@@ -4,7 +4,7 @@ project(wdm_coupling LANGUAGES Fortran C CXX)
 # don't look for $ENV{XXX_ROOT} variables
 # in find_library/package(xxx) commands
 if(POLICY CMP0074)
-  cmake_policy(set CMP0074 OLD)
+  cmake_policy(SET CMP0074 OLD)
 endif()
 
 cmake_host_system_information(RESULT HOST QUERY HOSTNAME)

@@ -6,6 +6,7 @@ set(MODS )
 
 set(LIB_NAME wdm_minapp)
 
+#includes ADIOS dependency
 find_package(wdm_coupler REQUIRED)
 
 find_package(XGC REQUIRED)

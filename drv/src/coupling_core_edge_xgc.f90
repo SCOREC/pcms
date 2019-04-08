@@ -14,7 +14,8 @@ module coupling_core_edge
   character(:), allocatable :: cce_adios_group
   character(8) :: cce_my_side
   character(8) :: cce_other_side
-  character(8) :: cce_step_string
+  character(8) :: cce_density_step_string
+  character(8) :: cce_field_step_string
   character(8) :: cce_plane_string
 
   logical :: cce_bcast_dpot
@@ -25,26 +26,29 @@ module coupling_core_edge
 
   integer :: cce_first_surface
   integer :: cce_last_surface
-  integer :: cce_surface_number
+  integer :: cce_surface_count
   integer :: cce_all_surface_number
 
-  integer :: cce_first_node
-  integer :: cce_last_node
-  integer :: cce_node_count
+  ! density field global vals
+  integer :: cce_density_first_node
+  integer :: cce_density_last_node
+  integer :: cce_density_node_count
 
-  integer :: cce_step
+  integer :: cce_density_step
   integer :: cce_field_step
   integer :: cce_field_model
 
   integer :: cce_comm_density_mode
   integer :: cce_comm_field_mode
 
+  ! potential field global vals
   integer :: cce_field_first_node
   integer :: cce_field_last_node
-  integer :: cce_field_node_number
+  integer :: cce_field_node_count
 
-  integer :: cce_first_surface_field
-  integer :: cce_last_surface_field
+  integer :: cce_field_first_surface
+  integer :: cce_field_last_surface
+  integer :: cce_field_surface_count
 
   integer :: cce_first_surface_coupling
   integer :: cce_last_surface_coupling
@@ -53,7 +57,7 @@ module coupling_core_edge
   integer :: cce_last_surface_coupling_axis
 
   ! physical data (fields)
-  real, dimension(:), allocatable :: cce_density
+  real, dimension(:,:), allocatable :: cce_density
   real, dimension(:), allocatable :: cce_pot0
   real, dimension(:), allocatable :: cce_dpot0
   real, dimension(:), allocatable :: cce_dpot1
@@ -73,8 +77,8 @@ module coupling_core_edge
     cce_output_dir, &
     cce_first_surface, &
     cce_last_surface, &
-    cce_first_node, &
-    cce_last_node, &
+    cce_density_first_node, &
+    cce_density_last_node, &
     cce_comm_density_mode, &
     cce_all_surface_number, &
     cce_alpha, &
@@ -82,8 +86,8 @@ module coupling_core_edge
     cce_comm_field_mode, &
     cce_first_surface_coupling, &
     cce_last_surface_coupling, &
-    cce_first_surface_field, &
-    cce_last_surface_field, &
+    cce_field_first_surface, &
+    cce_field_last_surface, &
     cce_npsi, &
     cce_first_surface_coupling_axis, &
     cce_last_surface_coupling_axis
@@ -99,10 +103,10 @@ contains
     ccs_adios_group = 'coupling'
     cce_alpha = 0.5D0
     cce_density_model = 0
-    cce_step = 1 !In case of restart, one might want to change this
+    cce_density_step = 1 !In case of restart, one might want to change this
     cce_field_step = 1
-    cce_first_node = 10
-    cce_last_node = 0
+    cce_density_first_node = 10
+    cce_density_last_node = 0
     cce_comm_density_mode = 2
     cce_all_surface_number = 1
     cce_first_surface_coupling = -1
@@ -134,14 +138,14 @@ contains
         cce_other_side = 'core'
       endif
 
-      cce_surface_number = cce_last_surface - cce_first_surface + 1
-      cce_node_count = cce_last_node - cce_first_node + 1
+      cce_surface_count = cce_last_surface - cce_first_surface + 1
+      cce_density_node_count = cce_density_last_node - cce_density_first_node + 1
 
-      cce_field_node_number = cce_node_count
-      cce_field_first_node = cce_first_node
-      cce_field_last_node = cce_last_node
+      cce_field_node_count = cce_density_node_count
+      cce_field_first_node = cce_density_first_node
+      cce_field_last_node = cce_density_last_node
 
-      if (cce_node_count < 0) then
+      if (cce_density_node_count < 0) then
         allocate(cce_surface_first_node(cce_all_surface_number))
         allocate(cce_surface_last_node(cce_all_surface_number))
 
@@ -149,22 +153,22 @@ contains
         READ(20, NML=surfaces)
         close(unit=20)
 
-        cce_first_node = cce_surface_first_node(cce_first_surface)
-        cce_last_node = cce_surface_last_node(cce_last_surface)
-        cce_node_count = cce_last_node - cce_first_node + 1
+        cce_density_first_node = cce_surface_first_node(cce_first_surface)
+        cce_density_last_node = cce_surface_last_node(cce_last_surface)
+        cce_density_node_count = cce_density_last_node - cce_density_first_node + 1
 
         cce_field_first_node = cce_surface_first_node(1)
         cce_field_last_node = cce_surface_last_node(cce_all_surface_number)
-        cce_field_node_number = cce_field_last_node - cce_field_first_node + 1
+        cce_field_node_count = cce_field_last_node - cce_field_first_node + 1
       endif
 
-      ! 1:cce_node_count
-      allocate(cce_density(cce_first_node:cce_last_node))
+      ! 1:cce_density_node_count
+      allocate(cce_density(cce_density_first_node:cce_density_last_node,cce_first_surface:cce_last_surface))
 
       if (cce_field_model /= 0 .and. cce_comm_field_mode /= 0) then
-        allocate(cce_dpot0(cce_field_first_node:cce_field_last_node))
-        allocate(cce_dpot1(cce_field_first_node:cce_field_last_node))
-        allocate(cce_pot0(cce_field_first_node:cce_field_last_node))
+        allocate(cce_dpot0(cce_field_first_node:cce_field_last_node,cce_field_first_surface:cce_field_last_surface))
+        allocate(cce_dpot1(cce_field_first_node:cce_field_last_node,cce_field_first_surface:cce_field_last_surface))
+        allocate(cce_pot0(cce_field_first_node:cce_field_last_node,cce_field_first_surface:cce_field_last_surface))
       endif
 
       if (cce_first_surface_coupling < 1) cce_first_surface_coupling = cce_first_surface
@@ -205,89 +209,15 @@ contains
     if(allocated(cce_pot0)) deallocate(cce_pot0)
   end subroutine cce_destroy
 
-  subroutine cce_advance
-    cce_step = cce_step + 1
-    write(cce_step_string,'(I0.5)') cce_step
-  end subroutine cce_advance
+  subroutine cce_advance_density
+    cce_density_step = cce_density_step + 1
+    write(cce_density_step_string,'(I0.5)') cce_density_step
+  end subroutine cce_advance_density
 
-  subroutine cce_send_density(density, pln_id, pln_cnt, blk_bgn, blk_cnt, comm)
-    implicit none
-
-    real, dimension(:), intent(in) :: density
-    integer, intent(in) :: pln_id
-    integer, intent(in) :: pln_cnt
-    integer, intent(in) :: blk_bgn
-    integer, intent(in) :: blk_cnt
-    integer, intent(in) :: comm
-
-    integer :: blk_end
-    character(:), allocatable :: cce_filename
-
-    ! adios
-    integer(8) :: buf_id
-    integer(8) :: adios_groupsize
-    integer(8) :: adios_totalsize
-    integer :: err
-
-    blk_end = blk_bgn + blk_cnt
-
-    if (cce_comm_density_mode == 1 .or. cce_comm_density_mode == 2) then
-      write(cce_plane_string,'(I0.5)') pln
-      cce_filename = trim(cce_output_dir)//'/density_'//trim(cce_my_side)//'_'//trim(planestr)//&
-        & '_'//trim(cce_step_string)//'.bp'
-
-      cce_density(:) = density(blk_bgn:blk_end) ! gene
-      cce_density(:) = density(cce_first_node:cce_last_node) ! xgc
-
-      call adios_open(buf_id, cce_adios_group, cce_filename, 'w', comm, err)
-      call adios_group_size (buf_id, adios_groupsize, adios_totalsize, err)
-      call adios_write (buf_id, "block_count", blk_cnt, err)
-      call adios_write (buf_id, "block_start", blk_bgn, err)
-      call adios_write (buf_id, "node_count",  cce_node_count, err)
-      call adios_write (buf_id, "node_start",  cce_node_start, err)
-      call adios_write (buf_id, "plane_count", pln_cnt, err)
-      call adios_write (buf_id, "plane_id", pln_id, err)
-      call adios_write (buf_id, "density", cce_density, err)
-      call adios_close (buf_id,err)
-    endif
-  end subroutine cce_send_density
-
-  subroutine cce_receive_density(density, pln_id, pln_cnt, blk_bgn, blk_cnt, comm)
-    implicit none
-
-    real, dimension(:,:), intent(out) :: density
-    integer, intent(in) :: pln_id
-    integer, intent(in) :: pln_cnt
-    integer, intent(in) :: blk_bgn
-    integer, intent(in) :: blk_cnt
-    integer, intent(in) :: comm
-
-    character(512) :: cce_filename
-
-    integer(8) :: buf_id
-    integer(8) :: adios_read_method = ADIOS_READ_METHOD_BP
-    integer(8) :: err
-    integer(8) :: bb_sel
-    integer :: stat
-    integer, dimension(2) :: bnds
-    integer, dimension(2) :: cnts
-
-    if (cce_comm_density_mode == 2.or.cce_comm_density_mode == 3) then
-      write(cce_plane_string,'(I0.5)') pln_id
-      cce_filename=trim(cce_output_dir)//'/density_'//trim(cce_other_side)//'_'//trim(cce_plane_string)//'_'//trim(cce_step_string)//'.bp'
-
-      bnds(1) = int(blk_bgn, kind=8)
-      bnds(2) = int(cce_node_start, kind=8)
-      cnts(1) = int(blk_cnt, kind=8)
-      cnts(2) = int(cce_node_count, kind=8)
-
-      call adios_selection_boundingbox (bb_sel, 1, bnds, cnts)
-      call adios_read_open_file (buf_id, cce_filename, ADIOS_READ_METHOD_BP, comm, err)
-      call adios_schedule_read (buf_id, bb_sel, 'density', 0, 1, cce_density(:), err)
-      call adios_perform_reads (buf_id, err)
-      call adios_read_close (buf_id, err)
-    endif
-  end subroutine cce_receive_density
+  subroutine cce_advance_field
+    cce_field_step = cce_field_step + 1
+    write(cce_field_step_string,'(I0.5)') cce_field_step
+  end subroutine cce_advance_field
 
   subroutine cce_preprocess_density(density, plane_id)
     real(8), dimension(:), intent(inout) :: density
@@ -300,11 +230,9 @@ contains
 
     character(512) :: cce_filename
 
-    write(cce_plane_string,'(I0.5)') plane_id
-
     select case (cce_density_model)
     case (-1)
-      density(cce_first_node:cce_last_node) = 0D0
+      density(cce_density_first_node:cce_density_last_node) = 0D0
     case (0)
       ! nothing
     case(1) !linear coupling
@@ -328,16 +256,16 @@ contains
     case(2) ! average
       alpha = cce_alpha
       ipsi0 = cce_field_first_node
-      ipsi1 = cce_last_node
+      ipsi1 = cce_density_last_node
       density(ipsi0:ipsi1) = (1D0 - alpha) * density(ipsi0:ipsi1) + alpha * cce_density(ipsi0:ipsi1)
     case(3) ! identity (doesn't do anything...)
-      ipsi0 = cce_first_node
-      ipsi1 = cce_last_node
+      ipsi0 = cce_density_first_node
+      ipsi1 = cce_density_last_node
       density(ipsi0:ipsi1) = density(ipsi0:ipsi1)
     case(4)
       alpha = cce_alpha
-      ipsi0 = cce_first_node
-      ipsi1 = cce_last_node
+      ipsi0 = cce_density_first_node
+      ipsi1 = cce_density_last_node
       density(ipsi0:ipsi1) = (1D0 - alpha) * cce_density(ipsi0:ipsi1)
     case(5)
       if ((cce_side == 1)) then
@@ -350,8 +278,8 @@ contains
         density(ipsi0:ipsi1) = cce_density(ipsi0:ipsi1)
       endif
     case(6)
-      ipsi0 = cce_surface_first_node(cce_first_surface) !cce_first_node
-      ipsi1 = cce_surface_last_node(cce_last_surface)   !cce_last_node
+      ipsi0 = cce_surface_first_node(cce_first_surface) !cce_density_first_node
+      ipsi1 = cce_surface_last_node(cce_last_surface)   !cce_density_last_node
       density(ipsi0:ipsi1) = density(ipsi0:ipsi1) + cce_density(ipsi0:ipsi1)
     case default
       print *,'Unknown coupling model'
@@ -359,305 +287,202 @@ contains
     end select
   end subroutine cce_preprocess_density
 
-  subroutine cce_send_field(dpot0,dpot1,pot0,flag_pot0)
-    use sml_module
-
-    include 'mpif.h'
-
-    real*8, dimension(:), intent(in) :: dpot0,dpot1,pot0
-    !real*8, dimension(:,:), intent(in) :: dpot
-    integer, intent(in) :: flag_pot0
-
-    character(512) :: cce_filename
-
-    ! ADIOS
-    integer*8 :: buf_id, buf_size, total_size
-    integer :: err,mode
-
-    real*8, dimension(:),allocatable :: arrtmp1,arrtmp2,arrtmp3
-
-    !cce_density=0D0
-
-    if(cce_side.eq.1.and.cce_comm_field_mode.GT.0)then
-      write(cce_plane_string,'(I0.5)') sml_intpl_mype
-
-      allocate(arrtmp1(cce_field_node_number),arrtmp2(cce_field_node_number),arrtmp3(cce_field_node_number))
-
-      arrtmp1(1:cce_field_node_number) = pot0(cce_field_first_node:cce_field_last_node)
-      arrtmp2(1:cce_field_node_number) = dpot0(cce_field_first_node:cce_field_last_node)
-      arrtmp3(1:cce_field_node_number) = dpot1(cce_field_first_node:cce_field_last_node)
-
-#ifdef CCE_DEBUG
-      cce_filename=trim(cce_output_dir)//'/field_'//trim(cce_my_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.bp'
-#else
-      cce_filename=trim(cce_output_dir)//'/field_'//trim(cce_my_side)//'_'//trim(planestr)//'.bp'
-#endif
-      ADIOS_OPEN(buf_id,'coupling_fields',cce_filename,'w',MPI_COMM_SELF,err)  !sml_comm_null,err)
-      buf_size= 4*8 + 8 + 24*cce_field_node_number  + 100 !last 100 is buffer
-      ADIOS_GROUP_SIZE(buf_id,buf_size,total_size,err)
-      ADIOS_WRITE_LBL(buf_id,'nphi',sml_nphi_total,err)
-      ADIOS_WRITE_LBL(buf_id,'iphi',sml_intpl_mype,err)
-      ADIOS_WRITE_LBL(buf_id,'first_node',cce_field_first_node,err)
-      ADIOS_WRITE_LBL(buf_id,'last_node',cce_field_last_node,err)
-      ADIOS_WRITE_LBL(buf_id,'node_number',cce_field_node_number,err)
-      ADIOS_WRITE_LBL(buf_id,'cce_side',cce_side,err)
-      ADIOS_WRITE_LBL(buf_id,'cce_model',cce_field_model,err)
-      ADIOS_WRITE_LBL(buf_id,'time',sml_time,err)
-      ADIOS_WRITE_LBL(buf_id,'step',sml_gstep,err)
-      ADIOS_WRITE_LBL(buf_id,'pot0', arrtmp1,err)
-      ADIOS_WRITE_LBL(buf_id,'dpot0', arrtmp2,err)
-      ADIOS_WRITE_LBL(buf_id,'dpot1', arrtmp3,err)
-      ADIOS_CLOSE(buf_id,err)
-
-      deallocate(arrtmp1)
-      deallocate(arrtmp2)
-      deallocate(arrtmp3)
-
-#ifdef OLDIMPLEMENTATIOBOBSOLETE
-#ifndef SPECIFIC_GENEXGC
-      arrtmp(1:cce_field_node_number)=dpot1(cce_field_first_node:cce_field_last_node)
-#ifdef CCE_DEBUG
-      cce_filename=trim(cce_output_dir)//'/dpot1_'//trim(cce_my_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.bp'
-#else
-      cce_filename=trim(cce_output_dir)//'/dpot1_'//trim(cce_my_side)//'_'//trim(planestr)//'.bp'
-#endif
-      ADIOS_OPEN(buf_id,'coupling',cce_filename,'w',MPI_COMM_SELF,err)  !sml_comm_null,err)
-      buf_size= 4*8 + 8 + 8*cce_field_node_number  + 100 !last 100 is buffer
-      ADIOS_GROUP_SIZE(buf_id,buf_size,total_size,err)
-      ADIOS_WRITE_LBL(buf_id,'nphi',sml_nphi_total,err)
-      ADIOS_WRITE_LBL(buf_id,'iphi',sml_intpl_mype,err)
-      ADIOS_WRITE_LBL(buf_id,'first_node',cce_field_first_node,err)
-      ADIOS_WRITE_LBL(buf_id,'last_node',cce_field_last_node,err)
-      ADIOS_WRITE_LBL(buf_id,'node_number',cce_field_node_number,err)
-      ADIOS_WRITE_LBL(buf_id,'cce_side',cce_side,err)
-      ADIOS_WRITE_LBL(buf_id,'cce_model',cce_field_model,err)
-      ADIOS_WRITE_LBL(buf_id,'time',sml_time,err)
-      ADIOS_WRITE_LBL(buf_id,'step',sml_gstep,err)
-      ADIOS_WRITE_LBL(buf_id,'data', arrtmp,err)
-      ADIOS_CLOSE(buf_id,err)
-
-      if(flag_pot0.eq.0)then
-        arrtmp(1:cce_field_node_number)=pot0(cce_field_first_node:cce_field_last_node)
-#ifdef CCE_DEBUG
-        cce_filename=trim(cce_output_dir)//'/pot0_'//trim(cce_my_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.bp'
-#else
-        cce_filename=trim(cce_output_dir)//'/pot0_'//trim(cce_my_side)//'_'//trim(planestr)//'.bp'
-#endif
-        ADIOS_OPEN(buf_id,'coupling',cce_filename,'w',MPI_COMM_SELF,err)  !sml_comm_null,err)
-        buf_size= 4*8 + 8 + 8*cce_field_node_number  + 100 !last 100 is buffer
-        ADIOS_GROUP_SIZE(buf_id,buf_size,total_size,err)
-        ADIOS_WRITE_LBL(buf_id,'nphi',sml_nphi_total,err)
-        ADIOS_WRITE_LBL(buf_id,'iphi',sml_intpl_mype,err)
-        ADIOS_WRITE_LBL(buf_id,'first_node',cce_field_first_node,err)
-        ADIOS_WRITE_LBL(buf_id,'last_node',cce_field_last_node,err)
-        ADIOS_WRITE_LBL(buf_id,'node_number',cce_field_node_number,err)
-        ADIOS_WRITE_LBL(buf_id,'cce_side',cce_side,err)
-        ADIOS_WRITE_LBL(buf_id,'cce_model',cce_field_model,err)
-        ADIOS_WRITE_LBL(buf_id,'time',sml_time,err)
-        ADIOS_WRITE_LBL(buf_id,'step',sml_gstep,err)
-        ADIOS_WRITE_LBL(buf_id,'data', arrtmp,err)
-        ADIOS_CLOSE(buf_id,err)
-      endif
-      deallocate(arrtmp)
-      !Create an unlock file
-#endif
-#endif
-
-      cce_filename=trim(cce_output_dir)//'/field_'//trim(cce_my_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.unlock'
-      open(20, file=cce_filename, status="new", action="write")
-      close(20)
-    endif
-
-  end subroutine cce_send_field
-
-  subroutine cce_receive_field(flag_pot0)
-    use adios_read_mod
-    use sml_module
-
-    include 'mpif.h'
-
-    integer, intent(in) :: flag_pot0
-
-    logical :: ex
-    character(5)::cce_stepstr,planestr
-    character(512) :: cce_filename
-    integer*8 :: buf_id
-    integer :: adios_read_method = ADIOS_READ_METHOD_BP, err
-    integer*8 :: sel1=0
-    real*8, dimension(:),allocatable :: arrtmp1,arrtmp2,arrtmp3
-    integer :: stat
-
-    cce_dpot0=0D0
-    cce_dpot1=0D0
-    cce_pot0=0D0
-
-    if(cce_side.eq.0.and.cce_comm_field_mode.GT.1)then
-
-      ex=.false.
-
-      write(cce_stepstr,'(I0.5)') cce_field_step
-      write(planestr,'(I0.5)') sml_intpl_mype
-
-      cce_filename=trim(cce_output_dir)//'/field_'//trim(cce_other_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.unlock'
-      do while(.NOT.ex)
-        inquire(file=cce_filename,EXIST=ex)
-      end do
-#ifndef CCE_DEBUG
-      open(unit=1234, iostat=stat, file=cce_filename, status='old')
-      if (stat == 0) close(1234, status='delete')
-#endif
-#ifdef CCE_DEBUG
-      cce_filename=trim(cce_output_dir)//'/field_'//trim(cce_other_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.bp'
-#else
-      cce_filename=trim(cce_output_dir)//'/field_'//trim(cce_other_side)//'_'//trim(planestr)//'.bp'
-#endif
-      call adios_read_open_file (buf_id, cce_filename, adios_read_method, MPI_COMM_SELF, err)
-      if(err/=0) then
-        print *, 'coupling receive error: could not open file', cce_filename
-        stop
-      endif
-      allocate(arrtmp1(cce_field_node_number),arrtmp2(cce_field_node_number),arrtmp3(cce_field_node_number))
-      arrtmp1=0D0
-      arrtmp2=0D0
-      arrtmp3=0D0
-      call adios_schedule_read (buf_id, sel1, 'pot0', 0, 1, arrtmp1, err)
-      call adios_schedule_read (buf_id, sel1, 'dpot0', 0, 1, arrtmp2, err)
-      call adios_schedule_read (buf_id, sel1, 'dpot1', 0, 1, arrtmp3, err)
-      call adios_perform_reads (buf_id, err)
-      call adios_read_close (buf_id, err)
-      cce_pot0(cce_field_first_node:cce_field_last_node)=arrtmp1(1:cce_field_node_number)
-      cce_dpot0(cce_field_first_node:cce_field_last_node)=arrtmp2(1:cce_field_node_number)
-      cce_dpot1(cce_field_first_node:cce_field_last_node)=arrtmp3(1:cce_field_node_number)
-      deallocate(arrtmp1)
-      deallocate(arrtmp2)
-      deallocate(arrtmp3)
-
-#ifdef OLDIMPLEMENTATIOBOBSOLETE
-#ifdef CCE_DEBUG
-      cce_filename=trim(cce_output_dir)//'/dpot1_'//trim(cce_other_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.bp'
-#else
-      cce_filename=trim(cce_output_dir)//'/dpot1_'//trim(cce_other_side)//'_'//trim(planestr)//'.bp'
-#endif
-      call adios_read_open_file (buf_id, cce_filename, adios_read_method, MPI_COMM_SELF, err)
-      if(err/=0) then
-        print *, 'coupling receive error: could not open file', cce_filename
-        stop
-      endif
-      arrtmp=0D0
-      call adios_schedule_read (buf_id, sel1, 'data', 0, 1, arrtmp, err)
-      call adios_perform_reads (buf_id, err)
-      call adios_read_close (buf_id, err)
-      cce_dpot1(cce_field_first_node:cce_field_last_node)=arrtmp(1:cce_field_node_number)
-
-      if(flag_pot0.eq.0)then
-        arrtmp=0D0
-#ifdef CCE_DEBUG
-        cce_filename=trim(cce_output_dir)//'/pot0_'//trim(cce_other_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.bp'
-#else
-        cce_filename=trim(cce_output_dir)//'/pot0_'//trim(cce_other_side)//'_'//trim(planestr)//'.bp'
-#endif
-        call adios_read_open_file (buf_id, cce_filename, adios_read_method, MPI_COMM_SELF, err)
-        if(err/=0) then
-          print *, 'coupling receive error: could not open file', cce_filename
-          stop
-        endif
-        call adios_schedule_read (buf_id, sel1, 'data', 0, 1, arrtmp, err)
-        call adios_perform_reads (buf_id, err)
-        call adios_read_close (buf_id, err)
-        cce_pot0(cce_field_first_node:cce_field_last_node)=arrtmp(1:cce_field_node_number)
-      endif
-
-      deallocate(arrtmp)
-#endif
-    endif
-  end subroutine cce_receive_field
-
-
-  subroutine cce_process_field(dpot0,dpot1,pot0, flag_pot0)
-    use sml_module
-
-    include 'mpif.h'
-
-    real*8, dimension(:)  , intent(inout) :: pot0,dpot0,dpot1
+  subroutine cce_preprocess_field(dpot0, dpot1, pot0, flag_pot0)
+    implicit none
+    real(8), dimension(:), intent(inout) :: pot0
+    real(8), dimension(:), intent(inout) :: dpot0
+    real(8), dimension(:), intent(inout) :: dpot1
     integer, intent(in) :: flag_pot0
 
     select case (cce_field_model)
     case (0)
       ! nothing
     case(1)
-      cce_bcast_dpot=.true.
-      dpot0(:)=cce_dpot0(:)
-      dpot1(:)=cce_dpot1(:)
-      if(flag_pot0.eq.0)then
-        cce_bcast_pot0=.true.
-        pot0(:)=cce_pot0(:)
+      cce_bcast_dpot = .true.
+      dpot0(:) = cce_dpot0(:)
+      dpot1(:) = cce_dpot1(:)
+      if (flag_pot0 == 0) then
+        cce_bcast_pot0 = .true.
+        pot0(:) = cce_pot0(:)
       endif
     case default
       print *,'Unknown coupling model'
       stop
     end select
-
     cce_field_step = cce_field_step + 1
+  end subroutine cce_preprocess_field
 
-  end subroutine cce_process_field
-#endif
+  ! all values local, though this assumes that the
+  !  indices used in density(:,:) are global indices instead of local indices...?
+  subroutine cce_send_density(density, nd_bgn, nd_cnt, pln_bgn, pln_cnt, comm)
+    implicit none
 
-#ifdef GENE_SIDE
-  subroutine cce_receive_field(iphi,myli0,myli1,myli2,data_block,comm)
-    use adios_read_mod
-    use mpi
-
-    integer, intent(in) :: iphi,myli0,myli1,myli2
+    real(8), dimension(:,:), intent(in) :: density
+    integer, intent(in) :: nd_bg
+    integer, intent(in) :: nd_cnt
+    integer, intent(in) :: pln_bgn
+    integer, intent(in) :: pln_cnt
     integer, intent(in) :: comm
-    real, dimension(myli1:myli2), intent(out) :: data_block
 
-    logical :: ex
-    character(5)::cce_stepstr,planestr
+    integer :: nd_end
+    integer :: pln_end
+    character(:), allocatable :: cce_filename
+
+    ! adios
+    integer(8) :: buf_id
+    integer(8) :: buf_grp_sz
+    integer(8) :: buf_sz
+    integer :: err
+
+    nd_end = nd_bgn + nd_cnt
+    pln_end = pln_bgn + pln_cnt
+
+    if (cce_comm_density_mode == 1 .or. cce_comm_density_mode == 2) then
+      write(cce_plane_string,'(I0.5)') pln_bgn
+      cce_filename = trim(cce_output_dir)//'/density_'//trim(cce_my_side)//'_'//trim(cce_plane_string)//'_'//trim(cce_density_step_string)//'.bp'
+      cce_density(:,:) = density(nd_bgn:nd_end,pln_bgn:pln_end)
+      buf_grp_sz = 24 + 8 * (nd_cnt * pln_cnt)
+      call adios_open(buf_id, cce_adios_group, cce_filename, 'w', comm, err)
+      call adios_group_size (buf_id, buf_grp_sz, buf_sz, err)
+      call adios_write (buf_id, "gbl_nd_cnt", cce_density_node_count, err)
+      call adios_write (buf_id, "lcl_nd_cnt", nd_cnt, err)
+      call adios_write (buf_id, "lcl_nd_bgn", nd_bgn, err)
+      call adios_write (buf_id, "gbl_pln_cnt", cce_surface_count, err)
+      call adios_write (buf_id, "lcl_pln_cnt", pln_cnt, err)
+      call adios_write (buf_id, "lcl_pln_bgn", pln_bgn, err)
+      call adios_write (buf_id, "density", cce_density, err)
+      call adios_close (buf_id, err)
+    endif
+  end subroutine cce_send_density
+
+  subroutine cce_send_field(pot0, dpot0, dpot1, nd_bgn, nd_cnt, pln_bgn, pln_cnt, comm)
+    implicit none
+
+    real(8), dimension(:), intent(in) :: pot0
+    real(8), dimension(:), intent(in) :: dpot0
+    real(8), dimension(:), intent(in) :: dpot1
+    integer, intent(in) :: nd_bgn
+    integer, intent(in) :: nd_cnt
+    integer, intent(in) :: pln_bgn
+    integer, intent(in) :: pln_cnt
+    integer, intent(in) :: comm
+
+    integer :: nd_end
+    integer :: pln_end
+    character(512) :: cce_filename
+
+    integer(8) :: buf_id
+    integer(8) :: buf_grp_sz
+    integer(8) :: buf_sz
+    integer :: err
+
+    nd_end = nd_bgn + nd_cnt
+    pln_end = pln_bgn + pln_cnt
+
+    if (cce_side == 1 .and. cce_comm_field_mode > 0) then
+      cce_filename = trim(cce_output_dir)//'/potential_'//trim(cce_my_side)//'_'//trim(cce_density_step_string)//'.bp'
+
+      cce_pot0(:,:)  = pot0(nd_bgn:nd_end, pln_bgn:pln_end)
+      cce_dpot0(:,:) = dpot0(nd_bgn:nd_end, pln_bgn:pln_end)
+      cce_dpot1(:,:) = dpot1(nd_bgn:nd_end, pln_bgn:pln_end)
+
+      call adios_open(buf_id,'coupling_fields',cce_filename,'w',MPI_COMM_SELF,err)
+      buf_grp_sz = (24 + 24 * cce_field_node_count)
+      call adios_group_size(buf_id, buf_sz, buf_sz, err)
+      call adios_write(buf_id, 'gbl_nd_cnt', cce_field_node_count, err)
+      call adios_write(buf_id, 'lcl_nd_cnt', nd_cnt, err)
+      call adios_write(buf_id, 'lcl_nd_bgn', nd_bgn, err)
+      call adios_write(buf_id, 'gbl_pln_cnt', cce_field_surface_count, err)
+      call adios_write(buf_id, 'lcl_pln_cnt', pln_cnt, err)
+      call adios_write(buf_id, 'lcl_pln_bgn', pln_bgn, err)
+      call adios_write(buf_id, 'pot0', cce_pot0, err)
+      call adios_write(buf_id, 'dpot0', cce_dpot0, err)
+      call adios_write(buf_id, 'dpot1', cce_dpot1, err)
+      call adios_close(buf_id, err)
+    endif
+  end subroutine cce_send_field
+
+  subroutine cce_receive_density(density, nd_bgn, nd_cnt, pln_bgn, pln_cnt, comm)
+    implicit none
+
+    real, dimension(:,:), intent(inout) :: density
+    integer, intent(in) :: nd_bgn
+    integer, intent(in) :: nd_cnt
+    integer, intent(in) :: pln_id
+    integer, intent(in) :: pln_cnt
+    integer, intent(in) :: comm
+
     character(512) :: cce_filename
     integer(8) :: buf_id
-    integer :: adios_read_method = ADIOS_READ_METHOD_BP, adios_err
+    integer(8) :: err
     integer(8) :: bb_sel
-    real, dimension(:),allocatable :: arrtmp
+    integer :: stat
+    integer(8), dimension(2) :: bnds
+    integer(8), dimension(2) :: cnts
 
-    cce_dpot0=0D0
+    if (cce_comm_density_mode == 2.or.cce_comm_density_mode == 3) then
+      write(cce_plane_string,'(I0.5)') pln_id
+      cce_filename=trim(cce_output_dir)//'/density_'//trim(cce_other_side)//'_'//trim(cce_plane_string)//'_'//trim(cce_density_step_string)//'.bp'
 
-    if(cce_side.eq.0.and.cce_comm_field_mode.GT.1)then
+      bnds(1) = int(nd_bgn, kind=8)
+      bnds(2) = int(pln_bgn, kind=8)
+      cnts(1) = int(nd_cnt, kind=8)
+      cnts(2) = int(pln_cnt, kind=8)
 
-      ex=.false.
-
-      write(cce_stepstr,'(I0.5)') cce_field_step
-      write(planestr,'(I0.5)') iphi
-      cce_filename=trim(cce_output_dir)//'/field_'//trim(cce_other_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.unlock'
-      write(*,*)'lookfor',cce_filename
-      do while(.NOT.ex)
-        inquire(file=cce_filename,EXIST=ex)
-      end do
-      write(*,*)'found',cce_filename
-      cce_filename=trim(cce_output_dir)//'/dpot0_'//trim(cce_other_side)//'_'//trim(planestr)//'_'//trim(cce_stepstr)//'.bp'
-      call adios_read_open_file (buf_id, cce_filename, adios_read_method, comm, adios_err)
-      if(adios_err.ne.0) then
-        print *, 'coupling receive error: could not open file', cce_filename
-        stop
-      endif
-
-      call adios_selection_boundingbox(bb_sel, 1, (/int(myli1, kind=8), int(1,kind=8)/), shape(data_block, kind=8))
-      call adios_schedule_read(buf_id, bb_sel, "data", 0 , 1, data_block, adios_err)
-      call adios_perform_reads(buf_id, adios_err)
-      call adios_read_close(buf_id, adios_err)
-      call adios_selection_delete(bb_sel)
-
+      call adios_selection_boundingbox (bb_sel, 1, bnds, cnts)
+      call adios_read_open_file (buf_id, cce_filename, ADIOS_READ_METHOD_BP, comm, err)
+      call adios_schedule_read (buf_id, bb_sel, 'density', 0, 1, cce_density, err)
+      call adios_perform_reads (buf_id, err)
+      call adios_read_close (buf_id, err)
     endif
+  end subroutine cce_receive_density
 
+  subroutine cce_receive_field(pot0, dpot0, dpot1, flag_pot0, nd_bgn, nd_cnt, pln_bgn, pln_cnt, comm)
+    implicit none
+    integer, intent(in) :: flag_pot0
+    real(8), dimension(:), intent(in)
+
+    character(512) :: cce_filename
+
+    ! adios
+    integer(8) :: buf_id
+    integer :: err
+    integer :: bb_sel
+    integer(8), dimension(2) :: bnds
+    integer(8), dimension(2) :: cnts
+
+    if (cce_side == 0 .and. cce_comm_field_mode > 1) then
+
+      bnds(1) = nd_bgn
+      cnts(1) = nd_cnt
+      bnds(2) = pln_bgn
+      cnts(2) = pln_cnt
+
+      cce_filename = trim(cce_output_dir)//'/field_'//trim(cce_other_side)//'.bp'
+
+      call adios_selection_boundingbox(bb_sel, 1, bnds, cnts)
+      call adios_read_open_file (buf_id, cce_filename, ADIOS_READ_METHOD_BP, comm, err)
+      call adios_schedule_read (buf_id, bb_sel, 'pot0', cce_field_step, 1, cce_pot0, err)
+      call adios_schedule_read (buf_id, bb_sel, 'dpot0', cce_field_step, 1, cce_dpot0, err)
+      call adios_schedule_read (buf_id, bb_sel, 'dpot1', cce_field_step, 1, cce_dpot1, err)
+      call adios_perform_reads (buf_id, err)
+      call adios_read_close (buf_id, err)
+    endif
   end subroutine cce_receive_field
 
-  subroutine cce_process_field()
-    cce_field_step=cce_field_step+1
-  end subroutine cce_process_field
+  ! i *think* this is taking the (gyro averaged) ion density for (in XGC) a single
+  !  poloidal plane (since each process has only 2), and for a single flux surface,
+  !  but for all nodes on the flux surface, and projecting those values onto the coupling grid
+  !  but is seems to do this for all flux surfaces, rather than some subset of the flux surfaces
+  !  which I might expect for a general coupling which has a limited overlap region
 
-#endif
+  ! oh wait, this might by APPLYING the coupling, since it seems to ZERO out those
+  ! nodes corresponding to the overlap region (in some cases) and then
+  ! add values to those locations, but I don't see the density field in here
 
-#ifndef GENE_SIDE
+  ! it could also just be setting some weighting values for use by the actual gyro-averagin function...
   subroutine cce_varpi_grid(rho_ff)
+    ! XGC VERSION
     real (8), dimension(:), intent(inout) :: rho_ff
     integer :: ipsi,ipsi0,ipsi1
     real (8) :: varpi

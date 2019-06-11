@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
 set(CSRC )
-#set(FSRC coupling_core_edge_xgc.F90)
 set(FSRC 
 	new_coupling_xgc.F90)
 
@@ -8,7 +7,6 @@ set(HDRS )
 set(MODS 
 	new_coupling_xgc.mod)
 
-#set(LIB_NAME wdm_coupling)
 set(LIB_NAME wdm_minapp)
 
 #includes ADIOS dependency
@@ -28,7 +26,6 @@ set(INCLUDE_DIRS ${INCLUDE_DIRS} ${ADIOS_INCLUDE_DIRS} )
 set(WDM_ROOT /users/adesoa/dev/install/wdm_coupling/)
 
 add_library(${LIB_NAME} ${FSRC} ${CSRC})
-
 target_include_directories(${LIB_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
@@ -38,9 +35,9 @@ target_include_directories(${LIB_NAME} PUBLIC
 target_link_libraries(${LIB_NAME} ${LINK_LIBS})
 
 
-install(FILES ${MODS} DESTINATION include)
+install(FILES ${MODS} DESTINATION ${WDM_ROOT}/drv/build)
 #install(FILES "${HDRS} ${MODS}" DESTINATION include)
 #install(TARGETS ${LIB_NAME} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
-install(TARGETS ${LIB_NAME} LIBRARY DESTINATION ${WDM_ROOT} ARCHIVE DESTINATION ${WDM_ROOT})
+install(TARGETS ${LIB_NAME} LIBRARY DESTINATION ${WDM_ROOT}/drv/build ARCHIVE DESTINATION ${WDM_ROOT}/drv/build)
 
 

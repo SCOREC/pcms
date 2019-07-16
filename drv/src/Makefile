@@ -198,6 +198,33 @@ new_coupling_xgc.F90.s:
 	cd /users/adesoa/dev/wdm/wdmapp_coupling/drv && $(MAKE) -f src/CMakeFiles/wdm_minapp.dir/build.make src/CMakeFiles/wdm_minapp.dir/new_coupling_xgc.F90.s
 .PHONY : new_coupling_xgc.F90.s
 
+sim_param.o: sim_param.F90.o
+
+.PHONY : sim_param.o
+
+# target to build an object file
+sim_param.F90.o:
+	cd /users/adesoa/dev/wdm/wdmapp_coupling/drv && $(MAKE) -f src/CMakeFiles/wdm_minapp.dir/build.make src/CMakeFiles/wdm_minapp.dir/sim_param.F90.o
+.PHONY : sim_param.F90.o
+
+sim_param.i: sim_param.F90.i
+
+.PHONY : sim_param.i
+
+# target to preprocess a source file
+sim_param.F90.i:
+	cd /users/adesoa/dev/wdm/wdmapp_coupling/drv && $(MAKE) -f src/CMakeFiles/wdm_minapp.dir/build.make src/CMakeFiles/wdm_minapp.dir/sim_param.F90.i
+.PHONY : sim_param.F90.i
+
+sim_param.s: sim_param.F90.s
+
+.PHONY : sim_param.s
+
+# target to generate assembly for a file
+sim_param.F90.s:
+	cd /users/adesoa/dev/wdm/wdmapp_coupling/drv && $(MAKE) -f src/CMakeFiles/wdm_minapp.dir/build.make src/CMakeFiles/wdm_minapp.dir/sim_param.F90.s
+.PHONY : sim_param.F90.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -214,6 +241,9 @@ help:
 	@echo "... new_coupling_xgc.o"
 	@echo "... new_coupling_xgc.i"
 	@echo "... new_coupling_xgc.s"
+	@echo "... sim_param.o"
+	@echo "... sim_param.i"
+	@echo "... sim_param.s"
 .PHONY : help
 
 

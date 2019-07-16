@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+	#2.8)
 project(wdm_minapp LANGUAGES Fortran C CXX)
 
 if(POLICY CMP0074)
@@ -15,7 +16,7 @@ if(BUILD_SHARED_LIBS)
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+#list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 add_subdirectory(src)
 

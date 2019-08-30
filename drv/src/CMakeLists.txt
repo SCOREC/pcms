@@ -10,9 +10,9 @@ set(MODS new_coupling_xgc.mod
 
  set(LIB_NAME wdm_minapp)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} /users/adesoa/dev/wdm/wdmapp_coupling/cpl/cmake/)
- 
- 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../cpl/cmake/")
+
+
 #find_package(XGC REQUIRED)
 #find_package(GENE REQIRED)
 

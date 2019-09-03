@@ -6,7 +6,7 @@ set(FSRC new_coupling_xgc.F90
 set(HDRS )
 set(MODS new_coupling_xgc.mod
 	 sim_param.mod
-	 adios_read_mod.mod)
+	 adios_comm_mod.mod)
 
  set(LIB_NAME wdm_minapp)
 

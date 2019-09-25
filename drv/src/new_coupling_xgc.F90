@@ -898,7 +898,7 @@ subroutine cce_receive_field_XGC(flag_pot0)
   integer :: err
   integer*8 :: sel2, start2(2), count2(2)
   real*8, dimension(:),allocatable :: arrtmp
-  call t_startf("CCE_RECEIVE_FIELD")
+  !! call t_startf("CCE_RECEIVE_FIELD")
   
   cce_dpot0=0D0
   cce_dpot1=0D0

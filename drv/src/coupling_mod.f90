@@ -89,7 +89,7 @@ contains
     if (sml_electron_on) then
        buf_size = buf_size + 4*3 + 8*3 + 8*spall(0)%num + 8*spall(0)%num*ict2
     endif
-    call t_startf("COUPLINGP_WRITE")
+    !! call t_startf("COUPLINGP_WRITE")
     write(filename,'("xgc.couplingp.xgc1.",i5.5,".bp")') sml_gstep
     if (sml_mype==0) print *, 'Writing', filename
     ADIOS_OPEN(buf_id,'couplingp',filename,'w',sml_comm,err)

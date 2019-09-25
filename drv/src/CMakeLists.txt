@@ -8,10 +8,9 @@ set(MODS new_coupling_xgc.mod
 	 sim_param.mod
 	 adios_comm_mod.mod)
 
- set(LIB_NAME wdm_minapp)
+set(LIB_NAME wdm_minapp)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../cpl/cmake/")
-
 
 #find_package(XGC REQUIRED)
 #find_package(GENE REQIRED)
@@ -36,6 +35,6 @@ target_include_directories(${LIB_NAME} PUBLIC
   )
 target_link_libraries(${LIB_NAME} ${LINK_LIBS})
 
-install(FILES ${MODS} DESTINATION ${PROJECT_BINARY_DIR})
+#install(FILES ${MODS} DESTINATION ${PROJECT_BINARY_DIR})
 install(TARGETS ${LIB_NAME} LIBRARY DESTINATION ${PROJECT_BINARY_DIR} ARCHIVE DESTINATION ${PROJECT_BINARY_DIR})
 

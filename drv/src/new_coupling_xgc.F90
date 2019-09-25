@@ -997,7 +997,7 @@ subroutine cce_receive_field_XGC(flag_pot0)
     deallocate(arrtmp)
   endif
 
-  call t_stopf("CCE_RECEIVE_FIELD")
+ ! call t_stopf("CCE_RECEIVE_FIELD")
 
 end subroutine cce_receive_field_XGC
 

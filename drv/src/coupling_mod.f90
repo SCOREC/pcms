@@ -130,7 +130,7 @@ contains
        endif
        ADIOS_CLOSE(buf_id,err)
        call write_unlock(filename)
-       call t_stopf("COUPLINGP_WRITE")
+       ! call t_stopf("COUPLINGP_WRITE")
        deallocate(phase,gid)
        if(sml_electron_on)   deallocate(ephase,egid)
        ADIOS_OPEN(buf_id,'coupling.info','xgc.coupling-info.bp','w',sml_comm,err)

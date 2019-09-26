@@ -1,0 +1,6 @@
+ssh romulus or any RHEL7 machine
+export MACHINE=scorec
+module load gcc/7.3.0-bt47fwr  mpich/3.3-diz4f6i
+module load adios/1.13.1-ootbumw hdf5/1.8.21-ftn-nqg53a4
+make
+The "./bin/gene_scorec" binary should be generated

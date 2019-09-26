@@ -1,0 +1,15 @@
+1. DISTRIBUTION
+
+The GENE code can only be distributed to individual users by the GENE Development Team (GDT, represented by Frank Jenko); users of the code are not free to re-distribute the GENE code (or any part or modified version of it) to third parties without prior consent of the GDT.
+
+2. MODIFICATIONS
+
+Individual users of the GENE code may modify the sources and publish results obtained this way, provided that all deviations from officially released versions are pointed out in the publication. Furthermore, users are encouraged to communicate such modifications to the GDT; if they are incorporated into a subsequent release of GENE, these contributions will be acknowledged. People who would like to participate in further developing the code on a more continuous basis may also join the GDT.
+
+3. PUBLICATIONS
+
+All publications containing results obtained with the GENE code should include the official code name and some key references describing the GENE code (provided by the GDT). Users are encouraged to notify the GDT about such publications.
+
+4. NO WARRANTY
+
+This software is provided on a "as is" basis, without warranty of any kind. The user is solely responsible for the appropriate handling of the code and assumes potential risks like program errors or damage to data.

@@ -1,0 +1,154 @@
+&parallelization
+n_procs_y = 1
+n_procs_s = 2
+n_procs_v = 1
+!min_npw = 4
+n_procs_w = -1
+min_npx = 2
+n_procs_x = -1
+n_procs_z = 1
+n_parallel_sims = 2
+/
+
+&box
+n_spec =    2
+nx0    =   64
+nky0   =    1
+nz0    =   16
+nv0    =   32
+nw0    =   16
+
+lx    =  32.0
+
+kymin =     0.30
+!n0_global = 19
+
+!brsc = 0.0 !scanlist:0.030,0.0285,0.0270,0.025
+
+adapt_ly = T
+
+lv    =     3.00
+lw    =     9.00
+
+x0 = 0.5
+/
+
+&in_out
+! where to write output files ?
+diagdir = './out/'
+
+! start from checkpoint file ?
+read_checkpoint  = F
+
+! how often to write out various files
+istep_field  =     100
+istep_mom    =    4000
+istep_nrg    =      10
+istep_energy =       0
+istep_vsp   =        0
+istep_schpt =     1000
+/
+
+&general
+x_local = F
+nonlinear =   F
+
+calc_dt    = .t.
+dt_max     =   0.3850E-01 !max. linear time step
+
+!simulation stop criteria
+timelim    =      86000	 ! wallclock limit in sec
+ntimesteps =      1000000
+simtimelim =      10000  ! simulation time limit in L_ref/c_ref
+
+beta       =    -1
+debye2     =    0.000
+
+collision_op = 'none'    !'landau','pitch-angle',...
+coll       =    0.000
+
+!initial condition, typically 'alm' for linear
+!and 'ppj' for nonlinear runs
+!init_cond = 'ppj'
+
+!hyperdiffusions
+hyp_x =   0.0
+hyp_z =   2.0000
+hyp_v =   0.2000
+
+underflow_limit = -1
+/
+
+&geometry
+magn_geometry = 'circular'
+
+q0 = 1.41
+shat = 0.8496
+trpeps = 0.18
+
+q_coeffs = 0.86,-0.16,2.52
+
+minor_r  =  0.36
+major_R  =  1.00
+
+mag_prof = T
+
+rhostar = -1
+/
+
+&species
+name   = 'ions'
+!omn    =    2.220    !L_ref/L_n
+!omt    =    6.960    !L_ref/L_T
+
+kappa_T = 6.96
+kappa_n = 2.23
+
+LT_width = 0.3
+Ln_width = 0.3
+
+mass   =    1.000    !mass in units of m_ref
+temp   =    1.000    !temperature in units of T_ref
+dens   =    1.000    !density in units of n_ref
+charge =  1 	     !charge in elementary charge units
+
+prof_type = 2
+/
+
+&species
+name   = 'electrons'
+!omn    =    2.220    !L_ref/L_n
+!omt    =    6.960    !L_ref/L_T
+
+kappa_T = 6.96
+kappa_n = 2.23
+
+LT_width = 0.3
+Ln_width = 0.3
+
+mass   =    5.44617E-4
+temp   =    1.000
+dens   =    1.000
+charge =  -1
+
+prof_type = 2
+/
+
+&units
+!taken from [Greenfield et al., NF 1997]
+!Tab. II, Fig. 5, #81499
+!assuming rho = 0.5 ~ r/a = 0.5
+!however, based on DIII-D #128913: r/a = 0.5 -> rho=0.45
+Bref = 2.0 !rounded from 1.91
+Lref = 1.67 !major radius
+!Tref = 2.36 !!Ti
+Tref = 2.14 !!Te
+nref = 4.66 !scan:466.0*!brsc(1)
+mref = 2.0 !rounded from 1.99
+!--> beta ~ 0.01
+!--> rhostar = 5.5593 = 1/179.8 ~ 1/180
+/
+
+&info
+comment = global EM IV scan
+/

@@ -1,0 +1,137 @@
+&parallelization
+!n_procs_s =   1
+!n_procs_v =   1
+!n_procs_w =   8
+!n_procs_x =   1
+!n_procs_y =   1
+!n_procs_z =   1
+!n_procs_sim =      8
+/
+
+&box
+n_spec =    2
+nx0    =   15
+nky0   =    1
+nz0    =   32
+nv0    =   48
+nw0    =   16
+
+kymin =   0.70700000
+lv    =   3.00000
+lw    =   9.00000
+adapt_lx = T
+ky0_ind =   1
+/
+
+&in_out
+diagdir = '/out'
+
+read_checkpoint  = F
+write_checkpoint = T
+
+istep_field  =    1000
+istep_mom    =    4000
+istep_nrg    =      10
+istep_omega  =      20
+istep_vsp    =    5000
+istep_schpt  =   50000
+istep_energy =    1000
+
+write_std = T
+/
+
+&general
+nonlinear =   F
+comp_type = 'IV'
+!perf_vec  =  2 2 1 1 1 2 1 1 2
+!nblocks   =      24
+hypz_compensation =   F
+
+timescheme = 'RK4'
+dt_max     =   0.1440E-02
+
+timelim    =      86000
+ntimesteps =   10000000
+simtimelim =    3.500
+
+beta       =    0.0000000
+debye2     =    0.0000000
+collision_op = 'none'
+
+init_cond = 'alm'
+
+hyp_z =    2.000
+hyp_v =   0.2000
+
+/
+
+&external_contr
+Omega0_tor =   0.50000000
+R0_tor     =    1.0000000
+dR0_tor_dx =    0.0000000
+
+with_comoving_other         = T
+with_coriolis    = T
+with_centrifugal = T
+
+/
+
+&geometry
+magn_geometry = 's_alpha'
+q0       =    2.0000000
+shat     =    1.0000000
+trpeps   =   0.16666600
+major_R  =    1.0000000
+dpdx_term= 'gradB_eq_curv'
+dpdx_pm  =    0.0000000
+norm_flux_projection  = F
+/
+
+&species
+name   = 'ions'
+omn    =    3.0000000
+omt    =    1.0000000
+
+mass   =    1.0000000
+temp   =    1.0000000
+dens   =    1.0000000
+charge =  1
+/
+
+&species
+name   = 'electrons'
+omn    =    3.0000000
+omt    =    9.0000000
+
+mass   =   0.27244000E-03
+temp   =    1.0000000
+dens   =    1.0000000
+charge = -1
+/
+
+&info
+comment = TEM + co-moving frame effects w/o ExB
+!from benchmark with Fig. 8b, [F. Casson et al., PoP 17, 102305 (2010)]
+step_time  =     0.0191
+number of computed time steps =    2431
+time for initial value solver =     46.454
+calc_dt = T
+nltdt_off = F
+init_time =     2.2370
+n_fields = 1
+n_moms   =  6
+nrgcols  = 10
+lx =   1.41443
+ly =   8.88711
+PRECISION  = DOUBLE
+ENDIANNESS = LITTLE
+OMP_NUM_THREADS =   1
+GIT_BRANCH = d616773d13ccabca39a8f2fa6f8f9d98ae34cb6e
+GIT_MASTER = d616773d13ccabca39a8f2fa6f8f9d98ae34cb6e
+RELEASE = 1.8 - alpha 0
+/
+
+&units
+/
+
+!

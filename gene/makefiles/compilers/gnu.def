@@ -1,0 +1,86 @@
+# definitions for the GNU compiler family
+
+MPFC ?= mpif90
+#MPFC = mpigfortran64
+MPCC ?= mpicc
+MPCXX ?= mpiCC
+FC ?= gfortran
+CC ?= gcc
+CXX ?= g++
+
+ifeq ($(USE_PERFLIB),scalasca)
+ MPFC := scalasca -instrument -user $(MPFC)
+ MPCC := scalasca -instrument -user $(MPCC)
+endif
+ifeq ($(USE_PERFLIB),ompp)
+# the preprocessor must not write #line directives
+# and also the quotes in the SVN statement is switched off
+ MPFC := kinst-ompp $(MPFC)
+ FC := kinst-ompp $(FC)
+endif
+ifeq ($(USE_PERFLIB),perf)
+ifeq ($(OPENMP),yes)
+ LIBS += -L$(PERFLIB_HOME)/lib -looperf_mt -Wl,-rpath,$(PERFLIB_HOME)/lib
+else
+ LIBS += -L$(PERFLIB_HOME)/lib -looperf -Wl,-rpath,$(PERFLIB_HOME)/lib
+endif
+ PREPROC += -DWITHPERF=1
+ INCPATHS += -I$(PERFLIB_HOME)/include
+endif
+
+SET_FORTRAN_STANDARD = -std=f2008 -fall-intrinsics
+PREPROC_FLAG = -cpp
+ONLY_PREPROCESS = -E -P
+
+DEBUG_TRACEBACK = -fbacktrace
+DEBUG_NOUNUSED = -Wno-unused
+DEBUG_NOSURPRISING = -Wno-surprising
+DEBUG_WARN = -Wall -Warray-temporaries 
+DEBUG_RUNTIME_CHECK =  -ffpe-trap=invalid,zero,overflow,underflow -fcheck=all
+DEBUG_SANITIZE = -fsanitize=address
+DEBUG_TRACEBACK = -fbacktrace
+DEBUG_FFLAGS = $(DEBUG_TRACEBACK) $(DEBUG_RUNTIME_CHECK) $(DEBUG_WARN) $(DEBUG_NOSURPRISING)
+DEBUG_CFLAGS = $(DEBUG_FFLAGS)
+
+ifeq ($(DEBUG),noopt)
+ DEBUG_FFLAGS += -fbacktrace -O0
+endif
+
+ifeq ($(CHIP),Core2)
+ CHIP_OPT = -march=core2
+endif
+ifeq ($(CHIP),Magny-Cours)
+ CHIP_OPT = -march=barcelona
+endif
+ifeq ($(CHIP),Nehalem)
+ CHIP_OPT = -march=corei7
+endif
+ifeq ($(CHIP),SandyBridge)
+ CHIP_OPT = -march=corei7-avx
+endif
+ifeq ($(CHIP),Haswell)
+ CHIP_OPT = -march=haswell
+endif
+ifeq ($(CHIP),skylake)
+ CHIP = SkyLake
+endif
+ifeq ($(CHIP),SkyLake)
+ CHIP_OPT = -march=skylake-avx512
+endif
+
+
+OPTLEVEL ?= 3
+OPT_FFLAGS = -O$(OPTLEVEL) $(CHIP_OPT)
+PRODRUN_FFLAGS = $(OPT_FFLAGS) -fipa-pta
+OPENMP_FFLAGS = -fopenmp
+
+SYMBOL_FFLAGS += -g 
+SYMBOL_CFLAGS += -g
+
+REPORT_FFLAGS = 
+
+DOUBLE_PRECISION_FFLAGS = -fdefault-real-8 -fdefault-double-8
+MODDIR_FFLAGS = -J$(OBJDIR)
+
+F2003_MISSING=-DF2003_NO_OPEN_CONVERT
+

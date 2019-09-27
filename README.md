@@ -11,3 +11,5 @@ eventually merged to gene's git repo some day.
 2. wdmapp_coupling
 
 This is an interface library between XGC and Gene.
+
+For more information, please check https://github.com/SCOREC/wdmapp_coupling/wiki

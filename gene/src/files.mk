@@ -256,6 +256,10 @@ MPIDEP += BandedMatrix.F90\
 #SRCLIST = $(F77SRC) $(F90PSRC)
 #CSRCLIST = $(CSRC)
 
+# If GPTL isn't available perf_monitor just doesn't do anything
+F90PSRC += perf_monitor.F90
+MPIDEP += perf_monitor.F90
+
 F90FULLSRC = $(addprefix $(SRCDIR)/,$(F90PSRC))
 #F90PRENAMES = $(addprefix $(PPDIR)/F,$(subst .F90,.f,$(F90PSRC)))
 F90PRENAMES = $(addprefix $(PPDIR)/,$(subst .F90,.f90,$(F90PSRC)))
@@ -298,6 +302,9 @@ $(OBJLIST) $(COBJLIST):		$(SRCDIR)/redef.h \
 
 $(SRCDIR)/codemods.F90: $(ALLFULLSRC)
 			$(shell $(TOOLDIR)/codemods.sh $(SRCDIR))
+
+$(OBJDIR)/perf_monitor.o:       $(OBJDIR)/par_in.o\
+                                $(OBJDIR)/file_io.o
 
 $(OBJDIR)/adiabatic_response.o:	$(SRCDIR)/switches.h \
 			$(OBJDIR)/discretization.o\
@@ -1150,6 +1157,7 @@ $(OBJDIR)/gene_scan.o:	$(SRCDIR)/switches.h \
 $(OBJDIR)/gene_subroutine.o:	$(OBJDIR)/par_mod.o\
 			$(OBJDIR)/comm.o\
 			$(OBJDIR)/perf_opt.o\
+			$(OBJDIR)/perf_monitor.o \
 			$(OBJDIR)/eigenvalue_comp.o\
 			$(OBJDIR)/initial_value_comp.o\
 			$(OBJDIR)/$(CODEMODS_DUMMY)codemods.o\

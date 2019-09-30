@@ -55,6 +55,7 @@ Module diagnostics
   ! This is the GPTL timing if built, otherwise it does nothing
   use perf_monitor
 
+  use compute_f, only: f_
 #ifdef ADIOS
     use adios_io
 #endif

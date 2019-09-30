@@ -8,7 +8,8 @@ Module diagnostics_energy
   Use file_io, only: get_unit_nr
   Use vel_space, only: fm, mat_00
   use calc_rhs, only: calc_rhs_only,bar_emfields, ptr_barchi, &
-       ptr_dbarchidxy, ptr_dgdxy, rhs_nl, chi_block, rhs_f0,this_nonlinear_term
+       ptr_dbarchidxy, ptr_dgdxy, rhs_nl, chi_block, rhs_f0
+  USE all_rhs_terms, only: this_nonlinear_term
   use geometry
   use communications
   use aux_fields, only: calc_aux_fields

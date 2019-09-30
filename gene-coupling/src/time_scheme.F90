@@ -6,11 +6,13 @@ Module time_scheme
   Use communications
   Use rhs_computations
   Use aux_fields
-  Use sources_mod, only: initialize_krookBuffer_operator, &
-       & add_krookBuffer, finalize_krookBuffer_operator, explicit_buffer
+    Use sources_mod, only: initialize_krookBuffer_operator, &
+       & add_krookBuffer, finalize_krookBuffer_operator, &
+       & f0_heat_src_active, explicit_buffer
+
   use external_contr
   use RK_coefficients
-  use calc_rhs, only:  mem_est_calc_rhs, rhs_nl, rhs_f0, f0_heat_src_active
+  use calc_rhs, only:  mem_est_calc_rhs, rhs_nl, rhs_f0
   use mtrandom
   use compute_dt
 #ifdef WITH_CUDA_NONLIN

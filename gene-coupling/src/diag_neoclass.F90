@@ -6,26 +6,27 @@
 !! of neoclassical transport data
 Module diagnostics_neoclass
   Use par_mod
-  use aux_fields, only: f_, emfields
+  use aux_fields, only: emfields
   Use communications
+  use compute_f, only: f_
   Use file_io
   use geometry
   use spatial_averages
   Use vel_space !, only: mat_00, mat_10, fm
 
 Implicit None
-  PUBLIC :: initialize_all_diags_neoclass, initialize_all_diags_neoclass2D, exec_all_diags_neoclass, exec_all_diags_neoclass2D, &
-    & finalize_all_diags_neoclass,finalize_all_diags_neoclass2D, mem_est_diag_neoclass, istep_neoclass, istep_neoclass2D,&
-    & check_diag_neoclass,check_diag_neoclass2D, neoflux, set_mats_diag_neoclass, write_neoclassfile
+  PUBLIC :: initialize_all_diags_neoclass, initialize_all_diags_neoclass2D, exec_all_diags_neoclass, exec_all_diags_neoclass2D, & 
+    & finalize_all_diags_neoclass,finalize_all_diags_neoclass2D, mem_est_diag_neoclass, istep_neoclass, istep_neoclass2D,& 
+    & check_diag_neoclass,check_diag_neoclass2D, neoflux, set_mats_diag_neoclass, write_neoclassfile 
 
 
-  PRIVATE
-  Integer:: istep_neoclass = -1, istep_neoclass2D = -1
+  PRIVATE 
+  Integer:: istep_neoclass = -1, istep_neoclass2D = -1  
   CHARACTER(LEN=8) :: filestat='replace', filepos='rewind'
-  Integer:: NEOCLASSFILE, NEOCLASSFILE2D
+  Integer:: NEOCLASSFILE, NEOCLASSFILE2D 
   REAL, DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE:: neoclass_mat
   Real, Dimension(:,:,:),ALLOCATABLE :: neoflux,neofluxf0
-  Real, Dimension(:,:,:,:),ALLOCATABLE :: neoflux2D
+  Real, Dimension(:,:,:,:),ALLOCATABLE :: neoflux2D 
   Real, Dimension(:), ALLOCATABLE :: fnorm
 
   INTEGER :: n_neoclass_mats = 4
@@ -49,7 +50,7 @@ CONTAINS
 
     !neoclass_mats
     mem_loc = n_neoclass_mats*mem_cn*pi0*pj0*lklmn0
-
+    
 #ifdef WITH_NEO_F0
     !neofluxf0
     mem_loc = mem_loc + 2*px0*n_spec*mem_rn
@@ -65,7 +66,7 @@ CONTAINS
     !mom_neo
     mem_loc = mem_loc + lijk0*n_neoclass_mats*ln0*mem_rn
     !2D diagnostic
-    mem_loc = mem_loc +  lijk0*n_neoclass_mats*ln0*mem_rn
+    mem_loc = mem_loc +  lijk0*n_neoclass_mats*ln0*mem_rn 
     mem_est_diag_neoclass = mem_loc+mem_req_in
 
   End Function mem_est_diag_neoclass
@@ -76,12 +77,12 @@ CONTAINS
     logical :: write_pe
 
     write_pe = ((mype.le.0).AND.(print_ini_msg))
-
+       
     if (xy_local.and.yx_order.and.(istep_neoclass.gt.0)) then
        if (write_pe) write(*,"(A)") "diag_neoclass not implemented for xy_local+yx_order --setting istep_neoclass=0"
        istep_neoclass=0
     endif
-
+    
     if (istep_neoclass .gt. 0) then
        if (xy_local) then
           if (ky0_ind .eq. 0) then
@@ -89,9 +90,9 @@ CONTAINS
           else
              if (write_pe) write(*,"(A)") "diag_neoclass switched off because kx=ky=0 mode is not in the system"
              istep_neoclass = 0
-          endif
+          endif      
        end if
-
+       
        if (.not.only_neo.and.include_f0_contr) then
           if (write_pe) write(*,"(A)") "WARNING: possible time scale separation between turbulence and neoclassics"
           if ((xy_local).and.(write_pe)) &
@@ -113,7 +114,7 @@ CONTAINS
        if (write_pe) write(*,"(A)") "diag_neoclass not implemented for xy_local+yx_order --setting istep_neoclass2D=0"
        istep_neoclass2D=0
     endif
-
+    
     if (istep_neoclass2D .gt. 0) then
        if (xy_local) then
           if (ky0_ind .eq. 0) then
@@ -121,9 +122,9 @@ CONTAINS
           else
              if (write_pe) write(*,"(A)") "diag_neoclass2D switched off because kx=ky=0 mode is not in the system"
              istep_neoclass2D = 0
-          endif
+          endif      
        end if
-
+       
        if (.not.only_neo.and.include_f0_contr) then
           if (write_pe) write(*,"(A)") "WARNING: possible time scale separation between turbulence and neoclassics"
           if ((xy_local).and.(write_pe)) &
@@ -168,9 +169,9 @@ CONTAINS
     else !.not.y_local
        fnorm = 1.0 / (REAL(nky0*nz0)*geom%avg_jaco_yz)
     endif
-
+    
     IF (.NOT.ALLOCATED(neofluxf0)) ALLOCATE(neofluxf0(pg1gl:pg2gl,0:n_spec-1,0:1))
-
+          
     call get_neofluxf0(neofluxf0)
     if (xy_local) then
        neoflux_f0_scalar=neofluxf0(pi1,:,:)
@@ -185,10 +186,10 @@ CONTAINS
   END SUBROUTINE initialize_all_diags_neoclass
 !!!******************************************************************!!!
 
-SUBROUTINE initialize_all_diags_neoclass2D
+SUBROUTINE initialize_all_diags_neoclass2D 
 
   call get_unit_nr(NEOCLASSFILE2D)
-
+  
   if(.not.allocated(neoclass_mat)) ALLOCATE(neoclass_mat(pi1:pi2,pj1:pj2,lk1:lk2,1:n_neoclass_mats,ll1:ll2,lm1:lm2,ln1:ln2))
   if (.not.allocated(neoflux2D)) allocate(neoflux2D( 0:nky0-1, 0:nz0-1, 1:n_neoclass_mats, 0:n_spec-1))
 
@@ -197,11 +198,11 @@ SUBROUTINE initialize_all_diags_neoclass2D
           &//trim(file_extension), form='unformatted',&
           status=filestat, position=filepos,ACCESS="STREAM")
      write(NEOCLASSFILE2D) n_spec
-     write(NEOCLASSFILE2D) nky0
+     write(NEOCLASSFILE2D) nky0 
      write(NEOCLASSFILE2D) ly
      write(NEOCLASSFILE2D) nz0
      write(NEOCLASSFILE2D) zval
-  endif
+  endif  
 
 END SUBROUTINE INITIALIZE_ALL_DIAGS_NEOCLASS2D
 
@@ -235,7 +236,7 @@ END SUBROUTINE INITIALIZE_ALL_DIAGS_NEOCLASS2D
        P_neo_pref(pi1:pi2,pj1:pj2,lk1:lk2) = Q_neo_pref(pi1:pi2,pj1:pj2,lk1:lk2)/sqrt(2*spec(n)%temp/spec(n)%mass)
 
        DO m=lm1,lm2
-          DO l=ll1,ll2
+          DO l=ll1,ll2    
              DO k=lk1,lk2
                 DO j=pj1,pj2
                    !mat_20+1/2 mat_01  for G_neo
@@ -251,16 +252,16 @@ END SUBROUTINE INITIALIZE_ALL_DIAGS_NEOCLASS2D
                    loc_neo_mat(:,j,k,3,l,m,n) = P_neo_pref(:,j,k)&
                                                 &*(vp(l)*mu(m)*geom%Bfield(pi1:pi2,j,k) + 2*vp(l)**3)&
                                                 &*mat_00(pi1:pi2,j,k,l,m)
-                   !B0*mat_10 essentially (bootstrap current)
+                   !B0*mat_10 essentially (bootstrap current)                            
                    loc_neo_mat(:,j,k,4,l,m,n) = spec(n)%dens*sqrt(2*spec(n)%temp/spec(n)%mass)&
                                                &*geom%Bfield(pi1:pi2,j,k)*vp(l)*mat_00(pi1:pi2,j,k,l,m)
                 END DO
              END DO
           END DO
        END DO
-    END DO
+    END DO    
   END SUBROUTINE set_mats_diag_neoclass
-
+  
 #ifdef WITH_NEO_F0
   !!computes f0 contribution to neoclassical fluxes (parallelized in i,j)
   !!f0 is integrated analytically
@@ -300,19 +301,19 @@ END SUBROUTINE INITIALIZE_ALL_DIAGS_NEOCLASS2D
                 enddo
              endif
           endif
+          
 
-
-          !!mpi sum z (only my_pez=0 gets result)
+          !!mpi sum z (only my_pez=0 gets result) 
           Call my_sum_to_0_real(loc_neofluxf0(pi1:pi2,n,0),Size(loc_neofluxf0(pi1:pi2,n,0)),mpi_comm_z)
 
-          !!Q and Gamma only differ in prefactor
+          !!Q and Gamma only differ in prefactor 
           !Q
           loc_neofluxf0(pi1:pi2,n,1)=pQneo0(pi1:pi2,pj1)*loc_neofluxf0(pi1:pi2,n,0)
           !Gamma
           loc_neofluxf0(pi1:pi2,n,0)=pGneo0(pi1:pi2,pj1)*loc_neofluxf0(pi1:pi2,n,0)
-
+          
           !gather all x profile points
-          do o=0,1
+          do o=0,1 
              call my_real_gather_to_0(loc_neofluxf0(:,n,o),pi1+1,pi0,px0,mpi_comm_x)
              !normalization for yz average
              loc_neofluxf0(:,n,o) = loc_neofluxf0(:,n,o)*fnorm
@@ -335,7 +336,7 @@ END SUBROUTINE INITIALIZE_ALL_DIAGS_NEOCLASS2D
   !! 1.) G_neo / (c_ref n_ref (rho_ref/Lref)^2)
   !! 2.) Q_neo / (c_ref p_ref (rho_ref/Lref)^2)
   !! 3.) P_neo / (c_ref^2 n_ref m_ref (rho_ref/Lref)^2)
-  !! 4.) j_B   / (c_ref n_ref B_ref (rho_ref/Lref))
+  !! 4.) j_B   / (c_ref n_ref B_ref (rho_ref/Lref)) 
   Subroutine exec_all_diags_neoclass
     real, dimension(0:n_spec-1,1:n_neoclass_mats)::neoflux_scalar
     Integer:: n, o
@@ -370,21 +371,21 @@ END SUBROUTINE INITIALIZE_ALL_DIAGS_NEOCLASS2D
     enddo
 
 #ifdef WITH_NEO_F0
-    call write_neoclassfile(neoflux_scalar,n_neoclass_mats,neofluxf0_scalar)
+    call write_neoclassfile(neoflux_scalar,n_neoclass_mats,neofluxf0_scalar)     
 #else
-    call write_neoclassfile(neoflux_scalar,n_neoclass_mats)
+    call write_neoclassfile(neoflux_scalar,n_neoclass_mats)     
 #endif
 
   End Subroutine exec_all_diags_neoclass
-
- Subroutine exec_all_diags_neoclass2D
+  
+ Subroutine exec_all_diags_neoclass2D 
     real, dimension(0:n_spec-1,1:n_neoclass_mats)::neoflux_scalar
 
 #ifdef WITH_NEO_F0
     real, dimension(0:n_spec-1,0:1)::neofluxf0_scalar
 #endif
 
-    call get_neoflux2D(neoflux2D)
+    call get_neoflux2D(neoflux2D) 
     call write_neoclassfile2D(neoflux2D)
 
   End Subroutine exec_all_diags_neoclass2D
@@ -401,15 +402,15 @@ END SUBROUTINE INITIALIZE_ALL_DIAGS_NEOCLASS2D
 
     momc_neo=(0.0)
 
-    !\ATTENTION: neoclassical flux contains (numerical) FLR corrections if emfields are considered
+    !\ATTENTION: neoclassical flux contains (numerical) FLR corrections if emfields are considered  
     !(needs fields WITH x and y coordinate: extended memory need, but simpler code)
     Call calc_vsp_moment(n_neoclass_mats,f_,.true.,emfields,neoclass_mat,momc_neo,nc_exb_corr)
 
     mom_neo(:,:,:,:,:) = Real(momc_neo(:,:,:,:,:))
-
+    
     !-------------- Sum over velocity space  -----------------
     Call my_sum_to_0_real(mom_neo(:,:,:,:,:), Size(mom_neo(:,:,:,:,:)), mpi_comm_vw)
-
+    
     !-------------- Flux surface averaging -------------------
     do o=1,n_neoclass_mats !... <G_neo>, <Q_neo>, <P_neo>, <bootstrap current>
        do n=ln1,ln2
@@ -420,38 +421,38 @@ END SUBROUTINE INITIALIZE_ALL_DIAGS_NEOCLASS2D
     enddo
 
   End Subroutine get_neoflux
-
+  
 
  Subroutine get_neoflux2D(flux2D)
     Complex, Dimension(li1:li2,lj1:lj2,lk1:lk2,1:n_neoclass_mats,ln1:ln2):: momc_neo
     real, Dimension(li1:li2,lj1:lj2,lk1:lk2,1:n_neoclass_mats,ln1:ln2):: mom_neo
     real, dimension(0:nky0-1, 0:nz0-1, 1:n_neoclass_mats, 0:n_spec-1),intent(out) :: flux2D
-    Integer:: i
+    Integer:: i 
     Integer:: n, o
 
     momc_neo=(0.0)
 
-    !\ATTENTION: neoclassical flux contains (numerical) FLR corrections if emfields are considered
+    !\ATTENTION: neoclassical flux contains (numerical) FLR corrections if emfields are considered  
     !(needs fields WITH x and y coordinate: extended memory need, but simpler code)
     Call calc_vsp_moment(n_neoclass_mats,f_,.true.,emfields,neoclass_mat,momc_neo,nc_exb_corr)
 
     mom_neo(:,:,:,:,:) = Real(momc_neo(:,:,:,:,:))
-
+    
     !-------------- Sum over velocity space  -----------------
     Call my_sum_to_0_real(mom_neo(:,:,:,:,:), Size(mom_neo(:,:,:,:,:)), mpi_comm_vw)
-
+    
     !-------------- Flux surface averaging -------------------
     do o=1,n_neoclass_mats !... <G_neo>, <Q_neo>, <P_neo>, <bootstrap current>
        do n=ln1,ln2
           flux2D(li1:li2,lk1:lk2,o, n) = mom_neo(li1:li2,lj1,lk1:lk2,o,n)
           do i=li1, li2
              call my_real_gather_to_0(flux2D(i,:,o,n), lk1+1, lk0, nz0, mpi_comm_z)
-          end do
+          end do 
        enddo
     enddo
 
   End Subroutine get_neoflux2D
-
+  
 
 
 
@@ -481,7 +482,7 @@ END SUBROUTINE INITIALIZE_ALL_DIAGS_NEOCLASS2D
   end subroutine write_neoclassfile
 
 
-subroutine write_neoclassfile2D(flux2D)
+subroutine write_neoclassfile2D(flux2D) 
 !writes 2D neoclassical flux
     real, dimension(0:nky0-1, 0:nz0-1, 1:n_neoclass_mats, 0:n_spec-1),intent(in) :: flux2D
     integer:: j, k, n, o
@@ -498,7 +499,7 @@ subroutine write_neoclassfile2D(flux2D)
              END DO
           END DO
        END DO
-
+       
        call flush(NEOCLASSFILE2D)
     endif
 end subroutine write_neoclassfile2D
@@ -507,7 +508,7 @@ end subroutine write_neoclassfile2D
   Subroutine finalize_all_diags_neoclass
     Implicit none
     Integer :: ierr
-
+    
     If (mype==0) CLOSE(NEOCLASSFILE)
     Deallocate(neoclass_mat)
 
@@ -517,7 +518,7 @@ end subroutine write_neoclassfile2D
        call mpi_bcast(neoflux,SIZE(neoflux),MPI_REAL_TYPE,&
             &0,MY_MPI_COMM_WORLD,ierr)
     endif
-#ifdef WITH_NEO_F0
+#ifdef WITH_NEO_F0 
     Deallocate(fnorm)
     if (par_in_dir.ne.'skip_parfile') then
        DEALLOCATE(neofluxf0)
@@ -529,12 +530,12 @@ end subroutine write_neoclassfile2D
 
   End Subroutine finalize_all_diags_neoclass
 
-  Subroutine finalize_all_diags_neoclass2D
+  Subroutine finalize_all_diags_neoclass2D 
 
     Implicit none
     deallocate(neoflux2D)
-    If (mype==0) CLOSE(NEOCLASSFILE2D)
-
+    If (mype==0) CLOSE(NEOCLASSFILE2D) 
+    
   End Subroutine finalize_all_diags_neoclass2D
 
 

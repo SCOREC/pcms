@@ -52,6 +52,8 @@ use profile_smoothing
 use poloidal_planes, only: set_poloidal_planes_defaults
 use par_poloidal_planes, only: nz_out, n_cuts, istep_planes, BC_in_fourier, &
                       &  res_fact, XGC_file,pre_proc,extra_Zero, sign_phi, istep_field_in
+
+use diagnostics_neoclass
 #ifndef COUPLE_XGC
 use Gyro_LES
 use diag_Gyro_LES
@@ -104,7 +106,7 @@ namelist /in_out/ &
      nmldir, acm_log_lvl, acm_timing, &
      adios_mpi_agg, adios_mpi_ost, adios_xml, &
      istep_nlt, istep_gav, write_flux_final, &
-     iterdb_file, iterdb_time,  momentum_flux,cat_output, istep_antenna, &
+     iterdb_file, iterdb_time,  momentum_flux,cat_output, &
 #ifndef COUPLE_XGC
      istep_GyroLES,istep_fe_time,&
      istep_fe_twoD, istep_fe_threeD, istep_fe_transfer, avg_window, &

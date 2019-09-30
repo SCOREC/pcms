@@ -16,6 +16,7 @@ Module diagnostics_df
   use lagrange_interpolation, only: lag3deriv
   use diagnostics_neoclass, only: set_mats_diag_neoclass,istep_neoclass
   use profile_smoothing
+  use compute_f, only: f_
 
   Implicit None
 

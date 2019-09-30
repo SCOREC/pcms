@@ -20,6 +20,7 @@ MODULE diagnostics_vsp
   USE par_mod
   USE profile_IO, only: Tref, mref, nref, omegatorref
   USE vel_space, only: mat_00, mat_10, fm, gyro_op_wrapper
+  use compute_f, only: f_
 #ifdef WITHFUTILS
   USE futils
 #endif

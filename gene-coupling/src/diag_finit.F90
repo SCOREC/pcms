@@ -9,6 +9,7 @@ MODULE diag_finit
   USE vel_space
   USE communications
   USE aux_fields
+  use compute_f, only: f_
 
   IMPLICIT NONE
 

@@ -2,7 +2,8 @@
 #include "redef.h"
 module initcond
   use antenna, only: get_Apar_antenna, n_antennae, antenna_type
-  USE aux_fields, ONLY: emfields, f_, calc_aux_fields_from_f
+  USE compute_f, only: f_
+  USE aux_fields, ONLY: emfields, calc_aux_fields_from_f
   use aux_func, only: gamma0, j0
   USE communications, ONLY: MPI_REAL_TYPE,MPI_SUM,MY_MPI_COMM_WORLD,MPI_MAX,mpi_comm_y
   USE coordinates, ONLY: kx,kxmin,kx_center,lx,ky,kymin,ly,&

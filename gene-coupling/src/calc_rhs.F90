@@ -63,6 +63,8 @@ Module calc_rhs
 #ifdef COUPLE_XGC
   use diagnostics, only: exec_all_diags
 #endif
+  use compute_f, only: f_, h_
+  Use antenna, only: antenna_type, add_dApar_dt_antenna, antenna_contrib
 
   implicit None
 

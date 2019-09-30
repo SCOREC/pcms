@@ -1,0 +1,7 @@
+call adios_selection_writeblock (s, rank)
+call adios_schedule_read (fp, s, "phi", 0, 1, tmp_field, adios_err)
+call adios_schedule_read (fp, s, "A_par", 0, 1, tmp_field, adios_err)
+call adios_schedule_read (fp, s, "B_par", 0, 1, tmp_field, adios_err)
+
+call adios_perform_reads (fp, adios_err)
+call adios_selection_delete (s)

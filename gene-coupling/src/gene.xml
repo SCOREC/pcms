@@ -1,0 +1,263 @@
+<?xml version="1.0"?>
+
+<adios-config host-language="Fortran">
+
+	<adios-group name="restart">
+
+		<!-- Dimensions -->
+		<var name="num_x"       gwrite="local_dims(1)" type="integer"/>
+		<var name="num_ky"      gwrite="local_dims(2)" type="integer"/>
+		<var name="num_z"       gwrite="local_dims(3)" type="integer"/>
+		<var name="num_vz"      gwrite="local_dims(4)" type="integer"/>
+		<var name="num_vx"      gwrite="local_dims(5)" type="integer"/>
+		<var name="num_species" gwrite="local_dims(6)" type="integer"/>
+
+		<var name="global_num_x"       gwrite="nx0"    type="integer"/>
+		<var name="global_num_ky"      gwrite="nky0"   type="integer"/>
+		<var name="global_num_z"       gwrite="nz0"    type="integer"/>
+		<var name="global_num_vz"      gwrite="nv0"    type="integer"/>
+		<var name="global_num_vx"      gwrite="nw0"    type="integer"/>
+		<var name="global_num_species" gwrite="n_spec" type="integer"/>
+
+		<var name="global_offset_x"       gwrite="li1" type="integer"/>
+		<var name="global_offset_ky"      gwrite="lj1" type="integer"/>
+		<var name="global_offset_z"       gwrite="lk1" type="integer"/>
+		<var name="global_offset_vz"      gwrite="ll1" type="integer"/>
+		<var name="global_offset_vx"      gwrite="lm1" type="integer"/>
+		<var name="global_offset_species" gwrite="ln1" type="integer"/>
+
+		<!-- Arrays -->
+		<global-bounds
+			dimensions="global_num_x,global_num_ky,global_num_z,global_num_vz,global_num_vx,global_num_species"
+			offsets="global_offset_x,global_offset_ky,global_offset_z,global_offset_vz,global_offset_vx">
+				<var name="g" gwrite="g_1" type="complex*16" dimensions="num_x,num_ky,num_z,num_vz,num_vx,num_species"/>
+		</global-bounds>
+
+		<!-- Scalars -->
+		<var name="dt"       gwrite="dt"    type="real*8"/>
+		<var name="time"     gwrite="time"  type="real*8"/>
+		<var name="timestep" gwrite="itime" type="integer"/>
+
+	</adios-group>
+
+
+	<adios-group name="field">
+
+		<!-- Dimensions -->
+		<var name="num_x"  gwrite="local_dims(1)" type="integer"/>
+		<var name="num_ky" gwrite="local_dims(2)" type="integer"/>
+		<var name="num_z"  gwrite="local_dims(3)" type="integer"/>
+
+		<var name="global_num_x"  gwrite="nx0"  type="integer"/>
+		<var name="global_num_ky" gwrite="nky0" type="integer"/>
+		<var name="global_num_z"  gwrite="nz0"  type="integer"/>
+
+		<var name="global_offset_x"  gwrite="li1" type="integer"/>
+		<var name="global_offset_ky" gwrite="lj1" type="integer"/>
+		<var name="global_offset_z"  gwrite="lk1" type="integer"/>
+
+		<!-- Scalars -->
+		<var name="time"             gwrite="time"       type="real*8"/>
+		<var name="timestep"         gwrite="itime"      type="integer"/>
+		<var name="field_output_num" gwrite="field_step" type="integer"/>
+
+
+		<!-- Arrays -->
+		<gwrite src=""/>
+		<gwrite src="if (n_fields.ge.1) then"/>
+		<gwrite src="tmp_field = emfields(li1:li2,lj1:lj2,lk1:lk2,1)"/>
+		<global-bounds dimensions="global_num_x,global_num_ky,global_num_z" offsets="global_offset_x,global_offset_ky,global_offset_z">
+			<var name="phi" gwrite="tmp_field" type="complex*16" dimensions="num_x,num_ky,num_z"/>
+		</global-bounds>
+		<gwrite src="end if"/>
+
+		<gwrite src=""/>
+		<gwrite src="if (n_fields.ge.2) then"/>
+		<gwrite src="tmp_field = emfields(li1:li2,lj1:lj2,lk1:lk2,2)"/>
+		<gwrite src="IF (antenna_type.eq.1) tmp_field = Apar_pre_antenna(:,:,lk1:lk2)"/>
+		<global-bounds dimensions="global_num_x,global_num_ky,global_num_z" offsets="global_offset_x,global_offset_ky,global_offset_z">
+			<var name="A_par" gwrite="tmp_field" type="complex*16" dimensions="num_x,num_ky,num_z"/>
+		</global-bounds>
+		<gwrite src="end if"/>
+
+		<gwrite src=""/>
+		<gwrite src="if (n_fields.ge.3) then"/>
+		<gwrite src="tmp_field = emfields(li1:li2,lj1:lj2,lk1:lk2,3)"/>
+		<global-bounds dimensions="global_num_x,global_num_ky,global_num_z" offsets="global_offset_x,global_offset_ky,global_offset_z">
+			<var name="B_par" gwrite="tmp_field" type="complex*16" dimensions="num_x,num_ky,num_z"/>
+		</global-bounds>
+		<gwrite src="end if"/>
+
+	</adios-group>
+
+
+	<adios-group name="mom">
+
+		<!-- Dimensions -->
+		<var name="num_x"  gwrite="local_dims(1)" type="integer"/>
+		<var name="num_ky" gwrite="local_dims(2)" type="integer"/>
+		<var name="num_z"  gwrite="local_dims(3)" type="integer"/>
+		<var name="num_species" gwrite="local_dims(6)" type="integer"/>
+
+		<var name="global_num_x"  gwrite="nx0"  type="integer"/>
+		<var name="global_num_ky" gwrite="nky0" type="integer"/>
+		<var name="global_num_z"  gwrite="nz0"  type="integer"/>
+		<var name="global_num_spec"  gwrite="n_spec"  type="integer"/>
+
+		<var name="global_offset_x"  gwrite="li1" type="integer"/>
+		<var name="global_offset_ky" gwrite="lj1" type="integer"/>
+		<var name="global_offset_z"  gwrite="lk1" type="integer"/>
+		<var name="global_offset_species" gwrite="n" type="integer"/>
+
+		<!-- Scalars -->
+		<!--<var name="time"           gwrite="time"       type="real*8"/>
+		<var name="timestep"       gwrite="itime"      type="integer"/>-->
+		<var name="mom_output_num" gwrite="isnap_mom" type="integer"/>
+
+		<var name="trap_levels" gwrite="diag_trap_levels" type="integer"/>
+		<var name="trap_level"  gwrite="trap_level"       type="integer"/>
+		<var name="n_moms_Bpar" gwrite="n_moms_Bpar"      type="integer"/>
+		<var name="n_corrs"     gwrite="n_corrs"          type="integer"/>
+
+
+		<!-- Arrays -->
+		<gwrite src=""/>
+
+		<gwrite src="if (diag_trap_levels.eq.0) then"/>
+			<global-bounds dimensions="global_num_x,global_num_ky,global_num_z,global_num_spec" offsets="global_offset_x,global_offset_ky,global_offset_z,global_offset_species">
+				<var name="dens"   gwrite="vmom(:,:,:,1,0)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="T_par"  gwrite="vmom(:,:,:,2,0)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="T_perp" gwrite="vmom(:,:,:,3,0)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="q_par"  gwrite="vmom(:,:,:,4,0)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="q_perp" gwrite="vmom(:,:,:,5,0)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="u_par"  gwrite="vmom(:,:,:,6,0)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+			</global-bounds>
+			<gwrite src="if (n_moms_Bpar.eq.3) then"/>
+				<global-bounds dimensions="global_num_x,global_num_ky,global_num_z,global_num_spec" offsets="global_offset_x,global_offset_ky,global_offset_z,global_offset_species">
+					<var name="densI1" gwrite="vmom(:,:,:,7,0)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+					<var name="TparI1" gwrite="vmom(:,:,:,8,0)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+					<var name="TppI1"  gwrite="vmom(:,:,:,9,0)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				</global-bounds>
+			<gwrite src="end if"/>
+
+		<gwrite src="else"/>
+			<global-bounds dimensions="global_num_x,global_num_ky,global_num_z,global_num_spec,trap_levels" offsets="global_offset_x,global_offset_ky,global_offset_z,global_offset_species,0">
+				<var name="dens_trap"   gwrite="vmom(:,:,:,1,0:trpl)" type="complex*16" dimensions="num_x,num_ky,num_z,1,trap_levels"/>
+				<var name="T_par_trap"  gwrite="vmom(:,:,:,2,0:trpl)" type="complex*16" dimensions="num_x,num_ky,num_z,1,trap_levels"/>
+				<var name="T_perp_trap" gwrite="vmom(:,:,:,3,0:trpl)" type="complex*16" dimensions="num_x,num_ky,num_z,1,trap_levels"/>
+				<var name="q_par_trap"  gwrite="vmom(:,:,:,4,0:trpl)" type="complex*16" dimensions="num_x,num_ky,num_z,1,trap_levels"/>
+				<var name="q_perp_trap" gwrite="vmom(:,:,:,5,0:trpl)" type="complex*16" dimensions="num_x,num_ky,num_z,1,trap_levels"/>
+				<var name="q_par_trap"  gwrite="vmom(:,:,:,6,0:trpl)" type="complex*16" dimensions="num_x,num_ky,num_z,1,trap_levels"/>
+			</global-bounds>
+			<global-bounds dimensions="global_num_x,global_num_ky,global_num_z,global_num_spec" offsets="global_offset_x,global_offset_ky,global_offset_z,global_offset_species">
+				<var name="dens_pass"   gwrite="vmom(:,:,:,1,diag_trap_levels)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="dens_FLR"    gwrite="vmom_corr(:,:,:,1)"             type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="T_par_pass"  gwrite="vmom(:,:,:,2,diag_trap_levels)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="T_par_FLR"   gwrite="vmom_corr(:,:,:,2)"             type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="T_perp_pass" gwrite="vmom(:,:,:,3,diag_trap_levels)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="T_perp_FLR"  gwrite="vmom_corr(:,:,:,3)"             type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="q_par_pass"  gwrite="vmom(:,:,:,4,diag_trap_levels)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="q_perp_pass" gwrite="vmom(:,:,:,5,diag_trap_levels)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				<var name="u_par_pass"  gwrite="vmom(:,:,:,6,diag_trap_levels)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+			</global-bounds>
+
+			<gwrite src="if (n_corrs.eq.3) then"/>
+			<gwrite src="tmp_mom = dummy_mom"/>
+			<gwrite src="else"/>
+			<gwrite src="tmp_mom = vmom_corr"/>
+			<gwrite src="end if"/>
+			<var name="q_par_FLR"  gwrite="tmp_mom(:,:,:,4)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+			<var name="q_perp_FLR" gwrite="tmp_mom(:,:,:,5)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+			<var name="u_par_FLR"  gwrite="tmp_mom(:,:,:,6)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+
+			<gwrite src="if (n_moms_Bpar.eq.3) then"/>
+				<global-bounds dimensions="global_num_x,global_num_ky,global_num_z,global_num_spec,trap_levels" offsets="global_offset_x,global_offset_ky,global_offset_z,global_offset_species,0">
+					<var name="densI1_trap" gwrite="vmom(:,:,:,7,0:trpl)" type="complex*16" dimensions="num_x,num_ky,num_z,1,trap_levels"/>
+					<var name="TparI1_trap" gwrite="vmom(:,:,:,8,0:trpl)" type="complex*16" dimensions="num_x,num_ky,num_z,1,trap_levels"/>
+					<var name="TppI1_trap"  gwrite="vmom(:,:,:,9,0:trpl)" type="complex*16" dimensions="num_x,num_ky,num_z,1,trap_levels"/>
+				</global-bounds>
+				<global-bounds dimensions="global_num_x,global_num_ky,global_num_z,global_num_spec" offsets="global_offset_x,global_offset_ky,global_offset_z,global_offset_species">
+					<var name="densI1_pass" gwrite="vmom(:,:,:,7,diag_trap_levels)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+					<var name="TparI1_pass" gwrite="vmom(:,:,:,8,diag_trap_levels)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+					<var name="TppI1_pass"  gwrite="vmom(:,:,:,9,diag_trap_levels)" type="complex*16" dimensions="num_x,num_ky,num_z,1"/>
+				</global-bounds>
+			<gwrite src="end if"/>
+		<gwrite src="end if"/>
+
+	</adios-group>
+
+
+	<adios-group name="coupling">
+
+		<!-- Dimensions for parallel IO-->
+		<var name="block"      gwrite="block_count"      type="integer"/>
+		<var name="offset_x"   gwrite="block_start"      type="integer"/>
+		<var name="nnodes"     gwrite="cce_node_number"  type="integer"/>
+		<var name="nphi_total"                           type="integer"/>
+		<var name="iphi"                                 type="integer"/>
+
+		<global-bounds dimensions="nnodes,nphi_total" offsets="offset_x,0">
+			  <var name="data" gwrite="tmp" type="real*8" dimensions="block,nphi_total"/>
+		</global-bounds>
+
+
+		<!-- What is this for? -->
+		<var name="start_fs" gwrite ="cce_first_surface" type="integer"/>
+
+
+		<!--XGC needs doesnt need this, in for check-->
+		<var name="first_node"  gwrite="cce_first_node"  type="integer"/>
+		<var name="last_node"   gwrite="cce_last_node"   type="integer"/>
+		<var name="node_number" gwrite="cce_node_number" type="integer"/>
+		<var name="cce_side"                             type="integer"/>
+		<var name="cce_density_model"                    type="integer"/>
+
+		<var name="time" gwrite="time"  type="real*8"/>
+		<var name="step" gwrite="itime" type="integer"/>
+
+	</adios-group>
+
+        <adios-group name="dt">
+               <var name="dt_gene" gwrite="dt*Lref/cref" type="real*8"/>
+               <var name="time" gwrite="time" type="real*8"/>
+               <var name="step" gwrite="itime" type="integer"/>
+        </adios-group>
+
+	<adios-group name="field_ky0">
+            <var name="nx" gwrite="local_dims(1)" type="integer"/>
+            <var name="nz" gwrite="local_dims(3)" type="integer"/>
+            <var name="gx" gwrite="nx0" type="integer"/>
+            <var name="gz" gwrite="nz0" type="integer"/>
+            <var name="ox" gwrite="li1" type="integer"/>
+            <var name="oz" gwrite="lk1" type="integer"/>
+            <var name="time"     gwrite="time"  type="real*8"/>
+            <var name="timestep" gwrite="itime" type="integer"/>
+
+            <global-bounds dimensions="gx,gz" offsets="ox,oz">
+				<var name="phi_real"       gwrite="real (emfields(li1:li2, lj1, lk1:lk2, 1))" type="real*8" dimensions="nx,nz"/>
+				<var name="phi_imag"       gwrite="aimag(emfields(li1:li2, lj1, lk1:lk2, 1))" type="real*8" dimensions="nx,nz"/>
+
+				<!-- In principle do this, but for the demo we're planning to do it through stage_write instead
+				<var name="phi_real_mgard" gwrite="real (emfields(li1:li2, lj1, lk1:lk2, 1))" type="real*8" dimensions="nx,nz"   transform="MGARD:tol=0.000001"/>
+				<var name="phi_imag_mgard" gwrite="aimag(emfields(li1:li2, lj1, lk1:lk2, 1))" type="real*8" dimensions="nx,nz"   transform="MGARD:tol=0.000001"/>
+				!-->
+
+				<!-- In principle do this, but for the demo we're planning to do it through stage_write instead
+				<var name="phi_imag_sz"    gwrite="aimag(emfields(li1:li2, lj1, lk1:lk2, 1))" type="real*8" dimensions="nx,nz" transform="sz:relative=0.000001"/>
+				<var name="phi_real_sz"    gwrite="real (emfields(li1:li2, lj1, lk1:lk2, 1))" type="real*8" dimensions="nx,nz" transform="sz:relative=0.000001"/>
+				!-->
+
+            </global-bounds>
+	</adios-group>
+
+
+	<method group="restart" method="POSIX">verbose=2</method>
+	<method group="mom"     method="MPI">verbose=2</method>
+	<method group="field"   method="MPI">verbose=2</method>
+	<method group="coupling"  method="POSIX">verbose=2</method>
+	<method group="dt"   method="MPI">verbose=2</method>
+
+
+	<buffer size-MB="2400" />
+
+</adios-config>

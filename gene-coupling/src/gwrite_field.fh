@@ -1,0 +1,45 @@
+adios_groupsize = 0
+adios_groupsize = adios_groupsize + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 8_8 &
+                + 4_8 &
+                + 4_8 &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3))
+call adios_group_size (adios_handle, adios_groupsize, adios_totalsize, adios_err)
+call adios_write (adios_handle, "num_x", local_dims(1), adios_err)
+call adios_write (adios_handle, "num_ky", local_dims(2), adios_err)
+call adios_write (adios_handle, "num_z", local_dims(3), adios_err)
+call adios_write (adios_handle, "global_num_x", nx0, adios_err)
+call adios_write (adios_handle, "global_num_ky", nky0, adios_err)
+call adios_write (adios_handle, "global_num_z", nz0, adios_err)
+call adios_write (adios_handle, "global_offset_x", li1, adios_err)
+call adios_write (adios_handle, "global_offset_ky", lj1, adios_err)
+call adios_write (adios_handle, "global_offset_z", lk1, adios_err)
+call adios_write (adios_handle, "time", time, adios_err)
+call adios_write (adios_handle, "timestep", itime, adios_err)
+call adios_write (adios_handle, "field_output_num", field_step, adios_err)
+
+if (n_fields.ge.1) then
+tmp_field = emfields(li1:li2,lj1:lj2,lk1:lk2,1)
+call adios_write (adios_handle, "phi", tmp_field, adios_err)
+end if
+
+if (n_fields.ge.2) then
+tmp_field = emfields(li1:li2,lj1:lj2,lk1:lk2,2)
+IF (antenna_type.eq.1) tmp_field = Apar_pre_antenna(:,:,lk1:lk2)
+call adios_write (adios_handle, "A_par", tmp_field, adios_err)
+end if
+
+if (n_fields.ge.3) then
+tmp_field = emfields(li1:li2,lj1:lj2,lk1:lk2,3)
+call adios_write (adios_handle, "B_par", tmp_field, adios_err)
+end if

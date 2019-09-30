@@ -1,0 +1,76 @@
+ <?xml-stylesheet type="text/xsl" href=""
+ charset="ISO-8859-1"?>
+
+ <parameters>
+
+   <parallelization>
+   </parallelization>
+
+   <box>
+     <n_spec> 2     </n_spec>
+     <nx0>    16   </nx0>
+     <nky0>    4    </nky0>
+     <nz0>    24    </nz0>
+     <nv0>    32    </nv0>
+     <nw0>    16    </nw0>
+     <nexc>   0     </nexc>
+     <kymin>  0.2   </kymin>
+     <lv>     3.00    </lv>
+     <lw>     9.00    </lw>
+     <lx>    64.00    </lx>
+     <adapt_lx>f</adapt_lx>
+   </box>
+
+   <in_out>
+     <diagdir>/pfs/scratch/imp4/goerler/actortest</diagdir>
+     <read_checkpoint>F</read_checkpoint>
+     <istep_field>  100  </istep_field>
+     <istep_mom>    500	 </istep_mom>
+     <istep_nrg>     10	 </istep_nrg>
+     <istep_vsp>   1000	 </istep_vsp>
+     <istep_schpt> 5000	 </istep_schpt>
+   </in_out>
+
+   <general>
+     <comp_type>  IV   </comp_type>
+     <nonlinear>t</nonlinear>
+     <calc_dt>t</calc_dt>
+     <dt_max>0.3490E-02</dt_max>
+     <timelim>85000</timelim>
+     <ntimesteps>1000000</ntimesteps>
+     <simtimelim>300</simtimelim>
+     <avgflux_stime>100</avgflux_stime>
+     <avgprof_stime>0</avgprof_stime>
+     <collision_op> landau </collision_op>
+     <arakawa_zv>T</arakawa_zv>
+     <hyp_z> 2.0 </hyp_z>
+     <hyp_v> 0.2 </hyp_v>
+   </general>
+
+   <geometry>
+     <magn_geometry>eq_cpo</magn_geometry>
+     <flux_pos>0.5</flux_pos>
+   </geometry>
+
+   <species>
+     <name>electrons</name>
+     <omn>4.3</omn>
+     <omt>11.19</omt>
+     <mass>0.000272</mass>
+     <dens>1.0</dens>
+     <temp>1.0</temp>
+     <charge>-1</charge>
+   </species>
+
+   <species>
+     <name>ions</name>
+     <omn>4.3</omn>
+     <omt>11.19</omt>
+     <mass>1.0</mass>
+     <dens>1.0</dens>
+     <temp>1.0</temp>
+     <charge>1</charge>
+   </species>
+
+
+ </parameters>

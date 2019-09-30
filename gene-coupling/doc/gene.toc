@@ -1,0 +1,63 @@
+\contentsline {section}{\numberline {1}Introduction}{3}{section.1}
+\contentsline {subsection}{\numberline {1.1}A few words on the code}{3}{subsection.1.1}
+\contentsline {subsection}{\numberline {1.2}A few words on the basic equations}{3}{subsection.1.2}
+\contentsline {paragraph}{Neoclassical equilibrium:}{4}{section*.2}
+\contentsline {subsection}{\numberline {1.3}A few words on magnetic geometry}{5}{subsection.1.3}
+\contentsline {subsection}{\numberline {1.4}A few words on algorithmic issues}{6}{subsection.1.4}
+\contentsline {subsection}{\numberline {1.5}A few words on computer resources}{7}{subsection.1.5}
+\contentsline {section}{\numberline {2}Installing Gene on your machine}{9}{section.2}
+\contentsline {subsection}{\numberline {2.1}Getting the source code}{9}{subsection.2.1}
+\contentsline {subsection}{\numberline {2.2}Creating a new machine-specific makefile}{9}{subsection.2.2}
+\contentsline {subsection}{\numberline {2.3}Testing your installation}{11}{subsection.2.3}
+\contentsline {subsection}{\numberline {2.4}Using the CHEASE interface module}{11}{subsection.2.4}
+\contentsline {subsection}{\numberline {2.5}Installing and running \textsc {Gene} on Mac OS}{12}{subsection.2.5}
+\contentsline {section}{\numberline {3}Setting up a computation}{13}{section.3}
+\contentsline {subsection}{\numberline {3.1}The {\sc Gene} launcher}{13}{subsection.3.1}
+\contentsline {subsubsection}{\numberline {3.1.1}Description of the interface}{13}{subsubsection.3.1.1}
+\contentsline {paragraph}{Command buttons:}{15}{section*.3}
+\contentsline {paragraph}{Keywords for job submission:}{15}{section*.4}
+\contentsline {paragraph}{Parameter scans:}{16}{section*.5}
+\contentsline {paragraph}{Further options:}{16}{section*.6}
+\contentsline {subsection}{\numberline {3.2}The \texttt {parameters} file}{17}{subsection.3.2}
+\contentsline {subsubsection}{\numberline {3.2.1}The \texttt {parallelization} namelist}{17}{subsubsection.3.2.1}
+\contentsline {subsubsection}{\numberline {3.2.2}The \texttt {box} namelist}{18}{subsubsection.3.2.2}
+\contentsline {subsubsection}{\numberline {3.2.3}The \texttt {in\_out} namelist}{21}{subsubsection.3.2.3}
+\contentsline {subsubsection}{\numberline {3.2.4}The \texttt {general} namelist}{24}{subsubsection.3.2.4}
+\contentsline {subsubsection}{\numberline {3.2.5}The \texttt {extended\_diags} namelist}{32}{subsubsection.3.2.5}
+\contentsline {subsubsection}{\numberline {3.2.6}The \texttt {external\_contr} namelist}{34}{subsubsection.3.2.6}
+\contentsline {subsubsection}{\numberline {3.2.7}The \texttt {geometry} namelist}{36}{subsubsection.3.2.7}
+\contentsline {subsubsection}{\numberline {3.2.8}{The \texttt {species} namelist}}{40}{subsubsection.3.2.8}
+\contentsline {subsubsection}{\numberline {3.2.9}{The \texttt {units} namelist (optional)}}{41}{subsubsection.3.2.9}
+\contentsline {subsubsection}{\numberline {3.2.10}The \texttt {nonlocal\_x} namelist (global code only)}{42}{subsubsection.3.2.10}
+\contentsline {subsection}{\numberline {3.3}Running the code}{46}{subsection.3.3}
+\contentsline {subsubsection}{\numberline {3.3.1}Continuing a simulation}{46}{subsubsection.3.3.1}
+\contentsline {subsection}{\numberline {3.4}The scan script}{47}{subsection.3.4}
+\contentsline {subsubsection}{\numberline {3.4.1}How to specify scan parameters:}{48}{subsubsection.3.4.1}
+\contentsline {subsubsection}{\numberline {3.4.2}Options (short form in brackets):}{50}{subsubsection.3.4.2}
+\contentsline {subsubsection}{\numberline {3.4.3}{\sc Gene} parallelization over parameter sets}{52}{subsubsection.3.4.3}
+\contentsline {subsubsection}{\numberline {3.4.4}Autoparallelization and scanscript}{52}{subsubsection.3.4.4}
+\contentsline {subsubsection}{\numberline {3.4.5}Checkpoint reading in scans}{53}{subsubsection.3.4.5}
+\contentsline {section}{\numberline {4}Output files}{54}{section.4}
+\contentsline {subsection}{\numberline {4.1}The \texttt {nrg} file}{54}{subsection.4.1}
+\contentsline {subsection}{\numberline {4.2}The \texttt {field} file}{55}{subsection.4.2}
+\contentsline {subsection}{\numberline {4.3}The \texttt {mom} file}{55}{subsection.4.3}
+\contentsline {subsection}{\numberline {4.4}The \texttt {vsp} file}{56}{subsection.4.4}
+\contentsline {subsection}{\numberline {4.5}The \texttt {neoclass} file}{56}{subsection.4.5}
+\contentsline {subsection}{\numberline {4.6}The \texttt {energy} file}{57}{subsection.4.6}
+\contentsline {subsection}{\numberline {4.7}Triplet Diagnostic files}{58}{subsection.4.7}
+\contentsline {subsection}{\numberline {4.8}The checkpoint files}{59}{subsection.4.8}
+\contentsline {subsection}{\numberline {4.9}The \texttt {omega} file}{59}{subsection.4.9}
+\contentsline {subsection}{\numberline {4.10}The \texttt {eigenvalues} file}{60}{subsection.4.10}
+\contentsline {subsection}{\numberline {4.11}The geometry output \texttt {<magn\_geometry>.dat} file}{60}{subsection.4.11}
+\contentsline {subsection}{\numberline {4.12}The \texttt {autopar} file}{61}{subsection.4.12}
+\contentsline {subsection}{\numberline {4.13}The \texttt {codemods} file}{61}{subsection.4.13}
+\contentsline {section}{\numberline {5}The Diagnostic Tool}{63}{section.5}
+\contentsline {subsection}{\numberline {5.1}The graphical user interface}{63}{subsection.5.1}
+\contentsline {subsection}{\numberline {5.2}The configuration file}{66}{subsection.5.2}
+\contentsline {section}{\numberline {6}Tools}{67}{section.6}
+\contentsline {section}{\numberline {7}Reporting bugs and submitting changes}{68}{section.7}
+\contentsline {section}{\numberline {8}Frequently Asked Questions}{69}{section.8}
+\contentsline {section}{\numberline {A}Normalizations}{70}{appendix.A}
+\contentsline {subsection}{\numberline {A.1}species dependent}{70}{subsection.A.1}
+\contentsline {subsection}{\numberline {A.2}reference quantities}{70}{subsection.A.2}
+\contentsline {subsubsection}{\numberline {A.2.1}derived reference quantities}{70}{subsubsection.A.2.1}

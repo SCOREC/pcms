@@ -1,0 +1,115 @@
+adios_groupsize = 0
+adios_groupsize = adios_groupsize + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) * (diag_trap_levels) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) * (diag_trap_levels) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) * (diag_trap_levels) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) * (diag_trap_levels) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) * (diag_trap_levels) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) * (diag_trap_levels) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) * (diag_trap_levels) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) * (diag_trap_levels) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) * (diag_trap_levels) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1) &
+                + 16_8 * (local_dims(1)) * (local_dims(2)) * (local_dims(3)) * (1)
+call adios_group_size (adios_handle, adios_groupsize, adios_totalsize, adios_err)
+call adios_write (adios_handle, "num_x", local_dims(1), adios_err)
+call adios_write (adios_handle, "num_ky", local_dims(2), adios_err)
+call adios_write (adios_handle, "num_z", local_dims(3), adios_err)
+call adios_write (adios_handle, "num_species", local_dims(6), adios_err)
+call adios_write (adios_handle, "global_num_x", nx0, adios_err)
+call adios_write (adios_handle, "global_num_ky", nky0, adios_err)
+call adios_write (adios_handle, "global_num_z", nz0, adios_err)
+call adios_write (adios_handle, "global_num_spec", n_spec, adios_err)
+call adios_write (adios_handle, "global_offset_x", li1, adios_err)
+call adios_write (adios_handle, "global_offset_ky", lj1, adios_err)
+call adios_write (adios_handle, "global_offset_z", lk1, adios_err)
+call adios_write (adios_handle, "global_offset_species", n, adios_err)
+call adios_write (adios_handle, "mom_output_num", isnap_mom, adios_err)
+call adios_write (adios_handle, "trap_levels", diag_trap_levels, adios_err)
+call adios_write (adios_handle, "trap_level", trap_level, adios_err)
+call adios_write (adios_handle, "n_moms_Bpar", n_moms_Bpar, adios_err)
+call adios_write (adios_handle, "n_corrs", n_corrs, adios_err)
+
+if (diag_trap_levels.eq.0) then
+call adios_write (adios_handle, "dens", vmom(:,:,:,1,0), adios_err)
+call adios_write (adios_handle, "T_par", vmom(:,:,:,2,0), adios_err)
+call adios_write (adios_handle, "T_perp", vmom(:,:,:,3,0), adios_err)
+call adios_write (adios_handle, "q_par", vmom(:,:,:,4,0), adios_err)
+call adios_write (adios_handle, "q_perp", vmom(:,:,:,5,0), adios_err)
+call adios_write (adios_handle, "u_par", vmom(:,:,:,6,0), adios_err)
+if (n_moms_Bpar.eq.3) then
+call adios_write (adios_handle, "densI1", vmom(:,:,:,7,0), adios_err)
+call adios_write (adios_handle, "TparI1", vmom(:,:,:,8,0), adios_err)
+call adios_write (adios_handle, "TppI1", vmom(:,:,:,9,0), adios_err)
+end if
+else
+call adios_write (adios_handle, "dens_trap", vmom(:,:,:,1,0:trpl), adios_err)
+call adios_write (adios_handle, "T_par_trap", vmom(:,:,:,2,0:trpl), adios_err)
+call adios_write (adios_handle, "T_perp_trap", vmom(:,:,:,3,0:trpl), adios_err)
+call adios_write (adios_handle, "q_par_trap", vmom(:,:,:,4,0:trpl), adios_err)
+call adios_write (adios_handle, "q_perp_trap", vmom(:,:,:,5,0:trpl), adios_err)
+call adios_write (adios_handle, "q_par_trap", vmom(:,:,:,6,0:trpl), adios_err)
+call adios_write (adios_handle, "dens_pass", vmom(:,:,:,1,diag_trap_levels), adios_err)
+call adios_write (adios_handle, "dens_FLR", vmom_corr(:,:,:,1), adios_err)
+call adios_write (adios_handle, "T_par_pass", vmom(:,:,:,2,diag_trap_levels), adios_err)
+call adios_write (adios_handle, "T_par_FLR", vmom_corr(:,:,:,2), adios_err)
+call adios_write (adios_handle, "T_perp_pass", vmom(:,:,:,3,diag_trap_levels), adios_err)
+call adios_write (adios_handle, "T_perp_FLR", vmom_corr(:,:,:,3), adios_err)
+call adios_write (adios_handle, "q_par_pass", vmom(:,:,:,4,diag_trap_levels), adios_err)
+call adios_write (adios_handle, "q_perp_pass", vmom(:,:,:,5,diag_trap_levels), adios_err)
+call adios_write (adios_handle, "u_par_pass", vmom(:,:,:,6,diag_trap_levels), adios_err)
+if (n_corrs.eq.3) then
+tmp_mom = dummy_mom
+else
+tmp_mom = vmom_corr
+end if
+call adios_write (adios_handle, "q_par_FLR", tmp_mom(:,:,:,4), adios_err)
+call adios_write (adios_handle, "q_perp_FLR", tmp_mom(:,:,:,5), adios_err)
+call adios_write (adios_handle, "u_par_FLR", tmp_mom(:,:,:,6), adios_err)
+if (n_moms_Bpar.eq.3) then
+call adios_write (adios_handle, "densI1_trap", vmom(:,:,:,7,0:trpl), adios_err)
+call adios_write (adios_handle, "TparI1_trap", vmom(:,:,:,8,0:trpl), adios_err)
+call adios_write (adios_handle, "TppI1_trap", vmom(:,:,:,9,0:trpl), adios_err)
+call adios_write (adios_handle, "densI1_pass", vmom(:,:,:,7,diag_trap_levels), adios_err)
+call adios_write (adios_handle, "TparI1_pass", vmom(:,:,:,8,diag_trap_levels), adios_err)
+call adios_write (adios_handle, "TppI1_pass", vmom(:,:,:,9,diag_trap_levels), adios_err)
+end if
+end if

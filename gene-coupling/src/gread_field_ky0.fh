@@ -1,0 +1,6 @@
+call adios_selection_writeblock (s, rank)
+call adios_schedule_read (fp, s, "phi_real", 0, 1, real (emfields(li1:li2, lj1, lk1:lk2, 1)), adios_err)
+call adios_schedule_read (fp, s, "phi_imag", 0, 1, aimag(emfields(li1:li2, lj1, lk1:lk2, 1)), adios_err)
+
+call adios_perform_reads (fp, adios_err)
+call adios_selection_delete (s)

@@ -1,0 +1,93 @@
+#########################################################################
+# contains link lines for MKL FFT, MKL SCALAPACK and MKL BLAS           #
+# based on definitions in MACHMKFILE and $(COMPILER).def                #
+# following the MKL link line advisor                                   #
+# https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor #
+#########################################################################
+
+ifneq ($(strip $(MKL_TARGET_ARCH)),)
+ MKL_ARCH?=$(MKL_TARGET_ARCH)
+endif
+MKL_ARCH?=intel64
+
+ifneq ($(MPIVENDOR),)
+ MKLMPI = $(MPIVENDOR)
+endif
+ifeq ($(MKLMPI),bullxmpi)
+ MKLMPI = openmpi
+endif
+MKLMPI ?= intelmpi
+
+ifeq ($(COMPILER),intel)
+ MKLCOMP = intel
+endif
+ifeq ($(COMPILER),gnu)
+ MKLCOMP = gf
+endif
+ifeq ($(COMPILER),pgi)
+ MKLCOMP = intel
+endif
+MKLCOMP ?= intel
+
+#try various environment variables if MKLROOT is not yet set
+ifneq ($(MKL_BASE),)
+ MKLROOT ?= $(MKL_BASE)
+endif
+ifneq ($(MKL_HOME),)
+ MKLROOT ?= $(MKLHOME)
+endif
+ifneq ($(MKL_HOME),)
+ MKLROOT ?= $(MKL_HOME)
+endif
+
+##very old mkl libraries
+ifneq ($(findstring 10.,$(MKLVERSION)),)
+ MKL_ARCH = em64t
+
+ MKL_SCALAPACK_LINKLINE = $(MKLROOT)/lib/$(MKL_ARCH)/libmkl_scalapack_lp64.a \
+	$(MKLROOT)/lib/$(MKL_ARCH)/libmkl_solver_lp64_sequential.a -Wl,--start-group  \
+	$(MKLROOT)/lib/$(MKL_ARCH)/libmkl_$(MKLCOMP)_lp64.a \
+	$(MKLROOT)/lib/$(MKL_ARCH)/libmkl_sequential.a \
+	$(MKLROOT)/lib/$(MKL_ARCH)/libmkl_core.a \
+	$(MKLROOT)/lib/$(MKL_ARCH)/libmkl_blacs_$(MKLMPI)_lp64.a -Wl,--end-group -lpthread -lm
+
+ MKL_BLAS_LINKLINE = $(MKLROOT)/lib/$(MKL_ARCH)/libmkl_solver_lp64_sequential.a \
+	-Wl,--start-group  $(MKLROOT)/lib/$(MKL_ARCH)/libmkl_$(MKLCOMP)_lp64.a \
+	$(MKLROOT)/lib/$(MKL_ARCH)/libmkl_sequential.a \
+	$(MKLROOT)/lib/$(MKL_ARCH)/libmkl_core.a -Wl,--end-group -lpthread -lm
+endif
+
+##################### DEFAULT LINK LINE #########################
+ifeq ($(MKL_DYNAMIC),yes)
+#dynamic:
+ MKL_LINKLINE ?= -L${MKLROOT}/lib/$(MKL_ARCH) -lmkl_$(MKLCOMP)_lp64 -lmkl_core \
+		-lmkl_sequential -lpthread -lm -ldl
+
+ MKL_SCALAPACK_LINKLINE ?= -L${MKLROOT}/lib/$(MKL_ARCH) \
+		-lmkl_scalapack_lp64 \
+		-lmkl_$(MKLCOMP)_lp64 -lmkl_core -lmkl_sequential \
+		-lmkl_blacs_$(MKLMPI)_lp64 -lpthread -lm -ldl
+
+ MKL_BLAS_LINKLINE ?= -L${MKLROOT}/lib/$(MKL_ARCH) \
+		-lmkl_$(MKLCOMP)_lp64 \
+		-lmkl_core -lmkl_sequential -lpthread -lm -ldl
+else
+#static
+ MKL_LINKLINE ?= -Wl,--start-group ${MKLROOT}/lib/$(MKL_ARCH)/libmkl_$(MKLCOMP)_lp64.a \
+		${MKLROOT}/lib/$(MKL_ARCH)/libmkl_core.a \
+		${MKLROOT}/lib/$(MKL_ARCH)/libmkl_sequential.a \
+		-Wl,--end-group -lpthread -lm -ldl
+
+ MKL_SCALAPACK_LINKLINE ?= ${MKLROOT}/lib/$(MKL_ARCH)/libmkl_scalapack_lp64.a \
+		-Wl,--start-group ${MKLROOT}/lib/$(MKL_ARCH)/libmkl_$(MKLCOMP)_lp64.a \
+		${MKLROOT}/lib/$(MKL_ARCH)/libmkl_core.a \
+		${MKLROOT}/lib/$(MKL_ARCH)/libmkl_sequential.a \
+		${MKLROOT}/lib/$(MKL_ARCH)/libmkl_blacs_$(MKLMPI)_lp64.a \
+		-Wl,--end-group -lpthread -lm -ldl
+
+ MKL_BLAS_LINKLINE ?= -Wl,--start-group ${MKLROOT}/lib/$(MKL_ARCH)/libmkl_$(MKLCOMP)_lp64.a \
+		${MKLROOT}/lib/$(MKL_ARCH)/libmkl_core.a \
+		${MKLROOT}/lib/$(MKL_ARCH)/libmkl_sequential.a \
+		-Wl,--end-group -lpthread -lm -ldl
+
+endif

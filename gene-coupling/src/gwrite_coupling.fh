@@ -1,0 +1,30 @@
+adios_groupsize = 0
+adios_groupsize = adios_groupsize + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 8_8 * (block_count) * (nphi_total) &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 4_8 &
+                + 8_8 &
+                + 4_8
+call adios_group_size (adios_handle, adios_groupsize, adios_totalsize, adios_err)
+call adios_write (adios_handle, "block", block_count, adios_err)
+call adios_write (adios_handle, "offset_x", block_start, adios_err)
+call adios_write (adios_handle, "nnodes", cce_node_number, adios_err)
+call adios_write (adios_handle, "nphi_total", nphi_total, adios_err)
+call adios_write (adios_handle, "iphi", iphi, adios_err)
+call adios_write (adios_handle, "data", tmp, adios_err)
+call adios_write (adios_handle, "start_fs", cce_first_surface, adios_err)
+call adios_write (adios_handle, "first_node", cce_first_node, adios_err)
+call adios_write (adios_handle, "last_node", cce_last_node, adios_err)
+call adios_write (adios_handle, "node_number", cce_node_number, adios_err)
+call adios_write (adios_handle, "cce_side", cce_side, adios_err)
+call adios_write (adios_handle, "cce_density_model", cce_density_model, adios_err)
+call adios_write (adios_handle, "time", time, adios_err)
+call adios_write (adios_handle, "step", itime, adios_err)

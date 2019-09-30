@@ -1,0 +1,8 @@
+adios_groupsize = 0
+adios_groupsize = adios_groupsize + 8_8 &
+                + 8_8 &
+                + 4_8
+call adios_group_size (adios_handle, adios_groupsize, adios_totalsize, adios_err)
+call adios_write (adios_handle, "dt_gene", dt*Lref/cref, adios_err)
+call adios_write (adios_handle, "time", time, adios_err)
+call adios_write (adios_handle, "step", itime, adios_err)

@@ -1,0 +1,52 @@
+diff --git a/src/chease.F90 b/src/chease.F90
+index 912524c0..cd39894e 100755
+--- a/src/chease.F90
++++ b/src/chease.F90
+@@ -633,7 +633,7 @@ CONTAINS
+     !enter this if interpolating in x direction. not force_x ensures that will work for the global
+     if (interpol .and. .not.force_x) then
+        call lag3interp(q,x_in,npsi,q_int,x_out,nx0int)
+-       call lag3interp(dxdpsi,x_in,npsi,dxdpsi_int,x_out,nx0int)
++       !call lag3interp(dxdpsi,x_in,npsi,dxdpsi_int,x_out,nx0int)
+        call lag3interp(Rgeom,x_in,npsi,Rgeom_int,x_out,nx0int)
+        call lag3interp(ageom,x_in,npsi,ageom_int,x_out,nx0int)
+        call lag3interp(V,x_in,npsi,V_int,x_out,nx0int)
+diff --git a/src/checkpoint.F90 b/src/checkpoint.F90
+index 77bdffd9..28c98d90 100755
+--- a/src/checkpoint.F90
++++ b/src/checkpoint.F90
+@@ -1010,7 +1010,7 @@ CONTAINS
+ 	end if
+        CALL adios_checkpoint_write (trim(chptdir)//trim(fullname), mpi_comm_xyzvwspec)
+ 	if (present(finalstep) .and. finalstep) then
+-		itime = itime + 1
++                itime = itime + 1
+ 	end if
+ #endif
+ 
+diff --git a/src/diag.F90 b/src/diag.F90
+index 2d858dca..38003352 100755
+--- a/src/diag.F90
++++ b/src/diag.F90
+@@ -1565,6 +1565,7 @@ CONTAINS
+ 
+ 
+   SUBROUTINE diag_mom_XGC
++    use geometry, only: flux_geomfac
+     COMPLEX, DIMENSION(li1:li2,lj1:lj2,lk1:lk2,lm1:lm2,6):: vmom
+     complex, dimension(li1:li2,lj1:lj2,lk1:lk2) :: tmp_field, bar_field
+     complex, dimension(li1:li2,lj1:lj2,lk1:lk2,lm1:lm2) :: dfields_dy
+diff --git a/src/perf_monitor.F90 b/src/perf_monitor.F90
+index f425c335..4396b7d8 100755
+--- a/src/perf_monitor.F90
++++ b/src/perf_monitor.F90
+@@ -21,7 +21,9 @@ contains
+ 
+     call mpi_comm_rank(timer_comm, rank, ierr)
+     if (rank.eq. 0) then
++#ifdef WITH_GPTL
+        call get_unit_nr(fileunit)
++#endif
+        open(fileunit, file=TRIM(dir)//"/test", iostat=ierr)
+        if (ierr.ne.0) then
+           call execute_command_line ('mkdir -p ' // adjustl(trim(dir)))

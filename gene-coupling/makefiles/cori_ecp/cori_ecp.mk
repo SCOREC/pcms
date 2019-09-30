@@ -145,7 +145,7 @@ ifeq ($(FUTILS),yes)
 endif
 
 ifeq ($(ADIOS),yes)
-  ADIOS_LIB = $(shell adios_config -l -f)
+  ADIOS_LIB = ADIOS1_LIB=-L/global/common/sw/cray/cnl7/haswell/adios/1.13.1/intel/19.0.3.199/wuurn4w/lib -ladiosf -L/global/common/sw/cray/cnl7/haswell/zlib/1.2.11/intel/19.0.3.199/bsk25he/lib -L/global/common/sw/cray/cnl7/haswell/bzip2/1.0.6/intel/19.0.3.199/p7h55tt/lib -L/global/common/sw/cray/cnl7/haswell/lz4/1.9.0/intel/19.0.3.199/qf6mmqo/lib -L/global/common/sw/cray/cnl7/haswell/c-blosc/1.16.3/intel/19.0.3.199/tn4uoyl/lib -L/global/common/sw/cray/cnl7/haswell/zfp/0.5.0/intel/19.0.3.199/cle2mg7/lib -L/global/common/sw/cray/cnl7/haswell/sz/1.4.12.3/intel/19.0.3.199/pubgujg/lib -L/global/common/sw/cray/cnl7/haswell/snappy/1.1.7/intel/19.0.3.199/vlbmtjf/lib -L/global/common/sw/cray/cnl7/haswell/zstd/1.4.0/intel/19.0.3.199/k2svlvb/lib -lblosc -Wl,-Bdynamic -lsnappy -lzstd -Wl,-Bstatic -lz -lbz2 -llz4 -Wl,-Bdynamic -lzfp -Wl,-Bstatic -lSZ -lzlib
   ADIOS_INC = $(shell adios_config -c -f)
   ADIOS_DIR = $(shell adios_config -d)
 endif

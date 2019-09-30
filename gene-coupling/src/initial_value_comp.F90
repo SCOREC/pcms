@@ -38,7 +38,7 @@ module initial_value_comp
 
   ! This is the GPTL timing if built, otherwise it does nothing
   use perf_monitor
-
+  USE compute_f, only: f_
 
 #ifdef WITH_LIKWID
 #include "likwid_f90.h"

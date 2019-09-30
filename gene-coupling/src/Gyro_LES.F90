@@ -19,7 +19,8 @@ Use blockindex
 Use prefactors
 use axpy
 use numerical_damping
-USE calc_rhs,only: this_nonlinear_term
+USE all_rhs_terms, only: this_nonlinear_term
+use compute_f, only: h_
 
     Implicit None
     Public :: initialize_GyroLES, exec_GyroLES, finalize_GyroLES

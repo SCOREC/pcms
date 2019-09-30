@@ -1,4 +1,0 @@
-call adios_selection_writeblock (s, rank)
-
-call adios_perform_reads (fp, adios_err)
-call adios_selection_delete (s)

@@ -16,7 +16,7 @@ if(BUILD_SHARED_LIBS)
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")
 endif()
 
-#list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cpl/cmake")
 
 add_subdirectory(src)
 

@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.12)
 project(wdm_coupling LANGUAGES Fortran C CXX)
 
+#set(wdm_coupling_VERSION_MAJOR 1)
+#set(wdm_coupling_VERSION_MINOR 0)
+
 # don't look for $ENV{XXX_ROOT} variables
 # in find_library/package(xxx) commands
 if(POLICY CMP0074)
@@ -26,6 +29,11 @@ add_subdirectory(src)
 if(ENABLE_TESTING)
   add_subdirectory(test)
 endif()
+
+add_executable(coupling ${CMAKE_SOURCE_DIR}/src/wdmapp.cc)
+
+# install targets
+install (TARGETS coupling DESTINATION bin)
 
 #cpack
 #doxy

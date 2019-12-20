@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/global/homes/d/damilare/wdmapp_coupling/cpl/src/cpl_init.cc
+cpl_init.h
+/global/homes/d/damilare/wdmapp_coupling/cpl/src/cpl_init.h
+
+/global/homes/d/damilare/wdmapp_coupling/cpl/src/cpl_init.h
+
+/global/homes/d/damilare/wdmapp_coupling/cpl/src/wdmapp.cc
+cpl_init.h
+/global/homes/d/damilare/wdmapp_coupling/cpl/src/cpl_init.h
+sstream
+-
+unistd.h
+-
+sys/wait.h
+-
+sys/stat.h
+-
+string
+-
+

@@ -1,0 +1,5 @@
+module load netcdf
+module load pspline
+module load tpsl
+module load petsc/3.2.02
+module load adios/1.2.1

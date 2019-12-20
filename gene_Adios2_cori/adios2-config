@@ -1,0 +1,73 @@
+#!/bin/bash
+
+#ADIOS2_PREFIX=$(perl -MCwd -e 'print Cwd::abs_path shift' $(dirname ${BASH_SOURCE})/..)
+ADIOS2_PREFIX=/project/projectdirs/m499/Software/adios2/DEFAULT/cori_haswell/DEFAULT/bin
+
+ADIOS2_C_CFLAGS="-isystem ${ADIOS2_PREFIX}/include"
+ADIOS2_C_LDFLAGS="${ADIOS2_PREFIX}/lib64/libadios2.a -ldl ${ADIOS2_PREFIX}/lib64/libadios2_sst.a ${ADIOS2_PREFIX}/lib64/libtaustubs.a ${ADIOS2_PREFIX}/lib64/libadios2_evpath.a ${ADIOS2_PREFIX}/lib64/libadios2_ffs.a ${ADIOS2_PREFIX}/lib64/libadios2_atl.a -lm ${ADIOS2_PREFIX}/lib64/libadios2_dill.a -L/global/common/sw/cray/sles15/x86_64/libffi/3.2.1/gcc/8.2.0/nprkfvh/lib/../lib64 -lffi ${ADIOS2_PREFIX}/lib64/libadios2_enet.a"
+ADIOS2_CXX_CXXFLAGS="-isystem ${ADIOS2_PREFIX}/include -std=gnu++11"
+ADIOS2_CXX_LDFLAGS="${ADIOS2_PREFIX}/lib64/libadios2.a -ldl ${ADIOS2_PREFIX}/lib64/libadios2_sst.a ${ADIOS2_PREFIX}/lib64/libtaustubs.a ${ADIOS2_PREFIX}/lib64/libadios2_evpath.a ${ADIOS2_PREFIX}/lib64/libadios2_ffs.a ${ADIOS2_PREFIX}/lib64/libadios2_atl.a -lm ${ADIOS2_PREFIX}/lib64/libadios2_dill.a -L/global/common/sw/cray/sles15/x86_64/libffi/3.2.1/gcc/8.2.0/nprkfvh/lib/../lib64 -lffi ${ADIOS2_PREFIX}/lib64/libadios2_enet.a"
+ADIOS2_Fortran_FFLAGS="-DADIOS2_HAVE_MPI_F -I${ADIOS2_PREFIX}/include/adios2/fortran -I/project/projectdirs/m499/libfabric/gnu/include/rdma"
+ADIOS2_Fortran_LDFLAGS="/project/projectdirs/m499/libfabric/gnu/lib/libfabric.a ${ADIOS2_PREFIX}/lib64/libadios2_f.a ${ADIOS2_PREFIX}/lib64/libadios2.a -ldl ${ADIOS2_PREFIX}/lib64/libadios2_sst.a ${ADIOS2_PREFIX}/lib64/libtaustubs.a ${ADIOS2_PREFIX}/lib64/libadios2_evpath.a ${ADIOS2_PREFIX}/lib64/libadios2_ffs.a ${ADIOS2_PREFIX}/lib64/libadios2_atl.a -lm ${ADIOS2_PREFIX}/lib64/libadios2_dill.a -L/global/common/sw/cray/sles15/x86_64/libffi/3.2.1/gcc/8.2.0/nprkfvh/lib/../lib64 -lffi ${ADIOS2_PREFIX}/lib64/libadios2_enet.a -lirng -ldecimal -lmpichcxx_intel -lstdc++ -lirng -lstdc++ -ldecimal -lstdc++"
+
+function usage() {
+  echo "adios2-config (--help | [--c-flags] [--c-libs] [--cxx-flags] [--cxx-libs] [-fortran-flags] [--fortran-libs])"
+  echo "  --help           Display help information"
+  echo "  -c               Both compile and link flags for the C bindings"
+  echo "  --c-flags        Preprocessor and compile flags for the C bindings"
+  echo "  --c-libs         Linker flags for the C bindings"
+  echo "  -x               Both compile and link flags for the C++ bindings"
+  echo "  --cxx-flags      Preprocessor and compile flags for the C++ bindings"
+  echo "  --cxx-libs       Linker flags for the C++ bindings"
+  echo "  -f               Both compile and link flags for the F90 bindings"
+  echo "  --fortran-flags  Preprocessor and compile flags for the F90 bindings"
+  echo "  --fortran-libs   Linker flags for the F90 bindings"
+}
+
+if [ $# -eq 0 ]
+then
+  usage
+  exit 1
+fi
+
+CF=0
+CL=0
+CXXF=0
+CXXL=0
+FF=0
+FL=0
+
+while [ $# -gt 0 ]
+do
+  case $1
+  in
+    -c) CF=1; CL=1 ;;
+    --c-flags) CF=1 ;;
+    --c-libs) CL=1 ;;
+    -x) CXXF=1; CXXL=1 ;;
+    --cxx-flags) CXXF=1 ;;
+    --cxx-libs) CXXL=1 ;;
+    -f) FF=1; FL=1 ;;
+    --fortran-flags) FF=1 ;;
+    --fortran-libs) FL=1 ;;
+    --help)
+      usage
+      exit 1
+      ;;
+    *)
+      echo "Error: Unknown argument: $1"
+      usage
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+if [ $CF -eq 1 ]; then echo -n "${ADIOS2_C_CFLAGS} "; fi
+if [ $CL -eq 1 ]; then echo -n "${ADIOS2_C_LDFLAGS} "; fi
+if [ $CXXF -eq 1 ]; then echo -n "${ADIOS2_CXX_CXXFLAGS} "; fi
+if [ $CXXL -eq 1 ]; then echo -n "${ADIOS2_CXX_LDFLAGS} "; fi
+if [ $FF -eq 1 ]; then echo -n "${ADIOS2_Fortran_FFLAGS} "; fi
+if [ $FL -eq 1 ]; then echo -n "${ADIOS2_Fortran_LDFLAGS} "; fi
+
+echo ""

@@ -1,0 +1,1085 @@
+! from E. Yoon's collision3
+#include <petscversion.h>
+
+subroutine col_f_angle_avg_m(c1, c2, M1, M2)
+    use sml_module, only : sml_pi
+    use col_f_module
+    use elliptics_mod
+    implicit none
+    type(col_f_core_type) :: c1, c2
+    real (8), dimension((col_f_nvr-1)*(col_f_nvz-1),3,(col_f_nvr-1)*(col_f_nvz-1)) :: M1, M2
+    integer :: index_I, index_ip, index_J, index_jp
+    integer :: index_rz, index_ac
+    real (8) :: r, z, a, c, dz, dz2, r2, a2, lambda, k, kp1_sqrt, km1
+    real (8), dimension((col_f_nvr-1)*(col_f_nvz-1)) :: EK, EE, k_eff
+    integer, dimension((col_f_nvr-1)*(col_f_nvz-1)) :: vpic_ierr
+    real (8) :: EE_k, EK_k
+    real (8) :: I1, I2, I3, temp_cons, temp_cons_dz, temp_cons_I1, temp_cons_I2, temp_cons_I3, temp_cons_dz_I2, temp_cons_dz_I3
+    real (8) :: tmp_a2, tmp_a2s((col_f_nvr-1)*(col_f_nvz-1),3), tmp_M15
+    integer :: mesh_Nrm1, mesh_Nzm1
+    real(8)::c1_mesh_r_half(lbound(c1%mesh_r_half,1):ubound(c1%mesh_r_half,1))
+    real(8)::c1_mesh_z_half(lbound(c1%mesh_z_half,1):ubound(c1%mesh_z_half,1))
+    real(8)::c2_mesh_r_half(lbound(c2%mesh_r_half,1):ubound(c2%mesh_r_half,1))
+    real(8)::c2_mesh_z_half(lbound(c2%mesh_z_half,1):ubound(c2%mesh_z_half,1))
+
+#if defined(_OPENACC) && defined(PILL_SUB_ELLIP)
+    integer, parameter ::n_order = 10
+    logical, parameter :: use_ellip_subroutine = .true.
+    integer :: i,order
+    real(kind=8), parameter :: e_tol = 1.0d-8
+    integer, parameter :: vl = 64
+    real(kind=8), dimension(vl) :: x_n,y_n,Mx_n,My_n,Mz_n
+    real(kind=8) :: x_np1,Mx_np1,My_np1,rd
+    integer :: iibeg,iiend,iisize,ii
+#endif
+
+#ifdef _OPENACC
+    integer :: istream, ithread
+!$  integer, external :: omp_get_thread_num
+#endif
+
+#ifdef _OPENACC
+    ithread = 0
+!$  ithread = omp_get_thread_num() 
+    istream = ithread + 1
+#endif
+
+    mesh_Nrm1 = col_f_nvr-1
+    mesh_Nzm1 = col_f_nvz-1
+
+    c1_mesh_r_half = c1%mesh_r_half
+    c1_mesh_z_half = c1%mesh_z_half
+    c2_mesh_r_half = c2%mesh_r_half
+    c2_mesh_z_half = c2%mesh_z_half
+
+    ! new routine
+    ! (r,z) : colliding paritcle "c1" - capital index, (a,c) : target particle "c2" - small index
+#ifdef _OPENACC
+!$acc kernels  present(M1,M2)  ASYNC(istream) &
+!$acc&    pcopyin(mesh_Nzm1,mesh_Nrm1) &
+!$acc&    pcopyin(c1_mesh_r_half,c1_mesh_z_half) &
+!$acc&    pcopyin(c2_mesh_r_half,c2_mesh_z_half)   
+
+!$acc loop independent collapse(2)  gang &
+!$acc&    private(index_I, z, index_J, index_rz, r, r2) &
+!$acc&    private(index_ip, c, dz, dz2, index_jp, a, a2, index_ac, lambda) &
+!$acc&    private(k, k_eff, kp1_sqrt, km1, EK, EE, vpic_ierr, I1, I2, I3)  &
+!$acc&    private(temp_cons, temp_cons_dz, temp_cons_I1, temp_cons_I2) &
+!$acc&    private(temp_cons_I3, temp_cons_dz_I2, temp_cons_dz_I3)  &
+#ifdef PILL_SUB_ELLIP 
+!$acc&    private(x_n,y_n,Mx_n,My_n,Mz_n,i,x_np1,Mx_np1,My_np1,rd) &
+!$acc&    private(ii,iibeg,iiend,iisize) &
+#endif
+!$acc&    private(tmp_a2, tmp_a2s, tmp_M15, EE_k, EK_k)    
+#else
+!$OMP PARALLEL DO &
+!$OMP&  default(none) &
+!$OMP& shared(mesh_Nzm1,mesh_Nrm1,sml_pi, c1,c2,M1,M2, &
+!$OMP&        c1_mesh_r_half, c1_mesh_z_half, c2_mesh_r_half, c2_mesh_z_half) &
+!$OMP& PRIVATE( index_I, z, index_J, index_rz, r, r2, index_ip, c, dz, dz2, index_jp, a, a2, index_ac, lambda, &
+!$OMP&           k, k_eff, kp1_sqrt, km1, EK, EE, EK_k, EE_k, vpic_ierr, I1, I2, I3, temp_cons, temp_cons_dz, temp_cons_I1, temp_cons_I2, &
+!$OMP&           temp_cons_I3, temp_cons_dz_I2, temp_cons_dz_I3, tmp_a2, tmp_a2s, tmp_M15)  &
+!$OMP&           num_threads(col_f_nthreads)
+#endif
+    do index_I=1,mesh_Nzm1
+        do index_J=1,mesh_Nrm1
+            z = c1_mesh_z_half(index_I)
+            index_rz = index_J +mesh_Nrm1*(index_I-1)
+            r=c1_mesh_r_half(index_J)
+            r2 = r*r
+
+!$acc loop independent collapse(2) vector(256)
+            do index_ip=1, mesh_Nzm1
+                do index_jp=1, mesh_Nrm1
+                    c = c2_mesh_z_half(index_ip)
+                    dz = z-c
+                    dz2 = dz*dz
+
+                    a=c2_mesh_r_half(index_jp)
+                    a2 = a*a
+                    index_ac = index_jp+mesh_Nrm1*(index_ip-1)
+
+                    !lambda
+                    lambda = r2+a2+dz2     !symmetric (r<->a, z<->c)
+                                           ! i.e. (r,z,a,c) = (a,z,r,c) = (r,c,a,z) = (a,c,r,z) for SAME grid
+                                           !      BUT!!, (r,z,a,c) = (a,c,r,z) only due to limitation of our domain for each species
+
+                    k = 2D0*r*a/lambda     !symmetric
+                    k_eff(index_ac) = 2D0*k/(1D0+k)
+#ifdef _OPENACC
+#ifdef PILL_SUB_ELLIP
+                enddo    
+            enddo    
+!$acc loop independent  worker
+            do iibeg=1,mesh_Nzm1*mesh_Nrm1,vl
+                iiend = min(mesh_Nzm1*mesh_Nrm1, iibeg+vl-1)
+                iisize = iiend - iibeg + 1
+
+!$acc loop independent  vector
+                do i=1,iisize
+                    ii = iibeg + (i-1)
+                    Mx_n(i) = 1D0
+                    My_n(i) = 1D0 - k_eff(ii)    !beta^2
+                    Mz_n(i) = 0D0
+                    x_n(i) = 1D0
+                    y_n(i) = sqrt(My_n(i))  !beta
+                enddo
+
+                do order=1, n_order
+!$acc loop independent  vector
+                    do i=1,iisize
+                        x_np1 = (x_n(i)+y_n(i))*0.5D0
+                        y_n(i) = sqrt(x_n(i)*y_n(i))
+                        x_n(i) = x_np1 !update results
+                        !magm
+                        Mx_np1 = (Mx_n(i)+My_n(i))*0.5D0
+                        rd = sqrt( (Mx_n(i)-Mz_n(i))*(My_n(i)-Mz_n(i)) )
+                        My_np1 = Mz_n(i)+rd
+                        Mz_n(i) = Mz_n(i)-rd
+                        Mx_n(i) = Mx_np1
+                        My_n(i) = My_np1
+                    enddo
+                enddo
+            
+!$acc loop independent  vector
+                do i=1,iisize
+                    ii = iibeg + (i-1)
+                    EK(ii) = (0.5D0*sml_pi)/x_n(i)
+                    EE(ii) = Mx_n(i)*EK(ii)
+                enddo
+            enddo
+
+!$acc loop independent collapse(2) worker vector
+            do index_ip=1, mesh_Nzm1
+                do index_jp=1, mesh_Nrm1
+                    c = c2_mesh_z_half(index_ip)
+                    dz = z-c
+                    dz2 = dz*dz
+                    a=c2_mesh_r_half(index_jp)
+                    a2 = a*a
+                    index_ac = index_jp+mesh_Nrm1*(index_ip-1)
+
+                    !lambda
+                    lambda = r2+a2+dz2     !symmetric (r<->a, z<->c)
+                                           ! i.e. (r,z,a,c) = (a,z,r,c) = (r,c,a,z) = (a,c,r,z) for SAME grid
+                                           !      BUT!!, (r,z,a,c) = (a,c,r,z) only due to limitation of our domain for each species
+
+                    k = 2D0*r*a/lambda     !symmetric
+#else
+                    call ellip_agm( k_eff(index_ac),  &
+                         EK(index_ac),EE(index_ac),vpic_ierr(index_ac))
+#endif
+#else
+                enddo
+            enddo
+
+            call ellip_agm_v(k_eff,EK,EE,vpic_ierr(1),size(k_eff))  !Nathan
+
+            do index_ip=1, mesh_Nzm1
+                do index_jp=1, mesh_Nrm1
+                    c = c2_mesh_z_half(index_ip)
+                    dz = z-c
+                    dz2 = dz*dz
+                    a = c2_mesh_r_half(index_jp)
+                    a2 = a*a
+                    index_ac = index_jp+mesh_Nrm1*(index_ip-1)
+
+                    lambda = r2+a2+dz2     !symmetric (r<->a, z<->c)
+                    k = 2D0*r*a/lambda     !symmetric
+#endif
+                    kp1_sqrt = sqrt(1D0+k)
+                    km1 = k-1D0
+
+                    EE_k = EE(index_ac)
+                    EK_k = EK(index_ac)
+                    !Calulation of M coeff. (all symmetric)
+                    I1 = -4D0*((1D0+k)*EE_k-EK_k)/(k*k*kp1_sqrt)
+                    I2 = -2D0*EE_k/(km1*kp1_sqrt)
+                    I3 = -2D0*(EE_k+km1*EK_k)/(km1*k*kp1_sqrt )
+                    temp_cons = 4D0*sml_pi/(lambda*sqrt(lambda))
+                    temp_cons_dz = temp_cons*dz
+                    temp_cons_I1 = temp_cons*I1
+                    temp_cons_I2 = temp_cons*I2
+                    temp_cons_I3 = temp_cons*I3
+                    temp_cons_dz_I2 = temp_cons_dz*I2
+                    temp_cons_dz_I3 = temp_cons_dz*I3
+
+                    ! 1: M_rr, 2:M_rz, 3:M_zz, 4:M_ra, 5:M_za
+                    M1(index_ac,1,index_rz) = temp_cons_I1*a2+temp_cons_I2*dz2
+                    M1(index_ac,2,index_rz) = temp_cons_dz_I3*a-temp_cons_dz_I2*r
+                    M1(index_ac,3,index_rz) = temp_cons_I2*(r2+a2) - temp_cons_I3*2D0*r*a
+#ifdef _OPENACC
+                    M2(index_rz,1,index_ac) = temp_cons_I1*r2+temp_cons_I2*dz2
+                    M2(index_rz,2,index_ac) = temp_cons_dz_I2*a-temp_cons_dz_I3*r
+                    M2(index_rz,3,index_ac) = temp_cons_I2*(r2+a2) - temp_cons_I3*2D0*r*a
+#else
+                    tmp_M15 = temp_cons_dz_I2*a-temp_cons_dz_I3*r
+                    tmp_a2  =  temp_cons_I1*r2+temp_cons_I2*dz2
+
+                    tmp_a2s(index_ac,1) = tmp_a2
+                    tmp_a2s(index_ac,2) = tmp_M15 
+                    tmp_a2s(index_ac,3) = M1(index_ac,3,index_rz) 
+                enddo !index_jp
+            enddo !index_ip
+#ifdef __INTEL_COMPILER                
+                ! Dmitry: below is directive for intel compiler
+                !dir$ nounroll
+                !dir$ loop count (31)
+#endif                
+            do index_ip=1, mesh_Nzm1                
+                do index_jp=1, mesh_Nrm1
+                    index_ac = index_jp+mesh_Nrm1*(index_ip-1)
+                    M2(index_rz,:,index_ac) = tmp_a2s(index_ac,:)
+#endif
+                enddo
+            enddo !index_ip
+        enddo !index_J
+    enddo ! index_I
+
+#ifdef _OPENACC
+!$acc end kernels
+!$acc wait(istream)
+#endif
+
+end subroutine col_f_angle_avg_m
+
+subroutine col_f_convergence_eval(cs, dist_n, dist_iter, vpic_dn, vpic_dw, vpic_dp, vpic_n_prev, vpic_w_prev, vpic_p_prev)
+       use col_f_module
+       implicit none
+       type(col_f_core_type) :: cs
+       real (kind=8), dimension(col_f_nvr, col_f_nvz) :: dist_n, dist_iter   ! local
+       real (kind=8) :: vpic_exit_num, vpic_exit_en
+
+       real (8) :: vpic_dn, vpic_dw, vpic_dp, vpic_n_prev, vpic_w_prev, vpic_p_prev, vpic_dfc
+       integer :: index_I, index_J
+       real (8) :: tmpr1, tmpr2, tmpr3
+       ! DIST_ITER has new updated PDF.
+
+       vpic_dn = 0D0
+       vpic_dw = 0D0
+       vpic_dp = 0D0
+       vpic_n_prev = 0D0
+       vpic_w_prev = 0D0
+       vpic_p_prev = 0D0
+
+!--------------------------------
+!efd add more reduction variables
+!--------------------------------
+!$omp  parallel do &
+!$omp& shared(cs)  &
+!$omp& private(index_I,index_J,tmpr1,tmpr2,tmpr3,vpic_dfc) &
+!$omp& reduction(+:vpic_dn,vpic_dw,vpic_dp,vpic_n_prev,vpic_w_prev,vpic_p_prev)            &
+!$omp& num_threads(col_f_nthreads)
+       do index_I=1,col_f_nvz
+           tmpr1 = cs%mesh_z(index_I)
+           tmpr1 = tmpr1*tmpr1     ! mesh_z^2
+           do index_J=1,col_f_nvr
+               tmpr2 = cs%mesh_r(index_J)
+               tmpr2 = tmpr2*tmpr2     ! mesh_r^2
+               tmpr3 = tmpr1+tmpr2     ! mesh_z^2+mesh_r^2
+               vpic_dfc = (dist_iter(index_J,index_I) - dist_n(index_J, index_I))*cs%vol(index_J)
+
+               vpic_dn = vpic_dn + vpic_dfc
+               vpic_dw = vpic_dw + vpic_dfc * tmpr3
+               vpic_dp = vpic_dp + vpic_dfc * cs%mesh_z(index_I)
+               vpic_n_prev = vpic_n_prev + dist_n(index_J, index_I)*cs%vol(index_J)
+               vpic_w_prev = vpic_w_prev + dist_n(index_J,index_I)*tmpr3*cs%vol(index_J)
+               vpic_p_prev = vpic_p_prev + dist_n(index_J,index_I)*tmpr1*cs%vol(index_J)
+           enddo
+       enddo
+
+       vpic_dw     = vpic_dw*cs%mass
+       vpic_dp     = vpic_dp*cs%mass
+       vpic_w_prev = vpic_w_prev*cs%mass
+       vpic_p_prev = vpic_p_prev*cs%mass
+#ifdef COL_F_CORE_MSG
+       if(sml_mype .eq. 0) then
+!$omp critical
+           print *, 'dn/n = ', vpic_dn/cs%dens, 'dw/w = ', vpic_dw/vpic_w_prev, 'dp/p = ', vpic_dp/vpic_p_prev
+!$omp end critical
+       endif
+#endif
+end subroutine col_f_convergence_eval
+
+#include <petscversion.h>
+#if PETSC_VERSION_LT(3,6,0)
+#include <finclude/petscsysdef.h>
+#include <finclude/petscsnesdef.h>
+#else
+#include <petsc/finclude/petscsysdef.h>
+#include <petsc/finclude/petscsnesdef.h>
+#endif
+
+subroutine col_f_picard_step(iter_inter, LU_values, dist_col, dist_iter, &
+             col_f_mat, col_f_ksp, col_f_vecb, col_f_vecx)
+    use sml_module, only : sml_mype
+    use col_f_module
+    use perf_monitor
+    implicit none
+
+#ifdef SOLVERLU
+    integer :: col_f_mat
+    integer :: col_f_ksp
+    integer :: col_f_vecb
+    integer :: col_f_vecx
+
+#else
+    Mat :: col_f_mat
+    KSP :: col_f_ksp
+    Vec :: col_f_vecb
+    Vec :: col_f_vecx
+#endif
+
+
+
+    integer :: iter_inter
+    real (kind=8), dimension(LU_nnz) :: LU_values
+    real (kind=8), dimension(col_f_ntotal_v) :: dist_col
+    real (kind=8), dimension(col_f_nvr,col_f_nvz) :: dist_iter
+
+
+    integer :: LU_factors(8)
+    integer :: LU_info, LU_info2
+    integer :: index_I, index_J, mat_pos, mat_pos_d, local_ij, local_i, local_j
+
+!pw    call t_startf('COL_F_PICARD_STEP')
+
+    if( iter_inter .eq. 1 ) then
+
+!$omp   parallel do private(index_I,index_J) num_threads(col_f_nthreads)
+        do index_I=1,size(dist_iter,2)
+        do index_J=1,size(dist_iter,1)
+           dist_iter(index_J,index_I) = 0
+        enddo
+        enddo
+
+!$omp   parallel do                                                         &
+!$omp&  default(none)                                                       &
+!$omp&  shared(col_f_nvr,col_f_nvz)                                         &
+!$omp&  shared(dist_iter,LU_values,LU_Cvalues,index_map_LU,dist_col)        &
+!$omp&  private(index_I,index_J,mat_pos,local_ij,local_i,local_j,mat_pos_d) &
+!$omp&  num_threads(col_f_nthreads)
+        do index_I=1,col_f_nvz
+            do index_J=1, col_f_nvr
+               mat_pos = index_J+(index_I-1)*col_f_nvr
+
+               !explicit time marching for 1st guess
+               do local_ij=1,9
+                  local_i = (local_ij-1)/3 - 1
+                  local_j = mod(local_ij-1,3) - 1
+                  if( index_J+local_j .gt. 0 .and. index_I+local_i .gt. 0 &
+                      .and. index_J+local_j .lt. col_f_nvr+1 .and. index_I+local_i .lt. col_f_nvz+1 ) then
+                      !valid mesh
+
+                      mat_pos_d = (index_J+local_j)+((index_I+local_i)-1)*col_f_nvr
+                      if( local_ij .eq. 5 ) then
+                          ! (I + L(f^n) dt) f^n  : diagonal part
+                          dist_iter(index_J, index_I) = dist_iter(index_J, index_I) + (1D0 + LU_values(LU_Cvalues(mat_pos_d))) * dist_col(mat_pos_d)
+                          !print *, LU_values(LU_Cvalues(mat_pos))*vpic_tstep*vpic_gamma, vpic_tstep
+                      else
+                          ! L(f^n) dt f^n : off-diagonal part
+                          dist_iter(index_J, index_I) = dist_iter(index_J, index_I) + LU_values(index_map_LU(local_ij,mat_pos)) * dist_col(mat_pos_d)
+                      endif
+                  endif
+               enddo   !local_ij
+            enddo  !index_J
+        enddo  !index_I
+    else
+        !IMPLICIT TIME MARCHING
+        ! NOTE!!!! THAT the below "-" sign has some reasons.
+        ! There can be easy mistakes that I(identity) - M doesn't mean
+        ! 1-diagonal part. Off-diagonal part will change to -M. Be careful!
+
+        ! LU_values = -LU_values
+!$omp   parallel do private(index_I) num_threads(col_f_nthreads)
+        do index_I=1,size(LU_values)
+          LU_values(index_I) = -LU_values(index_I)
+        enddo
+
+        LU_values(LU_cvalues) = 1D0 + LU_values(LU_cvalues)
+
+
+        call t_startf("COL_F_SOLVER_TOTAL")
+        !Then, finally solve! Super LU!! =)
+        !SUPER LU!!!! - We can directly call superLU wihtout below wrapper function!
+#ifdef SOLVERLU
+       if (use_superlu) then
+!        call c_fortran_dgssv(LU_n, LU_nnz, LU_nrhs, LU_values, LU_rowindx, LU_colptr, &
+!                              dist_col, LU_ldb, LU_factors, LU_info, LU_info2 )
+       else
+!!$omp   critical
+        call bsolver(LU_n, LU_nnz, LU_nrhs, LU_values, LU_rowindx, LU_colptr, &
+                     dist_col, LU_ldb, LU_info )
+!!$omp   end critical
+        LU_info2 = LU_info
+       endif
+#else
+
+        call petsc_lu_solver(LU_n, LU_nnz, LU_values, LU_rowindx, LU_colptr, dist_col, &
+                  col_f_mat, col_f_ksp, col_f_vecb, col_f_vecx)
+        LU_info=0
+#endif
+        call t_stopf("COL_F_SOLVER_TOTAL")
+
+        if(LU_info .ne. 0) then
+            write(*,*) 'SuperLU : Info = ',LU_info, 'mype :', sml_mype
+            write(*,*) 'It is very possible that you got NAN or INF since matrix component is NAN or INF'
+
+            if(sml_mype .eq. 23) then
+                open(unit=987,file='luinfo.txt',status='replace')
+                write(987,*) LU_values
+                close(987)
+            endif
+        endif
+
+!$omp   parallel do private(index_I,index_J,mat_pos) num_threads(col_f_nthreads)
+        do index_I=1,col_f_nvz
+        do index_J=1,col_f_nvr
+          mat_pos = index_J+(index_I-1)*col_f_nvr
+          dist_iter(index_J,index_I) = dist_col( mat_pos )
+        enddo
+        enddo
+    endif
+
+!pw    call t_stopf('COL_F_PICARD_STEP')
+end subroutine col_f_picard_step
+
+! op_mode==1 for same species, op_mode==2 for different species collision
+! cell_I and cell_J seem to be cell index  (c.f. grid index)
+! cs is required for cs%mesh_r_half , cs%mesh_dr/dz
+! mat_pos_rel_indx
+subroutine col_f_LU_matrix_ftn(op_mode, cell_I, cell_J, cs, mat_pos_rel_indx, mat_pos, coeff1, coeff2, EDs_comp, LU_values)
+   use col_f_module
+   implicit none
+   integer :: op_mode
+   type(col_f_core_type) :: cs
+   integer :: mat_pos_rel_indx(4)
+   integer :: mat_pos, cell_I, cell_J
+   real (8) :: coeff1, coeff2, coeff_loc1, coeff_loc2
+   real (8) :: EDs_comp(5)
+   real (kind=8), dimension(LU_nnz) :: LU_values
+   real (8) :: M_rr_fOVERdr, M_rz_fOVERdz, M_zz_fOVERdz, M_zr_fOVERdr, tmp_ER_sum, tmp_EZ_sum, delr, cdelr, delz, cdelz
+
+    coeff_loc1 = coeff1*cs%mesh_r_half(cell_J)
+    coeff_loc2 = coeff2*cs%mesh_r_half(cell_J)
+    ! EDs = 1: Drr, 2: Drz, 3:Dzz, 4:Dzr, 5: Er, 6:Ez
+    M_rr_fOVERdr = EDs_comp(1)/cs%mesh_dr
+    M_rz_fOVERdz = EDs_comp(2)/cs%mesh_dz
+    M_zr_fOVERdr = EDs_comp(2)/cs%mesh_dr
+    M_zz_fOVERdz = EDs_comp(3)/cs%mesh_dz
+    tmp_ER_sum   = EDs_comp(4)
+    tmp_EZ_sum   = EDs_comp(5)
+
+#ifndef COL_F_FIXED_DELTA
+    delr = cs%delta_r(cell_J,op_mode)
+#else
+    delr = 0.5D0
+#endif
+    cdelr = (1D0-delr)
+#ifndef COL_F_FIXED_DELTA
+    delz = cs%delta_z(cell_I,op_mode)
+#else
+    delz = 0.5D0
+#endif
+    cdelz = (1D0-delz)
+
+
+    !for (I,J)
+    LU_values(index_map_LU(mat_pos_rel_indx(1),mat_pos)) = LU_values(index_map_LU(mat_pos_rel_indx(1),mat_pos)) &
+                               + coeff_loc1* (tmp_ER_sum*delr*delz - M_rr_fOVERdr*(-delz) - M_rz_fOVERdz*(-delr)) &
+                               + coeff_loc2* (tmp_EZ_sum*delr*delz - M_zr_fOVERdr*(-delz) - M_zz_fOVERdz*(-delr))
+    !for (I,J+1)
+    LU_values(index_map_LU(mat_pos_rel_indx(2),mat_pos)) = LU_values(index_map_LU(mat_pos_rel_indx(2),mat_pos)) &
+                               + coeff_loc1* (tmp_ER_sum*cdelr*delz - M_rr_fOVERdr*(delz) - M_rz_fOVERdz*(-cdelr)) &
+                               + coeff_loc2* (tmp_EZ_sum*cdelr*delz - M_zr_fOVERdr*(delz) - M_zz_fOVERdz*(-cdelr))
+    !for(I+1,J)
+    LU_values(index_map_LU(mat_pos_rel_indx(3),mat_pos)) = LU_values(index_map_LU(mat_pos_rel_indx(3),mat_pos)) &
+                               + coeff_loc1* (tmp_ER_sum*delr*cdelz - M_rr_fOVERdr*(-cdelz) - M_rz_fOVERdz*(delr)) &
+                               + coeff_loc2* (tmp_EZ_sum*delr*cdelz - M_zr_fOVERdr*(-cdelz) - M_zz_fOVERdz*(delr))
+    !for(I+1,J+1)
+    LU_values(index_map_LU(mat_pos_rel_indx(4),mat_pos)) = LU_values(index_map_LU(mat_pos_rel_indx(4),mat_pos)) &
+                               + coeff_loc1* (tmp_ER_sum*cdelr*cdelz - M_rr_fOVERdr*(cdelz) - M_rz_fOVERdz*(cdelr)) &
+                               + coeff_loc2* (tmp_EZ_sum*cdelr*cdelz - M_zr_fOVERdr*(cdelz) - M_zz_fOVERdz*(cdelr))
+
+
+end subroutine col_f_LU_matrix_ftn
+
+subroutine col_f_LU_matrix(op_mode, cs, EDs, iter_inter ,LU_values)
+! EDs : target
+   use sml_module, only : sml_mype
+   use col_f_module
+   implicit none
+   integer :: op_mode
+   type(col_f_core_type) :: cs
+   real (8), dimension(5,col_f_nvr-1, col_f_nvz-1) :: EDs
+   integer :: iter_inter
+   real (kind=8), dimension(LU_nnz) :: LU_values
+   integer :: index_I, index_J, cell_I, cell_J, mesh_Nr, mesh_Nz
+   integer :: mat_pos_rel_indx(4)
+   real (8) :: coeff1_ab, coeff2_ab, coeff1, coeff2, local_vol
+   real (8) :: M_rr_fOVERdr, M_rz_fOVERdz, M_zz_fOVERdz, M_zr_fOVERdr, tmp_ER_sum, tmp_EZ_sum, delr, cdelr, delz, cdelz
+   integer :: local_ij, local_i, local_j, mat_pos, mat_pos_d
+
+   mesh_Nr = col_f_nvr
+   mesh_Nz = col_f_nvz
+
+   LU_values(:) = 0D0
+   do index_I=1,mesh_Nz
+       do index_J=1, mesh_Nr
+          mat_pos = index_J+(index_I-1)*col_f_nvr
+            ! What we know : the number of cells related to cell (J,I) from LU_colptr
+            !                index number of relevant cells from LU_rowindx
+
+            ! NOTE that local_vol is for volume in LHS. Therefore, fixed values!
+            local_vol = cs%vol(index_J)
+            coeff1_ab    = 0.5D0*cs%mesh_dz/local_vol
+            coeff2_ab    = 0.5D0*cs%mesh_dr/local_vol
+
+            if((index_I .ne. mesh_Nz) .and. (index_J .ne. mesh_Nr)) then
+            ! Existence of (I+1/2, J+1/2)
+                cell_I = index_I
+                cell_J = index_J
+                mat_pos_rel_indx=(/5, 6, 8, 9/) !just reuse array
+                coeff1 = -coeff1_ab
+                coeff2 = -coeff2_ab
+                call col_f_LU_matrix_ftn(op_mode, cell_I, cell_J, cs, mat_pos_rel_indx, mat_pos, coeff1, coeff2, EDs(:,cell_J,cell_I), LU_values)
+            endif
+
+            if((index_I .ne. 1) .and. (index_J .ne. mesh_Nr)) then
+            ! Existence of (I-1/2, J+1/2)
+                cell_I = index_I-1
+                cell_J = index_J
+                mat_pos_rel_indx=(/2, 3, 5, 6/)
+                coeff1 = -coeff1_ab
+                coeff2 =  coeff2_ab
+                call col_f_LU_matrix_ftn(op_mode, cell_I, cell_J, cs, mat_pos_rel_indx, mat_pos, coeff1, coeff2, EDs(:,cell_J,cell_I), LU_values)
+            endif
+
+            if((index_I .ne. mesh_Nz) .and. (index_J .ne. 1)) then
+            ! Existence of (I+1/2, J-1/2)
+                cell_I = index_I
+                cell_J = index_J-1
+                mat_pos_rel_indx=(/4, 5, 7, 8/)
+                coeff1 =  coeff1_ab
+                coeff2 = -coeff2_ab
+                call col_f_LU_matrix_ftn(op_mode, cell_I, cell_J, cs, mat_pos_rel_indx, mat_pos, coeff1, coeff2, EDs(:,cell_J,cell_I), LU_values)
+            endif
+
+            if( (index_I .ne. 1) .and. (index_J .ne. 1) ) then
+            ! Existence of (I-1/2, J-1/2)
+                cell_I = index_I-1
+                cell_J = index_J-1
+                mat_pos_rel_indx=(/1, 2, 4, 5/)
+                coeff1 = coeff1_ab
+                coeff2 = coeff2_ab
+                call col_f_LU_matrix_ftn(op_mode, cell_I, cell_J, cs, mat_pos_rel_indx, mat_pos, coeff1, coeff2, EDs(:,cell_J,cell_I), LU_values)
+            endif
+
+           enddo !index_J
+   enddo !index_I
+
+end subroutine col_f_LU_matrix
+
+
+subroutine col_f_E_and_D_m(cs1, cs2, f_half, dfdr, dfdz, Ms, EDs)
+! cs1 : colliding, cs2 : target
+! f_half, dfdr, dfdz => cs2
+    use col_f_module
+    implicit none
+    type(col_f_core_type) :: cs1, cs2
+    real (8), dimension(col_f_nvr-1,col_f_nvz-1) :: f_half, dfdr, dfdz
+    real (8), dimension((col_f_nvr-1)*(col_f_nvz-1),3,(col_f_nvr-1)*(col_f_nvz-1)) :: Ms
+    real (8), dimension(5,col_f_nvr-1, col_f_nvz-1) :: EDs
+
+    integer :: index_I, index_J, index_ip, index_jp, mesh_Nrm1, mesh_Nzm1, index_2dp, index_2D
+    real (8) :: tmp_vol, tmp_f_half_v, tmp_dfdr_v, tmp_dfdz_v, mass1, mass2
+    real (8) :: tmpr1, tmpr2, tmpr3, tmpr4, tmpr5  !Dmitry
+    real (8) :: r, a, z, c, dz, M_ra, M_za ! ES: array reduction
+
+    real (8) :: cs1_mesh_r_half(lbound(cs1%mesh_r_half,1):ubound(cs1%mesh_r_half,1)) 
+    real (8) :: cs1_mesh_z_half(lbound(cs1%mesh_z_half,1):ubound(cs1%mesh_z_half,1)) 
+    real (8) :: cs2_mesh_r_half(lbound(cs2%mesh_r_half,1):ubound(cs2%mesh_r_half,1)) 
+    real (8) :: cs2_mesh_z_half(lbound(cs2%mesh_z_half,1):ubound(cs2%mesh_z_half,1)) 
+    real (8) :: cs2_local_center_volume(lbound(cs2%local_center_volume,1):ubound(cs2%local_center_volume,1))
+#ifdef _OPENACC
+    integer :: ithread,istream
+!$  integer, external :: omp_get_thread_num
+#endif
+ 
+#ifdef _OPENACC
+    ithread = 0
+!$  ithread = omp_get_thread_num()
+    istream = ithread + 1
+#endif
+    cs1_mesh_r_half = cs1%mesh_r_half
+    cs1_mesh_z_half = cs1%mesh_z_half
+    cs2_mesh_r_half = cs2%mesh_r_half
+    cs2_mesh_z_half = cs2%mesh_z_half
+    cs2_local_center_volume = cs2%local_center_volume
+
+    mass1 = cs1%mass
+    mass2 = cs2%mass
+
+    mesh_Nrm1 = col_f_nvr-1
+    mesh_Nzm1 = col_f_nvz-1
+
+    !M_zr => Ms(2,:,:)
+    !M_rc => Ms(2,:,:)
+    !M_zc => Ms(3,:,:)
+
+#ifdef _OPENACC
+!$acc enter data pcreate(EDs) ASYNC(istream)
+
+!$acc kernels present(Ms,EDs) ASYNC(istream)
+!$acc loop independent  collapse(2) gang &
+!$acc private(z, r, index_2D, c, dz, a, index_2dp, index_I, index_J, index_ip, index_jp,  &
+!$acc         tmp_vol, tmp_f_half_v, tmp_dfdr_v, tmp_dfdz_v, M_ra, M_za)
+#else
+!$OMP  PARALLEL DO &
+!$OMP& default(none) &
+!$OMP& shared(mesh_Nzm1,mesh_Nrm1,f_half,dfdr,dfdz,Ms) &
+!$OMP& shared(cs1_mesh_r_half,cs1_mesh_z_half,cs2_mesh_r_half, &
+!$OMP&        cs2_mesh_z_half,cs2_local_center_volume,EDs,mass1,mass2) &
+!$OMP& PRIVATE( index_I,index_J, index_2D, index_ip, index_jp, index_2dp, &
+!$OMP&          tmp_vol, tmp_f_half_v, tmp_dfdr_v, tmp_dfdz_v,  &
+!$OMP&          r,a,z,c,dz,M_ra,M_za, &
+!$OMP&          tmpr1, tmpr2, tmpr3, tmpr4, tmpr5 ) &
+!$OMP& num_threads(col_f_nthreads)
+#endif 
+    do index_I=1, mesh_Nzm1
+        do index_J=1, mesh_Nrm1
+            z = cs1_mesh_z_half(index_I)
+            r = cs1_mesh_r_half(index_J)
+            index_2D = index_J+mesh_Nrm1*(index_I-1)
+            tmpr1=0D0
+            tmpr2=0D0
+            tmpr3=0D0
+            tmpr4=0D0
+            tmpr5=0D0
+
+            do index_ip = 1, mesh_Nzm1
+!$acc loop independent vector(32)
+                do index_jp = 1, mesh_Nrm1
+                    c = cs2_mesh_z_half(index_ip)
+                    dz = z-c
+                    a = cs2_mesh_r_half(index_jp)
+                    index_2dp = index_jp+mesh_Nrm1*(index_ip-1)
+                    tmp_vol = cs2_local_center_volume(index_jp)
+                    tmp_f_half_v = f_half(index_jp, index_ip) * tmp_vol
+                    tmp_dfdr_v = dfdr(index_jp, index_ip) * tmp_vol
+                    tmp_dfdz_v = dfdz(index_jp, index_ip) * tmp_vol
+                    M_ra = (r*Ms(index_2dp,1,index_2D) + dz*Ms(index_2dp,2,index_2D))/a  !ES: array reduction
+                    M_za = (r*Ms(index_2dp,2,index_2D) + dz*Ms(index_2dp,3,index_2D))/a  !ES: array reduction
+
+                    ! EDs = 1: Drr, 2: Drz, 3:Dzz, 4:Dzr, 5: Er, 6:Ez
+                    !  Ms = 1: M_rr, 2:M_rz, 3:M_zz, 4:M_ra, 5:M_za
+                    tmpr1 = tmpr1 + Ms(index_2dp,1,index_2D)*tmp_f_half_v
+                    tmpr2 = tmpr2 + Ms(index_2dp,2,index_2D)*tmp_f_half_v
+                    tmpr3 = tmpr3 + Ms(index_2dp,3,index_2D)*tmp_f_half_v
+                    tmpr4 = tmpr4 + M_ra*tmp_dfdr_v + Ms(index_2dp,2,index_2D)*tmp_dfdz_v
+                    tmpr5 = tmpr5 + M_za*tmp_dfdr_v + Ms(index_2dp,3,index_2D)*tmp_dfdz_v  !Multi-species
+                enddo !index_jp
+            enddo !index_ip
+
+            ! EDs = 1: Drr, 2: Drz, 3:Dzz, 4:Dzr, 5: Er, 6:Ez
+            !mass correction
+            EDs(1,index_J,index_I) = tmpr1/mass1
+            EDs(2,index_J,index_I) = tmpr2/mass1
+            EDs(3,index_J,index_I) = tmpr3/mass1
+            EDs(4,index_J,index_I) = tmpr4/mass2
+            EDs(5,index_J,index_I) = tmpr5/mass2
+        enddo
+    enddo
+#ifdef _OPENACC
+!$acc end kernels
+!$acc wait(istream)
+
+!$acc exit data copyout(EDs) ASYNC(istream)  
+!$acc wait(istream)
+#endif
+
+end subroutine col_f_E_and_D_m
+
+!! Changes after Hackathon : index fission. basically same
+subroutine col_f_angle_avg_s(cs, Ms)
+    use sml_module, only : sml_pi
+    use col_f_module
+    use elliptics_mod
+    implicit none
+    type(col_f_core_type) :: cs
+    real (8), dimension((col_f_nvr-1), 5, (col_f_nvr-1)*(col_f_nvz-1)) :: Ms
+    integer :: index_dz, index_J, index_jp
+    integer :: index_rz, index_ac
+    real (8) :: r, a, dz, dz2, r2, a2, lambda, k, k_eff, kp1_sqrt, km1, EK, EE, mesh_dz
+    integer :: vpic_ierr
+    real (8) :: I1, I2, I3, temp_cons, temp_cons_dz, temp_cons_I1, temp_cons_I2, temp_cons_I3, temp_cons_dz_I2, temp_cons_dz_I3
+    integer :: mesh_Nrm1, mesh_Nzm1
+    real (8) :: M_rr_v, M_rz_v, M_zz_v, M_ra_v, M_za_v
+
+    integer :: vpic_ierr0, istat
+    integer, allocatable, dimension(:) :: J_table,dz_table
+    real(8) :: tmp_vol(col_f_nvr-1), tmp_volr
+    real(8) :: cs_mesh_r_half(lbound(cs%mesh_r_half,1):ubound(cs%mesh_r_half,1)) 
+#ifdef _OPENACC
+    integer :: ithread,istream
+!$  integer, external :: omp_get_thread_num
+#endif
+
+#ifdef _OPENACC
+    ithread = 0
+!$  ithread = omp_get_thread_num()
+    istream = ithread + 1
+#endif
+
+    mesh_Nrm1 = col_f_nvr-1
+    mesh_Nzm1 = col_f_nvz-1
+
+    cs_mesh_r_half = cs%mesh_r_half
+    mesh_dz = cs%mesh_dz
+    tmp_vol  = cs%local_center_volume  ! It is volume for prime coordinate. cs2. For same species, both cs1 and cs 2 has same
+
+    vpic_ierr = 0
+    vpic_ierr0 = 0
+
+#ifdef _OPENACC
+!$acc  kernels ASYNC(istream)                                            &
+!$acc& pcopyin(mesh_Nrm1,mesh_Nzm1,cs_mesh_r_half,tmp_vol,mesh_dz)       &
+!$acc& present(Ms)
+
+!$acc loop independent  collapse(2) gang &
+!$acc& private(k_eff, EK, EE, vpic_ierr0) 
+#else
+!$omp   parallel do                                                      &
+!$omp&  default(none) &
+!$omp&  shared(mesh_Nrm1,cs_mesh_r_half, mesh_Nzm1, mesh_dz,tmp_vol)     &
+!$omp&  shared(Ms,sml_pi)                                         &
+!$omp&  private(index_dz,index_J,index_jp)                   &
+!$omp&  private(dz,dz2,r,r2,index_rz)                                    &
+!$omp&  private(a,a2,tmp_volr,index_ac,lambda,k,k_eff,kp1_sqrt,km1)      &
+!$omp&  private(I1,I2,I3)                                                &
+!$omp&  private(temp_cons,temp_cons_dz)                                  &
+!$omp&  private(temp_cons_I1,temp_cons_I2,temp_cons_I3)                  &
+!$omp&  private(temp_cons_dz_I2,temp_cons_dz_I3)                         &
+!$omp&  private(EE,EK,vpic_ierr0)                                        &
+!!$omp&  reduction(max:vpic_ierr)                                         &
+!$omp&  private(M_rr_v, M_rz_v, M_zz_v, M_ra_v, M_za_v) num_threads(col_f_nthreads)
+#endif
+    do index_J=1, mesh_Nrm1
+        do index_dz=0, mesh_Nzm1-1
+
+!$acc loop independent vector
+            do index_jp=1, mesh_Nrm1
+                r=cs_mesh_r_half(index_J)
+                r2 = r*r
+
+                index_rz = index_J +mesh_Nrm1*index_dz
+                !index_ac = index_jp
+                if(index_jp .eq. index_rz) then
+                    Ms(index_jp,:,index_jp) = 0d0 
+                    cycle
+                endif
+                !index_ac = index_jp
+
+                a=cs_mesh_r_half(index_jp)
+                a2 = a*a
+                tmp_volr = tmp_vol(index_jp)
+
+                dz = mesh_dz*index_dz
+                dz2 = dz*dz
+
+                lambda = r2+a2+dz2     !symmetric (r<->a, z<->c)
+                                       ! i.e. (r,z,a,c) = (a,z,r,c) = (r,c,a,z) = (a,c,r,z)
+                k = 2D0*r*a/lambda     !symmetric
+                k_eff = 2D0*k/(1D0+k)
+                kp1_sqrt = sqrt(1D0+k)
+                km1 = k-1D0
+
+                !k_eff=min(k_eff,0.95D0)
+#ifndef ELLIPTICS_NEW
+                call elliptics(k_eff,EK,EE,vpic_ierr0)
+#else
+                call ellip_agm(k_eff,EK,EE,vpic_ierr0)
+#endif
+
+                !vpic_ierr = max(vpic_ierr,vpic_ierr0)
+
+                !Calulation of M coeff. (all symmetric)
+                I1 = -4D0*((1D0+k)*EE-EK)/(k*k*kp1_sqrt)
+                I2 = -2D0*EE/(km1*kp1_sqrt)
+                I3 = -2D0*(EE+km1*EK)/(km1*k*kp1_sqrt )
+                !I4 = I2-I1 !For exact Numerical Conservation, and It shoudl be mathematically
+                temp_cons = 4D0*sml_pi/(lambda*sqrt(lambda)) * tmp_volr
+                temp_cons_dz = temp_cons*dz
+                temp_cons_I1 = temp_cons*I1
+                temp_cons_I2 = temp_cons*I2
+                temp_cons_I3 = temp_cons*I3
+                temp_cons_dz_I2 = temp_cons_dz*I2
+                temp_cons_dz_I3 = temp_cons_dz*I3
+
+
+                !NOTE THAT CONSIDERING SYMMETRY, we already have
+                ! I1, I2, I3 at (r,z,a,c), (a,z,r,c), (r,c,a,z), and (a,c,r,z) ->(jp,ip,J,I)
+                ! Using this values, we calculate symmetric and asymmetric compoenents of matrix
+                ! index_rz = index_J +mesh_Nrm1*index_I
+                M_rr_v = temp_cons_I1*a2+temp_cons_I2*dz2
+                M_rz_v = temp_cons_dz_I3*a-temp_cons_dz_I2*r
+                M_zz_v = temp_cons_I2*(r2+a2) - temp_cons_I3*2D0*r*a
+                M_ra_v = temp_cons_I1*r*a + temp_cons_I3*dz2
+                M_za_v = temp_cons_dz_I2*a-temp_cons_dz_I3*r
+
+                !(a,c,r,z)=(r,z,a,c)
+                ! 1: M_rr, 2:M_rz, 3:M_zz, 4:M_ra
+                Ms(index_jp,1, index_rz) = M_rr_v
+                Ms(index_jp,2, index_rz) = M_rz_v
+                Ms(index_jp,3, index_rz) = M_zz_v
+                Ms(index_jp,4, index_rz) = M_ra_v
+                Ms(index_jp,5, index_rz) = M_za_v
+
+            enddo  ! index_jp
+        enddo  !index_J_dz
+    enddo
+!$acc end kernels
+!$acc wait(istream)
+
+end subroutine col_f_angle_avg_s
+
+subroutine col_f_E_and_D_s(cs, f_half, dfdr, dfdz, Ms, EDs)
+! cs1 : colliding, cs2 : target
+! f_half, dfdr, dfdz => cs2
+!  use sml_module, only: sml_mype
+  use col_f_module
+  use perf_monitor
+  implicit none
+  type(col_f_core_type) :: cs
+  real (8), dimension((col_f_nvr-1),(col_f_nvz-1)) :: f_half, dfdr, dfdz
+  real (8), dimension((col_f_nvr-1),5, (col_f_nvr-1)*(col_f_nvz-1)) :: Ms
+  real (8), dimension(5,(col_f_nvr-1), (col_f_nvz-1)) :: EDs
+  integer :: index_I, index_J, index_ip, index_jp, mesh_Nrm1, mesh_Nzm1, index_2D, index_2dp,index_dz, sav_i
+  real (8) :: tmp_f_half_v, tmp_dfdr_v, tmp_dfdz_v
+  real (8) :: sum1,sum2,sum3,sum4,sum5
+  real (8) :: csign, inv_mass
+#ifdef _OPENACC
+    integer :: ithread,istream
+!$  integer, external :: omp_get_thread_num
+#endif
+  logical, external :: is_nan
+
+#ifdef _OPENACC
+    ithread = 0
+!$  ithread = omp_get_thread_num()
+    istream = ithread + 1
+#endif
+
+  mesh_Nrm1 = col_f_nvr-1
+  mesh_Nzm1 = col_f_nvz-1
+
+#ifdef _OPENACC
+!$acc  enter data pcreate(EDs) ASYNC(istream) 
+ 
+!$acc  kernels ASYNC(istream)                                 &
+!$acc& present(Ms)                                            &
+!$acc& present(EDs)                                           & 
+!$acc& pcopyin(mesh_Nrm1,mesh_Nzm1,f_half,dfdr,dfdz)        
+
+!$acc loop independent  collapse(2) gang &
+!$acc& private(csign,index_jp,index_ip,index_2D,index_dz,sav_i,tmp_f_half_v,tmp_dfdr_v,tmp_dfdz_v)            
+#else
+!$omp parallel do             default(none)                   &
+!$OMP& shared(mesh_Nzm1,mesh_Nrm1,f_half,dfdr,dfdz) &
+!$omp& shared(Ms,EDs)                                         &
+!$omp& shared(col_f_nthreads)                                 &
+!$omp& private(index_J,index_dz,index_2D,index_jp,index_2dp)  &
+!$omp& private(csign,sav_i,index_I,index_ip)                   &
+!$omp& private(tmp_f_half_v,tmp_dfdr_v,tmp_dfdz_v)            &
+!$omp& private(sum1,sum2,sum3,sum4,sum5)                      &
+!$OMP& num_threads(col_f_nthreads)
+#endif
+  do index_J=1, mesh_Nrm1
+      do index_I=1, mesh_Nzm1
+
+!!        "algorithm improved by Ed" - doesn't need initialization for EDs 
+!!        (1) index_I = 1 + index_dz + sav_i
+!!        (2) 0 <= sav_i <= mesh_Nzm1-1
+!!        (3) 0 <= index_dz <= mesh_Nzm1-1
+!!        from (1)    sav_i = (index_I-1) - index_dz
+!!        from (3) (index_I-1) - (mesh_Nzm1-1) <=  sav_i <= (index_I-1) - 0
+!!        from (2) max(0,(index_I-1)-(mesh_Nzm1-1)) <= sav_i <= min((index_I-1),mesh_Nzm1-1)
+!!        index_dz = index_I-1-sav_i
+!!        index_ip = sav+1
+
+          sum1 = 0
+          sum2 = 0
+          sum3 = 0
+          sum4 = 0
+          sum5 = 0
+          do index_ip=1, mesh_Nzm1     
+              if (index_ip <= index_I) then    
+                  index_dz = index_I-index_ip    
+                  csign = 1
+              else  
+                  index_dz = index_ip - index_I  
+                  csign = -1
+              endif
+              index_2D = index_J+mesh_Nrm1*index_dz  ! This is index for the Ms
+
+             ! EDs = 1: Drr, 2: Drz (=Dzr), 3:Dzz, 4: Er, 5:Ez
+             !  Ms = 1: M_rr, 2:M_rz, 3:M_zz, 4:M_ra, 5:M_za
+
+!$acc     loop independent vector(32)
+              do index_jp=1, mesh_Nrm1
+                  tmp_f_half_v = f_half(index_jp, index_ip)
+                  tmp_dfdr_v   = dfdr(index_jp, index_ip) 
+                  tmp_dfdz_v   = dfdz(index_jp, index_ip)
+                  sum1 = sum1 + Ms(index_jp,1,index_2D)*tmp_f_half_v
+                  sum2 = sum2 + csign*Ms(index_jp,2,index_2D)*tmp_f_half_v
+                  sum3 = sum3 + Ms(index_jp,3,index_2D)*tmp_f_half_v
+                  sum4 = sum4 + Ms(index_jp,4,index_2D)*tmp_dfdr_v + &
+                                csign*Ms(index_jp,2,index_2D)*tmp_dfdz_v
+                  sum5 = sum5 + Ms(index_jp,3,index_2D)*tmp_dfdz_v + &
+                                csign*Ms(index_jp,5,index_2D)*tmp_dfdr_v
+              enddo
+          enddo
+
+          EDs(1,index_J,index_I) = sum1
+          EDs(2,index_J,index_I) = sum2
+          EDs(3,index_J,index_I) = sum3
+          EDs(4,index_J,index_I) = sum4
+          EDs(5,index_J,index_I) = sum5
+
+      enddo
+  enddo
+#ifdef _OPENACC
+!$acc end kernels
+!$acc  wait(istream)
+#endif
+
+  ! EDs = 1: Drr, 2: Drz(=Dzr), 3:Dzz, 4: Er, 5:Ez
+  !mass correction
+  inv_mass = 1.0d0/cs%mass
+#ifdef _OPENACC
+!$acc  kernels  ASYNC(istream)                          &
+!$acc& pcopyin(inv_mass)                           &
+!$acc& present(EDs)                                      
+#else
+!$omp parallel do &
+!$omp& default(none) &
+!$omp& shared(EDs, inv_mass) &
+!$omp& private(index_ip,index_J,index_I) num_threads(col_f_nthreads)
+#endif
+  do index_J=1,size(EDs,3)
+      do index_I=1,size(EDs,2)
+          do index_ip=1, size(EDs,1) 
+              EDs(index_ip,index_I,index_J) = EDs(index_ip,index_I,index_J)*inv_mass
+          enddo
+      enddo
+  enddo
+#ifdef _OPENACC
+!$acc end kernels
+!$acc wait(istream)
+#endif
+ 
+#ifdef _OPENACC
+!$acc  exit data   copyout(EDs) ASYNC(istream)  
+!$acc  wait(istream)
+#endif
+
+end subroutine col_f_E_and_D_s
+
+#ifndef SOLVERLU
+subroutine petsc_lu_solver(n, nnz, values, rowindx, colptr, dist_col, &
+  col_f_mat, col_f_ksp, col_f_vecb, col_f_vecx )
+  use col_f_module
+  implicit none
+#include <petsc/finclude/petscsys.h>
+#include <petsc/finclude/petscvec.h>
+#include <petsc/finclude/petscmat.h>
+#include <petsc/finclude/petscksp.h>
+#include <petsc/finclude/petscpc.h>
+  Mat :: col_f_mat
+  Vec :: col_f_vecb
+  Vec :: col_f_vecx
+  KSP :: col_f_ksp
+
+  integer, intent(in) :: n, nnz
+  real (8),intent(in) :: values(nnz)
+  integer :: rowindx(nnz), colptr(n+1) !, colindex(nnz)
+!  PetscScalar :: dist_col(*)
+  !
+!  PetscScalar :: x(n)
+  real (8), intent(inout) :: dist_col(n)
+  PetscScalar :: x(n),b(n),values_petsc(nnz)
+  PetscErrorCode :: ierr
+  PetscInt :: j64, rowindx64
+  PetscInt, parameter :: ione=1
+
+  integer :: index_1
+  integer :: j, indx
+  PC pc
+
+  values_petsc=values
+
+  !set matrix element
+  do j=1, n
+     do indx=colptr(j),colptr(j+1)-1
+        j64=j
+        rowindx64=rowindx(indx)
+        call MatSetValues(col_f_mat, ione,rowindx64-ione, ione, j64-ione, values_petsc(indx), INSERT_VALUES, ierr)
+     enddo
+  enddo
+
+  call MatAssemblyBegin(col_f_mat, MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(col_f_mat, MAT_FINAL_ASSEMBLY,ierr)
+
+
+  ! set opeartors.
+!$omp critical (alloc1)
+#if (!PETSC_VERSION_LT(3,5,0))
+   call KSPSetOperators(col_f_ksp, col_f_mat, col_f_mat, ierr)
+#else
+   call KSPSetOperators(col_f_ksp, col_f_mat, col_f_mat, SAME_NONZERO_PATTERN,ierr)
+#endif
+!$omp end critical (alloc1)
+
+  ! set linear solver
+!$omp critical (alloc1)
+  call KSPGetPC(col_f_ksp,pc,ierr)
+!$omp end critical (alloc1)
+
+!$omp critical (alloc1)
+  call PCSetType(pc,PCLU,ierr)
+!$omp end critical (alloc1)
+
+  ! b=dist_col
+!$omp parallel do private(index_1) num_threads(col_f_nthreads)
+  do index_1=1,size(b)
+    b(index_1) = dist_col(index_1)
+  enddo
+
+  ! associate petsc vector with allocated array
+!$omp critical (alloc1)
+  call VecPlaceArray(col_f_vecx,x,ierr)
+!$omp end critical (alloc1)
+
+!$omp critical (alloc1)
+  call VecPlaceArray(col_f_vecb,b,ierr)
+!$omp end critical (alloc1)
+
+  call KSPSolve(col_f_ksp,col_f_vecb,col_f_vecx,ierr)
+
+!$omp critical (alloc1)
+  call VecResetArray(col_f_vecx,ierr)
+!$omp end critical (alloc1)
+
+!$omp critical (alloc1)
+  call VecResetArray(col_f_vecb,ierr)
+!$omp end critical (alloc1)
+
+
+  ! dist_col=x
+!$omp parallel do private(index_1) num_threads(col_f_nthreads)
+  do index_1=1,size(dist_col)
+    dist_col(index_1) = x(index_1)
+  enddo
+
+end subroutine petsc_lu_solver
+#endif

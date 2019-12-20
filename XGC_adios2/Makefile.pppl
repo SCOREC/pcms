@@ -1,0 +1,57 @@
+#include basic makefile definitions
+include defs.mk
+#include petsc_pppl.mk
+
+# try to replace this with $LD_LIBRARY_PATH and $INCLUDE_PATH
+PSPLINE_DIR=${NTCCHOME}
+#PSPLINE_DIR=/p/xshare/NTCC/rhel-ws4.x86_64
+PSPLINE_MOD=-I${PSPLINE_DIR}/mod
+PSPLINE_LIB=-L${PSPLINE_DIR}/lib -lpspline -lportlib -lezcdf
+
+#PERFMOD=-L../camtimers -I../camtimers -ltimers
+#PETSC_LIB=${PETSC_WITH_EXTERNAL_LIB}
+PETSC_INC=-I${PETSC_DIR}/include/petsc
+#PPPL module
+#HDF5_LIB=-L${HDF5HOME}/lib -lhdf5
+#MXML_LIB=-L${MXML_HOME}/lib -lmxml
+#NETCDF_LIB=-L${NETCDFHOME}/lib -lnetcdff -lnetcdf
+#ADIOS_LIB=-L${ADIOS_HOME}/lib -ladios -ladiosf
+#ADIOS_INC=-I${ADIOS_HOME}/include
+#ADIOS_FLIB = ${ADIOS_LIB} ${HDF5_LIB}  ${MXML_LIB} ${NETCDF_LIB}  -lz
+#
+ADIOS_INC=$(shell adios_config -f -c)
+ADIOS_LIB=$(shell adios_config -f -l)
+
+#ADIOSHOME = /p/epsi/xgclib/intel-2015.u1/adios-1.9.0
+
+#ADIOS_FLIB = -L${ADIOS_HOME}/lib -ladios -ladiosf -L${HDF5_HOME}/lib -lhdf5  -L${MXMLHOME}/lib -lmxml -lz -L${NETCDF_HOME}/lib -lnetcdf
+
+LIB= ${PSPLINE_LIB} ${ADIOS_LIB} ${PERFMOD} 
+
+#OPT= ${FC_FLAGS} ${FCPPFLAGS} ${PSPLINE_MOD} ${PERFMOD} ${PETSC_INC}  -I${ADIOSHOME}/include
+OPT= ${FC_FLAGS} ${FCPPFLAGS} ${PSPLINE_MOD} ${PERFMOD} ${PETSC_INCLUDE_OPTS} ${ADIOS_INC}
+
+#CMP=mpif90 -fopenmp -O0 -g -C -fbounds-check -fbacktrace -fPIC  -mtune=opteron \ 
+#CMP=mpif90 -fopenmp -O3 -fbacktrace -fPIC  -mtune=opteron \ 
+CMP=mpif90 -fopenmp -O3 -fbacktrace -fPIC  -mtune=opteron \
+	-DUSE_BICUB_MOD \
+	-DUSE_ONE_D_I_CUB_MOD \
+	-DPSPLINE \
+	-UDCAM_TIMERS \
+	-DUSE_OLD_READ_INPUT \
+	-DADIOS \
+	-DADIOS_NEW_INIT \
+	-DADIOS_READ_V2 \
+	-DADIOS_WRITE_NEW \
+	-DADIOS_READ_NEW \
+	-DSOLVERLU
+
+
+# Set EXTRA_OBJ to $(IMSL_OBJ) for MY_IMSL wrappers, or $(PORT_OBJ) if not using IMSL
+EXTRA_OBJ=$(PORT_OBJ)
+
+# Set MPI_OBJ to $(PAR_OBJ) for parallel code, or $(SER_OBJ) for serial code
+MPI_OBJ=$(PAR_OBJ)
+
+# include basic makefile build rules
+include rules_pppl.mk

@@ -1,0 +1,1162 @@
+<?xml version='1.0' encoding='utf-8'?>
+<adios-config host-language="Fortran">
+<adios-group name="restart">
+  <var gwrite="sml_istep" name="timestep" type="integer" />
+  <var gwrite="sml_time" name="time" type="real*8" />
+  <var gwrite="sp%maxnum" name="maxnum" type="integer" />
+  <var name="sheath_nwall" type="integer" />
+  <var dimensions="sheath_nwall" name="sheath_pot" type="real*8" />
+
+  <var gwrite="sp%num" name="inum" type="integer" />
+  <var gwrite="sp%nphase" name="inphase" type="integer" />
+  <var gwrite="sp%maxgid" name="imaxgid" type="integer*8" />
+
+  <var name="totalpe" type="integer" />
+  <var name="mype" type="integer" />
+  <global-bounds dimensions="totalpe" offsets="mype">
+    <var dimensions="1" name="inum_arr" type="integer" />
+    <var dimensions="1" name="ioff_arr" type="integer*8" />
+    <var dimensions="1" name="enum_arr" type="integer" />
+    <var dimensions="1" name="eoff_arr" type="integer*8" />
+  </global-bounds>
+
+  <var name="inum_total" type="integer*8" />
+  <var name="ioff" type="integer*8" />
+  <global-bounds dimensions="inum_total" offsets="ioff">
+    <var dimensions="inum" gwrite="sp%gid" name="igid" type="integer*8" />
+  </global-bounds>
+  <global-bounds dimensions="inphase,inum_total" offsets="0,ioff">
+    <var dimensions="inphase,inum" gwrite="sp%phase" name="iphase" type="real*8" />
+  </global-bounds>
+
+  <gwrite src="if(sml_electron_on==1) then" />
+  <gwrite src="sp=&gt;ptl%elec" />
+  <var gwrite="sp%num" name="enum" type="integer" />
+  <var gwrite="sp%nphase" name="enphase" type="integer" />
+  <var gwrite="sp%maxgid" name="emaxgid" type="integer*8" />
+
+  <var name="enum_total" type="integer*8" />
+  <var name="eoff" type="integer*8" />
+  <global-bounds dimensions="enum_total" offsets="eoff">
+    <var dimensions="enum" gwrite="sp%gid" name="egid" type="integer*8" />
+  </global-bounds>
+  <global-bounds dimensions="enphase,enum_total" offsets="0,eoff">
+    <var dimensions="enphase,enum" gwrite="sp%phase" name="ephase" type="real*8" />
+  </global-bounds>
+  <gwrite src="endif" />
+
+</adios-group>
+
+<adios-group name="restart_hyb">
+  <var name="timestep" type="integer" />
+  <var name="time" type="real*8" />
+  <var name="nnode" type="integer" />
+  <var name="nphi" type="integer" />
+  <var name="iphi" type="integer" />
+  <var dimensions="nnode" name="a_par" type="real*8" />
+  <var dimensions="nnode" name="eden_hyb" type="real*8" />
+  <var dimensions="nnode" name="u_e" type="real*8" />
+</adios-group>
+
+<adios-group name="restartf0">
+  <var name="timestep" type="integer" />
+  <var name="time" type="real*8" />
+
+  <var name="nmup1" type="integer" />
+  <var name="imu1m1" type="integer" />
+  <var name="mudata" type="integer" />
+  <var name="nnode" type="integer" />
+  <var name="inode1m1" type="integer" />
+  <var name="ndata" type="integer" />
+  <var name="vpdata" type="integer" />
+
+  <var name="nphi" type="integer" />
+  <var name="iphi" type="integer" />
+
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+    <var dimensions="vpdata,ndata,mudata,1" name="i_f0g" type="real*8" />
+    <var dimensions="vpdata,ndata,mudata,1" name="e_f0g" type="real*8" />
+    <var dimensions="vpdata,ndata,mudata,1" name="i_f0g1" type="real*8" />
+    <var dimensions="vpdata,ndata,mudata,1" name="e_f0g1" type="real*8" />
+  </global-bounds>
+
+  <var name="totalpe" type="integer" />
+  <var name="mype" type="integer" />
+  <global-bounds dimensions="totalpe" offsets="mype">
+    <var dimensions="1" name="inode1" type="integer" />
+    <var dimensions="1" name="inode2" type="integer" />
+    <var dimensions="1" name="imu1" type="integer" />
+    <var dimensions="1" name="imu2" type="integer" />
+    <var dimensions="1" name="ndata_arr" type="integer" />
+  </global-bounds>
+  <var dimensions="nnode" name="f0_edensity_n0_add" type="real*8" />
+  <var dimensions="nnode" name="f0_idensity_n0_add" type="real*8" />
+</adios-group>
+
+<adios-group name="eq_used">
+   <var name="eq_mr" type="integer" />
+   <var name="eq_mz" type="integer" />
+   <var name="eq_mpsi" type="integer" />
+   <var name="eq_min_r" type="real*8" />
+   <var name="eq_max_r" type="real*8" />
+   <var name="eq_min_z" type="real*8" />
+   <var name="eq_max_z" type="real*8" />
+   <var name="eq_axis_r" type="real*8" />
+   <var name="eq_axis_z" type="real*8" />
+   <var name="eq_axis_b" type="real*8" />
+   <var name="eq_x_psi" type="real*8" />
+   <var name="eq_x_r" type="real*8" />
+   <var name="eq_x_z" type="real*8" />
+   <var dimensions="eq_mpsi" name="eq_psi_grid" type="real*8" />
+   <var dimensions="eq_mpsi" name="eq_I" type="real*8" />
+   <var dimensions="eq_mr,eq_mz" name="eq_psi_rz" type="real*8" />
+</adios-group>
+
+<adios-group name="output.bfield">
+  <var name="N" type="integer" />
+  <var dimensions="N" name="rvec" type="real*8" />
+  <var dimensions="N" name="psi_eq_x_psi" type="real*8" />
+  <var dimensions="N" name="dpdr" type="real*8" />
+  <var dimensions="N" name="abs_bphi" type="real*8" />
+</adios-group>
+
+<adios-group name="output.volumes">
+  <var name="diag_1d_npsi" type="integer" />
+  <var dimensions="diag_1d_npsi" name="diag_1d_vol" type="real*8" />
+</adios-group>
+
+<adios-group name="output.initial">
+  <var name="N" type="integer" />
+  <var dimensions="N" name="psi_eq_x_psi" type="real*8" />
+  <var dimensions="N" name="Epoten" type="real*8" />
+  <var dimensions="N" name="Er_minor_radial" type="real*8" />
+  <var dimensions="N" name="er_arr" type="real*8" />
+  <var dimensions="N" name="ez_arr" type="real*8" />
+  <var dimensions="N" name="ephi_arr" type="real*8" />
+  <var dimensions="N" name="r_arr" type="real*8" />
+  <var dimensions="N" name="ion_temp" type="real*8" />
+  <var dimensions="N" name="e_temp" type="real*8" />
+  <var dimensions="N" name="back_den" type="real*8" />
+  <var dimensions="N" name="impurity_den" type="real*8" />
+</adios-group>
+
+<adios-group name="bounce.setup">
+  <var name="bnc_nr" type="integer" />
+  <var dimensions="bnc_nr" name="bnc_r_dr" type="real*8" />
+  <var dimensions="bnc_nr" name="bnc_z_psi_min" type="real*8" />
+</adios-group>
+
+<adios-group name="diagnosis.mesh">
+  <var name="n_n" type="integer" />
+  <var name="n_t" type="integer" />
+  <var name="n_geo" type="integer" />
+  <attribute name="nnodes" path="/" var="n_n" />
+  <attribute name="nspace" path="/" type="integer" value="2" />
+
+  <var dimensions="nspace,nnodes" name="rz" type="real*8" />
+
+
+  <var dimensions="nspace,nnodes" gwrite="coord" name="values" path="/coordinates" type="real*8" />
+
+  <attribute name="XP_CLASS" path="/" value="Mesh" />
+  <attribute name="ncell_sets" path="/" type="integer" value="1" />
+  <attribute name="cell_name" path="/cell_set[0]" value="Tri" />
+  <attribute name="ncells" path="/cell_set[0]" var="n_t" />
+  <attribute name="nodes_per_elem" path="/cell_set[0]" type="integer" value="3" />
+  <var dimensions="nodes_per_elem,ncells" gwrite="nodeid" name="node_connect_list" path="/cell_set[0]" type="integer" />
+  <var dimensions="nodes_per_elem,ncells" name="nd_connect_list" type="integer" />
+
+  <var name="n_psi" type="integer" />
+  <var dimensions="n_psi" gwrite="n_itheta0" name="itheta0" type="integer" />
+  <var dimensions="nnodes" gwrite="nextn" name="nextnode" type="integer" />
+  <var dimensions="nnodes,nspace" gwrite="ff_1dp_dx" name="one_per_dx" type="real*8" />
+  <var dimensions="nnodes" gwrite="grid%psi" name="psi" type="real*8" />
+  <var dimensions="nnodes" gwrite="grid%node_vol" name="node_vol" type="real*8" />
+  <var dimensions="nnodes" name="node_vol_ff0" type="real*8" />
+  <var dimensions="nnodes" name="node_vol_ff1" type="real*8" />
+  <var dimensions="nodes_per_elem,n_n,2" gwrite="psn%ff_hdp_p" name="ff_hdp_p" type="real*8"/>
+  <var dimensions="nodes_per_elem,n_n,2" gwrite="psn%ff_1dp_p" name="ff_1dp_p" type="real*8"/>
+  <var dimensions="nnodes" name="node_vol_nearest" type="real*8" />
+  
+  <var dimensions="n_geo" name="rmin" type="real*8" />
+  <var dimensions="n_geo" name="rmaj" type="real*8" />
+  <var dimensions="n_geo" name="epsilon" type="real*8" />
+  <var dimensions="n_geo" name="qsafety" type="real*8" />
+  <var dimensions="n_geo" name="trapped" type="real*8" />
+  
+
+  <var dimensions="n_t" name="tr_area" type="real*8" />
+  <var dimensions="2,3,n_t" name="mapping" type="real*8" />
+
+  <var name="psn_nwall" type="integer" />
+  <var dimensions="psn_nwall" name="psn_wall_nodes" type="integer" />
+</adios-group>
+
+<adios-group name="diagnosis.f0.mesh">
+  <var name="n_n" type="integer" />
+  <var name="nsp" type="integer" />
+  <var name="ndata" type="integer" />/
+  <var name="inode1m1" type="integer" />
+
+  <var name="f0_nmu" type="integer" />
+  <var name="f0_nvp" type="integer" />
+  <var name="f0_smu_max" type="real*8" />
+  <var name="f0_vp_max" type="real*8" />
+  <var name="f0_dsmu" type="real*8" />
+  <var name="f0_dvp" type="real*8" />
+
+  <attribute name="n_n" path="/" var="n_n" />
+  <attribute name="nsp" path="/" var="nsp" />
+  <attribute name="nndata" path="/" var="ndata" />
+  <attribute name="inode1m1" path="/" var="inode1m1" />
+  <attribute name="f0_nmu" path="/" var="f0_nmu" />
+  <attribute name="f0_nvp" path="/" var="f0_nvp" />
+  <attribute name="f0_smu_max" path="/" var="f0_smu_max" />
+  <attribute name="f0_vp_max" path="/" var="f0_vp_max" />
+  <attribute name="f0_dsmu" path="/" var="f0_dsmu" />
+  <attribute name="f0_dvp" path="/" var="f0_dvp" />
+
+  <global-bounds dimensions="n_n" offsets="inode1m1">
+     <var dimensions="ndata" name="f0_den" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="n_n,nsp" offsets="inode1m1,0">
+     <var dimensions="ndata,nsp" name="f0_T_ev" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="n_n,nsp" offsets="inode1m1,0">
+     <var dimensions="ndata,nsp" name="f0_grid_vol_vonly" type="real*8" />
+  </global-bounds>
+
+
+  
+  <attribute name="nspace" path="/" type="integer" value="2" />
+  <attribute name="nspace_vd" path="/" type="integer" value="3" />
+  <global-bounds dimensions="nspace_vd,n_n" offsets="0,inode1m1">
+     <var dimensions="nspace_vd,ndata" name="v_gradb" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nspace_vd,n_n" offsets="0,inode1m1">
+     <var dimensions="nspace_vd,ndata" name="v_curv" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="n_n" offsets="inode1m1">
+     <var dimensions="ndata" name="nb_curl_nb" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nspace,n_n" offsets="0,inode1m1">
+     <var dimensions="nspace,ndata" name="gradpsi" type="real*8" />
+  </global-bounds>
+</adios-group>
+
+<adios-group name="diag_2d_i">
+  <var name="istep" type="integer" />
+  <attribute name="timestep" path="/" var="istep" />
+  <var name="n_n" type="integer" />
+  <attribute name="nnodes" path="/" var="n_n" />
+  <attribute name="nspace" path="/" type="integer" value="2" />
+  <attribute name="XP_CLASS" path="/" value="Node_Data" />
+  <attribute name="nnode_data" path="/" type="integer" value="6" />
+
+  <attribute name="veclen" path="/node_data[0]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[0]" value="i_density(2D)" />
+  <attribute name="units" path="/node_data[0]" value="m^-3" />
+  <var dimensions="nnodes" gwrite="weight" name="values" path="/node_data[0]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[1]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[1]" value="i_v_par(2D)" />
+  <attribute name="units" path="/node_data[1]" value="m/s" />
+  <var dimensions="nnodes" gwrite="flow" name="values" path="/node_data[1]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[2]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[2]" value="i_v_ExB-R(2D)" />
+  <attribute name="units" path="/node_data[2]" value="m/s" />
+  <var dimensions="nnodes" gwrite="flower" name="values" path="/node_data[2]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[3]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[3]" value="i_v_ExB-Z(2D)" />
+  <attribute name="units" path="/node_data[3]" value="m/s" />
+  <var dimensions="nnodes" gwrite="flowez" name="values" path="/node_data[3]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[4]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[4]" value="i_T_par(2D)" />
+  <attribute name="units" path="/node_data[4]" value="keV" />
+  <var dimensions="nnodes" gwrite="enpa" name="values" path="/node_data[4]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[5]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[5]" value="i_T_perp(2D)" />
+  <attribute name="units" path="/node_data[5]" value="keV" />
+  <var dimensions="nnodes" gwrite="enpe" name="values" path="/node_data[5]" type="real*8" />
+  <attribute name="dummy" path="/coordinates" type="string" value="dummy" />
+</adios-group>
+
+<adios-group name="diag_2d_e">
+  <var name="istep" type="integer" />
+  <attribute name="timestep" path="/" var="istep" />
+  <var name="n_n" type="integer" />
+  <attribute name="nnodes" path="/" var="n_n" />
+  <attribute name="nspace" path="/" type="integer" value="2" />
+  <attribute name="XP_CLASS" path="/" value="Node_Data" />
+  <attribute name="nnode_data" path="/" type="integer" value="6" />
+
+  <attribute name="veclen" path="/node_data[0]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[0]" value="e_density(2D)" />
+  <attribute name="units" path="/node_data[0]" value="m^-3" />
+  <var dimensions="nnodes" gwrite="weight" name="values" path="/node_data[0]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[1]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[1]" value="e_v_par(2D)" />
+  <attribute name="units" path="/node_data[1]" value="m/s" />
+  <var dimensions="nnodes" gwrite="flow" name="values" path="/node_data[1]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[2]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[2]" value="e_v_ExB-R(2D)" />
+  <attribute name="units" path="/node_data[2]" value="m/s" />
+  <var dimensions="nnodes" gwrite="flower" name="values" path="/node_data[2]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[3]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[3]" value="e_v_ExB-Z(2D)" />
+  <attribute name="units" path="/node_data[3]" value="m/s" />
+  <var dimensions="nnodes" gwrite="flowez" name="values" path="/node_data[3]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[4]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[4]" value="e_T_par(2D)" />
+  <attribute name="units" path="/node_data[4]" value="keV" />
+  <var dimensions="nnodes" gwrite="enpa" name="values" path="/node_data[4]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[5]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[5]" value="e_T_perp(2D)" />
+  <attribute name="units" path="/node_data[5]" value="keV" />
+  <var dimensions="nnodes" gwrite="enpe" name="values" path="/node_data[5]" type="real*8" />
+  <attribute name="dummy" path="/coordinates" type="string" value="dummy" />
+</adios-group>
+
+<adios-group name="fort.tracer">
+  <var name="ncol_tracer" type="integer" />
+  <var dimensions="ncol_tracer" name="tracerdata" type="real*8" />
+</adios-group>
+
+<adios-group name="fort.gam">
+  <var gwrite="istep" name="timestep" type="integer" />
+  <var name="ncol_gam" type="integer" />
+  <var dimensions="ncol_gam" name="gam" type="real*8" />
+</adios-group>
+
+<adios-group name="fort.fenergy">
+  <var gwrite="istep" name="timestep" type="integer" />
+  <var name="ncol_fenergy" type="integer" />
+  <var dimensions="ncol_fenergy" name="fenergy" type="real*8" />
+</adios-group>
+
+<adios-group name="poisson.simple00">
+   <var gwrite="grid%npsi" name="npsi" type="integer" />
+   <var dimensions="npsi" name="r" type="real*8" />
+   <var dimensions="npsi" name="phi00" type="real*8" />
+   <var dimensions="npsi" name="den00" type="real*8" />
+   <var dimensions="npsi" name="phip00" type="real*8" />
+   <var dimensions="npsi" gwrite="temppsi" name="psi" type="real*8" />
+</adios-group>
+
+<adios-group name="poisson.neo_pot0_simple">
+  <var gwrite="np" name="npsi" type="integer" />
+  <var dimensions="npsi" gwrite="temp" name="psi_eqxpsi" type="real*8" />
+  <var dimensions="npsi" gwrite="pot" name="neo_pot00" type="real*8" />
+</adios-group>
+
+<adios-group name="col_2">
+  <var name="col_2_m" type="integer" />
+  <var name="col_2_mtheta" type="integer" />
+  <var dimensions="col_2_m,col_2_mtheta" name="psi" type="real*8" />
+  <var dimensions="col_2_m,col_2_mtheta" gwrite="idx" name="l" type="integer" />
+  <var dimensions="col_2_m,col_2_mtheta" name="col_2_dw_sum" type="real*8" />
+  <var dimensions="col_2_m,col_2_mtheta" name="col_2_dvp_sum" type="real*8" />
+  <var dimensions="col_2_m,col_2_mtheta" name="col_2_dv2_sum" type="real*8" />
+</adios-group>
+
+
+<adios-group name="diagnosis.ti">
+  <var gwrite="diag_ti_npsi" name="samples" type="integer" />
+  <var dimensions="samples" gwrite="psinorm" name="psi" type="real*8" />
+  <var dimensions="samples" gwrite="psi_mks" name="psi_mks" type="real*8" />
+  <var dimensions="samples" gwrite="mid_r" name="r_minor_omid" type="real*8" />
+  <var gwrite="sml_time/sml_tran" name="time" type="real*8" />
+  <attribute name="units" path="time" value="ion transit time" />
+  <var gwrite="sml_time" name="time_sec" type="real*8" />
+  <attribute name="units" path="time_sec" value="sec" />
+  <var gwrite="istep" name="istep" type="integer" />
+  <var gwrite="istep/diag_flow_period" name="tindex" type="integer" />
+  <var dimensions="samples" gwrite="diag_ti_sum(1,:)" name="dpot_sqr" type="real*8" />
+  <attribute name="units" path="dpot_sqr" value="V^2" />
+  <var dimensions="samples" gwrite="diag_ti_sum(2,:)" name="exb_r" type="real*8" />
+  <attribute name="units" path="exb_r" value="m/s" />
+  <var dimensions="samples" gwrite="diag_ti_sum(3,:)" name="dpot_exb_r" type="real*8" />
+  <attribute name="units" path="dpot_exb_r" value="Vm/s" />
+  <var dimensions="samples" gwrite="diag_ti_sum(4,:)" name="dpot_sqr_exb_r" type="real*8" />
+  <attribute name="units" path="dpot_sqr_exb_r" value="V^2m/s" />
+  <var dimensions="samples" gwrite="diag_ti_sum(5,:)" name="volume" type="real*8" />
+  <attribute name="units" path="volume" value="m^3" />
+</adios-group>
+
+<adios-group name="diagnosis.1d">
+  <var name="samples" type="integer" />
+  <var name="gsamples" type="integer" />
+  <var dimensions="samples" name="psi" type="real*8" />
+  <var dimensions="samples" name="psi_mks" type="real*8" />
+  <var name="time" type="real*8" />
+  <var dimensions="samples" name="volume_1d" type="real*8" />
+  <var dimensions="samples" name="dpdr_omid" type="real*8" />
+  <var name="step" type="integer" />
+  <var name="tindex" type="integer" />
+  <var name="nenergy" type="integer" />
+
+  <var dimensions="samples" name="i_gc_density_1d" type="real*8" />
+  <var dimensions="samples" name="i_gc_toroidal_flow_1d" type="real*8" />
+  <var dimensions="samples" name="i_gc_poloidal_flow_1d" type="real*8" />
+  <var dimensions="samples" name="i_parallel_flow_1d" type="real*8" />
+  <var dimensions="samples" name="i_tor_angular_momentum_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_1d" type="real*8" />
+  <var dimensions="samples" name="i_parallel_mean_en_1d" type="real*8" />
+  <var dimensions="samples" name="i_perp_temperature_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_ExB_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_ExB_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_ExB_1d" type="real*8" />
+  <var dimensions="samples" name="i_poloidal_ExB_flow_1d" type="real*8" />
+  <var dimensions="samples" name="i_grad_psi_sqr_1d" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_1d" type="real*8" />
+  <var dimensions="samples" name="i_para_force_1d" type="real*8" />
+  <var dimensions="samples" name="i_r_dot_vp_1d" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_wo_curlb_1d" type="real*8" />
+
+  <var dimensions="samples" name="i_gc_density_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_gc_toroidal_flow_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_gc_poloidal_flow_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_parallel_flow_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_tor_angular_momentum_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_parallel_mean_en_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_perp_temperature_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_ExB_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_ExB_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_ExB_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_poloidal_ExB_flow_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_grad_psi_sqr_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_para_force_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_r_dot_vp_df_1d" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_wo_curlb_df_1d" type="real*8" />
+
+  <var dimensions="samples" name="e_gc_density_1d" type="real*8" />
+  <var dimensions="samples" name="e_gc_toroidal_flow_1d" type="real*8" />
+  <var dimensions="samples" name="e_gc_poloidal_flow_1d" type="real*8" />
+  <var dimensions="samples" name="e_parallel_flow_1d" type="real*8" />
+  <var dimensions="samples" name="e_tor_angular_momentum_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_flux_1d" type="real*8" />
+  <var dimensions="samples" name="e_parallel_mean_en_1d" type="real*8" />
+  <var dimensions="samples" name="e_perp_temperature_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_en_flux_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_mom_flux_ExB_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_mom_flux_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_flux_ExB_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_en_flux_ExB_1d" type="real*8" />
+  <var dimensions="samples" name="e_poloidal_ExB_flow_1d" type="real*8" />
+  <var dimensions="samples" name="e_grad_psi_sqr_1d" type="real*8" />
+  <var dimensions="samples" name="e_para_force_E_1d" type="real*8" />
+  <var dimensions="samples" name="e_para_force_1d" type="real*8" />
+  <var dimensions="samples" name="e_r_dot_vp_1d" type="real*8" />
+  <var dimensions="samples" name="e_para_force_E_wo_curlb_1d" type="real*8" />
+
+  <var dimensions="samples" name="e_gc_density_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_gc_toroidal_flow_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_gc_poloidal_flow_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_parallel_flow_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_tor_angular_momentum_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_flux_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_parallel_mean_en_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_perp_temperature_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_en_flux_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_mom_flux_ExB_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_mom_flux_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_flux_ExB_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_radial_en_flux_ExB_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_poloidal_ExB_flow_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_grad_psi_sqr_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_para_force_E_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_para_force_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_r_dot_vp_df_1d" type="real*8" />
+  <var dimensions="samples" name="e_para_force_E_wo_curlb_df_1d" type="real*8" />
+
+  <var dimensions="samples" name="i_gc_density_avg" type="real*8" />
+  <var dimensions="samples" name="i_gc_toroidal_flow_avg" type="real*8" />
+  <var dimensions="samples" name="i_gc_poloidal_flow_avg" type="real*8" />
+  <var dimensions="samples" name="i_parallel_flow_avg" type="real*8" />
+  <var dimensions="samples" name="i_tor_angular_momentum_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_avg" type="real*8" />
+  <var dimensions="samples" name="i_parallel_mean_en_avg" type="real*8" />
+  <var dimensions="samples" name="i_perp_temperature_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_ExB_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_ExB_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_ExB_avg" type="real*8" />
+  <var dimensions="samples" name="i_poloidal_ExB_flow_avg" type="real*8" />
+  <var dimensions="samples" name="i_grad_psi_sqr_avg" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_avg" type="real*8" />
+  <var dimensions="samples" name="i_para_force_avg" type="real*8" />
+  <var dimensions="samples" name="i_r_dot_vp_avg" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_wo_curlb_avg" type="real*8" />
+
+  <var dimensions="samples" name="i_gc_density_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_gc_toroidal_flow_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_gc_poloidal_flow_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_parallel_flow_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_tor_angular_momentum_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_parallel_mean_en_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_perp_temperature_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_ExB_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_ExB_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_ExB_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_poloidal_ExB_flow_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_grad_psi_sqr_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_para_force_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_r_dot_vp_df_avg" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_wo_curlb_df_avg" type="real*8" />
+
+  <var dimensions="samples" name="i_gc_density_omid" type="real*8" />
+  <var dimensions="samples" name="i_gc_toroidal_flow_omid" type="real*8" />
+  <var dimensions="samples" name="i_gc_poloidal_flow_omid" type="real*8" />
+  <var dimensions="samples" name="i_parallel_flow_omid" type="real*8" />
+  <var dimensions="samples" name="i_tor_angular_momentum_omid" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_omid" type="real*8" />
+  <var dimensions="samples" name="i_parallel_mean_en_omid" type="real*8" />
+  <var dimensions="samples" name="i_perp_temperature_omid" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_omid" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_ExB_omid" type="real*8" />
+  <var dimensions="samples" name="i_radial_mom_flux_omid" type="real*8" />
+  <var dimensions="samples" name="i_radial_flux_ExB_omid" type="real*8" />
+  <var dimensions="samples" name="i_radial_en_flux_ExB_omid" type="real*8" />
+  <var dimensions="samples" name="i_poloidal_ExB_flow_omid" type="real*8" />
+  <var dimensions="samples" name="i_grad_psi_sqr_omid" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_omid" type="real*8" />
+  <var dimensions="samples" name="i_para_force_omid" type="real*8" />
+  <var dimensions="samples" name="i_r_dot_vp_omid" type="real*8" />
+  <var dimensions="samples" name="i_para_force_E_wo_curlb_omid" type="real*8" />
+
+  <var dimensions="samples" name="e_gc_density_avg" type="real*8" />
+  <var dimensions="samples" name="e_gc_toroidal_flow_avg" type="real*8" />
+  <var dimensions="samples" name="e_gc_poloidal_flow_avg" type="real*8" />
+  <var dimensions="samples" name="e_parallel_flow_avg" type="real*8" />
+  <var dimensions="samples" name="e_tor_angular_momentum_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_flux_avg" type="real*8" />
+  <var dimensions="samples" name="e_parallel_mean_en_avg" type="real*8" />
+  <var dimensions="samples" name="e_perp_temperature_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_en_flux_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_mom_flux_ExB_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_mom_flux_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_flux_ExB_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_en_flux_ExB_avg" type="real*8" />
+  <var dimensions="samples" name="e_poloidal_ExB_flow_avg" type="real*8" />
+  <var dimensions="samples" name="e_grad_psi_sqr_avg" type="real*8" />
+  <var dimensions="samples" name="e_para_force_E_avg" type="real*8" />
+  <var dimensions="samples" name="e_para_force_avg" type="real*8" />
+  <var dimensions="samples" name="e_r_dot_vp_avg" type="real*8" />
+  <var dimensions="samples" name="e_para_force_E_wo_curlb_avg" type="real*8" />
+
+  <var dimensions="samples" name="e_gc_density_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_gc_toroidal_flow_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_gc_poloidal_flow_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_parallel_flow_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_tor_angular_momentum_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_flux_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_parallel_mean_en_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_perp_temperature_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_en_flux_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_mom_flux_ExB_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_mom_flux_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_flux_ExB_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_radial_en_flux_ExB_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_poloidal_ExB_flow_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_grad_psi_sqr_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_para_force_E_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_para_force_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_r_dot_vp_df_avg" type="real*8" />
+  <var dimensions="samples" name="e_para_force_E_wo_curlb_df_avg" type="real*8" />
+
+  <var dimensions="gsamples" name="psi00" type="real*8" />
+  <var dimensions="gsamples" name="iden00_1d" type="real*8" />
+  <var dimensions="gsamples" name="eden00_1d" type="real*8" />
+  <var dimensions="gsamples" name="cden00_1d" type="real*8" />
+  <var dimensions="gsamples" name="pot00_1d" type="real*8" />
+
+  <var dimensions="samples,nenergy" name="i_radial_eflux" type="real*8" />
+  <var dimensions="samples,nenergy" name="i_radial_pflux" type="real*8" />
+  <var dimensions="samples,nenergy" name="i_radial_weight" type="real*8" />
+  <var dimensions="samples" name="i_radial_test" type="real*8" />
+
+  <var dimensions="samples,nenergy" name="e_radial_eflux" type="real*8" />
+  <var dimensions="samples,nenergy" name="e_radial_pflux" type="real*8" />
+  <var dimensions="samples,nenergy" name="e_radial_weight" type="real*8" />
+  <var dimensions="samples" name="e_radial_test" type="real*8" />
+
+</adios-group>
+
+
+<adios-group name="diagnosis.heat">
+  <var name="rsamples" type="integer" />
+  <var name="zsamples" type="integer" />
+  <var name="psamples" type="integer" />
+  <var name="section" type="integer" />
+  <var name="time" type="real*8" />
+  <var name="step" type="integer" />
+  <var name="tindex" type="integer" />
+
+  <var dimensions="rsamples,section" name="r" type="real*8" />
+  <var dimensions="zsamples,section" name="z" type="real*8" />
+  <var dimensions="psamples,section" name="psi" type="real*8" />
+
+  <var dimensions="rsamples,zsamples,section" name="i_number" type="real*8" />
+  <var dimensions="rsamples,zsamples,section" name="i_para_energy" type="real*8" />
+  <var dimensions="rsamples,zsamples,section" name="i_perp_energy" type="real*8" />
+  <var dimensions="rsamples,zsamples,section" name="i_potential" type="real*8" />
+  <var dimensions="rsamples,zsamples,section" name="i_distance" type="real*8" />
+
+  <var dimensions="rsamples,zsamples,section" name="e_number" type="real*8" />
+  <var dimensions="rsamples,zsamples,section" name="e_para_energy" type="real*8" />
+  <var dimensions="rsamples,zsamples,section" name="e_perp_energy" type="real*8" />
+  <var dimensions="rsamples,zsamples,section" name="e_potential" type="real*8" />
+  <var dimensions="rsamples,zsamples,section" name="e_distance" type="real*8" />
+
+  <var dimensions="psamples,section" name="i_number_psi" type="real*8" />
+  <var dimensions="psamples,section" name="i_para_energy_psi" type="real*8" />
+  <var dimensions="psamples,section" name="i_perp_energy_psi" type="real*8" />
+  <var dimensions="psamples,section" name="i_potential_psi" type="real*8" />
+  <var dimensions="psamples,section" name="i_distance_psi" type="real*8" />
+
+  <var dimensions="psamples,section" name="e_number_psi" type="real*8" />
+  <var dimensions="psamples,section" name="e_para_energy_psi" type="real*8" />
+  <var dimensions="psamples,section" name="e_perp_energy_psi" type="real*8" />
+  <var dimensions="psamples,section" name="e_potential_psi" type="real*8" />
+  <var dimensions="psamples,section" name="e_distance_psi" type="real*8" />
+</adios-group>
+
+
+<adios-group name="diagnosis.neu">
+  <var name="samples" type="integer" />
+  <var name="time" type="real*8" />
+  <var name="step" type="integer" />
+  <var name="tindex" type="integer" />
+  <var dimensions="samples" name="psi" type="real*8" />
+  <var dimensions="samples" name="psi_mks" type="real*8" />
+  <var dimensions="samples" name="volume_neu" type="real*8" />
+  <var name="neu_den0" type="real*8" />
+
+
+  <var dimensions="samples" name="dn_ionize" type="real*8" />
+  <var dimensions="samples" name="denergy_ionize" type="real*8" />
+  <var dimensions="samples" name="dv_para_ionize" type="real*8" />
+  <var dimensions="samples" name="dv_para_r_ionize" type="real*8" />
+
+  <var dimensions="samples" name="dn_elastic" type="real*8" />
+  <var dimensions="samples" name="denergy_elastic" type="real*8" />
+  <var dimensions="samples" name="dv_para_elastic" type="real*8" />
+  <var dimensions="samples" name="dv_para_r_elastic" type="real*8" />
+
+  <var dimensions="samples" name="dn_cx" type="real*8" />
+  <var dimensions="samples" name="denergy_cx" type="real*8" />
+  <var dimensions="samples" name="dv_para_cx" type="real*8" />
+  <var dimensions="samples" name="dv_para_r_cx" type="real*8" />
+
+</adios-group>
+
+<adios-group name="diagnosis.sheath">
+  <var name="nwall" type="integer" />
+  <var dimensions="nwall" name="sheath_pot" type="real*8" />
+  <var dimensions="nwall" name="sheath_lost" type="real*8" />
+  <var dimensions="nwall" name="sheath_ilost" type="real*8" />
+</adios-group>
+
+<adios-group name="diagnosis.fsource">
+  <var name="samples" type="integer" />
+  <var dimensions="samples" name="psi" type="real*8" />
+  <var dimensions="samples" name="psi_mks" type="real*8" />
+  <var name="time" type="real*8" />
+  <var name="step" type="integer" />
+  <var name="tindex" type="integer" />
+
+  <var dimensions="samples" name="i_volume_collision" type="real*8" />
+  <var dimensions="samples" name="i_volume_heat_torque" type="real*8" />
+  <var dimensions="samples" name="i_volume_neutral" type="real*8" />
+  <var dimensions="samples" name="i_volume_radiation" type="real*8" />
+
+  <var dimensions="samples" name="i_density_collision" type="real*8" />
+  <var dimensions="samples" name="i_density_heat_torque" type="real*8" />
+  <var dimensions="samples" name="i_density_neutral" type="real*8" />
+  <var dimensions="samples" name="i_density_radiation" type="real*8" />
+
+  <var dimensions="samples" name="i_density_change_collision" type="real*8" />
+  <var dimensions="samples" name="i_density_change_heat_torque" type="real*8" />
+  <var dimensions="samples" name="i_density_change_neutral" type="real*8" />
+  <var dimensions="samples" name="i_density_change_radiation" type="real*8" />
+
+  <var dimensions="samples" name="i_energy_change_collision" type="real*8" />
+  <var dimensions="samples" name="i_energy_change_heat_torque" type="real*8" />
+  <var dimensions="samples" name="i_energy_change_neutral" type="real*8" />
+  <var dimensions="samples" name="i_energy_change_radiation" type="real*8" />
+
+  <var dimensions="samples" name="i_momentum_change_collision" type="real*8" />
+  <var dimensions="samples" name="i_momentum_change_heat_torque" type="real*8" />
+  <var dimensions="samples" name="i_momentum_change_neutral" type="real*8" />
+  <var dimensions="samples" name="i_momentum_change_radiation" type="real*8" />
+  
+  <var dimensions="samples" name="e_volume_collision" type="real*8" />
+  <var dimensions="samples" name="e_volume_heat_torque" type="real*8" />
+  <var dimensions="samples" name="e_volume_neutral" type="real*8" />
+  <var dimensions="samples" name="e_volume_radiation" type="real*8" />
+
+  <var dimensions="samples" name="e_density_collision" type="real*8" />
+  <var dimensions="samples" name="e_density_heat_torque" type="real*8" />
+  <var dimensions="samples" name="e_density_neutral" type="real*8" />
+  <var dimensions="samples" name="e_density_radiation" type="real*8" />
+
+  <var dimensions="samples" name="e_density_change_collision" type="real*8" />
+  <var dimensions="samples" name="e_density_change_heat_torque" type="real*8" />
+  <var dimensions="samples" name="e_density_change_neutral" type="real*8" />
+  <var dimensions="samples" name="e_density_change_radiation" type="real*8" />
+
+  <var dimensions="samples" name="e_energy_change_collision" type="real*8" />
+  <var dimensions="samples" name="e_energy_change_heat_torque" type="real*8" />
+  <var dimensions="samples" name="e_energy_change_neutral" type="real*8" />
+  <var dimensions="samples" name="e_energy_change_radiation" type="real*8" />
+
+  <var dimensions="samples" name="e_momentum_change_collision" type="real*8" />
+  <var dimensions="samples" name="e_momentum_change_heat_torque" type="real*8" />
+  <var dimensions="samples" name="e_momentum_change_neutral" type="real*8" />
+  <var dimensions="samples" name="e_momentum_change_radiation" type="real*8" />
+</adios-group>
+
+
+<adios-group name="diagnosis.bfield">
+  <var name="n_n" type="integer" />
+  <attribute name="nnodes" path="/" var="n_n" />
+  <attribute name="nspace" path="/" type="integer" value="2" />
+  <attribute name="XP_CLASS" path="/" value="Node_Data" />
+  <attribute name="nnode_data" path="/" type="integer" value="2" />
+
+  <attribute name="veclen" path="/node_data[0]" type="integer" value="3" />
+  <attribute name="labels" path="/node_data[0]" value="bfield" />
+  <attribute name="units" path="/node_data[0]" value="Tesla" />
+  <var dimensions="veclen,nnodes" gwrite="bfld" name="values" path="/node_data[0]" type="real*8" />
+
+  <attribute name="veclen" path="/node_data[1]" type="integer" value="1" />
+  <attribute name="labels" path="/node_data[1]" value="poloidalflux" />
+  <attribute name="units" path="/node_data[1]" value="T m^2" />
+  <var dimensions="nnodes" gwrite="grid%psi" name="values" path="/node_data[1]" type="real*8" />
+  <attribute name="dummy" path="/coordinates" type="string" value="dummy" />
+</adios-group>
+
+<adios-group name="pot0">
+  <var name="istep" type="integer" />
+  <attribute name="timestep" path="/" var="istep" />
+  <var name="nphiP1" type="integer" />
+  <var name="nnode" type="integer" />
+  <attribute name="nnodes" path="/" var="nnode" />
+  <attribute name="nspace" path="/" type="integer" value="2" />
+  <attribute name="XP_CLASS" path="/" type="string" value="Node_Data" />
+  <attribute name="nnode_data" path="/" var="nphiP1" />
+
+  <attribute name="veclen" path="/node_data[0]" type="integer" value="1" />
+  <attribute name="units" path="/node_data[0]" value="V" />
+  <attribute name="labels" path="/node_data[0]" value="potential_favg" />
+  <var dimensions="nnodes" gwrite="potential" name="values" path="/node_data[0]" type="real*8" />
+  <attribute name="dummy" path="/coordinates" type="string" value="dummy" />
+</adios-group>
+
+<adios-group name="pot3d">
+  
+  <var name="nnode" type="integer" />
+  <attribute name="nnodes" path="/" var="nnode" />
+  <var dimensions="40" name="labelname" type="byte" />
+
+  <attribute name="veclen" path="/" type="integer" value="1" />
+  <attribute name="units" path="/" value="V" />
+  <attribute name="labels" path="/" var="labelname" />
+  <var dimensions="nnodes" gwrite="pot3d(:,iphi)" name="values" type="real*8" />
+  
+</adios-group>
+
+<adios-group name="field3D">
+  <var name="nnode" type="integer" />
+  <var name="nphi" type="integer" />
+  <var name="iphi" type="integer" />
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="dpot" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="iden_ff0" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="iden_ff1" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="iden" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="dpot_real" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="eden" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="ddpotdt" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="eden_hyb" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="a_par" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="u_e" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nnode" offsets="0">
+     <var dimensions="nnode" name="en_den" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nnode" offsets="0">
+     <var dimensions="nnode" name="en_dpot" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nnode" offsets="0">
+     <var dimensions="nnode" name="en_apar" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nnode" offsets="0">
+     <var dimensions="nnode" name="eta_loss" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nnode" offsets="0">
+     <var dimensions="nnode" name="tearing_drive" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nnode" offsets="0">
+     <var dimensions="nnode" name="tearing_drive2" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nnode" offsets="0">
+     <var dimensions="nnode" name="tearing_drive3" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="eden_f0" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="iden_f0" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="i_wsum" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="i_vp" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="i_temp" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="rhs1" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+     <var dimensions="1,nnode" name="rhs2" type="real*8" />
+  </global-bounds>
+
+  <var dimensions="nnode" name="pot0" type="real*8" />
+  <var dimensions="nnode" name="potm0" type="real*8" />
+</adios-group>
+
+
+<adios-group name="f0">
+  <var name="nnode" type="integer" />
+  <var name="inode1m1" type="integer" />
+  <var name="ndata" type="integer" />
+
+  <var name="nphi" type="integer" />
+  <var name="iphi" type="integer" />
+
+  <var name="nmup1" type="integer" />
+  <var name="imu1m1" type="integer" />
+  <var name="mudata" type="integer" />
+
+  <var name="vpdata" type="integer" />
+
+
+
+  <attribute name="nnodes" path="/" var="nnode" />
+  <attribute name="inode1m1" path="/" var="inode1m1" />
+  <attribute name="ndata" path="/" var="ndata" />
+
+  <attribute name="nphi" path="/" var="nphi" />
+  <attribute name="iphi" path="/" var="iphi" />
+
+  <attribute name="nmup1" path="/" var="nmup1" />
+  <attribute name="imu1m1" path="/" var="imu1m1" />
+  <attribute name="mudata" path="/" var="mudata" />
+
+  <attribute name="vpdata" path="/" var="vpdata" />
+
+  <var dimensions="40" name="labelname" type="byte" />
+
+
+  <global-bounds dimensions="nnode,nphi" offsets="inode1m1,iphi">
+     <var dimensions="ndata,1" name="iden_f0_approx" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="nnode,nphi" offsets="inode1m1,iphi">
+     <var dimensions="ndata,1" name="eden_f0" type="real*8" />
+  </global-bounds>
+
+
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="i_f0g" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="i_f0g1" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="i_f" type="real*8" />
+  </global-bounds>
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="e_f0g" type="real*8" />
+  </global-bounds>
+  
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="e_f0g1" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="e_f" type="real*8" />
+  </global-bounds>
+  
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="i_f0g4" type="real*4" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="i_f0g41" type="real*4" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="i_f4" type="real*4" />
+  </global-bounds>
+  
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="e_f0g4" type="real*4" />
+  </global-bounds>
+  
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="e_f0g41" type="real*4" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1,nphi" offsets="0,inode1m1,imu1m1,iphi">
+     <var dimensions="vpdata,ndata,mudata,1" name="e_f4" type="real*4" />
+  </global-bounds>
+  
+  <global-bounds dimensions="nnode,nphi" offsets="inode1m1,iphi">
+     <var dimensions="ndata,1" name="dpot" type="real*8" />
+  </global-bounds>
+  
+  <var dimensions="nnode" name="f0_edensity_n0_add" type="real*8" />
+  <var dimensions="nnode" name="f0_idensity_n0_add" type="real*8" />
+</adios-group>
+
+<adios-group name="f0n">
+  <var name="nnode" type="integer" />
+  <var name="inode1m1" type="integer" />
+  <var name="ndata" type="integer" />
+
+  <var name="nphi" type="integer" />
+  <var name="iphi" type="integer" />
+
+  <var name="nmup1" type="integer" />
+  <var name="imu1m1" type="integer" />
+  <var name="mudata" type="integer" />
+
+  <var name="vpdata" type="integer" />
+
+
+
+  <attribute name="nnodes" path="/" var="nnode" />
+  <attribute name="inode1m1" path="/" var="inode1m1" />
+  <attribute name="ndata" path="/" var="ndata" />
+
+  <attribute name="nphi" path="/" var="nphi" />
+  <attribute name="iphi" path="/" var="iphi" />
+
+  <attribute name="nmup1" path="/" var="nmup1" />
+  <attribute name="imu1m1" path="/" var="imu1m1" />
+  <attribute name="mudata" path="/" var="mudata" />
+
+  <attribute name="vpdata" path="/" var="vpdata" />
+
+  <var dimensions="40" name="labelname" type="byte" />
+
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="i_f0_n" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="i_f0_w0" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="i_f0_w0s" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="i_f0_w" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="i_f0_ws" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="e_f0_n" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="e_f0_w0" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="e_f0_w0s" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="e_f0_w" type="real*8" />
+  </global-bounds>
+
+  <global-bounds dimensions="vpdata,nnode,nmup1" offsets="0,inode1m1,imu1m1">
+     <var dimensions="vpdata,ndata,mudata" name="e_f0_ws" type="real*8" />
+  </global-bounds>
+
+</adios-group>
+
+
+<adios-group name="f3d">
+  <var name="nnode" type="integer" />
+  <var name="inode1m1" type="integer" />
+  <var name="ndata" type="integer" />
+
+  <var name="nphi" type="integer" />
+  <var name="iphim1" type="integer" />
+
+  <attribute name="nnodes" path="/" var="nnode" />
+  <attribute name="inode1m1" path="/" var="inode1m1" />
+  <attribute name="ndata" path="/" var="ndata" />
+
+  <global-bounds dimensions="nphi,nnode" offsets="iphim1,inode1m1">
+     <var dimensions="1,ndata" name="i_T_perp" type="real*8" />
+     <var dimensions="1,ndata" name="i_E_para" type="real*8" />
+     <var dimensions="1,ndata" name="i_u_para" type="real*8" />
+     <var dimensions="1,ndata" name="i_den" type="real*8" />
+     <var dimensions="1,ndata" name="e_T_perp" type="real*8" />
+     <var dimensions="1,ndata" name="e_E_para" type="real*8" />
+     <var dimensions="1,ndata" name="e_u_para" type="real*8" />
+     <var dimensions="1,ndata" name="e_den" type="real*8" />
+  </global-bounds>
+
+</adios-group>
+
+
+<adios-group name="particle">
+   <var gwrite="sml_istep" name="timestep" type="integer" />
+   <var gwrite="sml_time" name="time" type="real*8" />
+ 
+   <var name="inum_total" type="integer*8" />
+   <var name="inum" type="integer" />
+   <var name="ioff" type="integer*8" />
+   <var name="inphase" type="integer" />
+   <global-bounds dimensions="inum_total" offsets="ioff">
+      <var dimensions="inum" name="igid" type="integer*8" />
+   </global-bounds>
+   <global-bounds dimensions="inphase,inum_total" offsets="0,ioff">
+      <var dimensions="inphase,inum" name="iphase" type="real*4" />
+   </global-bounds>
+   
+   <var name="enum_total" type="integer*8" />
+   <var name="enum" type="integer" />
+   <var name="eoff" type="integer*8" />
+   <var name="enphase" type="integer" />
+   <global-bounds dimensions="enum_total" offsets="eoff">
+      <var dimensions="enum" name="egid" type="integer*8" />
+   </global-bounds>
+   <global-bounds dimensions="enphase,enum_total" offsets="0,eoff">
+      <var dimensions="enphase,enum" name="ephase" type="real*4" />
+   </global-bounds>
+</adios-group>
+
+<adios-group name="edensity0">
+ <var gwrite="grid%nnode" name="nnode" type="integer" />
+ <var gwrite="grid%npsi00" name="npsi" type="integer" />
+ <var dimensions="nnode" gwrite="psn%edensity0" name="edensity0_node" type="real*8" />
+ <var dimensions="npsi" gwrite="psn%eden00_1d" name="eden00_psi" type="real*8" />
+</adios-group>
+
+<adios-group name="coupling">
+  <var name="nphi" type="integer" />
+  <var name="iphi" type="integer" />
+  <var name="first_node" type="integer" />
+  <var name="last_node" type="integer" />
+  <var name="node_number" type="integer" />
+  <var name="cce_side" type="integer" />
+  <var name="cce_model" type="integer" />
+  <var name="time" type="real*8" />
+  <var name="step" type="integer" />
+  <global-bounds dimensions="node_number,nphi" offsets="0,iphi">
+    <var dimensions="node_number,1" name="data" type="real*8" />
+  </global-bounds>
+</adios-group>
+
+
+<method group="coupling" iterations="100" method="POSIX" priority="3">verbose=2</method>
+
+<method group="field3D" iterations="100" method="POSIX" priority="3" />
+<method group="restart" iterations="100" method="MPI_AGGREGATE" priority="3">num_aggregators=64;num_ost=64</method>
+
+
+<method group="restartf0" iterations="100" method="MPI_AGGREGATE" priority="3">num_aggregators=64;num_ost=64</method>
+<method group="restart_hyb" iterations="100" method="MPI_AGGREGATE" priority="3" />
+<method group="eq_used" iterations="100" method="POSIX" priority="3" />
+<method group="output.bfield" iterations="100" method="POSIX" priority="3" />
+<method group="output.volumes" iterations="100" method="POSIX" priority="3" />
+<method group="output.initial" iterations="100" method="POSIX" priority="3" />
+<method group="bounce.setup" iterations="100" method="POSIX" priority="3" />
+<method group="diagnosis.mesh" iterations="100" method="POSIX" priority="3" />
+<method group="diagnosis.f0.mesh" iterations="100" method="MPI" priority="3" />
+<method group="diag_2d_i" iterations="100" method="POSIX" priority="3" />
+<method group="diag_2d_e" iterations="100" method="POSIX" priority="3" />
+<method group="fort.tracer" iterations="100" method="POSIX" priority="3" />
+<method group="fort.gam" iterations="100" method="POSIX" priority="3" />
+<method group="fort.fenergy" iterations="100" method="POSIX" priority="3" />
+<method group="poisson.simple00" iterations="100" method="POSIX" priority="3" />
+<method group="poisson.neo_pot0_simple" iterations="100" method="POSIX" priority="3" />
+<method group="col_2" iterations="100" method="POSIX" priority="3" />
+<method group="diagnosis.bfield" iterations="100" method="POSIX" priority="3" />
+<method group="pot0" iterations="100" method="POSIX" priority="3" />
+<method group="pot3d" iterations="100" method="MPI" priority="3" />
+<method group="f0" iterations="100" method="MPI_AGGREGATE" priority="3">num_aggregators=64;num_ost=64</method>
+<method group="f0n" iterations="100" method="MPI" priority="3" />
+<method group="f3d" iterations="100" method="MPI" priority="3" />
+<method group="diagnosis.1d" iterations="100" method="POSIX" priority="3" />
+<method group="diagnosis.heat" iterations="100" method="POSIX" priority="3" />
+<method group="diagnosis.neu" iterations="100" method="POSIX" priority="3" />
+<method group="diagnosis.ti" iterations="100" method="POSIX" priority="3" />
+<method group="diagnosis.sheath" iterations="100" method="POSIX" priority="3" />
+<method group="diagnosis.fsource" iterations="100" method="POSIX" priority="3" />
+<method group="edensity0" iterations="100" method="POSIX" priority="3" />
+<method group="particle" iterations="100" method="MPI" priority="3" />
+
+<buffer size-MB="1600" />
+
+
+</adios-config>

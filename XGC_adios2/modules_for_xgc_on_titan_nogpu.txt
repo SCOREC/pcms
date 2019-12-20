@@ -1,0 +1,8 @@
+module load cray-hdf5-parallel
+module load netcdf
+module load cray-tpsl
+module load cray-petsc
+module load adios
+module load pgi
+
+# module load papi

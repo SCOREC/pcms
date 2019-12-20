@@ -1,0 +1,26 @@
+#include basic makefile definitions
+include defs.mk
+
+PSPLINE=-DPSPLINE -I../ntcc/pspline/MAC/mod
+PSPLINE_LIB=-L../ntcc/pspline/MAC/lib -lpspline -lcdf_dummy -lezcdf -lportlib
+PERFMOD=-DCAM_TIMERS -I../camtimers
+PERFMOD_LIB=-L../camtimers -ltimers
+
+LIB= ${PSPLINE_LIB} ${PERFMOD_LIB}
+#OPT=${FFLAGS} ${FC_FLAGS} ${FCPPFLAGS} ${PSPLINE} ${PERFMOD} 
+
+CMP=${FC}  -g #-C 
+
+XGC_FLAGS = -DUSE_BICUB_MOD -DUSE_ONE_D_I_CUB_MOD -DITER_GRID -DCOL_MIRA_ION -DCOL_MIRA_ELEC -DCAM_TIMERS
+XGC_INCLUDE = ${PSPLINE} ${PERFMOD}
+
+# Set EXTRA_OBJ to $(IMSL_OBJ) for MY_IMSL wrappers, or $(PORT_OBJ) if not using IMSL
+EXTRA_OBJ=$(PORT_OBJ)
+
+# Set MPI_OBJ to $(PAR_OBJ) for parallel code, or $(SER_OBJ) for serial code
+MPI_OBJ=$(PAR_OBJ)
+
+# include basic makefile build rules
+include rules.mk
+
+

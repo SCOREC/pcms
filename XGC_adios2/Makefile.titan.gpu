@@ -1,0 +1,88 @@
+#include basic makefile definitions
+include defs.mk
+
+FC := ftn
+
+#adios - I/O library
+ADIOS_INC=$(shell adios_config -f -c)
+ADIOS_LIB=$(shell adios_config -f -l)
+
+#pspline lib - spline library
+PSPLINE_DIR=/ccs/proj/env003/dazevedo/titan/ntcc_pspline
+PSPLINE_INC=-I$(PSPLINE_DIR)/include -I$(PSPLINE_DIR)/mod 
+PSPLINE_LIB=-L$(PSPLINE_DIR)/lib -lpspline -lezcdf
+
+#performance monitor
+PERFMOD_DIR=/lustre/atlas2/env003/proj-shared/camtimers
+PERFMOD_INC=-I$(PERFMOD_DIR)
+PERFMOD_LIB=-L$(PERFMOD_DIR) -ltimers
+
+NETCDF=-I$(NETCDF_DIR)/include \
+           -L$(NETCDF_DIR) -lnetcdf -lnetcdff 
+
+#reset petsc fc_flags
+#FC_FLAGS = -fast -mp -D__PGI -O3 -Mnodwarf -fpic 
+FC_FLAGS = -fast -mp -D__PGI -fpic 
+
+XGC_FLAGS = \
+		-DPSPLINE \
+		-DUSE_BICUB_MOD \
+		-DUSE_ONE_D_I_CUB_MOD \
+		-DCAM_TIMERS \
+		-DADIOS \
+		-DSOLVERLU -llapack -lblas \
+		-DITER_GRID \
+    -DF_USE_MARKER_DEN \
+		-DF0_TOR_LINEAR \
+		-DF_USE_MARKER_DEN2 \
+		-DV_PERP \
+		-DRK4_ACCURATE_EFIELD \
+		-UPLANE_MAJOR \
+		-DDELTAF_MODE2
+    
+XGC_INCLUDE = ${PSPLINE_INC} ${PERFMOD_INC} ${PETSC_INCLUDE_OPTS} ${ADIOS_INC} -module . -I./
+
+LIB= ${PSPLINE_LIB} ${ADIOS_LIB} ${PETSC_LIB} ${PERFMOD_LIB}   
+
+CMP=${FC} 
+# -C -Mbounds
+
+ACC_FFLAGS= -Mfree -acc -ta=tesla:cc35,nollvm,ptxinfo,maxrregcount:128 -I. -Minfo=accel -Mnostack_arrays  -UUSE_ASYNC
+
+GPU_FFLAGS= ${XGC_FLAGS} -module . ${ACC_FFLAGS} \
+		-Mcuda=7.5,cc35,maxregcount:80,madconst \
+		-nofma -mp \
+		-Minfo=all  \
+		-Mlist \
+		-DUSE_ONE_D_I_CUB_MOD=1 \
+		-DUSE_BICUB_MOD=1 \
+		-DUSE_STATIC=1 \
+		-DUSE_GPU=1 \
+		-DUSE_TR_CHECK=1 \
+		-DUSE_GRID_TEXTURE=1 \
+		-DUSE_PSN_TEXTURE=1 \
+		-DUSE_C_BICUB=1 \
+		-DUSE_THRUST=1 \
+		-UORIGINAL \
+		-DITER_GRID \
+		-UUSE_GPU_ASYNC  \
+		-module . 
+
+GPU_LINK_OPT = ${GPU_FFLAGS}
+
+# Set EXTRA_OBJ to $(IMSL_OBJ) for MY_IMSL wrappers, or $(PORT_OBJ) if not using IMSL
+EXTRA_OBJ=$(PORT_OBJ)
+
+# Set MPI_OBJ to $(PAR_OBJ) for parallel code, or $(SER_OBJ) for serial code
+MPI_OBJ=$(PAR_OBJ)
+
+# include basic makefile build rules
+include rules.mk
+
+cscan.o: cscan.cu
+	  nvcc -c -arch sm_35 --maxrregcount=80 cscan.cu
+csort.o: csort.cu
+	  nvcc -c -arch sm_35 --maxrregcount=80 csort.cu
+cbicub.o: cbicub.cu
+	  nvcc -c -rdc=true -arch sm_35 --maxrregcount=80 cbicub.cu
+

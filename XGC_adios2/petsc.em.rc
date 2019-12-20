@@ -1,0 +1,142 @@
+#
+# turbulence solver & 00 mode solver for FSA (solver_type!=0)
+#
+-s2_ksp_type cg
+-s2_ksp_rtol 1.e-6
+-s2_pc_type gamg
+-s2_pc_hypre_type boomeramg
+-s2_pc_gamg_agg_nsmooths 1
+-s2_pc_gamg_threshold -0.02
+-s2_mg_levels_ksp_type richardson
+-s2_mg_levels_pc_type sor
+-s2_mg_levels_ksp_max_it 2
+-s2_gamg_est_ksp_type cg
+#-s2_pc_gamg_repartition true
+-s2_pc_gamg_mat_partitioning_type parmetis
+-s2_pc_gamg_process_eq_limit 200
+-s2_ksp_converged_reason 
+#-s2_ksp_monitor
+#-s2_ksp_view
+#-s2_ksp_norm_type unpreconditioned
+#-s2_pc_gamg_reuse_interpolation true
+#
+# 00 mode solver for 1 field linear
+#
+-ksp_type cg
+#-pc_type gamg
+-pc_type sor
+-pc_hypre_type boomeramg
+-pc_gamg_agg_nsmooths 1 
+-pc_gamg_threshold -0.02
+-gamg_est_ksp_type cg
+-mg_levels_ksp_type richardson
+-mg_levels_pc_type sor
+-mg_levels_ksp_max_it 2
+-mg_coarse_pc_type svd
+#-pc_gamg_repartition false
+-pc_gamg_mat_partitioning_type parmetis
+-pc_gamg_process_eq_limit 200
+-pc_mg_log
+-ksp_converged_reason 
+#-ksp_monitor
+#-ksp_view
+#
+# mass solver EM explicit
+# 
+-mass_ksp_type cg
+-mass_pc_type sor
+-mass_ksp_converged_reason 
+#
+# TS options
+#
+-adv_ts_type beuler
+-adv_ts_monitor
+#-adv_ts_view
+-adv_ts_max_step 1
+-adv_snes_max_it 1                   # make >> 1 for nonlinear solve
+-adv_snes_lag_preconditioner -1      # make > 0 to update PC
+-adv_snes_lag_jacobian 1000000       # make > 0 for nonlinear Jacobian
+-adv_snes_monitor
+-adv_snes_converged_reason
+-adv_ksp_type fgmres
+-adv_ksp_max_it 20
+-adv_ksp_rtol 1.e-4
+-adv_ksp_norm_type unpreconditioned
+#-adv_ksp_monitor_true_residual
+-adv_ksp_monitor
+-adv_ksp_converged_reason
+-adv_pc_type fieldsplit
+#-adv_ksp_compute_singularvalues
+-adv_pc_fieldsplit_type multiplicative
+#-adv_pc_fieldsplit_type schur
+#-adv_pc_fieldsplit_schur_fact_type full
+#-adv_pc_fieldsplit_schur_precondition selfp
+#-adv_pc_fieldsplit_schur_precondition full
+#
+# multiplicative vars - 3 field needs AMG for n1 & apar
+#
+-adv_fieldsplit_n1_ksp_type cg
+-adv_fieldsplit_n1_pc_type sor
+#-adv_fieldsplit_n1_ksp_monitor
+-adv_fieldsplit_n1_ksp_converged_reason
+#-adv_fieldsplit_n1_ksp_view
+#
+-adv_fieldsplit_apar_ksp_type cg
+-adv_fieldsplit_apar_pc_type sor
+#-adv_fieldsplit_apar_ksp_monitor
+-adv_fieldsplit_apar_ksp_converged_reason
+#
+-adv_fieldsplit_phi_ksp_type cg
+-adv_fieldsplit_phi_pc_type gamg
+-adv_fieldsplit_phi_pc_gamg_agg_nsmooths 1 
+-adv_fieldsplit_phi_gamg_est_ksp_type cg
+-adv_fieldsplit_phi_mg_levels_ksp_type richardson 
+-adv_fieldsplit_phi_mg_levels_pc_type sor
+-adv_fieldsplit_phi_mg_levels_ksp_max_it 2
+#-adv_fieldsplit_phi_ksp_monitor
+-adv_fieldsplit_phi_ksp_converged_reason
+-adv_fieldsplit_phi_pc_mg_log
+#
+-adv_fieldsplit_je_ksp_type cg
+-adv_fieldsplit_je_pc_type sor
+#-adv_fieldsplit_je_ksp_monitor
+-adv_fieldsplit_je_ksp_converged_reason
+#
+# XGC variable
+#
+-adv_xgc_row_permute 1,2,3,4
+#
+# general PETSc parameters
+#
+#-info
+#-info_exclude null,vec,vecscatter
+#-help
+-malloc_debug
+-malloc_dump
+#-fp_trap
+#-mat_view ::ascii_matlab
+#-vec_view :x.m:ascii_matlab
+-mat_ascii_output_large
+#-mat_view ascii::ascii_info
+-options_left 
+-log_summary
+-mat_partitioning_type parmetis
+#-mat_partitioning_view
+#-on_error_attach_debugger /usr/bin/gdb
+#-start_in_debugger /usr/bin/gdb
+#
+# schur vars
+#
+-adv_fieldsplit_aux_ksp_max_it 5
+-adv_fieldsplit_dt_pc_type lu
+-adv_fieldsplit_aux_pc_type lu
+#-adv_fieldsplit_dt_pc_factor_mat_solver_package mumps
+#-adv_fieldsplit_aux_pc_factor_mat_solver_package mumps
+-adv_fieldsplit_dt_pc_factor_mat_solver_package superlu_dist
+-adv_fieldsplit_aux_pc_factor_mat_solver_package superlu_dist
+#-adv_fieldsplit_dt_ksp_converged_reason
+#-adv_fieldsplit_dt_ksp_monitor
+-adv_fieldsplit_aux_ksp_converged_reason
+-adv_fieldsplit_aux_ksp_monitor
+-adv_fieldsplit_dt_ksp_type preonly
+-adv_fieldsplit_aux_ksp_type preonly

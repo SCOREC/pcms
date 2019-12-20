@@ -1,0 +1,371 @@
+diff --git a/XGC1_3/adioscfg.xml b/XGC1_3/adioscfg.xml
+index 844de17..8dbbf3e 100644
+--- a/XGC1_3/adioscfg.xml
++++ b/XGC1_3/adioscfg.xml
+@@ -174,6 +174,8 @@
+   <var dimensions="nnodes" gwrite="grid%node_vol" name="node_vol" type="real*8" />
+   <var dimensions="nnodes" name="node_vol_ff0" type="real*8" />
+   <var dimensions="nnodes" name="node_vol_ff1" type="real*8" />
++  <var dimensions="nodes_per_elem,n_n,2" gwrite="psn%ff_hdp_p" name="ff_hdp_p" type="real*8"/>
++  <var dimensions="nodes_per_elem,n_n,2" gwrite="psn%ff_1dp_p" name="ff_1dp_p" type="real*8"/>
+   <var dimensions="nnodes" name="node_vol_nearest" type="real*8" />
+   
+   <var dimensions="n_geo" name="rmin" type="real*8" />
+@@ -849,13 +851,13 @@
+   </global-bounds>
+ 
+   <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+-     <var dimensions="1,nnode" name="i_wsum" type="real*8" />
++     <var dimensions="1,nnode" name="iden_real" type="real*8" />
+   </global-bounds>
+   <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+-     <var dimensions="1,nnode" name="i_vp" type="real*8" />
++     <var dimensions="1,nnode" name="itemp_real" type="real*8" />
+   </global-bounds>
+   <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+-     <var dimensions="1,nnode" name="i_temp" type="real*8" />
++     <var dimensions="1,nnode" name="iden_nogyro" type="real*8" />
+   </global-bounds>
+ 
+   <global-bounds dimensions="nphi,nnode" offsets="iphi,0">
+diff --git a/XGC1_3/diagnosis.F90 b/XGC1_3/diagnosis.F90
+index 5cd2ff0..a37c813 100644
+--- a/XGC1_3/diagnosis.F90
++++ b/XGC1_3/diagnosis.F90
+@@ -1268,11 +1268,11 @@ subroutine diag_3d(istep,grid,psn)
+            if(diag_3d_more) then
+               allocate(tmp(grid%nnode,3))
+               tmp(:,1)=diag_3d_add(1,:,1)
+-              ADIOS_WRITE_LBL(buf_id,'i_wsum',tmp(:,1),err)
++              ADIOS_WRITE_LBL(buf_id,'iden_real',tmp(:,1),err)
+               tmp(:,2)=diag_3d_add(2,:,1)
+-              ADIOS_WRITE_LBL(buf_id,'i_vp',tmp(:,2),err)
++              ADIOS_WRITE_LBL(buf_id,'itemp_real',tmp(:,2),err)
+               tmp(:,3)=diag_3d_add(3,:,1)
+-              ADIOS_WRITE_LBL(buf_id,'i_temp',tmp(:,3),err)
++              ADIOS_WRITE_LBL(buf_id,'iden_nogyro',tmp(:,3),err)
+            endif
+            !ADIOS_WRITE_LBL(buf_id,'dpot_real',psn%dpot_real(:,1),err)
+ 
+@@ -1830,6 +1830,96 @@ contains
+ end subroutine
+ 
+ 
++!subroutine diag_3d_additional(grid,psn,sp)
++!   use sml_module
++!   use grid_class
++!   use psn_class
++!   use ptl_module
++!   use diag_module
++!   use omp_module
++!   implicit none
++!   include 'mpif.h'
++!   type(grid_type) :: grid
++!   type(psn_type) :: psn
++!   type(species_type) :: sp
++!   !
++!   real (8), allocatable :: var(:,:,:)
++!   integer :: ith, i_beg(sml_nthreads), i_end(sml_nthreads), jth
++!   integer :: i, j, node
++!   real (8) :: b, v(diag_3d_nvar), particle_weight, wp
++!   integer :: ierr
++!   real (8), external :: b_interpol
++
++
++!   if(.not. allocated(diag_3d_add)) then
++!       allocate(diag_3d_add(diag_3d_nvar,grid%nnode,ptl_isp:ptl_nsp))
++!    endif
++
++!    allocate(var(diag_3d_nvar,grid%nnode,sml_nthreads))
++!    var=0D0
++
++!    call split_indices(sp%num, sml_nthreads, i_beg, i_end)
++   
++! !$OMP PARALLEL DO &
++! !$OMP PRIVATE( ITH, I, B, V, PARTICLE_WEIGHT, J, NODE, &
++! !$OMP          WP)
++!     do ith=1, sml_nthreads
++!        do i=i_beg(ith),i_end(ith)
++!          if(sp%ptl(i)%gid<=0) cycle
++!          if((sp%tr_save(i)) <= 0) cycle
++
++!          b=b_interpol(sp%ptl(i)%ph(pir),sp%ptl(i)%ph(piz),sp%ptl(i)%ph(pip))
++
++!          v(1)=1D0
++!          v(2)=ptl_c_m(sp%type) * sp%ptl(i)%ph(pirho) * b  ! parallel v
++!          v(3)=0.5D0*ptl_mass(sp%type)*v(1)*v(1)  + sp%ptl(i)%ct(pim)*b  ! energy
++
++!          ! particle weight
++!          if(ptl_deltaf_sp(sp%type)) then
++!            particle_weight=sp%ptl(i)%ph(piw1)*sp%ptl(i)%ct(piw0)
++!          else
++!            particle_weight=sp%ptl(i)%ct(piw0) ! for full f simulation only
++!          endif
++
++!          do j=1, 3
++!               node=grid%nd(j,sp%tr_save(i))
++!               wp=sp%p_save(j,i)
++
++!               var(:,node,ith)=var(:,node,ith) + v*particle_weight*wp
++!          enddo
++!        enddo
++!     enddo
++
++!     call split_indices(grid%nnode, sml_nthreads, i_beg, i_end)
++
++! !$OMP PARALLEL DO &
++! !$OMP PRIVATE( JTH, ITH, NODE)
++!     do jth=1, sml_nthreads
++!      if(sml_nthreads >= 2) then
++!        do ith=2, sml_nthreads
++!            do node=i_beg(jth), i_end(jth)
++!               var(:,node,1)=var(:,node,1)+var(:,node,ith)
++!            enddo
++!        enddo
++!      endif
++!     enddo
++
++!    ! mpi_reduce of var(:,:,1) to diag_3d_ad -- plane pe
++!     call mpi_reduce(var(:,:,1),diag_3d_add(:,:,sp%type),diag_3d_nvar*grid%nnode,MPI_REAL8,mpi_sum,0,sml_plane_comm,ierr)
++!     if(sml_plane_mype==0) then
++! !$OMP PARALLEL DO &
++! !$OMP PRIVATE( JTH, NODE)
++!        do jth=1, sml_nthreads
++!           do node=i_beg(jth), i_end(jth)
++!               diag_3d_add(2,node,sp%type)=diag_3d_add(2,node,sp%type)/diag_3d_add(1,node,sp%type)
++!               diag_3d_add(3,node,sp%type)=diag_3d_add(3,node,sp%type)/diag_3d_add(1,node,sp%type)
++!           enddo
++!        enddo
++!     endif
++!
++!
++! end subroutine
++
+ subroutine diag_3d_additional(grid,psn,sp)
+   use sml_module
+   use grid_class
+@@ -1837,86 +1927,186 @@ subroutine diag_3d_additional(grid,psn,sp)
+   use ptl_module
+   use diag_module
+   use omp_module
++  use perf_monitor
+   implicit none
+   include 'mpif.h'
+   type(grid_type) :: grid
+   type(psn_type) :: psn
+   type(species_type) :: sp
+   !
+-  real (8), allocatable :: var(:,:,:)
++  real (8), allocatable :: var(:,:,:,:,:)
+   integer :: ith, i_beg(sml_nthreads), i_end(sml_nthreads), jth
+-  integer :: i, j, node
+-  real (8) :: b, v(diag_3d_nvar), particle_weight, wp
+-  integer :: ierr
++  integer :: i, j, k, node, dir, irho
++  real (8) :: b, v(diag_3d_nvar), particle_weight, wp, &
++               phi, wphi(0:1), wrho(0:1)
++  integer :: nn, ierr
+   real (8), external :: b_interpol
+-
++  ! MPI stuff
++  integer :: idest, isendtag, isource, irecvtag
++  integer, dimension(MPI_STATUS_SIZE) :: istatus
+ 
+   if(.not. allocated(diag_3d_add)) then
+       allocate(diag_3d_add(diag_3d_nvar,grid%nnode,ptl_isp:ptl_nsp))
+    endif
+ 
+-   allocate(var(diag_3d_nvar,grid%nnode,sml_nthreads))
++   allocate(var(diag_3d_nvar,grid%nnode,0:1,0:grid%nrho,max(sml_nthreads,2)))
+    var=0D0
+ 
++   call t_startf("DIAG_3D_PART_COLL")
++
+    call split_indices(sp%num, sml_nthreads, i_beg, i_end)
+-   
++
+ !$OMP PARALLEL DO &
+-!$OMP PRIVATE( ITH, I, B, V, PARTICLE_WEIGHT, J, NODE, &
+-!$OMP          WP)
+-    do ith=1, sml_nthreads
+-       do i=i_beg(ith),i_end(ith)
+-         if(sp%ptl(i)%gid<=0) cycle
+-         if((sp%tr_save(i)) <= 0) cycle
+-
+-         b=b_interpol(sp%ptl(i)%ph(pir),sp%ptl(i)%ph(piz),sp%ptl(i)%ph(pip))
+-
+-         v(1)=1D0
+-         v(2)=ptl_c_m(sp%type) * sp%ptl(i)%ph(pirho) * b  ! parallel v
+-         v(3)=0.5D0*ptl_mass(sp%type)*v(1)*v(1)  + sp%ptl(i)%ct(pim)*b  ! energy
+-
+-         ! particle weight
+-         if(ptl_deltaf_sp(sp%type)) then
+-           particle_weight=sp%ptl(i)%ph(piw1)*sp%ptl(i)%ct(piw0)
+-         else
+-           particle_weight=sp%ptl(i)%ct(piw0) ! for full f simulation only
+-         endif
++!$OMP PRIVATE( ITH, DIR, I, J, K, B, V, PARTICLE_WEIGHT, NODE, &
++!$OMP          WP, PHI, WPHI, WRHO, IRHO)
++   do ith=1, sml_nthreads
++     do i=i_beg(ith),i_end(ith)
++       if(sp%ptl(i)%gid<=0) cycle
++       if((sp%tr_save(i)) <= 0) cycle
++
++       phi=modulo(sp%ptl(i)%ph(pip),grid%delta_phi)
++       irho=floor(sp%rhoi(i)/grid%drho)
++       irho=min(irho,grid%nrho-1)
++       wp=min(sp%rhoi(i)/grid%drho-irho,1d0)
++       wrho= (/ 1d0-wp, wp /)
++       b=b_interpol(sp%ptl(i)%ph(pir),sp%ptl(i)%ph(piz),sp%ptl(i)%ph(pip))
++       wp=phi/grid%delta_phi
++       wphi= (/ 1d0-wp, wp /)
++  ! density
++       v(1)=1D0
++  ! energy density
++       v(2)=ptl_c2_2m(sp%type)*(b*sp%ptl(i)%ph(pirho))**2+sp%ptl(i)%ct(pim)*b
++
++       ! particle weight
++       if(ptl_deltaf_sp(sp%type)) then
++         particle_weight=sp%ptl(i)%ph(piw1)*sp%ptl(i)%ct(piw0)
++       else
++         particle_weight=sp%ptl(i)%ct(piw0) ! for full f simulation only
++       endif
+ 
++       do dir=0,1
+          do j=1, 3
+-              node=grid%nd(j,sp%tr_save(i))
+-              wp=sp%p_save(j,i)
+-
+-              var(:,node,ith)=var(:,node,ith) + v*particle_weight*wp
++           node=grid%nd(j,sp%tr_save(i))
++           v(3)=psn%pot_rho_ff(dir,0,node)
++           do k=0,1
++             wp=sp%p_save(j,i)*wphi(dir)*wrho(k)/grid%node_vol_ff(node,dir)
++             var(:,node,dir,irho+k,ith)=var(:,node,dir,irho+k,ith)+v*particle_weight*wp
++           enddo
+          enddo
+        enddo
+-    enddo
++     enddo
++   enddo
+ 
+-    call split_indices(grid%nnode, sml_nthreads, i_beg, i_end)
++   call split_indices(grid%nnode, sml_nthreads, i_beg, i_end)
+ 
+ !$OMP PARALLEL DO &
+ !$OMP PRIVATE( JTH, ITH, NODE)
+     do jth=1, sml_nthreads
+-     if(sml_nthreads >= 2) then
+        do ith=2, sml_nthreads
+            do node=i_beg(jth), i_end(jth)
+-              var(:,node,1)=var(:,node,1)+var(:,node,ith)
++              var(:,node,:,:,1)=var(:,node,:,:,1)+var(:,node,:,:,ith)
+            enddo
+        enddo
+-     endif
+     enddo
+ 
+-   ! mpi_reduce of var(:,:,1) to diag_3d_ad -- plane pe
+-    call mpi_reduce(var(:,:,1),diag_3d_add(:,:,sp%type),diag_3d_nvar*grid%nnode,MPI_REAL8,mpi_sum,0,sml_plane_comm,ierr)
++   call t_stopf("DIAG_3D_PART_COLL")
++
++   call t_startf("DIAG_3D_COMM")
++
++   nn=grid%nnode*diag_3d_nvar
++   do dir=0,1
++     do irho=0,grid%nrho
++       ith=max((irho-1)*2+dir,0)
++       call MPI_reduce(var(:,:,dir,irho,1),var(:,:,dir,irho,2),nn, &
++            MPI_REAL8,MPI_SUM,ith,SML_PLANE_COMM,ierr)
++     enddo
++   enddo
++
++   call t_stopf("DIAG_3D_COMM")
++
++   call t_startf("DIAG_3D_GYROFF")
++
++    do j=1,diag_3d_nvar
++      do k=0,grid%nrho
++        do dir=0,1
++          if(sml_plane_mype==max(0,(k-1)*2)+dir) then
++            if(k>0) then
++              call mat_mult(psn%gyro_avg_mat,var(j,:,dir,k,2),var(j,:,dir,k,1))
++            else
++              ! here sml_plane_mype==1 doesn't do anything
++              var(j,:,dir,k,1)=var(j,:,dir,k,2)
++            endif
++          endif
++        enddo
++      enddo
++    enddo
++
++   call t_stopf("DIAG_3D_GYROFF")
++
++   call t_startf("DIAG_3D_COMM")
++
++    if(sml_plane_mype/=0) then
++       if(sml_plane_mype<2*grid%nrho) then
++         isendtag=sml_plane_mype
++         irho=sml_plane_mype/2+1
++	 dir=mod(sml_plane_mype,2)
++         idest=0
++         call MPI_send(var(:,:,dir,irho,1),nn,MPI_REAL8,idest,isendtag,SML_PLANE_COMM,ierr)
++       endif
++    else ! sml_plane_mype==0
++       do isource=1,2*grid%nrho-1
++         irecvtag=isource
++         irho=isource/2+1
++	 dir=mod(isource,2)
++         call MPI_recv(var(:,:,dir,irho,1),nn,MPI_REAL8,isource,irecvtag,SML_PLANE_COMM,istatus,ierr)
++       enddo
++    endif
++
++!    I had an OMP loop here, but why bother?
++
++    if(sml_plane_mype==0) then
++      var(:,:,:,0,1:2)=sum(var(:,:,:,:,1:2),dim=4)
++      do j=1,diag_3d_nvar
++        call cnvt_grid_ff2real(grid,psn%ff_hdp_tr,psn%ff_hdp_p,var(j,:,:,0,1),var(j,:,:,1,1))
++        call cnvt_grid_ff2real(grid,psn%ff_hdp_tr,psn%ff_hdp_p,var(j,:,:,0,2),var(j,:,:,1,2))
++      enddo
++    endif
++    
++    ! mpi_reduce of var(:,:,1) to diag_3d_var
+     if(sml_plane_mype==0) then
++     nn=grid%nnode*diag_3d_nvar
++     idest=mod(sml_intpl_mype-1+sml_intpl_totalpe,sml_intpl_totalpe)
++     isendtag=sml_intpl_mype
++
++     isource=mod(sml_intpl_mype+1,sml_intpl_totalpe)
++     irecvtag=isource
++     ! this is for gyroaveraged
++     call mpi_sendrecv(var(:,:,0,1,1),nn,MPI_REAL8,  idest,isendtag, &
++          var(:,:,1,0,1),nn,MPI_REAL8,isource,irecvtag, &
++          sml_intpl_comm,istatus,ierr)
++     ! this is for gyrocentered
++     call mpi_sendrecv(var(:,:,0,1,2),nn,MPI_REAL8,  idest,isendtag, &
++          var(:,:,1,0,2),nn,MPI_REAL8,isource,irecvtag, &
++          sml_intpl_comm,istatus,ierr)
++
++
++     diag_3d_add(1:2,:,sp%type)=0.5d0*(var(1:2,:,1,0,1)+var(1:2,:,1,1,1))
++     diag_3d_add(3,:,sp%type)=0.5d0*(var(1,:,1,0,2)+var(1,:,1,1,2))
++
+ !$OMP PARALLEL DO &
+ !$OMP PRIVATE( JTH, NODE)
+        do jth=1, sml_nthreads
+           do node=i_beg(jth), i_end(jth)
+               diag_3d_add(2,node,sp%type)=diag_3d_add(2,node,sp%type)/diag_3d_add(1,node,sp%type)
+-              diag_3d_add(3,node,sp%type)=diag_3d_add(3,node,sp%type)/diag_3d_add(1,node,sp%type)
++               ! it's density now
++!              diag_3d_add(3,node,sp%type)=diag_3d_add(3,node,sp%type)/diag_3d_add(1,node,sp%type)
+           enddo
+        enddo
+     endif
+ 
++   call t_stopf("DIAG_3D_COMM")
++
++   deallocate(var)
+    !
+ end subroutine
+ 

@@ -1,0 +1,92 @@
+# definitions for the PGI compiler family
+
+MPFC ?= mpipgf90
+MPCC ?= mpipgcc
+
+cmd=$(shell basename "`which $(MPFC)`")
+ifeq ($(cmd),)
+MPFC = mpipf90
+MPCC = mpipcc
+endif
+
+FC ?= pgf90
+CC ?= pgcc
+
+ifeq ($(USE_PERFLIB),scalasca)
+ MPFC := scalasca -instrument -user $(MPFC)
+ MPCC := scalasca -instrument -user $(MPCC)
+#	FFLAGS += -fpp -Wp,-P
+endif
+ifeq ($(USE_PERFLIB),ompp)
+# the preprocessor must not write #line directives
+# and also the quotes in the SVN statement is switched off
+ MPFC := kinst-ompp $(MPFC)
+ FC := kinst-ompp $(FC)
+#	FFLAGS += -fpp -Wp,-P
+endif
+ifeq ($(USE_PERFLIB),perf)
+ifeq ($(OPENMP),yes)
+ LIBS += -L$(PERFLIB_HOME)/lib -looperf_mt -Wl,-rpath,$(PERFLIB_HOME)/lib
+else
+ LIBS += -L$(PERFLIB_HOME)/lib -looperf -Wl,-rpath,$(PERFLIB_HOME)/lib
+endif
+ PREPROC += -DWITHPERF=1
+ INCPATHS += -I$(PERFLIB_HOME)/include
+endif
+
+FFLAGS += -Kieee -Mi4
+
+SET_F2003_STANDARD = -Mallocatable=03 -Mstandard
+PREPROC_FLAG = -Mpreprocess
+ONLY_PREPROCESS=-E
+
+DEBUG_TRACEBACK = -traceback
+DEBUG_FFLAGS = $(DEBUG_TRACEBACK) -g -C -Mchkptr -Mchkfpstk
+DEBUG_CFLAGS = 
+
+ifeq ($(CHIP),Core2)
+ CHIP_OPT = -tp core2
+endif
+ifeq ($(CHIP),Nehalem)
+ CHIP_OPT = -tp nehalem
+endif
+ifeq ($(CHIP),SandyBridge)
+ CHIP_OPT = -tp sandybridge
+endif
+ifeq ($(CHIP),IvyBridge)
+ CHIP_OPT = -tp sandybridge
+endif
+ifeq ($(CHIP),Magny-Cours)
+#according to http://sites.amd.com/es/Documents/CompilerOptQuickRef-61004100.pdf
+ CHIP_OPT = -tp istanbul-64
+endif
+ifeq ($(CHIP),Power8)
+ CHIP_OPT = -tp power8
+endif
+ifeq ($(CHIP),Phi)
+ CHIP_OPT =
+ MKL_ARCH = mic
+endif
+
+OPTLEVEL ?= 4
+OPT_FFLAGS = -O$(OPTLEVEL) $(CHIP_OPT) -fastsse -Mnobounds -Mcache_align -Mvect
+PRODRUN_FFLAGS = $(OPT_FFLAGS) -Mipa=fast,inline:3
+
+OPENMP_FFLAGS = -mp
+
+SYMBOL_FFLAGS += -g 
+SYMBOL_CFLAGS += -g
+
+REPORT_FFLAGS = -Minfo
+
+#DOUBLE_PRECISION_FFLAGS = -r8 -Mr8 –Mr8intrinsics gives problems with linker
+DOUBLE_PRECISION_FFLAGS = -r8
+DOUBLE_PRECISION_PREPREC = -D'erf=derf'
+MODDIR_FFLAGS = -module $(OBJDIR)
+
+F2003_MISSING=
+
+#default optimization creates problems with perf_vec(4)=3 in standard
+#test 3 for n_procs = (1,1,8,1,1,1); hence reduced opt. level
+NOOPTLIST += collisions.o
+NOOPTFLAGS = -Kieee $(MODDIR_FFLAGS) -O1 $(DOUBLE_PRECISION_FFLAGS)

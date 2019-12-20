@@ -1,0 +1,37 @@
+#include basic makefile definitions
+include defs_new_petsc.mk
+
+#PSPLINE_MOD=-I${PSPLINE_DIR}/mod
+#PSPLINE_LIB=-L${PSPLINE_DIR}/lib -lpspline -lportlib -lezcdf
+PSPLINE_MOD=${PSPLINE_INCLUDE_OPTS}
+
+#Perf. monitor
+PERFMOD=-L../camtimers -I../camtimers -ltimers
+
+#PETSc
+##PETSC_DIR=/autofs/na3_home1/adams/petsc
+##PETSC_ARCH=arch-sith-opt
+include ${PETSC_DIR}/conf/variables
+#PETSC_INC=-I${PETSC_DIR}/${PETSC_ARCH}/include
+PETSC_INC=-I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
+#PETSC_LIB=-L${PETSC_DIR}/${PETSC_ARCH}/lib -lpetsc -lHYPRE
+PETSC_LIB=${PETSC_WITH_EXTERNAL_LIB}
+
+#ADIOS_FLIB = -L${ADIOSHOME}/lib -ladios -ladiosf -L${HDF5HOME}/lib -lhdf5  -L${MXMLHOME}/lib -lmxml -lz
+
+LIB= ${PSPLINE_LIB} ${ADIOS_FLIB} ${PERFMOD} ${PETSC_LIB} ${NETCDF_FLIB}
+
+OPT=${FFLAGS} ${FC_FLAGS} ${FCPPFLAGS} ${PSPLINE_MOD} ${PERFMOD} ${PETSC_INC}
+
+CMP=mpif90  -mp -DPSPLINE -DADIOS -DUSE_BICUB_MOD -DUSE_ONE_D_I_CUB_MOD -DCAM_TIMERS -g  -DUSE_OLD_READ_INPUT   -DUSE_NEW_PETSC_SOLVER  #-C
+
+
+# Set EXTRA_OBJ to $(IMSL_OBJ) for MY_IMSL wrappers, or $(PORT_OBJ) if not using IMSL
+EXTRA_OBJ=$(PORT_OBJ)
+
+# Set MPI_OBJ to $(PAR_OBJ) for parallel code, or $(SER_OBJ) for serial code
+MPI_OBJ=$(PAR_OBJ)
+
+# include basic makefile build rules
+include rules.mk
+

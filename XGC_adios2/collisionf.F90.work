@@ -1,0 +1,2242 @@
+! collision in f_grid
+! From E.Yoon's collision3
+#include <petscversion.h>
+#ifdef USE_ASYNC
+#define ASYNC(istream)  async(istream)
+#else
+#define ASYNC(istream)  
+#endif
+
+module col_f_module
+
+! ------------------------
+! number of OpenMP threads used in the inner nested level
+! ------------------------
+  integer :: col_f_nthreads
+
+  integer :: col_f_nvr, col_f_nvz      ! The number of "GRIDS" in vr and vz, respectively
+  integer :: col_f_ntotal_v            ! set in col_f_setup
+  real (kind=8) :: col_f_dt            ! set in col_f_setup
+  integer, allocatable, dimension(:,:) :: index_map_LU
+  integer, allocatable, dimension(:) :: LU_cvalues, LU_rowindx, LU_colptr
+  integer :: LU_n, LU_nnz, LU_nrhs, LU_ldb
+
+  type col_f_core_type
+      real (kind=8) :: numeric_vth2, numeric_T, numeric_Teq, numeric_vtheq2
+      real (kind=8) :: mass, mesh_dr, mesh_dz, dens, ens, mom  !dr : dv_perp, dz: dv_para
+      real (kind=8), allocatable, dimension(:) :: mesh_r, mesh_r_half, mesh_z, mesh_z_half, &
+                                                  local_center_volume, vol
+      real (kind=8), allocatable, dimension(:,:) :: delta_r, delta_z
+  end type col_f_core_type
+
+
+  !PETSC solver
+  ! NOT used when defined(SOLVERLU)
+  integer, private, parameter :: MAX_THREADS=32
+#ifdef SOLVERLU
+
+! ------------------------------------------------------------
+! set use_superlu = .true. to use sparse direct SuperLU solver
+! set use_superlu = .false. to use lapack band solver
+! ------------------------------------------------------------
+  logical, parameter :: use_superlu = .false.
+
+  integer ::  col_f_mat_list(MAX_THREADS)
+  integer ::  col_f_vecb_list(MAX_THREADS)
+  integer ::  col_f_vecx_list(MAX_THREADS)
+  integer ::  col_f_ksp_list(MAX_THREADS)
+
+#else
+
+#if PETSC_VERSION_LT(3,6,0)
+#include <finclude/petscsysdef.h>
+#include <finclude/petscsnesdef.h>
+#include <finclude/petscdmdef.h>
+#else
+#include <petsc/finclude/petscsysdef.h>
+#include <petsc/finclude/petscsnesdef.h>
+#include <petsc/finclude/petscdmdef.h>
+#endif
+
+  Mat ::  col_f_mat_list(MAX_THREADS)
+  Vec ::  col_f_vecb_list(MAX_THREADS)
+  Vec ::  col_f_vecx_list(MAX_THREADS)
+  KSP ::  col_f_ksp_list(MAX_THREADS)
+#endif
+
+!rh LU_colindx is never used anywhere in the code.
+!rh   integer, allocatable :: LU_colindx(:)
+
+
+#ifdef SOLVERLU
+contains
+#include "bsolver.F90"
+#endif
+
+end module col_f_module
+
+
+
+subroutine f_collision(grid)
+  use sml_module
+  use grid_class
+  use f0_module
+  use col_f_module
+  use perf_monitor
+  implicit none
+  type(grid_type) :: grid
+  ! ES : below 4 lines are moved to col_f_setup
+  !col_f_nvr=f0_nmu+1  ! index from 0 to f0_nmu  in f0_module
+  !col_f_nvz=f0_nvp*2 + 1 ! index from -f0_nvp to f0_nvp in f0_module
+  !col_f_ntotal_v = col_f_nvr * col_f_nvz
+  !col_f_dt = sml_dt*sml_f_source_period ! delta time for collision operation
+
+  ! multi-species collision with electron on
+  if(sml_electron_on) then
+     call t_startf("F_COL_MULTI_SP")
+     call f_collision_multi_sp(grid,0,1)
+     call t_stopf("F_COL_MULTI_SP")
+  else
+     call t_startf("F_COL_SINGLE_SP")
+     call f_collision_single_sp(grid,1)
+     call t_stopf("F_COL_SINGLE_SP")
+  endif
+
+
+end subroutine f_collision
+
+subroutine f_collision_single_sp_body(node_in, grid, st, df, col_f_mat,   &
+                                      col_f_ksp,col_f_vecb,col_f_vecx)
+  use sml_module
+  use grid_class
+  use col_f_module
+  use f0_module
+  use ptl_module
+  use eq_module, only : eq_axis_b, eq_x_psi, eq_x_z
+  use col_module,only : col_pin, col_pout, col_f_start
+  use perf_monitor
+  use omp_module, only: split_indices
+  implicit none
+#ifdef SOLVERLU
+  integer :: col_f_mat
+  integer :: col_f_ksp
+  integer :: col_f_vecb
+  integer :: col_f_vecx
+#else
+#if PETSC_VERSION_LT(3,6,0)
+#include <finclude/petscsys.h>
+#include <finclude/petscvec.h>
+#include <finclude/petscmat.h>
+#include <finclude/petscksp.h>
+#include <finclude/petscpc.h>
+#else
+#include <petsc/finclude/petscsys.h>
+#include <petsc/finclude/petscvec.h>
+#include <petsc/finclude/petscmat.h>
+#include <petsc/finclude/petscksp.h>
+#include <petsc/finclude/petscpc.h>
+#endif
+
+  Mat :: col_f_mat
+  KSP :: col_f_ksp
+  Vec :: col_f_vecb
+  Vec :: col_f_vecx
+#endif
+
+  type(grid_type) :: grid
+  integer, intent(in) :: node_in
+  integer, intent(in) :: st ! sp%type of ion - specise for collision
+  real (8), intent(out), dimension(0:f0_nmu,-f0_nvp:f0_nvp) :: df
+  real (8), dimension(0:f0_nmu,-f0_nvp:f0_nvp) :: df_corr
+  integer :: node, imu, ivp
+  real (8) :: den, ti_ev, te_ev, massi, masse, gammac(4)
+  real (8) :: f(0:f0_nmu,-f0_nvp:f0_nvp), vol(0:f0_nmu)
+  real (8) :: vth, lz, deltay, deltax
+  integer :: vpic_ierr, negative_count
+  real (8) :: conv_factor
+  real (8) :: smu_n, pi4bb0vth3_dd
+
+#ifdef _OPENACC
+    integer :: ithread,istream
+!$  integer, external :: omp_get_thread_num
+#endif
+
+#ifdef _OPENACC
+    ithread = 0
+!$  ithread = omp_get_thread_num()
+    istream = ithread + 1
+#endif
+  df=0.D0
+  df_corr=0D0
+
+  node=node_in
+
+  ! check simulation range
+  if(col_pin > grid%psi(node) .or. col_pout < grid%psi(node) &
+     .or. (grid%x(2,node) .lt. eq_x_z .and. grid%psi(node) .lt. eq_x_psi) &
+     .or. grid%rgn(node)==grid_rgn_wall ) return
+
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+  if (node .gt. 1) return
+#endif
+
+  ti_ev=f0_t_ev(node,st)
+  !te_ev=psn%tempe_ev(node)
+  te_ev=ti_ev ! dummay variable for single species
+  den=f0_den(node)
+  massi=ptl_mass(1)
+  !masse=ptl_mass(0)
+  masse=massi  ! dummy variable for single species
+
+  ! 1. get lambda gamma
+!  call t_startf("COL_F_LAMBDA_GAMMA")
+  call col_f_lambda_gamma(den,ti_ev,te_ev,massi,masse,gammac)
+!  call t_stopf( "COL_F_LAMBDA_GAMMA")
+
+  ! 2. perform collision
+  !*** this routine work only when f0_imu1==0 and f0_imu2==f0_nmu.
+  !***** need mu decomposition
+
+  !rh For the origin of the conversion factors, see my note for different v-space grids
+
+  conv_factor=1.D0/sqrt(ti_ev*(sml_2pi * sml_e_charge / massi)**3)
+
+#ifdef COL_F_NAN_CHECK
+  if(.not. (f0_f(2,node,1,st) > 1D0 .or. f0_f(2, node, 1, st) < 2D0) ) then
+     print *, sml_mype, '] NAN FOUND f0_f ', f0_f(2, node,1, st), node, conv_factor
+     stop
+  endif
+#endif
+
+  ! prepare local f
+  negative_count=0
+  do imu=0, f0_nmu
+     if(imu==0) then
+        smu_n=f0_dsmu/f0_mu0_factor
+     else
+        smu_n=f0_dsmu*real(imu,8)
+     endif
+
+     do ivp=-f0_nvp,f0_nvp
+       if (f0_f(ivp,node,imu,st) .lt. 0D0) then
+         negative_count=negative_count+1
+       endif
+     enddo
+
+#ifdef COL_F_REJECT_NEGATIVE
+     if (negative_count .ge. 0.3*real((f0_nmu+1)*(2*f0_nvp+1),8)) then
+       print *, 'Collision cell rejected; too many negative values: ', node, negative_count
+       df=0D0
+       return
+     endif
+#endif
+
+     ! Local f with basic correction:
+     ! Simply cut off all negative values
+     f(imu,:)=max(f0_f(:,node,imu,st),0.D0)*conv_factor/smu_n
+
+     if (f0_f_correction) then
+       !rh Apply an additional correction to make f zero
+       df_corr(imu,:)=max(f0_f(:,node,imu,st),0.D0)-f0_f(:,node,imu,st)
+     endif
+
+  enddo
+
+  vth=sqrt(ti_ev*sml_ev2j/massi)       !  SI, v_parallel
+     ! The variable name is a bad choice for v_perp grid, but can be modified later
+  pi4bb0vth3_dd=sml_2pi*vth*vth*vth*f0_dsmu*f0_dvp
+
+  !prepare phase space volume
+  smu_n=f0_dsmu/f0_mu0_factor
+  vol(0)=0.5D0*pi4bb0vth3_dd*smu_n
+
+  smu_n=f0_dsmu*(real(f0_nmu,8)-1D0/f0_mu0_factor) !rh imu or f0_nmu???
+  vol(f0_nmu)=0.5D0*pi4bb0vth3_dd*smu_n
+
+  do imu=0+1, f0_nmu-1
+     smu_n=f0_dsmu*real(imu,8)
+     vol(imu)=pi4bb0vth3_dd*smu_n
+  enddo
+
+
+  !v-grid information
+
+  lz=-f0_vp_max*vth ! minimum
+  deltay = f0_dsmu*vth
+  deltax = f0_dvp *vth                  ! parallel spacing - "ES : please confirm this value"
+
+#ifdef COL_F_NAN_CHECK
+  if(.not. (f(1,2) > 1D0 .or. f(1,2) < 2D0) ) then
+     print *, sml_mype, '] NAN FOUND f ', f(1,2), node, smu_n
+     stop
+  endif
+#endif
+
+!$acc wait
+  call t_startf("COL_F_CORE_S")
+  ! df is variation of f - return value
+  call col_f_core_s(st, lz, deltay, deltax,f, vol, gammac(1),     &
+                    df,node, vpic_ierr,                           &
+                    col_f_mat,col_f_ksp,col_f_vecb,col_f_vecx)
+  call t_stopf( "COL_F_CORE_S")
+!$acc wait
+
+  ! apply modification on f0g
+  do imu=0, f0_nmu
+     if(imu==0) then
+        smu_n=f0_dsmu/f0_mu0_factor
+     else
+        smu_n=f0_dsmu*real(imu,8)
+     endif
+
+     df(imu,:) = df(imu,:)/conv_factor*smu_n    &
+                +df_corr(imu,:)
+
+  enddo
+
+end subroutine f_collision_single_sp_body
+
+subroutine f_collision_single_sp(grid,st)
+  use sml_module
+  use grid_class
+  use col_f_module
+  use col_module, only: col_f_start
+  use f0_module
+  use ptl_module
+  use perf_monitor
+#ifdef _OPENMP
+  use omp_lib
+#endif
+  use omp_module, only : split_indices
+  implicit none
+  include 'mpif.h'
+
+  type(grid_type) :: grid
+  integer, intent(in) :: st ! sp%type of ion - specise for collision
+
+  integer :: alloc_stat
+  integer :: node, imu
+  real (8), dimension(0:f0_nmu,-f0_nvp:f0_nvp) :: df
+  real (8), allocatable :: tmp(:,:,:)
+
+  ! For additional parallelization due to axisymmetry
+  integer :: inode1, inode2, stride, ith, jsize, ierr
+  integer :: inode_beg(sml_nphi_total), inode_end(sml_nphi_total)
+  integer :: isize, i_stride
+  integer :: i_beg(size(col_f_mat_list)), i_end(size(col_f_mat_list))
+
+#ifdef _OPENMP
+  integer :: nthreads
+  logical :: is_omp_nested
+  character(len=255) :: str
+#endif
+
+#ifdef _OPENACC
+    integer :: ithread,istream
+#endif
+
+#ifdef _OPENACC
+    ithread = 0
+!$  ithread = omp_get_thread_num()
+    istream = ithread + 1
+#endif
+
+  allocate(tmp(-f0_nvp:f0_nvp,f0_inode1:f0_inode2,f0_imu1:f0_imu2), stat=alloc_stat)
+   call assert(alloc_stat .eq. 0, 'alloc(tmp) return istat=',alloc_stat)
+   tmp=0.D0
+
+  ! Additional parallelization for XGCa because f0_f is axisymmetric
+  !if (sml_nphi_total .gt. 1 .and. f0_col_axisymm_decomp) then  !--XGCa
+  if (sml_symmetric_f) then  ! - XGC1
+    if (f0_grid_load_balance) then
+       ! use wrap map instead of block map to improve inter-node load balance
+       inode1=f0_inode1 + sml_intpl_mype
+       inode2=f0_inode2
+       stride = sml_nphi_total
+    else
+       call split_indices(f0_inode2-f0_inode1+1,sml_nphi_total,inode_beg,inode_end)
+       inode1=inode_beg(sml_intpl_mype+1)-1+f0_inode1
+       inode2=inode_end(sml_intpl_mype+1)-1+f0_inode1
+       stride = 1
+    endif
+  else
+    inode1=f0_inode1
+    inode2=f0_inode2
+    stride = 1
+  endif
+
+#ifdef _OPENMP
+! ----------------------
+! Note omp_get_nested() may not work correctly
+! with mpixlf95_r on BG/Q Mira
+! ----------------------
+  nthreads = omp_get_max_threads()
+  nthreads = max(1, nthreads/col_f_nthreads )
+  is_omp_nested = .false.
+  str = ''
+  call getenv("OMP_NESTED",str)
+  if (len(trim(str)) >= 1) then
+    if ((trim(str).eq."TRUE").or. &
+        (trim(str).eq."true").or. &
+        (trim(str).eq."1")) then
+       is_omp_nested = .true.
+    endif
+  endif
+
+  if (is_omp_nested) then
+    if (sml_mype == 0) then
+!$omp  master
+       print*,'omp_get_nested() ',omp_get_nested()
+       print*,'omp_get_max_theads() ', omp_get_max_threads()
+       print*,'omp_get_num_theads() ', omp_get_num_threads()
+       print*,'nthreads = ', nthreads
+!$omp  end master
+    endif
+  endif
+#endif
+
+#ifdef _OPENACC
+  !! nthreads = outer omp
+  !! col_f_nthreads = inner omp
+  !! This openACC version does not support inner omp
+  nthreads = omp_get_max_threads()
+!$omp master
+  if(sml_mype .eq. 0) then
+      print *, 'OPENACC is recognized'
+      if(is_omp_nested) print *, 'nthreads is reset to ', nthreads
+      if(is_omp_nested) print *, 'col_f_nthreads is reset to 1'
+  endif
+!$omp end master
+  is_omp_nested = .false.
+  col_f_nthreads = 1
+#endif
+
+#if (defined(_OPENMP) || defined(_OPENACC)) && !defined(COL_MIRA_ION)
+  isize = min(inode2-inode1+1,size(col_f_mat_list),nthreads)
+  if (f0_grid_load_balance) then
+     ! use wrap map instead of block map to improve intra-node load balance
+     do ith=1,isize
+        i_beg(ith) = inode1 + (ith-1)*stride
+        i_end(ith) = inode2
+     enddo
+     i_stride   = isize*stride
+  else
+     if (isize .gt. 0) then
+        call split_indices(inode2-inode1+1,isize,i_beg,i_end)
+        i_beg(1:isize) = i_beg(1:isize) + (inode1-1)
+        i_end(1:isize) = i_end(1:isize) + (inode1-1)
+     else
+        i_beg(:)=2
+        i_end(:)=1
+     endif
+     i_stride = stride
+  endif
+#else
+  isize = 1
+  i_beg(1) = inode1
+  i_end(1) = inode2
+  i_stride = stride
+#endif
+
+  if (sml_pol_decomp) f0_node_cost(:) = 0.D0
+
+#ifndef COL_MIRA_ION
+!rh On Mira, we have to be careful with the memory.
+!rh Too much parallelism in the collisions can quickly fill the memory.
+!$omp parallel do private(ith,node,imu,df) num_threads(nthreads)
+#endif
+  do ith=1,isize
+     do node=i_beg(ith),i_end(ith),i_stride
+        if (sml_pol_decomp) f0_node_cost(node) = f0_node_cost(node) - mpi_wtime()
+        call f_collision_single_sp_body(node, grid, st, df, &
+             col_f_mat_list(ith), col_f_ksp_list(ith),   &
+             col_f_vecb_list(ith), col_f_vecx_list(ith))
+        do imu=0,f0_nmu
+           tmp(:,node,imu)=df(imu,:)
+        enddo
+        if (sml_pol_decomp) f0_node_cost(node) = f0_node_cost(node) + mpi_wtime()
+     enddo
+  enddo
+  if (sml_pol_decomp) f0_node_cost_updated = .true.
+
+  ! MPI reduction
+  !if (sml_nphi_total .gt. 1 .and. f0_col_axisymm_decomp) then
+  if(sml_symmetric_f) then
+    call t_startf('F_COLL_SINGLE_RED')
+    jsize = (2*f0_nvp+1) * (f0_inode2-f0_inode1+1) * (f0_imu2-f0_imu1+1)
+    call mpi_allreduce(MPI_IN_PLACE,tmp(:,:,:),jsize,MPI_REAL8,MPI_SUM,sml_intpl_comm,ierr)
+    call t_stopf('F_COLL_SINGLE_RED')
+  endif
+
+  f0_df0g(:,:,:,st)=f0_df0g(:,:,:,st)+min(real(sml_gstep,8),real(col_f_start,8))/real(col_f_start,8)*tmp
+
+  deallocate(tmp, stat=alloc_stat)
+   call assert(alloc_stat .eq. 0, 'dealloc(tmp) return istat=',alloc_stat)
+
+#ifdef _OPENMP
+!  ---------------------
+!  reset omp_num_threads
+!  ---------------------
+   nthreads = omp_get_max_threads()
+   call omp_set_num_threads(  nthreads )
+#endif
+  return
+end subroutine f_collision_single_sp
+
+! electron and ion collision
+subroutine f_collision_multi_sp_body(node_in,grid,st0,st1,df,   &
+                                col_f_mat,col_f_ksp,col_f_vecb,col_f_vecx)
+  use sml_module
+  use grid_class
+  use col_f_module
+  use f0_module
+  use ptl_module
+  use perf_monitor
+  use eq_module, only: eq_x_psi, eq_x_z
+  use col_module,only : col_pin, col_pout, col_f_start
+  use omp_module, only: split_indices
+  implicit none
+#ifdef SOLVERLU
+  integer :: col_f_mat
+  integer :: col_f_ksp
+  integer :: col_f_vecb
+  integer :: col_f_vecx
+
+#else
+#if PETSC_VERSION_LT(3,6,0)
+#include <finclude/petscsys.h>
+#include <finclude/petscvec.h>
+#include <finclude/petscmat.h>
+#include <finclude/petscksp.h>
+#include <finclude/petscpc.h>
+#else
+#include <petsc/finclude/petscsys.h>
+#include <petsc/finclude/petscvec.h>
+#include <petsc/finclude/petscmat.h>
+#include <petsc/finclude/petscksp.h>
+#include <petsc/finclude/petscpc.h>
+#endif
+  Mat :: col_f_mat
+  KSP :: col_f_ksp
+  Vec :: col_f_vecb
+  Vec :: col_f_vecx
+#endif
+
+  type(grid_type) :: grid
+  integer, intent(in) :: st0, st1  ! st0 : electron sp%type, st1: ion sp%type
+  integer, intent(in) :: node_in
+  real (8), intent(out), dimension(0:f0_nmu,-f0_nvp:f0_nvp,st0:st1) :: df
+  real (8), dimension(0:f0_nmu,-f0_nvp:f0_nvp,st0:st1) :: df_corr
+
+  integer :: node, imu, ivp, isp, nsp, st(2)
+  real (8) :: den, ti_ev, te_ev, massi, masse, gammac(4)
+  real (8), dimension(0:f0_nmu,-f0_nvp:f0_nvp,st0:st1) :: f
+  real (8), dimension(0:f0_nmu) :: voli, vole
+  real (8) :: vth
+  real (8) :: lzi, deltayi, deltaxi
+  real (8) :: lze, deltaye, deltaxe
+  integer :: vpic_ierr, negative_count(2)
+  real (8) :: conv_factor(0:1)
+  real (8) :: smu_n, pi4bb0vth3_dd, vthi, vthe
+
+#ifdef _OPENACC
+    integer :: ithread,istream
+!$  integer, external :: omp_get_thread_num
+#endif
+
+#ifdef _OPENACC
+    ithread = 0
+!$  ithread = omp_get_thread_num()
+    istream = ithread + 1
+#endif
+
+  nsp=2
+  st(1)=st0
+  st(2)=st1
+
+  df=0.D0
+  df_corr=0D0
+
+  node=node_in
+  ! check simulation range
+#ifndef NO_COL_AXIS
+  !rh nodes outside [sml_inpsi,sml_outpsi] and in private flux region are skipped
+  if(col_pin > grid%psi(node) .or. col_pout < grid%psi(node) &
+     .or. (grid%x(2,node) .lt. eq_x_z .and. grid%psi(node) .lt. eq_x_psi) &
+     .or. grid%rgn(node)==grid_rgn_wall ) return
+#else
+  if(sml_inpsi+ 0.02 > grid%psi(node) .or. sml_outpsi -0.001 < grid%psi(node)) return
+#endif
+
+#ifdef NO_COL_INBOARD
+  if(grid%psi(node) > eq_x_psi .and. grid%x(1,node) < eq_axis_r ) return
+#endif
+
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+  if (node .gt. 1) return
+#endif
+
+
+  ti_ev=f0_t_ev(node,st1)
+  te_ev=f0_t_ev(node,st0)
+  den=f0_den(node)
+  massi=ptl_mass(st1)
+  masse=ptl_mass(st0)
+
+
+  ! 1. get lambda gamma
+! call t_startf("COL_F_LAMBDA_GAMMA")
+  call col_f_lambda_gamma(den,ti_ev,te_ev,massi,masse,gammac)
+! call t_stopf( "COL_F_LAMBDA_GAMMA")
+
+  ! 2. perform collision
+  !*** this routine work only when f0_imu1==0 and f0_imu2==f0_nmu.
+  !***** need mu decomposition
+
+  !rh For the origin of the conversion factors, see my note for different v-space grids
+
+  !rh These are correct
+  conv_factor(1)=1.D0/sqrt(ti_ev*(sml_2pi * sml_e_charge / massi)**3)
+  conv_factor(0)=1.D0/sqrt(te_ev*(sml_2pi * sml_e_charge / masse)**3)
+
+  ! prepare local f
+  negative_count(:)=0
+  do isp=1,nsp
+    do imu=0, f0_nmu
+       if(imu==0) then
+          smu_n=f0_dsmu/f0_mu0_factor
+       else
+          smu_n=f0_dsmu*real(imu,8)
+       endif
+
+       do ivp=-f0_nvp,f0_nvp
+         if (f0_f(ivp,node,imu,st(isp)) .lt. 0D0) then
+           negative_count(isp)=negative_count(isp)+1
+         endif
+       enddo
+
+#ifdef COL_F_REJECT_NEGATIVE
+       if (negative_count(isp) .ge. 0.3*real((f0_nmu+1)*(2*f0_nvp+1),8) ) then
+         print *, 'Collision cell rejected; too many negative values: ', node, st(isp), negative_count(isp)
+         df=0D0
+         return
+       endif
+#endif
+
+       ! Local f with basic correction:
+       ! Simply cut off all negative values
+       f(imu,:,st(isp))=max(f0_f(:,node,imu,st(isp)),0.D0)*conv_factor(st(isp))/smu_n
+
+       if (f0_f_correction) then
+         !rh Apply additional correction to make f zero where it is negative
+         df_corr(imu,:,st(isp))=max(f0_f(:,node,imu,st(isp)),0.D0)-f0_f(:,node,imu,st(isp))
+       endif
+
+    enddo
+  enddo
+
+
+  vthe=sqrt(te_ev*sml_ev2j/masse)       !  SI, v_parallel
+  vthi=sqrt(ti_ev*sml_ev2j/massi)
+
+  !prepare phase space volume
+  ! - electron
+  vth=vthe
+  ! The variable name is a bad choice for v_perp grid, but can be modified later
+  pi4bb0vth3_dd=sml_2pi*vth*vth*vth*f0_dsmu*f0_dvp
+
+  smu_n=f0_dsmu/f0_mu0_factor
+  vole(0)=0.5D0*pi4bb0vth3_dd*smu_n
+
+  smu_n=f0_dsmu*(real(f0_nmu,8)-1D0/f0_mu0_factor) !rh imu or f0_nmu???
+  vole(f0_nmu)=0.5D0*pi4bb0vth3_dd*smu_n
+
+  do imu=0+1, f0_nmu-1
+     smu_n=f0_dsmu*real(imu,8)
+     vole(imu)=pi4bb0vth3_dd*smu_n
+  enddo
+
+  ! - ion
+  vth=vthi
+  ! The variable name is a bad choice for v_perp grid, but can be modified later
+  pi4bb0vth3_dd=sml_2pi*vth*vth*vth*f0_dsmu*f0_dvp
+
+  smu_n=f0_dsmu/f0_mu0_factor
+  voli(0)=0.5D0*pi4bb0vth3_dd*smu_n
+
+  smu_n=f0_dsmu*(real(f0_nmu,8)-1D0/f0_mu0_factor) !rh imu or f0_nmu???
+  voli(f0_nmu)=0.5D0*pi4bb0vth3_dd*smu_n
+
+  do imu=0+1, f0_nmu-1
+     smu_n=f0_dsmu*real(imu,8)
+     voli(imu)=pi4bb0vth3_dd*smu_n
+  enddo
+
+
+  !v-grid information
+  !ion
+  vth=vthi       !  SI, v_parallel
+
+
+  lzi=-f0_vp_max*vth ! minimum
+  deltayi = f0_dsmu*vth
+  deltaxi = f0_dvp*vth                  ! parallel spacing - "ES : please confirm this value"
+
+  !electron
+  vth=vthe       !  SI, v_parallel
+
+
+  lze=-f0_vp_max*vth ! minimum
+  deltaye = f0_dsmu*vth
+  deltaxe = f0_dvp*vth                  ! parallel spacing - "ES : please confirm this value"
+
+
+
+#ifdef _OPENACC
+  if(sml_mype .eq. 0) print *, 'enter col_f_core_s for node = ', node, ithread
+#endif
+  ! collision in action
+  ! ES : please exchange parameters for col_f_core_m below
+  !dfi and dfe have been added
+  call t_startf("COL_F_CORE_M")
+  call col_f_core_m(st1, lzi, deltayi, deltaxi, f(:,:,st1), voli,       &
+                    st0, lze, deltaye, deltaxe, f(:,:,st0), vole,       &
+                    gammac, df(:,:,st1), df(:,:,st0), node, vpic_ierr,  &
+                    col_f_mat, col_f_ksp, col_f_vecb, col_f_vecx)
+  call t_stopf( "COL_F_CORE_M")
+
+  do isp=1,nsp
+    do imu=0, f0_nmu
+       if(imu==0) then
+          smu_n=f0_dsmu/f0_mu0_factor
+       else
+          smu_n=f0_dsmu*real(imu,8)
+       endif
+       df(imu,:,st(isp)) = df(imu,:,st(isp))/conv_factor(st(isp))*smu_n     &
+                          +df_corr(imu,:,st(isp))
+    enddo
+  enddo
+
+end subroutine f_collision_multi_sp_body
+
+subroutine f_collision_multi_sp(grid,st0,st1)
+  use sml_module
+  use grid_class
+  use col_f_module
+  use col_module, only: col_f_start
+  use f0_module
+  use ptl_module
+  use perf_monitor
+#ifdef _OPENMP
+  use omp_lib
+#endif
+  use omp_module, only : split_indices
+  implicit none
+  include 'mpif.h'
+
+  type(grid_type) :: grid
+  integer, intent(in) :: st0, st1  ! st0 : electron sp%type, st1: ion sp%type
+
+  integer :: alloc_stat
+  integer :: node, imu
+  real (8), dimension(0:f0_nmu,-f0_nvp:f0_nvp,st0:st1) :: df
+  real (8), allocatable :: tmp(:,:,:,:)
+
+  ! For additional parallelization due to axisymmetry
+  integer :: inode1, inode2, stride, ith, jsize, ierr
+  integer :: inode_beg(sml_nphi_total), inode_end(sml_nphi_total)
+  integer :: isize, i_stride
+  integer :: i_beg(size(col_f_mat_list)), i_end(size(col_f_mat_list))
+
+#ifdef _OPENMP
+  integer :: nthreads
+  logical :: is_omp_nested
+  character(len=255) :: str
+#endif
+
+  if (st0 .ne. 0 .or. st1 .ne. 1) then
+    print *,'General species not implemented properly yet in f_collision_multi_sp'
+    stop
+  endif
+
+  allocate(tmp(-f0_nvp:f0_nvp,f0_inode1:f0_inode2,f0_imu1:f0_imu2,st0:st1), stat=alloc_stat)
+   call assert(alloc_stat .eq. 0, 'alloc(tmp) return istat=',alloc_stat)
+   tmp=0.D0
+
+  df=0.D0
+
+  ! Additional parallelization for XGCa because f0_f is axisymmetric -- XGCa
+  ! In XGC1, sml_symmetric_f makes collision routines like XGCa with toroidal decomposition
+  !if (sml_nphi_total .gt. 1 .and. f0_col_axisymm_decomp) then
+  if(sml_symmetric_f) then ! when f is symmetic in toroidal direction, apply collision in parallel and gather the information
+    if (f0_grid_load_balance) then
+       ! use wrap map instead of block map to improve load balance
+       inode1=f0_inode1 + sml_intpl_mype
+       inode2=f0_inode2
+       stride = sml_nphi_total
+    else
+       call split_indices(f0_inode2-f0_inode1+1,sml_nphi_total,inode_beg,inode_end)
+       inode1=inode_beg(sml_intpl_mype+1)-1+f0_inode1
+       inode2=inode_end(sml_intpl_mype+1)-1+f0_inode1
+       stride = 1
+    endif
+  else
+    inode1=f0_inode1
+    inode2=f0_inode2
+    stride = 1
+  endif
+
+#ifdef _OPENMP
+! ----------------------
+! Note omp_get_nested() may not work correctly
+! with mpixlf95_r on BG/Q Mira
+! ----------------------
+  nthreads = omp_get_max_threads()
+  nthreads = max(1, nthreads/col_f_nthreads )
+  is_omp_nested = .false.
+  str = ''
+  call getenv("OMP_NESTED",str)
+  if (len(trim(str)) >= 1) then
+    if ((trim(str).eq."TRUE").or. &
+        (trim(str).eq."true").or. &
+        (trim(str).eq."1")) then
+       is_omp_nested = .true.
+    endif
+  endif
+
+  if (is_omp_nested) then
+    if (sml_mype == 0) then
+!$omp  master
+       print*,'omp_get_nested() ',omp_get_nested()
+       print*,'omp_get_max_theads() ', omp_get_max_threads()
+       print*,'omp_get_num_theads() ', omp_get_num_threads()
+       print*,'nthreads = ', nthreads
+!$omp  end master
+    endif
+  endif
+#endif
+
+#ifdef _OPENACC
+  !! nthreads = outer omp
+  !! col_f_nthreads = inner omp
+  !! This openACC version does not support inner omp
+  nthreads = omp_get_max_threads()
+!$omp  master
+  if(sml_mype .eq. 0) then
+      print *, 'OPENACC is recognized'
+      if(is_omp_nested) print *, 'nthreads is reset to ', nthreads
+      if(is_omp_nested) print *, 'col_f_nthreads is reset to 1'
+  endif
+!$omp  end master
+  is_omp_nested = .false.
+  col_f_nthreads = 1
+#endif
+
+#if (defined(_OPENMP) || defined(_OPENACC)) && !defined(COL_MIRA_ELEC)
+  isize = min(inode2-inode1+1,size(col_f_mat_list),nthreads)
+  if (f0_grid_load_balance) then
+     ! use wrap map instead of block map to improve intra-node load balance
+     do ith=1,isize
+        i_beg(ith) = inode1 + (ith-1)*stride
+        i_end(ith) = inode2
+     enddo
+     i_stride   = isize*stride
+  else
+     if (isize .gt. 0) then
+        call split_indices(inode2-inode1+1,isize,i_beg,i_end)
+        i_beg(1:isize) = i_beg(1:isize) + (inode1-1)
+        i_end(1:isize) = i_end(1:isize) + (inode1-1)
+     else
+        i_beg(:)=2
+        i_end(:)=1
+     endif
+     i_stride = stride
+  endif
+#else
+  isize = 1
+  i_beg(1) = inode1
+  i_end(1) = inode2
+  i_stride = stride
+#endif
+
+  if (sml_pol_decomp) f0_node_cost(:) = 0.D0
+#ifndef COL_MIRA_ELEC
+!rh On Mira, we have to be careful with the memory.
+!rh Too much parallelism in the collisions can quickly fill the memory.
+!$omp parallel do private(ith,node,imu,df) num_threads(nthreads)
+#endif
+  do ith=1,isize
+     do node=i_beg(ith),i_end(ith),i_stride
+        if (sml_pol_decomp) f0_node_cost(node) = f0_node_cost(node) - mpi_wtime()
+        call f_collision_multi_sp_body(node, grid,st0,st1,df, &
+             col_f_mat_list(ith), col_f_ksp_list(ith),        &
+             col_f_vecb_list(ith), col_f_vecx_list(ith))
+        do imu=0,f0_nmu
+           tmp(:,node,imu,st0)=df(imu,:,st0)
+           tmp(:,node,imu,st1)=df(imu,:,st1)
+        enddo
+        if (sml_pol_decomp) f0_node_cost(node) = f0_node_cost(node) + mpi_wtime()
+     enddo
+  enddo
+  if (sml_pol_decomp) f0_node_cost_updated = .true.
+
+  ! XGC1 had different algorithm using mpi_bcast -- better than allreduce?? --> gather_df0g
+  !if (sml_nphi_total .gt. 1 .and. f0_col_axisymm_decomp) then !XGCa
+  if(sml_symmetric_f) then  !XGC1
+    call t_startf('F_COLL_SINGLE_RED')
+    ! Make general for different species later
+    jsize=(2*f0_nvp+1) * (f0_inode2-f0_inode1+1) * (f0_imu2-f0_imu1+1) * 2
+    call mpi_allreduce(MPI_IN_PLACE,tmp(:,:,:,:),jsize,MPI_REAL8,MPI_SUM,sml_intpl_comm,ierr)
+    call t_stopf('F_COLL_SINGLE_RED')
+  endif
+
+  f0_df0g = f0_df0g + min(real(sml_gstep,8),real(col_f_start,8))/real(col_f_start,8)*tmp
+
+  deallocate(tmp, stat=alloc_stat)
+   call assert(alloc_stat .eq. 0, 'dealloc(tmp) return istat=',alloc_stat)
+
+#ifdef _OPENMP
+!  ---------------------
+!  reset omp_num_threads
+!  ---------------------
+   nthreads = omp_get_max_threads()
+   call omp_set_num_threads(  nthreads )
+#endif
+  return
+end subroutine f_collision_multi_sp
+
+subroutine gather_df0g(isize,i_beg,i_end)
+  use sml_module
+  use ptl_module
+  use f0_module
+  implicit none
+  include 'mpif.h'
+  integer, intent(in) :: isize
+  integer, intent(in) :: i_beg(isize), i_end(isize)
+  !
+  real (8), allocatable :: buff(:,:,:,:)
+  integer :: i, rootpe, j, ncount, ierr, isp, imu
+
+  !sku : due to different size for each proc, I do not know how to  use mpi_allgather in this situation.
+  !sku : Instead I used mpi_bcast many times. I guess this is faster than multiple mpi_gather or mpi_scatter ??
+
+  ! i_end(i)-i_beg(i) <= i_end(1)-i_beg(1)   for all i  -- from split_indices  (equal or smaller by 1)
+  allocate(buff(-f0_nvp:f0_nvp,f0_imu1:f0_imu2,i_end(1)-i_beg(1)+1,ptl_isp:ptl_nsp))
+  
+  do i=1, isize
+     rootpe=i-1
+     !pack data to send
+     if(sml_intpl_mype==rootpe) then
+        do isp=ptl_isp, ptl_nsp
+        do j=i_beg(i), i_end(i)
+        do imu=f0_imu1, f0_imu2
+           buff(:,imu,j-i_beg(i)+1,isp)=f0_df0g(:,j,imu,isp)
+        enddo
+        enddo
+        enddo
+     endif
+     
+     !mpi_bcast
+     ncount=(f0_imu2-f0_imu1+1)*(2*f0_nvp+1)*(i_end(i)-i_beg(i)+1)*(ptl_nsp-ptl_isp+1)
+     call mpi_bcast(buff, ncount, mpi_real8, rootpe, sml_intpl_comm, ierr)
+
+
+     !unpack data
+     if(sml_intpl_mype/=rootpe) then
+        do isp=ptl_isp, ptl_nsp
+        do j=i_beg(i), i_end(i)
+        do imu=f0_imu1, f0_imu2
+           f0_df0g(:,j,imu,isp)=buff(:,imu,j-i_beg(i)+1,isp)
+        enddo
+        enddo
+        enddo
+     endif
+  enddo
+
+  deallocate(buff)
+
+end subroutine gather_df0g
+
+
+subroutine col_f_lambda_gamma(den,ti_ev,te_ev, massi, masse, gammac)
+  use col_module
+  use sml_module
+  implicit none
+
+  real (8), intent(in) :: den, ti_ev, te_ev, massi, masse
+  real (8), intent(out) :: gammac(4)
+  real (8) :: lambda(3)
+
+  gammac=0D0  ! initialize to zero to avoid garbage
+
+
+  ! NRL Plasma Formulary 2011 version, p.34
+  !(c) Mixed ion-ion collisions (here, same species ion-ion collisions)
+  lambda(1) = 2.3D1 - log(sqrt( 2D0*den*1D-6/ti_ev)/ti_ev)
+
+  ! i-i
+  gammac(1) = (sml_e_charge**4) * lambda(1) / ( massi*((8.8542D-12)**2) * 8D0 * sml_pi )
+
+  if( sml_electron_on ) then
+      !(b) Electron-ion (and ion-electron) collisions
+     if(ti_ev * masse/massi .lt. te_ev) then
+        if(te_ev .lt. 1D1) then
+           lambda(2) = 2.3D1 - log(sqrt(den*1D-6/(te_ev**3)))
+        else
+           lambda(2) = 2.4D1 - log(sqrt(den*1D-6)/te_ev)
+        endif
+     else
+        lambda(2) = 3D1 - log(sqrt(den*1D-6/(ti_ev**3)))
+     endif
+
+
+     !(a) Thermal electron-electron collisions
+     lambda(3) = 2.35D1 - log(sqrt(den*1D-6)*(te_ev**(-1.25D0))) - sqrt(abs(1D-5+((log(te_ev) -2D0)**2)/16D0))
+
+     ! i-e
+     gammac(2) = (sml_e_charge**4) * lambda(2) / ( massi*((8.8542D-12)**2) * 8D0 * sml_pi )
+     ! e-i
+     gammac(3) = (sml_e_charge**4) * lambda(2) / ( masse*((8.8542D-12)**2) * 8D0 * sml_pi )
+     ! e-e
+     gammac(4) = (sml_e_charge**4) * lambda(3) / ( masse*((8.8542D-12)**2) * 8D0 * sml_pi )
+  endif
+
+  if(col_accel) then
+    gammac=gammac*col_accel_factor1   !in collisionf col_accel_factor is constant in space
+  endif
+
+end subroutine col_f_lambda_gamma
+
+
+subroutine col_f_core_s(st, Dlx, mesh_dr, mesh_dz, dist_n, vol, vpic_gamma,df, node, vpic_ierr,	&
+                        col_f_mat, col_f_ksp, col_f_vecb, col_f_vecx)
+  use sml_module, only : sml_e_charge, sml_pi, sml_mype, sml_intpl_mype
+  use ptl_module
+  use col_f_module
+  use perf_monitor
+  implicit none
+#ifdef SOLVERLU
+  integer :: col_f_mat
+  integer :: col_f_ksp
+  integer :: col_f_vecb
+  integer :: col_f_vecx
+
+#else
+#if PETSC_VERSION_LT(3,6,0)
+#include <finclude/petscsys.h>
+#include <finclude/petscvec.h>
+#include <finclude/petscmat.h>
+#include <finclude/petscksp.h>
+#include <finclude/petscpc.h>
+#else
+#include <petsc/finclude/petscsys.h>
+#include <petsc/finclude/petscvec.h>
+#include <petsc/finclude/petscmat.h>
+#include <petsc/finclude/petscksp.h>
+#include <petsc/finclude/petscpc.h>
+#endif
+  Mat :: col_f_mat
+  KSP :: col_f_ksp
+  Vec :: col_f_vecb
+  Vec :: col_f_vecx
+#endif
+
+  integer :: st
+  real (kind=8) :: Dlx, mesh_dz, mesh_dr  !original code : -FPL_rx->Dlx
+  real (kind=8), dimension(col_f_nvr, col_f_nvz) :: dist_n, df, dist_iter, df_corr   ! local
+  real (kind=8), dimension(1:col_f_nvr) :: vol      ! local
+  real (kind=8), dimension(col_f_ntotal_v) :: dist_col, dist_n_col
+  real (kind=8) :: vpic_gamma
+  integer :: vpic_ierr
+  integer, intent(in) :: node
+
+
+  integer :: vpic_inner_iter_max, mesh_Nrm1, mesh_Nzm1, mesh_Nrzm1
+  integer :: iter_inter
+  real (kind=8) :: vpic_tstep_gamma, negative_count
+  real (kind=8), dimension((col_f_nvr-1),(col_f_nvz-1)) :: f_half, dfdr, dfdz
+  real (kind=8), dimension(5,(col_f_nvr-1),(col_f_nvz-1)) :: EDs
+  real (kind=8), dimension((col_f_nvr-1),5,(col_f_nvr-1)*(col_f_nvz-1)) :: Ms
+  real (kind=8) :: vpic_exit_dn, vpic_exit_n_prev, vpic_exit_dn_n, vpic_exit_dn_n_prev, vpic_exit_dn_rel, &
+                   vpic_exit_dw, vpic_exit_w_prev, vpic_exit_dw_w, vpic_exit_dw_w_prev, vpic_exit_dw_rel, &
+                   vpic_exit_dp, vpic_exit_p_prev, vpic_exit_dp_p, vpic_exit_dp_p_prev, vpic_exit_dp_rel
+  type(col_f_core_type) :: cs
+  ! Super LU Variables
+  real (kind=8), dimension(LU_nnz) :: LU_values
+  integer :: index_0,index_1,index_2,index_3
+  real (kind=8) :: ch0, ch1, ch2
+#ifdef _OPENACC
+    integer :: ithread,istream
+!$  integer, external :: omp_get_thread_num
+#endif
+
+#ifdef _OPENACC
+    ithread = 0
+!$  ithread = omp_get_thread_num()
+    istream = ithread + 1
+#endif
+
+
+  mesh_Nrm1 = col_f_nvr-1
+  mesh_Nzm1 = col_f_nvz-1
+  mesh_Nrzm1 = mesh_Nrm1*mesh_Nzm1
+
+  vpic_inner_iter_max = 20
+  vpic_tstep_gamma = col_f_dt*vpic_gamma
+
+  vpic_ierr = 0
+
+#ifdef COL_F_NAN_CHECK
+     if(.not. (dist_n(1,2) > 1D0 .or. dist_n(1,2) < 2D0) ) then
+        print *, sml_mype, '] NAN FOUND dist_n ', dist_n(1,2), iter_inter
+        stop
+     endif
+     call check_point('After NaN check in collisionf (0)')
+#endif
+!pw call t_startf('COL_F_CORE_S_INIT')
+  call col_f_core_s_init(st, cs, dist_n, mesh_dr, mesh_dz, dlx, vol,node)
+!pw call t_stopf('COL_F_CORE_S_INIT')
+
+!!$acc wait
+!!$acc enter data pcreate(Ms) ASYNC(istream)
+!!$acc wait
+
+  call t_startf("COL_F_ANGLE_AVG_S")
+  call col_f_angle_avg_s(cs, Ms)
+  call t_stopf( "COL_F_ANGLE_AVG_S")
+
+!$acc wait
+
+!$omp parallel do private(index_2) num_threads(col_f_nthreads)
+  do index_2=1,size(dist_iter,2)
+    dist_iter(:,index_2) = dist_n(:,index_2)
+  enddo
+
+   !FOR COLUMN for b in every linear algebra
+!$omp parallel do private(index_1,index_2,index_0) num_threads(col_f_nthreads)
+   do index_2=1,size(dist_n,2)
+     do index_1=1,size(dist_n,1)
+       index_0 = index_1 + (index_2-1)*size(dist_n,1)
+       dist_n_col(index_0) = dist_n(index_1,index_2)
+     enddo
+   enddo
+
+
+  call t_startf("COL_F_CORE_S_LOOP")
+  do iter_inter=1, vpic_inner_iter_max
+     !NOTE THAT "dist_iter" is the PDF iterated and being updated in this LOOP
+
+     !dist_col SHOULD BE always "f_n"
+!$omp parallel do private(index_1) num_threads(col_f_nthreads)
+     do index_1=1,size(dist_n_col)
+       dist_col(index_1) = dist_n_col(index_1)
+     enddo
+
+!pw     call t_startf("COL_F_F_DF")
+#ifdef COL_F_NAN_CHECK
+     if(.not. (dist_iter(1,2) > 1D0 .or. dist_iter(1,2) < 2D0) ) then
+        print *, sml_mype, '] NAN FOUND dist_iter (1)', dist_iter(1,2), iter_inter
+        stop
+     endif
+
+#endif
+
+     call col_f_f_df(cs, 1, dist_iter, f_half, dfdr, dfdz) ! i-i
+
+#ifdef COL_F_NAN_CHECK
+     if(.not. (dist_iter(1,2) > 1D0 .or. dist_iter(1,2) < 2D0) ) then
+        print *, sml_mype, '] NAN FOUND dist_iter (2)', dist_iter(1,2), iter_inter
+        stop
+     endif
+     if(.not. (f_half(1,1) > 1D0 .or. f_half(1,1) < 2D0) ) then
+        print *, sml_mype, '] NAN FOUND f_half ', f_half(1,1), iter_inter
+        stop
+     endif
+     call check_point('After NaN check in collisionf')
+#endif
+!pw     call t_stopf( "COL_F_F_DF")
+
+!$acc wait
+
+     ! EDs = 1: Drr, 2: Drz, 3:Dzz, 4:Dzr, 5: Er, 6:Ez
+     call t_startf("COL_F_E_AND_D_S")
+     call col_f_E_and_D_s(cs, f_half, dfdr, dfdz, Ms, EDs)
+     call t_stopf( "COL_F_E_AND_D_S")
+
+!$acc wait
+
+     call t_startf("COL_F_LU_MATRIX")
+     call col_f_LU_matrix(1, cs, EDs, iter_inter, LU_values)
+     LU_values = LU_values*vpic_tstep_gamma
+     call t_stopf( "COL_F_LU_MATRIX")
+
+     call t_startf("COL_F_PICARD_STEP")
+     call col_f_picard_step(iter_inter, LU_values, dist_col, dist_iter, &
+              col_f_mat, col_f_ksp, col_f_vecb, col_f_vecx)
+     call t_stopf( "COL_F_PICARD_STEP")
+
+!pw     call t_startf("COL_F_UPDATE_PDF")
+     ! DIST_ITER has new updated PDF.
+     call col_f_convergence_eval(cs, dist_n, dist_iter, vpic_exit_dn, vpic_exit_dw, vpic_exit_dp,    &
+                                 vpic_exit_n_prev, vpic_exit_w_prev, vpic_exit_p_prev)
+
+     vpic_exit_dn_n  = dabs(vpic_exit_dn/cs%dens)
+     vpic_exit_dw_w  = dabs(vpic_exit_dw/cs%ens)
+     !rh To prevent convergence errors in case of small flow, a threshold for the momentum
+     !rh in the denominator of vpic_exit_dp_p is necessary. How small may the threshold be?
+     !rh Ad-hoc: 10^(-3)*max(me,mi) (kg m/s)
+     vpic_exit_dp_p    = dabs(vpic_exit_dp)/(max(dabs(cs%mom),1D-3*cs%mass*cs%dens))
+     vpic_exit_dn_rel = dabs(vpic_exit_dn_n/vpic_exit_dn_n_prev)
+     vpic_exit_dw_rel  = dabs(vpic_exit_dw_w/vpic_exit_dw_w_prev)
+     vpic_exit_dp_rel  = dabs(vpic_exit_dp_p/vpic_exit_dp_p_prev)
+
+#ifdef COL_F_CORE_MSG
+       if(sml_mype .eq. 0) then
+           write(*,1002) vpic_exit_dn_n, vpic_exit_dw_w, vpic_exit_dp_p
+1002 format('(dn/n)_i=', e19.13, 1x, 'dw/w=', e19.13,1x , 'dp/p=', e19.13,1x)
+       endif
+#endif
+
+     if( vpic_exit_dn_n .le. 1D-6 .and. vpic_exit_dw_w .le. 1D-6 &
+        .and. vpic_exit_dp_p .le. 1D-6 .and. iter_inter .ne. 1 ) then
+        ! Accuracy is enough to go
+        !pw call t_stopf("COL_F_UPDATE_PDF")
+        exit
+     !else if( vpic_exit_dn_rel .lt. 1D-1 .and. vpic_exit_dw_rel .lt. 1D-1 &
+     !         .and. vpic_exit_dp_rel .lt. 1D-1 .and. vpic_exit_dn_n .le. 1D-5 &
+     !         .and. vpic_exit_dw_w .le. 1D-5 .and. vpic_exit_dp_p .le. 1D-5 &
+     !         .and. iter_inter .ne. 1 ) then
+     !   ! Slow convergence exit
+     !   call t_stopf("COL_F_UPDATE_PDF")
+     !   exit
+     else
+     !   ! FOR ITERATION
+        vpic_exit_dn_n_prev = vpic_exit_dn_n
+        vpic_exit_dw_w_prev = vpic_exit_dw_w
+        vpic_exit_dp_p_prev = vpic_exit_dp_p
+     !   if( iter_inter .eq. 50 ) print *, sml_mype,': iteration is over 50', vpic_exit_dn_n, vpic_exit_dw_w
+        if(iter_inter .eq. 1) then
+            ch0 = vpic_exit_dn_n
+            ch1 = vpic_exit_dw_w
+            ch2 = vpic_exit_dp_p
+        endif
+     endif
+!pw     call t_stopf("COL_F_UPDATE_PDF")
+
+  enddo !iter_inter
+  call t_stopf("COL_F_CORE_S_LOOP")
+
+
+  ! Prevent negative values in new distribution function
+  ! Heaviside function
+!$omp parallel do private(index_1,index_2) num_threads(col_f_nthreads)
+  do index_2=1,size(df_corr,2)
+    do index_1=1,size(df_corr,1)
+      df_corr(index_1,index_2)=0.5D0*(sign(1D0,dist_iter(index_1,index_2))+1D0)
+    enddo
+  enddo
+  negative_count=real(col_f_nvr*col_f_nvz,8) - sum(df_corr)
+
+  if (iter_inter .gt. vpic_inner_iter_max) then
+     print *, 'inner iteration went to maximum number at :', sml_intpl_mype, sml_mype, node, &
+                            vpic_exit_dn_n, vpic_exit_dw_w, vpic_exit_dp_p, &
+                            ch0, ch1, ch2
+     df=0D0
+  elseif(negative_count .gt. 0.3D0*real(col_f_nvr*col_f_nvz,8)) then
+     print *, 'Too many negative values at :', sml_intpl_mype, sml_mype, node, floor(negative_count)
+     df=0D0
+  else
+    !dist_n = dist_iter  !This line has been changed from original source for simplicity
+
+    ! df = dist_iter - dist_n  ! df captures variation of distribution function
+!$omp parallel do private(index_1,index_2) num_threads(col_f_nthreads)
+    do index_2=1,size(df,2)
+      do index_1=1,size(df,1)
+        df(index_1,index_2) = df_corr(index_1,index_2) * (dist_iter(index_1,index_2) - dist_n(index_1,index_2))
+      enddo
+    enddo
+  endif
+
+
+  ! ES : "cs" deallocation instead of original "col_f_core_s_deallocation"
+!$omp critical (alloc1)
+  deallocate(cs%mesh_r, cs%mesh_z, cs%mesh_r_half, cs%mesh_z_half, cs%local_center_volume, cs%vol)
+!$omp end critical (alloc1)
+
+!!$acc exit data delete(Ms) ASYNC(istream)
+!$acc wait(istream)
+
+end subroutine col_f_core_s
+
+
+subroutine col_f_core_s_init(st, cs, dist_n, mesh_dr, mesh_dz, dlx, vol,node)
+    use sml_module, only : sml_mype, sml_e_charge, sml_istep
+    use ptl_module
+    use col_f_module
+    implicit none
+!    type(species_type) :: sp
+    integer, intent(in) :: st
+    type(col_f_core_type), intent(inout) :: cs
+    real (kind=8), dimension(col_f_nvr, col_f_nvz), intent(in) :: dist_n   ! local
+    real (8), intent(in) :: mesh_dr, mesh_dz, dlx
+    real (kind=8), dimension(1:col_f_nvr), intent(in) :: vol      ! local
+    integer, intent(in) :: node
+    real (8) :: dens, ens, numeric_T, mom
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+    real (8) :: entropy, ens_perp, ens_par
+#endif
+    integer :: index_i, mesh_Nz
+    !rh Minimum temperature for collisions to prevent
+    !rh --> Increase col. frequency for low T cells
+    real (8), parameter :: min_temp=10D0
+
+    mesh_Nz = col_f_nvz
+
+    !sp%mass --> ptl_mass
+    call col_f_core_sm_init_s(cs, ptl_mass(st), mesh_dr, mesh_dz, dlx, vol)
+
+    ! Get Eq. Temperature
+    dens = 0D0
+    ens = 0D0
+    mom = 0D0
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+    ens_perp = 0.D0
+    ens_par = 0.D0
+    entropy=0D0
+#endif
+
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+!$omp parallel do private(index_i) reduction(+:dens,ens,ens_perp,ens_par,mom,entropy) num_threads(col_f_nthreads)
+#else
+!$omp parallel do private(index_i) reduction(+:dens,ens,mom) num_threads(col_f_nthreads)
+#endif
+    do index_i=1, mesh_Nz
+        dens = dens + sum(dist_n(:,index_i)*vol)
+        ens = ens+sum(dist_n(:,index_i)*(cs%mesh_r**2+(dlx+mesh_dz*(index_i-1))**2)*vol) !n_i*v_i^2
+        mom = mom+sum(dist_n(:,index_i)*cs%mesh_z(index_i)*vol)
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+        ens_perp = ens_perp+sum(dist_n(:,index_i)*cs%mesh_r**2*vol)
+        ens_par = ens_par+sum(dist_n(:,index_i)*((dlx+mesh_dz*(index_i-1))**2)*vol)
+        entropy = entropy - sum(dist_n(:,index_i)*log(dist_n(:,index_i))*vol)
+#endif
+    end do
+    ens = ens*ptl_mass(st) ! sp%mass --> ptl_mass
+    mom = mom*ptl_mass(st)
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+    ens_perp = ens_perp*ptl_mass(st)
+    ens_par = ens_par*ptl_mass(st)
+#endif
+    numeric_T = max(ens/(3D0*dens*sml_e_charge),min_temp)
+
+    !col_3_core_s_init_e has been removed.
+    ! Following is from a guess based on col_f_core_m_init
+
+    !rh A better equilibrium temperature can be obtained by taking the
+    !rh  equilibrium flow into account (only for single-species)
+    cs%numeric_T      = numeric_T
+    cs%numeric_Teq    = cs%numeric_T
+    cs%numeric_vth2   = numeric_T*sml_e_charge/ptl_mass(st)
+    cs%numeric_vtheq2 = cs%numeric_vth2
+    cs%dens           = dens
+    cs%ens            = ens
+    cs%mom            = mom
+
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+    if (node==1) then
+      ! Time step, density (1/m^3), energy (eV), par. momentum (kg m/s), entropy
+      write(1998,'(i8,6e20.12)') sml_istep, dens, ens/3D0/dens/sml_e_charge, ens_perp/2D0/dens/sml_e_charge, &
+                                 ens_par/dens/sml_e_charge, mom/dens, entropy
+    endif
+#endif
+
+    call col_f_core_delta_init(cs)
+
+end subroutine col_f_core_s_init
+
+!spi and spe have become sti, ste
+subroutine col_f_core_m_init(sti, ci, dist_ni, mesh_dri, mesh_dzi, dlxi, voli, &
+                             ste, ce, dist_ne, mesh_dre, mesh_dze, dlxe, vole, node )
+    use sml_module, only : sml_e_charge, sml_istep
+    use ptl_module
+    use col_f_module
+    implicit none
+    integer, intent(in) :: sti, ste
+    type(col_f_core_type), intent(inout) :: ci, ce
+    real (kind=8), dimension(col_f_nvr, col_f_nvz), intent(in) :: dist_ni, dist_ne   ! local
+    real (8), intent(in) :: mesh_dri, mesh_dzi, mesh_dre, mesh_dze, dlxi, dlxe
+    real (kind=8), dimension(1:col_f_nvr), intent(in) :: voli, vole      ! local
+    integer, intent(in) :: node
+    real (8) :: densi, dense, numeric_Ti, numeric_Te, eni, ene, momi, mome
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+    real (8) :: entropy_i, entropy_e, eni_perp, eni_par, ene_perp, ene_par
+#endif
+    integer :: index_i, mesh_Nz
+    !rh Minimum temperature for collisions to prevent
+    !rh --> Increase col. frequency for low T cells
+    real (8), parameter :: min_temp=10D0
+
+    mesh_Nz = col_f_nvz
+
+    !sp%mass -->ptl_mass
+    call col_f_core_sm_init_s(ci, ptl_mass(sti), mesh_dri, mesh_dzi, dlxi, voli)
+    call col_f_core_sm_init_s(ce, ptl_mass(ste), mesh_dre, mesh_dze, dlxe, vole)
+
+    ! Get Eq. Temperature
+    densi = 0D0
+    dense = 0D0
+    eni = 0D0
+    ene = 0D0
+    momi = 0D0
+    mome = 0D0
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+    eni_perp = 0D0
+    eni_par = 0D0
+    ene_perp = 0D0
+    ene_par = 0D0
+    entropy_i = 0D0
+    entropy_e = 0D0
+#endif
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+!$omp parallel do private(index_i) reduction(+:densi,dense,eni,ene,eni_perp,eni_par, &
+!$omp ene_perp,ene_par,momi,mome,entropy_i,entropy_e) num_threads(col_f_nthreads)
+#else
+!$omp parallel do private(index_i) reduction(+:densi,dense,eni,ene,momi,mome) num_threads(col_f_nthreads)
+#endif
+    do index_i=1, mesh_Nz
+        densi = densi + sum(dist_ni(:,index_i)*voli)
+        dense = dense + sum(dist_ne(:,index_i)*vole)
+        eni = eni+sum(dist_ni(:,index_i)*(ci%mesh_r**2+(dlxi+mesh_dzi*(index_i-1))**2)*voli) !n_i*v_i^2
+        ene = ene+sum(dist_ne(:,index_i)*(ce%mesh_r**2+(dlxe+mesh_dze*(index_i-1))**2)*vole) !n_e*v_e^2
+        momi = momi+sum(dist_ni(:,index_i)*ci%mesh_z(index_i)*voli)
+        mome = mome+sum(dist_ne(:,index_i)*ce%mesh_z(index_i)*vole)
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+        eni_perp = eni_perp+sum(dist_ni(:,index_i)*ci%mesh_r**2*voli)
+        eni_par = eni_par+sum(dist_ni(:,index_i)*((dlxi+mesh_dzi*(index_i-1))**2)*voli)
+        ene_perp = ene_perp+sum(dist_ne(:,index_i)*ce%mesh_r**2*vole)
+        ene_par = ene_par+sum(dist_ne(:,index_i)*((dlxe+mesh_dze*(index_i-1))**2)*vole)
+        entropy_i = entropy_i - sum(dist_ni(:,index_i)*log(dist_ni(:,index_i))*voli)
+        entropy_e = entropy_e - sum(dist_ne(:,index_i)*log(dist_ne(:,index_i))*vole)
+#endif
+    end do
+    eni = ptl_mass(sti)*eni !sp%mass --> ptl_mass
+    ene = ptl_mass(ste)*ene
+    momi = ptl_mass(sti)*momi
+    mome= ptl_mass(ste)*mome
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+    eni_perp = eni_perp*ptl_mass(sti)
+    eni_par = eni_par*ptl_mass(sti)
+    ene_perp = ene_perp*ptl_mass(ste)
+    ene_par = ene_par*ptl_mass(ste)
+#endif
+    !rh Set minimum temperature for cells with many negative values
+    !rh --> have low density and very low temperature
+    numeric_Ti = max(eni/(3D0*densi*sml_e_charge),min_temp)
+    numeric_Te = max(ene/(3D0*dense*sml_e_charge),min_temp)
+
+    ! =============originally, col_f_core_s_init_e part
+    !rh This is obsolete ----->
+    ! delta_r and delta_z for single- & multi-spcies
+    ! The "delta" values are related to positivity of FP solver. At the moment, we just use 1/2.
+    ! Based on my experiences in past, constant 1/2 doest not lead to bad results. TVD scheme is to be considered.
+    ! ES : deleted : numeric_Teq, numeric_T, delta_r, delta_z in "cs"
+    !rh obsolete -----^
+
+    !rh We cannot take the flow into account to get the equilibrium temperature in the
+    !rh multi-species case. In equilibrium, ions and electrons would flow together. However
+    !rh the equilibrium flow is not known. Part of the ion and electron flows will dissipate to
+    !rh heat. Therefore, we use the mean kinetic energy to estimate the equilibrium temperature
+    ci%numeric_t      = numeric_Ti
+    ci%numeric_teq    = (densi*numeric_Ti + dense*numeric_Te)/(densi+dense)
+    ci%numeric_vth2   = numeric_Ti*sml_e_charge/ptl_mass(sti) !  sp%mass --> ptl_mass
+    ci%numeric_vtheq2 = ci%numeric_teq*sml_e_charge/ptl_mass(sti) !  sp%mass --> ptl_mass
+    ci%dens           = densi
+    ci%ens            = eni
+    ci%mom            = momi
+    ce%numeric_t      = numeric_Te
+    ce%numeric_teq    = ci%numeric_teq
+    ce%numeric_vth2   = numeric_Te*sml_e_charge/ptl_mass(ste)
+    ce%numeric_vtheq2 = ce%numeric_teq*sml_e_charge/ptl_mass(ste) !  sp%mass --> ptl_mass
+    ce%dens           = dense
+    ce%ens            = ene
+    ce%mom            = mome
+
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+    if (node==1) then
+      write(1998,'(i8,6e20.12)') sml_istep, densi, eni/3D0/densi/sml_e_charge, eni_perp/2D0/densi/sml_e_charge, &
+                                 eni_par/densi/sml_e_charge, momi/densi, entropy_i
+      write(1999,'(i8,6e20.12)') sml_istep, dense, ene/3D0/dense/sml_e_charge, ene_perp/2D0/dense/sml_e_charge, &
+                                 ene_par/dense/sml_e_charge, mome/dense, entropy_e
+    endif
+#endif
+
+    !rh Calculate finite difference parameters
+    call col_f_core_delta_init(ci)
+    call col_f_core_delta_init(ce)
+
+end subroutine col_f_core_m_init
+
+
+subroutine col_f_core_sm_init_s( cs, mass, mesh_dr, mesh_dz, dlx, vol )
+    use sml_module, only : sml_e_charge
+    use col_f_module
+    implicit none
+    type(col_f_core_type) :: cs
+    real (kind=8) :: mass, mesh_dr, mesh_dz,  dlx
+    real (kind=8), dimension(1:col_f_nvr) :: vol      ! local
+    integer :: itmp
+
+    integer :: mesh_Nz, mesh_Nrm1, mesh_Nzm1, mesh_Nrzm1, index_i, index_j
+
+    mesh_Nz=col_f_nvz
+    mesh_Nrm1 = col_f_nvr-1
+    mesh_Nzm1 = col_f_nvz-1
+    mesh_Nrzm1 = mesh_Nrm1*mesh_Nzm1
+
+    ! To be deallocated at `col_f_core_s_deallocation' or `col_f_core_deallocation' subroutine under col_f_core_m subroutine
+!$OMP CRITICAL (alloc1)
+    allocate(cs%mesh_r(col_f_nvr), cs%mesh_z(col_f_nvz), cs%mesh_r_half(mesh_Nrm1), cs%mesh_z_half(mesh_Nzm1), &
+             cs%local_center_volume(mesh_Nrm1), cs%vol(col_f_nvr))
+!$omp end critical (alloc1)
+
+    ! mass, mesh_dr, mesh_dz
+    cs%mass        = mass
+    cs%mesh_dr     = mesh_dr
+    cs%mesh_dz     = mesh_dz
+
+    ! mesh_r, mesh_r_half, mesh_z, mesh_z_half
+    do index_i=1, col_f_nvr-1
+        cs%mesh_r(index_i) = mesh_dr*(index_i-1)
+        cs%mesh_r_half(index_i) = mesh_dr*(index_i-0.5D0)
+    end do
+    cs%mesh_r(col_f_nvr) = mesh_dr*(mesh_Nrm1)
+    do index_i=1, col_f_nvz-1
+        cs%mesh_z(index_i) = dlx + mesh_dz*(index_i-1)
+        cs%mesh_z_half(index_i) = dlx + mesh_dz*(index_i-0.5D0)
+    end do
+    cs%mesh_z(col_f_nvz) = dlx + mesh_dz*(mesh_Nzm1)
+
+    ! local_center_volume
+    cs%local_center_volume = cs%mesh_r_half*mesh_dr*mesh_dz  !volume centered at a cell
+
+    cs%vol = vol !volume evaluated at NODEs
+
+end subroutine col_f_core_sm_init_s
+
+! Calculate finite difference parameters
+! This is much simpler now that alpha(1)*alpha(4)-alpha(2)*alpha(3)
+! has been taken into account
+subroutine col_f_core_delta_init(cs)
+    use sml_module, only : sml_e_charge, sml_mype, sml_plane_mype, sml_intpl_mype, sml_2pi
+    use col_f_module
+    implicit none
+    type(col_f_core_type), intent(inout) :: cs
+    real (kind=8) :: maxw_fac !, en_t, maxw(4), alpha(4)
+    real (kind=8) :: lambda_r, lambda_z, delta(2) !, a, b, c, d, beta
+    integer :: mesh_Nz, mesh_Nrm1, mesh_Nzm1, mesh_Nrzm1, index_i, index_j,delta_fail
+    real (kind=8) :: arg
+    real (kind=8), parameter :: arg_max = 227.0d0
+    real (kind=8), parameter :: arg_min = -arg_max
+
+    mesh_Nz=col_f_nvz
+    mesh_Nrm1 = col_f_nvr-1
+    mesh_Nzm1 = col_f_nvz-1
+    mesh_Nrzm1 = mesh_Nrm1*mesh_Nzm1
+
+    delta_fail=0
+
+!$omp critical (alloc1)
+    allocate(cs%delta_r(mesh_Nrm1,2), cs%delta_z(mesh_Nzm1,2))
+!$omp end critical (alloc1)
+
+!$omp parallel do private(index_J,lambda_r,maxw_fac,delta) num_threads(col_f_nthreads)
+    do index_j=1, mesh_Nrm1
+#ifndef COL_F_FIXED_DELTA
+
+      ! Same-species collisions
+      lambda_r = -cs%mesh_r_half(index_j)/cs%numeric_vth2 * cs%mesh_dr
+      arg=cs%mesh_dr*(cs%mesh_dr+2D0*cs%mesh_r(index_j))/(2D0*cs%numeric_vth2)
+      arg = max(arg_min,min(arg_max, arg))
+      if (abs(arg) <= 1.0d-6) then
+        maxw_fac = -arg*(1.0d0+arg/2.0d0*(1.0d0+arg/3.0d0))
+      else
+        maxw_fac=1D0-exp(arg)
+      endif
+      !maxw_fac=1D0-exp(cs%mesh_dr*(cs%mesh_dr+2D0*cs%mesh_r(index_j))/(2D0*cs%numeric_vth2))
+      delta(1)=1D0/maxw_fac-1D0/lambda_r
+      delta(2)=1D0/maxw_fac
+      if (0D0 .lt. delta(1) .and. delta(1) .lt. 1) then
+         cs%delta_r(index_j,1)=delta(1)
+      elseif (0D0 .lt. delta(2) .and. delta(2) .lt. 1) then
+         cs%delta_r(index_j,1)=delta(2)
+      else
+         print *,'COL_F_CORE_DELTA_INIT: Error (1a) in calculation of finite difference parameter!'
+         print *,sml_mype, sml_intpl_mype, sml_plane_mype,index_j, maxw_fac, lambda_r, delta(1), delta(2)
+         print *, cs%mesh_r(index_j), cs%mesh_r_half(index_j), cs%numeric_vth2, cs%mesh_dr
+         !stop
+         delta_fail=1
+      endif
+
+      ! Inter-species collisions
+      lambda_r = -cs%mesh_r_half(index_j)/cs%numeric_vtheq2 * cs%mesh_dr
+      arg=cs%mesh_dr*(cs%mesh_dr+2D0*cs%mesh_r(index_j))/(2D0*cs%numeric_vtheq2)
+      arg = max(arg_min,min(arg_max, arg))
+      if (abs(arg) <= 1.0d-6) then
+        maxw_fac = -arg*(1.0d0+arg/2.0d0*(1.0d0+arg/3.0d0))
+      else
+        maxw_fac=1D0-exp(arg)
+      endif
+      !maxw_fac=1D0-exp(cs%mesh_dr*(cs%mesh_dr+2D0*cs%mesh_r(index_j))/(2D0*cs%numeric_vtheq2))
+      delta(1)=1D0/maxw_fac-1D0/lambda_r
+      delta(2)=1D0/maxw_fac
+      if (0D0 .lt. delta(1) .and. delta(1) .lt. 1) then
+         cs%delta_r(index_j,2)=delta(1)
+      elseif (0D0 .lt. delta(2) .and. delta(2) .lt. 1) then
+         cs%delta_r(index_j,2)=delta(2)
+      else
+         print *,'COL_F_DELTA_INIT: Error (1b) in calculation of finite difference parameter!'
+         print *,sml_mype, sml_intpl_mype, sml_plane_mype,index_j, maxw_fac, lambda_r, delta(1), delta(2)
+         !stop
+         delta_fail=1
+      endif
+
+#else
+      cs%delta_r(index_j,1)=0.5D0
+      cs%delta_r(index_j,2)=0.5D0
+#endif
+    enddo
+
+!$omp parallel do private(index_i,lambda_z,maxw_fac,delta) num_threads(col_f_nthreads)
+    do index_i=1, mesh_Nzm1
+#ifndef COL_F_FIXED_DELTA
+      lambda_z = -cs%mesh_z_half(index_i)/cs%numeric_vth2 * cs%mesh_dz
+      arg=cs%mesh_dz*(cs%mesh_dz+2D0*cs%mesh_z(index_i))/(2D0*cs%numeric_vth2)
+      arg = max(arg_min,min(arg_max, arg))
+      if (abs(arg) <= 1.0d-6) then
+        maxw_fac = -arg*(1.0d0+arg/2.0d0*(1.0d0+arg/3.0d0))
+      else
+        maxw_fac=1D0-exp(arg)
+      endif
+      !maxw_fac=1D0-exp(cs%mesh_dz*(cs%mesh_dz+2D0*cs%mesh_z(index_i))/(2D0*cs%numeric_vth2))
+      delta(1)=1D0/maxw_fac-1D0/lambda_z
+      delta(2)=1D0/maxw_fac
+      if (0D0 .lt. delta(1) .and. delta(1) .lt. 1) then
+         cs%delta_z(index_i,1)=delta(1)
+      elseif (0D0 .lt. delta(2) .and. delta(2) .lt. 1) then
+         cs%delta_z(index_i,1)=delta(2)
+      else
+         print *,'COL_F_DELTA_INIT: Error (2a) in calculation of finite difference parameter!'
+         print *,sml_mype, sml_intpl_mype, sml_plane_mype, index_i, maxw_fac, lambda_z, delta(1), delta(2)
+         !stop
+         delta_fail=1
+      endif
+
+      lambda_z = -cs%mesh_z_half(index_i)/cs%numeric_vtheq2 * cs%mesh_dz
+      arg=cs%mesh_dz*(cs%mesh_dz+2D0*cs%mesh_z(index_i))/(2D0*cs%numeric_vtheq2)
+      arg = max(arg_min,min(arg_max, arg))
+      if (abs(arg) <= 1.0d-6) then
+        maxw_fac = -arg*(1.0d0+arg/2.0d0*(1.0d0+arg/3.0d0))
+      else
+        maxw_fac=1D0-exp(arg)
+      endif
+      !maxw_fac=1D0-exp(cs%mesh_dz*(cs%mesh_dz+2D0*cs%mesh_z(index_i))/(2D0*cs%numeric_vtheq2))
+      delta(1)=1D0/maxw_fac-1D0/lambda_z
+      delta(2)=1D0/maxw_fac
+      if (0D0 .lt. delta(1) .and. delta(1) .lt. 1) then
+         cs%delta_z(index_i,2)=delta(1)
+      elseif (0D0 .lt. delta(2) .and. delta(2) .lt. 1) then
+         cs%delta_z(index_i,2)=delta(2)
+      else
+         print *,'COL_F_DELTA_INIT: Error (2b) in calculation of finite difference parameter!'
+         print *,sml_mype, sml_intpl_mype, sml_plane_mype, index_i, maxw_fac, lambda_z, delta(1), delta(2)
+         !stop
+         delta_fail=1
+      endif
+
+#else
+      cs%delta_z(index_i,1)=0.5D0
+      cs%delta_z(index_i,2)=0.5D0
+#endif
+    enddo
+
+    if (delta_fail==1) then
+      cs%delta_r(:,:)=0.5D0
+      cs%delta_z(:,:)=0.5D0
+    endif
+
+end subroutine col_f_core_delta_init
+
+subroutine col_f_f_df(cs, op_mode, f, f_half, dfdr, dfdz)
+   use col_f_module
+   use sml_module, only: sml_mype
+   implicit none
+   type(col_f_core_type), intent(in) :: cs
+   integer, intent(in) :: op_mode
+   real(kind=8) :: mesh_dr, mesh_dz
+   real(kind=8), dimension(col_f_nvr, col_f_nvz) :: f
+   real(kind=8), dimension(col_f_nvr-1, col_f_nvz-1) :: f_half, dfdr, dfdz
+   real(kind=8) :: tmpr1, tmpr2, tmpr3, tmpr4
+   integer :: index_I, index_J
+   ! For finite difference parameter
+   real (kind=8) :: delr, cdelr, delz, cdelz
+
+!$omp parallel do private(index_I,index_J,tmpr1,tmpr2,tmpr3,tmpr4,delr,cdelr,delz,cdelz) num_threads(col_f_nthreads)
+   do index_I=1,col_f_nvz-1
+       do index_J=1, col_f_nvr-1
+           delr = cs%delta_r(index_J,op_mode)
+           cdelr = 1D0-delr
+           delz = cs%delta_z(index_I,op_mode)
+           cdelz = 1D0-delz
+
+           tmpr1 = f(index_J, index_I)
+           tmpr2 = f(index_J+1, index_I)
+           tmpr3 = f(index_J,index_I+1)
+           tmpr4 = f(index_J+1,index_I+1)
+
+           ! With delta_(r,z)=0.5
+           !f_half(index_J, index_I) = (tmpr1 + tmpr3 + tmpr2 + tmpr4)*0.25D0
+           !dfdr(index_J, index_I) = ((tmpr2 - tmpr1)+(tmpr4 - tmpr3))*0.5D0
+           !dfdz(index_J, index_I) = ((tmpr3 - tmpr1)+(tmpr4 - tmpr2))*0.5D0
+
+           ! With finite difference factor
+           f_half(index_J, index_I) = tmpr1 * delr*delz &
+                                     + tmpr3 * delr*cdelz &
+                                     + tmpr2 * cdelr*delz &
+                                     + tmpr4 * cdelr*cdelz
+           dfdr(index_J, index_I) = (tmpr2 - tmpr1)*delz &
+                                   +(tmpr4 - tmpr3)*cdelz
+           dfdz(index_J, index_I) = (tmpr3 - tmpr1)*delr &
+                                   +(tmpr4 - tmpr2)*cdelr
+
+       enddo
+   enddo
+
+   ! dfdr = dfdr/mesh_dr
+!$omp parallel do private(index_I,index_J) num_threads(col_f_nthreads)
+   do index_I=1,size(dfdr,2)
+     do index_J=1,size(dfdr,1)
+        dfdr(index_J,index_I) = dfdr(index_J,index_I)/cs%mesh_dr
+     enddo
+   enddo
+
+   ! dfdz = dfdz/mesh_dz
+!$omp parallel do private(index_I,index_J) num_threads(col_f_nthreads)
+   do index_I=1,size(dfdz,2)
+     do index_J=1,size(dfdz,1)
+       dfdz(index_J,index_I) = dfdz(index_J,index_I)/cs%mesh_dz
+     enddo
+   enddo
+
+end subroutine col_f_f_df
+
+!Note that original input FPL_rx has been changed to Dlx
+!2013-02-20 : '_m' implies use for multi-species
+!2013-03-01 : Merging all operations
+subroutine col_f_core_m(sti, Dlxi, mesh_dri, mesh_dzi, dist_ni, voli, &
+                        ste, Dlxe, mesh_dre, mesh_dze, dist_ne, vole, &
+                        vpic_gamma, dfi, dfe, node, vpic_ierr,        &
+                        col_f_mat, col_f_ksp, col_f_vecb, col_f_vecx)
+    use sml_module, only : sml_e_charge, sml_pi, sml_mype, sml_intpl_mype
+    use ptl_module
+    use col_f_module
+    use perf_monitor
+    implicit none
+#ifdef SOLVERLU
+    integer :: col_f_mat
+    integer :: col_f_ksp
+    integer :: col_f_vecb
+    integer :: col_f_vecx
+#else
+#if PETSC_VERSION_LT(3,6,0)
+#include <finclude/petscsys.h>
+#include <finclude/petscvec.h>
+#include <finclude/petscmat.h>
+#include <finclude/petscksp.h>
+#include <finclude/petscpc.h>
+#else
+#include <petsc/finclude/petscsys.h>
+#include <petsc/finclude/petscvec.h>
+#include <petsc/finclude/petscmat.h>
+#include <petsc/finclude/petscksp.h>
+#include <petsc/finclude/petscpc.h>
+#endif
+
+    Mat :: col_f_mat
+    KSP :: col_f_ksp
+    Vec :: col_f_vecb
+    Vec :: col_f_vecx
+#endif
+    integer, intent(in) :: sti, ste, node
+    real (kind=8) :: Dlxi, mesh_dzi, mesh_dri  !original code : -FPL_rx->Dlx
+    real (kind=8) :: Dlxe, mesh_dze, mesh_dre  !original code : -FPL_rx->Dlx
+    real (kind=8), dimension(col_f_nvr, col_f_nvz) :: dist_ni,dfi, dist_iteri   ! local
+    real (kind=8), dimension(col_f_nvr, col_f_nvz) :: dist_ne,dfe, dist_itere   ! local
+    real (kind=8), dimension(col_f_nvr, col_f_nvz) :: dfi_corr, dfe_corr   ! local
+    real (kind=8), dimension(1:col_f_nvr) :: voli,vole      ! local
+    real (kind=8), dimension(col_f_ntotal_v) :: dist_coli, dist_n_coli
+    real (kind=8), dimension(col_f_ntotal_v) :: dist_cole, dist_n_cole
+    real (kind=8) :: vpic_gamma(4)  ! 1: i-i, 2: i-e, 3: e-i, 4: e-e
+    integer :: vpic_ierr
+
+    integer :: vpic_inner_iter_max, mesh_Nrm1, mesh_Nzm1, mesh_Nrzm1
+    real (kind=8) :: vpic_tstep_gamma(4), negative_counti, negative_counte
+
+    real (kind=8),dimension((col_f_nvr-1),(col_f_nvz-1),2) :: fi_half,dfidr,dfidz,fe_half,dfedr,dfedz
+
+    real (kind=8), dimension(5,(col_f_nvr-1), (col_f_nvz-1),2) :: EDi, EDe
+
+
+    real (kind=8), dimension((col_f_nvr-1)*(col_f_nvz-1),3,(col_f_nvr-1)*(col_f_nvz-1)) :: M_ie, M_ei
+    real (kind=8), dimension((col_f_nvr-1),5,(col_f_nvr-1)*(col_f_nvz-1)) :: M_i, M_e
+
+    integer :: iter_inter
+    real (kind=8) :: vpic_exit_dni, vpic_exit_dni_ni, vpic_exit_ni_prev, vpic_exit_dni_ni_prev, &
+                     vpic_exit_dni_rel, &
+                     vpic_exit_dne, vpic_exit_dne_ne, vpic_exit_ne_prev, vpic_exit_dne_ne_prev, &
+                     vpic_exit_dne_rel, &
+                     vpic_exit_dwi, vpic_exit_wi_prev, vpic_exit_dwe, vpic_exit_we_prev,        &
+                     vpic_exit_dw_w, vpic_exit_dw_w_prev, vpic_exit_dw_rel, &
+                     vpic_exit_dpi, vpic_exit_pi_prev, vpic_exit_dpe, vpic_exit_pe_prev,        &
+                     vpic_exit_dp_p, vpic_exit_dp_p_prev, vpic_exit_dp_rel !rh, &
+                     !rh vpic_exit_dwi_wi, vpic_exit_dwe_we !rh only for debugging
+    type(col_f_core_type) :: ci, ce
+    real (kind=8), dimension(LU_nnz) :: LU_valuesi, LU_valuese, LU_values_tmp ! Super LU Variables
+
+    integer :: index_1,index_2,index_3,index_0
+
+#ifdef _OPENACC
+    integer :: ithread,istream
+!$  integer, external :: omp_get_thread_num
+#endif
+
+#ifdef _OPENACC
+    ithread=0
+!$  ithread = omp_get_thread_num()
+    istream = ithread+1
+#endif
+
+    mesh_Nrm1 = col_f_nvr-1
+    mesh_Nzm1 = col_f_nvz-1
+    mesh_Nrzm1 = mesh_Nrm1*mesh_Nzm1
+
+    vpic_inner_iter_max = 20
+    vpic_tstep_gamma = col_f_dt*vpic_gamma
+
+    !call t_startf('COL_F_CORE_M_INIT')
+    call col_f_core_m_init(sti, ci, dist_ni, mesh_dri, mesh_dzi, dlxi, voli, &
+                           ste, ce, dist_ne, mesh_dre, mesh_dze, dlxe, vole, node )
+    !call t_stopf('COL_F_CORE_M_INIT')
+
+!$acc wait
+!$acc data pcreate(M_ie,M_ei,M_i,M_e) ASYNC(istream)
+!$acc wait
+
+    call t_startf('COL_F_ANGLE_AVG_S')
+    call col_f_angle_avg_s(ci, M_i)
+    call col_f_angle_avg_s(ce, M_e)
+    call t_stopf('COL_F_ANGLE_AVG_S')
+    call t_startf('COL_F_ANGLE_AVG_M')
+    call col_f_angle_avg_m(ci, ce, M_ie, M_ei)
+    call t_stopf( 'COL_F_ANGLE_AVG_M')
+
+    !dist_iter <-implicitly updated distribution  (2D)
+!$omp parallel do private(index_2) num_threads(col_f_nthreads)
+    do index_2=1,size(dist_ni,2)
+        dist_iteri(:,index_2) = dist_ni(:,index_2)
+    enddo
+
+
+    !dist_n_col <- saved nth column distribution (1D)
+!$omp parallel do private(index_1,index_2,index_0) num_threads(col_f_nthreads)
+    do index_2=1,size(dist_ni,2)
+        do index_1=1,size(dist_ni,1)
+            index_0 = index_1 + (index_2-1)*size(dist_ni,1)
+            dist_n_coli( index_0 ) = dist_ni(index_1,index_2)
+        enddo
+    enddo
+
+
+    !dist_iter <-implicitly updated distribution  (2D)
+!$omp parallel do private(index_2) num_threads(col_f_nthreads)
+    do index_2=1,size(dist_ne,2)
+      dist_itere(:,index_2) = dist_ne(:,index_2)
+    enddo
+
+
+    !dist_n_col <- saved nth column distribution (1D)
+!$omp parallel do private(index_0,index_1,index_2) num_threads(col_f_nthreads)
+    do index_2=1,size(dist_ne,2)
+      do index_1=1,size(dist_ne,1)
+        index_0 = index_1 + (index_2-1)*size(dist_ne,1)
+        dist_n_cole(index_0) = dist_ne(index_1,index_2)
+      enddo
+    enddo
+
+    !NOTE THAT "dist_iter" is the PDF iterated and being updated in this LOOP
+    call t_startf("COL_F_CORE_M_LOOP")
+    do iter_inter=1, vpic_inner_iter_max
+
+       !dist_col SHOULD BE always "f_n"
+
+!$omp  parallel do private(index_1) num_threads(col_f_nthreads)
+       do index_1=1,size(dist_n_coli)
+          dist_coli(index_1) = dist_n_coli(index_1)
+       enddo
+
+
+       !dist_col SHOULD BE always "f_n"
+!$omp  parallel do private(index_1) num_threads(col_f_nthreads)
+       do index_1=1,size(dist_n_cole)
+         dist_cole(index_1) = dist_n_cole(index_1)
+       enddo
+
+       !call t_startf("COL_F_F_DF")
+       call col_f_f_df(ci, 1, dist_iteri, fi_half(:,:,1), dfidr(:,:,1), dfidz(:,:,1))  !i-i
+       call col_f_f_df(ci, 2, dist_iteri, fi_half(:,:,2), dfidr(:,:,2), dfidz(:,:,2))  !i-e
+       call col_f_f_df(ce, 1, dist_itere, fe_half(:,:,1), dfedr(:,:,1), dfedz(:,:,1))  !e-e
+       call col_f_f_df(ce, 2, dist_itere, fe_half(:,:,2), dfedr(:,:,2), dfedz(:,:,2))  !e-i
+       !call t_stopf("COL_F_F_DF")
+
+!$acc wait
+       ! EDs = 1: Drr, 2: Drz, 3:Dzz, 4:Dzr, 5: Er, 6:Ez
+       ! last dimension indicates 1=same species, 2=different species
+       call t_startf("COL_F_E_AND_D_S")
+       call col_f_E_and_D_s(ci, fi_half(:,:,1), dfidr(:,:,1), dfidz(:,:,1), M_i , EDi(:,:,:,1)) ! i-i
+       call col_f_E_and_D_s(ce, fe_half(:,:,1), dfedr(:,:,1), dfedz(:,:,1), M_e , EDe(:,:,:,1)) ! e-e
+       call t_stopf( "COL_F_E_AND_D_S")
+!$acc wait
+       call t_startf("COL_F_E_AND_D_M")
+       call col_f_E_and_D_m(ci, ce, fe_half(:,:,2), dfedr(:,:,2), dfedz(:,:,2), M_ie, EDe(:,:,:,2)) ! i-e
+       call col_f_E_and_D_m(ce, ci, fi_half(:,:,2), dfidr(:,:,2), dfidz(:,:,2), M_ei, EDi(:,:,:,2)) ! e-i
+       call t_stopf("COL_F_E_AND_D_M")
+!$acc wait
+
+       call t_startf("COL_F_LU_MATRIX")
+       ! LU_valuesi, LU_valuese, dist_iteri, dist_itere
+       call col_f_LU_matrix(1, ci, EDi(:,:,:,1), iter_inter, LU_values_tmp)  ! i-i
+       LU_valuesi = LU_values_tmp*vpic_tstep_gamma(1)
+       call col_f_LU_matrix(2, ci, EDe(:,:,:,2), iter_inter, LU_values_tmp)  ! i-e
+       LU_valuesi = LU_valuesi + LU_values_tmp*vpic_tstep_gamma(2)           ! summation over species for f_ion
+       !LU_valuesi = LU_values_tmp*vpic_tstep_gamma(2)   !For debugging
+       call col_f_LU_matrix(2, ce, EDi(:,:,:,2), iter_inter, LU_values_tmp)  ! e-i
+       LU_valuese = LU_values_tmp*vpic_tstep_gamma(3)
+       call col_f_LU_matrix(1, ce, EDe(:,:,:,1), iter_inter, LU_values_tmp)  ! e-e
+       LU_valuese = LU_valuese + LU_values_tmp*vpic_tstep_gamma(4)           ! summation over species for f_e-
+       !LU_valuese = LU_values_tmp*vpic_tstep_gamma(4)  !For debugging
+       call t_stopf("COL_F_LU_MATRIX")
+
+
+       call t_startf("COL_F_PICARD_STEP")
+       call col_f_picard_step(iter_inter, LU_valuesi, dist_coli, dist_iteri, &
+               col_f_mat, col_f_ksp, col_f_vecb, col_f_vecx)
+       call col_f_picard_step(iter_inter, LU_valuese, dist_cole, dist_itere, &
+               col_f_mat, col_f_ksp, col_f_vecb, col_f_vecx)
+       call t_stopf("COL_F_PICARD_STEP")
+
+       call col_f_convergence_eval(ci, dist_ni, dist_iteri, vpic_exit_dni, vpic_exit_dwi, vpic_exit_dpi,    &
+                                   vpic_exit_ni_prev, vpic_exit_wi_prev, vpic_exit_pi_prev)
+       call col_f_convergence_eval(ce, dist_ne, dist_itere, vpic_exit_dne, vpic_exit_dwe, vpic_exit_dpe,    &
+                                   vpic_exit_ne_prev, vpic_exit_we_prev, vpic_exit_pe_prev)
+
+       vpic_exit_dni_ni  = dabs(vpic_exit_dni/ci%dens)
+       vpic_exit_dne_ne  = dabs(vpic_exit_dne/ce%dens)
+       vpic_exit_dw_w    = dabs((vpic_exit_dwi+vpic_exit_dwe)/(ci%ens+ce%ens))
+       !rh To prevent convergence errors in case of small flow, a threshold for the momentum
+       !rh in the denominator of vpic_exit_dp_p is necessary. How small may the threshold be?
+       !rh Ad-hoc: 10^(-3)*max(me,mi) (kg m/s)
+       vpic_exit_dp_p    = dabs(vpic_exit_dpi+vpic_exit_dpe) &
+                          /(max(dabs(ci%mom+ce%mom),1D-3*max(ci%mass,ce%mass)*ce%dens))
+       !vpic_exit_dwi_wi  = dabs(vpic_exit_dwi/ci%ens) !For debugging
+       !vpic_exit_dwe_we  = dabs(vpic_exit_dwe/ce%ens) !For debugging
+       vpic_exit_dni_rel = dabs(vpic_exit_dni_ni/vpic_exit_dni_ni_prev)
+       vpic_exit_dne_rel = dabs(vpic_exit_dne_ne/vpic_exit_dne_ne_prev)
+       vpic_exit_dw_rel  = dabs(vpic_exit_dw_w/vpic_exit_dw_w_prev)
+       vpic_exit_dp_rel  = dabs(vpic_exit_dp_p/vpic_exit_dp_p_prev)
+#ifdef COL_F_CORE_MSG
+       if(sml_mype .eq. 0) then
+           write(*,1001) vpic_exit_dni_ni, vpic_exit_dne_ne, vpic_exit_dw_w, vpic_exit_dp_p
+1001 format('(dn/n)_i=', e19.13, 1x, '(dn/n)_e=', e19.13,1x, 'dw/w=', e19.13,1x , 'dp/p=', e19.13,1x)
+       endif
+#endif
+       ! DIST_ITER has new updated PDF.
+       if( vpic_exit_dni_ni .le. 1D-6 .and. vpic_exit_dne_ne .le. 1D-6 &
+           .and. vpic_exit_dw_w .le. 1D-6 .and. vpic_exit_dp_p .le. 1D-6 .and. iter_inter .ne. 1 ) then
+           ! Accuracy is enough to go
+           exit
+       !else if( vpic_exit_dni_rel .lt. 1D-1 .and. vpic_exit_dne_rel .lt. 1D-1 &
+       !         .and. vpic_exit_dw_rel .lt. 1D-1 .and. vpic_exit_dp_rel .lt. 1D-1 &
+       !         .and. vpic_exit_dni_ni  .lt. 1D-5 .and. vpic_exit_dne_ne  .lt. 1D-5 &
+       !         .and. vpic_exit_dw_w .lt. 1D-5 .and. vpic_exit_dp_p .lt. 1D-5 &
+       !         .and. iter_inter .gt. 50 ) then
+       !            print *, 'col_3 picard iteration - slow convergence exit', &
+       !            sml_mype, node, vpic_exit_dni_rel, vpic_exit_dne_rel, vpic_exit_dw_rel, &
+       !             vpic_exit_dni_ni, vpic_exit_dne_ne, vpic_exit_dw_w
+       !             exit
+       !elseif (iter_inter .gt. 5) then
+       else
+       !    ! FOR ITERATION
+       !    print *, sml_intpl_mype, sml_mype, node,': iteration is over 5', &
+       !             vpic_exit_dni_rel, vpic_exit_dne_rel, vpic_exit_dw_rel, &
+       !             vpic_exit_dni_ni, vpic_exit_dne_ne, vpic_exit_dw_w
+           vpic_exit_dni_ni_prev = vpic_exit_dni_ni
+           vpic_exit_dne_ne_prev = vpic_exit_dne_ne
+           vpic_exit_dw_w_prev = vpic_exit_dw_w
+           vpic_exit_dp_p_prev = vpic_exit_dp_p
+       endif
+
+
+    enddo !iter_inter
+    call t_stopf("COL_F_CORE_M_LOOP")
+
+    ! Prevent negative values in new distribution function
+    ! Heaviside function
+!$omp parallel do private(index_1,index_2) num_threads(col_f_nthreads)
+    do index_2=1,size(dfi_corr,2)
+      do index_1=1,size(dfi_corr,1)
+        dfi_corr(index_1,index_2)=0.5D0*(sign(1D0,dist_iteri(index_1,index_2))+1D0)
+      enddo
+    enddo
+    negative_counti=real(col_f_nvr*col_f_nvz,8) - sum(dfi_corr)
+!$omp parallel do private(index_1,index_2) num_threads(col_f_nthreads)
+    do index_2=1,size(dfe_corr,2)
+      do index_1=1,size(dfe_corr,1)
+        dfe_corr(index_1,index_2)=0.5D0*(sign(1D0,dist_itere(index_1,index_2))+1D0)
+      enddo
+    enddo
+    negative_counte=real(col_f_nvr*col_f_nvz,8) - sum(dfe_corr)
+
+    if (iter_inter .gt. vpic_inner_iter_max) then
+       print *, 'inner iteration went to maximum number at :', sml_intpl_mype, sml_mype, node, vpic_exit_dni_rel, &
+                    vpic_exit_dne_rel, vpic_exit_dw_rel, vpic_exit_dp_rel, &
+                    vpic_exit_dni_ni, vpic_exit_dne_ne, vpic_exit_dw_w, vpic_exit_dp_p
+
+       dfi=0D0
+       dfe=0D0
+    elseif (negative_counti .gt. 0.3D0*real(col_f_nvr*col_f_nvz,8) .or. &
+            negative_counte .gt. 0.3D0*real(col_f_nvr*col_f_nvz,8) ) then
+       print *, 'Too many negative values at :', sml_intpl_mype, &
+                    sml_mype, node, negative_counti, negative_counte
+       dfi=0D0
+       dfe=0D0
+    else
+
+!$omp parallel do private(index_2) num_threads(col_f_nthreads)
+      do index_2=1,size(dfi,2)
+        dfi(:,index_2)=dfi_corr(:,index_2) * (dist_iteri(:,index_2) - dist_ni(:,index_2))
+      enddo
+
+!$omp parallel do private(index_2) num_threads(col_f_nthreads)
+      do index_2=1,size(dfe,2)
+        dfe(:,index_2)=dfe_corr(:,index_2) * (dist_itere(:,index_2) - dist_ne(:,index_2))
+      enddo
+    endif
+
+    ! ES : original "col_f_core_deallocation(ci ,ce)" has been replaced as below
+!$omp critical (alloc1)
+    deallocate(ci%mesh_r, ci%mesh_z, ci%mesh_r_half, ci%mesh_z_half, ci%local_center_volume, ci%vol)
+    deallocate(ce%mesh_r, ce%mesh_z, ce%mesh_r_half, ce%mesh_z_half, ce%local_center_volume, ce%vol)
+!$omp end critical (alloc1)
+#ifdef _OPENACC
+!$acc end data 
+#endif
+end subroutine col_f_core_m
+
+subroutine col_f_setup
+  use col_f_module
+  use f0_module, only : f0_nmu, f0_nvp
+  use sml_module
+  implicit none
+  integer :: i, j
+  integer :: mat_pos_rel(9), mat_pos_rel_indx(9), LU_i_arr(9)
+  integer :: elem_n, mat_pos, LU_i, LU_j, incr_LU
+  integer, allocatable, dimension(:) :: LU_colptr_num
+
+
+  ! ES : moved from f_collision
+  col_f_nvr=f0_nmu+1  ! index from 0 to f0_nmu  in f0_module
+  col_f_nvz=f0_nvp*2 + 1 ! index from -f0_nvp to f0_nvp in f0_module
+  col_f_ntotal_v = col_f_nvr * col_f_nvz
+#if defined(COL_RELAX_TEST) || defined(COL_CONSERV_TEST)
+  !rh Choose sml_dt=2*10^-8 and sml_f_source_period=1 in the input file!!!
+  col_f_dt = 1D6*sml_dt ! delta time for collision operation
+#else
+  !rh need to account for collision interval elsewhere for random collision step
+  col_f_dt = sml_dt*sml_f_source_period ! delta time for collision operation
+#endif
+
+  ! 2013-02-23 =============================================== SUPER LU
+  ! index_map_LU, LU_rowindx, LU_cvalues
+  LU_n = col_f_ntotal_v !global
+  LU_nnz = 4*4 + 6*2*(col_f_nvr-2)+6*2*(col_f_nvz-2)+9*(col_f_nvr-2)*(col_f_nvz-2) !global
+  LU_nrhs = 1 !global
+  LU_ldb = LU_n !global
+!$omp critical (alloc1)
+  allocate(LU_rowindx(LU_nnz), LU_cvalues(LU_n), LU_colptr(LU_n+1), index_map_LU(9,LU_n))       !global
+  allocate(LU_colptr_num(LU_n))    !local
+!$omp end critical (alloc1)
+
+  LU_colptr_num = 0   ! number of elements in each column, local
+  LU_rowindx = 0         ! global
+
+  !below is time independent. Move to init_col in module
+  LU_colptr(1) = 1
+  do i=1,LU_n
+      !for colptr
+      LU_i = (i-1) / col_f_nvr+1
+      LU_j = mod(i-1, col_f_nvr)+1
+      if( (LU_i .eq. 1) .or. (LU_i .eq. col_f_nvz) ) then
+          if( (LU_j .eq. 1) .or. (LU_j .eq. col_f_nvr) ) then
+              incr_LU = 4
+          else
+              incr_LU = 6
+          endif
+      else
+          if( (LU_j .eq. 1) .or. (LU_j .eq. col_f_nvr) ) then
+              incr_LU = 6
+          else
+              incr_LU = 9
+          endif
+      endif
+      LU_colptr(i+1) = LU_colptr(i)+incr_LU
+  enddo
+
+  !===============
+  !  3--6--9
+  !  |  |  |
+  !  2--5--8
+  !  |  |  |
+  !  1--4--7
+  !==============
+  mat_pos_rel=(/-col_f_nvr-1,-col_f_nvr, -col_f_nvr+1, -1, 0, 1, col_f_nvr-1, col_f_nvr, col_f_nvr+1/)
+  index_map_LU = 0
+  do i=1,col_f_nvz
+      do j=1, col_f_nvr
+          mat_pos = j+(i-1)*col_f_nvr
+
+          ! INDEXING
+          if(i .eq. 1) then
+              if(j .eq. 1) then
+                  !(J,I)=(1,1)
+                  elem_n = 4
+                  mat_pos_rel_indx(1:elem_n) =(/5,6,8,9/)
+               elseif (j .eq. col_f_nvr) then
+                  !(J,I)=(Nr,1)
+                  elem_n = 4
+                  mat_pos_rel_indx(1:elem_n)=(/4,5,7,8/)
+               else
+                  !(J,I)=(:,1)
+                  elem_n = 6
+                  mat_pos_rel_indx(1:elem_n)=(/4,5,6,7,8,9/)
+               endif
+           elseif(i .eq. col_f_nvz) then
+               if(j .eq. 1) then
+                  !(J,I)=(1,mesh_Nz)
+                  elem_n = 4
+                  mat_pos_rel_indx(1:elem_n)=(/2,3,5,6/)
+               elseif (j .eq. col_f_nvr) then
+                  !(J,I)=(Nr,mesh_Nz)
+                  elem_n = 4
+                  mat_pos_rel_indx(1:elem_n)=(/1,2,4,5/)
+               else
+                  !(J,I)=(:,mesh_Nz)
+                  elem_n = 6
+                  mat_pos_rel_indx(1:elem_n)=(/1,2,3,4,5,6/)
+               endif
+           else
+               if(j .eq. 1) then
+                  !(J,I) = (1,:)
+                  elem_n = 6
+                  mat_pos_rel_indx(1:elem_n)=(/2,3,5,6,8,9/)
+               elseif(j .eq. col_f_nvr) then
+                  !(J,I) = (mesh_Nr,:)
+                  elem_n = 6
+                  mat_pos_rel_indx(1:elem_n)=(/1,2,4,5,7,8/)
+               else
+                  !(J,I) = (:,:)
+                  elem_n = 9
+                  mat_pos_rel_indx(1:elem_n)=(/1,2,3,4,5,6,7,8,9/)
+               endif
+           endif
+           LU_i_arr(1:elem_n) = mat_pos+mat_pos_rel(mat_pos_rel_indx(1:elem_n))  ! I need to change LU_i to array
+           index_map_LU(mat_pos_rel_indx(1:elem_n),mat_pos) = LU_colptr(LU_i_arr(1:elem_n))+LU_colptr_num(LU_i_arr(1:elem_n))
+           LU_colptr_num(LU_i_arr(1:elem_n)) = LU_colptr_num(LU_i_arr(1:elem_n))+1
+           LU_rowindx(index_map_LU(mat_pos_rel_indx(1:elem_n),mat_pos)) = mat_pos
+
+
+           LU_cvalues(mat_pos) = index_map_LU(5, mat_pos)  !For implicit time marching
+      enddo
+  enddo
+!$omp critical (alloc1)
+  deallocate(LU_colptr_num)
+!$omp end critical (alloc1)
+
+
+
+#ifndef SOLVERLU
+
+  do i=1,size(col_f_mat_list)
+    call col_f_petsc_initialize(col_f_mat_list(i), &
+           col_f_vecb_list(i),col_f_vecx_list(i),col_f_ksp_list(i))
+  enddo
+
+#endif
+
+#ifndef SOLVERLU
+  contains
+    subroutine col_f_petsc_initialize(col_f_mat,col_f_vecb,col_f_vecx,col_f_ksp)
+      implicit none
+      integer :: j, indx
+
+#if PETSC_VERSION_LT(3,6,0)
+#include <finclude/petscsys.h>
+#include <finclude/petscvec.h>
+#include <finclude/petscmat.h>
+#include <finclude/petscksp.h>
+#include <finclude/petscpc.h>
+#else
+#include <petsc/finclude/petscsys.h>
+#include <petsc/finclude/petscvec.h>
+#include <petsc/finclude/petscmat.h>
+#include <petsc/finclude/petscksp.h>
+#include <petsc/finclude/petscpc.h>
+#endif
+
+       PetscErrorCode:: ierr
+       PetscInt :: LU_n64
+       PetscInt, parameter :: pint_13=13, ione=1
+       Mat col_f_mat
+       Vec col_f_vecb
+       Vec col_f_vecx
+       KSP col_f_ksp
+
+      LU_n64=LU_n
+
+
+
+      !PETSc for collision-f
+      ! code addopted from ksp/examples/tutorials/ex13f90.F.html
+      !Using PCLU
+      call MatCreateSeqAIJ(PETSC_COMM_SELF,LU_n64, LU_n64, pint_13, PETSC_NULL_INTEGER, col_f_mat, ierr) ! 13 width - 9 is mimimum
+      call VecCreateSeqWithArray(PETSC_COMM_SELF,ione,LU_n64, PETSC_NULL_SCALAR,col_f_vecb,ierr)
+      call VecDuplicate(col_f_vecb,col_f_vecx,ierr)
+      call KSPCreate(PETSC_COMM_SELF,col_f_ksp,ierr)
+      call KSPSetOptionsPrefix(col_f_ksp,'col_f_',ierr)
+      call KSPSetFromOptions(col_f_ksp,ierr)
+
+!rh LU_colindx is never used anywhere in the code.
+!rh !$omp critical (alloc1)
+!rh       allocate(LU_colindx(LU_nnz))
+!rh !$omp end critical (alloc1)
+
+!rh       do j=1, LU_n
+!rh          do indx=LU_colptr(j), LU_colptr(j+1)-1
+!rh             LU_colindx(indx)=j - 1
+!rh          enddo
+!rh       enddo
+
+
+
+    end subroutine col_f_petsc_initialize
+#endif
+
+end subroutine col_f_setup
+

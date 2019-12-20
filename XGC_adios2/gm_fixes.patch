@@ -1,0 +1,429 @@
+diff --git a/XGC1_3/Makefile b/XGC1_3/Makefile
+index b0a3632..cdb3015 100644
+--- a/XGC1_3/Makefile
++++ b/XGC1_3/Makefile
+@@ -25,40 +25,42 @@ NETCDF=-I$(NETCDF_DIR)/include \
+ NETCDF=-I$(NETCDF_DIR)/include \
+ 			            -L$(NETCDF_DIR) -lnetcdf -lnetcdff
+ 
++VERSION_MOD = -coupling
++
+ #reset petsc fc_flags
+-#FC_FLAGS = #-g -C -qopenmp -no-ipo -traceback -fpic
++# FC_FLAGS = -O0 -g -C -traceback -fpic
++#FC_FLAGS = -g -C -qopenmp -no-ipo -traceback -fpic
+ #FC_FLAGS = -zero -g -check all -traceback
+ #FC_FLAGS = -O3 -qopenmp -no-ipo -traceback
+ #FC_FLAGS = -O0 -g -no-ipo -traceback
+ #FC_FLAGS = -O3 -no-ipo -traceback
+ #FC_FLAGS = -no-ipo -traceback
+-FC_FLAGS = -fast -mp -D__PGI -fpic
++FC_FLAGS = -fast -D__PGI -fpic # -mp
+ 
+-XGC_FLAGS = \
+-			-DPSPLINE \
++XGC_FLAGS = -DPSPLINE \
+ 		  -DUSE_BICUB_MOD \
+ 		  -DUSE_ONE_D_I_CUB_MOD \
+-		  -DCAM_TIMERS \
++		  -UCAM_TIMERS \
+ 		  -DADIOS \
+ 		  -DSOLVERLU -llapack -lblas \
+ 		  -DITER_GRID \
+ 		  -DF_USE_MARKER_DEN \
+-		  -DF0_TOR_LINEAR \
+ 		  -DF_USE_MARKER_DEN2 \
++		  -DF0_TOR_LINEAR \
+ 		  -DV_PERP \
+-		  -DRK4_ACCURATE_EFIELD \
+ 		  -DDELTAF_MODE2 \
+-		  -DINIT_GENE_PERT\
+-		  -DPURE_RK4\
+-		  -UPOS2_ORG_HACK\
+-		  -UFORCE_ZEROCHARGE\
+-		  -UFORCE_ZEROCHARGE_NEW\
+-		  -UOPTIM_GYRO_AVG_MAT\
+-		  -UNEWGYROMATRIX\
+-		  -USPECIFIC_GENEXGC\
+-		  -UXGC_COUPLING_CORE_EDGE\
+-                  -UXGC_COUPLING_CORE_EDGE_FIELD\
+-		  -UXGC_COUPLING_CORE_EDGE_VARPI2\
++		  -DINIT_GENE_PERT \
++		  -UPOS2_ORG_HACK \
++		  -UFORCE_ZEROCHARGE \
++		  -UFORCE_ZEROCHARGE_NEW \
++		  -UOPTIM_GYRO_AVG_MAT \
++		  -UNEWGYROMATRIX \
++		  -DPURE_RK4 \
++		  -DRK4_ACCURATE_EFIELD \
++		  -DSPECIFIC_GENEXGC \
++		  -DXGC_COUPLING_CORE_EDGE \
++                  -DXGC_COUPLING_CORE_EDGE_FIELD \
++		  -DXGC_COUPLING_CORE_EDGE_VARPI2 \
+ 		  -UCCE_TEST_1
+ 		  #-DPOS2_ORG
+ 		  #-UPLANE_MAJOR \
+diff --git a/XGC1_3/adioscfg.xml b/XGC1_3/adioscfg.xml
+index 844de17..7d1f7c8 100644
+--- a/XGC1_3/adioscfg.xml
++++ b/XGC1_3/adioscfg.xml
+@@ -174,6 +174,8 @@
+   <var dimensions="nnodes" gwrite="grid%node_vol" name="node_vol" type="real*8" />
+   <var dimensions="nnodes" name="node_vol_ff0" type="real*8" />
+   <var dimensions="nnodes" name="node_vol_ff1" type="real*8" />
++  <var dimensions="nodes_per_elem,n_n,2" gwrite="psn%ff_hdp_p" name="ff_hdp_p" type="real*8"/>
++  <var dimensions="nodes_per_elem,n_n,2" gwrite="psn%ff_1dp_p" name="ff_1dp_p" type="real*8"/>
+   <var dimensions="nnodes" name="node_vol_nearest" type="real*8" />
+   
+   <var dimensions="n_geo" name="rmin" type="real*8" />
+diff --git a/XGC1_3/defs.mk b/XGC1_3/defs.mk
+index e5a3f2e..95e0eb9 100644
+--- a/XGC1_3/defs.mk
++++ b/XGC1_3/defs.mk
+@@ -6,7 +6,7 @@
+ include ${PETSC_DIR}/lib/petsc/conf/variables
+ 
+ OBJ= module.o search.o module_psn.o pol_decomp.o f0module.o adios_comm_mod.o elliptics.o collisionf.o lbal_mod.o \
+-	$(EXTRA_OBJ) psmooth.o bicub_mod.o one_d_cub_mod.o initial_perturbation.o coupling_core_edge.o\
++	$(EXTRA_OBJ) psmooth.o bicub_mod.o one_d_cub_mod.o initial_perturbation_GM.o coupling_core_edge.o\
+         interfaces.o charge.o diagnosis.o poisson_extra_xgc1.o qevaluateandtrapped.o setup.o   \
+         read.o gen_perm.o sort_particles.o push.o pushe.o load.o \
+ 	 efield.o interpolation.o $(MPI_OBJ) \
+diff --git a/XGC1_3/diagnosis.F90 b/XGC1_3/diagnosis.F90
+index 5cd2ff0..b121dc3 100644
+--- a/XGC1_3/diagnosis.F90
++++ b/XGC1_3/diagnosis.F90
+@@ -2109,7 +2109,7 @@ subroutine dump_grid(grid,psn)
+   buf_size = buf_size + 2 * n_n * 8 * 2 ! /coordinates/values and rz
+   buf_size = buf_size + 3 * n_t * 4 * 2  ! connectivity - nodeid -- zero based.
+   buf_size = buf_size + n_n * 4 + 5 * n_n * 8  ! next node, psi, node_vol, ff0, ff1, nearest
+-  buf_size = buf_size + n_t*8  + n_t*2*3*8  ! tr_area , mapping
++  buf_size = buf_size + n_t*8  + n_t*2*3*8 + n_t*4*3*8  ! tr_area , mapping, ff_{h,1}dp_p
+   buf_size = buf_size + 4 + psn%nwall*4
+ 
+   buf_size = buf_size + grid%npsi00 * 5 * 8  !! qsafety, trapped, inv. aspect ratio
+@@ -2142,6 +2142,10 @@ subroutine dump_grid(grid,psn)
+   ADIOS_WRITE_LBL(buf_id,'node_vol_ff1', grid%node_vol_ff(:,1),err)
+   ADIOS_WRITE_LBL(buf_id,'tr_area',grid%tr_area,err)
+   ADIOS_WRITE_LBL(buf_id,'mapping',grid%mapping,err)
++  ADIOS_WRITE_LBL(buf_id,'ff_hdp_p',psn%ff_hdp_p,err)
++  ADIOS_WRITE_LBL(buf_id,'ff_1dp_p',psn%ff_1dp_p,err)
++!  ADIOS_WRITE_LBL(buf_id,'ff_hdp_p1',psn%ff_hdp_p(:,:,1),err)
++
+ 
+   if(sml_f0_grid) ADIOS_WRITE_LBL(buf_id,'node_vol_nearest',grid%node_vol_nearest,err)
+ 
+diff --git a/XGC1_3/es_main.F90 b/XGC1_3/es_main.F90
+index abcd37e..587c9a8 100644
+--- a/XGC1_3/es_main.F90
++++ b/XGC1_3/es_main.F90
+@@ -128,9 +128,12 @@ program xgc1_3
+      call mon_stop(SET_WEIGHTS_F_)
+   endif
+ 
++!!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++!#warning 'Load balancing is turned off'
+   call mon_start(SHIFT_I_F_)
+   call shift_sp(grid,psn,spall(1))
+   call mon_stop(SHIFT_I_F_)
++!!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+   if(sml_electron_on) then
+     call mon_start(SHIFT_E_F_)
+diff --git a/XGC1_3/initial_perturbation_GM.F90 b/XGC1_3/initial_perturbation_GM.F90
+old mode 100755
+new mode 100644
+index 425ea89..8d5baac
+--- a/XGC1_3/initial_perturbation_GM.F90
++++ b/XGC1_3/initial_perturbation_GM.F90
+@@ -1,11 +1,12 @@
+ #define READ_IN
+ #undef DEBUG_MAP
+-
++#undef TRANSPOSE
++#undef DOUBLE_READ
+ module initial_perturbation
+ 
+ IMPLICIT NONE
+ 
+-real(8) :: dR, dZ, sigma, rho0, dN0, Rmin, Zmin,pertw,cos_factor,sigma_n,sigma_chi,bt_sign,c1,c2,R0,Z0,B0;
++real(8) :: dR, dZ, sigma, rho0, dN0, Rmin, Zmin,pertw,cos_factor,sigma_n,sigma_chi,bt_sign,phi_sign,c1,c2,R0,Z0,B0;
+ logical :: radial_gaussian,circular_ad_hoc
+ real(8), dimension(:)  , allocatable :: nys
+ real(8), dimension(:,:), allocatable :: filter_ij,qs_ij,chi_ij,rho_ij
+@@ -15,7 +16,7 @@ logical :: GM_perturbation
+ integer :: NPSI,nz_GENE
+ real(8), dimension(:), allocatable :: rho_tor,psi_grid,q,R_grid,Z_grid
+ real(8), dimension(:,:), allocatable :: chi_map,psi_map,filter
+-
++real(8) :: RminJD, ZminJD, dZJD, drJD
+ contains
+ 
+ subroutine ip_initialize()
+@@ -34,7 +35,7 @@ subroutine ip_initialize()
+      ! change second index afterswitching node order in XGC
+   namelist /perturbation/ nr,nz,dR,dZ,sigma,rho0,nky,delta_nky,nzero,Rmin,Zmin,pertw,&
+                           cos_factor,radial_gaussian,poloidal_envelope,nkymax,       &
+-                          sigma_n,sigma_chi,bt_sign,circular_ad_hoc,c1,c2,Z0,R0,B0,  &
++                          sigma_n,sigma_chi,bt_sign,phi_sign,circular_ad_hoc,c1,c2,Z0,R0,B0,  &
+                           GM_perturbation,npsi, nz_GENE
+   
+   namelist /perturbation_data/ filter_ij,qs_ij,chi_ij,rho_ij
+@@ -62,6 +63,8 @@ subroutine ip_initialize()
+     bt_sign=+1D0;
+   endif
+ 
++  phi_sign=1d0
++
+   open(unit=20,file='perturbation.in', status='old',action='read')
+   READ(20, NML=perturbation)
+   close(unit=20)
+@@ -108,6 +111,20 @@ endif
+ 
+ #ifdef READ_IN
+   if (GM_perturbation) then
++#ifdef DOUBLE_READ
++     allocate(filter_ij(2000, 2000))
++     allocate(qs_ij(2000, 2000))
++     allocate(chi_ij(2000, 2000))
++     allocate(rho_ij(2000, 2000))
++
++     open(unit=20,file='perturbation.in', status='old',action='read')
++     READ(20, NML=perturbation_data)
++     close(unit=20)
++     drJD=dr
++     dzJD=dz
++     RminJD=Rmin
++     ZminJD=Zmin
++#endif
+      allocate(chi_map(NR,NZ))
+      allocate(psi_map(NR,NZ))
+      allocate(filter(NR,NZ))
+@@ -153,15 +170,13 @@ endif
+ 
+         call adios_read_close(adios_handle, adios_err)
+ 
+-        psi_map=transpose(psi_map)
+-        chi_map=transpose(chi_map)
+-     
++!        psi_map=transpose(psi_map)
++!        chi_map=transpose(chi_map)
+ 
+      endif
+      
+      call mpi_bcast(psi_grid,npsi,mpi_real8,0,sml_comm,ierr) 
+      call mpi_bcast(q,npsi,mpi_real8,0,sml_comm,ierr) 
+-if (sml_mype.eq.0) print *,'done'
+      call mpi_bcast(rho_tor,npsi,mpi_real8,0,sml_comm,ierr) 
+      call mpi_bcast(R_grid,nr,mpi_real8,0,sml_comm,ierr) 
+      call mpi_bcast(Z_grid,nz,mpi_real8,0,sml_comm,ierr) 
+@@ -284,6 +299,47 @@ subroutine ip_eval(dN,R,Z,varphi)
+   else if (GM_perturbation) then
+ #ifdef READ_IN
+ 
++#ifdef DOUBLE_READ
++     di=(Z-ZminJD)/dZJD;
++     i=1+floor(di);
++     wi=1D0-(di-dble(i-1));
++
++     dj=(R-RminJD)/dRJD;
++     j=1+floor(dj);
++     wj=1D0-(dj-dble(j-1));
++
++
++     if( 0.5>(filter_ij(i,j)+filter_ij(i+1,j)+filter_ij(i,j+1)+filter_ij(i+1,j+1)))then
++        qs  = wj*(wi* qs_ij(i,j)+(1D0-wi)* qs_ij(i+1,j))+(1D0-wj)*(wi* qs_ij(i,j+1)+(1D0-wi)* qs_ij(i+1,j+1));
++        chi = wj*(wi*chi_ij(i,j)+(1D0-wi)*chi_ij(i+1,j))+(1D0-wj)*(wi*chi_ij(i,j+1)+(1D0-wi)*chi_ij(i+1,j+1));
++        rho = wj*(wi*rho_ij(i,j)+(1D0-wi)*rho_ij(i+1,j))+(1D0-wj)*(wi*rho_ij(i,j+1)+(1D0-wi)*rho_ij(i+1,j+1));
++
++
++    	dN=dN0; !Potential contribution from n=0 mode
++    	qs=bt_sign*qs
++    	do k=1,nky
++      	   !dN=dN+2D0*cos(dble(k*delta_nky)*(qs*chi-varphi));
++	   if(poloidal_envelope==0)then
++		dN=dN+ cos_factor*cos(dble(k*delta_nky)*(qs*chi-varphi));
++      	   elseif(poloidal_envelope==1)then
++                dN=dN+ cos_factor*cos(dble(k*delta_nky)*(qs*chi-varphi))/sqrt(dble(k));
++      	   elseif(poloidal_envelope==2)then
++                dN=dN+ cos_factor*cos(dble(k*delta_nky)*(qs*chi-varphi))/dble(k);
++           elseif(poloidal_envelope==3)then
++		dN=dN+ cos_factor*cos(dble(k*delta_nky)*(qs*chi-varphi))*exp(-0.5*(dble(k)/sigma_n)**2);
++      	   elseif(poloidal_envelope==4)then
++		dN=dN+ cos_factor*cos(dble(k*delta_nky)*(qs*chi-varphi)) &
++               	       *exp(-0.5*(dble(k)/sigma_n)**2)*exp(-0.5*(chi/sigma_chi)**2);
++           endif
++        enddo
++	if(radial_gaussian)then
++	   dN=exp(-0.5*((rho-rho0)/sigma)**2) * dN !* pertw
++        endif
++    	if (sml_mype.eq.0) print *, 'txt-map (R,Z,qs,chi,rho)',R,Z,qs,chi,rho, dN
++     endif
++#endif
++
++#ifndef TRANSPOSE
+      di=(R-Rmin)/dR;
+      i=1+floor(di);
+      wi=1D0-(di-dble(i-1));
+@@ -291,6 +347,15 @@ subroutine ip_eval(dN,R,Z,varphi)
+      dj=(Z-Zmin)/dZ;
+      j=1+floor(dj);
+      wj=1D0-(dj-dble(j-1));
++#else
++     di=(Z-Zmin)/dZ;
++     i=1+floor(di);
++     wi=1D0-(di-dble(i-1));
++
++     dj=(R-Rmin)/dR;
++     j=1+floor(dj);
++     wj=1D0-(dj-dble(j-1));
++#endif
+ 
+      if( 0.5>(filter(i,j)+filter(i+1,j)+filter(i,j+1)+filter(i+1,j+1)))then
+         mychi =      wj*(wi*chi_map(i,j)+(1D0-wi)*chi_map(i+1,j))+ &
+@@ -326,8 +391,8 @@ subroutine ip_eval(dN,R,Z,varphi)
+         rho=(rho_tor(ind_l)*dl+rho_tor(ind_u)*du)/(psi_grid(ind_u)-psi_grid(ind_l))
+ 
+ #ifdef DEBUG_MAP
+-        if (sml_mype.eq.0) print *, '(R,Z,psi,chi,q,rho)',R,Z,mypsi,mychi,qs,rho,i,j,psi_map(i,j),chi_map(i,j)
+-        if (sml_mype.eq.0) print *, '(wi,wj,ind_l,ind_u,dl,du)',wi,wj,ind_l,ind_u,dl,du
++        if (sml_mype.eq.0.or.sml_mype.eq.2) print *, '(R,Z,psi,chi,q,rho,mype)',R,Z,mypsi,mychi,qs,rho,i,j,psi_map(i,j),chi_map(i,j),sml_mype
++!        if (sml_mype.eq.0) print *, '(wi,wj,ind_l,ind_u,dl,du)',wi,wj,ind_l,ind_u,dl,du
+ #endif
+ 
+ 
+@@ -358,11 +423,11 @@ subroutine ip_eval(dN,R,Z,varphi)
+         dy=sml_2pi/sml_nphi_total/sml_wedge_n
+         y_res=sml_nphi_total
+ 
+-        y_cut=(qs*mychi-varphi)/dy    
++        y_cut=(qs*mychi-phi_sign*varphi)/dy    
+ 
+-#ifdef DEBUG_MAP
+-       if (sml_mype.eq.0) print *, '(qs,mychi,varphi,dy,y_cut)',qs,mychi,varphi,dy,y_cut
+-#endif
++! #ifdef DEBUG_MAP
++!        if (sml_mype.eq.0) print *, '(qs,mychi,varphi,dy,y_cut)',qs,mychi,varphi,dy,y_cut
++! #endif
+         y_cut=mod(mod(y_cut,real(y_res,kind=8))+real(y_res,kind=8), real(y_res,kind=8))
+ 
+         tmp_ind=int(y_cut)
+@@ -376,17 +441,24 @@ subroutine ip_eval(dN,R,Z,varphi)
+ !             &   + (1.0-w_chi)*( &
+ !             &     cos(dble(k*delta_nky*(1+sml_2pi*qs))*dy*ind_h_tmp)*(y_cut-tmp_ind) &
+ !             &   + cos(dble(k*delta_nky*(1+sml_2pi*qs))*dy*ind_l_tmp)*(1.0-(y_cut-tmp_ind)))
+-#ifdef DEBUG_MAP
+-             if (sml_mype.eq.0) print *,'(y_cut,ind_h_tmp,ind_l_tmp,tmp_ind,dN)',y_cut,ind_h_tmp,ind_l_tmp,tmp_ind,dN
+-#endif
++! #ifdef DEBUG_MAP
++!              if (sml_mype.eq.0) print *,'(y_cut,ind_h_tmp,ind_l_tmp,tmp_ind,dN)',y_cut,ind_h_tmp,ind_l_tmp,tmp_ind,dN
++! #endif
+         end do
+ 
+         if (radial_gaussian) then
+            dN=exp(-0.5*((rho-rho0)/sigma)**2) * dN !* pertw
+         endif
+-
++        if (poloidal_envelope) then
++           dN=exp(-0.5*(mychi/sigma_chi)**2) * dN
++        endif
++     else
++       dN=0d0
+      endif
+ 
++#ifdef DOUBLE_READ
++     if (sml_mype.eq.0) print *, 'che-map (R,Z,qs,chi,rho)',R,Z,qs,mychi,rho,dN
++#endif
+   else
+     dN=0D0
+   endif
+diff --git a/XGC1_3/load.F90 b/XGC1_3/load.F90
+index 22bee45..5045354 100644
+--- a/XGC1_3/load.F90
++++ b/XGC1_3/load.F90
+@@ -376,8 +376,13 @@ subroutine maxwell_v_dist2(grid,spall)
+            ! for more exact calculation, adjust ct(pif0) accordingly  ( when sml_initial_deltaf_noise > 1D-4 )
+            ! ct(pif0) should be ct(pif0) / (1-w1) or ct(pif0) * (1-w1)
+ #else
+-         phig = modulo(phi+sml_pi,2D0*sml_pi)-sml_pi
++!         phig = modulo(phi+sml_pi,2D0*sml_pi)-sml_pi
++         phig = phi
+          call ip_eval(dN,r,z,phig)
++!!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++!#warning 'code is totally broken in load.F90:384'
++!         dN = 1d0
++!!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+          if(sml_initial_deltaf_noise.gt.0D0)then
+            spall(isp)%ptl(i)%ph(piw1:piw2) = dN * (pertw + sml_initial_deltaf_noise*2D0*(ranx()-0.5D0))
+          else
+@@ -744,8 +749,15 @@ subroutine uniform_space_dist(grid,psn,spall)
+      ! generate particle until # of valid particles become ptl_num 
+      do while(valid<spall(isp)%num)
+         !generate r,z in simulation region
++
++!!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++!#warning 'The code is totally broken in uniform_space_dist' 
+         r=sqrt(roffset**2 + rdim*ranx()*(2D0*roffset + rdim) ) !2002/05/27
+         z=zdim*ranx() + zoffset
++!! test for distribution
++!        r=2d0
++!        z=0d0
++!!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+         psi=psi_interpol(r,z,0,0)
+         total=total+1
+ 
+diff --git a/XGC1_3/push.F90 b/XGC1_3/push.F90
+index 0755b81..dc1550a 100644
+--- a/XGC1_3/push.F90
++++ b/XGC1_3/push.F90
+@@ -845,6 +845,8 @@ subroutine derivs_sp(fld,t, ptli, sp_type, yprime, diag_on, vf_diag)
+     nb_curl_nb= -1.D0*over_B2 * ( fld%dbpdz*fld%br + (fld%dbzdr-fld%dbrdz)*fld%bphi - (fld%bphi/r  + fld%dbpdr)*fld%bz )
+   endif
+   D=1.D0/ ( 1.D0 + rho * nb_curl_nb )
++!#warning 'D=1.0'
++!  D=1.D0
+       
+   dbdr = ( fld%br*fld%dbrdr + fld%bphi*fld%dbpdr + fld%bz*fld%dbzdr) *over_B
+   dbdz = ( fld%br*fld%dbrdz + fld%bphi*fld%dbpdz + fld%bz*fld%dbzdz) *over_B
+diff --git a/XGC1_3/rules.mk b/XGC1_3/rules.mk
+index 3614d85..c658e92 100644
+--- a/XGC1_3/rules.mk
++++ b/XGC1_3/rules.mk
+@@ -1,6 +1,6 @@
+ # default
+ es: $(OBJ) $(OBJ_ES) 
+-	$(CMP) -o xgc-es $(OBJ_ES) $(OBJ) $(LIB) ${PETSC_POST_LINK_OPTS} ${PETSC_KSP_LIB}
++	$(CMP) -o xgc-es$(VERSION_MOD) $(OBJ_ES) $(OBJ) $(LIB) ${PETSC_POST_LINK_OPTS} ${PETSC_KSP_LIB}
+ 
+ em: em_build $(OBJ) $(OBJ_EM) 
+ 	$(CMP) -o xgc-em $(OBJ_EM) $(OBJ) $(LIB) ${PETSC_POST_LINK_OPTS} ${PETSC_KSP_LIB}
+diff --git a/XGC1_3/setup.F90 b/XGC1_3/setup.F90
+index a5ce1d2..76c263a 100644
+--- a/XGC1_3/setup.F90
++++ b/XGC1_3/setup.F90
+@@ -1089,7 +1089,7 @@ subroutine read_input
+        diag_1d_on, diag_1d_period, diag_1d_npsi, &
+        diag_1d_pin, diag_1d_pout, diag_tavg_on, &
+        diag_omid_on, &
+-       diag_3d_on, diag_3d_more, &
++       diag_3d_on, diag_3d_period, diag_3d_more, &
+        diag_f0_period, diag_f0_g_on, diag_f0_df_on, &
+        diag_neu_pin, diag_neu_pout, diag_neu_npsi, &
+        diag_eflux_on, diag_1d_ne, diag_1d_emin, diag_1d_emax, &
+@@ -1753,6 +1753,7 @@ subroutine read_input
+   ! diag 3d
+   diag_3d_on=.true.
+   diag_3d_more=.false.
++  diag_3d_period=-1
+ 
+   ! diag f0
+   diag_f0_period=100
+@@ -1798,7 +1799,7 @@ subroutine read_input
+   read(input_string(name_idx:len_trim(input_string)),nml=diag_param)
+ #endif
+ 
+-  diag_3d_period=diag_1d_period  ! 3d_period is 1d_period
++  if(diag_3d_period==-1) diag_3d_period=diag_1d_period  ! 3d_period is 1d_period
+ 
+   ! smooth -----------------------------------------------------------------
+   call check_point('smooth_param')

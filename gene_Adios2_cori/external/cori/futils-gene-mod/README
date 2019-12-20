@@ -1,0 +1,21 @@
+Instructions
+============
+
+1) Obtaining FUTILS
+       The latest release of FUTILS is available from
+       http://pleiades1.epfl.ch/~tmt/pub.
+
+2) Quick installation
+       The following steps can be used to build, test and
+       install the FUTILS library:
+         tar zxvf futils-x.x.tar.gz
+         cd futils-x.x/src
+         make
+         make test
+         make install
+    The last step will install both the "g" (debug) and "O"
+    (optimized) versions in your $HOME. To change the installation
+    directory, replace the last step above with
+         make PREFIX=<install directory> install
+
+3) The FUTILS users's guide is located in futils-x.x/docs

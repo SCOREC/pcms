@@ -1,0 +1,88 @@
+#include basic makefile definitions
+include defs.mk
+
+FC := ftn
+
+#adios - I/O library
+ADIOS1_DIR=/project/projectdirs/m499/Software/adios/DEFAULT/cori_haswell/DEFAULT/bin
+ADIOS_INC=$(shell ${ADIOS1_DIR}/adios_config -f -c)
+ADIOS_LIB=$(shell ${ADIOS1_DIR}/adios_config -f -l)
+
+#MYADIOS2=/global/homes/m/merlo/soft/adios2-intel/bin
+MYADIOS2=/project/projectdirs/m499/Software/adios2/DEFAULT/cori_haswell/DEFAULT/bin
+ADIOS2_INC=$(shell ${MYADIOS2}/adios2-config --fortran-flags)
+ADIOS2_LIB=$(shell ${MYADIOS2}/adios2-config --fortran-libs)
+
+#pspline lib - spline library
+PSPLINE_DIR=/project/projectdirs/m499/Software/pspline/DEFAULT/cori_haswell/DEFAULT
+PSPLINE_INC=-I$(PSPLINE_DIR)/include -I$(PSPLINE_DIR)/mod
+PSPLINE_LIB=-L$(PSPLINE_DIR)/lib -lpspline -lezcdf
+
+#USER_LIB_DIR=/project/projectdirs/m499/rhager/software/cori_haswell/intel
+#PSPLINE_DIR=$(USER_LIB_DIR)/pspline
+#PSPLINE_INC=-I$(PSPLINE_DIR)/include -I$(PSPLINE_DIR)/mod
+#PSPLINE_LIB=-L$(PSPLINE_DIR)/lib -lpspline
+
+#performance monitor
+PERFMOD_DIR=/project/projectdirs/m499/camtimers/edison-intel/
+PERFMOD_INC=-I$(PERFMOD_DIR)
+PERFMOD_LIB=-L$(PERFMOD_DIR) -ltimers
+
+NETCDF=-I$(NETCDF_DIR)/include \
+			            -L$(NETCDF_DIR) -lnetcdf -lnetcdff
+
+#reset petsc fc_flags
+#FC_FLAGS = #-g -C -qopenmp -no-ipo -traceback -fpic
+#FC_FLAGS = -zero -g -check all -traceback
+#FC_FLAGS = -O3 -qopenmp -no-ipo -traceback
+#FC_FLAGS = -O0 -g -no-ipo -traceback
+FC_FLAGS = -O3 -no-ipo -traceback
+#FC_FLAGS = -O3 -fbacktrace -ffree-line-length-512
+#FC_FLAGS = -no-ipo -traceback
+
+XGC_FLAGS = \
+			-DPSPLINE \
+		  -DUSE_BICUB_MOD \
+		  -DUSE_ONE_D_I_CUB_MOD \
+		  -UCAM_TIMERS \
+		  -DADIOS \
+		  -DADIOS2 \
+		  -DSOLVERLU -llapack -lblas \
+		  -DITER_GRID \
+		  -DF_USE_MARKER_DEN \
+		  -DF0_TOR_LINEAR \
+		  -DF_USE_MARKER_DEN2 \
+		  -DV_PERP \
+		  -DRK4_ACCURATE_EFIELD \
+		  -DDELTAF_MODE2 \
+		  -DINIT_GENE_PERT\
+		  -DPURE_RK4\
+		  -DSPECIFIC_GENEXGC\
+		  -UPOS2_ORG_HACK\
+		  -UFORCE_ZEROCHARGE\
+		  -UFORCE_ZEROCHARGE_NEW\
+		  -UOPTIM_GYRO_AVG_MAT\
+		  -UNEWGYROMATRIX\
+		  -DXGC_COUPLING_CORE_EDGE\
+                  -DXGC_COUPLING_CORE_EDGE_FIELD\
+		  -DXGC_COUPLING_CORE_EDGE_VARPI2
+		  #-DPOS2_ORG
+		  #-UPLANE_MAJOR \
+
+XGC_INCLUDE = ${PSPLINE_INC} ${PERFMOD_INC} ${PETSC_INCLUDE_OPTS} ${ADIOS_INC} ${ADIOS2_INC} -module . -I./
+#XGC_INCLUDE = ${PSPLINE_INC} ${PERFMOD_INC} ${PETSC_INCLUDE_OPTS} ${ADIOS_INC} ${ADIOS2_INC}  -J./ -I./
+
+LIB= ${PSPLINE_LIB} ${ADIOS_LIB} ${PETSC_LIB} ${PERFMOD_LIB} ${ADIOS2_LIB}
+
+CMP=${FC}
+
+# Set EXTRA_OBJ to $(IMSL_OBJ) for MY_IMSL wrappers, or $(PORT_OBJ) if not using IMSL
+EXTRA_OBJ=$(PORT_OBJ)
+
+# Set MPI_OBJ to $(PAR_OBJ) for parallel code, or $(SER_OBJ) for serial code
+MPI_OBJ=$(PAR_OBJ)
+
+# include basic makefile build rules
+include rules.mk
+
+

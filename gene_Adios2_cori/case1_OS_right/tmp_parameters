@@ -1,0 +1,178 @@
+&parallelization
+n_parallel_sims = 1
+n_procs_sim = 192
+!n_parallel_sims = 2
+!n_procs: number of mpi processes per corresponding
+!	  dimension (automatic parallelization if <1)
+!For follow-up runs, you may set the mapping taken
+!from the (output) parameters.dat to speed up the
+!initialization
+n_procs_s = 1
+n_procs_v = 1
+n_procs_w = 12
+n_procs_x = 4
+n_procs_y = 1
+n_procs_z = 4
+
+!(Uncomment and) Set the number of parallel
+!gene subroutines and processes per subroutine.
+!for scanscript or if only a subdomain of the
+!MPI_COMM_WORLD shall be used
+!n_parallel_sims =  1
+!n_procs_sim = 24
+/
+
+&box
+!!the following parameters define a (minimum) set
+!!for a nonlinear run with adiabatic electrons (CBC like):
+
+n_spec =    1	 ! # species
+nx0    =  512	 ! # radial grid pts
+nky0   =    1	 ! # kys
+nz0    =   64	 ! # parallel grid pts
+nv0    =   64	 ! # vpar grid points
+nw0    =   24	 ! # mu grid points
+
+lx_a  =     0.8
+kymin =     0.05     ! min ky
+lv    =     4.14     ! domain in vpar
+lw    =     18.00     ! domain in mu
+
+x0=0.5
+n0_global=2 !scanrange: 8,4,48
+!!
+!!Only important for linear runs:
+!!
+!!the ky = 0 mode is neglected by default
+!!Uncomment the following line for GAM investigations
+!ky0_ind = 0
+!!
+!!lx is adapted for each ky to maximize the number
+!!of connections; uncomment the following line to use
+!!a constant lx instead
+!adapt_lx = .f.
+
+!!for simulations dedicated to particular discharges:
+!adapt_ly = T  !!see tutorial or documentation
+/
+
+&in_out
+! where to write output files ?
+diagdir = '/scratch1/scratchdirs/merlo/ecp/case1_OS_full/scanfiles0005' 
+
+! start from checkpoint file ?
+read_checkpoint  = F
+
+! how often to write out various files
+istep_field  =    100
+istep_mom    =    400
+istep_nrg    =     10
+istep_energy =    100
+istep_vsp   =     500
+istep_schpt =    5000
+
+write_std=F
+write_h5=T
+/
+
+&general
+nblocks = 256
+perf_vec = 1 1 1 1 1 1 1 1 1
+!type of operation
+nonlinear =   F
+x_local=F
+!choice of algorithms:
+!will be detected automatically and written to
+!(output) parameters.dat;
+!Uncomment to use a fixed setup
+!perf_vec  =  1 1 1 1 1 1 1 1 1
+
+!Calculate time step; if true, dt_max will be calculated by SLEPC
+!or if not available *approximated* by CFL limit
+calc_dt    = .t.
+
+!set dt_max if calc_dt = .f.
+!dt_max     =   0.3850E-01 !max. linear time step
+
+!simulation stop criteria
+timelim    =      86000	  ! wallclock limit in sec
+ntimesteps =      1000000 ! total # timesteps
+simtimelim =      10000   ! simulation time limit in L_ref/c_ref
+
+beta       =    0.00    ! 8 pi n_ref T_ref/B_ref^2 in cgs units
+debye2     =    0.00
+
+collision_op = 'none'   !'landau','pitch-angle',...
+coll       =    0.00
+
+zeff       =    1.00	!relevant to collisions in single-ion cases
+
+!initial condition, typically 'alm' for linear
+!and 'ppj' for nonlinear runs
+!init_cond = 'ppj'
+
+!hyperdiffusions
+hyp_z =   2.00
+hyp_v =   0.20 !set to zero if collisions are active
+
+!Uncomment following line to activate LES methods in perp. directions
+!(take some computational time but is recommended to avoid spectral pile-ups)
+!GyroLES = T
+underflow_limit=-1
+/
+&nonlocal_x
+l_buffer_size =   0.5000E-01
+lcoef_krook   =    2.000    
+u_buffer_size =   0.5000E-01
+ucoef_krook   =    2.000    
+ck_heat =   0.0             
+rad_bc_type =  1            
+drive_buffer=T              
+/                           
+
+&geometry
+magn_geometry = 'chease'
+geomfile = 'case1_GENE_inv.h5'
+!!geomdir='./'
+x_def = 'arho_t'                              
+minor_r  =   0.35125604                       
+major_R  =    1.0000000                       
+mag_prof   = T                                
+rhostar  =   0.55555000E-02                   
+dpdx_term= 'full_drift'                       
+dpdx_pm  =   -2.0000000                       
+norm_flux_projection  = F                     
+/                                             
+
+&species
+name   = 'ions'
+prof_type =  -4
+kappa_T   =   11.000000
+LT_center =   0.50000000
+LT_width  =   0.20000000E-01
+
+kappa_n   =    2.2200000
+Ln_center =   0.50000000
+Ln_width  =   0.20000000E-01
+
+delta_x_T  =   0.075000000
+delta_x_n  =   0.075000000
+
+mass   =    1.0000000
+temp   =    1.0000000
+dens   =    1.0000000
+charge =  1
+/
+
+&units
+Tref = -1
+nref = -1
+mref = -1
+Bref = -1
+Lref = -1
+/
+
+&scan
+scan_dims = 11
+par_in_dir = '/scratch1/scratchdirs/merlo/ecp/case1_OS_full/scanfiles0005/in_par'
+/

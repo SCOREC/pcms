@@ -1,0 +1,117 @@
+#include basic makefile definitions
+include defs_gpu.mk
+
+PSPLINE_DIR=/ccs/home/shku/lib/pspline
+#PSPLINE_DIR=/tmp/proj/env003/dazevedo/ntcc_pspline
+PERFMOD_DIR=/tmp/proj/env003/camtimers
+
+PSPLINE=-L$(PSPLINE_DIR)/lib -I$(PSPLINE_DIR)/include -I$(PSPLINE_DIR)/mod -lpspline -lezcdf
+PERFMOD=-L$(PERFMOD_DIR) -I$(PERFMOD_DIR) -ltimers
+
+NETCDF=-I$(NETCDF_DIR)/include \
+           -L$(NETCDF_DIR) -lnetcdf -lnetcdff_pgi -lnetcdff -lnetcdf
+
+GPU_SRC =   push_mod_gpu.F90 \
+        dimensions_mod_gpu.F90  \
+        precision_mod_gpu.F90  \
+        sml_module_gpu.F90  \
+        eq_module_gpu.F90  \
+        itp_module_gpu.F90  \
+        one_d_cub_mod_gpu.F90  \
+        bicub_mod_gpu.F90  \
+        ptl_module_gpu.F90  \
+        grid_class_gpu.F90  \
+        boundary_class_gpu.F90  \
+        psn_class_gpu.F90  \
+        diag_module_gpu.F90  \
+        bnc_module_gpu.F90  \
+        push_update_device_gpu.F90  \
+        psi_interpol_gpu.F90  \
+        I_interpol_wo_pspline_gpu.F90  \
+        I_interpol_gpu.F90  \
+        psi_der_all_gpu.F90  \
+        field_gpu.F90  \
+        b_interpol_gpu.F90  \
+        rho_mu_to_ev_pitch2_gpu.F90  \
+        remove_particle_gpu.F90  \
+        efield_gk_gpu.F90  \
+        derivs_sp_gpu.F90  \
+        efield_gpu.F90  \
+        diag_1d_port1_gpu.F90  \
+        derivs_single_gpu.F90  \
+        derivs_single_with_e_gpu.F90  \
+        push_single_gpu.F90  \
+        z_psi_min_gpu.F90  \
+        b_interpol_sym_gpu.F90  \
+        bounce_gpu.F90  \
+        push_kernel_gpu.F90  \
+        push_update_host_gpu.F90  \
+        guess_gpu.F90 \
+        search_tr2_gpu.F90 \
+        bvec_interpol_gpu.F90 \
+        derivs_gpu.F90 \
+        field_following_pos2_gpu.F90 \
+        pushe_gpu.F90 \
+        pushe_kernel_gpu.F90 \
+        t_coeff_gpu.F90 \
+        dreorder1d_gpu.F90 \
+        dreorder2d_gpu.F90 \
+        dreorder_gpu.F90 \
+        ireorder1d_gpu.F90 \
+        ireorder2d_gpu.F90 \
+        ireorder_gpu.F90 \
+        lreorder1d_gpu.F90 \
+        lreorder2d_gpu.F90 \
+        lreorder_gpu.F90 \
+        reorder_gpu_mod.F90 \
+        sreorder1d_gpu.F90 \
+        sreorder2d_gpu.F90 \
+        sreorder_gpu.F90 \
+        gen_perm_gpu.F90 \
+        gen_perm_gpu_mod.F90 \
+        gen_perm_gpu_pass1.F90 \
+        gen_perm_gpu_pass2.F90 \
+        isetval_gpu.F90 \
+        isum_col_gpu.F90 \
+        iprefix_sum_gpu.F90 \
+        setup_lcount_gpu.F90
+
+FFLAGS= -Mcuda=cuda5.0   \
+  -Minfo=all \
+  -DUSE_ONE_D_I_CUB_MOD=1 \
+  -DUSE_BICUB_MOD=1 \
+  -DUSE_STATIC=1 \
+  -DUSE_GPU=1 \
+  -UORIGINAL=1 \
+  -UUSE_GPU_ASYNC \
+  \
+  -I$(PETSC_DIR)/include \
+  -I$(PSPLINE_DIR)/include \
+  \
+  -I$(PERFMOD_DIR) \
+  -module . \
+  -module $(PSPLINE_DIR)/mod
+
+LIB= ${PSPLINE} ${ADIOS_FLIB} ${PERFMOD}   
+
+OPT=${FFLAGS} ${FC_FLAGS} ${FCPPFLAGS} ${PSPLINE} ${PERFMOD} ${ADIOS_POST_COMPILE_OPTS}
+
+CMP=ftn -DUSE_GPU=1 -DUSE_PSPLINE -DPSPLINE -DUSE_BICUB_MOD -DUSE_ONE_D_I_CUB_MOD -DCAM_TIMERS -fast -mp -DADIOS #-DCOL_F_NAN_CHECK # -C -Mbounds 
+
+# Set EXTRA_OBJ to $(IMSL_OBJ) for MY_IMSL wrappers, or $(PORT_OBJ) if not using IMSL
+EXTRA_OBJ=$(PORT_OBJ)
+
+# Set MPI_OBJ to $(PAR_OBJ) for parallel code, or $(SER_OBJ) for serial code
+MPI_OBJ=$(PAR_OBJ)
+
+# include basic makefile build rules
+include rules.mk
+
+cscan.o: cscan.cu
+	nvcc -c -arch sm_21 cscan.cu
+csort.o: csort.cu
+	nvcc -c -arch sm_21 csort.cu
+
+push_mod_gpu.o:  $(GPU_SRC) push_mod_gpu.F90
+	$(CMP) $(FFLAGS) -Mcpp -F push_mod_gpu.F90 > push_mod_gpu.f
+	$(CMP) $(FFLAGS)  -Mfree -UUSE_DEBUG -fast -c push_mod_gpu.f

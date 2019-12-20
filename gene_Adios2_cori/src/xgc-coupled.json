@@ -1,0 +1,10 @@
+{
+    "xgc": {
+        "readmethod": 0,
+        "infile": "/software/wdm/ecp-wdm/testrun-6/xgc/outfiles/xgc.3d.bp",
+        "donefile": "/software/wdm/ecp-wdm/testrun-6/xgc/XGC.finished",
+		"module": "xgc_field3d",
+		"outfile": "outfiles/xgc-copy.bp",
+		"outxml": "xgc.xml"
+    }
+}

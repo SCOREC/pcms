@@ -1,0 +1,10 @@
+class_diagrams.*
+*.bbl
+*.blg
+gene.out
+gene.pdf
+globalgene.out
+globalgene.pdf
+tutorial.out
+tutorial.pdf
+style_guide.pdf

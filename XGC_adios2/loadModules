@@ -1,0 +1,6 @@
+module load cray-netcdf-hdf5parallel
+module load cray-petsc/3.7.0.0
+module load cray-tpsl
+module load adios/1.13.0
+
+module load adios/1.11.0

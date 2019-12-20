@@ -1,0 +1,168 @@
+#include basic makefile definitions
+#include defs.mk
+
+#####################################################
+### Base directory for user installation of
+### external libraries
+#####################################################
+#
+#
+USER_LIB_DIR=/project/projectdirs/m499/Software
+XGC_PLATFORM=cori_knl
+#
+#
+#
+#####################################################
+### PETSc
+#####################################################
+#
+PETSC_DIR=$(USER_LIB_DIR)/petsc/DEFAULT/cori_knl/DEFAULT
+#
+include ${PETSC_DIR}/lib/petsc/conf/variables
+#
+PETSC_INC=$(PETSC_FC_INCLUDES)
+#
+PETSC_LIB=$(PETSC_KSP_LIB)
+#
+#
+#
+#####################################################
+### CABANA
+#####################################################
+#
+CABANA_DIR=/global/homes/a/ascheinb/cabana/Cabana
+#KOKKOS_SRC_DIR=/global/homes/a/ascheinb/cabana/kokkos
+#KOKKOS_INSTALL_DIR=/global/homes/a/ascheinb/cabana/kokkos/build/install
+#
+#CABANA_INC=-I$(CABANA_DIR)/build -I$(CABANA_DIR)/build/core/src -I$(CABANA_DIR)/core/src -I$(KOKKOS_INSTALL_DIR)/include
+#CABANA_LIB=-L$(KOKKOS_INSTALL_DIR)/lib -lkokkos
+#
+CAB_CXX_FLAGS=-pedantic -O3 -std=c++11 -fopenmp
+CAB_FTN_FLAGS=
+CAB_LINK_FLAGS=
+#
+#####################################################
+### PSPLINE
+#####################################################
+#
+PSPLINE_DIR=$(USER_LIB_DIR)/pspline/DEFAULT/$(XGC_PLATFORM)/DEFAULT
+#
+PSPLINE_INC=-I$(PSPLINE_DIR)/include
+#
+PSPLINE_LIB=-L$(PSPLINE_DIR)/lib -lpspline
+#
+#
+#
+#####################################################
+### Camtimers
+#####################################################
+#
+CAMTIMERS_DIR=$(USER_LIB_DIR)/camtimers/DEFAULT/$(XGC_PLATFORM)/DEFAULT
+#
+CAMTIMERS_INC=-I$(CAMTIMERS_DIR)/include
+#
+CAMTIMERS_LIB=-L$(CAMTIMERS_DIR)/lib -ltimers
+#
+XGC_FLAGS += -DUSE_INQUIRE_DIRECTORY
+#
+#
+#
+#####################################################
+### ADIOS
+#####################################################
+#
+ADIOS_DIR=$(USER_LIB_DIR)/adios/DEFAULT/$(XGC_PLATFORM)/DEFAULT
+ADIOS_INC=$(shell $(ADIOS_DIR)/bin/adios_config -f -c)
+ADIOS_LIB=$(shell $(ADIOS_DIR)/bin/adios_config -f -l)
+#
+ADIOS2_DIR=$(USER_LIB_DIR)/adios2/DEFAULT/$(XGC_PLATFORM)/DEFAULT
+ADIOS2_DIR=/global/homes/s/sjanhune/src/adios2/build
+ADIOS2_INC=$(shell $(ADIOS2_DIR)/bin/adios2-config --fortran-flags)
+ADIOS2_LIB=$(shell $(ADIOS2_DIR)/bin/adios2-config --fortran-libs --cxx-libs)
+
+FABRIC_INC = -I/project/projectdirs/m499/libfabric/intel/include/rdma/
+FABRIC_LIB = -L/project/projectdirs/m499/libfabric/intel/lib/ -lfabric
+#
+#
+#
+
+
+FC := ftn
+
+include defs.mk
+
+#adios - I/O library
+#ADIOS_INC=$(shell adios_config -f -c)
+#ADIOS_LIB=$(shell adios_config -f -l)
+
+#pspline lib - spline library
+#PSPLINE_DIR=/usr/common/software/pspline/nersc1.0/hsw/intel/
+#PSPLINE_INC=-I$(PSPLINE_DIR)/include -I$(PSPLINE_DIR)/mod
+#PSPLINE_LIB=-L$(PSPLINE_DIR)/lib -lpspline -lezcdf
+
+#performance monitor
+#PERFMOD_DIR=/project/projectdirs/m499/camtimers/edison-intel/
+#PERFMOD_INC=-I$(PERFMOD_DIR)
+#PERFMOD_LIB=-L$(PERFMOD_DIR) -ltimers
+PERFMOD_DIR=$(CAMTIMERS_DIR)
+PERFMOD_INC=$(CAMTIMERS_INC)
+PERFMOD_LIB=$(CAMTIMERS_LIB)
+
+#NETCDF=-I$(NETCDF_DIR)/include \
+			            -L$(NETCDF_DIR) -lnetcdf -lnetcdff
+
+
+
+#reset petsc fc_flags
+#FC_FLAGS = #-g -C -qopenmp -no-ipo -traceback -fpic
+#FC_FLAGS = -zero -g -check all -traceback
+FC_FLAGS = -O3 -qopenmp -no-ipo -traceback
+#FC_FLAGS = -O0 -g -no-ipo -traceback
+#FC_FLAGS = -O3 -no-ipo -traceback
+#FC_FLAGS = -no-ipo -traceback
+
+XGC_FLAGS = \
+			-DPSPLINE \
+		  -DUSE_BICUB_MOD \
+		  -DUSE_ONE_D_I_CUB_MOD \
+		  -DCAM_TIMERS \
+		  -DADIOS \
+		  -DADIOS2 \
+		  -DSOLVERLU -llapack -lblas \
+		  -UITER_GRID \
+		  -DF_USE_MARKER_DEN \
+		  -UF0_TOR_LINEAR \
+		  -DF_USE_MARKER_DEN2 \
+		  -DV_PERP \
+		  -DRK4_ACCURATE_EFIELD \
+		  -UDELTAF_MODE2 \
+		  -DINIT_GENE_PERT\
+		  -UPOS2_ORG_HACK\
+		  -UFORCE_ZEROCHARGE\
+		  -UFORCE_ZEROCHARGE_NEW\
+		  -UOPTIM_GYRO_AVG_MAT\
+		  -DXGC_COUPLING_CORE_EDGE\
+                  -DXGC_COUPLING_CORE_EDGE_FIELD\
+  		  -DXGC_COUPLING_CORE_EDGE_VARPI2\
+ 		  -DPURE_RK4\
+		  -DSPECIFIC_GENEXGC
+
+		  #-DPOS2_ORG
+		  #-UPLANE_MAJOR \
+
+XGC_INCLUDE = ${PSPLINE_INC} ${PERFMOD_INC} ${PETSC_INCLUDE_OPTS} ${ADIOS_INC} ${ADIOS2_INC} ${FABRIC_INC} -module . -I./
+
+LIB= ${PSPLINE_LIB} ${ADIOS_LIB} ${ADIOS2_LIB} ${PETSC_LIB} ${PERFMOD_LIB} ${FABRIC_LIB}
+
+CMP=${FC}
+
+# Set EXTRA_OBJ to $(IMSL_OBJ) for MY_IMSL wrappers, or $(PORT_OBJ) if not using IMSL
+EXTRA_OBJ=$(PORT_OBJ)
+
+# Set MPI_OBJ to $(PAR_OBJ) for parallel code, or $(SER_OBJ) for serial code
+MPI_OBJ=$(PAR_OBJ)
+
+# include basic makefile build rules
+include rules.mk
+
+

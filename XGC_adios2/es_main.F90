@@ -43,8 +43,8 @@ program xgc1_3
   use adios2_comm_module
 #endif
 #ifdef XGC_COUPLING_CORE_EDGE
-!  use coupling_core_edge
-  use new_coupling
+  use coupling_core_edge
+!  use new_coupling_xgc
 #endif
   implicit none
   include 'mpif.h'

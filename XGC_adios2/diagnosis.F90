@@ -1055,8 +1055,8 @@ subroutine diag_3d(istep,grid,psn)
   use ptl_module, only: ptl_mass
 #ifdef SC17DEMO
   !! jyc: temporary fix for SC17 demo
-!  use coupling_core_edge
-use new_coupling
+  use coupling_core_edge
+!use new_coupling_xgc
 #endif
   implicit none
   include 'mpif.h'
@@ -4066,8 +4066,8 @@ subroutine diag_particle(grid, psn, spall)
   use diag_module
 #ifdef SC17DEMO
   !! jyc: temporary fix for SC17 demo
-!  use coupling_core_edge
-use new_coupling
+  use coupling_core_edge
+!use new_coupling_xgc
 #endif
   type(grid_type) :: grid
   type(psn_type) :: psn

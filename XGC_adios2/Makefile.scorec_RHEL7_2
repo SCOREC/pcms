@@ -1,0 +1,121 @@
+#include basic makefile definitions
+include defs.mk
+
+FC := mpif90
+
+USERS_DEV=/users/adesoa/dev
+
+#adios - I/O library
+ADIOS_INC=$(shell adios_config -f -c)
+ADIOS_LIB=$(shell adios_config -f -l)
+
+#adios2 install
+ADIOS2_DIR=$(USERS_DEV)/install/ADIOS2
+ADIOS2_INC=$(shell $(ADIOS2_DIR)/bin/adios2-config --fortran-flags)
+ADIOS2_LIB=$(shell $(ADIOS2_DIR)/bin/adios2-config --fortran-libs --cxx-libs)
+
+# scorec coupling lib
+#COUPLING_LIB=-L$(shell pwd)/../drv/build/src -lwdm_minapp
+#COUPLING_DIR=/users/adesoa/dev/wdm/wdmapp_coupling/drv/build/src
+#COUPLING_LIB=-L$(COUPLING_DIR) -lwdm_minapp
+#COUPLING_INC=-I$(COUPLING_DIR)
+
+#PETSC_DIR=/opt/scorec/spack/install/linux-rhel7-x86_64/gcc-7.3.0/petsc-3.11.0-6izmpd7hffebjrzplumnrisvnu3ilkyr
+#
+include ${PETSC_DIR}/lib/petsc/conf/variables
+#
+PETSC_INC=$(PETSC_FC_INCLUDES)
+#
+PETSC_LIB=$(PETSC_KSP_LIB)
+#
+
+#PSPLINE_DIR=/lore/wtobin/dev/wdm/XGC-Devel/libs/pspline
+PSPLINE_DIR=$(USERS_DEV)/XGCM/xgc_scorec/scripts/XGC1/pspline
+PSPLINE_INC=-I$(PSPLINE_DIR)/
+PSPLINE_LIB=-L$(PSPLINE_DIR)/ -lpspline #-L$(NETCDF_DIR)/lib -lezcdf
+
+#performance monitor
+PERFMOD_DIR=$(USERS_DEV)/XGCM/xgc_scorec/scripts/XGC1/camtimers
+PERFMOD_INC=-I$(PERFMOD_DIR)
+PERFMOD_LIB=-L$(PERFMOD_DIR) -ltimers
+
+NETCDF_DIR=/opt/scorec/spack/install/linux-rhel7-x86_64/gcc-7.3.0/netcdf-4.6.3-n6uagsdaydnxskwuhgjsvnmp6bddod7s
+NETCDF=-I$(NETCDF_DIR)/include -L$(NETCDF_DIR) -lnetcdf -lnetcdff
+
+VERSION_MOD = -coupling
+
+#reset petsc fc_flags
+FC_FLAGS = -ffree-line-length-none -g -O0
+#FC_FLAGS = -O0 -g -C -traceback -fpic
+#FC_FLAGS = -g -C -qopenmp -no-ipo -traceback -fpic
+#FC_FLAGS = -zero -g -check all -traceback
+#FC_FLAGS = -O3 -qopenmp -no-ipo -traceback
+#FC_FLAGS = -O0 -g -no-ipo -traceback
+#FC_FLAGS = -O3 -no-ipo -traceback
+#FC_FLAGS = -no-ipo -traceback
+
+# intel flags
+#FC_FLAGS = -fast -D__PGI -fpic # -mp
+
+XGC_FLAGS = -DPSPLINE \
+		  -DUSE_BICUB_MOD \
+		  -DUSE_ONE_D_I_CUB_MOD \
+		  -UCAM_TIMERS \
+		  -DADIOS \
+		  -DADIOS2 \
+		  -DSOLVERLU -llapack -lblas \
+		  -DITER_GRID \
+		  -DF_USE_MARKER_DEN \
+		  -DF_USE_MARKER_DEN2 \
+		  -DF0_TOR_LINEAR \
+		  -DV_PERP \
+		  -DDELTAF_MODE2 \
+		  -DINIT_GENE_PERT \
+		  -UPOS2_ORG_HACK \
+		  -UFORCE_ZEROCHARGE \
+		  -UFORCE_ZEROCHARGE_NEW \
+		  -UOPTIM_GYRO_AVG_MAT \
+		  -UNEWGYROMATRIX \
+		  -DPURE_RK4 \
+		  -DRK4_ACCURATE_EFIELD \
+		  -DSPECIFIC_GENEXGC \
+		  -DXGC_COUPLING_CORE_EDGE \
+                  -DXGC_COUPLING_CORE_EDGE_FIELD \
+		  -DXGC_COUPLING_CORE_EDGE_VARPI2 \
+		  -UCCE_TEST_1
+		  #-DPOS2_ORG
+		  #-UPLANE_MAJOR \
+
+
+#XGC_FLAGS = -DPSPLINE \
+                  -DUSE_BICUB_MOD \
+                  -DUSE_ONE_D_I_CUB_MOD \
+                  -DCAM_TIMERS \
+                  -DADIOS \
+                  -DSOLVERLU -llapack -lblas \
+                  -DDELTAF_MODE2 \
+                  -USPECIFIC_GENEXGC\
+                  -UXGC_COUPLING_CORE_EDGE\
+                  -UXGC_COUPLING_CORE_EDGE_FIELD\
+                  -UXGC_COUPLING_CORE_EDGE_VARPI2\
+                  -UCCE_TEST_1
+                  #-DPOS2_ORG
+                  #-UPLANE_MAJOR \
+
+XGC_INCLUDE = ${PSPLINE_INC} ${PERFMOD_INC} ${PETSC_INCLUDE_OPTS} ${ADIOS_INC} ${ADIOS2_INC}  -I./
+
+LIB= ${PSPLINE_LIB} ${ADIOS_LIB} ${PETSC_LIB} ${PERFMOD_LIB} ${ADIOS2_LIB}   -L./
+
+CMP =${FC}
+
+# Set EXTRA_OBJ to ${IMSL_OBJ} for MY_IMSL wrapper, or ${PORT_OBJ} if not using IMSL
+EXTRA_OBJ=$(PORT_OBJ)
+
+# Set MPI_OBJ to $(PAR_OBJ) for parallel code, or $(SER_OBJ) for serial code
+
+MPI_OBJ = $(PAR_OBJ)
+
+#include basic makefile build rules
+include rules.mk
+
+

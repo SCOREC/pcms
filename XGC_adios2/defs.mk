@@ -1,7 +1,8 @@
 .SUFFIXES: .o .F90
 
 %.o: %.mod
-
+PETSC_DIR=/users/adesoa/dev/petsc/3.7.7
+#/opt/scorec/spack/install/linux-rhel7-x86_64/gcc-7.3.0/petsc-3.11.0-6izmpd7hffebjrzplumnrisvnu3ilkyr
 #include ${PETSC_DIR}/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/variables
 
@@ -11,7 +12,7 @@ include ${PETSC_DIR}/lib/petsc/conf/variables
 #PETSC_INC=$(PETSC_FC_INCLUDES)
 #PETSC_LIB=$(PETSC_KSP_LIB)
 
-OBJ= module.o search.o module_psn.o pol_decomp.o f0module.o adios_comm_mod.o adios2_comm_mod.o \
+OBJ= coupling_core_edge.o module.o search.o module_psn.o pol_decomp.o f0module.o adios_comm_mod.o adios2_comm_mod.o \
 	elliptics.o collisionf.o lbal_mod.o \
 	$(EXTRA_OBJ) psmooth.o bicub_mod.o one_d_cub_mod.o initial_perturbation_GM.o \
         interfaces.o charge.o diagnosis.o poisson_extra_xgc1.o qevaluateandtrapped.o setup.o   \
@@ -20,8 +21,7 @@ OBJ= module.o search.o module_psn.o pol_decomp.o f0module.o adios_comm_mod.o adi
 	limiter.o bounce.o diagnosis2.o collision.o collision2.o  \
         collisionf2.o  heat.o \
 	turbulence.o neutral.o  neutral2.o  neutral3.o linearsolver.o fem2d.o \
-	fem_ops.o poisson_extra_common.o petsc_solve.o
-#coupling_core_edge.o
+	fem_ops.o poisson_extra_common.o petsc_solve.o \
 #OBJ_EM=module-em.o bicub_mod.o one_d_cub_mod.o  search-em.o pol_decomp.o f0module.o em_advance_petsc.o  interfaces-em.o  em_main.o em_hyb.o em_poisson.o charge-em.o diagnosis-em.o poisson_extra_xgc1-em.o collisionf.o setup-em.o 
 OBJ_EM=em_main.o em_hyb.o em_poisson.o em_advance_petsc.o 
 

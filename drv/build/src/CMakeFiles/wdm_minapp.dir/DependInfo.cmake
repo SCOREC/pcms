@@ -4,12 +4,12 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_Fortran
-  "/global/homes/d/damilare/wdmapp_coupling/drv/src/adios2_comm_mod.F90" "/global/homes/d/damilare/wdmapp_coupling/drv/build/src/CMakeFiles/wdm_minapp.dir/adios2_comm_mod.F90.o"
-  "/global/homes/d/damilare/wdmapp_coupling/drv/src/adios_comm_mod.F90" "/global/homes/d/damilare/wdmapp_coupling/drv/build/src/CMakeFiles/wdm_minapp.dir/adios_comm_mod.F90.o"
-  "/global/homes/d/damilare/wdmapp_coupling/drv/src/new_coupling.F90" "/global/homes/d/damilare/wdmapp_coupling/drv/build/src/CMakeFiles/wdm_minapp.dir/new_coupling.F90.o"
-  "/global/homes/d/damilare/wdmapp_coupling/drv/src/sim_param.F90" "/global/homes/d/damilare/wdmapp_coupling/drv/build/src/CMakeFiles/wdm_minapp.dir/sim_param.F90.o"
+  "/lore/adesoa/dev/wdmapp_coupling/drv/src/new_coupling.F90" "/lore/adesoa/dev/wdmapp_coupling/drv/build/src/CMakeFiles/wdm_minapp.dir/new_coupling.F90.o"
+  "/lore/adesoa/dev/wdmapp_coupling/drv/src/sim_param.F90" "/lore/adesoa/dev/wdmapp_coupling/drv/build/src/CMakeFiles/wdm_minapp.dir/sim_param.F90.o"
   )
-set(CMAKE_Fortran_COMPILER_ID "Intel")
+set(CMAKE_Fortran_COMPILER_ID "GNU")
+set(CMAKE_Fortran_SUBMODULE_SEP "@")
+set(CMAKE_Fortran_SUBMODULE_EXT ".smod")
 
 # Preprocessor definitions for this target.
 set(CMAKE_TARGET_DEFINITIONS_Fortran
@@ -18,8 +18,11 @@ set(CMAKE_TARGET_DEFINITIONS_Fortran
 
 # The include file search paths:
 set(CMAKE_Fortran_TARGET_INCLUDE_PATH
-  "/global/common/sw/cray/cnl7/haswell/adios/1.13.1/intel/19.0.3.199/wuurn4w/include"
-  "/global/project/projectdirs/m499/Software/adios2/v2.1.0-3511-g0fa6aeef/cori_haswell/intel/include/adios2/fortran"
+  "../../cpl/cmake"
+  "/opt/scorec/spack/install/linux-rhel7-x86_64/gcc-7.3.0/adios-1.13.1-ootbumw6qyec5wyqcd7udfgcz5gewx5p/include"
+  "/users/adesoa/dev/install/ADIOS2/include/adios2/fortran"
+  "/opt/scorec/spack/install/linux-rhel7-x86_64/gcc-7.3.0/hdf5-1.10.5-teac4rs63rxd4bqexluxhmrlurx2ly4l/include"
+  "/opt/scorec/spack/install/linux-rhel7-x86_64/gcc-7.3.0/zlib-1.2.11-ypve67owtmigrrbz3b76gg66xvihmhmx/include"
   "../src"
   )
 

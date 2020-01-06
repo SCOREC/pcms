@@ -1,5 +1,5 @@
       program mpi_ver
-      use mpi_f08
+      use mpi
       implicit none
       integer(kind=kind(MPI_VERSION)), parameter :: zero = ichar('0')
       character, dimension(17), parameter :: mpiver_str =&

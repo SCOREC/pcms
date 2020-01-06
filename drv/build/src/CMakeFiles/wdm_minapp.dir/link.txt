@@ -1,2 +1,2 @@
-/usr/bin/ar qc libwdm_minapp.a  CMakeFiles/wdm_minapp.dir/adios2_comm_mod.F90.o CMakeFiles/wdm_minapp.dir/adios_comm_mod.F90.o CMakeFiles/wdm_minapp.dir/new_coupling.F90.o CMakeFiles/wdm_minapp.dir/sim_param.F90.o
+/usr/bin/ar qc libwdm_minapp.a  CMakeFiles/wdm_minapp.dir/new_coupling.F90.o CMakeFiles/wdm_minapp.dir/sim_param.F90.o
 /usr/bin/ranlib libwdm_minapp.a

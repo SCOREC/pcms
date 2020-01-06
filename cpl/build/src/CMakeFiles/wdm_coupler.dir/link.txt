@@ -1,2 +1,2 @@
-/usr/bin/ar qc libwdm_coupler.a  CMakeFiles/wdm_coupler.dir/wdmapp.cc.o CMakeFiles/wdm_coupler.dir/cpl_init.cc.o
+/usr/bin/ar qc libwdm_coupler.a  CMakeFiles/wdm_coupler.dir/app1.cc.o CMakeFiles/wdm_coupler.dir/cpl_init.cc.o
 /usr/bin/ranlib libwdm_coupler.a

@@ -1,10 +1,8 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/wdm_minapp.dir/adios2_comm_mod.F90.o"
-  "CMakeFiles/wdm_minapp.dir/adios_comm_mod.F90.o"
   "CMakeFiles/wdm_minapp.dir/new_coupling.F90.o"
   "CMakeFiles/wdm_minapp.dir/sim_param.F90.o"
-  "libwdm_minapp.pdb"
   "libwdm_minapp.a"
+  "libwdm_minapp.pdb"
 )
 
 # Per-language clean rules from dependency scanning.

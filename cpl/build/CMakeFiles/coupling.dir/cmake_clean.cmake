@@ -1,7 +1,7 @@
 file(REMOVE_RECURSE
   "CMakeFiles/coupling.dir/src/wdmapp.cc.o"
-  "coupling.pdb"
   "coupling"
+  "coupling.pdb"
 )
 
 # Per-language clean rules from dependency scanning.

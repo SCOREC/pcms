@@ -1,8 +1,8 @@
-# Install script for directory: /global/homes/d/damilare/wdmapp_coupling/drv/src
+# Install script for directory: /lore/adesoa/dev/wdmapp_coupling/drv/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/global/homes/d/damilare/wdmapp_coupling/install/drv")
+  set(CMAKE_INSTALL_PREFIX "/lore/adesoa/dev/wdmapp_coupling/drv")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -39,13 +39,25 @@ endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
-   "/global/homes/d/damilare/wdmapp_coupling/drv/build/libwdm_minapp.a")
+   "/lore/adesoa/dev/wdmapp_coupling/drv/build/libwdm_minapp.a")
   if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-file(INSTALL DESTINATION "/global/homes/d/damilare/wdmapp_coupling/drv/build" TYPE STATIC_LIBRARY FILES "/global/homes/d/damilare/wdmapp_coupling/drv/build/src/libwdm_minapp.a")
+file(INSTALL DESTINATION "/lore/adesoa/dev/wdmapp_coupling/drv/build" TYPE STATIC_LIBRARY FILES "/lore/adesoa/dev/wdmapp_coupling/drv/build/src/libwdm_minapp.a")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
+   "/lore/adesoa/dev/wdmapp_coupling/drv/src/")
+  if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+file(INSTALL DESTINATION "/lore/adesoa/dev/wdmapp_coupling/drv/src" TYPE DIRECTORY FILES "")
 endif()
 

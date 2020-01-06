@@ -1,8 +1,8 @@
-# Install script for directory: /global/homes/d/damilare/wdmapp_coupling/drv
+# Install script for directory: /lore/adesoa/dev/wdmapp_coupling/drv
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/global/homes/d/damilare/wdmapp_coupling/install/drv")
+  set(CMAKE_INSTALL_PREFIX "/lore/adesoa/dev/wdmapp_coupling/drv")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -39,7 +39,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("/global/homes/d/damilare/wdmapp_coupling/drv/build/src/cmake_install.cmake")
+  include("/lore/adesoa/dev/wdmapp_coupling/drv/build/src/cmake_install.cmake")
 
 endif()
 
@@ -51,5 +51,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/global/homes/d/damilare/wdmapp_coupling/drv/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/lore/adesoa/dev/wdmapp_coupling/drv/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

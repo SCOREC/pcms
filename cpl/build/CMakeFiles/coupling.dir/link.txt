@@ -1,1 +1,1 @@
-/opt/cray/pe/craype/2.5.18/bin/CC  -g   CMakeFiles/coupling.dir/src/wdmapp.cc.o  -o coupling 
+/opt/scorec/spack/install/linux-rhel7-x86_64/gcc-7.3.0/mpich-3.3-diz4f6ieln25ouifyc7ndtqlfksom6nb/bin/mpicxx  -g  -rdynamic CMakeFiles/coupling.dir/src/wdmapp.cc.o  -o coupling 

@@ -6,19 +6,13 @@
 
 #IncludeRegexTransform: 
 
-/global/homes/d/damilare/wdmapp_coupling/cpl/src/cpl_init.h
+/lore/adesoa/dev/wdmapp_coupling/cpl/src/cpl_init.h
 
-/global/homes/d/damilare/wdmapp_coupling/cpl/src/wdmapp.cc
+/lore/adesoa/dev/wdmapp_coupling/cpl/src/wdmapp.cc
 cpl_init.h
-/global/homes/d/damilare/wdmapp_coupling/cpl/src/cpl_init.h
-sstream
+/lore/adesoa/dev/wdmapp_coupling/cpl/src/cpl_init.h
+adios2.h
 -
-unistd.h
--
-sys/wait.h
--
-sys/stat.h
--
-string
+mpi.h
 -
 

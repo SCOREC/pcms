@@ -4,9 +4,9 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/global/homes/d/damilare/wdmapp_coupling/cpl/src/wdmapp.cc" "/global/homes/d/damilare/wdmapp_coupling/cpl/build/CMakeFiles/coupling.dir/src/wdmapp.cc.o"
+  "/lore/adesoa/dev/wdmapp_coupling/cpl/src/wdmapp.cc" "/lore/adesoa/dev/wdmapp_coupling/cpl/build/CMakeFiles/coupling.dir/src/wdmapp.cc.o"
   )
-set(CMAKE_CXX_COMPILER_ID "Intel")
+set(CMAKE_CXX_COMPILER_ID "GNU")
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH

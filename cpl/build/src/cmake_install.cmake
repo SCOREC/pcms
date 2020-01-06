@@ -1,8 +1,8 @@
-# Install script for directory: /global/homes/d/damilare/wdmapp_coupling/cpl/src
+# Install script for directory: /lore/adesoa/dev/wdmapp_coupling/cpl/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/global/homes/d/damilare/coupling_NL/GENE_XGC/circular_NL/XGC")
+  set(CMAKE_INSTALL_PREFIX "/lore/adesoa/dev/wdmapp_coupling/cpl")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -38,10 +38,34 @@ if(NOT DEFINED CMAKE_CROSSCOMPILING)
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE FILE FILES "/global/homes/d/damilare/wdmapp_coupling/cpl/src/cpl_init.h")
+  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/wdmapp" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/wdmapp")
+    file(RPATH_CHECK
+         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/wdmapp"
+         RPATH "")
+  endif()
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/bin" TYPE EXECUTABLE FILES "/lore/adesoa/dev/wdmapp_coupling/cpl/build/src/wdmapp")
+  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/wdmapp" AND
+     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/wdmapp")
+    file(RPATH_CHANGE
+         FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/wdmapp"
+         OLD_RPATH "/opt/scorec/spack/install/linux-rhel7-x86_64/gcc-7.3.0/lz4-1.8.3-oy5o4yqlquctxkaz2g65rngq45ctpocq/lib:/users/adesoa/dev/install/ADIOS2/lib64:"
+         NEW_RPATH "")
+    if(CMAKE_INSTALL_DO_STRIP)
+      execute_process(COMMAND "/usr/bin/strip" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/wdmapp")
+    endif()
+  endif()
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "/global/homes/d/damilare/wdmapp_coupling/cpl/build/src/libwdm_coupler.a")
+  list(APPEND CMAKE_ABSOLUTE_DESTINATION_FILES
+   "/lore/adesoa/dev/wdmapp_coupling/cpl/src/")
+  if(CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(WARNING "ABSOLUTE path INSTALL DESTINATION : ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+  if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
+    message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
+  endif()
+file(INSTALL DESTINATION "/lore/adesoa/dev/wdmapp_coupling/cpl/src" TYPE DIRECTORY FILES "")
 endif()
 

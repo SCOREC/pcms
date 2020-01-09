@@ -3,7 +3,6 @@
 This git repo consists of three pieces of software
 
 1. gene_adios2
-
 The base code was gotten from Gabrielle as the version used for the in-memory coupling.
 Its coupling capabilities were confirmed in December 2019 and still exist on cori. 
 Any modification for study on XGC-GENE coupling will be put into this repo and 
@@ -18,7 +17,6 @@ It was also gotten from Gabriele Merlo and its coupling has been verified.
 This is the pass-through coupler - executable piece of code that contains the adios2 implementation of the coupling to transfer data from and to each code.
 
 4. wdmapp_coupling/drv
-
 This fourth piece is the obsolete interface library between XGC and GENE. 
 It contains the data transfer capabilities that were initially within GENE.
 

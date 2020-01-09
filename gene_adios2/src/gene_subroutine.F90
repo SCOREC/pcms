@@ -15,7 +15,7 @@ module gene_subroutine
   use diagnostics, only: cat_output
   use time_averages, only: avgfluxes, avgflux_stime
   use diagnostics_df, only: avgprof_stime, avgprof, istep_prof
-  use diagnostics_neoclass, only: neoflux
+!  use diagnostics_neoclass, only: neoflux
   use checkpoint, only: checkpoint_in, read_checkpoint,&
        &reset_chpt_time,chpt_read_h5
   use geometry, only: magn_geometry, dvdx, sqrtgxx_fs,&
@@ -25,7 +25,6 @@ module gene_subroutine
   use collisions, only: coll
   use diagnostics_fmsvd
   use codemods_mod
-
 
   ! This is the GPTL timing if built, otherwise it does nothing
   use perf_monitor
@@ -37,16 +36,19 @@ module gene_subroutine
   use adios_comm_module, only: staging_read_method, staging_read_params
   use adios_read_mod
 #endif
+
 #ifdef ADIOS2
-  use adios2_comm_module, only: adios2_comm_init, adios2_comm_finalize
+  use adios2_comm_module, only: adios2_comm_init, adios2_comm_finalize, adios_cfg
 #endif
 
 #ifdef COUPLE_XGC
-   use coupling_core_gene, only: cce_initialize, cce_destroy
+  use coupling_core_gene, only: cce_initialize
+  use coupling_base_setup, only: cce_destroy
 #else
 
 #ifdef INIT_XGC
-    use coupling_core_gene, only: cce_initialize, cce_destroy
+  use coupling_core_gene, only: cce_initialize
+  use coupling_base_setup, only: cce_destroy
 #endif
 
 #endif
@@ -150,7 +152,7 @@ contains
 #endif
 
 #ifdef ADIOS2
-       call adios2_comm_init(adios_cfg, my_mpi_comm_world)
+       call adios2_comm_init(trim(adios_cfg), my_mpi_comm_world)
 #endif
 
 #ifdef COUPLE_XGC
@@ -224,7 +226,7 @@ contains
 #endif
 
 #ifdef ADIOS2
-       call adios_finalize(mype, adios_err)
+       call adios2_comm_finalize
 #endif
 
 

@@ -1,0 +1,2 @@
+/lore/adesoa/dev/wdmapp_coupling/examples/bin/helloSstWriter
+/lore/adesoa/dev/wdmapp_coupling/examples/bin/helloSstReader

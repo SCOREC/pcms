@@ -1,8 +1,0 @@
-Incoming variable is of size Incoming variable is of size 40
-Incoming variable is of size 40
-Reader rank 2 reading Incoming variable is of size 40
-Reader rank 3 reading 10 floats starting at element 30
-40
-Reader rank 0 reading 10 floats starting at element 0
-Reader rank 1 reading 10 floats starting at element 10
-10 floats starting at element 20

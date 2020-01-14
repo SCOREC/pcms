@@ -2,8 +2,8 @@
 #project(app CXX)
 
 set(SRCS  
-	coupling.cc
-	#cpl_init.cc
+	#coupling.cc
+	cpl_scorec.cc
 	)
 # any headers which need to be public/installed
 #  this does not need to be ALL headers

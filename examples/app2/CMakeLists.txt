@@ -1,7 +1,7 @@
 #cmake_minimum_required(VERSION 2.8)
 #project(app CXX)
 
-set(LIB_NAME helloSstReader)
+set(LIB_NAME app2)
 set(USER_LIB "/users/adesoa/dev")
 set(ADIOS2_INCLUDE_DIRS "${USER_LIB}/install/ADIOS2/include")
 set(ADIOS2_INC "${USER_LIB}/install/ADIOS2/lib64")
@@ -21,7 +21,7 @@ endif()
 
 
 add_definitions(-DADIOS2_HAVE_MPI)
-add_executable(${LIB_NAME} helloSstReader.cpp)
+add_executable(${LIB_NAME} app2.cc)
 target_link_libraries(${LIB_NAME} ${MPI_CXX_LIBRARIES} ${ADIOS2_LIB})
 
 INSTALL(TARGETS ${LIB_NAME}

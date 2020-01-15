@@ -33,10 +33,15 @@ int main(int argc, char **argv){
   //send field data to GENE
   write_field_to_GENE(field, rank, size);
   //	end loop
+  //
+  MPI_Barrier(MPI_COMM_WORLD);
+  if( !rank )
+    std::cout << "cpl done\n";
 
   MPI_Finalize();
   return 0;
 }
+
 
 void write_density_to_XGC(const std::vector<float> &dens, int rank, int size)
 {
@@ -57,6 +62,7 @@ void write_density_to_XGC(const std::vector<float> &dens, int rank, int size)
 
 void read_field_from_XGC(std::vector<float> &field, int rank, int size)
 {
+  std::cout << rank << " start reading from xgc\n";
   //  variable declaration
   adios2::Engine xfieldReader;
   adios2::IO xfieldIO;
@@ -65,20 +71,20 @@ void read_field_from_XGC(std::vector<float> &field, int rank, int size)
   xfieldIO = xc_adios.DeclareIO("xcIO");
   xfieldIO.SetEngine("Sst");
   xfieldReader = xfieldIO.Open("xfield.bp", adios2::Mode::Read);
-  std::cout << "XGC-to-coupling field engine created\n";
+  std::cout << rank << " XGC-to-coupling field engine created\n";
 
   xfieldReader.BeginStep();
   adios2::Variable<float> bp_xfield = xfieldIO.InquireVariable<float>("bp_xfield");
-  std::cout << "Incoming variable of size " << bp_xfield.Shape()[0] << "\n";
+  std::cout << rank << " Incoming variable of size " << bp_xfield.Shape()[0] << "\n";
 
   const std::size_t t_size = bp_xfield.Shape()[0];
   const std::size_t my_start = (t_size / size) * rank;
-  const std::size_t my_count = (t_size / size) * rank;
+  const std::size_t my_count = (t_size / size);
 
   const adios2::Dims start{my_start};
   const adios2::Dims count{my_count};
   const adios2::Box<adios2::Dims> sel(start, count);
-  std::cout << "xField Reader of rank " << rank << " reading " << my_count
+  std::cout << " xField Reader of rank " << rank << " reading " << my_count
   	<< " floats starting at element " << my_start << "\n";
 
   field.resize(my_count);
@@ -86,12 +92,16 @@ void read_field_from_XGC(std::vector<float> &field, int rank, int size)
   xfieldReader.Get(bp_xfield, field.data());
   xfieldReader.EndStep();
   xfieldReader.Close();
+  std::cout << rank << " done reading from xgc\n";
 }
 
 
 void write_field_to_GENE(const std::vector<float> &field, int rank, int size)
 {
+  std::cout << rank << " start writing to gene\n";
+ // local array size Nx = 10, 	
   const std::size_t Nx = field.size();
+  std::cout << rank << " Nx: " << Nx << "\n";
 
   adios2::ADIOS cg_adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::IO cfieldIO = cg_adios.DeclareIO("cgIO");
@@ -99,11 +109,15 @@ void write_field_to_GENE(const std::vector<float> &field, int rank, int size)
 
   auto bp_cfield = cfieldIO.DefineVariable<float>("bp_cfield",{size * Nx}, {rank * Nx}, {Nx});
   adios2::Engine cfieldWriter = cfieldIO.Open("cfield.bp", adios2::Mode::Write);
+/*  std::cout << " xField Writerer of rank " << rank << " writing " << my_count
+  	<< " floats starting at element " << my_start << "\n";
+*/
 
   cfieldWriter.BeginStep();
   cfieldWriter.Put<float>(bp_cfield, field.data());
   cfieldWriter.EndStep();
   cfieldWriter.Close();
+  std::cout << rank << " done writing to gene\n";
 }
 
 

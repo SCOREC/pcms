@@ -24,8 +24,11 @@ int main(int argc, char *argv[])
 
   write_density(density, rank, size);
   read_field(field, rank, size);
- MPI_Finalize();
-return 0;
+  MPI_Barrier(MPI_COMM_WORLD);
+  if ( !rank )
+    std::cout << "gene proxy done\n";
+  MPI_Finalize();
+  return 0;
 }
 
 

@@ -18,8 +18,10 @@ int main(int argc, char *argv[])
   read_density(density, rank, size);
   // returning the same varaible density across the loop
   write_field(density, rank, size);
+  MPI_Barrier(MPI_COMM_WORLD);
+  if( !rank )
+    std::cout << "xgc proxy done\n";
   MPI_Finalize();
-
   return 0;
 }
 
@@ -30,6 +32,7 @@ void write_field(const std::vector<float> &field, int rank, int size)
 
   try
   {
+	std::cout << rank << " start writing \n";
   	adios2::ADIOS xc_adios(MPI_COMM_WORLD, adios2::DebugON);
   	adios2::IO xfieldIO = xc_adios.DeclareIO("xcIO");
   	xfieldIO.SetEngine("Sst");
@@ -42,6 +45,7 @@ void write_field(const std::vector<float> &field, int rank, int size)
   	xfieldWriter.Put<float>(bp_xfield, field.data());
   	xfieldWriter.EndStep();
   	xfieldWriter.Close();
+	std::cout << rank << " Done writing \n";
   }
 
   catch(std::invalid_argument &e)
@@ -68,6 +72,7 @@ void read_density(std::vector<float> &dens, int rank, int size)
 
   try
   {
+	std::cout << rank << " start reading\n";
   	adios2::ADIOS xc_adios(MPI_COMM_WORLD, adios2::DebugON);
 
   	adios2::IO cdensIO = xc_adios.DeclareIO("xcIO");
@@ -97,6 +102,7 @@ void read_density(std::vector<float> &dens, int rank, int size)
   	cdensReader.EndStep();
 
   	cdensReader.Close();
+	std::cout << rank << " done reading\n";
   }
   catch (std::invalid_argument &e)
   {

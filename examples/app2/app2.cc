@@ -1,6 +1,6 @@
 #include<iostream>
 #include<vector>
-
+#include<assert.h>
 #include<adios2.h>
 #include<mpi.h>
 
@@ -16,6 +16,9 @@ int main(int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &size);   
 
   read_density(density, rank, size);
+  assert (sizeof(density[0])==4);
+  printf ("The first density value is %f\n",density[0]);
+
   // returning the same varaible density across the loop
   write_field(density, rank, size);
   MPI_Barrier(MPI_COMM_WORLD);

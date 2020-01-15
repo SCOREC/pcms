@@ -1,6 +1,6 @@
 #include<iostream>
 #include<vector>
-
+#include<assert.h>
 #include<adios2.h>
 #include<mpi.h>
 
@@ -24,6 +24,11 @@ int main(int argc, char *argv[])
 
   write_density(density, rank, size);
   read_field(field, rank, size);
+
+  assert (sizeof(field[0])==4);
+  printf ("The first field value is %f\n",field[0]);
+
+
   MPI_Barrier(MPI_COMM_WORLD);
   if ( !rank )
     std::cout << "gene proxy done\n";

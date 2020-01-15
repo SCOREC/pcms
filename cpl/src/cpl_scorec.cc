@@ -1,4 +1,4 @@
-#include"cpl_init.h"
+#include<assert.h>
 #include<adios2.h>
 #include<iostream>
 #include <mpi.h>
@@ -23,12 +23,18 @@ int main(int argc, char **argv){
 
   //get density data from GENE
   read_density_from_GENE(density, rank, size);
+  assert (sizeof(density[0])==4);
+  printf ("The first density value is %f\n",density[0]);
+
 
   //CPL-XGC Writer - send density data to XGC in the same format
   write_density_to_XGC(density, rank, size);
 
   //get field data from XGC
   read_field_from_XGC(field, rank, size);
+  assert (sizeof(field[0])==4);
+  printf ("The first field value is %f\n",field[0]);
+
   
   //send field data to GENE
   write_field_to_GENE(field, rank, size);

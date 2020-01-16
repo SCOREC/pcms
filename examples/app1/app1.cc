@@ -25,13 +25,15 @@ int main(int argc, char *argv[])
   write_density(density, rank, size);
   read_field(field, rank, size);
 
-  assert (sizeof(field[0])==4);
-  printf ("The first field value is %f\n",field[0]);
 
 
   MPI_Barrier(MPI_COMM_WORLD);
   if ( !rank )
+  {
+    assert (field[0] == (float)0);
+    std::cout << "The asserted first field value is " << field[0] << "\n";
     std::cout << "gene proxy done\n";
+  }
   MPI_Finalize();
   return 0;
 }

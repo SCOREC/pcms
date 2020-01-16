@@ -23,26 +23,28 @@ int main(int argc, char **argv){
 
   //get density data from GENE
   read_density_from_GENE(density, rank, size);
-  assert (sizeof(density[0])==4);
-  printf ("The first density value is %f\n",density[0]);
-
 
   //CPL-XGC Writer - send density data to XGC in the same format
   write_density_to_XGC(density, rank, size);
 
   //get field data from XGC
   read_field_from_XGC(field, rank, size);
-  assert (sizeof(field[0])==4);
-  printf ("The first field value is %f\n",field[0]);
-
   
   //send field data to GENE
   write_field_to_GENE(field, rank, size);
-  //	end loop
+  //  end loop
   //
   MPI_Barrier(MPI_COMM_WORLD);
   if( !rank )
+  {
+    assert (density[0] == (float)0);
+    std::cout << "The asserted first density value is " << density[0] << "\n";
+
+    assert (field[0] == (float)0);
+    std::cout << "The asserted first field value is " << field[0] << "\n";
+
     std::cout << "cpl done\n";
+  }
 
   MPI_Finalize();
   return 0;
@@ -91,7 +93,7 @@ void read_field_from_XGC(std::vector<float> &field, int rank, int size)
   const adios2::Dims count{my_count};
   const adios2::Box<adios2::Dims> sel(start, count);
   std::cout << " xField Reader of rank " << rank << " reading " << my_count
-  	<< " floats starting at element " << my_start << "\n";
+    << " floats starting at element " << my_start << "\n";
 
   field.resize(my_count);
   bp_xfield.SetSelection(sel);
@@ -105,7 +107,7 @@ void read_field_from_XGC(std::vector<float> &field, int rank, int size)
 void write_field_to_GENE(const std::vector<float> &field, int rank, int size)
 {
   std::cout << rank << " start writing to gene\n";
- // local array size Nx = 10, 	
+ // local array size Nx = 10,   
   const std::size_t Nx = field.size();
   std::cout << rank << " Nx: " << Nx << "\n";
 
@@ -116,7 +118,7 @@ void write_field_to_GENE(const std::vector<float> &field, int rank, int size)
   auto bp_cfield = cfieldIO.DefineVariable<float>("bp_cfield",{size * Nx}, {rank * Nx}, {Nx});
   adios2::Engine cfieldWriter = cfieldIO.Open("cfield.bp", adios2::Mode::Write);
 /*  std::cout << " xField Writerer of rank " << rank << " writing " << my_count
-  	<< " floats starting at element " << my_start << "\n";
+    << " floats starting at element " << my_start << "\n";
 */
 
   cfieldWriter.BeginStep();
@@ -147,7 +149,7 @@ void read_density_from_GENE(std::vector<float> &dens, int rank, int size)
   const std::size_t my_start = (t_size / size) *rank;
   const std::size_t my_count = (t_size / size);
   std::cout << "gDensity Reader of rank "<< rank <<" reading "<< my_count 
-	<< " floats starting from element "<< my_start << "\n";
+  << " floats starting from element "<< my_start << "\n";
   const adios2::Dims start{my_start};
   const adios2::Dims count{my_count};
   const adios2::Box<adios2::Dims> sel(start, count);

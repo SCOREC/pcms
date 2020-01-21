@@ -14,13 +14,14 @@ void read_density_from_GENE(std::vector<float> &dens, int rank, int size);
 
 
 int main(int argc, char **argv){
-  int rank, size;
+  int rank, size, step = 0;
   std::vector<float> density, field;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-
+  while(step < 5)
+  {
   //get density data from GENE
   read_density_from_GENE(density, rank, size);
 
@@ -32,6 +33,9 @@ int main(int argc, char **argv){
   
   //send field data to GENE
   write_field_to_GENE(field, rank, size);
+  step++;
+  std::cout << "This is for time step " << step <<std::endl;
+  }
   //  end loop
   //
   MPI_Barrier(MPI_COMM_WORLD);

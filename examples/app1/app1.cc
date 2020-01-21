@@ -9,7 +9,7 @@ void read_field(std::vector<float> &dens, int rank, int size);
 
 int main(int argc, char *argv[])
 {
-  int rank , size;
+  int rank, size, step = 0;
   std::vector<float> field = {0.0};
 
   MPI_Init(&argc, &argv);
@@ -22,9 +22,13 @@ int main(int argc, char *argv[])
     (float)10.0 * rank + 6, (float)10.0 * rank + 7, (float)10.0 * rank + 8,
     (float)10.0 * rank + 9};
 
+while(step <5)
+{
   write_density(density, rank, size);
   read_field(field, rank, size);
-
+  step++;
+  std::cout << "This is for step "<< step <<std::endl;
+}
 
 
   MPI_Barrier(MPI_COMM_WORLD);

@@ -8,6 +8,7 @@ set(SRCS
 # any headers which need to be public/installed
 #  this does not need to be ALL headers
 set(HDRS )
+#set(EXEC cpl_exec_GX)
 set(EXEC cpl_exec)
 
 set(USER_LIB "/users/adesoa/dev")

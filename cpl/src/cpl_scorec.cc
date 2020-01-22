@@ -15,7 +15,9 @@ void read_density_from_GENE(std::vector<float> &dens, int rank, int size);
 
 int main(int argc, char **argv){
   int rank, size, step = 0;
+  int field_step = 0, density_step = 0;
   std::vector<float> density, field;
+
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -27,14 +29,16 @@ int main(int argc, char **argv){
 
   //CPL-XGC Writer - send density data to XGC in the same format
   write_density_to_XGC(density, rank, size);
+  density_step++;
 
   //get field data from XGC
   read_field_from_XGC(field, rank, size);
   
   //send field data to GENE
   write_field_to_GENE(field, rank, size);
-  step++;
+  field_step++;
   std::cout << "This is for time step " << step <<std::endl;
+  step++;
   }
   //  end loop
   //

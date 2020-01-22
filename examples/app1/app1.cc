@@ -26,8 +26,8 @@ while(step <5)
 {
   write_density(density, rank, size);
   read_field(field, rank, size);
-  step++;
   std::cout << "This is for step "<< step <<std::endl;
+  step++;
 }
 
 

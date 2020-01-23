@@ -2,14 +2,14 @@
 #project(app CXX)
 
 set(SRCS  
-	#coupling.cc
-	cpl_scorec.cc
+	coupling.cc
+	#cpl_scorec.cc
 	)
 # any headers which need to be public/installed
 #  this does not need to be ALL headers
 set(HDRS )
-#set(EXEC cpl_exec_GX)
-set(EXEC cpl_exec)
+set(EXEC cpl_exec_GX)
+#set(EXEC cpl_exec)
 
 set(USER_LIB "/users/adesoa/dev")
 set(ADIOS2_INCLUDE_DIRS "${USER_LIB}/install/ADIOS2/include")

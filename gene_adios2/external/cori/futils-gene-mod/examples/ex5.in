@@ -1,0 +1,20 @@
+*** slabDKE: semi-Lagrangian code for solving DKE in slab geometry ***
+======================================================================
+T.M. Tran & S. Brunner, CRPP/EPFL
+-
+&BASIC
+  job_time=3600.0, extra_time=60.0,
+  nrun=5,
+  dt=2.D-2,
+  nlres=f,
+/
+&MESHES
+  Lx = 10.D0,
+  Ly = 20.D0,
+  Lz = 30.D0,
+  Vz_max = 7.D0,
+  nx  = 16,
+  ny  = 32,
+  nz  = 64,
+  nVz = 32,
+/

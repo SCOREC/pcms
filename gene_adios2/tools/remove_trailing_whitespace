@@ -1,0 +1,13 @@
+#!/bin/bash
+
+echo "no of arguments: $#"
+echo "args: $@"
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <filename> <filename> ..."
+    exit 1;
+fi
+
+for f in $@; do
+    echo "Removing trailing whitespace in $f"
+    sed -i "s/[\t ]*$//" $f
+done

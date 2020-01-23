@@ -1,9 +1,0 @@
-This is a list of things that we know are not working
-
-1- nrg needs to be embedded into basefile or at leat simplified
-2- File inheretihs all fields, change the method
-3- why strings are not plotted in time frame
-4- understand how to create a bottom down meanu with mutiple selections possible
-5- allow for mutliple choices in quant
-https://stackoverflow.com/questions/33781047/tkinter-drop-down-list-of-check-boxes-combo-boxes
-6- save old status option?

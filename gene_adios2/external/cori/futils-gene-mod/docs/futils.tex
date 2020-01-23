@@ -1,0 +1,1911 @@
+\documentclass[a4paper]{article}
+\usepackage{linuxdoc-sgml}
+\usepackage{qwertz}
+\usepackage{url}
+\usepackage[latin1]{inputenc}
+\usepackage{t1enc}
+\usepackage[english]{babel}
+\usepackage{epsfig}
+\usepackage{null}
+\usepackage{hyperref}
+
+\def\addbibtoc{
+\addcontentsline{toc}{section}{\numberline{\mbox{}}\relax\bibname}
+}%end-preamble
+\title{FUTILS User's Guide}
+\author{Trach-Minh Tran, Ben McMillan, Stephan Brunner, CRPP/EPFL.}
+\date{v1.0, May 2011}
+\abstract{A quick and simple way to start using HDF5 file formats for Fortran programmers.}
+
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{Introduction}
+
+
+\subsection{What is HDF5}
+
+HDF5 or {\itshape Hierarchical Data Format 5\/} is a library callable from
+C/C++ and Fortran to store scientific data in a portable
+way. Two primary objects form the basis of HDF5:
+\begin{itemize}
+\item  Groups are structures for organizing objects (others groups or
+datasets) in a HDF5 file
+\item  Datasets are essentially multidimensional arrays of data elements
+\end{itemize}
+
+By analogy with a filesystem, groups can be considered as
+{\itshape directories\/} and can contain others groups while datasets are simply
+the files.
+
+The main advantages of HDF5 files are:
+\begin{itemize}
+\item  Free, open source software
+\item  Portability across different platforms (Unix, Windows, Mac OSX,
+big/little endian, ...)
+\item  Many existing access (h5ls, h5dump, hdfview) and visualization (Matlab,
+Python, OpenDX, VTK, ...) tools
+\item  Parallel IO
+\end{itemize}
+
+
+
+
+
+\subsection{What is FUTILS}
+
+FUTILS is a module of Fortran {\itshape wrapper\/} routines which call the low
+level HDF5 routines. Its main purpose is to {\itshape simplify\/} the creation and
+manipulation of HDF5 files for some special types of data found in
+{\itshape diagnostic\/} or {\itshape restart\/} files produced by time-dependent
+simulation codes.
+
+The main features of the current version of FUTILS can be summarized as follow:
+\begin{itemize}
+\item  Serial and parallel modes, using serial and parallel HDF5.
+\item  Write and read integer, single/double precision real/complex
+arrays of dimensions up to 4.
+\item  Fixed and extendible (on the last dimension) arrays.
+\item  Write and read text and binary files.
+\item  Data can be compressed.
+\item  In parallel mode, arrays can be partionned on a processor grid of
+dimension up to 4d, using MPI cartesian topology (required when the
+partionning is more than one dimensional).
+\item  Local arrays with {\itshape ghost area\/} in parallel mode.
+\end{itemize}
+
+
+
+
+
+\section{Compiling programs with FUTILS}
+
+Here are the different steps to build FUTILS.
+
+
+\subsection{Obtaining the HDF5 software}
+
+The pre-built binaries exist for many platforms and can be downloaded from
+\onlynameurl{http://www.hdfgroup.org/HDF5/release/obtain5.html}.
+But most of these pre-built libraries do not include the {\itshape parallel\/}
+HDF5. Moreover, these libraries might use a different Fortran compiler
+than the one you are using. In such cases, it is better to grab the
+source code and build the library with the following {\ttfamily configure} and
+{\ttfamily make} commands, using the MPI {\ttfamily C} and {\ttfamily Fortran}
+wrappers {\ttfamily mpicc} and {\ttfamily mpif90}:
+\begin{tscreen}
+\begin{verbatim}
+export F9X=mpif90
+export CC=mpicc
+VERSION=1.6.5
+PREFIX=/usr/local/hdf5-$VERSION
+./configure --prefix=$PREFIX \
+    --enable-fortran \
+    --enable-parallel \
+    --disable-shared \
+  2>&1 | tee configure.log
+make 2>&1 | tee make.log
+make install 2>&1 | tee  -a make.log
+\end{verbatim}
+\end{tscreen}
+
+In addition to a MPI library with MPI-IO capability, the built of HDF5
+requires the compression library \nameurl{http://www.zlib.net}{ZLIB}.
+
+In the case you don't have MPI installed in your system or don't use the
+{\itshape parallel HDF5\/}, set the environment variables
+F9X and CC to your compilers and build the serial version of
+HDF5 {\itshape without\/} the {\ttfamily --enable-parallel} configure option.
+
+
+
+
+\subsection{Building FUTILS}
+
+FUTILS can be built by checking out the source from the {\ttfamily crppsvn}
+repository and simply running {\ttfamily make} as follows:
+\begin{tscreen}
+\begin{verbatim}
+svn co http://crppsvn.epfl.ch/repos/Utils/hdf5/futils/trunk futils
+cd futils/src
+make lib
+\end{verbatim}
+\end{tscreen}
+
+The resulting files are the module file {\ttfamily futils.mod} required for the
+compilation of program units that contains {\ttfamily USE FUTILS} and the library
+{\ttfamily libfutils.a} which include others utilities in addition to the FUTILS
+module.
+If you don't have {\ttfamily MPI} installed in your system or if you want to use only
+the {\itshape serial\/} HDF5, you should use the file {\ttfamily Makefile\_serial}
+to build the library:
+\begin{tscreen}
+\begin{verbatim}
+make -f Makefile_serial lib
+\end{verbatim}
+\end{tscreen}
+
+
+
+
+Assuming that the newly built {\ttfamily futils.mod, libfutils.a}
+(and {\ttfamily libmpiuni.a} required to use the serial version)
+are in the directory {\ttfamily \$FUTILS} and the parallel and serial HDF5 are
+installed respectively in {\ttfamily /usr/local/hdf5/lib} and in
+{\ttfamily /usr/local/hdf5\_serial/lib},
+you can compile your program in one of the 3 following ways:
+\begin{tscreen}
+\begin{verbatim}
+# MPI Programs using Parallel HDF5
+mpif90 -I${FUTILS} -I/usr/local/hdf5/lib -c myprog.f90
+mpif90 -L${FUTILS} -L/usr/local/hdf5/lib myprog.o -lfutils -lhdf5_fortran -lhdf5 -lz
+
+# MPI Programs using serial HDF5
+mpif90 -I${FUTILS} -I/usr/local/hdf5_serial/lib -c myprog.f90
+mpif90 -L${FUTILS} -L/usr/local/hdf5_serial/lib myprog.o -lfutils -lhdf5_fortran -lhdf5 -lz
+
+# Serial Programs using Serial HDF5
+ifort -I${FUTILS} -I/usr/local/hdf5_serial/lib -c myprog.f90
+ifort -L${FUTILS} -L/usr/local/hdf5_serial/lib myprog.o \
+           -lfutils -lhdf5_fortran -lhdf5 -lz -lmpiuni
+\end{verbatim}
+\end{tscreen}
+
+Note that when your MPI program calls only serial HDF5
+routines from a {\itshape single\/} processor, you can use both versions of HDF5,
+compiled either using {\ttfamily make lib} or {\ttfamily make -f Makefile\_serial lib}.
+You can find examples of {\ttfamily Makefile} for others platforms in
+{\ttfamily futils/src}.
+
+
+
+
+\section{Quick-start with examples}
+
+For the impatient, several examples are presented here to show how to quickly
+start to
+use the FUTILS routines. More examples can be found in {\ttfamily futils/src/}.
+
+
+\subsection{Example 1: Save a 2d spatial profile together with the grid coordinates}
+
+In this example, a new HDF5 file is created and contain the
+1d arrays for the 2 coordinates X(1:NX) and Y(1:NY), and a 2d array for the grid
+values of the potential POT(1:NX,1:NY). The data are organized in the following
+structure:
+\begin{itemize}
+\item  The dataset {\ttfamily /coordinateX}
+\item  The dataset {\ttfamily /coordinateY}
+\item  The group   {\ttfamily /2D\_profiles}
+\begin{itemize}
+\item   The dataset {\ttfamily /2D\_profiles/Potential}
+\end{itemize}
+\end{itemize}
+
+The group {\ttfamily /2D\_profiles} serves to {\itshape group\/} any others profiles
+(such as density, velocity, ...) defined on the same X-Y grid! The following
+minimalist (and yet complete) Fortran program  creates such a HDF5 file:
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+PROGRAM main
+!
+! Save a 2d spatial profile together with the grid coordinates
+!
+  USE futils
+  IMPLICIT NONE
+  INTEGER, PARAMETER :: NX=32, NY=20
+  DOUBLE PRECISION :: x(NX), y(NY), pot(NX,NY)
+  CHARACTER(len=32) :: file='ex11.h5'
+  INTEGER :: i, fid
+!
+!   Define the arrays x, y and pot
+!
+  x = (/ (i-1, i=1,NX) /)
+  y = 10. * (/ (i-1, i=1,NY) /) - 100
+  CALL RANDOM_NUMBER(pot)
+!
+!   Create and fill the HDF5 file
+!
+  CALL creatf(file, fid)
+  CALL putarr(fid, '/coordinateX', x)
+  CALL putarr(fid, '/coordinateY', y)
+  CALL creatg(fid, '/2D_profiles')
+  CALL putarr(fid, '/2D_profiles/Potential', pot)
+  CALL closef(fid)
+!
+END PROGRAM main
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+The code is pretty self-explanatory. Note that {\ttfamily creatf} returns a
+{\itshape file identifier\/} which is used subsequently to refer to the created
+file. It is possible to work simultaneously with several HDF5 files, each of
+which is referred by its {\ttfamily fid}.
+
+The resulting HDF5 file is named
+{\ttfamily ex11.h5} and its content can be visualized quickly using
+the command line utilities
+{\bfseries h5ls} and {\bfseries h5dump} that are included in the HDF5 software:
+\begin{tscreen}
+\begin{verbatim}
+crpppc231:src$ h5ls -r ex11.h5
+/2D_profiles             Group
+/2D_profiles/Potential   Dataset {20, 32}
+/coordinateX             Dataset {32}
+/coordinateY             Dataset {20}
+crpppc231:src$
+crpppc231:src$ h5dump -d /coordinateX ex11.h5
+HDF5 "ex11.h5" {
+DATASET "/coordinateX" {
+   DATATYPE  H5T_IEEE_F32LE
+   DATASPACE  SIMPLE { ( 32 ) / ( 32 ) }
+   DATA {
+   (0): 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+   (20): 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+   }
+}
+}
+\end{verbatim}
+\end{tscreen}
+
+One can also use the graphical {\bfseries HDFView} to browse the file more
+comfortably (see next example).
+It is available from \onlynameurl{http://www.hdfgroup.org/hdf-java-html/hdfview}
+for many architectures, including Linux, Mac OSX and Windows.
+
+It is important to note that the datasets created in this example {\bfseries could not
+be overwritten}! Attempt to reopen the file and write to the dataset
+{\ttfamily /2D\_profiles/Potential} for example will result in an error. However it
+is perfectly legal to add another dataset with a different name to an existing
+HDF5 file as follows:
+\begin{tscreen}
+\begin{verbatim}
+  CALL openf(file, fid)
+  CALL putarr(fid, '/2D_profiles/Kinetic', kin)
+  CALL closef(fid)
+\end{verbatim}
+\end{tscreen}
+
+
+
+
+
+\subsection{Example 2: Save 0d history arrays \label{0d_history}}
+
+The datasets created in Example 1 with a single {\bfseries putarr} has a
+{\bfseries fixed} array shape and could not be extended. In cases where we want
+to store for example, a time history of some 2d profile
+F(x,y,t) where the {\itshape time\/} dimension t can grow, the {\bfseries extendible
+dataset} could be used. It is first created with an initial call to
+{\bfseries creatd} where the shape of the fixed (space) dimensions is specified followed
+by repeated calls to {\bfseries append} to insert the data. The following example
+shows how the time evolution of the two scalar (0d) quantities, {\ttfamily ekin,
+epot} are stored, together with the times:
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+PROGRAM main
+!
+!   Save 0d history arrays with buffering
+!
+  USE futils
+  IMPLICIT NONE
+  CHARACTER(len=32) :: file='ex13.h5'
+  INTEGER :: fid, n, istep, ibuf, nrun=120
+  INTEGER :: rank, dims(1)
+  INTEGER, PARAMETER :: BUFSIZE=20
+  DOUBLE PRECISION :: buf(BUFSIZE, 0:2) ! To store hist. arrays for scalars
+  DOUBLE PRECISION :: time, ekin, epot
+!===========================================================================
+!                   1. Prologue
+!
+  CALL creatf(file, fid)
+  CALL creatg(fid, "/var0d")
+  rank = 0
+  CALL creatd(fid, rank, dims, "/var0d/time")
+  CALL creatd(fid, rank, dims, "/var0d/ekin")
+  CALL creatd(fid, rank, dims, "/var0d/epot")
+!===========================================================================
+!                   2. Time loop
+!
+  ibuf=0
+  DO istep=1,nrun
+     time = istep
+     ekin = COS(0.2*time)*EXP(0.01*time)
+     epot = SIN(0.2*time)*(1.0-EXP(0.01*time))
+!
+     ibuf = ibuf+1
+     buf(ibuf,0) = time
+     buf(ibuf,1) = ekin
+     buf(ibuf,2) = epot
+     IF( ibuf.EQ.BUFSIZE .OR. istep.EQ.nrun) THEN ! Dump the buffers to file
+        CALL append(fid, "/var0d/time", buf(1:ibuf,0))
+        CALL append(fid, "/var0d/ekin", buf(1:ibuf,1))
+        CALL append(fid, "/var0d/epot", buf(1:ibuf,2))
+        ibuf = 0
+     END IF
+  END DO
+!===========================================================================
+!                   9. Epilogue
+!
+  CALL closef(fid)
+END PROGRAM
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+Some remarks:
+\begin{itemize}
+\item  For each extendible dataset, the call to {\bfseries creatd} specifies the number
+of (fixed) dimensions {\ttfamily rank} and the shape (number of elements in each
+dimension) in the 1d array {\ttfamily dims}. Here, {\ttfamily rank=0} and the
+argument {\ttfamily dims} will not be referred by {\bfseries creatd}.
+\item  To minize the number of transfers to disk, the data are stored in
+buffers of size BUFSIZE which are flushed to disk only every BUFSIZE steps or at the
+last istep of the time loop.
+\item  For 1d or higher dimensions, this buffering might not be nessary.
+\item  In a {\itshape restart\/} run, the HDF5 file will be open with a call to
+{\ttfamily openf} followed by the sequence of calls to {\ttfamily append}, exactly as
+in the {\itshape time loop\/} in the program show above.
+\item  An alternative to the {\itshape extendible\/} dataset (for higher
+dimensions, {\ttfamily rank {$>$} 0}) is to create a
+sequence of {\itshape fixed\/} dimension datasets with names suffixed by the time
+step as in the following example:
+\begin{tscreen}
+\begin{verbatim}
+   WRITE(name,'(a,i3.3)') 'pot.', istep
+   CALL putarr(fid, name, pot)
+\end{verbatim}
+\end{tscreen}
+
+which will create the datasets {\ttfamily pot.001, pot.002, ...} for
+{\ttfamily istep=1, 2, ...}.
+\end{itemize}
+
+
+The resulting HDF5 file can be viewed using HDFView as shown in the following
+figure.
+
+\begin{figure}[here]
+\centerline{\epsfig{file=hdfview.eps,height=15cm,angle=0}}
+\caption{ The HDFView window}
+\end{figure}
+
+
+
+
+
+\subsection{Example 3: Files in datasets}
+
+Files can be stored as a HDF5 dataset by calling {\bfseries putfile}. It is thus
+possible to store all the input files and even the program sources together with
+the results inside a single self-contained HDF5 file! Note that {\itshape binary\/}
+can also be stored with {\bfseries putfile}. Here is a simple example which stores
+its own source file in a dataset which has the same name:
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+PROGRAM main
+!
+!   Store myself in a HDF5 file
+!
+  USE futils
+  IMPLICIT NONE
+  CHARACTER(len=256) :: file='ex14.h5'
+  INTEGER :: fid
+!
+  CALL creatf(file, fid)
+  CALL putfile(fid, '/ex14.f90', 'ex14.f90')
+  CALL closef(fid)
+END PROGRAM main
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+To retrieve the file, use the program in {\ttfamily getfile.f90} which is included
+in the FUTILS source tree.
+
+
+
+
+\subsection{Example 4: Writing a distributed matrix in a MPI program}
+
+Assume that a matrix is distributed by columns across {\itshape P\/} MPI
+processes. The following example shows the {\bfseries collective} creation of the
+(single) HDF5 file by all the {\itshape P\/} processes:
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+PROGRAM main
+!
+!   Parallel write a 2d array
+!
+  USE futils
+  IMPLICIT NONE
+  INCLUDE "mpif.h"
+  CHARACTER(len=32) :: file='pex10.h5'
+  INTEGER, PARAMETER:: nx=5, nyp=2
+  INTEGER :: ierr, fid, me, start, i, j
+  DOUBLE PRECISION :: array(nx,nyp)
+!
+!   Init MPI
+  CALL mpi_init(ierr)
+  CALL mpi_comm_rank(MPI_COMM_WORLD, me, ierr)
+!
+!   Define the local array
+  start = me*nyp
+  DO i=1,nx
+     DO j=1,nyp
+        array(i,j) = 10*i + (start+j)
+     END DO
+  END DO
+!
+!   Create file collectively
+  CALL creatf(file, fid, mpicomm=MPI_COMM_WORLD)
+  CALL putarr(fid, '/matrix', array, pardim=2)
+  CALL closef(fid)
+!
+  CALL mpi_finalize(ierr)
+END PROGRAM main
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+Note that the {\bfseries parallel} version uses the same FUTILS routines, but
+with the additional arguments {\ttfamily mpicomm} and {\ttfamily pardim}
+in {\bfseries creatf} and {\bfseries putarr} respectively.
+
+With 4 MPI processes,
+the resulting file {\ttfamily pex10.h5} should contain the global 5x8
+matrix. This can be easily checked using {\bfseries MATLAB-7.3}:
+\begin{tscreen}
+\begin{verbatim}
+>> file = 'pex10.h5';
+>> mat = hdf5read(file, '/matrix');
+>> mat
+
+mat =
+
+    11    12    13    14    15    16    17    18
+    21    22    23    24    25    26    27    28
+    31    32    33    34    35    36    37    38
+    41    42    43    44    45    46    47    48
+    51    52    53    54    55    56    57    58
+
+>>
+\end{verbatim}
+\end{tscreen}
+
+Note that with {\bfseries MATLAB-7.1}, {\ttfamily hdf5read} {\itshape transposes\/} the original
+matrix, which is incorrect!
+
+In this example it was assumed that the total number of columns is a multiple of
+the number of processes, with constant nyp. This is however {\bfseries not} required by
+FUTILS: each process can have different nyp and FUTILS will automatically
+detect it through the size along the dimension {\bfseries pardim} of the input
+array.
+
+In the next example, a 3d array is distributed on a 2d cartesian 2x4
+processor grid. To write {\itshape collectively\/} this partionned array,
+a communicator with a {\itshape cartesian topology\/} defined on it should be passed to
+the file creation routine and the "nd" version of {\ttfamily putarr} should
+be used.
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+PROGRAM main
+!
+!   Parallel write a 3d array partionned on 2d processor grid:
+!   A(n1/P1, n2/P2, n3).
+!
+  USE futils
+  IMPLICIT NONE
+  INCLUDE "mpif.h"
+  CHARACTER(len=32) :: file='para.h5'
+  INTEGER :: ierr, fid, me, npes
+  INTEGER, PARAMETER :: ndims=2
+  INTEGER, PARAMETER ::  n1p=3, n2p=2, n3=2  ! Dimension of local array
+  REAL, DIMENSION(n1p,n2p,n3) :: array
+  INTEGER, DIMENSION(ndims) :: dims, coords
+  LOGICAL :: periods(ndims), reorder
+  INTEGER :: cart, i, j, k, iglob, jglob
+!
+!   Init MPI
+  CALL mpi_init(ierr)
+  CALL mpi_comm_size(MPI_COMM_WORLD, npes, ierr)
+  CALL mpi_comm_rank(MPI_COMM_WORLD, me, ierr)
+!
+!   Create cartesian topology
+!
+  dims    = (/2, 4/)
+  periods = (/.FALSE., .TRUE./)
+  reorder = .FALSE.
+  IF( PRODUCT(dims) .NE. npes ) THEN
+     IF( me .EQ. 0 ) THEN
+        PRINT*,  PRODUCT(dims), " processors required!"
+        CALL mpi_abort(MPI_COMM_WORLD, -1, ierr)
+     END IF
+  END IF
+  CALL mpi_cart_create(MPI_COMM_WORLD, ndims, dims, periods, reorder, cart, ierr)
+  CALL mpi_cart_coords(cart, me, ndims, coords, ierr)
+!
+!   Define local array
+!
+  DO i=1,n1p
+     iglob = coords(1)*n1p + i
+     DO j=1,n2p
+        jglob = coords(2)*n2p + j
+        DO k=1,n3
+           array(i,j,k) = 100*iglob + 10*jglob + k
+        END DO
+     END DO
+  END DO
+!
+!   Create file collectively, passing the comm. with cartesian topology
+!
+  CALL creatf(file, fid, mpicomm=cart)
+!
+!   Write to file collectively using "nd" version of "putarr".
+!
+  CALL putarrnd(fid, '/parray', array, (/1,2/))
+!
+!   Lean up and quit
+!
+  CALL closef(fid)
+  CALL mpi_finalize(ierr)
+!
+END PROGRAM main
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+It was assumed that the size of the partitionned local dimensions is a
+multiple of the number of processors along the corresponding processor grid
+dimension. As in the non "nd" version, this is {\bfseries not} required.
+For local arrays with {\itshape ghost area\/}, see example {\ttfamily pex11.f90}.
+The resulting array {\ttfamily A(6,8,2)} stored in the HDF5 file
+can be checked using MATLAB:
+\begin{tscreen}
+\begin{verbatim}
+>> hdf5read('para.h5','/parray')
+
+ans(:,:,1) =
+
+   111   121   131   141   151   161   171   181
+   211   221   231   241   251   261   271   281
+   311   321   331   341   351   361   371   381
+   411   421   431   441   451   461   471   481
+   511   521   531   541   551   561   571   581
+   611   621   631   641   651   661   671   681
+
+
+ans(:,:,2) =
+
+   112   122   132   142   152   162   172   182
+   212   222   232   242   252   262   272   282
+   312   322   332   342   352   362   372   382
+   412   422   432   442   452   462   472   482
+   512   522   532   542   552   562   572   582
+   612   622   632   642   652   662   672   682
+
+>>
+\end{verbatim}
+\end{tscreen}
+
+
+
+
+
+
+
+\subsection{Example 5: Writing a section of a timeslice}
+
+It is possible to write less than a full timeslice to a dataset using the
+routine {\ttfamily append} with the argument offset. This may be useful when it is
+impractical to store the whole timeslice of a diagnostic in memory as an
+array. In this case, the dataset is not extended automatically and
+{\ttfamily extend} must be called before data may be written.
+Also, for optimum performance, when {\ttfamily creatd} is called, the optional argument
+{\ttfamily chunking} should be set equal to the size of the arrays to be written.
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+PROGRAM main
+!
+! Save a large 2d array without buffering the whole array.
+!
+  USE futils
+  INTEGER, PARAMETER :: NX=10000,NY=10000, NT = 5
+  DOUBLE PRECISION   :: pot_column(1,NY)
+!===========================================================================
+!                   1. Prologue
+!
+  CALL creatf(file, fid)
+  CALL creatd(fid, 2, (NX,NY), "potential",chunking=(1,NY) )
+!===========================================================================
+!                   2. Time loop
+!
+  DO t =1,NT
+     extend(fid, "potential", 1)
+     DO ix=1,NX
+        DO iy=1,NY
+           pot_column(iy) = (ix + iy*iy)*t
+        END DO
+        append(fid, "potential", pot_column, offset = (ix-1,0) )
+     END DO
+  END DO
+!===========================================================================
+!                   9. Epilogue
+!
+  CALL closef(fid)
+END PROGRAM
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+
+
+
+
+\subsection{Miscellanies}
+
+We list briefly here the features which are not mentionned in the examples
+above. Their detailed description will be given in the Reference Manual
+section.
+\begin{itemize}
+\item Attributes (or properties) can be {\itshape attached\/} to groups and
+datasets. This can be an character argument added to the creation routines
+(creatf, creatg, creatd and putarr) to give a short description or by calling
+{\bfseries attach} on existing objects.
+\item  Routines to read datasets (getarr) and attributes (getatt).
+\item In the present version, the maximum rank of arrays is 3. This can be
+increased in a future version.
+\item By default, the real type is in {\bfseries single precision} with 32 bits. This can
+be changed to 64 bits at the file {\itshape creation\/} by adding {\ttfamily real\_prec='d'}
+in {\ttfamily creatf}.
+\item {\bfseries Complex type} is implemented using the HDF5 {\itshape compound
+type\/}. The MATLAB high-level function {\ttfamily hdf5read} reads such dataset into arrays
+of {\itshape cells\/}. The script {\ttfamily src/h5Complex.m} shows
+how to read and convert these arrays into MATLAB {\ttfamily complex} arrays.
+\end{itemize}
+
+
+
+
+
+\section{The HASHTABLE module}
+
+The HASHTABLE module provides a convenient means to buffer 0d quantities before
+they are written into an HDF5 file. Such buffering might be necessary if
+collecting and writing these 0d quantities at each timestep was found to be
+a performance bottleneck. The HASHTABLE module also allows collective sums to be
+performed on data to be output from an MPI code. The module was designed to maintain the elegant
+interface of FUTILS, especially the concise keyword-based single line of code
+calling sequence.
+
+As an example, we recode the example of section \ref{0d_history} {(Save 0d history arrays)} using
+the HASHTABLE module:
+
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+PROGRAM main
+!
+! Save 0d history arrays with buffering using the HASHTABLE module
+!
+USE futils
+USE hashtable
+IMPLICIT NONE
+  include 'mpif.h'
+  CHARACTER(len=32) :: file='ex13.h5'
+  INTEGER :: fid, n, istep, nrun = 120, me_world,ierr
+  DOUBLE PRECISION :: time, ekin, vel
+  INTEGER, PARAMETER :: BUFSIZE = 20
+  TYPE(BUFFER_TYPE) :: hbuf
+!===========================================================================
+!                   1. Prologue
+!
+  CALL MPI_INIT(ierr)
+  CALL mpi_comm_rank(MPI_COMM_WORLD, me_world, ierr)
+  CALL htable_init(hbuf,BUFSIZE)
+  IF(me_world==0) THEN
+     CALL creatf(file, fid)
+     CALL creatg(fid, "/var0d")
+     CALL set_htable_fileid(hbuf,fid)
+  END IF
+!===========================================================================
+!                   2. Time loop
+!
+  DO istep=1,nrun
+     time = istep
+     ekin = COS(0.2*time)*EXP(0.01*time)
+     vel  = SIN(0.2*time)*(1.0-EXP(0.01*time))
+!
+     CALL add_record(hbuf,"time",  "simulation time", time)
+     CALL add_record(hbuf,"ekin",  "kinetic energy",  ekin, MPI_COMM_WORLD)
+     CALL add_record(hbuf,"maxvel","maximum velocity",vel,  MPI_COMM_WORLD,MPI_MAX)
+     CALL htable_endstep()
+  END DO
+!===========================================================================
+!                   9. Epilogue
+!
+  CALL htable_hdf5_flush()
+  IF (me_world==0) CALL closef(fid)
+END PROGRAM
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+
+
+
+
+\section{Reference Manual for FUTILS}
+
+The following conventions are adopted in the following routine description:
+\begin{itemize}
+\item  $<$TYPE$>$ in the declaration of an argument means that the argument can
+be a scalar or an array of rank 1 to 4 and
+\item  of types integer (I), single precision real (SP), double precision real
+(DP), complex (C), double complex (Z), logical (L) or character (S).
+\end{itemize}
+
+
+
+
+
+\subsection{allatts}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE allatts(fid, name, attnames, atttypes, attsizes)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    CHARACTER(len=*), DIMENSION(:), INTENT(out) :: attnames
+    CHARACTER(len=1), DIMENSION(:), INTENT(out) :: atttypes
+    INTEGER(SIZE_T), DIMENSION(:), INTENT(out) :: attsizes
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Get all attributes in a group or dataset. Used together with
+{\ttfamily getatt} to extract all attributes from a group or a dataset, see {\ttfamily ex8.f90}.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   attnames    OUT: array of attribute name
+   atttypes    OUT: array of attribute type
+   attsizes    OUT: array of attribute size
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{append}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE append(fid, name, array, pardim, ionode, offset)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    <TYPE>, INTENT(in) :: array
+    INTEGER, INTENT(in), OPTIONAL :: pardim
+    INTEGER, INTENT(in), OPTIONAL :: ionode
+    INTEGER, DIMENSION(:), INTENT(in), OPTIONAL :: offset
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Add array at the end of an extensible dataset. If argument offset is not
+present, the dataset is extended before it is written to. If argument offset
+is present, the dataset is not extended, and the vector {\ttfamily offset} specifies the
+position (relative to the first element) of the write in the non-extensible coordinates.
+In a {\bfseries collective} call, only the MPI rank
+{\ttfamily ionode} will perform the output if {\ttfamily ionode} is specified.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   array        IN: array of type DP or Z and rank 0, 1, 2 or 3
+   pardim       IN: dimension which is partitioned
+   ionode       IN: the node (MPI rank) which does the writing
+   offset       IN: offset in the dataset (default is at the end)
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{attach}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE attach(fid, name, attr, val)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name, attr
+    <TYPE> INTENT(in) :: val
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Attach a scalar attribute to group or dataset.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   attr         IN: name of attribute
+   val          IN: attribute value of type I, SP, DP, L, S
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{closeall}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE closeall(ierr)
+    IMPLICIT NONE
+    INTEGER, intent(OUT) :: ierr
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Flushes all data to disk, closes all file identifiers, and cleans
+up memory.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   ierr        OUT: Error status
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{closef}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE closef(fid)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Close the hdf5 file and release fid for reuse.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{creatd}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE creatd(fid, r, d, name, desc, compress, pardim, chunking, iscomplex)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid, r, d(:)
+    CHARACTER(len=*), INTENT(in):: name
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: desc
+    LOGICAL, INTENT(in), OPTIONAL :: compress
+    LOGICAL, INTENT(in), OPTIONAL :: iscomplex
+    INTEGER, INTENT(in), OPTIONAL :: pardim
+    INTEGER, INTENT(in),DIMENSION(:), OPTIONAL :: chunking
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Create a dataset for arrays of rank r and shape d, with UNLIMITED size
+for the r+1 dimension. d is {\bfseries unused} when r=0.
+
+
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   r            IN: number of fixed dimensions, not larger than 3
+   d            IN: shape of the r dimensions
+   name         IN: name of group or dataset
+   desc         IN: description of dataset
+   compress     IN: compress the array  elements. Default: not compressed
+   pardim       IN: dimension which is partitioned
+   attr         IN: name of attribute
+   chunking     IN: chunking size for fixed dimensions
+   iscomplex    IN: type of dataset is Z (DP by default)
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{creatf}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE creatf(file, fid, desc, real_prec, mpicomm, mpiposix)
+    IMPLICIT NONE
+    INCLUDE 'mpif.h'
+    CHARACTER(len=*), INTENT(in) :: file
+    INTEGER, INTENT(out) :: fid
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: desc
+    CHARACTER(len=1), INTENT(in), OPTIONAL :: real_prec
+    INTEGER, INTENT(in), OPTIONAL :: mpicomm
+    LOGICAL, INTENT(in), OPTIONAL :: mpiposix
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Creates a new HDF5 file and returns a {\itshape file identifier\/}.
+
+
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   file         IN: file name
+   fid          IN: file identifier
+   desc         IN: description of file
+   real_prec    IN: kind of reals: 'd' or 'D' for DP datasets, default is SP.
+   mpicomm      IN: MPI communicator
+   mpiposix     IN: use MPI Posix if true. Default is MPI-IO.
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{creatg}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE creatg(fid, name, desc)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in):: name
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: desc
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Creates a group
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   desc         IN: description of group
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{extend}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE extend(fid, name, length)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in):: name
+    INTEGER, INTENT(in) :: length
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Extends a dataset
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   length       IN: number of elements to extend group by
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{getarr}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE getarr(fid, name, array, pardim, ionode)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    <TYPE>, INTENT(out) :: array
+    INTEGER, INTENT(in), OPTIONAL :: pardim
+    INTEGER, INTENT(in), OPTIONAL :: ionode
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Read array from dataset.  In a {\bfseries collective} call, only the MPI rank
+{\ttfamily ionode} will read the dataset if {\ttfamily ionode} is specified.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   array       OUT: array of rank=1,..,6 and of types I, SP, DP, C and Z
+   pardim       IN: dimension which is partitioned
+   ionode       IN: the node (MPI rank) which does the writing
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{getarrnd}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE getarrnd(fid, name, array, pardim, garea)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    <TYPE>, INTENT(out) :: array
+    INTEGER, INTENT(in) :: pardim(:)
+    INTEGER, INTENT(in), OPTIONAL :: garea(:)
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Read from dataset into the local array.  This is a collective call from ALL
+processors in the communicator (with a defined cartesian
+topology) passed to the file open/creation routine
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   array       OUT: array of rank=1,..,6 and of types I, SP, DP, C and Z
+   pardim       IN: dimensions which are partitioned. Its size should be the
+                    same as the number of dimensions of the toplogy associated
+                    with the communicator.
+   garea        IN: ghost area of local array. For example, for 2d partition
+                    a ghost area of 2 elements on each side in each dimension
+                    is defined by garea=(/2,2/). Default is no ghost area.
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{getatt}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE getatt(fid, name, attr, val, err)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name, attr
+    <TYPE>, INTENT(out) :: val
+    INTEGER, INTENT(out), OPTIONAL :: err
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Get attribute from group or dataset
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   attr         IN: name of attribute
+   val         OUT: attribute value of types I, SP, DP, L, S
+   err         OUT: Attribute not found (-1) or of wrong type (-2)
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{getdims}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE getdims(fid, name, rank, dims)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    INTEGER, INTENT(out) :: rank, dims(:)
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Get rank and dimensions of dataset (cf. ex14.f90).
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of dataset
+   rank         IN: rank of dataset
+   dims         IN: dimensions of dataset
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{getfile}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE getfile(fid, name, path)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: path
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Get file in dataset name and put it in path or standard ouput(default).
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   path         IN: pathname of output file. Default is standard output.
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{geth5ver}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE geth5ver(libver, l)
+    IMPLICIT NONE
+    CHARACTER(len=*), INTENT(out) :: libver
+    INTEGER, INTENT(out) :: l
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Get HDF5 library version
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   libver      OUT: HDF5 library version (for example "1.8.7")
+   l           OUT: lenght of the string libver
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{getsize}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE getsize(fid, name, n)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    INTEGER, INTENT(out) :: n
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Get the size of last dimension of dataset, mainly
+used when extending an existing "extendible" dataset (cf. ex2.f90).
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   n            IN: size of the last dimension of dataset
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{isdataset}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  LOGICAL FUNCTION isdataset(fid, name)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Is name a dataset?
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: path name of item
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{isgroup}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  LOGICAL FUNCTION isgroup(fid, name)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Is name a group?
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: path name of item
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{numatts}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  INTEGER FUNCTION numatts(fid, name)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Number of attributes in group or dataset.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{openf}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE openf(file, fid, mode, mpicomm, mpiposix)
+    IMPLICIT NONE
+    INCLUDE 'mpif.h'
+    CHARACTER(len=*), INTENT(in) :: file
+    INTEGER, INTENT(out) :: fid
+    CHARACTER(len=*), OPTIONAL, INTENT(in) :: mode
+    INTEGER, INTENT(in), OPTIONAL :: mpicomm
+    LOGICAL, INTENT(in), OPTIONAL :: mpiposix
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Open an existing file with filename file and returns a file identifier.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   file         IN: file name
+   fid         OUT: file identifier
+   mode         IN: Read only if mode='r' or 'R'. Default is read-write.
+   mpicomm      IN: MPI communicator
+   mpiposix     IN: use MPI Posix if true. Default is MPI-IO.
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{putarr}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE putarr(fid, name, array, desc, compress, pardim, ionode)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    <TYPE>, INTENT(in) :: array
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: desc
+    LOGICAL, INTENT(in), OPTIONAL :: compress
+    INTEGER, INTENT(in), OPTIONAL :: pardim
+    INTEGER, INTENT(in), OPTIONAL :: ionode
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Write array to a new dataset.  In a {\bfseries collective}
+call, only the MPI rank {\ttfamily ionode} will perform the output
+if {\ttfamily ionode} is specified.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   array        IN: array of rank=1,..,6 and of types I, SP, DP, C and Z
+   desc         IN: description of dataset
+   compress     IN: compress the array  elements. Default: not compressed
+   pardim       IN: dimension which is partitioned
+   ionode       IN: the node (MPI rank) which does the writing
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{putarrnd}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE putarrnd(fid, name, array, pardim, garea, desc, compress)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    <TYPE>, INTENT(in) :: array
+    INTEGER, INTENT(in), OPTIONAL :: garea(:)
+    INTEGER, INTENT(in) :: pardim(:)
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: desc
+    LOGICAL, INTENT(in), OPTIONAL :: compress
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Write the local array into dataset.  This is a collective call from ALL
+processors in the communicator (with a defined cartesian
+topology) passed to the file open/creation routine
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   array        IN: array of rank=1,..,6 and of types I, SP, DP, C and Z
+   pardim       IN: dimensions which are partitioned. Its size should be the
+                    same as the number of dimensions of the toplogy associated
+                    with the communicator.
+   garea        IN: ghost area of local array. For example, for 2d partition
+                    a ghost area of 2 elements on each side in each dimension
+                    is defined by garea=(/2,2/). Default is no ghost area.
+   desc         IN: description of dataset
+   compress     IN: compress the array  elements. Default: not compressed
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{putfile}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE putfile(fid, name, path, desc, compress, ionode)
+    IMPLICIT NONE
+    INTEGER, INTENT(in) :: fid
+    CHARACTER(len=*), INTENT(in) :: name
+    CHARACTER(len=*), INTENT(in) :: path
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: desc
+    LOGICAL, INTENT(in), OPTIONAL :: compress
+    INTEGER, INTENT(in), OPTIONAL :: ionode
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Write the file specified in path to a new dataset.
+In a {\bfseries collective} call, only the MPI rank
+{\ttfamily ionode} will write the dataset if {\ttfamily ionode} is specified.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fid          IN: file identifier
+   name         IN: name of group or dataset
+   path         IN: pathname of file
+   desc         IN: description of dataset
+   compress     IN: compress the dataset. Default: not compressed
+   ionode       IN: the node (MPI rank) which does the writing
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{split}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE split(fullname, group, name)
+    IMPLICIT NONE
+    CHARACTER(len=*), INTENT(in) :: fullname
+    CHARACTER(len=*), INTENT(out) :: group, name
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Split a dataset full name into group name and dataset name.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+   fullname     IN: full name of dataset
+   group       OUT: group name
+   name        OUT: dataset name
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\section{Reference Manual for HASHTABLE}
+
+
+
+
+
+
+\subsection{htable\_init}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE htable_init
+    TYPE(BUFFER_TYPE), INTENT(INOUT)            :: buf
+    INTEGER, INTENT(IN), OPTIONAL               :: buffer_length_in
+    INTEGER, INTENT(IN), OPTIONAL               :: ionode_in
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Initialise a hashtable.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+     buf            INOUT: the hashtable.
+     buffer_length_in  IN: buffer length/number of timesteps per write.
+     ionode_in         IN: which node does the communication.
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{add\_record}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE add_record(buf,name,description,value,parallel_comm,mpi_operation)
+    TYPE(BUFFER_TYPE), INTENT(INOUT) :: buf
+    CHARACTER(len=*), INTENT(IN) :: name
+    CHARACTER(len=*), INTENT(IN) :: description
+    DOUBLE PRECISION, INTENT(IN) :: value
+    INTEGER, OPTIONAL,INTENT(IN) :: parallel_comm
+    INTEGER, OPTIONAL,INTENT(IN) :: mpi_operation
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Add a record to a hashtable.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+     buf            INOUT: the hashtable.
+     name              IN: name of the dataitem.
+     description       IN: description of the data.
+     value             IN: value of the data at the current timestep.
+     parallel_comm     IN: parallel communicator for collective operation.
+     mpi_operation     IN: which MPI operation to perform (defaul is none).
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{htable\_endstep}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+   SUBROUTINE htable_endstep(buf)
+    TYPE(BUFFER_TYPE), INTENT(INOUT) :: buf
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Signal that the timestep is complete, writing to HDF5 file if necessary.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+     buf            INOUT: the hashtable.
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{htable\_hdf5\_flush}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+   SUBROUTINE htable_endstep(buf)
+    TYPE(BUFFER_TYPE), INTENT(INOUT) :: buf
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Flush records to HDF5 file.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+     buf            INOUT: the hashtable.
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+
+\subsection{set\_htable\_fileid}
+
+\par
+\addvspace{\medskipamount}
+\nopagebreak\hrule
+\begin{verbatim}
+  SUBROUTINE set_htable_fileid(buf,fresid_in,groupname_in)
+    TYPE(BUFFER_TYPE), INTENT(INOUT) :: buf
+    INTEGER, INTENT(IN) :: fresid_in
+    CHARACTER(len=*), INTENT(in), OPTIONAL :: groupname_in
+\end{verbatim}
+\nopagebreak\hrule
+\addvspace{\medskipamount}
+
+\begin{description}
+\item[Purpose:] \mbox{}
+
+Set HDF5 file parameters.
+
+\item[Arguments:] \mbox{}
+
+\begin{verbatim}
+     buf            INOUT: the hashtable.
+     fresid_in         IN: the HDF5 file identifier
+     groupname_in      IN: the groupname for the 0D data: default is '/data/var0d/'.
+
+\end{verbatim}
+
+
+\end{description}
+
+
+
+
+\end{document}

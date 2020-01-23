@@ -1,6 +1,0 @@
-# The fortran modules provided by this target.
-provides
- adios2_comm_module
- adios_comm_module
- new_coupling
- sim_param

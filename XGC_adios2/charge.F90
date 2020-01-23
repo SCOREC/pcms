@@ -1907,8 +1907,8 @@ subroutine chargei(grid,psn,sp)
   use omp_module, only: split_indices
   use perf_monitor
 #ifdef XGC_COUPLING_CORE_EDGE
-!  use coupling_core_edge
-  use new_coupling
+  use coupling_core_edge
+!  use new_coupling_xgc
 #endif
   implicit none
   include 'mpif.h'
@@ -2331,8 +2331,8 @@ subroutine chargei_gyro_average(grid,psn,sp)
   use perf_monitor
   use smooth_module
 #ifdef XGC_COUPLING_CORE_EDGE_VARPI2
-!  use coupling_core_edge, only : cce_varpi_grid
-  use new_coupling, only : cce_varpi_grid
+  use coupling_core_edge, only : cce_varpi_grid
+!  use new_coupling_xgc, only : cce_varpi_grid
 #endif
   implicit none
   type(grid_type):: grid

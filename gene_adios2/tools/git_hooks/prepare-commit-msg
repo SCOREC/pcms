@@ -1,0 +1,10 @@
+#!/bin/bash
+
+#echo "Arguments: |$@|"
+
+if [ "$2" == "merge" ]; then
+    echo "We have a merge, and modify the commit message."
+    sed -i "s/Merge /Merge: /" $1
+fi
+
+exit 0

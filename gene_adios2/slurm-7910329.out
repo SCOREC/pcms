@@ -1,0 +1,2 @@
+srun: fatal: Can not execute ./gene_edison
+/var/spool/slurmd/job7910329/slurm_script: line 20: 43854 Aborted                 srun -n $SLURM_NTASKS ./gene_edison

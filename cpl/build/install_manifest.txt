@@ -1,3 +1,0 @@
-/global/homes/d/damilare/coupling_NL/GENE_XGC/circular_NL/XGC/bin/coupling
-/global/homes/d/damilare/coupling_NL/GENE_XGC/circular_NL/XGC/include/cpl_init.h
-/global/homes/d/damilare/coupling_NL/GENE_XGC/circular_NL/XGC/lib/libwdm_coupler.a

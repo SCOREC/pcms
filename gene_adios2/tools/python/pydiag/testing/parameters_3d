@@ -1,0 +1,134 @@
+&parallelization
+n_procs_s =   1
+n_procs_v =   1
+n_procs_w =   8
+n_procs_x =   1
+n_procs_y =   1
+n_procs_z =   1
+n_procs_sim =      8
+/
+
+&box
+n_spec =    1
+nx0    =   40
+nky0   =    2
+yk_res   =    8
+nz0    =   16
+nv0    =   16
+nw0    =   16
+
+kymin =   0.3000
+lv    =     3.00
+lw    =     9.00
+lx    =   150.000
+x0    =   0.5000
+n0_global =     20
+/
+
+&in_out
+diagdir = '/u/mobp/GENE3d/testsuite/'
+
+read_checkpoint  = F
+write_checkpoint = T
+
+istep_field  =      10
+istep_mom    =     100
+istep_nrg    =       1
+istep_omega  =       0
+istep_vsp    =     500
+istep_schpt  =   10000
+
+write_std = T
+/
+
+&general
+nonlinear =   F
+x_local   =  F
+y_local   =  F
+comp_type = 'IV'
+perf_vec  =  1 1 1 1 1 1 1 1 1
+nblocks   =       0
+arakawa_zv =   F
+
+timescheme = 'RK4'
+dt_max     =   0.2000E-01
+
+timelim    =      17000
+ntimesteps =        100
+simtimelim =   0.1000E+05
+stop_after_rescaling =   T
+underflow_limit =   -1.000
+
+beta       =    0.0000000
+debye2     =    0.0000000
+collision_op = 'none'
+
+init_cond = 'gmj'
+init_aux_y =    1.0000000
+init_aux_z =    0.0000000
+
+hyp_z =    2.000
+hyp_v =   0.2000
+
+perf_tsteps =  -1
+
+/
+
+&nonlocal_x
+rad_bc_type =  1
+/
+
+&geometry
+magn_geometry = 'circular'
+trpeps   =   0.18000000
+major_R  =    1.0000000
+minor_r  =   0.36000000
+q_coeffs  =   0.86000000, -0.16000000,   2.5200000
+mag_prof   = T
+dpdx_term= 'gradB_eq_curv'
+dpdx_pm  =   -2.0000000
+norm_flux_projection  = F
+/
+
+&species
+name   = 'ions'
+prof_type =  2
+kappa_T   =    6.9600000
+LT_center =   0.50000000
+LT_width  =   0.30000000
+
+kappa_n   =    2.2300000
+Ln_center =   0.50000000
+Ln_width  =   0.30000000
+
+mass   =    1.0000000
+temp   =    1.0000000
+dens   =    1.0000000
+charge =  1
+/
+
+&info
+step_time  =     0.0000
+number of computed time steps =      -1
+time for initial value solver =      0.000
+calc_dt = F
+init_time =     0.0000
+n_fields = 1
+n_moms   =  0
+nrgcols  = 10
+lx =   150.000
+ly =   0.00000
+PRECISION  = DOUBLE
+OMP_NUM_THREADS =   1
+GIT_BRANCH = d8bf8cab5ca7ba4d250e4e74681889675f2a4a02
+GIT_MASTER = 8c65568541cb6da1404a831db7b9b40b99c88056
+RELEASE = 1.8 - alpha 0
+/
+
+&units
+Bref =   2.0000000000000000E+00
+Tref =   2.1400000000000001E+00
+nref =   4.6600000000000001E+00
+Lref =   1.6699999999999999E+00
+mref =   2.0000000000000000E+00
+/

@@ -125,8 +125,8 @@ endif
 ifeq ($(ADIOS2),yes)
  PREPROC += -DADIOS2
 
- #ADIOS2_DIR=/opt/scorec/spack/dev/install/linux-rhel7-x86_64/gcc-7.4.0/adios2-2.5.0-wklbmleq32deiszlday4hfjs7gqkcguh/bin
- ADIOS2_DIR=/users/adesoa/dev/install/ADIOS2/bin
+ ADIOS2_DIR=/project/projectdirs/m499/Software/adios2/DEFAULT/cori_haswell/DEFAULT/bin
+ #ADIOS2_DIR=/users/adesoa/dev/install/ADIOS2/bin
  ADIOS2_LIB = $(shell $(ADIOS2_DIR)/adios2-config --fortran-libs)
  ADIOS2_INC = $(shell $(ADIOS2_DIR)/adios2-config --fortran-flags)
  LIBS += $(ADIOS2_LIB)

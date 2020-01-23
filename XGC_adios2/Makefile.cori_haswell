@@ -16,8 +16,8 @@ XGC_PLATFORM=cori_haswell
 #####################################################
 ### SCOREC LIBRARY
 #####################################################
-COUPLING_LIB=-L$(shell pwd)/../drv/build/src -lwdm_minapp
-COUPLING_DIR=-I$(shell pwd)/../drv/build/src 
+#COUPLING_LIB=-L$(shell pwd)/../drv/build/src -lwdm_minapp
+#COUPLING_DIR=-I$(shell pwd)/../drv/build/src 
 
 
 
@@ -94,7 +94,7 @@ ADIOS2_LIB=$(shell $(ADIOS2_DIR)/bin/adios2-config --fortran-libs --cxx-libs)
 
 FC := ftn
 
-include defs.mk
+include defs.cori.mk
 
 #adios - I/O library
 #ADIOS_INC=$(shell adios_config -f -c)
@@ -157,7 +157,7 @@ XGC_FLAGS = \
 
 XGC_INCLUDE = ${PSPLINE_INC} ${PERFMOD_INC} ${PETSC_INCLUDE_OPTS} ${ADIOS_INC} ${ADIOS2_INC} ${COUPLING_DIR} -module . -I./
 
-LIB= ${PSPLINE_LIB} ${ADIOS_LIB} ${PETSC_LIB} ${PERFMOD_LIB} ${ADIOS2_LIB} ${COUPLING_LIB} -L./
+LIB= ${PSPLINE_LIB} ${ADIOS_LIB} ${PETSC_LIB} ${PERFMOD_LIB} ${ADIOS2_LIB} ${COUPLING_LIB} 
 
 CMP=${FC} -dynamic
 
@@ -168,6 +168,6 @@ EXTRA_OBJ=$(PORT_OBJ)
 MPI_OBJ=$(PAR_OBJ)
 
 # include basic makefile build rules
-include rules.mk
+include rules.cori.mk
 
 

@@ -1,6 +1,6 @@
 # default
 es: $(OBJ) $(OBJ_ES) 
-	$(CMP) -o xgc-es $(OBJ_ES) $(OBJ) $(LIB) ${PETSC_POST_LINK_OPTS} ${PETSC_KSP_LIB} 
+	$(CMP) -o xgc-es $(OBJ_ES) $(OBJ) $(LIB) ${PETSC_POST_LINK_OPTS} ${PETSC_KSP_LIB} -mkl
 
 em: em_build $(OBJ) $(OBJ_EM) 
 	$(CMP) -o xgc-em $(OBJ_EM) $(OBJ) $(LIB) ${PETSC_POST_LINK_OPTS} ${PETSC_KSP_LIB}

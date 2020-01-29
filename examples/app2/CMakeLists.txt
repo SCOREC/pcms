@@ -21,7 +21,7 @@ endif()
 
 
 add_definitions(-DADIOS2_HAVE_MPI)
-add_executable(${LIB_NAME} app2.cc)
+add_executable(${LIB_NAME} app2_2d.cc)
 target_link_libraries(${LIB_NAME} ${MPI_CXX_LIBRARIES} ${ADIOS2_LIB})
 
 INSTALL(TARGETS ${LIB_NAME}

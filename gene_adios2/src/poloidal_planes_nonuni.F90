@@ -835,6 +835,18 @@ if (((li1.le.90).and.(li2.ge.90)).and.((my_pey+my_pez+my_pew+my_pev).eq.0)) prin
 #ifdef COUPLE_XGC
     if ((my_pez+my_pev+my_pew+my_pespec).eq.0) then
        data_block = data_block * norm_fact_mom
+
+!       if (my_pex .eq. 0) then
+       do i = 1,10
+       print *,  "The first 10 data_block content at ", i," is: ", data_block(i, 0)
+       end do
+
+       do i = 1,10
+       print *,  "The last 10 data_block content at ", n_cuts-1 - 10 + i, " is :", data_block((n_cuts-1)-10+i, block_end)
+       !print *,  "The last 10 data_block content at ", maxplane-10+i, " is :", data_block(maxplane-10+i, block_count-1)! last 10rowz
+       end do
+ !      endif
+
        if (.not.present(diagnostic)) call send_density(data_block, o, n_cuts, block_count, block_start, block_end, mpi_comm_x)
     endif
 #endif

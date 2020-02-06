@@ -58,16 +58,22 @@ else()
 endif()
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 add_definitions(-DADIOS2_HAVE_MPI)
 add_executable(${LIB_NAME} app2_2d.cc)
 target_link_libraries(${LIB_NAME} ${MPI_CXX_LIBRARIES} ${ADIOS2_LIB})
 =======
+=======
+>>>>>>> Stashed changes
 find_library(ADIOS2_EV NAMES adios2_evpath)
 if(NOT ADIOS2_EV)
 	message(STATUS "adios2_evpath library not found")
 else()
   message(STATUS "adios2_evpath library was found")
 endif()
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 find_library(ADIOS2_FFS NAMES adios2_ffs)

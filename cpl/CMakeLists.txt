@@ -15,12 +15,12 @@ message(STATUS "Configuring to build on: ${HOST}")
 set_property(GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS TRUE)
 
 # prefer static linking over dynamic unless specified
-#set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")
 #if(BUILD_SHARED_LIBS)
 #  set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")
 #endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 add_subdirectory(src)
 

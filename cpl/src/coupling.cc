@@ -1,15 +1,11 @@
 #include<adios2.h>
 #include<fstream>
 #include<iostream>
-//#include<map>
 #include <mpi.h>
 #include<vector>
 #include <algorithm> 
-//#include <cctype>
-//#include <locale>
-//#include<string.h>
-//#include<thread>
 #include<numeric>
+#include<time.h>
 
 //global variables
 bool cce_dpot_index0 ;
@@ -21,10 +17,9 @@ int cce_npsi, cce_dt, cce_side, cce_alpha, cce_all_surface_number, itime, mype;
 unsigned long cce_field_node_number, sml_nphi_total, sml_intpl_mype, cce_node_number, cce_first_node;
 
 std::string cce_folder;
-using twoD_vec = std::vector<std::vector<double>>;
-
-// cce_density is set as a global variable
-std::vector<double> density;
+using twod_vec = std::vector<std::vector<double>>;
+twod_vec dens_holder = {{0.0},{0.0}};
+twod_vec dens_sender = {{0.0},{0.0}};
 
 //global functions;
 void initialize_coupling();
@@ -35,11 +30,11 @@ static inline void ltrim(std::string &s);
 static inline void rtrim(std::string &s);
 static inline void trim(std::string &s);
 
-void send_dens_to_XGC(twoD_vec density, int iphi, int nphi, int block_count, int block_start,int block_end, int comm);
-void receive_field_from_XGC(twoD_vec &data_block,int block_start,int block_end, int block_count, int nphi);
+void receive_density(double* &vec, int rank, int nprocs);
+void send_density(const twod_vec &density, int rank, int size);
 
-void send_field_to_GENE(const twoD_vec field, std::vector<double> pot0, int flag);
-void receive_dens_from_GENE();
+void receive_field(twod_vec &data_block, int rank, int size);
+void send_field(const twod_vec &field, std::vector<double> pot0, int flag);
 
 
 int main(int argc, char **argv){
@@ -48,19 +43,29 @@ int main(int argc, char **argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  twod_vec dens_vec = {{0.0},{0.0}};
+
   initialize_coupling();
-  //  call cce_initialize to get the required cce_values
-  // initialize adios2
-  //  create a while loop
 
-  //    get density data from GENE
+  double * dens_arr = NULL;
+  receive_density(dens_arr, rank, size);
+  std::cerr << rank <<  " 2.0 \n";
 
+  /*  send_density(dens_vec, rank, size);
+      std::cerr << rank <<  " 3.0 \n";
+      */
+/*  if(!rank)
+  {
+    for (int i = 0; i < 10; i++)
+    {
+      std::cerr << rank <<  " The values of the first 10 at "<< i <<" is "<< (double)dens_arr[i] <<"\n";
+    }
 
-  //    CPL-XGC Writer - send density data to XGC in the same format
-
-  //    get field data from XGC
-
-
+    for (int i = 0; i < 10; i++)
+    {
+      std::cerr << rank <<  " The values of the last 10 at "<< (183529 * 32)-9+i <<" is "<< (double)dens_arr[(32*183529)-9+i] <<"\n";
+    }
+  }*/
   //    send field data to GENE
 
   //  end loop
@@ -122,8 +127,7 @@ void initialize_coupling()
   cce_node_number = cce_last_node - cce_first_node + 1;
   cce_node_number = 212817 - 1875 + 1;
   cce_side = 3;
-  cce_folder = "../coupling";
-  // maxplanes gets its values from ncuts thats defined in an hdf5 file  
+  cce_folder = "/global/homes/d/damilare";
 }
 
 void finalize_coupling()
@@ -148,117 +152,176 @@ static inline void trim(std::string &s) {
   rtrim(s);
 }
 
-
-void send_dens_to_XGC(twoD_vec dens, int iphi, unsigned long nphi, unsigned long block_count, unsigned long block_start, unsigned long block_end, int comm)
+void receive_density(double * &foo, int rank, int nprocs)
 {
-  int maxplane;
-  adios2::Dims gdims, goffset, ldims;
-  std::string fld_name = "data";
+  std::string fld_name = "gene_density"; // or data_from_gene??
 
-  gdims = {cce_node_number, nphi};
-  goffset = {block_start, 0};
-  ldims = {block_count, nphi};
+  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugOFF);
+  adios2::IO dens_io = adios.DeclareIO("density_coupling");
+  dens_io.SetEngine("Sst");
+  dens_io.SetParameters({{"DataTransport","RDMA"},  {"OpenTimeoutSecs", "360"}});
 
-  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO cplDensIO = adios.DeclareIO("density_from_coupling");
-  cplDensIO.SetEngine("Sst");
-
-  auto bpDens = cplDensIO.DefineVariable<double>(fld_name, gdims, goffset, ldims);
   trim(cce_folder);
-  adios2::Engine cplDensWriter = cplDensIO.Open(cce_folder + "/cpl_density.bp", adios2::Mode::Write);
-  maxplane = nphi - 1;
+  auto p =  dens_io.Parameters();
+  //print out the set parameters for this IO
 
-  cplDensWriter.BeginStep();
-  cplDensWriter.Put<double>(bpDens, (dens.data())->data() );
-  cplDensWriter.EndStep();
-  cplDensWriter.Close();
+  if (rank == 0)
+  {
+    time_t itime = time(NULL);// print wall time
+    std::cout << "The wall clock time at Open is "<< ctime(&itime) << std::endl;
+    for(auto it = p.begin(); it != p.end(); ++it)
+    {
+      std::cout<< it->first << " second: " << it->second <<std::endl;
+    }
+  }
+
+  adios2::Engine engine = dens_io.Open("/global/homes/d/damilare/density.bp", adios2::Mode::Read);
+  fprintf(stderr,"GENE-to-coupling density engine created by %d\n", rank);
+  fprintf(stderr,"%d 0.6\n", rank);
+
+  engine.BeginStep();
+  std::cerr << rank <<  " 0.7 \n";
+  adios2::Variable<double> dens_id = dens_io.InquireVariable<double>(fld_name);
+  auto height = dens_id.Shape()[0];
+  auto width = dens_id.Shape()[1];
+  std::cerr << rank <<  " 0.9\n";
+
+  //int count  =  height / nprocs;
+  int count  =  width / nprocs;
+  if(rank == nprocs - 1) count += width%nprocs;
+  //if(rank == nprocs - 1) count += height%nprocs;
+  const int start = rank * count;
+
+  fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
+      rank, nprocs, width, height, count, start);
+  const::adios2::Dims my_start({0, start});
+  std::cerr << rank <<  " 1.1 \n";
+  const::adios2::Dims my_count({height, count});
+  //const::adios2::Dims my_count({width, count});
+  std::cerr << rank <<  " 1.2 \n";
+  const adios2::Box<adios2::Dims> sel(my_start, my_count);
+  std::cerr << rank <<  " 1.3 \n";
+  //foo = new double[width * count];
+  foo = new double[height * count];
+
+  std::cerr << rank <<  " 1.41 \n";
+  dens_id.SetSelection(sel);
+  std::cerr << rank <<  " 1.5 \n";
+  engine.Get<double>(dens_id, foo);
+    for (int i = 0; i < 10; i++)
+    {
+      std::cerr << rank <<  " The values of the first 10 at "<< i << " for rank "<< rank << " is "<< (double)foo[i] <<"\n";
+    }
+	int last_col = (start + count);
+    for (int i = 0; i < 10; i++)
+    {
+      std::cerr << rank <<  " The values of the last 10 at " << last_col * (32 - 9 + i) <<" for rank "<< rank << " is "<< (double)foo[last_col *(32 - 9 + i)] <<"\n";
+    }
+  std::cerr << rank <<  " 1.6 \n";
+  engine.EndStep();
+  std::cerr << rank <<  " 1.7 \n";
+  engine.Close();
+  std::cerr << rank <<  " 1.8 \n";
+  //dens_holder = dens;
 }
 
 
-void receive_field_from_XGC(twoD_vec &data_block, int block_start, int block_end, unsigned long block_count, unsigned long nphi)
+void send_density(const twod_vec &dens, int rank, int size)
 {
-  int maxplane = nphi - 1;
-  adios2::Dims start, count;
+  int Nx, Ny, count_x, start_x;
+  std::string fld_name = "cpl_density";
 
-  start = {(cce_first_node - 1 + block_start), 0};
-  count = {block_count, nphi};
+  Nx = dens[0].size();  //node_number
+  Ny = dens.size();  //nphi
+  count_x = Nx / size;
+  if(rank == size - 1) count_x += Nx%size;
+  start_x = rank * count_x;
+
+  const::adios2::Dims gdims({Ny, Nx});
+  const::adios2::Dims goffset({0, start_x});
+  const::adios2::Dims ldims({Ny, count_x});
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO xgc_fieldIO = adios.DeclareIO("field_from_XGC");
-  xgc_fieldIO.SetEngine("Sst");
+  adios2::IO read_io = adios.DeclareIO("density_from_coupling");
+  read_io.SetEngine("Sst");
+
+  auto varid = read_io.DefineVariable<double>(fld_name, gdims, goffset, ldims);
+  trim(cce_folder);
+  adios2::Engine read_engine = read_io.Open(cce_folder + "/cpl_density.bp", adios2::Mode::Write);
+
+  read_engine.BeginStep();
+  read_engine.Put<double>(varid, (dens.data())->data() );
+  read_engine.EndStep();
+  read_engine.Close();
+  dens_sender = dens;
+}
+
+
+void receive_field(twod_vec &data_block, int rank, int size)
+{
+  int count, start;
+  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
+  adios2::IO send_io = adios.DeclareIO("field_coupling");
+  send_io.SetEngine("Sst");
   trim(cce_folder);
 
-  adios2::Engine xgc_field_reader = xgc_fieldIO.Open((cce_folder + "/field.bp"), adios2::Mode::Read);
+  adios2::Engine send_engine = send_io.Open((cce_folder + "/field.bp"), adios2::Mode::Read);
   std::cout << "XGC-to-coupling field engine created\n";
-  xgc_field_reader.BeginStep();
-  adios2::Variable<double> bp_field = xgc_fieldIO.InquireVariable<double>("dadat");
+  send_engine.BeginStep();
+  adios2::Variable<double> field_id = send_io.InquireVariable<double>("dadat");
+  auto height = field_id.Shape()[0] ;
+  auto width = field_id.Shape()[1];
+  std::cout << "first dim - Incoming variable is of size " << height << std::endl;
+  std::cout << "second dim - Incoming variable is of size " << width << std::endl;
 
-  auto shape =  bp_field.Shape();
-  size_t data_size = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<size_t>());
-  data_block.resize(data_size);
-  const adios2::Box<adios2::Dims> sel(start, count);
+  count  = (width / size);
+  if(rank == size - 1) count += width%size;
+  start = rank * count;
 
-  bp_field.SetSelection(sel);
-  xgc_field_reader.Get<double>(bp_field, (data_block.data())->data());
-  xgc_field_reader.EndStep();
-  xgc_field_reader.Close();
+  std::cout << "cField Reader of rank " << rank << " reading " << count
+    << " floats starting at element " << start << "\n";
+
+  const adios2::Dims my_start({0, start});
+  const adios2::Dims my_count({height, count});
+  const adios2::Box<adios2::Dims> sel(my_start, my_count);
+  // resize the block to fit 
+  for(int i=0; i < height; i++)
+  {
+    data_block[i].resize(count);// accessing wrong index and sizing wrong, fix
+  }
+
+  field_id.SetSelection(sel);
+  send_engine.Get<double>(field_id, (data_block.data())->data());
+  send_engine.EndStep();
+  send_engine.Close();
 }
 
 
-void send_field_to_GENE(const std::vector<double> field, int flag)
+void send_field(const twod_vec &field, int rank, int size)
 {
-  int maxplane;
-  adios2::Dims gdims, goffset, ldims;
-  std::string fld_name = "dadat";
+  const std::size_t width = field[0].size();
+  const std::size_t height = field.size();
 
-  gdims = {cce_field_node_number, sml_nphi_total};
-  goffset = {0, sml_intpl_mype};
-  ldims = {cce_field_node_number, 1};
+  std::string fld_name = "cpl_field";
+
+  const::adios2::Dims gdims({height, width});
+  int  count  = (width / size);
+  if(rank == size - 1) count += width%size;
+  const::adios2::Dims goffset({0, rank * count});
+  const::adios2::Dims ldims({height, count});
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO gene_fieldIO = adios.DeclareIO("field_to_gene");
-  gene_fieldIO.SetEngine("Sst");
+  adios2::IO coupling_io = adios.DeclareIO("field_from_coupling");
+  coupling_io.SetEngine("Sst");
 
-  auto bp_gene_field = gene_fieldIO.DefineVariable<double>(fld_name, gdims, goffset, ldims);
+  auto field_id = coupling_io.DefineVariable<double>(fld_name, gdims, goffset, ldims);
   trim(cce_folder);
-  adios2::Engine gene_field_writer = gene_fieldIO.Open(cce_folder + "/cpl_field.bp", adios2::Mode::Write);
+  adios2::Engine engine = coupling_io.Open(cce_folder + "/cpl_field.bp", adios2::Mode::Write);
 
-  gene_field_writer.BeginStep();
-  gene_field_writer.Put<double>(bp_gene_field, field.data());
-  gene_field_writer.EndStep();
-  gene_field_writer.Close();
-
+  engine.BeginStep();
+  engine.Put<double>(field_id, (field.data())->data());
+  engine.EndStep();
+  engine.Close();
 }
 
 
-void receive_dens_from_GENE()
-{
-  adios2::Dims start, count;
-  std::vector<double> arrtmp(cce_node_number);
-  std::string fld_name = "data"; // or data_from_gene??
-
-  start = {0, sml_intpl_mype};
-  count = {cce_node_number, 1};
-
-  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO gene_densIO = adios.DeclareIO("density_from_GENE");
-  gene_densIO.SetEngine("Sst");
-
-  trim(cce_folder);
-  adios2::Engine gene_density_reader = gene_densIO.Open((cce_folder + "/density.bp"), adios2::Mode::Read);
-  std::cout << "GENE-to-coupling density engine created\n";
-
-  gene_density_reader.BeginStep();
-  adios2::Variable<double> bp_density = gene_densIO.InquireVariable<double>(fld_name);
-  auto shape = bp_density.Shape();
-  size_t data_size = std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<size_t>());
-  density.resize(data_size);
-
-  const adios2::Box<adios2::Dims> sel(start, count);
-  bp_density.SetSelection(sel);
-
-  gene_density_reader.Get<double>(bp_density, arrtmp.data());
-  gene_density_reader.EndStep();
-  gene_density_reader.Close();
-  density = arrtmp;
-}

@@ -201,7 +201,7 @@ contains
     real*8, dimension(:),allocatable :: arrtmp
 #ifdef ADIOS2
     type(adios2_variable) :: varid
-    character(4):: fld_name='data'
+    character(16):: fld_name='cpl_density'
 #endif
     call t_startf("CCE_RECEIVE_DENSITY")
     
@@ -218,7 +218,7 @@ contains
 
 #ifdef ADIOS2
        if (cce_step .eq. 1) then
-          call adios2_declare_io(read_io, adios2obj, 'density_coupling',&
+          call adios2_declare_io(read_io, adios2obj, 'density_from_coupling',&
                & err)
           call adios2_open(read_engine,read_io,trim(cce_folder)//'/density.bp',&
                &adios2_mode_read, sml_intpl_comm, err)

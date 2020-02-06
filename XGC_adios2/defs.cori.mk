@@ -12,10 +12,10 @@ include ${PETSC_DIR}/lib/petsc/conf/variables
 #PETSC_INC=$(PETSC_FC_INCLUDES)
 #PETSC_LIB=$(PETSC_KSP_LIB)
 
-OBJ= coupling_core_edge.o module.o search.o module_psn.o pol_decomp.o f0module.o adios_comm_mod.o adios2_comm_mod.o \
+OBJ= module.o search.o module_psn.o pol_decomp.o f0module.o adios_comm_mod.o adios2_comm_mod.o \
 	elliptics.o collisionf.o lbal_mod.o \
 	$(EXTRA_OBJ) psmooth.o bicub_mod.o one_d_cub_mod.o initial_perturbation_GM.o \
-        interfaces.o charge.o diagnosis.o poisson_extra_xgc1.o qevaluateandtrapped.o setup.o   \
+        interfaces.o coupling_core_edge.o charge.o diagnosis.o poisson_extra_xgc1.o qevaluateandtrapped.o setup.o   \
         read.o gen_perm.o sort_particles.o push.o pushe.o load.o \
 	 efield.o interpolation.o $(MPI_OBJ) \
 	limiter.o bounce.o diagnosis2.o collision.o collision2.o  \

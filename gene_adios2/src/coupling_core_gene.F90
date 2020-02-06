@@ -115,7 +115,7 @@ contains
     integer(8) :: adios_handle, adios_groupsize, adios_totalsize
 #endif
     integer :: adios_err, i, maxplane
-    character(4)::fld_name='data'
+    character(16)::fld_name='gene_density'
 
     maxplane = nphi_total - 1
 
@@ -131,6 +131,7 @@ contains
           ldims(1) = block_count
           ldims(2) = nphi_total
 
+        print *, mype,  ' runs the coupling '
           call adios2_declare_io(dens_io,adios2obj,'density_coupling',adios_err)
           call adios2_define_variable(dens_id, dens_io,fld_name,&
                & adios2_type_dp, 2, gdims, goffset,&
@@ -250,7 +251,7 @@ contains
 #ifdef ADIOS2
         if (.not.read_engine_av)then
            call adios2_declare_io(coupling_io, adios2obj, &
-                & "field_coupling", adios_err)
+                & "field_from_coupling", adios_err)
            call adios2_open(engines(2), coupling_io, & 
                 & trim(cce_folder)//'/'//'field.bp', &
                 & adios2_mode_read, comm, adios_err)
@@ -259,7 +260,7 @@ contains
         endif
 
         call adios2_begin_step(engines(2),adios2_step_mode_read,adios_err)
-        call adios2_inquire_variable(field_id,coupling_io,'dadat',adios_err)
+        call adios2_inquire_variable(field_id,coupling_io,'cpl_field',adios_err)
         IF (MYPE.EQ.0) THEN
            if (.not.field_id%valid)then
               print *, fld_name_XGC, ' in field not found'

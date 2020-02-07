@@ -54,18 +54,18 @@ int main(int argc, char **argv){
   /*  send_density(dens_vec, rank, size);
       std::cerr << rank <<  " 3.0 \n";
       */
-/*  if(!rank)
-  {
-    for (int i = 0; i < 10; i++)
-    {
+  /*  if(!rank)
+      {
+      for (int i = 0; i < 10; i++)
+      {
       std::cerr << rank <<  " The values of the first 10 at "<< i <<" is "<< (double)dens_arr[i] <<"\n";
-    }
+      }
 
-    for (int i = 0; i < 10; i++)
-    {
+      for (int i = 0; i < 10; i++)
+      {
       std::cerr << rank <<  " The values of the last 10 at "<< (183529 * 32)-9+i <<" is "<< (double)dens_arr[(32*183529)-9+i] <<"\n";
-    }
-  }*/
+      }
+      }*/
   //    send field data to GENE
 
   //  end loop
@@ -164,7 +164,6 @@ void receive_density(double * &foo, int rank, int nprocs)
   trim(cce_folder);
   auto p =  dens_io.Parameters();
   //print out the set parameters for this IO
-
   if (rank == 0)
   {
     time_t itime = time(NULL);// print wall time
@@ -208,17 +207,17 @@ void receive_density(double * &foo, int rank, int nprocs)
   dens_id.SetSelection(sel);
   std::cerr << rank <<  " 1.5 \n";
   engine.Get<double>(dens_id, foo);
-    for (int i = 0; i < 10; i++)
-    {
-      std::cerr << rank <<  " The values of the first 10 at "<< i << " for rank "<< rank << " is "<< (double)foo[i] <<"\n";
-    }
-	int last_col = (start + count);
-    for (int i = 0; i < 10; i++)
-    {
-      std::cerr << rank <<  " The values of the last 10 at " << last_col * (32 - 9 + i) <<" for rank "<< rank << " is "<< (double)foo[last_col *(32 - 9 + i)] <<"\n";
-    }
   std::cerr << rank <<  " 1.6 \n";
   engine.EndStep();
+  for (int i = 0; i < 10; i++)
+  {
+    std::cerr << rank <<  ": first 10 density at "<< i << " is "<< (double)foo[i] <<"\n";
+  }
+  int last_ten = (height * count) - 10;
+  for (int i = 0; i < 10; i++)
+  {
+    std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "<< (double)foo[last_ten + i] <<"\n";
+  }
   std::cerr << rank <<  " 1.7 \n";
   engine.Close();
   std::cerr << rank <<  " 1.8 \n";

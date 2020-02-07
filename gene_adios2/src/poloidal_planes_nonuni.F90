@@ -842,8 +842,10 @@ if (((li1.le.90).and.(li2.ge.90)).and.((my_pey+my_pez+my_pew+my_pev).eq.0)) prin
        end do
 
        do i = 1,10
+       ! if the first dimension is in the Y direction
        print *,  "The last 10 data_block content at ", n_cuts-1 - 10 + i, " is :", data_block((n_cuts-1)-10+i, block_end)
-       !print *,  "The last 10 data_block content at ", maxplane-10+i, " is :", data_block(maxplane-10+i, block_count-1)! last 10rowz
+       ! if first dimension is in the X direction
+       !print *,  "The last 10 data_block content at ", block_end-10+i, " is :", data_block((n_cuts-1), block_end-10+i)
        end do
  !      endif
 

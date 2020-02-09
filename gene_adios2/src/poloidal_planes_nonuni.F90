@@ -839,8 +839,7 @@ if (((li1.le.90).and.(li2.ge.90)).and.((my_pey+my_pez+my_pew+my_pev).eq.0)) prin
 !       if (my_pex .eq. 0) then
        do i = 1,10
        !if (Y , X)
-       print *,  "First 10 -> dim1 X dim2: ", (n_cuts-1)-10+i, block_start, " is: ", data_block((n_cuts-1)-10+i, &
-        &       block_start)
+       print *,  "First 10 -> dim1 X dim2: ", i-1, block_start, " is: ", data_block(i-1, block_start)
        !if (X , Y)
        !print *,  " first 10 density at ", block_start-1+i," is: ", data_block(0, block_start-1+i)
        end do

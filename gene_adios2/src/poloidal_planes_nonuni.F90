@@ -838,14 +838,18 @@ if (((li1.le.90).and.(li2.ge.90)).and.((my_pey+my_pez+my_pew+my_pev).eq.0)) prin
 
 !       if (my_pex .eq. 0) then
        do i = 1,10
-       print *,  "The first 10 data_block content at ", i," is: ", data_block(i, 0)
+       !if (Y , X)
+       print *,  "First 10 -> dim1 X dim2: ", (n_cuts-1)-10+i, block_start, " is: ", data_block((n_cuts-1)-10+i, &
+        &       block_start)
+       !if (X , Y)
+       !print *,  " first 10 density at ", block_start-1+i," is: ", data_block(0, block_start-1+i)
        end do
 
        do i = 1,10
-       ! if the first dimension is in the Y direction
-       print *,  "The last 10 data_block content at ", n_cuts-1 - 10 + i, " is :", data_block((n_cuts-1)-10+i, block_end)
-       ! if first dimension is in the X direction
-       !print *,  "The last 10 data_block content at ", block_end-10+i, " is :", data_block((n_cuts-1), block_end-10+i)
+       !if (Y , X)
+       print *,  "Last 10 -> dim1 X dim2: ", (n_cuts-1) - 10 + i, block_end, " is :", data_block((n_cuts-1)-10+i, block_end)
+       !if (X , Y)
+       !print *,  " last 10 density at ", block_end-10+i, " is :", data_block((n_cuts-1), block_end-10+i)
        end do
  !      endif
 

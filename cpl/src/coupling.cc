@@ -181,8 +181,8 @@ void receive_density(double * &foo, int rank, int nprocs)
   engine.BeginStep();
   std::cerr << rank <<  " 0.7 \n";
   adios2::Variable<double> dens_id = dens_io.InquireVariable<double>(fld_name);
-  auto width = dens_id.Shape()[0]; // This should be width
-  auto height = dens_id.Shape()[1]; // This should be height
+  auto width = dens_id.Shape()[0]; 
+  auto height = dens_id.Shape()[1]; 
   std::cerr << rank <<  " 0.9\n";
 
   int count  =  height / nprocs;
@@ -192,7 +192,9 @@ void receive_density(double * &foo, int rank, int nprocs)
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
   const::adios2::Dims my_start({0, start});
+  //const::adios2::Dims my_start({start, 0}); //for DebugON
   std::cerr << rank <<  " 1.1 \n";
+  //const::adios2::Dims my_count({count, width}); //for DebugON
   const::adios2::Dims my_count({width, count});
   std::cerr << rank <<  " 1.2 \n";
   const adios2::Box<adios2::Dims> sel(my_start, my_count);

@@ -836,22 +836,6 @@ if (((li1.le.90).and.(li2.ge.90)).and.((my_pey+my_pez+my_pew+my_pev).eq.0)) prin
     if ((my_pez+my_pev+my_pew+my_pespec).eq.0) then
        data_block = data_block * norm_fact_mom
 
-!       if (my_pex .eq. 0) then
-       do i = 1,10
-       !if (Y , X)
-       print *,  "First 10 -> dim1 X dim2: ", i-1, block_start, " is: ", data_block(i-1, block_start)
-       !if (X , Y)
-       !print *,  " first 10 density at ", block_start-1+i," is: ", data_block(0, block_start-1+i)
-       end do
-
-       do i = 1,10
-       !if (Y , X)
-       print *,  "Last 10 -> dim1 X dim2: ", (n_cuts-1) - 10 + i, block_end, " is :", data_block((n_cuts-1)-10+i, block_end)
-       !if (X , Y)
-       !print *,  " last 10 density at ", block_end-10+i, " is :", data_block((n_cuts-1), block_end-10+i)
-       end do
- !      endif
-
        if (.not.present(diagnostic)) call send_density(data_block, o, n_cuts, block_count, block_start, block_end, mpi_comm_x)
     endif
 #endif

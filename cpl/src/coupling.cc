@@ -181,23 +181,23 @@ void receive_density(double * &foo, int rank, int nprocs)
   engine.BeginStep();
   std::cerr << rank <<  " 0.7 \n";
   adios2::Variable<double> dens_id = dens_io.InquireVariable<double>(fld_name);
-  auto height = dens_id.Shape()[0];
-  auto width = dens_id.Shape()[1];
+  auto width = dens_id.Shape()[0]; // This should be width
+  auto height = dens_id.Shape()[1]; // This should be height
   std::cerr << rank <<  " 0.9\n";
 
-  int count  =  width / nprocs;
-  if(rank == nprocs - 1) count += width%nprocs;
+  int count  =  height / nprocs;
+  if(rank == nprocs - 1) count += height%nprocs;
   const int start = rank * count;
 
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
   const::adios2::Dims my_start({0, start});
   std::cerr << rank <<  " 1.1 \n";
-  const::adios2::Dims my_count({height, count});
+  const::adios2::Dims my_count({width, count});
   std::cerr << rank <<  " 1.2 \n";
   const adios2::Box<adios2::Dims> sel(my_start, my_count);
   std::cerr << rank <<  " 1.3 \n";
-  foo = new double[height * count];
+  foo = new double[width * count];
 
   std::cerr << rank <<  " 1.41 \n";
   dens_id.SetSelection(sel);
@@ -211,12 +211,12 @@ void receive_density(double * &foo, int rank, int nprocs)
   {
     for (int i = 0; i < 10; i++)
     {
-      std::cerr << rank <<  ": first 10 density at "<< i << " is "<< (double)foo[i] <<"\n";
+      std::cerr << rank <<  ": first 10 density at "<< i << " is "<< foo[i] <<"\n";
     }
     // last 10 entries for rank 0
     for (int i = 0; i < 10; i++)
     {
-      int offset = ((height - 1) * count ) + 67235 - 9;
+      int offset = ((width - 1) * count ) + 67235 - 9; //width 
       std::cerr << rank << ": last 10 for rank 0 at: [67235 - 9]" << " + "<< i << " is " << foo[offset  + i] << "\n";
     }
     // first 10 entries for rank 1
@@ -229,10 +229,10 @@ void receive_density(double * &foo, int rank, int nprocs)
   // last 10 entries for rank 1
   if(rank == 1)
   {
-    int last_ten = (height * count) - 10;
+    int last_ten = (width * count) - 10;
     for (int i = 0; i < 10; i++)
     {
-      std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "<< (double)foo[last_ten + i] <<"\n";
+      std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "<< foo[last_ten + i] <<"\n";
     }
   }
   std::cerr << rank <<  " 1.7 \n";

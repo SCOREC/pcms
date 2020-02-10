@@ -185,10 +185,8 @@ void receive_density(double * &foo, int rank, int nprocs)
   auto width = dens_id.Shape()[1];
   std::cerr << rank <<  " 0.9\n";
 
-  //int count  =  height / nprocs;
   int count  =  width / nprocs;
   if(rank == nprocs - 1) count += width%nprocs;
-  //if(rank == nprocs - 1) count += height%nprocs;
   const int start = rank * count;
 
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
@@ -196,11 +194,9 @@ void receive_density(double * &foo, int rank, int nprocs)
   const::adios2::Dims my_start({0, start});
   std::cerr << rank <<  " 1.1 \n";
   const::adios2::Dims my_count({height, count});
-  //const::adios2::Dims my_count({width, count});
   std::cerr << rank <<  " 1.2 \n";
   const adios2::Box<adios2::Dims> sel(my_start, my_count);
   std::cerr << rank <<  " 1.3 \n";
-  //foo = new double[width * count];
   foo = new double[height * count];
 
   std::cerr << rank <<  " 1.41 \n";
@@ -210,24 +206,31 @@ void receive_density(double * &foo, int rank, int nprocs)
   std::cerr << rank <<  " 1.6 \n";
   engine.EndStep();
 
-  // confirming the values sent
-  for (int i = 0; i < 10; i++)
+  // confirming the values sent -  only rank 0 starts at correct spot
+  if(!rank)
   {
-    // the first 10 values for each rank
-    std::cerr << rank <<  ": first 10 density at "<< i << " is "<< (double)foo[i] <<"\n";
-    // for process zero, get the last values at row 67325 -1
-    if(!rank)
+    for (int i = 0; i < 10; i++)
     {
-      int last_ten = ((67235+1) * height) - 10;
-      std::cerr << rank <<  ": last 10 at " <<  last_ten + i << " is "<< (double)foo[last_ten + i] <<"\n";
-      int next_ten = ((67235) * height) - 10;
-      std::cerr << rank <<  ": previous 10 at " <<  next_ten + i << " is "<< (double)foo[next_ten + i] <<"\n";
+      // the first 10 values for each rank
+      std::cerr << rank <<  ": first 10 density at "<< i << " is "<< (double)foo[i] <<"\n";
+      // for process zero, get the last values at row 67325 -1
     }
   }
-
-//  if(!rank)
+  if(!rank)
   {
-	  std::cerr << rank << ": LAST ENTRY: 2,151,552 is " << foo[2151552] << "\n";
+    int last_ten = ((67226 + 1) * height) - 1;
+    std::cerr << rank <<  ": last 10 starts at " <<  last_ten << " is "<< (double)foo[last_ten] << "\n";
+    int next_ten = ((67235 + 1) * height) - 1;
+    std::cerr << rank <<  ": last 10 ends at " <<  next_ten << " is "<< (double)foo[next_ten] << "\n";
+  }
+  if(!rank)
+  {
+    for (int i = 0; i < 10; i++)
+    {
+	// first 10 entries in rank 1
+      std::cerr << rank << ": First 10 for rank 1 at: [67236]" << " + "<< i << " is " << foo[67236 + i] << "\n";
+    }
+
   }
 
   // for rank 1, get the last 10
@@ -238,11 +241,10 @@ void receive_density(double * &foo, int rank, int nprocs)
     {
       std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "<< (double)foo[last_ten + i] <<"\n";
     }
-    std::cerr << rank <<  " 1.7 \n";
-    engine.Close();
-    std::cerr << rank <<  " 1.8 \n";
-    //dens_holder = dens;
   }
+  std::cerr << rank <<  " 1.7 \n";
+  engine.Close();
+  std::cerr << rank <<  " 1.8 \n";
 }
 
 void send_density(const twod_vec &dens, int rank, int size)

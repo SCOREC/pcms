@@ -192,7 +192,7 @@ void receive_density(double * &foo, int rank, int nprocs)
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
   const::adios2::Dims my_start({0, start});
-  //const::adios2::Dims my_start({start, 0}); //for DebugON
+  //const::adios2::Dims my_start({start, 0}); //for  DebugON
   std::cerr << rank <<  " 1.1 \n";
   //const::adios2::Dims my_count({count, width}); //for DebugON
   const::adios2::Dims my_count({width, count});

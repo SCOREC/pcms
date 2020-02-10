@@ -206,43 +206,30 @@ void receive_density(double * &foo, int rank, int nprocs)
   std::cerr << rank <<  " 1.6 \n";
   engine.EndStep();
 
-  // confirming the values sent -  only rank 0 starts at correct spot
+  // confirming the values received -  only rank 0 starts at correct spot
   if(!rank)
   {
     for (int i = 0; i < 10; i++)
     {
-      // the first 10 values for each rank
       std::cerr << rank <<  ": first 10 density at "<< i << " is "<< (double)foo[i] <<"\n";
-      // for process zero, get the last values at row 67325 -1
     }
-  }
-  if(!rank)
-  {
-    int last_ten = ((67226 + 1) * height) - 1;
-    std::cerr << rank <<  ": last 10 starts at " <<  last_ten << " is "<< (double)foo[last_ten] << "\n";
-    int next_ten = ((67235 + 1) * height) - 1;
-    std::cerr << rank <<  ": last 10 ends at " <<  next_ten << " is "<< (double)foo[next_ten] << "\n";
-  }
-  if(!rank)
-  {
+    // last 10 entries for rank 0
     for (int i = 0; i < 10; i++)
     {
-      // last 10 entries for rank 0
-      int off_s = ((height - 1) * count ) + 67235 - 9;
-      std::cerr << rank << ": Last 10 for rank 0 at: [67235 - 9]" << " + "<< i << " is " << foo[off_s  + i] << "\n";
+      int offset = ((height - 1) * count ) + 67235 - 9;
+      std::cerr << rank << ": last 10 for rank 0 at: [67235 - 9]" << " + "<< i << " is " << foo[offset  + i] << "\n";
     }
+    // first 10 entries for rank 1
     for (int i = 0; i < 10; i++)
     {
-      // first 10 entries for rank 1
-      std::cerr << rank << ": First 10 for rank 1 at: [67236]" << " + "<< i << " is " << foo[67236 + i] << "\n";
+      std::cerr << "1" << ": first 10 for rank 1 at: [67236]" << " + "<< i << " is " << foo[67236 + i] << "\n";
     }
-
   }
 
-  // for rank 1, get the last 10
-  int last_ten = (height * count) - 10;
+  // last 10 entries for rank 1
   if(rank == 1)
   {
+    int last_ten = (height * count) - 10;
     for (int i = 0; i < 10; i++)
     {
       std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "<< (double)foo[last_ten + i] <<"\n";

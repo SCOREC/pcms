@@ -227,7 +227,13 @@ void receive_density(double * &foo, int rank, int nprocs)
   {
     for (int i = 0; i < 10; i++)
     {
-	// first 10 entries in rank 1
+      // last 10 entries for rank 0
+      int off_s = ((height - 1) * count ) + 67235 - 9;
+      std::cerr << rank << ": Last 10 for rank 0 at: [67235 - 9]" << " + "<< i << " is " << foo[off_s  + i] << "\n";
+    }
+    for (int i = 0; i < 10; i++)
+    {
+      // first 10 entries for rank 1
       std::cerr << rank << ": First 10 for rank 1 at: [67236]" << " + "<< i << " is " << foo[67236 + i] << "\n";
     }
 

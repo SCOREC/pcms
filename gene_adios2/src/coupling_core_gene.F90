@@ -133,21 +133,6 @@ contains
 
         print *, mype,  ' runs the coupling '
 
-!       if (my_pex .eq. 0) then
-       do i = 1,10 
-       !if (Y , X)
-       print *,  "First 10 -> dim1 X dim2: ", i-1, block_start, " is: ", density(i-1, block_start)
-       !if (X , Y)
-       !print *,  " first 10 density at ", block_start-1+i," is: ", density(0, block_start-1+i)
-       end do
-
-       do i = 1,10 
-       !if (Y , X)
-       print *,  "Last 10 -> dim1 X dim2: ", maxplane - 10 + i, block_end, " is :", density(maxplane-10+i, block_end)
-       !if (X , Y)
-       !print *,  " last 10 density at ", block_end-10+i, " is :", density((n_cuts-1), block_end-10+i)
-       end do
- !      endif
 
           call adios2_declare_io(dens_io,adios2obj,'density_coupling',adios_err)
           call adios2_define_variable(dens_id, dens_io,fld_name,&
@@ -167,6 +152,15 @@ contains
 
 #ifdef ADIOS2
        call adios2_begin_step(engines(1),adios2_step_mode_append,adios_err)
+
+       do i = 1,10 
+       print *,  "First 10 -> dim1 X dim2: ", block_start + i - 1, 0, " is: ", dens_out(block_start + i - 1, 0)
+       end do
+
+       do i = 1,10 
+       print *,  "Last 10 -> dim1 X dim2: ", block_end - 10 + i, maxplane, " is :", dens_out(block_end - 10 + i, maxplane)
+       end do
+
        call adios2_put(engines(1),dens_id,dens_out,adios_err)
        call adios2_end_step(engines(1), adios_err)
 #else 

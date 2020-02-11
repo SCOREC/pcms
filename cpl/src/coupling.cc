@@ -51,24 +51,6 @@ int main(int argc, char **argv){
   receive_density(dens_arr, rank, size);
   std::cerr << rank <<  " 2.0 \n";
 
-  /*  send_density(dens_vec, rank, size);
-      std::cerr << rank <<  " 3.0 \n";
-      */
-  /*  if(!rank)
-      {
-      for (int i = 0; i < 10; i++)
-      {
-      std::cerr << rank <<  " The values of the first 10 at "<< i <<" is "<< (double)dens_arr[i] <<"\n";
-      }
-
-      for (int i = 0; i < 10; i++)
-      {
-      std::cerr << rank <<  " The values of the last 10 at "<< (183529 * 32)-9+i <<" is "<< (double)dens_arr[(32*183529)-9+i] <<"\n";
-      }
-      }*/
-  //    send field data to GENE
-
-  //  end loop
   delete[] dens_arr;
   return 0;
 
@@ -186,23 +168,18 @@ void receive_density(double * &foo, int rank, int nprocs)
   auto height = dens_id.Shape()[1];// 183529
   std::cerr << rank <<  " 0.9\n";
 
-  //int count  =  height / nprocs;
   int count  =  width / nprocs;
-  //if(rank == nprocs - 1) count += height%nprocs;
   if(rank == nprocs - 1) count += width%nprocs; // 16
   const int start = rank * count;
 
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
-  //const::adios2::Dims my_start({0, start});
   const::adios2::Dims my_start({start, 0}); //for DebugON
   std::cerr << rank <<  " 1.1 \n";
   const::adios2::Dims my_count({count, height}); //for DebugON
-  //const::adios2::Dims my_count({width, count});
   std::cerr << rank <<  " 1.2 \n";
   const adios2::Box<adios2::Dims> sel(my_start, my_count);
   std::cerr << rank <<  " 1.3 \n";
-  //foo = new double[width * count];
   foo = new double[height * count]; //DebugON
 
   std::cerr << rank <<  " 1.41 \n";
@@ -223,14 +200,14 @@ void receive_density(double * &foo, int rank, int nprocs)
     // first 10 entries for rank 1
     for (int i = 0; i < 10; i++)
     {
-      std::cerr << "1" << ": first 10 for rank 1 at: [67236]" << " + "<< i << " is " << foo[67236 + i] << "\n";
+      std::cerr << rank << ": first 10 for rank 1 at: [67236]" << " + "<< i << " is " << foo[67236 + i] << "\n";
     }
   }
 
   // last 10 entries for rank 1
   if(rank == 1)
   {
-	  //last 10 or rank 0 for GENE
+    //last 10 or rank 0 for GENE
     for (int i = 0; i < 10; i++)
     {
       int offset = ((count - 1) * height) + 67235 - 9; //width 

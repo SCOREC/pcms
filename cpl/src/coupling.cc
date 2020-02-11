@@ -144,7 +144,7 @@ void receive_density(double * &foo, int rank, int nprocs)
   dens_io.SetEngine("Sst");
   dens_io.SetParameters({{"DataTransport","RDMA"},  {"OpenTimeoutSecs", "360"}});
 
-  trim(cce_folder);
+//  trim(cce_folder);
   auto p =  dens_io.Parameters();
   //print out the set parameters for this IO
   if (rank == 0)
@@ -159,14 +159,14 @@ void receive_density(double * &foo, int rank, int nprocs)
 
   adios2::Engine engine = dens_io.Open("/global/homes/d/damilare/density.bp", adios2::Mode::Read);
   fprintf(stderr,"GENE-to-coupling density engine created by %d\n", rank);
-  fprintf(stderr,"%d 0.6\n", rank);
+  //fprintf(stderr,"%d 0.6\n", rank);
 
   engine.BeginStep();
-  std::cerr << rank <<  " 0.7 \n";
+//  std::cerr << rank <<  " 0.7 \n";
   adios2::Variable<double> dens_id = dens_io.InquireVariable<double>(fld_name);
   auto width = dens_id.Shape()[0]; // 32 
   auto height = dens_id.Shape()[1];// 183529
-  std::cerr << rank <<  " 0.9\n";
+  //std::cerr << rank <<  " 0.9\n";
 
   int count  =  width / nprocs;
   if(rank == nprocs - 1) count += width%nprocs; // 16
@@ -175,18 +175,18 @@ void receive_density(double * &foo, int rank, int nprocs)
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
   const::adios2::Dims my_start({start, 0}); //for DebugON
-  std::cerr << rank <<  " 1.1 \n";
+//  std::cerr << rank <<  " 1.1 \n";
   const::adios2::Dims my_count({count, height}); //for DebugON
-  std::cerr << rank <<  " 1.2 \n";
+  //std::cerr << rank <<  " 1.2 \n";
   const adios2::Box<adios2::Dims> sel(my_start, my_count);
-  std::cerr << rank <<  " 1.3 \n";
+//  std::cerr << rank <<  " 1.3 \n";
   foo = new double[height * count]; //DebugON
 
-  std::cerr << rank <<  " 1.41 \n";
+  //std::cerr << rank <<  " 1.41 \n";
   dens_id.SetSelection(sel);
-  std::cerr << rank <<  " 1.5 \n";
+//std::cerr << rank <<  " 1.5 \n";
   engine.Get<double>(dens_id, foo);
-  std::cerr << rank <<  " 1.6 \n";
+//std::cerr << rank <<  " 1.6 \n";
   engine.EndStep();
 
   // confirming the values received -  only rank 0 starts at correct spot
@@ -220,9 +220,9 @@ void receive_density(double * &foo, int rank, int nprocs)
     }
   }
 
-  std::cerr << rank <<  " 1.7 \n";
+  //std::cerr << rank <<  " 1.7 \n";
   engine.Close();
-  std::cerr << rank <<  " 1.8 \n";
+//  std::cerr << rank <<  " 1.8 \n";
 }
 
 void send_density(const twod_vec &dens, int rank, int size)

@@ -110,7 +110,8 @@ void initialize_coupling()
   cce_node_number = cce_last_node - cce_first_node + 1;
   cce_node_number = 212817 - 1875 + 1;
   cce_side = 3;
-  cce_folder = "/global/homes/d/damilare";
+  //cce_folder = "/global/homes/d/damilare";
+  cce_folder = "../coupling";
 }
 
 void finalize_coupling()
@@ -157,7 +158,7 @@ void receive_density(double * &foo, int rank, int nprocs)
     }
   }
 
-  adios2::Engine engine = dens_io.Open("/global/homes/d/damilare/density.bp", adios2::Mode::Read);
+  adios2::Engine engine = dens_io.Open(cce_folder + "/density.bp", adios2::Mode::Read);
   fprintf(stderr,"GENE-to-coupling density engine created by %d\n", rank);
   //fprintf(stderr,"%d 0.6\n", rank);
 

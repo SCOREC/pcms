@@ -4,23 +4,19 @@ set(SRCS
 	coupling.cc
 	#cpl_scorec.cc
 	)
-# any headers which need to be public/installed
-#  this does not need to be ALL headers
 set(HDRS )
 set(EXEC cpl_exec_GX)
 #set(EXEC cpl_exec)
 
-set(USER_LIB "/users/adesoa/dev")
-set(ADIOS2_USER_DIR "/project/projectdirs/m499/Software/adios2/DEFAULT/cori_haswell/DEFAULT")
-
 #For cori build
+set(ADIOS2_USER_DIR "/project/projectdirs/m499/Software/adios2/DEFAULT/cori_haswell/DEFAULT")
 set(ADIOS2_INCLUDE_DIRS "${ADIOS2_USER_DIR}/include")
 set(ADIOS2_LIB_DIR "${ADIOS2_USER_DIR}/lib64")
 
-
 #For scorec build
-#set(ADIOS2_INCLUDE_DIRS "${USER_LIB}/install/ADIOS2/include")
-#set(ADIOS2_LIB_DIR "${USER_LIB}/install/ADIOS2/lib64")
+#set(ADIOS2_USER_DIR "/users/adesoa/dev/install/ADIOS2")
+#set(ADIOS2_INCLUDE_DIRS "${ADIOS2_USER_DIR}/include")
+#set(ADIOS2_LIB_DIR "${ADIOS2_USER_DIR}/lib64")
 
 set(CPL_INC "/lore/adesoa/dev/wdmapp_coupling/drv/build")
 set(DRV_INC "${CPL_INC}/src")
@@ -28,7 +24,7 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${ADIOS2_LIB_DIR} ${CPL_INC} )
 
 
 find_package(MPI REQUIRED)
-include_directories( ${MPI_CXX_INCLUDE_PATH} )
+include_directories(${MPI_CXX_INCLUDE_PATH})
 
 #find_library(DRV_LIB NAMES wdm_minapp)
 #include_directories(${DRV_INC})
@@ -107,7 +103,7 @@ endif()
 set(LINK_LIBS ${LINK_LIBS} ${MPI_LIBRARIES} ${ADIOS2_F} ${ADIOS2_LIB} ${ADIOS2_SST} ${ADIOS2_TAUS} ${ADIOS2_EV} ${ADIOS2_FFS} ${ADIOS2_ATL} ${ADIOS2_DILL} ${ADIOS2_ENET}) # ${DRV_LIB})
 set(INCLUDE_DIRS ${INCLUDE_DIRS} ${MPI_INCLUDE_PATH} ${ADIOS_INCLUDE_DIRS} ${ADIOS2_INCLUDE_DIRS}) #${DRV_INC})
 
-add_executable(${EXEC} ${SRCS} )
+add_executable(${EXEC} ${SRCS})
 target_link_libraries(${EXEC} ${LINK_LIBS})
 
 INSTALL(TARGETS ${EXEC}

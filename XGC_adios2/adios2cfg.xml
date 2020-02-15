@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <adios-config>
-    <io name="density_coupling"> 
+    <io name="cpl_density"> 
         <engine type="SST">
 	  <parameter key="MarshalMethod" value="bp"/>
 	  <parameter key="DataTransport" value="evpath"/>

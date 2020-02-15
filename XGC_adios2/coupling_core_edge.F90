@@ -66,6 +66,7 @@ contains
     
     namelist /varpi/ cce_varpi,cce_psi
     
+       print *, sml_intpl_mype, 'cce_initialize  1.0' 
     if(.not.allocated(cce_density))then
      
        cce_alpha=0.5D0
@@ -217,14 +218,21 @@ contains
        count2(2) = 1
 
 #ifdef ADIOS2
+        print *, sml_intpl_mype, ' runs the coupling'
        if (cce_step .eq. 1) then
-          call adios2_declare_io(read_io, adios2obj, 'density_from_coupling',&
+       print *, sml_intpl_mype, ' 0.0 ', trim(cce_folder)
+          call adios2_declare_io(read_io, adios2obj, 'density_XGC',&
                & err)
-          call adios2_open(read_engine,read_io,trim(cce_folder)//'/density.bp',&
+       print *, sml_intpl_mype, ' 0.1, read_io%: ' , err, read_io%valid
+          call adios2_open(read_engine,read_io,trim(cce_folder)//'/cpl_density.bp',&
                &adios2_mode_read, sml_intpl_comm, err)
+       print *, sml_intpl_mype, ' 0.2 read_engine% ' , err, read_engine%valid
        endif
+       print *, sml_intpl_mype, ' 0.3 ' 
        call adios2_begin_step(read_engine, adios2_step_mode_read, err)
+       print *, sml_intpl_mype, ' 0.4 begin_step ' , err
        call adios2_inquire_variable(varid,read_io,fld_name, err)
+       print *, sml_intpl_mype, ' 0.5 inquire_var ' , err
        if (.not.varid%valid)then
           if (sml_mype.eq.0) print *, fld_name, ' variable not found'
        else
@@ -304,11 +312,13 @@ contains
 
 #endif
        
+       print *, sml_intpl_mype, ' 1.0 ' 
        cce_density(cce_first_node:cce_last_node)=arrtmp(1:cce_node_number)
        
        !print *,trim(cce_my_side)//'density_'//trim(planestr)//'_'//trim(cce_stepstr)//'_R',arrtmp(1),arrtmp(cce_node_number)
        deallocate(arrtmp)
        
+       print *, sml_intpl_mype, ' 1.1' 
     endif
     call t_stopf("CCE_RECEIVE_DENSITY")
   end subroutine cce_receive_density
@@ -474,7 +484,7 @@ contains
                & adios2_type_dp, 2, gdims, goffset,&
                & ldims, adios2_constant_dims, err)
           call adios2_open(send_engine, send_io, trim(cce_folder) // '/'&
-               & //'field.bp', adios2_mode_write,&
+               & //'xgc_field.bp', adios2_mode_write,&
                & sml_intpl_comm, err)
           call MPI_Comm_rank(sml_intpl_comm, myrank, ierr);
           call MPI_Comm_size(sml_intpl_comm, mysize, ierr);
@@ -720,6 +730,7 @@ subroutine cce_send_density(density)
   cce_density=0D0
 
   if(cce_comm_density_mode.eq.1.or.cce_comm_density_mode.eq.2)then
+       print *, sml_intpl_mype, ' send_density 1.0 ' 
 
     write(cce_stepstr,'(I0.5)') cce_step
     write(planestr,'(I0.5)') sml_intpl_mype

@@ -66,7 +66,7 @@ contains
     
     namelist /varpi/ cce_varpi,cce_psi
     
-       print *, sml_intpl_mype, 'cce_initialize  1.0' 
+!       print *, sml_intpl_mype, 'cce_initialize  1.0' 
     if(.not.allocated(cce_density))then
      
        cce_alpha=0.5D0
@@ -221,7 +221,7 @@ contains
         print *, sml_intpl_mype, ' runs the coupling'
        if (cce_step .eq. 1) then
        print *, sml_intpl_mype, ' 0.0 ', trim(cce_folder)
-          call adios2_declare_io(read_io, adios2obj, 'density_XGC',&
+          call adios2_declare_io(read_io, adios2obj, 'cpl_density',&
                & err)
        print *, sml_intpl_mype, ' 0.1, read_io%: ' , err, read_io%valid
           call adios2_open(read_engine,read_io,trim(cce_folder)//'/cpl_density.bp',&

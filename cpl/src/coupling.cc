@@ -17,6 +17,8 @@ int cce_npsi, cce_dt, cce_side, cce_alpha, cce_all_surface_number, itime, mype;
 unsigned long cce_field_node_number, sml_nphi_total, sml_intpl_mype, cce_node_number, cce_first_node;
 std::string cce_folder;
 
+bool first_step=true;
+
 double ** bar; // array of pointers to two process array locations
 double * bar1; // array of pointers to two process array locations
 double * bar2; // array of pointers to two process array locations
@@ -26,7 +28,7 @@ int g_height = 0;
 double *dens_ptr = NULL;
 void initialize_coupling();
 void finalize_coupling();
-void receive_density(double* &density, int rank, int nprocs);
+void receive_density(int rank, int nprocs);
 void send_density(int rank, int nprocs);
 void receive_field(double* &field, int rank, int nprocs);
 void send_field(double* &field, int rank, int flag);
@@ -40,7 +42,7 @@ int main(int argc, char **argv){
 
   initialize_coupling();
 
-  receive_density(dens_ptr, rank, nprocs);
+  receive_density(rank, nprocs);
   std::cerr << rank <<  ": 2.0 \n";
   std::cerr << rank <<  ": g_height: "<< g_height << " g_width: "<< g_width <<" \n";
   send_density(rank, nprocs);
@@ -108,7 +110,7 @@ void initialize_coupling()
   cce_folder = "/global/homes/d/damilare";
 }
 
-void receive_density(double * &density, int rank, int nprocs)
+void receive_density(int rank, int nprocs)
 {
   std::string fld_name = "gene_density"; // or data_from_gene??
 
@@ -124,8 +126,6 @@ void receive_density(double * &density, int rank, int nprocs)
   adios2::Variable<double> dens_id = dens_io.InquireVariable<double>(fld_name);
   auto width = dens_id.Shape()[0]; // 32 
   auto height = dens_id.Shape()[1];// 183529
-//  g_width = height;
-//  g_height = width;
 
   int count  =  width / nprocs;
   if(rank == nprocs - 1) count += width%nprocs; // 16
@@ -133,28 +133,30 @@ void receive_density(double * &density, int rank, int nprocs)
 
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
+//This is temporarily for debugging #ADA
+  g_width = height;
+  g_height = width;
   const::adios2::Dims my_start({start, 0}); //for DebugON
   const::adios2::Dims my_count({count, height}); //for DebugON
   const adios2::Box<adios2::Dims> sel(my_start, my_count);
-  density = new double[height * count]; //contiguously allocate this on the heap from free-list
-//  if(!rank) density = new double[height * width]; //contiguously allocate this on the heap from free-list
+  dens_ptr = new double[height * count]; //contiguously allocate this on the heap from free-list
 
   dens_id.SetSelection(sel);
-  engine.Get<double>(dens_id, density);
+  engine.Get<double>(dens_id, dens_ptr);
   engine.EndStep();
 
   if(!rank)
   {
     for (int i = 0; i < 10; i++)
     {
-      std::cerr << rank <<  ": first 10 density at "<< i << " is "<< density[i] <<"\n";
+      std::cerr << rank <<  ": first 10 density at "<< i << " is "<< dens_ptr[i] <<"\n";
     }
     for (int i = 0; i < 10; i++)
     {
-      std::cerr << rank << ": first 10 for rank 1 at: [67236]" << " + "<< i << " is " << density[67236 + i] << "\n";
+      std::cerr << rank << ": first 10 for rank 1 at: [67236]" << " + "<< i << " is " << dens_ptr[67236 + i] << "\n";
     }
     std::cerr << 1.30 << std::endl;
-    bar1 = density;
+    bar1 = dens_ptr;
     std::cerr << 1.31 << std::endl;
   }
 
@@ -163,21 +165,18 @@ void receive_density(double * &density, int rank, int nprocs)
     for (int i = 0; i < 10; i++)
     {
       int offset = ((count - 1) * height) + 67235 - 9; //width 
-      std::cerr << rank << ": last 10 for rank 0 at: [67235 - 9]" << " + "<< i << " is " << density[offset  + i] << "\n";
+      std::cerr << rank << ": last 10 for rank 0 at: [67235 - 9]" << " + "<< i << " is " << dens_ptr[offset  + i] << "\n";
     }
     int last_ten = (height * count) - 10;
     for (int i = 0; i < 10; i++)
     {
-      std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "<< density[last_ten + i] <<"\n";
+      std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "<< dens_ptr[last_ten + i] <<"\n";
     }
     std::cerr << 1.40 << std::endl;
 //    bar[1] = &density[0];
     std::cerr << 1.41 << std::endl;
   }
-//This is temporarily for debugging #ADA
-  g_width = height;
-  g_height = count;
-  engine.Close();
+//  engine.Close(); // this is done at an external step
 }
 
 void send_density(int rank, int nprocs)
@@ -186,18 +185,16 @@ void send_density(int rank, int nprocs)
   std::string fld_name = "cpl_density";
 
     std::cerr << "5.0" << std::endl;
+    std::cerr << " g_height:" << g_height << " g_width: "<< g_width << std::endl;
   count = g_height / nprocs ; // break the height up
   if(rank == nprocs - 1) count += g_height%nprocs;
   start = rank * count;
     std::cerr << "5.1" << std::endl;
-    std::cerr << " g_height:" << g_height << " gwidth: "<< g_width << std::endl;
+    std::cerr << " start: " << start << " count: "<< count << std::endl;
 
-  const::adios2::Dims g_dims({g_width, g_height});
-  //const::adios2::Dims g_dims({g_height, g_width});
-  const::adios2::Dims g_offset({0, start});
-  //const::adios2::Dims g_offset({start, 0});
-  const::adios2::Dims l_dims({g_width, count});
-  //const::adios2::Dims l_dims({count, g_width});
+  const::adios2::Dims g_dims({g_height, g_width});
+  const::adios2::Dims g_offset({start, 0});
+  const::adios2::Dims l_dims({count, g_width});
     std::cerr << "5.2" << std::endl;
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);

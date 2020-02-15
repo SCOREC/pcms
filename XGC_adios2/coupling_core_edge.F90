@@ -479,7 +479,7 @@ contains
           goffset(2) = sml_intpl_mype
           ldims(1) = cce_field_node_number
           ldims(2) = 1
-          call adios2_declare_io(send_io, adios2obj, 'field_coupling', err)
+          call adios2_declare_io(send_io, adios2obj, 'xgc_field', err)
           call adios2_define_variable(field_id, send_io, 'dadat',  &
                & adios2_type_dp, 2, gdims, goffset,&
                & ldims, adios2_constant_dims, err)

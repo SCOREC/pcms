@@ -69,10 +69,7 @@ contains
         character(len=*), intent(in) :: initfile
         integer :: ierr
 
-    print *, 'adios2_comm_init 0.0'
         call adios2_init(adios2obj, initfile, sml_comm, .true., ierr)
-    print *, 'adios2_comm_init 0.1 ', ierr
-    if(adios2obj%valid)    print *, 'adios2_comm_init  obj valid 0.2 '
         allocate(list_engines(16))
         n_engines = 0
     end subroutine adios2_comm_init
@@ -101,7 +98,6 @@ contains
             deallocate(list_engines)
             call move_alloc(tmp,list_engines)
         endif
-        print *, ' adios2_comm_engine_push '
         n_engines = n_engines+1
         list_engines(n_engines) = engine
         if (sml_mype.eq.0) print *, 'ADIOS2: push to close on finalizing ', trim(list_engines(n_engines)%name)

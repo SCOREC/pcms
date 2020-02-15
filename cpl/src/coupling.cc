@@ -19,18 +19,17 @@ std::string cce_folder;
 
 bool first_step=true;
 
-double ** bar; // array of pointers to two process array locations
-double * bar1; // array of pointers to two process array locations
-double * bar2; // array of pointers to two process array locations
 int g_width = 0;
 int g_height = 0;
 
 double *dens_ptr = NULL;
+double *field_ptr = NULL;
+
 void initialize_coupling();
 void finalize_coupling();
 void receive_density(int rank, int nprocs);
 void send_density(int rank, int nprocs);
-void receive_field(double* &field, int rank, int nprocs);
+void receive_field(int rank, int nprocs);
 void send_field(double* &field, int rank, int flag);
 
 
@@ -43,10 +42,13 @@ int main(int argc, char **argv){
   initialize_coupling();
 
   receive_density(rank, nprocs);
-  std::cerr << rank <<  ": 2.0 \n";
+  std::cerr << rank <<  ": receive density done 2.0 \n";
   std::cerr << rank <<  ": g_height: "<< g_height << " g_width: "<< g_width <<" \n";
   send_density(rank, nprocs);
-  std::cerr << rank <<  ": 2.1 \n";
+  std::cerr << rank <<  ": send density done 2.1 \n";
+  std::cerr << rank <<  ": g_height: "<< g_height << " g_width: "<< g_width <<" \n";
+  receive_field(rank, nprocs);
+  std::cerr << rank <<  ": receive field done 2.2 \n";
 
   delete[] dens_ptr;
   return 0;
@@ -115,7 +117,7 @@ void receive_density(int rank, int nprocs)
   std::string fld_name = "gene_density"; // or data_from_gene??
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO dens_io = adios.DeclareIO("density_coupling");
+  adios2::IO dens_io = adios.DeclareIO("gene_density");
   dens_io.SetEngine("Sst");
   dens_io.SetParameters({{"DataTransport","RDMA"},  {"OpenTimeoutSecs", "360"}});
 
@@ -156,8 +158,6 @@ void receive_density(int rank, int nprocs)
       std::cerr << rank << ": first 10 for rank 1 at: [67236]" << " + "<< i << " is " << dens_ptr[67236 + i] << "\n";
     }
     std::cerr << 1.30 << std::endl;
-    bar1 = dens_ptr;
-    std::cerr << 1.31 << std::endl;
   }
 
   if(rank == 1)
@@ -220,38 +220,42 @@ void send_density(int rank, int nprocs)
 }
 
 
-void receive_field(double * &data_block, int rank, int nprocs)
+void receive_field(int rank, int nprocs)
 {
-  int count, start;
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO send_io = adios.DeclareIO("field_coupling");
-  send_io.SetEngine("Sst");
+  adios2::IO read_io = adios.DeclareIO("xgc_field");
+    std::cerr << "4.0" << std::endl;
+  read_io.SetEngine("Sst");
+    std::cerr << "4.1" << std::endl;
+  read_io.SetParameters({{"DataTransport","RDMA"},  {"OpenTimeoutSecs", "360"}});
+    std::cerr << "4.2" << std::endl;
 
-  adios2::Engine send_engine = send_io.Open((cce_folder + "/xgc_field.bp"), adios2::Mode::Read);
+  adios2::Engine read_engine = read_io.Open((cce_folder + "/xgc_field.bp"), adios2::Mode::Read);
   std::cout << "XGC-to-coupling field engine created\n";
-  send_engine.BeginStep();
-  adios2::Variable<double> field_id = send_io.InquireVariable<double>("dadat");
-  auto height = field_id.Shape()[0] ;
-  auto width = field_id.Shape()[1];
-  std::cout << "first dim - Incoming variable is of size " << height << std::endl;
-  std::cout << "second dim - Incoming variable is of size " << width << std::endl;
 
-  count  = (width / nprocs);
-  if(rank == nprocs - 1) count += width%nprocs;
-  start = rank * count;
+  read_engine.BeginStep();
+  adios2::Variable<double> field_id = read_io.InquireVariable<double>("dadat");
+  auto height = field_id.Shape()[0] ; //32
+  auto width = field_id.Shape()[1]; //183592 or whatever
 
-  std::cout << "cField Reader of rank " << rank << " reading " << count
-    << " floats starting at element " << start << "\n";
+  int count  =  width / nprocs;
+  if(rank == nprocs - 1) count += width%nprocs; // 16
+  const int start = rank * count;
 
-  const adios2::Dims my_start({0, start});
-  const adios2::Dims my_count({height, count});
+  fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
+      rank, nprocs, width, height, count, start);
+//This is temporarily for debugging #ADA
+  g_width = height;
+  g_height = width;
+  const::adios2::Dims my_start({start, 0}); //for DebugON
+  const::adios2::Dims my_count({count, height}); //for DebugON
   const adios2::Box<adios2::Dims> sel(my_start, my_count);
-  // resize the block to fit 
+  field_ptr = new double[height * count]; //contiguously allocate this on the heap from free-list
 
   field_id.SetSelection(sel);
-  send_engine.Get<double>(field_id, data_block);
-  send_engine.EndStep();
-  send_engine.Close();
+  read_engine.Get<double>(field_id, field_ptr);
+  read_engine.EndStep();
+//  read_engine.Close();
 }
 
 
@@ -269,7 +273,7 @@ void send_field(double * &field, int rank, int nprocs)
   const::adios2::Dims l_dims({height, count});
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO coupling_io = adios.DeclareIO("field_from_coupling");
+  adios2::IO coupling_io = adios.DeclareIO("cpl_field");
   coupling_io.SetEngine("Sst");
 
   auto field_id = coupling_io.DefineVariable<double>(fld_name, g_dims, g_offset, l_dims);

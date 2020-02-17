@@ -113,7 +113,7 @@ void initialize_coupling()
   cce_node_number = cce_last_node - cce_first_node + 1;
   cce_node_number = 212817 - 1875 + 1;
   cce_side = 3;
-  cce_folder = "/global/homes/d/damilare";
+  cce_folder = "../coupling";
 }
 
 void receive_density(int rank, int nprocs)
@@ -139,10 +139,10 @@ void receive_density(int rank, int nprocs)
 
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
-  
+
   g_width = height;
   g_height = width;
-  
+
   const::adios2::Dims my_start({start, 0}); 
   const::adios2::Dims my_count({count, height}); 
   const adios2::Box<adios2::Dims> sel(my_start, my_count);
@@ -229,7 +229,7 @@ void receive_field(int rank, int nprocs)
 
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
-  
+
   g_width = height;// 4 updating global height to be used for the field send
   g_height = width;// 128002 updating global width
   const::adios2::Dims my_start({start, 0}); 

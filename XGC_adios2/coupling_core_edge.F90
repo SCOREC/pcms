@@ -480,7 +480,7 @@ contains
           ldims(1) = cce_field_node_number
           ldims(2) = 1
           call adios2_declare_io(send_io, adios2obj, 'xgc_field', err)
-          call adios2_define_variable(field_id, send_io, 'dadat',  &
+          call adios2_define_variable(field_id, send_io, 'xgc_field',  &
                & adios2_type_dp, 2, gdims, goffset,&
                & ldims, adios2_constant_dims, err)
           call adios2_open(send_engine, send_io, trim(cce_folder) // '/'&

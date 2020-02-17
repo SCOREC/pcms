@@ -134,7 +134,7 @@ contains
         print *, mype,  ' runs the coupling '
 
 
-          call adios2_declare_io(dens_io,adios2obj,'density_coupling',adios_err)
+          call adios2_declare_io(dens_io,adios2obj,'gene_density',adios_err)
           call adios2_define_variable(dens_id, dens_io,fld_name,&
                & adios2_type_dp, 2, gdims, goffset,&
                & ldims,adios2_constant_dims, adios_err)
@@ -262,7 +262,7 @@ contains
 #ifdef ADIOS2
         if (.not.read_engine_av)then
            call adios2_declare_io(coupling_io, adios2obj, &
-                & "field_from_coupling", adios_err)
+                & "cpl_field", adios_err)
            call adios2_open(engines(2), coupling_io, & 
                 & trim(cce_folder)//'/'//'cpl_field.bp', &
                 & adios2_mode_read, comm, adios_err)

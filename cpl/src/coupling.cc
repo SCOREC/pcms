@@ -27,10 +27,12 @@ double *field_ptr = NULL;
 
 void initialize_coupling();
 void finalize_coupling();
+
 void receive_density(int rank, int nprocs);
 void send_density(int rank, int nprocs);
 void receive_field(int rank, int nprocs);
-void send_field(double* &field, int rank, int flag);
+
+void send_field(int rank, int flag);
 
 
 int main(int argc, char **argv){
@@ -41,16 +43,24 @@ int main(int argc, char **argv){
 
   initialize_coupling();
 
+  std::cerr << rank <<  ": g_height: "<< g_height << " g_width: "<< g_width <<" \n";
   receive_density(rank, nprocs);
   std::cerr << rank <<  ": receive density done 2.0 \n";
+
   std::cerr << rank <<  ": g_height: "<< g_height << " g_width: "<< g_width <<" \n";
   send_density(rank, nprocs);
   std::cerr << rank <<  ": send density done 2.1 \n";
+  delete[] dens_ptr;
+
   std::cerr << rank <<  ": g_height: "<< g_height << " g_width: "<< g_width <<" \n";
   receive_field(rank, nprocs);
   std::cerr << rank <<  ": receive field done 2.2 \n";
 
-  delete[] dens_ptr;
+  std::cerr << rank <<  ": g_height: "<< g_height << " g_width: "<< g_width <<" \n";
+  send_field(rank, nprocs);
+  std::cerr << rank <<  ": send field done 10.0 \n";
+
+  delete[] field_ptr;
   return 0;
 
   MPI_Finalize();
@@ -135,7 +145,7 @@ void receive_density(int rank, int nprocs)
 
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
-//This is temporarily for debugging #ADA
+  //This is temporarily for debugging #ADA
   g_width = height;
   g_height = width;
   const::adios2::Dims my_start({start, 0}); //for DebugON
@@ -173,10 +183,10 @@ void receive_density(int rank, int nprocs)
       std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "<< dens_ptr[last_ten + i] <<"\n";
     }
     std::cerr << 1.40 << std::endl;
-//    bar[1] = &density[0];
+    //    bar[1] = &density[0];
     std::cerr << 1.41 << std::endl;
   }
-//  engine.Close(); // this is done at an external step
+  engine.Close(); // this is done at an external step
 }
 
 void send_density(int rank, int nprocs)
@@ -184,105 +194,120 @@ void send_density(int rank, int nprocs)
   int count, start;
   std::string fld_name = "cpl_density";
 
-    std::cerr << "5.0" << std::endl;
-    std::cerr << " g_height:" << g_height << " g_width: "<< g_width << std::endl;
+  std::cerr << "5.0" << std::endl;
+  std::cerr << " g_height:" << g_height << " g_width: "<< g_width << std::endl;
   count = g_height / nprocs ; // break the height up
   if(rank == nprocs - 1) count += g_height%nprocs;
   start = rank * count;
-    std::cerr << "5.1" << std::endl;
-    std::cerr << " start: " << start << " count: "<< count << std::endl;
+  std::cerr << "5.1" << std::endl;
+  std::cerr << " start: " << start << " count: "<< count << std::endl;
 
   const::adios2::Dims g_dims({g_height, g_width});
   const::adios2::Dims g_offset({start, 0});
   const::adios2::Dims l_dims({count, g_width});
-    std::cerr << "5.2" << std::endl;
+  std::cerr << "5.2" << std::endl;
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::IO write_io = adios.DeclareIO("cpl_density");
-    std::cerr << "5.3" << std::endl;
+  std::cerr << "5.3" << std::endl;
   write_io.SetEngine("Sst");
-    std::cerr << "5.4" << std::endl;
+  std::cerr << "5.4" << std::endl;
 
   adios2::Variable<double> varid = write_io.DefineVariable<double>(fld_name, g_dims, g_offset, l_dims);
-    if(varid) std::cerr << " valid varID" << std::endl;
-    std::cerr << "5.5" << std::endl;
+  if(varid) std::cerr << " valid varID" << std::endl;
+  std::cerr << "5.5" << std::endl;
   adios2::Engine write_engine = write_io.Open(cce_folder + "/cpl_density.bp", adios2::Mode::Write);
   if(!write_engine) std::cerr << " NULL pointer for writer "<< std::endl;
-    std::cerr << "5.6" << std::endl;
+  std::cerr << "5.6" << std::endl;
 
   write_engine.BeginStep();
-    std::cerr << "5.7" << std::endl;
+  std::cerr << "5.7" << std::endl;
   write_engine.Put<double>(varid, dens_ptr);
-    std::cerr << "5.8" << std::endl;
+  std::cerr << "5.8" << std::endl;
   write_engine.EndStep();
-    std::cerr << "5.9" << std::endl;
+  std::cerr << "5.9" << std::endl;
   write_engine.Close();
 }
 
 
 void receive_field(int rank, int nprocs)
 {
-  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
+  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugOFF);
   adios2::IO read_io = adios.DeclareIO("xgc_field");
-    std::cerr << "4.0" << std::endl;
   read_io.SetEngine("Sst");
-    std::cerr << "4.1" << std::endl;
   read_io.SetParameters({{"DataTransport","RDMA"},  {"OpenTimeoutSecs", "360"}});
-    std::cerr << "4.2" << std::endl;
+  std::cerr << "4.2" << std::endl;
 
-  adios2::Engine read_engine = read_io.Open((cce_folder + "/xgc_field.bp"), adios2::Mode::Read);
+  adios2::Engine read_engine = read_io.Open(cce_folder + "/xgc_field.bp", adios2::Mode::Read);
   std::cout << "XGC-to-coupling field engine created\n";
 
   read_engine.BeginStep();
-  adios2::Variable<double> field_id = read_io.InquireVariable<double>("dadat");
-  auto height = field_id.Shape()[0] ; //32
-  auto width = field_id.Shape()[1]; //183592 or whatever
+  std::cerr << "4.3" << std::endl;
+  adios2::Variable<double> field_id = read_io.InquireVariable<double>("xgc_field");
+  std::cerr << "4.4" << std::endl;
+  auto height = field_id.Shape()[0] ; //4
+  auto width = field_id.Shape()[1]; // 256005
 
   int count  =  width / nprocs;
-  if(rank == nprocs - 1) count += width%nprocs; // 16
+  if(rank == nprocs - 1) count += width%nprocs; // 128002
   const int start = rank * count;
 
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
-//This is temporarily for debugging #ADA
-  g_width = height;
-  g_height = width;
+  //This is temporarily for debugging #ADA
+  g_width = height;// 4
+  g_height = width;// 128002
   const::adios2::Dims my_start({start, 0}); //for DebugON
+  std::cerr << "4.5" << std::endl;
   const::adios2::Dims my_count({count, height}); //for DebugON
+  std::cerr << "4.6" << std::endl;
   const adios2::Box<adios2::Dims> sel(my_start, my_count);
+  std::cerr << "4.7" << std::endl;
   field_ptr = new double[height * count]; //contiguously allocate this on the heap from free-list
+  std::cerr << "4.8" << std::endl;
 
   field_id.SetSelection(sel);
+  std::cerr << "4.9" << std::endl;
   read_engine.Get<double>(field_id, field_ptr);
+  std::cerr << "4.9.9" << std::endl;
   read_engine.EndStep();
-//  read_engine.Close();
+  read_engine.Close();
 }
 
 
-void send_field(double * &field, int rank, int nprocs)
+void send_field(int rank, int nprocs)
 {
-  const std::size_t width = 10; //fix this
-  const std::size_t height = 10; // fix this
-
   std::string fld_name = "cpl_field";
 
-  const::adios2::Dims g_dims({height, width});
-  int  count  = (width / nprocs);
-  if(rank == nprocs - 1) count += width%nprocs;
-  const::adios2::Dims g_offset({0, rank * count});
-  const::adios2::Dims l_dims({height, count});
+  std::cerr << "9.0"<< std::endl;
+  int count  = g_height / nprocs;
+  if(rank == nprocs - 1) count += g_height%nprocs;
+  int start = rank * count;
+
+  std::cerr << "9.1"<< std::endl;
+  const::adios2::Dims g_dims({g_height, g_width});
+  const::adios2::Dims g_offset({start, 0});
+  const::adios2::Dims l_dims({count, g_width});
+  std::cerr << "9.2"<< std::endl;
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
+  std::cerr << "9.3"<< std::endl;
   adios2::IO coupling_io = adios.DeclareIO("cpl_field");
+  std::cerr << "9.4"<< std::endl;
   coupling_io.SetEngine("Sst");
 
-  auto field_id = coupling_io.DefineVariable<double>(fld_name, g_dims, g_offset, l_dims);
+  auto send_id = coupling_io.DefineVariable<double>(fld_name, g_dims, g_offset, l_dims);
+  std::cerr << "9.5"<< std::endl;
   adios2::Engine engine = coupling_io.Open(cce_folder + "/cpl_field.bp", adios2::Mode::Write);
+  std::cerr << "9.6"<< std::endl;
 
   engine.BeginStep();
-  engine.Put<double>(field_id, field);
+  std::cerr << "9.7"<< std::endl;
+  engine.Put<double>(send_id, field_ptr);
+  std::cerr << "9.8"<< std::endl;
   engine.EndStep();
   engine.Close();
+  std::cerr << "9.9"<< std::endl;
 }
 
 

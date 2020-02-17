@@ -232,7 +232,7 @@ void send_density(int rank, int nprocs)
 
 void receive_field(int rank, int nprocs)
 {
-  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugOFF);
+  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::IO read_io = adios.DeclareIO("xgc_field");
   read_io.SetEngine("Sst");
   read_io.SetParameters({{"DataTransport","RDMA"},  {"OpenTimeoutSecs", "360"}});
@@ -248,9 +248,10 @@ void receive_field(int rank, int nprocs)
   auto height = field_id.Shape()[0] ; //4
   auto width = field_id.Shape()[1]; // 256005
 
-  int count  =  width / nprocs;
-  if(rank == nprocs - 1) count += width%nprocs; // 128002
+  //int count  =  width / nprocs;
+  int count  =  height / nprocs;
   const int start = rank * count;
+//  if(rank == nprocs - 1) count += width%nprocs; // 128002 //128003
 
   fprintf(stderr, "%d 1.0 nprocs %d width %d height %d count %d start %d\n",
       rank, nprocs, width, height, count, start);
@@ -259,11 +260,13 @@ void receive_field(int rank, int nprocs)
   g_height = width;// 128002
   const::adios2::Dims my_start({start, 0}); //for DebugON
   std::cerr << "4.5" << std::endl;
-  const::adios2::Dims my_count({count, height}); //for DebugON
+  //const::adios2::Dims my_count({count, height}); //for DebugON
+  const::adios2::Dims my_count({count, width}); //for DebugON
   std::cerr << "4.6" << std::endl;
   const adios2::Box<adios2::Dims> sel(my_start, my_count);
   std::cerr << "4.7" << std::endl;
-  field_ptr = new double[height * count]; //contiguously allocate this on the heap from free-list
+//  field_ptr = new double[height * count]; 
+  field_ptr = new double[width * count]; 
   std::cerr << "4.8" << std::endl;
 
   field_id.SetSelection(sel);

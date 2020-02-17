@@ -220,19 +220,13 @@ contains
 #ifdef ADIOS2
         print *, sml_intpl_mype, ' runs the coupling'
        if (cce_step .eq. 1) then
-       print *, sml_intpl_mype, ' 0.0 ', trim(cce_folder)
           call adios2_declare_io(read_io, adios2obj, 'cpl_density',&
                & err)
-       print *, sml_intpl_mype, ' 0.1, read_io%: ' , err, read_io%valid
           call adios2_open(read_engine,read_io,trim(cce_folder)//'/cpl_density.bp',&
                &adios2_mode_read, sml_intpl_comm, err)
-       print *, sml_intpl_mype, ' 0.2 read_engine% ' , err, read_engine%valid
        endif
-       print *, sml_intpl_mype, ' 0.3 ' 
        call adios2_begin_step(read_engine, adios2_step_mode_read, err)
-       print *, sml_intpl_mype, ' 0.4 begin_step ' , err
        call adios2_inquire_variable(varid,read_io,fld_name, err)
-       print *, sml_intpl_mype, ' 0.5 inquire_var ' , err
        if (.not.varid%valid)then
           if (sml_mype.eq.0) print *, fld_name, ' variable not found'
        else

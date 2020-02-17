@@ -42,17 +42,17 @@ int main(int argc, char **argv){
   initialize_coupling();
 
   receive_density(rank, nprocs);
-  std::cerr << rank <<  ": receive density done 2.0 \n";
+  std::cerr << rank <<  ": receive density done \n";
 
   send_density(rank, nprocs);
-  std::cerr << rank <<  ": send density done 2.1 \n";
+  std::cerr << rank <<  ": send density done \n";
   delete[] dens_ptr;
 
   receive_field(rank, nprocs);
-  std::cerr << rank <<  ": receive field done 2.2 \n";
+  std::cerr << rank <<  ": receive field done \n";
 
   send_field(rank, nprocs);
-  std::cerr << rank <<  ": send field done 10.0 \n";
+  std::cerr << rank <<  ": send field done \n";
 
   delete[] field_ptr;
   return 0;

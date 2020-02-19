@@ -250,7 +250,7 @@ subroutine init_gyro_avg_mat(grid,psn)
   real (8) :: rho, phi0, phi
   integer :: i, larmor
   real (8) :: x(2), xff(2), x_ring(2), x_rff(2)
-  integer, parameter :: n_gyro=32 !8
+  integer, parameter :: n_gyro=8 !32 !8
   real (8) :: dx_unit(2,n_gyro), dx_unit2(2)
   real (8) :: angle, dpdr, dpdz, dp, cosa, sina
   integer :: itr, node, ip
@@ -357,7 +357,7 @@ subroutine init_gyro_avg_mat(grid,psn)
   real (8) :: rho, phi0, phi
   integer :: i, larmor
   real (8) :: x(2), xff(2), x_ring(2), x_rff(2)
-  integer, parameter :: n_gyro=32 !8
+  integer, parameter :: n_gyro=8 !32 !8
   real (8) :: dx_unit(2,n_gyro), dx_unit2(2)
   real (8) :: angle, dpdr, dpdz, dp, cosa, sina
   integer :: itr, node, ip
@@ -446,7 +446,7 @@ subroutine init_gyro_avg_mat(grid,psn)
   type(psn_type) :: psn
   integer :: iphi, irho
   real (8) :: rho, phi0, phi
-  integer, parameter :: n_gyro=32 !32, nsub=3
+  integer, parameter :: n_gyro=8 !32, nsub=3
   integer :: larmor, i, nd(3), j, k, itmp
   real (8) :: dx_unit(2,n_gyro), dx_unit2(2)
   real (8) :: dx1(2), dx2(2), area, c1, c2, c3

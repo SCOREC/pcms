@@ -19,6 +19,8 @@ std::string cce_folder;
 
 int g_width = 0;
 int g_height = 0;
+int timestep = 0;
+
 
 double *dens_ptr = NULL;
 double *field_ptr = NULL;
@@ -29,7 +31,6 @@ void finalize_coupling();
 void receive_density(int rank, int nprocs);
 void send_density(int rank, int nprocs);
 void receive_field(int rank, int nprocs);
-
 void send_field(int rank, int flag);
 
 
@@ -42,17 +43,13 @@ int main(int argc, char **argv){
   initialize_coupling();
 
   receive_density(rank, nprocs);
-  std::cerr << rank <<  ": receive density done \n";
 
   send_density(rank, nprocs);
-  std::cerr << rank <<  ": send density done \n";
-  delete[] dens_ptr;
+ // delete[] dens_ptr;
 
-  receive_field(rank, nprocs);
-  std::cerr << rank <<  ": receive field done \n";
+//  receive_field(rank, nprocs);
 
-  send_field(rank, nprocs);
-  std::cerr << rank <<  ": send field done \n";
+//  send_field(rank, nprocs);
 
   delete[] field_ptr;
   return 0;
@@ -179,32 +176,39 @@ void receive_density(int rank, int nprocs)
     }
   }
   engine.Close(); // this is done at an external step
+  std::cerr << rank <<  ": receive density done \n";
 }
 
 void send_density(int rank, int nprocs)
 {
   int count, start;
+  adios2::Variable<double> varid;
+  adios2::Engine write_engine; 
   std::string fld_name = "cpl_density";
 
-  count = g_height / nprocs ; 
-  if(rank == nprocs - 1) count += g_height%nprocs;
-  start = rank * count;
+  //if(!timestep)
+  {
+    count = g_height / nprocs ; 
+    if(rank == nprocs - 1) count += g_height%nprocs;
+    start = rank * count;
 
-  const::adios2::Dims g_dims({g_height, g_width});
-  const::adios2::Dims g_offset({start, 0});
-  const::adios2::Dims l_dims({count, g_width});
+    const::adios2::Dims g_dims({g_height, g_width});
+    const::adios2::Dims g_offset({start, 0});
+    const::adios2::Dims l_dims({count, g_width});
+    adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
+    adios2::IO write_io = adios.DeclareIO("cpl_density");
+    write_io.SetEngine("Sst");
 
-  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO write_io = adios.DeclareIO("cpl_density");
-  write_io.SetEngine("Sst");
-
-  adios2::Variable<double> varid = write_io.DefineVariable<double>(fld_name, g_dims, g_offset, l_dims);
-  adios2::Engine write_engine = write_io.Open(cce_folder + "/cpl_density.bp", adios2::Mode::Write);
-
+   varid = write_io.DefineVariable<double>(fld_name, g_dims, g_offset, l_dims);
+   write_engine = write_io.Open(cce_folder + "/cpl_density.bp", adios2::Mode::Write);
+  }
+  timestep++;
   write_engine.BeginStep();
   write_engine.Put<double>(varid, dens_ptr);
   write_engine.EndStep();
-  write_engine.Close();
+  //write_engine.Close();
+  //if(timestep) write_engine.Close();
+  std::cerr << rank <<  ": send density done \n";
 }
 
 
@@ -240,7 +244,8 @@ void receive_field(int rank, int nprocs)
   field_id.SetSelection(sel);
   read_engine.Get<double>(field_id, field_ptr);
   read_engine.EndStep();
-  read_engine.Close();
+  //  read_engine.Close();
+  std::cerr << rank <<  ": receive field done \n";
 }
 
 
@@ -267,6 +272,7 @@ void send_field(int rank, int nprocs)
   engine.Put<double>(send_id, field_ptr);
   engine.EndStep();
   engine.Close();
+  std::cerr << rank <<  ": send field done \n";
 }
 
 

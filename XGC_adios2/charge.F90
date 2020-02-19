@@ -1964,17 +1964,17 @@ subroutine chargei(grid,psn,sp)
   !! jyc: temporary fix for SC17 demo
   if(first_flag)then
     first_flag=.false.
-    print *, 'cce initialize 1.0'
     call cce_initialize()
-    print *, 'cce initialize 1.1'
   endif
 #endif
   if(sml_plane_mype==0)then
 #ifndef SC17DEMO
     !! jyc: temporary fix for SC17 demo
     if(first_flag)then
+    print *, 'cce initialize 1.0'
       first_flag=.false.
       call cce_initialize()
+    print *, 'cce initialize 1.1'
     endif
 #endif
     call cce_send_density(psn%idensity(:,1))

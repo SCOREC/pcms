@@ -47,7 +47,8 @@ int main(int argc, char **argv){
   send_density(rank, nprocs);
  // delete[] dens_ptr;
 
-//  receive_field(rank, nprocs);
+  receive_field(rank, nprocs);
+  send_density(rank, nprocs);
 
 //  send_field(rank, nprocs);
 
@@ -187,7 +188,7 @@ void send_density(int rank, int nprocs)
   std::string fld_name = "cpl_density";
 
   //if(!timestep)
-  {
+//  {
     count = g_height / nprocs ; 
     if(rank == nprocs - 1) count += g_height%nprocs;
     start = rank * count;
@@ -201,7 +202,7 @@ void send_density(int rank, int nprocs)
 
    varid = write_io.DefineVariable<double>(fld_name, g_dims, g_offset, l_dims);
    write_engine = write_io.Open(cce_folder + "/cpl_density.bp", adios2::Mode::Write);
-  }
+  //}
   timestep++;
   write_engine.BeginStep();
   write_engine.Put<double>(varid, dens_ptr);

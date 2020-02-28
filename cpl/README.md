@@ -24,7 +24,7 @@ module load gcc mpich adios2
 
 ```
 cd build-wdmCoupler-rhel7
-cmake ../wdmapp_coupling/cpl
+cmake ../wdmapp_coupling/cpl -DCMAKE_CXX_COMPILER=mpicxx
 make # there will be a bunch of warnings
 ```
 

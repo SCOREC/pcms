@@ -34,7 +34,7 @@ class Array2d {
     GO locFirstCol;
 };
 
-const void printSomeDensityVals(const Array2d* density) {
+void printSomeDensityVals(const Array2d* density) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   //asserting the density values received from GENE

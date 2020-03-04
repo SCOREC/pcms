@@ -94,7 +94,7 @@ Array2d* receive2d_from_ftn(const std::string dir, const std::string name) {
   if(rank == nprocs - 1) local_width += c_glob_width%nprocs; // 2
 
   fprintf(stderr, "%d 1.0 name %s nprocs %d"
-      "c_glob_width %d c_glob_height %d local_width %d start %d\n",
+      "c_glob_width %lu c_glob_height %lu local_width %lu start %lu\n",
       rank, name.c_str(), nprocs,
       c_glob_width, c_glob_height, local_width, start);
 

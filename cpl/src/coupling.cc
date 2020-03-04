@@ -2,6 +2,8 @@
 #include<iostream>
 #include<mpi.h>
 #include<cassert>
+#include <Kokkos_Core.hpp>
+#include <typeinfo>
 
 typedef long unsigned GO;
 
@@ -163,11 +165,24 @@ void send_field(const std::string cce_folder, const Array2d* field)
   std::cerr << rank <<  ": send field done \n";
 }
 
+void exParFor() {
+  Kokkos::parallel_for(
+      4, KOKKOS_LAMBDA(const int i) {
+        printf("Hello from kokkos thread i = %i\n", i);
+      });
+}
+
 int main(int argc, char **argv){
   int rank, nprocs;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  Kokkos::initialize(argc, argv);
+  if(!rank) {
+    printf("Hello World on Kokkos execution space %s\n",
+         typeid(Kokkos::DefaultExecutionSpace).name());
+    exParFor();
+  }
 
   const std::string cce_folder = "../coupling";
   Array2d* density = receive_density(cce_folder);
@@ -178,6 +193,7 @@ int main(int argc, char **argv){
   delete density;
   delete field;
 
+  Kokkos::finalize();
   MPI_Finalize();
   return 0;
 }

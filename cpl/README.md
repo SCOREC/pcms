@@ -82,3 +82,33 @@ srun /path/to/build-wdmCoupler-intel-cori/src/cpl
 ```
 
 Where this script is submitted with `sbatch runCoriCpl.sh`.
+
+## Build on AiMOS
+
+### Setup
+
+Clone the repo and create a build directory:
+
+```
+git clone git@github.com:SCOREC/wdmapp_coupling.git
+mkdir build-wdmCoupler-aimosXl
+```
+
+Run the following commands to select the compiler and set environment variables
+for dependencies.  *This needs to be done every time you create a new shell and
+build within it.*
+
+```
+module load
+```
+
+### Build
+
+```
+cd build-wdmCoupler-rhel7
+cmake ../wdmapp_coupling/cpl -DCMAKE_CXX_COMPILER=mpicxx
+make
+```
+
+If all goes well you will have a `cpl` binary in the `src` directory.
+

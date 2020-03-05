@@ -66,12 +66,11 @@ void printSomeDensityVals(const Array2d* density) {
 }
 
 /* receive columns (start_col) to (start_col + localW) */
-Array2d* receive2d_from_ftn(const std::string dir, const std::string name, adios2::Engine &eng) {
+Array2d* receive2d_from_ftn(const std::string dir, const std::string name, adios2::ADIOS &adios, adios2::Engine &eng) {
   int rank, nprocs;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::IO read_io = adios.DeclareIO(name.c_str());
   read_io.SetEngine("Sst");
   read_io.SetParameters({{"DataTransport","RDMA"},  {"OpenTimeoutSecs", "480"}});
@@ -118,13 +117,12 @@ Array2d* receive2d_from_ftn(const std::string dir, const std::string name, adios
 }
 
 /* send columns (start_col) to (start_col + localW) */
-void send2d_from_C(const Array2d* a2d, const std::string dir, const std::string name, adios2::Engine &engine) {
+void send2d_from_C(const Array2d* a2d, const std::string dir, const std::string name, adios2::ADIOS &adios, adios2::Engine &engine) {
   const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
   const::adios2::Dims g_offset({a2d->start_col(), 0});
   assert(a2d->localH() == a2d->globalH());
   const::adios2::Dims l_dims({a2d->localW(), a2d->globalH()});
 
-  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::IO coupling_io = adios.DeclareIO(name);
   coupling_io.SetEngine("Sst");
 
@@ -142,38 +140,39 @@ void send2d_from_C(const Array2d* a2d, const std::string dir, const std::string 
   engine.EndStep();
 }
 
-Array2d* receive_density(const std::string cce_folder, adios2::Engine &engine)
+Array2d* receive_density(const std::string cce_folder, adios2::ADIOS &adios, adios2::Engine &engine)
 {
   const std::string name = "gene_density";
-  return receive2d_from_ftn(cce_folder,name,engine);
+  return receive2d_from_ftn(cce_folder,name,adios, engine);
 }
 
-void send_density(const std::string cce_folder, const Array2d* density, adios2::Engine &engine)
+void send_density(const std::string cce_folder, const Array2d* density,  adios2::ADIOS &adios, adios2::Engine &engine)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   const std::string fld_name = "cpl_density";
-  send2d_from_C(density, cce_folder, fld_name, engine);
-  std::cerr << rank <<  ": send density done \n";
+  send2d_from_C(density, cce_folder, fld_name, adios, engine);
+  std::cerr << rank <<  ": send " << fld_name <<" done \n";
 }
 
-Array2d* receive_field(const std::string cce_folder, adios2::Engine &eng)
+Array2d* receive_field(const std::string cce_folder,  adios2::ADIOS &adios, adios2::Engine &eng)
 {
   const std::string name = "xgc_field";
-  return receive2d_from_ftn(cce_folder,name,eng);
+  return receive2d_from_ftn(cce_folder,name, adios, eng);
 }
 
-void send_field(const std::string cce_folder, const Array2d* field, adios2::Engine &engine)
+void send_field(const std::string cce_folder, const Array2d* field,  adios2::ADIOS &adios, adios2::Engine &engine)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   const std::string fld_name = "cpl_field";
-  send2d_from_C(field, cce_folder, fld_name, engine);
-  std::cerr << rank <<  ": send field done \n";
+  send2d_from_C(field, cce_folder, fld_name, adios, engine);
+  std::cerr << rank <<  ": send " << fld_name <<" done \n";
 }
 
 void close_engines(adios2::Engine engine[]){
-  for(int i = 0; i < 4; i++) {
+  for(int i = 0; i < 4; i++)
+  {
     engine[i].Close();
   }
 }
@@ -185,13 +184,17 @@ int main(int argc, char **argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
+  adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::Engine engines[4];
   const std::string cce_folder = "../coupling";
-  Array2d* density = receive_density(cce_folder, engines[0]);
+  Array2d* density;
+  density = receive_density(cce_folder, adios, engines[0]);
   printSomeDensityVals(density);
-  send_density(cce_folder, density, engines[1]);
-  Array2d* field = receive_field(cce_folder, engines[2]);
-  send_field(cce_folder, field, engines[3]);
+  send_density(cce_folder, density, adios, engines[1]);
+
+
+  Array2d* field = receive_field(cce_folder, adios, engines[2]);
+  send_field(cce_folder, field, adios, engines[3]);
   close_engines(engines);
   delete density;
   delete field;

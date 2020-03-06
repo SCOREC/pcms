@@ -187,18 +187,16 @@ int main(int argc, char **argv){
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::Engine engines[4];
   const std::string cce_folder = "../coupling";
-  Array2d* density;
-  density = receive_density(cce_folder, adios, engines[0]);
+  
+  Array2d* density = receive_density(cce_folder, adios, engines[0]);
   printSomeDensityVals(density);
   send_density(cce_folder, density, adios, engines[1]);
-
+  delete density;
 
   Array2d* field = receive_field(cce_folder, adios, engines[2]);
   send_field(cce_folder, field, adios, engines[3]);
   close_engines(engines);
-  delete density;
   delete field;
-
   MPI_Finalize();
   return 0;
 }

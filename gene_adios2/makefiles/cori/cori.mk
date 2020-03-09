@@ -46,7 +46,7 @@ PRECISION = double
 
 DEBUG= no
 
-SLEPC= yes
+SLEPC= no
 
 SCALAPACK = yes
 
@@ -56,13 +56,15 @@ USE_PERFLIB = none
 
 DIAG_MPI_IO= no
 
-FUTILS = no
+FUTILS = yes
 
 PRODRUN = yes
 
-ADIOS = yes
+ADIOS = no
 
-COUPLE=no
+ADIOS2 = yes
+
+COUPLE_XGC=yes
 
 ifeq ($(CHIP),mic-knl)
 MB_PER_CORE=1300

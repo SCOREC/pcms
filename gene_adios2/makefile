@@ -115,7 +115,7 @@ endif
 #------- Create executable ----- #
 #$(MAKE) -f $(MKFILE) $@
 $(EXECDIR)/$(EXEC): checkpath
-	$(MAKE) -f $(MKFILE) $@ #main
+	$(MAKE) -f $(MKFILE) $@
 
 #coupler: checkpath
 #	$(MAKE) -f $(MKFILE) coupler

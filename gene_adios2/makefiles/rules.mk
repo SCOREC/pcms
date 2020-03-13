@@ -124,9 +124,6 @@ endif
 
 ifeq ($(ADIOS2),yes)
  PREPROC += -DADIOS2
-
- ADIOS2_DIR=/project/projectdirs/m499/Software/adios2/DEFAULT/cori_haswell/DEFAULT/bin
- #ADIOS2_DIR=/users/adesoa/dev/install/ADIOS2/bin
  ADIOS2_LIB = $(shell $(ADIOS2_DIR)/adios2-config --fortran-libs)
  ADIOS2_INC = $(shell $(ADIOS2_DIR)/adios2-config --fortran-flags)
  LIBS += $(ADIOS2_LIB)
@@ -139,9 +136,9 @@ ifeq ($(COUPLE_XGC),yes)
   $(error Coupling must be built with FUTILS to read XGC grid)
  endif
 
- #ifneq ($(ADIOS2),yes)
- # $(error Coupling must be built with ADIOS. ADIOS must be yes)
- #endif
+ ifneq ($(ADIOS2),yes)
+  $(error Coupling must be built with ADIOS. ADIOS must be yes)
+ endif
  PREPROC += -DCOUPLE_XGC -DGENE_SIDE -DCOUPLE
 endif
 
@@ -285,10 +282,9 @@ $(PPDIR)/%.f90: $(SRCDIR)/%.F90
 
 ##############################################################################
 ifeq ($(ADIOS),yes)
- ADIOS_MOD=/opt/scorec/spack/install/linux-rhel7-x86_64/gcc-7.3.0/adios-1.13.1-ootbumw6qyec5wyqcd7udfgcz5gewx5p/bin
- LIBS += $(shell $(ADIOS_MOD)/adios_config -l -f)
- INCPATHS += $(shell $(ADIOS_MOD)/adios_config -c -f)
- ADIOSBASE = $(shell $(ADIOS_MOD)/adios_config -d)
+ LIBS += $(shell adios_config -l -f)
+ INCPATHS += $(shell adios_config -c -f)
+ ADIOSBASE = $(shell adios_config -d)
 endif
 
 $(OBJDIR)/adios_io.o: $(SRCDIR)/adios_io.F90 $(XMLFILE)
@@ -407,6 +403,7 @@ liblinkline:
 
 
 coupler:
-	rsync -a --exclude="${COUPLE_DIR}/install" $(COUPLE_DIR)/ coupler
-	$(MAKE) -C coupler FFLAGS="" FC="${MPFC}" PARAMS=${COUPLING_FILE} PREFIX=install lib
-	rsync -a coupler/*.mod coupler/libcoupler.a coupler/modules/libcmodules.a $(OBJDIR)
+	@echo "------  coupler rule - you should not be here, something is wrong --------"
+	#rsync -a --exclude="${COUPLE_DIR}/install" $(COUPLE_DIR)/ coupler
+	#$(MAKE) -C coupler FFLAGS="" FC="${MPFC}" PARAMS=${COUPLING_FILE} PREFIX=install lib
+	#rsync -a coupler/*.mod coupler/libcoupler.a coupler/modules/libcmodules.a $(OBJDIR)

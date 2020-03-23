@@ -46,8 +46,10 @@ for dependencies.  *This needs to be done every time you create a new shell and
 build within it.*
 
 ```
-module load cmake adios2
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ADIOS_DIR/lib64
+a2=/project/projectdirs/m499/Software/adios2/DEFAULT/cori_haswell/DEFAULT
+module load cmake
+export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:$a2
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$a2/lib64
 ```
 
 ### Build
@@ -75,8 +77,8 @@ to your script that calls `srun`.  For example,
 #SBATCH --tasks-per-node=1
 #SBATCH --constraint=haswell
 
-module load adios2
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ADIOS_DIR/lib64
+a2=/project/projectdirs/m499/Software/adios2/DEFAULT/cori_haswell/DEFAULT
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$a2/lib64
 
 srun /path/to/build-wdmCoupler-intel-cori/src/cpl
 ```

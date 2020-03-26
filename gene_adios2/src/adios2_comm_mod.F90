@@ -82,7 +82,7 @@ contains
     integer, intent(in):: comm
     integer :: ierr
 
-    call adios2_init_config(adios2obj, initfile, comm, .true., ierr)
+    call adios2_init(adios2obj, initfile, comm, .true., ierr)
     
     n_engines=2
     !first write second read

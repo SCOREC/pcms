@@ -84,3 +84,82 @@ srun /path/to/build-wdmCoupler-intel-cori/src/cpl
 ```
 
 Where this script is submitted with `sbatch runCoriCpl.sh`.
+
+
+## Build on AiMOS
+
+### Build Kokkos
+
+#### Setup
+
+Create an environment script `~/barn/kokkos/envKkAimosGnu.sh` with the following
+contents:
+
+```
+module use
+/gpfs/u/software/dcs-spack-install/v0133gcc/lmod/linux-rhel7-ppc64le/gcc/7.4.0-1/
+module load gcc/7.4.0/1
+module load cmake/3.15.4-mnqjvz6
+
+export CUDA_DIR=/usr/local/cuda-10.2/
+export PATH=$PATH:${CUDA_DIR}/bin
+```
+
+#### Build
+
+```
+cd ~/barn/
+mkdir build-kokkos3-aimos-gnu74
+cd !$
+cmake ../kokkos/ \
+-DCMAKE_CXX_COMPILER=~/barn/kokkos/bin/nvcc_wrapper \
+-DKokkos_ARCH_VOLTA70=ON \
+-DKokkos_ENABLE_SERIAL=ON \
+-DKokkos_ENABLE_CUDA=on \
+-DKokkos_CUDA_DIR=$CUDA_DIR \
+-DKokkos_ENABLE_CUDA_LAMBDA=on \
+-DKokkos_ENABLE_DEBUG=on \
+-DKokkos_ENABLE_PROFILING=on \
+-DCMAKE_INSTALL_PREFIX=~/barn/build-kokkos3-aimos-gnu74/install
+
+make -j8 install
+```
+
+
+### Build Coupler
+
+#### Setup
+
+Create an environment script `~/barn/wdmapp_coupling/envCplAimosGnu.sh` with the
+following contents:
+
+```
+module use
+/gpfs/u/software/dcs-spack-install/v0133gcc/lmod/linux-rhel7-ppc64le/gcc/7.4.0-1/
+module load gcc/7.4.0/1
+module load openmpi/3.1.4-mm5hjuq
+module load \
+  cmake/3.15.4-mnqjvz6 \
+  adios2/2.5.0-rqsvxj4
+
+export
+CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:~/barn/build-dcs-gcc74-kokkos3/install
+export kk=~/barn/kokkos
+export OMPI_CXX=$kk/bin/nvcc_wrapper
+
+export CUDA_DIR=/usr/local/cuda-10.2/
+export PATH=$PATH:${CUDA_DIR}/bin
+```
+
+#### Build
+
+```
+cd ~/barn
+source wdmapp_coupling/envCplAimosGnu.sh
+mkdir build-wdmCoupler-aimosGnu
+cd !$
+cmake ../wdmapp_coupling/cpl -DCMAKE_CXX_COMPILER=mpicxx
+make
+```
+
+If all goes well, the `src/cpl` executable will be created.

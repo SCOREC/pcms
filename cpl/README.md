@@ -85,7 +85,6 @@ srun /path/to/build-wdmCoupler-intel-cori/src/cpl
 
 Where this script is submitted with `sbatch runCoriCpl.sh`.
 
-
 ## Build on AiMOS
 
 ### Build Kokkos

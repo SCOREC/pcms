@@ -2,6 +2,8 @@
 #include<iostream>
 #include<mpi.h>
 #include<cassert>
+#include <Kokkos_Core.hpp>
+#include <typeinfo>
 
 typedef long unsigned GO;
 
@@ -96,7 +98,7 @@ Array2d* receive2d_from_ftn(const std::string dir, const std::string name, adios
   if(rank == nprocs - 1) local_width += c_glob_width%nprocs; // 2
 
   fprintf(stderr, "%d 1.0 name %s nprocs %d"
-      "c_glob_width %d c_glob_height %d local_width %d start %d\n",
+      "c_glob_width %lu c_glob_height %lu local_width %lu start %lu\n",
       rank, name.c_str(), nprocs,
       c_glob_width, c_glob_height, local_width, start);
 
@@ -173,12 +175,24 @@ void close_engines(adios2::Engine engine[]){
   }
 }
 
+void exParFor() {
+  Kokkos::parallel_for(
+      4, KOKKOS_LAMBDA(const int i) {
+        printf("Hello from kokkos thread i = %i\n", i);
+      });
+}
 
 int main(int argc, char **argv){
   int rank, nprocs;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  Kokkos::initialize(argc, argv);
+  if(!rank) {
+    printf("Hello World on Kokkos execution space %s\n",
+         typeid(Kokkos::DefaultExecutionSpace).name());
+    exParFor();
+  }
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::IO IO[4];
@@ -186,7 +200,6 @@ int main(int argc, char **argv){
   adios2::Variable<double> send_var[2];
   const std::string cce_folder = "../coupling";
   const int time_step = 1, RK_count = 4;
-
 
   IO[0] = adios.DeclareIO("gene_density");
   IO[1] = adios.DeclareIO("cpl_density");
@@ -209,6 +222,7 @@ int main(int argc, char **argv){
   }
 
   close_engines(engines);
+  Kokkos::finalize();
   MPI_Finalize();
   return 0;
 }

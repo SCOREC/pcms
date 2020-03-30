@@ -9,4 +9,6 @@ find_package(Kokkos 3.0 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(fftw REQUIRED IMPORTED_TARGET fftw3>=3.3)
 
+message(STATUS "foo")
+
 add_subdirectory(src)

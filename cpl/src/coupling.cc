@@ -2,8 +2,8 @@
 #include<iostream>
 #include<mpi.h>
 #include<cassert>
-#include <Kokkos_Core.hpp>
-#include <typeinfo>
+#include<Kokkos_Core.hpp>
+#include<typeinfo>
 #include<fftw3.h>
 
 typedef long unsigned GO;
@@ -45,11 +45,13 @@ void printSomeDensityVals(const Array2d* density) {
   {
     for (int i = 0; i < 10; i++)
     {
-      std::cerr << rank <<  ": first 10 density at "<< i << " is "<< density->val(i) <<"\n";
+      std::cerr << rank <<  ": first 10 density at "<< i
+        << " is "<< density->val(i) <<"\n";
     }
     for (int i = 0; i < 10; i++)
     {
-      std::cerr << rank << ": first 10 for rank 1 at: [67236]" << " + "<< i << " is " << density->val(67236 + i) << "\n";
+      std::cerr << rank << ": first 10 for rank 1 at: [67236]" << " + "<< i
+        << " is " << density->val(67236 + i) << "\n";
     }
   }
 
@@ -57,19 +59,22 @@ void printSomeDensityVals(const Array2d* density) {
   {
     for (int i = 0; i < 10; i++)
     {
-      int offset = ((density->localW() - 1) * density->localH()) + 67235 - 9; //width
-      std::cerr << rank << ": last 10 for rank 0 at: [67235 - 9]" << " + "<< i << " is " << density->val(offset  + i) << "\n";
+      int offset = ((density->localW() - 1) * density->localH()) + 67235 - 9;
+      std::cerr << rank << ": last 10 for rank 0 at: [67235 - 9]" << " + "<< i
+        << " is " << density->val(offset  + i) << "\n";
     }
     int last_ten = (density->localH() * density->localW()) - 10;
     for (int i = 0; i < 10; i++)
     {
-      std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "<< density->val(last_ten + i) <<"\n";
+      std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "
+        << density->val(last_ten + i) <<"\n";
     }
   }
 }
 
 /* receive columns (start_col) to (start_col + localW) */
-Array2d* receive2d_from_ftn(const std::string dir, const std::string name, adios2::IO &read_io, adios2::Engine &eng) {
+Array2d* receive2d_from_ftn(const std::string dir, const std::string name,
+    adios2::IO &read_io, adios2::Engine &eng) {
   int rank, nprocs;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -78,7 +83,10 @@ Array2d* receive2d_from_ftn(const std::string dir, const std::string name, adios
 
   if(!eng){
     read_io.SetEngine("Sst");
-    read_io.SetParameters({{"DataTransport","RDMA"},  {"OpenTimeoutSecs", "480"}});
+    read_io.SetParameters({
+        {"DataTransport","RDMA"},
+        {"OpenTimeoutSecs", "480"}
+        });
     eng = read_io.Open(fname, adios2::Mode::Read);
     std::cerr << rank << ": " << name << " engine created\n";
   }
@@ -118,7 +126,9 @@ Array2d* receive2d_from_ftn(const std::string dir, const std::string name, adios
 }
 
 /* send columns (start_col) to (start_col + localW) */
-void send2d_from_C(const Array2d* a2d, const std::string dir, const std::string name, adios2::IO &coupling_io, adios2::Engine &engine, adios2::Variable<double> &send_id) {
+void send2d_from_C(const Array2d* a2d, const std::string dir,
+    const std::string name, adios2::IO &coupling_io,
+    adios2::Engine &engine, adios2::Variable<double> &send_id) {
   const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
   const::adios2::Dims g_offset({a2d->start_col(), 0});
   assert(a2d->localH() == a2d->globalH());
@@ -127,7 +137,8 @@ void send2d_from_C(const Array2d* a2d, const std::string dir, const std::string 
   const std::string fname = dir + "/" + name + ".bp";
   if (!engine){
     coupling_io.SetEngine("Sst");
-    send_id = coupling_io.DefineVariable<double>(name, g_dims, g_offset, l_dims);
+    send_id = coupling_io.DefineVariable<double>(name,
+        g_dims, g_offset, l_dims);
     engine = coupling_io.Open(fname, adios2::Mode::Write);
   }
   else{
@@ -139,14 +150,14 @@ void send2d_from_C(const Array2d* a2d, const std::string dir, const std::string 
   engine.EndStep();
 }
 
-Array2d* receive_density(const std::string cce_folder, adios2::IO &io, adios2::Engine &engine)
-{
+Array2d* receive_density(const std::string cce_folder,
+    adios2::IO &io, adios2::Engine &engine) {
   const std::string name = "gene_density";
   return receive2d_from_ftn(cce_folder,name, io, engine);
 }
 
-void send_density(const std::string cce_folder, const Array2d* density,  adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id)
-{
+void send_density(const std::string cce_folder, const Array2d* density,
+    adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   const std::string fld_name = "cpl_density";
@@ -154,14 +165,14 @@ void send_density(const std::string cce_folder, const Array2d* density,  adios2:
   std::cerr << rank <<  ": send " << fld_name <<" done \n";
 }
 
-Array2d* receive_field(const std::string cce_folder,  adios2::IO &io, adios2::Engine &eng)
-{
+Array2d* receive_field(const std::string cce_folder,
+    adios2::IO &io, adios2::Engine &eng) {
   const std::string name = "xgc_field";
   return receive2d_from_ftn(cce_folder,name, io, eng);
 }
 
-void send_field(const std::string cce_folder, const Array2d* field, adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id)
-{
+void send_field(const std::string cce_folder, const Array2d* field,
+    adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   const std::string fld_name = "cpl_field";
@@ -169,9 +180,8 @@ void send_field(const std::string cce_folder, const Array2d* field, adios2::IO &
   std::cerr << rank <<  ": send " << fld_name <<" done \n";
 }
 
-void close_engines(adios2::Engine engine[]){
-  for(int i = 0; i < 4; i++)
-  {
+void close_engines(adios2::Engine engine[]) {
+  for(int i = 0; i < 4; i++) {
     engine[i].Close();
   }
 }
@@ -206,11 +216,9 @@ int main(int argc, char **argv){
   IO[1] = adios.DeclareIO("cpl_density");
   IO[2] = adios.DeclareIO("xgc_field");
   IO[3] = adios.DeclareIO("cpl_field");
-  
-  for (int i = 0; i < time_step; i++)
-  {
-    for (int j = 0; j < RK_count; j++)
-    {
+
+  for (int i = 0; i < time_step; i++) {
+    for (int j = 0; j < RK_count; j++) {
       Array2d* density = receive_density(cce_folder, IO[0], engines[0]);
       printSomeDensityVals(density);
       send_density(cce_folder, density, IO[1], engines[1], send_var[0]);

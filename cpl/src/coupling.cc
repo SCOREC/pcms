@@ -4,6 +4,7 @@
 #include<cassert>
 #include <Kokkos_Core.hpp>
 #include <typeinfo>
+#include<fftw3.h>
 
 typedef long unsigned GO;
 

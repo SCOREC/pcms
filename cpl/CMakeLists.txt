@@ -3,4 +3,10 @@ project(wdm_coupling VERSION 0.0.1 LANGUAGES CXX)
 #adios2 adds C and Fortran depending on how it was built
 find_package(ADIOS2 REQUIRED)
 find_package(Kokkos REQUIRED)
+## use pkgconfig since the fftw autoconf install produces
+## broken cmake config files
+## https://github.com/FFTW/fftw3/issues/130
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(fftw REQUIRED IMPORTED_TARGET fftw3>=3.3)
+
 add_subdirectory(src)

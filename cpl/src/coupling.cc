@@ -2,7 +2,7 @@
 #include<iostream>
 #include<mpi.h>
 #include<cassert>
-#include <Kokkos_Core.hpp>
+//#include <Kokkos_Core.hpp>
 #include <typeinfo>
 
 typedef long unsigned GO;
@@ -175,25 +175,27 @@ void close_engines(adios2::Engine engine[]){
   }
 }
 
+/*
 void exParFor() {
   Kokkos::parallel_for(
       4, KOKKOS_LAMBDA(const int i) {
         printf("Hello from kokkos thread i = %i\n", i);
       });
 }
+*/
 
 int main(int argc, char **argv){
   int rank, nprocs;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-  Kokkos::initialize(argc, argv);
-  if(!rank) {
+//  Kokkos::initialize(argc, argv);
+/*  if(!rank) {
     printf("Hello World on Kokkos execution space %s\n",
          typeid(Kokkos::DefaultExecutionSpace).name());
     exParFor();
   }
-
+*/
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::IO IO[4];
   adios2::Engine engines[4];
@@ -222,7 +224,7 @@ int main(int argc, char **argv){
   }
 
   close_engines(engines);
-  Kokkos::finalize();
+//  Kokkos::finalize();
   MPI_Finalize();
   return 0;
 }

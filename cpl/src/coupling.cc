@@ -178,6 +178,11 @@ void send_field(const std::string cce_folder, const Array2d* field,
   std::cerr << rank <<  ": send " << fld_name <<" done \n";
 }
 
+Array1d<T> receive_field_1d<T>(const std::string cce_folder, const std::string name,
+      adios2::IO &io, adios2::Engine &eng) {
+   return receive1d_form_ftn<T>(cce_folder,name,io,eng);
+}
+
 void close_engines(adios2::Engine engine[]) {
   for(int i = 0; i < 4; i++) {
     engine[i].Close();

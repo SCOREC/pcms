@@ -17,7 +17,7 @@ namespace coupler {
      T* data  // data is 2d array
     };
 */
-  template<class T>  //T is the Aarray1D
+  template<class T>  //T is the Aarray1D; num is an integer
   T receive_field1D(T* array1D,const std::string cce_folder,
     const std::string name, GO num, MPI_Comm Comm){
 

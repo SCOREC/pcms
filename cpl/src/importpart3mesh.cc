@@ -31,11 +31,11 @@ void ImportPart3Data3D(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d){
    p3d3d.xcoords = new double[numsurf];
    if(p1pp3d.mype==0){
      receive_field1D_serial(p3d3d.versurf, "../coupling", "vertice_over_surf",numsurf);
-     MPI_Bcast(p3d3d.versurf,numsurf,MPI_UNSIGNED_LONG,int root=0,MPI_COMM_WORLD);
      receive_field1D_serial(p3d3d.xcoords,"../coupling", "xcoords_midplane",numsurf);
+  }
+     MPI_Bcast(p3d3d.versurf,numsurf,MPI_UNSIGNED_LONG,int root=0,MPI_COMM_WORLD);
      MPI_Bcast(p3d3d.x_part3,numsurf,MPI_DOUBLE,int root=0,MPI_COMM_WORLD);
-   }
-
+ 
    if(preproc==true)
    {
      if(p3d3d.nsurf != p1pp3d.nx0)

@@ -18,32 +18,32 @@ namespace coupler {
     };
 */
   template<class T>  //T is the Aarray1D; num is an integer
-  T receive_field1D(T* array1D,const std::string cce_folder,
+    receive_field1D(T* array1D,const std::string cce_folder,
     const std::string name, GO num, MPI_Comm Comm){
 
   }
 
  template<class T> //T is the Arrary1D
- T send_field1D(T* array1D, const std::string cce_folder, 
+   send_field1D(T* array1D, const std::string cce_folder, 
     const std::string name, GO num, MPI_Comm Comm){
 
  } 
 
   template<class T>  //T is the Aarray2D,num[2]
-  T receive_field2D(T* array2D,const std::string cce_folder,
+    receive_field2D(T* array2D,const std::string cce_folder,
     const std::string name,GO num, MPI_Comm Comm){
 
 
   }
 
  template<class T> //T is the Arrary2D, num[2]
- T send_field2D(T* array2D, const std::string cce_folder, 
+   send_field2D(T* array2D, const std::string cce_folder, 
     const std::string name, GO num,MPI_Comm Comm){
 
  } 
 
  template<class T>
- T receive_field1D_serial(T* array1D, const std::string cce_folder,const std::string name, GO num)
+   receive_field1D_serial(T* array1D, const std::string cce_folder,const std::string name, GO num)
 
 void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d)
 

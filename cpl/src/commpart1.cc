@@ -15,8 +15,8 @@ class Part1ParalPar3D {
     GO npx,nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
     GO npy,ny0,nyb,lh0,lh1,lh2,lm0,lm1,lm2;
     GO npz,nz0 nzb,lk0,lk1,lk2,ln0,ln1,ln2;
-    double& x_part1;
-    double& z_part1;
+    double* xcoords;
+    double* pzcoords;
     double dz;
        
 }
@@ -24,6 +24,7 @@ class Part1ParalPar3D {
 
 //read the paralllization parameters
 void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d){
+  if(prepro==true){ 
    receive_field1D(Array1D<GO> &parpar, "../coupling","para_parameters",9,MPI_COMM_WORLD);
    p1pp3d.npx=parpar[0];
    p1pp3d.nx0=parpar[1];
@@ -82,14 +83,14 @@ void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d){
    // initialize the radial locations of the flux surface and poloidal angles
    receive_field1D(Array1D<double> &xzcoord, "../coupling","xcoords_dz",p1pp3d.nx0+1,MPI_COMM_WORLD);  
    for(GO i==0;i<p1pp3d.nx0;i++)
-     p1pp3d.x_part1[i]=xzcoord[i];
+     p1pp3d.xcoords[i]=xzcoord[i];
    p1pp3d.dz=xzcoord[nx0]; 
      
    for(int i=0;i<nz0-1;i++){
-     p1pp3d.z_part1[i]=pi_+(double)i*p1pp3d.dz;
+     p1pp3d.pzcoords[i]=pi_+(double)i*p1pp3d.dz;
    }
 
-
+}
 
  
 }

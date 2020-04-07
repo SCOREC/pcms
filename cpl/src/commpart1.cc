@@ -15,8 +15,13 @@ class Part1ParalPar3D {
     GO npx,nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
     GO npy,ny0,nyb,lh0,lh1,lh2,lm0,lm1,lm2;
     GO npz,nz0 nzb,lk0,lk1,lk2,ln0,ln1,ln2;
+<<<<<<< HEAD
     double* xcoords;
     double* pzcoords;
+=======
+    double& x_part1;
+    double& z_part1;
+>>>>>>> upstream/master
     double dz;
        
 }
@@ -24,7 +29,10 @@ class Part1ParalPar3D {
 
 //read the paralllization parameters
 void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d){
+<<<<<<< HEAD
   if(prepro==true){ 
+=======
+>>>>>>> upstream/master
    receive_field1D(Array1D<GO> &parpar, "../coupling","para_parameters",9,MPI_COMM_WORLD);
    p1pp3d.npx=parpar[0];
    p1pp3d.nx0=parpar[1];
@@ -91,6 +99,5 @@ void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d){
    }
 
 }
-
  
 }

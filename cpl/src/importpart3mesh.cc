@@ -41,7 +41,7 @@ void ImportPart3Data3D(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d){
    if(preproc==true){
      if(p3d3d.nsurf != p1pp3d.nx0)
      {std::cout<<"Error: The number of surface of Part3 doesn't equal to the number vertice of x domain of part1. " \ 
-                <<"\n"<<std::endl;
+               <<"\n"<<std::endl;
        std::exit;
      }
      GO xinds[]={p1pp3d.li0,p1pp3d.li1,p1pp3d.li2};  
@@ -69,10 +69,11 @@ void DistriPart3zcoords(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d){
          numsurf+=1; 
        } 
     }
+
     p3d3d.pzcoords = new double*[p3d3d.xboxinds[0][p2pp3d.mype_x]];  
     GO index=p3d3d.xboxinds[1][p1pp3d.mype_x];
     for(GO i== index;i<p3d3d.xboxinds[2][p1pp3d.mype_x]+1;i++){
-       double* zcoords=new double[p3d3d.versurf[numsurf]];
+      double* zcoords=new double[p3d3d.versurf[numsurf]];
 //       numsurf+=1;
        GO numvert1=numvert+p3d3d.versurf[numsurf];
        for(int j=0;j<numvert1;j++)
@@ -161,7 +162,6 @@ void SetDistributeInds(const int dir, li1,li2,double* interarr,double* exterarr)
 
 }
 */
-
 
 
 }

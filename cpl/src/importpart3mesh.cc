@@ -5,16 +5,15 @@ namespace coupler{
 class Part3Data3D{
   public:
     GO  nsurf;    // number of flux surfaces
-    GO* versurf; // numbers of vertices on the flux surfaces
+    GO* versurf; // numbers of vertice on the flux surfaces
 //    GO li0,li1,li2,lg1,lg2; // The radial box indexes
-    double* xcoords
-    GO* xboxinds  //The indexes of all boxes on the radial dimension
-    GO* mylk0,myly1,mylk2; // The indexes of box along z dimension
-    GO boxsta,boxend,boxcount; // The  indexes of the 2d box
+    double* xcoords;
+    GO* xboxinds;  //The indexes of all boxes on the radial dimension
+    GO* mylk0,mylk1,mylk2; // The indexes of box along z dimension
+    GO boxstar,boxend,boxcount; // The  indexes of the 2d box
 
     double** Rcoords;  // The R coordinate of all vertices within the 2d box  
     double** Zcoords;  // The Z coordinate of all vertices within the 2d box 
-//    double* density //3D array storing density on each process; 
     double** pzcoords;  // The z coordinates of all points with the 2d box. 
 
 }
@@ -51,6 +50,7 @@ void ImportPart3Data3D(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d){
        p3d3d.xboxinds[i]=new GO[p1pp3d.npx];
        MPI_Allgather(&xinds[i],1,MPI_UNSIGNED_LONG,p3d3d.xboxinds[i],1,MPI_UNSIGNED_LONG,MPI_COMM_WORLD);
      }       
+   DistriPart3zcoords(&p3d3d,&p1pp3d);
   } 
 }
 
@@ -73,7 +73,10 @@ void DistriPart3zcoords(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d)
          numsurf+=1; 
        } 
     }
-    for(GO i==p3d3d.xboxinds[1][p1pp3d.mype_x];i<p3d3d.xboxinds[2][p1pp3d.mype_x]+1;i++)
+
+    p3d3d.pzcoords = new double*[p3d3d.xboxinds[0][p2pp3d.mype_x]];
+    GO index=p3d3d.xboxinds[1][p1pp3d.mype_x];
+    for(GO i== index;i<p3d3d.xboxinds[2][p1pp3d.mype_x]+1;i++)
     {
        double* zcoords=new double[p3d3d.versurf[numsurf]];
 //       numsurf+=1;
@@ -82,7 +85,10 @@ void DistriPart3zcoords(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d)
          zcoords[j]=zcoordall[numvert+j]-pi_;
        GO nstart=minloc(zcoords,p3d3d.versurf[numsurf]);
        reshuffle_nodes(zcoords,nstart,p3d3d.versurf[numsurf]);
-           
+       DistributePoints(zcoords,index,i,p1pp3d.pzcoords,&p3d3d,&p1pp3d)
+       p3d3d.pzcoords[i-index]= new double*[p3d3d.mylk0[i-index]];
+       for(GO k=0;k<p3d3d.mylk0[i-index];k++)
+         p3d3d.pzcoords[i-index][k]=zcoords[p3d3d.mylk1[i-index]+k];
     }
 
    }
@@ -113,20 +119,42 @@ void reshuffle_nodes(double* zcoords,const GO nstart,const GO vertnum)
     zcoords[k]=tmp[k];
 }
 
-void DistributePoints(double* exterarr,int dir,)
-{
-  
-
+//// notice: be carefull with extra_zero case.
+void DistributePoints(double* exterarr,GO gstart,GO li, double* interarr,Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d){
+  if(prepro==true){
+    GO nstart;
+    double* tmp=new double[p3d3d.versurf[li]]
+    for(GO i=0;i<p3d3d.versurf[li];i++)
+      tmp[i]=abs(exterarr[i]-interarr[p1pp3d.lk1]);
+    nstart=minloc(tmp,p1pp3d.li0);
+    //nstart must be in my domain or will duplicate
+    if(exterarr[nstart]<interarr[p1pp3d.lk1])
+      nstart+=1;
+    GO i1=nstart;
+    GO i2=nstart;
+    double interal_ub;
+    if(p1pp3d.lk2==p1pp3d.nz0-1){
+      internal_ub=pi_;
+    }
+    else{
+      internal_ub=p1pp3d.pzcoords[p1pp3d.lk2+1];
+    }
+    bool inside = true;
+    while(bool){
+      if(i2+1>p1pp3d.versurf[li]){
+        break;
+      }
+      if(exterarr[i2+1]<interal_ub){
+        i2+=1;
+      }
+      else{
+        inside=false;
+      }
+    }
+    p3d3d.mylk1[li-gstart]=i1;
+    p3d3d.mylk2[li-gstart]=i2;
+    p3d3d.mylk0[li-gstart]=i2-i2+1;
+    }
 }
-
-void SetDistributeInds(const int dir, li1,li2,double* interarr,double* exterarr)
-{
-  
-
-
-}
-
-
-
 
 }

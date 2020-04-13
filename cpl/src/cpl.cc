@@ -20,8 +20,8 @@ int main(int argc, char **argv){
   }
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO IO[4];
-  adios2::Engine eng[4];
+  adios2::IO IO[5];
+  adios2::Engine eng[5];
   adios2::Variable<double> send_var[2];
   const std::string dir = "../coupling";
   const int time_step = 1, RK_count = 4;
@@ -30,6 +30,10 @@ int main(int argc, char **argv){
   IO[1] = adios.DeclareIO("cpl_density");
   IO[2] = adios.DeclareIO("xgc_field");
   IO[3] = adios.DeclareIO("cpl_field");
+  IO[4] = adios.DeclareIO("gene_pproc");
+
+  //receive GENE's preproc mesh discretization values
+  std::vector<double> gene_pproc = coupler::receive_gene_pproc(dir, IO[4], eng[4]);
 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {

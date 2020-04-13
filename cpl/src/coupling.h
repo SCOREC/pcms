@@ -29,6 +29,11 @@ namespace coupler {
    */
   void destroy(Array2d* a);
 
+  /** Receive PreProc values from GENE
+   */
+  Array2d* receive_gene_pproc(const std::string cce_folder,
+      adios2::IO &io, adios2::Engine &engine);
+
   /** Receive density from GENE
    */
   Array2d* receive_density(const std::string cce_folder,

@@ -70,6 +70,54 @@ void printSomeDensityVals(const Array2d* density) {
   }
 }
 
+std::vector<double> receive1d_from_ftn(const std::string dir, const std::string name,
+    adios2::IO &read_io, adios2::Engine &eng) {
+  int rank, nprocs;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+  const std::string fname = dir + "/" + name + ".bp";
+
+  if(!eng){
+    read_io.SetEngine("Sst");
+    read_io.SetParameters({
+        {"DataTransport","RDMA"},
+        {"OpenTimeoutSecs", "480"}
+        });
+    eng = read_io.Open(fname, adios2::Mode::Read);
+    std::cerr << rank << ": " << name << " engine created\n";
+  }
+  else{
+    std::cerr << rank << ": receive engine already exists \n";
+  }
+
+  eng.BeginStep();
+  adios2::Variable<double> adios_var = read_io.InquireVariable<double>(name);
+
+  const auto total_size = bp_cfield.Shape()[0];
+  const auto my_start = (total_size / nprocs) * rank;
+  const auto my_count = (total_size / nprocs);
+  std::cout << " Reader of rank " << rank << " reading " << my_count
+            << " floats starting at element " << my_start << "\n";
+
+  const adios2::Dims start{my_start};
+  const adios2::Dims count{my_count};
+
+  const adios2::Box<adios2::Dims> sel(start, count);
+  std::vector<double> field = {0.0};
+  field.resize(my_count);
+
+  adios_var.SetSelection(sel);
+  eng.Get(adios_var, field.data());
+  eng.EndStep();
+
+
+}
+
+
+
+
+
 /* receive columns (start_col) to (start_col + localW) */
 Array2d* receive2d_from_ftn(const std::string dir, const std::string name,
     adios2::IO &read_io, adios2::Engine &eng) {
@@ -146,6 +194,12 @@ void send2d_from_C(const Array2d* a2d, const std::string dir,
   engine.BeginStep();
   engine.Put<double>(send_id, a2d->data());
   engine.EndStep();
+}
+
+std::vector<double> receive_gene_pproc(const std::string cce_folder,
+    adios2::IO &io, adios2::Engine &engine) {
+  const std::string name = "gene_pproc";
+  return receive1d_from_ftn(cce_folder,name, io, engine);
 }
 
 Array2d* receive_density(const std::string cce_folder,

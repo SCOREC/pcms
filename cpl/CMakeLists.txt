@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.13)
 project(wdm_coupling VERSION 0.0.1 LANGUAGES CXX)
 #adios2 adds C and Fortran depending on how it was built
 find_package(ADIOS2 2.5 REQUIRED)

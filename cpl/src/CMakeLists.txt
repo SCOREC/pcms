@@ -6,7 +6,7 @@ set(SOURCES
 set(HEADERS coupling.h couplingConstants.h)
 
 add_library(coupler ${SOURCES})
-set_target_properties(coupler PROPERTIES PUBLIC_HEADER ${HEADERS})
+set_target_properties(coupler PROPERTIES PUBLIC_HEADER "${HEADERS}")
 target_link_libraries(coupler adios2::adios2 Kokkos::kokkos PkgConfig::fftw)
 
 add_executable(cpl cpl.cc)

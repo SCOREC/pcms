@@ -1,4 +1,4 @@
-#include<coupling1.h>
+#include<coupling.h>
 #include<algorithm>
 namespace coupler {
 

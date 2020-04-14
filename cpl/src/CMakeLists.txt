@@ -3,7 +3,7 @@ set(SOURCES
   commpart1.cc
   importpart3mesh.cc)
 
-set(HEADERS coupling.h coupling1.h)
+set(HEADERS coupling.h)
 
 add_library(coupler ${SOURCES})
 set_target_properties(coupler PROPERTIES PUBLIC_HEADER ${HEADERS})

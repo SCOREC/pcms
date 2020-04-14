@@ -94,7 +94,7 @@ std::vector<double> receive1d_from_ftn(const std::string dir, const std::string 
   eng.BeginStep();
   adios2::Variable<double> adios_var = read_io.InquireVariable<double>(name);
 
-  const auto total_size = bp_cfield.Shape()[0];
+  const auto total_size = adios_var.Shape()[0];
   const auto my_start = (total_size / nprocs) * rank;
   const auto my_count = (total_size / nprocs);
   std::cout << " Reader of rank " << rank << " reading " << my_count
@@ -110,7 +110,7 @@ std::vector<double> receive1d_from_ftn(const std::string dir, const std::string 
   adios_var.SetSelection(sel);
   eng.Get(adios_var, field.data());
   eng.EndStep();
-
+  return field;
 
 }
 
@@ -232,10 +232,11 @@ void send_field(const std::string cce_folder, const Array2d* field,
   std::cerr << rank <<  ": send " << fld_name <<" done \n";
 }
 
-Array1d<T> receive_field_1d<T>(const std::string cce_folder, const std::string name,
+/*Array1d<T> receive_field_1d<T>(const std::string cce_folder, const std::string name,
       adios2::IO &io, adios2::Engine &eng) {
    return receive1d_form_ftn<T>(cce_folder,name,io,eng);
 }
+*/
 
 void close_engines(adios2::Engine engine[]) {
   for(int i = 0; i < 4; i++) {

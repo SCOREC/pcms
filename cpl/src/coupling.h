@@ -9,7 +9,7 @@
 #include <typeinfo>
 #include <fftw3.h>
 
-#include <couplingConstants.h>
+//#include <couplingConstants.h>
 
 namespace coupler {
   class Part1ParalPar3D

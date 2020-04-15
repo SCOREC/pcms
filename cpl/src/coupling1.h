@@ -10,7 +10,7 @@ namespace coupler {
      Aarray1D{
       T* data   // data is 1d array
 
-     };
+     }; This can readily be an std::vector
 
   template<class T> // T can be int, long int, or double
     Array2D{

@@ -2,40 +2,70 @@
 
 namespace coupler {
 
-class Array2d {
-  public:
-    Array2d(GO gH, GO gW, GO lH, GO lW, GO start) :
-      globH(gH), globW(gW), locH(lH), locW(lW), locFirstCol(start) {
-        vals = new double[locH*locW];
-    }
-    ~Array2d() {
-      globH = globW = locH = locW = 0;
-      delete [] vals;
-    }
-    double val(long i) const {
-      assert(i<(locH*locW));
-      return vals[i];
-    }
-    double* data() const { return vals; };
-    GO globalH() const { return globH; };
-    GO globalW() const { return globW; };
-    GO localH() const { return locH; };
-    GO localW() const { return locW; };
-    GO start_col() const { return locFirstCol; };
-  private:
-    double* vals;
-    GO globH;
-    GO globW;
-    GO locH;
-    GO locW;
-    GO locFirstCol;
-};
+//template<class T> class Array2d {
+//  public:
+//    Array2d(GO gH, GO gW, GO lH, GO lW, GO start) :
+//      globH(gH), globW(gW), locH(lH), locW(lW), locFirstCol(start) {
+//        vals = new double[locH*locW];
+//    }
+//    ~Array2d() {
+//      globH = globW = locH = locW = 0;
+//      delete [] vals;
+//    }
+//    double val(long i) const {
+//      assert(i<(locH*locW));
+//      return vals[i];
+//    }
+//    double* data() const { return vals; };
+//    GO globalH() const { return globH; };
+//    GO globalW() const { return globW; };
+//    GO localH() const { return locH; };
+//    GO localW() const { return locW; };
+//    GO start_col() const { return locFirstCol; };
+//  private:
+//    double* vals;
+//    GO globH;
+//    GO globW;
+//    GO locH;
+//    GO locW;
+//    GO locFirstCol;
+//};
+//
+//template<class T> 
+//class Array1d {
+//  public:
+//    Array1d(GO gW, GO lW, GO start) :
+//      globW(gW), locW(lW), locFirstCol(start) {
+//      vals = new T[locW];
+//    }
+//    ~Array1d() {
+//      globW = locW = 0;
+//      delete [] vals;
+//    }
+//    T val(long i) const {
+//      assert(i<(locW));
+//      return vals[i];
+//    }
+//    T* data() const { return vals; };
+//    GO globalW() const { return globW; };
+//    GO localW() const { return locW; };
+//    GO start_col() const { return locFirstCol; };
+//  private:
+//    T* vals;
+//    GO globW;
+//    GO locW;
+//    GO locFirstCol;
+//};
 
-void destroy(Array2d* a) {
+void destroy(Array1d<T>* a) {
   delete a;
 }
 
-void printSomeDensityVals(const Array2d* density) {
+void destroy(Array2d<T>* a) {
+  delete a;
+}
+
+void printSomeDensityVals(const Array2d<T>* density) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   //asserting the density values received from GENE
@@ -70,7 +100,7 @@ void printSomeDensityVals(const Array2d* density) {
   }
 }
 
-std::vector<double> receive1d_from_ftn(const std::string dir, const std::string name,
+Array1d<T>* receive1d_from_ftn(const std::string dir, const std::string name,
     adios2::IO &read_io, adios2::Engine &eng) {
   int rank, nprocs;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -92,7 +122,7 @@ std::vector<double> receive1d_from_ftn(const std::string dir, const std::string 
   }
 
   eng.BeginStep();
-  adios2::Variable<double> adios_var = read_io.InquireVariable<double>(name);
+  adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
 
   const auto total_size = adios_var.Shape()[0];
   const auto my_start = (total_size / nprocs) * rank;
@@ -104,14 +134,13 @@ std::vector<double> receive1d_from_ftn(const std::string dir, const std::string 
   const adios2::Dims count{my_count};
 
   const adios2::Box<adios2::Dims> sel(start, count);
-  std::vector<double> field = {0.0};
-  field.resize(my_count);
+  Array1d<T>* field = new  Array1d<T>{total_size, my_count, 
+  	my_start};
 
   adios_var.SetSelection(sel);
-  eng.Get(adios_var, field.data());
+  eng.Get(adios_var, field->data());
   eng.EndStep();
   return field;
-
 }
 
 
@@ -119,7 +148,7 @@ std::vector<double> receive1d_from_ftn(const std::string dir, const std::string 
 
 
 /* receive columns (start_col) to (start_col + localW) */
-Array2d* receive2d_from_ftn(const std::string dir, const std::string name,
+Array2d<T>* receive2d_from_ftn(const std::string dir, const std::string name,
     adios2::IO &read_io, adios2::Engine &eng) {
   int rank, nprocs;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -157,7 +186,7 @@ Array2d* receive2d_from_ftn(const std::string dir, const std::string name,
       rank, name.c_str(), nprocs,
       c_glob_width, c_glob_height, local_width, start);
 
-  Array2d* a2d = new Array2d(c_glob_height, c_glob_width,
+  Array2d<T>* a2d = new Array2d<T>(c_glob_height, c_glob_width,
       c_glob_height, local_width, start);
   const::adios2::Dims my_start({a2d->start_col(), 0});
   assert(a2d->localH() == a2d->globalH());
@@ -172,7 +201,7 @@ Array2d* receive2d_from_ftn(const std::string dir, const std::string name,
 }
 
 /* send columns (start_col) to (start_col + localW) */
-void send2d_from_C(const Array2d* a2d, const std::string dir,
+void send2d_from_C(const Array2d<T>* a2d, const std::string dir,
     const std::string name, adios2::IO &coupling_io,
     adios2::Engine &engine, adios2::Variable<double> &send_id) {
   const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
@@ -196,19 +225,19 @@ void send2d_from_C(const Array2d* a2d, const std::string dir,
   engine.EndStep();
 }
 
-std::vector<double> receive_gene_pproc(const std::string cce_folder,
+Array1d<T>* receive_gene_pproc(const std::string cce_folder,
     adios2::IO &io, adios2::Engine &engine) {
   const std::string name = "gene_pproc";
   return receive1d_from_ftn(cce_folder,name, io, engine);
 }
 
-Array2d* receive_density(const std::string cce_folder,
+Array2d<T>* receive_density(const std::string cce_folder,
     adios2::IO &io, adios2::Engine &engine) {
   const std::string name = "gene_density";
   return receive2d_from_ftn(cce_folder,name, io, engine);
 }
 
-void send_density(const std::string cce_folder, const Array2d* density,
+void send_density(const std::string cce_folder, const Array2d<T>* density,
     adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -217,13 +246,13 @@ void send_density(const std::string cce_folder, const Array2d* density,
   std::cerr << rank <<  ": send " << fld_name <<" done \n";
 }
 
-Array2d* receive_field(const std::string cce_folder,
+Array2d<T>* receive_field(const std::string cce_folder,
     adios2::IO &io, adios2::Engine &eng) {
   const std::string name = "xgc_field";
   return receive2d_from_ftn(cce_folder,name, io, eng);
 }
 
-void send_field(const std::string cce_folder, const Array2d* field,
+void send_field(const std::string cce_folder, const Array2d<T>* field,
     adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id) {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -232,14 +261,9 @@ void send_field(const std::string cce_folder, const Array2d* field,
   std::cerr << rank <<  ": send " << fld_name <<" done \n";
 }
 
-/*Array1d<T> receive_field_1d<T>(const std::string cce_folder, const std::string name,
-      adios2::IO &io, adios2::Engine &eng) {
-   return receive1d_form_ftn<T>(cce_folder,name,io,eng);
-}
-*/
 
-void close_engines(adios2::Engine engine[]) {
-  for(int i = 0; i < 4; i++) {
+void close_engines(adios2::Engine engine[], const int num) {
+  for(int i = 0; i < num; i++) {
     engine[i].Close();
   }
 }

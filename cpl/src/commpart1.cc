@@ -1,4 +1,4 @@
-#include<coupling.h>
+#include"coupling.h"
 #include<algorithm>
 namespace coupler {
 
@@ -18,7 +18,7 @@ class Part1ParalPar3D {
     double* xcoords;
     double* pzcoords;
     double dz;
-}
+};
 
 
 //read the paralllization parameters
@@ -45,20 +45,20 @@ void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d){
    p1pp3d.lm1=parpar[16];
    p1pp3d.lm2=parpar[17];
 
-   p1pp3d.npz=parpar[13];
-   p1pp3d.nz0=parpar[14];
-   p1pp3d.nzb=parpar[15];
-   p1pp3d.lk0=parpar[12];
-   p1pp3d.lk1=parpar[13];
-   p1pp3d.lk2=parpar[14];
-   p1pp3d.ln0=parpar[15];
-   p1pp3d.ln1=parpar[16];
-   p1pp3d.ln2=parpar[17];
+   p1pp3d.npz=parpar[18];
+   p1pp3d.nz0=parpar[19];
+   p1pp3d.nzb=parpar[20];
+   p1pp3d.lk0=parpar[21];
+   p1pp3d.lk1=parpar[22];
+   p1pp3d.lk2=parpar[23];
+   p1pp3d.ln0=parpar[24];
+   p1pp3d.ln1=parpar[25];
+   p1pp3d.ln2=parpar[26];
 
    p1pp3d.NP=p1pp3d.npx*p1pp3d.npy*p1pp3d.npz;
    // create 3D parallel cart with z being periodic
    int period[3]={1,1,0};
-   int rorder = 1;
+  // int rorder = 1;
    int dim[3]={npx,npy,npz};
    MPI_Comm comm_cart;
    MPI_Cart_create(MPI_COMM_WORLD,3,dim,period,order,&comm_cart);
@@ -80,13 +80,14 @@ void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d){
    MPI_Comm_rank(p1pp3d.comm_z,&p1pp3d.mype_z);
 
    // initialize the radial locations of the flux surface and poloidal angles
-   receive_field1D(Array1D<double> &xzcoord, "../coupling","xcoords_dz",p1pp3d.nx0+1,MPI_COMM_WORLD);
+   std::vector<double> xzcoord = {0.0};
+   receive_field1D(&xzcoord, "../coupling","xcoords_dz",p1pp3d.nx0+1,MPI_COMM_WORLD);
    for(GO i==0;i<p1pp3d.nx0;i++)
      p1pp3d.xcoords[i]=xzcoord[i];
    p1pp3d.dz=xzcoord[nx0];
 
    for(int i=0;i<nz0-1;i++){
-     p1pp3d.pzcoords[i]=pi_+(double)i*p1pp3d.dz;
+     p1pp3d.pzcoords[i]=cplPI+(double)i*p1pp3d.dz;
    }
 
   }

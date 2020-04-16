@@ -1,7 +1,6 @@
 set(SOURCES 
             coupling.cc
-            commpart1.cc
-            importpart3mesh.cc)
+            commpart1.cc)
 
 set(HEADERS coupling.h couplingConstants.h)
 

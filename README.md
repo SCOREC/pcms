@@ -1,3 +1,7 @@
+# wdmapp_coupling
+
+Adios2-based coupler for XGC and GENE
+
 ## Build on SCOREC RHEL7
 
 ### Setup

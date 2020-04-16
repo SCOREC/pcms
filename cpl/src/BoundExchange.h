@@ -1,4 +1,4 @@
-#include <coupling1.h>
+#include <coupling.h>
 
 namespace coupler {
   template<class T1, int mpitype>

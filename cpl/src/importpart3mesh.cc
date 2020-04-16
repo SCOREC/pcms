@@ -1,4 +1,4 @@
-#include <coupling1.h>
+#include "coupling.h"
 
 namespace coupler{
 
@@ -16,31 +16,32 @@ class Part3Data3D{
     double** Zcoords;  // The Z coordinate of all vertices within the 2d box 
     double** pzcoords;  // The z coordinates of all points with the 2d box. 
 
-}
+};
 
 
 void ImportPart3Data3D(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d){
    GO numsurf;
+   const int root =0;
 //   GO verosurf;
    if(p1pp3d.mype==0)
-     receive_field1D_serial(&numsurf,"../coupling","numsurface",1);
-   MPI_Bcast(&numsurf,1,MPI_UNSIGNED_LONG,int root=0, MPI_COMM_WORLD);
+//     receive_field1D_serial(&numsurf,"../coupling","numsurface",1); yyou cant just call receive from anywheree in the code
+   MPI_Bcast(&numsurf,1,MPI_UNSIGNED_LONG,root, MPI_COMM_WORLD);
    p3d3d.nsurf=numsurf;   
    p3d3d.versurf = new GO[numsurf];
    p3d3d.xcoords = new double[numsurf];
    if(p1pp3d.mype==0){
-     receive_field1D_serial(p3d3d.versurf, "../coupling", "vertice_over_surf",numsurf);
-     receive_field1D_serial(p3d3d.xcoords,"../coupling", "xcoords_midplane",numsurf);
+//     receive_field1D_serial(p3d3d.versurf, "../coupling", "vertice_over_surf",numsurf);
+//     receive_field1D_serial(p3d3d.xcoords,"../coupling", "xcoords_midplane",numsurf);
   }
-     MPI_Bcast(p3d3d.versurf,numsurf,MPI_UNSIGNED_LONG,int root=0,MPI_COMM_WORLD);
-     MPI_Bcast(p3d3d.x_part3,numsurf,MPI_DOUBLE,int root=0,MPI_COMM_WORLD);
+     MPI_Bcast(p3d3d.versurf,numsurf,MPI_UNSIGNED_LONG,root,MPI_COMM_WORLD);
+     MPI_Bcast(p3d3d.x_part3,numsurf,MPI_DOUBLE,root,MPI_COMM_WORLD);
  
    if(preproc==true)
    {
      if(p3d3d.nsurf != p1pp3d.nx0)
      {
-       std::cout<<"Error: The number of surface of Part3 doesn't equal to the number vertice of x domain of part1. " \ 
-                <<"\n"<<std::endl;
+       std::cout<<"Error: The number of surface of Part3 doesn't equal to the number vertice "<<
+	       "of x domain of part1. "  <<"\n"<<std::endl;
        std::exit;
      }
      GO xinds[]={p1pp3d.li0,p1pp3d.li1,p1pp3d.li2};  
@@ -76,16 +77,16 @@ void DistriPart3zcoords(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d)
 
     p3d3d.pzcoords = new double*[p3d3d.xboxinds[0][p2pp3d.mype_x]];
     GO index=p3d3d.xboxinds[1][p1pp3d.mype_x];
-    for(GO i== index;i<p3d3d.xboxinds[2][p1pp3d.mype_x]+1;i++)
+    for(GO i= index;i<p3d3d.xboxinds[2][p1pp3d.mype_x]+1;i++)
     {
        double* zcoords=new double[p3d3d.versurf[numsurf]];
 //       numsurf+=1;
        GO numvert1=numvert+p3d3d.versurf[numsurf];
        for(int j=0;j<numvert1;j++)
-         zcoords[j]=zcoordall[numvert+j]-pi_;
+         zcoords[j]=zcoordall[numvert+j]-cplPI;
        GO nstart=minloc(zcoords,p3d3d.versurf[numsurf]);
        reshuffle_nodes(zcoords,nstart,p3d3d.versurf[numsurf]);
-       DistributePoints(zcoords,index,i,p1pp3d.pzcoords,&p3d3d,&p1pp3d)
+       DistributePoints(zcoords,index,i,p1pp3d.pzcoords,&p3d3d,&p1pp3d);
        p3d3d.pzcoords[i-index]= new double*[p3d3d.mylk0[i-index]];
        for(GO k=0;k<p3d3d.mylk0[i-index];k++)
          p3d3d.pzcoords[i-index][k]=zcoords[p3d3d.mylk1[i-index]+k];
@@ -103,7 +104,7 @@ GO  minloc(double* zcoords, const GO n)
     for(GO i=0;i<n;i++) 
      { 
        if(zcoords[i]==zmin) break;
-       num=i
+       num=i;
      }
      return num;
   }
@@ -123,7 +124,7 @@ void reshuffle_nodes(double* zcoords,const GO nstart,const GO vertnum)
 void DistributePoints(double* exterarr,GO gstart,GO li, double* interarr,Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d){
   if(prepro==true){
     GO nstart;
-    double* tmp=new double[p3d3d.versurf[li]]
+    double* tmp=new double[p3d3d.versurf[li]];
     for(GO i=0;i<p3d3d.versurf[li];i++)
       tmp[i]=abs(exterarr[i]-interarr[p1pp3d.lk1]);
     nstart=minloc(tmp,p1pp3d.li0);
@@ -134,7 +135,7 @@ void DistributePoints(double* exterarr,GO gstart,GO li, double* interarr,Part3Da
     GO i2=nstart;
     double interal_ub;
     if(p1pp3d.lk2==p1pp3d.nz0-1){
-      internal_ub=pi_;
+      internal_ub=cplPI;
     }
     else{
       internal_ub=p1pp3d.pzcoords[p1pp3d.lk2+1];

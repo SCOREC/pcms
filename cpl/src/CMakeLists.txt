@@ -1,12 +1,11 @@
 set(SOURCES 
-  coupling.cc
-  commpart1.cc
-  importpart3mesh.cc)
+            coupling.cc
+            commpart1.cc)
 
-set(HEADERS coupling.h coupling1.h)
+set(HEADERS coupling.h couplingConstants.h)
 
 add_library(coupler ${SOURCES})
-set_target_properties(coupler PROPERTIES PUBLIC_HEADER ${HEADERS})
+set_target_properties(coupler PROPERTIES PUBLIC_HEADER "${HEADERS}")
 target_link_libraries(coupler adios2::adios2 Kokkos::kokkos PkgConfig::fftw)
 
 add_executable(cpl cpl.cc)

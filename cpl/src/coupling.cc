@@ -3,11 +3,11 @@
 namespace coupler {
 
 
-  Array1d<double>* receive_gene_pproc(const std::string cce_folder,
-      adios2::IO &io, adios2::Engine &engine) {
-    const std::string name = "gene_pproc";
-    return receive1d_from_ftn<double>(cce_folder,name, io, engine);
-  }
+ // Array1d<double>* receive_gene_pproc(const std::string cce_folder,
+ //     adios2::IO &io, adios2::Engine &engine) {
+ //   const std::string name = "gene_pproc";
+ //   return receive1d_from_ftn<double>(cce_folder,name, io, engine);
+ // }
   
   Array2d<double>* receive_density(const std::string cce_folder,
   		    adios2::IO &io, adios2::Engine &engine) {

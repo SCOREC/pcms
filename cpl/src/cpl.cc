@@ -34,19 +34,19 @@ int main(int argc, char **argv){
   IO[5] = adios.DeclareIO("cpl_field");
 
   //receive GENE's preproc mesh discretization values
-  coupler::Array1d*<int> gene_pproc = coupler::receive_gene_pproc(dir, IO[0], eng[0]);
-  coupler::Array1d*<double> xgc_pproc = coupler::receive_xgc_pproc(dir, IO[1], eng[1]);
+  //coupler::Array1d*<int> gene_pproc = coupler::receive_gene_pproc(dir, IO[0], eng[0]);
+  //coupler::Array1d*<double> xgc_pproc = coupler::receive_xgc_pproc(dir, IO[1], eng[1]);
 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::Array2d* density = coupler::receive_density(dir, IO[2], eng[2]);
       coupler::printSomeDensityVals(density);
       coupler::send_density(dir, density, IO[3], eng[3], send_var[0]);
-      coupler::destroy(density);
+   //   coupler::destroy(density);
 
       coupler::Array2d* field = coupler::receive_field(dir, IO[4], eng[4]);
       coupler::send_field(dir, field, IO[5], eng[5], send_var[1]);
-      coupler::destroy(field);
+ //     coupler::destroy(field);
     }
   }
 

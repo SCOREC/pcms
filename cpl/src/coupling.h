@@ -12,7 +12,9 @@
 #include "couplingConstants.h"
 
 namespace coupler {
+
   class Part1ParalPar3D;
+
   void InitPart1ParalPar3D(Part1ParalPar3D  &p1pp3d);
 
   

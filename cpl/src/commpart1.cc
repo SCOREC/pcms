@@ -15,9 +15,12 @@ class Part1ParalPar3D {
     GO npx,nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
     GO npy,ny0,nyb,lh0,lh1,lh2,lm0,lm1,lm2;
     GO npz,nz0 nzb,lk0,lk1,lk2,ln0,ln1,ln2;
-    double* xcoords;
-    double* pzcoords;
-    double dz;
+    GO mylj0,mylj1,myl12;  // The indexes of box y after Fourier transform
+    GO periods={0,0,1};
+    double* xcoords; // The 1d array storing the radial position of all flux surfaces
+    double* pzcoords; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve. 
+    double* pzp; // The 1d array storing the poloial on each process.
+    double dz;  // The equal step length along the poloidal flux curve.         
 }
 
 
@@ -45,17 +48,17 @@ void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d){
    p1pp3d.lm1=parpar[16];
    p1pp3d.lm2=parpar[17];
 
-   p1pp3d.npz=parpar[13];
-   p1pp3d.nz0=parpar[14];
-   p1pp3d.nzb=parpar[15];
-   p1pp3d.lk0=parpar[12];
-   p1pp3d.lk1=parpar[13];
-   p1pp3d.lk2=parpar[14];
-   p1pp3d.ln0=parpar[15];
-   p1pp3d.ln1=parpar[16];
-   p1pp3d.ln2=parpar[17];
-
-   p1pp3d.NP=p1pp3d.npx*p1pp3d.npy*p1pp3d.npz;
+   p1pp3d.npz=parpar[18];
+   p1pp3d.nz0=parpar[19];
+   p1pp3d.nzb=parpar[20];
+   p1pp3d.lk0=parpar[21];
+   p1pp3d.lk1=parpar[22];
+   p1pp3d.lk2=parpar[23];
+   p1pp3d.ln0=parpar[24];
+   p1pp3d.ln1=parpar[25];
+   p1pp3d.ln2=parpar[26];
+  
+   p1pp3d.NP=p1pp3d.npx*p1pp3d.npy*p1pp3d.npz;  
    // create 3D parallel cart with z being periodic
    int period[3]={1,1,0};
    int rorder = 1;

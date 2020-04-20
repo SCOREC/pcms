@@ -1,14 +1,15 @@
-#include "coupling.h"
+#include <coupling1.h>
 
 namespace coupler{
 
-class Part3Data3D{
+class Part3Mesh3D{
   public:
     GO  nsurf;    // number of flux surfaces
     GO* versurf; // numbers of vertice on the flux surfaces
-//    GO li0,li1,li2,lg1,lg2; // The radial box indexes
     double* xcoords;
-    GO* xboxinds;  //The indexes of all boxes on the radial dimension
+    GO  li0,li1,li2;
+    GO** xboxinds;  //The indexes of all boxes on the radial dimension
+    GO lj0;
     GO* mylk0,mylk1,mylk2; // The indexes of box along z dimension
     GO boxstar,boxend,boxcount; // The  indexes of the 2d box
 
@@ -16,98 +17,97 @@ class Part3Data3D{
     double** Zcoords;  // The Z coordinate of all vertices within the 2d box 
     double** pzcoords;  // The z coordinates of all points with the 2d box. 
 
-};
+}
 
 
-void ImportPart3Data3D(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d){
+void ImportPart3Mesh3D(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d)
+{
    GO numsurf;
-   const int root =0;
 //   GO verosurf;
    if(p1pp3d.mype==0)
-//     receive_field1D_serial(&numsurf,"../coupling","numsurface",1); yyou cant just call receive from anywheree in the code
-   MPI_Bcast(&numsurf,1,MPI_UNSIGNED_LONG,root, MPI_COMM_WORLD);
-   p3d3d.nsurf=numsurf;   
-   p3d3d.versurf = new GO[numsurf];
-   p3d3d.xcoords = new double[numsurf];
+     receive_field1D_serial(&numsurf,"../coupling","numsurface",1);
+   MPI_Bcast(&numsurf,1,MPI_UNSIGNED_LONG,int root=0, MPI_COMM_WORLD);
+   p3m3d.nsurf=numsurf;   
+   p3m3d.versurf = new GO[numsurf];
+   p3m3d.xcoords = new double[numsurf];
    if(p1pp3d.mype==0){
-//     receive_field1D_serial(p3d3d.versurf, "../coupling", "vertice_over_surf",numsurf);
-//     receive_field1D_serial(p3d3d.xcoords,"../coupling", "xcoords_midplane",numsurf);
-  }
-     MPI_Bcast(p3d3d.versurf,numsurf,MPI_UNSIGNED_LONG,root,MPI_COMM_WORLD);
-     MPI_Bcast(p3d3d.x_part3,numsurf,MPI_DOUBLE,root,MPI_COMM_WORLD);
+     receive_field1D_serial(p3m3d.versurf, "../coupling", "vertice_over_surf",numsurf);
+     receive_field1D_serial(p3m3d.xcoords,"../coupling", "xcoords_midplane",numsurf);
+   }
+     MPI_Bcast(p3m3d.versurf,numsurf,MPI_UNSIGNED_LONG,int root=0,MPI_COMM_WORLD);
+     MPI_Bcast(p3m3d.x_part3,numsurf,MPI_DOUBLE,int root=0,MPI_COMM_WORLD);
  
-   if(preproc==true)
-   {
-     if(p3d3d.nsurf != p1pp3d.nx0)
-     {
-       std::cout<<"Error: The number of surface of Part3 doesn't equal to the number vertice "<<
-	       "of x domain of part1. "  <<"\n"<<std::endl;
+   if(preproc==true){
+     if(p3m3d.nsurf != p1pp3d.nx0)
+     {std::cout<<"Error: The number of surface of Part3 doesn't equal to the number vertice of x domain of part1. " \ 
+               <<"\n"<<std::endl;
        std::exit;
      }
+     p3m3d.li0=p1pp3d.li0;
+     p3m3d.li1=p1pp3d.li1;
+     p3m3d.li2=p1pp3d.li2;
      GO xinds[]={p1pp3d.li0,p1pp3d.li1,p1pp3d.li2};  
-     p3d3d.xboxinds = new GO*[3];
-     for(GO i=0;i<3;i++)
-     {
-       p3d3d.xboxinds[i]=new GO[p1pp3d.npx];
-       MPI_Allgather(&xinds[i],1,MPI_UNSIGNED_LONG,p3d3d.xboxinds[i],1,MPI_UNSIGNED_LONG,MPI_COMM_WORLD);
+     p3m3d.xboxinds = new GO*[3];
+     for(GO i=0;i<3;i++){
+       p3m3d.xboxinds[i]=new GO[p1pp3d.npx];
+       MPI_Allgather(&xinds[i],1,MPI_UNSIGNED_LONG,p3m3d.xboxinds[i],1,MPI_UNSIGNED_LONG,MPI_COMM_WORLD);
      }       
-   DistriPart3zcoords(&p3d3d,&p1pp3d);
+    DistriPart3zcoords(&p3m3d,&p1pp3d);
   } 
 }
 
 //when prepro=ture
-void DistriPart3zcoords(Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d)
+void DistriPart3zcoords(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d)
 {
    GO num=0;
-   for(GO i=0;i<p3d3d.nsurf;i++) 
-     num+=p3d3d.versurf[i];   
-   if(prepro==true)
-   {
+   for(GO i=0;i<p3m3d.nsurf;i++) 
+     num+=p3m3d.versurf[i];   
+   if(prepro==true){
      double *zcoordall = new double[num]; 
      receive_field1D(zcoordall,"../coupling","all_zcoordinates",num);   
      GO numvert=0, numsurf=0;
-     for(GO i=0;i<p1pp3d.mype_x;i++)
-     {
-       for(GO j=p3d3d.xboxinds[1][i];j<p3d3d.xboxinds[2][i]+1;j++)
-       {
-         numvert+=p3d3d.versurf[numsurf];
+     for(GO i=0;i<p1pp3d.mype_x;i++){
+       for(GO j=p3m3d.xboxinds[1][i];j<p3m3d.xboxinds[2][i]+1;j++){
+         numvert+=p3m3d.versurf[numsurf];
          numsurf+=1; 
        } 
     }
 
-    p3d3d.pzcoords = new double*[p3d3d.xboxinds[0][p2pp3d.mype_x]];
-    GO index=p3d3d.xboxinds[1][p1pp3d.mype_x];
-    for(GO i= index;i<p3d3d.xboxinds[2][p1pp3d.mype_x]+1;i++)
+    p3m3d.pzcoords = new double*[p3m3d.xboxinds[0][p1pp3d.mype_x]];
+    GO index=p3m3d.xboxinds[1][p1pp3d.mype_x];
+    double* zcoords=new double[p3m3d.versurf[numsurf]];
+    for(GO i= index;i<p3m3d.xboxinds[2][p1pp3d.mype_x]+1;i++)
     {
-       double* zcoords=new double[p3d3d.versurf[numsurf]];
-//       numsurf+=1;
-       GO numvert1=numvert+p3d3d.versurf[numsurf];
-       for(int j=0;j<numvert1;j++)
+       //       numsurf+=1;
+//       numvert=numvert+p3m3d.versurf[numsurf];
+       for(int j=0;j<p3m3d.versurf[numsurf];j++)
          zcoords[j]=zcoordall[numvert+j]-cplPI;
-       GO nstart=minloc(zcoords,p3d3d.versurf[numsurf]);
-       reshuffle_nodes(zcoords,nstart,p3d3d.versurf[numsurf]);
-       DistributePoints(zcoords,index,i,p1pp3d.pzcoords,&p3d3d,&p1pp3d);
-       p3d3d.pzcoords[i-index]= new double*[p3d3d.mylk0[i-index]];
-       for(GO k=0;k<p3d3d.mylk0[i-index];k++)
-         p3d3d.pzcoords[i-index][k]=zcoords[p3d3d.mylk1[i-index]+k];
+//       numvert+=p3m3d.versurf[numsurf];
+       GO nstart=minloc(zcoords,p3m3d.versurf[numsurf]);
+       reshuffle_nodes(zcoords,nstart,p3m3d.versurf[numsurf]);
+       DistributePoints(zcoords,index,i,p1pp3d.pzcoords,&p3m3d,&p1pp3d)
+       p3m3d.pzcoords[i-index]= new double*[p3m3d.mylk0[i-index]];
+       for(GO k=0;k<p3m3d.mylk0[i-index];k++){
+         p3m3d.pzcoords[i-index][k]=zcoords[p3m3d.mylk1[i-index]+k];
+       }
+       numvert+=p3m3d.versurf[numsurf];
+       numsurf+=1;       
     }
-
-   }
-
+    delete[] zcoords; 
+  }
 
 }
 
-GO  minloc(double* zcoords, const GO n)
-  {
+GO  minloc(const double* zcoords, const GO n)
+{
     double zmin=std::min(zcoords);
     GO num=0;
-    for(GO i=0;i<n;i++) 
-     { 
+    for(GO i=0;i<n;i++){ 
        if(zcoords[i]==zmin) break;
-       num=i;
+       num=i
      }
      return num;
-  }
+ }
 
 void reshuffle_nodes(double* zcoords,const GO nstart,const GO vertnum)
 {
@@ -121,13 +121,14 @@ void reshuffle_nodes(double* zcoords,const GO nstart,const GO vertnum)
 }
 
 //// notice: be carefull with extra_zero case.
-void DistributePoints(double* exterarr,GO gstart,GO li, double* interarr,Part3Data3D &p3d3d, Part1ParalPar3D  &p1pp3d){
+void DistributePoints(double* exterarr,GO gstart,GO li, double* interarr,Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d)
+{
   if(prepro==true){
     GO nstart;
-    double* tmp=new double[p3d3d.versurf[li]];
-    for(GO i=0;i<p3d3d.versurf[li];i++)
+    double* tmp=new double[p3m3d.versurf[li]]
+    for(GO i=0;i<p3m3d.versurf[li];i++)
       tmp[i]=abs(exterarr[i]-interarr[p1pp3d.lk1]);
-    nstart=minloc(tmp,p1pp3d.li0);
+    nstart=minloc(tmp,p3m3d.versurf[li]);
     //nstart must be in my domain or will duplicate
     if(exterarr[nstart]<interarr[p1pp3d.lk1])
       nstart+=1;
@@ -141,7 +142,7 @@ void DistributePoints(double* exterarr,GO gstart,GO li, double* interarr,Part3Da
       internal_ub=p1pp3d.pzcoords[p1pp3d.lk2+1];
     }
     bool inside = true;
-    while(bool){
+    while(inside){
       if(i2+1>p1pp3d.versurf[li]){
         break;
       }
@@ -152,9 +153,9 @@ void DistributePoints(double* exterarr,GO gstart,GO li, double* interarr,Part3Da
         inside=false;
       }
     }
-    p3d3d.mylk1[li-gstart]=i1;
-    p3d3d.mylk2[li-gstart]=i2;
-    p3d3d.mylk0[li-gstart]=i2-i2+1;
+    p3m3d.mylk1[li-gstart]=i1;
+    p3m3d.mylk2[li-gstart]=i2;
+    p3m3d.mylk0[li-gstart]=i2-i1+1;
     }
 }
 

@@ -1,8 +1,23 @@
 set(SOURCES 
-            coupling.cc
-            commpart1.cc)
+  coupling.cc
+  commpart1.cc
+  importpart3mesh.cc
+  BoundExchange.cc
+  commpart1.cc
+  fourierdataproc.cc
+  importpart3mesh.cc 
+  initdatastruc.cc 
+  interpo.cc
+)
 
-set(HEADERS coupling.h couplingConstants.h)
+set(HEADERS
+    coupling.h 
+    couplingConstants.h)
+    BoundExchange.h
+    commpart1.h
+    dataprocess.h
+    importpart3mesh.h
+)
 
 add_library(coupler ${SOURCES})
 set_target_properties(coupler PROPERTIES PUBLIC_HEADER "${HEADERS}")

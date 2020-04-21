@@ -12,7 +12,7 @@ set(SOURCES
 
 set(HEADERS
     coupling.h 
-    couplingConstants.h)
+    couplingConstants.h
     BoundExchange.h
     commpart1.h
     dataprocess.h

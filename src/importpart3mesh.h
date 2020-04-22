@@ -1,35 +1,38 @@
-#include<commpart1.h>
-#include<importpart3mesh.cc>
+#include "coupling.h"
+#include "commpart1.h"
 
 namespace coupler {
 class Part3Mesh3D{
   public:
-    GO  nsurf;    // number of flux surfaces
-    GO* versurf; // numbers of vertice on the flux surfaces
-    double* xcoords;
-    GO  li0,li1,li2;
-    GO** xboxinds;  //The indexes of all boxes on the radial dimension
-    GO lj0;
-    GO* mylk0,mylk1,mylk2; // The indexes of box along z dimension
+    LO  nsurf;    // number of flux surfaces
+    LO* versurf=NULL; // numbers of vertice on the flux surfaces
+    double* xcoords=NULL;
+    LO  li0,li1,li2;
+    LO** xboxinds=NULL;  //The indexes of all boxes on the radial dimension
+    LO lj0;
+    LO* mylk0=NULL;
+    LO* mylk1=NULL;
+    LO* mylk2=NULL; // The indexes of box along z dimension
     GO boxstar,boxend,boxcount; // The  indexes of the 2d box
 
-    double** Rcoords;  // The R coordinate of all vertices within the 2d box
-    double** Zcoords;  // The Z coordinate of all vertices within the 2d box
-    double** pzcoords;  // The z coordinates of all points with the 2d box.
+    double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
+    double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
+    double** pzcoords=NULL;  // The z coordinates of all points with the 2d box.
 
-}
+};
 
 void ImportPart3Mesh3D(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d);
 
 void DistriPart3zcoords(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d);
 
 
-GO  minloc(const double* zcoords, const GO n); 
+LO  minloc(const double* zcoords, const LO n); 
 
-void reshuffle_nodes(double* zcoords,const GO nstart,const GO vertnum);
+void reshuffle_nodes(double* zcoords,const LO nstart,const LO vertnum);
 
-void DistributePoints(double* exterarr,GO gstart,GO li, double* interarr,Part3Mesh3D &p3m3d,  \
+void DistributePoints(double* exterarr,LO gstart,LO li, double* interarr,Part3Mesh3D &p3m3d,  \
      Part1ParalPar3D  &p1pp3d);
 
+double minimalvalue(const double* array, const LO n);
 
 }

@@ -5,7 +5,6 @@ set(SOURCES
   BoundExchange.cc
   commpart1.cc
   fourierdataproc.cc
-  importpart3mesh.cc 
   initdatastruc.cc 
   interpo.cc
 )
@@ -13,7 +12,6 @@ set(SOURCES
 set(HEADERS
     coupling.h 
     couplingConstants.h
-    BoundExchange.h
     commpart1.h
     dataprocess.h
     importpart3mesh.h

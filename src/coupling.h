@@ -11,13 +11,7 @@
 
 #include "couplingConstants.h"
 
-namespace coupler {
-
-  class Part1ParalPar3D;
-
-  void InitPart1ParalPar3D(Part1ParalPar3D  &p1pp3d);
-
-  
+namespace coupler { 
 
   /** GO = global ordinate to count/number
    *  quantities over the entire domain
@@ -27,7 +21,7 @@ namespace coupler {
   /** LO = local ordinate to count/number
    *  quantities over a sub-domain
    */
-  typedef unsigned LO;
+  typedef int LO;
 
   /** Storage of double precision 2D array data
    *  and associated meta data

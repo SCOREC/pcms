@@ -1,4 +1,7 @@
 #include "coupling.h"
+#include "parameters.h"
+#include <string>
+#include <fstream>
 
 namespace coupler {
 
@@ -25,8 +28,36 @@ class Part1ParalPar3D {
     double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature ground. 
     LO res_fact;
+    ~Part1ParalPar3D()
+    {
+      delete[] xcoords;
+      delete[] pzcoords;
+      delete[] pzp;
+    }     
 };
 
 void InitPart1ParalPar3D(Part1ParalPar3D& p1pp3d);
+
+template<class T>
+void InputfromFile(T* numbers,LO ARRAY_SIZE,std::string filename)
+{
+    LO count = 0;             // Loop counter variable
+    std::ifstream inputFile;        // Input file stream object
+
+    // Open the file.
+    inputFile.open(filename);
+
+    // Read the numbers from the file into the array.
+    while (count < ARRAY_SIZE && inputFile >> numbers[count]){
+        count++;
+    }
+
+    inputFile.close();
+    std::cout<<filename<<'\n';
+    for (count = 0; count < ARRAY_SIZE; count++){
+        std::cout << numbers[count] << "\n";
+    }
+
+}
 
 }

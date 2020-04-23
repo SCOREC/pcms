@@ -16,7 +16,7 @@ namespace coupler {
   /** GO = global ordinate to count/number
    *  quantities over the entire domain
    */
-  typedef long unsigned GO;
+  typedef unsigned long GO;
 
   /** LO = local ordinate to count/number
    *  quantities over a sub-domain

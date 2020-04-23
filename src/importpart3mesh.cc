@@ -6,17 +6,27 @@ void ImportPart3Mesh3D(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d)
 {
    LO numsurf;
    int root=0;
-//   LO verosurf;
    if(p1pp3d.mype==0){
-//     receive_field1D_serial(&numsurf,"../coupling","numsurface",1);
+     if(test_case==0){
+       LO num;
+       InputfromFile(&num,1,"numsurf.rtf");
+       numsurf=num;
+     } else{
+//     receive_field1D_serial(&numsurf,"../coupling","numsurface",1); 
+     }
    }
    MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
    p3m3d.nsurf=numsurf;   
    p3m3d.versurf = new LO[numsurf];
    p3m3d.xcoords = new double[numsurf];
    if(p1pp3d.mype==0){
+     if(test_case==0){
+       InputfromFile(p3m3d.versurf,numsurf,"versuf.rtf");
+       InputfromFile(p3m3d.xcoords,numsurf,"xcoords.rtf");
+     }else {
 //     receive_field1D_serial(p3m3d.versurf, "../coupling", "vertice_over_surf",numsurf);
 //     receive_field1D_serial(p3m3d.xcoords,"../coupling", "xcoords_midplane",numsurf);
+     }
    }
      MPI_Bcast(p3m3d.versurf,numsurf,MPI_UNSIGNED_LONG,root,MPI_COMM_WORLD);
      MPI_Bcast(p3m3d.xcoords,numsurf,MPI_DOUBLE,root,MPI_COMM_WORLD);
@@ -36,7 +46,7 @@ void ImportPart3Mesh3D(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d)
        p3m3d.xboxinds[i]=new LO[p1pp3d.npx];
        MPI_Allgather(&xinds[i],1,MPI_UNSIGNED_LONG,p3m3d.xboxinds[i],1,MPI_UNSIGNED_LONG,MPI_COMM_WORLD);
      }
-     p3m3d.lj0=p1pp3d.lj0; 
+     p3m3d.lj0=p1pp3d.lj0*2; 
      p3m3d.mylk0=new LO[p3m3d.li0];
      p3m3d.mylk1=new LO[p3m3d.li0];
      p3m3d.mylk2=new LO[p3m3d.li0];      
@@ -51,8 +61,12 @@ void DistriPart3zcoords(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d)
   for(LO i=0;i<p3m3d.nsurf;i++) 
      num+=p3m3d.versurf[i];   
   if(p1pp3d.preproc==true){
-    double *zcoordall = new double[num]; 
+    double *zcoordall = new double[num];
+    if(test_case==0){
+      InputfromFile(zcoordall,num,"zcoordall.rtf");
+    }else{ 
 //     receive_field1D(zcoordall,"../coupling","all_zcoordinates",num);   
+    }
     LO numvert=0, numsurf=0;
     for(LO i=0;i<p1pp3d.mype_x;i++){
       for(LO j=p3m3d.xboxinds[1][i];j<p3m3d.xboxinds[2][i]+1;j++){

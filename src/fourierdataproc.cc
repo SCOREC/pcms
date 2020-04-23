@@ -15,29 +15,29 @@ void CmplxdataToRealdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d)
     std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densout must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
   }
-GO num;
-if(dp3d.yparal==false){
-  for(LO i=0; i<p1pp3d.li0;i++){
-    for(LO j=0;j<p1pp3d.lj0;j++){
-      for(LO k=0;k<p1pp3d.lk0;k++){
-        num=(GO)(i*p1pp3d.lj0*p1pp3d.lk0+j*p1pp3d.lk0+k+1);
-        dp3d.densintmp[num]=dp3d.densin[i][j][k];
-      }      
-    }
-    ExecuteCmplToReal(dp3d,p1pp3d);
-    for(LO i=0;i<p1pp3d.li0;i++){
-      for(LO j=0;j<dp3d.part1lj0;j++){ 
-         for(LO k=0;k<p1pp3d.lk0;k++){ 
-           num=(GO)(i*dp3d.part1lj0*p1pp3d.lk0+j*p1pp3d.lk0+k+1);
-           dp3d.densout[i][j][k]=dp3d.densouttmp[num];          
-         }
+  GO num;
+  if(dp3d.yparal==false){
+    for(LO i=0; i<p1pp3d.li0;i++){
+      for(LO j=0;j<p1pp3d.lj0;j++){
+	for(LO k=0;k<p1pp3d.lk0;k++){
+	  num=(GO)(i*p1pp3d.lj0*p1pp3d.lk0+j*p1pp3d.lk0+k+1);
+	  dp3d.densintmp[num]=dp3d.densin[i][j][k];
+	}      
       }
-//    delete[] dp3d.denstin;
-//    dp3d.denstin=NULL; 
+      ExecuteCmplToReal(dp3d,p1pp3d);
+      for(LO i=0;i<p1pp3d.li0;i++){
+	for(LO j=0;j<dp3d.part1lj0;j++){ 
+	   for(LO k=0;k<p1pp3d.lk0;k++){ 
+	     num=(GO)(i*dp3d.part1lj0*p1pp3d.lk0+j*p1pp3d.lk0+k+1);
+	     dp3d.densout[i][j][k]=dp3d.densouttmp[num];          
+	   }
+	}
+  //    delete[] dp3d.denstin;
+  //    dp3d.denstin=NULL; 
+     }
+    }
    }
-  }
  }
-}
 
 void RealdataToCmplxdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d,Part3Mesh3D& p3m3d)
 {
@@ -50,24 +50,24 @@ void RealdataToCmplxdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d,Part3Mesh3
     std::exit(EXIT_FAILURE);
   }
   GO sum=0;
-if(dp3d.yparal==false){
-  for(LO i=0;i<p3m3d.li0;i++){
-    for(LO k=0;k<p3m3d.mylk0[i];k++){
-      sum+=1;
-      for(LO j=0;j<p3m3d.lj0;j++)
-        dp3d.potentintmp[sum*p3m3d.lj0+j+1]=dp3d.potentin[i][j][k];  
+  if(dp3d.yparal==false){
+    for(LO i=0;i<p3m3d.li0;i++){
+      for(LO k=0;k<p3m3d.mylk0[i];k++){
+	sum+=1;
+	for(LO j=0;j<p3m3d.lj0;j++)
+	  dp3d.potentintmp[sum*p3m3d.lj0+j+1]=dp3d.potentin[i][j][k];  
+      }
     }
-  }
-  ExecuteRealToCmplx(dp3d,p1pp3d);
-  sum=0;
-  for(LO i=0;i<p3m3d.li0;i++){
-    for(LO k=0;k<p3m3d.mylk0[i];k++){
-      sum+=1;
-      for(LO j=0;j<dp3d.part3lj0;j++)
-        dp3d.potentout[i][j][k]=dp3d.potentouttmp[sum*dp3d.part1lj0+j+1];      
+    ExecuteRealToCmplx(dp3d,p1pp3d);
+    sum=0;
+    for(LO i=0;i<p3m3d.li0;i++){
+      for(LO k=0;k<p3m3d.mylk0[i];k++){
+	sum+=1;
+	for(LO j=0;j<dp3d.part3lj0;j++)
+	  dp3d.potentout[i][j][k]=dp3d.potentouttmp[sum*dp3d.part1lj0+j+1];      
+      }
     }
-  }
-}
+   }
 }
 
 // This routine is not required in first verion of coupler, but would be modifed 
@@ -102,7 +102,7 @@ void ExecuteCmplToReal(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d)
        tmp_re[j]=new double[dp3d.myli0];
      // Here is not finished for yparal=true
 
-     } else{
+    }else{
      fftw_execute(dp3d.plan_backward);
     } 
  }
@@ -118,7 +118,8 @@ void ExecuteRealToCmplx(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d)
  } 
 
 void InitFourierPlan3D( DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d, Part3Mesh3D &p3m3d)
-{ if(dp3d.yparal==true){
+{ 
+  if(dp3d.yparal==true){
     dp3d.plan_backward=fftw_plan_dft_c2r_2d(p1pp3d.li0*p1pp3d.lk0, p1pp3d.lj0,\
                        reinterpret_cast<fftw_complex*>(dp3d.densintmp),dp3d.densouttmp,FFTW_BACKWARD); 
     dp3d.plan_forward=fftw_plan_dft_r2c_2d(dp3d.sum, p3m3d.lj0,dp3d.potentintmp, \

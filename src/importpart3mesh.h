@@ -18,7 +18,18 @@ class Part3Mesh3D{
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
     double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
     double** pzcoords=NULL;  // The z coordinates of all points with the 2d box.
-
+    ~Part3Mesh3D()
+   {
+     delete[] versurf;
+     delete[] xboxinds;
+     delete[] xcoords;
+     delete[] mylk0;
+     delete[] mylk1;
+     delete[] mylk2;
+     delete[] Rcoords;
+     delete[] Zcoords;
+     delete[] pzcoords;
+   }
 };
 
 void ImportPart3Mesh3D(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d);

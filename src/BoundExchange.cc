@@ -38,7 +38,7 @@ void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasP
     std::cout<<"ERROR:the boundary buffer of the potential must be allocated beforing invoking this routine.";
     std::exit(EXIT_FAILURE);
   }
-  GO li0,lj0,lk0,nzb;
+  LO li0,lj0,lk0,nzb;
   li0=p3m3d.xboxinds[0][p1pp3d.mype_x];
   lj0=p3m3d.lj0;
   nzb=bdesc.nzb;
@@ -46,7 +46,7 @@ void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasP
     for(LO i=0;i<li0;i++){
       lk0=p3m3d.mylk0[i];
       if(lk0<nzb){
-         std::cout<<"ERROR: the LOerpolation order is larger than the box count along z dimension.";
+         std::cout<<"ERROR: the interpolation order is larger than the box count along z dimension.";
          std::exit(EXIT_FAILURE);
        } 
       if(p1pp3d.periods[2]==1){ 
@@ -58,7 +58,7 @@ void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasP
               dp3d.potentout[i][j]); 
         }
       } else {
-         std::cout<<"The topology is not right for parallely domain."<<'\n';
+         std::cout<<"The topology is not right for the parallel domain."<<'\n';
          std::exit(EXIT_FAILURE);
       }
     }  
@@ -70,7 +70,7 @@ void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasP
             std::cout<<"ERROR: the LOerpolation order is larger than the box count along z dimension.";
             std::exit(EXIT_FAILURE);
           }  
-          for(GO k=0;k<nzb-1;k++){
+          for(LO k=0;k<nzb-1;k++){
             bdesc.lowzpart3[i][k]=p3m3d.pzcoords[i][lk0-nzb+k];
             bdesc.upzpart3[i][k]=p3m3d.pzcoords[i][k];
           }
@@ -88,46 +88,15 @@ void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasP
    }
 }
 
+BoundaryDescr3D::~BoundaryDescr3D()
+{
+  if(upzpart3!=NULL) delete[] upzpart3;
+  if(lowzpart3!=NULL) delete[] lowzpart3;
+  if(updenz!=NULL) delete[] updenz;
+  if(lowdenz!=NULL) delete[] lowdenz;
+  if(uppotentz!=NULL) delete[] uppotentz;
+  if(lowpotentz!=NULL) delete[] lowpotentz;
 }
-/*  stuct boundarydescrip{
-    public:
-      GO lower; //number of boundary poLOs on lower side
-      GO upper; //number of boundary poLOs on upper side
-      GO count; //how often exchange the direction
-      GO n_poLOs; //number of poLOs(incl boundary) in 1st dimension
-      GO innerfirst; //index of last inner poLO, when counting starts with 0 for the most left poLO
-      GO innerlast; //
-      GO subarray_size; //size of the subarrays which consists the dimension to exchange
-      GO n_upper_subarrays; //number of subarrays in the upper boundary
-      GO n_lower_subarrays; //number of subarrays in the lower boundary
-      bool mpi_type_allocated; //is true if two mpi datatypes have been set and committed
-      GO mpi_lower_datatype; //user defined datatypes for the exchange of lower boundary
-      GO mpi_upper_datatype; //user defined datatypes for the exchange of upper boundary
-      GO exchange_direction; //
-  }
 
-  void InitBoundDescrip(boundarydescrip& bdesc, GO a_suarray_size, \
-   GO a_n_subarrays, GO a_n_lower_subarrays,GO a_n_upper_subarrays, \
-   GO a_count){
-     bdesc.lower = a_subarray_size*a_n_lower_subarrays;
-     bdesc.upper = a_subarray_size*a_n_upper_subarrays;
-     bdesc.count = a_count;
-     bdesc.n_poLOs=a_n_subarrays*a_n_lower_subarrays;
-     bdesc.innerfirst=bdesc.n_poLOs-bdesc.upper-1;
-     bdesc.subarray_size=a_subarray_size;
-     bdesc.n_upper_subarrays=a_n_upper_subarrays;
-     bdesc.n_lower_subarrays=a_n_lower_subarrays;
-     bdesc.mpi_type_allocated = false;  
-  }
-
-  void  MPIExchangeType(boundarydescrip& bdesc, MPI_Comm mpitype){
-     MPI_Type_vector(bdesc.count,bdesc.lower,bdesc.n_poLOs,mpitype, \
-     &bdesc.mpi_lower_datatype);
-     MPI_Type_commit(&bdesc.mpi_lower_datatype);
-
-     MPI_Type_vector(bdesc.count,bdesc.lower,bdesc.n_poLOs,mpitype, \
-     &bdesc.mpi_upper_datatype);
-     MPI_Type_commit(&bdesc.mpi_upper_datatype);
-
-  } 
-*/ 
+}
+ 

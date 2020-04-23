@@ -29,7 +29,7 @@ namespace coupler {
      fftw_plan plan_forward, plan_backward;
 //The following parameters for yparal=true;
      LO myli0;
-
+     ~DatasProc3D();
 };
 
 void InitDatasProc3Dparameters(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D &p3m3d );
@@ -44,12 +44,13 @@ void AllocDatasProc3dPotentArraies(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Par
 class BoundaryDescr3D{
   public:
     LO nzb;
-    double** upzpart3;
-    double** lowzpart3;
+    double** upzpart3=NULL;
+    double** lowzpart3=NULL;
     double*** updenz=NULL; // The upper  boundary buffer on z domain for interpolation and storing the real quantiies resulted from the backward Fourier transform of complex charged density.
     double*** lowdenz=NULL;
     std::complex<double>*** uppotentz=NULL; //The upper  boundary buffer on z domain for interpolation and storing the complex  quantiies resulted from the forward Fourier transform of electrosttic potential.
     std::complex<double>*** lowpotentz=NULL;
+    ~BoundaryDescr3D();
 };
 
 void InitBoundaryDescr3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d, Part1ParalPar3D &p1pp3d,DatasProc3D& dp3d);

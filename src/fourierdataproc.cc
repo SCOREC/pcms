@@ -24,7 +24,7 @@ void CmplxdataToRealdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d)
 	  dp3d.densintmp[num]=dp3d.densin[i][j][k];
 	}      
       }
-      ExecuteCmplToReal(dp3d,p1pp3d);
+      ExecuteCmplxToReal(dp3d,p1pp3d);
       for(LO i=0;i<p1pp3d.li0;i++){
 	for(LO j=0;j<dp3d.part1lj0;j++){ 
 	   for(LO k=0;k<p1pp3d.lk0;k++){ 
@@ -89,7 +89,7 @@ void TransposeComplex(std::complex<double>** InMatrix,std::complex<double>** Out
   }
 }
 // It's not finished for dp3d.yparal==true here.
-void ExecuteCmplToReal(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d)
+void ExecuteCmplxToReal(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d)
 {
    if(dp3d.yparal==true){
      std::complex<double>** tmp_cmplx;
@@ -132,9 +132,13 @@ void FreeFourierPlan3D(DatasProc3D& dp3d)
   fftw_destroy_plan(dp3d.plan_forward);
   fftw_destroy_plan(dp3d.plan_backward);  
   delete[] dp3d.densintmp;
+  dp3d.densintmp=NULL;
   delete[] dp3d.densouttmp;
+  dp3d.densintmp=NULL;
   delete[] dp3d.potentintmp;
+  dp3d.potentintmp=NULL;
   delete[] dp3d.potentouttmp;
+  dp3d.potentouttmp=NULL;
 }
 
 }  

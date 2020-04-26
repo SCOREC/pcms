@@ -46,4 +46,6 @@ void DistributePoints(double* exterarr,LO gstart,LO li, double* interarr,Part3Me
 
 double minimalvalue(const double* array, const LO n);
 
+void InitzcoordsInCoupler(double* zcoords,LO num);
+
 }

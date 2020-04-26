@@ -18,7 +18,7 @@ void InterpoDensity3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d, Part1ParalPar3D
   for(LO k=0;k<p1pp3d.lk0-1;k++){  
     xin[nzb+k]=p1pp3d.pzp[k];
   }   
-  if(p1pp3d.preproc==true){
+  if(preproc==true){
     for(LO i=0;i<p3m3d.li0;i++){
       for(LO j=0;j<p3m3d.lj0;j++){
         for(LO l=0;l<nzb-1;l++){
@@ -47,7 +47,7 @@ void InterpoPotential3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d, Part1ParalPar
   double* xout;
   yout=new std::complex<double>[p1pp3d.lk0];
   LO nzb=bdesc.nzb;
-  if(p1pp3d.preproc==true){
+  if(preproc==true){
     for(LO i=0;i<p3m3d.li0;i++){
       yin=new std::complex<double>[p3m3d.mylk0[i]+2*nzb];
       xin=new double[p3m3d.mylk0[i]+2*nzb];

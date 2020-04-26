@@ -20,8 +20,9 @@ set(HEADERS
 add_library(coupler ${SOURCES})
 set_target_properties(coupler PROPERTIES PUBLIC_HEADER "${HEADERS}")
 target_link_libraries(coupler adios2::adios2 Kokkos::kokkos PkgConfig::fftw)
+target_include_directories(coupler PUBLIC ./)
 
-add_executable(cpl cpl.cc)
-target_link_libraries(cpl coupler)
-
-install(TARGETS cpl coupler)
+#add_executable(cpl cpl.cc)
+#target_link_libraries(cpl coupler)
+#
+#install(TARGETS cpl coupler)

@@ -4,7 +4,7 @@ namespace coupler {
 
 void InitDatasProc3Dparameters(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D &p3m3d )
 {
-  if(p1pp3d.preproc==true){
+  if(preproc==true){
     if(dp3d.yparal==true){
       if(p1pp3d.li0%p1pp3d.npy==0){
         dp3d.part1li0=p1pp3d.li0/p1pp3d.npy;
@@ -30,7 +30,7 @@ void InitDatasProc3Dparameters(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Me
   for(LO i=0;i<p3m3d.li0;i++)  dp3d.sum+=p3m3d.mylk0[i];
 }
 
-void AllocDatasProc3dDensityArray(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D& p3m3d)
+void AllocDatasProc3dDensityArrays(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D& p3m3d)
 {
  if(dp3d.yparal==false){
   dp3d.densin=new std::complex<double>**[p1pp3d.li0];
@@ -62,7 +62,7 @@ void AllocDatasProc3dDensityArray(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part
 } 
 }
 
-void AllocDatasProc3dPotentArray(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D& p3m3d)
+void AllocDatasProc3dPotentArrays(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D& p3m3d)
 {
  if(dp3d.yparal==false){
   dp3d.potentin=new double**[p3m3d.li0];

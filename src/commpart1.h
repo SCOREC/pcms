@@ -1,8 +1,4 @@
 #include "coupling.h"
-#include "parameters.h"
-#include <string>
-#include <fstream>
-
 namespace coupler {
 
 class Part1ParalPar3D {
@@ -19,9 +15,8 @@ class Part1ParalPar3D {
     LO nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
     LO ny0,nyb,lj0,lj1,lj2,lm0,lm1,lm2;
     LO nz0,nzb,lk0,lk1,lk2,ln0,ln1,ln2;
-    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
+//    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
     int periods[3]={0,1,1};
-    bool preproc=true;
     double* xcoords; // The 1d array storing the radial position of all flux surfaces
     double* pzcoords; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
     double* pzp; // The 1d array storing the poloial on each process.
@@ -42,22 +37,43 @@ template<class T>
 void InputfromFile(T* numbers,LO ARRAY_SIZE,std::string filename)
 {
     LO count = 0;             // Loop counter variable
+    T x;
+    LO rank;
     std::ifstream inputFile;        // Input file stream object
-
     // Open the file.
-    inputFile.open(filename);
-
-    // Read the numbers from the file into the array.
-    while (count < ARRAY_SIZE && inputFile >> numbers[count]){
-        count++;
+    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    if(rank==0){
+      std::cout<<filename<<'\n';
     }
-
+    inputFile.open(filename);
+    if (!inputFile) {
+        std::cout << "Unable to open file";
+        exit(1); // terminate with error
+    }
+    // Read the numbers from the file into the array.
+    while (inputFile >> x){
+       numbers[count]=x;
+       count++;
+    }
     inputFile.close();
-    std::cout<<filename<<'\n';
     for (count = 0; count < ARRAY_SIZE; count++){
         std::cout << numbers[count] << "\n";
     }
+}
+
+void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d);
+
+void CreateSubCommunicators(Part1ParalPar3D  &p1pp3d);
 
 }
 
-}
+
+
+
+
+
+
+
+
+
+

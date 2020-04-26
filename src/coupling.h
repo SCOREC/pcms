@@ -8,7 +8,10 @@
 #include <Kokkos_Core.hpp>
 #include <typeinfo>
 #include <fftw3.h>
-
+#include <string>
+#include <complex>
+#include <fstream>
+#include "parameters.h"
 #include "couplingConstants.h"
 
 namespace coupler { 

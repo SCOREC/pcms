@@ -20,15 +20,15 @@ class Part3Mesh3D{
     double** pzcoords=NULL;  // The z coordinates of all points with the 2d box.
     ~Part3Mesh3D()
    {
-     delete[] versurf;
-     delete[] xboxinds;
-     delete[] xcoords;
-     delete[] mylk0;
-     delete[] mylk1;
-     delete[] mylk2;
-     delete[] Rcoords;
-     delete[] Zcoords;
-     delete[] pzcoords;
+     if(versurf!=NULL) delete[] versurf;
+     if(xboxinds!=NULL) delete[] xboxinds;
+     if(xcoords!=NULL) delete[] xcoords;
+     if(mylk0!=NULL) delete[] mylk0;
+     if(mylk1!=NULL) delete[] mylk1;
+     if(mylk2!=NULL) delete[] mylk2;
+     if(Rcoords!=NULL) delete[] Rcoords;
+     if(Zcoords!=NULL) delete[] Zcoords;
+     if(pzcoords!=NULL) delete[] pzcoords;
    }
 };
 
@@ -46,6 +46,6 @@ void DistributePoints(double* exterarr,LO gstart,LO li, double* interarr,Part3Me
 
 double minimalvalue(const double* array, const LO n);
 
-void InitzcoordsInCoupler(double* zcoords,LO num);
+void InitzcoordsInCoupler(double* zcoords,LO* versurf,LO nsurf);
 
 }

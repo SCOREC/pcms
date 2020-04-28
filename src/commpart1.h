@@ -10,6 +10,7 @@ class Part1ParalPar3D {
     MPI_Comm comm_x;
     MPI_Comm comm_y;
     MPI_Comm comm_z;
+    MPI_Comm comm_cart;
     LO  NP; // The total number of processes
     LO npx,npy,npz;
     LO nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
@@ -17,17 +18,17 @@ class Part1ParalPar3D {
     LO nz0,nzb,lk0,lk1,lk2,ln0,ln1,ln2;
 //    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
     int periods[3]={0,1,1};
-    double* xcoords; // The 1d array storing the radial position of all flux surfaces
-    double* pzcoords; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
-    double* pzp; // The 1d array storing the poloial on each process.
+    double* xcoords=NULL; // The 1d array storing the radial position of all flux surfaces
+    double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
+    double* pzp=NULL; // The 1d array storing the poloial on each process.
     double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature ground. 
     LO res_fact;
     ~Part1ParalPar3D()
     {
-      delete[] xcoords;
-      delete[] pzcoords;
-      delete[] pzp;
+      if(xcoords!=NULL)  delete[] xcoords;
+      if(pzcoords!=NULL) delete[] pzcoords;
+      if(pzp!=NULL)      delete[] pzp;
     }     
 };
 
@@ -56,8 +57,10 @@ void InputfromFile(T* numbers,LO ARRAY_SIZE,std::string filename)
        count++;
     }
     inputFile.close();
-    for (count = 0; count < ARRAY_SIZE; count++){
-        std::cout << numbers[count] << "\n";
+    if(rank==0){
+      for (count = 0; count < ARRAY_SIZE; count++){
+	  std::cout << numbers[count] << "\n";
+      }
     }
 }
 
@@ -65,6 +68,7 @@ void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d);
 
 void CreateSubCommunicators(Part1ParalPar3D  &p1pp3d);
 
+void MpiFreeComm(Part1ParalPar3D  &p1pp3d);
 }
 
 

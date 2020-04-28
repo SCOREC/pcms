@@ -8,11 +8,11 @@ int main(int argc, char* argv[])
   coupler::DatasProc3D dp3d;
   coupler::BoundaryDescr3D bdesc;  
   coupler::InitPart1ParalPar3D(p1pp3d);
-std::cout<<"2"<<'\n';
   coupler::ImportPart3Mesh3D(p3m3d,p1pp3d);
-std::cout<<"3"<<'\n'; 
-
-
+//std::cout<<"3"<<'\n'; 
+//MPI_Barrier(MPI_COMM_WORLD);
+//  MpiFreeComm(p1pp3d);
+ 
   MPI_Finalize(); 
   return 0;
 }

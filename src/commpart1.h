@@ -34,36 +34,6 @@ class Part1ParalPar3D {
 
 void InitPart1ParalPar3D(Part1ParalPar3D& p1pp3d);
 
-template<class T>
-void InputfromFile(T* numbers,LO ARRAY_SIZE,std::string filename)
-{
-    LO count = 0;             // Loop counter variable
-    T x;
-    LO rank;
-    std::ifstream inputFile;        // Input file stream object
-    // Open the file.
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-    if(rank==0){
-      std::cout<<filename<<'\n';
-    }
-    inputFile.open(filename);
-    if (!inputFile) {
-        std::cout << "Unable to open file";
-        exit(1); // terminate with error
-    }
-    // Read the numbers from the file into the array.
-    while (inputFile >> x){
-       numbers[count]=x;
-       count++;
-    }
-    inputFile.close();
-    if(rank==0){
-      for (count = 0; count < ARRAY_SIZE; count++){
-	  std::cout << numbers[count] << "\n";
-      }
-    }
-}
-
 void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d);
 
 void CreateSubCommunicators(Part1ParalPar3D  &p1pp3d);

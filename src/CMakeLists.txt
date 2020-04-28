@@ -7,6 +7,7 @@ set(SOURCES
   fourierdataproc.cc
   initdatastruc.cc 
   interpo.cc
+  testutilities.cc
 )
 
 set(HEADERS
@@ -15,6 +16,9 @@ set(HEADERS
     commpart1.h
     dataprocess.h
     importpart3mesh.h
+    commwrapping.h
+    parameters.h
+    testutilities.h
 )
 
 add_library(coupler ${SOURCES})

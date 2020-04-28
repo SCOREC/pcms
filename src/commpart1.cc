@@ -1,4 +1,4 @@
-#include "commpart1.h"
+#include "testutilities.h"
 namespace coupler {
 
 //read the paralllization parameters
@@ -73,7 +73,7 @@ void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d)
  }
 }
 
-void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d)
+/*void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d)
 {
   LO size;
   LO rank;
@@ -103,7 +103,7 @@ void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d)
   p1pp3d.lk1=p1pp3d.mype_z*p1pp3d.lk0;
   p1pp3d.lk2=p1pp3d.lk1+p1pp3d.lk0-1;  
 }
-
+*/
 void CreateSubCommunicators(Part1ParalPar3D  &p1pp3d)
 {
    // create 3D parallel cart with z being periodic

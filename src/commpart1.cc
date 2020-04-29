@@ -73,37 +73,6 @@ void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d)
  }
 }
 
-/*void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d)
-{
-  LO size;
-  LO rank;
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  p1pp3d.npx=2;
-  p1pp3d.nx0=4;
-  p1pp3d.nxb=2;
-  p1pp3d.li0=2;
-
-  p1pp3d.npy=1;
-  p1pp3d.ny0=8;
-  p1pp3d.nyb=0;
-  p1pp3d.lj0=8;
-
-  p1pp3d.npz=2;
-  p1pp3d.nz0=8;
-  p1pp3d.nzb=2;
-  p1pp3d.lk0=4;
-
-  p1pp3d.NP=p1pp3d.npx*p1pp3d.npy*p1pp3d.npz;
-  CreateSubCommunicators(p1pp3d);
-  p1pp3d.li1=p1pp3d.mype_x*p1pp3d.li0;
-  p1pp3d.li2=p1pp3d.li1+p1pp3d.li0-1;
-  p1pp3d.lj1=p1pp3d.mype_y*p1pp3d.lj0;
-  p1pp3d.lj2=p1pp3d.lj1+p1pp3d.lj0-1;
-  p1pp3d.lk1=p1pp3d.mype_z*p1pp3d.lk0;
-  p1pp3d.lk2=p1pp3d.lk1+p1pp3d.lk0-1;  
-}
-*/
 void CreateSubCommunicators(Part1ParalPar3D  &p1pp3d)
 {
    // create 3D parallel cart with z being periodic

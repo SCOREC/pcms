@@ -169,7 +169,7 @@ If all goes well, the `src/cpl` executable will be created.
 
 #### running the test within the coupler
 
-1. The test datas are stored in the fold "testdatas" of the repo [here] (https://github.com/SCOREC/wdmapp_coupling_data.git)
+1. The test datas are stored in the fold "testdatas" of the repo [here](https://github.com/SCOREC/wdmapp_coupling_data.git)
 
 2. The path of the location to store the testdatas is given by "test_dir" of parameters.h
 

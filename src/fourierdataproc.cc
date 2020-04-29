@@ -72,7 +72,7 @@ void RealdataToCmplxdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d,Part3Mesh3
 
 // This routine is not required in first verion of coupler, but would be modifed 
 // for in the 2nd version. Here, the indexes may need exchange. 
-void TransposeComplex(std::complex<double>** InMatrix,std::complex<double>** OutMatrix, DatasProc3D& dp3d, \
+void TransposeComplex(std::complex<double>** InMatrix,std::complex<double>** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d)
 {
   std::complex<double>*** sbuf;
@@ -120,9 +120,9 @@ void ExecuteRealToCmplx(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d)
 void InitFourierPlan3D( DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d, Part3Mesh3D &p3m3d)
 { 
   if(dp3d.yparal==true){
-    dp3d.plan_backward=fftw_plan_dft_c2r_2d(p1pp3d.li0*p1pp3d.lk0, p1pp3d.lj0,\
+    dp3d.plan_backward=fftw_plan_dft_c2r_2d(p1pp3d.li0*p1pp3d.lk0, p1pp3d.lj0,
                        reinterpret_cast<fftw_complex*>(dp3d.densintmp),dp3d.densouttmp,FFTW_BACKWARD); 
-    dp3d.plan_forward=fftw_plan_dft_r2c_2d(dp3d.sum, p3m3d.lj0,dp3d.potentintmp, \
+    dp3d.plan_forward=fftw_plan_dft_r2c_2d(dp3d.sum, p3m3d.lj0,dp3d.potentintmp,
                       reinterpret_cast<fftw_complex*>(dp3d.potentouttmp),FFTW_ESTIMATE);
   }
 }

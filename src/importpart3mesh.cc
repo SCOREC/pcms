@@ -34,7 +34,7 @@ void ImportPart3Mesh3D(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d)
      MPI_Bcast(p3m3d.xcoords,numsurf,MPI_DOUBLE,root,MPI_COMM_WORLD);
     if(preproc==true){
      if(p3m3d.nsurf != p1pp3d.nx0)
-     {std::cout<<"Error: The number of surface of Part3 doesn't equal to the number vertice of x domain of part1. " \ 
+     {std::cout<<"Error: The number of surface of Part3 doesn't equal to the number vertice of x domain of part1. "
                <<"\n"<<std::endl;
        std::exit(EXIT_FAILURE);
      }
@@ -183,7 +183,7 @@ void DistributePoints(double* exterarr,LO gstart,LO li, double* interarr,Part3Me
     p3m3d.mylk0[li-gstart]=i2-i1+1;
     if(test_case==0){   
       std::cout<<"rank="<<p1pp3d.mype<<" "<<li-gstart<<'\n';
-      std::cout<<"mylk k="<<p3m3d.mylk0[li-gstart]<<" "<<p3m3d.mylk1[li-gstart] \
+      std::cout<<"mylk k="<<p3m3d.mylk0[li-gstart]<<" "<<p3m3d.mylk1[li-gstart]
       <<" "<<p3m3d.mylk2[li-gstart]<<" "<<'\n'; 
     }
   }

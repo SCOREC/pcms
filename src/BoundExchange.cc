@@ -31,7 +31,7 @@ void InitBoundaryDescr3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d, Part1ParalPa
   }
 }
 
-void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasProc3D& dp3d, Part3Mesh3D& p3m3d,\
+void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasProc3D& dp3d, Part3Mesh3D& p3m3d,
      Part1ParalPar3D &p1pp3d)
 {
   if(bdesc.lowpotentz==NULL||bdesc.uppotentz==NULL){
@@ -50,11 +50,11 @@ void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasP
          std::exit(EXIT_FAILURE);
        } 
       if(p1pp3d.periods[2]==1){ 
-        mpisendrecv_aux1D(mpitype,p1pp3d.comm_z,nzb,li0,lj0,lk0,bdesc.lowzpart3[i],bdesc.upzpart3[i], \
+        mpisendrecv_aux1D(mpitype,p1pp3d.comm_z,nzb,li0,lj0,lk0,bdesc.lowzpart3[i],bdesc.upzpart3[i],
           p3m3d.pzcoords[i]); 
         if(p1pp3d.comm_z==0) 
         for(LO j=0;j<lj0;j++){
-          mpisendrecv_aux1D(mpitype,p1pp3d.comm_z,nzb,li0,lj0,lk0,bdesc.lowpotentz[i][j],bdesc.uppotentz[i][j],\
+          mpisendrecv_aux1D(mpitype,p1pp3d.comm_z,nzb,li0,lj0,lk0,bdesc.lowpotentz[i][j],bdesc.uppotentz[i][j],
               dp3d.potentout[i][j]); 
         }
       } else {

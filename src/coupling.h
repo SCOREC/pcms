@@ -8,26 +8,23 @@
 #include <Kokkos_Core.hpp>
 #include <typeinfo>
 #include <fftw3.h>
-
+#include <string>
+#include <complex>
+#include <fstream>
+#include "parameters.h"
 #include "couplingConstants.h"
 
-namespace coupler {
-
-  class Part1ParalPar3D;
-
-  void InitPart1ParalPar3D(Part1ParalPar3D  &p1pp3d);
-
-  
+namespace coupler { 
 
   /** GO = global ordinate to count/number
    *  quantities over the entire domain
    */
-  typedef long unsigned GO;
+  typedef unsigned long GO;
 
   /** LO = local ordinate to count/number
    *  quantities over a sub-domain
    */
-  typedef unsigned LO;
+  typedef int LO;
 
   /** Storage of double precision 2D array data
    *  and associated meta data

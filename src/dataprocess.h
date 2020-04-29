@@ -54,11 +54,11 @@ class BoundaryDescr3D{
 
 void InitBoundaryDescr3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d, Part1ParalPar3D &p1pp3d,DatasProc3D& dp3d);
 
-void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasProc3D& dp3d,\
+void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasProc3D& dp3d,
         Part3Mesh3D& p3m3d, Part1ParalPar3D &p1pp3d);
 
   template<class T>
-void  zDensityBoundaryBufAssign(MPI_Datatype mpitype,LO nzb,LO lx,LO ly,LO lz,T*** lowbuf,\
+void  zDensityBoundaryBufAssign(MPI_Datatype mpitype,LO nzb,LO lx,LO ly,LO lz,T*** lowbuf,
        T*** upbuf,T*** box,Part1ParalPar3D &p1pp3d)
   {
    if(lowbuf==NULL||upbuf==NULL){
@@ -91,7 +91,7 @@ void  zDensityBoundaryBufAssign(MPI_Datatype mpitype,LO nzb,LO lx,LO ly,LO lz,T*
 
 
 template<class T>
-void mpisendrecv_aux2D(MPI_Datatype mpitype,MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,\
+void mpisendrecv_aux2D(MPI_Datatype mpitype,MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,
      T*** lowbuf,T*** upbuf,T*** box)
 {
       T* sendbuf=new T[lx*ly*nzb];
@@ -105,7 +105,7 @@ void mpisendrecv_aux2D(MPI_Datatype mpitype,MPI_Comm comm,LO nzb,LO lx,LO ly,LO 
            sendbuf[i*ly*nzb+j*nzb+k]=box[i][j][k];
        }
       }
-      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,rank_dest,100,recvbuf,lx*ly*nzb,mpitype,rank_source,101,\
+      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,rank_dest,100,recvbuf,lx*ly*nzb,mpitype,rank_source,101,
                   comm,&status);
       for(LO i=0;i<lx-1;i++){
        for(LO j=0;j<ly-1;j++){
@@ -120,7 +120,7 @@ void mpisendrecv_aux2D(MPI_Datatype mpitype,MPI_Comm comm,LO nzb,LO lx,LO ly,LO 
             sendbuf[i*ly*nzb+j*nzb+k]=box[i][j][lz-nzb+k];
        }
      }
-      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,&rank_dest,102,recvbuf,lx*ly*nzb,mpitype,&rank_source,103,\
+      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,&rank_dest,102,recvbuf,lx*ly*nzb,mpitype,&rank_source,103,
                   comm,&status);
       for(LO i=0;i<lx-1;i++){
        for(LO j=0;j<ly-1;j++){
@@ -133,16 +133,16 @@ void mpisendrecv_aux2D(MPI_Datatype mpitype,MPI_Comm comm,LO nzb,LO lx,LO ly,LO 
 }
 
 template<class T>
-void mpisendrecv_aux1D(MPI_Datatype mpitype,MPI_Comm comm,LO nzb,LO xind,LO yind,LO zind,\
+void mpisendrecv_aux1D(MPI_Datatype mpitype,MPI_Comm comm,LO nzb,LO xind,LO yind,LO zind,
      T* lowbuf,T* upbuf,T* box1d)
 {
       MPI_Status status;
       int rank_source, rank_dest;
       MPI_Cart_shift(comm,3,1,&rank_source,&rank_dest);
-      MPI_Sendrecv(box1d,nzb,mpitype,rank_dest,100,upbuf,nzb,mpitype,rank_source,101,\
+      MPI_Sendrecv(box1d,nzb,mpitype,rank_dest,100,upbuf,nzb,mpitype,rank_source,101,
             comm,&status);
       MPI_Cart_shift(comm,3,-1,&rank_source,&rank_dest);
-      MPI_Sendrecv(&box1d[zind-nzb],nzb,mpitype,rank_dest,102,lowbuf,nzb,mpitype,rank_source,103,\
+      MPI_Sendrecv(&box1d[zind-nzb],nzb,mpitype,rank_dest,102,lowbuf,nzb,mpitype,rank_source,103,
             comm,&status);
 }
 
@@ -153,7 +153,7 @@ void CmplxdataToRealdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d);
 
 void RealdataToCmplxdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d,Part3Mesh3D &p3m3d);
 
-void TransposeComplex(std::complex<double>** InMatrix,std::complex<double>** OutMatrix, DatasProc3D& dp3d,\
+void TransposeComplex(std::complex<double>** InMatrix,std::complex<double>** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d);
 
 void ExecuteCmplxToReal(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d);
@@ -207,10 +207,10 @@ void Lag3dArray(T* yin,double* xin,LO nin,T* yout,double* xout,LO nout){
 
      }
 
-void InterpoDensity3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d,\  
+void InterpoDensity3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d,  
      Part1ParalPar3D &p1pp3d,DatasProc3D& dp3d);
 
-void InterpoPotential3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d,\
+void InterpoPotential3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d,
      Part1ParalPar3D &p1pp3d,DatasProc3D& dp3d);
 
 }

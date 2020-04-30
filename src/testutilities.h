@@ -1,5 +1,8 @@
+#ifndef TESTUTILITIES_H
+#define TESTUTILITIES_H
+
+#include "classes.h"
 #include "coupling.h"
-#include "importpart3mesh.h"
 
 namespace coupler {
 
@@ -58,3 +61,4 @@ void InputfromFile(T* numbers,LO ARRAY_SIZE,std::string filename)
 
 }
 
+#endif

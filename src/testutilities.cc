@@ -1,5 +1,6 @@
 //#include "importpart3mesh.h"
 #include "testutilities.h"
+#include "commpart1.h"
 
 namespace coupler {
 

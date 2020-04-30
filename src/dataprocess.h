@@ -1,35 +1,9 @@
-#include "importpart3mesh.h"
+#ifndef DATAPROCESS_H
+#define DATAPROCESS_H
+
+#include "classes.h"
 
 namespace coupler {
-
- class DatasProc3D{
-   public:
-     LO part1li0; // part1li0 is the element number of subdomain of x on each process belonging to comm_y. This x subdomain
-                // belongs to 2d box on the x-y plane storing the input charged ion density for fourier transform.
-     LO part3li0; // part3li0 is the element number of subdomain of x on each process belonging to comm_y. This x subdomain
-                // belongs to 2d box on the x-y plane storing the input electrostatic potential.
-     LO part1lj0; //the count of elements on y domain on each process after backward Fourier transform
-     LO part3lj0; ////the count of elements on y domain on each process after forward Fourier transform
- 
-
-     LO sum;
-// here, pointers must be assigned a NULL;
-     std::complex<double>*** densin=NULL;  // input 3d density in complex number
-     std::complex<double>*  densintmp=NULL;  // temporary 2d density array prepared for backward fourier transform
-     double* densouttmp=NULL; // store the x-y 2d real density after backward fourier transform
-     double*** densout=NULL;   // store xyz 3d real density
-     double*** denspart3=NULL; // storing the density being sent to the part3 
-     double*** potentin=NULL;   // the input real electrostatic potential in 3d xyz
-     double* potentintmp=NULL;  // temporary xy 2d potential array for forward fourier transform
-     std::complex<double>* potentouttmp=NULL; //
-     std::complex<double>*** potentout=NULL; // 3d temporary array stroring complex electrostatic potential
-     std::complex<double>*** potentpart1=NULL; // storing the electrostatic potential being sent to the part1.
-     bool yparal=false;
-     fftw_plan plan_forward, plan_backward;
-//The following parameters for yparal=true;
-     LO myli0;
-     ~DatasProc3D();
-};
 
 void InitDatasProc3Dparameters(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D &p3m3d );
 
@@ -39,19 +13,6 @@ void AllocDatasProc3dPotentArraies(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Par
 
 
 //boundary treatment
-
-class BoundaryDescr3D{
-  public:
-    LO nzb;
-    double** upzpart3=NULL;
-    double** lowzpart3=NULL;
-    double*** updenz=NULL; // The upper  boundary buffer on z domain for interpolation and storing the real quantiies resulted from the backward Fourier transform of complex charged density.
-    double*** lowdenz=NULL;
-    std::complex<double>*** uppotentz=NULL; //The upper  boundary buffer on z domain for interpolation and storing the complex  quantiies resulted from the forward Fourier transform of electrosttic potential.
-    std::complex<double>*** lowpotentz=NULL;
-    ~BoundaryDescr3D();
-};
-
 void InitBoundaryDescr3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d, Part1ParalPar3D &p1pp3d,DatasProc3D& dp3d);
 
 void zPotentBoundaryBufAssign(MPI_Datatype mpitype,BoundaryDescr3D &bdesc,DatasProc3D& dp3d,
@@ -214,3 +175,5 @@ void InterpoPotential3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d,
      Part1ParalPar3D &p1pp3d,DatasProc3D& dp3d);
 
 }
+
+#endif

@@ -1,4 +1,6 @@
+#include "commpart1.h"
 #include "testutilities.h"
+
 namespace coupler {
 
 //read the paralllization parameters

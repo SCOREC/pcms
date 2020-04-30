@@ -1,4 +1,8 @@
+#include "classes.h"
+#include "commpart1.h"
+#include "importpart3mesh.h"
 #include "dataprocess.h"
+#include "testutilities.h"
 
 int main(int argc, char* argv[])
 {

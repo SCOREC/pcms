@@ -9,9 +9,4 @@ void mpiallgatherwrapper(T1* in,T1* out,T2 n,MPI_Datatype mpitype,MPI_Comm comm)
   MPI_Allgather(in,n,mpitype,out,n,mpitype,comm);  
 }
 
-
-
-
-
-
 }

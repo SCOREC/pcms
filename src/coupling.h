@@ -3,29 +3,15 @@
 
 #include <adios2.h>
 #include <iostream>
-#include <mpi.h>
 #include <cassert>
-#include <Kokkos_Core.hpp>
-#include <typeinfo>
-#include <fftw3.h>
+#include <Kokkos_Core.hpp> //not used
+#include <typeinfo> //not used
 #include <string>
-#include <complex>
 #include <fstream>
-#include "parameters.h"
-#include "couplingConstants.h"
+#include "couplingConstants.h" //not used
+#include "couplingTypes.h"
 
 namespace coupler { 
-
-  /** GO = global ordinate to count/number
-   *  quantities over the entire domain
-   */
-  typedef unsigned long GO;
-
-  /** LO = local ordinate to count/number
-   *  quantities over a sub-domain
-   */
-  typedef int LO;
-
   /** Storage of double precision 2D array data
    *  and associated meta data
    */

@@ -1,11 +1,15 @@
+#ifndef TESTUTILITIES_H
+#define TESTUTILITIES_H
+
 #include "coupling.h"
-#include "importpart3mesh.h"
 
 namespace coupler {
 
-//For initialize the part1 
-
-void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d);
+enum class TestCase : unsigned {
+  off,
+  t0, // better name?
+  invalid
+};
 
 // input and output utilities
 template<class T>
@@ -58,3 +62,4 @@ void InputfromFile(T* numbers,LO ARRAY_SIZE,std::string filename)
 
 }
 
+#endif

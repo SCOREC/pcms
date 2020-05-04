@@ -9,6 +9,7 @@ Adios2-based coupler for XGC and GENE
 Clone the repo and create a build directory:
 
 ```
+git clone git@github.com:SCOREC/wdmapp_coupling_data.git
 git clone git@github.com:SCOREC/wdmapp_coupling.git
 mkdir build-wdmCoupler-rhel7
 ```
@@ -41,6 +42,7 @@ If all goes well you will have a `cpl` binary in the `src` directory.
 Clone the repo and create a build directory:
 
 ```
+git clone git@github.com:SCOREC/wdmapp_coupling_data.git
 git clone git@github.com:SCOREC/wdmapp_coupling.git
 mkdir build-wdmCoupler-intel-cori
 ```
@@ -161,7 +163,8 @@ cd ~/barn
 source wdmapp_coupling/envCplAimosGnu.sh
 mkdir build-wdmCoupler-aimosGnu
 cd !$
-cmake ../wdmapp_coupling/cpl -DCMAKE_CXX_COMPILER=mpicxx
+cmake ../wdmapp_coupling/cpl -DCMAKE_CXX_COMPILER=mpicxx \
+  -DTEST_DATA_DIR=/path/to/wdmapp_coupling_data
 make
 ```
 

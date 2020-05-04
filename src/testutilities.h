@@ -10,6 +10,10 @@ namespace coupler {
 
 void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d);
 
+
+// Initialize the part3 box
+void TestInitPotentAlongz(DatasProc3D& dp3d,Part3Mesh3D& p3m3d,LO npy,LO n);
+
 // input and output utilities
 template<class T>
 void OutputtoFile(T* numbers,LO array_size,std::string filename){ 

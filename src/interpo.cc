@@ -25,7 +25,7 @@ void InterpoDensity3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d, Part1ParalPar3D
           yin[l]=bdesc.lowdenz[i][j][l];
           yin[p1pp3d.lk0+nzb+l]=bdesc.updenz[i][j][l];
         }
-        for(LO k=0;k<p1pp3d.lk0-1;k++){  
+        for(LO k=0;k<p1pp3d.lk0;k++){  
           yin[nzb+k]=dp3d.densout[i][j][k];
           
         }
@@ -41,37 +41,39 @@ void InterpoDensity3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d, Part1ParalPar3D
 
 void InterpoPotential3D(BoundaryDescr3D &bdesc,Part3Mesh3D& p3m3d, Part1ParalPar3D &p1pp3d,DatasProc3D& dp3d)
 {
-  std::complex<double>* yin;
-  std::complex<double>* yout;
+  double* yin;
+  double* yout;
   double* xin;
   double* xout;
-  yout=new std::complex<double>[p1pp3d.lk0];
+  xout=p1pp3d.pzp;
+  yout=new double[p1pp3d.lk0];
   LO nzb=bdesc.nzb;
   if(preproc==true){
     for(LO i=0;i<p3m3d.li0;i++){
-      yin=new std::complex<double>[p3m3d.mylk0[i]+2*nzb];
+      yin=new double[p3m3d.mylk0[i]+2*nzb];
       xin=new double[p3m3d.mylk0[i]+2*nzb];
-      for(LO l=0;l<nzb-1;l++){  
+      for(LO l=0;l<nzb;l++){  
         xin[l]=bdesc.lowzpart3[i][l];
         xin[p3m3d.mylk0[i]+nzb+l]=bdesc.upzpart3[i][l];      
       }
       for(LO j=0;j<p3m3d.lj0;j++){
-        for(LO l=0;l<nzb-1;l++){
+        for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowpotentz[i][j][l];
           yin[p3m3d.mylk0[i]+nzb+l]=bdesc.uppotentz[i][j][l];
         }
-        for(LO k=0;k<p3m3d.mylk0[i]-1;k++){
-          xin[k]=p3m3d.pzcoords[i][k];
-          yin[k]=dp3d.potentin[i][j][k];
+        for(LO k=0;k<p3m3d.mylk0[i];k++){
+          xin[k+nzb]=p3m3d.pzcoords[i][k];
+          yin[k+nzb]=dp3d.potentin[i][j][k];
         }
-        xout=p1pp3d.pzp;
-        yout=dp3d.potentout[i][j];
+        yout=dp3d.potentinterpo[i][j];
         Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,yout,xout,p1pp3d.lk0);
      }
-     delete[] xin,yin; 
+     delete[] xin;
+     delete[] yin; 
     }
   }
  delete[] yout;
+ delete[] xout;
 }
 
 

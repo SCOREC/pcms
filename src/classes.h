@@ -84,9 +84,9 @@ class Part3Mesh3D{
      double*** densout=NULL;   // store xyz 3d real density
      double*** denspart3=NULL; // storing the density being sent to the part3
      double*** potentin=NULL;   // the input real electrostatic potential in 3d xyz
+     double*** potentinterpo=NULL; // 3d temporary array stroring real electrostatic potential after interpolation
      double* potentintmp=NULL;  // temporary xy 2d potential array for forward fourier transform
      std::complex<double>* potentouttmp=NULL; //
-     std::complex<double>*** potentout=NULL; // 3d temporary array stroring complex electrostatic potential
      std::complex<double>*** potentpart1=NULL; // storing the electrostatic potential being sent to the part1.
      bool yparal=false;
      fftw_plan plan_forward, plan_backward;
@@ -102,8 +102,8 @@ class BoundaryDescr3D{
     double** lowzpart3=NULL;
     double*** updenz=NULL; // The upper  boundary buffer on z domain for interpolation and storing the real quantiies resulted from the backward Fourier transform of complex charged density.
     double*** lowdenz=NULL;
-    std::complex<double>*** uppotentz=NULL; //The upper  boundary buffer on z domain for interpolation and storing the complex  quantiies resulted from the forward Fourier transform of electrosttic potential.
-    std::complex<double>*** lowpotentz=NULL;
+    double*** uppotentz=NULL; //The upper  boundary buffer on z domain for interpolation and storing the complex  quantiies resulted from the forward Fourier transform of electrosttic potential.
+    double*** lowpotentz=NULL;
     ~BoundaryDescr3D();
 };
 

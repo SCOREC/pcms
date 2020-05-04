@@ -7,9 +7,9 @@ namespace coupler {
 
 void InitDatasProc3Dparameters(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D &p3m3d );
 
-void AllocDatasProc3dDensityArraies(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D& p3m3d);
+void AllocDatasProc3dDensityArrays(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D& p3m3d);
 
-void AllocDatasProc3dPotentArraies(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D &p3m3d);
+void AllocDatasProc3dPotentArrays(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Mesh3D &p3m3d);
 
 
 //boundary treatment
@@ -100,19 +100,19 @@ void mpisendrecv_aux1D(MPI_Datatype mpitype,MPI_Comm comm,LO nzb,LO xind,LO yind
       MPI_Status status;
       int rank_source, rank_dest;
       MPI_Cart_shift(comm,3,1,&rank_source,&rank_dest);
-      MPI_Sendrecv(box1d,nzb,mpitype,rank_dest,100,upbuf,nzb,mpitype,rank_source,101,
+      MPI_Sendrecv(box1d,nzb,mpitype,rank_dest,100,upbuf,nzb,mpitype,rank_source,100,
             comm,&status);
       MPI_Cart_shift(comm,3,-1,&rank_source,&rank_dest);
-      MPI_Sendrecv(&box1d[zind-nzb],nzb,mpitype,rank_dest,102,lowbuf,nzb,mpitype,rank_source,103,
+      MPI_Sendrecv(&box1d[zind-nzb],nzb,mpitype,rank_dest,102,lowbuf,nzb,mpitype,rank_source,102,
             comm,&status);
 }
 
 
 //routines for Fourier transform
 
-void CmplxdataToRealdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d);
+void DensityCmplxdataToRealdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d);
 
-void RealdataToCmplxdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d,Part3Mesh3D &p3m3d);
+void PotentRealdataToCmplxdata3D(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d,Part3Mesh3D &p3m3d);
 
 void TransposeComplex(std::complex<double>** InMatrix,std::complex<double>** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d);
@@ -121,8 +121,9 @@ void ExecuteCmplxToReal(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d);
 
 void ExecuteRealToCmplx(DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d);
 
-void InitFourierPlan3D( DatasProc3D& dp3d);
+void InitFourierPlan3D( DatasProc3D& dp3d, Part1ParalPar3D& p1pp3d, Part3Mesh3D &p3m3d);
 
+void FreeFourierPlan3D(DatasProc3D& dp3d);
 
 // routines for interpolation
 template<class T>

@@ -70,6 +70,10 @@ void InitPart1ParalPar3D (Part1ParalPar3D  &p1pp3d)
    for(LO i=0;i<p1pp3d.nz0;i++){
      p1pp3d.pzcoords[i]=-1.0*cplPI+(double)i*p1pp3d.dz;
    }
+   p1pp3d.pzp=new double[p1pp3d.lk0];
+   for(LO i=0;i<p1pp3d.lk0;i++){
+     p1pp3d.pzp[i]=double(p1pp3d.lk0+i)*p1pp3d.dz;
+   }
   delete[] parpar;
   delete[] xzcoords;
  }

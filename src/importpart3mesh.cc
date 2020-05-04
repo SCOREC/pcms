@@ -168,7 +168,7 @@ void DistributePoints(double* exterarr,LO gstart,LO li, double* interarr,Part3Me
     }
     bool inside = true;
     while(inside){
-      if(i2+1>p3m3d.versurf[li]){
+      if(i2>=p3m3d.versurf[li]-1){
         break;
       }
       if(exterarr[i2+1]<internal_ub){

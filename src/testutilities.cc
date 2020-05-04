@@ -6,12 +6,6 @@ namespace coupler {
 
 void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d)
 {
-/*
-  LO size;
-  LO rank;
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-*/
   LO* data=new LO[12];
   std::string fname=test_dir+"parpart1.nml";
   InputfromFile(data,12,fname); 
@@ -43,9 +37,31 @@ void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d)
   delete[] data;
 }
 
-
-
-
+void TestInitPotentAlongz(DatasProc3D& dp3d,Part3Mesh3D& p3m3d,LO npy,LO n)
+{
+  if(npy==1){
+    LO li0,lj0,lk0;
+    li0=p3m3d.li0;
+    lj0=p3m3d.lj0;
+    double ylen;
+    double sum;
+    double dy=2.0*cplPI/double(lj0);
+    for(LO i=0;i<li0;i++){
+      lk0=p3m3d.mylk0[i];
+      for(LO k=0;k<lk0;k++){
+	ylen=0.0;
+	for(LO j=0;j<lj0;j++){
+          ylen=double(j)*dy;
+          sum=0.0;
+          for(LO h=0;h<n;h++){
+            sum+=cos(double(h+1)*ylen);
+          }
+          dp3d.potentin[i][j][k]=sum;
+	}
+      }
+    }  
+  } 
+}
 
 
 }

@@ -27,6 +27,7 @@ void InitDatasProc3Dparameters(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part3Me
      dp3d.part3lj0=p1pp3d.ny0;   // here may need rethinking.
    }
  }
+  dp3d.sum=0;
   for(LO i=0;i<p3m3d.li0;i++)  dp3d.sum+=p3m3d.mylk0[i];
 }
 
@@ -39,11 +40,9 @@ void AllocDatasProc3dDensityArrays(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Par
     for(LO j=0;j<p1pp3d.lj0;j++)
       dp3d.densin[i][j]=new std::complex<double>[p1pp3d.lk0];
   }
-  GO num=p1pp3d.li0*p1pp3d.lj0*p1pp3d.lk0;
-  dp3d.densintmp=new std::complex<double>[num];
+  dp3d.densintmp=new std::complex<double>[p1pp3d.lj0];
 
-  num=p3m3d.li0*p3m3d.lj0*p1pp3d.lk0;
-  dp3d.densouttmp=new double[num];
+  dp3d.densouttmp=new double[p1pp3d.lj0*2];
 
   dp3d.densout=new double**[p1pp3d.li0];
   for(LO i=0;i<p3m3d.li0;i++){
@@ -71,18 +70,15 @@ void AllocDatasProc3dPotentArrays(DatasProc3D& dp3d,Part1ParalPar3D& p1pp3d,Part
     for(LO j=0;j<p3m3d.lj0;j++)
       dp3d.potentin[i][j]=new double[p3m3d.mylk0[i]];
   }
-  dp3d.potentintmp=new double[dp3d.sum*p3m3d.lj0];
-/*  for(LO k=0;k<dp3d.sum;k++){
-      dp3d.potenttmp[k]=new double[p3m3d.lj0];
-    }
-*/
-  dp3d.potentouttmp=new std::complex<double>[dp3d.sum*p3m3d.lj0/2];
-  dp3d.potentout=new std::complex<double>**[p3m3d.li0];
+
+  dp3d.potentinterpo=new double**[p3m3d.li0];
   for(LO i=0;i<p3m3d.li0;i++){
-    dp3d.potentout[i]=new std::complex<double>*[dp3d.part3lj0];
+    dp3d.potentinterpo[i]=new double*[p3m3d.lj0];
     for(LO j=0;j<p3m3d.lj0;j++)
-      dp3d.potentout[i][j]=new std::complex<double>[p3m3d.mylk0[i]];
+      dp3d.potentinterpo[i][j]=new double[p1pp3d.lk0];
   }
+  dp3d.potentintmp=new double[p3m3d.lj0];
+  dp3d.potentouttmp=new std::complex<double>[p3m3d.lj0/2+1];
 
   dp3d.potentpart1=new std::complex<double>**[p1pp3d.li0];
   for(LO i=0;i<p1pp3d.li0;i++){
@@ -104,7 +100,7 @@ DatasProc3D::~DatasProc3D()
   if(potentin!=NULL) delete[] potentin;
   if(potentintmp!=NULL) delete[] potentintmp;
   if(potentouttmp!=NULL) delete[] potentouttmp;
-  if(potentout!=NULL) delete[] potentout;
+  if(potentinterpo!=NULL) delete[] potentinterpo;
   if(potentpart1!=NULL) delete[] potentpart1;       
 }
 

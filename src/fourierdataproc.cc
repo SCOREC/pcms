@@ -134,16 +134,10 @@ void DatasProc3D::InitFourierPlan3D(const Part1ParalPar3D& p1pp3d, const Part3Me
 
 void DatasProc3D::FreeFourierPlan3D()
 {
-  fftw_destroy_plan(plan_forward);
-  fftw_destroy_plan(plan_backward);  
-  delete[] densintmp;
-  densintmp=NULL;
-  delete[] densouttmp;
-  densintmp=NULL;
-  delete[] potentintmp;
-  potentintmp=NULL;
-  delete[] potentouttmp;
-  potentouttmp=NULL;
+  if(plan_forward)
+    fftw_destroy_plan(plan_forward);
+  if(plan_backward)
+    fftw_destroy_plan(plan_backward);  
 }
 
 }  

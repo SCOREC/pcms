@@ -34,7 +34,7 @@ namespace coupler {
      CV* potentouttmp=NULL; //
      CV*** potentout=NULL; // 3d temporary array stroring complex electrostatic potential
      CV*** potentpart1=NULL; // storing the electrostatic potential being sent to the part1.
-     fftw_plan plan_forward, plan_backward;
+     fftw_plan plan_forward=NULL, plan_backward=NULL;
 //The following parameters for yparal=true;
      LO myli0;
      /* constructor

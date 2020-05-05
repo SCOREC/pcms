@@ -1,4 +1,8 @@
+#ifndef COMMPART1_H
+#define COMMPART1_H
+
 #include "coupling.h"
+#include "testutilities.h"
 namespace coupler {
 
 class Part1ParalPar3D {
@@ -24,30 +28,33 @@ class Part1ParalPar3D {
     double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature ground. 
     LO res_fact;
+    /* constructor
+     * optionally read preproc, test_case and test_dir from user
+     */
+    Part1ParalPar3D(bool pproc = true,
+      TestCase tcase = TestCase::off,
+      std::string tdir="")
+      : preproc(pproc), test_case(tcase) {
+      init(tdir);
+    }
     ~Part1ParalPar3D()
     {
       if(xcoords!=NULL)  delete[] xcoords;
       if(pzcoords!=NULL) delete[] pzcoords;
       if(pzp!=NULL)      delete[] pzp;
-    }     
+    }
+    
+  private:
+    const bool preproc;
+    const TestCase test_case;
+    void init(std::string test_dir="");
+    void initTest0(std::string test_dir);
+    /* init* helper function */
+    void CreateSubCommunicators();
+    /* destructor helper function */
+    void MpiFreeComm();
 };
 
-void InitPart1ParalPar3D(Part1ParalPar3D& p1pp3d);
-
-void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d);
-
-void CreateSubCommunicators(Part1ParalPar3D  &p1pp3d);
-
-void MpiFreeComm(Part1ParalPar3D  &p1pp3d);
 }
 
-
-
-
-
-
-
-
-
-
-
+#endif

@@ -2,22 +2,22 @@ set(SOURCES
   coupling.cc
   commpart1.cc
   importpart3mesh.cc
-  BoundExchange.cc
+  BoundaryDescr3D.cc
   commpart1.cc
   fourierdataproc.cc
-  initdatastruc.cc 
+  dataprocess.cc 
   interpo.cc
-  testutilities.cc
 )
 
 set(HEADERS
     coupling.h 
     couplingConstants.h
+    couplingTypes.h
     commpart1.h
     dataprocess.h
     importpart3mesh.h
+    BoundaryDescr3D.h
     commwrapping.h
-    parameters.h
     testutilities.h
 )
 

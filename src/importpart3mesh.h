@@ -1,7 +1,16 @@
-#include "coupling.h"
-#include "commpart1.h"
+#ifndef IMPORTPART3MESH_H
+#define IMPORTPART3MESH_H
+
+#include "couplingTypes.h"
+#include "testutilities.h"
 
 namespace coupler {
+
+//forward declare the Part1ParalPar3D class; we don't care how 
+// the class is defined in this header since we don't call
+// any of its functions or access its member variables
+class Part1ParalPar3D;
+
 class Part3Mesh3D{
   public:
     LO  nsurf;    // number of flux surfaces
@@ -18,8 +27,21 @@ class Part3Mesh3D{
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
     double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
     double** pzcoords=NULL;  // The z coordinates of all points with the 2d box.
+    /* constructor
+     * optional arguments support reading
+     * the test case number and directory
+     * from the user
+     */
+    Part3Mesh3D(Part1ParalPar3D &p1pp3d,
+        bool pproc = true,
+        TestCase tcase = TestCase::off,
+        std::string tdir="")
+      : preproc(pproc), test_case(tcase) {
+      assert(tcase < TestCase::invalid);
+      init(p1pp3d,tdir);
+    }
     ~Part3Mesh3D()
-   {
+    {
      if(versurf!=NULL) delete[] versurf;
      if(xboxinds!=NULL) delete[] xboxinds;
      if(xcoords!=NULL) delete[] xcoords;
@@ -30,22 +52,33 @@ class Part3Mesh3D{
      if(Zcoords!=NULL) delete[] Zcoords;
      if(pzcoords!=NULL) delete[] pzcoords;
    }
+  private:
+    const bool preproc;
+    const TestCase test_case;
+    void init(const Part1ParalPar3D &p1pp3d, const std::string test_dir="");
+    /* helper function called by init */
+    void DistriPart3zcoords(const Part1ParalPar3D  &p1pp3d,
+        const std::string test_dir="");
+    /* helper function called by DistriPart3zcoords */
+    void DistributePoints(double* exterarr, LO gstart, LO li,
+        double* interarr, const Part1ParalPar3D  &p1pp3d);
+    /* default constructor 
+     * put this in private to prevent users from calling it
+     */
+    Part3Mesh3D() : preproc(true), test_case(TestCase::off) {};
 };
 
-void ImportPart3Mesh3D(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d);
 
-void DistriPart3zcoords(Part3Mesh3D &p3m3d, Part1ParalPar3D  &p1pp3d);
-
-
+// The following utility functions should go into a header for utilities if they
+// need to be called by other other classes or code.
+// If they are not needed elsewhere, the prototypes/definitions below should
+// be removed.
 LO  minloc(const double* zcoords, const LO n); 
 
 void reshuffle_nodes(double* zcoords,const LO nstart,const LO vertnum);
 
-void DistributePoints(double* exterarr,LO gstart,LO li, double* interarr,Part3Mesh3D &p3m3d,
-     Part1ParalPar3D  &p1pp3d);
-
 double minimalvalue(const double* array, const LO n);
 
-void InitzcoordsInCoupler(double* zcoords,LO* versurf,LO nsurf);
-
 }
+
+#endif

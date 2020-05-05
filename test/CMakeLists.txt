@@ -6,3 +6,7 @@ target_link_libraries(test_init coupler)
 
 set(sources cpl test_init)
 install(TARGETS ${sources} coupler)
+
+if(BUILD_TESTING)
+  include(testing.cmake)
+endif()

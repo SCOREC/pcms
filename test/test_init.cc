@@ -16,7 +16,8 @@ int main(int argc, char* argv[])
   std::string test_dir(argv[1]);
   coupler::Part1ParalPar3D p1pp3d(preproc, test_case, test_dir);
   coupler::Part3Mesh3D p3m3d(p1pp3d, preproc, test_case, test_dir);
-  coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, ypar);
+
+  coupler::DatasProc3D dp3d(p1pp3d,p3m3d, preproc, ypar);
   coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d);
 //std::cout<<"3"<<'\n'; 
 //MPI_Barrier(MPI_COMM_WORLD);

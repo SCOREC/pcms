@@ -16,9 +16,9 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
          p1pp3d.res_fact),
     p3(p3m3d.li0,p3m3d.lj0,p3m3d.mylk0)
   {
-  init();
-  AllocDensityArrays();
-  AllocPotentArrays();
+    init();
+    AllocDensityArrays();
+    AllocPotentArrays();
 }
 
 
@@ -47,6 +47,7 @@ void DatasProc3D::init()
       part3lj0=p1.ny0;   // here may need rethinking.
     }
   }
+  sum=0;
   for(LO i=0;i<p3.li0;i++)  sum+=p3.mylk0[i];
 }
 
@@ -84,7 +85,7 @@ void DatasProc3D::AllocDensityArrays()
 }
 
 void DatasProc3D::AllocPotentArrays()
-{
+{ 
   if(yparal==false){
     potentin=new double**[p3.li0];
     for(LO i=0;i<p3.li0;i++){
@@ -96,7 +97,7 @@ void DatasProc3D::AllocPotentArrays()
     //  for(LO k=0;k<sum;k++){
     //    potenttmp[k]=new double[p3.lj0];
     //    }
-    potentouttmp=new CV[sum*p3.lj0/2];
+    potentouttmp=new CV[sum*(p3.lj0)/2];
     potentout=new CV**[p3.li0];
     for(LO i=0;i<p3.li0;i++){
       potentout[i]=new CV*[part3lj0];

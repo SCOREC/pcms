@@ -87,9 +87,9 @@ private:
 
   const struct P3Data {
     P3Data(LO li, LO lj, LO* mylk) : li0(li), lj0(lj), mylk0(mylk) {};
-    const LO li0;
-    const LO lj0;
-    const LO* mylk0;
+      LO li0;
+      LO lj0;
+      LO* mylk0;
   } p3;
 
   /* helper function for destructor */
@@ -99,13 +99,13 @@ private:
   void AllocDensityArrays();
   void AllocPotentArrays();
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
-  void ExecuteRealToCmplx(P1Data &p1);
-  void ExecuteCmplxToReal(P1Data &p1);
+  void ExecuteRealToCmplx();
+  void ExecuteCmplxToReal();
 
 public:
   
-  void RealdataToCmplxdata3D(P1Data &p1, P3Data &p3);
-  void InitFourierPlan3D(P1Data &p1,P3Data &p3);
+  void RealdataToCmplxdata3D();//P1Data &p1, P3Data &p3);
+  void InitFourierPlan3D();//P1Data &p1,P3Data &p3);
 };
 
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,

@@ -29,7 +29,7 @@ void DatasProc3D::CmplxdataToRealdata3D()
 	  densintmp[num]=densin[i][j][k];
 	}      
       }
-      //ExecuteCmplxToReal(p1);
+      ExecuteCmplxToReal();
       for(LO i=0;i<p1.li0;i++){
 	for(LO j=0;j<part1lj0;j++){ 
 	   for(LO k=0;k<p1.lk0;k++){ 
@@ -44,7 +44,7 @@ void DatasProc3D::CmplxdataToRealdata3D()
    }
  }
 
-void DatasProc3D::RealdataToCmplxdata3D(P1Data &p1, P3Data &p3)
+void DatasProc3D::RealdataToCmplxdata3D()//P1Data &p1, P3Data &p3)
 {
 
   if(potentin==NULL){
@@ -64,7 +64,7 @@ void DatasProc3D::RealdataToCmplxdata3D(P1Data &p1, P3Data &p3)
 	  potentintmp[sum*p3.lj0+j+1]=potentin[i][j][k];  
       }
     }
-    ExecuteRealToCmplx(p1);
+    ExecuteRealToCmplx();
     sum=0;
     for(LO i=0;i<p3.li0;i++){
       for(LO k=0;k<p3.mylk0[i];k++){
@@ -98,7 +98,7 @@ void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d)
   }
 }
 // It's not finished for yparal==true here.
-void DatasProc3D::ExecuteCmplxToReal(P1Data &p1)
+void DatasProc3D::ExecuteCmplxToReal()//P1Data &p1)
 {
    if(yparal==true){
      CV** tmp_cmplx;
@@ -116,7 +116,7 @@ void DatasProc3D::ExecuteCmplxToReal(P1Data &p1)
     } 
  }
 
-void DatasProc3D::ExecuteRealToCmplx(P1Data &p1)
+void DatasProc3D::ExecuteRealToCmplx()
 {
    if(yparal==true){
      // Here is not finished for yparal=true
@@ -126,7 +126,7 @@ void DatasProc3D::ExecuteRealToCmplx(P1Data &p1)
 
  } 
 
-void DatasProc3D::InitFourierPlan3D(P1Data &p1,P3Data &p3)
+void DatasProc3D::InitFourierPlan3D()//P1Data &p1,P3Data &p3)
 { 
   if(yparal==true){
     plan_backward=fftw_plan_dft_c2r_2d(p1.li0*p1.lk0, p1.lj0,

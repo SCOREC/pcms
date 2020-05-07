@@ -1,14 +1,15 @@
 #ifndef TESTUTILITIES_H
 #define TESTUTILITIES_H
 
-#include "classes.h"
 #include "coupling.h"
 
 namespace coupler {
 
-//For initialize the part1 
-
-void InitPart1paral3DInCoupler(Part1ParalPar3D  &p1pp3d);
+enum class TestCase : unsigned {
+  off,
+  t0, // better name?
+  invalid
+};
 
 
 // Initialize the part3 box

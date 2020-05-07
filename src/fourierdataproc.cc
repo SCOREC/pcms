@@ -44,7 +44,7 @@ void DatasProc3D::CmplxdataToRealdata3D()
    }
  }
 
-void DatasProc3D::RealdataToCmplxdata3D()//P1Data &p1, P3Data &p3)
+void DatasProc3D::RealdataToCmplxdata3D()
 {
 
   if(potentin==NULL){
@@ -98,7 +98,7 @@ void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d)
   }
 }
 // It's not finished for yparal==true here.
-void DatasProc3D::ExecuteCmplxToReal()//P1Data &p1)
+void DatasProc3D::ExecuteCmplxToReal()
 {
    if(yparal==true){
      CV** tmp_cmplx;

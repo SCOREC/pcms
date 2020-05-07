@@ -11,12 +11,6 @@ class Part3Mesh3D;
 class Part1ParalPar3D;
 class BoundaryDescr3D;
 
-
-
-
-
-
-
 class DatasProc3D {
 public:
   LO part1li0; // part1li0 is the element number of subdomain of x on each
@@ -71,6 +65,7 @@ private:
   const bool preproc;
   const bool yparal;
 
+  // this struct contains the read-only values from Part1ParalPar3D class
   const struct P1Data {
     P1Data(LO li, LO lj, LO lk, LO ny, LO np, LO pe_y, LO res) : 
 	    li0(li), lj0(lj), lk0(lk), 
@@ -85,6 +80,7 @@ private:
     const LO res_fact;
   } p1;
 
+  // this struct contains the read-only values from Part3Mesh3D class
   const struct P3Data {
     P3Data(LO li, LO lj, LO* mylk) : li0(li), lj0(lj), mylk0(mylk) {};
       LO li0;

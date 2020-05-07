@@ -79,7 +79,8 @@ void DatasProc3D::RealdataToCmplxdata3D()
 //TODO Incomplete, Not used, put into the class it supports, I assume DatasProc3D
 // This routine is not required in first verion of coupler, but would be modifed 
 // for in the 2nd version. Here, the indexes may need exchange. 
-void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d)
+void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
+     Part1ParalPar3D& p1pp3d)
 {
   LO ny0 = dp3d.getP1ny0();
   LO npy = dp3d.getP1npy();
@@ -126,7 +127,7 @@ void DatasProc3D::ExecuteRealToCmplx()
 
  } 
 
-void DatasProc3D::InitFourierPlan3D()//P1Data &p1,P3Data &p3)
+void DatasProc3D::InitFourierPlan3D()
 { 
   if(yparal==true){
     plan_backward=fftw_plan_dft_c2r_2d(p1.li0*p1.lk0, p1.lj0,

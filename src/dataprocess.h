@@ -105,7 +105,7 @@ public:
 };
 
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
-     LO* p1);
+     Part1ParalPar3D& p1pp3d);
 
 void InterpoDensity3D(const BoundaryDescr3D& bdesc, const DatasProc3D& dp3d);
 

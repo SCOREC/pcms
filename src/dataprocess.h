@@ -57,6 +57,8 @@ public:
   ~DatasProc3D();
   //routines for Fourier transform
   void CmplxdataToRealdata3D();
+  void RealdataToCmplxdata3D();
+  void InitFourierPlan3D();
   LO getP1li0() { return p1.li0; };
   LO getP1ny0() { return p1.ny0; };
   LO getP1npy() { return p1.npy; };
@@ -97,11 +99,6 @@ private:
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
-
-public:
-  
-  void RealdataToCmplxdata3D();//P1Data &p1, P3Data &p3);
-  void InitFourierPlan3D();//P1Data &p1,P3Data &p3);
 };
 
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,

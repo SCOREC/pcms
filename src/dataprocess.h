@@ -83,9 +83,9 @@ private:
   // this struct contains the read-only values from Part3Mesh3D class
   const struct P3Data {
     P3Data(LO li, LO lj, LO* mylk) : li0(li), lj0(lj), mylk0(mylk) {};
-      LO li0;
-      LO lj0;
-      LO* mylk0;
+      const LO li0;
+      const LO lj0;
+      LO const* const mylk0;
   } p3;
 
   /* helper function for destructor */

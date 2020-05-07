@@ -12,8 +12,8 @@ src/
 -sendrev\_imp.h - templated functions for mpi sendrecv
 -CMakeLists.txt - cmake
 -commpart1.cc - gene mesh class
--coupling.cc - adios2 send/recv functions and array2d class
--coupling.h - header for coupling.cc
+-adios2Routines.cc - adios2 send/recv functions and array2d class
+-adios2Routines.h - header for adios2Routine.cc
 -importpart3mesh.cc - xgc mesh class
 -testutilities.h - enum for test cases and IO helper functions
 

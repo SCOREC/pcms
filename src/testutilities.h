@@ -59,30 +59,6 @@ void InputfromFile(T* numbers,LO ARRAY_SIZE,std::string filename)
     }
 }
 
-template<class T>
-void InputfromFile_(Array1d<T>* numbers,LO ARRAY_SIZE,std::string filename)
-{
-    LO count = 0;             // Loop counter variable
-    LO rank;
-    std::ifstream inputFile;        // Input file stream object
-    // Open the file.
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-    if(rank==0){
-      std::cout<<filename<<'\n';
-    }
-//    inputFile.open(filename);
-//    if (!inputFile) {
-//        std::cout << "Unable to open file";
-//        exit(1); // terminate with error
-//    }
-//    inputFile.close();
-    if(rank==0){
-      for (count = 0; count < ARRAY_SIZE; count++){
-          std::cout << numbers->val(count) << "\n";
-      }
-    }
-}
-
 
 }
 

@@ -13,7 +13,7 @@ enum class TestCase : unsigned {
 
 
 // Initialize the part3 box
-void TestInitPotentAlongz(DatasProc3D& dp3d,Part3Mesh3D& p3m3d,LO npy,LO n);
+//void TestInitPotentAlongz(DatasProc3D& dp3d,Part3Mesh3D& p3m3d,LO npy,LO n);
 
 // input and output utilities
 template<class T>

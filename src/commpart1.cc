@@ -111,9 +111,9 @@ void Part1ParalPar3D::init(std::string test_dir)
    for(LO i=0;i<nz0;i++){
      pzcoords[i]=-1.0*cplPI+(double)i*dz;
    }
-   p1pp3d.pzp=new double[p1pp3d.lk0];
-   for(LO i=0;i<p1pp3d.lk0;i++){
-     p1pp3d.pzp[i]=double(p1pp3d.lk0+i)*p1pp3d.dz;
+   pzp=new double[lk0];
+   for(LO i=0;i<lk0;i++){
+     pzp[i]=double(lk0+i)*dz;
    }
   delete[] parpar;
   delete[] xzcoords;

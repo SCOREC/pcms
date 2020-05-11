@@ -24,18 +24,18 @@ BoundaryDescr3D::BoundaryDescr3D(
       lowdenz[i][j]=new double[nzb];
     }
   } 
-  uppotentz=new CV**[p3m3d.xboxinds[0][p1pp3d.mype_x]];
-  lowpotentz=new CV**[p3m3d.xboxinds[0][p1pp3d.mype_x]];
+  uppotentz=new double**[p3m3d.xboxinds[0][p1pp3d.mype_x]];
+  lowpotentz=new double**[p3m3d.xboxinds[0][p1pp3d.mype_x]];
   upzpart3=new double*[p3m3d.xboxinds[0][p1pp3d.mype_x]];
   lowzpart3=new double*[p3m3d.xboxinds[0][p1pp3d.mype_x]];
   for(LO i=0;i<p3m3d.xboxinds[0][p1pp3d.mype_x];i++){
-    uppotentz[i]=new CV*[p3m3d.lj0];
-    lowpotentz[i]=new CV*[p3m3d.lj0]; 
+    uppotentz[i]=new double*[p3m3d.lj0];
+    lowpotentz[i]=new double*[p3m3d.lj0]; 
     upzpart3[i]=new double[nzb];
     lowzpart3[i]=new double[nzb];
     for(LO j=0;j<dp3d.part3lj0;j++){
-      uppotentz[i][j]=new CV[nzb];
-      lowpotentz[i][j]=new CV[nzb];
+      uppotentz[i][j]=new double[nzb];
+      lowpotentz[i][j]=new double[nzb];
     }
   }
 }
@@ -49,7 +49,7 @@ void BoundaryDescr3D::zPotentBoundaryBufAssign(
     std::cout<<"ERROR:the boundary buffer of the potential must be allocated beforing invoking this routine.";
     std::exit(EXIT_FAILURE);
   }
-  LO li0,lj0,lk0;
+  LO li0,lj0,lk0,nzb;
   li0=p3m3d.xboxinds[0][p1pp3d.mype_x];
   lj0=p3m3d.lj0;
   if(p1pp3d.npz>1){
@@ -61,11 +61,10 @@ void BoundaryDescr3D::zPotentBoundaryBufAssign(
        } 
       if(p1pp3d.periods[2]==1){ 
         mpisendrecv_aux1D(p1pp3d.comm_z,nzb,li0,lj0,lk0,lowzpart3[i],upzpart3[i],
-          p3m3d.pzcoords[i]); //double
-        if(p1pp3d.comm_z==0) 
+          p3m3d.pzcoords[i]); //double 
         for(LO j=0;j<lj0;j++){
           mpisendrecv_aux1D(p1pp3d.comm_z,nzb,li0,lj0,lk0,lowpotentz[i][j],uppotentz[i][j],
-              dp3d.potentout[i][j]); //complex
+              dp3d.potentin[i][j]); //complex
         }
       } else {
          std::cout<<"The topology is not right for the parallel domain."<<'\n';

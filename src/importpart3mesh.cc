@@ -188,7 +188,7 @@ void Part3Mesh3D::DistributePoints(double* exterarr,LO gstart,LO li, double* int
     }
     bool inside = true;
     while(inside){
-      if(i2>=p3m3d.versurf[li]-1){
+      if(i2>=versurf[li]-1){
         break;
       }
       if(exterarr[i2+1]<internal_ub){

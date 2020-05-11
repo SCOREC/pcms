@@ -114,7 +114,7 @@ void DatasProc3D::ExecuteCmplxToReal(const Part1ParalPar3D& p1pp3d)
     } 
  }
 
-void DatasProc3D::ExecuteRealToCmplx(const Part1ParalPar3D&)
+void DatasProc3D::ExecuteRealToCmplx(const Part1ParalPar3D& p1pp3d)
 {
    if(p1pp3d.npy!=1){
      // Here is not finished for yparal=true
@@ -127,10 +127,10 @@ void DatasProc3D::ExecuteRealToCmplx(const Part1ParalPar3D&)
 void DatasProc3D::InitFourierPlan3D(const Part1ParalPar3D& p1pp3d, const Part3Mesh3D &p3m3d)
 { 
   if(p1pp3d.npy==1){
-    dp3d.plan_backward=fftw_plan_dft_c2r_1d(p1pp3d.lj0*2,
-                       reinterpret_cast<fftw_complex*>(dp3d.densintmp),dp3d.densouttmp,FFTW_ESTIMATE); 
-    dp3d.plan_forward=fftw_plan_dft_r2c_1d(p3m3d.lj0,dp3d.potentintmp,
-                      reinterpret_cast<fftw_complex*>(dp3d.potentouttmp),FFTW_ESTIMATE);
+    plan_backward=fftw_plan_dft_c2r_1d(p1pp3d.lj0*2,
+                       reinterpret_cast<fftw_complex*>(densintmp),densouttmp,FFTW_ESTIMATE); 
+    plan_forward=fftw_plan_dft_r2c_1d(p3m3d.lj0,potentintmp,
+                      reinterpret_cast<fftw_complex*>(potentouttmp),FFTW_ESTIMATE);
   }
 }
 

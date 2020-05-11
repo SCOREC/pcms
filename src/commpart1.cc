@@ -130,15 +130,14 @@ void Part1ParalPar3D::init(std::string test_dir)
 
 void Part1ParalPar3D::CreateSubCommunicators()
 {
-  npw = 4;//TODO: this should be sent in via ADIOS
    // create 3D parallel cart with z being periodic
-   //int rorder = 0;//TODO: Does 0 mean true or false
-   int dim[4]={(int)npx,(int)npy,(int)npz, (int)npw};
-   MPI_Cart_create(MPI_COMM_WORLD,4,dim,periods,false,&comm_cart);
+   int rorder = 0;
+   int dim[3]={(int)npx,(int)npy,(int)npz};
+   MPI_Cart_create(MPI_COMM_WORLD,3,dim,periods,rorder,&comm_cart);
 
-   MPI_Comm subcomuni[4];
-   for (int i=0; i<4; i++){
-     int remain[4]={0,0,0,0};
+   MPI_Comm subcomuni[3];
+   for (int i=0;i<3;i++){
+     int remain[3]={0,0,0};
      remain[i]=1;
      MPI_Cart_sub(comm_cart,remain,&subcomuni[i]);
    }
@@ -146,13 +145,11 @@ void Part1ParalPar3D::CreateSubCommunicators()
    comm_x=subcomuni[0];
    comm_y=subcomuni[1];
    comm_z=subcomuni[2];
-   comm_w=subcomuni[3];
 
    MPI_Comm_rank(MPI_COMM_WORLD,&mype);
    MPI_Comm_rank(comm_x,&mype_x);
    MPI_Comm_rank(comm_y,&mype_y);
    MPI_Comm_rank(comm_z,&mype_z);
-   MPI_Comm_rank(comm_w,&mype_w);
 }
 
 void Part1ParalPar3D::MpiFreeComm()
@@ -160,7 +157,6 @@ void Part1ParalPar3D::MpiFreeComm()
   MPI_Comm_free(&comm_x);
   MPI_Comm_free(&comm_y);
   MPI_Comm_free(&comm_z);
-  MPI_Comm_free(&comm_w);
   MPI_Comm_free(&comm_cart);
 }
 

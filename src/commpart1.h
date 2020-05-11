@@ -11,20 +11,17 @@ class Part1ParalPar3D {
     LO mype_x; // my process rank in comm_x
     LO mype_y; // my process rank in comm_y
     LO mype_z; // my process rank in comm_z
-    LO mype_w; // my process rank in comm_w
     MPI_Comm comm_x;
     MPI_Comm comm_y;
     MPI_Comm comm_z;
-    MPI_Comm comm_w;
     MPI_Comm comm_cart;
     LO  NP; // The total number of processes
-    LO npx,npy,npz, npw;
+    LO npx,npy,npz;
     LO nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
     LO ny0,nyb,lj0,lj1,lj2,lm0,lm1,lm2;
     LO nz0,nzb,lk0,lk1,lk2,ln0,ln1,ln2;
 //    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
-    //int periods[3]={0,1,1};  TODO: confirm if 1 means true or false and which axis is periodic, he said z initially
-    int periods[4]={0,0,1,0};
+    int periods[3]={0,1,1};
     double* xcoords=NULL; // The 1d array storing the radial position of all flux surfaces
     double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
     double* pzp=NULL; // The 1d array storing the poloial on each process.

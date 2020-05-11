@@ -7,4 +7,4 @@ function(mpi_test TESTNAME PROCS EXE)
     )
 endfunction(mpi_test)
 
-mpi_test(t0 16 test_init ${TEST_DATA_DIR}/testdatas/)
+mpi_test(t0 4 test_init ${TEST_DATA_DIR}/testdatas/)

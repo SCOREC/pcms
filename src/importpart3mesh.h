@@ -14,8 +14,11 @@ class Part1ParalPar3D;
 class Part3Mesh3D{
   public:
     LO  nsurf;    // number of flux surfaces
-    LO* versurf=NULL; // numbers of vertice on the flux surfaces
-    double* xcoords=NULL;
+    LO* versurf_test=NULL; //TODO: delete these
+    double* xcoords_test=NULL;
+    Array1d<int>* versurf; // numbers of vertice on the flux surfaces
+    Array1d<double>* xcoords;
+    Array1d<double>* zcoordall;
     LO  li0,li1,li2;
     LO** xboxinds=NULL;  //The indexes of all boxes on the radial dimension
     LO lj0;
@@ -33,18 +36,22 @@ class Part3Mesh3D{
      * from the user
      */
     Part3Mesh3D(Part1ParalPar3D &p1pp3d,
+	Array1d<int>* versurf_,	    
+	Array1d<double>* xcoords_,	    
+	Array1d<double>* zcoord_,	    
         bool pproc = true,
         TestCase tcase = TestCase::off,
         std::string tdir="")
-      : preproc(pproc), test_case(tcase) {
+      : versurf(versurf_), xcoords(xcoords_), zcoordall(zcoord_),
+	preproc(pproc), test_case(tcase) {
       assert(tcase < TestCase::invalid);
       init(p1pp3d,tdir);
     }
     ~Part3Mesh3D()
     {
-     if(versurf!=NULL) delete[] versurf;
+     if(versurf!=NULL) destroy(versurf);
      if(xboxinds!=NULL) delete[] xboxinds;
-     if(xcoords!=NULL) delete[] xcoords;
+     if(xcoords!=NULL) destroy(xcoords);
      if(mylk0!=NULL) delete[] mylk0;
      if(mylk1!=NULL) delete[] mylk1;
      if(mylk2!=NULL) delete[] mylk2;

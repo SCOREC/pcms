@@ -26,7 +26,7 @@ int main(int argc, char **argv){
     exParFor();
   }
 
-  int obj_count = 10; 
+  int obj_count = 11; 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::IO IO[obj_count];
   adios2::Engine eng[obj_count];
@@ -41,6 +41,7 @@ int main(int argc, char **argv){
 
   const std::string x_pproc_v = "xgc_pproc_v";
   const std::string x_pproc_x = "xgc_pproc_x";
+  const std::string x_pproc_z = "xgc_pproc_z";
   const int time_step = 1, RK_count = 4;
 
   IO[0] = adios.DeclareIO("gene_density");
@@ -53,6 +54,7 @@ int main(int argc, char **argv){
   IO[7] = adios.DeclareIO(pproc_c);
   IO[8] = adios.DeclareIO(x_pproc_v);
   IO[9] = adios.DeclareIO(x_pproc_x);
+  IO[10] = adios.DeclareIO(x_pproc_z);
 
   //receive GENE's preproc mesh discretization values
   coupler::Array1d<double>* gene_pproc_rz = coupler::receive_gene_pproc<double>(dir, IO[4], eng[4], pproc_rz);
@@ -69,10 +71,11 @@ int main(int argc, char **argv){
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<int>* xgc_pproc_v = {0};//coupler::receive_gene_pproc<int>(dir, IO[8], eng[8], x_pproc_v);
   coupler::Array1d<double>* xgc_pproc_x = {0};//coupler::receive_gene_pproc<double>(dir, IO[9], eng[9], x_pproc_x);
+  coupler::Array1d<double>* xgc_pproc_z = {0};//coupler::receive_gene_pproc<double>(dir, IO[10], eng[10], x_pproc_z);
 
   if(!rank) std::cerr << rank << " 0.2\n"; 
-  //coupler::Part3Mesh3D p3m3d(p1pp3d,xgc_pproc_v,xgc_pproc_x, preproc);
-  coupler::Part3Mesh3D p3m3d(p1pp3d);
+  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_pproc_v, xgc_pproc_x, xgc_pproc_z, preproc);
+  //coupler::Part3Mesh3D p3m3d(p1pp3d);
   if(!rank) std::cerr << rank << " 0.3\n"; 
   coupler::DatasProc3D dp3d(p1pp3d,p3m3d, preproc, ypar);
   if(!rank) std::cerr << rank << " 0.4\n"; 

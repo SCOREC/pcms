@@ -30,8 +30,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        InputfromFile(xcoords,numsurf,fname);
      }else {
 //     receive_field1D_serial(versurf, "../coupling", "vertice_over_surf",numsurf);
-//     receive_field1D_serial(xcoords,"../c
-//     upling", "xcoords_midplane",numsurf);
+//     receive_field1D_serial(xcoords,"../coupling", "xcoords_midplane",numsurf);
      }
    }
      MPI_Bcast(versurf,numsurf,MPI_INT,root,MPI_COMM_WORLD);

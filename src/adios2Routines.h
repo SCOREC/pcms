@@ -143,7 +143,7 @@ namespace coupler {
           {"OpenTimeoutSecs", "480"}
           });
       eng = read_io.Open(fname, adios2::Mode::Read);
-      std::cerr << rank << ": " << name << " engine created\n";
+      if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     }
     else{
       std::cerr << rank << ": receive engine already exists \n";
@@ -155,7 +155,7 @@ namespace coupler {
     const auto total_size = adios_var.Shape()[0];
     const auto my_start = (total_size / nprocs) * rank;
     const auto my_count = (total_size / nprocs);
-    std::cout << " Reader of rank " << rank << " reading " << my_count
+    if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
     const adios2::Dims start{my_start};
@@ -192,7 +192,7 @@ namespace coupler {
           {"OpenTimeoutSecs", "480"}
           });
       eng = read_io.Open(fname, adios2::Mode::Read);
-      std::cerr << rank << ": " << name << " engine created\n";
+      if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     }
     else{
       std::cerr << rank << ": receive engine already exists \n";
@@ -259,8 +259,7 @@ namespace coupler {
    */
   template<typename T>
   Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      adios2::IO &io, adios2::Engine &engine) {
-    const std::string name = "gene_pproc";
+      adios2::IO &io, adios2::Engine &engine, const std::string name) {
     return receive1d_from_ftn<T>(cce_folder,name, io, engine);
   }
   

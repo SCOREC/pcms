@@ -39,6 +39,7 @@ class Part1ParalPar3D {
       : preproc(pproc), test_case(tcase),
 	    parpar(parpar_),xzcoords(xzcoords_) {
       init(tdir);
+      if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
     ~Part1ParalPar3D()
     {

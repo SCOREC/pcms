@@ -46,6 +46,9 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 //read the paralllization parameters
 void Part1ParalPar3D::init(std::string test_dir)
 {
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+
  if(preproc==true){ 
    if(test_case==TestCase::t0){
      initTest0(test_dir);
@@ -79,6 +82,7 @@ void Part1ParalPar3D::init(std::string test_dir)
      ln0=parpar->val(24);
      ln1=parpar->val(25);
      ln2=parpar->val(26);
+if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);  
   
      NP=npx*npy*npz;  
      CreateSubCommunicators();
@@ -123,8 +127,8 @@ void Part1ParalPar3D::init(std::string test_dir)
       }
    }
    
-  delete[] parpar;
-  delete[] xzcoords;
+  destroy(parpar);
+  destroy(xzcoords);
  }
 }
 

@@ -68,24 +68,23 @@ int main(int argc, char **argv){
   if(!rank) std::cerr << rank << " 0.1\n"; 
   coupler::Part1ParalPar3D p1pp3d(gene_pproc_i,gene_pproc_rx,preproc);
 
+  if(!rank) std::cerr << rank << " 0.2\n"; 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<int>* xgc_pproc_v = {0};//coupler::receive_gene_pproc<int>(dir, IO[8], eng[8], x_pproc_v);
   coupler::Array1d<double>* xgc_pproc_x = {0};//coupler::receive_gene_pproc<double>(dir, IO[9], eng[9], x_pproc_x);
   coupler::Array1d<double>* xgc_pproc_z = {0};//coupler::receive_gene_pproc<double>(dir, IO[10], eng[10], x_pproc_z);
 
-  if(!rank) std::cerr << rank << " 0.2\n"; 
-  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_pproc_v, xgc_pproc_x, xgc_pproc_z, preproc);
-  //coupler::Part3Mesh3D p3m3d(p1pp3d);
   if(!rank) std::cerr << rank << " 0.3\n"; 
-  coupler::DatasProc3D dp3d(p1pp3d,p3m3d, preproc, ypar);
-  if(!rank) std::cerr << rank << " 0.4\n"; 
-  coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d);
-  if(!rank) std::cerr << rank << " 0.5\n"; 
+  //coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_pproc_v, xgc_pproc_x, xgc_pproc_z, preproc);
+  //coupler::Part3Mesh3D p3m3d(p1pp3d);
+  //coupler::DatasProc3D dp3d(p1pp3d,p3m3d, preproc, ypar);
+  //coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d);
 
+  if(!rank) std::cerr << rank << " 0.4\n"; 
   coupler::destroy(gene_pproc_rz);
-  coupler::destroy(gene_pproc_rx);
-  coupler::destroy(gene_pproc_i);
-  coupler::destroy(gene_pproc_c);
+  //coupler::destroy(gene_pproc_rx);
+  //coupler::destroy(gene_pproc_i);
+  //coupler::destroy(gene_pproc_c);
 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {

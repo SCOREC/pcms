@@ -87,11 +87,13 @@ if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);
      NP=npx*npy*npz;  
      CreateSubCommunicators();
    }
+   if(!rank) fprintf(stderr,"0.11 \n");
 
    // initialize the radial locations of the flux surface and poloidal angles
    pzcoords=new double[nz0];
    xcoords=new double[nx0];
 
+   if(!rank) fprintf(stderr,"0.12 \n");
    // If running the test case, take this route
    if(test_case==TestCase::t0){
       double* xzcoord; // this lie may be deleted
@@ -113,6 +115,7 @@ if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);
       }
    // if running the GENE_cuth test, take this route
    }else{
+   if(!rank) fprintf(stderr,"0.13\n");
       for(LO i=0;i<nx0;i++){
         xcoords[i]=xzcoords->val(i);
       }
@@ -122,13 +125,17 @@ if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);
         dz=xzcoords->val(nx0-1);
       }
                                                 
+   if(!rank) fprintf(stderr,"0.14\n");
       for(LO i=0;i<nz0;i++){
         pzcoords[i]=-1.0*cplPI+(double)i*dz;
       }
    }
    
+   if(!rank) fprintf(stderr,"0.15\n");
   destroy(parpar);
+   if(!rank) fprintf(stderr,"0.16\n");
   destroy(xzcoords);
+   if(!rank) fprintf(stderr,"0.17\n");
  }
 }
 

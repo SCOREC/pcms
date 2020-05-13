@@ -26,7 +26,7 @@ int main(int argc, char **argv){
     exParFor();
   }
 
-  int obj_count = 11; 
+  const int obj_count = 11; 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::IO IO[obj_count];
   adios2::Engine eng[obj_count];
@@ -93,8 +93,8 @@ int main(int argc, char **argv){
       coupler::send_density(dir, density, IO[1], eng[1], send_var[0]);
       coupler::destroy(density);
 
-      coupler::Array2d<double>* field = coupler::receive_field(dir, IO[4], eng[4]);
-      coupler::send_field(dir, field, IO[5], eng[5], send_var[1]);
+      coupler::Array2d<double>* field = coupler::receive_field(dir, IO[2], eng[2]);
+      coupler::send_field(dir, field, IO[3], eng[3], send_var[1]);
       coupler::destroy(field);
     }
   }

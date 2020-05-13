@@ -82,9 +82,9 @@ int main(int argc, char **argv){
 
   if(!rank) std::cerr << rank << " 0.4\n"; 
   coupler::destroy(gene_pproc_rz);
-  //coupler::destroy(gene_pproc_rx);
-  //coupler::destroy(gene_pproc_i);
-  //coupler::destroy(gene_pproc_c);
+  coupler::destroy(gene_pproc_rx);
+  coupler::destroy(gene_pproc_i);
+  coupler::destroy(gene_pproc_c);
 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {

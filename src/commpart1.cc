@@ -131,11 +131,6 @@ if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);
       }
    }
    
-   if(!rank) fprintf(stderr,"0.15\n");
-  destroy(parpar);
-   if(!rank) fprintf(stderr,"0.16\n");
-  destroy(xzcoords);
-   if(!rank) fprintf(stderr,"0.17\n");
  }
 }
 

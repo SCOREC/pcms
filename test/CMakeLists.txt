@@ -8,7 +8,7 @@ add_executable(cpl cpl.cc)
 target_link_libraries(cpl coupler)
 
 set(drivers passthrough test_init cpl)
-install(TARGETS ${drivers} DESTINATION ${CMAKE_BINARY_DIR}/bin)
+install(TARGETS ${drivers})
 
 if(BUILD_TESTING)
   include(testing.cmake)

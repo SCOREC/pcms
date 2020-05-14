@@ -13,64 +13,49 @@ namespace coupler {
 
 void DatasProc3D::CmplxdataToRealdata3D(const Part1ParalPar3D& p1pp3d)
 {
-  if(densin==NULL){
-    std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densin must be allocated"<<'\n';
+  if(densintmp==NULL){
+    std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densintmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
   }
-  if(densout==NULL){
-    std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densout must be allocated"<<'\n';
+  if(densouttmp==NULL){
+    std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densouttmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
   }
-  GO num;
   if(yparal==false){
     for(LO i=0; i<p1pp3d.li0;i++){
-      for(LO j=0;j<p1pp3d.lj0;j++){
-	for(LO k=0;k<p1pp3d.lk0;k++){
-	  num=(GO)(i*p1pp3d.lj0*p1pp3d.lk0+j*p1pp3d.lk0+k+1);
-	  densintmp[num]=densin[i][j][k];
+      for(LO k=0;k<p1pp3d.lk0;k++){
+	for(LO j=0;j<p1pp3d.lj0;j++){
+          densintmp[j]=densin[i][j][k];
 	}      
-      }
-      ExecuteCmplxToReal(p1pp3d);
-      for(LO i=0;i<p1pp3d.li0;i++){
-	for(LO j=0;j<part1lj0;j++){ 
-	   for(LO k=0;k<p1pp3d.lk0;k++){ 
-	     num=(GO)(i*part1lj0*p1pp3d.lk0+j*p1pp3d.lk0+k+1);
-	     densout[i][j][k]=densouttmp[num];          
-	   }
+        ExecuteCmplxToReal(p1pp3d);
+        for(LO l=0;l<part1lj0*2;l++){ 
+          densout[i][l][k]=densouttmp[l];          
 	}
-  //    delete[] denstin;
-  //    denstin=NULL; 
-     }
-   }
- }
+      }
+    }
+  }
 }
 
 void DatasProc3D::RealdataToCmplxdata3D(const Part1ParalPar3D& p1pp3d, const Part3Mesh3D& p3m3d)
 {
-  if(potentin==NULL){
-    std::cout<<"ERROR: before invoking CmplxdataToRealdata3, DatasProc3D.potentin must be allocated"<<'\n';
+  if(potentintmp==NULL){
+    std::cout<<"ERROR: before invoking CmplxdataToRealdata3, DatasProc3D.potentintmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
   }
-  if(potentout==NULL){
-    std::cout<<"ERROR: before invoking CmplxdataToRealdata3,DatasProc3D.potentout must be allocated"<<'\n';
+  if(potentouttmp==NULL){
+    std::cout<<"ERROR: before invoking CmplxdataToRealdata3,DatasProc3D.potentouttmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
   }
-  GO sum=0;
   if(yparal==false){
     for(LO i=0;i<p3m3d.li0;i++){
-      for(LO k=0;k<p3m3d.mylk0[i];k++){
-	sum+=1;
-	for(LO j=0;j<p3m3d.lj0;j++)
-	  potentintmp[sum*p3m3d.lj0+j+1]=potentin[i][j][k];  
-      }
-    }
-    ExecuteRealToCmplx(p1pp3d);
-    sum=0;
-    for(LO i=0;i<p3m3d.li0;i++){
-      for(LO k=0;k<p3m3d.mylk0[i];k++){
-	sum+=1;
-	for(LO j=0;j<part3lj0;j++)
-	  potentout[i][j][k]=potentouttmp[sum*part1lj0+j+1];      
+      for(LO k=0;k<p1pp3d.lk0;k++){
+	for(LO j=0;j<p3m3d.lj0;j++){
+	  potentintmp[j]=potentinterpo[i][j][k];  
+        }
+        ExecuteRealToCmplx(p1pp3d);
+        for(LO l=0;l<p3m3d.lj0/2;l++){
+          potentpart1[i][l][k]=potentouttmp[l];      
+        }
       }
     }
   }
@@ -140,6 +125,16 @@ void DatasProc3D::FreeFourierPlan3D()
     fftw_destroy_plan(plan_forward);
   if(plan_backward)
     fftw_destroy_plan(plan_backward);  
+// This commeted part may be implememted to releaste the memory during the process.
+//  delete[] dp3d.densintmp;
+/*  dp3d.densintmp=NULL;
+  delete[] dp3d.densouttmp;
+  dp3d.densintmp=NULL;
+  delete[] dp3d.potentintmp;
+  dp3d.potentintmp=NULL;
+  delete[] dp3d.potentouttmp;
+  dp3d.potentouttmp=NULL;
+*/
 }
 
 }  

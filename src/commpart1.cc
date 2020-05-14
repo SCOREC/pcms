@@ -113,7 +113,7 @@ void Part1ParalPar3D::init(std::string test_dir)
    }
    pzp=new double[lk0];
    for(LO i=0;i<lk0;i++){
-     pzp[i]=double(lk0+i)*dz;
+     pzp[i]=double(lk1+i)*dz-1.0*cplPI;
    }
   delete[] parpar;
   delete[] xzcoords;
@@ -143,7 +143,6 @@ void Part1ParalPar3D::CreateSubCommunicators()
    MPI_Comm_rank(comm_x,&mype_x);
    MPI_Comm_rank(comm_y,&mype_y);
    MPI_Comm_rank(comm_z,&mype_z);
-
 }
 
 void Part1ParalPar3D::MpiFreeComm()

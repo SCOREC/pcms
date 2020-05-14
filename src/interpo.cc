@@ -22,21 +22,24 @@ T Lag3dInterpo1D(const T yin[4],const double xin[4],const double x)
 
 //central 3rd order Lagrange polynormal interpolation
 template<class T>
-void Lag3dArray(T* yin,double* xin,LO nin,T* yout,double* xout,LO nout){
+void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double* xout,const LO nout){
   LO jstart=2;
   LO j1=jstart;
   LO j2,j0,jm;
   double x;
   T func[4];
   double coords[4];
-  for(LO j=0;j<nout;j++){
+//std::cout<<xout[0]<<" "<<xin[1]<<" "<<xin[nin-2]<<'\n'; 
+ for(LO j=0;j<nout;j++){
     x=xout[j];
     while(x>=xin[j1] && j1<nin-2 && j1>1){
-      j1=+1;
+      j1=j1+1;
     }
     j2=j1+1;
     j0=j1-1;
     jm=j1-2;
+//std::cout<<jm<<" "<<j0<<" "<<j1<<" "<<j2<<'\n';
+
     coords[0]=xin[jm];
     coords[1]=xin[j0];
     coords[2]=xin[j1];
@@ -101,24 +104,28 @@ void InterpoDensity3D(const BoundaryDescr3D &bdesc,
 void InterpoPotential3D(const BoundaryDescr3D &bdesc,
     const Part3Mesh3D& p3m3d,
     const Part1ParalPar3D &p1pp3d,
-    const DatasProc3D& dp3d,
-    bool preproc = true)
+     DatasProc3D& dp3d,
+    const bool preproc)
+// why is true assigned to preproc?
 {
   double* yin;
   double* yout;
   double* xin;
-  double* xout;
-  xout=p1pp3d.pzp;
-  yout=new double[p1pp3d.lk0];
+//  double* xout;
+//  xout=p1pp3d.pzp;
+//  yout=new double[p1pp3d.lk0];
   LO nzb=bdesc.nzb;
+
   if(preproc==true){
     for(LO i=0;i<p3m3d.li0;i++){
       yin=new double[p3m3d.mylk0[i]+2*nzb];
       xin=new double[p3m3d.mylk0[i]+2*nzb];
+
       for(LO l=0;l<nzb;l++){  
         xin[l]=bdesc.lowzpart3[i][l];
         xin[p3m3d.mylk0[i]+nzb+l]=bdesc.upzpart3[i][l];      
       }
+
       for(LO j=0;j<p3m3d.lj0;j++){
         for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowpotentz[i][j][l];
@@ -128,15 +135,16 @@ void InterpoPotential3D(const BoundaryDescr3D &bdesc,
           xin[k+nzb]=p3m3d.pzcoords[i][k];
           yin[k+nzb]=dp3d.potentin[i][j][k];
         }
-        yout=dp3d.potentinterpo[i][j];
-        Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,yout,xout,p1pp3d.lk0);
+//        yout=dp3d.potentinterpo[i][j];
+        Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,dp3d.potentinterpo[i][j],p1pp3d.pzp,p1pp3d.lk0);
      }
+
      delete[] xin;
      delete[] yin; 
     }
   }
- delete[] yout;
- delete[] xout;
+
+// delete[] yout;
 }
 
 }

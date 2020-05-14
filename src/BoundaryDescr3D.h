@@ -2,6 +2,7 @@
 #define BOUNDARY_DESCR_3D_H
 
 #include "couplingTypes.h"
+#include "testutilities.h"
 
 namespace coupler {
 
@@ -20,10 +21,12 @@ class BoundaryDescr3D{
     double*** lowdenz=NULL;
     double*** uppotentz=NULL; //The upper  boundary buffer on z domain for interpolation and storing the complex  quantiies resulted from the forward Fourier transform of electrosttic potential.
     double*** lowpotentz=NULL;
+    TestCase test_case;
     /* constructor */
     BoundaryDescr3D(const Part3Mesh3D& p3m3d,
         const Part1ParalPar3D &p1pp3d,
-        const DatasProc3D& dp3d);
+        const DatasProc3D& dp3d,
+        TestCase tcase = TestCase::off);
     /* destructor */
     ~BoundaryDescr3D();
     //Not used

@@ -30,6 +30,7 @@ void DatasProc3D::init(const Part1ParalPar3D& p1pp3d, const Part3Mesh3D &p3m3d)
       part3lj0=p1pp3d.ny0;   // here may need rethinking.
     }
   }
+  sum=0;
   for(LO i=0;i<p3m3d.li0;i++)  sum+=p3m3d.mylk0[i];
 }
 
@@ -42,11 +43,8 @@ void DatasProc3D::AllocDensityArrays(const Part1ParalPar3D& p1pp3d, const Part3M
       for(LO j=0;j<p1pp3d.lj0;j++)
         densin[i][j]=new CV[p1pp3d.lk0];
     }
-    GO num=p1pp3d.li0*p1pp3d.lj0*p1pp3d.lk0;
-    densintmp=new CV[num];
-
-    num=p3m3d.li0*p3m3d.lj0*p1pp3d.lk0;
-    densouttmp=new double[num];
+    densintmp=new CV[p1pp3d.lj0];
+    densouttmp=new double[p1pp3d.lj0*2];
 
     densout=new double**[p1pp3d.li0];
     for(LO i=0;i<p3m3d.li0;i++){
@@ -74,19 +72,17 @@ void DatasProc3D::AllocPotentArrays(const Part1ParalPar3D& p1pp3d, const Part3Me
       for(LO j=0;j<p3m3d.lj0;j++)
         potentin[i][j]=new double[p3m3d.mylk0[i]];
     }
-    potentintmp=new double[sum*p3m3d.lj0];
-    /*  for(LO k=0;k<sum;k++){
-        potenttmp[k]=new double[p3m3d.lj0];
-        }
-        */
-    potentouttmp=new CV[sum*p3m3d.lj0/2];
-    potentout=new CV**[p3m3d.li0];
+
+    potentinterpo=new double**[p3m3d.lj0];
     for(LO i=0;i<p3m3d.li0;i++){
-      potentout[i]=new CV*[part3lj0];
+      potentinterpo[i]=new double*[p3m3d.lj0];
       for(LO j=0;j<p3m3d.lj0;j++)
-        potentout[i][j]=new CV[p3m3d.mylk0[i]];
+        potentinterpo[i][j]=new double[p1pp3d.lk0];
     }
 
+    potentintmp=new double[p3m3d.lj0];
+    potentouttmp=new CV[p3m3d.lj0/2+1];
+   
     potentpart1=new CV**[p1pp3d.li0];
     for(LO i=0;i<p1pp3d.li0;i++){
       potentpart1[i]=new CV*[p1pp3d.lj0];
@@ -106,9 +102,8 @@ DatasProc3D::~DatasProc3D()
   if(densout!=NULL) delete[] densout;
   if(denspart3!=NULL) delete[] denspart3;
   if(potentin!=NULL) delete[] potentin;
-  if(potentintmp!=NULL) delete[] potentintmp;
   if(potentouttmp!=NULL) delete[] potentouttmp;
-  if(potentout!=NULL) delete[] potentout;
+  if(potentinterpo!=NULL) delete[] potentinterpo;
   if(potentpart1!=NULL) delete[] potentpart1;       
 }
 

@@ -1,11 +1,14 @@
-add_executable(cpl cpl.cc)
-target_link_libraries(cpl coupler)
+add_executable(passthrough passthrough.cc)
+target_link_libraries(passthrough coupler)
 
 add_executable(test_init test_init.cc)
 target_link_libraries(test_init coupler)
 
-set(sources cpl test_init)
-install(TARGETS ${sources} coupler)
+add_executable(cpl cpl.cc)
+target_link_libraries(cpl coupler)
+
+set(drivers passthrough test_init cpl)
+install(TARGETS ${drivers} DESTINATION ${CMAKE_BINARY_DIR}/bin)
 
 if(BUILD_TESTING)
   include(testing.cmake)

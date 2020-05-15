@@ -7,6 +7,19 @@
 #include "testutilities.h"
 #include <string>
 
+struct adios2_handler{
+public:
+  adios2::IO IO;
+  adios2::Engine eng;
+
+  adios2_handler(adios2::ADIOS &adios, const std::string name):
+	  IO(adios.DeclareIO(name))  {}
+  ~adios2_handler(){
+	  eng.Close();
+  }
+};
+
+
 void exParFor() {
   Kokkos::parallel_for(
       4, KOKKOS_LAMBDA(const int i) {
@@ -26,41 +39,29 @@ int main(int argc, char **argv){
     exParFor();
   }
 
-  const int obj_count = 11; 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::IO IO[obj_count];
-  adios2::Engine eng[obj_count];
   adios2::Variable<double> send_var[2];
 
   const std::string dir = "../coupling";
-
-  const std::string pproc_rz = "gene_pproc_rz";
-  const std::string pproc_rx = "gene_pproc_rx";
-  const std::string pproc_i = "gene_pproc_i";
-  const std::string pproc_c = "gene_pproc_c";
-
-  const std::string x_pproc_v = "xgc_pproc_v";
-  const std::string x_pproc_x = "xgc_pproc_x";
-  const std::string x_pproc_z = "xgc_pproc_z";
   const int time_step = 1, RK_count = 4;
 
-  IO[0] = adios.DeclareIO("gene_density");
-  IO[1] = adios.DeclareIO("cpl_density");
-  IO[2] = adios.DeclareIO("xgc_field");
-  IO[3] = adios.DeclareIO("cpl_field");
-  IO[4] = adios.DeclareIO(pproc_rz);
-  IO[5] = adios.DeclareIO(pproc_rx);
-  IO[6] = adios.DeclareIO(pproc_i);
-  IO[7] = adios.DeclareIO(pproc_c);
-  IO[8] = adios.DeclareIO(x_pproc_v);
-  IO[9] = adios.DeclareIO(x_pproc_x);
-  IO[10] = adios.DeclareIO(x_pproc_z);
+  adios2_handler h0(adios,"gene_density");
+  adios2_handler h1(adios,"cpl_density");
+  adios2_handler h2(adios,"xgc_field");
+  adios2_handler h3(adios,"cpl_field");
+  adios2_handler h4(adios,"gene_pproc_rz");
+  adios2_handler h5(adios,"gene_pproc_rx");
+  adios2_handler h6(adios,"gene_pproc_i");
+  adios2_handler h7(adios,"gene_pproc_c");
+  adios2_handler h8(adios,"xgc_pproc_v");
+  adios2_handler h9(adios,"xgc_pproc_x");
+  adios2_handler h10(adios,"xgc_pproc_z");
 
   //receive GENE's preproc mesh discretization values
-  coupler::Array1d<double>* gene_pproc_rz = coupler::receive_gene_pproc<double>(dir, IO[4], eng[4], pproc_rz);
-  coupler::Array1d<double>* gene_pproc_rx = coupler::receive_gene_pproc<double>(dir, IO[5], eng[5], pproc_rx);
-  coupler::Array1d<int>* gene_pproc_i = coupler::receive_gene_pproc<int>(dir, IO[6], eng[6], pproc_i);
-  coupler::Array1d<std::complex<double>>* gene_pproc_c = coupler::receive_gene_pproc<std::complex<double>>(dir, IO[7], eng[7], pproc_c);
+  coupler::Array1d<double>* gene_pproc_rz = coupler::receive_gene_pproc<double>(dir, h4.IO, h4.eng, "gene_pproc_rz");
+  coupler::Array1d<double>* gene_pproc_rx = coupler::receive_gene_pproc<double>(dir, h5.IO, h5.eng, "gene_pproc_rx");
+  coupler::Array1d<int>* gene_pproc_i = coupler::receive_gene_pproc<int>(dir, h6.IO, h6.eng, "gene_pproc_i");
+  coupler::Array1d<std::complex<double>>* gene_pproc_c = coupler::receive_gene_pproc<std::complex<double>>(dir, h7.IO, h7.eng, "gene_pproc_c");
 
   //intialize GENE class
   const bool preproc = true;
@@ -70,9 +71,9 @@ int main(int argc, char **argv){
 
   if(!rank) std::cerr << rank << " 0.2\n"; 
   //receive XGC's preproc mesh discretization values
-  coupler::Array1d<int>* xgc_pproc_v = {0};//coupler::receive_gene_pproc<int>(dir, IO[8], eng[8], x_pproc_v);
-  coupler::Array1d<double>* xgc_pproc_x = {0};//coupler::receive_gene_pproc<double>(dir, IO[9], eng[9], x_pproc_x);
-  coupler::Array1d<double>* xgc_pproc_z = {0};//coupler::receive_gene_pproc<double>(dir, IO[10], eng[10], x_pproc_z);
+  coupler::Array1d<int>* xgc_pproc_v = {0};//coupler::receive_gene_pproc<int>(dir, h8.IO, h8.eng, "xgc_pproc_v");
+  coupler::Array1d<double>* xgc_pproc_x = {0};//coupler::receive_gene_pproc<double>(dir, h9.IO, h9.eng, "xgc_pproc_x");
+  coupler::Array1d<double>* xgc_pproc_z = {0};//coupler::receive_gene_pproc<double>(dir, h10.IO, h10.eng, "xgc_pproc_z");
 
   if(!rank) std::cerr << rank << " 0.3\n"; 
   //coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_pproc_v, xgc_pproc_x, xgc_pproc_z, preproc);
@@ -88,18 +89,17 @@ int main(int argc, char **argv){
 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
-      coupler::Array2d<double>* density = coupler::receive_density(dir, IO[0], eng[0]);
+      coupler::Array2d<double>* density = coupler::receive_density(dir, h0.IO, h0.eng);
       coupler::printSomeDensityVals(density);
-      coupler::send_density(dir, density, IO[1], eng[1], send_var[0]);
+      coupler::send_density(dir, density, h1.IO, h1.eng, send_var[0]);
       coupler::destroy(density);
 
-      coupler::Array2d<double>* field = coupler::receive_field(dir, IO[2], eng[2]);
-      coupler::send_field(dir, field, IO[3], eng[3], send_var[1]);
+      coupler::Array2d<double>* field = coupler::receive_field(dir, h2.IO, h2.eng);
+      coupler::send_field(dir, field, h3.IO, h3.eng, send_var[1]);
       coupler::destroy(field);
     }
   }
 
-  coupler::close_engines(eng, obj_count);
   Kokkos::finalize();
   MPI_Finalize();
   return 0;

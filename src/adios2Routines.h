@@ -276,9 +276,6 @@ namespace coupler {
   void send_field(const std::string cce_folder, const Array2d<double>* field,
       adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id); 
 
-  /** Close the Adios2 engine objects
-   */
-  void close_engines(adios2::Engine engine[], const int i);
 }//end namespace coupler
 
 #endif

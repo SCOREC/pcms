@@ -56,6 +56,19 @@ void mpisendrecv_aux2D(MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,
               upbuf[i][j][k]=recvbuf[i*ly*nzb+j*nzb+k];
        }
       }
+/*
+int rank;
+MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+if(rank==0){
+  for(int i=0;i<lx;i++){
+  for(int j=0;j<ly;j++){
+  for(int h=0;h<nzb;h++){
+    std::cout<<"upbuf="<<upbuf[i][j][h]<<'\n';
+  }
+  }
+  }
+}
+*/
       MPI_Cart_shift(comm,2,-1, &rank_source, &rank_dest);
       for(LO i=0;i<lx;i++){
        for(LO j=0;j<ly;j++){
@@ -63,7 +76,7 @@ void mpisendrecv_aux2D(MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,
             sendbuf[i*ly*nzb+j*nzb+k]=box[i][j][lz-nzb+k];
        }
      }
-      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,&rank_dest,102,recvbuf,lx*ly*nzb,mpitype,&rank_source,102,
+      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,rank_dest,102,recvbuf,lx*ly*nzb,mpitype,rank_source,102,
                   comm,&status);
       for(LO i=0;i<lx;i++){
        for(LO j=0;j<ly;j++){

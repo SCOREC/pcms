@@ -28,8 +28,8 @@ void DatasProc3D::CmplxdataToRealdata3D(const Part1ParalPar3D& p1pp3d)
           densintmp[j]=densin[i][j][k];
 	}      
         ExecuteCmplxToReal(p1pp3d);
-        for(LO l=0;l<part1lj0*2;l++){ 
-          densout[i][l][k]=densouttmp[l];          
+        for(LO l=0;l<p1pp3d.lj0*2;l++){ 
+          densout[i][l][k]=densouttmp[l]/double(p1pp3d.lj0*2);          
 	}
       }
     }

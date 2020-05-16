@@ -13,32 +13,36 @@ BoundaryDescr3D::BoundaryDescr3D(
     const Part3Mesh3D& p3m3d,
     const Part1ParalPar3D &p1pp3d,
     const DatasProc3D& dp3d,
-    const TestCase tcase)
+    const TestCase tcase,
+    bool pproc)
 {
-  test_case=tcase;
-  nzb=p1pp3d.nzb;
-  updenz=new double**[p1pp3d.li0];
-  lowdenz=new double**[p1pp3d.li0];
-  for(LO i=0;i<p1pp3d.li0;i++){
-    updenz[i]=new double*[dp3d.part1lj0];
-    lowdenz[i]=new double*[dp3d.part1lj0];
-    for(LO j=0;j<p3m3d.lj0;j++){
-      updenz[i][j]=new double[nzb];
-      lowdenz[i][j]=new double[nzb];
-    }
-  } 
-  uppotentz=new double**[p3m3d.xboxinds[p1pp3d.mype_x][0]];
-  lowpotentz=new double**[p3m3d.xboxinds[p1pp3d.mype_x][0]];
-  upzpart3=new double*[p3m3d.xboxinds[p1pp3d.mype_x][0]];
-  lowzpart3=new double*[p3m3d.xboxinds[p1pp3d.mype_x][0]];
-  for(LO i=0;i<p3m3d.xboxinds[p1pp3d.mype_x][0];i++){
-    uppotentz[i]=new double*[p3m3d.lj0];
-    lowpotentz[i]=new double*[p3m3d.lj0]; 
-    upzpart3[i]=new double[nzb];
-    lowzpart3[i]=new double[nzb];
-    for(LO j=0;j<p3m3d.lj0;j++){
-      uppotentz[i][j]=new double[nzb];
-      lowpotentz[i][j]=new double[nzb];
+  preproc=pproc;
+  if(preproc==true){
+    test_case=tcase;
+    nzb=p1pp3d.nzb;
+    updenz=new double**[p1pp3d.li0];
+    lowdenz=new double**[p1pp3d.li0];
+    for(LO i=0;i<p1pp3d.li0;i++){
+      updenz[i]=new double*[p3m3d.lj0];
+      lowdenz[i]=new double*[p3m3d.lj0];
+      for(LO j=0;j<p3m3d.lj0;j++){
+	updenz[i][j]=new double[nzb];
+	lowdenz[i][j]=new double[nzb];
+      }
+    } 
+    uppotentz=new double**[p3m3d.xboxinds[p1pp3d.mype_x][0]];
+    lowpotentz=new double**[p3m3d.xboxinds[p1pp3d.mype_x][0]];
+    upzpart3=new double*[p3m3d.xboxinds[p1pp3d.mype_x][0]];
+    lowzpart3=new double*[p3m3d.xboxinds[p1pp3d.mype_x][0]];
+    for(LO i=0;i<p3m3d.xboxinds[p1pp3d.mype_x][0];i++){
+      uppotentz[i]=new double*[p3m3d.lj0];
+      lowpotentz[i]=new double*[p3m3d.lj0]; 
+      upzpart3[i]=new double[nzb];
+      lowzpart3[i]=new double[nzb];
+      for(LO j=0;j<p3m3d.lj0;j++){
+	uppotentz[i][j]=new double[nzb];
+	lowpotentz[i][j]=new double[nzb];
+      }
     }
   }
 }

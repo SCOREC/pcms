@@ -52,14 +52,10 @@ void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double
   }
 }
 
-//FIXME What does this function output - none of the input
-//FIXME class member variables are modified.
-//FIXME Added optional arg for preproc - once this is in
-//FIXME a class that can be removed.
 void InterpoDensity3D(const BoundaryDescr3D &bdesc,
     const Part3Mesh3D& p3m3d, 
     const Part1ParalPar3D &p1pp3d,
-    const DatasProc3D& dp3d,
+    DatasProc3D& dp3d,
     bool preproc = true)
 {
   double* yin;
@@ -69,38 +65,72 @@ void InterpoDensity3D(const BoundaryDescr3D &bdesc,
   LO nzb=bdesc.nzb;
   xin=new double[p1pp3d.lk0+2*nzb];
   yin=new double[p1pp3d.lk0+2*nzb];  
-  for(LO l=0;l<nzb;l++){
-    xin[l]=p1pp3d.pzp[0]-double(nzb-l)*p1pp3d.dz;
-    xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzp[p1pp3d.lk0-1]+double(l+1)*p1pp3d.dz;
-  }
-  for(LO k=0;k<p1pp3d.lk0-1;k++){  
-    xin[nzb+k]=p1pp3d.pzp[k];
-  }   
   if(preproc==true){
-    for(LO i=0;i<p3m3d.li0;i++){
+    if(p1pp3d.periods[2]==1){
+      if(p1pp3d.mype_z==0){
+        for(LO l=0;l<nzb;l++){
+          xin[l]=p1pp3d.pzcoords[p1pp3d.nz0-nzb+l]-2.0*cplPI;
+          xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzcoords[p1pp3d.lk2+l+1];          
+        }
+      } else if(p1pp3d.mype_z==p1pp3d.npz-1){
+          for(LO l=0;l<nzb;l++){
+            xin[l]=p1pp3d.pzcoords[p1pp3d.lk1-nzb+l];
+            xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzcoords[l]+2.0*cplPI;
+          }        
+      }else{
+          for(LO l=0;l<nzb;l++){
+            xin[l]=p1pp3d.pzcoords[p1pp3d.lk1-nzb+l];
+            xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzcoords[p1pp3d.lk2+l+1];
+          }
+      }
+      for(LO k=0;k<p1pp3d.lk0;k++){  
+        xin[nzb+k]=p1pp3d.pzcoords[p1pp3d.lk1+k];
+      }      
+    }
+/*
+if(p1pp3d.mype==0){
+  for(int l=0;l<p1pp3d.lk0+2*nzb;l++)
+  std::cout<<"xin"<<xin[l]<<'\n';
+}
+*/
+
+/*
+if(p1pp3d.mype==0){
+  for(int i=0;i<p1pp3d.li0;i++){
+  for(int j=0;j<p1pp3d.lj0*2;j++){
+  for(int h=0;h<bdesc.nzb;h++){
+    std::cout<<"lowbuf="<<bdesc.lowdenz[i][j][h]<<'\n';
+  }
+  }
+  }
+}
+*/
+
+   for(LO i=0;i<p3m3d.li0;i++){
       for(LO j=0;j<p3m3d.lj0;j++){
-        for(LO l=0;l<nzb-1;l++){
+        for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowdenz[i][j][l];
           yin[p1pp3d.lk0+nzb+l]=bdesc.updenz[i][j][l];
         }
         for(LO k=0;k<p1pp3d.lk0;k++){  
-          yin[nzb+k]=dp3d.densout[i][j][k];
-          
+          yin[nzb+k]=dp3d.densout[i][j][k];          
         }
+/*
+if(p1pp3d.mype==0){
+  for(int l=0;l<p1pp3d.lk0+2*nzb;l++)
+  std::cout<<i<<" "<<j<<" "<<l<<" "<<yin[l]<<'\n';
+}
+*/
         xout=p3m3d.pzcoords[i];
         yout=dp3d.denspart3[i][j]; 
         Lag3dArray(yin,xin,p1pp3d.lk0+2*nzb,yout,xout,p3m3d.mylk0[i]);
       }
     }   
   }
-  delete[] xin,yin,yout,xout;
+  delete[] xin,yin;
 }
 
 
-//FIXME What does this function output - none of the input
-//FIXME class member variables are modified.
-//FIXME Added optional arg for preproc - once this is in
-//FIXME a class that can be removed.
 void InterpoPotential3D(const BoundaryDescr3D &bdesc,
     const Part3Mesh3D& p3m3d,
     const Part1ParalPar3D &p1pp3d,
@@ -115,7 +145,6 @@ void InterpoPotential3D(const BoundaryDescr3D &bdesc,
 //  xout=p1pp3d.pzp;
 //  yout=new double[p1pp3d.lk0];
   LO nzb=bdesc.nzb;
-
   if(preproc==true){
     for(LO i=0;i<p3m3d.li0;i++){
       yin=new double[p3m3d.mylk0[i]+2*nzb];
@@ -135,8 +164,8 @@ void InterpoPotential3D(const BoundaryDescr3D &bdesc,
           xin[k+nzb]=p3m3d.pzcoords[i][k];
           yin[k+nzb]=dp3d.potentin[i][j][k];
         }
-//        yout=dp3d.potentinterpo[i][j];
-        Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,dp3d.potentinterpo[i][j],p1pp3d.pzp,p1pp3d.lk0);
+        yout=dp3d.potentinterpo[i][j];
+        Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,yout,p1pp3d.pzp,p1pp3d.lk0);
      }
 
      delete[] xin;

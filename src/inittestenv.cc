@@ -1,10 +1,8 @@
-#include "commpart1.h"
-#include "importpart3mesh.h"
-#include "dataprocess.h"
+#include "inittestenv.h"
 
-namespace coupler {
+namespace coupler{
 
-void TestInitPotentAlongz(DatasProc3D& dp3d,Part3Mesh3D& p3m3d,LO npy,LO n)
+void TestInitPotentAlongz(DatasProc3D& dp3d, const Part3Mesh3D& p3m3d, const LO npy, const LO n)
 {
   if(npy==1){
     LO li0,lj0,lk0;
@@ -21,7 +19,7 @@ void TestInitPotentAlongz(DatasProc3D& dp3d,Part3Mesh3D& p3m3d,LO npy,LO n)
           ylen=double(j)*dy;
           sum=0.0;
           for(LO h=0;h<n;h++){
-            sum+=cos(double(h+1)*ylen);
+            sum+=cos(double(h+1)*ylen-cplPI);
           }
           dp3d.potentin[i][j][k]=sum;
         }
@@ -30,10 +28,6 @@ void TestInitPotentAlongz(DatasProc3D& dp3d,Part3Mesh3D& p3m3d,LO npy,LO n)
   } 
 }
 
-
-
-
-
-
-
+//void testInitFourierPlan()
+   
 }

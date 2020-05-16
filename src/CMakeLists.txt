@@ -20,6 +20,7 @@ set(HEADERS
     BoundaryDescr3D.h
     commwrapping.h
     testutilities.h
+    inittestenv.h
 )
 
 add_library(coupler ${SOURCES})

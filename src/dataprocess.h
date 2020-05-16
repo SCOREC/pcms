@@ -86,14 +86,12 @@ void TransposeComplex(CV** InMatrix, CV** OutMatrix, DatasProc3D& dp3d,
                       Part1ParalPar3D& p1pp3d);
 
 void InterpoDensity3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
-                      const Part1ParalPar3D& p1pp3d, const DatasProc3D& dp3d,
+                      const Part1ParalPar3D& p1pp3d, DatasProc3D& dp3d,
                       const bool preproc);
 
 void InterpoPotential3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
                         const Part1ParalPar3D& p1pp3d, DatasProc3D& dp3d,
                         const bool preproc);
-
-void TestInitPotentAlongz(DatasProc3D& dp3d,Part3Mesh3D& p3m3d,LO npy,LO n);
 
 } // namespace coupler
 

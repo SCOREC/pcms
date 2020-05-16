@@ -25,8 +25,11 @@ int main(int argc, char* argv[])
   coupler::TestInitPotentAlongz(dp3d,p3m3d,p1pp3d.npy,nummode);
   bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
   coupler::InterpoPotential3D(bdesc,p3m3d,p1pp3d,dp3d,preproc);
-  dp3d.InitFourierPlan3D(p1pp3d,p3m3d); 
-  dp3d.RealdataToCmplxdata3D(p1pp3d,p3m3d);
+
+  dp3d.InitFourierPlan3D(); 
+
+  dp3d.RealdataToCmplxdata3D();
+
 
   for(coupler::LO i=0;i<p1pp3d.li0;i++){
     for(coupler::LO j=0;j<p1pp3d.lj0;j++){
@@ -35,7 +38,7 @@ int main(int argc, char* argv[])
       }
     }   
   }
-  dp3d.DatasProc3D::CmplxdataToRealdata3D(p1pp3d);
+  dp3d.CmplxdataToRealdata3D();
   coupler::zDensityBoundaryBufAssign(bdesc.nzb,p1pp3d.li0,p1pp3d.lj0*2,p1pp3d.lk0,
            bdesc.lowdenz,bdesc.updenz,dp3d.densout,p1pp3d);
   coupler::InterpoDensity3D(bdesc,p3m3d,p1pp3d,dp3d,preproc); 
@@ -64,11 +67,14 @@ if(p1pp3d.mype==0){
 }
 */
 
-
 /*
+    for(coupler::LO i=0;i<p3m3d.li0;i++){
+    for(coupler::LO k=0;k<p1pp3d.lk0;k++){
     for(coupler::LO j=0;j<p3m3d.lj0;j++){
-       std::cout<<dp3d.potentpart3[1][j][10]<<" "<<dp3d.potentinterpo[1][j][6]<<'\n';
+       std::cout<<dp3d.potentinterpo[i][j][k]<<'\n';
       }
+     }
+     }
 */
 //  MpiFreeComm(p1pp3d);
  

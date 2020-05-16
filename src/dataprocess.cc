@@ -60,8 +60,8 @@ void DatasProc3D::AllocDensityArrays()
       for(LO j=0;j<p1.lj0;j++)
         densin[i][j]=new CV[p1.lk0];
     }
-    densintmp=new CV[p1pp3d.lj0];
-    densouttmp=new double[p1pp3d.lj0*2];
+    densintmp=new CV[p1.lj0];
+    densouttmp=new double[p1.lj0*2];
 
     densout=new double**[p1.li0];
     for(LO i=0;i<p3.li0;i++){

@@ -1,4 +1,3 @@
-#include "coupling.h"
 #include "dataprocess.h"
 #include "commpart1.h"
 #include "importpart3mesh.h"
@@ -113,7 +112,7 @@ void DatasProc3D::ExecuteRealToCmplx()
 
 void DatasProc3D::InitFourierPlan3D()
 { 
-  if(yparal==true){
+  if(yparal==false){
     plan_backward=fftw_plan_dft_c2r_1d(p1.lj0*2,
                        reinterpret_cast<fftw_complex*>(densintmp),densouttmp,FFTW_ESTIMATE); 
     plan_forward=fftw_plan_dft_r2c_1d(p3.lj0,potentintmp,
@@ -127,7 +126,7 @@ void DatasProc3D::FreeFourierPlan3D()
     fftw_destroy_plan(plan_forward);
   if(plan_backward)
     fftw_destroy_plan(plan_backward);  
-// This commeted part may be implememted to releaste the memory during the process.
+// This commeted part will be  implememted to releaste the memory during the process.
 //  delete[] dp3d.densintmp;
 /*  dp3d.densintmp=NULL;
   delete[] dp3d.densouttmp;

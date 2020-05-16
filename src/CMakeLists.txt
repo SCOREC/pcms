@@ -1,5 +1,5 @@
 set(SOURCES 
-  coupling.cc
+  adios2Routines.cc
   commpart1.cc
   importpart3mesh.cc
   BoundaryDescr3D.cc
@@ -11,7 +11,7 @@ set(SOURCES
 )
 
 set(HEADERS
-    coupling.h 
+    adios2Routines.h
     couplingConstants.h
     couplingTypes.h
     commpart1.h

@@ -4,7 +4,6 @@
 #include "couplingTypes.h"
 #include <fftw3.h>
 
-// FIXME indentation is wrong
 namespace coupler {
 
 // forward declare
@@ -25,8 +24,7 @@ public:
   LO part1lj0; // the count of elements on y domain on each process after
                // backward Fourier transform
   LO part3lj0; ////the count of elements on y domain on each process after
-               ///forward Fourier transform
-
+               ///forward Fourier transform  
   LO sum;
   // here, pointers must be assigned a NULL;
   CV*** densin = NULL; // input 3d density in complex number
@@ -50,48 +48,63 @@ public:
    * optional argument supports setting
    * the prepoc and yparal modes
    */
-  DatasProc3D(const Part1ParalPar3D& p1pp3d, const Part3Mesh3D& p3m3d,
-              bool pproc = true, bool ypar = false)
-    : preproc(pproc), yparal(ypar) {
-    init(p1pp3d, p3m3d);
-    AllocDensityArrays(p1pp3d, p3m3d);
-    AllocPotentArrays(p1pp3d, p3m3d);
-  }
+  DatasProc3D(const Part1ParalPar3D& p1pp3d,
+      const Part3Mesh3D &p3m3d,
+      bool pproc = true,
+      bool ypar = false);
   ~DatasProc3D();
-  // routines for Fourier transform
-  void CmplxdataToRealdata3D(const Part1ParalPar3D& p1pp3d);
-  void RealdataToCmplxdata3D(const Part1ParalPar3D& p1pp3d,
-                             const Part3Mesh3D& p3m3d);
-  void InitFourierPlan3D(const Part1ParalPar3D& p1pp3d,
-                         const Part3Mesh3D& p3m3d);
+  //routines for Fourier transform
+  void CmplxdataToRealdata3D();
+  void RealdataToCmplxdata3D();
+  void InitFourierPlan3D();
+  LO getP1li0() { return p1.li0; };
+  LO getP1ny0() { return p1.ny0; };
+  LO getP1npy() { return p1.npy; };
 
 private:
   const bool preproc;
   const bool yparal;
+
+  // this struct contains the read-only values from Part1ParalPar3D class
+  const struct P1Data {
+    P1Data(LO li, LO lj, LO lk, LO ny, LO np, LO pe_y, LO res) : 
+	    li0(li), lj0(lj), lk0(lk), 
+	  ny0(ny), npy(np), mype_y(pe_y), res_fact(res)
+	  {};
+    const LO li0;
+    const LO lj0;
+    const LO lk0;
+    const LO ny0;
+    const LO npy;
+    const LO mype_y;
+    const LO res_fact;
+  } p1;
+
+  // this struct contains the read-only values from Part3Mesh3D class
+  const struct P3Data {
+    P3Data(LO li, LO lj, LO* mylk) : li0(li), lj0(lj), mylk0(mylk) {};
+      const LO li0;
+      const LO lj0;
+      LO const* const mylk0;
+  } p3;
+
   /* helper function for destructor */
-  void
-  FreeFourierPlan3D(); // called from the destructor - does that make sense?
+  void FreeFourierPlan3D(); // called from the destructor - does that make sense?
   /* helper functions for constructor */
-  void init(const Part1ParalPar3D& p1pp3d, const Part3Mesh3D& p3m3d);
-  void AllocDensityArrays(const Part1ParalPar3D& p1pp3d,
-                          const Part3Mesh3D& p3m3d);
-  void AllocPotentArrays(const Part1ParalPar3D& p1pp3d,
-                         const Part3Mesh3D& p3m3d);
+  void init();
+  void AllocDensityArrays();
+  void AllocPotentArrays();
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
-  void ExecuteRealToCmplx(const Part1ParalPar3D& p1pp3d);
-  void ExecuteCmplxToReal(const Part1ParalPar3D& p1pp3d);
+  void ExecuteRealToCmplx();
+  void ExecuteCmplxToReal();
 };
 
-void TransposeComplex(CV** InMatrix, CV** OutMatrix, DatasProc3D& dp3d,
-                      Part1ParalPar3D& p1pp3d);
+void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
+     Part1ParalPar3D& p1pp3d);
 
-void InterpoDensity3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
-                      const Part1ParalPar3D& p1pp3d, DatasProc3D& dp3d,
-                      const bool preproc);
+void InterpoDensity3D(const BoundaryDescr3D& bdesc, DatasProc3D& dp3d);
 
-void InterpoPotential3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
-                        const Part1ParalPar3D& p1pp3d, DatasProc3D& dp3d,
-                        const bool preproc);
+void InterpoPotential3D(const BoundaryDescr3D& bdesc, DatasProc3D& dp3d);
 
 } // namespace coupler
 

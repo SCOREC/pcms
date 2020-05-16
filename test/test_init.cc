@@ -70,19 +70,8 @@ if(p1pp3d.mype==0){
        std::cout<<dp3d.potentpart3[1][j][10]<<" "<<dp3d.potentinterpo[1][j][6]<<'\n';
       }
 */
-/*
-if(p1pp3d.mype==0){ 
- for(coupler::LO i=0;i<p1pp3d.li0;i++){
-    for(coupler::LO k=0;k<p1pp3d.lk0;k++){
-      for(coupler::LO j=0;j<p1pp3d.lj0;j++){
-     //   std::cout<<"check "<<dp3d.denspart3[i][j][k]-dp3d.potentin[i][j][k]<<'\n'; 
-       std::cout<<i<<" "<<k<<" "<<dp3d.potentpart1[i][j][k]<<'\n';       
-      }
-    }
-  } 
-}
-*/
-//  coupler::FreeFourierPlan3D(dp3d); 
+//  MpiFreeComm(p1pp3d);
+ 
   MPI_Finalize(); 
   return 0;
 }

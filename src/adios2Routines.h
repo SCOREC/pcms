@@ -1,5 +1,5 @@
-#ifndef COUPLING_H_
-#define COUPLING_H_
+#ifndef ADIOS2ROUTINES_H_
+#define ADIOS2ROUTINES_H_
 
 #include <adios2.h>
 #include <iostream>

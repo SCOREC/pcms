@@ -1,7 +1,7 @@
 #ifndef TESTUTILITIES_H
 #define TESTUTILITIES_H
 
-#include "coupling.h"
+#include "adios2Routines.h"
 
 namespace coupler {
 

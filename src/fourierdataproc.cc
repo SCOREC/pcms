@@ -10,8 +10,7 @@ namespace coupler {
 // read densin and potentin routines will be written here. 
 
 // Beforing invoking this routine, the FFtw plan routine must be invoked. 
-
-void DatasProc3D::CmplxdataToRealdata3D(const Part1ParalPar3D& p1pp3d)
+void DatasProc3D::CmplxdataToRealdata3D()
 {
   if(densintmp==NULL){
     std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densintmp must be allocated"<<'\n';
@@ -22,21 +21,21 @@ void DatasProc3D::CmplxdataToRealdata3D(const Part1ParalPar3D& p1pp3d)
     std::exit(EXIT_FAILURE);
   }
   if(yparal==false){
-    for(LO i=0; i<p1pp3d.li0;i++){
-      for(LO k=0;k<p1pp3d.lk0;k++){
-	for(LO j=0;j<p1pp3d.lj0;j++){
+    for(LO i=0; i<p1.li0;i++){
+      for(LO k=0;k<p1.lk0;k++){
+	for(LO j=0;j<p1.lj0;j++){
           densintmp[j]=densin[i][j][k];
 	}      
-        ExecuteCmplxToReal(p1pp3d);
-        for(LO l=0;l<p1pp3d.lj0*2;l++){ 
-          densout[i][l][k]=densouttmp[l]/double(p1pp3d.lj0*2);          
+        ExecuteCmplxToReal();
+        for(LO l=0;l<p1.lj0*2;l++){ 
+          densout[i][l][k]=densouttmp[l]/double(p1.lj0*2);          
 	}
       }
     }
   }
 }
 
-void DatasProc3D::RealdataToCmplxdata3D(const Part1ParalPar3D& p1pp3d, const Part3Mesh3D& p3m3d)
+void DatasProc3D::RealdataToCmplxdata3D()
 {
   if(potentintmp==NULL){
     std::cout<<"ERROR: before invoking CmplxdataToRealdata3, DatasProc3D.potentintmp must be allocated"<<'\n';
@@ -47,13 +46,13 @@ void DatasProc3D::RealdataToCmplxdata3D(const Part1ParalPar3D& p1pp3d, const Par
     std::exit(EXIT_FAILURE);
   }
   if(yparal==false){
-    for(LO i=0;i<p3m3d.li0;i++){
-      for(LO k=0;k<p1pp3d.lk0;k++){
-	for(LO j=0;j<p3m3d.lj0;j++){
+    for(LO i=0;i<p3.li0;i++){
+      for(LO k=0;k<p1.lk0;k++){
+	for(LO j=0;j<p3.lj0;j++){
 	  potentintmp[j]=potentinterpo[i][j][k];  
         }
-        ExecuteRealToCmplx(p1pp3d);
-        for(LO l=0;l<p3m3d.lj0/2;l++){
+        ExecuteRealToCmplx();
+        for(LO l=0;l<p3.lj0/2;l++){
           potentpart1[i][l][k]=potentouttmp[l];      
         }
       }
@@ -67,30 +66,33 @@ void DatasProc3D::RealdataToCmplxdata3D(const Part1ParalPar3D& p1pp3d, const Par
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d)
 {
+  LO ny0 = dp3d.getP1ny0();
+  LO npy = dp3d.getP1npy();
+
   CV*** sbuf;
   CV*** rbuf;
-  sbuf=new CV**[p1pp3d.ny0];
-  rbuf=new CV**[p1pp3d.ny0];
-  for(int i=0;i<p1pp3d.ny0;i++){
+  sbuf=new CV**[ny0];
+  rbuf=new CV**[ny0];
+  for(int i=0;i<ny0;i++){
     sbuf[i]=new CV*[dp3d.part1li0];
     rbuf[i]=new CV*[dp3d.part1li0];
     for(int j=0;j<dp3d.part1li0;j++){
-      sbuf[i][j]=new CV[p1pp3d.npy];
-      rbuf[i][j]=new CV[p1pp3d.npy];
+      sbuf[i][j]=new CV[npy];
+      rbuf[i][j]=new CV[npy];
     }
   }
 }
 // It's not finished for yparal==true here.
-void DatasProc3D::ExecuteCmplxToReal(const Part1ParalPar3D& p1pp3d)
+void DatasProc3D::ExecuteCmplxToReal()
 {
    if(yparal==true){
      CV** tmp_cmplx;
-     tmp_cmplx=new CV*[p1pp3d.ny0];
+     tmp_cmplx=new CV*[p1.ny0];
      double** tmp_re; 
-     tmp_re=new double*[2*p1pp3d.ny0*p1pp3d.res_fact]; 
-     for(LO i=0;i<p1pp3d.ny0;i++)
+     tmp_re=new double*[2*p1.ny0*p1.res_fact]; 
+     for(LO i=0;i<p1.ny0;i++)
        tmp_cmplx[i]=new CV[myli0]; 
-     for(LO j=0;j<2*p1pp3d.ny0*p1pp3d.res_fact;j++)
+     for(LO j=0;j<2*p1.ny0*p1.res_fact;j++)
        tmp_re[j]=new double[myli0];
      // Here is not finished for yparal=true
 
@@ -99,9 +101,9 @@ void DatasProc3D::ExecuteCmplxToReal(const Part1ParalPar3D& p1pp3d)
     } 
  }
 
-void DatasProc3D::ExecuteRealToCmplx(const Part1ParalPar3D& p1pp3d)
+void DatasProc3D::ExecuteRealToCmplx()
 {
-   if(p1pp3d.npy!=1){
+   if(yparal==true){
      // Here is not finished for yparal=true
    } else{
      fftw_execute(plan_forward);
@@ -109,12 +111,12 @@ void DatasProc3D::ExecuteRealToCmplx(const Part1ParalPar3D& p1pp3d)
 
  } 
 
-void DatasProc3D::InitFourierPlan3D(const Part1ParalPar3D& p1pp3d, const Part3Mesh3D &p3m3d)
+void DatasProc3D::InitFourierPlan3D()
 { 
-  if(p1pp3d.npy==1){
-    plan_backward=fftw_plan_dft_c2r_1d(p1pp3d.lj0*2,
+  if(yparal==true){
+    plan_backward=fftw_plan_dft_c2r_1d(p1.lj0*2,
                        reinterpret_cast<fftw_complex*>(densintmp),densouttmp,FFTW_ESTIMATE); 
-    plan_forward=fftw_plan_dft_r2c_1d(p3m3d.lj0,potentintmp,
+    plan_forward=fftw_plan_dft_r2c_1d(p3.lj0,potentintmp,
                       reinterpret_cast<fftw_complex*>(potentouttmp),FFTW_ESTIMATE);
   }
 }

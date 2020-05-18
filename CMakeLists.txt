@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 project(wdm_coupling VERSION 0.0.1 LANGUAGES CXX)
 #adios2 adds C and Fortran depending on how it was built
-#set(cmake_build_type release)
-#set(default_build_type "Release")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 find_package(ADIOS2 2.5 REQUIRED)
 find_package(Kokkos 3.0 REQUIRED)

@@ -59,8 +59,9 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      delete[] buffer;
      if(test_case==TestCase::t0){
        if(p1pp3d.mype_x==0){
-	 for(LO k=0;k<3;k++)
-	 std::cout<<"k"<<" "<<xboxinds[1][k]<<'\n';
+	 for(LO k=0;k<3;k++){
+      	     std::cout<<"xboxinds[1]["<<k<<"]="<<xboxinds[1][k]<<'\n';
+         }
        }
      }
      lj0=p1pp3d.lj0*2; 
@@ -188,7 +189,7 @@ void Part3Mesh3D::DistributePoints(double* exterarr,LO gstart,LO li, double* int
     }
     bool inside = true;
     while(inside){
-      if(i2+1>versurf[li]){
+      if(i2>=versurf[li]-1){
         break;
       }
       if(exterarr[i2+1]<internal_ub){

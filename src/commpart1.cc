@@ -6,12 +6,6 @@ namespace coupler {
 void Part1ParalPar3D::initTest0(std::string test_dir)
 {
   assert(!test_dir.empty());
-/*
-  LO size;
-  LO rank;
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-*/
   LO* data=new LO[12];
   std::string fname=test_dir+"parpart1.nml";
   InputfromFile(data,12,fname); 
@@ -47,7 +41,7 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 void Part1ParalPar3D::init(std::string test_dir)
 {
  if(preproc==true){ 
-   LO* parpar=new LO[26];   
+   LO* parpar=new LO[27];   
    if(test_case==TestCase::t0){
      initTest0(test_dir);
    }else{
@@ -111,6 +105,10 @@ void Part1ParalPar3D::init(std::string test_dir)
    for(LO i=0;i<nz0;i++){
      pzcoords[i]=-1.0*cplPI+(double)i*dz;
    }
+   pzp=new double[lk0];
+   for(LO i=0;i<lk0;i++){
+     pzp[i]=double(lk1+i)*dz-1.0*cplPI;
+   }
   delete[] parpar;
   delete[] xzcoords;
  }
@@ -139,7 +137,6 @@ void Part1ParalPar3D::CreateSubCommunicators()
    MPI_Comm_rank(comm_x,&mype_x);
    MPI_Comm_rank(comm_y,&mype_y);
    MPI_Comm_rank(comm_z,&mype_z);
-
 }
 
 void Part1ParalPar3D::MpiFreeComm()

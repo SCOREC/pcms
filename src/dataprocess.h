@@ -2,6 +2,7 @@
 #define DATAPROCESS_H
 
 #include "couplingTypes.h"
+#include "testutilities.h"
 #include <fftw3.h>
 
 namespace coupler {
@@ -51,6 +52,7 @@ public:
   DatasProc3D(const Part1ParalPar3D& p1pp3d,
       const Part3Mesh3D &p3m3d,
       bool pproc = true,
+      TestCase test_case = TestCase::off,
       bool ypar = false);
   ~DatasProc3D();
   //routines for Fourier transform
@@ -63,6 +65,7 @@ public:
 
 private:
   const bool preproc;
+  const TestCase testcase;
   const bool yparal;
 
   // this struct contains the read-only values from Part1ParalPar3D class
@@ -94,6 +97,7 @@ private:
   void init();
   void AllocDensityArrays();
   void AllocPotentArrays();
+  void TestInitPotentAlongz(const Part3Mesh3D& p3m3d, const LO npy, const LO n);
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();

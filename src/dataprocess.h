@@ -53,7 +53,8 @@ public:
       const Part3Mesh3D &p3m3d,
       bool pproc = true,
       TestCase test_case = TestCase::off,
-      bool ypar = false);
+      bool ypar = false,
+      int nummode = 1);
   ~DatasProc3D();
   void InterpoDensity3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
                         const Part1ParalPar3D& p1pp3d);

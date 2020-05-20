@@ -55,6 +55,10 @@ public:
       TestCase test_case = TestCase::off,
       bool ypar = false);
   ~DatasProc3D();
+  void InterpoDensity3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
+                        const Part1ParalPar3D& p1pp3d);
+  void InterpoPotential3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
+                        const Part1ParalPar3D& p1pp3d);
   //routines for Fourier transform
   void CmplxdataToRealdata3D();
   void RealdataToCmplxdata3D();
@@ -106,13 +110,6 @@ private:
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d);
 
-void InterpoDensity3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
-                      const Part1ParalPar3D& p1pp3d, DatasProc3D& dp3d,
-                      const bool preproc);
-
-void InterpoPotential3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
-                        const Part1ParalPar3D& p1pp3d, DatasProc3D& dp3d,
-                        const bool preproc);
 
 } // namespace coupler
 

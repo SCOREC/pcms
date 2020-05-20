@@ -90,7 +90,7 @@ void DatasProc3D::AllocPotentArrays()
         potentin[i][j]=new double[p3.mylk0[i]];
     }
 
-    potentinterpo=new double**[p3.lj0];
+    potentinterpo=new double**[p3.li0];
     for(LO i=0;i<p3.li0;i++){
       potentinterpo[i]=new double*[p3.lj0];
       for(LO j=0;j<p3.lj0;j++)

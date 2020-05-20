@@ -41,7 +41,7 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 void Part1ParalPar3D::init(std::string test_dir)
 {
  if(preproc==true){ 
-   LO* parpar=new LO[27];   
+   LO* parpar=new LO[29];   
    if(test_case==TestCase::t0){
      initTest0(test_dir);
    }else{
@@ -75,9 +75,15 @@ void Part1ParalPar3D::init(std::string test_dir)
      ln0=parpar[24];
      ln1=parpar[25];
      ln2=parpar[26];
-    
+
+     n0_global=parpar[27];
+     ky0_ind=parpar[28];    
+
      NP=npx*npy*npz;  
      CreateSubCommunicators();
+     
+     q_prof = new double[npx];
+   //receive buffer by adious routine from GENE
    }
 
    // initialize the radial locations of the flux surface and poloidal angles

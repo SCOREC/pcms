@@ -6,6 +6,7 @@
 #include "testutilities.h"
 #include "sendrecv_impl.h"
 #include <mpi.h>
+#include <math.h>
 
 namespace coupler {
 
@@ -14,37 +15,55 @@ BoundaryDescr3D::BoundaryDescr3D(
     const Part1ParalPar3D &p1pp3d,
     const DatasProc3D& dp3d,
     const TestCase tcase,
-    bool pproc)
+    bool pproc):test_case(tcase), preproc(pproc)
 {
-  preproc=pproc;
   if(preproc==true){
-    test_case=tcase;
     nzb=p1pp3d.nzb;
-    updenz=new double**[p1pp3d.li0];
-    lowdenz=new double**[p1pp3d.li0];
+    updenz=new CV**[p1pp3d.li0];
+    lowdenz=new CV**[p1pp3d.li0];
     for(LO i=0;i<p1pp3d.li0;i++){
-      updenz[i]=new double*[p3m3d.lj0];
-      lowdenz[i]=new double*[p3m3d.lj0];
+      updenz[i]=new CV*[p1pp3d.lj0];
+      lowdenz[i]=new CV*[p1pp3d.lj0];
       for(LO j=0;j<p3m3d.lj0;j++){
-	updenz[i][j]=new double[nzb];
-	lowdenz[i][j]=new double[nzb];
+	updenz[i][j]=new CV[nzb];
+	lowdenz[i][j]=new CV[nzb];
       }
-    } 
-    uppotentz=new double**[p3m3d.xboxinds[p1pp3d.mype_x][0]];
-    lowpotentz=new double**[p3m3d.xboxinds[p1pp3d.mype_x][0]];
-    upzpart3=new double*[p3m3d.xboxinds[p1pp3d.mype_x][0]];
-    lowzpart3=new double*[p3m3d.xboxinds[p1pp3d.mype_x][0]];
+    }
+
+    if(uppbmat==NULL && lowpbmat==NULL){
+      uppbmat=new CV*[p1pp3d.li0];
+      lowpbmat=new CV*[p1pp3d.li0];
+      for(LO i=0;i<p1pp3d.li0;i++){
+        uppbmat=new CV[p1pp3d.lj0]; 
+        lowpbmat=new CV[p1pp3d.lj0];      
+      }
+    }
+    uppotentz=new CV**[p3m3d.xboxinds[p1pp3d.mype_x][0]];
+    lowpotentz=new CV**[p3m3d.xboxinds[p1pp3d.mype_x][0]];
+    upzpart3=new CV*[p3m3d.xboxinds[p1pp3d.mype_x][0]];
+    lowzpart3=new CV*[p3m3d.xboxinds[p1pp3d.mype_x][0]];
     for(LO i=0;i<p3m3d.xboxinds[p1pp3d.mype_x][0];i++){
-      uppotentz[i]=new double*[p3m3d.lj0];
-      lowpotentz[i]=new double*[p3m3d.lj0]; 
-      upzpart3[i]=new double[nzb];
-      lowzpart3[i]=new double[nzb];
+      uppotentz[i]=new CV*[p3m3d.lj0/2];
+      lowpotentz[i]=new CV*[p3m3d.lj0/2]; 
+      upzpart3[i]=new CV[nzb];
+      lowzpart3[i]=new CV[nzb];
       for(LO j=0;j<p3m3d.lj0;j++){
 	uppotentz[i][j]=new double[nzb];
 	lowpotentz[i][j]=new double[nzb];
       }
-    }
+    }    
   }
+}
+
+void BoundaryDescr3D::initpbmat()
+{
+   LO num;
+   for(LO i=0;i<p1pp3d.li0;i++){
+     num=p1pp3d.li1+i;
+     for(LO j=0;j<p1pp3d.lj0;j++)  
+       lowpbmat[i][j]=exp(CV(0.0,1.0)*2.0*cplPI*double(n0_global)*double(j+ky0_ind)*q_prof(num)*);
+       uppbmat[i][j]=exp(-CV(0.0,1.0)*2.0*cplPI*double(n0_global)*double(j+ky0_ind)*q_prof(num)*);
+   } 
 }
 
 void BoundaryDescr3D::zPotentBoundaryBufAssign(
@@ -58,7 +77,7 @@ void BoundaryDescr3D::zPotentBoundaryBufAssign(
   }
   LO li0,lj0,lk0;
   li0=p3m3d.xboxinds[p1pp3d.mype_x][0];
-  lj0=p3m3d.lj0;
+  lj0=p3m3d.lj0/2;
   if(p1pp3d.npz>1){
     if(p1pp3d.periods[2]==1){  
       for(LO i=0;i<li0;i++){
@@ -69,7 +88,8 @@ void BoundaryDescr3D::zPotentBoundaryBufAssign(
         } 
         mpisendrecv_aux1D(p1pp3d.comm_z,nzb,li0,lj0,lk0,lowzpart3[i],upzpart3[i],
           p3m3d.pzcoords[i]);   
-
+     
+       //for test debugging
        if(test_case==TestCase::t0){
          if(p1pp3d.mype_z==0){
              std::cout<<"lowzpart3="<<lowzpart3[i][0]<<" "<<lowzpart3[i][1]<<'\n';
@@ -79,13 +99,17 @@ void BoundaryDescr3D::zPotentBoundaryBufAssign(
             std::cout<<"upzpart3="<<upzpart3[i][0]<<" "<<upzpart3[i][1]<<'\n';
             std::cout<<"upzcoords="<<p3m3d.pzcoords[i][lk0-2]<<" "<<p3m3d.pzcoords[i][lk0-1]<<'\n'; 
           }
-        }
+       }
 
         for(LO j=0;j<lj0;j++){
           mpisendrecv_aux1D(p1pp3d.comm_z,nzb,li0,lj0,lk0,lowpotentz[i][j],uppotentz[i][j],
               dp3d.potentin[i][j]); 
+        //enforce the parallel boundary condition
+        if(p1pp3d.mype_z==0){
+          lowpotentz[i][j]=lowpotentz[i][j]*lowpbmat[i][j];
+        } else if(p1pp3d.mype_z=p1pp3d.npz-1){
+          uppotentz[i][j]=uppotentz[i][j]*uppbmat[i][j];
         }
-
      }
       if(p1pp3d.mype_z==0){
         for(LO h=0;h<li0;h++){
@@ -100,6 +124,7 @@ void BoundaryDescr3D::zPotentBoundaryBufAssign(
            }
          }          
        }
+       //for test debugging
        if(test_case==TestCase::t0){
          if(p1pp3d.mype_z==0){
            for(LO k=0;k<li0;k++){

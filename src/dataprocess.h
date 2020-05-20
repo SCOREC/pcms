@@ -70,7 +70,7 @@ private:
     P1Data(LO li, LO lj, LO lk, LO ny, LO np, LO pe_y, LO res) : 
 	    li0(li), lj0(lj), lk0(lk), 
 	  ny0(ny), npy(np), mype_y(pe_y), res_fact(res)
-	  {};
+          {};
     const LO li0;
     const LO lj0;
     const LO lk0;

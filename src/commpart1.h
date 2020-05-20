@@ -26,8 +26,11 @@ class Part1ParalPar3D {
     double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
     double* pzp=NULL; // The 1d array storing the poloial on each process.
     double dz;  // The equal step length along the poloidal flux curve.
- // parameters for creating the magnetic field, density and temperature ground. 
+ // parameters for creating the magnetic field, density and temperature background. 
     LO res_fact;
+    double* q_prof;  //safty factor
+    LO n0_global;
+    LO ky0_ind;
     /* constructor
      * optionally read preproc, test_case and test_dir from user
      */

@@ -33,6 +33,7 @@ class BoundaryDescr3D{
     void zPotentBoundaryBufAssign(const DatasProc3D& dp3d, 
         const Part3Mesh3D& p3m3d,
         const Part1ParalPar3D &p1pp3d);
+    void zDensityBoundaryBufAssign(double*** box, const Part1ParalPar3D& p1pp3d);
   private:
     /* prevent users from calling this */  
     BoundaryDescr3D() : test_case(TestCase::off), preproc(false) {};

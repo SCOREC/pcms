@@ -3,7 +3,6 @@
 #include "importpart3mesh.h"
 #include "commpart1.h"
 #include "BoundaryDescr3D.h"
-#include "dataprocess_impl.h"
 #include "testutilities.h"
 #include "inittestenv.h"
 #include <string>
@@ -38,8 +37,7 @@ int main(int argc, char* argv[])
     }   
   }
   dp3d.CmplxdataToRealdata3D();
-  coupler::zDensityBoundaryBufAssign(bdesc.nzb,p1pp3d.li0,p1pp3d.lj0*2,p1pp3d.lk0,
-           bdesc.lowdenz,bdesc.updenz,dp3d.densout,p1pp3d);
+  bdesc.zDensityBoundaryBufAssign(dp3d.densout,p1pp3d);
   coupler::InterpoDensity3D(bdesc,p3m3d,p1pp3d,dp3d,preproc); 
   
   if(p1pp3d.mype==2){

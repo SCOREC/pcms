@@ -178,5 +178,39 @@ BoundaryDescr3D::~BoundaryDescr3D()
   if(lowpotentz!=NULL) delete[] lowpotentz;
 }
 
+void BoundaryDescr3D::zDensityBoundaryBufAssign(double*** box,
+    const Part1ParalPar3D& p1pp3d) {
+  if (lowdenz == NULL || updenz == NULL) {
+    std::cout << "ERROR:the boundary buffer must be alloctted before "
+                 "calling this routine.";
+    std::exit(EXIT_FAILURE);
+  }
+  const LO lx = p1pp3d.li0;
+  const LO ly = p1pp3d.lj0*2;
+  const LO lz = p1pp3d.lk0;
+  if (p1pp3d.npz > 1) {
+    if (lz >= nzb) {
+      mpisendrecv_aux2D(p1pp3d.comm_z, nzb, lx, ly, lz, lowdenz, updenz, box);
+    } else {
+      std::cout << "ERROR: nzb is larger than lz. A larger lz is required.";
+      std::exit(EXIT_FAILURE);
+    }
+  } else {
+    if (p1pp3d.periods[2] == 1) {
+      for (LO i = 0; i < lx ; i++) {
+        for (LO j = 0; j < ly; j++) {
+          for (LO k = 0; k < nzb; k++) {
+            lowdenz[i][j][k] = box[i][j][lz - nzb + k];
+            updenz[i][j][k] = box[i][j][k];
+          }
+        }
+      }
+    } else {
+      std::cout << "The topology is not right." << '\n';
+      std::exit(EXIT_FAILURE);
+    }
+  }
+}
+
 }
  

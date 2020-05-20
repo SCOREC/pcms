@@ -27,7 +27,7 @@ class BoundaryDescr3D{
     BoundaryDescr3D(const Part3Mesh3D& p3m3d,
         const Part1ParalPar3D &p1pp3d,
         const DatasProc3D& dp3d,
-        TestCase tcase = TestCase::off,
+        const TestCase tcase = TestCase::off,
         const bool pproc = true);
     /* destructor */
     ~BoundaryDescr3D();
@@ -35,12 +35,13 @@ class BoundaryDescr3D{
     void zPotentBoundaryBufAssign(const DatasProc3D& dp3d, 
         const Part3Mesh3D& p3m3d,
         const Part1ParalPar3D &p1pp3d);
+    void zDensityBoundaryBufAssign(double*** box, const Part1ParalPar3D& p1pp3d);
   private:
     /* prevent users from calling this */  
-    BoundaryDescr3D() {};
-    TestCase test_case;
-    bool preproc;  
- };
+    BoundaryDescr3D() : test_case(TestCase::off), preproc(false) {};
+    const TestCase test_case;
+    const bool preproc;
+};
 
 }
 

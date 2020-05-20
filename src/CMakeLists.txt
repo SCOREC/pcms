@@ -7,7 +7,6 @@ set(SOURCES
   fourierdataproc.cc
   dataprocess.cc 
   interpo.cc
-  inittestenv.cc
 )
 
 set(HEADERS
@@ -20,7 +19,6 @@ set(HEADERS
     BoundaryDescr3D.h
     commwrapping.h
     testutilities.h
-    inittestenv.h
 )
 
 add_library(coupler ${SOURCES})

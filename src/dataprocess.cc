@@ -1,5 +1,4 @@
 #include "dataprocess.h"
-#include "dataprocess_impl.h"
 #include "importpart3mesh.h"
 #include "commpart1.h"
 
@@ -8,8 +7,11 @@ namespace coupler {
 DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
     const Part3Mesh3D &p3m3d,
     bool pproc,
-    bool ypar)
+    TestCase test_case,
+    bool ypar,
+    int nummode)
   : preproc(pproc),
+    testcase(test_case),
     yparal(ypar),
     p1(p1pp3d.li0,p1pp3d.lj0,p1pp3d.lk0,
 	 p1pp3d.ny0, p1pp3d.npy, p1pp3d.mype_y, 
@@ -19,8 +21,10 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
     init();
     AllocDensityArrays();
     AllocPotentArrays();
+    if(testcase==TestCase::t0) {
+      TestInitPotentAlongz(p3m3d, p1pp3d.npy, nummode);
+    }
 }
-
 
 void DatasProc3D::init()
 {
@@ -110,6 +114,31 @@ void DatasProc3D::AllocPotentArrays()
   }
 }
 
+void DatasProc3D::TestInitPotentAlongz(const Part3Mesh3D& p3m3d,
+    const LO npy, const LO n) {
+  if(npy==1){
+    LO li0,lj0,lk0;
+    li0=p3m3d.li0;
+    lj0=p3m3d.lj0;
+    double ylen;
+    double sum;
+    double dy=2.0*cplPI/double(lj0);
+    for(LO i=0;i<li0;i++){
+      lk0=p3m3d.mylk0[i];
+      for(LO k=0;k<lk0;k++){
+        ylen=0.0;
+        for(LO j=0;j<lj0;j++){
+          ylen=double(j)*dy;
+          sum=0.0;
+          for(LO h=0;h<n;h++){
+            sum+=cos(double(h+1)*ylen-cplPI);
+          }
+          potentin[i][j][k]=sum;
+        }
+      }
+    }
+  }
+}
 
 DatasProc3D::~DatasProc3D()
 {

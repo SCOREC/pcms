@@ -50,11 +50,9 @@ void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double
   }
 }
 
-void InterpoDensity3D(const BoundaryDescr3D &bdesc,
+void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc,
     const Part3Mesh3D& p3m3d, 
-    const Part1ParalPar3D &p1pp3d,
-    DatasProc3D& dp3d,
-    bool preproc = true)
+    const Part1ParalPar3D &p1pp3d)
 {
   double* yin;
   double* xin;
@@ -93,10 +91,10 @@ void InterpoDensity3D(const BoundaryDescr3D &bdesc,
           yin[p1pp3d.lk0+nzb+l]=bdesc.updenz[i][j][l];
         }
         for(LO k=0;k<p1pp3d.lk0;k++){  
-          yin[nzb+k]=dp3d.densout[i][j][k];          
+          yin[nzb+k]=densout[i][j][k];
         }
         xout=p3m3d.pzcoords[i];
-        yout=dp3d.denspart3[i][j]; 
+        yout=denspart3[i][j];
         Lag3dArray(yin,xin,p1pp3d.lk0+2*nzb,yout,xout,p3m3d.mylk0[i]);
       }
     }   
@@ -105,11 +103,9 @@ void InterpoDensity3D(const BoundaryDescr3D &bdesc,
 }
 
 
-void InterpoPotential3D(const BoundaryDescr3D &bdesc,
+void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc,
     const Part3Mesh3D& p3m3d,
-    const Part1ParalPar3D &p1pp3d,
-     DatasProc3D& dp3d,
-    const bool preproc)
+    const Part1ParalPar3D &p1pp3d)
 {
   double* yin;
   double* yout;
@@ -132,9 +128,9 @@ void InterpoPotential3D(const BoundaryDescr3D &bdesc,
         }
         for(LO k=0;k<p3m3d.mylk0[i];k++){
           xin[k+nzb]=p3m3d.pzcoords[i][k];
-          yin[k+nzb]=dp3d.potentin[i][j][k];
+          yin[k+nzb]=potentin[i][j][k];
         }
-        yout=dp3d.potentinterpo[i][j];
+        yout=potentinterpo[i][j];
         Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,yout,p1pp3d.pzp,p1pp3d.lk0);
      }
 

@@ -29,7 +29,7 @@ class Part3Mesh3D{
 
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
     double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
-    double** pzcoords=NULL;  // The z coordinates of all points with the 2d box.
+    double** pzcoords=NULL;  // The z coordinates of all points within the 2d box.
     /* constructor
      * optional arguments support reading
      * the test case number and directory

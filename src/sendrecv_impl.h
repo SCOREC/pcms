@@ -41,32 +41,32 @@ void mpisendrecv_aux2D(MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,
       T* recvbuf=new T[lx*ly*nzb];
       MPI_Status status;
       int rank_source,rank_dest;
-      MPI_Cart_shift(comm,2,1,&rank_source,&rank_dest);
-      for(LO i=0;i<lx-1;i++){
-       for(LO j=0;j<ly-1;j++){
-         for(LO k=0;k<nzb-1;k++)
+      MPI_Cart_shift(comm,0,1,&rank_source,&rank_dest);
+      for(LO i=0;i<lx;i++){
+       for(LO j=0;j<ly;j++){
+         for(LO k=0;k<nzb;k++)
            sendbuf[i*ly*nzb+j*nzb+k]=box[i][j][k];
        }
       }
-      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,rank_dest,100,recvbuf,lx*ly*nzb,mpitype,rank_source,101,
+      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,rank_dest,100,recvbuf,lx*ly*nzb,mpitype,rank_source,100,
                   comm,&status);
-      for(LO i=0;i<lx-1;i++){
-       for(LO j=0;j<ly-1;j++){
-         for(LO k=0;k<nzb-1;k++)
+      for(LO i=0;i<lx;i++){
+       for(LO j=0;j<ly;j++){
+         for(LO k=0;k<nzb;k++)
               upbuf[i][j][k]=recvbuf[i*ly*nzb+j*nzb+k];
        }
       }
-      MPI_Cart_shift(comm,2,-1, &rank_source, &rank_dest);
-      for(LO i=0;i<lx-1;i++){
-       for(LO j=0;j<ly-1;j++){
-         for(LO k=0;k<nzb-1;k++)
+      MPI_Cart_shift(comm,0,-1, &rank_source, &rank_dest);
+      for(LO i=0;i<lx;i++){
+       for(LO j=0;j<ly;j++){
+         for(LO k=0;k<nzb;k++)
             sendbuf[i*ly*nzb+j*nzb+k]=box[i][j][lz-nzb+k];
        }
      }
-      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,&rank_dest,102,recvbuf,lx*ly*nzb,mpitype,&rank_source,103,
+      MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,rank_dest,102,recvbuf,lx*ly*nzb,mpitype,rank_source,102,
                   comm,&status);
-      for(LO i=0;i<lx-1;i++){
-       for(LO j=0;j<ly-1;j++){
+      for(LO i=0;i<lx;i++){
+       for(LO j=0;j<ly;j++){
          for(LO k=0;k<nzb;k++)
               lowbuf[i][j][k]=recvbuf[i*ly*nzb+j*nzb+k];
        }
@@ -79,14 +79,15 @@ template<class T>
 void mpisendrecv_aux1D(MPI_Comm comm,LO nzb,LO xind,LO yind,LO zind,
      T* lowbuf,T* upbuf,T* box1d)
 {
+
       MPI_Datatype mpitype = getMpiType(T());
       MPI_Status status;
       int rank_source, rank_dest;
-      MPI_Cart_shift(comm,3,1,&rank_source,&rank_dest);
-      MPI_Sendrecv(box1d,nzb,mpitype,rank_dest,100,upbuf,nzb,mpitype,rank_source,101,
+      MPI_Cart_shift(comm,0,1,&rank_source,&rank_dest);
+      MPI_Sendrecv(box1d,nzb,mpitype,rank_dest,100,upbuf,nzb,mpitype,rank_source,100,
             comm,&status);
-      MPI_Cart_shift(comm,3,-1,&rank_source,&rank_dest);
-      MPI_Sendrecv(&box1d[zind-nzb],nzb,mpitype,rank_dest,102,lowbuf,nzb,mpitype,rank_source,103,
+      MPI_Cart_shift(comm,0,-1,&rank_source,&rank_dest);
+      MPI_Sendrecv(&box1d[zind-nzb],nzb,mpitype,rank_dest,102,lowbuf,nzb,mpitype,rank_source,102,
             comm,&status);
 }
 

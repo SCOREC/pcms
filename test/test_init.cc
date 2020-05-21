@@ -14,18 +14,41 @@ int main(int argc, char* argv[])
   const bool preproc = true;
   const bool ypar = false;
   std::string test_dir(argv[1]);
-  coupler::Array1d<int>* gene_parpar={0};
-  coupler::Array1d<double>* gene_xzcoords={0};
-  coupler::Array1d<int>* xgc_vsurf={0};
-  coupler::Array1d<double>* xgc_xcoords={0};
-  coupler::Array1d<double>* xgc_zcoords={0};
-  coupler::Part1ParalPar3D p1pp3d(gene_parpar,gene_xzcoords,true, test_case, test_dir);
-  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_vsurf, xgc_xcoords, xgc_zcoords, preproc, test_case, test_dir);
-  coupler::DatasProc3D dp3d(p1pp3d,p3m3d, preproc, ypar);
-  coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d);
-//std::cout<<"3"<<'\n'; 
-//MPI_Barrier(MPI_COMM_WORLD);
-//  MpiFreeComm(p1pp3d);
+
+  coupler::Part1ParalPar3D p1pp3d(preproc, test_case, test_dir);  
+  coupler::Part3Mesh3D p3m3d(p1pp3d, preproc, test_case, test_dir);
+  const int nummode = 1;
+  coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
+  coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d,test_case,preproc);
+  bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
+  dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);
+
+  dp3d.InitFourierPlan3D(); 
+
+  dp3d.RealdataToCmplxdata3D();
+
+
+  for(coupler::LO i=0;i<p1pp3d.li0;i++){
+    for(coupler::LO j=0;j<p1pp3d.lj0;j++){
+      for(coupler::LO k=0;k<p1pp3d.lk0;k++){
+        dp3d.densin[i][j][k]=dp3d.potentpart1[i][j][k];
+      }
+    }   
+  }
+  dp3d.CmplxdataToRealdata3D();
+  bdesc.zDensityBoundaryBufAssign(dp3d.densout,p1pp3d);
+  dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
+  
+  if(p1pp3d.mype==2){
+   for(coupler::LO i=0;i<p3m3d.li0;i++){
+     for(coupler::LO k=0;k<p3m3d.mylk0[i];k++){
+      for(coupler::LO j=0;j<p3m3d.lj0;j++){
+	 std::cout<<i<<" "<<k<<" "<<j<<" "<<dp3d.denspart3[i][j][k]-dp3d.potentin[i][j][k]<<'\n';       
+	}
+      }
+    } 
+  }
+ 
  
   MPI_Finalize(); 
   return 0;

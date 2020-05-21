@@ -2,6 +2,7 @@
 #define DATAPROCESS_H
 
 #include "couplingTypes.h"
+#include "testutilities.h"
 #include <fftw3.h>
 
 namespace coupler {
@@ -24,8 +25,7 @@ public:
   LO part1lj0; // the count of elements on y domain on each process after
                // backward Fourier transform
   LO part3lj0; ////the count of elements on y domain on each process after
-               ///forward Fourier transform
-  
+               ///forward Fourier transform  
   LO sum;
   // here, pointers must be assigned a NULL;
   CV*** densin = NULL; // input 3d density in complex number
@@ -36,11 +36,10 @@ public:
   double*** densout = NULL; // store xyz 3d real density
   double*** denspart3 = NULL; // storing the density being sent to the part3
   double*** potentin = NULL; // the input real electrostatic potential in 3d xyz
-  double* potentintmp = NULL; // temporary xy 2d potential array for forward 
+  double*** potentinterpo = NULL; // temporary xy 2d potential array for forward 
                               // fourier transform
+  double* potentintmp = NULL;
   CV* potentouttmp = NULL;
-  CV*** potentout = NULL; // 3d temporary array stroring complex
-                          // electrostatic potential
   CV*** potentpart1 = NULL; // storing the electrostatic potential being sent
                             // to the part1.
   fftw_plan plan_forward = NULL, plan_backward = NULL;
@@ -53,8 +52,14 @@ public:
   DatasProc3D(const Part1ParalPar3D& p1pp3d,
       const Part3Mesh3D &p3m3d,
       bool pproc = true,
-      bool ypar = false);
+      TestCase test_case = TestCase::off,
+      bool ypar = false,
+      int nummode = 1);
   ~DatasProc3D();
+  void InterpoDensity3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
+                        const Part1ParalPar3D& p1pp3d);
+  void InterpoPotential3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
+                        const Part1ParalPar3D& p1pp3d);
   //routines for Fourier transform
   void CmplxdataToRealdata3D();
   void RealdataToCmplxdata3D();
@@ -65,6 +70,7 @@ public:
 
 private:
   const bool preproc;
+  const TestCase testcase;
   const bool yparal;
 
   // this struct contains the read-only values from Part1ParalPar3D class
@@ -96,6 +102,7 @@ private:
   void init();
   void AllocDensityArrays();
   void AllocPotentArrays();
+  void TestInitPotentAlongz(const Part3Mesh3D& p3m3d, const LO npy, const LO n);
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
@@ -104,9 +111,6 @@ private:
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d);
 
-void InterpoDensity3D(const BoundaryDescr3D& bdesc, const DatasProc3D& dp3d);
-
-void InterpoPotential3D(const BoundaryDescr3D& bdesc, const DatasProc3D& dp3d);
 
 } // namespace coupler
 

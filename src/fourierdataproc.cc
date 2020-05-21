@@ -11,69 +11,52 @@ namespace coupler {
 // Beforing invoking this routine, the FFtw plan routine must be invoked. 
 void DatasProc3D::CmplxdataToRealdata3D()
 {
-  if(densin==NULL){
-    std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densin must be allocated"<<'\n';
+  if(densintmp==NULL){
+    std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densintmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
   }
-  if(densout==NULL){
-    std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densout must be allocated"<<'\n';
+  if(densouttmp==NULL){
+    std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densouttmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
   }
- 
-  GO num;
   if(yparal==false){
     for(LO i=0; i<p1.li0;i++){
-      for(LO j=0;j<p1.lj0;j++){
-	for(LO k=0;k<p1.lk0;k++){
-	  num=(GO)(i*p1.lj0*p1.lk0+j*p1.lk0+k+1);
-	  densintmp[num]=densin[i][j][k];
+      for(LO k=0;k<p1.lk0;k++){
+	for(LO j=0;j<p1.lj0;j++){
+          densintmp[j]=densin[i][j][k];
 	}      
-      }
-      ExecuteCmplxToReal();
-      for(LO i=0;i<p1.li0;i++){
-	for(LO j=0;j<part1lj0;j++){ 
-	   for(LO k=0;k<p1.lk0;k++){ 
-	     num=(GO)(i*part1lj0*p1.lk0+j*p1.lk0+k+1);
-	     densout[i][j][k]=densouttmp[num];          
-	   }
+        ExecuteCmplxToReal();
+        for(LO l=0;l<p1.lj0*2;l++){ 
+          densout[i][l][k]=densouttmp[l]/double(p1.lj0*2);          
 	}
-  //    delete[] denstin;
-  //    denstin=NULL; 
-     }
+      }
     }
-   }
- }
+  }
+}
 
 void DatasProc3D::RealdataToCmplxdata3D()
 {
-
-  if(potentin==NULL){
-    std::cout<<"ERROR: before invoking CmplxdataToRealdata3, DatasProc3D.potentin must be allocated"<<'\n';
+  if(potentintmp==NULL){
+    std::cout<<"ERROR: before invoking CmplxdataToRealdata3, DatasProc3D.potentintmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
   }
-  if(potentout==NULL){
-    std::cout<<"ERROR: before invoking CmplxdataToRealdata3,DatasProc3D.potentout must be allocated"<<'\n';
+  if(potentouttmp==NULL){
+    std::cout<<"ERROR: before invoking CmplxdataToRealdata3,DatasProc3D.potentouttmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
   }
-  GO sum=0;
   if(yparal==false){
     for(LO i=0;i<p3.li0;i++){
-      for(LO k=0;k<p3.mylk0[i];k++){
-	sum+=1;
-	for(LO j=0;j<p3.lj0;j++)
-	  potentintmp[sum*p3.lj0+j+1]=potentin[i][j][k];  
+      for(LO k=0;k<p1.lk0;k++){
+	for(LO j=0;j<p3.lj0;j++){
+	  potentintmp[j]=potentinterpo[i][j][k];  
+        }
+        ExecuteRealToCmplx();
+        for(LO l=0;l<p3.lj0/2;l++){
+          potentpart1[i][l][k]=potentouttmp[l];      
+        }
       }
     }
-    ExecuteRealToCmplx();
-    sum=0;
-    for(LO i=0;i<p3.li0;i++){
-      for(LO k=0;k<p3.mylk0[i];k++){
-	sum+=1;
-	for(LO j=0;j<part3lj0;j++)
-	  potentout[i][j][k]=potentouttmp[sum*part1lj0+j+1];      
-      }
-    }
-   }
+  }
 }
 
 //TODO Incomplete, Not used, put into the class it supports, I assume DatasProc3D
@@ -129,10 +112,10 @@ void DatasProc3D::ExecuteRealToCmplx()
 
 void DatasProc3D::InitFourierPlan3D()
 { 
-  if(yparal==true){
-    plan_backward=fftw_plan_dft_c2r_2d(p1.li0*p1.lk0, p1.lj0,
-                       reinterpret_cast<fftw_complex*>(densintmp),densouttmp,FFTW_BACKWARD); 
-    plan_forward=fftw_plan_dft_r2c_2d(sum, p3.lj0,potentintmp,
+  if(yparal==false){
+    plan_backward=fftw_plan_dft_c2r_1d(p1.lj0*2,
+                       reinterpret_cast<fftw_complex*>(densintmp),densouttmp,FFTW_ESTIMATE); 
+    plan_forward=fftw_plan_dft_r2c_1d(p3.lj0,potentintmp,
                       reinterpret_cast<fftw_complex*>(potentouttmp),FFTW_ESTIMATE);
   }
 }
@@ -143,6 +126,16 @@ void DatasProc3D::FreeFourierPlan3D()
     fftw_destroy_plan(plan_forward);
   if(plan_backward)
     fftw_destroy_plan(plan_backward);  
+// This commeted part will be  implememted to releaste the memory during the process.
+//  delete[] dp3d.densintmp;
+/*  dp3d.densintmp=NULL;
+  delete[] dp3d.densouttmp;
+  dp3d.densintmp=NULL;
+  delete[] dp3d.potentintmp;
+  dp3d.potentintmp=NULL;
+  delete[] dp3d.potentouttmp;
+  dp3d.potentouttmp=NULL;
+*/
 }
 
 }  

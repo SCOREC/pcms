@@ -22,7 +22,7 @@ T Lag3dInterpo1D(const T yin[4],const double xin[4],const double x)
 
 //central 3rd order Lagrange polynormal interpolation
 template<class T>
-void Lag3dArray(T* yin,double* xin,LO nin,T* yout,double* xout,LO nout){
+void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double* xout,const LO nout){
   LO jstart=2;
   LO j1=jstart;
   LO j2,j0,jm;
@@ -32,11 +32,12 @@ void Lag3dArray(T* yin,double* xin,LO nin,T* yout,double* xout,LO nout){
   for(LO j=0;j<nout;j++){
     x=xout[j];
     while(x>=xin[j1] && j1<nin-2 && j1>1){
-      j1=+1;
+      j1=j1+1;
     }
     j2=j1+1;
     j0=j1-1;
     jm=j1-2;
+
     coords[0]=xin[jm];
     coords[1]=xin[j0];
     coords[2]=xin[j1];
@@ -49,15 +50,9 @@ void Lag3dArray(T* yin,double* xin,LO nin,T* yout,double* xout,LO nout){
   }
 }
 
-//FIXME What does this function output - none of the input
-//FIXME class member variables are modified.
-//FIXME Added optional arg for preproc - once this is in
-//FIXME a class that can be removed.
-void InterpoDensity3D(const BoundaryDescr3D &bdesc,
+void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc,
     const Part3Mesh3D& p3m3d, 
-    const Part1ParalPar3D &p1pp3d,
-    const DatasProc3D& dp3d,
-    bool preproc = true)
+    const Part1ParalPar3D &p1pp3d)
 {
   double* yin;
   double* xin;
@@ -66,75 +61,84 @@ void InterpoDensity3D(const BoundaryDescr3D &bdesc,
   LO nzb=bdesc.nzb;
   xin=new double[p1pp3d.lk0+2*nzb];
   yin=new double[p1pp3d.lk0+2*nzb];  
-  for(LO l=0;l<nzb;l++){
-    xin[l]=p1pp3d.pzp[0]-double(nzb-l)*p1pp3d.dz;
-    xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzp[p1pp3d.lk0-1]+double(l+1)*p1pp3d.dz;
-  }
-  for(LO k=0;k<p1pp3d.lk0-1;k++){  
-    xin[nzb+k]=p1pp3d.pzp[k];
-  }   
   if(preproc==true){
-    for(LO i=0;i<p3m3d.li0;i++){
+    if(p1pp3d.periods[2]==1){
+      if(p1pp3d.mype_z==0){
+        for(LO l=0;l<nzb;l++){
+          xin[l]=p1pp3d.pzcoords[p1pp3d.nz0-nzb+l]-2.0*cplPI;
+          xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzcoords[p1pp3d.lk2+l+1];          
+        }
+      } else if(p1pp3d.mype_z==p1pp3d.npz-1){
+          for(LO l=0;l<nzb;l++){
+            xin[l]=p1pp3d.pzcoords[p1pp3d.lk1-nzb+l];
+            xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzcoords[l]+2.0*cplPI;
+          }        
+      }else{
+          for(LO l=0;l<nzb;l++){
+            xin[l]=p1pp3d.pzcoords[p1pp3d.lk1-nzb+l];
+            xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzcoords[p1pp3d.lk2+l+1];
+          }
+      }
+      for(LO k=0;k<p1pp3d.lk0;k++){  
+        xin[nzb+k]=p1pp3d.pzcoords[p1pp3d.lk1+k];
+      }      
+    }
+
+   for(LO i=0;i<p3m3d.li0;i++){
       for(LO j=0;j<p3m3d.lj0;j++){
-        for(LO l=0;l<nzb-1;l++){
+        for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowdenz[i][j][l];
           yin[p1pp3d.lk0+nzb+l]=bdesc.updenz[i][j][l];
         }
-        for(LO k=0;k<p1pp3d.lk0-1;k++){  
-          yin[nzb+k]=dp3d.densout[i][j][k];
-          
+        for(LO k=0;k<p1pp3d.lk0;k++){  
+          yin[nzb+k]=densout[i][j][k];
         }
         xout=p3m3d.pzcoords[i];
-        yout=dp3d.denspart3[i][j]; 
+        yout=denspart3[i][j];
         Lag3dArray(yin,xin,p1pp3d.lk0+2*nzb,yout,xout,p3m3d.mylk0[i]);
       }
     }   
   }
-  delete[] xin,yin,yout,xout;
+  delete[] xin,yin;
 }
 
 
-//FIXME What does this function output - none of the input
-//FIXME class member variables are modified.
-//FIXME Added optional arg for preproc - once this is in
-//FIXME a class that can be removed.
-void InterpoPotential3D(const BoundaryDescr3D &bdesc,
+void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc,
     const Part3Mesh3D& p3m3d,
-    const Part1ParalPar3D &p1pp3d,
-    const DatasProc3D& dp3d,
-    bool preproc = true)
+    const Part1ParalPar3D &p1pp3d)
 {
-  std::complex<double>* yin;
-  std::complex<double>* yout;
+  double* yin;
+  double* yout;
   double* xin;
-  double* xout;
-  yout=new std::complex<double>[p1pp3d.lk0];
   LO nzb=bdesc.nzb;
   if(preproc==true){
     for(LO i=0;i<p3m3d.li0;i++){
-      yin=new std::complex<double>[p3m3d.mylk0[i]+2*nzb];
+      yin=new double[p3m3d.mylk0[i]+2*nzb];
       xin=new double[p3m3d.mylk0[i]+2*nzb];
-      for(LO l=0;l<nzb-1;l++){  
+
+      for(LO l=0;l<nzb;l++){  
         xin[l]=bdesc.lowzpart3[i][l];
         xin[p3m3d.mylk0[i]+nzb+l]=bdesc.upzpart3[i][l];      
       }
+
       for(LO j=0;j<p3m3d.lj0;j++){
-        for(LO l=0;l<nzb-1;l++){
+        for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowpotentz[i][j][l];
           yin[p3m3d.mylk0[i]+nzb+l]=bdesc.uppotentz[i][j][l];
         }
-        for(LO k=0;k<p3m3d.mylk0[i]-1;k++){
-          xin[k]=p3m3d.pzcoords[i][k];
-          yin[k]=dp3d.potentin[i][j][k];
+        for(LO k=0;k<p3m3d.mylk0[i];k++){
+          xin[k+nzb]=p3m3d.pzcoords[i][k];
+          yin[k+nzb]=potentin[i][j][k];
         }
-        xout=p1pp3d.pzp;
-        yout=dp3d.potentout[i][j];
-        Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,yout,xout,p1pp3d.lk0);
+        yout=potentinterpo[i][j];
+        Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,yout,p1pp3d.pzp,p1pp3d.lk0);
      }
-     delete[] xin,yin; 
+
+     delete[] xin;
+     delete[] yin; 
     }
   }
- delete[] yout;
+
 }
 
 }

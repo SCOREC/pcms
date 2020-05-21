@@ -6,12 +6,6 @@ namespace coupler {
 void Part1ParalPar3D::initTest0(std::string test_dir)
 {
   assert(!test_dir.empty());
-/*
-  LO size;
-  LO rank;
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-*/
   LO* data=new LO[12];
   std::string fname=test_dir+"parpart1.nml";
   InputfromFile(data,12,fname); 
@@ -130,7 +124,6 @@ if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);
         pzcoords[i]=-1.0*cplPI+(double)i*dz;
       }
    }
-   
  }
 }
 

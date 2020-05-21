@@ -46,7 +46,7 @@ int main(int argc, char **argv){
     }
   }
 
-  coupler::close_engines(eng, 6);
+  //coupler::close_engines(eng, 6);
   Kokkos::finalize();
   MPI_Finalize();
   return 0;

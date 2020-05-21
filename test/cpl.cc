@@ -6,6 +6,7 @@
 #include "BoundaryDescr3D.h"
 #include "testutilities.h"
 #include <string>
+#include <fstream> 
 
 struct adios2_handler{
 public:
@@ -53,15 +54,15 @@ int main(int argc, char **argv){
   adios2_handler h5(adios,"gene_pproc_rx");
   adios2_handler h6(adios,"gene_pproc_i");
   adios2_handler h7(adios,"gene_pproc_c");
-  adios2_handler h8(adios,"xgc_pproc_v");
-  adios2_handler h9(adios,"xgc_pproc_x");
-  adios2_handler h10(adios,"xgc_pproc_z");
+  adios2_handler h8(adios,"xgc_numsurf");
+  adios2_handler h9(adios,"xgc_znum");
+  adios2_handler h10(adios,"xgc_xcoords");
+  adios2_handler h11(adios,"xgc_versurf");
 
   //receive GENE's preproc mesh discretization values
   coupler::Array1d<double>* gene_pproc_rz = coupler::receive_gene_pproc<double>(dir, h4.IO, h4.eng, "gene_pproc_rz");
   coupler::Array1d<double>* gene_pproc_rx = coupler::receive_gene_pproc<double>(dir, h5.IO, h5.eng, "gene_pproc_rx");
   coupler::Array1d<int>* gene_pproc_i = coupler::receive_gene_pproc<int>(dir, h6.IO, h6.eng, "gene_pproc_i");
-  coupler::Array1d<std::complex<double>>* gene_pproc_c = coupler::receive_gene_pproc<std::complex<double>>(dir, h7.IO, h7.eng, "gene_pproc_c");
 
   //intialize GENE class
   const bool preproc = true;
@@ -69,11 +70,20 @@ int main(int argc, char **argv){
   if(!rank) std::cerr << rank << " 0.1\n"; 
   coupler::Part1ParalPar3D p1pp3d(gene_pproc_i,gene_pproc_rx,preproc);
 
-  if(!rank) std::cerr << rank << " 0.2\n"; 
   //receive XGC's preproc mesh discretization values
-  coupler::Array1d<int>* xgc_pproc_v = {0};//coupler::receive_gene_pproc<int>(dir, h8.IO, h8.eng, "xgc_pproc_v");
-  coupler::Array1d<double>* xgc_pproc_x = {0};//coupler::receive_gene_pproc<double>(dir, h9.IO, h9.eng, "xgc_pproc_x");
-  coupler::Array1d<double>* xgc_pproc_z = {0};//coupler::receive_gene_pproc<double>(dir, h10.IO, h10.eng, "xgc_pproc_z");
+  coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, h8.IO, h8.eng, "xgc_numsurfs");
+  int num_surf = xgc_numsurf->val(0);
+  if(!rank) std::cerr << rank << " 0.2 " << num_surf <<"\n"; 
+  coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, h10.IO, h10.eng, "xgc_x_coordss");
+
+  //TODO: map the received xgc_xcoords correctly
+  //for (int i = p1pp3d.li1; i < p1pp3d.li2; i++)
+  //{
+  coupler::Array1d<double>* xgc_versurf = coupler::receive_gene_pproc<double>(dir, h11.IO, h11.eng, "xgc_versurf");
+  //}
+
+  coupler::Array1d<int>* xgc_znum = coupler::receive_gene_pproc<int>(dir, h9.IO, h9.eng, "xgc_pproc_zi");
+  coupler::Array1d<std::complex<double>>* gene_pproc_c = coupler::receive_gene_pproc<std::complex<double>>(dir, h7.IO, h7.eng, "gene_pproc_c");
 
   if(!rank) std::cerr << rank << " 0.3\n"; 
   //coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_pproc_v, xgc_pproc_x, xgc_pproc_z, preproc);

@@ -14,7 +14,6 @@ int main(int argc, char* argv[])
   const bool preproc = true;
   const bool ypar = false;
   std::string test_dir(argv[1]);
-
   coupler::Part1ParalPar3D p1pp3d(preproc, test_case, test_dir);  
   coupler::Part3Mesh3D p3m3d(p1pp3d, preproc, test_case, test_dir);
   const int nummode = 1;
@@ -49,6 +48,7 @@ int main(int argc, char* argv[])
     } 
   }
  
+
  
   MPI_Finalize(); 
   return 0;

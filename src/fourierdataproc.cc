@@ -27,7 +27,7 @@ void DatasProc3D::CmplxdataToRealdata3D()
 	}      
         ExecuteCmplxToReal();
         for(LO l=0;l<p1.lj0*2;l++){ 
-          densout[i][l][k]=densouttmp[l]/double(p1.lj0*2);          
+          denspart3[i][l][k]=densouttmp[l]/double(p1.lj0*2);          
 	}
       }
     }
@@ -48,11 +48,11 @@ void DatasProc3D::RealdataToCmplxdata3D()
     for(LO i=0;i<p3.li0;i++){
       for(LO k=0;k<p3.mylk0[i];k++){
 	for(LO j=0;j<p3.lj0;j++){
-	  potentintmp[j]=potentinterpo[i][j][k];  
+	  potentintmp[j]=potentin[i][j][k];  
         }
         ExecuteRealToCmplx();
         for(LO l=0;l<p3.lj0/2;l++){
-          potentinterpo[i][l][k]=potentouttmp[l];      
+          potentinterpo[i][l][k]=potentouttmp[l];       
         }
       }
     }

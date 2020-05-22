@@ -14,18 +14,18 @@ int main(int argc, char* argv[])
   const bool preproc = true;
   const bool ypar = false;
   std::string test_dir(argv[1]);
+//  std::string test_dir="/gpfs/u/home/MPFS/MPFSshng/barn/wdmapp_coupling_data/testdatas/";
   coupler::Part1ParalPar3D p1pp3d(preproc, test_case, test_dir);  
   coupler::Part3Mesh3D p3m3d(p1pp3d, preproc, test_case, test_dir);
   const int nummode = 1;
-  coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
+  coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);  
   coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d,test_case,preproc);
-  bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
-  dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);
-
+  bdesc.initpbmat(p1pp3d);
   dp3d.InitFourierPlan3D(); 
 
   dp3d.RealdataToCmplxdata3D();
-
+  bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
+  dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);
 
   for(coupler::LO i=0;i<p1pp3d.li0;i++){
     for(coupler::LO j=0;j<p1pp3d.lj0;j++){
@@ -34,9 +34,13 @@ int main(int argc, char* argv[])
       }
     }   
   }
+ 
+
+  bdesc.zDensityBoundaryBufAssign(dp3d.densin,p1pp3d);
+  dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d); 
   dp3d.CmplxdataToRealdata3D();
-  bdesc.zDensityBoundaryBufAssign(dp3d.densout,p1pp3d);
-  dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
+
+
   
   if(p1pp3d.mype==2){
    for(coupler::LO i=0;i<p3m3d.li0;i++){
@@ -47,9 +51,42 @@ int main(int argc, char* argv[])
       }
     } 
   }
- 
 
- 
+/*
+if(p1pp3d.mype==2){
+  for(coupler::LO i=0;i<p1pp3d.li0;i++){
+    for(coupler::LO j=0;j<p1pp3d.lj0;j++){
+      for(coupler::LO k=0;k<p1pp3d.lk0;k++){
+         std::cout<<i<<" "<<k<<" "<<j<<" "<<dp3d.potentpart1[i][j][k]<<'\n';
+      }
+    }
+  }
+}
+*/
+/*
+if(p1pp3d.mype==2){
+  for(coupler::LO i=0;i<p1pp3d.li0;i++){
+      for(coupler::LO j=0;j<p1pp3d.lj0;j++){
+     for(coupler::LO k=0;k<p3m3d.mylk0[i];k++){ 
+         std::cout<<i<<" "<<k<<" "<<j<<" "<<dp3d.potentinterpo[i][j][k]<<'\n';
+      }
+    }
+  }
+}
+*/
+/*
+if(p1pp3d.mype==1){
+  for(coupler::LO i=0;i<p1pp3d.li0;i++){
+      for(coupler::LO j=0;j<p1pp3d.lj0;j++){
+     for(coupler::LO k=0;k<p1pp3d.nzb;k++){
+         std::cout<<i<<" "<<j<<" "<<k<<" "<<bdesc.lowpotentz[i][j][k]<<" "<<bdesc.uppotentz[i][j][k]<<'\n';
+      }
+    }
+  }
+}
+*/
+
+
   MPI_Finalize(); 
   return 0;
 }

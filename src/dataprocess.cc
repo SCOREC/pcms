@@ -64,18 +64,18 @@ void DatasProc3D::AllocDensityArrays()
       for(LO j=0;j<p1.lj0;j++)
         densin[i][j]=new CV[p1.lk0];
     }
-    densintmp=new CV[p1.lj0];
-    densouttmp=new double[p1.lj0*2];
-
-    densout=new double**[p1.li0];
-    for(LO i=0;i<p3.li0;i++){
-      densout[i]=new double*[p1.lj0*2];
-      for(GO j=0;j<p3.lj0;j++){
-        densout[i][j]=new double[p1.lk0];
+    densinterpo=new CV**[p1.li0];
+    for(LO i=0;i<p1.li0;i++){
+      densinterpo[i]=new CV*[p1.lj0];
+      for(GO j=0;j<p1.lj0;j++){
+        densinterpo[i][j]=new CV[p3.mylk0[i]];
       }
     }
 
-    denspart3=new double**[p3.li0];
+   densintmp=new CV[p1.lj0];
+   densouttmp=new double[p1.lj0*2];
+
+   denspart3=new double**[p3.li0];
     for(LO i=0;i<p3.li0;i++){
       denspart3[i]=new double*[p3.lj0];
       for(LO j=0; j<p3.lj0; j++)
@@ -94,16 +94,16 @@ void DatasProc3D::AllocPotentArrays()
         potentin[i][j]=new double[p3.mylk0[i]];
     }
 
-    potentinterpo=new double**[p3.li0];
-    for(LO i=0;i<p3.li0;i++){
-      potentinterpo[i]=new double*[p3.lj0];
-      for(LO j=0;j<p3.lj0;j++)
-        potentinterpo[i][j]=new double[p1.lk0];
-    }
-
     potentintmp=new double[p3.lj0];
     potentouttmp=new CV[p3.lj0/2+1];
-   
+ 
+    potentinterpo=new CV**[p3.li0];
+    for(LO i=0;i<p3.li0;i++){
+      potentinterpo[i]=new CV*[p3.lj0/2];
+      for(LO j=0;j<p3.lj0/2;j++)
+        potentinterpo[i][j]=new CV[p3.mylk0[i]];
+    }
+  
     potentpart1=new CV**[p1.li0];
     for(LO i=0;i<p1.li0;i++){
       potentpart1[i]=new CV*[p1.lj0];
@@ -146,7 +146,7 @@ DatasProc3D::~DatasProc3D()
   if(densin!=NULL) delete[] densin;
   if(densintmp!=NULL) delete[] densintmp;
   if(densouttmp!=NULL) delete[] densouttmp;
-  if(densout!=NULL) delete[] densout;
+  if(densinterpo!=NULL) delete[] densinterpo;
   if(denspart3!=NULL) delete[] denspart3;
   if(potentin!=NULL) delete[] potentin;
   if(potentouttmp!=NULL) delete[] potentouttmp;

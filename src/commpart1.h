@@ -28,7 +28,7 @@ class Part1ParalPar3D {
     double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature background. 
     LO res_fact;
-    double* q_prof;  //safty factor
+    double* q_prof=NULL;  //safty factor
     LO n0_global;
     LO ky0_ind;
     /* constructor
@@ -45,6 +45,7 @@ class Part1ParalPar3D {
       if(xcoords!=NULL)  delete[] xcoords;
       if(pzcoords!=NULL) delete[] pzcoords;
       if(pzp!=NULL)      delete[] pzp;
+      if(q_prof!=NULL)   delete[] q_prof;
     }
     
   private:

@@ -35,6 +35,14 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
   lk2=lk1+lk0-1;
   
   delete[] data;
+
+  n0_global=8.0;
+  ky0_ind=0;
+ 
+  q_prof=new double[nx0]; 
+  fname=test_dir+"q_prof.nml";
+  InputfromFile(q_prof,nx0,fname);
+  
 }
 
 //read the paralllization parameters

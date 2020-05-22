@@ -47,35 +47,35 @@ void Part1ParalPar3D::init(std::string test_dir)
    if(test_case==TestCase::t0){
      initTest0(test_dir);
    }else{
-     npx=parpar->val(0);
-     nx0=parpar->val(1);
-     nxb=parpar->val(2);
-     li0=parpar->val(3);
-     li1=parpar->val(4);
-     li2=parpar->val(5);
-     lg0=parpar->val(6);
-     lg1=parpar->val(7);
-     lg2=parpar->val(8);
+     npx=parpar[0];
+     nx0=parpar[1];
+     nxb=parpar[2];
+     li0=parpar[3];
+     li1=parpar[4];
+     li2=parpar[5];
+     lg0=parpar[6];
+     lg1=parpar[7];
+     lg2=parpar[8];
    
-     npy=parpar->val(9);
-     ny0=parpar->val(10);
-     nyb=parpar->val(11);
-     lj0=parpar->val(12);
-     lj1=parpar->val(13);
-     lj2=parpar->val(14);
-     lm0=parpar->val(15);
-     lm1=parpar->val(16);
-     lm2=parpar->val(17);
+     npy=parpar[9];
+     ny0=parpar[10];
+     nyb=parpar[11];
+     lj0=parpar[12];
+     lj1=parpar[13];
+     lj2=parpar[14];
+     lm0=parpar[15];
+     lm1=parpar[16];
+     lm2=parpar[17];
    
-     npz=parpar->val(18);
-     nz0=parpar->val(19);
-     nzb=parpar->val(20);
-     lk0=parpar->val(21);
-     lk1=parpar->val(22);
-     lk2=parpar->val(23);
-     ln0=parpar->val(24);
-     ln1=parpar->val(25);
-     ln2=parpar->val(26);
+     npz=parpar[18];
+     nz0=parpar[19];
+     nzb=parpar[20];
+     lk0=parpar[21];
+     lk1=parpar[22];
+     lk2=parpar[23];
+     ln0=parpar[24];
+     ln1=parpar[25];
+     ln2=parpar[26];
 if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);  
   
      NP=npx*npy*npz;  
@@ -87,43 +87,33 @@ if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);
    pzcoords=new double[nz0];
    xcoords=new double[nx0];
 
-   if(!rank) fprintf(stderr,"0.12 \n");
-   // If running the test case, take this route
    if(test_case==TestCase::t0){
-      double* xzcoord; // this lie may be deleted
-      xzcoord=new double[nx0];
+      xzcoords=new double[nx0];
       assert(!test_dir.empty());
       std::string fname=test_dir+"xcoords.nml";
-      InputfromFile(xzcoord,nx0,fname);
-      for(LO i=0;i<nx0;i++){
-        xcoords[i]=xzcoord[i];
-      }
-      if(test_case==TestCase::t0){
-        dz=2.0*cplPI/nz0;
-      }else{
-        dz=xzcoord[nx0-1]; 
-      }
-                                             
-      for(LO i=0;i<nz0;i++){
-        pzcoords[i]=-1.0*cplPI+(double)i*dz;
-      }
-   // if running the GENE_cuth test, take this route
+      InputfromFile(xzcoords,nx0,fname);
    }else{
-   if(!rank) fprintf(stderr,"0.13\n");
-      for(LO i=0;i<nx0;i++){
-        xcoords[i]=xzcoords->val(i);
-      }
-      if(test_case==TestCase::t0){
-        dz=2.0*cplPI/nz0;
-      }else{
-        dz=xzcoords->val(nx0-1);
-      }
-                                                
-   if(!rank) fprintf(stderr,"0.14\n");
-      for(LO i=0;i<nz0;i++){
-        pzcoords[i]=-1.0*cplPI+(double)i*dz;
-      }
+        assert(xzcoords);
    }
+
+   for(LO i=0;i<nx0;i++){
+     xcoords[i]=xzcoords[i];
+   }
+   if(test_case==TestCase::t0){
+     dz=2.0*cplPI/nz0;
+   }else{
+     dz=xzcoords[nx0-1];
+   }
+
+   for(LO i=0;i<nz0;i++){
+     pzcoords[i]=-1.0*cplPI+(double)i*dz;
+   }
+   pzp=new double[lk0];
+   for(LO i=0;i<lk0;i++){
+     pzp[i]=double(lk1+i)*dz-1.0*cplPI;
+   }
+  delete[] parpar;
+  delete[] xzcoords;
  }
 }
 

@@ -4,13 +4,17 @@ namespace coupler {
 
 
   Array2d<double>* receive_density(const std::string cce_folder,
-  		    adios2::IO &io, adios2::Engine &engine) {
+      const adios2_handler &handler) { 
+      adios2::IO io = handler.IO; 
+      adios2::Engine engine = handler.eng;
     const std::string name = "gene_density";
     return receive2d_from_ftn<double>(cce_folder,name, io, engine);
   }
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
-      adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id) {
+      const adios2_handler &handler, adios2::Variable<double> &send_id) {
+    adios2::IO io = handler.IO; 
+    adios2::Engine engine = handler.eng;
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     const std::string fld_name = "cpl_density";
@@ -19,13 +23,17 @@ namespace coupler {
   }
 
   Array2d<double>* receive_field(const std::string cce_folder,
-      adios2::IO &io, adios2::Engine &eng) {
+      const adios2_handler &handler) { 
+      adios2::IO io = handler.IO; 
+      adios2::Engine engine = handler.eng;
     const std::string name = "xgc_field";
-    return receive2d_from_ftn<double>(cce_folder,name, io, eng);
+    return receive2d_from_ftn<double>(cce_folder,name, io, engine);
   }
 
   void send_field(const std::string cce_folder, const Array2d<double>* field,
-      adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id) {
+      const adios2_handler &handler, adios2::Variable<double> &send_id) {
+    adios2::IO io = handler.IO; 
+    adios2::Engine engine = handler.eng;
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     const std::string fld_name = "cpl_field";

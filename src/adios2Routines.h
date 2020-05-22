@@ -12,6 +12,19 @@
 #include "couplingTypes.h"
 
 namespace coupler { 
+      
+  struct adios2_handler{
+  public:
+    adios2::IO IO;
+    adios2::Engine eng;
+  
+    adios2_handler(adios2::ADIOS &adios, const std::string name):
+            IO(adios.DeclareIO(name))  {}
+    ~adios2_handler(){
+            eng.Close();
+    }
+  };
+
   /** Storage of double precision 2D array data
    *  and associated meta data
    */
@@ -259,22 +272,24 @@ namespace coupler {
    */
   template<typename T>
   Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      adios2::IO &io, adios2::Engine &engine, const std::string name) {
+      const adios2_handler &handler, const std::string name) { 
+      adios2::IO io = handler.IO; 
+      adios2::Engine engine = handler.eng;
     return receive1d_from_ftn<T>(cce_folder,name, io, engine);
   }
   
 
   Array2d<double>* receive_density(const std::string cce_folder,
-  		    adios2::IO &io, adios2::Engine &engine);
+      const adios2_handler &handler);
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
-      adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id);
+      const adios2_handler &handler, adios2::Variable<double> &send_id);
 
   Array2d<double>* receive_field(const std::string cce_folder,
-      adios2::IO &io, adios2::Engine &eng);
+      const adios2_handler &handler);
 
   void send_field(const std::string cce_folder, const Array2d<double>* field,
-      adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id); 
+      const adios2_handler &handle, adios2::Variable<double> &send_id); 
 
 }//end namespace coupler
 

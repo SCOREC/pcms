@@ -55,7 +55,10 @@ class Part3Mesh3D{
         std::string tdir)
       : preproc(pproc), test_case(tcase) {
       assert(tcase < TestCase::invalid);
+      MPI_Barrier(MPI_COMM_WORLD);
+      std::cerr <<  " ABJ 2.10 \n";
       init(p1pp3d,tdir);
+      std::cerr <<  " ABJ 2.11 at past init \n";
     }
     ~Part3Mesh3D()
     {

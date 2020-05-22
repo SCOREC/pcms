@@ -19,10 +19,10 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
    }
    MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
    nsurf=numsurf;   
+   versurf = new LO[numsurf];
+   xcoords = new double[numsurf];
    if(p1pp3d.mype==0){
      if(test_case==TestCase::t0){
-       versurf = new LO[numsurf];
-       xcoords = new double[numsurf];
        assert(!test_dir.empty());
        std::string fname=test_dir+"versurf.nml";
        InputfromFile(versurf,numsurf,fname);
@@ -93,7 +93,7 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     for(LO i=0;i<nsurf;i++) 
        num+=(GO)(versurf[i]); 
     if(test_case==TestCase::t0){
-      double *zcoordall = new double[num];
+      zcoordall = new double[num];
       InitzcoordsInCoupler(zcoordall,versurf,nsurf);
     }else{
       assert(zcoordall);
@@ -188,7 +188,7 @@ void Part3Mesh3D::DistributePoints(double* exterarr,LO gstart,LO li, double* int
     }
     bool inside = true;
     while(inside){
-
+      if(i2>=versurf[li]-1){
         break;
       }
       if(exterarr[i2+1]<internal_ub){

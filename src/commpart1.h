@@ -28,18 +28,28 @@ class Part1ParalPar3D {
     double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature ground. 
     LO res_fact;
-    Array1d<int>* parpar;
-    Array1d<double>* xzcoords;
+    int* parpar = NULL;
+    double* xzcoords = NULL;
     /* constructor
      * optionally read preproc, test_case and test_dir from user
      */
-    Part1ParalPar3D(Array1d<int>* parpar_, Array1d<double>* xzcoords_,
-		    bool pproc = true,TestCase tcase = TestCase::off,
-      		    std::string tdir="")
-      : preproc(pproc), test_case(tcase),
-	    parpar(parpar_),xzcoords(xzcoords_) {
+    Part1ParalPar3D(LO * parpar_, 
+        double* xzcoords_,
+	bool pproc = true,
+        std::string tdir="")
+      : preproc(pproc), 
+        test_case(TestCase::off),
+        parpar(parpar_),
+        xzcoords(xzcoords_) {
       init(tdir);
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
+    }
+    /*Test case constructor*/
+    Part1ParalPar3D(bool pproc,
+        TestCase tcase,
+      	std::string tdir)
+      : preproc(pproc), test_case(tcase){
+      init(tdir);
     }
     ~Part1ParalPar3D()
     {

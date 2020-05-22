@@ -14,11 +14,9 @@ class Part1ParalPar3D;
 class Part3Mesh3D{
   public:
     LO  nsurf;    // number of flux surfaces
-    LO* versurf_test=NULL; //TODO: delete these
-    double* xcoords_test=NULL;
-    Array1d<int>* versurf; // numbers of vertice on the flux surfaces
-    Array1d<double>* xcoords;
-    Array1d<double>* zcoordall;
+    LO* versurf = NULL; // numbers of vertice on the flux surfaces // znum in gene
+    double* xcoords = NULL;
+    double* zcoordall = NULL;
     LO  li0,li1,li2;
     LO** xboxinds=NULL;  //The indexes of all boxes on the radial dimension
     LO lj0;
@@ -36,22 +34,34 @@ class Part3Mesh3D{
      * from the user
      */
     Part3Mesh3D(Part1ParalPar3D &p1pp3d,
-	Array1d<int>* versurf_,	    
-	Array1d<double>* xcoords_,	    
-	Array1d<double>* zcoord_,	    
-        bool pproc = true,
-        TestCase tcase = TestCase::off,
-        std::string tdir="")
-      : versurf(versurf_), xcoords(xcoords_), zcoordall(zcoord_),
-	preproc(pproc), test_case(tcase) {
+        LO* versurf_,
+        double* xcoords_,
+        double* zcoord_,
+        bool pproc = true)
+      : versurf(versurf_),
+        xcoords(xcoords_),
+        zcoordall(zcoord_),
+	preproc(pproc), test_case(TestCase::off) {
+      init(p1pp3d);
+    }
+    /* testing constructor
+     * arguments support reading
+     * the test case number and directory
+     * from the user
+     */
+    Part3Mesh3D(Part1ParalPar3D &p1pp3d,
+        bool pproc,
+        TestCase tcase,
+        std::string tdir)
+      : preproc(pproc), test_case(tcase) {
       assert(tcase < TestCase::invalid);
       init(p1pp3d,tdir);
     }
     ~Part3Mesh3D()
     {
-     if(versurf!=NULL) destroy(versurf);
+     if(versurf!=NULL) delete[] versurf;
      if(xboxinds!=NULL) delete[] xboxinds;
-     if(xcoords!=NULL) destroy(xcoords);
+     if(xcoords!=NULL) delete[] xcoords;
      if(mylk0!=NULL) delete[] mylk0;
      if(mylk1!=NULL) delete[] mylk1;
      if(mylk2!=NULL) delete[] mylk2;

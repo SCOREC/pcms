@@ -86,8 +86,10 @@ int main(int argc, char **argv){
   coupler::Array1d<std::complex<double>>* gene_pproc_c = coupler::receive_gene_pproc<std::complex<double>>(dir, h7.IO, h7.eng, "gene_pproc_c");
 
   if(!rank) std::cerr << rank << " 0.3\n"; 
-  //coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_pproc_v, xgc_pproc_x, xgc_pproc_z, preproc);
-  //coupler::Part3Mesh3D p3m3d(p1pp3d);
+  coupler::Part3Mesh3D p3m3d(p1pp3d, 
+    xgc_znum->data(), /*update*/xgc_pproc_x,
+    /*update*/xgc_pproc_z, preproc);
+  //coupler::<geneclass> 
   //coupler::DatasProc3D dp3d(p1pp3d,p3m3d, preproc, ypar);
   //coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d);
 

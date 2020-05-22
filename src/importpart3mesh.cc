@@ -14,26 +14,23 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      if(test_case==TestCase::t0){
        numsurf=p1pp3d.nx0;
      } else{
-//     receive_field1D_serial(&numsurf,"../coupling","numsurface",1); 
+       numsurf=p1pp3d.nx0;//TODO: This is temporary, delete it once XGC-devel is inplace
      }
    }
    MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
-   numsurf=p1pp3d.nx0;//TODO: This is temporary, delete it once XGC-devel is inplace
    nsurf=numsurf;   
-   //versurf = new LO[numsurf];TODO: delete these once XGC sends its part
-   //xcoords = new double[numsurf];
    if(p1pp3d.mype==0){
      if(test_case==TestCase::t0){
-       versurf_test = new LO[numsurf];
-       xcoords_test = new double[numsurf];
+       versurf = new LO[numsurf];
+       xcoords = new double[numsurf];
        assert(!test_dir.empty());
        std::string fname=test_dir+"versurf.nml";
-       InputfromFile(versurf_test,numsurf,fname);
+       InputfromFile(versurf,numsurf,fname);
        fname=test_dir+"xcoords.nml";
-       InputfromFile(xcoords_test,numsurf,fname);
+       InputfromFile(xcoords,numsurf,fname);
      }else {
-//     receive_field1D_serial(versurf, "../coupling", "vertice_over_surf",numsurf);
-//     receive_field1D_serial(xcoords,"../coupling", "xcoords_midplane",numsurf);
+       assert(versurf);
+       assert(xcoords);
      }
    }
      MPI_Bcast(versurf,numsurf,MPI_INT,root,MPI_COMM_WORLD);
@@ -93,20 +90,18 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
 {
   if(preproc==true){
     GO num=0;
-    if(test_case==TestCase::t0){
-      for(LO i=0;i<nsurf;i++) 
-         num+=(GO)(versurf_test[i]); 
-      double *zcoordall_test = new double[num];
-      InitzcoordsInCoupler(zcoordall_test,versurf_test,nsurf);
-    }else{
     for(LO i=0;i<nsurf;i++) 
-       num+=(GO)(versurf->val(i)); 
-//     receive_field1D(zcoordall,"../coupling","all_zcoordinates",num);   
+       num+=(GO)(versurf[i]); 
+    if(test_case==TestCase::t0){
+      double *zcoordall = new double[num];
+      InitzcoordsInCoupler(zcoordall,versurf,nsurf);
+    }else{
+      assert(zcoordall);
     }
     LO numvert=0, numsurf=0;
     for(LO i=0;i<p1pp3d.mype_x;i++){
       for(LO j=xboxinds[i][1];j<xboxinds[i][2]+1;j++){
-	numvert+=versurf->val(numsurf);
+	numvert+=versurf[numsurf];
 	numsurf+=1; 
       } 
     }
@@ -118,29 +113,29 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     double* zcoords;
     for(LO i= index1;i<index2+1;i++)
     {
-      zcoords=new double[versurf->val(numsurf)];  
-      for(LO j=0;j<versurf->val(numsurf);j++){
-	 zcoords[j]=zcoordall->val(numvert+j)-cplPI;
+      zcoords=new double[versurf[numsurf]];  
+      for(LO j=0;j<versurf[numsurf];j++){
+	 zcoords[j]=zcoordall[numvert+j]-cplPI;
       }
       if(test_case==TestCase::t0){
         assert(!test_dir.empty());
         std::string fname=test_dir+std::to_string(i)+"_zcoords.txt";
-       OutputtoFile(zcoords,versurf_test[numsurf],fname);
+       OutputtoFile(zcoords,versurf[numsurf],fname);
       }
-       LO nstart=minloc(zcoords,versurf->val(numsurf));
+       LO nstart=minloc(zcoords,versurf[numsurf]);
 /*
 if(p1pp3d.mype_x==1){
   std::cout<<"versurf["<<numsurf<<"]="<<versurf[numsurf]<<'\n';
   std::cout<<"li="<<i<<" "<<"nstart="<<nstart<<'\n';
 }
 */
-       reshuffle_nodes(zcoords,nstart,versurf->val(numsurf));
+       reshuffle_nodes(zcoords,nstart,versurf[numsurf]);
        DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
        pzcoords[i-index1]= new double[mylk0[i-index1]];
        for(LO k=0;k<mylk0[i-index1];k++){
 	 pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
        }
-       numvert+=versurf->val(numsurf);
+       numvert+=versurf[numsurf];
        numsurf+=1;       
        delete[] zcoords; 
     }
@@ -175,10 +170,10 @@ void Part3Mesh3D::DistributePoints(double* exterarr,LO gstart,LO li, double* int
 {
   if(preproc==true){
     LO nstart;
-    double* tmp=new double[versurf->val(li)];
-    for(LO i=0;i<versurf->val(li);i++)
+    double* tmp=new double[versurf[li]];
+    for(LO i=0;i<versurf[li];i++)
       tmp[i]=abs(exterarr[i]-interarr[p1pp3d.lk1]);
-    nstart=minloc(tmp,versurf->val(li));
+    nstart=minloc(tmp,versurf[li]);
     //nstart must be in my domain or will duplicate
     if(exterarr[nstart]<interarr[p1pp3d.lk1])
       nstart+=1;
@@ -193,8 +188,6 @@ void Part3Mesh3D::DistributePoints(double* exterarr,LO gstart,LO li, double* int
     }
     bool inside = true;
     while(inside){
-
-      if(i2+1>versurf->val(li)){
 
         break;
       }

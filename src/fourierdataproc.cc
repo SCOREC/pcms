@@ -21,13 +21,13 @@ void DatasProc3D::CmplxdataToRealdata3D()
   }
   if(yparal==false){
     for(LO i=0; i<p1.li0;i++){
-      for(LO k=0;k<p1.lk0;k++){
+      for(LO k=0;k<p3.mylk0[i];k++){
 	for(LO j=0;j<p1.lj0;j++){
-          densintmp[j]=densin[i][j][k];
+          densintmp[j]=densinterpo[i][j][k];
 	}      
         ExecuteCmplxToReal();
         for(LO l=0;l<p1.lj0*2;l++){ 
-          densout[i][l][k]=densouttmp[l]/double(p1.lj0*2);          
+          denspart3[i][l][k]=densouttmp[l]/double(p1.lj0*2);          
 	}
       }
     }
@@ -46,13 +46,13 @@ void DatasProc3D::RealdataToCmplxdata3D()
   }
   if(yparal==false){
     for(LO i=0;i<p3.li0;i++){
-      for(LO k=0;k<p1.lk0;k++){
+      for(LO k=0;k<p3.mylk0[i];k++){
 	for(LO j=0;j<p3.lj0;j++){
-	  potentintmp[j]=potentinterpo[i][j][k];  
+	  potentintmp[j]=potentin[i][j][k];  
         }
         ExecuteRealToCmplx();
         for(LO l=0;l<p3.lj0/2;l++){
-          potentpart1[i][l][k]=potentouttmp[l];      
+          potentinterpo[i][l][k]=potentouttmp[l];       
         }
       }
     }

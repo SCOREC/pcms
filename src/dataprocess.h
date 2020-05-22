@@ -29,17 +29,18 @@ public:
   LO sum;
   // here, pointers must be assigned a NULL;
   CV*** densin = NULL; // input 3d density in complex number
+  CV*** densinterpo = NULL; 
   CV* densintmp = NULL; // temporary 2d density array prepared for backward
                         // fourier transform
   double* densouttmp = NULL; // store the x-y 2d real density after backward 
                              // fourier transform
-  double*** densout = NULL; // store xyz 3d real density
   double*** denspart3 = NULL; // storing the density being sent to the part3
   double*** potentin = NULL; // the input real electrostatic potential in 3d xyz
-  double*** potentinterpo = NULL; // temporary xy 2d potential array for forward 
-                              // fourier transform
   double* potentintmp = NULL;
   CV* potentouttmp = NULL;
+ 
+  CV*** potentinterpo = NULL; // temporary xy 2d potential array for forward 
+                              // fourier transform
   CV*** potentpart1 = NULL; // storing the electrostatic potential being sent
                             // to the part1.
   fftw_plan plan_forward = NULL, plan_backward = NULL;
@@ -78,7 +79,7 @@ private:
     P1Data(LO li, LO lj, LO lk, LO ny, LO np, LO pe_y, LO res) : 
 	    li0(li), lj0(lj), lk0(lk), 
 	  ny0(ny), npy(np), mype_y(pe_y), res_fact(res)
-	  {};
+          {};
     const LO li0;
     const LO lj0;
     const LO lk0;

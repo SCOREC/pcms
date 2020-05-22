@@ -35,6 +35,14 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
   lk2=lk1+lk0-1;
   
   delete[] data;
+
+  n0_global=8.0;
+  ky0_ind=0;
+ 
+  q_prof=new double[nx0]; 
+  fname=test_dir+"q_prof.nml";
+  InputfromFile(q_prof,nx0,fname);
+  
 }
 
 //read the paralllization parameters
@@ -43,43 +51,48 @@ void Part1ParalPar3D::init(std::string test_dir)
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 
-  if(preproc==true){ 
-    if(test_case==TestCase::t0){
+ if(preproc==true){ 
+   if(test_case==TestCase::t0){
+      LO* parpar=new LO[29];   
       initTest0(test_dir);
-    }else{
-      npx=parpar[0];
-      nx0=parpar[1];
-      nxb=parpar[2];
-      li0=parpar[3];
-      li1=parpar[4];
-      li2=parpar[5];
-      lg0=parpar[6];
-      lg1=parpar[7];
-      lg2=parpar[8];
-    
-      npy=parpar[9];
-      ny0=parpar[10];
-      nyb=parpar[11];
-      lj0=parpar[12];
-      lj1=parpar[13];
-      lj2=parpar[14];
-      lm0=parpar[15];
-      lm1=parpar[16];
-      lm2=parpar[17];
-    
-      npz=parpar[18];
-      nz0=parpar[19];
-      nzb=parpar[20];
-      lk0=parpar[21];
-      lk1=parpar[22];
-      lk2=parpar[23];
-      ln0=parpar[24];
-      ln1=parpar[25];
-      ln2=parpar[26];
-      if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);  
- 
-    NP=npx*npy*npz;  
+   }else{
+     npx=parpar[0];
+     nx0=parpar[1];
+     nxb=parpar[2];
+     li0=parpar[3];
+     li1=parpar[4];
+     li2=parpar[5];
+     lg0=parpar[6];
+     lg1=parpar[7];
+     lg2=parpar[8];
+
+     npy=parpar[9];
+     ny0=parpar[10];
+     nyb=parpar[11];
+     lj0=parpar[12];
+     lj1=parpar[13];
+     lj2=parpar[14];
+     lm0=parpar[15];
+     lm1=parpar[16];
+     lm2=parpar[17];
+
+     npz=parpar[18];
+     nz0=parpar[19];
+     nzb=parpar[20];
+     lk0=parpar[21];
+     lk1=parpar[22];
+     lk2=parpar[23];
+     ln0=parpar[24];
+     ln1=parpar[25];
+     ln2=parpar[26];
+
+     n0_global=parpar[27];
+     ky0_ind=parpar[28];    
+     NP=npx*npy*npz;  
      CreateSubCommunicators();
+     
+     q_prof = new double[npx];
+   //receive buffer by adious routine from GENE
    }
 
    // initialize the radial locations of the flux surface and poloidal angles

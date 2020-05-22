@@ -43,45 +43,44 @@ void Part1ParalPar3D::init(std::string test_dir)
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 
- if(preproc==true){ 
-   if(test_case==TestCase::t0){
-     initTest0(test_dir);
-   }else{
-     npx=parpar[0];
-     nx0=parpar[1];
-     nxb=parpar[2];
-     li0=parpar[3];
-     li1=parpar[4];
-     li2=parpar[5];
-     lg0=parpar[6];
-     lg1=parpar[7];
-     lg2=parpar[8];
-   
-     npy=parpar[9];
-     ny0=parpar[10];
-     nyb=parpar[11];
-     lj0=parpar[12];
-     lj1=parpar[13];
-     lj2=parpar[14];
-     lm0=parpar[15];
-     lm1=parpar[16];
-     lm2=parpar[17];
-   
-     npz=parpar[18];
-     nz0=parpar[19];
-     nzb=parpar[20];
-     lk0=parpar[21];
-     lk1=parpar[22];
-     lk2=parpar[23];
-     ln0=parpar[24];
-     ln1=parpar[25];
-     ln2=parpar[26];
-if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);  
-  
-     NP=npx*npy*npz;  
+  if(preproc==true){ 
+    if(test_case==TestCase::t0){
+      initTest0(test_dir);
+    }else{
+      npx=parpar[0];
+      nx0=parpar[1];
+      nxb=parpar[2];
+      li0=parpar[3];
+      li1=parpar[4];
+      li2=parpar[5];
+      lg0=parpar[6];
+      lg1=parpar[7];
+      lg2=parpar[8];
+    
+      npy=parpar[9];
+      ny0=parpar[10];
+      nyb=parpar[11];
+      lj0=parpar[12];
+      lj1=parpar[13];
+      lj2=parpar[14];
+      lm0=parpar[15];
+      lm1=parpar[16];
+      lm2=parpar[17];
+    
+      npz=parpar[18];
+      nz0=parpar[19];
+      nzb=parpar[20];
+      lk0=parpar[21];
+      lk1=parpar[22];
+      lk2=parpar[23];
+      ln0=parpar[24];
+      ln1=parpar[25];
+      ln2=parpar[26];
+      if(!rank) fprintf(stderr," npx: %d, npy: %d, npz: %d \n", npx, npy, npz);  
+ 
+    NP=npx*npy*npz;  
      CreateSubCommunicators();
    }
-   if(!rank) fprintf(stderr,"0.11 \n");
 
    // initialize the radial locations of the flux surface and poloidal angles
    pzcoords=new double[nz0];

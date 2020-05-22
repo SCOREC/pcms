@@ -54,25 +54,16 @@ int main(int argc, char **argv){
   //intialize GENE class
   const bool preproc = true;
   const bool ypar = false;
-  if(!rank) std::cerr << rank << " 0.1\n"; 
   coupler::Part1ParalPar3D p1pp3d(gene_pproc_i->data(),gene_pproc_rx->data(),preproc);
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xNum, "xgc_numsurfs");
   int num_surf = xgc_numsurf->val(0);
-  if(!rank) std::cerr << rank << " 0.2 " << num_surf <<"\n"; 
   coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord, "xgc_x_coordss");
-
-  //TODO: map the received xgc_xcoords correctly
-  //for (int i = p1pp3d.li1; i < p1pp3d.li2; i++)
-  //{
   coupler::Array1d<double>* xgc_versurf = coupler::receive_gene_pproc<double>(dir, xVsurf, "xgc_versurf");
-  //}
-
   coupler::Array1d<int>* xgc_znum = coupler::receive_gene_pproc<int>(dir, xZNum, "xgc_pproc_zi");
   coupler::Array1d<std::complex<double>>* gene_pproc_c = coupler::receive_gene_pproc<std::complex<double>>(dir, gComp, "gene_pproc_c");
 
-  if(!rank) std::cerr << rank << " 0.3\n"; 
   coupler::Part3Mesh3D p3m3d(p1pp3d, 
     xgc_znum->data(), xgc_xcoords->data(),
     xgc_versurf->data(), preproc);
@@ -80,7 +71,6 @@ int main(int argc, char **argv){
   //coupler::DatasProc3D dp3d(p1pp3d,p3m3d, preproc, ypar);
   //coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d);
 
-  if(!rank) std::cerr << rank << " 0.4\n"; 
   coupler::destroy(gene_pproc_rz);
   coupler::destroy(gene_pproc_rx);
   coupler::destroy(gene_pproc_i);

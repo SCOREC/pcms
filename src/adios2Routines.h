@@ -14,7 +14,6 @@
 namespace coupler { 
       
   struct adios2_handler{
-  public:
     adios2::IO IO;
     adios2::Engine eng;
   

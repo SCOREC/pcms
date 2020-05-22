@@ -64,12 +64,11 @@ int main(int argc, char **argv){
   coupler::Array1d<int>* xgc_znum = coupler::receive_gene_pproc<int>(dir, xZNum, "xgc_pproc_zi");
   coupler::Array1d<std::complex<double>>* gene_pproc_c = coupler::receive_gene_pproc<std::complex<double>>(dir, gComp, "gene_pproc_c");
 
-  coupler::Part3Mesh3D p3m3d(p1pp3d, 
-    xgc_znum->data(), xgc_xcoords->data(),
-    xgc_versurf->data(), preproc);
+  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_znum->data(), xgc_xcoords->data(), xgc_versurf->data(), preproc);
   //coupler::<geneclass> 
-  //coupler::DatasProc3D dp3d(p1pp3d,p3m3d, preproc, ypar);
-  //coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d);
+  const int nummode = 1;
+  //coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, ypar, nummode);
+  //coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, dp3d, preproc);
 
   coupler::destroy(gene_pproc_rz);
   coupler::destroy(gene_pproc_rx);

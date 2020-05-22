@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);  
   coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d,test_case,preproc);
-  bdesc.initpbmat(p1pp3d);
+//  bdesc.initpbmat(p1pp3d);
   dp3d.InitFourierPlan3D(); 
 
   dp3d.RealdataToCmplxdata3D();

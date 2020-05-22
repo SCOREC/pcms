@@ -61,6 +61,8 @@ BoundaryDescr3D::BoundaryDescr3D(
       }
     }    
   }
+
+  initpbmat(p1pp3d);
 }
 
 void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)

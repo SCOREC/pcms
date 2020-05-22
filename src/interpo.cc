@@ -54,13 +54,13 @@ void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc,
     const Part3Mesh3D& p3m3d, 
     const Part1ParalPar3D &p1pp3d)
 {
-  double* yin;
+  CV* yin;
   double* xin;
-  double* yout;
+  CV* yout;
   double* xout;
   LO nzb=bdesc.nzb;
   xin=new double[p1pp3d.lk0+2*nzb];
-  yin=new double[p1pp3d.lk0+2*nzb];  
+  yin=new CV[p1pp3d.lk0+2*nzb];  
   if(preproc==true){
     if(p1pp3d.periods[2]==1){
       if(p1pp3d.mype_z==0){
@@ -84,17 +84,17 @@ void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc,
       }      
     }
 
-   for(LO i=0;i<p3m3d.li0;i++){
-      for(LO j=0;j<p3m3d.lj0;j++){
+   for(LO i=0;i<p1pp3d.li0;i++){
+      for(LO j=0;j<p1pp3d.lj0;j++){
         for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowdenz[i][j][l];
           yin[p1pp3d.lk0+nzb+l]=bdesc.updenz[i][j][l];
         }
         for(LO k=0;k<p1pp3d.lk0;k++){  
-          yin[nzb+k]=densout[i][j][k];
+          yin[nzb+k]=densin[i][j][k];
         }
         xout=p3m3d.pzcoords[i];
-        yout=denspart3[i][j];
+        yout=densinterpo[i][j];
         Lag3dArray(yin,xin,p1pp3d.lk0+2*nzb,yout,xout,p3m3d.mylk0[i]);
       }
     }   
@@ -107,13 +107,13 @@ void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc,
     const Part3Mesh3D& p3m3d,
     const Part1ParalPar3D &p1pp3d)
 {
-  double* yin;
-  double* yout;
+  CV* yin;
+  CV* yout;
   double* xin;
   LO nzb=bdesc.nzb;
   if(preproc==true){
     for(LO i=0;i<p3m3d.li0;i++){
-      yin=new double[p3m3d.mylk0[i]+2*nzb];
+      yin=new CV[p3m3d.mylk0[i]+2*nzb];
       xin=new double[p3m3d.mylk0[i]+2*nzb];
 
       for(LO l=0;l<nzb;l++){  
@@ -121,16 +121,16 @@ void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc,
         xin[p3m3d.mylk0[i]+nzb+l]=bdesc.upzpart3[i][l];      
       }
 
-      for(LO j=0;j<p3m3d.lj0;j++){
+      for(LO j=0;j<p3m3d.lj0/2;j++){
         for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowpotentz[i][j][l];
           yin[p3m3d.mylk0[i]+nzb+l]=bdesc.uppotentz[i][j][l];
         }
         for(LO k=0;k<p3m3d.mylk0[i];k++){
           xin[k+nzb]=p3m3d.pzcoords[i][k];
-          yin[k+nzb]=potentin[i][j][k];
+          yin[k+nzb]=potentinterpo[i][j][k];
         }
-        yout=potentinterpo[i][j];
+        yout=potentpart1[i][j];
         Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,yout,p1pp3d.pzp,p1pp3d.lk0);
      }
 

@@ -53,8 +53,8 @@ void Part1ParalPar3D::init(std::string test_dir)
 
  if(preproc==true){ 
    if(test_case==TestCase::t0){
-      LO* parpar=new LO[29];   
-      initTest0(test_dir);
+     parpar=new LO[29];   
+     initTest0(test_dir);
    }else{
      npx=parpar[0];
      nx0=parpar[1];
@@ -105,7 +105,7 @@ void Part1ParalPar3D::init(std::string test_dir)
       std::string fname=test_dir+"xcoords.nml";
       InputfromFile(xzcoords,nx0,fname);
    }else{
-        assert(xzcoords);
+      assert(xzcoords);
    }
 
    for(LO i=0;i<nx0;i++){

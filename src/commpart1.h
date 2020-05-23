@@ -28,23 +28,19 @@ class Part1ParalPar3D {
     double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature background. 
     LO res_fact;
-    LO* parpar = NULL;
-    double* xzcoords = NULL;
     double* q_prof=NULL;  //safty factor
     LO n0_global;
     LO ky0_ind;
     /* constructor
      * optionally read preproc, test_case and test_dir from user
      */
-    Part1ParalPar3D(LO * parpar_, 
-        double* xzcoords_,
+    Part1ParalPar3D(LO * parpar, 
+        double* xzcoords,
 	bool pproc = true,
         std::string tdir="")
       : preproc(pproc), 
-        test_case(TestCase::off),
-        parpar(parpar_),
-        xzcoords(xzcoords_) {
-      init(tdir);
+        test_case(TestCase::off){
+      init(parpar, xzcoords, tdir);
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
     /*Test case constructor*/
@@ -52,7 +48,9 @@ class Part1ParalPar3D {
         TestCase tcase,
       	std::string tdir)
       : preproc(pproc), test_case(tcase){
-      init(tdir);
+     LO* parpar=new LO[29];   
+     double* xzcoords=new double[nx0];
+      init(parpar, xzcoords,tdir);
     }
     ~Part1ParalPar3D()
     {
@@ -65,7 +63,7 @@ class Part1ParalPar3D {
   private:
     const bool preproc;
     const TestCase test_case;
-    void init(std::string test_dir="");
+    void init(LO* parpar, double* xzcoords,std::string test_dir="");
     void initTest0(std::string test_dir);
     /* init* helper function */
     void CreateSubCommunicators();

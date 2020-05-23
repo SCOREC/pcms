@@ -46,16 +46,17 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 }
 
 //read the paralllization parameters
-void Part1ParalPar3D::init(std::string test_dir)
+void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 
  if(preproc==true){ 
    if(test_case==TestCase::t0){
-     parpar=new LO[29];   
+     //parpar=new LO[29];   
      initTest0(test_dir);
    }else{
+     assert(parpar);
      npx=parpar[0];
      nx0=parpar[1];
      nxb=parpar[2];
@@ -100,7 +101,7 @@ void Part1ParalPar3D::init(std::string test_dir)
    xcoords=new double[nx0];
 
    if(test_case==TestCase::t0){
-      xzcoords=new double[nx0];
+      //xzcoords=new double[nx0];
       assert(!test_dir.empty());
       std::string fname=test_dir+"xcoords.nml";
       InputfromFile(xzcoords,nx0,fname);

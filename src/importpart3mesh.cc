@@ -14,7 +14,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      if(test_case==TestCase::t0){
        numsurf=p1pp3d.nx0;
      } else{
-//     receive_field1D_serial(&numsurf,"../coupling","numsurface",1); 
+       numsurf=p1pp3d.nx0;//TODO: This is temporary, delete it once XGC-devel is inplace
      }
    }
    MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
@@ -29,9 +29,8 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        fname=test_dir+"xcoords.nml";
        InputfromFile(xcoords,numsurf,fname);
      }else {
-//     receive_field1D_serial(versurf, "../coupling", "vertice_over_surf",numsurf);
-//     receive_field1D_serial(xcoords,"../c
-//     upling", "xcoords_midplane",numsurf);
+       assert(versurf);
+       assert(xcoords);
      }
    }
      MPI_Bcast(versurf,numsurf,MPI_INT,root,MPI_COMM_WORLD);
@@ -93,11 +92,11 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     GO num=0;
     for(LO i=0;i<nsurf;i++) 
        num+=(GO)(versurf[i]); 
-    double *zcoordall = new double[num];
     if(test_case==TestCase::t0){
+      zcoordall = new double[num];
       InitzcoordsInCoupler(zcoordall,versurf,nsurf);
     }else{
-//     receive_field1D(zcoordall,"../coupling","all_zcoordinates",num);   
+      assert(zcoordall);
     }
     LO numvert=0, numsurf=0;
     for(LO i=0;i<p1pp3d.mype_x;i++){

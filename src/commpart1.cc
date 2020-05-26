@@ -46,14 +46,16 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 }
 
 //read the paralllization parameters
-void Part1ParalPar3D::init(std::string test_dir)
+void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
 {
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+
  if(preproc==true){ 
-   LO* parpar=new LO[29];   
    if(test_case==TestCase::t0){
      initTest0(test_dir);
    }else{
-//     receive_field1D(GO &parpar, "../coupling","para_parameters",9,MPI_COMM_WORLD);
+     assert(parpar);
      npx=parpar[0];
      nx0=parpar[1];
      nxb=parpar[2];
@@ -86,7 +88,6 @@ void Part1ParalPar3D::init(std::string test_dir)
 
      n0_global=parpar[27];
      ky0_ind=parpar[28];    
-
      NP=npx*npy*npz;  
      CreateSubCommunicators();
      
@@ -97,14 +98,13 @@ void Part1ParalPar3D::init(std::string test_dir)
    // initialize the radial locations of the flux surface and poloidal angles
    pzcoords=new double[nz0];
    xcoords=new double[nx0];
-   double* xzcoords; // this lie may be deleted
-   xzcoords=new double[nx0];
+
    if(test_case==TestCase::t0){
       assert(!test_dir.empty());
       std::string fname=test_dir+"xcoords.nml";
       InputfromFile(xzcoords,nx0,fname);
    }else{
-   //receive_field1D(double& xzcoord, "../coupling","xcoords_dz",nx0+1,MPI_COMM_WORLD);
+      assert(xzcoords);
    }
 
    for(LO i=0;i<nx0;i++){
@@ -113,9 +113,9 @@ void Part1ParalPar3D::init(std::string test_dir)
    if(test_case==TestCase::t0){
      dz=2.0*cplPI/nz0;
    }else{
-     dz=xzcoords[nx0]; 
+     dz=xzcoords[nx0-1];
    }
- 
+
    for(LO i=0;i<nz0;i++){
      pzcoords[i]=-1.0*cplPI+(double)i*dz;
    }
@@ -133,7 +133,6 @@ void Part1ParalPar3D::CreateSubCommunicators()
    // create 3D parallel cart with z being periodic
    int rorder = 0;
    int dim[3]={(int)npx,(int)npy,(int)npz};
-//   MPI_Comm comm_cart;
    MPI_Cart_create(MPI_COMM_WORLD,3,dim,periods,rorder,&comm_cart);
 
    MPI_Comm subcomuni[3];

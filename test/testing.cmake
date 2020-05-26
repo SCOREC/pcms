@@ -3,7 +3,7 @@ function(mpi_test TESTNAME PROCS EXE)
   add_test(
     NAME ${TESTNAME}
     COMMAND ${MPIRUN} ${MPIRUN_PROCFLAG} ${PROCS} ${VALGRIND}
-    ${VALGRIND_ARGS} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${EXE} ${ARGN}
+    ${VALGRIND_ARGS} ${CMAKE_CURRENT_BINARY_DIR}/${EXE} ${ARGN}
     )
 endfunction(mpi_test)
 

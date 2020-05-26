@@ -26,12 +26,10 @@ int main(int argc, char **argv){
          typeid(Kokkos::DefaultExecutionSpace).name());
     exParFor();
   }
-  if(argc != 1) {
-    if(!rank) printf("Usage: %s <number of timesteps>\n", argv[0]);
+  if(argc != 2) {
+    if(!rank) printf("Usage: %s <number of timesteps>\n", argv[1]);
     exit(EXIT_FAILURE);
   }
-  std::string test_dir(argv[1]);
-
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::Variable<double> send_var[2];
 

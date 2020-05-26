@@ -16,12 +16,13 @@ namespace coupler {
   struct adios2_handler{
     adios2::IO IO;
     adios2::Engine eng;
-  
-    adios2_handler(adios2::ADIOS &adios, const std::string name):
-            IO(adios.DeclareIO(name))  {}
+    std::string name;
+    adios2_handler(adios2::ADIOS &adios, const std::string name_):
+            name(name_),IO(adios.DeclareIO(name_))  {}
     ~adios2_handler(){
             eng.Close();
     }
+    std::string get_name() const { return name; };
   };
 
   /** Storage of double precision 2D array data
@@ -271,9 +272,10 @@ namespace coupler {
    */
   template<typename T>
   Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      const adios2_handler &handler, const std::string name) { 
+      const adios2_handler &handler) { 
       adios2::IO io = handler.IO; 
       adios2::Engine engine = handler.eng;
+      std::string name = handler.get_name();
     return receive1d_from_ftn<T>(cce_folder,name, io, engine);
   }
   
@@ -288,7 +290,7 @@ namespace coupler {
       const adios2_handler &handler);
 
   void send_field(const std::string cce_folder, const Array2d<double>* field,
-      const adios2_handler &handle, adios2::Variable<double> &send_id); 
+      const adios2_handler &handler, adios2::Variable<double> &send_id); 
 
 }//end namespace coupler
 

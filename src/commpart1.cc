@@ -53,7 +53,6 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
 
  if(preproc==true){ 
    if(test_case==TestCase::t0){
-     //parpar=new LO[29];   
      initTest0(test_dir);
    }else{
      assert(parpar);
@@ -101,7 +100,6 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
    xcoords=new double[nx0];
 
    if(test_case==TestCase::t0){
-      //xzcoords=new double[nx0];
       assert(!test_dir.empty());
       std::string fname=test_dir+"xcoords.nml";
       InputfromFile(xzcoords,nx0,fname);
@@ -138,7 +136,7 @@ void Part1ParalPar3D::CreateSubCommunicators()
    MPI_Cart_create(MPI_COMM_WORLD,3,dim,periods,rorder,&comm_cart);
 
    MPI_Comm subcomuni[3];
-   for (int i=0;i<3;i++){
+   for(int i=0;i<3;i++){
      int remain[3]={0,0,0};
      remain[i]=1;
      MPI_Cart_sub(comm_cart,remain,&subcomuni[i]);

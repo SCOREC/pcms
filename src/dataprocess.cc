@@ -76,12 +76,24 @@ void DatasProc3D::AllocDensityArrays()
    densouttmp=new double[p1.lj0*2];
 
    denspart3=new double**[p3.li0];
-    for(LO i=0;i<p3.li0;i++){
-      denspart3[i]=new double*[p3.lj0];
-      for(LO j=0; j<p3.lj0; j++)
+   for(LO i=0;i<p3.li0;i++){
+     denspart3[i]=new double*[p3.lj0];
+     for(LO j=0; j<p3.lj0; j++)
         denspart3[i][j]=new double[p3.mylk0[i]];
-    }
-  } 
+   }
+
+//notice: the dimension may be gave more detaild describtion based on 
+//the first coupling surface and last coupling surface
+   densrecv = new CV*[p1.ny0];
+   for(LO i=0;i<p1.ny0;i++){
+     densrecv[i] = new CV*[p3.sum];
+   }   
+
+   denssend = new double*[p1.ny0*2];
+   for(LO i=0;i<p1.ny0; i++){
+     denssend = new double[p3.sum];
+   }
+ } 
 }
 
 void DatasProc3D::AllocPotentArrays()
@@ -111,8 +123,144 @@ void DatasProc3D::AllocPotentArrays()
         potentpart1[i][j]=new CV[p1.lk0];
       }
     }
+ 
+//notice: the dimension may be gave more detaild describtion based on
+////the first coupling surface and last coupling surface 
+    potentrecv = new double*[p1.ny0*2];
+    for(LO i=0;i<p1.ny0;i++){
+      potentrecv[i] = new double[sum];
+    }
+
+    potentsend = new double*[p1.ny0];
+    for(LO i=0;i<p1.ny0;i++){
+      potentsend[i] = new double[sum];
+    }
   }
 }
+
+
+void DatasProc3D:DistriPotentRecvfromPart3(const LO* nstart,const LO* versurf, double** potentrecv)
+{ 
+  double** tmp
+  for(LO j=0;j<p3.lj0;j++){
+    tmp = new double*[p3.li0];
+    LO xl=0
+    for(LO i=0;i<p3.li0;i++){
+      xl=p3.li1+i;
+      tmp[i]=new double[versurf[xl]];
+      GO sumbegin=0;
+      for(LO h=0;h<xl;h++){
+        sumbegin+=(GO)versurf[h];
+      }
+      for(LO m=0;m<versurf[xl];m++){
+        tmp[i][m]=potentrecv[i][sumbegin+m];
+      }
+      reshuffleforward(tmp[xl],nstart[xl],vesurf[xl]);
+      for(LO k=0;k<versurf[xl];k++){
+        potentin[i][j][k]=tmp[i][lk1+k];
+      }
+      delete[] tmp[i];
+    }
+  }
+
+ } 
+
+
+void DatasProc3D:AssemPotentSendtoPart1(const LO* nstart,const LO* versurf, double** potentsend)
+{
+  LO* recvcount = new LO[p1.npz];
+  LO* rdispls = new LO[p1.npz];
+  MPI_Datatype mpitype = getDtype(LO)      
+  MPI_Allgather(&p1.lk0,1,mpitype,recvcount,1,mpitype,p1.comm_z); 
+  rdispls[0]=0;
+  for(LO i=1;i<p1.npz;i++){
+    rdispls[i]=ridspls[0]+recvcout[i];
+  }
+  for(LO j=0;j<p1.lj0;j++){
+    LO xl=0;
+    for(LO i=0;i<p1.li0;i++){
+      xl=p1.li1+i;
+      GO sumbegin=0;
+      for(LO h=0;h<xl;h++){
+        sumbegin+=(GO)p1.nz0
+      }      
+      CV* tmp = new CV[versurf[xl]];
+      MPI_Allgatherv(potentpart1[i][j],p1.lk0,MPI_CXX_DOUBLE_COMPLEX,tmp,recvcount,rdispls,
+                    MPI_CXX_DOUBLE_COMPLEX,p1.comm_z);    
+      for(LO m=0;m<p1.nz0;m++){
+        potentsend[j][sumbegin+m]=tmp[m];
+      }      
+      delete[] tmp; 
+    }
+  } 
+  delete[] recvcount,rdispls;
+}
+
+
+void DatasProc3D:DistriDensiRecvfromPart1(const LO* versurf, CV** densrecv)
+{
+  CV** tmp
+  tmp = new CV*[p1.li0];
+  for(LO i=0;i<p1.li0;i++)
+    tmp[i]=new CV[p1.nz0];
+ 
+  for(LO j=0;j<p1.lj0;j++){
+    LO xl=0
+    for(LO i=0;i<p1.li0;i++){
+      xl=p1.li1+i;
+      GO sumbegin=0;
+      for(LO h=0;h<xl;h++){
+        sumbegin+=(GO)p1.nz0;
+      }
+      for(LO m=0;m<p1.nz0;m++){
+        tmp[i][m]=densrecv[i][sumbegin+m];
+      }
+      for(LO k=0;k<lk0;k++){
+        potentin[i][j][k]=tmp[i][lk1+k];
+      }
+     }
+   }    
+   for(LO i=0;i<p1.li0;i++){
+     delete[] tmp[i];
+   } 
+}
+
+
+void DatasProc3D:AssemDensSendtoPart3(const LO* nstart,const LO* versurf, CV** denssend)
+{
+  for(LO j=0;j<p1.lj0;j++){
+    LO xl=0;
+    for(LO i=0;i<p1.li0;i++){
+      LO* recvcount = new LO[p1.npz];
+      LO* rdispls = new LO[p1.npz];
+      MPI_Datatype mpitype = getDtype(LO)      
+      MPI_Allgather(&p3.mylk0[i],1,mpitype,recvcount,1,mpitype,p1.comm_z); 
+      rdispls[0]=0;
+      for(LO i=1;i<p1.npz;i++){
+	rdispls[i]=ridspls[0]+recvcout[i];
+      }
+
+      xl=p3.li1+i;     
+      CV* tmp = new CV[versurf[xl]];
+      MPI_Allgatherv(denspart3[i][j],p3.mylk0[i],MPI_CXX_DOUBLE_COMPLEX,tmp,recvcount,rdispls,
+                    MPI_CXX_DOUBLE_COMPLEX,p1.comm_z);    
+      reshufflebackward(tmp,p3.nstart,versurf[xl]);
+      GO sumbegin=0;
+      for(LO h=0;h<xl;h++){
+        sumbegin+=(GO)versurf[h];
+      } 
+      for(LO m=0;m<versurf[xl];m++){
+        potentsend[j][sumbegin+m]=tmp[m];
+      }      
+      delete[] tmp; 
+    }
+    delete[] recvcount,rdispls;
+  }  
+ 
+
+
+}
+
 
 void DatasProc3D::TestInitPotentAlongz(const Part3Mesh3D& p3m3d,
     const LO npy, const LO n) {

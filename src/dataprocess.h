@@ -28,6 +28,8 @@ public:
                ///forward Fourier transform  
   LO sum;
   // here, pointers must be assigned a NULL;
+  CV** densrecv = NULL; // the 2d array density recived by the coupler.
+                           // and sent by part1.
   CV*** densin = NULL; // input 3d density in complex number
   CV*** densinterpo = NULL; 
   CV* densintmp = NULL; // temporary 2d density array prepared for backward
@@ -35,14 +37,20 @@ public:
   double* densouttmp = NULL; // store the x-y 2d real density after backward 
                              // fourier transform
   double*** denspart3 = NULL; // storing the density being sent to the part3
+  double**  denssend = NULL; // the 2d array density transferred to part3
+
+
+  double** potentrecv = NULL; // the 2d array potential received by the coupler 
+                                 // and sent by part3 
   double*** potentin = NULL; // the input real electrostatic potential in 3d xyz
   double* potentintmp = NULL;
-  CV* potentouttmp = NULL;
- 
+  CV* potentouttmp = NULL; 
   CV*** potentinterpo = NULL; // temporary xy 2d potential array for forward 
                               // fourier transform
   CV*** potentpart1 = NULL; // storing the electrostatic potential being sent
                             // to the part1.
+  CV**  potentsed = NULL; // the 2d array complex potential transffered to part1 
+
   fftw_plan plan_forward = NULL, plan_backward = NULL;
   // The following parameters for yparal=true;
   LO myli0;
@@ -107,6 +115,10 @@ private:
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
+  void DistriPotentRecvfromPart3(const LO* nstart,const LO* versurf, double** potentrecv);
+  void AssemPotentSendtoPart1(const LO* nstart,const LO* versurf, double** potentsend);
+  void DistriDensiRecvfromPart1(const LO* versurf, CV** densrecv);
+  void AssemDensSendtoPart3(const LO* nstart,const LO* versurf, CV** denssend);
 };
 
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,

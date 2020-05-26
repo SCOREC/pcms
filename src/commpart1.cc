@@ -98,7 +98,7 @@ void Part1ParalPar3D::init(std::string test_dir)
    pzcoords=new double[nz0];
    xcoords=new double[nx0];
    double* xzcoords; // this lie may be deleted
-   xzcoords=new double[nx0];
+   xzcoords=new double[nx0+1];
    if(test_case==TestCase::t0){
       assert(!test_dir.empty());
       std::string fname=test_dir+"xcoords.nml";

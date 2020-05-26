@@ -1,6 +1,7 @@
 #include "importpart3mesh.h"
 #include "commpart1.h"
 #include "testutilities.h"
+#include "sendrecv_impl.h"
 #include <cassert>
 
 namespace coupler{
@@ -18,8 +19,13 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      }
    }
    MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
-   nsurf=numsurf;   
+   nsurf=numsurf; 
+   nstart = new LO[numsurf];  
    versurf = new LO[numsurf];
+   
+   sum=0;
+   for(LO i=0;i<nsurf;i++)
+     sum+=(GO)versurf[i];
    xcoords = new double[numsurf];
    if(p1pp3d.mype==0){
      if(test_case==TestCase::t0){
@@ -34,9 +40,9 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 //     upling", "xcoords_midplane",numsurf);
      }
    }
-     MPI_Bcast(versurf,numsurf,MPI_INT,root,MPI_COMM_WORLD);
-     MPI_Bcast(xcoords,numsurf,MPI_DOUBLE,root,MPI_COMM_WORLD);
-    if(preproc==true){
+   MPI_Bcast(versurf,numsurf,MPI_INT,root,MPI_COMM_WORLD);
+   MPI_Bcast(xcoords,numsurf,MPI_DOUBLE,root,MPI_COMM_WORLD);
+   if(preproc==true){
      if(nsurf != p1pp3d.nx0)
      {std::cout<<"Error: The number of surface of Part3 doesn't equal to the number vertice of x domain of part1. "
                <<"\n"<<std::endl;
@@ -45,7 +51,10 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      li0=p1pp3d.li0;
      li1=p1pp3d.li1;
      li2=p1pp3d.li2;
-     LO xinds[3]={p1pp3d.li0,p1pp3d.li1,p1pp3d.li2};  
+
+     BlockIndexes(p1pp3d.comm_x,p1pp3d.mype_x); 
+ 
+     LO xinds[3]={p1pp3d.li0,p1pp3d.li1,p1pp3d.li2}; 
      xboxinds = new LO*[p1pp3d.npx]; 
      for(LO i=0;i<p1pp3d.npx;i++){
        xboxinds[i]=new LO[3];
@@ -71,6 +80,22 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      DistriPart3zcoords(p1pp3d, test_dir);
   } 
 }
+
+void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x)
+{
+  GO* inds = new GO[p2pp3d.npx]; 
+  blockcount=0;
+  for(LO i=0;i<li0;i++)
+    blockcount_part3+=blockcount+(GO)versurf[li1+i];
+  MPI_Datatype mpitype = getMpiType(GO);
+  MPI_Allgather(MPI_IN_PLACE,1,inds,1,mpitype,comm_x);
+  blockstart=0;
+  for(LO i=0;i<mype_x;i++) 
+     blockstart+=inds[i];
+  blockend=blockstart+blockcount-1;
+  delete[] inds;
+}
+
 
 void InitzcoordsInCoupler(double* zcoords,LO* versurf,LO nsurf)
 {
@@ -123,14 +148,14 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
         std::string fname=test_dir+std::to_string(i)+"_zcoords.txt";
        OutputtoFile(zcoords,versurf[numsurf],fname);
       }
-       LO nstart=minloc(zcoords,versurf[numsurf]);
+      nstart[i] = minloc(zcoords,versurf[numsurf]);
 /*
 if(p1pp3d.mype_x==1){
   std::cout<<"versurf["<<numsurf<<"]="<<versurf[numsurf]<<'\n';
   std::cout<<"li="<<i<<" "<<"nstart="<<nstart<<'\n';
 }
 */
-       reshuffle_nodes(zcoords,nstart,versurf[numsurf]);
+       reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
        DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
        pzcoords[i-index1]= new double[mylk0[i-index1]];
        for(LO k=0;k<mylk0[i-index1];k++){
@@ -153,7 +178,7 @@ LO  minloc(const double* zcoords, const LO n)
      }
      return num;
  }
-
+/*
 void reshuffle_nodes(double* zcoords,const LO nstart,const LO vertnum)
 {
   double* tmp=new double[vertnum];
@@ -164,10 +189,12 @@ void reshuffle_nodes(double* zcoords,const LO nstart,const LO vertnum)
   for(LO k=0;k<vertnum;k++)
     zcoords[k]=tmp[k];
 }
+*/
 
 //// notice: be carefull with extra_zero case.
 // CWS - one of the classes must be read only.... 
-void Part3Mesh3D::DistributePoints(double* exterarr,LO gstart,LO li, double* interarr, const Part1ParalPar3D  &p1pp3d)
+void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li, 
+                  const double* interarr, const Part1ParalPar3D  &p1pp3d)
 {
   if(preproc==true){
     LO nstart;

@@ -22,11 +22,14 @@ class Part3Mesh3D{
     LO* mylk0=NULL;
     LO* mylk1=NULL;
     LO* mylk2=NULL; // The indexes of box along z dimension
-    GO boxstar,boxend,boxcount; // The  indexes of the 2d box
+    GO  blockstart,blockend,blockcount; // The  indexes of the 2d box
+    GO  totnode;
+    LO* nstart; // Store the the index of the minimal element of the array of 
+                // the z coordinates on each cross section
 
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
     double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
-    double** pzcoords=NULL;  // The z coordinates of all points within the 2d box.
+    double** pzcoords=NULL;  // The z coordinates of all points within the 2d box
     /* constructor
      * optional arguments support reading
      * the test case number and directory
@@ -75,7 +78,32 @@ class Part3Mesh3D{
 // be removed.
 LO  minloc(const double* zcoords, const LO n); 
 
-void reshuffle_nodes(double* zcoords,const LO nstart,const LO vertnum);
+template<class T>
+void reshuffleforward(double* array,const LO nstart,const LO vertnum)
+{
+  double* tmp=new double[vertnum];
+  for(LO i=0;i<vertnum-nstart;i++)
+    tmp[i]=array[nstart+i];
+  for(LO j=vertnum-nstart+1;j<vertnum;j++)
+    tmp[j]=array[j-vertnum+nstart-1];
+  for(LO k=0;k<vertnum;k++)
+    array[k]=tmp[k];
+  delete[] tmp;
+}
+
+
+template<class T>
+void reshufflebackward(double* array,const LO nstart,const LO vertnum)
+{
+  double* tmp=new double[vertnum];
+  for(LO i=vertnum-nstart;i<vertnum;i++)
+    tmp[i-vertnum+nstart]=array[i];
+  for(LO j=0;j<vertnum-nstart;j++)
+    tmp[j+nstart]=array[j];
+  for(LO k=0;k<vertnum;k++)
+    array[k]=tmp[k];
+  delete[] tmp;
+}
 
 double minimalvalue(const double* array, const LO n);
 

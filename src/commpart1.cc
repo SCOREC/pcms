@@ -53,7 +53,10 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
 
  if(preproc==true){ 
    if(test_case==TestCase::t0){
+     assert(!parpar && !xzcoords);//when not testing, arrays come from ADIOS2
      initTest0(test_dir);
+     xzcoords = new double[nx0];
+     parpar = new LO[1];// This is unused but it is deleted
    }else{
      assert(parpar);
      npx=parpar[0];

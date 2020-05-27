@@ -66,7 +66,7 @@ int main(int argc, char **argv){
   coupler::Array1d<double>* xgc_zcoords = coupler::receive_gene_pproc<double>(dir, xZcoord);
   coupler::Array1d<int>* xgc_versurf = coupler::receive_gene_pproc<int>(dir, xVsurf);
 
-  coupler::Array1d<std::complex<double>>* gene_pproc_c = coupler::receive_gene_pproc<std::complex<double>>(dir, gComp);
+  coupler::Array1d<coupler::CV>* gene_pproc_c = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);
   coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_numsurf->val(0), xgc_versurf->data(), xgc_xcoords->data(), xgc_zcoords->data(), preproc);
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);

@@ -25,7 +25,7 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
     if(testcase==TestCase::t0) {
       TestInitPotentAlongz(p3m3d, p1pp3d.npy, nummode);
     }
-}
+  }
 
 void DatasProc3D::init()
 {

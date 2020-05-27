@@ -23,9 +23,6 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
    nstart = new LO[numsurf];  
    versurf = new LO[numsurf];
    
-   totnode=0;
-   for(LO i=0;i<nsurf;i++)
-     totnode+=(GO)versurf[i];
    xcoords = new double[numsurf];
    if(p1pp3d.mype==0){
      if(test_case==TestCase::t0){
@@ -42,6 +39,11 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
    }
    MPI_Bcast(versurf,numsurf,MPI_INT,root,MPI_COMM_WORLD);
    MPI_Bcast(xcoords,numsurf,MPI_DOUBLE,root,MPI_COMM_WORLD);
+
+   totnode=0;
+   for(LO i=0;i<nsurf;i++)
+     totnode+=(GO)versurf[i];
+
    if(preproc==true){
      if(nsurf != p1pp3d.nx0)
      {std::cout<<"Error: The number of surface of Part3 doesn't equal to the number vertice of x domain of part1. "

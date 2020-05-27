@@ -1,6 +1,7 @@
 #include "dataprocess.h"
 #include "importpart3mesh.h"
 #include "commpart1.h"
+#include "sendrecv_impl.h"
 
 namespace coupler {
 
@@ -16,7 +17,7 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
     p1(p1pp3d.li0,p1pp3d.lj0,p1pp3d.lk0,
 	 p1pp3d.ny0, p1pp3d.npy, p1pp3d.mype_y, 
          p1pp3d.res_fact),
-    p3(p3m3d.li0,p3m3d.lj0,p3m3d.mylk0)
+    p3(p3m3d.li0,p3m3d.lj0,p3m3d.totnode,p3m3d.mylk0)
   {
     init();
     AllocDensityArrays();
@@ -86,12 +87,12 @@ void DatasProc3D::AllocDensityArrays()
 //the first coupling surface and last coupling surface
    densrecv = new CV*[p1.ny0];
    for(LO i=0;i<p1.ny0;i++){
-     densrecv[i] = new CV*[p3.sum];
+     densrecv[i] = new CV[p3.totnode];
    }   
 
-   denssend = new double*[p1.ny0*2];
-   for(LO i=0;i<p1.ny0; i++){
-     denssend = new double[p3.sum];
+   denssend = new double*[p3.lj0];
+   for(LO i=0;i<p3.lj0; i++){
+     denssend[i] = new double[p3.totnode];
    }
  } 
 }
@@ -126,38 +127,38 @@ void DatasProc3D::AllocPotentArrays()
  
 //notice: the dimension may be gave more detaild describtion based on
 ////the first coupling surface and last coupling surface 
-    potentrecv = new double*[p1.ny0*2];
-    for(LO i=0;i<p1.ny0;i++){
-      potentrecv[i] = new double[sum];
+    potentrecv = new double*[p3.lj0];
+    for(LO i=0;i<p3.lj0;i++){
+      potentrecv[i] = new double[p3.totnode];
     }
 
-    potentsend = new double*[p1.ny0];
-    for(LO i=0;i<p1.ny0;i++){
-      potentsend[i] = new double[sum];
+    potentsend = new CV*[p1.lj0];
+    for(LO i=0;i<p1.lj0;i++){
+      potentsend[i] = new CV[p3.totnode];
     }
   }
 }
 
-
-void DatasProc3D:DistriPotentRecvfromPart3(const LO* nstart,const LO* versurf, double** potentrecv)
+//Distribute the global potential  2d array received from part3 and reorder the sub 2darray.  
+void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d)
 { 
-  double** tmp
-  for(LO j=0;j<p3.lj0;j++){
-    tmp = new double*[p3.li0];
-    LO xl=0
-    for(LO i=0;i<p3.li0;i++){
-      xl=p3.li1+i;
-      tmp[i]=new double[versurf[xl]];
+  double** tmp;
+  for(LO j=0;j<p3m3d.lj0;j++){
+    tmp = new double*[p3m3d.li0];
+    LO xl=0;
+    for(LO i=0;i<p3m3d.li0;i++){
+      xl=p3m3d.li1+i;
+      tmp[i]=new double[p3m3d.versurf[xl]];
       GO sumbegin=0;
       for(LO h=0;h<xl;h++){
-        sumbegin+=(GO)versurf[h];
+        sumbegin+=GO(p3m3d.versurf[h]);
       }
-      for(LO m=0;m<versurf[xl];m++){
+      for(LO m=0;m<p3m3d.versurf[xl];m++){
         tmp[i][m]=potentrecv[i][sumbegin+m];
       }
-      reshuffleforward(tmp[xl],nstart[xl],vesurf[xl]);
-      for(LO k=0;k<versurf[xl];k++){
-        potentin[i][j][k]=tmp[i][lk1+k];
+      reshuffleforward(tmp[xl],p3m3d.nstart[xl],p3m3d.versurf[xl]);
+      for(LO k=0;k<p3m3d.mylk0[i];k++){
+        potentin[i][j][k]=tmp[i][p3m3d.mylk1[i]+k];
       }
       delete[] tmp[i];
     }
@@ -165,29 +166,30 @@ void DatasProc3D:DistriPotentRecvfromPart3(const LO* nstart,const LO* versurf, d
 
  } 
 
-
-void DatasProc3D:AssemPotentSendtoPart1(const LO* nstart,const LO* versurf, double** potentsend)
+// Assemble the potential sub2d array in each process into a bigger one, which is straightforwardly transferred by
+// the adios2 API from coupler to Part1.
+void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
 {
-  LO* recvcount = new LO[p1.npz];
-  LO* rdispls = new LO[p1.npz];
-  MPI_Datatype mpitype = getDtype(LO)      
-  MPI_Allgather(&p1.lk0,1,mpitype,recvcount,1,mpitype,p1.comm_z); 
+  LO* recvcount = new LO[p1pp3d.npz];
+  LO* rdispls = new LO[p1pp3d.npz];
+  MPI_Datatype mpitype = getMpiType(LO());      
+  MPI_Allgather(&p1pp3d.lk0,1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
   rdispls[0]=0;
-  for(LO i=1;i<p1.npz;i++){
-    rdispls[i]=ridspls[0]+recvcout[i];
+  for(LO i=1;i<p1pp3d.npz;i++){
+    rdispls[i]=rdispls[0]+recvcount[i];
   }
-  for(LO j=0;j<p1.lj0;j++){
+  for(LO j=0;j<p1pp3d.lj0;j++){
     LO xl=0;
-    for(LO i=0;i<p1.li0;i++){
-      xl=p1.li1+i;
+    for(LO i=0;i<p1pp3d.li0;i++){
+      xl=p1pp3d.li1+i;
       GO sumbegin=0;
       for(LO h=0;h<xl;h++){
-        sumbegin+=(GO)p1.nz0
+        sumbegin+=(GO)p1pp3d.nz0;
       }      
-      CV* tmp = new CV[versurf[xl]];
-      MPI_Allgatherv(potentpart1[i][j],p1.lk0,MPI_CXX_DOUBLE_COMPLEX,tmp,recvcount,rdispls,
-                    MPI_CXX_DOUBLE_COMPLEX,p1.comm_z);    
-      for(LO m=0;m<p1.nz0;m++){
+      CV* tmp = new CV[p3m3d.versurf[xl]];
+      MPI_Allgatherv(potentpart1[i][j],p1pp3d.lk0,MPI_CXX_DOUBLE_COMPLEX,tmp,recvcount,rdispls,
+                    MPI_CXX_DOUBLE_COMPLEX,p1pp3d.comm_z);    
+      for(LO m=0;m<p1pp3d.nz0;m++){
         potentsend[j][sumbegin+m]=tmp[m];
       }      
       delete[] tmp; 
@@ -196,69 +198,72 @@ void DatasProc3D:AssemPotentSendtoPart1(const LO* nstart,const LO* versurf, doub
   delete[] recvcount,rdispls;
 }
 
-
-void DatasProc3D:DistriDensiRecvfromPart1(const LO* versurf, CV** densrecv)
+////Distribute the global density  2d array received from part1 to the processes.
+void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
 {
-  CV** tmp
-  tmp = new CV*[p1.li0];
-  for(LO i=0;i<p1.li0;i++)
-    tmp[i]=new CV[p1.nz0];
+  CV** tmp;
+  tmp = new CV*[p1pp3d.li0];
+  for(LO i=0;i<p1pp3d.li0;i++)
+    tmp[i]=new CV[p1pp3d.nz0];
  
-  for(LO j=0;j<p1.lj0;j++){
-    LO xl=0
-    for(LO i=0;i<p1.li0;i++){
-      xl=p1.li1+i;
+  for(LO j=0;j<p1pp3d.lj0;j++){
+    LO xl=0;
+    for(LO i=0;i<p1pp3d.li0;i++){
+      xl=p1pp3d.li1+i;
       GO sumbegin=0;
       for(LO h=0;h<xl;h++){
-        sumbegin+=(GO)p1.nz0;
+        sumbegin+=(GO)p1pp3d.nz0;
       }
-      for(LO m=0;m<p1.nz0;m++){
+      for(LO m=0;m<p1pp3d.nz0;m++){
         tmp[i][m]=densrecv[i][sumbegin+m];
       }
-      for(LO k=0;k<lk0;k++){
-        potentin[i][j][k]=tmp[i][lk1+k];
+      for(LO k=0;k<p1pp3d.lk0;k++){
+        densin[i][j][k]=tmp[i][p1pp3d.lk1+k];
       }
      }
    }    
-   for(LO i=0;i<p1.li0;i++){
+   for(LO i=0;i<p1pp3d.li0;i++){
      delete[] tmp[i];
    } 
 }
 
+// Assemble the density sub2d array in each process into a global one, which is straightforwardly transferred by
+// the adios2 API from coupler to Part3.
 
-void DatasProc3D:AssemDensSendtoPart3(const LO* nstart,const LO* versurf, CV** denssend)
+void DatasProc3D::AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
 {
-  for(LO j=0;j<p1.lj0;j++){
+  LO* recvcount = new LO[p1pp3d.npz];
+  LO* rdispls = new LO[p1pp3d.npz]; 
+  for(LO j=0;j<p1pp3d.lj0;j++){
     LO xl=0;
-    for(LO i=0;i<p1.li0;i++){
-      LO* recvcount = new LO[p1.npz];
-      LO* rdispls = new LO[p1.npz];
-      MPI_Datatype mpitype = getDtype(LO)      
-      MPI_Allgather(&p3.mylk0[i],1,mpitype,recvcount,1,mpitype,p1.comm_z); 
+    for(LO h=0;h<p1pp3d.npz;h++){
+      recvcount[h]=0;
+      rdispls[h]=0;
+    }
+    for(LO i=0;i<p1pp3d.li0;i++){
+      MPI_Datatype mpitype = getMpiType(LO());      
+      MPI_Allgather(&p3m3d.mylk0[i],1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
       rdispls[0]=0;
-      for(LO i=1;i<p1.npz;i++){
-	rdispls[i]=ridspls[0]+recvcout[i];
+      for(LO k=1;k<p1pp3d.npz;k++){
+	rdispls[k]=rdispls[0]+recvcount[k];
       }
 
-      xl=p3.li1+i;     
-      CV* tmp = new CV[versurf[xl]];
-      MPI_Allgatherv(denspart3[i][j],p3.mylk0[i],MPI_CXX_DOUBLE_COMPLEX,tmp,recvcount,rdispls,
-                    MPI_CXX_DOUBLE_COMPLEX,p1.comm_z);    
-      reshufflebackward(tmp,p3.nstart,versurf[xl]);
+      xl=p1pp3d.li1+i;     
+      CV* tmp = new CV[p3m3d.versurf[xl]];
+      MPI_Allgatherv(denspart3[i][j],p3m3d.mylk0[i],MPI_CXX_DOUBLE_COMPLEX,tmp,recvcount,rdispls,
+                    MPI_CXX_DOUBLE_COMPLEX,p1pp3d.comm_z);    
+      reshufflebackward(tmp,p3m3d.nstart[xl],p3m3d.versurf[xl]);
       GO sumbegin=0;
       for(LO h=0;h<xl;h++){
-        sumbegin+=(GO)versurf[h];
+        sumbegin+=GO(p3m3d.versurf[h]);
       } 
-      for(LO m=0;m<versurf[xl];m++){
+      for(LO m=0;m<p3m3d.versurf[xl];m++){
         potentsend[j][sumbegin+m]=tmp[m];
       }      
       delete[] tmp; 
     }
-    delete[] recvcount,rdispls;
   }  
- 
-
-
+  delete[] recvcount,rdispls;
 }
 
 

@@ -49,7 +49,7 @@ public:
                               // fourier transform
   CV*** potentpart1 = NULL; // storing the electrostatic potential being sent
                             // to the part1.
-  CV**  potentsed = NULL; // the 2d array complex potential transffered to part1 
+  CV**  potentsend = NULL; // the 2d array complex potential transffered to part1 
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
   // The following parameters for yparal=true;
@@ -99,9 +99,10 @@ private:
 
   // this struct contains the read-only values from Part3Mesh3D class
   const struct P3Data {
-    P3Data(LO li, LO lj, LO* mylk) : li0(li), lj0(lj), mylk0(mylk) {};
+    P3Data(LO li, LO lj,GO totnod, LO* mylk) : li0(li), lj0(lj),totnode(totnod) ,mylk0(mylk) {};
       const LO li0;
       const LO lj0;
+      const GO totnode;
       LO const* const mylk0;
   } p3;
 
@@ -115,10 +116,10 @@ private:
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
-  void DistriPotentRecvfromPart3(const LO* nstart,const LO* versurf, double** potentrecv);
-  void AssemPotentSendtoPart1(const LO* nstart,const LO* versurf, double** potentsend);
-  void DistriDensiRecvfromPart1(const LO* versurf, CV** densrecv);
-  void AssemDensSendtoPart3(const LO* nstart,const LO* versurf, CV** denssend);
+  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
 };
 
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,

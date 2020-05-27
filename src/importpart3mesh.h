@@ -23,7 +23,7 @@ class Part3Mesh3D{
     LO* mylk1=NULL;
     LO* mylk2=NULL; // The indexes of box along z dimension
     GO  blockstart,blockend,blockcount; // The  indexes of the 2d box
-    GO  totnode;
+    GO  totnode; // the total number of nodes;
     LO* nstart; // Store the the index of the minimal element of the array of 
                 // the z coordinates on each cross section
 
@@ -63,8 +63,9 @@ class Part3Mesh3D{
     void DistriPart3zcoords(const Part1ParalPar3D  &p1pp3d,
         const std::string test_dir="");
     /* helper function called by DistriPart3zcoords */
-    void DistributePoints(double* exterarr, LO gstart, LO li,
-        double* interarr, const Part1ParalPar3D  &p1pp3d);
+    void DistributePoints(const double* exterarr, const LO gstart, const LO li,
+        const double* interarr, const Part1ParalPar3D  &p1pp3d);
+    void BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx);
     /* default constructor 
      * put this in private to prevent users from calling it
      */
@@ -79,9 +80,9 @@ class Part3Mesh3D{
 LO  minloc(const double* zcoords, const LO n); 
 
 template<class T>
-void reshuffleforward(double* array,const LO nstart,const LO vertnum)
+void reshuffleforward(T* array,const LO nstart,const LO vertnum)
 {
-  double* tmp=new double[vertnum];
+  T* tmp=new T[vertnum];
   for(LO i=0;i<vertnum-nstart;i++)
     tmp[i]=array[nstart+i];
   for(LO j=vertnum-nstart+1;j<vertnum;j++)
@@ -93,9 +94,9 @@ void reshuffleforward(double* array,const LO nstart,const LO vertnum)
 
 
 template<class T>
-void reshufflebackward(double* array,const LO nstart,const LO vertnum)
+void reshufflebackward(T* array,const LO nstart,const LO vertnum)
 {
-  double* tmp=new double[vertnum];
+  T* tmp=new T[vertnum];
   for(LO i=vertnum-nstart;i<vertnum;i++)
     tmp[i-vertnum+nstart]=array[i];
   for(LO j=0;j<vertnum-nstart;j++)

@@ -23,9 +23,9 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
    nstart = new LO[numsurf];  
    versurf = new LO[numsurf];
    
-   sum=0;
+   totnode=0;
    for(LO i=0;i<nsurf;i++)
-     sum+=(GO)versurf[i];
+     totnode+=(GO)versurf[i];
    xcoords = new double[numsurf];
    if(p1pp3d.mype==0){
      if(test_case==TestCase::t0){
@@ -52,7 +52,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      li1=p1pp3d.li1;
      li2=p1pp3d.li2;
 
-     BlockIndexes(p1pp3d.comm_x,p1pp3d.mype_x); 
+     BlockIndexes(p1pp3d.comm_x,p1pp3d.mype_x,p1pp3d.npx); 
  
      LO xinds[3]={p1pp3d.li0,p1pp3d.li1,p1pp3d.li2}; 
      xboxinds = new LO*[p1pp3d.npx]; 
@@ -81,14 +81,15 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
   } 
 }
 
-void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x)
+void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx)
 {
-  GO* inds = new GO[p2pp3d.npx]; 
+  GO* inds = new GO[npx]; 
   blockcount=0;
   for(LO i=0;i<li0;i++)
-    blockcount_part3+=blockcount+(GO)versurf[li1+i];
-  MPI_Datatype mpitype = getMpiType(GO);
-  MPI_Allgather(MPI_IN_PLACE,1,inds,1,mpitype,comm_x);
+    blockcount+=blockcount+(GO)versurf[li1+i];
+  MPI_Datatype mpitype;
+  mpitype = getMpiType(GO());
+  MPI_Allgather(MPI_IN_PLACE,1,mpitype,inds,1,mpitype,comm_x);
   blockstart=0;
   for(LO i=0;i<mype_x;i++) 
      blockstart+=inds[i];

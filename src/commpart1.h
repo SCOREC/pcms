@@ -48,9 +48,7 @@ class Part1ParalPar3D {
         TestCase tcase,
       	std::string tdir)
       : preproc(pproc), test_case(tcase){
-     LO* parpar=new LO[29];   
-     double* xzcoords=new double[nx0];
-      init(parpar, xzcoords,tdir);
+      init(NULL, NULL,tdir);
     }
     ~Part1ParalPar3D()
     {

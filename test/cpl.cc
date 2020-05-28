@@ -45,8 +45,8 @@ int main(int argc, char **argv){
   coupler::adios2_handler gInt(adios,"gene_pproc_i");
   coupler::adios2_handler gComp(adios,"gene_pproc_c");
   coupler::adios2_handler xSurf(adios,"xgc_numsurfs");
+  coupler::adios2_handler xXcoord(adios,"xgc_x_coordss");
   coupler::adios2_handler xZcoord(adios,"xgc_z_coordss");
-  coupler::adios2_handler xXcoord(adios,"xgc_xcoords");
   coupler::adios2_handler xVsurf(adios,"xgc_versurfs");
 
   //receive GENE's preproc mesh discretization values
@@ -62,11 +62,11 @@ int main(int argc, char **argv){
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf);
-  coupler::Array1d<double>* xgc_zcoords = coupler::receive_gene_pproc<double>(dir, xZcoord);
   coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);
+  coupler::Array1d<double>* xgc_zcoords = coupler::receive_gene_pproc<double>(dir, xZcoord);
   coupler::Array1d<int>* xgc_versurf = coupler::receive_gene_pproc<int>(dir, xVsurf);
 
-  coupler::Array1d<std::complex<double>>* gene_pproc_c = coupler::receive_gene_pproc<std::complex<double>>(dir, gComp);
+  coupler::Array1d<coupler::CV>* gene_pproc_c = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);
   coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_numsurf->val(0), xgc_versurf->data(), xgc_xcoords->data(), xgc_zcoords->data(), preproc);
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);

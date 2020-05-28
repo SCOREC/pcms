@@ -14,13 +14,16 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      if(test_case==TestCase::t0){
        numsurf=p1pp3d.nx0;
      } else{
-       numsurf=p1pp3d.nx0;//TODO: This is temporary, delete it once XGC-devel is inplace
+      assert(nsurf);
+       numsurf=nsurf;   //nsurf is passed in class member
      }
    }
    MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
    nsurf=numsurf;   
-   versurf = new LO[numsurf];
-   xcoords = new double[numsurf];
+   if(test_case==TestCase::t0){
+      versurf = new LO[numsurf];
+      xcoords = new double[numsurf];
+   }
    if(p1pp3d.mype==0){
      if(test_case==TestCase::t0){
        assert(!test_dir.empty());
@@ -105,7 +108,6 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
 	numsurf+=1; 
       } 
     }
-
     LO index1=xboxinds[p1pp3d.mype_x][1];
     LO index2=xboxinds[p1pp3d.mype_x][2];
     LO index0=xboxinds[p1pp3d.mype_x][0];

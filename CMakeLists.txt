@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
 project(wdm_coupling VERSION 0.0.1 LANGUAGES CXX)
-# please keep the follow line. The bin direcory is used for debug sometimes.
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(MPI_CXX_SKIP_MPICXX ON)
 find_package(MPI REQUIRED)
 #adios2 adds C and Fortran depending on how it was built

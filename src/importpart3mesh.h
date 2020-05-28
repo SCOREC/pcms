@@ -13,9 +13,10 @@ class Part1ParalPar3D;
 
 class Part3Mesh3D{
   public:
-    LO  nsurf;    // number of flux surfaces
-    LO* versurf=NULL; // numbers of vertice on the flux surfaces
-    double* xcoords=NULL;
+    LO nsurf;    // number of flux surfaces
+    LO* versurf = NULL; // numbers of vertice on the flux surfaces //
+    double* xcoords = NULL;
+    double* zcoordall = NULL;
     LO  li0,li1,li2;
     LO** xboxinds=NULL;  //The indexes of all boxes on the radial dimension
     LO lj0;
@@ -29,16 +30,33 @@ class Part3Mesh3D{
 
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
     double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
-    double** pzcoords=NULL;  // The z coordinates of all points within the 2d box
-    /* constructor
-     * optional arguments support reading
+    double** pzcoords=NULL;  // The z coordinates of all points within the 2d box.
+    /* constructor - versurf has length = numsurf & versurf[i] = the number of nodes surface[i]
+     * xcoords saves the radial coordinate of each surface.
+     * zcoords saves the poloidal angle of each node on each surface.
+     */
+    Part3Mesh3D(Part1ParalPar3D &p1pp3d,
+        LO nsurf_,
+        LO* versurf_,
+        double* xcoords_,
+        double* zcoord_,
+        bool pproc = true)
+      : nsurf(nsurf_),
+        versurf(versurf_),
+        xcoords(xcoords_),
+        zcoordall(zcoord_),
+	preproc(pproc), test_case(TestCase::off) {
+      init(p1pp3d);
+    }
+    /* testing constructor
+     * arguments support reading
      * the test case number and directory
      * from the user
      */
     Part3Mesh3D(Part1ParalPar3D &p1pp3d,
-        bool pproc = true,
-        TestCase tcase = TestCase::off,
-        std::string tdir="")
+        bool pproc,
+        TestCase tcase,
+        std::string tdir)
       : preproc(pproc), test_case(tcase) {
       assert(tcase < TestCase::invalid);
       init(p1pp3d,tdir);

@@ -12,6 +12,19 @@
 #include "couplingTypes.h"
 
 namespace coupler { 
+      
+  struct adios2_handler{
+    adios2::IO IO;
+    adios2::Engine eng;
+    std::string name;
+    adios2_handler(adios2::ADIOS &adios, const std::string name_):
+            name(name_),IO(adios.DeclareIO(name_))  {}
+    ~adios2_handler(){
+            eng.Close();
+    }
+    std::string get_name() const { return name; };
+  };
+
   /** Storage of double precision 2D array data
    *  and associated meta data
    */
@@ -143,7 +156,7 @@ namespace coupler {
           {"OpenTimeoutSecs", "480"}
           });
       eng = read_io.Open(fname, adios2::Mode::Read);
-      std::cerr << rank << ": " << name << " engine created\n";
+      if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     }
     else{
       std::cerr << rank << ": receive engine already exists \n";
@@ -155,7 +168,7 @@ namespace coupler {
     const auto total_size = adios_var.Shape()[0];
     const auto my_start = (total_size / nprocs) * rank;
     const auto my_count = (total_size / nprocs);
-    std::cout << " Reader of rank " << rank << " reading " << my_count
+    if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
     const adios2::Dims start{my_start};
@@ -192,7 +205,7 @@ namespace coupler {
           {"OpenTimeoutSecs", "480"}
           });
       eng = read_io.Open(fname, adios2::Mode::Read);
-      std::cerr << rank << ": " << name << " engine created\n";
+      if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     }
     else{
       std::cerr << rank << ": receive engine already exists \n";
@@ -259,27 +272,26 @@ namespace coupler {
    */
   template<typename T>
   Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      adios2::IO &io, adios2::Engine &engine) {
-    const std::string name = "gene_pproc";
+      const adios2_handler &handler) { 
+      adios2::IO io = handler.IO; 
+      adios2::Engine engine = handler.eng;
+      std::string name = handler.get_name();
     return receive1d_from_ftn<T>(cce_folder,name, io, engine);
   }
   
 
   Array2d<double>* receive_density(const std::string cce_folder,
-  		    adios2::IO &io, adios2::Engine &engine);
+      const adios2_handler &handler);
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
-      adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id);
+      const adios2_handler &handler, adios2::Variable<double> &send_id);
 
   Array2d<double>* receive_field(const std::string cce_folder,
-      adios2::IO &io, adios2::Engine &eng);
+      const adios2_handler &handler);
 
   void send_field(const std::string cce_folder, const Array2d<double>* field,
-      adios2::IO &io, adios2::Engine &engine, adios2::Variable<double> &send_id); 
+      const adios2_handler &handler, adios2::Variable<double> &send_id); 
 
-  /** Close the Adios2 engine objects
-   */
-  void close_engines(adios2::Engine engine[], const int i);
 }//end namespace coupler
 
 #endif

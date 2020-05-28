@@ -13,8 +13,8 @@ int main(int argc, char* argv[])
   coupler::TestCase test_case = coupler::TestCase::t0;
   const bool preproc = true;
   const bool ypar = false;
-//  std::string test_dir(argv[1]);
-  std::string test_dir = "/gpfs/u/home/MPFS/MPFSshng/barn/wdmapp_coupling_data/testdatas/";
+  std::string test_dir(argv[1]);
+//  std::string test_dir = "/gpfs/u/home/MPFS/MPFSshng/barn/wdmapp_coupling_data/testdatas/";
   coupler::Part1ParalPar3D p1pp3d(preproc, test_case, test_dir);  
   coupler::Part3Mesh3D p3m3d(p1pp3d, preproc, test_case, test_dir);
   const int nummode = 1;

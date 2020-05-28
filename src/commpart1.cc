@@ -46,14 +46,17 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 }
 
 //read the paralllization parameters
-void Part1ParalPar3D::init(std::string test_dir)
+void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
 {
  if(preproc==true){ 
-   LO* parpar=new LO[29];   
    if(test_case==TestCase::t0){
+     assert(!parpar && !xzcoords);//when not testing, arrays come from ADIOS2
      initTest0(test_dir);
+//  The following two lines looks weird here. 
+     xzcoords = new double[nx0];
+     parpar = new LO[1];// This is unused but it is deleted
    }else{
-//     receive_field1D(GO &parpar, "../coupling","para_parameters",9,MPI_COMM_WORLD);
+     assert(parpar);
      npx=parpar[0];
      nx0=parpar[1];
      nxb=parpar[2];
@@ -86,25 +89,27 @@ void Part1ParalPar3D::init(std::string test_dir)
 
      n0_global=parpar[27];
      ky0_ind=parpar[28];    
-
      NP=npx*npy*npz;  
      CreateSubCommunicators();
-     
+ 
+// This array will be transferred from part1    
      q_prof = new double[npx];
-   //receive buffer by adious routine from GENE
    }
 
    // initialize the radial locations of the flux surface and poloidal angles
    pzcoords=new double[nz0];
    xcoords=new double[nx0];
-   double* xzcoords; // this lie may be deleted
-   xzcoords=new double[nx0+1];
+
+// The two lines will be needed when refactoring this part code.
+//   double* xzcoords;
+//   xzcoords=new double[nx0+1];
+
    if(test_case==TestCase::t0){
       assert(!test_dir.empty());
       std::string fname=test_dir+"xcoords.nml";
       InputfromFile(xzcoords,nx0,fname);
    }else{
-   //receive_field1D(double& xzcoord, "../coupling","xcoords_dz",nx0+1,MPI_COMM_WORLD);
+      assert(xzcoords);
    }
 
    for(LO i=0;i<nx0;i++){
@@ -113,9 +118,9 @@ void Part1ParalPar3D::init(std::string test_dir)
    if(test_case==TestCase::t0){
      dz=2.0*cplPI/nz0;
    }else{
-     dz=xzcoords[nx0]; 
+     dz=xzcoords[nx0];
    }
- 
+
    for(LO i=0;i<nz0;i++){
      pzcoords[i]=-1.0*cplPI+(double)i*dz;
    }
@@ -133,7 +138,6 @@ void Part1ParalPar3D::CreateSubCommunicators()
    // create 3D parallel cart with z being periodic
    int rorder = 0;
    int dim[3]={(int)npx,(int)npy,(int)npz};
-//   MPI_Comm comm_cart;
    MPI_Cart_create(MPI_COMM_WORLD,3,dim,periods,rorder,&comm_cart);
 
    MPI_Comm subcomuni[3];

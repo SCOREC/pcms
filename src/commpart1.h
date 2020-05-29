@@ -40,7 +40,7 @@ class Part1ParalPar3D {
         std::string tdir="")
       : preproc(pproc), 
         test_case(TestCase::off){
-      init(parpar, xzcoords, tdir);
+        init(parpar, xzcoords, tdir);
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
     /*Test case constructor*/

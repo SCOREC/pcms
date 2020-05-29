@@ -14,7 +14,8 @@ class Part1ParalPar3D;
 class Part3Mesh3D{
   public:
     LO nsurf;    // number of flux surfaces
-    LO* versurf = NULL; // numbers of vertice on the flux surfaces //
+    LO* versurfpart3 = NULL; // numbers of vertices on all flux surfaces from part3 
+    LO* versurf = NULL; // numbers of vertices on the flux surfaces locating on the part1 domain.
     double* xcoords = NULL;
     double* zcoordall = NULL;
     LO  li0,li1,li2;
@@ -23,11 +24,20 @@ class Part3Mesh3D{
     LO* mylk0=NULL;
     LO* mylk1=NULL;
     LO* mylk2=NULL; // The indexes of box along z dimension
-    GO  blockstart,blockend,blockcount; // The  indexes of the 2d box
-    GO  totnode; // the total number of nodes;
     LO* nstart; // Store the the index of the minimal element of the array of 
                 // the z coordinates on each cross section
 
+    // parameters for receiving and sending global 2d arrays
+    GO  blockstart,blockend,blockcount; // The  indexes of the 2d box global in z dimension
+    LO  cce_first_surface; // The number of the first flux surface where GENE begins.
+    LO  cce_last_surface;  // The number of the last flux surface where GENE ends.
+    GO  cce_first_node; // The number of the first active node sent by part3;
+    GO  cce_last_node; // The number of the last active node send by part3;
+    GO  cce_node_number;  // The number of active nodes sent by part3.
+    GO  totnode; // the total number of nodes sent by part3;
+    GO  activenode; // The number of nodes part1 has on the poloidal cross section. 
+    LO  shiftx;  // The number of surfaces shifting from part3 first surface to part1 first surface.
+  
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
     double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
     double** pzcoords=NULL;  // The z coordinates of all points within the 2d box.
@@ -73,6 +83,8 @@ class Part3Mesh3D{
      if(Zcoords!=NULL) delete[] Zcoords;
      if(pzcoords!=NULL) delete[] pzcoords;
    }
+     void  JugeFirstSurfaceMatch(double xp1);
+ 
   private:
     const bool preproc;
     const TestCase test_case;

@@ -85,14 +85,14 @@ void DatasProc3D::AllocDensityArrays()
 
 //notice: the dimension may be gave more detaild describtion based on 
 //the first coupling surface and last coupling surface
-   densrecv = new CV*[p1.ny0];
+   densrecv = new CV*[p1.lj0];
    for(LO i=0;i<p1.ny0;i++){
-     densrecv[i] = new CV[p3.totnode];
+     densrecv[i] = new CV[p1.blockcount];
    }   
 
    denssend = new double*[p3.lj0];
    for(LO i=0;i<p3.lj0; i++){
-     denssend[i] = new double[p3.totnode];
+     denssend[i] = new double[p3.blockcount];
    }
  } 
 }
@@ -129,12 +129,12 @@ void DatasProc3D::AllocPotentArrays()
 ////the first coupling surface and last coupling surface 
     potentrecv = new double*[p3.lj0];
     for(LO i=0;i<p3.lj0;i++){
-      potentrecv[i] = new double[p3.totnode];
+      potentrecv[i] = new double[p3.blockcount];
     }
 
     potentsend = new CV*[p1.lj0];
     for(LO i=0;i<p1.lj0;i++){
-      potentsend[i] = new CV[p3.totnode];
+      potentsend[i] = new CV[p1.blockcount];
     }
   }
 }
@@ -183,10 +183,10 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
     for(LO i=0;i<p1pp3d.li0;i++){
       xl=p1pp3d.li1+i;
       GO sumbegin=0;
-      for(LO h=0;h<xl;h++){
+      for(LO h=0;h<i;h++){
         sumbegin+=(GO)p1pp3d.nz0;
       }      
-      CV* tmp = new CV[p3m3d.versurf[xl]];
+      CV* tmp = new CV[p1pp3d.nz0];
       MPI_Allgatherv(potentpart1[i][j],p1pp3d.lk0,MPI_CXX_DOUBLE_COMPLEX,tmp,recvcount,rdispls,
                     MPI_CXX_DOUBLE_COMPLEX,p1pp3d.comm_z);    
       for(LO m=0;m<p1pp3d.nz0;m++){
@@ -254,8 +254,8 @@ void DatasProc3D::AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1Para
                     MPI_CXX_DOUBLE_COMPLEX,p1pp3d.comm_z);    
       reshufflebackward(tmp,p3m3d.nstart[xl],p3m3d.versurf[xl]);
       GO sumbegin=0;
-      for(LO h=0;h<xl;h++){
-        sumbegin+=GO(p3m3d.versurf[h]);
+      for(LO h=0;h<i;h++){
+        sumbegin+=GO(p3m3d.versurf[h+p3m3d.li1]);
       } 
       for(LO m=0;m<p3m3d.versurf[xl];m++){
         potentsend[j][sumbegin+m]=tmp[m];
@@ -306,6 +306,8 @@ DatasProc3D::~DatasProc3D()
   if(potentinterpo!=NULL) delete[] potentinterpo;
   if(potentpart1!=NULL) delete[] potentpart1;       
 }
+
+ 
 
 }
 

@@ -13,11 +13,10 @@ class Part1ParalPar3D;
 
 class Part3Mesh3D{
   public:
-    LO nsurf;    // number of flux surfaces
+    LO nsurf;    // number of flux surfaces of part3
     LO* versurfpart3 = NULL; // numbers of vertices on all flux surfaces from part3 
     LO* versurf = NULL; // numbers of vertices on the flux surfaces locating on the part1 domain.
     double* xcoords = NULL;
-    double* zcoordall = NULL;
     LO  li0,li1,li2;
     LO** xboxinds=NULL;  //The indexes of all boxes on the radial dimension
     LO lj0;
@@ -26,6 +25,11 @@ class Part3Mesh3D{
     LO* mylk2=NULL; // The indexes of box along z dimension
     LO* nstart; // Store the the index of the minimal element of the array of 
                 // the z coordinates on each cross section
+
+//  temporary members which would be deleted in the next time refactor
+    double* zcoordall = NULL; //zcoordall will be removed in the next refacotr.
+    GO* cce = NULL; //store versurfpart3 and cce_ variables
+
 
     // parameters for receiving and sending global 2d arrays
     GO  blockstart,blockend,blockcount; // The  indexes of the 2d box global in z dimension
@@ -47,12 +51,14 @@ class Part3Mesh3D{
      */
     Part3Mesh3D(Part1ParalPar3D &p1pp3d,
         LO nsurf_,
-        LO* versurf_,
+        LO* versurfpart3_,
+        GO* cce_,
         double* xcoords_,
         double* zcoord_,
         bool pproc = true)
       : nsurf(nsurf_),
-        versurf(versurf_),
+        versurfpart3(versurfpart3_),
+        cce(cce_),
         xcoords(xcoords_),
         zcoordall(zcoord_),
 	preproc(pproc), test_case(TestCase::off) {
@@ -73,6 +79,7 @@ class Part3Mesh3D{
     }
     ~Part3Mesh3D()
     {
+     if(versurfpart3!=NULL) delete[] versurfpart3;
      if(versurf!=NULL) delete[] versurf;
      if(xboxinds!=NULL) delete[] xboxinds;
      if(xcoords!=NULL) delete[] xcoords;

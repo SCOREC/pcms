@@ -60,9 +60,9 @@ BoundaryDescr3D::BoundaryDescr3D(
 	lowpotentz[i][j]=new CV[nzb];
       }
     }    
-  }
 
-  initpbmat(p1pp3d);
+   initpbmat(p1pp3d);
+ } 
 }
 
 void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)

@@ -24,17 +24,21 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
    }
    MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
    nsurf=numsurf; 
-   versurfpart3 = new LO[nsurf];
-   
-   xcoords = new double[nsurf];
+//   if(test_case==TestCase::t0){
+//      versurfpart3 = new LO[nsurf];
+//      xcoords = new double[nsurf];
+//   }
 //   if(p1pp3d.mype==0){   // please keep this commented loop.
    if(test_case==TestCase::t0){
+      versurfpart3 = new LO[nsurf];
+      xcoords = new double[nsurf];
+
       assert(!test_dir.empty());
       std::string fname=test_dir+"versurf.nml";
       InputfromFile(versurfpart3,numsurf,fname);
       fname=test_dir+"xcoords.nml";
       InputfromFile(xcoords,nsurf,fname);
-// please keep the following two commented lines.After determing the community, they will be removed.
+// please keep the following two commented lines.After determining the communnicator, they will be removed.
 //       MPI_Bcast(versurfpart3,nsurf,MPI_INT,root,MPI_COMM_WORLD);
 //       MPI_Bcast(xcoords,nsurf,MPI_DOUBLE,root,MPI_COMM_WORLD);
 
@@ -47,19 +51,15 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
       cce_node_number = cce_last_node-cce_first_node+1;
 
     }else {
-      GO* tmp = new GO[nsurf+4];
-      // tmp will be transferred from part1 in mpi_comm_word comm;
-      assert(versurfpart3);
-      cce_first_surface=(LO)tmp[nsurf];
-      cce_last_surface=(LO)tmp[nsurf+1];
-      cce_first_node=tmp[nsurf+2];
-      cce_last_node=tmp[nsurf+3];
+
+      cce_first_surface=(LO)cce[0];
+      cce_last_surface=(LO)cce[1];
+      cce_first_node=cce[nsurf+2];
+      cce_last_node=cce[nsurf+3];
       cce_node_number = cce_last_node-cce_first_node+1;
-      for(int i=0;i<nsurf;i++){
-	versurfpart3[i]=(LO)tmp[i];
-      }
+   
+      assert(versurfpart3);
       assert(xcoords);
-      // Here is the xcoords(x_XGC) transferred from part1 in the MPI_COMM_WORLD comm.
     }
 //   }
 
@@ -114,7 +114,6 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      mylk1=new LO[li0];
      mylk2=new LO[li0];      
      DistriPart3zcoords(p1pp3d, test_dir);
-
   } 
 }
 
@@ -166,7 +165,6 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
 	numsurf+=1; 
       } 
     }
-
     LO index1=xboxinds[p1pp3d.mype_x][1];
     LO index2=xboxinds[p1pp3d.mype_x][2];
     LO index0=xboxinds[p1pp3d.mype_x][0];

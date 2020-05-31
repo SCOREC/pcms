@@ -128,8 +128,10 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
    for(LO i=0;i<lk0;i++){
      pzp[i]=double(lk1+i)*dz-1.0*cplPI;
    }
-  delete[] parpar;
-  delete[] xzcoords;
+   void blockindicess();
+   void blockindicess(); 
+   delete[] parpar;
+   delete[] xzcoords;
  }
 }
 
@@ -163,6 +165,14 @@ void Part1ParalPar3D::MpiFreeComm()
   MPI_Comm_free(&comm_y);
   MPI_Comm_free(&comm_z);
   MPI_Comm_free(&comm_cart);
+}
+
+void Part1ParalPar3D::blockindices()
+{
+   blockcount = nz0*li0;
+   blockstart = nz0*li1;
+   blockend = nz0*(li2+1)-1;
+
 }
 
 

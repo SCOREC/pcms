@@ -139,7 +139,7 @@ void DatasProc3D::AllocPotentArrays()
   }
 }
 
-//Distribute the global potential  2d array received from part3 and reorder the sub 2darray.  
+//Distribute the sub global potential  2d array received from part3 and reorder the sub 2darray.  
 void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d)
 { 
   double** tmp;
@@ -150,13 +150,13 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
       xl=p3m3d.li1+i;
       tmp[i]=new double[p3m3d.versurf[xl]];
       GO sumbegin=0;
-      for(LO h=0;h<xl;h++){
-        sumbegin+=GO(p3m3d.versurf[h]);
+      for(LO h=0;h<i;h++){
+        sumbegin+=GO(p3m3d.versurf[h+p3mp3d.li1]);
       }
       for(LO m=0;m<p3m3d.versurf[xl];m++){
-        tmp[i][m]=potentrecv[i][sumbegin+m];
+        tmp[i][m]=potentrecv[j][sumbegin+m];
       }
-      reshuffleforward(tmp[xl],p3m3d.nstart[xl],p3m3d.versurf[xl]);
+      reshuffleforward(tmp[i],p3m3d.nstart[xl],p3m3d.versurf[xl]);
       for(LO k=0;k<p3m3d.mylk0[i];k++){
         potentin[i][j][k]=tmp[i][p3m3d.mylk1[i]+k];
       }
@@ -198,7 +198,7 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
   delete[] recvcount,rdispls;
 }
 
-////Distribute the global density  2d array received from part1 to the processes.
+////Distribute the subglobal density  2d array received from part1 to the processes.
 void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
 {
   CV** tmp;
@@ -211,11 +211,11 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1
     for(LO i=0;i<p1pp3d.li0;i++){
       xl=p1pp3d.li1+i;
       GO sumbegin=0;
-      for(LO h=0;h<xl;h++){
+      for(LO h=0;h<i;h++){
         sumbegin+=(GO)p1pp3d.nz0;
       }
       for(LO m=0;m<p1pp3d.nz0;m++){
-        tmp[i][m]=densrecv[i][sumbegin+m];
+        tmp[i][m]=densrecv[j][sumbegin+m];
       }
       for(LO k=0;k<p1pp3d.lk0;k++){
         densin[i][j][k]=tmp[i][p1pp3d.lk1+k];
@@ -242,7 +242,7 @@ void DatasProc3D::AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1Para
     }
     for(LO i=0;i<p1pp3d.li0;i++){
       MPI_Datatype mpitype = getMpiType(LO());      
-      MPI_Allgather(&p3m3d.mylk0[i],1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
+      MPI_Allgather(p3m3d.mylk0[i],1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
       rdispls[0]=0;
       for(LO k=1;k<p1pp3d.npz;k++){
 	rdispls[k]=rdispls[0]+recvcount[k];

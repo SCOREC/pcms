@@ -31,6 +31,10 @@ class Part1ParalPar3D {
     double* q_prof=NULL;  //safty factor
     LO n0_global;
     LO ky0_ind;
+
+// parameters for Adios transfer
+    LO blockstart,blockend,blockcount;    
+
     /* constructor
      * optionally read preproc, test_case and test_dir from user
      */
@@ -65,8 +69,9 @@ class Part1ParalPar3D {
     void initTest0(std::string test_dir);
     /* init* helper function */
     void CreateSubCommunicators();
-    /* destructor helper function */
+   /* destructor helper function */
     void MpiFreeComm();
+    void blockindicess(); 
 };
 
 }

@@ -24,10 +24,6 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
    }
    MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
    nsurf=numsurf; 
-//   if(test_case==TestCase::t0){
-//      versurfpart3 = new LO[nsurf];
-//      xcoords = new double[nsurf];
-//   }
 //   if(p1pp3d.mype==0){   // please keep this commented loop.
    if(test_case==TestCase::t0){
       versurfpart3 = new LO[nsurf];

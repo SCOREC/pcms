@@ -169,9 +169,9 @@ void Part1ParalPar3D::MpiFreeComm()
 
 void Part1ParalPar3D::blockindices()
 {
-   blockcount = nz0*li0;
-   blockstart = nz0*li1;
-   blockend = nz0*(li2+1)-1;
+   blockcount = GO(nz0*li0);
+   blockstart = GO(nz0*li1);
+   blockend = GO(nz0*(li2+1)-1);
 
 }
 

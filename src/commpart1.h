@@ -33,7 +33,7 @@ class Part1ParalPar3D {
     LO ky0_ind;
 
 // parameters for Adios transfer
-    LO blockstart,blockend,blockcount;    
+    GO blockstart,blockend,blockcount;    
 
     /* constructor
      * optionally read preproc, test_case and test_dir from user
@@ -71,7 +71,7 @@ class Part1ParalPar3D {
     void CreateSubCommunicators();
    /* destructor helper function */
     void MpiFreeComm();
-    void blockindicess(); 
+    void blockindices(); 
 };
 
 }

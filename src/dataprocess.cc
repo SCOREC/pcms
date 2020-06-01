@@ -15,9 +15,9 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
     testcase(test_case),
     yparal(ypar),
     p1(p1pp3d.li0,p1pp3d.lj0,p1pp3d.lk0,
-	 p1pp3d.ny0, p1pp3d.npy, p1pp3d.mype_y, 
+	 p1pp3d.ny0, p1pp3d.npy, p1pp3d.mype_y,p1pp3d.blockcount, 
          p1pp3d.res_fact),
-    p3(p3m3d.li0,p3m3d.lj0,p3m3d.totnode,p3m3d.mylk0)
+    p3(p3m3d.li0,p3m3d.lj0,p3m3d.totnode,p3m3d.blockcount,p3m3d.mylk0)
   {
     init();
     AllocDensityArrays();
@@ -151,7 +151,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
       tmp[i]=new double[p3m3d.versurf[xl]];
       GO sumbegin=0;
       for(LO h=0;h<i;h++){
-        sumbegin+=GO(p3m3d.versurf[h+p3mp3d.li1]);
+        sumbegin+=GO(p3m3d.versurf[h+p3m3d.li1]);
       }
       for(LO m=0;m<p3m3d.versurf[xl];m++){
         tmp[i][m]=potentrecv[j][sumbegin+m];
@@ -175,13 +175,11 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
   MPI_Datatype mpitype = getMpiType(LO());      
   MPI_Allgather(&p1pp3d.lk0,1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
   rdispls[0]=0;
-  for(LO i=1;i<p1pp3d.npz;i++){
+    for(LO i=1;i<p1pp3d.npz;i++){
     rdispls[i]=rdispls[0]+recvcount[i];
   }
-  for(LO j=0;j<p1pp3d.lj0;j++){
-    LO xl=0;
+  for(LO j=0;j<p1pp3d.lj0;j++){ 
     for(LO i=0;i<p1pp3d.li0;i++){
-      xl=p1pp3d.li1+i;
       GO sumbegin=0;
       for(LO h=0;h<i;h++){
         sumbegin+=(GO)p1pp3d.nz0;
@@ -204,12 +202,9 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1
   CV** tmp;
   tmp = new CV*[p1pp3d.li0];
   for(LO i=0;i<p1pp3d.li0;i++)
-    tmp[i]=new CV[p1pp3d.nz0];
- 
+    tmp[i]=new CV[p1pp3d.nz0]; 
   for(LO j=0;j<p1pp3d.lj0;j++){
-    LO xl=0;
     for(LO i=0;i<p1pp3d.li0;i++){
-      xl=p1pp3d.li1+i;
       GO sumbegin=0;
       for(LO h=0;h<i;h++){
         sumbegin+=(GO)p1pp3d.nz0;
@@ -242,7 +237,7 @@ void DatasProc3D::AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1Para
     }
     for(LO i=0;i<p1pp3d.li0;i++){
       MPI_Datatype mpitype = getMpiType(LO());      
-      MPI_Allgather(p3m3d.mylk0[i],1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
+      MPI_Allgather(&p3m3d.mylk0[i],1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
       rdispls[0]=0;
       for(LO k=1;k<p1pp3d.npz;k++){
 	rdispls[k]=rdispls[0]+recvcount[k];
@@ -307,7 +302,6 @@ DatasProc3D::~DatasProc3D()
   if(potentpart1!=NULL) delete[] potentpart1;       
 }
 
- 
 
 }
 

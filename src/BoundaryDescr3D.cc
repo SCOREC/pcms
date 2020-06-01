@@ -12,15 +12,16 @@ namespace coupler {
 
 BoundaryDescr3D::BoundaryDescr3D(
     const Part3Mesh3D& p3m3d,
-    const Part1ParalPar3D &p1pp3d,
+    const Part1ParalPar3D& p1pp3d,
     const DatasProc3D& dp3d,
-    const TestCase tcase,
+    TestCase tcase,
     bool pproc):test_case(tcase), preproc(pproc)
 {
   if(preproc==true){
     nzb=p1pp3d.nzb;
     updenz=new CV**[p1pp3d.li0];
     lowdenz=new CV**[p1pp3d.li0];
+
     for(LO i=0;i<p1pp3d.li0;i++){
       updenz[i]=new CV*[p1pp3d.lj0];
       lowdenz[i]=new CV*[p1pp3d.lj0];
@@ -62,7 +63,7 @@ BoundaryDescr3D::BoundaryDescr3D(
     }    
 
    initpbmat(p1pp3d);
- } 
+  } 
 }
 
 void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)

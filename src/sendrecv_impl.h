@@ -21,7 +21,7 @@ MPI_Datatype getMpiType(T foo) {
     //https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node48.htm
     mpitype = MPI_CXX_DOUBLE_COMPLEX;
   } else if ( std::is_same<T, coupler::GO>::value ) { 
-    mpitype = MPI::UNSIGNED_LONG;
+    mpitype = CXX_UNSIGNED_LONG;
   } else if ( std::is_same<T, coupler::LO>::value ) {
     mpitype = MPI_INT;
   } else {

@@ -142,10 +142,10 @@ namespace coupler {
   
   template<typename T> 
   Array1d<T>* receive1d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng) {
+      adios2::IO &read_io, adios2::Engine &eng, MPI_Comm &comm) {
     int rank, nprocs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &nprocs);
   
     const std::string fname = dir + "/" + name + ".bp";
   
@@ -168,7 +168,7 @@ namespace coupler {
     const auto total_size = adios_var.Shape()[0];
     const auto my_start = (total_size / nprocs) * rank;
     const auto my_count = (total_size / nprocs);
-    if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
+    std::cout << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
     const adios2::Dims start{my_start};
@@ -191,10 +191,10 @@ namespace coupler {
   /* receive columns (start_col) to (start_col + localW) */
   template<typename T>
   Array2d<T>* receive2d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng) {
+      adios2::IO &read_io, adios2::Engine &eng,MPI_Comm &comm) {
     int rank, nprocs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &nprocs);
   
     const std::string fname = dir + "/" + name + ".bp";
   
@@ -272,22 +272,22 @@ namespace coupler {
    */
   template<typename T>
   Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      const adios2_handler &handler) { 
+      const adios2_handler &handler,MPI_Comm comm = MPI_COMM_WORLD) { 
       adios2::IO io = handler.IO; 
       adios2::Engine engine = handler.eng;
       std::string name = handler.get_name();
-    return receive1d_from_ftn<T>(cce_folder,name, io, engine);
+    return receive1d_from_ftn<T>(cce_folder,name, io, engine, comm);
   }
   
 
   Array2d<double>* receive_density(const std::string cce_folder,
-      const adios2_handler &handler);
+      const adios2_handler &handler, MPI_Comm comm = MPI_COMM_WORLD);
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id);
 
   Array2d<double>* receive_field(const std::string cce_folder,
-      const adios2_handler &handler);
+      const adios2_handler &handler, MPI_Comm comm = MPI_COMM_WORLD);
 
   void send_field(const std::string cce_folder, const Array2d<double>* field,
       const adios2_handler &handler, adios2::Variable<double> &send_id); 

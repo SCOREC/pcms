@@ -86,7 +86,7 @@ void DatasProc3D::AllocDensityArrays()
 //notice: the dimension may be gave more detaild describtion based on 
 //the first coupling surface and last coupling surface
    densrecv = new CV*[p1.lj0];
-   for(LO i=0;i<p1.ny0;i++){
+   for(LO i=0;i<p1.lj0;i++){
      densrecv[i] = new CV[p1.blockcount];
    }   
 

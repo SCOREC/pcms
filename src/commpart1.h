@@ -71,7 +71,7 @@ class Part1ParalPar3D {
     void CreateSubCommunicators();
    /* destructor helper function */
     void MpiFreeComm();
-    void blockindices(); 
+    void blockindice(); 
 };
 
 }

@@ -46,19 +46,20 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 }
 
 //read the paralllization parameters
-void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
+void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::string test_dir)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 
  if(preproc==true){ 
    if(test_case==TestCase::t0){
-     assert(!parpar && !xzcoords);//when not testing, arrays come from ADIOS2
+     assert(!parpar && !xzcoords && !q_prof);//when not testing, arrays come from ADIOS2
      initTest0(test_dir);
      xzcoords = new double[nx0];
      parpar = new LO[1];// This is unused but it is deleted
    }else{
      assert(parpar);
+     assert(q_prof);
      npx=parpar[0];
      nx0=parpar[1];
      nxb=parpar[2];
@@ -94,8 +95,6 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
      NP=npx*npy*npz;  
      CreateSubCommunicators();
      
-     q_prof = new double[npx];
-   //receive buffer by adious routine from GENE
    }
 
    // initialize the radial locations of the flux surface and poloidal angles

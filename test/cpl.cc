@@ -52,14 +52,14 @@ int main(int argc, char **argv){
 
   //receive GENE's preproc mesh discretization values
   coupler::Array1d<double>* q_prof = coupler::receive_gene_pproc<double>(dir, gQP);
-  coupler::Array1d<double>* gene_pproc_rx = coupler::receive_gene_pproc<double>(dir, gRX);
-  coupler::Array1d<int>* gene_pproc_i = coupler::receive_gene_pproc<int>(dir, gInt);
+  coupler::Array1d<double>* gene_xval = coupler::receive_gene_pproc<double>(dir, gRX);//matching gene's xval arr
+  coupler::Array1d<int>* gene_parpar = coupler::receive_gene_pproc<int>(dir, gInt);
 
   //intialize GENE class
   const bool preproc = true;
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
-  coupler::Part1ParalPar3D p1pp3d(gene_pproc_i->data(),gene_pproc_rx->data(),q_prof->data(),preproc);
+  coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(),preproc);
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf);
@@ -68,16 +68,16 @@ int main(int argc, char **argv){
   coupler::Array1d<int>* xgc_versurf = coupler::receive_gene_pproc<int>(dir, xVsurf);
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
 
-  coupler::Array1d<coupler::CV>* gene_pproc_c = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);
+  coupler::Array1d<coupler::CV>* gene_moments = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);//matching gene's moments arr
   coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_numsurf->val(0), xgc_versurf->data(), xgc_xcoords->data(), xgc_zcoords->data(), preproc);
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, dp3d, test_case, preproc);
 
   coupler::destroy(q_prof);
-  coupler::destroy(gene_pproc_rx);
-  coupler::destroy(gene_pproc_i);
-  coupler::destroy(gene_pproc_c);
+  coupler::destroy(gene_xval);
+  coupler::destroy(gene_parpar);
+  coupler::destroy(gene_moments);
 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {

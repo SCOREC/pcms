@@ -83,6 +83,11 @@ int main(int argc, char **argv){
     for (int j = 0; j < RK_count; j++) {
       coupler::Array2d<double>* density = coupler::receive_density(dir, gDens);
       coupler::printSomeDensityVals(density);
+      /* For sends involving subcomm, the adios object must be created with the subcomm
+      adios2::ADIOS adios_x(p1pp3d.comm_x, adios2::DebugON);
+      coupler::adios2_handler xdens(adios_x,"cpl_dens_data");
+      coupler::send_density(dir, density, xdens, send_var[0]);
+      */
       coupler::send_density(dir, density, cDens, send_var[0]);
       coupler::destroy(density);
 

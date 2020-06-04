@@ -14,14 +14,14 @@ int main(int argc, char* argv[])
   const bool preproc = true;
   const bool ypar = false;
   std::string test_dir(argv[1]);
-  coupler::Part1ParalPar3D p1pp3d(preproc, test_case, test_dir);  
+  coupler::Part1ParalPar3D p1pp3d(preproc, test_case, test_dir);    
   coupler::Part3Mesh3D p3m3d(p1pp3d, preproc, test_case, test_dir);
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);  
-  coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d,test_case,preproc);
-//  bdesc.initpbmat(p1pp3d);
-  dp3d.InitFourierPlan3D(); 
 
+  coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,dp3d,test_case,preproc);
+
+  dp3d.InitFourierPlan3D(); 
   dp3d.RealdataToCmplxdata3D();
   bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
   dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);
@@ -61,9 +61,6 @@ if(p1pp3d.mype==2){
     }
   }
 }
-
-
-
   MPI_Finalize(); 
   return 0;
 }

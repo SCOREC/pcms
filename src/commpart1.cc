@@ -104,6 +104,7 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
 //   double* xzcoords;
 //   xzcoords=new double[nx0+1];
 
+   totnodes=nx0*nz0;
    if(test_case==TestCase::t0){
       assert(!test_dir.empty());
       std::string fname=test_dir+"xcoords.nml";

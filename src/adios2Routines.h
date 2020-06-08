@@ -35,7 +35,7 @@ namespace coupler {
         globH(gH), globW(gW), locH(lH), locW(lW), locFirstCol(start) {
           vals = new* T[locH];
           for(int i=0;i<locH;i++)
-             vals[i]=new T[locw];
+             vals[i]=new T[locW];
       }   
       ~Array2d() {
         for(int i=0;i<locH;i++)
@@ -255,7 +255,7 @@ namespace coupler {
       const std::string name, adios2::IO &coupling_io,
       adios2::Engine &engine, adios2::Variable<T> &send_id) {
     const::adios2::Dims g_dims({a2d->globalH(),a2d->globalW()});
-    const::adios2::Dims g_offset({a2d->start_col(), 0});
+    const::adios2::Dims g_offset(a2d->start_col());
 //    assert(a2d->localH() == a2d->globalH());
     const::adios2::Dims l_dims({a2d->localH(),a2d->localW()});
   

@@ -84,17 +84,18 @@ int main(int argc, char **argv){
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,p1pp3d.comm_x,p1pp3d.comm_y);
-      dp3d.DistriDensityRecvfromPart1(p3m3d,p1pp3d,densityfromXGC->vals);
+      dp3d.DistriDensityRecvfromPart1(p3m3d,p1pp3d,densityfromXGC->data());
       bdesc.zDensityBoundaryBufAssign(dp3d.densin,p1pp3d);
       dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
       dp3d.CmplxdataToRealdata3D();
       dp3d.AssemDensitySendtoPart3(p3m3d,p1pp3d);
-      coupler::Array2d<coupler::CV>* densitytoXGC = new coupler::Array2d<double>{
-                                                    p3m3d.activenode,p3m3d.lj0,p3m3d.activenode,{0,0}};
+      coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>{
+                                                    p3m3d.activenode,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
+                                                    {p3m3d.blockstart,0}};
       double** densitytmp = densitytoXGC->data();
       for(int h=0;h<p3m3d.lj0;h++){
         for(coupler::GO k=0;k<p3m3d.activenode;k++){
-          densitytmp[k][h] = p3m3d.denspart3[k][h]; 
+          densitytmp[k][h] = dp3d.denssend[k][h]; 
         }
       }
       if(p1pp3d.mype_z==0){
@@ -108,17 +109,18 @@ int main(int argc, char **argv){
 
  
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,p1pp3d.comm_x,p1pp3d.comm_y);
-      dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC->vals);
+      dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC->data());
       dp3d.RealdataToCmplxdata3D();
       bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
       dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);       
       dp3d.AssemPotentSendtoPart1(p3m3d,p1pp3d);
       coupler::Array2d<coupler::CV>* fieldtoGENE = new coupler::Array2d<coupler::CV>{
-                                                   p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.totnodes,0};
-      coupler::cv** fieldtmp = fieldtoGENE->data(); 
+                                                   p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.blockcount,
+                                                   p1pp3d.lj0,{p1pp3d.blockstart,0}};
+      coupler::CV** fieldtmp = fieldtoGENE->data(); 
       for(int h=0;h<p1pp3d.lj0;h++){
         for(int k=0;k<p1pp3d.totnodes;k++){
-          fieldtmp[h][k] = dp3d.potentpart1[h][k];
+          fieldtmp[h][k] = dp3d.potentsend[h][k];
         }
       }         
       if(p1pp3d.mype_z==0){

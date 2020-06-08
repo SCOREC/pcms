@@ -20,6 +20,8 @@ class Part1ParalPar3D {
     LO nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
     LO ny0,nyb,lj0,lj1,lj2,lm0,lm1,lm2;
     LO nz0,nzb,lk0,lk1,lk2,ln0,ln1,ln2;
+    
+    GO totnodes; // the total nodes number of the poloidal cross setion of part1.
 //    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
     int periods[3]={0,1,1};
     double* xcoords=NULL; // The 1d array storing the radial position of all flux surfaces

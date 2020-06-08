@@ -4,11 +4,11 @@ namespace coupler {
 
 
   Array2d<double>* receive_density(const std::string cce_folder,
-      const adios2_handler &handler) { 
+      const adios2_handler &handler,MPI_Comm comm_1,MPI_Comm comm_2) { 
       adios2::IO io = handler.IO; 
       adios2::Engine engine = handler.eng;
     const std::string name = "gene_density";
-    return receive2d_from_ftn<double>(cce_folder,name, io, engine);
+    return receive2d_from_ftn<double>(cce_folder,name, io, engine, MPI_Comm comm_1,MPI_Comm comm_2);
   }
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
@@ -23,11 +23,11 @@ namespace coupler {
   }
 
   Array2d<double>* receive_field(const std::string cce_folder,
-      const adios2_handler &handler) { 
+      const adios2_handler &handler,MPI_Comm comm_1,MPI_Comm comm_2) { 
       adios2::IO io = handler.IO; 
       adios2::Engine engine = handler.eng;
     const std::string name = "xgc_field";
-    return receive2d_from_ftn<double>(cce_folder,name, io, engine);
+    return receive2d_from_ftn<double>(cce_folder,name, io, engine,comm_1,comm_2);
   }
 
   void send_field(const std::string cce_folder, const Array2d<double>* field,

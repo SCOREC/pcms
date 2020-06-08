@@ -140,21 +140,19 @@ void DatasProc3D::AllocPotentArrays()
 }
 
 //Distribute the sub global potential  2d array received from part3 and reorder the sub 2darray.  
-void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d)
+void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d,const double** array)
 { 
   double** tmp;
   for(LO j=0;j<p3m3d.lj0;j++){
+    GO sumbegin=cce_first_node-1+p3m3d.blockstart;
     tmp = new double*[p3m3d.li0];
     LO xl=0;
     for(LO i=0;i<p3m3d.li0;i++){
       xl=p3m3d.li1+i;
       tmp[i]=new double[p3m3d.versurf[xl]];
-      GO sumbegin=0;
-      for(LO h=0;h<i;h++){
-        sumbegin+=GO(p3m3d.versurf[h+p3m3d.li1]);
-      }
       for(LO m=0;m<p3m3d.versurf[xl];m++){
-        tmp[i][m]=potentrecv[j][sumbegin+m];
+        tmp[i][m]=array[sumbegin][j];
+        sumbegin=sumbegin+1; 
       }
       reshuffleforward(tmp[i],p3m3d.nstart[xl],p3m3d.versurf[xl]);
       for(LO k=0;k<p3m3d.mylk0[i];k++){
@@ -197,7 +195,8 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
 }
 
 ////Distribute the subglobal density  2d array received from part1 to the processes.
-void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
+void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
+     const double* array)
 {
   CV** tmp;
   tmp = new CV*[p1pp3d.li0];

@@ -33,15 +33,19 @@ namespace coupler {
     public:
       Array2d(GO gH, GO gW, GO lH, GO lW, GO start) :
         globH(gH), globW(gW), locH(lH), locW(lW), locFirstCol(start) {
-          vals = new T[locH*locW];
+          vals = new* T[locH];
+          for(int i=0;i<locH;i++)
+             vals[i]=new T[locw];
       }   
       ~Array2d() {
+        for(int i=0;i<locH;i++)
+          delete [] vals[i];        
         globH = globW = locH = locW = 0;
-        delete [] vals;
       }   
-      T val(long i) const {
-        assert(i<(locH*locW));
-        return vals[i];
+      T val(long i,long j) const {
+        assert(i<locH);
+        assert(j<locw)
+        return vals[i][j];
       }   
       T* data() const { return vals; };
       GO globalH() const { return globH; };
@@ -50,12 +54,12 @@ namespace coupler {
       GO localW() const { return locW; };
       GO start_col() const { return locFirstCol; };
     private:
-      T* vals;
+      T** vals;
       GO globH;
       GO globW;
       GO locH;
       GO locW;
-      GO locFirstCol;
+      GO locFirstCol[2];
   };
 
   template<class T>
@@ -191,10 +195,13 @@ namespace coupler {
   /* receive columns (start_col) to (start_col + localW) */
   template<typename T>
   Array2d<T>* receive2d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng) {
-    int rank, nprocs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+      adios2::IO &read_io, adios2::Engine &eng,MPI_Comm comm_1,MPI_Comm comm_2) {
+    int rank_1, nprocs_1;
+    int rank_2, nprocs_2;
+    MPI_Comm_rank(comm_1, &rank_1);
+    MPI_Comm_size(comm_1, &nprocs_1);
+    MPI_Comm_rank(comm_2, &rank_2);
+    MPI_Comm_size(comm_2, &nprocs_2);
   
     const std::string fname = dir + "/" + name + ".bp";
   
@@ -219,21 +226,23 @@ namespace coupler {
     const auto c_glob_height = ftn_glob_width;
     const auto c_glob_width = ftn_glob_height;
   
-    GO local_width  =  c_glob_width / nprocs;
-    const GO start = rank * local_width;
-    if(rank == nprocs - 1) local_width += c_glob_width%nprocs; // 2
+    GO local_width  =  c_glob_width / nprocs_2;
+    const GO start[2];
+    start[0] = 0;
+    start[1] = rank_2 * local_width;
+//    if(rank == nprocs - 1) local_width += c_glob_width%nprocs; // 2
   
     fprintf(stderr, "%d 1.0 name %s nprocs %d"
-        "c_glob_width %lu c_glob_height %lu local_width %lu start %lu\n",
+        "c_glob_width %lu c_glob_height %lu local_width %lu start[1] %lu\n",
         rank, name.c_str(), nprocs,
-        c_glob_width, c_glob_height, local_width, start);
+        c_glob_width, c_glob_height, local_width, start[1]);
   
     Array2d<T>* a2d = new Array2d<T>(c_glob_height, c_glob_width,
         c_glob_height, local_width, start);
-    const::adios2::Dims my_start({a2d->start_col(), 0});
+    const::adios2::Dims my_start(a2d->start_col());
     assert(a2d->localH() == a2d->globalH());
-    const::adios2::Dims my_offset({a2d->localW(), a2d->globalH()});
-    const adios2::Box<adios2::Dims> sel(my_start, my_offset);
+    const::adios2::Dims my_count({a2d->globalH(),a2d->localW()});
+    const adios2::Box<adios2::Dims> sel(my_start, my_count);
   
     adVar.SetSelection(sel);
     eng.Get<T>(adVar, a2d->data());
@@ -247,10 +256,10 @@ namespace coupler {
   void send2d_from_C(const Array2d<T>* a2d, const std::string dir,
       const std::string name, adios2::IO &coupling_io,
       adios2::Engine &engine, adios2::Variable<T> &send_id) {
-    const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
+    const::adios2::Dims g_dims({a2d->globalH(),a2d->globalW()});
     const::adios2::Dims g_offset({a2d->start_col(), 0});
-    assert(a2d->localH() == a2d->globalH());
-    const::adios2::Dims l_dims({a2d->localW(), a2d->globalH()});
+//    assert(a2d->localH() == a2d->globalH());
+    const::adios2::Dims l_dims({a2d->localH(),a2d->localW()});
   
     const std::string fname = dir + "/" + name + ".bp";
     if (!engine){

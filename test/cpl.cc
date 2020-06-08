@@ -96,7 +96,8 @@ int main(int argc, char **argv){
         for(coupler::GO k=0;k<p3m3d.activenode;k++)
           densitytmp[k][h] = p3m3d.denspart3[k][h]; 
       }
-      coupler::send_density(dir, densitytoXGC, cDens, send_var[0]);
+      if(p1pp3d.mype_z==0)
+        coupler::send_density(dir, densitytoXGC, cDens, send_var[0]);
       for(coupler::GO h=0;h<p3mp3d.activenode;h++)
         delete[] densitytmp[h];
       coupler::destroy(densityfromGENE);
@@ -116,7 +117,8 @@ int main(int argc, char **argv){
         for(int k=0;k<p1pp3d.totnodes;k++)
           fieldtmp[h][k] = dp3d.potentpart1[h][k];
       }         
-      coupler::send_field(dir, fieldtoGENE, cFld, send_var[1]);
+      if(p1pp3d.mype_z==0)
+        coupler::send_field(dir, fieldtoGENE, cFld, send_var[1]);
       for(int h=0;h<p1pp3d.li0;h++)
         delete[] fieldtmp[h];
       coupler::destroy(fieldtoGENE);

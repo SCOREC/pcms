@@ -116,13 +116,13 @@ namespace coupler {
     {
       for (int i = 0; i < 10; i++)
       {
-        std::cerr << rank <<  ": first 10 density at "<< i
-          << " is "<< density->val(i) <<"\n";
+        std::cerr <<"rank="<<rank <<  ": first 10 density at "<< i
+          << " is "<< density->vals[i][0] <<"\n";
       }
       for (int i = 0; i < 10; i++)
       {
-        std::cerr << rank << ": first 10 for rank 1 at: [67236]" << " + "<< i
-          << " is " << density->val(67236 + i) << "\n";
+        std::cerr <<"rank="<<rank << ": first 10 for rank 1 at: [67236]" << " + "<< i
+          << " is " << density->vals[density->glowH-10][density->locW-1] << "\n";
       }
     }
   
@@ -130,15 +130,13 @@ namespace coupler {
     {
       for (int i = 0; i < 10; i++)
       {
-        int offset = ((density->localW() - 1) * density->localH()) + 67235 - 9;
-        std::cerr << rank << ": last 10 for rank 0 at: [67235 - 9]" << " + "<< i
-          << " is " << density->val(offset  + i) << "\n";
+        std::cerr <<"rank="<< rank <<  ": first 10 density at "<< i
+          << " is "<< density->vals[i][0] <<"\n";
       }
-      int last_ten = (density->localH() * density->localW()) - 10;
       for (int i = 0; i < 10; i++)
       {
-        std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "
-          << density->val(last_ten + i) <<"\n";
+        std::cerr <<"rank="<< rank << ": first 10 for rank 1 at: [67236]" << " + "<< i
+          << " is " << density->vals[density->glowH-10][density->locW-1] << "\n";
       }
     }
   }

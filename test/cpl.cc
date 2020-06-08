@@ -83,7 +83,7 @@ int main(int argc, char **argv){
 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
-      coupler::Array2d<double>* densityfromGENE = coupler::receive_density(dir, gDens,p1pp3d.comm_x,p1pp3d.comm_y);
+      coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,p1pp3d.comm_x,p1pp3d.comm_y);
       dp3d.DistriDensityRecvfromPart1(p3m3d,p1pp3d,densityfromXGC->vals);
       bdesc.zDensityBoundaryBufAssign(dp3d.densin,p1pp3d);
       dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
@@ -93,13 +93,16 @@ int main(int argc, char **argv){
                                                     p3m3d.activenode,p3m3d.lj0,p3m3d.activenode,{0,0}};
       double** densitytmp = densitytoXGC->data();
       for(int h=0;h<p3m3d.lj0;h++){
-        for(coupler::GO k=0;k<p3m3d.activenode;k++)
+        for(coupler::GO k=0;k<p3m3d.activenode;k++){
           densitytmp[k][h] = p3m3d.denspart3[k][h]; 
+        }
       }
-      if(p1pp3d.mype_z==0)
+      if(p1pp3d.mype_z==0){
         coupler::send_density(dir, densitytoXGC, cDens, send_var[0]);
-      for(coupler::GO h=0;h<p3mp3d.activenode;h++)
+      }
+      for(coupler::GO h=0;h<p3mp3d.activenode;h++){
         delete[] densitytmp[h];
+      }
       coupler::destroy(densityfromGENE);
       coupler::destroy(densitytoXGC);
 
@@ -114,13 +117,16 @@ int main(int argc, char **argv){
                                                    p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.totnodes,0};
       coupler::cv** fieldtmp = fieldtoGENE->data(); 
       for(int h=0;h<p1pp3d.lj0;h++){
-        for(int k=0;k<p1pp3d.totnodes;k++)
+        for(int k=0;k<p1pp3d.totnodes;k++){
           fieldtmp[h][k] = dp3d.potentpart1[h][k];
+        }
       }         
-      if(p1pp3d.mype_z==0)
+      if(p1pp3d.mype_z==0){
         coupler::send_field(dir, fieldtoGENE, cFld, send_var[1]);
-      for(int h=0;h<p1pp3d.li0;h++)
+      }
+      for(int h=0;h<p1pp3d.li0;h++){
         delete[] fieldtmp[h];
+      }
       coupler::destroy(fieldtoGENE);
       coupler::destroy(fieldfromXGC)
     }

@@ -28,7 +28,7 @@ class Part3Mesh3D{
 
 //  temporary members which would be deleted in the next time refactor
     double* zcoordall = NULL; //zcoordall will be removed in the next refacotr.
-    GO* cce = NULL; //store versurfpart3 and cce_ variables
+    int* cce = NULL; //store versurfpart3 and cce_ variables
 
 
     // parameters for receiving and sending global 2d arrays
@@ -52,7 +52,7 @@ class Part3Mesh3D{
     Part3Mesh3D(Part1ParalPar3D &p1pp3d,
         LO nsurf_,
         LO* versurfpart3_,
-        GO* cce_,
+        int* cce_,
         double* xcoords_,
         double* zcoord_,
         bool pproc = true)

@@ -48,13 +48,11 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 //read the paralllization parameters
 void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::string test_dir)
 {
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-
  if(preproc==true){ 
    if(test_case==TestCase::t0){
      assert(!parpar && !xzcoords && !q_prof);//when not testing, arrays come from ADIOS2
      initTest0(test_dir);
+//  The following two lines looks weird here. 
      xzcoords = new double[nx0];
      parpar = new LO[1];// This is unused but it is deleted
    }else{
@@ -94,12 +92,15 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
      ky0_ind=parpar[28];    
      NP=npx*npy*npz;  
      CreateSubCommunicators();
-     
    }
 
    // initialize the radial locations of the flux surface and poloidal angles
    pzcoords=new double[nz0];
    xcoords=new double[nx0];
+
+// The two lines will be needed when refactoring this part code.
+//   double* xzcoords;
+//   xzcoords=new double[nx0+1];
 
    if(test_case==TestCase::t0){
       assert(!test_dir.empty());
@@ -115,7 +116,7 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
    if(test_case==TestCase::t0){
      dz=2.0*cplPI/nz0;
    }else{
-     dz=xzcoords[nx0-1];
+     dz=xzcoords[nx0];
    }
 
    for(LO i=0;i<nz0;i++){
@@ -125,8 +126,10 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
    for(LO i=0;i<lk0;i++){
      pzp[i]=double(lk1+i)*dz-1.0*cplPI;
    }
-  delete[] parpar;
-  delete[] xzcoords;
+   blockindice();  
+
+   delete[] parpar;
+   delete[] xzcoords;
  }
 }
 
@@ -160,6 +163,14 @@ void Part1ParalPar3D::MpiFreeComm()
   MPI_Comm_free(&comm_y);
   MPI_Comm_free(&comm_z);
   MPI_Comm_free(&comm_cart);
+}
+
+void Part1ParalPar3D::blockindice()
+{
+   blockcount = GO(nz0*li0);
+   blockstart = GO(nz0*li1);
+   blockend = GO(nz0*(li2+1)-1);
+
 }
 
 

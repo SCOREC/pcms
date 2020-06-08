@@ -28,6 +28,8 @@ public:
                ///forward Fourier transform  
   LO sum;
   // here, pointers must be assigned a NULL;
+  CV** densrecv = NULL; // the 2d array density recived by the coupler.
+                           // and sent by part1. This is received in comm_x and comm_y communicators.
   CV*** densin = NULL; // input 3d density in complex number
   CV*** densinterpo = NULL; 
   CV* densintmp = NULL; // temporary 2d density array prepared for backward
@@ -35,14 +37,22 @@ public:
   double* densouttmp = NULL; // store the x-y 2d real density after backward 
                              // fourier transform
   double*** denspart3 = NULL; // storing the density being sent to the part3
+  double**  denssend = NULL; // the 2d array density transferred to part3, 
+                             // and would be sent in comm_x and comm_y communicators
+
+
+  double** potentrecv = NULL; // the 2d array potential received by the coupler 
+                                 // and sent by part3. This is received in comm_x and comm_y communicators.
   double*** potentin = NULL; // the input real electrostatic potential in 3d xyz
   double* potentintmp = NULL;
-  CV* potentouttmp = NULL;
- 
+  CV* potentouttmp = NULL; // 
   CV*** potentinterpo = NULL; // temporary xy 2d potential array for forward 
                               // fourier transform
   CV*** potentpart1 = NULL; // storing the electrostatic potential being sent
                             // to the part1.
+  CV**  potentsend = NULL; // the 2d array complex potential transffered to part1, and would be sent 
+                           // in comm_x and comm_y communicators. 
+
   fftw_plan plan_forward = NULL, plan_backward = NULL;
   // The following parameters for yparal=true;
   LO myli0;
@@ -76,9 +86,9 @@ private:
 
   // this struct contains the read-only values from Part1ParalPar3D class
   const struct P1Data {
-    P1Data(LO li, LO lj, LO lk, LO ny, LO np, LO pe_y, LO res) : 
+    P1Data(LO li, LO lj, LO lk, LO ny, LO np, LO pe_y,GO blockcount_, LO res) : 
 	    li0(li), lj0(lj), lk0(lk), 
-	  ny0(ny), npy(np), mype_y(pe_y), res_fact(res)
+	  ny0(ny), npy(np), mype_y(pe_y), blockcount(blockcount_),res_fact(res)
           {};
     const LO li0;
     const LO lj0;
@@ -87,13 +97,17 @@ private:
     const LO npy;
     const LO mype_y;
     const LO res_fact;
+    const GO blockcount;
   } p1;
 
   // this struct contains the read-only values from Part3Mesh3D class
   const struct P3Data {
-    P3Data(LO li, LO lj, LO* mylk) : li0(li), lj0(lj), mylk0(mylk) {};
+    P3Data(LO li, LO lj,GO totnod,GO blockcount_,LO* mylk) : li0(li), lj0(lj),totnode(totnod), 
+          blockcount(blockcount_), mylk0(mylk) {};
       const LO li0;
       const LO lj0;
+      const GO totnode;
+      const GO blockcount;
       LO const* const mylk0;
   } p3;
 
@@ -107,6 +121,10 @@ private:
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
+  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
 };
 
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,

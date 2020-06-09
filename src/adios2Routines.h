@@ -33,19 +33,15 @@ namespace coupler {
     public:
       Array2d(GO gH, GO gW, GO lH, GO lW, GO start) :
         globH(gH), globW(gW), locH(lH), locW(lW), locFirstCol(start) {
-          vals = new* T[locH];
-          for(int i=0;i<locH;i++)
-             vals[i]=new T[locW];
+          vals = new T[locH*locW];
       }   
       ~Array2d() {
-        for(int i=0;i<locH;i++)
-          delete [] vals[i];        
         globH = globW = locH = locW = 0;
+        delete [] vals;
       }   
-      T val(long i,long j) const {
-        assert(i<locH);
-        assert(j<locw)
-        return vals[i][j];
+      T val(long i) const {
+        assert(i<(locH*locW));
+        return vals[i];
       }   
       T* data() const { return vals; };
       GO globalH() const { return globH; };
@@ -54,12 +50,12 @@ namespace coupler {
       GO localW() const { return locW; };
       GO start_col() const { return locFirstCol; };
     private:
-      T** vals;
+      T* vals;
       GO globH;
       GO globW;
       GO locH;
       GO locW;
-      GO locFirstCol[2];
+      GO locFirstCol;
   };
 
   template<class T>
@@ -116,13 +112,13 @@ namespace coupler {
     {
       for (int i = 0; i < 10; i++)
       {
-        std::cerr <<"rank="<<rank <<  ": first 10 density at "<< i
-          << " is "<< density->vals[i][0] <<"\n";
+        std::cerr << rank <<  ": first 10 density at "<< i
+          << " is "<< density->val(i) <<"\n";
       }
       for (int i = 0; i < 10; i++)
       {
-        std::cerr <<"rank="<<rank << ": first 10 for rank 1 at: [67236]" << " + "<< i
-          << " is " << density->vals[density->glowH-10][density->locW-1] << "\n";
+        std::cerr << rank << ": first 10 for rank 1 at: [67236]" << " + "<< i
+          << " is " << density->val(67236 + i) << "\n";
       }
     }
   
@@ -130,13 +126,15 @@ namespace coupler {
     {
       for (int i = 0; i < 10; i++)
       {
-        std::cerr <<"rank="<< rank <<  ": first 10 density at "<< i
-          << " is "<< density->vals[i][0] <<"\n";
+        int offset = ((density->localW() - 1) * density->localH()) + 67235 - 9;
+        std::cerr << rank << ": last 10 for rank 0 at: [67235 - 9]" << " + "<< i
+          << " is " << density->val(offset  + i) << "\n";
       }
+      int last_ten = (density->localH() * density->localW()) - 10;
       for (int i = 0; i < 10; i++)
       {
-        std::cerr <<"rank="<< rank << ": first 10 for rank 1 at: [67236]" << " + "<< i
-          << " is " << density->vals[density->glowH-10][density->locW-1] << "\n";
+        std::cerr << rank <<  ": last 10 density at " << last_ten + i << " is "
+          << density->val(last_ten + i) <<"\n";
       }
     }
   }
@@ -166,10 +164,11 @@ namespace coupler {
   
     eng.BeginStep();
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
-  
+
     const auto total_size = adios_var.Shape()[0];
     const auto my_start = (total_size / nprocs) * rank;
     const auto my_count = (total_size / nprocs);
+
     if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
@@ -193,13 +192,10 @@ namespace coupler {
   /* receive columns (start_col) to (start_col + localW) */
   template<typename T>
   Array2d<T>* receive2d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng,MPI_Comm comm_1,MPI_Comm comm_2) {
-    int rank_1, nprocs_1;
-    int rank_2, nprocs_2;
-    MPI_Comm_rank(comm_1, &rank_1);
-    MPI_Comm_size(comm_1, &nprocs_1);
-    MPI_Comm_rank(comm_2, &rank_2);
-    MPI_Comm_size(comm_2, &nprocs_2);
+      adios2::IO &read_io, adios2::Engine &eng, GO my_start[2], GO my_count[2]) {
+    int rank, nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   
     const std::string fname = dir + "/" + name + ".bp";
   
@@ -217,29 +213,18 @@ namespace coupler {
     }
     eng.BeginStep();
     adios2::Variable<T> adVar = read_io.InquireVariable<T>(name);
-  
+ 
     const auto ftn_glob_height = adVar.Shape()[0] ; //4
     const auto ftn_glob_width = adVar.Shape()[1]; // 256005
+
     //fortran to C transpose
     const auto c_glob_height = ftn_glob_width;
     const auto c_glob_width = ftn_glob_height;
-  
-    GO local_width  =  c_glob_width / nprocs_2;
-    const GO start[2];
-    start[0] = 0;
-    start[1] = rank_2 * local_width;
-//    if(rank == nprocs - 1) local_width += c_glob_width%nprocs; // 2
-  
-    fprintf(stderr, "%d 1.0 name %s nprocs %d"
-        "c_glob_width %lu c_glob_height %lu local_width %lu start[1] %lu\n",
-        rank, name.c_str(), nprocs,
-        c_glob_width, c_glob_height, local_width, start[1]);
-  
+
     Array2d<T>* a2d = new Array2d<T>(c_glob_height, c_glob_width,
-        c_glob_height, local_width, start);
-    const::adios2::Dims my_start(a2d->start_col());
-    assert(a2d->localH() == a2d->globalH());
-    const::adios2::Dims my_count({a2d->globalH(),a2d->localW()});
+        my_count[0], my_count[1], my_start[0]);
+    const::adios2::Dims my_start({my_start[0], my_start[1]});
+    const::adios2::Dims my_count({my_count[0], my_count[1]});
     const adios2::Box<adios2::Dims> sel(my_start, my_count);
   
     adVar.SetSelection(sel);
@@ -254,10 +239,9 @@ namespace coupler {
   void send2d_from_C(const Array2d<T>* a2d, const std::string dir,
       const std::string name, adios2::IO &coupling_io,
       adios2::Engine &engine, adios2::Variable<T> &send_id) {
-    const::adios2::Dims g_dims({a2d->globalH(),a2d->globalW()});
-    const::adios2::Dims g_offset(a2d->start_col());
-//    assert(a2d->localH() == a2d->globalH());
-    const::adios2::Dims l_dims({a2d->localH(),a2d->localW()});
+    const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
+    const::adios2::Dims g_offset({a2d->start_col(), 0});
+    const::adios2::Dims l_dims({a2d->localW(), a2d->localH()});
   
     const std::string fname = dir + "/" + name + ".bp";
     if (!engine){

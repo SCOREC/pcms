@@ -38,8 +38,8 @@ class Part3Mesh3D{
     GO  cce_first_node; // The number of the first active node sent by part3;
     GO  cce_last_node; // The number of the last active node send by part3;
     GO  cce_node_number;  // The number of active nodes sent by part3.
-    GO  totnode; // the total number of nodes sent by part3;
-    GO  activenode; // The number of nodes part1 has on the poloidal cross section. 
+    GO  totnodes; // the total number of nodes sent by part3;
+    GO  activenodes; // The number of nodes part1 has on the poloidal cross section. 
     LO  shiftx;  // The number of surfaces shifting from part3 first surface to part1 first surface.
   
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box

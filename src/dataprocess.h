@@ -121,9 +121,9 @@ private:
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
-  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,const double** array);
   void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,const CV** array);
   void AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
 };
 

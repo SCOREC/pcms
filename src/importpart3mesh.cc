@@ -16,7 +16,6 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
    int root=0;
    if(p1pp3d.mype==0){
      if(test_case==TestCase::t0){
-       shiftx=-1;
        numsurf=p1pp3d.nx0;
      } else{
      // Here, numsurf is sent from other parts by Adios routines.  
@@ -42,6 +41,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
       cce_last_surface=nsurf-1;
       cce_first_node=1;
       cce_last_node=0;
+      shiftx=-1; 
       for(LO i=0;i<nsurf;i++)
 	cce_last_node+=(GO)versurfpart3[i];
       cce_node_number = cce_last_node-cce_first_node+1;
@@ -53,7 +53,8 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
       cce_first_node=cce[nsurf+2];
       cce_last_node=cce[nsurf+3];
       cce_node_number = cce_last_node-cce_first_node+1;
-   
+      shiftx = cce_first_surface-1;  
+ 
       assert(versurfpart3);
       assert(xcoords);
     }

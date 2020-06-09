@@ -58,8 +58,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
       cce_first_node=cce[2];
       cce_last_node=cce[3];
       cce_node_number = cce_last_node-cce_first_node+1;
-      shiftx = cce_first_surface - 1;
-   
+      shiftx = cce_first_surface - 1; 
       assert(versurfpart3);
       assert(xcoords);
     }
@@ -211,8 +210,7 @@ void Part3Mesh3D::JugeFirstSurfaceMatch(double xp1)
   }
   if(test_case==TestCase::t0){
     shiftx = minloc(tmp,nsurf)-1;
-  }else{
-  };
+  }else{};
   std::cout<<"cce_first_surface "<<cce_first_surface<<'\n';
   if(shiftx+1!=cce_first_surface){
     std::cout<<"shiftx="<<shiftx<<'\n';

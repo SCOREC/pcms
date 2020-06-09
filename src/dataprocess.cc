@@ -88,7 +88,7 @@ void DatasProc3D::AllocDensityArrays()
    densrecv = new CV*[p1.lj0];
    for(LO i=0;i<p1.lj0;i++){
      densrecv[i] = new CV[p1.blockcount];
-   }   
+   }
 
    denssend = new double*[p3.lj0];
    for(LO i=0;i<p3.lj0; i++){

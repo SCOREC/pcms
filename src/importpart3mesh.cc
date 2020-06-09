@@ -58,7 +58,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
       cce_first_node=cce[2];
       cce_last_node=cce[3];
       cce_node_number = cce_last_node-cce_first_node+1;
-      shiftx = cce_first_surface - 1; 
+      shiftx = cce_first_surface-1; 
       assert(versurfpart3);
       assert(xcoords);
     }
@@ -123,7 +123,7 @@ void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO np
   GO* inds = new GO[npx]; 
   blockcount=0;
   for(LO i=0;i<li0;i++)
-    blockcount+=blockcount+(GO)versurf[li1+i];
+    blockcount+=(GO)versurf[li1+i];
   MPI_Datatype mpitype;
   mpitype = getMpiType(GO());
   MPI_Allgather(MPI_IN_PLACE,1,mpitype,inds,1,mpitype,comm_x);

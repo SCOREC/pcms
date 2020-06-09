@@ -28,7 +28,7 @@ class Part3Mesh3D{
 
 //  temporary members which would be deleted in the next time refactor
     double* zcoordall = NULL; //zcoordall will be removed in the next refacotr.
-    int* cce = NULL; //store versurfpart3 and cce_ variables
+    int* cce = NULL; //store cce_ variables only
 
 
     // parameters for receiving and sending global 2d arrays
@@ -62,6 +62,7 @@ class Part3Mesh3D{
         xcoords(xcoords_),
         zcoordall(zcoord_),
 	preproc(pproc), test_case(TestCase::off) {
+      std::cerr <<"0.iii "<<nsurf<<"\n";
       init(p1pp3d);
     }
     /* testing constructor

@@ -61,6 +61,7 @@ BoundaryDescr3D::BoundaryDescr3D(
       }
     }    
 
+  if(p1pp3d.mype==0)std::cerr <<"1.1"<<"\n";
    initpbmat(p1pp3d);
   } 
 }

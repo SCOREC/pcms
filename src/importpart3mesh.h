@@ -62,7 +62,6 @@ class Part3Mesh3D{
         xcoords(xcoords_),
         zcoordall(zcoord_),
 	preproc(pproc), test_case(TestCase::off) {
-      std::cerr <<"0.iii "<<nsurf<<"\n";
       init(p1pp3d);
     }
     /* testing constructor

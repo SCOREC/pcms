@@ -14,24 +14,21 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
    versurf = new LO[p1pp3d.nx0];
    LO numsurf;
    int root=0;
-  if(p1pp3d.mype==0) std::cerr <<"0.0"<<"\n";
    if(p1pp3d.mype==0){
      if(test_case==TestCase::t0){
        shiftx=-1;
        numsurf=p1pp3d.nx0;
      } else{
-        assert(nsurf);
+        assert(nsurf && cce);
      // Here, numsurf is sent from other parts by Adios routines.  
      }
    }
-  if(p1pp3d.mype==0) std::cerr <<"0.1"<<"\n";
      if(test_case==TestCase::t0){
         MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
         nsurf=numsurf; 
       }else{
         MPI_Bcast(&nsurf,1,MPI_INT,root, MPI_COMM_WORLD);
       }
-  if(p1pp3d.mype==0)std::cerr <<"0.2"<<"\n";
 //   if(p1pp3d.mype==0){   // please keep this commented loop.
    if(test_case==TestCase::t0){
       versurfpart3 = new LO[nsurf];
@@ -56,26 +53,22 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 
     }else {
 
-  if(p1pp3d.mype==0)std::cerr <<"0.25"<<"\n";
       cce_first_surface=(LO)cce[0];
       cce_last_surface=(LO)cce[1];
       cce_first_node=cce[2];
       cce_last_node=cce[3];
       cce_node_number = cce_last_node-cce_first_node+1;
+      shiftx = cce_first_surface - 1;
    
-  if(p1pp3d.mype==0)std::cerr <<"0.3"<<"\n";
       assert(versurfpart3);
       assert(xcoords);
-  if(p1pp3d.mype==0)std::cerr <<"0.4"<<"\n";
     }
 //   }
 
-  if(p1pp3d.mype==0)std::cerr <<"0.5"<<"\n";
 
    if(preproc==true){
      JugeFirstSurfaceMatch(p1pp3d.xcoords[0]); // Judge whether the first surface of part1 
                                                // equals cce_first_surface of part3 
-  if(p1pp3d.mype==0)std::cerr <<"0.6"<<"\n";
      for(LO i=0;i<p1pp3d.nx0; i++)
        versurf[i]=versurfpart3[i+shiftx+1];     
 
@@ -84,16 +77,13 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        totnode+=(GO)versurfpart3[i];
   
      activenode=0;
-  if(p1pp3d.mype==0)std::cerr <<"0.7"<<"\n";
      for(LO i=0;i<p1pp3d.nx0;i++)
        activenode+=(GO)versurf[i];
 
- if(p1pp3d.mype==0) std::cerr <<"0.8"<<"\n";
      if(activenode!=cce_node_number){
        std::cout<<"ERROR: The activenode number of part1 doesn't equal to cce_node_number for part3."<<'\n';
        std::exit(EXIT_FAILURE);
      }
-  if(p1pp3d.mype==0)std::cerr <<"0.9"<<"\n";
  
      li0=p1pp3d.li0;
      li1=p1pp3d.li1;
@@ -215,22 +205,20 @@ if(p1pp3d.mype_x==1){
 
 void Part3Mesh3D::JugeFirstSurfaceMatch(double xp1)
 {
-  std::cerr <<"0.61 "<<nsurf<<"\n";
   double* tmp = new double[nsurf];
-  std::cerr <<"0.62"<<"\n";
   for(LO i=0;i<nsurf; i++){
-    tmp[i]=xcoords[i]-xp1;
+    tmp[i]=abs(xcoords[i]-(xp1));
   }
-  std::cerr <<"0.63"<<"\n";
-  shiftx = minloc(tmp,nsurf)-1;
-  std::cerr <<"0.64"<<"\n";
-  std::cout<<cce_first_surface<<'\n';
+  if(test_case==TestCase::t0){
+    shiftx = minloc(tmp,nsurf)-1;
+  }else{
+  };
+  std::cout<<"cce_first_surface "<<cce_first_surface<<'\n';
   if(shiftx+1!=cce_first_surface){
     std::cout<<"shiftx="<<shiftx<<'\n';
     std::cout<<"ERROR: The first surface of part1 doesn't match cce_first_surface."<<'\n';
     exit(1);
   }
-  std::cerr <<"0.65"<<"\n";
   delete[] tmp;
 }
 

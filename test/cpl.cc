@@ -63,16 +63,20 @@ int main(int argc, char **argv){
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf);
-  coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord, p1pp3d.comm_x);
-  coupler::Array1d<double>* xgc_zcoords = coupler::receive_gene_pproc<double>(dir, xZcoord, p1pp3d.comm_z);
+  coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord, p1pp3d.comm_x);//x_XGC
+  coupler::Array1d<double>* xgc_zcoords = coupler::receive_gene_pproc<double>(dir, xZcoord);
   coupler::Array1d<int>* xgc_versurf = coupler::receive_gene_pproc<int>(dir, xVsurf);
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
 
   coupler::Array1d<coupler::CV>* gene_moments = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);//matching gene's moments arr
-  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_numsurf->val(0), xgc_versurf->data(),xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords->data(), preproc);
+  if(p1pp3d.mype==0)std::cerr <<"10.0"<<"\n";
+  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_numsurf->val(0), xgc_versurf->data(), xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords->data(), preproc);
+  if(p1pp3d.mype==0)std::cerr <<"10.1"<<"\n";
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
+  if(p1pp3d.mype==0)std::cerr <<"10.3"<<"\n";
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, dp3d, test_case, preproc);
+  if(p1pp3d.mype==0)std::cerr <<"10.4"<<"\n";
 
   coupler::destroy(q_prof);
   coupler::destroy(gene_xval);

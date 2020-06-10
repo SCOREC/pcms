@@ -23,7 +23,7 @@ namespace coupler {
   }
 
   Array2d<double>* receive_field(const std::string cce_folder,
-      const adios2_handler &handler,GO my_start, GO my_count) { 
+      const adios2_handler &handler,GO my_start[2], GO my_count[2]) { 
       adios2::IO io = handler.IO; 
       adios2::Engine engine = handler.eng;
     const std::string name = "xgc_field";

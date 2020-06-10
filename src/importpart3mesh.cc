@@ -67,16 +67,16 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      for(LO i=0;i<p1pp3d.nx0; i++)
        versurf[i]=versurfpart3[i+shiftx+1];     
 
-     totnode=0;
+     totnodes=0;
      for(LO i=0;i<nsurf;i++)
-       totnode+=(GO)versurfpart3[i];
+       totnodes+=(GO)versurfpart3[i];
   
-     activenode=0;
+     activenodes=0;
      for(LO i=0;i<p1pp3d.nx0;i++)
-       activenode+=(GO)versurf[i];
+       activenodes+=(GO)versurf[i];
 
-     if(activenode!=cce_node_number){
-       std::cout<<"ERROR: The activenode number of part1 doesn't equal to cce_node_number for part3."<<'\n';
+     if(activenodes!=cce_node_number){
+       std::cout<<"ERROR: The activenodes number of part1 doesn't equal to cce_node_number for part3."<<'\n';
        std::exit(EXIT_FAILURE);
      }
  
@@ -150,10 +150,10 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
 {
   if(preproc==true){
     if(test_case==TestCase::t0){
-      zcoordall = new double[activenode];
+      zcoordall = new double[activenodes];
       InitzcoordsInCoupler(zcoordall,versurf,p1pp3d.nx0);
     }else{
-      assert(zcoordall); // the number of elements is activenode
+      assert(zcoordall); // the number of elements is activenodes
     }
     LO numvert=0, numsurf=0;
     for(LO i=0;i<p1pp3d.mype_x;i++){

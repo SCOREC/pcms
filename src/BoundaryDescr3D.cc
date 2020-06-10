@@ -14,7 +14,7 @@ BoundaryDescr3D::BoundaryDescr3D(
     const Part3Mesh3D& p3m3d,
     const Part1ParalPar3D& p1pp3d,
     const DatasProc3D& dp3d,
-    TestCase tcase,
+    const TestCase tcase,
     bool pproc):test_case(tcase), preproc(pproc)
 {
   if(preproc==true){

@@ -37,8 +37,8 @@ public:
   double* densouttmp = NULL; // store the x-y 2d real density after backward 
                              // fourier transform
   double*** denspart3 = NULL; // storing the density being sent to the part3
-  double**  denssend = NULL; // the 2d array density transferred to part3, 
-                             // and would be sent in comm_x and comm_y communicators
+  double*  denssend = NULL; // the 1d array density  sent to part3
+                             //  would be sent in comm_x and comm_y communicators
 
 
   double** potentrecv = NULL; // the 2d array potential received by the coupler 
@@ -50,7 +50,7 @@ public:
                               // fourier transform
   CV*** potentpart1 = NULL; // storing the electrostatic potential being sent
                             // to the part1.
-  CV**  potentsend = NULL; // the 2d array complex potential transffered to part1, and would be sent 
+  CV*  potentsend = NULL; // the 1d array complex potential sent  to part1, and would be sent 
                            // in comm_x and comm_y communicators. 
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
@@ -121,9 +121,9 @@ private:
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
-  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,const double** array);
+  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,const double* array);
   void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,const CV** array);
+  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,const CV* array);
   void AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
 };
 

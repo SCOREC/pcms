@@ -192,7 +192,7 @@ namespace coupler {
   /* receive columns (start_col) to (start_col + localW) */
   template<typename T>
   Array2d<T>* receive2d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng, GO my_start[2], GO my_count[2]) {
+      adios2::IO &read_io, adios2::Engine &eng, GO start[2], GO count[2]) {
     int rank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -222,9 +222,11 @@ namespace coupler {
     const auto c_glob_width = ftn_glob_height;
 
     Array2d<T>* a2d = new Array2d<T>(c_glob_height, c_glob_width,
-        my_count[0], my_count[1], my_start[0]);
-    const::adios2::Dims my_start({my_start[0], my_start[1]});
-    const::adios2::Dims my_count({my_count[0], my_count[1]});
+        count[0], count[1], start[0]);
+
+// Here, count,start take care of the fortran to C transpose. 
+    const::adios2::Dims my_start({start[0], start[1]});
+    const::adios2::Dims my_count({count[0], count[1]});
     const adios2::Box<adios2::Dims> sel(my_start, my_count);
   
     adVar.SetSelection(sel);
@@ -240,7 +242,7 @@ namespace coupler {
       const std::string name, adios2::IO &coupling_io,
       adios2::Engine &engine, adios2::Variable<T> &send_id) {
     const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
-    const::adios2::Dims g_offset({a2d->start_col(), 0});
+    const::adios2::Dims g_offset({0,a2d->start_col()});
     const::adios2::Dims l_dims({a2d->localW(), a2d->localH()});
   
     const std::string fname = dir + "/" + name + ".bp";

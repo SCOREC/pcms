@@ -2,6 +2,7 @@
 #include "importpart3mesh.h"
 #include "commpart1.h"
 #include "sendrecv_impl.h"
+#include <cassert>
 
 namespace coupler {
 
@@ -17,7 +18,7 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
     p1(p1pp3d.li0,p1pp3d.lj0,p1pp3d.lk0,
 	 p1pp3d.ny0, p1pp3d.npy, p1pp3d.mype_y,p1pp3d.blockcount, 
          p1pp3d.res_fact),
-    p3(p3m3d.li0,p3m3d.lj0,p3m3d.totnode,p3m3d.blockcount,p3m3d.mylk0)
+    p3(p3m3d.li0,p3m3d.lj0,p3m3d.totnodes,p3m3d.blockcount,p3m3d.mylk0)
   {
     init();
     AllocDensityArrays();
@@ -83,9 +84,7 @@ void DatasProc3D::AllocDensityArrays()
         denspart3[i][j]=new double[p3.mylk0[i]];
    }
 
-//notice: the dimension may be gave more detaild describtion based on 
-//the first coupling surface and last coupling surface
-   denssend = new double*[p3.blockcount*p3.lj0];
+   denssend = new double[p3.blockcount*p3.lj0];
 
  } 
 }
@@ -118,15 +117,7 @@ void DatasProc3D::AllocPotentArrays()
       }
     }
  
-//notice: the dimension may be gave more detaild describtion based on
-////the first coupling surface and last coupling surface 
-/*
-    potentrecv = new double*[p3.lj0];
-    for(LO i=0;i<p3.lj0;i++){
-      potentrecv[i] = new double[p3.blockcount];
-    }
-*/
-    potentsend = new CV*[p1.blockcount*p1.lj0];
+   potentsend = new CV[p1.blockcount*p1.lj0];
   
   }
 }
@@ -141,7 +132,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
   }
   for(LO j=0;j<p3m3d.lj0;j++){
     for(GO i=0;i<p3m3d.blockcount;i++)
-      tmp[j][i]=array[i*p3m3d.lj0+j];
+      tmp[j][i]=array[j*p3m3d.blockcount+i];
   }
   double** subtmp;
   for(LO j=0;j<p3m3d.lj0;j++){
@@ -155,7 +146,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
         subtmp[i][m]=tmp[j][sumbegin];
         sumbegin=sumbegin+1; 
       }
-      assert(sumbegin=p3m3d.blockcount);
+      assert(sumbegin==p3m3d.blockcount);
       reshuffleforward(subtmp[i],p3m3d.nstart[xl],p3m3d.versurf[xl]);
       for(LO k=0;k<p3m3d.mylk0[i];k++){
         potentin[i][j][k]=subtmp[i][p3m3d.mylk1[i]+k];
@@ -186,7 +177,7 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
  
   for(LO j=0;j<p1pp3d.lj0;j++){ 
     for(GO h=0;h<p1pp3d.blockcount;h++){
-      blocktmp = CV({0.0,0.0});
+      blocktmp[h] = CV({0.0,0.0});
     }
     for(LO i=0;i<p1pp3d.li0;i++){
       GO sumbegin=0;
@@ -201,9 +192,9 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
       for(LO m=0;m<p1pp3d.nz0;m++){
         blocktmp[sumbegin+m]=tmp[m];
       }      
-      assert(sumbegin=p1pp3d.blockcount);
+      assert(sumbegin==p1pp3d.blockcount);
     }    
-    mpitype = getMPIType(CV())
+    mpitype = getMpiType(CV());
     if(p1pp3d.mype_x==0){
       for(GO h=0;h<p1pp3d.blockcount;h++){
         potentsend[j*p1pp3d.blockcount+h] = blocktmp[h]; 	    
@@ -217,7 +208,7 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
 
 ////Distribute the subglobal density  2d array received from part1 to the processes.
 void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
-     const double* array)
+     const CV* array)
 {
   CV** tmp; 
   tmp = new CV*[p1pp3d.lj0];
@@ -226,7 +217,7 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1
   }
   for(LO j=0;j<p1pp3d.lj0;j++){
     for(GO i=0;i<p1pp3d.blockcount;i++){
-      tmp[j][i]=array[i*p1pp3d.lj0+j];
+      tmp[j][i]=array[j*p1pp3d.blockcount+i];
     }
   }
 
@@ -263,7 +254,7 @@ void DatasProc3D::AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1Para
 {
   LO* recvcount = new LO[p1pp3d.npz];
   LO* rdispls = new LO[p1pp3d.npz];
-  double* blocktmp = new CV[p3m3d.blockcount];
+  double* blocktmp = new double[p3m3d.blockcount];
 
   for(LO j=0;j<p1pp3d.lj0;j++){
     LO xl=0;
@@ -285,7 +276,7 @@ void DatasProc3D::AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1Para
       }
 
       xl=p1pp3d.li1+i;     
-      CV* tmp = new CV[p3m3d.versurf[xl]];
+      double* tmp = new double[p3m3d.versurf[xl]];
       MPI_Allgatherv(denspart3[i][j],p3m3d.mylk0[i],MPI_DOUBLE,tmp,recvcount,rdispls,
                     MPI_DOUBLE,p1pp3d.comm_z);    
       reshufflebackward(tmp,p3m3d.nstart[xl],p3m3d.versurf[xl]);
@@ -297,7 +288,7 @@ void DatasProc3D::AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1Para
         blocktmp[sumbegin+m]=tmp[m];
       }     
       if(i==p1pp3d.li0-1){
-        assert(sumbegin+p3m3d.versurf[xl]=p3m3d.blockcount);
+        assert((sumbegin+(GO)p3m3d.versurf[xl]) == p3m3d.blockcount);
       }
       delete[] tmp; 
     }

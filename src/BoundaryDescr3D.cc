@@ -24,7 +24,7 @@ BoundaryDescr3D::BoundaryDescr3D(
     for(LO i=0;i<p1pp3d.li0;i++){
       updenz[i]=new CV*[p1pp3d.lj0];
       lowdenz[i]=new CV*[p1pp3d.lj0];
-      for(LO j=0;j<p3m3d.lj0;j++){
+      for(LO j=0;j<p1pp3d.lj0;j++){
 	updenz[i][j]=new CV[nzb];
 	lowdenz[i][j]=new CV[nzb];
       }

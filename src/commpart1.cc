@@ -128,8 +128,10 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
    }
    blockindice();  
 
-   delete[] parpar;
-   delete[] xzcoords;
+   if(test_case==TestCase::t0){ 
+     delete[] parpar;
+     delete[] xzcoords;
+   }
  }
 }
 

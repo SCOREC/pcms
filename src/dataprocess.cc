@@ -168,7 +168,7 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
   MPI_Datatype mpitype = getMpiType(LO());      
   MPI_Allgather(&p1pp3d.lk0,1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
   rdispls[0]=0;
-  for(LO i=1;i<p1pp3d.npz;i++){
+    for(LO i=1;i<p1pp3d.npz;i++){
     rdispls[i]=rdispls[0]+recvcount[i];
   }
 

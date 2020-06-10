@@ -40,7 +40,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler cDens(adios,"cpl_density");
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
-  coupler::adios2_handler gRZ(adios,"gene_pproc_rz");
+  coupler::adios2_handler gQP(adios,"gene_pproc_qp");
   coupler::adios2_handler gRX(adios,"gene_pproc_rx");
   coupler::adios2_handler gInt(adios,"gene_pproc_i");
   coupler::adios2_handler gComp(adios,"gene_pproc_c");
@@ -48,37 +48,36 @@ int main(int argc, char **argv){
   coupler::adios2_handler xXcoord(adios,"xgc_x_coordss");
   coupler::adios2_handler xZcoord(adios,"xgc_z_coordss");
   coupler::adios2_handler xVsurf(adios,"xgc_versurfs");
-  coupler::adios2_handler cceXGC(adios,"xgc_cces");
+  coupler::adios2_handler xCce(adios,"xgc_cce_data");
 
   //receive GENE's preproc mesh discretization values
-  coupler::Array1d<double>* gene_pproc_rz = coupler::receive_gene_pproc<double>(dir, gRZ);
-  coupler::Array1d<double>* gene_pproc_rx = coupler::receive_gene_pproc<double>(dir, gRX);
-  coupler::Array1d<int>* gene_pproc_i = coupler::receive_gene_pproc<int>(dir, gInt);
+  coupler::Array1d<double>* q_prof = coupler::receive_gene_pproc<double>(dir, gQP);
+  coupler::Array1d<double>* gene_xval = coupler::receive_gene_pproc<double>(dir, gRX);//matching gene's xval arr
+  coupler::Array1d<int>* gene_parpar = coupler::receive_gene_pproc<int>(dir, gInt);
 
   //intialize GENE class
   const bool preproc = true;
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
-  coupler::Part1ParalPar3D p1pp3d(gene_pproc_i->data(),gene_pproc_rx->data(),preproc);
+  coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(),preproc);
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf);
-  coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord, p1pp3d.comm_x);
-  coupler::Array1d<double>* xgc_zcoords = coupler::receive_gene_pproc<double>(dir, xZcoord, p1pp3d.comm_z);
+  coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord, p1pp3d.comm_x);//x_XGC
+  coupler::Array1d<double>* xgc_zcoords = coupler::receive_gene_pproc<double>(dir, xZcoord);
   coupler::Array1d<int>* xgc_versurf = coupler::receive_gene_pproc<int>(dir, xVsurf);
-  coupler::Array1d<coupler::GO>* xgc_cce = coupler::receive_gene_pproc<coupler::GO>(dir, cceXGC);
+  coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
 
-  coupler::Array1d<coupler::CV>* gene_pproc_c = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);
-  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_numsurf->val(0), xgc_versurf->data(),xgc_cce->data(), 
-                            xgc_xcoords->data(), xgc_zcoords->data(), preproc);
+  coupler::Array1d<coupler::CV>* gene_moments = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);//matching gene's moments arr
+  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_numsurf->val(0), xgc_versurf->data(), xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords->data(), preproc);
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, dp3d, test_case, preproc);
 
-  coupler::destroy(gene_pproc_rz);
-  coupler::destroy(gene_pproc_rx);
-  coupler::destroy(gene_pproc_i);
-  coupler::destroy(gene_pproc_c);
+  coupler::destroy(q_prof);
+  coupler::destroy(gene_xval);
+  coupler::destroy(gene_parpar);
+  coupler::destroy(gene_moments);
 
   dp3d.InitFourierPlan3d();
 

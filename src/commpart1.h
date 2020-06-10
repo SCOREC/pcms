@@ -42,11 +42,12 @@ class Part1ParalPar3D {
      */
     Part1ParalPar3D(LO * parpar, 
         double* xzcoords,
+        double* q_prof_,
 	bool pproc = true,
         std::string tdir="")
-      : preproc(pproc), 
+      : preproc(pproc),q_prof(q_prof_), 
         test_case(TestCase::off){
-        init(parpar, xzcoords, tdir);
+      init(parpar, xzcoords, q_prof, tdir);
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
     /*Test case constructor*/
@@ -54,7 +55,7 @@ class Part1ParalPar3D {
         TestCase tcase,
       	std::string tdir)
       : preproc(pproc), test_case(tcase){
-      init(NULL, NULL,tdir);
+      init(NULL, NULL, NULL, tdir);
     }
     ~Part1ParalPar3D()
     {
@@ -67,7 +68,7 @@ class Part1ParalPar3D {
   private:
     const bool preproc;
     const TestCase test_case;
-    void init(LO* parpar, double* xzcoords,std::string test_dir="");
+    void init(LO* parpar, double* xzcoords, double* q_prof, std::string test_dir="");
     void initTest0(std::string test_dir);
     /* init* helper function */
     void CreateSubCommunicators();

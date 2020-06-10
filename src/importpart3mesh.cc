@@ -18,11 +18,16 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      if(test_case==TestCase::t0){
        numsurf=p1pp3d.nx0;
      } else{
+        assert(nsurf && cce);
      // Here, numsurf is sent from other parts by Adios routines.  
      }
    }
-   MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
-   nsurf=numsurf; 
+     if(test_case==TestCase::t0){
+        MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
+        nsurf=numsurf; 
+      }else{
+        MPI_Bcast(&nsurf,1,MPI_INT,root, MPI_COMM_WORLD);
+      }
 //   if(p1pp3d.mype==0){   // please keep this commented loop.
    if(test_case==TestCase::t0){
       versurfpart3 = new LO[nsurf];
@@ -50,11 +55,10 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 
       cce_first_surface=(LO)cce[0];
       cce_last_surface=(LO)cce[1];
-      cce_first_node=cce[nsurf+2];
-      cce_last_node=cce[nsurf+3];
+      cce_first_node=cce[2];
+      cce_last_node=cce[3];
       cce_node_number = cce_last_node-cce_first_node+1;
-      shiftx = cce_first_surface-1;  
- 
+      shiftx = cce_first_surface-1; 
       assert(versurfpart3);
       assert(xcoords);
     }
@@ -119,7 +123,7 @@ void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO np
   GO* inds = new GO[npx]; 
   blockcount=0;
   for(LO i=0;i<li0;i++)
-    blockcount+=blockcount+(GO)versurf[li1+i];
+    blockcount+=(GO)versurf[li1+i];
   MPI_Datatype mpitype;
   mpitype = getMpiType(GO());
   MPI_Allgather(MPI_IN_PLACE,1,mpitype,inds,1,mpitype,comm_x);
@@ -202,10 +206,12 @@ void Part3Mesh3D::JugeFirstSurfaceMatch(double xp1)
 {
   double* tmp = new double[nsurf];
   for(LO i=0;i<nsurf; i++){
-    tmp[i]=xcoords[i]-xp1;
+    tmp[i]=abs(xcoords[i]-(xp1));
   }
-  shiftx = minloc(tmp,nsurf)-1;
-  std::cout<<cce_first_surface<<'\n';
+  if(test_case==TestCase::t0){
+    shiftx = minloc(tmp,nsurf)-1;
+  }else{};
+  std::cout<<"cce_first_surface "<<cce_first_surface<<'\n';
   if(shiftx+1!=cce_first_surface){
     std::cout<<"shiftx="<<shiftx<<'\n';
     std::cout<<"ERROR: The first surface of part1 doesn't match cce_first_surface."<<'\n';

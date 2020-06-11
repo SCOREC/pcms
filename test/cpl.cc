@@ -31,7 +31,8 @@ int main(int argc, char **argv){
     exit(EXIT_FAILURE);
   }
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::Variable<double> send_var[2];
+  adios2::Variable<double> senddensity;
+  adios2::Variable<coupler::CV> sendfield;
 
   const std::string dir = "../coupling";
   const int time_step = atoi(argv[1]), RK_count = 4;
@@ -79,51 +80,60 @@ int main(int argc, char **argv){
   coupler::destroy(gene_parpar);
   coupler::destroy(gene_moments);
 
-  dp3d.InitFourierPlan3d();
+  dp3d.InitFourierPlan3D();
 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
-      coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,{0, p1pp3d.blockstart},
-                                     {p1pp3d.lj0, p1pp3d.blockcount});
-      dp3d.DistriDensityRecvfromPart1(p3m3d,p1pp3d,densityfromXGC->data());
+      coupler::GO start[2]={0, p1pp3d.blockstart};
+      coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};
+      coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,p1pp3d.comm_x);
+
+      dp3d.DistriDensiRecvfromPart1(p3m3d,p1pp3d,densityfromGENE);
+
       bdesc.zDensityBoundaryBufAssign(dp3d.densin,p1pp3d);
       dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
       dp3d.CmplxdataToRealdata3D();
-      dp3d.AssemDensitySendtoPart3(p3m3d,p1pp3d);
+
+      dp3d.AssemDensiSendtoPart3(p3m3d,p1pp3d);
+
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
-                                                    p3m3d.activenode,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
+                                                    p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
                                                     p3m3d.blockstart);
       double* densitytmp = densitytoXGC->data();
       for(int h=0;h<p3m3d.lj0*p3m3d.blockcount;h++){
         densitytmp[h] = dp3d.denssend[h]; 
       }
       if(p1pp3d.mype_z==0){
-        coupler::send_density(dir, densitytoXGC, cDens, send_var[0]);
+        coupler::send_density(dir, densitytoXGC, cDens, senddensity);
       }     
       coupler::destroy(densityfromGENE);
       coupler::destroy(densitytoXGC);
 
- 
-      coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,{0,p3m3d.blockstat+p3m3d.cce_first_node-1},
-                                                                      {p3m3d.lj0,p3m3d.blockcount});
-      dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC->data());
+      coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
+      coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
+      coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,p1pp3d.comm_x);
+
+      dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC);
+
       dp3d.RealdataToCmplxdata3D();
       bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
       dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);       
+
       dp3d.AssemPotentSendtoPart1(p3m3d,p1pp3d);
+
       coupler::Array2d<coupler::CV>* fieldtoGENE = new coupler::Array2d<coupler::CV>(
                                                    p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.blockcount,
                                                    p1pp3d.lj0,p1pp3d.blockstart);
       coupler::CV* fieldtmp = fieldtoGENE->data(); 
-      for(int h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
+      for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
       if(p1pp3d.mype_z==0){
-        coupler::send_field(dir, fieldtoGENE, cFld, send_var[1]);
+        coupler::send_field(dir, fieldtoGENE, cFld, sendfield);
       }
 
       coupler::destroy(fieldtoGENE);
-      coupler::destroy(fieldfromXGC)
+      coupler::destroy(fieldfromXGC);
     }
   }
 

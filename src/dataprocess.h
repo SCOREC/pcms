@@ -8,6 +8,9 @@
 namespace coupler {
 
 // forward declare
+template<class T>
+class Array2d;
+
 class Part3Mesh3D;
 class Part1ParalPar3D;
 class BoundaryDescr3D;
@@ -56,6 +59,8 @@ public:
   fftw_plan plan_forward = NULL, plan_backward = NULL;
   // The following parameters for yparal=true;
   LO myli0;
+
+
   /* constructor
    * optional argument supports setting
    * the prepoc and yparal modes
@@ -75,9 +80,18 @@ public:
   void CmplxdataToRealdata3D();
   void RealdataToCmplxdata3D();
   void InitFourierPlan3D();
+  void AssemDensiSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
+       const Array2d<double>* fieldfromXGC);
+  void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
+       const Array2d<CV>* densityfromGENE);
+
+
   LO getP1li0() { return p1.li0; };
   LO getP1ny0() { return p1.ny0; };
   LO getP1npy() { return p1.npy; };
+
 
 private:
   const bool preproc;
@@ -121,12 +135,9 @@ private:
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
-  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,const double* array);
-  void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,const CV* array);
-  void AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-};
 
+  };
+ 
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d);
 

@@ -273,17 +273,17 @@ namespace coupler {
   }
   
 
-  Array2d<double>* receive_density(const std::string cce_folder,
-      const adios2_handler &handler, MPI_Comm comm = MPI_COMM_WORLD);
+  Array2d<CV>* receive_density(const std::string cce_folder,
+      const adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm);
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id);
 
   Array2d<double>* receive_field(const std::string cce_folder,
-      const adios2_handler &handler, MPI_Comm comm = MPI_COMM_WORLD);
+      const adios2_handler &handler, GO my_start[2], GO my_count[2], MPI_Comm comm);
 
-  void send_field(const std::string cce_folder, const Array2d<double>* field,
-      const adios2_handler &handler, adios2::Variable<double> &send_id); 
+  void send_field(const std::string cce_folder, const Array2d<CV>* field,
+      const adios2_handler &handler, adios2::Variable<CV> &send_id); 
 
 }//end namespace coupler
 

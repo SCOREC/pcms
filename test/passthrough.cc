@@ -29,7 +29,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
 
-  for (int i = 0; i < time_step; i++) {
+/*  for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::Array2d<double>* density = coupler::receive_density(dir, gDens,MPI_COMM_WORLD,MPI_COMM_WORLD);
       coupler::printSomeDensityVals(density);
@@ -41,7 +41,7 @@ int main(int argc, char **argv){
       coupler::destroy(field);
     }
   }
-
+*/
   Kokkos::finalize();
   MPI_Finalize();
   return 0;

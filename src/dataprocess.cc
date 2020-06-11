@@ -2,6 +2,7 @@
 #include "importpart3mesh.h"
 #include "commpart1.h"
 #include "sendrecv_impl.h"
+//#include "testutilities.h"
 #include <cassert>
 
 namespace coupler {
@@ -123,13 +124,16 @@ void DatasProc3D::AllocPotentArrays()
 }
 
 //Distribute the sub global potential  2d array received from part3 and reorder the sub 2darray.  
-void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d,const double* array)
+void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d,
+     const Array2d<double>* fieldfromXGC)
 { 
   double** tmp;
   tmp = new double*[p3m3d.lj0];
   for(LO j=0;j<p3m3d.lj0;j++){
     tmp[j] = new double[p3m3d.blockcount]; 
   }
+  double* array;
+  array = fieldfromXGC->data();
   for(LO j=0;j<p3m3d.lj0;j++){
     for(GO i=0;i<p3m3d.blockcount;i++)
       tmp[j][i]=array[j*p3m3d.blockcount+i];
@@ -208,13 +212,14 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
 
 ////Distribute the subglobal density  2d array received from part1 to the processes.
 void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
-     const CV* array)
+     const Array2d<CV>* densityfromGENE)
 {
   CV** tmp; 
   tmp = new CV*[p1pp3d.lj0];
   for(LO j=0;j<p1pp3d.lj0; j++){
     tmp[j] = new CV[p1pp3d.blockcount];
   }
+  CV* array = densityfromGENE->data();
   for(LO j=0;j<p1pp3d.lj0;j++){
     for(GO i=0;i<p1pp3d.blockcount;i++){
       tmp[j][i]=array[j*p1pp3d.blockcount+i];
@@ -250,7 +255,7 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1
 // Assemble the density sub2d array in each process into a global one, which is straightforwardly transferred by
 // the adios2 API from coupler to Part3.
 
-void DatasProc3D::AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
+void DatasProc3D::AssemDensiSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
 {
   LO* recvcount = new LO[p1pp3d.npz];
   LO* rdispls = new LO[p1pp3d.npz];

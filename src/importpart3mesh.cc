@@ -76,9 +76,11 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        totnode+=(GO)versurfpart3[i];
   
      activenode=0;
-     for(LO i=0;i<p1pp3d.nx0;i++)
-       activenode+=(GO)versurf[i];
-
+     //std::cerr<<"nx0: "<<p1pp3d.nx0<<"\n";
+     for(LO i=0;i<p1pp3d.nx0;i++){
+     //std::cerr<<"i: "<<i<<" versurf[i]: "<<versurf[i]<<"\n";
+       activenode+=(GO)versurf[i];}
+    //std::cerr<<"activenode: "<<activenode<<" cce_node_number "<<cce_node_number<<"\n";
      if(activenode!=cce_node_number){
        std::cout<<"ERROR: The activenode number of part1 doesn't equal to cce_node_number for part3."<<'\n';
        std::exit(EXIT_FAILURE);

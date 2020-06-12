@@ -76,27 +76,31 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        totnode+=(GO)versurfpart3[i];
   
      activenode=0;
-     //std::cerr<<"nx0: "<<p1pp3d.nx0<<"\n";
+     std::cerr<<"nx0: "<<p1pp3d.nx0<<"\n";
      for(LO i=0;i<p1pp3d.nx0;i++){
+      MPI_Barrier(MPI_COMM_WORLD);
      //std::cerr<<"i: "<<i<<" versurf[i]: "<<versurf[i]<<"\n";
        activenode+=(GO)versurf[i];}
-    //std::cerr<<"activenode: "<<activenode<<" cce_node_number "<<cce_node_number<<"\n";
+    std::cerr<<"activenode: "<<activenode<<" cce_node_number "<<cce_node_number<<"\n";
      if(activenode!=cce_node_number){
        std::cout<<"ERROR: The activenode number of part1 doesn't equal to cce_node_number for part3."<<'\n';
        std::exit(EXIT_FAILURE);
      }
- 
+      std::cerr<<"0.0"<<"\n"; 
      li0=p1pp3d.li0;
      li1=p1pp3d.li1;
      li2=p1pp3d.li2;
 
+      std::cerr<<"0.1"<<"\n"; 
      BlockIndexes(p1pp3d.comm_x,p1pp3d.mype_x,p1pp3d.npx); 
  
+      std::cerr<<"0.2"<<"\n"; 
      LO xinds[3]={p1pp3d.li0,p1pp3d.li1,p1pp3d.li2}; 
      xboxinds = new LO*[p1pp3d.npx]; 
      for(LO i=0;i<p1pp3d.npx;i++){
        xboxinds[i]=new LO[3];
      }
+      std::cerr<<"0.3"<<"\n"; 
 
      LO* buffer=new LO[3*p1pp3d.npx];
      MPI_Allgather(xinds,3,MPI_INT,buffer,3,MPI_INT,p1pp3d.comm_x);
@@ -104,6 +108,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        for(LO j=0;j<3;j++)
          xboxinds[i][j]=buffer[i*3+j];
      }
+      std::cerr<<"0.4"<<"\n"; 
      delete[] buffer;
      if(test_case==TestCase::t0){
        if(p1pp3d.mype_x==0){
@@ -112,11 +117,14 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
          }
        }
      }
+      std::cerr<<"0.5"<<"\n"; 
      lj0=p1pp3d.lj0*2; 
      mylk0=new LO[3];
      mylk1=new LO[li0];
      mylk2=new LO[li0];      
+      std::cerr<< p1pp3d.mype << " 0.6"<<"\n"; 
      DistriPart3zcoords(p1pp3d, test_dir);
+      std::cerr<< p1pp3d.mype << " 0.7"<<"\n"; 
   } 
 }
 
@@ -154,36 +162,52 @@ void InitzcoordsInCoupler(double* zcoords,LO* versurf,LO nsurf)
 void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     const std::string test_dir)
 {
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(!p1pp3d.mype)  std::cerr<<"0.60"<<"\n"; 
   if(preproc==true){
     if(test_case==TestCase::t0){
       zcoordall = new double[activenode];
       InitzcoordsInCoupler(zcoordall,versurf,p1pp3d.nx0);
     }else{
+      MPI_Barrier(MPI_COMM_WORLD);
+      if(!p1pp3d.mype)  std::cerr<<"0.61"<<"\n"; 
       assert(zcoordall); // the number of elements is activenode
     }
     LO numvert=0, numsurf=0;
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(!p1pp3d.mype)  std::cerr<<"0.615"<<"\n"; 
     for(LO i=0;i<p1pp3d.mype_x;i++){
+      if(!p1pp3d.mype)  std::cerr<<"0.619"<<"\n"; 
       for(LO j=xboxinds[i][1];j<xboxinds[i][2]+1;j++){
+        std::cerr<<p1pp3d.mype<<" 0.62,numsurf: "<<numsurf<<" versurf[numsurf] "<<versurf[numsurf]<<"\n";
 	numvert+=versurf[numsurf];
 	numsurf+=1; 
       } 
     }
+    MPI_Barrier(MPI_COMM_WORLD);
+    std::cerr<<"0.63"<<"\n"; 
     LO index1=xboxinds[p1pp3d.mype_x][1];
     LO index2=xboxinds[p1pp3d.mype_x][2];
     LO index0=xboxinds[p1pp3d.mype_x][0];
     pzcoords = new double*[index0]; 
+    MPI_Barrier(MPI_COMM_WORLD);
+    std::cerr<<p1pp3d.mype << " 0.64, numsurf: "<<numsurf<<"\n"; 
     double* zcoords;
+    std::cerr<< p1pp3d.mype << " loop range " << index1 << " : " << index2+1 << "\n";
+    MPI_Barrier(MPI_COMM_WORLD);
     for(LO i= index1;i<index2+1;i++)
     {
       zcoords=new double[versurf[numsurf]];  
       for(LO j=0;j<versurf[numsurf];j++){
 	 zcoords[j]=zcoordall[numvert+j]-cplPI;
       }
+      std::cerr<< p1pp3d.mype << " 0.65"<<"\n"; 
       if(test_case==TestCase::t0){
         assert(!test_dir.empty());
         std::string fname=test_dir+std::to_string(i)+"_zcoords.txt";
-       OutputtoFile(zcoords,versurf[numsurf],fname);
+        OutputtoFile(zcoords,versurf[numsurf],fname);
       }
+      std::cerr<<p1pp3d.mype << " idx " << i << " 0.66"<<"\n"; 
       nstart[i] = minloc(zcoords,versurf[numsurf]);
 /*
 if(p1pp3d.mype_x==1){
@@ -192,16 +216,24 @@ if(p1pp3d.mype_x==1){
 }
 */
        reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
+       std::cerr<<p1pp3d.mype << " 0.67,numsurf: "<<numsurf<<" versurf[numsurf] "<<versurf[numsurf]<<"\n"; 
        DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
+       std::cerr<<p1pp3d.mype << " 0.68"<<"\n"; 
        pzcoords[i-index1]= new double[mylk0[i-index1]];
+       std::cerr<<p1pp3d.mype << " 0.69"<<"\n"; 
        for(LO k=0;k<mylk0[i-index1];k++){
 	 pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
        }
+       std::cerr<<p1pp3d.mype << " 0.691"<<"\n"; 
        numvert+=versurf[numsurf];
        numsurf+=1;       
+       std::cerr<<p1pp3d.mype << " 0.692"<<"\n"; 
        delete[] zcoords; 
+       std::cerr<<p1pp3d.mype << " idx " << i << " 0.693"<<"\n"; 
     }
+    std::cerr<<p1pp3d.mype << " 0.6931"<<"\n"; 
   }  
+  std::cerr<<p1pp3d.mype << " 0.694"<<"\n"; 
 }
 
 void Part3Mesh3D::JugeFirstSurfaceMatch(double xp1)

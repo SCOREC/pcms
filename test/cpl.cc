@@ -72,8 +72,8 @@ int main(int argc, char **argv){
   if(!p1pp3d.mype)std::cerr << "0.2"<< "\n";
   coupler::Array1d<double>* xgc_zcoords = coupler::receive_gene_pproc<double>(dir, xZcoord);
   MPI_Barrier(MPI_COMM_WORLD);
-  if(!p1pp3d.mype)std::cerr << "0.3"<< "\n";
-  coupler::Array1d<int>* xgc_versurf = coupler::receive_gene_pproc<int>(dir, xVsurf);
+  std::cerr << "0.3"<<" p1pp3d.li1, "<<p1pp3d.li1<<" p1pp3d.li1-p1pp3d.li2 "<<p1pp3d.li0<< "\n";
+  int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, p1pp3d.li1, p1pp3d.li0);
   MPI_Barrier(MPI_COMM_WORLD);
   if(!p1pp3d.mype)std::cerr << "0.4"<< "\n";
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
@@ -82,8 +82,8 @@ int main(int argc, char **argv){
 
   coupler::Array1d<coupler::CV>* gene_moments = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);//matching gene's moments arr
   MPI_Barrier(MPI_COMM_WORLD);
-  if(!p1pp3d.mype)std::cerr << "0.6"<< "\n";
-  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_numsurf->val(0), xgc_versurf->data(), xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords->data(), preproc);
+  std::cerr <<p1pp3d.mype<< " numsurf: "<< xgc_numsurf->val(0)<<" 0.6"<< "\n";
+  coupler::Part3Mesh3D p3m3d(p1pp3d, xgc_numsurf->val(0), xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords->data(), preproc);
   MPI_Barrier(MPI_COMM_WORLD);
   if(!p1pp3d.mype)std::cerr << "0.7"<< "\n";
   const int nummode = 1;

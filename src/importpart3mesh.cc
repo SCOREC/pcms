@@ -122,7 +122,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      // FIXME mylk0 is undersized for circular case;
      // it is written in DistributePoints and
      // read in DistriPart3zcoords
-     mylk0=new LO[3]; 
+     mylk0=new LO[li0]; 
      mylk1=new LO[li0];
      mylk2=new LO[li0];      
       std::cerr<< p1pp3d.mype << " 0.6"<<"\n"; 

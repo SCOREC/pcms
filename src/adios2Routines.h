@@ -229,9 +229,10 @@ namespace coupler {
     eng.EndStep();
     //move my chunk of the adios2 buffer to the correct index
     int start_idx = (total_size / nprocs) * rank;
+    std::cerr<<rank<< " li1: "<<li1<<" li1+li0: "<<li1+li0<<"\n";
     for (int i=li1; i<(li1+li0); i++){
-    std::cerr<<rank<< " start_idx: "<<start_idx<<" val[start_idx]: "<<val[start_idx]<<" tmp_val[i]: "<<tmp_val[i]<<"\n";
       tmp_val[i] = val[start_idx];
+      std::cerr<<rank<< " start_idx: "<<start_idx<<" val[start_idx]: "<<val[start_idx]<<" tmp_val[i]: "<<tmp_val[i]<<"\n";
       start_idx++;
     }
     //delete [] val;

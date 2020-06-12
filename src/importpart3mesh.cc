@@ -119,7 +119,10 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      }
       std::cerr<<"0.5"<<"\n"; 
      lj0=p1pp3d.lj0*2; 
-     mylk0=new LO[3];
+     // FIXME mylk0 is undersized for circular case;
+     // it is written in DistributePoints and
+     // read in DistriPart3zcoords
+     mylk0=new LO[3]; 
      mylk1=new LO[li0];
      mylk2=new LO[li0];      
       std::cerr<< p1pp3d.mype << " 0.6"<<"\n"; 
@@ -218,10 +221,10 @@ if(p1pp3d.mype_x==1){
        reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
        std::cerr<<p1pp3d.mype << " 0.67,numsurf: "<<numsurf<<" versurf[numsurf] "<<versurf[numsurf]<<"\n"; 
        DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
-       std::cerr<<p1pp3d.mype << " 0.68"<<"\n"; 
-       pzcoords[i-index1]= new double[mylk0[i-index1]];
+       std::cerr<<p1pp3d.mype << " 0.68 p1.nz0 " << p1pp3d.nz0 << "mylk0[i-index1] " << mylk0[i-index1] << "\n";
+       pzcoords[i-index1]= new double[mylk0[i-index1]]; // FIXME li is ~0:90 for circular case, this read is out of bounds
        std::cerr<<p1pp3d.mype << " 0.69"<<"\n"; 
-       for(LO k=0;k<mylk0[i-index1];k++){
+       for(LO k=0;k<mylk0[i-index1];k++){ // FIXME li is ~0:90 for circular case, this read is out of bounds
 	 pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
        }
        std::cerr<<p1pp3d.mype << " 0.691"<<"\n"; 
@@ -302,7 +305,8 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
     }
     mylk1[li-gstart]=i1;
     mylk2[li-gstart]=i2;
-    mylk0[li-gstart]=i2-i1+1;
+    std::cerr << p1pp3d.mype << " li-gstart " << li-gstart << "\n";
+    mylk0[li-gstart]=i2-i1+1; // li is ~0:90 for circular case, this write is out of bounds
     if(test_case==TestCase::t0){   
       std::cout<<"rank="<<p1pp3d.mype<<" "<<li-gstart<<'\n';
       std::cout<<"mylk k="<<mylk0[li-gstart]<<" "<<mylk1[li-gstart]

@@ -56,6 +56,17 @@ void DatasProc3D::init()
   }
   sum=0;
   for(LO i=0;i<p3.li0;i++)  sum+=p3.mylk0[i];
+ 
+  mattoplane=new double***[p3.li0];
+  for(LO i=0;i<p3.li0;i++){
+    mattoplane[i] = new double**[p3.lj0];
+    for(LO j=0;j<p3.lj0;j++){
+      mattoplane[i][j]=new double*[p3.lj0];
+      for(LO k=0;k<p3.lj0;k++){
+        mattoplane[i][j][k]=new double*[mylk0[i]];
+      }    
+    }
+  }
 }
 
 void DatasProc3D::AllocDensityArrays()
@@ -85,10 +96,18 @@ void DatasProc3D::AllocDensityArrays()
         denspart3[i][j]=new double[p3.mylk0[i]];
    }
 
-   denssend = new double[p3.blockcount*p3.lj0];
+   densTOpart3=new double**[p3.li0];
+   for(LO i=0;i<p3.li0;i++){
+     densTOpart3[i]=new double*[p3.lj0];
+     for(LO j=0; j<p3.lj0; j++)
+        densTOpart3[i][j]=new double[p3.mylk0[i]];
+   }
 
+   denssend = new double[p3.blockcount*p3.lj0];
+   
  } 
 }
+
 
 void DatasProc3D::AllocPotentArrays()
 { 
@@ -304,6 +323,45 @@ void DatasProc3D::AssemDensiSendtoPart3(const Part3Mesh3D &p3m3d, const Part1Par
   delete[] recvcount,rdispls,blocktmp;
 }
 
+//I dont's understand the function of the following matrix.
+void DatasProc3D::initmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d)
+{
+  double y_cut;
+  LO tmp_ind;
+  LO in_l_tmp;
+  LO ind_h_tmp;
+  for(LO i=0;i<p3m3d.li0;i++){
+    for(LO k=0;k<p3m3d.mylk0[i];k++){
+      for(LO j=0;j<p3m3d.lj0;j++){
+        y_cut=p1pp3d.C_y[0]*(p1pp3d.q_prof[i]*p3m3d.pzcoords[i][k]-p1pp3d.phi_cut[j])/p1pp3d.dy;
+        y_cut=remainder(remainder(y_cut,double(y_res))+double(y_res),double(y_res));
+      
+        tmp_ind=LO(y_cut);
+        ind_l_tmp=remainder(remainder(tmp_ind,y_res)+y_res,y_res);
+        ind_h_tmp=reaminder(remainder(tmp_ind+1,y_res)+y_res,y_res);
+
+        mattoplane[i][j][ind_h_tmp][k]=y_cut-double(tmp_ind);
+        mattoplane[i][j][ind_l_tmp][k]=1.0-(y_cut-double(tmp_ind));
+      }
+    }
+  }
+}
+
+//The function of this routines is not clear so far.
+void DatasProc3D::DensityToPart3(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d)
+{
+  for(LO i=0;i<p3.li0;i++){
+    for(LO k=0;k<p3.mylk0[i];k++){
+      for(LO j=0;j<p3.lj0;j++){
+        double tmp=0.0;
+        for(LO l=0;l<p3.lj0;j++){
+          tmp+=mattoplane[i][j][l][k]*denspart3[i][l][k];
+        }
+        densTOpart3[i][j][k]=tmp;
+      }
+    }
+  }
+}
 
 void DatasProc3D::TestInitPotentAlongz(const Part3Mesh3D& p3m3d,
     const LO npy, const LO n) {
@@ -334,6 +392,12 @@ void DatasProc3D::TestInitPotentAlongz(const Part3Mesh3D& p3m3d,
 DatasProc3D::~DatasProc3D()
 {
   FreeFourierPlan3D();
+  if(densrecv!=NULL){
+    for(LO i=0;i<p1.li0;i++){
+ 
+    } 
+ 
+  }
   if(densin!=NULL) delete[] densin;
   if(densintmp!=NULL) delete[] densintmp;
   if(densouttmp!=NULL) delete[] densouttmp;

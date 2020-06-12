@@ -72,6 +72,8 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
      ny0=parpar[10];
      nyb=parpar[11];
      lj0=parpar[12];
+     lj0=lj0/2; // This lj0 corresponds the one after Fourier
+                // transformation
      lj1=parpar[13];
      lj2=parpar[14];
      lm0=parpar[15];
@@ -90,7 +92,9 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
 
      n0_global=parpar[27];
      ky0_ind=parpar[28];    
-     NP=npx*npy*npz;  
+     NP=npx*npy*npz; 
+     n_cuts = 2*lj0;      
+ 
      CreateSubCommunicators();
    }
 
@@ -128,6 +132,13 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
      pzp[i]=double(lk1+i)*dz-1.0*cplPI;
    }
    blockindice();  
+
+   L_tor=sing_phi*2.0*cplPI/double(n0_global*lj0*2);
+   phi_cut = new double[n_cuts];
+   for(LO i=0;i<n_cuts;i++){
+     phi_cut[i] = L_tor*double(i+1); // need more check
+   } 
+   dy=dx*rhostar*minor_r/res_fact;
 
    if(test_case==TestCase::t0){ 
      delete[] parpar;

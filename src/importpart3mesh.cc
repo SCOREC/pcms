@@ -111,7 +111,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        }
      }
      lj0=p1pp3d.lj0*2; 
-     mylk0=new LO[3];
+     mylk0=new LO[li0];
      mylk1=new LO[li0];
      mylk2=new LO[li0];      
      DistriPart3zcoords(p1pp3d, test_dir);

@@ -41,6 +41,18 @@ class Part3Mesh3D{
     GO  totnodes; // the total number of nodes sent by part3;
     GO  activenodes; // The number of nodes part1 has on the poloidal cross section. 
     LO  shiftx;  // The number of surfaces shifting from part3 first surface to part1 first surface.
+
+// paramters to create the background of mgnetic field, density and temperature profile
+    double rhostar; //This quantity is obtained by complex formula    
+    double* C_y;
+    double minor_r;
+    double lx_a;
+    LO sign_phi;
+
+    double resfact;
+    double dx;
+    double L_tor;     
+    double* phi_cut;    
   
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
     double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box

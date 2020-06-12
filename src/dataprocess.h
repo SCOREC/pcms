@@ -40,6 +40,9 @@ public:
   double* densouttmp = NULL; // store the x-y 2d real density after backward 
                              // fourier transform
   double*** denspart3 = NULL; // storing the density being sent to the part3
+  double**** mattoplane;
+  double*** densTOpart3 = NULL;
+
   double*  denssend = NULL; // the 1d array density  sent to part3
                              //  would be sent in comm_x and comm_y communicators
 

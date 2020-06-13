@@ -89,7 +89,8 @@ public:
   void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
   void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
        const Array2d<CV>* densityfromGENE);
-
+  void Initmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d);
+  void DensityToPart3(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d);
 
   LO getP1li0() { return p1.li0; };
   LO getP1ny0() { return p1.ny0; };

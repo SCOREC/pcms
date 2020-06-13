@@ -18,11 +18,13 @@ class Part1ParalPar3D {
     LO  NP; // The total number of processes
     LO npx,npy,npz;
     LO nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
-    LO ny0,nyb,lj0,lj1,lj2,lm0,lm1,lm2;
+    LO ny0,nyb,llj0,llj1,llj2,lm0,lm1,lm2;
     LO nz0,nzb,lk0,lk1,lk2,ln0,ln1,ln2;
 
-    LO n_cuts; // the number of surfaces along y dim. 
-    
+    LO lj0; //the number of elements in Fourier space.
+    LO lj1; //the number of elements in Fourier space.
+    LO lj2; //the number of elements in Fourier space.   
+
     GO totnodes; // the total nodes number of the poloidal cross setion of part1.
 //    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
     int periods[3]={0,1,1};
@@ -48,6 +50,7 @@ class Part1ParalPar3D {
     double L_tor;
     double* phi_cut;
     double dy;
+    LO y_res;
  
 
 // parameters for Adios transfer

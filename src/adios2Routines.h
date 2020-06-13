@@ -166,6 +166,7 @@ namespace coupler {
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
   
     const auto total_size = adios_var.Shape()[0];
+    if(!rank) std::cout << " total_size " <<total_size << "\n";
     const auto my_start = (total_size / nprocs) * rank;
     const auto my_count = (total_size / nprocs);
     std::cout << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
@@ -229,10 +230,10 @@ namespace coupler {
     eng.EndStep();
     //move my chunk of the adios2 buffer to the correct index
     int start_idx = (total_size / nprocs) * rank;
-    std::cerr<<rank<< " li1: "<<li1<<" li1+li0: "<<li1+li0<<"\n";
+    //std::cerr<<rank<< " li1: "<<li1<<" li1+li0: "<<li1+li0<<"\n";
     for (int i=li1; i<(li1+li0); i++){
       tmp_val[i] = val[start_idx];
-      std::cerr<<rank<< " start_idx: "<<start_idx<<" val[start_idx]: "<<val[start_idx]<<" tmp_val[i]: "<<tmp_val[i]<<"\n";
+      //std::cerr<<rank<< " start_idx: "<<start_idx<<" val[start_idx]: "<<val[start_idx]<<" tmp_val[i]: "<<tmp_val[i]<<"\n";
       start_idx++;
     }
     //delete [] val;

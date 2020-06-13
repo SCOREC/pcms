@@ -194,14 +194,18 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     LO index0=xboxinds[p1pp3d.mype_x][0];
     pzcoords = new double*[index0]; 
     MPI_Barrier(MPI_COMM_WORLD);
-    std::cerr<<p1pp3d.mype << " 0.64, numsurf: "<<numsurf<<"\n"; 
+    std::cerr<<p1pp3d.mype << " 0.64, numsurf: "<<numsurf<<" numvert: "<<numvert<<"\n"; 
     double* zcoords;
     std::cerr<< p1pp3d.mype << " loop range " << index1 << " : " << index2+1 << "\n";
     MPI_Barrier(MPI_COMM_WORLD);
     for(LO i= index1;i<index2+1;i++)
     {
+      std::cerr<< p1pp3d.mype << " 0.641"<<" versurf[numsurf] "<<versurf[numsurf]<<"\n"; 
       zcoords=new double[versurf[numsurf]];  
+      std::cerr<< p1pp3d.mype << " 0.642"<<"\n"; 
       for(LO j=0;j<versurf[numsurf];j++){
+      std::cerr<< p1pp3d.mype << " 0.643, j "<< j <<" numvert+j "<< numvert+j <<" zcoordall[numvert+j] "<<zcoordall[numvert+j]<<"\n"; 
+      std::cerr<< p1pp3d.mype << " 0.643, numvert+j "<< numvert+j <<"\n"; 
 	 zcoords[j]=zcoordall[numvert+j]-cplPI;
       }
       std::cerr<< p1pp3d.mype << " 0.65"<<"\n"; 

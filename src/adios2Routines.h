@@ -212,18 +212,22 @@ namespace coupler {
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
   
     const auto total_size = adios_var.Shape()[0];
+    auto my_start = 0;
+    auto my_count = 0;
     std::cerr << rank << ": total_size "<<total_size <<" \n";
-    const auto my_start = 0;
-    const auto my_count = total_size;
+    MPI_Exscan(&li0, &my_start, 1, MPI_INTEGER, MPI_SUM, comm);
+    if(!rank) my_start = 0;
+    my_count = li0;
     std::cout << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
-    const adios2::Dims start{my_start};
-    const adios2::Dims count{my_count};
+    const adios2::Dims start{(GO)my_start};
+    const adios2::Dims count{(GO)my_count};
   
     const adios2::Box<adios2::Dims> sel(start, count);
     int arr_size = total_size;
-    T* val = new T[arr_size];
+    //T* val = new T[arr_size];
+    T* val = new T[my_count];
     T* tmp_val = new T[arr_size];
     adios_var.SetSelection(sel);
     eng.Get(adios_var, val);

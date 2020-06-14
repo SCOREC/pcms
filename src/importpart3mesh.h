@@ -14,6 +14,7 @@ class Part1ParalPar3D;
 class Part3Mesh3D{
   public:
     LO nsurf;    // number of flux surfaces of part3
+    LO block_count;    // number of nodes
     LO* versurfpart3 = NULL; // numbers of vertices on all flux surfaces from part3 
     LO* versurf = NULL; // numbers of vertices on the flux surfaces locating on the part1 domain.
     double* xcoords = NULL;
@@ -51,12 +52,14 @@ class Part3Mesh3D{
      */
     Part3Mesh3D(Part1ParalPar3D &p1pp3d,
         LO nsurf_,
+        LO block_count_,
         LO* versurfpart3_,
         int* cce_,
         double* xcoords_,
         double* zcoord_,
         bool pproc = true)
       : nsurf(nsurf_),
+        block_count(block_count_),
         versurfpart3(versurfpart3_),
         cce(cce_),
         xcoords(xcoords_),

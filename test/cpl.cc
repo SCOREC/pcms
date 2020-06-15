@@ -43,6 +43,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler cFld(adios,"cpl_field");
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
   coupler::adios2_handler gRX(adios,"gene_pproc_rx");
+  coupler::adios2_handler gCy(adios,"gene_cy_array");
   coupler::adios2_handler gInt(adios,"gene_pproc_i");
   coupler::adios2_handler gComp(adios,"gene_pproc_c");
   coupler::adios2_handler xXcoord(adios,"xgc_x_coordss");
@@ -54,6 +55,12 @@ int main(int argc, char **argv){
   //receive GENE's preproc mesh discretization values
   coupler::Array1d<double>* q_prof = coupler::receive_gene_pproc<double>(dir, gQP);
   coupler::Array1d<double>* gene_xval = coupler::receive_gene_pproc<double>(dir, gRX);//matching gene's xval arr
+  coupler::Array1d<double>* gene_cy = coupler::receive_gene_pproc<double>(dir, gCy);
+  double* C_y = gene_cy->data();
+  double minor_r = gene_cy->val(180);
+  double lx_a = gene_cy->val(181);
+  double sign_phi = gene_cy->val(182);
+  double dx = gene_cy->val(183);
   coupler::Array1d<int>* gene_parpar = coupler::receive_gene_pproc<int>(dir, gInt);
 
   //intialize GENE class

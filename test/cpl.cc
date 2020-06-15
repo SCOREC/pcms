@@ -63,51 +63,31 @@ int main(int argc, char **argv){
   coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(),preproc);
 
   //receive XGC's preproc mesh discretization values
-  if(!p1pp3d.mype)std::cerr << "0.0"<< "\n";
   coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);//x_XGC
-  MPI_Barrier(MPI_COMM_WORLD);
-  if(!p1pp3d.mype)std::cerr << "0.1"<< "\n";
   coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf);
-  std::cerr << "0.2, xgc_numsurf= "<<xgc_numsurf->val(0)<< " xgc_start= "<<xgc_numsurf->val(1)<< "\n";
   int numsurf = xgc_numsurf->val(0);
   int block_count = xgc_numsurf->val(1);
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  std::cerr << "0.2, z_start "<< block_count<<"\n";
-  double* xgc_zcoords = coupler::receive_gene_exact<double>(dir,xZcoord, p1pp3d.li1, block_count);
-  if(p1pp3d.mype_x==1) {
+  double* xgc_zcoords = coupler::receive_gene_exact<double>(dir,xZcoord, 0, block_count);
+  /*if(p1pp3d.mype_x==1) {
     std::cerr << "foo block_count " << block_count << "\n";
     for(int i=0; i < (block_count); i++)  
       std::cerr<< "foo "  << xgc_zcoords[i] << "\n";
-  }
-  MPI_Barrier(MPI_COMM_WORLD);
-  std::cerr << "0.3"<<" p1pp3d.li1, "<<p1pp3d.li1<<" p1pp3d.li1-p1pp3d.li2 "<<p1pp3d.li0<< "\n";
-  //int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, p1pp3d.li1, p1pp3d.li0);
-  coupler::Array1d<int>* xgc_versurf = coupler::receive_gene_pproc<int>(dir, xVsurf);
-/*
-  if(p1pp3d.mype_x==1){
+  }*/
+  int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, p1pp3d.li1, p1pp3d.nx0);
+  /*if(p1pp3d.mype_x==1){
     for(int i=0;i<p1pp3d.nx0;i++){
       std::cout<<"i="<<i<<" "<<xgc_versurf[i]<<'\n';
     } 
-  }
-*/
-  MPI_Barrier(MPI_COMM_WORLD);
-  if(!p1pp3d.mype)std::cerr << "0.4"<< "\n";
+  }*/
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
-  MPI_Barrier(MPI_COMM_WORLD);
-  if(!p1pp3d.mype)std::cerr << "0.5"<< "\n";
-
   coupler::Array1d<coupler::CV>* gene_moments = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);//matching gene's moments arr
-  MPI_Barrier(MPI_COMM_WORLD);
-  coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf->data(), xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
-  MPI_Barrier(MPI_COMM_WORLD);
-  if(!p1pp3d.mype)std::cerr << "0.7"<< "\n";
+  coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
+
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
-  MPI_Barrier(MPI_COMM_WORLD);
   if(!p1pp3d.mype)std::cerr << "0.8"<< "\n";
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, dp3d, test_case, preproc);
-  MPI_Barrier(MPI_COMM_WORLD);
   if(!p1pp3d.mype)std::cerr << "0.9"<< "\n";
 
   coupler::destroy(q_prof);

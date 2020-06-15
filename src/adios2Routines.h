@@ -217,6 +217,7 @@ namespace coupler {
     std::cerr << rank << ": total_size "<<total_size <<" \n";
     MPI_Exscan(&li0, &my_start, 1, MPI_INTEGER, MPI_SUM, comm);
     if(!rank) my_start = 0;
+    if(name == "xgc_versurfs") my_start = 0;
     my_count = li0;
     std::cout << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
               << " floats starting at element " << my_start << "\n";
@@ -248,7 +249,7 @@ namespace coupler {
   /* receive columns (start_col) to (start_col + localW) */
   template<typename T>
   Array2d<T>* receive2d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng, GO start[2], GO count[2],MPI_Comm &comm) {
+      adios2::IO &read_io, adios2::Engine &eng, GO starts[2], GO counts[2],MPI_Comm &comm) {
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
@@ -269,20 +270,28 @@ namespace coupler {
     }
     eng.BeginStep();
     adios2::Variable<T> adVar = read_io.InquireVariable<T>(name);
- 
+  
     const auto ftn_glob_height = adVar.Shape()[0] ; //4
     const auto ftn_glob_width = adVar.Shape()[1]; // 256005
     //fortran to C transpose
     const auto c_glob_height = ftn_glob_width;
     const auto c_glob_width = ftn_glob_height;
-
+  
+    GO local_width  =  c_glob_width / nprocs;
+    const GO start = rank * local_width;
+    if(rank == nprocs - 1) local_width += c_glob_width%nprocs; // 2
+  
+    fprintf(stderr, "%d 1.0 name %s nprocs %d"
+        "c_glob_width %lu c_glob_height %lu local_width %lu start %lu\n",
+        rank, name.c_str(), nprocs,
+        c_glob_width, c_glob_height, local_width, start);
+  
     Array2d<T>* a2d = new Array2d<T>(c_glob_height, c_glob_width,
-        count[0], count[1], start[0]);
-
-// Here, count,start take care of the fortran to C transpose. 
-    const::adios2::Dims my_start({start[0], start[1]});
-    const::adios2::Dims my_count({count[0], count[1]});
-    const adios2::Box<adios2::Dims> sel(my_start, my_count);
+        c_glob_height, local_width, start);
+    const::adios2::Dims my_start({a2d->start_col(), 0});
+    assert(a2d->localH() == a2d->globalH());
+    const::adios2::Dims my_offset({a2d->localW(), a2d->globalH()});
+    const adios2::Box<adios2::Dims> sel(my_start, my_offset);
   
     adVar.SetSelection(sel);
     eng.Get<T>(adVar, a2d->data());
@@ -297,8 +306,9 @@ namespace coupler {
       const std::string name, adios2::IO &coupling_io,
       adios2::Engine &engine, adios2::Variable<T> &send_id) {
     const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
-    const::adios2::Dims g_offset({0,a2d->start_col()});
-    const::adios2::Dims l_dims({a2d->localW(), a2d->localH()});
+    const::adios2::Dims g_offset({a2d->start_col(), 0});
+    assert(a2d->localH() == a2d->globalH());
+    const::adios2::Dims l_dims({a2d->localW(), a2d->globalH()});
   
     const std::string fname = dir + "/" + name + ".bp";
     if (!engine){

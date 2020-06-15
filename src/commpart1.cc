@@ -91,10 +91,10 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
      n0_global=parpar[27];
      ky0_ind=parpar[28];    
      NP=npx*npy*npz; 
-     lj0=llj0/2;
-     lj1=llj1/2;
-     lj2=llj2/2;    
- 
+     lj0=llj0;
+     lj1=llj1;
+     lj2=llj2;    
+
      CreateSubCommunicators();
    }
 

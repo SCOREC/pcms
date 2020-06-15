@@ -120,11 +120,10 @@ private:
 
   // this struct contains the read-only values from Part3Mesh3D class
   const struct P3Data {
-    P3Data(LO li, LO lj,GO totnod,GO blockcount_,LO* mylk) : li0(li), lj0(lj),totnode(totnod), 
+    P3Data(LO li, LO lj,GO blockcount_,LO* mylk) : li0(li), lj0(lj), 
           blockcount(blockcount_), mylk0(mylk) {};
       const LO li0;
       const LO lj0;
-      const GO totnode;
       const GO blockcount;
       LO const* const mylk0;
   } p3;

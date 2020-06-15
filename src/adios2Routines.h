@@ -166,6 +166,7 @@ namespace coupler {
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
 
     const auto total_size = adios_var.Shape()[0];
+    if(!rank) std::cout << " total_size " <<total_size << "\n";
     const auto my_start = (total_size / nprocs) * rank;
     const auto my_count = (total_size / nprocs);
 
@@ -174,7 +175,10 @@ namespace coupler {
   
     const adios2::Dims start{my_start};
     const adios2::Dims count{my_count};
-  
+if(name=="xgc_numsurfs"){
+ std::cout<<"total_size,my_count="<<total_size<<" "<<my_count<<'\n';
+}
+ 
     const adios2::Box<adios2::Dims> sel(start, count);
     Array1d<T>* field = new Array1d<T>{total_size, my_count, 
     	my_start};
@@ -186,7 +190,59 @@ namespace coupler {
   }
   
   
+  template<typename T> 
+  T* receive1d_exact_ftn(const std::string dir, const std::string name,
+      adios2::IO &read_io, adios2::Engine &eng, GO li1, GO li0, MPI_Comm &comm) {
+    int rank, nprocs;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &nprocs);
   
+    const std::string fname = dir + "/" + name + ".bp";
+  
+    if(!eng){
+      read_io.SetEngine("Sst");
+      read_io.SetParameters({
+          {"DataTransport","RDMA"},
+          {"OpenTimeoutSecs", "480"}
+          });
+      eng = read_io.Open(fname, adios2::Mode::Read);
+      if(!rank) std::cerr << rank << ": " << name << " engine created\n";
+    }
+    else{
+      std::cerr << rank << ": receive engine already exists \n";
+    }
+  
+    eng.BeginStep();
+    adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
+  
+    const auto total_size = adios_var.Shape()[0];
+    std::cerr << rank << ": total_size "<<total_size <<" \n";
+    const auto my_start = 0;
+    const auto my_count = total_size;
+    std::cout << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
+              << " floats starting at element " << my_start << "\n";
+  
+    const adios2::Dims start{my_start};
+    const adios2::Dims count{my_count};
+  
+    const adios2::Box<adios2::Dims> sel(start, count);
+    int arr_size = total_size;
+    T* val = new T[arr_size];
+    T* tmp_val = new T[arr_size];
+    adios_var.SetSelection(sel);
+    eng.Get(adios_var, val);
+    eng.EndStep();
+    //move my chunk of the adios2 buffer to the correct index
+    int start_idx = (total_size / nprocs) * rank;
+    //std::cerr<<rank<< " li1: "<<li1<<" li1+li0: "<<li1+li0<<"\n";
+    for (int i=li1; i<(li1+li0); i++){
+      tmp_val[i] = val[start_idx];
+      //std::cerr<<rank<< " start_idx: "<<start_idx<<" val[start_idx]: "<<val[start_idx]<<" tmp_val[i]: "<<tmp_val[i]<<"\n";
+      start_idx++;
+    }
+    //delete [] val;
+    return val;
+  } 
   
   
   /* receive columns (start_col) to (start_col + localW) */
@@ -265,12 +321,21 @@ namespace coupler {
    */
   template<typename T>
   Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      const adios2_handler &handler,MPI_Comm comm = MPI_COMM_WORLD) { 
+      const adios2_handler &handler,MPI_Comm comm) { 
       adios2::IO io = handler.IO; 
       adios2::Engine engine = handler.eng;
       std::string name = handler.get_name();
     return receive1d_from_ftn<T>(cce_folder,name, io, engine, comm);
   }
+  template<typename T>
+  T* receive_gene_exact(const std::string cce_folder,
+      const adios2_handler &handler, GO my_start, GO my_count, MPI_Comm comm = MPI_COMM_WORLD) { 
+      adios2::IO io = handler.IO; 
+      adios2::Engine engine = handler.eng;
+      std::string name = handler.get_name();
+    return receive1d_exact_ftn<T>(cce_folder,name, io, engine, my_start, my_count, comm);
+  }
+  
   
 
   Array2d<CV>* receive_density(const std::string cce_folder,

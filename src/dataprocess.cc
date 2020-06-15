@@ -19,7 +19,7 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
     p1(p1pp3d.li0,p1pp3d.lj0,p1pp3d.lk0,
 	 p1pp3d.ny0, p1pp3d.npy, p1pp3d.mype_y,p1pp3d.blockcount, 
          p1pp3d.res_fact),
-    p3(p3m3d.li0,p3m3d.lj0,p3m3d.totnodes,p3m3d.blockcount,p3m3d.mylk0)
+    p3(p3m3d.li0,p3m3d.lj0,p3m3d.blockcount,p3m3d.mylk0)
   {
     init();
     AllocDensityArrays();

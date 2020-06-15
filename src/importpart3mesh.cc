@@ -70,7 +70,6 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 
      activenodes=0;
      for(LO i=0;i<p1pp3d.nx0;i++){
-       std::cerr<<"i: "<<i<<" versurf[i]: "<<versurf[i]<<"\n";
        activenodes+=(GO)versurf[i];
      }
 

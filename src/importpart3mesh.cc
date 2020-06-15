@@ -70,12 +70,14 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 
      activenodes=0;
      for(LO i=0;i<p1pp3d.nx0;i++){
+       std::cerr<<"i: "<<i<<" versurf[i]: "<<versurf[i]<<"\n";
        activenodes+=(GO)versurf[i];
      }
-     std::cerr<<p1pp3d.mype<<" block_count: "<<block_count<<" activenode: "<<activenode<<" cce_node_number "<<cce_node_number<<"\n";
-     MPI_Allreduce(&block_count, &activenode, 1, MPI_INTEGER, MPI_SUM, p1pp3d.comm_x);
+     activenodes=0;
+     std::cerr<<p1pp3d.mype<<" block_count: "<<block_count<<" activenode: "<<activenodes<<" cce_node_number "<<cce_node_number<<"\n";
+     MPI_Allreduce(&block_count, &activenodes, 1, MPI_INTEGER, MPI_SUM, p1pp3d.comm_x);
      if(p1pp3d.mype_y==p1pp3d.mype_z==0){
-      std::cerr<<p1pp3d.mype<<" block_count: "<<block_count<<" activenode: "<<activenode<<" cce_node_number "<<cce_node_number<<"\n";
+      std::cerr<<p1pp3d.mype<<" block_count: "<<block_count<<" activenode: "<<activenodes<<" cce_node_number "<<cce_node_number<<"\n";
 
      if(activenodes!=cce_node_number){
        std::cout<<"ERROR: The activenode number of part1 doesn't equal to cce_node_number for part3."<<'\n';

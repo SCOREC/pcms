@@ -169,16 +169,12 @@ namespace coupler {
     if(!rank) std::cout << " total_size " <<total_size << "\n";
     const auto my_start = (total_size / nprocs) * rank;
     const auto my_count = (total_size / nprocs);
-
-    if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
+    std::cout << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
     const adios2::Dims start{my_start};
     const adios2::Dims count{my_count};
-if(name=="xgc_numsurfs"){
- std::cout<<"total_size,my_count="<<total_size<<" "<<my_count<<'\n';
-}
- 
+  
     const adios2::Box<adios2::Dims> sel(start, count);
     Array1d<T>* field = new Array1d<T>{total_size, my_count, 
     	my_start};
@@ -276,7 +272,6 @@ if(name=="xgc_numsurfs"){
  
     const auto ftn_glob_height = adVar.Shape()[0] ; //4
     const auto ftn_glob_width = adVar.Shape()[1]; // 256005
-
     //fortran to C transpose
     const auto c_glob_height = ftn_glob_width;
     const auto c_glob_width = ftn_glob_height;
@@ -325,7 +320,7 @@ if(name=="xgc_numsurfs"){
    */
   template<typename T>
   Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      const adios2_handler &handler,MPI_Comm comm) { 
+      const adios2_handler &handler,MPI_Comm comm = MPI_COMM_WORLD) { 
       adios2::IO io = handler.IO; 
       adios2::Engine engine = handler.eng;
       std::string name = handler.get_name();
@@ -343,13 +338,13 @@ if(name=="xgc_numsurfs"){
   
 
   Array2d<CV>* receive_density(const std::string cce_folder,
-      const adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm);
+      const adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm = MPI_COMM_WORLD);
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id);
 
   Array2d<double>* receive_field(const std::string cce_folder,
-      const adios2_handler &handler, GO my_start[2], GO my_count[2], MPI_Comm comm);
+      const adios2_handler &handler, GO my_start[2], GO my_count[2], MPI_Comm comm = MPI_COMM_WORLD);
 
   void send_field(const std::string cce_folder, const Array2d<CV>* field,
       const adios2_handler &handler, adios2::Variable<CV> &send_id); 

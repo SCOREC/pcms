@@ -30,8 +30,10 @@ int main(int argc, char **argv){
     if(!rank) printf("Usage: %s <number of timesteps>\n", argv[1]);
     exit(EXIT_FAILURE);
   }
+
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::Variable<double> send_var[2];
+  adios2::Variable<double> senddensity;
+  adios2::Variable<coupler::CV> sendfield;
 
   const std::string dir = "../coupling";
   const int time_step = atoi(argv[1]), RK_count = 4;
@@ -51,17 +53,24 @@ int main(int argc, char **argv){
   coupler::adios2_handler xCce(adios,"xgc_cce_data");
 
   //receive GENE's preproc mesh discretization values
-  coupler::Array1d<double>* q_prof = coupler::receive_gene_pproc<double>(dir, gQP);
-  coupler::Array1d<double>* gene_xval = coupler::receive_gene_pproc<double>(dir, gRX);//matching gene's xval arr
-  coupler::Array1d<int>* gene_parpar = coupler::receive_gene_pproc<int>(dir, gInt);
+  coupler::Array1d<double>* q_prof = coupler::receive_gene_pproc<double>(dir, gQP,MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
+  coupler::Array1d<double>* gene_xval = coupler::receive_gene_pproc<double>(dir, gRX,MPI_COMM_WORLD);//matching gene's xval arr
+  MPI_Barrier(MPI_COMM_WORLD);
+  coupler::Array1d<int>* gene_parpar = coupler::receive_gene_pproc<int>(dir, gInt,MPI_COMM_WORLD);
 
-  //intialize GENE class
+ //intialize GENE class
   const bool preproc = true;
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(),preproc);
 
   //receive XGC's preproc mesh discretization values
+
+  coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf,MPI_COMM_WORLD);
+  std::cerr << "0.2, xgc_numsurf= "<<xgc_numsurf->val(0)<< " xgc_start= "<<xgc_numsurf->val(1)<< "\n";
+ 
+  coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord,MPI_COMM_WORLD);//x_XGC
   MPI_Barrier(MPI_COMM_WORLD);
   if(!p1pp3d.mype)std::cerr << "0.0"<< "\n";
   coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);//x_XGC
@@ -77,11 +86,14 @@ int main(int argc, char **argv){
   MPI_Barrier(MPI_COMM_WORLD);
   std::cerr << "0.3"<<" p1pp3d.li1, "<<p1pp3d.li1<<" p1pp3d.li1-p1pp3d.li2 "<<p1pp3d.li0<< "\n";
   int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, p1pp3d.li1, p1pp3d.li0);
-  MPI_Barrier(MPI_COMM_WORLD);
-  if(!p1pp3d.mype)std::cerr << "0.4"<< "\n";
-  coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
-  MPI_Barrier(MPI_COMM_WORLD);
-  if(!p1pp3d.mype)std::cerr << "0.5"<< "\n";
+/*
+  if(p1pp3d.mype_x==1){
+    for(int i=0;i<p1pp3d.nx0;i++){
+      std::cout<<"i="<<i<<" "<<xgc_versurf[i]<<'\n';
+    } 
+  }
+*/
+  coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce,MPI_COMM_WORLD);
 
   coupler::Array1d<coupler::CV>* gene_moments = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);//matching gene's moments arr
   MPI_Barrier(MPI_COMM_WORLD);
@@ -90,8 +102,6 @@ int main(int argc, char **argv){
   if(!p1pp3d.mype)std::cerr << "0.7"<< "\n";
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
-  MPI_Barrier(MPI_COMM_WORLD);
-  if(!p1pp3d.mype)std::cerr << "0.8"<< "\n";
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, dp3d, test_case, preproc);
   MPI_Barrier(MPI_COMM_WORLD);
   if(!p1pp3d.mype)std::cerr << "0.9"<< "\n";
@@ -99,23 +109,62 @@ int main(int argc, char **argv){
   coupler::destroy(q_prof);
   coupler::destroy(gene_xval);
   coupler::destroy(gene_parpar);
-  coupler::destroy(gene_moments);
+//  coupler::destroy(gene_moments);
+
+  dp3d.InitFourierPlan3D();
 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
-      coupler::Array2d<double>* density = coupler::receive_density(dir, gDens);
-      coupler::printSomeDensityVals(density);
-      /* For sends involving subcomm, the adios object must be created with the subcomm
-      adios2::ADIOS adios_x(p1pp3d.comm_x, adios2::DebugON);
-      coupler::adios2_handler xdens(adios_x,"cpl_dens_data");
-      coupler::send_density(dir, density, xdens, send_var[0]);
-      */
-      coupler::send_density(dir, density, cDens, send_var[0]);
-      coupler::destroy(density);
+      coupler::GO start[2]={0, p1pp3d.blockstart};
+      coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};
+      coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,p1pp3d.comm_x);
 
-      coupler::Array2d<double>* field = coupler::receive_field(dir, xFld);
-      coupler::send_field(dir, field, cFld, send_var[1]);
-      coupler::destroy(field);
+      dp3d.DistriDensiRecvfromPart1(p3m3d,p1pp3d,densityfromGENE);
+
+      bdesc.zDensityBoundaryBufAssign(dp3d.densin,p1pp3d);
+      dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
+      dp3d.CmplxdataToRealdata3D();
+
+      dp3d.AssemDensiSendtoPart3(p3m3d,p1pp3d);
+
+      coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
+                                                    p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
+                                                    p3m3d.blockstart);
+      double* densitytmp = densitytoXGC->data();
+      for(int h=0;h<p3m3d.lj0*p3m3d.blockcount;h++){
+        densitytmp[h] = dp3d.denssend[h]; 
+      }
+      if(p1pp3d.mype_z==0){
+        coupler::send_density(dir, densitytoXGC, cDens, senddensity);
+      }     
+      coupler::destroy(densityfromGENE);
+      coupler::destroy(densitytoXGC);
+
+      coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
+      coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
+      coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,p1pp3d.comm_x);
+
+      dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC);
+
+      dp3d.RealdataToCmplxdata3D();
+      bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
+      dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);       
+
+      dp3d.AssemPotentSendtoPart1(p3m3d,p1pp3d);
+
+      coupler::Array2d<coupler::CV>* fieldtoGENE = new coupler::Array2d<coupler::CV>(
+                                                   p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.blockcount,
+                                                   p1pp3d.lj0,p1pp3d.blockstart);
+      coupler::CV* fieldtmp = fieldtoGENE->data(); 
+      for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
+        fieldtmp[h] = dp3d.potentsend[h];
+      }         
+      if(p1pp3d.mype_z==0){
+        coupler::send_field(dir, fieldtoGENE, cFld, sendfield);
+      }
+
+      coupler::destroy(fieldtoGENE);
+      coupler::destroy(fieldfromXGC);
     }
   }
 

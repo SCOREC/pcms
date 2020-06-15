@@ -29,19 +29,19 @@ int main(int argc, char **argv){
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
 
-  for (int i = 0; i < time_step; i++) {
+/*  for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
-      coupler::Array2d<double>* density = coupler::receive_density(dir, gDens);
+      coupler::Array2d<double>* density = coupler::receive_density(dir, gDens,MPI_COMM_WORLD,MPI_COMM_WORLD);
       coupler::printSomeDensityVals(density);
       coupler::send_density(dir, density, cDens, send_var[0]);
       coupler::destroy(density);
 
-      coupler::Array2d<double>* field = coupler::receive_field(dir, xFld);
+      coupler::Array2d<double>* field = coupler::receive_field(dir, xFld,MPI_COMM_WORLD,MPI_COMM_WORLD);
       coupler::send_field(dir, field, cFld, send_var[1]);
       coupler::destroy(field);
     }
   }
-
+*/
   Kokkos::finalize();
   MPI_Finalize();
   return 0;

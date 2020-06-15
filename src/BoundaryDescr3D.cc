@@ -12,15 +12,18 @@ namespace coupler {
 
 BoundaryDescr3D::BoundaryDescr3D(
     const Part3Mesh3D& p3m3d,
-    const Part1ParalPar3D &p1pp3d,
+    const Part1ParalPar3D& p1pp3d,
     const DatasProc3D& dp3d,
     const TestCase tcase,
-    bool pproc):test_case(tcase), preproc(pproc)
+    bool pproc)    //:test_case(tcase), preproc(pproc)
 {
+  preproc = pproc;
+  test_case = tcase;
   if(preproc==true){
     nzb=p1pp3d.nzb;
     updenz=new CV**[p1pp3d.li0];
     lowdenz=new CV**[p1pp3d.li0];
+
     for(LO i=0;i<p1pp3d.li0;i++){
       updenz[i]=new CV*[p1pp3d.lj0];
       lowdenz[i]=new CV*[p1pp3d.lj0];

@@ -27,8 +27,7 @@ void DatasProc3D::CmplxdataToRealdata3D()
 	}      
         ExecuteCmplxToReal();
         for(LO l=0;l<p1.lj0*2;l++){ 
-          denspart3[i][l][k]=densouttmp[l]/double(p1.lj0*2);          
-	}
+          denspart3[i][l][k]=densouttmp[l]/double(p1.lj0*2);             }
       }
     }
   }

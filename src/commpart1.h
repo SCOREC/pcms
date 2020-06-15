@@ -18,19 +18,40 @@ class Part1ParalPar3D {
     LO  NP; // The total number of processes
     LO npx,npy,npz;
     LO nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
-    LO ny0,nyb,lj0,lj1,lj2,lm0,lm1,lm2;
+    LO ny0,nyb,llj0,llj1,llj2,lm0,lm1,lm2;
     LO nz0,nzb,lk0,lk1,lk2,ln0,ln1,ln2;
+
+    LO lj0; //the number of elements in Fourier space.
+    LO lj1; //the number of elements in Fourier space.
+    LO lj2; //the number of elements in Fourier space.   
+
+    GO totnodes; // the total nodes number of the poloidal cross setion of part1.
 //    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
     int periods[3]={1,0,1};
     double* xcoords=NULL; // The 1d array storing the radial position of all flux surfaces
     double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
     double* pzp=NULL; // The 1d array storing the poloial on each process.
-    double dz;  // The equal step length along the poloidal flux curve.
+//    double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature background. 
-    LO res_fact;
     double* q_prof=NULL;  //safty factor
     LO n0_global;
     LO ky0_ind;
+
+    double rhostar; //This quantity is obtained by complex formula
+    double* C_y;
+    double minor_r;
+    double lx_a;
+    LO sign_phi;
+    double dx;
+ 
+    double dz;  // The equal step length along the poloidal flux curve.
+
+    double res_fact;
+    double L_tor;
+    double* phi_cut;
+    double dy;
+    LO y_res;
+ 
 
 // parameters for Adios transfer
     GO blockstart,blockend,blockcount;    

@@ -55,12 +55,6 @@ int main(int argc, char **argv){
   //receive GENE's preproc mesh discretization values
   coupler::Array1d<double>* q_prof = coupler::receive_gene_pproc<double>(dir, gQP);
   coupler::Array1d<double>* gene_xval = coupler::receive_gene_pproc<double>(dir, gRX);//matching gene's xval arr
-  coupler::Array1d<double>* gene_cy = coupler::receive_gene_pproc<double>(dir, gCy);
-  double* C_y = gene_cy->data();
-  double minor_r = gene_cy->val(180);
-  double lx_a = gene_cy->val(181);
-  double sign_phi = gene_cy->val(182);
-  double dx = gene_cy->val(183);
   coupler::Array1d<int>* gene_parpar = coupler::receive_gene_pproc<int>(dir, gInt);
 
   //intialize GENE class
@@ -68,6 +62,12 @@ int main(int argc, char **argv){
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(),preproc);
+  coupler::Array1d<double>* gene_cy = coupler::receive_gene_pproc<double>(dir, gCy);
+  double* C_y = gene_cy->data();
+  double minor_r = gene_cy->val(p1pp3d.nx0);
+  double lx_a = gene_cy->val(p1pp3d.nx0+1);
+  double sign_phi = gene_cy->val(p1pp3d.nx0+2);
+  double dx = gene_cy->val(p1pp3d.nx0+3);
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);//x_XGC

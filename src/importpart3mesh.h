@@ -14,7 +14,8 @@ class Part1ParalPar3D;
 class Part3Mesh3D{
   public:
     LO nsurf;    // number of flux surfaces of part3
-    LO* versurfpart3 = NULL; // numbers of vertices on all flux surfaces from part3 
+    LO block_count;    // number of nodes
+//    LO* versurfpart3 = NULL; // numbers of vertices on all flux surfaces from part3 
     LO* versurf = NULL; // numbers of vertices on the flux surfaces locating on the part1 domain.
     double* xcoords = NULL;
     LO  li0,li1,li2;
@@ -28,7 +29,7 @@ class Part3Mesh3D{
 
 //  temporary members which would be deleted in the next time refactor
     double* zcoordall = NULL; //zcoordall will be removed in the next refacotr.
-    GO* cce = NULL; //store versurfpart3 and cce_ variables
+    int* cce = NULL; //store cce_ variables only
 
 
     // parameters for receiving and sending global 2d arrays
@@ -38,9 +39,21 @@ class Part3Mesh3D{
     GO  cce_first_node; // The number of the first active node sent by part3;
     GO  cce_last_node; // The number of the last active node send by part3;
     GO  cce_node_number;  // The number of active nodes sent by part3.
-    GO  totnode; // the total number of nodes sent by part3;
-    GO  activenode; // The number of nodes part1 has on the poloidal cross section. 
+    GO  totnodes; // the total number of nodes sent by part3;
+    GO  activenodes; // The number of nodes part1 has on the poloidal cross section. 
     LO  shiftx;  // The number of surfaces shifting from part3 first surface to part1 first surface.
+
+// paramters to create the background of mgnetic field, density and temperature profile
+    double rhostar; //This quantity is obtained by complex formula    
+    double* C_y;
+    double minor_r;
+    double lx_a;
+    LO sign_phi;
+
+    double resfact;
+    double dx;
+    double L_tor;     
+    double* phi_cut;    
   
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
     double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
@@ -51,13 +64,15 @@ class Part3Mesh3D{
      */
     Part3Mesh3D(Part1ParalPar3D &p1pp3d,
         LO nsurf_,
-        LO* versurfpart3_,
-        GO* cce_,
+        LO block_count_,
+        LO* versurf_,
+        int* cce_,
         double* xcoords_,
         double* zcoord_,
         bool pproc = true)
       : nsurf(nsurf_),
-        versurfpart3(versurfpart3_),
+        block_count(block_count_),
+        versurf(versurf_),
         cce(cce_),
         xcoords(xcoords_),
         zcoordall(zcoord_),
@@ -79,7 +94,6 @@ class Part3Mesh3D{
     }
     ~Part3Mesh3D()
     {
-     if(versurfpart3!=NULL) delete[] versurfpart3;
      if(versurf!=NULL) delete[] versurf;
      if(xboxinds!=NULL) delete[] xboxinds;
      if(xcoords!=NULL) delete[] xcoords;

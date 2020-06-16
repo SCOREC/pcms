@@ -46,17 +46,18 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 }
 
 //read the paralllization parameters
-void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
+void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::string test_dir)
 {
  if(preproc==true){ 
    if(test_case==TestCase::t0){
-     assert(!parpar && !xzcoords);//when not testing, arrays come from ADIOS2
+     assert(!parpar && !xzcoords && !q_prof);//when not testing, arrays come from ADIOS2
      initTest0(test_dir);
 //  The following two lines looks weird here. 
      xzcoords = new double[nx0];
      parpar = new LO[1];// This is unused but it is deleted
    }else{
      assert(parpar);
+     assert(q_prof);
      npx=parpar[0];
      nx0=parpar[1];
      nxb=parpar[2];
@@ -70,9 +71,9 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
      npy=parpar[9];
      ny0=parpar[10];
      nyb=parpar[11];
-     lj0=parpar[12];
-     lj1=parpar[13];
-     lj2=parpar[14];
+     llj0=parpar[12];
+     llj1=parpar[13];
+     llj2=parpar[14];
      lm0=parpar[15];
      lm1=parpar[16];
      lm2=parpar[17];
@@ -89,11 +90,12 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
 
      n0_global=parpar[27];
      ky0_ind=parpar[28];    
-     NP=npx*npy*npz;  
+     NP=npx*npy*npz; 
+     lj0=llj0;
+     lj1=llj1;
+     lj2=llj2;    
+
      CreateSubCommunicators();
- 
-// This array will be transferred from part1    
-     q_prof = new double[npx];
    }
 
    // initialize the radial locations of the flux surface and poloidal angles
@@ -104,6 +106,7 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
 //   double* xzcoords;
 //   xzcoords=new double[nx0+1];
 
+   totnodes=nx0*nz0;
    if(test_case==TestCase::t0){
       assert(!test_dir.empty());
       std::string fname=test_dir+"xcoords.nml";
@@ -130,8 +133,18 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, std::string test_dir)
    }
    blockindice();  
 
-   delete[] parpar;
-   delete[] xzcoords;
+   L_tor=sign_phi*2.0*cplPI/double(n0_global*lj0*2);
+   phi_cut = new double[lj0*2];
+   for(LO i=0;i<lj0*2;i++){
+     phi_cut[i] = L_tor*double(i+1); // need more check
+   } 
+   dy=dx*rhostar*minor_r/res_fact;
+   y_res=2.0*lj0*res_fact;
+
+   if(test_case==TestCase::t0){ 
+     delete[] parpar;
+     delete[] xzcoords;
+   }
  }
 }
 

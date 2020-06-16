@@ -8,6 +8,9 @@
 namespace coupler {
 
 // forward declare
+template<class T>
+class Array2d;
+
 class Part3Mesh3D;
 class Part1ParalPar3D;
 class BoundaryDescr3D;
@@ -37,8 +40,11 @@ public:
   double* densouttmp = NULL; // store the x-y 2d real density after backward 
                              // fourier transform
   double*** denspart3 = NULL; // storing the density being sent to the part3
-  double**  denssend = NULL; // the 2d array density transferred to part3, 
-                             // and would be sent in comm_x and comm_y communicators
+  double**** mattoplane;
+  double*** densTOpart3 = NULL;
+
+  double*  denssend = NULL; // the 1d array density  sent to part3
+                             //  would be sent in comm_x and comm_y communicators
 
 
   double** potentrecv = NULL; // the 2d array potential received by the coupler 
@@ -50,12 +56,14 @@ public:
                               // fourier transform
   CV*** potentpart1 = NULL; // storing the electrostatic potential being sent
                             // to the part1.
-  CV**  potentsend = NULL; // the 2d array complex potential transffered to part1, and would be sent 
+  CV*  potentsend = NULL; // the 1d array complex potential sent  to part1, and would be sent 
                            // in comm_x and comm_y communicators. 
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
   // The following parameters for yparal=true;
   LO myli0;
+
+
   /* constructor
    * optional argument supports setting
    * the prepoc and yparal modes
@@ -75,9 +83,19 @@ public:
   void CmplxdataToRealdata3D();
   void RealdataToCmplxdata3D();
   void InitFourierPlan3D();
+  void AssemDensiSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
+       const Array2d<double>* fieldfromXGC);
+  void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
+       const Array2d<CV>* densityfromGENE);
+  void Initmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d);
+  void DensityToPart3(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d);
+
   LO getP1li0() { return p1.li0; };
   LO getP1ny0() { return p1.ny0; };
   LO getP1npy() { return p1.npy; };
+
 
 private:
   const bool preproc;
@@ -102,11 +120,10 @@ private:
 
   // this struct contains the read-only values from Part3Mesh3D class
   const struct P3Data {
-    P3Data(LO li, LO lj,GO totnod,GO blockcount_,LO* mylk) : li0(li), lj0(lj),totnode(totnod), 
+    P3Data(LO li, LO lj,GO blockcount_,LO* mylk) : li0(li), lj0(lj), 
           blockcount(blockcount_), mylk0(mylk) {};
       const LO li0;
       const LO lj0;
-      const GO totnode;
       const GO blockcount;
       LO const* const mylk0;
   } p3;
@@ -121,12 +138,9 @@ private:
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
-  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-  void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-  void AssemDensSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-};
 
+  };
+ 
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d);
 

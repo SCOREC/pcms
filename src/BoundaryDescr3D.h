@@ -17,9 +17,11 @@ class BoundaryDescr3D{
     LO nzb;
     double** upzpart3=NULL;
     double** lowzpart3=NULL;
-    CV*** updenz=NULL; // The upper  boundary buffer on z domain for interpolation and storing the real quantiies resulted from the backward Fourier transform of complex charged density.
+    CV*** updenz=NULL; // The upper  boundary buffer on z domain for interpolation and storing the 
+                       //real quantiies resulted from the backward Fourier transform of complex charged density.
     CV*** lowdenz=NULL;
-    CV*** uppotentz=NULL; //The upper  boundary buffer on z domain for interpolation and storing the complex  quantiies resulted from the forward Fourier transform of electrosttic potential.
+    CV*** uppotentz=NULL; //The upper  boundary buffer on z domain for interpolation and storing the complex  
+                          //quantiies resulted from the forward Fourier transform of electrosttic potential.
     CV*** lowpotentz=NULL;
     CV** uppbmat=NULL; //the upper matrix for the parallel boundary condition
     CV** lowpbmat=NULL; // the lower matrix for the parallel boundary condition

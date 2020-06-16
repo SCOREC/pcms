@@ -18,19 +18,40 @@ class Part1ParalPar3D {
     LO  NP; // The total number of processes
     LO npx,npy,npz;
     LO nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
-    LO ny0,nyb,lj0,lj1,lj2,lm0,lm1,lm2;
+    LO ny0,nyb,llj0,llj1,llj2,lm0,lm1,lm2;
     LO nz0,nzb,lk0,lk1,lk2,ln0,ln1,ln2;
+
+    LO lj0; //the number of elements in Fourier space.
+    LO lj1; //the number of elements in Fourier space.
+    LO lj2; //the number of elements in Fourier space.   
+
+    GO totnodes; // the total nodes number of the poloidal cross setion of part1.
 //    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
-    int periods[3]={0,1,1};
+    int periods[3]={1,0,1};
     double* xcoords=NULL; // The 1d array storing the radial position of all flux surfaces
     double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
     double* pzp=NULL; // The 1d array storing the poloial on each process.
-    double dz;  // The equal step length along the poloidal flux curve.
+//    double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature background. 
-    LO res_fact;
     double* q_prof=NULL;  //safty factor
     LO n0_global;
     LO ky0_ind;
+
+    double rhostar; //This quantity is obtained by complex formula
+    double* C_y;
+    double minor_r;
+    double lx_a;
+    LO sign_phi;
+    double dx;
+ 
+    double dz;  // The equal step length along the poloidal flux curve.
+
+    double res_fact;
+    double L_tor;
+    double* phi_cut;
+    double dy;
+    LO y_res;
+ 
 
 // parameters for Adios transfer
     GO blockstart,blockend,blockcount;    
@@ -40,11 +61,12 @@ class Part1ParalPar3D {
      */
     Part1ParalPar3D(LO * parpar, 
         double* xzcoords,
+        double* q_prof_,
 	bool pproc = true,
         std::string tdir="")
-      : preproc(pproc), 
+      : preproc(pproc),q_prof(q_prof_), 
         test_case(TestCase::off){
-        init(parpar, xzcoords, tdir);
+      init(parpar, xzcoords, q_prof, tdir);
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
     /*Test case constructor*/
@@ -52,7 +74,7 @@ class Part1ParalPar3D {
         TestCase tcase,
       	std::string tdir)
       : preproc(pproc), test_case(tcase){
-      init(NULL, NULL,tdir);
+      init(NULL, NULL, NULL, tdir);
     }
     ~Part1ParalPar3D()
     {
@@ -65,7 +87,7 @@ class Part1ParalPar3D {
   private:
     const bool preproc;
     const TestCase test_case;
-    void init(LO* parpar, double* xzcoords,std::string test_dir="");
+    void init(LO* parpar, double* xzcoords, double* q_prof, std::string test_dir="");
     void initTest0(std::string test_dir);
     /* init* helper function */
     void CreateSubCommunicators();

@@ -20,7 +20,8 @@ int main(int argc, char **argv){
   }
 
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
-  adios2::Variable<double> send_var[2];
+  adios2::Variable<double> send_dbl_var;
+  adios2::Variable<coupler::CV> send_cv_var;
   const std::string dir = "../coupling";
   const int time_step = 1, RK_count = 4;
 
@@ -29,19 +30,25 @@ int main(int argc, char **argv){
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
 
-/*  for (int i = 0; i < time_step; i++) {
+  for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
-      coupler::Array2d<double>* density = coupler::receive_density(dir, gDens,MPI_COMM_WORLD,MPI_COMM_WORLD);
-      coupler::printSomeDensityVals(density);
-      coupler::send_density(dir, density, cDens, send_var[0]);
+      coupler::GO start[2]={0, 100}; //FIXME
+      coupler::GO count[2]={10, 42}; //FIXME
+      MPI_Comm subcomm = MPI_COMM_WORLD;
+      coupler::Array2d<coupler::CV>* density = coupler::receive_density(dir, gDens, start, count, subcomm);
+      coupler::Array2d<double> densitySend(2,2,1,1,0); //FIXME
+      coupler::send_density(dir, &densitySend, cDens, send_dbl_var);
       coupler::destroy(density);
+      coupler::destroy(&densitySend);
 
-      coupler::Array2d<double>* field = coupler::receive_field(dir, xFld,MPI_COMM_WORLD,MPI_COMM_WORLD);
-      coupler::send_field(dir, field, cFld, send_var[1]);
+      coupler::Array2d<double>* field = coupler::receive_field(dir, xFld, start, count, subcomm);
+      coupler::Array2d<coupler::CV> fieldSend(2,2,1,1,0); //FIXME
+      coupler::send_field(dir, &fieldSend, cFld, send_cv_var);
       coupler::destroy(field);
+      coupler::destroy(&fieldSend);
     }
   }
-*/
+
   Kokkos::finalize();
   MPI_Finalize();
   return 0;

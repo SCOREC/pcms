@@ -193,8 +193,8 @@ if(p1pp3d.mype_x==1){
 */
        reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
        DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
-       pzcoords[i-index1]= new double[mylk0[i-index1]]; // FIXME li is ~0:90 for circular case, this read is out of bounds
-       for(LO k=0;k<mylk0[i-index1];k++){ // FIXME li is ~0:90 for circular case, this read is out of bounds
+       pzcoords[i-index1]= new double[mylk0[i-index1]];
+       for(LO k=0;k<mylk0[i-index1];k++){
 	 pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
        }
        numvert+=versurf[numsurf];
@@ -270,7 +270,7 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
     }
     mylk1[li-gstart]=i1;
     mylk2[li-gstart]=i2;
-    mylk0[li-gstart]=i2-i1+1; // li is ~0:90 for circular case, this write is out of bounds
+    mylk0[li-gstart]=i2-i1+1;
     if(test_case==TestCase::t0){   
       std::cout<<"rank="<<p1pp3d.mype<<" "<<li-gstart<<'\n';
       std::cout<<"mylk k="<<mylk0[li-gstart]<<" "<<mylk1[li-gstart]

@@ -27,7 +27,7 @@ class Part1ParalPar3D {
 
     GO totnodes; // the total nodes number of the poloidal cross setion of part1.
 //    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
-    int periods[3]={1,0,1};
+    int periods[3]={0,1,1};
     double* xcoords=NULL; // The 1d array storing the radial position of all flux surfaces
     double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
     double* pzp=NULL; // The 1d array storing the poloial on each process.

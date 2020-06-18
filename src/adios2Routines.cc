@@ -40,5 +40,9 @@ namespace coupler {
     send2d_from_C(field, cce_folder, fld_name, io, engine, send_id);
     std::cerr << rank <<  ": send " << fld_name <<" done \n";
   }
-
+ 
+ void AdiosProTransFortrandCpp2D(LO npxout,LO npyout, const LO mypex,const LO mypey,const LO npx,const LO npy)
+{
+  npxout = npy-1-mypey;
+  npyout = npx-1-mypex;  
 }

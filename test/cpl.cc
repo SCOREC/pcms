@@ -79,6 +79,7 @@ int main(int argc, char **argv){
   if(!p1pp3d.mype)std::cerr << "0.8"<< "\n";
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, dp3d, test_case, preproc);
   if(!p1pp3d.mype)std::cerr << "0.9"<< "\n";
+std::cout<<"nzb="<<bdesc.nzb<<'\n';
 
   coupler::destroy(q_prof);
   coupler::destroy(gene_xval);
@@ -93,17 +94,44 @@ int main(int argc, char **argv){
       coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};
 std::cout<<"start count"<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
       coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,MPI_COMM_WORLD);
+/*
 for(coupler::LO i=0;i<count[0]*count[1];i++){
 std::cout<<"i="<<i<<" "<<densityfromGENE->val(i)<<'\n';
  }
+*/
+
       dp3d.DistriDensiRecvfromPart1(p3m3d,p1pp3d,densityfromGENE);
+      coupler::destroy(densityfromGENE);
+ 
+/*if(p1pp3d.mype==0){
+for(int i=0;i<p1pp3d.li0;i++){
+  for(int j=0;j<p1pp3d.lj0;j++){
+    for(int k=0;k<bdesc.nzb;k++){
+      std::cout<<"i,j,k="<<i<<" "<<j<<" "<<k<<" "<<dp3d.densin[i][j][p1pp3d.lk2-2+k]-bdesc.lowdenz[i][j][k]<<'\n';
+    }
+  }
+}
+}
+*/
 
       bdesc.zDensityBoundaryBufAssign(dp3d.densin,p1pp3d);
+/*
+if(p1pp3d.mype==0){
+for(int i=0;i<p1pp3d.li0;i++){
+  for(int j=0;j<p1pp3d.lj0;j++){
+    for(int k=0;k<bdesc.nzb;k++)
+     std::cout<<"i,j="<<i<<" "<<j<<" "<<bdesc.lowdenz[i][j][k]<<'\n';
+  }
+}
+}
+*/
+
       dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
       dp3d.CmplxdataToRealdata3D();
 
       dp3d.AssemDensiSendtoPart3(p3m3d,p1pp3d);
-
+std::cout<<"111111"<<'\n';
+/* 
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
                                                     p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
                                                     p3m3d.blockstart);
@@ -114,7 +142,6 @@ std::cout<<"i="<<i<<" "<<densityfromGENE->val(i)<<'\n';
       if(p1pp3d.mype_z==0){
         coupler::send_density(dir, densitytoXGC, cDens, senddensity);
       }     
-      coupler::destroy(densityfromGENE);
       coupler::destroy(densitytoXGC);
 
       coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
@@ -142,6 +169,7 @@ std::cout<<"i="<<i<<" "<<densityfromGENE->val(i)<<'\n';
 
       coupler::destroy(fieldtoGENE);
       coupler::destroy(fieldfromXGC);
+*/
     }
   }
 

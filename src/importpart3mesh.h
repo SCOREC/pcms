@@ -136,8 +136,8 @@ void reshuffleforward(T* array,const LO nstart,const LO vertnum)
   T* tmp=new T[vertnum];
   for(LO i=0;i<vertnum-nstart;i++)
     tmp[i]=array[nstart+i];
-  for(LO j=vertnum-nstart+1;j<vertnum;j++)
-    tmp[j]=array[j-vertnum+nstart-1];
+  for(LO j=vertnum-nstart;j<vertnum;j++)
+    tmp[j]=array[j-vertnum+nstart];
   for(LO k=0;k<vertnum;k++)
     array[k]=tmp[k];
   delete[] tmp;

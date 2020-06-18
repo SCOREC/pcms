@@ -244,7 +244,6 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1
       tmp[j][i]=array[j*p1pp3d.blockcount+i];
     }
   }
-
   CV** blocktmp= new CV*[p1pp3d.li0];
   for(LO i=0;i<p1pp3d.li0;i++)
     blocktmp[i]=new CV[p1pp3d.nz0]; 
@@ -262,13 +261,16 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1
         densin[i][j][k]=blocktmp[i][p1pp3d.lk1+k];
       }
      }
-   }    
-   for(LO i=0;i<p1pp3d.li0;i++){
-     delete[] blocktmp[i];
    }
+   for(LO i=0;i<p1pp3d.li0;i++){
+     free(blocktmp[i]);
+   }
+   free(blocktmp);
+
    for(LO i=0;i<p1pp3d.lj0;i++){
-     delete[] tmp[i];
+     free(tmp[i]);
    }  
+   free(tmp);
 }
 
 // Assemble the density sub2d array in each process into a global one, which is straightforwardly transferred by
@@ -296,31 +298,57 @@ void DatasProc3D::AssemDensiSendtoPart3(const Part3Mesh3D &p3m3d, const Part1Par
       MPI_Allgather(&p3m3d.mylk0[i],1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
       rdispls[0]=0;
       for(LO k=1;k<p1pp3d.npz;k++){
-	rdispls[k]=rdispls[0]+recvcount[k];
+	rdispls[k]=rdispls[k-1]+recvcount[k-1];
       }
+/*
+if(p1pp3d.mype==0) {
+for(LO k=0;k<p3m3d.mylk0[i];k++){
+std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\n';
+}
+}
+*/
+      xl=p1pp3d.li1+i;    
+      LO totn=0;
 
-      xl=p1pp3d.li1+i;     
+if(p1pp3d.mype==0){
+      for(LO h=0;h<p1pp3d.npz;h++){
+        totn+=recvcount[h];
+        std::cout<<"xl,h,recvcount[h]="<<xl<<" "<<h<<" "<<recvcount[h]<<'\n';
+      } 
+      std::cout<<"xl,totn, versurf[xl]="<<xl<<" "<<totn<<" "<<p3m3d.versurf[xl]<<'\n'; 
+      assert(totn=p3m3d.versurf[xl]);
+}
+
       double* tmp = new double[p3m3d.versurf[xl]];
-      MPI_Allgatherv(denspart3[i][j],p3m3d.mylk0[i],MPI_DOUBLE,tmp,recvcount,rdispls,
+      double* tmp_one;
+      tmp_one=denspart3[i][j];
+/*
+      MPI_Allgatherv(tmp_one,p3m3d.mylk0[i],MPI_DOUBLE,tmp,recvcount,rdispls,
                     MPI_DOUBLE,p1pp3d.comm_z);    
-      reshufflebackward(tmp,p3m3d.nstart[xl],p3m3d.versurf[xl]);
+ 
+     reshufflebackward(tmp,p3m3d.nstart[xl],p3m3d.versurf[xl]);
       GO sumbegin=0;
       for(LO h=0;h<i;h++){
         sumbegin+=GO(p3m3d.versurf[h+p3m3d.li1]);
       } 
       for(LO m=0;m<p3m3d.versurf[xl];m++){
         blocktmp[sumbegin+m]=tmp[m];
-      }     
-      if(i==p1pp3d.li0-1){
+      }    
+     if(i==p1pp3d.li0-1){
         assert((sumbegin+(GO)p3m3d.versurf[xl]) == p3m3d.blockcount);
       }
-      delete[] tmp; 
+*/
+      free(tmp); 
     }
+  /* 
     for(GO h=0;h<p3m3d.blockcount;h++){
         denssend[j*p3m3d.blockcount+h] = blocktmp[h];
-    } 
-  } 
-  delete[] recvcount,rdispls,blocktmp;
+    }
+*/ 
+  }
+  free(recvcount);
+  free(rdispls);
+  free(blocktmp);
 }
 
 //I dont's understand the function of the following matrix.

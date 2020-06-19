@@ -123,6 +123,7 @@ void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO np
   blockcount=0;
   for(LO i=0;i<li0;i++)
     blockcount+=(GO)versurf[li1+i];
+  inds[mype_x]=blockcount;
   MPI_Datatype mpitype;
   mpitype = getMpiType(GO());
   MPI_Allgather(MPI_IN_PLACE,1,mpitype,inds,1,mpitype,comm_x);

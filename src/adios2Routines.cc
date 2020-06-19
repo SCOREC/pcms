@@ -41,8 +41,13 @@ namespace coupler {
     std::cerr << rank <<  ": send " << fld_name <<" done \n";
   }
  
- void AdiosProTransFortrandCpp2D(LO npxout,LO npyout, const LO mypex,const LO mypey,const LO npx,const LO npy)
+ void AdiosProTransFortranCpp2D(LO rankout,LO mypxout,LO mypyout, const LO mypex,const LO mypey,const LO npx,const LO npy)
 {
-  npxout = npy-1-mypey;
-  npyout = npx-1-mypex;  
+  mypxout = mypey;
+  mypyout = mypex; 
+  LO npxbar;
+  npxbar=npy; 
+  rankout = mypyout*npxbar+mypxout; 
+}
+
 }

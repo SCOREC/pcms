@@ -142,10 +142,10 @@ namespace coupler {
   
   template<typename T> 
   Array1d<T>* receive1d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng,MPI_Comm comm_1,MPI_Comm comm_2) {
+      adios2::IO &read_io, adios2::Engine &eng) {
     int rank, nprocs;
-    MPI_Comm_rank(comm_1, &rank);
-    MPI_Comm_size(comm_1, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   
     const std::string fname = dir + "/" + name + ".bp";
   
@@ -285,6 +285,7 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
     adVar.SetSelection(sel);
     eng.Get<T>(adVar, a2d->data());
     eng.EndStep();
+    eng.Close();
     std::cerr << rank <<  ": receive " << name << " done \n";
     return a2d;
   }
@@ -347,7 +348,7 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
   void send_field(const std::string cce_folder, const Array2d<CV>* field,
       const adios2_handler &handler, adios2::Variable<CV> &send_id); 
 
-  void AdiosProTransFortrandCpp2D(LO npxout,LO npyout, const LO mypex,const LO mypey,
+  void AdiosProTransFortrandCpp2D(LO rankout,LO mypxout,LO mypyout, const LO mypex,const LO mypey,
       const LO npx,const LO npy);
 }//end namespace coupler
 

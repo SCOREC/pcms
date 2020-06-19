@@ -71,7 +71,6 @@ int main(int argc, char **argv){
   double* xgc_zcoords = coupler::receive_gene_exact<double>(dir,xZcoord, 0, block_count);
   int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, p1pp3d.li1, p1pp3d.nx0);
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
-//  coupler::Array1d<coupler::CV>* gene_moments = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);//matching gene's moments arr
   coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
 
   const int nummode = 1;
@@ -84,7 +83,6 @@ std::cout<<"nzb="<<bdesc.nzb<<'\n';
   coupler::destroy(q_prof);
   coupler::destroy(gene_xval);
   coupler::destroy(gene_parpar);
-//  coupler::destroy(gene_moments);
 
   dp3d.InitFourierPlan3D();
 
@@ -130,8 +128,7 @@ for(int i=0;i<p1pp3d.li0;i++){
       dp3d.CmplxdataToRealdata3D();
 
       dp3d.AssemDensiSendtoPart3(p3m3d,p1pp3d);
-std::cout<<"111111"<<'\n';
-/* 
+ 
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
                                                     p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
                                                     p3m3d.blockstart);
@@ -169,7 +166,7 @@ std::cout<<"111111"<<'\n';
 
       coupler::destroy(fieldtoGENE);
       coupler::destroy(fieldfromXGC);
-*/
+
     }
   }
 

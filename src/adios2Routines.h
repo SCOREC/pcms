@@ -293,31 +293,23 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
   /* send columns (start_col) to (start_col + localW) */
   template<typename T>
   void send2d_from_C(const Array2d<T>* a2d, const std::string dir,
-      const std::string name, adios2::IO coupling_io,adios2::Variable<T> &send_id) 
+      const std::string name, adios2::IO coupling_io,adios2::Engine engine,
+      adios2::Variable<T> &send_id) 
 {
- std::cout<<"here1"<<'\n';
     const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
     const::adios2::Dims g_offset({0,a2d->start_col()});
     const::adios2::Dims l_dims({a2d->localW(), a2d->localH()});
- std::cout<<"here2"<<'\n'; 
     const std::string fname = dir + "/" + name + ".bp";
-    if(!coupling_io){
-std::cout<<"error:coupler_io is not initialized"<<'\n';
-    }
-//    if (!engine){
-//      coupling_io.SetEngine("Sst");
-std::cout<<"here3"<<'\n';
+    if (!engine){
+      coupling_io.SetEngine("Sst");
       send_id = coupling_io.DefineVariable<T>(name,
           g_dims, g_offset, l_dims);
-std::cout<<"here4"<<'\n';
       adios2::Engine  engine = coupling_io.Open(fname, adios2::Mode::Write);
-std::cout<<"here5"<<'\n';
-/*    }
+    }
     else{
       std::cerr << ": field engine already created \n";
     }
-*/
- std::cout<<fname<<'\n'; 
+
     engine.BeginStep();
     engine.Put<T>(send_id, a2d->data());
     engine.EndStep();

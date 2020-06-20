@@ -127,18 +127,7 @@ for(int i=0;i<p1pp3d.li0;i++){
 
       dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
       dp3d.CmplxdataToRealdata3D();
-/*
-if(p1pp3d.mype==0){
-for(int i=0;i<p3m3d.li0;i++){
-  for(int j=0;j<p3m3d.lj0;j++){
-    for(int k=0;k<p3m3d.mylk0[i];k++)
-     std::cout<<"i,j,k="<<i<<" "<<j<<" "<<k<<" "<<dp3d.denspart3[i][j][k]<<'\n';
-  }
-}
-}
-*/
       dp3d.AssemDensiSendtoPart3(p3m3d,p1pp3d);
-
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
                                                     p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
                                                     p3m3d.blockstart);
@@ -148,18 +137,14 @@ for(int i=0;i<p3m3d.li0;i++){
       }
  
       coupler::send_density_coupler(adios, dir, densitytoXGC, senddensity,p1pp3d.comm_x);
-     
-std::cout<<"22222"<<'\n';
- 
+      
       coupler::destroy(densitytoXGC);
       coupler::destroy(densityfromGENE);
  
-std::cout<<"444"<<'\n';
       coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
       coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,p1pp3d.comm_x);
-std::cout<<"3333"<<'\n';
- 
+
       dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC);
       coupler::destroy(fieldfromXGC);
  
@@ -176,14 +161,13 @@ std::cout<<"3333"<<'\n';
       for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
-std::cout<<"3333"<<'\n';
-
-//      if(p1pp3d.mype_z==0){
+      if(p1pp3d.mype_z==0){
         coupler::send_field(dir, fieldtoGENE, cFld, sendfield);
-//      }
+      }
 
       coupler::destroy(fieldtoGENE);
- 
+      coupler::destroy(fieldfromXGC);
+
     }
   }
 

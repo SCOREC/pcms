@@ -96,12 +96,6 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
      lj2=llj2;    
 
      CreateSubCommunicators();
-
-std::cout<<"mype,mype_x,mype_z="<<mype<<" "<<mype_x<<" "<<mype_z<<'\n';
-      std::cout<<"mype_z,p1pp3d.lk0,p1pp3d.lk1,p1pp3d.lk2,nz0="<<mype_z<<" "<<lk0<<" "<<parpar[22]<<" "<<parpar[23]<<" "<<nz0<<'\n';
-     
-       std::cout<<"mype_x,p1pp3d.li0,p1pp3d.li1,p1pp3d.li2,nx0="<<mype_x<<" "<<li0<<" "<<li1<<" "<<li2<<" "<<nx0<<'\n';
- 
    }
 
    // initialize the radial locations of the flux surface and poloidal angles

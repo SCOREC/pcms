@@ -13,12 +13,12 @@ namespace coupler {
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id) {
-//    adios2::IO io = handler.IO; 
-//    adios2::Engine engine = handler.eng;
+    adios2::IO io = handler.IO; 
+    adios2::Engine engine = handler.eng;
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     const std::string fld_name = "cpl_density";
-    send2d_from_C(density, cce_folder, fld_name, handler.IO, send_id);
+    send2d_from_C(density, cce_folder, fld_name, io, engine, send_id);
     std::cerr << rank <<  ": send " << fld_name <<" done \n";
   }
 
@@ -32,12 +32,12 @@ namespace coupler {
 
   void send_field(const std::string cce_folder, const Array2d<CV>* field,
       const adios2_handler &handler, adios2::Variable<CV> &send_id) {
-//    adios2::IO io = handler.IO; 
-//    adios2::Engine engine = handler.eng;
+    adios2::IO io = handler.IO; 
+    adios2::Engine engine = handler.eng;
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     const std::string fld_name = "cpl_field";
-    send2d_from_C(field, cce_folder, fld_name, handler.IO, send_id);
+    send2d_from_C(field, cce_folder, fld_name, io, engine, send_id);
     std::cerr << rank <<  ": send " << fld_name <<" done \n";
   }
  
@@ -73,8 +73,6 @@ namespace coupler {
     engine.Close();
 
   }
-
-
 
 
 }

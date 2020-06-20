@@ -251,7 +251,7 @@ namespace coupler {
     MPI_Comm_size(comm, &nprocs);
   
     const std::string fname = dir + "/" + name + ".bp";
-  
+    std::cout<<fname<<'\n'; 
     if(!eng){
       read_io.SetEngine("Sst");
       read_io.SetParameters({

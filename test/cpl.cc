@@ -136,15 +136,16 @@ for(int i=0;i<p1pp3d.li0;i++){
         densitytmp[h] = dp3d.denssend[h]; 
       }
  
-      coupler::send_density_coupler(adios, dir, densitytoXGC, senddensity,p1pp3d.comm_x);
+//      coupler::send_density_coupler(adios, dir, densitytoXGC, senddensity,p1pp3d.comm_x);
       
       coupler::destroy(densitytoXGC);
       coupler::destroy(densityfromGENE);
  
       coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
       coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
+std::cout<<"1111"<<'\n';
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,p1pp3d.comm_x);
-
+std::cout<<"2222"<<'\n';
       dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC);
       coupler::destroy(fieldfromXGC);
  

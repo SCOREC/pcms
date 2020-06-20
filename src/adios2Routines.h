@@ -142,10 +142,10 @@ namespace coupler {
   
   template<typename T> 
   Array1d<T>* receive1d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng,MPI_Comm comm_1,MPI_Comm comm_2) {
+      adios2::IO &read_io, adios2::Engine &eng) {
     int rank, nprocs;
-    MPI_Comm_rank(comm_1, &rank);
-    MPI_Comm_size(comm_1, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   
     const std::string fname = dir + "/" + name + ".bp";
   
@@ -285,6 +285,7 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
     adVar.SetSelection(sel);
     eng.Get<T>(adVar, a2d->data());
     eng.EndStep();
+    eng.Close();
     std::cerr << rank <<  ": receive " << name << " done \n";
     return a2d;
   }
@@ -292,27 +293,37 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
   /* send columns (start_col) to (start_col + localW) */
   template<typename T>
   void send2d_from_C(const Array2d<T>* a2d, const std::string dir,
-      const std::string name, adios2::IO &coupling_io,
-      adios2::Engine &engine, adios2::Variable<T> &send_id) {
+      const std::string name, adios2::IO coupling_io,adios2::Variable<T> &send_id) 
+{
+ std::cout<<"here1"<<'\n';
     const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
     const::adios2::Dims g_offset({0,a2d->start_col()});
     const::adios2::Dims l_dims({a2d->localW(), a2d->localH()});
-  
+ std::cout<<"here2"<<'\n'; 
     const std::string fname = dir + "/" + name + ".bp";
-    if (!engine){
-      coupling_io.SetEngine("Sst");
+    if(!coupling_io){
+std::cout<<"error:coupler_io is not initialized"<<'\n';
+    }
+//    if (!engine){
+//      coupling_io.SetEngine("Sst");
+std::cout<<"here3"<<'\n';
       send_id = coupling_io.DefineVariable<T>(name,
           g_dims, g_offset, l_dims);
-      engine = coupling_io.Open(fname, adios2::Mode::Write);
-    }
+std::cout<<"here4"<<'\n';
+      adios2::Engine  engine = coupling_io.Open(fname, adios2::Mode::Write);
+std::cout<<"here5"<<'\n';
+/*    }
     else{
       std::cerr << ": field engine already created \n";
     }
-  
+*/
+ std::cout<<fname<<'\n'; 
     engine.BeginStep();
     engine.Put<T>(send_id, a2d->data());
     engine.EndStep();
-  }
+    std::cout<<"The cpl_density was written"<<'\n';
+    engine.Close(); 
+ }
   
   /** Receive PreProc values from GENE
    */
@@ -347,8 +358,11 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
   void send_field(const std::string cce_folder, const Array2d<CV>* field,
       const adios2_handler &handler, adios2::Variable<CV> &send_id); 
 
-  void AdiosProTransFortrandCpp2D(LO npxout,LO npyout, const LO mypex,const LO mypey,
+  void AdiosProTransFortrandCpp2D(LO rankout,LO mypxout,LO mypyout, const LO mypex,const LO mypey,
       const LO npx,const LO npy);
+
+  void send_density_coupler(adios2::ADIOS &adios,const std::string cce_folder, const Array2d<double>* density, adios2::Variable<double> &send_id,const MPI_Comm comm);
+
 }//end namespace coupler
 
 #endif

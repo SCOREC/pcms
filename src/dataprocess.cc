@@ -2,7 +2,6 @@
 #include "importpart3mesh.h"
 #include "commpart1.h"
 #include "sendrecv_impl.h"
-//#include "testutilities.h"
 #include <cassert>
 
 namespace coupler {
@@ -309,7 +308,7 @@ std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\
 */
       xl=p1pp3d.li1+i;    
       LO totn=0;
-
+/*
 if(p1pp3d.mype==0){
       for(LO h=0;h<p1pp3d.npz;h++){
         totn+=recvcount[h];
@@ -318,11 +317,11 @@ if(p1pp3d.mype==0){
       std::cout<<"xl,totn, versurf[xl]="<<xl<<" "<<totn<<" "<<p3m3d.versurf[xl]<<'\n'; 
       assert(totn=p3m3d.versurf[xl]);
 }
-
+*/
       double* tmp = new double[p3m3d.versurf[xl]];
       double* tmp_one;
       tmp_one=denspart3[i][j];
-/*
+
       MPI_Allgatherv(tmp_one,p3m3d.mylk0[i],MPI_DOUBLE,tmp,recvcount,rdispls,
                     MPI_DOUBLE,p1pp3d.comm_z);    
  
@@ -337,14 +336,11 @@ if(p1pp3d.mype==0){
      if(i==p1pp3d.li0-1){
         assert((sumbegin+(GO)p3m3d.versurf[xl]) == p3m3d.blockcount);
       }
-*/
       free(tmp); 
     }
-  /* 
     for(GO h=0;h<p3m3d.blockcount;h++){
         denssend[j*p3m3d.blockcount+h] = blocktmp[h];
     }
-*/ 
   }
   free(recvcount);
   free(rdispls);

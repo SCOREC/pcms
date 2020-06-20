@@ -21,13 +21,12 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      // Here, numsurf is sent from other parts by Adios routines.  
      }
    }
-     if(test_case==TestCase::t0){
-        MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
-        nsurf=numsurf; 
-      }else{
-        MPI_Bcast(&nsurf,1,MPI_INT,root, MPI_COMM_WORLD);
-      }
-//   if(p1pp3d.mype==0){   // please keep this commented loop.
+   if(test_case==TestCase::t0){
+      MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
+      nsurf=numsurf; 
+    }else{
+      MPI_Bcast(&nsurf,1,MPI_INT,root, MPI_COMM_WORLD);
+    }
    if(test_case==TestCase::t0){
       versurf = new LO[nsurf];
       xcoords = new double[nsurf];
@@ -37,9 +36,6 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
       InputfromFile(versurf,numsurf,fname);
       fname=test_dir+"xcoords.nml";
       InputfromFile(xcoords,nsurf,fname);
-// please keep the following two commented lines.After determining the communnicator, they will be removed.
-//       MPI_Bcast(versurfpart3,nsurf,MPI_INT,root,MPI_COMM_WORLD);
-//       MPI_Bcast(xcoords,nsurf,MPI_DOUBLE,root,MPI_COMM_WORLD);
 
       cce_first_surface=0;
       cce_last_surface=nsurf-1;
@@ -62,8 +58,6 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
       assert(xcoords);
 
     }
-//   }
-
 
    if(preproc==true){
      JugeFirstSurfaceMatch(p1pp3d.xcoords[0]); // Judge whether the first surface of part1 
@@ -78,6 +72,9 @@ if(p1pp3d.mype==0){
        activenodes+=(GO)versurf[i];
      }
 
+     if(p1pp3d.mype==0){
+       std::cout<<"activenodes, cce_node_number="<<activenodes<<" "<<cce_node_number<<'\n';
+     }
      if(activenodes!=cce_node_number){
        std::cout<<"ERROR: The activenode number of part1 doesn't equal to cce_node_number for part3."<<'\n';
        std::exit(EXIT_FAILURE);
@@ -127,6 +124,7 @@ void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO np
     blockcount+=(GO)versurf[li1+i];
   MPI_Datatype mpitype;
   mpitype = getMpiType(GO());
+  inds[mype_x]=blockcount;
   MPI_Allgather(MPI_IN_PLACE,1,mpitype,inds,1,mpitype,comm_x);
   blockstart=0;
   for(LO i=0;i<mype_x;i++) 
@@ -161,7 +159,6 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
       assert(zcoordall); // the number of elements is activenode
     }
 if(p1pp3d.mype==0){
-  std::cout<<"zcoordall="<<sizeof(zcoordall)/sizeof(zcoordall[0])<<'\n';
   std::cout<<"activenodes="<<activenodes<<'\n';
 //  for(GO i=0;i<activenodes;i++)
 //    std::cout<<"i="<<i<<" "<<"zcoordall="<<zcoordall[i]<<'\n';
@@ -202,31 +199,34 @@ if(p1pp3d.mype==0 && i==index1){
         OutputtoFile(zcoords,versurf[numsurf],fname);
       }
       nstart[i] = minloc(zcoords,versurf[numsurf]);
-/*
+
 if(p1pp3d.mype_x==1){
   std::cout<<"versurf["<<numsurf<<"]="<<versurf[numsurf]<<'\n';
-  std::cout<<"li="<<i<<" "<<"nstart="<<nstart<<'\n';
+//  std::cout<<"li="<<i<<" "<<"nstart="<<nstart<<'\n';
 }
-*/
 
        reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
+/*
 if(p1pp3d.mype==0 && i==index1){
   std::cout<<"nstart[i],numvert="<<nstart[i]<<" "<<numvert<<'\n';
   for(LO h=0;h<versurf[numsurf];h++){
     std::cout<<"h,zcoords="<<h<<" "<<zcoords[h]<<'\n';
   }
 }
+*/
        DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
        pzcoords[i-index1]= new double[mylk0[i-index1]]; // FIXME li is ~0:90 for circular case, this read is out of bounds
        for(LO k=0;k<mylk0[i-index1];k++){ // FIXME li is ~0:90 for circular case, this read is out of bounds
 	 pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
        }
+/*
 if(p1pp3d.mype_x==0 && p1pp3d.mype_z==1 && i==index1){
   std::cout<<"mylk0[i]="<<mylk0[i]<<'\n';
   for(LO h=0;h<mylk0[i];h++){
     std::cout<<"h,mype_z,pzcoords="<<h<<" "<<p1pp3d.mype_z<<" "<<pzcoords[i-index1][h]<<'\n';
   }
 }
+*/
        numvert+=versurf[numsurf];
        numsurf+=1;       
        delete[] zcoords; 
@@ -277,15 +277,13 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
     double* tmp=new double[versurf[li]];
     for(LO i=0;i<versurf[li];i++){
       tmp[i]=abs(exterarr[i]-interarr[p1pp3d.lk1]);
-//      if(p1pp3d.mype==0)
-//        std::cout<<"i,tmp[i]="<<i<<" "<<tmp[i]<<'\n';
     }
     nstart=minloc(tmp,versurf[li]);
-
+/*
 if(p1pp3d.mype_z==1 && p1pp3d.mype_x==0){
   std::cout<<"interarr[p1pp3d.lk1],nstart="<<interarr[p1pp3d.lk1]<<" "<<nstart<<'\n';
 }
-
+*/
     //nstart must be in my domain or will duplicate
     if(exterarr[nstart]<interarr[p1pp3d.lk1])
       nstart+=1;

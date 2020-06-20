@@ -30,15 +30,16 @@ int main(int argc, char **argv){
     if(!rank) printf("Usage: %s <number of timesteps>\n", argv[1]);
     exit(EXIT_FAILURE);
   }
+  const std::string dir = "../coupling";
+  const int time_step = atoi(argv[1]), RK_count = 4;
+
+  const std::string fname = "adios2cfg.xml";
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::Variable<double> senddensity;
   adios2::Variable<coupler::CV> sendfield;
 
-  const std::string dir = "../coupling";
-  const int time_step = atoi(argv[1]), RK_count = 4;
-
   coupler::adios2_handler gDens(adios,"gene_density");
-  coupler::adios2_handler cDens(adios,"cpl_density");
+  //coupler::adios2_handler cDens(adios,"cpl_density");
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
@@ -71,7 +72,6 @@ int main(int argc, char **argv){
   double* xgc_zcoords = coupler::receive_gene_exact<double>(dir,xZcoord, 0, block_count);
   int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, p1pp3d.li1, p1pp3d.nx0);
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
-//  coupler::Array1d<coupler::CV>* gene_moments = coupler::receive_gene_pproc<coupler::CV>(dir, gComp);//matching gene's moments arr
   coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
 
   const int nummode = 1;
@@ -84,7 +84,6 @@ std::cout<<"nzb="<<bdesc.nzb<<'\n';
   coupler::destroy(q_prof);
   coupler::destroy(gene_xval);
   coupler::destroy(gene_parpar);
-//  coupler::destroy(gene_moments);
 
   dp3d.InitFourierPlan3D();
 
@@ -101,7 +100,7 @@ std::cout<<"i="<<i<<" "<<densityfromGENE->val(i)<<'\n';
 */
 
       dp3d.DistriDensiRecvfromPart1(p3m3d,p1pp3d,densityfromGENE);
-      coupler::destroy(densityfromGENE);
+//      coupler::destroy(densityfromGENE);
  
 /*if(p1pp3d.mype==0){
 for(int i=0;i<p1pp3d.li0;i++){
@@ -128,10 +127,18 @@ for(int i=0;i<p1pp3d.li0;i++){
 
       dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
       dp3d.CmplxdataToRealdata3D();
-
+/*
+if(p1pp3d.mype==0){
+for(int i=0;i<p3m3d.li0;i++){
+  for(int j=0;j<p3m3d.lj0;j++){
+    for(int k=0;k<p3m3d.mylk0[i];k++)
+     std::cout<<"i,j,k="<<i<<" "<<j<<" "<<k<<" "<<dp3d.denspart3[i][j][k]<<'\n';
+  }
+}
+}
+*/
       dp3d.AssemDensiSendtoPart3(p3m3d,p1pp3d);
-std::cout<<"111111"<<'\n';
-/* 
+
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
                                                     p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
                                                     p3m3d.blockstart);
@@ -139,17 +146,23 @@ std::cout<<"111111"<<'\n';
       for(int h=0;h<p3m3d.lj0*p3m3d.blockcount;h++){
         densitytmp[h] = dp3d.denssend[h]; 
       }
-      if(p1pp3d.mype_z==0){
-        coupler::send_density(dir, densitytoXGC, cDens, senddensity);
-      }     
+ 
+      coupler::send_density_coupler(adios, dir, densitytoXGC, senddensity,p1pp3d.comm_x);
+     
+std::cout<<"22222"<<'\n';
+ 
       coupler::destroy(densitytoXGC);
-
+      coupler::destroy(densityfromGENE);
+ 
+std::cout<<"444"<<'\n';
       coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
       coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,p1pp3d.comm_x);
-
+std::cout<<"3333"<<'\n';
+ 
       dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC);
-
+      coupler::destroy(fieldfromXGC);
+ 
       dp3d.RealdataToCmplxdata3D();
       bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
       dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);       
@@ -163,13 +176,14 @@ std::cout<<"111111"<<'\n';
       for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
-      if(p1pp3d.mype_z==0){
+std::cout<<"3333"<<'\n';
+
+//      if(p1pp3d.mype_z==0){
         coupler::send_field(dir, fieldtoGENE, cFld, sendfield);
-      }
+//      }
 
       coupler::destroy(fieldtoGENE);
-      coupler::destroy(fieldfromXGC);
-*/
+ 
     }
   }
 

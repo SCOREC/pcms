@@ -33,7 +33,7 @@ int main(int argc, char **argv){
   const std::string dir = "../coupling";
   const int time_step = atoi(argv[1]), RK_count = 4;
 
-  const std::string fname = "adios2cfg.xml";
+  const std::string xmlfile = "adios2cfg.xml";
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::Variable<double> senddensity;
   adios2::Variable<coupler::CV> sendfield;
@@ -149,9 +149,9 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
  
       coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
       coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
-std::cout<<"1111"<<'\n';
+
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,p1pp3d.comm_x);
-std::cout<<"2222"<<'\n';
+
       dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC);
       coupler::destroy(fieldfromXGC);
  
@@ -160,8 +160,7 @@ std::cout<<"2222"<<'\n';
       dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);       
 
       dp3d.AssemPotentSendtoPart1(p3m3d,p1pp3d);
-      MPI_Barrier(MPI_COMM_WORLD);
- std::cout<<"3333"<<'\n';     
+    
       coupler::Array2d<coupler::CV>* fieldtoGENE = new coupler::Array2d<coupler::CV>(
                                                    p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.blockcount,
                                                    p1pp3d.lj0,p1pp3d.blockstart);
@@ -169,16 +168,14 @@ std::cout<<"2222"<<'\n';
       for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
- MPI_Barrier(MPI_COMM_WORLD);
-std::cout<<"4444"<<'\n';
-        coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,p1pp3d.comm_x);
+
+      coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,p1pp3d.comm_x);
+
 
 MPI_Barrier(MPI_COMM_WORLD);
-std::cout<<"5555"<<'\n';
-      coupler::destroy(fieldtoGENE);
 std::cout<<"6666"<<'\n';
-      coupler::destroy(fieldfromXGC);
-std::cout<<"7777"<<'\n';
+      coupler::destroy(fieldtoGENE);
+std::cout<<"mype="<<p1pp3d.mype<<" "<<"7777"<<'\n';
     }
   }
 

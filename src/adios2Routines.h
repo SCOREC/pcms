@@ -336,6 +336,36 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
     return receive1d_exact_ftn<T>(cce_folder,name, io, engine, my_start, my_count, comm);
   }
   
+
+template<typename T>
+ void send_from_coupler(adios2::ADIOS &adios,const std::string cce_folder,
+        const Array2d<T>* a2d, adios2::IO sendIO,adios2::Engine engine,const std::string fldname,                        
+        adios2::Variable<T> &send_id, const MPI_Comm comm)  //     
+ {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    const std::string fld_name;
+
+    const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
+    const::adios2::Dims g_offset({0,a2d->start_col()});
+    const::adios2::Dims l_dims({a2d->localW(), a2d->localH()});
+
+    const std::string fname = cce_folder + "/" + fldname + ".bp";
+  
+//    adios2::IO sendIO = handler.IO;
+//    adios2::Engine engine = handler.eng;
+//    sendIO.SetEngine("Sst");
+    send_id = sendIO.DefineVariable<T>(fldname,
+          g_dims, g_offset, l_dims);
+    
+    engine = sendIO.Open(fname, adios2::Mode::Write,comm);
+    if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';   
+    engine.BeginStep();
+    engine.Put<T>(send_id, a2d->data());
+    engine.EndStep();
+    std::cout<<"rank="<<rank<<" "<<"The "<<fldname<<" was written"<<'\n';
+    engine.Close();
+  }
   
 
   Array2d<CV>* receive_density(const std::string cce_folder,

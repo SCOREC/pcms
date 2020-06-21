@@ -39,7 +39,7 @@ int main(int argc, char **argv){
   adios2::Variable<coupler::CV> sendfield;
 
   coupler::adios2_handler gDens(adios,"gene_density");
-  //coupler::adios2_handler cDens(adios,"cpl_density");
+  coupler::adios2_handler cDens(adios,"cpl_density");
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
@@ -135,9 +135,15 @@ for(int i=0;i<p1pp3d.li0;i++){
       for(int h=0;h<p3m3d.lj0*p3m3d.blockcount;h++){
         densitytmp[h] = dp3d.denssend[h]; 
       }
+/*
+if(p1pp3d.mype==0){
+for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
+     std::cout<<"i="<<i<<" "<<densitytmp[i]<<'\n';
+}
+} 
+*/
  
-//      coupler::send_density_coupler(adios, dir, densitytoXGC, senddensity,p1pp3d.comm_x);
-      
+      coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,p1pp3d.comm_x);    
       coupler::destroy(densitytoXGC);
       coupler::destroy(densityfromGENE);
  
@@ -154,7 +160,8 @@ std::cout<<"2222"<<'\n';
       dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);       
 
       dp3d.AssemPotentSendtoPart1(p3m3d,p1pp3d);
-
+      MPI_Barrier(MPI_COMM_WORLD);
+ std::cout<<"3333"<<'\n';     
       coupler::Array2d<coupler::CV>* fieldtoGENE = new coupler::Array2d<coupler::CV>(
                                                    p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.blockcount,
                                                    p1pp3d.lj0,p1pp3d.blockstart);
@@ -162,13 +169,16 @@ std::cout<<"2222"<<'\n';
       for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
-      if(p1pp3d.mype_z==0){
-        coupler::send_field(dir, fieldtoGENE, cFld, sendfield);
-      }
+ MPI_Barrier(MPI_COMM_WORLD);
+std::cout<<"4444"<<'\n';
+        coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,p1pp3d.comm_x);
 
+MPI_Barrier(MPI_COMM_WORLD);
+std::cout<<"5555"<<'\n';
       coupler::destroy(fieldtoGENE);
+std::cout<<"6666"<<'\n';
       coupler::destroy(fieldfromXGC);
-
+std::cout<<"7777"<<'\n';
     }
   }
 

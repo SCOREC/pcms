@@ -49,7 +49,7 @@ namespace coupler {
   npxbar=npy; 
   rankout = mypyout*npxbar+mypxout; 
 }
-
+/*
   void send_density_coupler(adios2::ADIOS &adios,const std::string cce_folder, const Array2d<double>* a2d,
       adios2::Variable<double> &send_id, const MPI_Comm comm) {
     int rank;
@@ -73,6 +73,6 @@ namespace coupler {
     engine.Close();
 
   }
-
+*/
 
 }

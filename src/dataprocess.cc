@@ -158,7 +158,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
   }
   double** subtmp;
   for(LO j=0;j<p3m3d.lj0;j++){
-    GO sumbegin=0;       // p3m3d.cce_first_node-1+p3m3d.blockstart;
+    GO sumbegin=0;       
     subtmp = new double*[p3m3d.li0];
     LO xl=0;
     for(LO i=0;i<p3m3d.li0;i++){
@@ -168,16 +168,19 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
         subtmp[i][m]=tmp[j][sumbegin];
         sumbegin=sumbegin+1; 
       }
-      assert(sumbegin==p3m3d.blockcount);
       reshuffleforward(subtmp[i],p3m3d.nstart[xl],p3m3d.versurf[xl]);
       for(LO k=0;k<p3m3d.mylk0[i];k++){
         potentin[i][j][k]=subtmp[i][p3m3d.mylk1[i]+k];
       }
-      delete[] subtmp[i];
+      free(subtmp[i]);
     }
+//      std::cout<<"sumbegin, p3m3d.blockcount="<<sumbegin<<" "<<p3m3d.blockcount<<'\n';
+      assert(sumbegin==p3m3d.blockcount); 
   }
+  free(subtmp);
   for(LO j=0;j<p3m3d.lj0;j++)
-    delete[] tmp[j];
+    free(tmp[j]);
+  free(tmp);
  } 
 
 // Assemble the potential sub2d array in each process into a bigger one, which is straightforwardly transferred by
@@ -201,8 +204,9 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
     for(GO h=0;h<p1pp3d.blockcount;h++){
       blocktmp[h] = CV({0.0,0.0});
     }
+    GO sumbegin; 
     for(LO i=0;i<p1pp3d.li0;i++){
-      GO sumbegin=0;
+      sumbegin=0;
       for(LO h=0;h<i;h++){
         sumbegin+=(GO)p1pp3d.nz0;
       }     
@@ -214,8 +218,8 @@ void DatasProc3D::AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1Pa
       for(LO m=0;m<p1pp3d.nz0;m++){
         blocktmp[sumbegin+m]=tmp[m];
       }      
-      assert(sumbegin==p1pp3d.blockcount);
     }    
+    assert(sumbegin+p1pp3d.nz0==p1pp3d.blockcount); 
     mpitype = getMpiType(CV());
     if(p1pp3d.mype_x==0){
       for(GO h=0;h<p1pp3d.blockcount;h++){
@@ -281,7 +285,7 @@ void DatasProc3D::AssemDensiSendtoPart3(const Part3Mesh3D &p3m3d, const Part1Par
   LO* rdispls = new LO[p1pp3d.npz];
   double* blocktmp = new double[p3m3d.blockcount];
 
-  for(LO j=0;j<p1pp3d.lj0;j++){
+  for(LO j=0;j<p3m3d.lj0;j++){
     LO xl=0;
     for(GO h=0;h<p3m3d.blockcount;h++){
       blocktmp[h] = 0.0;

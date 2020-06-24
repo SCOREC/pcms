@@ -249,6 +249,8 @@ namespace coupler {
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
+ std::cout<<"rank="<<rank<<'\n';
+ MPI_Barrier(MPI_COMM_WORLD);
   
     const std::string fname = dir + "/" + name + ".bp";
     std::cout<<fname<<'\n'; 

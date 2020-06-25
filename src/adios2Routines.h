@@ -291,7 +291,6 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
     adVar.SetSelection(sel);
     eng.Get<T>(adVar, a2d->data());
     eng.EndStep();
-    eng.Close();
     std::cerr << rank <<  ": receive " << name << " done \n";
     return a2d;
   }

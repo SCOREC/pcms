@@ -180,7 +180,9 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
     }
   }
 
+  std::cerr << p1pp3d.mype << " before kokkos finalize\n";
   Kokkos::finalize();
+  std::cerr << p1pp3d.mype << " done kokkos finalize\n";
   MPI_Finalize();
   return 0;
 }

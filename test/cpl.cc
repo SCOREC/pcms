@@ -87,12 +87,14 @@ std::cout<<"nzb="<<bdesc.nzb<<'\n';
 
   dp3d.InitFourierPlan3D();
 
+  int m;
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::GO start[2]={0, p1pp3d.blockstart};
       coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};
 std::cout<<"start count"<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
-      coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,MPI_COMM_WORLD);
+      m=i*RK_count+j;
+      coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,MPI_COMM_WORLD,m);
 /*
 for(coupler::LO i=0;i<count[0]*count[1];i++){
 std::cout<<"i="<<i<<" "<<densityfromGENE->val(i)<<'\n';
@@ -143,14 +145,14 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
 } 
 */
  
-      coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,p1pp3d.comm_x);    
+      coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);    
       coupler::destroy(densitytoXGC);
       coupler::destroy(densityfromGENE);
  
       coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
       coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
 
-      coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,p1pp3d.comm_x);
+      coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,MPI_COMM_WORLD,m);
 
       dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC);
       coupler::destroy(fieldfromXGC);
@@ -169,7 +171,7 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
 
-      coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,p1pp3d.comm_x);
+      coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,MPI_COMM_WORLD,m);
 
 
 MPI_Barrier(MPI_COMM_WORLD);

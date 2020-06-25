@@ -33,6 +33,8 @@ int main(int argc, char **argv){
   const std::string dir = "../coupling";
   const int time_step = atoi(argv[1]), RK_count = 4;
 
+  fprintf(stderr, "%d number of time steps: %d\n", rank, time_step);
+
   const std::string xmlfile = "adios2cfg.xml";
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::Variable<double> senddensity;

@@ -256,6 +256,7 @@ namespace coupler {
     std::cout<<fname<<'\n'; 
     if(m==0){
     std::cout<<"creat engine for: "<<name<<'\n';
+      eng = read_io.Open(fname, adios2::Mode::Read);
       read_io.SetEngine("Sst");
       read_io.SetParameters({
 //          {"DataTransport","RDMA"},
@@ -267,7 +268,6 @@ std::cout<<"engine parameters are set"<<'\n';
     } else{
       std::cerr << rank << ": receive engine already exists \n";
     }
-      eng = read_io.Open(fname, adios2::Mode::Read);
  
     eng.BeginStep();
     adios2::Variable<T> adVar = read_io.InquireVariable<T>(name);

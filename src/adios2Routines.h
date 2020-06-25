@@ -319,7 +319,6 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
     engine.Put<T>(send_id, a2d->data());
     engine.EndStep();
     std::cout<<"The cpl_density was written"<<'\n';
-    engine.Close(); 
  }
   
   /** Receive PreProc values from GENE
@@ -375,7 +374,6 @@ template<typename T>
     engine.Put<T>(send_id, a2d->data());
     engine.EndStep();
     std::cout<<"rank="<<rank<<" "<<"The "<<fldname<<" was written"<<'\n';
-    engine.Close();
   }
   
 

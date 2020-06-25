@@ -384,7 +384,7 @@ template<typename T>
       const adios2_handler &handler, adios2::Variable<double> &send_id);
 
   Array2d<double>* receive_field(const std::string cce_folder,
-      const adios2_handler &handler, GO my_start[2], GO my_count[2], MPI_Comm comm,const int m);
+      adios2_handler &handler, GO my_start[2], GO my_count[2], MPI_Comm comm,const int m);
 
   void send_field(const std::string cce_folder, const Array2d<CV>* field,
       const adios2_handler &handler, adios2::Variable<CV> &send_id); 

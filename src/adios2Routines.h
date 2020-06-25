@@ -267,6 +267,7 @@ std::cout<<"engine parameters are set"<<'\n';
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     } else{
       std::cerr << rank << ": receive engine already exists \n";
+      assert(eng);
     }
  
     eng.BeginStep();
@@ -378,7 +379,7 @@ template<typename T>
   
 
   Array2d<CV>* receive_density(const std::string cce_folder,
-      const adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm, const int m);
+      adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm, const int m);
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id);

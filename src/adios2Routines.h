@@ -343,7 +343,7 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
 
 template<typename T>
  void send_from_coupler(adios2::ADIOS &adios,const std::string cce_folder,
-        const Array2d<T>* a2d, adios2::IO sendIO,adios2::Engine engine,const std::string fldname,                        
+        const Array2d<T>* a2d, adios2::IO& sendIO,adios2::Engine& engine,const std::string fldname,                        
         adios2::Variable<T> &send_id, const MPI_Comm comm,const int m)  //     
  {
     int rank;

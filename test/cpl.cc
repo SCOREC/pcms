@@ -173,11 +173,10 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
 
       coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,MPI_COMM_WORLD,m);
 
-
-MPI_Barrier(MPI_COMM_WORLD);
-std::cout<<"6666"<<'\n';
+      MPI_Barrier(MPI_COMM_WORLD);
+      std::cout<<"6666"<<'\n';
       coupler::destroy(fieldtoGENE);
-std::cout<<"mype="<<p1pp3d.mype<<" "<<"7777"<<'\n';
+      std::cerr << p1pp3d.mype << " done loop " << i << " " << j << "\n";
     }
   }
 

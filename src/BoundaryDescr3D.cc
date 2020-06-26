@@ -215,7 +215,19 @@ void BoundaryDescr3D::zDensityBoundaryBufAssign(CV*** box,
   const LO lz = p1pp3d.lk0;
   if (p1pp3d.npz > 1) {
     if (lz >= nzb) {
+/*
+if(p1pp3d.mype==0){
+for(int i=0;i<lx;i++){
+  for(int j=0;j<ly;j++){
+    for(int k=0;k<nzb;k++)
+     std::cout<<"i,j="<<i<<" "<<j<<" "<<box[i][j][k]<<'\n';
+  }
+}
+}
+*/
+
       mpisendrecv_aux2D(p1pp3d.comm_z, nzb, lx, ly, lz, lowdenz, updenz, box);
+//fix the parallel boundary condition here.
     } else {
       std::cout << "ERROR: nzb is larger than lz. A larger lz is required.";
       std::exit(EXIT_FAILURE);

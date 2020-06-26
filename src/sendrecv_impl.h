@@ -48,16 +48,18 @@ void mpisendrecv_aux2D(MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,
       MPI_Cart_shift(comm,0,1,&rank_source,&rank_dest);
       for(LO i=0;i<lx;i++){
        for(LO j=0;j<ly;j++){
-         for(LO k=0;k<nzb;k++)
+         for(LO k=0;k<nzb;k++){
            sendbuf[i*ly*nzb+j*nzb+k]=box[i][j][k];
+         }
        }
       }
       MPI_Sendrecv(sendbuf,lx*ly*nzb,mpitype,rank_dest,100,recvbuf,lx*ly*nzb,mpitype,rank_source,100,
                   comm,&status);
       for(LO i=0;i<lx;i++){
        for(LO j=0;j<ly;j++){
-         for(LO k=0;k<nzb;k++)
+         for(LO k=0;k<nzb;k++){
               upbuf[i][j][k]=recvbuf[i*ly*nzb+j*nzb+k];
+         }
        }
       }
       MPI_Cart_shift(comm,0,-1, &rank_source, &rank_dest);

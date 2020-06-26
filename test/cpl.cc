@@ -46,6 +46,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler cFld(adios,"cpl_field");
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
   coupler::adios2_handler gRX(adios,"gene_pproc_rx");
+  coupler::adios2_handler gCy(adios,"gene_cy_array");
   coupler::adios2_handler gInt(adios,"gene_pproc_i");
   coupler::adios2_handler xXcoord(adios,"xgc_x_coordss");
   coupler::adios2_handler xSurf(adios,"xgc_numsurfs");
@@ -63,6 +64,12 @@ int main(int argc, char **argv){
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(),preproc);
+  coupler::Array1d<double>* gene_cy = coupler::receive_gene_pproc<double>(dir, gCy);
+  double* C_y = gene_cy->data();
+  double minor_r = gene_cy->val(p1pp3d.nx0);
+  double lx_a = gene_cy->val(p1pp3d.nx0+1);
+  double sign_phi = gene_cy->val(p1pp3d.nx0+2);
+  double dx = gene_cy->val(p1pp3d.nx0+3);
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);//x_XGC

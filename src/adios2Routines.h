@@ -23,9 +23,6 @@ namespace coupler {
       assert(eng);
       eng.Close();
     }
-    ~adios2_handler(){
-      assert(!eng);
-    }
     std::string get_name() const { return name; };
   };
 
@@ -329,19 +326,15 @@ std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
    */
   template<typename T>
   Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      const adios2_handler &handler) { 
-      adios2::IO io = handler.IO; 
-      adios2::Engine engine = handler.eng;
+      adios2_handler &handler) { 
       std::string name = handler.get_name();
-    return receive1d_from_ftn<T>(cce_folder,name, io, engine);
+    return receive1d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng);
   }
   template<typename T>
   T* receive_gene_exact(const std::string cce_folder,
-      const adios2_handler &handler, GO my_start, GO my_count, MPI_Comm comm = MPI_COMM_WORLD) { 
-      adios2::IO io = handler.IO; 
-      adios2::Engine engine = handler.eng;
+      adios2_handler &handler, GO my_start, GO my_count, MPI_Comm comm = MPI_COMM_WORLD) { 
       std::string name = handler.get_name();
-    return receive1d_exact_ftn<T>(cce_folder,name, io, engine, my_start, my_count, comm);
+    return receive1d_exact_ftn<T>(cce_folder,name, handler.IO, handler.eng, my_start, my_count, comm);
   }
   
 

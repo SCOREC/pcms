@@ -19,8 +19,12 @@ namespace coupler {
     std::string name;
     adios2_handler(adios2::ADIOS &adios, const std::string name_):
             name(name_),IO(adios.DeclareIO(name_))  {}
+    void close() {
+      assert(eng);
+      eng.Close();
+    }
     ~adios2_handler(){
-            eng.Close();
+      assert(!eng);
     }
     std::string get_name() const { return name; };
   };

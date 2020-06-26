@@ -47,7 +47,6 @@ int main(int argc, char **argv){
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
   coupler::adios2_handler gRX(adios,"gene_pproc_rx");
   coupler::adios2_handler gInt(adios,"gene_pproc_i");
-  coupler::adios2_handler gComp(adios,"gene_pproc_c");
   coupler::adios2_handler xXcoord(adios,"xgc_x_coordss");
   coupler::adios2_handler xSurf(adios,"xgc_numsurfs");
   coupler::adios2_handler xZcoord(adios,"xgc_z_coordss");
@@ -58,6 +57,9 @@ int main(int argc, char **argv){
   coupler::Array1d<double>* q_prof = coupler::receive_gene_pproc<double>(dir, gQP);
   coupler::Array1d<double>* gene_xval = coupler::receive_gene_pproc<double>(dir, gRX);//matching gene's xval arr
   coupler::Array1d<int>* gene_parpar = coupler::receive_gene_pproc<int>(dir, gInt);
+  gQP.close();
+  gRX.close();
+  gInt.close();
 
   //intialize GENE class
   const bool preproc = true;
@@ -70,11 +72,16 @@ int main(int argc, char **argv){
   coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf);
   int numsurf = xgc_numsurf->val(0);
   int block_count = xgc_numsurf->val(1);
+  xXcoord.close();
+  xSurf.close();
 
   double* xgc_zcoords = coupler::receive_gene_exact<double>(dir,xZcoord, 0, block_count);
   int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, p1pp3d.li1, p1pp3d.nx0);
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
   coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
+  xZcoord.close();
+  xVsurf.close();
+  xCce.close();
 
   const int nummode = 1;
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
@@ -181,6 +188,11 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
       std::cerr << p1pp3d.mype << " done loop " << i << " " << j << "\n";
     }
   }
+
+  gDens.close();
+  cDens.close();
+  xFld.close();
+  cFld.close();
 
   std::cerr << p1pp3d.mype << " before kokkos finalize\n";
   Kokkos::finalize();

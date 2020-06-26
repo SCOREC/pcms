@@ -63,14 +63,8 @@ int main(int argc, char **argv){
   const bool preproc = true;
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
-  coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(),preproc);
-
   coupler::Array1d<double>* gene_cy = coupler::receive_gene_pproc<double>(dir, gCy);
-  double* C_y = gene_cy->data();
-  double minor_r = gene_cy->val(p1pp3d.nx0);
-  double lx_a = gene_cy->val(p1pp3d.nx0+1);
-  double sign_phi = gene_cy->val(p1pp3d.nx0+2);
-  double dx = gene_cy->val(p1pp3d.nx0+3);
+  coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(), gene_cy->data(), preproc);
 
 
   //receive XGC's preproc mesh discretization values

@@ -55,7 +55,7 @@ BoundaryDescr3D::BoundaryDescr3D(
       lowpotentz[i]=new CV*[p3m3d.lj0/2]; 
       upzpart3[i]=new double[nzb];
       lowzpart3[i]=new double[nzb];
-      for(LO j=0;j<p3m3d.lj0;j++){
+      for(LO j=0;j<(p3m3d.lj0/2);j++){
 	uppotentz[i][j]=new CV[nzb];
 	lowpotentz[i][j]=new CV[nzb];
       }

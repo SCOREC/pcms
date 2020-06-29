@@ -191,11 +191,12 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
   gQP.close();
   gRX.close();
   gInt.close();
+  gCy.close();
+  xXcoord.close();
+  xSurf.close();
   xZcoord.close();
   xVsurf.close();
   xCce.close();
-  xXcoord.close();
-  xSurf.close();
 
   std::cerr << p1pp3d.mype << " before kokkos finalize\n";
   Kokkos::finalize();
@@ -203,4 +204,3 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
   MPI_Finalize();
   return 0;
 }
-

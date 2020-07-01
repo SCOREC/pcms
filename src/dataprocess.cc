@@ -192,7 +192,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
     for(GO i=0;i<p3m3d.blockcount;i++)
       tmp[j][i]=array[j*p3m3d.blockcount+i];
   }
-
+std::cout<<"1"<<'\n';
   LO xl=0; 
   GO sumbegin=0;       
   GO numnode=0;  
@@ -207,7 +207,8 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
         numnode=numnode+1; 
       }
       reshuffleforward(datain[j],p3m3d.nstart[xl],p3m3d.versurf[xl]);
-    }     
+    }
+std::cout<<"2"<<'\n';     
     sumbegin+=p3m3d.versurf[xl];
     
     for(LO j=0;j<p1pp3d.y_res_back-1;j++){
@@ -219,13 +220,14 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
         +datain[mat_from_ind_n[i][j][k][4]][mat_from_ind_plane[i][j][k][2]]*mat_from_weight[i][j][k][4];
       }
     }
+std::cout<<"3"<<'\n';
     for(LO j=0;j<p3m3d.lj0;j++){
       free(datain[j]);
     }
     free(datain);
   }
-//      std::cout<<"sumbegin, p3m3d.blockcount="<<sumbegin<<" "<<p3m3d.blockcount<<'\n';
-  assert(sumbegin==p3m3d.blockcount); 
+      std::cout<<"sumbegin, p3m3d.blockcount="<<sumbegin<<" "<<p3m3d.blockcount<<'\n';
+//  assert(sumbegin==p3m3d.blockcount); 
   for(LO j=0;j<p3m3d.lj0;j++)
     free(tmp[j]);
   free(tmp);
@@ -451,12 +453,13 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc, const Part3Mesh3
         }
       }
     }
- 
+
   zDensityBoundaryBufAssign(densin,bdesc,p1pp3d);
   InterpoDensity3D(bdesc,p3m3d,p1pp3d);  
+
 // don't understand the following operation  
   for(LO i=0;i<p1pp3d.li0;i++){
-    CV** loc_data = new CV*[p1pp3d.lj0];
+    CV** loc_data = new CV*[p3m3d.lj0];
     for(LO j=0;j<p3m3d.lj0;j++){
       loc_data[j]=new CV[p3m3d.mylk0[i]];
     }
@@ -477,7 +480,8 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc, const Part3Mesh3
         tmpmat[i][j][k]+=tmp.real();
       }
     }     
-   }
+  }
+
 //don't understand the above operation   
 
   LO* recvcount = new LO[p1pp3d.npz];
@@ -563,9 +567,11 @@ void DatasProc3D::oldInitmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar
         tmp_ind=LO(y_cut);
         ind_l_tmp=remainder(remainder(tmp_ind,p1pp3d.y_res)+p1pp3d.y_res,p1pp3d.y_res);
         ind_h_tmp=remainder(remainder(tmp_ind+1,p1pp3d.y_res)+p1pp3d.y_res,p1pp3d.y_res);
+/*
 if(p1pp3d.mype==0){
   std::cout<<ind_l_tmp<<" "<<ind_h_tmp<<'\n';
 }
+*/
         mattoplane[i][j][ind_h_tmp][k]=y_cut-double(tmp_ind);
         mattoplane[i][j][ind_l_tmp][k]=1.0-(y_cut-double(tmp_ind));
       }

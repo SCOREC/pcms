@@ -7,6 +7,7 @@ set(SOURCES
   fourierdataproc.cc
   dataprocess.cc 
   interpo.cc
+  boundbuffer.cc
 )
 
 set(HEADERS

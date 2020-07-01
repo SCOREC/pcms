@@ -110,6 +110,12 @@ public:
        const Array2d<double>* fieldfromXGC); 
   void oldInitmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d);  
 
+//boundary buffer
+  void zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc,const Part3Mesh3D& p3m3d,
+    const Part1ParalPar3D &p1pp3d);
+  void zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc,
+    const Part1ParalPar3D& p1pp3d);
+
   LO getP1li0() { return p1.li0; };
   LO getP1ny0() { return p1.ny0; };
   LO getP1npy() { return p1.npy; };
@@ -121,37 +127,6 @@ private:
   const bool yparal;
   Part1ParalPar3D p1;
   Part3Mesh3D p3;
-/*
-  // this struct contains the read-only values from Part1ParalPar3D class
-  const struct P1Data {
-    P1Data(LO li, LO lj, LO lk, LO ny, LO np, LO pe_y,GO blockcount_, LO res_, LO n0_global_,const double* q_prof_,
-           double L_tor_) : li0(li), lj0(lj), lk0(lk), ny0(ny), npy(np), mype_y(pe_y), blockcount(blockcount_),
-           res_fact(res_),n0_global(n0_global_),q_prof(q_prof_),L_tor(L_tor_){};
-    const LO li0;
-    const LO lj0;
-    const LO lk0;
-    const LO ny0;
-    const LO npy;
-    const LO mype_y;
-    const LO res_fact;
-    const GO blockcount;
-    const LO n0_global;
-    const double* q_prof;
-    const double L_tor; 
-  } p1;
-
-  // this struct contains the read-only values from Part3Mesh3D class
-  const struct P3Data {
-    P3Data(LO li, LO lj,GO blockcount_,LO* mylk,LO y_res_b,const double** pzcoords_) : li0(li), lj0(lj), 
-          blockcount(blockcount_), mylk0(mylk),y_res_back(y_res_b),pzcoord(pzcoords_) {};
-      const LO li0;
-      const LO lj0;
-      const LO y_res_back;
-      const GO blockcount;
-      LO const* const mylk0;
-      const double** pzcoords;
-  } p3;
-*/
   /* helper function for destructor */
   void FreeFourierPlan3D(); // called from the destructor - does that make sense?
   /* helper functions for constructor */

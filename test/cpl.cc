@@ -78,11 +78,10 @@ int main(int argc, char **argv){
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
   coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
   const int nummode = 1;
-  coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, dp3d, test_case, preproc);
+  coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, test_case, preproc);
   if(!p1pp3d.mype)std::cerr << "0.8"<< "\n"; 
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
   if(!p1pp3d.mype)std::cerr << "0.9"<< "\n";
-  std::cout<<"nzb="<<bdesc.nzb<<'\n';
 
 //  dp3d.Initmattoplane(p3m3d,p1pp3d);
 
@@ -93,7 +92,6 @@ int main(int argc, char **argv){
   dp3d.InitFourierPlan3D();
 
 
-/*
   int m;
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
@@ -102,15 +100,16 @@ int main(int argc, char **argv){
 std::cout<<"start count"<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
       m=i*RK_count+j;
       coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,MPI_COMM_WORLD,m);
-
+/*
 for(coupler::LO i=0;i<count[0]*count[1];i++){
 std::cout<<"i="<<i<<" "<<densityfromGENE->val(i)<<'\n';
  }
-
-
+*/
+std::cout<<"111"<<'\n';
       dp3d.DistriDensiRecvfromPart1(p3m3d,p1pp3d,densityfromGENE);
+std::cout<<"222"<<'\n';
 //      coupler::destroy(densityfromGENE);
- 
+/* 
 if(p1pp3d.mype==0){
 for(int i=0;i<p1pp3d.li0;i++){
   for(int j=0;j<p1pp3d.lj0;j++){
@@ -120,10 +119,10 @@ for(int i=0;i<p1pp3d.li0;i++){
   }
 }
 }
+*/
 
-
-      bdesc.zDensityBoundaryBufAssign(dp3d.densin,p1pp3d);
-
+//      bdesc.zDensityBoundaryBufAssign(dp3d.densin,p1pp3d);
+/*
 if(p1pp3d.mype==0){
 for(int i=0;i<p1pp3d.li0;i++){
   for(int j=0;j<p1pp3d.lj0;j++){
@@ -132,6 +131,7 @@ for(int i=0;i<p1pp3d.li0;i++){
   }
 }
 }
+*/
 
 
 //      dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
@@ -146,13 +146,13 @@ for(int i=0;i<p1pp3d.li0;i++){
       for(int h=0;h<p3m3d.lj0*p3m3d.blockcount;h++){
         densitytmp[h] = dp3d.denssend[h]; 
       }
-
+/*
 if(p1pp3d.mype==0){
 for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
      std::cout<<"i="<<i<<" "<<densitytmp[i]<<'\n';
 }
 } 
-
+*/
  
       coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);    
       coupler::destroy(densitytoXGC);
@@ -167,7 +167,7 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
       coupler::destroy(fieldfromXGC);
  
       dp3d.RealdataToCmplxdata3D();
-      bdesc.zPotentBoundaryBufAssign(dp3d,p3m3d,p1pp3d);
+      dp3d.zPotentBoundaryBufAssign(bdesc,p3m3d,p1pp3d);
       dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);       
 
       dp3d.AssemPotentSendtoPart1(p3m3d,p1pp3d);
@@ -188,7 +188,7 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
       std::cerr << p1pp3d.mype << " done loop " << i << " " << j << "\n";
     }
   }
-*/
+
   gDens.close();
   cDens.close();
   xFld.close();

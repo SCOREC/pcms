@@ -13,7 +13,6 @@ namespace coupler {
 BoundaryDescr3D::BoundaryDescr3D(
     const Part3Mesh3D& p3m3d,
     const Part1ParalPar3D &p1pp3d,
-    const DatasProc3D& dp3d,
     const TestCase tcase,
     bool pproc):test_case(tcase), preproc(pproc)
 {
@@ -86,7 +85,7 @@ void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)
      }
    }
 }
-
+/*
 // In the wdm/app(cuda_under_hood) the parallel boundary condition is not used for the potential.
 void BoundaryDescr3D::zPotentBoundaryBufAssign(
     const DatasProc3D& dp3d, 
@@ -193,7 +192,7 @@ void BoundaryDescr3D::zPotentBoundaryBufAssign(
       }
    }
 }
-
+*/
 BoundaryDescr3D::~BoundaryDescr3D()
 {
   if(upzpart3!=NULL) delete[] upzpart3;
@@ -204,6 +203,7 @@ BoundaryDescr3D::~BoundaryDescr3D()
   if(lowpotentz!=NULL) delete[] lowpotentz;
 }
 
+/*
 void BoundaryDescr3D::zDensityBoundaryBufAssign(CV*** box,
     const Part1ParalPar3D& p1pp3d) {
   if (lowdenz == NULL || updenz == NULL) {
@@ -216,16 +216,7 @@ void BoundaryDescr3D::zDensityBoundaryBufAssign(CV*** box,
   const LO lz = p1pp3d.lk0;
   if (p1pp3d.npz > 1) {
     if (lz >= nzb) {
-/*
-if(p1pp3d.mype==0){
-for(int i=0;i<lx;i++){
-  for(int j=0;j<ly;j++){
-    for(int k=0;k<nzb;k++)
-     std::cout<<"i,j="<<i<<" "<<j<<" "<<box[i][j][k]<<'\n';
-  }
-}
-}
-*/
+
 
       mpisendrecv_aux2D(p1pp3d.comm_z, nzb, lx, ly, lz, lowdenz, updenz, box);
 //fix the parallel boundary condition here.
@@ -254,6 +245,8 @@ for(int i=0;i<lx;i++){
     }
   }
 }
+*/
+
 
 }
  

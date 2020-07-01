@@ -24,14 +24,8 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
     AllocDensityArrays();
     AllocPotentArrays();
     AllocMatXYZtoPlane();
-MPI_Barrier(MPI_COMM_WORLD);
-std::cout<<"55"<<'\n';
     Initmattoplane(); 
-std::cout<<"66"<<'\n';
-MPI_Barrier(MPI_COMM_WORLD);
     Prepare_mats_from_planes();
-MPI_Barrier(MPI_COMM_WORLD);
-    std::cout<<"77"<<'\n';
     if(testcase==TestCase::t0) {
       TestInitPotentAlongz(p3m3d, p1pp3d.npy, nummode);
     }
@@ -378,7 +372,7 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1
 // the adios2 API from coupler to Part3.
 void DatasProc3D::oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc,const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
 {
-  bdesc.zDensityBoundaryBufAssign(densin,p1pp3d);
+  zDensityBoundaryBufAssign(densin,bdesc,p1pp3d);
   InterpoDensity3D(bdesc,p3m3d,p1pp3d);
   CmplxdataToRealdata3D();
   DensityToPart3(p3m3d);
@@ -458,7 +452,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc, const Part3Mesh3
       }
     }
  
-  bdesc.zDensityBoundaryBufAssign(densin,p1pp3d);
+  zDensityBoundaryBufAssign(densin,bdesc,p1pp3d);
   InterpoDensity3D(bdesc,p3m3d,p1pp3d);  
 // don't understand the following operation  
   for(LO i=0;i<p1pp3d.li0;i++){
@@ -722,23 +716,25 @@ void DatasProc3D::Prepare_mats_from_planes()
         dchi=chi_l-chi_u;
         mat_from_weight[i][j][k][2]=(chi_l-chi_red_r)/dchi*w_plane_right;
         mat_from_weight[i][j][k][3]=(chi_red_r-chi_u)/dchi*w_plane_right;  
-
+/*
 if(p1.mype==0 && k==p1.lk0-1 && j==p1.y_res_back-1){
 std::cout<<"333"<<'\n';
 }
+*/
       }
+/*
 if(p1.mype==0 && j==p1.y_res_back-1){
 std::cout<<"444"<<'\n';
 }
+*/
     }
     free(tmp);
+/*
 if(p1.mype==0 && i==p3.li0){
 std::cout<<"222"<<'\n';
 }
-  } 
-std::cout<<"mype="<<p1.mype<<"111"<<'\n'; 
-MPI_Barrier(MPI_COMM_WORLD);
-
+*/
+  }
   for(LO i=0;i<p3.li0;i++){
     free(p3.zcoordsurf[i]);
   }

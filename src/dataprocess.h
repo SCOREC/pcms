@@ -4,6 +4,9 @@
 #include "couplingTypes.h"
 #include "testutilities.h"
 #include <fftw3.h>
+#include "importpart3mesh.h"
+#include "commpart1.h"
+#include "BoundaryDescr3D.h"
 
 namespace coupler {
 
@@ -40,7 +43,6 @@ public:
   double* densouttmp = NULL; // store the x-y 2d real density after backward 
                              // fourier transform
   double*** denspart3 = NULL; // storing the density being sent to the part3
-  double**** mattoplane;
   double*** densTOpart3 = NULL;
 
   double*  denssend = NULL; // the 1d array density  sent to part3
@@ -58,6 +60,15 @@ public:
                             // to the part1.
   CV*  potentsend = NULL; // the 1d array complex potential sent  to part1, and would be sent 
                            // in comm_x and comm_y communicators. 
+
+// matrix for the transformation between planes and xyz
+   double**** mattoplane=NULL;
+ 
+   CV****      mat_to_plane=NULL; 
+   double**** mat_from_weight=NULL;
+   int****    mat_from_ind_plane=NULL;
+   int****    mat_from_ind_n=NULL; 
+
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
   // The following parameters for yparal=true;
@@ -83,14 +94,21 @@ public:
   void CmplxdataToRealdata3D();
   void RealdataToCmplxdata3D();
   void InitFourierPlan3D();
-  void AssemDensiSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
-       const Array2d<double>* fieldfromXGC);
-  void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void AllocMatXYZtoPlane();
+  void Prepare_mats_from_planes();
+  void Initmattoplane();
+
+  void oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc,const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void AssemDensiSendtoPart3(BoundaryDescr3D& bdesc,const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d); 
   void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
        const Array2d<CV>* densityfromGENE);
-  void Initmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d);
-  void DensityToPart3(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d);
+  void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
+  void DensityToPart3(const Part3Mesh3D& p3m3d);
+  void oldDistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d,
+     const Array2d<double>* fieldfromXGC);
+  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
+       const Array2d<double>* fieldfromXGC); 
+  void oldInitmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d);  
 
   LO getP1li0() { return p1.li0; };
   LO getP1ny0() { return p1.ny0; };
@@ -101,13 +119,14 @@ private:
   const bool preproc;
   const TestCase testcase;
   const bool yparal;
-
+  Part1ParalPar3D p1;
+  Part3Mesh3D p3;
+/*
   // this struct contains the read-only values from Part1ParalPar3D class
   const struct P1Data {
-    P1Data(LO li, LO lj, LO lk, LO ny, LO np, LO pe_y,GO blockcount_, LO res) : 
-	    li0(li), lj0(lj), lk0(lk), 
-	  ny0(ny), npy(np), mype_y(pe_y), blockcount(blockcount_),res_fact(res)
-          {};
+    P1Data(LO li, LO lj, LO lk, LO ny, LO np, LO pe_y,GO blockcount_, LO res_, LO n0_global_,const double* q_prof_,
+           double L_tor_) : li0(li), lj0(lj), lk0(lk), ny0(ny), npy(np), mype_y(pe_y), blockcount(blockcount_),
+           res_fact(res_),n0_global(n0_global_),q_prof(q_prof_),L_tor(L_tor_){};
     const LO li0;
     const LO lj0;
     const LO lk0;
@@ -116,18 +135,23 @@ private:
     const LO mype_y;
     const LO res_fact;
     const GO blockcount;
+    const LO n0_global;
+    const double* q_prof;
+    const double L_tor; 
   } p1;
 
   // this struct contains the read-only values from Part3Mesh3D class
   const struct P3Data {
-    P3Data(LO li, LO lj,GO blockcount_,LO* mylk) : li0(li), lj0(lj), 
-          blockcount(blockcount_), mylk0(mylk) {};
+    P3Data(LO li, LO lj,GO blockcount_,LO* mylk,LO y_res_b,const double** pzcoords_) : li0(li), lj0(lj), 
+          blockcount(blockcount_), mylk0(mylk),y_res_back(y_res_b),pzcoord(pzcoords_) {};
       const LO li0;
       const LO lj0;
+      const LO y_res_back;
       const GO blockcount;
       LO const* const mylk0;
+      const double** pzcoords;
   } p3;
-
+*/
   /* helper function for destructor */
   void FreeFourierPlan3D(); // called from the destructor - does that make sense?
   /* helper functions for constructor */

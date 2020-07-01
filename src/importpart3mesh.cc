@@ -102,7 +102,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        }
      }
      lj0=p1pp3d.lj0*2; 
-     // FIXME mylk0 is undersized for circular case;
+
      // it is written in DistributePoints and
      // read in DistriPart3zcoords
      mylk0=new LO[li0]; 
@@ -167,21 +167,22 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     LO index2=p1pp3d.li2;
     LO index0=p1pp3d.li0;
     pzcoords = new double*[index0]; 
+    zcoordsurf = new double*[index0];
     double* zcoords;
     for(LO i= index1;i<index2+1;i++)
     {
-      zcoords=new double[versurf[numsurf]];  
+//      zcoords=new double[versurf[numsurf]];  
+      zcoordsurf[i-index1]=new double[versurf[numsurf]];
+      zcoords=zcoordsurf[i-index1];
       for(LO j=0;j<versurf[numsurf];j++){
-        zcoords[j]=zcoordall[numvert+j]; 
+        zcoords[j]=zcoordall[numvert+j];  
       }
-
       if(test_case==TestCase::t0){
         assert(!test_dir.empty());
         std::string fname=test_dir+std::to_string(i)+"_zcoords.txt";
         OutputtoFile(zcoords,versurf[numsurf],fname);
       }
       nstart[i] = minloc(zcoords,versurf[numsurf]);
-
       reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
 
        DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
@@ -189,10 +190,8 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
        for(LO k=0;k<mylk0[i-index1];k++){
 	 pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
        }
-
        numvert+=versurf[numsurf];
-       numsurf+=1;       
-       delete[] zcoords; 
+       numsurf+=1;        
     }
   }  
 }

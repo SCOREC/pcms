@@ -87,6 +87,7 @@ void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)
    }
 }
 
+// In the wdm/app(cuda_under_hood) the parallel boundary condition is not used for the potential.
 void BoundaryDescr3D::zPotentBoundaryBufAssign(
     const DatasProc3D& dp3d, 
     const Part3Mesh3D& p3m3d,

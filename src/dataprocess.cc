@@ -1,8 +1,10 @@
 #include "dataprocess.h"
 #include "importpart3mesh.h"
 #include "commpart1.h"
+#include "BoundaryDescr3D.h"
 #include "sendrecv_impl.h"
 #include <cassert>
+#include <cmath>
 
 namespace coupler {
 
@@ -15,14 +17,21 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D& p1pp3d,
   : preproc(pproc),
     testcase(test_case),
     yparal(ypar),
-    p1(p1pp3d.li0,p1pp3d.lj0,p1pp3d.lk0,
-	 p1pp3d.ny0, p1pp3d.npy, p1pp3d.mype_y,p1pp3d.blockcount, 
-         p1pp3d.res_fact),
-    p3(p3m3d.li0,p3m3d.lj0,p3m3d.blockcount,p3m3d.mylk0)
+    p1(p1pp3d),
+    p3(p3m3d)
   {
     init();
     AllocDensityArrays();
     AllocPotentArrays();
+    AllocMatXYZtoPlane();
+MPI_Barrier(MPI_COMM_WORLD);
+std::cout<<"55"<<'\n';
+    Initmattoplane(); 
+std::cout<<"66"<<'\n';
+MPI_Barrier(MPI_COMM_WORLD);
+    Prepare_mats_from_planes();
+MPI_Barrier(MPI_COMM_WORLD);
+    std::cout<<"77"<<'\n';
     if(testcase==TestCase::t0) {
       TestInitPotentAlongz(p3m3d, p1pp3d.npy, nummode);
     }
@@ -56,16 +65,6 @@ void DatasProc3D::init()
   sum=0;
   for(LO i=0;i<p3.li0;i++)  sum+=p3.mylk0[i];
  
-  mattoplane=new double***[p3.li0];
-  for(LO i=0;i<p3.li0;i++){
-    mattoplane[i] = new double**[p3.lj0];
-    for(LO j=0;j<p3.lj0;j++){
-      mattoplane[i][j]=new double*[p3.lj0];
-      for(LO k=0;k<p3.lj0;k++){
-        mattoplane[i][j][k]=new double[p3.mylk0[i]];
-      }    
-    }
-  }
 }
 
 void DatasProc3D::AllocDensityArrays()
@@ -113,13 +112,13 @@ void DatasProc3D::AllocPotentArrays()
   if(yparal==false){
     potentin=new double**[p3.li0];
     for(LO i=0;i<p3.li0;i++){
-      potentin[i]=new double*[p3.lj0];
-      for(LO j=0;j<p3.lj0;j++)
+      potentin[i]=new double*[p1.y_res_back];
+      for(LO j=0;j<p1.y_res_back;j++)
         potentin[i][j]=new double[p3.mylk0[i]];
     }
 
-    potentintmp=new double[p3.lj0];
-    potentouttmp=new CV[p3.lj0/2+1];
+    potentintmp=new double[p1.y_res_back];
+    potentouttmp=new CV[p1.y_res_back/2+1];
  
     potentinterpo=new CV**[p3.li0];
     for(LO i=0;i<p3.li0;i++){
@@ -141,8 +140,107 @@ void DatasProc3D::AllocPotentArrays()
   }
 }
 
-//Distribute the sub global potential  2d array received from part3 and reorder the sub 2darray.  
+void DatasProc3D::AllocMatXYZtoPlane()
+{
+   mattoplane=new double***[p3.li0];
+   for(LO i=0;i<p3.li0;i++){
+     mattoplane[i] = new double**[p1.n_cuts];
+     for(LO j=0;j<p1.n_cuts;j++){
+       mattoplane[i][j]=new double*[p3.lj0];
+       for(LO k=0;k<p3.lj0;k++){
+	 mattoplane[i][j][k]=new double[p3.mylk0[i]];
+       }    
+     }
+   }  
+
+  mat_to_plane=new CV***[p3.li0];
+   for(LO i=0;i<p3.li0;i++){
+     mat_to_plane[i] = new CV**[p1.n_cuts];
+     for(LO j=0;j<p1.n_cuts;j++){
+       mat_to_plane[i][j]=new CV*[p3.lj0];
+       for(LO k=0;k<p3.lj0;k++){
+         mat_to_plane[i][j][k]=new CV[p3.mylk0[i]];
+       }
+     }
+   }
+
+  mat_from_weight=new double***[p1.li0];
+  mat_from_ind_plane=new LO***[p1.li0];
+  mat_from_ind_n=new LO***[p1.li0];
+  for(LO i=0;i<p1.li0;i++){
+    mat_from_weight[i]=new double**[p1.y_res_back];
+    mat_from_ind_plane[i]=new LO**[p1.y_res_back];
+    mat_from_ind_n[i]=new LO**[p1.y_res_back];
+    for(LO j=0;j<p1.y_res_back;j++){
+      mat_from_weight[i][j]=new double*[p1.lk0];
+      mat_from_ind_plane[i][j]=new LO*[p1.lk0];
+      mat_from_ind_n[i][j]=new LO*[p1.lk0];
+      for(LO k=0;k<p1.lk0;k++){
+        mat_from_weight[i][j][k]=new double[4];
+        mat_from_ind_plane[i][j][k]=new LO[2];
+        mat_from_ind_n[i][j][k]=new LO[4];
+      }
+    }
+  }
+}
+
 void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d,
+     const Array2d<double>* fieldfromXGC)
+{ 
+  double** tmp;
+  tmp = new double*[p3m3d.lj0];
+  for(LO j=0;j<p3m3d.lj0;j++){
+    tmp[j] = new double[p3m3d.blockcount]; 
+  }
+  double* array;
+  array = fieldfromXGC->data();
+  for(LO j=0;j<p3m3d.lj0;j++){
+    for(GO i=0;i<p3m3d.blockcount;i++)
+      tmp[j][i]=array[j*p3m3d.blockcount+i];
+  }
+
+  LO xl=0; 
+  GO sumbegin=0;       
+  GO numnode=0;  
+  for(LO i=0;i<p3m3d.li0;i++){
+    xl=p3m3d.li1+i;
+    double** datain= new double*[p3m3d.lj0];   
+    for(LO j=0;j<p3m3d.lj0;j++){
+      numnode=sumbegin;  
+      datain[j]=new double[p3m3d.versurf[xl]];    
+      for(LO m=0;m<p3m3d.versurf[xl];m++){
+        datain[j][m]=tmp[j][numnode];
+        numnode=numnode+1; 
+      }
+      reshuffleforward(datain[j],p3m3d.nstart[xl],p3m3d.versurf[xl]);
+    }     
+    sumbegin+=p3m3d.versurf[xl];
+    
+    for(LO j=0;j<p1pp3d.y_res_back-1;j++){
+      for(LO k=0;k<p1pp3d.lk0;k++){
+        potentin[i][j][k]=
+        +datain[mat_from_ind_n[i][j][k][1]][mat_from_ind_plane[i][j][k][1]]*mat_from_weight[i][j][k][1]
+        +datain[mat_from_ind_n[i][j][k][2]][mat_from_ind_plane[i][j][k][1]]*mat_from_weight[i][j][k][2]
+        +datain[mat_from_ind_n[i][j][k][3]][mat_from_ind_plane[i][j][k][2]]*mat_from_weight[i][j][k][3]
+        +datain[mat_from_ind_n[i][j][k][4]][mat_from_ind_plane[i][j][k][2]]*mat_from_weight[i][j][k][4];
+      }
+    }
+    for(LO j=0;j<p3m3d.lj0;j++){
+      free(datain[j]);
+    }
+    free(datain);
+  }
+//      std::cout<<"sumbegin, p3m3d.blockcount="<<sumbegin<<" "<<p3m3d.blockcount<<'\n';
+  assert(sumbegin==p3m3d.blockcount); 
+  for(LO j=0;j<p3m3d.lj0;j++)
+    free(tmp[j]);
+  free(tmp);
+ } 
+
+
+
+//Distribute the sub global potential  2d array received from part3 and reorder the sub 2darray.  
+void DatasProc3D::oldDistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d,
      const Array2d<double>* fieldfromXGC)
 { 
   double** tmp;
@@ -278,9 +376,13 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1
 
 // Assemble the density sub2d array in each process into a global one, which is straightforwardly transferred by
 // the adios2 API from coupler to Part3.
-
-void DatasProc3D::AssemDensiSendtoPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
+void DatasProc3D::oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc,const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
 {
+  bdesc.zDensityBoundaryBufAssign(densin,p1pp3d);
+  InterpoDensity3D(bdesc,p3m3d,p1pp3d);
+  CmplxdataToRealdata3D();
+  DensityToPart3(p3m3d);
+  
   LO* recvcount = new LO[p1pp3d.npz];
   LO* rdispls = new LO[p1pp3d.npz];
   double* blocktmp = new double[p3m3d.blockcount];
@@ -341,8 +443,118 @@ std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\
   free(blocktmp);
 }
 
+// Assemble the density sub2d array in each process into a global one, which is straightforwardly transferred by
+// the adios2 API from coupler to Part3.
+void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc, const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d)
+{
+  double*** tmpmat = new double**[p3m3d.li0];
+    for(LO i=0;i<p3m3d.li0;i++){
+      tmpmat[i]=new double*[p3m3d.lj0];
+      for(LO j=0;j<p3m3d.lj0;j++){
+        tmpmat[i][j]=new double[p3m3d.mylk0[i]];
+        for(LO k=0;k<p3m3d.mylk0[i];k++){
+          tmpmat[i][j][k]=0.0;
+        }
+      }
+    }
+ 
+  bdesc.zDensityBoundaryBufAssign(densin,p1pp3d);
+  InterpoDensity3D(bdesc,p3m3d,p1pp3d);  
+// don't understand the following operation  
+  for(LO i=0;i<p1pp3d.li0;i++){
+    CV** loc_data = new CV*[p1pp3d.lj0];
+    for(LO j=0;j<p3m3d.lj0;j++){
+      loc_data[j]=new CV[p3m3d.mylk0[i]];
+    }
+    for(LO j=0;j<p1pp3d.lj0;j++){
+      loc_data[j]=densinterpo[i][j];
+      if(j>0){
+        for(LO k=0;k<p3m3d.mylk0[i];k++){
+          loc_data[p3m3d.lj0-j][k]=std::conj(densinterpo[i][j][k]);
+        }
+      } 
+    } 
+    for(LO j=0;j<p1pp3d.n_cuts;j++){
+      for(LO k=0;k<p3m3d.mylk0[i];k++){   
+        CV tmp=CV(0.0,0.0);
+        for(LO h=0;h<p3m3d.lj0;h++){
+          tmp=+mat_to_plane[i][j][h][k]*loc_data[h][k];
+        }       
+        tmpmat[i][j][k]+=tmp.real();
+      }
+    }     
+   }
+//don't understand the above operation   
+
+  LO* recvcount = new LO[p1pp3d.npz];
+  LO* rdispls = new LO[p1pp3d.npz];
+  double* blocktmp = new double[p3m3d.blockcount];
+
+  for(LO j=0;j<p3m3d.lj0;j++){
+    LO xl=0;
+    for(GO h=0;h<p3m3d.blockcount;h++){
+      blocktmp[h] = 0.0;
+    }
+
+    for(LO h=0;h<p1pp3d.npz;h++){
+      recvcount[h]=0;
+      rdispls[h]=0;
+    }
+
+    for(LO i=0;i<p1pp3d.li0;i++){
+      MPI_Datatype mpitype = getMpiType(LO());      
+      MPI_Allgather(&p3m3d.mylk0[i],1,mpitype,recvcount,1,mpitype,p1pp3d.comm_z); 
+      rdispls[0]=0;
+      for(LO k=1;k<p1pp3d.npz;k++){
+	rdispls[k]=rdispls[k-1]+recvcount[k-1];
+      }
+/*
+if(p1pp3d.mype==0) {
+for(LO k=0;k<p3m3d.mylk0[i];k++){
+std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\n';
+}
+}
+*/
+      xl=p1pp3d.li1+i;    
+      double* tmp = new double[p3m3d.versurf[xl]];
+      double* tmp_one;
+      tmp_one=tmpmat[i][j];         
+      MPI_Allgatherv(tmp_one,p3m3d.mylk0[i],MPI_DOUBLE,tmp,recvcount,rdispls,
+                    MPI_DOUBLE,p1pp3d.comm_z);    
+ 
+      reshufflebackward(tmp,p3m3d.nstart[xl],p3m3d.versurf[xl]);
+      GO sumbegin=0;
+      for(LO h=0;h<i;h++){
+        sumbegin+=GO(p3m3d.versurf[h+p3m3d.li1]);
+      } 
+      for(LO m=0;m<p3m3d.versurf[xl];m++){
+        blocktmp[sumbegin+m]=tmp[m];
+      }    
+     if(i==p1pp3d.li0-1){
+        assert((sumbegin+(GO)p3m3d.versurf[xl]) == p3m3d.blockcount);
+      }
+
+      free(tmp); 
+    }
+   
+    for(GO h=0;h<p3m3d.blockcount;h++){
+        denssend[j*p3m3d.blockcount+h] = blocktmp[h];
+    } 
+  }
+  free(recvcount);
+  free(rdispls);
+  free(blocktmp);
+  for(LO i=0;i<p3m3d.li0;i++){
+    for(LO j=0;j<p3m3d.lj0;j++){
+      free(tmpmat[i][j]);
+    }
+    free(tmpmat[i]);
+  }
+  free(tmpmat);
+}
+
 //I dont's understand the function of the following matrix.
-void DatasProc3D::Initmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d)
+void DatasProc3D::oldInitmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d)
 {
   double y_cut;
   LO tmp_ind;
@@ -357,7 +569,9 @@ void DatasProc3D::Initmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D&
         tmp_ind=LO(y_cut);
         ind_l_tmp=remainder(remainder(tmp_ind,p1pp3d.y_res)+p1pp3d.y_res,p1pp3d.y_res);
         ind_h_tmp=remainder(remainder(tmp_ind+1,p1pp3d.y_res)+p1pp3d.y_res,p1pp3d.y_res);
-
+if(p1pp3d.mype==0){
+  std::cout<<ind_l_tmp<<" "<<ind_h_tmp<<'\n';
+}
         mattoplane[i][j][ind_h_tmp][k]=y_cut-double(tmp_ind);
         mattoplane[i][j][ind_l_tmp][k]=1.0-(y_cut-double(tmp_ind));
       }
@@ -365,20 +579,170 @@ void DatasProc3D::Initmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D&
   }
 }
 
-//The function of this routines is not clear so far.
-void DatasProc3D::DensityToPart3(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d)
+
+void DatasProc3D::Initmattoplane()
 {
   for(LO i=0;i<p3.li0;i++){
-    for(LO k=0;k<p3.mylk0[i];k++){
-      for(LO j=0;j<p3.lj0;j++){
+    for(LO o=0;o<p1.n_cuts;o++){
+      for(LO j=0;j<p1.lj0;j++){
+        for(LO k=0;k<p3.mylk0[i];k++){
+         if(j==0){
+            mat_to_plane[i][o][j][k]=1.0;
+          }else{
+            mat_to_plane[i][o][j][k]=exp(CV(0,1.0)*double(j*p1.n0_global)*(p1.q_prof[i]
+            *p3.pzcoords[i][k]-p1.L_tor*double(o+1)));
+            mat_to_plane[i][o][p3.lj0-j][k]=exp(-CV(0,1.0)*double(j*p1.n0_global)*(p1.q_prof[i]
+            *p3.pzcoords[i][k]-p1.L_tor*double(o+1)));
+          } 
+        }
+     }
+   }
+ }
+}
+
+//The function of this routines is not clear so far.
+void DatasProc3D::DensityToPart3(const Part3Mesh3D& p3m3d)
+{
+  for(LO i=0;i<p3m3d.li0;i++){
+    for(LO k=0;k<p3m3d.mylk0[i];k++){
+      for(LO j=0;j<p3m3d.lj0;j++){
         double tmp=0.0;
-        for(LO l=0;l<p3.lj0;j++){
+        for(LO l=0;l<p3m3d.lj0;j++){
           tmp+=mattoplane[i][j][l][k]*denspart3[i][l][k];
+//std::cout<<"mattoplane="<<mattoplane[i][j][l][k]<<'\n';
         }
         densTOpart3[i][j][k]=tmp;
       }
     }
   }
+}
+
+// not very clear about the function of this routine
+void DatasProc3D::Prepare_mats_from_planes()
+{
+  double dphi=2.0*cplPI/double(p1.n0_global*p1.n_cuts);
+  double* phi_l=new double[p1.n_cuts];
+  for(int i=0;i<p1.n_cuts;i++){
+    phi_l[i]=double(i)*dphi;
+  }
+  double Ly=2.0*cplPI/(p1.n0_global*p1.rhostar*p1.minor_r)*abs(p1.C_y[1]);
+  double dy_inv=Ly/double(p1.y_res_back);
+
+  double q,y,chi_red,phi,phi_red,chi_red_l,chi_red_r,phi_red_l,phi_red_r,dist_phi,
+         dist_l,dist_r,w_plane_left,w_plane_right,chi_l, chi_u,dchi;
+  LO count_l,count_r,ipl_l,ipl_r,ind_l,ind_u;
+ 
+  for(int i=0;i<p3.li0;i++){
+    q=p1.q_prof[i];
+    double* tmp = new double[p3.versurf[i+p3.li1]]; 
+    for(int j=0;j<p1.y_res_back;j++){
+      y=j*dy_inv;
+      for(int k=0;k<p1.lk0;k++){
+        chi_red=p1.pzcoords[p1.lk1+k];
+        phi=q*chi_red-y/p1.C_y[i+p3.li1]*(p1.rhostar*p1.minor_r);
+        phi_red=remainder(phi,2.0*cplPI/double(p1.n0_global));
+        count_l=int((phi-phi_red)/(2.0*cplPI/double(p1.n0_global)));
+        count_r=count_l;
+        ipl_l=int(phi_red/dphi);
+        ipl_r=ipl_l+1;       
+        chi_red_l=(y/p1.C_y[i+p3.li1]*(p1.rhostar*p1.minor_r)+phi_l[ipl_l]
+               +count_l*2.0*cplPI/double(p1.n0_global))/q;
+        chi_red_r=(y/p1.C_y[i+p3.li1]*(p1.rhostar*p1.minor_r)+phi_l[ipl_r]
+               +count_r*2.0*cplPI/double(p1.n0_global))/q;   
+        chi_red_l=remainder(chi_red_l+cplPI,2.0*cplPI)-cplPI;
+        chi_red_r=remainder(chi_red_r+cplPI,2.0*cplPI)-cplPI;
+        phi_red_l=phi_l[ipl_l];
+        phi_red_r=phi_l[ipl_r];
+        mat_from_ind_plane[i][j][k][0]=ipl_l;
+        mat_from_ind_plane[i][j][k][1]=ipl_r;
+        dist_phi=sqrt(pow(phi_red_l-phi_red_r,2)+pow(chi_red_l-chi_red_r,2));
+        dist_l=sqrt(pow(phi_red-phi_red_r,2)+pow(chi_red-chi_red_r,2));
+        dist_r=sqrt(pow(phi_red-phi_red_l,2)+pow(chi_red-chi_red_l,2));        
+        w_plane_left=dist_l/dist_phi;
+        w_plane_right=dist_r/dist_phi;
+        //left_plane 
+        for(LO m=0;m<p3.versurf[i+p3.li1];m++){
+          tmp[i]=abs(p3.zcoordsurf[i][m]-chi_red_l);
+        } 
+        ind_u=minloc(tmp,p3.versurf[i+p3.li1]);
+        mat_from_ind_n[i][j][k][0]=ind_u;
+        chi_u=p3.pzcoords[i][ind_u];
+        
+        if((chi_red_l-chi_u)>0){
+          ind_l=ind_u+1;
+          if(ind_l>p3.mylk0[i]){
+            ind_l=1;
+            chi_l=p3.zcoordsurf[i][ind_l]+2.0*cplPI;
+          }else{
+            chi_l=p3.zcoordsurf[i][ind_l];
+          }
+          mat_from_ind_n[i][j][k][1]=ind_l;
+        } else{
+          ind_l=ind_u-1;
+          if(ind_l<1){
+              ind_l=p3.versurf[i+p3.li1]; //Here is not right
+          chi_l=p3.zcoordsurf[i][ind_l]-2.0*cplPI;
+          } else{
+            chi_l=p3.zcoordsurf[i][ind_l];
+          }
+          mat_from_ind_n[i][j][k][1]=ind_l;      
+        }  
+        dchi=chi_l-chi_u;
+        
+        mat_from_weight[i][j][k][0]=(chi_l-chi_red_l)/dchi*w_plane_left;
+        mat_from_weight[i][j][k][1]=(chi_red_l-chi_u)/dchi*w_plane_left;
+
+        ////right plane
+        for(LO m=0;m<p3.versurf[i+p3.li1];m++){
+          tmp[i]=abs(p3.zcoordsurf[i][m]-chi_red_r);
+        }
+        ind_u=minloc(tmp,p3.versurf[i+p3.li1]);
+        mat_from_ind_n[i][j][k][2]=ind_u;
+        chi_u=p3.zcoordsurf[i][ind_u];       
+        if((chi_red_r-chi_u)>0){
+          ind_l=ind_u+1;
+          if(ind_l>p3.versurf[p3.li1+i]){
+            ind_l=1;
+            chi_l=p3.zcoordsurf[i][ind_l]+2.0*cplPI;
+          }else{
+            chi_l=p3.zcoordsurf[i][ind_l];
+          }
+          mat_from_ind_n[i][j][k][3]=ind_l;
+        }else{
+          ind_l=ind_u-1;
+          if(ind_l<1){
+            ind_l=p3.versurf[p3.li1+i];
+            chi_l=p3.zcoordsurf[i][ind_l]-2.0*cplPI;
+          }else{
+            chi_l=p3.zcoordsurf[i][ind_l];
+          }
+          mat_from_ind_n[i][j][k][3]=ind_l;
+        }       
+        
+        dchi=chi_l-chi_u;
+        mat_from_weight[i][j][k][2]=(chi_l-chi_red_r)/dchi*w_plane_right;
+        mat_from_weight[i][j][k][3]=(chi_red_r-chi_u)/dchi*w_plane_right;  
+
+if(p1.mype==0 && k==p1.lk0-1 && j==p1.y_res_back-1){
+std::cout<<"333"<<'\n';
+}
+      }
+if(p1.mype==0 && j==p1.y_res_back-1){
+std::cout<<"444"<<'\n';
+}
+    }
+    free(tmp);
+if(p1.mype==0 && i==p3.li0){
+std::cout<<"222"<<'\n';
+}
+  } 
+std::cout<<"mype="<<p1.mype<<"111"<<'\n'; 
+MPI_Barrier(MPI_COMM_WORLD);
+
+  for(LO i=0;i<p3.li0;i++){
+    free(p3.zcoordsurf[i]);
+  }
+  free(p3.zcoordsurf);
 }
 
 void DatasProc3D::TestInitPotentAlongz(const Part3Mesh3D& p3m3d,

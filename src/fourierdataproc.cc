@@ -46,7 +46,7 @@ void DatasProc3D::RealdataToCmplxdata3D()
   if(yparal==false){
     for(LO i=0;i<p3.li0;i++){
       for(LO k=0;k<p3.mylk0[i];k++){
-	for(LO j=0;j<p3.lj0;j++){
+	for(LO j=0;j<p1.y_res_back;j++){
 	  potentintmp[j]=potentin[i][j][k];  
         }
         ExecuteRealToCmplx();
@@ -114,7 +114,7 @@ void DatasProc3D::InitFourierPlan3D()
   if(yparal==false){
     plan_backward=fftw_plan_dft_c2r_1d(p1.lj0*2,
                        reinterpret_cast<fftw_complex*>(densintmp),densouttmp,FFTW_ESTIMATE); 
-    plan_forward=fftw_plan_dft_r2c_1d(p3.lj0,potentintmp,
+    plan_forward=fftw_plan_dft_r2c_1d(p1.y_res_back,potentintmp,
                       reinterpret_cast<fftw_complex*>(potentouttmp),FFTW_ESTIMATE);
   }
 }

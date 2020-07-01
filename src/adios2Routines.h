@@ -167,7 +167,7 @@ namespace coupler {
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
 
     const auto total_size = adios_var.Shape()[0];
-    if(!rank) std::cout << " total_size " <<total_size << "\n";
+    if(!rank) std::cout <<name<< "  total_size " <<total_size << "\n";
     const auto my_start = (total_size / nprocs) * rank;
     const auto my_count = (total_size / nprocs);
 

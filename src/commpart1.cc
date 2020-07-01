@@ -103,16 +103,34 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
    pzcoords=new double[nz0];
    xcoords=new double[nx0];
 
-    
+   n_cuts = 2*lj0;
+
    C_y = gene_cy;
    minor_r = gene_cy[nx0];
    lx_a = gene_cy[nx0+1];
    sign_phi = gene_cy[nx0+2];
    dx = gene_cy[nx0+3];
+   rhostar=gene_cy[nx0+4];
 
-// The two lines will be needed when refactoring this part code.
-//   double* xzcoords;
-//   xzcoords=new double[nx0+1];
+   L_tor=sign_phi*2.0*cplPI/double(n0_global*lj0*2);
+   if(mype==0){
+     std::cout<<"n_cuts="<<n_cuts<<'\n';
+     std::cout<<"minor_r="<<minor_r<<'\n';
+     std::cout<<"n0_global="<<n0_global<<'\n';
+     std::cout<<"sign_phi="<<sign_phi<<'\n';
+     std::cout<<"lj0="<<lj0<<'\n';
+     std::cout<<"L_tor="<<L_tor<<'\n'; 
+     std::cout<<"rhostar="<<rhostar<<'\n';
+   }   
+   phi_cut = new double[lj0*2];
+   for(LO i=0;i<lj0*2;i++){
+     phi_cut[i] = L_tor*double(i+1); // need more check
+   } 
+   res_fact=n0_global;
+   dy=dx*rhostar*minor_r/res_fact;
+   y_res=2.0*lj0;
+   y_res_back=y_res*res_fact;
+
 
    totnodes=nx0*nz0;
    if(test_case==TestCase::t0){
@@ -140,14 +158,6 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
      pzp[i]=double(lk1+i)*dz-1.0*cplPI;
    }
    blockindice();  
-
-   L_tor=sign_phi*2.0*cplPI/double(n0_global*lj0*2);
-   phi_cut = new double[lj0*2];
-   for(LO i=0;i<lj0*2;i++){
-     phi_cut[i] = L_tor*double(i+1); // need more check
-   } 
-   dy=dx*rhostar*minor_r/res_fact;
-   y_res=2.0*lj0*res_fact;
 
    if(test_case==TestCase::t0){ 
      delete[] parpar;

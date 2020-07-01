@@ -46,6 +46,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler cFld(adios,"cpl_field");
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
   coupler::adios2_handler gRX(adios,"gene_pproc_rx");
+  coupler::adios2_handler gCy(adios,"gene_cy_array");
   coupler::adios2_handler gInt(adios,"gene_pproc_i");
   coupler::adios2_handler xXcoord(adios,"xgc_x_coordss");
   coupler::adios2_handler xSurf(adios,"xgc_numsurfs");
@@ -62,7 +63,9 @@ int main(int argc, char **argv){
   const bool preproc = true;
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
-  coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(),preproc);
+  coupler::Array1d<double>* gene_cy = coupler::receive_gene_pproc<double>(dir, gCy);
+  coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(), gene_cy->data(), preproc);
+
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);//x_XGC
@@ -188,11 +191,12 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
   gQP.close();
   gRX.close();
   gInt.close();
+  gCy.close();
+  xXcoord.close();
+  xSurf.close();
   xZcoord.close();
   xVsurf.close();
   xCce.close();
-  xXcoord.close();
-  xSurf.close();
 
   std::cerr << p1pp3d.mype << " before kokkos finalize\n";
   Kokkos::finalize();
@@ -200,4 +204,3 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
   MPI_Finalize();
   return 0;
 }
-

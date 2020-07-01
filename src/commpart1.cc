@@ -46,7 +46,7 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 }
 
 //read the paralllization parameters
-void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::string test_dir)
+void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double* gene_cy, std::string test_dir)
 {
  if(preproc==true){ 
    if(test_case==TestCase::t0){
@@ -58,6 +58,7 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
    }else{
      assert(parpar);
      assert(q_prof);
+     assert(gene_cy);
      npx=parpar[0];
      nx0=parpar[1];
      nxb=parpar[2];
@@ -101,6 +102,13 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, std::st
    // initialize the radial locations of the flux surface and poloidal angles
    pzcoords=new double[nz0];
    xcoords=new double[nx0];
+
+    
+   C_y = gene_cy;
+   minor_r = gene_cy[nx0];
+   lx_a = gene_cy[nx0+1];
+   sign_phi = gene_cy[nx0+2];
+   dx = gene_cy[nx0+3];
 
 // The two lines will be needed when refactoring this part code.
 //   double* xzcoords;

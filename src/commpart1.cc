@@ -160,12 +160,6 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
    }
    blockindice();  
 
-   if(mype==0){
-     for(LO h=0;h<nx0;h++){
-       std::cout<<"q_prof,h="<<h<<" "<<q_prof[h]<<'\n';
-     }
-   }
-
    if(test_case==TestCase::t0){ 
      delete[] parpar;
      delete[] xzcoords;

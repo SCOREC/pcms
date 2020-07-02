@@ -64,7 +64,7 @@ public:
 // matrix for the transformation between planes and xyz
    double**** mattoplane=NULL;
  
-   CV****      mat_to_plane=NULL; 
+   CV****     mat_to_plane=NULL; 
    double**** mat_from_weight=NULL;
    int****    mat_from_ind_plane=NULL;
    int****    mat_from_ind_n=NULL; 
@@ -79,17 +79,15 @@ public:
    * optional argument supports setting
    * the prepoc and yparal modes
    */
-  DatasProc3D(const Part1ParalPar3D& p1pp3d,
-      const Part3Mesh3D &p3m3d,
+  DatasProc3D(const Part1ParalPar3D* p1pp3d,
+      const Part3Mesh3D* p3m3d,
       bool pproc = true,
       TestCase test_case = TestCase::off,
       bool ypar = false,
       int nummode = 1);
   ~DatasProc3D();
-  void InterpoDensity3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
-                        const Part1ParalPar3D& p1pp3d);
-  void InterpoPotential3D(const BoundaryDescr3D& bdesc, const Part3Mesh3D& p3m3d,
-                        const Part1ParalPar3D& p1pp3d);
+  void InterpoDensity3D(const BoundaryDescr3D& bdesc);
+  void InterpoPotential3D(const BoundaryDescr3D& bdesc);
   //routines for Fourier transform
   void CmplxdataToRealdata3D();
   void RealdataToCmplxdata3D();
@@ -98,42 +96,37 @@ public:
   void Prepare_mats_from_planes();
   void Initmattoplane();
 
-  void oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc,const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-  void AssemDensiSendtoPart3(BoundaryDescr3D& bdesc,const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d); 
-  void DistriDensiRecvfromPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
-       const Array2d<CV>* densityfromGENE);
-  void AssemPotentSendtoPart1(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d);
-  void DensityToPart3(const Part3Mesh3D& p3m3d);
-  void oldDistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part1ParalPar3D& p1pp3d,
-     const Array2d<double>* fieldfromXGC);
-  void DistriPotentRecvfromPart3(const Part3Mesh3D &p3m3d, const Part1ParalPar3D& p1pp3d,
-       const Array2d<double>* fieldfromXGC); 
-  void oldInitmattoplane(const Part3Mesh3D& p3m3d,const Part1ParalPar3D& p1pp3d);  
+  void oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc);
+  void AssemDensiSendtoPart3(BoundaryDescr3D& bdesc); 
+  void DistriDensiRecvfromPart1(const Array2d<CV>* densityfromGENE);
+  void AssemPotentSendtoPart1();
+  void DensityToPart3();
+  void oldDistriPotentRecvfromPart3(const Array2d<double>* fieldfromXGC);
+  void DistriPotentRecvfromPart3(const Array2d<double>* fieldfromXGC); 
+  void oldInitmattoplane();  
 
 //boundary buffer
-  void zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc,const Part3Mesh3D& p3m3d,
-    const Part1ParalPar3D &p1pp3d);
-  void zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc,
-    const Part1ParalPar3D& p1pp3d);
+  void zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc);
+  void zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc);
 
-  LO getP1li0() { return p1.li0; };
-  LO getP1ny0() { return p1.ny0; };
-  LO getP1npy() { return p1.npy; };
+  LO getP1li0() { return p1->li0; };
+  LO getP1ny0() { return p1->ny0; };
+  LO getP1npy() { return p1->npy; };
 
 
 private:
   const bool preproc;
   const TestCase testcase;
   const bool yparal;
-  Part1ParalPar3D p1;
-  Part3Mesh3D p3;
+  const Part1ParalPar3D* p1;
+  const Part3Mesh3D* p3;
   /* helper function for destructor */
   void FreeFourierPlan3D(); // called from the destructor - does that make sense?
   /* helper functions for constructor */
   void init();
   void AllocDensityArrays();
   void AllocPotentArrays();
-  void TestInitPotentAlongz(const Part3Mesh3D& p3m3d, const LO npy, const LO n);
+  void TestInitPotentAlongz(const Part3Mesh3D* p3m3d,const LO npy, const LO n);
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();

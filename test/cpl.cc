@@ -80,9 +80,14 @@ int main(int argc, char **argv){
   const int nummode = 1;
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, test_case, preproc);
   if(!p1pp3d.mype)std::cerr << "0.8"<< "\n"; 
-  coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
-  if(!p1pp3d.mype)std::cerr << "0.9"<< "\n";
 
+  coupler::Part1ParalPar3D* mesh1;
+  mesh1=&p1pp3d;
+  coupler::Part3Mesh3D*     mesh3;
+  mesh3=&p3m3d;
+  coupler::DatasProc3D dp3d(mesh1, mesh3, preproc, test_case, ypar, nummode);
+  if(!p1pp3d.mype)std::cerr << "0.9"<< "\n";
+  MPI_Barrier(MPI_COMM_WORLD);
   coupler::destroy(q_prof);
   coupler::destroy(gene_xval);
   coupler::destroy(gene_parpar);
@@ -103,7 +108,7 @@ for(coupler::LO i=0;i<count[0]*count[1];i++){
 std::cout<<"i="<<i<<" "<<densityfromGENE->val(i)<<'\n';
  }
 */
-      dp3d.DistriDensiRecvfromPart1(p3m3d,p1pp3d,densityfromGENE);
+      dp3d.DistriDensiRecvfromPart1(densityfromGENE);
 //      coupler::destroy(densityfromGENE);
 /* 
 if(p1pp3d.mype==0){
@@ -130,7 +135,7 @@ for(int i=0;i<p1pp3d.li0;i++){
 */
 
 
-      dp3d.AssemDensiSendtoPart3(bdesc,p3m3d,p1pp3d);
+      dp3d.AssemDensiSendtoPart3(bdesc);
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
                                                     p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
                                                     p3m3d.blockstart);
@@ -152,12 +157,12 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
       coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
 
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,MPI_COMM_WORLD,m);
-      dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC);
+      dp3d.DistriPotentRecvfromPart3(fieldfromXGC);
       coupler::destroy(fieldfromXGC);
       dp3d.RealdataToCmplxdata3D();
-      dp3d.zPotentBoundaryBufAssign(bdesc,p3m3d,p1pp3d);
-      dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);       
-      dp3d.AssemPotentSendtoPart1(p3m3d,p1pp3d);
+      dp3d.zPotentBoundaryBufAssign(bdesc);
+      dp3d.InterpoPotential3D(bdesc);       
+      dp3d.AssemPotentSendtoPart1();
       coupler::Array2d<coupler::CV>* fieldtoGENE = new coupler::Array2d<coupler::CV>(
                                                    p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.blockcount,
                                                    p1pp3d.lj0,p1pp3d.blockstart);

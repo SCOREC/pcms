@@ -50,52 +50,50 @@ void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double
   }
 }
 
-void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc,
-    const Part3Mesh3D& p3m3d, 
-    const Part1ParalPar3D &p1pp3d)
+void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc)
 {
   CV* yin;
   double* xin;
   CV* yout;
   double* xout;
   LO nzb=bdesc.nzb;
-  xin=new double[p1pp3d.lk0+2*nzb];
-  yin=new CV[p1pp3d.lk0+2*nzb];  
+  xin=new double[p1->lk0+2*nzb];
+  yin=new CV[p1->lk0+2*nzb];  
   if(preproc==true){
-    if(p1pp3d.periods[2]==1){
-      if(p1pp3d.mype_z==0){
+    if(p1->periods[2]==1){
+      if(p1->mype_z==0){
         for(LO l=0;l<nzb;l++){
-          xin[l]=p1pp3d.pzcoords[p1pp3d.nz0-nzb+l]-2.0*cplPI;
-          xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzcoords[p1pp3d.lk2+l+1];          
+          xin[l]=p1->pzcoords[p1->nz0-nzb+l]-2.0*cplPI;
+          xin[p1->lk0+nzb+l]=p1->pzcoords[p1->lk2+l+1];          
         }
-      } else if(p1pp3d.mype_z==p1pp3d.npz-1){
+      } else if(p1->mype_z==p1->npz-1){
           for(LO l=0;l<nzb;l++){
-            xin[l]=p1pp3d.pzcoords[p1pp3d.lk1-nzb+l];
-            xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzcoords[l]+2.0*cplPI;
+            xin[l]=p1->pzcoords[p1->lk1-nzb+l];
+            xin[p1->lk0+nzb+l]=p1->pzcoords[l]+2.0*cplPI;
           }        
       }else{
           for(LO l=0;l<nzb;l++){
-            xin[l]=p1pp3d.pzcoords[p1pp3d.lk1-nzb+l];
-            xin[p1pp3d.lk0+nzb+l]=p1pp3d.pzcoords[p1pp3d.lk2+l+1];
+            xin[l]=p1->pzcoords[p1->lk1-nzb+l];
+            xin[p1->lk0+nzb+l]=p1->pzcoords[p1->lk2+l+1];
           }
       }
-      for(LO k=0;k<p1pp3d.lk0;k++){  
-        xin[nzb+k]=p1pp3d.pzcoords[p1pp3d.lk1+k];
+      for(LO k=0;k<p1->lk0;k++){  
+        xin[nzb+k]=p1->pzcoords[p1->lk1+k];
       }      
     }
 
-   for(LO i=0;i<p1pp3d.li0;i++){
-      for(LO j=0;j<p1pp3d.lj0;j++){
+   for(LO i=0;i<p1->li0;i++){
+      for(LO j=0;j<p1->lj0;j++){
         for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowdenz[i][j][l];
-          yin[p1pp3d.lk0+nzb+l]=bdesc.updenz[i][j][l];
+          yin[p1->lk0+nzb+l]=bdesc.updenz[i][j][l];
         }
-        for(LO k=0;k<p1pp3d.lk0;k++){  
+        for(LO k=0;k<p1->lk0;k++){  
           yin[nzb+k]=densin[i][j][k];
         }
-        xout=p3m3d.pzcoords[i];
+        xout=p3->pzcoords[i];
         yout=densinterpo[i][j];
-        Lag3dArray(yin,xin,p1pp3d.lk0+2*nzb,yout,xout,p3m3d.mylk0[i]);
+        Lag3dArray(yin,xin,p1->lk0+2*nzb,yout,xout,p3->mylk0[i]);
       }
     }   
   }
@@ -103,35 +101,33 @@ void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc,
 }
 
 
-void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc,
-    const Part3Mesh3D& p3m3d,
-    const Part1ParalPar3D &p1pp3d)
+void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc)
 {
   CV* yin;
   CV* yout;
   double* xin;
   LO nzb=bdesc.nzb;
   if(preproc==true){
-    for(LO i=0;i<p3m3d.li0;i++){
-      yin=new CV[p3m3d.mylk0[i]+2*nzb];
-      xin=new double[p3m3d.mylk0[i]+2*nzb];
+    for(LO i=0;i<p3->li0;i++){
+      yin=new CV[p3->mylk0[i]+2*nzb];
+      xin=new double[p3->mylk0[i]+2*nzb];
 
       for(LO l=0;l<nzb;l++){  
         xin[l]=bdesc.lowzpart3[i][l];
-        xin[p3m3d.mylk0[i]+nzb+l]=bdesc.upzpart3[i][l];      
+        xin[p3->mylk0[i]+nzb+l]=bdesc.upzpart3[i][l];      
       }
 
-      for(LO j=0;j<p3m3d.lj0/2;j++){
+      for(LO j=0;j<p3->lj0/2;j++){
         for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowpotentz[i][j][l];
-          yin[p3m3d.mylk0[i]+nzb+l]=bdesc.uppotentz[i][j][l];
+          yin[p3->mylk0[i]+nzb+l]=bdesc.uppotentz[i][j][l];
         }
-        for(LO k=0;k<p3m3d.mylk0[i];k++){
-          xin[k+nzb]=p3m3d.pzcoords[i][k];
+        for(LO k=0;k<p3->mylk0[i];k++){
+          xin[k+nzb]=p3->pzcoords[i][k];
           yin[k+nzb]=potentinterpo[i][j][k];
         }
         yout=potentpart1[i][j];
-        Lag3dArray(yin,xin,p3m3d.mylk0[i]+2*nzb,yout,p1pp3d.pzp,p1pp3d.lk0);
+        Lag3dArray(yin,xin,p3->mylk0[i]+2*nzb,yout,p1->pzp,p1->lk0);
      }
 
      delete[] xin;

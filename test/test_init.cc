@@ -17,14 +17,16 @@ int main(int argc, char* argv[])
   coupler::Part1ParalPar3D p1pp3d(preproc, test_case, test_dir);    
   coupler::Part3Mesh3D p3m3d(p1pp3d, preproc, test_case, test_dir);
   const int nummode = 1;
-  coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);  
+  coupler::Part1ParalPar3D* mesh1=&p1pp3d;
+  coupler::Part3Mesh3D*     mesh3=&p3m3d;
+  coupler::DatasProc3D dp3d(mesh1, mesh3, preproc, test_case, ypar, nummode);  
 
   coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,test_case,preproc);
 
   dp3d.InitFourierPlan3D(); 
   dp3d.RealdataToCmplxdata3D();
-  dp3d.zPotentBoundaryBufAssign(bdesc,p3m3d,p1pp3d);
-  dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);
+  dp3d.zPotentBoundaryBufAssign(bdesc);
+  dp3d.InterpoPotential3D(bdesc);
 
   for(coupler::LO i=0;i<p1pp3d.li0;i++){
     for(coupler::LO j=0;j<p1pp3d.lj0;j++){
@@ -35,8 +37,8 @@ int main(int argc, char* argv[])
   }
  
 
-  dp3d.zDensityBoundaryBufAssign(dp3d.densin,bdesc,p1pp3d);
-  dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d); 
+  dp3d.zDensityBoundaryBufAssign(dp3d.densin,bdesc);
+  dp3d.InterpoDensity3D(bdesc); 
   dp3d.CmplxdataToRealdata3D();
 
 

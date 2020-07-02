@@ -83,8 +83,6 @@ int main(int argc, char **argv){
   coupler::DatasProc3D dp3d(p1pp3d, p3m3d, preproc, test_case, ypar, nummode);
   if(!p1pp3d.mype)std::cerr << "0.9"<< "\n";
 
-//  dp3d.Initmattoplane(p3m3d,p1pp3d);
-
   coupler::destroy(q_prof);
   coupler::destroy(gene_xval);
   coupler::destroy(gene_parpar);
@@ -105,9 +103,7 @@ for(coupler::LO i=0;i<count[0]*count[1];i++){
 std::cout<<"i="<<i<<" "<<densityfromGENE->val(i)<<'\n';
  }
 */
-std::cout<<"111"<<'\n';
       dp3d.DistriDensiRecvfromPart1(p3m3d,p1pp3d,densityfromGENE);
-std::cout<<"222"<<'\n';
 //      coupler::destroy(densityfromGENE);
 /* 
 if(p1pp3d.mype==0){
@@ -134,10 +130,6 @@ for(int i=0;i<p1pp3d.li0;i++){
 */
 
 
-//      dp3d.InterpoDensity3D(bdesc,p3m3d,p1pp3d);
-//      dp3d.CmplxdataToRealdata3D();
-//      dp3d.DensityToPart3(p3m3d);
-
       dp3d.AssemDensiSendtoPart3(bdesc,p3m3d,p1pp3d);
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
                                                     p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
@@ -153,25 +145,19 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
 }
 } 
 */
- 
       coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);    
       coupler::destroy(densitytoXGC);
       coupler::destroy(densityfromGENE);
- 
       coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
       coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
 
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,MPI_COMM_WORLD,m);
-
       dp3d.DistriPotentRecvfromPart3(p3m3d,p1pp3d,fieldfromXGC);
       coupler::destroy(fieldfromXGC);
- 
       dp3d.RealdataToCmplxdata3D();
       dp3d.zPotentBoundaryBufAssign(bdesc,p3m3d,p1pp3d);
       dp3d.InterpoPotential3D(bdesc,p3m3d,p1pp3d);       
-
       dp3d.AssemPotentSendtoPart1(p3m3d,p1pp3d);
-    
       coupler::Array2d<coupler::CV>* fieldtoGENE = new coupler::Array2d<coupler::CV>(
                                                    p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.blockcount,
                                                    p1pp3d.lj0,p1pp3d.blockstart);
@@ -179,7 +165,7 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
       for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
-
+std::cout<<"777"<<'\n';
       coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,MPI_COMM_WORLD,m);
 
       MPI_Barrier(MPI_COMM_WORLD);

@@ -152,12 +152,19 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
 
    for(LO i=0;i<nz0;i++){
      pzcoords[i]=-1.0*cplPI+(double)i*dz;
+     if(mype==0) std::cout<<"i="<<i<<" "<<"pz="<<pzcoords[i]<<'\n';
    }
    pzp=new double[lk0];
    for(LO i=0;i<lk0;i++){
      pzp[i]=double(lk1+i)*dz-1.0*cplPI;
    }
    blockindice();  
+
+   if(mype==0){
+     for(LO h=0;h<nx0;h++){
+       std::cout<<"q_prof,h="<<h<<" "<<q_prof[h]<<'\n';
+     }
+   }
 
    if(test_case==TestCase::t0){ 
      delete[] parpar;

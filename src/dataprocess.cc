@@ -192,7 +192,6 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Part3Mesh3D& p3m3d, const Part
     for(GO i=0;i<p3m3d.blockcount;i++)
       tmp[j][i]=array[j*p3m3d.blockcount+i];
   }
-std::cout<<"1"<<'\n';
   LO xl=0; 
   GO sumbegin=0;       
   GO numnode=0;  
@@ -208,19 +207,22 @@ std::cout<<"1"<<'\n';
       }
       reshuffleforward(datain[j],p3m3d.nstart[xl],p3m3d.versurf[xl]);
     }
-std::cout<<"2"<<'\n';     
     sumbegin+=p3m3d.versurf[xl];
     
     for(LO j=0;j<p1pp3d.y_res_back-1;j++){
       for(LO k=0;k<p1pp3d.lk0;k++){
+/*
+std::cout<<mat_from_ind_n[i][j][k][0]<<" "<<mat_from_ind_n[i][j][k][1]<<" "<<mat_from_ind_n[i][j][k][2]
+<<" "<<mat_from_ind_n[i][j][k][3]<<'\n'
+<<mat_from_ind_plane[i][j][k][0]<<" "<<mat_from_ind_plane[i][j][k][1]<<'\n'; 
+*/
         potentin[i][j][k]=
-        +datain[mat_from_ind_n[i][j][k][1]][mat_from_ind_plane[i][j][k][1]]*mat_from_weight[i][j][k][1]
-        +datain[mat_from_ind_n[i][j][k][2]][mat_from_ind_plane[i][j][k][1]]*mat_from_weight[i][j][k][2]
-        +datain[mat_from_ind_n[i][j][k][3]][mat_from_ind_plane[i][j][k][2]]*mat_from_weight[i][j][k][3]
-        +datain[mat_from_ind_n[i][j][k][4]][mat_from_ind_plane[i][j][k][2]]*mat_from_weight[i][j][k][4];
-      }
+        +datain[mat_from_ind_plane[i][j][k][0]][mat_from_ind_n[i][j][k][0]]*mat_from_weight[i][j][k][0]
+        +datain[mat_from_ind_plane[i][j][k][0]][mat_from_ind_n[i][j][k][1]]*mat_from_weight[i][j][k][1]
+        +datain[mat_from_ind_plane[i][j][k][1]][mat_from_ind_n[i][j][k][2]]*mat_from_weight[i][j][k][2]
+        +datain[mat_from_ind_plane[i][j][k][1]][mat_from_ind_n[i][j][k][3]]*mat_from_weight[i][j][k][3];
+     }
     }
-std::cout<<"3"<<'\n';
     for(LO j=0;j<p3m3d.lj0;j++){
       free(datain[j]);
     }
@@ -633,37 +635,61 @@ void DatasProc3D::Prepare_mats_from_planes()
   LO count_l,count_r,ipl_l,ipl_r,ind_l,ind_u;
  
   for(int i=0;i<p3.li0;i++){
-    q=p1.q_prof[i];
+    q=p1.q_prof[i+p3.li1];
     double* tmp = new double[p3.versurf[i+p3.li1]]; 
     for(int j=0;j<p1.y_res_back;j++){
       y=j*dy_inv;
       for(int k=0;k<p1.lk0;k++){
         chi_red=p1.pzcoords[p1.lk1+k];
-        phi=q*chi_red-y/p1.C_y[i+p3.li1]*(p1.rhostar*p1.minor_r);
-        phi_red=remainder(phi,2.0*cplPI/double(p1.n0_global));
+        phi=q*chi_red-(y/p1.C_y[i+p3.li1])*(p1.rhostar*p1.minor_r);
+/*
+if(p1.mype==0){
+std::cout<<"phi="<<phi<<" "<<chi_red<<" "<<q<<" "<<y<<" "<<p1.C_y[i+p3.li1]<<'\n';
+}
+*/        phi_red=remainder(phi,2.0*cplPI/double(p1.n0_global));
+        if(phi_red<=0) phi_red=2.0*cplPI/double(p1.n0_global)+phi_red;
         count_l=int((phi-phi_red)/(2.0*cplPI/double(p1.n0_global)));
         count_r=count_l;
         ipl_l=int(phi_red/dphi);
         ipl_r=ipl_l+1;       
+
+//if(p1.mype==0) std::cout<<"ipl_l,ipl_r,phi_red="<<ipl_l<<" "<<ipl_r<<" "<<phi_red<<" "<<phi<<'\n';
+        if(ipl_r==p1.n_cuts){
+          ipl_r=0;
+          count_r=count_r+1;
+        }
+//        ipl_r=ipl_r+1;
+//        ipl_l=ipl_l+1;
+
         chi_red_l=(y/p1.C_y[i+p3.li1]*(p1.rhostar*p1.minor_r)+phi_l[ipl_l]
                +count_l*2.0*cplPI/double(p1.n0_global))/q;
         chi_red_r=(y/p1.C_y[i+p3.li1]*(p1.rhostar*p1.minor_r)+phi_l[ipl_r]
                +count_r*2.0*cplPI/double(p1.n0_global))/q;   
-        chi_red_l=remainder(chi_red_l+cplPI,2.0*cplPI)-cplPI;
-        chi_red_r=remainder(chi_red_r+cplPI,2.0*cplPI)-cplPI;
+        chi_red_l=remainder(chi_red_l+cplPI,2.0*cplPI);
+        if(chi_red_l<=0)  chi_red_l=2.0*cplPI+chi_red_l;
+        chi_red_l=chi_red_l-cplPI;
+       
+        chi_red_r=remainder(chi_red_r+cplPI,2.0*cplPI);
+        if(chi_red_r<=0) chi_red_r=2.0*cplPI+chi_red_r;
+        chi_red_r=chi_red_r-cplPI;        
+
         phi_red_l=phi_l[ipl_l];
         phi_red_r=phi_l[ipl_r];
+
         mat_from_ind_plane[i][j][k][0]=ipl_l;
         mat_from_ind_plane[i][j][k][1]=ipl_r;
+
         dist_phi=sqrt(pow(phi_red_l-phi_red_r,2)+pow(chi_red_l-chi_red_r,2));
         dist_l=sqrt(pow(phi_red-phi_red_r,2)+pow(chi_red-chi_red_r,2));
         dist_r=sqrt(pow(phi_red-phi_red_l,2)+pow(chi_red-chi_red_l,2));        
         w_plane_left=dist_l/dist_phi;
         w_plane_right=dist_r/dist_phi;
+
         //left_plane 
         for(LO m=0;m<p3.versurf[i+p3.li1];m++){
           tmp[i]=abs(p3.zcoordsurf[i][m]-chi_red_l);
         } 
+
         ind_u=minloc(tmp,p3.versurf[i+p3.li1]);
         mat_from_ind_n[i][j][k][0]=ind_u;
         chi_u=p3.pzcoords[i][ind_u];
@@ -687,6 +713,7 @@ void DatasProc3D::Prepare_mats_from_planes()
           }
           mat_from_ind_n[i][j][k][1]=ind_l;      
         }  
+
         dchi=chi_l-chi_u;
         
         mat_from_weight[i][j][k][0]=(chi_l-chi_red_l)/dchi*w_plane_left;
@@ -696,9 +723,12 @@ void DatasProc3D::Prepare_mats_from_planes()
         for(LO m=0;m<p3.versurf[i+p3.li1];m++){
           tmp[i]=abs(p3.zcoordsurf[i][m]-chi_red_r);
         }
+
         ind_u=minloc(tmp,p3.versurf[i+p3.li1]);
+
         mat_from_ind_n[i][j][k][2]=ind_u;
         chi_u=p3.zcoordsurf[i][ind_u];       
+
         if((chi_red_r-chi_u)>0){
           ind_l=ind_u+1;
           if(ind_l>p3.versurf[p3.li1+i]){
@@ -722,24 +752,9 @@ void DatasProc3D::Prepare_mats_from_planes()
         dchi=chi_l-chi_u;
         mat_from_weight[i][j][k][2]=(chi_l-chi_red_r)/dchi*w_plane_right;
         mat_from_weight[i][j][k][3]=(chi_red_r-chi_u)/dchi*w_plane_right;  
-/*
-if(p1.mype==0 && k==p1.lk0-1 && j==p1.y_res_back-1){
-std::cout<<"333"<<'\n';
-}
-*/
       }
-/*
-if(p1.mype==0 && j==p1.y_res_back-1){
-std::cout<<"444"<<'\n';
-}
-*/
     }
     free(tmp);
-/*
-if(p1.mype==0 && i==p3.li0){
-std::cout<<"222"<<'\n';
-}
-*/
   }
   for(LO i=0;i<p3.li0;i++){
     free(p3.zcoordsurf[i]);

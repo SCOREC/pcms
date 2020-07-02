@@ -31,7 +31,7 @@ class Part1ParalPar3D {
 //    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
     int periods[3]={1,0,1};
     double* xcoords=NULL; // The 1d array storing the radial position of all flux surfaces
-    double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
+    double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal cross section.
     double* pzp=NULL; // The 1d array storing the poloial on each process.
 //    double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature background. 

@@ -182,11 +182,12 @@ std::cout<<"777"<<'\n';
   gQP.close();
   gRX.close();
   gInt.close();
+  gCy.close();
+  xXcoord.close();
+  xSurf.close();
   xZcoord.close();
   xVsurf.close();
   xCce.close();
-  xXcoord.close();
-  xSurf.close();
 
   std::cerr << p1pp3d.mype << " before kokkos finalize\n";
   Kokkos::finalize();
@@ -194,4 +195,3 @@ std::cout<<"777"<<'\n';
   MPI_Finalize();
   return 0;
 }
-

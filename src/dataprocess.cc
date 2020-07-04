@@ -227,8 +227,7 @@ std::cout<<mat_from_ind_n[i][j][k][0]<<" "<<mat_from_ind_n[i][j][k][1]<<" "<<mat
     }
     free(datain);
   }
-      std::cout<<"sumbegin, p3->blockcount="<<sumbegin<<" "<<p3->blockcount<<'\n';
-//  assert(sumbegin==p3->blockcount); 
+  assert(sumbegin==p3->blockcount); 
   for(LO j=0;j<p3->lj0;j++)
     free(tmp[j]);
   free(tmp);

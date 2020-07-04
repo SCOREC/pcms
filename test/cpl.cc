@@ -104,8 +104,10 @@ std::cout<<"start count"<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<
       m=i*RK_count+j;
       coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,MPI_COMM_WORLD,m);
 /*
-for(coupler::LO i=0;i<count[0]*count[1];i++){
-std::cout<<"i="<<i<<" "<<densityfromGENE->val(i)<<'\n';
+if(p1pp3d.mype==0){
+for(coupler::LO h=0;h<2*count[1];h++){
+std::cout<<"densityfromGENE,h="<<h<<" "<<densityfromGENE->val(h)<<'\n';
+ }
  }
 */
       dp3d.DistriDensiRecvfromPart1(densityfromGENE);
@@ -145,8 +147,8 @@ for(int i=0;i<p1pp3d.li0;i++){
       }
 /*
 if(p1pp3d.mype==0){
-for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
-     std::cout<<"i="<<i<<" "<<densitytmp[i]<<'\n';
+for(int f=0;f<p3m3d.blockcount;f++){
+     std::cout<<"denssend,f="<<f<<" "<<densitytmp[f]<<'\n';
 }
 } 
 */
@@ -157,6 +159,13 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
       coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
 
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,MPI_COMM_WORLD,m);
+
+if(p1pp3d.mype==0){
+for(coupler::LO h=0;h<2*count[1];h++){
+std::cout<<"fieldfromXGC,j,h="<<j<<" "<<h<<" "<<fieldfromXGC->val(h)<<'\n';
+ }
+ }
+
       dp3d.DistriPotentRecvfromPart3(fieldfromXGC);
       coupler::destroy(fieldfromXGC);
       dp3d.RealdataToCmplxdata3D();
@@ -170,7 +179,13 @@ for(int i=0;i<p3m3d.lj0*p3m3d.blockcount;i++){
       for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
-std::cout<<"777"<<'\n';
+
+if(p1pp3d.mype==0){
+for(int f=0;f<p1pp3d.lj0*p1pp3d.blockcount;f++){
+     std::cout<<"fieldtoGENE,f,j="<<j<<" "<<f<<" "<<fieldtmp[f]<<'\n';
+}
+}
+
       coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,MPI_COMM_WORLD,m);
 
       MPI_Barrier(MPI_COMM_WORLD);
@@ -198,5 +213,6 @@ std::cout<<"777"<<'\n';
   Kokkos::finalize();
   std::cerr << p1pp3d.mype << " done kokkos finalize\n";
   MPI_Finalize();
+  std::cout<<"MPI is finalized."<<'\n';
   return 0;
 }

@@ -103,6 +103,13 @@ int main(int argc, char **argv){
 std::cout<<"start count"<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
       m=i*RK_count+j;
       coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,MPI_COMM_WORLD,m);
+
+//if(p1pp3d.mype==0){
+for(coupler::LO h=0;h<count[0]*count[1];h++){
+std::cout<<"densityfromGENE,j,h="<<j<<" "<<h<<" "<<densityfromGENE->val(h)<<'\n';
+ }
+// }
+
 /*
 if(p1pp3d.mype==0){
 for(coupler::LO h=0;h<2*count[1];h++){
@@ -145,13 +152,13 @@ for(int i=0;i<p1pp3d.li0;i++){
       for(int h=0;h<p3m3d.lj0*p3m3d.blockcount;h++){
         densitytmp[h] = dp3d.denssend[h]; 
       }
-/*
-if(p1pp3d.mype==0){
-for(int f=0;f<p3m3d.blockcount;f++){
-     std::cout<<"denssend,f="<<f<<" "<<densitytmp[f]<<'\n';
+
+//if(p1pp3d.mype==0){
+for(int f=0;f<p3m3d.lj0*p3m3d.blockcount;f++){
+     std::cout<<"denstoXGC,j,f="<<j<<" "<<f<<" "<<densitytmp[f]<<'\n';
 }
-} 
-*/
+//} 
+
       coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);    
       coupler::destroy(densitytoXGC);
       coupler::destroy(densityfromGENE);
@@ -160,11 +167,11 @@ for(int f=0;f<p3m3d.blockcount;f++){
 
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,MPI_COMM_WORLD,m);
 
-if(p1pp3d.mype==0){
+//if(p1pp3d.mype==0){
 for(coupler::LO h=0;h<2*count[1];h++){
 std::cout<<"fieldfromXGC,j,h="<<j<<" "<<h<<" "<<fieldfromXGC->val(h)<<'\n';
  }
- }
+//}
 
       dp3d.DistriPotentRecvfromPart3(fieldfromXGC);
       coupler::destroy(fieldfromXGC);
@@ -177,14 +184,14 @@ std::cout<<"fieldfromXGC,j,h="<<j<<" "<<h<<" "<<fieldfromXGC->val(h)<<'\n';
                                                    p1pp3d.lj0,p1pp3d.blockstart);
       coupler::CV* fieldtmp = fieldtoGENE->data(); 
       for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
-        fieldtmp[h] = dp3d.potentsend[h];
+        fieldtmp[h] =coupler::CV(1.0,1.0);        //dp3d.potentsend[h];
       }         
 
-if(p1pp3d.mype==0){
+//if(p1pp3d.mype==0){
 for(int f=0;f<p1pp3d.lj0*p1pp3d.blockcount;f++){
-     std::cout<<"fieldtoGENE,f,j="<<j<<" "<<f<<" "<<fieldtmp[f]<<'\n';
+     std::cout<<"mype,fieldtoGENE,j,f="<<p1pp3d.mype<<" "<<j<<" "<<f<<" "<<fieldtmp[f]<<'\n';
 }
-}
+//}
 
       coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,MPI_COMM_WORLD,m);
 

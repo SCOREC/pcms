@@ -111,6 +111,11 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
    sign_phi = gene_cy[nx0+2];
    dx = gene_cy[nx0+3];
    rhostar=gene_cy[nx0+4];
+   Tref=gene_cy[nx0+5];
+   nref=gene_cy[nx0+6];
+   mref=gene_cy[nx0+7];
+   Bref=gene_cy[nx0+8];
+   Lref=gene_cy[nx0+9];
 
    L_tor=sign_phi*2.0*cplPI/double(n0_global*lj0*2);
    if(mype==0){
@@ -121,6 +126,11 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
      std::cout<<"lj0="<<lj0<<'\n';
      std::cout<<"L_tor="<<L_tor<<'\n'; 
      std::cout<<"rhostar="<<rhostar<<'\n';
+     std::cout<<"Tref="<<Tref<<'\n';
+     std::cout<<"nref="<<nref<<'\n';
+     std::cout<<"mref="<<mref<<'\n';
+     std::cout<<"Bref="<<Bref<<'\n';
+     std::cout<<"Lref="<<Lref<<'\n';
    }   
    phi_cut = new double[lj0*2];
    for(LO i=0;i<lj0*2;i++){
@@ -130,7 +140,13 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
    dy=dx*rhostar*minor_r/res_fact;
    y_res=2.0*lj0;
    y_res_back=y_res*res_fact;
-
+   norm_fact_dens=nref * 1.0e+19 * rhostar* minor_r;
+   norm_fact_field=Tref * 1.0e+3* rhostar * minor_r;   
+   if(mype==0){
+     std::cout<<"norm_fact_dens="<<norm_fact_dens<<'\n';
+     std::cout<<"norm_fact_field="<<norm_fact_field<<'\n';
+     std::cout<<"y_red_back="<<y_res_back<<'\n';
+   }
 
    totnodes=nx0*nz0;
    if(test_case==TestCase::t0){

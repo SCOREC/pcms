@@ -45,7 +45,8 @@ class Part1ParalPar3D {
     double lx_a;
     LO sign_phi;
     double dx;
- 
+    double Tref,nref,mref,Bref,Lref;
+    
     double dz;  // The equal step length along the poloidal flux curve.
 
     int res_fact; //This is different from 4 which has no substantial implementation in wdmapp/GENE 
@@ -54,7 +55,9 @@ class Part1ParalPar3D {
     double dy;
     LO y_res;
     LO y_res_back;
- 
+    double norm_fact_dens;
+    double norm_fact_field; 
+
 
 // parameters for Adios transfer
     GO blockstart,blockend,blockcount;    

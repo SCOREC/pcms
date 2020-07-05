@@ -189,7 +189,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Array2d<double>* fieldfromXGC)
   array = fieldfromXGC->data();
   for(LO j=0;j<p3->lj0;j++){
     for(GO i=0;i<p3->blockcount;i++)
-      tmp[j][i]=array[j*p3->blockcount+i];
+      tmp[j][i]=array[j*p3->blockcount+i]/p1->norm_fact_field;
   }
   LO xl=0; 
   GO sumbegin=0;       
@@ -534,7 +534,7 @@ std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\
     }
    
     for(GO h=0;h<p3->blockcount;h++){
-        denssend[j*p3->blockcount+h] = blocktmp[h];
+        denssend[j*p3->blockcount+h] = blocktmp[h]*p1->norm_fact_dens;
     } 
   }
   free(recvcount);

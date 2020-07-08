@@ -354,6 +354,7 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Array2d<CV>* densityfromGENE)
       }
       for(LO k=0;k<p1->lk0;k++){
         densin[i][j][k]=blocktmp[i][p1->lk1+k];
+//if(p1->mype==0) std::cout<<"densin,i,j,k="<<i<<" "<<j<<" "<<k<<" "<<densin[i][j][k]<<'\n';
       }
      }
    }
@@ -456,6 +457,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
   InterpoDensity3D(bdesc);  
 
 // don't understand the following operation  
+
   for(LO i=0;i<p1->li0;i++){
     CV** loc_data = new CV*[p3->lj0];
     for(LO j=0;j<p3->lj0;j++){
@@ -469,15 +471,17 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
         }
       } 
     } 
-    for(LO j=0;j<p1->n_cuts;j++){
+    for(LO j=0;j<p1->lj0;j++){
       for(LO k=0;k<p3->mylk0[i];k++){   
-        CV tmp=CV(0.0,0.0);
+        CV tmp1=CV(0.0,0.0);
         for(LO h=0;h<p3->lj0;h++){
-          tmp=+mat_to_plane[i][j][h][k]*loc_data[h][k];
+          tmp1+=mat_to_plane[i][j][h][k]*loc_data[h][k];
         }       
-        tmpmat[i][j][k]+=tmp.real();
+        tmpmat[i][j][k]+=tmp1.real();
       }
     }     
+    for(LO j=0;j<p3->lj0;j++) free(loc_data[j]);
+    free(loc_data);
   }
 
 //don't understand the above operation   
@@ -491,33 +495,38 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
     for(GO h=0;h<p3->blockcount;h++){
       blocktmp[h] = 0.0;
     }
-
-    for(LO h=0;h<p1->npz;h++){
-      recvcount[h]=0;
-      rdispls[h]=0;
-    }
-
-    for(LO i=0;i<p1->li0;i++){
+    LO num;
+    for(LO i=0;i<p3->li0;i++){
       MPI_Datatype mpitype = getMpiType(LO());      
+      for(LO h=0;h<p1->npz;h++){
+        recvcount[h]=0;
+        rdispls[h]=0;
+      }
       MPI_Allgather(&p3->mylk0[i],1,mpitype,recvcount,1,mpitype,p1->comm_z); 
       rdispls[0]=0;
       for(LO k=1;k<p1->npz;k++){
 	rdispls[k]=rdispls[k-1]+recvcount[k-1];
       }
 /*
-if(p1->mype==0) {
-for(LO k=0;k<p3->mylk0[i];k++){
-std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\n';
+if(j==0 && i==0)
+for(LO h=0;h<p1->npz;h++){
+std::cout<<p1->mype<<" "<<recvcount[h]<<" "<<rdispls[h]<<'\n';
 }
 }
-*/
+*/    num=0;
+      for(LO h=0;h<p1->npz;h++){
+        num+=recvcount[h];
+      }
       xl=p1->li1+i;    
+      std::cout<<"num versurf[xl]="<<num<<" "<<p3->versurf[xl]<<'\n';
+      assert(num==p3->versurf[xl]);
+ 
       double* tmp = new double[p3->versurf[xl]];
-      double* tmp_one;
+      double* tmp_one = new double[p3->mylk0[i]];
+      for(LO h=0;h<p3->mylk0[i];h++) tmp_one[h]=0.0;
       tmp_one=tmpmat[i][j];         
       MPI_Allgatherv(tmp_one,p3->mylk0[i],MPI_DOUBLE,tmp,recvcount,rdispls,
                     MPI_DOUBLE,p1->comm_z);    
- 
       reshufflebackward(tmp,p3->nstart[xl],p3->versurf[xl]);
       GO sumbegin=0;
       for(LO h=0;h<i;h++){
@@ -529,10 +538,8 @@ std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\
      if(i==p1->li0-1){
         assert((sumbegin+(GO)p3->versurf[xl]) == p3->blockcount);
       }
-
-      free(tmp); 
-    }
-   
+      free(tmp);
+    }   
     for(GO h=0;h<p3->blockcount;h++){
         denssend[j*p3->blockcount+h] = blocktmp[h]*p1->norm_fact_dens;
     } 
@@ -540,6 +547,7 @@ std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\
   free(recvcount);
   free(rdispls);
   free(blocktmp);
+
   for(LO i=0;i<p3->li0;i++){
     for(LO j=0;j<p3->lj0;j++){
       free(tmpmat[i][j]);

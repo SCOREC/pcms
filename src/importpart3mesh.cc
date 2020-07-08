@@ -109,7 +109,24 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      mylk1=new LO[li0];
      mylk2=new LO[li0];      
      DistriPart3zcoords(p1pp3d, test_dir);
+
+// for debugging
+     bool debug =false;
+     if(debug){
+     for(LO i=0;i<li0;i++){
+      LO num=0;
+     LO* recvcount=new LO[p1pp3d.npz];
+     MPI_Allgather(&mylk0[i],1,MPI_INT,recvcount,1,MPI_INT,p1pp3d.comm_z);
+     for(LO h=0;h<p1pp3d.npz;h++) num+=recvcount[h];
+     free(recvcount);
+     if(p1pp3d.mype==2) std::cout<<num<<"   "<<versurf[li1+i]<<'\n';
+
+     if(i==0) 
+	std::cout<<"mypez,lk="<<p1pp3d.mype_z<<" "<<mylk0[0]<<" "<<mylk1[0]<<" "<<mylk2[0]<<'\n';
+     }
+     }
   } 
+
 }
 
 void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx)
@@ -184,14 +201,18 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
       }
       nstart[i] = minloc(zcoords,versurf[numsurf]);
       reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
-
-       DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
-       pzcoords[i-index1]= new double[mylk0[i-index1]];
-       for(LO k=0;k<mylk0[i-index1];k++){
-	 pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
-       }
-       numvert+=versurf[numsurf];
-       numsurf+=1;        
+      if(p1pp3d.mype==2 && i==index1){
+	for(LO h=0;h<versurf[numsurf];h++){
+	  std::cout<<"h,pz="<<h<<" "<<zcoords[h]<<'\n';
+	}
+      }
+      DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
+      pzcoords[i-index1]= new double[mylk0[i-index1]];
+      for(LO k=0;k<mylk0[i-index1];k++){
+	pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
+      }
+      numvert+=versurf[numsurf];
+      numsurf+=1;        
     }
   }  
 }
@@ -243,9 +264,10 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
     nstart=minloc(tmp,versurf[li]);
 
     //nstart must be in my domain or will duplicate
-    if(exterarr[nstart]<interarr[p1pp3d.lk1])
+  //  if(nstart!=0) nstart=nstart-1;
+    if(exterarr[nstart]<interarr[p1pp3d.lk1]){
       nstart+=1;
-
+    }
     LO i1=nstart;
     LO i2=nstart;
     double internal_ub;

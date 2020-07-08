@@ -59,7 +59,50 @@ void InputfromFile(T* numbers,LO ARRAY_SIZE,std::string filename)
     }
 }
 
-
+// for diagnosis
+template<class T>
+void printSumm1D(T* array, GO inds1d[2],T sum,
+     MPI_Comm &comm, std::string name,LO numiter)
+{
+  for(GO i=inds1d[0];i<inds1d[1]+1;i++){
+      sum+=array[i];
+    }
+  LO rank;
+  MPI_Comm_rank(comm,&rank);
+  std::cout<<"numiter,ranki "<<name<<"="<<numiter<<" "<<rank<<" "<<sum<<'\n';
 }
 
+
+
+template<class T>
+void printSumm2D(T** array, GO inds1d[2],GO inds2d[2],T sum,
+     MPI_Comm comm, std::string name,LO numiter)
+{
+  for(LO i=inds1d[0];i<inds1d[1]+1;i++){
+    for(LO j=inds2d[0];j<inds2d[1]+1;j++){
+      sum+=array[i][j];
+    }
+  }
+  LO rank;
+  MPI_Comm_rank(comm,&rank);
+  std::cout<<"numiter,ranki "<<name<<"="<<numiter<<" "<<rank<<" "<<sum<<'\n';
+}
+
+template<class T>
+void printSumm3D(T*** array, LO inds1d[2],LO inds2d[2],LO inds3d[2],T sum,
+     MPI_Comm comm, std::string name,LO numiter)
+{
+  for(GO i=inds1d[0];i<inds1d[1]+1;i++){
+    for(GO j=inds2d[0];j<inds2d[1]+1;j++){
+      for(GO k=inds3d[0];k<inds3d[1]+1;k++)
+      sum+=array[i][j][k];
+    }
+  }
+  LO rank;
+  MPI_Comm_rank(comm,&rank);
+  std::cout<<"numiter,ranki "<<name<<"="<<numiter<<" "<<rank<<" "<<sum<<'\n';
+}
+
+
+}
 #endif

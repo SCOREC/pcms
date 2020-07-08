@@ -96,11 +96,13 @@ int main(int argc, char **argv){
 
 
   int m;
+  double realsum;
+  coupler::CV cplxsum;
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::GO start[2]={0, p1pp3d.blockstart};
       coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};
-std::cout<<"start count"<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
+std::cout<<"mype, start count"<<p1pp3d.mype<<" "<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
       m=i*RK_count+j;
       coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,MPI_COMM_WORLD,m);
 
@@ -120,7 +122,25 @@ std::cout<<"densityfromGENE,h="<<h<<" "<<densityfromGENE->val(h)<<'\n';
  }
 */
       dp3d.DistriDensiRecvfromPart1(densityfromGENE);
-//      coupler::destroy(densityfromGENE);
+      cplxsum=coupler::CV(0.0,0.0);
+      coupler::LO inds1d[2]={0,p1pp3d.li0-1};
+      coupler::LO inds2d[2]={0,p1pp3d.lj0-1};
+      coupler::LO inds3d[2]={0,p1pp3d.lk0-1};
+      MPI_Barrier(MPI_COMM_WORLD);
+      coupler::printSumm3D(dp3d.densin,inds1d,inds2d,inds3d,cplxsum,
+      MPI_COMM_WORLD,"densityfromGENE",m);
+
+/*
+      if(p1pp3d.mype==0){
+      for(coupler::LO l=0; l<p1pp3d.li0; l++){
+        for(coupler::LO p=0; p<p1pp3d.lj0; p++){
+          for(coupler::LO k=0; k<p1pp3d.lk0; k++){
+            std::cout<<"numiter,densin,i,j,k="<<m<<" "<<l<<" "<<p<<" "<<k<<" "<<dp3d.densin[l][p][k]<<'\n';
+          }
+        }
+      }
+      }
+*/
 /* 
 if(p1pp3d.mype==0){
 for(int i=0;i<p1pp3d.li0;i++){
@@ -133,7 +153,6 @@ for(int i=0;i<p1pp3d.li0;i++){
 }
 */
 
-//      bdesc.zDensityBoundaryBufAssign(dp3d.densin,p1pp3d);
 /*
 if(p1pp3d.mype==0){
 for(int i=0;i<p1pp3d.li0;i++){
@@ -145,21 +164,29 @@ for(int i=0;i<p1pp3d.li0;i++){
 }
 */
 
-
       dp3d.AssemDensiSendtoPart3(bdesc);
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
                                                     p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
                                                     p3m3d.blockstart);
+std::cout<<"111"<<"\n";
       double* densitytmp = densitytoXGC->data();
       for(int h=0;h<p3m3d.lj0*p3m3d.blockcount;h++){
         densitytmp[h] = dp3d.denssend[h]; 
       }
+      realsum=0.0;
+      coupler::GO INDS1d[2]={0,p3m3d.lj0*p3m3d.blockcount};
+std::cout<<"222"<<"\n";
+MPI_Barrier(MPI_COMM_WORLD);
+      coupler::printSumm1D(dp3d.denssend,INDS1d,realsum,p1pp3d.comm_x,"densitytoXGC",m);
+std::cout<<"333"<<"\n";
+
 
 //if(p1pp3d.mype==0){
-
+/*
 for(int f=0;f<p3m3d.lj0*p3m3d.blockcount;f++){
      std::cout<<"denstoXGC,j,f="<<j<<" "<<f<<" "<<densitytmp[f]<<'\n';
 }
+*/
 
 //} 
 
@@ -170,6 +197,7 @@ for(int f=0;f<p3m3d.lj0*p3m3d.blockcount;f++){
       coupler::GO count_1[2]={coupler::GO(p3m3d.lj0),p3m3d.blockcount}; 
 
       coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,MPI_COMM_WORLD,m);
+
 
 //if(p1pp3d.mype==0){
 /*
@@ -192,12 +220,6 @@ std::cout<<"fieldfromXGC,j,h="<<j<<" "<<h<<" "<<fieldfromXGC->val(h)<<'\n';
       for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
-
-//if(p1pp3d.mype==0){
-for(int f=0;f<p1pp3d.lj0*p1pp3d.blockcount;f++){
-     std::cout<<"mype,fieldtoGENE,j,f="<<p1pp3d.mype<<" "<<j<<" "<<f<<" "<<fieldtmp[f]<<'\n';
-}
-//}
 
       coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,MPI_COMM_WORLD,m);
 

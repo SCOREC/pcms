@@ -471,7 +471,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
         }
       } 
     } 
-    for(LO j=0;j<p1->lj0;j++){
+    for(LO j=0;j<p1->n_cuts;j++){
       for(LO k=0;k<p3->mylk0[i];k++){   
         CV tmp1=CV(0.0,0.0);
         for(LO h=0;h<p3->lj0;h++){
@@ -508,19 +508,24 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
 	rdispls[k]=rdispls[k-1]+recvcount[k-1];
       }
 /*
-if(j==0 && i==0)
+if(j==0 && i==0){
 for(LO h=0;h<p1->npz;h++){
 std::cout<<p1->mype<<" "<<recvcount[h]<<" "<<rdispls[h]<<'\n';
 }
 }
-*/    num=0;
-      for(LO h=0;h<p1->npz;h++){
-        num+=recvcount[h];
-      }
-      xl=p1->li1+i;    
-      std::cout<<"num versurf[xl]="<<num<<" "<<p3->versurf[xl]<<'\n';
-      assert(num==p3->versurf[xl]);
+*/    xl=p1->li1+i;   
  
+      bool debug=false;
+      if(debug){
+	num=0;
+	for(LO h=0;h<p1->npz;h++){
+	  num+=recvcount[h];
+	}	   
+	std::cout<<"num versurf[xl]="<<num<<" "<<p3->versurf[xl]<<'\n';
+	assert(num==p3->versurf[xl]);
+	} 
+      MPI_Barrier(MPI_COMM_WORLD);      
+
       double* tmp = new double[p3->versurf[xl]];
       double* tmp_one = new double[p3->mylk0[i]];
       for(LO h=0;h<p3->mylk0[i];h++) tmp_one[h]=0.0;
@@ -542,8 +547,8 @@ std::cout<<p1->mype<<" "<<recvcount[h]<<" "<<rdispls[h]<<'\n';
     }   
     for(GO h=0;h<p3->blockcount;h++){
         denssend[j*p3->blockcount+h] = blocktmp[h]*p1->norm_fact_dens;
-    } 
-  }
+    }
+  } 
   free(recvcount);
   free(rdispls);
   free(blocktmp);

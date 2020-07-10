@@ -63,13 +63,15 @@ void InputfromFile(T* numbers,LO ARRAY_SIZE,std::string filename)
 template<class T>
 void printSumm1D(T* array, GO inds1d[2],T sum,
      MPI_Comm &comm, std::string name,LO numiter)
-{
-  for(GO i=inds1d[0];i<inds1d[1]+1;i++){
-      sum+=array[i];
-    }
+{  LO num=0;
   LO rank;
   MPI_Comm_rank(comm,&rank);
-  std::cout<<"numiter,ranki "<<name<<"="<<numiter<<" "<<rank<<" "<<sum<<'\n';
+  for(GO i=inds1d[0];i<inds1d[1]+1;i++){
+      sum+=array[i];
+      num+=1;
+//     if(rank==0) std::cout<<i<<" "<<array[i]<<'\n';
+    }
+  std::cout<<"numiter,ranki "<<name<<"="<<numiter<<" "<<rank<<" "<<sum<<" "<<num<<'\n';
 }
 
 
@@ -77,7 +79,7 @@ void printSumm1D(T* array, GO inds1d[2],T sum,
 template<class T>
 void printSumm2D(T** array, GO inds1d[2],GO inds2d[2],T sum,
      MPI_Comm comm, std::string name,LO numiter)
-{
+{ 
   for(LO i=inds1d[0];i<inds1d[1]+1;i++){
     for(LO j=inds2d[0];j<inds2d[1]+1;j++){
       sum+=array[i][j];
@@ -85,7 +87,7 @@ void printSumm2D(T** array, GO inds1d[2],GO inds2d[2],T sum,
   }
   LO rank;
   MPI_Comm_rank(comm,&rank);
-  std::cout<<"numiter,ranki "<<name<<"="<<numiter<<" "<<rank<<" "<<sum<<'\n';
+  std::cout<<"numiter,rank "<<name<<"="<<numiter<<" "<<rank<<" "<<sum<<'\n';
 }
 
 template<class T>

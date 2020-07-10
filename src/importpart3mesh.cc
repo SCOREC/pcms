@@ -86,7 +86,6 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      for(LO i=0;i<p1pp3d.npx;i++){
        xboxinds[i]=new LO[3];
      }
-
      LO* buffer=new LO[3*p1pp3d.npx];
      MPI_Allgather(xinds,3,MPI_INT,buffer,3,MPI_INT,p1pp3d.comm_x);
      for(LO i=0;i<p1pp3d.npx;i++){
@@ -111,22 +110,22 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      DistriPart3zcoords(p1pp3d, test_dir);
 
 // for debugging
-     bool debug =false;
+     MPI_Barrier(MPI_COMM_WORLD);
+     bool debug = false;
      if(debug){
-     for(LO i=0;i<li0;i++){
-      LO num=0;
-     LO* recvcount=new LO[p1pp3d.npz];
-     MPI_Allgather(&mylk0[i],1,MPI_INT,recvcount,1,MPI_INT,p1pp3d.comm_z);
-     for(LO h=0;h<p1pp3d.npz;h++) num+=recvcount[h];
-     free(recvcount);
-     if(p1pp3d.mype==2) std::cout<<num<<"   "<<versurf[li1+i]<<'\n';
-
-     if(i==0) 
-	std::cout<<"mypez,lk="<<p1pp3d.mype_z<<" "<<mylk0[0]<<" "<<mylk1[0]<<" "<<mylk2[0]<<'\n';
-     }
-     }
-  } 
-
+       for(LO i=0;i<li0;i++){
+	 LO num=0;
+	 LO* recvcount=new LO[p1pp3d.npz];
+	 MPI_Allgather(&mylk0[i],1,MPI_INT,recvcount,1,MPI_INT,p1pp3d.comm_z);
+	 for(LO h=0;h<p1pp3d.npz;h++) num+=recvcount[h];
+	 free(recvcount);
+	 if(p1pp3d.mype==2 || p1pp3d.mype==0) std::cout<<num<<"   "<<versurf[li1+i]<<'\n';
+	if(i==0){
+	  std::cout<<"mypez,lk="<<p1pp3d.mype_z<<" "<<mylk0[0]<<" "<<mylk1[0]<<" "<<mylk2[0]<<'\n';
+	} 
+      }
+    } 
+  }
 }
 
 void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx)
@@ -188,7 +187,6 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     double* zcoords;
     for(LO i= index1;i<index2+1;i++)
     {
-//      zcoords=new double[versurf[numsurf]];  
       zcoordsurf[i-index1]=new double[versurf[numsurf]];
       zcoords=zcoordsurf[i-index1];
       for(LO j=0;j<versurf[numsurf];j++){

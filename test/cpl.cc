@@ -7,25 +7,26 @@
 #include "testutilities.h"
 #include <string>
 #include <fstream> 
-
+/*
 void exParFor() {
   Kokkos::parallel_for(
       4, KOKKOS_LAMBDA(const int i) {
         printf("Hello from kokkos thread i = %i\n", i);
       });
 }
-
+*/
 int main(int argc, char **argv){
   int rank;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
+/*
   Kokkos::initialize(argc, argv);
   if(!rank) {
     printf("Hello World on Kokkos execution space %s\n",
          typeid(Kokkos::DefaultExecutionSpace).name());
     exParFor();
   }
+*/
   if(argc != 2) {
     if(!rank) printf("Usage: %s <number of timesteps>\n", argv[1]);
     exit(EXIT_FAILURE);
@@ -69,12 +70,14 @@ int main(int argc, char **argv){
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);//x_XGC
-  coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf);
-  int numsurf = xgc_numsurf->val(0);
-  int block_count = xgc_numsurf->val(1);
-
+  //coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf);
+  coupler::LO start1d=p1pp3d.mype_x*2;
+  coupler::LO count1d=2;
+  int*xgc_numsurf=coupler::receive_gene_exact<int>(dir,xSurf,start1d,count1d);
+  int numsurf = xgc_numsurf[0];
+  int block_count = xgc_numsurf[1];
   double* xgc_zcoords = coupler::receive_gene_exact<double>(dir,xZcoord, 0, block_count);
-  int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, p1pp3d.li1, p1pp3d.nx0);
+  int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, 0, p1pp3d.nx0);
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
   coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
   const int nummode = 1;
@@ -168,15 +171,14 @@ for(int i=0;i<p1pp3d.li0;i++){
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
                                                     p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
                                                     p3m3d.blockstart);
-std::cout<<"111"<<"\n";
       double* densitytmp = densitytoXGC->data();
       for(int h=0;h<p3m3d.lj0*p3m3d.blockcount;h++){
         densitytmp[h] = dp3d.denssend[h]; 
       }
       realsum=0.0;
       coupler::GO INDS1d[2]={0,p3m3d.lj0*p3m3d.blockcount};
-std::cout<<"222"<<"\n";
 MPI_Barrier(MPI_COMM_WORLD);
+std::cout<<"p3m3d.lj0*p3m3d.blockcount="<<p3m3d.lj0*p3m3d.blockcount<<'\n';
       coupler::printSumm1D(dp3d.denssend,INDS1d,realsum,p1pp3d.comm_x,"densitytoXGC",m);
 std::cout<<"333"<<"\n";
 
@@ -245,7 +247,7 @@ std::cout<<"fieldfromXGC,j,h="<<j<<" "<<h<<" "<<fieldfromXGC->val(h)<<'\n';
   xCce.close();
 
   std::cerr << p1pp3d.mype << " before kokkos finalize\n";
-  Kokkos::finalize();
+//  Kokkos::finalize();
   std::cerr << p1pp3d.mype << " done kokkos finalize\n";
   MPI_Finalize();
   std::cout<<"MPI is finalized."<<'\n';

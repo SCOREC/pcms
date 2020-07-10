@@ -4,7 +4,7 @@
 #include <adios2.h>
 #include <iostream>
 #include <cassert>
-#include <Kokkos_Core.hpp> //not used
+//#include <Kokkos_Core.hpp> //not used
 #include <typeinfo> //not used
 #include <string>
 #include <fstream>
@@ -215,8 +215,8 @@ namespace coupler {
   
     const auto total_size = adios_var.Shape()[0];
     std::cerr << rank << ": total_size "<<total_size <<" \n";
-    const auto my_start = 0;
-    const auto my_count = total_size;
+    const auto my_start = li1;
+    const auto my_count = li0;
     std::cout << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
@@ -224,21 +224,10 @@ namespace coupler {
     const adios2::Dims count{my_count};
   
     const adios2::Box<adios2::Dims> sel(start, count);
-    int arr_size = total_size;
-    T* val = new T[arr_size];
-    T* tmp_val = new T[arr_size];
+    T* val = new T[li0];
     adios_var.SetSelection(sel);
     eng.Get(adios_var, val);
     eng.EndStep();
-    //move my chunk of the adios2 buffer to the correct index
-    int start_idx = (total_size / nprocs) * rank;
-    //std::cerr<<rank<< " li1: "<<li1<<" li1+li0: "<<li1+li0<<"\n";
-    for (int i=li1; i<(li1+li0); i++){
-      tmp_val[i] = val[start_idx];
-      //std::cerr<<rank<< " start_idx: "<<start_idx<<" val[start_idx]: "<<val[start_idx]<<" tmp_val[i]: "<<tmp_val[i]<<"\n";
-      start_idx++;
-    }
-    //delete [] val;
     return val;
   } 
   

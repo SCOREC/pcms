@@ -134,6 +134,7 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
      std::cout<<"mref="<<mref<<'\n';
      std::cout<<"Bref="<<Bref<<'\n';
      std::cout<<"Lref="<<Lref<<'\n';
+     std::cout<<"ky0_ind="<<ky0_ind<<'\n';
    }   
    phi_cut = new double[lj0*2];
    for(LO i=0;i<lj0*2;i++){

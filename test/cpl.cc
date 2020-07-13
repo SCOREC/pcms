@@ -246,7 +246,7 @@ std::cout<<"333"<<"\n";
       }
 
 
-      coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,p1pp3d.comm_x,m);
+      coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,MPI_COMM_WORLD,m);
 
       MPI_Barrier(MPI_COMM_WORLD);
       std::cout<<"6666"<<'\n';

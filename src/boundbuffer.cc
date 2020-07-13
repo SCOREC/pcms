@@ -144,7 +144,18 @@ for(int i=0;i<lx;i++){
 
       mpisendrecv_aux2D(p1->comm_z, nzb, lx, ly, lz, bdesc.lowdenz, bdesc.updenz, box);
 //fix the parallel boundary condition here.
-    } else {
+      for (LO i = 0; i < lx ; i++) {
+	for (LO j = 0; j < ly; j++) {
+	  for(LO k=0;k<nzb;k++){
+	    if(p1->mype_z==0){
+	      bdesc.lowdenz[i][j][k]=bdesc.lowdenz[i][j][k]*bdesc.lowpbmat[i][j];
+	    } else if(p1->mype_z==p1->npz-1){
+	      bdesc.updenz[i][j][k]=bdesc.updenz[i][j][k]*bdesc.uppbmat[i][j];
+	    }
+	  }
+	}
+      } 
+   } else {
       std::cout << "ERROR: nzb is larger than lz. A larger lz is required.";
       std::exit(EXIT_FAILURE);
     }

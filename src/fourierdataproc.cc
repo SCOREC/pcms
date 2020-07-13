@@ -45,13 +45,13 @@ void DatasProc3D::RealdataToCmplxdata3D()
   }
   if(yparal==false){
     for(LO i=0;i<p3->li0;i++){
-      for(LO k=0;k<p3->mylk0[i];k++){
+      for(LO k=0;k<p1->lk0;k++){
 	for(LO j=0;j<p1->y_res_back;j++){
 	  potentintmp[j]=potentin[i][j][k];  
         }
         ExecuteRealToCmplx();
         for(LO l=0;l<p3->lj0/2;l++){
-          potentinterpo[i][l][k]=potentouttmp[l];       
+          potentpart1[i][l][k]=potentouttmp[l]/double(p1->y_res_back);       
         }
       }
     }

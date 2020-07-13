@@ -239,7 +239,7 @@ namespace coupler {
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
- std::cout<<"rank="<<rank<<'\n';
+    std::cout<<"rank="<<rank<<'\n';
   
     const std::string fname = dir + "/" + name + ".bp";
     std::cout<<fname<<'\n'; 
@@ -250,8 +250,7 @@ namespace coupler {
 //          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
-std::cout<<"engine parameters are set"<<'\n';
-//      eng = read_io.Open(fname, adios2::Mode::Read);
+      std::cout<<"engine parameters are set"<<'\n';
       eng = read_io.Open(fname, adios2::Mode::Read);
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     } else{
@@ -264,7 +263,7 @@ std::cout<<"engine parameters are set"<<'\n';
  
     const auto ftn_glob_height = adVar.Shape()[0] ; //4
     const auto ftn_glob_width = adVar.Shape()[1]; // 256005
-std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
+    std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
     //fortran to C transpose
     const auto c_glob_height = ftn_glob_width;
     const auto c_glob_width = ftn_glob_height;

@@ -108,7 +108,7 @@ void DatasProc3D::AllocPotentArrays()
     for(LO i=0;i<p3->li0;i++){
       potentin[i]=new double*[p1->y_res_back];
       for(LO j=0;j<p1->y_res_back;j++)
-        potentin[i][j]=new double[p3->mylk0[i]];
+        potentin[i][j]=new double[p1->lk0];
     }
 
     potentintmp=new double[p1->y_res_back];
@@ -226,8 +226,9 @@ std::cout<<mat_from_ind_n[i][j][k][0]<<" "<<mat_from_ind_n[i][j][k][1]<<" "<<mat
       free(datain[j]);
     }
     free(datain);
-  }
+  }  
   assert(sumbegin==p3->blockcount); 
+  RealdataToCmplxdata3D();
   for(LO j=0;j<p3->lj0;j++)
     free(tmp[j]);
   free(tmp);

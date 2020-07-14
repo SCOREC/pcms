@@ -96,7 +96,7 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
      lj1=llj1;
      lj2=llj2;    
 
-     CreateSubCommunicators();
+     CreateSubCommunicators(); 
    }
 
    std::cout<<"mype,mype_x,mype_z,li1,li2,lj1,lj2,lk1,lk2="<<mype<<" "<<mype_x<<" "<<mype_z<<" "<<li1<<" "

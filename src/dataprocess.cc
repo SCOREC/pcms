@@ -457,6 +457,14 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
   zDensityBoundaryBufAssign(densin,bdesc);
   InterpoDensity3D(bdesc);  
 
+  bool debug=true;
+  if(debug){
+    CV sum=CV(0.0,0.0);
+    printSumm3D(densinterpo,p1->li0,p1->lj0,p3->mylk0,sum,
+     p1->comm_x,"densinterpo",0);
+
+  }
+
 // don't understand the following operation  
 
   for(LO i=0;i<p1->li0;i++){
@@ -508,13 +516,8 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
       for(LO k=1;k<p1->npz;k++){
 	rdispls[k]=rdispls[k-1]+recvcount[k-1];
       }
-/*
-if(j==0 && i==0){
-for(LO h=0;h<p1->npz;h++){
-std::cout<<p1->mype<<" "<<recvcount[h]<<" "<<rdispls[h]<<'\n';
-}
-}
-*/    xl=p1->li1+i;   
+ 
+      xl=p1->li1+i;   
  
       bool debug=false;
       if(debug){
@@ -573,7 +576,7 @@ void DatasProc3D::oldInitmattoplane()
   for(LO i=0;i<p3->li0;i++){
     for(LO k=0;k<p3->mylk0[i];k++){
       for(LO j=0;j<p3->lj0;j++){
-        y_cut=p1->C_y[0]*(p1->q_prof[i]*p3->pzcoords[i][k]-p1->phi_cut[j])/p1->dy;
+        y_cut=p1->C_y[0]*(p1->q_prof[i+p3->li1]*p3->pzcoords[i][k]-p1->phi_cut[j])/p1->dy;
         y_cut=remainder(remainder(y_cut,double(p1->y_res))+double(p1->y_res),double(p1->y_res));
       
         tmp_ind=LO(y_cut);
@@ -599,18 +602,34 @@ void DatasProc3D::Initmattoplane()
       for(LO j=0;j<p1->lj0;j++){
         for(LO k=0;k<p3->mylk0[i];k++){
          if(j==0){
-            mat_to_plane[i][o][j][k]=1.0;
+            mat_to_plane[i][o][j][k]=CV(1.0,0.0);
           }else{
-            mat_to_plane[i][o][j][k]=exp(CV(0,1.0)*double(j*p1->n0_global)*(p1->q_prof[i]
+            mat_to_plane[i][o][j][k]=exp(CV(0,1.0)*double(j*p1->n0_global)*(p1->q_prof[i+p3->li1]
             *p3->pzcoords[i][k]-p1->L_tor*double(o+1)));
-            mat_to_plane[i][o][p3->lj0-j][k]=exp(-CV(0,1.0)*double(j*p1->n0_global)*(p1->q_prof[i]
+            mat_to_plane[i][o][p3->lj0-j][k]=exp(-CV(0,1.0)*double(j*p1->n0_global)*(p1->q_prof[i+p3->li1]
             *p3->pzcoords[i][k]-p1->L_tor*double(o+1)));
           } 
         }
      }
    }
  }
+ bool debug=true;
+ if(debug){
+  CV sum=CV(0.0,0.0);
+  for(LO i=0;i<p3->li0;i++){
+    for(LO o=0;o<p1->n_cuts;o++){
+      for(LO j=0;j<p1->lj0;j++){
+        for(LO k=0;k<p3->mylk0[i];k++){
+          sum=sum+mat_to_plane[i][o][j][k];
+        }
+      }
+    }
+  }
+  std::cout<<"sum of mat_to_plane, mype_x="<<p1->mype_x<<" "<<sum<<'\n';
 }
+
+}
+
 
 //The function of this routines is not clear so far.
 void DatasProc3D::DensityToPart3()

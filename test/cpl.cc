@@ -127,11 +127,10 @@ std::cout<<"densityfromGENE,h="<<h<<" "<<densityfromGENE->val(h)<<'\n';
 */
       dp3d.DistriDensiRecvfromPart1(densityfromGENE);
       cplxsum=coupler::CV(0.0,0.0);
-      coupler::LO inds1d[2]={0,p1pp3d.li0-1};
-      coupler::LO inds2d[2]={0,p1pp3d.lj0-1};
-      coupler::LO inds3d[2]={0,p1pp3d.lk0-1};
+      coupler::LO* inds3d=new coupler::LO[p1pp3d.li0];
+      for(coupler::LO h=0;h<p1pp3d.li0;h++) inds3d[h]=p1pp3d.lk0;
       MPI_Barrier(MPI_COMM_WORLD);
-      coupler::printSumm3D(dp3d.densin,inds1d,inds2d,inds3d,cplxsum,
+      coupler::printSumm3D(dp3d.densin,p1pp3d.li0,p1pp3d.lj0,inds3d,cplxsum,
       MPI_COMM_WORLD,"densityfromGENE",m);
 
 /*

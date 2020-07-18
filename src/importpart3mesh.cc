@@ -185,6 +185,7 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     pzcoords = new double*[index0]; 
     zcoordsurf = new double*[index0];
     double* zcoords;
+    bool debug=false;
     for(LO i= index1;i<index2+1;i++)
     {
       zcoordsurf[i-index1]=new double[versurf[numsurf]];
@@ -199,16 +200,18 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
       }
       nstart[i] = minloc(zcoords,versurf[numsurf]);
       reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
-      if(p1pp3d.mype==2 && i==index1){
-	for(LO h=0;h<versurf[numsurf];h++){
-	  std::cout<<"h,pz="<<h<<" "<<zcoords[h]<<'\n';
+      if(debug){
+	if(p1pp3d.mype==0 && i==index1+1){
+	  for(LO h=0;h<versurf[numsurf];h++){
+	    std::cout<<"h,pz="<<h<<" "<<zcoordsurf[i-index1][h]<<'\n';
+	  }
 	}
       }
       DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
       pzcoords[i-index1]= new double[mylk0[i-index1]];
       for(LO k=0;k<mylk0[i-index1];k++){
 	pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
-      }
+      } 
       numvert+=versurf[numsurf];
       numsurf+=1;        
     }
@@ -238,14 +241,10 @@ LO  minloc(const double* array, const LO n)
     double zmin=minimalvalue(array, n);
     LO num=0;
     for(LO i=0;i<n;i++){ 
-       if(array[i]==zmin) break;
-       num=i;
+      num=i;
+      if(array[i]==zmin) break;
     }
-    if(num==0){
-      return num;
-    }else{
-      return num+1;
-    }
+    return num;
  }
 
 //// notice: be carefull with extra_zero case.

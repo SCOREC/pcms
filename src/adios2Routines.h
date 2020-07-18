@@ -340,9 +340,6 @@ template<typename T>
 
     const std::string fname = cce_folder + "/" + fldname + ".bp";
   
-//    adios2::IO sendIO = handler.IO;
-//    adios2::Engine engine = handler.eng;
-//    sendIO.SetEngine("Sst");
     if(m==0){
       sendIO.SetEngine("Sst");
       sendIO.SetParameters({
@@ -352,7 +349,7 @@ template<typename T>
           g_dims, g_offset, l_dims);
     
       engine = sendIO.Open(fname, adios2::Mode::Write,comm);
-     }
+    }
     if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';   
     engine.BeginStep(adios2::StepMode::Append);
     engine.Put<T>(send_id, a2d->data());

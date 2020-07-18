@@ -102,11 +102,14 @@ int main(int argc, char **argv){
   double realsum;
   coupler::CV cplxsum;
   bool debug = false;
+  coupler::LO* inds3d=new coupler::LO[p1pp3d.li0];
+  for(coupler::LO h=0;h<p1pp3d.li0;h++) inds3d[h]=p1pp3d.lk0;
+ 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::GO start[2]={0, p1pp3d.blockstart};
       coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};
-std::cout<<"mype, start count"<<p1pp3d.mype<<" "<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
+      std::cout<<"mype, start count"<<p1pp3d.mype<<" "<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
       m=i*RK_count+j;
       coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,MPI_COMM_WORLD,m);
 
@@ -127,8 +130,6 @@ std::cout<<"densityfromGENE,h="<<h<<" "<<densityfromGENE->val(h)<<'\n';
 */
       dp3d.DistriDensiRecvfromPart1(densityfromGENE);
       cplxsum=coupler::CV(0.0,0.0);
-      coupler::LO* inds3d=new coupler::LO[p1pp3d.li0];
-      for(coupler::LO h=0;h<p1pp3d.li0;h++) inds3d[h]=p1pp3d.lk0;
       MPI_Barrier(MPI_COMM_WORLD);
       coupler::printSumm3D(dp3d.densin,p1pp3d.li0,p1pp3d.lj0,inds3d,cplxsum,
       MPI_COMM_WORLD,"densityfromGENE",m);
@@ -177,10 +178,10 @@ for(int i=0;i<p1pp3d.li0;i++){
       }
       realsum=0.0;
       coupler::GO INDS1d[2]={0,p3m3d.lj0*p3m3d.blockcount};
-MPI_Barrier(MPI_COMM_WORLD);
-std::cout<<"p3m3d.lj0*p3m3d.blockcount="<<p3m3d.lj0*p3m3d.blockcount<<'\n';
+      MPI_Barrier(MPI_COMM_WORLD);
+      std::cout<<"p3m3d.lj0*p3m3d.blockcount="<<p3m3d.lj0*p3m3d.blockcount<<'\n';
       coupler::printSumm1D(dp3d.denssend,INDS1d,realsum,p1pp3d.comm_x,"densitytoXGC",m);
-std::cout<<"333"<<"\n";
+      std::cout<<"333"<<"\n";
 
       if(!debug){
         coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);    
@@ -244,8 +245,15 @@ std::cout<<"333"<<"\n";
 */
       }
 
-
+  
       coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,MPI_COMM_WORLD,m);
+      coupler::printminmax(dp3d.potentpart1, p1pp3d.li0,p1pp3d.lj0,inds3d,MPI_COMM_WORLD,"fieldtoGENE",m);
+      cplxsum=coupler::CV(0.0,0.0);
+      coupler::printSumm3D(dp3d.potentpart1, p1pp3d.li0,p1pp3d.lj0,inds3d,cplxsum,
+      MPI_COMM_WORLD,"fieldtoGENE",m);
+
+
+
 
       MPI_Barrier(MPI_COMM_WORLD);
       std::cout<<"6666"<<'\n';

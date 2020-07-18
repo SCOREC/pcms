@@ -172,7 +172,8 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
 
    for(LO i=0;i<nz0;i++){
      pzcoords[i]=-1.0*cplPI+(double)i*dz;
-     if(mype==0) std::cout<<"i="<<i<<" "<<"pz="<<pzcoords[i]<<'\n';
+     if(mype==0) printf("i=: %3d,pz=:%19.17f \n",i,pzcoords[i]);
+//std::cout<<"i="<<i<<" "<<"pz="<<pzcoords[i]<<'\n';
    }
    pzp=new double[lk0];
    for(LO i=0;i<lk0;i++){

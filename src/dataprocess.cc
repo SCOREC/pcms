@@ -195,7 +195,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Array2d<double>* fieldfromXGC)
   GO sumbegin=0;       
   GO numnode=0;  
   double sum_in;
-  bool debug=true;
+  bool debug=false;
   for(LO i=0;i<p3->li0;i++){
     xl=p3->li1+i;
     double** datain= new double*[p3->lj0];   
@@ -352,6 +352,12 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Array2d<CV>* densityfromGENE)
       tmp[j][i]=array[j*p1->blockcount+i];
     }
   }
+  for(LO i=0;i<p1->li0;i++){
+    for(LO j=0;j<p1->lj0;j++){
+      for(LO k=0;k<p1->lk0;k++)  densin[i][j][k]=CV(0.0,0.0);
+    }
+  }
+  
   CV** blocktmp= new CV*[p1->li0];
   for(LO i=0;i<p1->li0;i++)
     blocktmp[i]=new CV[p1->nz0]; 
@@ -369,8 +375,8 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Array2d<CV>* densityfromGENE)
         densin[i][j][k]=blocktmp[i][p1->lk1+k];
 //if(p1->mype==0) std::cout<<"densin,i,j,k="<<i<<" "<<j<<" "<<k<<" "<<densin[i][j][k]<<'\n';
       }
-     }
-   }
+    }
+  }
    for(LO i=0;i<p1->li0;i++){
      free(blocktmp[i]);
    }
@@ -427,7 +433,7 @@ std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\
       MPI_Allgatherv(tmp_one,p3->mylk0[i],MPI_DOUBLE,tmp,recvcount,rdispls,
                     MPI_DOUBLE,p1->comm_z);    
  
-     reshufflebackward(tmp,p3->nstart[xl],p3->versurf[xl]);
+      reshufflebackward(tmp,p3->nstart[xl],p3->versurf[xl]);
       GO sumbegin=0;
       for(LO h=0;h<i;h++){
         sumbegin+=GO(p3->versurf[h+p3->li1]);
@@ -467,18 +473,24 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
     }
 
   zDensityBoundaryBufAssign(densin,bdesc);
-  InterpoDensity3D(bdesc);  
+
+  InterpoDensity3D(bdesc); 
+ 
+std::cout<<p1->mype<<" "<<"yyy"<<'\n';
+MPI_Barrier(MPI_COMM_WORLD);
 
   bool debug=true;
   if(debug){
+    printminmax(densinterpo,p1->li0,p1->lj0,p3->mylk0,p1->mype,"densinterpo",0);
+    MPI_Barrier(MPI_COMM_WORLD);
     CV sum=CV(0.0,0.0);
     printSumm3D(densinterpo,p1->li0,p1->lj0,p3->mylk0,sum,
-     p1->comm_x,"densinterpo",0);
+    MPI_COMM_WORLD,"densinterpo",0);
 
   }
 
 // don't understand the following operation  
-
+  CV tmp1;
   for(LO i=0;i<p1->li0;i++){
     CV** loc_data = new CV*[p3->lj0];
     for(LO j=0;j<p3->lj0;j++){
@@ -494,7 +506,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
     } 
     for(LO j=0;j<p1->n_cuts;j++){
       for(LO k=0;k<p3->mylk0[i];k++){   
-        CV tmp1=CV(0.0,0.0);
+        tmp1=CV(0.0,0.0);
         for(LO h=0;h<p3->lj0;h++){
           tmp1+=mat_to_plane[i][j][h][k]*loc_data[h][k];
         }       
@@ -510,6 +522,11 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
   LO* recvcount = new LO[p1->npz];
   LO* rdispls = new LO[p1->npz];
   double* blocktmp = new double[p3->blockcount];
+
+  double** tmp=new double*[p3->li0];
+  for(LO i=0;i<p3->li0;i++){
+    tmp[i]=new double[p3->versurf[p3->li1+i]];
+  }
 
   for(LO j=0;j<p3->lj0;j++){
     LO xl=0;
@@ -530,7 +547,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
       }
  
       xl=p1->li1+i;   
- 
+
       bool debug=false;
       if(debug){
 	num=0;
@@ -539,27 +556,22 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
 	}	   
 	std::cout<<"num versurf[xl]="<<num<<" "<<p3->versurf[xl]<<'\n';
 	assert(num==p3->versurf[xl]);
-      } 
-      MPI_Barrier(MPI_COMM_WORLD);      
+      }     
 
-      double* tmp = new double[p3->versurf[xl]];
-      double* tmp_one = new double[p3->mylk0[i]];
-      for(LO h=0;h<p3->mylk0[i];h++) tmp_one[h]=0.0;
-      tmp_one=tmpmat[i][j];         
-      MPI_Allgatherv(tmp_one,p3->mylk0[i],MPI_DOUBLE,tmp,recvcount,rdispls,
+      MPI_Allgatherv(tmpmat[i][j],p3->mylk0[i],MPI_DOUBLE,tmp[i],recvcount,rdispls,
                     MPI_DOUBLE,p1->comm_z);    
-      reshufflebackward(tmp,p3->nstart[xl],p3->versurf[xl]);
+      reshufflebackward(tmp[i],p3->nstart[xl],p3->versurf[xl]);
+
       GO sumbegin=0;
       for(LO h=0;h<i;h++){
         sumbegin+=GO(p3->versurf[h+p3->li1]);
       } 
       for(LO m=0;m<p3->versurf[xl];m++){
-        blocktmp[sumbegin+m]=tmp[m];
+        blocktmp[sumbegin+m]=tmp[i][m];
       }    
      if(i==p1->li0-1){
         assert((sumbegin+(GO)p3->versurf[xl]) == p3->blockcount);
       }
-      free(tmp);
     }   
     for(GO h=0;h<p3->blockcount;h++){
         denssend[j*p3->blockcount+h] = blocktmp[h]*p1->norm_fact_dens;
@@ -568,6 +580,9 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
   free(recvcount);
   free(rdispls);
   free(blocktmp);
+
+  for(LO i=0;i<p3->li0;i++) free(tmp[i]);
+  free(tmp);
 
   for(LO i=0;i<p3->li0;i++){
     for(LO j=0;j<p3->lj0;j++){
@@ -621,7 +636,7 @@ void DatasProc3D::Initmattoplane()
      }
    }
  }
- bool debug=true;
+ bool debug=false;
  if(debug){
   CV sum=CV(0.0,0.0);
   for(LO i=0;i<p3->li0;i++){
@@ -821,7 +836,7 @@ if(p1->mype==0 && i==50 && k==0 && j==0){  //std::cout<<j<<" "<<ind_u<<" "<<ind_
   }
   free(p3->zcoordsurf);
 
-  bool debug=true;
+  bool debug=false;
   if(debug){
     LO* inds1=new LO[p1->li0];
     for(LO i=0;i<p1->li0;i++) inds1[i]=4;
@@ -834,12 +849,7 @@ if(p1->mype==0 && i==50 && k==0 && j==0){  //std::cout<<j<<" "<<ind_u<<" "<<ind_
 
     printSumm4D(mat_from_weight,p1->li0,p1->y_res_back,p1->lk0,inds1, sum_weight,
        MPI_COMM_WORLD,"mat_from_weight",0);
-/*
-    printSumm4D(mat_from_ind_plane,p1->li0,p1->y_res_back,p1->lk0,inds2, sum_plane,
-       MPI_COMM_WORLD,"mat_from_ind_plane",0);
-    printSumm4D(mat_from_ind_n,p1->li0,p1->y_res_back,p1->lk0,inds1, sum_n,
-       MPI_COMM_WORLD,"mat_from_ind_n",0);
-*/
+
     printminmax4d(mat_from_ind_n,p1->li0,p1->y_res_back,p1->lk0,4,
      MPI_COMM_WORLD, "mat_from_ind_n",0);
 

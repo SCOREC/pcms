@@ -126,7 +126,7 @@ void printSumm4D(T**** array, LO inds1d,LO inds2d,LO inds3d,LO* inds4d,T sum,
 
 template<class T>
 void printminmax(T*** array, LO inds1d,LO inds2d,LO *inds3d,
-     MPI_Comm comm, std::string name,LO numiter)
+     LO rank, std::string name,LO numiter)
 { double minmal=0.0;
   double maxmal=0.0;
   T minele,maxele;
@@ -138,8 +138,6 @@ void printminmax(T*** array, LO inds1d,LO inds2d,LO *inds3d,
       }
     }
   }
-  LO rank;
-  MPI_Comm_rank(comm,&rank);
   std::cout<<name<<" numiter,rank,"<<" minele,maxele="<<numiter<<" "<<rank<<" "<<minele<<" "<<maxele<<'\n';
 }
 

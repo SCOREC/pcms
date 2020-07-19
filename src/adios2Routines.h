@@ -4,7 +4,7 @@
 #include <adios2.h>
 #include <iostream>
 #include <cassert>
-#include <Kokkos_Core.hpp> //not used
+//#include <Kokkos_Core.hpp> //not used
 #include <typeinfo> //not used
 #include <string>
 #include <fstream>
@@ -244,10 +244,10 @@ namespace coupler {
     const std::string fname = dir + "/" + name + ".bp";
     std::cout<<fname<<'\n'; 
     if(m==0){
-    std::cout<<"creat engine for: "<<name<<'\n';
+      std::cout<<"creat engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
-//          {"DataTransport","RDMA"},
+          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
       std::cout<<"engine parameters are set"<<'\n';

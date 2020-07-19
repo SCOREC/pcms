@@ -131,19 +131,23 @@ void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bde
   const LO lz = p1->lk0;
   if (p1->npz > 1) {
     if (lz >= nzb) {
-/*
-if(p1->mype==0){
-for(int i=0;i<lx;i++){
-  for(int j=0;j<ly;j++){
-    for(int k=0;k<nzb;k++)
-     std::cout<<"i,j="<<i<<" "<<j<<" "<<box[i][j][k]<<'\n';
-  }
-}
-}
-*/
-
+      for (LO i = 0; i < lx ; i++) {
+        for (LO j = 0; j < ly; j++) {
+          for(LO k=0;k<nzb;k++){
+            bdesc.lowdenz[i][j][k]=CV(0.0,0.0);
+            bdesc.updenz[i][j][k]=CV(0.0,0.0);
+          }
+        }
+      }
       mpisendrecv_aux2D(p1->comm_z, nzb, lx, ly, lz, bdesc.lowdenz, bdesc.updenz, box);
-//fix the parallel boundary condition here.
+
+/*
+      for (LO i = 0; i < lx ; i++) {
+        for (LO j = 0; j < ly; j++) {
+            if(p1->mype==3) std::cout<<bdesc.lowdenz[i][j][1]<<" "<<bdesc.updenz[i][j][1]<<'\n';
+        }
+      } 
+*/
       for (LO i = 0; i < lx ; i++) {
 	for (LO j = 0; j < ly; j++) {
 	  for(LO k=0;k<nzb;k++){

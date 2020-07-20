@@ -232,6 +232,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Array2d<double>* fieldfromXGC)
       free(datain[j]);
     }
     free(datain);
+    datain=NULL;
   }  
   assert(sumbegin==p3->blockcount); 
 
@@ -245,6 +246,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Array2d<double>* fieldfromXGC)
   for(LO j=0;j<p3->lj0;j++)
     free(tmp[j]);
   free(tmp);
+  tmp=NULL;
  } 
 
 
@@ -335,7 +337,10 @@ void DatasProc3D::AssemPotentSendtoPart1()
   }
   delete[] blocktmp; 
   delete[] tmp,recvcount,rdispls;
-
+  blocktmp=NULL;
+  tmp=NULL;
+  recvcount=NULL;
+  rdispls=NULL;
 }
 
 ////Distribute the subglobal density  2d array received from part1 to the processes.
@@ -381,11 +386,12 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Array2d<CV>* densityfromGENE)
      free(blocktmp[i]);
    }
    free(blocktmp);
-
+   blocktmp=NULL;
    for(LO i=0;i<p1->lj0;i++){
      free(tmp[i]);
    }  
    free(tmp);
+   tmp=NULL;
 }
 
 // Assemble the density sub2d array in each process into a global one, which is straightforwardly transferred by
@@ -419,13 +425,7 @@ void DatasProc3D::oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
       for(LO k=1;k<p1->npz;k++){
 	rdispls[k]=rdispls[k-1]+recvcount[k-1];
       }
-/*
-if(p1->mype==0) {
-for(LO k=0;k<p3->mylk0[i];k++){
-std::cout<<"i,j="<<i<<" "<<j<<" "<<"denspart3[i][j][k]="<<denspart3[i][j][k]<<'\n';
-}
-}
-*/
+
       xl=p1->li1+i;    
       double* tmp = new double[p3->versurf[xl]];
       double* tmp_one;
@@ -475,47 +475,52 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
   zDensityBoundaryBufAssign(densin,bdesc);
 
   InterpoDensity3D(bdesc); 
- 
-std::cout<<p1->mype<<" "<<"yyy"<<'\n';
-MPI_Barrier(MPI_COMM_WORLD);
 
-  bool debug=true;
+  bool debug=false;
   if(debug){
     printminmax(densinterpo,p1->li0,p1->lj0,p3->mylk0,p1->mype,"densinterpo",0);
     MPI_Barrier(MPI_COMM_WORLD);
     CV sum=CV(0.0,0.0);
     printSumm3D(densinterpo,p1->li0,p1->lj0,p3->mylk0,sum,
     MPI_COMM_WORLD,"densinterpo",0);
-
   }
 
 // don't understand the following operation  
-  CV tmp1;
+  
+  CV*** loc_data=new CV**[p1->li0];
   for(LO i=0;i<p1->li0;i++){
-    CV** loc_data = new CV*[p3->lj0];
-    for(LO j=0;j<p3->lj0;j++){
-      loc_data[j]=new CV[p3->mylk0[i]];
-    }
+    loc_data[i]=new CV*[p3->lj0];
+    for(LO j=0;j<p3->lj0;j++) loc_data[i][j]=new CV[p3->mylk0[i]];
+  }
+  CV tmp1;
+
+  for(LO i=0;i<p1->li0;i++){
     for(LO j=0;j<p1->lj0;j++){
-      loc_data[j]=densinterpo[i][j];
+      for(LO k=0;k<p3->mylk0[i];k++){
+        loc_data[i][j][k]= densinterpo[i][j][k];  //FIXME: Here pointer is better      
+      }
       if(j>0){
         for(LO k=0;k<p3->mylk0[i];k++){
-          loc_data[p3->lj0-j][k]=std::conj(densinterpo[i][j][k]);
+          loc_data[i][p3->lj0-j][k]=std::conj(densinterpo[i][j][k]);
         }
-      } 
+      }
     } 
     for(LO j=0;j<p1->n_cuts;j++){
       for(LO k=0;k<p3->mylk0[i];k++){   
         tmp1=CV(0.0,0.0);
         for(LO h=0;h<p3->lj0;h++){
-          tmp1+=mat_to_plane[i][j][h][k]*loc_data[h][k];
+          tmp1+=mat_to_plane[i][j][h][k]*loc_data[i][h][k];
         }       
         tmpmat[i][j][k]+=tmp1.real();
       }
     }     
-    for(LO j=0;j<p3->lj0;j++) free(loc_data[j]);
-    free(loc_data);
   }
+
+  for(LO i=0;i<p1->li0;i++){
+    for(LO j=0;j<p3->lj0;j++) free(loc_data[i][j]);
+    free(loc_data[i]);
+  }
+  free(loc_data);
 
 //don't understand the above operation   
 
@@ -528,12 +533,15 @@ MPI_Barrier(MPI_COMM_WORLD);
     tmp[i]=new double[p3->versurf[p3->li1+i]];
   }
 
+  GO sumbegin;
+  LO xl;
+  LO num;
+
   for(LO j=0;j<p3->lj0;j++){
-    LO xl=0;
+    xl=0;
     for(GO h=0;h<p3->blockcount;h++){
       blocktmp[h] = 0.0;
     }
-    LO num;
     for(LO i=0;i<p3->li0;i++){
       MPI_Datatype mpitype = getMpiType(LO());      
       for(LO h=0;h<p1->npz;h++){
@@ -548,7 +556,7 @@ MPI_Barrier(MPI_COMM_WORLD);
  
       xl=p1->li1+i;   
 
-      bool debug=false;
+      debug=false;
       if(debug){
 	num=0;
 	for(LO h=0;h<p1->npz;h++){
@@ -562,7 +570,7 @@ MPI_Barrier(MPI_COMM_WORLD);
                     MPI_DOUBLE,p1->comm_z);    
       reshufflebackward(tmp[i],p3->nstart[xl],p3->versurf[xl]);
 
-      GO sumbegin=0;
+      sumbegin=0;
       for(LO h=0;h<i;h++){
         sumbegin+=GO(p3->versurf[h+p3->li1]);
       } 
@@ -576,13 +584,18 @@ MPI_Barrier(MPI_COMM_WORLD);
     for(GO h=0;h<p3->blockcount;h++){
         denssend[j*p3->blockcount+h] = blocktmp[h]*p1->norm_fact_dens;
     }
-  } 
+  }
+ 
   free(recvcount);
   free(rdispls);
   free(blocktmp);
+  recvcount=NULL;
+  rdispls=NULL;
+  blocktmp=NULL;
 
   for(LO i=0;i<p3->li0;i++) free(tmp[i]);
   free(tmp);
+  tmp=NULL;  
 
   for(LO i=0;i<p3->li0;i++){
     for(LO j=0;j<p3->lj0;j++){
@@ -591,6 +604,7 @@ MPI_Barrier(MPI_COMM_WORLD);
     free(tmpmat[i]);
   }
   free(tmpmat);
+  tmpmat=NULL;
 }
 
 //I dont's understand the function of the following matrix.
@@ -701,8 +715,7 @@ void DatasProc3D::Prepare_mats_from_planes()
         count_r=count_l;
         ipl_l=int(phi_red/dphi);
         ipl_r=ipl_l+1;       
-// if(p1->mype==0 && i==1 && k==0) std::cout<<j<<" "<<ipl_l<<" "<<ipl_r<<'\n'; 
-//if(p1->mype==0) std::cout<<"ipl_l,ipl_r,phi_red="<<ipl_l<<" "<<ipl_r<<" "<<phi_red<<" "<<phi<<'\n';
+
         if(ipl_r==p1->n_cuts){
           ipl_r=0;
           count_r=count_r+1;
@@ -712,12 +725,7 @@ void DatasProc3D::Prepare_mats_from_planes()
                +count_l*2.0*cplPI/double(p1->n0_global))/q;
         chi_red_r=(y/p1->C_y[i+p3->li1]*(p1->rhostar*p1->minor_r)+phi_l[ipl_r]
                +count_r*2.0*cplPI/double(p1->n0_global))/q;   
-/*
-if(p1->mype==3 && i==159-p1->li1 && k==12-p1->lk1 && j==0){ 
-   printf("chi_red_l,phi_l[ipl_l],phi_red,count_l= %15.12f %15.12f %15.12f %3d \n", chi_red_l,phi_l[ipl_l],phi_red,count_l);
-   printf("chi_red,phi=,%15.12f %15.12f \n", chi_red,phi);
-}
-*/
+
         chi_red_l=remainder(chi_red_l+cplPI,2.0*cplPI);
         if(chi_red_l<0)  chi_red_l=2.0*cplPI+chi_red_l;
         chi_red_l=chi_red_l-cplPI;
@@ -731,7 +739,6 @@ if(p1->mype==3 && i==159-p1->li1 && k==12-p1->lk1 && j==0){
 
         mat_from_ind_plane[i][j][k][0]=ipl_l;
         mat_from_ind_plane[i][j][k][1]=ipl_r;
-// if(p1->mype==0 && i==1 && k==0) std::cout<<j<<" "<<ipl_l<<" "<<ipl_r<<'\n'; 
 
         dist_phi=sqrt(pow(phi_red_l-phi_red_r,2)+pow(chi_red_l-chi_red_r,2));
         dist_l=sqrt(pow(phi_red-phi_red_r,2)+pow(chi_red-chi_red_r,2));
@@ -743,23 +750,11 @@ if(p1->mype==3 && i==159-p1->li1 && k==12-p1->lk1 && j==0){
         for(LO m=0;m<p3->versurf[i+p3->li1];m++){
           tmp[m]=abs(p3->zcoordsurf[i][m]-chi_red_l);
         } 
-/*
-if(p1->mype==0 && i==1 && k==0 && j==0){
-for(LO m=0;m<p3->versurf[i+p3->li1];m++) std::cout<<m<<" "<<tmp[m]<<'\n';
-}
-*/
+
         ind_u=minloc(tmp,p3->versurf[i+p3->li1]);
 
         mat_from_ind_n[i][j][k][0]=ind_u;
         chi_u=p3->zcoordsurf[i][ind_u];
-// if(p1->mype==0 && i==89 && k==10) std::cout<<j<<" "<<chi_red_l<<" "<<ind_u<<" "<<p3->versurf[i+p3->li1]<<'\n';
-/*       
-if(p1->mype==3 && i==159-p1->li1 && k==12-p1->lk1 && j==0){  //std::cout<<j<<" "<<ind_u<<" "<<ind_l<<" "<<p3->versurf[i+p3->li1]<<'\n';
-  for(LO m=0;m<p3->versurf[i+p3->li1];m++){
-    std::cout<<m<<" "<<ind_u<<" "<<tmp[m]<<" "<<p3->zcoordsurf[i][m]<<" "<<chi_red_l<<'\n';
-  }
-}
-*/
  
         if((chi_red_l-chi_u)>0){
           ind_l=ind_u+1;
@@ -782,9 +777,7 @@ if(p1->mype==3 && i==159-p1->li1 && k==12-p1->lk1 && j==0){  //std::cout<<j<<" "
         }  
 
         dchi=chi_l-chi_u;
-//if(p1->mype==3 && i==159-p1->li1 && k==12-p1->lk1) std::cout<<j<<" "<<ind_l<<" "<<ind_u<<" "<<chi_l<<" "<<chi_red_l<<" "
-// <<chi_u<<" "<<w_plane_left<<'\n'; 
-       
+      
         mat_from_weight[i][j][k][0]=(chi_l-chi_red_l)/dchi*w_plane_left;
         mat_from_weight[i][j][k][1]=(chi_red_l-chi_u)/dchi*w_plane_left;
 
@@ -797,13 +790,7 @@ if(p1->mype==3 && i==159-p1->li1 && k==12-p1->lk1 && j==0){  //std::cout<<j<<" "
 
         mat_from_ind_n[i][j][k][2]=ind_u;
         chi_u=p3->zcoordsurf[i][ind_u];       
-/*
-if(p1->mype==0 && i==50 && k==0 && j==0){  //std::cout<<j<<" "<<ind_u<<" "<<ind_l<<" "<<p3->versurf[i+p3->li1]<<'\n';
-  for(LO m=0;m<p3->versurf[i+p3->li1];m++){
-    std::cout<<m<<" "<<ind_u<<" "<<tmp[m]<<" "<<p3->zcoordsurf[i][m]<<" "<<chi_red_r<<'\n';
-  }
-}
-*/
+
         if((chi_red_r-chi_u)>0){
           ind_l=ind_u+1;
           if(ind_l>p3->versurf[p3->li1+i]-1){
@@ -823,7 +810,7 @@ if(p1->mype==0 && i==50 && k==0 && j==0){  //std::cout<<j<<" "<<ind_u<<" "<<ind_
           }
           mat_from_ind_n[i][j][k][3]=ind_l;
         }       
- //if(p1->mype==0 && i==50 && k==0) std::cout<<j<<" "<<ind_l<<" "<<ind_u<<" "<<chi_l<<" "<<chi_red_r<<" "<<chi_u<<" "<<w_plane_right<<'\n';   
+
         dchi=chi_l-chi_u;
         mat_from_weight[i][j][k][2]=(chi_l-chi_red_r)/dchi*w_plane_right;
         mat_from_weight[i][j][k][3]=(chi_red_r-chi_u)/dchi*w_plane_right;  

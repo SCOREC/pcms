@@ -111,7 +111,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 
 // for debugging
      MPI_Barrier(MPI_COMM_WORLD);
-     bool debug = true;
+     bool debug = false;
      if(debug){
        for(LO i=0;i<li0;i++){
 	 LO num=0;

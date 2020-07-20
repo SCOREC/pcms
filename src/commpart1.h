@@ -40,7 +40,7 @@ class Part1ParalPar3D {
     LO ky0_ind;
 
     double rhostar; //This quantity is obtained by complex formula
-    double* C_y;
+    double* C_y=NULL;
     double minor_r;
     double lx_a;
     LO sign_phi;
@@ -51,7 +51,7 @@ class Part1ParalPar3D {
 
     int res_fact; //This is different from 4 which has no substantial implementation in wdmapp/GENE 
     double L_tor;
-    double* phi_cut;
+    double* phi_cut=NULL;
     double dy;
     LO y_res;
     LO y_res_back;

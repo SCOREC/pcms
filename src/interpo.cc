@@ -81,7 +81,7 @@ void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc)
         xin[nzb+k]=p1->pzcoords[p1->lk1+k];
       }      
     }
-std::cout<<"xxx"<<'\n';
+
    for(LO i=0;i<p1->li0;i++){
       for(LO j=0;j<p1->lj0;j++){
         for(LO l=0;l<nzb;l++){
@@ -98,7 +98,8 @@ std::cout<<"xxx"<<'\n';
     }   
   }
   delete[] xin,yin;
-  std::cout<<"zzz"<<'\n';
+  xin=NULL;
+  yin=NULL;
 }
 
 

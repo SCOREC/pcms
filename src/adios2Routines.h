@@ -4,7 +4,7 @@
 #include <adios2.h>
 #include <iostream>
 #include <cassert>
-//#include <Kokkos_Core.hpp> //not used
+#include <Kokkos_Core.hpp> //not used
 #include <typeinfo> //not used
 #include <string>
 #include <fstream>

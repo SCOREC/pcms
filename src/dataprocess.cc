@@ -283,8 +283,7 @@ void DatasProc3D::oldDistriPotentRecvfromPart3(const Array2d<double>* fieldfromX
       }
       free(subtmp[i]);
     }
-//      std::cout<<"sumbegin, p3->blockcount="<<sumbegin<<" "<<p3->blockcount<<'\n';
-      assert(sumbegin==p3->blockcount); 
+     assert(sumbegin==p3->blockcount); 
   }
   free(subtmp);
   for(LO j=0;j<p3->lj0;j++)
@@ -329,11 +328,9 @@ void DatasProc3D::AssemPotentSendtoPart1()
       }      
     }    
     assert(sumbegin+p1->nz0==p1->blockcount); 
- //   if(p1->mype==0){
-      for(GO h=0;h<p1->blockcount;h++){
-        potentsend[j*p1->blockcount+h] = blocktmp[h]; 	    
-      }
-//    }
+    for(GO h=0;h<p1->blockcount;h++){
+      potentsend[j*p1->blockcount+h] = blocktmp[h]; 	    
+    }
   }
   delete[] blocktmp; 
   delete[] tmp,recvcount,rdispls;
@@ -378,7 +375,6 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Array2d<CV>* densityfromGENE)
       }
       for(LO k=0;k<p1->lk0;k++){
         densin[i][j][k]=blocktmp[i][p1->lk1+k];
-//if(p1->mype==0) std::cout<<"densin,i,j,k="<<i<<" "<<j<<" "<<k<<" "<<densin[i][j][k]<<'\n';
       }
     }
   }
@@ -677,7 +673,6 @@ void DatasProc3D::DensityToPart3()
         double tmp=0.0;
         for(LO l=0;l<p3->lj0;j++){
           tmp+=mattoplane[i][j][l][k]*denspart3[i][l][k];
-//std::cout<<"mattoplane="<<mattoplane[i][j][l][k]<<'\n';
         }
         densTOpart3[i][j][k]=tmp;
       }
@@ -831,8 +826,6 @@ void DatasProc3D::Prepare_mats_from_planes()
     for(LO i=0;i<p1->li0;i++) inds2[i]=2;
 
     double sum_weight=0.0;
-    LO sum_plane=0;
-    LO sum_n=0;
 
     printSumm4D(mat_from_weight,p1->li0,p1->y_res_back,p1->lk0,inds1, sum_weight,
        MPI_COMM_WORLD,"mat_from_weight",0);
@@ -846,18 +839,6 @@ void DatasProc3D::Prepare_mats_from_planes()
     printminmax4d(mat_from_weight,p1->li0,p1->y_res_back,p1->lk0,4,
      MPI_COMM_WORLD, "mat_from_weight",0);
 
-    if(p1->mype==0){
-      for(LO i=50;i<51;i++){
-      for(LO j=0;j<p1->y_res_back;j++){
-        for(LO k=0;k<1;k++){ 
-          for(LO l=3;l<4;l++){
-//            std::cout<<i<<" "<<j<<" "<<k<<" "<<l<<" "<<mat_from_weight[i][j][k][l]<<'\n';
-   //         std::cout<<i<<" "<<j<<" "<<k<<" "<<l<<" "<<mat_from_ind_plane[1][j][k][l]<<'\n';
-          }
-        }
-      }
-      }
-    }
   }
   
 }

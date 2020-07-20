@@ -7,27 +7,27 @@
 #include "testutilities.h"
 #include <string>
 #include <fstream> 
-/*
+
 void exParFor() {
   Kokkos::parallel_for(
       4, KOKKOS_LAMBDA(const int i) {
         printf("Hello from kokkos thread i = %i\n", i);
       });
 }
-*/
+
 
 int main(int argc, char **argv){
   int rank;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-/*
+
   Kokkos::initialize(argc, argv);
   if(!rank) {
     printf("Hello World on Kokkos execution space %s\n",
          typeid(Kokkos::DefaultExecutionSpace).name());
     exParFor();
   }
-*/
+
   if(argc != 2) {
     if(!rank) printf("Usage: %s <number of timesteps>\n", argv[1]);
     exit(EXIT_FAILURE);
@@ -70,8 +70,7 @@ int main(int argc, char **argv){
 
 
   //receive XGC's preproc mesh discretization values
-  coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);//x_XGC
-  //coupler::Array1d<int>* xgc_numsurf = coupler::receive_gene_pproc<int>(dir, xSurf);
+  coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);
   coupler::LO start1d=p1pp3d.mype_x*2;
   coupler::LO count1d=2;
   int*xgc_numsurf=coupler::receive_gene_exact<int>(dir,xSurf,start1d,count1d);
@@ -106,7 +105,7 @@ int main(int argc, char **argv){
   coupler::LO* inds3d=new coupler::LO[p1pp3d.li0];
   for(coupler::LO h=0;h<p1pp3d.li0;h++) inds3d[h]=p1pp3d.lk0;
  
-  for (int i = 0; i < time_step; i++) {
+  for (int i = 0; i < 3; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::GO start[2]={0, p1pp3d.blockstart};
       coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};
@@ -123,7 +122,6 @@ int main(int argc, char **argv){
 
 
       dp3d.AssemDensiSendtoPart3(bdesc);
-std::cout<<"111"<<'\n';
       coupler::Array2d<double>* densitytoXGC = new coupler::Array2d<double>(
                                                     p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0, 
                                                     p3m3d.blockstart);
@@ -136,7 +134,6 @@ std::cout<<"111"<<'\n';
       MPI_Barrier(MPI_COMM_WORLD);
       std::cout<<"p3m3d.lj0*p3m3d.blockcount="<<p3m3d.lj0*p3m3d.blockcount<<'\n';
       coupler::printSumm1D(dp3d.denssend,INDS1d,realsum,p1pp3d.comm_x,"densitytoXGC",m);
-      std::cout<<"333"<<"\n";
 
       if(!debug){
         coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);    
@@ -149,7 +146,6 @@ std::cout<<"111"<<'\n';
         coupler::Array2d<double>* fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,MPI_COMM_WORLD,m);
         dp3d.DistriPotentRecvfromPart3(fieldfromXGC);
         coupler::destroy(fieldfromXGC);
-
       }
 
       if(debug){
@@ -173,17 +169,6 @@ std::cout<<"111"<<'\n';
         fieldtmp[h] = dp3d.potentsend[h];
       }         
 
-      if(debug){
-        std::cout<<"potentpart1"<<'\n';
-        for(coupler::LO j=0;j<p1pp3d.lj0;j++){ 
-          for(coupler::LO i=0;i<p1pp3d.li0;i++){
-            for(coupler::LO k=0;k<p1pp3d.lk0;k++){
-              std::cout<<"i,k,j="<<i<<" "<<k<<" "<<j<<" "<<dp3d.potentpart1[i][j][k]<<'\n';
-            }
-          }
-        }
-      }
-
   
       coupler::send_from_coupler(adios,dir,fieldtoGENE,cFld.IO,cFld.eng,cFld.name,sendfield,MPI_COMM_WORLD,m);
       coupler::printminmax(dp3d.potentpart1, p1pp3d.li0,p1pp3d.lj0,inds3d,p1pp3d.mype,"fieldtoGENE",m);
@@ -191,11 +176,6 @@ std::cout<<"111"<<'\n';
       coupler::printSumm3D(dp3d.potentpart1, p1pp3d.li0,p1pp3d.lj0,inds3d,cplxsum,
       MPI_COMM_WORLD,"fieldtoGENE",m);
 
-
-
-
-      MPI_Barrier(MPI_COMM_WORLD);
-      std::cout<<"6666"<<'\n';
       coupler::destroy(fieldtoGENE);
       std::cerr << p1pp3d.mype << " done loop " << i << " " << j << "\n";
     }
@@ -216,7 +196,7 @@ std::cout<<"111"<<'\n';
   xCce.close();
 
   std::cerr << p1pp3d.mype << " before kokkos finalize\n";
-//  Kokkos::finalize();
+  Kokkos::finalize();
   std::cerr << p1pp3d.mype << " done kokkos finalize\n";
   MPI_Finalize();
   std::cout<<"MPI is finalized."<<'\n';

@@ -105,7 +105,7 @@ int main(int argc, char **argv){
   coupler::LO* inds3d=new coupler::LO[p1pp3d.li0];
   for(coupler::LO h=0;h<p1pp3d.li0;h++) inds3d[h]=p1pp3d.lk0;
  
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 30; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::GO start[2]={0, p1pp3d.blockstart};
       coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};

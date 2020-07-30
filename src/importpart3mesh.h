@@ -44,14 +44,7 @@ class Part3Mesh3D{
     LO  shiftx;  // The number of surfaces shifting from part3 first surface to part1 first surface.
 
 // paramters to create the background of mgnetic field, density and temperature profile
-/*
-    double rhostar; //This quantity is obtained by complex formula    
-    double* C_y;
-    double minor_r;
-    double lx_a;
-    LO sign_phi;
-*/  
-  
+   
     double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
     double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
     double** pzcoords=NULL;  // The z coordinates of all points within the 2d box.

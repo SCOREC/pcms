@@ -20,14 +20,14 @@ void DatasProc3D::CmplxdataToRealdata3D()
     std::exit(EXIT_FAILURE);
   }
   if(yparal==false){
-    for(LO i=0; i<p1.li0;i++){
-      for(LO k=0;k<p3.mylk0[i];k++){
-	for(LO j=0;j<p1.lj0;j++){
+    for(LO i=0; i<p1->li0;i++){
+      for(LO k=0;k<p3->mylk0[i];k++){
+	for(LO j=0;j<p1->lj0;j++){
           densintmp[j]=densinterpo[i][j][k];
 	}      
         ExecuteCmplxToReal();
-        for(LO l=0;l<p1.lj0*2;l++){ 
-          denspart3[i][l][k]=densouttmp[l]/double(p1.lj0*2);             }
+        for(LO l=0;l<p1->lj0*2;l++){ 
+          denspart3[i][l][k]=densouttmp[l]/double(p1->lj0*2);             }
       }
     }
   }
@@ -44,14 +44,14 @@ void DatasProc3D::RealdataToCmplxdata3D()
     std::exit(EXIT_FAILURE);
   }
   if(yparal==false){
-    for(LO i=0;i<p3.li0;i++){
-      for(LO k=0;k<p3.mylk0[i];k++){
-	for(LO j=0;j<p3.lj0;j++){
+    for(LO i=0;i<p3->li0;i++){
+      for(LO k=0;k<p1->lk0;k++){
+	for(LO j=0;j<p1->y_res_back;j++){
 	  potentintmp[j]=potentin[i][j][k];  
         }
         ExecuteRealToCmplx();
-        for(LO l=0;l<p3.lj0/2;l++){
-          potentinterpo[i][l][k]=potentouttmp[l];       
+        for(LO l=0;l<p3->lj0/2;l++){
+          potentpart1[i][l][k]=potentouttmp[l]/double(p1->y_res_back);       
         }
       }
     }
@@ -85,12 +85,12 @@ void DatasProc3D::ExecuteCmplxToReal()
 {
    if(yparal==true){
      CV** tmp_cmplx;
-     tmp_cmplx=new CV*[p1.ny0];
+     tmp_cmplx=new CV*[p1->ny0];
      double** tmp_re; 
-     tmp_re=new double*[2*p1.ny0*p1.res_fact]; 
-     for(LO i=0;i<p1.ny0;i++)
+     tmp_re=new double*[2*p1->ny0*p1->res_fact]; 
+     for(LO i=0;i<p1->ny0;i++)
        tmp_cmplx[i]=new CV[myli0]; 
-     for(LO j=0;j<2*p1.ny0*p1.res_fact;j++)
+     for(LO j=0;j<2*p1->ny0*p1->res_fact;j++)
        tmp_re[j]=new double[myli0];
      // Here is not finished for yparal=true
 
@@ -112,9 +112,9 @@ void DatasProc3D::ExecuteRealToCmplx()
 void DatasProc3D::InitFourierPlan3D()
 { 
   if(yparal==false){
-    plan_backward=fftw_plan_dft_c2r_1d(p1.lj0*2,
+    plan_backward=fftw_plan_dft_c2r_1d(p1->lj0*2,
                        reinterpret_cast<fftw_complex*>(densintmp),densouttmp,FFTW_ESTIMATE); 
-    plan_forward=fftw_plan_dft_r2c_1d(p3.lj0,potentintmp,
+    plan_forward=fftw_plan_dft_r2c_1d(p1->y_res_back,potentintmp,
                       reinterpret_cast<fftw_complex*>(potentouttmp),FFTW_ESTIMATE);
   }
 }

@@ -167,7 +167,7 @@ namespace coupler {
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
 
     const auto total_size = adios_var.Shape()[0];
-    if(!rank) std::cout << " total_size " <<total_size << "\n";
+    if(!rank) std::cout <<name<< "  total_size " <<total_size << "\n";
     const auto my_start = (total_size / nprocs) * rank;
     const auto my_count = (total_size / nprocs);
 
@@ -215,8 +215,8 @@ namespace coupler {
   
     const auto total_size = adios_var.Shape()[0];
     std::cerr << rank << ": total_size "<<total_size <<" \n";
-    const auto my_start = 0;
-    const auto my_count = total_size;
+    const auto my_start = li1;
+    const auto my_count = li0;
     std::cout << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
@@ -224,21 +224,10 @@ namespace coupler {
     const adios2::Dims count{my_count};
   
     const adios2::Box<adios2::Dims> sel(start, count);
-    int arr_size = total_size;
-    T* val = new T[arr_size];
-    T* tmp_val = new T[arr_size];
+    T* val = new T[li0];
     adios_var.SetSelection(sel);
     eng.Get(adios_var, val);
     eng.EndStep();
-    //move my chunk of the adios2 buffer to the correct index
-    int start_idx = (total_size / nprocs) * rank;
-    //std::cerr<<rank<< " li1: "<<li1<<" li1+li0: "<<li1+li0<<"\n";
-    for (int i=li1; i<(li1+li0); i++){
-      tmp_val[i] = val[start_idx];
-      //std::cerr<<rank<< " start_idx: "<<start_idx<<" val[start_idx]: "<<val[start_idx]<<" tmp_val[i]: "<<tmp_val[i]<<"\n";
-      start_idx++;
-    }
-    //delete [] val;
     return val;
   } 
   
@@ -250,19 +239,18 @@ namespace coupler {
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
- std::cout<<"rank="<<rank<<'\n';
+    std::cout<<"rank="<<rank<<'\n';
   
     const std::string fname = dir + "/" + name + ".bp";
     std::cout<<fname<<'\n'; 
     if(m==0){
-    std::cout<<"creat engine for: "<<name<<'\n';
+      std::cout<<"creat engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
-//          {"DataTransport","RDMA"},
+          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
-std::cout<<"engine parameters are set"<<'\n';
-//      eng = read_io.Open(fname, adios2::Mode::Read);
+      std::cout<<"engine parameters are set"<<'\n';
       eng = read_io.Open(fname, adios2::Mode::Read);
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     } else{
@@ -275,7 +263,7 @@ std::cout<<"engine parameters are set"<<'\n';
  
     const auto ftn_glob_height = adVar.Shape()[0] ; //4
     const auto ftn_glob_width = adVar.Shape()[1]; // 256005
-std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
+    std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
     //fortran to C transpose
     const auto c_glob_height = ftn_glob_width;
     const auto c_glob_width = ftn_glob_height;
@@ -352,9 +340,6 @@ template<typename T>
 
     const std::string fname = cce_folder + "/" + fldname + ".bp";
   
-//    adios2::IO sendIO = handler.IO;
-//    adios2::Engine engine = handler.eng;
-//    sendIO.SetEngine("Sst");
     if(m==0){
       sendIO.SetEngine("Sst");
       sendIO.SetParameters({
@@ -364,7 +349,7 @@ template<typename T>
           g_dims, g_offset, l_dims);
     
       engine = sendIO.Open(fname, adios2::Mode::Write,comm);
-     }
+    }
     if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';   
     engine.BeginStep(adios2::StepMode::Append);
     engine.Put<T>(send_id, a2d->data());

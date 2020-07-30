@@ -86,7 +86,6 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      for(LO i=0;i<p1pp3d.npx;i++){
        xboxinds[i]=new LO[3];
      }
-
      LO* buffer=new LO[3*p1pp3d.npx];
      MPI_Allgather(xinds,3,MPI_INT,buffer,3,MPI_INT,p1pp3d.comm_x);
      for(LO i=0;i<p1pp3d.npx;i++){
@@ -102,14 +101,31 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        }
      }
      lj0=p1pp3d.lj0*2; 
-     // FIXME mylk0 is undersized for circular case;
+
      // it is written in DistributePoints and
      // read in DistriPart3zcoords
      mylk0=new LO[li0]; 
      mylk1=new LO[li0];
      mylk2=new LO[li0];      
      DistriPart3zcoords(p1pp3d, test_dir);
-  } 
+
+// for debugging
+     MPI_Barrier(MPI_COMM_WORLD);
+     bool debug = false;
+     if(debug){
+       for(LO i=0;i<li0;i++){
+	 LO num=0;
+	 LO* recvcount=new LO[p1pp3d.npz];
+	 MPI_Allgather(&mylk0[i],1,MPI_INT,recvcount,1,MPI_INT,p1pp3d.comm_z);
+	 for(LO h=0;h<p1pp3d.npz;h++) num+=recvcount[h];
+	 free(recvcount);
+	 if(p1pp3d.mype==2 || p1pp3d.mype==0) std::cout<<num<<"   "<<versurf[li1+i]<<'\n';
+	if(i==0){
+	  std::cout<<"mypez,lk="<<p1pp3d.mype_z<<" "<<mylk0[0]<<" "<<mylk1[0]<<" "<<mylk2[0]<<'\n';
+	} 
+      }
+    } 
+  }
 }
 
 void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx)
@@ -167,32 +183,37 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     LO index2=p1pp3d.li2;
     LO index0=p1pp3d.li0;
     pzcoords = new double*[index0]; 
+    zcoordsurf = new double*[index0];
     double* zcoords;
+    bool debug=false;
     for(LO i= index1;i<index2+1;i++)
     {
-      zcoords=new double[versurf[numsurf]];  
+      zcoordsurf[i-index1]=new double[versurf[numsurf]];
+      zcoords=zcoordsurf[i-index1];
       for(LO j=0;j<versurf[numsurf];j++){
-        zcoords[j]=zcoordall[numvert+j]; 
+        zcoords[j]=zcoordall[numvert+j];  
       }
-
       if(test_case==TestCase::t0){
         assert(!test_dir.empty());
         std::string fname=test_dir+std::to_string(i)+"_zcoords.txt";
         OutputtoFile(zcoords,versurf[numsurf],fname);
       }
       nstart[i] = minloc(zcoords,versurf[numsurf]);
-
       reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
-
-       DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
-       pzcoords[i-index1]= new double[mylk0[i-index1]];
-       for(LO k=0;k<mylk0[i-index1];k++){
-	 pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
-       }
-
-       numvert+=versurf[numsurf];
-       numsurf+=1;       
-       delete[] zcoords; 
+      if(debug){
+	if(p1pp3d.mype==0 && i==index1+1){
+	  for(LO h=0;h<versurf[numsurf];h++){
+	    std::cout<<"h,pz="<<h<<" "<<zcoordsurf[i-index1][h]<<'\n';
+	  }
+	}
+      }
+      DistributePoints(zcoords,index1,i,p1pp3d.pzcoords,p1pp3d);
+      pzcoords[i-index1]= new double[mylk0[i-index1]];
+      for(LO k=0;k<mylk0[i-index1];k++){
+	pzcoords[i-index1][k]= zcoords[mylk1[i-index1]+k];
+      } 
+      numvert+=versurf[numsurf];
+      numsurf+=1;        
     }
   }  
 }
@@ -220,14 +241,10 @@ LO  minloc(const double* array, const LO n)
     double zmin=minimalvalue(array, n);
     LO num=0;
     for(LO i=0;i<n;i++){ 
-       if(array[i]==zmin) break;
-       num=i;
+      num=i;
+      if(array[i]==zmin) break;
     }
-    if(num==0){
-      return num;
-    }else{
-      return num+1;
-    }
+    return num;
  }
 
 //// notice: be carefull with extra_zero case.
@@ -244,9 +261,10 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
     nstart=minloc(tmp,versurf[li]);
 
     //nstart must be in my domain or will duplicate
-    if(exterarr[nstart]<interarr[p1pp3d.lk1])
+  //  if(nstart!=0) nstart=nstart-1;
+    if(exterarr[nstart]<interarr[p1pp3d.lk1]){
       nstart+=1;
-
+    }
     LO i1=nstart;
     LO i2=nstart;
     double internal_ub;

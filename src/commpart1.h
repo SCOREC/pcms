@@ -3,6 +3,7 @@
 
 #include "adios2Routines.h"
 #include "testutilities.h"
+#include <cstddef>
 namespace coupler {
 
 class Part1ParalPar3D {
@@ -26,10 +27,11 @@ class Part1ParalPar3D {
     LO lj2; //the number of elements in Fourier space.   
 
     GO totnodes; // the total nodes number of the poloidal cross setion of part1.
+    LO n_cuts; //The number of toroidal planes.
 //    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
     int periods[3]={1,0,1};
     double* xcoords=NULL; // The 1d array storing the radial position of all flux surfaces
-    double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal surface curve.
+    double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal cross section.
     double* pzp=NULL; // The 1d array storing the poloial on each process.
 //    double dz;  // The equal step length along the poloidal flux curve.
  // parameters for creating the magnetic field, density and temperature background. 
@@ -38,20 +40,24 @@ class Part1ParalPar3D {
     LO ky0_ind;
 
     double rhostar; //This quantity is obtained by complex formula
-    double* C_y;
+    double* C_y=NULL;
     double minor_r;
     double lx_a;
     LO sign_phi;
     double dx;
- 
+    double Tref,nref,mref,Bref,Lref;
+    
     double dz;  // The equal step length along the poloidal flux curve.
 
-    double res_fact;
+    int res_fact; //This is different from 4 which has no substantial implementation in wdmapp/GENE 
     double L_tor;
-    double* phi_cut;
+    double* phi_cut=NULL;
     double dy;
     LO y_res;
- 
+    LO y_res_back;
+    double norm_fact_dens;
+    double norm_fact_field; 
+
 
 // parameters for Adios transfer
     GO blockstart,blockend,blockcount;    
@@ -96,6 +102,11 @@ class Part1ParalPar3D {
     void MpiFreeComm();
     void blockindice(); 
 };
+
+template<typename T, size_t SIZE>
+size_t getSize(T (&)[SIZE]) {
+    return SIZE;
+}
 
 }
 

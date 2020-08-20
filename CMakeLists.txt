@@ -5,6 +5,7 @@ find_package(MPI REQUIRED)
 #adios2 adds C and Fortran depending on how it was built
 find_package(ADIOS2 2.5 REQUIRED)
 find_package(Kokkos 3.0 REQUIRED)
+
 ## use pkgconfig since the fftw autoconf install produces
 ## broken cmake config files
 ## https://github.com/FFTW/fftw3/issues/130
@@ -29,4 +30,3 @@ endif()
 
 add_subdirectory(src)
 add_subdirectory(test)
-add_subdirectory(perfstubs)

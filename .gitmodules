@@ -1,3 +1,0 @@
-[submodule "perfstubs"]
-	path = perfstubs
-	url = https://github.com/khuck/perfstubs.git

@@ -1,4 +1,3 @@
-#include "../perfstubs/perfstubs_api/timer.h"
 #include "adios2Routines.h"
 #include "couplingTypes.h"
 #include "dataprocess.h"
@@ -8,6 +7,8 @@
 #include "testutilities.h"
 #include <string>
 #include <fstream> 
+#define PERFSTUBS_USE_TIMERS
+#include "../perfstubs/perfstubs_api/timer.h"
 
 void exParFor() {
   Kokkos::parallel_for(
@@ -18,6 +19,8 @@ void exParFor() {
 
 
 int main(int argc, char **argv){
+  PERFSTUBS_INITIALIZE();
+
   int rank;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -108,6 +111,7 @@ int main(int argc, char **argv){
  
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
+      PERFSTUBS_DYNAMIC_PHASE_START("RK loop", (i * time_step) + j);
       coupler::GO start[2]={0, p1pp3d.blockstart};
       coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};
       std::cout<<"mype, start count"<<p1pp3d.mype<<" "<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
@@ -179,6 +183,7 @@ int main(int argc, char **argv){
 
       coupler::destroy(fieldtoGENE);
       std::cerr << p1pp3d.mype << " done loop " << i << " " << j << "\n";
+      PERFSTUBS_DYNAMIC_PHASE_STOP("RK loop", (i * time_step) + j);
     }
   }
 
@@ -201,5 +206,7 @@ int main(int argc, char **argv){
   std::cerr << p1pp3d.mype << " done kokkos finalize\n";
   MPI_Finalize();
   std::cout<<"MPI is finalized."<<'\n';
+  PERFSTUBS_DUMP_DATA();
+  PERFSTUBS_FINALIZE();
   return 0;
 }

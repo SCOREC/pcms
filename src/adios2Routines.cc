@@ -11,6 +11,7 @@ namespace coupler {
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id) {
+    PERFSTUBS_START_STRING(__func__);
     adios2::IO io = handler.IO; 
     adios2::Engine engine = handler.eng;
     int rank;
@@ -18,6 +19,7 @@ namespace coupler {
     const std::string fld_name = "cpl_density";
     send2d_from_C(density, cce_folder, fld_name, io, engine, send_id);
     std::cerr << rank <<  ": send " << fld_name <<" done \n";
+    PERFSTUBS_STOP_STRING(__func__);
   }
 
   Array2d<double>* receive_field(const std::string cce_folder,
@@ -28,6 +30,7 @@ namespace coupler {
 
   void send_field(const std::string cce_folder, const Array2d<CV>* field,
       const adios2_handler &handler, adios2::Variable<CV> &send_id) {
+    PERFSTUBS_START_STRING(__func__);
     adios2::IO io = handler.IO; 
     adios2::Engine engine = handler.eng;
     int rank;
@@ -35,6 +38,7 @@ namespace coupler {
     const std::string fld_name = "cpl_field";
     send2d_from_C(field, cce_folder, fld_name, io, engine, send_id);
     std::cerr << rank <<  ": send " << fld_name <<" done \n";
+    PERFSTUBS_STOP_STRING(__func__);
   }
  
  void AdiosProTransFortranCpp2D(LO rankout,LO mypxout,LO mypyout, const LO mypex,const LO mypey,const LO npx,const LO npy)

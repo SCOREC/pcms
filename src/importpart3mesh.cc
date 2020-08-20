@@ -10,6 +10,7 @@ namespace coupler{
 void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
     const std::string test_dir)
 {
+   PERFSTUBS_START_STRING(__func__);
    nstart = new LO[p1pp3d.nx0];
    LO numsurf;
    int root=0;
@@ -126,10 +127,12 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
       }
     } 
   }
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx)
 {
+  PERFSTUBS_START_STRING(__func__);
   GO* inds = new GO[npx]; 
   blockcount=0;
   for(LO i=0;i<li0;i++)
@@ -143,11 +146,13 @@ void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO np
      blockstart+=inds[i];
   blockend=blockstart+blockcount-1;
   delete[] inds;
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 
 void InitzcoordsInCoupler(double* zcoords,LO* versurf,LO nsurf)
 {
+  PERFSTUBS_START_STRING(__func__);
   double shift=0.1;
   GO num=0;
   for(LO i=0;i<nsurf;i++){
@@ -157,12 +162,14 @@ void InitzcoordsInCoupler(double* zcoords,LO* versurf,LO nsurf)
       num++;
     }
   } 
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 //when prepro=ture
 void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
     const std::string test_dir)
 {
+  PERFSTUBS_START_STRING(__func__);
   if(preproc==true){
     if(test_case==TestCase::t0){
       zcoordall = new double[activenodes];
@@ -216,10 +223,12 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
       numsurf+=1;        
     }
   }  
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 void Part3Mesh3D::JugeFirstSurfaceMatch(double xp1)
 {
+  PERFSTUBS_START_STRING(__func__);
   double* tmp = new double[nsurf];
   for(LO i=0;i<nsurf; i++){
     tmp[i]=abs(xcoords[i]-(xp1));
@@ -234,16 +243,19 @@ void Part3Mesh3D::JugeFirstSurfaceMatch(double xp1)
     exit(1);
   }
   delete[] tmp;
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 LO  minloc(const double* array, const LO n)
 {
+    PERFSTUBS_START_STRING(__func__);
     double zmin=minimalvalue(array, n);
     LO num=0;
     for(LO i=0;i<n;i++){ 
       num=i;
       if(array[i]==zmin) break;
     }
+    PERFSTUBS_STOP_STRING(__func__);
     return num;
  }
 
@@ -252,6 +264,7 @@ LO  minloc(const double* array, const LO n)
 void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li, 
                   const double* interarr, const Part1ParalPar3D  &p1pp3d)
 {
+  PERFSTUBS_START_STRING(__func__);
   if(preproc==true){
     LO nstart;
     double* tmp=new double[versurf[li]];
@@ -295,16 +308,19 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
       <<" "<<mylk2[li-gstart]<<" "<<'\n'; 
     }
   }
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
  double minimalvalue(const double* array, const LO n)
 {
+    PERFSTUBS_START_STRING(__func__);
     double tmp=array[0];
     for(LO i=1;i<n;i++){
       if(tmp>array[i]){
         tmp=array[i];
       }
     }
+    PERFSTUBS_STOP_STRING(__func__);
     return tmp;      
 }
 

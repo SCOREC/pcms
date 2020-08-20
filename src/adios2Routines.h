@@ -10,6 +10,7 @@
 #include <fstream>
 #include "couplingConstants.h" //not used
 #include "couplingTypes.h"
+#include "../perfstubs/perfstubs_api/timer.h"
 
 namespace coupler { 
       
@@ -144,6 +145,7 @@ namespace coupler {
   template<typename T> 
   Array1d<T>* receive1d_from_ftn(const std::string dir, const std::string name,
       adios2::IO &read_io, adios2::Engine &eng) {
+    PERFSTUBS_START_STRING(__func__);
     int rank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -184,6 +186,7 @@ namespace coupler {
     adios_var.SetSelection(sel);
     eng.Get(adios_var, field->data());
     eng.EndStep();
+    PERFSTUBS_STOP_STRING(__func__);
     return field;
   }
   
@@ -191,6 +194,7 @@ namespace coupler {
   template<typename T> 
   T* receive1d_exact_ftn(const std::string dir, const std::string name,
       adios2::IO &read_io, adios2::Engine &eng, GO li1, GO li0, MPI_Comm &comm) {
+    PERFSTUBS_START_STRING(__func__);
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
@@ -228,6 +232,7 @@ namespace coupler {
     adios_var.SetSelection(sel);
     eng.Get(adios_var, val);
     eng.EndStep();
+    PERFSTUBS_STOP_STRING(__func__);
     return val;
   } 
   
@@ -236,6 +241,7 @@ namespace coupler {
   template<typename T>
   Array2d<T>* receive2d_from_ftn(const std::string dir, const std::string name,
       adios2::IO &read_io, adios2::Engine &eng, GO start[2], GO count[2],MPI_Comm &comm,const int m) {
+    PERFSTUBS_START_STRING(__func__);
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
@@ -280,6 +286,7 @@ namespace coupler {
     eng.Get<T>(adVar, a2d->data());
     eng.EndStep();
     std::cerr << rank <<  ": receive " << name << " done \n";
+    PERFSTUBS_STOP_STRING(__func__);
     return a2d;
   }
   
@@ -289,6 +296,7 @@ namespace coupler {
       const std::string name, adios2::IO coupling_io,adios2::Engine engine,
       adios2::Variable<T> &send_id) 
 {
+    PERFSTUBS_START_STRING(__func__);
     const::adios2::Dims g_dims({a2d->globalW(), a2d->globalH()});
     const::adios2::Dims g_offset({0,a2d->start_col()});
     const::adios2::Dims l_dims({a2d->localW(), a2d->localH()});
@@ -307,6 +315,7 @@ namespace coupler {
     engine.Put<T>(send_id, a2d->data());
     engine.EndStep();
     std::cout<<"The cpl_density was written"<<'\n';
+    PERFSTUBS_STOP_STRING(__func__);
  }
   
   /** Receive PreProc values from GENE
@@ -330,6 +339,7 @@ template<typename T>
         const Array2d<T>* a2d, adios2::IO& sendIO,adios2::Engine& engine,const std::string fldname,                        
         adios2::Variable<T> &send_id, const MPI_Comm comm,const int m)  //     
  {
+    PERFSTUBS_START_STRING(__func__);
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     const std::string fld_name;
@@ -355,6 +365,7 @@ template<typename T>
     engine.Put<T>(send_id, a2d->data());
     engine.EndStep();
     std::cout<<"rank="<<rank<<" "<<"The "<<fldname<<" was written"<<'\n';
+    PERFSTUBS_STOP_STRING(__func__);
   }
   
 

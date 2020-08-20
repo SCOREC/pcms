@@ -11,6 +11,7 @@ namespace coupler {
 // Beforing invoking this routine, the FFtw plan routine must be invoked. 
 void DatasProc3D::CmplxdataToRealdata3D()
 {
+  PERFSTUBS_START_STRING(__func__);
   if(densintmp==NULL){
     std::cout<<"ERROR: before invoking CmplxdataToRealdata3D, DatasProc3.densintmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
@@ -31,10 +32,12 @@ void DatasProc3D::CmplxdataToRealdata3D()
       }
     }
   }
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 void DatasProc3D::RealdataToCmplxdata3D()
 {
+  PERFSTUBS_START_STRING(__func__);
   if(potentintmp==NULL){
     std::cout<<"ERROR: before invoking CmplxdataToRealdata3, DatasProc3D.potentintmp must be allocated"<<'\n';
     std::exit(EXIT_FAILURE);
@@ -56,6 +59,7 @@ void DatasProc3D::RealdataToCmplxdata3D()
       }
     }
   }
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 //TODO Incomplete, Not used, put into the class it supports, I assume DatasProc3D
@@ -64,6 +68,7 @@ void DatasProc3D::RealdataToCmplxdata3D()
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d)
 {
+  PERFSTUBS_START_STRING(__func__);
   LO ny0 = dp3d.getP1ny0();
   LO npy = dp3d.getP1npy();
 
@@ -79,10 +84,12 @@ void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
       rbuf[i][j]=new CV[npy];
     }
   }
+  PERFSTUBS_STOP_STRING(__func__);
 }
 // It's not finished for yparal==true here.
 void DatasProc3D::ExecuteCmplxToReal()
 {
+  PERFSTUBS_START_STRING(__func__);
    if(yparal==true){
      CV** tmp_cmplx;
      tmp_cmplx=new CV*[p1->ny0];
@@ -97,30 +104,35 @@ void DatasProc3D::ExecuteCmplxToReal()
     }else{
      fftw_execute(plan_backward);
     } 
+  PERFSTUBS_STOP_STRING(__func__);
  }
 
 void DatasProc3D::ExecuteRealToCmplx()
 {
+   PERFSTUBS_START_STRING(__func__);
    if(yparal==true){
      // Here is not finished for yparal=true
    } else{
      fftw_execute(plan_forward);
    }
-
+  PERFSTUBS_STOP_STRING(__func__);
  } 
 
 void DatasProc3D::InitFourierPlan3D()
 { 
+  PERFSTUBS_START_STRING(__func__);
   if(yparal==false){
     plan_backward=fftw_plan_dft_c2r_1d(p1->lj0*2,
                        reinterpret_cast<fftw_complex*>(densintmp),densouttmp,FFTW_ESTIMATE); 
     plan_forward=fftw_plan_dft_r2c_1d(p1->y_res_back,potentintmp,
                       reinterpret_cast<fftw_complex*>(potentouttmp),FFTW_ESTIMATE);
   }
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 void DatasProc3D::FreeFourierPlan3D()
 {
+  PERFSTUBS_START_STRING(__func__);
   if(plan_forward)
     fftw_destroy_plan(plan_forward);
   if(plan_backward)
@@ -135,6 +147,7 @@ void DatasProc3D::FreeFourierPlan3D()
   delete[] dp3d.potentouttmp;
   dp3d.potentouttmp=NULL;
 */
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 }  

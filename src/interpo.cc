@@ -10,6 +10,7 @@ namespace coupler {
 template<class T>
 T Lag3dInterpo1D(const T yin[4],const double xin[4],const double x)
 {
+  PERFSTUBS_START_STRING(__func__);
   double l0,l1,l2,l3;
   T yout;
   l0=(x-xin[1])*(x-xin[2])*(x-xin[3])/(xin[0]-xin[1])/(xin[0]-xin[2])/(xin[0]-xin[3]);
@@ -17,12 +18,14 @@ T Lag3dInterpo1D(const T yin[4],const double xin[4],const double x)
   l2=(x-xin[0])*(x-xin[1])*(x-xin[3])/(xin[2]-xin[0])/(xin[2]-xin[1])/(xin[2]-xin[3]);
   l3=(x-xin[0])*(x-xin[1])*(x-xin[2])/(xin[3]-xin[0])/(xin[3]-xin[1])/(xin[3]-xin[2]);
   yout=yin[0]*l0+yin[1]*l1+yin[2]*l2+yin[3]*l3;
+  PERFSTUBS_STOP_STRING(__func__);
   return yout;
 }
 
 //central 3rd order Lagrange polynormal interpolation
 template<class T>
 void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double* xout,const LO nout){
+  PERFSTUBS_START_STRING(__func__);
   LO jstart=2;
   LO j1=jstart;
   LO j2,j0,jm;
@@ -48,10 +51,12 @@ void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double
     func[3]=yin[j2];
     yout[j]=Lag3dInterpo1D(func,coords,x);
   }
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc)
 {
+  PERFSTUBS_START_STRING(__func__);
   CV* yin;
   double* xin;
   CV* yout;
@@ -100,11 +105,13 @@ void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc)
   delete[] xin,yin;
   xin=NULL;
   yin=NULL;
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 
 void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc)
 {
+  PERFSTUBS_START_STRING(__func__);
   CV* yin;
   CV* yout;
   double* xin;
@@ -136,7 +143,7 @@ void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc)
      delete[] yin; 
     }
   }
-
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 }

@@ -5,6 +5,7 @@ namespace coupler {
 
 void Part1ParalPar3D::initTest0(std::string test_dir)
 {
+  PERFSTUBS_START_STRING(__func__);
   assert(!test_dir.empty());
   LO* data=new LO[12];
   std::string fname=test_dir+"parpart1.nml";
@@ -43,11 +44,13 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
   fname=test_dir+"q_prof.nml";
   InputfromFile(q_prof,nx0,fname);
   
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 //read the paralllization parameters
 void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double* gene_cy, std::string test_dir)
 {
+ PERFSTUBS_START_STRING(__func__);
  if(preproc==true){ 
    if(test_case==TestCase::t0){
      assert(!parpar && !xzcoords && !q_prof);//when not testing, arrays come from ADIOS2
@@ -186,10 +189,12 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
      delete[] xzcoords;
    }
  }
+ PERFSTUBS_STOP_STRING(__func__);
 }
 
 void Part1ParalPar3D::CreateSubCommunicators()
 {
+   PERFSTUBS_START_STRING(__func__);
    // create 3D parallel cart with z being periodic
    int rorder = 0;
    int dim[3]={(int)npx,(int)npy,(int)npz};
@@ -210,22 +215,26 @@ void Part1ParalPar3D::CreateSubCommunicators()
    MPI_Comm_rank(comm_x,&mype_x);
    MPI_Comm_rank(comm_y,&mype_y);
    MPI_Comm_rank(comm_z,&mype_z);
+   PERFSTUBS_STOP_STRING(__func__);
 }
 
 void Part1ParalPar3D::MpiFreeComm()
 {
+  PERFSTUBS_START_STRING(__func__);
   MPI_Comm_free(&comm_x);
   MPI_Comm_free(&comm_y);
   MPI_Comm_free(&comm_z);
   MPI_Comm_free(&comm_cart);
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 void Part1ParalPar3D::blockindice()
 {
+   PERFSTUBS_START_STRING(__func__);
    blockcount = GO(nz0*li0);
    blockstart = GO(nz0*li1);
    blockend = GO(nz0*(li2+1)-1);
-
+   PERFSTUBS_STOP_STRING(__func__);
 }
 
 

@@ -16,6 +16,7 @@ BoundaryDescr3D::BoundaryDescr3D(
     const TestCase tcase,
     bool pproc):test_case(tcase), preproc(pproc)
 {
+  PERFSTUBS_START_STRING(__func__);
   if(preproc==true){
     nzb=p1pp3d.nzb;
     updenz=new CV**[p1pp3d.li0];
@@ -62,10 +63,12 @@ BoundaryDescr3D::BoundaryDescr3D(
 
    initpbmat(p1pp3d);
   } 
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)
 {
+   PERFSTUBS_START_STRING(__func__);
    LO num;
    if(p1pp3d.mype_z==0){
      for(LO i=0;i<p1pp3d.li0;i++){
@@ -84,17 +87,20 @@ void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)
        }
      }
    }
+   PERFSTUBS_STOP_STRING(__func__);
 }
 
 
 BoundaryDescr3D::~BoundaryDescr3D()
 {
+  PERFSTUBS_START_STRING(__func__);
   if(upzpart3!=NULL) delete[] upzpart3;
   if(lowzpart3!=NULL) delete[] lowzpart3;
   if(updenz!=NULL) delete[] updenz;
   if(lowdenz!=NULL) delete[] lowdenz;
   if(uppotentz!=NULL) delete[] uppotentz;
   if(lowpotentz!=NULL) delete[] lowpotentz;
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 

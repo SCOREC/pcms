@@ -14,6 +14,7 @@ namespace coupler{
 // In the wdm/app(cuda_under_hood) the parallel boundary condition is not used for the potential.
 void DatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
 {
+  PERFSTUBS_START_STRING(__func__);
   LO nzb=bdesc.nzb;
   if(bdesc.lowpotentz==NULL||bdesc.uppotentz==NULL){
     std::cout<<"ERROR:the boundary buffer of the potential must be allocated beforing invoking this routine.";
@@ -114,12 +115,14 @@ void DatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
          std::exit(EXIT_FAILURE);
       }
    }
+   PERFSTUBS_STOP_STRING(__func__);
 }
 
 
 
 void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc) 
 {
+  PERFSTUBS_START_STRING(__func__);
   LO nzb=bdesc.nzb;
   if (bdesc.lowdenz == NULL || bdesc.updenz == NULL) {
     std::cout << "ERROR:the boundary buffer must be alloctted before "
@@ -183,6 +186,7 @@ void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bde
       std::exit(EXIT_FAILURE);
     }
   }
+  PERFSTUBS_STOP_STRING(__func__);
 }
 
 

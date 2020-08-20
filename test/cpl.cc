@@ -8,7 +8,7 @@
 #include <string>
 #include <fstream> 
 #define PERFSTUBS_USE_TIMERS
-#include "../perfstubs/perfstubs_api/timer.h"
+#include "perfstubs_api/timer.h"
 
 void exParFor() {
   Kokkos::parallel_for(

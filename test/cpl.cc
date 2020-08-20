@@ -1,3 +1,4 @@
+#include "../perfstubs/perfstubs_api/timer.h"
 #include "adios2Routines.h"
 #include "couplingTypes.h"
 #include "dataprocess.h"
@@ -105,7 +106,7 @@ int main(int argc, char **argv){
   coupler::LO* inds3d=new coupler::LO[p1pp3d.li0];
   for(coupler::LO h=0;h<p1pp3d.li0;h++) inds3d[h]=p1pp3d.lk0;
  
-  for (int i = 0; i < 30; i++) {
+  for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::GO start[2]={0, p1pp3d.blockstart};
       coupler::GO count[2]={coupler::GO(p1pp3d.lj0), p1pp3d.blockcount};
@@ -133,7 +134,7 @@ int main(int argc, char **argv){
       coupler::GO INDS1d[2]={0,p3m3d.lj0*p3m3d.blockcount};
       MPI_Barrier(MPI_COMM_WORLD);
       std::cout<<"p3m3d.lj0*p3m3d.blockcount="<<p3m3d.lj0*p3m3d.blockcount<<'\n';
-      coupler::printSumm1D(dp3d.denssend,INDS1d,realsum,p1pp3d.comm_x,"densitytoXGC",m);
+      //coupler::printSumm1D(dp3d.denssend,INDS1d,realsum,p1pp3d.comm_x,"densitytoXGC",m);
 
       if(!debug){
         coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);    

@@ -10,7 +10,7 @@
 #include <fstream>
 #include "couplingConstants.h" //not used
 #include "couplingTypes.h"
-#include "../perfstubs/perfstubs_api/timer.h"
+#include "perfstubs_api/timer.h"
 
 namespace coupler { 
       

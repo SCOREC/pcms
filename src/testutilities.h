@@ -66,7 +66,7 @@ void printSumm1D(T* array, GO inds1d[2],T sum,
 {  LO num=0;
   LO rank;
   MPI_Comm_rank(comm,&rank);
-  for(GO i=inds1d[0];i<inds1d[1]+1;i++){
+  for(GO i=inds1d[0];i<inds1d[1];i++){
       sum+=array[i];
       num+=1;
 //     if(rank==0) std::cout<<i<<" "<<array[i]<<'\n';

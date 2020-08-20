@@ -7,6 +7,9 @@ target_link_libraries(test_init coupler)
 add_executable(cpl cpl.cc)
 target_link_libraries(cpl coupler)
 
+link_directories(..${CMAKE_BINARY_DIR}/perfstubs/perfstubs)
+target_link_libraries(coupler perfstubs)
+
 set(drivers passthrough test_init cpl)
 install(TARGETS ${drivers})
 

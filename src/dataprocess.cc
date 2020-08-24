@@ -494,7 +494,6 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
   bool debug=false;
   if(debug){
     printminmax(densinterpo,p1->li0,p1->lj0,p3->mylk0,p1->mype,"densinterpo",0);
-    MPI_Barrier(MPI_COMM_WORLD);
     CV sum=CV(0.0,0.0);
     printSumm3D(densinterpo,p1->li0,p1->lj0,p3->mylk0,sum,
     MPI_COMM_WORLD,"densinterpo",0);

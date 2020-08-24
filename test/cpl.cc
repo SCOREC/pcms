@@ -94,7 +94,6 @@ int main(int argc, char **argv){
   mesh3=&p3m3d;
   coupler::DatasProc3D dp3d(mesh1, mesh3, preproc, test_case, ypar, nummode);
   if(!p1pp3d.mype)std::cerr << "0.9"<< "\n";
-  MPI_Barrier(MPI_COMM_WORLD);
   coupler::destroy(q_prof);
   coupler::destroy(gene_xval);
   coupler::destroy(gene_parpar);
@@ -117,11 +116,9 @@ int main(int argc, char **argv){
       std::cout<<"mype, start count"<<p1pp3d.mype<<" "<<start[0]<<" "<<start[1]<<" "<<count[0]<<" "<<count[1]<<'\n';
       m=i*RK_count+j;
       coupler::Array2d<coupler::CV>* densityfromGENE = coupler::receive_density(dir, gDens,start,count,MPI_COMM_WORLD,m);
-      MPI_Barrier(MPI_COMM_WORLD);
 
       dp3d.DistriDensiRecvfromPart1(densityfromGENE);
       cplxsum=coupler::CV(0.0,0.0);
-      MPI_Barrier(MPI_COMM_WORLD);
       coupler::printSumm3D(dp3d.densin,p1pp3d.li0,p1pp3d.lj0,inds3d,cplxsum,
       MPI_COMM_WORLD,"densityfromGENE",m);
 
@@ -136,7 +133,6 @@ int main(int argc, char **argv){
       }
       realsum=0.0;
       coupler::GO INDS1d[2]={0,p3m3d.lj0*p3m3d.blockcount};
-      MPI_Barrier(MPI_COMM_WORLD);
       std::cout<<"p3m3d.lj0*p3m3d.blockcount="<<p3m3d.lj0*p3m3d.blockcount<<'\n';
       //coupler::printSumm1D(dp3d.denssend,INDS1d,realsum,p1pp3d.comm_x,"densitytoXGC",m);
 

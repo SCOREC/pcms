@@ -57,43 +57,43 @@ void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc)
   CV* yout;
   double* xout;
   LO nzb=bdesc.nzb;
-  xin=new double[p1->lk0+2*nzb];
-  yin=new CV[p1->lk0+2*nzb];  
+  xin=new double[p1->lk0[p1->mype_z]+2*nzb];
+  yin=new CV[p1->lk0[p1->mype_z]+2*nzb];  
   if(preproc==true){
     if(p1->periods[2]==1){
       if(p1->mype_z==0){
         for(LO l=0;l<nzb;l++){
           xin[l]=p1->pzcoords[p1->nz0-nzb+l]-2.0*cplPI;
-          xin[p1->lk0+nzb+l]=p1->pzcoords[p1->lk2+l+1];          
+          xin[p1->lk0[p1->mype_z]+nzb+l]=p1->pzcoords[p1->lk2+l+1];          
         }
       } else if(p1->mype_z==p1->npz-1){
           for(LO l=0;l<nzb;l++){
             xin[l]=p1->pzcoords[p1->lk1-nzb+l];
-            xin[p1->lk0+nzb+l]=p1->pzcoords[l]+2.0*cplPI;
+            xin[p1->lk0[p1->mype_z]+nzb+l]=p1->pzcoords[l]+2.0*cplPI;
           }        
       }else{
           for(LO l=0;l<nzb;l++){
             xin[l]=p1->pzcoords[p1->lk1-nzb+l];
-            xin[p1->lk0+nzb+l]=p1->pzcoords[p1->lk2+l+1];
+            xin[p1->lk0[p1->mype_z]+nzb+l]=p1->pzcoords[p1->lk2+l+1];
           }
       }
-      for(LO k=0;k<p1->lk0;k++){  
+      for(LO k=0;k<p1->lk0[p1->mype_z];k++){  
         xin[nzb+k]=p1->pzcoords[p1->lk1+k];
       }      
     }
 
-   for(LO i=0;i<p1->li0;i++){
+   for(LO i=0;i<p1->li0[mype_x];i++){
       for(LO j=0;j<p1->lj0;j++){
         for(LO l=0;l<nzb;l++){
           yin[l]=bdesc.lowdenz[i][j][l];
-          yin[p1->lk0+nzb+l]=bdesc.updenz[i][j][l];
+          yin[p1->lk0[p1->mype_z]+nzb+l]=bdesc.updenz[i][j][l];
         }
-        for(LO k=0;k<p1->lk0;k++){  
+        for(LO k=0;k<p1->lk0[p1->mype_z];k++){  
           yin[nzb+k]=densin[i][j][k];
         }
         xout=p3->pzcoords[i];
         yout=densinterpo[i][j];
-        Lag3dArray(yin,xin,p1->lk0+2*nzb,yout,xout,p3->mylk0[i]);
+        Lag3dArray(yin,xin,p1->lk0[p1->mype_z]+2*nzb,yout,xout,p3->mylk0[i]);
       }
     }   
   }
@@ -110,7 +110,7 @@ void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc)
   double* xin;
   LO nzb=bdesc.nzb;
   if(preproc==true){
-    for(LO i=0;i<p3->li0;i++){
+    for(LO i=0;i<p3->li0[mype_x];i++){
       yin=new CV[p3->mylk0[i]+2*nzb];
       xin=new double[p3->mylk0[i]+2*nzb];
 

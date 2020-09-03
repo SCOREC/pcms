@@ -35,43 +35,43 @@ void DatasProc3D::init()
 {
   if(preproc==true){
     if(yparal==true){
-      if(p1->li0%p1->npy==0){
-        part1li0=p1->li0/p1->npy;
+      if(p1->li0[p1->mype_x]%p1->npy==0){
+        part1li0=p1->li0[p1->mype_x]/p1->npy;
         part3li0=part1li0;
       } else{
         if(p1->mype_y==p1->npy-1){
-          part1li0=p1->li0%p1->npy;
+          part1li0=p1->li0[p1->mype_x]%p1->npy;
           part3li0=part1li0;
         }  else{
-          part1li0=p1->li0%p1->npy;
+          part1li0=p1->li0[p1->mype_x]%p1->npy;
           part3li0=part1li0;
         }
       }
       part1lj0=2*p1->ny0;
       part3lj0=p1->ny0;   // here may need rethinking.
     } else{
-      part1li0=p1->li0;
-      part3li0=p1->li0;
+      part1li0=p1->li0[p1->mype_x];
+      part3li0=p1->li0[p1->mype_x];
       part1lj0=2*p1->ny0;
       part3lj0=p1->ny0;   // here may need rethinking.
     }
   }
   sum=0;
-  for(LO i=0;i<p3->li0;i++)  sum+=p3->mylk0[i];
+  for(LO i=0;i<p3->li0[p1->mype_x];i++)  sum+=p3->mylk0[i];
  
 }
 
 void DatasProc3D::AllocDensityArrays()
 {
   if(yparal==false){
-    densin=new CV**[p1->li0];
-    for(LO i=0;i<p1->li0;i++){
+    densin=new CV**[p1->li0[p1->mype_x]];
+    for(LO i=0;i<p1->li0[p1->mype_x];i++){
       densin[i]=new CV*[p1->lj0];
       for(LO j=0;j<p1->lj0;j++)
-        densin[i][j]=new CV[p1->lk0];
+        densin[i][j]=new CV[p1->lk0[p1->mype_z]];
     }
-    densinterpo=new CV**[p1->li0];
-    for(LO i=0;i<p1->li0;i++){
+    densinterpo=new CV**[p1->li0[p1->mype_x]];
+    for(LO i=0;i<p1->li0[p1->mype_x];i++){
       densinterpo[i]=new CV*[p1->lj0];
       for(GO j=0;j<p1->lj0;j++){
         densinterpo[i][j]=new CV[p3->mylk0[i]];
@@ -81,15 +81,15 @@ void DatasProc3D::AllocDensityArrays()
    densintmp=new CV[p1->lj0];
    densouttmp=new double[p1->lj0*2];
 
-   denspart3=new double**[p3->li0];
-   for(LO i=0;i<p3->li0;i++){
+   denspart3=new double**[p3->li0[p1->mype_x]];
+   for(LO i=0;i<p3->li0[p1->mype_x];i++){
      denspart3[i]=new double*[p3->lj0];
      for(LO j=0; j<p3->lj0; j++)
         denspart3[i][j]=new double[p3->mylk0[i]];
    }
 
-   densTOpart3=new double**[p3->li0];
-   for(LO i=0;i<p3->li0;i++){
+   densTOpart3=new double**[p3->li0[p1->mype_x]];
+   for(LO i=0;i<p3->li0[p1->mype_x];i++){
      densTOpart3[i]=new double*[p3->lj0];
      for(LO j=0; j<p3->lj0; j++)
         densTOpart3[i][j]=new double[p3->mylk0[i]];
@@ -104,28 +104,28 @@ void DatasProc3D::AllocDensityArrays()
 void DatasProc3D::AllocPotentArrays()
 { 
   if(yparal==false){
-    potentin=new double**[p3->li0];
-    for(LO i=0;i<p3->li0;i++){
+    potentin=new double**[p3->li0[p1->mype_x]];
+    for(LO i=0;i<p3->li0[p1->mype_x];i++){
       potentin[i]=new double*[p1->y_res_back];
       for(LO j=0;j<p1->y_res_back;j++)
-        potentin[i][j]=new double[p1->lk0];
+        potentin[i][j]=new double[p1->lk0[p1->mype_z]];
     }
 
     potentintmp=new double[p1->y_res_back];
     potentouttmp=new CV[p1->y_res_back/2+1];
  
-    potentinterpo=new CV**[p3->li0];
-    for(LO i=0;i<p3->li0;i++){
+    potentinterpo=new CV**[p3->li0[p1->mype_x]];
+    for(LO i=0;i<p3->li0[p1->mype_x];i++){
       potentinterpo[i]=new CV*[p3->lj0/2];
       for(LO j=0;j<p3->lj0/2;j++)
         potentinterpo[i][j]=new CV[p3->mylk0[i]];
     }
   
-    potentpart1=new CV**[p1->li0];
-    for(LO i=0;i<p1->li0;i++){
+    potentpart1=new CV**[p1->li0[p1->mype_x]];
+    for(LO i=0;i<p1->li0[p1->mype_x];i++){
       potentpart1[i]=new CV*[p1->lj0];
       for(LO j=0;j<p1->lj0;j++){
-        potentpart1[i][j]=new CV[p1->lk0];
+        potentpart1[i][j]=new CV[p1->lk0[p1->mype_z]];
       }
     }
  
@@ -136,8 +136,8 @@ void DatasProc3D::AllocPotentArrays()
 
 void DatasProc3D::AllocMatXYZtoPlane()
 {
-   mattoplane=new double***[p3->li0];
-   for(LO i=0;i<p3->li0;i++){
+   mattoplane=new double***[p3->li0[p1->mype_x]];
+   for(LO i=0;i<p3->li0[p1->mype_x];i++){
      mattoplane[i] = new double**[p1->n_cuts];
      for(LO j=0;j<p1->n_cuts;j++){
        mattoplane[i][j]=new double*[p3->lj0];
@@ -147,8 +147,8 @@ void DatasProc3D::AllocMatXYZtoPlane()
      }
    }  
 
-  mat_to_plane=new CV***[p3->li0];
-   for(LO i=0;i<p3->li0;i++){
+  mat_to_plane=new CV***[p3->li0[p1->mype_x]];
+   for(LO i=0;i<p3->li0[p1->mype_x];i++){
      mat_to_plane[i] = new CV**[p1->n_cuts];
      for(LO j=0;j<p1->n_cuts;j++){
        mat_to_plane[i][j]=new CV*[p3->lj0];
@@ -158,18 +158,18 @@ void DatasProc3D::AllocMatXYZtoPlane()
      }
    }
 
-  mat_from_weight=new double***[p1->li0];
-  mat_from_ind_plane=new LO***[p1->li0];
-  mat_from_ind_n=new LO***[p1->li0];
-  for(LO i=0;i<p1->li0;i++){
+  mat_from_weight=new double***[p1->li0[p1->mype_x]];
+  mat_from_ind_plane=new LO***[p1->li0[p1->mype_x]];
+  mat_from_ind_n=new LO***[p1->li0[p1->mype_x]];
+  for(LO i=0;i<p1->li0[p1->mype_x];i++){
     mat_from_weight[i]=new double**[p1->y_res_back];
     mat_from_ind_plane[i]=new LO**[p1->y_res_back];
     mat_from_ind_n[i]=new LO**[p1->y_res_back];
     for(LO j=0;j<p1->y_res_back;j++){
-      mat_from_weight[i][j]=new double*[p1->lk0];
-      mat_from_ind_plane[i][j]=new LO*[p1->lk0];
-      mat_from_ind_n[i][j]=new LO*[p1->lk0];
-      for(LO k=0;k<p1->lk0;k++){
+      mat_from_weight[i][j]=new double*[p1->lk0[p1->mype_z]];
+      mat_from_ind_plane[i][j]=new LO*[p1->lk0[p1->mype_z]];
+      mat_from_ind_n[i][j]=new LO*[p1->lk0[p1->mype_z]];
+      for(LO k=0;k<p1->lk0[p1->mype_z];k++){
         mat_from_weight[i][j][k]=new double[4];
         mat_from_ind_plane[i][j][k]=new LO[2];
         mat_from_ind_n[i][j][k]=new LO[4];
@@ -196,7 +196,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Array2d<double>* fieldfromXGC)
   GO numnode=0;  
   double sum_in;
   bool debug=false;
-  for(LO i=0;i<p3->li0;i++){
+  for(LO i=0;i<p3->li0[p1->mype_x];i++){
     xl=p3->li1+i;
     double** datain= new double*[p3->lj0];   
     for(LO j=0;j<p3->lj0;j++){
@@ -219,7 +219,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Array2d<double>* fieldfromXGC)
     }
  
     for(LO j=0;j<p1->y_res_back;j++){
-      for(LO k=0;k<p1->lk0;k++){
+      for(LO k=0;k<p1->lk0[p1->mype_z];k++){
         potentin[i][j][k]=
         +datain[mat_from_ind_plane[i][j][k][0]][mat_from_ind_n[i][j][k][0]]*mat_from_weight[i][j][k][0]
         +datain[mat_from_ind_plane[i][j][k][0]][mat_from_ind_n[i][j][k][1]]*mat_from_weight[i][j][k][1]
@@ -237,7 +237,7 @@ void DatasProc3D::DistriPotentRecvfromPart3(const Array2d<double>* fieldfromXGC)
   assert(sumbegin==p3->blockcount); 
 
    if(debug){
-     printminmax3d(potentin,p3->li0,p1->y_res_back,p1->lk0,p1->mype,"potentin",0);
+     printminmax3d(potentin,p3->li0[p1->mype_x],p1->y_res_back,p1->lk0[p1->mype_z],p1->mype,"potentin",0);
    }
     
 
@@ -268,9 +268,9 @@ void DatasProc3D::oldDistriPotentRecvfromPart3(const Array2d<double>* fieldfromX
   double** subtmp;
   for(LO j=0;j<p3->lj0;j++){
     GO sumbegin=0;       
-    subtmp = new double*[p3->li0];
+    subtmp = new double*[p3->li0[p1->mype_x]];
     LO xl=0;
-    for(LO i=0;i<p3->li0;i++){
+    for(LO i=0;i<p3->li0[p1->mype_x];i++){
       xl=p3->li1+i;
       subtmp[i]=new double[p3->versurf[xl]];
       for(LO m=0;m<p3->versurf[xl];m++){
@@ -299,7 +299,7 @@ void DatasProc3D::AssemPotentSendtoPart1()
   LO* rdispls = new LO[p1->npz];
 
   MPI_Datatype mpitype = getMpiType(LO());      
-  MPI_Allgather(&p1->lk0,1,mpitype,recvcount,1,mpitype,p1->comm_z); 
+  MPI_Allgather(&p1->lk0[p1->mype_z],1,mpitype,recvcount,1,mpitype,p1->comm_z); 
   rdispls[0]=0;
   for(LO i=1;i<p1->npz;i++){
     rdispls[i]=rdispls[i-1]+recvcount[i-1];
@@ -313,7 +313,7 @@ void DatasProc3D::AssemPotentSendtoPart1()
     for(GO h=0;h<p1->blockcount;h++){
       blocktmp[h] = CV({0.0,0.0});
     } 
-    for(LO i=0;i<p1->li0;i++){
+    for(LO i=0;i<p1->li0[p1->mype_x];i++){
       sumbegin=0;
       for(LO h=0;h<i;h++){
         sumbegin+=(GO)p1->nz0;
@@ -321,7 +321,7 @@ void DatasProc3D::AssemPotentSendtoPart1()
       for(LO h=0;h<p1->nz0;h++){
         tmp[h]=CV({0.0,0.0});
       } 
-      MPI_Allgatherv(potentpart1[i][j],p1->lk0,MPI_CXX_DOUBLE_COMPLEX,tmp,recvcount,rdispls,
+      MPI_Allgatherv(potentpart1[i][j],p1->lk0[p1->mype_z],MPI_CXX_DOUBLE_COMPLEX,tmp,recvcount,rdispls,
                     MPI_CXX_DOUBLE_COMPLEX,p1->comm_z);    
       for(LO m=0;m<p1->nz0;m++){
         blocktmp[sumbegin+m]=tmp[m];
@@ -354,18 +354,18 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Array2d<CV>* densityfromGENE)
       tmp[j][i]=array[j*p1->blockcount+i];
     }
   }
-  for(LO i=0;i<p1->li0;i++){
+  for(LO i=0;i<p1->li0[p1->mype_x];i++){
     for(LO j=0;j<p1->lj0;j++){
-      for(LO k=0;k<p1->lk0;k++)  densin[i][j][k]=CV(0.0,0.0);
+      for(LO k=0;k<p1->lk0[p1->mype_z];k++)  densin[i][j][k]=CV(0.0,0.0);
     }
   }
   
-  CV** blocktmp= new CV*[p1->li0];
-  for(LO i=0;i<p1->li0;i++)
+  CV** blocktmp= new CV*[p1->li0[p1->mype_x]];
+  for(LO i=0;i<p1->li0[p1->mype_x];i++)
     blocktmp[i]=new CV[p1->nz0]; 
 
   for(LO j=0;j<p1->lj0;j++){
-    for(LO i=0;i<p1->li0;i++){
+    for(LO i=0;i<p1->li0[p1->mype_x];i++){
       GO sumbegin=0;
       for(LO h=0;h<i;h++){
         sumbegin+=(GO)p1->nz0;
@@ -373,12 +373,12 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Array2d<CV>* densityfromGENE)
       for(LO m=0;m<p1->nz0;m++){
         blocktmp[i][m]=tmp[j][sumbegin+m];
       }
-      for(LO k=0;k<p1->lk0;k++){
+      for(LO k=0;k<p1->lk0[p1->mype_z];k++){
         densin[i][j][k]=blocktmp[i][p1->lk1+k];
       }
     }
   }
-   for(LO i=0;i<p1->li0;i++){
+   for(LO i=0;i<p1->li0[p1->mype_x];i++){
      free(blocktmp[i]);
    }
    free(blocktmp);
@@ -414,7 +414,7 @@ void DatasProc3D::oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
       rdispls[h]=0;
     }
 
-    for(LO i=0;i<p1->li0;i++){
+    for(LO i=0;i<p1->li0[p1->mype_x];i++){
       MPI_Datatype mpitype = getMpiType(LO());      
       MPI_Allgather(&p3->mylk0[i],1,mpitype,recvcount,1,mpitype,p1->comm_z); 
       rdispls[0]=0;
@@ -437,7 +437,7 @@ void DatasProc3D::oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
       for(LO m=0;m<p3->versurf[xl];m++){
         blocktmp[sumbegin+m]=tmp[m];
       }    
-     if(i==p1->li0-1){
+     if(i==p1->li0[p1->mype_x]-1){
         assert((sumbegin+(GO)p3->versurf[xl]) == p3->blockcount);
       }
 
@@ -457,8 +457,8 @@ void DatasProc3D::oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
 // the adios2 API from coupler to Part3.
 void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
 {
-  double*** tmpmat = new double**[p3->li0];
-    for(LO i=0;i<p3->li0;i++){
+  double*** tmpmat = new double**[p3->li0[p1->mype_x]];
+    for(LO i=0;i<p3->li0[p1->mype_x];i++){
       tmpmat[i]=new double*[p3->lj0];
       for(LO j=0;j<p3->lj0;j++){
         tmpmat[i][j]=new double[p3->mylk0[i]];
@@ -474,23 +474,23 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
 
   bool debug=false;
   if(debug){
-    printminmax(densinterpo,p1->li0,p1->lj0,p3->mylk0,p1->mype,"densinterpo",0);
+    printminmax(densinterpo,p1->li0[p1->mype_x],p1->lj0,p3->mylk0,p1->mype,"densinterpo",0);
     MPI_Barrier(MPI_COMM_WORLD);
     CV sum=CV(0.0,0.0);
-    printSumm3D(densinterpo,p1->li0,p1->lj0,p3->mylk0,sum,
+    printSumm3D(densinterpo,p1->li0[p1->mype_x],p1->lj0,p3->mylk0,sum,
     MPI_COMM_WORLD,"densinterpo",0);
   }
 
 // don't understand the following operation  
   
-  CV*** loc_data=new CV**[p1->li0];
-  for(LO i=0;i<p1->li0;i++){
+  CV*** loc_data=new CV**[p1->li0[p1->mype_x]];
+  for(LO i=0;i<p1->li0[p1->mype_x];i++){
     loc_data[i]=new CV*[p3->lj0];
     for(LO j=0;j<p3->lj0;j++) loc_data[i][j]=new CV[p3->mylk0[i]];
   }
   CV tmp1;
 
-  for(LO i=0;i<p1->li0;i++){
+  for(LO i=0;i<p1->li0[p1->mype_x];i++){
     for(LO j=0;j<p1->lj0;j++){
       for(LO k=0;k<p3->mylk0[i];k++){
         loc_data[i][j][k]= densinterpo[i][j][k];  //FIXME: Here pointer is better      
@@ -512,7 +512,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
     }     
   }
 
-  for(LO i=0;i<p1->li0;i++){
+  for(LO i=0;i<p1->li0[p1->mype_x];i++){
     for(LO j=0;j<p3->lj0;j++) free(loc_data[i][j]);
     free(loc_data[i]);
   }
@@ -524,8 +524,8 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
   LO* rdispls = new LO[p1->npz];
   double* blocktmp = new double[p3->blockcount];
 
-  double** tmp=new double*[p3->li0];
-  for(LO i=0;i<p3->li0;i++){
+  double** tmp=new double*[p3->li0[p1->mype_x]];
+  for(LO i=0;i<p3->li0[p1->mype_x];i++){
     tmp[i]=new double[p3->versurf[p3->li1+i]];
   }
 
@@ -538,7 +538,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
     for(GO h=0;h<p3->blockcount;h++){
       blocktmp[h] = 0.0;
     }
-    for(LO i=0;i<p3->li0;i++){
+    for(LO i=0;i<p3->li0[p1->mype_x];i++){
       MPI_Datatype mpitype = getMpiType(LO());      
       for(LO h=0;h<p1->npz;h++){
         recvcount[h]=0;
@@ -573,7 +573,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
       for(LO m=0;m<p3->versurf[xl];m++){
         blocktmp[sumbegin+m]=tmp[i][m];
       }    
-     if(i==p1->li0-1){
+     if(i==p1->li0[p1->mype_x]-1){
         assert((sumbegin+(GO)p3->versurf[xl]) == p3->blockcount);
       }
     }   
@@ -589,11 +589,11 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
   rdispls=NULL;
   blocktmp=NULL;
 
-  for(LO i=0;i<p3->li0;i++) free(tmp[i]);
+  for(LO i=0;i<p3->li0[p1->mype_x];i++) free(tmp[i]);
   free(tmp);
   tmp=NULL;  
 
-  for(LO i=0;i<p3->li0;i++){
+  for(LO i=0;i<p3->li0[p1->mype_x];i++){
     for(LO j=0;j<p3->lj0;j++){
       free(tmpmat[i][j]);
     }
@@ -610,7 +610,7 @@ void DatasProc3D::oldInitmattoplane()
   LO tmp_ind;
   LO ind_l_tmp;
   LO ind_h_tmp;
-  for(LO i=0;i<p3->li0;i++){
+  for(LO i=0;i<p3->li0[p1->mype_x];i++){
     for(LO k=0;k<p3->mylk0[i];k++){
       for(LO j=0;j<p3->lj0;j++){
         y_cut=p1->C_y[0]*(p1->q_prof[i+p3->li1]*p3->pzcoords[i][k]-p1->phi_cut[j])/p1->dy;
@@ -630,7 +630,7 @@ void DatasProc3D::oldInitmattoplane()
 
 void DatasProc3D::Initmattoplane()
 {
-  for(LO i=0;i<p3->li0;i++){
+  for(LO i=0;i<p3->li0[p1->mype_x];i++){
     for(LO o=0;o<p1->n_cuts;o++){
       for(LO j=0;j<p1->lj0;j++){
         for(LO k=0;k<p3->mylk0[i];k++){
@@ -649,7 +649,7 @@ void DatasProc3D::Initmattoplane()
  bool debug=false;
  if(debug){
   CV sum=CV(0.0,0.0);
-  for(LO i=0;i<p3->li0;i++){
+  for(LO i=0;i<p3->li0[p1->mype_x];i++){
     for(LO o=0;o<p1->n_cuts;o++){
       for(LO j=0;j<p1->lj0;j++){
         for(LO k=0;k<p3->mylk0[i];k++){
@@ -667,7 +667,7 @@ void DatasProc3D::Initmattoplane()
 //The function of this routines is not clear so far.
 void DatasProc3D::DensityToPart3()
 {
-  for(LO i=0;i<p3->li0;i++){
+  for(LO i=0;i<p3->li0[p1->mype_x];i++){
     for(LO k=0;k<p3->mylk0[i];k++){
       for(LO j=0;j<p3->lj0;j++){
         double tmp=0.0;
@@ -695,12 +695,12 @@ void DatasProc3D::Prepare_mats_from_planes()
          dist_l,dist_r,w_plane_left,w_plane_right,chi_l, chi_u,dchi;
   LO count_l,count_r,ipl_l,ipl_r,ind_l,ind_u;
 
-  for(int i=0;i<p3->li0;i++){
+  for(int i=0;i<p3->li0[p1->mype_x];i++){
     q=p1->q_prof[i+p3->li1];
     double* tmp = new double[p3->versurf[i+p3->li1]]; 
     for(int j=0;j<p1->y_res_back;j++){
       y=double(j)*dy_inv;
-      for(int k=0;k<p1->lk0;k++){
+      for(int k=0;k<p1->lk0[p1->mype_z];k++){
         chi_red=p1->pzcoords[p1->lk1+k];
         phi=q*chi_red-(y/p1->C_y[i+p3->li1])*(p1->rhostar*p1->minor_r);
 
@@ -813,30 +813,30 @@ void DatasProc3D::Prepare_mats_from_planes()
     }
     free(tmp);
   }
-  for(LO i=0;i<p3->li0;i++){
+  for(LO i=0;i<p3->li0[p1->mype_x];i++){
     free(p3->zcoordsurf[i]);
   }
   free(p3->zcoordsurf);
 
   bool debug=false;
   if(debug){
-    LO* inds1=new LO[p1->li0];
-    for(LO i=0;i<p1->li0;i++) inds1[i]=4;
-    LO* inds2=new LO[p1->li0];
-    for(LO i=0;i<p1->li0;i++) inds2[i]=2;
+    LO* inds1=new LO[p1->li0[p1->mype_x]];
+    for(LO i=0;i<p1->li0[p1->mype_x];i++) inds1[i]=4;
+    LO* inds2=new LO[p1->li0[p1->mype_x]];
+    for(LO i=0;i<p1->li0[p1->mype_x];i++) inds2[i]=2;
 
     double sum_weight=0.0;
 
-    printSumm4D(mat_from_weight,p1->li0,p1->y_res_back,p1->lk0,inds1, sum_weight,
+    printSumm4D(mat_from_weight,p1->li0[p1->mype_x],p1->y_res_back,p1->lk0[p1->mype_z],inds1, sum_weight,
        MPI_COMM_WORLD,"mat_from_weight",0);
 
-    printminmax4d(mat_from_ind_n,p1->li0,p1->y_res_back,p1->lk0,4,
+    printminmax4d(mat_from_ind_n,p1->li0[p1->mype_x],p1->y_res_back,p1->lk0[p1->mype_z],4,
      MPI_COMM_WORLD, "mat_from_ind_n",0);
 
-    printminmax4d(mat_from_ind_plane,p1->li0,p1->y_res_back,p1->lk0,2,
+    printminmax4d(mat_from_ind_plane,p1->li0[p1->mype_x],p1->y_res_back,p1->lk0[p1->mype_z],2,
      MPI_COMM_WORLD, "mat_from_ind_plane",0);
 
-    printminmax4d(mat_from_weight,p1->li0,p1->y_res_back,p1->lk0,4,
+    printminmax4d(mat_from_weight,p1->li0[p1->mype_x],p1->y_res_back,p1->lk0[p1->mype_z],4,
      MPI_COMM_WORLD, "mat_from_weight",0);
 
   }
@@ -847,7 +847,7 @@ void DatasProc3D::TestInitPotentAlongz(const Part3Mesh3D* p3m3d,const LO npy, co
 {
   if(npy==1){
     LO li0,lj0,lk0;
-    li0=p3->li0;
+    li0=p3->li0[p1->mype_x];
     lj0=p3->lj0;
     double ylen;
     double sum;
@@ -873,7 +873,7 @@ DatasProc3D::~DatasProc3D()
 {
   FreeFourierPlan3D();
   if(densrecv!=NULL){
-    for(LO i=0;i<p1->li0;i++){
+    for(LO i=0;i<p1->li0[p1->mype_x];i++){
  
     } 
  

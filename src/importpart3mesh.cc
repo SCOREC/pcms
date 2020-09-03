@@ -7,6 +7,7 @@
 
 namespace coupler{
 
+//Initialize XGC's mesh for gene-xgc coupling
 void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
     const std::string test_dir)
 {
@@ -75,13 +76,14 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        std::cout<<"ERROR: The activenode number of part1 doesn't equal to cce_node_number for part3."<<'\n';
        std::exit(EXIT_FAILURE);
      }
-     li0=p1pp3d.li0;
+     li0=new LO[p1pp3d.npx];
+     for(LO i=0;i<npx;i++) li0[i]=p1pp3d.li0[i];
      li1=p1pp3d.li1;
      li2=p1pp3d.li2;
 
      BlockIndexes(p1pp3d.comm_x,p1pp3d.mype_x,p1pp3d.npx); 
  
-     LO xinds[3]={p1pp3d.li0,p1pp3d.li1,p1pp3d.li2}; 
+     LO xinds[3]={p1pp3d.li0[p1pp3d.mype_x],p1pp3d.li1,p1pp3d.li2}; 
      xboxinds = new LO*[p1pp3d.npx]; 
      for(LO i=0;i<p1pp3d.npx;i++){
        xboxinds[i]=new LO[3];
@@ -104,16 +106,16 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 
      // it is written in DistributePoints and
      // read in DistriPart3zcoords
-     mylk0=new LO[li0]; 
-     mylk1=new LO[li0];
-     mylk2=new LO[li0];      
+     mylk0=new LO[li0[p1pp3d.mype_x]]; 
+     mylk1=new LO[li0[p1pp3d.mype_x]];
+     mylk2=new LO[li0[p1pp3d.mype_x]];      
      DistriPart3zcoords(p1pp3d, test_dir);
 
 // for debugging
      MPI_Barrier(MPI_COMM_WORLD);
      bool debug = false;
      if(debug){
-       for(LO i=0;i<li0;i++){
+       for(LO i=0;i<li0[p1pp3d.mype_x];i++){
 	 LO num=0;
 	 LO* recvcount=new LO[p1pp3d.npz];
 	 MPI_Allgather(&mylk0[i],1,MPI_INT,recvcount,1,MPI_INT,p1pp3d.comm_z);
@@ -132,7 +134,7 @@ void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO np
 {
   GO* inds = new GO[npx]; 
   blockcount=0;
-  for(LO i=0;i<li0;i++)
+  for(LO i=0;i<li0[p1pp3d.mype_x];i++)
     blockcount+=(GO)versurf[li1+i];
   inds[mype_x]=blockcount;
   MPI_Datatype mpitype;
@@ -181,7 +183,7 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
 
     LO index1=p1pp3d.li1;
     LO index2=p1pp3d.li2;
-    LO index0=p1pp3d.li0;
+    LO index0=p1pp3d.li0[p1pp3d.mype_x];
     pzcoords = new double*[index0]; 
     zcoordsurf = new double*[index0];
     double* zcoords;
@@ -308,5 +310,58 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
     return tmp;      
 }
 
+//Initialize XGC's mesh for gem-xgc coupling
+void Part3Mesh3D::initXgcGem(const Part1ParalPar3D &p1pp3d,const Array2d<int> xgcnodes,const Array2d<double> ){
+  LO* inttmp;
+  inttmp=xgcnodes->data;
+  totnodes=inttmp[0];
+  npsi_surf=inttmp[1]
+  cce_first_surface=inttmp[2];
+  cce_last_surface=inttmp[3];
+  cce_first_node=inttmp[4];
+  cce_last_node=inttmp[5];
+  nsurf=cce_first_surface-cce_last_surface+1; 
+
+  for(LO i=0;i<npsi_surf;i++){ 
+    versurf[i]=inttmp[i+6]; 
+  }
+  
+  theta_geo=new double*[ccd_surface_end-cce_surface_start+1];
+  theta_flx=new double*[ccd_surface_end-cce_surface_start+1];
+  for(i=0;i<cce_surface_end-cce_surface_start+1;i++){
+    theta_geo[i]=new double[verusrf[i+cce_surface_start]];
+    theta_flx[i]=new double[verusrf[i+cce_surface_start]];
+  }
+   
+}
+
+void decompRadialMesh(const gemParaMesh3D &gem3d){
+  cce_surface_start=0;
+  cce_surface_end=0; 
+  if(gem3d.numprocs/(gem3d.imx+1)>=1.0){ 
+    LO i=int(gem3d.numprocs/(gem3d.imx+1));
+    LO x_id=int(gem3d.myid/i)%(gem3d.imx+1);
+    cce_surface_start=x_id+cce_first_surface;
+    cce_surface_end=cce_surface_start; 
+  }else{
+    LO i=int((gem3d.imx+1)/gem3d.numprocs)+1;
+    if(gem3d.myid*i<=gem3d.imx){
+      LO x_id=gem3d.myid;
+      ccd_surface_start=x_id*i+cce_first_surface;
+      if(gem3d.myid+1*i<=gem3d.imx){
+        cce_surface_end=cce_surface_start+i-1;
+      }else{
+        cce_surface_end=cce_last_surface;
+      }
+      if(cce_surface_end>cce_last_surface){
+        std::cout<<"Error: index in x direction exceeds the boundary"
+        exit(1); 
+      }
+    }else{
+      cce_surface_start=cce_fisrt_surface;
+      cce_surface_end=cce_first_surface;
+    }
+  }
+}
 
 }

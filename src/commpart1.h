@@ -5,9 +5,11 @@
 #include "testutilities.h"
 #include <cstddef>
 namespace coupler {
-
+class Array1d;
+// create class for gene's mesh as well as its domain decomposition
 class Part1ParalPar3D {
   public:
+/*variables for gene*/
     LO mype ; // my process rank in mpi_comm_world
     LO mype_x; // my process rank in comm_x
     LO mype_y; // my process rank in comm_y
@@ -18,9 +20,11 @@ class Part1ParalPar3D {
     MPI_Comm comm_cart;
     LO  NP; // The total number of processes
     LO npx,npy,npz;
-    LO nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
+    LO nx0,nxb,li1,li2,lg0,lg1,lg2;
     LO ny0,nyb,llj0,llj1,llj2,lm0,lm1,lm2;
-    LO nz0,nzb,lk0,lk1,lk2,ln0,ln1,ln2;
+    LO nz0,nzb,lk1,lk2,ln0,ln1,ln2;
+ 
+    LO* li0,lk0;  
 
     LO lj0; //the number of elements in Fourier space.
     LO lj1; //the number of elements in Fourier space.
@@ -28,13 +32,12 @@ class Part1ParalPar3D {
 
     GO totnodes; // the total nodes number of the poloidal cross setion of part1.
     LO n_cuts; //The number of toroidal planes.
-//    LO myli0,mylj1,myl12;  // The indexes of box y after Fourier transform
     int periods[3]={1,0,1};
     double* xcoords=NULL; // The 1d array storing the radial position of all flux surfaces
     double* pzcoords=NULL; // The 1d array storing the poloidal angle of all vertices along the poloidal cross section.
     double* pzp=NULL; // The 1d array storing the poloial on each process.
-//    double dz;  // The equal step length along the poloidal flux curve.
- // parameters for creating the magnetic field, density and temperature background. 
+   
+    // parameters for creating the magnetic field, density and temperature background. 
     double* q_prof=NULL;  //safty factor
     LO n0_global;
     LO ky0_ind;
@@ -59,9 +62,19 @@ class Part1ParalPar3D {
     double norm_fact_field; 
 
 
-// parameters for Adios transfer
+    // parameters for Adios transfer
     GO blockstart,blockend,blockcount;    
 
+/*------------------------------------------------------*/
+/*variables specially owned by GEM*/
+    LO numprocs;
+    LO ntude,imx,jmx,kmx,ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
+    MPI_Comm grid_comm,tube_comm;
+
+    double dth;
+    double* thetagrid; //store the \theta value of all the nodes on one poloidal cross section of GEM
+    double** thflx; //store GEM's flux coordinates theta*; sent from GEM
+   
     /* constructor
      * optionally read preproc, test_case and test_dir from user
      */
@@ -83,6 +96,11 @@ class Part1ParalPar3D {
       : preproc(pproc), test_case(tcase){
       init(NULL, NULL, NULL, NULL, tdir);
     }
+
+    /*The constructor for GEM*/
+    Part1ParalPar3D(Array1d* gemmesh){
+      initGem(gemmesh);
+    }
     ~Part1ParalPar3D()
     {
       if(xcoords!=NULL)  delete[] xcoords;
@@ -95,6 +113,7 @@ class Part1ParalPar3D {
     const bool preproc;
     const TestCase test_case;
     void init(LO* parpar, double* xzcoords, double* q_prof, double* gene_cy, std::string test_dir="");
+    void initGem()
     void initTest0(std::string test_dir);
     /* init* helper function */
     void CreateSubCommunicators();
@@ -102,6 +121,18 @@ class Part1ParalPar3D {
     void MpiFreeComm();
     void blockindice(); 
 };
+
+//create class for GEM's mesh as well as its domain decomposition
+class gemParaMesh3D {
+  public:
+    LO myid,numprocs; 
+    LO ntude,imx,jmx,kmx;
+    MPI_Comm grid_comm,tube_comm,x_comm,gx_comm; 
+   
+    double* thetagrid; //store the \theta value of all the nodes on one poloidal cross section of GEM
+    double** thflx; //store GEM's flux coordinates theta*; sent from GEM     
+}
+
 
 template<typename T, size_t SIZE>
 size_t getSize(T (&)[SIZE]) {

@@ -20,7 +20,7 @@ void DatasProc3D::CmplxdataToRealdata3D()
     std::exit(EXIT_FAILURE);
   }
   if(yparal==false){
-    for(LO i=0; i<p1->li0;i++){
+    for(LO i=0; i<p1->li0[p1->mype_x];i++){
       for(LO k=0;k<p3->mylk0[i];k++){
 	for(LO j=0;j<p1->lj0;j++){
           densintmp[j]=densinterpo[i][j][k];
@@ -44,8 +44,8 @@ void DatasProc3D::RealdataToCmplxdata3D()
     std::exit(EXIT_FAILURE);
   }
   if(yparal==false){
-    for(LO i=0;i<p3->li0;i++){
-      for(LO k=0;k<p1->lk0;k++){
+    for(LO i=0;i<p3->li0[p1->mype_x];i++){
+      for(LO k=0;k<p1->lk0[p1->mype_z];k++){
 	for(LO j=0;j<p1->y_res_back;j++){
 	  potentintmp[j]=potentin[i][j][k];  
         }

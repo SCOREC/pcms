@@ -18,9 +18,9 @@ BoundaryDescr3D::BoundaryDescr3D(
 {
   if(preproc==true){
     nzb=p1pp3d.nzb;
-    updenz=new CV**[p1pp3d.li0[p1pp3d.mype_x]];
-    lowdenz=new CV**[p1pp3d.li0[p1pp3d.mype_x]];
-    for(LO i=0;i<p1pp3d.li0[p1pp3d.mype_x];i++){
+    updenz=new CV**[p1pp3d.li0];
+    lowdenz=new CV**[p1pp3d.li0];
+    for(LO i=0;i<p1pp3d.li0;i++){
       updenz[i]=new CV*[p1pp3d.lj0];
       lowdenz[i]=new CV*[p1pp3d.lj0];
       for(LO j=0;j<p1pp3d.lj0;j++){
@@ -31,15 +31,15 @@ BoundaryDescr3D::BoundaryDescr3D(
 
     if(p1pp3d.mype_z==0){
       if(lowpbmat==NULL){
-        lowpbmat=new CV*[p1pp3d.li0[p1pp3d.mype_x]];
-        for(LO i=0;i<p1pp3d.li0[p1pp3d.mype_x];i++){
+        lowpbmat=new CV*[p1pp3d.li0];
+        for(LO i=0;i<p1pp3d.li0;i++){
           lowpbmat[i]=new CV[p1pp3d.lj0];      
         } 
       }
      }else if(p1pp3d.mype_z==p1pp3d.npz-1){
       if(uppbmat==NULL){
-        uppbmat=new CV*[p1pp3d.li0[p1pp3d.mype_x]];
-        for(LO i=0;i<p1pp3d.li0[p1pp3d.mype_x];i++){
+        uppbmat=new CV*[p1pp3d.li0];
+        for(LO i=0;i<p1pp3d.li0;i++){
           uppbmat[i]=new CV[p1pp3d.lj0]; 
         }
        }
@@ -68,7 +68,7 @@ void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)
 {
    LO num;
    if(p1pp3d.mype_z==0){
-     for(LO i=0;i<p1pp3d.li0[p1pp3d.mype_x];i++){
+     for(LO i=0;i<p1pp3d.li0;i++){
        num=p1pp3d.li1+i;
        for(LO j=0;j<p1pp3d.lj0;j++){  
 	 lowpbmat[i][j]=exp(CV(0.0,1.0)*2.0*cplPI*double(p1pp3d.n0_global)
@@ -76,7 +76,7 @@ void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)
        }
      } 
    } else if(p1pp3d.mype_z==p1pp3d.npz-1){
-     for(LO i=0;i<p1pp3d.li0[p1pp3d.mype_x];i++){
+     for(LO i=0;i<p1pp3d.li0;i++){
        num=p1pp3d.li1+i;
        for(LO j=0;j<p1pp3d.lj0;j++){
          uppbmat[i][j]=exp(-CV(0.0,1.0)*2.0*cplPI*double(p1pp3d.n0_global)

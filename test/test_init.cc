@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
   dp3d.InitFourierPlan3D(); 
   dp3d.RealdataToCmplxdata3D();
   dp3d.zPotentBoundaryBufAssign(bdesc);
-  dp3d.InterpoPotential3D(bdesc);
+  dp3d.InterpoPotential3D();
 
   for(coupler::LO i=0;i<p1pp3d.li0;i++){
     for(coupler::LO j=0;j<p1pp3d.lj0;j++){
@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
  
 
   dp3d.zDensityBoundaryBufAssign(dp3d.densin,bdesc);
-  dp3d.InterpoDensity3D(bdesc); 
+  dp3d.InterpoDensity3D(); 
   dp3d.CmplxdataToRealdata3D();
 
 

@@ -1,11 +1,12 @@
 #include "couplingTypes.h"
 #include "dataprocess.h"
+#include "interpoutil.h"
 #include "importpart3mesh.h"
 #include "commpart1.h"
 #include "BoundaryDescr3D.h"
 
 namespace coupler {
-
+/*
 // routines for interpolation
 template<class T>
 T Lag3dInterpo1D(const T yin[4],const double xin[4],const double x)
@@ -49,90 +50,103 @@ void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double
     yout[j]=Lag3dInterpo1D(func,coords,x);
   }
 }
+*/
 
-void DatasProc3D::InterpoDensity3D(const BoundaryDescr3D &bdesc)
+void DatasProc3D::mesh1dforDensityInterpo()
+{
+   LO nzb=bdesc->nzb;
+   if(p1->periods[2]==1){
+     if(p1->mype_z==0){
+       for(LO l=0;l<nzb;l++){
+	 mesh1ddens[l]=p1->pzcoords[p1->nz0-nzb+l]-2.0*cplPI;
+	 mesh1ddens[p1->lk0+nzb+l]=p1->pzcoords[p1->lk2+l+1];          
+       }
+     } else if(p1->mype_z==p1->npz-1){
+	 for(LO l=0;l<nzb;l++){
+	   mesh1ddens[l]=p1->pzcoords[p1->lk1-nzb+l];
+	   mesh1ddens[p1->lk0+nzb+l]=p1->pzcoords[l]+2.0*cplPI;
+	 }        
+     }else{
+	 for(LO l=0;l<nzb;l++){
+	   mesh1ddens[l]=p1->pzcoords[p1->lk1-nzb+l];
+	   mesh1ddens[p1->lk0+nzb+l]=p1->pzcoords[p1->lk2+l+1];
+	 }
+     }
+     for(LO k=0;k<p1->lk0;k++){  
+       mesh1ddens[nzb+k]=p1->pzcoords[p1->lk1+k];
+     }      
+   }
+
+}
+
+void DatasProc3D::InterpoDensity3D()
 {
   CV* yin;
-  double* xin;
   CV* yout;
   double* xout;
-  LO nzb=bdesc.nzb;
-  xin=new double[p1->lk0[p1->mype_z]+2*nzb];
-  yin=new CV[p1->lk0[p1->mype_z]+2*nzb];  
+  LO nzb=bdesc->nzb;
+  yin=new CV[p1->lk0+2*nzb];  
   if(preproc==true){
-    if(p1->periods[2]==1){
-      if(p1->mype_z==0){
-        for(LO l=0;l<nzb;l++){
-          xin[l]=p1->pzcoords[p1->nz0-nzb+l]-2.0*cplPI;
-          xin[p1->lk0[p1->mype_z]+nzb+l]=p1->pzcoords[p1->lk2+l+1];          
-        }
-      } else if(p1->mype_z==p1->npz-1){
-          for(LO l=0;l<nzb;l++){
-            xin[l]=p1->pzcoords[p1->lk1-nzb+l];
-            xin[p1->lk0[p1->mype_z]+nzb+l]=p1->pzcoords[l]+2.0*cplPI;
-          }        
-      }else{
-          for(LO l=0;l<nzb;l++){
-            xin[l]=p1->pzcoords[p1->lk1-nzb+l];
-            xin[p1->lk0[p1->mype_z]+nzb+l]=p1->pzcoords[p1->lk2+l+1];
-          }
-      }
-      for(LO k=0;k<p1->lk0[p1->mype_z];k++){  
-        xin[nzb+k]=p1->pzcoords[p1->lk1+k];
-      }      
-    }
-
-   for(LO i=0;i<p1->li0[mype_x];i++){
+   for(LO i=0;i<p1->li0;i++){
       for(LO j=0;j<p1->lj0;j++){
         for(LO l=0;l<nzb;l++){
-          yin[l]=bdesc.lowdenz[i][j][l];
-          yin[p1->lk0[p1->mype_z]+nzb+l]=bdesc.updenz[i][j][l];
+          yin[l]=bdesc->lowdenz[i][j][l];
+          yin[p1->lk0+nzb+l]=bdesc->updenz[i][j][l];
         }
-        for(LO k=0;k<p1->lk0[p1->mype_z];k++){  
+        for(LO k=0;k<p1->lk0;k++){  
           yin[nzb+k]=densin[i][j][k];
         }
         xout=p3->pzcoords[i];
         yout=densinterpo[i][j];
-        Lag3dArray(yin,xin,p1->lk0[p1->mype_z]+2*nzb,yout,xout,p3->mylk0[i]);
+        Lag3dArray(yin,mesh1ddens,p1->lk0+2*nzb,yout,xout,p3->mylk0[i]);
       }
     }   
   }
-  delete[] xin,yin;
-  xin=NULL;
+  delete[] yin;
   yin=NULL;
 }
 
+void DatasProc3D::mesh1dforPotentialInterpo()
+{
+  LO nzb=bdesc->nzb;
+  mesh1dpotent=new double*[p3->li0];
+  for(LO i=0;i<p3->li0;i++){
+    mesh1dpotent[i]=new double[p3->mylk0[i]+2*nzb];
 
-void DatasProc3D::InterpoPotential3D(const BoundaryDescr3D &bdesc)
+    for(LO l=0;l<nzb;l++){
+      mesh1dpotent[i][l]=bdesc->lowzpart3[i][l];
+      mesh1dpotent[i][p3->mylk0[i]+nzb+l]=bdesc->upzpart3[i][l];
+    }
+
+    for(LO j=0;j<p3->lj0/2;j++){
+      for(LO k=0;k<p3->mylk0[i];k++){
+	mesh1dpotent[i][k+nzb]=p3->pzcoords[i][k];
+      }
+    }
+  }
+}
+
+
+void DatasProc3D::InterpoPotential3D()
 {
   CV* yin;
   CV* yout;
-  double* xin;
-  LO nzb=bdesc.nzb;
+  LO nzb=bdesc->nzb;
   if(preproc==true){
-    for(LO i=0;i<p3->li0[mype_x];i++){
+    for(LO i=0;i<p3->li0;i++){
       yin=new CV[p3->mylk0[i]+2*nzb];
-      xin=new double[p3->mylk0[i]+2*nzb];
-
-      for(LO l=0;l<nzb;l++){  
-        xin[l]=bdesc.lowzpart3[i][l];
-        xin[p3->mylk0[i]+nzb+l]=bdesc.upzpart3[i][l];      
-      }
-
       for(LO j=0;j<p3->lj0/2;j++){
         for(LO l=0;l<nzb;l++){
-          yin[l]=bdesc.lowpotentz[i][j][l];
-          yin[p3->mylk0[i]+nzb+l]=bdesc.uppotentz[i][j][l];
+          yin[l]=bdesc->lowpotentz[i][j][l];
+          yin[p3->mylk0[i]+nzb+l]=bdesc->uppotentz[i][j][l];
         }
         for(LO k=0;k<p3->mylk0[i];k++){
-          xin[k+nzb]=p3->pzcoords[i][k];
           yin[k+nzb]=potentinterpo[i][j][k];
         }
         yout=potentpart1[i][j];
-        Lag3dArray(yin,xin,p3->mylk0[i]+2*nzb,yout,p1->pzp,p1->lk0);
+        Lag3dArray(yin,mesh1dpotent[i],p3->mylk0[i]+2*nzb,yout,p1->pzp,p1->lk0);
      }
 
-     delete[] xin;
      delete[] yin; 
     }
   }

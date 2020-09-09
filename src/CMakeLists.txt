@@ -19,6 +19,7 @@ set(HEADERS
     importpart3mesh.h
     BoundaryDescr3D.h
     testutilities.h
+    interpoutil.h
 )
 
 add_library(coupler ${SOURCES})

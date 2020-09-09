@@ -2,12 +2,13 @@
 #include "commpart1.h"
 #include "testutilities.h"
 #include "sendrecv_impl.h"
+#include "interpoutil.h"
 #include <cstdlib>
 #include <cassert>
 
 namespace coupler{
 
-//Initialize XGC's mesh for gene-xgc coupling
+//Initialize XGC's mesh for gene-xgc coupling. 
 void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
     const std::string test_dir)
 {
@@ -76,14 +77,13 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
        std::cout<<"ERROR: The activenode number of part1 doesn't equal to cce_node_number for part3."<<'\n';
        std::exit(EXIT_FAILURE);
      }
-     li0=new LO[p1pp3d.npx];
-     for(LO i=0;i<npx;i++) li0[i]=p1pp3d.li0[i];
+     li0=p1pp3d.li0;
      li1=p1pp3d.li1;
      li2=p1pp3d.li2;
 
      BlockIndexes(p1pp3d.comm_x,p1pp3d.mype_x,p1pp3d.npx); 
  
-     LO xinds[3]={p1pp3d.li0[p1pp3d.mype_x],p1pp3d.li1,p1pp3d.li2}; 
+     LO xinds[3]={p1pp3d.li0,p1pp3d.li1,p1pp3d.li2}; 
      xboxinds = new LO*[p1pp3d.npx]; 
      for(LO i=0;i<p1pp3d.npx;i++){
        xboxinds[i]=new LO[3];
@@ -106,16 +106,16 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 
      // it is written in DistributePoints and
      // read in DistriPart3zcoords
-     mylk0=new LO[li0[p1pp3d.mype_x]]; 
-     mylk1=new LO[li0[p1pp3d.mype_x]];
-     mylk2=new LO[li0[p1pp3d.mype_x]];      
+     mylk0=new LO[li0]; 
+     mylk1=new LO[li0];
+     mylk2=new LO[li0];      
      DistriPart3zcoords(p1pp3d, test_dir);
 
 // for debugging
      MPI_Barrier(MPI_COMM_WORLD);
      bool debug = false;
      if(debug){
-       for(LO i=0;i<li0[p1pp3d.mype_x];i++){
+       for(LO i=0;i<li0;i++){
 	 LO num=0;
 	 LO* recvcount=new LO[p1pp3d.npz];
 	 MPI_Allgather(&mylk0[i],1,MPI_INT,recvcount,1,MPI_INT,p1pp3d.comm_z);
@@ -134,7 +134,7 @@ void Part3Mesh3D::BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO np
 {
   GO* inds = new GO[npx]; 
   blockcount=0;
-  for(LO i=0;i<li0[p1pp3d.mype_x];i++)
+  for(LO i=0;i<li0;i++)
     blockcount+=(GO)versurf[li1+i];
   inds[mype_x]=blockcount;
   MPI_Datatype mpitype;
@@ -183,7 +183,7 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
 
     LO index1=p1pp3d.li1;
     LO index2=p1pp3d.li2;
-    LO index0=p1pp3d.li0[p1pp3d.mype_x];
+    LO index0=p1pp3d.li0;
     pzcoords = new double*[index0]; 
     zcoordsurf = new double*[index0];
     double* zcoords;
@@ -311,31 +311,81 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
 }
 
 //Initialize XGC's mesh for gem-xgc coupling
-void Part3Mesh3D::initXgcGem(const Part1ParalPar3D &p1pp3d,const Array2d<int> xgcnodes,const Array2d<double> ){
+void Part3Mesh3D::initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>* rzcoords)
+{
   LO* inttmp;
-  inttmp=xgcnodes->data;
+  inttmp=xgcnodes->data();
   totnodes=inttmp[0];
-  npsi_surf=inttmp[1]
-  cce_first_surface=inttmp[2];
+  npsi_surf=inttmp[1];
+  cce_first_surface=inttmp[2]; // The number labeling the first active surface 
   cce_last_surface=inttmp[3];
   cce_first_node=inttmp[4];
   cce_last_node=inttmp[5];
+  cce_first=inttmp[6];  // The number labeling the first surface
   nsurf=cce_first_surface-cce_last_surface+1; 
 
-  for(LO i=0;i<npsi_surf;i++){ 
-    versurf[i]=inttmp[i+6]; 
+  versurf=new LO[nsurf];
+  activenodes=0
+  for(LO i=0;i<nsurf;i++){ 
+    versurf[i]=inttmp[i+cce_first_surface+7-cce_first];  
+    activenodes+=versurf[i];
+  }  
+  BlockIndexes(p1->comm_x,p1->mype_x,p1->npx); 
+  double* realtmp;
+  realtmp=rzcoords->data();
+  for(LO i=0;i<activenodes;i++)  Rcoordall[i+cce_first_node]=realtmp[i+cce_first_node]; 
+  for(LO i=totnodes+cce_first_node;i<2*totnodes;i++) Zcoordall[i]=realtmp[i];
+  
+  double eq_axis_r=realtmp[0];
+  double eq_axis_z=realtmp[totnodes];
+  double* tmp=new double[activenodes];
+  for(LO i=0;i<activenodes;i++) 
+    tmp[i]=atan2(Rcoordall[i]-eq_axis_r,Zcoordall[i]-eq_axis_z);
+    
+  double** tmptheta=new double*[p1->li0];
+  for(LO i=0;i<li0;i++) tmptheta[i]=new double[versurf[li1+i]];
+  GO num=blockstart;
+  for(LO i=0;i<li0;i++){
+    for(LO k=0;k<versurf[li1+i];k++) tmptheta[i][k]=tmp[num+k];
+    num+=versurf[li1+i];
+  }     
+  for(LO i=p1->li1;i<p1->li2+1;i++){  
+    gemDistributePoints(tmptheta[i-p1->li1],p1->li1,i,p1->theta);
+  }  
+  theta_geo=new double*[p1->li0];
+  for(LO i=0;i<p1->li0;i++){
+    theta_geo[i]=new double[mylk0[i]];
+    for(LO k=0;k<mylk0[i];k++) theta_geo[i][k]=tmptheta[i][mylk1[i]+k];
   }
   
-  theta_geo=new double*[ccd_surface_end-cce_surface_start+1];
-  theta_flx=new double*[ccd_surface_end-cce_surface_start+1];
-  for(i=0;i<cce_surface_end-cce_surface_start+1;i++){
-    theta_geo[i]=new double[verusrf[i+cce_surface_start]];
-    theta_flx[i]=new double[verusrf[i+cce_surface_start]];
-  }
-   
-}
+  double* tmpthetaeq=new double[p1->ntheta+5];
+  tmpthetaeq[0]=p1->thetagrideq[0]-2.0*p1->dth;
+  tmpthetaeq[1]=p1->thetagrideq[1]-p1->dth;
+  tmpthetaeq[p1->ntheta+2]=p1->thetagrideq[p1->ntheta]+p1->dth;
+  tmpthetaeq[p1->ntheta+3]=p1->thetagrideq[p1->ntheta]+2.0*p1->dth;
+  for(LO k=2;k<p1->ntheta+2;k++) tmpthetaeq[k]=p1->thetagrideq[k-2];
 
-void decompRadialMesh(const gemParaMesh3D &gem3d){
+  theta_flx=new double*[p1->li0];
+  for(LO i=0;i<p1->li0;i++){
+    theta_flx[i]=new double[mylk0[i]];
+  }
+ 
+  //Here, the continusous boundary condition is used for the 3rd-order Lagrangain interpolaiton; It's better to replace it with the cubic spline interpolation
+  double* tmpflxeq=new double[p1->ntheta+5];
+  for(LO i=0;i<li0;i++){ 
+    tmpflxeq[0]=p1->thflxeq[p1->li1+i][0];
+    tmpflxeq[1]=p1->thflxeq[p1->li1+i][0];
+    tmpflxeq[p1->ntheta+2]=p1->thflxeq[p1->li1+i][p1->ntheta-1];
+    tmpflxeq[p1->ntheta+3]=p1->thflxeq[p1->li1+i][p1->ntheta-1];
+    for(LO k=2;k<p1->ntheta+2;i++) tmpflxeq[k]=p1->thflxeq[p1->li1+i][k-2];
+    Lag3dArray(tmpflxeq,tmpthetaeq,p1->ntheta+5,theta_flx[i],theta_geo[i],mylk0[i]);     
+  } 
+
+  delete[] tmpthetaeq;
+  for(LO i=0;i<p1->li0;i++) delete[] tmptheta[i];
+}
+/*
+void Part3Mesh3D::decompRadialMesh(const gemParaMesh3D &gem3d){
   cce_surface_start=0;
   cce_surface_end=0; 
   if(gem3d.numprocs/(gem3d.imx+1)>=1.0){ 
@@ -362,6 +412,61 @@ void decompRadialMesh(const gemParaMesh3D &gem3d){
       cce_surface_end=cce_first_surface;
     }
   }
+}
+*/
+
+void Part3Mesh3D::search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp)
+{
+  j1=int(tmp/dy);
+  j2=j1+1;
+  w2=(tmp-double(j1)*dy)/dy;
+  w1=1.0-w2;
+}
+
+void Part3Mesh3D::gemDistributePoints(const double* exterarr, const LO gstart,LO li,
+                  const double* interarr)
+{
+    double tmp=exterarr[0];
+    LO nstart;
+    if(p1->mype_z==0){
+      nstart=0;
+    }else {
+      while(tmp<p1->theta[p1->lk1]){
+        nstart+=1;
+        tmp=exterarr[nstart];
+      }
+    }   
+    LO i1=nstart;
+    LO i2=nstart;
+    double internal_ub;
+    if(p1->lk2==p1->kmx){
+      internal_ub=cplPI;
+    }
+    else{
+      internal_ub=p1->theta[p1->lk2+1];
+    }
+    bool inside = true;
+    while(inside){
+      if(i2>=versurf[li]-1){
+        break;
+      }
+      if(exterarr[i2+1]<internal_ub){
+        i2+=1;
+      }
+      else{
+        inside=false;
+      }
+    }
+    mylk1[li-gstart]=i1;
+    mylk2[li-gstart]=i2;
+    mylk0[li-gstart]=i2-i1+1;
+    if(test_case==TestCase::t0){
+      std::cout<<"rank="<<p1->mype<<" "<<li-gstart<<'\n';
+      std::cout<<"mylk k="<<mylk0[li-gstart]<<" "<<mylk1[li-gstart]
+      <<" "<<mylk2[li-gstart]<<" "<<'\n';
+    }
+
+
 }
 
 }

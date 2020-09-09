@@ -71,6 +71,11 @@ public:
 
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
+
+  // For interpolation mesh
+  double* mesh1ddens; // 1d mesh for interpolating density;
+  double** mesh1dpotent; // the mesh for interpoating potential;
+
   // The following parameters for yparal=true;
   LO myli0;
 
@@ -86,8 +91,8 @@ public:
       bool ypar = false,
       int nummode = 1);
   ~DatasProc3D();
-  void InterpoDensity3D(const BoundaryDescr3D& bdesc);
-  void InterpoPotential3D(const BoundaryDescr3D& bdesc);
+  void InterpoDensity3D();
+  void InterpoPotential3D();
   //routines for Fourier transform
   void CmplxdataToRealdata3D();
   void RealdataToCmplxdata3D();
@@ -109,6 +114,10 @@ public:
   void zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc);
   void zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc);
 
+//interpolation
+  void mesh1dforDensityInterpo();
+  void mesh1dforPotentialInterpo();
+
   LO getP1li0() { return p1->li0; };
   LO getP1ny0() { return p1->ny0; };
   LO getP1npy() { return p1->npy; };
@@ -120,6 +129,7 @@ private:
   const bool yparal;
   const Part1ParalPar3D* p1;
   const Part3Mesh3D* p3;
+  const BoundaryDescr3D* bdesc;
   /* helper function for destructor */
   void FreeFourierPlan3D(); // called from the destructor - does that make sense?
   /* helper functions for constructor */

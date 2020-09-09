@@ -3,13 +3,18 @@
 
 #include "couplingTypes.h"
 #include "testutilities.h"
+#include "adios2Routines.h"
+#include "commpart1.h"
 
 namespace coupler {
 
 //forward declare the Part1ParalPar3D class; we don't care how 
 // the class is defined in this header since we don't call
 // any of its functions or access its member variables
+
+template<class T>
 class Array2d;
+
 class Part1ParalPar3D;
 
 class Part3Mesh3D{
@@ -20,8 +25,7 @@ class Part3Mesh3D{
     LO block_count;  // number of nodes
     LO* versurf = NULL; // numbers of vertices on the flux surfaces locating on the part1 domain.
     double* xcoords = NULL;
-    LO* li0
-    LO  li1,li2;
+    LO  li0,li1,li2;
     LO** xboxinds=NULL;  //The indexes of all boxes on the radial dimension
     LO lj0;
     LO* mylk0=NULL;
@@ -57,10 +61,11 @@ class Part3Mesh3D{
     LO* lgi0;
     double* Rcoordall; // store R of all nodes in XGC mesh
     double* Zcoordall; // store Z of all nodes in XGC mesh
-    double* versurf; //store the number of nodes on each surface
     double** surf_idx; //store the vertex indices of each surface
+    double** theta_geo;
     double** theta; //store the theta value of the nodes on the surface of xgc in the local process
     double** theta_flx; //store  the flux_theta of the nodes on the surface of xgc mesh in the local process
+    LO cce_first; // The number labelling the first surface 
  
     /* constructor - versurf has length = numsurf & versurf[i] = the number of nodes surface[i]
      * xcoords saves the radial coordinate of each surface.
@@ -97,10 +102,12 @@ class Part3Mesh3D{
       assert(tcase < TestCase::invalid);
       init(p1pp3d,tdir);
     }
-    Part3Mesh3D(gemParaMesh3D &gem3d,
-                Array2d<CV>* xgcnodes)
-    {
-                initXgcGem();
+    Part3Mesh3D(Array2d<int>* xgcnodes,
+                Array2d<double>* rzcoords,
+                bool pproc,
+                TestCase tcase)
+              : preproc(pproc),test_case(tcase){                    
+      initXgcGem(xgcnodes,rzcoords);
     }
 
     ~Part3Mesh3D()
@@ -111,8 +118,8 @@ class Part3Mesh3D{
      if(mylk0!=NULL) delete[] mylk0;
      if(mylk1!=NULL) delete[] mylk1;
      if(mylk2!=NULL) delete[] mylk2;
-     if(Rcoords!=NULL) delete[] Rcoords;
-     if(Zcoords!=NULL) delete[] Zcoords;
+     if(Rcoordall!=NULL) delete[] Rcoordall;
+     if(Zcoordall!=NULL) delete[] Zcoordall;
      if(pzcoords!=NULL) delete[] pzcoords;
    }
      void  JugeFirstSurfaceMatch(double xp1);
@@ -120,8 +127,9 @@ class Part3Mesh3D{
   private:
     const bool preproc;
     const TestCase test_case;
+    class Part1ParalPar3D* p1;
     void init(const Part1ParalPar3D &p1pp3d, const std::string test_dir="");
-    void initXgcGem();
+    void initXgcGem(Array2d<int>* xgcnodes,Array2d<double>* rzcoords);
     /* helper function called by init */
     void DistriPart3zcoords(const Part1ParalPar3D  &p1pp3d,
         const std::string test_dir="");
@@ -129,13 +137,18 @@ class Part3Mesh3D{
     void DistributePoints(const double* exterarr, const LO gstart, const LO li,
         const double* interarr, const Part1ParalPar3D  &p1pp3d);
     void BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx);
+    void gemDistributePoints(const double* exterarr, const LO gstart,LO li,
+         const double* interarr);
+    void search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp);
+    void initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>* rzcoords);
+
     /* default constructor 
      * put this in private to prevent users from calling it
      */
     Part3Mesh3D() : preproc(true), test_case(TestCase::off) {};
 };
 
-
+/*
 class xgcCoupleGemMesh3D {
   public:
     LO cce_first_surface; // The number of the first surface on the coupled domain
@@ -175,6 +188,7 @@ class xgcCoupleGemMesh3D {
       void init(const gemParaMesh3D &gem3d);
  
 };
+*/
 
 
 

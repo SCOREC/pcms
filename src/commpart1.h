@@ -4,7 +4,9 @@
 #include "adios2Routines.h"
 #include "testutilities.h"
 #include <cstddef>
+
 namespace coupler {
+template<class T>
 class Array1d;
 // create class for gene's mesh as well as its domain decomposition
 class Part1ParalPar3D {
@@ -20,11 +22,9 @@ class Part1ParalPar3D {
     MPI_Comm comm_cart;
     LO  NP; // The total number of processes
     LO npx,npy,npz;
-    LO nx0,nxb,li1,li2,lg0,lg1,lg2;
+    LO nx0,nxb,li0,li1,li2,lg0,lg1,lg2;
     LO ny0,nyb,llj0,llj1,llj2,lm0,lm1,lm2;
-    LO nz0,nzb,lk1,lk2,ln0,ln1,ln2;
- 
-    LO* li0,lk0;  
+    LO nz0,nzb,lk0,lk1,lk2,ln0,ln1,ln2; 
 
     LO lj0; //the number of elements in Fourier space.
     LO lj1; //the number of elements in Fourier space.
@@ -68,13 +68,17 @@ class Part1ParalPar3D {
 /*------------------------------------------------------*/
 /*variables specially owned by GEM*/
     LO numprocs;
-    LO ntude,imx,jmx,kmx,ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
+    LO ntube,imx,jmx,kmx,ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
     MPI_Comm grid_comm,tube_comm;
 
-    double dth;
-    double* thetagrid; //store the \theta value of all the nodes on one poloidal cross section of GEM
-    double** thflx; //store GEM's flux coordinates theta*; sent from GEM
-   
+    double lz,ly;
+    double dth,delz;
+    double* thetagrideq; //store ntheta \theta values of all the nodes on one poloidal cross section of GEM
+    double* theta; // store kmx \theta values for the perturbation
+    double** thflxeq; //store GEM's flux coordinates theta*; sent from GEM
+    double** thflx;   //store GEM's flux coordinates theta; for perturbation evolution.  
+    double** thfnz;   //store the theta value inversly transformed from z'. 
+
     /* constructor
      * optionally read preproc, test_case and test_dir from user
      */
@@ -98,8 +102,11 @@ class Part1ParalPar3D {
     }
 
     /*The constructor for GEM*/
-    Part1ParalPar3D(Array1d* gemmesh){
-      initGem(gemmesh);
+    Part1ParalPar3D(Array1d<int>* gemmesh, 
+                    Array2d<double>* thfnz,
+                    bool pproc = true)
+    : preproc(pproc),test_case(TestCase::off){
+      initGem(gemmesh,thfnz);
     }
     ~Part1ParalPar3D()
     {
@@ -113,25 +120,17 @@ class Part1ParalPar3D {
     const bool preproc;
     const TestCase test_case;
     void init(LO* parpar, double* xzcoords, double* q_prof, double* gene_cy, std::string test_dir="");
-    void initGem()
+    void initGem();
     void initTest0(std::string test_dir);
     /* init* helper function */
     void CreateSubCommunicators();
    /* destructor helper function */
     void MpiFreeComm();
     void blockindice(); 
+    void decomposeGemMesh();
+    void CreateGemsubcommunicators();
+    void initGem(const Array1d<int>* gemmesh, const Array2d<double>* thfnz);    
 };
-
-//create class for GEM's mesh as well as its domain decomposition
-class gemParaMesh3D {
-  public:
-    LO myid,numprocs; 
-    LO ntude,imx,jmx,kmx;
-    MPI_Comm grid_comm,tube_comm,x_comm,gx_comm; 
-   
-    double* thetagrid; //store the \theta value of all the nodes on one poloidal cross section of GEM
-    double** thflx; //store GEM's flux coordinates theta*; sent from GEM     
-}
 
 
 template<typename T, size_t SIZE>

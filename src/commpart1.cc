@@ -1,4 +1,5 @@
 #include "commpart1.h"
+#include "interpoutil.h"
 #include <cassert>
 #include <cmath>
 
@@ -15,6 +16,7 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
   npx=data[0];
   nx0=data[1];
   nxb=data[2];
+  li0=data[3];
 
   npy=data[4];
   ny0=data[5];
@@ -24,20 +26,17 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
   npz=data[8];
   nz0=data[9];
   nzb=data[10];
+  lk0=data[11];
 
   NP=npx*npy*npz;
   CreateSubCommunicators();
-  li0=new LO[npx];
-  lk0=new LO[npz];
-  for(LO i=0;i<npx;i++)  li0[i]=data[3];
-  for(i=0;i<npz;i++) lk0[i]=data[11];
 
-  li1=mype_x*li0[0];
-  li2=li1+li0[0]-1;
+  li1=mype_x*li0;
+  li2=li1+li0-1;
   lj1=mype_y*lj0;
   lj2=lj1+lj0-1;
-  lk1=mype_z*lk0[0];
-  lk2=lk1+lk0[0]-1;
+  lk1=mype_z*lk0;
+  lk2=lk1+lk0-1;
   
   delete[] data;
 
@@ -67,6 +66,7 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
      npx=parpar[0];
      nx0=parpar[1];
      nxb=parpar[2];
+     li0=parpar[3];
      li1=parpar[4];
      li2=parpar[5];
      lg0=parpar[6];
@@ -86,6 +86,7 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
      npz=parpar[18];
      nz0=parpar[19];
      nzb=parpar[20];
+     lk0=parpar[21];
      lk1=parpar[22];
      lk2=parpar[23];
      ln0=parpar[24];
@@ -100,11 +101,6 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
      lj2=llj2;    
 
      CreateSubCommunicators(); 
-     li0=new LO[npx];
-     lk0=new LO[npz];
-     for(LO i=0;i<npx;i++)  li0[i]=parpar[3];
-     for(i=0;i<npz;i++) lk0[i]=parpar[11];
-
    }
 
    std::cout<<"mype,mype_x,mype_z,li1,li2,lj1,lj2,lk1,lk2="<<mype<<" "<<mype_x<<" "<<mype_z<<" "<<li1<<" "
@@ -183,8 +179,8 @@ void Part1ParalPar3D::init(LO* parpar, double* xzcoords, double* q_prof, double*
      if(mype==0) printf("i=: %3d,pz=:%19.17f \n",i,pzcoords[i]);
 //std::cout<<"i="<<i<<" "<<"pz="<<pzcoords[i]<<'\n';
    }
-   pzp=new double[lk0[p1pp3d.mype_z]];
-   for(LO i=0;i<lk0[p1pp3d.mype_z];i++){
+   pzp=new double[lk0];
+   for(LO i=0;i<lk0;i++){
      pzp[i]=double(lk1+i)*dz-1.0*cplPI;
    }
    blockindice();  
@@ -230,7 +226,7 @@ void Part1ParalPar3D::MpiFreeComm()
 
 void Part1ParalPar3D::blockindice()
 {
-   blockcount = GO(nz0*li0[p1pp3d.mype_x]);
+   blockcount = GO(nz0*li0);
    blockstart = GO(nz0*li1);
    blockend = GO(nz0*(li2+1)-1);
 
@@ -238,45 +234,87 @@ void Part1ParalPar3D::blockindice()
 
 //Input GEM's mesh
 
-void Part1ParalPar3D::initGem(const array1d<int>* gemmesh, const array2d<double>* flxtheta)
-{
+void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>* thfnz)
+{  
   MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
-  LO* tmp=gemmesh->data;
-  ntude=tmp[0];
+  LO* tmp=gemmesh->data();
+  ntube=tmp[0];
   imx=tmp[1];
   jmx=tmp[2];
   kmx=tmp[3]; 
   ntheta=tmp[4];
   dth=2.0*cplPI/double(ntheta);
 
-  thetagrid=new double*[ntheta];
-
-  for(LO i=0;i<nsurf;i++) thetaflx[i]=new double*[ntehta];  
-  for(i=ntehta/2+1;i<ntheta+1;i++){
-    thetagrid[i]=double(i-ntheta/2)*dth;
+  thetagrideq=new double[ntheta];
+  thetagrideq[ntheta/2]=0.0;
+  for(LO i=ntheta/2+1;i<ntheta+1;i++){
+    thetagrideq[i]=double(i-ntheta/2)*dth;
+    thetagrideq[ntheta-i]=-thetagrideq[i];
   }
   
   CreateGemsubcommunicators();
-  if(npx>imx) std::err<<"Error: npx>imx; radial mesh is not dense enough"; 
-  li0=new LO[npx];
-  lk0=new LO[npz];
+  if(npx>imx) std::cout<<"Error: npx>imx; radial mesh is not dense enough"<<'\n';
+  std::exit(1); 
   decomposeGemMesh();
-  thetaflx=new double*[li0[mype_x]];
-  for(i=0;i<li0[mype_x];i++) thetaflx[i]=new double[lk0[mype_z]];
-  tmp=flxtheta;
-  LO surfx=0
-  for(i=0;i<mype_x;i++) surfx+=li0[i];
-  LO numtheta=0;
-  for(i=0;i<mype_z;i++) numtheta+=lk0[i];
-  for(i=0;i<li0[mype_x];i++){    
-    for(LO k=0;k<lk0[mype_z];k++)
-      thetaflx[i][k]=tmp[(surfx+i)*ntheta+numtheta+k];
-  }    
+  double* tmpreal;
+  tmpreal=thfnz->data();
+  lz=tmpreal[0];
+  ly=tmpreal[1];
+  dz=lz/double(kmx);
+  delz=lz/double(ntheta);
+  dy=ly/double(jmx);
+  dth=2.0*cplPI/double(ntheta);
 
+  thflxeq=new double*[li0];
+  for(LO i=0;i<li0;i++) thflxeq[i]=new double[ntheta+1];  
+//  LO surfx=0;
+//  for(i=0;i<mype_x;i++) surfx+=li0[i];
+  for(LO i=0;i<li0;i++){    
+    for(LO k=0;k<ntheta+1;k++)
+      thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k];
+  }   
+ 
+  thflx=new double*[li0];
+  for(LO i=0;i<li0;i++) thflx[i]=new double[lk0];
+ 
+//interpolation for obtaining the flux theta of mesh for the perturbation 
+  double* tmpth=new double[kmx+1];
+  double tmpdth=2.0*cplPI/double(kmx); 
+  for(LO i=kmx/2+1;i<kmx+1;i++){      // Here, another way is to minus cplPI
+    theta[i]=double(i-kmx/2)*tmpdth;
+    theta[kmx-i]=-theta[i];
+  }
+
+  double* tmpthetaeq=new double[ntheta+5];
+  tmpthetaeq[0]=thetagrideq[0]-2.0*dth;
+  tmpthetaeq[1]=thetagrideq[1]-dth;
+  tmpthetaeq[ntheta+2]=thetagrideq[ntheta]+dth;
+  tmpthetaeq[ntheta+3]=thetagrideq[ntheta]+2.0*dth;
+  for(LO k=2;k<ntheta+2;k++) tmpthetaeq[k]=thetagrideq[k-2];
+  
+  //Here, the continusous boundary condition is used for the 3rd-order Lagrangain interpolaiton; It's better to replace it with the cubic spline interpolation
+  double* tmpflxeq=new double[ntheta+5];  
+  double* tmpflx=new double[kmx+1]; 
+  for(LO i=0;i<li0;i++){
+    tmpflxeq[0]=thflxeq[li1+i][0];
+    tmpflxeq[1]=thflxeq[li1+i][0];
+    tmpflxeq[ntheta+2]=thflxeq[li1+i][ntheta-1];   
+    tmpflxeq[ntheta+3]=thflxeq[li1+i][ntheta-1];
+    for(LO k=2;k<ntheta+2;i++) tmpflxeq[k]=thflxeq[li1+i][k-2];
+    Lag3dArray(tmpflxeq,tmpthetaeq,ntheta+5,tmpflx,theta,kmx+1); 
+
+    //Then, the initialization of theflx
+    for(LO k=0;k<lk0;k++) thflx[i][k]=tmpflx[lk1+k];
+  }  
+  delete[] tmpthetaeq;
+  delete[] tmpflxeq;
+  delete[] tmpflx;
+  delete[] tmpthetaeq;
+ 
 }
 
 
-void gemParaMesh::CreateGemsubcommunicators(){
+void Part1ParalPar3D::CreateGemsubcommunicators(){
 //split the communicator for GEM's domain decomposition
   LO size, gclr,tclr;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -284,47 +322,45 @@ void gemParaMesh::CreateGemsubcommunicators(){
   
   gclr=int(mype/ntube);
   tclr=mype%ntube;
-  MPI_Comm_split(MPI_COMM_WORLD,gclr,tclr,GRID_COMM);
-  MPI_Comm_split(MPI_COMM_WORLD,tclr,gclr,TUBE_COMM);
+  MPI_Comm_split(MPI_COMM_WORLD,gclr,tclr,&grid_comm);
+  MPI_Comm_split(MPI_COMM_WORLD,tclr,gclr,&tube_comm);
 
 //split MPI_COMM_WORLD for GEM-XGC mapping
   npz=int(sqrt(kmx+1));
   while(floor((kmx+1)/npz)<(kmx+1)/npz){
     if((kmx+1)/npz>2) npz++;     
   }
-  if((kmx+1)/n<2) std::err<<"Error: the number of processes is not chosen right."<<'\n';
+  if((kmx+1)/npz<2) std::cout<<"Error: the number of processes is not chosen right."<<'\n';
+  std::exit(1);
   npx=numprocs/npz; 
   npy=1;
   CreateSubCommunicators(); 
  } 
      
-void decomposeGemMesh(){
+void Part1ParalPar3D::decomposeGemMesh()
+{
   LO n=int((imx+1)/npx);
-  LO count;
   if(mype_x<npx-1){
-    count=n;
+    lk0=n;
     li1=mype_x*n;
     li2=li1+n-1;
   }else{
     li1=mype_x*n;
-    count=imx-li1+2;
+    li0=imx-li1+2;
     li2=imx;
   }
-  MPI_Allgather(count,1,MPI_INT,li0,1,MPI_INT,comm_x);
   n=int((kmx+1)/npz);
   if(mype_z<npz-1){
-    count=n;
+    lk0=n;
     lk1=mype_z*n;
     lk2=lk1+n-1;
   }else{
     lk1=mype_z*n;
-    count=kmx-lk1+2;
+    lk0=kmx-lk1+2;
     lk2=kmx;
   }
-  MPI_Allgather(count,1,MPI_INT,li0,1,MPI_INT,comm_z);
   lj1=jmx+1;
 } 
-
  
 
 }

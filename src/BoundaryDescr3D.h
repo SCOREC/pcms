@@ -25,17 +25,40 @@ class BoundaryDescr3D{
     CV*** lowpotentz=NULL;
     CV** uppbmat=NULL; //the upper matrix for the parallel boundary condition
     CV** lowpbmat=NULL; // the lower matrix for the parallel boundary condition
+
+    // specially for GEM-XGC coupling
+    double*** lowdenzgemxgc=NULL;
+    double*** updenzgemxgc=NULL;
+    double*** uppotentzgemxgc=NULL;
+    double*** lowpotentzgemxgc=NULL;
+
+    double* ymeshxgc=NULL;
+    double* ymeshgem=NULL;
+    double** thetameshxgc=NULL;
+    double* thetameshgem=NULL;   
+
+
    /* constructor */
     BoundaryDescr3D(const Part3Mesh3D& p3m3d,
         const Part1ParalPar3D &p1pp3d,
+        const CouplingCase ccase,
         const TestCase tcase = TestCase::off,
-        const bool pproc = true);
+        const bool pproc = true)
+      : test_case(tcase),preproc(pproc){
+        if(ccase==CouplingCase::genexgc){
+          initGeneXgc(p3m3d,p1pp3d);
+        }else if(ccase==CouplingCase::gemxgc){
+          initGemXgc(p3m3d,p1pp3d);
+        }       
+      }
     /* destructor */
     ~BoundaryDescr3D();
   private:
     /* prevent users from calling this */  
-    BoundaryDescr3D() : test_case(TestCase::off), preproc(false) {};
+//    BoundaryDescr3D() : test_case(TestCase::off), preproc(false) {};
     void initpbmat(const Part1ParalPar3D &p1pp3d);
+    void initGeneXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D &p1pp3d);
+    void initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D &p1pp3d);
     const TestCase test_case;
     const bool preproc;
 };

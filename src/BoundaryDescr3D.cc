@@ -10,11 +10,9 @@
 
 namespace coupler {
 
-BoundaryDescr3D::BoundaryDescr3D(
+BoundaryDescr3D::initGemXgc(
     const Part3Mesh3D& p3m3d,
-    const Part1ParalPar3D &p1pp3d,
-    const TestCase tcase,
-    bool pproc):test_case(tcase), preproc(pproc)
+    const Part1ParalPar3D &p1pp3d)
 {
   if(preproc==true){
     nzb=p1pp3d.nzb;
@@ -84,6 +82,68 @@ void BoundaryDescr3D::initpbmat(const Part1ParalPar3D &p1pp3d)
        }
      }
    }
+}
+
+void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D &p1pp3d)
+{
+  nzb=p1pp3d.nzb;
+  ymeshgem=new double[p1pp3d.lj0+4];
+  for(LO j=0;j<p1pp3d.lj0;j++){
+    ymeshgem[2+j]=p1pp3d.y_gem[j];
+  }
+  ymeshgem[1]=p1pp3d.y_gem[p1pp3d.lj0-1]-p1pp3d.ly;
+  ymeshgem[0]=p1pp3d.y_gem[p1pp3d.lj0-2]-p1pp3d.ly;
+  ymeshgem[p1pp3d.lj0+2]=p1pp3d.y_gem[0]+p1pp3d.ly;
+  ymeshgem[p1pp3d.lj0+3]=p1pp3d.y_gem[1]+p1pp3d.ly;
+
+  thetameshgem=new double[p1pp3d.lk0+4];
+  for(LO i=0;i<p1pp3d.lk0;k++){
+    thetameshgem[2+i]=p1pp3d.theta[p1pp3d.lk1+i];
+  }
+  if(p1pp3d.mype_z!=0 && p1pp3d.mype_z!=p1pp3d.npz-1){
+    thetameshgem[1]=p1pp3d.theta[p1pp3d.lk1-1];
+    thetameshgem[0]=p1pp3d.theta[p1pp3d.lk1-2];
+    thetameshgem[p1pp3d.lk0+2]=p1pp3d.theta[p1pp3d.lk2+1];
+    thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk1+2];
+  }else if(p1pp3d.mype_z==0){
+    thetameshgem[1]=-p1pp3d.dth;
+    thetameshgem[0]=-2.0*p1pp3d.dth;
+    thetameshgem[p1pp3d.lk0+2]=p1pp3d.theta[p1pp3d.lk2+1]
+    thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk2+2]     
+  }else {
+    thetameshgem[1]=p1pp3d.theta[p1pp3d.lk1-1];
+    thetameshgem[0]=p1pp3d.theta[p1pp3d.lk1-2];
+    thetameshgem[p1pp3d.lk0+2]=p1pp3d.theta[p1pp3d.lk2]+p1pp3d.dth;
+    thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk2]+2.0*p1pp3d.dth;
+  }
+
+  updenzgemxgc=new double**[p1pp3d.li0];
+  lowdenzgemxgc=new double**[p1pp3d.li0];
+  for(LO i=0;i<p1pp3d.li0;i++){
+    updenzgemxgc[i]=new double*[p1pp3d.lj0];
+    lowdenzgemxgc[i]=new double*[p1pp3d.lj0];
+    for(LO j=0;j<p1pp3d.lj0;j++){
+      updenzgemxgc[i][j]=new double[nzb];
+      lowdenzgemxgc[i][j]=new double[nzb];
+    }
+  }
+
+
+  uppotentzgemxgc=new double**[p1pp3d.li0];
+  lowpotentzgemxgc=new double**[p1pp3d.li0];
+  upzpart3=new double*[p1pp3d.li0];
+  lowzpart3=new double*[p1pp3d.li0];
+  for(LO i=0;i<p1pp3d.li0;i++){
+    uppotentzgemxgc[i]=new double*[p1pp3d.lj0];
+    lowpotentzgemxgc[i]=new double*[p1ppd.lj0]; 
+    upzpart3[i]=new double[nzb];
+    lowzpart3[i]=new double[nzb];
+    for(LO j=0;j<p1pp3d.lj0;j++){
+      uppotentzgemxgc[i][j]=new double[nzb];
+      lowpotentzgemxgc[i][j]=new double[nzb];
+    }
+  }   
+
 }
 
 

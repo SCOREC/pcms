@@ -74,10 +74,17 @@ class Part1ParalPar3D {
     double lz,ly;
     double dth,delz;
     double* thetagrideq; //store ntheta \theta values of all the nodes on one poloidal cross section of GEM
-    double* theta; // store kmx \theta values for the perturbation
+    double* theta; // store kmx+1 \theta values for the perturbation
     double** thflxeq; //store GEM's flux coordinates theta*; sent from GEM
     double** thflx;   //store GEM's flux coordinates theta; for perturbation evolution.  
     double** thfnz;   //store the theta value inversly transformed from z'. 
+    double* y_gem;  //store jmx+1 y varaibles of GEM
+    LO mype_grid,mype_tube;
+    MPI_Group zsend_group;
+    MPI_Comm  zsend_comm;
+    MPI_Group zrecv_group;
+    MPI_Comm  zrecv_comm;
+    LO nwedge;
 
     /* constructor
      * optionally read preproc, test_case and test_dir from user
@@ -104,8 +111,9 @@ class Part1ParalPar3D {
     /*The constructor for GEM*/
     Part1ParalPar3D(Array1d<int>* gemmesh, 
                     Array2d<double>* thfnz,
-                    bool pproc = true)
-    : preproc(pproc),test_case(TestCase::off){
+                    bool pproc = true, 
+                    TestCase tcase=TestCase::off)
+    : preproc(pproc),test_case(tcase){
       initGem(gemmesh,thfnz);
     }
     ~Part1ParalPar3D()
@@ -130,6 +138,7 @@ class Part1ParalPar3D {
     void decomposeGemMesh();
     void CreateGemsubcommunicators();
     void initGem(const Array1d<int>* gemmesh, const Array2d<double>* thfnz);    
+    void CreateGroupComm();
 };
 
 

@@ -62,10 +62,10 @@ class Part3Mesh3D{
     double* Rcoordall; // store R of all nodes in XGC mesh
     double* Zcoordall; // store Z of all nodes in XGC mesh
     double** surf_idx; //store the vertex indices of each surface
-    double** theta_geo;
-    double** theta; //store the theta value of the nodes on the surface of xgc in the local process
+    double** theta_geo; //store the theta value of the nodes on the surface of xgc in the local process
     double** theta_flx; //store  the flux_theta of the nodes on the surface of xgc mesh in the local process
     LO cce_first; // The number labelling the first surface 
+    double*** y_xgc; 
  
     /* constructor - versurf has length = numsurf & versurf[i] = the number of nodes surface[i]
      * xcoords saves the radial coordinate of each surface.

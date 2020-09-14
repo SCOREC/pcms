@@ -76,10 +76,6 @@ public:
   double* mesh1ddens; // 1d mesh for interpolating density;
   double** mesh1dpotent; // the mesh for interpoating potential;
 
-  // The following parameters for yparal=true;
-  LO myli0;
-
-
   /* constructor
    * optional argument supports setting
    * the prepoc and yparal modes
@@ -142,6 +138,29 @@ private:
   void ExecuteCmplxToReal();
 
   };
+
+class gemXgcDatasProc3D {
+  public:
+    double*** densin = NULL;  // Store the input density datas from GEM; 
+    double*** densgem = NULL;  // Store the density on the coupling subcommunicator of GEM
+    double*** densxgc = NULL;  // Store the density which is sent to XGC
+
+    gemXgcDatasProc3D(bool pproc = true,
+      TestCase test_case = TestCase::off,
+      bool ypar = false);
+
+  private:
+    const bool preproc;
+    const TestCase testcase;
+    const bool yparal;
+    const Part1ParalPar3D* p1;
+    const Part3Mesh3D* p3;
+    const BoundaryDescr3D* bdesc;
+    init();
+
+};
+
+
  
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d);

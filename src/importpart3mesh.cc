@@ -325,7 +325,7 @@ void Part3Mesh3D::initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>*
   nsurf=cce_first_surface-cce_last_surface+1; 
 
   versurf=new LO[nsurf];
-  activenodes=0
+  activenodes=0;
   for(LO i=0;i<nsurf;i++){ 
     versurf[i]=inttmp[i+cce_first_surface+7-cce_first];  
     activenodes+=versurf[i];
@@ -367,23 +367,46 @@ void Part3Mesh3D::initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>*
 
   theta_flx=new double*[p1->li0];
   for(LO i=0;i<p1->li0;i++){
-    theta_flx[i]=new double[mylk0[i]];
+    for(LO j=0;j<p1->lj0;j++){
+      theta_flx[i][j]=new double[mylk0[i]];
+    }
   }
  
   //Here, the continusous boundary condition is used for the 3rd-order Lagrangain interpolaiton; It's better to replace it with the cubic spline interpolation
   double* tmpflxeq=new double[p1->ntheta+5];
-  for(LO i=0;i<li0;i++){ 
+  for(LO i=0;i<p1->li0;i++){ 
     tmpflxeq[0]=p1->thflxeq[p1->li1+i][0];
     tmpflxeq[1]=p1->thflxeq[p1->li1+i][0];
     tmpflxeq[p1->ntheta+2]=p1->thflxeq[p1->li1+i][p1->ntheta-1];
     tmpflxeq[p1->ntheta+3]=p1->thflxeq[p1->li1+i][p1->ntheta-1];
     for(LO k=2;k<p1->ntheta+2;i++) tmpflxeq[k]=p1->thflxeq[p1->li1+i][k-2];
-    Lag3dArray(tmpflxeq,tmpthetaeq,p1->ntheta+5,theta_flx[i],theta_geo[i],mylk0[i]);     
+    for(LO j=0;j<p1->lj0;j++) 
+      Lag3dArray(tmpflxeq,tmpthetaeq,p1->ntheta+5,theta_flx[i][j],theta_geo[i],mylk0[i]);     
+  } 
+
+  y_xgc = new double**[p1->li0];
+  for(LO i=0;i<p1->li0;i++){
+    y_xgc[i] = new double*[p1->lj0];
+    for(LO j=0;j<p1->lj0;j++)
+      y_xgc[i][j]=new double[p1->lk0]  
+    }
+  }
+  
+  double phi_tmp;
+  for(LO i=0;i<p1->li0;i++){
+    for(LO j=0;j<p1->lj0;j++){
+      phi_tmp=double(j-1)*2.0*cplPI/(doulbe(p1->lj0*p1->nwedge);
+      for(LO k=0;k<p1->lk0;k++){
+        y_xgc[i][j][k]=remainder(p1->r0/p1->q0*(theta_flx[i][j][k]-phi_tmp),ly);
+        if(y_xgc[i][j][k]<0) y_xgc[i][j][k]=ly+y_xgc[i][j][k];
+      }
+    }
   } 
 
   delete[] tmpthetaeq;
   for(LO i=0;i<p1->li0;i++) delete[] tmptheta[i];
 }
+
 /*
 void Part3Mesh3D::decompRadialMesh(const gemParaMesh3D &gem3d){
   cce_surface_start=0;

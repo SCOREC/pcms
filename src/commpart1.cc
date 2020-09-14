@@ -30,7 +30,6 @@ void Part1ParalPar3D::initTest0(std::string test_dir)
 
   NP=npx*npy*npz;
   CreateSubCommunicators();
-
   li1=mype_x*li0;
   li2=li1+li0-1;
   lj1=mype_y*lj0;
@@ -306,11 +305,15 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>
     //Then, the initialization of theflx
     for(LO k=0;k<lk0;k++) thflx[i][k]=tmpflx[lk1+k];
   }  
+
+  double* y_gem = new double[jmx+1];
+  for(LO j=0;j<jmx+1;j++){
+    y_gem[j]=double(j)*ly/dy;
+  }
   delete[] tmpthetaeq;
   delete[] tmpflxeq;
   delete[] tmpflx;
-  delete[] tmpthetaeq;
- 
+
 }
 
 
@@ -334,7 +337,8 @@ void Part1ParalPar3D::CreateGemsubcommunicators(){
   std::exit(1);
   npx=numprocs/npz; 
   npy=1;
-  CreateSubCommunicators(); 
+  MPI_Comm_rank(grid_comm,&mype_grid);
+  MPI_Comm_rank(tube_comm,&mype_tube); 
  } 
      
 void Part1ParalPar3D::decomposeGemMesh()
@@ -361,6 +365,37 @@ void Part1ParalPar3D::decomposeGemMesh()
   }
   lj1=jmx+1;
 } 
- 
 
+/*
+  void Part1ParalPar3D::CreateGroupComm()
+  {   
+    MPI_Group z_group;
+    MPI_Comm_group(p1->comm_z,&z_group,);
+ 
+    LO* tmplk1=new double[p1->npz];
+    LO* tmplk2=new double[p1->npz];
+    MPI_Allgather(&p1->lk1,1,MPI_INT,tmplk1,1,MPI_INT,p1->comm_z);
+    MPI_Allgather(&p1->lk2,1,MPI_INT,tmplk1,1,MPI_INT,p1->comm_z);
+    LO i=0;
+    while(tmplk1[i]-mype_grid!=0) i+=1;
+    LO minrank=i;
+    i=0
+    while(tmplk2[i]-mype_grid!=0) i+=1;
+    LO maxrank=i;
+    LO* ranksend=new LO[maxrank-minrank+1];
+    for(i=0;i<maxrank-minrank+1;i++) ranksend[i]=i+minrank; 
+    
+    MPI_Group zsend_group;
+    MPI_Comm  zsend_comm;
+    MPI_Group_incl(z_group,maxrank-minrank+1,ranksend,&zsend_group);
+    MPI_Comm_create_group(p1->comm_z,zsend_group,0,&zsend_comm);
+
+    LO* rankrecv=new LO[lk0];
+    for(i=0;i<lk0;i++) rankrecv[i]=lk1+i;
+    MPI_Group zrecv_group;
+    MPI_Comm  zrecv_comm;
+    MPI_Group_incl(z_group,,rankredv,&zrecv_group);
+    MPI_Comm_create_group(p1->comm_z,zrecv_group,1,&zrecv_comm); 
+  } 
+*/
 }

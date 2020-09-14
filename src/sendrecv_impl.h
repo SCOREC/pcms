@@ -97,6 +97,22 @@ void mpisendrecv_aux1D(MPI_Comm comm,LO nzb,LO xind,LO yind,LO zind,
             comm,&status);
 }
 
+ void prep_for_mpi_alltoallv(const LO rank,const LO size,const LO numgr,const LO* snum,
+      const LO* rnum, LO* scounts, LO* rcounts,GO* sdispls,GO* rdispls,GO numsend, GO numrecv)
+ {
+   numsend=0;
+   for(LO i=0;i<size;i++) numsend+=snum[i];
+   numrecv=0;
+   for(LO i=0;i<size;i++) numrecv+=rnum[i];
+   for(i=0;i<size;i++){
+     
+   } 
+
+
+
+ }
+
+
 }
 
 #endif

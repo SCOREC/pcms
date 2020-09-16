@@ -131,8 +131,15 @@ class Part3Mesh3D{
      if(Zcoordall!=NULL) delete[] Zcoordall;
      if(pzcoords!=NULL) delete[] pzcoords;
    }
-     void  JugeFirstSurfaceMatch(double xp1);
+   void  JugeFirstSurfaceMatch(double xp1);
+   inline double search_zeta(const double dlength,const double length,const LO nlength,const double tmp);
+   inline  flxxgc gemXgcDatasProc3D::search_flux_3rdorder_periodbound(
+        const double tmpflx,const double* flxin, tmp,LO num,double* out1,double* out2);
+   void gemDistributePoints(const double* exterarr, const LO gstart,LO li,
+        const double* interarr);
+   void search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp); 
  
+
   private:
     const bool preproc;
     const TestCase test_case;
@@ -156,49 +163,6 @@ class Part3Mesh3D{
      */
     Part3Mesh3D() : preproc(true), test_case(TestCase::off) {};
 };
-
-/*
-class xgcCoupleGemMesh3D {
-  public:
-    LO cce_first_surface; // The number of the first surface on the coupled domain
-    LO cce_last_surface;  // The number of the last surface on the coupled domain
-    LO cce_first_node; // The number of the first node on the coupled domain
-    LO cce_last_node; // The number of the last node on the coupled domain
-    LO nnode; // the total number of nodes provided by XGC
-    LO npsi_surf; // The total number of the surfaces provided by XGC
-    LO* versurf; // store the number of the nodes on each surface
-    LO nsurf;  // The total number of surface on the coupled domain
-   
-    LO cce_surface_start; // The number of the first surface of myid rank
-    LO cce_surface_end; // The number of the last surface of myid rank
-
-    LO* cce;
-    double* Rcoordall; // store R of all nodes in XGC mesh
-    double* Zcoordall; // store Z of all nodes in XGC mesh
-    double* versurf; //store the number of nodes on each surface
-    double** surf_idx; //store the vertex indices of each surface
-    double** theta_geo; //store the theta value of the nodes on the surface of xgc in the local process
-    double** theta_flx; //store  the flux_theta of the nodes on the surface of xgc mesh in the local process
-    LO surf_len_local; // the number of nodes on the local surface;
-    LO surf_idx_local; // store the indices by the order of nodes on the surface of xgc mesh.
- 
-    
-    xgcCoupleGemMesh3D(gemParaMesh3D &gem3d,
-        LO* cce_, 
-        double* Rcoordall_,
-        double* Zcoordall_)                          
-      : cce(cce_),
-        Rcoordall(Rcoordall_),
-        Zcoordall(Zcoordall_){ 
-        init(gem3d);
-     }
-
-    private:
-      void init(const gemParaMesh3D &gem3d);
- 
-};
-*/
-
 
 
 // The following utility functions should go into a header for utilities if they

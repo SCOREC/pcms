@@ -14,6 +14,9 @@ namespace coupler {
 template<class T>
 class Array2d;
 
+template<class T>
+class Array3d;
+
 class Part3Mesh3D;
 class Part1ParalPar3D;
 class BoundaryDescr3D;
@@ -145,11 +148,23 @@ class gemXgcDatasProc3D {
     double*** densgem = NULL;  // Store the density on the coupling subcommunicator of GEM
     double*** densinterone = NULL;  // Store the density interpolated along theta
     double*** densintertwo = NULL;  // Store the density interpolated along y
+    double**** pot_gem_fol = NULL;
+    double*** pot_ygem = NULL;
+    double*** pot_ythgem = NULL;
 
     gemXgcDatasProc3D(bool pproc = true,
       TestCase test_case = TestCase::off,
       bool ypar = false);
 
+    void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxyout); 
+    void AllocDensityArrays();
+    void AllocPotentArrays();
+    void DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM);
+    void DistriPotentRecvfromXGC(const Array3d<double>* potentfromXGC);
+    void densityfromGemToCoupler(const double*** tmpdensity);  
+    void interpoDensityAlongZ(double*** box);
+    void interpoDensityAlongY();
+    void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxout); 
   private:
     const bool preproc;
     const TestCase testcase;
@@ -157,7 +172,6 @@ class gemXgcDatasProc3D {
     const Part1ParalPar3D* p1;
     const Part3Mesh3D* p3;
     const BoundaryDescr3D* bdesc;
-    init();
 
 };
 

@@ -105,7 +105,6 @@ void DatasProc3D::InterpoPotential3D()
      delete[] yin; 
     }
   }
-
 }
 
 
@@ -161,7 +160,29 @@ void gemXgcDatasProc3D::interpoDensityAlongY()
       }
     }
   }
-  
+}
+
+void gemXgcDatasProc3D::InterpoPotential3DAlongZ(const double*** boxyin, double*** boxout)
+{
+  double* yin;
+  double* yout;
+  LO nzb=bdesc->nzb;
+  if(preproc==true){
+    for(LO i=0;i<p1->li0;i++){
+      yin=new double[p3->mylk0[i]+2*nzb];
+      for(LO j=0;j<p1->lj0;j++){
+        for(LO l=0;l<nzb;l++){
+          yin[l]=bdesc->lowpotentzgemxgc[i][j][l];
+          yin[p3->mylk0[i]+nzb+l]=bdesc->uppotentzgemxgc[i][j][l];
+        }
+        for(LO k=0;k<p3->mylk0[i];k++){
+          yin[k+nzb]=boxin[i][j][k];
+        }
+        yout=boxout[i][j];
+        Lag3dArray(yin,bdesc->thflxmeshxgc[i][j],p3->mylk0[i]+2*nzb,yout,p1->thflx[i],p1->lk0);
+     }
+    }
+  }
 
 }
 

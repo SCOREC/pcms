@@ -574,7 +574,7 @@ inline double gemXgcDatasProc3D::search_zeta(const double dlength,const double l
 */
 }
 
-inline  gemXgcDatasProc3D::flxxgc gemXgcDatasProc3D::search_flux_3rdorder_periodbound(
+inline  flxxgc gemXgcDatasProc3D::search_flux_3rdorder_periodbound(
         const double tmpflx,const double* flxin, tmp,LO num,double* out1,double* out2)
 {
   struct flxxgc tmp;

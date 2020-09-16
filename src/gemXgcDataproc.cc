@@ -11,12 +11,10 @@ namespace coupler {
  : preproc(pproc),
    testcase(test_case),
    yparal(ypar)  
- {
-   
-   AllocDensityArrays();
+ {    
+   AllocDensityArrays(); 
 
-
-
+   AllocPotentArrays();
 
  }
 
@@ -45,6 +43,23 @@ namespace coupler {
        densxgc=new double[p3->mylk0[i]];
    }    
  }
+
+ void gemXgcDatasProc3D::AllocPotentArrays()
+ {
+   double**** pot_gem_fl=new double***[p1->li0];
+   double*** pot_ygem=new double**[p1->li0];
+   for(LO i=0;i<p1->li0;i++){
+     pot_gem_fl[i]=new double**[p1->lj0];
+     pot_ygem[i]=new double*[p1->lj0];
+     for(hj=0;j<p1->lj0;j++){
+       pot_gem_fl[i][j]=new double*[>mylk0[i]];
+       pot_ygem[i][j]=new double[mylk0[i]];
+	 for(LO k=0;k<mylk0[i];k++)
+	   pot_gem_fl[i][j][k]=new double[4];
+     }
+   }
+
+ } 
 
  void gemXgcDatasProc3D::DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM)
  {    
@@ -80,6 +95,7 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* potentfro
   //FIXME: distribute potentfromXGC->datas() to tmp;  
 
   //first interpolation along the field line
+  /*  
   double**** pot_gem_fl=new double***[p1->li0];   
   double*** pot_ygem=new double**[p1->li0];  
   for(LO i=0;i<p1->li0;i++){
@@ -92,8 +108,9 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* potentfro
           pot_gem_fl[i][j][k]=new double[4]; 
     }
   }
- 
+  */
 
+  // First interpolation along the field line; 
   double* tmppotent;
   double* tmpflx=new double[4];
   double* tmplength;
@@ -112,12 +129,14 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* potentfro
       }
       tmppotent=pot_gem_fl[i][j][k];
       tmplength=nodesdist_fl[i][j][k];
-      pot_ygem[i][j][k]=Lag3dInterpo1D(tmppotent,tmplength,nodesdist_fl[i][j][k][4]);
+      pot_ygem[i][j][k]=Lag3dInterpo1D(tmppotent,tmplength,nodesdist_fl[i][j][k][4]);     
      }
    } 
  }  
 
-  
+ // The 2nd interpolation along theta
+ InterpoPotential3DAlongZ(pot_ygem,pot_ythgem);  
+ // FIXME: distribute pot_ythgem
 }
 
 
@@ -196,39 +215,6 @@ void gemXgcDatasProc3D::densityfromGemToCoupler(const double*** tmpdensity)
      }
    }      
  }
-
-//fixme: the equivalent routine in GEM looks not right
-void gemXgcDatasProc3D::search_zeta(LO j11,LO j10,LO j20,LO j21,LO w1,LO w2,
-     const double dlength,const double length,const double nlength,const double tmp)
-{
-  if(tmp<0 || tmp>=length){
-     tmp=remainder(tmp,length);
-     if(tmp<0) tmp=tmp+length;
-  } 
-  j10=floor(tmp/dlength);
-  if(j10==0){
-    j11=nlength-1;
-    j20=j10+1;
-    j21=j10+2;
-  } else if(j10=nlength-1){
-    j11=nlength-2;
-    j20=0;
-    j21=1;
-  } else {
-    j11=j10-1;
-    j20=j10+1;
-    j21=j10+2;
-  }
-  w2=(tmp-real(j1)*dlength)/dlength;
-  w1=1.0-w2;
-}
-
-
-
-
-
-
-
 
 
 }

@@ -10,7 +10,7 @@
 
 namespace coupler {
 
-BoundaryDescr3D::initGemXgc(
+BoundaryDescr3D::initGeneXgc(
     const Part3Mesh3D& p3m3d,
     const Part1ParalPar3D &p1pp3d)
 {
@@ -128,7 +128,39 @@ void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D 
       for(LO j=0;j<p1->lj0;j++)
         ymeshxgc[i][k][j]=y_zgc[i][j][k];
     }
-  } 
+  }
+ //3rd order central Lagrange interpolation
+  thflxmeshxgc=new double*[p1->li0];
+  for(LO i=0;i<p1->li0;i++){
+    thflxmeshxgc[i]=new double[p3->mylk0[i]+4];
+    for(LO k=0;k<p3->mylk0[i];k++){
+      thflxmeshxgc[i][k+2]=p3->theta_flux[i][p3->mylk1[i]+k];
+    }
+    // for lower boundary
+    if(p3->mylk1[i]==0){
+      thflxmeshxgc[i][1]=p3->theta_flux[i][p3->versurf[i+p1->li1]-1]-2.0*cplPI; 
+      thflxmeshxgc[i][0]=p3->theta_flux[i][p3->versurf[i+p1->li1]-2]-2.0*cplPI;
+    }else if(p3->mylk1[i]==1){
+      thflxmeshxgc[i][1]=p3->theta_flux[i][0];
+      thflxmeshxgc[i][0]=p3->theta_flux[i][p3->versurf[i+p1->li1]-1]-2.0*cplPI;
+    }else{
+      thflxmeshxgc[i][1]=p3->theta_flux[i][p3->mylk1[i]-1];
+      thflxmeshxgc[i][0]=p3->theta_flux[i][p3->mylk1[i]-2];
+    }
+    //for upper boundary
+    if(p3->mylk2[i]==p3->versurf[i+p1->li1]-1){
+      thflxmeshxgc[i][p3->mylk0[i]+2]=p3->theta_flux[i][0]+2.0*cplPI;
+      thflxmeshxgc[i][p3->mylk0[i]+3]=p3->theta_flux[i][1]+2.0*cplPI;
+    }else if(p3->mylk2[i]==p3->versurf[i+p1->li1]-2){ 
+      thflxmeshxgc[i][p3->mylk0[i]+2]=p3->theta_flux[i][p3->versurf[i+p1->li1]-1];
+      thflxmeshxgc[i][p3->mylk0[i]+3]=p3->theta_flux[i][0]+2.0*cplPI;      
+    }else{
+      thflxmeshxgc[i][p3->mylk0[i]+2]=p3->theta_flux[i][p3->mylk2[i]+1];
+      thflxmeshxgc[i][p3->mylk0[i]+3]=p3->theta_flux[i][p3->mylk2[i]+2];
+    }
+  }
+  
+   
 
   updenzgemxgc=new double**[p1pp3d.li0];
   lowdenzgemxgc=new double**[p1pp3d.li0];

@@ -34,7 +34,7 @@ class BoundaryDescr3D{
 
     double* ymeshxgc=NULL;
     double* ymeshgem=NULL;
-    double** thetameshxgc=NULL;
+    double** thflxmeshxgc=NULL;
     double* thetameshgem=NULL;   
 
 

@@ -2,7 +2,8 @@ namespace coupler {
 
 // routines for interpolation
 template<class T>
-T Lag3dInterpo1D(const T yin[4],const double xin[4],const double x)
+inline
+T Lag3dInterpo1D(const T* yin,const double* xin,const double x)
 {
   double l0,l1,l2,l3;
   T yout;
@@ -23,8 +24,8 @@ void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double
   LO j1=jstart;
   LO j2,j0,jm;
   double x;
-  T func[4];
-  double coords[4];
+  T* func=new T[4];
+  T* coords=new T[4];
   for(LO j=0;j<nout;j++){
     x=xout[j];
     while(x>=xin[j1] && j1<nin-2 && j1>1){
@@ -44,6 +45,8 @@ void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double
     func[3]=yin[j2];
     yout[j]=Lag3dInterpo1D(func,coords,x);
   }
+  delete[] func;
+  delete[] coords;
 }
 
 }

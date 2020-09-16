@@ -368,20 +368,20 @@ void Part3Mesh3D::initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>*
   theta_flx=new double*[p1->li0];
   for(LO i=0;i<p1->li0;i++){
     for(LO j=0;j<p1->lj0;j++){
-      theta_flx[i][j]=new double[mylk0[i]];
+      theta_flx[i][j]=new double[versurf[p1->li1+i]];
     }
   }
  
   //Here, the continusous boundary condition is used for the 3rd-order Lagrangain interpolaiton; It's better to replace it with the cubic spline interpolation
   double* tmpflxeq=new double[p1->ntheta+5];
   for(LO i=0;i<p1->li0;i++){ 
-    tmpflxeq[0]=p1->thflxeq[p1->li1+i][0];
-    tmpflxeq[1]=p1->thflxeq[p1->li1+i][0];
-    tmpflxeq[p1->ntheta+2]=p1->thflxeq[p1->li1+i][p1->ntheta-1];
-    tmpflxeq[p1->ntheta+3]=p1->thflxeq[p1->li1+i][p1->ntheta-1];
+    tmpflxeq[0]=p1->thflxeq[p1->li1+i][p1->ntheta-2]-2.0*cplPI;
+    tmpflxeq[1]=p1->thflxeq[p1->li1+i][p1->ntheta-1]-2.0*cplPI;
+    tmpflxeq[p1->ntheta+2]=p1->thflxeq[p1->li1+i][0]+2.0*cplPI;
+    tmpflxeq[p1->ntheta+3]=p1->thflxeq[p1->li1+i][1]+2.0*cplPI;
     for(LO k=2;k<p1->ntheta+2;i++) tmpflxeq[k]=p1->thflxeq[p1->li1+i][k-2];
     for(LO j=0;j<p1->lj0;j++) 
-      Lag3dArray(tmpflxeq,tmpthetaeq,p1->ntheta+5,theta_flx[i][j],theta_geo[i],mylk0[i]);     
+      Lag3dArray(tmpflxeq,tmpthetaeq,p1->ntheta+5,theta_flx[i][j],tmptheta[i],versurf[p1->li1+i]);     
   } 
 
   y_xgc = new double**[p1->li0];
@@ -395,7 +395,7 @@ void Part3Mesh3D::initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>*
   double phi_tmp;
   for(LO i=0;i<p1->li0;i++){
     for(LO j=0;j<p1->lj0;j++){
-      phi_tmp=double(j-1)*2.0*cplPI/(doulbe(p1->lj0*p1->nwedge);
+      phi_tmp=double(j-1)*2.0*cplPI/(double(nphi*p1->nwedge);
       for(LO k=0;k<p1->lk0;k++){
         y_xgc[i][j][k]=remainder(p1->r0/p1->q0*(theta_flx[i][j][k]-phi_tmp),ly);
         if(y_xgc[i][j][k]<0) y_xgc[i][j][k]=ly+y_xgc[i][j][k];
@@ -403,40 +403,94 @@ void Part3Mesh3D::initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>*
     }
   } 
 
+  thetaflx_pot = new double****[p1->li0];
+  thetaflx_ind_pot = new LO****[p1->li0];
+  zeta_pot = new double***[p1->li0];
+  nodedist_fl = new double***[p1->li0];
+  for(LO i=0;i<p1->li0;i++){
+    thetaflx_pot[i] = new double***[p1->lj0];
+    thetaflx_ind_pot[i] = new LO***[p1->lj0];
+    zeta_pot[i] = new double**[p1->lj0];
+    nodedist_fl[i] = new double**[p1->lj0];
+    for(LO j=0;j<p1->lj0;j++){ 
+      thetaflx_pot[i][j]=new double**[mylk0[i]];
+      thetaflx_ind_pot[i][j]=new LO**[mylk0[i]];
+      zeta_pot[i][j]=new double*[mylk0[i]];
+      nodedist_fl[i][j] = new double*[mylk0[i]];
+      for(LO k=0;k<mylk0[i];k++){
+        thetaflx_pot[i][j][k]=new double[4];  //For 3rd central Lagrnagian interpolation 
+        thetaflx_ind_pot[i][j][k]=new LO[4] //For 3rd central Lagrnagian interpolation
+        zeta_pot[i][j][k]=new double[5];
+        nodedist_fl[i][j][k] = new double[5];
+        for(LO h=0;h<4;h++){
+          thetaflx_pot[i][j][k][h]=new double[5];
+          thetaflx_ind_pot[i][j][k][h]=new LO[4]
+        } 
+      }
+    }
+  }
+
+  //for nzb=2;
+  double dzeta=2.0*cplPI/double(nphi*nwedge);
+  double lzeta=2.0*cplPI/double(nwedge);
+  double zeta_tmp;
+  double y_tmp;
+  double q_local;
+  double tmpflx;
+  LO j11,j10,j20,j21;
+  struct flxxgc* flxinter;
+
+  for(LO i=0;i<p1->li0;i++){
+    for(LO k=0;k<mylk0[i];k++){
+      q_local=
+      for(LO j=0;j<p1->lj0;j++){
+        y_tmp=double(k)*dy;
+        zeta_tmp=remainder(q_local*theta_flux[mylk1[i]+k]-y_tmp/(p1->r0*p1->q0),2.0*cplPI/double(nwedge));
+        if(zeta_tmp<0) zeta_tmp=zeta_tmp+2.0*cplPI/double(nwedge);
+        zeta_pot[i][k][j][4]=zeta_tmp;
+        //FIXME: here is different from GEM
+        j10=search_zeta(dzeta,lzeta,nphi,zeta_tmp);
+        zeta_pot[i][k][j][0]=double(j10-1)*dzeta;
+        zeta_pot[i][k][j][1]=double(j10)*dzeta;
+        zeta_pot[i][k][j][2]=double(j10+1)*dzeta;
+        zeta_pot[i][k][j][3]=double(j10+2)*dzeta;
+
+        tmpflx=(q_local*theta_flux[mylk1[i]+k]-zeta_tmp+zeta_pot[i][k][j][0])/q_local;
+        flxinter=search_flux_3rdorder_periodbound(tmpflx,theta_flux[p1->li1+i],versurf[p1->li1+i]);
+        for(LO h=0;h<5;h++) thetaflx_pot[i][j][k][0][h]=flxinter->flxt[h];
+        for(LO h=0;h<4;h++) thetaflx_ind_pot[i][j][k][0][h]=flxinter->flxind[h];
+
+        tmpflx=(q_local*theta_flux[mylk1[i]+k]-zeta_tmp+zeta_pot[i][k][j][1])/q_local;
+        flxinter=search_flux_3rdorder_periodbound(tmpflx,theta_flux[p1->li1+i],versurf[p1->li1+i]);
+        for(LO h=0;h<5;h++) thetaflx_pot[i][j][k][1][h]=flxinter->flxt[h];
+        for(LO h=0;h<4;h++) thetaflx_ind_pot[i][j][k][1][h]=flxinter->flxind[h];
+
+        tmpflx=(q_local*theta_flux[mylk1[i]+k]-zeta_tmp+zeta_pot[i][k][j][2])/q_local;
+        flxinter=search_flux_3rdorder_periodbound(tmpflx,theta_flux[p1->li1+i],versurf[p1->li1+i]);
+        for(LO h=0;h<5;h++) thetaflx_pot[i][j][k][2][h]=flxinter->flxt[h];
+        for(LO h=0;h<4;h++) thetaflx_ind_pot[i][j][k][2][h]=flxinter->flxind[h];
+
+        tmpflx=(q_local*theta_flux[mylk1[i]+k]-zeta_tmp+zeta_pot[i][k][j][3])/q_local;
+        flxinter=search_flux_3rdorder_periodbound(tmpflx,theta_flux[p1->li1+i],versurf[p1->li1+i]);
+        for(LO h=0;h<5;h++) thetaflx_pot[i][j][k][3][h]=flxinter->flxt[h];
+        for(LO h=0;h<4;h++) thetaflx_ind_pot[i][j][k][3][h]=flxinter->flxind[h];        
+      }
+      nodesdist_fl[i][j][k][0]=0.0;
+      nodesdist_fl[i][j][k][1]=sqrt(power(thetaflx_pot[i][j][k][1][4]-thetaflx_pot[i][j][k][0][4],2)
+      +power(zeta_pot[i][j][k][1]-zeta_pot[i][j][k][0],2));
+      nodesdist_fl[i][j][k][4]=sqrt(power(thetaflx_pot[i][j][k][4][4]-thetaflx_pot[i][j][k][0][4],2)
+      +power(zeta_pot[i][j][k][4]-zeta_pot[i][j][k][0],2));  
+      nodesdist_fl[i][j][k][2]=sqrt(power(thetaflx_pot[i][j][k][2][4]-thetaflx_pot[i][j][k][0][4],2)
+      +power(zeta_pot[i][j][k][2]-zeta_pot[i][j][k][0],2));    
+      nodesdist_fl[i][j][k][3]=sqrt(power(thetaflx_pot[i][j][k][3][4]-thetaflx_pot[i][j][k][0][4],2)
+      +power(zeta_pot[i][j][k][3]-zeta_pot[i][j][k][0],2));
+    }
+  } 
+  
   delete[] tmpthetaeq;
   for(LO i=0;i<p1->li0;i++) delete[] tmptheta[i];
 }
 
-/*
-void Part3Mesh3D::decompRadialMesh(const gemParaMesh3D &gem3d){
-  cce_surface_start=0;
-  cce_surface_end=0; 
-  if(gem3d.numprocs/(gem3d.imx+1)>=1.0){ 
-    LO i=int(gem3d.numprocs/(gem3d.imx+1));
-    LO x_id=int(gem3d.myid/i)%(gem3d.imx+1);
-    cce_surface_start=x_id+cce_first_surface;
-    cce_surface_end=cce_surface_start; 
-  }else{
-    LO i=int((gem3d.imx+1)/gem3d.numprocs)+1;
-    if(gem3d.myid*i<=gem3d.imx){
-      LO x_id=gem3d.myid;
-      ccd_surface_start=x_id*i+cce_first_surface;
-      if(gem3d.myid+1*i<=gem3d.imx){
-        cce_surface_end=cce_surface_start+i-1;
-      }else{
-        cce_surface_end=cce_last_surface;
-      }
-      if(cce_surface_end>cce_last_surface){
-        std::cout<<"Error: index in x direction exceeds the boundary"
-        exit(1); 
-      }
-    }else{
-      cce_surface_start=cce_fisrt_surface;
-      cce_surface_end=cce_first_surface;
-    }
-  }
-}
-*/
 
 void Part3Mesh3D::search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp)
 {
@@ -488,8 +542,103 @@ void Part3Mesh3D::gemDistributePoints(const double* exterarr, const LO gstart,LO
       std::cout<<"mylk k="<<mylk0[li-gstart]<<" "<<mylk1[li-gstart]
       <<" "<<mylk2[li-gstart]<<" "<<'\n';
     }
-
-
 }
 
+
+//fixme: the equivalent routine in GEM looks not right
+inline double gemXgcDatasProc3D::search_zeta(const double dlength,const double length,const LO nlength,const double tmp)
+{
+  LO j10;
+  if(tmp<0 || tmp>=length){
+     tmp=remainder(tmp,length);
+     if(tmp<0) tmp=tmp+length;
+  }
+  j10=floor(tmp/dlength);
+  return j10;
+/*
+  if(j10==0){
+    j11=-1;
+    j20=j10+1;
+    j21=j10+2;
+  } else if(j10=nlength-1){
+    j11=nlength-2;
+    j20=0;
+    j21=1;
+  } else {
+    j11=j10-1;
+    j20=j10+1;
+    j21=j10+2;
+  }
+  w2=(tmp-real(j1)*dlength)/dlength;
+  w1=1.0-w2;
+*/
 }
+
+inline  gemXgcDatasProc3D::flxxgc gemXgcDatasProc3D::search_flux_3rdorder_periodbound(
+        const double tmpflx,const double* flxin, tmp,LO num,double* out1,double* out2)
+{
+  struct flxxgc tmp;
+  tmpflx=remainder(tmpflx+cplPI,2.0*cplPI);
+  if(tmpflx<0) tmpflx=tmpflx+2.0*cplPI;
+  tmpflx=tmpflx-cplPI;
+  if(tmpflx>flxin[num-1]){
+    tmp.flxtind[0]=num-2;
+    tmp.flxtind[1]=num-1;
+    tmp.flxtind[2]=0;
+    tmp.flxtind[3]=1;
+    tmp.flxt[4]=tmpflx;
+    tmp.flxt[0]=flxin[num-2];
+    tmp.flxt[1]=flxin[num-1];
+    tmp.flxt[2]=flxin[0]+2.0*cplPI;
+    tmp.flxt[3]=flxin[1]+2.0*cplPI;
+  }else if(tmpflx<=flxin[0]){
+    tmp.flxt[4]=tmpflx;
+    tmp.flxt[0]=flxin[num-2]-2.0*cplPI;
+    tmp.flxt[1]=flxin[num-1]-2.0*cplPI;
+    tmp.flxt[2]=flxin[0];
+    tmp.flxt[3]=flxin[1]; 
+    tmp.flxtind[0]=num-2;
+    tmp.flxtind[1]=num-1;
+    tmp.flxtind[2]=0;
+    tmp.flxtind[3]=1;   
+  }else if(tmpflx<=flxin[1] && tmpflx>flxin[0]){
+    tmp.flxt[4]=tmpflx;
+    tmp.flxt[0]=flxin[num-1]-2.0*cplPI;
+    tmp.flxt[1]=flxin[0];
+    tmp.flxt[2]=flxin[1];
+    tmp.flxt[3]=flxin[2];
+    
+    tmp.flxtind[0]=num-1;
+    tmp.flxtind[1]=0;
+    tmp.flxtind[2]=1;
+    tmp.flxtind[3]=2;
+  }else if(tmpflx>flxin[num-2] && tmpflx<=flxin[num-1])
+    tmp.flxt[4]=tmpflx;
+    tmp.flxt[0]=flxin[num-3];
+    tmp.flxt[1]=flxin[num-2];
+    tmp.flxt[2]=flxin[num-1];
+    tmp.flxt[3]=flxin[0]+2.0*cplPI;
+
+    tmp.flxtind[0]=num-3;
+    tmp.flxtind[1]=num-2;
+    tmp.flxtind[2]=num-1;
+    tmp.flxtind[3]=0;
+  }else{
+    LO k=0;
+    while(tmpflx>flxin[k]) k+=1;
+    tmp.flxt[4]=tmpflx;
+    tmp.flxt[0]=flxin[k-2];
+    tmp.flxt[1]=flxin[k-1];
+    tmp.flxt[2]=flxin[k];
+    tmp.flxt[3]=flxin[k+1];
+
+    tmp.flxtind[0]=k-2;
+    tmp.flxtind[1]=k-1;
+    tmp.flxtind[2]=k;
+    tmp.flxtind[3]=k+1;
+  } 
+  return tmp;
+}
+
+
+} 

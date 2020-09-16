@@ -143,7 +143,8 @@ class gemXgcDatasProc3D {
   public:
     double*** densin = NULL;  // Store the input density datas from GEM; 
     double*** densgem = NULL;  // Store the density on the coupling subcommunicator of GEM
-    double*** densxgc = NULL;  // Store the density which is sent to XGC
+    double*** densinterone = NULL;  // Store the density interpolated along theta
+    double*** densintertwo = NULL;  // Store the density interpolated along y
 
     gemXgcDatasProc3D(bool pproc = true,
       TestCase test_case = TestCase::off,

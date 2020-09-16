@@ -165,6 +165,7 @@ void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bde
   const LO lz = p1->lk0;
   if (p1->npz > 1) {
     if (lz >= nzb) {
+    //FIXME: The following assignment may be removed. 
       for (LO i = 0; i < lx ; i++) {
         for (LO j = 0; j < ly; j++) {
           for(LO k=0;k<nzb;k++){
@@ -212,7 +213,7 @@ void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bde
   }
 }
 
-void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
+void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const double** box,const BoundaryDescr3D& bdesc)
 {
   LO nzb=bdesc.nzb;
   if(bdesc.lowpotentzGemXgc==NULL||bdesc.uppotentzGemXgc==NULL){
@@ -221,7 +222,7 @@ void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
   }
   LO li0,lj0,lk0;
   li0=p1->li0;
-  lj0=p1->lj0;
+  lj0=p3->nphi;
   if(p1->npz>1){
     if(p1->periods[2]==1){
       for(LO i=0;i<li0;i++){
@@ -232,7 +233,7 @@ void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
         }
         for(LO j=0;j<lj0;j++){
           mpisendrecv_aux1D(p1->comm_z,nzb,li0,lj0,lk0,bdesc.lowpotentzGemXgc[i][j],bdesc.uppotentzGemXgc[i][j],
-              potentinterpo[i][j]);
+              box[i][j]);
         //FIXME: It looks GEM doesn't enforce the parallel boundary condition
 /*
           if(p1->mype_z==0){
@@ -261,8 +262,8 @@ void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
            }
            for(LO j=0;j<lj0;j++){
              for(LO k=0;k<nzb;k++){
-               bdesc.uppotentzGemXgc[i][j][k]=potentin[i][j][k];
-               bdesc.lowpotentzGemXgc[i][j][k]=potentin[i][j][lk0-nzb+k];
+               bdesc.uppotentzGemXgc[i][j][k]=box[i][j][k];
+               bdesc.lowpotentzGemXgc[i][j][k]=box[i][j][lk0-nzb+k];
              }
            }
         }
@@ -276,7 +277,7 @@ void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
 
 
 
-void gemXgcDatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc) 
+void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box,const BoundaryDescr3D& bdesc) 
 {
   LO nzb=bdesc.nzb;
   if (bdesc.lowdenzGemXgc == NULL || bdesc.updenzGemXgc == NULL) {
@@ -289,6 +290,7 @@ void gemXgcDatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3
   const LO lz = p1->lk0;
   if (p1->npz > 1) {
     if (lz >= nzb) {
+      //FIXME: The following assignment may be removed.
       for (LO i = 0; i < lx ; i++) {
         for (LO j = 0; j < ly; j++) {
           for(LO k=0;k<nzb;k++){
@@ -300,19 +302,7 @@ void gemXgcDatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3
       mpisendrecv_aux2D(p1->comm_z, nzb, lx, ly, lz, bdesc.lowdenzGemXgc, bdesc.updenzGemXgc, box);
 
       //FIXME: It looks GEM doesn't enforce the parallel boundary condition
-      /*
-      for (LO i = 0; i < lx ; i++) {
-	for (LO j = 0; j < ly; j++) {
-	  for(LO k=0;k<nzb;k++){
-	    if(p1->mype_z==0){
-	      bdesc.lowdenz[i][j][k]=bdesc.lowdenz[i][j][k]*bdesc.lowpbmat[i][j];
-	    } else if(p1->mype_z==p1->npz-1){
-	      bdesc.updenz[i][j][k]=bdesc.updenz[i][j][k]*bdesc.uppbmat[i][j];
-	    }
-	  }
-	}
-      }
-      */ 
+
    } else {
       std::cout << "ERROR: nzb is larger than lz. A larger lz is required.";
       std::exit(EXIT_FAILURE);
@@ -325,13 +315,6 @@ void gemXgcDatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3
             bdesc.lowdenzGemXgc[i][j][k] = box[i][j][lz - nzb + k];
             bdesc.updenzGemXgc[i][j][k] = box[i][j][k];
             //FIXME: It looks GEM doesn't enforce the parallel boundary condition
-            /*
-            if(p1->mype_z==0){
-              bdesc.lowdenz[i][j][k]=bdesc.lowdenz[i][j][k]*bdesc.lowpbmat[i][j];
-            } else if(p1->mype_z==p1->npz-1){
-              bdesc.updenz[i][j][k]=bdesc.updenz[i][j][k]*bdesc.uppbmat[i][j];
-            }
-            */
           }
         }
       }

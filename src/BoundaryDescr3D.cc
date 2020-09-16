@@ -117,25 +117,37 @@ void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D 
     thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk2]+2.0*p1pp3d.dth;
   }
 
+  ymeshxgc = new double**[p1->li0];
+  for(LO i=0;i<p1->li0;i++){
+    ymeshxgc[i]=new double*[p1->mylk0[i]];
+    for(LO k=0;k<p1->lk0;k++)
+      ymeshxgc[i][k][j]=new double[p1->lj0];
+  }
+  for(LO i=0;i<p1->li0;i++){
+    for(LO k=0;k<p1->lk0;k++){
+      for(LO j=0;j<p1->lj0;j++)
+        ymeshxgc[i][k][j]=y_zgc[i][j][k];
+    }
+  } 
+
   updenzgemxgc=new double**[p1pp3d.li0];
   lowdenzgemxgc=new double**[p1pp3d.li0];
   for(LO i=0;i<p1pp3d.li0;i++){
-    updenzgemxgc[i]=new double*[p1pp3d.lj0];
-    lowdenzgemxgc[i]=new double*[p1pp3d.lj0];
+    updenzgemxgc[i]=new double*[p3m3d.nphi];
+    lowdenzgemxgc[i]=new double*[p3m3d.nphi];
     for(LO j=0;j<p1pp3d.lj0;j++){
       updenzgemxgc[i][j]=new double[nzb];
       lowdenzgemxgc[i][j]=new double[nzb];
     }
   }
 
-
   uppotentzgemxgc=new double**[p1pp3d.li0];
   lowpotentzgemxgc=new double**[p1pp3d.li0];
   upzpart3=new double*[p1pp3d.li0];
   lowzpart3=new double*[p1pp3d.li0];
   for(LO i=0;i<p1pp3d.li0;i++){
-    uppotentzgemxgc[i]=new double*[p1pp3d.lj0];
-    lowpotentzgemxgc[i]=new double*[p1ppd.lj0]; 
+    uppotentzgemxgc[i]=new double*[p3m3d.nphi];
+    lowpotentzgemxgc[i]=new double*[p3m3d.nphi]; 
     upzpart3[i]=new double[nzb];
     lowzpart3[i]=new double[nzb];
     for(LO j=0;j<p1pp3d.lj0;j++){

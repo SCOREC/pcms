@@ -59,6 +59,7 @@ class Part3Mesh3D{
 /*------------------------------------------------------*/
 /*variables specially owned by XGC for GEM-XGC coupling*/
     LO* lgi0;
+    LO  nphi;
     double* Rcoordall; // store R of all nodes in XGC mesh
     double* Zcoordall; // store Z of all nodes in XGC mesh
     double** surf_idx; //store the vertex indices of each surface
@@ -66,6 +67,14 @@ class Part3Mesh3D{
     double** theta_flx; //store  the flux_theta of the nodes on the surface of xgc mesh in the local process
     LO cce_first; // The number labelling the first surface 
     double*** y_xgc; 
+    double**** zeta_pot; //Store the theta_f mesh for interpolating potential provided by XGC to the one for GEM
+    double***** thetaflx_pot; //Store the five flux theta values for the 3rd order interpolation along the field line.
+    LO***** thetaflx_ind_pot; //Store the four indices of nodals for the 3rd order interpolation along the field line.
+    double**** nodedist_fl; //Store the length of the four points along the field line for interpolation.
+    struct flxxgc {
+      LO flxind[5];
+      double flxt[4];
+    };
  
     /* constructor - versurf has length = numsurf & versurf[i] = the number of nodes surface[i]
      * xcoords saves the radial coordinate of each surface.

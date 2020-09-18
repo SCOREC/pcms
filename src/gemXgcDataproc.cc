@@ -15,7 +15,6 @@ namespace coupler {
    AllocDensityArrays(); 
 
    AllocPotentArrays();
-
  }
 
 
@@ -61,6 +60,32 @@ namespace coupler {
 
  } 
 
+ void allocSendRecvbuff()
+ {
+   numsend=new LO[p1->NP];
+   numrecv=new LO[p1->NP];
+   sdispls=new GO[p1->NP];
+   rdispls=new GO[p1->NP];
+
+   // sending side is in tube_comm X grid_comm collective
+   for(LO i=0;i<NP;i++){
+     numsend[i]=0;
+     numrecv[i]=0;
+     sdispls[i]=0;
+     rdispls[i]=0;
+   }
+   LO rank;
+   for(LO i=0;i<sendOverlap_x.size();i++){
+     for(LO j=0;j<sendOverlap_y.size();j++){
+        rank=sendOverlap_x[i][0]
+ 
+     }
+   }
+    
+  
+
+ }
+
  void gemXgcDatasProc3D::DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM)
  {    
    double* array=densityfromGEM->data();
@@ -94,22 +119,6 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* potentfro
 
   //FIXME: distribute potentfromXGC->datas() to tmp;  
 
-  //first interpolation along the field line
-  /*  
-  double**** pot_gem_fl=new double***[p1->li0];   
-  double*** pot_ygem=new double**[p1->li0];  
-  for(LO i=0;i<p1->li0;i++){
-    pot_gem_fl[i]=new double**[p1->lj0];
-    pot_ygem[i]=new double*[p1->lj0];
-    for(hj=0;j<p1->lj0;j++){
-      pot_gem_fl[i][j]=new double*[p3->mylk0[i]]; 
-      pot_ygem[i][j]=new double[p3->mylk0[i]];
-        for(LO k=0;k<p3->mylk0[i];k++)
-          pot_gem_fl[i][j][k]=new double[4]; 
-    }
-  }
-  */
-
   // First interpolation along the field line; 
   double* tmppotent;
   double* tmpflx=new double[4];
@@ -139,6 +148,27 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* potentfro
  // FIXME: distribute pot_ythgem
 }
 
+
+
+
+void gemXgcDatasProc3D::densityfromGemToCoupler(const double*** tmpdensity)
+{
+   numsend=new LO[p1->NP];
+   numrecv=new LO[p1->NP];
+   sdispls=new GO[p1->NP];
+   rdispls=new GO[p1->NP];
+ 
+// sending side is in tube_comm X grid_comm collective    
+   
+
+}
+
+void prepareSendRecv()
+ {
+   
+
+
+ }
 
 void gemXgcDatasProc3D::densityfromGemToCoupler(const double*** tmpdensity)
  {

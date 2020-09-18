@@ -79,7 +79,17 @@ class Part1ParalPar3D {
     double** thflx;   //store GEM's flux coordinates theta; for perturbation evolution.  
     double** thfnz;   //store the theta value inversly transformed from z'. 
     double* y_gem;  //store jmx+1 y varaibles of GEM
-    LO mype_grid,mype_tube;
+    LO mype_g,mype_t;
+    LO** mype_xztg; // store the mapping mype<-->(mype_x,mype_y)<-->(mype_t,mype_g)
+    LO tli0,tli1,tli2;
+    LO glk0,gkk1,glk2;
+//    typedef vector<vector<vector<LO> > > vectInt3d;
+//    typedef vector<vector<LO> > vecInt2d;
+    vecint2d sendOverlap_x;
+    vecint2d sendOverlap_th;
+    vecint2d recvOverlap_x;
+    vecint2d recvOverlap_th;    
+
     MPI_Group zsend_group;
     MPI_Comm  zsend_comm;
     MPI_Group zrecv_group;
@@ -139,6 +149,9 @@ class Part1ParalPar3D {
     void CreateGemsubcommunicators();
     void initGem(const Array1d<int>* gemmesh, const Array2d<double>* thfnz);    
     void CreateGroupComm();
+    void overlapBox();
+    void getOverlapBox(vecint2d vec2din,LO* lowind,LO* upind,LO numproc2,LO low,LO up);
+    void rankMapping();
 };
 
 

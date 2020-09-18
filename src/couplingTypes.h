@@ -16,6 +16,9 @@ namespace coupler {
   /** CV = complex value 
    */
   typedef std::complex<double> CV;
+
+  typedef vector<vector<vector<LO> > > vecint3d;
+  typedef vector<vector<LO> > vecint2d;
 }
 
 #endif

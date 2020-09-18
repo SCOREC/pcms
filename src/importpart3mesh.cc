@@ -546,7 +546,7 @@ void Part3Mesh3D::gemDistributePoints(const double* exterarr, const LO gstart,LO
 
 
 //fixme: the equivalent routine in GEM looks not right
-inline double gemXgcDatasProc3D::search_zeta(const double dlength,const double length,const LO nlength,const double tmp)
+inline LO gemXgcDatasProc3D::search_zeta(const double dlength,const double length,const LO nlength,const double tmp)
 {
   LO j10;
   if(tmp<0 || tmp>=length){
@@ -574,68 +574,68 @@ inline double gemXgcDatasProc3D::search_zeta(const double dlength,const double l
 */
 }
 
-inline  flxxgc gemXgcDatasProc3D::search_flux_3rdorder_periodbound(
+inline struct  flxxgc* gemXgcDatasProc3D::search_flux_3rdorder_periodbound(
         const double tmpflx,const double* flxin, tmp,LO num,double* out1,double* out2)
 {
-  struct flxxgc tmp;
+  struct flxxgc* tmp;
   tmpflx=remainder(tmpflx+cplPI,2.0*cplPI);
   if(tmpflx<0) tmpflx=tmpflx+2.0*cplPI;
   tmpflx=tmpflx-cplPI;
   if(tmpflx>flxin[num-1]){
-    tmp.flxtind[0]=num-2;
-    tmp.flxtind[1]=num-1;
-    tmp.flxtind[2]=0;
-    tmp.flxtind[3]=1;
-    tmp.flxt[4]=tmpflx;
-    tmp.flxt[0]=flxin[num-2];
-    tmp.flxt[1]=flxin[num-1];
-    tmp.flxt[2]=flxin[0]+2.0*cplPI;
-    tmp.flxt[3]=flxin[1]+2.0*cplPI;
+    tmp->flxtind[0]=num-2;
+    tmp->flxtind[1]=num-1;
+    tmp->flxtind[2]=0;
+    tmp->flxtind[3]=1;
+    tmp->flxt[4]=tmpflx;
+    tmp->flxt[0]=flxin[num-2];
+    tmp->flxt[1]=flxin[num-1];
+    tmp->flxt[2]=flxin[0]+2.0*cplPI;
+    tmp->flxt[3]=flxin[1]+2.0*cplPI;
   }else if(tmpflx<=flxin[0]){
-    tmp.flxt[4]=tmpflx;
-    tmp.flxt[0]=flxin[num-2]-2.0*cplPI;
-    tmp.flxt[1]=flxin[num-1]-2.0*cplPI;
-    tmp.flxt[2]=flxin[0];
-    tmp.flxt[3]=flxin[1]; 
-    tmp.flxtind[0]=num-2;
-    tmp.flxtind[1]=num-1;
-    tmp.flxtind[2]=0;
-    tmp.flxtind[3]=1;   
+    tmp->flxt[4]=tmpflx;
+    tmp->flxt[0]=flxin[num-2]-2.0*cplPI;
+    tmp->flxt[1]=flxin[num-1]-2.0*cplPI;
+    tmp->flxt[2]=flxin[0];
+    tmp->flxt[3]=flxin[1]; 
+    tmp->flxtind[0]=num-2;
+    tmp->flxtind[1]=num-1;
+    tmp->flxtind[2]=0;
+    tmp->flxtind[3]=1;   
   }else if(tmpflx<=flxin[1] && tmpflx>flxin[0]){
-    tmp.flxt[4]=tmpflx;
-    tmp.flxt[0]=flxin[num-1]-2.0*cplPI;
-    tmp.flxt[1]=flxin[0];
-    tmp.flxt[2]=flxin[1];
-    tmp.flxt[3]=flxin[2];
+    tmp->flxt[4]=tmpflx;
+    tmp->flxt[0]=flxin[num-1]-2.0*cplPI;
+    tmp->flxt[1]=flxin[0];
+    tmp->flxt[2]=flxin[1];
+    tmp->flxt[3]=flxin[2];
     
-    tmp.flxtind[0]=num-1;
-    tmp.flxtind[1]=0;
-    tmp.flxtind[2]=1;
-    tmp.flxtind[3]=2;
+    tmp->flxtind[0]=num-1;
+    tmp->flxtind[1]=0;
+    tmp->flxtind[2]=1;
+    tmp->flxtind[3]=2;
   }else if(tmpflx>flxin[num-2] && tmpflx<=flxin[num-1])
-    tmp.flxt[4]=tmpflx;
-    tmp.flxt[0]=flxin[num-3];
-    tmp.flxt[1]=flxin[num-2];
-    tmp.flxt[2]=flxin[num-1];
-    tmp.flxt[3]=flxin[0]+2.0*cplPI;
+    tmp->flxt[4]=tmpflx;
+    tmp->flxt[0]=flxin[num-3];
+    tmp->flxt[1]=flxin[num-2];
+    tmp->flxt[2]=flxin[num-1];
+    tmp->flxt[3]=flxin[0]+2.0*cplPI;
 
-    tmp.flxtind[0]=num-3;
-    tmp.flxtind[1]=num-2;
-    tmp.flxtind[2]=num-1;
-    tmp.flxtind[3]=0;
+    tmp->flxtind[0]=num-3;
+    tmp->flxtind[1]=num-2;
+    tmp->flxtind[2]=num-1;
+    tmp->flxtind[3]=0;
   }else{
     LO k=0;
     while(tmpflx>flxin[k]) k+=1;
-    tmp.flxt[4]=tmpflx;
-    tmp.flxt[0]=flxin[k-2];
-    tmp.flxt[1]=flxin[k-1];
-    tmp.flxt[2]=flxin[k];
-    tmp.flxt[3]=flxin[k+1];
+    tmp->flxt[4]=tmpflx;
+    tmp->flxt[0]=flxin[k-2];
+    tmp->flxt[1]=flxin[k-1];
+    tmp->flxt[2]=flxin[k];
+    tmp->flxt[3]=flxin[k+1];
 
-    tmp.flxtind[0]=k-2;
-    tmp.flxtind[1]=k-1;
-    tmp.flxtind[2]=k;
-    tmp.flxtind[3]=k+1;
+    tmp->flxtind[0]=k-2;
+    tmp->flxtind[1]=k-1;
+    tmp->flxtind[2]=k;
+    tmp->flxtind[3]=k+1;
   } 
   return tmp;
 }

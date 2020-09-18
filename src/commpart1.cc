@@ -2,6 +2,7 @@
 #include "interpoutil.h"
 #include <cassert>
 #include <cmath>
+#include <algorithm>
 
 namespace coupler {
 
@@ -254,7 +255,8 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>
   CreateGemsubcommunicators();
   if(npx>imx) std::cout<<"Error: npx>imx; radial mesh is not dense enough"<<'\n';
   std::exit(1); 
-  decomposeGemMesh();
+  decomposeGemMeshforCoupling();
+  CreateSubCommunicators();
   double* tmpreal;
   tmpreal=thfnz->data();
   lz=tmpreal[0];
@@ -276,7 +278,7 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>
   thflx=new double*[li0];
   for(LO i=0;i<li0;i++) thflx[i]=new double[lk0];
  
-//interpolation for obtaining the flux theta of mesh for the perturbation 
+  //interpolation for obtaining the flux theta of mesh for the perturbation 
   double* tmpth=new double[kmx+1];
   double tmpdth=2.0*cplPI/double(kmx); 
   for(LO i=kmx/2+1;i<kmx+1;i++){      // Here, another way is to minus cplPI
@@ -319,16 +321,39 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>
 
 void Part1ParalPar3D::CreateGemsubcommunicators(){
 //split the communicator for GEM's domain decomposition
-  LO size, gclr,tclr;
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  LO gclr,tclr;
+  MPI_Comm_size(MPI_COMM_WORLD, &NP);
   MPI_Comm_rank(MPI_COMM_WORLD, &mype);   
   
+  //Here: NP=ntube*(NP/ntube)
   gclr=int(mype/ntube);
   tclr=mype%ntube;
   MPI_Comm_split(MPI_COMM_WORLD,gclr,tclr,&grid_comm);
   MPI_Comm_split(MPI_COMM_WORLD,tclr,gclr,&tube_comm);
+  MPI_Comm_rank(grid_comm,&mype_g);
+  MPI_Comm_rank(tube_comm,&mype_t); 
+ 
+  if(mype_g<kmx-1){
+    glk0=mype_g;
+    glk1=mype_g;
+    glk2=mype_g;
+  else{
+    glk0=mype_g;
+    glk1=mype_g;
+    glk2=mype_g+1;
+  }
+  //x domain decomposition of GEM 
+  if(mype_t!=ntube-1){
+    tli0=(imx+1)/ntube;
+    tli1=tli0*mype_t;
+    tli2=tli1+tli0-1;
+  }else{
+    tli0=(imx+1)%ntube;
+    tli2=imx;
+    tli1=imx-tli0+1;
+  }  
 
-//split MPI_COMM_WORLD for GEM-XGC mapping
+  //split MPI_COMM_WORLD for GEM-XGC mapping
   npz=int(sqrt(kmx+1));
   while(floor((kmx+1)/npz)<(kmx+1)/npz){
     if((kmx+1)/npz>2) npz++;     
@@ -337,11 +362,9 @@ void Part1ParalPar3D::CreateGemsubcommunicators(){
   std::exit(1);
   npx=numprocs/npz; 
   npy=1;
-  MPI_Comm_rank(grid_comm,&mype_grid);
-  MPI_Comm_rank(tube_comm,&mype_tube); 
  } 
      
-void Part1ParalPar3D::decomposeGemMesh()
+void Part1ParalPar3D::decomposeGemMeshforCoupling()
 {
   LO n=int((imx+1)/npx);
   if(mype_x<npx-1){
@@ -366,7 +389,89 @@ void Part1ParalPar3D::decomposeGemMesh()
   lj1=jmx+1;
 } 
 
-/*
+//Mapping the rank (mype_x,mype_z) and (mype_g,mype_t)
+void Part1ParalPar3D::rankMapping()
+{
+  mype_xztg=new LO*[NP];
+  for(LO i=0;i<NP;i++){ 
+    mype_xztg[i]=new LO[4];  
+    mype_xztg[i][0]=mype%npx;
+    mype_xztg[i][1]=LO(mype/npx);
+    mype_xztg[i][2]=mype%ntube;
+    mype_xztg[i][3]=LO(mype/ntube);
+  }}
+
+void Part1ParalPar3D::overlapBox()
+{
+  LO xsendlow[npx],xsendup[npx]; 
+  MPI_Allgather(&li1,1,MPI_INT,&xsendlow,1,MPI_INT,comm_x);
+  MPI_Allgather(&li2,1,MPI_INT,&xsendup,1,MPI_INT,comm_x);
+  getOverlapBox(sendOverlap_x,xsendlow,xsendup,npx,tli1,tli2);
+  
+  LO thsendlow[npz],thsendlow[npz];
+  MPI_Allgather(&lk1,1,MPI_INT,&thsendlow,1,MPI_INT,comm_z);
+  MPI_Allgather(&lk2,1,MPI_INT,&thsendup,1,MPI_INT,comm_z);  
+  getOverlapBox(sendOverlap_th,thsendlow,thsendup,npz,glk1,glk2); 
+
+  LO xrecvlow[ntude],xrecvup[ntude];
+  MPI_Allgather(&tli1,1,MPI_INT,&xrecvlow,1,MPI_INT,tube_comm);
+  MPI_Allgather(&gli2,1,MPI_INT,&xrecvup,1,MPI_INT,tube_comm);
+  getOverlapBox(recvOverlap_x,xrecvlow,xrecvup,ntube,li1,lk2);  
+   
+  LO threcvlow[kmx+1],threcvup[kmx+1];
+  MPI_Allgather(&glk1,1,MPI_INT,&threcvlow,1,MPI_INT,grid_comm);
+  MPI_Allgather(&glk2,1,MPI_INT,&threcvup,1,MPI_INT,grid_comm);
+  getOverlapBox(recvOverlap_th,threcvlow,threcvup,kmx+1,lk1,lk2);  
+}
+
+void Part1ParalPar3D::getOverlapBox(vecint2d vec2din,LO* lowind,LO* upind,LO numproc2,LO low,LO up)
+{
+  LO min,max
+  bool overlap;
+//   vecint2d tmp2d;  
+  for(LO j=0;j<numproc2;j++){
+    vecint1d tmp1d={0,0,0};
+    overlap=false;
+    if(low>upind[j]){
+      break;
+    }else{
+      if(low>lowind[j]){
+	overlap=true;
+	min=lowin[j];
+	if(up>upind[j]){
+	   max=upind[j];
+	}else{
+	   max=low;
+	}
+      }else{
+	if(lowind[j]>up){
+	  break;
+	}else{
+	  overlap=true
+	  min=lowind[j];
+	  if(up>upind[j]){
+	     max=upind[j];
+	  }else{
+	     max=up;
+	  }
+	}          
+      }
+    }     
+    if(ovelap=true){ 
+      tmp1d[0]=j;
+      tmp1d[1]=min;
+      tmp1d[2]=max;
+    }
+  }
+  tmp2d.push_back(vecint1d) 
+}
+
+
+
+
+
+
+ /*
   void Part1ParalPar3D::CreateGroupComm()
   {   
     MPI_Group z_group;

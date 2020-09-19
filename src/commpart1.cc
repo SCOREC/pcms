@@ -430,7 +430,7 @@ void Part1ParalPar3D::getOverlapBox(vecint2d vec2din,LO* lowind,LO* upind,LO num
   bool overlap;
 //   vecint2d tmp2d;  
   for(LO j=0;j<numproc2;j++){
-    vecint1d tmp1d={0,0,0};
+    vecint1d tmp1d={0,0,0,0};
     overlap=false;
     if(low>upind[j]){
       break;
@@ -461,6 +461,7 @@ void Part1ParalPar3D::getOverlapBox(vecint2d vec2din,LO* lowind,LO* upind,LO num
       tmp1d[0]=j;
       tmp1d[1]=min;
       tmp1d[2]=max;
+      tmp1d[3]=max-min+1;
     }
   }
   tmp2d.push_back(vecint1d) 

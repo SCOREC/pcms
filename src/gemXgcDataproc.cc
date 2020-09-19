@@ -12,13 +12,15 @@ namespace coupler {
    testcase(test_case),
    yparal(ypar)  
  {    
-   AllocDensityArrays(); 
+   allocDensityArrays(); 
 
-   AllocPotentArrays();
+   allocPotentArrays();
+
+   allocSendRecvbuff();
  }
 
 
- void gemXgcDatasProc3D::AllocDensityArrays()
+ void gemXgcDatasProc3D::allocDensityArrays()
  {
    densin=new double**[p1->imx+1];
    for(LO i=0;i<p1->imx+;i++){
@@ -43,7 +45,7 @@ namespace coupler {
    }    
  }
 
- void gemXgcDatasProc3D::AllocPotentArrays()
+ void gemXgcDatasProc3D::allocPotentArrays()
  {
    double**** pot_gem_fl=new double***[p1->li0];
    double*** pot_ygem=new double**[p1->li0];
@@ -57,17 +59,19 @@ namespace coupler {
 	   pot_gem_fl[i][j][k]=new double[4];
      }
    }
-
  } 
 
  void allocSendRecvbuff()
  {
+/*
    numsend=new LO[p1->NP];
    numrecv=new LO[p1->NP];
    sdispls=new GO[p1->NP];
    rdispls=new GO[p1->NP];
-
+*/
    // sending side is in tube_comm X grid_comm collective
+   sendnum=0;
+   recvnum=0;
    for(LO i=0;i<NP;i++){
      numsend[i]=0;
      numrecv[i]=0;
@@ -75,15 +79,28 @@ namespace coupler {
      rdispls[i]=0;
    }
    LO rank;
-   for(LO i=0;i<sendOverlap_x.size();i++){
-     for(LO j=0;j<sendOverlap_y.size();j++){
-        rank=sendOverlap_x[i][0]
- 
+   for(LO i=0;i<p1->sendOverlap_x.size();i++){
+     for(LO j=0;j<p1->sendOverlap_y.size();j++){
+        rank=p1->sendOverlap_x[i][0]*p1->npz+p1->sendOverlap_th[j][0];
+        numsend[rank]=(p1->sendOverlap_x[i][2]-p1->sendOverlap_x[i][1]+1)
+         *(p1->sendOverlap_th[j][2]-p1->sendOverlap_th[j][1]+1)*p1->lj0;
      }
+   } 
+   for(LO i=1;i<p1->NP;i++){ 
+     sendnum=numsend[i];
+     sdispls[i]=sdispls[i-1]+numsend[i-1];
+   } 
+   for(LO i=0;i<p1->recvOverlap_x.size();i++){
+     for(LO j=0;j<p1->recvOverlap_y.size();j++){
+        rank=p1->recvOverlap_x[i][0]*p1->kmx+p1->recvOverlap_th[j][0];
+        numrecv[rank]=(p1->recvOverlap_x[i][2]-p1->recvOverlap_x[i][1]+1)
+         *(p1->recvOverlap_th[j][2]-p1->recvOverlap_th[j][1]+1)*p1->lj0;
+     }
+   }  
+   for(LO i=1;i<p1->NP;i++){
+     rdispls[i]=rdispls[i-1]+numrecv[i-1];
+     recvnum=numrecv[i];
    }
-    
-  
-
  }
 
  void gemXgcDatasProc3D::DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM)
@@ -97,7 +114,7 @@ namespace coupler {
      }
    }
 
-   densityfromGemToCoupler();   
+   distriDensityFromGemToCoupler();  
    zDensityBoundaryBufAssign(densgem,bdesc);
    interpoDensityAlongZ(densinterone);
    interpoDensityAlongY();
@@ -151,100 +168,76 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* potentfro
 
 
 
-void gemXgcDatasProc3D::densityfromGemToCoupler(const double*** tmpdensity)
+void gemXgcDatasProc3D::densityFromGemToCoupler()
 {
-   numsend=new LO[p1->NP];
-   numrecv=new LO[p1->NP];
-   sdispls=new GO[p1->NP];
-   rdispls=new GO[p1->NP];
- 
-// sending side is in tube_comm X grid_comm collective    
-   
+// sending happens in MPI_COMM_WORLD, but the process in grid_comm and tube_comm is mappped to comm_x and comm_y    
+   double* sendbuf=new double[sendnum];
+   double* recvbuf=new double[recvnum];
+   LO xnum=0;
+   LO thnum=0;
+   LO nrank=0;
 
-}
-
-void prepareSendRecv()
- {
-   
-
-
- }
-
-void gemXgcDatasProc3D::densityfromGemToCoupler(const double*** tmpdensity)
- {
-   LO* tmplk1=new double[p1->npz];
-   LO* tmplk2=new double[p1->npz];
-   MPI_Allgather(&p1->lk1,1,MPI_INT,tmplk1,1,MPI_INT,p1->comm_z);
-   MPI_Allgather(&p1->lk2,1,MPI_INT,tmplk1,1,MPI_INT,p1->comm_z);
-   LO i=0;
-   while(tmplk1[i]-mype_grid!=0) i+=1;
-   LO minrank=i;
-   i=0
-   while(tmplk2[i]-mype_grid!=0) i+=1;
-   LO maxrank=i;
- 
-   LO* numsend=new LO[p1->npz];
-   LO* numrecv=new LO[p1->npz];
-   LO* sdispls=new GO[p1->npz];
-   LO* rdispls=new GO[p1->npz];
-   GO  scounts=0;
-   GO  scounts=0;
-
-   for(LO i=0;i<p1->npz;i++){
-     if(i<minrank){
-       numsend[i]=0;
-     }else if(i>maxrank){
-       numsend[i]=0;
-     }else {
-       numsend[i]=li0*lj0;
+   //for initialize the sendbuf  
+   for(LO i=0;i<p1->npx;i++){
+     for(LO k=0;k<p1->npz;k++)
+     nrank=i*p1->npz+k;
+     if(numsend[nrank]!=0){
+       xnum=0;
+       while(assert(i!=sendOverlap_x[xnum][0])){
+         xnum+=1;
+         assert(xnum<=sendOverlap_x.size());
+       }
+       thnum=0;
+       while(assert(k!=sendOverlap_th[thnum][0])){
+         thnum+=1;
+         assert(thnum<=sendOverlap_th.size());
+       }              
+       for(LO i1=p1->sendOverlap_x[xnum][1];i1<p1->sendOverlap_x[xnum][2];i1++){
+         for(LO j1=0;j1<p1->lj0;j1++){
+           for(LO k1=p1->sendOverlap_th[thnum][1];k1++<p1->sendOverlap_th[thnum][2];k1++){
+             sendbuf[sdispls[n]+(i1-p1->sendOverlap_x[xnum][1])*p1->lj0
+               *p1->sendOverlap_th[thnum][3]+j1*p1->sendOverlap_th[thnum][3]
+               +k1-p1->sendOverlap_th[thnum][1]]
+               =den_tmp[i1-p1->tli0][j1][k1-p1->glk0];
+           }
+         }
+       }     
      }
-     
-     if(i<p1->lk1){
-       numrecv[i]=0;
-     }else if(i>p1->lk2){
-       numrecv[i]=0;
-     }else{
-       numrecv[i]=li0*lj0;
+   }    
+   
+   MPI_Alltoallv(sendbuf,sendnum,sdispls,MPI_DOUBLE,recvbuf,recvnum,rdispls,MPI_DOUBLE,MPI_COMM_WORLD);
+
+   LO tubenum=0;
+   LO gridnum=0;
+   LO nrank=0;
+   for(LO i=0;i<p1->ntude;i++){
+     for(LO k=0;k<p1->gnpz;k++)
+     nrank=i*p1->gnpz+k;
+     if(numrecv[nrank]!=0){
+       tubenum=0;
+       while(assert(i!=recvOverlap_x[tubenum][0])){
+         tubenum+=1;
+         assert(tubenum<=recvOverlap_x.size());
+       }
+       gridnum=0;
+       while(assert(k!=recvOverlap_th[gridnum][0])){
+         gridnum+=1;
+         assert(gridnum<=recvOverlap_th.size());
+       }              
+
+       for(LO i1=p1->recvOverlap_x[tubenum][1];i1<p1->recvOverlap_x[tubenum][2];i1++){
+         for(LO j1=0;j1<p1->lj0;j1++){
+           for(LO k1=p1->recvOverlap_th[gridnum][1];k1++<p1->recvOverlap_th[gridnum][2];k1++){
+             densgem[i1-p1->li0][j1][k1-p1->lk0]=recvbuf[rdispls[nrank]+(i1-p1->recvOverlap_x[tubenum][1])
+               *p1->lj0*recvOverlap_th[gridnum][3]+j1*recvOverlap_th[gridnum][3]+k1-p1->recvOverlap_th[gridnum][1]];
+           }
+         }
+       }          
      }
    } 
+}
 
-   sdispls[0]=0;
-   rdispls[0]=0;
-   for(LO i=1;i<p1->npz;i++){
-     sdispls[i]=sdispls[i-1]+numsend[i-1];
-     rdispls[i]=rdispls[i-1]+numrecv[i-1];
-   }
 
-   for(LO i=0;i<p1->npz;i++){
-     scounts+=numsend[i];
-     rcounts+=numrecv[i];
-   }
-   
-   double* sendbuf=new double[scounts];
-   double* recvbuf=new double[rcounts];
-
-   for(LO l=0;l<p1->npz;l++){
-     if(numsend[l]!=0){
-       for(LO i=0;i<p1->li0;i++){
-         for(LO j=0;j<p1->lj0;j++){
-           sendbuf[sdispls[l]+i*lj0+j]=den_tmp[p1->li1+i][j];
-         } 
-       }
-     }
-   }
-
-   MPI_Alltoallv(sendbuf,scounts,sdispls,MPI_DOUBLE,recvbuf,rcounts,rdispls,MPI_DOUBLE,p1->comm_z);
-
-   for(LO l=0;l<p1->npz;l++){
-     if(numrecv[l]!=0){
-       for(LO i=0;i<p1->li0;i++){
-         for(LO j=0;j<p1->lj0;j++){
-           densgem[i][j][l-p1->lk0]=recvbuf[rdispls[l]+i*p1->lj0+j];
-         }
-       }
-     }
-   }      
- }
 
 
 }

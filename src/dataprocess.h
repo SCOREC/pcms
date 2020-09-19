@@ -152,19 +152,17 @@ class gemXgcDatasProc3D {
     double*** pot_ygem = NULL;
     double*** pot_ythgem = NULL;
 
+    LO numsend[p1->NP];
+    LO numsend[p1->NP];
+    LO sdispls[p1->NP];
+    LO rdispls[p1->NP];
+    LO sendnum;
+    LO recvnum;
+
     gemXgcDatasProc3D(bool pproc = true,
       TestCase test_case = TestCase::off,
       bool ypar = false);
 
-    void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxyout); 
-    void AllocDensityArrays();
-    void AllocPotentArrays();
-    void DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM);
-    void DistriPotentRecvfromXGC(const Array3d<double>* potentfromXGC);
-    void densityfromGemToCoupler(const double*** tmpdensity);  
-    void interpoDensityAlongZ(double*** box);
-    void interpoDensityAlongY();
-    void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxout); 
   private:
     const bool preproc;
     const TestCase testcase;
@@ -172,6 +170,17 @@ class gemXgcDatasProc3D {
     const Part1ParalPar3D* p1;
     const Part3Mesh3D* p3;
     const BoundaryDescr3D* bdesc;
+
+    void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxyout); 
+    void allocDensityArrays();
+    void allocPotentArrays();
+    void allocSendRecvbuff();
+    void DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM);
+    void DistriPotentRecvfromXGC(const Array3d<double>* potentfromXGC);
+    void densityfromGemToCoupler();  
+    void interpoDensityAlongZ(double*** box);
+    void interpoDensityAlongY();
+    void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxout); 
 
 };
 

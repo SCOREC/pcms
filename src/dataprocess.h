@@ -145,12 +145,13 @@ private:
 class gemXgcDatasProc3D {
   public:
     double*** densin = NULL;  // Store the input density datas from GEM; 
-    double*** densgem = NULL;  // Store the density on the coupling subcommunicator of GEM
+    double*** densCpl = NULL;  // Store the density on the coupling subcommunicator of GEM
     double*** densinterone = NULL;  // Store the density interpolated along theta
     double*** densintertwo = NULL;  // Store the density interpolated along y
     double**** pot_gem_fol = NULL;
-    double*** pot_ygem = NULL;
-    double*** pot_ythgem = NULL;
+    double*** potyCpl = NULL;
+    double*** potythCpl = NULL;
+    double*** potGem = NULL;
 
     LO numsend[p1->NP];
     LO numsend[p1->NP];
@@ -181,7 +182,7 @@ class gemXgcDatasProc3D {
     void interpoDensityAlongZ(double*** box);
     void interpoDensityAlongY();
     void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxout); 
-
+    void potentFromCouplerToGem();
 };
 
 

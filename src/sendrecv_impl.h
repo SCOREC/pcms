@@ -37,7 +37,7 @@ MPI_Datatype getMpiType(T foo) {
 namespace coupler {
 
 template<class T>
-void mpisendrecv_aux2D(MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,
+void mpisendrecv_aux2D(const MPI_Comm comm,const LO nzb,const LO lx,const LO ly,const LO lz,
      T*** lowbuf,T*** upbuf,T*** box)
 {
       MPI_Datatype mpitype = getMpiType(T());
@@ -82,8 +82,8 @@ void mpisendrecv_aux2D(MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,
 }
 
 template<class T>
-void mpisendrecv_aux1D(MPI_Comm comm,LO nzb,LO xind,LO yind,LO zind,
-     T* lowbuf,T* upbuf,T* box1d)
+void mpisendrecv_aux1D(const MPI_Comm comm,const LO nzb,const LO xind,const LO yind,const LO zind,
+     T* lowbuf,T* upbuf,const T* box1d)
 {
 
       MPI_Datatype mpitype = getMpiType(T());
@@ -96,21 +96,6 @@ void mpisendrecv_aux1D(MPI_Comm comm,LO nzb,LO xind,LO yind,LO zind,
       MPI_Sendrecv(&box1d[zind-nzb],nzb,mpitype,rank_dest,102,lowbuf,nzb,mpitype,rank_source,102,
             comm,&status);
 }
-
- void prep_for_mpi_alltoallv(const LO rank,const LO size,const LO numgr,const LO* snum,
-      const LO* rnum, LO* scounts, LO* rcounts,GO* sdispls,GO* rdispls,GO numsend, GO numrecv)
- {
-   numsend=0;
-   for(LO i=0;i<size;i++) numsend+=snum[i];
-   numrecv=0;
-   for(LO i=0;i<size;i++) numrecv+=rnum[i];
-   for(i=0;i<size;i++){
-     
-   } 
-
-
-
- }
 
 
 }

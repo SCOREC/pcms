@@ -65,6 +65,7 @@ int main(int argc, char **argv){
   const bool preproc = true;
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
+  coupler::CouplingCase ccase = coupler::CouplingCase::genexgc;
   coupler::Array1d<double>* gene_cy = coupler::receive_gene_pproc<double>(dir, gCy);
   coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(), gene_cy->data(), preproc);
 
@@ -81,7 +82,7 @@ int main(int argc, char **argv){
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
   coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
   const int nummode = 1;
-  coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, test_case, preproc);
+  coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, ccase, test_case, preproc);
   if(!p1pp3d.mype)std::cerr << "0.8"<< "\n"; 
 
   coupler::Part1ParalPar3D* mesh1;

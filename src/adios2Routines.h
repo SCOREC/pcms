@@ -31,11 +31,11 @@ namespace coupler {
   template<class T>
   class Array3d {
     public:
-      Array2d(GO dim0, GO dim1, GO dim2, GO start[]) :
+      Array3d(GO dim0, GO dim1, GO dim2, GO* start) :
         DIM0(dim0), DIM1(dim1), DIM2(dim2), START(start) {
           vals = new T[dim0*dim1*dim2];
       }
-      ~Array2d() {
+      ~Array3d() {
         DIM0 = DIM1 = DIM2 = 0;
         for(LO i=0;i<3;i++) START[i]=0;
         delete [] vals;
@@ -54,7 +54,7 @@ namespace coupler {
       GO DIM0;
       GO DIM1;
       GO DIM2;
-      GO START[3];
+      GO* START;
   };
 
   /** Storage of double precision 2D array data
@@ -309,7 +309,7 @@ namespace coupler {
   
   template<typename T>
   Array3d<T>* receive3d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng, GO* start,MPI_Comm &comm,const int m) {
+      adios2::IO &read_io, adios2::Engine &eng, GO* start,GO* count,MPI_Comm &comm,const int m) {
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
@@ -344,7 +344,7 @@ namespace coupler {
     const auto DIM1 = dim1;
     const auto DIM2 = dim0;
 
-    Array2d<T>* a2d = new Array2d<T>(DIM0,DIM1,DIM2,start);
+    Array3d<T>* a3d = new Array3d<T>(DIM0,DIM1,DIM2,start);
 
 // Here, count,start take care of the fortran to C transpose. 
     const::adios2::Dims my_start({start[0], start[1], start[2]});
@@ -352,10 +352,10 @@ namespace coupler {
     const adios2::Box<adios2::Dims> sel(my_start, my_count);
   
     adVar.SetSelection(sel);
-    eng.Get<T>(adVar, a2d->data());
+    eng.Get<T>(adVar, a3d->data());
     eng.EndStep();
     std::cerr << rank <<  ": receive " << name << " done \n";
-    return a2d;
+    return a3d;
   }
 
 

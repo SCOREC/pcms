@@ -25,7 +25,7 @@ void Lag3dArray(const T* yin,const double* xin,const LO nin,T* yout,const double
   LO j2,j0,jm;
   double x;
   T* func=new T[4];
-  T* coords=new T[4];
+  double* coords=new double[4];
   for(LO j=0;j<nout;j++){
     x=xout[j];
     while(x>=xin[j1] && j1<nin-2 && j1>1){

@@ -11,6 +11,7 @@ int main(int argc, char* argv[])
 {
   MPI_Init(&argc,&argv);
   coupler::TestCase test_case = coupler::TestCase::t0;
+  coupler::CouplingCase ccase = coupler::CouplingCase::off;
   const bool preproc = true;
   const bool ypar = false;
   std::string test_dir(argv[1]);
@@ -21,7 +22,7 @@ int main(int argc, char* argv[])
   coupler::Part3Mesh3D*     mesh3=&p3m3d;
   coupler::DatasProc3D dp3d(mesh1, mesh3, preproc, test_case, ypar, nummode);  
 
-  coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,test_case,preproc);
+  coupler::BoundaryDescr3D bdesc(p3m3d,p1pp3d,ccase,test_case,preproc);
 
   dp3d.InitFourierPlan3D(); 
   dp3d.RealdataToCmplxdata3D();

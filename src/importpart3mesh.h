@@ -17,6 +17,11 @@ class Array2d;
 
 class Part1ParalPar3D;
 
+struct flxxgc {
+  LO flxtind[5];
+  double flxt[4];
+};
+
 class Part3Mesh3D{
   public:
 /*variables of XGC for both gene-xgc and gem-xgc coupling*/
@@ -60,6 +65,7 @@ class Part3Mesh3D{
 /*variables specially owned by XGC for GEM-XGC coupling*/
     LO* lgi0;
     LO  nphi;
+    LO  nwedge;
     double* Rcoordall; // store R of all nodes in XGC mesh
     double* Zcoordall; // store Z of all nodes in XGC mesh
     double** surf_idx; //store the vertex indices of each surface
@@ -70,11 +76,7 @@ class Part3Mesh3D{
     double**** zeta_pot; //Store the theta_f mesh for interpolating potential provided by XGC to the one for GEM
     double***** thetaflx_pot; //Store the five flux theta values for the 3rd order interpolation along the field line.
     LO***** thetaflx_ind_pot; //Store the four indices of nodals for the 3rd order interpolation along the field line.
-    double**** nodedist_fl; //Store the length of the four points along the field line for interpolation.
-    struct flxxgc {
-      LO flxind[5];
-      double flxt[4];
-    };
+    double**** nodesdist_fl; //Store the length of the four points along the field line for interpolation.
  
     /* constructor - versurf has length = numsurf & versurf[i] = the number of nodes surface[i]
      * xcoords saves the radial coordinate of each surface.
@@ -131,14 +133,6 @@ class Part3Mesh3D{
      if(Zcoordall!=NULL) delete[] Zcoordall;
      if(pzcoords!=NULL) delete[] pzcoords;
    }
-   void  JugeFirstSurfaceMatch(double xp1);
-   inline double search_zeta(const double dlength,const double length,const LO nlength,const double tmp);
-   inline  flxxgc gemXgcDatasProc3D::search_flux_3rdorder_periodbound(
-        const double tmpflx,const double* flxin, tmp,LO num,double* out1,double* out2);
-   void gemDistributePoints(const double* exterarr, const LO gstart,LO li,
-        const double* interarr);
-   void search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp); 
- 
 
   private:
     const bool preproc;
@@ -155,8 +149,12 @@ class Part3Mesh3D{
     void BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx);
     void gemDistributePoints(const double* exterarr, const LO gstart,LO li,
          const double* interarr);
-    void search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp);
     void initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>* rzcoords);
+    void  JugeFirstSurfaceMatch(double xp1);
+    inline LO search_zeta(const double dlength,const double length,const LO nlength,double tmp);
+    inline struct flxxgc* search_flux_3rdorder_periodbound(double tmpflx,const double* flxin, LO num);
+    void search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp); 
+ 
 
     /* default constructor 
      * put this in private to prevent users from calling it

@@ -73,6 +73,7 @@ class Part1ParalPar3D {
 
     double lz,ly;
     double dth,delz;
+    double r0,q0;
     double* thetagrideq; //store ntheta \theta values of all the nodes on one poloidal cross section of GEM
     double* theta; // store kmx+1 \theta values for the perturbation
     double** thflxeq; //store GEM's flux coordinates theta*; sent from GEM
@@ -82,7 +83,7 @@ class Part1ParalPar3D {
     LO mype_g,mype_t;
     LO** mype_xztg; // store the mapping mype<-->(mype_x,mype_y)<-->(mype_t,mype_g)
     LO tli0,tli1,tli2;
-    LO glk0,gkk1,glk2;
+    LO glk0,glk1,glk2;
 //    typedef vector<vector<vector<LO> > > vectInt3d;
 //    typedef vector<vector<LO> > vecInt2d;
     vecint2d sendOverlap_x;
@@ -145,13 +146,13 @@ class Part1ParalPar3D {
    /* destructor helper function */
     void MpiFreeComm();
     void blockindice(); 
-    void decomposeGemMesh();
     void CreateGemsubcommunicators();
     void initGem(const Array1d<int>* gemmesh, const Array2d<double>* thfnz);    
     void CreateGroupComm();
     void overlapBox();
-    void getOverlapBox(vecint2d vec2din,LO* lowind,LO* upind,LO numproc2,LO low,LO up);
+    void getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numproc2,LO low,LO up);
     void rankMapping();
+    void decomposeGemMeshforCoupling();
 };
 
 

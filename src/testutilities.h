@@ -11,6 +11,14 @@ enum class TestCase : unsigned {
   invalid
 };
 
+enum class CouplingCase : unsigned {
+  genexgc,
+  gemxgc,
+  off
+};
+
+
+
 // input and output utilities
 template<class T>
 void OutputtoFile(T* numbers,LO array_size,std::string filename){ 

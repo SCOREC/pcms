@@ -32,7 +32,7 @@ class BoundaryDescr3D{
     double*** uppotentzgemxgc=NULL;
     double*** lowpotentzgemxgc=NULL;
 
-    double* ymeshxgc=NULL;
+    double*** ymeshxgc=NULL;
     double* ymeshgem=NULL;
     double** thflxmeshxgc=NULL;
     double* thetameshgem=NULL;   
@@ -41,13 +41,13 @@ class BoundaryDescr3D{
    /* constructor */
     BoundaryDescr3D(const Part3Mesh3D& p3m3d,
         const Part1ParalPar3D &p1pp3d,
-        const CouplingCase ccase,
+        const CouplingCase c_case,
         const TestCase tcase = TestCase::off,
         const bool pproc = true)
-      : test_case(tcase),preproc(pproc){
-        if(ccase==CouplingCase::genexgc){
+      : ccase(c_case),test_case(tcase),preproc(pproc){
+        if(c_case==CouplingCase::genexgc){
           initGeneXgc(p3m3d,p1pp3d);
-        }else if(ccase==CouplingCase::gemxgc){
+        }else if(c_case==CouplingCase::gemxgc){
           initGemXgc(p3m3d,p1pp3d);
         }       
       }
@@ -60,6 +60,7 @@ class BoundaryDescr3D{
     void initGeneXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D &p1pp3d);
     void initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D &p1pp3d);
     const TestCase test_case;
+    const CouplingCase ccase;
     const bool preproc;
 };
 

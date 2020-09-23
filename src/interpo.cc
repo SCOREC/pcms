@@ -119,8 +119,8 @@ void gemXgcDatasProc3D::interpoDensityAlongZ(double*** box)
    for(LO i=0;i<p1->li0;i++){
       for(LO j=0;j<p1->lj0;j++){
         for(LO l=0;l<nzb;l++){
-          yin[l]=bdesc->lowdenzGemXgc[i][j][l];
-          yin[p1->lk0+nzb+l]=bdesc->updenzGemXgc[i][j][l];
+          yin[l]=bdesc->lowdenzgemxgc[i][j][l];
+          yin[p1->lk0+nzb+l]=bdesc->updenzgemxgc[i][j][l];
         }
         for(LO k=0;k<p1->lk0;k++){
           yin[nzb+k]=densin[i][j][k];
@@ -151,10 +151,10 @@ void gemXgcDatasProc3D::interpoDensityAlongY()
       }
       for(LO b=0;b<nzb;b++){
         yin[b]=densinterone[i][p1->lj0+b-nzb][k];
-        yin[p->lj0+nzb-1+b]=densinterone[i][b][k];
+        yin[p1->lj0+nzb-1+b]=densinterone[i][b][k];
       }
-      xout=ymeshxgc[i][k];
-      Lag3dArray(yin,ymeshgem,p1->lj0+2*nzb,yout,xout,p1->lj0); 
+      xout=bdesc->ymeshxgc[i][k];
+      Lag3dArray(yin,bdesc->ymeshgem,p1->lj0+2*nzb,yout,xout,p1->lj0); 
       for(LO j=0;j<p1->lj0;j++){
         densintertwo[i][j][k]=yout[j];
       }
@@ -162,7 +162,7 @@ void gemXgcDatasProc3D::interpoDensityAlongY()
   }
 }
 
-void gemXgcDatasProc3D::InterpoPotential3DAlongZ(const double*** boxyin, double*** boxout)
+void gemXgcDatasProc3D::InterpoPotential3DAlongZ(const double*** boxin, double*** boxout)
 {
   double* yin;
   double* yout;
@@ -179,7 +179,7 @@ void gemXgcDatasProc3D::InterpoPotential3DAlongZ(const double*** boxyin, double*
           yin[k+nzb]=boxin[i][j][k];
         }
         yout=boxout[i][j];
-        Lag3dArray(yin,bdesc->thflxmeshxgc[i][j],p3->mylk0[i]+2*nzb,yout,p1->thflx[i],p1->lk0);
+        Lag3dArray(yin,bdesc->thflxmeshxgc[i],p3->mylk0[i]+2*nzb,yout,p1->thflx[i],p1->lk0);
      }
     }
   }

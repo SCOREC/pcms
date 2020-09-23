@@ -74,6 +74,7 @@ public:
 
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
+  LO myli0;
 
   // For interpolation mesh
   double* mesh1ddens; // 1d mesh for interpolating density;
@@ -111,7 +112,7 @@ public:
 
 //boundary buffer
   void zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc);
-  void zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc);
+  void zDensityBoundaryBufAssign(CV*** box,BoundaryDescr3D& bdesc);
 
 //interpolation
   void mesh1dforDensityInterpo();
@@ -153,10 +154,10 @@ class gemXgcDatasProc3D {
     double*** potythCpl = NULL;
     double*** potGem = NULL;
 
-    LO numsend[p1->NP];
-    LO numsend[p1->NP];
-    LO sdispls[p1->NP];
-    LO rdispls[p1->NP];
+    LO* numsend;
+    LO* numrecv;
+    LO* sdispls;
+    LO* rdispls;
     LO sendnum;
     LO recvnum;
 
@@ -172,7 +173,6 @@ class gemXgcDatasProc3D {
     const Part3Mesh3D* p3;
     const BoundaryDescr3D* bdesc;
 
-    void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxyout); 
     void allocDensityArrays();
     void allocPotentArrays();
     void allocSendRecvbuff();
@@ -183,6 +183,9 @@ class gemXgcDatasProc3D {
     void interpoDensityAlongY();
     void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxout); 
     void potentFromCouplerToGem();
+    void zPotentBoundaryBufAssign(const double*** box,BoundaryDescr3D& bdesc);
+    void zMeshPotentBoundaryBufAssign(BoundaryDescr3D& bdesc);
+    void zDensityBoundaryBufAssign(double*** box,BoundaryDescr3D& bdesc);
 };
 
 

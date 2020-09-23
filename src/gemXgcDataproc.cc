@@ -71,12 +71,11 @@ namespace coupler {
 
  void allocSendRecvbuff()
  {
-/*
    numsend=new LO[p1->NP];
    numrecv=new LO[p1->NP];
    sdispls=new GO[p1->NP];
    rdispls=new GO[p1->NP];
-*/
+
    // sending side is in tube_comm X grid_comm collective
    sendnum=0;
    recvnum=0;

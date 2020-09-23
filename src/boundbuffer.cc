@@ -70,7 +70,7 @@ void DatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
    }
 }
 
-void DatasProc3D::zMeshPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
+void gemXgcDatasProc3D::zMeshPotentBoundaryBufAssign(BoundaryDescr3D& bdesc)
 {
   LO nzb=bdesc.nzb;
   LO li0,lj0,lk0;
@@ -152,7 +152,7 @@ void DatasProc3D::zMeshPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
 }
 
 
-void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc) 
+void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,BoundaryDescr3D& bdesc) 
 {
   LO nzb=bdesc.nzb;
   if (bdesc.lowdenz == NULL || bdesc.updenz == NULL) {
@@ -213,10 +213,10 @@ void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bde
   }
 }
 
-void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const double** box,const BoundaryDescr3D& bdesc)
+void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const double*** box,BoundaryDescr3D& bdesc)
 {
   LO nzb=bdesc.nzb;
-  if(bdesc.lowpotentzGemXgc==NULL||bdesc.uppotentzGemXgc==NULL){
+  if(bdesc.lowpotentzgemxgc==NULL||bdesc.uppotentzgemxgc==NULL){
     std::cout<<"ERROR:the boundary buffer of the potential must be allocated beforing invoking this routine.";
     std::exit(EXIT_FAILURE);
   }
@@ -232,7 +232,7 @@ void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const double** box,const Bounda
           std::exit(EXIT_FAILURE);
         }
         for(LO j=0;j<lj0;j++){
-          mpisendrecv_aux1D(p1->comm_z,nzb,li0,lj0,lk0,bdesc.lowpotentzGemXgc[i][j],bdesc.uppotentzGemXgc[i][j],
+          mpisendrecv_aux1D(p1->comm_z,nzb,li0,lj0,lk0,bdesc.lowpotentzgemxgc[i][j],bdesc.uppotentzgemxgc[i][j],
               box[i][j]);
         //FIXME: It looks GEM doesn't enforce the parallel boundary condition
 /*
@@ -262,8 +262,8 @@ void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const double** box,const Bounda
            }
            for(LO j=0;j<lj0;j++){
              for(LO k=0;k<nzb;k++){
-               bdesc.uppotentzGemXgc[i][j][k]=box[i][j][k];
-               bdesc.lowpotentzGemXgc[i][j][k]=box[i][j][lk0-nzb+k];
+               bdesc.uppotentzgemxgc[i][j][k]=box[i][j][k];
+               bdesc.lowpotentzgemxgc[i][j][k]=box[i][j][lk0-nzb+k];
              }
            }
         }
@@ -277,10 +277,10 @@ void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const double** box,const Bounda
 
 
 
-void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box,const BoundaryDescr3D& bdesc) 
+void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box,BoundaryDescr3D& bdesc) 
 {
   LO nzb=bdesc.nzb;
-  if (bdesc.lowdenzGemXgc == NULL || bdesc.updenzGemXgc == NULL) {
+  if (bdesc.lowdenzgemxgc == NULL || bdesc.updenzgemxgc == NULL) {
     std::cout << "ERROR:the boundary buffer must be alloctted before "
                  "calling this routine.";
     std::exit(EXIT_FAILURE);
@@ -294,12 +294,12 @@ void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box,const BoundaryDe
       for (LO i = 0; i < lx ; i++) {
         for (LO j = 0; j < ly; j++) {
           for(LO k=0;k<nzb;k++){
-            bdesc.lowdenzGemXgc[i][j][k]=0.0;
-            bdesc.updenzGemXgc[i][j][k]=0.0;
+            bdesc.lowdenzgemxgc[i][j][k]=0.0;
+            bdesc.updenzgemxgc[i][j][k]=0.0;
           }
         }
       }
-      mpisendrecv_aux2D(p1->comm_z, nzb, lx, ly, lz, bdesc.lowdenzGemXgc, bdesc.updenzGemXgc, box);
+      mpisendrecv_aux2D(p1->comm_z, nzb, lx, ly, lz, bdesc.lowdenzgemxgc, bdesc.updenzgemxgc, box);
 
       //FIXME: It looks GEM doesn't enforce the parallel boundary condition
 
@@ -312,8 +312,8 @@ void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box,const BoundaryDe
       for (LO i = 0; i < lx ; i++) {
         for (LO j = 0; j < ly; j++) {
           for (LO k = 0; k < nzb; k++) {
-            bdesc.lowdenzGemXgc[i][j][k] = box[i][j][lz - nzb + k];
-            bdesc.updenzGemXgc[i][j][k] = box[i][j][k];
+            bdesc.lowdenzgemxgc[i][j][k] = box[i][j][lz - nzb + k];
+            bdesc.updenzgemxgc[i][j][k] = box[i][j][k];
             //FIXME: It looks GEM doesn't enforce the parallel boundary condition
           }
         }

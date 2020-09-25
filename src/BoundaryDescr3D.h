@@ -31,6 +31,10 @@ class BoundaryDescr3D{
     double*** uppotentzgemxgc=NULL;
     double*** lowpotentzgemxgc=NULL;
 
+  // For interpolation mesh
+    double* mesh1ddens; // 1d mesh for interpolating density;
+    double** mesh1dpotent; // the mesh for interpoating potential;
+
     double*** ymeshxgc=NULL;
     double* ymeshgem=NULL;
     double** thflxmeshxgc=NULL;

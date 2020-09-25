@@ -17,9 +17,9 @@ class Array2d;
 template<class T>
 class Array3d;
 
+class BoundaryDescr3D;
 class Part3Mesh3D;
 class Part1ParalPar3D;
-class BoundaryDescr3D;
 
 class DatasProc3D {
 public:
@@ -37,6 +37,8 @@ public:
                ///forward Fourier transform  
   LO sum;
   // here, pointers must be assigned a NULL;
+  CV** densrecv = NULL; // the 2d array density recived by the coupler.
+                           // and sent by part1. This is received in comm_x and comm_y communicators.
   CV*** densin = NULL; // input 3d density in complex number
   CV*** densinterpo = NULL; 
   CV* densintmp = NULL; // temporary 2d density array prepared for backward
@@ -73,10 +75,6 @@ public:
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
   LO myli0;
-
-  // For interpolation mesh
-  double* mesh1ddens = NULL; // 1d mesh for interpolating density;
-  double** mesh1dpotent = NULL; // the mesh for interpoating potential;
 
   /* constructor
    * optional argument supports setting
@@ -152,10 +150,10 @@ class gemXgcDatasProc3D {
     double*** potythCpl = NULL;
     double*** potGem = NULL;
 
-    LO* numsend = NULL;
-    LO* numrecv = NULL;
-    LO* sdispls = NULL;
-    LO* rdispls = NULL;
+    LO* numsend;
+    LO* numrecv;
+    LO* sdispls;
+    LO* rdispls;
     LO sendnum;
     LO recvnum;
 

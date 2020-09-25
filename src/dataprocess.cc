@@ -28,7 +28,7 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D* p1pp3d,
     mesh1dforDensityInterpo();
  printf("8a \n");
  MPI_Barrier(MPI_COMM_WORLD);
-    mesh1dforPotentialInterpo();
+//    mesh1dforPotentialInterpo();
  printf("11a \n");
  MPI_Barrier(MPI_COMM_WORLD);
     AllocDensityArrays();
@@ -980,10 +980,7 @@ DatasProc3D::~DatasProc3D()
     }
     delete[] mat_from_ind_n;
   }       
-  if(mesh1ddens!=NULL) delete[] mesh1ddens;
-  if(mesh1dpotent!=NULL) delete[] mesh1ddens;
 }
-
 
 }
 

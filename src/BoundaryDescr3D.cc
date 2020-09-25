@@ -58,7 +58,13 @@ void BoundaryDescr3D::initGeneXgc(
       }
     }    
 
-   initpbmat(p1pp3d);
+    mesh1ddens = new double[p1pp3d.lk0+2*p1pp3d.nzb];
+    mesh1dpotent=new double*[p3m3d.li0];
+    for(LO i=0;i<p3m3d.li0;i++){
+      mesh1dpotent[i]=new double[p3m3d.mylk0[i]+2*p1pp3d.nzb];
+    }
+
+    initpbmat(p1pp3d);
   } 
 }
 

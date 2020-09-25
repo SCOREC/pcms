@@ -116,22 +116,23 @@ void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D 
     thetameshgem[p1pp3d.lk0+2]=p1pp3d.theta[p1pp3d.lk2]+p1pp3d.dth;
     thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk2]+2.0*p1pp3d.dth;
   }
-
-  ymeshxgc = new double**[p1pp3d.li0];
-  for(LO i=0;i<p1pp3d.li0;i++){
+//FIXME: is the boundary buffer required?
+  ymeshxgc = new double**[p3m3d.li0];
+  for(LO i=0;i<p3m3d.li0;i++){
     ymeshxgc[i]=new double*[p3m3d.mylk0[i]];
-    for(LO k=0;k<p1pp3d.lk0;k++)
-      ymeshxgc[i][k]=new double[p1pp3d.lj0];
+    for(LO k=0;k<p3m3d.mylk0[i];k++)
+      ymeshxgc[i][k]=new double[p3m3d.nphi];
   }
-  for(LO i=0;i<p1pp3d.li0;i++){
-    for(LO k=0;k<p1pp3d.lk0;k++){
-      for(LO j=0;j<p1pp3d.lj0;j++)
+//FIXME: there is problems
+  for(LO i=0;i<p3m3d.li0;i++){
+    for(LO k=0;k<p3m3d.mylk0[i];k++){
+      for(LO j=0;j<p3m3d.nphi;j++)
         ymeshxgc[i][k][j]=p3m3d.y_xgc[i][j][k];
     }
   }
  //3rd order central Lagrange interpolation
-  thflxmeshxgc=new double*[p1pp3d.li0];
-  for(LO i=0;i<p1pp3d.li0;i++){
+  thflxmeshxgc=new double*[p3m3d.li0];
+  for(LO i=0;i<p3m3d.li0;i++){
     thflxmeshxgc[i]=new double[p3m3d.mylk0[i]+4];
     for(LO k=0;k<p3m3d.mylk0[i];k++){
       thflxmeshxgc[i][k+2]=p3m3d.theta_flx[i][p3m3d.mylk1[i]+k];
@@ -160,8 +161,6 @@ void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D 
     }
   }
   
-   
-
   updenzgemxgc=new double**[p1pp3d.li0];
   lowdenzgemxgc=new double**[p1pp3d.li0];
   for(LO i=0;i<p1pp3d.li0;i++){
@@ -173,16 +172,16 @@ void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D 
     }
   }
 
-  uppotentzgemxgc=new double**[p1pp3d.li0];
-  lowpotentzgemxgc=new double**[p1pp3d.li0];
-  upzpart3=new double*[p1pp3d.li0];
-  lowzpart3=new double*[p1pp3d.li0];
-  for(LO i=0;i<p1pp3d.li0;i++){
+  uppotentzgemxgc=new double**[p3m3d.li0];
+  lowpotentzgemxgc=new double**[p3m3d.li0];
+  upzpart3=new double*[p3m3d.li0];
+  lowzpart3=new double*[p3m3d.li0];
+  for(LO i=0;i<p3m3d.li0;i++){
     uppotentzgemxgc[i]=new double*[p3m3d.nphi];
     lowpotentzgemxgc[i]=new double*[p3m3d.nphi]; 
     upzpart3[i]=new double[nzb];
     lowzpart3[i]=new double[nzb];
-    for(LO j=0;j<p1pp3d.lj0;j++){
+    for(LO j=0;j<p3m3d.nphi;j++){
       uppotentzgemxgc[i][j]=new double[nzb];
       lowpotentzgemxgc[i][j]=new double[nzb];
     }
@@ -193,12 +192,86 @@ void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D 
 
 BoundaryDescr3D::~BoundaryDescr3D()
 {
-  if(upzpart3!=NULL) delete[] upzpart3;
-  if(lowzpart3!=NULL) delete[] lowzpart3;
-  if(updenz!=NULL) delete[] updenz;
-  if(lowdenz!=NULL) delete[] lowdenz;
-  if(uppotentz!=NULL) delete[] uppotentz;
-  if(lowpotentz!=NULL) delete[] lowpotentz;
+  if(upzpart3!=NULL){
+    for(LO i=0;i<p3->li0;i++) delete[] upzpart3[i];
+    delete[] upzpart3;
+  }
+  if(lowzpart3!=NULL){
+    for(LO i=0;i<p3->li0;i++) delete[] lowzpart3[i];
+    delete[] lowzpart3;
+  }
+  if(updenz!=NULL){
+    for(LO i=0;i<p1->li0;i++){
+      for(LO j=0;j<p1->lj0;j++) delete[] updenz[i][j];
+      delete[] updenz[i];
+    }    
+    delete[] updenz;
+  }
+  if(lowdenz!=NULL){
+    for(LO i=0;i<p1->li0;i++){
+      for(LO j=0;j<p1->lj0;j++) delete[] lowdenz[i][j];
+      delete[] lowdenz[i];
+    }    
+    delete[] lowdenz;
+  }
+  if(uppotentz!=NULL){
+    for(LO i=0;i<p1->li0;i++) delete[] uppotentz[i];
+    delete[] uppotentz;
+  }
+  if(lowpotentz!=NULL){
+    for(LO i=0;i<p1->li0;i++) delete[] lowpotentz[i];   
+    delete[] lowpotentz;
+  }
+  if(uppbmat!=NULL){
+    for(LO i=0;i<p1->li0;i++) delete[] uppbmat[i]; 
+    delete[] uppbmat;
+  }
+  if(lowpbmat!=NULL){
+    for(LO i=0;i<p1->li0;i++) delete[] lowpbmat[i];
+    delete[] lowpbmat;
+  }
+  if(lowdenzgemxgc!=NULL){ 
+    for(LO i=0;i<p1->li0;i++){ 
+      for(LO j=0;j<p1->lj0;j++) delete[] lowdenzgemxgc[i][j];
+      delete[] lowdenzgemxgc[i];
+    }
+    delete[] lowdenzgemxgc;
+  }
+  if(updenzgemxgc!=NULL){
+    for(LO i=0;i<p1->li0;i++){
+      for(LO j=0;j<p1->lj0;j++) delete[] updenzgemxgc[i][j];
+      delete[] updenzgemxgc[i];
+    }
+    delete[] updenzgemxgc;
+  }
+
+  if(lowpotentzgemxgc!=NULL){
+    for(LO i=0;i<p3->li0;i++){
+      for(LO j=0;j<p3->nphi;j++) delete[] lowpotentzgemxgc[i][j];
+      delete[] lowpotentzgemxgc[i];
+    }
+    delete[] lowpotentzgemxgc;
+  }
+  if(uppotentzgemxgc!=NULL){
+    for(LO i=0;i<p3->li0;i++){
+      for(LO j=0;j<p3->nphi;j++) delete[] uppotentzgemxgc[i][j];
+      delete[] uppotentzgemxgc[i];
+    }
+    delete[] uppotentzgemxgc;
+  }  
+  if(ymeshxgc!=NULL){
+    for(LO i=0;i<p3->li0;i++){
+      for(LO k=0;k<p3->mylk0[i];k++) delete[] ymeshxgc[i][k];
+      delete[] ymeshxgc[i];
+    }
+    delete[] ymeshxgc;
+  }
+  if(ymeshgem!=NULL) delete[] ymeshgem;  
+  if(thflxmeshxgc!=NULL){ 
+    for(LO i=0;i<p3->li0;i++) delete[] thflxmeshxgc[i];
+    delete[] thflxmeshxgc;
+  }
+  if(thetameshgem!=NULL) delete[] thetameshgem;
 }
 
 

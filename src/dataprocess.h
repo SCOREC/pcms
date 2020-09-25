@@ -37,8 +37,6 @@ public:
                ///forward Fourier transform  
   LO sum;
   // here, pointers must be assigned a NULL;
-  CV** densrecv = NULL; // the 2d array density recived by the coupler.
-                           // and sent by part1. This is received in comm_x and comm_y communicators.
   CV*** densin = NULL; // input 3d density in complex number
   CV*** densinterpo = NULL; 
   CV* densintmp = NULL; // temporary 2d density array prepared for backward
@@ -77,8 +75,8 @@ public:
   LO myli0;
 
   // For interpolation mesh
-  double* mesh1ddens; // 1d mesh for interpolating density;
-  double** mesh1dpotent; // the mesh for interpoating potential;
+  double* mesh1ddens = NULL; // 1d mesh for interpolating density;
+  double** mesh1dpotent = NULL; // the mesh for interpoating potential;
 
   /* constructor
    * optional argument supports setting
@@ -154,10 +152,10 @@ class gemXgcDatasProc3D {
     double*** potythCpl = NULL;
     double*** potGem = NULL;
 
-    LO* numsend;
-    LO* numrecv;
-    LO* sdispls;
-    LO* rdispls;
+    LO* numsend = NULL;
+    LO* numrecv = NULL;
+    LO* sdispls = NULL;
+    LO* rdispls = NULL;
     LO sendnum;
     LO recvnum;
 

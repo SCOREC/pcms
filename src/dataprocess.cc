@@ -20,14 +20,26 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D* p1pp3d,
  {
     p1=p1pp3d;
     p3=p3m3d;
+ printf("7a \n");
+ MPI_Barrier(MPI_COMM_WORLD);
     init();
+ printf("9a \n");
+ MPI_Barrier(MPI_COMM_WORLD);
     mesh1dforDensityInterpo();
+ printf("8a \n");
+ MPI_Barrier(MPI_COMM_WORLD);
     mesh1dforPotentialInterpo();
+ printf("11a \n");
+ MPI_Barrier(MPI_COMM_WORLD);
     AllocDensityArrays();
     AllocPotentArrays();
     AllocMatXYZtoPlane();
+ printf("12a \n");
+MPI_Barrier(MPI_COMM_WORLD);
     Initmattoplane(); 
     Prepare_mats_from_planes();
+printf("13a \n");
+MPI_Barrier(MPI_COMM_WORLD);
     if(testcase==TestCase::t0) {
       TestInitPotentAlongz(p3m3d, p1->npy, nummode);
     }
@@ -96,9 +108,7 @@ void DatasProc3D::AllocDensityArrays()
      for(LO j=0; j<p3->lj0; j++)
         densTOpart3[i][j]=new double[p3->mylk0[i]];
    }
-
-   denssend = new double[p3->blockcount*p3->lj0];
-   
+   denssend = new double[p3->blockcount*p3->lj0];   
  } 
 }
 
@@ -874,21 +884,104 @@ void DatasProc3D::TestInitPotentAlongz(const Part3Mesh3D* p3m3d,const LO npy, co
 DatasProc3D::~DatasProc3D()
 {
   FreeFourierPlan3D();
-  if(densrecv!=NULL){
+  if(densin!=NULL){
     for(LO i=0;i<p1->li0;i++){
- 
-    } 
- 
+      for(LO j=0;j<p1->lj0;j++) delete[] densin[i][j];
+      delete[] densin[i];
+    }  
+    delete[] densin;
   }
-  if(densin!=NULL) delete[] densin;
   if(densintmp!=NULL) delete[] densintmp;
   if(densouttmp!=NULL) delete[] densouttmp;
-  if(densinterpo!=NULL) delete[] densinterpo;
-  if(denspart3!=NULL) delete[] denspart3;
-  if(potentin!=NULL) delete[] potentin;
+  if(densinterpo!=NULL){
+    for(LO i=0;i<p1->li0;i++){
+      for(LO j=0;j<p1->lj0;j++) delete[] densinterpo[i][j];
+      delete[] densinterpo[i];
+    }
+    delete[] densinterpo;
+  } 
+  if(denspart3!=NULL){ 
+    for(LO i=0;i<p3->li0;i++){
+      for(LO j=0;j<p3->lj0;j++) delete[] denspart3[i][j];
+      delete[] denspart3[i];
+    }
+    delete[] denspart3;
+  }
+  if(potentin!=NULL){
+    for(LO i=0;i<p3->li0;i++){
+      for(LO j=0;j<p1->y_res_back;j++) delete[] potentin[i][j];
+      delete[] potentin[i];
+    }
+    delete[] potentin;
+  }
   if(potentouttmp!=NULL) delete[] potentouttmp;
-  if(potentinterpo!=NULL) delete[] potentinterpo;
-  if(potentpart1!=NULL) delete[] potentpart1;       
+  if(potentinterpo!=NULL){
+    for(LO i=0;i<p3->li0;i++){
+      for(LO j=0;j<p3->lj0/2;j++) delete[] potentinterpo[i][j];
+      delete[] potentinterpo[i];
+    } 
+    delete[] potentinterpo;
+  }
+  if(potentpart1!=NULL){
+    for(LO i=0;i<p1->li0;i++){
+      for(LO j=0;i<p1->lj0;j++) delete[] potentpart1[i][j];
+      delete[] potentpart1[i];
+    }
+    delete[] potentpart1;  
+  } 
+  if(potentsend!=NULL) delete[] potentsend;
+  if(mattoplane!=NULL){
+    for(LO i=0;i<p3->li0;i++){
+      for(LO j=0;j<p1->n_cuts;j++){
+        for(LO k=0;k<p3->lj0;k++) delete[] mattoplane[i][j][k];
+        delete[] mattoplane[i][j];
+      }
+      delete[] mattoplane[i];
+    } 
+    delete[] mattoplane;
+  } 
+  if(mat_to_plane!=NULL){
+    for(LO i=0;i<p3->li0;i++){
+      for(LO j=0;j<p1->n_cuts;j++){
+        for(LO k=0;k<p3->lj0;k++) delete[] mat_to_plane[i][j][k];
+        delete[] mat_to_plane[i][j];
+      }
+      delete[] mat_to_plane[i];
+    } 
+    delete[] mat_to_plane;
+  }
+  if(mat_from_weight!=NULL){
+    for(LO i=0;i<p1->li0;i++){
+      for(LO j=0;j<p1->y_res_back;j++){
+        for(LO k=0;k<p1->lk0;k++) delete[] mat_from_weight[i][j][k];
+        delete[] mat_from_weight[i][j];
+      }
+      delete[] mat_from_weight[i];
+    }
+    delete[] mat_from_weight;   
+  }
+  if(mat_from_ind_plane!=NULL){
+    for(LO i=0;i<p1->li0;i++){
+      for(LO j=0;j<p1->y_res_back;j++){
+        for(LO k=0;k<p1->lk0;k++) delete[] mat_from_ind_plane[i][j][k];
+        delete[] mat_from_ind_plane[i][j];
+      }
+      delete[] mat_from_ind_plane[i];
+    }
+    delete[] mat_from_ind_plane;
+  }
+  if(mat_from_ind_n!=NULL){
+    for(LO i=0;i<p1->li0;i++){
+      for(LO j=0;j<p1->y_res_back;j++){
+        for(LO k=0;k<p1->lk0;k++) delete[] mat_from_ind_n[i][j][k];
+        delete[] mat_from_ind_n[i][j];
+      }
+      delete[] mat_from_ind_n[i];
+    }
+    delete[] mat_from_ind_n;
+  }       
+  if(mesh1ddens!=NULL) delete[] mesh1ddens;
+  if(mesh1dpotent!=NULL) delete[] mesh1ddens;
 }
 
 

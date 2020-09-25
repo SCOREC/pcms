@@ -505,4 +505,28 @@ void Part1ParalPar3D::getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numpr
     MPI_Comm_create_group(p1->comm_z,zrecv_group,1,&zrecv_comm); 
   } 
 */
+
+  Part1ParalPar3D::~Part1ParalPar3D()
+    {
+      if(xcoords!=NULL)  delete[] xcoords;
+      if(pzcoords!=NULL) delete[] pzcoords;
+      if(pzp!=NULL)      delete[] pzp;
+      if(q_prof!=NULL)   delete[] q_prof;
+      if(C_y!=NULL)      delete[] C_y;
+      if(phi_cut!=NULL)  delete[] phi_cut;
+      if(thetagrideq!=NULL) delete[] thetagrideq;
+      if(theta!=NULL)    delete[] theta;
+      if(thflxeq!=NULL){
+        for(LO i=0;i<li0;i++) delete[] thflxeq[i];
+        delete[] thflxeq;
+      }    
+      if(thflx!=NULL){ 
+        for(LO i=0;i<li0;i++) delete[] thflx[i];
+        delete[] thflx;
+      }
+      if(y_gem!=NULL)    delete[] y_gem;   
+    }
+
+
+
 }

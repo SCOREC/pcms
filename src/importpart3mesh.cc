@@ -23,12 +23,12 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
      // Here, numsurf is sent from other parts by Adios routines.  
      }
    }
-     if(test_case==TestCase::t0){
-        MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
-        nsurf=numsurf; 
-      }else{
-        MPI_Bcast(&nsurf,1,MPI_INT,root, MPI_COMM_WORLD);
-      }
+   if(test_case==TestCase::t0){
+      MPI_Bcast(&numsurf,1,MPI_INT,root, MPI_COMM_WORLD);
+      nsurf=numsurf; 
+    }else{
+      MPI_Bcast(&nsurf,1,MPI_INT,root, MPI_COMM_WORLD);
+    }
    if(test_case==TestCase::t0){
       versurf = new LO[nsurf];
       xcoords = new double[nsurf];
@@ -126,7 +126,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 	  std::cout<<"mypez,lk="<<p1pp3d.mype_z<<" "<<mylk0[0]<<" "<<mylk1[0]<<" "<<mylk2[0]<<'\n';
 	} 
       }
-    } 
+    }
   }
 }
 
@@ -203,7 +203,7 @@ void Part3Mesh3D::DistriPart3zcoords(const Part1ParalPar3D &p1pp3d,
       nstart[i] = minloc(zcoords,versurf[numsurf]);
       reshuffleforward(zcoords,nstart[i],versurf[numsurf]);
       if(debug){
-	if(p1pp3d.mype==0 && i==index1+1){
+	if(i==index1+1){
 	  for(LO h=0;h<versurf[numsurf];h++){
 	    std::cout<<"h,pz="<<h<<" "<<zcoordsurf[i-index1][h]<<'\n';
 	  }
@@ -638,5 +638,94 @@ inline struct flxxgc* Part3Mesh3D::search_flux_3rdorder_periodbound(
   return tmp;
 }
 
+
+ Part3Mesh3D::~Part3Mesh3D()
+ {
+   if(versurf!=NULL) delete[] versurf;
+   if(xboxinds!=NULL){
+    for(LO i=0;i<p1->npx;i++) delete[] xboxinds[i];
+    delete[] xboxinds;
+   } 
+   if(xcoords!=NULL) delete[] xcoords;
+   if(mylk0!=NULL) delete[] mylk0;
+   if(mylk1!=NULL) delete[] mylk1;
+   if(mylk2!=NULL) delete[] mylk2;
+   if(nstart!=NULL) delete[] nstart;
+   if(zcoordall!=NULL) delete[] zcoordall;
+   if(cce!=NULL) delete[] cce;
+   if(pzcoords!=NULL){
+     for(LO i=0;i<p1->li0;i++) delete[] pzcoords[i];
+     delete[] pzcoords;
+   }
+   if(zcoordsurf!=NULL) delete[] zcoordsurf;
+   if(Rcoordall!=NULL) delete[] Rcoordall;
+   if(Zcoordall!=NULL) delete[] Zcoordall;
+   if(pzcoords!=NULL) delete[] pzcoords;
+//   if(surf_idx!=NULL) delete[] surf_idx**;
+   if(theta_geo!=NULL){
+     for(LO i=0;i<p1->li0;i++) delete[] theta_geo[i];
+     delete[] theta_geo;
+   }
+   if(theta_flx!=NULL){
+     for(LO i=0;i<p1->li0;i++) delete[] theta_flx[i];
+     delete[] theta_flx;
+   }
+   if(y_xgc!=NULL){
+     for(LO i=0;i<p1->li0;i++){
+       for(LO j=0;j<p1->lj0;j++) delete y_xgc[i][j];
+       delete[] y_xgc[i];
+     } 
+     delete[] y_xgc; 
+   }
+   if(zeta_pot!=NULL){
+     for(LO i=0;i<p1->li0;i++){
+       for(LO j=0;j<p1->lj0;j++){
+         for(LO k=0;k<mylk0[i];k++)  delete zeta_pot[i][j][k];
+         delete[] zeta_pot[i][j];
+       }   
+       delete[] zeta_pot[i];
+     } 
+     delete[] zeta_pot;
+   }
+   if(thetaflx_pot!=NULL){
+     for(LO i=0;i<p1->li0;i++){
+       for(LO j=0;j<p1->lj0;j++){
+         for(LO k=0;k<mylk0[i];k++){
+           for(LO h=0;h<4;h++)  delete thetaflx_pot[i][j][k][h];
+           delete[] thetaflx_pot[i][j][k];
+         }
+         delete[] thetaflx_pot[i][j];
+       }
+       delete[] thetaflx_pot[i];
+     } 
+     delete[] thetaflx_pot;
+   }
+
+   if(thetaflx_ind_pot!=NULL){
+     for(LO i=0;i<p1->li0;i++){
+       for(LO j=0;j<p1->lj0;j++){
+         for(LO k=0;k<mylk0[i];k++){
+           for(LO h=0;h<4;h++)  delete thetaflx_ind_pot[i][j][k][h];
+           delete[] thetaflx_ind_pot[i][j][k];
+         }
+         delete[] thetaflx_ind_pot[i][j];
+       }
+       delete[] thetaflx_ind_pot[i];
+     }
+     delete[] thetaflx_ind_pot;
+   } 
+   if(nodesdist_fl!=NULL){
+     for(LO i=0;i<p1->li0;i++){
+       for(LO j=0;j<p1->lj0;j++){
+         for(LO k=0;k<mylk0[i];k++)  delete nodesdist_fl[i][j][k];
+         delete[] nodesdist_fl[i][j];
+       }
+       delete[] nodesdist_fl[i];
+     }
+     delete[] nodesdist_fl;
+   }
+
+
+ }
 
 } 

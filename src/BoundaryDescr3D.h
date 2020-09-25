@@ -7,7 +7,6 @@
 namespace coupler {
 
 //forward declare
-class DatasProc3D;
 class Part3Mesh3D;
 class Part1ParalPar3D;
 
@@ -56,12 +55,14 @@ class BoundaryDescr3D{
   private:
     /* prevent users from calling this */  
 //    BoundaryDescr3D() : test_case(TestCase::off), preproc(false) {};
-    void initpbmat(const Part1ParalPar3D &p1pp3d);
-    void initGeneXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D &p1pp3d);
-    void initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D &p1pp3d);
     const TestCase test_case;
     const CouplingCase ccase;
     const bool preproc;
+    const Part1ParalPar3D* p1;
+    const Part3Mesh3D* p3;
+    void initpbmat(const Part1ParalPar3D &p1pp3d);
+    void initGeneXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D &p1pp3d);
+    void initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D &p1pp3d);
 };
 
 }

@@ -74,18 +74,16 @@ class Part1ParalPar3D {
     double lz,ly;
     double dth,delz;
     double r0,q0;
-    double* thetagrideq; //store ntheta \theta values of all the nodes on one poloidal cross section of GEM
-    double* theta; // store kmx+1 \theta values for the perturbation
-    double** thflxeq; //store GEM's flux coordinates theta*; sent from GEM
-    double** thflx;   //store GEM's flux coordinates theta; for perturbation evolution.  
-    double** thfnz;   //store the theta value inversly transformed from z'. 
-    double* y_gem;  //store jmx+1 y varaibles of GEM
+    double* thetagrideq=NULL; //store ntheta \theta values of all the nodes on one poloidal cross section of GEM
+    double* theta=NULL; // store kmx+1 \theta values for the perturbation
+    double** thflxeq=NULL; //store GEM's flux coordinates theta*; sent from GEM
+    double** thflx=NULL;   //store GEM's flux coordinates theta; for perturbation evolution.  
+    double* y_gem=NULL;  //store jmx+1 y varaibles of GEM
     LO mype_g,mype_t;
-    LO** mype_xztg; // store the mapping mype<-->(mype_x,mype_y)<-->(mype_t,mype_g)
+    LO** mype_xztg=NULL; // store the mapping mype<-->(mype_x,mype_y)<-->(mype_t,mype_g)
     LO tli0,tli1,tli2;
     LO glk0,glk1,glk2;
-//    typedef vector<vector<vector<LO> > > vectInt3d;
-//    typedef vector<vector<LO> > vecInt2d;
+
     vecint2d sendOverlap_x;
     vecint2d sendOverlap_th;
     vecint2d recvOverlap_x;
@@ -127,14 +125,15 @@ class Part1ParalPar3D {
     : preproc(pproc),test_case(tcase){
       initGem(gemmesh,thfnz);
     }
-    ~Part1ParalPar3D()
+    ~Part1ParalPar3D();
+/*
     {
       if(xcoords!=NULL)  delete[] xcoords;
       if(pzcoords!=NULL) delete[] pzcoords;
       if(pzp!=NULL)      delete[] pzp;
       if(q_prof!=NULL)   delete[] q_prof;
     }
-    
+*/    
   private:
     const bool preproc;
     const TestCase test_case;

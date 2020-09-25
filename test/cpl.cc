@@ -7,27 +7,27 @@
 #include "testutilities.h"
 #include <string>
 #include <fstream> 
-
+/*
 void exParFor() {
   Kokkos::parallel_for(
       4, KOKKOS_LAMBDA(const int i) {
         printf("Hello from kokkos thread i = %i\n", i);
       });
 }
-
+*/
 
 int main(int argc, char **argv){
   int rank;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
+/*
   Kokkos::initialize(argc, argv);
   if(!rank) {
     printf("Hello World on Kokkos execution space %s\n",
          typeid(Kokkos::DefaultExecutionSpace).name());
     exParFor();
   }
-
+*/
   if(argc != 2) {
     if(!rank) printf("Usage: %s <number of timesteps>\n", argv[1]);
     exit(EXIT_FAILURE);
@@ -41,11 +41,12 @@ int main(int argc, char **argv){
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::Variable<double> senddensity;
   adios2::Variable<coupler::CV> sendfield;
-
+/*
   coupler::adios2_handler gDens(adios,"gene_density");
   coupler::adios2_handler cDens(adios,"cpl_density");
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
+*/
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
   coupler::adios2_handler gRX(adios,"gene_pproc_rx");
   coupler::adios2_handler gCy(adios,"gene_cy_array");
@@ -78,9 +79,16 @@ int main(int argc, char **argv){
   int numsurf = xgc_numsurf[0];
   int block_count = xgc_numsurf[1];
   double* xgc_zcoords = coupler::receive_gene_exact<double>(dir,xZcoord, 0, block_count);
+printf("0ab \n");
+//MPI_Barrier(MPI_COMM_WORLD);
   int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, 0, p1pp3d.nx0);
   coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
+printf("0aa \n");
+//MPI_Barrier(MPI_COMM_WORLD);
   coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
+
+printf("1a \n");
+//MPI_Barrier(MPI_COMM_WORLD);
   const int nummode = 1;
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, ccase, test_case, preproc);
   if(!p1pp3d.mype)std::cerr << "0.8"<< "\n"; 
@@ -89,15 +97,20 @@ int main(int argc, char **argv){
   mesh1=&p1pp3d;
   coupler::Part3Mesh3D*     mesh3;
   mesh3=&p3m3d;
+printf("begin \n");
   coupler::DatasProc3D dp3d(mesh1, mesh3, preproc, test_case, ypar, nummode);
-  if(!p1pp3d.mype)std::cerr << "0.9"<< "\n";
+  if(!p1pp3d.mype) std::cerr << "0.9"<< "\n";
   MPI_Barrier(MPI_COMM_WORLD);
+
   coupler::destroy(q_prof);
+printf("2 \n");
   coupler::destroy(gene_xval);
+MPI_Barrier(MPI_COMM_WORLD);
+printf("3 \n");
+
   coupler::destroy(gene_parpar);
 
   dp3d.InitFourierPlan3D();
-
 
   int m;
   double realsum;
@@ -105,7 +118,8 @@ int main(int argc, char **argv){
   bool debug = false;
   coupler::LO* inds3d=new coupler::LO[p1pp3d.li0];
   for(coupler::LO h=0;h<p1pp3d.li0;h++) inds3d[h]=p1pp3d.lk0;
- 
+
+/* 
   for (int i = 0; i < time_step; i++) {
     for (int j = 0; j < RK_count; j++) {
       coupler::GO start[2]={0, p1pp3d.blockstart};
@@ -181,11 +195,13 @@ int main(int argc, char **argv){
       std::cerr << p1pp3d.mype << " done loop " << i << " " << j << "\n";
     }
   }
-
-  gDens.close();
+*/
+/* 
+ gDens.close();
   cDens.close();
   xFld.close();
   cFld.close();
+*/
   gQP.close();
   gRX.close();
   gInt.close();
@@ -197,8 +213,10 @@ int main(int argc, char **argv){
   xCce.close();
 
   std::cerr << p1pp3d.mype << " before kokkos finalize\n";
+/*
   Kokkos::finalize();
   std::cerr << p1pp3d.mype << " done kokkos finalize\n";
+*/
   MPI_Finalize();
   std::cout<<"MPI is finalized."<<'\n';
   return 0;

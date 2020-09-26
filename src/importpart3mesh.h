@@ -120,7 +120,7 @@ class Part3Mesh3D{
       initXgcGem(xgcnodes,rzcoords);
     }
 
-    ~Part3Mesh3D();
+    ~Part3Mesh3D(){};
 
   private:
     const bool preproc;

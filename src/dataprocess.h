@@ -90,7 +90,7 @@ public:
       TestCase test_case = TestCase::off,
       bool ypar = false,
       int nummode = 1);
-  ~DatasProc3D();
+  ~DatasProc3D(){};
   void InterpoDensity3D();
   void InterpoPotential3D();
   //routines for Fourier transform

@@ -55,7 +55,7 @@ class BoundaryDescr3D{
         }       
       }
     /* destructor */
-    ~BoundaryDescr3D();
+    ~BoundaryDescr3D(){};
   private:
     /* prevent users from calling this */  
 //    BoundaryDescr3D() : test_case(TestCase::off), preproc(false) {};

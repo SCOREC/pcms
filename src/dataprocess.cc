@@ -10,6 +10,7 @@ namespace coupler {
 
 DatasProc3D::DatasProc3D(const Part1ParalPar3D* p1pp3d,
     const Part3Mesh3D* p3m3d,
+    const BoundaryDescr3D* bdesc_,
     bool pproc,
     TestCase test_case,
     bool ypar,
@@ -20,26 +21,15 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D* p1pp3d,
  {
     p1=p1pp3d;
     p3=p3m3d;
- printf("7a \n");
- MPI_Barrier(MPI_COMM_WORLD);
+    bdesc=bdesc_;
     init();
- printf("9a \n");
- MPI_Barrier(MPI_COMM_WORLD);
-    mesh1dforDensityInterpo();
- printf("8a \n");
- MPI_Barrier(MPI_COMM_WORLD);
-//    mesh1dforPotentialInterpo();
- printf("11a \n");
- MPI_Barrier(MPI_COMM_WORLD);
     AllocDensityArrays();
     AllocPotentArrays();
+    AllocBufferForIntepo();
     AllocMatXYZtoPlane();
- printf("12a \n");
-MPI_Barrier(MPI_COMM_WORLD);
+    mesh1dforDensityInterpo();
     Initmattoplane(); 
     Prepare_mats_from_planes();
-printf("13a \n");
-MPI_Barrier(MPI_COMM_WORLD);
     if(testcase==TestCase::t0) {
       TestInitPotentAlongz(p3m3d, p1->npy, nummode);
     }
@@ -144,6 +134,15 @@ void DatasProc3D::AllocPotentArrays()
    potentsend = new CV[p1->blockcount*p1->lj0];
   
   }
+}
+
+void DatasProc3D::AllocBufferForIntepo()
+{
+    mesh1ddens = new double[p1->lk0+2*p1->nzb];
+    mesh1dpotent=new double*[p3->li0];
+    for(LO i=0;i<p3->li0;i++){
+      mesh1dpotent[i]=new double[p3->mylk0[i]+2*p1->nzb];
+    }
 }
 
 void DatasProc3D::AllocMatXYZtoPlane()
@@ -881,6 +880,7 @@ void DatasProc3D::TestInitPotentAlongz(const Part3Mesh3D* p3m3d,const LO npy, co
   }
 }
 
+
 DatasProc3D::~DatasProc3D()
 {
   FreeFourierPlan3D();
@@ -981,6 +981,7 @@ DatasProc3D::~DatasProc3D()
     delete[] mat_from_ind_n;
   }       
 }
+
 
 }
 

@@ -121,19 +121,7 @@ class Part3Mesh3D{
     }
 
     ~Part3Mesh3D();
-/*
-    {
-     if(versurf!=NULL) delete[] versurf;
-     if(xboxinds!=NULL) delete[] xboxinds;
-     if(xcoords!=NULL) delete[] xcoords;
-     if(mylk0!=NULL) delete[] mylk0;
-     if(mylk1!=NULL) delete[] mylk1;
-     if(mylk2!=NULL) delete[] mylk2;
-     if(Rcoordall!=NULL) delete[] Rcoordall;
-     if(Zcoordall!=NULL) delete[] Zcoordall;
-     if(pzcoords!=NULL) delete[] pzcoords;
-   }
-*/
+
   private:
     const bool preproc;
     const TestCase test_case;

@@ -75,6 +75,9 @@ public:
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
   LO myli0;
+  // For interpolation mesh
+  double* mesh1ddens; // 1d mesh for interpolating density;
+  double** mesh1dpotent; // the mesh for interpoating potential;
 
   /* constructor
    * optional argument supports setting
@@ -82,6 +85,7 @@ public:
    */
   DatasProc3D(const Part1ParalPar3D* p1pp3d,
       const Part3Mesh3D* p3m3d,
+      const BoundaryDescr3D* bdesc_,
       bool pproc = true,
       TestCase test_case = TestCase::off,
       bool ypar = false,
@@ -132,6 +136,7 @@ private:
   void init();
   void AllocDensityArrays();
   void AllocPotentArrays();
+  void AllocBufferForIntepo();
   void TestInitPotentAlongz(const Part3Mesh3D* p3m3d,const LO npy, const LO n);
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();

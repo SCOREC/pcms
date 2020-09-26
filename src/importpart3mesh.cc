@@ -638,7 +638,6 @@ inline struct flxxgc* Part3Mesh3D::search_flux_3rdorder_periodbound(
   return tmp;
 }
 
-
  Part3Mesh3D::~Part3Mesh3D()
  {
    if(versurf!=NULL) delete[] versurf;
@@ -724,8 +723,7 @@ inline struct flxxgc* Part3Mesh3D::search_flux_3rdorder_periodbound(
      }
      delete[] nodesdist_fl;
    }
-
-
  }
+
 
 } 

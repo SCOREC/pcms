@@ -49,7 +49,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
   coupler::adios2_handler gRX(adios,"gene_pproc_rx");
   coupler::adios2_handler gCy(adios,"gene_cy_array");
-  coupler::adios2_handler gInt(adios,"gene_pproc_i");
+  coupler::adios2_handler gMsh(adios,"gem_mesh_summ");
   coupler::adios2_handler xXcoord(adios,"xgc_x_coordss");
   coupler::adios2_handler xSurf(adios,"xgc_numsurfs");
   coupler::adios2_handler xZcoord(adios,"xgc_z_coordss");
@@ -57,9 +57,9 @@ int main(int argc, char **argv){
   coupler::adios2_handler xCce(adios,"xgc_cce_data");
 
   //receive GENE's preproc mesh discretization values
+  coupler::Array1d<int>* gem_mesh_summ = coupler::receive_gene_pproc<int>(dir, gMsh);
   coupler::Array1d<double>* q_prof = coupler::receive_gene_pproc<double>(dir, gQP);
   coupler::Array1d<double>* gene_xval = coupler::receive_gene_pproc<double>(dir, gRX);//matching gene's xval arr
-  coupler::Array1d<int>* gene_parpar = coupler::receive_gene_pproc<int>(dir, gInt);
 
   //intialize GENE class
   const bool preproc = true;
@@ -67,7 +67,7 @@ int main(int argc, char **argv){
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::CouplingCase ccase = coupler::CouplingCase::genexgc;
   coupler::Array1d<double>* gene_cy = coupler::receive_gene_pproc<double>(dir, gCy);
-  coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(), gene_cy->data(), preproc);
+  coupler::Part1ParalPar3D p1pp3d(gem_mesh_summ->data(),gene_xval->data(),q_prof->data(), gene_cy->data(), preproc);
 
   //receive XGC's preproc mesh discretization values
   coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);
@@ -92,7 +92,7 @@ int main(int argc, char **argv){
 
   coupler::destroy(q_prof);
   coupler::destroy(gene_xval);
-  coupler::destroy(gene_parpar);
+  coupler::destroy(gem_mesh_summ);
 
   dp3d.InitFourierPlan3D();
 
@@ -184,7 +184,7 @@ int main(int argc, char **argv){
   cFld.close();
   gQP.close();
   gRX.close();
-  gInt.close();
+  gMsh.close();
   gCy.close();
   xXcoord.close();
   xSurf.close();

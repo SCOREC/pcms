@@ -119,11 +119,11 @@ class Part1ParalPar3D {
 
     /*The constructor for GEM*/
     Part1ParalPar3D(Array1d<int>* gemmesh, 
-                    Array2d<double>* thfnz,
+                    Array2d<double>* thflx_qprof,
                     bool pproc = true, 
                     TestCase tcase=TestCase::off)
     : preproc(pproc),test_case(tcase){
-      initGem(gemmesh,thfnz);
+      initGem(gemmesh,thflx_qprof);
     }
     ~Part1ParalPar3D();
 /*

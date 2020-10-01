@@ -311,10 +311,10 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
 }
 
 //Initialize XGC's mesh for gem-xgc coupling
-void Part3Mesh3D::initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>* rzcoords)
+void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>* rzcoords)
 {
   LO* inttmp;
-  inttmp=xgcnodes->data();
+  inttmp=xgccouple->data();
   totnodes=inttmp[0];
   npsi_surf=inttmp[1];
   cce_first_surface=inttmp[2]; // The number labeling the first active surface 

@@ -112,12 +112,12 @@ class Part3Mesh3D{
       assert(tcase < TestCase::invalid);
       init(p1pp3d,tdir);
     }
-    Part3Mesh3D(Array2d<int>* xgcnodes,
-                Array2d<double>* rzcoords,
+    Part3Mesh3D(Array1d<LO>* xgccouple,
+                Array1d<double>* rzcoords,
                 bool pproc,
                 TestCase tcase)
               : preproc(pproc),test_case(tcase){                    
-      initXgcGem(xgcnodes,rzcoords);
+      initXgcGem(xgccouple,rzcoords);
     }
 
     ~Part3Mesh3D(){};
@@ -127,7 +127,7 @@ class Part3Mesh3D{
     const TestCase test_case;
     class Part1ParalPar3D* p1;
     void init(const Part1ParalPar3D &p1pp3d, const std::string test_dir="");
-    void initXgcGem(Array2d<int>* xgcnodes,Array2d<double>* rzcoords);
+    void initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>* rzcoords);
     /* helper function called by init */
     void DistriPart3zcoords(const Part1ParalPar3D  &p1pp3d,
         const std::string test_dir="");

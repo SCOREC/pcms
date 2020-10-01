@@ -57,28 +57,29 @@ int main(int argc, char **argv){
   coupler::adios2_handler xCce(adios,"xgc_cce_data");
 
   //receive GENE's preproc mesh discretization values
-  coupler::Array1d<double>* q_prof = coupler::receive_gene_pproc<double>(dir, gQP);
-  coupler::Array1d<double>* gene_xval = coupler::receive_gene_pproc<double>(dir, gRX);//matching gene's xval arr
-  coupler::Array1d<int>* gene_parpar = coupler::receive_gene_pproc<int>(dir, gInt);
+  std::string model = "local";
+  coupler::Array1d<double>* q_prof = coupler::receive_pproc<double>(dir, gQP,model);
+  coupler::Array1d<double>* gene_xval = coupler::receive_pproc<double>(dir, gRX,model);//matching gene's xval arr
+  coupler::Array1d<int>* gene_parpar = coupler::receive_pproc<int>(dir, gInt,model);
 
   //intialize GENE class
   const bool preproc = true;
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::CouplingCase ccase = coupler::CouplingCase::genexgc;
-  coupler::Array1d<double>* gene_cy = coupler::receive_gene_pproc<double>(dir, gCy);
+  coupler::Array1d<double>* gene_cy = coupler::receive_pproc<double>(dir, gCy,model);
   coupler::Part1ParalPar3D p1pp3d(gene_parpar->data(),gene_xval->data(),q_prof->data(), gene_cy->data(), preproc);
 
   //receive XGC's preproc mesh discretization values
-  coupler::Array1d<double>* xgc_xcoords = coupler::receive_gene_pproc<double>(dir, xXcoord);
+  coupler::Array1d<double>* xgc_xcoords = coupler::receive_pproc<double>(dir, xXcoord,model);
   coupler::LO start1d=p1pp3d.mype_x*2;
   coupler::LO count1d=2;
-  int*xgc_numsurf=coupler::receive_gene_exact<int>(dir,xSurf,start1d,count1d);
+  int* xgc_numsurf=coupler::receive_exact<int>(dir,xSurf,start1d,count1d);
   int numsurf = xgc_numsurf[0];
   int block_count = xgc_numsurf[1];
-  double* xgc_zcoords = coupler::receive_gene_exact<double>(dir,xZcoord, 0, block_count);
-  int* xgc_versurf = coupler::receive_gene_exact<int>(dir,xVsurf, 0, p1pp3d.nx0);
-  coupler::Array1d<int>* xgc_cce = coupler::receive_gene_pproc<int>(dir, xCce);
+  double* xgc_zcoords = coupler::receive_exact<double>(dir,xZcoord, 0, block_count);
+  int* xgc_versurf = coupler::receive_exact<int>(dir,xVsurf, 0, p1pp3d.nx0);
+  coupler::Array1d<int>* xgc_cce = coupler::receive_pproc<int>(dir, xCce,model);
   coupler::Part3Mesh3D p3m3d(p1pp3d, numsurf, block_count, xgc_versurf, xgc_cce->data(), xgc_xcoords->data(), xgc_zcoords, preproc);
   const int nummode = 1;
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, ccase, test_case, preproc);

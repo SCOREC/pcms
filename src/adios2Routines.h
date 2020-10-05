@@ -4,7 +4,7 @@
 #include <adios2.h>
 #include <iostream>
 #include <cassert>
-//#include <Kokkos_Core.hpp> //not used
+#include <Kokkos_Core.hpp> //not used
 #include <typeinfo> //not used
 #include <string>
 #include <fstream>
@@ -176,12 +176,16 @@ namespace coupler {
   
     const std::string fname = dir + "/" + name + ".bp";
   
+    if(!rank) std::cerr<<"ABJ 0.0\n";
     if(!eng){
-      read_io.SetEngine("BP4");
+    if(!rank) std::cerr<<"ABJ 0.1\n";
+      read_io.SetEngine("Sst");
+    if(!rank) std::cerr<<"ABJ 0.2\n";
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
+    if(!rank) std::cerr<<"ABJ 0.3\n";
       eng = read_io.Open(fname, adios2::Mode::Read);
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     }

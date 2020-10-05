@@ -8,12 +8,12 @@
 #include <string>
 #include <fstream> 
 
-//void exParFor() {
-//  Kokkos::parallel_for(
-//      4, KOKKOS_LAMBDA(const int i) {
-//        printf("Hello from kokkos thread i = %i\n", i);
-//      });
-//}
+void exParFor() {
+  Kokkos::parallel_for(
+      4, KOKKOS_LAMBDA(const int i) {
+        printf("Hello from kokkos thread i = %i\n", i);
+      });
+}
 
 
 int main(int argc, char **argv){
@@ -21,12 +21,12 @@ int main(int argc, char **argv){
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  //Kokkos::initialize(argc, argv);
-  //if(!rank) {
-  //  printf("Hello World on Kokkos execution space %s\n",
-  //       typeid(Kokkos::DefaultExecutionSpace).name());
-  //  exParFor();
-  //}
+  Kokkos::initialize(argc, argv);
+  if(!rank) {
+    printf("Hello World on Kokkos execution space %s\n",
+         typeid(Kokkos::DefaultExecutionSpace).name());
+    exParFor();
+  }
 
   if(argc != 2) {
     if(!rank) printf("Usage: %s <number of timesteps>\n", argv[1]);
@@ -49,7 +49,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
   coupler::adios2_handler gRX(adios,"gene_pproc_rx");
   coupler::adios2_handler gCy(adios,"gene_cy_array");
-  coupler::adios2_handler gMsh(adios,"gem_mesh_summ");
+  coupler::adios2_handler gMsh(adios,"gem_mesh");
   coupler::adios2_handler xXcoord(adios,"xgc_x_coordss");
   coupler::adios2_handler xSurf(adios,"xgc_numsurfs");
   coupler::adios2_handler xZcoord(adios,"xgc_z_coordss");
@@ -194,7 +194,7 @@ int main(int argc, char **argv){
   xCce.close();
 
   std::cerr << p1pp3d.mype << " before kokkos finalize\n";
-  //Kokkos::finalize();
+  Kokkos::finalize();
   std::cerr << p1pp3d.mype << " done kokkos finalize\n";
   MPI_Finalize();
   std::cout<<"MPI is finalized."<<'\n';

@@ -59,9 +59,9 @@ int main(int argc, char **argv){
   //receive GENE's preproc mesh discretization values
   std::string model = "local";
   coupler::Array1d<int>* gene_parpar = coupler::receive_pproc<int>(dir, gMsh,model);
-  fprintf(stderr,"ABJ done \n");
+  if(!rank) fprintf(stderr,"ABJ done \n");
   coupler::Array1d<double>* q_prof = coupler::receive_pproc<double>(dir, gQP,model);
-  coupler::Array1d<double>* gene_xval = coupler::receive_pproc<double>(dir, gRX,model);//matching gene's xval arr
+  coupler::Array1d<double>* gene_xval = coupler::receive_pproc<double>(dir, gRX,model);
 
   //intialize GENE class
   const bool preproc = true;

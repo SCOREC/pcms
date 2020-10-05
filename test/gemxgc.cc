@@ -28,15 +28,21 @@ int main(int argc, char **argv){
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
   coupler::adios2_handler gMesh(adios,"gem_mesh");
-  coupler::adios2_handler gThf(adios,"gem_thflx");
-  coupler::adios2_handler gQprof(adios,"gem_qprof");
+  coupler::adios2_handler gThf(adios,"gem_thfl");
+  coupler::adios2_handler gGrd(adios,"gem_grid");
+  coupler::adios2_handler gQprof(adios,"gem_qprf");
   coupler::adios2_handler xCouple(adios,"xgc_couple");
   coupler::adios2_handler xRzcoords(adios,"xgc_rzcoords");  
 
-  std::string model="global";
-  coupler::Array1d<coupler::LO>* gmesh=coupler::receive_pproc<coupler::LO>(dir,gMesh,model);
+  std::string model = "local";
+  //std::string model="global";
+  coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
+  if(!rank)fprintf(stderr, "ABJ done\n");
+  coupler::GO start[2] = {0,0};
+  coupler::GO count[2] = {0,0};
   coupler::Array1d<double>* qprof=coupler::receive_pproc<double>(dir,gQprof,model);
-  coupler::Array1d<double>* thflx=coupler::receive_pproc<double>(dir,gThf,model);
+  const int m =1;
+  coupler::Array2d<double>* thflx=coupler::receive_pproc_2d<double>(dir,gThf,start,count,m);
  
   //intialize GEM class
   const bool preproc = true;

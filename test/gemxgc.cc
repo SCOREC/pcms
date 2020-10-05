@@ -33,7 +33,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler xRzcoords(adios,"xgc_rzcoords");  
 
   std::string model="global";
-  coupler::Array1d<coupler::LO>* gmesh=coupler::receive_pproc<LO>(dir,gMesh,model);
+  coupler::Array1d<coupler::LO>* gmesh=coupler::receive_pproc<coupler::LO>(dir,gMesh,model);
   coupler::Array1d<double>* thflx_qprof=coupler::receive_pproc<double>(dir,gThfQprof,model);
  
   //intialize GEM class
@@ -41,10 +41,10 @@ int main(int argc, char **argv){
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::CouplingCase ccase = coupler::CouplingCase::gemxgc; 
-  coupler::Part1ParalPar3D p1pp3d(gmesh,thlx_qprof,preproc,test_case);
-
-  coupler::Array1d<coupler::LO>* xcouple=coupler::receive_pproc(dir,xCouple);
-  coupler::Array1d<double>* rzcoords=coupler::receive_pproc(dir,xRzcoords);
+  coupler::Part1ParalPar3D p1pp3d(gmesh,thflx_qprof,preproc,test_case);
+ 
+  coupler::Array1d<coupler::LO>* xcouple=coupler::receive_pproc<coupler::LO>(dir,xCouple,model);
+  coupler::Array1d<double>* rzcoords=coupler::receive_pproc<double>(dir,xRzcoords,model);
   coupler::Part3Mesh3D p3m3d(xcouple,rzcoords,preproc,test_case);
 
   return 0;

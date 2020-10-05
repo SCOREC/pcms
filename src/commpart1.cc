@@ -234,7 +234,7 @@ void Part1ParalPar3D::blockindice()
 
 //Input GEM's mesh
 
-void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>* thflx_qprof)
+void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>* thflx_qprof)
 {  
   MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
   LO* tmp=gemmesh->data();

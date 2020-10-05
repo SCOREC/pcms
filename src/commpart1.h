@@ -109,6 +109,17 @@ class Part1ParalPar3D {
       init(parpar, xzcoords, q_prof, gene_cy, tdir);
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
+    /*gem constructor*/
+    Part1ParalPar3D(LO* parpar, 
+        double* thflx,
+        double* q_prof_,
+        coupler::TestCase test,
+	bool pproc = true)
+      : preproc(pproc),q_prof(q_prof_),
+        test_case(test){
+      //init(parpar, xzcoords, q_prof, gene_cy, tdir);
+      if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
+    }
     /*Test case constructor*/
     Part1ParalPar3D(bool pproc,
         TestCase tcase,
@@ -119,11 +130,11 @@ class Part1ParalPar3D {
 
     /*The constructor for GEM*/
     Part1ParalPar3D(Array1d<int>* gemmesh, 
-                    Array2d<double>* thfnz,
+                    Array2d<double>* thflx_qprof,
                     bool pproc = true, 
                     TestCase tcase=TestCase::off)
     : preproc(pproc),test_case(tcase){
-      initGem(gemmesh,thfnz);
+      initGem(gemmesh,thflx_qprof);
     }
     ~Part1ParalPar3D();
 /*

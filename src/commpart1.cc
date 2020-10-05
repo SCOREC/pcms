@@ -234,7 +234,7 @@ void Part1ParalPar3D::blockindice()
 
 //Input GEM's mesh
 
-void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>* thfnz)
+void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>* thflx_qprof)
 {  
   MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
   LO* tmp=gemmesh->data();
@@ -257,7 +257,7 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>
   decomposeGemMeshforCoupling();
   CreateSubCommunicators();
   double* tmpreal;
-  tmpreal=thfnz->data();
+  tmpreal=thflx_qprof->data();
   lz=tmpreal[0];
   ly=tmpreal[1];
   dz=lz/double(kmx);
@@ -271,8 +271,11 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>
 //  for(i=0;i<mype_x;i++) surfx+=li0[i];
   for(LO i=0;i<li0;i++){    
     for(LO k=0;k<ntheta+1;k++)
-      thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k];
+      thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k+2];  //Here 2 comes from lz and ly.
   }   
+
+  q_prof=new double[imx+1];
+  for(LO i=0;i<imx+1;i++) q_prof[i]=tmpreal[2+li1*(ntheta+1)+i];
  
   thflx=new double*[li0];
   for(LO i=0;i<li0;i++) thflx[i]=new double[lk0];

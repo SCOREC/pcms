@@ -169,7 +169,7 @@ namespace coupler {
   
   template<typename T> 
   Array1d<T>* receive1d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng) {
+      adios2::IO &read_io, adios2::Engine &eng,const std::string model) {
     int rank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -179,7 +179,7 @@ namespace coupler {
     if(!rank) std::cerr<<"ABJ 0.0\n";
     if(!eng){
     if(!rank) std::cerr<<"ABJ 0.1\n";
-      read_io.SetEngine("Sst");
+      read_io.SetEngine("BP4");
     if(!rank) std::cerr<<"ABJ 0.2\n";
       read_io.SetParameters({
           {"DataTransport","RDMA"},
@@ -198,8 +198,17 @@ namespace coupler {
 
     const auto total_size = adios_var.Shape()[0];
     if(!rank) std::cout <<name<< "  total_size " <<total_size << "\n";
-    const auto my_start = (total_size / nprocs) * rank;
-    const auto my_count = (total_size / nprocs);
+    GO my_start, my_count;
+    if(model=="local"){
+      my_start =(GO)(total_size / nprocs) * rank;
+      my_count =(GO)(total_size / nprocs);
+    }else if(model=="global"){
+      my_start = 0;
+      my_count = GO(total_size);     
+    }else{
+      std::cout<<"Error: 'model' is not correctly assigned."<<'\n';
+      exit(1);
+    }
 
     if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
               << " floats starting at element " << my_start << "\n";
@@ -228,7 +237,7 @@ namespace coupler {
     const std::string fname = dir + "/" + name + ".bp";
   
     if(!eng){
-      read_io.SetEngine("Sst");
+      read_io.SetEngine("BP4");
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
@@ -273,7 +282,7 @@ namespace coupler {
     std::cout<<fname<<'\n'; 
     if(m==0){
       std::cout<<"creat engine for: "<<name<<'\n';
-      read_io.SetEngine("Sst");
+      read_io.SetEngine("BP4");
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
@@ -323,7 +332,7 @@ namespace coupler {
     std::cout<<fname<<'\n'; 
     if(m==0){
       std::cout<<"creat engine for: "<<name<<'\n';
-      read_io.SetEngine("Sst");
+      read_io.SetEngine("BP4");
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
@@ -374,7 +383,7 @@ namespace coupler {
     const::adios2::Dims l_dims({a2d->localW(), a2d->localH()});
     const std::string fname = dir + "/" + name + ".bp";
     if (!engine){
-      coupling_io.SetEngine("Sst");
+      coupling_io.SetEngine("BP4");
       send_id = coupling_io.DefineVariable<T>(name,
           g_dims, g_offset, l_dims);
       adios2::Engine  engine = coupling_io.Open(fname, adios2::Mode::Write);
@@ -392,13 +401,13 @@ namespace coupler {
   /** Receive PreProc values from GENE
    */
   template<typename T>
-  Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      adios2_handler &handler) { 
+  Array1d<T>* receive_pproc(const std::string cce_folder,
+      adios2_handler &handler, const std::string model) { 
       std::string name = handler.get_name();
-    return receive1d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng);
+    return receive1d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng, model);
   }
   template<typename T>
-  T* receive_gene_exact(const std::string cce_folder,
+  T* receive_exact(const std::string cce_folder,
       adios2_handler &handler, GO my_start, GO my_count, MPI_Comm comm = MPI_COMM_WORLD) { 
       std::string name = handler.get_name();
     return receive1d_exact_ftn<T>(cce_folder,name, handler.IO, handler.eng, my_start, my_count, comm);
@@ -421,7 +430,7 @@ template<typename T>
     const std::string fname = cce_folder + "/" + fldname + ".bp";
   
     if(m==0){
-      sendIO.SetEngine("Sst");
+      sendIO.SetEngine("BP4");
       sendIO.SetParameters({
       {"OpenTimeoutSecs", "480"}
           });

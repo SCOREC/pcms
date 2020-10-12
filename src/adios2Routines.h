@@ -179,12 +179,14 @@ namespace coupler {
     if(!rank) std::cerr<<"ABJ 0.0\n";
     if(!eng){
     if(!rank) std::cerr<<"ABJ 0.1\n";
-      read_io.SetEngine("BP4");
+      read_io.SetEngine("Sst");
+    MPI_Barrier(MPI_COMM_WORLD);
     if(!rank) std::cerr<<"ABJ 0.2\n";
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
+    MPI_Barrier(MPI_COMM_WORLD);
     if(!rank) std::cerr<<"ABJ 0.3\n";
       eng = read_io.Open(fname, adios2::Mode::Read);
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
@@ -194,21 +196,25 @@ namespace coupler {
     }
   
     eng.BeginStep();
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(!rank) std::cerr<<"ABJ 0.4\n";
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(!rank) std::cerr<<"ABJ 0.5\n";
 
     const auto total_size = adios_var.Shape()[0];
     if(!rank) std::cout <<name<< "  total_size " <<total_size << "\n";
     GO my_start, my_count;
-    if(model=="local"){
-      my_start =(GO)(total_size / nprocs) * rank;
-      my_count =(GO)(total_size / nprocs);
-    }else if(model=="global"){
+//    if(model=="local"){
+//      my_start =(GO)(total_size / nprocs) * rank;
+//      my_count =(GO)(total_size / nprocs);
+//    }else if(model=="global"){
       my_start = 0;
       my_count = GO(total_size);     
-    }else{
-      std::cout<<"Error: 'model' is not correctly assigned."<<'\n';
-      exit(1);
-    }
+//    }else{
+//      std::cout<<"Error: 'model' is not correctly assigned."<<'\n';
+//      exit(1);
+//    }
 
     if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
               << " floats starting at element " << my_start << "\n";
@@ -216,13 +222,19 @@ namespace coupler {
     const adios2::Dims start{my_start};
     const adios2::Dims count{my_count};
  
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(!rank) std::cerr<<"ABJ 0.6\n";
     const adios2::Box<adios2::Dims> sel(start, count);
+    if(!rank) std::cerr<<"ABJ 0.7\n";
     Array1d<T>* field = new Array1d<T>{total_size, my_count, 
     	my_start};
   
+    if(!rank) std::cerr<<"ABJ 0.8\n";
     adios_var.SetSelection(sel);
     eng.Get(adios_var, field->data());
+    if(!rank) std::cerr<<"ABJ 0.9\n";
     eng.EndStep();
+    if(!rank) std::cerr<<"ABJ 0.95\n";
     return field;
   }
   
@@ -237,7 +249,7 @@ namespace coupler {
     const std::string fname = dir + "/" + name + ".bp";
   
     if(!eng){
-      read_io.SetEngine("BP4");
+      read_io.SetEngine("Sst");
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
@@ -279,10 +291,11 @@ namespace coupler {
     std::cout<<"rank="<<rank<<'\n';
   
     const std::string fname = dir + "/" + name + ".bp";
+    if(!rank) std::cerr<<"ABJ 1.1\n";
     std::cout<<fname<<'\n'; 
     if(m==0){
       std::cout<<"creat engine for: "<<name<<'\n';
-      read_io.SetEngine("BP4");
+      read_io.SetEngine("Sst");
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
@@ -332,7 +345,7 @@ namespace coupler {
     std::cout<<fname<<'\n'; 
     if(m==0){
       std::cout<<"creat engine for: "<<name<<'\n';
-      read_io.SetEngine("BP4");
+      read_io.SetEngine("Sst");
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
@@ -383,7 +396,7 @@ namespace coupler {
     const::adios2::Dims l_dims({a2d->localW(), a2d->localH()});
     const std::string fname = dir + "/" + name + ".bp";
     if (!engine){
-      coupling_io.SetEngine("BP4");
+      coupling_io.SetEngine("Sst");
       send_id = coupling_io.DefineVariable<T>(name,
           g_dims, g_offset, l_dims);
       adios2::Engine  engine = coupling_io.Open(fname, adios2::Mode::Write);
@@ -436,7 +449,7 @@ template<typename T>
     const std::string fname = cce_folder + "/" + fldname + ".bp";
   
     if(m==0){
-      sendIO.SetEngine("BP4");
+      sendIO.SetEngine("Sst");
       sendIO.SetParameters({
       {"OpenTimeoutSecs", "480"}
           });
@@ -453,8 +466,13 @@ template<typename T>
   }
   
 
-  Array2d<CV>* receive_density(const std::string cce_folder,
-      adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm, const int m);
+  template<typename T>
+  Array2d<T>* receive_density(const std::string cce_folder,
+      adios2_handler &handler,GO my_start[2], GO my_count[2], const int m, MPI_Comm comm = MPI_COMM_WORLD) { 
+      std::string name = handler.get_name();
+    return receive2d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng,my_start, my_count, comm, m);
+  }
+  template<typename T>
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id);

@@ -34,21 +34,15 @@ int main(int argc, char **argv){
   coupler::adios2_handler xCouple(adios,"xgc_couple");
   coupler::adios2_handler xRzcoords(adios,"xgc_rzcoords");  
 
-  std::string model = "local";
-  //std::string model="global";
+  std::string model="global";
   const int m =0;
   coupler::GO start[2] = {0,0};
-  //coupler::Array2d<double>* densityfromGENE = coupler::receive_density<double>(dir, gDens,start,count,m,MPI_COMM_WORLD);
   coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
-  if(!rank)fprintf(stderr, "ABJ done 1.0\n");
   coupler::GO count[2] = {(int)gmesh->val(4),(int)gmesh->val(5)};
-  coupler::Array2d<double>* thflx=coupler::receive_pproc_2d<double>(dir,gThf,start,count,m);
-  if(!rank)fprintf(stderr, "ABJ done 2.0\n");
-  coupler::Array1d<double>* qprof=coupler::receive_pproc<double>(dir,gQprof,model);
-  if(!rank)fprintf(stderr, "ABJ done 3.0\n");
   coupler::GO count2[2] = {2,(int)gmesh->val(6)};
+  coupler::Array2d<double>* thflx=coupler::receive_pproc_2d<double>(dir,gThf,start,count,m);
+  coupler::Array1d<double>* qprof=coupler::receive_pproc<double>(dir,gQprof,model);
   coupler::Array2d<double>* ggrid=coupler::receive_pproc_2d<double>(dir,gGrd,start,count2,m);
-  if(!rank)fprintf(stderr, "ABJ done 4.0\n");
  
   //intialize GEM class
   const bool preproc = true;

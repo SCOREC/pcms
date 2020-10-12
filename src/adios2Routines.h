@@ -205,16 +205,16 @@ namespace coupler {
     const auto total_size = adios_var.Shape()[0];
     if(!rank) std::cout <<name<< "  total_size " <<total_size << "\n";
     GO my_start, my_count;
-//    if(model=="local"){
-//      my_start =(GO)(total_size / nprocs) * rank;
-//      my_count =(GO)(total_size / nprocs);
-//    }else if(model=="global"){
+    if(model=="local"){
+      my_start =(GO)(total_size / nprocs) * rank;
+      my_count =(GO)(total_size / nprocs);
+    }else if(model=="global"){
       my_start = 0;
       my_count = GO(total_size);     
-//    }else{
-//      std::cout<<"Error: 'model' is not correctly assigned."<<'\n';
-//      exit(1);
-//    }
+    }else{
+      std::cout<<"Error: 'model' is not correctly assigned."<<'\n';
+      exit(1);
+    }
 
     if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
               << " floats starting at element " << my_start << "\n";

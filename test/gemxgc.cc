@@ -46,7 +46,7 @@ int main(int argc, char **argv){
   if(!rank)fprintf(stderr, "ABJ done 2.0\n");
   coupler::Array1d<double>* qprof=coupler::receive_pproc<double>(dir,gQprof,model);
   if(!rank)fprintf(stderr, "ABJ done 3.0\n");
-  coupler::GO count2[2] = {(int)gmesh->val(6),2};
+  coupler::GO count2[2] = {2,(int)gmesh->val(6)};
   coupler::Array2d<double>* ggrid=coupler::receive_pproc_2d<double>(dir,gGrd,start,count2,m);
   if(!rank)fprintf(stderr, "ABJ done 4.0\n");
  

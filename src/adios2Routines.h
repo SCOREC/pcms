@@ -178,12 +178,10 @@ namespace coupler {
   
     if(!eng){
       read_io.SetEngine("Sst");
-    MPI_Barrier(MPI_COMM_WORLD);
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
-    MPI_Barrier(MPI_COMM_WORLD);
       eng = read_io.Open(fname, adios2::Mode::Read);
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     }
@@ -192,9 +190,7 @@ namespace coupler {
     }
   
     eng.BeginStep();
-    MPI_Barrier(MPI_COMM_WORLD);
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
-    MPI_Barrier(MPI_COMM_WORLD);
 
     const auto total_size = adios_var.Shape()[0];
     if(!rank) std::cout <<name<< "  total_size " <<total_size << "\n";
@@ -216,7 +212,6 @@ namespace coupler {
     const adios2::Dims start{my_start};
     const adios2::Dims count{my_count};
  
-    MPI_Barrier(MPI_COMM_WORLD);
     const adios2::Box<adios2::Dims> sel(start, count);
     Array1d<T>* field = new Array1d<T>{total_size, my_count, 
     	my_start};

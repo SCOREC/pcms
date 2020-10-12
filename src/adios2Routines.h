@@ -176,18 +176,14 @@ namespace coupler {
   
     const std::string fname = dir + "/" + name + ".bp";
   
-    if(!rank) std::cerr<<"ABJ 0.0\n";
     if(!eng){
-    if(!rank) std::cerr<<"ABJ 0.1\n";
       read_io.SetEngine("Sst");
     MPI_Barrier(MPI_COMM_WORLD);
-    if(!rank) std::cerr<<"ABJ 0.2\n";
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
     MPI_Barrier(MPI_COMM_WORLD);
-    if(!rank) std::cerr<<"ABJ 0.3\n";
       eng = read_io.Open(fname, adios2::Mode::Read);
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     }
@@ -197,10 +193,8 @@ namespace coupler {
   
     eng.BeginStep();
     MPI_Barrier(MPI_COMM_WORLD);
-    if(!rank) std::cerr<<"ABJ 0.4\n";
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
     MPI_Barrier(MPI_COMM_WORLD);
-    if(!rank) std::cerr<<"ABJ 0.5\n";
 
     const auto total_size = adios_var.Shape()[0];
     if(!rank) std::cout <<name<< "  total_size " <<total_size << "\n";
@@ -223,18 +217,13 @@ namespace coupler {
     const adios2::Dims count{my_count};
  
     MPI_Barrier(MPI_COMM_WORLD);
-    if(!rank) std::cerr<<"ABJ 0.6\n";
     const adios2::Box<adios2::Dims> sel(start, count);
-    if(!rank) std::cerr<<"ABJ 0.7\n";
     Array1d<T>* field = new Array1d<T>{total_size, my_count, 
     	my_start};
   
-    if(!rank) std::cerr<<"ABJ 0.8\n";
     adios_var.SetSelection(sel);
     eng.Get(adios_var, field->data());
-    if(!rank) std::cerr<<"ABJ 0.9\n";
     eng.EndStep();
-    if(!rank) std::cerr<<"ABJ 0.95\n";
     return field;
   }
   
@@ -291,7 +280,6 @@ namespace coupler {
     std::cout<<"rank="<<rank<<'\n';
   
     const std::string fname = dir + "/" + name + ".bp";
-    if(!rank) std::cerr<<"ABJ 1.1\n";
     std::cout<<fname<<'\n'; 
     if(m==0){
       std::cout<<"creat engine for: "<<name<<'\n';

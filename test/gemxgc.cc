@@ -38,10 +38,14 @@ int main(int argc, char **argv){
   const int m =0;
   coupler::GO start[2] = {0,0};
   coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
-  coupler::GO count[2] = {(int)gmesh->val(4),(int)gmesh->val(5)};
-  coupler::GO count2[2] = {2,(int)gmesh->val(6)};
+  coupler::GO ntheta = (int)gmesh->val(4);
+  coupler::GO nr = (int)gmesh->val(5);
+  coupler::GO count[2] = {2,(int)gmesh->val(6)};
+  coupler::GO count2[2] = {0,10};
   coupler::Array1d<double>* thfl_qprof=coupler::receive_pproc<double>(dir,gQprof,model);
-  coupler::Array2d<double>* ggrid=coupler::receive_pproc_2d<double>(dir,gGrd,start,count2,m);
+  for(coupler::LO i=0; i<100; i++) if(!rank) fprintf(stderr,"array[%d]: %f\n",i,thfl_qprof->val(i));
+
+  coupler::Array2d<double>* ggrid=coupler::receive_pproc_2d<double>(dir,gGrd,start,count,m);
  
   //intialize GEM class
   const bool preproc = true;

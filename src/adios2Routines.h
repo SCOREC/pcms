@@ -449,13 +449,8 @@ template<typename T>
   }
   
 
-  template<typename T>
-  Array2d<T>* receive_density(const std::string cce_folder,
-      adios2_handler &handler,GO my_start[2], GO my_count[2], const int m, MPI_Comm comm = MPI_COMM_WORLD) { 
-      std::string name = handler.get_name();
-    return receive2d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng,my_start, my_count, comm, m);
-  }
-  template<typename T>
+  Array2d<CV>* receive_density(const std::string cce_folder,
+      adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm, const int m);
 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id);

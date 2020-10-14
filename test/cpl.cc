@@ -49,7 +49,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler gQP(adios,"gene_pproc_qp");
   coupler::adios2_handler gRX(adios,"gene_pproc_rx");
   coupler::adios2_handler gCy(adios,"gene_cy_array");
-  coupler::adios2_handler gMsh(adios,"gem_mesh");
+  coupler::adios2_handler gInt(adios,"gene_pproc_i");
   coupler::adios2_handler xXcoord(adios,"xgc_x_coordss");
   coupler::adios2_handler xSurf(adios,"xgc_numsurfs");
   coupler::adios2_handler xZcoord(adios,"xgc_z_coordss");
@@ -58,10 +58,9 @@ int main(int argc, char **argv){
 
   //receive GENE's preproc mesh discretization values
   std::string model = "local";
-  coupler::Array1d<int>* gene_parpar = coupler::receive_pproc<int>(dir, gMsh,model);
-  if(!rank) fprintf(stderr,"ABJ done \n");
   coupler::Array1d<double>* q_prof = coupler::receive_pproc<double>(dir, gQP,model);
-  coupler::Array1d<double>* gene_xval = coupler::receive_pproc<double>(dir, gRX,model);
+  coupler::Array1d<double>* gene_xval = coupler::receive_pproc<double>(dir, gRX,model);//matching gene's xval arr
+  coupler::Array1d<int>* gene_parpar = coupler::receive_pproc<int>(dir, gInt,model);
 
   //intialize GENE class
   const bool preproc = true;
@@ -186,7 +185,7 @@ int main(int argc, char **argv){
   cFld.close();
   gQP.close();
   gRX.close();
-  gMsh.close();
+  gInt.close();
   gCy.close();
   xXcoord.close();
   xSurf.close();

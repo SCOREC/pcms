@@ -40,8 +40,7 @@ int main(int argc, char **argv){
   coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
   coupler::GO count[2] = {(int)gmesh->val(4),(int)gmesh->val(5)};
   coupler::GO count2[2] = {2,(int)gmesh->val(6)};
-  coupler::Array2d<double>* thflx=coupler::receive_pproc_2d<double>(dir,gThf,start,count,m);
-  coupler::Array1d<double>* qprof=coupler::receive_pproc<double>(dir,gQprof,model);
+  coupler::Array1d<double>* thfl_qprof=coupler::receive_pproc<double>(dir,gQprof,model);
   coupler::Array2d<double>* ggrid=coupler::receive_pproc_2d<double>(dir,gGrd,start,count2,m);
  
   //intialize GEM class
@@ -49,7 +48,7 @@ int main(int argc, char **argv){
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::CouplingCase ccase = coupler::CouplingCase::gemxgc; 
-  coupler::Part1ParalPar3D p1pp3d(gmesh->data(),thflx->data(),qprof->data(),test_case,preproc);
+  coupler::Part1ParalPar3D p1pp3d(gmesh->data(),thfl_qprof->data(),test_case,preproc);
 
   coupler::Array1d<coupler::LO>* xcouple=coupler::receive_pproc<coupler::LO>(dir,xCouple,model);
   coupler::Array1d<double>* rzcoords=coupler::receive_pproc<double>(dir,xRzcoords,model);

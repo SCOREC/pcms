@@ -111,7 +111,6 @@ class Part1ParalPar3D {
     }
     /*gem constructor*/
     Part1ParalPar3D(LO* parpar, 
-        double* thflx,
         double* q_prof_,
         coupler::TestCase test,
 	bool pproc = true)

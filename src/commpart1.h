@@ -69,6 +69,7 @@ class Part1ParalPar3D {
 /*variables specially owned by GEM*/
     LO numprocs;
     LO ntube,imx,jmx,kmx,ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
+    LO nr, nnodes;
     MPI_Comm grid_comm,tube_comm;
 
     double lz,ly;
@@ -129,7 +130,7 @@ class Part1ParalPar3D {
 
     /*The constructor for GEM*/
     Part1ParalPar3D(Array1d<int>* gemmesh, 
-                    Array2d<double>* thflx_qprof,
+                    Array1d<double>* thflx_qprof,
                     bool pproc = true, 
                     TestCase tcase=TestCase::off)
     : preproc(pproc),test_case(tcase){
@@ -156,7 +157,7 @@ class Part1ParalPar3D {
     void MpiFreeComm();
     void blockindice(); 
     void CreateGemsubcommunicators();
-    void initGem(const Array1d<int>* gemmesh, const Array2d<double>* thfnz);    
+    void initGem(const Array1d<int>* gemmesh, const Array1d<double>* thfnz);    
     void CreateGroupComm();
     void overlapBox();
     void getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numproc2,LO low,LO up);

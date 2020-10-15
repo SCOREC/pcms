@@ -234,15 +234,18 @@ void Part1ParalPar3D::blockindice()
 
 //Input GEM's mesh
 
-void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>* thflx_qprof)
+void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>* thflx_qprof)
 {  
   MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &mype);   
   LO* tmp=gemmesh->data();
   ntube=tmp[0];
   imx=tmp[1];
   jmx=tmp[2];
   kmx=tmp[3]; 
   ntheta=tmp[4];
+  nr=tmp[5];
+  if(!mype) fprintf(stderr,"ntube: %d, imx: %d, jmx: %d, kmx: %d, ntheta: %d, nr: %d\n", ntube, imx, jmx,kmx,ntheta,nr);
 
   thetagrideq=new double[ntheta];
   thetagrideq[ntheta/2]=0.0;
@@ -258,8 +261,9 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>
   CreateSubCommunicators();
   double* tmpreal;
   tmpreal=thflx_qprof->data();
-  lz=tmpreal[0];
-  ly=tmpreal[1];
+  lz=tmpreal[(nr+1)*(ntheta+2)+1];
+  ly=tmpreal[(nr+1)*(ntheta+2)+2];
+  if(!mype) fprintf(stderr,"lz: %f, ly: %f\n", lz,ly);
   dz=lz/double(kmx);
   delz=lz/double(ntheta);
   dy=ly/double(jmx);

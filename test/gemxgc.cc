@@ -52,7 +52,7 @@ int main(int argc, char **argv){
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::CouplingCase ccase = coupler::CouplingCase::gemxgc; 
-  coupler::Part1ParalPar3D p1pp3d(gmesh->data(),thfl_qprof->data(),test_case,preproc);
+  coupler::Part1ParalPar3D p1pp3d(gmesh,thfl_qprof,preproc,test_case);
 
   coupler::Array1d<coupler::LO>* xcouple=coupler::receive_pproc<coupler::LO>(dir,xCouple,model);
   coupler::Array1d<double>* rzcoords=coupler::receive_pproc<double>(dir,xRzcoords,model);

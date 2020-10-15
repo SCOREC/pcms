@@ -255,8 +255,10 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   }
   
   CreateGemsubcommunicators();
-  if(npx>imx) std::cout<<"Error: npx>imx; radial mesh is not dense enough"<<'\n';
-  std::exit(1); 
+  if(npx>imx){
+    std::cout<<"Error: npx>imx; radial mesh is not dense enough"<<'\n';
+    std::exit(1);
+  }
   decomposeGemMeshforCoupling();
   CreateSubCommunicators();
   double* tmpreal;
@@ -268,6 +270,8 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   delz=lz/double(ntheta);
   dy=ly/double(jmx);
   dth=2.0*cplPI/double(ntheta);
+  li0=nr+1;
+  li1=0;
 
   thflxeq=new double*[li0];
   for(LO i=0;i<li0;i++) thflxeq[i]=new double[ntheta+1];  
@@ -275,17 +279,18 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
 //  for(i=0;i<mype_x;i++) surfx+=li0[i];
   for(LO i=0;i<li0;i++){    
     for(LO k=0;k<ntheta+1;k++)
-      thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k+2];  //Here 2 comes from lz and ly.
+      thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k];  //Here 2 comes from lz and ly., ly&lz are at the end
   }   
 
   q_prof=new double[imx+1];
-  for(LO i=0;i<imx+1;i++) q_prof[i]=tmpreal[2+li1*(ntheta+1)+i];
+  for(LO i=0;i<imx+1;i++) q_prof[i]=tmpreal[(nr+1)*(ntheta+1)+i];
  
   thflx=new double*[li0];
   for(LO i=0;i<li0;i++) thflx[i]=new double[lk0];
  
   //interpolation for obtaining the flux theta of mesh for the perturbation 
   double* tmpth=new double[kmx+1];
+  double* theta=new double[kmx+1]();
   double tmpdth=2.0*cplPI/double(kmx); 
   for(LO i=kmx/2+1;i<kmx+1;i++){      // Here, another way is to minus cplPI
     theta[i]=double(i-kmx/2)*tmpdth;
@@ -307,7 +312,7 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
     tmpflxeq[1]=thflxeq[li1+i][0];
     tmpflxeq[ntheta+2]=thflxeq[li1+i][ntheta-1];   
     tmpflxeq[ntheta+3]=thflxeq[li1+i][ntheta-1];
-    for(LO k=2;k<ntheta+2;i++) tmpflxeq[k]=thflxeq[li1+i][k-2];
+    for(LO k=2;k<ntheta+2;k++) tmpflxeq[k]=thflxeq[li1+i][k-2];
     Lag3dArray(tmpflxeq,tmpthetaeq,ntheta+5,tmpflx,theta,kmx+1); 
 
     //Then, the initialization of theflx
@@ -365,8 +370,10 @@ void Part1ParalPar3D::CreateGemsubcommunicators()
   while(floor((kmx+1)/npz)<(kmx+1)/npz){
     if((kmx+1)/npz>2) npz++;     
   }
-  if((kmx+1)/npz<2) std::cout<<"Error: the number of processes is not chosen right."<<'\n';
-  std::exit(1);
+  if((kmx+1)/npz<2){
+    std::cout<<"Error: the number of processes is not chosen right."<<'\n';
+    std::exit(1);
+  }
   npx=numprocs/npz; 
   npy=1;
  } 

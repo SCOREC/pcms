@@ -162,10 +162,13 @@ class gemXgcDatasProc3D {
     LO sendnum;
     LO recvnum;
 
-    gemXgcDatasProc3D(bool pproc = true,
+    gemXgcDatasProc3D(const Part1ParalPar3D* p1pp3d,
+      const Part3Mesh3D* p3m3d,
+      const BoundaryDescr3D* bdesc_,
+      bool pproc = true,
       TestCase test_case = TestCase::off,
       bool ypar = false);
-
+    ~gemXgcDatasProc3D(){};
   private:
     const bool preproc;
     const TestCase testcase;

@@ -38,9 +38,9 @@ int main(int argc, char **argv){
   const int m =0;
   coupler::GO start[2] = {0,0};
   coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
-  coupler::GO ntheta = (int)gmesh->val(4);
-  coupler::GO nr = (int)gmesh->val(5);
-  coupler::GO count[2] = {2,(int)gmesh->val(6)};
+  coupler::GO ntheta = (coupler::GO)gmesh->val(4);
+  coupler::GO nr = (coupler::GO)gmesh->val(5);
+  coupler::GO count[2] = {2,(coupler::GO)gmesh->val(6)};
   coupler::GO count2[2] = {0,10};
   coupler::Array1d<double>* thfl_qprof=coupler::receive_pproc<double>(dir,gQprof,model);
   for(coupler::LO i=0; i<100; i++) if(!rank) fprintf(stderr,"array[%d]: %f\n",i,thfl_qprof->val(i));
@@ -52,11 +52,29 @@ int main(int argc, char **argv){
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::CouplingCase ccase = coupler::CouplingCase::gemxgc; 
-  coupler::Part1ParalPar3D p1pp3d(gmesh->data(),thfl_qprof->data(),test_case,preproc);
+  coupler::Part1ParalPar3D p1pp3d(gmesh->data(), thfl_qprof->data(), test_case, preproc);
 
-  coupler::Array1d<coupler::LO>* xcouple=coupler::receive_pproc<coupler::LO>(dir,xCouple,model);
-  coupler::Array1d<double>* rzcoords=coupler::receive_pproc<double>(dir,xRzcoords,model);
-  coupler::Part3Mesh3D p3m3d(xcouple,rzcoords,preproc,test_case);
+  coupler::Array1d<coupler::LO>* xcouple = coupler::receive_pproc<coupler::LO>(dir, xCouple, model);
+  coupler::Array1d<double>* rzcoords = coupler::receive_pproc<double>(dir,xRzcoords, model);
+  coupler::Part3Mesh3D p3m3d(xcouple, rzcoords, preproc, test_case);
+  coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, ccase, test_case, preproc);  
+ 
+  coupler::Part1ParalPar3D* mesh1 = &p1pp3d;
+  coupler::Part3Mesh3D*     mesh3 = &p3m3d;
+  coupler::BoundaryDescr3D* bound = &bdesc;
+  coupler::gemXgcDatasProc3D(mesh1, mesh3, bound, preproc, test_case, ypar);
 
+/*
+  int m;
+  coupler::GO start[3];
+  coupler::GO count[3];
+*/
+  for (int i = 0; i < time_step; i++) {
+    for (int j = 0; j < RK_count; j++) {
+//      m = i*RK_count+j;
+       
+ 
+    }
+  }
   return 0;
 }

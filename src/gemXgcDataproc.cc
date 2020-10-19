@@ -7,11 +7,20 @@
 #include <cmath>
 
 namespace coupler {
- void  gemXgcDatasProc3D::gemXgcDatasProc3D(bool pproc,TestCase test_case, bool ypar)
- : preproc(pproc),
-   testcase(test_case),
-   yparal(ypar)  
- {    
+  gemXgcDatasProc3D::gemXgcDatasProc3D(
+    const Part1ParalPar3D* p1pp3d,
+    const Part3Mesh3D* p3m3d,
+    const BoundaryDescr3D* bdesc_,
+    bool pproc,
+    TestCase test_case, 
+    bool ypar)
+ :  preproc(pproc),
+    testcase(test_case),
+    yparal(ypar)  
+ {  
+   p1 = p1pp3d;
+   p2 = p3m3d;
+   bdesc = bdesc_;  
    allocDensityArrays(); 
 
    allocPotentArrays();

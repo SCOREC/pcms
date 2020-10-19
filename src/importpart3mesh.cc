@@ -410,26 +410,26 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
     zeta_pot[i] = new double**[p1->lj0];
     nodesdist_fl[i] = new double**[p1->lj0];
     for(LO j=0;j<p1->lj0;j++){ 
-      thetaflx_pot[i][j]=new double**[mylk0[i]];
-      thetaflx_ind_pot[i][j]=new LO**[mylk0[i]];
-      zeta_pot[i][j]=new double*[mylk0[i]];
+      thetaflx_pot[i][j] = new double**[mylk0[i]];
+      thetaflx_ind_pot[i][j] = new LO**[mylk0[i]];
+      zeta_pot[i][j] = new double*[mylk0[i]];
       nodesdist_fl[i][j] = new double*[mylk0[i]];
       for(LO k=0;k<mylk0[i];k++){
-        thetaflx_pot[i][j][k]=new double*[4];  //For 3rd central Lagrnagian interpolation 
-        thetaflx_ind_pot[i][j][k]=new LO*[4]; //For 3rd central Lagrnagian interpolation
-        zeta_pot[i][j][k]=new double[5];
+        thetaflx_pot[i][j][k] = new double*[4];  //For 3rd central Lagrnagian interpolation 
+        thetaflx_ind_pot[i][j][k] = new LO*[4]; //For 3rd central Lagrnagian interpolation
+        zeta_pot[i][j][k] = new double[5];
         nodesdist_fl[i][j][k] = new double[5];
         for(LO h=0;h<4;h++){
-          thetaflx_pot[i][j][k][h]=new double[5];
-          thetaflx_ind_pot[i][j][k][h]=new LO[4];
+          thetaflx_pot[i][j][k][h] = new double[5];
+          thetaflx_ind_pot[i][j][k][h] = new LO[4];
         } 
       }
     }
   }
 
   //for nzb=2;
-  double dzeta=2.0*cplPI/double(nphi*p1->nwedge);
-  double lzeta=2.0*cplPI/double(p1->nwedge);
+  double dzeta = 2.0*cplPI/double(nphi*p1->nwedge);
+  double lzeta = 2.0*cplPI/double(p1->nwedge);
   double zeta_tmp;
   double y_tmp;
   double q_local;
@@ -437,13 +437,13 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
   struct flxxgc* flxinter;
   LO j10;
 
-  for(LO i=0;i<p1->li0;i++){
-    for(LO k=0;k<mylk0[i];k++){
-      q_local=1.0; // FIXME
-      for(LO j=0;j<p1->lj0;j++){
-        y_tmp=double(k)*p1->dy;
-        zeta_tmp=remainder(q_local*theta_flx[i][mylk1[i]+k]-y_tmp/(p1->r0*p1->q0),2.0*cplPI/double(nwedge));
-        if(zeta_tmp<0) zeta_tmp=zeta_tmp+2.0*cplPI/double(nwedge);
+  for(LO i = 0; i<p1->li0; i++){
+    for(LO k = 0; k<mylk0[i]; k++){
+      q_local = 1.0; // FIXME
+      for(LO j = 0; j<p1->lj0; j++){
+        y_tmp = double(k)*p1->dy;
+        zeta_tmp = remainder(q_local*theta_flx[i][mylk1[i]+k]-y_tmp/(p1->r0*p1->q0),2.0*cplPI/double(nwedge));
+        if(zeta_tmp<0) zeta_tmp = zeta_tmp+2.0*cplPI/double(nwedge);
         zeta_pot[i][k][j][4]=zeta_tmp;
         //FIXME: here is different from GEM
         j10=search_zeta(dzeta,lzeta,nphi,zeta_tmp);

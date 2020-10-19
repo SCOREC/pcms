@@ -323,7 +323,7 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array2d<double>
 
 void Part1ParalPar3D::CreateGemsubcommunicators()
 {
-//split the communicator for GEM's domain decomposition
+  //split the communicator identical with GEM's domain decomposition
   LO gclr,tclr;
   MPI_Comm_size(MPI_COMM_WORLD, &NP);
   MPI_Comm_rank(MPI_COMM_WORLD, &mype);   

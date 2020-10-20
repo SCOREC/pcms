@@ -1,6 +1,4 @@
 #ifndef DATAPROCESS_H
-#define DATAPROCESS_H
-
 #include "couplingTypes.h"
 #include "testutilities.h"
 #include <fftw3.h>
@@ -64,13 +62,13 @@ public:
   CV*  potentsend = NULL; // the 1d array complex potential sent  to part1, and would be sent 
                            // in comm_x and comm_y communicators. 
 
-// matrix for the transformation between planes and xyz
-   double**** mattoplane=NULL;
+  // matrix for the transformation between planes and xyz
+  double**** mattoplane=NULL;
  
-   CV****     mat_to_plane=NULL; 
-   double**** mat_from_weight=NULL;
-   int****    mat_from_ind_plane=NULL;
-   int****    mat_from_ind_n=NULL; 
+  CV****     mat_to_plane=NULL; 
+  double**** mat_from_weight=NULL;
+  int****    mat_from_ind_plane=NULL;
+  int****    mat_from_ind_n=NULL; 
 
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
@@ -150,25 +148,27 @@ class gemXgcDatasProc3D {
     double*** densCpl = NULL;  // Store the density on the coupling subcommunicator of GEM
     double*** densinterone = NULL;  // Store the density interpolated along theta
     double*** densintertwo = NULL;  // Store the density interpolated along y
-    double**** pot_gem_fol = NULL;
+    double*** densXgc = NULL;
+    double**** pot_gem_fl = NULL;
     double*** potyCpl = NULL;
     double*** potythCpl = NULL;
-    double*** potGem = NULL;
+    double* potGem = NULL;
 
-    LO* numsend;
-    LO* numrecv;
-    LO* sdispls;
-    LO* rdispls;
+    LO* numsend = NULL;
+    LO* numrecv = NULL;
+    LO* sdispls = NULL;
+    LO* rdispls = NULL;
     LO sendnum;
     LO recvnum;
 
     gemXgcDatasProc3D(const Part1ParalPar3D* p1pp3d,
       const Part3Mesh3D* p3m3d,
       const BoundaryDescr3D* bdesc_,
-      bool pproc = true,
-      TestCase test_case = TestCase::off,
-      bool ypar = false);
+      const bool pproc = true,
+      const TestCase test_case = TestCase::off,
+      const bool ypar = false);
     ~gemXgcDatasProc3D(){};
+
   private:
     const bool preproc;
     const TestCase testcase;
@@ -182,14 +182,14 @@ class gemXgcDatasProc3D {
     void allocSendRecvbuff();
     void DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM);
     void DistriPotentRecvfromXGC(const Array3d<double>* potentfromXGC);
-    void densityfromGemToCoupler();  
+    void densityFromGemToCoupler(const Array3d<double>* densityfromGEM);  
     void interpoDensityAlongZ(double*** box);
     void interpoDensityAlongY();
-    void InterpoPotential3DAlongZ(const double*** boxyin, double*** boxout); 
+    void InterpoPotential3DAlongZ(double*** boxyin, double*** boxout); 
     void potentFromCouplerToGem();
     void zPotentBoundaryBufAssign(const double*** box,BoundaryDescr3D& bdesc);
     void zMeshPotentBoundaryBufAssign(BoundaryDescr3D& bdesc);
-    void zDensityBoundaryBufAssign(double*** box,BoundaryDescr3D& bdesc);
+    void zDensityBoundaryBufAssign(double*** box);
 };
 
 

@@ -277,10 +277,10 @@ void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const double*** box,BoundaryDes
 
 
 
-void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box,BoundaryDescr3D& bdesc) 
+void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box) 
 {
-  LO nzb=bdesc.nzb;
-  if (bdesc.lowdenzgemxgc == NULL || bdesc.updenzgemxgc == NULL) {
+  LO nzb=bdesc->nzb;
+  if (bdesc->lowdenzgemxgc == NULL || bdesc->updenzgemxgc == NULL) {
     std::cout << "ERROR:the boundary buffer must be alloctted before "
                  "calling this routine.";
     std::exit(EXIT_FAILURE);
@@ -294,12 +294,12 @@ void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box,BoundaryDescr3D&
       for (LO i = 0; i < lx ; i++) {
         for (LO j = 0; j < ly; j++) {
           for(LO k=0;k<nzb;k++){
-            bdesc.lowdenzgemxgc[i][j][k]=0.0;
-            bdesc.updenzgemxgc[i][j][k]=0.0;
+            bdesc->lowdenzgemxgc[i][j][k]=0.0;
+            bdesc->updenzgemxgc[i][j][k]=0.0;
           }
         }
       }
-      mpisendrecv_aux2D(p1->comm_z, nzb, lx, ly, lz, bdesc.lowdenzgemxgc, bdesc.updenzgemxgc, box);
+      mpisendrecv_aux2D(p1->comm_z, nzb, lx, ly, lz, bdesc->lowdenzgemxgc, bdesc->updenzgemxgc, box);
 
       //FIXME: It looks GEM doesn't enforce the parallel boundary condition
 
@@ -312,8 +312,8 @@ void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box,BoundaryDescr3D&
       for (LO i = 0; i < lx ; i++) {
         for (LO j = 0; j < ly; j++) {
           for (LO k = 0; k < nzb; k++) {
-            bdesc.lowdenzgemxgc[i][j][k] = box[i][j][lz - nzb + k];
-            bdesc.updenzgemxgc[i][j][k] = box[i][j][k];
+            bdesc->lowdenzgemxgc[i][j][k] = box[i][j][lz - nzb + k];
+            bdesc->updenzgemxgc[i][j][k] = box[i][j][k];
             //FIXME: It looks GEM doesn't enforce the parallel boundary condition
           }
         }

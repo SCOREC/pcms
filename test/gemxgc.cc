@@ -50,7 +50,7 @@ int main(int argc, char **argv){
   //intialize GEM class
   const bool preproc = true;
   const bool ypar = false;
-  coupler::TestCase test_case = coupler::TestCase::off;
+  const coupler::TestCase test_case = coupler::TestCase::off;
   coupler::CouplingCase ccase = coupler::CouplingCase::gemxgc; 
   coupler::Part1ParalPar3D p1pp3d(gmesh->data(), thfl_qprof->data(), test_case, preproc);
 
@@ -62,7 +62,7 @@ int main(int argc, char **argv){
   coupler::Part1ParalPar3D* mesh1 = &p1pp3d;
   coupler::Part3Mesh3D*     mesh3 = &p3m3d;
   coupler::BoundaryDescr3D* bound = &bdesc;
-  coupler::gemXgcDatasProc3D(mesh1, mesh3, bound, preproc, test_case, ypar);
+  coupler::gemXgcDatasProc3D  gxdp3d(mesh1,mesh3,bound,preproc,test_case,ypar);
 
 /*
   int m;

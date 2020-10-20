@@ -112,12 +112,13 @@ class Part3Mesh3D{
       assert(tcase < TestCase::invalid);
       init(p1pp3d,tdir);
     }
+
     Part3Mesh3D(Array1d<LO>* xgccouple,
-                Array1d<double>* rzcoords,
-                bool pproc,
-                TestCase tcase)
-              : preproc(pproc),test_case(tcase){                    
-      initXgcGem(xgccouple,rzcoords);
+        Array1d<double>* rzcoords,
+        bool pproc,
+        TestCase tcase)
+      : preproc(pproc),test_case(tcase){                    
+        initXgcGem(xgccouple,rzcoords);
     }
 
     ~Part3Mesh3D(){};
@@ -138,7 +139,7 @@ class Part3Mesh3D{
     void gemDistributePoints(const double* exterarr, const LO gstart,LO li,
          const double* interarr);
     void initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>* rzcoords);
-    void  JugeFirstSurfaceMatch(double xp1);
+    void JugeFirstSurfaceMatch(double xp1);
     inline LO search_zeta(const double dlength,const double length,const LO nlength,double tmp);
     inline struct flxxgc* search_flux_3rdorder_periodbound(double tmpflx,const double* flxin, LO num);
     void search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp); 

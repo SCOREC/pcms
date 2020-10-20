@@ -335,7 +335,8 @@ void Part1ParalPar3D::CreateGemsubcommunicators()
   MPI_Comm_split(MPI_COMM_WORLD,tclr,gclr,&tube_comm);
   MPI_Comm_rank(grid_comm,&mype_g);
   MPI_Comm_rank(tube_comm,&mype_t); 
- 
+
+  gnpz = kmx;  
   if(mype_g<kmx-1){
     glk0=mype_g;
     glk1=mype_g;

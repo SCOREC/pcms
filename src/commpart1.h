@@ -70,6 +70,7 @@ class Part1ParalPar3D {
     LO numprocs;
     LO ntube,imx,jmx,kmx,ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
     MPI_Comm grid_comm,tube_comm;
+    LO gnpz; // the number of process ong z dimension in grid_comm communicator 
 
     double lz,ly;
     double dth,delz;
@@ -79,6 +80,8 @@ class Part1ParalPar3D {
     double** thflxeq=NULL; //store GEM's flux coordinates theta*; sent from GEM
     double** thflx=NULL;   //store GEM's flux coordinates theta; for perturbation evolution.  
     double* y_gem=NULL;  //store jmx+1 y varaibles of GEM
+    LO nwedge;
+
     LO mype_g,mype_t;
     LO** mype_xztg=NULL; // store the mapping mype<-->(mype_x,mype_y)<-->(mype_t,mype_g)
     LO tli0,tli1,tli2;
@@ -88,12 +91,12 @@ class Part1ParalPar3D {
     vecint2d sendOverlap_th;
     vecint2d recvOverlap_x;
     vecint2d recvOverlap_th;    
-
+/*
     MPI_Group zsend_group;
     MPI_Comm  zsend_comm;
     MPI_Group zrecv_group;
     MPI_Comm  zrecv_comm;
-    LO nwedge;
+*/
 
     /* constructor
      * optionally read preproc, test_case and test_dir from user
@@ -136,14 +139,7 @@ class Part1ParalPar3D {
       initGem(gemmesh,thflx_qprof);
     }
     ~Part1ParalPar3D();
-/*
-    {
-      if(xcoords!=NULL)  delete[] xcoords;
-      if(pzcoords!=NULL) delete[] pzcoords;
-      if(pzp!=NULL)      delete[] pzp;
-      if(q_prof!=NULL)   delete[] q_prof;
-    }
-*/    
+   
   private:
     const bool preproc;
     const TestCase test_case;

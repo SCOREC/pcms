@@ -313,6 +313,11 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
 //Initialize XGC's mesh for gem-xgc coupling
 void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>* rzcoords)
 {
+  li0=p1->li0;
+  li1=p1->li1;
+  li2=p1->li2;
+  lj0=p1->lj0;
+  
   LO* inttmp;
   inttmp=xgccouple->data();
   totnodes=inttmp[0];

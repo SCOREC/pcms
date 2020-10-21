@@ -113,18 +113,7 @@ class Part1ParalPar3D {
       init(parpar, xzcoords, q_prof, gene_cy, tdir);
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
-    /*gem constructor*/
-/*
-    Part1ParalPar3D(LO* parpar, 
-        double* q_prof_,
-        coupler::TestCase test,
-	bool pproc = true)
-      : preproc(pproc),q_prof(q_prof_),
-        test_case(test){
-      //init(parpar, xzcoords, q_prof, gene_cy, tdir);
-      if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
-    }
-*/    
+   
     /*Test case constructor*/
     Part1ParalPar3D(bool pproc,
         TestCase tcase,

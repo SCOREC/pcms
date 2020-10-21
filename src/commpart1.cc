@@ -245,7 +245,6 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   kmx=tmp[3]; 
   ntheta=tmp[4];
   nr=tmp[5];
-  printf("imx=%d, jmx=%d, kmx=%d \n", imx,jmx,kmx);
   if(!mype) fprintf(stderr,"ntube: %d, imx: %d, jmx: %d, kmx: %d, ntheta: %d, nr: %d\n", ntube, imx, jmx,kmx,ntheta,nr);
 
   thetagrideq=new double[ntheta];

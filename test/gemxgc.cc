@@ -37,12 +37,12 @@ int main(int argc, char **argv){
   std::string model="global";
   const int m =0;
   coupler::GO start[2] = {0,0};
-  coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
+  const coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
   coupler::GO ntheta = (coupler::GO)gmesh->val(4);
   coupler::GO nr = (coupler::GO)gmesh->val(5);
   coupler::GO count[2] = {2,(coupler::GO)gmesh->val(6)};
   coupler::GO count2[2] = {0,10};
-  coupler::Array1d<double>* thfl_qprof=coupler::receive_pproc<double>(dir,gQprof,model);
+  const coupler::Array1d<double>* thfl_qprof=coupler::receive_pproc<double>(dir,gQprof,model);
   for(coupler::LO i=0; i<100; i++) if(!rank) fprintf(stderr,"array[%d]: %f\n",i,thfl_qprof->val(i));
 
   coupler::Array2d<double>* ggrid=coupler::receive_pproc_2d<double>(dir,gGrd,start,count,m);
@@ -50,11 +50,12 @@ int main(int argc, char **argv){
   //intialize GEM class
   const bool preproc = true;
   const bool ypar = false;
-  const coupler::TestCase test_case = coupler::TestCase::off;
+  coupler::TestCase test_case = coupler::TestCase::off;
   coupler::CouplingCase ccase = coupler::CouplingCase::gemxgc; 
-  coupler::Part1ParalPar3D p1pp3d(gmesh->data(), thfl_qprof->data(), test_case, preproc);
-
-  coupler::Array1d<coupler::LO>* xcouple = coupler::receive_pproc<coupler::LO>(dir, xCouple, model);
+  
+  coupler::Part1ParalPar3D p1pp3d(gmesh, thfl_qprof, test_case, preproc);
+printf("1111 \n");
+coupler::Array1d<coupler::LO>* xcouple = coupler::receive_pproc<coupler::LO>(dir, xCouple, model);
   coupler::Array1d<double>* rzcoords = coupler::receive_pproc<double>(dir,xRzcoords, model);
   coupler::Part3Mesh3D p3m3d(xcouple, rzcoords, preproc, test_case);
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, ccase, test_case, preproc);  

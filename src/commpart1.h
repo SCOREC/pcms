@@ -69,6 +69,7 @@ class Part1ParalPar3D {
 /*variables specially owned by GEM*/
     LO numprocs;
     LO ntube,imx,jmx,kmx,ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
+    LO nr, nnodes;
     MPI_Comm grid_comm,tube_comm;
     LO gnpz; // the number of process ong z dimension in grid_comm communicator 
 
@@ -113,6 +114,7 @@ class Part1ParalPar3D {
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
     /*gem constructor*/
+/*
     Part1ParalPar3D(LO* parpar, 
         double* q_prof_,
         coupler::TestCase test,
@@ -122,6 +124,7 @@ class Part1ParalPar3D {
       //init(parpar, xzcoords, q_prof, gene_cy, tdir);
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
+*/    
     /*Test case constructor*/
     Part1ParalPar3D(bool pproc,
         TestCase tcase,
@@ -131,10 +134,10 @@ class Part1ParalPar3D {
     }
 
     /*The constructor for GEM*/
-    Part1ParalPar3D(Array1d<int>* gemmesh, 
-                    Array2d<double>* thflx_qprof,
-                    bool pproc = true, 
-                    TestCase tcase=TestCase::off)
+    Part1ParalPar3D(const Array1d<int>* gemmesh, 
+                    const Array1d<double>* thflx_qprof,
+                    TestCase tcase=TestCase::off,
+		    bool pproc = true)
     : preproc(pproc),test_case(tcase){
       initGem(gemmesh,thflx_qprof);
     }
@@ -144,7 +147,6 @@ class Part1ParalPar3D {
     const bool preproc;
     const TestCase test_case;
     void init(LO* parpar, double* xzcoords, double* q_prof, double* gene_cy, std::string test_dir="");
-    void initGem();
     void initTest0(std::string test_dir);
     /* init* helper function */
     void CreateSubCommunicators();
@@ -152,7 +154,7 @@ class Part1ParalPar3D {
     void MpiFreeComm();
     void blockindice(); 
     void CreateGemsubcommunicators();
-    void initGem(const Array1d<int>* gemmesh, const Array2d<double>* thfnz);    
+    void initGem(const Array1d<int>* gemmesh, const Array1d<double>* thflx_qprof);    
     void CreateGroupComm();
     void overlapBox();
     void getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numproc2,LO low,LO up);

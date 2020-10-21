@@ -323,7 +323,9 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
   cce_last_node=inttmp[5];
   cce_first=inttmp[6];  // The number labeling the first surface
   nsurf=cce_first_surface-cce_last_surface+1; 
-
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if(!rank)fprintf(stderr,"tot:%d, first_node:%d, last_node:%d\n",totnodes,cce_first_node,cce_last_node);
   versurf=new LO[nsurf];
   activenodes=0;
   for(LO i=0;i<nsurf;i++){ 

@@ -34,22 +34,23 @@ int main(int argc, char **argv){
   coupler::adios2_handler xCouple(adios,"xgc_couple");
   coupler::adios2_handler xRzcoords(adios,"xgc_rzcoords");  
 
-  std::string model = "local";
-  //std::string model="global";
+  std::string model = "global";
   coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
-  if(!rank)fprintf(stderr, "ABJ done\n");
-  coupler::GO start[2] = {0,0};
-  coupler::GO count[2] = {0,0};
-  coupler::Array1d<double>* qprof=coupler::receive_pproc<double>(dir,gQprof,model);
+  if(!rank)fprintf(stderr, "ABJ done: nr %d, ntheta: %d\n",gmesh->val(5),gmesh->val(4));
   const int m =1;
+  coupler::GO start[2] = {0,0};
+  coupler::GO count[2] = {coupler::GO(gmesh->val(5)),coupler::GO(gmesh->val(4))};
   coupler::Array2d<double>* thflx=coupler::receive_pproc_2d<double>(dir,gThf,start,count,m);
+  coupler::GO start2[2] = {0,0};
+  coupler::GO count2[2] = {2,coupler::GO(gmesh->val(6))};
+  coupler::Array1d<double>* qprof=coupler::receive_pproc<double>(dir,gQprof,model);
  
   //intialize GEM class
   const bool preproc = true;
   const bool ypar = false;
   coupler::TestCase test_case = coupler::TestCase::off;
   coupler::CouplingCase ccase = coupler::CouplingCase::gemxgc; 
-  coupler::Part1ParalPar3D p1pp3d(gmesh->data(),thflx->data(),qprof->data(),test_case,preproc);
+  //coupler::Part1ParalPar3D p1pp3d(gmesh->data(),thflx->data(),qprof->data(),test_case,preproc);
 
   coupler::Array1d<coupler::LO>* xcouple=coupler::receive_pproc<coupler::LO>(dir,xCouple,model);
   coupler::Array1d<double>* rzcoords=coupler::receive_pproc<double>(dir,xRzcoords,model);

@@ -68,8 +68,12 @@ class Part1ParalPar3D {
 /*------------------------------------------------------*/
 /*variables specially owned by GEM*/
     LO numprocs;
-    LO ntube,imx,jmx,kmx,ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
-    LO nr, nnodes;
+    LO ntube;
+    LO imx;
+    LO jmx;
+    LO kmx;
+    LO ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
+    LO nnodes;
     MPI_Comm grid_comm,tube_comm;
     LO gnpz; // the number of process ong z dimension in grid_comm communicator 
 
@@ -81,7 +85,7 @@ class Part1ParalPar3D {
     double** thflxeq=NULL; //store GEM's flux coordinates theta*; sent from GEM
     double** thflx=NULL;   //store GEM's flux coordinates theta; for perturbation evolution.  
     double* y_gem=NULL;  //store jmx+1 y varaibles of GEM
-    LO nwedge;
+    LO nr, nwedge;
 
     LO mype_g,mype_t;
     LO** mype_xztg=NULL; // store the mapping mype<-->(mype_x,mype_y)<-->(mype_t,mype_g)

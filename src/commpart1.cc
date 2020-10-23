@@ -244,81 +244,81 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   jmx=tmp[2];
   kmx=tmp[3]; 
   ntheta=tmp[4];
-  nr=tmp[5];
-  if(!mype) fprintf(stderr,"ntube: %d, imx: %d, jmx: %d, kmx: %d, ntheta: %d, nr: %d\n", ntube, imx, jmx,kmx,ntheta,nr);
-
-  thetagrideq=new double[ntheta];
-  thetagrideq[ntheta/2]=0.0;
-  for(LO i=ntheta/2+1;i<ntheta+1;i++){
-    thetagrideq[i]=double(i-ntheta/2)*dth;
-    thetagrideq[ntheta-i]=-thetagrideq[i];
-  }
+  if(!mype) fprintf(stderr,"ntube: %d, imx: %d, jmx: %d, kmx: %d, ntheta: %d \n", ntube, imx, jmx,kmx,ntheta);
   
   CreateGemsubcommunicators();
   if(npx>imx){
     std::cout<<"Error: npx>imx; radial mesh is not dense enough"<<'\n';
     std::exit(1);
   }
-  decomposeGemMeshforCoupling();
   CreateSubCommunicators();
+  decomposeGemMeshforCoupling();
   double* tmpreal;
   tmpreal=thflx_qprof->data();
-  lz=tmpreal[(nr+1)*(ntheta+2)+1];
-  ly=tmpreal[(nr+1)*(ntheta+2)+2];
-  if(!mype) fprintf(stderr,"lz: %f, ly: %f\n", lz,ly);
+  lz=tmpreal[(imx+1)*(ntheta+2)+0];
+  ly=tmpreal[(imx+1)*(ntheta+2)+1];
+  
+  fprintf(stderr,"mype:%d,lz: %f, ly: %f\n", mype,lz,ly);
+  MPI_Barrier(MPI_COMM_WORLD);
+  fprintf(stderr,"mype:%d,li0:%d,li1:%d,li2:%d,lk0:%d,lk1:%d,lk2:%d, lj0:%d \n",mype,li0,li1,lk2,lk0,lk1,lk2,lj0); 
+  MPI_Barrier(MPI_COMM_WORLD);
+
   dz=lz/double(kmx);
   delz=lz/double(ntheta);
   dy=ly/double(jmx);
   dth=2.0*cplPI/double(ntheta);
-  li0=nr+1;
-  li1=0;
+
+  /*ntehta is an even number*/
+  thetagrideq = new double[ntheta+1];
+  thetagrideq[ntheta/2] = 0.0;
+  for(LO i=ntheta/2+1; i<ntheta+1; i++){
+    thetagrideq[i] = double(i-ntheta/2)*dth;
+    thetagrideq[ntheta-i] = -thetagrideq[i];
+  }
 
   thflxeq=new double*[li0];
   for(LO i=0;i<li0;i++) thflxeq[i]=new double[ntheta+1];  
-//  LO surfx=0;
-//  for(i=0;i<mype_x;i++) surfx+=li0[i];
   for(LO i=0;i<li0;i++){    
     for(LO k=0;k<ntheta+1;k++)
-      thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k];  //Here 2 comes from lz and ly., ly&lz are at the end
+      thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k];  
   }   
 
   q_prof=new double[imx+1];
-  for(LO i=0;i<imx+1;i++) q_prof[i]=tmpreal[(nr+1)*(ntheta+1)+i];
+  for(LO i=0;i<imx+1;i++) q_prof[i]=tmpreal[(imx+1)*(ntheta+1)+i];
  
+  fprintf(stderr,"mype:%d,q_prof[0]:%f,q_prof[imx]:%f \n", mype, q_prof[0],q_prof[imx]);
+   
   thflx=new double*[li0];
   for(LO i=0;i<li0;i++) thflx[i]=new double[lk0];
  
   //interpolation for obtaining the flux theta of mesh for the perturbation 
   double* tmpth=new double[kmx+1];
-  double* theta=new double[kmx+1]();
+  double* theta=new double[kmx+1];
   double tmpdth=2.0*cplPI/double(kmx); 
   for(LO i=kmx/2+1;i<kmx+1;i++){      // Here, another way is to minus cplPI
     theta[i]=double(i-kmx/2)*tmpdth;
     theta[kmx-i]=-theta[i];
   }
-
-  double* tmpthetaeq=new double[ntheta+5];
-  tmpthetaeq[0]=thetagrideq[0]-2.0*dth;
-  tmpthetaeq[1]=thetagrideq[1]-dth;
-  tmpthetaeq[ntheta+2]=thetagrideq[ntheta]+dth;
-  tmpthetaeq[ntheta+3]=thetagrideq[ntheta]+2.0*dth;
-  for(LO k=2;k<ntheta+2;k++) tmpthetaeq[k]=thetagrideq[k-2];
   
+  if(!mype) fprintf(stderr, "theta[0]:%f, theta[kmx]:%f \n", theta[0],theta[kmx]);
+
+  double* tmpthetaeq=new double[ntheta+3];
+  tmpthetaeq[0]=thetagrideq[0]-dth;
+  tmpthetaeq[ntheta+2]=thetagrideq[ntheta]+dth;
+  for(LO k=1;k<ntheta+2;k++) tmpthetaeq[k]=thetagrideq[k-1];
+
   //Here, the continusous boundary condition is used for the 3rd-order Lagrangain interpolaiton; It's better to replace it with the cubic spline interpolation
-  double* tmpflxeq=new double[ntheta+5];  
+  double* tmpflxeq=new double[ntheta+3];  
   double* tmpflx=new double[kmx+1]; 
   for(LO i=0;i<li0;i++){
-    tmpflxeq[0]=thflxeq[li1+i][0];
-    tmpflxeq[1]=thflxeq[li1+i][0];
-    tmpflxeq[ntheta+2]=thflxeq[li1+i][ntheta-1];   
-    tmpflxeq[ntheta+3]=thflxeq[li1+i][ntheta-1];
-    for(LO k=2;k<ntheta+2;k++) tmpflxeq[k]=thflxeq[li1+i][k-2];
-    Lag3dArray(tmpflxeq,tmpthetaeq,ntheta+5,tmpflx,theta,kmx+1); 
+    tmpflxeq[0]=thflxeq[i][0];
+    tmpflxeq[ntheta+2]=thflxeq[i][ntheta];
+    for(LO k=1;k<ntheta+2;k++) tmpflxeq[k]=thflxeq[i][k-1];
+    Lag3dArray(tmpflxeq,tmpthetaeq,ntheta+3,tmpflx,theta,kmx+1); 
 
     //Then, the initialization of theflx
     for(LO k=0;k<lk0;k++) thflx[i][k]=tmpflx[lk1+k];
   }  
-
   double* y_gem = new double[jmx+1];
   for(LO j=0;j<jmx+1;j++){
     y_gem[j]=double(j)*ly/dy;
@@ -326,7 +326,6 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   delete[] tmpthetaeq;
   delete[] tmpflxeq;
   delete[] tmpflx;
-
 }
 
 
@@ -377,6 +376,7 @@ void Part1ParalPar3D::CreateGemsubcommunicators()
   }
   npx=numprocs/npz; 
   npy=1;
+  if(!mype) fprintf(stderr, "npx=%d,npy=%d,npz=%d \n", npx,npy,npz);
  } 
      
 void Part1ParalPar3D::decomposeGemMeshforCoupling()

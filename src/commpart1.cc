@@ -1,8 +1,12 @@
 #include "commpart1.h"
+#include "interpoutil.h"
 #include <cassert>
+#include <cmath>
+#include <algorithm>
 
 namespace coupler {
 
+// Input GENE's mesh
 void Part1ParalPar3D::initTest0(std::string test_dir)
 {
   assert(!test_dir.empty());
@@ -227,6 +231,317 @@ void Part1ParalPar3D::blockindice()
    blockend = GO(nz0*(li2+1)-1);
 
 }
+
+//Input GEM's mesh
+
+void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>* thflx_qprof)
+{  
+  MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
+  MPI_Comm_rank(MPI_COMM_WORLD, &mype);   
+  LO* tmp=gemmesh->data();
+  ntube=tmp[0];
+  imx=tmp[1];
+  jmx=tmp[2];
+  kmx=tmp[3]; 
+  ntheta=tmp[4];
+  if(!mype) fprintf(stderr,"ntube: %d, imx: %d, jmx: %d, kmx: %d, ntheta: %d \n", ntube, imx, jmx,kmx,ntheta);
+  
+  CreateGemsubcommunicators();
+  if(npx>imx){
+    std::cout<<"Error: npx>imx; radial mesh is not dense enough"<<'\n';
+    std::exit(1);
+  }
+  CreateSubCommunicators();
+  decomposeGemMeshforCoupling();
+  double* tmpreal;
+  tmpreal=thflx_qprof->data();
+  lz=tmpreal[(imx+1)*(ntheta+2)+0];
+  ly=tmpreal[(imx+1)*(ntheta+2)+1];
+  
+  fprintf(stderr,"mype:%d,lz: %f, ly: %f\n", mype,lz,ly);
+  MPI_Barrier(MPI_COMM_WORLD);
+  fprintf(stderr,"mype:%d,li0:%d,li1:%d,li2:%d,lk0:%d,lk1:%d,lk2:%d, lj0:%d \n",mype,li0,li1,lk2,lk0,lk1,lk2,lj0); 
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  dz=lz/double(kmx);
+  delz=lz/double(ntheta);
+  dy=ly/double(jmx);
+  dth=2.0*cplPI/double(ntheta);
+
+  /*ntehta is an even number*/
+  thetagrideq = new double[ntheta+1];
+  thetagrideq[ntheta/2] = 0.0;
+  for(LO i=ntheta/2+1; i<ntheta+1; i++){
+    thetagrideq[i] = double(i-ntheta/2)*dth;
+    thetagrideq[ntheta-i] = -thetagrideq[i];
+  }
+
+  thflxeq=new double*[li0];
+  for(LO i=0;i<li0;i++) thflxeq[i]=new double[ntheta+1];  
+  for(LO i=0;i<li0;i++){    
+    for(LO k=0;k<ntheta+1;k++)
+      thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k];  
+  }   
+
+  q_prof=new double[imx+1];
+  for(LO i=0;i<imx+1;i++) q_prof[i]=tmpreal[(imx+1)*(ntheta+1)+i];
+ 
+  fprintf(stderr,"mype:%d,q_prof[0]:%f,q_prof[imx]:%f \n", mype, q_prof[0],q_prof[imx]);
+   
+  thflx=new double*[li0];
+  for(LO i=0;i<li0;i++) thflx[i]=new double[lk0];
+ 
+  //interpolation for obtaining the flux theta of mesh for the perturbation 
+  double* tmpth=new double[kmx+1];
+  double* theta=new double[kmx+1];
+  double tmpdth=2.0*cplPI/double(kmx); 
+  for(LO i=kmx/2+1;i<kmx+1;i++){      // Here, another way is to minus cplPI
+    theta[i]=double(i-kmx/2)*tmpdth;
+    theta[kmx-i]=-theta[i];
+  }
+  
+  if(!mype) fprintf(stderr, "theta[0]:%f, theta[kmx]:%f \n", theta[0],theta[kmx]);
+
+  double* tmpthetaeq=new double[ntheta+3];
+  tmpthetaeq[0]=thetagrideq[0]-dth;
+  tmpthetaeq[ntheta+2]=thetagrideq[ntheta]+dth;
+  for(LO k=1;k<ntheta+2;k++) tmpthetaeq[k]=thetagrideq[k-1];
+
+  //Here, the continusous boundary condition is used for the 3rd-order Lagrangain interpolaiton; It's better to replace it with the cubic spline interpolation
+  double* tmpflxeq=new double[ntheta+3];  
+  double* tmpflx=new double[kmx+1]; 
+  for(LO i=0;i<li0;i++){
+    tmpflxeq[0]=thflxeq[i][0];
+    tmpflxeq[ntheta+2]=thflxeq[i][ntheta];
+    for(LO k=1;k<ntheta+2;k++) tmpflxeq[k]=thflxeq[i][k-1];
+    Lag3dArray(tmpflxeq,tmpthetaeq,ntheta+3,tmpflx,theta,kmx+1); 
+
+    //Then, the initialization of theflx
+    for(LO k=0;k<lk0;k++) thflx[i][k]=tmpflx[lk1+k];
+  }  
+  double* y_gem = new double[jmx+1];
+  for(LO j=0;j<jmx+1;j++){
+    y_gem[j]=double(j)*ly/dy;
+  }
+  delete[] tmpthetaeq;
+  delete[] tmpflxeq;
+  delete[] tmpflx;
+}
+
+
+void Part1ParalPar3D::CreateGemsubcommunicators()
+{
+  //split the communicator identical with GEM's domain decomposition
+  LO gclr,tclr;
+  MPI_Comm_size(MPI_COMM_WORLD, &NP);
+  MPI_Comm_rank(MPI_COMM_WORLD, &mype);   
+  
+  //Here: NP=ntube*(NP/ntube)
+  gclr=int(mype/ntube);
+  tclr=mype%ntube;
+  MPI_Comm_split(MPI_COMM_WORLD,gclr,tclr,&grid_comm);
+  MPI_Comm_split(MPI_COMM_WORLD,tclr,gclr,&tube_comm);
+  MPI_Comm_rank(grid_comm,&mype_g);
+  MPI_Comm_rank(tube_comm,&mype_t); 
+
+  gnpz = kmx;  
+  if(mype_g<kmx-1){
+    glk0=mype_g;
+    glk1=mype_g;
+    glk2=mype_g;
+  }else{
+    glk0=mype_g;
+    glk1=mype_g;
+    glk2=mype_g+1;
+  }
+  //x domain decomposition of GEM 
+  if(mype_t!=ntube-1){
+    tli0=(imx+1)/ntube;
+    tli1=tli0*mype_t;
+    tli2=tli1+tli0-1;
+  }else{
+    tli0=(imx+1)%ntube;
+    tli2=imx;
+    tli1=imx-tli0+1;
+  }  
+
+  //split MPI_COMM_WORLD for GEM-XGC mapping
+  npz=int(sqrt(kmx+1));
+  while(floor((kmx+1)/npz)<(kmx+1)/npz){
+    if((kmx+1)/npz>2) npz++;     
+  }
+  if((kmx+1)/npz<2){
+    std::cout<<"Error: the number of processes is not chosen right."<<'\n';
+    std::exit(1);
+  }
+  npx=numprocs/npz; 
+  npy=1;
+  if(!mype) fprintf(stderr, "npx=%d,npy=%d,npz=%d \n", npx,npy,npz);
+ } 
+     
+void Part1ParalPar3D::decomposeGemMeshforCoupling()
+{
+  LO n=int((imx+1)/npx);
+  if(mype_x<npx-1){
+    lk0=n;
+    li1=mype_x*n;
+    li2=li1+n-1;
+  }else{
+    li1=mype_x*n;
+    li0=imx-li1+2;
+    li2=imx;
+  }
+  n=int((kmx+1)/npz);
+  if(mype_z<npz-1){
+    lk0=n;
+    lk1=mype_z*n;
+    lk2=lk1+n-1;
+  }else{
+    lk1=mype_z*n;
+    lk0=kmx-lk1+1;
+    lk2=kmx;
+  }
+  lj0=jmx+1;
+} 
+
+//Mapping the rank (mype_x,mype_z) and (mype_g,mype_t)
+void Part1ParalPar3D::rankMapping()
+{
+  mype_xztg=new LO*[NP];
+  for(LO i=0;i<NP;i++){ 
+    mype_xztg[i]=new LO[4];  
+    mype_xztg[i][0]=mype%npx;
+    mype_xztg[i][1]=LO(mype/npx);
+    mype_xztg[i][2]=mype%ntube;
+    mype_xztg[i][3]=LO(mype/ntube);
+  }
+}
+
+void Part1ParalPar3D::overlapBox()
+{
+  LO xsendlow[npx],xsendup[npx]; 
+  MPI_Allgather(&li1,1,MPI_INT,&xsendlow,1,MPI_INT,comm_x);
+  MPI_Allgather(&li2,1,MPI_INT,&xsendup,1,MPI_INT,comm_x);
+  getOverlapBox(sendOverlap_x,xsendlow,xsendup,npx,tli1,tli2);
+  
+  LO thsendlow[npz],thsendup[npz];
+  MPI_Allgather(&lk1,1,MPI_INT,&thsendlow,1,MPI_INT,comm_z);
+  MPI_Allgather(&lk2,1,MPI_INT,&thsendup,1,MPI_INT,comm_z);  
+  getOverlapBox(sendOverlap_th,thsendlow,thsendup,npz,glk1,glk2); 
+
+  LO xrecvlow[ntube],xrecvup[ntube];
+  MPI_Allgather(&tli1,1,MPI_INT,&xrecvlow,1,MPI_INT,tube_comm);
+  MPI_Allgather(&tli2,1,MPI_INT,&xrecvup,1,MPI_INT,tube_comm);
+  getOverlapBox(recvOverlap_x,xrecvlow,xrecvup,ntube,li1,li2);  
+   
+  LO threcvlow[kmx+1],threcvup[kmx+1];
+  MPI_Allgather(&glk1,1,MPI_INT,&threcvlow,1,MPI_INT,grid_comm);
+  MPI_Allgather(&glk2,1,MPI_INT,&threcvup,1,MPI_INT,grid_comm);
+  getOverlapBox(recvOverlap_th,threcvlow,threcvup,kmx+1,lk1,lk2);  
+}
+
+void Part1ParalPar3D::getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numproc2,LO low,LO up)
+{
+  LO min,max;
+  bool overlap;
+//   vecint2d tmp2d;  
+  for(LO j=0;j<numproc2;j++){
+    vecint1d tmp1d={0,0,0,0};
+    overlap=false;
+    if(low>upind[j]){
+      break;
+    }else{
+      if(low>lowind[j]){
+	overlap=true;
+	min=lowind[j];
+	if(up>upind[j]){
+	   max=upind[j];
+	}else{
+	   max=low;
+	}
+      }else{
+	if(lowind[j]>up){
+	  break;
+	}else{
+	  overlap=true;
+	  min=lowind[j];
+	  if(up>upind[j]){
+	     max=upind[j];
+	  }else{
+	     max=up;
+	  }
+	}          
+      }
+    }     
+    if(overlap==true){ 
+      tmp1d[0]=j;
+      tmp1d[1]=min;
+      tmp1d[2]=max;
+      tmp1d[3]=max-min+1;
+    }
+    vec2d.push_back(tmp1d); 
+  } 
+}
+
+
+
+
+
+
+ /*
+  void Part1ParalPar3D::CreateGroupComm()
+  {   
+    MPI_Group z_group;
+    MPI_Comm_group(p1->comm_z,&z_group,);
+ 
+    LO* tmplk1=new double[p1->npz];
+    LO* tmplk2=new double[p1->npz];
+    MPI_Allgather(&p1->lk1,1,MPI_INT,tmplk1,1,MPI_INT,p1->comm_z);
+    MPI_Allgather(&p1->lk2,1,MPI_INT,tmplk1,1,MPI_INT,p1->comm_z);
+    LO i=0;
+    while(tmplk1[i]-mype_grid!=0) i+=1;
+    LO minrank=i;
+    i=0
+    while(tmplk2[i]-mype_grid!=0) i+=1;
+    LO maxrank=i;
+    LO* ranksend=new LO[maxrank-minrank+1];
+    for(i=0;i<maxrank-minrank+1;i++) ranksend[i]=i+minrank; 
+    
+    MPI_Group zsend_group;
+    MPI_Comm  zsend_comm;
+    MPI_Group_incl(z_group,maxrank-minrank+1,ranksend,&zsend_group);
+    MPI_Comm_create_group(p1->comm_z,zsend_group,0,&zsend_comm);
+
+    LO* rankrecv=new LO[lk0];
+    for(i=0;i<lk0;i++) rankrecv[i]=lk1+i;
+    MPI_Group zrecv_group;
+    MPI_Comm  zrecv_comm;
+    MPI_Group_incl(z_group,,rankredv,&zrecv_group);
+    MPI_Comm_create_group(p1->comm_z,zrecv_group,1,&zrecv_comm); 
+  } 
+*/
+
+  Part1ParalPar3D::~Part1ParalPar3D()
+    {
+      if(xcoords!=NULL)  delete[] xcoords;
+      if(pzcoords!=NULL) delete[] pzcoords;
+      if(pzp!=NULL)      delete[] pzp;
+      if(q_prof!=NULL)   delete[] q_prof;
+      if(C_y!=NULL)      delete[] C_y;
+      if(phi_cut!=NULL)  delete[] phi_cut;
+      if(thetagrideq!=NULL) delete[] thetagrideq;
+      if(theta!=NULL)    delete[] theta;
+      if(thflxeq!=NULL){
+        for(LO i=0;i<li0;i++) delete[] thflxeq[i];
+        delete[] thflxeq;
+      }    
+      if(thflx!=NULL){ 
+        for(LO i=0;i<li0;i++) delete[] thflx[i];
+        delete[] thflx;
+      }
+      if(y_gem!=NULL)    delete[] y_gem;   
+    }
+
 
 
 }

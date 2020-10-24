@@ -37,7 +37,7 @@ MPI_Datatype getMpiType(T foo) {
 namespace coupler {
 
 template<class T>
-void mpisendrecv_aux2D(MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,
+void mpisendrecv_aux2D(const MPI_Comm comm,const LO nzb,const LO lx,const LO ly,const LO lz,
      T*** lowbuf,T*** upbuf,T*** box)
 {
       MPI_Datatype mpitype = getMpiType(T());
@@ -82,8 +82,8 @@ void mpisendrecv_aux2D(MPI_Comm comm,LO nzb,LO lx,LO ly,LO lz,
 }
 
 template<class T>
-void mpisendrecv_aux1D(MPI_Comm comm,LO nzb,LO xind,LO yind,LO zind,
-     T* lowbuf,T* upbuf,T* box1d)
+void mpisendrecv_aux1D(const MPI_Comm comm,const LO nzb,const LO xind,const LO yind,const LO zind,
+     T* lowbuf,T* upbuf,const T* box1d)
 {
 
       MPI_Datatype mpitype = getMpiType(T());
@@ -96,6 +96,7 @@ void mpisendrecv_aux1D(MPI_Comm comm,LO nzb,LO xind,LO yind,LO zind,
       MPI_Sendrecv(&box1d[zind-nzb],nzb,mpitype,rank_dest,102,lowbuf,nzb,mpitype,rank_source,102,
             comm,&status);
 }
+
 
 }
 

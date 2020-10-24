@@ -8,6 +8,7 @@ set(SOURCES
   dataprocess.cc 
   interpo.cc
   boundbuffer.cc
+  gemXgcDataproc.cc
 )
 
 set(HEADERS
@@ -19,6 +20,7 @@ set(HEADERS
     importpart3mesh.h
     BoundaryDescr3D.h
     testutilities.h
+    interpoutil.h
 )
 
 add_library(coupler ${SOURCES})

@@ -10,6 +10,7 @@ namespace coupler {
 
 DatasProc3D::DatasProc3D(const Part1ParalPar3D* p1pp3d,
     const Part3Mesh3D* p3m3d,
+    const BoundaryDescr3D* bdesc_,
     bool pproc,
     TestCase test_case,
     bool ypar,
@@ -20,10 +21,13 @@ DatasProc3D::DatasProc3D(const Part1ParalPar3D* p1pp3d,
  {
     p1=p1pp3d;
     p3=p3m3d;
+    bdesc=bdesc_;
     init();
     AllocDensityArrays();
     AllocPotentArrays();
+    AllocBufferForIntepo();
     AllocMatXYZtoPlane();
+    mesh1dforDensityInterpo();
     Initmattoplane(); 
     Prepare_mats_from_planes();
     if(testcase==TestCase::t0) {
@@ -94,9 +98,7 @@ void DatasProc3D::AllocDensityArrays()
      for(LO j=0; j<p3->lj0; j++)
         densTOpart3[i][j]=new double[p3->mylk0[i]];
    }
-
-   denssend = new double[p3->blockcount*p3->lj0];
-   
+   denssend = new double[p3->blockcount*p3->lj0];   
  } 
 }
 
@@ -132,6 +134,15 @@ void DatasProc3D::AllocPotentArrays()
    potentsend = new CV[p1->blockcount*p1->lj0];
   
   }
+}
+
+void DatasProc3D::AllocBufferForIntepo()
+{
+    mesh1ddens = new double[p1->lk0+2*p1->nzb];
+    mesh1dpotent=new double*[p3->li0];
+    for(LO i=0;i<p3->li0;i++){
+      mesh1dpotent[i]=new double[p3->mylk0[i]+2*p1->nzb];
+    }
 }
 
 void DatasProc3D::AllocMatXYZtoPlane()
@@ -395,7 +406,7 @@ void DatasProc3D::DistriDensiRecvfromPart1(const Array2d<CV>* densityfromGENE)
 void DatasProc3D::oldAssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
 {
   zDensityBoundaryBufAssign(densin,bdesc);
-  InterpoDensity3D(bdesc);
+  InterpoDensity3D();
   CmplxdataToRealdata3D();
   DensityToPart3();
   
@@ -470,7 +481,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
 
   zDensityBoundaryBufAssign(densin,bdesc);
 
-  InterpoDensity3D(bdesc); 
+  InterpoDensity3D(); 
 
   bool debug=false;
   if(debug){
@@ -867,26 +878,6 @@ void DatasProc3D::TestInitPotentAlongz(const Part3Mesh3D* p3m3d,const LO npy, co
       }
     }
   }
-}
-
-DatasProc3D::~DatasProc3D()
-{
-  FreeFourierPlan3D();
-  if(densrecv!=NULL){
-    for(LO i=0;i<p1->li0;i++){
- 
-    } 
- 
-  }
-  if(densin!=NULL) delete[] densin;
-  if(densintmp!=NULL) delete[] densintmp;
-  if(densouttmp!=NULL) delete[] densouttmp;
-  if(densinterpo!=NULL) delete[] densinterpo;
-  if(denspart3!=NULL) delete[] denspart3;
-  if(potentin!=NULL) delete[] potentin;
-  if(potentouttmp!=NULL) delete[] potentouttmp;
-  if(potentinterpo!=NULL) delete[] potentinterpo;
-  if(potentpart1!=NULL) delete[] potentpart1;       
 }
 
 

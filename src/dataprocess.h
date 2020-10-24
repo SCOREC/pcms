@@ -1,6 +1,4 @@
 #ifndef DATAPROCESS_H
-#define DATAPROCESS_H
-
 #include "couplingTypes.h"
 #include "testutilities.h"
 #include <fftw3.h>
@@ -14,9 +12,12 @@ namespace coupler {
 template<class T>
 class Array2d;
 
+template<class T>
+class Array3d;
+
+class BoundaryDescr3D;
 class Part3Mesh3D;
 class Part1ParalPar3D;
-class BoundaryDescr3D;
 
 class DatasProc3D {
 public:
@@ -61,19 +62,20 @@ public:
   CV*  potentsend = NULL; // the 1d array complex potential sent  to part1, and would be sent 
                            // in comm_x and comm_y communicators. 
 
-// matrix for the transformation between planes and xyz
-   double**** mattoplane=NULL;
+  // matrix for the transformation between planes and xyz
+  double**** mattoplane=NULL;
  
-   CV****     mat_to_plane=NULL; 
-   double**** mat_from_weight=NULL;
-   int****    mat_from_ind_plane=NULL;
-   int****    mat_from_ind_n=NULL; 
+  CV****     mat_to_plane=NULL; 
+  double**** mat_from_weight=NULL;
+  int****    mat_from_ind_plane=NULL;
+  int****    mat_from_ind_n=NULL; 
 
 
   fftw_plan plan_forward = NULL, plan_backward = NULL;
-  // The following parameters for yparal=true;
   LO myli0;
-
+  // For interpolation mesh
+  double* mesh1ddens; // 1d mesh for interpolating density;
+  double** mesh1dpotent; // the mesh for interpoating potential;
 
   /* constructor
    * optional argument supports setting
@@ -81,13 +83,14 @@ public:
    */
   DatasProc3D(const Part1ParalPar3D* p1pp3d,
       const Part3Mesh3D* p3m3d,
+      const BoundaryDescr3D* bdesc_,
       bool pproc = true,
       TestCase test_case = TestCase::off,
       bool ypar = false,
       int nummode = 1);
-  ~DatasProc3D();
-  void InterpoDensity3D(const BoundaryDescr3D& bdesc);
-  void InterpoPotential3D(const BoundaryDescr3D& bdesc);
+  ~DatasProc3D(){};
+  void InterpoDensity3D();
+  void InterpoPotential3D();
   //routines for Fourier transform
   void CmplxdataToRealdata3D();
   void RealdataToCmplxdata3D();
@@ -107,7 +110,11 @@ public:
 
 //boundary buffer
   void zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc);
-  void zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc);
+  void zDensityBoundaryBufAssign(CV*** box,BoundaryDescr3D& bdesc);
+
+//interpolation
+  void mesh1dforDensityInterpo();
+  void mesh1dforPotentialInterpo();
 
   LO getP1li0() { return p1->li0; };
   LO getP1ny0() { return p1->ny0; };
@@ -120,18 +127,72 @@ private:
   const bool yparal;
   const Part1ParalPar3D* p1;
   const Part3Mesh3D* p3;
+  const BoundaryDescr3D* bdesc;
   /* helper function for destructor */
   void FreeFourierPlan3D(); // called from the destructor - does that make sense?
   /* helper functions for constructor */
   void init();
   void AllocDensityArrays();
   void AllocPotentArrays();
+  void AllocBufferForIntepo();
   void TestInitPotentAlongz(const Part3Mesh3D* p3m3d,const LO npy, const LO n);
   /* helper functions for CmplxdataToRealdata3D and RealdataToCmplxdata3D */
   void ExecuteRealToCmplx();
   void ExecuteCmplxToReal();
 
   };
+
+class gemXgcDatasProc3D {
+  public:
+    double*** densin = NULL;  // Store the input density datas from GEM; 
+    double*** densCpl = NULL;  // Store the density on the coupling subcommunicator of GEM
+    double*** densinterone = NULL;  // Store the density interpolated along theta
+    double*** densintertwo = NULL;  // Store the density interpolated along y
+    double*** densXgc = NULL;
+    double**** pot_gem_fl = NULL;
+    double*** potyCpl = NULL;
+    double*** potythCpl = NULL;
+    double* potGem = NULL;
+
+    LO* numsend = NULL;
+    LO* numrecv = NULL;
+    LO* sdispls = NULL;
+    LO* rdispls = NULL;
+    LO sendnum;
+    LO recvnum;
+
+    gemXgcDatasProc3D(const Part1ParalPar3D* p1pp3d,
+      const Part3Mesh3D* p3m3d,
+      const BoundaryDescr3D* bdesc_,
+      const bool pproc = true,
+      const TestCase test_case = TestCase::off,
+      const bool ypar = false);
+    ~gemXgcDatasProc3D(){};
+
+  private:
+    const bool preproc;
+    const TestCase testcase;
+    const bool yparal;
+    const Part1ParalPar3D* p1;
+    const Part3Mesh3D* p3;
+    const BoundaryDescr3D* bdesc;
+
+    void allocDensityArrays();
+    void allocPotentArrays();
+    void allocSendRecvbuff();
+    void DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM);
+    void DistriPotentRecvfromXGC(const Array3d<double>* potentfromXGC);
+    void densityFromGemToCoupler(const Array3d<double>* densityfromGEM);  
+    void interpoDensityAlongZ(double*** box);
+    void interpoDensityAlongY();
+    void InterpoPotential3DAlongZ(double*** boxyin, double*** boxout); 
+    void potentFromCouplerToGem();
+    void zPotentBoundaryBufAssign(const double*** box,BoundaryDescr3D& bdesc);
+    void zMeshPotentBoundaryBufAssign(BoundaryDescr3D& bdesc);
+    void zDensityBoundaryBufAssign(double*** box);
+};
+
+
  
 void TransposeComplex(CV** InMatrix,CV** OutMatrix, DatasProc3D& dp3d,
      Part1ParalPar3D& p1pp3d);

@@ -13,7 +13,7 @@ namespace coupler {
 // any of its functions or access its member variables
 
 template<class T>
-class Array2d;
+class Array1d;
 
 class Part1ParalPar3D;
 
@@ -113,11 +113,14 @@ class Part3Mesh3D{
       init(p1pp3d,tdir);
     }
 
-    Part3Mesh3D(Array1d<LO>* xgccouple,
+    Part3Mesh3D(Part1ParalPar3D* p1pp3d,
+        Array1d<LO>* xgccouple,
         Array1d<double>* rzcoords,
         bool pproc,
         TestCase tcase)
-      : preproc(pproc),test_case(tcase){                    
+      : p1(p1pp3d),
+        preproc(pproc),
+	test_case(tcase){                    
         initXgcGem(xgccouple,rzcoords);
     }
 
@@ -134,14 +137,14 @@ class Part3Mesh3D{
         const std::string test_dir="");
     /* helper function called by DistriPart3zcoords */
     void DistributePoints(const double* exterarr, const LO gstart, const LO li,
-        const double* interarr, const Part1ParalPar3D  &p1pp3d);
+        const double* interarr, const LO lk1, const LO lk2, const LO nz0);
     void BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx);
     void gemDistributePoints(const double* exterarr, const LO gstart,LO li,
          const double* interarr);
     void initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>* rzcoords);
     void JugeFirstSurfaceMatch(double xp1);
     inline LO search_zeta(const double dlength,const double length,const LO nlength,double tmp);
-    inline struct flxxgc* search_flux_3rdorder_periodbound(double tmpflx,const double* flxin, LO num);
+     struct flxxgc* search_flux_3rdorder_periodbound(double tmpflx,const double* flxin, LO num);
     void search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp); 
  
 

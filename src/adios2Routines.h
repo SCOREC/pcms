@@ -213,8 +213,7 @@ namespace coupler {
     const adios2::Dims count{my_count};
  
     const adios2::Box<adios2::Dims> sel(start, count);
-    Array1d<T>* field = new Array1d<T>{total_size, my_count, 
-    	my_start};
+    Array1d<T>* field = new Array1d<T>{total_size, my_count, my_start};
   
     adios_var.SetSelection(sel);
     eng.Get(adios_var, field->data());

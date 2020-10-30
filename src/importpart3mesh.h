@@ -144,7 +144,7 @@ class Part3Mesh3D{
     void initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>* rzcoords);
     void JugeFirstSurfaceMatch(double xp1);
     inline LO search_zeta(const double dlength,const double length,const LO nlength,double tmp);
-     struct flxxgc* search_flux_3rdorder_periodbound(double tmpflx,const double* flxin, LO num);
+    inline void  search_flux_3rdorder_periodbound(double tmpflx,const double* flxin, LO num, struct flxxgc flxinter);
     void search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp); 
  
 

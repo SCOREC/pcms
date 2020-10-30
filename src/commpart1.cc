@@ -294,7 +294,16 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
     for(LO k=0;k<ntheta+1;k++)
       thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k];  
   }   
-  fprintf(stderr, "thflxeq[0]: %f, thfxeq[ntheta+1]: %f \n", thflxeq[li0-1][0], thflxeq[li0-1][ntheta]);
+//  fprintf(stderr, "thflxeq[0]: %f, thfxeq[ntheta+1]: %f \n", thflxeq[li0-1][0], thflxeq[li0-1][ntheta]);
+
+  bool debug = false;
+  if (debug){
+    if (p1->mype ==3){
+       for (LO j = 0; j < ntheta+3; j++)
+         fprintf(stderr, "j: %d, tmpflxeq[j]: %f \n", j, thflxeq[0][k]);
+       for (LO k = 0; k< versurf[0]; k++) fprintf(stderr, "k:%d, theta_flx[0][k]: %f \n", k, theta_flx[0][k]);
+    }
+  } 
 
   q_prof=new double[imx+1];
   for(LO i=0;i<imx+1;i++) q_prof[i]=tmpreal[(imx+1)*(ntheta+1)+i];

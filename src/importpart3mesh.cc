@@ -538,7 +538,7 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 
 	if (debug){
 	  if(p1->mype == 3){
-	    fprin tf(stderr, "theta_flx: %f, zeta_pot: %f, q_local: %f \n", theta_flx[i][mylk1[i] + k], 
+	    fprintf(stderr, "theta_flx: %f, zeta_pot: %f, q_local: %f \n", theta_flx[i][mylk1[i] + k], 
 	       zeta_pot[i][j][k][0], q_local);
 	  }
 	}
@@ -547,10 +547,10 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
  	search_flux_3rdorder_periodbound(tmpflx, theta_flx[i], versurf[p1->li1 + i], flxinter);
 	      
 	if (debug){     
-          printf("%f, %f, %f, %f, %f \n", flxinter->flxt[0],flxinter->flxt[1],flxinter->flxt[2],
-	    flxinter->flxt[3],flxinter->flxt[4]);
-          printf("%d, %d, %d, %d \n", flxinter->flxtind[0],flxinter->flxtind[1], flxinter->flxtind[2], 
-	    flxinter->flxtind[3]);
+          printf("%f, %f, %f, %f, %f \n", flxinter.flxt[0], flxinter.flxt[1], flxinter.flxt[2],
+	    flxinter.flxt[3], flxinter.flxt[4]);
+          printf("%d, %d, %d, %d \n", flxinter.flxtind[0], flxinter.flxtind[1], flxinter.flxtind[2], 
+	    flxinter.flxtind[3]);
         }
 
 	for (LO h=0; h<5; h++) thetaflx_pot[i][j][k][0][h] = flxinter.flxt[h];

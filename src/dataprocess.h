@@ -167,6 +167,7 @@ class gemXgcDatasProc3D {
       const bool pproc = true,
       const TestCase test_case = TestCase::off,
       const bool ypar = false);
+
     ~gemXgcDatasProc3D(){};
 
   private:

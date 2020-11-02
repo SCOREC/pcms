@@ -343,7 +343,7 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   }  
 
   y_gem = new double[jmx+1];
-  bool debug = true;
+  bool debug = false;
   for(LO j=0;j<jmx+1;j++){
     y_gem[j]=double(j)*ly/dy;
     if (debug){

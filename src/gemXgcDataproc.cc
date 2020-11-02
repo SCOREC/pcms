@@ -12,9 +12,9 @@ namespace coupler {
   gemXgcDatasProc3D::gemXgcDatasProc3D(const Part1ParalPar3D* p1pp3d,
     const Part3Mesh3D* p3m3d,
     const BoundaryDescr3D* bdesc_,
-    const bool pproc,
-    const TestCase test_case, 
-    const bool ypar)
+    bool pproc,
+    TestCase test_case, 
+    bool ypar)
  :  preproc(pproc),
     testcase(test_case),
     yparal(ypar)  
@@ -22,11 +22,13 @@ namespace coupler {
    p1 = p1pp3d;
    p3 = p3m3d;
    bdesc = bdesc_;  
+
    allocDensityArrays(); 
 
    allocPotentArrays();
 
    allocSendRecvbuff();
+
  }
 
 
@@ -56,8 +58,8 @@ namespace coupler {
 
  void gemXgcDatasProc3D::allocPotentArrays()
  {
-   double**** pot_gem_fl=new double***[p1->li0];
-   double*** pot_y_cpl=new double**[p1->li0];
+   pot_gem_fl=new double***[p1->li0];
+   potyCpl=new double**[p1->li0];
    for(LO i=0;i<p1->li0;i++){
      pot_gem_fl[i]=new double**[p1->lj0];
      potyCpl[i]=new double*[p1->lj0];

@@ -676,7 +676,9 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
     }
 
    tmp.flxt[4]=tmpflx;
-   printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
+   if(debug){
+     printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
+   }
    if (tmpflx > tmp.flxt[2]){
       printf("Error: The boundary condition is not right at upper end first,tmpflx: %f, flxt[2]: %f \n", 
 	tmpflx, tmp.flxt[2]);
@@ -715,9 +717,10 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
     } 
 
     tmp.flxt[4]=tmpflx;
-
-    printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
-
+    
+    if(debug){
+      printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
+    }
     if (tmpflx<=tmp.flxt[1]){
       printf("Error: The boundary condition is not right at lower end first,tmpflx: %f, flxt[1]: %f \n", 
 	tmpflx, tmp.flxt[1]);

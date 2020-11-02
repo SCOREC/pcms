@@ -70,9 +70,9 @@ int main(int argc, char **argv){
   coupler::Part3Mesh3D p3m3d(mesh1, xcouple, rzcoords, preproc, test_case);
   printf("mype: %d \n", p1pp3d.mype);
   MPI_Barrier(MPI_COMM_WORLD);
-  /*
+  
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, ccase, test_case, preproc);  
- 
+/* 
   coupler::Part1ParalPar3D* mesh1 = &p1pp3d;
   coupler::Part3Mesh3D*     mesh3 = &p3m3d;
   coupler::BoundaryDescr3D* bound = &bdesc;

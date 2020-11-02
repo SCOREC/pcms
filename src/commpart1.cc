@@ -239,6 +239,8 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &mype);   
   LO* tmp = gemmesh->data();
+  
+  /*Initialize mesh inforamtion of GEM*/
   ntube = tmp[0];
   imx = tmp[1];
   jmx = tmp[2];
@@ -253,14 +255,18 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   nx0 = imx + 1;
   ny0 = jmx + 1;
   nz0 = kmx + 1;
+  nzb = 2; // for boundary buffer
 
+  /*Create GEM's own domain decomposiiton*/
   CreateGemsubcommunicators();
   if(npx>imx){
     std::cout<<"Error: npx>imx; radial mesh is not dense enough"<<'\n';
     std::exit(1);
   }
+  /*Create the decomain decomposition for the coupling operation*/
   CreateSubCommunicators();
   decomposeGemMeshforCoupling();
+
   double* tmpreal;
   tmpreal=thflx_qprof->data();
   lz=tmpreal[(imx+1)*(ntheta+2)+0];
@@ -305,7 +311,7 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   thflx=new double*[li0];
   for(LO i=0;i<li0;i++) thflx[i]=new double[lk0];
  
-  //interpolation for obtaining the flux theta of mesh for the perturbation 
+  /*interpolation for obtaining the flux theta of mesh for the perturbation*/ 
   double* tmpth=new double[kmx+1];
   theta=new double[kmx+1];
   double tmpdth=2.0*cplPI/double(kmx); 
@@ -321,8 +327,9 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   tmpthetaeq[ntheta+2]=thetagrideq[ntheta]+dth;
   for(LO k=1;k<ntheta+2;k++) tmpthetaeq[k]=thetagrideq[k-1];
 
-  //Here, the continusous boundary condition is used for the 3rd-order Lagrangain interpolaiton; 
-  //It's better to replace it with the cubic spline interpolation
+  /*Here, the continusous boundary condition is used for the 3rd-order Lagrangain interpolaiton; 
+   *It's better to replace it with the cubic spline interpolation
+   */
   double* tmpflxeq=new double[ntheta+3];  
   double* tmpflx=new double[kmx+1]; 
   for(LO i=0;i<li0;i++){
@@ -331,12 +338,17 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
     for(LO k=1;k<ntheta+2;k++) tmpflxeq[k]=thflxeq[i][k-1];
     Lag3dArray(tmpflxeq,tmpthetaeq,ntheta+3,tmpflx,theta,kmx+1); 
 
-    //Then, the initialization of theflx
+    /*Then, the initialization of theflx*/
     for(LO k=0;k<lk0;k++) thflx[i][k]=tmpflx[lk1+k];
   }  
-  double* y_gem = new double[jmx+1];
+
+  y_gem = new double[jmx+1];
+  bool debug = true;
   for(LO j=0;j<jmx+1;j++){
     y_gem[j]=double(j)*ly/dy;
+    if (debug){
+      if (mype == 0) printf("i: %d, y_gem: %f \n", j, y_gem[j]);
+    }
   }
   delete[] tmpthetaeq;
   delete[] tmpflxeq;
@@ -346,12 +358,12 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
 
 void Part1ParalPar3D::CreateGemsubcommunicators()
 {
-  //split the communicator identical with GEM's domain decomposition
+  /*split the communicator identical with GEM's domain decomposition*/
   LO gclr,tclr;
   MPI_Comm_size(MPI_COMM_WORLD, &NP);
   MPI_Comm_rank(MPI_COMM_WORLD, &mype);   
   
-  //Here: NP=ntube*(NP/ntube)
+  /*Here: NP=ntube*(NP/ntube)*/
   gclr=int(mype/ntube);
   tclr=mype%ntube;
   MPI_Comm_split(MPI_COMM_WORLD,gclr,tclr,&grid_comm);
@@ -369,7 +381,8 @@ void Part1ParalPar3D::CreateGemsubcommunicators()
     glk1=mype_g;
     glk2=mype_g+1;
   }
-  //x domain decomposition of GEM 
+
+  /*x domain decomposition of GEM*/ 
   if(mype_t!=ntube-1){
     tli0=(imx+1)/ntube;
     tli1=tli0*mype_t;
@@ -380,7 +393,7 @@ void Part1ParalPar3D::CreateGemsubcommunicators()
     tli1=imx-tli0+1;
   }  
 
-  //split MPI_COMM_WORLD for GEM-XGC mapping
+  /*split MPI_COMM_WORLD for GEM-XGC mapping*/
   npz=int(sqrt(kmx+1));
   while(floor((kmx+1)/npz)<(kmx+1)/npz){
     if((kmx+1)/npz>2) npz++;     
@@ -419,7 +432,7 @@ void Part1ParalPar3D::decomposeGemMeshforCoupling()
   lj0=jmx+1;
 } 
 
-//Mapping the rank (mype_x,mype_z) and (mype_g,mype_t)
+/*Mapping the rank (mype_x,mype_z) and (mype_g,mype_t)*/
 void Part1ParalPar3D::rankMapping()
 {
   mype_xztg=new LO*[NP];
@@ -559,4 +572,4 @@ void Part1ParalPar3D::getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numpr
 
 
 
-}
+} /*compart1.cc*/

@@ -181,7 +181,7 @@ namespace coupler {
       read_io.SetEngine("Sst");
       if(!rank) std::cerr<<"ABJ 0.2\n";
       read_io.SetParameters({
-          {"DataTransport","RDMA"},
+//          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
       if(!rank) std::cerr<<"ABJ 0.3\n";
@@ -237,7 +237,7 @@ namespace coupler {
     if(!eng){
       read_io.SetEngine("Sst");
       read_io.SetParameters({
-          {"DataTransport","RDMA"},
+//          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
       eng = read_io.Open(fname, adios2::Mode::Read);
@@ -282,7 +282,7 @@ namespace coupler {
       std::cout<<"creat engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
-          {"DataTransport","RDMA"},
+ //         {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
       std::cout<<"engine parameters are set"<<'\n';
@@ -332,7 +332,7 @@ namespace coupler {
       std::cout<<"creat engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
-          {"DataTransport","RDMA"},
+//          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
       std::cout<<"engine parameters are set"<<'\n';

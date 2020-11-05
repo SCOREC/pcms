@@ -8,6 +8,7 @@ set(SOURCES
   dataprocess.cc 
   interpo.cc
   boundbuffer.cc
+  gemXgcDataproc.cc
 )
 
 set(HEADERS

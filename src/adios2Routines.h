@@ -176,13 +176,12 @@ namespace coupler {
   
     const std::string fname = dir + "/" + name + ".bp";
   
-    if(!rank) std::cerr<<"ABJ 0.0\n";
     if(!eng){
       if(!rank) std::cerr<<"ABJ 0.1\n";
       read_io.SetEngine("Sst");
       if(!rank) std::cerr<<"ABJ 0.2\n";
       read_io.SetParameters({
-          {"DataTransport","RDMA"},
+//          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
       if(!rank) std::cerr<<"ABJ 0.3\n";
@@ -217,8 +216,7 @@ namespace coupler {
     const adios2::Dims count{my_count};
  
     const adios2::Box<adios2::Dims> sel(start, count);
-    Array1d<T>* field = new Array1d<T>{total_size, my_count, 
-    	my_start};
+    Array1d<T>* field = new Array1d<T>{total_size, my_count, my_start};
   
     adios_var.SetSelection(sel);
     eng.Get(adios_var, field->data());
@@ -239,7 +237,7 @@ namespace coupler {
     if(!eng){
       read_io.SetEngine("Sst");
       read_io.SetParameters({
-          {"DataTransport","RDMA"},
+//          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
       eng = read_io.Open(fname, adios2::Mode::Read);
@@ -284,7 +282,7 @@ namespace coupler {
       std::cout<<"creat engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
-          {"DataTransport","RDMA"},
+ //         {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
       std::cout<<"engine parameters are set"<<'\n';
@@ -334,7 +332,7 @@ namespace coupler {
       std::cout<<"creat engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
-          {"DataTransport","RDMA"},
+//          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
       std::cout<<"engine parameters are set"<<'\n';

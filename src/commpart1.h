@@ -68,32 +68,43 @@ class Part1ParalPar3D {
 /*------------------------------------------------------*/
 /*variables specially owned by GEM*/
     LO numprocs;
-    LO ntube,imx,jmx,kmx,ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
+    LO ntube;
+    LO imx;
+    LO jmx;
+    LO kmx;
+    LO ntheta; //imx,jmx,kmx are the number of cells on the respective dimension.
+    LO nnodes;
     MPI_Comm grid_comm,tube_comm;
+    LO gnpz; // the number of process ong z dimension in grid_comm communicator 
 
-    double lz,ly;
-    double dth,delz;
-    double r0,q0;
+    double lz, ly;
+    double dth, delz;
+    double r0, q0;
     double* thetagrideq=NULL; //store ntheta \theta values of all the nodes on one poloidal cross section of GEM
     double* theta=NULL; // store kmx+1 \theta values for the perturbation
     double** thflxeq=NULL; //store GEM's flux coordinates theta*; sent from GEM
     double** thflx=NULL;   //store GEM's flux coordinates theta; for perturbation evolution.  
     double* y_gem=NULL;  //store jmx+1 y varaibles of GEM
-    LO mype_g,mype_t;
+    LO nr;
+    LO nwedge;
+    LO nphi; 
+    LO nnode;
+
+    LO mype_g, mype_t;
     LO** mype_xztg=NULL; // store the mapping mype<-->(mype_x,mype_y)<-->(mype_t,mype_g)
-    LO tli0,tli1,tli2;
-    LO glk0,glk1,glk2;
+    LO tli0, tli1, tli2;
+    LO glk0, glk1, glk2;
 
     vecint2d sendOverlap_x;
     vecint2d sendOverlap_th;
     vecint2d recvOverlap_x;
     vecint2d recvOverlap_th;    
-
+/*
     MPI_Group zsend_group;
     MPI_Comm  zsend_comm;
     MPI_Group zrecv_group;
     MPI_Comm  zrecv_comm;
-    LO nwedge;
+*/
 
     /* constructor
      * optionally read preproc, test_case and test_dir from user
@@ -109,17 +120,7 @@ class Part1ParalPar3D {
       init(parpar, xzcoords, q_prof, gene_cy, tdir);
       if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
     }
-    /*gem constructor*/
-    Part1ParalPar3D(LO* parpar, 
-        double* thflx,
-        double* q_prof_,
-        coupler::TestCase test,
-	bool pproc = true)
-      : preproc(pproc),q_prof(q_prof_),
-        test_case(test){
-      //init(parpar, xzcoords, q_prof, gene_cy, tdir);
-      if(!mype) std::cerr << mype << " Done with Part1ParalPar3D class intialization \n"; 
-    }
+   
     /*Test case constructor*/
     Part1ParalPar3D(bool pproc,
         TestCase tcase,
@@ -129,27 +130,19 @@ class Part1ParalPar3D {
     }
 
     /*The constructor for GEM*/
-    Part1ParalPar3D(Array1d<int>* gemmesh, 
-                    Array2d<double>* thflx_qprof,
-                    bool pproc = true, 
-                    TestCase tcase=TestCase::off)
+    Part1ParalPar3D(const Array1d<int>* gemmesh, 
+                    const Array1d<double>* thflx_qprof,
+                    TestCase tcase=TestCase::off,
+		    bool pproc = true)
     : preproc(pproc),test_case(tcase){
       initGem(gemmesh,thflx_qprof);
     }
     ~Part1ParalPar3D();
-/*
-    {
-      if(xcoords!=NULL)  delete[] xcoords;
-      if(pzcoords!=NULL) delete[] pzcoords;
-      if(pzp!=NULL)      delete[] pzp;
-      if(q_prof!=NULL)   delete[] q_prof;
-    }
-*/    
+   
   private:
     const bool preproc;
     const TestCase test_case;
     void init(LO* parpar, double* xzcoords, double* q_prof, double* gene_cy, std::string test_dir="");
-    void initGem();
     void initTest0(std::string test_dir);
     /* init* helper function */
     void CreateSubCommunicators();
@@ -157,7 +150,7 @@ class Part1ParalPar3D {
     void MpiFreeComm();
     void blockindice(); 
     void CreateGemsubcommunicators();
-    void initGem(const Array1d<int>* gemmesh, const Array2d<double>* thfnz);    
+    void initGem(const Array1d<int>* gemmesh, const Array1d<double>* thflx_qprof);    
     void CreateGroupComm();
     void overlapBox();
     void getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numproc2,LO low,LO up);

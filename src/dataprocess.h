@@ -169,7 +169,11 @@ class gemXgcDatasProc3D {
       const bool ypar = false);
 
     ~gemXgcDatasProc3D(){};
-
+    
+    void DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM);
+    void DistriPotentRecvfromXGC(const Array3d<double>* potentfromXGC);
+    void densityFromGemToCoupler(const Array3d<double>* densityfromGEM);  
+ 
   private:
     const bool preproc;
     const TestCase testcase;
@@ -181,9 +185,6 @@ class gemXgcDatasProc3D {
     void allocDensityArrays();
     void allocPotentArrays();
     void allocSendRecvbuff();
-    void DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM);
-    void DistriPotentRecvfromXGC(const Array3d<double>* potentfromXGC);
-    void densityFromGemToCoupler(const Array3d<double>* densityfromGEM);  
     void interpoDensityAlongZ(double*** box);
     void interpoDensityAlongY();
     void InterpoPotential3DAlongZ(double*** boxyin, double*** boxout); 

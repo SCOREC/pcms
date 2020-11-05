@@ -153,7 +153,7 @@ class Part1ParalPar3D {
     void initGem(const Array1d<int>* gemmesh, const Array1d<double>* thflx_qprof);    
     void CreateGroupComm();
     void overlapBox();
-    void getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numproc2,LO low,LO up);
+    void getOverlapBox(vecint2d& vec2d, LO* lowind, LO* upind, LO numproc2, LO low, LO up);
     void rankMapping();
     void decomposeGemMeshforCoupling();
 };

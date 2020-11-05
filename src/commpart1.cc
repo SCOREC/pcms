@@ -278,7 +278,8 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
 
   if(!mype) fprintf(stderr,"mype:%d,lz: %f, ly: %f, r0: %f \n", mype,lz,ly, r0);
   MPI_Barrier(MPI_COMM_WORLD);
-  fprintf(stderr,"mype_x:%d,li0:%d,li1:%d,li2:%d,lk0:%d,lk1:%d,lk2:%d, lj0:%d \n",mype_x,li0,li1,li2,lk0,lk1,lk2,lj0); 
+  fprintf(stderr,"mype_x:%d, li0:%d, li1:%d, li2:%d, lk0:%d, lk1:%d, lk2:%d, lj0:%d\n",
+          mype_x,li0,li1,li2,lk0,lk1,lk2,lj0); 
   MPI_Barrier(MPI_COMM_WORLD);
 
   dz=lz/double(kmx);
@@ -353,6 +354,10 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   delete[] tmpthetaeq;
   delete[] tmpflxeq;
   delete[] tmpflx;
+
+  rankMapping();
+  overlapBox();
+
 }
 
 
@@ -366,20 +371,20 @@ void Part1ParalPar3D::CreateGemsubcommunicators()
   /*Here: NP=ntube*(NP/ntube)*/
   gclr=int(mype/ntube);
   tclr=mype%ntube;
-  MPI_Comm_split(MPI_COMM_WORLD,gclr,tclr,&grid_comm);
-  MPI_Comm_split(MPI_COMM_WORLD,tclr,gclr,&tube_comm);
+  MPI_Comm_split(MPI_COMM_WORLD,tclr,gclr,&grid_comm);
+  MPI_Comm_split(MPI_COMM_WORLD,gclr,tclr,&tube_comm);
   MPI_Comm_rank(grid_comm,&mype_g);
   MPI_Comm_rank(tube_comm,&mype_t); 
 
   gnpz = kmx;  
   if(mype_g<kmx-1){
-    glk0=mype_g;
-    glk1=mype_g;
-    glk2=mype_g;
+    glk0 = 1;
+    glk1 = mype_g;
+    glk2 = mype_g;
   }else{
-    glk0=mype_g;
-    glk1=mype_g;
-    glk2=mype_g+1;
+    glk0 = 2;
+    glk1 = mype_g;
+    glk2 = mype_g+1;
   }
 
   /*x domain decomposition of GEM*/ 
@@ -388,10 +393,13 @@ void Part1ParalPar3D::CreateGemsubcommunicators()
     tli1=tli0*mype_t;
     tli2=tli1+tli0-1;
   }else{
-    tli0=(imx+1)%ntube;
-    tli2=imx;
-    tli1=imx-tli0+1;
+    tli1 = (imx+1)/ntube*(ntube-1);
+    tli2 = imx;
+    tli0= tli2 - tli1 + 1;
   }  
+  
+  printf("mype_g: %d, mype_t: %d, glk0: %d, glk1: %d, glk2: %d, tli0: %d, tli1: %d, tli2: %d \n", mype_g, mype_t, glk0,
+          glk1, glk2, tli0, tli1, tli2);
 
   /*split MPI_COMM_WORLD for GEM-XGC mapping*/
   npz=int(sqrt(kmx+1));
@@ -447,28 +455,87 @@ void Part1ParalPar3D::rankMapping()
 
 void Part1ParalPar3D::overlapBox()
 {
-  LO xsendlow[npx],xsendup[npx]; 
-  MPI_Allgather(&li1,1,MPI_INT,&xsendlow,1,MPI_INT,comm_x);
-  MPI_Allgather(&li2,1,MPI_INT,&xsendup,1,MPI_INT,comm_x);
+  LO* xsendlow = new LO[npx];
+  LO* xsendup = new LO[npx]; 
+  MPI_Allgather(&li1,1,MPI_INT,xsendlow,1,MPI_INT,comm_x);
+  MPI_Allgather(&li2,1,MPI_INT,xsendup,1,MPI_INT,comm_x);
   getOverlapBox(sendOverlap_x,xsendlow,xsendup,npx,tli1,tli2);
-  
-  LO thsendlow[npz],thsendup[npz];
-  MPI_Allgather(&lk1,1,MPI_INT,&thsendlow,1,MPI_INT,comm_z);
-  MPI_Allgather(&lk2,1,MPI_INT,&thsendup,1,MPI_INT,comm_z);  
+ 
+  std::cout<<" sendOverlap "<<sendOverlap_x.size()<<'\n'<<std::endl;
+  bool debug = false;
+  if (debug){
+  printf("xsendlow ");
+  for (LO i=0; i<npx; i++){
+    if (i < npx-1) {
+      printf(" i: %d, xsendlow: %d", i, xsendlow[i]);
+    }
+    else {
+      printf(" i: %d, xsendlow: %d\n", i, xsendlow[i]);
+    }
+  }
+  printf(" xsendup ");
+  for (LO i=0; i<npx; i++){
+    if (i < npx-1) {
+      printf("i: %d, xsendlow: %d", i, xsendup[i]);
+    }
+    else {
+      printf("i: %d, xsendlow: %d\n", i, xsendup[i]);
+    }
+  }
+  }
+
+  LO* thsendlow = new LO[npz];
+  LO* thsendup = new LO[npz];
+  MPI_Allgather(&lk1,1,MPI_INT,thsendlow,1,MPI_INT,comm_z);
+  MPI_Allgather(&lk2,1,MPI_INT,thsendup,1,MPI_INT,comm_z);  
   getOverlapBox(sendOverlap_th,thsendlow,thsendup,npz,glk1,glk2); 
 
-  LO xrecvlow[ntube],xrecvup[ntube];
-  MPI_Allgather(&tli1,1,MPI_INT,&xrecvlow,1,MPI_INT,tube_comm);
-  MPI_Allgather(&tli2,1,MPI_INT,&xrecvup,1,MPI_INT,tube_comm);
+  LO* xrecvlow = new LO[ntube];
+  LO* xrecvup = new LO[ntube];
+  MPI_Allgather(&tli1,1,MPI_INT,xrecvlow,1,MPI_INT,tube_comm);
+  MPI_Allgather(&tli2,1,MPI_INT,xrecvup,1,MPI_INT,tube_comm);
   getOverlapBox(recvOverlap_x,xrecvlow,xrecvup,ntube,li1,li2);  
-   
-  LO threcvlow[kmx+1],threcvup[kmx+1];
-  MPI_Allgather(&glk1,1,MPI_INT,&threcvlow,1,MPI_INT,grid_comm);
-  MPI_Allgather(&glk2,1,MPI_INT,&threcvup,1,MPI_INT,grid_comm);
+
+  debug = true;
+  if (debug) {
+  printf("xrecvlow ");
+  for (LO i=0; i<ntube; i++){
+    if (i < ntube-1) {
+      printf(" i: %d, xrecvlow: %d", i, xrecvlow[i]);
+    }
+    else {
+      printf(" i: %d, xrecvlow: %d\n", i, xrecvlow[i]);
+    }
+  }
+  printf(" xrecvup ");
+  for (LO i=0; i<ntube; i++){
+    if (i < ntube-1) {
+      printf("i: %d, xrecvup: %d", i, xrecvup[i]);
+    }
+    else {
+      printf("i: %d, xrecvup: %d\n", i, xrecvup[i]);
+    }
+  }
+  }
+
+
+  LO* threcvlow = new LO[kmx+1];
+  LO* threcvup = new LO[kmx+1];
+  MPI_Allgather(&glk1,1,MPI_INT,threcvlow,1,MPI_INT,grid_comm);
+  MPI_Allgather(&glk2,1,MPI_INT,threcvup,1,MPI_INT,grid_comm);
   getOverlapBox(recvOverlap_th,threcvlow,threcvup,kmx+1,lk1,lk2);  
+
+  debug = false;
+  if (debug) {
+  printf("mype: %d, sendOverlap_x.size: %lu, sendOverlap_th.size: %lu, recvOverlap_x.size: %lu, recvOverlap_th.size: %lu \n", 
+        mype, sendOverlap_x.size(), sendOverlap_th.size(),
+	recvOverlap_x.size(), recvOverlap_th.size());
+  }
+
 }
 
-void Part1ParalPar3D::getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numproc2,LO low,LO up)
+void Part1ParalPar3D::getOverlapBox(vecint2d& vec2d, LO* lowind, LO* upind, LO numproc2,
+     LO low, LO up)
 {
   LO min,max;
   bool overlap;
@@ -476,16 +543,16 @@ void Part1ParalPar3D::getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numpr
   for(LO j=0;j<numproc2;j++){
     vecint1d tmp1d={0,0,0,0};
     overlap=false;
-    if(low>upind[j]){
+    if(low>upind[j] || lowind[j]>up) {
       break;
     }else{
-      if(low>lowind[j]){
+      if(low>=lowind[j]){
 	overlap=true;
-	min=lowind[j];
+	min=low;  //lowind[j];
 	if(up>upind[j]){
 	   max=upind[j];
 	}else{
-	   max=low;
+	   max=up;
 	}
       }else{
 	if(lowind[j]>up){
@@ -508,7 +575,8 @@ void Part1ParalPar3D::getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numpr
       tmp1d[3]=max-min+1;
     }
     vec2d.push_back(tmp1d); 
-  } 
+  }
+  printf("vec2d.size(): %lu \n", vec2d.size());
 }
 
 

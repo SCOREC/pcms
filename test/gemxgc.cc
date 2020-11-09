@@ -35,10 +35,13 @@ int main(int argc, char **argv){
   coupler::adios2_handler xRzcoords(adios,"xgc_rzcoords");  
 
   std::string model="global";
-  const int m =1;
+  const int m =0;
+  coupler::GO start[2] = {0,0};
+  coupler::GO ABJ_count[2] = {3,3};//{32,272523}; //a-priori known
+  coupler::Array2d<double>* q_prof = coupler::receive_pproc_2d<double>(dir, gDens, start, ABJ_count, m); //debugging
+  if(!rank)fprintf(stderr, "ABJ done\n");
   coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
   if(!rank)fprintf(stderr, "ABJ done: nr %d, ntheta: %d\n",gmesh->val(5),gmesh->val(4));
-  coupler::GO start[2] = {0,0};
  
   coupler::GO ntheta = (coupler::GO)gmesh->val(4);
   coupler::GO nr = (coupler::GO)gmesh->val(1);
@@ -46,23 +49,13 @@ int main(int argc, char **argv){
   if(!rank) fprintf(stderr, "%d,%d,%d,%d,%d,%d \n", gmesh->val(0),gmesh->val(1),gmesh->val(2),
             gmesh->val(3), gmesh->val(4), gmesh->val(5));
 
-  coupler::GO count[2] = {coupler::GO(gmesh->val(5)),coupler::GO(gmesh->val(4))};
-  coupler::Array2d<double>* thflx=coupler::receive_pproc_2d<double>(dir,gThf,start,count,m);
-  coupler::GO start2[2] = {0,0};
-  coupler::GO count2[2] = {2,coupler::GO(gmesh->val(6))};
-  coupler::Array1d<double>* qprof=coupler::receive_pproc<double>(dir,gQprof,model);
-/*
   coupler::GO count[2] = {2,(coupler::GO)gmesh->val(5)};
-  coupler::GO count2[2] = {0,10};
-*/
   const coupler::Array1d<double>* thfl_qprof=coupler::receive_pproc<double>(dir,gQprof,model);
-  for(coupler::LO i=0; i<2; i++) if(!rank) fprintf(stderr,"array[%d]: %f\n",i,thfl_qprof->val(i));
 
-  coupler::Array1d<double>* rzcoords = coupler::receive_pproc<double>(dir,gGrd,model);
+  coupler::Array1d<double>* rzcoords=coupler::receive_pproc<double>(dir,gGrd,model);//rz
   if(!rank) fprintf(stderr, "rzcoords[2*nnode-2]: %f, rzcoords[2*nnode-1]: %f \n", 
           rzcoords->val(2*nnode-2),rzcoords->val(2*nnode-1));
-
-  coupler::Array1d<coupler::LO>* xcouple = coupler::receive_pproc<coupler::LO>(dir, xCouple, model);
+  coupler::Array1d<coupler::LO>* xcouple=coupler::receive_pproc<coupler::LO>(dir,xCouple,model);//cce_
   if(!rank) fprintf(stderr, "xcouple[5]: %d, xcouple[6]: %d \n", xcouple->val(5), xcouple->val(6));
 
   //intialize GEM class

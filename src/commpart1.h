@@ -76,6 +76,7 @@ class Part1ParalPar3D {
     LO nnodes;
     MPI_Comm grid_comm,tube_comm;
     LO gnpz; // the number of process ong z dimension in grid_comm communicator 
+    LO tnpx;
 
     double lz, ly;
     double dth, delz;

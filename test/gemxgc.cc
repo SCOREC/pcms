@@ -23,7 +23,7 @@ int main(int argc, char **argv){
   adios2::Variable<double> senddensity;
   adios2::Variable<coupler::CV> sendfield;
 
-//  coupler::adios2_handler gDens(adios,"gem_density");
+  coupler::adios2_handler gDens(adios,"gem_density");
   coupler::adios2_handler cDens(adios,"cpl_density");
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
@@ -65,7 +65,7 @@ int main(int argc, char **argv){
   
   coupler::Part1ParalPar3D p1pp3d(gmesh, thfl_qprof, test_case, preproc);
   MPI_Barrier(MPI_COMM_WORLD);
-/*
+
   coupler::Part1ParalPar3D* p1 = &p1pp3d;  
   coupler::Part3Mesh3D p3m3d(p1, xcouple, rzcoords, preproc, test_case);
   MPI_Barrier(MPI_COMM_WORLD);
@@ -81,8 +81,7 @@ int main(int argc, char **argv){
   coupler::GO* start_adios = new coupler::GO[3];
   coupler::GO* count = new coupler::GO[3];
   coupler::GO dim0, dim1, dim2;
-*/
-/*  
+  
   for (int i = 0; i < 1; i++) {
     for (int j = 0; j < 1; j++) {
       m = i*RK_count+j;
@@ -94,14 +93,17 @@ int main(int argc, char **argv){
       count[2] = p1->tli0;      
       coupler::Array3d<double>* densityfromGEM = coupler::receive_pproc_3d<double>(dir, gDens, start_adios, count, m, MPI_COMM_WORLD); 
       gxdp3d.DistriDensiRecvfromGem(densityfromGEM);
+MPI_Barrier(MPI_COMM_WORLD);
+
+//      for (coupler::LO k=0; k< 5; k++) printf(" densi[i]: %f ", densityfromGEM->val(k));
 
       coupler::destroy(densityfromGEM); 
 
       
     }
   }
-*/ 
-//  gDens.close();
+ 
+  gDens.close();
 /*
   cDens.close();
   xFld.close();

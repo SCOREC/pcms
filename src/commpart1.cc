@@ -214,6 +214,11 @@ void Part1ParalPar3D::CreateSubCommunicators()
    MPI_Comm_rank(comm_x,&mype_x);
    MPI_Comm_rank(comm_y,&mype_y);
    MPI_Comm_rank(comm_z,&mype_z);
+   
+   bool debug = true;
+   if (debug){
+     printf("mype: %d, mype_x: %d, mype_y: %d, mype_z: %d \n", mype, mype_x, mype_y, mype_z);
+   }
 }
 
 void Part1ParalPar3D::MpiFreeComm()
@@ -236,6 +241,8 @@ void Part1ParalPar3D::blockindice()
 
 void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>* thflx_qprof)
 {  
+  bool debug = false;
+
   MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
   MPI_Comm_rank(MPI_COMM_WORLD, &mype);   
   LO* tmp = gemmesh->data();
@@ -301,8 +308,15 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
     for(LO k=0;k<ntheta+1;k++)
       thflxeq[i][k]=tmpreal[(li1+i)*(ntheta+1)+k];  
   }   
-//  fprintf(stderr, "thflxeq[0]: %f, thfxeq[ntheta+1]: %f \n", thflxeq[li0-1][0], thflxeq[li0-1][ntheta]);
-
+//  printf("thflxeq[0]: %f, thfxeq[ntheta+1]: %f \n", thflxeq[li0-1][0], thflxeq[li0-1][ntheta]);
+  debug = false;
+  if (mype == 0 && debug == true) {
+  for (LO i=0; i<1; i++) {
+    for (LO k=0; k<ntheta+1; k++) {
+      printf("thflxeq[i][k]: %f \n", thflxeq[i][k]);
+    }
+  }
+  }
   q_prof=new double[imx+1];
   for(LO i=0;i<imx+1;i++) q_prof[i]=tmpreal[(imx+1)*(ntheta+1)+i];
   q0 = q_prof[imx/2];
@@ -332,19 +346,29 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
    *It's better to replace it with the cubic spline interpolation
    */
   double* tmpflxeq=new double[ntheta+3];  
-  double* tmpflx=new double[kmx+1]; 
+  double* tmpflx=new double[kmx+1];
+  debug = false; 
   for(LO i=0;i<li0;i++){
     tmpflxeq[0]=thflxeq[i][ntheta-1] - 2.0*cplPI;
     tmpflxeq[ntheta+2]=thflxeq[i][1] + 2.0*cplPI;
     for(LO k=1;k<ntheta+2;k++) tmpflxeq[k]=thflxeq[i][k-1];
+    if(debug) {
+      if (mype == 0 && i == 0) {
+	for (LO k=0; k<ntheta+3; k++) printf("k: %d, tmpflxeq: %f \n", k, tmpflxeq[k]);
+      }
+    }
     Lag3dArray(tmpflxeq,tmpthetaeq,ntheta+3,tmpflx,theta,kmx+1); 
+
+    if (mype == 0 && i == 0) {
+      for (LO j=0; j<kmx+1; j++) printf("j: %d, tmpflx: %f \n", j, tmpflx[j]);
+    }
 
     /*Then, the initialization of theflx*/
     for(LO k=0;k<lk0;k++) thflx[i][k]=tmpflx[lk1+k];
   }  
 
   y_gem = new double[jmx+1];
-  bool debug = false;
+  debug = false; 
   for(LO j=0;j<jmx+1;j++){
     y_gem[j]=double(j)*ly/dy;
     if (debug){
@@ -375,8 +399,12 @@ void Part1ParalPar3D::CreateGemsubcommunicators()
   MPI_Comm_split(MPI_COMM_WORLD,gclr,tclr,&tube_comm);
   MPI_Comm_rank(grid_comm,&mype_g);
   MPI_Comm_rank(tube_comm,&mype_t); 
+  MPI_Comm_size(grid_comm, &gnpz);
+  MPI_Comm_size(tube_comm, &tnpx);
 
-  gnpz = kmx;  
+  printf("gnpz: %d, tnpx: %d, kmx: %d \n", gnpz, tnpx, kmx);
+
+//  gnpz = kmx;  
   if(mype_g<kmx-1){
     glk0 = 1;
     glk1 = mype_g;
@@ -398,8 +426,8 @@ void Part1ParalPar3D::CreateGemsubcommunicators()
     tli0= tli2 - tli1 + 1;
   }  
   
-  printf("mype_g: %d, mype_t: %d, glk0: %d, glk1: %d, glk2: %d, tli0: %d, tli1: %d, tli2: %d \n", mype_g, mype_t, glk0,
-          glk1, glk2, tli0, tli1, tli2);
+  printf("mype: %d, mype_t: %d, mype_g: %d, glk0: %d, glk1: %d, glk2: %d, tli0: %d, tli1: %d, tli2: %d \n", mype, mype_t, 
+    mype_g, glk0, glk1, glk2, tli0, tli1, tli2);
 
   /*split MPI_COMM_WORLD for GEM-XGC mapping*/
   npz=int(sqrt(kmx+1));
@@ -453,36 +481,33 @@ void Part1ParalPar3D::rankMapping()
   }
 }
 
+/* find the overlapping box between blocks of coupling collective and blocks of GEM's own collectives
+ */
 void Part1ParalPar3D::overlapBox()
 {
+  bool debug = false; 
+
   LO* xsendlow = new LO[npx];
   LO* xsendup = new LO[npx]; 
   MPI_Allgather(&li1,1,MPI_INT,xsendlow,1,MPI_INT,comm_x);
   MPI_Allgather(&li2,1,MPI_INT,xsendup,1,MPI_INT,comm_x);
   getOverlapBox(sendOverlap_x,xsendlow,xsendup,npx,tli1,tli2);
+
+  if (debug && mype == 0){
+  for (LO i=0; i<npx; i++){
+    printf(" i: %d, xsendlow: %d, xsendup: %d \n", i, xsendlow[i], xsendup[i]);
+  }
+  printf("mype: %d, tli1: %d, tli2: %d \n", mype, tli1, tli2);
+  }
+
+  debug = false;
+  if (debug && mype_g == 0) {
+    for (LO k=0; k<sendOverlap_x.size(); k++ ) {
+      printf("sendmype_x: %d, sendOverlap_x1: %d, sendOverlap_x2: %d, pro: %d\n", mype_t, 
+	sendOverlap_x[k][1],  sendOverlap_x[k][2], sendOverlap_x[k][0]);
+    }
+  }
  
-  std::cout<<" sendOverlap "<<sendOverlap_x.size()<<'\n'<<std::endl;
-  bool debug = false;
-  if (debug){
-  printf("xsendlow ");
-  for (LO i=0; i<npx; i++){
-    if (i < npx-1) {
-      printf(" i: %d, xsendlow: %d", i, xsendlow[i]);
-    }
-    else {
-      printf(" i: %d, xsendlow: %d\n", i, xsendlow[i]);
-    }
-  }
-  printf(" xsendup ");
-  for (LO i=0; i<npx; i++){
-    if (i < npx-1) {
-      printf("i: %d, xsendlow: %d", i, xsendup[i]);
-    }
-    else {
-      printf("i: %d, xsendlow: %d\n", i, xsendup[i]);
-    }
-  }
-  }
 
   LO* thsendlow = new LO[npz];
   LO* thsendup = new LO[npz];
@@ -490,45 +515,74 @@ void Part1ParalPar3D::overlapBox()
   MPI_Allgather(&lk2,1,MPI_INT,thsendup,1,MPI_INT,comm_z);  
   getOverlapBox(sendOverlap_th,thsendlow,thsendup,npz,glk1,glk2); 
 
+  debug = false;
+  if (debug) {
+    for (LO k=0; k<sendOverlap_th.size(); k++ ) {
+      printf("mype_g: %d, sendOverlap_th1: %d, sendOverlap_th2: %d, glk1: %d, glk2: %d, lk1: %d, lk2: %d \n", mype_g, 
+	sendOverlap_th[k][1],  sendOverlap_th[k][2], glk1, glk2, lk1, lk2);
+    }
+  }
+  debug = false;
+  if (debug && mype_t == 0) {
+    for (LO k=0; k<sendOverlap_th.size(); k++ ) {
+      printf("sendmype_g: %d, sendOverlap_th1: %d, sendOverlap_th2: %d, pro: %d\n", mype_g, 
+	sendOverlap_th[k][1],  sendOverlap_th[k][2], sendOverlap_th[k][0]);
+    }
+  }
+
+
   LO* xrecvlow = new LO[ntube];
   LO* xrecvup = new LO[ntube];
   MPI_Allgather(&tli1,1,MPI_INT,xrecvlow,1,MPI_INT,tube_comm);
   MPI_Allgather(&tli2,1,MPI_INT,xrecvup,1,MPI_INT,tube_comm);
   getOverlapBox(recvOverlap_x,xrecvlow,xrecvup,ntube,li1,li2);  
-
-  debug = true;
+ 
+  debug = false;
+  if (debug && mype_z == 0) {
+    for (LO k=0; k<recvOverlap_x.size(); k++ ) {
+      printf("recvmype_z: %d, recvOverlap_x1: %d, recvOverlap_x2: %d, pro: %d\n", mype_x, 
+	recvOverlap_x[k][1],  recvOverlap_x[k][2], recvOverlap_x[k][0]);
+    }
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+ 
+  debug = false; 
   if (debug) {
-  printf("xrecvlow ");
-  for (LO i=0; i<ntube; i++){
-    if (i < ntube-1) {
-      printf(" i: %d, xrecvlow: %d", i, xrecvlow[i]);
-    }
-    else {
-      printf(" i: %d, xrecvlow: %d\n", i, xrecvlow[i]);
+    for (LO k=0; k<recvOverlap_x.size(); k++ ) {
+      printf("mype: %d, recvOverlap_x1: %d, recvOverlap_x2: %d, li1: %d, li2: %d, tli1: %d, tli2: %d \n", mype, 
+	recvOverlap_x[k][1],  recvOverlap_x[k][2], li1, li2, xrecvlow[recvOverlap_x[k][0]],
+       	xrecvup[recvOverlap_x[k][0]]);
     }
   }
-  printf(" xrecvup ");
-  for (LO i=0; i<ntube; i++){
-    if (i < ntube-1) {
-      printf("i: %d, xrecvup: %d", i, xrecvup[i]);
-    }
-    else {
-      printf("i: %d, xrecvup: %d\n", i, xrecvup[i]);
-    }
-  }
-  }
-
+ 
 
   LO* threcvlow = new LO[kmx+1];
   LO* threcvup = new LO[kmx+1];
   MPI_Allgather(&glk1,1,MPI_INT,threcvlow,1,MPI_INT,grid_comm);
   MPI_Allgather(&glk2,1,MPI_INT,threcvup,1,MPI_INT,grid_comm);
-  getOverlapBox(recvOverlap_th,threcvlow,threcvup,kmx+1,lk1,lk2);  
+  getOverlapBox(recvOverlap_th,threcvlow,threcvup,kmx,lk1,lk2);  
 
   debug = false;
   if (debug) {
-  printf("mype: %d, sendOverlap_x.size: %lu, sendOverlap_th.size: %lu, recvOverlap_x.size: %lu, recvOverlap_th.size: %lu \n", 
-        mype, sendOverlap_x.size(), sendOverlap_th.size(),
+    for (LO k=0; k<recvOverlap_th.size(); k++ ) {
+      printf("mype: %d, recvOverlap_th1: %d, recvOverlap_th2: %d, lk1: %d, lk2: %d, glk1: %d, glk2: %d \n", mype, 
+	recvOverlap_th[k][1],  recvOverlap_th[k][2], lk1, lk2, glk1, glk2);
+    }
+  }
+
+  debug = false;
+  if (debug && mype_x == 0) {
+    for (LO k=0; k<recvOverlap_th.size(); k++ ) {
+      printf("recvmype_z: %d, recvOverlap_th1: %d, recvOverlap_th2: %d, pro: %d\n", mype_z, 
+	recvOverlap_th[k][1],  recvOverlap_th[k][2], recvOverlap_th[k][0]);
+    }
+  }
+ 
+
+  debug = false;
+  if (debug) {
+  printf("mype: %d, mype_x: %d, sendOverlap_x.size: %lu, sendOverlap_th.size: %lu, recvOverlap_x.size: %lu, recvOverlap_th.size: %lu \n", 
+        mype, mype_x, sendOverlap_x.size(), sendOverlap_th.size(),
 	recvOverlap_x.size(), recvOverlap_th.size());
   }
 
@@ -538,13 +592,15 @@ void Part1ParalPar3D::getOverlapBox(vecint2d& vec2d, LO* lowind, LO* upind, LO n
      LO low, LO up)
 {
   LO min,max;
-  bool overlap;
-//   vecint2d tmp2d;  
+  bool overlap; 
+  vecint1d tmp1d(4);
   for(LO j=0;j<numproc2;j++){
-    vecint1d tmp1d={0,0,0,0};
+    for (LO h=0; h<3; h++) tmp1d[h] = 0;
     overlap=false;
+//    if(mype==17 && low==120) printf("low: %d, up: %d, lowind: %d, upind: %d \n", low, up, lowind[j], upind[j]); 
+ 
     if(low>upind[j] || lowind[j]>up) {
-      break;
+      overlap = false;
     }else{
       if(low>=lowind[j]){
 	overlap=true;
@@ -573,10 +629,11 @@ void Part1ParalPar3D::getOverlapBox(vecint2d& vec2d, LO* lowind, LO* upind, LO n
       tmp1d[1]=min;
       tmp1d[2]=max;
       tmp1d[3]=max-min+1;
+//      printf("tmp1d: %d, %d, %d, %d \n", tmp1d[0], tmp1d[1], tmp1d[2], tmp1d[3]);
+      vec2d.push_back(tmp1d); 
     }
-    vec2d.push_back(tmp1d); 
   }
-  printf("vec2d.size(): %lu \n", vec2d.size());
+  if (mype == 17) printf("mype: %d,  vec2d.size(): %lu \n", mype, vec2d.size());
 }
 
 

@@ -23,7 +23,7 @@ int main(int argc, char **argv){
   adios2::Variable<double> senddensity;
   adios2::Variable<coupler::CV> sendfield;
 
-  coupler::adios2_handler gDens(adios,"density");
+  coupler::adios2_handler gDens(adios,"gem_dens");
   coupler::adios2_handler cDens(adios,"cpl_density");
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
@@ -36,10 +36,6 @@ int main(int argc, char **argv){
 
   std::string model="global";
   const int m =0;
-  coupler::GO start[2] = {0,0};
-  coupler::GO ABJ_count[2] = {3,3};//{32,272523}; //a-priori known
-  coupler::Array2d<double>* q_prof = coupler::receive_pproc_2d<double>(dir, gDens, start, ABJ_count, m); //debugging
-  if(!rank)fprintf(stderr, "ABJ done\n");
   coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
   if(!rank)fprintf(stderr, "ABJ done: nr %d, ntheta: %d\n",gmesh->val(5),gmesh->val(4));
  

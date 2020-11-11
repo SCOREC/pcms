@@ -177,13 +177,10 @@ namespace coupler {
     const std::string fname = dir + "/" + name + ".bp";
   
     if(!eng){
-      if(!rank) std::cerr<<"ABJ 0.1\n";
       read_io.SetEngine("Sst");
-      if(!rank) std::cerr<<"ABJ 0.2\n";
       read_io.SetParameters({
           {"OpenTimeoutSecs", "480"}
           });
-      if(!rank) std::cerr<<"ABJ 0.3\n";
       eng = read_io.Open(fname, adios2::Mode::Read);
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     }
@@ -220,6 +217,7 @@ namespace coupler {
     adios_var.SetSelection(sel);
     eng.Get(adios_var, field->data());
     eng.EndStep();
+    if(!rank) std::cerr << rank <<  ": receive " << name << " done \n";
     return field;
   }
   
@@ -290,11 +288,8 @@ namespace coupler {
       assert(eng);
     }
     
-    if(!rank) fprintf(stderr, "ABJ 2.0\n"); 
     eng.BeginStep();
-    if(!rank) fprintf(stderr, "ABJ 2.1\n"); 
     adios2::Variable<T> adVar = read_io.InquireVariable<T>(name);
-    if(!rank) fprintf(stderr, "ABJ 2.2\n"); 
  
     const auto ftn_glob_height = adVar.Shape()[0]; 
     const auto ftn_glob_width = adVar.Shape()[1]; 

@@ -206,9 +206,10 @@ namespace coupler {
    
    densityFromGemToCoupler(densityfromGEM);  
 
-//   zDensityBoundaryBufAssign(densCpl);
-
-//   interpoDensityAlongZ(densinterone);
+   zDensityBoundaryBufAssign(densCpl);
+printf("before interpo, mype: %d \n", p1->mype);
+   interpoDensityAlongZ(densinterone);
+printf("after interpo, mype: %d \n", p1->mype);
 /*
    interpoDensityAlongY();
 */   

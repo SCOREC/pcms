@@ -325,7 +325,7 @@ void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box)
     }
   }
 
-  bool debug = true;
+  bool debug = false;
   if (debug){
       for (LO i = 0; i < lx ; i++) {
         for (LO j = 0; j < ly; j++) {

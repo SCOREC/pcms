@@ -128,6 +128,12 @@ namespace coupler {
       delete a;
     }
 
+  template<typename T>
+    void destroy(Array3d<T>* a) {
+      delete a;
+    }
+
+
   /** Sanity check values
    */
   template<typename T>
@@ -179,6 +185,7 @@ namespace coupler {
     if(!eng){
       read_io.SetEngine("Sst");
       read_io.SetParameters({
+          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
       eng = read_io.Open(fname, adios2::Mode::Read);
@@ -234,6 +241,7 @@ namespace coupler {
     if(!eng){
       read_io.SetEngine("Sst");
       read_io.SetParameters({
+          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "480"}
           });
       eng = read_io.Open(fname, adios2::Mode::Read);
@@ -278,6 +286,7 @@ namespace coupler {
       if(!rank) std::cerr<<"create engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
+          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
       if(!rank) std::cerr<<"engine parameters are set"<<'\n';
@@ -319,14 +328,12 @@ namespace coupler {
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
-    std::cerr<<"rank="<<rank<<'\n';
-  
     const std::string fname = dir + "/" + name + ".bp";
-    std::cerr<<fname<<'\n'; 
     if(m==0){
       std::cerr<<"creat engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
+          {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
       std::cerr<<"engine parameters are set"<<'\n';
@@ -343,7 +350,7 @@ namespace coupler {
     const auto dim0 = adVar.Shape()[0]; 
     const auto dim1 = adVar.Shape()[1]; 
     const auto dim2 = adVar.Shape()[2];
-    std::cerr<<"Shape 0 1 2="<<dim0<<" "<<dim1<<" "<<dim2<<'\n';
+    std::cout<<"rank Shape 0 1 2="<<rank<<" "<<dim0<<" "<<dim1<<" "<<dim2<<'\n';
     //fortran to C transpose
     const auto DIM0 = dim2;
     const auto DIM1 = dim1;
@@ -398,12 +405,21 @@ namespace coupler {
       std::string name = handler.get_name();
     return receive1d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng, model);
   }
+
   template<typename T>
   Array2d<T>* receive_pproc_2d(const std::string cce_folder,
       adios2_handler &handler,GO my_start[2], GO my_count[2], const int m, MPI_Comm comm = MPI_COMM_WORLD) { 
       std::string name = handler.get_name();
     return receive2d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng,my_start, my_count, comm, m);
   }
+
+  template<typename T>
+  Array3d<T>* receive_pproc_3d(const std::string cce_folder,
+      adios2_handler &handler, GO* my_start, GO* my_count, const int m, MPI_Comm comm = MPI_COMM_WORLD) {
+      std::string name = handler.get_name();
+   return receive3d_from_ftn<T>(cce_folder, name, handler.IO, handler.eng, my_start, my_count, comm, m);
+  } 
+
   template<typename T>
   T* receive_exact(const std::string cce_folder,
       adios2_handler &handler, GO my_start, GO my_count, MPI_Comm comm = MPI_COMM_WORLD) { 

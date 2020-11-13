@@ -23,7 +23,7 @@ int main(int argc, char **argv){
   adios2::Variable<double> senddensity;
   adios2::Variable<coupler::CV> sendfield;
 
-  coupler::adios2_handler gDens(adios,"gem_dens");
+  coupler::adios2_handler gDens(adios,"gem_density");
   coupler::adios2_handler cDens(adios,"cpl_density");
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
@@ -35,7 +35,7 @@ int main(int argc, char **argv){
   coupler::adios2_handler xRzcoords(adios,"xgc_rzcoords");  
 
   std::string model="global";
-  const int m =0;
+  int m =0;
   coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
   if(!rank)fprintf(stderr, "ABJ done: nr %d, ntheta: %d\n",gmesh->val(5),gmesh->val(4));
  
@@ -45,7 +45,6 @@ int main(int argc, char **argv){
   if(!rank) fprintf(stderr, "%d,%d,%d,%d,%d,%d \n", gmesh->val(0),gmesh->val(1),gmesh->val(2),
             gmesh->val(3), gmesh->val(4), gmesh->val(5));
 
-  coupler::GO count[2] = {2,(coupler::GO)gmesh->val(5)};
   const coupler::Array1d<double>* thfl_qprof=coupler::receive_pproc<double>(dir,gQprof,model);
 
   coupler::Array1d<double>* rzcoords=coupler::receive_pproc<double>(dir,gGrd,model);//rz
@@ -63,33 +62,45 @@ int main(int argc, char **argv){
   coupler::Part1ParalPar3D p1pp3d(gmesh, thfl_qprof, test_case, preproc);
   MPI_Barrier(MPI_COMM_WORLD);
 
-  coupler::Part1ParalPar3D* mesh1 = &p1pp3d;  
-  coupler::Part3Mesh3D p3m3d(mesh1, xcouple, rzcoords, preproc, test_case);
-  printf("mype: %d \n", p1pp3d.mype);
+  coupler::Part1ParalPar3D* p1 = &p1pp3d;  
+  coupler::Part3Mesh3D p3m3d(p1, xcouple, rzcoords, preproc, test_case);
   MPI_Barrier(MPI_COMM_WORLD);
-  /*
+  
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, ccase, test_case, preproc);  
  
-  coupler::Part1ParalPar3D* mesh1 = &p1pp3d;
-  coupler::Part3Mesh3D*     mesh3 = &p3m3d;
+  coupler::Part3Mesh3D*     p3 = &p3m3d;
   coupler::BoundaryDescr3D* bound = &bdesc;
-  coupler::gemXgcDatasProc3D  gxdp3d(mesh1,mesh3,bound,preproc,test_case,ypar);
-*/
-/*
-  int m;
-  coupler::GO start[3];
-  coupler::GO count[3];
-*/
-  for (int i = 0; i < time_step; i++) {
-    for (int j = 0; j < RK_count; j++) {
-//      m = i*RK_count+j;
-       
- 
+
+  coupler::gemXgcDatasProc3D  gxdp3d(p1,p3,bound,preproc,test_case,ypar);
+  coupler::gemXgcDatasProc3D  gx3d_ = gxdp3d; 
+
+  coupler::GO* start_adios = new coupler::GO[3];
+  coupler::GO* count = new coupler::GO[3];
+  coupler::GO dim0, dim1, dim2;
+  
+  for (int i = 0; i < 1; i++) {
+    for (int j = 0; j < 1; j++) {
+      m = i*RK_count+j;
+      start_adios[0] = p1->glk1;
+      start_adios[1] = 0;
+      start_adios[2] = p1->tli1;
+      count[0] = p1->glk0;
+      count[1] = p1->lj0;
+      count[2] = p1->tli0;      
+      coupler::Array3d<double>* densityfromGEM = coupler::receive_pproc_3d<double>(dir, gDens, start_adios, count, m, MPI_COMM_WORLD); 
+      gxdp3d.DistriDensiRecvfromGem(densityfromGEM);
+MPI_Barrier(MPI_COMM_WORLD);
+
+//      for (coupler::LO k=0; k< 5; k++) printf(" densi[i]: %f ", densityfromGEM->val(k));
+
+      coupler::destroy(densityfromGEM); 
+
+      
     }
   }
-
-/*  
+ 
   gDens.close();
+/*
   cDens.close();
   xFld.close();
   cFld.close();

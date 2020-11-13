@@ -427,7 +427,7 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
      theta_flx[i] = new double[versurf[p1->li1+i]];
   }
  
-  /*Here, the continusous boundary condition is used for the 3rd-order Lagrangain interpolaiton; 
+  /*Here, the continuous boundary condition is used for the 3rd-order Lagrangain interpolaiton; 
    *It's better to replace it with the cubic spline interpolation
    */
   double* tmpflxeq=new double[p1->ntheta+5];
@@ -449,17 +449,17 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
     if(debug){
       if (p1->mype ==3 && i==0){
 	 for (LO j = 0; j < p1->ntheta+5; j++) 
-	  fprintf(stderr, "j: %d, tmpflxeq[j]: %f, tmpthetaeq: %f \n", j, tmpflxeq[j], tmpthetaeq[j]);
-	 for (LO k = 0; k< versurf[0]; k++) 
+	   fprintf(stderr, "j: %d, tmpflxeq[j]: %f, tmpthetaeq: %f \n", j, tmpflxeq[j], tmpthetaeq[j]);
+	 for (LO k = 0; k< versurf[p1->li1]; k++) 
 	   fprintf(stderr, "k:%d, theta_flx[0][k]: %f, tmptheta: %f \n", k, theta_flx[0][k], tmptheta[0][k]);
       }
     }
   } 
   
-  debug = true;
+  debug = false;
   if(debug){
     if (p1->mype ==3){
-       for (LO i = 0; i< versurf[0]; i++) printf("i:%d, theta_flx[0][i]: %f \n", i, theta_flx[0][i]);
+       for (LO i = 0; i< versurf[p1->li1]; i++) printf("i:%d, theta_flx[0][i]: %f \n", i, theta_flx[0][i]);
     }
   }
 
@@ -676,7 +676,9 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
     }
 
    tmp.flxt[4]=tmpflx;
-   printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
+   if(debug){
+     printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
+   }
    if (tmpflx > tmp.flxt[2]){
       printf("Error: The boundary condition is not right at upper end first,tmpflx: %f, flxt[2]: %f \n", 
 	tmpflx, tmp.flxt[2]);
@@ -715,9 +717,10 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
     } 
 
     tmp.flxt[4]=tmpflx;
-
-    printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
-
+    
+    if(debug){
+      printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
+    }
     if (tmpflx<=tmp.flxt[1]){
       printf("Error: The boundary condition is not right at lower end first,tmpflx: %f, flxt[1]: %f \n", 
 	tmpflx, tmp.flxt[1]);

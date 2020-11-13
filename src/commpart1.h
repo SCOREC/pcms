@@ -76,6 +76,7 @@ class Part1ParalPar3D {
     LO nnodes;
     MPI_Comm grid_comm,tube_comm;
     LO gnpz; // the number of process ong z dimension in grid_comm communicator 
+    LO tnpx;
 
     double lz, ly;
     double dth, delz;
@@ -153,7 +154,7 @@ class Part1ParalPar3D {
     void initGem(const Array1d<int>* gemmesh, const Array1d<double>* thflx_qprof);    
     void CreateGroupComm();
     void overlapBox();
-    void getOverlapBox(vecint2d vec2d,LO* lowind,LO* upind,LO numproc2,LO low,LO up);
+    void getOverlapBox(vecint2d& vec2d, LO* lowind, LO* upind, LO numproc2, LO low, LO up);
     void rankMapping();
     void decomposeGemMeshforCoupling();
 };

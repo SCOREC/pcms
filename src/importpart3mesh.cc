@@ -465,17 +465,17 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 
   y_xgc = new double**[p1->li0];
   for(LO i=0;i<p1->li0;i++){
-    y_xgc[i] = new double*[p1->lj0];
+    y_xgc[i] = new double*[p1->nphi];
     for(LO j=0;j<p1->lj0;j++)
-      y_xgc[i][j]=new double[p1->lk0];  
+      y_xgc[i][j]=new double[mylk0[i]];  
   }
   
   double phi_tmp;
   for(LO i=0;i<p1->li0;i++){
-    for(LO j=0;j<p1->lj0;j++){
+    for(LO j=0;j<p1->nphi;j++){
       phi_tmp=double(j-1)*2.0*cplPI/double(p1->nphi*p1->nwedge);
-      for(LO k=0;k<p1->lk0;k++){
-        y_xgc[i][j][k]=remainder(p1->r0/p1->q0*(theta_flx[i][k]-phi_tmp),p1->ly);
+      for(LO k=0; k<mylk0[i]; k++){
+        y_xgc[i][j][k]=remainder(p1->r0/p1->q0*(theta_flx[i][mylk1[i]+k]-phi_tmp),p1->ly);
         if(y_xgc[i][j][k]<0) y_xgc[i][j][k]=p1->ly+y_xgc[i][j][k];
       }
     }
@@ -780,4 +780,4 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
 
 }
 
-} 
+} /*importpart3mesh.cc*/ 

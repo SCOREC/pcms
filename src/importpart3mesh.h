@@ -71,7 +71,7 @@ class Part3Mesh3D{
     double** theta_geo=NULL; //store the theta value of the nodes on the surface of xgc in the local process
     double** theta_flx=NULL; //store  the flux_theta of the nodes on the surface of xgc mesh in the local process
     LO cce_first; // The number labelling the first surface 
-    double*** y_xgc=NULL; 
+    double*** y_xgc=NULL; // 
     double**** zeta_pot=NULL; //Store the theta_f mesh for interpolating potential provided by XGC to the one for GEM
     double***** thetaflx_pot=NULL; //Store the five flux theta values for the 3rd order interpolation along the field line.
     LO***** thetaflx_ind_pot=NULL; //Store the four indices of nodals for the 3rd order interpolation along the field line.
@@ -192,4 +192,4 @@ double minimalvalue(const double* array, const LO n);
 
 }
 
-#endif
+#endif /*mportpart3mesh.h*/

@@ -52,8 +52,24 @@ namespace coupler {
    for(LO i=0;i<p3->li0;i++){
      densXgc[i]=new double*[p3->lj0];
      for(LO j=0;j<p3->lj0;j++)
-       densXgc[i][j]=new double[p3->mylk0[i]];
-   }    
+        densXgc[i][j]=new double[p3->mylk0[i]];
+   } 
+
+   densinterone = new double**[p1->li0];
+   for (LO i=0; i<p1->li0; i++) {
+     densinterone[i] = new double*[p1->lj0];
+     for (LO j=0; j<p1->lj0; j++) {
+       densinterone[i][j] = new double[p3->mylk0[i]];
+     }
+   }      
+
+   densintertwo = new double**[p1->li0];
+   for (LO i=0; i<p1->li0; i++) {
+     densintertwo[i] = new double*[p1->nphi];
+     for (LO j=0; j<p1->nphi; j++) {
+       densintertwo[i][j] = new double[p3->mylk0[i]];
+     }
+   }
  }
 
  void gemXgcDatasProc3D::allocPotentArrays()
@@ -207,12 +223,13 @@ namespace coupler {
    densityFromGemToCoupler(densityfromGEM);  
 
    zDensityBoundaryBufAssign(densCpl);
-printf("before interpo, mype: %d \n", p1->mype);
+
    interpoDensityAlongZ(densinterone);
-printf("after interpo, mype: %d \n", p1->mype);
-/*
+
+   printf("after interpo, mype: %d \n", p1->mype);
+   MPI_Barrier(MPI_COMM_WORLD);
    interpoDensityAlongY();
-*/   
+   
    //fixme: distribute and assemble the datas to get the matrix to be sent to xgc by the adios2 routine     
    
  }
@@ -443,4 +460,4 @@ void gemXgcDatasProc3D::potentFromCouplerToGem()
 }
 
 
-}
+} /*gemXgcDataproc.cc*/ 

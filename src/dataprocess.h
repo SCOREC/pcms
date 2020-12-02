@@ -149,6 +149,8 @@ class gemXgcDatasProc3D {
     double*** densinterone = NULL;  // Store the density interpolated along theta
     double*** densintertwo = NULL;  // Store the density interpolated along y
     double*** densXgc = NULL;
+    double*  denssend = NULL;
+
     double**** pot_gem_fl = NULL;
     double*** potyCpl = NULL;
     double*** potythCpl = NULL;

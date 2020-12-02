@@ -70,6 +70,8 @@ namespace coupler {
        densintertwo[i][j] = new double[p3->mylk0[i]];
      }
    }
+ 
+   denssend = new double[p3->blockcount*p3->nphi];
  }
 
  void gemXgcDatasProc3D::allocPotentArrays()
@@ -227,11 +229,11 @@ namespace coupler {
    interpoDensityAlongZ(densinterone);
 
    printf("after interpo, mype: %d \n", p1->mype);
-   MPI_Barrier(MPI_COMM_WORLD);
    interpoDensityAlongY();
+   MPI_Barrier(MPI_COMM_WORLD);
    
    //fixme: distribute and assemble the datas to get the matrix to be sent to xgc by the adios2 routine     
-   
+   distriDataAmongCollective(p1, p3, densintertwo, denssend);   
  }
 
 
@@ -343,7 +345,7 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
    }
   
    MPI_Barrier(MPI_COMM_WORLD);   
-   printf("before alltoallv mype: %d\n",p1->mype );
+//   printf("before alltoallv mype: %d\n",p1->mype );
 
    MPI_Alltoallv(sendbuf,numsend,sdispls,MPI_DOUBLE,recvbuf,numrecv,rdispls,MPI_DOUBLE,MPI_COMM_WORLD);
  

@@ -113,7 +113,7 @@ void gemXgcDatasProc3D::interpoDensityAlongZ(double*** box)
   LO nzb=bdesc->nzb;
   yin=new double[p1->lk0+2*nzb];
   if(preproc==true){
-   printf("reach interpo\n");
+//   printf("reach interpo\n");
    MPI_Barrier(MPI_COMM_WORLD);  
 // printf("after reach interpo\n");
 

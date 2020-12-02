@@ -161,35 +161,8 @@ class Part3Mesh3D{
 // be removed.
 LO  minloc(const double* zcoords, const LO n); 
 
-template<class T>
-void reshuffleforward(T* array,const LO nstart,const LO vertnum)
-{
-  T* tmp=new T[vertnum];
-  for(LO i=0;i<vertnum-nstart;i++)
-    tmp[i]=array[nstart+i];
-  for(LO j=vertnum-nstart;j<vertnum;j++)
-    tmp[j]=array[j-vertnum+nstart];
-  for(LO k=0;k<vertnum;k++)
-    array[k]=tmp[k];
-  delete[] tmp;
-}
-
-
-template<class T>
-void reshufflebackward(T* array,const LO nstart,const LO vertnum)
-{
-  T* tmp=new T[vertnum];
-  for(LO i=vertnum-nstart;i<vertnum;i++)
-    tmp[i-vertnum+nstart]=array[i];
-  for(LO j=0;j<vertnum-nstart;j++)
-    tmp[j+nstart]=array[j];
-  for(LO k=0;k<vertnum;k++)
-    array[k]=tmp[k];
-  delete[] tmp;
-}
-
 double minimalvalue(const double* array, const LO n);
 
 }
 
-#endif /*mportpart3mesh.h*/
+#endif /*importpart3mesh.h*/

@@ -24,7 +24,7 @@ int main(int argc, char **argv){
   adios2::Variable<coupler::CV> sendfield;
 
   coupler::adios2_handler gDens(adios,"gem_density");
-  coupler::adios2_handler cDens(adios,"cpl_density");
+  coupler::adios2_handler cDens(adios,"density");
   coupler::adios2_handler xFld(adios,"xgc_field");
   coupler::adios2_handler cFld(adios,"cpl_field");
   coupler::adios2_handler gMesh(adios,"gem_mesh");
@@ -41,8 +41,10 @@ int main(int argc, char **argv){
   coupler::GO ntheta = (coupler::GO)gmesh->val(4);
   coupler::GO nr = (coupler::GO)gmesh->val(1);
   coupler::GO nnode = (coupler::GO)gmesh->val(5);
-  if(!rank) fprintf(stderr, "%d,%d,%d,%d,%d,%d \n", gmesh->val(0),gmesh->val(1),gmesh->val(2),
+  printf("%d,%d,%d,%d,%d,%d \n", gmesh->val(0),gmesh->val(1),gmesh->val(2),
             gmesh->val(3), gmesh->val(4), gmesh->val(5));
+  printf("mype: %d \n", rank);
+  MPI_Barrier(MPI_COMM_WORLD);
 /*
   coupler::GO count[2] = {2,(coupler::GO)gmesh->val(5)};
   coupler::GO count2[2] = {0,10};
@@ -81,6 +83,12 @@ int main(int argc, char **argv){
   coupler::GO* start_adios = new coupler::GO[3];
   coupler::GO* count = new coupler::GO[3];
   coupler::GO dim0, dim1, dim2;
+      
+  coupler::GO INDS1d[2]={0,p3m3d.lj0*p3m3d.blockcount};
+
+  coupler::Array3d<double>* densityfromGEM;
+  coupler::Array2d<double>* densitytoXGC; 
+  double* densitytmp;
   
   for (int i = 0; i < 1; i++) {
     for (int j = 0; j < 1; j++) {
@@ -91,21 +99,31 @@ int main(int argc, char **argv){
       count[0] = p1->glk0;
       count[1] = p1->lj0;
       count[2] = p1->tli0;      
-      coupler::Array3d<double>* densityfromGEM = coupler::receive_pproc_3d<double>(dir, gDens, start_adios, count, m, MPI_COMM_WORLD); 
+      densityfromGEM = coupler::receive_pproc_3d<double>(dir, gDens, start_adios, count, m, MPI_COMM_WORLD); 
       gxdp3d.DistriDensiRecvfromGem(densityfromGEM);
-MPI_Barrier(MPI_COMM_WORLD);
+      MPI_Barrier(MPI_COMM_WORLD);
 
 //      for (coupler::LO k=0; k< 5; k++) printf(" densi[i]: %f ", densityfromGEM->val(k));
 
-      coupler::destroy(densityfromGEM); 
+      densitytoXGC = new coupler::Array2d<double>(
+                                  p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0,
+                                  p3m3d.blockstart);
+      densitytmp = densitytoXGC->data();
+      for(int h=0; h<p3m3d.nphi*p3m3d.blockcount; h++){
+        densitytmp[h] = gxdp3d.denssend[h];
+      }
+//      realsum=0.0;
 
-      
+//      coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);
+    
     }
   }
- 
+
+//  coupler::destroy(densitytoXGC); 
+//  coupler::destroy(densityfromGEM); 
   gDens.close();
+//  cDens.close();
 /*
-  cDens.close();
   xFld.close();
   cFld.close();
 */

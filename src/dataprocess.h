@@ -173,7 +173,7 @@ class gemXgcDatasProc3D {
     ~gemXgcDatasProc3D(){};
     
     void DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM);
-    void DistriPotentRecvfromXGC(const Array3d<double>* potentfromXGC);
+    void DistriPotentRecvfromXGC(const Array3d<double>* fieldfromXGC);
     void densityFromGemToCoupler(const Array3d<double>* densityfromGEM);  
  
   private:
@@ -190,7 +190,7 @@ class gemXgcDatasProc3D {
     void interpoDensityAlongZ(double*** box);
     void interpoDensityAlongY();
     void InterpoPotential3DAlongZ(double*** boxyin, double*** boxout); 
-    void potentFromCouplerToGem();
+    void potentFromCouplerToGem(const Array3d<double>* fieldfromXGC);
     void zPotentBoundaryBufAssign(const double*** box,BoundaryDescr3D& bdesc);
     void zMeshPotentBoundaryBufAssign(BoundaryDescr3D& bdesc);
     void zDensityBoundaryBufAssign(double*** box);

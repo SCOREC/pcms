@@ -154,14 +154,14 @@ namespace coupler {
      }
    
 
-   LO sendtot;
-   LO recvtot;
-   MPI_Reduce(&sendnum, &sendtot, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-   MPI_Reduce(&recvnum, &recvtot, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-   if (p1->mype == 0) {
-     printf("sendtot: %d, recvtot: %d \n", sendtot, recvtot);
-     assert(sendtot == recvtot);
-   }
+     LO sendtot;
+     LO recvtot;
+     MPI_Reduce(&sendnum, &sendtot, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+     MPI_Reduce(&recvnum, &recvtot, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+     if (p1->mype == 0) {
+       printf("sendtot: %d, recvtot: %d \n", sendtot, recvtot);
+       assert(sendtot == recvtot);
+     }
    }   
 
    debug = false;
@@ -237,7 +237,7 @@ namespace coupler {
  }
 
 
-void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* potentfromXGC)
+void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* fieldfromXGC)
 {
   double*** tmp=new double**[p1->li0];
   for(LO i=0;i<p1->li0;i++){
@@ -248,7 +248,7 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* potentfro
   }    
 
   //FIXME: distribute potentfromXGC->datas() to tmp;
-  double* potent=potentfromXGC->data();  
+  double* potent=fieldfromXGC->data();  
   LO n=0;
   for(LO i=0;i<p1->li0;i++){
     for(LO j=0;j<p3->nphi;j++){
@@ -286,7 +286,7 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* potentfro
 
   // The 2nd interpolation along theta
   InterpoPotential3DAlongZ(potyCpl,potythCpl);  
-  potentFromCouplerToGem();
+  potentFromCouplerToGem(fieldfromXGC);
 }
 
 
@@ -301,7 +301,7 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
    LO nrank=0;
    LO n, m;
 
-   for(LO i=0; i<sendnum; i++) {
+   for (LO i=0; i<sendnum; i++) {
      sendbuf[i] = 0.0;
    }
 
@@ -353,9 +353,9 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
    LO gridnum=0;
    nrank=0;
    
-   for(LO k=0;k<p1->gnpz;k++){
-     for(LO i=0;i<p1->ntube;i++){
-       nrank=k*p1->tnpx+i;
+   for(LO k=0; k<p1->gnpz; k++){
+     for(LO i=0; i<p1->tnpx; i++){
+       nrank = k*p1->tnpx + i;
        if(numrecv[nrank]!=0){
 	 tubenum=0;
 	 while(i!=p1->recvOverlap_x[tubenum][0]){
@@ -368,11 +368,12 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
 	   assert(gridnum<=p1->recvOverlap_th.size());
 	 }              
 
-	 for(LO i1=p1->recvOverlap_x[tubenum][1];i1<p1->recvOverlap_x[tubenum][2];i1++){
-	   for(LO j1=0;j1<p1->lj0;j1++){
-	     for(LO k1=p1->recvOverlap_th[gridnum][1];k1++<p1->recvOverlap_th[gridnum][2];k1++){ 
-	       densCpl[i1-p1->li1][j1][k1-p1->lk1]=recvbuf[rdispls[nrank]+(i1-p1->recvOverlap_x[tubenum][1])
-		 *p1->lj0*p1->recvOverlap_th[gridnum][3]+j1*p1->recvOverlap_th[gridnum][3]+k1-p1->recvOverlap_th[gridnum][1]];
+	 for(LO i1=p1->recvOverlap_x[tubenum][1]; i1<p1->recvOverlap_x[tubenum][2] + 1; i1++){
+	   for(LO j1=0; j1<p1->lj0; j1++){
+	     for(LO k1=p1->recvOverlap_th[gridnum][1]; k1<p1->recvOverlap_th[gridnum][2] + 1; k1++){ 
+               n = rdispls[nrank]+(i1-p1->recvOverlap_x[tubenum][1])
+		 *p1->lj0*p1->recvOverlap_th[gridnum][3]+j1*p1->recvOverlap_th[gridnum][3]+k1-p1->recvOverlap_th[gridnum][1];
+	       densCpl[i1-p1->li1][j1][k1-p1->lk1] = recvbuf[n];
 	     }
 	   }
 	 }          
@@ -382,8 +383,9 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
 }
 
 // It's a reverse procedure of densityFromGemToCoupler
-void gemXgcDatasProc3D::potentFromCouplerToGem()
+void gemXgcDatasProc3D::potentFromCouplerToGem(const Array3d<double>* fieldfromXGC)
 {
+   double* array = fieldfromXGC->data();
    GO scounts=recvnum;
    GO rcounts=sendnum;
    double* sendbuf=new double[scounts];
@@ -393,10 +395,12 @@ void gemXgcDatasProc3D::potentFromCouplerToGem()
    LO tubenum=0;
    LO gridnum=0;
    LO nrank=0;
-   for(LO i=0;i<p1->ntube;i++){
-     for(LO k=0;k<p1->gnpz;k++){
-       nrank=i*p1->gnpz+k;
-       if(numrecv[nrank]!=0){
+   LO n, m;
+
+   for(LO k=0; k<p1->gnpz; k++){
+     for(LO i=0; i<p1->tnpx; i++){
+       nrank = k*p1->tnpx + i;
+       if(numrecv[nrank] != 0){
 	 tubenum=0;
 	 while(i!=p1->recvOverlap_x[tubenum][0]){
 	   tubenum+=1;
@@ -408,12 +412,12 @@ void gemXgcDatasProc3D::potentFromCouplerToGem()
 	   assert(gridnum<=p1->recvOverlap_th.size());
 	 }              
 
-	 for(LO i1 = p1->recvOverlap_x[tubenum][1]; i1 < p1->recvOverlap_x[tubenum][2]; i1++){
+	 for(LO i1 = p1->recvOverlap_x[tubenum][1]; i1 < p1->recvOverlap_x[tubenum][2] + 1; i1++){
 	   for(LO j1 = 0; j1<p1->lj0; j1++){
-	     for(LO k1 = p1->recvOverlap_th[gridnum][1]; k1 < p1->recvOverlap_th[gridnum][2]; k1++){
-	       sendbuf[rdispls[nrank]+(i1-p1->recvOverlap_x[tubenum][1])
-		 *p1->lj0*p1->recvOverlap_th[gridnum][3]+j1*p1->recvOverlap_th[gridnum][3]+k1-p1->recvOverlap_th[gridnum][1]]
-	       =potythCpl[i1-p1->li0][j1][k1-p1->lk0];
+	     for(LO k1 = p1->recvOverlap_th[gridnum][1]; k1 < p1->recvOverlap_th[gridnum][2] + 1; k1++){
+               n = rdispls[nrank]+(i1-p1->recvOverlap_x[tubenum][1])
+		 *p1->lj0*p1->recvOverlap_th[gridnum][3]+j1*p1->recvOverlap_th[gridnum][3]+k1-p1->recvOverlap_th[gridnum][1];
+	       sendbuf[n] = potythCpl[i1-p1->li1][j1][k1-p1->lk1];
 	     }
 	   }
 	 }          
@@ -426,31 +430,48 @@ void gemXgcDatasProc3D::potentFromCouplerToGem()
    LO xnum=0;
    LO thnum=0;
    nrank=0;
-   LO n;
+   
+   for (LO i=0; i<scounts; i++) {
+     sendbuf[i] = 0.0;
+   }
+
+   for (LO i=0; i<rcounts; i++) {
+     recvbuf[i] = 0.0;
+   }
 
    //for initialize the sendbuf  
    for(LO i=0;i<p1->npx;i++){
      for(LO k=0;k<p1->npz;k++){
        nrank=i*p1->npz+k;
+       xnum = 0;
+       thnum = 0;
        if(numsend[nrank]!=0){
-	 xnum=0;
 	 while(i!=p1->sendOverlap_x[xnum][0]){
 	   xnum+=1;
 	   assert(xnum<=p1->sendOverlap_x.size());
 	 }
-	 thnum=0;
 	 while(k!=p1->sendOverlap_th[thnum][0]){
 	   thnum+=1;
 	   assert(thnum<=p1->sendOverlap_th.size());
 	 }      
 		
-	 for(LO i1=p1->sendOverlap_x[xnum][1];i1<p1->sendOverlap_x[xnum][2];i1++){
-	   for(LO j1=0;j1<p1->lj0;j1++){
-	     for(LO k1=p1->sendOverlap_th[thnum][1];k1++<p1->sendOverlap_th[thnum][2];k1++){
+	 for(LO i1=p1->sendOverlap_x[xnum][1]; i1<p1->sendOverlap_x[xnum][2] + 1; i1++){
+	   for(LO j1=0; j1<p1->lj0; j1++){
+	     for(LO k1=p1->sendOverlap_th[thnum][1]; k1<p1->sendOverlap_th[thnum][2]+1; k1++){
+               n = (i1-p1->tli1)*p1->lj0*p1->glk0+j1*p1->glk0+k1-p1->glk1;
+               m = (i1-p1->sendOverlap_x[xnum][1])*p1->lj0
+                 *p1->sendOverlap_th[thnum][3]+j1*p1->sendOverlap_th[thnum][3]
+                 +k1-p1->sendOverlap_th[thnum][1];
+               potGem[n] = recvbuf[sdispls[nrank]+m];
+               assert(m<numsend[nrank]);
+               assert(n<p1->tli0*p1->lj0*p1->glk0);
+
+/*
 		potGem[(k1-p1->sendOverlap_th[thnum][1])*p1->lj0*(p1->imx+1)+j1*(p1->imx+1)+i1]
 		=recvbuf[sdispls[n]+(i1-p1->sendOverlap_x[xnum][1])*p1->lj0
 		 *p1->sendOverlap_th[thnum][3]+j1*p1->sendOverlap_th[thnum][3]
 		 +k1-p1->sendOverlap_th[thnum][1]];
+*/
 	     }
 	   }
 	 }     

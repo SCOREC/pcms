@@ -334,8 +334,13 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
     theta[i]=double(i-kmx/2)*tmpdth;
     theta[kmx-i]=-theta[i];
   }
-  
-  if(mype == 0) fprintf(stderr, "theta[0]:%f, theta[kmx]:%f \n", theta[0],theta[kmx]);
+ 
+  debug = true; 
+  if (debug) { 
+    if(mype == 1) {
+      for (LO i=0; i<kmx+1; i++) printf("i: %d, theta[i]:%f \n", i, theta[i]);
+    }
+  }
 
   double* tmpthetaeq=new double[ntheta+3];
   tmpthetaeq[0]=thetagrideq[0]-dth;

@@ -210,22 +210,28 @@ namespace coupler {
 
  void gemXgcDatasProc3D::DistriDensiRecvfromGem(const Array3d<double>* densityfromGEM)
  {    
-   
-   double* array=densityfromGEM->data();
-   LO n=0;
-   for(LO i=0;i<p1->tli0;i++){ 
-     for(LO j=0;j<p1->lj0;j++){
-       for(LO k=0;k<p1->glk0;k++){
-         n++;
-         densin[i][j][k]=array[n];
-       }
-     }
-   }
-   
+   bool debug = false;
+//   double* array=densityfromGEM->data();
+//   LO n=0;
+  
+   MPI_Barrier(MPI_COMM_WORLD); 
    densityFromGemToCoupler(densityfromGEM);  
 
    zDensityBoundaryBufAssign(densCpl);
 
+   debug = false;
+   if (debug) {	
+   for(LO i=0;i<p1->li0;i++){ 
+     for(LO k=0;k<p1->lk0;k++){
+       for(LO j=0;j<p1->lj0;j++){
+       if (p1->mype == 0) {
+             printf("k:%d, j:%d, denCpl: %f \n", k, j, densCpl[i][j][k]);
+	   }
+	 }  
+       }
+     }
+   }
+   
    interpoDensityAlongZ(densinterone);
 
    printf("after interpo, mype: %d \n", p1->mype);
@@ -300,6 +306,7 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
    LO thnum=0;
    LO nrank=0;
    LO n, m;
+   bool debug;
 
    for (LO i=0; i<sendnum; i++) {
      sendbuf[i] = 0.0;
@@ -347,8 +354,28 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
    MPI_Barrier(MPI_COMM_WORLD);   
 //   printf("before alltoallv mype: %d\n",p1->mype );
 
+   debug = false;
+   if (debug) {
+   if (p1->mype == 1) {
+     for (LO i=0; i<sendnum; i++)
+     printf("i: %d, sendbuf: %f \n", i, sendbuf[i]);
+   } 
+   }
    MPI_Alltoallv(sendbuf,numsend,sdispls,MPI_DOUBLE,recvbuf,numrecv,rdispls,MPI_DOUBLE,MPI_COMM_WORLD);
- 
+
+   debug = false;
+   if (debug) {
+   if (p1->mype < 6) {
+     for (LO i=0; i<recvnum; i++){
+       if(isnan(recvbuf[i])) {
+         printf("i: %d, recvbuf[i] is nan. \n", i);
+	 exit(1);
+       }
+//       printf("i: %d, recvbuf: %f \n", i, recvbuf[i]);
+     }
+   } 
+   }
+
    LO tubenum=0;
    LO gridnum=0;
    nrank=0;

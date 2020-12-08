@@ -107,6 +107,7 @@ void DatasProc3D::InterpoPotential3D()
 
 void gemXgcDatasProc3D::interpoDensityAlongZ(double*** box)
 {
+  bool debug;
   double* yin;
   double* yout;
   double* xout;
@@ -130,7 +131,7 @@ void gemXgcDatasProc3D::interpoDensityAlongZ(double*** box)
 //	if(i == 0) printf("mype1: %d, j1: %d", p1->mype, j);	
 //        MPI_Barrier(MPI_COMM_WORLD);
         for(LO k=0;k<p1->lk0;k++){
-          yin[nzb+k]=densin[i][j][k];
+          yin[nzb+k]=densCpl[i][j][k];
         }
 
 //	if(i == 0) printf("mype2: %d, j2: %d", p1->mype, j);
@@ -140,7 +141,16 @@ void gemXgcDatasProc3D::interpoDensityAlongZ(double*** box)
 	  yout=box[i][j];
 
 	  Lag3dArray(yin,bdesc->thetameshgem,p1->lk0+2*nzb,yout,xout,p3->mylk0[i]);
-
+  
+	  debug = false;
+	  if (debug) {
+            if (p1->mype == 1) {
+	      for (LO k=0; k< p1->lk0+2*nzb; k++) printf("i: %d, j: %d, k: %d, xin: %f,  yin: %f \n",
+		i, j, k, bdesc->thetameshgem[k], yout[k]);
+              for (LO k=0; k< p3->mylk0[i]; k++) printf("i: %d, j: %d, k: %d, xout: %f,  yout: %f \n",
+	        	i, j, k, xout[k], yout[k]);
+	    }
+	  }
 //  	  if(i == 0) printf("mype: %d, j: %d \n", p1->mype, j);
 //          MPI_Barrier(MPI_COMM_WORLD);
 
@@ -156,6 +166,7 @@ void gemXgcDatasProc3D::interpoDensityAlongZ(double*** box)
 
 void gemXgcDatasProc3D::interpoDensityAlongY()
 {
+  bool debug = false;
   double* yin;
   double* xin;
   double* yout = new double[p1->nphi];
@@ -176,6 +187,11 @@ void gemXgcDatasProc3D::interpoDensityAlongY()
       Lag3dArray(yin,bdesc->ymeshgem,p1->lj0+2*nzb,yout,xout,p1->nphi); 
       for(LO j=0;j<p1->nphi;j++){
         densintertwo[i][j][k]=yout[j];
+        if (debug) {
+	  if (p1->mype == 1) {
+	    printf("k:%d, j:%d, densintertwo: %f, densinterone: %f \n", k, j, densintertwo[i][j][k], densinterone[i][j][k]);
+	  }
+        }
       }      
     }
   }

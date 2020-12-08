@@ -112,17 +112,19 @@ void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D 
     thetameshgem[1]=p1pp3d.theta[p1pp3d.lk1-1];
     thetameshgem[0]=p1pp3d.theta[p1pp3d.lk1-2];
     thetameshgem[p1pp3d.lk0+2]=p1pp3d.theta[p1pp3d.lk2+1];
-    thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk1+2];
+    thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk2+2];
   }else if(p1pp3d.mype_z==0){
-    thetameshgem[1]=-p1pp3d.dth;
-    thetameshgem[0]=-2.0*p1pp3d.dth;
+    double delta = p1pp3d.theta[1] - p1pp3d.theta[0];
+    thetameshgem[1]=-delta + p1pp3d.theta[0];
+    thetameshgem[0]=-2.0*delta + p1pp3d.theta[0];
     thetameshgem[p1pp3d.lk0+2]=p1pp3d.theta[p1pp3d.lk2+1];
     thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk2+2];     
   }else {
+    double delta = p1pp3d.theta[p1pp3d.lk2] - p1pp3d.theta[p1pp3d.lk2-1];
     thetameshgem[1]=p1pp3d.theta[p1pp3d.lk1-1];
     thetameshgem[0]=p1pp3d.theta[p1pp3d.lk1-2];
-    thetameshgem[p1pp3d.lk0+2]=p1pp3d.theta[p1pp3d.lk2]+p1pp3d.dth;
-    thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk2]+2.0*p1pp3d.dth;
+    thetameshgem[p1pp3d.lk0+2]=p1pp3d.theta[p1pp3d.lk2] + delta;
+    thetameshgem[p1pp3d.lk0+3]=p1pp3d.theta[p1pp3d.lk2] + 2.0*delta;
   }
   /*FIXME: is the boundary buffer required?*/
   ymeshxgc = new double**[p3m3d.li0];

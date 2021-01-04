@@ -110,16 +110,21 @@ int main(int argc, char **argv){
       densitytmp = densitytoXGC->data();
       for(int h=0; h<p3m3d.nphi*p3m3d.blockcount; h++){
         densitytmp[h] = gxdp3d.denssend[h];
+       if(isnan(densitytmp[h])) {
+         printf("h: %d, densitytmp[h] is nan. \n", h);
+         exit(1);
+       }
       }
 //      realsum=0.0;
+
       coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);
-/*
-      coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};
-      coupler::GO count_1[2]={coupler::GO(p3m3d.nphi),p3m3d.blockcount};
-      fieldfromXGC = coupler::receive_field(dir, xFld,start_1,count_1,MPI_COMM_WORLD,m);
+
+      coupler::GO start_1[2]={0, p3m3d.blockstart+p3m3d.cce_first_node-1};
+      coupler::GO count_1[2]={coupler::GO(p3m3d.nphi), p3m3d.blockcount};
+      fieldfromXGC = coupler::receive_field(dir, xFld,start_1, count_1, MPI_COMM_WORLD,m);
       gxdp3d.DistriPotentRecvfromXGC(fieldfromXGC);
       coupler::destroy(fieldfromXGC);
-*/          
+          
     }
   }
 
@@ -127,8 +132,9 @@ int main(int argc, char **argv){
 //  coupler::destroy(densityfromGEM); 
   gDens.close();
   cDens.close();
-/*
+
   xFld.close();
+/*
   cFld.close();
 */
   gMesh.close();

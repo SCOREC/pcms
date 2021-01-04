@@ -243,7 +243,7 @@ namespace coupler {
  }
 
 
-void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array3d<double>* fieldfromXGC)
+void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array2d<double>* fieldfromXGC)
 {
   double*** tmp=new double**[p1->li0];
   for(LO i=0;i<p1->li0;i++){
@@ -410,7 +410,7 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
 }
 
 // It's a reverse procedure of densityFromGemToCoupler
-void gemXgcDatasProc3D::potentFromCouplerToGem(const Array3d<double>* fieldfromXGC)
+void gemXgcDatasProc3D::potentFromCouplerToGem(const Array2d<double>* fieldfromXGC)
 {
    double* array = fieldfromXGC->data();
    GO scounts=recvnum;

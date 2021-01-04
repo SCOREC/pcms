@@ -112,6 +112,7 @@ int main(int argc, char **argv){
         densitytmp[h] = gxdp3d.denssend[h];
       }
 //      realsum=0.0;
+      std::cerr<<"ABJ 0.0\n";
       coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);
 /*
       coupler::GO start_1[2]={0,p3m3d.blockstart+p3m3d.cce_first_node-1};

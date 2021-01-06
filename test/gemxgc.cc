@@ -101,9 +101,10 @@ int main(int argc, char **argv){
       count[1] = p1->lj0;
       count[2] = p1->tli0;      
       densityfromGEM = coupler::receive_pproc_3d<double>(dir, gDens, start_adios, count, m, MPI_COMM_WORLD); 
+
       gxdp3d.DistriDensiRecvfromGem(densityfromGEM);
       MPI_Barrier(MPI_COMM_WORLD);
-
+/*
       densitytoXGC = new coupler::Array2d<double>(
                                   p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0,
                                   p3m3d.blockstart);
@@ -115,8 +116,9 @@ int main(int argc, char **argv){
          exit(1);
        }
       }
+*/
 //      realsum=0.0;
-
+/*
       coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);
 
       coupler::GO start_1[2]={0, p3m3d.blockstart+p3m3d.cce_first_node-1};
@@ -124,16 +126,16 @@ int main(int argc, char **argv){
       fieldfromXGC = coupler::receive_field(dir, xFld,start_1, count_1, MPI_COMM_WORLD,m);
       gxdp3d.DistriPotentRecvfromXGC(fieldfromXGC);
       coupler::destroy(fieldfromXGC);
-          
+*/          
     }
   }
 
 //  coupler::destroy(densitytoXGC); 
-//  coupler::destroy(densityfromGEM); 
+  coupler::destroy(densityfromGEM); 
   gDens.close();
-  cDens.close();
+//  cDens.close();
 
-  xFld.close();
+//  xFld.close();
 /*
   cFld.close();
 */

@@ -216,9 +216,9 @@ namespace coupler {
   
    MPI_Barrier(MPI_COMM_WORLD); 
    densityFromGemToCoupler(densityfromGEM);  
-
+// printf("1111 \n");
    zDensityBoundaryBufAssign(densCpl);
-
+// printf("2222 \n");
    debug = false;
    if (debug) {	
    for(LO i=0;i<p1->li0;i++){ 
@@ -233,14 +233,15 @@ namespace coupler {
    }
    
    interpoDensityAlongZ(densinterone);
+//   printf("3333 \n");
 
    printf("after interpo, mype: %d \n", p1->mype);
    interpoDensityAlongY();
    MPI_Barrier(MPI_COMM_WORLD);
-   
+  
    //fixme: distribute and assemble the datas to get the matrix to be sent to xgc by the adios2 routine     
    distriDataAmongCollective(p1, p3, densintertwo, denssend);   
- }
+}
 
 
 void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array2d<double>* fieldfromXGC)
@@ -508,6 +509,92 @@ void gemXgcDatasProc3D::potentFromCouplerToGem(const Array2d<double>* fieldfromX
    MPI_Reduce(MPI_IN_PLACE,potGem,p1->tli0*p1->lj0*p1->glk0,MPI_DOUBLE,MPI_SUM,0,p1->tube_comm);
 
 }
+
+void gemXgcDatasProc3D::distriDataAmongCollective(const Part1ParalPar3D* p1, const Part3Mesh3D* p3, double*** inmatrix, double* outmatrix)
+{
+  bool debug;
+  LO* recvcount = new LO[p1->npz];
+  LO* rdispls = new LO[p1->npz];
+  double* blocktmp = new double[p3->blockcount];
+
+  double** tmp=new double*[p3->li0];
+  for(LO i=0;i<p3->li0;i++){
+    tmp[i]=new double[p3->versurf[p3->li1+i]];
+  }
+
+  GO sumbegin;
+  LO xl;
+  LO num;
+
+  for(LO j=0; j<p3->nphi; j++){
+    xl=0;
+    for(GO h=0;h<p3->blockcount;h++){
+      blocktmp[h] = 0.0;
+    }
+    for(LO i=0;i<p3->li0;i++){
+      MPI_Datatype mpitype = getMpiType(LO());
+      for(LO h=0;h<p1->npz;h++){
+        recvcount[h]=0;
+        rdispls[h]=0;
+      }
+      MPI_Allgather(&p3->mylk0[i],1,mpitype,recvcount,1,mpitype,p1->comm_z);
+      rdispls[0]=0;
+      for(LO k=1;k<p1->npz;k++){
+        rdispls[k]=rdispls[k-1]+recvcount[k-1];
+      }
+
+      xl=p1->li1+i;
+
+      debug=true;
+      if(debug){
+        num=0;
+        for(LO h=0;h<p1->npz;h++){
+          num+=recvcount[h];
+        }
+        std::cout<<"num versurf[xl]="<<num<<" "<<p3->versurf[xl]<<'\n';
+        assert(num==p3->versurf[xl]);
+      }
+
+      mpitype = getMpiType(double());
+      MPI_Barrier(p1->comm_z);
+
+      MPI_Allgatherv(inmatrix[i][j], p3->mylk0[i], mpitype, tmp[i], recvcount, rdispls,
+                     mpitype, p1->comm_z);
+      MPI_Barrier(p1->comm_z);
+
+      reshufflebackward(tmp[i],p3->nstart[xl],p3->versurf[xl]);
+
+      sumbegin=0;
+      for(LO h=0;h<i;h++){
+        sumbegin+=GO(p3->versurf[h+p3->li1]);
+      }
+      for(LO m=0;m<p3->versurf[xl];m++){
+        blocktmp[sumbegin+m]=tmp[i][m];
+      }
+      if(i==p1->li0-1){
+        assert((sumbegin+(GO)p3->versurf[xl]) == p3->blockcount);
+      }
+
+    }
+
+    for(GO h=0;h<p3->blockcount;h++){
+        outmatrix[j*p3->blockcount+h] = blocktmp[h];
+    }
+  }
+
+  free(recvcount);
+  free(rdispls);
+  free(blocktmp);
+  recvcount=NULL;
+  rdispls=NULL;
+  blocktmp=NULL;
+
+  for(LO i=0;i<p3->li0;i++) free(tmp[i]);
+  free(tmp);
+  tmp=NULL;
+
+}
+
 
 
 } /*gemXgcDataproc.cc*/ 

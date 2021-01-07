@@ -98,9 +98,9 @@ void mpisendrecv_aux1D(const MPI_Comm comm,const LO nzb,const LO xind,const LO y
             comm,&status);
 }
 
-
+/*
 template<class T1, class T2, typename T3>
-void distriDataAmongCollective(T1* p1, T2* p3, T3*** inmatrix, T3* outmatrix)
+void istriDataAmongCollective(T1* p1, T2* p3, T3*** inmatrix, T3* outmatrix)
 {
   bool debug;
   LO* recvcount = new LO[p1->npz];
@@ -182,7 +182,7 @@ void distriDataAmongCollective(T1* p1, T2* p3, T3*** inmatrix, T3* outmatrix)
   free(tmp);
   tmp=NULL;
 }
-
+*/
 
 }
 

@@ -194,6 +194,7 @@ class gemXgcDatasProc3D {
     void zPotentBoundaryBufAssign(const double*** box,BoundaryDescr3D& bdesc);
     void zMeshPotentBoundaryBufAssign(BoundaryDescr3D& bdesc);
     void zDensityBoundaryBufAssign(double*** box);
+    void distriDataAmongCollective(const Part1ParalPar3D* p1, const Part3Mesh3D* p3, double*** inmatrix, double* outmatrix);
 };
 
 

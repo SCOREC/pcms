@@ -545,7 +545,7 @@ void gemXgcDatasProc3D::distriDataAmongCollective(const Part1ParalPar3D* p1, con
 
       xl=p1->li1+i;
 
-      debug=true;
+      debug=false;
       if(debug){
         num=0;
         for(LO h=0;h<p1->npz;h++){

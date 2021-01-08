@@ -256,7 +256,7 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
   nnode = tmp[5];
   nwedge = tmp[6];
   nphi = tmp[7];
-  if(mype == 0) fprintf(stderr,"ntube: %d, imx: %d, jmx: %d, kmx: %d, ntheta: %d, nwedge: %d, nphi: %d \n", 
+  if(mype == 17) fprintf(stderr,"ntube: %d, imx: %d, jmx: %d, kmx: %d, ntheta: %d, nwedge: %d, nphi: %d \n", 
                 ntube, imx, jmx, kmx, ntheta, nwedge, nphi);
   
   nx0 = imx + 1;
@@ -285,8 +285,8 @@ void Part1ParalPar3D::initGem(const Array1d<int>* gemmesh, const Array1d<double>
 
   if(!mype) fprintf(stderr,"mype:%d,lz: %f, ly: %f, r0: %f \n", mype,lz,ly, r0);
   MPI_Barrier(MPI_COMM_WORLD);
-  fprintf(stderr,"mype_x:%d, li0:%d, li1:%d, li2:%d, lk0:%d, lk1:%d, lk2:%d, lj0:%d\n",
-          mype_x,li0,li1,li2,lk0,lk1,lk2,lj0); 
+  fprintf(stderr,"mype: %d, li0:%d, li1:%d, li2:%d, lk0:%d, lk1:%d, lk2:%d, lj0:%d\n",
+          mype,li0,li1,li2,lk0,lk1,lk2,lj0); 
   MPI_Barrier(MPI_COMM_WORLD);
 
   dz=lz/double(kmx);

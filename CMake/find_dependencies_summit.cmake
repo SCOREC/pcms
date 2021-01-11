@@ -1,7 +1,7 @@
 #set(Kokkos_ROOT "/ccs/home/scheinberg/Software/Jan20/kokkos/cmake_install/lib/CMake/Kokkos")
-set(Kokkos_ROOT "/gpfs/alpine/world-shared/phy122/lib/install/summit/kokkos/pgi19.10/install/lib64/cmake/Kokkos")
-SET(Kokkos_INCLUDE_DIRS_RET "/gpfs/alpine/world-shared/phy122/lib/install/summit/kokkos/pgi19.10/install/include")
-include_directories(${Kokkos_INCLUDE_DIRS_RET})
+#set(Kokkos_ROOT "/gpfs/alpine/world-shared/phy122/lib/install/summit/kokkos/pgi19.10/install/lib64/cmake/Kokkos")
+#SET(Kokkos_INCLUDE_DIRS_RET "/gpfs/alpine/world-shared/phy122/lib/install/summit/kokkos/pgi19.10/install/include")
+#include_directories(${Kokkos_INCLUDE_DIRS_RET})
 
 set(ADIOS1_ROOT "/ccs/home/shku/Software/install/summit/adios/devel/pgi19.4")
 #set(ADIOS2_ROOT "/gpfs/alpine/world-shared/csc143/jyc/summit/sw/adios2/devel/pgi")

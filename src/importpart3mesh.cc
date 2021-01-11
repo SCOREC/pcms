@@ -5,6 +5,7 @@
 #include "interpoutil.h"
 #include <cstdlib>
 #include <cassert>
+#include <cmath>
 
 namespace coupler{
 
@@ -114,7 +115,7 @@ void Part3Mesh3D::init(const Part1ParalPar3D &p1pp3d,
 
      /*for debugging*/
      MPI_Barrier(MPI_COMM_WORLD);
-     bool debug = false;
+     bool debug = true;
      if(debug){
        for(LO i=0;i<li0;i++){
 	 LO num=0;
@@ -225,7 +226,8 @@ void Part3Mesh3D::JugeFirstSurfaceMatch(double xp1)
 {
   double* tmp = new double[nsurf];
   for(LO i=0;i<nsurf; i++){
-    tmp[i]=abs(xcoords[i]-(xp1));
+    tmp[i]=xcoords[i]-(xp1);
+    if(tmp[i]<=0.0) tmp[i] = -tmp[i];
   }
   if(test_case==TestCase::t0){
     shiftx = minloc(tmp,nsurf)-1;
@@ -260,7 +262,7 @@ void Part3Mesh3D::DistributePoints(const double* exterarr, const LO gstart,LO li
     LO nstart;
     double* tmp=new double[versurf[li]];
     for(LO i=0;i<versurf[li];i++){
-      tmp[i]=abs(exterarr[i]-interarr[lk1]);
+      tmp[i]=std::abs(exterarr[i]-interarr[lk1]);
     }
     nstart=minloc(tmp,versurf[li]);
 
@@ -390,15 +392,19 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
     for (LO k=0; k<versurf[p1->li1+i]; k++) tmptheta[i][k]=tmp[num+k];
     num+=versurf[p1->li1+i];
   }     
-
+/*
+    if(p1->mype == 17){
+      for( LO m = 0; m<versurf[p1->li1]; m++) printf("m=%d, versurf=%d, tmptheta[i][m]=%f \n", m, versurf[p1->li1],tmptheta[0][m]);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+*/
   for (LO i=p1->li1; i<p1->li2+1; i++){  
     nstart[i] = minloc(tmptheta[i-p1->li1], versurf[i]);
     reshuffleforward(tmptheta[i-p1->li1], nstart[i], versurf[i]);
-//    gemDistributePoints(tmptheta[i-p1->li1], p1->li1, i, p1->theta);
     DistributePoints(tmptheta[i-p1->li1], p1->li1, i, p1->theta, p1->lk1, p1->lk2, p1->nz0);
   } 
 
-  bool debug = false;
+  bool debug = true;
   if (debug){
     printf("mype_x: %d, mype: %d, \n", p1->mype_x, p1->mype);
 
@@ -407,6 +413,23 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
        printf("nth: %d, theta: %f, versurf[0]: %d \n", i,tmptheta[0][i], versurf[p1->li1]);
     } 
   }
+
+  debug = true;
+  if(debug){
+    LO* recvcount=new LO[p1->npz];
+    for(LO i=0;i<li0;i++){
+/*
+      LO num=0;
+      MPI_Allgather(&mylk0[i],1,MPI_INT,recvcount,1,MPI_INT,p1->comm_z);
+      for(LO h=0;h<p1->npz;h++) num+=recvcount[h];
+      if(p1->mype==2 || p1->mype==0) std::cout<<"num, versurf = "<<num<<"   "<<versurf[li1+i]<<'\n';
+*/
+     if(p1->mype==17){
+       std::cout<<"mypez,lk="<<p1->mype_z<<" "<<mylk0[0]<<" "<<mylk1[0]<<" "<<mylk2[0]<<'\n';
+     }
+   }
+   free(recvcount);
+ }
 
   theta_geo=new double*[p1->li0];
   for(LO i=0;i<p1->li0;i++){

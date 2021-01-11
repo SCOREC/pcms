@@ -18,8 +18,8 @@ class Array1d;
 class Part1ParalPar3D;
 
 struct flxxgc {
-  LO flxtind[5];
-  double flxt[4];
+  LO flxtind[4];
+  double flxt[5];
 };
 
 class Part3Mesh3D{

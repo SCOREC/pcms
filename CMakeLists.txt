@@ -5,6 +5,7 @@ list(INSERT CMAKE_MODULE_PATH 0 ${wdm_coupling_SOURCE_DIR}/CMake)
 if(CMAKE_CXX_COMPILER_ID MATCHES "PGI")
 include(find_dependencies_summit)
 endif()
+enable_language(CXX)
 set(MPI_CXX_SKIP_MPICXX ON)
 find_package(MPI REQUIRED)
 #adios2 adds C and Fortran depending on how it was built

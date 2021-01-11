@@ -451,7 +451,8 @@ template<typename T>
           });
       send_id = sendIO.DefineVariable<T>(fldname,
           g_dims, g_offset, l_dims);
-    printf("before cpl_density open \n"); 
+      printf("before cpl_density open \n"); 
+      MPI_Barrier(MPI_COMM_WORLD);
       engine = sendIO.Open(fname, adios2::Mode::Write,comm);
     }
     if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';   

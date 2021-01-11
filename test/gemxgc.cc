@@ -13,6 +13,7 @@ int main(int argc, char **argv){
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+  std::string execut = filename(__FILE__);
   const std::string dir = "../coupling";
   const int time_step = atoi(argv[1]), RK_count = 4;
 
@@ -25,7 +26,7 @@ int main(int argc, char **argv){
 
   coupler::adios2_handler gDens(adios,"gem_density");
   coupler::adios2_handler cDens(adios,"density");
-  coupler::adios2_handler xFld(adios,"xgc_field");
+  coupler::adios2_handler xFld(adios,"field");
   coupler::adios2_handler cFld(adios,"cpl_field");
   coupler::adios2_handler gMesh(adios,"gem_mesh");
   coupler::adios2_handler gThf(adios,"gem_thfl");
@@ -104,7 +105,7 @@ int main(int argc, char **argv){
 
       gxdp3d.DistriDensiRecvfromGem(densityfromGEM);
       MPI_Barrier(MPI_COMM_WORLD);
-/*
+
       densitytoXGC = new coupler::Array2d<double>(
                                   p3m3d.activenodes,p3m3d.lj0,p3m3d.blockcount,p3m3d.lj0,
                                   p3m3d.blockstart);
@@ -116,26 +117,27 @@ int main(int argc, char **argv){
          exit(1);
        }
       }
-*/
+
 //      realsum=0.0;
-/*
+
       coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);
 
       coupler::GO start_1[2]={0, p3m3d.blockstart+p3m3d.cce_first_node-1};
       coupler::GO count_1[2]={coupler::GO(p3m3d.nphi), p3m3d.blockcount};
       fieldfromXGC = coupler::receive_field(dir, xFld,start_1, count_1, MPI_COMM_WORLD,m);
+/*
       gxdp3d.DistriPotentRecvfromXGC(fieldfromXGC);
-      coupler::destroy(fieldfromXGC);
-*/          
+      coupler::destroy(fieldfromXGC);          
+*/
     }
   }
 
-//  coupler::destroy(densitytoXGC); 
+  coupler::destroy(densitytoXGC); 
   coupler::destroy(densityfromGEM); 
   gDens.close();
-//  cDens.close();
+  cDens.close();
 
-//  xFld.close();
+  xFld.close();
 /*
   cFld.close();
 */

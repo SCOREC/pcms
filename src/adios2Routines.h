@@ -192,14 +192,14 @@ namespace coupler {
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     }
     else{
-      std::cerr << rank << ": receive engine already exists \n";
+      std::cerr << rank <<  ": " << name << ": receive engine already exists \n";
     }
   
     eng.BeginStep();
     adios2::Variable<T> adios_var = read_io.InquireVariable<T>(name);
 
     const auto total_size = adios_var.Shape()[0];
-    if(!rank) std::cout <<name<< "  total_size " <<total_size << "\n";
+    if(!rank) std::cerr <<name<< "  total_size " <<total_size << "\n";
     GO my_start, my_count;
     if(model=="local"){
       my_start =(GO)(total_size / nprocs) * rank;
@@ -208,11 +208,11 @@ namespace coupler {
       my_start = 0;
       my_count = GO(total_size);     
     }else{
-      std::cout<<"Error: 'model' is not correctly assigned."<<'\n';
+      std::cerr<<"Error: 'model' is not correctly assigned."<<'\n';
       exit(1);
     }
 
-    if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
+    if(!rank)std::cerr << " Reader of rank " << rank << " reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
     const adios2::Dims start{my_start};
@@ -224,6 +224,7 @@ namespace coupler {
     adios_var.SetSelection(sel);
     eng.Get(adios_var, field->data());
     eng.EndStep();
+    if(!rank) std::cerr << rank <<  ": receive " << name << " done \n";
     return field;
   }
   
@@ -257,7 +258,7 @@ namespace coupler {
     std::cerr << rank << ": total_size "<<total_size <<" \n";
     const auto my_start = li1;
     const auto my_count = li0;
-    std::cout << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
+    std::cerr << " Reader of rank " << rank << " of "<<nprocs<<" ranks, reading " << my_count
               << " floats starting at element " << my_start << "\n";
   
     const adios2::Dims start{my_start};
@@ -277,31 +278,31 @@ namespace coupler {
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
-    std::cout<<"rank="<<rank<<'\n';
+    if(!rank) std::cerr<<"rank="<<rank<<'\n';
   
     const std::string fname = dir + "/" + name + ".bp";
-    std::cout<<fname<<'\n'; 
+    if(!rank) std::cerr<<fname<<'\n'; 
     if(m==0){
-      std::cout<<"creat engine for: "<<name<<'\n';
+      if(!rank) std::cerr<<"create engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
-      std::cout<<"engine parameters are set"<<'\n';
+      if(!rank) std::cerr<<"engine parameters are set"<<'\n';
       eng = read_io.Open(fname, adios2::Mode::Read);
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     } else{
-      std::cerr << rank << ": receive engine already exists \n";
+      if(!rank) std::cerr << rank << ": receive engine already exists \n";
       assert(eng);
     }
- 
+    
     eng.BeginStep();
     adios2::Variable<T> adVar = read_io.InquireVariable<T>(name);
  
     const auto ftn_glob_height = adVar.Shape()[0]; 
     const auto ftn_glob_width = adVar.Shape()[1]; 
-    std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
+    if(!rank) std::cerr<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
     //fortran to C transpose
     const auto c_glob_height = ftn_glob_width;
     const auto c_glob_width = ftn_glob_height;
@@ -317,7 +318,7 @@ namespace coupler {
     adVar.SetSelection(sel);
     eng.Get<T>(adVar, a2d->data());
     eng.EndStep();
-    std::cerr << rank <<  ": receive " << name << " done \n";
+    if(!rank) std::cerr << rank <<  ": receive " << name << " done \n";
     return a2d;
   }
   
@@ -327,16 +328,15 @@ namespace coupler {
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
- 
     const std::string fname = dir + "/" + name + ".bp";
     if(m==0){
-      std::cout<<"creat engine for: "<<name<<'\n';
+      std::cerr<<"creat engine for: "<<name<<'\n';
       read_io.SetEngine("Sst");
       read_io.SetParameters({
           {"DataTransport","RDMA"},
           {"OpenTimeoutSecs", "800"}
           });
-      std::cout<<"engine parameters are set"<<'\n';
+      std::cerr<<"engine parameters are set"<<'\n';
       eng = read_io.Open(fname, adios2::Mode::Read);
       if(!rank) std::cerr << rank << ": " << name << " engine created\n";
     } else{
@@ -350,7 +350,6 @@ namespace coupler {
     const auto dim0 = adVar.Shape()[0]; 
     const auto dim1 = adVar.Shape()[1]; 
     const auto dim2 = adVar.Shape()[2];
-
     std::cout<<"rank Shape 0 1 2="<<rank<<" "<<dim0<<" "<<dim1<<" "<<dim2<<'\n';
     //fortran to C transpose
     const auto DIM0 = dim2;
@@ -395,7 +394,7 @@ namespace coupler {
     engine.BeginStep();
     engine.Put<T>(send_id, a2d->data());
     engine.EndStep();
-    std::cout<<"The cpl_density was written"<<'\n';
+    std::cerr<<"The cpl_density was written"<<'\n';
  }
   
   /** Receive PreProc values from GENE
@@ -454,17 +453,17 @@ template<typename T>
     printf("before cpl_density open \n"); 
       engine = sendIO.Open(fname, adios2::Mode::Write,comm);
     }
-    if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';   
+    if(engine) std::cerr<<"sending Engine for "<<fldname<<" is created."<<'\n';   
     engine.BeginStep(adios2::StepMode::Append);
     engine.Put<T>(send_id, a2d->data());
     engine.EndStep();
-    std::cout<<"rank="<<rank<<" "<<"The "<<fldname<<" was written"<<'\n';
+    std::cerr<<"rank="<<rank<<" "<<"The "<<fldname<<" was written"<<'\n';
   }
   
 
   Array2d<CV>* receive_density(const std::string cce_folder,
       adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm, const int m);
- 
+
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id);
 

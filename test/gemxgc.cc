@@ -13,7 +13,6 @@ int main(int argc, char **argv){
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  std::string execut = filename(__FILE__);
   const std::string dir = "../coupling";
   const int time_step = atoi(argv[1]), RK_count = 4;
 

@@ -71,6 +71,7 @@ int main(int argc, char **argv){
   coupler::Part1ParalPar3D* p1 = &p1pp3d;  
   coupler::Part3Mesh3D p3m3d(p1, xcouple, rzcoords, preproc, test_case);
   MPI_Barrier(MPI_COMM_WORLD);
+  fprintf(stderr, "sxz 00 \n");
   
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, ccase, test_case, preproc);  
  

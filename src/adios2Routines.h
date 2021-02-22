@@ -298,7 +298,6 @@ namespace coupler {
  
     eng.BeginStep();
     adios2::Variable<T> adVar = read_io.InquireVariable<T>(name);
- 
     const auto ftn_glob_height = adVar.Shape()[0]; 
     const auto ftn_glob_width = adVar.Shape()[1]; 
     std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
@@ -313,10 +312,20 @@ namespace coupler {
     const::adios2::Dims my_start({start[0], start[1]});
     const::adios2::Dims my_count({count[0], count[1]});
     const adios2::Box<adios2::Dims> sel(my_start, my_count);
-  
     adVar.SetSelection(sel);
     eng.Get<T>(adVar, a2d->data());
     eng.EndStep();
+/*
+    if (name == "xgc_field"){
+      printf("enter the loop \n");
+      T* array = a2d->data();
+      if (rank == 0 ) {
+        for (LO i=(count[0]-1)*count[1]; i<count[0]*count[1]; i++) {
+          printf("i: %d, a2d[i]: %f \n", i, array[i]);
+        }
+      }
+    }
+*/
     std::cerr << rank <<  ": receive " << name << " done \n";
     return a2d;
   }

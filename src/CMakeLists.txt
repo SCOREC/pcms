@@ -22,6 +22,7 @@ set(HEADERS
     BoundaryDescr3D.h
     testutilities.h
     interpoutil.h   
+    macros.h
 )
 
 add_library(coupler ${SOURCES})

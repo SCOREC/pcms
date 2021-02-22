@@ -3,6 +3,7 @@
 #include "testutilities.h"
 #include "sendrecv_impl.h"
 #include "interpoutil.h"
+//#include "macros.h"
 #include <cstdlib>
 #include <cassert>
 #include <cmath>
@@ -382,14 +383,14 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
   for (LO i=0;i<activenodes;i++) 
     tmp[i]=atan2(Zcoordall[i]-eq_axis_z, Rcoordall[i]-eq_axis_r);
     
-  double** tmptheta=new double*[p1->li0];
-  for (LO i=0;i<p1->li0;i++){
-    tmptheta[i]=new double[versurf[p1->li1+i]];
+  theta_xgc = new double*[p1->li0];
+  for (LO i=0; i<p1->li0; i++){
+    theta_xgc[i] = new double[versurf[p1->li1+i]];
   }
 
   GO num=blockstart;
   for (LO i=0; i<p1->li0; i++){
-    for (LO k=0; k<versurf[p1->li1+i]; k++) tmptheta[i][k]=tmp[num+k];
+    for (LO k=0; k<versurf[p1->li1+i]; k++) theta_xgc[i][k]=tmp[num+k];
     num+=versurf[p1->li1+i];
   }     
 /*
@@ -399,9 +400,9 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
     MPI_Barrier(MPI_COMM_WORLD);
 */
   for (LO i=p1->li1; i<p1->li2+1; i++){  
-    nstart[i] = minloc(tmptheta[i-p1->li1], versurf[i]);
-    reshuffleforward(tmptheta[i-p1->li1], nstart[i], versurf[i]);
-    DistributePoints(tmptheta[i-p1->li1], p1->li1, i, p1->theta, p1->lk1, p1->lk2, p1->nz0);
+    nstart[i] = minloc(theta_xgc[i-p1->li1], versurf[i]);
+    reshuffleforward(theta_xgc[i-p1->li1], nstart[i], versurf[i]);
+    DistributePoints(theta_xgc[i-p1->li1], p1->li1, i, p1->theta, p1->lk1, p1->lk2, p1->nz0);
   } 
 
   bool debug = true;
@@ -410,7 +411,7 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 
     if (p1->mype == 3){
       for(LO i=0; i<versurf[p1->li1]; i++ )
-       printf("nth: %d, theta: %f, versurf[0]: %d \n", i,tmptheta[0][i], versurf[p1->li1]);
+       printf("nth: %d, theta: %f, versurf[0]: %d \n", i, theta_xgc[0][i], versurf[p1->li1]);
     } 
   }
 
@@ -434,7 +435,7 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
   theta_geo=new double*[p1->li0];
   for(LO i=0;i<p1->li0;i++){
     theta_geo[i]=new double[mylk0[i]];
-    for(LO k=0;k<mylk0[i];k++) theta_geo[i][k]=tmptheta[i][mylk1[i]+k];
+    for(LO k=0;k<mylk0[i];k++) theta_geo[i][k] = theta_xgc[i][mylk1[i]+k];
   }
 
   
@@ -457,24 +458,26 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 
   /*Here: Linear or high order extrapolation may be better to get the boundary value
    */
+  // xgc only sends poloida theta. The following is to get the theta flux on each xgc's theta 
+  // via interpolating GEM's theta flux mesh. 
   for (LO i=0; i<p1->li0; i++){ 
     tmpflxeq[0] = p1->thflxeq[i][p1->ntheta-2] - 2.0*cplPI; // reason for "-2": thflx[ntheta] = cplPI, thfx[0] = -cplPI
     tmpflxeq[1] = p1->thflxeq[i][p1->ntheta-1] - 2.0*cplPI; // reason for "-1": thflx[ntheta] = cplPI, thfx[0] = -cplPI
     tmpflxeq[p1->ntheta+3] = p1->thflxeq[i][1] + 2.0*cplPI;
     tmpflxeq[p1->ntheta+4] = p1->thflxeq[i][2] + 2.0*cplPI;
     for (LO k=2; k<p1->ntheta+3; k++) tmpflxeq[k] = p1->thflxeq[i][k-2];
-    if (tmptheta[i][0] < tmpthetaeq[1] || tmptheta[i][p1->li1+i] > tmpthetaeq[p1->ntheta+3]){
+    if (theta_xgc[i][0] < tmpthetaeq[1] || theta_xgc[i][p1->li1+i] > tmpthetaeq[p1->ntheta+3]){
        printf("Error: The boundary condition is not right for the Lagrangian interpolation");
        exit(1);
     }   
-    Lag3dArray(tmpflxeq,tmpthetaeq,p1->ntheta+5,theta_flx[i],tmptheta[i],versurf[p1->li1+i]);     
+    Lag3dArray(tmpflxeq,tmpthetaeq,p1->ntheta+5,theta_flx[i], theta_xgc[i],versurf[p1->li1+i]);     
     debug = false;
     if(debug){
       if (p1->mype ==3 && i==0){
 	 for (LO j = 0; j < p1->ntheta+5; j++) 
 	   fprintf(stderr, "j: %d, tmpflxeq[j]: %f, tmpthetaeq: %f \n", j, tmpflxeq[j], tmpthetaeq[j]);
 	 for (LO k = 0; k< versurf[p1->li1]; k++) 
-	   fprintf(stderr, "k:%d, theta_flx[0][k]: %f, tmptheta: %f \n", k, theta_flx[0][k], tmptheta[0][k]);
+	   fprintf(stderr, "k:%d, theta_flx[0][k]: %f, theta_xgc: %f \n", k, theta_flx[0][k], theta_xgc[0][k]);
       }
     }
   } 
@@ -489,7 +492,7 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
   y_xgc = new double**[p1->li0];
   for(LO i=0;i<p1->li0;i++){
     y_xgc[i] = new double*[p1->nphi];
-    for(LO j=0;j<p1->lj0;j++)
+    for(LO j=0;j<p1->nphi;j++)
       y_xgc[i][j]=new double[mylk0[i]];  
   }
   
@@ -504,30 +507,41 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
     }
   } 
 
-  thetaflx_pot = new double****[p1->li0];
-  thetaflx_ind_pot = new LO****[p1->li0];
+  theta_pot = new double****[p1->li0];
+  theta_ind_pot = new LO****[p1->li0];
   zeta_pot = new double***[p1->li0];
   nodesdist_fl = new double***[p1->li0];
   for(LO i=0;i<p1->li0;i++){
-    thetaflx_pot[i] = new double***[p1->lj0];
-    thetaflx_ind_pot[i] = new LO***[p1->lj0];
+    theta_pot[i] = new double***[p1->lj0];
+    theta_ind_pot[i] = new LO***[p1->lj0];
     zeta_pot[i] = new double**[p1->lj0];
     nodesdist_fl[i] = new double**[p1->lj0];
     for(LO j=0;j<p1->lj0;j++){ 
-      thetaflx_pot[i][j] = new double**[mylk0[i]];
-      thetaflx_ind_pot[i][j] = new LO**[mylk0[i]];
+      theta_pot[i][j] = new double**[mylk0[i]];
+      theta_ind_pot[i][j] = new LO**[mylk0[i]];
       zeta_pot[i][j] = new double*[mylk0[i]];
       nodesdist_fl[i][j] = new double*[mylk0[i]];
       for(LO k=0;k<mylk0[i];k++){
-        thetaflx_pot[i][j][k] = new double*[4];  //For 3rd central Lagrnagian interpolation 
-        thetaflx_ind_pot[i][j][k] = new LO*[4]; //For 3rd central Lagrnagian interpolation
+        theta_pot[i][j][k] = new double*[4];  //For 3rd central Lagrnagian interpolation 
+        theta_ind_pot[i][j][k] = new LO*[4]; //For 3rd central Lagrnagian interpolation
         zeta_pot[i][j][k] = new double[5];
         nodesdist_fl[i][j][k] = new double[5];
         for(LO h=0;h<4;h++){
-          thetaflx_pot[i][j][k][h] = new double[5];
-          thetaflx_ind_pot[i][j][k][h] = new LO[4];
+          theta_pot[i][j][k][h] = new double[5];
+          theta_ind_pot[i][j][k][h] = new LO[4];
         } 
       }
+    }
+  }
+
+  theta_ind_gemxgc = new LO**[p1->li0];
+  theta_gemxgc = new double**[p1->li0];
+  for (LO i=0; i<p1->li0; i++) {
+    theta_ind_gemxgc[i] = new LO*[p1->lk0];
+    theta_gemxgc[i] = new double*[p1->lk0];
+    for (LO k=0; k<p1->lk0; k++) {
+      theta_ind_gemxgc[i][k] = new LO[4];
+      theta_gemxgc[i][k] = new double[5];
     }
   }
 
@@ -537,28 +551,30 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
   double zeta_tmp;
   double y_tmp;
   double q_local;
-  double tmpflx;
-  struct flxxgc flxinter;
+  double tmptheta;
+//  flxxgc flxinter;
   LO j10;
 
   debug = false;
-  for(LO i = 0; i<1; i++){
+  for(LO i = 0; i<p1->li0; i++){
     q_local = p1->q_prof[i + p1->li1]; // FIXME 
     for(LO k = 0; k < mylk0[i]; k++){
       y_tmp = double(k)*p1->dy;
+      // zeta_tmp corresponding to y given xgc's poloidal theta flux point
       zeta_tmp = remainder(q_local*theta_flx[i][mylk1[i]+k]-p1->q0*y_tmp/p1->r0,2.0*cplPI/double(p1->nwedge));
       if(zeta_tmp < 0) zeta_tmp = zeta_tmp + 2.0*cplPI/double(p1->nwedge);	
 
-      for(LO j = 0; j < p1->lj0; j++){
+      for(LO j = 0; j < p1->nphi; j++){
         zeta_pot[i][j][k][4] = zeta_tmp;
         //FIXME: here is different from GEM
-
+        // zeta_pot stores the 4 zeta points of xgc zeta mesh for the interpolation of zeta_tmp
 	j10 = search_zeta(dzeta, lzeta, p1->nphi, zeta_tmp);
         zeta_pot[i][j][k][0] = double(j10-1)*dzeta;
         zeta_pot[i][j][k][1] = double(j10)*dzeta;
         zeta_pot[i][j][k][2] = double(j10+1)*dzeta;
         zeta_pot[i][j][k][3] = double(j10+2)*dzeta;
 
+        debug = false;
 	if (debug){
 	  if(p1->mype == 3){
 	    fprintf(stderr, "theta_flx: %f, zeta_pot: %f, q_local: %f \n", theta_flx[i][mylk1[i] + k], 
@@ -566,52 +582,91 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 	  }
 	}
 
-        tmpflx = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp+zeta_pot[i][j][k][0])/q_local;
- 	search_flux_3rdorder_periodbound(tmpflx, theta_flx[i], versurf[p1->li1 + i], flxinter);
-	      
-	if (debug){     
-          printf("%f, %f, %f, %f, %f \n", flxinter.flxt[0], flxinter.flxt[1], flxinter.flxt[2],
-	    flxinter.flxt[3], flxinter.flxt[4]);
-          printf("%d, %d, %d, %d \n", flxinter.flxtind[0], flxinter.flxtind[1], flxinter.flxtind[2], 
-	    flxinter.flxtind[3]);
-        }
-
-	for (LO h=0; h<5; h++) thetaflx_pot[i][j][k][0][h] = flxinter.flxt[h];
-        for (LO h=0; h<4; h++) thetaflx_ind_pot[i][j][k][0][h] = flxinter.flxtind[h];
-
-        tmpflx = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp + zeta_pot[i][j][k][1])/q_local;
-        search_flux_3rdorder_periodbound(tmpflx,theta_flx[i],versurf[p1->li1 + i], flxinter);
-        for (LO h=0; h<5; h++) thetaflx_pot[i][j][k][1][h] = flxinter.flxt[h];
-        for (LO h=0; h<4; h++) thetaflx_ind_pot[i][j][k][1][h] = flxinter.flxtind[h];
-
-        tmpflx = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp + zeta_pot[i][j][k][2])/q_local;
-        search_flux_3rdorder_periodbound(tmpflx, theta_flx[i], versurf[p1->li1 + i], flxinter);
-        for (LO h=0; h<5; h++) thetaflx_pot[i][j][k][2][h] = flxinter.flxt[h];
-        for (LO h=0; h<4; h++) thetaflx_ind_pot[i][j][k][2][h] = flxinter.flxtind[h];
-
-        tmpflx = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp + zeta_pot[i][j][k][3])/q_local;
-        search_flux_3rdorder_periodbound(tmpflx,theta_flx[i],versurf[p1->li1+i], flxinter);
-        for (LO h=0; h<5; h++) thetaflx_pot[i][j][k][3][h] = flxinter.flxt[h];
-        for(LO h=0; h<4; h++) thetaflx_ind_pot[i][j][k][3][h] = flxinter.flxtind[h];        
+        // tmpflx is the theta angle  with given theta_flx (the xgc's theta_flx point) and y
+        tmptheta = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp+zeta_pot[i][j][k][0])/q_local;
       
+    //    fprintf(stderr, "tmptheta=: %f \n", tmptheta);        
+        search_theta_3rdorder_periodbound(tmptheta, theta_xgc[i], versurf[p1->li1 + i]);
+	debug = false;
+	if (debug && p1->mype == 1){     
+	  printf("flxinter.flxt[i]: %f, %f, %f, %f, %f \n", flxinter.flxt[0], flxinter.flxt[1], flxinter.flxt[2],
+	    flxinter.flxt[3], flxinter.flxt[4]);
+	  printf("flxinter.flxtind[i]:%d, %d, %d, %d \n", flxinter.flxtind[0], flxinter.flxtind[1], flxinter.flxtind[2], 
+	    flxinter.flxtind[3]);
+	}
+
+	for (LO h=0; h<5; h++) theta_pot[i][j][k][0][h] = flxinter.flxt[h];
+	for (LO h=0; h<4; h++) theta_ind_pot[i][j][k][0][h] = flxinter.flxtind[h];
+
+	tmptheta = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp + zeta_pot[i][j][k][1])/q_local;
+	search_theta_3rdorder_periodbound(tmptheta,theta_xgc[i],versurf[p1->li1 + i]);
+	for (LO h=0; h<5; h++) theta_pot[i][j][k][1][h] = flxinter.flxt[h];
+	for (LO h=0; h<4; h++) theta_ind_pot[i][j][k][1][h] = flxinter.flxtind[h];
+	debug = false;
+	if (debug){     
+	  printf("flxinter.flxt[i]: %f, %f, %f, %f, %f \n", flxinter.flxt[0], flxinter.flxt[1], flxinter.flxt[2],
+	    flxinter.flxt[3], flxinter.flxt[4]);
+	  printf("flxinter.flxtind[i]: %d, %d, %d, %d \n", flxinter.flxtind[0], flxinter.flxtind[1], flxinter.flxtind[2], 
+	    flxinter.flxtind[3]);
+	}
+
+
+	tmptheta = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp + zeta_pot[i][j][k][2])/q_local;
+	search_theta_3rdorder_periodbound(tmptheta, theta_flx[i], versurf[p1->li1 + i]);
+	for (LO h=0; h<5; h++) theta_pot[i][j][k][2][h] = flxinter.flxt[h];
+	for (LO h=0; h<4; h++) theta_ind_pot[i][j][k][2][h] = flxinter.flxtind[h];
+
+	tmptheta = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp + zeta_pot[i][j][k][3])/q_local;
+	search_theta_3rdorder_periodbound(tmptheta,theta_flx[i],versurf[p1->li1+i]);
+	for (LO h=0; h<5; h++) theta_pot[i][j][k][3][h] = flxinter.flxt[h];
+	for(LO h=0; h<4; h++)  theta_ind_pot[i][j][k][3][h] = flxinter.flxtind[h];        
+        
 	nodesdist_fl[i][j][k][0] = 0.0;
-	nodesdist_fl[i][j][k][1] = sqrt(pow(thetaflx_pot[i][j][k][1][4] - thetaflx_pot[i][j][k][0][4],2)
+	nodesdist_fl[i][j][k][1] = sqrt(pow(theta_pot[i][j][k][1][4] - theta_pot[i][j][k][0][4],2)
 	+ pow(zeta_pot[i][j][k][1] - zeta_pot[i][j][k][0],2));
 
 //        nodesdist_fl[i][j][k][4] = sqrt(pow(thetaflx_pot[i][j][k][4][4] - thetaflx_pot[i][j][k][0][4],2)
 //	+ pow(zeta_pot[i][j][k][4] - zeta_pot[i][j][k][0],2));  
 
-        nodesdist_fl[i][j][k][2] = sqrt(pow(thetaflx_pot[i][j][k][2][4] - thetaflx_pot[i][j][k][0][4],2)
+        nodesdist_fl[i][j][k][2] = sqrt(pow(theta_pot[i][j][k][2][4] - theta_pot[i][j][k][0][4],2)
 	+ pow(zeta_pot[i][j][k][2] - zeta_pot[i][j][k][0],2));    
-	nodesdist_fl[i][j][k][3] = sqrt(pow(thetaflx_pot[i][j][k][3][4] - thetaflx_pot[i][j][k][0][4],2)
+	nodesdist_fl[i][j][k][3] = sqrt(pow(theta_pot[i][j][k][3][4] - theta_pot[i][j][k][0][4],2)
 	+ pow(zeta_pot[i][j][k][3] - zeta_pot[i][j][k][0],2));
+
+        debug = false;
+	if (debug && p1->mype == 1){     
+          printf("fxinter.flxt[i]: %f, %f, %f, %f, %f \n", theta_pot[i][j][k][2][0], theta_pot[i][j][k][2][1],
+                 theta_pot[i][j][k][2][2], theta_pot[i][j][k][2][3], theta_pot[i][j][k][2][4], 
+                 theta_pot[i][j][k][2][5]);
+        }
       }
     }
   }
-//  }
-  
+
+  MPI_Barrier(MPI_COMM_WORLD);
+/*
+  fprintf(stderr, "sxz 11 \n");
+  for (LO k=0; k<p1->lk0; k++) {
+    if (p1->mype == 0) fprintf(stderr, "k: %d, p1->theta: %f \n", k, p1->theta[p1->lk1+k]);  
+  }
+*/
+  InitInterpoThetaPointsXGCtoGEM();
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
   delete[] tmpthetaeq;
-  for (LO i=0; i<p1->li0; i++) delete[] tmptheta[i];
+}
+
+void Part3Mesh3D::InitInterpoThetaPointsXGCtoGEM() {  
+  for (LO i=0; i<p1->li0; i++ ) {
+    for (LO k=0; k<p1->lk0; k++) {
+      if (p1->mype == 0) fprintf(stderr, "i: %d, p1->theta: %f \n", i, p1->theta[p1->lk1+k]);  
+//      MPI_Barrier(MPI_COMM_WORLD);
+      search_theta_3rdorder_periodbound(p1->theta[p1->lk1+k], theta_xgc[i], versurf[p1->li1 + i]); 
+      for (LO h=0; h<5; h++) theta_gemxgc[i][k][h] = flxinter.flxt[h];
+      for (LO h=0; h<4; h++) theta_ind_gemxgc[i][k][h] = flxinter.flxtind[h];       
+    }
+  }  
 }
 
 
@@ -653,135 +708,141 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
 */
 }
 
- inline void Part3Mesh3D::search_flux_3rdorder_periodbound(
-        double tmpflx, const double* flxin, LO num, struct flxxgc tmp)
+ /*This routine is for choosing the points between which that interpolated locates for the 
+   third order lagrangian interpolation.*/ 
+ void Part3Mesh3D::search_theta_3rdorder_periodbound(
+        double tmpflx, const double* flxin, LO num)
 {
   bool debug = false;
+//  fprintf(stderr, "sxz33 \n");
   tmpflx = remainder(tmpflx + cplPI,2.0 * cplPI);
+//  fprintf(stderr, "tmpflx_1: %f \n", tmpflx);
   if (tmpflx < 0) tmpflx = tmpflx + 2.0 * cplPI;
+//  fprintf(stderr, "tmpflx_2: %f \n", tmpflx);
   tmpflx = tmpflx - cplPI;
-
+  
+//  fprintf(stderr, "tmpflx: %f \n", tmpflx);
   if (tmpflx >= flxin[num - 1]){
     LO k = 1;
-    tmp.flxt[2] = flxin[k] + 2.0*cplPI;
-    while(tmpflx > tmp.flxt[2]){
+    flxinter.flxt[2] = flxin[k] + 2.0*cplPI;
+    while(tmpflx > flxinter.flxt[2]){
       k++;
-      tmp.flxt[2] = flxin[k] + 2.0*cplPI;
+      flxinter.flxt[2] = flxin[k] + 2.0*cplPI;
     }
-    tmp.flxtind[2] = k;
-    tmp.flxtind[3] = k+1;
+    flxinter.flxtind[2] = k;
+    flxinter.flxtind[3] = k+1;
     if (k >= 3){
-      tmp.flxtind[1] = k-1;
-      tmp.flxtind[0] = k-2;
+      flxinter.flxtind[1] = k-1;
+      flxinter.flxtind[0] = k-2;
 
-      tmp.flxt[0] = flxin[k-2] + 2.0*cplPI;
-      tmp.flxt[1] = flxin[k-1] + 2.0*cplPI;
-      tmp.flxt[2] = flxin[k] + 2.0*cplPI;
-      tmp.flxt[3] = flxin[k+1] + 2.0*cplPI;
+      flxinter.flxt[0] = flxin[k-2] + 2.0*cplPI;
+      flxinter.flxt[1] = flxin[k-1] + 2.0*cplPI;
+      flxinter.flxt[2] = flxin[k] + 2.0*cplPI;
+      flxinter.flxt[3] = flxin[k+1] + 2.0*cplPI;
     }
     else if (k == 2){
-      tmp.flxtind[1] = 1;
-      tmp.flxtind[0] = num -1;
+      flxinter.flxtind[1] = 1;
+      flxinter.flxtind[0] = num -1;
 
-      tmp.flxt[0] = flxin[num - 1];
-      tmp.flxt[1] = flxin[k-1] + 2.0*cplPI;
-      tmp.flxt[2] = flxin[k] + 2.0*cplPI;
-      tmp.flxt[3] = flxin[k+1] + 2.0*cplPI;
+      flxinter.flxt[0] = flxin[num - 1];   // This assignment is based on flxin has periodic symmetry.  
+      flxinter.flxt[1] = flxin[k-1] + 2.0*cplPI;
+      flxinter.flxt[2] = flxin[k] + 2.0*cplPI;
+      flxinter.flxt[3] = flxin[k+1] + 2.0*cplPI;
     }
     else{
-      tmp.flxtind[1] = num - 1;
-      tmp.flxtind[0] = num - 2;
+      flxinter.flxtind[1] = num - 1;
+      flxinter.flxtind[0] = num - 2;
 
-      tmp.flxt[0] = flxin[num - 2];
-      tmp.flxt[1] = flxin[num - 1];
-      tmp.flxt[2] = flxin[k] + 2.0*cplPI;
-      tmp.flxt[3] = flxin[k+1] + 2.0*cplPI; 
+      flxinter.flxt[0] = flxin[num - 2];
+      flxinter.flxt[1] = flxin[num - 1];
+      flxinter.flxt[2] = flxin[k] + 2.0*cplPI;
+      flxinter.flxt[3] = flxin[k+1] + 2.0*cplPI; 
     }
 
-   tmp.flxt[4]=tmpflx;
+   flxinter.flxt[4]=tmpflx;
    if(debug){
-     printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
+     printf("flxt: %f, %f, %f, %f \n", flxinter.flxt[0], flxinter.flxt[1], flxinter.flxt[2], flxinter.flxt[3]);
    }
-   if (tmpflx > tmp.flxt[2]){
+   if (tmpflx > flxinter.flxt[2]){
       printf("Error: The boundary condition is not right at upper end first,tmpflx: %f, flxt[2]: %f \n", 
-	tmpflx, tmp.flxt[2]);
+	tmpflx, flxinter.flxt[2]);
       exit(1);
    }
 
   }
   else if (tmpflx <= flxin[0]){
     LO k = num - 2;
-    tmp.flxt[2] = flxin[k] - 2.0*cplPI;
-    while (tmpflx < tmp.flxt[2]){
+    flxinter.flxt[2] = flxin[k] - 2.0*cplPI;
+    while (tmpflx < flxinter.flxt[2]){
       k--;
-      tmp.flxt[2] = flxin[k] - 2.0*cplPI;
+      flxinter.flxt[2] = flxin[k] - 2.0*cplPI;
     } 
     if (k < num - 2){
-      tmp.flxtind[2] = k;
-      tmp.flxtind[3] = k+1; 
-      tmp.flxtind[1] = k-1;
-      tmp.flxtind[0] = k-2;
+      flxinter.flxtind[2] = k;
+      flxinter.flxtind[3] = k+1; 
+      flxinter.flxtind[1] = k-1;
+      flxinter.flxtind[0] = k-2;
 
-      tmp.flxt[0] = flxin[k-2] - 2.0*cplPI;
-      tmp.flxt[1] = flxin[k-1] - 2.0*cplPI;
-      tmp.flxt[2] = flxin[k] - 2.0*cplPI;
-      tmp.flxt[3] = flxin[k+1] - 2.0*cplPI;
+      flxinter.flxt[0] = flxin[k-2] - 2.0*cplPI;
+      flxinter.flxt[1] = flxin[k-1] - 2.0*cplPI;
+      flxinter.flxt[2] = flxin[k] - 2.0*cplPI;
+      flxinter.flxt[3] = flxin[k+1] - 2.0*cplPI;
     } 
     else{
-      tmp.flxtind[2] = 0;
-      tmp.flxtind[3] = 1; 
-      tmp.flxtind[1] = num - 2;
-      tmp.flxtind[0] = num - 3;
+      flxinter.flxtind[2] = 0;
+      flxinter.flxtind[3] = 1; 
+      flxinter.flxtind[1] = num - 2;
+      flxinter.flxtind[0] = num - 3;
 
-      tmp.flxt[0] = flxin[num - 3] - 2.0*cplPI;
-      tmp.flxt[1] = flxin[num - 2] - 2.0*cplPI;
-      tmp.flxt[2] = flxin[0];
-      tmp.flxt[3] = flxin[1]; 
+      flxinter.flxt[0] = flxin[num - 3] - 2.0*cplPI;
+      flxinter.flxt[1] = flxin[num - 2] - 2.0*cplPI;
+      flxinter.flxt[2] = flxin[0];
+      flxinter.flxt[3] = flxin[1]; 
     } 
 
-    tmp.flxt[4]=tmpflx;
+    flxinter.flxt[4]=tmpflx;
     
     if(debug){
-      printf("flxt: %f, %f, %f, %f \n", tmp.flxt[0], tmp.flxt[1], tmp.flxt[2], tmp.flxt[3]);
+      printf("flxt: %f, %f, %f, %f \n", flxinter.flxt[0], flxinter.flxt[1], flxinter.flxt[2], flxinter.flxt[3]);
     }
-    if (tmpflx<=tmp.flxt[1]){
+    if (tmpflx<=flxinter.flxt[1]){
       printf("Error: The boundary condition is not right at lower end first,tmpflx: %f, flxt[1]: %f \n", 
-	tmpflx, tmp.flxt[1]);
+	tmpflx, flxinter.flxt[1]);
       exit(1);
     }
   }
   else if (tmpflx<=flxin[1] && tmpflx>flxin[0]){
-    tmp.flxt[4]=tmpflx;
-    tmp.flxt[0]=flxin[num-2]-2.0*cplPI;
-    tmp.flxt[1]=flxin[0];
-    tmp.flxt[2]=flxin[1];
-    tmp.flxt[3]=flxin[2];
+    flxinter.flxt[4]=tmpflx;
+    flxinter.flxt[0]=flxin[num-2]-2.0*cplPI;
+    flxinter.flxt[1]=flxin[0];
+    flxinter.flxt[2]=flxin[1];
+    flxinter.flxt[3]=flxin[2];
     
-    tmp.flxtind[0]=num-2;
-    tmp.flxtind[1]=0;
-    tmp.flxtind[2]=1;
-    tmp.flxtind[3]=2;
+    flxinter.flxtind[0]=num-2;
+    flxinter.flxtind[1]=0;
+    flxinter.flxtind[2]=1;
+    flxinter.flxtind[3]=2;
   }
     
 
   else if (tmpflx>=flxin[num-2] && tmpflx<flxin[num-1]){
-    tmp.flxt[4]=tmpflx;
-    tmp.flxt[0]=flxin[num-3];
-    tmp.flxt[1]=flxin[num-2];
-    tmp.flxt[2]=flxin[num-1];
-    tmp.flxt[3]=flxin[1]+2.0*cplPI;
+    flxinter.flxt[4]=tmpflx;
+    flxinter.flxt[0]=flxin[num-3];
+    flxinter.flxt[1]=flxin[num-2];
+    flxinter.flxt[2]=flxin[num-1];
+    flxinter.flxt[3]=flxin[1]+2.0*cplPI;
 
-    tmp.flxtind[0]=num-3;
-    tmp.flxtind[1]=num-2;
-    tmp.flxtind[2]=num-1;
-    tmp.flxtind[3]=1;
+    flxinter.flxtind[0]=num-3;
+    flxinter.flxtind[1]=num-2;
+    flxinter.flxtind[2]=num-1;
+    flxinter.flxtind[3]=1;
   }
 
-  else{
+  else {
     LO k=0;
-    if (debug){
-      while(tmpflx >= flxin[k] && tmpflx != flxin[1] && tmpflx != flxin[num-2]) k+=1;
-      if(tmpflx >= flxin[k]) k++;
+    while(tmpflx >= flxin[k] && tmpflx != flxin[1] && tmpflx != flxin[num-2]) k+=1;
+    if(tmpflx >= flxin[k]) k++;
+    if (debug) {
       for (LO i = 0; i< versurf[0]; i++) printf("i:%d, flxin[i]: %f \n", i, flxin[i]);
       assert(num-1 >= k+2);
       fprintf(stderr, "num-1: %d, k-2: %d, k-1: %d, k+1: %d \n", num-1,k-2,k-1,k+1);
@@ -789,16 +850,20 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
       fprintf(stderr, "%f, %f, %f, %f, %f \n", tmpflx, flxin[k-2], flxin[k-1], flxin[k], flxin[k+1]);
     }
 
-    tmp.flxt[4]=tmpflx;
-    tmp.flxt[0]=flxin[k-2];
-    tmp.flxt[1]=flxin[k-1];
-    tmp.flxt[2]=flxin[k];
-    tmp.flxt[3]=flxin[k+1];
+    flxinter.flxt[4]=tmpflx;
+    flxinter.flxt[0]=flxin[k-2];
+    flxinter.flxt[1]=flxin[k-1];
+    flxinter.flxt[2]=flxin[k];
+    flxinter.flxt[3]=flxin[k+1];
 
-    tmp.flxtind[0]=k-2;
-    tmp.flxtind[1]=k-1;
-    tmp.flxtind[2]=k;
-    tmp.flxtind[3]=k+1;   
+    flxinter.flxtind[0]=k-2;
+    flxinter.flxtind[1]=k-1;
+    flxinter.flxtind[2]=k;
+    flxinter.flxtind[3]=k+1; 
+    debug = false;  
+    if (debug) { 
+      fprintf(stderr, "flxinter.flxtind[i]: %d, %d, %d, %d \n", flxinter.flxtind[0], flxinter.flxtind[1], flxinter.flxtind[2], flxinter.flxtind[3]);
+    }
   } 
 
 }

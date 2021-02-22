@@ -4,6 +4,7 @@
 #include "BoundaryDescr3D.h"
 #include "sendrecv_impl.h"
 #include "interpoutil.h"
+//////#include "macros.h"
 #include <cassert>
 #include <cmath>
 
@@ -89,10 +90,10 @@ namespace coupler {
      }
    }
   
-   potythCpl=new double**[p1->li0];
+   poty_GemCpl=new double**[p1->li0];
    for(LO i=0;i<p1->li0;i++){
-     potythCpl[i]=new double*[p1->lj0];
-     for(LO j=0;j<p1->lj0;j++) potythCpl[i][j]=new double[p1->lk0];
+     poty_GemCpl[i]=new double*[p1->lj0];
+     for(LO j=0; j<p1->lj0; j++) poty_GemCpl[i][j]=new double[p1->lk0];
    }
 
    potGem=new double[p1->tli0*p1->lj0*p1->glk0];
@@ -257,43 +258,89 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array2d<double>* fieldfrom
   //FIXME: distribute potentfromXGC->datas() to tmp;
   double* potent=fieldfromXGC->data();  
   LO n=0;
-  for(LO i=0;i<p1->li0;i++){
-    for(LO j=0;j<p3->nphi;j++){
-      for(LO k=0;k<p3->versurf[i+p1->li1];j++){
+  for(LO i=0; i<p1->li0; i++){
+    for(LO j=0; j<p3->nphi; j++){
+      for(LO k=0; k<p3->versurf[i+p1->li1]; k++){
         n++;
         tmp[i][j][k]=potent[n];
       }
     }
   }  
 
-
+fprintf(stderr, "sxz 1111111 \n");
+MPI_Barrier(MPI_COMM_WORLD);
+  bool debug = true;
   // First interpolation along the field line; 
-  double* tmppotent;
-  double* tmpflx=new double[4];
+  double* tmppotent = new double[4];
+  double* tmptheta;
   double* tmplength;
-  for(LO i=0;i<p1->li0;i++){
-    for(LO j=0;j<p1->lj0;j++){ 
+  for(LO i=0; i<p1->li0; i++){
+    for(LO j=0; j<p1->lj0; j++){ 
 /*
       double* tmpthflx=new double[2.0*bdesc->nzb+p3->mylk0[i]];
       for(LO h=0;h<bdesc->nzb;h++) tmpthflx[h]=bdesc->lowpotentgemxgc[h];
       for(LO l=0;l<bdesc->) 
 */ 
-      for(LO k=0;k<p3->mylk0[i];k++){ 
-        for(LO h=0;h<4;h++){
-          tmppotent=p3->thetaflx_pot[i][j][k][h];
-          for(LO l=0;l<4;l++) tmpflx[l]=tmp[i][j][p3->thetaflx_ind_pot[i][j][k][h][l]];
-          pot_gem_fl[i][j][k][h]=Lag3dInterpo1D(tmppotent,tmpflx,p3->thetaflx_pot[i][j][k][h][4]); 
+      for (LO k=0; k<p3->mylk0[i]; k++){ 
+        for (LO h=0; h<4; h++){
+/*
+          if (j<p1->lj0-1){
+          //Linar extroplation if p3->thetaflx_pot[i][j][k][h][4] 
+          //locates out of the boundary of theta_flx of xgc
+            if (p3->)
+
+
+	    if (p3->thetaflx_pot[i][j][k][h][4] > p3->theta_flx[i][p3->versurf[p1->li1+i] - 1]) {
+	       pot_gem_fl[i][j][k][h] = tmp[i][j][p3->versurf[p1->li1+i] - 1] + 
+	       (p3->thetaflx_pot[i][j][k][h][4] - p3->theta_flx[i][p3->versurf[p1->li1+i]] - 1)/
+	       (p3->theta_flx[i][p3->versurf[p1->li1+i]-1] - p3->theta_flx[i][p3->versurf[p1->li1+i]-2]) *
+	       (tmp[i][j][p3->versurf[p1->li1+i] - 2] - tmp[i][j][p3->versurf[p1->li1+i] - 3]);
+	    } 
+	    else if (p3->thetaflx_pot[i][j][k][h][4] < p3->theta_flx[i][0]) {
+	       pot_gem_fl[i][j][k][h] = tmp[i][j][0] + (p3->theta_flx[i][1] - p3->theta_flx[i][0])/ 
+	       (p3->theta_flx[i][0] - p3->thetaflx_pot[i][j][k][h][4]) *
+	       (tmp[i][j][0] - tmp[i][j][1]);
+		
+	    } else {
+	     // The third order Lagrangian interpolation
+	     //Here the interpolation of the theta_flux points  along XGC's fixed zeta line;
+	     //This point is the cross point bettwen fixed zeta line and the field line labeld by y
+	      tmpflx = p3->thetaflx_pot[i][j][k][h];
+	      for(LO l=0; l<4; l++)   
+		tmppotent[l]=tmp[i][j][p3->thetaflx_ind_pot[i][j][k][h][l]];
+	      pot_gem_fl[i][j][k][h]=Lag3dInterpo1D(tmppotent,tmpflx,p3->thetaflx_pot[i][j][k][h][4]); 
+	     }
+	   } else {
+	     //the last j line is copy of the first j line
+	     pot_gem_fl[i][p1->lj0-1][k][h] = pot_gem_fl[i][0][k][h];
+	   } 
+         }
+*/
+//fprintf(stderr, "sxz 33 \n");
+       // The third order Lagrangian interpolation
+       //Here the interpolation of the theta_flux points  along XGC's fixed zeta line;
+       //This point is the cross point bettwen fixed zeta line and the field line labeld by y
+	  if (j<p3->lj0-1) {
+	    tmptheta = p3->theta_pot[i][j][k][h];
+	    for(LO l=0; l<4; l++)
+	      tmppotent[l]=tmp[i][j][p3->theta_ind_pot[i][j][k][h][l]];
+	    pot_gem_fl[i][j][k][h]=Lag3dInterpo1D(tmppotent,tmptheta,p3->theta_pot[i][j][k][h][4]);
+	  } else {
+	    pot_gem_fl[i][p1->lj0-1][k][h] = pot_gem_fl[i][0][k][h];
+	  }
+	
+	  tmppotent=pot_gem_fl[i][j][k];
+	  tmplength=p3->nodesdist_fl[i][j][k];
+	  potyCpl[i][j][k]=Lag3dInterpo1D(tmppotent,tmplength,p3->nodesdist_fl[i][j][k][4]);     
         }
-        tmppotent=pot_gem_fl[i][j][k];
-        tmplength=p3->nodesdist_fl[i][j][k];
-        potyCpl[i][j][k]=Lag3dInterpo1D(tmppotent,tmplength,p3->nodesdist_fl[i][j][k][4]);     
       }
     } 
   }  
-
-  // The 2nd interpolation along theta
-  InterpoPotential3DAlongZ(potyCpl,potythCpl);  
-  potentFromCouplerToGem(fieldfromXGC);
+MPI_Barrier(MPI_COMM_WORLD);
+fprintf(stderr, "sxz 222222 \n");
+  // The 2nd interpolation along theta 
+  InterpoPotential3DAlongZ(potyCpl,poty_GemCpl); 
+//  potentFromCouplerToGem(fieldfromXGC);
 }
 
 
@@ -445,7 +492,7 @@ void gemXgcDatasProc3D::potentFromCouplerToGem(const Array2d<double>* fieldfromX
 	     for(LO k1 = p1->recvOverlap_th[gridnum][1]; k1 < p1->recvOverlap_th[gridnum][2] + 1; k1++){
                n = rdispls[nrank]+(i1-p1->recvOverlap_x[tubenum][1])
 		 *p1->lj0*p1->recvOverlap_th[gridnum][3]+j1*p1->recvOverlap_th[gridnum][3]+k1-p1->recvOverlap_th[gridnum][1];
-	       sendbuf[n] = potythCpl[i1-p1->li1][j1][k1-p1->lk1];
+	       sendbuf[n] = poty_GemCpl[i1-p1->li1][j1][k1-p1->lk1];
 	     }
 	   }
 	 }          
@@ -594,6 +641,23 @@ void gemXgcDatasProc3D::distriDataAmongCollective(const Part1ParalPar3D* p1, con
   tmp=NULL;
 
 }
+
+void gemXgcDatasProc3D::InterpoPotential3DAlongZ(double*** potyCpl,double*** poty_GemCpl) {
+  double* tmptheta = new double[4];
+  double* tmppot = new double[4];
+  for (LO i=0; i<p1->li0; i++) {
+    for (LO j=0; j<p1->lj0; j++) {
+      for (LO k=0; k<p1->lk0; k++) {
+        for (LO h=0; h<4; h++) {
+          tmptheta[h] = p3->theta_gemxgc[i][k][h];  
+          tmppot[h] = potyCpl[i][j][p3->theta_ind_gemxgc[i][k][h]];
+        }
+        poty_GemCpl[i][j][k] = Lag3dInterpo1D(tmppot, tmptheta, p3->theta_gemxgc[i][k][4]);    
+      }
+    }
+  }
+}
+
 
 
 

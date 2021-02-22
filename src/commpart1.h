@@ -83,6 +83,7 @@ class Part1ParalPar3D {
     double r0, q0;
     double* thetagrideq=NULL; //store ntheta \theta values of all the nodes on one poloidal cross section of GEM
     double* theta=NULL; // store kmx+1 \theta values for the perturbation
+    double* theta_distr; // store the distributed theta on each process
     double** thflxeq=NULL; //store GEM's flux coordinates theta*; sent from GEM
     double** thflx=NULL;   //store GEM's flux coordinates theta; for perturbation evolution.  
     double* y_gem=NULL;  //store jmx+1 y varaibles of GEM

@@ -151,9 +151,10 @@ class gemXgcDatasProc3D {
     double*** densXgc = NULL;
     double*  denssend = NULL;
 
-    double**** pot_gem_fl = NULL;
-    double*** potyCpl = NULL;
-    double*** potythCpl = NULL;
+    double**** pot_gem_fl = NULL; // Store the theta flux locating at the mesh composited by XGC's zeta dimension 
+                                  // and GEM's y dimension. The y points come from GEM straitforwardly. 
+    double*** potyCpl = NULL; // Store the  
+    double*** poty_GemCpl = NULL;
     double* potGem = NULL;
 
     LO* numsend = NULL;
@@ -189,12 +190,15 @@ class gemXgcDatasProc3D {
     void allocSendRecvbuff();
     void interpoDensityAlongZ(double*** box);
     void interpoDensityAlongY();
-    void InterpoPotential3DAlongZ(double*** boxyin, double*** boxout); 
+//    void InterpoPotential3DAlongZ(double*** boxyin, double*** boxout); 
     void potentFromCouplerToGem(const Array2d<double>* fieldfromXGC);
     void zPotentBoundaryBufAssign(const double*** box,BoundaryDescr3D& bdesc);
     void zMeshPotentBoundaryBufAssign(BoundaryDescr3D& bdesc);
     void zDensityBoundaryBufAssign(double*** box);
     void distriDataAmongCollective(const Part1ParalPar3D* p1, const Part3Mesh3D* p3, double*** inmatrix, double* outmatrix);
+    void InterpoPotential3DAlongZ(double*** potyCpl, double*** poty_GemCpl);
+
+
 };
 
 

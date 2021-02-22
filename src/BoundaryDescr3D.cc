@@ -98,7 +98,8 @@ void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D 
   for(LO j=0;j<p1pp3d.lj0;j++){
     ymeshgem[2+j]=p1pp3d.y_gem[j];
   }
-
+  
+  //Handle the boundary points
   ymeshgem[1]=p1pp3d.y_gem[p1pp3d.lj0-1]-p1pp3d.ly;
   ymeshgem[0]=p1pp3d.y_gem[p1pp3d.lj0-2]-p1pp3d.ly;
   ymeshgem[p1pp3d.lj0+2]=p1pp3d.y_gem[0]+p1pp3d.ly;

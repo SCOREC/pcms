@@ -21,7 +21,7 @@ int main(int argc, char **argv){
   const std::string xmlfile = "adios2cfg.xml";
   adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
   adios2::Variable<double> senddensity;
-  adios2::Variable<coupler::CV> sendfield;
+  adios2::Variable<double> sendfield;
 
   coupler::adios2_handler gDens(adios,"gem_density");
   coupler::adios2_handler cDens(adios,"cpl_density");
@@ -67,8 +67,8 @@ int main(int argc, char **argv){
   
   coupler::Part1ParalPar3D p1pp3d(gmesh, thfl_qprof, test_case, preproc);
   MPI_Barrier(MPI_COMM_WORLD);
-
   coupler::Part1ParalPar3D* p1 = &p1pp3d;  
+
   coupler::Part3Mesh3D p3m3d(p1, xcouple, rzcoords, preproc, test_case);
   MPI_Barrier(MPI_COMM_WORLD);
   fprintf(stderr, "sxz 00 \n");
@@ -87,11 +87,18 @@ int main(int argc, char **argv){
       
   coupler::GO INDS1d[2]={0,p3m3d.lj0*p3m3d.blockcount};
 
+  coupler::GO globcount[3] = {p1->imx, p1->jmx, p1->kmx};
+  coupler::GO loccount[3] = {p1->tli0, p1->lj0, p1->glk0};
+  coupler::GO start3d[3] = {p1->li1, 0, p1->lk1};
+
   coupler::Array3d<double>* densityfromGEM;
   coupler::Array2d<double>* densitytoXGC; 
   coupler::Array2d<double>* fieldfromXGC; 
+  coupler::Array3d<double>* fieldtoGEM;
+ 
   double* densitytmp;
-  
+  double* fieldgem;  
+ 
   for (int i = 0; i < 1; i++) {
     for (int j = 0; j < 1; j++) {
       m = i*RK_count+j;
@@ -101,6 +108,7 @@ int main(int argc, char **argv){
       count[0] = p1->glk0;
       count[1] = p1->lj0;
       count[2] = p1->tli0;      
+      // receive density from GEM to coupler
       densityfromGEM = coupler::receive_pproc_3d<double>(dir, gDens, start_adios, count, m, MPI_COMM_WORLD); 
 
       gxdp3d.DistriDensiRecvfromGem(densityfromGEM);
@@ -117,15 +125,32 @@ int main(int argc, char **argv){
        }
       }
 //      realsum=0.0;
-      coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,senddensity,MPI_COMM_WORLD,m);
+      // send density from coupler to xgc
+      coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,
+      senddensity,MPI_COMM_WORLD,m);
 
-
+      // receive field from xgc to coupler
       coupler::GO start_1[2]={0, p3m3d.blockstart+p3m3d.cce_first_node-1};
       coupler::GO count_1[2]={coupler::GO(p3m3d.nphi), p3m3d.blockcount};
       fieldfromXGC = coupler::receive_field(dir, xFld,start_1, count_1, MPI_COMM_WORLD,m);
       gxdp3d.DistriPotentRecvfromXGC(fieldfromXGC);
       coupler::destroy(fieldfromXGC);
-          
+
+      MPI_Barrier(MPI_COMM_WORLD);
+      fieldtoGEM = new coupler::Array3d<double>(p1->imx, p1->lj0, p1->kmx, p1->li0, p1->lj0,
+                   p1->lk0, start3d);
+      fieldgem = fieldtoGEM->data();
+      for(int h=0; h<p1->tli0*p1->lj0*p1->glk0; h++){
+       fieldgem[h] = gxdp3d.potGem[h];
+       if(isnan(fieldgem[h])) {
+         printf("h: %d, fieldgem[h] is nan. \n", h);
+         exit(1);
+       }
+      }
+      // send field from coupler to gem
+      coupler::send3D_from_coupler(adios, dir, fieldtoGEM, cFld.IO, cFld.eng, cFld.name,
+      sendfield, MPI_COMM_WORLD, m);
+      coupler::destroy(fieldtoGEM);         
     }
   }
 

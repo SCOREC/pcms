@@ -31,12 +31,14 @@ namespace coupler {
   template<class T>
   class Array3d {
     public:
-      Array3d(GO dim0, GO dim1, GO dim2, GO* start) :
-        DIM0(dim0), DIM1(dim1), DIM2(dim2), START(start) {
-          vals = new T[dim0*dim1*dim2];
+      Array3d(GO globdim0, GO globdim1, GO globdim2, GO locdim0,
+             GO locdim1, GO locdim2, GO* start) :
+             globDIM0(globdim0), globDIM1(globdim1), globDIM2(globdim2), 
+             locDIM0(locdim0), locDIM1(locdim1), locDIM2(locdim2), START(start) {
+          vals = new T[locdim0*locdim1*locdim2];
       }
       ~Array3d() {
-        DIM0 = DIM1 = DIM2 = 0;
+        globDIM0 = globDIM1 = globDIM2 = 0;
         for(LO i=0;i<3;i++) START[i]=0;
         delete [] vals;
       }
@@ -45,15 +47,22 @@ namespace coupler {
         return vals[i];
       }
       T* data() const { return vals; };
-      GO dim0() const { return DIM0; };
-      GO dim1() const { return DIM1; };
-      GO dim2() const { return DIM2; };
+      GO globdim0() const { return globDIM0; };
+      GO globdim1() const { return globDIM1; };
+      GO globdim2() const { return globDIM2; };
+      GO locdim0() const { return locDIM0; };
+      GO locdim1() const { return locDIM1; };
+      GO locdim2() const { return locDIM2; };
+ 
       GO* start() const { return START; };
     private:
       T* vals;
-      GO DIM0;
-      GO DIM1;
-      GO DIM2;
+      GO globDIM0;
+      GO globDIM1;
+      GO globDIM2;
+      GO locDIM0;
+      GO locDIM1;
+      GO locDIM2;
       GO* START;
   };
 
@@ -308,7 +317,7 @@ namespace coupler {
     Array2d<T>* a2d = new Array2d<T>(c_glob_height, c_glob_width,
         count[0], count[1], start[0]);
 
-// Here, count,start take care of the fortran to C transpose. 
+    // Here, count,start take care of the fortran to C transpose. 
     const::adios2::Dims my_start({start[0], start[1]});
     const::adios2::Dims my_count({count[0], count[1]});
     const adios2::Box<adios2::Dims> sel(my_start, my_count);
@@ -332,7 +341,8 @@ namespace coupler {
   
   template<typename T>
   Array3d<T>* receive3d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng, GO* start,GO* count,MPI_Comm &comm,const int m) {
+      adios2::IO &read_io, adios2::Engine &eng, GO* start,GO* count,
+      MPI_Comm &comm,const int m) {
     int rank, nprocs;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &nprocs);
@@ -362,11 +372,14 @@ namespace coupler {
 
     std::cout<<"rank Shape 0 1 2="<<rank<<" "<<dim0<<" "<<dim1<<" "<<dim2<<'\n';
     //fortran to C transpose
-    const auto DIM0 = dim2;
-    const auto DIM1 = dim1;
-    const auto DIM2 = dim0;
-
-    Array3d<T>* a3d = new Array3d<T>(DIM0,DIM1,DIM2,start);
+    const auto globDIM0 = dim2;
+    const auto globDIM1 = dim1;
+    const auto globDIM2 = dim0;
+    const auto locDIM0 = count[2];
+    const auto locDIM1 = count[1];
+    const auto locDIM2 = count[0];
+   
+    Array3d<T>* a3d = new Array3d<T>(globDIM0, globDIM1, globDIM2, locDIM0, locDIM1, locDIM2, start);
 
 // Here, count,start take care of the fortran to C transpose. 
     const::adios2::Dims my_start({start[0], start[1], start[2]});
@@ -469,7 +482,40 @@ template<typename T>
     engine.EndStep();
     std::cout<<"rank="<<rank<<" "<<"The "<<fldname<<" was written"<<'\n';
   }
-  
+ 
+ template<typename T>
+ void send3D_from_coupler(adios2::ADIOS &adios,const std::string cce_folder,
+        const Array3d<T>* a3d, adios2::IO& sendIO,adios2::Engine& engine,const std::string fldname,
+        adios2::Variable<T> &send_id, const MPI_Comm comm,const int m)  //
+ {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    const std::string fld_name;
+    const GO* start = a3d->start();   
+ 
+    const::adios2::Dims g_dims({a3d->globdim2(), a3d->globdim1(), a3d->globdim0()});
+    const::adios2::Dims g_offset({start[2], start[1], start[0]});
+    const::adios2::Dims l_dims({a3d->locdim2(), a3d->locdim1(), a3d->locdim0()});
+
+    const std::string fname = cce_folder + "/" + fldname + ".bp";
+
+    if(m==0){
+      sendIO.SetEngine("Sst");
+      sendIO.SetParameters({
+      {"OpenTimeoutSecs", "480"}
+          });
+      send_id = sendIO.DefineVariable<T>(fldname,
+          g_dims, g_offset, l_dims);
+      printf("before cpl_density open \n");
+      engine = sendIO.Open(fname, adios2::Mode::Write,comm);
+    }
+    if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';
+    engine.BeginStep(adios2::StepMode::Append);
+    engine.Put<T>(send_id, a3d->data());
+    engine.EndStep();
+    std::cout<<"rank="<<rank<<" "<<"The "<<fldname<<" was written"<<'\n';
+  }
+ 
 
   Array2d<CV>* receive_density(const std::string cce_folder,
       adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm, const int m);
@@ -486,7 +532,8 @@ template<typename T>
   void AdiosProTransFortrandCpp2D(LO rankout,LO mypxout,LO mypyout, const LO mypex,const LO mypey,
       const LO npx,const LO npy);
 
-  void send_density_coupler(adios2::ADIOS &adios,const std::string cce_folder, const Array2d<double>* density, adios2::Variable<double> &send_id,const MPI_Comm comm);
+  void send_density_coupler(adios2::ADIOS &adios,const std::string cce_folder, 
+       const Array2d<double>* density, adios2::Variable<double> &send_id,const MPI_Comm comm);
 
 }//end namespace coupler
 

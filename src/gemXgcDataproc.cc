@@ -316,7 +316,7 @@ MPI_Barrier(MPI_COMM_WORLD);
 	   } 
          }
 */
-//fprintf(stderr, "sxz 33 \n");
+
        // The third order Lagrangian interpolation
        //Here the interpolation of the theta_flux points  along XGC's fixed zeta line;
        //This point is the cross point bettwen fixed zeta line and the field line labeld by y
@@ -340,7 +340,12 @@ MPI_Barrier(MPI_COMM_WORLD);
 fprintf(stderr, "sxz 222222 \n");
   // The 2nd interpolation along theta 
   InterpoPotential3DAlongZ(potyCpl,poty_GemCpl); 
-//  potentFromCouplerToGem(fieldfromXGC);
+
+MPI_Barrier(MPI_COMM_WORLD);
+fprintf(stderr, "sxz 333 \n");
+
+  // Distribute the datas from Coupler's mesh to GEM's own mesh
+  potentFromCouplerToGem();
 }
 
 
@@ -364,17 +369,19 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
      recvbuf[i] = 0.0;
    }
 
-   //for initialize the sendbuf  
-   for(LO i=0;i<p1->npx;i++){
-     for(LO k=0;k<p1->npz;k++){
-       nrank=i*p1->npz+k;
+   //for initializing the sendbuf  
+   for (LO i=0; i<p1->npx; i++) {
+     for (LO k=0; k<p1->npz; k++) {
+       nrank = i*p1->npz+k;
        xnum = 0;
        thnum = 0;
-       if(numsend[nrank]!=0){
+       if(numsend[nrank]!=0){       // Judge whether communication is needed at nrank. 
+         // find out which xnum will have communication with the ith rank of the x collective;
          while(i!=p1->sendOverlap_x[xnum][0]){
 	   xnum+=1;
 	   assert(xnum<=p1->sendOverlap_x.size());
 	 }
+         // find out which thnum with have communication with the kth rank of the theta collective
 	 while(k!=p1->sendOverlap_th[thnum][0]){
 	   thnum+=1;
 	   assert(thnum<=p1->sendOverlap_th.size());
@@ -458,9 +465,8 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
 }
 
 // It's a reverse procedure of densityFromGemToCoupler
-void gemXgcDatasProc3D::potentFromCouplerToGem(const Array2d<double>* fieldfromXGC)
+void gemXgcDatasProc3D::potentFromCouplerToGem( )
 {
-   double* array = fieldfromXGC->data();
    GO scounts=recvnum;
    GO rcounts=sendnum;
    double* sendbuf=new double[scounts];
@@ -471,6 +477,14 @@ void gemXgcDatasProc3D::potentFromCouplerToGem(const Array2d<double>* fieldfromX
    LO gridnum=0;
    LO nrank=0;
    LO n, m;
+
+   for (LO i=0; i<scounts; i++) {
+     sendbuf[i] = 0.0;
+   }
+
+   for (LO i=0; i<rcounts; i++) {
+     recvbuf[i] = 0.0;
+   }
 
    for(LO k=0; k<p1->gnpz; k++){
      for(LO i=0; i<p1->tnpx; i++){
@@ -506,14 +520,6 @@ void gemXgcDatasProc3D::potentFromCouplerToGem(const Array2d<double>* fieldfromX
    LO thnum=0;
    nrank=0;
    
-   for (LO i=0; i<scounts; i++) {
-     sendbuf[i] = 0.0;
-   }
-
-   for (LO i=0; i<rcounts; i++) {
-     recvbuf[i] = 0.0;
-   }
-
    //for initialize the sendbuf  
    for(LO i=0;i<p1->npx;i++){
      for(LO k=0;k<p1->npz;k++){
@@ -538,6 +544,8 @@ void gemXgcDatasProc3D::potentFromCouplerToGem(const Array2d<double>* fieldfromX
                  *p1->sendOverlap_th[thnum][3]+j1*p1->sendOverlap_th[thnum][3]
                  +k1-p1->sendOverlap_th[thnum][1];
                potGem[n] = recvbuf[sdispls[nrank]+m];
+if(p1->mype==2 ) fprintf(stderr,"potGem: %f, sdispls[nrank]: %d, m: %d, recvbuf: %f \n", 
+potGem[n], sdispls[nrank], m, recvbuf[sdispls[nrank]+m]);
                assert(m<numsend[nrank]);
                assert(n<p1->tli0*p1->lj0*p1->glk0);
 
@@ -553,7 +561,7 @@ void gemXgcDatasProc3D::potentFromCouplerToGem(const Array2d<double>* fieldfromX
        }
      }
    } 
-   MPI_Reduce(MPI_IN_PLACE,potGem,p1->tli0*p1->lj0*p1->glk0,MPI_DOUBLE,MPI_SUM,0,p1->tube_comm);
+//   MPI_Reduce(MPI_IN_PLACE,potGem,p1->tli0*p1->lj0*p1->glk0,MPI_DOUBLE,MPI_SUM,0,p1->tube_comm);
 
 }
 

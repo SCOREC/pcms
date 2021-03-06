@@ -269,7 +269,7 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array2d<double>* fieldfrom
 
 fprintf(stderr, "sxz 1111111 \n");
 MPI_Barrier(MPI_COMM_WORLD);
-  bool debug = true;
+  bool debug = false;
   // First interpolation along the field line; 
   double* tmppotent = new double[4];
   double* tmptheta;
@@ -332,9 +332,28 @@ MPI_Barrier(MPI_COMM_WORLD);
 	  tmppotent=pot_gem_fl[i][j][k];
 	  tmplength=p3->nodesdist_fl[i][j][k];
 	  potyCpl[i][j][k]=Lag3dInterpo1D(tmppotent,tmplength,p3->nodesdist_fl[i][j][k][4]);     
+ //if(p1->mype==2) fprintf(stderr, "potycpl: %f, i: %d, j: %d, k: %d \n", potyCpl[i][j][k], i, j, k);
+          debug = true;
+          if(debug) {
+	    if(p1->mype==2 && isnan(potyCpl[i][j][k]) && j<32) {
+/*
+	      fprintf(stderr, "potyCpl[i][j][k] is nan \n");
+	      fprintf(stderr, "i: %d, j: %d, k: %d \n", i, j, k);
+	      fprintf(stderr, "tmepotent: %f, %f, %f, %f \n", tmppotent[0], tmppotent[1], 
+		      tmppotent[2], tmppotent[3]);
+*/
+	      fprintf(stderr, "tmplength: %f, %f, %f, %f, nodesdist_fl: %f \n", tmplength[0], tmplength[1],
+		      tmplength[2], tmplength[3], p3->nodesdist_fl[i][j][k][4]);
+	    }
+          }
         }
       }
     } 
+    for(LO i=0; i<p1->li0; i++) {
+      for(LO k=0; k<p3->mylk0[i]; k++) {
+        potyCpl[i][p1->lj0-1][k] = potyCpl[i][0][k];
+      }
+    }
   }  
 MPI_Barrier(MPI_COMM_WORLD);
 fprintf(stderr, "sxz 222222 \n");
@@ -418,7 +437,7 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
    }
    MPI_Alltoallv(sendbuf,numsend,sdispls,MPI_DOUBLE,recvbuf,numrecv,rdispls,MPI_DOUBLE,MPI_COMM_WORLD);
 
-   debug = false;
+   debug = true;
    if (debug) {
    if (p1->mype < 6) {
      for (LO i=0; i<recvnum; i++){
@@ -471,7 +490,8 @@ void gemXgcDatasProc3D::potentFromCouplerToGem( )
    GO rcounts=sendnum;
    double* sendbuf=new double[scounts];
    double* recvbuf=new double[rcounts];
-
+   bool debug = false;
+ 
    //for initialize the sendbuf  
    LO tubenum=0;
    LO gridnum=0;
@@ -507,6 +527,11 @@ void gemXgcDatasProc3D::potentFromCouplerToGem( )
                n = rdispls[nrank]+(i1-p1->recvOverlap_x[tubenum][1])
 		 *p1->lj0*p1->recvOverlap_th[gridnum][3]+j1*p1->recvOverlap_th[gridnum][3]+k1-p1->recvOverlap_th[gridnum][1];
 	       sendbuf[n] = poty_GemCpl[i1-p1->li1][j1][k1-p1->lk1];
+               debug = false;
+               if(debug){ 
+                 if(p1->mype==2) fprintf(stderr, "poty_GemCpl: %f, i1-p1->li1: %d, j1: %d, k1-p1->lk1: %d \n", 
+                   sendbuf[n], i1-p1->li1, j1, k1-p1->lk1);
+               }
 	     }
 	   }
 	 }          
@@ -544,8 +569,11 @@ void gemXgcDatasProc3D::potentFromCouplerToGem( )
                  *p1->sendOverlap_th[thnum][3]+j1*p1->sendOverlap_th[thnum][3]
                  +k1-p1->sendOverlap_th[thnum][1];
                potGem[n] = recvbuf[sdispls[nrank]+m];
-if(p1->mype==2 ) fprintf(stderr,"potGem: %f, sdispls[nrank]: %d, m: %d, recvbuf: %f \n", 
-potGem[n], sdispls[nrank], m, recvbuf[sdispls[nrank]+m]);
+               debug = false;
+               if(debug) {
+                 if(p1->mype==2 ) fprintf(stderr,"potGem: %f, sdispls[nrank]: %d, n: %d, recvbuf: %f \n", 
+                      potGem[n], sdispls[nrank], n, recvbuf[sdispls[nrank]+m]);
+               }
                assert(m<numsend[nrank]);
                assert(n<p1->tli0*p1->lj0*p1->glk0);
 
@@ -562,7 +590,8 @@ potGem[n], sdispls[nrank], m, recvbuf[sdispls[nrank]+m]);
      }
    } 
 //   MPI_Reduce(MPI_IN_PLACE,potGem,p1->tli0*p1->lj0*p1->glk0,MPI_DOUBLE,MPI_SUM,0,p1->tube_comm);
-
+   MPI_Barrier(MPI_COMM_WORLD);
+   fprintf(stderr, "sxz 555 \n");
 }
 
 void gemXgcDatasProc3D::distriDataAmongCollective(const Part1ParalPar3D* p1, const Part3Mesh3D* p3, double*** inmatrix, double* outmatrix)

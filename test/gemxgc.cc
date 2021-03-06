@@ -87,9 +87,9 @@ int main(int argc, char **argv){
       
   coupler::GO INDS1d[2]={0,p3m3d.lj0*p3m3d.blockcount};
 
-  coupler::GO globcount[3] = {p1->imx, p1->jmx, p1->kmx};
+  coupler::GO globcount[3] = {p1->imx+1, p1->jmx+1, p1->kmx+1};
   coupler::GO loccount[3] = {p1->tli0, p1->lj0, p1->glk0};
-  coupler::GO start3d[3] = {p1->li1, 0, p1->lk1};
+  coupler::GO start3d[3] = {p1->tli1, 0, p1->glk1};
 
   coupler::Array3d<double>* densityfromGEM;
   coupler::Array2d<double>* densitytoXGC; 
@@ -98,9 +98,10 @@ int main(int argc, char **argv){
  
   double* densitytmp;
   double* fieldgem;  
+  bool debug = false;
  
   for (int i = 0; i < 1; i++) {
-    for (int j = 0; j < 1; j++) {
+    for (int j = 0; j < 4; j++) {
       m = i*RK_count+j;
       start_adios[0] = p1->glk1;
       start_adios[1] = 0;
@@ -134,35 +135,47 @@ int main(int argc, char **argv){
       coupler::GO count_1[2]={coupler::GO(p3m3d.nphi), p3m3d.blockcount};
       fieldfromXGC = coupler::receive_field(dir, xFld,start_1, count_1, MPI_COMM_WORLD,m);
       gxdp3d.DistriPotentRecvfromXGC(fieldfromXGC);
-      coupler::destroy(fieldfromXGC);
-
+ 
       MPI_Barrier(MPI_COMM_WORLD);
-      fieldtoGEM = new coupler::Array3d<double>(p1->imx, p1->lj0, p1->kmx, p1->li0, p1->lj0,
-                   p1->lk0, start3d);
+      fprintf(stderr, "sxz 666 \n");
+      fieldtoGEM = new coupler::Array3d<double>(p1->nx0, p1->lj0, p1->nz0, p1->tli0, p1->lj0,
+                   p1->glk0, start3d);
       fieldgem = fieldtoGEM->data();
-      for(int h=0; h<p1->tli0*p1->lj0*p1->glk0; h++){
-       fieldgem[h] = gxdp3d.potGem[h];
-       if(isnan(fieldgem[h])) {
-         printf("h: %d, fieldgem[h] is nan. \n", h);
-         exit(1);
-       }
-      }
+      MPI_Barrier(MPI_COMM_WORLD);
+      fprintf(stderr, "sxz 777 \n");
+      debug = false;
+      if( debug ) {
+	for(int h=0; h<p1->tli0*p1->lj0*p1->glk0; h++){
+	  fieldgem[h] = gxdp3d.potGem[h];
+	  fprintf(stderr, "h: %d, fieldgem: %f \n", h, fieldgem[h]);
+	  if(isnan(fieldgem[h])) {
+	    printf("h: %d, fieldgem[h] is nan. \n", h);
+	    exit(1);
+	  }
+	}
+      } 
       // send field from coupler to gem
+  
+      MPI_Barrier(MPI_COMM_WORLD);
+      fprintf(stderr, "sxz 444 \n");
       coupler::send3D_from_coupler(adios, dir, fieldtoGEM, cFld.IO, cFld.eng, cFld.name,
       sendfield, MPI_COMM_WORLD, m);
-      coupler::destroy(fieldtoGEM);         
     }
   }
 
   coupler::destroy(densitytoXGC); 
   coupler::destroy(densityfromGEM); 
+  coupler::destroy(fieldfromXGC);
+  coupler::destroy(fieldtoGEM);         
+
+
   gDens.close();
   cDens.close();
 
-//  xFld.close();
-/*
-  cFld.close();
-*/
+  xFld.close();
+
+//  cFld.close();
+
   gMesh.close();
 //  gThf.close();
   gGrd.close();

@@ -625,19 +625,28 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 	nodesdist_fl[i][j][k][1] = sqrt(pow(theta_pot[i][j][k][1][4] - theta_pot[i][j][k][0][4],2)
 	+ pow(zeta_pot[i][j][k][1] - zeta_pot[i][j][k][0],2));
 
-//        nodesdist_fl[i][j][k][4] = sqrt(pow(thetaflx_pot[i][j][k][4][4] - thetaflx_pot[i][j][k][0][4],2)
-//	+ pow(zeta_pot[i][j][k][4] - zeta_pot[i][j][k][0],2));  
+        // this tmptheta is the theta angle of the point where field line with y cross with zeta line of 
+        //  xgc labled by theta_flx
+        tmptheta = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp)/q_local;
+        nodesdist_fl[i][j][k][4] = sqrt(pow(tmptheta - theta_pot[i][j][k][0][4],2)
+	+ pow(zeta_pot[i][j][k][4] - zeta_pot[i][j][k][0],2));  
 
         nodesdist_fl[i][j][k][2] = sqrt(pow(theta_pot[i][j][k][2][4] - theta_pot[i][j][k][0][4],2)
 	+ pow(zeta_pot[i][j][k][2] - zeta_pot[i][j][k][0],2));    
 	nodesdist_fl[i][j][k][3] = sqrt(pow(theta_pot[i][j][k][3][4] - theta_pot[i][j][k][0][4],2)
 	+ pow(zeta_pot[i][j][k][3] - zeta_pot[i][j][k][0],2));
 
-        debug = false;
-	if (debug && p1->mype == 1){     
-          printf("fxinter.flxt[i]: %f, %f, %f, %f, %f \n", theta_pot[i][j][k][2][0], theta_pot[i][j][k][2][1],
+        debug = true;
+	if (debug && p1->mype == 2 && i==7 && j==15 && k==22){     
+/* 
+          fprintf(stderr, "fxinter.flxt[i]: %f, %f, %f, %f, %f \n", theta_pot[i][j][k][2][0], theta_pot[i][j][k][2][1],
                  theta_pot[i][j][k][2][2], theta_pot[i][j][k][2][3], theta_pot[i][j][k][2][4], 
                  theta_pot[i][j][k][2][5]);
+*/   
+//          if(isnan(nodesdist_fl[i][j][k][4])) {
+            fprintf(stderr, "nodesdist_fl: %f, %f, %f, %d, %d, %d \n", 
+               nodesdist_fl[i][j][k][0], nodesdist_fl[i][j][k][1],  nodesdist_fl[i][j][k][4], i, j, k);
+//          }
         }
       }
     }

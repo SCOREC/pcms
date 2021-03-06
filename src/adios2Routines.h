@@ -473,7 +473,7 @@ template<typename T>
           });
       send_id = sendIO.DefineVariable<T>(fldname,
           g_dims, g_offset, l_dims);
-    printf("before cpl_density open \n"); 
+      printf("before cpl_density open \n"); 
       engine = sendIO.Open(fname, adios2::Mode::Write,comm);
     }
     if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';   
@@ -490,6 +490,7 @@ template<typename T>
  {
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    fprintf(stderr, "rank: %d \n", rank);
     const std::string fld_name;
     const GO* start = a3d->start();   
  
@@ -506,7 +507,7 @@ template<typename T>
           });
       send_id = sendIO.DefineVariable<T>(fldname,
           g_dims, g_offset, l_dims);
-      printf("before cpl_density open \n");
+      printf("before %s open \n", fldname);
       engine = sendIO.Open(fname, adios2::Mode::Write,comm);
     }
     if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';

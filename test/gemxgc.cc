@@ -134,7 +134,6 @@ int main(int argc, char **argv){
       coupler::GO start_1[2]={0, p3m3d.blockstart+p3m3d.cce_first_node-1};
       coupler::GO count_1[2]={coupler::GO(p3m3d.nphi), p3m3d.blockcount};
       fieldfromXGC = coupler::receive_field(dir, xFld,start_1, count_1, MPI_COMM_WORLD,m);
-/*
       gxdp3d.DistriPotentRecvfromXGC(fieldfromXGC);
  
       MPI_Barrier(MPI_COMM_WORLD);

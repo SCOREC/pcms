@@ -13,7 +13,7 @@ find_package(ADIOS2 2.5 REQUIRED)
 if(CMAKE_CXX_COMPILER_ID MATCHES "PGI")
 #find_package(Kokkos MODULE REQUIRED)
 else()
-find_package(Kokkos REQUIRED)
+#find_package(Kokkos REQUIRED)
 endif()
 
 ## use pkgconfig since the fftw autoconf install produces

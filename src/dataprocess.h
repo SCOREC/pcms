@@ -151,10 +151,13 @@ class gemXgcDatasProc3D {
     double*** densXgc = NULL;
     double*  denssend = NULL;
 
-    double**** pot_gem_fl = NULL;
-    double*** potyCpl = NULL;
-    double*** potythCpl = NULL;
-    double* potGem = NULL;
+    double**** pot_gem_fl = NULL; // Store the theta flux locating at the mesh composited by XGC's zeta dimension 
+                                  // and GEM's y dimension. The y points come from GEM straitforwardly. 
+    double*** potyCpl = NULL; // Store the potential at points where filed line with y crosses xgc's zeta line 
+                              // whose coordinate is xgc's theta mesh  
+    double*** poty_GemCpl = NULL; // Store the potential at points of CPL's mesh distributed from GEM
+    double* potGem = NULL;    // store the potential on GEM's mesh in one dimension array 
+                              // which will be transferred to GEM part by ADIOS2
 
     LO* numsend = NULL;
     LO* numrecv = NULL;
@@ -189,12 +192,15 @@ class gemXgcDatasProc3D {
     void allocSendRecvbuff();
     void interpoDensityAlongZ(double*** box);
     void interpoDensityAlongY();
-    void InterpoPotential3DAlongZ(double*** boxyin, double*** boxout); 
-    void potentFromCouplerToGem(const Array2d<double>* fieldfromXGC);
+//    void InterpoPotential3DAlongZ(double*** boxyin, double*** boxout); 
+    void potentFromCouplerToGem();
     void zPotentBoundaryBufAssign(const double*** box,BoundaryDescr3D& bdesc);
     void zMeshPotentBoundaryBufAssign(BoundaryDescr3D& bdesc);
     void zDensityBoundaryBufAssign(double*** box);
     void distriDataAmongCollective(const Part1ParalPar3D* p1, const Part3Mesh3D* p3, double*** inmatrix, double* outmatrix);
+    void InterpoPotential3DAlongZ(double*** potyCpl, double*** poty_GemCpl);
+
+
 };
 
 

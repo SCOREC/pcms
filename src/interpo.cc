@@ -196,7 +196,7 @@ void gemXgcDatasProc3D::interpoDensityAlongY()
     }
   }
 }
-
+/*
 void gemXgcDatasProc3D::InterpoPotential3DAlongZ(double*** boxin, double*** boxout)
 {
   double* yin;
@@ -220,6 +220,7 @@ void gemXgcDatasProc3D::InterpoPotential3DAlongZ(double*** boxin, double*** boxo
   }
 
 }
+*/
 
 
 } /*interpo.cc*/

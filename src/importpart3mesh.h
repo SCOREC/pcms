@@ -17,11 +17,6 @@ class Array1d;
 
 class Part1ParalPar3D;
 
-struct flxxgc {
-  LO flxtind[4];
-  double flxt[5];
-};
-
 class Part3Mesh3D{
   public:
 /*variables of XGC for both gene-xgc and gem-xgc coupling*/
@@ -65,17 +60,27 @@ class Part3Mesh3D{
 /*variables specially owned by XGC for GEM-XGC coupling*/
     LO  nphi;
     LO  nwedge;
-    double* Rcoordall=NULL; // store R of all nodes in XGC mesh
-    double* Zcoordall=NULL; // store Z of all nodes in XGC mesh
-    double** surf_idx=NULL; //store the vertex indices of each surface
-    double** theta_geo=NULL; //store the theta value of the nodes on the surface of xgc in the local process
-    double** theta_flx=NULL; //store  the flux_theta of the nodes on the surface of xgc mesh in the local process
+    double* Rcoordall = NULL; // store R of all nodes in XGC mesh
+    double* Zcoordall = NULL; // store Z of all nodes in XGC mesh
+    double** surf_idx = NULL; //store the vertex indices of each surface
+    double** theta_geo = NULL; //store the theta value of the nodes on the surface of xgc in the local process
+    double** theta_flx = NULL; //store  the flux_theta of the nodes on the surface of xgc mesh in the local process
+                             // \theta_{fxgc}
     LO cce_first; // The number labelling the first surface 
-    double*** y_xgc=NULL; // 
-    double**** zeta_pot=NULL; //Store the theta_f mesh for interpolating potential provided by XGC to the one for GEM
-    double***** thetaflx_pot=NULL; //Store the five flux theta values for the 3rd order interpolation along the field line.
-    LO***** thetaflx_ind_pot=NULL; //Store the four indices of nodals for the 3rd order interpolation along the field line.
-    double**** nodesdist_fl=NULL; //Store the length of the four points along the field line for interpolation.
+    double*** y_xgc = NULL; // 
+    double**  theta_xgc;  // xgc's theta mesh
+    double**** zeta_pot = NULL; //Store the theta_f mesh for interpolating potential provided by XGC to the one for GEM
+    double***** theta_pot = NULL; //Store the five  theta values for the 3rd order interpolation along the field line.
+    LO***** theta_ind_pot =NULL; //Store the four indices of nodals for the 3rd order interpolation along the field line.
+    double**** nodesdist_fl = NULL; //Store the length of the four points along the field line for interpolation.
+    double*** theta_gemxgc = NULL; // Store the five theta values for the 3rd order interpolation between gem's theta mesh
+                                   // and xgc's theta mesh
+    LO*** theta_ind_gemxgc = NULL; // Store the four indices of theta_xgc nodes which surround gem's theta nodes. 
+    struct flxxgc {
+      LO flxtind[4];
+      double flxt[5];
+    } flxinter;
+
  
     /* constructor - versurf has length = numsurf & versurf[i] = the number of nodes surface[i]
      * xcoords saves the radial coordinate of each surface.
@@ -144,9 +149,9 @@ class Part3Mesh3D{
     void initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>* rzcoords);
     void JugeFirstSurfaceMatch(double xp1);
     inline LO search_zeta(const double dlength,const double length,const LO nlength,double tmp);
-    inline void  search_flux_3rdorder_periodbound(double tmpflx,const double* flxin, LO num, struct flxxgc flxinter);
-    void search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp); 
- 
+    void  search_theta_3rdorder_periodbound(double tmpflx,const double* flxin, LO num);
+    void  search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp); 
+    void  InitInterpoThetaPointsXGCtoGEM(); 
 
     /* default constructor 
      * put this in private to prevent users from calling it

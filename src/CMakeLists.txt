@@ -22,6 +22,7 @@ set(HEADERS
     BoundaryDescr3D.h
     testutilities.h
     interpoutil.h   
+    macros.h
 )
 
 add_library(coupler ${SOURCES})
@@ -30,7 +31,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "PGI")
 target_compile_definitions(coupler PUBLIC ADIOS2)
 target_link_libraries(coupler PUBLIC ${ADIOS2_LIBRARIES} FFTW3::FFTW3)
 else()
-target_link_libraries(coupler adios2::adios2 Kokkos::kokkos PkgConfig::fftw)
+target_link_libraries(coupler adios2::adios2 PkgConfig::fftw)
 endif()
 target_include_directories(coupler PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 install(TARGETS coupler)

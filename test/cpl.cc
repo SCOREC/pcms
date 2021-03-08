@@ -163,7 +163,7 @@ int main(int argc, char **argv){
                                                    p1pp3d.totnodes,p1pp3d.lj0,p1pp3d.blockcount,
                                                    p1pp3d.lj0,p1pp3d.blockstart);
       coupler::CV* fieldtmp = fieldtoGENE->data(); 
-      for(coupler::GO h=0;h<p1pp3d.lj0*p1pp3d.blockcount;h++){
+      for(coupler::GO h=0; h<p1pp3d.lj0*p1pp3d.blockcount; h++){
         fieldtmp[h] = dp3d.potentsend[h];
       }         
 

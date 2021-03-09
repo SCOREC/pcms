@@ -99,18 +99,29 @@ int main(int argc, char **argv){
   double* densitytmp;
   double* fieldgem;  
   bool debug = false;
+  start_adios[0] = p1->glk1;
+  start_adios[1] = 0;
+  start_adios[2] = p1->tli1;
+  count[0] = p1->glk0;
+  count[1] = p1->lj0;
+  count[2] = p1->tli0;      
+
+  coupler::GO start_1[2]={0, p3m3d.blockstart+p3m3d.cce_first_node-1};
+  coupler::GO count_1[2]={coupler::GO(p3m3d.nphi), p3m3d.blockcount};
  
-  for (int i = 0; i < 1; i++) {
+
+  for (int i = 0; i < 25; i++) {
     for (int j = 0; j < 4; j++) {
       m = i*RK_count+j;
-      start_adios[0] = p1->glk1;
-      start_adios[1] = 0;
-      start_adios[2] = p1->tli1;
-      count[0] = p1->glk0;
-      count[1] = p1->lj0;
-      count[2] = p1->tli0;      
-      // receive density from GEM to coupler
+      if(p1->mype == 0) printf("m equals %d \n", m);
+     // receive density from GEM to coupler
       densityfromGEM = coupler::receive_pproc_3d<double>(dir, gDens, start_adios, count, m, MPI_COMM_WORLD); 
+      
+      debug = true;
+      if( debug ) {
+        coupler::printminmax1d(densityfromGEM->data(), count[0]*count[1]*count[2], p1->mype, 
+        "densityfromGEM", m, false);
+      }
 
       gxdp3d.DistriDensiRecvfromGem(densityfromGEM);
       MPI_Barrier(MPI_COMM_WORLD);
@@ -125,14 +136,16 @@ int main(int argc, char **argv){
          exit(1);
        }
       }
+      debug = true;
+      if(debug) {
+        coupler::printminmax1d(densitytmp, p3m3d.nphi*p3m3d.blockcount, p1->mype, "densitytmp", m, false);
+      }
 //      realsum=0.0;
       // send density from coupler to xgc
       coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,
       senddensity,MPI_COMM_WORLD,m);
 
       // receive field from xgc to coupler
-      coupler::GO start_1[2]={0, p3m3d.blockstart+p3m3d.cce_first_node-1};
-      coupler::GO count_1[2]={coupler::GO(p3m3d.nphi), p3m3d.blockcount};
       fieldfromXGC = coupler::receive_field(dir, xFld,start_1, count_1, MPI_COMM_WORLD,m);
       gxdp3d.DistriPotentRecvfromXGC(fieldfromXGC);
  

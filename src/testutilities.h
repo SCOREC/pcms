@@ -150,6 +150,49 @@ void printminmax(T*** array, LO inds1d,LO inds2d,LO *inds3d,
 }
 
 template<class T>
+void printminmax1d(T* array, LO inds1d, LO rank, std::string name, LO numiter, bool outpattern)
+{
+  double minmal = 0.0;
+  double maxmal = 0.0;
+  T minele, maxele;
+  LO i1;
+  for (LO i=0; i< inds1d; i++) {
+    if (std::abs(array[i]) > maxmal) {
+      maxmal = std::abs(array[i]);
+      maxele = array[i]; 
+      i1 = i;
+    }
+    if(std::abs(array[i] < minmal)) {
+      minmal=std::abs(array[i]);
+      minele=array[i];        
+    }
+  }
+  if(outpattern = true) {
+    printf("%s,numiter,rank,minele,maxele=%2d %2d %E %E \n",name.c_str(),numiter,rank,minele,maxele);
+  } 
+  else {
+    double *maxarray = new double[inds1d];
+    double *minarray = new double[inds1d];
+    LO size;
+    LO rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Gather(&maxmal, 1, MPI_DOUBLE, maxarray, size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Gather(&minmal, 1, MPI_DOUBLE, minarray, size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+ 
+    double minmal = 0.0;
+    double maxmal = 0.0;
+    if(rank == 0) {
+      for (LO i=0; i<size; i++ ) {
+        if(minmal<minarray[i]) minmal = minarray[i];
+        if(maxmal>maxarray[i]) maxmal = maxarray[i];
+      }
+      printf("m: %d, maxmal: %f, minmal: %f \n", numiter, maxmal, minmal); 
+    }
+  }
+}
+
+template<class T>
 void printminmax2d(T** array, LO inds1d,LO inds2d,LO rank, std::string name,LO numiter)
 { double minmal=0.0;
   double maxmal=0.0;

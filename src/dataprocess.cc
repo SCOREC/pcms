@@ -492,8 +492,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
     MPI_COMM_WORLD,"densinterpo",0);
   }
 
-// don't understand the following operation  
-  
+ 
   CV*** loc_data=new CV**[p1->li0];
   for(LO i=0;i<p1->li0;i++){
     loc_data[i]=new CV*[p3->lj0];
@@ -528,8 +527,6 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
     free(loc_data[i]);
   }
   free(loc_data);
-
-//don't understand the above operation   
 
   LO* recvcount = new LO[p1->npz];
   LO* rdispls = new LO[p1->npz];
@@ -614,7 +611,7 @@ void DatasProc3D::AssemDensiSendtoPart3(BoundaryDescr3D& bdesc)
   tmpmat=NULL;
 }
 
-//I dont's understand the function of the following matrix.
+
 void DatasProc3D::oldInitmattoplane()
 {
   double y_cut;
@@ -675,7 +672,6 @@ void DatasProc3D::Initmattoplane()
 }
 
 
-//The function of this routines is not clear so far.
 void DatasProc3D::DensityToPart3()
 {
   for(LO i=0;i<p3->li0;i++){
@@ -691,7 +687,6 @@ void DatasProc3D::DensityToPart3()
   }
 }
 
-// not very clear about the function of this routine
 void DatasProc3D::Prepare_mats_from_planes()
 {
   double dphi=2.0*cplPI/double(p1->n0_global*p1->n_cuts);

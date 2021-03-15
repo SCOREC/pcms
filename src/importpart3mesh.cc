@@ -612,12 +612,13 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 
 
 	tmptheta = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp + zeta_pot[i][j][k][2])/q_local;
-	search_theta_3rdorder_periodbound(tmptheta, theta_flx[i], versurf[p1->li1 + i]);
+
+	search_theta_3rdorder_periodbound(tmptheta, theta_xgc[i], versurf[p1->li1 + i]);
 	for (LO h=0; h<5; h++) theta_pot[i][j][k][2][h] = flxinter.flxt[h];
 	for (LO h=0; h<4; h++) theta_ind_pot[i][j][k][2][h] = flxinter.flxtind[h];
 
 	tmptheta = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp + zeta_pot[i][j][k][3])/q_local;
-	search_theta_3rdorder_periodbound(tmptheta,theta_flx[i],versurf[p1->li1+i]);
+	search_theta_3rdorder_periodbound(tmptheta, theta_xgc[i], versurf[p1->li1+i]);
 	for (LO h=0; h<5; h++) theta_pot[i][j][k][3][h] = flxinter.flxt[h];
 	for(LO h=0; h<4; h++)  theta_ind_pot[i][j][k][3][h] = flxinter.flxtind[h];        
         
@@ -724,15 +725,15 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
 {
   bool debug = false;
 //  fprintf(stderr, "sxz33 \n");
-  tmpflx = remainder(tmpflx + cplPI,2.0 * cplPI);
+//  tmpflx = remainder(tmpflx + cplPI,2.0 * cplPI);
 //  fprintf(stderr, "tmpflx_1: %f \n", tmpflx);
-  if (tmpflx < 0) tmpflx = tmpflx + 2.0 * cplPI;
+//  if (tmpflx < 0) tmpflx = tmpflx + 2.0 * cplPI;
 //  fprintf(stderr, "tmpflx_2: %f \n", tmpflx);
-  tmpflx = tmpflx - cplPI;
+//  tmpflx = tmpflx - cplPI;
   
 //  fprintf(stderr, "tmpflx: %f \n", tmpflx);
   if (tmpflx >= flxin[num - 1]){
-    LO k = 1;
+    LO k = 0;
     flxinter.flxt[2] = flxin[k] + 2.0*cplPI;
     while(tmpflx > flxinter.flxt[2]){
       k++;
@@ -758,7 +759,16 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
       flxinter.flxt[2] = flxin[k] + 2.0*cplPI;
       flxinter.flxt[3] = flxin[k+1] + 2.0*cplPI;
     }
-    else{
+    else if(k == 1) {
+      flxinter.flxtind[1] = 0;
+      flxinter.flxtind[0] = num - 1;
+
+      flxinter.flxt[0] = flxin[num - 1];
+      flxinter.flxt[1] = flxin[0];
+      flxinter.flxt[2] = flxin[k] + 2.0*cplPI;
+      flxinter.flxt[3] = flxin[k+1] + 2.0*cplPI;
+    } 
+    else {
       flxinter.flxtind[1] = num - 1;
       flxinter.flxtind[0] = num - 2;
 

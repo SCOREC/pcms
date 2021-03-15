@@ -119,9 +119,17 @@ int main(int argc, char **argv){
       
       debug = true;
       if( debug ) {
-        coupler::printminmax1d(densityfromGEM->data(), count[0]*count[1]*count[2], p1->mype, 
+         coupler::printminmax1d(densityfromGEM->data(), count[0]*count[1]*count[2], p1->mype, 
         "densityfromGEM", m, false);
-      }
+/*
+          double* tmp = densityfromGEM->data();
+          if (p1->mype == 4) {
+            for (coupler::LO k=0; k< count[0]*count[1]*count[2]; k++) {
+              printf("k: %d, receve density: %f \n", k, tmp[k]);
+            }
+          }
+*/
+     }
 
       gxdp3d.DistriDensiRecvfromGem(densityfromGEM);
       MPI_Barrier(MPI_COMM_WORLD);
@@ -142,6 +150,7 @@ int main(int argc, char **argv){
       }
 //      realsum=0.0;
       // send density from coupler to xgc
+      MPI_Barrier(MPI_COMM_WORLD);
       coupler::send_from_coupler(adios,dir,densitytoXGC,cDens.IO,cDens.eng,cDens.name,
       senddensity,MPI_COMM_WORLD,m);
 

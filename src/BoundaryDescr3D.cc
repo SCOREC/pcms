@@ -175,8 +175,8 @@ void BoundaryDescr3D::initGemXgc(const Part3Mesh3D& p3m3d,const Part1ParalPar3D 
   updenzgemxgc=new double**[p1pp3d.li0];
   lowdenzgemxgc=new double**[p1pp3d.li0];
   for(LO i=0;i<p1pp3d.li0;i++){
-    updenzgemxgc[i]=new double*[p3m3d.nphi];
-    lowdenzgemxgc[i]=new double*[p3m3d.nphi];
+    updenzgemxgc[i] = new double*[p1pp3d.lj0];     //new double*[p3m3d.nphi];
+    lowdenzgemxgc[i]= new double*[p1pp3d.lj0];   //new double*[p3m3d.nphi];
     for(LO j=0;j<p1pp3d.lj0;j++){
       updenzgemxgc[i][j]=new double[nzb];
       lowdenzgemxgc[i][j]=new double[nzb];

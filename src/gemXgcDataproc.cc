@@ -220,24 +220,63 @@ namespace coupler {
 // printf("1111 \n");
    zDensityBoundaryBufAssign(densCpl);
 // printf("2222 \n");
-   debug = false;
+
+   debug = true;
    if (debug) {	
+/*
    for(LO i=0;i<p1->li0;i++){ 
      for(LO k=0;k<p1->lk0;k++){
        for(LO j=0;j<p1->lj0;j++){
-       if (p1->mype == 0) {
-             printf("k:%d, j:%d, denCpl: %f \n", k, j, densCpl[i][j][k]);
+       if (p1->mype == 15 ) {
+             printf("i:%d, j: %d, k:%d, denCpl: %f \n",i,j, p1->lk1+k, densCpl[i][j][k]);
 	   }
 	 }  
        }
      }
+*/
+     MPI_Barrier(MPI_COMM_WORLD); 
+     printminmax3d(densCpl, p1->li0, p1->lj0, p1->lk0, p1->mype, "denCpl", 0, false);
    }
    
    interpoDensityAlongZ(densinterone);
 //   printf("3333 \n");
+   debug = true;
+   if(debug) {
+     printminmax_var3d(densinterone, p1->li0, p1->lj0, p3->mylk0, p1->mype, "densinterone", 0, false);
+/*
+   for(LO i=0; i<p1->li0; i++){ 
+     for(LO k=0; k<p3->mylk0[i]; k++){
+       for(LO j=0; j<p1->lj0; j++){
+       if (p1->mype == 15) {
+             printf("i:%d, j:%d, k:%d, densinterone: %f \n",i,j, p3->mylk1[i]+k, densinterone[i][j][k]);
+             if(densinterone[i][j][k]>2.01) {
+               printf("out, i:%d, j: %d, k: %d\n", i, j, k);
+             }
+	   }
+	 }  
+       }
+     }
+*/
 
+     MPI_Barrier(MPI_COMM_WORLD);
+   }
    printf("after interpo, mype: %d \n", p1->mype);
    interpoDensityAlongY();
+   debug = true;
+   if( debug ) {
+     printminmax_var3d(densintertwo, p1->li0, p1->nphi, p3->mylk0, p1->mype, "densintertwo", 0, false);
+/*
+   for(LO i=0; i<p1->li0; i++){ 
+     for(LO k=0; k<p3->mylk0[i]; k++){
+       for(LO j=0; j<p1->nphi; j++){
+       if (p1->mype_x == 0 && i==39 && j==0) {
+             printf("k:%d, densintertwo: %f \n", p3->mylk1[i]+k, densintertwo[i][j][k]);
+	   }
+	 }  
+       }
+     }
+*/
+   }
    MPI_Barrier(MPI_COMM_WORLD);
   
    //fixme: distribute and assemble the datas to get the matrix to be sent to xgc by the adios2 routine     
@@ -263,6 +302,7 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array2d<double>* fieldfrom
       for(LO k=0; k<p3->versurf[i+p1->li1]; k++){
         n++;
         tmp[i][j][k]=potent[n];
+        reshuffleforward(tmp[i][j], p3->nstart[i+p1->li1], p3->versurf[i+p1->li1]);
       }
     }
   }  

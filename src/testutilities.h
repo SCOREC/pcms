@@ -241,8 +241,8 @@ void printminmax1d(T* array, LO inds1d, LO rank, std::string name, LO numiter, b
     }    
   }
   if(!outpattern) {
-//    printf("name:%s, numiter: %d, rank: %d, imax: %d, imin: %d, minmal: %f, maxmal: %f \n",
-//    name.c_str(),numiter,rank,imax, imin, minmal,maxmal);
+    printf("name:%s, numiter: %d, rank: %d, imax: %d, imin: %d, minmal: %f, maxmal: %f \n",
+    name.c_str(),numiter,rank,imax, imin, minmal,maxmal);
 //  } 
 //  else {
     if (typeid(T) == typeid(double)){
@@ -264,7 +264,7 @@ void printminmax1d(T* array, LO inds1d, LO rank, std::string name, LO numiter, b
 	  if(minmal > minarray[i]) minmal = minarray[i];
 	  if(maxmal < maxarray[i]) maxmal = maxarray[i];
 	}
-	printf("m: %d, tomaxmal: %f, tominmal: %f \n", numiter, maxmal, minmal); 
+	printf("m: %d, name: %s, tomaxmal: %f, tominmal: %f \n", numiter, name, maxmal, minmal); 
       }
       free(maxarray);
       free(minarray);

@@ -156,8 +156,13 @@ int main(int argc, char **argv){
 
       // receive field from xgc to coupler
       fieldfromXGC = coupler::receive_field(dir, xFld,start_1, count_1, MPI_COMM_WORLD,m);
+      debug = true;
+      if (debug) {
+        coupler::printminmax1d(fieldfromXGC->data(), count_1[0]*count_1[1], p1->mype,
+	        "fieldfromXGC", m, false);
+      }
       gxdp3d.DistriPotentRecvfromXGC(fieldfromXGC);
- 
+
       MPI_Barrier(MPI_COMM_WORLD);
       fprintf(stderr, "sxz 666 \n");
       fieldtoGEM = new coupler::Array3d<double>(p1->nx0, p1->lj0, p1->nz0, p1->tli0, p1->lj0,
@@ -176,6 +181,13 @@ int main(int argc, char **argv){
 	  }
 	}
       } 
+     
+      debug = true;
+      if (debug) {
+        coupler::printminmax1d(fieldtoGEM->data(), p1->tli0*p1->lj0*p1->glk0, p1->mype,
+                   "fieldfromXGC", m, false);
+      }
+
       // send field from coupler to gem
   
       MPI_Barrier(MPI_COMM_WORLD);

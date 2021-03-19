@@ -142,18 +142,18 @@ void gemXgcDatasProc3D::interpoDensityAlongZ(double*** box)
 
 	  Lag3dArray(yin,bdesc->thetameshgem,p1->lk0+2*nzb,yout,xout,p3->mylk0[i]);
           
-          debug = true;
+          debug = false;
           if(debug) {
-          if(p1->mype == 10) {
-            double xp = p3->theta_geo[18][263];
-          //  double* yin = new double[4];
-            double yin[4]={1.490, 1.556, 1.97, 0.0};
-            double* yinn = yin;
-          // double* xin = new doulbe[4];
-            double xin[4] = {-1.3962, -0.6981, 0.6981, 1.3962};
-            double* xinn = xin;
-            printf("youtpoint: %f \n", Lag3dInterpo1D(yinn, xinn, xp));
-          }
+	    if(p1->mype == 10) {
+	      double xp = p3->theta_geo[18][263];
+	    //  double* yin = new double[4];
+	      double yin[4]={1.490, 1.556, 1.97, 0.0};
+	      double* yinn = yin;
+	    // double* xin = new doulbe[4];
+	      double xin[4] = {-1.3962, -0.6981, 0.6981, 1.3962};
+	      double* xinn = xin;
+	      printf("youtpoint: %f \n", Lag3dInterpo1D(yinn, xinn, xp));
+	    }
           }
 /* 
           if(p1->mype == 10) {

@@ -221,9 +221,9 @@ namespace coupler {
    zDensityBoundaryBufAssign(densCpl);
 // printf("2222 \n");
 
-   debug = true;
+   debug = false;
    if (debug) {	
-/*
+
    for(LO i=0;i<p1->li0;i++){ 
      for(LO k=0;k<p1->lk0;k++){
        for(LO j=0;j<p1->lj0;j++){
@@ -233,7 +233,7 @@ namespace coupler {
 	 }  
        }
      }
-*/
+
      MPI_Barrier(MPI_COMM_WORLD); 
      printminmax3d(densCpl, p1->li0, p1->lj0, p1->lk0, p1->mype, "denCpl", 0, false);
    }

@@ -670,7 +670,7 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 void Part3Mesh3D::InitInterpoThetaPointsXGCtoGEM() {  
   for (LO i=0; i<p1->li0; i++ ) {
     for (LO k=0; k<p1->lk0; k++) {
-      if (p1->mype == 0) fprintf(stderr, "i: %d, p1->theta: %f \n", i, p1->theta[p1->lk1+k]);  
+//      if (p1->mype == 0) fprintf(stderr, "i: %d, p1->theta: %f \n", i, p1->theta[p1->lk1+k]);  
 //      MPI_Barrier(MPI_COMM_WORLD);
       search_theta_3rdorder_periodbound(p1->theta[p1->lk1+k], theta_xgc[i], versurf[p1->li1 + i]); 
       for (LO h=0; h<5; h++) theta_gemxgc[i][k][h] = flxinter.flxt[h];

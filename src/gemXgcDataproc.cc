@@ -294,6 +294,8 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array2d<double>* fieldfrom
     }
   }    
 
+  bool debug = false;
+
   //FIXME: distribute potentfromXGC->datas() to tmp;
   double* potent=fieldfromXGC->data();  
   LO n=0;
@@ -302,106 +304,120 @@ void gemXgcDatasProc3D::DistriPotentRecvfromXGC(const Array2d<double>* fieldfrom
       for(LO k=0; k<p3->versurf[i+p1->li1]; k++){
         n++;
         tmp[i][j][k]=potent[n];
-        reshuffleforward(tmp[i][j], p3->nstart[i+p1->li1], p3->versurf[i+p1->li1]);
       }
+      reshuffleforward(tmp[i][j], p3->nstart[i+p1->li1], p3->versurf[i+p1->li1]);
+      if(debug && p1->mype == 0) { 
+        for(LO k=0; k<p3->versurf[i+p1->li1]; k++)
+	  printf("tmptmp: %19.18f \n", tmp[i][j][k]);
+      }  
     }
   }  
 
-fprintf(stderr, "sxz 1111111 \n");
-MPI_Barrier(MPI_COMM_WORLD);
-  bool debug = false;
+  //fprintf(stderr, "sxz 1111111 \n");
+  MPI_Barrier(MPI_COMM_WORLD);
+ 
   // First interpolation along the field line; 
   double* tmppotent = new double[4];
-  double* tmptheta;
+  double* tmptheta = new double[4];
   double* tmplength;
-  for(LO i=0; i<p1->li0; i++){
-    for(LO j=0; j<p1->lj0; j++){ 
-/*
-      double* tmpthflx=new double[2.0*bdesc->nzb+p3->mylk0[i]];
-      for(LO h=0;h<bdesc->nzb;h++) tmpthflx[h]=bdesc->lowpotentgemxgc[h];
-      for(LO l=0;l<bdesc->) 
-*/ 
+  for(LO i=0; i<p1->li0; i++) {
+    for(LO j=0; j<p1->nphi; j++) { 
       for (LO k=0; k<p3->mylk0[i]; k++){ 
         for (LO h=0; h<4; h++){
-/*
-          if (j<p1->lj0-1){
-          //Linar extroplation if p3->thetaflx_pot[i][j][k][h][4] 
-          //locates out of the boundary of theta_flx of xgc
-            if (p3->)
-
-
-	    if (p3->thetaflx_pot[i][j][k][h][4] > p3->theta_flx[i][p3->versurf[p1->li1+i] - 1]) {
-	       pot_gem_fl[i][j][k][h] = tmp[i][j][p3->versurf[p1->li1+i] - 1] + 
-	       (p3->thetaflx_pot[i][j][k][h][4] - p3->theta_flx[i][p3->versurf[p1->li1+i]] - 1)/
-	       (p3->theta_flx[i][p3->versurf[p1->li1+i]-1] - p3->theta_flx[i][p3->versurf[p1->li1+i]-2]) *
-	       (tmp[i][j][p3->versurf[p1->li1+i] - 2] - tmp[i][j][p3->versurf[p1->li1+i] - 3]);
-	    } 
-	    else if (p3->thetaflx_pot[i][j][k][h][4] < p3->theta_flx[i][0]) {
-	       pot_gem_fl[i][j][k][h] = tmp[i][j][0] + (p3->theta_flx[i][1] - p3->theta_flx[i][0])/ 
-	       (p3->theta_flx[i][0] - p3->thetaflx_pot[i][j][k][h][4]) *
-	       (tmp[i][j][0] - tmp[i][j][1]);
-		
-	    } else {
-	     // The third order Lagrangian interpolation
-	     //Here the interpolation of the theta_flux points  along XGC's fixed zeta line;
-	     //This point is the cross point bettwen fixed zeta line and the field line labeld by y
-	      tmpflx = p3->thetaflx_pot[i][j][k][h];
-	      for(LO l=0; l<4; l++)   
-		tmppotent[l]=tmp[i][j][p3->thetaflx_ind_pot[i][j][k][h][l]];
-	      pot_gem_fl[i][j][k][h]=Lag3dInterpo1D(tmppotent,tmpflx,p3->thetaflx_pot[i][j][k][h][4]); 
-	     }
-	   } else {
-	     //the last j line is copy of the first j line
-	     pot_gem_fl[i][p1->lj0-1][k][h] = pot_gem_fl[i][0][k][h];
-	   } 
-         }
-*/
 
        // The third order Lagrangian interpolation
-       //Here the interpolation of the theta_flux points  along XGC's fixed zeta line;
-       //This point is the cross point bettwen fixed zeta line and the field line labeld by y
-	  if (j<p3->lj0-1) {
-	    tmptheta = p3->theta_pot[i][j][k][h];
-	    for(LO l=0; l<4; l++)
-	      tmppotent[l]=tmp[i][j][p3->theta_ind_pot[i][j][k][h][l]];
-	    pot_gem_fl[i][j][k][h]=Lag3dInterpo1D(tmppotent,tmptheta,p3->theta_pot[i][j][k][h][4]);
-	  } else {
-	    pot_gem_fl[i][p1->lj0-1][k][h] = pot_gem_fl[i][0][k][h];
-	  }
-	
-	  tmppotent=pot_gem_fl[i][j][k];
-	  tmplength=p3->nodesdist_fl[i][j][k];
-	  potyCpl[i][j][k]=Lag3dInterpo1D(tmppotent,tmplength,p3->nodesdist_fl[i][j][k][4]);     
- //if(p1->mype==2) fprintf(stderr, "potycpl: %f, i: %d, j: %d, k: %d \n", potyCpl[i][j][k], i, j, k);
-          debug = true;
-          if(debug) {
-	    if(p1->mype==2 && isnan(potyCpl[i][j][k]) && j<32) {
+       // Here the interpolation of the theta_flux points  along XGC's fixed zeta line;
+       // This point is the point where the fixed zeta line and the field line labeld by y cross
+	   for(LO l=0; l<4; l++) {
+	     tmptheta[l] = p3->theta_pot[i][j][k][h][l];
+	     tmppotent[l]=tmp[i][j][p3->theta_ind_pot[i][j][k][h][l]];
+	   }
+	   pot_gem_fl[i][j][k][h]=Lag3dInterpo1D(tmppotent,tmptheta,p3->theta_pot[i][j][k][h][4]);
+	 }
+         debug = true;
+         if(debug) {
+	 
+	   if( j<32 && isnan(pot_gem_fl[i][j][k][0]) ) {
+	     printf("pot_gem_fl  is nan, i: %d, j: %d, k: %d \n", i, j, k);
+	     exit(1);		 
+	   } 
+	   else {
+	     if(p1->mype==10 && j==31 && i==39 && k==557) {
+	      fprintf(stderr, "pot_gem_fl: %19.18f, %19.18f, %19.18f, %19.18f \n", pot_gem_fl[i][j][k][0],
+		       pot_gem_fl[i][j][k][1],  pot_gem_fl[i][j][k][2],  pot_gem_fl[i][j][k][3]);
 /*
-	      fprintf(stderr, "potyCpl[i][j][k] is nan \n");
-	      fprintf(stderr, "i: %d, j: %d, k: %d \n", i, j, k);
-	      fprintf(stderr, "tmepotent: %f, %f, %f, %f \n", tmppotent[0], tmppotent[1], 
-		      tmppotent[2], tmppotent[3]);
+	      printf("tmppotent: %19.18f, %19.18f, %19.18f, %19.18f \n", tmppotent[0], tmppotent[1], 
+		     tmppotent[2], tmppotent[3]);
+
+	     fprintf(stderr, "tmptheta: %f, %f, %f, %f, p3->theta_pot: %f \n", tmptheta[0], tmptheta[1],
+		     tmptheta[2], tmptheta[3], p3->theta_pot[i][j][k][h][4]);
 */
-	      fprintf(stderr, "tmplength: %f, %f, %f, %f, nodesdist_fl: %f \n", tmplength[0], tmplength[1],
-		      tmplength[2], tmplength[3], p3->nodesdist_fl[i][j][k][4]);
-	    }
-          }
-        }
-      }
-    } 
-    for(LO i=0; i<p1->li0; i++) {
-      for(LO k=0; k<p3->mylk0[i]; k++) {
-        potyCpl[i][p1->lj0-1][k] = potyCpl[i][0][k];
+
+	    }    
+	  }
+	}
+       }
+     } 
+   } 
+
+  // periodic boundary condition over the y direction
+  for(LO i=0; i<p1->li0; i++) {  
+      for (LO k=0; k<p3->mylk0[i]; k++){ 
+	for (LO h=0; h<4; h++){
+	  pot_gem_fl[i][p1->lj0-1][k][h] = pot_gem_fl[i][0][k][h];
+	}
       }
     }
-  }  
-MPI_Barrier(MPI_COMM_WORLD);
-fprintf(stderr, "sxz 222222 \n");
+
+ 
+    for(LO i=0; i<p1->li0; i++) {   
+       for(LO j=0; j<p1->nphi; j++){
+	 for (LO k=0; k<p3->mylk0[i]; k++){ 
+	   for (LO h=0; h<4; h++){
+          
+	     tmppotent[h]=pot_gem_fl[i][j][k][h];
+	     tmplength=p3->nodesdist_fl[i][j][k];
+	     potyCpl[i][j][k]=Lag3dInterpo1D(tmppotent,tmplength,p3->nodesdist_fl[i][j][k][4]);     
+          // if(p1->mype==2) fprintf(stderr, "potycpl: %f, i: %d, j: %d, k: %d \n", potyCpl[i][j][k], i, j, k);   
+	   }
+	   debug = false;
+	   if(debug) {
+	     if( j<32 && isnan(potyCpl[i][j][k]) ) {
+	       printf("potyCpl  is nan, i: %d, j: %d, k: %d. \n");
+	       exit(1);		 
+	     } 
+	     else {
+	       if(p1->mype==10 && j==31 && i==39 && k==557 ) {
+		 fprintf(stderr, "tmppotent_2: %19.18f, %19.18f, %19.18f, %19.18f \n", tmppotent[0], tmppotent[1], 
+		       tmppotent[2], tmppotent[3]);
+            
+	    	 fprintf(stderr, "pot_gem_fl: %19.18f, %19.18f, %19.18f, %19.18f \n",  pot_gem_fl[i][j][k][0],
+		          pot_gem_fl[i][j][k][1],  pot_gem_fl[i][j][k][2],  pot_gem_fl[i][j][k][3]);
+ 
+	         fprintf(stderr, "tmplength: %f, %f, %f, %f, nodesdist_fl: %f \n", tmplength[0], tmplength[1],
+		       tmplength[2], tmplength[3], p3->nodesdist_fl[i][j][k][4]);
+	       }
+	     }    
+         }
+       }
+     } 
+   } 
+   for(LO i=0; i<p1->li0; i++) {
+     for(LO k=0; k<p3->mylk0[i]; k++) {
+       potyCpl[i][p1->lj0-1][k] = potyCpl[i][0][k];
+     }
+   }
+
+  debug = false;
+  if (debug) {
+    printminmax_var3d(potyCpl, p1->li0, p1->lj0-1, p3->mylk0, p1->mype, "potyCpl", 0, false);
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+
   // The 2nd interpolation along theta 
   InterpoPotential3DAlongZ(potyCpl,poty_GemCpl); 
 
-MPI_Barrier(MPI_COMM_WORLD);
-fprintf(stderr, "sxz 333 \n");
+  MPI_Barrier(MPI_COMM_WORLD);
 
   // Distribute the datas from Coupler's mesh to GEM's own mesh
   potentFromCouplerToGem();
@@ -411,7 +427,8 @@ fprintf(stderr, "sxz 333 \n");
 void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfromGEM)
 {
    double* array=densityfromGEM->data();
-// sending happens in MPI_COMM_WORLD, but the process in grid_comm and tube_comm is mappped to comm_x and comm_y    
+
+   // sending happens in MPI_COMM_WORLD, but the process in grid_comm and tube_comm is mappped to comm_x and comm_y    
    double* sendbuf=new double[sendnum];
    double* recvbuf=new double[recvnum];
    LO xnum=0;
@@ -466,7 +483,6 @@ void gemXgcDatasProc3D::densityFromGemToCoupler(const Array3d<double>* densityfr
    }
   
    MPI_Barrier(MPI_COMM_WORLD);   
-//   printf("before alltoallv mype: %d\n",p1->mype );
 
    debug = false;
    if (debug) {
@@ -611,18 +627,11 @@ void gemXgcDatasProc3D::potentFromCouplerToGem( )
                potGem[n] = recvbuf[sdispls[nrank]+m];
                debug = false;
                if(debug) {
-                 if(p1->mype==2 ) fprintf(stderr,"potGem: %f, sdispls[nrank]: %d, n: %d, recvbuf: %f \n", 
+                 if(p1->mype==2 ) fprintf(stderr,"potGem: %f, sdispls[nrank]: %d, n: %d, recvbuf: %19.18f \n", 
                       potGem[n], sdispls[nrank], n, recvbuf[sdispls[nrank]+m]);
                }
                assert(m<numsend[nrank]);
                assert(n<p1->tli0*p1->lj0*p1->glk0);
-
-/*
-		potGem[(k1-p1->sendOverlap_th[thnum][1])*p1->lj0*(p1->imx+1)+j1*(p1->imx+1)+i1]
-		=recvbuf[sdispls[n]+(i1-p1->sendOverlap_x[xnum][1])*p1->lj0
-		 *p1->sendOverlap_th[thnum][3]+j1*p1->sendOverlap_th[thnum][3]
-		 +k1-p1->sendOverlap_th[thnum][1]];
-*/
 	     }
 	   }
 	 }     
@@ -631,10 +640,10 @@ void gemXgcDatasProc3D::potentFromCouplerToGem( )
    } 
 //   MPI_Reduce(MPI_IN_PLACE,potGem,p1->tli0*p1->lj0*p1->glk0,MPI_DOUBLE,MPI_SUM,0,p1->tube_comm);
    MPI_Barrier(MPI_COMM_WORLD);
-   fprintf(stderr, "sxz 555 \n");
 }
 
-void gemXgcDatasProc3D::distriDataAmongCollective(const Part1ParalPar3D* p1, const Part3Mesh3D* p3, double*** inmatrix, double* outmatrix)
+void gemXgcDatasProc3D::distriDataAmongCollective(const Part1ParalPar3D* p1, const Part3Mesh3D* p3, 
+     double*** inmatrix, double* outmatrix)
 {
   bool debug;
   LO* recvcount = new LO[p1->npz];
@@ -720,6 +729,7 @@ void gemXgcDatasProc3D::distriDataAmongCollective(const Part1ParalPar3D* p1, con
 }
 
 void gemXgcDatasProc3D::InterpoPotential3DAlongZ(double*** potyCpl,double*** poty_GemCpl) {
+  bool debug = false;
   double* tmptheta = new double[4];
   double* tmppot = new double[4];
   for (LO i=0; i<p1->li0; i++) {
@@ -732,6 +742,10 @@ void gemXgcDatasProc3D::InterpoPotential3DAlongZ(double*** potyCpl,double*** pot
         poty_GemCpl[i][j][k] = Lag3dInterpo1D(tmppot, tmptheta, p3->theta_gemxgc[i][k][4]);    
       }
     }
+  }
+  debug = false;
+  if (debug) {
+    printminmax3d(poty_GemCpl, p1->li0, p1->lj0, p1->lk0, p1->mype, "poty_GemCpl", 0, false);
   }
 }
 

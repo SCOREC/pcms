@@ -71,7 +71,7 @@ int main(int argc, char **argv){
 
   coupler::Part3Mesh3D p3m3d(p1, xcouple, rzcoords, preproc, test_case);
   MPI_Barrier(MPI_COMM_WORLD);
-  fprintf(stderr, "sxz 00 \n");
+//  fprintf(stderr, "sxz 00 \n");
   
   coupler::BoundaryDescr3D bdesc(p3m3d, p1pp3d, ccase, test_case, preproc);  
  
@@ -146,7 +146,7 @@ int main(int argc, char **argv){
       }
       debug = true;
       if(debug) {
-        coupler::printminmax1d(densitytmp, p3m3d.nphi*p3m3d.blockcount, p1->mype, "densitytmp", m, false);
+        coupler::printminmax1d(densitytmp, p3m3d.nphi*p3m3d.blockcount, p1->mype, "densitytoXGC", m, false);
       }
 //      realsum=0.0;
       // send density from coupler to xgc
@@ -164,17 +164,19 @@ int main(int argc, char **argv){
       gxdp3d.DistriPotentRecvfromXGC(fieldfromXGC);
 
       MPI_Barrier(MPI_COMM_WORLD);
-      fprintf(stderr, "sxz 666 \n");
+//    fprintf(stderr, "sxz 666 \n");
       fieldtoGEM = new coupler::Array3d<double>(p1->nx0, p1->lj0, p1->nz0, p1->tli0, p1->lj0,
                    p1->glk0, start3d);
       fieldgem = fieldtoGEM->data();
       MPI_Barrier(MPI_COMM_WORLD);
-      fprintf(stderr, "sxz 777 \n");
+//    fprintf(stderr, "sxz 777 \n");
+      for (int h=0; h<p1->tli0*p1->lj0*p1->glk0; h++) {      
+        fieldgem[h] = gxdp3d.potGem[h];
+      }      
       debug = false;
-      if( debug ) {
+      if( debug && p1->mype == 1) {
 	for(int h=0; h<p1->tli0*p1->lj0*p1->glk0; h++){
-	  fieldgem[h] = gxdp3d.potGem[h];
-	  fprintf(stderr, "h: %d, fieldgem: %f \n", h, fieldgem[h]);
+          fprintf(stderr, "h: %d, fieldgem: %19.18f \n", h, fieldgem[h]);
 	  if(isnan(fieldgem[h])) {
 	    printf("h: %d, fieldgem[h] is nan. \n", h);
 	    exit(1);
@@ -185,13 +187,13 @@ int main(int argc, char **argv){
       debug = true;
       if (debug) {
         coupler::printminmax1d(fieldtoGEM->data(), p1->tli0*p1->lj0*p1->glk0, p1->mype,
-                   "fieldfromXGC", m, false);
+                   "fieldtoGEM", m, false);
       }
 
       // send field from coupler to gem
   
       MPI_Barrier(MPI_COMM_WORLD);
-      fprintf(stderr, "sxz 444 \n");
+//      fprintf(stderr, "sxz 444 \n");
       coupler::send3D_from_coupler(adios, dir, fieldtoGEM, cFld.IO, cFld.eng, cFld.name,
       sendfield, MPI_COMM_WORLD, m);
     }

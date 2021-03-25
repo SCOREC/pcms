@@ -405,7 +405,7 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
     DistributePoints(theta_xgc[i-p1->li1], p1->li1, i, p1->theta, p1->lk1, p1->lk2, p1->nz0);
   } 
 
-  bool debug = true;
+  bool debug = false;
   if (debug){
     printf("mype_x: %d, mype: %d, \n", p1->mype_x, p1->mype);
 
@@ -415,7 +415,7 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
     } 
   }
 
-  debug = true;
+  debug = false;
   if(debug){
     LO* recvcount=new LO[p1->npz];
     for(LO i=0;i<li0;i++){
@@ -628,7 +628,7 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 
         // this tmptheta is the theta angle of the point where field line with y cross with zeta line of 
         //  xgc labled by theta_flx
-        tmptheta = (q_local*theta_flx[i][mylk1[i] + k] - zeta_tmp)/q_local;
+        tmptheta = (q_local*theta_flx[i][mylk1[i] + k] )/q_local;
         nodesdist_fl[i][j][k][4] = sqrt(pow(tmptheta - theta_pot[i][j][k][0][4],2)
 	+ pow(zeta_pot[i][j][k][4] - zeta_pot[i][j][k][0],2));  
 
@@ -637,17 +637,22 @@ void Part3Mesh3D::initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>*
 	nodesdist_fl[i][j][k][3] = sqrt(pow(theta_pot[i][j][k][3][4] - theta_pot[i][j][k][0][4],2)
 	+ pow(zeta_pot[i][j][k][3] - zeta_pot[i][j][k][0],2));
 
-        debug = true;
-	if (debug && p1->mype == 2 && i==7 && j==15 && k==22){     
+        debug = false;
+	if (debug && p1->mype == 10 && i==39 && j==31 && k==557){     
 /* 
           fprintf(stderr, "fxinter.flxt[i]: %f, %f, %f, %f, %f \n", theta_pot[i][j][k][2][0], theta_pot[i][j][k][2][1],
                  theta_pot[i][j][k][2][2], theta_pot[i][j][k][2][3], theta_pot[i][j][k][2][4], 
                  theta_pot[i][j][k][2][5]);
 */   
-//          if(isnan(nodesdist_fl[i][j][k][4])) {
-            fprintf(stderr, "nodesdist_fl: %f, %f, %f, %d, %d, %d \n", 
-               nodesdist_fl[i][j][k][0], nodesdist_fl[i][j][k][1],  nodesdist_fl[i][j][k][4], i, j, k);
-//          }
+          if(isnan(nodesdist_fl[i][j][k][4])) {
+	    fprintf(stderr, "fxinter.flxt[i]: %f, %f, %f, %f, %f \n", theta_pot[i][j][k][0][4], theta_pot[i][j][k][1][4],
+		   theta_pot[i][j][k][2][4], theta_pot[i][j][k][3][4], tmptheta);
+
+	    fprintf(stderr, "zeta_pot: %f, %f, %f, %f \n", zeta_pot[i][j][k][0], zeta_pot[i][j][k][1], zeta_pot[i][j][k][2],
+		   zeta_pot[i][j][k][3], zeta_pot[i][j][k][4]);
+
+	    fprintf(stderr, "nodesdist_fl: %f, %f, %f, %f, %f, %d, %d, %d \n", nodesdist_fl[i][j][k][0], nodesdist_fl[i][j][k][1],             nodesdist_fl[i][j][k][2], nodesdist_fl[i][j][k][3], nodesdist_fl[i][j][k][4], i, j, k);
+          }
         }
       }
     }
@@ -699,23 +704,6 @@ inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,cons
   }
   j10=floor(tmp/dlength);
   return j10;
-/*
-  if(j10==0){
-    j11=-1;
-    j20=j10+1;
-    j21=j10+2;
-  } else if(j10=nlength-1){
-    j11=nlength-2;
-    j20=0;
-    j21=1;
-  } else {
-    j11=j10-1;
-    j20=j10+1;
-    j21=j10+2;
-  }
-  w2=(tmp-real(j1)*dlength)/dlength;
-  w1=1.0-w2;
-*/
 }
 
  /*This routine is for choosing the points between which that interpolated locates for the 

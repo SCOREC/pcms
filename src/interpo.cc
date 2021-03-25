@@ -162,7 +162,7 @@ void gemXgcDatasProc3D::interpoDensityAlongZ(double*** box)
           }
           }
 */
-	  debug = true;
+	  debug = false;
 	  if (debug) {
             if (p1->mype == 10 && i==18 && j==7) {
 	      for (LO k=0; k< p1->lk0+2*nzb; k++) printf("i: %d, j: %d, k: %d, xin: %f,  yin: %f \n",

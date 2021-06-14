@@ -110,8 +110,8 @@ int main(int argc, char **argv){
   coupler::GO count_1[2]={coupler::GO(p3m3d.nphi), p3m3d.blockcount};
  
 
-  for (int i = 0; i < 25; i++) {
-    for (int j = 0; j < 4; j++) {
+  for (int i = 0; i < time_step; i++) {
+    for (int j = 0; j < RK_count; j++) {
       m = i*RK_count+j;
       if(p1->mype == 0) printf("m equals %d \n", m);
      // receive density from GEM to coupler

@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cassert>
 #include <cmath>
+#include <math.h> //isnan
 
 namespace coupler{
 

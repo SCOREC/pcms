@@ -7,6 +7,7 @@
 //////#include "macros.h"
 #include <cassert>
 #include <cmath>
+#include <math.h> //isnan
 
 namespace coupler {
 

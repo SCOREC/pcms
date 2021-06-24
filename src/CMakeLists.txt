@@ -27,6 +27,12 @@ set(HEADERS
 
 add_library(coupler ${SOURCES})
 set_target_properties(coupler PROPERTIES PUBLIC_HEADER "${HEADERS}")
+set_target_properties(coupler
+  PROPERTIES 
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO
+)
 target_link_libraries(coupler adios2::adios2 PkgConfig::fftw)
 target_include_directories(coupler PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 install(TARGETS coupler)

@@ -7,6 +7,7 @@
 #include "testutilities.h"
 #include <string>
 #include <fstream>
+#include <math.h> //isnan
 
 int main(int argc, char **argv){
   int rank;

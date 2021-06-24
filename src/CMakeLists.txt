@@ -27,11 +27,6 @@ set(HEADERS
 
 add_library(coupler ${SOURCES})
 set_target_properties(coupler PROPERTIES PUBLIC_HEADER "${HEADERS}")
-if(CMAKE_CXX_COMPILER_ID MATCHES "PGI")
-target_compile_definitions(coupler PUBLIC ADIOS2)
-target_link_libraries(coupler PUBLIC ${ADIOS2_LIBRARIES} FFTW3::FFTW3)
-else()
 target_link_libraries(coupler adios2::adios2 PkgConfig::fftw)
-endif()
 target_include_directories(coupler PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 install(TARGETS coupler)

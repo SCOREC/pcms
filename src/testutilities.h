@@ -423,8 +423,5 @@ void reshufflebackward(T* array,const LO nstart,const LO vertnum)
   delete[] tmp;
 }
 
-std::string filename(std::string const& s);
-
-
 }
 #endif  /*testutilities.h*/

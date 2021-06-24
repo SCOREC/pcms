@@ -13,7 +13,7 @@ namespace {
 
 //TODO I think there is a cleaner way - ask Gerrett
 template<class T>
-MPI_Datatype getMpiType(T foo) {
+MPI_Datatype getMpiType(T) {
   MPI_Datatype mpitype;
   //determine the type based on what is being sent
   if( std::is_same<T, double>::value ) {

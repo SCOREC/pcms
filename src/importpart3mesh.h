@@ -150,7 +150,6 @@ class Part3Mesh3D{
     void JugeFirstSurfaceMatch(double xp1);
     inline LO search_zeta(const double dlength,const double length,const LO nlength,double tmp);
     void  search_theta_3rdorder_periodbound(double tmpflx,const double* flxin, LO num);
-    void  search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp); 
     void  InitInterpoThetaPointsXGCtoGEM(); 
 
     /* default constructor 

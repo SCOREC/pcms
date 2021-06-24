@@ -685,16 +685,6 @@ void Part3Mesh3D::InitInterpoThetaPointsXGCtoGEM() {
   }  
 }
 
-
-void Part3Mesh3D::search_y(LO j1,LO j2,double w1,double w2,const double dy,const double ly,const double tmp)
-{
-  j1=int(tmp/dy);
-  j2=j1+1;
-  w2=(tmp-double(j1)*dy)/dy;
-  w1=1.0-w2;
-}
-
-
 //fixme: the equivalent routine in GEM looks not right
 inline LO Part3Mesh3D::search_zeta(const double dlength,const double length,const LO nlength,double tmp)
 {

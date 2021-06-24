@@ -178,7 +178,7 @@ void printminmax_var3d(T*** array, LO inds1d, LO inds2d, LO *inds3d, LO rank, st
   }
   else if(typeid(T) == typeid(double)) {
     printf("name: %s, numiter: %d, rank: %d,i1: %d, j1: %d, k1: %d,  maxval: %f, minval: %f \n", 
-            name, numiter, rank, i1, j1, k1, maxmal, minmal);
+            name.c_str(), numiter, rank, i1, j1, k1, maxmal, minmal);
     if(!outpattern) {
       LO size;
       LO rank;
@@ -200,7 +200,7 @@ void printminmax_var3d(T*** array, LO inds1d, LO inds2d, LO *inds3d, LO rank, st
 	  if(minmal > minarray[i]) {minmal = minarray[i]; max = i;}
 	  if(maxmal < maxarray[i]) {maxmal = maxarray[i]; min = i;}
 	}
-	printf("name:%s, min: %d, max: %d, m: %d, tomaxmal: %f, tominmal: %f \n", name, min, max, 
+	printf("name:%s, min: %d, max: %d, m: %d, tomaxmal: %f, tominmal: %f \n", name.c_str(), min, max, 
         numiter, maxmal, minmal); 
       }
       free(maxarray);
@@ -241,8 +241,9 @@ void printminmax1d(T* array, LO inds1d, LO rank, std::string name, LO numiter, b
     }    
   }
   if(!outpattern) {
-    printf("name:%s, numiter: %d, rank: %d, imax: %d, imin: %d, minmal: %19.13f, maxmal: %19.13f \n",
-    name.c_str(),numiter,rank,imax, imin, minmal,maxmal);
+    fprintf(stderr, "name:%s, numiter: %d, rank: %d, imax: %d, imin: %d, minmal: %19.13f, maxmal: %19.13f, minele %d, maxele %d\n",
+    name.c_str(),numiter,rank,imax, imin, minmal,maxmal, minele, maxele);
+
 //  } 
 //  else {
     if (typeid(T) == typeid(double)){
@@ -264,7 +265,7 @@ void printminmax1d(T* array, LO inds1d, LO rank, std::string name, LO numiter, b
 	  if(minmal > minarray[i]) minmal = minarray[i];
 	  if(maxmal < maxarray[i]) maxmal = maxarray[i];
 	}
-	printf("m: %d, name: %s, tomaxmal: %19.13f, tominmal: %19.13f \n", numiter, name, maxmal, minmal); 
+	printf("m: %d, name: %s, tomaxmal: %19.13f, tominmal: %19.13f \n", numiter, name.c_str(), maxmal, minmal); 
       }
       free(maxarray);
       free(minarray);
@@ -328,10 +329,9 @@ void printminmax3d(T*** array, LO inds1d,LO inds2d,LO inds3d,LO rank, std::strin
    }
  }
 
-// printf("numiter: %d, rank: %d, 3Dminval: %f, 3dmaxval: %f \n", numiter, rank, minmal, maxmal);
-//  std::cout<<name<<" numiter,rank,"<<" 3Dminval,3Dmaxval="<<numiter<<" "<<rank<<" "<<minmal<<" "<<maxmal<<'\n';
-//  std::cout<<name<<" "<<rank<<" "<<i1<<" "<<j1<<" "<<k1<<'\n';
   if(!outpattern) {
+    fprintf(stderr, "numiter: %d, rank: %d, 3Dminval: %f, 3dmaxval: %f max(i,j,k) %d %d %d minele %d maxele %d\n",
+        numiter, rank, minmal, maxmal, i1, j1, k1, minele, maxele);
     if (typeid(T) == typeid(double)){
       LO size;
       LO rank;
@@ -351,7 +351,7 @@ void printminmax3d(T*** array, LO inds1d,LO inds2d,LO inds3d,LO rank, std::strin
           if(minmal > minarray[i]) minmal = minarray[i];
           if(maxmal < maxarray[i]) maxmal = maxarray[i];
         }
-        printf("rank: %d, name: %s, m: %d, to3Dmaxmal: %19.18f, to3Dminmal: %19.18f \n", rank, name, numiter, maxmal, minmal);
+        printf("rank: %d, name: %s, m: %d, to3Dmaxmal: %19.18f, to3Dminmal: %19.18f \n", rank, name.c_str(), numiter, maxmal, minmal);
       }
       free(maxarray);
       free(minarray);

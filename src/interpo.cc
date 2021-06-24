@@ -188,12 +188,10 @@ void gemXgcDatasProc3D::interpoDensityAlongY()
 {
   bool debug = false;
   double* yin;
-  double* xin;
   double* yout = new double[p1->nphi];
   double* xout;
   LO nzb=bdesc->nzb;
-  yin=new double[p1->lj0+2*nzb];
-  xin=new double[p1->lj0+2*nzb];
+  yin=new double[p1->lj0+2*nzb]; //FIXME leak?
   for(LO i=0;i<p1->li0;i++){
     for(LO k=0;k<p3->mylk0[i];k++){
       for(LO j=0;j<p1->lj0;j++){

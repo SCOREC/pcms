@@ -37,7 +37,6 @@ int main(int argc, char **argv){
 
   std::string model="global";
   int m =0;
-  coupler::GO start[2] = {0,0};
   const coupler::Array1d<int>* gmesh=coupler::receive_pproc<int>(dir,gMesh,model);
   coupler::GO ntheta = (coupler::GO)gmesh->val(4);
   coupler::GO nr = (coupler::GO)gmesh->val(1);
@@ -84,12 +83,7 @@ int main(int argc, char **argv){
 
   coupler::GO* start_adios = new coupler::GO[3];
   coupler::GO* count = new coupler::GO[3];
-  coupler::GO dim0, dim1, dim2;
       
-  coupler::GO INDS1d[2]={0,p3m3d.lj0*p3m3d.blockcount};
-
-  coupler::GO globcount[3] = {p1->imx+1, p1->jmx+1, p1->kmx+1};
-  coupler::GO loccount[3] = {p1->tli0, p1->lj0, p1->glk0};
   coupler::GO start3d[3] = {p1->tli1, 0, p1->glk1};
 
   coupler::Array3d<double>* densityfromGEM;

@@ -19,5 +19,5 @@ Assign the full path of testdatas to test_dir in the test_init.cc file; Use "mpi
 
 ## Code Notes
 
-`Part1` refers to the core (GENE/GEM) application
-`Part3` refers to the edges (XGC) application
+- `Part1` refers to the core (GENE/GEM) application
+- `Part3` refers to the edges (XGC) application

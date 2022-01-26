@@ -133,8 +133,8 @@ void printSumm4D(T**** array, LO inds1d,LO inds2d,LO inds3d,LO* inds4d,T sum,
 }
 
 template<class T>
-void printminmax(T*** array, LO inds1d,LO inds2d,LO *inds3d,
-     LO rank, std::string name,LO numiter)
+void printminmax(T*** array, LO inds1d, LO inds2d, LO *inds3d,
+     LO rank, std::string name, LO numiter)
 { double minmal=0.0;
   double maxmal=0.0;
   T minele,maxele;
@@ -147,6 +147,130 @@ void printminmax(T*** array, LO inds1d,LO inds2d,LO *inds3d,
     }
   }
   std::cout<<name<<" numiter,rank,"<<" minele,maxele="<<numiter<<" "<<rank<<" "<<minele<<" "<<maxele<<'\n';
+}
+
+template<class T>
+void printminmax_var3d(T*** array, LO inds1d, LO inds2d, LO *inds3d, LO rank, std::string name, 
+     LO numiter, bool outpattern = true)
+{ double minmal=0.0;
+  double maxmal=0.0;
+  T minele,maxele;
+  LO i1 = 0, j1 = 0, k1 = 0;
+  for(GO i=0;i<inds1d;i++){
+    for(GO j=0;j<inds2d;j++){
+      for(GO k=0;k<inds3d[i];k++){
+        if(typeid(T) == typeid(CV)) {
+          if(std::abs(array[i][j][k])>maxmal) maxele=array[i][j][k];
+          if(std::abs(array[i][j][k])<minmal) minele=array[i][j][k];
+        }
+        else if(typeid(T) == typeid(double)) {
+          if(maxmal < array[i][j][k]) maxmal = array[i][j][k];
+          i1 = i;
+          j1 = j;
+          k1 = k;
+          if(minmal > array[i][j][k]) minmal = array[i][j][k];
+        }
+      }
+    }
+  }
+  if(typeid(T) == typeid(CV)) {
+    std::cout<<name<<" numiter,rank,"<<" minele,maxele="<<numiter<<" "<<rank<<" "<<minele<<" "<<maxele<<'\n';
+  }
+  else if(typeid(T) == typeid(double)) {
+    printf("name: %s, numiter: %d, rank: %d,i1: %d, j1: %d, k1: %d,  maxval: %f, minval: %f \n", 
+            name.c_str(), numiter, rank, i1, j1, k1, maxmal, minmal);
+    if(!outpattern) {
+      LO size;
+      LO rank;
+      MPI_Comm_size(MPI_COMM_WORLD, &size);
+      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+   
+      double *maxarray = new double[size];
+      double *minarray = new double[size];
+
+      MPI_Gather(&maxmal, 1, MPI_DOUBLE, maxarray, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Gather(&minmal, 1, MPI_DOUBLE, minarray, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+   
+      double minmal = 0.0;
+      double maxmal = 0.0;
+      LO min = 0;
+      LO max = 0;
+      if(rank == 0) {
+	for (LO i=0; i<size; i++ ) {
+	  if(minmal > minarray[i]) {minmal = minarray[i]; max = i;}
+	  if(maxmal < maxarray[i]) {maxmal = maxarray[i]; min = i;}
+	}
+	printf("name:%s, min: %d, max: %d, m: %d, tomaxmal: %f, tominmal: %f \n", name.c_str(), min, max, 
+        numiter, maxmal, minmal); 
+      }
+      free(maxarray);
+      free(minarray);
+   }
+  }
+}
+
+
+template<class T>
+void printminmax1d(T* array, LO inds1d, LO rank, std::string name, LO numiter, bool outpattern)
+{
+  double minmal = 0.0;
+  double maxmal = 0.0;
+  T minele, maxele;
+  LO imax, imin;
+  for (LO i=0; i< inds1d; i++) {
+    if(typeid(T) == typeid(CV)){
+      if (std::abs(array[i]) > maxmal) {
+	maxmal = std::abs(array[i]);
+	maxele = array[i]; 
+	imax = i;
+      }
+      if(std::abs(array[i] < minmal)) {
+	minmal=std::abs(array[i]);
+	minele=array[i];        
+      }
+    }
+    else if (typeid(T) == typeid(double)){
+      if (array[i] > maxmal) {
+	maxmal = array[i];
+	imax = i;
+      }
+      if(array[i] < minmal) {
+        minmal=array[i];
+        imin = i;
+      }
+    }    
+  }
+  if(!outpattern) {
+    fprintf(stderr, "name:%s, numiter: %d, rank: %d, imax: %d, imin: %d, minmal: %19.13f, maxmal: %19.13f, minele %d, maxele %d\n",
+    name.c_str(),numiter,rank,imax, imin, minmal,maxmal, minele, maxele);
+
+//  } 
+//  else {
+    if (typeid(T) == typeid(double)){
+      LO size;
+      LO rank;
+      MPI_Comm_size(MPI_COMM_WORLD, &size);
+      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+   
+      double *maxarray = new double[size];
+      double *minarray = new double[size];
+
+      MPI_Gather(&maxmal, 1, MPI_DOUBLE, maxarray, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Gather(&minmal, 1, MPI_DOUBLE, minarray, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+   
+      double minmal = 0.0;
+      double maxmal = 0.0;
+      if(rank == 0) {
+	for (LO i=0; i<size; i++ ) {
+	  if(minmal > minarray[i]) minmal = minarray[i];
+	  if(maxmal < maxarray[i]) maxmal = maxarray[i];
+	}
+	printf("m: %d, name: %s, tomaxmal: %19.13f, tominmal: %19.13f \n", numiter, name.c_str(), maxmal, minmal); 
+      }
+      free(maxarray);
+      free(minarray);
+    }
+  }
 }
 
 template<class T>
@@ -175,7 +299,8 @@ void printminmax2d(T** array, LO inds1d,LO inds2d,LO rank, std::string name,LO n
 }
 
 template<class T>
-void printminmax3d(T*** array, LO inds1d,LO inds2d,LO inds3d,LO rank, std::string name,LO numiter)
+void printminmax3d(T*** array, LO inds1d,LO inds2d,LO inds3d,LO rank, std::string name, 
+     LO numiter, bool outpattern = true)
 { double minmal=0.0;
   double maxmal=0.0;
   T minele,maxele;
@@ -183,22 +308,55 @@ void printminmax3d(T*** array, LO inds1d,LO inds2d,LO inds3d,LO rank, std::strin
   for(LO i=0;i<inds1d;i++){
     for(LO j=0;j<inds2d;j++){
       for(LO k=0;k<inds3d;k++){
-	if(std::abs(array[i][j][k])>maxmal){
-	  maxmal=std::abs(array[i][j][k]);
-	  maxele=array[i][j][k];
-	  i1=i;
-	  j1=j;
-          k1=k;
-	 }
-	if(std::abs(array[i][j][k])<minmal){
-	  minmal=std::abs(array[i][j][k]);
-	  minele=array[i][j][k];
-	}
+        if(typeid(T) == typeid(CV)) {
+	  if(std::abs(array[i][j][k])>maxmal){
+	    maxmal=std::abs(array[i][j][k]);
+	    maxele=array[i][j][k];
+	    i1=i;
+	    j1=j;
+	    k1=k;
+	   }
+	  if(std::abs(array[i][j][k])<minmal){
+	    minmal=std::abs(array[i][j][k]);
+	    minele=array[i][j][k];
+	  }
+        }
+        else if(typeid(T) == typeid(double)) {
+          if(array[i][j][k] > maxmal) maxmal = array[i][j][k];
+          if(array[i][j][k] < minmal) minmal = array[i][j][k];
+        } 
+     }
+   }
+ }
+
+  if(!outpattern) {
+    fprintf(stderr, "numiter: %d, rank: %d, 3Dminval: %f, 3dmaxval: %f max(i,j,k) %d %d %d minele %d maxele %d\n",
+        numiter, rank, minmal, maxmal, i1, j1, k1, minele, maxele);
+    if (typeid(T) == typeid(double)){
+      LO size;
+      LO rank;
+      MPI_Comm_size(MPI_COMM_WORLD, &size);
+      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+      double *maxarray = new double[size];
+      double *minarray = new double[size];
+
+      MPI_Gather(&maxmal, 1, MPI_DOUBLE, maxarray, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Gather(&minmal, 1, MPI_DOUBLE, minarray, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+      double minmal = 0.0;
+      double maxmal = 0.0;
+      if(rank == 0) {
+        for (LO i=0; i<size; i++ ) {
+          if(minmal > minarray[i]) minmal = minarray[i];
+          if(maxmal < maxarray[i]) maxmal = maxarray[i];
+        }
+        printf("rank: %d, name: %s, m: %d, to3Dmaxmal: %19.18f, to3Dminmal: %19.18f \n", rank, name.c_str(), numiter, maxmal, minmal);
       }
+      free(maxarray);
+      free(minarray);
     }
   }
-  std::cout<<name<<" numiter,rank,"<<" minele,maxele="<<numiter<<" "<<rank<<" "<<minele<<" "<<maxele<<'\n';
-  std::cout<<name<<" "<<rank<<" "<<i1<<" "<<j1<<" "<<k1<<'\n';
 }
 
 
@@ -235,5 +393,35 @@ void printminmax4d(T**** array, LO inds1d,LO inds2d,LO inds3d,LO inds4d,
   std::cout<<name<<" "<<rank<<" "<<i1<<" "<<j1<<" "<<k1<<" "<<l1<<'\n';
 }
 
+
+
+/*for reorder the datas between different collectives*/
+template<class T>
+void reshuffleforward(T* array,const LO nstart,const LO vertnum)
+{
+  T* tmp=new T[vertnum];
+  for(LO i=0;i<vertnum-nstart;i++)
+    tmp[i]=array[nstart+i];
+  for(LO j=vertnum-nstart;j<vertnum;j++)
+    tmp[j]=array[j-vertnum+nstart];
+  for(LO k=0;k<vertnum;k++)
+    array[k]=tmp[k];
+  delete[] tmp;
 }
-#endif
+
+
+template<class T>
+void reshufflebackward(T* array,const LO nstart,const LO vertnum)
+{
+  T* tmp=new T[vertnum];
+  for(LO i=vertnum-nstart;i<vertnum;i++)
+    tmp[i-vertnum+nstart]=array[i];
+  for(LO j=0;j<vertnum-nstart;j++)
+    tmp[j+nstart]=array[j];
+  for(LO k=0;k<vertnum;k++)
+    array[k]=tmp[k];
+  delete[] tmp;
+}
+
+}
+#endif  /*testutilities.h*/

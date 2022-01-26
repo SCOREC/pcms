@@ -37,14 +37,6 @@ namespace coupler {
     std::cerr << rank <<  ": send " << fld_name <<" done \n";
   }
  
- void AdiosProTransFortranCpp2D(LO rankout,LO mypxout,LO mypyout, const LO mypex,const LO mypey,const LO npx,const LO npy)
-{
-  mypxout = mypey;
-  mypyout = mypex; 
-  LO npxbar;
-  npxbar=npy; 
-  rankout = mypyout*npxbar+mypxout; 
-}
 /*
   void send_density_coupler(adios2::ADIOS &adios,const std::string cce_folder, const Array2d<double>* a2d,
       adios2::Variable<double> &send_id, const MPI_Comm comm) {

@@ -1,7 +1,0 @@
-#ifndef COUPLING_CONSTANTS_H_
-#define COUPLING_CONSTANTS_H_
-
-#define cplPI 3.141592653589793239
-
-#endif
-

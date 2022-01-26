@@ -2,6 +2,7 @@
 #define COUPLING_TYPES_H
 
 #include <complex>
+#include <vector>
 
 namespace coupler { 
   /** GO = global ordinate to count/number
@@ -16,6 +17,10 @@ namespace coupler {
   /** CV = complex value 
    */
   typedef std::complex<double> CV;
+
+  typedef std::vector<std::vector<std::vector<LO> > > vecint3d;
+  typedef std::vector<std::vector<LO> > vecint2d;
+  typedef std::vector<LO> vecint1d;
 }
 
 #endif

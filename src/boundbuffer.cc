@@ -9,9 +9,7 @@
 
 namespace coupler{
 
-
-//fix me: lowzpart3 and uppart3 will be sparated. 
-// In the wdm/app(cuda_under_hood) the parallel boundary condition is not used for the potential.
+// FIXME: In the wdm/app(cuda_under_hood) the parallel boundary condition is not used for the potential.
 void DatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
 {
   LO nzb=bdesc.nzb;
@@ -19,6 +17,62 @@ void DatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
     std::cout<<"ERROR:the boundary buffer of the potential must be allocated beforing invoking this routine.";
     std::exit(EXIT_FAILURE);
   }
+  LO li0,lj0,lk0;
+  li0=p3->xboxinds[p1->mype_x][0];
+  lj0=p3->lj0/2;
+  if(p1->npz>1){
+    if(p1->periods[2]==1){
+      for(LO i=0;i<li0;i++){
+        lk0=p3->mylk0[i];
+        if(lk0<nzb){
+          std::cout<<"ERROR: the interpolation order is larger than the box count along z dimension.";
+          std::exit(EXIT_FAILURE);
+        }
+        for(LO j=0;j<lj0;j++){
+          mpisendrecv_aux1D(p1->comm_z,nzb,li0,lj0,lk0,bdesc.lowpotentz[i][j],bdesc.uppotentz[i][j],
+              potentinterpo[i][j]);
+        //enforce the parallel boundary condition
+          if(p1->mype_z==0){
+            for(LO k=0;k<nzb;k++)
+              bdesc.lowpotentz[i][j][k]=bdesc.lowpotentz[i][j][k]*bdesc.lowpbmat[i][j];
+          } else if(p1->mype_z==p1->npz-1){
+             for(LO k=0;k<nzb;k++)
+               bdesc.uppotentz[i][j][k]=bdesc.uppotentz[i][j][k]*bdesc.uppbmat[i][j];
+          }
+        }
+      }
+
+    } else if(p1->periods[2]==0){
+         std::cout<<"The parallelization of 'z' domain is not down with unperiodic boundary condiiton"
+                  <<" and npz>1"<<'\n';
+         std::exit(EXIT_FAILURE);
+    }
+  } else {
+      if(p1->periods[2]==1){
+        for(LO i=0;i<li0;i++){
+           lk0=p3->mylk0[i];
+           if(lk0<nzb){
+             std::cout<<"ERROR: the interpolation order is larger than the box count along z dimension.";
+             std::exit(EXIT_FAILURE);
+           }
+           for(LO j=0;j<lj0;j++){
+             for(LO k=0;k<nzb;k++){
+               bdesc.uppotentz[i][j][k]=potentin[i][j][k];
+               bdesc.lowpotentz[i][j][k]=potentin[i][j][lk0-nzb+k];
+             }
+           }
+        }
+     } else if(p1->periods[2]==0) {
+         std::cout<<"The parallelization of 'z' domain is not down with unperiodic boundary condiiton"
+                  <<" and npz=1"<<'\n';
+         std::exit(EXIT_FAILURE);
+     }
+   }
+}
+
+void gemXgcDatasProc3D::zMeshPotentBoundaryBufAssign(BoundaryDescr3D& bdesc)
+{
+  LO nzb=bdesc.nzb;
   LO li0,lj0,lk0;
   li0=p3->xboxinds[p1->mype_x][0];
   lj0=p3->lj0/2;
@@ -43,19 +97,6 @@ void DatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
             std::cout<<"upzpart3="<<bdesc.upzpart3[i][0]<<" "<<bdesc.upzpart3[i][1]<<'\n';
             std::cout<<"upzcoords="<<p3->pzcoords[i][lk0-2]<<" "<<p3->pzcoords[i][lk0-1]<<'\n';
          }
-       }
-
-       for(LO j=0;j<lj0;j++){
-          mpisendrecv_aux1D(p1->comm_z,nzb,li0,lj0,lk0,bdesc.lowpotentz[i][j],bdesc.uppotentz[i][j],
-              potentinterpo[i][j]);
-        //enforce the parallel boundary condition
-          if(p1->mype_z==0){
-            for(LO k=0;k<nzb;k++)
-              bdesc.lowpotentz[i][j][k]=bdesc.lowpotentz[i][j][k]*bdesc.lowpbmat[i][j];
-          } else if(p1->mype_z==p1->npz-1){
-             for(LO k=0;k<nzb;k++)
-               bdesc.uppotentz[i][j][k]=bdesc.uppotentz[i][j][k]*bdesc.uppbmat[i][j];
-          }
        }
      }
 
@@ -101,12 +142,6 @@ void DatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
              bdesc.lowzpart3[i][k]=p3->pzcoords[i][lk0-nzb+k];
              bdesc.upzpart3[i][k]=p3->pzcoords[i][k];
            }
-           for(LO j=0;j<lj0;j++){
-             for(LO k=0;k<nzb;k++){
-               bdesc.uppotentz[i][j][k]=potentin[i][j][k];
-               bdesc.lowpotentz[i][j][k]=potentin[i][j][lk0-nzb+k];
-             }
-           }
         }
      } else if(p1->periods[2]==0) {
          std::cout<<"The parallelization of 'z' domain is not down with unperiodic boundary condiiton"
@@ -117,8 +152,7 @@ void DatasProc3D::zPotentBoundaryBufAssign(const BoundaryDescr3D& bdesc)
 }
 
 
-
-void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bdesc) 
+void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,BoundaryDescr3D& bdesc) 
 {
   LO nzb=bdesc.nzb;
   if (bdesc.lowdenz == NULL || bdesc.updenz == NULL) {
@@ -131,6 +165,7 @@ void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bde
   const LO lz = p1->lk0;
   if (p1->npz > 1) {
     if (lz >= nzb) {
+    //FIXME: The following assignment may be removed. 
       for (LO i = 0; i < lx ; i++) {
         for (LO j = 0; j < ly; j++) {
           for(LO k=0;k<nzb;k++){
@@ -141,13 +176,6 @@ void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bde
       }
       mpisendrecv_aux2D(p1->comm_z, nzb, lx, ly, lz, bdesc.lowdenz, bdesc.updenz, box);
 
-/*
-      for (LO i = 0; i < lx ; i++) {
-        for (LO j = 0; j < ly; j++) {
-            if(p1->mype==3) std::cout<<bdesc.lowdenz[i][j][1]<<" "<<bdesc.updenz[i][j][1]<<'\n';
-        }
-      } 
-*/
       for (LO i = 0; i < lx ; i++) {
 	for (LO j = 0; j < ly; j++) {
 	  for(LO k=0;k<nzb;k++){
@@ -182,6 +210,131 @@ void DatasProc3D::zDensityBoundaryBufAssign(CV*** box,const BoundaryDescr3D& bde
       std::cout << "The topology is not right." << '\n';
       std::exit(EXIT_FAILURE);
     }
+  }
+}
+
+void gemXgcDatasProc3D::zPotentBoundaryBufAssign(const double*** box,BoundaryDescr3D& bdesc)
+{
+  LO nzb=bdesc.nzb;
+  if(bdesc.lowpotentzgemxgc==NULL||bdesc.uppotentzgemxgc==NULL){
+    std::cout<<"ERROR:the boundary buffer of the potential must be allocated beforing invoking this routine.";
+    std::exit(EXIT_FAILURE);
+  }
+  LO li0,lj0,lk0;
+  li0=p1->li0;
+  lj0=p3->nphi;
+  if(p1->npz>1){
+    if(p1->periods[2]==1){
+      for(LO i=0;i<li0;i++){
+        lk0=p3->mylk0[i];
+        if(lk0<nzb){
+          std::cout<<"ERROR: the interpolation order is larger than the box count along z dimension.";
+          std::exit(EXIT_FAILURE);
+        }
+        for(LO j=0;j<lj0;j++){
+          mpisendrecv_aux1D(p1->comm_z,nzb,li0,lj0,lk0,bdesc.lowpotentzgemxgc[i][j],bdesc.uppotentzgemxgc[i][j],
+              box[i][j]);
+        //FIXME: It looks GEM doesn't enforce the parallel boundary condition
+/*
+          if(p1->mype_z==0){
+            for(LO k=0;k<nzb;k++)
+              bdesc.lowpotentz[i][j][k]=bdesc.lowpotentz[i][j][k]*bdesc.lowpbmat[i][j];
+          } else if(p1->mype_z==p1->npz-1){
+             for(LO k=0;k<nzb;k++)
+               bdesc.uppotentz[i][j][k]=bdesc.uppotentz[i][j][k]*bdesc.uppbmat[i][j];
+          }
+*/
+        }
+      }
+
+    } else if(p1->periods[2]==0){
+         std::cout<<"The parallelization of 'z' domain is not down with unperiodic boundary condiiton"
+                  <<" and npz>1"<<'\n';
+         std::exit(EXIT_FAILURE);
+    }
+  } else {
+      if(p1->periods[2]==1){
+        for(LO i=0;i<li0;i++){
+           lk0=p3->mylk0[i];
+           if(lk0<nzb){
+             std::cout<<"ERROR: the interpolation order is larger than the box count along z dimension.";
+             std::exit(EXIT_FAILURE);
+           }
+           for(LO j=0;j<lj0;j++){
+             for(LO k=0;k<nzb;k++){
+               bdesc.uppotentzgemxgc[i][j][k]=box[i][j][k];
+               bdesc.lowpotentzgemxgc[i][j][k]=box[i][j][lk0-nzb+k];
+             }
+           }
+        }
+     } else if(p1->periods[2]==0) {
+         std::cout<<"The parallelization of 'z' domain is not down with unperiodic boundary condiiton"
+                  <<" and npz=1"<<'\n';
+         std::exit(EXIT_FAILURE);
+     }
+   }
+}
+
+
+
+void gemXgcDatasProc3D::zDensityBoundaryBufAssign(double*** box) 
+{
+  LO nzb=bdesc->nzb;
+  if (bdesc->lowdenzgemxgc == NULL || bdesc->updenzgemxgc == NULL) {
+    std::cout << "ERROR:the boundary buffer must be alloctted before "
+                 "calling this routine.";
+    std::exit(EXIT_FAILURE);
+  }
+  const LO lx = p1->li0;
+  const LO ly = p1->lj0;
+  const LO lz = p1->lk0;
+  if (p1->npz > 1) {
+    if (lz >= nzb) {
+      //FIXME: The following assignment may be removed.
+      for (LO i = 0; i < lx ; i++) {
+        for (LO j = 0; j < ly; j++) {
+          for(LO k=0;k<nzb;k++){
+            bdesc->lowdenzgemxgc[i][j][k]=0.0;
+            bdesc->updenzgemxgc[i][j][k]=0.0;
+          }
+        }
+      }
+      mpisendrecv_aux2D(p1->comm_z, nzb, lx, ly, lz, bdesc->lowdenzgemxgc, bdesc->updenzgemxgc, box);
+
+      //FIXME: It looks GEM doesn't enforce the parallel boundary condition
+//  printf("denbuff, p1->mype_z: %d \n", p1->mype_z);
+   } else {
+      std::cout << "ERROR: nzb is larger than lz. A larger lz is required.";
+      std::exit(EXIT_FAILURE);
+    }
+  } else {
+    if (p1->periods[2] == 1) {
+      for (LO i = 0; i < lx ; i++) {
+        for (LO j = 0; j < ly; j++) {
+          for (LO k = 0; k < nzb; k++) {
+            bdesc->lowdenzgemxgc[i][j][k] = box[i][j][lz - nzb + k];
+            bdesc->updenzgemxgc[i][j][k] = box[i][j][k];
+            //FIXME: It looks GEM doesn't enforce the parallel boundary condition
+          }
+        }
+      }
+// printf("denbuff, p1->mype_z: %d \n", p1->mype_z);     
+    } else {
+      std::cout << "The topology is not right." << '\n';
+      std::exit(EXIT_FAILURE);
+    }
+  }
+
+  bool debug = false;
+  if (debug){
+      for (LO i = 0; i < lx ; i++) {
+        for (LO j = 0; j < ly; j++) {
+          for (LO k = 0; k < nzb; k++) {
+            printf("i: %d, j: %d, lowdenz: %f, updenz: %f\n", i,j,bdesc->lowdenzgemxgc[i][j][k], 
+            bdesc->updenzgemxgc[i][j][k]);
+          }
+        }
+      }
   }
 }
 

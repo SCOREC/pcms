@@ -4,7 +4,7 @@
 #include <adios2.h>
 #include <iostream>
 #include <cassert>
-#include <Kokkos_Core.hpp> //not used
+//#include <Kokkos_Core.hpp> //not used
 #include <typeinfo> //not used
 #include <string>
 #include <fstream>
@@ -24,6 +24,46 @@ namespace coupler {
       eng.Close();
     }
     std::string get_name() const { return name; };
+  };
+
+  /** Storage of double precision 2D array data
+ *       */
+  template<class T>
+  class Array3d {
+    public:
+      Array3d(GO globdim0, GO globdim1, GO globdim2, GO locdim0,
+             GO locdim1, GO locdim2, GO* start) :
+             globDIM0(globdim0), globDIM1(globdim1), globDIM2(globdim2), 
+             locDIM0(locdim0), locDIM1(locdim1), locDIM2(locdim2), START(start) {
+          vals = new T[locdim0*locdim1*locdim2];
+      }
+      ~Array3d() {
+        globDIM0 = globDIM1 = globDIM2 = 0;
+        for(LO i=0;i<3;i++) START[i]=0;
+        delete [] vals;
+      }
+      T val(long i) const {
+        assert(i<(DIM0*DIM1*DIM2));
+        return vals[i];
+      }
+      T* data() const { return vals; };
+      GO globdim0() const { return globDIM0; };
+      GO globdim1() const { return globDIM1; };
+      GO globdim2() const { return globDIM2; };
+      GO locdim0() const { return locDIM0; };
+      GO locdim1() const { return locDIM1; };
+      GO locdim2() const { return locDIM2; };
+ 
+      GO* start() const { return START; };
+    private:
+      T* vals;
+      GO globDIM0;
+      GO globDIM1;
+      GO globDIM2;
+      GO locDIM0;
+      GO locDIM1;
+      GO locDIM2;
+      GO* START;
   };
 
   /** Storage of double precision 2D array data
@@ -97,9 +137,10 @@ namespace coupler {
       delete a;
     }
 
-
-
-
+  template<typename T>
+    void destroy(Array3d<T>* a) {
+      delete a;
+    }
 
 
   /** Sanity check values
@@ -143,7 +184,7 @@ namespace coupler {
   
   template<typename T> 
   Array1d<T>* receive1d_from_ftn(const std::string dir, const std::string name,
-      adios2::IO &read_io, adios2::Engine &eng) {
+      adios2::IO &read_io, adios2::Engine &eng,const std::string model) {
     int rank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -168,8 +209,17 @@ namespace coupler {
 
     const auto total_size = adios_var.Shape()[0];
     if(!rank) std::cout <<name<< "  total_size " <<total_size << "\n";
-    const auto my_start = (total_size / nprocs) * rank;
-    const auto my_count = (total_size / nprocs);
+    GO my_start, my_count;
+    if(model=="local"){
+      my_start =(GO)(total_size / nprocs) * rank;
+      my_count =(GO)(total_size / nprocs);
+    }else if(model=="global"){
+      my_start = 0;
+      my_count = GO(total_size);     
+    }else{
+      std::cout<<"Error: 'model' is not correctly assigned."<<'\n';
+      exit(1);
+    }
 
     if(!rank)std::cout << " Reader of rank " << rank << " reading " << my_count
               << " floats starting at element " << my_start << "\n";
@@ -178,8 +228,7 @@ namespace coupler {
     const adios2::Dims count{my_count};
  
     const adios2::Box<adios2::Dims> sel(start, count);
-    Array1d<T>* field = new Array1d<T>{total_size, my_count, 
-    	my_start};
+    Array1d<T>* field = new Array1d<T>{total_size, my_count, my_start};
   
     adios_var.SetSelection(sel);
     eng.Get(adios_var, field->data());
@@ -231,8 +280,6 @@ namespace coupler {
     return val;
   } 
   
-  
-  /* receive columns (start_col) to (start_col + localW) */
   template<typename T>
   Array2d<T>* receive2d_from_ftn(const std::string dir, const std::string name,
       adios2::IO &read_io, adios2::Engine &eng, GO start[2], GO count[2],MPI_Comm &comm,const int m) {
@@ -260,9 +307,8 @@ namespace coupler {
  
     eng.BeginStep();
     adios2::Variable<T> adVar = read_io.InquireVariable<T>(name);
- 
-    const auto ftn_glob_height = adVar.Shape()[0] ; //4
-    const auto ftn_glob_width = adVar.Shape()[1]; // 256005
+    const auto ftn_glob_height = adVar.Shape()[0]; 
+    const auto ftn_glob_width = adVar.Shape()[1]; 
     std::cout<<"Shape 0 1="<<ftn_glob_width<<" "<<ftn_glob_height<<'\n';
     //fortran to C transpose
     const auto c_glob_height = ftn_glob_width;
@@ -271,18 +317,83 @@ namespace coupler {
     Array2d<T>* a2d = new Array2d<T>(c_glob_height, c_glob_width,
         count[0], count[1], start[0]);
 
-// Here, count,start take care of the fortran to C transpose. 
+    // Here, count,start take care of the fortran to C transpose. 
     const::adios2::Dims my_start({start[0], start[1]});
     const::adios2::Dims my_count({count[0], count[1]});
     const adios2::Box<adios2::Dims> sel(my_start, my_count);
-  
     adVar.SetSelection(sel);
     eng.Get<T>(adVar, a2d->data());
     eng.EndStep();
+/*
+    if (name == "xgc_field"){
+      printf("enter the loop \n");
+      T* array = a2d->data();
+      if (rank == 0 ) {
+        for (LO i=(count[0]-1)*count[1]; i<count[0]*count[1]; i++) {
+          printf("i: %d, a2d[i]: %f \n", i, array[i]);
+        }
+      }
+    }
+*/
     std::cerr << rank <<  ": receive " << name << " done \n";
     return a2d;
   }
   
+  template<typename T>
+  Array3d<T>* receive3d_from_ftn(const std::string dir, const std::string name,
+      adios2::IO &read_io, adios2::Engine &eng, GO* start,GO* count,
+      MPI_Comm &comm,const int m) {
+    int rank, nprocs;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &nprocs);
+ 
+    const std::string fname = dir + "/" + name + ".bp";
+    if(m==0){
+      std::cout<<"creat engine for: "<<name<<'\n';
+      read_io.SetEngine("Sst");
+      read_io.SetParameters({
+          {"DataTransport","RDMA"},
+          {"OpenTimeoutSecs", "800"}
+          });
+      std::cout<<"engine parameters are set"<<'\n';
+      eng = read_io.Open(fname, adios2::Mode::Read);
+      if(!rank) std::cerr << rank << ": " << name << " engine created\n";
+    } else{
+      std::cerr << rank << ": receive engine already exists \n";
+      assert(eng);
+    }
+ 
+    eng.BeginStep();
+    adios2::Variable<T> adVar = read_io.InquireVariable<T>(name);
+ 
+    const auto dim0 = adVar.Shape()[0]; 
+    const auto dim1 = adVar.Shape()[1]; 
+    const auto dim2 = adVar.Shape()[2];
+
+    std::cout<<"rank Shape 0 1 2="<<rank<<" "<<dim0<<" "<<dim1<<" "<<dim2<<'\n';
+    //fortran to C transpose
+    const auto globDIM0 = dim2;
+    const auto globDIM1 = dim1;
+    const auto globDIM2 = dim0;
+    const auto locDIM0 = count[2];
+    const auto locDIM1 = count[1];
+    const auto locDIM2 = count[0];
+   
+    Array3d<T>* a3d = new Array3d<T>(globDIM0, globDIM1, globDIM2, locDIM0, locDIM1, locDIM2, start);
+
+// Here, count,start take care of the fortran to C transpose. 
+    const::adios2::Dims my_start({start[0], start[1], start[2]});
+    const::adios2::Dims my_count({count[0], count[1], count[2]});
+    const adios2::Box<adios2::Dims> sel(my_start, my_count);
+  
+    adVar.SetSelection(sel);
+    eng.Get<T>(adVar, a3d->data());
+    eng.EndStep();
+    std::cerr << rank <<  ": receive " << name << " done \n";
+    return a3d;
+  }
+
+
   /* send columns (start_col) to (start_col + localW) */
   template<typename T>
   void send2d_from_C(const Array2d<T>* a2d, const std::string dir,
@@ -312,13 +423,28 @@ namespace coupler {
   /** Receive PreProc values from GENE
    */
   template<typename T>
-  Array1d<T>* receive_gene_pproc(const std::string cce_folder,
-      adios2_handler &handler) { 
+  Array1d<T>* receive_pproc(const std::string cce_folder,
+      adios2_handler &handler, const std::string model) { 
       std::string name = handler.get_name();
-    return receive1d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng);
+    return receive1d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng, model);
   }
+
   template<typename T>
-  T* receive_gene_exact(const std::string cce_folder,
+  Array2d<T>* receive_pproc_2d(const std::string cce_folder,
+      adios2_handler &handler,GO my_start[2], GO my_count[2], const int m, MPI_Comm comm = MPI_COMM_WORLD) { 
+      std::string name = handler.get_name();
+    return receive2d_from_ftn<T>(cce_folder,name, handler.IO, handler.eng,my_start, my_count, comm, m);
+  }
+
+  template<typename T>
+  Array3d<T>* receive_pproc_3d(const std::string cce_folder,
+      adios2_handler &handler, GO* my_start, GO* my_count, const int m, MPI_Comm comm = MPI_COMM_WORLD) {
+      std::string name = handler.get_name();
+   return receive3d_from_ftn<T>(cce_folder, name, handler.IO, handler.eng, my_start, my_count, comm, m);
+  } 
+
+  template<typename T>
+  T* receive_exact(const std::string cce_folder,
       adios2_handler &handler, GO my_start, GO my_count, MPI_Comm comm = MPI_COMM_WORLD) { 
       std::string name = handler.get_name();
     return receive1d_exact_ftn<T>(cce_folder,name, handler.IO, handler.eng, my_start, my_count, comm);
@@ -347,7 +473,7 @@ template<typename T>
           });
       send_id = sendIO.DefineVariable<T>(fldname,
           g_dims, g_offset, l_dims);
-    
+      printf("before cpl_density open \n"); 
       engine = sendIO.Open(fname, adios2::Mode::Write,comm);
     }
     if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';   
@@ -356,11 +482,45 @@ template<typename T>
     engine.EndStep();
     std::cout<<"rank="<<rank<<" "<<"The "<<fldname<<" was written"<<'\n';
   }
-  
+ 
+ template<typename T>
+ void send3D_from_coupler(adios2::ADIOS &adios,const std::string cce_folder,
+        const Array3d<T>* a3d, adios2::IO& sendIO,adios2::Engine& engine,const std::string fldname,
+        adios2::Variable<T> &send_id, const MPI_Comm comm,const int m)  //
+ {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    fprintf(stderr, "rank: %d \n", rank);
+    const std::string fld_name;
+    const GO* start = a3d->start();   
+ 
+    const::adios2::Dims g_dims({a3d->globdim2(), a3d->globdim1(), a3d->globdim0()});
+    const::adios2::Dims g_offset({start[2], start[1], start[0]});
+    const::adios2::Dims l_dims({a3d->locdim2(), a3d->locdim1(), a3d->locdim0()});
+
+    const std::string fname = cce_folder + "/" + fldname + ".bp";
+
+    if(m==0){
+      sendIO.SetEngine("Sst");
+      sendIO.SetParameters({
+      {"OpenTimeoutSecs", "480"}
+          });
+      send_id = sendIO.DefineVariable<T>(fldname,
+          g_dims, g_offset, l_dims);
+      printf("before %s open \n", fldname.c_str());
+      engine = sendIO.Open(fname, adios2::Mode::Write,comm);
+    }
+    if(engine) std::cout<<"sending Engine for "<<fldname<<" is created."<<'\n';
+    engine.BeginStep(adios2::StepMode::Append);
+    engine.Put<T>(send_id, a3d->data());
+    engine.EndStep();
+    std::cout<<"rank="<<rank<<" "<<"The "<<fldname<<" was written"<<'\n';
+  }
+ 
 
   Array2d<CV>* receive_density(const std::string cce_folder,
       adios2_handler &handler,GO my_start[2],GO my_count[2], MPI_Comm comm, const int m);
-
+ 
   void send_density(const std::string cce_folder, const Array2d<double>* density,
       const adios2_handler &handler, adios2::Variable<double> &send_id);
 
@@ -373,7 +533,8 @@ template<typename T>
   void AdiosProTransFortrandCpp2D(LO rankout,LO mypxout,LO mypyout, const LO mypex,const LO mypey,
       const LO npx,const LO npy);
 
-  void send_density_coupler(adios2::ADIOS &adios,const std::string cce_folder, const Array2d<double>* density, adios2::Variable<double> &send_id,const MPI_Comm comm);
+  void send_density_coupler(adios2::ADIOS &adios,const std::string cce_folder, 
+       const Array2d<double>* density, adios2::Variable<double> &send_id,const MPI_Comm comm);
 
 }//end namespace coupler
 

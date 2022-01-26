@@ -3,19 +3,26 @@
 
 #include "couplingTypes.h"
 #include "testutilities.h"
+#include "adios2Routines.h"
+#include "commpart1.h"
 
 namespace coupler {
 
 //forward declare the Part1ParalPar3D class; we don't care how 
 // the class is defined in this header since we don't call
 // any of its functions or access its member variables
+
+template<class T>
+class Array1d;
+
 class Part1ParalPar3D;
 
 class Part3Mesh3D{
   public:
-    LO nsurf;    // number of flux surfaces of part3
-    LO block_count;    // number of nodes
-//    LO* versurfpart3 = NULL; // numbers of vertices on all flux surfaces from part3 
+/*variables of XGC for both gene-xgc and gem-xgc coupling*/
+    LO nsurf;  // number of flux surfaces on the coupled domain
+    LO npsi_surf; // The notal number of surfaces provided by XGC
+    LO block_count;  // number of nodes
     LO* versurf = NULL; // numbers of vertices on the flux surfaces locating on the part1 domain.
     double* xcoords = NULL;
     LO  li0,li1,li2;
@@ -43,16 +50,43 @@ class Part3Mesh3D{
     GO  activenodes; // The number of nodes part1 has on the poloidal cross section. 
     LO  shiftx;  // The number of surfaces shifting from part3 first surface to part1 first surface.
 
-// paramters to create the background of mgnetic field, density and temperature profile
+    // paramters to create the background of mgnetic field, density and temperature profile
    
-    double** Rcoords=NULL;  // The R coordinate of all vertices within the 2d box
-    double** Zcoords=NULL;  // The Z coordinate of all vertices within the 2d box
     double** pzcoords=NULL;  // The z coordinates of all points within the 2d box.
     double** zcoordsurf=NULL;
+
+
+/*------------------------------------------------------*/
+/*variables specially owned by XGC for GEM-XGC coupling*/
+    LO  nphi;
+    LO  nwedge;
+    double* Rcoordall = NULL; // store R of all nodes in XGC mesh
+    double* Zcoordall = NULL; // store Z of all nodes in XGC mesh
+    double** surf_idx = NULL; //store the vertex indices of each surface
+    double** theta_geo = NULL; //store the theta value of the nodes on the surface of xgc in the local process
+    double** theta_flx = NULL; //store  the flux_theta of the nodes on the surface of xgc mesh in the local process
+                             // \theta_{fxgc}
+    LO cce_first; // The number labelling the first surface 
+    double*** y_xgc = NULL; // 
+    double**  theta_xgc;  // xgc's theta mesh
+    double**** zeta_pot = NULL; //Store the theta_f mesh for interpolating potential provided by XGC to the one for GEM
+    double***** theta_pot = NULL; //Store the five  theta values for the 3rd order interpolation along the field line.
+    LO***** theta_ind_pot =NULL; //Store the four indices of nodals for the 3rd order interpolation along the field line.
+    double**** nodesdist_fl = NULL; //Store the length of the four points along the field line for interpolation.
+    double*** theta_gemxgc = NULL; // Store the five theta values for the 3rd order interpolation between gem's theta mesh
+                                   // and xgc's theta mesh
+    LO*** theta_ind_gemxgc = NULL; // Store the four indices of theta_xgc nodes which surround gem's theta nodes. 
+    struct flxxgc {
+      LO flxtind[4];
+      double flxt[5];
+    } flxinter;
+
+ 
     /* constructor - versurf has length = numsurf & versurf[i] = the number of nodes surface[i]
      * xcoords saves the radial coordinate of each surface.
      * zcoords saves the poloidal angle of each node on each surface.
      */
+
     Part3Mesh3D(Part1ParalPar3D &p1pp3d,
         LO nsurf_,
         LO block_count_,
@@ -68,7 +102,7 @@ class Part3Mesh3D{
         xcoords(xcoords_),
         zcoordall(zcoord_),
 	preproc(pproc), test_case(TestCase::off) {
-      init(p1pp3d);
+        init(p1pp3d);
     }
     /* testing constructor
      * arguments support reading
@@ -83,31 +117,41 @@ class Part3Mesh3D{
       assert(tcase < TestCase::invalid);
       init(p1pp3d,tdir);
     }
-    ~Part3Mesh3D()
-    {
-     if(versurf!=NULL) delete[] versurf;
-     if(xboxinds!=NULL) delete[] xboxinds;
-     if(xcoords!=NULL) delete[] xcoords;
-     if(mylk0!=NULL) delete[] mylk0;
-     if(mylk1!=NULL) delete[] mylk1;
-     if(mylk2!=NULL) delete[] mylk2;
-     if(Rcoords!=NULL) delete[] Rcoords;
-     if(Zcoords!=NULL) delete[] Zcoords;
-     if(pzcoords!=NULL) delete[] pzcoords;
-   }
-     void  JugeFirstSurfaceMatch(double xp1);
- 
+
+    Part3Mesh3D(Part1ParalPar3D* p1pp3d,
+        Array1d<LO>* xgccouple,
+        Array1d<double>* rzcoords,
+        bool pproc,
+        TestCase tcase)
+      : p1(p1pp3d),
+        preproc(pproc),
+	test_case(tcase){                    
+        initXgcGem(xgccouple,rzcoords);
+    }
+
+    ~Part3Mesh3D(){};
+
   private:
     const bool preproc;
     const TestCase test_case;
+    class Part1ParalPar3D* p1;
     void init(const Part1ParalPar3D &p1pp3d, const std::string test_dir="");
+    void initXgcGem(const Array1d<LO>* xgccouple,const Array1d<double>* rzcoords);
     /* helper function called by init */
     void DistriPart3zcoords(const Part1ParalPar3D  &p1pp3d,
         const std::string test_dir="");
     /* helper function called by DistriPart3zcoords */
     void DistributePoints(const double* exterarr, const LO gstart, const LO li,
-        const double* interarr, const Part1ParalPar3D  &p1pp3d);
+        const double* interarr, const LO lk1, const LO lk2, const LO nz0);
     void BlockIndexes(const MPI_Comm comm_x,const LO mype_x,const LO npx);
+    void gemDistributePoints(const double* exterarr, const LO gstart,LO li,
+         const double* interarr);
+    void initXgcGem(const Array2d<int>* xgcnodes,const Array2d<double>* rzcoords);
+    void JugeFirstSurfaceMatch(double xp1);
+    inline LO search_zeta(const double dlength,const double length,const LO nlength,double tmp);
+    void  search_theta_3rdorder_periodbound(double tmpflx,const double* flxin, LO num);
+    void  InitInterpoThetaPointsXGCtoGEM(); 
+
     /* default constructor 
      * put this in private to prevent users from calling it
      */
@@ -121,35 +165,8 @@ class Part3Mesh3D{
 // be removed.
 LO  minloc(const double* zcoords, const LO n); 
 
-template<class T>
-void reshuffleforward(T* array,const LO nstart,const LO vertnum)
-{
-  T* tmp=new T[vertnum];
-  for(LO i=0;i<vertnum-nstart;i++)
-    tmp[i]=array[nstart+i];
-  for(LO j=vertnum-nstart;j<vertnum;j++)
-    tmp[j]=array[j-vertnum+nstart];
-  for(LO k=0;k<vertnum;k++)
-    array[k]=tmp[k];
-  delete[] tmp;
-}
-
-
-template<class T>
-void reshufflebackward(T* array,const LO nstart,const LO vertnum)
-{
-  T* tmp=new T[vertnum];
-  for(LO i=vertnum-nstart;i<vertnum;i++)
-    tmp[i-vertnum+nstart]=array[i];
-  for(LO j=0;j<vertnum-nstart;j++)
-    tmp[j+nstart]=array[j];
-  for(LO k=0;k<vertnum;k++)
-    array[k]=tmp[k];
-  delete[] tmp;
-}
-
 double minimalvalue(const double* array, const LO n);
 
 }
 
-#endif
+#endif /*importpart3mesh.h*/

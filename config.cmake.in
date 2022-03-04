@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/wdmcpl-targets.cmake")
+
+check_required_components(wdmcpl)
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Omega_h CONFIG HINTS @Omega_h_DIR@)
+find_dependency(redev CONFIG HINTS @redev_DIR@)
+

@@ -30,11 +30,14 @@ Build, install, and test
 ```
 git clone git@github.com:SCOREC/xgc1_data.git #test data
 git clone git@github.com:SCOREC/wdmapp_coupling.git
+
 cmake -S wdmapp_coupling -B buildWdmCpl \
 -Dredev_ROOT=/path/to/redev/install \
 -DOmega_h_ROOT=/path/to/omegah/install \
--DCMAKE_INSTALL_PREFIX=$PWD/buildWdmCpl/install
+-DCMAKE_INSTALL_PREFIX=$PWD/buildWdmCpl/install \
 -DWDMCPL_TEST_DATA_DIR=$PWD/xgc1_data
+
 cmake --build buildWdmCpl --target install
+
 ctest --test-dir buildWdmCpl --output-on-failure
 ```

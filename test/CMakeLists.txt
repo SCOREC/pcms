@@ -30,7 +30,23 @@ if(BUILD_TESTING)
     )
   endfunction(mpi_test)
 
+  function(dual_mpi_test TESTNAME PROCS1 EXE1 ARGS1 PROCS2 EXE2 ARGS2)
+    removeBpFiles(${TESTNAME}_cleanup)
+    add_test(NAME ${TESTNAME}
+      COMMAND ${CMAKE_COMMAND}
+      -DMPIEXEC_EXECUTABLE=${MPIEXEC_EXECUTABLE}
+      -DMPIEXEC_NUMPROC_FLAG=${MPIEXEC_NUMPROC_FLAG}
+      -DPROCS1=${PROCS1} -DEXE1=${EXE1} -DARGS1=${ARGS1}
+      -DPROCS2=${PROCS2} -DEXE2=${EXE2} -DARGS2=${ARGS2}
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/runTwoMpiJobs.cmake)
+  endfunction(dual_mpi_test)
+
   add_exe(test_meshRcbRdv)
   mpi_test(test_meshRcbRdv_1p 1 ./test_meshRcbRdv
     ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
+  add_exe(test_ohClassPtnRecv)
+  add_exe(test_ohClassPtnSend)
+  set(testMesh ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
+  dual_mpi_test(test_ohClassPtnSendRecv 1 ./test_ohClassPtnRecv ${testMesh} 
+                                        4 ./test_ohClassPtnSend ${testMesh})
 endif()

@@ -8,7 +8,7 @@ Adios2-based coupler for XGC and GENE
 - MPI
 - FFTW 3.3.8+
 - redev 1.1.0+ (https://github.com/SCOREC/redev)
-- Omega\_h 10+ (https://github.com/SCOREC/omega_h)
+- Omega\_h 10+ with MPI enabled (https://github.com/SCOREC/omega_h)
 
 ## Build Instructions
 
@@ -25,7 +25,7 @@ fftw \
 gdb
 ```
 
-Build and install
+Build, install, and test
 
 ```
 git clone git@github.com:SCOREC/xgc1_data.git #test data
@@ -36,4 +36,5 @@ cmake -S wdmapp_coupling -B buildWdmCpl \
 -DCMAKE_INSTALL_PREFIX=$PWD/buildWdmCpl/install
 -DWDMCPL_TEST_DATA_DIR=$PWD/xgc1_data
 cmake --build buildWdmCpl --target install
+ctest --test-dir buildWdmCpl --output-on-failure
 ```

@@ -16,6 +16,9 @@ find_package(redev REQUIRED)
 message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
 find_package(Omega_h REQUIRED VERSION 10)
 message(STATUS "Found Omega_h: ${Omega_h_DIR} (found version ${Omega_h_VERSION})")
+if(NOT Omega_h_USE_MPI)
+  message(FATAL_ERROR "Omega_h must be built with MPI enabled.")
+endif()
 
 ## use pkgconfig since the fftw autoconf install produces
 ## broken cmake config files
@@ -25,13 +28,8 @@ pkg_check_modules(fftw REQUIRED IMPORTED_TARGET fftw3>=3.3)
 
 add_subdirectory(src)
 
-include(CTest)
 if(BUILD_TESTING)
-  get_filename_component(COMPILER_DIR "${CMAKE_CXX_COMPILER}" PATH) 
-  set(WDMCPL_TEST_DATA_DIR "" CACHE PATH
-    "Path to a local copy of the wdmapp_coupling_data repo.")
-  if(NOT EXISTS ${WDMCPL_TEST_DATA_DIR})
-    message(FATAL_ERROR "WDMCPL_TEST_DATA_DIR \"${WDMCPL_TEST_DATA_DIR}\" is not accessible")
-  endif()
+  include(CTest)
+  add_subdirectory(test)
 endif()
 

@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.15.0...3.21.0)
+file(GLOB bpDirs LIST_DIRECTORIES TRUE *.bp*)
+message(STATUS "before bpDirs ${bpDirs}")
+if(bpDirs)
+  file(REMOVE_RECURSE ${bpDirs})
+  file(GLOB bpDirs LIST_DIRECTORIES TRUE *.bp*)
+  message(STATUS "after bpDirs ${bpDirs}")
+endif()

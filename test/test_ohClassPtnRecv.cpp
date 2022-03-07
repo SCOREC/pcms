@@ -4,20 +4,32 @@
 #include <Omega_h_mesh.hpp>
 #include "wdmcpl.h"
 
+void getClassPtn(Omega_h::Mesh& mesh, redev::LOs ranks, redev::LOs classIds) {
+  auto ohComm = mesh.comm();
+  auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
+  Omega_h::ClassId max_class = Omega_h::get_max(class_ids);
+  auto max_class_g = ohComm->allreduce(max_class);
+  fprintf(stderr, "max_class_g %d\n", max_class_g);
+}
+
 int main(int argc, char** argv) {
   int rank, nproc;
   auto lib = Omega_h::Library(&argc, &argv);
-  OMEGA_H_CHECK(argc == 2);
+  if(argc != 3) {
+    std::cerr << "Usage: " << argv[0] << " <1=isRendezvousApp,0=isParticipant> /path/to/omega_h/mesh\n";
+    exit(EXIT_FAILURE);
+  }
+  OMEGA_H_CHECK(argc == 3);
+  auto isRdv = atoi(argv[1]);
   Omega_h::Mesh mesh(&lib);
-  Omega_h::binary::read(argv[1], lib.world(), &mesh);
-  const auto expectedRanks = redev::LOs({0,1,2,3});
-  const auto expectedCuts = redev::Reals({0,0.5,0.75,0.25});
-  auto ranks = rank==0 ? expectedRanks : redev::LOs(4);
-  auto cuts = rank==0 ? expectedCuts : redev::Reals(4);
-  const auto dim = 2;
-  auto ptn = redev::RCBPtn(dim,ranks,cuts);
-  ptn.Broadcast(MPI_COMM_WORLD);
-  assert(ptn.GetRanks() == expectedRanks);
-  assert(ptn.GetCuts() == expectedCuts);
+  Omega_h::binary::read(argv[2], lib.world(), &mesh);
+  redev::LOs ranks;
+  redev::LOs classIds;
+  getClassPtn(mesh, ranks, classIds);
+//  const auto isRdv = true;
+//  redev::Redev rdv(MPI_COMM_WORLD,ptn,isRdv);
+//  rdv.Setup();
+//  std::string name = "foo";
+//  redev::AdiosComm<redev::LO> comm(MPI_COMM_WORLD, ranks.size(), rdv.getToEngine(), rdv.getIO(), name);
   return 0;
 }

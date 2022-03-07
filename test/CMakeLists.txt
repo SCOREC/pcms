@@ -44,9 +44,8 @@ if(BUILD_TESTING)
   add_exe(test_meshRcbRdv)
   mpi_test(test_meshRcbRdv_1p 1 ./test_meshRcbRdv
     ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
-  add_exe(test_ohClassPtnRecv)
-  add_exe(test_ohClassPtnSend)
+  add_exe(test_ohClassPtn)
   set(testMesh ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
-  dual_mpi_test(test_ohClassPtnSendRecv 1 ./test_ohClassPtnRecv ${testMesh} 
-                                        4 ./test_ohClassPtnSend ${testMesh})
+  dual_mpi_test(test_ohClassPtnSendRecv 1 ./test_ohClassPtn 0 ${testMesh}
+                                        4 ./test_ohClassPtn 4 ${testMesh})
 endif()

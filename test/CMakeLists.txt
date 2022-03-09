@@ -38,7 +38,7 @@ if(BUILD_TESTING)
       -DMPIEXEC_NUMPROC_FLAG=${MPIEXEC_NUMPROC_FLAG}
       -DPROCS1=${PROCS1} -DEXE1=${EXE1} -DARGS1=${ARGS1}
       -DPROCS2=${PROCS2} -DEXE2=${EXE2} -DARGS2=${ARGS2}
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/runTwoMpiJobs.cmake)
+      -P ${CMAKE_SOURCE_DIR}/cmake/runTwoMpiJobs.cmake)
   endfunction(dual_mpi_test)
 
   add_exe(test_ohClassPtn)

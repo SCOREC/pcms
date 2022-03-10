@@ -92,6 +92,22 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
   REDEV_ALWAYS_ASSERT(offset == expectedOffset);
   //fill permutation array such that for vertex i permute[i] contains the
   //  position of vertex i's data in the message array
+  std::map<int,int> destRankIdx;
+  for(int i=0; i<dest.size(); i++) {
+    auto dr = dest[i];
+    destRankIdx[dr] = offset[i];
+  }
+  auto gids = mesh.globals(0);
+  auto gids_h = Omega_h::deep_copy(gids);
+  permute.resize(classIds_h.size());
+  for(auto i=0; i<classIds_h.size(); i++) {
+    auto dr = ptn.GetRank(classIds_h[i]);
+    auto idx = destRankIdx[dr]++;
+    permute[i] = idx;
+    printf("i %d gid %ld classId %d idx %d\n", i, gids_h[i], classIds_h[i], permute[i]);
+  }
+  redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
+  REDEV_ALWAYS_ASSERT(permute == expectedPermute);
 }
 
 int main(int argc, char** argv) {
@@ -125,21 +141,27 @@ int main(int argc, char** argv) {
   const std::string name = "meshVtxIds";
   std::stringstream ss;
   ss << name << " ";
-  redev::AdiosComm<redev::LO> comm(MPI_COMM_WORLD, ranks.size(), rdv.getToEngine(), rdv.getIO(), name);
+  const int rdvRanks = 2;
+  redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getIO(), name);
   size_t msgStart, msgCount;
+  redev::LOs permute;
+  redev::LOs dest;
+  redev::LOs offsets;
   for(int i=0; i<3; i++) {
     if(!isRdv) {
       //the non-rendezvous app sends mesh data to rendezvous
       //build dest and offsets arrays
-      redev::LOs dest;
-      redev::LOs offsets;
-      redev::LOs permute;
-      prepareMsg(mesh, ptn, dest, offsets, permute);
+      if(i==0) prepareMsg(mesh, ptn, dest, offsets, permute);
+      auto gids = mesh.globals(0);
+      auto gids_h = Omega_h::deep_copy(gids);
+      redev::GOs msgs(gids_h.size());
+      for(int i=0; i<msgs.size(); i++)
+        msgs[permute[i]] = gids_h[i];
       //fill/access data array - array of vtx global ids
       //pack messages
       auto start = std::chrono::steady_clock::now();
-      //comm.Pack(dest, offsets, msgs.data());
-      //comm.Send();
+      comm.Pack(dest, offsets, msgs.data());
+      comm.Send();
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
@@ -149,12 +171,14 @@ int main(int argc, char** argv) {
       if(!rank) printTime(str, min, max, avg);
     } else {
       //the rendezvous app receives mesh data from non-rendezvous
-      //redev::LO* msgs;
+      redev::GO* msgs;
       redev::GOs rdvSrcRanks;
       redev::GOs offsets;
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (i == 0) ? false : true;
-      //comm.Unpack(rdvSrcRanks,offsets,msgs,msgStart,msgCount,knownSizes);
+      comm.Unpack(rdvSrcRanks,offsets,msgs,msgStart,msgCount,knownSizes);
+      if(!rank) REDEV_ALWAYS_ASSERT(msgStart==0 && msgCount==6);
+      else REDEV_ALWAYS_ASSERT(msgStart==6 && msgCount==13);
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
@@ -162,7 +186,7 @@ int main(int argc, char** argv) {
       if( i == 0 ) ss << "read";
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
-      //delete [] msgs;
+      delete [] msgs;
     }
   }
   return 0;

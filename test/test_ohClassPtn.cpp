@@ -104,7 +104,6 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
     auto dr = ptn.GetRank(classIds_h[i]);
     auto idx = destRankIdx[dr]++;
     permute[i] = idx;
-    printf("i %d gid %ld classId %d idx %d\n", i, gids_h[i], classIds_h[i], permute[i]);
   }
   redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
   REDEV_ALWAYS_ASSERT(permute == expectedPermute);

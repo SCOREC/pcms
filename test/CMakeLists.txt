@@ -30,19 +30,24 @@ if(BUILD_TESTING)
     )
   endfunction(mpi_test)
 
-  function(dual_mpi_test TESTNAME PROCS1 EXE1 ARGS1 PROCS2 EXE2 ARGS2)
-    removeBpFiles(${TESTNAME}_cleanup)
-    add_test(NAME ${TESTNAME}
+  function(dual_mpi_test)
+    set(oneValueArgs NAME EXE1 EXE2 PROCS1 PROCS2 )
+    set(multiValueArgs ARGS1 ARGS2)
+    cmake_parse_arguments(DUALTEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+    removeBpFiles(${DUALTEST_NAME}_cleanup)
+    add_test(NAME ${DUALTEST_NAME}
       COMMAND ${CMAKE_COMMAND}
       -DMPIEXEC_EXECUTABLE=${MPIEXEC_EXECUTABLE}
       -DMPIEXEC_NUMPROC_FLAG=${MPIEXEC_NUMPROC_FLAG}
-      -DPROCS1=${PROCS1} -DEXE1=${EXE1} -DARGS1=${ARGS1}
-      -DPROCS2=${PROCS2} -DEXE2=${EXE2} -DARGS2=${ARGS2}
+      -DMPITEST_PROCS1=${DUALTEST_PROCS1} -DMPITEST_EXE1=${DUALTEST_EXE1} "-DMPITEST_ARGS1=${DUALTEST_ARGS1}"
+      -DMPITEST_PROCS2=${DUALTEST_PROCS2} -DMPITEST_EXE2=${DUALTEST_EXE2} "-DMPITEST_ARGS2=${DUALTEST_ARGS2}"
       -P ${CMAKE_SOURCE_DIR}/cmake/runTwoMpiJobs.cmake)
   endfunction(dual_mpi_test)
 
   add_exe(test_ohClassPtn)
   set(testMesh ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
-  dual_mpi_test(test_ohClassPtnSendRecv 1 ./test_ohClassPtn 0 ${testMesh}
-                                        2 ./test_ohClassPtn 1 ${testMesh})
+  message(STATUS "appArgs ${appArgs}")
+  dual_mpi_test(NAME test_ohClassPtnSendRecv
+    EXE1 ./test_ohClassPtn PROCS1 2 ARGS1 1 ${testMesh}
+    EXE2 ./test_ohClassPtn PROCS2 1 ARGS2 0 ${testMesh})
 endif()

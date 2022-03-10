@@ -51,19 +51,34 @@ void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
   }
 
   //the hardcoded assignment of classids to ranks
-  ranks.resize(2);
-  classIds.resize(2);
-  ranks[0] = 0; classIds[0] = 1;
-  ranks[1] = 1; classIds[1] = 2;
-  //sanity check
-  class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
-  if(!ohComm->rank()) {
-    Omega_h::Read<Omega_h::ClassId> ones(class_ids.size(), 1);
-    REDEV_ALWAYS_ASSERT(class_ids == ones);
-  } else {
-    Omega_h::Read<Omega_h::ClassId> twos(class_ids.size(), 2);
-    REDEV_ALWAYS_ASSERT(class_ids == twos);
+  ranks.resize(3);
+  classIds.resize(3);
+  classIds[0] = 1; ranks[0] = 0;
+  classIds[1] = 2; ranks[1] = 1;
+  classIds[2] = 3; ranks[2] = 0;  //center ('O point') model vertex
+}
+
+void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
+    redev::LOs& dest, redev::LOs& offset, redev::LOs& permute) {
+  //transfer vtx classification to host
+  auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
+  auto classIds_h = Omega_h::deep_copy(classIds);
+  //count number of vertices going to each destination process by calling getRank - degree array
+  std::map<int,int> destRankCounts;
+  const auto ptnRanks = ptn.GetRanks();
+  for(auto rank : ptnRanks) {
+    destRankCounts[rank] = 0;
   }
+  for(auto i=0; i<classIds_h.size(); i++) {
+    auto dr = ptn.GetRank(classIds_h[i]);
+    assert(destRankCounts.count(dr));
+    destRankCounts[dr]++;
+  }
+  REDEV_ALWAYS_ASSERT(destRankCounts[0] == 6);
+  REDEV_ALWAYS_ASSERT(destRankCounts[1] == 13);
+  //create offsets array from degree array
+  //fill permutation array such that for vertex i permute[i] contains the
+  //  position of vertex i's data in the message array
 }
 
 int main(int argc, char** argv) {
@@ -87,7 +102,7 @@ int main(int argc, char** argv) {
     //partition the omegah mesh by classification and return the
     //rank-to-classid array
     getClassPtn(mesh, ranks, classIds);
-    REDEV_ALWAYS_ASSERT(ranks.size()==2);
+    REDEV_ALWAYS_ASSERT(ranks.size()==3);
     REDEV_ALWAYS_ASSERT(ranks.size()==classIds.size());
     Omega_h::vtk::write_parallel("rdvSplit.vtk", &mesh, mesh.dim());
   }
@@ -105,8 +120,9 @@ int main(int argc, char** argv) {
       //build dest and offsets arrays
       redev::LOs dest;
       redev::LOs offsets;
-      //fill/access data array
-      redev::LOs msgs;
+      redev::LOs permute;
+      prepareMsg(mesh, ptn, dest, offsets, permute);
+      //fill/access data array - array of vtx global ids
       //pack messages
       auto start = std::chrono::steady_clock::now();
       //comm.Pack(dest, offsets, msgs.data());

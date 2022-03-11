@@ -146,16 +146,17 @@ int main(int argc, char** argv) {
   redev::LOs permute;
   redev::LOs dest;
   redev::LOs offsets;
-  for(int i=0; i<3; i++) {
+  for(int iter=0; iter<1; iter++) {
     if(!isRdv) {
       //the non-rendezvous app sends mesh data to rendezvous
       //build dest and offsets arrays
-      if(i==0) prepareMsg(mesh, ptn, dest, offsets, permute);
+      if(iter==0) prepareMsg(mesh, ptn, dest, offsets, permute);
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::deep_copy(gids);
-      redev::GOs msgs(gids_h.size());
-      for(int i=0; i<msgs.size(); i++)
+      redev::GOs msgs(gids_h.size(),0);
+      for(int i=0; i<msgs.size(); i++) {
         msgs[permute[i]] = gids_h[i];
+      }
       //fill/access data array - array of vtx global ids
       //pack messages
       auto start = std::chrono::steady_clock::now();
@@ -165,7 +166,7 @@ int main(int argc, char** argv) {
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
       timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( i == 0 ) ss << "write";
+      if( iter == 0 ) ss << "write";
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
     } else {
@@ -174,15 +175,24 @@ int main(int argc, char** argv) {
       redev::GOs rdvSrcRanks;
       redev::GOs offsets;
       auto start = std::chrono::steady_clock::now();
-      const bool knownSizes = (i == 0) ? false : true;
+      const bool knownSizes = (iter == 0) ? false : true;
       comm.Unpack(rdvSrcRanks,offsets,msgs,msgStart,msgCount,knownSizes);
-      if(!rank) REDEV_ALWAYS_ASSERT(msgStart==0 && msgCount==6);
-      else REDEV_ALWAYS_ASSERT(msgStart==6 && msgCount==13);
+      REDEV_ALWAYS_ASSERT(offsets == redev::GOs({0,6,19}));
+      REDEV_ALWAYS_ASSERT(rdvSrcRanks == redev::GOs({0,0}));
+      if(!rank) {
+        REDEV_ALWAYS_ASSERT(msgStart==0 && msgCount==6);
+        redev::GOs msgVec(msgs, msgs+msgCount);
+        REDEV_ALWAYS_ASSERT(msgVec == redev::GOs({0,2,3,4,5,6}));
+      } else {
+        REDEV_ALWAYS_ASSERT(msgStart==6 && msgCount==13);
+        redev::GOs msgVec(msgs, msgs+msgCount);
+        REDEV_ALWAYS_ASSERT(msgVec == redev::GOs({1,7,8,9,10,11,12,13,14,15,16,17,18}));
+      }
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
       timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( i == 0 ) ss << "read";
+      if( iter == 0 ) ss << "read";
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
       delete [] msgs;

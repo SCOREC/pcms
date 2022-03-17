@@ -112,16 +112,17 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
 //creates rdvPermute given inGids and the rdv mesh instance
 //this should only be needed once for each topological dimension - running on
 //the host for now
-void getRdvPermutation(Omega_h::Mesh& mesh, redev::GOs& inGids, redev::GOs& rdvPermute) {
+void getRdvPermutation(Omega_h::Mesh& mesh, redev::GO*& inGids, redev::GO msgCount, redev::GOs& rdvPermute) {
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::deep_copy(gids);
   //WIP
 }
 
 //TODO template this function
-void attachVtxData(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxData, redev::GOs& rdvPermute) {
-  Omega_h::HostWrite<Omega_h::GO> inVtxData_h(msgCount);
-  for(int i=0; i<msgCount; i++) {
+void attachVtxData(Omega_h::Mesh& mesh, std::string name, redev::GO*& vtxData, redev::GOs& rdvPermute) {
+  const auto numVerts = rdvPermute.size();
+  Omega_h::HostWrite<Omega_h::GO> inVtxData_h(numVerts);
+  for(int i=0; i<numVerts; i++) {
     inVtxData_h[rdvPermute[i]] = vtxData[i];
   }
   Omega_h::Write inVtxData(inVtxData_h);
@@ -217,7 +218,7 @@ int main(int argc, char** argv) {
       //attach the ids to the mesh
       redev::GOs inPermute;
       getRdvPermutation(mesh, msgs, msgCount, inPermute);
-      attachVtxData(mesh, msgs, inPermute);
+      attachVtxData(mesh, "inVtxGids", msgs, inPermute);
       Omega_h::vtk::write_parallel("rdvInGids.vtk", &mesh, mesh.dim());
 
       delete [] msgs;

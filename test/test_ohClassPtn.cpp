@@ -196,8 +196,10 @@ int main(int argc, char** argv) {
   for(int iter=0; iter<3; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
     MPI_Barrier(MPI_COMM_WORLD);
+    //////////////////////////////////////////////////////
+    //the non-rendezvous app sends global vtx ids to rendezvous
+    //////////////////////////////////////////////////////
     if(!isRdv) {
-      //the non-rendezvous app sends mesh data to rendezvous
       //build dest and offsets arrays
       if(iter==0) prepareMsg(mesh, ptn, dest, offsets, permute);
       auto gids = mesh.globals(0);
@@ -219,7 +221,6 @@ int main(int argc, char** argv) {
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
     } else {
-      //the rendezvous app receives mesh data from non-rendezvous
       redev::GO* msgs;
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
@@ -248,7 +249,7 @@ int main(int argc, char** argv) {
       Omega_h::vtk::write_parallel("rdvInGids.vtk", &mesh, mesh.dim());
 
       delete [] msgs;
-    }
-  }
+    } //end non-rdv -> rdv
+  } //end iter loop
   return 0;
 }

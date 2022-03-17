@@ -190,7 +190,12 @@ int main(int argc, char** argv) {
   redev::LOs permute;
   redev::LOs dest;
   redev::LOs offsets;
-  for(int iter=0; iter<1; iter++) {
+  redev::GOs inPermute;
+  redev::GOs rdvSrcRanks;
+  redev::GOs rdvOffsets;
+  for(int iter=0; iter<3; iter++) {
+    if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
+    MPI_Barrier(MPI_COMM_WORLD);
     if(!isRdv) {
       //the non-rendezvous app sends mesh data to rendezvous
       //build dest and offsets arrays
@@ -216,12 +221,10 @@ int main(int argc, char** argv) {
     } else {
       //the rendezvous app receives mesh data from non-rendezvous
       redev::GO* msgs;
-      redev::GOs rdvSrcRanks;
-      redev::GOs offsets;
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
-      comm.Unpack(rdvSrcRanks,offsets,msgs,msgStart,msgCount,knownSizes);
-      REDEV_ALWAYS_ASSERT(offsets == redev::GOs({0,6,19}));
+      comm.Unpack(rdvSrcRanks,rdvOffsets,msgs,msgStart,msgCount,knownSizes);
+      REDEV_ALWAYS_ASSERT(rdvOffsets == redev::GOs({0,6,19}));
       REDEV_ALWAYS_ASSERT(rdvSrcRanks == redev::GOs({0,0}));
       if(!rank) {
         REDEV_ALWAYS_ASSERT(msgStart==0 && msgCount==6);
@@ -240,8 +243,7 @@ int main(int argc, char** argv) {
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
       //attach the ids to the mesh
-      redev::GOs inPermute;
-      getRdvPermutation(mesh, msgs, msgCount, inPermute);
+      if(iter==0) getRdvPermutation(mesh, msgs, msgCount, inPermute);
       checkAndAttachIds(mesh, "inVtxGids", msgs, inPermute);
       Omega_h::vtk::write_parallel("rdvInGids.vtk", &mesh, mesh.dim());
 

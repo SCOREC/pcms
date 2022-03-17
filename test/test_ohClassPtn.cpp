@@ -32,7 +32,7 @@ void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
   Omega_h::ClassId max_class = Omega_h::get_max(class_ids);
   auto max_class_g = ohComm->allreduce(max_class,Omega_h_Op::OMEGA_H_MAX);
   REDEV_ALWAYS_ASSERT(ohComm->size() == max_class_g);
-  auto class_ids_h = Omega_h::deep_copy(class_ids);
+  auto class_ids_h = Omega_h::HostRead(class_ids);
   if(!ohComm->rank()) {
     //send ents with classId=2 to rank 1
     Omega_h::Write<Omega_h::I32> ptnRanks(5,0);
@@ -62,7 +62,7 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
     redev::LOs& dest, redev::LOs& offset, redev::LOs& permute) {
   //transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
-  auto classIds_h = Omega_h::deep_copy(classIds);
+  auto classIds_h = Omega_h::HostRead(classIds);
   //count number of vertices going to each destination process by calling getRank - degree array
   std::map<int,int> destRankCounts;
   const auto ptnRanks = ptn.GetRanks();
@@ -98,7 +98,7 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
     destRankIdx[dr] = offset[i];
   }
   auto gids = mesh.globals(0);
-  auto gids_h = Omega_h::deep_copy(gids);
+  auto gids_h = Omega_h::HostRead(gids);
   permute.resize(classIds_h.size());
   for(auto i=0; i<classIds_h.size(); i++) {
     auto dr = ptn.GetRank(classIds_h[i]);
@@ -110,20 +110,44 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
 }
 
 //creates rdvPermute given inGids and the rdv mesh instance
-//this should only be needed once for each topological dimension - running on
-//the host for now
-void getRdvPermutation(Omega_h::Mesh& mesh, redev::GO*& inGids, redev::GO msgCount, redev::GOs& rdvPermute) {
+//this only needs to be computed once for each topological dimension
+//TODO - port to GPU
+void getRdvPermutation(Omega_h::Mesh& mesh, redev::GO*& inGids, redev::GO inGidsSz, redev::GOs& rdvPermute) {
   auto gids = mesh.globals(0);
-  auto gids_h = Omega_h::deep_copy(gids);
-  //WIP
+  auto gids_h = Omega_h::HostRead(gids);
+  typedef std::map<Omega_h::GO, int> G2I;
+  G2I in2idx;
+  for(int i=0; i<inGidsSz; i++)
+    in2idx[inGids[i]] = i;
+  G2I gid2idx;
+  for(int i=0; i<gids_h.size(); i++)
+    gid2idx[gids_h[i]] = i;
+  rdvPermute.resize(inGidsSz);
+  auto gidIter = gid2idx.begin();
+  for(auto inIter=in2idx.begin(); inIter != in2idx.end(); inIter++) {
+    while(gidIter->first != inIter->first)
+      gidIter++;
+    //must have been found
+    REDEV_ALWAYS_ASSERT(gidIter != gid2idx.end());
+    REDEV_ALWAYS_ASSERT(gidIter->first == inIter->first);
+    //store permutation
+    const auto gidIdx = gidIter->second;
+    const auto inIdx = inIter->second;
+    REDEV_ALWAYS_ASSERT(gids_h[gidIdx] == inGids[inIdx]);
+    REDEV_ALWAYS_ASSERT(inIdx < inGidsSz);
+    rdvPermute[inIdx] = gidIdx;
+  }
 }
 
-//TODO template this function
-void attachVtxData(Omega_h::Mesh& mesh, std::string name, redev::GO*& vtxData, redev::GOs& rdvPermute) {
-  const auto numVerts = rdvPermute.size();
-  Omega_h::HostWrite<Omega_h::GO> inVtxData_h(numVerts);
-  for(int i=0; i<numVerts; i++) {
+void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GO*& vtxData, redev::GOs& rdvPermute) {
+  auto gids_h = Omega_h::HostRead(mesh.globals(0));
+  const auto numInVtx = rdvPermute.size();
+  Omega_h::HostWrite<Omega_h::GO> inVtxData_h(mesh.nverts());
+  for(int i=0; i<mesh.nverts(); i++)
+    inVtxData_h[i] = -1;
+  for(int i=0; i<numInVtx; i++) {
     inVtxData_h[rdvPermute[i]] = vtxData[i];
+    REDEV_ALWAYS_ASSERT(gids_h[rdvPermute[i]] == vtxData[i]);
   }
   Omega_h::Write inVtxData(inVtxData_h);
   mesh.add_tag(0,name,1,Omega_h::read(inVtxData));
@@ -172,7 +196,7 @@ int main(int argc, char** argv) {
       //build dest and offsets arrays
       if(iter==0) prepareMsg(mesh, ptn, dest, offsets, permute);
       auto gids = mesh.globals(0);
-      auto gids_h = Omega_h::deep_copy(gids);
+      auto gids_h = Omega_h::HostRead(gids);
       redev::GOs msgs(gids_h.size(),0);
       for(int i=0; i<msgs.size(); i++) {
         msgs[permute[i]] = gids_h[i];
@@ -218,7 +242,7 @@ int main(int argc, char** argv) {
       //attach the ids to the mesh
       redev::GOs inPermute;
       getRdvPermutation(mesh, msgs, msgCount, inPermute);
-      attachVtxData(mesh, "inVtxGids", msgs, inPermute);
+      checkAndAttachIds(mesh, "inVtxGids", msgs, inPermute);
       Omega_h::vtk::write_parallel("rdvInGids.vtk", &mesh, mesh.dim());
 
       delete [] msgs;

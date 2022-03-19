@@ -26,17 +26,22 @@ the unified field is converted to, and sent in the native format for the second 
         asynchronously launch solver for each solver in SolverGroup
         wait for results
 
-    Function run_coupling
+    Function run_coupling(Coupling)
+        solve(Core/Edge push)
+        reconcile(core/edge, field solver)
+        solve(field solver)
+        // this loop is indicated for case where field solver is operating over multiple partitions and needs to reconcile data between them
+        while (solver not converged) 
+            reconcile(field solver,field solver)
+            solve(field solver)
+        reconcile(field solver, core/edge)
+
+    MAIN (this can be wrapped in class, function, etc. but it's the main driver code)
         Initialization (receive the mesh data and other initialization data)
         while (not done coupling)
-            solve(Core/Edge push)
-            reconcile(core/edge, field solver)
-            solve(field solver)
-            // this loop is indicated for case where field solver is operating over multiple partitions and needs to reconcile data between them
-            while (solver not converged) 
-                reconcile(field solver,field solver)
-                solve(field solver)
-            reconcile(field solver, core/edge)
+            run_coupling(charge density+electric field coupling) // poisson
+            run_coupling(current density+parallel part of vector potential coupling) // ampere
+            ...
 
 ### Functions
 1. solve: launch the solver for the Core/Edge coupling this corresponds to either the push operation, or the field solve.
@@ -47,6 +52,7 @@ the unified field is converted to, and sent in the native format for the second 
 1. FieldTransfer
 2. Solver
 3. DataTransfer
+4. SolverGroup
 
 ### open questions
 1. For coupling with multiple fields should solve,reconcile, etc. deal with multiple fields internally? Or, run_coupling

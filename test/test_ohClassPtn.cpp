@@ -186,11 +186,14 @@ int main(int argc, char** argv) {
   ss << name << " ";
   const int rdvRanks = 2;
   redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getIO(), name);
+
   size_t msgStart, msgCount;
-  redev::LOs permute;
-  redev::LOs dest;
-  redev::LOs offsets;
-  redev::GOs inPermute;
+
+  redev::LOs appOutPermute;
+  redev::LOs appOutDest;
+  redev::LOs appOutOffsets;
+
+  redev::GOs rdvInPermute;
   redev::GOs rdvSrcRanks;
   redev::GOs rdvOffsets;
   for(int iter=0; iter<3; iter++) {
@@ -201,17 +204,17 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     if(!isRdv) {
       //build dest and offsets arrays
-      if(iter==0) prepareMsg(mesh, ptn, dest, offsets, permute);
+      if(iter==0) prepareMsg(mesh, ptn, appOutDest, appOutOffsets, appOutPermute);
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
       redev::GOs msgs(gids_h.size(),0);
       for(int i=0; i<msgs.size(); i++) {
-        msgs[permute[i]] = gids_h[i];
+        msgs[appOutPermute[i]] = gids_h[i];
       }
       //fill/access data array - array of vtx global ids
       //pack messages
       auto start = std::chrono::steady_clock::now();
-      comm.Pack(dest, offsets, msgs.data());
+      comm.Pack(appOutDest, appOutOffsets, msgs.data());
       comm.Send();
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed_seconds = end-start;
@@ -244,10 +247,9 @@ int main(int argc, char** argv) {
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
       //attach the ids to the mesh
-      if(iter==0) getRdvPermutation(mesh, msgs, msgCount, inPermute);
-      checkAndAttachIds(mesh, "inVtxGids", msgs, inPermute);
+      if(iter==0) getRdvPermutation(mesh, msgs, msgCount, rdvInPermute);
+      checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
       Omega_h::vtk::write_parallel("rdvInGids.vtk", &mesh, mesh.dim());
-
       delete [] msgs;
     } //end non-rdv -> rdv
   } //end iter loop

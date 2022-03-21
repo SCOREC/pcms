@@ -52,4 +52,15 @@ if(BUILD_TESTING)
   dual_mpi_test(NAME test_ohClassPtnSendRecv
     EXE1 ./test_ohClassPtn PROCS1 1 ARGS1 ${notRendezvous} ${testMesh}
     EXE2 ./test_ohClassPtn PROCS2 2 ARGS2 ${rendezvous} ${testMesh})
+
+  add_exe(test_ohClassPtn_appRibPtn)
+  set(testMesh ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
+  set(testMesh2p ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/2p.osh)
+  message(STATUS "appArgs ${appArgs}")
+  set(rendezvous 1)
+  set(notRendezvous 0)
+  dual_mpi_test(NAME test_ohClassPtn_appRibPtn
+    EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${notRendezvous} ${testMesh2p}
+    EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${rendezvous} ${testMesh})
+
 endif()

@@ -117,7 +117,11 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
 //creates rdvPermute given inGids and the rdv mesh instance
 //this only needs to be computed once for each topological dimension
 //TODO - port to GPU
+//FIXME - this breaks when the inGids contains duplicate Gids!!!
 void getRdvPermutation(Omega_h::Mesh& mesh, redev::GO*& inGids, redev::GO inGidsSz, redev::GOs& rdvPermute) {
+  const auto rank = mesh.comm()->rank();
+  if(!rank) REDEV_ALWAYS_ASSERT(inGidsSz == 9);
+  else REDEV_ALWAYS_ASSERT(inGidsSz == 15);
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
   typedef std::map<Omega_h::GO, int> G2I;
@@ -186,6 +190,7 @@ int main(int argc, char** argv) {
   } else {
     REDEV_ALWAYS_ASSERT(world->size()==2);
     if(!rank) REDEV_ALWAYS_ASSERT(mesh.nelems()==11);
+    Omega_h::vtk::write_parallel("appSplit.vtk", &mesh, mesh.dim());
   }
   auto ptn = redev::ClassPtn(ranks,classIds);
   redev::Redev rdv(MPI_COMM_WORLD,ptn,isRdv);

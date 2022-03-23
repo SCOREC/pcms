@@ -138,38 +138,42 @@ std::vector<size_t> sort_indexes(const T &v) {
 // in rdvPermute[i]
 //this only needs to be computed once for each topological dimension
 //TODO - port to GPU
-void getRdvPermutation(Omega_h::Mesh& mesh, redev::GO*& inGids, redev::GO inGidsSz, redev::GOs& rdvPermute) {
+void getRdvPermutation(Omega_h::Mesh& mesh, redev::GOs& inGids, redev::GOs& rdvPermute) {
   const auto rank = mesh.comm()->rank();
-  if(!rank) REDEV_ALWAYS_ASSERT(inGidsSz == 9);
-  else REDEV_ALWAYS_ASSERT(inGidsSz == 15);
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
   auto iGids = sort_indexes(gids_h);
-  std::vector<redev::GO> vInGids(inGids,inGids+inGidsSz); //ehhh - prefer not to copy the array
-  auto iInGids = sort_indexes(vInGids);
-  rdvPermute.resize(inGidsSz);
+  auto iInGids = sort_indexes(inGids);
+  rdvPermute.resize(inGids.size());
   int j=0;
-  for(int i=0; i<inGidsSz; i++) {
+  for(int i=0; i<inGids.size(); i++) {
     while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
       j++;
     }
-    REDEV_ALWAYS_ASSERT(j!=gids_h.size());
+    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //not found
     rdvPermute[iInGids[i]] = iGids[j];
   }
 }
 
-void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GO*& vtxData, redev::GOs& rdvPermute) {
+void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxData, redev::GOs& rdvPermute) {
+  REDEV_ALWAYS_ASSERT(rdvPermute.size() == vtxData.size());
   auto gids_h = Omega_h::HostRead(mesh.globals(0));
   const auto numInVtx = rdvPermute.size();
   Omega_h::HostWrite<Omega_h::GO> inVtxData_h(mesh.nverts());
   for(int i=0; i<mesh.nverts(); i++)
-    inVtxData_h[i] = -1;
+    inVtxData_h[i] = gids_h[i];
   for(int i=0; i<numInVtx; i++) {
     inVtxData_h[rdvPermute[i]] = vtxData[i];
     REDEV_ALWAYS_ASSERT(gids_h[rdvPermute[i]] == vtxData[i]);
   }
   Omega_h::Write inVtxData(inVtxData_h);
   mesh.add_tag(0,name,1,Omega_h::read(inVtxData));
+}
+
+void writeVtk(Omega_h::Mesh& mesh, std::string name, int step) {
+  std::stringstream ss;
+  ss << name << step << ".vtk";
+  Omega_h::vtk::write_parallel(ss.str(), &mesh, mesh.dim());
 }
 
 int main(int argc, char** argv) {
@@ -252,17 +256,8 @@ int main(int argc, char** argv) {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
       comm.Unpack(rdvSrcRanks,rdvOffsets,msgs,msgStart,msgCount,knownSizes);
-      //REDEV_ALWAYS_ASSERT(rdvOffsets == redev::GOs({0,6,19}));
-      //REDEV_ALWAYS_ASSERT(rdvSrcRanks == redev::GOs({0,0}));
-      if(!rank) {
-        //REDEV_ALWAYS_ASSERT(msgStart==0 && msgCount==6);
-        redev::GOs msgVec(msgs, msgs+msgCount);
-        //REDEV_ALWAYS_ASSERT(msgVec == redev::GOs({0,2,3,4,5,6}));
-      } else {
-        //REDEV_ALWAYS_ASSERT(msgStart==6 && msgCount==13);
-        redev::GOs msgVec(msgs, msgs+msgCount);
-        //REDEV_ALWAYS_ASSERT(msgVec == redev::GOs({1,7,8,9,10,11,12,13,14,15,16,17,18}));
-      }
+      redev::GOs msgVec(msgs, msgs+msgCount);
+      delete [] msgs;
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
@@ -271,10 +266,9 @@ int main(int argc, char** argv) {
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
       //attach the ids to the mesh
-      if(iter==0) getRdvPermutation(mesh, msgs, msgCount, rdvInPermute);
-      checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
-      Omega_h::vtk::write_parallel("rdvInGids.vtk", &mesh, mesh.dim());
-      delete [] msgs;
+      if(iter==0) getRdvPermutation(mesh, msgVec, rdvInPermute);
+      checkAndAttachIds(mesh, "inVtxGids", msgVec, rdvInPermute);
+      writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv
   } //end iter loop
   return 0;

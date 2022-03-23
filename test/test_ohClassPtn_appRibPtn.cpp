@@ -1,5 +1,7 @@
 #include <chrono> //steady_clock, duration
 #include <thread> //this_thread
+#include <numeric> // std::iota
+#include <algorithm> // std::sort, std::stable_sort
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_array_ops.hpp>
@@ -114,37 +116,45 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
 //  REDEV_ALWAYS_ASSERT(permute == expectedPermute);
 }
 
+//from https://stackoverflow.com/a/12399290
+template <typename T>
+std::vector<size_t> sort_indexes(const T &v) {
+  // initialize original index locations
+  std::vector<size_t> idx(v.size());
+  std::iota(idx.begin(), idx.end(), 0);
+  // sort indexes based on comparing values in v
+  // using std::stable_sort instead of std::sort
+  // to avoid unnecessary index re-orderings
+  // when v contains elements of equal values 
+  std::stable_sort(idx.begin(), idx.end(),
+       [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+  return idx;
+}
+
 //creates rdvPermute given inGids and the rdv mesh instance
+//create rdvPermute such that gids[rdvPermute[i]] == inGids[i]
+//for the ith global id in inGids, find the corresponding global id in
+// gids (from mesh.globals(0)) and store the index of its position in gids 
+// in rdvPermute[i]
 //this only needs to be computed once for each topological dimension
 //TODO - port to GPU
-//FIXME - this breaks when the inGids contains duplicate Gids!!!
 void getRdvPermutation(Omega_h::Mesh& mesh, redev::GO*& inGids, redev::GO inGidsSz, redev::GOs& rdvPermute) {
   const auto rank = mesh.comm()->rank();
   if(!rank) REDEV_ALWAYS_ASSERT(inGidsSz == 9);
   else REDEV_ALWAYS_ASSERT(inGidsSz == 15);
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
-  typedef std::map<Omega_h::GO, int> G2I;
-  G2I in2idx;
-  for(int i=0; i<inGidsSz; i++)
-    in2idx[inGids[i]] = i;
-  G2I gid2idx;
-  for(int i=0; i<gids_h.size(); i++)
-    gid2idx[gids_h[i]] = i;
+  auto iGids = sort_indexes(gids_h);
+  std::vector<redev::GO> vInGids(inGids,inGids+inGidsSz); //ehhh - prefer not to copy the array
+  auto iInGids = sort_indexes(vInGids);
   rdvPermute.resize(inGidsSz);
-  auto gidIter = gid2idx.begin();
-  for(auto inIter=in2idx.begin(); inIter != in2idx.end(); inIter++) {
-    while(gidIter->first != inIter->first)
-      gidIter++;
-    //must have been found
-    REDEV_ALWAYS_ASSERT(gidIter != gid2idx.end());
-    REDEV_ALWAYS_ASSERT(gidIter->first == inIter->first);
-    //store permutation
-    const auto gidIdx = gidIter->second;
-    const auto inIdx = inIter->second;
-    REDEV_ALWAYS_ASSERT(gids_h[gidIdx] == inGids[inIdx]);
-    REDEV_ALWAYS_ASSERT(inIdx < inGidsSz);
-    rdvPermute[inIdx] = gidIdx;
+  int j=0;
+  for(int i=0; i<inGidsSz; i++) {
+    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
+      j++;
+    }
+    REDEV_ALWAYS_ASSERT(j!=gids_h.size());
+    rdvPermute[iInGids[i]] = iGids[j];
   }
 }
 

@@ -11,6 +11,11 @@
 #include <redev_comm.h>
 #include "wdmcpl.h"
 
+struct CSR {
+  redev::GOs off;
+  redev::GOs val;  
+};
+
 void timeMinMaxAvg(double time, double& min, double& max, double& avg) {
   const auto comm = MPI_COMM_WORLD;
   int nproc;
@@ -118,6 +123,12 @@ std::vector<size_t> sort_indexes(const T &v) {
   std::stable_sort(idx.begin(), idx.end(),
        [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
   return idx;
+}
+
+//creates the outbound (rdv->non-rdv) permutation CSR given inGids and the rdv mesh instance
+//this only needs to be computed once for each topological dimension
+//TODO - port to GPU
+void getOutboundRdvPermutation(Omega_h::Mesh& mesh, redev::GOs& inGids, CSR& perm) {
 }
 
 //creates rdvPermute given inGids and the rdv mesh instance
@@ -265,6 +276,14 @@ int main(int argc, char** argv) {
       checkAndAttachIds(mesh, "inVtxGids", rdvInMsgs, rdvInPermute);
       writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv
+    //////////////////////////////////////////////////////
+    //the rendezvous app sends global vtx ids to non-rendezvous
+    //////////////////////////////////////////////////////
+    if(isRdv) {
+      //build dest and offsets arrays from incoming message metadata
+      if(iter==0) getOutboundRdvPermutation(mesh, rdvInMsgs, rdvOutPermute);
+    } else {
+    } //end rdv -> non-rdv
   } //end iter loop
   return 0;
 }

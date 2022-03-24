@@ -212,8 +212,8 @@ int main(int argc, char** argv) {
   redev::LOs appOutOffsets;
 
   redev::GOs rdvInPermute;
-  redev::GOs rdvSrcRanks;
-  redev::GOs rdvOffsets;
+  redev::GOs rdvInSrcRanks;
+  redev::GOs rdvInOffsets;
   for(int iter=0; iter<3; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
     MPI_Barrier(MPI_COMM_WORLD);
@@ -245,7 +245,7 @@ int main(int argc, char** argv) {
       redev::GO* msgs;
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
-      comm.Unpack(rdvSrcRanks,rdvOffsets,msgs,msgStart,msgCount,knownSizes);
+      comm.Unpack(rdvInSrcRanks,rdvInOffsets,msgs,msgStart,msgCount,knownSizes);
       redev::GOs msgVec(msgs, msgs+msgCount);
       delete [] msgs;
       auto end = std::chrono::steady_clock::now();

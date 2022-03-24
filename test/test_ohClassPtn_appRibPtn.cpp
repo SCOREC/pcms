@@ -8,6 +8,7 @@
 #include <Omega_h_comm.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>
+#include <Omega_h_scalar.hpp> // divide_no_remainder
 #include <redev_comm.h>
 #include "wdmcpl.h"
 
@@ -180,8 +181,8 @@ void writeVtk(Omega_h::Mesh& mesh, std::string name, int step) {
 int main(int argc, char** argv) {
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
-  int rank = world->rank();
-  int nproc = world->size();
+  const int rank = world->rank();
+  const int nproc = world->size();
   if(argc != 3) {
     std::cerr << "Usage: " << argv[0] << " <1=isRendezvousApp,0=isParticipant> /path/to/omega_h/mesh\n";
     std::cerr << "WARNING: this test is currently hardcoded for the xgc1_data/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh\n";
@@ -280,8 +281,36 @@ int main(int argc, char** argv) {
     //the rendezvous app sends global vtx ids to non-rendezvous
     //////////////////////////////////////////////////////
     if(isRdv) {
-      //build dest and offsets arrays from incoming message metadata
-      if(iter==0) getOutboundRdvPermutation(mesh, rdvInMsgs, rdvOutPermute);
+      if( iter==0 ) {
+        auto nAppProcs = Omega_h::divide_no_remainder(rdvInSrcRanks.size(),static_cast<size_t>(nproc));
+        REDEV_ALWAYS_ASSERT(nAppProcs==2);
+        //build dest and offsets arrays from incoming message metadata
+        redev::LOs senderDeg(nAppProcs);
+        for(int i=0; i<nAppProcs-1; i++) {
+          senderDeg[i] = rdvInSrcRanks[(i+1)*nproc+rank] - rdvInSrcRanks[i*nproc+rank];
+        }
+        const auto totInMsgs = rdvInOffsets[rank+1]-rdvInOffsets[rank];
+        senderDeg[nAppProcs-1] = totInMsgs - rdvInSrcRanks[(nAppProcs-1)*nproc+rank];
+        if(!rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({4,5}) );
+        if(rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({8,7}) );
+        for(int i=0; i<nAppProcs; i++) {
+          if(senderDeg[i] > 0) {
+            rdvOutDest.push_back(i);
+          }
+        }
+        REDEV_ALWAYS_ASSERT( rdvOutDest == redev::LOs({0,1}) );
+        redev::GO sum = 0;
+        for(auto deg : senderDeg) { //exscan over values > 0
+          if(deg>0) {
+            rdvOutOffsets.push_back(sum);
+            sum+=deg;
+          }
+        }
+        rdvOutOffsets.push_back(sum);
+        if(!rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::GOs({0,4,9}) );
+        if(rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::GOs({0,8,15}) );
+        getOutboundRdvPermutation(mesh, rdvInMsgs, rdvOutPermute);
+      } // end iter==0
     } else {
     } //end rdv -> non-rdv
   } //end iter loop

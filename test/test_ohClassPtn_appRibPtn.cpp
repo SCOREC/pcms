@@ -150,13 +150,14 @@ void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxDat
   const auto numInVtx = rdvPermute.size();
   Omega_h::HostWrite<Omega_h::GO> inVtxData_h(mesh.nverts());
   for(int i=0; i<mesh.nverts(); i++)
-    inVtxData_h[i] = gids_h[i];
+    inVtxData_h[i] = -1;
   for(int i=0; i<numInVtx; i++) {
     inVtxData_h[rdvPermute[i]] = vtxData[i];
     REDEV_ALWAYS_ASSERT(gids_h[rdvPermute[i]] == vtxData[i]);
   }
   Omega_h::Write inVtxData(inVtxData_h);
   mesh.add_tag(0,name,1,Omega_h::read(inVtxData));
+  mesh.sync_tag(0,name);
 }
 
 void writeVtk(Omega_h::Mesh& mesh, std::string name, int step) {

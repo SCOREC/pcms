@@ -77,9 +77,6 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
     destRankCounts[dr]++;
   }
 
-  //REDEV_ALWAYS_ASSERT(destRankCounts[0] == 6);
-  //REDEV_ALWAYS_ASSERT(destRankCounts[1] == 13);
-
   //create dest and offsets arrays from degree array
   offset.resize(destRankCounts.size()+1);
   dest.resize(destRankCounts.size());
@@ -90,11 +87,6 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
     offset[i] = offset[i-1]+rankCount.second;
     i++;
   }
-
-  //redev::LOs expectedDest = {0,1};
-  //REDEV_ALWAYS_ASSERT(dest == expectedDest);
-  //redev::LOs expectedOffset = {0,6,19};
-  //REDEV_ALWAYS_ASSERT(offset == expectedOffset);
 
   //fill permutation array such that for vertex i permute[i] contains the
   //  position of vertex i's data in the message array
@@ -111,9 +103,6 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
     auto idx = destRankIdx[dr]++;
     permute[i] = idx;
   }
-
-//  redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
-//  REDEV_ALWAYS_ASSERT(permute == expectedPermute);
 }
 
 //from https://stackoverflow.com/a/12399290

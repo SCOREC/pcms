@@ -214,6 +214,11 @@ int main(int argc, char** argv) {
   redev::GOs rdvInPermute;
   redev::GOs rdvInSrcRanks;
   redev::GOs rdvInOffsets;
+  redev::GOs rdvInMsgs;
+  redev::GOs rdvOutOffsets;
+  redev::LOs rdvOutDest;
+  CSR rdvOutPermute;
+
   for(int iter=0; iter<3; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
     MPI_Barrier(MPI_COMM_WORLD);
@@ -246,7 +251,7 @@ int main(int argc, char** argv) {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
       comm.Unpack(rdvInSrcRanks,rdvInOffsets,msgs,msgStart,msgCount,knownSizes);
-      redev::GOs msgVec(msgs, msgs+msgCount);
+      rdvInMsgs = redev::GOs(msgs, msgs+msgCount);
       delete [] msgs;
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed_seconds = end-start;
@@ -256,8 +261,8 @@ int main(int argc, char** argv) {
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
       //attach the ids to the mesh
-      if(iter==0) getRdvPermutation(mesh, msgVec, rdvInPermute);
-      checkAndAttachIds(mesh, "inVtxGids", msgVec, rdvInPermute);
+      if(iter==0) getRdvPermutation(mesh, rdvInMsgs, rdvInPermute);
+      checkAndAttachIds(mesh, "inVtxGids", rdvInMsgs, rdvInPermute);
       writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv
   } //end iter loop

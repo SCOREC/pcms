@@ -244,7 +244,8 @@ int main(int argc, char** argv) {
   std::stringstream ss;
   ss << name << " ";
   const int rdvRanks = 2;
-  redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getIO(), name);
+  redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getIO(), name+"_A2R");
+  redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, rdvRanks, rdv.getFromEngine(), rdv.getIO(), name+"_R2A");
 
   size_t msgStart, msgCount;
 
@@ -282,8 +283,8 @@ int main(int argc, char** argv) {
       //fill/access data array - array of vtx global ids
       //pack messages
       auto start = std::chrono::steady_clock::now();
-      comm.Pack(appOutDest, appOutOffsets, msgs.data());
-      comm.Send();
+      commA2R.Pack(appOutDest, appOutOffsets, msgs.data());
+      commA2R.Send();
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
@@ -295,7 +296,7 @@ int main(int argc, char** argv) {
       redev::GO* msgs;
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
-      comm.Unpack(rdvInSrcRanks,rdvInOffsets,msgs,msgStart,msgCount,knownSizes);
+      commA2R.Unpack(rdvInSrcRanks,rdvInOffsets,msgs,msgStart,msgCount,knownSizes);
       rdvInMsgs = redev::GOs(msgs, msgs+msgCount);
       delete [] msgs;
       auto end = std::chrono::steady_clock::now();
@@ -343,7 +344,7 @@ int main(int argc, char** argv) {
         if(!rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::LOs({0,4,9}) );
         if(rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::LOs({0,8,15}) );
         getOutboundRdvPermutation(mesh, rdvInMsgs, rdvOutPermute);
-      } // end iter==0
+      } // end if(iter==0)
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
       redev::GOs msgs(rdvOutPermute.off.back());
@@ -353,8 +354,8 @@ int main(int argc, char** argv) {
         }
       }
       auto start = std::chrono::steady_clock::now();
-      comm.Pack(rdvOutDest, rdvOutOffsets, msgs.data());
-      comm.Send();
+      commR2A.Pack(rdvOutDest, rdvOutOffsets, msgs.data());
+      commR2A.Send();
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
@@ -367,7 +368,7 @@ int main(int argc, char** argv) {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
       redev::GOs ignored;
-      comm.Unpack(ignored,appInOffsets,msgs,msgStart,msgCount,knownSizes);
+      commR2A.Unpack(ignored,appInOffsets,msgs,msgStart,msgCount,knownSizes);
       appInMsgs = redev::GOs(msgs, msgs+msgCount);
       delete [] msgs;
       auto end = std::chrono::steady_clock::now();

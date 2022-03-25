@@ -1,6 +1,6 @@
 #include <chrono> //steady_clock, duration
 #include <thread> //this_thread
-#include <numeric> // std::iota
+#include <numeric> // std::iota, std::exclusive_scan
 #include <algorithm> // std::sort, std::stable_sort
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
@@ -128,8 +128,37 @@ std::vector<size_t> sort_indexes(const T &v) {
 
 //creates the outbound (rdv->non-rdv) permutation CSR given inGids and the rdv mesh instance
 //this only needs to be computed once for each topological dimension
-//TODO - port to GPU
 void getOutboundRdvPermutation(Omega_h::Mesh& mesh, redev::GOs& inGids, CSR& perm) {
+  auto gids = mesh.globals(0);
+  auto gids_h = Omega_h::HostRead(gids);
+  auto iGids = sort_indexes(gids_h);
+  auto iInGids = sort_indexes(inGids);
+  //count the number of times each gid is included in inGids
+  perm.off.resize(gids_h.size()+1);
+  int j=0;
+  for(int i=0; i<inGids.size(); i++) {
+    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
+      j++;
+    }
+    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //found
+    perm.off[iGids[j]]++;
+  }
+  //create the offsets array from the counts
+  std::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0); 
+  //fill the permutation array
+  perm.val.resize(perm.off.back());
+  redev::LOs count(gids_h.size()); //how many times each gid was written
+  j=0;
+  for(int i=0; i<inGids.size(); i++) {
+    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
+      j++;
+    }
+    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //found
+    const auto subIdx = count[iGids[j]]++;
+    const auto startIdx = perm.off[iGids[j]];
+    const auto offIdx = startIdx + subIdx;
+    perm.val[offIdx] = iInGids[i];
+  }
 }
 
 //creates rdvPermute given inGids and the rdv mesh instance

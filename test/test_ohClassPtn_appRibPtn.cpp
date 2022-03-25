@@ -252,11 +252,15 @@ int main(int argc, char** argv) {
   redev::LOs appOutDest;
   redev::LOs appOutOffsets;
 
+  redev::GOs appInSrcRanks;
+  redev::GOs appInOffsets;
+  redev::GOs appInMsgs;
+
   redev::GOs rdvInPermute;
   redev::GOs rdvInSrcRanks;
   redev::GOs rdvInOffsets;
   redev::GOs rdvInMsgs;
-  redev::GOs rdvOutOffsets;
+  redev::LOs rdvOutOffsets;
   redev::LOs rdvOutDest;
   CSR rdvOutPermute;
 
@@ -336,11 +340,43 @@ int main(int argc, char** argv) {
           }
         }
         rdvOutOffsets.push_back(sum);
-        if(!rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::GOs({0,4,9}) );
-        if(rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::GOs({0,8,15}) );
+        if(!rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::LOs({0,4,9}) );
+        if(rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::LOs({0,8,15}) );
         getOutboundRdvPermutation(mesh, rdvInMsgs, rdvOutPermute);
       } // end iter==0
+      auto gids = mesh.globals(0);
+      auto gids_h = Omega_h::HostRead(gids);
+      redev::GOs msgs(rdvOutPermute.off.back());
+      for(int i=0; i<gids_h.size(); i++) {
+        for(int j=rdvOutPermute.off[i]; j<rdvOutPermute.off[i+1]; j++) {
+          msgs[rdvOutPermute.val[j]] = gids_h[i];
+        }
+      }
+      auto start = std::chrono::steady_clock::now();
+      comm.Pack(rdvOutDest, rdvOutOffsets, msgs.data());
+      comm.Send();
+      auto end = std::chrono::steady_clock::now();
+      std::chrono::duration<double> elapsed_seconds = end-start;
+      double min, max, avg;
+      timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
+      if( iter == 0 ) ss << "rdvWrite";
+      std::string str = ss.str();
+      if(!rank) printTime(str, min, max, avg);
     } else {
+      redev::GO* msgs;
+      auto start = std::chrono::steady_clock::now();
+      const bool knownSizes = (iter == 0) ? false : true;
+      redev::GOs ignored;
+      comm.Unpack(ignored,appInOffsets,msgs,msgStart,msgCount,knownSizes);
+      appInMsgs = redev::GOs(msgs, msgs+msgCount);
+      delete [] msgs;
+      auto end = std::chrono::steady_clock::now();
+      std::chrono::duration<double> elapsed_seconds = end-start;
+      double min, max, avg;
+      timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
+      if( iter == 0 ) ss << "appRead";
+      std::string str = ss.str();
+      if(!rank) printTime(str, min, max, avg);
     } //end rdv -> non-rdv
   } //end iter loop
   return 0;

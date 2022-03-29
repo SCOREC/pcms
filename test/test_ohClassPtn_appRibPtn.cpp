@@ -244,8 +244,9 @@ int main(int argc, char** argv) {
   std::stringstream ss;
   ss << name << " ";
   const int rdvRanks = 2;
+  const int appRanks = 2;
   redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getIO(), name+"_A2R");
-  redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, rdvRanks, rdv.getFromEngine(), rdv.getIO(), name+"_R2A");
+  redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getIO(), name+"_R2A");
 
   size_t msgStart, msgCount;
 

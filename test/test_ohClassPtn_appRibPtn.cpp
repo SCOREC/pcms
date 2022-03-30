@@ -266,7 +266,7 @@ int main(int argc, char** argv) {
   redev::LOs rdvOutDest;
   CSR rdvOutPermute;
 
-  for(int iter=0; iter<1; iter++) {
+  for(int iter=0; iter<2; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
     MPI_Barrier(MPI_COMM_WORLD);
     //////////////////////////////////////////////////////
@@ -315,6 +315,7 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     //the rendezvous app sends global vtx ids to non-rendezvous
     //////////////////////////////////////////////////////
+    if(iter==0) { //only run reverse send on first iteration - rdv fails with "EndStep() is called without a successful BeginStep()"
     if(isRdv) {
       if( iter==0 ) {
         auto nAppProcs = Omega_h::divide_no_remainder(rdvInSrcRanks.size(),static_cast<size_t>(nproc));
@@ -388,6 +389,7 @@ int main(int argc, char** argv) {
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
     } //end rdv -> non-rdv
+    }
   } //end iter loop
   return 0;
 }

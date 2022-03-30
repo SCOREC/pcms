@@ -266,7 +266,7 @@ int main(int argc, char** argv) {
   redev::LOs rdvOutDest;
   CSR rdvOutPermute;
 
-  for(int iter=0; iter<3; iter++) {
+  for(int iter=0; iter<1; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
     MPI_Barrier(MPI_COMM_WORLD);
     //////////////////////////////////////////////////////
@@ -372,6 +372,14 @@ int main(int argc, char** argv) {
       commR2A.Unpack(ignored,appInOffsets,msgs,msgStart,msgCount,knownSizes);
       appInMsgs = redev::GOs(msgs, msgs+msgCount);
       delete [] msgs;
+      { //check incoming messages are in the correct order
+        auto gids = mesh.globals(0);
+        auto gids_h = Omega_h::HostRead(gids);
+        REDEV_ALWAYS_ASSERT(msgCount == gids_h.size());
+        for(int i=0; i<appInMsgs.size(); i++) {
+          REDEV_ALWAYS_ASSERT(gids_h[i] == appInMsgs[appOutPermute[i]]);
+        }
+      }
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;

@@ -93,7 +93,7 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
   //fill permutation array such that for vertex i permute[i] contains the
   //  position of vertex i's data in the message array
   std::map<int,int> destRankIdx;
-  for(int i=0; i<dest.size(); i++) {
+  for(size_t i=0; i<dest.size(); i++) {
     auto dr = dest[i];
     destRankIdx[dr] = offset[i];
   }
@@ -141,11 +141,10 @@ void getRdvPermutation(Omega_h::Mesh& mesh, redev::GO*& inGids, redev::GO inGids
 
 void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GO*& vtxData, redev::GOs& rdvPermute) {
   auto gids_h = Omega_h::HostRead(mesh.globals(0));
-  const auto numInVtx = rdvPermute.size();
   Omega_h::HostWrite<Omega_h::GO> inVtxData_h(mesh.nverts());
   for(int i=0; i<mesh.nverts(); i++)
     inVtxData_h[i] = -1;
-  for(int i=0; i<numInVtx; i++) {
+  for(size_t i=0; i<rdvPermute.size(); i++) {
     inVtxData_h[rdvPermute[i]] = vtxData[i];
     REDEV_ALWAYS_ASSERT(gids_h[rdvPermute[i]] == vtxData[i]);
   }
@@ -157,7 +156,6 @@ int main(int argc, char** argv) {
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
   int rank = world->rank();
-  int nproc = world->size();
   if(argc != 3) {
     std::cerr << "Usage: " << argv[0] << " <1=isRendezvousApp,0=isParticipant> /path/to/omega_h/mesh\n";
     std::cerr << "WARNING: this test is currently hardcoded for the xgc1_data/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh mesh\n";
@@ -208,7 +206,7 @@ int main(int argc, char** argv) {
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
       redev::GOs msgs(gids_h.size(),0);
-      for(int i=0; i<msgs.size(); i++) {
+      for(size_t i=0; i<msgs.size(); i++) {
         msgs[appOutPermute[i]] = gids_h[i];
       }
       //fill/access data array - array of vtx global ids

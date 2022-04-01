@@ -147,8 +147,6 @@ void prepareRdvOutMessage(Omega_h::Mesh& mesh, ts::InMsg const& in, ts::OutMsg& 
   getOutboundRdvPermutation(mesh, in.msgs, permute);
 }
 
-
-
 //creates rdvPermute given inGids and the rdv mesh instance
 //create rdvPermute such that gids[rdvPermute[i]] == inGids[i]
 //for the ith global id in inGids, find the corresponding global id in
@@ -171,8 +169,6 @@ void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs
     rdvPermute[iInGids[i]] = iGids[j];
   }
 }
-
-
 
 void writeVtk(Omega_h::Mesh& mesh, std::string name, int step) {
   std::stringstream ss;

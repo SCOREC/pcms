@@ -119,8 +119,6 @@ int main(int argc, char** argv) {
   redev::Redev rdv(MPI_COMM_WORLD,ptn,isRdv);
   rdv.Setup();
   const std::string name = "meshVtxIds";
-  std::stringstream ss;
-  ss << name << " ";
   const int rdvRanks = 2;
   redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name);
 

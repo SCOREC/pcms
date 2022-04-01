@@ -17,6 +17,19 @@ struct CSR {
   redev::GOs val;  
 };
 
+struct OutMsg {
+  redev::LOs dest;
+  redev::LOs offset;
+};
+
+struct InMsg {
+  redev::GOs srcRanks;
+  redev::GOs offset;
+  redev::GOs msgs;
+  size_t start;
+  size_t count;
+};
+
 void timeMinMaxAvg(double time, double& min, double& max, double& avg) {
   const auto comm = MPI_COMM_WORLD;
   int nproc;
@@ -76,7 +89,7 @@ void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
 }
 
 void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
-    redev::LOs& dest, redev::LOs& offset, redev::LOs& permute) {
+    OutMsg& out, redev::LOs& permute) {
   //transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
   auto classIds_h = Omega_h::HostRead(classIds);
@@ -93,22 +106,22 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
   }
 
   //create dest and offsets arrays from degree array
-  offset.resize(destRankCounts.size()+1);
-  dest.resize(destRankCounts.size());
-  offset[0] = 0;
+  out.offset.resize(destRankCounts.size()+1);
+  out.dest.resize(destRankCounts.size());
+  out.offset[0] = 0;
   int i = 1;
   for(auto rankCount : destRankCounts) {
-    dest[i-1] = rankCount.first;
-    offset[i] = offset[i-1]+rankCount.second;
+    out.dest[i-1] = rankCount.first;
+    out.offset[i] = out.offset[i-1]+rankCount.second;
     i++;
   }
 
   //fill permutation array such that for vertex i permute[i] contains the
   //  position of vertex i's data in the message array
   std::map<int,int> destRankIdx;
-  for(int i=0; i<dest.size(); i++) {
-    auto dr = dest[i];
-    destRankIdx[dr] = offset[i];
+  for(int i=0; i<out.dest.size(); i++) {
+    auto dr = out.dest[i];
+    destRankIdx[dr] = out.offset[i];
   }
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
@@ -259,23 +272,14 @@ int main(int argc, char** argv) {
   redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R");
   redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getFromIO(), name+"_R2A");
 
-  size_t msgStart, msgCount;
-
   redev::LOs appOutPermute;
-  redev::LOs appOutDest;
-  redev::LOs appOutOffsets;
-
-  redev::GOs appInSrcRanks;
-  redev::GOs appInOffsets;
-  redev::GOs appInMsgs;
+  OutMsg appOut;
+  InMsg appIn;
 
   redev::GOs rdvInPermute;
-  redev::GOs rdvInSrcRanks;
-  redev::GOs rdvInOffsets;
-  redev::GOs rdvInMsgs;
-  redev::LOs rdvOutOffsets;
-  redev::LOs rdvOutDest;
   CSR rdvOutPermute;
+  OutMsg rdvOut;
+  InMsg rdvIn;
 
   for(int iter=0; iter<3; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
@@ -285,7 +289,7 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     if(!isRdv) {
       //build dest and offsets arrays
-      if(iter==0) prepareMsg(mesh, ptn, appOutDest, appOutOffsets, appOutPermute);
+      if(iter==0) prepareMsg(mesh, ptn, appOut, appOutPermute);
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
       redev::GOs msgs(gids_h.size(),0);
@@ -295,20 +299,20 @@ int main(int argc, char** argv) {
       //fill/access data array - array of vtx global ids
       //pack messages
       auto start = std::chrono::steady_clock::now();
-      commA2R.Pack(appOutDest, appOutOffsets, msgs.data());
+      commA2R.Pack(appOut.dest, appOut.offset, msgs.data());
       commA2R.Send();
       getAndPrintTime(start,name + " appWrite",rank);
     } else {
       redev::GO* msgs;
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
-      commA2R.Unpack(rdvInSrcRanks,rdvInOffsets,msgs,msgStart,msgCount,knownSizes);
-      rdvInMsgs = redev::GOs(msgs, msgs+msgCount);
+      commA2R.Unpack(rdvIn.srcRanks,rdvIn.offset,msgs,rdvIn.start,rdvIn.count,knownSizes);
+      rdvIn.msgs = redev::GOs(msgs, msgs+rdvIn.count);
       delete [] msgs;
       getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
-      if(iter==0) getRdvPermutation(mesh, rdvInMsgs, rdvInPermute);
-      checkAndAttachIds(mesh, "inVtxGids", rdvInMsgs, rdvInPermute);
+      if(iter==0) getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
+      checkAndAttachIds(mesh, "inVtxGids", rdvIn.msgs, rdvInPermute);
       writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv
     //////////////////////////////////////////////////////
@@ -316,34 +320,34 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     if(isRdv) {
       if( iter==0 ) {
-        auto nAppProcs = Omega_h::divide_no_remainder(rdvInSrcRanks.size(),static_cast<size_t>(nproc));
+        auto nAppProcs = Omega_h::divide_no_remainder(rdvIn.srcRanks.size(),static_cast<size_t>(nproc));
         REDEV_ALWAYS_ASSERT(nAppProcs==2);
         //build dest and offsets arrays from incoming message metadata
         redev::LOs senderDeg(nAppProcs);
         for(int i=0; i<nAppProcs-1; i++) {
-          senderDeg[i] = rdvInSrcRanks[(i+1)*nproc+rank] - rdvInSrcRanks[i*nproc+rank];
+          senderDeg[i] = rdvIn.srcRanks[(i+1)*nproc+rank] - rdvIn.srcRanks[i*nproc+rank];
         }
-        const auto totInMsgs = rdvInOffsets[rank+1]-rdvInOffsets[rank];
-        senderDeg[nAppProcs-1] = totInMsgs - rdvInSrcRanks[(nAppProcs-1)*nproc+rank];
+        const auto totInMsgs = rdvIn.offset[rank+1]-rdvIn.offset[rank];
+        senderDeg[nAppProcs-1] = totInMsgs - rdvIn.srcRanks[(nAppProcs-1)*nproc+rank];
         if(!rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({4,5}) );
         if(rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({8,7}) );
         for(int i=0; i<nAppProcs; i++) {
           if(senderDeg[i] > 0) {
-            rdvOutDest.push_back(i);
+            rdvOut.dest.push_back(i);
           }
         }
-        REDEV_ALWAYS_ASSERT( rdvOutDest == redev::LOs({0,1}) );
+        REDEV_ALWAYS_ASSERT( rdvOut.dest == redev::LOs({0,1}) );
         redev::GO sum = 0;
         for(auto deg : senderDeg) { //exscan over values > 0
           if(deg>0) {
-            rdvOutOffsets.push_back(sum);
+            rdvOut.offset.push_back(sum);
             sum+=deg;
           }
         }
-        rdvOutOffsets.push_back(sum);
-        if(!rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::LOs({0,4,9}) );
-        if(rank) REDEV_ALWAYS_ASSERT( rdvOutOffsets == redev::LOs({0,8,15}) );
-        getOutboundRdvPermutation(mesh, rdvInMsgs, rdvOutPermute);
+        rdvOut.offset.push_back(sum);
+        if(!rank) REDEV_ALWAYS_ASSERT( rdvOut.offset == redev::LOs({0,4,9}) );
+        if(rank) REDEV_ALWAYS_ASSERT( rdvOut.offset == redev::LOs({0,8,15}) );
+        getOutboundRdvPermutation(mesh, rdvIn.msgs, rdvOutPermute);
       } // end if(iter==0)
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
@@ -354,7 +358,7 @@ int main(int argc, char** argv) {
         }
       }
       auto start = std::chrono::steady_clock::now();
-      commR2A.Pack(rdvOutDest, rdvOutOffsets, msgs.data());
+      commR2A.Pack(rdvOut.dest, rdvOut.offset, msgs.data());
       commR2A.Send();
       getAndPrintTime(start,name + " rdvWrite",rank);
     } else {
@@ -362,16 +366,16 @@ int main(int argc, char** argv) {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
       redev::GOs ignored;
-      commR2A.Unpack(ignored,appInOffsets,msgs,msgStart,msgCount,knownSizes);
-      appInMsgs = redev::GOs(msgs, msgs+msgCount);
+      commR2A.Unpack(ignored,appIn.offset,msgs,appIn.start,appIn.count,knownSizes);
+      appIn.msgs = redev::GOs(msgs, msgs+appIn.count);
       delete [] msgs;
       getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order
         auto gids = mesh.globals(0);
         auto gids_h = Omega_h::HostRead(gids);
-        REDEV_ALWAYS_ASSERT(msgCount == gids_h.size());
-        for(int i=0; i<appInMsgs.size(); i++) {
-          REDEV_ALWAYS_ASSERT(gids_h[i] == appInMsgs[appOutPermute[i]]);
+        REDEV_ALWAYS_ASSERT(appIn.count == gids_h.size());
+        for(int i=0; i<appIn.msgs.size(); i++) {
+          REDEV_ALWAYS_ASSERT(gids_h[i] == appIn.msgs[appOutPermute[i]]);
         }
       }
     } //end rdv -> non-rdv

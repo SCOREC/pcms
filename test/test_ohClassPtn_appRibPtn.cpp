@@ -1,5 +1,3 @@
-#include <chrono> //steady_clock, duration
-#include <thread> //this_thread
 #include <numeric> // std::iota, std::exclusive_scan
 #include <algorithm> // std::sort, std::stable_sort
 #include <Omega_h_file.hpp>
@@ -11,85 +9,17 @@
 #include <Omega_h_scalar.hpp> // divide_no_remainder
 #include <redev_comm.h>
 #include "wdmcpl.h"
+#include "test_support.h"
+
+namespace ts = test_support;
 
 struct CSR {
   redev::GOs off;
   redev::GOs val;  
 };
 
-struct OutMsg {
-  redev::LOs dest;
-  redev::LOs offset;
-};
-
-struct InMsg {
-  redev::GOs srcRanks;
-  redev::GOs offset;
-  redev::GOs msgs;
-  size_t start;
-  size_t count;
-};
-
-void timeMinMaxAvg(double time, double& min, double& max, double& avg) {
-  const auto comm = MPI_COMM_WORLD;
-  int nproc;
-  MPI_Comm_size(comm, &nproc);
-  double tot = 0;
-  MPI_Allreduce(&time, &min, 1, MPI_DOUBLE, MPI_MIN, comm);
-  MPI_Allreduce(&time, &max, 1, MPI_DOUBLE, MPI_MAX, comm);
-  MPI_Allreduce(&time, &tot, 1, MPI_DOUBLE, MPI_SUM, comm);
-  avg = tot / nproc;
-}
-
-void printTime(std::string mode, double min, double max, double avg) {
-  std::cout << mode << " elapsed time min, max, avg (s): "
-            << min << " " << max << " " << avg << "\n";
-}
-
-template <class T>
-void getAndPrintTime(T start, std::string key, int rank) {
-  auto end = std::chrono::steady_clock::now();
-  std::chrono::duration<double> elapsed_seconds = end-start;
-  double min, max, avg;
-  timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-  if(!rank) printTime(key, min, max, avg);
-}
-
-void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
-  auto ohComm = mesh.comm();
-  const auto dim = mesh.dim();
-  auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
-  Omega_h::ClassId max_class = Omega_h::get_max(class_ids);
-  auto max_class_g = ohComm->allreduce(max_class,Omega_h_Op::OMEGA_H_MAX);
-  REDEV_ALWAYS_ASSERT(ohComm->size() == max_class_g);
-  auto class_ids_h = Omega_h::HostRead(class_ids);
-  if(!ohComm->rank()) {
-    //send ents with classId=2 to rank 1
-    Omega_h::Write<Omega_h::I32> ptnRanks(5,0);
-    Omega_h::Write<Omega_h::LO> ptnIdxs(5);
-    Omega_h::fill_linear(ptnIdxs,0,1);
-    auto owners = Omega_h::Remotes(ptnRanks, ptnIdxs);
-    mesh.migrate(owners);
-  } else {
-    int firstElm = 5;
-    const int elms = 18; // migrating elements [5:22]
-    Omega_h::Write<Omega_h::I32> ptnRanks(elms,0);
-    Omega_h::Write<Omega_h::LO> ptnIdxs(elms);
-    Omega_h::fill_linear(ptnIdxs,firstElm,1);
-    auto owners = Omega_h::Remotes(ptnRanks, ptnIdxs);
-    mesh.migrate(owners);
-  }
-
-  //the hardcoded assignment of classids to ranks
-  ranks.resize(3);
-  classIds.resize(3);
-  classIds[0] = 1; ranks[0] = 0;
-  classIds[1] = 2; ranks[1] = 1;
-  classIds[2] = 3; ranks[2] = 0;  //center ('O point') model vertex
-}
-
 void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
-    OutMsg& out, redev::LOs& permute) {
+    ts::OutMsg& out, redev::LOs& permute) {
   //transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
   auto classIds_h = Omega_h::HostRead(classIds);
@@ -183,7 +113,7 @@ void getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, CS
   }
 }
 
-void prepareRdvOutMessage(Omega_h::Mesh& mesh, InMsg const& in, OutMsg& out, CSR& permute){
+void prepareRdvOutMessage(Omega_h::Mesh& mesh, ts::InMsg const& in, ts::OutMsg& out, CSR& permute){
   auto ohComm = mesh.comm();
   const auto rank = ohComm->rank();
   const auto nproc = ohComm->size();
@@ -242,20 +172,7 @@ void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs
   }
 }
 
-void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxData, redev::GOs& rdvPermute) {
-  REDEV_ALWAYS_ASSERT(rdvPermute.size() == vtxData.size());
-  auto gids_h = Omega_h::HostRead(mesh.globals(0));
-  Omega_h::HostWrite<Omega_h::GO> inVtxData_h(mesh.nverts());
-  for(int i=0; i<mesh.nverts(); i++)
-    inVtxData_h[i] = -1;
-  for(size_t i=0; i<rdvPermute.size(); i++) {
-    inVtxData_h[rdvPermute[i]] = vtxData[i];
-    REDEV_ALWAYS_ASSERT(gids_h[rdvPermute[i]] == vtxData[i]);
-  }
-  Omega_h::Write inVtxData(inVtxData_h);
-  mesh.add_tag(0,name,1,Omega_h::read(inVtxData));
-  mesh.sync_tag(0,name);
-}
+
 
 void writeVtk(Omega_h::Mesh& mesh, std::string name, int step) {
   std::stringstream ss;
@@ -263,7 +180,7 @@ void writeVtk(Omega_h::Mesh& mesh, std::string name, int step) {
   Omega_h::vtk::write_parallel(ss.str(), &mesh, mesh.dim());
 }
 
-void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in) {
+void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, ts::InMsg& in) {
   redev::GO* msgs;
   comm.Unpack(in.srcRanks, in.offset, msgs, in.start, in.count, knownSizes);
   in.msgs = redev::GOs(msgs, msgs+in.count);
@@ -290,7 +207,7 @@ int main(int argc, char** argv) {
   if(isRdv) {
     //partition the omegah mesh by classification and return the
     //rank-to-classid array
-    getClassPtn(mesh, ranks, classIds);
+    ts::getClassPtn(mesh, ranks, classIds);
     REDEV_ALWAYS_ASSERT(ranks.size()==3);
     REDEV_ALWAYS_ASSERT(ranks.size()==classIds.size());
     Omega_h::vtk::write_parallel("rdvSplit.vtk", &mesh, mesh.dim());
@@ -310,13 +227,13 @@ int main(int argc, char** argv) {
   redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getFromIO(), name+"_R2A");
 
   redev::LOs appOutPermute;
-  OutMsg appOut;
-  InMsg appIn;
+  ts::OutMsg appOut;
+  ts::InMsg appIn;
 
   redev::GOs rdvInPermute;
   CSR rdvOutPermute;
-  OutMsg rdvOut;
-  InMsg rdvIn;
+  ts::OutMsg rdvOut;
+  ts::InMsg rdvIn;
 
   for(int iter=0; iter<3; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
@@ -337,15 +254,15 @@ int main(int argc, char** argv) {
       auto start = std::chrono::steady_clock::now();
       commA2R.Pack(appOut.dest, appOut.offset, msgs.data());
       commA2R.Send();
-      getAndPrintTime(start,name + " appWrite",rank);
+      ts::getAndPrintTime(start,name + " appWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
       unpack(commA2R,knownSizes,rdvIn);
-      getAndPrintTime(start,name + " rdvRead",rank);
+      ts::getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
       if(iter==0) getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
-      checkAndAttachIds(mesh, "inVtxGids", rdvIn.msgs, rdvInPermute);
+      ts::checkAndAttachIds(mesh, "inVtxGids", rdvIn.msgs, rdvInPermute);
       writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv
     //////////////////////////////////////////////////////
@@ -366,12 +283,12 @@ int main(int argc, char** argv) {
       auto start = std::chrono::steady_clock::now();
       commR2A.Pack(rdvOut.dest, rdvOut.offset, msgs.data());
       commR2A.Send();
-      getAndPrintTime(start,name + " rdvWrite",rank);
+      ts::getAndPrintTime(start,name + " rdvWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
       unpack(commR2A,knownSizes,appIn);
-      getAndPrintTime(start,name + " appRead",rank);
+      ts::getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order
         auto gids = mesh.globals(0);
         auto gids_h = Omega_h::HostRead(gids);

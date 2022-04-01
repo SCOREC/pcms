@@ -8,9 +8,13 @@ if(BUILD_TESTING)
   message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
   message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
 
+  add_library(test_support test_support.cpp)
+  target_link_libraries(test_support wdmcpl) #for omegah and redev
+
   function(add_exe NAME)
     add_executable(${NAME} ${NAME}.cpp)
-    target_link_libraries(${NAME} wdmcpl)
+    target_link_libraries(${NAME} wdmcpl test_support)
+    target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     if(WDMCPL_HAS_ASAN)
       target_compile_options(${NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
       target_link_libraries(${NAME} asan rt)

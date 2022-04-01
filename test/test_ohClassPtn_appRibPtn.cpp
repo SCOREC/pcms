@@ -128,7 +128,7 @@ std::vector<size_t> sort_indexes(const T &v) {
 
 //creates the outbound (rdv->non-rdv) permutation CSR given inGids and the rdv mesh instance
 //this only needs to be computed once for each topological dimension
-void getOutboundRdvPermutation(Omega_h::Mesh& mesh, redev::GOs& inGids, CSR& perm) {
+void getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, CSR& perm) {
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
   auto iGids = sort_indexes(gids_h);
@@ -168,7 +168,7 @@ void getOutboundRdvPermutation(Omega_h::Mesh& mesh, redev::GOs& inGids, CSR& per
 // in rdvPermute[i]
 //this only needs to be computed once for each topological dimension
 //TODO - port to GPU
-void getRdvPermutation(Omega_h::Mesh& mesh, redev::GOs& inGids, redev::GOs& rdvPermute) {
+void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute) {
   const auto rank = mesh.comm()->rank();
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
@@ -245,8 +245,8 @@ int main(int argc, char** argv) {
   ss << name << " ";
   const int rdvRanks = 2;
   const int appRanks = 2;
-  redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getIO(), name+"_A2R");
-  redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getIO(), name+"_R2A");
+  redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R");
+  redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getFromIO(), name+"_R2A");
 
   size_t msgStart, msgCount;
 
@@ -315,7 +315,6 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     //the rendezvous app sends global vtx ids to non-rendezvous
     //////////////////////////////////////////////////////
-    if(iter==0) { //only run reverse send on first iteration - rdv fails with "EndStep() is called without a successful BeginStep()"
     if(isRdv) {
       if( iter==0 ) {
         auto nAppProcs = Omega_h::divide_no_remainder(rdvInSrcRanks.size(),static_cast<size_t>(nproc));
@@ -389,7 +388,6 @@ int main(int argc, char** argv) {
       std::string str = ss.str();
       if(!rank) printTime(str, min, max, avg);
     } //end rdv -> non-rdv
-    }
   } //end iter loop
   return 0;
 }

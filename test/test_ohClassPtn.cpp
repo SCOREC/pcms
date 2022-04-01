@@ -185,7 +185,7 @@ int main(int argc, char** argv) {
   std::stringstream ss;
   ss << name << " ";
   const int rdvRanks = 2;
-  redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getIO(), name);
+  redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name);
 
   size_t msgStart, msgCount;
 

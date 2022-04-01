@@ -180,13 +180,6 @@ void writeVtk(Omega_h::Mesh& mesh, std::string name, int step) {
   Omega_h::vtk::write_parallel(ss.str(), &mesh, mesh.dim());
 }
 
-void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, ts::InMsg& in) {
-  redev::GO* msgs;
-  comm.Unpack(in.srcRanks, in.offset, msgs, in.start, in.count, knownSizes);
-  in.msgs = redev::GOs(msgs, msgs+in.count);
-  delete [] msgs;
-}
-
 int main(int argc, char** argv) {
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
@@ -258,7 +251,7 @@ int main(int argc, char** argv) {
     } else {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
-      unpack(commA2R,knownSizes,rdvIn);
+      ts::unpack(commA2R,knownSizes,rdvIn);
       ts::getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
       if(iter==0) getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
@@ -287,7 +280,7 @@ int main(int argc, char** argv) {
     } else {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
-      unpack(commR2A,knownSizes,appIn);
+      ts::unpack(commR2A,knownSizes,appIn);
       ts::getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order
         auto gids = mesh.globals(0);

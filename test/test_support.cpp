@@ -67,4 +67,11 @@ void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxDat
   mesh.sync_tag(0,name);
 }
 
+void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in) {
+  redev::GO* msgs;
+  comm.Unpack(in.srcRanks, in.offset, msgs, in.start, in.count, knownSizes);
+  in.msgs = redev::GOs(msgs, msgs+in.count);
+  delete [] msgs;
+}
+
 }

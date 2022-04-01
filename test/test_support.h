@@ -6,6 +6,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array_ops.hpp>
 #include <redev.h>
+#include <redev_comm.h>
 
 namespace test_support {
 
@@ -38,6 +39,8 @@ void getAndPrintTime(T start, std::string key, int rank) {
 void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds);
 
 void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxData, redev::GOs& rdvPermute);
+
+void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in);
 
 }
 #endif

@@ -88,7 +88,7 @@ void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
   classIds[2] = 3; ranks[2] = 0;  //center ('O point') model vertex
 }
 
-void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
+void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
     OutMsg& out, redev::LOs& permute) {
   //transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
@@ -325,7 +325,7 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     if(!isRdv) {
       //build dest and offsets arrays
-      if(iter==0) prepareMsg(mesh, ptn, appOut, appOutPermute);
+      if(iter==0) prepareAppOutMessage(mesh, ptn, appOut, appOutPermute);
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
       redev::GOs msgs(gids_h.size(),0);

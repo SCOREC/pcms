@@ -33,6 +33,15 @@ void printTime(std::string mode, double min, double max, double avg) {
             << min << " " << max << " " << avg << "\n";
 }
 
+template <class T>
+void getAndPrintTime(T start, std::string key, int rank) {
+  auto end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> elapsed_seconds = end-start;
+  double min, max, avg;
+  timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
+  if(!rank) printTime(key, min, max, avg);
+}
+
 void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
   auto ohComm = mesh.comm();
   const auto dim = mesh.dim();
@@ -288,13 +297,7 @@ int main(int argc, char** argv) {
       auto start = std::chrono::steady_clock::now();
       commA2R.Pack(appOutDest, appOutOffsets, msgs.data());
       commA2R.Send();
-      auto end = std::chrono::steady_clock::now();
-      std::chrono::duration<double> elapsed_seconds = end-start;
-      double min, max, avg;
-      timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( iter == 0 ) ssFwd << "write";
-      std::string str = ssFwd.str();
-      if(!rank) printTime(str, min, max, avg);
+      getAndPrintTime(start,name + " appWrite",rank);
     } else {
       redev::GO* msgs;
       auto start = std::chrono::steady_clock::now();
@@ -302,13 +305,7 @@ int main(int argc, char** argv) {
       commA2R.Unpack(rdvInSrcRanks,rdvInOffsets,msgs,msgStart,msgCount,knownSizes);
       rdvInMsgs = redev::GOs(msgs, msgs+msgCount);
       delete [] msgs;
-      auto end = std::chrono::steady_clock::now();
-      std::chrono::duration<double> elapsed_seconds = end-start;
-      double min, max, avg;
-      timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( iter == 0 ) ssFwd << "read";
-      std::string str = ssFwd.str();
-      if(!rank) printTime(str, min, max, avg);
+      getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
       if(iter==0) getRdvPermutation(mesh, rdvInMsgs, rdvInPermute);
       checkAndAttachIds(mesh, "inVtxGids", rdvInMsgs, rdvInPermute);
@@ -359,13 +356,7 @@ int main(int argc, char** argv) {
       auto start = std::chrono::steady_clock::now();
       commR2A.Pack(rdvOutDest, rdvOutOffsets, msgs.data());
       commR2A.Send();
-      auto end = std::chrono::steady_clock::now();
-      std::chrono::duration<double> elapsed_seconds = end-start;
-      double min, max, avg;
-      timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( iter == 0 ) ssRev << "rdvWrite";
-      std::string str = ssRev.str();
-      if(!rank) printTime(str, min, max, avg);
+      getAndPrintTime(start,name + " rdvWrite",rank);
     } else {
       redev::GO* msgs;
       auto start = std::chrono::steady_clock::now();
@@ -374,6 +365,7 @@ int main(int argc, char** argv) {
       commR2A.Unpack(ignored,appInOffsets,msgs,msgStart,msgCount,knownSizes);
       appInMsgs = redev::GOs(msgs, msgs+msgCount);
       delete [] msgs;
+      getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order
         auto gids = mesh.globals(0);
         auto gids_h = Omega_h::HostRead(gids);
@@ -382,13 +374,6 @@ int main(int argc, char** argv) {
           REDEV_ALWAYS_ASSERT(gids_h[i] == appInMsgs[appOutPermute[i]]);
         }
       }
-      auto end = std::chrono::steady_clock::now();
-      std::chrono::duration<double> elapsed_seconds = end-start;
-      double min, max, avg;
-      timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( iter == 0 ) ssRev << "appRead";
-      std::string str = ssRev.str();
-      if(!rank) printTime(str, min, max, avg);
     } //end rdv -> non-rdv
   } //end iter loop
   return 0;

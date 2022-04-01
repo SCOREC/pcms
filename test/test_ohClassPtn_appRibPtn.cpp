@@ -183,6 +183,42 @@ void getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, CS
   }
 }
 
+void prepareRdvOutMessage(Omega_h::Mesh& mesh, InMsg const& in, OutMsg& out, CSR& permute){
+  auto ohComm = mesh.comm();
+  const auto rank = ohComm->rank();
+  const auto nproc = ohComm->size();
+  auto nAppProcs = Omega_h::divide_no_remainder(in.srcRanks.size(),static_cast<size_t>(nproc));
+  REDEV_ALWAYS_ASSERT(nAppProcs==2);
+  //build dest and offsets arrays from incoming message metadata
+  redev::LOs senderDeg(nAppProcs);
+  for(int i=0; i<nAppProcs-1; i++) {
+    senderDeg[i] = in.srcRanks[(i+1)*nproc+rank] - in.srcRanks[i*nproc+rank];
+  }
+  const auto totInMsgs = in.offset[rank+1]-in.offset[rank];
+  senderDeg[nAppProcs-1] = totInMsgs - in.srcRanks[(nAppProcs-1)*nproc+rank];
+  if(!rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({4,5}) );
+  if(rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({8,7}) );
+  for(int i=0; i<nAppProcs; i++) {
+    if(senderDeg[i] > 0) {
+      out.dest.push_back(i);
+    }
+  }
+  REDEV_ALWAYS_ASSERT( out.dest == redev::LOs({0,1}) );
+  redev::GO sum = 0;
+  for(auto deg : senderDeg) { //exscan over values > 0
+    if(deg>0) {
+      out.offset.push_back(sum);
+      sum+=deg;
+    }
+  }
+  out.offset.push_back(sum);
+  if(!rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,4,9}) );
+  if(rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,8,15}) );
+  getOutboundRdvPermutation(mesh, in.msgs, permute);
+}
+
+
+
 //creates rdvPermute given inGids and the rdv mesh instance
 //create rdvPermute such that gids[rdvPermute[i]] == inGids[i]
 //for the ith global id in inGids, find the corresponding global id in
@@ -320,34 +356,7 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     if(isRdv) {
       if( iter==0 ) {
-        auto nAppProcs = Omega_h::divide_no_remainder(rdvIn.srcRanks.size(),static_cast<size_t>(nproc));
-        REDEV_ALWAYS_ASSERT(nAppProcs==2);
-        //build dest and offsets arrays from incoming message metadata
-        redev::LOs senderDeg(nAppProcs);
-        for(int i=0; i<nAppProcs-1; i++) {
-          senderDeg[i] = rdvIn.srcRanks[(i+1)*nproc+rank] - rdvIn.srcRanks[i*nproc+rank];
-        }
-        const auto totInMsgs = rdvIn.offset[rank+1]-rdvIn.offset[rank];
-        senderDeg[nAppProcs-1] = totInMsgs - rdvIn.srcRanks[(nAppProcs-1)*nproc+rank];
-        if(!rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({4,5}) );
-        if(rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({8,7}) );
-        for(int i=0; i<nAppProcs; i++) {
-          if(senderDeg[i] > 0) {
-            rdvOut.dest.push_back(i);
-          }
-        }
-        REDEV_ALWAYS_ASSERT( rdvOut.dest == redev::LOs({0,1}) );
-        redev::GO sum = 0;
-        for(auto deg : senderDeg) { //exscan over values > 0
-          if(deg>0) {
-            rdvOut.offset.push_back(sum);
-            sum+=deg;
-          }
-        }
-        rdvOut.offset.push_back(sum);
-        if(!rank) REDEV_ALWAYS_ASSERT( rdvOut.offset == redev::LOs({0,4,9}) );
-        if(rank) REDEV_ALWAYS_ASSERT( rdvOut.offset == redev::LOs({0,8,15}) );
-        getOutboundRdvPermutation(mesh, rdvIn.msgs, rdvOutPermute);
+        prepareRdvOutMessage(mesh,rdvIn,rdvOut,rdvOutPermute);
       } // end if(iter==0)
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);

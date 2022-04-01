@@ -305,11 +305,8 @@ int main(int argc, char** argv) {
   auto ptn = redev::ClassPtn(ranks,classIds);
   redev::Redev rdv(MPI_COMM_WORLD,ptn,isRdv);
   rdv.Setup();
+
   const std::string name = "meshVtxIds";
-  std::stringstream ssFwd;
-  ssFwd << name << " ";
-  std::stringstream ssRev;
-  ssRev << name << " ";
   const int rdvRanks = 2;
   const int appRanks = 2;
   redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R");
@@ -331,16 +328,15 @@ int main(int argc, char** argv) {
     //the non-rendezvous app sends global vtx ids to rendezvous
     //////////////////////////////////////////////////////
     if(!isRdv) {
-      //build dest and offsets arrays
+      //build dest, offsets, and permutation arrays
       if(iter==0) prepareAppOutMessage(mesh, ptn, appOut, appOutPermute);
+      //fill message array
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
       redev::GOs msgs(gids_h.size(),0);
       for(int i=0; i<msgs.size(); i++) {
         msgs[appOutPermute[i]] = gids_h[i];
       }
-      //fill/access data array - array of vtx global ids
-      //pack messages
       auto start = std::chrono::steady_clock::now();
       commA2R.Pack(appOut.dest, appOut.offset, msgs.data());
       commA2R.Send();
@@ -359,9 +355,9 @@ int main(int argc, char** argv) {
     //the rendezvous app sends global vtx ids to non-rendezvous
     //////////////////////////////////////////////////////
     if(isRdv) {
-      if( iter==0 ) {
-        prepareRdvOutMessage(mesh,rdvIn,rdvOut,rdvOutPermute);
-      } // end if(iter==0)
+      //build dest, offsets, and permutation arrays
+      if( iter==0 ) prepareRdvOutMessage(mesh,rdvIn,rdvOut,rdvOutPermute);
+      //fill message array
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
       redev::GOs msgs(rdvOutPermute.off.back());

@@ -64,7 +64,7 @@ if(BUILD_TESTING)
   set(rendezvous 1)
   set(notRendezvous 0)
   dual_mpi_test(NAME test_ohClassPtn_appRibPtn
-    EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${notRendezvous} ${testMesh2p}
-    EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${rendezvous} ${testMesh})
+    EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${rendezvous} ${testMesh}
+    EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${testMesh2p})
 
 endif()

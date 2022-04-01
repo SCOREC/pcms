@@ -241,8 +241,10 @@ int main(int argc, char** argv) {
   redev::Redev rdv(MPI_COMM_WORLD,ptn,isRdv);
   rdv.Setup();
   const std::string name = "meshVtxIds";
-  std::stringstream ss;
-  ss << name << " ";
+  std::stringstream ssFwd;
+  ssFwd << name << " ";
+  std::stringstream ssRev;
+  ssRev << name << " ";
   const int rdvRanks = 2;
   const int appRanks = 2;
   redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R");
@@ -266,7 +268,7 @@ int main(int argc, char** argv) {
   redev::LOs rdvOutDest;
   CSR rdvOutPermute;
 
-  for(int iter=0; iter<2; iter++) {
+  for(int iter=0; iter<3; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
     MPI_Barrier(MPI_COMM_WORLD);
     //////////////////////////////////////////////////////
@@ -290,8 +292,8 @@ int main(int argc, char** argv) {
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
       timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( iter == 0 ) ss << "write";
-      std::string str = ss.str();
+      if( iter == 0 ) ssFwd << "write";
+      std::string str = ssFwd.str();
       if(!rank) printTime(str, min, max, avg);
     } else {
       redev::GO* msgs;
@@ -304,8 +306,8 @@ int main(int argc, char** argv) {
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
       timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( iter == 0 ) ss << "read";
-      std::string str = ss.str();
+      if( iter == 0 ) ssFwd << "read";
+      std::string str = ssFwd.str();
       if(!rank) printTime(str, min, max, avg);
       //attach the ids to the mesh
       if(iter==0) getRdvPermutation(mesh, rdvInMsgs, rdvInPermute);
@@ -361,8 +363,8 @@ int main(int argc, char** argv) {
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
       timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( iter == 0 ) ss << "rdvWrite";
-      std::string str = ss.str();
+      if( iter == 0 ) ssRev << "rdvWrite";
+      std::string str = ssRev.str();
       if(!rank) printTime(str, min, max, avg);
     } else {
       redev::GO* msgs;
@@ -384,8 +386,8 @@ int main(int argc, char** argv) {
       std::chrono::duration<double> elapsed_seconds = end-start;
       double min, max, avg;
       timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
-      if( iter == 0 ) ss << "appRead";
-      std::string str = ss.str();
+      if( iter == 0 ) ssRev << "appRead";
+      std::string str = ssRev.str();
       if(!rank) printTime(str, min, max, avg);
     } //end rdv -> non-rdv
   } //end iter loop

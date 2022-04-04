@@ -48,3 +48,5 @@ ctest --test-dir buildWdmCpl --output-on-failure
 - create a spack environment that's part of this project that can build the whole stack.
   most of the pieces are in place for this, but it will require createing a package for redev
   and of the SCOREC version of Omega\_h
+  - scorec version 10.1.0 of Omega\_h is in spack@develop
+    https://github.com/spack/spack/blob/8ddaa08ed2aacb4b5e587a33c625492cbdd4886e/var/spack/repos/builtin/packages/omega-h/package.py#L21

@@ -37,20 +37,50 @@ void getAndPrintTime(T start, std::string key, int rank) {
   if(!rank) printTime(key, min, max, avg);
 }
 
+/**
+ * Compute a partition of the mesh based on its classification
+ * on the geometric model. This function is hardcoded for a specific mesh and
+ * process count.
+ */
 void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds);
 
-void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxData, redev::GOs& rdvPermute);
 
 void writeVtk(Omega_h::Mesh& mesh, std::string name, int step);
 
+/**
+ * Call the rendezvous Unpack function to receive data and populate the InMsg structure.
+ */
 void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in);
 
+/**
+ * Given the omegah mesh, and the partition object (ptn), determine which application vertex
+ * should be sending to which rendezvous process, and populate the OutMsg
+ * structures dest and offsets array that are required by the rendezvous Pack API.
+ * The permutation from the application mesh to the array of message data sent
+ * to the rendezvous processes is also computed here.
+ */
 void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
     OutMsg& out, redev::LOs& permute);
 
+/**
+ * Creates the permutation (rdvPermute) from the input message array of
+ * vertex global ids (inGids) to the mesh on this rendezvous process (mesh)
+ * such that gids[rdvPermute[i]] == inGids[i].
+ */
 void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute);
 
-//from https://stackoverflow.com/a/12399290
+/**
+ * On the rendezvous processes use the permutation (rdvPermute) from the input message array
+ * to the mesh to attach the incoming data (global vertex ids) and check that they match the
+ * rendezvous vertex ids.
+ */
+void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxData, redev::GOs& rdvPermute);
+
+/**
+ * Return the index permutation of the input array (v) such that the array is
+ * sorted in ascending order.
+ * from https://stackoverflow.com/a/12399290
+ */
 template <typename T>
 std::vector<size_t> sort_indexes(const T &v) {
   // initialize original index locations

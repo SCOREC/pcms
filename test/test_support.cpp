@@ -127,12 +127,6 @@ void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
   }
 }
 
-//creates rdvPermute given inGids and the rdv mesh instance
-//create rdvPermute such that gids[rdvPermute[i]] == inGids[i]
-//for the ith global id in inGids, find the corresponding global id in
-// gids (from mesh.globals(0)) and store the index of its position in gids
-// in rdvPermute[i]
-//this only needs to be computed once for each topological dimension
 void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute) {
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);

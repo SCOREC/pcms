@@ -9,6 +9,7 @@ Adios2-based coupler for XGC and GENE
 - FFTW 3.3.8+
 - redev 1.1.0+ (https://github.com/SCOREC/redev)
 - Omega\_h 10+ with MPI enabled (https://github.com/SCOREC/omega_h)
+- Catch2 (for unit tests)
 
 ## Build Instructions
 
@@ -41,3 +42,8 @@ cmake --build buildWdmCpl --target install
 
 ctest --test-dir buildWdmCpl --output-on-failure
 ```
+
+### BUILD TODO
+- create a spack environment that's part of this project that can build the whole stack.
+  most of the pieces are in place for this, but it will require createing a package for redev
+  and of the SCOREC version of Omega\_h

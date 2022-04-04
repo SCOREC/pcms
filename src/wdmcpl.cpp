@@ -1,11 +1,29 @@
 #include "wdmcpl.h"
 #include <redev.h>
+#include "wdmcpl/coordinate_transform.h"
+#include "wdmcpl/types.h"
 
-namespace wdmcpl {
-  void init(int argc, char** argv, MPI_Comm comm) {
-    redev::RCBPtn ptn;
-    auto isRendezvous = true;
-    auto noParticipant = true;
-    redev::Redev(comm,ptn,isRendezvous,noParticipant);
-  }
+namespace wdmcpl
+{
+// this function make me sad...initialization should be RAII
+void init(int argc, char** argv, MPI_Comm comm)
+{
+  redev::RCBPtn ptn;
+  auto isRendezvous = true;
+  auto noParticipant = true;
+  redev::Redev(comm, ptn, isRendezvous, noParticipant);
 }
+
+static_assert(std::is_same_v<Real, redev::Real>,
+              "wdmcpl and redev real types must match");
+static_assert(std::is_same_v<LO, redev::LO>,
+              "wdmcpl and redev LO types must match");
+static_assert(std::is_same_v<GO, redev::GO>,
+              "wdmcpl and redev GO types must match");
+static_assert(std::is_same_v<Real, Omega_h::Real>,
+              "wdmcpl and Omega_h real types must match");
+static_assert(std::is_same_v<LO, Omega_h::LO>,
+              "wdmcpl and Omega_h LO types must match");
+static_assert(std::is_same_v<GO, Omega_h::GO>,
+              "wdmcpl and Omega_h GO types must match");
+} // namespace wdmcpl

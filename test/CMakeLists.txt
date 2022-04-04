@@ -50,7 +50,6 @@ endfunction(dual_mpi_test)
 
 add_exe(test_ohClassPtn)
 set(testMesh ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
-message(STATUS "appArgs ${appArgs}")
 set(rendezvous 1)
 set(notRendezvous 0)
 dual_mpi_test(NAME test_ohClassPtnSendRecv
@@ -60,7 +59,6 @@ dual_mpi_test(NAME test_ohClassPtnSendRecv
 add_exe(test_ohClassPtn_appRibPtn)
 set(testMesh ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
 set(testMesh2p ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/2p.osh)
-message(STATUS "appArgs ${appArgs}")
 set(rendezvous 1)
 set(notRendezvous 0)
 dual_mpi_test(NAME test_ohClassPtn_appRibPtn
@@ -68,7 +66,8 @@ dual_mpi_test(NAME test_ohClassPtn_appRibPtn
   EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${testMesh2p})
 
 # unit tests
-find_package(Catch2 REQUIRED)
+find_package(Catch2 2 REQUIRED)
+message(STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
 add_executable(unit_tests unit_test_main.cpp test_coordinate_transform.cpp test_coordinate.cpp)
 target_link_libraries(unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl)
 include(Catch)

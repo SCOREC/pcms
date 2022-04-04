@@ -9,7 +9,7 @@ Adios2-based coupler for XGC and GENE
 - FFTW 3.3.8+
 - redev 1.1.0+ (https://github.com/SCOREC/redev)
 - Omega\_h 10+ with MPI enabled (https://github.com/SCOREC/omega_h)
-- Catch2 (for unit tests)
+- Catch2 2.\* (for unit tests) (https://github.com/catchorg/Catch2/tree/v2.13.8)
 
 ## Build Instructions
 
@@ -36,7 +36,8 @@ cmake -S wdmapp_coupling -B buildWdmCpl \
 -Dredev_ROOT=/path/to/redev/install \
 -DOmega_h_ROOT=/path/to/omegah/install \
 -DCMAKE_INSTALL_PREFIX=$PWD/buildWdmCpl/install \
--DWDMCPL_TEST_DATA_DIR=$PWD/xgc1_data
+-DWDMCPL_TEST_DATA_DIR=$PWD/xgc1_data \
+-DCatch2_ROOT=/path/to/catch2/install
 
 cmake --build buildWdmCpl --target install
 

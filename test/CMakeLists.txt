@@ -67,11 +67,6 @@ dual_mpi_test(NAME test_ohClassPtn_appRibPtn
   EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${rendezvous} ${testMesh}
   EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${testMesh2p})
 
-add_exe(test_meshRcbRdv)
-mpi_test(test_meshRcbRdv_1p 1 ./test_meshRcbRdv
-        ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
-
-
 # unit tests
 find_package(Catch2 REQUIRED)
 add_executable(unit_tests unit_test_main.cpp test_coordinate_transform.cpp test_coordinate.cpp)

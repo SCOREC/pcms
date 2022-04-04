@@ -43,6 +43,10 @@ void getAndPrintTime(T start, std::string_view key, int rank) {
   if(!rank) printTime(key, min, max, avg);
 }
 
+void readClassPtnFromCpn(std::string cpnFileName, redev::LOs& ranks, redev::LOs& classIds);
+
+void migrateMeshElms(Omega_h::Mesh& mesh, const redev::LOs& ranks, const redev::LOs& classIds);
+
 /**
  * Migrate 18 of the mesh elements to rank 1 and return its classification partition
  * on the geometric model. This function is hardcoded for a specific mesh and

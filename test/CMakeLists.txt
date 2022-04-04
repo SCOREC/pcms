@@ -71,6 +71,8 @@ dual_mpi_test(NAME test_ohClassPtn_appRibPtn
   EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${rendezvous} ${testMesh}
   EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${testMesh2p})
 
+add_exe(test_ohOverlap)
+
 # unit tests
 find_package(Catch2 2 REQUIRED)
 message(STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")

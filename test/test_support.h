@@ -40,7 +40,12 @@ void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds);
 
 void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxData, redev::GOs& rdvPermute);
 
+void writeVtk(Omega_h::Mesh& mesh, std::string name, int step);
+
 void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in);
+
+void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
+    OutMsg& out, redev::LOs& permute);
 
 }
 #endif

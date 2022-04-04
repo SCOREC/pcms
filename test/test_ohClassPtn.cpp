@@ -57,8 +57,6 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
     auto idx = destRankIdx[dr]++;
     permute[i] = idx;
   }
-  redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
-  REDEV_ALWAYS_ASSERT(permute == expectedPermute);
 }
 
 //creates rdvPermute given inGids and the rdv mesh instance
@@ -130,13 +128,18 @@ int main(int argc, char** argv) {
 
   for(int iter=0; iter<3; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
-    MPI_Barrier(MPI_COMM_WORLD);
     //////////////////////////////////////////////////////
     //the non-rendezvous app sends global vtx ids to rendezvous
     //////////////////////////////////////////////////////
     if(!isRdv) {
       //build dest and offsets arrays
-      if(iter==0) prepareMsg(mesh, ptn, appOut, appOutPermute);
+      if(iter==0) ts::prepareAppOutMessage(mesh, ptn, appOut, appOutPermute);
+      redev::LOs expectedDest = {0,1};
+      REDEV_ALWAYS_ASSERT(appOut.dest == expectedDest);
+      redev::LOs expectedOffset = {0,6,19};
+      REDEV_ALWAYS_ASSERT(appOut.offset == expectedOffset);
+      redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
+      REDEV_ALWAYS_ASSERT(appOutPermute == expectedPermute);
       //fill message array
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
@@ -165,7 +168,7 @@ int main(int argc, char** argv) {
       //attach the ids to the mesh
       if(iter==0) getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
       ts::checkAndAttachIds(mesh, "inVtxGids", rdvIn.msgs, rdvInPermute);
-      Omega_h::vtk::write_parallel("rdvInGids.vtk", &mesh, mesh.dim());
+      ts::writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv
   } //end iter loop
   return 0;

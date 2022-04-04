@@ -1,7 +1,14 @@
 #include "test_support.h"
+#include <Omega_h_file.hpp> //vtk::write_parallel
 #include <mpi.h>
 
 namespace test_support {
+
+void writeVtk(Omega_h::Mesh& mesh, std::string name, int step) {
+  std::stringstream ss;
+  ss << name << step << ".vtk";
+  Omega_h::vtk::write_parallel(ss.str(), &mesh, mesh.dim());
+}
 
 void timeMinMaxAvg(double time, double& min, double& max, double& avg) {
   const auto comm = MPI_COMM_WORLD;
@@ -72,6 +79,51 @@ void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in) {
   comm.Unpack(in.srcRanks, in.offset, msgs, in.start, in.count, knownSizes);
   in.msgs = redev::GOs(msgs, msgs+in.count);
   delete [] msgs;
+}
+
+void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
+    OutMsg& out, redev::LOs& permute) {
+  //transfer vtx classification to host
+  auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
+  auto classIds_h = Omega_h::HostRead(classIds);
+  //count number of vertices going to each destination process by calling getRank - degree array
+  std::map<int,int> destRankCounts;
+  const auto ptnRanks = ptn.GetRanks();
+  for(auto rank : ptnRanks) {
+    destRankCounts[rank] = 0;
+  }
+  for(auto i=0; i<classIds_h.size(); i++) {
+    auto dr = ptn.GetRank(classIds_h[i]);
+    assert(destRankCounts.count(dr));
+    destRankCounts[dr]++;
+  }
+
+  //create dest and offsets arrays from degree array
+  out.offset.resize(destRankCounts.size()+1);
+  out.dest.resize(destRankCounts.size());
+  out.offset[0] = 0;
+  int i = 1;
+  for(auto rankCount : destRankCounts) {
+    out.dest[i-1] = rankCount.first;
+    out.offset[i] = out.offset[i-1]+rankCount.second;
+    i++;
+  }
+
+  //fill permutation array such that for vertex i permute[i] contains the
+  //  position of vertex i's data in the message array
+  std::map<int,int> destRankIdx;
+  for(size_t i=0; i<out.dest.size(); i++) {
+    auto dr = out.dest[i];
+    destRankIdx[dr] = out.offset[i];
+  }
+  auto gids = mesh.globals(0);
+  auto gids_h = Omega_h::HostRead(gids);
+  permute.resize(classIds_h.size());
+  for(auto i=0; i<classIds_h.size(); i++) {
+    auto dr = ptn.GetRank(classIds_h[i]);
+    auto idx = destRankIdx[dr]++;
+    permute[i] = idx;
+  }
 }
 
 }

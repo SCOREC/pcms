@@ -28,8 +28,8 @@ pkg_check_modules(fftw REQUIRED IMPORTED_TARGET fftw3>=3.3)
 
 add_subdirectory(src)
 
+include(CTest)
 if(BUILD_TESTING)
-  include(CTest)
   add_subdirectory(test)
 endif()
 

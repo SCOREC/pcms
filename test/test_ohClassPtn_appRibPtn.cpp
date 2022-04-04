@@ -15,7 +15,7 @@ namespace ts = test_support;
 
 struct CSR {
   redev::GOs off;
-  redev::GOs val;  
+  redev::GOs val;
 };
 
 //from https://stackoverflow.com/a/12399290
@@ -27,7 +27,7 @@ std::vector<size_t> sort_indexes(const T &v) {
   // sort indexes based on comparing values in v
   // using std::stable_sort instead of std::sort
   // to avoid unnecessary index re-orderings
-  // when v contains elements of equal values 
+  // when v contains elements of equal values
   std::stable_sort(idx.begin(), idx.end(),
        [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
   return idx;
@@ -51,7 +51,7 @@ void getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, CS
     perm.off[iGids[j]]++;
   }
   //create the offsets array from the counts
-  std::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0); 
+  std::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0);
   //fill the permutation array
   perm.val.resize(perm.off.back());
   redev::LOs count(gids_h.size()); //how many times each gid was written
@@ -105,7 +105,7 @@ void prepareRdvOutMessage(Omega_h::Mesh& mesh, ts::InMsg const& in, ts::OutMsg& 
 //creates rdvPermute given inGids and the rdv mesh instance
 //create rdvPermute such that gids[rdvPermute[i]] == inGids[i]
 //for the ith global id in inGids, find the corresponding global id in
-// gids (from mesh.globals(0)) and store the index of its position in gids 
+// gids (from mesh.globals(0)) and store the index of its position in gids
 // in rdvPermute[i]
 //this only needs to be computed once for each topological dimension
 //TODO - port to GPU

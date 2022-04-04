@@ -8,6 +8,12 @@ endif ()
 message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
 message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
 
+file(COPY "adios2_bp4.yaml" DESTINATION ${CMAKE_BINARY_DIR}/test)
+file(RENAME "${CMAKE_BINARY_DIR}/test/adios2_bp4.yaml"
+            "${CMAKE_BINARY_DIR}/test/adios2.yaml")
+#somewhat of a hack - want the yaml file in the same dir as the binaries
+install(FILES "adios2_bp4.yaml" RENAME "adios2.yaml" TYPE BIN)
+
 add_library(test_support test_support.cpp)
 target_link_libraries(test_support wdmcpl) #for omegah and redev
 

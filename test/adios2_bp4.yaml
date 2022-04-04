@@ -1,0 +1,13 @@
+---
+# adios2 config.yaml
+- IO: "fromRendezvous"
+  Engine:
+      Type: BP4
+      Streaming: On
+      OpenTimeoutSecs: 2
+- IO: "toRendezvous"
+  Engine:
+      Type: BP4
+      Streaming: On
+      OpenTimeoutSecs: 2
+

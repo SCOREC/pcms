@@ -1,5 +1,6 @@
 #include "test_support.h"
 #include <Omega_h_file.hpp> //vtk::write_parallel
+#include <algorithm> // std::sort, std::stable_sort
 #include <mpi.h>
 
 namespace test_support {
@@ -123,6 +124,28 @@ void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
     auto dr = ptn.GetRank(classIds_h[i]);
     auto idx = destRankIdx[dr]++;
     permute[i] = idx;
+  }
+}
+
+//creates rdvPermute given inGids and the rdv mesh instance
+//create rdvPermute such that gids[rdvPermute[i]] == inGids[i]
+//for the ith global id in inGids, find the corresponding global id in
+// gids (from mesh.globals(0)) and store the index of its position in gids
+// in rdvPermute[i]
+//this only needs to be computed once for each topological dimension
+void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute) {
+  auto gids = mesh.globals(0);
+  auto gids_h = Omega_h::HostRead(gids);
+  auto iGids = sort_indexes(gids_h);
+  auto iInGids = sort_indexes(inGids);
+  rdvPermute.resize(inGids.size());
+  int j=0;
+  for(size_t i=0; i<inGids.size(); i++) {
+    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
+      j++;
+    }
+    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //not found
+    rdvPermute[iInGids[i]] = iGids[j];
   }
 }
 

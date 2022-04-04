@@ -1,5 +1,4 @@
-#include <numeric> // std::iota, std::exclusive_scan
-#include <algorithm> // std::sort, std::stable_sort
+#include <numeric> // std::exclusive_scan
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_array_ops.hpp>
@@ -18,28 +17,13 @@ struct CSR {
   redev::GOs val;
 };
 
-//from https://stackoverflow.com/a/12399290
-template <typename T>
-std::vector<size_t> sort_indexes(const T &v) {
-  // initialize original index locations
-  std::vector<size_t> idx(v.size());
-  std::iota(idx.begin(), idx.end(), 0);
-  // sort indexes based on comparing values in v
-  // using std::stable_sort instead of std::sort
-  // to avoid unnecessary index re-orderings
-  // when v contains elements of equal values
-  std::stable_sort(idx.begin(), idx.end(),
-       [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
-  return idx;
-}
-
 //creates the outbound (rdv->non-rdv) permutation CSR given inGids and the rdv mesh instance
 //this only needs to be computed once for each topological dimension
 void getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, CSR& perm) {
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
-  auto iGids = sort_indexes(gids_h);
-  auto iInGids = sort_indexes(inGids);
+  auto iGids = ts::sort_indexes(gids_h);
+  auto iInGids = ts::sort_indexes(inGids);
   //count the number of times each gid is included in inGids
   perm.off.resize(gids_h.size()+1);
   int j=0;
@@ -100,29 +84,6 @@ void prepareRdvOutMessage(Omega_h::Mesh& mesh, ts::InMsg const& in, ts::OutMsg& 
   if(!rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,4,9}) );
   if(rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,8,15}) );
   getOutboundRdvPermutation(mesh, in.msgs, permute);
-}
-
-//creates rdvPermute given inGids and the rdv mesh instance
-//create rdvPermute such that gids[rdvPermute[i]] == inGids[i]
-//for the ith global id in inGids, find the corresponding global id in
-// gids (from mesh.globals(0)) and store the index of its position in gids
-// in rdvPermute[i]
-//this only needs to be computed once for each topological dimension
-//TODO - port to GPU
-void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute) {
-  auto gids = mesh.globals(0);
-  auto gids_h = Omega_h::HostRead(gids);
-  auto iGids = sort_indexes(gids_h);
-  auto iInGids = sort_indexes(inGids);
-  rdvPermute.resize(inGids.size());
-  int j=0;
-  for(size_t i=0; i<inGids.size(); i++) {
-    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
-      j++;
-    }
-    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //not found
-    rdvPermute[iInGids[i]] = iGids[j];
-  }
 }
 
 int main(int argc, char** argv) {
@@ -198,7 +159,7 @@ int main(int argc, char** argv) {
       ts::unpack(commA2R,knownSizes,rdvIn);
       ts::getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
-      if(iter==0) getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
+      if(iter==0) ts::getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
       ts::checkAndAttachIds(mesh, "inVtxGids", rdvIn.msgs, rdvInPermute);
       ts::writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv

@@ -59,36 +59,6 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
   }
 }
 
-//creates rdvPermute given inGids and the rdv mesh instance
-//this only needs to be computed once for each topological dimension
-//TODO - port to GPU
-void getRdvPermutation(Omega_h::Mesh& mesh, redev::GOs& inGids, redev::GOs& rdvPermute) {
-  auto gids = mesh.globals(0);
-  auto gids_h = Omega_h::HostRead(gids);
-  typedef std::map<Omega_h::GO, int> G2I;
-  G2I in2idx;
-  for(size_t i=0; i<inGids.size(); i++)
-    in2idx[inGids[i]] = i;
-  G2I gid2idx;
-  for(int i=0; i<gids_h.size(); i++)
-    gid2idx[gids_h[i]] = i;
-  rdvPermute.resize(inGids.size());
-  auto gidIter = gid2idx.begin();
-  for(auto inIter=in2idx.begin(); inIter != in2idx.end(); inIter++) {
-    while(gidIter->first != inIter->first)
-      gidIter++;
-    //must have been found
-    REDEV_ALWAYS_ASSERT(gidIter != gid2idx.end());
-    REDEV_ALWAYS_ASSERT(gidIter->first == inIter->first);
-    //store permutation
-    const auto gidIdx = gidIter->second;
-    const auto inIdx = inIter->second;
-    REDEV_ALWAYS_ASSERT(gids_h[gidIdx] == inGids[inIdx]);
-    REDEV_ALWAYS_ASSERT(static_cast<size_t>(inIdx) < inGids.size());
-    rdvPermute[inIdx] = gidIdx;
-  }
-}
-
 int main(int argc, char** argv) {
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
@@ -166,7 +136,7 @@ int main(int argc, char** argv) {
       }
       ts::getAndPrintTime(start,name + " read",rank);
       //attach the ids to the mesh
-      if(iter==0) getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
+      if(iter==0) ts::getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
       ts::checkAndAttachIds(mesh, "inVtxGids", rdvIn.msgs, rdvInPermute);
       ts::writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv

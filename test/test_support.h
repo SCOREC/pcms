@@ -2,7 +2,8 @@
 #define TEST_HELPERS_H
 #include <iostream>
 #include <string>
-#include <chrono> //steady_clock, duration
+#include <chrono> // steady_clock, duration
+#include <numeric> // std::iota
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array_ops.hpp>
 #include <redev.h>
@@ -46,6 +47,23 @@ void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in);
 
 void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
     OutMsg& out, redev::LOs& permute);
+
+void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute);
+
+//from https://stackoverflow.com/a/12399290
+template <typename T>
+std::vector<size_t> sort_indexes(const T &v) {
+  // initialize original index locations
+  std::vector<size_t> idx(v.size());
+  std::iota(idx.begin(), idx.end(), 0);
+  // sort indexes based on comparing values in v
+  // using std::stable_sort instead of std::sort
+  // to avoid unnecessary index re-orderings
+  // when v contains elements of equal values
+  std::stable_sort(idx.begin(), idx.end(),
+       [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+  return idx;
+}
 
 }
 #endif

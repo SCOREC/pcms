@@ -85,7 +85,8 @@ int main(int argc, char** argv) {
   const int rdvRanks = 2;
   redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name);
 
-  ts::OutMsg appOut;
+  //build dest, offsets, and permutation arrays
+  ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
 
   redev::GOs rdvInPermute;
   ts::InMsg rdvIn;
@@ -96,10 +97,6 @@ int main(int argc, char** argv) {
     //the non-rendezvous app sends global vtx ids to rendezvous
     //////////////////////////////////////////////////////
     if(!isRdv) {
-      //build dest, offsets, and permutation arrays
-      if(iter==0) {
-        appOut = ts::prepareAppOutMessage(mesh, partition);
-      }
       redev::LOs expectedDest = {0,1};
       REDEV_ALWAYS_ASSERT(appOut.dest == expectedDest);
       redev::LOs expectedOffset = {0,6,19};

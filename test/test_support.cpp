@@ -23,8 +23,10 @@ void timeMinMaxAvg(double time, double& min, double& max, double& avg) {
 }
 
 void printTime(std::string_view mode, double min, double max, double avg) {
-  std::cout << mode << " elapsed time min, max, avg (s): "
-            << min << " " << max << " " << avg << "\n";
+  std::stringstream ss;
+  ss << mode << " elapsed time min, max, avg (s): "
+     << min << " " << max << " " << avg << "\n";
+  std::cout << ss.str();
 }
 
 ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh) {

@@ -42,7 +42,7 @@ void getAndPrintTime(T start, std::string key, int rank) {
  * on the geometric model. This function is hardcoded for a specific mesh and
  * process count.
  */
-void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds);
+void getClassPartition(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds);
 
 
 void writeVtk(Omega_h::Mesh& mesh, std::string name, int step);
@@ -53,13 +53,13 @@ void writeVtk(Omega_h::Mesh& mesh, std::string name, int step);
 void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in);
 
 /**
- * Given the omegah mesh, and the partition object (ptn), determine which application vertex
+ * Given the omegah mesh, and the partition object (partition), determine which application vertex
  * should be sending to which rendezvous process, and populate the OutMsg
  * structures dest and offsets array that are required by the rendezvous Pack API.
  * The permutation from the application mesh to the array of message data sent
  * to the rendezvous processes is also computed here.
  */
-void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
+void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition,
     OutMsg& out, redev::LOs& permute);
 
 /**

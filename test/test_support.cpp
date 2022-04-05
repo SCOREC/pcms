@@ -27,7 +27,7 @@ void printTime(std::string mode, double min, double max, double avg) {
             << min << " " << max << " " << avg << "\n";
 }
 
-void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
+void getClassPartition(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
   auto ohComm = mesh.comm();
   const auto dim = mesh.dim();
   auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
@@ -37,18 +37,18 @@ void getClassPtn(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
   auto class_ids_h = Omega_h::HostRead(class_ids);
   if(!ohComm->rank()) {
     //send ents with classId=2 to rank 1
-    Omega_h::Write<Omega_h::I32> ptnRanks(5,0);
-    Omega_h::Write<Omega_h::LO> ptnIdxs(5);
-    Omega_h::fill_linear(ptnIdxs,0,1);
-    auto owners = Omega_h::Remotes(ptnRanks, ptnIdxs);
+    Omega_h::Write<Omega_h::I32> partitionRanks(5,0);
+    Omega_h::Write<Omega_h::LO> partitionIdxs(5);
+    Omega_h::fill_linear(partitionIdxs,0,1);
+    auto owners = Omega_h::Remotes(partitionRanks, partitionIdxs);
     mesh.migrate(owners);
   } else {
     int firstElm = 5;
     const int elms = 18; // migrating elements [5:22]
-    Omega_h::Write<Omega_h::I32> ptnRanks(elms,0);
-    Omega_h::Write<Omega_h::LO> ptnIdxs(elms);
-    Omega_h::fill_linear(ptnIdxs,firstElm,1);
-    auto owners = Omega_h::Remotes(ptnRanks, ptnIdxs);
+    Omega_h::Write<Omega_h::I32> partitionRanks(elms,0);
+    Omega_h::Write<Omega_h::LO> partitionIdxs(elms);
+    Omega_h::fill_linear(partitionIdxs,firstElm,1);
+    auto owners = Omega_h::Remotes(partitionRanks, partitionIdxs);
     mesh.migrate(owners);
   }
 
@@ -82,19 +82,18 @@ void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in) {
   delete [] msgs;
 }
 
-void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
+void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition,
     OutMsg& out, redev::LOs& permute) {
   //transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
   auto classIds_h = Omega_h::HostRead(classIds);
   //count number of vertices going to each destination process by calling getRank - degree array
   std::map<int,int> destRankCounts;
-  const auto ptnRanks = ptn.GetRanks();
-  for(auto rank : ptnRanks) {
+  for(auto rank : partition.GetRanks() ) {
     destRankCounts[rank] = 0;
   }
   for(auto i=0; i<classIds_h.size(); i++) {
-    auto dr = ptn.GetRank(classIds_h[i]);
+    auto dr = partition.GetRank(classIds_h[i]);
     assert(destRankCounts.count(dr));
     destRankCounts[dr]++;
   }
@@ -121,7 +120,7 @@ void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& ptn,
   auto gids_h = Omega_h::HostRead(gids);
   permute.resize(classIds_h.size());
   for(auto i=0; i<classIds_h.size(); i++) {
-    auto dr = ptn.GetRank(classIds_h[i]);
+    auto dr = partition.GetRank(classIds_h[i]);
     auto idx = destRankIdx[dr]++;
     permute[i] = idx;
   }

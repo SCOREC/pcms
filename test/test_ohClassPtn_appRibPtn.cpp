@@ -106,7 +106,7 @@ int main(int argc, char** argv) {
   if(isRdv) {
     //partition the omegah mesh by classification and return the
     //rank-to-classid array
-    ts::getClassPtn(mesh, ranks, classIds);
+    ts::getClassPartition(mesh, ranks, classIds);
     REDEV_ALWAYS_ASSERT(ranks.size()==3);
     REDEV_ALWAYS_ASSERT(ranks.size()==classIds.size());
     ts::writeVtk(mesh,"rdvSplit",0);
@@ -115,8 +115,8 @@ int main(int argc, char** argv) {
     if(!rank) REDEV_ALWAYS_ASSERT(mesh.nelems()==11);
     ts::writeVtk(mesh,"appSplit",0);
   }
-  auto ptn = redev::ClassPtn(ranks,classIds);
-  redev::Redev rdv(MPI_COMM_WORLD,ptn,isRdv);
+  auto partition = redev::ClassPtn(ranks,classIds);
+  redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
   rdv.Setup();
 
   const std::string name = "meshVtxIds";
@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     if(!isRdv) {
       //build dest, offsets, and permutation arrays
-      if(iter==0) ts::prepareAppOutMessage(mesh, ptn, appOut, appOutPermute);
+      if(iter==0) ts::prepareAppOutMessage(mesh, partition, appOut, appOutPermute);
       //fill message array
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);

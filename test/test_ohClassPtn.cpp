@@ -10,19 +10,18 @@
 
 namespace ts = test_support;
 
-void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
+void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& partition,
     ts::OutMsg& out, redev::LOs& permute) {
   //transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
   auto classIds_h = Omega_h::HostRead(classIds);
   //count number of vertices going to each destination process by calling getRank - degree array
   std::map<int,int> destRankCounts;
-  const auto ptnRanks = ptn.GetRanks();
-  for(auto rank : ptnRanks) {
+  for(auto rank : partition.GetRanks() ) {
     destRankCounts[rank] = 0;
   }
   for(auto i=0; i<classIds_h.size(); i++) {
-    auto dr = ptn.GetRank(classIds_h[i]);
+    auto dr = partition.GetRank(classIds_h[i]);
     assert(destRankCounts.count(dr));
     destRankCounts[dr]++;
   }
@@ -53,7 +52,7 @@ void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& ptn,
   auto gids_h = Omega_h::HostRead(gids);
   permute.resize(classIds_h.size());
   for(auto i=0; i<classIds_h.size(); i++) {
-    auto dr = ptn.GetRank(classIds_h[i]);
+    auto dr = partition.GetRank(classIds_h[i]);
     auto idx = destRankIdx[dr]++;
     permute[i] = idx;
   }
@@ -78,13 +77,13 @@ int main(int argc, char** argv) {
   if(isRdv) {
     //partition the omegah mesh by classification and return the
     //rank-to-classid array
-    ts::getClassPtn(mesh, ranks, classIds);
+    ts::getClassPartition(mesh, ranks, classIds);
     REDEV_ALWAYS_ASSERT(ranks.size()==3);
     REDEV_ALWAYS_ASSERT(ranks.size()==classIds.size());
     Omega_h::vtk::write_parallel("rdvSplit.vtk", &mesh, mesh.dim());
   }
-  auto ptn = redev::ClassPtn(ranks,classIds);
-  redev::Redev rdv(MPI_COMM_WORLD,ptn,isRdv);
+  auto partition = redev::ClassPtn(ranks,classIds);
+  redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
   rdv.Setup();
   const std::string name = "meshVtxIds";
   const int rdvRanks = 2;
@@ -103,7 +102,7 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     if(!isRdv) {
       //build dest and offsets arrays
-      if(iter==0) ts::prepareAppOutMessage(mesh, ptn, appOut, appOutPermute);
+      if(iter==0) ts::prepareAppOutMessage(mesh, partition, appOut, appOutPermute);
       redev::LOs expectedDest = {0,1};
       REDEV_ALWAYS_ASSERT(appOut.dest == expectedDest);
       redev::LOs expectedOffset = {0,6,19};

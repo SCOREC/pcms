@@ -22,8 +22,8 @@ struct CSR {
 void getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, CSR& perm) {
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
-  auto iGids = ts::sort_indexes(gids_h);
-  auto iInGids = ts::sort_indexes(inGids);
+  auto iGids = ts::sortIndexes(gids_h);
+  auto iInGids = ts::sortIndexes(inGids);
   //count the number of times each gid is included in inGids
   perm.off.resize(gids_h.size()+1);
   int j=0;

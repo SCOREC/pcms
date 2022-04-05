@@ -82,7 +82,7 @@ void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, redev::GOs& v
  * from https://stackoverflow.com/a/12399290
  */
 template <typename T>
-std::vector<size_t> sort_indexes(const T &v) {
+std::vector<size_t> sortIndexes(const T &v) {
   // initialize original index locations
   std::vector<size_t> idx(v.size());
   std::iota(idx.begin(), idx.end(), 0);

@@ -130,8 +130,8 @@ void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition,
 void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute) {
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
-  auto iGids = sort_indexes(gids_h);
-  auto iInGids = sort_indexes(inGids);
+  auto iGids = sortIndexes(gids_h);
+  auto iInGids = sortIndexes(inGids);
   rdvPermute.resize(inGids.size());
   int j=0;
   for(size_t i=0; i<inGids.size(); i++) {

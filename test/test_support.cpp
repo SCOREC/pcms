@@ -85,8 +85,7 @@ void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in) {
   delete [] msgs;
 }
 
-void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition,
-    OutMsg& out, redev::LOs& permute) {
+OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition) {
   //transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
   auto classIds_h = Omega_h::HostRead(classIds);
@@ -101,6 +100,7 @@ void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition,
     destRankCounts[dr]++;
   }
 
+  OutMsg out;
   //create dest and offsets arrays from degree array
   out.offset.resize(destRankCounts.size()+1);
   out.dest.resize(destRankCounts.size());
@@ -121,12 +121,13 @@ void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition,
   }
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
-  permute.resize(classIds_h.size());
+  out.permute.resize(classIds_h.size());
   for(auto i=0; i<classIds_h.size(); i++) {
     auto dr = partition.GetRank(classIds_h[i]);
     auto idx = destRankIdx[dr]++;
-    permute[i] = idx;
+    out.permute[i] = idx;
   }
+  return out;
 }
 
 void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute) {

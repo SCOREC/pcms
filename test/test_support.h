@@ -14,6 +14,7 @@ namespace test_support {
 struct OutMsg {
   redev::LOs dest;
   redev::LOs offset;
+  redev::LOs permute;
 };
 
 struct InMsg {
@@ -63,8 +64,7 @@ void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in);
  * The permutation from the application mesh to the array of message data sent
  * to the rendezvous processes is also computed here.
  */
-void prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition,
-    OutMsg& out, redev::LOs& permute);
+OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition);
 
 /**
  * Creates the permutation (rdvPermute) from the input message array of

@@ -85,7 +85,6 @@ int main(int argc, char** argv) {
   const int rdvRanks = 2;
   redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name);
 
-  redev::LOs appOutPermute;
   ts::OutMsg appOut;
 
   redev::GOs rdvInPermute;
@@ -97,20 +96,22 @@ int main(int argc, char** argv) {
     //the non-rendezvous app sends global vtx ids to rendezvous
     //////////////////////////////////////////////////////
     if(!isRdv) {
-      //build dest and offsets arrays
-      if(iter==0) ts::prepareAppOutMessage(mesh, partition, appOut, appOutPermute);
+      //build dest, offsets, and permutation arrays
+      if(iter==0) {
+        appOut = ts::prepareAppOutMessage(mesh, partition);
+      }
       redev::LOs expectedDest = {0,1};
       REDEV_ALWAYS_ASSERT(appOut.dest == expectedDest);
       redev::LOs expectedOffset = {0,6,19};
       REDEV_ALWAYS_ASSERT(appOut.offset == expectedOffset);
       redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
-      REDEV_ALWAYS_ASSERT(appOutPermute == expectedPermute);
+      REDEV_ALWAYS_ASSERT(appOut.permute == expectedPermute);
       //fill message array
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
       redev::GOs msgs(gids_h.size(),0);
       for(size_t i=0; i<msgs.size(); i++) {
-        msgs[appOutPermute[i]] = gids_h[i];
+        msgs[appOut.permute[i]] = gids_h[i];
       }
       auto start = std::chrono::steady_clock::now();
       comm.Pack(appOut.dest, appOut.offset, msgs.data());

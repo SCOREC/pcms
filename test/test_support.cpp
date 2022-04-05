@@ -74,7 +74,6 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const redev::LOs& ranks, const redev::
       if(dest) {
         const auto elms = iter->second;
         const auto numElms = elms.size();
-        fprintf(stderr, "dest numElms %d %d\n", dest, numElms);
         MPI_Send(&numElms, 1, MPI_INT, dest, 0, mpiComm);
         MPI_Send(elms.data(), elms.size(), MPI_INT, dest, 0, mpiComm);
       }
@@ -85,8 +84,11 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const redev::LOs& ranks, const redev::
     MPI_Status stat;
     MPI_Recv(&numElms,1,MPI_INT,src,0,mpiComm,&stat);
     redev::LOs elms(numElms);
-    MPI_Recv(elms.data(),numElms,MPI_INT,src,0,mpiComm,&stat);
-    fprintf(stderr, "%d numElms %d\n", rank, numElms);
+    Omega_h::HostWrite<Omega_h::LO> ptnIdxs(numElms);
+    MPI_Recv(ptnIdxs.data(),numElms,MPI_INT,src,0,mpiComm,&stat);
+    Omega_h::HostWrite<Omega_h::I32> ptnRanks(numElms);
+    std::fill(ptnRanks.data(),ptnRanks.data()+numElms,0);
+    //copy to device, create Remotes, call migrate
   }
 }
 

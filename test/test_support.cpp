@@ -44,17 +44,16 @@ void readClassPtnFromCpn(std::string cpnFileName, redev::LOs& ranks, redev::LOs&
   int rank, classId;
   while(in_file >> classId >> rank) {
     ranks.push_back(rank);
-    ranks.push_back(classId);
+    classIds.push_back(classId);
   }
   in_file.close();
 }
 
 void migrateMeshElms(Omega_h::Mesh& mesh, const redev::LOs& ranks, const redev::LOs& classIds) {
   auto ohComm = mesh.comm();
-  auto mpiComm = ohcomm.get_impl();
+  auto mpiComm = ohComm->get_impl();
   const auto rank = ohComm->rank();
   if(rank) REDEV_ALWAYS_ASSERT(mesh.nelems()==0); //only rank zero should have elements
-  //loop over elements
   if(!rank) {
     const auto dim = mesh.dim();
     auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
@@ -63,28 +62,32 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const redev::LOs& ranks, const redev::
     mii classIdToRank;
     for(int i=0; i<ranks.size(); i++)
       classIdToRank[classIds[i]] = ranks[i];
-    typedef std::map<int,vector<int>> miv;
+    typedef std::map<int,std::vector<int>> miv;
     miv elmsPerRank;
     for(int i=0; i<mesh.nelems(); i++) {
       const auto dest = classIdToRank[class_ids_h[i]];
       elmsPerRank[dest].push_back(i);
+
     }
     for(auto iter = elmsPerRank.begin(); iter != elmsPerRank.end(); iter++) {
-      //send the vector to the dest rank
-      auto dest = iter.first;
-      auto elms = iter.second;
-      auto numElms = elms.size();
-      MPI_Send(&numElms, 1, MPI_INT, dest, 0, mpiComm);
-      MPI_Send(elms.data(), elms.size(), MPI_INT, dest, 0, mpiComm);
+      const auto dest = iter->first;
+      if(dest) {
+        const auto elms = iter->second;
+        const auto numElms = elms.size();
+        fprintf(stderr, "dest numElms %d %d\n", dest, numElms);
+        MPI_Send(&numElms, 1, MPI_INT, dest, 0, mpiComm);
+        MPI_Send(elms.data(), elms.size(), MPI_INT, dest, 0, mpiComm);
+      }
     }
   } else {
-     const int src=0;
-     int numElms;
-     MPI_Recv(&numElms,1,MPI_INT,src,0,mpiComm,NULL);
-     redev::LOs elms(numElms);
-     MPI_Recv(elms.data(),numElms,MPI_INT,src,0,mpiComm,NULL);
+    const int src=0;
+    int numElms;
+    MPI_Status stat;
+    MPI_Recv(&numElms,1,MPI_INT,src,0,mpiComm,&stat);
+    redev::LOs elms(numElms);
+    MPI_Recv(elms.data(),numElms,MPI_INT,src,0,mpiComm,&stat);
+    fprintf(stderr, "%d numElms %d\n", rank, numElms);
   }
-  //HERE - not tested
 }
 
 ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh) {

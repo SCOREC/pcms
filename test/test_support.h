@@ -24,6 +24,11 @@ struct InMsg {
   size_t count;
 };
 
+struct ClassificationPartition {
+  redev::LOs ranks;
+  redev::LOs classIds;
+};
+
 void printTime(std::string_view mode, double min, double max, double avg);
 
 void timeMinMaxAvg(double time, double& min, double& max, double& avg);
@@ -38,12 +43,11 @@ void getAndPrintTime(T start, std::string_view key, int rank) {
 }
 
 /**
- * Compute a partition of the mesh based on its classification
+ * Migrate 18 of the mesh elements to rank 1 and return its classification partition
  * on the geometric model. This function is hardcoded for a specific mesh and
  * process count.
  */
-void getClassPartition(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds);
-
+ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh);
 
 void writeVtk(Omega_h::Mesh& mesh, std::string_view name, int step);
 

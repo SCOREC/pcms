@@ -27,7 +27,7 @@ void printTime(std::string_view mode, double min, double max, double avg) {
             << min << " " << max << " " << avg << "\n";
 }
 
-void getClassPartition(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds) {
+ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh) {
   auto ohComm = mesh.comm();
   const auto dim = mesh.dim();
   auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
@@ -53,11 +53,13 @@ void getClassPartition(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& class
   }
 
   //the hardcoded assignment of classids to ranks
-  ranks.resize(3);
-  classIds.resize(3);
-  classIds[0] = 1; ranks[0] = 0;
-  classIds[1] = 2; ranks[1] = 1;
-  classIds[2] = 3; ranks[2] = 0;  //center ('O point') model vertex
+  ClassificationPartition cp;
+  cp.ranks.resize(3);
+  cp.classIds.resize(3);
+  cp.classIds[0] = 1; cp.ranks[0] = 0;
+  cp.classIds[1] = 2; cp.ranks[1] = 1;
+  cp.classIds[2] = 3; cp.ranks[2] = 0;  //center ('O point') model vertex
+  return cp;
 }
 
 void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, redev::GOs& vtxData, redev::GOs& rdvPermute) {

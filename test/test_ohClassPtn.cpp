@@ -72,17 +72,13 @@ int main(int argc, char** argv) {
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[2], lib.world(), &mesh);
   if(!rank) REDEV_ALWAYS_ASSERT(mesh.nelems() == 23); //sanity check that the loaded mesh is the expected one
-  redev::LOs ranks;
-  redev::LOs classIds;
+  //partition the omegah mesh by classification and return the rank-to-classid array
+  const auto classPartition = isRdv ? ts::migrateAndGetPartition(mesh) :
+                                      ts::ClassificationPartition();
   if(isRdv) {
-    //partition the omegah mesh by classification and return the
-    //rank-to-classid array
-    ts::getClassPartition(mesh, ranks, classIds);
-    REDEV_ALWAYS_ASSERT(ranks.size()==3);
-    REDEV_ALWAYS_ASSERT(ranks.size()==classIds.size());
-    Omega_h::vtk::write_parallel("rdvSplit.vtk", &mesh, mesh.dim());
+    ts::writeVtk(mesh,"rdvSplit",0);
   }
-  auto partition = redev::ClassPtn(ranks,classIds);
+  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.classIds);
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
   rdv.Setup();
   const std::string name = "meshVtxIds";

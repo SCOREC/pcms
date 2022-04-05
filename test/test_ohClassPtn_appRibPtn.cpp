@@ -101,21 +101,17 @@ int main(int argc, char** argv) {
   auto isRdv = atoi(argv[1]);
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[2], lib.world(), &mesh);
-  redev::LOs ranks;
-  redev::LOs classIds;
+  //partition the omegah mesh by classification and return the rank-to-classid array
+  const auto classPartition = isRdv ? ts::migrateAndGetPartition(mesh) :
+                                      ts::ClassificationPartition();
   if(isRdv) {
-    //partition the omegah mesh by classification and return the
-    //rank-to-classid array
-    ts::getClassPartition(mesh, ranks, classIds);
-    REDEV_ALWAYS_ASSERT(ranks.size()==3);
-    REDEV_ALWAYS_ASSERT(ranks.size()==classIds.size());
     ts::writeVtk(mesh,"rdvSplit",0);
   } else {
     REDEV_ALWAYS_ASSERT(world->size()==2);
     if(!rank) REDEV_ALWAYS_ASSERT(mesh.nelems()==11);
     ts::writeVtk(mesh,"appSplit",0);
   }
-  auto partition = redev::ClassPtn(ranks,classIds);
+  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.classIds);
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
   rdv.Setup();
 

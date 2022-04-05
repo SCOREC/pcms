@@ -5,7 +5,7 @@
 
 namespace test_support {
 
-void writeVtk(Omega_h::Mesh& mesh, std::string name, int step) {
+void writeVtk(Omega_h::Mesh& mesh, std::string_view name, int step) {
   std::stringstream ss;
   ss << name << step << ".vtk";
   Omega_h::vtk::write_parallel(ss.str(), &mesh, mesh.dim());
@@ -22,7 +22,7 @@ void timeMinMaxAvg(double time, double& min, double& max, double& avg) {
   avg = tot / nproc;
 }
 
-void printTime(std::string mode, double min, double max, double avg) {
+void printTime(std::string_view mode, double min, double max, double avg) {
   std::cout << mode << " elapsed time min, max, avg (s): "
             << min << " " << max << " " << avg << "\n";
 }
@@ -60,7 +60,7 @@ void getClassPartition(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& class
   classIds[2] = 3; ranks[2] = 0;  //center ('O point') model vertex
 }
 
-void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxData, redev::GOs& rdvPermute) {
+void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, redev::GOs& vtxData, redev::GOs& rdvPermute) {
   REDEV_ALWAYS_ASSERT(rdvPermute.size() == vtxData.size());
   auto gids_h = Omega_h::HostRead(mesh.globals(0));
   Omega_h::HostWrite<Omega_h::GO> inVtxData_h(mesh.nverts());
@@ -71,8 +71,9 @@ void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxDat
     REDEV_ALWAYS_ASSERT(gids_h[rdvPermute[i]] == vtxData[i]);
   }
   Omega_h::Write inVtxData(inVtxData_h);
-  mesh.add_tag(0,name,1,Omega_h::read(inVtxData));
-  mesh.sync_tag(0,name);
+  auto ohStr = std::string(name); //omegah wants a std::string const reference
+  mesh.add_tag(0,ohStr,1,Omega_h::read(inVtxData));
+  mesh.sync_tag(0,ohStr);
 }
 
 void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in) {

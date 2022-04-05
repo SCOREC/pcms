@@ -1,7 +1,7 @@
 #ifndef TEST_HELPERS_H
 #define TEST_HELPERS_H
 #include <iostream>
-#include <string>
+#include <string_view>
 #include <chrono> // steady_clock, duration
 #include <numeric> // std::iota
 #include <Omega_h_mesh.hpp>
@@ -24,12 +24,12 @@ struct InMsg {
   size_t count;
 };
 
-void printTime(std::string mode, double min, double max, double avg);
+void printTime(std::string_view mode, double min, double max, double avg);
 
 void timeMinMaxAvg(double time, double& min, double& max, double& avg);
 
 template <class T>
-void getAndPrintTime(T start, std::string key, int rank) {
+void getAndPrintTime(T start, std::string_view key, int rank) {
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> elapsed_seconds = end-start;
   double min, max, avg;
@@ -45,7 +45,7 @@ void getAndPrintTime(T start, std::string key, int rank) {
 void getClassPartition(Omega_h::Mesh& mesh, redev::LOs& ranks, redev::LOs& classIds);
 
 
-void writeVtk(Omega_h::Mesh& mesh, std::string name, int step);
+void writeVtk(Omega_h::Mesh& mesh, std::string_view name, int step);
 
 /**
  * Call the rendezvous Unpack function to receive data and populate the InMsg structure.
@@ -74,7 +74,7 @@ void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs
  * to the mesh to attach the incoming data (global vertex ids) and check that they match the
  * rendezvous vertex ids.
  */
-void checkAndAttachIds(Omega_h::Mesh& mesh, std::string name, redev::GOs& vtxData, redev::GOs& rdvPermute);
+void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, redev::GOs& vtxData, redev::GOs& rdvPermute);
 
 /**
  * Return the index permutation of the input array (v) such that the array is

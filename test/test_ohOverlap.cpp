@@ -17,14 +17,14 @@ struct CSR {
   redev::GOs val;
 };
 
-//creates the outbound (rdv->non-rdv) permutation CSR given inGids and the rdv mesh instance
-//this only needs to be computed once for each topological dimension
-void getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, CSR& perm) {
+//creates the rdv->non-rdv permutation CSR given inGids and the rdv mesh instance
+CSR getRdvOutPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
-  auto iGids = ts::sort_indexes(gids_h);
-  auto iInGids = ts::sort_indexes(inGids);
+  auto iGids = ts::sortIndexes(gids_h);
+  auto iInGids = ts::sortIndexes(inGids);
   //count the number of times each gid is included in inGids
+  CSR perm;
   perm.off.resize(gids_h.size()+1);
   int j=0;
   for(size_t i=0; i<inGids.size(); i++) {
@@ -50,9 +50,10 @@ void getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, CS
     const auto offIdx = startIdx + subIdx;
     perm.val[offIdx] = iInGids[i];
   }
+  return perm;
 }
 
-void prepareRdvOutMessage(Omega_h::Mesh& mesh, ts::InMsg const& in, ts::OutMsg& out, CSR& permute){
+ts::OutMsg prepareRdvOutMessage(Omega_h::Mesh& mesh, const redev::InMessageLayout& in) {
   auto ohComm = mesh.comm();
   const auto rank = ohComm->rank();
   const auto nproc = ohComm->size();
@@ -67,6 +68,7 @@ void prepareRdvOutMessage(Omega_h::Mesh& mesh, ts::InMsg const& in, ts::OutMsg& 
   senderDeg[nAppProcs-1] = totInMsgs - in.srcRanks[(nAppProcs-1)*nproc+rank];
   if(!rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({4,5}) );
   if(rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({8,7}) );
+  ts::OutMsg out;
   for(size_t i=0; i<nAppProcs; i++) {
     if(senderDeg[i] > 0) {
       out.dest.push_back(i);
@@ -83,7 +85,7 @@ void prepareRdvOutMessage(Omega_h::Mesh& mesh, ts::InMsg const& in, ts::OutMsg& 
   out.offset.push_back(sum);
   if(!rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,4,9}) );
   if(rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,8,15}) );
-  getOutboundRdvPermutation(mesh, in.msgs, permute);
+  return out;
 }
 
 int main(int argc, char** argv) {

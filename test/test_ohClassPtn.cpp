@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
       ts::getAndPrintTime(start,name + " write",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = comm.Unpack();
+      const auto msgs = comm.Recv();
       const auto rdvIn = comm.GetInMessageLayout();
       REDEV_ALWAYS_ASSERT(rdvIn.offset == redev::GOs({0,6,19}));
       REDEV_ALWAYS_ASSERT(rdvIn.srcRanks == redev::GOs({0,0}));

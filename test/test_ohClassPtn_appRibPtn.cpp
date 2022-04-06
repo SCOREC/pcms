@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
       ts::getAndPrintTime(start,name + " appWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = commA2R.Unpack();
+      const auto msgs = commA2R.Recv();
       ts::getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
       if(iter==0) {
@@ -191,7 +191,7 @@ int main(int argc, char** argv) {
       ts::getAndPrintTime(start,name + " rdvWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = commR2A.Unpack();
+      const auto msgs = commR2A.Recv();
       ts::getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order
         auto gids = mesh.globals(0);

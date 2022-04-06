@@ -10,54 +10,6 @@
 
 namespace ts = test_support;
 
-void prepareMsg(Omega_h::Mesh& mesh, redev::ClassPtn& partition,
-    ts::OutMsg& out, redev::LOs& permute) {
-  //transfer vtx classification to host
-  auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
-  auto classIds_h = Omega_h::HostRead(classIds);
-  //count number of vertices going to each destination process by calling getRank - degree array
-  std::map<int,int> destRankCounts;
-  for(auto rank : partition.GetRanks() ) {
-    destRankCounts[rank] = 0;
-  }
-  for(auto i=0; i<classIds_h.size(); i++) {
-    auto dr = partition.GetRank(classIds_h[i]);
-    assert(destRankCounts.count(dr));
-    destRankCounts[dr]++;
-  }
-  REDEV_ALWAYS_ASSERT(destRankCounts[0] == 6);
-  REDEV_ALWAYS_ASSERT(destRankCounts[1] == 13);
-  //create dest and offsets arrays from degree array
-  out.offset.resize(destRankCounts.size()+1);
-  out.dest.resize(destRankCounts.size());
-  out.offset[0] = 0;
-  int i = 1;
-  for(auto rankCount : destRankCounts) {
-    out.dest[i-1] = rankCount.first;
-    out.offset[i] = out.offset[i-1]+rankCount.second;
-    i++;
-  }
-  redev::LOs expectedDest = {0,1};
-  REDEV_ALWAYS_ASSERT(out.dest == expectedDest);
-  redev::LOs expectedOffset = {0,6,19};
-  REDEV_ALWAYS_ASSERT(out.offset == expectedOffset);
-  //fill permutation array such that for vertex i permute[i] contains the
-  //  position of vertex i's data in the message array
-  std::map<int,int> destRankIdx;
-  for(size_t i=0; i<out.dest.size(); i++) {
-    auto dr = out.dest[i];
-    destRankIdx[dr] = out.offset[i];
-  }
-  auto gids = mesh.globals(0);
-  auto gids_h = Omega_h::HostRead(gids);
-  permute.resize(classIds_h.size());
-  for(auto i=0; i<classIds_h.size(); i++) {
-    auto dr = partition.GetRank(classIds_h[i]);
-    auto idx = destRankIdx[dr]++;
-    permute[i] = idx;
-  }
-}
-
 int main(int argc, char** argv) {
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();

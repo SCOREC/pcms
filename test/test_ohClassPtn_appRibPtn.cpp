@@ -122,6 +122,9 @@ int main(int argc, char** argv) {
 
   //build dest, offsets, and permutation arrays
   ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
+  if(!isRdv) {
+    commA2R.SetOutMessageLayout(appOut.dest, appOut.offset);
+  }
 
   redev::GOs rdvInPermute;
   CSR rdvOutPermute;
@@ -141,8 +144,7 @@ int main(int argc, char** argv) {
         msgs[appOut.permute[i]] = gids_h[i];
       }
       auto start = std::chrono::steady_clock::now();
-      commA2R.Pack(appOut.dest, appOut.offset, msgs.data());
-      commA2R.Send();
+      commA2R.Send(msgs.data());
       ts::getAndPrintTime(start,name + " appWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
@@ -178,7 +180,7 @@ int main(int argc, char** argv) {
         }
       }
       auto start = std::chrono::steady_clock::now();
-      commR2A.Pack(rdvOut.dest, rdvOut.offset, msgs.data());
+      if(iter==0) commR2A.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
       commR2A.Send(msgs.data());
       ts::getAndPrintTime(start,name + " rdvWrite",rank);
     } else {

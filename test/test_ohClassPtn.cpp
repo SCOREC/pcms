@@ -94,6 +94,8 @@ int main(int argc, char** argv) {
     REDEV_ALWAYS_ASSERT(appOut.offset == expectedOffset);
     redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
     REDEV_ALWAYS_ASSERT(appOut.permute == expectedPermute);
+
+    comm.SetOutMessageLayout(appOut.dest, appOut.offset);
   }
 
   redev::GOs rdvInPermute;
@@ -112,8 +114,7 @@ int main(int argc, char** argv) {
         msgs[appOut.permute[i]] = gids_h[i];
       }
       auto start = std::chrono::steady_clock::now();
-      comm.Pack(appOut.dest, appOut.offset, msgs.data());
-      comm.Send();
+      comm.Send(msgs.data());
       ts::getAndPrintTime(start,name + " write",rank);
     } else {
       auto start = std::chrono::steady_clock::now();

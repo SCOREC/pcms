@@ -64,7 +64,7 @@ ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh) {
   return cp;
 }
 
-void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, redev::GOs& vtxData, redev::GOs& rdvPermute) {
+void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, const redev::GOs& vtxData, redev::GOs& rdvPermute) {
   REDEV_ALWAYS_ASSERT(rdvPermute.size() == vtxData.size());
   auto gids_h = Omega_h::HostRead(mesh.globals(0));
   Omega_h::HostWrite<Omega_h::GO> inVtxData_h(mesh.nverts());
@@ -78,13 +78,6 @@ void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, redev::GOs& v
   auto ohStr = std::string(name); //omegah wants a std::string const reference
   mesh.add_tag(0,ohStr,1,Omega_h::read(inVtxData));
   mesh.sync_tag(0,ohStr);
-}
-
-void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in) {
-  redev::GO* msgs;
-  comm.Unpack(in.srcRanks, in.offset, msgs, in.start, in.count, knownSizes);
-  in.msgs = redev::GOs(msgs, msgs+in.count);
-  delete [] msgs;
 }
 
 OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition) {

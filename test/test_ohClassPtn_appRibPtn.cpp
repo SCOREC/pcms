@@ -52,7 +52,7 @@ void getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, CS
   }
 }
 
-void prepareRdvOutMessage(Omega_h::Mesh& mesh, ts::InMsg const& in, ts::OutMsg& out, CSR& permute){
+void prepareRdvOutMessage(Omega_h::Mesh& mesh, redev::InMessageLayout const& in, ts::OutMsg& out) {
   auto ohComm = mesh.comm();
   const auto rank = ohComm->rank();
   const auto nproc = ohComm->size();
@@ -83,7 +83,6 @@ void prepareRdvOutMessage(Omega_h::Mesh& mesh, ts::InMsg const& in, ts::OutMsg& 
   out.offset.push_back(sum);
   if(!rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,4,9}) );
   if(rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,8,15}) );
-  getOutboundRdvPermutation(mesh, in.msgs, permute);
 }
 
 int main(int argc, char** argv) {
@@ -124,12 +123,9 @@ int main(int argc, char** argv) {
   //build dest, offsets, and permutation arrays
   ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
 
-  ts::InMsg appIn;
-
   redev::GOs rdvInPermute;
   CSR rdvOutPermute;
   ts::OutMsg rdvOut;
-  ts::InMsg rdvIn;
 
   for(int iter=0; iter<3; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
@@ -151,19 +147,27 @@ int main(int argc, char** argv) {
     } else {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
-      ts::unpack(commA2R,knownSizes,rdvIn);
+      const auto msgs = commA2R.Unpack();
       ts::getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
-      if(iter==0) ts::getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
-      ts::checkAndAttachIds(mesh, "inVtxGids", rdvIn.msgs, rdvInPermute);
+      if(iter==0) {
+        auto rdvIn = commA2R.GetInMessageLayout();
+        ts::getRdvPermutation(mesh, msgs, rdvInPermute);
+        //build dest, offsets, and permutation arrays for the
+        // reverse send (rdv->non-rendezvous)
+        prepareRdvOutMessage(mesh,rdvIn,rdvOut);
+        getOutboundRdvPermutation(mesh, msgs, rdvOutPermute);
+      }
+      ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
       ts::writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv
     //////////////////////////////////////////////////////
     //the rendezvous app sends global vtx ids to non-rendezvous
     //////////////////////////////////////////////////////
+    //uncommenting the following results in:
+    //terminate called after throwing an instance of 'std::length_error'
+    //  what():  cannot create std::vector larger than max_size()
     if(isRdv) {
-      //build dest, offsets, and permutation arrays
-      if( iter==0 ) prepareRdvOutMessage(mesh,rdvIn,rdvOut,rdvOutPermute);
       //fill message array
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
@@ -175,19 +179,19 @@ int main(int argc, char** argv) {
       }
       auto start = std::chrono::steady_clock::now();
       commR2A.Pack(rdvOut.dest, rdvOut.offset, msgs.data());
-      commR2A.Send();
+      commR2A.Send(msgs.data());
       ts::getAndPrintTime(start,name + " rdvWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
       const bool knownSizes = (iter == 0) ? false : true;
-      ts::unpack(commR2A,knownSizes,appIn);
+      const auto msgs = commR2A.Unpack();
       ts::getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order
         auto gids = mesh.globals(0);
         auto gids_h = Omega_h::HostRead(gids);
-        REDEV_ALWAYS_ASSERT(appIn.count == static_cast<size_t>(gids_h.size()));
-        for(size_t i=0; i<appIn.msgs.size(); i++) {
-          REDEV_ALWAYS_ASSERT(gids_h[i] == appIn.msgs[appOut.permute[i]]);
+        REDEV_ALWAYS_ASSERT(msgs.size() == static_cast<size_t>(gids_h.size()));
+        for(size_t i=0; i<msgs.size(); i++) {
+          REDEV_ALWAYS_ASSERT(gids_h[i] == msgs[appOut.permute[i]]);
         }
       }
     } //end rdv -> non-rdv

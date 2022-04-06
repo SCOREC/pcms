@@ -87,9 +87,16 @@ int main(int argc, char** argv) {
 
   //build dest, offsets, and permutation arrays
   ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
+  if(!isRdv) {
+    redev::LOs expectedDest = {0,1};
+    REDEV_ALWAYS_ASSERT(appOut.dest == expectedDest);
+    redev::LOs expectedOffset = {0,6,19};
+    REDEV_ALWAYS_ASSERT(appOut.offset == expectedOffset);
+    redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
+    REDEV_ALWAYS_ASSERT(appOut.permute == expectedPermute);
+  }
 
   redev::GOs rdvInPermute;
-  ts::InMsg rdvIn;
 
   for(int iter=0; iter<3; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
@@ -97,12 +104,6 @@ int main(int argc, char** argv) {
     //the non-rendezvous app sends global vtx ids to rendezvous
     //////////////////////////////////////////////////////
     if(!isRdv) {
-      redev::LOs expectedDest = {0,1};
-      REDEV_ALWAYS_ASSERT(appOut.dest == expectedDest);
-      redev::LOs expectedOffset = {0,6,19};
-      REDEV_ALWAYS_ASSERT(appOut.offset == expectedOffset);
-      redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
-      REDEV_ALWAYS_ASSERT(appOut.permute == expectedPermute);
       //fill message array
       auto gids = mesh.globals(0);
       auto gids_h = Omega_h::HostRead(gids);
@@ -116,21 +117,21 @@ int main(int argc, char** argv) {
       ts::getAndPrintTime(start,name + " write",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const bool knownSizes = (iter == 0) ? false : true;
-      ts::unpack(comm,knownSizes,rdvIn);
+      const auto msgs = comm.Unpack();
+      const auto rdvIn = comm.GetInMessageLayout();
       REDEV_ALWAYS_ASSERT(rdvIn.offset == redev::GOs({0,6,19}));
       REDEV_ALWAYS_ASSERT(rdvIn.srcRanks == redev::GOs({0,0}));
       if(!rank) {
         REDEV_ALWAYS_ASSERT(rdvIn.start==0 && rdvIn.count==6);
-        REDEV_ALWAYS_ASSERT(rdvIn.msgs == redev::GOs({0,2,3,4,5,6}));
+        REDEV_ALWAYS_ASSERT(msgs == redev::GOs({0,2,3,4,5,6}));
       } else {
         REDEV_ALWAYS_ASSERT(rdvIn.start==6 && rdvIn.count==13);
-        REDEV_ALWAYS_ASSERT(rdvIn.msgs == redev::GOs({1,7,8,9,10,11,12,13,14,15,16,17,18}));
+        REDEV_ALWAYS_ASSERT(msgs == redev::GOs({1,7,8,9,10,11,12,13,14,15,16,17,18}));
       }
       ts::getAndPrintTime(start,name + " read",rank);
       //attach the ids to the mesh
-      if(iter==0) ts::getRdvPermutation(mesh, rdvIn.msgs, rdvInPermute);
-      ts::checkAndAttachIds(mesh, "inVtxGids", rdvIn.msgs, rdvInPermute);
+      if(iter==0) ts::getRdvPermutation(mesh, msgs, rdvInPermute);
+      ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
       ts::writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv
   } //end iter loop

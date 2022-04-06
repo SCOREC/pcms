@@ -53,11 +53,6 @@ ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh);
 void writeVtk(Omega_h::Mesh& mesh, std::string_view name, int step);
 
 /**
- * Call the rendezvous Unpack function to receive data and populate the InMsg structure.
- */
-void unpack(redev::AdiosComm<redev::GO>& comm, bool knownSizes, InMsg& in);
-
-/**
  * Given the omegah mesh, and the partition object (partition), determine which application vertex
  * should be sending to which rendezvous process, and populate the OutMsg
  * structures dest and offsets array that are required by the rendezvous Pack API.
@@ -78,7 +73,7 @@ void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs
  * to the mesh to attach the incoming data (global vertex ids) and check that they match the
  * rendezvous vertex ids.
  */
-void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, redev::GOs& vtxData, redev::GOs& rdvPermute);
+void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, const redev::GOs& vtxData, redev::GOs& rdvPermute);
 
 /**
  * Return the index permutation of the input array (v) such that the array is

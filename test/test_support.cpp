@@ -64,7 +64,7 @@ ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh) {
   return cp;
 }
 
-void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, const redev::GOs& vtxData, redev::GOs& rdvPermute) {
+void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, const redev::GOs& vtxData, const redev::GOs& rdvPermute) {
   REDEV_ALWAYS_ASSERT(rdvPermute.size() == vtxData.size());
   auto gids_h = Omega_h::HostRead(mesh.globals(0));
   Omega_h::HostWrite<Omega_h::GO> inVtxData_h(mesh.nverts());

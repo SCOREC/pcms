@@ -73,7 +73,7 @@ redev::GOs getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids);
  * to the mesh to attach the incoming data (global vertex ids) and check that they match the
  * rendezvous vertex ids.
  */
-void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, const redev::GOs& vtxData, redev::GOs& rdvPermute);
+void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, const redev::GOs& vtxData, const redev::GOs& rdvPermute);
 
 /**
  * Return the index permutation of the input array (v) such that the array is

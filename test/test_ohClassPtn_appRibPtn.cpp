@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
         //the topology and partition of the rendezvous and non-rendezvous meshes
         //remains the same.
         auto rdvIn = commA2R.GetInMessageLayout();
-        ts::getRdvPermutation(mesh, msgs, rdvInPermute);
+        rdvInPermute = ts::getRdvPermutation(mesh, msgs);
         prepareRdvOutMessage(mesh,rdvIn,rdvOut);
         commR2A.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
         getOutboundRdvPermutation(mesh, msgs, rdvOutPermute);

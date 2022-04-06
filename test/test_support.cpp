@@ -125,12 +125,12 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
   return out;
 }
 
-void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute) {
+redev::GOs getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
   auto iGids = sortIndexes(gids_h);
   auto iInGids = sortIndexes(inGids);
-  rdvPermute.resize(inGids.size());
+  redev::GOs rdvPermute(inGids.size());
   int j=0;
   for(size_t i=0; i<inGids.size(); i++) {
     while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
@@ -139,6 +139,7 @@ void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs
     REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //not found
     rdvPermute[iInGids[i]] = iGids[j];
   }
+  return rdvPermute;
 }
 
 }

@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
       }
       ts::getAndPrintTime(start,name + " read",rank);
       //attach the ids to the mesh
-      if(iter==0) ts::getRdvPermutation(mesh, msgs, rdvInPermute);
+      if(iter==0) rdvInPermute = ts::getRdvPermutation(mesh, msgs);
       ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
       ts::writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv

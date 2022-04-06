@@ -66,7 +66,7 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
  * vertex global ids (inGids) to the mesh on this rendezvous process (mesh)
  * such that gids[rdvPermute[i]] == inGids[i].
  */
-void getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids, redev::GOs& rdvPermute);
+redev::GOs getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids);
 
 /**
  * On the rendezvous processes use the permutation (rdvPermute) from the input message array

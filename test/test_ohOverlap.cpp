@@ -100,12 +100,10 @@ int main(int argc, char** argv) {
   auto isRdv = atoi(argv[1]);
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[2], lib.world(), &mesh);
-  const std::string cpnFileName(argv[3]);
-  redev::LOs ranks;
-  redev::LOs classIds;
+  std::string_view cpnFileName(argv[3]);
   if(isRdv) {
-    if(!rank) ts::readClassPtnFromCpn(cpnFileName, ranks, classIds);
-    ts::migrateMeshElms(mesh, ranks, classIds);
+    const auto partition = !rank ? ts::readClassPartitionFile(cpnFileName) : ts::ClassificationPartition();
+    ts::migrateMeshElms(mesh, partition);
   } else {
   }
   return 0;

@@ -30,26 +30,31 @@ void printTime(std::string_view mode, double min, double max, double avg) {
   std::cout << ss.str();
 }
 
-void readClassPtnFromCpn(std::string cpnFileName, redev::LOs& ranks, redev::LOs& classIds) {
-  std::ifstream in_file(cpnFileName);
+ClassificationPartition readClassPartitionFile(std::string_view cpnFileName) {
+  std::string cpnFileNameStr(cpnFileName);
+  std::ifstream in_file(cpnFileNameStr); //doesn't take a string_view
   if(!in_file) {
-    std::cerr << "cannot read " << cpnFileName << "... exiting\n";
+    std::stringstream ss;
+    ss << "cannot read " << cpnFileName << "... exiting\n";
+    std::cout << ss.str();
     exit(EXIT_FAILURE);
   }
 
   int numLines;
   in_file >> numLines;
-  ranks.reserve(numLines);
-  classIds.reserve(numLines);
+  ClassificationPartition cp;
+  cp.ranks.reserve(numLines);
+  cp.classIds.reserve(numLines);
   int rank, classId;
   while(in_file >> classId >> rank) {
-    ranks.push_back(rank);
-    classIds.push_back(classId);
+    cp.ranks.push_back(rank);
+    cp.classIds.push_back(classId);
   }
   in_file.close();
+  return cp;
 }
 
-void migrateMeshElms(Omega_h::Mesh& mesh, const redev::LOs& ranks, const redev::LOs& classIds) {
+void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partition) {
   auto ohComm = mesh.comm();
   auto mpiComm = ohComm->get_impl();
   const auto rank = ohComm->rank();
@@ -60,8 +65,8 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const redev::LOs& ranks, const redev::
     auto class_ids_h = Omega_h::HostRead(class_ids);
     typedef std::map<int,int> mii;
     mii classIdToRank;
-    for(int i=0; i<ranks.size(); i++)
-      classIdToRank[classIds[i]] = ranks[i];
+    for(int i=0; i<partition.ranks.size(); i++)
+      classIdToRank[partition.classIds[i]] = partition.ranks[i];
     typedef std::map<int,std::vector<int>> miv;
     miv elmsPerRank;
     for(int i=0; i<mesh.nelems(); i++) {

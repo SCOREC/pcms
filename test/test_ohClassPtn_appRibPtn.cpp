@@ -120,7 +120,8 @@ int main(int argc, char** argv) {
   redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R");
   redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getFromIO(), name+"_R2A");
 
-  //build dest, offsets, and permutation arrays
+  //Build the dest, offsets, and permutation arrays for the forward
+  //send from non-rendezvous to rendezvous.
   ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
   if(!isRdv) {
     commA2R.SetOutMessageLayout(appOut.dest, appOut.offset);
@@ -148,16 +149,25 @@ int main(int argc, char** argv) {
       ts::getAndPrintTime(start,name + " appWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const bool knownSizes = (iter == 0) ? false : true;
       const auto msgs = commA2R.Unpack();
       ts::getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
       if(iter==0) {
+        //We have received the first input message in the rendezvous
+        //processes.  Using the meta data of the incoming message we will:
+        //- compute the permutation from the incoming vertex global ids to the
+        //  on-process global ids
+        //- set the message layout for the reverse (rendezvous->non-rendezvous) send by
+        //  building the dest and offsets array.
+        //- compute the reverse send's permutation array using the layout of
+        //  global vertex ids in 'msgs'.
+        //These operations only need to be done once per coupling as long as
+        //the topology and partition of the rendezvous and non-rendezvous meshes
+        //remains the same.
         auto rdvIn = commA2R.GetInMessageLayout();
         ts::getRdvPermutation(mesh, msgs, rdvInPermute);
-        //build dest, offsets, and permutation arrays for the
-        // reverse send (rdv->non-rendezvous)
         prepareRdvOutMessage(mesh,rdvIn,rdvOut);
+        commR2A.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
         getOutboundRdvPermutation(mesh, msgs, rdvOutPermute);
       }
       ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
@@ -166,9 +176,6 @@ int main(int argc, char** argv) {
     //////////////////////////////////////////////////////
     //the rendezvous app sends global vtx ids to non-rendezvous
     //////////////////////////////////////////////////////
-    //uncommenting the following results in:
-    //terminate called after throwing an instance of 'std::length_error'
-    //  what():  cannot create std::vector larger than max_size()
     if(isRdv) {
       //fill message array
       auto gids = mesh.globals(0);
@@ -180,12 +187,10 @@ int main(int argc, char** argv) {
         }
       }
       auto start = std::chrono::steady_clock::now();
-      if(iter==0) commR2A.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
       commR2A.Send(msgs.data());
       ts::getAndPrintTime(start,name + " rdvWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const bool knownSizes = (iter == 0) ? false : true;
       const auto msgs = commR2A.Unpack();
       ts::getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order

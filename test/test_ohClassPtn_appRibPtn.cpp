@@ -17,9 +17,8 @@ struct CSR {
   redev::GOs val;
 };
 
-//creates the outbound (rdv->non-rdv) permutation CSR given inGids and the rdv mesh instance
-//this only needs to be computed once for each topological dimension
-CSR getOutboundRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
+//creates the rdv->non-rdv permutation CSR given inGids and the rdv mesh instance
+CSR getRdvOutPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
   auto iGids = ts::sortIndexes(gids_h);
@@ -172,7 +171,7 @@ int main(int argc, char** argv) {
         rdvInPermute = ts::getRdvPermutation(mesh, msgs);
         rdvOut = prepareRdvOutMessage(mesh,rdvIn);
         commR2A.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
-        rdvOutPermute = getOutboundRdvPermutation(mesh, msgs);
+        rdvOutPermute = getRdvOutPermutation(mesh, msgs);
       }
       ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
       ts::writeVtk(mesh,"rdvInGids",iter);

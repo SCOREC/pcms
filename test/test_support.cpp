@@ -83,17 +83,35 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partiti
         MPI_Send(elms.data(), elms.size(), MPI_INT, dest, 0, mpiComm);
       }
     }
+    const auto elems = elmsPerRank[0];
+    const auto numElems = elems.size();
+    Omega_h::HostWrite<Omega_h::LO> elemIdxs(numElems);
+    for(size_t i=0; i<numElems; i++) elemIdxs[i] = elems[i];
+    Omega_h::HostWrite<Omega_h::I32> elemRanks(numElems);
+    std::fill(elemRanks.data(),elemRanks.data()+numElems,0);
+    //copy to device
+    Omega_h::Write elemIdxs_d(elemIdxs);
+    Omega_h::Write elemRanks_d(elemRanks);
+    //create remotes
+    auto owners = Omega_h::Remotes(elemRanks_d, elemIdxs_d);
+    //call migrate
+    mesh.migrate(owners);
   } else {
     const int src=0;
-    int numElms;
+    int numElems;
     MPI_Status stat;
-    MPI_Recv(&numElms,1,MPI_INT,src,0,mpiComm,&stat);
-    redev::LOs elms(numElms);
-    Omega_h::HostWrite<Omega_h::LO> ptnIdxs(numElms);
-    MPI_Recv(ptnIdxs.data(),numElms,MPI_INT,src,0,mpiComm,&stat);
-    Omega_h::HostWrite<Omega_h::I32> ptnRanks(numElms);
-    std::fill(ptnRanks.data(),ptnRanks.data()+numElms,0);
-    //copy to device, create Remotes, call migrate
+    MPI_Recv(&numElems,1,MPI_INT,src,0,mpiComm,&stat);
+    Omega_h::HostWrite<Omega_h::LO> elemIdxs(numElems);
+    MPI_Recv(elemIdxs.data(),numElems,MPI_INT,src,0,mpiComm,&stat);
+    Omega_h::HostWrite<Omega_h::I32> elemRanks(numElems);
+    std::fill(elemRanks.data(),elemRanks.data()+numElems,0);
+    //copy to device
+    Omega_h::Write elemIdxs_d(elemIdxs);
+    Omega_h::Write elemRanks_d(elemRanks);
+    //create remotes
+    auto owners = Omega_h::Remotes(elemRanks_d, elemIdxs_d);
+    //call migrate
+    mesh.migrate(owners);
   }
 }
 

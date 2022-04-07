@@ -73,8 +73,11 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partiti
       const auto dest = classIdToRank[class_ids_h[i]];
       elemsPerRank[dest].push_back(i);
     }
+    //make sure we are not sending elements to ranks that don't exist
+    REDEV_ALWAYS_ASSERT(elemsPerRank.size() == ohComm->size());
     for(auto iter = elemsPerRank.begin(); iter != elemsPerRank.end(); iter++) {
       const auto dest = iter->first;
+      REDEV_ALWAYS_ASSERT(dest < ohComm->size()); //the destination rank must exist
       if(dest) {
         const auto elms = iter->second;
         const auto numElms = elms.size();

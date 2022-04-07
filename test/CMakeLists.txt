@@ -8,13 +8,23 @@ endif ()
 message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
 message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
 
+file(COPY "adios2_bp4.yaml" DESTINATION ${CMAKE_BINARY_DIR}/test)
+file(RENAME "${CMAKE_BINARY_DIR}/test/adios2_bp4.yaml"
+            "${CMAKE_BINARY_DIR}/test/adios2.yaml")
+#somewhat of a hack - want the yaml file in the same dir as the binaries
+install(FILES "adios2_bp4.yaml" RENAME "adios2.yaml" TYPE BIN)
+
+add_library(test_support test_support.cpp)
+target_link_libraries(test_support wdmcpl) #for omegah and redev
+
 function(add_exe NAME)
-    add_executable(${NAME} ${NAME}.cpp)
-    target_link_libraries(${NAME} wdmcpl)
-    if (WDMCPL_HAS_ASAN)
-        target_compile_options(${NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-        target_link_libraries(${NAME} asan rt)
-    endif ()
+  add_executable(${NAME} ${NAME}.cpp)
+  target_link_libraries(${NAME} wdmcpl test_support)
+  target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  if(WDMCPL_HAS_ASAN)
+    target_compile_options(${NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+    target_link_libraries(${NAME} asan rt)
+  endif()
 endfunction(add_exe)
 
 function(removeBpFiles TESTNAME)
@@ -30,13 +40,40 @@ function(mpi_test TESTNAME PROCS EXE)
     )
 endfunction(mpi_test)
 
-add_exe(test_meshRcbRdv)
-mpi_test(test_meshRcbRdv_1p 1 ./test_meshRcbRdv
-        ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
+function(dual_mpi_test)
+  set(oneValueArgs NAME EXE1 EXE2 PROCS1 PROCS2 )
+  set(multiValueArgs ARGS1 ARGS2)
+  cmake_parse_arguments(DUALTEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+  removeBpFiles(${DUALTEST_NAME}_cleanup)
+  add_test(NAME ${DUALTEST_NAME}
+    COMMAND ${CMAKE_COMMAND}
+    -DMPIEXEC_EXECUTABLE=${MPIEXEC_EXECUTABLE}
+    -DMPIEXEC_NUMPROC_FLAG=${MPIEXEC_NUMPROC_FLAG}
+    -DMPITEST_PROCS1=${DUALTEST_PROCS1} -DMPITEST_EXE1=${DUALTEST_EXE1} "-DMPITEST_ARGS1=${DUALTEST_ARGS1}"
+    -DMPITEST_PROCS2=${DUALTEST_PROCS2} -DMPITEST_EXE2=${DUALTEST_EXE2} "-DMPITEST_ARGS2=${DUALTEST_ARGS2}"
+    -P ${CMAKE_SOURCE_DIR}/cmake/runTwoMpiJobs.cmake)
+endfunction(dual_mpi_test)
 
+add_exe(test_ohClassPtn)
+set(testMesh ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
+set(rendezvous 1)
+set(notRendezvous 0)
+dual_mpi_test(NAME test_ohClassPtnSendRecv
+  EXE1 ./test_ohClassPtn PROCS1 1 ARGS1 ${notRendezvous} ${testMesh}
+  EXE2 ./test_ohClassPtn PROCS2 2 ARGS2 ${rendezvous} ${testMesh})
+
+add_exe(test_ohClassPtn_appRibPtn)
+set(testMesh ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/mesh.osh/)
+set(testMesh2p ${WDMCPL_TEST_DATA_DIR}/Cyclone_ITG/Cyclone_ITG_deltaf_23mesh/2p.osh)
+set(rendezvous 1)
+set(notRendezvous 0)
+dual_mpi_test(NAME test_ohClassPtn_appRibPtn
+  EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${rendezvous} ${testMesh}
+  EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${testMesh2p})
 
 # unit tests
-find_package(Catch2 REQUIRED)
+find_package(Catch2 2 REQUIRED)
+message(STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
 add_executable(unit_tests unit_test_main.cpp test_coordinate_transform.cpp test_coordinate.cpp)
 target_link_libraries(unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl)
 include(Catch)

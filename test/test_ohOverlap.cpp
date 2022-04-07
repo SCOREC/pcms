@@ -104,6 +104,7 @@ int main(int argc, char** argv) {
   if(isRdv) {
     const auto partition = !rank ? ts::readClassPartitionFile(cpnFileName) : ts::ClassificationPartition();
     ts::migrateMeshElms(mesh, partition);
+    ts::writeVtk(mesh,"rdvClassPtn",0);
   } else {
   }
   return 0;

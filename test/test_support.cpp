@@ -68,13 +68,12 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partiti
     for(int i=0; i<partition.ranks.size(); i++)
       classIdToRank[partition.classIds[i]] = partition.ranks[i];
     typedef std::map<int,std::vector<int>> miv;
-    miv elmsPerRank;
+    miv elemsPerRank;
     for(int i=0; i<mesh.nelems(); i++) {
       const auto dest = classIdToRank[class_ids_h[i]];
-      elmsPerRank[dest].push_back(i);
-
+      elemsPerRank[dest].push_back(i);
     }
-    for(auto iter = elmsPerRank.begin(); iter != elmsPerRank.end(); iter++) {
+    for(auto iter = elemsPerRank.begin(); iter != elemsPerRank.end(); iter++) {
       const auto dest = iter->first;
       if(dest) {
         const auto elms = iter->second;
@@ -83,7 +82,7 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partiti
         MPI_Send(elms.data(), elms.size(), MPI_INT, dest, 0, mpiComm);
       }
     }
-    const auto elems = elmsPerRank[0];
+    const auto elems = elemsPerRank[0];
     const auto numElems = elems.size();
     Omega_h::HostWrite<Omega_h::LO> elemIdxs(numElems);
     for(size_t i=0; i<numElems; i++) elemIdxs[i] = elems[i];

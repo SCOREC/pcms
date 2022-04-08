@@ -27,7 +27,7 @@ struct InMsg {
 
 struct ClassificationPartition {
   redev::LOs ranks;
-  redev::LOs classIds;
+  redev::ClassPtn::ModelEntVec modelEnts;
 };
 
 void printTime(std::string_view mode, double min, double max, double avg);

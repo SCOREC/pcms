@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
     if(!rank) REDEV_ALWAYS_ASSERT(mesh.nelems()==11);
     ts::writeVtk(mesh,"appSplit",0);
   }
-  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.classIds);
+  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.modelEnts);
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
   rdv.Setup();
 

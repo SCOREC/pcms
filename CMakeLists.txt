@@ -12,7 +12,7 @@ endif()
 
 set(MPI_CXX_SKIP_MPICXX ON)
 find_package(MPI REQUIRED)
-find_package(redev 1.4.0 REQUIRED)
+find_package(redev 1.4.1 REQUIRED)
 message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
 find_package(Omega_h REQUIRED VERSION 10)
 message(STATUS "Found Omega_h: ${Omega_h_DIR} (found version ${Omega_h_VERSION})")

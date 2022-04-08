@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
   if(isRdv) {
     ts::writeVtk(mesh,"rdvSplit",0);
   }
-  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.classIds);
+  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.modelEnts);
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
   rdv.Setup();
   const std::string name = "meshVtxIds";

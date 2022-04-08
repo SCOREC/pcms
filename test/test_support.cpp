@@ -44,14 +44,27 @@ ClassificationPartition readClassPartitionFile(std::string_view cpnFileName) {
   in_file >> numLines;
   ClassificationPartition cp;
   cp.ranks.reserve(numLines);
-  cp.classIds.reserve(numLines);
+  cp.modelEnts.reserve(numLines);
   int rank, classId;
   while(in_file >> classId >> rank) {
     cp.ranks.push_back(rank);
-    cp.classIds.push_back(classId);
+    const redev::ClassPtn::ModelEnt ent(2,classId); //cpn files only contain model faces!
+    cp.modelEnts.push_back(ent);
   }
   in_file.close();
   return cp;
+}
+
+//FIXME - write this code
+ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh) {
+  //ClassificationPartition cp
+  //for(ent : modelEnts) {
+  //  verts = getrc(VERTEX,ent)
+  //  remotes = getRemotes(verts)
+  //  destRank = minRank(remotes)
+  //  cp.ranks.push_back(destRank)
+  //  cp.modelEnts.push_back({ent.dim, ent.id})
+  //}
 }
 
 void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partition) {
@@ -63,14 +76,18 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partiti
     const auto dim = mesh.dim();
     auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
     auto class_ids_h = Omega_h::HostRead(class_ids);
-    typedef std::map<int,int> mii;
-    mii classIdToRank;
+    auto class_dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
+    auto class_dims_h = Omega_h::HostRead(class_dims);
+    using ModelEnt = redev::ClassPtn::ModelEnt;
+    std::map<ModelEnt,int> modelEntToRank;
     for(int i=0; i<partition.ranks.size(); i++)
-      classIdToRank[partition.classIds[i]] = partition.ranks[i];
+      modelEntToRank[partition.modelEnts[i]] = partition.ranks[i];
     typedef std::map<int,std::vector<int>> miv;
     miv elemsPerRank;
     for(int i=0; i<mesh.nelems(); i++) {
-      const auto dest = classIdToRank[class_ids_h[i]];
+      const ModelEnt ent({class_dims_h[i],class_ids_h[i]});
+      REDEV_ALWAYS_ASSERT(modelEntToRank.count(ent));
+      const auto dest = modelEntToRank[ent];
       elemsPerRank[dest].push_back(i);
     }
     //make sure we are not sending elements to ranks that don't exist
@@ -141,14 +158,13 @@ ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh) {
     auto owners = Omega_h::Remotes(partitionRanks, partitionIdxs);
     mesh.migrate(owners);
   }
-
-  //the hardcoded assignment of classids to ranks
-  ClassificationPartition cp;
-  cp.ranks.resize(3);
-  cp.classIds.resize(3);
-  cp.classIds[0] = 1; cp.ranks[0] = 0;
-  cp.classIds[1] = 2; cp.ranks[1] = 1;
-  cp.classIds[2] = 3; cp.ranks[2] = 0;  //center ('O point') model vertex
+  cp = CreateClassificationPartition(mesh);
+  //check the hardcoded assignment of classids to ranks
+  //FIXME - this needs to be expanded to include all model entities
+  redev::ClassPtn::ModelEntVec expectedEnts {{2,1},{2,2},{0,3} /* 'O point' model vertex */};
+  redev::LOs expectedRanks {{0,1,0}};
+  REDEV_ALWAYS_ASSERT(cp.ranks == expectedRanks);
+  REDEV_ALWAYS_ASSERT(cp.modelEnts == expectedEnts);
   return cp;
 }
 
@@ -172,13 +188,17 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
   //transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
   auto classIds_h = Omega_h::HostRead(classIds);
+  auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
+  auto classDims_h = Omega_h::HostRead(classDims);
   //count number of vertices going to each destination process by calling getRank - degree array
   std::map<int,int> destRankCounts;
   for(auto rank : partition.GetRanks() ) {
     destRankCounts[rank] = 0;
   }
   for(auto i=0; i<classIds_h.size(); i++) {
-    auto dr = partition.GetRank(classIds_h[i]);
+    const auto ent = redev::ClassPtn::ModelEnt({classDims_h[i],classIds_h[i]});
+    std::stringstream ss; ss << "0.1 " << ent.first << " " << ent.second << "\n"; std::cerr << ss.str();
+    auto dr = partition.GetRank(ent);
     assert(destRankCounts.count(dr));
     destRankCounts[dr]++;
   }
@@ -206,7 +226,9 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
   auto gids_h = Omega_h::HostRead(gids);
   out.permute.resize(classIds_h.size());
   for(auto i=0; i<classIds_h.size(); i++) {
-    auto dr = partition.GetRank(classIds_h[i]);
+    const auto ent = redev::ClassPtn::ModelEnt({classDims_h[i],classIds_h[i]});
+    std::stringstream ss; ss << "0.1 " << ent.first << " " << ent.second << "\n"; std::cerr << ss.str();
+    auto dr = partition.GetRank(ent);
     auto idx = destRankIdx[dr]++;
     out.permute[i] = idx;
   }

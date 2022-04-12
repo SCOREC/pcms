@@ -1,5 +1,7 @@
 #include "test_support.h"
 #include <Omega_h_file.hpp> //vtk::write_parallel
+#include <Omega_h_atomics.hpp> //atomic_increment
+#include <Omega_h_for.hpp> //parallel_for
 #include <algorithm> // std::sort, std::stable_sort
 #include <fstream> // ifstream
 #include <mpi.h>
@@ -55,16 +57,65 @@ ClassificationPartition readClassPartitionFile(std::string_view cpnFileName) {
   return cp;
 }
 
-//FIXME - write this code
+/**
+ * return the permutation array that orders the list of model entities (defined
+ * by a pair of integers for their id and dimension) in ascending order
+ */
+Omega_h::LOs getModelEntityPermutation(const Omega_h::LOs& class_ids, const Omega_h::Read<Omega_h::I8>& class_dims) {
+  REDEV_ALWAYS_ASSERT(class_ids.size() == class_dims.size());
+  auto ids = Omega_h::HostRead(class_ids);
+  auto dims = Omega_h::HostRead(class_dims);
+  Omega_h::HostWrite<Omega_h::LO> idx(ids.size());
+  std::iota(&idx[0], &idx[ids.size()-1], 0);
+  std::stable_sort(&idx[0], &idx[ids.size()-1],
+      [&] (const size_t lhs, const size_t rhs) {
+      const auto ldim = dims[lhs]; const auto lid = ids[lhs];
+      const auto rdim = dims[rhs]; const auto rid = ids[rhs];
+      const auto dimLess = (ldim < rdim);
+      const auto dimEqIdLess = (ldim == rdim) && (lid < rid);
+      const auto res = dimLess || dimEqIdLess;
+      return res;
+      });
+  Omega_h::LOs perm(idx);
+  return perm;
+}
+
+Omega_h::LO countModelEnts(const Omega_h::LOs& ids, const Omega_h::Read<Omega_h::I8>& dims,
+    const Omega_h::LOs permutation) {
+  REDEV_ALWAYS_ASSERT(ids.size() == dims.size());
+  REDEV_ALWAYS_ASSERT(ids.size() == permutation.size());
+  Omega_h::Write<Omega_h::LO> numModelEnts(1,0);
+  auto isSameModelEnt = OMEGA_H_LAMBDA(int i, int j) {
+    const auto ip = permutation[i];
+    const auto jp = permutation[j];
+    return (ids[ip] == ids[jp]) && (dims[ip] == dims[jp]);
+  };
+  auto countEnts = OMEGA_H_LAMBDA(int i) {
+    const auto prevSame = (i==0) ? false : isSameModelEnt(i,i-1);
+    if(prevSame) return;
+    Omega_h::atomic_increment(&numModelEnts[0]);
+  };
+  Omega_h::parallel_for(ids.size(), countEnts);
+  Omega_h::HostRead numModelEnts_h(Omega_h::read(numModelEnts));
+  return numModelEnts_h.last();
+}
+
 ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh) {
-  //ClassificationPartition cp
-  //for(ent : modelEnts) {
-  //  verts = getrc(VERTEX,ent)
-  //  remotes = getRemotes(verts)
-  //  destRank = minRank(remotes)
-  //  cp.ranks.push_back(destRank)
-  //  cp.modelEnts.push_back({ent.dim, ent.id})
-  //}
+  auto ohComm = mesh.comm();
+  const auto rank = ohComm->rank();
+  ClassificationPartition cp;
+  for(int dim=0; dim<=mesh.dim(); dim++) {
+    std::cout << dim << "\n";
+    auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
+    auto class_dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
+    auto perm = getModelEntityPermutation(class_ids, class_dims);
+    auto numModelEnts = countModelEnts(class_ids, class_dims, perm);
+    std::stringstream ss;
+    ss << rank << " dim " << dim << " numModelEnts " << numModelEnts << "\n";
+    std::cerr << ss.str();
+    //auto minRemoteRank = getMinRemoteRank(mesh);
+  }
+  return cp;
 }
 
 void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partition) {
@@ -158,7 +209,7 @@ ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh) {
     auto owners = Omega_h::Remotes(partitionRanks, partitionIdxs);
     mesh.migrate(owners);
   }
-  cp = CreateClassificationPartition(mesh);
+  auto cp = CreateClassificationPartition(mesh);
   //check the hardcoded assignment of classids to ranks
   //FIXME - this needs to be expanded to include all model entities
   redev::ClassPtn::ModelEntVec expectedEnts {{2,1},{2,2},{0,3} /* 'O point' model vertex */};

@@ -61,13 +61,14 @@ ClassificationPartition readClassPartitionFile(std::string_view cpnFileName) {
  * return the permutation array that orders the list of model entities (defined
  * by a pair of integers for their id and dimension) in ascending order
  */
-Omega_h::LOs getModelEntityPermutation(const Omega_h::LOs& class_ids, const Omega_h::Read<Omega_h::I8>& class_dims) {
-  REDEV_ALWAYS_ASSERT(class_ids.size() == class_dims.size());
+Omega_h::LOs getModelEntityPermutation(Omega_h::Mesh& mesh, const int dim) {
+  auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
+  auto class_dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
   auto ids = Omega_h::HostRead(class_ids);
   auto dims = Omega_h::HostRead(class_dims);
   Omega_h::HostWrite<Omega_h::LO> idx(ids.size());
-  std::iota(&idx[0], &idx[ids.size()-1], 0);
-  std::stable_sort(&idx[0], &idx[ids.size()-1],
+  std::iota(&idx[0], &idx[ids.size()], 0);
+  std::stable_sort(&idx[0], &idx[ids.size()],
       [&] (const size_t lhs, const size_t rhs) {
       const auto ldim = dims[lhs]; const auto lid = ids[lhs];
       const auto rdim = dims[rhs]; const auto rid = ids[rhs];
@@ -80,9 +81,9 @@ Omega_h::LOs getModelEntityPermutation(const Omega_h::LOs& class_ids, const Omeg
   return perm;
 }
 
-Omega_h::LO countModelEnts(const Omega_h::LOs& ids, const Omega_h::Read<Omega_h::I8>& dims,
-    const Omega_h::LOs permutation) {
-  REDEV_ALWAYS_ASSERT(ids.size() == dims.size());
+Omega_h::LO countModelEnts(Omega_h::Mesh& mesh, const Omega_h::LOs permutation, const int dim) {
+  auto ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
+  auto dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
   REDEV_ALWAYS_ASSERT(ids.size() == permutation.size());
   Omega_h::Write<Omega_h::LO> numModelEnts(1,0);
   auto isSameModelEnt = OMEGA_H_LAMBDA(int i, int j) {
@@ -111,6 +112,7 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
   auto ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
   auto dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
   auto remotes = mesh.ask_owners(dim);
+  const auto numEnts = ids.size();
 
   auto mdlEntIds = Omega_h::Write<Omega_h::LO>(numModelEnts);
   auto mdlEntDims = Omega_h::Write<Omega_h::I8>(numModelEnts);
@@ -124,12 +126,12 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
     const auto jp = permutation[j];
     return (ids[ip] == ids[jp]) && (dims[ip] == dims[jp]);
   };
-  auto countEnts = OMEGA_H_LAMBDA(int i) {
+  auto getEnts = OMEGA_H_LAMBDA(int i) {
     const auto prevSame = (i==0) ? false : isSameModelEnt(i,i-1);
     if(prevSame) return;
     auto minOwner = remotes.ranks[permutation[i]];
     auto next = i+1;
-    while( isSameModelEnt(i, next) ) {
+    while( isSameModelEnt(i, next) && (next < numEnts) ) {
       auto nextOwner = remotes.ranks[permutation[next]];
       if( minOwner > nextOwner )
         minOwner = nextOwner;
@@ -140,7 +142,7 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
     mdlEntOwners[count[0]] = minOwner;
     Omega_h::atomic_increment(&count[0]);
   };
-  Omega_h::parallel_for(ids.size(), countEnts);
+  Omega_h::parallel_for(numEnts, getEnts);
   ModelEntityOwners meow {mdlEntIds, mdlEntDims, mdlEntOwners};
   return meow;
 }
@@ -162,10 +164,8 @@ ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh) {
   const auto rank = ohComm->rank();
   ClassificationPartition cp;
   for(int dim=0; dim<=mesh.dim(); dim++) {
-    auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
-    auto class_dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
-    auto perm = getModelEntityPermutation(class_ids, class_dims);
-    auto numModelEnts = countModelEnts(class_ids, class_dims, perm);
+    auto perm = getModelEntityPermutation(mesh, dim);
+    auto numModelEnts = countModelEnts(mesh, perm, dim);
     auto modelEntityOwners = getModelEntityOwners(mesh, perm, dim, numModelEnts);
     printMeow(modelEntityOwners, rank, dim);
     //auto minRemoteRank = getMinRemoteRank(mesh);

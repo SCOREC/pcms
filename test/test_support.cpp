@@ -100,19 +100,74 @@ Omega_h::LO countModelEnts(const Omega_h::LOs& ids, const Omega_h::Read<Omega_h:
   return numModelEnts_h.last();
 }
 
+struct ModelEntityOwners {
+  Omega_h::LOs ids;
+  Omega_h::Read<Omega_h::I8> dims;
+  Omega_h::LOs owners;
+};
+
+ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
+    const Omega_h::LOs permutation, const int dim, const int numModelEnts) {
+  auto ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
+  auto dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
+  auto remotes = mesh.ask_owners(dim);
+
+  auto mdlEntIds = Omega_h::Write<Omega_h::LO>(numModelEnts);
+  auto mdlEntDims = Omega_h::Write<Omega_h::I8>(numModelEnts);
+  auto mdlEntOwners = Omega_h::Write<Omega_h::LO>(numModelEnts);
+
+  Omega_h::Write<Omega_h::LO> count(1,0);
+
+  REDEV_ALWAYS_ASSERT(ids.size() == permutation.size());
+  auto isSameModelEnt = OMEGA_H_LAMBDA(int i, int j) {
+    const auto ip = permutation[i];
+    const auto jp = permutation[j];
+    return (ids[ip] == ids[jp]) && (dims[ip] == dims[jp]);
+  };
+  auto countEnts = OMEGA_H_LAMBDA(int i) {
+    const auto prevSame = (i==0) ? false : isSameModelEnt(i,i-1);
+    if(prevSame) return;
+    auto minOwner = remotes.ranks[permutation[i]];
+    auto next = i+1;
+    while( isSameModelEnt(i, next) ) {
+      auto nextOwner = remotes.ranks[permutation[next]];
+      if( minOwner > nextOwner )
+        minOwner = nextOwner;
+      next++;
+    }
+    mdlEntIds[count[0]] = ids[permutation[i]];
+    mdlEntDims[count[0]] = dims[permutation[i]];
+    mdlEntOwners[count[0]] = minOwner;
+    Omega_h::atomic_increment(&count[0]);
+  };
+  Omega_h::parallel_for(ids.size(), countEnts);
+  ModelEntityOwners meow {mdlEntIds, mdlEntDims, mdlEntOwners};
+  return meow;
+}
+
+void printMeow(const ModelEntityOwners& meow, const int rank, const int dim) {
+   auto ids = Omega_h::HostRead(meow.ids);
+   auto dims = Omega_h::HostRead(meow.dims);
+   auto owners = Omega_h::HostRead(meow.owners);
+   std::stringstream ss;
+   ss << rank << " dim " << dim << " ";
+   for(size_t i=0; i<ids.size(); i++)
+     ss << "(" << static_cast<int>(dims[i]) << "," << ids[i] << "," << owners[i] << ") ";
+   ss << "\n";
+   std::cout << ss.str();
+}
+
 ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh) {
   auto ohComm = mesh.comm();
   const auto rank = ohComm->rank();
   ClassificationPartition cp;
   for(int dim=0; dim<=mesh.dim(); dim++) {
-    std::cout << dim << "\n";
     auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
     auto class_dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
     auto perm = getModelEntityPermutation(class_ids, class_dims);
     auto numModelEnts = countModelEnts(class_ids, class_dims, perm);
-    std::stringstream ss;
-    ss << rank << " dim " << dim << " numModelEnts " << numModelEnts << "\n";
-    std::cerr << ss.str();
+    auto modelEntityOwners = getModelEntityOwners(mesh, perm, dim, numModelEnts);
+    printMeow(modelEntityOwners, rank, dim);
     //auto minRemoteRank = getMinRemoteRank(mesh);
   }
   return cp;

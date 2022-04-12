@@ -159,18 +159,45 @@ void printMeow(const ModelEntityOwners& meow, const int rank, const int dim) {
    std::cout << ss.str();
 }
 
+/**
+ * I don't feel like writing the array merge... so we dump it into a map
+ */
+void append(const ModelEntityOwners& meow, redev::ClassPtn::ModelEntToRank& entToRank) {
+   auto ids = Omega_h::HostRead(meow.ids);
+   auto dims = Omega_h::HostRead(meow.dims);
+   auto owners = Omega_h::HostRead(meow.owners);
+   for(size_t i=0; i<ids.size(); i++)  {
+     const auto ent = redev::ClassPtn::ModelEnt(dims[i],ids[i]);
+     if(entToRank.count(ent))
+       REDEV_ALWAYS_ASSERT(entToRank[ent] == owners[i]);
+     else 
+       entToRank[ent] = owners[i];
+   }
+}
+
+ClassificationPartition fromMap(redev::ClassPtn::ModelEntToRank& entToRank) {
+  ClassificationPartition cp;
+  cp.ranks.reserve(entToRank.size());
+  cp.modelEnts.reserve(entToRank.size());
+  for(auto iter = entToRank.begin(); iter != entToRank.end(); iter++) {
+    cp.modelEnts.push_back(iter->first);
+    cp.ranks.push_back(iter->second);
+  }
+  return cp;
+}
+
 ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh) {
   auto ohComm = mesh.comm();
   const auto rank = ohComm->rank();
-  ClassificationPartition cp;
+  redev::ClassPtn::ModelEntToRank m2r;
   for(int dim=0; dim<=mesh.dim(); dim++) {
     auto perm = getModelEntityPermutation(mesh, dim);
     auto numModelEnts = countModelEnts(mesh, perm, dim);
     auto modelEntityOwners = getModelEntityOwners(mesh, perm, dim, numModelEnts);
     printMeow(modelEntityOwners, rank, dim);
-    //auto minRemoteRank = getMinRemoteRank(mesh);
+    append(modelEntityOwners,m2r);
   }
-  return cp;
+  return fromMap(m2r);
 }
 
 void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partition) {

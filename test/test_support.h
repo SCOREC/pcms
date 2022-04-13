@@ -45,6 +45,8 @@ void getAndPrintTime(T start, std::string_view key, int rank) {
 
 ClassificationPartition readClassPartitionFile(std::string_view cpnFileName);
 
+ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh);
+
 void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partition);
 
 /**

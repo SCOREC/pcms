@@ -101,11 +101,19 @@ int main(int argc, char** argv) {
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[2], lib.world(), &mesh);
   std::string_view cpnFileName(argv[3]);
+  ts::ClassificationPartition classPartition;
   if(isRdv) {
-    const auto partition = !rank ? ts::readClassPartitionFile(cpnFileName) : ts::ClassificationPartition();
-    ts::migrateMeshElms(mesh, partition);
+    const auto facePartition = !rank ? ts::readClassPartitionFile(cpnFileName) : ts::ClassificationPartition();
+    ts::migrateMeshElms(mesh, facePartition);
+    classPartition = ts::CreateClassificationPartition(mesh);
     ts::writeVtk(mesh,"rdvClassPtn",0);
   } else {
+    ts::writeVtk(mesh,"appPartition",0);
   }
+  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.modelEnts);
+  partition.Gather(MPI_COMM_WORLD); //TODO should be included in rdv.Setup - faild here for 37k d3d - split ownership on part boundary
+  redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
+  rdv.Setup();
+
   return 0;
 }

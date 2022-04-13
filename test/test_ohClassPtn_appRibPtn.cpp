@@ -114,6 +114,7 @@ int main(int argc, char** argv) {
     ts::writeVtk(mesh,"appSplit",0);
   }
   auto partition = redev::ClassPtn(classPartition.ranks,classPartition.modelEnts);
+  partition.Gather(MPI_COMM_WORLD); //TODO should be included in rdv.Setup
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
   rdv.Setup();
 

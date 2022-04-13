@@ -293,11 +293,17 @@ ClassificationPartition migrateAndGetPartition(Omega_h::Mesh& mesh) {
   }
   auto cp = CreateClassificationPartition(mesh);
   //check the hardcoded assignment of classids to ranks
-  //FIXME - this needs to be expanded to include all model entities
-  redev::ClassPtn::ModelEntVec expectedEnts {{2,1},{2,2},{0,3} /* 'O point' model vertex */};
-  redev::LOs expectedRanks {{0,1,0}};
-  REDEV_ALWAYS_ASSERT(cp.ranks == expectedRanks);
-  REDEV_ALWAYS_ASSERT(cp.modelEnts == expectedEnts);
+  if(!ohComm->rank()) {
+    redev::ClassPtn::ModelEntVec expectedEnts {{0,1}, {0,3}, {1,1}, {2,1}};
+    redev::LOs expectedRanks {{0,0,0,0}};
+    REDEV_ALWAYS_ASSERT(cp.ranks == expectedRanks);
+    REDEV_ALWAYS_ASSERT(cp.modelEnts == expectedEnts);
+  } else {
+    redev::ClassPtn::ModelEntVec expectedEnts {{0,1}, {0,2}, {1,1}, {1,2}, {2,2}};
+    redev::LOs expectedRanks {{0,1,0,1,1}};
+    REDEV_ALWAYS_ASSERT(cp.ranks == expectedRanks);
+    REDEV_ALWAYS_ASSERT(cp.modelEnts == expectedEnts);
+  }
   return cp;
 }
 
@@ -330,7 +336,6 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
   }
   for(auto i=0; i<classIds_h.size(); i++) {
     const auto ent = redev::ClassPtn::ModelEnt({classDims_h[i],classIds_h[i]});
-    std::stringstream ss; ss << "0.1 " << ent.first << " " << ent.second << "\n"; std::cerr << ss.str();
     auto dr = partition.GetRank(ent);
     assert(destRankCounts.count(dr));
     destRankCounts[dr]++;
@@ -360,7 +365,6 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
   out.permute.resize(classIds_h.size());
   for(auto i=0; i<classIds_h.size(); i++) {
     const auto ent = redev::ClassPtn::ModelEnt({classDims_h[i],classIds_h[i]});
-    std::stringstream ss; ss << "0.1 " << ent.first << " " << ent.second << "\n"; std::cerr << ss.str();
     auto dr = partition.GetRank(ent);
     auto idx = destRankIdx[dr]++;
     out.permute[i] = idx;

@@ -131,7 +131,7 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
     if(prevSame) return;
     auto minOwner = remotes.ranks[permutation[i]];
     auto next = i+1;
-    while( isSameModelEnt(i, next) && (next < numEnts) ) {
+    while( (next < numEnts) && isSameModelEnt(i, next) ) {
       auto nextOwner = remotes.ranks[permutation[next]];
       if( minOwner > nextOwner )
         minOwner = nextOwner;

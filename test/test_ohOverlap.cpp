@@ -93,11 +93,14 @@ int main(int argc, char** argv) {
   auto world = lib.world();
   const int rank = world->rank();
   if(argc != 4) {
-    std::cerr << "Usage: " << argv[0] << " <1=isRendezvousApp,0=isParticipant> /path/to/omega_h/mesh /path/to/partitionFile.cpn\n";
+    if(!rank) {
+      std::cerr << "Usage: " << argv[0] << " <1=isRendezvousApp,0=isParticipant> /path/to/omega_h/mesh /path/to/partitionFile.cpn\n";
+    }
     exit(EXIT_FAILURE);
   }
   OMEGA_H_CHECK(argc == 4);
-  auto isRdv = atoi(argv[1]);
+  const auto isRdv = atoi(argv[1]);
+  REDEV_ALWAYS_ASSERT(isRdv==1 || isRdv==0);
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[2], lib.world(), &mesh);
   std::string_view cpnFileName(argv[3]);
@@ -111,9 +114,15 @@ int main(int argc, char** argv) {
     ts::writeVtk(mesh,"appPartition",0);
   }
   auto partition = redev::ClassPtn(classPartition.ranks,classPartition.modelEnts);
-  partition.Gather(MPI_COMM_WORLD); //TODO should be included in rdv.Setup - faild here for 37k d3d - split ownership on part boundary
+  partition.Gather(MPI_COMM_WORLD);
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
   rdv.Setup();
+
+  const std::string name = "meshVtxIds";
+  const int rdvRanks = 4; //TODO - add the exchange of rank count to the redev::Setup call
+  const int appRanks = 16;
+  redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R");
+  redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getFromIO(), name+"_R2A");
 
   return 0;
 }

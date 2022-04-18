@@ -88,6 +88,46 @@ ts::OutMsg prepareRdvOutMessage(Omega_h::Mesh& mesh, const redev::InMessageLayou
   return out;
 }
 
+//TODO - use attributes on the geometric model to
+//       define which model entities are in the
+//       buffer/blended/overlap regions.
+//       This is currently hardcoded for the D3D
+//       case in the coupling data repo.
+/**
+ * return 1 if the specificed model entity is part of the overlap region, 0
+ * otherwise
+ */
+OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id) {
+  //the TOMMS generated geometric model has
+  //entity IDs that increase with the distance
+  //from the magnetic axis
+  if (dim == 2 && (id >=16 && id<=25) ) {
+      return 1;
+  } else if (dim == 1 && (id >=15 && id<=25) ) {
+      return 1;
+  } else if (dim == 0 && (id >=15 && id<=25) ) {
+      return 1;
+  }
+  return 0;
+}
+
+/**
+ * Create the tag 'isOverlap' for each mesh vertex whose value is 1 if the
+ * vertex is classified on a model entity in the closure of the geometric model
+ * faces forming the overlap region; the value is 0 otherwise.
+ */
+void markOverlapMeshEntities(Omega_h::Mesh& mesh) {
+  //transfer vtx classification to host
+  auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
+  auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
+  auto isOverlap = Omega_h::Write<Omega_h::I8>(classIds.size(), "isOverlap");
+  auto markOverlap = OMEGA_H_LAMBDA(int i) {
+    isOverlap[i] = isModelEntInOverlap(classDims[i], classIds[i]);
+  };
+  Omega_h::parallel_for(classIds.size(), markOverlap);
+  mesh.add_tag(0, "isOverlap", 1, Omega_h::read(isOverlap));
+}
+
 int main(int argc, char** argv) {
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
@@ -123,6 +163,13 @@ int main(int argc, char** argv) {
   const int appRanks = 16;
   redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R");
   redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getFromIO(), name+"_R2A");
+
+  markOverlapMeshEntities(mesh);
+  if(isRdv) {
+    ts::writeVtk(mesh,"rdvOverlap",0);
+  } else {
+    ts::writeVtk(mesh,"appOverlap",0);
+  }
 
   return 0;
 }

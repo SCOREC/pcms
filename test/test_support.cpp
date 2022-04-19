@@ -320,7 +320,7 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
   auto classDims_h = Omega_h::HostRead(classDims);
   auto isOverlap = mesh.has_tag(0, "isOverlap") ? 
     mesh.get_array<Omega_h::I8>(0, "isOverlap") :
-    Omega_h::Read<Omega_h::I8>(classIds.size(), 0, "isOverlap");
+    Omega_h::Read<Omega_h::I8>(classIds.size(), 1, "isOverlap"); //no mask for overlap vertices
   auto isOverlap_h = Omega_h::HostRead(isOverlap);
   //count number of vertices going to each destination process by calling getRank - degree array
   std::map<int,int> destRankCounts;

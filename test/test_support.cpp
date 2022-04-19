@@ -147,18 +147,6 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
   return meow;
 }
 
-void printMeow(const ModelEntityOwners& meow, const int rank, const int dim) {
-   auto ids = Omega_h::HostRead(meow.ids);
-   auto dims = Omega_h::HostRead(meow.dims);
-   auto owners = Omega_h::HostRead(meow.owners);
-   std::stringstream ss;
-   ss << rank << " dim " << dim << " ";
-   for(size_t i=0; i<ids.size(); i++)
-     ss << "(" << static_cast<int>(dims[i]) << "," << ids[i] << "," << owners[i] << ") ";
-   ss << "\n";
-   std::cout << ss.str();
-}
-
 /**
  * I don't feel like writing the array merge... so we dump it into a map
  */
@@ -194,7 +182,6 @@ ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh) {
     auto perm = getModelEntityPermutation(mesh, dim);
     auto numModelEnts = countModelEnts(mesh, perm, dim);
     auto modelEntityOwners = getModelEntityOwners(mesh, perm, dim, numModelEnts);
-    printMeow(modelEntityOwners, rank, dim);
     append(modelEntityOwners,m2r);
   }
   return fromMap(m2r);

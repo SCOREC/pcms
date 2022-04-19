@@ -324,21 +324,29 @@ void checkAndAttachIds(Omega_h::Mesh& mesh, std::string_view name, const redev::
 }
 
 OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition) {
+  auto ohComm = mesh.comm();
+  const auto rank = ohComm->rank();
   //transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
   auto classIds_h = Omega_h::HostRead(classIds);
   auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
   auto classDims_h = Omega_h::HostRead(classDims);
+  auto isOverlap = mesh.has_tag(0, "isOverlap") ? 
+    mesh.get_array<Omega_h::I8>(0, "isOverlap") :
+    Omega_h::Read<Omega_h::I8>(classIds.size(), 0, "isOverlap");
+  auto isOverlap_h = Omega_h::HostRead(isOverlap);
   //count number of vertices going to each destination process by calling getRank - degree array
   std::map<int,int> destRankCounts;
   for(auto rank : partition.GetRanks() ) {
     destRankCounts[rank] = 0;
   }
   for(auto i=0; i<classIds_h.size(); i++) {
-    const auto ent = redev::ClassPtn::ModelEnt({classDims_h[i],classIds_h[i]});
-    auto dr = partition.GetRank(ent);
-    assert(destRankCounts.count(dr));
-    destRankCounts[dr]++;
+    if( isOverlap_h[i] ) {
+      const auto ent = redev::ClassPtn::ModelEnt({classDims_h[i],classIds_h[i]});
+      auto dr = partition.GetRank(ent);
+      assert(destRankCounts.count(dr));
+      destRankCounts[dr]++;
+    }
   }
 
   OutMsg out;
@@ -362,12 +370,17 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
   }
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
-  out.permute.resize(classIds_h.size());
+  out.permute.resize(out.offset.back());
+  int j=0;
   for(auto i=0; i<classIds_h.size(); i++) {
-    const auto ent = redev::ClassPtn::ModelEnt({classDims_h[i],classIds_h[i]});
-    auto dr = partition.GetRank(ent);
-    auto idx = destRankIdx[dr]++;
-    out.permute[i] = idx;
+    if( isOverlap_h[i] ) {
+      const auto ent = redev::ClassPtn::ModelEnt({classDims_h[i],classIds_h[i]});
+      auto dr = partition.GetRank(ent);
+      auto idx = destRankIdx[dr]++;
+      out.permute[j] = idx;
+      assert(j<out.permute.size());
+      j++;
+    }
   }
   return out;
 }

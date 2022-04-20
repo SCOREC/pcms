@@ -12,75 +12,6 @@
 
 namespace ts = test_support;
 
-struct CSR {
-  redev::GOs off;
-  redev::GOs val;
-};
-
-//creates the rdv->non-rdv permutation CSR given inGids and the rdv mesh instance
-CSR getRdvOutPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
-  auto gids = mesh.globals(0);
-  auto gids_h = Omega_h::HostRead(gids);
-  auto iGids = ts::sortIndexes(gids_h);
-  auto iInGids = ts::sortIndexes(inGids);
-  //count the number of times each gid is included in inGids
-  CSR perm;
-  perm.off.resize(gids_h.size()+1);
-  int j=0;
-  for(size_t i=0; i<inGids.size(); i++) {
-    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
-      j++;
-    }
-    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //found
-    perm.off[iGids[j]]++;
-  }
-  //create the offsets array from the counts
-  std::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0);
-  //fill the permutation array
-  perm.val.resize(perm.off.back());
-  redev::LOs count(gids_h.size()); //how many times each gid was written
-  j=0;
-  for(size_t i=0; i<inGids.size(); i++) {
-    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
-      j++;
-    }
-    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //found
-    const auto subIdx = count[iGids[j]]++;
-    const auto startIdx = perm.off[iGids[j]];
-    const auto offIdx = startIdx + subIdx;
-    perm.val[offIdx] = iInGids[i];
-  }
-  return perm;
-}
-
-ts::OutMsg prepareRdvOutMessage(Omega_h::Mesh& mesh, const redev::InMessageLayout& in) {
-  auto ohComm = mesh.comm();
-  const auto rank = ohComm->rank();
-  const auto nproc = ohComm->size();
-  auto nAppProcs = Omega_h::divide_no_remainder(in.srcRanks.size(),static_cast<size_t>(nproc));
-  //build dest and offsets arrays from incoming message metadata
-  redev::LOs senderDeg(nAppProcs);
-  for(size_t i=0; i<nAppProcs-1; i++) {
-    senderDeg[i] = in.srcRanks[(i+1)*nproc+rank] - in.srcRanks[i*nproc+rank];
-  }
-  const auto totInMsgs = in.offset[rank+1]-in.offset[rank];
-  senderDeg[nAppProcs-1] = totInMsgs - in.srcRanks[(nAppProcs-1)*nproc+rank];
-  ts::OutMsg out;
-  for(size_t i=0; i<nAppProcs; i++) {
-    if(senderDeg[i] > 0) {
-      out.dest.push_back(i);
-    }
-  }
-  redev::GO sum = 0;
-  for(auto deg : senderDeg) { //exscan over values > 0
-    if(deg>0) {
-      out.offset.push_back(sum);
-      sum+=deg;
-    }
-  }
-  out.offset.push_back(sum);
-  return out;
-}
 
 //TODO - use attributes on the geometric model to
 //       define which model entities are in the
@@ -150,13 +81,14 @@ int main(int argc, char** argv) {
     ts::writeVtk(mesh,"appPartition",0);
   }
   auto partition = redev::ClassPtn(classPartition.ranks,classPartition.modelEnts);
-  partition.Gather(MPI_COMM_WORLD);
+  partition.Gather(MPI_COMM_WORLD); //FIXME - move to redev::ClassPtn ctor
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
-  rdv.Setup();
+  rdv.Setup(); //FIXME - move to redev ctor
 
   const std::string name = "meshVtxIds";
   const int rdvRanks = 4; //TODO - add the exchange of rank count to the redev::Setup call
   const int appRanks = 16;
+  //TODO - name the endpoints in the rdv.get*Engine() APIs
   redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R");
   redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getFromIO(), name+"_R2A");
 
@@ -172,11 +104,12 @@ int main(int argc, char** argv) {
   //send from non-rendezvous to rendezvous.
   ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
   if(!isRdv) {
-    commA2R.SetOutMessageLayout(appOut.dest, appOut.offset);
+    commA2R.SetOutMessageLayout(appOut.dest, appOut.offset); //TODO - can this be moved to the AdiosComm ctor 
   }
 
+  //TODO - Document why rendezvous needs two permutations but the app does not
   redev::GOs rdvInPermute;
-  CSR rdvOutPermute;
+  ts::CSR rdvOutPermute;
   ts::OutMsg rdvOut;
 
   for(int iter=0; iter<3; iter++) {
@@ -217,9 +150,9 @@ int main(int argc, char** argv) {
         //remains the same.
         auto rdvIn = commA2R.GetInMessageLayout();
         rdvInPermute = ts::getRdvPermutation(mesh, msgs);
-        rdvOut = prepareRdvOutMessage(mesh,rdvIn);
+        rdvOut = ts::prepareRdvOutMessage(mesh,rdvIn);
         commR2A.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
-        rdvOutPermute = getRdvOutPermutation(mesh, msgs);
+        rdvOutPermute = ts::getRdvOutPermutation(mesh, msgs);
       }
       ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
       ts::writeVtk(mesh,"rdvInGids",iter);

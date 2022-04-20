@@ -394,4 +394,69 @@ redev::GOs getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
   return rdvPermute;
 }
 
+CSR getRdvOutPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
+  auto gids = mesh.globals(0);
+  auto gids_h = Omega_h::HostRead(gids);
+  auto iGids = sortIndexes(gids_h);
+  auto iInGids = sortIndexes(inGids);
+  //count the number of times each gid is included in inGids
+  CSR perm;
+  perm.off.resize(gids_h.size()+1);
+  int j=0;
+  for(size_t i=0; i<inGids.size(); i++) {
+    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
+      j++;
+    }
+    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //found
+    perm.off[iGids[j]]++;
+  }
+  //create the offsets array from the counts
+  std::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0);
+  //fill the permutation array
+  perm.val.resize(perm.off.back());
+  redev::LOs count(gids_h.size()); //how many times each gid was written
+  j=0;
+  for(size_t i=0; i<inGids.size(); i++) {
+    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
+      j++;
+    }
+    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //found
+    const auto subIdx = count[iGids[j]]++;
+    const auto startIdx = perm.off[iGids[j]];
+    const auto offIdx = startIdx + subIdx;
+    perm.val[offIdx] = iInGids[i];
+  }
+  return perm;
+}
+
+OutMsg prepareRdvOutMessage(Omega_h::Mesh& mesh, const redev::InMessageLayout& in) {
+  auto ohComm = mesh.comm();
+  const auto rank = ohComm->rank();
+  const auto nproc = ohComm->size();
+  auto nAppProcs = Omega_h::divide_no_remainder(in.srcRanks.size(),static_cast<size_t>(nproc));
+  //build dest and offsets arrays from incoming message metadata
+  redev::LOs senderDeg(nAppProcs);
+  for(size_t i=0; i<nAppProcs-1; i++) {
+    senderDeg[i] = in.srcRanks[(i+1)*nproc+rank] - in.srcRanks[i*nproc+rank];
+  }
+  const auto totInMsgs = in.offset[rank+1]-in.offset[rank];
+  senderDeg[nAppProcs-1] = totInMsgs - in.srcRanks[(nAppProcs-1)*nproc+rank];
+  OutMsg out;
+  for(size_t i=0; i<nAppProcs; i++) {
+    if(senderDeg[i] > 0) {
+      out.dest.push_back(i);
+    }
+  }
+  redev::GO sum = 0;
+  for(auto deg : senderDeg) { //exscan over values > 0
+    if(deg>0) {
+      out.offset.push_back(sum);
+      sum+=deg;
+    }
+  }
+  out.offset.push_back(sum);
+  return out;
+}
+
+
 }

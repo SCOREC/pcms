@@ -11,6 +11,11 @@
 
 namespace test_support {
 
+struct CSR {
+  redev::GOs off;
+  redev::GOs val;
+};
+
 struct OutMsg {
   redev::LOs dest;
   redev::LOs offset;
@@ -73,6 +78,17 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
  * such that gids[rdvPermute[i]] == inGids[i].
  */
 redev::GOs getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids);
+
+/**
+ * Creates the rendezvous -> non-rendezvous permutation CSR given inGids and the rdv mesh instance.
+ */
+CSR getRdvOutPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids);
+
+/**
+ * Construct the meta data for the rendezvous -> non-rendezvous (reverse) send from the
+ * meta data associated with the non-rendezvous -> rendezvous (forward) send.
+ */
+OutMsg prepareRdvOutMessage(Omega_h::Mesh& mesh, const redev::InMessageLayout& in);
 
 /**
  * On the rendezvous processes use the permutation (rdvPermute) from the input message array

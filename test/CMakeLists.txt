@@ -75,7 +75,7 @@ set(d3d_4p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/4p.cpn)
 set(d3d16p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p16.osh/)
 add_exe(test_ohOverlap)
 dual_mpi_test(NAME test_ohOverlap_d3d_20p
-  EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn})
+  EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
   EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
 
 # unit tests

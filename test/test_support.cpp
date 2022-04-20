@@ -174,6 +174,11 @@ ClassificationPartition fromMap(redev::ClassPtn::ModelEntToRank& entToRank) {
   return cp;
 }
 
+/**
+ * given a mesh partitioned based on model face ownership, derive model vertex and
+ * edge assignment to mpi ranks from the ownership of mesh entities on
+ * the partition boundaries
+ */
 ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh) {
   auto ohComm = mesh.comm();
   const auto rank = ohComm->rank();

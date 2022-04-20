@@ -71,7 +71,7 @@ dual_mpi_test(NAME test_ohClassPtn_appRibPtn
   EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${cyclone2p})
 
 set(d3d1p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc.osh/)
-set(d3d_4p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/4p.cpn)
+set(d3d4p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/4p.cpn)
 set(d3d16p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p16.osh/)
 add_exe(test_ohOverlap)
 dual_mpi_test(NAME test_ohOverlap_d3d_20p

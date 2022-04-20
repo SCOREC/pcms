@@ -4,10 +4,10 @@
   Engine:
       Type: BP4
       Streaming: On
-      OpenTimeoutSecs: 2
+      OpenTimeoutSecs: 4
 - IO: "toRendezvous"
   Engine:
       Type: BP4
       Streaming: On
-      OpenTimeoutSecs: 2
+      OpenTimeoutSecs: 4
 

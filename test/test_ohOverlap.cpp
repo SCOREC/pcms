@@ -76,9 +76,6 @@ int main(int argc, char** argv) {
     const auto facePartition = !rank ? ts::readClassPartitionFile(cpnFileName) : ts::ClassificationPartition();
     ts::migrateMeshElms(mesh, facePartition);
     classPartition = ts::CreateClassificationPartition(mesh);
-    ts::writeVtk(mesh,"rdvClassPtn",0);
-  } else {
-    ts::writeVtk(mesh,"appPartition",0);
   }
   auto partition = redev::ClassPtn(classPartition.ranks,classPartition.modelEnts);
   partition.Gather(MPI_COMM_WORLD); //FIXME - move to redev::ClassPtn ctor
@@ -94,11 +91,6 @@ int main(int argc, char** argv) {
 
   auto isOverlap = markOverlapMeshEntities(mesh);
   auto isOverlap_h = Omega_h::HostRead(isOverlap);
-  if(isRdv) {
-    ts::writeVtk(mesh,"rdvOverlap",0);
-  } else {
-    ts::writeVtk(mesh,"appOverlap",0);
-  }
 
   //Build the dest, offsets, and permutation arrays for the forward
   //send from non-rendezvous to rendezvous.
@@ -112,7 +104,7 @@ int main(int argc, char** argv) {
   ts::CSR rdvOutPermute;
   ts::OutMsg rdvOut;
 
-  for(int iter=0; iter<3; iter++) {
+  for(int iter=0; iter<10; iter++) {
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
     //////////////////////////////////////////////////////
     //the non-rendezvous app sends global vtx ids to rendezvous
@@ -155,7 +147,6 @@ int main(int argc, char** argv) {
         rdvOutPermute = ts::getRdvOutPermutation(mesh, msgs);
       }
       ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
-      ts::writeVtk(mesh,"rdvInGids",iter);
     } //end non-rdv -> rdv
     //////////////////////////////////////////////////////
     //the rendezvous app sends global vtx ids to non-rendezvous

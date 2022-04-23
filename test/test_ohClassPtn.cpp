@@ -30,10 +30,8 @@ int main(int argc, char** argv) {
   if(isRdv) {
     ts::writeVtk(mesh,"rdvSplit",0);
   }
-  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.modelEnts);
-  partition.Gather(MPI_COMM_WORLD); //TODO should be included in rdv.Setup
+  auto partition = redev::ClassPtn(MPI_COMM_WORLD,classPartition.ranks,classPartition.modelEnts);
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
-  rdv.Setup();
   const std::string name = "meshVtxIds";
   const int rdvRanks = 2;
   redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name);

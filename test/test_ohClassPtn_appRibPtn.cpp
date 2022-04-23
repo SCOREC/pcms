@@ -38,10 +38,8 @@ int main(int argc, char** argv) {
     if(!rank) REDEV_ALWAYS_ASSERT(mesh.nelems()==11);
     ts::writeVtk(mesh,"appSplit",0);
   }
-  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.modelEnts);
-  partition.Gather(MPI_COMM_WORLD); //TODO should be included in rdv.Setup
+  auto partition = redev::ClassPtn(MPI_COMM_WORLD,classPartition.ranks,classPartition.modelEnts);
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
-  rdv.Setup();
 
   const std::string name = "meshVtxIds";
   const int rdvRanks = 2;

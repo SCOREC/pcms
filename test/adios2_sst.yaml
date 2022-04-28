@@ -1,9 +1,0 @@
----
-# adios2 config.yaml
-- IO: "fromRendezvous"
-  Engine:
-      Type: SST
-- IO: "toRendezvous"
-  Engine:
-      Type: SST
-

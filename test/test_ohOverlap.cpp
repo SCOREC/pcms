@@ -6,7 +6,6 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>
 #include <Omega_h_scalar.hpp> // divide_no_remainder
-#include <redev_comm.h>
 #include "wdmcpl.h"
 #include "test_support.h"
 
@@ -64,6 +63,7 @@ redev::Redev clientSetup(Omega_h::Mesh& mesh) {
   ts::writeVtk(mesh,"appPartition",0);
   ts::ClassificationPartition classPartition;
   const bool isRendezvous = false;
+  fprintf(stderr, "%s 0.1\n", __func__);
   return redevSetup(classPartition,isRendezvous);
 }
 
@@ -75,24 +75,16 @@ redev::Redev serverSetup(Omega_h::Mesh& mesh, std::string_view cpnFileName) {
   auto classPartition = ts::CreateClassificationPartition(mesh);
   ts::writeVtk(mesh,"rdvClassPtn",0);
   const bool isRendezvous = true;
+  fprintf(stderr, "%s 0.1\n", __func__);
   return redevSetup(classPartition,isRendezvous);
 }
 
-struct AdiosCommPair {
-  redev::AdiosComm<redev::GO> c2s; //client to server
-  redev::AdiosComm<redev::GO> s2c; //server to client
-};
-
-AdiosCommPair setupComms(redev::Redev& rdv) {
+auto setupComms(redev::Redev& rdv) {
+  fprintf(stderr, "%s 0.1\n", __func__);
   const std::string name = "meshVtxIds";
-  const int rdvRanks = 4; //TODO - add the exchange of rank count to the redev::Setup call
-  const int appRanks = 16;
-  AdiosCommPair cp = {
-    //TODO - name the endpoints in the rdv.get*Engine() APIs
-    redev::AdiosComm<redev::GO>(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R", isSender),
-    redev::AdiosComm<redev::GO>(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getFromIO(), name+"_R2A", isSender) 
-  };
-  return cp;
+  const bool isSST = false;
+  adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
+  return rdv.CreateAdiosClient<redev::GO>(name,params,isSST);
 }
 
 Omega_h::HostRead<Omega_h::I8> markMeshOverlapRegion(Omega_h::Mesh& mesh) {
@@ -119,9 +111,11 @@ int main(int argc, char** argv) {
     std::string_view cpnFileName(argv[3]);
     auto rdv = serverSetup(mesh,cpnFileName);
     auto comm = setupComms(rdv);
+    fprintf(stderr, "%s 0.1\n", __func__);
   } else {
     auto rdv = clientSetup(mesh);
     auto comm = setupComms(rdv);
+    fprintf(stderr, "%s 0.1\n", __func__);
   }
 
   auto isOverlap_h = markMeshOverlapRegion(mesh);

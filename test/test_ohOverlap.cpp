@@ -54,34 +54,23 @@ Omega_h::Read<Omega_h::I8> markOverlapMeshEntities(Omega_h::Mesh& mesh) {
   return isOverlap_r;
 }
 
-redev::Redev redevSetup(const ts::ClassificationPartition& classPartition, const bool isRendezvous) {
-  auto partition = redev::ClassPtn(MPI_COMM_WORLD, classPartition.ranks,classPartition.modelEnts);
-  return redev::Redev(MPI_COMM_WORLD,partition,isRendezvous);
-}
-
-redev::Redev clientSetup(Omega_h::Mesh& mesh) {
+redev::ClassPtn setupClientPartition(Omega_h::Mesh& mesh) {
   ts::writeVtk(mesh,"appPartition",0);
-  ts::ClassificationPartition classPartition;
-  const bool isRendezvous = false;
-  fprintf(stderr, "%s 0.1\n", __func__);
-  return redevSetup(classPartition,isRendezvous);
+  auto ptn = ts::ClassificationPartition();
+  return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
 
-redev::Redev serverSetup(Omega_h::Mesh& mesh, std::string_view cpnFileName) {
+redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh, std::string_view cpnFileName) {
   auto ohComm = mesh.comm();
   const auto facePartition = !ohComm->rank() ? ts::readClassPartitionFile(cpnFileName) :
                                                ts::ClassificationPartition();
   ts::migrateMeshElms(mesh, facePartition);
-  auto classPartition = ts::CreateClassificationPartition(mesh);
-  ts::writeVtk(mesh,"rdvClassPtn",0);
-  const bool isRendezvous = true;
-  fprintf(stderr, "%s 0.1\n", __func__);
-  return redevSetup(classPartition,isRendezvous);
+  auto ptn = ts::CreateClassificationPartition(mesh);
+  return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
 
-auto setupComms(redev::Redev& rdv) {
+auto setupComms(redev::Redev& rdv, std::string_view name) {
   fprintf(stderr, "%s 0.1\n", __func__);
-  const std::string name = "meshVtxIds";
   const bool isSST = false;
   adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
   return rdv.CreateAdiosClient<redev::GO>(name,params,isSST);
@@ -107,107 +96,118 @@ int main(int argc, char** argv) {
   REDEV_ALWAYS_ASSERT(isRdv==1 || isRdv==0);
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[2], lib.world(), &mesh);
+  const std::string name = "meshVtxIds";
   if(isRdv) {
     std::string_view cpnFileName(argv[3]);
-    auto rdv = serverSetup(mesh,cpnFileName);
-    auto comm = setupComms(rdv);
+    auto partition = setupServerPartition(mesh,cpnFileName);
+    auto rdv = redev::Redev(MPI_COMM_WORLD,partition,isRdv);
+    auto comm = setupComms(rdv,name);
     fprintf(stderr, "%s 0.1\n", __func__);
+    auto isOverlap_h = markMeshOverlapRegion(mesh);
+    ts::OutMsg appOut = ts::OutMsg(); //FIXME is this needed?
+    //TODO - Document why rendezvous needs two permutations but the app does not
+    redev::GOs rdvInPermute;
+    ts::CSR rdvOutPermute;
+    ts::OutMsg rdvOut;
+    //////////////////////////////////////////////////////
+    //the non-rendezvous app sends global vtx ids to rendezvous
+    //////////////////////////////////////////////////////
+    auto start = std::chrono::steady_clock::now();
+    const auto msgsIn = comm.c2s.Recv();
+    ts::getAndPrintTime(start,name + " rdvRead",rank);
+    //We have received the first input message in the rendezvous
+    //processes.  Using the meta data of the incoming message we will:
+    //- compute the permutation from the incoming vertex global ids to the
+    //  on-process global ids
+    //- set the message layout for the reverse (rendezvous->non-rendezvous) send by
+    //  building the dest and offsets array.
+    //- compute the reverse send's permutation array using the layout of
+    //  global vertex ids in 'msgsIn'.
+    //These operations only need to be done once per coupling as long as
+    //the topology and partition of the rendezvous and non-rendezvous meshes
+    //remains the same.
+    auto rdvIn = comm.c2s.GetInMessageLayout();
+    rdvInPermute = ts::getRdvPermutation(mesh, msgsIn);
+    rdvOut = ts::prepareRdvOutMessage(mesh,rdvIn);
+    comm.s2c.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
+    rdvOutPermute = ts::getRdvOutPermutation(mesh, msgsIn);
+    //attach ids to the mesh
+    ts::checkAndAttachIds(mesh, "inVtxGids", msgsIn, rdvInPermute);
+    ts::writeVtk(mesh,"rdvInGids",0);
+    //////////////////////////////////////////////////////
+    //the rendezvous app sends global vtx ids to the client
+    //////////////////////////////////////////////////////
+    //fill message array
+    auto gids = mesh.globals(0);
+    auto gids_h = Omega_h::HostRead(gids);
+    redev::GOs msgs(rdvOutPermute.off.back());
+    for(int i=0; i<gids_h.size(); i++) {
+      for(int j=rdvOutPermute.off[i]; j<rdvOutPermute.off[i+1]; j++) {
+        REDEV_ALWAYS_ASSERT(isOverlap_h[i]);
+        msgs[rdvOutPermute.val[j]] = gids_h[i];
+      }
+    }
+    start = std::chrono::steady_clock::now();
+    comm.s2c.Send(msgs.data());
+    ts::getAndPrintTime(start,name + " rdvWrite",rank);
   } else {
-    auto rdv = clientSetup(mesh);
-    auto comm = setupComms(rdv);
+    auto partition = setupClientPartition(mesh);
+    auto rdv = redev::Redev(MPI_COMM_WORLD,partition,isRdv);
+    auto comm = setupComms(rdv,name);
     fprintf(stderr, "%s 0.1\n", __func__);
+    auto isOverlap_h = markMeshOverlapRegion(mesh);
+    //////////////////////////////////////////////////////
+    //the non-rendezvous app sends global vtx ids to rendezvous
+    //////////////////////////////////////////////////////
+    ts::OutMsg appOut = ts::prepareAppOutMessage(mesh, partition);
+    //Build the dest, offsets, and permutation arrays for the forward
+    //send from client to rendezvous/server.
+    comm.c2s.SetOutMessageLayout(appOut.dest, appOut.offset); //TODO - can this be moved to the AdiosComm ctor 
+    //fill message array
+    auto gids = mesh.globals(0);
+    auto gids_h = Omega_h::HostRead(gids);
+    redev::GOs msgs(isOverlap_h.size(),0);
+    int j=0;
+    for(size_t i=0; i<gids_h.size(); i++) {
+      if( isOverlap_h[i] ) {
+        msgs[appOut.permute[j++]] = gids_h[i];
+      }
+    }
+    auto start = std::chrono::steady_clock::now();
+    comm.c2s.Send(msgs.data());
+    ts::getAndPrintTime(start,name + " appWrite",rank);
+    //////////////////////////////////////////////////////
+    //the rendezvous app sends global vtx ids to non-rendezvous
+    //////////////////////////////////////////////////////
+    start = std::chrono::steady_clock::now();
+    const auto msgsIn = comm.s2c.Recv();
+    ts::getAndPrintTime(start,name + " appRead",rank);
+    { //check incoming messages are in the correct order
+      auto gids = mesh.globals(0);
+      auto gids_h = Omega_h::HostRead(gids);
+      int j=0;
+      for(size_t i=0; i<gids_h.size(); i++) {
+        if( isOverlap_h[i] ) {
+          REDEV_ALWAYS_ASSERT(msgsIn[appOut.permute[j++]] == gids_h[i]);
+        }
+      }
+    }
   }
 
-  auto isOverlap_h = markMeshOverlapRegion(mesh);
-
-//  //Build the dest, offsets, and permutation arrays for the forward
-//  //send from non-rendezvous to rendezvous.
-//  ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
-//  if(!isRdv) {
-//    commA2R.SetOutMessageLayout(appOut.dest, appOut.offset); //TODO - can this be moved to the AdiosComm ctor 
-//  }
-//
-//  //TODO - Document why rendezvous needs two permutations but the app does not
-//  redev::GOs rdvInPermute;
-//  ts::CSR rdvOutPermute;
-//  ts::OutMsg rdvOut;
-//
 //  for(int iter=0; iter<3; iter++) {
 //    if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
 //    //////////////////////////////////////////////////////
 //    //the non-rendezvous app sends global vtx ids to rendezvous
 //    //////////////////////////////////////////////////////
 //    if(!isRdv) {
-//      //fill message array
-//      auto gids = mesh.globals(0);
-//      auto gids_h = Omega_h::HostRead(gids);
-//      redev::GOs msgs(isOverlap.size(),0);
-//      int j=0;
-//      for(size_t i=0; i<gids_h.size(); i++) {
-//        if( isOverlap_h[i] ) {
-//          msgs[appOut.permute[j++]] = gids_h[i];
-//        }
-//      }
-//      auto start = std::chrono::steady_clock::now();
-//      commA2R.Send(msgs.data());
-//      ts::getAndPrintTime(start,name + " appWrite",rank);
 //    } else {
-//      auto start = std::chrono::steady_clock::now();
-//      const auto msgs = commA2R.Recv();
-//      ts::getAndPrintTime(start,name + " rdvRead",rank);
-//      //attach the ids to the mesh
-//      if(iter==0) {
-//        //We have received the first input message in the rendezvous
-//        //processes.  Using the meta data of the incoming message we will:
-//        //- compute the permutation from the incoming vertex global ids to the
-//        //  on-process global ids
-//        //- set the message layout for the reverse (rendezvous->non-rendezvous) send by
-//        //  building the dest and offsets array.
-//        //- compute the reverse send's permutation array using the layout of
-//        //  global vertex ids in 'msgs'.
-//        //These operations only need to be done once per coupling as long as
-//        //the topology and partition of the rendezvous and non-rendezvous meshes
-//        //remains the same.
-//        auto rdvIn = commA2R.GetInMessageLayout();
-//        rdvInPermute = ts::getRdvPermutation(mesh, msgs);
-//        rdvOut = ts::prepareRdvOutMessage(mesh,rdvIn);
-//        commR2A.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
-//        rdvOutPermute = ts::getRdvOutPermutation(mesh, msgs);
 //      }
-//      ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
-//      ts::writeVtk(mesh,"rdvInGids",iter);
 //    } //end non-rdv -> rdv
 //    //////////////////////////////////////////////////////
 //    //the rendezvous app sends global vtx ids to non-rendezvous
 //    //////////////////////////////////////////////////////
 //    if(isRdv) {
-//      //fill message array
-//      auto gids = mesh.globals(0);
-//      auto gids_h = Omega_h::HostRead(gids);
-//      redev::GOs msgs(rdvOutPermute.off.back());
-//      for(int i=0; i<gids_h.size(); i++) {
-//        for(int j=rdvOutPermute.off[i]; j<rdvOutPermute.off[i+1]; j++) {
-//          REDEV_ALWAYS_ASSERT(isOverlap_h[i]);
-//          msgs[rdvOutPermute.val[j]] = gids_h[i];
-//        }
-//      }
-//      auto start = std::chrono::steady_clock::now();
-//      commR2A.Send(msgs.data());
-//      ts::getAndPrintTime(start,name + " rdvWrite",rank);
 //    } else {
-//      auto start = std::chrono::steady_clock::now();
-//      const auto msgs = commR2A.Recv();
-//      ts::getAndPrintTime(start,name + " appRead",rank);
-//      { //check incoming messages are in the correct order
-//        auto gids = mesh.globals(0);
-//        auto gids_h = Omega_h::HostRead(gids);
-//        int j=0;
-//        for(size_t i=0; i<gids_h.size(); i++) {
-//          if( isOverlap_h[i] ) {
-//            REDEV_ALWAYS_ASSERT(msgs[appOut.permute[j++]] == gids_h[i]);
-//          }
-//        }
-//      }
 //    } //end rdv -> non-rdv
 //  } //end iter loop
   return 0;

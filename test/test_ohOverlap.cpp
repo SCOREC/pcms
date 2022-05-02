@@ -80,6 +80,22 @@ Omega_h::HostRead<Omega_h::I8> markMeshOverlapRegion(Omega_h::Mesh& mesh) {
   return Omega_h::HostRead(isOverlap);
 }
 
+void clientCheckIncomingMessages(Omega_h::Mesh& mesh,
+    Omega_h::HostRead<Omega_h::I8> isOverlap_h,
+    const std::vector<redev::GO>& msgsIn,
+    const ts::OutMsg& appOut) {
+  //check incoming messages are in the correct order
+  auto gids = mesh.globals(0);
+  auto gids_h = Omega_h::HostRead(gids);
+  int j=0;
+  for(size_t i=0; i<gids_h.size(); i++) {
+    if( isOverlap_h[i] ) {
+      REDEV_ALWAYS_ASSERT(msgsIn[appOut.permute[j++]] == gids_h[i]);
+    }
+  }
+}
+
+
 int main(int argc, char** argv) {
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
@@ -97,6 +113,7 @@ int main(int argc, char** argv) {
   Omega_h::binary::read(argv[2], lib.world(), &mesh);
   const std::string name = "meshVtxIds";
   if(isRdv) {
+    ///////////////////  SERVER /////////////////////////
     std::string_view cpnFileName(argv[3]);
     auto partition = setupServerPartition(mesh,cpnFileName);
     auto rdv = redev::Redev(MPI_COMM_WORLD,partition,isRdv);
@@ -148,7 +165,29 @@ int main(int argc, char** argv) {
     start = std::chrono::steady_clock::now();
     comm.s2c.Send(msgs.data());
     ts::getAndPrintTime(start,name + " rdvWrite",rank);
+    //////////////////////////////////////////////////////
+    //communication loop
+    //////////////////////////////////////////////////////
+    for(int iter=0; iter<3; iter++) {
+      if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
+      //receive from client
+      auto start = std::chrono::steady_clock::now();
+      const auto msgsIn = comm.c2s.Recv();
+      ts::getAndPrintTime(start,name + " rdvRead",rank);
+      ts::checkAndAttachIds(mesh, "inVtxGids", msgsIn, rdvInPermute);
+      //send to client
+      for(int i=0; i<gids_h.size(); i++) {
+        for(int j=rdvOutPermute.off[i]; j<rdvOutPermute.off[i+1]; j++) {
+          REDEV_ALWAYS_ASSERT(isOverlap_h[i]);
+          msgs[rdvOutPermute.val[j]] = gids_h[i];
+        }
+      }
+      start = std::chrono::steady_clock::now();
+      comm.s2c.Send(msgs.data());
+      ts::getAndPrintTime(start,name + " rdvWrite",rank);
+    } //end iter loop
   } else {
+    ///////////////////  CLIENT /////////////////////////
     auto partition = setupClientPartition(mesh);
     auto rdv = redev::Redev(MPI_COMM_WORLD,partition,isRdv);
     auto comm = setupComms(rdv,name);
@@ -179,33 +218,28 @@ int main(int argc, char** argv) {
     start = std::chrono::steady_clock::now();
     const auto msgsIn = comm.s2c.Recv();
     ts::getAndPrintTime(start,name + " appRead",rank);
-    { //check incoming messages are in the correct order
-      auto gids = mesh.globals(0);
-      auto gids_h = Omega_h::HostRead(gids);
+    clientCheckIncomingMessages(mesh,isOverlap_h,msgsIn,appOut);
+    //////////////////////////////////////////////////////
+    //communication loop
+    //////////////////////////////////////////////////////
+    for(int iter=0; iter<3; iter++) {
+      if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
+      //send to server
       int j=0;
       for(size_t i=0; i<gids_h.size(); i++) {
         if( isOverlap_h[i] ) {
-          REDEV_ALWAYS_ASSERT(msgsIn[appOut.permute[j++]] == gids_h[i]);
+          msgs[appOut.permute[j++]] = gids_h[i];
         }
       }
-    }
+      auto start = std::chrono::steady_clock::now();
+      comm.c2s.Send(msgs.data());
+      ts::getAndPrintTime(start,name + " appWrite",rank);
+      //receive from server
+      start = std::chrono::steady_clock::now();
+      const auto msgsIn = comm.s2c.Recv();
+      ts::getAndPrintTime(start,name + " appRead",rank);
+      clientCheckIncomingMessages(mesh,isOverlap_h,msgsIn,appOut);
+    } //end iter loop
   }
-
-//  for(int iter=0; iter<3; iter++) {
-//    if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
-//    //////////////////////////////////////////////////////
-//    //the non-rendezvous app sends global vtx ids to rendezvous
-//    //////////////////////////////////////////////////////
-//    if(!isRdv) {
-//    } else {
-//      }
-//    } //end non-rdv -> rdv
-//    //////////////////////////////////////////////////////
-//    //the rendezvous app sends global vtx ids to non-rendezvous
-//    //////////////////////////////////////////////////////
-//    if(isRdv) {
-//    } else {
-//    } //end rdv -> non-rdv
-//  } //end iter loop
   return 0;
 }

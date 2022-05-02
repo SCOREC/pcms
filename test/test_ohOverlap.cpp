@@ -70,7 +70,6 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh, std::string_view cpnFi
 }
 
 auto setupComms(redev::Redev& rdv, std::string_view name) {
-  fprintf(stderr, "%s 0.1\n", __func__);
   const bool isSST = false;
   adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
   return rdv.CreateAdiosClient<redev::GO>(name,params,isSST);
@@ -102,7 +101,6 @@ int main(int argc, char** argv) {
     auto partition = setupServerPartition(mesh,cpnFileName);
     auto rdv = redev::Redev(MPI_COMM_WORLD,partition,isRdv);
     auto comm = setupComms(rdv,name);
-    fprintf(stderr, "%s 0.1\n", __func__);
     auto isOverlap_h = markMeshOverlapRegion(mesh);
     ts::OutMsg appOut = ts::OutMsg(); //FIXME is this needed?
     //TODO - Document why rendezvous needs two permutations but the app does not
@@ -154,7 +152,6 @@ int main(int argc, char** argv) {
     auto partition = setupClientPartition(mesh);
     auto rdv = redev::Redev(MPI_COMM_WORLD,partition,isRdv);
     auto comm = setupComms(rdv,name);
-    fprintf(stderr, "%s 0.1\n", __func__);
     auto isOverlap_h = markMeshOverlapRegion(mesh);
     //////////////////////////////////////////////////////
     //the non-rendezvous app sends global vtx ids to rendezvous

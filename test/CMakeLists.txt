@@ -71,6 +71,7 @@ add_exe(test_ohOverlap)
 dual_mpi_test(NAME test_ohOverlap_d3d_20p
   EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
   EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
+add_exe(test_twoClientOverlap)
 
 # unit tests
 find_package(Catch2 2 REQUIRED)

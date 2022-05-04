@@ -11,7 +11,6 @@
 
 namespace ts = test_support;
 
-
 int main(int argc, char** argv) {
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();

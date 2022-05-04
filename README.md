@@ -7,7 +7,7 @@ Adios2-based coupler for XGC and GENE
 - CMake 3.19+
 - MPI
 - FFTW 3.3.8+
-- redev 1.4.5+ (https://github.com/SCOREC/redev)
+- redev 2.0.0+ (https://github.com/SCOREC/redev)
 - Omega\_h 10.2.0+ with MPI enabled (https://github.com/SCOREC/omega_h)
 - Catch2 2.\* (for unit tests) (https://github.com/catchorg/Catch2/tree/v2.13.8)
 

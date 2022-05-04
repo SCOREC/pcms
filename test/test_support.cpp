@@ -458,5 +458,4 @@ OutMsg prepareRdvOutMessage(Omega_h::Mesh& mesh, const redev::InMessageLayout& i
   return out;
 }
 
-
 }

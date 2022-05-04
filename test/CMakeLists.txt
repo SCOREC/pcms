@@ -35,18 +35,33 @@ function(mpi_test TESTNAME PROCS EXE)
 endfunction(mpi_test)
 
 function(dual_mpi_test)
-  set(oneValueArgs NAME EXE1 EXE2 PROCS1 PROCS2 )
+  set(oneValueArgs TESTNAME TIMEOUT NAME1 NAME2 EXE1 EXE2 PROCS1 PROCS2)
   set(multiValueArgs ARGS1 ARGS2)
   cmake_parse_arguments(DUALTEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
-  removeBpFiles(${DUALTEST_NAME}_cleanup)
-  add_test(NAME ${DUALTEST_NAME}
-    COMMAND ${CMAKE_COMMAND}
-    -DMPIEXEC_EXECUTABLE=${MPIEXEC_EXECUTABLE}
-    -DMPIEXEC_NUMPROC_FLAG=${MPIEXEC_NUMPROC_FLAG}
-    -DMPITEST_PROCS1=${DUALTEST_PROCS1} -DMPITEST_EXE1=${DUALTEST_EXE1} "-DMPITEST_ARGS1=${DUALTEST_ARGS1}"
-    -DMPITEST_PROCS2=${DUALTEST_PROCS2} -DMPITEST_EXE2=${DUALTEST_EXE2} "-DMPITEST_ARGS2=${DUALTEST_ARGS2}"
-    -P ${CMAKE_SOURCE_DIR}/cmake/runTwoMpiJobs.cmake)
+  removeBpFiles(${DUALTEST_TESTNAME}_cleanup)
+  add_test(NAME ${DUALTEST_TESTNAME}
+    COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
+    ${MPIEXEC_EXECUTABLE}
+    ${MPIEXEC_NUMPROC_FLAG}
+    ${DUALTEST_NAME1} ${DUALTEST_PROCS1} ${DUALTEST_EXE1} "${DUALTEST_ARGS1}"
+    ${DUALTEST_NAME2} ${DUALTEST_PROCS2} ${DUALTEST_EXE2} "${DUALTEST_ARGS2}")
+  set_tests_properties(${DUALTEST_TESTNAME} PROPERTIES TIMEOUT ${DUALTEST_TIMEOUT})
 endfunction(dual_mpi_test)
+
+function(tri_mpi_test)
+  set(oneValueArgs TESTNAME TIMEOUT NAME1 NAME2 NAME3 EXE1 EXE2 EXE3 PROCS1 PROCS2 PROCS3)
+  set(multiValueArgs ARGS1 ARGS2 ARGS3)
+  cmake_parse_arguments(TRITEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+  removeBpFiles(${TRITEST_TESTNAME}_cleanup)
+  add_test(NAME ${TRITEST_TESTNAME}
+    COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
+    ${MPIEXEC_EXECUTABLE}
+    ${MPIEXEC_NUMPROC_FLAG}
+    ${TRITEST_NAME1} ${TRITEST_PROCS1} ${TRITEST_EXE1} "${TRITEST_ARGS1}"
+    ${TRITEST_NAME2} ${TRITEST_PROCS2} ${TRITEST_EXE2} "${TRITEST_ARGS2}"
+    ${TRITEST_NAME3} ${TRITEST_PROCS3} ${TRITEST_EXE3} "${TRITEST_ARGS3}")
+  set_tests_properties(${TRITEST_TESTNAME} PROPERTIES TIMEOUT ${TRITEST_TIMEOUT})
+endfunction(tri_mpi_test)
 
 #helper variables for readability
 set(rendezvous 1)
@@ -54,24 +69,34 @@ set(notRendezvous 0)
 
 add_exe(test_ohClassPtn)
 set(cyclone1p ${WDMCPL_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/)
-dual_mpi_test(NAME test_ohClassPtnSendRecv
-  EXE1 ./test_ohClassPtn PROCS1 1 ARGS1 ${notRendezvous} ${cyclone1p}
-  EXE2 ./test_ohClassPtn PROCS2 2 ARGS2 ${rendezvous} ${cyclone1p})
+dual_mpi_test(TESTNAME test_ohClassPtnSendRecv
+  TIMEOUT 4
+  NAME1 rdv EXE1 ./test_ohClassPtn PROCS1 2 ARGS1 ${rendezvous} ${cyclone1p}
+  NAME2 app EXE2 ./test_ohClassPtn PROCS2 1 ARGS2 ${notRendezvous} ${cyclone1p})
 
 add_exe(test_ohClassPtn_appRibPtn)
 set(cyclone2p ${WDMCPL_TEST_DATA_DIR}/cyclone/23elements/2p.osh/)
-dual_mpi_test(NAME test_ohClassPtn_appRibPtn
-  EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${rendezvous} ${cyclone1p}
-  EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${cyclone2p})
+dual_mpi_test(TESTNAME test_ohClassPtn_appRibPtn
+  TIMEOUT 8
+  NAME1 rdv EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${rendezvous} ${cyclone1p}
+  NAME2 app EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${cyclone2p})
 
 set(d3d1p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc.osh/)
 set(d3d4p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/4p.cpn)
 set(d3d16p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p16.osh/)
 add_exe(test_ohOverlap)
-dual_mpi_test(NAME test_ohOverlap_d3d_20p
-  EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
-  EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
+dual_mpi_test(TESTNAME test_ohOverlap_d3d_20p
+  TIMEOUT 10
+  NAME1 rdv EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
+  NAME2 app EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
+
+set(d3d8p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p8.osh/)
 add_exe(test_twoClientOverlap)
+tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
+  TIMEOUT 12
+  NAME1 rdv EXE1 ./test_twoClientOverlap PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
+  NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
+  NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
 
 # unit tests
 find_package(Catch2 2 REQUIRED)

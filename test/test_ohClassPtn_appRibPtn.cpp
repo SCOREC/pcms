@@ -6,87 +6,10 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>
 #include <Omega_h_scalar.hpp> // divide_no_remainder
-#include <redev_comm.h>
 #include "wdmcpl.h"
 #include "test_support.h"
 
 namespace ts = test_support;
-
-struct CSR {
-  redev::GOs off;
-  redev::GOs val;
-};
-
-//creates the rdv->non-rdv permutation CSR given inGids and the rdv mesh instance
-CSR getRdvOutPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
-  auto gids = mesh.globals(0);
-  auto gids_h = Omega_h::HostRead(gids);
-  auto iGids = ts::sortIndexes(gids_h);
-  auto iInGids = ts::sortIndexes(inGids);
-  //count the number of times each gid is included in inGids
-  CSR perm;
-  perm.off.resize(gids_h.size()+1);
-  int j=0;
-  for(size_t i=0; i<inGids.size(); i++) {
-    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
-      j++;
-    }
-    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //found
-    perm.off[iGids[j]]++;
-  }
-  //create the offsets array from the counts
-  std::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0);
-  //fill the permutation array
-  perm.val.resize(perm.off.back());
-  redev::LOs count(gids_h.size()); //how many times each gid was written
-  j=0;
-  for(size_t i=0; i<inGids.size(); i++) {
-    while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
-      j++;
-    }
-    REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //found
-    const auto subIdx = count[iGids[j]]++;
-    const auto startIdx = perm.off[iGids[j]];
-    const auto offIdx = startIdx + subIdx;
-    perm.val[offIdx] = iInGids[i];
-  }
-  return perm;
-}
-
-ts::OutMsg prepareRdvOutMessage(Omega_h::Mesh& mesh, const redev::InMessageLayout& in) {
-  auto ohComm = mesh.comm();
-  const auto rank = ohComm->rank();
-  const auto nproc = ohComm->size();
-  auto nAppProcs = Omega_h::divide_no_remainder(in.srcRanks.size(),static_cast<size_t>(nproc));
-  REDEV_ALWAYS_ASSERT(nAppProcs==2);
-  //build dest and offsets arrays from incoming message metadata
-  redev::LOs senderDeg(nAppProcs);
-  for(size_t i=0; i<nAppProcs-1; i++) {
-    senderDeg[i] = in.srcRanks[(i+1)*nproc+rank] - in.srcRanks[i*nproc+rank];
-  }
-  const auto totInMsgs = in.offset[rank+1]-in.offset[rank];
-  senderDeg[nAppProcs-1] = totInMsgs - in.srcRanks[(nAppProcs-1)*nproc+rank];
-  if(!rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({4,5}) );
-  if(rank) REDEV_ALWAYS_ASSERT( senderDeg == redev::LOs({8,7}) );
-  ts::OutMsg out;
-  for(size_t i=0; i<nAppProcs; i++) {
-    if(senderDeg[i] > 0) {
-      out.dest.push_back(i);
-    }
-  }
-  REDEV_ALWAYS_ASSERT( out.dest == redev::LOs({0,1}) );
-  redev::GO sum = 0;
-  for(auto deg : senderDeg) { //exscan over values > 0
-    if(deg>0) {
-      out.offset.push_back(sum);
-      sum+=deg;
-    }
-  }
-  out.offset.push_back(sum);
-  if(!rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,4,9}) );
-  if(rank) REDEV_ALWAYS_ASSERT( out.offset == redev::LOs({0,8,15}) );
-  return out;
-}
 
 int main(int argc, char** argv) {
   auto lib = Omega_h::Library(&argc, &argv);
@@ -113,25 +36,26 @@ int main(int argc, char** argv) {
     if(!rank) REDEV_ALWAYS_ASSERT(mesh.nelems()==11);
     ts::writeVtk(mesh,"appSplit",0);
   }
-  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.classIds);
+  auto partition = redev::ClassPtn(MPI_COMM_WORLD,classPartition.ranks,classPartition.modelEnts);
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
-  rdv.Setup();
 
   const std::string name = "meshVtxIds";
   const int rdvRanks = 2;
   const int appRanks = 2;
-  redev::AdiosComm<redev::GO> commA2R(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name+"_A2R");
-  redev::AdiosComm<redev::GO> commR2A(MPI_COMM_WORLD, appRanks, rdv.getFromEngine(), rdv.getFromIO(), name+"_R2A");
+
+  const bool isSST = false;
+  adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "2"}};
+  auto commPair = rdv.CreateAdiosClient<redev::GO>(name,params,isSST);
 
   //Build the dest, offsets, and permutation arrays for the forward
   //send from non-rendezvous to rendezvous.
   ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
   if(!isRdv) {
-    commA2R.SetOutMessageLayout(appOut.dest, appOut.offset);
+    commPair.c2s.SetOutMessageLayout(appOut.dest, appOut.offset);
   }
 
   redev::GOs rdvInPermute;
-  CSR rdvOutPermute;
+  ts::CSR rdvOutPermute;
   ts::OutMsg rdvOut;
 
   for(int iter=0; iter<3; iter++) {
@@ -148,11 +72,11 @@ int main(int argc, char** argv) {
         msgs[appOut.permute[i]] = gids_h[i];
       }
       auto start = std::chrono::steady_clock::now();
-      commA2R.Send(msgs.data());
+      commPair.c2s.Send(msgs.data());
       ts::getAndPrintTime(start,name + " appWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = commA2R.Recv();
+      const auto msgs = commPair.c2s.Recv();
       ts::getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
       if(iter==0) {
@@ -167,11 +91,14 @@ int main(int argc, char** argv) {
         //These operations only need to be done once per coupling as long as
         //the topology and partition of the rendezvous and non-rendezvous meshes
         //remains the same.
-        auto rdvIn = commA2R.GetInMessageLayout();
+        auto rdvIn = commPair.c2s.GetInMessageLayout();
         rdvInPermute = ts::getRdvPermutation(mesh, msgs);
-        rdvOut = prepareRdvOutMessage(mesh,rdvIn);
-        commR2A.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
-        rdvOutPermute = getRdvOutPermutation(mesh, msgs);
+        rdvOut = ts::prepareRdvOutMessage(mesh,rdvIn);
+        REDEV_ALWAYS_ASSERT( rdvOut.dest == redev::LOs({0,1}) );
+        if(!rank) REDEV_ALWAYS_ASSERT( rdvOut.offset == redev::LOs({0,4,9}) );
+        if(rank) REDEV_ALWAYS_ASSERT( rdvOut.offset == redev::LOs({0,8,15}) );
+        commPair.s2c.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
+        rdvOutPermute = ts::getRdvOutPermutation(mesh, msgs);
       }
       ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
       ts::writeVtk(mesh,"rdvInGids",iter);
@@ -190,11 +117,11 @@ int main(int argc, char** argv) {
         }
       }
       auto start = std::chrono::steady_clock::now();
-      commR2A.Send(msgs.data());
+      commPair.s2c.Send(msgs.data());
       ts::getAndPrintTime(start,name + " rdvWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = commR2A.Recv();
+      const auto msgs = commPair.s2c.Recv();
       ts::getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order
         auto gids = mesh.globals(0);

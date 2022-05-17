@@ -11,6 +11,11 @@
 
 namespace test_support {
 
+struct CSR {
+  redev::GOs off;
+  redev::GOs val;
+};
+
 struct OutMsg {
   redev::LOs dest;
   redev::LOs offset;
@@ -27,7 +32,7 @@ struct InMsg {
 
 struct ClassificationPartition {
   redev::LOs ranks;
-  redev::LOs classIds;
+  redev::ClassPtn::ModelEntVec modelEnts;
 };
 
 void printTime(std::string_view mode, double min, double max, double avg);
@@ -42,6 +47,12 @@ void getAndPrintTime(T start, std::string_view key, int rank) {
   test_support::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
   if(!rank) printTime(key, min, max, avg);
 }
+
+ClassificationPartition readClassPartitionFile(std::string_view cpnFileName);
+
+ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh);
+
+void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partition);
 
 /**
  * Migrate 18 of the mesh elements to rank 1 and return its classification partition
@@ -67,6 +78,17 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
  * such that gids[rdvPermute[i]] == inGids[i].
  */
 redev::GOs getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids);
+
+/**
+ * Creates the rendezvous -> non-rendezvous permutation CSR given inGids and the rdv mesh instance.
+ */
+CSR getRdvOutPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids);
+
+/**
+ * Construct the meta data for the rendezvous -> non-rendezvous (reverse) send from the
+ * meta data associated with the non-rendezvous -> rendezvous (forward) send.
+ */
+OutMsg prepareRdvOutMessage(Omega_h::Mesh& mesh, const redev::InMessageLayout& in);
 
 /**
  * On the rendezvous processes use the permutation (rdvPermute) from the input message array

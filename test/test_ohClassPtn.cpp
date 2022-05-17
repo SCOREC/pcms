@@ -4,7 +4,6 @@
 #include <Omega_h_comm.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>
-#include <redev_comm.h>
 #include "wdmcpl.h"
 #include "test_support.h"
 
@@ -30,12 +29,12 @@ int main(int argc, char** argv) {
   if(isRdv) {
     ts::writeVtk(mesh,"rdvSplit",0);
   }
-  auto partition = redev::ClassPtn(classPartition.ranks,classPartition.classIds);
+  auto partition = redev::ClassPtn(MPI_COMM_WORLD,classPartition.ranks,classPartition.modelEnts);
   redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
-  rdv.Setup();
   const std::string name = "meshVtxIds";
-  const int rdvRanks = 2;
-  redev::AdiosComm<redev::GO> comm(MPI_COMM_WORLD, rdvRanks, rdv.getToEngine(), rdv.getToIO(), name);
+  const bool isSST = false;
+  adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "2"}};
+  auto commPair = rdv.CreateAdiosClient<redev::GO>(name,params,isSST);
 
   //build dest, offsets, and permutation arrays
   ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
@@ -47,7 +46,7 @@ int main(int argc, char** argv) {
     redev::LOs expectedPermute = {0,6,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18};
     REDEV_ALWAYS_ASSERT(appOut.permute == expectedPermute);
 
-    comm.SetOutMessageLayout(appOut.dest, appOut.offset);
+    commPair.c2s.SetOutMessageLayout(appOut.dest, appOut.offset);
   }
 
   redev::GOs rdvInPermute;
@@ -66,12 +65,12 @@ int main(int argc, char** argv) {
         msgs[appOut.permute[i]] = gids_h[i];
       }
       auto start = std::chrono::steady_clock::now();
-      comm.Send(msgs.data());
+      commPair.c2s.Send(msgs.data());
       ts::getAndPrintTime(start,name + " write",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = comm.Recv();
-      const auto rdvIn = comm.GetInMessageLayout();
+      const auto msgs = commPair.c2s.Recv();
+      const auto rdvIn = commPair.c2s.GetInMessageLayout();
       REDEV_ALWAYS_ASSERT(rdvIn.offset == redev::GOs({0,6,19}));
       REDEV_ALWAYS_ASSERT(rdvIn.srcRanks == redev::GOs({0,0}));
       if(!rank) {

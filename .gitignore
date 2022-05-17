@@ -1,2 +1,5 @@
- *.idea/
- *build*
+*.idea
+*build*
+*.pdf
+.DS_Store
+

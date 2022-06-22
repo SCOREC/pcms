@@ -106,16 +106,5 @@ add_executable(unit_tests unit_test_main.cpp test_coordinate_transform.cpp test_
 target_link_libraries(unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl wdmcpl::point_search)
 target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(static_unit_tests unit_test_main.cpp test_proxy_coupling_static.cpp XGCProxy.cpp GeneProxy.cpp XGCFieldSolveProxy.cpp)
-target_link_libraries(static_unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl_static)
-target_include_directories(static_unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_executable(dynamic_unit_tests unit_test_main.cpp test_proxy_coupling_dynamic.cpp XGCProxy.cpp GeneProxy.cpp XGCFieldSolveProxy.cpp)
-target_link_libraries(dynamic_unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl_dynamic)
-target_include_directories(dynamic_unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_executable(interpolation omega_h_interpolation.cpp)
-target_link_libraries(interpolation PUBLIC Omega_h::omega_h)
-
 include(Catch)
 catch_discover_tests(unit_tests)

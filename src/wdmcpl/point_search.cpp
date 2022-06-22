@@ -4,16 +4,6 @@
 
 namespace wdmcpl
 {
-// Omega_h::Vector<3> barycentric_from_global(
-//   const Omega_h::Vector<3>& point, const Omega_h::Matrix<2, 3>&
-//   vertex_coords)
-//{
-//   auto inverse_basis =
-//   Omega_h::invert(Omega_h::simplex_basis<2,2>(vertex_coords)); return
-//   Omega_h::form_barycentric(inverse_basis*)
-//   //Omega_h::pseudo_invert(basis);
-//   return Omega_h::Vector<3>();
-// }
 KOKKOS_INLINE_FUNCTION
 AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
 {
@@ -112,10 +102,14 @@ bool bbox_verts_within_triangle(const AABBox<2>& bbox, const Omega_h::Matrix<2,3
   return false;
 }
 
-// TODO do full triangle bbox intersection
+/**
+ * Check if a triangle element represented by 3 coordinates in two dimensions
+ * intersects with a bounding box
+ */
 [[nodiscard]] bool triangle_intersects_bbox(const Omega_h::Matrix<2, 3>& coords,
                                             const AABBox<2>& bbox)
 {
+  // triangle and grid cell bounding box intersect
   if (intersects(triangle_bbox(coords), bbox)) {
     // if any of the triangle verts inside of bbox
     if(within_bbox(coords[0], bbox) || within_bbox(coords[1], bbox) || within_bbox(coords[2], bbox)) {
@@ -125,6 +119,7 @@ bool bbox_verts_within_triangle(const AABBox<2>& bbox, const Omega_h::Matrix<2,3
     if(bbox_verts_within_triangle(bbox, coords)) {
       return true;
     }
+    // if any of the triangle's edges intersect with the bounding box
     if (line_intersects_bbox(coords[0], coords[1], bbox) ||
         line_intersects_bbox(coords[1], coords[2], bbox) ||
         line_intersects_bbox(coords[2], coords[0], bbox)) {
@@ -133,9 +128,6 @@ bool bbox_verts_within_triangle(const AABBox<2>& bbox, const Omega_h::Matrix<2,3
   }
   return false;
 }
-
-///// Axis aligned bounding box of grid cell
-// Omega_h::BBox get_grid_cell_bbox
 
 namespace detail
 {

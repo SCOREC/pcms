@@ -11,7 +11,7 @@
 
 namespace wdmcpl
 {
-
+//
 // TODO take a bounding box as we may want a bbox that's bigger than the mesh!
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh, const UniformGrid& grid);
@@ -67,9 +67,9 @@ public:
     // parametric inversion
     for (auto i = candidates_begin; i < candidates_end; ++i) {
       const auto elem_tri2verts =
-        gather_verts<3>(tris2verts_, candidate_map_.entries(i));
+        Omega_h::gather_verts<3>(tris2verts_, candidate_map_.entries(i));
       // 2d mesh with 2d coords, but 3 triangles
-      const auto vertex_coords = gather_vectors<3, 2>(coords_, elem_tri2verts);
+      const auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
       auto parametric_coords = barycentric_from_global(point, vertex_coords);
       if (Omega_h::is_barycentric_inside(parametric_coords)) {
         return {candidate_map_.entries(i), parametric_coords};

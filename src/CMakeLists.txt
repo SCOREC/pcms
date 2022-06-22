@@ -6,7 +6,7 @@ set(WDMCPL_SOURCES  wdmcpl.cpp)
 
 add_library(wdmcpl ${WDMCPL_SOURCES})
 add_library(wdmcpl::wdmcpl ALIAS wdmcpl)
-target_compile_features(wdmcpl PUBLIC cxx_std_20)
+target_compile_features(wdmcpl PUBLIC cxx_std_17)
 target_link_libraries(wdmcpl PUBLIC Omega_h::omega_h redev::redev MPI::MPI_CXX)
 
 find_package(Kokkos REQUIRED)

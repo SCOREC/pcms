@@ -175,9 +175,9 @@ struct GridTriIntersectionFunctor
 
     // hierarchical parallel may make be very beneficial here...
     for (LO elem_idx = 0; elem_idx < mesh_.nelems(); ++elem_idx) {
-      const auto elem_tri2verts = gather_verts<3>(tris2verts_, elem_idx);
+      const auto elem_tri2verts = Omega_h::gather_verts<3>(tris2verts_, elem_idx);
       // 2d mesh with 2d coords, but 3 triangles
-      const auto vertex_coords = gather_vectors<3, 2>(coords_, elem_tri2verts);
+      const auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
       if (triangle_intersects_bbox(vertex_coords, grid_cell_bbox)) {
         if (fill) {
           fill[num_intersections] = elem_idx;

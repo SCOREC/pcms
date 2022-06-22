@@ -135,7 +135,7 @@ TEST_CASE("construct intersection map")
   {
     UniformGrid grid{
       .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
-    auto intersection_map = wdmcpl::construct_intersection_map(mesh, grid);
+    auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid);
     REQUIRE(intersection_map.numRows() == 100);
     REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
   }
@@ -144,7 +144,7 @@ TEST_CASE("construct intersection map")
      UniformGrid grid{
        .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
      // require number of candidates is >=1 and <=6
-     auto intersection_map = wdmcpl::construct_intersection_map(mesh, grid);
+     auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid);
      REQUIRE(intersection_map.numRows() == 3600);
      REQUIRE(num_candidates_within_range(intersection_map, 1, 6));
    }
@@ -156,18 +156,26 @@ TEST_CASE("uniform grid search") {
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
   GridPointSearch search{mesh,10,10};
-  auto [idx,coords] = search({0,0});
-  REQUIRE(idx == 0);
-  REQUIRE(coords[0] == Approx(1));
-  REQUIRE(coords[1] == Approx(0));
-  REQUIRE(coords[2] == Approx(0));
-  std::tie(idx,coords) = search({0.55,0.54});
-  REQUIRE(idx == 91);
-  REQUIRE(coords[0] == Approx(0.5));
-  REQUIRE(coords[1] == Approx(0.1));
-  REQUIRE(coords[2] == Approx(0.4));
+  SECTION("global coordinate within mesh")
+  {
+    auto [idx,coords] = search({0,0});
+    REQUIRE(idx == 0);
+    REQUIRE(coords[0] == Approx(1));
+    REQUIRE(coords[1] == Approx(0));
+    REQUIRE(coords[2] == Approx(0));
+    std::tie(idx,coords) = search({0.55,0.54});
+    REQUIRE(idx == 91);
+    REQUIRE(coords[0] == Approx(0.5));
+    REQUIRE(coords[1] == Approx(0.1));
+    REQUIRE(coords[2] == Approx(0.4));
 
-  auto out_of_bounds = search({100,100});
-  auto top_left = search({1,1});
-  REQUIRE(-1*out_of_bounds.first == top_left.first);
+  }
+  SECTION("Global coordinate outisde mesh", "[!mayfail]") {
+    auto out_of_bounds = search({100,100});
+    auto top_left = search({1,1});
+    REQUIRE(-1*out_of_bounds.first == top_left.first);
+    out_of_bounds = search({-1,-1});
+    auto bot_left = search({0,0});
+    REQUIRE(-1*out_of_bounds.first == bot_left.first);
+  }
 }

@@ -186,7 +186,6 @@ private:
   Omega_h::Reals coords_;
   UniformGrid grid_;
 };
-} // namespace detail
 
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh, const UniformGrid& grid)
@@ -197,6 +196,7 @@ construct_intersection_map(Omega_h::Mesh& mesh, const UniformGrid& grid)
   Kokkos::count_and_fill_crs(intersection_map, grid.GetNumCells(), f);
   return intersection_map;
 }
+} // namespace detail
 
 Omega_h::Vector<3> barycentric_from_global(
   const Omega_h::Vector<2>& point, const Omega_h::Matrix<2, 3>& vertex_coords)
@@ -209,4 +209,42 @@ Omega_h::Vector<3> barycentric_from_global(
   return {1 - xi[0] - xi[1], xi[0], xi[1]};
 }
 
+std::pair<LO, Omega_h::Vector<GridPointSearch::dim + 1>> GridPointSearch::operator()(
+  Omega_h::Vector<dim> point)
+{
+  // TODO use a functor for parallel for over a list of points
+  // TODO return result struct rather than pair
+  auto cell_id = grid_.ClosestCellID(point);
+  assert(cell_id < candidate_map_.numRows() && cell_id >= 0);
+  auto candidates_begin = candidate_map_.row_map(cell_id);
+  auto candidates_end = candidate_map_.row_map(cell_id + 1);
+  // create array that's size of number of candidates x num coords to store
+  // parametric inversion
+  for (auto i = candidates_begin; i < candidates_end; ++i) {
+    const auto elem_tri2verts =
+      Omega_h::gather_verts<3>(tris2verts_, candidate_map_.entries(i));
+    // 2d mesh with 2d coords, but 3 triangles
+    const auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
+    auto parametric_coords = barycentric_from_global(point, vertex_coords);
+    if (Omega_h::is_barycentric_inside(parametric_coords)) {
+      return {candidate_map_.entries(i), parametric_coords};
+    }
+  }
+  return {-1, {}};
+}
+GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
+
+{
+  auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
+  // get mesh bounding box
+  grid_ = {.edge_length = {mesh_bbox.max[0] - mesh_bbox.min[0],
+                           mesh_bbox.max[1] - mesh_bbox.min[1]},
+    .bot_left = {mesh_bbox.min[0], mesh_bbox.min[1]},
+    .divisions = {Nx, Ny}};
+  candidate_map_ = detail::construct_intersection_map(mesh, grid_);
+  coords_ = mesh.coords();
+  tris2verts_ = mesh.ask_elem_verts();
+  // TODO intiaialize coords and tri2vert and mesh!
+  // TODO pass coords& tri2vert to construct map by references!
+}
 } // namespace wdmcpl

@@ -5,13 +5,14 @@
 using wdmcpl::Coordinate;
 using wdmcpl::Cartesian;
 using wdmcpl::Cylindrical;
+using wdmcpl::Real;
 
 // coordinates from different coordinate systems should not be equality comparable
-static_assert(!std::equality_comparable_with<Coordinate<Cartesian>,Coordinate<Cylindrical>>);
+static_assert(!std::equality_comparable_with<Coordinate<Cartesian,Real>,Coordinate<Cylindrical,Real>>);
 
 TEST_CASE( "Coordinate Strong type works", "[coordinate]" ) {
-  Coordinate<Cartesian> cart{1.0,2.0,3.0};
-  Coordinate<Cylindrical> cyl{4.0,5.0,6.0};
+  Coordinate<Cartesian,Real> cart{{1.0,2.0,3.0}};
+  Coordinate<Cylindrical,Real> cyl{{4.0,5.0,6.0}};
   SECTION("Values()")
   {
     auto values = cart.Values();

@@ -4,7 +4,7 @@ In the current design we think of the coupling problem as coupling two groups of
 an internal data computation or as a callback to an external code. For example, three solvers in the GENE/XGC electrostatic
 case are 1) GENE compute charge density, 2) XGC compute charge density, 3) XGC field solve for electric field.
 
-Solvers are grouped based on the data transfer needs and a group is typically formed for each high level step in the
+Applications are grouped based on the data transfer needs and a group is typically formed for each high level step in the
 coupling. In our concrete example we have the following two groups: 1) compute the charge density and 2) compute the electric field.
 
 The reconciliation process transfers field data from one solver group to another. The field data is received from the first
@@ -22,8 +22,8 @@ the unified field is converted to, and sent in the native format for the second 
         FieldTransfer Internal field to SolverGroupB
         Send native data to SolverGroupB
     
-    Function solve(SolverGroup)
-        asynchronously launch solver for each solver in SolverGroup
+    Function solve(ApplicationGroup)
+        asynchronously launch solver for each solver in ApplicationGroup
         wait for results
 
     Function run_coupling(Coupling)
@@ -57,10 +57,10 @@ the unified field is converted to, and sent in the native format for the second 
 ### Classes/Concepts
 1. CoordinateSystem
 2. Field
-3. Solver
+3. Application
 4. FieldTransfer
 5. DataTransfer : how data transfer will happen for a given code
-6. SolverGroup : group of solvers
+6. ApplicationGroup : group of solvers
 7. Coupling : defines a complete coupling procedure for a given field/group of solvers e.g. this could be the charge density/poisson solve
 8. Coupler : Ties together couplings, data initialization, etc to provide the full
 

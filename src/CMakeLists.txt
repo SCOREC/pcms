@@ -2,14 +2,35 @@ set(WDMCPL_HEADERS
   wdmcpl.h
   )
 
-set(WDMCPL_SOURCES
-  wdmcpl.cpp
-        wdmcpl/coordinate.h)
+set(WDMCPL_SOURCES  wdmcpl.cpp)
 
 add_library(wdmcpl ${WDMCPL_SOURCES})
 add_library(wdmcpl::wdmcpl ALIAS wdmcpl)
 target_compile_features(wdmcpl PUBLIC cxx_std_20)
-target_link_libraries(wdmcpl PUBLIC Omega_h::omega_h redev::redev MPI::MPI_C)
+target_link_libraries(wdmcpl PUBLIC Omega_h::omega_h redev::redev MPI::MPI_CXX)
+
+find_package(Kokkos REQUIRED)
+
+
+add_library(wdmcpl_static wdmcpl/wdmcpl_static.cpp wdmcpl/utility.h)
+add_library(wdmcpl::wdmcpl_static ALIAS wdmcpl_static)
+target_compile_features(wdmcpl_static PUBLIC cxx_std_20)
+target_link_libraries(wdmcpl_static PUBLIC Omega_h::omega_h redev::redev MPI::MPI_CXX)
+target_include_directories(wdmcpl_static
+        PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+
+add_library(wdmcpl_dynamic wdmcpl/wdmcpl_dynamic.cpp wdmcpl/utility.h wdmcpl/wdmcpl_dynamic.cpp wdmcpl/wdmcpl_dynamic.h)
+add_library(wdmcpl::wdmcpl_dynamic ALIAS wdmcpl_dynamic)
+target_compile_features(wdmcpl_dynamic PUBLIC cxx_std_20)
+target_link_libraries(wdmcpl_dynamic PUBLIC Omega_h::omega_h redev::redev MPI::MPI_CXX)
+target_include_directories(wdmcpl_dynamic
+        PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+
+
 if(WDMCPL_HAS_ASAN)
   target_compile_options(wdmcpl PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 endif()

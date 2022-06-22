@@ -40,7 +40,6 @@ if (WDMCPL_ENABLE_SERVER)
   list(APPEND WDMCPL_HEADERS wdmcpl/server.h)
 endif ()
 
-
 find_package(Kokkos REQUIRED)
 
 add_library(wdmcpl ${WDMCPL_SOURCES})

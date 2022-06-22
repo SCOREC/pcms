@@ -11,19 +11,10 @@ using wdmcpl::Cylindrical;
 using wdmcpl::CoordinateElement;
 using wdmcpl::Real;
 
-// Version required for equality_comparable
-// coordinates from different coordinate systems should not be equality comparable
-// Version required for equality_comparable
 #if __cplusplus >= 202002L
-static_assert(!std::equality_comparable_with<Coordinate<Cartesian>,Coordinate<Cylindrical>>);
+  // coordinates from different coordinate systems should not be equality comparable
+  static_assert(!std::equality_comparable_with<Coordinate<Cartesian>,Coordinate<Cylindrical>>);
 #endif
-
-// CoordinateValueType should be memcpyable this allows ("bitcast") between
-// underlying type when needed
-static_assert(std::is_trivially_copyable_v<CoordinateElement<Cartesian,Real>>);
-static_assert(std::is_trivially_copyable_v<CoordinateElement<Cylindrical,Real>>);
-static_assert(sizeof(Real) == sizeof(CoordinateElement<Cartesian,Real>));
-static_assert(sizeof(Real) == sizeof(CoordinateElement<Cylindrical,Real>));
 
 TEST_CASE( "Coordinate Strong type works", "[coordinate]" ) {
   Coordinate<Cartesian> cart{1.0,2.0,3.0};

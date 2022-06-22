@@ -34,6 +34,7 @@ Reals interpolate(Mesh& mesh, Reals field, const LOs& elements, Omega_h::Vector<
     const auto xi2 = 1-coord[0]-coord[1];
     result[i] = vertex_field(0)*xi0+vertex_field(1)*xi1+vertex_field(2)*xi2;
   });
+  return result;
 }
 
 

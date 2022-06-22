@@ -14,7 +14,7 @@ public:
   constexpr Coordinate(Args... args) : data_{std::forward<Args>(args)...}
   {}
   [[nodiscard]]
-  constexpr std::span<const ScalarT, N> Values() const noexcept { return data_; }
+  constexpr const std::array<CoordT,N>& Values() const noexcept { return data_; }
   [[nodiscard]]
   constexpr ScalarT operator[](std::size_t i) const { return data_[i]; }
 

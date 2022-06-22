@@ -110,9 +110,9 @@ add_executable(static_unit_tests unit_test_main.cpp test_proxy_coupling_static.c
 target_link_libraries(static_unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl_static Kokkos::kokkos)
 target_include_directories(static_unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(dynamic_unit_tests unit_test_main.cpp test_proxy_coupling_dynamic.cpp XGCProxy.cpp GeneProxy.cpp XGCFieldSolveProxy.cpp)
-target_link_libraries(dynamic_unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl_dynamic Kokkos::kokkos)
-target_include_directories(dynamic_unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+#add_executable(dynamic_unit_tests unit_test_main.cpp test_proxy_coupling_dynamic.cpp XGCProxy.cpp GeneProxy.cpp XGCFieldSolveProxy.cpp)
+#target_link_libraries(dynamic_unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl_dynamic)
+#target_include_directories(dynamic_unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(interpolation omega_h_interpolation.cpp)
 target_link_libraries(interpolation PUBLIC Omega_h::omega_h)

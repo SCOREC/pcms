@@ -101,9 +101,8 @@ tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
 # unit tests
 find_package(Catch2 2 REQUIRED)
 message(STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
-#add_executable(unit_tests unit_test_main.cpp test_coordinate_transform.cpp test_coordinate.cpp test_field_abstraction.cpp test_point_search.cpp test_bounding_box.cpp test_uniform_grid.cpp)
 add_executable(unit_tests unit_test_main.cpp test_coordinate_transform.cpp test_coordinate.cpp test_point_search.cpp test_bounding_box.cpp test_uniform_grid.cpp)
-target_link_libraries(unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl wdmcpl::point_search)
+target_link_libraries(unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl)
 target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(Catch)

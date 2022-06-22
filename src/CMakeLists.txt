@@ -2,18 +2,15 @@ set(WDMCPL_HEADERS
   wdmcpl.h
   )
 
-set(WDMCPL_SOURCES  wdmcpl.cpp)
+set(WDMCPL_SOURCES  wdmcpl.cpp
+                    wdmcpl/point_search.cpp)
+
+find_package(Kokkos REQUIRED)
 
 add_library(wdmcpl ${WDMCPL_SOURCES})
 add_library(wdmcpl::wdmcpl ALIAS wdmcpl)
 target_compile_features(wdmcpl PUBLIC cxx_std_17)
-target_link_libraries(wdmcpl PUBLIC Omega_h::omega_h redev::redev MPI::MPI_CXX)
-
-find_package(Kokkos REQUIRED)
-add_library(point_search wdmcpl/point_search.cpp wdmcpl/uniform_grid.h wdmcpl/bounding_box.h)
-add_library(wdmcpl::point_search ALIAS point_search)
-target_compile_features(point_search PUBLIC cxx_std_17)
-target_link_libraries(point_search PUBLIC Omega_h::omega_h wdmcpl Kokkos::kokkos MPI::MPI_CXX)
+target_link_libraries(wdmcpl PUBLIC Omega_h::omega_h redev::redev MPI::MPI_CXX Kokkos::kokkos)
 
 if(WDMCPL_HAS_ASAN)
   target_compile_options(wdmcpl PRIVATE -fsanitize=address -fno-omit-frame-pointer)

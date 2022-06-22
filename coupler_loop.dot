@@ -1,0 +1,99 @@
+digraph coupler_loop {
+  run_a ->rdv_a_to_cpl;
+  run_b ->rdv_b_to_cpl;
+
+  rdv_a_to_cpl->field_transfer_a_to_cpl;
+  field_transfer_a_to_cpl->cpl_combine_ab;
+
+  rdv_b_to_cpl->field_transfer_b_to_cpl;
+  field_transfer_b_to_cpl->cpl_combine_ab;
+
+  cpl_combine_ab -> cpl_split_cd;
+
+  cpl_split_cd->run_c;
+  cpl_split_cd->run_d;
+
+  run_c ->rdv_c_to_cpl;
+  run_d ->rdv_d_to_cpl;
+
+  rdv_c_to_cpl->field_transfer_c_to_cpl;
+  field_transfer_c_to_cpl->cpl_combine_cd;
+
+  rdv_d_to_cpl->field_transfer_d_to_cpl;
+  field_transfer_d_to_cpl->cpl_combine_cd;
+
+  cpl_combine_cd -> cpl_split_ab;
+
+  cpl_split_ab->run_a;
+  cpl_split_ab->run_b;
+
+}
+/*
+digraph coupler_loop {
+  run_a ->rdv_a_to_cpl;
+  run_b ->rdv_b_to_cpl;
+
+subgraph cluster_0 {
+  rdv_a_to_cpl->field_transfer_a_to_cpl;
+  field_transfer_a_to_cpl->cpl_combine_ab;
+
+  rdv_b_to_cpl->field_transfer_b_to_cpl;
+  field_transfer_b_to_cpl->cpl_combine_ab;
+
+  cpl_combine_ab -> cpl_split_cd;
+  }
+
+  cpl_split_cd->run_c;
+  cpl_split_cd->run_d;
+
+  run_c ->rdv_c_to_cpl;
+  run_d ->rdv_d_to_cpl;
+
+subgraph cluster_1 {
+  rdv_c_to_cpl->field_transfer_c_to_cpl;
+  field_transfer_c_to_cpl->cpl_combine_cd;
+
+  rdv_d_to_cpl->field_transfer_d_to_cpl;
+  field_transfer_d_to_cpl->cpl_combine_cd;
+
+  cpl_combine_cd -> cpl_split_ab;
+  }
+
+  cpl_split_ab->run_a;
+  cpl_split_ab->run_b;
+
+}
+
+
+digraph coupler_loop2 {
+subgraph cluster_0 {
+  run_a ->rdv_a_to_cpl;
+  run_b ->rdv_b_to_cpl;
+  rdv_a_to_cpl->field_transfer_a_to_cpl;
+  rdv_b_to_cpl->field_transfer_b_to_cpl;
+  }
+  field_transfer_a_to_cpl->cpl_combine_ab;
+  field_transfer_b_to_cpl->cpl_combine_ab;
+
+  cpl_combine_ab -> cpl_split_cd;
+
+  cpl_split_cd->run_c;
+  cpl_split_cd->run_d;
+
+subgraph cluster_1 {
+  run_c ->rdv_c_to_cpl;
+  run_d ->rdv_d_to_cpl;
+
+  rdv_c_to_cpl->field_transfer_c_to_cpl;
+  rdv_d_to_cpl->field_transfer_d_to_cpl;
+  }
+  field_transfer_d_to_cpl->cpl_combine_cd;
+  field_transfer_c_to_cpl->cpl_combine_cd;
+
+  cpl_combine_cd -> cpl_split_ab;
+
+  cpl_split_ab->run_a;
+  cpl_split_ab->run_b;
+
+}
+*/

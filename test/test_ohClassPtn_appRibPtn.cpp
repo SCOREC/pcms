@@ -37,21 +37,20 @@ int main(int argc, char** argv) {
     ts::writeVtk(mesh,"appSplit",0);
   }
   auto partition = redev::ClassPtn(MPI_COMM_WORLD,classPartition.ranks,classPartition.modelEnts);
-  redev::Redev rdv(MPI_COMM_WORLD,partition,isRdv);
+  redev::Redev rdv(MPI_COMM_WORLD,partition,static_cast<redev::ProcessType>(isRdv));
 
   const std::string name = "meshVtxIds";
   const int rdvRanks = 2;
   const int appRanks = 2;
 
-  const bool isSST = false;
   adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "2"}};
-  auto commPair = rdv.CreateAdiosClient<redev::GO>(name,params,isSST);
+  auto commPair = rdv.CreateAdiosClient<redev::GO>(name,params,redev::TransportType::BP4);
 
   //Build the dest, offsets, and permutation arrays for the forward
   //send from non-rendezvous to rendezvous.
   ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
   if(!isRdv) {
-    commPair.c2s.SetOutMessageLayout(appOut.dest, appOut.offset);
+    commPair.SetOutMessageLayout(appOut.dest, appOut.offset);
   }
 
   redev::GOs rdvInPermute;
@@ -72,11 +71,11 @@ int main(int argc, char** argv) {
         msgs[appOut.permute[i]] = gids_h[i];
       }
       auto start = std::chrono::steady_clock::now();
-      commPair.c2s.Send(msgs.data());
+      commPair.Send(msgs.data());
       ts::getAndPrintTime(start,name + " appWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = commPair.c2s.Recv();
+      const auto msgs = commPair.Recv();
       ts::getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
       if(iter==0) {
@@ -91,13 +90,13 @@ int main(int argc, char** argv) {
         //These operations only need to be done once per coupling as long as
         //the topology and partition of the rendezvous and non-rendezvous meshes
         //remains the same.
-        auto rdvIn = commPair.c2s.GetInMessageLayout();
+        auto rdvIn = commPair.GetInMessageLayout();
         rdvInPermute = ts::getRdvPermutation(mesh, msgs);
         rdvOut = ts::prepareRdvOutMessage(mesh,rdvIn);
         REDEV_ALWAYS_ASSERT( rdvOut.dest == redev::LOs({0,1}) );
         if(!rank) REDEV_ALWAYS_ASSERT( rdvOut.offset == redev::LOs({0,4,9}) );
         if(rank) REDEV_ALWAYS_ASSERT( rdvOut.offset == redev::LOs({0,8,15}) );
-        commPair.s2c.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
+        commPair.SetOutMessageLayout(rdvOut.dest,rdvOut.offset);
         rdvOutPermute = ts::getRdvOutPermutation(mesh, msgs);
       }
       ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
@@ -117,11 +116,11 @@ int main(int argc, char** argv) {
         }
       }
       auto start = std::chrono::steady_clock::now();
-      commPair.s2c.Send(msgs.data());
+      commPair.Send(msgs.data());
       ts::getAndPrintTime(start,name + " rdvWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = commPair.s2c.Recv();
+      const auto msgs = commPair.Recv();
       ts::getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order
         auto gids = mesh.globals(0);

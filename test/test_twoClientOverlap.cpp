@@ -70,8 +70,8 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh, std::string_view cpnFi
 }
 
 auto setupComms(redev::Redev& rdv, std::string_view name, const int clientId) {
-  const bool isSST = false;
-  adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
+  const bool isSST = true;
+  adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "24"}};
   REDEV_ALWAYS_ASSERT(clientId == 0 || clientId ==1);
   std::stringstream clientName;
   clientName << name << "Client" << clientId;
@@ -277,5 +277,6 @@ int main(int argc, char** argv) {
   } else {
     client(mesh,name,clientId);
   }
+  if(!rank) fprintf(stderr, "done\n");
   return 0;
 }

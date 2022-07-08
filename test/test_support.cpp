@@ -378,17 +378,24 @@ OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partitio
 }
 
 redev::GOs getRdvPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
+  // global vertex ids
   auto gids = mesh.globals(0);
+  // host side global vertex ids
   auto gids_h = Omega_h::HostRead(gids);
+  // indexes of global vertex ids sorted by id
   auto iGids = sortIndexes(gids_h);
+  // indexes of input
   auto iInGids = sortIndexes(inGids);
   redev::GOs rdvPermute(inGids.size());
   int j=0;
+  // for i in size of global ids
   for(size_t i=0; i<inGids.size(); i++) {
+    // loop through the global ids until get to the matching input global id
     while(gids_h[iGids[j]] != inGids[iInGids[i]] && j < gids_h.size()) {
       j++;
     }
     REDEV_ALWAYS_ASSERT(j!=gids_h.size()); //not found
+    // at the
     rdvPermute[iInGids[i]] = iGids[j];
   }
   return rdvPermute;

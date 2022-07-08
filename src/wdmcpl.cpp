@@ -5,15 +5,6 @@
 
 namespace wdmcpl
 {
-// this function make me sad...initialization should be RAII
-void init(int argc, char** argv, MPI_Comm comm)
-{
-  redev::RCBPtn ptn;
-  auto isRendezvous = true;
-  auto noParticipant = true;
-  redev::Redev(comm, ptn, isRendezvous, noParticipant);
-}
-
 static_assert(std::is_same_v<Real, redev::Real>,
               "wdmcpl and redev real types must match");
 static_assert(std::is_same_v<LO, redev::LO>,

@@ -4,7 +4,6 @@
 #include <redev.h>
 
 namespace wdmcpl {
-  void init(int argc, char** argv, MPI_Comm comm);
 }
 
 #endif

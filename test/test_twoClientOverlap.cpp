@@ -75,7 +75,7 @@ auto setupComms(redev::Redev& rdv, std::string_view name, const int clientId) {
   REDEV_ALWAYS_ASSERT(clientId == 0 || clientId ==1);
   std::stringstream clientName;
   clientName << name << "Client" << clientId;
-  return rdv.CreateAdiosClient<redev::GO>(clientName.str(),params,isSST);
+  return rdv.CreateAdiosClient<redev::GO>(clientName.str(),params,static_cast<redev::TransportType>(isSST));
 }
 
 Omega_h::HostRead<Omega_h::I8> markMeshOverlapRegion(Omega_h::Mesh& mesh) {
@@ -105,7 +105,7 @@ void client(Omega_h::Mesh& mesh, std::string fieldName, const int clientId) {
   if(!rank) fprintf(stderr, "clientId %d\n", clientId);
 
   auto partition = setupClientPartition(mesh);
-  auto rdv = redev::Redev(MPI_COMM_WORLD,partition,isRdv);
+  auto rdv = redev::Redev(MPI_COMM_WORLD,partition,static_cast<redev::ProcessType>(isRdv));
   auto comm = setupComms(rdv,fieldName,clientId);
 
   auto isOverlap_h = markMeshOverlapRegion(mesh);
@@ -115,7 +115,7 @@ void client(Omega_h::Mesh& mesh, std::string fieldName, const int clientId) {
   ts::OutMsg appOut = ts::prepareAppOutMessage(mesh, partition);
   //Build the dest, offsets, and permutation arrays for the forward
   //send from client to rendezvous/server.
-  comm.c2s.SetOutMessageLayout(appOut.dest, appOut.offset); //TODO - can this be moved to the AdiosComm ctor
+  comm.SetOutMessageLayout(appOut.dest, appOut.offset); //TODO - can this be moved to the AdiosComm ctor
   //fill message array
   auto gids = mesh.globals(0);
   auto gids_h = Omega_h::HostRead(gids);
@@ -127,13 +127,13 @@ void client(Omega_h::Mesh& mesh, std::string fieldName, const int clientId) {
     }
   }
   auto start = std::chrono::steady_clock::now();
-  comm.c2s.Send(msgs.data());
+  comm.Send(msgs.data());
   ts::getAndPrintTime(start,fieldName + " appWrite",rank);
   //////////////////////////////////////////////////////
   //the rendezvous app sends global vtx ids to non-rendezvous
   //////////////////////////////////////////////////////
   start = std::chrono::steady_clock::now();
-  const auto msgsIn = comm.s2c.Recv();
+  const auto msgsIn = comm.Recv();
   ts::getAndPrintTime(start,fieldName + " appRead",rank);
   clientCheckIncomingMessages(mesh,isOverlap_h,msgsIn,appOut);
   //////////////////////////////////////////////////////
@@ -149,11 +149,11 @@ void client(Omega_h::Mesh& mesh, std::string fieldName, const int clientId) {
       }
     }
     auto start = std::chrono::steady_clock::now();
-    comm.c2s.Send(msgs.data());
+    comm.Send(msgs.data());
     ts::getAndPrintTime(start,fieldName + " appWrite",rank);
     //receive from server
     start = std::chrono::steady_clock::now();
-    const auto msgsIn = comm.s2c.Recv();
+    const auto msgsIn = comm.Recv();
     ts::getAndPrintTime(start,fieldName + " appRead",rank);
     clientCheckIncomingMessages(mesh,isOverlap_h,msgsIn,appOut);
   } //end iter loop
@@ -166,18 +166,24 @@ struct ClientMetaData {
 };
 
 void serverReceiveFromClient(ClientMetaData& clientMeta,
-    redev::CommPair<redev::GO>& comm, Omega_h::Mesh& mesh,
+    redev::BidirectionalComm<redev::GO>& comm, Omega_h::Mesh& mesh,
     std::string_view fieldName, const int rank, const int clientId) {
   std::stringstream ss;
   ss << fieldName << " rdvRead clientId " << clientId;
   auto start = std::chrono::steady_clock::now();
-  const auto msgsIn = comm.c2s.Recv();
+  const auto msgsIn = comm.Recv();
   ts::getAndPrintTime(start,ss.str(),rank);
-  auto rdvIn = comm.c2s.GetInMessageLayout();
+  auto rdvIn = comm.GetInMessageLayout();
   //setup outbound meta data
+  // FIXME: this assumes we know the correct order of the data already!
+  // If we transfer data/msg that's not GID we can't do this comparison on the
+  // message directly, so the global ids may need to be sent during an initialization
+  // phase
   clientMeta.inPermute = ts::getRdvPermutation(mesh, msgsIn);
   clientMeta.outMsg = ts::prepareRdvOutMessage(mesh,rdvIn);
-  comm.s2c.SetOutMessageLayout(clientMeta.outMsg.dest,clientMeta.outMsg.offset);
+  // FIXME is this necessary to set the outgoing message layout here? The
+  // reciever shouldn't need to know the layout of the sender
+  comm.SetOutMessageLayout(clientMeta.outMsg.dest,clientMeta.outMsg.offset);
   clientMeta.outPermute = ts::getRdvOutPermutation(mesh, msgsIn);
   //attach ids to the mesh
   ss.str("");
@@ -186,7 +192,7 @@ void serverReceiveFromClient(ClientMetaData& clientMeta,
 }
 
 void serverSendToClient(ClientMetaData& clientMeta,
-    redev::CommPair<redev::GO>& comm, Omega_h::Mesh& mesh,
+    redev::BidirectionalComm<redev::GO>& comm, Omega_h::Mesh& mesh,
     Omega_h::HostRead<Omega_h::I8>& isOverlap_h,
     std::string_view fieldName, const int rank, const int clientId) {
   //fill message array
@@ -202,7 +208,7 @@ void serverSendToClient(ClientMetaData& clientMeta,
   std::stringstream ss;
   ss << fieldName << " rdvWrite clientId " << clientId;
   auto start = std::chrono::steady_clock::now();
-  comm.s2c.Send(msgs.data());
+  comm.Send(msgs.data());
   ts::getAndPrintTime(start,ss.str(),rank);
 }
 
@@ -211,7 +217,7 @@ void server(Omega_h::Mesh& mesh, std::string fieldName, std::string_view cpnFile
   auto ohComm = mesh.comm();
   const auto rank = ohComm->rank();
   auto partition = setupServerPartition(mesh,cpnFileName);
-  auto rdv = redev::Redev(MPI_COMM_WORLD,partition,isRdv);
+  auto rdv = redev::Redev(MPI_COMM_WORLD,partition,static_cast<redev::ProcessType>(isRdv));
   auto commClient0 = setupComms(rdv,fieldName,0);
   auto commClient1 = setupComms(rdv,fieldName,1);
 
@@ -233,12 +239,12 @@ void server(Omega_h::Mesh& mesh, std::string fieldName, std::string_view cpnFile
     if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
     //receive from clients
     auto start = std::chrono::steady_clock::now();
-    const auto msgsIn0 = commClient0.c2s.Recv();
+    const auto msgsIn0 = commClient0.Recv();
     ts::getAndPrintTime(start,fieldName + " rdvRead clientId 0",rank);
     ts::checkAndAttachIds(mesh, "inVtxGidsClient0", msgsIn0, client0.inPermute);
 
     start = std::chrono::steady_clock::now();
-    const auto msgsIn1 = commClient1.c2s.Recv();
+    const auto msgsIn1 = commClient1.Recv();
     ts::getAndPrintTime(start,fieldName + " rdvRead clientId 1",rank);
     ts::checkAndAttachIds(mesh, "inVtxGidsClient1", msgsIn1, client1.inPermute);
     //send to clients

@@ -66,9 +66,9 @@ void writeVtk(Omega_h::Mesh& mesh, std::string_view name, int step);
 /**
  * Given the omegah mesh, and the partition object (partition), determine which application vertex
  * should be sending to which rendezvous process, and populate the OutMsg
- * structures dest and offsets array that are required by the rendezvous Pack API.
- * The permutation from the application mesh to the array of message data sent
- * to the rendezvous processes is also computed here.
+ * structures dest and offsets array that are required by the Redev::SetOutMessageLayout API.
+ * The permutation from the client mesh to the array of message data sent
+ * to the server processes is also computed here.
  */
 OutMsg prepareAppOutMessage(Omega_h::Mesh& mesh, const redev::ClassPtn& partition);
 

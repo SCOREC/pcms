@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     ts::writeVtk(mesh,"appSplit",0);
   }
   auto partition = redev::ClassPtn(MPI_COMM_WORLD,classPartition.ranks,classPartition.modelEnts);
-  redev::Redev rdv(MPI_COMM_WORLD,partition,static_cast<redev::ProcessType>(isRdv));
+  redev::Redev rdv(MPI_COMM_WORLD,std::move(partition),static_cast<redev::ProcessType>(isRdv));
 
   const std::string name = "meshVtxIds";
   const int rdvRanks = 2;
@@ -48,7 +48,10 @@ int main(int argc, char** argv) {
 
   //Build the dest, offsets, and permutation arrays for the forward
   //send from non-rendezvous to rendezvous.
-  ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
+  ts::OutMsg appOut = !isRdv
+                        ? ts::prepareAppOutMessage(
+                            mesh, std::get<decltype(partition)>(rdv.GetPartition()))
+                        : ts::OutMsg();
   if(!isRdv) {
     commPair.SetOutMessageLayout(appOut.dest, appOut.offset);
   }

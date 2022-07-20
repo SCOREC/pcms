@@ -30,13 +30,13 @@ int main(int argc, char** argv) {
     ts::writeVtk(mesh,"rdvSplit",0);
   }
   auto partition = redev::ClassPtn(MPI_COMM_WORLD,classPartition.ranks,classPartition.modelEnts);
-  redev::Redev rdv(MPI_COMM_WORLD,partition,static_cast<redev::ProcessType>(isRdv));
+  redev::Redev rdv(MPI_COMM_WORLD,std::move(partition),static_cast<redev::ProcessType>(isRdv));
   const std::string name = "meshVtxIds";
   adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "2"}};
   auto commPair = rdv.CreateAdiosClient<redev::GO>(name,params,redev::TransportType::BP4);
 
   //build dest, offsets, and permutation arrays
-  ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, partition) : ts::OutMsg();
+  ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, get<decltype(partition)>(rdv.GetPartition())) : ts::OutMsg();
   if(!isRdv) {
     redev::LOs expectedDest = {0,1};
     REDEV_ALWAYS_ASSERT(appOut.dest == expectedDest);

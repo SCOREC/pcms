@@ -188,13 +188,13 @@ int main(int argc, char** argv) {
   } else {
     ///////////////////  CLIENT /////////////////////////
     auto partition = setupClientPartition(mesh);
-    auto rdv = redev::Redev(MPI_COMM_WORLD,partition,static_cast<redev::ProcessType>(isRdv));
+    auto rdv = redev::Redev(MPI_COMM_WORLD,std::move(partition),static_cast<redev::ProcessType>(isRdv));
     auto comm = setupComms(rdv,name);
     auto isOverlap_h = markMeshOverlapRegion(mesh);
     //////////////////////////////////////////////////////
     //the non-rendezvous app sends global vtx ids to rendezvous
     //////////////////////////////////////////////////////
-    ts::OutMsg appOut = ts::prepareAppOutMessage(mesh, partition);
+    ts::OutMsg appOut = ts::prepareAppOutMessage(mesh, std::get<decltype(partition)>(rdv.GetPartition()));
     //Build the dest, offsets, and permutation arrays for the forward
     //send from client to rendezvous/server.
     comm.SetOutMessageLayout(appOut.dest, appOut.offset); //TODO - can this be moved to the AdiosComm ctor

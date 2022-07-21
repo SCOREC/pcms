@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(wdm_coupling VERSION 0.0.1 LANGUAGES C CXX)
+project(wdm_coupling VERSION 0.0.2 LANGUAGES C CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -12,7 +12,7 @@ endif()
 
 set(MPI_CXX_SKIP_MPICXX ON)
 find_package(MPI REQUIRED)
-find_package(redev 3.0.0 REQUIRED)
+find_package(redev 4.0.0 REQUIRED)
 message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
 find_package(Omega_h REQUIRED VERSION 10)
 message(STATUS "Found Omega_h: ${Omega_h_DIR} (found version ${Omega_h_VERSION})")

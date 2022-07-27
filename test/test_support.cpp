@@ -92,9 +92,16 @@ Omega_h::LO countModelEnts(Omega_h::Mesh& mesh, const Omega_h::LOs permutation, 
     const auto jp = permutation[j];
     return (ids[ip] == ids[jp]) && (dims[ip] == dims[jp]);
   };
+  //only looking for equal order classification
+  // (mesh ent dimension == model ent dimension)
+  auto isCurrentModelEntDim = OMEGA_H_LAMBDA(int i) {
+    const auto ip = permutation[i];
+    return (dims[ip] == dim);
+  };
   auto countEnts = OMEGA_H_LAMBDA(int i) {
+    const auto currentDim = isCurrentModelEntDim(i);
     const auto prevSame = (i==0) ? false : isSameModelEnt(i,i-1);
-    if(prevSame) return;
+    if(!currentDim || prevSame) return;
     Omega_h::atomic_increment(&numModelEnts[0]);
   };
   Omega_h::parallel_for(ids.size(), countEnts);
@@ -115,6 +122,8 @@ struct ModelEntityOwners {
  */
 ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
     const Omega_h::LOs permutation, const int dim, const int numModelEnts) {
+  auto ohComm = mesh.comm();
+  const auto rank = ohComm->rank();
   auto ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
   auto dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
   auto remotes = mesh.ask_owners(dim);
@@ -135,13 +144,21 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
       const auto idsj = ids[jp];
       const auto dimsi = dims[ip];
       const auto dimsj = dims[jp];
-      if( (dimsi==dimsj) && (idsi==idsj) &&
+      if( (rank==10 || rank==11) &&
+          (dim==dimsi) &&
+          (dimsi==dimsj) && (idsi==idsj) &&
           (dimsi==1) && (idsi==34) ) {
         auto owner = remotes.ranks[jp];
-        printf("owner %d\n", owner);
+        //printf("%d owner %d\n", rank, owner);
       }
     }
     return (ids[ip] == ids[jp]) && (dims[ip] == dims[jp]);
+  };
+  //only looking for equal order classification
+  // (mesh ent dimension == model ent dimension)
+  auto isCurrentModelEntDim = OMEGA_H_LAMBDA(int i) {
+    const auto ip = permutation[i];
+    return (dims[ip] == dim);
   };
   //Loop through the model entities and then find the minimum
   //rank of mesh entities classified on it (the inner while loop).
@@ -150,8 +167,9 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
   //It is essentially a min-reduction over a bunch of small arrays
   //(one array for each model entity).
   auto getEnts = OMEGA_H_LAMBDA(int i) {
+    const auto currentDim = isCurrentModelEntDim(i);
     const auto prevSame = (i==0) ? false : isSameModelEnt(i,i-1);
-    if(prevSame) return;
+    if(!currentDim || prevSame) return;
     auto minOwner = remotes.ranks[permutation[i]];
     auto next = i+1;
     while( (next < numEnts) && isSameModelEnt(i, next) ) {
@@ -160,7 +178,6 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
         minOwner = nextOwner;
       next++;
     }
-    //HERE
     const int mdlEntIdx = Omega_h::atomic_fetch_add(&count[0],1);
     mdlEntIds[mdlEntIdx] = ids[permutation[i]];
     mdlEntDims[mdlEntIdx] = dims[permutation[i]];
@@ -175,18 +192,14 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
 /**
  * I don't feel like writing the array merge... so we dump it into a map
  */
-void append(const ModelEntityOwners& meow, redev::ClassPtn::ModelEntToRank& entToRank) {
+void append(int rank, const ModelEntityOwners& meow, redev::ClassPtn::ModelEntToRank& entToRank) {
    auto ids = Omega_h::HostRead(meow.ids);
    auto dims = Omega_h::HostRead(meow.dims);
    auto owners = Omega_h::HostRead(meow.owners);
    for(size_t i=0; i<ids.size(); i++)  {
      const auto ent = redev::ClassPtn::ModelEnt(dims[i],ids[i]);
      if(entToRank.count(ent)) {
-       if(entToRank[ent] != owners[i]) {
-         fprintf(stderr, "mdlEnt %d %d entToRank[ent] %d owners[%d] %d\n",
-             dims[i], ids[i], entToRank.count(ent), i, owners[i]);
-       }
-       REDEV_ALWAYS_ASSERT(entToRank[ent] == owners[i]); //fails here
+       REDEV_ALWAYS_ASSERT(entToRank[ent] == owners[i]);
      } else {
        entToRank[ent] = owners[i];
      }
@@ -204,16 +217,23 @@ ClassificationPartition fromMap(redev::ClassPtn::ModelEntToRank& entToRank) {
   return cp;
 }
 
-void printMap(redev::ClassPtn::ModelEntToRank& entToRank) {
-  std::stringstream ss;
-  ss << "(dimension,id,rank) ";
-  for(auto iter = entToRank.begin(); iter != entToRank.end(); iter++) {
-    auto ent = iter->first;
-    auto rank = iter->second;
-    ss << " (" << ent.first << " " << ent.second << " " << rank << ") ";
+void printMap(int rank, redev::ClassPtn::ModelEntToRank& entToRank) {
+  int commsz;
+  MPI_Comm_size(MPI_COMM_WORLD, &commsz);
+  for(int r=0; r<commsz; r++) {
+    if(r==rank && (r==10 || r==11)) {
+      std::stringstream ss;
+      ss << rank << " (dimension,id,rank) ";
+      for(auto iter = entToRank.begin(); iter != entToRank.end(); iter++) {
+        auto ent = iter->first;
+        auto rank = iter->second;
+        ss << " (" << ent.first << " " << ent.second << " " << rank << ") ";
+      }
+      std::string s = ss.str();
+      std::cerr << s << "\n";
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
   }
-  std::string s = ss.str();
-  std::cerr << s << "\n";
 }
 
 /**
@@ -228,9 +248,12 @@ ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh) {
   for(int dim=0; dim<=mesh.dim(); dim++) {
     auto perm = getModelEntityPermutation(mesh, dim);
     auto numModelEnts = countModelEnts(mesh, perm, dim);
+    if(rank==10 || rank==11) {
+      fprintf(stderr, "%d dim %d numModelEnts %d\n", rank, dim, numModelEnts);
+    }
     auto modelEntityOwners = getModelEntityOwners(mesh, perm, dim, numModelEnts);
-    append(modelEntityOwners,m2r);
-    printMap(m2r);
+    append(rank,modelEntityOwners,m2r);
+    printMap(rank,m2r);
   }
   return fromMap(m2r);
 }

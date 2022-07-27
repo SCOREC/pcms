@@ -99,6 +99,14 @@ tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
   NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
   NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
 
+add_executable(ohClassPtnOwnership test_ohClassPtnOwnership.cpp)
+target_link_libraries(ohClassPtnOwnership PUBLIC wdmcpl::wdmcpl test_support)
+tri_mpi_test(TESTNAME test_ohClassPtnOwnership_40p
+        TIMEOUT 12
+        NAME1 rdv EXE1 ./ohClassPtnOwnership PROCS1 16 ARGS1 -1 ${d3d1p} ${d3d16p_cpn}
+        NAME2 client0 EXE2 ./ohClassPtnOwnership PROCS2 16 ARGS2 0 ${d3d16p} ignored
+        NAME3 client1 EXE3 ./ohClassPtnOwnership PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+
 add_executable(proxy_coupling XGCProxy.cpp test_proxy_coupling.cpp)
 target_link_libraries(proxy_coupling PUBLIC wdmcpl::wdmcpl test_support)
 tri_mpi_test(TESTNAME test_proxy_coupling

@@ -223,6 +223,12 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
                                ? ts::readClassPartitionFile(cpnFileName)
                                : ts::ClassificationPartition();
   ts::migrateMeshElms(mesh, facePartition);
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cerr << ohComm->rank() << " elms " << mesh.nelems() << "\n";
+  REDEV_ALWAYS_ASSERT(mesh.nelems()); //all ranks should have elements
+  Omega_h::vtk::write_parallel("rdv.vtk", &mesh, 2);
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(!ohComm->rank()) std::cerr << " before CreateClassificationPartition\n";
   auto ptn = ts::CreateClassificationPartition(mesh);
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }

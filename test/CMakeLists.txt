@@ -8,7 +8,7 @@ endif ()
 message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
 message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
 set(VALGRIND_EXECUTABLE "none" CACHE FILEPATH "path to valgrind executable")
-set(VALGRIND_ARGS "none" CACHE STRING "valgrind options")
+set(VALGRIND_ARGS "none" CACHE STRING "specify valgrind options; logging (--log-file=%p_<name>.vg) is enabled by default if VALGRIND_EXECUTABLE is set")
 message(STATUS "VALGRIND_EXECUTABLE: ${VALGRIND_EXECUTABLE}")
 message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
 

@@ -82,7 +82,9 @@ dual_mpi_test(TESTNAME test_ohClassPtn_appRibPtn
   NAME2 app EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${cyclone2p})
 
 set(d3d1p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc.osh/)
+set(d3d2p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/2p.cpn)
 set(d3d4p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/4p.cpn)
+set(d3d8p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/8p.cpn)
 set(d3d16p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/16p.cpn)
 set(d3d16p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p16.osh/)
 add_exe(test_ohOverlap)
@@ -101,6 +103,18 @@ tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
 
 add_executable(ohClassPtnOwnership test_ohClassPtnOwnership.cpp)
 target_link_libraries(ohClassPtnOwnership PUBLIC wdmcpl::wdmcpl test_support)
+tri_mpi_test(TESTNAME test_ohClassPtnOwnership_26p
+        TIMEOUT 12
+        NAME1 rdv EXE1 ./ohClassPtnOwnership PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
+        NAME2 client0 EXE2 ./ohClassPtnOwnership PROCS2 16 ARGS2 0 ${d3d16p} ignored
+        NAME3 client1 EXE3 ./ohClassPtnOwnership PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+
+tri_mpi_test(TESTNAME test_ohClassPtnOwnership_32p
+        TIMEOUT 12
+        NAME1 rdv EXE1 ./ohClassPtnOwnership PROCS1 8 ARGS1 -1 ${d3d1p} ${d3d8p_cpn}
+        NAME2 client0 EXE2 ./ohClassPtnOwnership PROCS2 16 ARGS2 0 ${d3d16p} ignored
+        NAME3 client1 EXE3 ./ohClassPtnOwnership PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+
 tri_mpi_test(TESTNAME test_ohClassPtnOwnership_40p
         TIMEOUT 12
         NAME1 rdv EXE1 ./ohClassPtnOwnership PROCS1 16 ARGS1 -1 ${d3d1p} ${d3d16p_cpn}
@@ -109,9 +123,19 @@ tri_mpi_test(TESTNAME test_ohClassPtnOwnership_40p
 
 add_executable(proxy_coupling XGCProxy.cpp test_proxy_coupling.cpp)
 target_link_libraries(proxy_coupling PUBLIC wdmcpl::wdmcpl test_support)
+tri_mpi_test(TESTNAME test_proxy_coupling_26p
+        TIMEOUT 12
+        NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
+        NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+        NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
 tri_mpi_test(TESTNAME test_proxy_coupling
         TIMEOUT 12
         NAME1 rdv EXE1 ./proxy_coupling PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
+        NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+        NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+tri_mpi_test(TESTNAME test_proxy_coupling_32p
+        TIMEOUT 12
+        NAME1 rdv EXE1 ./proxy_coupling PROCS1 8 ARGS1 -1 ${d3d1p} ${d3d8p_cpn}
         NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
         NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
 tri_mpi_test(TESTNAME test_proxy_coupling_40p

@@ -7,6 +7,10 @@ endif ()
 
 message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
 message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
+set(VALGRIND_EXECUTABLE "none" CACHE FILEPATH "path to valgrind executable")
+set(VALGRIND_ARGS "none" CACHE STRING "valgrind options")
+message(STATUS "VALGRIND_EXECUTABLE: ${VALGRIND_EXECUTABLE}")
+message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
 
 add_library(test_support test_support.cpp)
 target_link_libraries(test_support wdmcpl) #for omegah and redev
@@ -28,10 +32,14 @@ endfunction()
 
 function(mpi_test TESTNAME PROCS EXE)
     removeBpFiles(${TESTNAME}_cleanup)
-    add_test(
-            NAME ${TESTNAME}
-            COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} ${VALGRIND} ${VALGRIND_ARGS} ${EXE} ${ARGN}
-    )
+    if(${VALGRIND_EXECUTABLE} MATCHES "none")
+      add_test(NAME ${TESTNAME}
+              COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} ${EXE} ${ARGN})
+    else()
+      add_test(NAME ${TESTNAME}
+              COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${PROCS}
+                      ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS} ${EXE} ${ARGN})
+    endif()
 endfunction(mpi_test)
 
 function(dual_mpi_test)
@@ -43,6 +51,7 @@ function(dual_mpi_test)
     COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
     ${MPIEXEC_EXECUTABLE}
     ${MPIEXEC_NUMPROC_FLAG}
+    ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS}
     ${DUALTEST_NAME1} ${DUALTEST_PROCS1} ${DUALTEST_EXE1} "${DUALTEST_ARGS1}"
     ${DUALTEST_NAME2} ${DUALTEST_PROCS2} ${DUALTEST_EXE2} "${DUALTEST_ARGS2}")
   set_tests_properties(${DUALTEST_TESTNAME} PROPERTIES TIMEOUT ${DUALTEST_TIMEOUT})
@@ -57,6 +66,7 @@ function(tri_mpi_test)
     COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
     ${MPIEXEC_EXECUTABLE}
     ${MPIEXEC_NUMPROC_FLAG}
+    ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS}
     ${TRITEST_NAME1} ${TRITEST_PROCS1} ${TRITEST_EXE1} "${TRITEST_ARGS1}"
     ${TRITEST_NAME2} ${TRITEST_PROCS2} ${TRITEST_EXE2} "${TRITEST_ARGS2}"
     ${TRITEST_NAME3} ${TRITEST_PROCS3} ${TRITEST_EXE3} "${TRITEST_ARGS3}")

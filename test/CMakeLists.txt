@@ -23,7 +23,7 @@ endfunction(add_exe)
 
 function(removeBpFiles TESTNAME)
     add_test(NAME ${TESTNAME} COMMAND ${CMAKE_COMMAND}
-            -P ${CMAKE_SOURCE_DIR}/cmake/removeBpFiles.cmake)
+            -P ${CMAKE_SOURCE_DIR}/ctest/removeBpFiles.cmake)
 endfunction()
 
 function(mpi_test TESTNAME PROCS EXE)

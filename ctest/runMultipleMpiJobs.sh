@@ -29,7 +29,11 @@ run() {
   local exe=${3}
   local args=${4}
   IFS=';' read -a argsArray <<< "${args}" #split the cmake list of args
-  ${runCmd} ${numProcsFlag} ${procs} ${valgrindCmd} ${valgrindLogging}_${name}.vg ${valgrindOptions} ${exe} ${argsArray[@]} &> ${name}.log &
+  local vgLog=${valgrindLogging}_${name}.vg
+  if [[ -z ${valgrindLogging} ]]; then
+    vgLog=""
+  fi
+  ${runCmd} ${numProcsFlag} ${procs} ${valgrindCmd} ${vgLog} ${valgrindOptions} ${exe} ${argsArray[@]} &> ${name}.log &
   PIDS+=($!)
   LOGS+=(${name}.log)
 }

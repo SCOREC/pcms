@@ -193,9 +193,10 @@ public:
       name_{std::move(name)}
 
   {
-
     std::string transport_name = std::string(name_prefix);
     transport_name.append("_").append(name_);
+    transport_name_ = transport_name;
+    fprintf(stderr, "in fieldComm ctor %s\n", transport_name_.c_str());
     comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type);
     // set up GID comm to do setup phase and get the
     // FIXME: use  one directional comm instead of the adios bidirectional comm
@@ -277,6 +278,7 @@ public:
       // data. Duplicate data indicates that sender is not sending data from
       // only the owned rank
       REDEV_ALWAYS_ASSERT(!HasDuplicates(recv_gids));
+      fprintf(stderr, "%d name %s\n", rank, transport_name_.c_str());
       message_permutation_ = ConstructPermutation(gids, recv_gids);
     }
     comm_buffer_.resize(message_permutation_.size());
@@ -296,6 +298,7 @@ private:
   DeserializerFunction<T> deserializer_;
   redev::Redev& redev_;
   std::string name_;
+  std::string transport_name_;
 };
 
 class Application {

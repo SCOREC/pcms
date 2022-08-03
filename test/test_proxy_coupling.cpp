@@ -307,13 +307,17 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   std::vector<wdmcpl::GO> total_f_gids;
   auto& total_f = cpl.AddApplication("total_f");
   auto& delta_f = cpl.AddApplication("delta_f");
-  auto& tf_gid_field = total_f.AddField<wdmcpl::GO>(
-    "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
-    SerializeServer{total_f_gids}, DeserializeServer{total_f_gids});
 
   auto& df_gid_field = delta_f.AddField<wdmcpl::GO>(
     "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
     SerializeServer{delta_f_gids}, DeserializeServer{delta_f_gids});
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  auto& tf_gid_field = total_f.AddField<wdmcpl::GO>( //failing here
+    "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
+    SerializeServer{total_f_gids}, DeserializeServer{total_f_gids});
+
   df_gid_field.Receive();
   tf_gid_field.Receive();
   df_gid_field.Send();

@@ -75,6 +75,7 @@ redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
 redev::LOs ConstructPermutation(const std::vector<wdmcpl::GO>& local_gids,
                                 const std::vector<wdmcpl::GO>& received_gids)
 {
+  fprintf(stderr, "lgids %lu rgids %lu\n", local_gids.size(), received_gids.size());
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
   std::map<wdmcpl::GO, wdmcpl::LO> global_to_local_ids;
   for (wdmcpl::LO i = 0; i < local_gids.size(); ++i) {

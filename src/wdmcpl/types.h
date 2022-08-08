@@ -25,6 +25,9 @@ constexpr Type TypeEnumFromType(T) {
   }
 };
 
+namespace detail {
+template <typename... T> struct dependent_always_false : std::false_type {};
+}
 
 } // namespace wdmcpl
 

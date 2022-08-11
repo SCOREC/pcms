@@ -2,6 +2,7 @@
 #define WDM_COUPLING_FIELD_H
 #include "wdmcpl/external/span.h"
 #include "wdmcpl/types.h"
+#include "wdmcpl/arrays.h"
 namespace wdmcpl
 {
 
@@ -16,42 +17,6 @@ constexpr void check_field()
 }
 } // namespace detail
 
-template <typename ArrayType, typename DataType>
-nonstd::span<DataType> GetSpan(ArrayType array);
-
-template <typename CoordinateSystemT, typename ArrayType, typename DataType,
-          typename ExeSpace>
-class CoordinateArray
-{
-public:
-  CoordinateArray(ArrayType array) : data_(std::move(array)) {}
-  using CoordinateSystem = CoordinateSystemT;
-  using ExecutionSpace = ExeSpace;
-  nonstd::span<const DataType> GetSpan() const
-  {
-    return wdmcpl::GetSpan<ArrayType, DataType>(data_);
-  }
-
-private:
-  ArrayType data_;
-};
-
-template <typename ArrayType, typename DataType, typename ExeSpace>
-class ScalarArray
-{
-public:
-  ScalarArray(ArrayType array) : data_(std::move(array)) {}
-  using ExecutionSpace = ExeSpace;
-  // nonstd::span<DataType> GetSpan() { return
-  // wdmcpl::GetSpan<ArrayType,DataType>(data_); }
-  nonstd::span<const DataType> GetSpan() const
-  {
-    return wdmcpl::GetSpan<ArrayType, DataType>(data_);
-  }
-
-private:
-  ArrayType data_;
-};
 
 // should we use kokkos views and template on execution space?
 template <typename NodeHandle, typename Coordinate>
@@ -75,8 +40,8 @@ evaluate(const CoordinateArray<
 };
 template <typename Field>
 void set(Field& field,
-         const ScalarArray<typename Field::ArrayType, typename Field::DataType,
-                           typename Field::ExecutionSpace>&)
+         ScalarArrayView<const typename Field::DataType,
+                           typename Field::ExecutionSpace>)
 {
   static_assert(detail::dependent_always_false<Field>::value,
                 "No Matching implementation of set");

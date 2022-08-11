@@ -8,6 +8,7 @@
 #include <Kokkos_core.hpp>
 #include <wdmcpl/assert.h>
 #include <Omega_h_for.hpp>
+#include "wdmcpl/arrays.h"
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
 
@@ -61,13 +62,15 @@ Omega_h_field::CoordinateArrayType get_nodal_coordinates(
 
 // set the data on the entire mesh
 template <>
-void set(Omega_h_field & field, const typename Omega_h_field::ScalarArrayType & data) {
-  const auto data_view = data.GetSpan();
-  WDMCPL_ALWAYS_ASSERT(data_view.size() == field.mesh.nents(0));
+void set(Omega_h_field & field,
+         ScalarArrayView<const typename Omega_h_field::DataType,
+           typename Omega_h_field::ExecutionSpace> data)
+ {
+  WDMCPL_ALWAYS_ASSERT(data.extent(0) == field.mesh.nents(0));
   auto& mesh = field.mesh;
-  Omega_h::Write array(data_view.size(),0);
-  Omega_h::parallel_for(data_view.size(),OMEGA_H_LAMBDA(size_t i){
-                                            array[i] = data_view[i];
+  Omega_h::Write array(data.extent(0),0);
+  Omega_h::parallel_for(data.extent(0),OMEGA_H_LAMBDA(size_t i){
+                                            array[i] = data[i];
                                           });
   mesh.set_tag(0,field.name,Omega_h::Read(array));
 }

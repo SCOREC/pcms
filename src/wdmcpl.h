@@ -16,7 +16,7 @@ namespace wdmcpl
 using ProcessType = redev::ProcessType;
 /**
  * Key: result of partition object i.e. rank that the data is sent to on host
- * Value: Vector of local index (ordered) and global ID
+ * Value: Vector of local index (ordered)
  */
 using ReversePartitionMap = std::map<wdmcpl::LO, std::vector<wdmcpl::LO>>;
 

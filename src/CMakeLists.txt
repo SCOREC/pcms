@@ -4,7 +4,7 @@ set(WDMCPL_HEADERS
 
 set(WDMCPL_SOURCES
   wdmcpl.cpp
-        wdmcpl/coordinate.h wdmcpl/omega_h_field.cpp wdmcpl/omega_h_field.h wdmcpl/field.cpp wdmcpl/field.h)
+        wdmcpl/coordinate.h wdmcpl/omega_h_field.cpp wdmcpl/omega_h_field.h wdmcpl/field.cpp wdmcpl/field.h wdmcpl/transfer_field.cpp wdmcpl/transfer_field.h)
 
 add_library(wdmcpl ${WDMCPL_SOURCES})
 add_library(wdmcpl::wdmcpl ALIAS wdmcpl)

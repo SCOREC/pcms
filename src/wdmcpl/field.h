@@ -17,7 +17,6 @@ constexpr void check_field()
 }
 } // namespace detail
 
-
 // should we use kokkos views and template on execution space?
 template <typename NodeHandle, typename Coordinate>
 struct NodalCoordinates
@@ -28,20 +27,18 @@ struct NodalCoordinates
   nonstd::span<Coordinate> node_coordinates;
 };
 
+// note value_type should/could have a coordinate system associated with it
 template <typename Field>
-ScalarArray<typename Field::ArrayType, typename Field::DataType,
-            typename Field::ExecutionSpace>
-evaluate(const CoordinateArray<
-         typename Field::CoordinateSystem, typename Field::ArrayType,
-         typename Field::DataType, typename Field::ExecutionSpace>&)
+auto evaluate(ScalarArrayView<const typename Field::value_type,
+                              typename Field::ExecutionSpace>)
+  -> ScalarArray<typename Field::ArrayType, typename Field::ExecutionSpace>
 {
   static_assert(detail::dependent_always_false<Field>::value,
                 "No Matching implementation of evaluate");
-};
+}
 template <typename Field>
-void set(Field& field,
-         ScalarArrayView<const typename Field::DataType,
-                           typename Field::ExecutionSpace>)
+auto set(Field& field, ScalarArrayView<const typename Field::value_type,
+                                       typename Field::execution_space>) -> void
 {
   static_assert(detail::dependent_always_false<Field>::value,
                 "No Matching implementation of set");

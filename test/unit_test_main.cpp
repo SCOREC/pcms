@@ -1,9 +1,13 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
+#include <Kokkos_Core.hpp>
+#include <mpi.h>
+
 
 int main( int argc, char* argv[] ) {
-  // initialize kokkos/redev/mpi/omega_h/whatever
+  MPI_Init(&argc, &argv);
+  Kokkos::ScopeGuard kokkos_scope();
   int result = Catch::Session().run( argc, argv );
-  //deinitialize kokkos/redev/mpi
+  MPI_Finalize();
   return result;
 }

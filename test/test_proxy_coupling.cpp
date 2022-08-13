@@ -154,8 +154,8 @@ struct OmegaHGids
   }
   std::vector<wdmcpl::GO> operator()(std::string_view) const
   {
-    auto gids = mesh_.globals(0);
-    auto gids_h = Omega_h::HostRead(gids);
+    auto gids = mesh_.globals(0); // GPU
+    auto gids_h = Omega_h::HostRead(gids); // CPU
     std::vector<wdmcpl::GO> global_ids;
     for (size_t i = 0; i < gids_h.size(); i++) {
       if (is_overlap_h_[i]) {
@@ -164,7 +164,7 @@ struct OmegaHGids
     }
     return global_ids;
   }
-  Omega_h::Mesh mesh_;
+  Omega_h::Mesh& mesh_;
   Omega_h::HostRead<Omega_h::I8> is_overlap_h_;
 };
 
@@ -230,12 +230,14 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
 
+
   wdmcpl::Coupler cpl("proxy_couple", wdmcpl::ProcessType::Client, comm,
                       redev::ClassPtn{});
   auto& delta_f = cpl.AddApplication("delta_f");
   auto is_overlap_h = markMeshOverlapRegion(mesh);
   auto& df_gid_field = delta_f.AddField<wdmcpl::GO>(
-    "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
+    "gids", OmegaHGids{mesh, is_overlap_h},
+    OmegaHReversePartition{mesh},
     SerializeOmegaHGids{mesh, is_overlap_h},
     DeserializeOmegaH{mesh, is_overlap_h});
 
@@ -309,6 +311,7 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   auto& df_gid_field = delta_f.AddField<wdmcpl::GO>(
     "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
     SerializeServer{delta_f_gids}, DeserializeServer{delta_f_gids});
+
   df_gid_field.Receive();
   tf_gid_field.Receive();
   df_gid_field.Send();

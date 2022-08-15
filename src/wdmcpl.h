@@ -78,6 +78,15 @@ redev::LOs ConstructPermutation(const std::vector<wdmcpl::GO>& local_gids,
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   fprintf(stderr, "%d lgids %lu rgids %lu\n", rank, local_gids.size(), received_gids.size());
+  if(rank==11) {
+    auto sorted_rgids = received_gids;
+    std::sort(sorted_rgids.begin(), sorted_rgids.end());
+    std::stringstream ss;
+    ss << "rgids: ";
+    for (auto gid : sorted_rgids) ss << gid << ", ";
+    ss << "\n";
+    std::cerr << ss.str();
+  }
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
   std::map<wdmcpl::GO, wdmcpl::LO> global_to_local_ids;
   for (wdmcpl::LO i = 0; i < local_gids.size(); ++i) {

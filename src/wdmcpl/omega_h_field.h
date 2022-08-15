@@ -21,6 +21,7 @@ struct OmegaHMemorySpace
   using type = Kokkos::DefaultExecutionSpace;
 };
 
+template <typename T>
 class OmegaHField
 {
 public:
@@ -28,20 +29,13 @@ public:
   using node_handle_array = Omega_h::GOs;
   using coordinate_system = Cartesian;
   using memory_space = OmegaHMemorySpace::type;
-  using value_type = LO;
+  using value_type = T;
   using coordinate_element_type = CoordinateElement<coordinate_system, Real>;
 
   OmegaHField(std::string name, Omega_h::Mesh& mesh)
     : name_(std::move(name)), mesh_(mesh)
   {
   }
-  // using DataType = wdmcpl::Real;
-  // using ArrayType = Omega_h::Reals;
-
-  // using CoordinateArrayType =
-  //   CoordinateArray<CoordinateSystem, ArrayType, DataType, ExecutionSpace>;
-  // using ScalarArrayType =
-  //   ScalarArray<ArrayType, ExecutionSpace>;
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
   [[nodiscard]] Omega_h::Mesh& GetMesh() const noexcept { return mesh_; }
 
@@ -96,54 +90,43 @@ void set(Omega_h_field & field,
 */
 
 template <typename T>
-struct ArrayToViewTypesMap<Omega_h::Read<T>> {
-  using memory_space = typename OmegaHMemorySpace::type;
-  using value_type = const T;
-};
-
-// template <typename T>
-template <>
-ScalarArrayView<const Real, typename OmegaHMemorySpace::type>
-make_array_view(const Omega_h::Read<Real>& array)
+auto get_nodal_data(const OmegaHField<T>& field)
+  -> Omega_h::Read<T>
 {
-  ScalarArrayView<const Real, typename OmegaHMemorySpace::type> view(array.data(),array.size());
-  return view;
-}
-template <>
-ScalarArrayView<const LO, typename OmegaHMemorySpace::type>
-make_array_view(const Omega_h::Read<LO>& array)
-{
-  ScalarArrayView<const LO, typename OmegaHMemorySpace::type> view(array.data(),array.size());
-  return view;
-}
-
-auto get_nodal_data(const OmegaHField& field)
-  -> Omega_h::Read<OmegaHField::value_type>
-{
-  return field.GetMesh().get_array<OmegaHField::value_type>(0, field.GetName());
+  return field.GetMesh().template get_array<T>(0, field.GetName());
 }
 
 /**
  * Sets the data on the entire mesh
  */
 template <typename ElementType>
-auto set(const OmegaHField& field,
-         ScalarArrayView<ElementType, OmegaHMemorySpace::type> data) -> void
+auto set(const OmegaHField<ElementType>& field,
+         ScalarArrayView<const ElementType, OmegaHMemorySpace::type> data) -> void
 {
 
   WDMCPL_ALWAYS_ASSERT(data.extent(0) == field.GetMesh().nents(0));
   auto& mesh = field.GetMesh();
-  Omega_h::Write<std::remove_cv_t<ElementType>> array(data.extent(0), 0);
+  Omega_h::Write<ElementType> array(data.extent(0), 0);
   Omega_h::parallel_for(
     data.extent(0), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
-  if(mesh.has_tag(0, field.GetName())) {
+  if (mesh.has_tag(0, field.GetName())) {
     mesh.set_tag(0, field.GetName(), Omega_h::Read(array));
-  }
-  else {
+  } else {
     mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
   }
 }
 
 } // namespace wdmcpl
+namespace Omega_h
+{
+template <typename T>
+wdmcpl::ScalarArrayView<const T, typename wdmcpl::OmegaHMemorySpace::type>
+make_array_view(const Omega_h::Read<T>& array)
+{
+  wdmcpl::ScalarArrayView<const T, typename wdmcpl::OmegaHMemorySpace::type>
+    view(array.data(), array.size());
+  return view;
+}
+} // namespace Omega_h
 
 #endif // WDM_COUPLING_OMEGA_H_FIELD_H

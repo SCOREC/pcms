@@ -10,12 +10,12 @@ TEST_CASE("field copy", "[field transfer]")
   Omega_h::Library lib;
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  wdmcpl::OmegaHField f1("source", mesh);
+  wdmcpl::OmegaHField<wdmcpl::LO> f1("source", mesh);
   Omega_h::Write<int> data(mesh.nents(0));
   Omega_h::parallel_for(
     data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });
-  mesh.add_tag<redev::LO>(0, "source", 1, data);
-  wdmcpl::OmegaHField f2("target", mesh);
+  mesh.add_tag<wdmcpl::LO>(0, "source", 1, data);
+  wdmcpl::OmegaHField<wdmcpl::LO> f2("target", mesh);
   wdmcpl::copy_field(f1, f2);
   auto target_array = mesh.get_array<int>(0, "target");
   REQUIRE(target_array.size() == mesh.nents(0));
@@ -33,7 +33,7 @@ TEST_CASE("field lagrange projection", "[.][field transfer]")
   Omega_h::Library lib;
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  wdmcpl::OmegaHField f1("source", mesh);
-  wdmcpl::OmegaHField f2("target", mesh);
+  wdmcpl::OmegaHField<wdmcpl::LO> f1("source", mesh);
+  wdmcpl::OmegaHField<wdmcpl::LO> f2("target", mesh);
   wdmcpl::project_field(f1, f2, wdmcpl::Lagrange<1>{});
 }

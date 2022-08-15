@@ -129,21 +129,14 @@ using ScalarArrayView = std::experimental::mdspan<
   std::experimental::layout_right,
   detail::memory_space_accessor<ElementType, MemorySpace>>;
 
-// template <typename T, typename MemorySpace= typename T::memory_space,
-// typename ElementType = typename T::value_type> ScalarArrayView<ElementType,
-// MemorySpace> make_array_view(const T& array) {
-//   using std::data;
-//   using std::size;
-//   return {data(array), size(array)};
-// }
-
-template <typename T>
-struct ArrayToViewTypesMap {};
-
-template <typename T>
-ScalarArrayView<typename ArrayToViewTypesMap<T>::value_type,
-                typename ArrayToViewTypesMap<T>::memory_space>
-make_array_view(const T& array);
+// default implementation of make_array_view
+ template <typename T, typename MemorySpace= typename T::memory_space,
+ typename ElementType = typename T::value_type> ScalarArrayView<ElementType,
+ MemorySpace> make_array_view(const T& array) {
+   using std::data;
+   using std::size;
+   return {data(array), size(array)};
+ }
 
 } // namespace wdmcpl
 

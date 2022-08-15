@@ -17,6 +17,7 @@ constexpr void check_field()
 }
 } // namespace detail
 
+/*
 // should we use kokkos views and template on execution space?
 template <typename NodeHandle, typename Coordinate>
 struct NodalCoordinates
@@ -26,6 +27,7 @@ struct NodalCoordinates
   // internally. This allows for more efficient conversion/copying
   nonstd::span<Coordinate> node_coordinates;
 };
+
 
 // note value_type should/could have a coordinate system associated with it
 template <typename Field>
@@ -45,18 +47,21 @@ auto set(Field& field, ScalarArrayView<const typename Field::value_type,
 }
 // TODO
 template <typename Field>
-typename Field::CoordinateArrayType get_nodal_coordinates(const Field&)
+auto get_nodal_coordinates(const Field&) -> typename Field::CoordinateArrayType
 {
   static_assert(detail::dependent_always_false<Field>::value,
                 "No Matching implementation of get_nodal_coordinates");
 }
 
 template <typename Field>
-typename Field::NodeHandleArray get_node_handles(const Field&)
+auto get_node_handles(const Field&) -> typename Field::NodeHandleArray
 {
   static_assert(detail::dependent_always_false<Field>::value,
                 "No Matching implementation of get_node_handles");
 }
+ */
+
+
 } // namespace wdmcpl
 
 #endif // WDM_COUPLING_FIELD_H

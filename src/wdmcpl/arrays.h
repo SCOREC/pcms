@@ -53,11 +53,11 @@ public:
   CoordinateArray(ArrayType array) : data_(std::move(array)) {}
   using coordinate_system = CoordinateSystemT;
   using execution_space = ExeSpace;
-  using ArrayType::value_type;
-  using ArrayType::pointer;
-  using ArrayType::reference;
   using ArrayType::const_pointer;
   using ArrayType::const_reference;
+  using ArrayType::pointer;
+  using ArrayType::reference;
+  using ArrayType::value_type;
 
   // TODO convert this to mdspan
   auto GetSpan() const
@@ -99,9 +99,18 @@ template <typename ElementType, typename CoordinateSystem,
           typename Container =
             std::vector<CoordinateElement<CoordinateSystem, ElementType>>,
           size_t N = 3>
+
 using CoordinateMDArray = std::experimental::mdarray<
   CoordinateElement<CoordinateSystem, ElementType>,
   std::experimental::extents<int, std::experimental::dynamic_extent, N>,
+  LayoutPolicy, Container>;
+
+template <typename ElementType,
+          typename LayoutPolicy = std::experimental::layout_right,
+          typename Container = std::vector<ElementType>>
+using MDArray = std::experimental::mdarray<
+  ElementType,
+  std::experimental::extents<int, std::experimental::dynamic_extent, 1>,
   LayoutPolicy, Container>;
 
 template <typename ElementType, typename CoordinateSystem, typename MemorySpace,
@@ -119,6 +128,22 @@ using ScalarArrayView = std::experimental::mdspan<
   ElementType, std::experimental::dextents<LO, 1>,
   std::experimental::layout_right,
   detail::memory_space_accessor<ElementType, MemorySpace>>;
+
+// template <typename T, typename MemorySpace= typename T::memory_space,
+// typename ElementType = typename T::value_type> ScalarArrayView<ElementType,
+// MemorySpace> make_array_view(const T& array) {
+//   using std::data;
+//   using std::size;
+//   return {data(array), size(array)};
+// }
+
+template <typename T>
+struct ArrayToViewTypesMap {};
+
+template <typename T>
+ScalarArrayView<typename ArrayToViewTypesMap<T>::value_type,
+                typename ArrayToViewTypesMap<T>::memory_space>
+make_array_view(const T& array);
 
 } // namespace wdmcpl
 

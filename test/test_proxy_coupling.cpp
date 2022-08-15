@@ -151,6 +151,39 @@ struct OmegaHGids
   OmegaHGids(Omega_h::Mesh& mesh, Omega_h::HostRead<Omega_h::I8> is_overlap_h)
     : mesh_(mesh), is_overlap_h_(is_overlap_h)
   {
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    auto gids = mesh_.globals(0);
+    auto gids_h = Omega_h::HostRead(gids);
+    auto overlap_gids_hw = Omega_h::HostWrite<Omega_h::GO>(gids_h.size());
+
+    auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
+    auto classIds_h = Omega_h::HostRead(classIds);
+    auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
+    auto classDims_h = Omega_h::HostRead(classDims);
+    int numOverlapVtxOnId = 0;
+
+    std::vector<wdmcpl::GO> global_ids;
+    for (size_t i = 0; i < gids_h.size(); i++) {
+      if (is_overlap_h_[i]) {
+        global_ids.push_back(gids_h[i]);
+        overlap_gids_hw[i] = gids_h[i];
+      } else {
+        overlap_gids_hw[i] = -1;
+      }
+      if (is_overlap_h_[i] && classIds_h[i] == 34 &&
+          (classDims_h[i] == 0 || classDims_h[i] == 1) ) {
+        numOverlapVtxOnId++;
+      }
+    }
+    auto overlap_gids_dw = Omega_h::Write(overlap_gids_hw);
+    auto overlap_gids_dr = Omega_h::read(overlap_gids_dw);
+    mesh_.add_tag<Omega_h::GO>(0, "overlapGids", 1, overlap_gids_dr);
+    Omega_h::vtk::write_parallel("overlapGids.vtk", &mesh_, 2);
+    fprintf(stderr, "%d num overlap Vtx classified on id 34 %d\n",
+        rank, numOverlapVtxOnId);
+
   }
   std::vector<wdmcpl::GO> operator()(std::string_view) const
   {

@@ -12,10 +12,12 @@ using wdmcpl::Cylindrical;
 using wdmcpl::CoordinateElement;
 using wdmcpl::Real;
 
+// Version required for equality_comparable
+#if __cplusplus >= 202002L
 // coordinates from different coordinate systems should not be equality comparable
 static_assert(!std::equality_comparable_with<Coordinate<Cartesian>,Coordinate<Cylindrical>>);
 static_assert(!std::equality_comparable_with<CoordinateElement<Cartesian>,
-                                             CoordinateElement<Cylindrical>>);
+#endif
 
 // CoordinateValueType should be memcpyable this allows ("bitcast") between
 // underlying type when needed

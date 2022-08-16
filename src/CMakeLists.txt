@@ -3,20 +3,19 @@ set(WDMCPL_HEADERS
   )
 
 set(WDMCPL_SOURCES
-  wdmcpl.cpp
-        wdmcpl/coordinate.h
-        wdmcpl/omega_h_field.cpp
-        wdmcpl/omega_h_field.h
-        wdmcpl/field.cpp
-        wdmcpl/field.h
-        wdmcpl/transfer_field.cpp
-        wdmcpl/transfer_field.h
-        wdmcpl/assert.cpp)
+    wdmcpl.cpp
+    wdmcpl/omega_h_field.cpp
+    wdmcpl/field.cpp
+    wdmcpl/transfer_field.cpp
+    wdmcpl/assert.cpp
+    wdmcpl/point_search.cpp)
+find_package(Kokkos REQUIRED)
 
 add_library(wdmcpl ${WDMCPL_SOURCES})
 add_library(wdmcpl::wdmcpl ALIAS wdmcpl)
-target_compile_features(wdmcpl PUBLIC cxx_std_20)
-target_link_libraries(wdmcpl PUBLIC Omega_h::omega_h redev::redev MPI::MPI_C)
+target_compile_features(wdmcpl PUBLIC cxx_std_17)
+target_link_libraries(wdmcpl PUBLIC Omega_h::omega_h redev::redev MPI::MPI_CXX Kokkos::kokkos)
+
 if(WDMCPL_HAS_ASAN)
   target_compile_options(wdmcpl PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 endif()

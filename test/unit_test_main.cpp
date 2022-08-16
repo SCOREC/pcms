@@ -4,10 +4,11 @@
 #include <mpi.h>
 
 
-int main( int argc, char* argv[] ) {
+int main( int argc, char* argv[] )
+{
   MPI_Init(&argc, &argv);
-  //Kokkos::ScopeGuard kokkos_scope;
-  int result = Catch::Session().run( argc, argv );
+  Kokkos::ScopeGuard kokkos{};
+  int result = Catch::Session().run(argc, argv);
   MPI_Finalize();
   return result;
 }

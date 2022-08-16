@@ -31,7 +31,7 @@ TEST_CASE("field copy", "[field transfer]")
   REQUIRE(result == n * (n + 1) / 2);
 }
 
-TEST_CASE("field interpolation", "[.][field transfer]")
+TEST_CASE("field interpolation", "[field transfer]")
 {
   Omega_h::Library lib;
   auto mesh =

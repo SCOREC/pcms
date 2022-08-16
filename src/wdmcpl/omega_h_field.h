@@ -9,6 +9,7 @@
 #include <wdmcpl/assert.h>
 #include <Omega_h_for.hpp>
 #include "wdmcpl/arrays.h"
+#include "wdmcpl/field_evaluation_methods.h"
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
 
@@ -18,19 +19,20 @@ namespace wdmcpl
 // TODO different types dependent on active OmegaHBackend
 struct OmegaHMemorySpace
 {
-  using type = Kokkos::DefaultExecutionSpace;
+  using type = typename Kokkos::DefaultExecutionSpace::memory_space;
 };
 
-template <typename T>
+template <typename T,
+          typename CoordinateElementType =
+            Real> // CoordinateElement<Cartesian, Real>>
 class OmegaHField
 {
 public:
-  using node_handle_type = Omega_h::GO;
-  using node_handle_array = Omega_h::GOs;
-  using coordinate_system = Cartesian;
-  using memory_space = OmegaHMemorySpace::type;
-  using value_type = T;
-  using coordinate_element_type = CoordinateElement<coordinate_system, Real>;
+  // using memory_space = OmegaHMemorySpace::type;
+  // using value_type = T;
+  //  using coordinate_element_type = CoordinateElement<coordinate_system,
+  //  Real>;
+  // using coordinate_element_type = CoordinateElementType;
 
   OmegaHField(std::string name, Omega_h::Mesh& mesh)
     : name_(std::move(name)), mesh_(mesh)
@@ -44,69 +46,39 @@ private:
   Omega_h::Mesh& mesh_;
 };
 
-/*
-namespace detail {
-  constexpr void check_omega_h_field() {
-    check_field<Omega_h_field>();
-  }
-}
-*/
-
-// template <>
-// nonstd::span<const Omega_h::Real> GetSpan(const Omega_h::Reals& array)
-//{
-//   return {array.data(), static_cast<size_t>(array.size())};
-// }
-
-/*
-template <>
-typename Omega_h_field::NodeHandleArray get_node_handles(
-  const Omega_h_field& field)
-{
-  return field.mesh.globals(0);
-}
-
-template <>
-Omega_h_field::CoordinateArrayType get_nodal_coordinates(
-  const Omega_h_field& field)
-{
-  return {field.mesh.coords()};
-}
-
-// set the data on the entire mesh
-template <>
-void set(Omega_h_field & field,
-         ScalarArrayView<const typename Omega_h_field::DataType,
-           typename Omega_h_field::ExecutionSpace> data)
- {
-  WDMCPL_ALWAYS_ASSERT(data.extent(0) == field.mesh.nents(0));
-  auto& mesh = field.mesh;
-  Omega_h::Write array(data.extent(0),0);
-  Omega_h::parallel_for(data.extent(0),OMEGA_H_LAMBDA(size_t i){
-                                            array[i] = data[i];
-                                          });
-  mesh.set_tag(0,field.name,Omega_h::Read(array));
-}
-*/
-
-template <typename T>
-auto get_nodal_data(const OmegaHField<T>& field)
+template <typename T, typename CoordinateElementType>
+auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
   -> Omega_h::Read<T>
 {
   return field.GetMesh().template get_array<T>(0, field.GetName());
 }
 
+// TODO since Omega_h owns coordinate data, we could potentially
+// return a view of the data without lifetime issues.
+template <typename T, typename CoordinateElementType>
+auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
+{
+  if constexpr (detail::HasCoordinateSystem<CoordinateElementType>::value) {
+    const auto coords = field.GetMesh().coords();
+    return MDArray<CoordinateElementType>{};
+    // FIXME implement copy to
+    throw;
+  } else {
+    return Omega_h::Reals{field.GetMesh().coords()};
+  }
+}
+
 /**
  * Sets the data on the entire mesh
  */
-template <typename ElementType>
-auto set(const OmegaHField<ElementType>& field,
-         ScalarArrayView<const ElementType, OmegaHMemorySpace::type> data) -> void
+template <typename T, typename CoordinateElementType, typename U>
+auto set(const OmegaHField<T, CoordinateElementType>& field,
+         ScalarArrayView<const U, OmegaHMemorySpace::type> data) -> void
 {
 
   WDMCPL_ALWAYS_ASSERT(data.extent(0) == field.GetMesh().nents(0));
   auto& mesh = field.GetMesh();
-  Omega_h::Write<ElementType> array(data.extent(0), 0);
+  Omega_h::Write<U> array(data.extent(0), 0);
   Omega_h::parallel_for(
     data.extent(0), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
   if (mesh.has_tag(0, field.GetName())) {
@@ -116,12 +88,21 @@ auto set(const OmegaHField<ElementType>& field,
   }
 }
 
+template <typename T, typename CoordinateElementType, int o>
+auto evaluate(
+  const OmegaHField<T, CoordinateElementType>& field, Lagrange<o> method,
+  ScalarArrayView<const CoordinateElementType, OmegaHMemorySpace::type>
+    coordinates) -> Omega_h::Reals
+{
+  // FIXME implement
+}
+
 } // namespace wdmcpl
 namespace Omega_h
 {
 template <typename T>
-wdmcpl::ScalarArrayView<const T, typename wdmcpl::OmegaHMemorySpace::type>
-make_array_view(const Omega_h::Read<T>& array)
+auto make_array_view(const Omega_h::Read<T>& array)
+  -> wdmcpl::ScalarArrayView<const T, typename wdmcpl::OmegaHMemorySpace::type>
 {
   wdmcpl::ScalarArrayView<const T, typename wdmcpl::OmegaHMemorySpace::type>
     view(array.data(), array.size());

@@ -122,8 +122,6 @@ struct ModelEntityOwners {
  */
 ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
     const Omega_h::LOs permutation, const int dim, const int numModelEnts) {
-  auto ohComm = mesh.comm();
-  const auto rank = ohComm->rank();
   auto ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
   auto dims = mesh.get_array<Omega_h::I8>(dim, "class_dim");
   auto remotes = mesh.ask_owners(dim);
@@ -139,19 +137,6 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
   auto isSameModelEnt = OMEGA_H_LAMBDA(int i, int j) {
     const auto ip = permutation[i];
     const auto jp = permutation[j];
-    {
-      const auto idsi = ids[ip];
-      const auto idsj = ids[jp];
-      const auto dimsi = dims[ip];
-      const auto dimsj = dims[jp];
-      if( (rank==10 || rank==11) &&
-          (dim==dimsi) &&
-          (dimsi==dimsj) && (idsi==idsj) &&
-          (dimsi==1) && (idsi==34) ) {
-        auto owner = remotes.ranks[jp];
-        //printf("%d owner %d\n", rank, owner);
-      }
-    }
     return (ids[ip] == ids[jp]) && (dims[ip] == dims[jp]);
   };
   //only looking for equal order classification
@@ -165,7 +150,7 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
   //Note, this function only has N concurrent indices doing work
   //where N is the number of model entities of the active dimension.
   //It is essentially a min-reduction over a bunch of small arrays
-  //(one array for each model entity).
+  //(one array for each model entity).  Could be written as a segment-sort.
   auto getEnts = OMEGA_H_LAMBDA(int i) {
     const auto currentDim = isCurrentModelEntDim(i);
     const auto prevSame = (i==0) ? false : isSameModelEnt(i,i-1);
@@ -185,14 +170,13 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
   };
   Omega_h::parallel_for(numEnts, getEnts);
   ModelEntityOwners meow {mdlEntIds, mdlEntDims, mdlEntOwners};
-  MPI_Barrier(MPI_COMM_WORLD);
   return meow;
 }
 
 /**
  * I don't feel like writing the array merge... so we dump it into a map
  */
-void append(int rank, const ModelEntityOwners& meow, redev::ClassPtn::ModelEntToRank& entToRank) {
+void append(const ModelEntityOwners& meow, redev::ClassPtn::ModelEntToRank& entToRank) {
    auto ids = Omega_h::HostRead(meow.ids);
    auto dims = Omega_h::HostRead(meow.dims);
    auto owners = Omega_h::HostRead(meow.owners);
@@ -217,25 +201,6 @@ ClassificationPartition fromMap(redev::ClassPtn::ModelEntToRank& entToRank) {
   return cp;
 }
 
-void printMap(int rank, redev::ClassPtn::ModelEntToRank& entToRank) {
-  int commsz;
-  MPI_Comm_size(MPI_COMM_WORLD, &commsz);
-  for(int r=0; r<commsz; r++) {
-    if(r==rank && (r==10 || r==11)) {
-      std::stringstream ss;
-      ss << rank << " (dimension,id,rank) ";
-      for(auto iter = entToRank.begin(); iter != entToRank.end(); iter++) {
-        auto ent = iter->first;
-        auto rank = iter->second;
-        ss << " (" << ent.first << " " << ent.second << " " << rank << ") ";
-      }
-      std::string s = ss.str();
-      std::cerr << s << "\n";
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-  }
-}
-
 /**
  * given a mesh partitioned based on model face ownership, derive model vertex and
  * edge assignment to mpi ranks from the ownership of mesh entities on
@@ -248,12 +213,8 @@ ClassificationPartition CreateClassificationPartition(Omega_h::Mesh& mesh) {
   for(int dim=0; dim<=mesh.dim(); dim++) {
     auto perm = getModelEntityPermutation(mesh, dim);
     auto numModelEnts = countModelEnts(mesh, perm, dim);
-    if(rank==10 || rank==11) {
-      fprintf(stderr, "%d dim %d numModelEnts %d\n", rank, dim, numModelEnts);
-    }
     auto modelEntityOwners = getModelEntityOwners(mesh, perm, dim, numModelEnts);
-    append(rank,modelEntityOwners,m2r);
-    printMap(rank,m2r);
+    append(modelEntityOwners,m2r);
   }
   return fromMap(m2r);
 }
@@ -273,25 +234,20 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partiti
     std::map<ModelEnt,int> modelEntToRank;
     for(int i=0; i<partition.ranks.size(); i++)
       modelEntToRank[partition.modelEnts[i]] = partition.ranks[i];
-    Omega_h::HostWrite<Omega_h::LO> destRank(mesh.nelems());
     typedef std::map<int,std::vector<int>> miv;
     miv elemsPerRank;
     for(int i=0; i<mesh.nelems(); i++) {
       const ModelEnt ent({class_dims_h[i],class_ids_h[i]});
       REDEV_ALWAYS_ASSERT(modelEntToRank.count(ent));
       const auto dest = modelEntToRank[ent];
-      REDEV_ALWAYS_ASSERT(dest < ohComm->size()); //the destination rank must exist
       elemsPerRank[dest].push_back(i);
-      destRank[i] = dest;
     }
-    auto destRank_r = Omega_h::Read<Omega_h::LO>(destRank);
-    mesh.add_tag(dim,"destinationRank",1,destRank_r);
-    Omega_h::vtk::write_vtu("rank0.vtu",&mesh);
     //make sure we are not sending elements to ranks that don't exist
     REDEV_ALWAYS_ASSERT(elemsPerRank.size() == ohComm->size());
     for(auto iter = elemsPerRank.begin(); iter != elemsPerRank.end(); iter++) {
       const auto dest = iter->first;
-      if(dest) { //not rank zero
+      REDEV_ALWAYS_ASSERT(dest < ohComm->size()); //the destination rank must exist
+      if(dest) {
         const auto elms = iter->second;
         const auto numElms = elms.size();
         //send the array of element ids each destination rank will be the owner of
@@ -320,9 +276,6 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partiti
     MPI_Recv(&numElems,1,MPI_INT,src,0,mpiComm,&stat);
     Omega_h::HostWrite<Omega_h::LO> elemIdxs(numElems);
     MPI_Recv(elemIdxs.data(),numElems,MPI_INT,src,0,mpiComm,&stat);
-    for(int i=0; i<elemIdxs.size(); i++) {
-      assert(elemIdxs[i] >= 0 && elemIdxs[i] < 9268);
-    }
     Omega_h::HostWrite<Omega_h::I32> elemRanks(numElems);
     std::fill(elemRanks.data(),elemRanks.data()+numElems,0);
     //copy to device

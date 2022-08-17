@@ -201,39 +201,6 @@ struct OmegaHGids
   OmegaHGids(Omega_h::Mesh& mesh, Omega_h::HostRead<Omega_h::I8> is_overlap_h)
     : mesh_(mesh), is_overlap_h_(is_overlap_h)
   {
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    auto gids = mesh_.globals(0);
-    auto gids_h = Omega_h::HostRead(gids);
-    auto overlap_gids_hw = Omega_h::HostWrite<Omega_h::GO>(gids_h.size());
-
-    auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
-    auto classIds_h = Omega_h::HostRead(classIds);
-    auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
-    auto classDims_h = Omega_h::HostRead(classDims);
-    int numOverlapVtxOnId = 0;
-
-    std::vector<wdmcpl::GO> global_ids;
-    for (size_t i = 0; i < gids_h.size(); i++) {
-      if (is_overlap_h_[i]) {
-        global_ids.push_back(gids_h[i]);
-        overlap_gids_hw[i] = gids_h[i];
-      } else {
-        overlap_gids_hw[i] = -1;
-      }
-      if (is_overlap_h_[i] && classIds_h[i] == 34 &&
-          (classDims_h[i] == 0 || classDims_h[i] == 1) ) {
-        numOverlapVtxOnId++;
-      }
-    }
-    auto overlap_gids_dw = Omega_h::Write(overlap_gids_hw);
-    auto overlap_gids_dr = Omega_h::read(overlap_gids_dw);
-    mesh_.add_tag<Omega_h::GO>(0, "overlapGids", 1, overlap_gids_dr);
-    Omega_h::vtk::write_parallel("overlapGids.vtk", &mesh_, 2);
-    fprintf(stderr, "%d num overlap Vtx classified on id 34 %d\n",
-        rank, numOverlapVtxOnId);
-
   }
   std::vector<wdmcpl::GO> operator()(std::string_view) const
   {
@@ -306,11 +273,7 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
                                ? ts::readClassPartitionFile(cpnFileName)
                                : ts::ClassificationPartition();
   ts::migrateMeshElms(mesh, facePartition);
-  MPI_Barrier(MPI_COMM_WORLD);
   REDEV_ALWAYS_ASSERT(mesh.nelems()); //all ranks should have elements
-  Omega_h::vtk::write_parallel("rdv.vtk", &mesh, 2);
-  MPI_Barrier(MPI_COMM_WORLD);
-  if(!ohComm->rank()) std::cerr << " before CreateClassificationPartition\n";
   auto ptn = ts::CreateClassificationPartition(mesh);
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
@@ -390,17 +353,13 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   std::vector<wdmcpl::GO> total_f_gids;
   auto& total_f = cpl.AddApplication("total_f");
   auto& delta_f = cpl.AddApplication("delta_f");
+  auto& tf_gid_field = total_f.AddField<wdmcpl::GO>(
+    "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
+    SerializeServer{total_f_gids}, DeserializeServer{total_f_gids});
 
   auto& df_gid_field = delta_f.AddField<wdmcpl::GO>(
     "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
     SerializeServer{delta_f_gids}, DeserializeServer{delta_f_gids});
-
-  MPI_Barrier(MPI_COMM_WORLD);
-
-  auto& tf_gid_field = total_f.AddField<wdmcpl::GO>( //failing here
-    "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
-    SerializeServer{total_f_gids}, DeserializeServer{total_f_gids});
-
   df_gid_field.Receive();
   tf_gid_field.Receive();
   df_gid_field.Send();

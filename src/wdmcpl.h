@@ -75,18 +75,6 @@ redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
 redev::LOs ConstructPermutation(const std::vector<wdmcpl::GO>& local_gids,
                                 const std::vector<wdmcpl::GO>& received_gids)
 {
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  fprintf(stderr, "%d lgids %lu rgids %lu\n", rank, local_gids.size(), received_gids.size());
-  if(rank==11) {
-    auto sorted_rgids = received_gids;
-    std::sort(sorted_rgids.begin(), sorted_rgids.end());
-    std::stringstream ss;
-    ss << "rgids: ";
-    for (auto gid : sorted_rgids) ss << gid << ", ";
-    ss << "\n";
-    std::cerr << ss.str();
-  }
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
   std::map<wdmcpl::GO, wdmcpl::LO> global_to_local_ids;
   for (wdmcpl::LO i = 0; i < local_gids.size(); ++i) {
@@ -204,10 +192,9 @@ public:
       name_{std::move(name)}
 
   {
+
     std::string transport_name = std::string(name_prefix);
     transport_name.append("_").append(name_);
-    transport_name_ = transport_name;
-    fprintf(stderr, "in fieldComm ctor %s\n", transport_name_.c_str());
     comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type);
     // set up GID comm to do setup phase and get the
     // FIXME: use  one directional comm instead of the adios bidirectional comm
@@ -289,7 +276,6 @@ public:
       // data. Duplicate data indicates that sender is not sending data from
       // only the owned rank
       REDEV_ALWAYS_ASSERT(!HasDuplicates(recv_gids));
-      fprintf(stderr, "%d name %s\n", rank, transport_name_.c_str());
       message_permutation_ = ConstructPermutation(gids, recv_gids);
     }
     comm_buffer_.resize(message_permutation_.size());
@@ -309,7 +295,6 @@ private:
   DeserializerFunction<T> deserializer_;
   redev::Redev& redev_;
   std::string name_;
-  std::string transport_name_;
 };
 
 class Application {

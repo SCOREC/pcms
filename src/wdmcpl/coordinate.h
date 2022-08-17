@@ -27,7 +27,7 @@ private:
 template <typename CoordinateSystem, typename ElementType = Real>
 struct CoordinateElement
 {
-  using value_type = std::remove_cvref_t<ElementType>;
+  using value_type = ElementType;
   using reference = value_type&;
   using const_reference = const value_type &;
   using coordinate_system = CoordinateSystem;

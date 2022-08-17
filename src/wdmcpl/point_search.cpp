@@ -209,8 +209,8 @@ Omega_h::Vector<3> barycentric_from_global(
   return {1 - xi[0] - xi[1], xi[0], xi[1]};
 }
 
-std::pair<LO, Omega_h::Vector<GridPointSearch::dim + 1>> GridPointSearch::operator()(
-  Omega_h::Vector<dim> point)
+std::pair<LO, Omega_h::Vector<GridPointSearch::dim + 1>>
+GridPointSearch::operator()(Omega_h::Vector<dim> point) const
 {
   // TODO use a functor for parallel for over a list of points
   // TODO return result struct rather than pair
@@ -224,9 +224,11 @@ std::pair<LO, Omega_h::Vector<GridPointSearch::dim + 1>> GridPointSearch::operat
     const auto elem_tri2verts =
       Omega_h::gather_verts<3>(tris2verts_, candidate_map_.entries(i));
     // 2d mesh with 2d coords, but 3 triangles
-    const auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
+    const auto vertex_coords =
+      Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
     auto parametric_coords = barycentric_from_global(point, vertex_coords);
-    if (Omega_h::is_barycentric_inside(parametric_coords)) {
+    constexpr auto fuzz = 1E-8;
+    if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
       return {candidate_map_.entries(i), parametric_coords};
     }
   }

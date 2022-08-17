@@ -41,8 +41,8 @@ public:
    * id will be a negative number and (TODO) will return a negative id of the
    * closest element
    */
-  std::pair<LO, Omega_h::Vector<dim + 1>> operator()(
-    Omega_h::Vector<dim> point);
+  [[nodiscard]] std::pair<LO, Omega_h::Vector<dim + 1>> operator()(
+    Omega_h::Vector<dim> point) const;
 
 private:
   Omega_h::Mesh mesh_;

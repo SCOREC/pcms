@@ -30,6 +30,14 @@ function(removeBpFiles TESTNAME)
             -P ${CMAKE_SOURCE_DIR}/ctest/removeBpFiles.cmake)
 endfunction()
 
+function(increaseTimeoutForValgrind TIME TIME_VAR_OUT)
+  set(factor 10)
+  if( NOT ${VALGRIND_EXECUTABLE} MATCHES "none" )
+    math(EXPR TIME_OUT "${TIME} * ${factor}")
+    set(${TIME_VAR_OUT} ${TIME_OUT} PARENT_SCOPE)
+  endif()
+endfunction()
+
 function(mpi_test TESTNAME PROCS EXE)
     removeBpFiles(${TESTNAME}_cleanup)
     if(${VALGRIND_EXECUTABLE} MATCHES "none")
@@ -47,6 +55,7 @@ function(dual_mpi_test)
   set(multiValueArgs ARGS1 ARGS2)
   cmake_parse_arguments(DUALTEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
   removeBpFiles(${DUALTEST_TESTNAME}_cleanup)
+  increaseTimeoutForValgrind(${DUALTEST_TIMEOUT} DUALTEST_TIMEOUT)
   add_test(NAME ${DUALTEST_TESTNAME}
     COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
     ${MPIEXEC_EXECUTABLE}
@@ -62,6 +71,7 @@ function(tri_mpi_test)
   set(multiValueArgs ARGS1 ARGS2 ARGS3)
   cmake_parse_arguments(TRITEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
   removeBpFiles(${TRITEST_TESTNAME}_cleanup)
+  increaseTimeoutForValgrind(${TRITEST_TIMEOUT} TRITEST_TIMEOUT)
   add_test(NAME ${TRITEST_TESTNAME}
     COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
     ${MPIEXEC_EXECUTABLE}

@@ -149,7 +149,7 @@ tri_mpi_test(TESTNAME test_proxy_coupling_32p
         NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
         NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
 tri_mpi_test(TESTNAME test_proxy_coupling_40p
-        TIMEOUT 12
+        TIMEOUT 16
         NAME1 rdv EXE1 ./proxy_coupling PROCS1 16 ARGS1 -1 ${d3d1p} ${d3d16p_cpn}
         NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
         NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)

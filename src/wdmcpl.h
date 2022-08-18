@@ -341,15 +341,15 @@ private:
 // Coupler needs to have both a standalone mesh definitions to setup rdv comms
 // and a list of fields
 // in the server it also needs sets of fields that will be combined
+template <ProcessType PT>
 class Coupler
 {
 public:
-  Coupler(std::string name, ProcessType process_type, MPI_Comm comm,
+  Coupler(std::string name, MPI_Comm comm,
           redev::Partition partition)
     : name_(std::move(name)),
-      process_type_(process_type),
       mpi_comm_(comm),
-      redev_({comm, std::move(partition), process_type_})
+      redev_({comm, std::move(partition), PT})
   {
   }
   Application& AddApplication(std::string_view name) {
@@ -374,7 +374,7 @@ public:
 
 private:
   std::string name_;
-  ProcessType process_type_;
+  static constexpr ProcessType process_type_{PT};
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
   std::unordered_map<std::string, Application> applications_;

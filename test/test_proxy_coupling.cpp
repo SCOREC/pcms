@@ -154,7 +154,7 @@ struct OmegaHGids
   }
   std::vector<wdmcpl::GO> operator()(std::string_view) const
   {
-    auto gids = mesh_.globals(0); // GPU
+    auto gids = mesh_.globals(0);          // GPU
     auto gids_h = Omega_h::HostRead(gids); // CPU
     std::vector<wdmcpl::GO> global_ids;
     for (size_t i = 0; i < gids_h.size(); i++) {
@@ -171,8 +171,8 @@ struct OmegaHGids
 struct OmegaHReversePartition
 {
   OmegaHReversePartition(Omega_h::Mesh& mesh) : mesh(mesh) {}
-  wdmcpl::ReversePartitionMap operator()(std::string_view,
-                                         const redev::Partition& partition) const
+  wdmcpl::ReversePartitionMap operator()(
+    std::string_view, const redev::Partition& partition) const
   {
     auto ohComm = mesh.comm();
     const auto rank = ohComm->rank();
@@ -227,17 +227,16 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
 
+using PT = wdmcpl::ProcessType;
+
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
 
-
-  wdmcpl::Coupler cpl("proxy_couple", wdmcpl::ProcessType::Client, comm,
-                      redev::ClassPtn{});
+  wdmcpl::Coupler<PT::Client> cpl("proxy_couple", comm, redev::ClassPtn{});
   auto& delta_f = cpl.AddApplication("delta_f");
   auto is_overlap_h = markMeshOverlapRegion(mesh);
   auto& df_gid_field = delta_f.AddField<wdmcpl::GO>(
-    "gids", OmegaHGids{mesh, is_overlap_h},
-    OmegaHReversePartition{mesh},
+    "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
     SerializeOmegaHGids{mesh, is_overlap_h},
     DeserializeOmegaH{mesh, is_overlap_h});
 
@@ -246,8 +245,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  wdmcpl::Coupler cpl("proxy_couple", wdmcpl::ProcessType::Client, comm,
-                      redev::ClassPtn{});
+  wdmcpl::Coupler<PT::Client> cpl("proxy_couple", comm, redev::ClassPtn{});
   auto& total_f = cpl.AddApplication("total_f");
   auto is_overlap_h = markMeshOverlapRegion(mesh);
   auto& tf_gid_field = total_f.AddField<wdmcpl::GO>(
@@ -297,8 +295,8 @@ private:
 void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
 
-  wdmcpl::Coupler cpl("proxy_couple", wdmcpl::ProcessType::Server, comm,
-                      setupServerPartition(mesh, cpn_file));
+  wdmcpl::Coupler<PT::Server> cpl("proxy_couple", comm,
+                              setupServerPartition(mesh, cpn_file));
   auto is_overlap_h = markMeshOverlapRegion(mesh);
   std::vector<wdmcpl::GO> delta_f_gids;
   std::vector<wdmcpl::GO> total_f_gids;

@@ -11,6 +11,7 @@
 #include "wdmcpl/arrays.h"
 #include "wdmcpl/field_evaluation_methods.h"
 #include "wdmcpl/point_search.h"
+#include <redev_variant_tools.h>
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
 
@@ -31,11 +32,39 @@ class OmegaHField
 public:
   OmegaHField(std::string name, Omega_h::Mesh& mesh, int search_nx = 10,
               int search_ny = 10)
-    : name_(std::move(name)), mesh_(mesh), search_{mesh, search_nx, search_ny}
+    : name_(std::move(name)),
+      mesh_(mesh),
+      search_{mesh, search_nx, search_ny},
+      size_(mesh.nents(0))
   {
   }
+  OmegaHField(std::string name, Omega_h::Mesh& mesh,
+              Omega_h::Read<Omega_h::I8> mask, int search_nx = 10,
+              int search_ny = 10)
+    : name_(std::move(name)), mesh_(mesh), search_{mesh, search_nx, search_ny}
+  {
+    WDMCPL_ALWAYS_ASSERT(mesh.nents(0) == mask.size());
+    Omega_h::Write<LO> index_mask(mask.size());
+    Kokkos::parallel_scan(
+      mask.size(),
+      KOKKOS_LAMBDA(int i, LO& update, bool final) {
+        update += (mask[i] > 0);
+        if (final) {
+          index_mask[i] = update;
+        }
+      },
+      size_);
+    mask_ = index_mask;
+  }
+
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
   [[nodiscard]] Omega_h::Mesh& GetMesh() const noexcept { return mesh_; }
+  [[nodiscard]] const Omega_h::Read<LO>& GetMask() const noexcept
+  {
+    return mask_;
+  };
+  [[nodiscard]] bool HasMask() const noexcept { return mask_.exists(); };
+  [[nodiscard]] LO Size() const noexcept { return size_; }
   // pass through to search function
   template <typename... Ts>
   auto Search(Ts... args) const
@@ -43,18 +72,68 @@ public:
     return search_(std::forward<Ts>(args)...);
   }
 
+  [[nodiscard]] Omega_h::Read<Omega_h::ClassId> GetClassIDs() const
+  {
+    return mesh_.get_array<Omega_h::ClassId>(0, "class_id");
+  }
+  [[nodiscard]] Omega_h::Read<Omega_h::I8> GetClassDims() const
+  {
+    return mesh_.get_array<Omega_h::I8>(0, "class_dim");
+  }
+
 private:
   std::string name_;
   Omega_h::Mesh& mesh_;
   // FIXME GridPointSearch take mdspan
   GridPointSearch search_;
+  // bitmask array that specifies a filter on the field
+  Omega_h::Read<LO> mask_;
+  LO size_;
 };
+
+namespace detail
+{
+
+template <typename T, int dim = 1>
+Omega_h::Read<T> filter_array(Omega_h::Read<T> array, Omega_h::Read<LO> mask,
+                              LO size)
+{
+  static_assert(dim > 0, "array dimension must be >0");
+  Omega_h::Write<T> filtered_field(size * dim);
+  WDMCPL_ALWAYS_ASSERT(filtered_field.size() <= array.size());
+  Omega_h::parallel_for(
+    size, OMEGA_H_LAMBDA(LO i) {
+      if (mask[i]) {
+        auto idx = mask[i] - 1;
+        for (int j = 0; j < dim; ++j) {
+          filtered_field[idx * dim + j] = array[i];
+        }
+      }
+    });
+  return filtered_field;
+}
+} // namespace detail
 
 template <typename T, typename CoordinateElementType>
 auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
   -> Omega_h::Read<T>
 {
-  return field.GetMesh().template get_array<T>(0, field.GetName());
+  auto full_field = field.GetMesh().template get_array<T>(0, field.GetName());
+  if (field.HasMask()) {
+    return detail::filter_array<T>(full_field, field.GetMask(), field.Size());
+  }
+  return full_field;
+}
+
+template <typename T, typename CoordinateElementType>
+auto get_nodal_gids(const OmegaHField<T, CoordinateElementType>& field)
+  -> Omega_h::Read<Omega_h::GO>
+{
+  auto full_gids = field.GetMesh().globals(0);
+  if (field.HasMask()) {
+    return detail::filter_array<T>(full_gids, field.GetMask(), field.Size());
+  }
+  return full_gids;
 }
 
 // TODO since Omega_h owns coordinate data, we could potentially
@@ -62,13 +141,20 @@ auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
 template <typename T, typename CoordinateElementType>
 auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
 {
+  static constexpr auto coordinate_dimension = 2;
   if constexpr (detail::HasCoordinateSystem<CoordinateElementType>::value) {
     const auto coords = field.GetMesh().coords();
     return MDArray<CoordinateElementType>{};
     // FIXME implement copy to
     throw;
   } else {
-    return Omega_h::Reals{field.GetMesh().coords()};
+    auto coords = Omega_h::Reals{field.GetMesh().coords()};
+    if (field.HasMask()) {
+      return detail::filter_array<typename decltype(coords)::value_type,
+                                  coordinate_dimension>(coords, field.GetMask(),
+                                                        field.Size());
+    }
+    return coords;
   }
 }
 
@@ -172,5 +258,108 @@ auto make_array_view(const Omega_h::Read<T>& array)
   return view;
 }
 } // namespace Omega_h
+
+namespace wdmcpl
+{
+template <typename T, typename CoordinateElementType = Real>
+class OmegaHFieldShim final
+  : public FieldShim<T, typename OmegaHMemorySpace::type>
+{
+public:
+  using memory_space = OmegaHMemorySpace::type;
+  using value_type = T;
+  OmegaHFieldShim(std::string name, Omega_h::Mesh& mesh, int search_nx = 10,
+                  int search_ny = 10)
+    : field_{std::move(name), mesh, search_nx, search_ny}
+  {
+  }
+
+  OmegaHFieldShim(std::string name, Omega_h::Mesh& mesh,
+                  Omega_h::Read<Omega_h::I8> mask, int search_nx = 10,
+                  int search_ny = 10)
+    : field_{std::move(name), mesh, mask, search_nx, search_ny}
+  {
+  }
+  const std::string& GetName() const noexcept { return field_.GetName(); }
+  virtual int Serialize(
+    ScalarArrayView<T, memory_space> buffer,
+    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
+  {
+    // host copy of filtered field data array
+    const auto array_h = Omega_h::HostRead(get_nodal_data(field_));
+    if (buffer.size() > 0) {
+      for (size_t i = 0, j = 0; i < array_h.size(); i++) {
+        buffer[permutation[j++]] = array_h[i];
+      }
+    }
+    return array_h.size();
+  }
+  virtual void Deserialize(
+    ScalarArrayView<T, memory_space> buffer,
+    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
+  {
+    REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
+    Omega_h::Write<T> sorted_buffer;
+    for (int i = 0; i < buffer.size(); ++i) {
+      sorted_buffer[i] = buffer[permutation[i]];
+    }
+    set(field_, make_array_view(Omega_h::Read(sorted_buffer)));
+  }
+
+  virtual std::vector<GO> GetGids() const
+  {
+    auto gids = get_nodal_gids(field_);
+    // FIXME: can use omega_h memcpy to get rid of extra copy here
+    auto gids_h = Omega_h::HostRead(gids);
+    // copy host gids into a vector
+    return {&gids_h[0], &(gids_h[gids_h.size() - 1]) + 1};
+  }
+  virtual ReversePartitionMap GetReversePartitionMap(
+    const redev::Partition& partition) const
+  {
+    auto& mesh = field_.GetMesh();
+    auto classIds_h = Omega_h::HostRead(field_.GetClassIDs());
+    auto classDims_h = Omega_h::HostRead(field_.GetClassDims());
+
+    // local_index number of vertices going to each destination process by
+    // calling getRank - degree array
+    wdmcpl::ReversePartitionMap reverse_partition;
+    wdmcpl::LO local_index = 0;
+    for (auto i = 0; i < classIds_h.size(); i++) {
+      auto dr = std::visit(
+        redev::overloaded{
+          [&classDims_h, &classIds_h, &i](const redev::ClassPtn& ptn) {
+            const auto ent =
+              redev::ClassPtn::ModelEnt({classDims_h[i], classIds_h[i]});
+            return ptn.GetRank(ent);
+          },
+          [](const redev::RCBPtn& ptn) {
+            std::cerr << "RCB partition not handled yet\n";
+            std::exit(EXIT_FAILURE);
+            return 0;
+          }},
+        partition);
+      reverse_partition[dr].emplace_back(local_index++);
+    }
+    return reverse_partition;
+  }
+  void ToOmegaH(OmegaHField<T, Real>& internal_field,
+                FieldTransferMethod transfer_method,
+                FieldEvaluationMethod evaluation_method)
+  {
+    transfer_field(field_, internal_field, transfer_method, evaluation_method);
+  }
+  void FromOmegaH(const OmegaHField<T, Real>& internal_field,
+                  FieldTransferMethod transfer_method,
+                  FieldEvaluationMethod evaluation_method)
+  {
+    transfer_field(internal_field, field_, transfer_method, evaluation_method);
+  }
+
+private:
+  OmegaHField<T, CoordinateElementType> field_;
+};
+
+} // namespace wdmcpl
 
 #endif // WDM_COUPLING_OMEGA_H_FIELD_H

@@ -58,18 +58,47 @@ void interpolate_field(const SourceField& source_field,
   auto coordinates_view = make_array_view(coordinates);
 
   if constexpr (needs_coordinate_transform) {
-    using target_coordinate_system =
-      typename target_coordinate_type::coordinate_system;
-    auto transformed_coordinates =
-      coordinate_transform<target_coordinate_system>(coordinates_view);
-    const auto data =
-      evaluate(source_field, method, make_array_view(transformed_coordinates));
-    set(target_field, make_array_view(data));
+    static_assert(!needs_coordinate_transform,
+                  "coordinate transforms not finalized");
+    // using target_coordinate_system =
+    //   typename target_coordinate_type::coordinate_system;
+    // auto transformed_coordinates =
+    //   coordinate_transform<target_coordinate_system>(coordinates_view);
+    // const auto data =
+    //   evaluate(source_field, method,
+    //   make_array_view(transformed_coordinates));
+    // set(target_field, make_array_view(data));
   } else {
     const auto data = evaluate(source_field, method, coordinates_view);
     set(target_field, make_array_view(data));
   }
 }
+template <typename SourceField, typename TargetField>
+void transfer_field(const SourceField& source, const TargetField& target,
+                    FieldTransferMethod transfer_method,
+                    FieldEvaluationMethod evaluation_method)
+{
+  switch (transfer_method) {
+    case FieldTransferMethod::None: return;
+    case FieldTransferMethod::Copy: copy_field(source, target); return;
+    case FieldTransferMethod::Interpolate:
+      switch (evaluation_method) {
+        case FieldEvaluationMethod::None:
+          std::cerr << "Cannot interpolate field with no evaluation method!";
+          std::terminate();
+        case FieldEvaluationMethod::Lagrange1:
+          interpolate_field(source, Lagrange<1>{});
+          break;
+        case FieldEvaluationMethod::NearestNeighbor:
+          interpolate_field(source, NearestNeighbor{});
+          break;
+          // no default case for compiler error on missing cases
+      }
+      return;
+      // no default case for compiler error on missing transfer method
+  }
+}
+
 } // namespace wdmcpl
 
 #endif // WDM_COUPLING_TRANSFER_FIELD_H

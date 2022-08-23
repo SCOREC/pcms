@@ -1,0 +1,300 @@
+// This is an excerpt from /opt/cray/pe/gcc/11.2.0/snos/include/g++/numeric
+
+// <numeric> -*- C++ -*-
+
+// Copyright (C) 2001-2021 Free Software Foundation, Inc.
+//
+// This file is part of the GNU ISO C++ Library.  This library is free
+// software; you can redistribute it and/or modify it under the
+// terms of the GNU General Public License as published by the
+// Free Software Foundation; either version 3, or (at your option)
+// any later version.
+
+// This library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// Under Section 7 of GPL version 3, you are granted additional
+// permissions described in the GCC Runtime Library Exception, version
+// 3.1, as published by the Free Software Foundation.
+
+// You should have received a copy of the GNU General Public License and
+// a copy of the GCC Runtime Library Exception along with this program;
+// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+// <http://www.gnu.org/licenses/>.
+
+/*
+ *
+ * Copyright (c) 1994
+ * Hewlett-Packard Company
+ *
+ * Permission to use, copy, modify, distribute and sell this software
+ * and its documentation for any purpose is hereby granted without fee,
+ * provided that the above copyright notice appear in all copies and
+ * that both that copyright notice and this permission notice appear
+ * in supporting documentation.  Hewlett-Packard Company makes no
+ * representations about the suitability of this software for any
+ * purpose.  It is provided "as is" without express or implied warranty.
+ *
+ *
+ * Copyright (c) 1996,1997
+ * Silicon Graphics Computer Systems, Inc.
+ *
+ * Permission to use, copy, modify, distribute and sell this software
+ * and its documentation for any purpose is hereby granted without fee,
+ * provided that the above copyright notice appear in all copies and
+ * that both that copyright notice and this permission notice appear
+ * in supporting documentation.  Silicon Graphics makes no
+ * representations about the suitability of this software for any
+ * purpose.  It is provided "as is" without express or implied warranty.
+ */
+
+
+
+#ifndef NUMERIC_REDUX
+#define NUMERIC_REDUX
+
+#include <utility> //move
+#include <functional> //plus, multiplies
+#include <iterator> //random_access_iterator
+
+namespace nonstd {
+  /** @brief Output the cumulative sum of one range to a second range
+   *
+   *  @param __first  Start of input range.
+   *  @param __last   End of input range.
+   *  @param __result Start of output range.
+   *  @param __init   Initial value.
+   *  @param __binary_op Function to perform summation.
+   *  @return The end of the output range.
+   *
+   *  Write the cumulative sum (aka prefix sum, aka scan) of the input range
+   *  to the output range. Each element of the output range contains the
+   *  running total of all earlier elements (and the initial value),
+   *  using `binary_op` for summation.
+   *
+   *  This function generates an "exclusive" scan, meaning the Nth element
+   *  of the output range is the sum of the first N-1 input elements,
+   *  so the Nth input element is not included.
+   */
+  template<typename _InputIterator, typename _OutputIterator, typename _Tp,
+	   typename _BinaryOperation>
+  _OutputIterator
+  exclusive_scan(_InputIterator __first, _InputIterator __last,
+		   _OutputIterator __result, _Tp __init,
+		   _BinaryOperation __binary_op)
+    {
+      while (__first != __last)
+	{
+	  auto __v = __init;
+	  __init = __binary_op(__init, *__first);
+	  ++__first;
+	  *__result++ = std::move(__v);
+	}
+      return __result;
+    }
+
+  /** @brief Output the cumulative sum of one range to a second range
+   *
+   *  @param __first  Start of input range.
+   *  @param __last   End of input range.
+   *  @param __result Start of output range.
+   *  @param __init   Initial value.
+   *  @return The end of the output range.
+   *
+   *  Write the cumulative sum (aka prefix sum, aka scan) of the input range
+   *  to the output range. Each element of the output range contains the
+   *  running total of all earlier elements (and the initial value),
+   *  using `std::plus<>` for summation.
+   *
+   *  This function generates an "exclusive" scan, meaning the Nth element
+   *  of the output range is the sum of the first N-1 input elements,
+   *  so the Nth input element is not included.
+   */
+  template<typename _InputIterator, typename _OutputIterator, typename _Tp>
+    inline _OutputIterator
+    exclusive_scan(_InputIterator __first, _InputIterator __last,
+		   _OutputIterator __result, _Tp __init)
+    {
+      return nonstd::exclusive_scan(__first, __last, __result, std::move(__init),
+				 std::plus<>());
+    }
+
+
+
+//
+// transform_reduce
+//
+  /**
+   *  @brief  Combine elements from two ranges and reduce
+   *
+   *  @param  __first1  Start of first range.
+   *  @param  __last1  End of first range.
+   *  @param  __first2  Start of second range.
+   *  @param  __init  Starting value to add other values to.
+   *  @param  __binary_op1 The function used to perform reduction.
+   *  @param  __binary_op2 The function used to combine values from the ranges.
+   *  @return  The final sum.
+   *
+   *  Call `binary_op2(first1[n],first2[n])` for each `n` in `[0,last1-first1)`
+   *  and then use `binary_op1` to reduce the values returned by `binary_op2`
+   *  to a single value of type `T`.
+   *
+   *  The range beginning at `first2` must contain at least `last1-first1`
+   *  elements.
+   */
+  template<typename _InputIterator1, typename _InputIterator2, typename _Tp,
+	   typename _BinaryOperation1, typename _BinaryOperation2>
+    _Tp
+    transform_reduce(_InputIterator1 __first1, _InputIterator1 __last1,
+		     _InputIterator2 __first2, _Tp __init,
+		     _BinaryOperation1 __binary_op1,
+		     _BinaryOperation2 __binary_op2)
+    {
+      for (; __first1 != __last1; ++__first1, (void) ++__first2)
+	__init = __binary_op1(__init, __binary_op2(*__first1, *__first2));
+      return __init;
+    }
+
+  /**
+   *  @brief  Combine elements from two ranges and reduce
+   *
+   *  @param  __first1  Start of first range.
+   *  @param  __last1  End of first range.
+   *  @param  __first2  Start of second range.
+   *  @param  __init  Starting value to add other values to.
+   *  @return  The final sum.
+   *
+   *  Call `first1[n]*first2[n]` for each `n` in `[0,last1-first1)` and then
+   *  use addition to sum those products to a single value of type `T`.
+   *
+   *  The range beginning at `first2` must contain at least `last1-first1`
+   *  elements.
+   */
+  template<typename _InputIterator1, typename _InputIterator2, typename _Tp>
+    inline _Tp
+    transform_reduce(_InputIterator1 __first1, _InputIterator1 __last1,
+		     _InputIterator2 __first2, _Tp __init)
+    {
+      return nonstd::transform_reduce(__first1, __last1, __first2,
+				   std::move(__init),
+				   std::plus<>(), std::multiplies<>());
+    }
+
+  /**
+   *  @brief  Transform the elements of a range and reduce
+   *
+   *  @param  __first  Start of range.
+   *  @param  __last  End of range.
+   *  @param  __init  Starting value to add other values to.
+   *  @param  __binary_op The function used to perform reduction.
+   *  @param  __unary_op The function used to transform values from the range.
+   *  @return  The final sum.
+   *
+   *  Call `unary_op(first[n])` for each `n` in `[0,last-first)` and then
+   *  use `binary_op` to reduce the values returned by `unary_op`
+   *  to a single value of type `T`.
+   */
+  template<typename _InputIterator, typename _Tp,
+	   typename _BinaryOperation, typename _UnaryOperation>
+    _Tp
+    transform_reduce(_InputIterator __first, _InputIterator __last, _Tp __init,
+		     _BinaryOperation __binary_op, _UnaryOperation __unary_op)
+    {
+      for (; __first != __last; ++__first)
+	__init = __binary_op(__init, __unary_op(*__first));
+      return __init;
+    }
+
+//
+// inclusive_scan
+//
+
+  /** @brief Output the cumulative sum of one range to a second range
+   *
+   *  @param __first  Start of input range.
+   *  @param __last   End of input range.
+   *  @param __result Start of output range.
+   *  @param __binary_op Function to perform summation.
+   *  @param __init   Initial value.
+   *  @return The end of the output range.
+   *
+   *  Write the cumulative sum (aka prefix sum, aka scan) of the input range
+   *  to the output range. Each element of the output range contains the
+   *  running total of all earlier elements (and the initial value),
+   *  using `binary_op` for summation.
+   *
+   *  This function generates an "inclusive" scan, meaning the Nth element
+   *  of the output range is the sum of the first N input elements,
+   *  so the Nth input element is included.
+   */
+  template<typename _InputIterator, typename _OutputIterator,
+	   typename _BinaryOperation, typename _Tp>
+    _OutputIterator
+    inclusive_scan(_InputIterator __first, _InputIterator __last,
+		   _OutputIterator __result, _BinaryOperation __binary_op,
+		   _Tp __init)
+    {
+      for (; __first != __last; ++__first)
+	*__result++ = __init = __binary_op(__init, *__first);
+      return __result;
+    }
+
+  /** @brief Output the cumulative sum of one range to a second range
+   *
+   *  @param __first  Start of input range.
+   *  @param __last   End of input range.
+   *  @param __result Start of output range.
+   *  @param __binary_op Function to perform summation.
+   *  @return The end of the output range.
+   *
+   *  Write the cumulative sum (aka prefix sum, aka scan) of the input range
+   *  to the output range. Each element of the output range contains the
+   *  running total of all earlier elements, using `binary_op` for summation.
+   *
+   *  This function generates an "inclusive" scan, meaning the Nth element
+   *  of the output range is the sum of the first N input elements,
+   *  so the Nth input element is included.
+   */
+  template<typename _InputIterator, typename _OutputIterator,
+	   typename _BinaryOperation>
+    _OutputIterator
+    inclusive_scan(_InputIterator __first, _InputIterator __last,
+		   _OutputIterator __result, _BinaryOperation __binary_op)
+    {
+      if (__first != __last)
+	{
+	  auto __init = *__first;
+	  *__result++ = __init;
+	  ++__first;
+	  if (__first != __last)
+	    __result = nonstd::inclusive_scan(__first, __last, __result,
+					   __binary_op, std::move(__init));
+	}
+      return __result;
+    }
+
+  /** @brief Output the cumulative sum of one range to a second range
+   *
+   *  @param __first  Start of input range.
+   *  @param __last   End of input range.
+   *  @param __result Start of output range.
+   *  @return The end of the output range.
+   *
+   *  Write the cumulative sum (aka prefix sum, aka scan) of the input range
+   *  to the output range. Each element of the output range contains the
+   *  running total of all earlier elements, using `std::plus<>` for summation.
+   *
+   *  This function generates an "inclusive" scan, meaning the Nth element
+   *  of the output range is the sum of the first N input elements,
+   *  so the Nth input element is included.
+   */
+  template<typename _InputIterator, typename _OutputIterator>
+    inline _OutputIterator
+    inclusive_scan(_InputIterator __first, _InputIterator __last,
+		   _OutputIterator __result)
+    { return nonstd::inclusive_scan(__first, __last, __result, std::plus<>()); }
+}
+
+#endif

@@ -1,3 +1,4 @@
+#include "wdmcpl/external/numeric_redux"
 #include "test_support.h"
 #include <Omega_h_file.hpp> //vtk::write_parallel
 #include <Omega_h_atomics.hpp> //atomic_increment
@@ -448,7 +449,7 @@ CSR getRdvOutPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids) {
     perm.off[iGids[j]]++;
   }
   //create the offsets array from the counts
-  std::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0);
+  nonstd::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0);
   //fill the permutation array
   perm.val.resize(perm.off.back());
   redev::LOs count(gids_h.size()); //how many times each gid was written

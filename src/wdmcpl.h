@@ -176,7 +176,7 @@ public:
     ReversePartitionMapFunction reverse_partition_map_function,
     SerializerFunction<T> serializer, DeserializerFunction<T> deserializer,
     std::string_view name_prefix = "",
-    redev::TransportType transport_type = redev::TransportType::BP4,
+    redev::TransportType transport_type = redev::TransportType::SST,
     adios2::Params params = adios2::Params{{"Streaming", "On"},
                                            {"DataTransport", "WAN"},
                                            {"OpenTimeoutSecs", "120"}})

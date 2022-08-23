@@ -178,7 +178,8 @@ public:
     std::string_view name_prefix = "",
     redev::TransportType transport_type = redev::TransportType::BP4,
     adios2::Params params = adios2::Params{{"Streaming", "On"},
-                                           {"OpenTimeoutSecs", "12"}})
+                                           {"DataTransport", "WAN"},
+                                           {"OpenTimeoutSecs", "120"}})
     : mpi_comm_(mpi_comm),
       comm_buffer_{},
       message_permutation_{},

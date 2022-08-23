@@ -368,9 +368,12 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
 int main(int argc, char** argv)
 {
+  int provided;
+  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
   const int rank = world->rank();
+  if(!rank) fprintf(stderr, "mpi provided %d\n", provided);
   if (argc != 4) {
     if (!rank) {
       std::cerr << "Usage: " << argv[0]

@@ -290,8 +290,11 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
     SerializeOmegaHGids{mesh, is_overlap_h},
     DeserializeOmegaH{mesh, is_overlap_h});
 
+  int rank; MPI_Comm_rank(comm, &rank);
+  auto start = std::chrono::steady_clock::now();
   df_gid_field.Send();
   df_gid_field.Receive();
+  test_support::getAndPrintTime(start,"dfSendRecv",rank);
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
@@ -304,9 +307,12 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
     SerializeOmegaHGids{mesh, is_overlap_h},
     DeserializeOmegaH{mesh, is_overlap_h});
 
+  int rank; MPI_Comm_rank(comm, &rank);
+  auto start = std::chrono::steady_clock::now();
   tf_gid_field.Send();
   // get updated field data from coupling server
   tf_gid_field.Receive();
+  test_support::getAndPrintTime(start,"tfSendRecv",rank);
 }
 struct DeserializeServer
 {
@@ -360,10 +366,13 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   auto& df_gid_field = delta_f.AddField<wdmcpl::GO>(
     "gids", OmegaHGids{mesh, is_overlap_h}, OmegaHReversePartition{mesh},
     SerializeServer{delta_f_gids}, DeserializeServer{delta_f_gids});
+  int rank; MPI_Comm_rank(comm, &rank);
+  auto start = std::chrono::steady_clock::now();
   df_gid_field.Receive();
   tf_gid_field.Receive();
   df_gid_field.Send();
   tf_gid_field.Send();
+  test_support::getAndPrintTime(start,"serverSendRecv",rank);
 }
 
 int main(int argc, char** argv)

@@ -113,5 +113,8 @@ add_executable(unit_tests unit_test_main.cpp test_coordinate_transform.cpp test_
 target_link_libraries(unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl)
 target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_executable(field_transfer_example field_transfer_example.cpp)
+target_link_libraries(field_transfer_example PUBLIC wdmcpl::wdmcpl)
+
 include(Catch)
 catch_discover_tests(unit_tests)

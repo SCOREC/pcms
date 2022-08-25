@@ -74,23 +74,31 @@ void interpolate_field(const SourceField& source_field,
   }
 }
 template <typename SourceField, typename TargetField>
-void transfer_field(const SourceField& source, const TargetField& target,
+void transfer_field(const SourceField& source, TargetField& target,
                     FieldTransferMethod transfer_method,
                     FieldEvaluationMethod evaluation_method)
 {
   switch (transfer_method) {
     case FieldTransferMethod::None: return;
-    case FieldTransferMethod::Copy: copy_field(source, target); return;
+    case FieldTransferMethod::Copy:
+      if constexpr(std::is_same_v<SourceField, TargetField>) {
+        copy_field(source, target);
+      }
+      else {
+        std::cerr<<"Source field and destination field must have same type to copy!\n";
+        std::abort();
+      }
+      return;
     case FieldTransferMethod::Interpolate:
       switch (evaluation_method) {
         case FieldEvaluationMethod::None:
           std::cerr << "Cannot interpolate field with no evaluation method!";
           std::terminate();
         case FieldEvaluationMethod::Lagrange1:
-          interpolate_field(source, Lagrange<1>{});
+          interpolate_field(source, target, Lagrange<1>{});
           break;
         case FieldEvaluationMethod::NearestNeighbor:
-          interpolate_field(source, NearestNeighbor{});
+          interpolate_field(source, target, NearestNeighbor{});
           break;
           // no default case for compiler error on missing cases
       }

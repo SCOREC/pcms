@@ -38,6 +38,7 @@ class OmegaHField;
 template <typename T, typename MemorySpace = HostMemorySpace>
 class FieldShim
 {
+  using InternalCoordinateType = Real;
 public:
   using memory_space = MemorySpace;
   using value_type = T;
@@ -53,8 +54,8 @@ public:
     const redev::Partition& partition) const = 0;
   // FIXME these functions are only needed on the server and we need to make sure we
   // can compile the applications without linking against OmegaH.
-  virtual void ToOmegaH(OmegaHField<T, Real>& internal_field, FieldTransferMethod, FieldEvaluationMethod) = 0;
-  virtual void FromOmegaH(const OmegaHField<T, Real>& internal_field, FieldTransferMethod, FieldEvaluationMethod) = 0;
+  virtual void ToOmegaH(OmegaHField<T, InternalCoordinateType>& internal_field, FieldTransferMethod, FieldEvaluationMethod) = 0;
+  virtual void FromOmegaH(const OmegaHField<T, InternalCoordinateType>& internal_field, FieldTransferMethod, FieldEvaluationMethod) = 0;
 };
 
 } // namespace wdmcpl

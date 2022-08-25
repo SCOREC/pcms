@@ -76,6 +76,8 @@ using wdmcpl::make_array_view;
 using wdmcpl::OmegaHField;
 using wdmcpl::OmegaHFieldShim;
 using wdmcpl::Coupler;
+using wdmcpl::FieldEvaluationMethod;
+using wdmcpl::FieldTransferMethod;
 
 static constexpr bool done = true;
 
@@ -87,7 +89,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   auto* df_gid_field = cpl.AddField("delta_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
 
   do {
-    cpl.SendField("delta_f_gids"); //(Alt) df_gid_field->Send();
+    cpl.SendField("_gids"); //(Alt) df_gid_field->Send();
     cpl.ReceiveField("delta_f_gids"); //(Alt) df_gid_field->Receive();
   } while(!done);
 }
@@ -109,14 +111,14 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // Note: coupler takes ownership of the field shim as well as
   cpl.AddField("total_f_gids",
                OmegaHFieldShim<GO>("total_f_gids", mesh, is_overlap),
-               wdmcpl::FieldTransferMethod::None, // to Omega_h
-               wdmcpl::FieldEvaluationMethod::None,
-               wdmcpl::FieldTransferMethod::None, // from Omega_h
-               wdmcpl::FieldEvaluationMethod::None);
+               FieldTransferMethod::None, // to Omega_h
+               FieldEvaluationMethod::None,
+               FieldTransferMethod::None, // from Omega_h
+               FieldEvaluationMethod::None);
   cpl.AddField(
     "delta_f_gids", OmegaHFieldShim<GO>("delta_f_gids", mesh, is_overlap),
-    wdmcpl::FieldTransferMethod::None, wdmcpl::FieldEvaluationMethod::None,
-    wdmcpl::FieldTransferMethod::None, wdmcpl::FieldEvaluationMethod::None);
+    FieldTransferMethod::None, FieldEvaluationMethod::None,
+    FieldTransferMethod::None, FieldEvaluationMethod::None);
 
   // Combiner is a functor that takes a vector of omega_h fields combines their values
   // and sets the combined values into the resultant field

@@ -9,9 +9,9 @@
 #include <wdmcpl/assert.h>
 #include <Omega_h_for.hpp>
 #include "wdmcpl/arrays.h"
-#include "wdmcpl/field_evaluation_methods.h"
 #include "wdmcpl/point_search.h"
 #include <redev_variant_tools.h>
+#include "wdmcpl/transfer_field.h"
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
 
@@ -125,6 +125,7 @@ auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
   return full_field;
 }
 
+// TODO Remove as customization point
 template <typename T, typename CoordinateElementType>
 auto get_nodal_gids(const OmegaHField<T, CoordinateElementType>& field)
   -> Omega_h::Read<Omega_h::GO>

@@ -40,7 +40,8 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
  * the ownership of mesh entities following the mesh partition ownership is OK.
  * The function markMeshOverlapRegion(...) supports this.
  */
-Omega_h::HostRead<Omega_h::I8> markServerOverlapRegion(Omega_h::Mesh& mesh, redev::ClassPtn& classPtn)
+Omega_h::HostRead<Omega_h::I8> markServerOverlapRegion(Omega_h::Mesh& mesh,
+    const redev::ClassPtn& classPtn)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -346,9 +347,10 @@ private:
 void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
 
-  auto cp = setupServerPartition(mesh,cpn_file);
-  wdmcpl::Coupler cpl("proxy_couple", wdmcpl::ProcessType::Server, comm, cp);
-  auto is_overlap_h = markServerOverlapRegion(mesh,cp);
+  wdmcpl::Coupler cpl("proxy_couple", wdmcpl::ProcessType::Server, comm,
+                      setupServerPartition(mesh,cpn_file));
+  const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
+  auto is_overlap_h = markServerOverlapRegion(mesh,partition);
   std::vector<wdmcpl::GO> delta_f_gids;
   std::vector<wdmcpl::GO> total_f_gids;
   auto& total_f = cpl.AddApplication("total_f");

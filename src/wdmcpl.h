@@ -364,6 +364,10 @@ public:
     return it->second;
   }
 
+  const redev::Partition& GetPartition() const {
+    return redev_.GetPartition();
+  }
+
   // register_field sets up a rdv::BidirectionalComm on the given mesh rdv
   // object for the field
   // GlobalIDFunc gives a list of global IDs in mesh iteration order

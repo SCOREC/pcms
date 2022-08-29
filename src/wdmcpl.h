@@ -392,9 +392,28 @@ private:
 };
 
 } // namespace detail
-// Coupler needs to have both a standalone mesh definitions to setup rdv comms
-// and a list of fields
-// in the server it also needs sets of fields that will be combined
+
+class CoupledField {
+public:
+  void Send() const { comm_.Send();}
+  void Receive() const { comm_.Receive();}
+
+  template <typename T>
+  void NativeToInternal(OmegaHField<T,HostMemorySpace> & internal) {
+    native_to_internal_.SetTargetField(internal);
+    native_to_internal_.Run();
+  }
+  template <typename T>
+  void InternalToNative(const OmegaHField<T,HostMemorySpace> & internal) {
+    internal_to_native_.SetTargetField(internal);
+    internal_to_native_.Run();
+  }
+
+  FieldCommunicator comm_;
+  detail::TransferOperation native_to_internal_;
+  detail::TransferOperation internal_to_native_;
+};
+
 // TODO: refactor into ClientCoupler, ServerCoupler, BaseCoupler or Coupler<PT>
 // with base with shared
 template <ProcessType PT>
@@ -408,7 +427,7 @@ public:
   {
   }
   template <typename FieldShimT>
-  Field* AddField(std::string unique_name, FieldShimT field_shim)
+  CoupledField* AddField(std::string unique_name, FieldShimT field_shim)
   {
     /*
     auto [it, inserted] = fields_.template try_emplace(
@@ -423,7 +442,7 @@ public:
      */
   }
   template <typename FieldShimT>
-  Field* AddField(std::string unique_name, FieldShimT field_shim,
+  CoupledField* AddField(std::string unique_name, FieldShimT field_shim,
                   FieldTransferMethod to_field_transfer_method,
                   FieldEvaluationMethod to_field_eval_method,
                   FieldTransferMethod from_field_transfer_method,
@@ -462,12 +481,19 @@ public:
   // here we take a string, not string_view since we need to search map
   void GatherFields(const std::string& name)
   {
-    // auto& gather_op = detail::find_or_error(name, gather_operations_);
-    auto& field_comm = detail::find_or_error(name, fields_);
-    field_comm.Receive();
+    auto& gather_op = detail::find_or_error(name, gather_operations_);
+    // gather op needs to store a copy of the appropriate field transfer op. Upon
+    // construction of gather op the field_transfer_op is set for each
+    // field since we only then have
+    // the pointer to the internal field (it's created in CreateGatherOp).
+    // note that we end up taking a copy of the TransferOp since a single field
+    // may get transferred onto multiple internal fields!
 
-    // field transfer native to internal
-    //  combine fields native to internal
+    gather_op.Receive();
+    //for field in fields:
+    gather_op.NativeToInternal();
+    gather_op.Combine();
+    // or just gather_op.Run();
   }
   void SendField(const std::string& name)
   {
@@ -478,39 +504,18 @@ public:
     detail::find_or_error(name, fields_).Receive();
   };
 
-  // register_field sets up a rdv::BidirectionalComm on the given mesh rdv
-  // object for the field
-  // GlobalIDFunc gives a list of global IDs in mesh iteration order
-  // rank_count_func gives the ReversePartitionMap on the clients
-  // TODO: decide...function objects can become regular types if field sizes are
-  // static
-  // FIXME: rank_count_func is only needed on client
-
 private:
   std::string name_;
   static constexpr ProcessType process_type_{PT};
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
-  std::unordered_map<std::string, FieldCommunicator> fields_;
+  std::unordered_map<std::string, CoupledField> fields_;
+  // Do we want to make this thing more specific and have
+  // type erase Omega_h field?
+  std::unordered_map<std::string, Field> internal_fields_;
   std::unordered_map<std::string, GatherOperation> scatter_operations_;
   std::unordered_map<std::string, ScatterOperation> gather_operations_;
-  // note that field transfer operations are one per field and should be
-  // TODO: grouped with fiels into "field_operator"
-  // std::unordered_map<std::string, FieldTransferOptions> gather_transfer_opt_;
-  // std::unordered_map<std::string, FieldTransferOptions>
-  // scatter_transfer_opt_;
-  // gather scatter field will essentially be a functor or lambda that calls
-  // the field transfer operation like so:
-  //[internal_field, field](){transfer_field(internal_field, field,
-  //               field_transfer_options.transfer_method,
-  //               field_transfer_options.evaluation_method)};
-  // TODO: rename convert_native_to_internal
-  std::unordered_map<std::string, detail::TransferOperation> gather_transfer_;
-  // TODO: rename convert_internal_to_native
-  std::unordered_map<std::string, detail::TransferOperation> scatter_transfer_;
 };
-// Transfer operation holds reference to the Source and target fields and
-// does the field transfer operation
 } // namespace wdmcpl
 
 #endif

@@ -13,6 +13,7 @@
 #include "wdmcpl/memory_spaces.h"
 #include "wdmcpl/transfer_field.h"
 
+
 namespace wdmcpl
 {
 namespace detail
@@ -130,6 +131,7 @@ bool HasDuplicates(std::vector<T> v)
   return it != v.end();
 }
 
+// TODO: rename to IFieldCommunicator
 class FieldCommunicator
 {
 public:
@@ -140,15 +142,16 @@ public:
 
 // Attempt 2 of field communicator that takes a field rather than function
 // objects
+// TODO rename to FieldCommunicator
 template <typename FieldShimT>
-class FieldCommunicatorT : public FieldCommunicator
+class FieldCommunicatorT final : public FieldCommunicator
 {
   using T = typename FieldShimT::value_type;
 
 public:
   FieldCommunicatorT(
     std::string name, redev::Redev& redev, MPI_Comm mpi_comm,
-    FieldShimT field_shim,
+    FieldShimT& field_shim,
     redev::TransportType transport_type = redev::TransportType::BP4,
     adios2::Params params = adios2::Params{{"Streaming", "On"},
                                            {"OpenTimeoutSecs", "12"}})
@@ -255,10 +258,11 @@ private:
   redev::BidirectionalComm<T> gid_comm_;
   bool buffer_size_needs_update_;
   // Stored functions used for updated field info/serialization/deserialization
-  FieldShimT field_shim_;
+  FieldShimT& field_shim_;
   redev::Redev& redev_;
   std::string name_;
 };
+
 
 struct FieldTransferOptions
 {
@@ -294,11 +298,83 @@ auto& find_or_error(const std::string& name,
   return it->second;
 }
 
-} // namespace detail
+struct TransferOperation
+{
+  template <typename SourceField, typename TargetField>
+  TransferOperation(FieldTransferMethod ftm, FieldEvaluationMethod fem)
+  {
+    transfer_operation_ =
+      std::make_unique<TransferOperationModel<SourceField, TargetField>>(ftm,
+                                                                         fem);
+  }
+  template <typename SourceField, typename TargetField>
+  TransferOperation(const SourceField& source, TargetField& target,
+                    FieldTransferMethod ftm, FieldEvaluationMethod fem)
+  {
+    auto model_ptr =
+      std::make_unique<TransferOperationModel<SourceField, TargetField>>(ftm,
+                                                                         fem);
+    // directly set ptrs to avoid creation of type erased field type
+    model_ptr->source_ = &source;
+    model_ptr->target_ = &target;
+    transfer_operation_ = std::move(model_ptr);
+  }
+  void Run(){transfer_operation_->Run();}
+  void SetTargetField(Field& f){transfer_operation_->SetTargetField(f);}
+  void SetSourceField(const Field& f){transfer_operation_->SetSourceField(f);}
 
+private:
+  struct TransferOperationConcept
+  {
+    virtual void Run() = 0;
+    virtual void SetTargetField(Field&) = 0;
+    virtual void SetSourceField(const Field&) = 0;
+    virtual ~TransferOperationConcept() = default;
+  };
+
+  template <typename SourceField, typename TargetField>
+  struct TransferOperationModel final : TransferOperationConcept
+  {
+    TransferOperationModel(FieldTransferMethod ftm, FieldEvaluationMethod fem)
+      : source_(nullptr),
+        target_(nullptr),
+        transfer_method_(ftm),
+        evaluation_method_(fem)
+    {
+    }
+
+    void SetTargetField(Field& field)
+    {
+      target_ = field_cast<TargetField>(&field);
+    }
+    void SetSourceField(const Field& field)
+    {
+      source_ = field_cast<SourceField>(&field);
+    }
+
+    void Run()
+    {
+      // source and target fields must be set with SetSourceField and
+      // SetTargetField
+      WDMCPL_ALWAYS_ASSERT(source_ != nullptr && target_ != nullptr);
+      transfer_field(*source_, *target_, transfer_method_, evaluation_method_);
+    }
+    // nonowning pointers to source/target field
+    const SourceField* source_;
+    TargetField* target_;
+
+    FieldTransferMethod transfer_method_;
+    FieldEvaluationMethod evaluation_method_;
+  };
+  std::unique_ptr<TransferOperationConcept> transfer_operation_;
+};
+
+} // namespace detail
 // Coupler needs to have both a standalone mesh definitions to setup rdv comms
 // and a list of fields
 // in the server it also needs sets of fields that will be combined
+// TODO: refactor into ClientCoupler, ServerCoupler, BaseCoupler or Coupler<PT>
+// with base with shared
 template <ProcessType PT>
 class Coupler
 {
@@ -310,8 +386,7 @@ public:
   {
   }
   template <typename FieldShimT>
-  FieldCommunicatorT<FieldShimT>* AddField(std::string unique_name,
-                                           FieldShimT field_shim)
+  Field* AddField(std::string unique_name, FieldShimT field_shim)
   {
     auto [it, inserted] = fields_.template try_emplace(
       unique_name, std::make_unique<FieldCommunicatorT<FieldShimT>>(
@@ -324,12 +399,11 @@ public:
     return static_cast<FieldCommunicatorT<FieldShimT>*>(it->second.get());
   }
   template <typename FieldShimT>
-  FieldCommunicatorT<FieldShimT>* AddField(
-    std::string unique_name, FieldShimT field_shim,
-    FieldTransferMethod to_field_transfer_method,
-    FieldEvaluationMethod to_field_eval_method,
-    FieldTransferMethod from_field_transfer_method,
-    FieldEvaluationMethod from_field_eval_method)
+  Field* AddField(std::string unique_name, FieldShimT field_shim,
+                  FieldTransferMethod to_field_transfer_method,
+                  FieldEvaluationMethod to_field_eval_method,
+                  FieldTransferMethod from_field_transfer_method,
+                  FieldEvaluationMethod from_field_eval_method)
   {
     auto [it, inserted] = fields_.template try_emplace(
       unique_name, std::make_unique<FieldCommunicatorT<FieldShimT>>(
@@ -396,16 +470,21 @@ private:
   std::unordered_map<std::string, ScatterOperation> gather_operations_;
   // note that field transfer operations are one per field and should be
   // TODO: grouped with fiels into "field_operator"
-  //std::unordered_map<std::string, FieldTransferOptions> gather_transfer_opt_;
-  //std::unordered_map<std::string, FieldTransferOptions> scatter_transfer_opt_;
+  // std::unordered_map<std::string, FieldTransferOptions> gather_transfer_opt_;
+  // std::unordered_map<std::string, FieldTransferOptions>
+  // scatter_transfer_opt_;
   // gather scatter field will essentially be a functor or lambda that calls
   // the field transfer operation like so:
   //[internal_field, field](){transfer_field(internal_field, field,
   //               field_transfer_options.transfer_method,
   //               field_transfer_options.evaluation_method)};
-  std::unordered_map<std::string, std::function<void()>> gather_transfer_;
-  std::unordered_map<std::string, std::function<void()>> scatter_transfer_;
+  // TODO: rename convert_native_to_internal
+  std::unordered_map<std::string, detail::TransferOperation> gather_transfer_;
+  // TODO: rename convert_internal_to_native
+  std::unordered_map<std::string, detail::TransferOperation> scatter_transfer_;
 };
+// Transfer operation holds reference to the Source and target fields and
+// does the field transfer operation
 } // namespace wdmcpl
 
 #endif

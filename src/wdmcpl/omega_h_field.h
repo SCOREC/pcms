@@ -30,6 +30,9 @@ template <typename T,
 class OmegaHField
 {
 public:
+  using value_type = T;
+  using coordinate_element_type = CoordinateElementType;
+
   OmegaHField(std::string name, Omega_h::Mesh& mesh, int search_nx = 10,
               int search_ny = 10)
     : name_(std::move(name)),
@@ -269,6 +272,7 @@ class OmegaHFieldShim final
 public:
   using memory_space = OmegaHMemorySpace::type;
   using value_type = T;
+  using coordinate_element_type = CoordinateElementType;
   OmegaHFieldShim(std::string name, Omega_h::Mesh& mesh, int search_nx = 10,
                   int search_ny = 10)
     : field_{std::move(name), mesh, search_nx, search_ny}

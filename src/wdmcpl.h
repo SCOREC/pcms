@@ -12,13 +12,24 @@
 #include "wdmcpl/field.h"
 #include "wdmcpl/memory_spaces.h"
 #include "wdmcpl/transfer_field.h"
+#include "wdmcpl/omega_h_field.h"
 
 namespace wdmcpl
 {
 namespace detail
 {
-using InternalCoordinateElementType = Real;
-}
+using InternalCoordinateElement = Real;
+
+// internal field can only be one of the types supported by Omega_h
+// The coordinate element for all internal fields is the same since
+// all internal fields are on the same mesh
+using InternalField =
+  std::variant<std::monostate,
+               OmegaHField<Omega_h::I8, InternalCoordinateElement>,
+               OmegaHField<Omega_h::I32, InternalCoordinateElement>,
+               OmegaHField<Omega_h::I64, InternalCoordinateElement>,
+               OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
+} // namespace detail
 using ProcessType = redev::ProcessType;
 
 struct OutMsg
@@ -53,7 +64,7 @@ redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
 {
 
   auto num_entries = std::transform_reduce(
-    reverse_partition.begin(), reverse_partition.end(), 0, std::plus<LO>(),
+    reverse_partition.begin(), reverse_partition.end(), 0, std::plus<>(),
     [](const std::pair<const LO, std::vector<LO>>& v) {
       return v.second.size();
     });
@@ -92,7 +103,7 @@ OutMsg ConstructOutMessage(int rank, int nproc,
                            const redev::InMessageLayout& in)
 {
 
-  REDEV_ALWAYS_ASSERT(in.srcRanks.size() > 0);
+  REDEV_ALWAYS_ASSERT(!in.srcRanks.empty());
   // auto nAppProcs =
   // Omega_h::divide_no_remainder(in.srcRanks.size(),static_cast<size_t>(nproc));
   auto nAppProcs = in.srcRanks.size() / static_cast<size_t>(nproc);
@@ -145,8 +156,13 @@ public:
       std::move(name), redev, mpi_comm, field_shim, transport_type,
       std::move(params));
   }
+  // default constructor creates field communicator that doesn't send or receive
+  FieldCommunicator()
+  {
+    field_communicator_ = std::make_unique<FieldCommunicatorModel<void>>();
+  }
   void Send() const { field_communicator_->Send(); }
-  void Receive() const {field_communicator_->Receive(); }
+  void Receive() const { field_communicator_->Receive(); }
 
 private:
   struct FieldCommunicatorConcept
@@ -176,7 +192,7 @@ private:
         name_{std::move(name)},
         field_shim_(std::move(field_shim))
     {
-      std::string transport_name = name;
+      std::string transport_name = name_;
       comm_ =
         redev_.CreateAdiosClient<T>(transport_name, params, transport_type);
       // set up GID comm to do setup phase and get the
@@ -279,6 +295,12 @@ private:
     redev::Redev& redev_;
     std::string name_;
   };
+  template <>
+  struct FieldCommunicatorModel<void> final : public FieldCommunicatorConcept
+  {
+    void Send() {}
+    void Receive() {}
+  };
 
   std::unique_ptr<FieldCommunicatorConcept> field_communicator_;
 };
@@ -288,21 +310,6 @@ struct FieldTransferOptions
   FieldTransferMethod transfer_method;
   FieldEvaluationMethod evaluation_method;
 };
-
-struct GatherOperation
-{
-  /*
-  void operator()() {
-    for(auto& field : fields_) {
-    }
-    // receive
-  }
-  std::vector<OmegaHField<T,detail::InternalCoordinateElementType>> fields_;
-  OmegaHField<T,detail::InternalCoordinateElementType> internal_field_;
-   */
-};
-struct ScatterOperation
-{};
 
 namespace detail
 {
@@ -317,10 +324,22 @@ auto& find_or_error(const std::string& name,
   return it->second;
 }
 
+template <typename T>
+struct SourceFieldIdentity
+{
+  using type = T;
+};
+template <typename T>
+struct TargetFieldIdentity
+{
+  using type = T;
+};
 struct TransferOperation
 {
   template <typename SourceField, typename TargetField>
-  TransferOperation(FieldTransferMethod ftm, FieldEvaluationMethod fem)
+  TransferOperation(SourceFieldIdentity<SourceField>,
+                    TargetFieldIdentity<TargetField>, FieldTransferMethod ftm,
+                    FieldEvaluationMethod fem)
   {
     transfer_operation_ =
       std::make_unique<TransferOperationModel<SourceField, TargetField>>(ftm,
@@ -393,25 +412,129 @@ private:
 
 } // namespace detail
 
-class CoupledField {
+class CoupledField
+{
 public:
-  void Send() const { comm_.Send();}
-  void Receive() const { comm_.Receive();}
-
-  template <typename T>
-  void NativeToInternal(OmegaHField<T,HostMemorySpace> & internal) {
-    native_to_internal_.SetTargetField(internal);
-    native_to_internal_.Run();
+  class GatherScatterPasskey
+  {
+  private:
+    friend class GatherOperation;
+    friend class ScatterOperation;
+    GatherScatterPasskey() = default;
+    GatherScatterPasskey(const GatherScatterPasskey&) = default;
+    GatherScatterPasskey(GatherScatterPasskey&&) = delete;
+    GatherScatterPasskey& operator=(const GatherScatterPasskey&) = delete;
+    GatherScatterPasskey& operator=(GatherScatterPasskey&&) = delete;
+  };
+  // only coupler creates coupled field??
+  // don't really want "internal" field or TransferOperation in interface
+  CoupledField(FieldCommunicator comm, detail::InternalField internal_field,
+               detail::TransferOperation native_to_internal,
+               detail::TransferOperation internal_to_native)
+    : comm_(std::move(comm)),
+      native_to_internal_(std::move(native_to_internal)),
+      internal_to_native_(std::move(internal_to_native)),
+      internal_field_(std::move(internal_field))
+  {
   }
-  template <typename T>
-  void InternalToNative(const OmegaHField<T,HostMemorySpace> & internal) {
-    internal_to_native_.SetTargetField(internal);
-    internal_to_native_.Run();
+  template <typename FieldShimT>
+  CoupledField(std::string name, redev::Redev&, MPI_Comm mpi_comm,
+               FieldShimT field_shim, FieldTransferMethod,
+               FieldEvaluationMethod, FieldTransferMethod,
+               FieldEvaluationMethod)
+  {
+    // 1. Create field communicator
+  }
+  void Send() const { comm_.Send(); }
+  void Receive() const { comm_.Receive(); }
+  void SyncNativeToInternal(GatherScatterPasskey) { native_to_internal_.Run(); }
+  void SyncInternalToNative(GatherScatterPasskey) { internal_to_native_.Run(); }
+  [[nodiscard]] detail::InternalField& GetInternalField(
+    GatherScatterPasskey) noexcept
+  {
+    return internal_field_;
+  }
+  [[nodiscard]] const detail::InternalField& GetInternalField(
+    GatherScatterPasskey) const noexcept
+  {
+    return internal_field_;
   }
 
+private:
+  // FIXME need to own Field shim here!
   FieldCommunicator comm_;
   detail::TransferOperation native_to_internal_;
   detail::TransferOperation internal_to_native_;
+  detail::InternalField internal_field_;
+};
+
+class GatherOperation
+{
+public:
+  using Combiner = std::function<void(
+    const std::vector<std::reference_wrapper<detail::InternalField>>&,
+    detail::InternalField&)>;
+  GatherOperation(
+    std::vector<std::reference_wrapper<CoupledField>> fields_to_gather,
+    detail::InternalField& combined_field, Combiner combiner)
+    : coupled_fields_(std::move(fields_to_gather)),
+      combined_field_{combined_field},
+      combiner_(std::move(combiner))
+  {
+
+    internal_fields_.reserve(coupled_fields_.size());
+    std::transform(begin(coupled_fields_), end(coupled_fields_),
+                   std::back_inserter(internal_fields_), [](CoupledField& fld) {
+                     return std::ref(fld.GetInternalField(
+                       CoupledField::GatherScatterPasskey()));
+                   });
+  }
+  void Run() const
+  {
+    for (auto& field : coupled_fields_) {
+      field.get().Receive();
+      field.get().SyncNativeToInternal(CoupledField::GatherScatterPasskey());
+    }
+    combiner_(internal_fields_, combined_field_);
+  };
+
+private:
+  std::vector<std::reference_wrapper<CoupledField>> coupled_fields_;
+  std::vector<std::reference_wrapper<detail::InternalField>> internal_fields_;
+  detail::InternalField& combined_field_;
+  Combiner combiner_;
+};
+class ScatterOperation
+{
+public:
+  ScatterOperation(
+    std::vector<std::reference_wrapper<CoupledField>> fields_to_scatter,
+    detail::InternalField& combined_field)
+    : coupled_fields_(std::move(fields_to_scatter)),
+      combined_field_{combined_field}
+  {
+
+    internal_fields_.reserve(coupled_fields_.size());
+    std::transform(begin(coupled_fields_), end(coupled_fields_),
+                   std::back_inserter(internal_fields_), [](CoupledField& fld) {
+                     return std::ref(fld.GetInternalField(
+                       CoupledField::GatherScatterPasskey()));
+                   });
+  }
+  void Run() const
+  {
+    // possible we may need to add a splitter operation here. will evaluate if
+    // needed splitter(combined_field, internal_fields_);
+    for (auto& field : coupled_fields_) {
+      field.get().SyncInternalToNative(CoupledField::GatherScatterPasskey());
+      field.get().Send();
+    }
+  };
+
+private:
+  std::vector<std::reference_wrapper<CoupledField>> coupled_fields_;
+  std::vector<std::reference_wrapper<detail::InternalField>> internal_fields_;
+  detail::InternalField& combined_field_;
 };
 
 // TODO: refactor into ClientCoupler, ServerCoupler, BaseCoupler or Coupler<PT>
@@ -429,36 +552,34 @@ public:
   template <typename FieldShimT>
   CoupledField* AddField(std::string unique_name, FieldShimT field_shim)
   {
-    /*
     auto [it, inserted] = fields_.template try_emplace(
-      unique_name, std::make_unique<FieldCommunicatorModel<FieldShimT>>(
-                     unique_name, redev_, mpi_comm_, std::move(field_shim)));
+      unique_name, unique_name, redev_, mpi_comm_, std::move(field_shim));
     if (!inserted) {
-      std::cerr << "Field with this name" << unique_name << "already exists!\n";
+      std::cerr << "OHField with this name" << unique_name
+                << "already exists!\n";
       std::exit(EXIT_FAILURE);
     }
     REDEV_ALWAYS_ASSERT(it->second != nullptr);
-    return static_cast<FieldCommunicatorModel<FieldShimT>*>(it->second.get());
-     */
+    return it->second;
   }
   template <typename FieldShimT>
   CoupledField* AddField(std::string unique_name, FieldShimT field_shim,
-                  FieldTransferMethod to_field_transfer_method,
-                  FieldEvaluationMethod to_field_eval_method,
-                  FieldTransferMethod from_field_transfer_method,
-                  FieldEvaluationMethod from_field_eval_method)
+                         FieldTransferMethod to_field_transfer_method,
+                         FieldEvaluationMethod to_field_eval_method,
+                         FieldTransferMethod from_field_transfer_method,
+                         FieldEvaluationMethod from_field_eval_method)
   {
-    /*
     auto [it, inserted] = fields_.template try_emplace(
-      unique_name, std::make_unique<FieldCommunicatorModel<FieldShimT>>(
-                     unique_name, redev_, mpi_comm_, std::move(field_shim)));
+      unique_name, unique_name, redev_, mpi_comm_, std::move(field_shim),
+      to_field_transfer_method, to_field_eval_method,
+      from_field_transfer_method, from_field_eval_method);
     if (!inserted) {
-      std::cerr << "Field with this name" << unique_name << "already exists!\n";
+      std::cerr << "OHField with this name" << unique_name
+                << "already exists!\n";
       std::exit(EXIT_FAILURE);
     }
     REDEV_ALWAYS_ASSERT(it->second != nullptr);
-    return static_cast<FieldCommunicatorModel<FieldShimT>*>(it->second.get());
-    */
+    return it->second;
   }
 
   // here we take a string, not string_view since we need to search map
@@ -477,23 +598,23 @@ public:
       field_comm->Send();
     }
      */
+    detail::find_or_error(name, scatter_operations_).Run();
   }
   // here we take a string, not string_view since we need to search map
   void GatherFields(const std::string& name)
   {
-    auto& gather_op = detail::find_or_error(name, gather_operations_);
-    // gather op needs to store a copy of the appropriate field transfer op. Upon
-    // construction of gather op the field_transfer_op is set for each
+    detail::find_or_error(name, gather_operations_).Run();
+    // gather op needs to store a copy of the appropriate field transfer op.
+    // Upon construction of gather op the field_transfer_op is set for each
     // field since we only then have
     // the pointer to the internal field (it's created in CreateGatherOp).
     // note that we end up taking a copy of the TransferOp since a single field
     // may get transferred onto multiple internal fields!
-
-    gather_op.Receive();
-    //for field in fields:
-    gather_op.NativeToInternal();
-    gather_op.Combine();
-    // or just gather_op.Run();
+    // gather_op.Receive();
+    ////for field in fields:
+    // gather_op.NativeToInternal();
+    // gather_op.Combine();
+    //  or just gather_op.Run();
   }
   void SendField(const std::string& name)
   {
@@ -510,9 +631,9 @@ private:
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
   std::unordered_map<std::string, CoupledField> fields_;
-  // Do we want to make this thing more specific and have
-  // type erase Omega_h field?
-  std::unordered_map<std::string, Field> internal_fields_;
+  // coupler owns internal fields since both gather/scatter ops use these
+  std::unordered_map<std::string, detail::InternalField> internal_fields_;
+  // gather and scatter operations have reference to internal fields
   std::unordered_map<std::string, GatherOperation> scatter_operations_;
   std::unordered_map<std::string, ScatterOperation> gather_operations_;
 };

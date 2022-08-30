@@ -2,77 +2,171 @@
 #include <Omega_h_vtk.hpp>
 #include <wdmcpl/transfer_field.h>
 #include <wdmcpl/omega_h_field.h>
+// for transfer operation dummy test
+#include <wdmcpl.h>
 
 using wdmcpl::Real;
-using Field = wdmcpl::OmegaHField<Real,Real>;
-using wdmcpl::set;
+using OHField = wdmcpl::OmegaHField<Real, Real>;
+using OHShim = wdmcpl::OmegaHFieldShim<Real, Real>;
+using wdmcpl::copy_field;
 using wdmcpl::get_nodal_coordinates;
 using wdmcpl::get_nodal_data;
-using wdmcpl::make_array_view;
 using wdmcpl::interpolate_field;
-using wdmcpl::copy_field;
+using wdmcpl::make_array_view;
+using wdmcpl::set;
 
-struct MeanCombiner {
-  void operator()(std::vector<std::reference_wrapper<Field>> fields, Field& combined) const {
+void f()
+{
+  Omega_h::Mesh mesh;
+  wdmcpl::OmegaHField<int, double> f("id", mesh);
+  wdmcpl::detail::TransferOperation op(
+    f, f, wdmcpl::FieldTransferMethod::Copy,
+    wdmcpl::FieldEvaluationMethod::Lagrange1);
+  wdmcpl::Field n(f);
+  op.SetSourceField(n);
+  op.SetTargetField(n);
+  op.Run();
+}
+
+struct MeanCombiner
+{
+  void operator()(std::vector<std::reference_wrapper<OHField>> fields,
+                  OHField& combined) const
+  {
     auto field_size = combined.Size();
     Omega_h::Write<Real> combined_array(field_size);
-    for( auto& field : fields) {
+    for (auto& field : fields) {
       assert(field.get().Size() == field_size);
       auto field_array = get_nodal_data(field.get());
-      Omega_h::parallel_for(field_size, OMEGA_H_LAMBDA(int i){
-                                         combined_array[i] += field_array[i];
-                                        });
+      Omega_h::parallel_for(
+        field_size,
+        OMEGA_H_LAMBDA(int i) { combined_array[i] += field_array[i]; });
     }
     auto num_fields = fields.size();
-    Omega_h::parallel_for(field_size, OMEGA_H_LAMBDA(int i){
-      combined_array[i] /= num_fields;
-    });
+    Omega_h::parallel_for(
+      field_size, OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
     set(combined, make_array_view(Omega_h::Read(combined_array)));
   }
 };
+void SetApplicationFields(const OHField& app_a_field,
+                          const OHField& app_b_field);
 
-int main(int argc, char** argv) {
+using wdmcpl::CoupledField;
+using wdmcpl::FieldCommunicator;
+using wdmcpl::FieldEvaluationMethod;
+using wdmcpl::FieldTransferMethod;
+using wdmcpl::GatherOperation;
+using wdmcpl::detail::InternalField;
+using wdmcpl::detail::SourceFieldIdentity;
+using wdmcpl::detail::TargetFieldIdentity;
+using wdmcpl::detail::TransferOperation;
 
-  auto lib = Omega_h::Library{&argc, &argv};
-  auto world = lib.world();
-  auto internal_mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 40, 40, 0, false);
-  auto app_mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  assert(internal_mesh.dim() == 2 && app_mesh.dim() == 2);
-  Field app_a_field("app_a_field",app_mesh);
-  Field app_b_field("app_b_field",app_mesh);
-  Field internal_app_a_field("internal_app_a_field",internal_mesh);
-  Field internal_app_b_field("internal_app_b_field",internal_mesh);
-  Field internal_combined("internal_combined",internal_mesh);
+void test_gather_operation(Omega_h::Mesh& internal_mesh,
+                           Omega_h::Mesh& app_mesh)
+{
+  OHField app_a_field("gather_app_a_field", app_mesh);
+  OHField app_b_field("gather_app_b_field", app_mesh);
+  wdmcpl::detail::InternalField f(app_a_field);
+  SetApplicationFields(app_a_field, app_b_field);
+  // workaround since can't specify types in class constructor
+  // wdmcpl::detail::TransferOperation to(
+  //  SourceFieldIdentity<OHField>{}, TargetFieldIdentity<OHField>{},
+  //  FieldTransferMethod::Interpolate, FieldEvaluationMethod::Lagrange1);
+  // InternalField internal_app_a_field{};
+  InternalField internal_app_b_field{
+    OHField("gather_app_b_field.__internal__", internal_mesh)};
+  /*
+  CoupledField cpl_field_a(
+    FieldCommunicator(), // null communicator for test case
+    OHField("gather_app_a_field.__internal__", internal_mesh),
+    // native to internal
+    TransferOperation(SourceFieldIdentity<OHField>{},
+      TargetFieldIdentity<OHField>{},
+      FieldTransferMethod::Interpolate, FieldEvaluationMethod::Lagrange1),
+    TransferOperation(SourceFieldIdentity<OHField>{},
+                      TargetFieldIdentity<OHField>{},
+                      FieldTransferMethod::Interpolate,
+                      FieldEvaluationMethod::NearestNeighbor));
+                      */
+  MPI_Comm mpi_comm = MPI_COMM_WORLD;
+  redev::Redev redev{mpi_comm, redev::ClassPtn{}};
+  CoupledField cpl_field_a(
+    "cpl_field_a", redev, mpi_comm, OHShim("gather_app_a", app_mesh),
+    FieldTransferMethod::Interpolate, FieldEvaluationMethod::Lagrange1,
+    FieldTransferMethod::Interpolate, FieldEvaluationMethod::NearestNeighbor);
+
+  InternalField combined{
+    OHField("gather_combined.__internal__", internal_mesh)};
+
+  // CoupledField()
+
+  // OHField internal_combined("gather_internal_combined", internal_mesh);
+}
+void test_standalone(Omega_h::Mesh& internal_mesh, Omega_h::Mesh& app_mesh)
+{
+  OHField app_a_field("app_a_field", app_mesh);
+  OHField app_b_field("app_b_field", app_mesh);
+  SetApplicationFields(app_a_field, app_b_field);
+
+  OHField internal_app_a_field("internal_app_a_field", internal_mesh);
+  OHField internal_app_b_field("internal_app_b_field", internal_mesh);
+  OHField internal_combined("internal_combined", internal_mesh);
+  // copy_field(app_a_field, app_b_field);
+
+  // set(app_b_field, make_array_view(read_values));
+  interpolate_field(app_a_field, internal_app_a_field, wdmcpl::Lagrange<1>{});
+  interpolate_field(app_b_field, internal_app_b_field,
+                    wdmcpl::NearestNeighbor{});
+
+  // combine after interpolation
+  MeanCombiner combiner{};
+  std::vector<std::reference_wrapper<OHField>> internal_fields{
+    internal_app_a_field, internal_app_b_field};
+  combiner(internal_fields, internal_combined);
+}
+void SetApplicationFields(const OHField& app_a_field,
+                          const OHField& app_b_field)
+{
   auto app_nodal_coords = get_nodal_coordinates(app_a_field);
   Omega_h::Write<double> values_a(app_a_field.Size());
   Omega_h::Write<double> values_b(app_b_field.Size());
   assert(app_a_field.Size() == app_b_field.Size());
-  assert(app_a_field.Size() == app_nodal_coords.size()/2);
-  for(int i=0; i<app_nodal_coords.size()/2; ++i) {
-    auto x = app_nodal_coords[i*2]-0.5;
-    auto y = app_nodal_coords[i*2+1]-0.5;
-    auto r = sqrt(x*x+y*y);
-    r = r>1E-3?r:1E-3;
-    std::cout<<r<<"\n";
-    //values[i] = 1/r;
-    values_b[i] = sin(x)*sin(y);
-    values_a[i] = cos(x)*cos(y);
+  assert(app_a_field.Size() == app_nodal_coords.size() / 2);
+  for (int i = 0; i < app_nodal_coords.size() / 2; ++i) {
+    auto x = (app_nodal_coords[i * 2] - 0.5) * 3.1415 * 2;
+    auto y = (app_nodal_coords[i * 2 + 1] - 0.5) * 3.1415 * 2;
+    auto r = sqrt(x * x + y * y);
+    r = r > 1E-3 ? r : 1E-3;
+    // values[i] = 1/r;
+    values_b[i] = sin(x) * sin(y);
+    values_a[i] = cos(x) * cos(y);
   }
-  //auto read_values = Omega_h::Read(values);
+  // auto read_values = Omega_h::Read(values);
   set(app_a_field, make_array_view(Omega_h::Read(values_a)));
   set(app_b_field, make_array_view(Omega_h::Read(values_b)));
-  //copy_field(app_a_field, app_b_field);
+}
 
-  //set(app_b_field, make_array_view(read_values));
-  interpolate_field(app_a_field,internal_app_a_field, wdmcpl::Lagrange<1>{});
-  interpolate_field(app_b_field,internal_app_b_field, wdmcpl::NearestNeighbor{});
+int main(int argc, char** argv)
+{
 
-  // combine after interpolation
-  MeanCombiner combiner{};
-  std::vector<std::reference_wrapper<Field>> internal_fields{internal_app_a_field, internal_app_b_field};
-  combiner(internal_fields, internal_combined);
+  auto lib = Omega_h::Library{&argc, &argv};
+  auto world = lib.world();
+  auto internal_mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 40, 40, 0, false);
+  auto app_mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
 
-  Omega_h::vtk::write_parallel("internal_mesh.vtk", &internal_mesh, internal_mesh.dim());
+  // we can try this when search structure is working better
+  // auto internal_mesh = Omega_h::Mesh{&lib};
+  // Omega_h::binary::read("./d3d-full_9k_sfc.osh",lib.world(), &internal_mesh);
+  // auto app_mesh = Omega_h::Mesh{&lib};
+  // Omega_h::binary::read("./d3d-full_9k_sfc.osh", lib.world(), &app_mesh);
+  assert(internal_mesh.dim() == 2 && app_mesh.dim() == 2);
+  test_standalone(internal_mesh, app_mesh);
+
+  Omega_h::vtk::write_parallel("internal_mesh.vtk", &internal_mesh,
+                               internal_mesh.dim());
   Omega_h::vtk::write_parallel("app_mesh.vtk", &app_mesh, app_mesh.dim());
+
   return 0;
 }

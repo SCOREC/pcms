@@ -131,13 +131,13 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   //                      "combined_gids", MeanCombiner{});
 
   do {
-    //  Gather Field
+    //  Gather OHField
     // 1. receives any member fields .Receive()
     // 2. field_transfer native to internal
     // 3. combine internal fields into combined internal field
     cpl.GatherFields("cpl1"); // (Alt) scatter->Run();
-    // Scatter Field
-    // 1. Field transfer internal to native
+    // Scatter OHField
+    // 1. OHField transfer internal to native
     // 2. Send data to members
     cpl.ScatterFields("cpl1"); // (Alt) gather->Run();
   } while(!done);

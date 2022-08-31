@@ -41,7 +41,7 @@ struct MeanCombiner
 void SetApplicationFields(const OHField& app_a_field,
                           const OHField& app_b_field);
 
-using wdmcpl::CoupledField;
+using wdmcpl::ConvertibleCoupledField;
 using wdmcpl::FieldEvaluationMethod;
 using wdmcpl::FieldTransferMethod;
 using wdmcpl::GatherOperation;
@@ -61,7 +61,7 @@ void test_gather_operation(Omega_h::Mesh& internal_mesh,
                                 FieldEvaluationMethod::Lagrange1};
   TransferOptions transfer_nn{FieldTransferMethod::Interpolate,
                               FieldEvaluationMethod::NearestNeighbor};
-  std::vector<CoupledField<ProcessType::Server>> coupled_fields;
+  std::vector<ConvertibleCoupledField> coupled_fields;
   coupled_fields.reserve(2);
   coupled_fields.emplace_back("gather_app_a", OHShim("gather_app_a", app_mesh),
                               FieldCommunicator<void>(), internal_mesh,

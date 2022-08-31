@@ -75,7 +75,8 @@ using wdmcpl::Lagrange;
 using wdmcpl::make_array_view;
 using wdmcpl::OmegaHField;
 using wdmcpl::OmegaHFieldShim;
-using wdmcpl::Coupler;
+using wdmcpl::CouplerServer;
+using wdmcpl::CouplerClient;
 using wdmcpl::FieldEvaluationMethod;
 using wdmcpl::FieldTransferMethod;
 
@@ -83,11 +84,11 @@ static constexpr bool done = true;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  /*
-  Coupler<PT::Client> cpl("proxy_couple", comm, redev::ClassPtn{});
+  CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
   auto* df_gid_field = cpl.AddField("delta_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
 
+  /*
   do {
     cpl.SendField("_gids"); //(Alt) df_gid_field->Send();
     cpl.ReceiveField("delta_f_gids"); //(Alt) df_gid_field->Receive();
@@ -96,7 +97,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  wdmcpl::Coupler<PT::Client> cpl("proxy_couple", comm, redev::ClassPtn{});
+  wdmcpl::CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
   auto tf_gid_field = cpl.AddField("total_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
   /*
@@ -108,8 +109,9 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 }
 void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
-  wdmcpl::Coupler<PT::Server> cpl("proxy_couple", comm,
-                                  setupServerPartition(mesh, cpn_file));
+  // coupling server using same mesh as application
+  wdmcpl::CouplerServer cpl("proxy_couple", comm,
+                                  setupServerPartition(mesh, cpn_file),mesh);
   auto is_overlap = markOverlapMeshEntities(mesh);
   // Note: coupler takes ownership of the field shim as well as
   cpl.AddField("total_f_gids",

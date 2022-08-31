@@ -142,7 +142,6 @@ bool HasDuplicates(std::vector<T> v)
   return it != v.end();
 }
 
-// TODO: cleanup...consider moving field_communicator to detail namespace
 template <typename FieldShimT>
 struct FieldCommunicator
 {
@@ -182,10 +181,7 @@ public:
   void Send()
   {
     auto n = field_shim_.Serialize({}, {});
-    if (comm_buffer_.size() != n) {
-      UpdateLayout();
-      REDEV_ALWAYS_ASSERT(comm_buffer_.size() == n);
-    }
+    REDEV_ALWAYS_ASSERT(comm_buffer_.size() == n);
 
     auto buffer = ScalarArrayView<typename decltype(comm_buffer_)::value_type,
                                   HostMemorySpace>(comm_buffer_.data(),
@@ -267,13 +263,21 @@ private:
 template <>
 struct FieldCommunicator<void>
 {
-  void Send() const {}
-  void Receive() const {}
+  void Send() {}
+  void Receive() {}
 };
 // helper function for dealing with field maps
 template <typename T, typename U>
 auto& find_or_error(const std::string& name,
                     const std::unordered_map<T, U>& map)
+{
+  auto it = map.find(name);
+  WDMCPL_ALWAYS_ASSERT(it != map.end());
+  return it->second;
+}
+template <typename T, typename U>
+auto& find_or_error(const std::string& name,
+                    std::unordered_map<T, U>& map)
 {
   auto it = map.find(name);
   WDMCPL_ALWAYS_ASSERT(it != map.end());
@@ -300,15 +304,12 @@ struct TransferOptions
   FieldEvaluationMethod evaluation_method;
 };
 
-template <ProcessType>
-class CoupledField;
-
-template <>
-class CoupledField<ProcessType::Server>
+// TODO: come up with better name for this...Don't like CoupledFieldServer because it's necessarily tied to the Server of the coupler
+class ConvertibleCoupledField
 {
 public:
   template <typename FieldShimT, typename CommT>
-  CoupledField(const std::string& name, FieldShimT field_shim,
+  ConvertibleCoupledField(const std::string& name, FieldShimT field_shim,
                detail::FieldCommunicator<CommT> field_comm,
                Omega_h::Mesh& internal_mesh, TransferOptions native_to_internal,
                TransferOptions internal_to_native)
@@ -321,7 +322,7 @@ public:
       std::move(native_to_internal), std::move(internal_to_native));
   }
   template <typename FieldShimT>
-  CoupledField(const std::string& name, FieldShimT field_shim,
+  ConvertibleCoupledField(const std::string& name, FieldShimT field_shim,
                redev::Redev& redev, MPI_Comm mpi_comm,
                Omega_h::Mesh& internal_mesh, TransferOptions native_to_internal,
                TransferOptions internal_to_native)
@@ -329,9 +330,6 @@ public:
                                   detail::InternalCoordinateElement>(
         name + ".__internal__", internal_mesh)}
   {
-    // FIXME: push field communicator construction down into the model type
-    // otherwise bad things happen since we don't operate on correct copy of the
-    // field_shim
     coupled_field_ = std::make_unique<
       CoupledFieldModel<FieldShimT, FieldShimT>>(
       name, std::move(field_shim), redev, mpi_comm,
@@ -415,7 +413,6 @@ public:
     };
 
     FieldShimT field_shim_;
-    // TODO unwrap FieldCommunicator use (FieldCommunicator<T>)
     detail::FieldCommunicator<CommT> comm_;
     TransferOptions native_to_internal_;
     TransferOptions internal_to_native_;
@@ -429,8 +426,7 @@ private:
   // function
   detail::InternalField internal_field_;
 };
-template <>
-class CoupledField<ProcessType::Client>
+class CoupledField
 {
 public:
   template <typename FieldShimT, typename CommT>
@@ -496,7 +492,7 @@ public:
     nonstd::span<const std::reference_wrapper<detail::InternalField>>,
     detail::InternalField&)>;
   GatherOperation(
-    nonstd::span<CoupledField<ProcessType::Server>> fields_to_gather,
+    nonstd::span<ConvertibleCoupledField> fields_to_gather,
     detail::InternalField& combined_field, Combiner combiner)
     : coupled_fields_(std::move(fields_to_gather)),
       combined_field_{combined_field},
@@ -506,7 +502,7 @@ public:
     internal_fields_.reserve(coupled_fields_.size());
     std::transform(coupled_fields_.begin(), coupled_fields_.end(),
                    std::back_inserter(internal_fields_),
-                   [](CoupledField<ProcessType::Server>& fld) {
+                   [](ConvertibleCoupledField& fld) {
                      return std::ref(
                        fld.GetInternalField(detail::GatherScatterPasskey()));
                    });
@@ -521,7 +517,7 @@ public:
   };
 
 private:
-  nonstd::span<CoupledField<ProcessType::Server>> coupled_fields_;
+  nonstd::span<ConvertibleCoupledField> coupled_fields_;
   std::vector<std::reference_wrapper<detail::InternalField>> internal_fields_;
   detail::InternalField& combined_field_;
   Combiner combiner_;
@@ -530,7 +526,7 @@ class ScatterOperation
 {
 public:
   ScatterOperation(
-    std::vector<std::reference_wrapper<CoupledField<ProcessType::Server>>>
+    std::vector<std::reference_wrapper<ConvertibleCoupledField>>
       fields_to_scatter,
     detail::InternalField& combined_field)
     : coupled_fields_(std::move(fields_to_scatter)),
@@ -540,7 +536,7 @@ public:
     internal_fields_.reserve(coupled_fields_.size());
     std::transform(begin(coupled_fields_), end(coupled_fields_),
                    std::back_inserter(internal_fields_),
-                   [](CoupledField<ProcessType::Server>& fld) {
+                   [](ConvertibleCoupledField& fld) {
                      return std::ref(
                        fld.GetInternalField(detail::GatherScatterPasskey()));
                    });
@@ -556,48 +552,24 @@ public:
   };
 
 private:
-  std::vector<std::reference_wrapper<CoupledField<ProcessType::Server>>>
+  std::vector<std::reference_wrapper<ConvertibleCoupledField>>
     coupled_fields_;
   std::vector<std::reference_wrapper<detail::InternalField>> internal_fields_;
   detail::InternalField& combined_field_;
 };
 
-// TODO: refactor into ClientCoupler, ServerCoupler, BaseCoupler or Coupler<PT>
-// with base with shared
-template <ProcessType PT>
-class Coupler
+class CouplerServer
 {
 public:
-  Coupler(std::string name, MPI_Comm comm, redev::Partition partition)
+  CouplerServer(std::string name, MPI_Comm comm, redev::Partition partition, Omega_h::Mesh mesh)
     : name_(std::move(name)),
       mpi_comm_(comm),
-      redev_({comm, std::move(partition), PT})
+      redev_({comm, std::move(partition), ProcessType::Server}),
+      internal_mesh_(std::move(mesh))
   {
   }
-  // note enable_if needs to include FieldShimT in resolution so that enable_if
-  // is operating in deduced context
   template <typename FieldShimT>
-  std::enable_if_t<(PT == ProcessType::Client) ||
-                     detail::dependent_always_false<FieldShimT>::value,
-                   CoupledField<ProcessType::Client>*>
-  AddField(std::string unique_name, FieldShimT field_shim)
-  {
-    auto [it, inserted] = fields_.template try_emplace(
-      unique_name, unique_name, std::move(field_shim), redev_, mpi_comm_);
-    if (!inserted) {
-      std::cerr << "OHField with this name" << unique_name
-                << "already exists!\n";
-      std::terminate();
-    }
-    return &(it->second);
-  }
-  // note enable_if needs to include FieldShimT in resolution so that enable_if
-  // is operating in deduced context
-  template <typename FieldShimT>
-  std::enable_if_t<(PT == ProcessType::Server) ||
-                     detail::dependent_always_false<FieldShimT>::value,
-                   CoupledField<ProcessType::Server>*>
-  AddField(std::string unique_name, FieldShimT field_shim,
+  ConvertibleCoupledField* AddField(std::string unique_name, FieldShimT field_shim,
            FieldTransferMethod to_field_transfer_method,
            FieldEvaluationMethod to_field_eval_method,
            FieldTransferMethod from_field_transfer_method,
@@ -637,17 +609,52 @@ public:
 
 private:
   std::string name_;
-  static constexpr ProcessType process_type_{PT};
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
-  std::unordered_map<std::string, CoupledField<PT>> fields_;
+  std::unordered_map<std::string, ConvertibleCoupledField> fields_;
   // coupler owns internal fields since both gather/scatter ops use these
   std::unordered_map<std::string, detail::InternalField> internal_fields_;
   // gather and scatter operations have reference to internal fields
   std::unordered_map<std::string, GatherOperation> scatter_operations_;
   std::unordered_map<std::string, ScatterOperation> gather_operations_;
-  // FIXME: Initialize internal mesh on server only!
   Omega_h::Mesh internal_mesh_;
+};
+class CouplerClient
+{
+public:
+  CouplerClient(std::string name, MPI_Comm comm, redev::Partition partition)
+  : name_(std::move(name)),
+  mpi_comm_(comm),
+  redev_({comm, std::move(partition), ProcessType::Client})
+  {
+  }
+  template <typename FieldShimT>
+  CoupledField* AddField(std::string unique_name, FieldShimT field_shim)
+  {
+    auto [it, inserted] = fields_.template try_emplace(
+      unique_name, unique_name, std::move(field_shim), redev_, mpi_comm_);
+    if (!inserted) {
+      std::cerr << "OHField with this name" << unique_name
+                << "already exists!\n";
+      std::terminate();
+    }
+    return &(it->second);
+  }
+
+  void SendField(const std::string& name)
+  {
+    detail::find_or_error(name, fields_).Send();
+  };
+  void ReceiveField(const std::string& name)
+  {
+    detail::find_or_error(name, fields_).Receive();
+  };
+
+private:
+  std::string name_;
+  MPI_Comm mpi_comm_;
+  redev::Redev redev_;
+  std::unordered_map<std::string, CoupledField> fields_;
 };
 } // namespace wdmcpl
 

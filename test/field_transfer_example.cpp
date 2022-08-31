@@ -16,6 +16,7 @@ using wdmcpl::interpolate_field;
 using wdmcpl::make_array_view;
 using wdmcpl::set;
 
+inline constexpr int num_trials=1000;
 
 struct MeanCombiner
 {
@@ -46,6 +47,7 @@ using wdmcpl::FieldTransferMethod;
 using wdmcpl::GatherOperation;
 using wdmcpl::TransferOptions;
 using wdmcpl::detail::InternalField;
+using wdmcpl::FieldCommunicator;
 
 void test_gather_operation(Omega_h::Mesh& internal_mesh,
                            Omega_h::Mesh& app_mesh)
@@ -64,12 +66,12 @@ void test_gather_operation(Omega_h::Mesh& internal_mesh,
   coupled_fields.reserve(2);
   coupled_fields.emplace_back("gather_app_a",
                               OHShim("gather_app_a", app_mesh),
-                              wdmcpl::FieldCommunicator(),
+                              FieldCommunicator<void>(),
                               internal_mesh,
                               transfer_lag1, transfer_lag1);
   coupled_fields.emplace_back("gather_app_b",
                               OHShim("gather_app_b", app_mesh),
-                              wdmcpl::FieldCommunicator(),
+                              FieldCommunicator<void>(),
                               internal_mesh,
                               transfer_nn, transfer_lag1);
   GatherOperation gather(
@@ -87,7 +89,7 @@ void test_gather_operation(Omega_h::Mesh& internal_mesh,
       auto& typed_combined_field = std::get<OHField>(combined_field);
       std::invoke(MeanCombiner{}, typed_fields, typed_combined_field);
     });
-  for(int i=0; i<100; ++i) {
+  for(int i=0; i<num_trials; ++i) {
     gather.Run();
   }
 }
@@ -103,7 +105,7 @@ void test_standalone(Omega_h::Mesh& internal_mesh, Omega_h::Mesh& app_mesh)
   OHField internal_combined("internal_combined", internal_mesh);
   // copy_field(app_a_field, app_b_field);
 
-  for(int i=0; i<100; ++i) {
+  for(int i=0; i<num_trials; ++i) {
   // set(app_b_field, make_array_view(read_values));
   interpolate_field(app_a_field, internal_app_a_field, wdmcpl::Lagrange<1>{});
   interpolate_field(app_b_field, internal_app_b_field,

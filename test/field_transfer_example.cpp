@@ -16,7 +16,7 @@ using wdmcpl::interpolate_field;
 using wdmcpl::make_array_view;
 using wdmcpl::set;
 
-inline constexpr int num_trials=1000;
+inline constexpr int num_trials = 1000;
 
 struct MeanCombiner
 {
@@ -45,9 +45,10 @@ using wdmcpl::CoupledField;
 using wdmcpl::FieldEvaluationMethod;
 using wdmcpl::FieldTransferMethod;
 using wdmcpl::GatherOperation;
+using wdmcpl::ProcessType;
 using wdmcpl::TransferOptions;
-using wdmcpl::detail::InternalField;
 using wdmcpl::detail::FieldCommunicator;
+using wdmcpl::detail::InternalField;
 
 void test_gather_operation(Omega_h::Mesh& internal_mesh,
                            Omega_h::Mesh& app_mesh)
@@ -55,24 +56,18 @@ void test_gather_operation(Omega_h::Mesh& internal_mesh,
   OHField app_a_field("gather_app_a", app_mesh);
   OHField app_b_field("gather_app_b", app_mesh);
   SetApplicationFields(app_a_field, app_b_field);
-  MPI_Comm mpi_comm = MPI_COMM_WORLD;
-  redev::Redev redev{mpi_comm, redev::ClassPtn{}};
   InternalField combined_field(OHField("gather_combined", internal_mesh));
   TransferOptions transfer_lag1{FieldTransferMethod::Interpolate,
-                                   FieldEvaluationMethod::Lagrange1};
+                                FieldEvaluationMethod::Lagrange1};
   TransferOptions transfer_nn{FieldTransferMethod::Interpolate,
-                                   FieldEvaluationMethod::NearestNeighbor};
-  std::vector<CoupledField> coupled_fields;
+                              FieldEvaluationMethod::NearestNeighbor};
+  std::vector<CoupledField<ProcessType::Server>> coupled_fields;
   coupled_fields.reserve(2);
-  coupled_fields.emplace_back("gather_app_a",
-                              OHShim("gather_app_a", app_mesh),
-                              FieldCommunicator<void>(),
-                              internal_mesh,
+  coupled_fields.emplace_back("gather_app_a", OHShim("gather_app_a", app_mesh),
+                              FieldCommunicator<void>(), internal_mesh,
                               transfer_lag1, transfer_lag1);
-  coupled_fields.emplace_back("gather_app_b",
-                              OHShim("gather_app_b", app_mesh),
-                              FieldCommunicator<void>(),
-                              internal_mesh,
+  coupled_fields.emplace_back("gather_app_b", OHShim("gather_app_b", app_mesh),
+                              FieldCommunicator<void>(), internal_mesh,
                               transfer_nn, transfer_lag1);
   GatherOperation gather(
     coupled_fields, combined_field,
@@ -81,6 +76,8 @@ void test_gather_operation(Omega_h::Mesh& internal_mesh,
       std::vector<std::reference_wrapper<OHField>> typed_fields;
       typed_fields.reserve(fields.size());
 
+      // this transform is here to let us use the same combiner as with the
+      // hand-rolled solution (test_standalone).
       std::transform(fields.begin(), fields.end(),
                      std::back_inserter(typed_fields),
                      [](const std::reference_wrapper<InternalField>& internal) {
@@ -89,7 +86,7 @@ void test_gather_operation(Omega_h::Mesh& internal_mesh,
       auto& typed_combined_field = std::get<OHField>(combined_field);
       std::invoke(MeanCombiner{}, typed_fields, typed_combined_field);
     });
-  for(int i=0; i<num_trials; ++i) {
+  for (int i = 0; i < num_trials; ++i) {
     gather.Run();
   }
 }
@@ -105,16 +102,16 @@ void test_standalone(Omega_h::Mesh& internal_mesh, Omega_h::Mesh& app_mesh)
   OHField internal_combined("internal_combined", internal_mesh);
   // copy_field(app_a_field, app_b_field);
 
-  for(int i=0; i<num_trials; ++i) {
-  // set(app_b_field, make_array_view(read_values));
-  interpolate_field(app_a_field, internal_app_a_field, wdmcpl::Lagrange<1>{});
-  interpolate_field(app_b_field, internal_app_b_field,
-                    wdmcpl::NearestNeighbor{});
+  for (int i = 0; i < num_trials; ++i) {
+    // set(app_b_field, make_array_view(read_values));
+    interpolate_field(app_a_field, internal_app_a_field, wdmcpl::Lagrange<1>{});
+    interpolate_field(app_b_field, internal_app_b_field,
+                      wdmcpl::NearestNeighbor{});
 
-  // combine after interpolation
-  MeanCombiner combiner{};
-  std::vector<std::reference_wrapper<OHField>> internal_fields{
-    internal_app_a_field, internal_app_b_field};
+    // combine after interpolation
+    MeanCombiner combiner{};
+    std::vector<std::reference_wrapper<OHField>> internal_fields{
+      internal_app_a_field, internal_app_b_field};
 
     combiner(internal_fields, internal_combined);
   }
@@ -164,10 +161,12 @@ int main(int argc, char** argv)
                                internal_mesh.dim());
   Omega_h::vtk::write_parallel("app_mesh.vtk", &app_mesh, app_mesh.dim());
   auto point4 = std::chrono::steady_clock::now();
-  std::cout<<"Test Standalone: "<<std::chrono::duration<double>(point2-point1).count()<<"\n";
-  std::cout<<"Test Gather: "<<std::chrono::duration<double>(point3-point2).count()<<"\n";
-  std::cout<<"Write Files: "<<std::chrono::duration<double>(point4-point3).count()<<"\n";
-
+  std::cout << "Test Standalone: "
+            << std::chrono::duration<double>(point2 - point1).count() << "\n";
+  std::cout << "Test Gather: "
+            << std::chrono::duration<double>(point3 - point2).count() << "\n";
+  std::cout << "Write Files: "
+            << std::chrono::duration<double>(point4 - point3).count() << "\n";
 
   return 0;
 }

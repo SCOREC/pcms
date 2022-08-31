@@ -68,17 +68,42 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
 
-using PT = wdmcpl::ProcessType;
+struct MeanCombiner
+{
+  //void operator()(const std::vector<std::reference_wrapper<OHField>>& fields,
+  //                OHField& combined) const
+  void operator()(const nonstd::span<const std::reference_wrapper<wdmcpl::detail::InternalField>>& fields,
+                  wdmcpl::detail::InternalField& combined) const
+  {
+    auto field_size = std::visit([](auto&& arg){return arg.Size();}, combined);
+    /*
+    Omega_h::Write<Real> combined_array(field_size);
+    for (auto& field : fields) {
+      assert(field.get().Size() == field_size);
+      auto field_array = get_nodal_data(field.get());
+      Omega_h::parallel_for(
+        field_size,
+        OMEGA_H_LAMBDA(int i) { combined_array[i] += field_array[i]; });
+    }
+    auto num_fields = fields.size();
+    Omega_h::parallel_for(
+      field_size, OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
+    set(combined, make_array_view(Omega_h::Read(combined_array)));
+    */
+  }
+};
+
+
 using wdmcpl::Copy;
+using wdmcpl::CouplerClient;
+using wdmcpl::CouplerServer;
+using wdmcpl::FieldEvaluationMethod;
+using wdmcpl::FieldTransferMethod;
 using wdmcpl::GO;
 using wdmcpl::Lagrange;
 using wdmcpl::make_array_view;
 using wdmcpl::OmegaHField;
 using wdmcpl::OmegaHFieldShim;
-using wdmcpl::CouplerServer;
-using wdmcpl::CouplerClient;
-using wdmcpl::FieldEvaluationMethod;
-using wdmcpl::FieldTransferMethod;
 
 static constexpr bool done = true;
 
@@ -86,32 +111,30 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
-  auto* df_gid_field = cpl.AddField("delta_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
+  auto* df_gid_field =
+    cpl.AddField("delta_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
 
-  /*
   do {
-    cpl.SendField("_gids"); //(Alt) df_gid_field->Send();
+    cpl.SendField("_gids");           //(Alt) df_gid_field->Send();
     cpl.ReceiveField("delta_f_gids"); //(Alt) df_gid_field->Receive();
-  } while(!done);
-   */
+  } while (!done);
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   wdmcpl::CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
-  auto tf_gid_field = cpl.AddField("total_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
-  /*
+  auto tf_gid_field =
+    cpl.AddField("total_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
   do {
-    cpl.SendField("total_f_gids"); //(Alt) tf_gid_field->Send();
+    cpl.SendField("total_f_gids");    //(Alt) tf_gid_field->Send();
     cpl.ReceiveField("total_f_gids"); //(Alt) tf_gid_field->Receive();
-  } while(!done);
-   */
+  } while (!done);
 }
 void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
   // coupling server using same mesh as application
   wdmcpl::CouplerServer cpl("proxy_couple", comm,
-                                  setupServerPartition(mesh, cpn_file),mesh);
+                            setupServerPartition(mesh, cpn_file), mesh);
   auto is_overlap = markOverlapMeshEntities(mesh);
   // Note: coupler takes ownership of the field shim as well as
   cpl.AddField("total_f_gids",
@@ -120,20 +143,20 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
                FieldEvaluationMethod::None,
                FieldTransferMethod::None, // from Omega_h
                FieldEvaluationMethod::None);
-  cpl.AddField(
-    "delta_f_gids", OmegaHFieldShim<GO>("delta_f_gids", mesh, is_overlap),
-    FieldTransferMethod::None, FieldEvaluationMethod::None,
-    FieldTransferMethod::None, FieldEvaluationMethod::None);
+  cpl.AddField("delta_f_gids",
+               OmegaHFieldShim<GO>("delta_f_gids", mesh, is_overlap),
+               FieldTransferMethod::None, FieldEvaluationMethod::None,
+               FieldTransferMethod::None, FieldEvaluationMethod::None);
 
-  /*
-  // Combiner is a functor that takes a vector of omega_h fields combines their values
-  // and sets the combined values into the resultant field
-  auto scatter = cpl.AddGatherFieldsOp("cpl1", {"total_f_gids", "delta_f_gids"},
-                        "combined_gids", MeanCombiner{});
-  auto gather = cpl.AddScatterFieldsOp("cpl1", "combined_gids",
-                         {"total_f_gids", "delta_f_gids"});
+  // CombinerFunction is a functor that takes a vector of omega_h fields
+  // combines their values and sets the combined values into the resultant field
+  auto* gather = cpl.AddGatherFieldsOp(
+    "cpl1", {"total_f_gids", "delta_f_gids"},"combined_gids", MeanCombiner{});
+  auto* scatter = cpl.AddScatterFieldsOp("cpl1", "combined_gids",
+                                         {"total_f_gids", "delta_f_gids"});
   // for case with symmetric Gather/Scatter we have
-  //auto[scatter, gather] = cpl.AddSymmetricGatherScatterOp("cpl1", {"total_f_gids", "delta_f_gids"},
+  // auto [gather, scatter] = cpl.AddSymmetricGatherScatterOp("cpl1",
+  // {"total_f_gids", "delta_f_gids"},
   //                      "combined_gids", MeanCombiner{});
 
   do {
@@ -141,13 +164,14 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     // 1. receives any member fields .Receive()
     // 2. field_transfer native to internal
     // 3. combine internal fields into combined internal field
-    cpl.GatherFields("cpl1"); // (Alt) scatter->Run();
+    //cpl.GatherFields("cpl1"); // (Alt) gather->Run();
+    gather->Run();
     // Scatter OHField
     // 1. OHField transfer internal to native
     // 2. Send data to members
-    cpl.ScatterFields("cpl1"); // (Alt) gather->Run();
-  } while(!done);
-   */
+    //cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
+    scatter->Run();
+  } while (!done);
 }
 
 int main(int argc, char** argv)

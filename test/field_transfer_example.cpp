@@ -69,8 +69,12 @@ void test_gather_operation(Omega_h::Mesh& internal_mesh,
   coupled_fields.emplace_back("gather_app_b", OHShim("gather_app_b", app_mesh),
                               FieldCommunicator<void>(), internal_mesh,
                               transfer_nn, transfer_lag1);
+  std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_view;
+  std::transform(coupled_fields.begin(),coupled_fields.end(),std::back_inserter(coupled_fields_view),
+                 [](ConvertibleCoupledField& field){return std::ref(field);}
+                 );
   GatherOperation gather(
-    coupled_fields, combined_field,
+    coupled_fields_view, combined_field,
     [](nonstd::span<const std::reference_wrapper<InternalField>> fields,
        InternalField& combined_field) {
       std::vector<std::reference_wrapper<OHField>> typed_fields;

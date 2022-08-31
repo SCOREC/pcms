@@ -27,8 +27,7 @@ using InternalCoordinateElement = Real;
 // The coordinate element for all internal fields is the same since
 // all internal fields are on the same mesh
 using InternalField =
-  std::variant<std::monostate,
-               OmegaHField<Omega_h::I8, InternalCoordinateElement>,
+  std::variant<OmegaHField<Omega_h::I8, InternalCoordinateElement>,
                OmegaHField<Omega_h::I32, InternalCoordinateElement>,
                OmegaHField<Omega_h::I64, InternalCoordinateElement>,
                OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
@@ -275,12 +274,50 @@ auto& find_or_error(const std::string& name,
   WDMCPL_ALWAYS_ASSERT(it != map.end());
   return it->second;
 }
+
 template <typename T, typename U>
-auto& find_or_error(const std::string& name,
-                    std::unordered_map<T, U>& map)
+auto& find_or_error(const std::string& name, std::unordered_map<T, U>& map)
 {
   auto it = map.find(name);
   WDMCPL_ALWAYS_ASSERT(it != map.end());
+  return it->second;
+}
+template <typename T, typename U>
+auto find_many_or_error(const std::vector<T>& keys,
+                        const std::unordered_map<T, U>& map)
+{
+
+  std::vector<std::reference_wrapper<U>> results;
+  results.reserve(keys.size());
+  std::transform(keys.begin(), keys.end(), std::back_inserter(results),
+                 [&map](const std::string& key) {
+                   return std::ref(detail::find_or_error(key, map));
+                 });
+  return results;
+}
+template <typename T, typename U>
+auto find_many_or_error(const std::vector<T>& keys,
+                        std::unordered_map<T, U>& map)
+{
+
+  std::vector<std::reference_wrapper<U>> results;
+  results.reserve(keys.size());
+  std::transform(keys.begin(), keys.end(), std::back_inserter(results),
+                 [&map](const std::string& key) {
+                   return std::ref(detail::find_or_error(key, map));
+                 });
+  return results;
+}
+template <typename T>
+auto& find_or_create_internal_field(
+  const std::string& key, std::unordered_map<std::string, InternalField> internal_fields,
+  Omega_h::Mesh& mesh, int search_nx, int search_ny)
+{
+  auto [it, inserted] = internal_fields.try_emplace(
+    key, std::in_place_type<OmegaHField<T, InternalCoordinateElement>>, key,
+    mesh, search_nx, search_ny);
+  WDMCPL_ALWAYS_ASSERT(
+    (std::holds_alternative<OmegaHField<T, InternalCoordinateElement>>(it->second)));
   return it->second;
 }
 
@@ -304,15 +341,17 @@ struct TransferOptions
   FieldEvaluationMethod evaluation_method;
 };
 
-// TODO: come up with better name for this...Don't like CoupledFieldServer because it's necessarily tied to the Server of the coupler
+// TODO: come up with better name for this...Don't like CoupledFieldServer
+// because it's necessarily tied to the Server of the coupler
 class ConvertibleCoupledField
 {
 public:
   template <typename FieldShimT, typename CommT>
   ConvertibleCoupledField(const std::string& name, FieldShimT field_shim,
-               detail::FieldCommunicator<CommT> field_comm,
-               Omega_h::Mesh& internal_mesh, TransferOptions native_to_internal,
-               TransferOptions internal_to_native)
+                          detail::FieldCommunicator<CommT> field_comm,
+                          Omega_h::Mesh& internal_mesh,
+                          TransferOptions native_to_internal,
+                          TransferOptions internal_to_native)
     : internal_field_{OmegaHField<typename FieldShimT::value_type,
                                   detail::InternalCoordinateElement>(
         name + ".__internal__", internal_mesh)}
@@ -323,17 +362,18 @@ public:
   }
   template <typename FieldShimT>
   ConvertibleCoupledField(const std::string& name, FieldShimT field_shim,
-               redev::Redev& redev, MPI_Comm mpi_comm,
-               Omega_h::Mesh& internal_mesh, TransferOptions native_to_internal,
-               TransferOptions internal_to_native)
+                          redev::Redev& redev, MPI_Comm mpi_comm,
+                          Omega_h::Mesh& internal_mesh,
+                          TransferOptions native_to_internal,
+                          TransferOptions internal_to_native)
     : internal_field_{OmegaHField<typename FieldShimT::value_type,
                                   detail::InternalCoordinateElement>(
         name + ".__internal__", internal_mesh)}
   {
-    coupled_field_ = std::make_unique<
-      CoupledFieldModel<FieldShimT, FieldShimT>>(
-      name, std::move(field_shim), redev, mpi_comm,
-      std::move(native_to_internal), std::move(internal_to_native));
+    coupled_field_ =
+      std::make_unique<CoupledFieldModel<FieldShimT, FieldShimT>>(
+        name, std::move(field_shim), redev, mpi_comm,
+        std::move(native_to_internal), std::move(internal_to_native));
   }
   using GatherScatterPasskey = detail::GatherScatterPasskey;
 
@@ -440,11 +480,12 @@ public:
   }
   template <typename FieldShimT>
   CoupledField(const std::string& name, FieldShimT field_shim,
-               redev::Redev& redev, MPI_Comm mpi_comm) {
+               redev::Redev& redev, MPI_Comm mpi_comm)
+  {
 
-    coupled_field_ = std::make_unique<
-      CoupledFieldModel<FieldShimT, FieldShimT>>(
-      name, std::move(field_shim), redev, mpi_comm);
+    coupled_field_ =
+      std::make_unique<CoupledFieldModel<FieldShimT, FieldShimT>>(
+        name, std::move(field_shim), redev, mpi_comm);
   }
   using GatherScatterPasskey = detail::GatherScatterPasskey;
 
@@ -467,11 +508,10 @@ public:
     {
     }
     CoupledFieldModel(const std::string& name, FieldShimT&& field_shim,
-                      redev::Redev& redev,
-                      MPI_Comm mpi_comm)
+                      redev::Redev& redev, MPI_Comm mpi_comm)
       : field_shim_(std::move(field_shim)),
-        comm_(detail::FieldCommunicator<CommT>(name, redev, mpi_comm,
-                                                    field_shim_))
+        comm_(
+          detail::FieldCommunicator<CommT>(name, redev, mpi_comm, field_shim_))
     {
     }
     void Send() { comm_.Send(); };
@@ -485,61 +525,59 @@ private:
   std::unique_ptr<CoupledFieldConcept> coupled_field_;
 };
 
+using CombinerFunction = std::function<void(
+  nonstd::span<const std::reference_wrapper<detail::InternalField>>,
+  detail::InternalField&)>;
 class GatherOperation
 {
 public:
-  using Combiner = std::function<void(
-    nonstd::span<const std::reference_wrapper<detail::InternalField>>,
-    detail::InternalField&)>;
-  GatherOperation(
-    nonstd::span<ConvertibleCoupledField> fields_to_gather,
-    detail::InternalField& combined_field, Combiner combiner)
+  GatherOperation(std::vector<std::reference_wrapper<ConvertibleCoupledField>>
+                    fields_to_gather,
+                  detail::InternalField& combined_field,
+                  CombinerFunction combiner)
     : coupled_fields_(std::move(fields_to_gather)),
       combined_field_{combined_field},
       combiner_(std::move(combiner))
   {
 
     internal_fields_.reserve(coupled_fields_.size());
-    std::transform(coupled_fields_.begin(), coupled_fields_.end(),
-                   std::back_inserter(internal_fields_),
-                   [](ConvertibleCoupledField& fld) {
-                     return std::ref(
-                       fld.GetInternalField(detail::GatherScatterPasskey()));
-                   });
+    std::transform(
+      coupled_fields_.begin(), coupled_fields_.end(),
+      std::back_inserter(internal_fields_), [](ConvertibleCoupledField& fld) {
+        return std::ref(fld.GetInternalField(detail::GatherScatterPasskey()));
+      });
   }
   void Run() const
   {
     for (auto& field : coupled_fields_) {
-      field.Receive();
-      field.SyncNativeToInternal(detail::GatherScatterPasskey());
+      field.get().Receive();
+      field.get().SyncNativeToInternal(detail::GatherScatterPasskey());
     }
     combiner_(internal_fields_, combined_field_);
   };
 
 private:
-  nonstd::span<ConvertibleCoupledField> coupled_fields_;
+  std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_;
   std::vector<std::reference_wrapper<detail::InternalField>> internal_fields_;
   detail::InternalField& combined_field_;
-  Combiner combiner_;
+  CombinerFunction combiner_;
 };
 class ScatterOperation
 {
 public:
-  ScatterOperation(
-    std::vector<std::reference_wrapper<ConvertibleCoupledField>>
-      fields_to_scatter,
-    detail::InternalField& combined_field)
+  ScatterOperation(std::vector<std::reference_wrapper<ConvertibleCoupledField>>
+                     fields_to_scatter,
+                   detail::InternalField& combined_field)
     : coupled_fields_(std::move(fields_to_scatter)),
       combined_field_{combined_field}
   {
 
     internal_fields_.reserve(coupled_fields_.size());
-    std::transform(begin(coupled_fields_), end(coupled_fields_),
-                   std::back_inserter(internal_fields_),
-                   [](ConvertibleCoupledField& fld) {
-                     return std::ref(
-                       fld.GetInternalField(detail::GatherScatterPasskey()));
-                   });
+    std::transform(
+      begin(coupled_fields_), end(coupled_fields_),
+      std::back_inserter(internal_fields_), [](ConvertibleCoupledField& fld) {
+        return std::ref(fld.GetInternalField(detail::GatherScatterPasskey()));
+      });
   }
   void Run() const
   {
@@ -552,8 +590,7 @@ public:
   };
 
 private:
-  std::vector<std::reference_wrapper<ConvertibleCoupledField>>
-    coupled_fields_;
+  std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_;
   std::vector<std::reference_wrapper<detail::InternalField>> internal_fields_;
   detail::InternalField& combined_field_;
 };
@@ -561,7 +598,8 @@ private:
 class CouplerServer
 {
 public:
-  CouplerServer(std::string name, MPI_Comm comm, redev::Partition partition, Omega_h::Mesh mesh)
+  CouplerServer(std::string name, MPI_Comm comm, redev::Partition partition,
+                Omega_h::Mesh mesh)
     : name_(std::move(name)),
       mpi_comm_(comm),
       redev_({comm, std::move(partition), ProcessType::Server}),
@@ -569,11 +607,12 @@ public:
   {
   }
   template <typename FieldShimT>
-  ConvertibleCoupledField* AddField(std::string unique_name, FieldShimT field_shim,
-           FieldTransferMethod to_field_transfer_method,
-           FieldEvaluationMethod to_field_eval_method,
-           FieldTransferMethod from_field_transfer_method,
-           FieldEvaluationMethod from_field_eval_method)
+  ConvertibleCoupledField* AddField(
+    std::string unique_name, FieldShimT field_shim,
+    FieldTransferMethod to_field_transfer_method,
+    FieldEvaluationMethod to_field_eval_method,
+    FieldTransferMethod from_field_transfer_method,
+    FieldEvaluationMethod from_field_eval_method)
   {
     auto [it, inserted] = fields_.template try_emplace(
       unique_name, unique_name, std::move(field_shim), redev_, mpi_comm_,
@@ -607,6 +646,52 @@ public:
     detail::find_or_error(name, fields_).Receive();
   };
 
+  // TODO: refactor searchnx/seachny into search input parameter struct
+  template <typename CombinedFieldT = Real>
+  GatherOperation* AddGatherFieldsOp(
+    const std::string & name, const std::vector<std::string>& fields_to_gather,
+    const std::string& internal_field_name, CombinerFunction func)
+  {
+    auto gather_fields = detail::find_many_or_error(fields_to_gather, fields_);
+    static constexpr int seach_nx = 10;
+    static constexpr int seach_ny = 10;
+
+    auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
+      internal_field_name, internal_fields_, internal_mesh_, seach_nx,
+      seach_ny);
+    auto [it, inserted] = gather_operations_.template try_emplace(
+      name, std::move(gather_fields), combined, std::move(func));
+
+    if (!inserted) {
+      std::cerr << "GatherOperation with this name" << name
+                << "already exists!\n";
+      std::terminate();
+    }
+    return &(it->second);
+  }
+  template <typename CombinedFieldT = Real>
+  ScatterOperation* AddScatterFieldsOp(
+    const std::string& name, const std::string& internal_field_name,
+    const std::vector<std::string>& fields_to_scatter )
+  {
+    auto scatter_fields =
+      detail::find_many_or_error(fields_to_scatter, fields_);
+    static constexpr int seach_nx = 10;
+    static constexpr int seach_ny = 10;
+
+    auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
+      internal_field_name, internal_fields_, internal_mesh_, seach_nx,
+      seach_ny);
+    auto [it, inserted] = scatter_operations_.template try_emplace(
+      name, std::move(scatter_fields), combined);
+
+    if (!inserted) {
+      std::cerr << "Scatter with this name" << name << "already exists!\n";
+      std::terminate();
+    }
+    return &(it->second);
+  }
+
 private:
   std::string name_;
   MPI_Comm mpi_comm_;
@@ -615,17 +700,17 @@ private:
   // coupler owns internal fields since both gather/scatter ops use these
   std::unordered_map<std::string, detail::InternalField> internal_fields_;
   // gather and scatter operations have reference to internal fields
-  std::unordered_map<std::string, GatherOperation> scatter_operations_;
-  std::unordered_map<std::string, ScatterOperation> gather_operations_;
+  std::unordered_map<std::string, ScatterOperation> scatter_operations_;
+  std::unordered_map<std::string, GatherOperation> gather_operations_;
   Omega_h::Mesh internal_mesh_;
 };
 class CouplerClient
 {
 public:
   CouplerClient(std::string name, MPI_Comm comm, redev::Partition partition)
-  : name_(std::move(name)),
-  mpi_comm_(comm),
-  redev_({comm, std::move(partition), ProcessType::Client})
+    : name_(std::move(name)),
+      mpi_comm_(comm),
+      redev_({comm, std::move(partition), ProcessType::Client})
   {
   }
   template <typename FieldShimT>

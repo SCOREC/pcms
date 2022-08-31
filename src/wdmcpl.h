@@ -305,11 +305,8 @@ private:
   std::unique_ptr<FieldCommunicatorConcept> field_communicator_;
 };
 
-struct FieldTransferOptions
-{
-  FieldTransferMethod transfer_method;
-  FieldEvaluationMethod evaluation_method;
-};
+class GatherOperation;
+class ScatterOperation;
 
 namespace detail
 {
@@ -410,45 +407,55 @@ private:
   std::unique_ptr<TransferOperationConcept> transfer_operation_;
 };
 
+class GatherScatterPasskey
+{
+private:
+  friend class ::wdmcpl::GatherOperation;
+  friend class ::wdmcpl::ScatterOperation;
+  GatherScatterPasskey() = default;
+  GatherScatterPasskey(const GatherScatterPasskey&) = default;
+  GatherScatterPasskey(GatherScatterPasskey&&) = delete;
+  GatherScatterPasskey& operator=(const GatherScatterPasskey&) = delete;
+  GatherScatterPasskey& operator=(GatherScatterPasskey&&) = delete;
+};
+
 } // namespace detail
 
+struct TransferOptions
+{
+  FieldTransferMethod transfer_method;
+  FieldEvaluationMethod evaluation_method;
+};
+
+// TODO ClientCoupledField/ServerCoupledField
 class CoupledField
 {
 public:
-  class GatherScatterPasskey
-  {
-  private:
-    friend class GatherOperation;
-    friend class ScatterOperation;
-    GatherScatterPasskey() = default;
-    GatherScatterPasskey(const GatherScatterPasskey&) = default;
-    GatherScatterPasskey(GatherScatterPasskey&&) = delete;
-    GatherScatterPasskey& operator=(const GatherScatterPasskey&) = delete;
-    GatherScatterPasskey& operator=(GatherScatterPasskey&&) = delete;
-  };
-  // only coupler creates coupled field??
-  // don't really want "internal" field or TransferOperation in interface
-  CoupledField(FieldCommunicator comm, detail::InternalField internal_field,
-               detail::TransferOperation native_to_internal,
-               detail::TransferOperation internal_to_native)
-    : comm_(std::move(comm)),
-      native_to_internal_(std::move(native_to_internal)),
-      internal_to_native_(std::move(internal_to_native)),
-      internal_field_(std::move(internal_field))
-  {
-  }
   template <typename FieldShimT>
-  CoupledField(std::string name, redev::Redev&, MPI_Comm mpi_comm,
-               FieldShimT field_shim, FieldTransferMethod,
-               FieldEvaluationMethod, FieldTransferMethod,
-               FieldEvaluationMethod)
+  CoupledField(const std::string& name, FieldShimT field_shim,
+               FieldCommunicator field_comm, Omega_h::Mesh& internal_mesh,
+               TransferOptions native_to_internal,
+               TransferOptions internal_to_native)
+    : internal_field_{OmegaHField<typename FieldShimT::value_type,
+                                  detail::InternalCoordinateElement>(
+        name + ".__internal__", internal_mesh)}
   {
-    // 1. Create field communicator
+    coupled_field_ = std::make_unique<CoupledFieldModel<FieldShimT>>(
+      std::move(field_shim), std::move(field_comm),
+      std::move(native_to_internal), std::move(internal_to_native));
   }
-  void Send() const { comm_.Send(); }
-  void Receive() const { comm_.Receive(); }
-  void SyncNativeToInternal(GatherScatterPasskey) { native_to_internal_.Run(); }
-  void SyncInternalToNative(GatherScatterPasskey) { internal_to_native_.Run(); }
+  using GatherScatterPasskey = detail::GatherScatterPasskey;
+
+  void Send() const { coupled_field_->Send(); }
+  void Receive() const { coupled_field_->Receive(); }
+  void SyncNativeToInternal(GatherScatterPasskey)
+  {
+    coupled_field_->SyncNativeToInternal(internal_field_);
+  }
+  void SyncInternalToNative(GatherScatterPasskey)
+  {
+    coupled_field_->SyncInternalToNative(internal_field_);
+  }
   [[nodiscard]] detail::InternalField& GetInternalField(
     GatherScatterPasskey) noexcept
   {
@@ -459,12 +466,61 @@ public:
   {
     return internal_field_;
   }
+  struct CoupledFieldConcept
+  {
+    virtual void Send() const = 0;
+    virtual void Receive() const = 0;
+    virtual void SyncNativeToInternal(detail::InternalField&) = 0;
+    virtual void SyncInternalToNative(const detail::InternalField&) = 0;
+    virtual ~CoupledFieldConcept() = default;
+  };
+  template <typename FieldShimT>
+  struct CoupledFieldModel final : CoupledFieldConcept
+  {
+    using value_type = typename FieldShimT::value_type;
+
+    CoupledFieldModel(FieldShimT&& field_shim, FieldCommunicator&& comm,
+                      TransferOptions&& native_to_internal,
+                      TransferOptions&& internal_to_native)
+      : field_shim_(std::move(field_shim)),
+        comm_(std::move(comm)),
+        native_to_internal_(std::move(native_to_internal)),
+        internal_to_native_(std::move(internal_to_native))
+    {
+    }
+    void Send() const { comm_.Send(); };
+    void Receive() const { comm_.Receive(); };
+    void SyncNativeToInternal(detail::InternalField& internal_field)
+    {
+      field_shim_.ToOmegaH(
+        std::get<OmegaHField<typename FieldShimT::value_type,
+                             detail::InternalCoordinateElement>>(
+          internal_field),
+        native_to_internal_.transfer_method,
+        native_to_internal_.evaluation_method);
+    };
+    void SyncInternalToNative(const detail::InternalField& internal_field)
+    {
+      field_shim_.FromOmegaH(
+        std::get<OmegaHField<typename FieldShimT::value_type,
+                             detail::InternalCoordinateElement>>(
+          internal_field),
+        internal_to_native_.transfer_method,
+        internal_to_native_.evaluation_method);
+    };
+
+    FieldShimT field_shim_;
+    // TODO unwrap FieldCommunicator use (FieldCommunicator<T>)
+    FieldCommunicator comm_;
+    TransferOptions native_to_internal_;
+    TransferOptions internal_to_native_;
+    // even though we know the type of the internal field,
+    // we store it as the InternalField variant since this avoids any copies
+    // TODO move to the outer type since we can devirtualize GetInternalField
+  };
 
 private:
-  // FIXME need to own Field shim here!
-  FieldCommunicator comm_;
-  detail::TransferOperation native_to_internal_;
-  detail::TransferOperation internal_to_native_;
+  std::unique_ptr<CoupledFieldConcept> coupled_field_;
   detail::InternalField internal_field_;
 };
 
@@ -472,34 +528,33 @@ class GatherOperation
 {
 public:
   using Combiner = std::function<void(
-    const std::vector<std::reference_wrapper<detail::InternalField>>&,
+    nonstd::span<const std::reference_wrapper<detail::InternalField>>,
     detail::InternalField&)>;
-  GatherOperation(
-    std::vector<std::reference_wrapper<CoupledField>> fields_to_gather,
-    detail::InternalField& combined_field, Combiner combiner)
+  GatherOperation(nonstd::span<CoupledField> fields_to_gather,
+                  detail::InternalField& combined_field, Combiner combiner)
     : coupled_fields_(std::move(fields_to_gather)),
       combined_field_{combined_field},
       combiner_(std::move(combiner))
   {
 
     internal_fields_.reserve(coupled_fields_.size());
-    std::transform(begin(coupled_fields_), end(coupled_fields_),
+    std::transform(coupled_fields_.begin(), coupled_fields_.end(),
                    std::back_inserter(internal_fields_), [](CoupledField& fld) {
-                     return std::ref(fld.GetInternalField(
-                       CoupledField::GatherScatterPasskey()));
+                     return std::ref(
+                       fld.GetInternalField(detail::GatherScatterPasskey()));
                    });
   }
   void Run() const
   {
     for (auto& field : coupled_fields_) {
-      field.get().Receive();
-      field.get().SyncNativeToInternal(CoupledField::GatherScatterPasskey());
+      field.Receive();
+      field.SyncNativeToInternal(detail::GatherScatterPasskey());
     }
     combiner_(internal_fields_, combined_field_);
   };
 
 private:
-  std::vector<std::reference_wrapper<CoupledField>> coupled_fields_;
+  nonstd::span<CoupledField> coupled_fields_;
   std::vector<std::reference_wrapper<detail::InternalField>> internal_fields_;
   detail::InternalField& combined_field_;
   Combiner combiner_;
@@ -517,8 +572,8 @@ public:
     internal_fields_.reserve(coupled_fields_.size());
     std::transform(begin(coupled_fields_), end(coupled_fields_),
                    std::back_inserter(internal_fields_), [](CoupledField& fld) {
-                     return std::ref(fld.GetInternalField(
-                       CoupledField::GatherScatterPasskey()));
+                     return std::ref(
+                       fld.GetInternalField(detail::GatherScatterPasskey()));
                    });
   }
   void Run() const
@@ -526,7 +581,7 @@ public:
     // possible we may need to add a splitter operation here. will evaluate if
     // needed splitter(combined_field, internal_fields_);
     for (auto& field : coupled_fields_) {
-      field.get().SyncInternalToNative(CoupledField::GatherScatterPasskey());
+      field.get().SyncInternalToNative(detail::GatherScatterPasskey());
       field.get().Send();
     }
   };

@@ -135,7 +135,7 @@ auto get_nodal_gids(const OmegaHField<T, CoordinateElementType>& field)
 {
   auto full_gids = field.GetMesh().globals(0);
   if (field.HasMask()) {
-    return detail::filter_array<T>(full_gids, field.GetMask(), field.Size());
+    return detail::filter_array(full_gids, field.GetMask(), field.Size());
   }
   return full_gids;
 }
@@ -165,6 +165,7 @@ auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
 /**
  * Sets the data on the entire mesh
  */
+ // FIXME rename set to set_nodal_data
 template <typename T, typename CoordinateElementType, typename U>
 auto set(const OmegaHField<T, CoordinateElementType>& field,
          ScalarArrayView<const U, OmegaHMemorySpace::type> data) -> void

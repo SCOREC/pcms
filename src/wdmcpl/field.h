@@ -55,9 +55,11 @@ public:
     const redev::Partition& partition) const = 0;
   // FIXME these functions are only needed on the server and we need to make sure we
   // can compile the applications without linking against OmegaH.
+  // FIXME pull out ToOmegaH/FromOmegaH into "customization point functions". Default implementation calls transfer_field
   virtual void ToOmegaH(OmegaHField<T, InternalCoordinateType>& internal_field, FieldTransferMethod, FieldEvaluationMethod) = 0;
   virtual void FromOmegaH(const OmegaHField<T, InternalCoordinateType>& internal_field, FieldTransferMethod, FieldEvaluationMethod) = 0;
 };
+
 
 class Field {
 public:

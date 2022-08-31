@@ -83,7 +83,7 @@ static constexpr bool done = true;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-
+  /*
   Coupler<PT::Client> cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
   auto* df_gid_field = cpl.AddField("delta_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
@@ -92,16 +92,19 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
     cpl.SendField("_gids"); //(Alt) df_gid_field->Send();
     cpl.ReceiveField("delta_f_gids"); //(Alt) df_gid_field->Receive();
   } while(!done);
+   */
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   wdmcpl::Coupler<PT::Client> cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
   auto tf_gid_field = cpl.AddField("total_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
+  /*
   do {
     cpl.SendField("total_f_gids"); //(Alt) tf_gid_field->Send();
     cpl.ReceiveField("total_f_gids"); //(Alt) tf_gid_field->Receive();
   } while(!done);
+   */
 }
 void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
@@ -120,6 +123,7 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     FieldTransferMethod::None, FieldEvaluationMethod::None,
     FieldTransferMethod::None, FieldEvaluationMethod::None);
 
+  /*
   // Combiner is a functor that takes a vector of omega_h fields combines their values
   // and sets the combined values into the resultant field
   auto scatter = cpl.AddGatherFieldsOp("cpl1", {"total_f_gids", "delta_f_gids"},
@@ -141,6 +145,7 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     // 2. Send data to members
     cpl.ScatterFields("cpl1"); // (Alt) gather->Run();
   } while(!done);
+   */
 }
 
 int main(int argc, char** argv)

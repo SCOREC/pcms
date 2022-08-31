@@ -16,18 +16,6 @@ using wdmcpl::interpolate_field;
 using wdmcpl::make_array_view;
 using wdmcpl::set;
 
-void f()
-{
-  Omega_h::Mesh mesh;
-  wdmcpl::OmegaHField<int, double> f("id", mesh);
-  wdmcpl::detail::TransferOperation op(
-    f, f, wdmcpl::FieldTransferMethod::Copy,
-    wdmcpl::FieldEvaluationMethod::Lagrange1);
-  wdmcpl::Field n(f);
-  op.SetSourceField(n);
-  op.SetTargetField(n);
-  op.Run();
-}
 
 struct MeanCombiner
 {

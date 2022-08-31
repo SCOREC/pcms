@@ -16,6 +16,9 @@
 
 namespace wdmcpl
 {
+using ProcessType = redev::ProcessType;
+class GatherOperation;
+class ScatterOperation;
 namespace detail
 {
 using InternalCoordinateElement = Real;
@@ -29,8 +32,6 @@ using InternalField =
                OmegaHField<Omega_h::I32, InternalCoordinateElement>,
                OmegaHField<Omega_h::I64, InternalCoordinateElement>,
                OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
-} // namespace detail
-using ProcessType = redev::ProcessType;
 
 struct OutMsg
 {
@@ -163,8 +164,7 @@ public:
       field_shim_(std::move(field_shim))
   {
     std::string transport_name = name_;
-    comm_ =
-      redev_.CreateAdiosClient<T>(transport_name, params, transport_type);
+    comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type);
     // set up GID comm to do setup phase and get the
     // FIXME: use  one directional comm instead of the adios bidirectional
     // comm
@@ -188,12 +188,12 @@ public:
     }
 
     auto buffer = ScalarArrayView<typename decltype(comm_buffer_)::value_type,
-      HostMemorySpace>(comm_buffer_.data(),
-                       comm_buffer_.size());
-    const auto permutation = ScalarArrayView<
-      const typename decltype(message_permutation_)::value_type,
-      HostMemorySpace>(message_permutation_.data(),
-                       message_permutation_.size());
+                                  HostMemorySpace>(comm_buffer_.data(),
+                                                   comm_buffer_.size());
+    const auto permutation =
+      ScalarArrayView<const typename decltype(message_permutation_)::value_type,
+                      HostMemorySpace>(message_permutation_.data(),
+                                       message_permutation_.size());
 
     field_shim_.Serialize(buffer, permutation);
     comm_.Send(buffer.data_handle());
@@ -201,13 +201,12 @@ public:
   void Receive()
   {
     auto data = comm_.Recv();
-    auto buffer =
-      ScalarArrayView<T, HostMemorySpace>(data.data(), data.size());
+    auto buffer = ScalarArrayView<T, HostMemorySpace>(data.data(), data.size());
     static_assert(std::is_same_v<T, typename decltype(data)::value_type>);
-    auto permutation = ScalarArrayView<
-      const typename decltype(message_permutation_)::value_type,
-      HostMemorySpace>(message_permutation_.data(),
-                       message_permutation_.size());
+    auto permutation =
+      ScalarArrayView<const typename decltype(message_permutation_)::value_type,
+                      HostMemorySpace>(message_permutation_.data(),
+                                       message_permutation_.size());
     // load data into the field based on user specified function/functor
     field_shim_.Deserialize(buffer, permutation);
   }
@@ -271,13 +270,6 @@ struct FieldCommunicator<void>
   void Send() const {}
   void Receive() const {}
 };
-
-class GatherOperation;
-class ScatterOperation;
-
-namespace detail
-{
-
 // helper function for dealing with field maps
 template <typename T, typename U>
 auto& find_or_error(const std::string& name,
@@ -314,14 +306,14 @@ class CoupledField
 public:
   template <typename FieldShimT, typename CommT>
   CoupledField(const std::string& name, FieldShimT field_shim,
-               FieldCommunicator<CommT> field_comm, Omega_h::Mesh& internal_mesh,
-               TransferOptions native_to_internal,
+               detail::FieldCommunicator<CommT> field_comm,
+               Omega_h::Mesh& internal_mesh, TransferOptions native_to_internal,
                TransferOptions internal_to_native)
     : internal_field_{OmegaHField<typename FieldShimT::value_type,
                                   detail::InternalCoordinateElement>(
         name + ".__internal__", internal_mesh)}
   {
-    coupled_field_ = std::make_unique<CoupledFieldModel<FieldShimT,CommT>>(
+    coupled_field_ = std::make_unique<CoupledFieldModel<FieldShimT, CommT>>(
       std::move(field_shim), std::move(field_comm),
       std::move(native_to_internal), std::move(internal_to_native));
   }
@@ -360,7 +352,8 @@ public:
   {
     using value_type = typename FieldShimT::value_type;
 
-    CoupledFieldModel(FieldShimT&& field_shim, FieldCommunicator<CommT>&& comm,
+    CoupledFieldModel(FieldShimT&& field_shim,
+                      detail::FieldCommunicator<CommT>&& comm,
                       TransferOptions&& native_to_internal,
                       TransferOptions&& internal_to_native)
       : field_shim_(std::move(field_shim)),
@@ -392,7 +385,7 @@ public:
 
     FieldShimT field_shim_;
     // TODO unwrap FieldCommunicator use (FieldCommunicator<T>)
-    FieldCommunicator<CommT> comm_;
+    detail::FieldCommunicator<CommT> comm_;
     TransferOptions native_to_internal_;
     TransferOptions internal_to_native_;
   };

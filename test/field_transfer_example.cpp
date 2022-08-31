@@ -47,7 +47,7 @@ using wdmcpl::FieldTransferMethod;
 using wdmcpl::GatherOperation;
 using wdmcpl::TransferOptions;
 using wdmcpl::detail::InternalField;
-using wdmcpl::FieldCommunicator;
+using wdmcpl::detail::FieldCommunicator;
 
 void test_gather_operation(Omega_h::Mesh& internal_mesh,
                            Omega_h::Mesh& app_mesh)

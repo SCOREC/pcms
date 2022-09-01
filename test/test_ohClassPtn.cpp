@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
   auto commPair = rdv.CreateAdiosClient<redev::GO>(name,params,redev::TransportType::BP4);
 
   //build dest, offsets, and permutation arrays
-  ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, get<decltype(partition)>(rdv.GetPartition())) : ts::OutMsg();
+  ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, std::get<decltype(partition)>(rdv.GetPartition())) : ts::OutMsg();
   if(!isRdv) {
     redev::LOs expectedDest = {0,1};
     REDEV_ALWAYS_ASSERT(appOut.dest == expectedDest);

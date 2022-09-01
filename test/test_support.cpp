@@ -68,8 +68,8 @@ Omega_h::LOs getModelEntityPermutation(Omega_h::Mesh& mesh, const int dim) {
   auto ids = Omega_h::HostRead(class_ids);
   auto dims = Omega_h::HostRead(class_dims);
   Omega_h::HostWrite<Omega_h::LO> idx(ids.size());
-  std::iota(&idx[0], &idx[ids.size()], 0);
-  std::stable_sort(&idx[0], &idx[ids.size()],
+  std::iota(&idx[0], (&idx[ids.size()-1])+1, 0);
+  std::stable_sort(&idx[0], (&idx[idx.size()-1])+1,
       [&] (const size_t lhs, const size_t rhs) {
       const auto ldim = dims[lhs]; const auto lid = ids[lhs];
       const auto rdim = dims[rhs]; const auto rid = ids[rhs];

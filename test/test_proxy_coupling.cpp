@@ -37,12 +37,12 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
  * the client processes.
  *
  * On the client side we only care that each mesh vertex is sent by exactly one
- * client process (to the server process returned by GetRank(modelEntity)) so using
- * the ownership of mesh entities following the mesh partition ownership is OK.
- * The function markMeshOverlapRegion(...) supports this.
+ * client process (to the server process returned by GetRank(modelEntity)) so
+ * using the ownership of mesh entities following the mesh partition ownership
+ * is OK. The function markMeshOverlapRegion(...) supports this.
  */
 auto markServerOverlapRegion(Omega_h::Mesh& mesh,
-    const redev::ClassPtn& classPtn)
+                             const redev::ClassPtn& classPtn)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -60,20 +60,21 @@ auto markServerOverlapRegion(Omega_h::Mesh& mesh,
   auto owned_h = Omega_h::HostRead(mesh.owned(0));
   auto isOverlap_h = Omega_h::HostRead<Omega_h::I8>(isOverlap);
   // mask to only class partition owned entities
-  auto isOverlapOwned = Omega_h::HostWrite<Omega_h::I8>(classIds.size(), "isOverlapAndOwnsModelEntInClassPartition");
-  for(int i=0; i<mesh.nverts(); i++) {
-    redev::ClassPtn::ModelEnt ent(classDims_h[i],classIds_h[i]);
+  auto isOverlapOwned = Omega_h::HostWrite<Omega_h::I8>(
+    classIds.size(), "isOverlapAndOwnsModelEntInClassPartition");
+  for (int i = 0; i < mesh.nverts(); i++) {
+    redev::ClassPtn::ModelEnt ent(classDims_h[i], classIds_h[i]);
     auto destRank = classPtn.GetRank(ent);
     auto isModelEntOwned = (destRank == rank);
     isOverlapOwned[i] = isModelEntOwned && isOverlap_h[i];
-    if( owned_h[i] && !isModelEntOwned ) {
+    if (owned_h[i] && !isModelEntOwned) {
       fprintf(stderr, "%d owner conflict %d ent (%d,%d) owner %d owned %d\n",
-          rank, i, classDims_h[i], classIds_h[i], destRank, owned_h[i]);
+              rank, i, classDims_h[i], classIds_h[i], destRank, owned_h[i]);
     }
   }
-  //this is a crime: host -> device -> host
+  // this is a crime: host -> device -> host
   auto isOverlapOwned_dr = Omega_h::read(Omega_h::Write(isOverlapOwned));
-  //auto isOverlapOwned_hr = Omega_h::HostRead(isOverlapOwned_dr);
+  // auto isOverlapOwned_hr = Omega_h::HostRead(isOverlapOwned_dr);
   mesh.add_tag(0, "isOverlap", 1, isOverlapOwned_dr);
   return isOverlapOwned_dr;
 }
@@ -115,7 +116,7 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
                                ? ts::readClassPartitionFile(cpnFileName)
                                : ts::ClassificationPartition();
   ts::migrateMeshElms(mesh, facePartition);
-  REDEV_ALWAYS_ASSERT(mesh.nelems()); //all ranks should have elements
+  REDEV_ALWAYS_ASSERT(mesh.nelems()); // all ranks should have elements
   auto ptn = ts::CreateClassificationPartition(mesh);
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
@@ -172,11 +173,9 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
-  auto* df_gid_field =
-    cpl.AddField("delta_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
-
+  cpl.AddField("delta_f_gids", OmegaHFieldShim<GO>("global", mesh, is_overlap));
   do {
-    cpl.SendField("delta_f_gids");           //(Alt) df_gid_field->Send();
+    cpl.SendField("delta_f_gids");    //(Alt) df_gid_field->Send();
     cpl.ReceiveField("delta_f_gids"); //(Alt) df_gid_field->Receive();
   } while (!done);
 }
@@ -184,8 +183,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   wdmcpl::CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
-  auto tf_gid_field =
-    cpl.AddField("total_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
+  cpl.AddField("total_f_gids", OmegaHFieldShim<GO>("global", mesh, is_overlap));
   do {
     cpl.SendField("total_f_gids");    //(Alt) tf_gid_field->Send();
     cpl.ReceiveField("total_f_gids"); //(Alt) tf_gid_field->Receive();
@@ -193,12 +191,11 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 }
 void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
+  auto p = setupServerPartition(mesh, cpn_file);
   // coupling server using same mesh as application
-  wdmcpl::CouplerServer cpl("proxy_couple", comm,
-                            setupServerPartition(mesh, cpn_file), mesh);
+  wdmcpl::CouplerServer cpl("proxy_couple", comm, std::move(p), mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
-  auto is_overlap = markServerOverlapRegion(mesh,partition);
-  // Note: coupler takes ownership of the field shim as well as
+  auto is_overlap = markServerOverlapRegion(mesh, partition);
   cpl.AddField("total_f_gids",
                OmegaHFieldShim<GO>("total_f_gids", mesh, is_overlap),
                FieldTransferMethod::None, // to Omega_h
@@ -209,7 +206,6 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
                OmegaHFieldShim<GO>("delta_f_gids", mesh, is_overlap),
                FieldTransferMethod::None, FieldEvaluationMethod::None,
                FieldTransferMethod::None, FieldEvaluationMethod::None);
-
   // CombinerFunction is a functor that takes a vector of omega_h fields
   // combines their values and sets the combined values into the resultant field
   auto* gather = cpl.AddGatherFieldsOp("cpl1", {"total_f_gids", "delta_f_gids"},

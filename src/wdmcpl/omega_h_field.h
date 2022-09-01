@@ -24,6 +24,29 @@ struct OmegaHMemorySpace
   using type = typename Kokkos::DefaultExecutionSpace::memory_space;
 };
 
+namespace detail
+{
+template <typename T, int dim = 1>
+Omega_h::Read<T> filter_array(Omega_h::Read<T> array, Omega_h::Read<LO> mask,
+                              LO size)
+{
+  static_assert(dim > 0, "array dimension must be >0");
+  Omega_h::Write<T> filtered_field(size * dim);
+  WDMCPL_ALWAYS_ASSERT(array.size() == mask.size());
+  WDMCPL_ALWAYS_ASSERT(filtered_field.size() <= array.size());
+  Omega_h::parallel_for(
+    mask.size(), OMEGA_H_LAMBDA(LO i) {
+      if (mask[i]) {
+        auto idx = mask[i] - 1;
+        for (int j = 0; j < dim; ++j) {
+          filtered_field[idx * dim + j] = array[i];
+        }
+      }
+    });
+  return filtered_field;
+}
+} // namespace detail
+
 template <typename T,
           typename CoordinateElementType =
             Real> // CoordinateElement<Cartesian, Real>>
@@ -46,17 +69,24 @@ public:
               int search_ny = 10)
     : name_(std::move(name)), mesh_(mesh), search_{mesh, search_nx, search_ny}
   {
+    // we use a parallel scan to construct the mask mapping so that filtering
+    // can happen in parallel. This method gives us the index to fill into the
+    // filtered array
     WDMCPL_ALWAYS_ASSERT(mesh.nents(0) == mask.size());
     Omega_h::Write<LO> index_mask(mask.size());
     Kokkos::parallel_scan(
       mask.size(),
-      KOKKOS_LAMBDA(int i, LO& update, bool final) {
+      KOKKOS_LAMBDA(LO i, LO & update, bool final) {
         update += (mask[i] > 0);
         if (final) {
           index_mask[i] = update;
         }
       },
       size_);
+    // set index mask to 0 anywhere that the original mask is 0
+    Kokkos::parallel_for(
+      mask.size(), KOKKOS_LAMBDA(LO i) { index_mask[i] *= mask[i]; });
+
     mask_ = index_mask;
   }
 
@@ -77,10 +107,16 @@ public:
 
   [[nodiscard]] Omega_h::Read<Omega_h::ClassId> GetClassIDs() const
   {
+    if (HasMask())
+      return detail::filter_array(
+        mesh_.get_array<Omega_h::ClassId>(0, "class_id"), GetMask(), Size());
     return mesh_.get_array<Omega_h::ClassId>(0, "class_id");
   }
   [[nodiscard]] Omega_h::Read<Omega_h::I8> GetClassDims() const
   {
+    if (HasMask())
+      return detail::filter_array(mesh_.get_array<Omega_h::I8>(0, "class_dim"),
+                                  GetMask(), Size());
     return mesh_.get_array<Omega_h::I8>(0, "class_dim");
   }
 
@@ -93,29 +129,6 @@ private:
   Omega_h::Read<LO> mask_;
   LO size_;
 };
-
-namespace detail
-{
-
-template <typename T, int dim = 1>
-Omega_h::Read<T> filter_array(Omega_h::Read<T> array, Omega_h::Read<LO> mask,
-                              LO size)
-{
-  static_assert(dim > 0, "array dimension must be >0");
-  Omega_h::Write<T> filtered_field(size * dim);
-  WDMCPL_ALWAYS_ASSERT(filtered_field.size() <= array.size());
-  Omega_h::parallel_for(
-    size, OMEGA_H_LAMBDA(LO i) {
-      if (mask[i]) {
-        auto idx = mask[i] - 1;
-        for (int j = 0; j < dim; ++j) {
-          filtered_field[idx * dim + j] = array[i];
-        }
-      }
-    });
-  return filtered_field;
-}
-} // namespace detail
 
 template <typename T, typename CoordinateElementType>
 auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
@@ -165,7 +178,7 @@ auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
 /**
  * Sets the data on the entire mesh
  */
- // FIXME rename set to set_nodal_data
+// FIXME rename set to set_nodal_data
 template <typename T, typename CoordinateElementType, typename U>
 auto set(const OmegaHField<T, CoordinateElementType>& field,
          ScalarArrayView<const U, OmegaHMemorySpace::type> data) -> void
@@ -341,7 +354,7 @@ public:
           },
           [](const redev::RCBPtn& ptn) {
             std::cerr << "RCB partition not handled yet\n";
-            std::exit(EXIT_FAILURE);
+            std::terminate();
             return 0;
           }},
         partition);

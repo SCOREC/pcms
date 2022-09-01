@@ -183,15 +183,23 @@ template <typename T, typename CoordinateElementType, typename U>
 auto set(const OmegaHField<T, CoordinateElementType>& field,
          ScalarArrayView<const U, OmegaHMemorySpace::type> data) -> void
 {
-
-  WDMCPL_ALWAYS_ASSERT(data.extent(0) == field.GetMesh().nents(0));
   auto& mesh = field.GetMesh();
-  Omega_h::Write<U> array(data.extent(0), 0);
-  Omega_h::parallel_for(
-    data.extent(0), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
-  if (mesh.has_tag(0, field.GetName())) {
+  const auto has_tag = mesh.has_tag(0, field.GetName());
+  auto& mask = field.GetMask();
+  Omega_h::Write<U> array(mask.size(), 0);
+  if (has_tag) {
+    auto original_data = mesh. template get_array<U>(0, field.GetName());
+    Omega_h::parallel_for(
+      mask.size(), OMEGA_H_LAMBDA(size_t i) {
+        array[i] = mask[i] ? data(mask[i]) : original_data[i];
+      });
     mesh.set_tag(0, field.GetName(), Omega_h::Read(array));
-  } else {
+  }
+  else {
+    Omega_h::parallel_for(
+      mask.size(), OMEGA_H_LAMBDA(size_t i) {
+        array[i] = mask[i] ? data(mask[i]) : 0;
+      });
     mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
   }
 }
@@ -318,20 +326,21 @@ public:
     ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
   {
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
-    Omega_h::Write<T> sorted_buffer;
-    for (int i = 0; i < buffer.size(); ++i) {
-      sorted_buffer[i] = buffer[permutation[i]];
-    }
-    set(field_, make_array_view(Omega_h::Read(sorted_buffer)));
+      Omega_h::Write<T> sorted_buffer(buffer.size());
+      for (int i = 0; i < buffer.size(); ++i) {
+        sorted_buffer[i] = buffer[permutation[i]];
+      }
+      set(field_,make_array_view(Omega_h::Read(sorted_buffer)) );
   }
 
   virtual std::vector<GO> GetGids() const
   {
     auto gids = get_nodal_gids(field_);
-    // FIXME: can use omega_h memcpy to get rid of extra copy here
-    auto gids_h = Omega_h::HostRead(gids);
-    // copy host gids into a vector
-    return {&gids_h[0], &(gids_h[gids_h.size() - 1]) + 1};
+    if (gids.size() > 0) {
+      auto gids_h = Omega_h::HostRead(gids);
+      return {&gids_h[0], &(gids_h[gids_h.size() - 1]) + 1};
+    }
+    return {};
   }
   virtual ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const

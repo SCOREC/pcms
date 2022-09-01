@@ -130,29 +130,34 @@ struct MeanCombiner
       const std::reference_wrapper<wdmcpl::detail::InternalField>>& fields,
     wdmcpl::detail::InternalField& combined_variant) const
   {
+    WDMCPL_ALWAYS_ASSERT(!combined_variant.valueless_by_exception());
+    WDMCPL_ALWAYS_ASSERT(!fields[0].get().valueless_by_exception());
+    /*
     std::visit(
-      [&fields](auto&& combined_field) {
-        using T = typename std::remove_reference_t<
-          decltype(combined_field)>::value_type;
-        Omega_h::Write<T> combined_array(combined_field.Size());
-        for (auto& field_variant : fields) {
-          std::visit(
-            [&combined_array](auto&& field) {
-              WDMCPL_ALWAYS_ASSERT(field.Size() == combined_array.size());
-              auto field_array = get_nodal_data(field);
-              Omega_h::parallel_for(
-                field_array.size(),
-                OMEGA_H_LAMBDA(int i) { combined_array[i] += field_array[i]; });
-            },
-            field_variant.get());
-        }
-        auto num_fields = fields.size();
-        Omega_h::parallel_for(
-          combined_array.size(),
-          OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
-        set(combined_field, make_array_view(Omega_h::Read(combined_array)));
+      //[&fields](auto&& combined_field) {
+        [](auto&& combined_field) {
+        //using T = typename std::remove_reference_t<
+        //  decltype(combined_field)>::value_type;
+        //Omega_h::Write<T> combined_array(combined_field.Size());
+        //for (auto& field_variant : fields) {
+          //std::visit(
+          //  [&combined_array](auto&& field) {
+          //    WDMCPL_ALWAYS_ASSERT(field.Size() == combined_array.size());
+          //    auto field_array = get_nodal_data(field);
+          //    Omega_h::parallel_for(
+          //      field_array.size(),
+          //      OMEGA_H_LAMBDA(int i) { combined_array[i] += field_array[i]; });
+          //  },
+          //  field_variant.get());
+        //}
+        //auto num_fields = fields.size();
+        //Omega_h::parallel_for(
+        //  combined_array.size(),
+        //  OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
+        //set(combined_field, make_array_view(Omega_h::Read(combined_array)));
       },
       combined_variant);
+      */
   }
 };
 
@@ -216,18 +221,24 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // auto [gather, scatter] = cpl.AddSymmetricGatherScatterOp("cpl1",
   // {"total_f_gids", "delta_f_gids"},
   //                      "combined_gids", MeanCombiner{});
-
+  //WDMCPL_ALWAYS_ASSERT(gather != nullptr);
+  //WDMCPL_ALWAYS_ASSERT(scatter != nullptr);
   do {
     //  Gather OHField
     // 1. receives any member fields .Receive()
     // 2. field_transfer native to internal
     // 3. combine internal fields into combined internal field
-    // cpl.GatherFields("cpl1"); // (Alt) gather->Run();
+     //cpl.GatherFields("cpl1"); // (Alt) gather->Run();
     gather->Run();
+    //cpl.ReceiveField("total_f_gids");
+    //cpl.ReceiveField("delta_f_gids");
+
     // Scatter OHField
     // 1. OHField transfer internal to native
     // 2. Send data to members
-    // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
+    //cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
+    //cpl.SendField("total_f_gids");
+    //cpl.SendField("delta_f_gids");
     scatter->Run();
   } while (!done);
 }

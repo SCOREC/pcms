@@ -310,14 +310,17 @@ auto find_many_or_error(const std::vector<T>& keys,
 }
 template <typename T>
 auto& find_or_create_internal_field(
-  const std::string& key, std::unordered_map<std::string, InternalField> internal_fields,
+  const std::string& key,
+  std::unordered_map<std::string, InternalField> internal_fields,
   Omega_h::Mesh& mesh, int search_nx, int search_ny)
 {
   auto [it, inserted] = internal_fields.try_emplace(
     key, std::in_place_type<OmegaHField<T, InternalCoordinateElement>>, key,
     mesh, search_nx, search_ny);
+  //WDMCPL_ALWAYS_ASSERT(!(it->second).valueless_by_exception());
   WDMCPL_ALWAYS_ASSERT(
-    (std::holds_alternative<OmegaHField<T, InternalCoordinateElement>>(it->second)));
+    (std::holds_alternative<OmegaHField<T, InternalCoordinateElement>>(
+      it->second)));
   return it->second;
 }
 
@@ -539,7 +542,9 @@ public:
       combined_field_{combined_field},
       combiner_(std::move(combiner))
   {
-
+    std::cerr<<"Constructing gather\n";
+    WDMCPL_ALWAYS_ASSERT(!combined_field_.valueless_by_exception());
+    WDMCPL_ALWAYS_ASSERT(combined_field_.valueless_by_exception());
     internal_fields_.reserve(coupled_fields_.size());
     std::transform(
       coupled_fields_.begin(), coupled_fields_.end(),
@@ -649,7 +654,7 @@ public:
   // TODO: refactor searchnx/seachny into search input parameter struct
   template <typename CombinedFieldT = Real>
   GatherOperation* AddGatherFieldsOp(
-    const std::string & name, const std::vector<std::string>& fields_to_gather,
+    const std::string& name, const std::vector<std::string>& fields_to_gather,
     const std::string& internal_field_name, CombinerFunction func)
   {
     auto gather_fields = detail::find_many_or_error(fields_to_gather, fields_);
@@ -672,7 +677,7 @@ public:
   template <typename CombinedFieldT = Real>
   ScatterOperation* AddScatterFieldsOp(
     const std::string& name, const std::string& internal_field_name,
-    const std::vector<std::string>& fields_to_scatter )
+    const std::vector<std::string>& fields_to_scatter)
   {
     auto scatter_fields =
       detail::find_many_or_error(fields_to_scatter, fields_);
@@ -691,8 +696,8 @@ public:
     }
     return &(it->second);
   }
-  [[nodiscard]]
-  const redev::Partition& GetPartition() const {
+  [[nodiscard]] const redev::Partition& GetPartition() const
+  {
     return redev_.GetPartition();
   }
 
@@ -738,8 +743,8 @@ public:
   {
     detail::find_or_error(name, fields_).Receive();
   };
-  [[nodiscard]]
-  const redev::Partition& GetPartition() const {
+  [[nodiscard]] const redev::Partition& GetPartition() const
+  {
     return redev_.GetPartition();
   }
 

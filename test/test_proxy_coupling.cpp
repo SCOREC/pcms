@@ -70,29 +70,38 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
 
 struct MeanCombiner
 {
-  //void operator()(const std::vector<std::reference_wrapper<OHField>>& fields,
-  //                OHField& combined) const
-  void operator()(const nonstd::span<const std::reference_wrapper<wdmcpl::detail::InternalField>>& fields,
-                  wdmcpl::detail::InternalField& combined) const
+  // void operator()(const std::vector<std::reference_wrapper<OHField>>& fields,
+  //                 OHField& combined) const
+  void operator()(
+    const nonstd::span<
+      const std::reference_wrapper<wdmcpl::detail::InternalField>>& fields,
+    wdmcpl::detail::InternalField& combined_variant) const
   {
-    auto field_size = std::visit([](auto&& arg){return arg.Size();}, combined);
-    /*
-    Omega_h::Write<Real> combined_array(field_size);
-    for (auto& field : fields) {
-      assert(field.get().Size() == field_size);
-      auto field_array = get_nodal_data(field.get());
-      Omega_h::parallel_for(
-        field_size,
-        OMEGA_H_LAMBDA(int i) { combined_array[i] += field_array[i]; });
-    }
-    auto num_fields = fields.size();
-    Omega_h::parallel_for(
-      field_size, OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
-    set(combined, make_array_view(Omega_h::Read(combined_array)));
-    */
+    std::visit(
+      [&fields](auto&& combined_field) {
+        using T = typename std::remove_reference_t<
+          decltype(combined_field)>::value_type;
+        Omega_h::Write<T> combined_array(combined_field.Size());
+        for (auto& field_variant : fields) {
+          std::visit(
+            [&combined_array](auto&& field) {
+              WDMCPL_ALWAYS_ASSERT(field.Size() == combined_array.size());
+              auto field_array = get_nodal_data(field);
+              Omega_h::parallel_for(
+                field_array.size(),
+                OMEGA_H_LAMBDA(int i) { combined_array[i] += field_array[i]; });
+            },
+            field_variant.get());
+        }
+        auto num_fields = fields.size();
+        Omega_h::parallel_for(
+          combined_array.size(),
+          OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
+        set(combined_field, make_array_view(Omega_h::Read(combined_array)));
+      },
+      combined_variant);
   }
 };
-
 
 using wdmcpl::Copy;
 using wdmcpl::CouplerClient;
@@ -115,7 +124,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
     cpl.AddField("delta_f_gids", OmegaHFieldShim<GO>("gids", mesh, is_overlap));
 
   do {
-    cpl.SendField("_gids");           //(Alt) df_gid_field->Send();
+    cpl.SendField("delta_f_gids");           //(Alt) df_gid_field->Send();
     cpl.ReceiveField("delta_f_gids"); //(Alt) df_gid_field->Receive();
   } while (!done);
 }
@@ -150,8 +159,8 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
   // CombinerFunction is a functor that takes a vector of omega_h fields
   // combines their values and sets the combined values into the resultant field
-  auto* gather = cpl.AddGatherFieldsOp(
-    "cpl1", {"total_f_gids", "delta_f_gids"},"combined_gids", MeanCombiner{});
+  auto* gather = cpl.AddGatherFieldsOp("cpl1", {"total_f_gids", "delta_f_gids"},
+                                       "combined_gids", MeanCombiner{});
   auto* scatter = cpl.AddScatterFieldsOp("cpl1", "combined_gids",
                                          {"total_f_gids", "delta_f_gids"});
   // for case with symmetric Gather/Scatter we have
@@ -164,12 +173,12 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     // 1. receives any member fields .Receive()
     // 2. field_transfer native to internal
     // 3. combine internal fields into combined internal field
-    //cpl.GatherFields("cpl1"); // (Alt) gather->Run();
+    // cpl.GatherFields("cpl1"); // (Alt) gather->Run();
     gather->Run();
     // Scatter OHField
     // 1. OHField transfer internal to native
     // 2. Send data to members
-    //cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
+    // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
     scatter->Run();
   } while (!done);
 }

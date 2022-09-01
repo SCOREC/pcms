@@ -58,8 +58,9 @@ ClassificationPartition readClassPartitionFile(std::string_view cpnFileName) {
 }
 
 /**
- * return the permutation array that orders the list of model entities (defined
- * by a pair of integers for their id and dimension) in ascending order
+ * return the permutation array of mesh entities of dimension 'dim' that orders
+ * the list of model entities they are classified on (defined by a pair of integers
+ * for the model entity id and dimension) in ascending order.
  */
 Omega_h::LOs getModelEntityPermutation(Omega_h::Mesh& mesh, const int dim) {
   auto class_ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
@@ -91,9 +92,16 @@ Omega_h::LO countModelEnts(Omega_h::Mesh& mesh, const Omega_h::LOs permutation, 
     const auto jp = permutation[j];
     return (ids[ip] == ids[jp]) && (dims[ip] == dims[jp]);
   };
+  //only looking for equal order classification
+  // (mesh ent dimension == model ent dimension)
+  auto isCurrentModelEntDim = OMEGA_H_LAMBDA(int i) {
+    const auto ip = permutation[i];
+    return (dims[ip] == dim);
+  };
   auto countEnts = OMEGA_H_LAMBDA(int i) {
+    const auto currentDim = isCurrentModelEntDim(i);
     const auto prevSame = (i==0) ? false : isSameModelEnt(i,i-1);
-    if(prevSame) return;
+    if(!currentDim || prevSame) return;
     Omega_h::atomic_increment(&numModelEnts[0]);
   };
   Omega_h::parallel_for(ids.size(), countEnts);
@@ -107,6 +115,11 @@ struct ModelEntityOwners {
   Omega_h::LOs owners;
 };
 
+/**
+ * For each model entity find the minimum rank that has a mesh entity
+ * classified on it.  This rank is defined as the owner of that model entity in
+ * the classification partition.
+ */
 ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
     const Omega_h::LOs permutation, const int dim, const int numModelEnts) {
   auto ids = mesh.get_array<Omega_h::ClassId>(dim, "class_id");
@@ -126,9 +139,22 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
     const auto jp = permutation[j];
     return (ids[ip] == ids[jp]) && (dims[ip] == dims[jp]);
   };
+  //only looking for equal order classification
+  // (mesh ent dimension == model ent dimension)
+  auto isCurrentModelEntDim = OMEGA_H_LAMBDA(int i) {
+    const auto ip = permutation[i];
+    return (dims[ip] == dim);
+  };
+  //Loop through the model entities and then find the minimum
+  //rank of mesh entities classified on it (the inner while loop).
+  //Note, this function only has N concurrent indices doing work
+  //where N is the number of model entities of the active dimension.
+  //It is essentially a min-reduction over a bunch of small arrays
+  //(one array for each model entity).  Could be written as a segment-sort.
   auto getEnts = OMEGA_H_LAMBDA(int i) {
+    const auto currentDim = isCurrentModelEntDim(i);
     const auto prevSame = (i==0) ? false : isSameModelEnt(i,i-1);
-    if(prevSame) return;
+    if(!currentDim || prevSame) return;
     auto minOwner = remotes.ranks[permutation[i]];
     auto next = i+1;
     while( (next < numEnts) && isSameModelEnt(i, next) ) {
@@ -137,10 +163,10 @@ ModelEntityOwners getModelEntityOwners(Omega_h::Mesh& mesh,
         minOwner = nextOwner;
       next++;
     }
-    mdlEntIds[count[0]] = ids[permutation[i]];
-    mdlEntDims[count[0]] = dims[permutation[i]];
-    mdlEntOwners[count[0]] = minOwner;
-    Omega_h::atomic_increment(&count[0]);
+    const int mdlEntIdx = Omega_h::atomic_fetch_add(&count[0],1);
+    mdlEntIds[mdlEntIdx] = ids[permutation[i]];
+    mdlEntDims[mdlEntIdx] = dims[permutation[i]];
+    mdlEntOwners[mdlEntIdx] = minOwner;
   };
   Omega_h::parallel_for(numEnts, getEnts);
   ModelEntityOwners meow {mdlEntIds, mdlEntDims, mdlEntOwners};
@@ -156,10 +182,11 @@ void append(const ModelEntityOwners& meow, redev::ClassPtn::ModelEntToRank& entT
    auto owners = Omega_h::HostRead(meow.owners);
    for(size_t i=0; i<ids.size(); i++)  {
      const auto ent = redev::ClassPtn::ModelEnt(dims[i],ids[i]);
-     if(entToRank.count(ent))
+     if(entToRank.count(ent)) {
        REDEV_ALWAYS_ASSERT(entToRank[ent] == owners[i]);
-     else 
+     } else {
        entToRank[ent] = owners[i];
+     }
    }
 }
 
@@ -223,10 +250,12 @@ void migrateMeshElms(Omega_h::Mesh& mesh, const ClassificationPartition& partiti
       if(dest) {
         const auto elms = iter->second;
         const auto numElms = elms.size();
+        //send the array of element ids each destination rank will be the owner of
         MPI_Send(&numElms, 1, MPI_INT, dest, 0, mpiComm);
         MPI_Send(elms.data(), elms.size(), MPI_INT, dest, 0, mpiComm);
       }
     }
+    //fill a device array with the element ids that remain on rank 0
     const auto elems = elemsPerRank[0];
     const auto numElems = elems.size();
     Omega_h::HostWrite<Omega_h::LO> elemIdxs(numElems);

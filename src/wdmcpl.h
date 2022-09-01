@@ -691,6 +691,10 @@ public:
     }
     return &(it->second);
   }
+  [[nodiscard]]
+  const redev::Partition& GetPartition() const {
+    return redev_.GetPartition();
+  }
 
 private:
   std::string name_;
@@ -734,6 +738,10 @@ public:
   {
     detail::find_or_error(name, fields_).Receive();
   };
+  [[nodiscard]]
+  const redev::Partition& GetPartition() const {
+    return redev_.GetPartition();
+  }
 
 private:
   std::string name_;

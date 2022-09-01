@@ -1,7 +1,7 @@
 #ifndef WDM_COUPLING_COORDINATE_H
 #define WDM_COUPLING_COORDINATE_H
 #include <array>
-#include <span>
+#include "wdmcpl/external/span.h"
 #include "wdmcpl/types.h"
 #include <Kokkos_Macros.hpp>
 namespace wdmcpl

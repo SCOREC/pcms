@@ -28,6 +28,57 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
 }
 
 /**
+ * On the server we mark the vertices on each process that are in the overlap
+ * region and are owned by the process as defined by the Classification
+ * Partition GetRank(modelEntity) function.  The ownership of mesh entities on
+ * the mesh partition boundary is not guaranteed to match the ownership of the
+ * geometric model entities defined by the Classification Partition so we must
+ * use GetRank(modelEntity) to ensure consistency with data incoming from
+ * the client processes.
+ *
+ * On the client side we only care that each mesh vertex is sent by exactly one
+ * client process (to the server process returned by GetRank(modelEntity)) so using
+ * the ownership of mesh entities following the mesh partition ownership is OK.
+ * The function markMeshOverlapRegion(...) supports this.
+ */
+auto markServerOverlapRegion(Omega_h::Mesh& mesh,
+    const redev::ClassPtn& classPtn)
+{
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  // transfer vtx classification to host
+  auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
+  auto classIds_h = Omega_h::HostRead(classIds);
+  auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
+  auto classDims_h = Omega_h::HostRead(classDims);
+  auto isOverlap = Omega_h::Write<Omega_h::I8>(classIds.size(), "isOverlap");
+  auto markOverlap = OMEGA_H_LAMBDA(int i)
+  {
+    isOverlap[i] = isModelEntInOverlap(classDims[i], classIds[i]);
+  };
+  Omega_h::parallel_for(classIds.size(), markOverlap);
+  auto owned_h = Omega_h::HostRead(mesh.owned(0));
+  auto isOverlap_h = Omega_h::HostRead<Omega_h::I8>(isOverlap);
+  // mask to only class partition owned entities
+  auto isOverlapOwned = Omega_h::HostWrite<Omega_h::I8>(classIds.size(), "isOverlapAndOwnsModelEntInClassPartition");
+  for(int i=0; i<mesh.nverts(); i++) {
+    redev::ClassPtn::ModelEnt ent(classDims_h[i],classIds_h[i]);
+    auto destRank = classPtn.GetRank(ent);
+    auto isModelEntOwned = (destRank == rank);
+    isOverlapOwned[i] = isModelEntOwned && isOverlap_h[i];
+    if( owned_h[i] && !isModelEntOwned ) {
+      fprintf(stderr, "%d owner conflict %d ent (%d,%d) owner %d owned %d\n",
+          rank, i, classDims_h[i], classIds_h[i], destRank, owned_h[i]);
+    }
+  }
+  //this is a crime: host -> device -> host
+  auto isOverlapOwned_dr = Omega_h::read(Omega_h::Write(isOverlapOwned));
+  //auto isOverlapOwned_hr = Omega_h::HostRead(isOverlapOwned_dr);
+  mesh.add_tag(0, "isOverlap", 1, isOverlapOwned_dr);
+  return isOverlapOwned_dr;
+}
+
+/**
  * Create the tag 'isOverlap' for each mesh vertex whose value is 1 if the
  * vertex is classified on a model entity in the closure of the geometric model
  * faces forming the overlap region; the value is 0 otherwise.
@@ -64,6 +115,7 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
                                ? ts::readClassPartitionFile(cpnFileName)
                                : ts::ClassificationPartition();
   ts::migrateMeshElms(mesh, facePartition);
+  REDEV_ALWAYS_ASSERT(mesh.nelems()); //all ranks should have elements
   auto ptn = ts::CreateClassificationPartition(mesh);
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
@@ -144,7 +196,8 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // coupling server using same mesh as application
   wdmcpl::CouplerServer cpl("proxy_couple", comm,
                             setupServerPartition(mesh, cpn_file), mesh);
-  auto is_overlap = markOverlapMeshEntities(mesh);
+  const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
+  auto is_overlap = markServerOverlapRegion(mesh,partition);
   // Note: coupler takes ownership of the field shim as well as
   cpl.AddField("total_f_gids",
                OmegaHFieldShim<GO>("total_f_gids", mesh, is_overlap),

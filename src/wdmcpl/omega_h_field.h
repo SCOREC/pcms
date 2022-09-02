@@ -69,25 +69,28 @@ public:
               int search_ny = 10)
     : name_(std::move(name)), mesh_(mesh), search_{mesh, search_nx, search_ny}
   {
-    // we use a parallel scan to construct the mask mapping so that filtering
-    // can happen in parallel. This method gives us the index to fill into the
-    // filtered array
-    WDMCPL_ALWAYS_ASSERT(mesh.nents(0) == mask.size());
-    Omega_h::Write<LO> index_mask(mask.size());
-    Kokkos::parallel_scan(
-      mask.size(),
-      KOKKOS_LAMBDA(LO i, LO & update, bool final) {
-        update += (mask[i] > 0);
-        if (final) {
-          index_mask[i] = update;
-        }
-      },
-      size_);
-    // set index mask to 0 anywhere that the original mask is 0
-    Kokkos::parallel_for(
-      mask.size(), KOKKOS_LAMBDA(LO i) { index_mask[i] *= mask[i]; });
+    if (mask.exists()) {
 
-    mask_ = index_mask;
+      // we use a parallel scan to construct the mask mapping so that filtering
+      // can happen in parallel. This method gives us the index to fill into the
+      // filtered array
+      WDMCPL_ALWAYS_ASSERT(mesh.nents(0) == mask.size());
+      Omega_h::Write<LO> index_mask(mask.size());
+      Kokkos::parallel_scan(
+        mask.size(),
+        KOKKOS_LAMBDA(LO i, LO & update, bool final) {
+          update += (mask[i] > 0);
+          if (final) {
+            index_mask[i] = update;
+          }
+        },
+        size_);
+      // set index mask to 0 anywhere that the original mask is 0
+      Kokkos::parallel_for(
+        mask.size(), KOKKOS_LAMBDA(LO i) { index_mask[i] *= mask[i]; });
+
+      mask_ = index_mask;
+    }
   }
 
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
@@ -185,23 +188,36 @@ auto set(const OmegaHField<T, CoordinateElementType>& field,
 {
   auto& mesh = field.GetMesh();
   const auto has_tag = mesh.has_tag(0, field.GetName());
-  auto& mask = field.GetMask();
-  Omega_h::Write<U> array(mask.size(), 0);
-  if (has_tag) {
-    auto original_data = mesh. template get_array<U>(0, field.GetName());
+  if (field.HasMask()) {
+    auto& mask = field.GetMask();
+    WDMCPL_ALWAYS_ASSERT(mask.size() == mesh.nents(0));
+    Omega_h::Write<U> array(mask.size());
+    if (has_tag) {
+      auto original_data = mesh.template get_array<U>(0, field.GetName());
+      WDMCPL_ALWAYS_ASSERT(original_data.size() == mask.size());
+      Omega_h::parallel_for(
+        mask.size(), OMEGA_H_LAMBDA(size_t i) {
+          array[i] = mask[i] ? data(mask[i]) : original_data[i];
+        });
+      mesh.set_tag(0, field.GetName(), Omega_h::Read(array));
+    } else {
+      Omega_h::parallel_for(
+        mask.size(),
+        OMEGA_H_LAMBDA(size_t i) { array[i] = mask[i] ? data(mask[i]) : 0; });
+      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
+    }
+  } else {
+    WDMCPL_ALWAYS_ASSERT(data.size() == mesh.nents(0));
+    Omega_h::Write<U> array(data.size());
     Omega_h::parallel_for(
-      mask.size(), OMEGA_H_LAMBDA(size_t i) {
-        array[i] = mask[i] ? data(mask[i]) : original_data[i];
-      });
-    mesh.set_tag(0, field.GetName(), Omega_h::Read(array));
+      data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
+    if (has_tag) {
+      mesh.set_tag(0, field.GetName(), Omega_h::Read(array));
+    } else {
+      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
+    }
   }
-  else {
-    Omega_h::parallel_for(
-      mask.size(), OMEGA_H_LAMBDA(size_t i) {
-        array[i] = mask[i] ? data(mask[i]) : 0;
-      });
-    mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
-  }
+  WDMCPL_ALWAYS_ASSERT(mesh.has_tag(0, field.GetName()));
 }
 
 // TODO abstract out repeat parts of lagrange/nearest neighbor evaluation
@@ -307,7 +323,10 @@ public:
     : field_{std::move(name), mesh, mask, search_nx, search_ny}
   {
   }
-  const std::string& GetName() const noexcept { return field_.GetName(); }
+  [[nodiscard]] const std::string& GetName() const noexcept
+  {
+    return field_.GetName();
+  }
   virtual int Serialize(
     ScalarArrayView<T, memory_space> buffer,
     ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
@@ -326,14 +345,14 @@ public:
     ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
   {
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
-      Omega_h::Write<T> sorted_buffer(buffer.size());
-      for (int i = 0; i < buffer.size(); ++i) {
-        sorted_buffer[i] = buffer[permutation[i]];
-      }
-      set(field_,make_array_view(Omega_h::Read(sorted_buffer)) );
+    Omega_h::Write<T> sorted_buffer(buffer.size());
+    for (int i = 0; i < buffer.size(); ++i) {
+      sorted_buffer[i] = buffer[permutation[i]];
+    }
+    set(field_, make_array_view(Omega_h::Read(sorted_buffer)));
   }
 
-  virtual std::vector<GO> GetGids() const
+  [[nodiscard]] virtual std::vector<GO> GetGids() const
   {
     auto gids = get_nodal_gids(field_);
     if (gids.size() > 0) {
@@ -342,7 +361,7 @@ public:
     }
     return {};
   }
-  virtual ReversePartitionMap GetReversePartitionMap(
+  [[nodiscard]] virtual ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const
   {
     auto& mesh = field_.GetMesh();

@@ -152,7 +152,7 @@ public:
     FieldShimT& field_shim,
     redev::TransportType transport_type = redev::TransportType::BP4,
     adios2::Params params = adios2::Params{{"Streaming", "On"},
-                                           {"OpenTimeoutSecs", "12"}})
+                                           {"OpenTimeoutSecs", "30"}})
     : mpi_comm_(mpi_comm),
       comm_buffer_{},
       message_permutation_{},
@@ -308,34 +308,20 @@ auto find_many_or_error(const std::vector<T>& keys,
                  });
   return results;
 }
-template <typename T>
+template <typename T, typename... Args>
 auto& find_or_create_internal_field(
   const std::string& key,
-  std::unordered_map<std::string, InternalField> internal_fields,
-  Omega_h::Mesh& mesh, int search_nx, int search_ny)
+  std::unordered_map<std::string, InternalField>& internal_fields,
+  Args&&... args)
 {
   auto [it, inserted] = internal_fields.try_emplace(
     key, std::in_place_type<OmegaHField<T, InternalCoordinateElement>>, key,
-    mesh, search_nx, search_ny);
-  //WDMCPL_ALWAYS_ASSERT(!(it->second).valueless_by_exception());
+    std::forward<Args>(args)...);
   WDMCPL_ALWAYS_ASSERT(
     (std::holds_alternative<OmegaHField<T, InternalCoordinateElement>>(
       it->second)));
   return it->second;
 }
-
-class GatherScatterPasskey
-{
-private:
-  friend class ::wdmcpl::GatherOperation;
-  friend class ::wdmcpl::ScatterOperation;
-  GatherScatterPasskey() = default;
-  GatherScatterPasskey(const GatherScatterPasskey&) = default;
-  GatherScatterPasskey(GatherScatterPasskey&&) = delete;
-  GatherScatterPasskey& operator=(const GatherScatterPasskey&) = delete;
-  GatherScatterPasskey& operator=(GatherScatterPasskey&&) = delete;
-};
-
 } // namespace detail
 
 struct TransferOptions
@@ -354,10 +340,11 @@ public:
                           detail::FieldCommunicator<CommT> field_comm,
                           Omega_h::Mesh& internal_mesh,
                           TransferOptions native_to_internal,
-                          TransferOptions internal_to_native)
+                          TransferOptions internal_to_native,
+                          Omega_h::Read<Omega_h::I8> internal_field_mask = {})
     : internal_field_{OmegaHField<typename FieldShimT::value_type,
                                   detail::InternalCoordinateElement>(
-        name + ".__internal__", internal_mesh)}
+        name + ".__internal__", internal_mesh, internal_field_mask)}
   {
     coupled_field_ = std::make_unique<CoupledFieldModel<FieldShimT, CommT>>(
       std::move(field_shim), std::move(field_comm),
@@ -368,35 +355,33 @@ public:
                           redev::Redev& redev, MPI_Comm mpi_comm,
                           Omega_h::Mesh& internal_mesh,
                           TransferOptions native_to_internal,
-                          TransferOptions internal_to_native)
+                          TransferOptions internal_to_native,
+                          Omega_h::Read<Omega_h::I8> internal_field_mask = {})
     : internal_field_{OmegaHField<typename FieldShimT::value_type,
                                   detail::InternalCoordinateElement>(
-        name + ".__internal__", internal_mesh)}
+        name + ".__internal__", internal_mesh, internal_field_mask)}
   {
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldShimT, FieldShimT>>(
         name, std::move(field_shim), redev, mpi_comm,
         std::move(native_to_internal), std::move(internal_to_native));
   }
-  using GatherScatterPasskey = detail::GatherScatterPasskey;
 
   void Send() { coupled_field_->Send(); }
   void Receive() { coupled_field_->Receive(); }
-  void SyncNativeToInternal(GatherScatterPasskey)
+  void SyncNativeToInternal()
   {
     coupled_field_->SyncNativeToInternal(internal_field_);
   }
-  void SyncInternalToNative(GatherScatterPasskey)
+  void SyncInternalToNative()
   {
     coupled_field_->SyncInternalToNative(internal_field_);
   }
-  [[nodiscard]] detail::InternalField& GetInternalField(
-    GatherScatterPasskey) noexcept
+  [[nodiscard]] detail::InternalField& GetInternalField() noexcept
   {
     return internal_field_;
   }
-  [[nodiscard]] const detail::InternalField& GetInternalField(
-    GatherScatterPasskey) const noexcept
+  [[nodiscard]] const detail::InternalField& GetInternalField() const noexcept
   {
     return internal_field_;
   }
@@ -490,7 +475,6 @@ public:
       std::make_unique<CoupledFieldModel<FieldShimT, FieldShimT>>(
         name, std::move(field_shim), redev, mpi_comm);
   }
-  using GatherScatterPasskey = detail::GatherScatterPasskey;
 
   void Send() { coupled_field_->Send(); }
   void Receive() { coupled_field_->Receive(); }
@@ -539,24 +523,21 @@ public:
                   detail::InternalField& combined_field,
                   CombinerFunction combiner)
     : coupled_fields_(std::move(fields_to_gather)),
-      combined_field_{combined_field},
+      combined_field_(combined_field),
       combiner_(std::move(combiner))
   {
-    std::cerr<<"Constructing gather\n";
-    WDMCPL_ALWAYS_ASSERT(!combined_field_.valueless_by_exception());
-    WDMCPL_ALWAYS_ASSERT(combined_field_.valueless_by_exception());
     internal_fields_.reserve(coupled_fields_.size());
-    std::transform(
-      coupled_fields_.begin(), coupled_fields_.end(),
-      std::back_inserter(internal_fields_), [](ConvertibleCoupledField& fld) {
-        return std::ref(fld.GetInternalField(detail::GatherScatterPasskey()));
-      });
+    std::transform(coupled_fields_.begin(), coupled_fields_.end(),
+                   std::back_inserter(internal_fields_),
+                   [](ConvertibleCoupledField& fld) {
+                     return std::ref(fld.GetInternalField());
+                   });
   }
   void Run() const
   {
     for (auto& field : coupled_fields_) {
       field.get().Receive();
-      field.get().SyncNativeToInternal(detail::GatherScatterPasskey());
+      field.get().SyncNativeToInternal();
     }
     combiner_(internal_fields_, combined_field_);
   };
@@ -578,18 +559,18 @@ public:
   {
 
     internal_fields_.reserve(coupled_fields_.size());
-    std::transform(
-      begin(coupled_fields_), end(coupled_fields_),
-      std::back_inserter(internal_fields_), [](ConvertibleCoupledField& fld) {
-        return std::ref(fld.GetInternalField(detail::GatherScatterPasskey()));
-      });
+    std::transform(begin(coupled_fields_), end(coupled_fields_),
+                   std::back_inserter(internal_fields_),
+                   [](ConvertibleCoupledField& fld) {
+                     return std::ref(fld.GetInternalField());
+                   });
   }
   void Run() const
   {
     // possible we may need to add a splitter operation here. will evaluate if
     // needed splitter(combined_field, internal_fields_);
     for (auto& field : coupled_fields_) {
-      field.get().SyncInternalToNative(detail::GatherScatterPasskey());
+      field.get().SyncInternalToNative();
       field.get().Send();
     }
   };
@@ -604,11 +585,11 @@ class CouplerServer
 {
 public:
   CouplerServer(std::string name, MPI_Comm comm, redev::Partition partition,
-                Omega_h::Mesh mesh)
+                Omega_h::Mesh& mesh)
     : name_(std::move(name)),
       mpi_comm_(comm),
       redev_({comm, std::move(partition), ProcessType::Server}),
-      internal_mesh_(std::move(mesh))
+      internal_mesh_(mesh)
   {
   }
   template <typename FieldShimT>
@@ -617,13 +598,15 @@ public:
     FieldTransferMethod to_field_transfer_method,
     FieldEvaluationMethod to_field_eval_method,
     FieldTransferMethod from_field_transfer_method,
-    FieldEvaluationMethod from_field_eval_method)
+    FieldEvaluationMethod from_field_eval_method,
+    Omega_h::Read<Omega_h::I8> internal_field_mask = {})
   {
     auto [it, inserted] = fields_.template try_emplace(
       unique_name, unique_name, std::move(field_shim), redev_, mpi_comm_,
       internal_mesh_,
       TransferOptions{to_field_transfer_method, to_field_eval_method},
-      TransferOptions{from_field_transfer_method, from_field_eval_method});
+      TransferOptions{from_field_transfer_method, from_field_eval_method},
+      internal_field_mask);
     if (!inserted) {
       std::cerr << "OHField with this name" << unique_name
                 << "already exists!\n";
@@ -655,18 +638,17 @@ public:
   template <typename CombinedFieldT = Real>
   GatherOperation* AddGatherFieldsOp(
     const std::string& name, const std::vector<std::string>& fields_to_gather,
-    const std::string& internal_field_name, CombinerFunction func)
+    const std::string& internal_field_name, CombinerFunction func,
+    Omega_h::Read<Omega_h::I8> mask = {})
   {
     auto gather_fields = detail::find_many_or_error(fields_to_gather, fields_);
     static constexpr int seach_nx = 10;
     static constexpr int seach_ny = 10;
 
     auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
-      internal_field_name, internal_fields_, internal_mesh_, seach_nx,
-      seach_ny);
+      internal_field_name, internal_fields_, internal_mesh_,mask, seach_nx, seach_ny);
     auto [it, inserted] = gather_operations_.template try_emplace(
       name, std::move(gather_fields), combined, std::move(func));
-
     if (!inserted) {
       std::cerr << "GatherOperation with this name" << name
                 << "already exists!\n";
@@ -677,7 +659,8 @@ public:
   template <typename CombinedFieldT = Real>
   ScatterOperation* AddScatterFieldsOp(
     const std::string& name, const std::string& internal_field_name,
-    const std::vector<std::string>& fields_to_scatter)
+    const std::vector<std::string>& fields_to_scatter,
+    Omega_h::Read<Omega_h::I8> mask = {})
   {
     auto scatter_fields =
       detail::find_many_or_error(fields_to_scatter, fields_);
@@ -685,7 +668,7 @@ public:
     static constexpr int seach_ny = 10;
 
     auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
-      internal_field_name, internal_fields_, internal_mesh_, seach_nx,
+      internal_field_name, internal_fields_, internal_mesh_, mask, seach_nx,
       seach_ny);
     auto [it, inserted] = scatter_operations_.template try_emplace(
       name, std::move(scatter_fields), combined);
@@ -700,6 +683,7 @@ public:
   {
     return redev_.GetPartition();
   }
+  [[nodiscard]] Omega_h::Mesh& GetMesh() { return internal_mesh_; }
 
 private:
   std::string name_;
@@ -711,7 +695,7 @@ private:
   // gather and scatter operations have reference to internal fields
   std::unordered_map<std::string, ScatterOperation> scatter_operations_;
   std::unordered_map<std::string, GatherOperation> gather_operations_;
-  Omega_h::Mesh internal_mesh_;
+  Omega_h::Mesh& internal_mesh_;
 };
 class CouplerClient
 {

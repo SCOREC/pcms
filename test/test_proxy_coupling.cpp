@@ -121,43 +121,38 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
 
+// TODO: move to be internal to wdmcpl
 struct MeanCombiner
 {
-  // void operator()(const std::vector<std::reference_wrapper<OHField>>& fields,
-  //                 OHField& combined) const
   void operator()(
     const nonstd::span<
       const std::reference_wrapper<wdmcpl::detail::InternalField>>& fields,
     wdmcpl::detail::InternalField& combined_variant) const
   {
-    WDMCPL_ALWAYS_ASSERT(!combined_variant.valueless_by_exception());
-    WDMCPL_ALWAYS_ASSERT(!fields[0].get().valueless_by_exception());
-    /*
     std::visit(
-      //[&fields](auto&& combined_field) {
-        [](auto&& combined_field) {
-        //using T = typename std::remove_reference_t<
-        //  decltype(combined_field)>::value_type;
-        //Omega_h::Write<T> combined_array(combined_field.Size());
-        //for (auto& field_variant : fields) {
-          //std::visit(
-          //  [&combined_array](auto&& field) {
-          //    WDMCPL_ALWAYS_ASSERT(field.Size() == combined_array.size());
-          //    auto field_array = get_nodal_data(field);
-          //    Omega_h::parallel_for(
-          //      field_array.size(),
-          //      OMEGA_H_LAMBDA(int i) { combined_array[i] += field_array[i]; });
-          //  },
-          //  field_variant.get());
-        //}
-        //auto num_fields = fields.size();
-        //Omega_h::parallel_for(
-        //  combined_array.size(),
-        //  OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
-        //set(combined_field, make_array_view(Omega_h::Read(combined_array)));
+      [&fields](auto&& combined_field) {
+        //[](auto&& combined_field) {
+        using T = typename std::remove_reference_t<
+          decltype(combined_field)>::value_type;
+        Omega_h::Write<T> combined_array(combined_field.Size());
+        for (auto& field_variant : fields) {
+          std::visit(
+            [&combined_array, &combined_field](auto&& field) {
+              WDMCPL_ALWAYS_ASSERT(field.Size() == combined_array.size());
+              auto field_array = get_nodal_data(field);
+              Omega_h::parallel_for(
+                field_array.size(),
+                OMEGA_H_LAMBDA(int i) { combined_array[i] += field_array[i]; });
+            },
+            field_variant.get());
+        }
+        auto num_fields = fields.size();
+        Omega_h::parallel_for(
+          combined_array.size(),
+          OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
+        set(combined_field, make_array_view(Omega_h::Read(combined_array)));
       },
       combined_variant);
-      */
   }
 };
 
@@ -196,51 +191,47 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 }
 void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
-  auto p = setupServerPartition(mesh, cpn_file);
   // coupling server using same mesh as application
-  wdmcpl::CouplerServer cpl("proxy_couple", comm, std::move(p), mesh);
+  // note the coupler stores a reference to the internal mesh and it is the user
+  // responsibility to keep it alive!
+  wdmcpl::CouplerServer cpl("proxy_couple", comm,
+                            setupServerPartition(mesh, cpn_file), mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto is_overlap = markServerOverlapRegion(mesh, partition);
   cpl.AddField("total_f_gids",
                OmegaHFieldShim<GO>("total_f_gids", mesh, is_overlap),
-               FieldTransferMethod::None, // to Omega_h
+               FieldTransferMethod::Copy, // to Omega_h
                FieldEvaluationMethod::None,
-               FieldTransferMethod::None, // from Omega_h
-               FieldEvaluationMethod::None);
-  cpl.AddField("delta_f_gids",
-               OmegaHFieldShim<GO>("delta_f_gids", mesh, is_overlap),
-               FieldTransferMethod::None, FieldEvaluationMethod::None,
-               FieldTransferMethod::None, FieldEvaluationMethod::None);
+               FieldTransferMethod::Copy, // from Omega_h
+               FieldEvaluationMethod::None, is_overlap);
+  cpl.AddField(
+    "delta_f_gids", OmegaHFieldShim<GO>("delta_f_gids", mesh, is_overlap),
+    FieldTransferMethod::Copy, FieldEvaluationMethod::None,
+    FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
   // CombinerFunction is a functor that takes a vector of omega_h fields
   // combines their values and sets the combined values into the resultant field
-  auto* gather = cpl.AddGatherFieldsOp("cpl1", {"total_f_gids", "delta_f_gids"},
-                                       "combined_gids", MeanCombiner{});
-  auto* scatter = cpl.AddScatterFieldsOp("cpl1", "combined_gids",
-                                         {"total_f_gids", "delta_f_gids"});
+  auto* gather =
+    cpl.AddGatherFieldsOp("cpl1", {"total_f_gids", "delta_f_gids"},
+                          "combined_gids", MeanCombiner{}, is_overlap);
+  auto* scatter = cpl.AddScatterFieldsOp(
+    "cpl1", "combined_gids", {"total_f_gids", "delta_f_gids"}, is_overlap);
   // for case with symmetric Gather/Scatter we have
   // auto [gather, scatter] = cpl.AddSymmetricGatherScatterOp("cpl1",
   // {"total_f_gids", "delta_f_gids"},
   //                      "combined_gids", MeanCombiner{});
-  //WDMCPL_ALWAYS_ASSERT(gather != nullptr);
-  //WDMCPL_ALWAYS_ASSERT(scatter != nullptr);
   do {
     //  Gather OHField
     // 1. receives any member fields .Receive()
     // 2. field_transfer native to internal
     // 3. combine internal fields into combined internal field
-     //cpl.GatherFields("cpl1"); // (Alt) gather->Run();
-    gather->Run();
-    //cpl.ReceiveField("total_f_gids");
-    //cpl.ReceiveField("delta_f_gids");
-
+    gather->Run(); // alt cpl.GatherFields("cpl1")
     // Scatter OHField
     // 1. OHField transfer internal to native
     // 2. Send data to members
-    //cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
-    //cpl.SendField("total_f_gids");
-    //cpl.SendField("delta_f_gids");
-    scatter->Run();
+    // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
+    scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
   } while (!done);
+  Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }
 
 int main(int argc, char** argv)

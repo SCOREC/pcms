@@ -37,7 +37,7 @@ Omega_h::Read<T> filter_array(Omega_h::Read<T> array, Omega_h::Read<LO> mask,
   Omega_h::parallel_for(
     mask.size(), OMEGA_H_LAMBDA(LO i) {
       if (mask[i]) {
-        auto idx = mask[i] - 1;
+        const auto idx = mask[i] - 1;
         for (int j = 0; j < dim; ++j) {
           filtered_field[idx * dim + j] = array[i];
         }
@@ -197,13 +197,13 @@ auto set(const OmegaHField<T, CoordinateElementType>& field,
       WDMCPL_ALWAYS_ASSERT(original_data.size() == mask.size());
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
-          array[i] = mask[i] ? data(mask[i]) : original_data[i];
+          array[i] = mask[i] ? data(mask[i]-1) : original_data[i];
         });
       mesh.set_tag(0, field.GetName(), Omega_h::Read(array));
     } else {
       Omega_h::parallel_for(
         mask.size(),
-        OMEGA_H_LAMBDA(size_t i) { array[i] = mask[i] ? data(mask[i]) : 0; });
+        OMEGA_H_LAMBDA(size_t i) { array[i] = mask[i] ? data(mask[i]-1) : 0; });
       mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
     }
   } else {

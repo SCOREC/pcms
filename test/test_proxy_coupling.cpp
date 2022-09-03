@@ -126,8 +126,8 @@ struct MeanCombiner
 {
   void operator()(
     const nonstd::span<
-      const std::reference_wrapper<wdmcpl::detail::InternalField>>& fields,
-    wdmcpl::detail::InternalField& combined_variant) const
+      const std::reference_wrapper<wdmcpl::InternalField>>& fields,
+    wdmcpl::InternalField& combined_variant) const
   {
     std::visit(
       [&fields](auto&& combined_field) {

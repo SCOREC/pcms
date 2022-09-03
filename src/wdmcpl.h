@@ -19,8 +19,6 @@ namespace wdmcpl
 using ProcessType = redev::ProcessType;
 class GatherOperation;
 class ScatterOperation;
-namespace detail
-{
 using InternalCoordinateElement = Real;
 
 // internal field can only be one of the types supported by Omega_h
@@ -28,9 +26,12 @@ using InternalCoordinateElement = Real;
 // all internal fields are on the same mesh
 using InternalField =
   std::variant<OmegaHField<Omega_h::I8, InternalCoordinateElement>,
-               OmegaHField<Omega_h::I32, InternalCoordinateElement>,
-               OmegaHField<Omega_h::I64, InternalCoordinateElement>,
-               OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
+    OmegaHField<Omega_h::I32, InternalCoordinateElement>,
+    OmegaHField<Omega_h::I64, InternalCoordinateElement>,
+    OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
+
+namespace detail
+{
 
 struct OutMsg
 {
@@ -343,7 +344,7 @@ public:
                           TransferOptions internal_to_native,
                           Omega_h::Read<Omega_h::I8> internal_field_mask = {})
     : internal_field_{OmegaHField<typename FieldShimT::value_type,
-                                  detail::InternalCoordinateElement>(
+                                  InternalCoordinateElement>(
         name + ".__internal__", internal_mesh, internal_field_mask)}
   {
     coupled_field_ = std::make_unique<CoupledFieldModel<FieldShimT, CommT>>(
@@ -358,7 +359,7 @@ public:
                           TransferOptions internal_to_native,
                           Omega_h::Read<Omega_h::I8> internal_field_mask = {})
     : internal_field_{OmegaHField<typename FieldShimT::value_type,
-                                  detail::InternalCoordinateElement>(
+                                  InternalCoordinateElement>(
         name + ".__internal__", internal_mesh, internal_field_mask)}
   {
     coupled_field_ =
@@ -377,11 +378,11 @@ public:
   {
     coupled_field_->SyncInternalToNative(internal_field_);
   }
-  [[nodiscard]] detail::InternalField& GetInternalField() noexcept
+  [[nodiscard]] InternalField& GetInternalField() noexcept
   {
     return internal_field_;
   }
-  [[nodiscard]] const detail::InternalField& GetInternalField() const noexcept
+  [[nodiscard]] const InternalField& GetInternalField() const noexcept
   {
     return internal_field_;
   }
@@ -389,8 +390,8 @@ public:
   {
     virtual void Send() = 0;
     virtual void Receive() = 0;
-    virtual void SyncNativeToInternal(detail::InternalField&) = 0;
-    virtual void SyncInternalToNative(const detail::InternalField&) = 0;
+    virtual void SyncNativeToInternal(InternalField&) = 0;
+    virtual void SyncInternalToNative(const InternalField&) = 0;
     virtual ~CoupledFieldConcept() = default;
   };
   template <typename FieldShimT, typename CommT>
@@ -421,20 +422,20 @@ public:
     }
     void Send() { comm_.Send(); };
     void Receive() { comm_.Receive(); };
-    void SyncNativeToInternal(detail::InternalField& internal_field)
+    void SyncNativeToInternal(InternalField& internal_field)
     {
       field_shim_.ToOmegaH(
         std::get<OmegaHField<typename FieldShimT::value_type,
-                             detail::InternalCoordinateElement>>(
+                             InternalCoordinateElement>>(
           internal_field),
         native_to_internal_.transfer_method,
         native_to_internal_.evaluation_method);
     };
-    void SyncInternalToNative(const detail::InternalField& internal_field)
+    void SyncInternalToNative(const InternalField& internal_field)
     {
       field_shim_.FromOmegaH(
         std::get<OmegaHField<typename FieldShimT::value_type,
-                             detail::InternalCoordinateElement>>(
+                             InternalCoordinateElement>>(
           internal_field),
         internal_to_native_.transfer_method,
         internal_to_native_.evaluation_method);
@@ -452,7 +453,7 @@ private:
   // we store it as the InternalField variant since this avoids any copies
   // This comes at the cost of a slightly larger type with need to use the get<>
   // function
-  detail::InternalField internal_field_;
+  InternalField internal_field_;
 };
 class CoupledField
 {
@@ -513,14 +514,14 @@ private:
 };
 
 using CombinerFunction = std::function<void(
-  nonstd::span<const std::reference_wrapper<detail::InternalField>>,
-  detail::InternalField&)>;
+  nonstd::span<const std::reference_wrapper<InternalField>>,
+  InternalField&)>;
 class GatherOperation
 {
 public:
   GatherOperation(std::vector<std::reference_wrapper<ConvertibleCoupledField>>
                     fields_to_gather,
-                  detail::InternalField& combined_field,
+                  InternalField& combined_field,
                   CombinerFunction combiner)
     : coupled_fields_(std::move(fields_to_gather)),
       combined_field_(combined_field),
@@ -544,8 +545,8 @@ public:
 
 private:
   std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_;
-  std::vector<std::reference_wrapper<detail::InternalField>> internal_fields_;
-  detail::InternalField& combined_field_;
+  std::vector<std::reference_wrapper<InternalField>> internal_fields_;
+  InternalField& combined_field_;
   CombinerFunction combiner_;
 };
 class ScatterOperation
@@ -553,7 +554,7 @@ class ScatterOperation
 public:
   ScatterOperation(std::vector<std::reference_wrapper<ConvertibleCoupledField>>
                      fields_to_scatter,
-                   detail::InternalField& combined_field)
+                   InternalField& combined_field)
     : coupled_fields_(std::move(fields_to_scatter)),
       combined_field_{combined_field}
   {
@@ -577,8 +578,8 @@ public:
 
 private:
   std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_;
-  std::vector<std::reference_wrapper<detail::InternalField>> internal_fields_;
-  detail::InternalField& combined_field_;
+  std::vector<std::reference_wrapper<InternalField>> internal_fields_;
+  InternalField& combined_field_;
 };
 
 class CouplerServer
@@ -691,7 +692,7 @@ private:
   redev::Redev redev_;
   std::unordered_map<std::string, ConvertibleCoupledField> fields_;
   // coupler owns internal fields since both gather/scatter ops use these
-  std::unordered_map<std::string, detail::InternalField> internal_fields_;
+  std::unordered_map<std::string, InternalField> internal_fields_;
   // gather and scatter operations have reference to internal fields
   std::unordered_map<std::string, ScatterOperation> scatter_operations_;
   std::unordered_map<std::string, GatherOperation> gather_operations_;

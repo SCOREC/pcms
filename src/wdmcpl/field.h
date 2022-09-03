@@ -60,28 +60,6 @@ public:
   virtual void FromOmegaH(const OmegaHField<T, InternalCoordinateType>& internal_field, FieldTransferMethod, FieldEvaluationMethod) = 0;
 };
 
-
-class Field {
-public:
-  template <typename Field>
-  Field(Field&& f) : field_(std::forward<Field>(f)) {}
-
-  template <typename FieldType>
-  friend FieldType* field_cast(Field*);
-  template <typename FieldType>
-  friend const FieldType* field_cast(const Field*);
-
-private:
-  std::any field_;
-};
-
-template <typename FieldType>
-FieldType* field_cast(Field* field){ return std::any_cast<FieldType>(&field->field_); }
-template <typename FieldType>
-const FieldType* field_cast(const Field* field) {return std::any_cast<FieldType>(&field->field_);}
-// field cast works like any_cast and throws exception
-// if the wrong cast type is performed
-
 } // namespace wdmcpl
 
 #endif // WDM_COUPLING_FIELD_H

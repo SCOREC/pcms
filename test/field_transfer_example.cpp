@@ -8,7 +8,7 @@
 
 using wdmcpl::Real;
 using OHField = wdmcpl::OmegaHField<Real, Real>;
-using OHShim = wdmcpl::OmegaHFieldShim<Real, Real>;
+using OHShim = wdmcpl::OmegaHFieldAdapter<Real, Real>;
 using wdmcpl::copy_field;
 using wdmcpl::get_nodal_coordinates;
 using wdmcpl::get_nodal_data;

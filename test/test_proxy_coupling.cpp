@@ -131,7 +131,6 @@ struct MeanCombiner
   {
     std::visit(
       [&fields](auto&& combined_field) {
-        //[](auto&& combined_field) {
         using T = typename std::remove_reference_t<
           decltype(combined_field)>::value_type;
         Omega_h::Write<T> combined_array(combined_field.Size());
@@ -165,7 +164,7 @@ using wdmcpl::GO;
 using wdmcpl::Lagrange;
 using wdmcpl::make_array_view;
 using wdmcpl::OmegaHField;
-using wdmcpl::OmegaHFieldShim;
+using wdmcpl::OmegaHFieldAdapter;
 
 static constexpr bool done = true;
 
@@ -173,7 +172,8 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
-  cpl.AddField("delta_f_gids", OmegaHFieldShim<GO>("global", mesh, is_overlap));
+  cpl.AddField("delta_f_gids",
+               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
     cpl.SendField("delta_f_gids");    //(Alt) df_gid_field->Send();
     cpl.ReceiveField("delta_f_gids"); //(Alt) df_gid_field->Receive();
@@ -183,7 +183,8 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   wdmcpl::CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
   auto is_overlap = markOverlapMeshEntities(mesh);
-  cpl.AddField("total_f_gids", OmegaHFieldShim<GO>("global", mesh, is_overlap));
+  cpl.AddField("total_f_gids",
+               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
     cpl.SendField("total_f_gids");    //(Alt) tf_gid_field->Send();
     cpl.ReceiveField("total_f_gids"); //(Alt) tf_gid_field->Receive();
@@ -199,13 +200,13 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto is_overlap = markServerOverlapRegion(mesh, partition);
   cpl.AddField("total_f_gids",
-               OmegaHFieldShim<GO>("total_f_gids", mesh, is_overlap),
+               OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap),
                FieldTransferMethod::Copy, // to Omega_h
                FieldEvaluationMethod::None,
                FieldTransferMethod::Copy, // from Omega_h
                FieldEvaluationMethod::None, is_overlap);
   cpl.AddField(
-    "delta_f_gids", OmegaHFieldShim<GO>("delta_f_gids", mesh, is_overlap),
+    "delta_f_gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap),
     FieldTransferMethod::Copy, FieldEvaluationMethod::None,
     FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
   // CombinerFunction is a functor that takes a vector of omega_h fields

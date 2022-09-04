@@ -132,15 +132,15 @@ bool HasDuplicates(std::vector<T> v)
   return it != v.end();
 }
 
-template <typename FieldShimT>
+template <typename FieldAdapterT>
 struct FieldCommunicator
 {
-  using T = typename FieldShimT::value_type;
+  using T = typename FieldAdapterT::value_type;
 
 public:
   FieldCommunicator(
     std::string name, redev::Redev& redev, MPI_Comm mpi_comm,
-    FieldShimT& field_shim,
+    FieldAdapterT& field_adapter,
     redev::TransportType transport_type = redev::TransportType::BP4,
     adios2::Params params = adios2::Params{{"Streaming", "On"},
                                            {"OpenTimeoutSecs", "30"}})
@@ -150,7 +150,7 @@ public:
       buffer_size_needs_update_{true},
       redev_{redev},
       name_{std::move(name)},
-      field_shim_(field_shim)
+      field_adapter_(field_adapter)
   {
     std::string transport_name = name_;
     comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type);
@@ -170,7 +170,7 @@ public:
 
   void Send()
   {
-    auto n = field_shim_.Serialize({}, {});
+    auto n = field_adapter_.Serialize({}, {});
     REDEV_ALWAYS_ASSERT(comm_buffer_.size() == n);
 
     auto buffer = ScalarArrayView<typename decltype(comm_buffer_)::value_type,
@@ -181,7 +181,7 @@ public:
                       HostMemorySpace>(message_permutation_.data(),
                                        message_permutation_.size());
 
-    field_shim_.Serialize(buffer, permutation);
+    field_adapter_.Serialize(buffer, permutation);
     comm_.Send(buffer.data_handle());
   }
   void Receive()
@@ -194,7 +194,7 @@ public:
                       HostMemorySpace>(message_permutation_.data(),
                                        message_permutation_.size());
     // load data into the field based on user specified function/functor
-    field_shim_.Deserialize(buffer, permutation);
+    field_adapter_.Deserialize(buffer, permutation);
   }
 
   /** update the permutation array and buffer sizes upon mesh change
@@ -203,10 +203,10 @@ public:
    */
   void UpdateLayout()
   {
-    auto gids = field_shim_.GetGids();
+    auto gids = field_adapter_.GetGids();
     if (redev_.GetProcessType() == redev::ProcessType::Client) {
       const ReversePartitionMap reverse_partition =
-        field_shim_.GetReversePartitionMap(redev_.GetPartition());
+        field_adapter_.GetReversePartitionMap(redev_.GetPartition());
       auto out_message = ConstructOutMessage(reverse_partition);
       comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
       gid_comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
@@ -246,7 +246,7 @@ private:
   bool buffer_size_needs_update_;
   // Stored functions used for updated field
   // info/serialization/deserialization
-  FieldShimT& field_shim_;
+  FieldAdapterT& field_adapter_;
   redev::Redev& redev_;
   std::string name_;
 };
@@ -326,35 +326,35 @@ struct TransferOptions
 class ConvertibleCoupledField
 {
 public:
-  template <typename FieldShimT, typename CommT>
-  ConvertibleCoupledField(const std::string& name, FieldShimT field_shim,
+  template <typename FieldAdapterT, typename CommT>
+  ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
                           detail::FieldCommunicator<CommT> field_comm,
                           Omega_h::Mesh& internal_mesh,
                           TransferOptions native_to_internal,
                           TransferOptions internal_to_native,
                           Omega_h::Read<Omega_h::I8> internal_field_mask = {})
-    : internal_field_{OmegaHField<typename FieldShimT::value_type,
+    : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
                                   InternalCoordinateElement>(
         name + ".__internal__", internal_mesh, internal_field_mask)}
   {
-    coupled_field_ = std::make_unique<CoupledFieldModel<FieldShimT, CommT>>(
-      std::move(field_shim), std::move(field_comm),
+    coupled_field_ = std::make_unique<CoupledFieldModel<FieldAdapterT, CommT>>(
+      std::move(field_adapter), std::move(field_comm),
       std::move(native_to_internal), std::move(internal_to_native));
   }
-  template <typename FieldShimT>
-  ConvertibleCoupledField(const std::string& name, FieldShimT field_shim,
+  template <typename FieldAdapterT>
+  ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
                           redev::Redev& redev, MPI_Comm mpi_comm,
                           Omega_h::Mesh& internal_mesh,
                           TransferOptions native_to_internal,
                           TransferOptions internal_to_native,
                           Omega_h::Read<Omega_h::I8> internal_field_mask = {})
-    : internal_field_{OmegaHField<typename FieldShimT::value_type,
+    : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
                                   InternalCoordinateElement>(
         name + ".__internal__", internal_mesh, internal_field_mask)}
   {
     coupled_field_ =
-      std::make_unique<CoupledFieldModel<FieldShimT, FieldShimT>>(
-        name, std::move(field_shim), redev, mpi_comm,
+      std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
+        name, std::move(field_adapter), redev, mpi_comm,
         std::move(native_to_internal), std::move(internal_to_native));
   }
 
@@ -384,28 +384,28 @@ public:
     virtual void SyncInternalToNative(const InternalField&) = 0;
     virtual ~CoupledFieldConcept() = default;
   };
-  template <typename FieldShimT, typename CommT>
+  template <typename FieldAdapterT, typename CommT>
   struct CoupledFieldModel final : CoupledFieldConcept
   {
-    using value_type = typename FieldShimT::value_type;
+    using value_type = typename FieldAdapterT::value_type;
 
-    CoupledFieldModel(FieldShimT&& field_shim,
+    CoupledFieldModel(FieldAdapterT&& field_adapter,
                       detail::FieldCommunicator<CommT>&& comm,
                       TransferOptions&& native_to_internal,
                       TransferOptions&& internal_to_native)
-      : field_shim_(std::move(field_shim)),
+      : field_adapter_(std::move(field_adapter)),
         comm_(std::move(comm)),
         native_to_internal_(std::move(native_to_internal)),
         internal_to_native_(std::move(internal_to_native))
     {
     }
-    CoupledFieldModel(const std::string& name, FieldShimT&& field_shim,
+    CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
                       redev::Redev& redev, MPI_Comm mpi_comm,
                       TransferOptions&& native_to_internal,
                       TransferOptions&& internal_to_native)
-      : field_shim_(std::move(field_shim)),
-        comm_(detail::FieldCommunicator<FieldShimT>(name, redev, mpi_comm,
-                                                    field_shim_)),
+      : field_adapter_(std::move(field_adapter)),
+        comm_(detail::FieldCommunicator<FieldAdapterT>(name, redev, mpi_comm,
+                                                    field_adapter_)),
         native_to_internal_(std::move(native_to_internal)),
         internal_to_native_(std::move(internal_to_native))
     {
@@ -414,18 +414,18 @@ public:
     void Receive() { comm_.Receive(); };
     void SyncNativeToInternal(InternalField& internal_field)
     {
-      ConvertFieldAdapterToOmegaH(field_shim_, internal_field,
+      ConvertFieldAdapterToOmegaH(field_adapter_, internal_field,
                                   native_to_internal_.transfer_method,
                                   native_to_internal_.evaluation_method);
     };
     void SyncInternalToNative(const InternalField& internal_field)
     {
-      ConvertOmegaHToFieldAdapter(internal_field, field_shim_,
+      ConvertOmegaHToFieldAdapter(internal_field, field_adapter_,
                                   internal_to_native_.transfer_method,
                                   internal_to_native_.evaluation_method);
     };
 
-    FieldShimT field_shim_;
+    FieldAdapterT field_adapter_;
     detail::FieldCommunicator<CommT> comm_;
     TransferOptions native_to_internal_;
     TransferOptions internal_to_native_;
@@ -442,23 +442,23 @@ private:
 class CoupledField
 {
 public:
-  template <typename FieldShimT, typename CommT>
-  CoupledField(const std::string& name, FieldShimT field_shim,
+  template <typename FieldAdapterT, typename CommT>
+  CoupledField(const std::string& name, FieldAdapterT field_adapter,
                detail::FieldCommunicator<CommT> field_comm,
                Omega_h::Mesh& internal_mesh, TransferOptions native_to_internal,
                TransferOptions internal_to_native)
   {
-    coupled_field_ = std::make_unique<CoupledFieldModel<FieldShimT, CommT>>(
-      std::move(field_shim), std::move(field_comm));
+    coupled_field_ = std::make_unique<CoupledFieldModel<FieldAdapterT, CommT>>(
+      std::move(field_adapter), std::move(field_comm));
   }
-  template <typename FieldShimT>
-  CoupledField(const std::string& name, FieldShimT field_shim,
+  template <typename FieldAdapterT>
+  CoupledField(const std::string& name, FieldAdapterT field_adapter,
                redev::Redev& redev, MPI_Comm mpi_comm)
   {
 
     coupled_field_ =
-      std::make_unique<CoupledFieldModel<FieldShimT, FieldShimT>>(
-        name, std::move(field_shim), redev, mpi_comm);
+      std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
+        name, std::move(field_adapter), redev, mpi_comm);
   }
 
   void Send() { coupled_field_->Send(); }
@@ -469,27 +469,28 @@ public:
     virtual void Receive() = 0;
     virtual ~CoupledFieldConcept() = default;
   };
-  template <typename FieldShimT, typename CommT>
+  template <typename FieldAdapterT, typename CommT>
   struct CoupledFieldModel final : CoupledFieldConcept
   {
-    using value_type = typename FieldShimT::value_type;
+    using value_type = typename FieldAdapterT::value_type;
 
-    CoupledFieldModel(FieldShimT&& field_shim,
+    CoupledFieldModel(FieldAdapterT&& field_adapter,
                       detail::FieldCommunicator<CommT>&& comm)
-      : field_shim_(std::move(field_shim)), comm_(std::move(comm))
+      : field_adapter_(std::move(field_adapter)), comm_(std::move(comm))
     {
     }
-    CoupledFieldModel(const std::string& name, FieldShimT&& field_shim,
+    CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
                       redev::Redev& redev, MPI_Comm mpi_comm)
-      : field_shim_(std::move(field_shim)),
+      : field_adapter_(std::move(field_adapter)),
         comm_(
-          detail::FieldCommunicator<CommT>(name, redev, mpi_comm, field_shim_))
+          detail::FieldCommunicator<CommT>(name, redev, mpi_comm,
+                                               field_adapter_))
     {
     }
     void Send() { comm_.Send(); };
     void Receive() { comm_.Receive(); };
 
-    FieldShimT field_shim_;
+    FieldAdapterT field_adapter_;
     detail::FieldCommunicator<CommT> comm_;
   };
 
@@ -577,9 +578,9 @@ public:
       internal_mesh_(mesh)
   {
   }
-  template <typename FieldShimT>
+  template <typename FieldAdapterT>
   ConvertibleCoupledField* AddField(
-    std::string unique_name, FieldShimT field_shim,
+    std::string unique_name, FieldAdapterT field_adapter,
     FieldTransferMethod to_field_transfer_method,
     FieldEvaluationMethod to_field_eval_method,
     FieldTransferMethod from_field_transfer_method,
@@ -587,7 +588,7 @@ public:
     Omega_h::Read<Omega_h::I8> internal_field_mask = {})
   {
     auto [it, inserted] = fields_.template try_emplace(
-      unique_name, unique_name, std::move(field_shim), redev_, mpi_comm_,
+      unique_name, unique_name, std::move(field_adapter), redev_, mpi_comm_,
       internal_mesh_,
       TransferOptions{to_field_transfer_method, to_field_eval_method},
       TransferOptions{from_field_transfer_method, from_field_eval_method},
@@ -692,11 +693,11 @@ public:
       redev_({comm, std::move(partition), ProcessType::Client})
   {
   }
-  template <typename FieldShimT>
-  CoupledField* AddField(std::string unique_name, FieldShimT field_shim)
+  template <typename FieldAdapterT>
+  CoupledField* AddField(std::string unique_name, FieldAdapterT field_adapter)
   {
     auto [it, inserted] = fields_.template try_emplace(
-      unique_name, unique_name, std::move(field_shim), redev_, mpi_comm_);
+      unique_name, unique_name, std::move(field_adapter), redev_, mpi_comm_);
     if (!inserted) {
       std::cerr << "OHField with this name" << unique_name
                 << "already exists!\n";

@@ -317,20 +317,20 @@ namespace wdmcpl
 {
 
 template <typename T, typename CoordinateElementType = Real>
-class OmegaHFieldShim final
-  : public FieldShim<T, typename OmegaHMemorySpace::type>
+class OmegaHFieldAdapter final
+  : public FieldAdapter<T, typename OmegaHMemorySpace::type>
 {
 public:
   using memory_space = OmegaHMemorySpace::type;
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
-  OmegaHFieldShim(std::string name, Omega_h::Mesh& mesh, int search_nx = 10,
+  OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh, int search_nx = 10,
                   int search_ny = 10)
     : field_{std::move(name), mesh, search_nx, search_ny}
   {
   }
 
-  OmegaHFieldShim(std::string name, Omega_h::Mesh& mesh,
+  OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
                   Omega_h::Read<Omega_h::I8> mask, int search_nx = 10,
                   int search_ny = 10)
     : field_{std::move(name), mesh, mask, search_nx, search_ny}
@@ -447,9 +447,9 @@ void ConvertOmegaHToFieldAdapter(const InternalField& internal,
     internal);
 }
 // Specializations for the Omega_h field adapter class since get/set are
-// implemented on the OmegaHFieldClass which is owned by the field shim
+// implemented on the OmegaHFieldClass which is owned by the field adapter
 template <typename T, typename C>
-void ConvertFieldAdapterToOmegaH(const OmegaHFieldShim<T, C>& adapter,
+void ConvertFieldAdapterToOmegaH(const OmegaHFieldAdapter<T, C>& adapter,
                                  InternalField internal,
                                  FieldTransferMethod ftm,
                                  FieldEvaluationMethod fem)
@@ -462,7 +462,7 @@ void ConvertFieldAdapterToOmegaH(const OmegaHFieldShim<T, C>& adapter,
 }
 template <typename T, typename C>
 void ConvertOmegaHToFieldAdapter(const InternalField& internal,
-                                 OmegaHFieldShim<T, C>& adapter,
+                                 OmegaHFieldAdapter<T, C>& adapter,
                                  FieldTransferMethod ftm,
                                  FieldEvaluationMethod fem)
 {

@@ -36,7 +36,7 @@ using ReversePartitionMap = std::map<wdmcpl::LO, std::vector<wdmcpl::LO>>;
 // template <typename T, typename MemorySpace = HostMemorySpace, typename
 // CoordinateElementType = Real>
 template <typename T, typename MemorySpace = HostMemorySpace>
-class FieldShim
+class FieldAdapter
 {
   using InternalCoordinateType = Real;
 

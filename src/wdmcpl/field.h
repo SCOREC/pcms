@@ -33,8 +33,9 @@ struct HasCoordinateSystem<T, VoidT<typename T::coordinate_system>>
  */
 using ReversePartitionMap = std::map<wdmcpl::LO, std::vector<wdmcpl::LO>>;
 
-// template <typename T, typename MemorySpace = HostMemorySpace, typename
-// CoordinateElementType = Real>
+// This is a model interface. The current wdmcpl design does not require that
+// the FieldAdapter must be inherited from this class
+/*
 template <typename T, typename MemorySpace = HostMemorySpace>
 class FieldAdapter
 {
@@ -54,6 +55,7 @@ public:
   virtual ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const = 0;
 };
+*/
 } // namespace wdmcpl
 
 #endif // WDM_COUPLING_FIELD_H

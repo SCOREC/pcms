@@ -317,8 +317,7 @@ namespace wdmcpl
 {
 
 template <typename T, typename CoordinateElementType = Real>
-class OmegaHFieldAdapter final
-  : public FieldAdapter<T, typename OmegaHMemorySpace::type>
+class OmegaHFieldAdapter
 {
 public:
   using memory_space = OmegaHMemorySpace::type;
@@ -341,9 +340,9 @@ public:
     return field_.GetName();
   }
   // REQUIRED
-  virtual int Serialize(
+  int Serialize(
     ScalarArrayView<T, memory_space> buffer,
-    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const final
+    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
   {
     // host copy of filtered field data array
     const auto array_h = Omega_h::HostRead(get_nodal_data(field_));
@@ -355,9 +354,9 @@ public:
     return array_h.size();
   }
   // REQUIRED
-  virtual void Deserialize(
+  void Deserialize(
     ScalarArrayView<T, memory_space> buffer,
-    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const final
+    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
   {
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
     Omega_h::Write<T> sorted_buffer(buffer.size());
@@ -368,7 +367,7 @@ public:
   }
 
   // REQUIRED
-  [[nodiscard]] virtual std::vector<GO> GetGids() const final
+  [[nodiscard]] std::vector<GO> GetGids() const
   {
     auto gids = get_nodal_gids(field_);
     if (gids.size() > 0) {
@@ -378,8 +377,8 @@ public:
     return {};
   }
   // REQUIRED
-  [[nodiscard]] virtual ReversePartitionMap GetReversePartitionMap(
-    const redev::Partition& partition) const final
+  [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
+    const redev::Partition& partition) const
   {
     auto& mesh = field_.GetMesh();
     auto classIds_h = Omega_h::HostRead(field_.GetClassIDs());

@@ -24,6 +24,7 @@ struct OmegaHMemorySpace
   using type = typename Kokkos::DefaultExecutionSpace::memory_space;
 };
 
+
 namespace detail
 {
 template <typename T, int dim = 1>
@@ -133,6 +134,16 @@ private:
   LO size_;
 };
 
+using InternalCoordinateElement = Real;
+// internal field can only be one of the types supported by Omega_h
+// The coordinate element for all internal fields is the same since
+// all internal fields are on the same mesh
+using InternalField =
+  std::variant<OmegaHField<Omega_h::I8, InternalCoordinateElement>,
+    OmegaHField<Omega_h::I32, InternalCoordinateElement>,
+    OmegaHField<Omega_h::I64, InternalCoordinateElement>,
+    OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
+
 template <typename T, typename CoordinateElementType>
 auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
   -> Omega_h::Read<T>
@@ -197,13 +208,14 @@ auto set(const OmegaHField<T, CoordinateElementType>& field,
       WDMCPL_ALWAYS_ASSERT(original_data.size() == mask.size());
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
-          array[i] = mask[i] ? data(mask[i]-1) : original_data[i];
+          array[i] = mask[i] ? data(mask[i] - 1) : original_data[i];
         });
       mesh.set_tag(0, field.GetName(), Omega_h::Read(array));
     } else {
       Omega_h::parallel_for(
-        mask.size(),
-        OMEGA_H_LAMBDA(size_t i) { array[i] = mask[i] ? data(mask[i]-1) : 0; });
+        mask.size(), OMEGA_H_LAMBDA(size_t i) {
+          array[i] = mask[i] ? data(mask[i] - 1) : 0;
+        });
       mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
     }
   } else {
@@ -303,6 +315,7 @@ auto make_array_view(const Omega_h::Read<T>& array)
 
 namespace wdmcpl
 {
+
 template <typename T, typename CoordinateElementType = Real>
 class OmegaHFieldShim final
   : public FieldShim<T, typename OmegaHMemorySpace::type>
@@ -327,9 +340,10 @@ public:
   {
     return field_.GetName();
   }
+  // REQUIRED
   virtual int Serialize(
     ScalarArrayView<T, memory_space> buffer,
-    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
+    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const final
   {
     // host copy of filtered field data array
     const auto array_h = Omega_h::HostRead(get_nodal_data(field_));
@@ -340,9 +354,10 @@ public:
     }
     return array_h.size();
   }
+  // REQUIRED
   virtual void Deserialize(
     ScalarArrayView<T, memory_space> buffer,
-    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
+    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const final
   {
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
     Omega_h::Write<T> sorted_buffer(buffer.size());
@@ -352,7 +367,8 @@ public:
     set(field_, make_array_view(Omega_h::Read(sorted_buffer)));
   }
 
-  [[nodiscard]] virtual std::vector<GO> GetGids() const
+  // REQUIRED
+  [[nodiscard]] virtual std::vector<GO> GetGids() const final
   {
     auto gids = get_nodal_gids(field_);
     if (gids.size() > 0) {
@@ -361,8 +377,9 @@ public:
     }
     return {};
   }
+  // REQUIRED
   [[nodiscard]] virtual ReversePartitionMap GetReversePartitionMap(
-    const redev::Partition& partition) const
+    const redev::Partition& partition) const final
   {
     auto& mesh = field_.GetMesh();
     auto classIds_h = Omega_h::HostRead(field_.GetClassIDs());
@@ -390,22 +407,71 @@ public:
     }
     return reverse_partition;
   }
-  void ToOmegaH(OmegaHField<T, Real>& internal_field,
-                FieldTransferMethod transfer_method,
-                FieldEvaluationMethod evaluation_method)
+  // NOT REQUIRED PART OF FieldAdapter interface
+  [[nodiscard]] OmegaHField<T, CoordinateElementType>& GetField() noexcept
   {
-    transfer_field(field_, internal_field, transfer_method, evaluation_method);
+    return field_;
   }
-  void FromOmegaH(const OmegaHField<T, Real>& internal_field,
-                  FieldTransferMethod transfer_method,
-                  FieldEvaluationMethod evaluation_method)
+  // NOT REQUIRED PART OF FieldAdapter interface
+  [[nodiscard]] const OmegaHField<T, CoordinateElementType>& GetField()
+    const noexcept
   {
-    transfer_field(internal_field, field_, transfer_method, evaluation_method);
+    return field_;
   }
 
 private:
   OmegaHField<T, CoordinateElementType> field_;
 };
+template <typename FieldAdapter>
+void ConvertFieldAdapterToOmegaH(const FieldAdapter& adapter,
+                                 InternalField internal,
+                                 FieldTransferMethod ftm,
+                                 FieldEvaluationMethod fem)
+{
+  std::visit(
+    [&](auto&& internal_field) {
+      transfer_field(adapter, internal_field, ftm, fem);
+    },
+    internal);
+}
+
+template <typename FieldAdapter>
+void ConvertOmegaHToFieldAdapter(const InternalField& internal,
+                                 FieldAdapter& adapter, FieldTransferMethod ftm,
+                                 FieldEvaluationMethod fem)
+{
+  std::visit(
+    [&](auto&& internal_field) {
+      transfer_field(internal_field, adapter, ftm, fem);
+    },
+    internal);
+}
+// Specializations for the Omega_h field adapter class since get/set are
+// implemented on the OmegaHFieldClass which is owned by the field shim
+template <typename T, typename C>
+void ConvertFieldAdapterToOmegaH(const OmegaHFieldShim<T, C>& adapter,
+                                 InternalField internal,
+                                 FieldTransferMethod ftm,
+                                 FieldEvaluationMethod fem)
+{
+  std::visit(
+    [&](auto&& internal_field) {
+      transfer_field(adapter.GetField(), internal_field, ftm, fem);
+    },
+    internal);
+}
+template <typename T, typename C>
+void ConvertOmegaHToFieldAdapter(const InternalField& internal,
+                                 OmegaHFieldShim<T, C>& adapter,
+                                 FieldTransferMethod ftm,
+                                 FieldEvaluationMethod fem)
+{
+  std::visit(
+    [&](auto&& internal_field) {
+      transfer_field(internal_field, adapter.GetField(), ftm, fem);
+    },
+    internal);
+}
 
 } // namespace wdmcpl
 

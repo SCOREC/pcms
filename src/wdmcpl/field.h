@@ -32,18 +32,18 @@ struct HasCoordinateSystem<T, VoidT<typename T::coordinate_system>>
  * Value: Vector of local index (ordered)
  */
 using ReversePartitionMap = std::map<wdmcpl::LO, std::vector<wdmcpl::LO>>;
-template <typename T, typename CoordinateElementType>
-class OmegaHField;
 
-//template <typename T, typename MemorySpace = HostMemorySpace, typename CoordinateElementType = Real>
+// template <typename T, typename MemorySpace = HostMemorySpace, typename
+// CoordinateElementType = Real>
 template <typename T, typename MemorySpace = HostMemorySpace>
 class FieldShim
 {
   using InternalCoordinateType = Real;
+
 public:
   using memory_space = MemorySpace;
   using value_type = T;
-  virtual const std::string& GetName() const noexcept= 0;
+  virtual const std::string& GetName() const noexcept = 0;
   virtual int Serialize(
     ScalarArrayView<T, MemorySpace> buffer,
     ScalarArrayView<const wdmcpl::LO, MemorySpace> permutation) const = 0;
@@ -53,13 +53,7 @@ public:
   virtual std::vector<GO> GetGids() const = 0;
   virtual ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const = 0;
-  // FIXME these functions are only needed on the server and we need to make sure we
-  // can compile the applications without linking against OmegaH.
-  // FIXME pull out ToOmegaH/FromOmegaH into "customization point functions". Default implementation calls transfer_field
-  virtual void ToOmegaH(OmegaHField<T, InternalCoordinateType>& internal_field, FieldTransferMethod, FieldEvaluationMethod) = 0;
-  virtual void FromOmegaH(const OmegaHField<T, InternalCoordinateType>& internal_field, FieldTransferMethod, FieldEvaluationMethod) = 0;
 };
-
 } // namespace wdmcpl
 
 #endif // WDM_COUPLING_FIELD_H

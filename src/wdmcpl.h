@@ -19,16 +19,6 @@ namespace wdmcpl
 using ProcessType = redev::ProcessType;
 class GatherOperation;
 class ScatterOperation;
-using InternalCoordinateElement = Real;
-
-// internal field can only be one of the types supported by Omega_h
-// The coordinate element for all internal fields is the same since
-// all internal fields are on the same mesh
-using InternalField =
-  std::variant<OmegaHField<Omega_h::I8, InternalCoordinateElement>,
-    OmegaHField<Omega_h::I32, InternalCoordinateElement>,
-    OmegaHField<Omega_h::I64, InternalCoordinateElement>,
-    OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
 
 namespace detail
 {
@@ -424,21 +414,15 @@ public:
     void Receive() { comm_.Receive(); };
     void SyncNativeToInternal(InternalField& internal_field)
     {
-      field_shim_.ToOmegaH(
-        std::get<OmegaHField<typename FieldShimT::value_type,
-                             InternalCoordinateElement>>(
-          internal_field),
-        native_to_internal_.transfer_method,
-        native_to_internal_.evaluation_method);
+      ConvertFieldAdapterToOmegaH(field_shim_, internal_field,
+                                  native_to_internal_.transfer_method,
+                                  native_to_internal_.evaluation_method);
     };
     void SyncInternalToNative(const InternalField& internal_field)
     {
-      field_shim_.FromOmegaH(
-        std::get<OmegaHField<typename FieldShimT::value_type,
-                             InternalCoordinateElement>>(
-          internal_field),
-        internal_to_native_.transfer_method,
-        internal_to_native_.evaluation_method);
+      ConvertOmegaHToFieldAdapter(internal_field, field_shim_,
+                                  internal_to_native_.transfer_method,
+                                  internal_to_native_.evaluation_method);
     };
 
     FieldShimT field_shim_;
@@ -647,7 +631,8 @@ public:
     static constexpr int seach_ny = 10;
 
     auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
-      internal_field_name, internal_fields_, internal_mesh_,mask, seach_nx, seach_ny);
+      internal_field_name, internal_fields_, internal_mesh_, mask, seach_nx,
+      seach_ny);
     auto [it, inserted] = gather_operations_.template try_emplace(
       name, std::move(gather_fields), combined, std::move(func));
     if (!inserted) {

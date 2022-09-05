@@ -1,5 +1,24 @@
+
 set(WDMCPL_HEADERS
-  wdmcpl.h
+        wdmcpl.h
+        arrays.h
+        assert.h
+        bounding_box.h
+        client.h
+        common.h
+        coordinate.h
+        coordinate_systems.h
+        coordinate_transform.h
+        field.h
+        field_communicator.h
+        field_evaluation_methods.h
+        memory_spaces.h
+        omega_h_field.h
+        point_search.h
+        server.h
+        transfer_field.h
+        types.h
+        uniform_grid.h
   )
 
 set(WDMCPL_SOURCES

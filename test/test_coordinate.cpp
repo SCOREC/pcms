@@ -7,7 +7,10 @@ using wdmcpl::Cartesian;
 using wdmcpl::Cylindrical;
 
 // coordinates from different coordinate systems should not be equality comparable
+// Version required for equality_comparable
+#if __cplusplus >= 202002L
 static_assert(!std::equality_comparable_with<Coordinate<Cartesian>,Coordinate<Cylindrical>>);
+#endif
 
 TEST_CASE( "Coordinate Strong type works", "[coordinate]" ) {
   Coordinate<Cartesian> cart{1.0,2.0,3.0};

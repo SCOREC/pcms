@@ -8,7 +8,7 @@ set(WDMCPL_SOURCES
 
 add_library(wdmcpl ${WDMCPL_SOURCES})
 add_library(wdmcpl::wdmcpl ALIAS wdmcpl)
-target_compile_features(wdmcpl PUBLIC cxx_std_20)
+target_compile_features(wdmcpl PUBLIC cxx_std_17)
 target_link_libraries(wdmcpl PUBLIC Omega_h::omega_h redev::redev MPI::MPI_C)
 if(WDMCPL_HAS_ASAN)
   target_compile_options(wdmcpl PRIVATE -fsanitize=address -fno-omit-frame-pointer)

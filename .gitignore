@@ -2,4 +2,4 @@
 *build*
 *.pdf
 .DS_Store
-
+.vscode

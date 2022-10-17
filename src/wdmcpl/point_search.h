@@ -1,7 +1,6 @@
 #ifndef WDM_COUPLING_POINT_SEARCH_H
 #define WDM_COUPLING_POINT_SEARCH_H
 #include <unordered_map>
-#include <Kokkos_Crs.hpp>
 #include <Kokkos_Core.hpp>
 #include <Omega_h_mesh.hpp>
 #include "types.h"
@@ -20,6 +19,7 @@ namespace detail
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh, const UniformGrid& grid);
 } // namespace detail
+KOKKOS_FUNCTION
 Omega_h::Vector<3> barycentric_from_global(
   const Omega_h::Vector<2>& point, const Omega_h::Matrix<2, 3>& vertex_coords);
 

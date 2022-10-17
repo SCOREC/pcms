@@ -1,6 +1,7 @@
 #ifndef WDM_COUPLING_BOUNDING_BOX_H
 #define WDM_COUPLING_BOUNDING_BOX_H
 #include "wdmcpl/types.h"
+#include <Kokkos_Core.hpp>
 #include <array>
 namespace wdmcpl
 {
@@ -15,6 +16,7 @@ struct AABBox
 };
 
 template <int dim>
+KOKKOS_INLINE_FUNCTION
 bool intersects(const AABBox<dim>& a, const AABBox<dim>& b)
 {
   for (int i = 0; i < dim; ++i) {

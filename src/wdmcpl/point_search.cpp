@@ -10,10 +10,10 @@ AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
   std::array<Real, 2> max{coords(0, 0), coords(1, 0)};
   std::array<Real, 2> min{coords(0, 0), coords(1, 0)};
   for (int i = 1; i < 3; ++i) {
-    max[0] = std::max(max[0], coords(0, i));
-    max[1] = std::max(max[1], coords(1, i));
-    min[0] = std::min(min[0], coords(0, i));
-    min[1] = std::min(min[1], coords(1, i));
+    max[0] = Kokkos::fmax(max[0], coords(0, i));
+    max[1] = Kokkos::fmax(max[1], coords(1, i));
+    min[0] = Kokkos::fmin(min[0], coords(0, i));
+    min[1] = Kokkos::fmin(min[1], coords(1, i));
   }
   return {.center = {(max[0] + min[0]) / 2.0, (max[1] + min[1]) / 2.0},
           .half_width = {(max[0] - min[0]) / 2.0, (max[1] - min[1]) / 2.0}};
@@ -21,6 +21,7 @@ AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
 // Liang, You-Dong, and B. A. Barsky. “A New Concept and Method for Line
 // Clipping.” ACM Transactions on Graphics 3, no. 1 (January 1984): 1–22.
 // https://doi.org/10.1145/357332.357333.
+KOKKOS_INLINE_FUNCTION
 bool clipt(Real p, Real q, Real& t0, Real& t1)
 {
   if (p < 0) {
@@ -51,6 +52,7 @@ bool clipt(Real p, Real q, Real& t0, Real& t1)
 // Liang, You-Dong, and B. A. Barsky. “A New Concept and Method for Line
 // Clipping.” ACM Transactions on Graphics 3, no. 1 (January 1984): 1–22.
 // https://doi.org/10.1145/357332.357333.
+KOKKOS_INLINE_FUNCTION
 bool line_intersects_bbox(const Omega_h::Vector<2>& p0,
                           const Omega_h::Vector<2>& p1, const AABBox<2>& bbox)
 {
@@ -76,21 +78,21 @@ bool line_intersects_bbox(const Omega_h::Vector<2>& p0,
   return false;
 }
 
-[[nodiscard]]
-bool within_bbox(const Omega_h::Vector<2> coord, const AABBox<2> & bbox) noexcept{
-  auto left = bbox.center[0]-bbox.half_width[0];
-  auto right = bbox.center[0]+bbox.half_width[0];
-  auto bot = bbox.center[1]-bbox.half_width[1];
-  auto top = bbox.center[1]+bbox.half_width[1];
+[[nodiscard]] KOKKOS_INLINE_FUNCTION
+bool within_bbox(const Omega_h::Vector<2> coord, const AABBox<2> & bbox) noexcept {
+  auto left = bbox.center[0] - bbox.half_width[0];
+  auto right = bbox.center[0] + bbox.half_width[0];
+  auto bot = bbox.center[1] - bbox.half_width[1];
+  auto top = bbox.center[1] + bbox.half_width[1];
   return (coord[0]>=left) && (coord[0]<=right) && (coord[1] >= bot) && (coord[1]<=top);
-
 }
-[[nodiscard]]
+
+[[nodiscard]] KOKKOS_INLINE_FUNCTION
 bool bbox_verts_within_triangle(const AABBox<2>& bbox, const Omega_h::Matrix<2,3>& coords) {
-  auto left = bbox.center[0]-bbox.half_width[0];
-  auto right = bbox.center[0]+bbox.half_width[0];
-  auto bot = bbox.center[1]-bbox.half_width[1];
-  auto top = bbox.center[1]+bbox.half_width[1];
+  auto left = bbox.center[0] - bbox.half_width[0];
+  auto right = bbox.center[0] + bbox.half_width[0];
+  auto bot = bbox.center[1] - bbox.half_width[1];
+  auto top = bbox.center[1] + bbox.half_width[1];
   auto xi = barycentric_from_global({left,bot}, coords);
   if(Omega_h::is_barycentric_inside(xi)){ return true;}
   xi = barycentric_from_global({left,top}, coords);
@@ -112,11 +114,13 @@ bool bbox_verts_within_triangle(const AABBox<2>& bbox, const Omega_h::Matrix<2,3
   // triangle and grid cell bounding box intersect
   if (intersects(triangle_bbox(coords), bbox)) {
     // if any of the triangle verts inside of bbox
-    if(within_bbox(coords[0], bbox) || within_bbox(coords[1], bbox) || within_bbox(coords[2], bbox)) {
+    if (within_bbox(coords[0], bbox) ||
+        within_bbox(coords[1], bbox) ||
+        within_bbox(coords[2], bbox)) {
       return true;
     }
     // if any of the bbox verts are within the triangle
-    if(bbox_verts_within_triangle(bbox, coords)) {
+    if (bbox_verts_within_triangle(bbox, coords)) {
       return true;
     }
     // if any of the triangle's edges intersect with the bounding box
@@ -147,7 +151,8 @@ struct GridTriIntersectionFunctor
     : mesh_(mesh),
       tris2verts_(mesh_.ask_elem_verts()),
       coords_(mesh_.coords()),
-      grid_(grid)
+      grid_(grid),
+      nelems_(mesh_.nelems())
   {
     if (mesh_.dim() != 2) {
       std::cerr << "GridTriIntersection currently only developed for 2D "
@@ -166,7 +171,7 @@ struct GridTriIntersectionFunctor
     LO num_intersections = 0;
 
     // hierarchical parallel may make be very beneficial here...
-    for (LO elem_idx = 0; elem_idx < mesh_.nelems(); ++elem_idx) {
+    for (LO elem_idx = 0; elem_idx < nelems_; ++elem_idx) {
       const auto elem_tri2verts = Omega_h::gather_verts<3>(tris2verts_, elem_idx);
       // 2d mesh with 2d coords, but 3 triangles
       const auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
@@ -185,12 +190,13 @@ private:
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
   UniformGrid grid_;
+public:
+  LO nelems_;
 };
 
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh, const UniformGrid& grid)
 {
-
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
   auto f = detail::GridTriIntersectionFunctor{mesh, grid};
   Kokkos::count_and_fill_crs(intersection_map, grid.GetNumCells(), f);
@@ -235,7 +241,6 @@ GridPointSearch::operator()(Omega_h::Vector<dim> point) const
   return {-1, {}};
 }
 GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
-
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
   // get mesh bounding box

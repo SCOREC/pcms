@@ -15,7 +15,9 @@ struct UniformGrid
   std::array<LO, dim> divisions;
 
 public:
-  [[nodiscard]] LO GetNumCells() const { return std::accumulate(divisions.begin(),divisions.end(), 1, std::multiplies<LO>{});}
+  [[nodiscard]] LO GetNumCells() const {
+    return std::accumulate(divisions.begin(), divisions.end(), 1, std::multiplies<LO>{});
+  }
   /// return the grid cell ID that the input point is inside or closest to if
   /// the point lies outside
   [[nodiscard]] LO ClosestCellID(const Omega_h::Vector<dim>& point) const
@@ -37,7 +39,7 @@ public:
     }
     return GetCellIndex(indexes[0], indexes[1]);
   }
-  [[nodiscard]] AABBox<dim> GetCellBBOX(LO idx) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<dim> GetCellBBOX(LO idx) const
   {
     auto [i, j] = GetTwoDCellIndex(idx);
     std::array<Real, dim> half_width = {edge_length[0] / (2.0 * divisions[0]),
@@ -47,7 +49,7 @@ public:
                      .half_width = half_width};
     return bbox;
   }
-  [[nodiscard]] std::array<LO, 2> GetTwoDCellIndex(LO idx) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION std::array<LO, 2> GetTwoDCellIndex(LO idx) const
   {
     return {idx / divisions[0], idx % divisions[0]};
   }

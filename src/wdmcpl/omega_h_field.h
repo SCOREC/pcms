@@ -192,10 +192,10 @@ auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
 /**
  * Sets the data on the entire mesh
  */
-// FIXME rename set to set_nodal_data
 template <typename T, typename CoordinateElementType, typename U>
-auto set(const OmegaHField<T, CoordinateElementType>& field,
-         ScalarArrayView<const U, OmegaHMemorySpace::type> data) -> void
+auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
+                    ScalarArrayView<const U, OmegaHMemorySpace::type> data)
+  -> void
 {
   auto& mesh = field.GetMesh();
   const auto has_tag = mesh.has_tag(0, field.GetName());
@@ -219,7 +219,7 @@ auto set(const OmegaHField<T, CoordinateElementType>& field,
       mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
     }
   } else {
-    WDMCPL_ALWAYS_ASSERT(data.size() == mesh.nents(0));
+    WDMCPL_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh.nents(0));
     Omega_h::Write<U> array(data.size());
     Omega_h::parallel_for(
       data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
@@ -363,7 +363,7 @@ public:
     for (int i = 0; i < buffer.size(); ++i) {
       sorted_buffer[i] = buffer[permutation[i]];
     }
-    set(field_, make_array_view(Omega_h::Read(sorted_buffer)));
+    set_nodal_data(field_, make_array_view(Omega_h::Read(sorted_buffer)));
   }
 
   // REQUIRED

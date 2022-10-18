@@ -149,7 +149,8 @@ struct MeanCombiner
         Omega_h::parallel_for(
           combined_array.size(),
           OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
-        set(combined_field, make_array_view(Omega_h::Read(combined_array)));
+        set_nodal_data(combined_field,
+                       make_array_view(Omega_h::Read(combined_array)));
       },
       combined_variant);
   }

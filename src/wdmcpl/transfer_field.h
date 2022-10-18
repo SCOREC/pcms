@@ -19,7 +19,7 @@ template <typename Field>
 void copy_field(const Field& source_field, Field& target_field)
 {
   const auto source_data = get_nodal_data(source_field);
-  set(target_field, make_array_view(source_data));
+  set_nodal_data(target_field, make_array_view(source_data));
 }
 
 template <typename SourceField, typename TargetField,
@@ -67,10 +67,10 @@ void interpolate_field(const SourceField& source_field,
     // const auto data =
     //   evaluate(source_field, method,
     //   make_array_view(transformed_coordinates));
-    // set(target_field, make_array_view(data));
+    // set_nodal_data(target_field, make_array_view(data));
   } else {
     const auto data = evaluate(source_field, method, coordinates_view);
-    set(target_field, make_array_view(data));
+    set_nodal_data(target_field, make_array_view(data));
   }
 }
 template <typename SourceField, typename TargetField>

@@ -14,7 +14,7 @@ using wdmcpl::get_nodal_coordinates;
 using wdmcpl::get_nodal_data;
 using wdmcpl::interpolate_field;
 using wdmcpl::make_array_view;
-using wdmcpl::set;
+using wdmcpl::set_nodal_data;
 
 inline constexpr int num_trials = 1000;
 
@@ -35,7 +35,7 @@ struct MeanCombiner
     auto num_fields = fields.size();
     Omega_h::parallel_for(
       field_size, OMEGA_H_LAMBDA(int i) { combined_array[i] /= num_fields; });
-    set(combined, make_array_view(Omega_h::Read(combined_array)));
+    set_nodal_data(combined, make_array_view(Omega_h::Read(combined_array)));
   }
 };
 void SetApplicationFields(const OHField& app_a_field,
@@ -107,7 +107,7 @@ void test_standalone(Omega_h::Mesh& internal_mesh, Omega_h::Mesh& app_mesh)
   // copy_field(app_a_field, app_b_field);
 
   for (int i = 0; i < num_trials; ++i) {
-    // set(app_b_field, make_array_view(read_values));
+    // set_nodal_data(app_b_field, make_array_view(read_values));
     interpolate_field(app_a_field, internal_app_a_field, wdmcpl::Lagrange<1>{});
     interpolate_field(app_b_field, internal_app_b_field,
                       wdmcpl::NearestNeighbor{});
@@ -135,8 +135,8 @@ void SetApplicationFields(const OHField& app_a_field,
     values_a[i] = cos(x) * cos(y);
   }
   // auto read_values = Omega_h::Read(values);
-  set(app_a_field, make_array_view(Omega_h::Read(values_a)));
-  set(app_b_field, make_array_view(Omega_h::Read(values_b)));
+  set_nodal_data(app_a_field, make_array_view(Omega_h::Read(values_a)));
+  set_nodal_data(app_b_field, make_array_view(Omega_h::Read(values_b)));
 }
 
 int main(int argc, char** argv)

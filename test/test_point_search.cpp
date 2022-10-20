@@ -135,7 +135,9 @@ TEST_CASE("construct intersection map")
   {
     UniformGrid grid{
       .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
+    assert(cudaSuccess == cudaDeviceSynchronize());
     auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid);
+    assert(cudaSuccess == cudaDeviceSynchronize());
     REQUIRE(intersection_map.numRows() == 100);
     REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
   }

@@ -147,7 +147,7 @@ namespace detail
  */
 struct GridTriIntersectionFunctor
 {
-  GridTriIntersectionFunctor(Omega_h::Mesh& mesh, UniformGrid grid)
+  GridTriIntersectionFunctor(Omega_h::Mesh& mesh, Kokkos::View<UniformGrid[1]> grid)
     : mesh_(mesh),
       tris2verts_(mesh_.ask_elem_verts()),
       coords_(mesh_.coords()),
@@ -166,8 +166,9 @@ struct GridTriIntersectionFunctor
   KOKKOS_INLINE_FUNCTION
   LO operator()(LO row, LO* fill) const
   {
-    const auto grid_cell_bbox = grid_.GetCellBBOX(row);
-
+    printf("line 169\n");
+    const auto grid_cell_bbox = grid_(0).GetCellBBOX(row);
+    printf("line 170");
     LO num_intersections = 0;
 
     // hierarchical parallel may make be very beneficial here...
@@ -189,7 +190,7 @@ private:
   Omega_h::Mesh& mesh_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
-  UniformGrid grid_;
+  Kokkos::View<UniformGrid[1]> grid_;
 public:
   LO nelems_;
 };
@@ -197,9 +198,17 @@ public:
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh, const UniformGrid& grid)
 {
+  std::cerr << "line 203\n";
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  auto f = detail::GridTriIntersectionFunctor{mesh, grid};
+  Kokkos::View<UniformGrid[1]> grid_view;
+  auto grid_h = Kokkos::create_mirror_view(grid_view);
+  grid_h(0) = grid;
+  Kokkos::deep_copy(grid_view, grid_h);
+  std::cerr << "line 209\n";
+  auto f = detail::GridTriIntersectionFunctor{mesh, grid_view};
+  std::cerr << "line 211\n";
   Kokkos::count_and_fill_crs(intersection_map, grid.GetNumCells(), f);
+  std::cerr << "line 213\n";
   return intersection_map;
 }
 } // namespace detail

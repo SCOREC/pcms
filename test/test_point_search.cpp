@@ -106,7 +106,7 @@ bool num_candidates_within_range(const T& intersection_map, wdmcpl::LO min,
 {
   using size_type = typename T::size_type;
   using memory_space = typename T::memory_space;
-  using MinMax = Kokkos::MinMax<size_type, memory_space>;
+  using MinMax = Kokkos::MinMax<size_type, Kokkos::HostSpace>;
   using result_type = typename MinMax::value_type;
   result_type result;
   Kokkos::parallel_reduce(
@@ -119,6 +119,7 @@ bool num_candidates_within_range(const T& intersection_map, wdmcpl::LO min,
         update.min_val = num_candidates;
     },
     MinMax{result});
+  std::cerr << result.min_val << ' ' << result.max_val << '\n';
   return (result.min_val >= min) && (result.max_val <= max);
 }
 //extern Omega_h::Library omega_h_library;
@@ -135,11 +136,11 @@ TEST_CASE("construct intersection map")
   {
     UniformGrid grid{
       .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
-    assert(cudaSuccess == cudaDeviceSynchronize());
     auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid);
-    assert(cudaSuccess == cudaDeviceSynchronize());
+    // assert(cudaSuccess == cudaDeviceSynchronize());
     REQUIRE(intersection_map.numRows() == 100);
     REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
+    printf("line 143\n");
   }
    SECTION("fine grid")
   {

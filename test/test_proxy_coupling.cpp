@@ -171,7 +171,7 @@ static constexpr bool done = true;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
+  CouplerClient cpl("proxy_couple", comm);
   auto is_overlap = markOverlapMeshEntities(mesh);
   cpl.AddField("delta_f_gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
@@ -182,7 +182,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  wdmcpl::CouplerClient cpl("proxy_couple", comm, redev::ClassPtn{});
+  wdmcpl::CouplerClient cpl("proxy_couple", comm);
   auto is_overlap = markOverlapMeshEntities(mesh);
   cpl.AddField("total_f_gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));

@@ -64,7 +64,7 @@ redev::LOs ConstructPermutation(const std::vector<wdmcpl::GO>& local_gids,
 {
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
   std::map<wdmcpl::GO, wdmcpl::LO> global_to_local_ids;
-  for (wdmcpl::LO i = 0; i < local_gids.size(); ++i) {
+  for (size_t i = 0; i < local_gids.size(); ++i) {
     global_to_local_ids[local_gids[i]] = i;
   }
   redev::LOs permutation;
@@ -133,8 +133,8 @@ public:
       message_permutation_{},
       buffer_size_needs_update_{true},
       redev_{redev},
-      name_{std::move(name)},
-      field_adapter_(field_adapter)
+      field_adapter_(field_adapter),
+      name_{std::move(name)}
   {
     std::string transport_name = name_;
     comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type);

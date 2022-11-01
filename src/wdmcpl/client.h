@@ -9,7 +9,7 @@ class CoupledField
 {
 public:
   template <typename FieldAdapterT, typename CommT>
-  CoupledField(const std::string& name, FieldAdapterT field_adapter,
+  CoupledField(const std::string& /* name */, FieldAdapterT field_adapter,
                FieldCommunicator<CommT> field_comm,
                Omega_h::Mesh& internal_mesh, TransferOptions native_to_internal,
                TransferOptions internal_to_native)
@@ -64,10 +64,8 @@ private:
 class CouplerClient
 {
 public:
-  CouplerClient(std::string name, MPI_Comm comm, redev::Partition partition)
-    : name_(std::move(name)),
-      mpi_comm_(comm),
-      redev_({comm, std::move(partition), ProcessType::Client})
+  CouplerClient(std::string name, MPI_Comm comm)
+    : name_(std::move(name)), mpi_comm_(comm), redev_(comm)
   {
   }
   template <typename FieldAdapterT>
@@ -83,10 +81,14 @@ public:
     return &(it->second);
   }
 
+  // take a string& since unordered_map cannot be searched with string_view
+  // (heterogeneous lookup)
   void SendField(const std::string& name)
   {
     detail::find_or_error(name, fields_).Send();
   };
+  // take a string& since unordered_map cannot be searched with string_view
+  // (heterogeneous lookup)
   void ReceiveField(const std::string& name)
   {
     detail::find_or_error(name, fields_).Receive();

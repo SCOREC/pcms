@@ -20,7 +20,7 @@ public:
   }
   /// return the grid cell ID that the input point is inside or closest to if
   /// the point lies outside
-  [[nodiscard]] LO ClosestCellID(const Omega_h::Vector<dim>& point) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Omega_h::Vector<dim>& point) const
   {
     std::array<Real, dim> distance_within_grid{point[0] - bot_left[0],
                                                point[1] - bot_left[1]};
@@ -53,7 +53,7 @@ public:
   {
     return {idx / divisions[0], idx % divisions[0]};
   }
-  [[nodiscard]] LO GetCellIndex(LO i, LO j) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO GetCellIndex(LO i, LO j) const
   {
     OMEGA_H_CHECK(i >= 0 && j >= 0 && i < divisions[1] && j < divisions[0]);
     return i * divisions[0] + j;

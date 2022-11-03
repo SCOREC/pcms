@@ -218,8 +218,7 @@ Omega_h::Vector<3> barycentric_from_global(
   return {1 - xi[0] - xi[1], xi[0], xi[1]};
 }
 
-std::pair<LO, Omega_h::Vector<GridPointSearch::dim + 1>> GridPointSearch::operator()(
-  Omega_h::Vector<dim> point)
+GridPointSearch::Result GridPointSearch::operator()(Omega_h::Vector<dim> point) const
 {
   // TODO use a functor for parallel for over a list of points
   // TODO return result struct rather than pair
@@ -241,6 +240,7 @@ std::pair<LO, Omega_h::Vector<GridPointSearch::dim + 1>> GridPointSearch::operat
   }
   return {-1, {}};
 }
+
 GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
@@ -252,7 +252,5 @@ GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
   candidate_map_ = detail::construct_intersection_map(mesh, grid_);
   coords_ = mesh.coords();
   tris2verts_ = mesh.ask_elem_verts();
-  // TODO intiaialize coords and tri2vert and mesh!
-  // TODO pass coords& tri2vert to construct map by references!
 }
 } // namespace wdmcpl

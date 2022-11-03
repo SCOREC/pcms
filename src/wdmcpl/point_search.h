@@ -28,11 +28,15 @@ Omega_h::Vector<3> barycentric_from_global(
 
 class GridPointSearch
 {
-  using CandidateMapT =
-    Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
+  using CandidateMapT = Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
   static constexpr auto dim = 2;
 
 public:
+  struct Result {
+    LO tri_id;
+    Omega_h::Vector<dim + 1> parametric_coords;
+  };
+
   GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny);
   /**
    *  given a point in global coordinates give the id of the triangle that the
@@ -41,8 +45,7 @@ public:
    * id will be a negative number and (TODO) will return a negative id of the
    * closest element
    */
-  std::pair<LO, Omega_h::Vector<dim + 1>> operator()(
-    Omega_h::Vector<dim> point);
+  KOKKOS_FUNCTION Result operator()(Omega_h::Vector<dim> point) const;
 
 private:
   Omega_h::Mesh mesh_;

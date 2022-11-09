@@ -29,7 +29,7 @@ struct coordinate_accessor
 } // namespace detail
 
 template <typename ArrayType>
-nonstd::span<typename ArrayType::value_type> GetSpan(ArrayType array)
+nonstd::span<typename ArrayType::value_type> GetSpan(ArrayType /* unused */)
 {
   static_assert(detail::dependent_always_false<ArrayType>::type,
                 "creating span is not implemented for type");
@@ -37,7 +37,7 @@ nonstd::span<typename ArrayType::value_type> GetSpan(ArrayType array)
 
 template <typename ContainerType, typename ElementType, typename Extents,
           typename LayoutPolicy, typename AccessorPolicy>
-auto make_mdspan(const ContainerType& t)
+auto make_mdspan(const ContainerType& /* unused */)
   -> std::experimental::mdspan<ElementType, Extents, LayoutPolicy,
                                AccessorPolicy>
 {

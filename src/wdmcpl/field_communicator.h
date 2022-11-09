@@ -226,7 +226,7 @@ private:
   std::vector<T> comm_buffer_;
   std::vector<wdmcpl::LO> message_permutation_;
   redev::BidirectionalComm<T> comm_;
-  redev::BidirectionalComm<T> gid_comm_;
+  redev::BidirectionalComm<GO> gid_comm_;
   bool buffer_size_needs_update_;
   // Stored functions used for updated field
   // info/serialization/deserialization

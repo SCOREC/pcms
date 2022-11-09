@@ -28,7 +28,7 @@ struct HasCoordinateSystem<T, VoidT<typename T::coordinate_system>>
 } // namespace detail
 
 /**
- * Key: result of partition object i.e. rank that the data is sent to on host
+ * Key: result of partition object i.e. rank that the data is sent to on coupling server
  * Value: Vector of local index (ordered)
  */
 using ReversePartitionMap = std::map<wdmcpl::LO, std::vector<wdmcpl::LO>>;

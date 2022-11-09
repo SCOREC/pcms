@@ -235,7 +235,7 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
 // TODO abstract out repeat parts of lagrange/nearest neighbor evaluation
 template <typename T, typename CoordinateElementType>
 auto evaluate(
-  const OmegaHField<T, CoordinateElementType>& field, Lagrange<1> method,
+  const OmegaHField<T, CoordinateElementType>& field, Lagrange<1> /* method */,
   ScalarArrayView<const CoordinateElementType, OmegaHMemorySpace::type>
     coordinates) -> Omega_h::Read<T>
 {
@@ -267,7 +267,7 @@ auto evaluate(
 
 template <typename T, typename CoordinateElementType>
 auto evaluate(
-  const OmegaHField<T, CoordinateElementType>& field, NearestNeighbor method,
+  const OmegaHField<T, CoordinateElementType>& field, NearestNeighbor /* method */,
   ScalarArrayView<const CoordinateElementType, OmegaHMemorySpace::type>
     coordinates) -> Omega_h::Read<T>
 {
@@ -396,7 +396,7 @@ public:
               redev::ClassPtn::ModelEnt({classDims_h[i], classIds_h[i]});
             return ptn.GetRank(ent);
           },
-          [](const redev::RCBPtn& ptn) {
+          [](const redev::RCBPtn& /*ptn*/) {
             std::cerr << "RCB partition not handled yet\n";
             std::terminate();
             return 0;

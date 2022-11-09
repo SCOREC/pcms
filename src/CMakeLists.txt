@@ -27,7 +27,10 @@ set(WDMCPL_SOURCES
     wdmcpl/field.cpp
     wdmcpl/transfer_field.cpp
     wdmcpl/assert.cpp
-    wdmcpl/point_search.cpp)
+    wdmcpl/point_search.cpp
+    wdmcpl/capi/client.cpp
+    wdmcpl/xgc_field_adapter.cpp
+    wdmcpl/xgc_field_adapter.h)
 find_package(Kokkos REQUIRED)
 
 add_library(wdmcpl ${WDMCPL_SOURCES})

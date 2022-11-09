@@ -10,14 +10,26 @@ if(WDMCPL_ENABLE_ASAN AND CMAKE_COMPILER_IS_GNUCXX MATCHES 1)
   set(WDMCPL_HAS_ASAN ON)
 endif()
 
+option(WDMCPL_ENABLE_SERVER "enable the coupling server implementation" ON)
+option(WDMCPL_ENABLE_CLIENT "enable the coupling client implementation" ON)
+
+option(WDMCPL_ENABLE_XGC "enable xgc field adapter" ON)
+option(WDMCPL_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
+if(WDMCPL_ENABLE_SERVER)
+  set(WDMCPL_ENABLE_OMEGA_H ON CACHE BOOL "enable Omega_h field adapter" FORCE)
+endif()
+
+
 set(MPI_CXX_SKIP_MPICXX ON)
 find_package(MPI REQUIRED)
 find_package(redev 4.0.0 REQUIRED)
 message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
-find_package(Omega_h REQUIRED VERSION 10)
-message(STATUS "Found Omega_h: ${Omega_h_DIR} (found version ${Omega_h_VERSION})")
-if(NOT Omega_h_USE_MPI)
-  message(FATAL_ERROR "Omega_h must be built with MPI enabled.")
+if(WDMCPL_ENABLE_OMEGA_H)
+  find_package(Omega_h REQUIRED VERSION 10)
+  message(STATUS "Found Omega_h: ${Omega_h_DIR} (found version ${Omega_h_VERSION})")
+  if(NOT Omega_h_USE_MPI)
+    message(FATAL_ERROR "Omega_h must be built with MPI enabled.")
+  endif()
 endif()
 
 ## use pkgconfig since the fftw autoconf install produces

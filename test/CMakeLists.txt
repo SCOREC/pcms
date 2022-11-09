@@ -12,12 +12,17 @@ set(VALGRIND_ARGS "none" CACHE STRING "specify valgrind options; logging (--log-
 message(STATUS "VALGRIND_EXECUTABLE: ${VALGRIND_EXECUTABLE}")
 message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
 
-add_library(test_support test_support.cpp)
-target_link_libraries(test_support wdmcpl) #for omegah and redev
+if(WDMCPL_ENABLE_OMEGA_H)
+  add_library(test_support test_support.cpp)
+  target_link_libraries(test_support wdmcpl) #for omegah and redev
+endif()
 
 function(add_exe NAME)
   add_executable(${NAME} ${NAME}.cpp)
-  target_link_libraries(${NAME} wdmcpl test_support)
+  target_link_libraries(${NAME} wdmcpl)
+  if(WDMCPL_ENABLE_OMEGA_H)
+    target_link_libraries(${NAME} test_support)
+  endif()
   target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   if(WDMCPL_HAS_ASAN)
     target_compile_options(${NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
@@ -87,78 +92,92 @@ endfunction(tri_mpi_test)
 set(rendezvous 1)
 set(notRendezvous 0)
 
-add_exe(test_ohClassPtn)
-set(cyclone1p ${WDMCPL_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/)
-dual_mpi_test(TESTNAME test_ohClassPtnSendRecv
-  TIMEOUT 4
-  NAME1 rdv EXE1 ./test_ohClassPtn PROCS1 2 ARGS1 ${rendezvous} ${cyclone1p}
-  NAME2 app EXE2 ./test_ohClassPtn PROCS2 1 ARGS2 ${notRendezvous} ${cyclone1p})
+if(WDMCPL_ENABLE_OMEGA_H)
+  add_exe(test_ohClassPtn)
+  set(cyclone1p ${WDMCPL_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/)
+  dual_mpi_test(TESTNAME test_ohClassPtnSendRecv
+    TIMEOUT 4
+    NAME1 rdv EXE1 ./test_ohClassPtn PROCS1 2 ARGS1 ${rendezvous} ${cyclone1p}
+    NAME2 app EXE2 ./test_ohClassPtn PROCS2 1 ARGS2 ${notRendezvous} ${cyclone1p})
 
-add_exe(test_ohClassPtn_appRibPtn)
-set(cyclone2p ${WDMCPL_TEST_DATA_DIR}/cyclone/23elements/2p.osh/)
-dual_mpi_test(TESTNAME test_ohClassPtn_appRibPtn
-  TIMEOUT 8
-  NAME1 rdv EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${rendezvous} ${cyclone1p}
-  NAME2 app EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${cyclone2p})
+  add_exe(test_ohClassPtn_appRibPtn)
+  set(cyclone2p ${WDMCPL_TEST_DATA_DIR}/cyclone/23elements/2p.osh/)
+  dual_mpi_test(TESTNAME test_ohClassPtn_appRibPtn
+    TIMEOUT 8
+    NAME1 rdv EXE1 ./test_ohClassPtn_appRibPtn PROCS1 2 ARGS1 ${rendezvous} ${cyclone1p}
+    NAME2 app EXE2 ./test_ohClassPtn_appRibPtn PROCS2 2 ARGS2 ${notRendezvous} ${cyclone2p})
 
-set(d3d1p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc.osh/)
-set(d3d2p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/2p.cpn)
-set(d3d4p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/4p.cpn)
-set(d3d8p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/8p.cpn)
-set(d3d16p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/16p.cpn)
-set(d3d16p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p16.osh/)
-add_exe(test_ohOverlap)
-dual_mpi_test(TESTNAME test_ohOverlap_d3d_20p
-  TIMEOUT 10
-  NAME1 rdv EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
-  NAME2 app EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
+  set(d3d1p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc.osh/)
+  set(d3d2p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/2p.cpn)
+  set(d3d4p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/4p.cpn)
+  set(d3d8p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/8p.cpn)
+  set(d3d16p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/16p.cpn)
+  set(d3d16p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p16.osh/)
+  add_exe(test_ohOverlap)
+  dual_mpi_test(TESTNAME test_ohOverlap_d3d_20p
+    TIMEOUT 10
+    NAME1 rdv EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
+    NAME2 app EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
 
-set(d3d8p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p8.osh/)
-add_exe(test_twoClientOverlap)
-tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
-  TIMEOUT 12
-  NAME1 rdv EXE1 ./test_twoClientOverlap PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
-  NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
-  NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+  set(d3d8p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p8.osh/)
+  add_exe(test_twoClientOverlap)
+  tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
+    TIMEOUT 12
+    NAME1 rdv EXE1 ./test_twoClientOverlap PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
+    NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
+    NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
 
-add_executable(proxy_coupling test_proxy_coupling.cpp)
-target_link_libraries(proxy_coupling PUBLIC wdmcpl::wdmcpl test_support)
-tri_mpi_test(TESTNAME test_proxy_coupling_26p
-        TIMEOUT 12
-        NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
-        NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
-        NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+  add_executable(proxy_coupling test_proxy_coupling.cpp)
+  target_link_libraries(proxy_coupling PUBLIC wdmcpl::wdmcpl test_support)
+  tri_mpi_test(TESTNAME test_proxy_coupling_26p
+          TIMEOUT 12
+          NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
+          NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+          NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
 
-tri_mpi_test(TESTNAME test_proxy_coupling_4p
-        TIMEOUT 12
-        NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
-        NAME2 client0 EXE2 ./proxy_coupling PROCS2 1 ARGS2 0 ${d3d1p} ignored
-        NAME3 client1 EXE3 ./proxy_coupling PROCS3 1 ARGS3 1 ${d3d1p} ignored)
-tri_mpi_test(TESTNAME test_proxy_coupling
-        TIMEOUT 12
-        NAME1 rdv EXE1 ./proxy_coupling PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
-        NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
-        NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
-tri_mpi_test(TESTNAME test_proxy_coupling_32p
-        TIMEOUT 12
-        NAME1 rdv EXE1 ./proxy_coupling PROCS1 8 ARGS1 -1 ${d3d1p} ${d3d8p_cpn}
-        NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
-        NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
-tri_mpi_test(TESTNAME test_proxy_coupling_40p
-        TIMEOUT 16
-        NAME1 rdv EXE1 ./proxy_coupling PROCS1 16 ARGS1 -1 ${d3d1p} ${d3d16p_cpn}
-        NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
-        NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
-
+  tri_mpi_test(TESTNAME test_proxy_coupling_4p
+          TIMEOUT 12
+          NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
+          NAME2 client0 EXE2 ./proxy_coupling PROCS2 1 ARGS2 0 ${d3d1p} ignored
+          NAME3 client1 EXE3 ./proxy_coupling PROCS3 1 ARGS3 1 ${d3d1p} ignored)
+  tri_mpi_test(TESTNAME test_proxy_coupling
+          TIMEOUT 12
+          NAME1 rdv EXE1 ./proxy_coupling PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
+          NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+          NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+  tri_mpi_test(TESTNAME test_proxy_coupling_32p
+          TIMEOUT 12
+          NAME1 rdv EXE1 ./proxy_coupling PROCS1 8 ARGS1 -1 ${d3d1p} ${d3d8p_cpn}
+          NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+          NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+  tri_mpi_test(TESTNAME test_proxy_coupling_40p
+          TIMEOUT 16
+          NAME1 rdv EXE1 ./proxy_coupling PROCS1 16 ARGS1 -1 ${d3d1p} ${d3d16p_cpn}
+          NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+          NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+endif()
 # unit tests
 find_package(Catch2 2 REQUIRED)
 message(STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
-add_executable(unit_tests unit_test_main.cpp test_coordinate_transform.cpp test_coordinate.cpp test_point_search.cpp test_bounding_box.cpp test_uniform_grid.cpp test_field_transfer.cpp test_omega_h_copy.cpp)
+set(WDMCPL_UNIT_TEST_SOURCES
+        unit_test_main.cpp
+        test_coordinate_transform.cpp
+        test_coordinate.cpp
+        test_bounding_box.cpp
+        )
+if(WDMCPL_ENABLE_OMEGA_H)
+  add_executable(field_transfer_example field_transfer_example.cpp)
+  target_link_libraries(field_transfer_example PUBLIC wdmcpl::wdmcpl)
+  list(APPEND WDMCPL_UNIT_TEST_SOURCES
+          test_field_transfer.cpp
+          test_uniform_grid.cpp
+          test_omega_h_copy.cpp
+          test_point_search.cpp
+          )
+endif()
+add_executable(unit_tests ${WDMCPL_UNIT_TEST_SOURCES})
 target_link_libraries(unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl)
 target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_executable(field_transfer_example field_transfer_example.cpp)
-target_link_libraries(field_transfer_example PUBLIC wdmcpl::wdmcpl)
 
 include(Catch)
 catch_discover_tests(unit_tests)

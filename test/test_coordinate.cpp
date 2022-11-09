@@ -3,7 +3,6 @@
 #include <wdmcpl/coordinate_systems.h>
 #include <wdmcpl/external/mdspan.hpp>
 #include <wdmcpl/arrays.h>
-#include <Omega_h_array.hpp>
 
 using wdmcpl::Cartesian;
 using wdmcpl::Coordinate;

@@ -17,7 +17,9 @@ struct WdmCplAdapterType_s
   enum Type
   {
     XGC,
+#ifdef WDMCPL_HAS_OMEGA_H
     OmegaH,
+#endif
     GENE,
     GEM
   };

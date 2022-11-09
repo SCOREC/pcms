@@ -8,15 +8,6 @@ namespace wdmcpl
 class CoupledField
 {
 public:
-  template <typename FieldAdapterT, typename CommT>
-  CoupledField(const std::string& /* name */, FieldAdapterT field_adapter,
-               FieldCommunicator<CommT> field_comm,
-               Omega_h::Mesh& internal_mesh, TransferOptions native_to_internal,
-               TransferOptions internal_to_native)
-  {
-    coupled_field_ = std::make_unique<CoupledFieldModel<FieldAdapterT, CommT>>(
-      std::move(field_adapter), std::move(field_comm));
-  }
   template <typename FieldAdapterT>
   CoupledField(const std::string& name, FieldAdapterT field_adapter,
                redev::Redev& redev, MPI_Comm mpi_comm)

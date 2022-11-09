@@ -1,8 +1,9 @@
 #include "client.h"
 #include "wdmcpl.h"
-#include "wdmcpl/client.h"
 #include "wdmcpl/xgc_field_adapter.h"
-#include "wdmcpl/omega_h_field.h"
+#ifdef WDMCPL_HAS_OMEGA_H
+  #include "wdmcpl/omega_h_field.h"
+#endif
 #include <fstream>
 
 namespace wdmcpl
@@ -20,12 +21,14 @@ static void wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
       client->AddField(name, *adapter);
       break;
     }
+#ifdef WDMCPL_HAS_OMEGA_H
     case WdmCplAdapterType::OmegaH: {
       auto* adapter =
         reinterpret_cast<wdmcpl::OmegaHFieldAdapter<T>*>(adapter_handle->xgc_);
       client->AddField(name, *adapter);
       break;
     }
+#endif
     case WdmCplAdapterType::GENE:
     case WdmCplAdapterType::GEM:
       std::cerr << "Unhandled field adapter type in C interface\n";
@@ -138,7 +141,9 @@ void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter* adapter)
     case (WdmCplAdapterType::XGC):
       wdmcpl_destroy_xgc_adapter(adapter->xgc_, adapter->data_type);
       break;
+#ifdef WDMCPL_HAS_OMEGA_H
     case (WdmCplAdapterType::OmegaH): break;
+#endif
     case (WdmCplAdapterType::GENE): break;
     case (WdmCplAdapterType::GEM): break;
   }

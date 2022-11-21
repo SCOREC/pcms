@@ -15,7 +15,7 @@ static void wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
   switch (adapter_handle->type) {
-    case WdmCplAdapterType::XGC: {
+    case WDMCPL_ADAPTER_XGC: {
       auto* adapter =
         reinterpret_cast<wdmcpl::XGCFieldAdapter<T>*>(adapter_handle->xgc_);
       client->AddField(name, *adapter);
@@ -29,8 +29,8 @@ static void wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
       break;
     }
 #endif
-    case WdmCplAdapterType::GENE:
-    case WdmCplAdapterType::GEM:
+    case WDMCPL_ADAPTER_GENE:
+    case WDMCPL_ADAPTER_GEM:
       std::cerr << "Unhandled field adapter type in C interface\n";
       std::abort();
   }
@@ -40,16 +40,16 @@ template <typename F>
 auto ApplyToTypes(WdmCplType type, const F&& f)
 {
   switch (type) {
-    case WdmCplType::DOUBLE: {
+    case WDMCPL_DOUBLE: {
       return f(double{});
     }
-    case WdmCplType::FLOAT: {
+    case WDMCPL_FLOAT: {
       return f(float{});
     }
-    case WdmCplType::INT: {
+    case WDMCPL_INT: {
       return f(int{});
     }
-    case WdmCplType::LONG_INT: {
+    case WDMCPL_LONG_INT: {
       return f(long{});
     }
   }
@@ -100,16 +100,12 @@ WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(const char* name,
   std::ifstream infile(classification_file);
   auto classification = wdmcpl::ReadXGCNodeClassification(infile);
   WdmCplFieldAdapter* field_adapter = new WdmCplFieldAdapter;
-  field_adapter->type = WdmCplAdapterType::XGC;
+  field_adapter->type = WDMCPL_ADAPTER_XGC;
   switch (data_type) {
-    case WdmCplType::DOUBLE:
-      field_adapter->data_type = WdmCplType::DOUBLE;
-      break;
-    case WdmCplType::FLOAT: field_adapter->data_type = WdmCplType::FLOAT; break;
-    case WdmCplType::INT: field_adapter->data_type = WdmCplType::INT; break;
-    case WdmCplType::LONG_INT:
-      field_adapter->data_type = WdmCplType::LONG_INT;
-      break;
+    case WDMCPL_DOUBLE: field_adapter->data_type = WDMCPL_DOUBLE; break;
+    case WDMCPL_FLOAT: field_adapter->data_type = WDMCPL_FLOAT; break;
+    case WDMCPL_INT: field_adapter->data_type = WDMCPL_INT; break;
+    case WDMCPL_LONG_INT: field_adapter->data_type = WDMCPL_LONG_INT; break;
   }
   wdmcpl::ApplyToTypes(data_type, [&](auto d) {
     using T = decltype(d);
@@ -138,14 +134,14 @@ static void wdmcpl_destroy_xgc_adapter(WdmCplXgcAdapter* xgc_adapter,
 void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter* adapter)
 {
   switch (adapter->type) {
-    case (WdmCplAdapterType::XGC):
+    case (WDMCPL_ADAPTER_XGC):
       wdmcpl_destroy_xgc_adapter(adapter->xgc_, adapter->data_type);
       break;
 #ifdef WDMCPL_HAS_OMEGA_H
     case (WdmCplAdapterType::OmegaH): break;
 #endif
-    case (WdmCplAdapterType::GENE): break;
-    case (WdmCplAdapterType::GEM): break;
+    case (WDMCPL_ADAPTER_GENE): break;
+    case (WDMCPL_ADAPTER_GEM): break;
   }
 
   if (adapter != nullptr) {

@@ -18,7 +18,6 @@ set(WDMCPL_HEADERS
 set(WDMCPL_SOURCES
         wdmcpl.cpp
         wdmcpl/assert.cpp
-        wdmcpl/capi/client.cpp
         wdmcpl/xgc_field_adapter.cpp
         wdmcpl/xgc_field_adapter.h)
 set(WDMCPL_SOURCES wdmcpl.cpp wdmcpl/assert.cpp)
@@ -26,24 +25,26 @@ if(WDMCPL_ENABLE_XGC)
   list(APPEND WDMCPL_SOURCES wdmcpl/xgc_field_adapter.cpp)
   list(APPEND WDMCPL_HEADERS )
 endif()
-if(WDMCPL_ENABLE_OMEGA_H)
+if (WDMCPL_ENABLE_OMEGA_H)
   list(APPEND WDMCPL_SOURCES wdmcpl/point_search.cpp)
   list(APPEND WDMCPL_HEADERS
           wdmcpl/omega_h_field.h
           wdmcpl/transfer_field.h
           wdmcpl/uniform_grid.h
           wdmcpl/point_search.h)
-endif()
-if(WDMCPL_ENABLE_CLIENT)
-  list(APPEND WDMCPL_SOURCES wdmcpl/capi/client.cpp)
+endif ()
+if (WDMCPL_ENABLE_CLIENT)
+  if (WDMCPL_ENABLE_CAPI)
+    list(APPEND WDMCPL_SOURCES wdmcpl/capi/client.cpp)
+  endif ()
   list(APPEND WDMCPL_HEADERS wdmcpl/client.h wdmcpl/capi/client.h)
-endif()
-if(WDMCPL_ENABLE_SERVER)
-  if(NOT WDMCPL_ENABLE_OMEGA_H)
+endif ()
+if (WDMCPL_ENABLE_SERVER)
+  if (NOT WDMCPL_ENABLE_OMEGA_H)
     message(ERROR "WDMCPL_ENABLE_OMEGA_H is required for server implementation")
-  endif()
+  endif ()
   list(APPEND WDMCPL_HEADERS wdmcpl/server.h)
-endif()
+endif ()
 
 
 find_package(Kokkos REQUIRED)

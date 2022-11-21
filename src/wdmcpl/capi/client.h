@@ -2,7 +2,9 @@
 #define WDM_COUPLING_CAPI_CLIENT_H
 #include <mpi.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 struct WdmCplClient;
 typedef struct WdmCplClient WdmCplClient;
 // TODO move into XGC specific header
@@ -12,53 +14,29 @@ typedef struct WdmCplXgcAdapter WdmCplXgcAdapter;
 struct WdmCplOmegaHMeshHandle;
 typedef struct WdmCplOmegaHMeshHandle WdmCplOmegaHMeshHandle;
 
-struct WdmCplAdapterType_s
+enum WdmCplAdapterType
 {
-  enum Type
-  {
-    XGC,
+  WDMCPL_ADAPTER_XGC,
 #ifdef WDMCPL_HAS_OMEGA_H
-    OmegaH,
+  WDMCPL_ADAPTER_OMEGAH,
 #endif
-    GENE,
-    GEM
-  };
-  // empty struct in C++ is 1 byte and 0 byte in C
-  char dummy;
+  WDMCPL_ADAPTER_GENE,
+  WDMCPL_ADAPTER_GEM
 };
-typedef WdmCplAdapterType_s::Type WdmCplAdapterType;
-struct WdmCplType_s {
-  enum Type {
-    FLOAT,
-    DOUBLE,
-    INT,
-    LONG_INT
-  };
-  // empty struct in C++ is 1 byte and 0 byte in C
-  char dummy;
+typedef enum WdmCplAdapterType WdmCplAdapterType;
+enum WdmCplType
+{
+  WDMCPL_FLOAT,
+  WDMCPL_DOUBLE,
+  WDMCPL_INT,
+  WDMCPL_LONG_INT
 };
-typedef WdmCplType_s::Type WdmCplType;
+typedef enum WdmCplType WdmCplType;
 
 struct WdmCplFieldAdapter
 {
   WdmCplAdapterType type;
   WdmCplType data_type;
-  /*
-  enum Type
-  {
-    XGC,
-    OmegaH,
-    GENE,
-    GEM
-  } type;
-  enum DataType
-  {
-    FLOAT,
-    DOUBLE,
-    INT,
-    LONG_INT
-  } data_type;
-   */
   union
   {
     WdmCplXgcAdapter* xgc_;
@@ -70,13 +48,13 @@ struct WdmCplFieldAdapter
 typedef struct WdmCplFieldAdapter WdmCplFieldAdapter;
 
 // FIXME communicate partition type in underlying library
-[[nodiscard]] WdmCplClient* wdmcpl_create_client(const char* name,
-                                                 MPI_Comm comm);
+WdmCplClient* wdmcpl_create_client(const char* name, MPI_Comm comm);
 void wdmcpl_destroy_client(WdmCplClient*);
 
-WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(
-  const char* name, void* data, int size,
-  WdmCplType data_type, char* classification_file);
+WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(const char* name,
+                                                    void* data, int size,
+                                                    WdmCplType data_type,
+                                                    char* classification_file);
 
 void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter*);
 
@@ -84,6 +62,8 @@ void wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
                       WdmCplFieldAdapter* adapter_handle);
 void wdmcpl_send_field(WdmCplClient*, const char* name);
 void wdmcpl_receive_field(WdmCplClient*, const char* name);
-};
+#ifdef __cplusplus
+}
+#endif
 
 #endif // WDM_COUPLING_CLIENT_H

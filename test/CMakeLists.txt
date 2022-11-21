@@ -181,3 +181,9 @@ target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(Catch)
 catch_discover_tests(unit_tests)
+
+if (WDMCPL_ENABLE_C)
+  add_executable(test_c_interface test_c_interface.c)
+  target_link_libraries(test_c_interface PUBLIC wdmcpl::wdmcpl MPI::MPI_C)
+  target_compile_features(test_c_interface PUBLIC cxx_std_11)
+endif ()

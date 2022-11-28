@@ -33,12 +33,6 @@ if (WDMCPL_ENABLE_OMEGA_H)
           wdmcpl/uniform_grid.h
           wdmcpl/point_search.h)
 endif ()
-if (WDMCPL_ENABLE_CLIENT)
-  if (WDMCPL_ENABLE_CAPI)
-    list(APPEND WDMCPL_SOURCES wdmcpl/capi/client.cpp)
-  endif ()
-  list(APPEND WDMCPL_HEADERS wdmcpl/client.h wdmcpl/capi/client.h)
-endif ()
 if (WDMCPL_ENABLE_SERVER)
   if (NOT WDMCPL_ENABLE_OMEGA_H)
     message(ERROR "WDMCPL_ENABLE_OMEGA_H is required for server implementation")
@@ -67,6 +61,7 @@ endif()
 if(WDMCPL_HAS_ASAN)
   target_compile_options(wdmcpl PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 endif()
+
 
 ## export the library
 set_target_properties(wdmcpl PROPERTIES
@@ -102,3 +97,12 @@ install(
   EXPORT wdmcpl-targets
   NAMESPACE wdmcpl::
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wdmcpl)
+
+if (WDMCPL_ENABLE_C)
+  add_subdirectory(wdmcpl/capi)
+  #if(NOT WDMCPL_ENABLE_CLIENT)
+  #  message(ERROR "capi requires WDMCPL client. Please set WDMCPL_ENABLE_CLIENT=ON")
+  #endif()
+  #list(APPEND WDMCPL_HEADERS wdmcpl/client.h wdmcpl/capi/client.h)
+  #list(APPEND WDMCPL_SOURCES wdmcpl/capi/client.cpp)
+endif ()

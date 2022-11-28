@@ -1,11 +1,10 @@
 #include "client.h"
 #include "wdmcpl.h"
 #include "wdmcpl/xgc_field_adapter.h"
-#ifdef WDMCPL_HAS_OMEGA_H
-  #include "wdmcpl/omega_h_field.h"
-#endif
+//#ifdef WDMCPL_HAS_OMEGA_H
+//  #include "wdmcpl/omega_h_field.h"
+//#endif
 #include <fstream>
-
 namespace wdmcpl
 {
 
@@ -22,17 +21,22 @@ static void wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
       break;
     }
 #ifdef WDMCPL_HAS_OMEGA_H
-    case WdmCplAdapterType::OmegaH: {
-      auto* adapter =
-        reinterpret_cast<wdmcpl::OmegaHFieldAdapter<T>*>(adapter_handle->xgc_);
-      client->AddField(name, *adapter);
+    case WDMCPL_ADAPTER_OMEGAH: {
+      if constexpr (std::is_same_v<T, double> ||
+                    std::is_same_v<T, int>) {
+        auto* adapter = reinterpret_cast<wdmcpl::OmegaHFieldAdapter<T>*>(
+          adapter_handle->xgc_);
+        client->AddField(name, *adapter);
+      } else {
+        // error trying to use omega_h adapter with unsupported data type
+        Wdmcpl_Assert_Fail("Omega_h can only use double or int fields.");
+      }
       break;
     }
 #endif
     case WDMCPL_ADAPTER_GENE:
     case WDMCPL_ADAPTER_GEM:
-      std::cerr << "Unhandled field adapter type in C interface\n";
-      std::abort();
+      Wdmcpl_Assert_Fail("Unhandled field adapter type in C interface\n");
   }
 }
 
@@ -59,8 +63,6 @@ auto ApplyToTypes(WdmCplType type, const F&& f)
 }
 
 } // namespace wdmcpl
-
-extern "C" {
 
 [[nodiscard]] WdmCplClient* wdmcpl_create_client(const char* name,
                                                  MPI_Comm comm)
@@ -99,7 +101,7 @@ WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(const char* name,
 {
   std::ifstream infile(classification_file);
   auto classification = wdmcpl::ReadXGCNodeClassification(infile);
-  WdmCplFieldAdapter* field_adapter = new WdmCplFieldAdapter;
+  auto* field_adapter = new WdmCplFieldAdapter;
   field_adapter->type = WDMCPL_ADAPTER_XGC;
   switch (data_type) {
     case WDMCPL_DOUBLE: field_adapter->data_type = WDMCPL_DOUBLE; break;
@@ -138,7 +140,7 @@ void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter* adapter)
       wdmcpl_destroy_xgc_adapter(adapter->xgc_, adapter->data_type);
       break;
 #ifdef WDMCPL_HAS_OMEGA_H
-    case (WdmCplAdapterType::OmegaH): break;
+    case (WDMCPL_ADAPTER_OMEGAH): break;
 #endif
     case (WDMCPL_ADAPTER_GENE): break;
     case (WDMCPL_ADAPTER_GEM): break;
@@ -148,5 +150,4 @@ void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter* adapter)
     delete adapter;
     adapter = nullptr;
   }
-}
 }

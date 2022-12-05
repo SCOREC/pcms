@@ -15,7 +15,7 @@ namespace wdmcpl
 // this function is in the public header for testing, but should not be directly
 // used
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map(Omega_h::Mesh& mesh, const UniformGrid& grid);
+construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<UniformGrid[1]> grid, int num_grid_cells);
 } // namespace detail
 KOKKOS_FUNCTION
 Omega_h::Vector<3> barycentric_from_global(
@@ -27,9 +27,9 @@ Omega_h::Vector<3> barycentric_from_global(
 class GridPointSearch
 {
   using CandidateMapT = Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
-  static constexpr auto dim = 2;
 
 public:
+  static constexpr auto dim = 2;
   struct Result {
     LO tri_id;
     Omega_h::Vector<dim + 1> parametric_coords;
@@ -43,11 +43,11 @@ public:
    * id will be a negative number and (TODO) will return a negative id of the
    * closest element
    */
-  KOKKOS_FUNCTION Result operator()(Omega_h::Vector<dim> point) const;
+  Kokkos::View<Result*> operator()(Kokkos::View<Real*[dim] > point) const;
 
 private:
   Omega_h::Mesh mesh_;
-  UniformGrid grid_{};
+  Kokkos::View<UniformGrid[1]> grid_{"uniform grid"};
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;

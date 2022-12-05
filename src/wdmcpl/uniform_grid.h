@@ -20,7 +20,10 @@ public:
   }
   /// return the grid cell ID that the input point is inside or closest to if
   /// the point lies outside
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Omega_h::Vector<dim>& point) const
+  // take the view as a template because it might be a subview type
+  //template <typename T>
+  //[[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const T& point) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Omega_h::Vector<2>& point) const
   {
     std::array<Real, dim> distance_within_grid{point[0] - bot_left[0],
                                                point[1] - bot_left[1]};
@@ -33,8 +36,8 @@ public:
       } else if (distance_within_grid[i] >= edge_length[i]) {
         indexes[dim - (i + 1)] = divisions[i] - 1;
       } else {
-        indexes[dim - (i + 1)] =
-          static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
+        indexes[dim - (i + 1)] = 
+          static_cast<LO>(Kokkos::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
       }
     }
     return GetCellIndex(indexes[0], indexes[1]);

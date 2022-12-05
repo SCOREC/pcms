@@ -4,6 +4,8 @@
 
 namespace wdmcpl
 {
+constexpr Real fuzz = 1E-6;
+
 KOKKOS_INLINE_FUNCTION
 AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
 {
@@ -94,13 +96,13 @@ bool bbox_verts_within_triangle(const AABBox<2>& bbox, const Omega_h::Matrix<2,3
   auto bot = bbox.center[1] - bbox.half_width[1];
   auto top = bbox.center[1] + bbox.half_width[1];
   auto xi = barycentric_from_global({left,bot}, coords);
-  if(Omega_h::is_barycentric_inside(xi)){ return true;}
+  if(Omega_h::is_barycentric_inside(xi, fuzz)){ return true;}
   xi = barycentric_from_global({left,top}, coords);
-  if(Omega_h::is_barycentric_inside(xi)){ return true;}
+  if(Omega_h::is_barycentric_inside(xi, fuzz)){ return true;}
   xi = barycentric_from_global({right,top}, coords);
-  if(Omega_h::is_barycentric_inside(xi)){ return true;}
+  if(Omega_h::is_barycentric_inside(xi, fuzz)){ return true;}
   xi = barycentric_from_global({right,bot}, coords);
-  if(Omega_h::is_barycentric_inside(xi)){ return true;}
+  if(Omega_h::is_barycentric_inside(xi, fuzz)){ return true;}
   return false;
 }
 
@@ -193,63 +195,89 @@ public:
   LO nelems_;
 };
 
+// num_grid_cells should be result of grid.GetNumCells(), take as argument to avoid extra copy
+// of grid from gpu to cpu
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map(Omega_h::Mesh& mesh, const UniformGrid& grid)
+construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<UniformGrid[1]> grid, int num_grid_cells)
 {
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  Kokkos::View<UniformGrid[1]> grid_view{"grid view"};
-  auto grid_h = Kokkos::create_mirror_view(grid_view);
-  grid_h(0) = grid;
-  Kokkos::deep_copy(grid_view, grid_h);
-  auto f = detail::GridTriIntersectionFunctor{mesh, grid_view};
-  Kokkos::count_and_fill_crs(intersection_map, grid.GetNumCells(), f);
+  auto f = detail::GridTriIntersectionFunctor{mesh, grid};
+  Kokkos::count_and_fill_crs(intersection_map, num_grid_cells, f);
   return intersection_map;
 }
 } // namespace detail
 
+KOKKOS_FUNCTION
 Omega_h::Vector<3> barycentric_from_global(
   const Omega_h::Vector<2>& point, const Omega_h::Matrix<2, 3>& vertex_coords)
 {
   const auto inverse_basis =
-    Omega_h::invert(Omega_h::simplex_basis<2, 2>(vertex_coords));
+    Omega_h::pseudo_invert(Omega_h::simplex_basis<2, 2>(vertex_coords));
   auto xi = inverse_basis * (point - vertex_coords[0]);
   // note omega_h form_barycentric is currently broken.
   // see https://github.com/sandialabs/omega_h/issues/389
   return {1 - xi[0] - xi[1], xi[0], xi[1]};
 }
 
-GridPointSearch::Result GridPointSearch::operator()(Omega_h::Vector<dim> point) const
+template <int n,  typename Op>
+OMEGA_H_INLINE double myreduce(const Omega_h::Vector<n> & x, Op op) OMEGA_H_NOEXCEPT {
+  auto out = x[0];
+  for (int i = 1; i < n; ++i) out = op(out, x[i]);
+  return out;
+}         
+
+Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<Real*[dim] > points) const
 {
-  // TODO use a functor for parallel for over a list of points
-  // TODO return result struct rather than pair
-  auto cell_id = grid_.ClosestCellID(point);
-  assert(cell_id < candidate_map_.numRows() && cell_id >= 0);
-  auto candidates_begin = candidate_map_.row_map(cell_id);
-  auto candidates_end = candidate_map_.row_map(cell_id + 1);
-  // create array that's size of number of candidates x num coords to store
-  // parametric inversion
-  for (auto i = candidates_begin; i < candidates_end; ++i) {
-    const auto elem_tri2verts =
-      Omega_h::gather_verts<3>(tris2verts_, candidate_map_.entries(i));
-    // 2d mesh with 2d coords, but 3 triangles
-    const auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
-    auto parametric_coords = barycentric_from_global(point, vertex_coords);
-    if (Omega_h::is_barycentric_inside(parametric_coords)) {
-      return {candidate_map_.entries(i), parametric_coords};
+  static_assert(dim == 2, "point search assumes dim==2");
+  Kokkos::View<GridPointSearch::Result*> results("point search result", points.extent(0));
+  auto num_rows = candidate_map_.numRows();
+  // needed so that we don't capture this ptr which will be memory error on cuda
+  auto grid = grid_; 
+  auto candidate_map = candidate_map_;
+  auto tris2verts = tris2verts_;
+  auto coords = coords_;
+  Kokkos::parallel_for(points.extent(0), KOKKOS_LAMBDA(int p) {
+    Omega_h::Vector<2> point(std::initializer_list<double>{points(p,0), points(p,1)});
+    auto cell_id = grid(0).ClosestCellID(point);
+    assert(cell_id < num_rows && cell_id >= 0);
+    auto candidates_begin = candidate_map.row_map(cell_id);
+    auto candidates_end = candidate_map.row_map(cell_id + 1);
+    bool found = false;
+    // create array that's size of number of candidates x num coords to store
+    // parametric inversion
+    for (auto i = candidates_begin; i < candidates_end; ++i) {
+    //for (auto i = 0; i<1; ++i) {
+     auto elem_tri2verts =
+        Omega_h::gather_verts<3>(tris2verts, candidate_map.entries(i));
+      // 2d mesh with 2d coords, but 3 triangles
+     auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
+     auto parametric_coords = barycentric_from_global(point, vertex_coords);
+      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
+        results(p) = GridPointSearch::Result{candidate_map.entries(i), parametric_coords};
+        found = true;
+        break;
+      }
     }
-  }
-  return {-1, {}};
+    if(!found)
+    {
+      results(p) = GridPointSearch::Result{-1,{0,0,0}};
+    }
+
+  });
+
+  return results;
 }
 
 GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
-  // get mesh bounding box
-  grid_ = {.edge_length = {mesh_bbox.max[0] - mesh_bbox.min[0],
+  auto grid_h = Kokkos::create_mirror_view(grid_);
+  grid_h(0) = UniformGrid{.edge_length = {mesh_bbox.max[0] - mesh_bbox.min[0],
                            mesh_bbox.max[1] - mesh_bbox.min[1]},
     .bot_left = {mesh_bbox.min[0], mesh_bbox.min[1]},
     .divisions = {Nx, Ny}};
-  candidate_map_ = detail::construct_intersection_map(mesh, grid_);
+  Kokkos::deep_copy(grid_, grid_h);
+  candidate_map_ = detail::construct_intersection_map(mesh, grid_, grid_h(0).GetNumCells());
   coords_ = mesh.coords();
   tris2verts_ = mesh.ask_elem_verts();
 }

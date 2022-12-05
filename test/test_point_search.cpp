@@ -135,19 +135,24 @@ TEST_CASE("construct intersection map")
   REQUIRE(mesh.dim() == 2);
   SECTION("grid bbox overlap")
   {
-    UniformGrid grid{
-      .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
-    auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid);
+    Kokkos::View<UniformGrid[1]> grid_d("uniform grid");
+    auto grid_h = Kokkos::create_mirror_view(grid_d);
+    grid_h(0) = UniformGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
+    Kokkos::deep_copy(grid_d, grid_h);
+    auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());
     // assert(cudaSuccess == cudaDeviceSynchronize());
     REQUIRE(intersection_map.numRows() == 100);
     REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
   }
   SECTION("fine grid")
   {
-    UniformGrid grid{
-      .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
+    Kokkos::View<UniformGrid[1]> grid_d("uniform grid");
+    auto grid_h = Kokkos::create_mirror_view(grid_d);
+    grid_h(0) = UniformGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
+    Kokkos::deep_copy(grid_d, grid_h);
     // require number of candidates is >=1 and <=6
-    auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid);
+    auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());
+
     REQUIRE(intersection_map.numRows() == 3600);
     REQUIRE(num_candidates_within_range(intersection_map, 1, 6));
   }
@@ -159,17 +164,34 @@ TEST_CASE("uniform grid search") {
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
   GridPointSearch search{mesh,10,10};
+  Kokkos::View<wdmcpl::Real*[2]> points("test_points", 5);
+  //Kokkos::View<wdmcpl::Real*[2]> points("test_points", 1);
+  auto points_h = Kokkos::create_mirror_view(points);
+  points_h(0,0) = 0;
+  points_h(0,1) = 0;
+  points_h(1,0) = 0.55;
+  points_h(1,1) = 0.54;
+  points_h(2,0) = 100;
+  points_h(2,1) = 100;
+  points_h(3,0) = 1;
+  points_h(3,1) = 1;
+  points_h(4,0) = -1;
+  points_h(4,1) = -1;
+  Kokkos::deep_copy(points, points_h);
+  auto results = search(points);
+  auto results_h = Kokkos::create_mirror_view(results);
+  Kokkos::deep_copy(results_h, results);
   SECTION("global coordinate within mesh")
   {
     {
-      auto [idx,coords] = search({0,0});
+      auto [idx,coords] = results_h(0);
       REQUIRE(idx == 0);
       REQUIRE(coords[0] == Approx(1));
       REQUIRE(coords[1] == Approx(0));
       REQUIRE(coords[2] == Approx(0));
     }
     {
-      auto [idx,coords] = search({0.55,0.54});
+      auto [idx,coords] = results_h(1);
       REQUIRE(idx == 91);
       REQUIRE(coords[0] == Approx(0.5));
       REQUIRE(coords[1] == Approx(0.1));
@@ -177,11 +199,11 @@ TEST_CASE("uniform grid search") {
     }
   }
   SECTION("Global coordinate outisde mesh", "[!mayfail]") {
-    auto out_of_bounds = search({100,100});
-    auto top_left = search({1,1});
+    auto out_of_bounds = results_h(2);
+    auto top_left = results_h(3);
     REQUIRE(-1*out_of_bounds.tri_id == top_left.tri_id);
-    out_of_bounds = search({-1,-1});
-    auto bot_left = search({0,0});
+    out_of_bounds = results_h(4);
+    auto bot_left = results_h(0);
     REQUIRE(-1*out_of_bounds.tri_id == bot_left.tri_id);
   }
 }

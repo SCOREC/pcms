@@ -11,12 +11,12 @@ TEST_CASE("uniform grid")
   // Omega_h::Vector<2> point{0,0};
   SECTION("Closest Cell ID")
   {
-    REQUIRE(0 == uniform_grid.ClosestCellID({0, 0}));
-    REQUIRE(0 == uniform_grid.ClosestCellID({-5, -5}));
-    REQUIRE(1 == uniform_grid.ClosestCellID({1.5, 0}));
-    REQUIRE(119 == uniform_grid.ClosestCellID({10, 12}));
-    REQUIRE(119 == uniform_grid.ClosestCellID({9.5, 11.5}));
-    REQUIRE(119 == uniform_grid.ClosestCellID({100, 100}));
+    REQUIRE(0 == uniform_grid.ClosestCellID(Omega_h::Vector<2>{0, 0}));
+    REQUIRE(0 == uniform_grid.ClosestCellID(Omega_h::Vector<2>{-5, -5}));
+    REQUIRE(1 == uniform_grid.ClosestCellID(Omega_h::Vector<2>{1.5, 0}));
+    REQUIRE(119 == uniform_grid.ClosestCellID(Omega_h::Vector<2>{10, 12}));
+    REQUIRE(119 == uniform_grid.ClosestCellID(Omega_h::Vector<2>{9.5, 11.5}));
+    REQUIRE(119 == uniform_grid.ClosestCellID(Omega_h::Vector<2>{100, 100}));
   }
   SECTION("cell bbox")
   {

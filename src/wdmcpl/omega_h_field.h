@@ -356,7 +356,7 @@ public:
   }
   // REQUIRED
   void Deserialize(
-    ScalarArrayView<T, memory_space> buffer,
+    ScalarArrayView<const T, memory_space> buffer,
     ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
   {
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());

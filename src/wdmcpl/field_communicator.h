@@ -156,29 +156,14 @@ public:
   {
     auto n = field_adapter_.Serialize({}, {});
     REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
-
-    auto buffer = ScalarArrayView<typename decltype(comm_buffer_)::value_type,
-                                  HostMemorySpace>(comm_buffer_.data(),
-                                                   comm_buffer_.size());
-    const auto permutation =
-      ScalarArrayView<const typename decltype(message_permutation_)::value_type,
-                      HostMemorySpace>(message_permutation_.data(),
-                                       message_permutation_.size());
-
-    field_adapter_.Serialize(buffer, permutation);
+    auto buffer = make_array_view(comm_buffer_);
+    field_adapter_.Serialize(buffer, make_const_array_view(message_permutation_));
     comm_.Send(buffer.data_handle());
   }
   void Receive()
   {
     auto data = comm_.Recv();
-    auto buffer = ScalarArrayView<T, HostMemorySpace>(data.data(), data.size());
-    static_assert(std::is_same_v<T, typename decltype(data)::value_type>);
-    auto permutation =
-      ScalarArrayView<const typename decltype(message_permutation_)::value_type,
-                      HostMemorySpace>(message_permutation_.data(),
-                                       message_permutation_.size());
-    // load data into the field based on user specified function/functor
-    field_adapter_.Deserialize(buffer, permutation);
+    field_adapter_.Deserialize(make_const_array_view(data), make_const_array_view(message_permutation_));
   }
 
   /** update the permutation array and buffer sizes upon mesh change

@@ -5,6 +5,9 @@
 #include "wdmcpl/field.h"
 #include <vector>
 #include <redev_variant_tools.h>
+#include "wdmcpl/xgc_reverse_classification.h"
+#include "wdmcpl/assert.h"
+#include "wdmcpl/array_mask.h"
 
 namespace wdmcpl
 {
@@ -16,18 +19,28 @@ public:
   using memory_space = HostMemorySpace;
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
-  XGCFieldAdapter(std::string name,
-                  std::vector<int8_t> classification_dimension,
-                  std::vector<LO> classification_geometric_id,
-                  ScalarArrayView<T, memory_space> data)
+  XGCFieldAdapter(std::string name, ScalarArrayView<T, memory_space> data,
+                  const ReverseClassificationVertex& reverse_classification,
+                  std::function<int8_t(int, int)> in_overlap)
     : name_(std::move(name)),
       data_(data),
       gids_(data.size()),
-      classification_dimension_(std::move(classification_dimension)),
-      classification_geometric_id_(std::move(classification_geometric_id))
+      reverse_classification_(reverse_classification),
+      in_overlap_(in_overlap)
   {
-    // XGC meshes are naively ordered in iteration order (full mesh on every
-    // cpu)
+    // WDMCPL_ALWAYS_ASSERT(reverse_classification.nverts() == data.size());
+    Kokkos::View<int8_t*, HostMemorySpace> mask("mask", data.size());
+    for (auto& geom : reverse_classification_) {
+      if (in_overlap(geom.first.dim, geom.first.id)) {
+        for (auto vert : geom.second) {
+          mask(vert) = 1;
+        }
+      }
+    }
+    mask_ = ArrayMask<memory_space>{make_array_view(mask)};
+    WDMCPL_ALWAYS_ASSERT(!mask_.empty());
+    //// XGC meshes are naively ordered in iteration order (full mesh on every
+    //// cpu)
     std::iota(gids_.begin(), gids_.end(), static_cast<GO>(0));
   }
 
@@ -37,50 +50,60 @@ public:
   {
     static_assert(std::is_same_v<memory_space, wdmcpl::HostMemorySpace>,
                   "gpu space unhandled\n");
+    auto const_data =
+      ScalarArrayView<const T, memory_space>{data_.data_handle(), data_.size()};
     if (buffer.size() > 0) {
-      for (size_t i = 0, j = 0; i < data_.size(); i++) {
-        buffer[permutation[j++]] = data_[i];
-      }
+      mask_.Apply(const_data, buffer, permutation);
     }
-    return data_.size();
+    return mask_.Size();
   }
   void Deserialize(
-    ScalarArrayView<T, memory_space> buffer,
+    ScalarArrayView<const T, memory_space> buffer,
     ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
   {
     static_assert(std::is_same_v<memory_space, wdmcpl::HostMemorySpace>,
                   "gpu space unhandled\n");
-    REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
-    for (int i = 0; i < buffer.size(); ++i) {
-      data_[i] = buffer[permutation[i]];
-    }
+    mask_.ToFullArray(buffer, data_, permutation);
   }
 
   // REQUIRED
-  [[nodiscard]] const std::vector<GO>& GetGids() const { return gids_; }
+  [[nodiscard]] const std::vector<GO> GetGids() const
+  {
+    std::vector<GO> gids(mask_.Size());
+    auto v1 = make_array_view(gids_);
+    auto v2 = make_array_view(gids);
+    mask_.Apply(v1, v2);
+
+    return gids;
+  }
   // REQUIRED
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const
   {
     wdmcpl::ReversePartitionMap reverse_partition;
-    wdmcpl::LO local_index = 0;
-    for (size_t i = 0; i < classification_dimension_.size(); ++i) {
-      auto& class_dim = classification_dimension_;
-      auto& class_id = classification_geometric_id_;
-      auto dr =
-        std::visit(redev::overloaded{
-                     [&class_dim, &class_id, &i](const redev::ClassPtn& ptn) {
-                       const auto ent =
-                         redev::ClassPtn::ModelEnt({class_dim[i], class_id[i]});
-                       return ptn.GetRank(ent);
-                     },
-                     [](const redev::RCBPtn& ptn) {
-                       std::cerr << "RCB partition not handled yet\n";
-                       std::terminate();
-                       return 0;
-                     }},
-                   partition);
-      reverse_partition[dr].emplace_back(local_index++);
+    // in_overlap_ must contain a function!
+    WDMCPL_ALWAYS_ASSERT(static_cast<bool>(in_overlap_));
+    for (const auto& geom : reverse_classification_) {
+      // if the geometry is in specified overlap region
+      if (in_overlap_(geom.first.dim, geom.first.id)) {
+
+        auto dr = std::visit(
+          redev::overloaded{[&geom](const redev::ClassPtn& ptn) {
+                              const auto ent = redev::ClassPtn::ModelEnt(
+                                {geom.first.dim, geom.first.id});
+                              return ptn.GetRank(ent);
+                            },
+                            [](const redev::RCBPtn& /* unused */) {
+                              std::cerr << "RCB partition not handled yet\n";
+                              std::terminate();
+                              return 0;
+                            }},
+          partition);
+        auto [it, inserted] = reverse_partition.try_emplace(dr);
+        // Note that the node ordering is the local iteration order!
+        std::copy(geom.second.begin(), geom.second.end(),
+                  std::back_inserter(it->second));
+      }
     }
     return reverse_partition;
   }
@@ -89,8 +112,9 @@ private:
   std::string name_;
   ScalarArrayView<T, memory_space> data_;
   std::vector<GO> gids_;
-  std::vector<int8_t> classification_dimension_;
-  std::vector<LO> classification_geometric_id_;
+  const ReverseClassificationVertex& reverse_classification_;
+  std::function<int8_t(int, int)> in_overlap_;
+  ArrayMask<memory_space> mask_;
 };
 
 struct ReadXGCNodeClassificationResult

@@ -132,8 +132,8 @@ public:
       comm_buffer_{},
       message_permutation_{},
       buffer_size_needs_update_{true},
-      redev_{redev},
       field_adapter_(field_adapter),
+      redev_{redev},
       name_{std::move(name)}
   {
     std::string transport_name = name_;
@@ -155,7 +155,7 @@ public:
   void Send()
   {
     auto n = field_adapter_.Serialize({}, {});
-    REDEV_ALWAYS_ASSERT(comm_buffer_.size() == n);
+    REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
 
     auto buffer = ScalarArrayView<typename decltype(comm_buffer_)::value_type,
                                   HostMemorySpace>(comm_buffer_.data(),
@@ -198,7 +198,7 @@ public:
       // use permutation array to send the gids
       std::vector<wdmcpl::GO> gid_msgs(gids.size());
       REDEV_ALWAYS_ASSERT(gids.size() == message_permutation_.size());
-      for (int i = 0; i < gids.size(); ++i) {
+      for (size_t i = 0; i < gids.size(); ++i) {
         gid_msgs[message_permutation_[i]] = gids[i];
       }
       gid_comm_.Send(gid_msgs.data());

@@ -347,7 +347,8 @@ public:
     // host copy of filtered field data array
     const auto array_h = Omega_h::HostRead(get_nodal_data(field_));
     if (buffer.size() > 0) {
-      for (size_t i = 0, j = 0; i < array_h.size(); i++) {
+      for (LO i = 0, j = 0; i < array_h.size(); i++) {
+        // FIXME j==i, can't we just get rid of j, or am i missing something
         buffer[permutation[j++]] = array_h[i];
       }
     }
@@ -360,7 +361,7 @@ public:
   {
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
     Omega_h::Write<T> sorted_buffer(buffer.size());
-    for (int i = 0; i < buffer.size(); ++i) {
+    for (size_t i = 0; i < buffer.size(); ++i) {
       sorted_buffer[i] = buffer[permutation[i]];
     }
     set_nodal_data(field_, make_array_view(Omega_h::Read(sorted_buffer)));
@@ -380,7 +381,6 @@ public:
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const
   {
-    auto& mesh = field_.GetMesh();
     auto classIds_h = Omega_h::HostRead(field_.GetClassIDs());
     auto classDims_h = Omega_h::HostRead(field_.GetClassDims());
 

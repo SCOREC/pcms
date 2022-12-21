@@ -1,10 +1,11 @@
 #include "client.h"
 #include "wdmcpl.h"
 #include "wdmcpl/xgc_field_adapter.h"
-//#ifdef WDMCPL_HAS_OMEGA_H
-//  #include "wdmcpl/omega_h_field.h"
-//#endif
+// #ifdef WDMCPL_HAS_OMEGA_H
+//   #include "wdmcpl/omega_h_field.h"
+// #endif
 #include <fstream>
+#include "wdmcpl/xgc_reverse_classification.h"
 namespace wdmcpl
 {
 
@@ -22,8 +23,7 @@ static void wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
     }
 #ifdef WDMCPL_HAS_OMEGA_H
     case WDMCPL_ADAPTER_OMEGAH: {
-      if constexpr (std::is_same_v<T, double> ||
-                    std::is_same_v<T, int>) {
+      if constexpr (std::is_same_v<T, double> || std::is_same_v<T, int>) {
         auto* adapter = reinterpret_cast<wdmcpl::OmegaHFieldAdapter<T>*>(
           adapter_handle->xgc_);
         client->AddField(name, *adapter);
@@ -75,6 +75,19 @@ void wdmcpl_destroy_client(WdmCplClient* client)
   if (client != nullptr)
     delete reinterpret_cast<wdmcpl::CouplerClient*>(client);
 }
+WdmCplReverseClassificationHandle* wdmcpl_load_reverse_classification(
+  const char* file, MPI_Comm comm)
+{
+  std::filesystem::path filepath{file};
+  auto* rc = new wdmcpl::ReverseClassificationVertex{
+    wdmcpl::ReadReverseClassificationVertex(filepath, comm)};
+  return reinterpret_cast<WdmCplReverseClassificationHandle*>(rc);
+}
+void wdmcpl_destroy_reverse_classification(WdmCplReverseClassificationHandle* rc)
+{
+  if(rc != nullptr)
+    delete reinterpret_cast<wdmcpl::ReverseClassificationVertex*>(rc);
+}
 
 void wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
                       WdmCplFieldAdapter* adapter_handle)
@@ -94,28 +107,32 @@ void wdmcpl_receive_field(WdmCplClient* client_handle, const char* name)
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
   client->ReceiveField(name);
 }
-WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(const char* name,
-                                                    void* data, int size,
-                                                    WdmCplType data_type,
-                                                    char* classification_file)
+WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(
+  const char* name, void* data, int size, WdmCplType data_type,
+  const WdmCplReverseClassificationHandle* rc, in_overlap_function in_overlap)
 {
-  std::ifstream infile(classification_file);
-  auto classification = wdmcpl::ReadXGCNodeClassification(infile);
+  // auto classification = wdmcpl::ReadXGCNodeClassification(infile);
   auto* field_adapter = new WdmCplFieldAdapter;
   field_adapter->type = WDMCPL_ADAPTER_XGC;
+  WDMCPL_ALWAYS_ASSERT(rc != nullptr);
+  auto* reverse_classification =
+    reinterpret_cast<const wdmcpl::ReverseClassificationVertex*>(rc);
   switch (data_type) {
     case WDMCPL_DOUBLE: field_adapter->data_type = WDMCPL_DOUBLE; break;
     case WDMCPL_FLOAT: field_adapter->data_type = WDMCPL_FLOAT; break;
     case WDMCPL_INT: field_adapter->data_type = WDMCPL_INT; break;
     case WDMCPL_LONG_INT: field_adapter->data_type = WDMCPL_LONG_INT; break;
   }
+  WDMCPL_ALWAYS_ASSERT(reverse_classification != nullptr);
   wdmcpl::ApplyToTypes(data_type, [&](auto d) {
     using T = decltype(d);
     wdmcpl::ScalarArrayView<T, wdmcpl::HostMemorySpace> data_view(
       reinterpret_cast<T*>(data), size);
-    auto* adapter = new wdmcpl::XGCFieldAdapter<T>(
-      name, std::move(classification.dimension),
-      std::move(classification.geometric_id), data_view);
+    auto* adapter =
+      new wdmcpl::XGCFieldAdapter<T>(name, data_view, *reverse_classification, in_overlap);
+    // auto* adapter = new wdmcpl::XGCFieldAdapter<T>(
+    //   name, std::move(classification.dimension),
+    //   std::move(classification.geometric_id), data_view);
     field_adapter->xgc_ = reinterpret_cast<WdmCplXgcAdapter*>(adapter);
   });
   return field_adapter;

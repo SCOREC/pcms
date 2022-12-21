@@ -55,7 +55,7 @@ void interpolate_field(const SourceField& source_field,
                 "cannot mix data with and without coordinate systems");
 
   auto coordinates = get_nodal_coordinates(target_field);
-  auto coordinates_view = make_array_view(coordinates);
+  auto coordinates_view = make_const_array_view(coordinates);
 
   if constexpr (needs_coordinate_transform) {
     static_assert(!needs_coordinate_transform,

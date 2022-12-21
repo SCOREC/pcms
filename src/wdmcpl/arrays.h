@@ -4,6 +4,7 @@
 #include "wdmcpl/types.h"
 #include "wdmcpl/coordinate.h"
 #include "wdmcpl/external/span.h"
+#include "wdmcpl/memory_spaces.h"
 
 namespace wdmcpl
 {
@@ -127,17 +128,82 @@ template <typename ElementType, typename MemorySpace>
 using ScalarArrayView = std::experimental::mdspan<
   ElementType, std::experimental::dextents<LO, 1>,
   std::experimental::layout_right,
-  detail::memory_space_accessor<ElementType, MemorySpace>>;
+  detail::memory_space_accessor<std::remove_reference_t<ElementType>,
+                                MemorySpace>>;
 
-// default implementation of make_array_view
- template <typename T, typename MemorySpace= typename T::memory_space,
- typename ElementType = typename T::value_type> ScalarArrayView<ElementType,
- MemorySpace> make_array_view(const T& array) {
-   using std::data;
-   using std::size;
-   return {data(array), size(array)};
- }
+namespace detail
+{
+template <typename T, typename = std::void_t<>>
+struct HasValueType : std::false_type
+{};
+template <typename T>
+struct HasValueType<T, std::void_t<typename T::value_type>> : std::true_type
+{};
 
+template <typename T, typename = std::void_t<>>
+struct memory_space_selector
+{
+  using type = HostMemorySpace;
+};
+template <typename T>
+struct memory_space_selector<T, std::void_t<typename T::memory_space>>
+{
+  using type = typename T::memory_space;
+};
+template <typename T>
+using memory_space_selector_t = typename memory_space_selector<T>::type;
+
+template <typename T, bool = false>
+struct arr_trait;
+template <typename T>
+struct arr_trait<T, true>
+{
+  using type = typename T::value_type;
+};
+
+template <typename T, size_t N>
+struct arr_trait<T[N]>
+{
+  using type = T;
+};
+
+template <typename T, size_t N>
+struct arr_trait<std::array<T, N>>
+{
+  using type = T;
+};
+
+template <typename T>
+using element_type_t = typename arr_trait<T, HasValueType<T>::value>::type;
+
+} // namespace detail
+  // default implementation of make_array_view
+template <typename T, typename MemorySpace = detail::memory_space_selector_t<T>,
+          typename ElementType = detail::element_type_t<T>>
+auto make_array_view(const T& array)
+  -> ScalarArrayView<const ElementType, MemorySpace>
+{
+  using std::data;
+  using std::size;
+  return ScalarArrayView<const ElementType, MemorySpace>{data(array),
+                                                         size(array)};
+}
+template <typename T, typename MemorySpace = detail::memory_space_selector_t<T>,
+          typename ElementType = detail::element_type_t<T>>
+auto make_array_view(T& array) -> ScalarArrayView<ElementType, MemorySpace>
+{
+  using std::data;
+  using std::size;
+  return ScalarArrayView<ElementType, MemorySpace>{data(array), size(array)};
+}
+
+template <typename T, typename MemorySpace = detail::memory_space_selector_t<T>,
+  typename ElementType = detail::element_type_t<T>>
+auto make_const_array_view(T& array) -> ScalarArrayView<const ElementType, MemorySpace>
+{
+  using std::data;
+  using std::size;
+  return ScalarArrayView<const ElementType, MemorySpace>{data(array), size(array)};
+}
 } // namespace wdmcpl
-
 #endif // WDM_COUPLING_ARRAYS_H

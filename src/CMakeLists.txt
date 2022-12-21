@@ -13,17 +13,17 @@ set(WDMCPL_HEADERS
         wdmcpl/field_evaluation_methods.h
         wdmcpl/memory_spaces.h
         wdmcpl/types.h
+        wdmcpl/array_mask.h
         )
 
 set(WDMCPL_SOURCES
         wdmcpl.cpp
         wdmcpl/assert.cpp
-        wdmcpl/xgc_field_adapter.cpp
         wdmcpl/xgc_field_adapter.h)
 set(WDMCPL_SOURCES wdmcpl.cpp wdmcpl/assert.cpp)
 if(WDMCPL_ENABLE_XGC)
-  list(APPEND WDMCPL_SOURCES wdmcpl/xgc_field_adapter.cpp)
-  list(APPEND WDMCPL_HEADERS )
+  list(APPEND WDMCPL_SOURCES  wdmcpl/xgc_reverse_classification.cpp)
+  list(APPEND WDMCPL_HEADERS wdmcpl/xgc_reverse_classification.h)
 endif()
 if (WDMCPL_ENABLE_OMEGA_H)
   list(APPEND WDMCPL_SOURCES wdmcpl/point_search.cpp)

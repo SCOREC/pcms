@@ -163,8 +163,13 @@ set(WDMCPL_UNIT_TEST_SOURCES
         unit_test_main.cpp
         test_coordinate_transform.cpp
         test_coordinate.cpp
-        test_bounding_box.cpp
-        )
+        test_bounding_box.cpp)
+if(WDMCPL_ENABLE_XGC)
+  list(APPEND WDMCPL_UNIT_TEST_SOURCES
+          test_xgc_reverse_classifcation.cpp
+          test_xgc_field_adapter.cpp)
+endif()
+
 if(WDMCPL_ENABLE_OMEGA_H)
   add_executable(field_transfer_example field_transfer_example.cpp)
   target_link_libraries(field_transfer_example PUBLIC wdmcpl::wdmcpl)

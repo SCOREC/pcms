@@ -13,6 +13,8 @@ typedef struct WdmCplXgcAdapter WdmCplXgcAdapter;
 
 struct WdmCplOmegaHMeshHandle;
 typedef struct WdmCplOmegaHMeshHandle WdmCplOmegaHMeshHandle;
+struct WdmCplReverseClassificationHandle;
+typedef struct WdmCplReverseClassificationHandle WdmCplReverseClassificationHandle;
 
 enum WdmCplAdapterType
 {
@@ -47,14 +49,21 @@ struct WdmCplFieldAdapter
 };
 typedef struct WdmCplFieldAdapter WdmCplFieldAdapter;
 
-// FIXME communicate partition type in underlying library
 WdmCplClient* wdmcpl_create_client(const char* name, MPI_Comm comm);
 void wdmcpl_destroy_client(WdmCplClient*);
 
+// returns a pointer to a handle to a reverse classification object
+WdmCplReverseClassificationHandle* wdmcpl_load_reverse_classification(const char* file, MPI_Comm comm);
+void wdmcpl_destroy_reverse_classification(WdmCplReverseClassificationHandle*);
+
+// takes in overlap function takes a geometric dimension and a geometric id
+// C doesn't have a builtin bool type, so we use int for compatability with C++
+typedef int8_t(*in_overlap_function)(int, int);
 WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(const char* name,
                                                     void* data, int size,
                                                     WdmCplType data_type,
-                                                    char* classification_file);
+                                                    const WdmCplReverseClassificationHandle* rc,
+                                                    in_overlap_function in_overlap);
 
 void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter*);
 

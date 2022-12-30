@@ -135,6 +135,41 @@ struct ReadXGCNodeClassificationResult
 [[nodiscard]] ReadXGCNodeClassificationResult ReadXGCNodeClassification(
   std::istream& in);
 
+template <typename T, typename CoordinateElementType>
+auto get_nodal_coordinates(const XGCFieldAdapter<T, CoordinateElementType> & field) {
+  Kokkos::View<CoordinateElementType*, typename XGCFieldAdapter<T,CoordinateElementType>::memory_space> coordinates;
+  return coordinates;
+}
+template <typename T, typename CoordinateElementType>
+auto evaluate(
+  const XGCFieldAdapter<T, CoordinateElementType>& field, Lagrange<1> /* method */,
+  ScalarArrayView<const CoordinateElementType,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space >
+  coordinates) -> Kokkos::View<T*,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+{
+  Kokkos::View<T*,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space> values("data", coordinates.size()/2);
+  std::cerr<<"Evaluation of XGC Field not implemented yet!\n";
+  std::abort();
+  return values;
+}
+template <typename T, typename CoordinateElementType>
+auto evaluate(
+  const XGCFieldAdapter<T, CoordinateElementType>& field, NearestNeighbor /* method */,
+  ScalarArrayView<const CoordinateElementType,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space >
+  coordinates) -> Kokkos::View<T*,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+{
+  Kokkos::View<T*,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space> values("data", coordinates.size()/2);
+  std::cerr<<"Evaluation of XGC Field not implemented yet!\n";
+  std::abort();
+  return values;
+}
+
+template <typename T, typename CoordinateElementType, typename U>
+auto set_nodal_data(const XGCFieldAdapter<T, CoordinateElementType>& field,
+                    ScalarArrayView<const U, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space> data)
+-> void {
+
+}
+
 } // namespace wdmcpl
 
 #endif // WDM_COUPLING_XGC_FIELD_ADAPTER_H

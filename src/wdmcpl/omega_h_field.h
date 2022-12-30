@@ -57,12 +57,13 @@ public:
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
 
-  OmegaHField(std::string name, Omega_h::Mesh& mesh, int search_nx = 10,
+  OmegaHField(std::string name, Omega_h::Mesh& mesh, std::string global_id_name="", int search_nx = 10,
               int search_ny = 10)
     : name_(std::move(name)),
       mesh_(mesh),
       search_{mesh, search_nx, search_ny},
-      size_(mesh.nents(0))
+      size_(mesh.nents(0)),
+      global_id_name_(std::move(global_id_name))
   {
   }
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
@@ -103,6 +104,7 @@ public:
   [[nodiscard]] bool HasMask() const noexcept { return mask_.exists(); };
   [[nodiscard]] LO Size() const noexcept { return size_; }
   // pass through to search function
+  // FIXME should be Ts&s
   template <typename... Ts>
   auto Search(Ts... args) const
   {
@@ -123,15 +125,27 @@ public:
                                   GetMask(), Size());
     return mesh_.get_array<Omega_h::I8>(0, "class_dim");
   }
+  [[nodiscard]] Omega_h::Read<Omega_h::GO> GetGids() const {
+    Omega_h::Read<Omega_h::GO> gid_array;
+    if(global_id_name_.empty()) {
+      gid_array = mesh_.globals(0);
+    } else {
+      gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
+    }
+    if (HasMask()) {
+      return detail::filter_array(gid_array,GetMask(), Size());
+    }
+    return gid_array;
+  }
 
 private:
   std::string name_;
   Omega_h::Mesh& mesh_;
-  // FIXME GridPointSearch take mdspan
   GridPointSearch search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;
   LO size_;
+  std::string global_id_name_;
 };
 
 using InternalCoordinateElement = Real;
@@ -160,11 +174,7 @@ template <typename T, typename CoordinateElementType>
 auto get_nodal_gids(const OmegaHField<T, CoordinateElementType>& field)
   -> Omega_h::Read<Omega_h::GO>
 {
-  auto full_gids = field.GetMesh().globals(0);
-  if (field.HasMask()) {
-    return detail::filter_array(full_gids, field.GetMask(), field.Size());
-  }
-  return full_gids;
+  return field.GetGids();
 }
 
 // TODO since Omega_h owns coordinate data, we could potentially
@@ -323,9 +333,9 @@ public:
   using memory_space = OmegaHMemorySpace::type;
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
-  OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh, int search_nx = 10,
+  OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh, std::string global_id_name="", int search_nx = 10,
                   int search_ny = 10)
-    : field_{std::move(name), mesh, search_nx, search_ny}
+    : field_{std::move(name), mesh, std::move(global_id_name), search_nx, search_ny}
   {
   }
 
@@ -367,10 +377,9 @@ public:
     set_nodal_data(field_, make_array_view(Omega_h::Read(sorted_buffer)));
   }
 
-  // REQUIRED
   [[nodiscard]] std::vector<GO> GetGids() const
   {
-    auto gids = get_nodal_gids(field_);
+    auto gids = field_.GetGids();
     if (gids.size() > 0) {
       auto gids_h = Omega_h::HostRead(gids);
       return {&gids_h[0], &(gids_h[gids_h.size() - 1]) + 1};

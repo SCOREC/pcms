@@ -28,7 +28,7 @@ struct OmegaHMemorySpace
 namespace detail
 {
 template <typename T, int dim = 1>
-Omega_h::Read<T> filter_array(Omega_h::Read<T> array, Omega_h::Read<LO> mask,
+Omega_h::Read<T> filter_array(Omega_h::Read<T> array, const Omega_h::Read<LO>& mask,
                               LO size)
 {
   static_assert(dim > 0, "array dimension must be >0");
@@ -67,9 +67,12 @@ public:
   {
   }
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
-              Omega_h::Read<Omega_h::I8> mask, int search_nx = 10,
-              int search_ny = 10)
-    : name_(std::move(name)), mesh_(mesh), search_{mesh, search_nx, search_ny}
+              Omega_h::Read<Omega_h::I8> mask, std::string global_id_name = "",
+              int search_nx = 10, int search_ny = 10)
+    : name_(std::move(name)),
+      mesh_(mesh),
+      search_{mesh, search_nx, search_ny},
+      global_id_name_(std::move(global_id_name))
   {
     if (mask.exists()) {
 
@@ -340,9 +343,11 @@ public:
   }
 
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
-                  Omega_h::Read<Omega_h::I8> mask, int search_nx = 10,
-                  int search_ny = 10)
-    : field_{std::move(name), mesh, mask, search_nx, search_ny}
+                     Omega_h::Read<Omega_h::I8> mask,
+                     std::string global_id_name = "", int search_nx = 10,
+                     int search_ny = 10)
+    : field_{std::move(name),           mesh,      mask,
+             std::move(global_id_name), search_nx, search_ny}
   {
   }
   [[nodiscard]] const std::string& GetName() const noexcept

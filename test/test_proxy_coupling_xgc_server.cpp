@@ -3,7 +3,6 @@
 #include <wdmcpl/types.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
-#include <redev_variant_tools.h>
 #include "test_support.h"
 #include <wdmcpl/omega_h_field.h>
 #include <wdmcpl/xgc_field_adapter.h>
@@ -17,12 +16,14 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
   // the TOMMS generated geometric model has
   // entity IDs that increase with the distance
   // from the magnetic axis
-  if (dim == 2 && (id >= 22 && id <= 34)) {
-    return 1;
-  } else if (dim == 1 && (id >= 21 && id <= 34)) {
-    return 1;
-  } else if (dim == 0 && (id >= 21 && id <= 34)) {
-    return 1;
+  if((id >= 22 && id <= 34)) {
+    if(dim == 2) {
+      return 1;
+    } else if(dim == 1) {
+      return 1;
+    } else if(dim == 0) {
+      return 1;
+    }
   }
   return 0;
 }
@@ -170,19 +171,25 @@ using wdmcpl::ReadReverseClassificationVertex;
 
 static constexpr bool done = true;
 
-static wdmcpl::ReverseClassificationVertex construct_xgc_rc(Omega_h::Mesh& mesh) {
+static wdmcpl::ReverseClassificationVertex construct_xgc_rc(Omega_h::Mesh& mesh)
+{
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   // transfer vtx classification to host
-  auto classIds_h = Omega_h::HostRead(mesh.get_array<Omega_h::ClassId>(0, "class_id"));
-  auto classDims_h = Omega_h::HostRead(mesh.get_array<Omega_h::I8>(0, "class_dim"));
-
+  auto classIds_h =
+    Omega_h::HostRead(mesh.get_array<Omega_h::ClassId>(0, "class_id"));
+  auto classDims_h =
+    Omega_h::HostRead(mesh.get_array<Omega_h::I8>(0, "class_dim"));
+  auto vertid =
+    Omega_h::HostRead(mesh.get_array<Omega_h::LO>(0, "simNumbering"));
   wdmcpl::ReverseClassificationVertex rc;
   WDMCPL_ALWAYS_ASSERT(classDims_h.size() == classIds_h.size());
-  for(int i=0; i<classDims_h.size(); ++i) {
-    wdmcpl::DimID geom{classDims_h[i],classIds_h[i]};
-    rc.Insert(geom, i);
+  for (int i = 0; i < classDims_h.size(); ++i) {
+    wdmcpl::DimID geom{classDims_h[i], classIds_h[i]};
+    WDMCPL_ALWAYS_ASSERT(vertid[i] > 0);
+    rc.Insert(geom, vertid[i] - 1);
   }
+  return rc;
 }
 
 void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
@@ -194,52 +201,21 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
                             setupServerPartition(mesh, cpn_file), mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto rc = construct_xgc_rc(mesh);
-  std::vector<GO> data;
   auto is_overlap = markServerOverlapRegion(mesh, partition);
-  cpl.AddField("xgc_gids",
-               wdmcpl::XGCFieldAdapter<GO>("xgc_gids", make_array_view(data), rc, isModelEntInOverlap),
+  std::vector<GO> data(mesh.nverts());
+
+  auto field_adapter = wdmcpl::XGCFieldAdapter<GO>(
+    "xgc_gids", make_array_view(data), rc, isModelEntInOverlap);
+  cpl.AddField("xgc_gids", std::move(field_adapter),
                FieldTransferMethod::Copy, // to Omega_h
                FieldEvaluationMethod::None,
                FieldTransferMethod::Copy, // from Omega_h
                FieldEvaluationMethod::None, is_overlap);
-
-
-
-
-
-
-  cpl.AddField("total_f_gids",
-               OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap),
-               FieldTransferMethod::Copy, // to Omega_h
-               FieldEvaluationMethod::None,
-               FieldTransferMethod::Copy, // from Omega_h
-               FieldEvaluationMethod::None, is_overlap);
-  cpl.AddField(
-    "delta_f_gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap),
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None,
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
-  // CombinerFunction is a functor that takes a vector of omega_h fields
-  // combines their values and sets the combined values into the resultant field
-  auto* gather =
-    cpl.AddGatherFieldsOp("cpl1", {"total_f_gids", "delta_f_gids"},
-                          "combined_gids", MeanCombiner{}, is_overlap);
-  auto* scatter = cpl.AddScatterFieldsOp(
-    "cpl1", "combined_gids", {"total_f_gids", "delta_f_gids"}, is_overlap);
-  // for case with symmetric Gather/Scatter we have
-  // auto [gather, scatter] = cpl.AddSymmetricGatherScatterOp("cpl1",
-  // {"total_f_gids", "delta_f_gids"},
-  //                      "combined_gids", MeanCombiner{});
   do {
-    //  Gather OHField
-    // 1. receives any member fields .Receive()
-    // 2. field_transfer native to internal
-    // 3. combine internal fields into combined internal field
-    gather->Run(); // alt cpl.GatherFields("cpl1")
-    // Scatter OHField
-    // 1. OHField transfer internal to native
-    // 2. Send data to members
-    // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
-    scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
+    cpl.ReceiveField("xgc_gids");
+    cpl.SendField("xgc_gids");
+    cpl.ReceiveField("xgc_gids");
+    cpl.SendField("xgc_gids");
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }
@@ -249,6 +225,15 @@ int main(int argc, char** argv)
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
   const int rank = world->rank();
+  int size = world->size();
+  if (size != 1) {
+    if (!rank) {
+      std::cerr << "XGC Adapter only works on 1 rank (not a distributed mesh "
+                   "datastructure)"
+                << std::endl;
+    }
+    return 1;
+  }
   if (argc != 3) {
     if (!rank) {
       std::cerr << "Usage: " << argv[0]

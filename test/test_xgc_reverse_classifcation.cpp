@@ -36,7 +36,7 @@ TEST_CASE("reverse classification") {
     const auto* q = rc.Query({2,1});
     REQUIRE(q!=nullptr);
     REQUIRE(q->size() == 3);
-    std::unordered_set<wdmcpl::LO> s{4,5,6};
+    std::set<wdmcpl::LO> s{4, 5, 6};
     REQUIRE(s == *q);
   }
   auto vec = rc.Serialize();

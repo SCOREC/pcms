@@ -168,3 +168,14 @@ void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter* adapter)
     adapter = nullptr;
   }
 }
+int wdmcpl_reverse_classification_count_verts(
+  WdmCplReverseClassificationHandle* rc)
+{
+  auto* reverse_classification =
+    reinterpret_cast<const wdmcpl::ReverseClassificationVertex*>(rc);
+  return std::accumulate(reverse_classification->begin(),
+                         reverse_classification->end(), 0,
+                         [](auto current, const auto& verts) {
+                           return current + verts.second.size();
+                         });
+}

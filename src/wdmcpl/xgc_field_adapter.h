@@ -19,6 +19,8 @@ public:
   using memory_space = HostMemorySpace;
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
+  /// The xgc field adapter does not currently deal with parallel meshes since
+  /// XGC meshes are always on a single rank
   XGCFieldAdapter(std::string name, ScalarArrayView<T, memory_space> data,
                   const ReverseClassificationVertex& reverse_classification,
                   std::function<int8_t(int, int)> in_overlap)
@@ -30,9 +32,11 @@ public:
   {
     // WDMCPL_ALWAYS_ASSERT(reverse_classification.nverts() == data.size());
     Kokkos::View<int8_t*, HostMemorySpace> mask("mask", data.size());
+    WDMCPL_ALWAYS_ASSERT((bool)in_overlap);
     for (auto& geom : reverse_classification_) {
       if (in_overlap(geom.first.dim, geom.first.id)) {
         for (auto vert : geom.second) {
+          WDMCPL_ALWAYS_ASSERT(vert < data.size());
           mask(vert) = 1;
         }
       }
@@ -73,7 +77,6 @@ public:
     auto v1 = make_array_view(gids_);
     auto v2 = make_array_view(gids);
     mask_.Apply(v1, v2);
-
     return gids;
   }
   // REQUIRED
@@ -100,9 +103,14 @@ public:
                             }},
           partition);
         auto [it, inserted] = reverse_partition.try_emplace(dr);
-        // Note that the node ordering is the local iteration order!
-        std::copy(geom.second.begin(), geom.second.end(),
-                  std::back_inserter(it->second));
+        // the map gives the local iteration order of the global ids
+        auto map = mask_.GetMap();
+        std::transform(geom.second.begin(), geom.second.end(),
+                       std::back_inserter(it->second), [&map](auto v) {
+                         auto idx = map[v];
+                         WDMCPL_ALWAYS_ASSERT(idx > 0);
+                         return idx - 1;
+                       });
       }
     }
     return reverse_partition;
@@ -136,38 +144,58 @@ struct ReadXGCNodeClassificationResult
   std::istream& in);
 
 template <typename T, typename CoordinateElementType>
-auto get_nodal_coordinates(const XGCFieldAdapter<T, CoordinateElementType> & field) {
-  Kokkos::View<CoordinateElementType*, typename XGCFieldAdapter<T,CoordinateElementType>::memory_space> coordinates;
+auto get_nodal_coordinates(
+  const XGCFieldAdapter<T, CoordinateElementType>& field)
+{
+  Kokkos::View<CoordinateElementType*,
+               typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+    coordinates;
   return coordinates;
 }
 template <typename T, typename CoordinateElementType>
 auto evaluate(
-  const XGCFieldAdapter<T, CoordinateElementType>& field, Lagrange<1> /* method */,
-  ScalarArrayView<const CoordinateElementType,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space >
-  coordinates) -> Kokkos::View<T*,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+  const XGCFieldAdapter<T, CoordinateElementType>& field,
+  Lagrange<1> /* method */,
+  ScalarArrayView<
+    const CoordinateElementType,
+    typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+    coordinates)
+  -> Kokkos::View<
+    T*, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
 {
-  Kokkos::View<T*,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space> values("data", coordinates.size()/2);
-  std::cerr<<"Evaluation of XGC Field not implemented yet!\n";
+  Kokkos::View<T*,
+               typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+    values("data", coordinates.size() / 2);
+  std::cerr << "Evaluation of XGC Field not implemented yet!\n";
   std::abort();
   return values;
 }
 template <typename T, typename CoordinateElementType>
 auto evaluate(
-  const XGCFieldAdapter<T, CoordinateElementType>& field, NearestNeighbor /* method */,
-  ScalarArrayView<const CoordinateElementType,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space >
-  coordinates) -> Kokkos::View<T*,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+  const XGCFieldAdapter<T, CoordinateElementType>& field,
+  NearestNeighbor /* method */,
+  ScalarArrayView<
+    const CoordinateElementType,
+    typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+    coordinates)
+  -> Kokkos::View<
+    T*, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
 {
-  Kokkos::View<T*,typename XGCFieldAdapter<T, CoordinateElementType>::memory_space> values("data", coordinates.size()/2);
-  std::cerr<<"Evaluation of XGC Field not implemented yet!\n";
+  Kokkos::View<T*,
+               typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+    values("data", coordinates.size() / 2);
+  std::cerr << "Evaluation of XGC Field not implemented yet!\n";
   std::abort();
   return values;
 }
 
 template <typename T, typename CoordinateElementType, typename U>
-auto set_nodal_data(const XGCFieldAdapter<T, CoordinateElementType>& field,
-                    ScalarArrayView<const U, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space> data)
--> void {
-
+auto set_nodal_data(
+  const XGCFieldAdapter<T, CoordinateElementType>& field,
+  ScalarArrayView<
+    const U, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+    data) -> void
+{
 }
 
 } // namespace wdmcpl

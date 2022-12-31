@@ -53,17 +53,22 @@ WdmCplClient* wdmcpl_create_client(const char* name, MPI_Comm comm);
 void wdmcpl_destroy_client(WdmCplClient*);
 
 // returns a pointer to a handle to a reverse classification object
-WdmCplReverseClassificationHandle* wdmcpl_load_reverse_classification(const char* file, MPI_Comm comm);
+WdmCplReverseClassificationHandle* wdmcpl_load_reverse_classification(
+  const char* file, MPI_Comm comm);
 void wdmcpl_destroy_reverse_classification(WdmCplReverseClassificationHandle*);
+
+// this function is helpful for test cases so we can compute the total number of
+// vertexes in the mesh without reading additional files. This function is not
+// likely to be needed for production cases
+int wdmcpl_reverse_classification_count_verts(
+  WdmCplReverseClassificationHandle*);
 
 // takes in overlap function takes a geometric dimension and a geometric id
 // C doesn't have a builtin bool type, so we use int for compatability with C++
-typedef int8_t(*in_overlap_function)(int, int);
-WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(const char* name,
-                                                    void* data, int size,
-                                                    WdmCplType data_type,
-                                                    const WdmCplReverseClassificationHandle* rc,
-                                                    in_overlap_function in_overlap);
+typedef int8_t (*in_overlap_function)(int, int);
+WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(
+  const char* name, void* data, int size, WdmCplType data_type,
+  const WdmCplReverseClassificationHandle* rc, in_overlap_function in_overlap);
 
 void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter*);
 

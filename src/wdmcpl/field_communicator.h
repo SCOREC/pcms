@@ -47,6 +47,7 @@ redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
   LO entry = 0;
   for (auto& rank : reverse_partition) {
     for (auto& idx : rank.second) {
+      WDMCPL_ALWAYS_ASSERT(idx < num_entries);
       permutation[idx] = entry++;
     }
   }
@@ -165,7 +166,6 @@ public:
     auto data = comm_.Recv();
     field_adapter_.Deserialize(make_const_array_view(data), make_const_array_view(message_permutation_));
   }
-
   /** update the permutation array and buffer sizes upon mesh change
    * @WARNING this function mut be called on *both* the client and server
    * after any modifications on the client

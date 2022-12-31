@@ -267,15 +267,15 @@ public:
   GatherOperation* AddGatherFieldsOp(
     const std::string& name, const std::vector<std::string>& fields_to_gather,
     const std::string& internal_field_name, CombinerFunction func,
-    Omega_h::Read<Omega_h::I8> mask = {})
+    Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
   {
     auto gather_fields = detail::find_many_or_error(fields_to_gather, fields_);
     static constexpr int seach_nx = 10;
     static constexpr int seach_ny = 10;
 
     auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
-      internal_field_name, internal_fields_, internal_mesh_, mask, seach_nx,
-      seach_ny);
+      internal_field_name, internal_fields_, internal_mesh_, mask,
+      std::move(global_id_name), seach_nx, seach_ny);
     auto [it, inserted] = gather_operations_.template try_emplace(
       name, std::move(gather_fields), combined, std::move(func));
     if (!inserted) {
@@ -289,7 +289,7 @@ public:
   ScatterOperation* AddScatterFieldsOp(
     const std::string& name, const std::string& internal_field_name,
     const std::vector<std::string>& fields_to_scatter,
-    Omega_h::Read<Omega_h::I8> mask = {})
+    Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
   {
     auto scatter_fields =
       detail::find_many_or_error(fields_to_scatter, fields_);
@@ -297,8 +297,8 @@ public:
     static constexpr int seach_ny = 10;
 
     auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
-      internal_field_name, internal_fields_, internal_mesh_, mask, seach_nx,
-      seach_ny);
+      internal_field_name, internal_fields_, internal_mesh_, mask,
+      std::move(global_id_name), seach_nx, seach_ny);
     auto [it, inserted] = scatter_operations_.template try_emplace(
       name, std::move(scatter_fields), combined);
 

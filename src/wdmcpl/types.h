@@ -3,15 +3,15 @@
 #include <redev_types.h>
 namespace wdmcpl
 {
-using Real = double;
-using LO = int32_t;
-using GO = int64_t;
 enum class Type
 {
   Real,
   LO,
   GO
 };
+using Real = double;
+using LO = int32_t;
+using GO = int64_t;
 template <typename T>
 constexpr Type TypeEnumFromType(T)
 {

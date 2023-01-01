@@ -33,12 +33,12 @@ int main(int argc, char** argv)
   long int* data = calloc(nverts, sizeof(long int));
   WdmCplFieldAdapter* xgc_adapter = wdmcpl_create_xgc_field_adapter(
     "adapter1", data, nverts, WDMCPL_LONG_INT, rc, &in_overlap);
-  wdmcpl_add_field(client, "xgc_gids", xgc_adapter);
+  WdmCplFieldHandle* field = wdmcpl_add_field(client, "xgc_gids", xgc_adapter);
   for (int i = 0; i < nverts; ++i) {
     data[i] = i;
   }
-  wdmcpl_send_field_name(client, "xgc_gids");
-  wdmcpl_receive_field_name(client, "xgc_gids");
+  wdmcpl_send_field(field);
+  wdmcpl_receive_field(field);
   for (int i = 0; i < nverts; ++i) {
     if (data[i] != i) {
       printf("ERROR: data[%d] = %ld, should be %d", i, data[i], i);

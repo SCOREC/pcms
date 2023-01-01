@@ -10,15 +10,16 @@ namespace wdmcpl
 {
 
 template <typename T>
-static void wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
+static WdmCplFieldHandle* wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
                                WdmCplFieldAdapter* adapter_handle)
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
+  CoupledField* field = nullptr;
   switch (adapter_handle->type) {
     case WDMCPL_ADAPTER_XGC: {
       auto* adapter =
         reinterpret_cast<wdmcpl::XGCFieldAdapter<T>*>(adapter_handle->xgc_);
-      client->AddField(name, *adapter);
+      field = client->AddField(name, *adapter);
       break;
     }
 #ifdef WDMCPL_HAS_OMEGA_H
@@ -26,7 +27,7 @@ static void wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
       if constexpr (std::is_same_v<T, double> || std::is_same_v<T, int>) {
         auto* adapter = reinterpret_cast<wdmcpl::OmegaHFieldAdapter<T>*>(
           adapter_handle->xgc_);
-        client->AddField(name, *adapter);
+        field = client->AddField(name, *adapter);
       } else {
         // error trying to use omega_h adapter with unsupported data type
         Wdmcpl_Assert_Fail("Omega_h can only use double or int fields.");
@@ -38,6 +39,7 @@ static void wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
     case WDMCPL_ADAPTER_GEM:
       Wdmcpl_Assert_Fail("Unhandled field adapter type in C interface\n");
   }
+  return reinterpret_cast<WdmCplFieldHandle*>(field);
 }
 
 template <typename F>
@@ -89,13 +91,15 @@ void wdmcpl_destroy_reverse_classification(WdmCplReverseClassificationHandle* rc
     delete reinterpret_cast<wdmcpl::ReverseClassificationVertex*>(rc);
 }
 
-void wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
+WdmCplFieldHandle* wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
                       WdmCplFieldAdapter* adapter_handle)
 {
+  WdmCplFieldHandle* field = nullptr;
   wdmcpl::ApplyToTypes(adapter_handle->data_type, [&](auto d) {
     using T = decltype(d);
-    wdmcpl::wdmcpl_add_field_t<T>(client_handle, name, adapter_handle);
+    field = wdmcpl::wdmcpl_add_field_t<T>(client_handle, name, adapter_handle);
   });
+  return field;
 }
 void wdmcpl_send_field_name(WdmCplClient* client_handle, const char* name)
 {
@@ -106,6 +110,14 @@ void wdmcpl_receive_field_name(WdmCplClient* client_handle, const char* name)
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
   client->ReceiveField(name);
+}
+void wdmcpl_send_field(WdmCplFieldHandle* field_handle) {
+  auto * field = reinterpret_cast<wdmcpl::CoupledField*>(field_handle);
+  field->Send();
+}
+void wdmcpl_receive_field(WdmCplFieldHandle* field_handle) {
+  auto * field = reinterpret_cast<wdmcpl::CoupledField*>(field_handle);
+  field->Receive();
 }
 WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(
   const char* name, void* data, int size, WdmCplType data_type,

@@ -10,7 +10,6 @@ typedef struct WdmCplClient WdmCplClient;
 // TODO move into XGC specific header
 struct WdmCplXgcAdapter;
 typedef struct WdmCplXgcAdapter WdmCplXgcAdapter;
-
 struct WdmCplOmegaHMeshHandle;
 typedef struct WdmCplOmegaHMeshHandle WdmCplOmegaHMeshHandle;
 struct WdmCplReverseClassificationHandle;
@@ -75,10 +74,13 @@ WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(
 
 void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter*);
 
-void wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
+WdmCplFieldHandle* wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
                       WdmCplFieldAdapter* adapter_handle);
 void wdmcpl_send_field_name(WdmCplClient*, const char* name);
 void wdmcpl_receive_field_name(WdmCplClient*, const char* name);
+
+void wdmcpl_send_field(WdmCplFieldHandle*);
+void wdmcpl_receive_field(WdmCplFieldHandle*);
 #ifdef __cplusplus
 }
 #endif

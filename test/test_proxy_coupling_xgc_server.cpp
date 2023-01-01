@@ -168,29 +168,10 @@ using wdmcpl::make_array_view;
 using wdmcpl::OmegaHField;
 using wdmcpl::OmegaHFieldAdapter;
 using wdmcpl::ReadReverseClassificationVertex;
+using wdmcpl::ConstructRCFromOmegaHMesh;
+using wdmcpl::ReverseClassificationVertex;
 
 static constexpr bool done = true;
-
-static wdmcpl::ReverseClassificationVertex construct_xgc_rc(Omega_h::Mesh& mesh)
-{
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  // transfer vtx classification to host
-  auto classIds_h =
-    Omega_h::HostRead(mesh.get_array<Omega_h::ClassId>(0, "class_id"));
-  auto classDims_h =
-    Omega_h::HostRead(mesh.get_array<Omega_h::I8>(0, "class_dim"));
-  auto vertid =
-    Omega_h::HostRead(mesh.get_array<Omega_h::LO>(0, "simNumbering"));
-  wdmcpl::ReverseClassificationVertex rc;
-  WDMCPL_ALWAYS_ASSERT(classDims_h.size() == classIds_h.size());
-  for (int i = 0; i < classDims_h.size(); ++i) {
-    wdmcpl::DimID geom{classDims_h[i], classIds_h[i]};
-    WDMCPL_ALWAYS_ASSERT(vertid[i] > 0);
-    rc.Insert(geom, vertid[i] - 1);
-  }
-  return rc;
-}
 
 void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
@@ -200,7 +181,14 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   wdmcpl::CouplerServer cpl("proxy_couple", comm,
                             setupServerPartition(mesh, cpn_file), mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
-  auto rc = construct_xgc_rc(mesh);
+  ReverseClassificationVertex rc;
+  if(mesh.has_tag(0,"simNumbering")) {
+    rc = ConstructRCFromOmegaHMesh(mesh, "simNumbering");
+  }
+  else {
+    rc = ConstructRCFromOmegaHMesh<GO>(mesh, "global",wdmcpl::IndexBase::Zero);
+  }
+
   auto is_overlap = markServerOverlapRegion(mesh, partition);
   std::vector<GO> data(mesh.nverts());
 

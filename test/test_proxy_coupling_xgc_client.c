@@ -37,8 +37,8 @@ int main(int argc, char** argv)
   for (int i = 0; i < nverts; ++i) {
     data[i] = i;
   }
-  wdmcpl_send_field(client, "xgc_gids");
-  wdmcpl_receive_field(client, "xgc_gids");
+  wdmcpl_send_field_name(client, "xgc_gids");
+  wdmcpl_receive_field_name(client, "xgc_gids");
   for (int i = 0; i < nverts; ++i) {
     if (data[i] != i) {
       printf("ERROR: data[%d] = %ld, should be %d", i, data[i], i);
@@ -48,8 +48,8 @@ int main(int argc, char** argv)
   for (int i = 0; i < nverts; ++i) {
     data[i] *= 2;
   }
-  wdmcpl_send_field(client, "xgc_gids");
-  wdmcpl_receive_field(client, "xgc_gids");
+  wdmcpl_send_field_name(client, "xgc_gids");
+  wdmcpl_receive_field_name(client, "xgc_gids");
   for (int i = 0; i < nverts; ++i) {
     if (data[i] != 2 * i) {
       printf("ERROR: data[%d] = %ld, should be %d", i, data[i], 2 * i);

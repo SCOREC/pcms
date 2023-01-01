@@ -97,12 +97,12 @@ void wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
     wdmcpl::wdmcpl_add_field_t<T>(client_handle, name, adapter_handle);
   });
 }
-void wdmcpl_send_field(WdmCplClient* client_handle, const char* name)
+void wdmcpl_send_field_name(WdmCplClient* client_handle, const char* name)
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
   client->SendField(name);
 }
-void wdmcpl_receive_field(WdmCplClient* client_handle, const char* name)
+void wdmcpl_receive_field_name(WdmCplClient* client_handle, const char* name)
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
   client->ReceiveField(name);

@@ -16,12 +16,15 @@ typedef struct WdmCplOmegaHMeshHandle WdmCplOmegaHMeshHandle;
 struct WdmCplReverseClassificationHandle;
 typedef struct WdmCplReverseClassificationHandle WdmCplReverseClassificationHandle;
 
+struct WdmCplFieldHandle;
+typedef struct WdmCplFieldHandle WdmCplFieldHandle;
+
 enum WdmCplAdapterType
 {
   WDMCPL_ADAPTER_XGC,
-#ifdef WDMCPL_HAS_OMEGA_H
+//#ifdef WDMCPL_HAS_OMEGA_H
   WDMCPL_ADAPTER_OMEGAH,
-#endif
+//#endif
   WDMCPL_ADAPTER_GENE,
   WDMCPL_ADAPTER_GEM
 };
@@ -74,8 +77,8 @@ void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter*);
 
 void wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
                       WdmCplFieldAdapter* adapter_handle);
-void wdmcpl_send_field(WdmCplClient*, const char* name);
-void wdmcpl_receive_field(WdmCplClient*, const char* name);
+void wdmcpl_send_field_name(WdmCplClient*, const char* name);
+void wdmcpl_receive_field_name(WdmCplClient*, const char* name);
 #ifdef __cplusplus
 }
 #endif

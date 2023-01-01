@@ -16,12 +16,12 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
   // the TOMMS generated geometric model has
   // entity IDs that increase with the distance
   // from the magnetic axis
-  if((id >= 22 && id <= 34)) {
-    if(dim == 2) {
+  if ((id >= 22 && id <= 34)) {
+    if (dim == 2) {
       return 1;
-    } else if(dim == 1) {
+    } else if (dim == 1) {
       return 1;
-    } else if(dim == 0) {
+    } else if (dim == 0) {
       return 1;
     }
   }
@@ -157,6 +157,7 @@ struct MeanCombiner
   }
 };
 
+using wdmcpl::ConstructRCFromOmegaHMesh;
 using wdmcpl::Copy;
 using wdmcpl::CouplerClient;
 using wdmcpl::CouplerServer;
@@ -168,25 +169,23 @@ using wdmcpl::make_array_view;
 using wdmcpl::OmegaHField;
 using wdmcpl::OmegaHFieldAdapter;
 using wdmcpl::ReadReverseClassificationVertex;
-using wdmcpl::ConstructRCFromOmegaHMesh;
 using wdmcpl::ReverseClassificationVertex;
 
 static constexpr bool done = true;
 
-void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
+void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
   // coupling server using same mesh as application
-  // note the coupler stores a reference to the internal mesh and it is the user
-  // responsibility to keep it alive!
+  // note the xgc_coupler stores a reference to the internal mesh and it is the
+  // user responsibility to keep it alive!
   wdmcpl::CouplerServer cpl("proxy_couple", comm,
                             setupServerPartition(mesh, cpn_file), mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   ReverseClassificationVertex rc;
-  if(mesh.has_tag(0,"simNumbering")) {
+  if (mesh.has_tag(0, "simNumbering")) {
     rc = ConstructRCFromOmegaHMesh(mesh, "simNumbering");
-  }
-  else {
-    rc = ConstructRCFromOmegaHMesh<GO>(mesh, "global",wdmcpl::IndexBase::Zero);
+  } else {
+    rc = ConstructRCFromOmegaHMesh<GO>(mesh, "global", wdmcpl::IndexBase::Zero);
   }
 
   auto is_overlap = markServerOverlapRegion(mesh, partition);
@@ -207,6 +206,43 @@ void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }
+void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
+                    std::string_view cpn_file)
+{
+  // coupling server using same mesh as application
+  // note the xgc_coupler stores a reference to the internal mesh and it is the
+  // user responsibility to keep it alive!
+  wdmcpl::CouplerServer cpl("proxy_couple", comm,
+                            setupServerPartition(mesh, cpn_file), mesh);
+  const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
+  ReverseClassificationVertex rc;
+  std::string numbering;
+  if (mesh.has_tag(0, "simNumbering")) {
+    rc = ConstructRCFromOmegaHMesh(mesh, "simNumbering");
+    numbering = "simNumbering";
+  } else {
+    rc = ConstructRCFromOmegaHMesh<GO>(mesh, "global", wdmcpl::IndexBase::Zero);
+    numbering = "global";
+  }
+
+  auto is_overlap = markServerOverlapRegion(mesh, partition);
+  std::vector<GO> data(mesh.nverts());
+
+  auto field_adapter =
+    wdmcpl::OmegaHFieldAdapter<GO>("xgc_gids", mesh, is_overlap, numbering);
+  cpl.AddField("xgc_gids", std::move(field_adapter),
+               FieldTransferMethod::Copy, // to Omega_h
+               FieldEvaluationMethod::None,
+               FieldTransferMethod::Copy, // from Omega_h
+               FieldEvaluationMethod::None, is_overlap);
+  do {
+    cpl.ReceiveField("xgc_gids");
+    cpl.SendField("xgc_gids");
+    cpl.ReceiveField("xgc_gids");
+    cpl.SendField("xgc_gids");
+  } while (!done);
+  Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
+}
 
 int main(int argc, char** argv)
 {
@@ -214,29 +250,38 @@ int main(int argc, char** argv)
   auto world = lib.world();
   const int rank = world->rank();
   int size = world->size();
-  if (size != 1) {
-    if (!rank) {
-      std::cerr << "XGC Adapter only works on 1 rank (not a distributed mesh "
-                   "datastructure)"
-                << std::endl;
-    }
-    return 1;
-  }
-  if (argc != 3) {
+  if (argc != 4) {
     if (!rank) {
       std::cerr << "Usage: " << argv[0]
-                << "/path/to/omega_h/mesh "
-                   "/path/to/partitionFile.cpn\n";
+                << "</path/to/omega_h/mesh> "
+                   "</path/to/partitionFile.cpn>"
+                   "<coupler type (0 xgc, 1 omega-h)>";
     }
     exit(EXIT_FAILURE);
   }
 
   const auto meshFile = argv[1];
   const auto classPartitionFile = argv[2];
+  int coupler_type = std::atoi(argv[3]);
 
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(meshFile, lib.world(), &mesh);
   MPI_Comm mpi_comm = lib.world()->get_impl();
-  coupler(mpi_comm, mesh, classPartitionFile);
+  if (coupler_type == 0) {
+    if (size != 1) {
+      if (!rank) {
+        std::cerr << "XGC Adapter only works on 1 rank (not a distributed mesh "
+                     "datastructure)"
+                  << std::endl;
+      }
+      std::abort();
+    }
+    xgc_coupler(mpi_comm, mesh, classPartitionFile);
+  } else if (coupler_type == 1) {
+    omegah_coupler(mpi_comm, mesh, classPartitionFile);
+  } else {
+    std::cerr << "Invalid coupler type. Choose 1 for XGC, 2 for Omega-h\n";
+    std::abort();
+  }
   return 0;
 }

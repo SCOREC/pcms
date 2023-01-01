@@ -197,10 +197,14 @@ if (WDMCPL_ENABLE_C)
         if (WDMCPL_ENABLE_OMEGA_H)
             add_executable(test_proxy_couple_xgc_cpp_interface test_proxy_coupling_xgc_server.cpp)
             target_link_libraries(test_proxy_couple_xgc_cpp_interface PUBLIC wdmcpl::wdmcpl MPI::MPI_C test_support)
-            dual_mpi_test(TESTNAME xgc_proxy
+            dual_mpi_test(TESTNAME xgc_proxy_to_xgc
                     TIMEOUT 10
                     NAME1 cinterface EXE1 $<TARGET_FILE:test_proxy_couple_xgc_c_interface> PROCS1 1 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
-                    NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 1 ARGS2 ${d3d1p} ${d3d1p_cpn})
+                    NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 1 ARGS2 ${d3d1p} ${d3d1p_cpn} 0)
+            dual_mpi_test(TESTNAME xgc_proxy_to_omega
+                    TIMEOUT 10
+                    NAME1 cinterface EXE1 $<TARGET_FILE:test_proxy_couple_xgc_c_interface> PROCS1 1 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
+                    NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 2 ARGS2 ${d3d1p} ${d3d2p_cpn} 1)
         endif ()
     endif ()
 endif ()

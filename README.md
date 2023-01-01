@@ -1,6 +1,6 @@
 # WDMApp Coupling
 
-Adios2-based coupler for XGC and GENE
+Adios2-based xgc_coupler for XGC and GENE
 
 ## Dependencies
 

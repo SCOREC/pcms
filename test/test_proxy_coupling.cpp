@@ -191,10 +191,10 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
     cpl.ReceiveField("total_f_gids"); //(Alt) tf_gid_field->Receive();
   } while (!done);
 }
-void coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
+void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
   // coupling server using same mesh as application
-  // note the coupler stores a reference to the internal mesh and it is the user
+  // note the xgc_coupler stores a reference to the internal mesh and it is the user
   // responsibility to keep it alive!
   wdmcpl::CouplerServer cpl("proxy_couple", comm,
                             setupServerPartition(mesh, cpn_file), mesh);
@@ -259,7 +259,7 @@ int main(int argc, char** argv)
   MPI_Comm mpi_comm = lib.world()->get_impl();
   const std::string name = "meshVtxIds";
   switch (clientId) {
-    case -1: coupler(mpi_comm, mesh, classPartitionFile); break;
+    case -1: xgc_coupler(mpi_comm, mesh, classPartitionFile); break;
     case 0: xgc_delta_f(mpi_comm, mesh); break;
     case 1: xgc_total_f(mpi_comm, mesh); break;
     default:

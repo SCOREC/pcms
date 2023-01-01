@@ -27,7 +27,7 @@ using CombinerFunction = std::function<void(
   nonstd::span<const std::reference_wrapper<InternalField>>, InternalField&)>;
 
 // TODO: come up with better name for this...Don't like CoupledFieldServer
-// because it's necessarily tied to the Server of the coupler
+// because it's necessarily tied to the Server of the xgc_coupler
 class ConvertibleCoupledField
 {
 public:
@@ -319,7 +319,7 @@ private:
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
   std::unordered_map<std::string, ConvertibleCoupledField> fields_;
-  // coupler owns internal fields since both gather/scatter ops use these
+  // xgc_coupler owns internal fields since both gather/scatter ops use these
   std::unordered_map<std::string, InternalField> internal_fields_;
   // gather and scatter operations have reference to internal fields
   std::unordered_map<std::string, ScatterOperation> scatter_operations_;

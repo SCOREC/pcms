@@ -203,7 +203,7 @@ int main(int argc, char** argv) {
     auto gids_h = Omega_h::HostRead(gids);
     redev::GOs msgs(isOverlap_h.size(),0);
     int j=0;
-    for(size_t i=0; i<gids_h.size(); i++) {
+    for(wdmcpl::LO i=0; i<gids_h.size(); i++) {
       if( isOverlap_h[i] ) {
         msgs[appOut.permute[j++]] = gids_h[i];
       }
@@ -225,7 +225,7 @@ int main(int argc, char** argv) {
       if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
       //send to server
       int j=0;
-      for(size_t i=0; i<gids_h.size(); i++) {
+      for(wdmcpl::LO i=0; i<gids_h.size(); i++) {
         if( isOverlap_h[i] ) {
           msgs[appOut.permute[j++]] = gids_h[i];
         }

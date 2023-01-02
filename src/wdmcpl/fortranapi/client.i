@@ -11,12 +11,13 @@ extern "C" {
 int8_t in_overlap_func(int dimension, int id);
 }
 
-// TODO try with bodies to improve names once other stuff works..
+
 struct WdmCplClient;
 struct WdmCplXgcAdapter;
 struct WdmCplOmegaHMeshHandle;
 struct WdmCplReverseClassificationHandle;
 struct WdmCplFieldHandle;
+struct WdmCplFieldAdapter;
 
 enum WdmCplAdapterType
 {
@@ -33,18 +34,6 @@ enum WdmCplType
   WDMCPL_LONG_INT
 };
 
-struct WdmCplFieldAdapter
-{
-  WdmCplAdapterType type;
-  WdmCplType data_type;
-  union
-  {
-    WdmCplXgcAdapter* xgc_;
-    // OmegaHAdapter* omega_h;
-    // GENEAdapter* gene_;
-    // GEMAdapter* gem_;
-  };
-};
 
 WdmCplClient* wdmcpl_create_client(const char* name, MPI_Comm comm);
 void wdmcpl_destroy_client(WdmCplClient*);

@@ -32,7 +32,8 @@ Program MAIN
     type(SWIGTYPE_p_WdmCplClient) :: client
     type(SWIGTYPE_p_WdmCplReverseClassificationHandle) :: reverse_classification
     type(SWIGTYPE_p_WdmCplFieldHandle) :: field
-    type(WdmCplFieldAdapter) :: xgc_adapter
+    !type(WdmCplFieldAdapter) :: xgc_adapter
+    type(SWIGTYPE_p_WdmCplFieldAdapter) :: xgc_adapter
     character(len=80), dimension(:), allocatable :: args
     character(len=:), allocatable :: rc_file
     integer(C_LONG), allocatable,target :: data(:)

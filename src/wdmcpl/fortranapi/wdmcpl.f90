@@ -35,23 +35,6 @@ module wdmcpl
   type(C_PTR), public :: cptr = C_NULL_PTR
   integer(C_INT), public :: cmemflags = 0
  end type
- type, public :: SWIGTYPE_p_WdmCplXgcAdapter
-  type(SwigClassWrapper), public :: swigdata
- end type
- ! struct struct WdmCplFieldAdapter
- type, public :: WdmCplFieldAdapter
-  type(SwigClassWrapper), public :: swigdata
- contains
-  procedure :: set_type => swigf_WdmCplFieldAdapter_type_set
-  procedure :: get_type => swigf_WdmCplFieldAdapter_type_get
-  procedure :: set_data_type => swigf_WdmCplFieldAdapter_data_type_set
-  procedure :: get_data_type => swigf_WdmCplFieldAdapter_data_type_get
-  procedure :: set_xgc_ => swigf_WdmCplFieldAdapter_xgc__set
-  procedure :: get_xgc_ => swigf_WdmCplFieldAdapter_xgc__get
-  procedure :: release => swigf_WdmCplFieldAdapter_release
-  procedure, private :: swigf_WdmCplFieldAdapter_op_assign__
-  generic :: assignment(=) => swigf_WdmCplFieldAdapter_op_assign__
- end type WdmCplFieldAdapter
  type, bind(C) :: SwigArrayWrapper
   type(C_PTR), public :: data = C_NULL_PTR
   integer(C_SIZE_T), public :: size = 0
@@ -67,6 +50,9 @@ module wdmcpl
  public :: wdmcpl_load_reverse_classification
  public :: wdmcpl_destroy_reverse_classification
  public :: wdmcpl_reverse_classification_count_verts
+ type, public :: SWIGTYPE_p_WdmCplFieldAdapter
+  type(SwigClassWrapper), public :: swigdata
+ end type
  public :: wdmcpl_create_xgc_field_adapter
  public :: wdmcpl_destroy_field_adapter
  type, public :: SWIGTYPE_p_WdmCplFieldHandle
@@ -77,9 +63,6 @@ module wdmcpl
  public :: wdmcpl_receive_field_name
  public :: wdmcpl_send_field
  public :: wdmcpl_receive_field
- interface WdmCplFieldAdapter
-  module procedure swigf_new_WdmCplFieldAdapter
- end interface
 
 ! FUNCTION POINTER DECLARATIONS
 abstract interface
@@ -97,80 +80,6 @@ end interface
 
 ! WRAPPER DECLARATIONS
 interface
-subroutine swigc_WdmCplFieldAdapter_type_set(farg1, farg2) &
-bind(C, name="_wrap_WdmCplFieldAdapter_type_set")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-integer(C_INT), intent(in) :: farg2
-end subroutine
-
-function swigc_WdmCplFieldAdapter_type_get(farg1) &
-bind(C, name="_wrap_WdmCplFieldAdapter_type_get") &
-result(fresult)
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-integer(C_INT) :: fresult
-end function
-
-subroutine swigc_WdmCplFieldAdapter_data_type_set(farg1, farg2) &
-bind(C, name="_wrap_WdmCplFieldAdapter_data_type_set")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-integer(C_INT), intent(in) :: farg2
-end subroutine
-
-function swigc_WdmCplFieldAdapter_data_type_get(farg1) &
-bind(C, name="_wrap_WdmCplFieldAdapter_data_type_get") &
-result(fresult)
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-integer(C_INT) :: fresult
-end function
-
-subroutine swigc_WdmCplFieldAdapter_xgc__set(farg1, farg2) &
-bind(C, name="_wrap_WdmCplFieldAdapter_xgc__set")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-type(SwigClassWrapper), intent(in) :: farg2
-end subroutine
-
-function swigc_WdmCplFieldAdapter_xgc__get(farg1) &
-bind(C, name="_wrap_WdmCplFieldAdapter_xgc__get") &
-result(fresult)
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-type(SwigClassWrapper) :: fresult
-end function
-
-function swigc_new_WdmCplFieldAdapter() &
-bind(C, name="_wrap_new_WdmCplFieldAdapter") &
-result(fresult)
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper) :: fresult
-end function
-
-subroutine swigc_delete_WdmCplFieldAdapter(farg1) &
-bind(C, name="_wrap_delete_WdmCplFieldAdapter")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(inout) :: farg1
-end subroutine
-
-subroutine swigc_WdmCplFieldAdapter_op_assign__(farg1, farg2) &
-bind(C, name="_wrap_WdmCplFieldAdapter_op_assign__")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(inout) :: farg1
-type(SwigClassWrapper), intent(in) :: farg2
-end subroutine
-
 function swigc_wdmcpl_create_client(farg1, farg2) &
 bind(C, name="_wrap_wdmcpl_create_client") &
 result(fresult)
@@ -287,118 +196,6 @@ end interface
 
 contains
  ! MODULE SUBPROGRAMS
-subroutine swigf_WdmCplFieldAdapter_type_set(self, type)
-use, intrinsic :: ISO_C_BINDING
-class(WdmCplFieldAdapter), intent(in) :: self
-integer(WdmCplAdapterType), intent(in) :: type
-type(SwigClassWrapper) :: farg1 
-integer(C_INT) :: farg2 
-
-farg1 = self%swigdata
-farg2 = type
-call swigc_WdmCplFieldAdapter_type_set(farg1, farg2)
-end subroutine
-
-function swigf_WdmCplFieldAdapter_type_get(self) &
-result(swig_result)
-use, intrinsic :: ISO_C_BINDING
-integer(WdmCplAdapterType) :: swig_result
-class(WdmCplFieldAdapter), intent(in) :: self
-integer(C_INT) :: fresult 
-type(SwigClassWrapper) :: farg1 
-
-farg1 = self%swigdata
-fresult = swigc_WdmCplFieldAdapter_type_get(farg1)
-swig_result = fresult
-end function
-
-subroutine swigf_WdmCplFieldAdapter_data_type_set(self, data_type)
-use, intrinsic :: ISO_C_BINDING
-class(WdmCplFieldAdapter), intent(in) :: self
-integer(WdmCplType), intent(in) :: data_type
-type(SwigClassWrapper) :: farg1 
-integer(C_INT) :: farg2 
-
-farg1 = self%swigdata
-farg2 = data_type
-call swigc_WdmCplFieldAdapter_data_type_set(farg1, farg2)
-end subroutine
-
-function swigf_WdmCplFieldAdapter_data_type_get(self) &
-result(swig_result)
-use, intrinsic :: ISO_C_BINDING
-integer(WdmCplType) :: swig_result
-class(WdmCplFieldAdapter), intent(in) :: self
-integer(C_INT) :: fresult 
-type(SwigClassWrapper) :: farg1 
-
-farg1 = self%swigdata
-fresult = swigc_WdmCplFieldAdapter_data_type_get(farg1)
-swig_result = fresult
-end function
-
-subroutine swigf_WdmCplFieldAdapter_xgc__set(self, xgc_)
-use, intrinsic :: ISO_C_BINDING
-class(WdmCplFieldAdapter), intent(in) :: self
-class(SWIGTYPE_p_WdmCplXgcAdapter), intent(in) :: xgc_
-type(SwigClassWrapper) :: farg1 
-type(SwigClassWrapper) :: farg2 
-
-farg1 = self%swigdata
-farg2 = xgc_%swigdata
-call swigc_WdmCplFieldAdapter_xgc__set(farg1, farg2)
-end subroutine
-
-function swigf_WdmCplFieldAdapter_xgc__get(self) &
-result(swig_result)
-use, intrinsic :: ISO_C_BINDING
-type(SWIGTYPE_p_WdmCplXgcAdapter) :: swig_result
-class(WdmCplFieldAdapter), intent(in) :: self
-type(SwigClassWrapper) :: fresult 
-type(SwigClassWrapper) :: farg1 
-
-farg1 = self%swigdata
-fresult = swigc_WdmCplFieldAdapter_xgc__get(farg1)
-swig_result%swigdata = fresult
-end function
-
-function swigf_new_WdmCplFieldAdapter() &
-result(self)
-use, intrinsic :: ISO_C_BINDING
-type(WdmCplFieldAdapter) :: self
-type(SwigClassWrapper) :: fresult 
-
-fresult = swigc_new_WdmCplFieldAdapter()
-self%swigdata = fresult
-end function
-
-subroutine swigf_WdmCplFieldAdapter_release(self)
-use, intrinsic :: ISO_C_BINDING
-class(WdmCplFieldAdapter), intent(inout) :: self
-type(SwigClassWrapper) :: farg1 
-
-farg1 = self%swigdata
-if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
-call swigc_delete_WdmCplFieldAdapter(farg1)
-endif
-farg1%cptr = C_NULL_PTR
-farg1%cmemflags = 0
-self%swigdata = farg1
-end subroutine
-
-subroutine swigf_WdmCplFieldAdapter_op_assign__(self, other)
-use, intrinsic :: ISO_C_BINDING
-class(WdmCplFieldAdapter), intent(inout) :: self
-type(WdmCplFieldAdapter), intent(in) :: other
-type(SwigClassWrapper) :: farg1 
-type(SwigClassWrapper) :: farg2 
-
-farg1 = self%swigdata
-farg2 = other%swigdata
-call swigc_WdmCplFieldAdapter_op_assign__(farg1, farg2)
-self%swigdata = farg1
-end subroutine
-
 
 subroutine SWIGTM_fin_char_Sm_(finp, iminp, temp)
   use, intrinsic :: ISO_C_BINDING
@@ -485,7 +282,7 @@ end function
 function wdmcpl_create_xgc_field_adapter(name, data, size, data_type, rc, in_overlap) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(WdmCplFieldAdapter) :: swig_result
+type(SWIGTYPE_p_WdmCplFieldAdapter) :: swig_result
 character(len=*), target :: name
 type(C_PTR), intent(in) :: data
 integer(C_INT), intent(in) :: size
@@ -513,7 +310,7 @@ end function
 
 subroutine wdmcpl_destroy_field_adapter(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(WdmCplFieldAdapter), intent(in) :: arg0
+class(SWIGTYPE_p_WdmCplFieldAdapter), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -526,7 +323,7 @@ use, intrinsic :: ISO_C_BINDING
 type(SWIGTYPE_p_WdmCplFieldHandle) :: swig_result
 class(SWIGTYPE_p_WdmCplClient), intent(in) :: client_handle
 character(len=*), target :: name
-class(WdmCplFieldAdapter), intent(in) :: adapter_handle
+class(SWIGTYPE_p_WdmCplFieldAdapter), intent(in) :: adapter_handle
 type(SwigClassWrapper) :: fresult 
 type(SwigClassWrapper) :: farg1 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 

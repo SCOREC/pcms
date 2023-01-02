@@ -150,14 +150,6 @@ enum {
 };
 
 
-#define SWIG_check_nonnull(PTR, TYPENAME, FNAME, FUNCNAME, RETURNNULL) \
-  if (!(PTR)) { \
-    SWIG_exception_impl(FUNCNAME, SWIG_NullReferenceError, \
-                        "Cannot pass null " TYPENAME " (class " FNAME ") " \
-                        "as a reference", RETURNNULL); \
-  }
-
-
 
 #define SWIG_VERSION 0x040101
 #define SWIGFORTRAN
@@ -219,43 +211,6 @@ SWIGINTERN SwigClassWrapper SwigClassWrapper_uninitialized() {
 #endif
 
 
-#include <string.h>
-
-
-SWIGINTERN void SWIG_assign(SwigClassWrapper* self, SwigClassWrapper other) {
-  if (self->cptr == NULL) {
-    /* LHS is unassigned */
-    if (other.cmemflags & SWIG_MEM_RVALUE) {
-      /* Capture pointer from RHS, clear 'moving' flag */
-      self->cptr = other.cptr;
-      self->cmemflags = other.cmemflags & (~SWIG_MEM_RVALUE);
-    } else {
-      /* Become a reference to the other object */
-      self->cptr = other.cptr;
-      self->cmemflags = other.cmemflags & (~SWIG_MEM_OWN);
-    }
-  } else if (other.cptr == NULL) {
-    /* Replace LHS with a null pointer */
-    free(self->cptr);
-    *self = SwigClassWrapper_uninitialized();
-  } else if (self->cptr == other.cptr) {
-    /* Self-assignment: ignore */
-  } else {
-    if (self->cmemflags & SWIG_MEM_OWN) {
-      free(self->cptr);
-    }
-    self->cptr = other.cptr;
-    if (other.cmemflags & SWIG_MEM_RVALUE) {
-      /* Capture RHS */
-      self->cmemflags = other.cmemflags & ~SWIG_MEM_RVALUE;
-    } else {
-      /* Point to RHS */
-      self->cmemflags = other.cmemflags & ~SWIG_MEM_OWN;
-    }
-  }
-}
-
-
 typedef struct {
     void* data;
     size_t size;
@@ -268,109 +223,6 @@ SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized() {
   result.size = 0;
   return result;
 }
-
-SWIGEXPORT void _wrap_WdmCplFieldAdapter_type_set(SwigClassWrapper *farg1, int const *farg2) {
-  struct WdmCplFieldAdapter *arg1 = (struct WdmCplFieldAdapter *) 0 ;
-  WdmCplAdapterType arg2 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct WdmCplFieldAdapter *", "WdmCplFieldAdapter", "WdmCplFieldAdapter::type", return );
-  arg1 = (struct WdmCplFieldAdapter *)farg1->cptr;
-  arg2 = (WdmCplAdapterType)(*farg2);
-  if (arg1) (arg1)->type = arg2;
-}
-
-
-SWIGEXPORT int _wrap_WdmCplFieldAdapter_type_get(SwigClassWrapper *farg1) {
-  int fresult ;
-  struct WdmCplFieldAdapter *arg1 = (struct WdmCplFieldAdapter *) 0 ;
-  WdmCplAdapterType result;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct WdmCplFieldAdapter *", "WdmCplFieldAdapter", "WdmCplFieldAdapter::type", return 0);
-  arg1 = (struct WdmCplFieldAdapter *)farg1->cptr;
-  result = (WdmCplAdapterType) ((arg1)->type);
-  fresult = (int)(result);
-  return fresult;
-}
-
-
-SWIGEXPORT void _wrap_WdmCplFieldAdapter_data_type_set(SwigClassWrapper *farg1, int const *farg2) {
-  struct WdmCplFieldAdapter *arg1 = (struct WdmCplFieldAdapter *) 0 ;
-  WdmCplType arg2 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct WdmCplFieldAdapter *", "WdmCplFieldAdapter", "WdmCplFieldAdapter::data_type", return );
-  arg1 = (struct WdmCplFieldAdapter *)farg1->cptr;
-  arg2 = (WdmCplType)(*farg2);
-  if (arg1) (arg1)->data_type = arg2;
-}
-
-
-SWIGEXPORT int _wrap_WdmCplFieldAdapter_data_type_get(SwigClassWrapper *farg1) {
-  int fresult ;
-  struct WdmCplFieldAdapter *arg1 = (struct WdmCplFieldAdapter *) 0 ;
-  WdmCplType result;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct WdmCplFieldAdapter *", "WdmCplFieldAdapter", "WdmCplFieldAdapter::data_type", return 0);
-  arg1 = (struct WdmCplFieldAdapter *)farg1->cptr;
-  result = (WdmCplType) ((arg1)->data_type);
-  fresult = (int)(result);
-  return fresult;
-}
-
-
-SWIGEXPORT void _wrap_WdmCplFieldAdapter_xgc__set(SwigClassWrapper *farg1, SwigClassWrapper *farg2) {
-  struct WdmCplFieldAdapter *arg1 = (struct WdmCplFieldAdapter *) 0 ;
-  WdmCplXgcAdapter *arg2 = (WdmCplXgcAdapter *) 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct WdmCplFieldAdapter *", "WdmCplFieldAdapter", "WdmCplFieldAdapter::xgc_", return );
-  arg1 = (struct WdmCplFieldAdapter *)farg1->cptr;
-  arg2 = (WdmCplXgcAdapter *)farg2->cptr;
-  if (arg1) (arg1)->xgc_ = arg2;
-}
-
-
-SWIGEXPORT SwigClassWrapper _wrap_WdmCplFieldAdapter_xgc__get(SwigClassWrapper *farg1) {
-  SwigClassWrapper fresult ;
-  struct WdmCplFieldAdapter *arg1 = (struct WdmCplFieldAdapter *) 0 ;
-  WdmCplXgcAdapter *result = 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct WdmCplFieldAdapter *", "WdmCplFieldAdapter", "WdmCplFieldAdapter::xgc_", return SwigClassWrapper_uninitialized());
-  arg1 = (struct WdmCplFieldAdapter *)farg1->cptr;
-  result = (WdmCplXgcAdapter *) ((arg1)->xgc_);
-  fresult.cptr = (void*)result;
-  fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
-  return fresult;
-}
-
-
-SWIGEXPORT SwigClassWrapper _wrap_new_WdmCplFieldAdapter() {
-  SwigClassWrapper fresult ;
-  struct WdmCplFieldAdapter *result = 0 ;
-  
-  result = (struct WdmCplFieldAdapter *)calloc(1, sizeof(struct WdmCplFieldAdapter));
-  fresult.cptr = (void*)result;
-  fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
-  return fresult;
-}
-
-
-SWIGEXPORT void _wrap_delete_WdmCplFieldAdapter(SwigClassWrapper *farg1) {
-  struct WdmCplFieldAdapter *arg1 = (struct WdmCplFieldAdapter *) 0 ;
-  
-  arg1 = (struct WdmCplFieldAdapter *)farg1->cptr;
-  free((char *) arg1);
-}
-
-
-SWIGEXPORT void _wrap_WdmCplFieldAdapter_op_assign__(SwigClassWrapper *farg1, SwigClassWrapper *farg2) {
-  struct WdmCplFieldAdapter *arg1 = (struct WdmCplFieldAdapter *) 0 ;
-  struct WdmCplFieldAdapter *arg2 = 0 ;
-  
-  (void)sizeof(arg1);
-  (void)sizeof(arg2);
-  SWIG_assign(farg1, *farg2);
-  
-}
-
 
 SWIGEXPORT SwigClassWrapper _wrap_wdmcpl_create_client(SwigArrayWrapper *farg1, int const *farg2) {
   SwigClassWrapper fresult ;

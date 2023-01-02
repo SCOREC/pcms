@@ -25,13 +25,13 @@ int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
   c_kokkos_initialize_without_args();
-  WdmCplClient* client = wdmcpl_create_client("proxy_couple", MPI_COMM_WORLD);
+  WdmCplClientHandle* client = wdmcpl_create_client("proxy_couple", MPI_COMM_WORLD);
   const char* rc_file = argv[1];
   WdmCplReverseClassificationHandle* rc =
     wdmcpl_load_reverse_classification(rc_file, MPI_COMM_WORLD);
   const int nverts = wdmcpl_reverse_classification_count_verts(rc);
   long int* data = calloc(nverts, sizeof(long int));
-  WdmCplFieldAdapter* xgc_adapter = wdmcpl_create_xgc_field_adapter(
+  WdmCplFieldAdapterHandle* xgc_adapter = wdmcpl_create_xgc_field_adapter(
     "adapter1", data, nverts, WDMCPL_LONG_INT, rc, &in_overlap);
   WdmCplFieldHandle* field = wdmcpl_add_field(client, "xgc_gids", xgc_adapter);
   for (int i = 0; i < nverts; ++i) {

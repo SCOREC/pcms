@@ -12,13 +12,6 @@ int8_t in_overlap_func(int dimension, int id);
 }
 
 
-struct WdmCplClient;
-struct WdmCplXgcAdapter;
-struct WdmCplOmegaHMeshHandle;
-struct WdmCplReverseClassificationHandle;
-struct WdmCplFieldHandle;
-struct WdmCplFieldAdapter;
-
 enum WdmCplAdapterType
 {
   WDMCPL_ADAPTER_XGC,
@@ -35,8 +28,8 @@ enum WdmCplType
 };
 
 
-WdmCplClient* wdmcpl_create_client(const char* name, MPI_Comm comm);
-void wdmcpl_destroy_client(WdmCplClient*);
+WdmCplClientHandle* wdmcpl_create_client(const char* name, MPI_Comm comm);
+void wdmcpl_destroy_client(WdmCplClientHandle*);
 
 WdmCplReverseClassificationHandle* wdmcpl_load_reverse_classification(
   const char* file, MPI_Comm comm);
@@ -46,16 +39,16 @@ int wdmcpl_reverse_classification_count_verts(
   WdmCplReverseClassificationHandle*);
 
 typedef int8_t (*in_overlap_function)(int, int);
-WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(
+WdmCplFieldAdapterHandle* wdmcpl_create_xgc_field_adapter(
   const char* name, void* data, int size, WdmCplType data_type,
   const WdmCplReverseClassificationHandle* rc, in_overlap_function in_overlap);
 
-void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter*);
+void wdmcpl_destroy_field_adapter(WdmCplFieldAdapterHandle*);
 
-WdmCplFieldHandle* wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
-                      WdmCplFieldAdapter* adapter_handle);
-void wdmcpl_send_field_name(WdmCplClient*, const char* name);
-void wdmcpl_receive_field_name(WdmCplClient*, const char* name);
+WdmCplFieldHandle* wdmcpl_add_field(WdmCplClientHandle* client_handle, const char* name,
+                      WdmCplFieldAdapterHandle* adapter_handle);
+void wdmcpl_send_field_name(WdmCplClientHandle*, const char* name);
+void wdmcpl_receive_field_name(WdmCplClientHandle*, const char* name);
 
 void wdmcpl_send_field(WdmCplFieldHandle*);
 void wdmcpl_receive_field(WdmCplFieldHandle*);

@@ -39,7 +39,7 @@ module wdmcpl
   type(C_PTR), public :: data = C_NULL_PTR
   integer(C_SIZE_T), public :: size = 0
  end type
- type, public :: SWIGTYPE_p_WdmCplClient
+ type, public :: SWIGTYPE_p_WdmCplClientHandle
   type(SwigClassWrapper), public :: swigdata
  end type
  public :: wdmcpl_create_client
@@ -50,7 +50,7 @@ module wdmcpl
  public :: wdmcpl_load_reverse_classification
  public :: wdmcpl_destroy_reverse_classification
  public :: wdmcpl_reverse_classification_count_verts
- type, public :: SWIGTYPE_p_WdmCplFieldAdapter
+ type, public :: SWIGTYPE_p_WdmCplFieldAdapterHandle
   type(SwigClassWrapper), public :: swigdata
  end type
  public :: wdmcpl_create_xgc_field_adapter
@@ -217,7 +217,7 @@ end subroutine
 function wdmcpl_create_client(name, comm) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(SWIGTYPE_p_WdmCplClient) :: swig_result
+type(SWIGTYPE_p_WdmCplClientHandle) :: swig_result
 character(len=*), target :: name
 integer :: comm
 type(SwigClassWrapper) :: fresult 
@@ -233,7 +233,7 @@ end function
 
 subroutine wdmcpl_destroy_client(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClient), intent(in) :: arg0
+class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -282,7 +282,7 @@ end function
 function wdmcpl_create_xgc_field_adapter(name, data, size, data_type, rc, in_overlap) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(SWIGTYPE_p_WdmCplFieldAdapter) :: swig_result
+type(SWIGTYPE_p_WdmCplFieldAdapterHandle) :: swig_result
 character(len=*), target :: name
 type(C_PTR), intent(in) :: data
 integer(C_INT), intent(in) :: size
@@ -310,7 +310,7 @@ end function
 
 subroutine wdmcpl_destroy_field_adapter(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplFieldAdapter), intent(in) :: arg0
+class(SWIGTYPE_p_WdmCplFieldAdapterHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -321,9 +321,9 @@ function wdmcpl_add_field(client_handle, name, adapter_handle) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
 type(SWIGTYPE_p_WdmCplFieldHandle) :: swig_result
-class(SWIGTYPE_p_WdmCplClient), intent(in) :: client_handle
+class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: client_handle
 character(len=*), target :: name
-class(SWIGTYPE_p_WdmCplFieldAdapter), intent(in) :: adapter_handle
+class(SWIGTYPE_p_WdmCplFieldAdapterHandle), intent(in) :: adapter_handle
 type(SwigClassWrapper) :: fresult 
 type(SwigClassWrapper) :: farg1 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 
@@ -339,7 +339,7 @@ end function
 
 subroutine wdmcpl_send_field_name(arg0, name)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClient), intent(in) :: arg0
+class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
 character(len=*), target :: name
 type(SwigClassWrapper) :: farg1 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 
@@ -352,7 +352,7 @@ end subroutine
 
 subroutine wdmcpl_receive_field_name(arg0, name)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClient), intent(in) :: arg0
+class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
 character(len=*), target :: name
 type(SwigClassWrapper) :: farg1 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 

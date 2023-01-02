@@ -6,11 +6,29 @@
 // #endif
 #include <fstream>
 #include "wdmcpl/xgc_reverse_classification.h"
+extern "C" {
+// TODO move into XGC specific header
+struct WdmCplXgcAdapter;
+typedef struct WdmCplXgcAdapter WdmCplXgcAdapter;
+struct WdmCplFieldAdapter
+{
+  WdmCplAdapterType type;
+  WdmCplType data_type;
+  union
+  {
+    WdmCplXgcAdapter* xgc_;
+    // OmegaHAdapter* omega_h;
+    // GENEAdapter* gene_;
+    // GEMAdapter* gem_;
+  };
+};
+typedef struct WdmCplFieldAdapter WdmCplFieldAdapter;
+};
 namespace wdmcpl
 {
 
 template <typename T>
-static WdmCplFieldHandle* wdmcpl_add_field_t(WdmCplClient* client_handle, const char* name,
+static WdmCplFieldHandle* wdmcpl_add_field_t(WdmCplClientHandle* client_handle, const char* name,
                                WdmCplFieldAdapter* adapter_handle)
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
@@ -66,13 +84,13 @@ auto ApplyToTypes(WdmCplType type, const F&& f)
 
 } // namespace wdmcpl
 
-[[nodiscard]] WdmCplClient* wdmcpl_create_client(const char* name,
+[[nodiscard]] WdmCplClientHandle* wdmcpl_create_client(const char* name,
                                                  MPI_Comm comm)
 {
   auto* client = new wdmcpl::CouplerClient(name, comm);
-  return reinterpret_cast<WdmCplClient*>(client);
+  return reinterpret_cast<WdmCplClientHandle*>(client);
 }
-void wdmcpl_destroy_client(WdmCplClient* client)
+void wdmcpl_destroy_client(WdmCplClientHandle* client)
 {
   if (client != nullptr)
     delete reinterpret_cast<wdmcpl::CouplerClient*>(client);
@@ -91,22 +109,24 @@ void wdmcpl_destroy_reverse_classification(WdmCplReverseClassificationHandle* rc
     delete reinterpret_cast<wdmcpl::ReverseClassificationVertex*>(rc);
 }
 
-WdmCplFieldHandle* wdmcpl_add_field(WdmCplClient* client_handle, const char* name,
-                      WdmCplFieldAdapter* adapter_handle)
+WdmCplFieldHandle* wdmcpl_add_field(WdmCplClientHandle* client_handle, const char* name,
+                      WdmCplFieldAdapterHandle* adapter_handle)
 {
+
   WdmCplFieldHandle* field = nullptr;
-  wdmcpl::ApplyToTypes(adapter_handle->data_type, [&](auto d) {
+  auto* adapter = reinterpret_cast<WdmCplFieldAdapter*>(adapter_handle);
+  wdmcpl::ApplyToTypes(adapter->data_type, [&](auto d) {
     using T = decltype(d);
-    field = wdmcpl::wdmcpl_add_field_t<T>(client_handle, name, adapter_handle);
+    field = wdmcpl::wdmcpl_add_field_t<T>(client_handle, name, adapter);
   });
   return field;
 }
-void wdmcpl_send_field_name(WdmCplClient* client_handle, const char* name)
+void wdmcpl_send_field_name(WdmCplClientHandle* client_handle, const char* name)
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
   client->SendField(name);
 }
-void wdmcpl_receive_field_name(WdmCplClient* client_handle, const char* name)
+void wdmcpl_receive_field_name(WdmCplClientHandle* client_handle, const char* name)
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
   client->ReceiveField(name);
@@ -119,7 +139,7 @@ void wdmcpl_receive_field(WdmCplFieldHandle* field_handle) {
   auto * field = reinterpret_cast<wdmcpl::CoupledField*>(field_handle);
   field->Receive();
 }
-WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(
+WdmCplFieldAdapterHandle* wdmcpl_create_xgc_field_adapter(
   const char* name, void* data, int size, WdmCplType data_type,
   const WdmCplReverseClassificationHandle* rc, in_overlap_function in_overlap)
 {
@@ -147,7 +167,7 @@ WdmCplFieldAdapter* wdmcpl_create_xgc_field_adapter(
     //   std::move(classification.geometric_id), data_view);
     field_adapter->xgc_ = reinterpret_cast<WdmCplXgcAdapter*>(adapter);
   });
-  return field_adapter;
+  return reinterpret_cast<WdmCplFieldAdapterHandle*>(field_adapter);
 }
 
 static void wdmcpl_destroy_xgc_adapter(WdmCplXgcAdapter* xgc_adapter,
@@ -162,8 +182,9 @@ static void wdmcpl_destroy_xgc_adapter(WdmCplXgcAdapter* xgc_adapter,
     xgc_adapter = nullptr;
   });
 }
-void wdmcpl_destroy_field_adapter(WdmCplFieldAdapter* adapter)
+void wdmcpl_destroy_field_adapter(WdmCplFieldAdapterHandle* adapter_handle)
 {
+  auto* adapter = reinterpret_cast<WdmCplFieldAdapter*>(adapter_handle);
   switch (adapter->type) {
     case (WDMCPL_ADAPTER_XGC):
       wdmcpl_destroy_xgc_adapter(adapter->xgc_, adapter->data_type);

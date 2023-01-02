@@ -107,6 +107,9 @@ ReverseClassificationVertex ReadReverseClassificationVertex(
 {
   WDMCPL_ALWAYS_ASSERT(classification_file.has_filename());
   std::ifstream infile(classification_file);
+  if(!infile.is_open()) {
+    std::cerr<<"Cannot open reverse classification file "<<classification_file<<"\n";
+  }
   WDMCPL_ALWAYS_ASSERT(infile.is_open());
   return ReadReverseClassificationVertex(infile, comm, root);
 }

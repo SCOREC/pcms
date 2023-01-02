@@ -100,9 +100,7 @@ install(
 
 if (WDMCPL_ENABLE_C)
   add_subdirectory(wdmcpl/capi)
-  #if(NOT WDMCPL_ENABLE_CLIENT)
-  #  message(ERROR "capi requires WDMCPL client. Please set WDMCPL_ENABLE_CLIENT=ON")
-  #endif()
-  #list(APPEND WDMCPL_HEADERS wdmcpl/client.h wdmcpl/capi/client.h)
-  #list(APPEND WDMCPL_SOURCES wdmcpl/capi/client.cpp)
 endif ()
+if(WDMCPL_ENABLE_Fortran)
+  add_subdirectory(wdmcpl/fortranapi)
+endif()

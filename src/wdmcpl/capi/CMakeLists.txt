@@ -4,7 +4,7 @@ target_link_libraries(capi PUBLIC wdmcpl::wdmcpl)
 
 target_include_directories(capi
         PUBLIC
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}../..>" # this makes our include path wdmcpl/capi
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>" # this makes our include path wdmcpl/capi
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/capi>")
 
 set_target_properties(capi PROPERTIES

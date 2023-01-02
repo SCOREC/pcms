@@ -108,7 +108,7 @@ public:
         });
     }
   }
-  [[nodiscard]] bool empty() const noexcept { return mask_.size() == 0; }
+  [[nodiscard]] bool empty() const noexcept { return num_active_entries_ == 0; }
   // mask is true if the mask exists
   explicit operator bool() const noexcept { !empty(); }
 

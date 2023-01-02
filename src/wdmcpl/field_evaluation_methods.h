@@ -12,7 +12,7 @@ struct Lagrange
 template <>
 struct Lagrange<0>
 {
-  explicit Lagrange(int order) : order{order} {};
+  explicit Lagrange(int o) : order{o} {};
   int order;
 };
 

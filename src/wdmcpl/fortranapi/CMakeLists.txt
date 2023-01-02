@@ -1,0 +1,6 @@
+find_package(flcl REQUIRED)
+add_library(fortranapi wdmcpl.f90 client_wrap.c)
+add_library(wdmcpl::fortranapi ALIAS fortranapi)
+set_target_properties(fortranapi PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(fortranapi PUBLIC $<TARGET_PROPERTY:wdmcpl::fortranapi,Fortran_MODULE_DIRECTORY>)
+target_link_libraries(fortranapi PUBLIC capi flcl::flcl)

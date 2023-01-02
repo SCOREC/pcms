@@ -208,3 +208,12 @@ if (WDMCPL_ENABLE_C)
         endif ()
     endif ()
 endif ()
+if(WDMCPL_ENABLE_Fortran)
+    #find_package(MPI REQUIRED)
+    add_executable(test_proxy_coupling_xgc_client_fortran test_proxy_coupling_xgc_client.f90)
+    target_link_libraries(test_proxy_coupling_xgc_client_fortran PUBLIC wdmcpl::fortranapi MPI::MPI_Fortran flcl::flcl)
+    dual_mpi_test(TESTNAME xgc_fortran_proxy_to_omega
+            TIMEOUT 10
+            NAME1 finterface EXE1 $<TARGET_FILE:test_proxy_coupling_xgc_client_fortran> PROCS1 1 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
+            NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 2 ARGS2 ${d3d1p} ${d3d2p_cpn} 1)
+endif()

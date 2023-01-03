@@ -24,12 +24,11 @@ struct OmegaHMemorySpace
   using type = typename Kokkos::DefaultExecutionSpace::memory_space;
 };
 
-
 namespace detail
 {
 template <typename T, int dim = 1>
-Omega_h::Read<T> filter_array(Omega_h::Read<T> array, const Omega_h::Read<LO>& mask,
-                              LO size)
+Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
+                              const Omega_h::Read<LO>& mask, LO size)
 {
   static_assert(dim > 0, "array dimension must be >0");
   Omega_h::Write<T> filtered_field(size * dim);
@@ -57,7 +56,8 @@ public:
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
 
-  OmegaHField(std::string name, Omega_h::Mesh& mesh, std::string global_id_name="", int search_nx = 10,
+  OmegaHField(std::string name, Omega_h::Mesh& mesh,
+              std::string global_id_name = "", int search_nx = 10,
               int search_ny = 10)
     : name_(std::move(name)),
       mesh_(mesh),
@@ -107,12 +107,7 @@ public:
   [[nodiscard]] bool HasMask() const noexcept { return mask_.exists(); };
   [[nodiscard]] LO Size() const noexcept { return size_; }
   // pass through to search function
-  // FIXME should be Ts&s
-  template <typename... Ts>
-  auto Search(Ts... args) const
-  {
-    return search_(std::forward<Ts>(args)...);
-  }
+  auto Search(Kokkos::View<Real* [2]> points) const { return search_(points); }
 
   [[nodiscard]] Omega_h::Read<Omega_h::ClassId> GetClassIDs() const
   {
@@ -128,15 +123,16 @@ public:
                                   GetMask(), Size());
     return mesh_.get_array<Omega_h::I8>(0, "class_dim");
   }
-  [[nodiscard]] Omega_h::Read<Omega_h::GO> GetGids() const {
+  [[nodiscard]] Omega_h::Read<Omega_h::GO> GetGids() const
+  {
     Omega_h::Read<Omega_h::GO> gid_array;
-    if(global_id_name_.empty()) {
+    if (global_id_name_.empty()) {
       gid_array = mesh_.globals(0);
     } else {
       gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
     }
     if (HasMask()) {
-      return detail::filter_array(gid_array,GetMask(), Size());
+      return detail::filter_array(gid_array, GetMask(), Size());
     }
     return gid_array;
   }
@@ -157,9 +153,9 @@ using InternalCoordinateElement = Real;
 // all internal fields are on the same mesh
 using InternalField =
   std::variant<OmegaHField<Omega_h::I8, InternalCoordinateElement>,
-    OmegaHField<Omega_h::I32, InternalCoordinateElement>,
-    OmegaHField<Omega_h::I64, InternalCoordinateElement>,
-    OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
+               OmegaHField<Omega_h::I32, InternalCoordinateElement>,
+               OmegaHField<Omega_h::I64, InternalCoordinateElement>,
+               OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
 
 template <typename T, typename CoordinateElementType>
 auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
@@ -255,13 +251,18 @@ auto evaluate(
   Omega_h::Write<T> values(coordinates.size() / 2);
   auto tris2verts = field.GetMesh().ask_elem_verts();
   auto field_values = field.GetMesh().template get_array<T>(0, field.GetName());
-  // FIXME field search operation needs to be on GPU
-  // FIXME field search takes mdspan
-  // FIXME coordinate array view as nx2 span
-  Omega_h::parallel_for(
-    coordinates.size() / 2, OMEGA_H_LAMBDA(LO i) {
-      auto [elem_idx, coord] = field.Search(
-        Omega_h::Vector<2>{coordinates(2 * i), coordinates(2 * i + 1)});
+
+  Kokkos::View<Real* [2]> coords("coords", coordinates.size() / 2);
+  Kokkos::parallel_for(
+    coordinates.size() / 2, KOKKOS_LAMBDA(LO i) {
+      coords(i, 0) = coordinates(2 * i);
+      coords(i, 1) = coordinates(2 * i + 1);
+    });
+  auto results = field.Search(coords);
+
+  Kokkos::parallel_for(
+    results.size(), KOKKOS_LAMBDA(LO i) {
+      auto [elem_idx, coord] = results(i);
       // TODO deal with case for elem_idx < 0 (point outside of mesh)
       KOKKOS_ASSERT(elem_idx >= 0);
       const auto elem_tri2verts =
@@ -275,25 +276,32 @@ auto evaluate(
       }
       values[i] = val;
     });
+
   return values;
 }
 
 template <typename T, typename CoordinateElementType>
 auto evaluate(
-  const OmegaHField<T, CoordinateElementType>& field, NearestNeighbor /* method */,
+  const OmegaHField<T, CoordinateElementType>& field,
+  NearestNeighbor /* method */,
   ScalarArrayView<const CoordinateElementType, OmegaHMemorySpace::type>
     coordinates) -> Omega_h::Read<T>
 {
   Omega_h::Write<T> values(coordinates.size() / 2);
   auto tris2verts = field.GetMesh().ask_elem_verts();
   auto field_values = field.GetMesh().template get_array<T>(0, field.GetName());
-  // FIXME field search operation needs to be on GPU
-  // FIXME field search takes mdspan
-  // FIXME coordinate array view as nx2 span
-  Omega_h::parallel_for(
-    coordinates.size() / 2, OMEGA_H_LAMBDA(LO i) {
-      auto [elem_idx, coord] = field.Search(
-        Omega_h::Vector<2>{coordinates(2 * i), coordinates(2 * i + 1)});
+  // TODO reuse coordinates_data if possible
+  Kokkos::View<Real* [2]> coords("coords", coordinates.size() / 2);
+  Kokkos::parallel_for(
+    coordinates.size() / 2, KOKKOS_LAMBDA(LO i) {
+      coords(i, 0) = coordinates(2 * i);
+      coords(i, 1) = coordinates(2 * i + 1);
+    });
+  auto results = field.Search(coords);
+
+  Kokkos::parallel_for(
+    results.size(), KOKKOS_LAMBDA(LO i) {
+      auto [elem_idx, coord] = results(i);
       // TODO deal with case for elem_idx < 0 (point outside of mesh)
       KOKKOS_ASSERT(elem_idx >= 0);
       const auto elem_tri2verts =
@@ -336,9 +344,11 @@ public:
   using memory_space = OmegaHMemorySpace::type;
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
-  OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh, std::string global_id_name="", int search_nx = 10,
-                  int search_ny = 10)
-    : field_{std::move(name), mesh, std::move(global_id_name), search_nx, search_ny}
+  OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
+                     std::string global_id_name = "", int search_nx = 10,
+                     int search_ny = 10)
+    : field_{std::move(name), mesh, std::move(global_id_name), search_nx,
+             search_ny}
   {
   }
 

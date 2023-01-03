@@ -7,6 +7,7 @@
 #include <Omega_h_bbox.hpp>
 #include <Omega_h_shape.hpp>
 #include "wdmcpl/uniform_grid.h"
+#include "wdmcpl/bounding_box.h"
 
 namespace wdmcpl
 {
@@ -14,9 +15,10 @@ namespace wdmcpl
 // TODO take a bounding box as we may want a bbox that's bigger than the mesh!
 // this function is in the public header for testing, but should not be directly
 // used
+namespace detail {
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<UniformGrid[1]> grid, int num_grid_cells);
-} // namespace detail
+}
 KOKKOS_FUNCTION
 Omega_h::Vector<3> barycentric_from_global(
   const Omega_h::Vector<2>& point, const Omega_h::Matrix<2, 3>& vertex_coords);
@@ -53,6 +55,5 @@ private:
   Omega_h::Reals coords_;
 };
 
-} // namespace wdmcpl
-
+} // namespace detail
 #endif // WDM_COUPLING_POINT_SEARCH_H

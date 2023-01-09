@@ -19,9 +19,7 @@ typedef struct WdmCplFieldHandle WdmCplFieldHandle;
 enum WdmCplAdapterType
 {
   WDMCPL_ADAPTER_XGC,
-//#ifdef WDMCPL_HAS_OMEGA_H
   WDMCPL_ADAPTER_OMEGAH,
-//#endif
   WDMCPL_ADAPTER_GENE,
   WDMCPL_ADAPTER_GEM
 };

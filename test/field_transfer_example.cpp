@@ -104,10 +104,8 @@ void test_standalone(Omega_h::Mesh& internal_mesh, Omega_h::Mesh& app_mesh)
   OHField internal_app_a_field("internal_app_a_field", internal_mesh);
   OHField internal_app_b_field("internal_app_b_field", internal_mesh);
   OHField internal_combined("internal_combined", internal_mesh);
-  // copy_field(app_a_field, app_b_field);
 
   for (int i = 0; i < num_trials; ++i) {
-    // set_nodal_data(app_b_field, make_array_view(read_values));
     interpolate_field(app_a_field, internal_app_a_field, wdmcpl::Lagrange<1>{});
     interpolate_field(app_b_field, internal_app_b_field,
                       wdmcpl::NearestNeighbor{});
@@ -134,7 +132,6 @@ void SetApplicationFields(const OHField& app_a_field,
     values_b[i] = sin(x) * sin(y);
     values_a[i] = cos(x) * cos(y);
   }
-  // auto read_values = Omega_h::Read(values);
   set_nodal_data(app_a_field, make_array_view(Omega_h::Read(values_a)));
   set_nodal_data(app_b_field, make_array_view(Omega_h::Read(values_b)));
 }
@@ -149,11 +146,6 @@ int main(int argc, char** argv)
   auto app_mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
 
-  // we can try this when search structure is working better
-  // auto internal_mesh = Omega_h::Mesh{&lib};
-  // Omega_h::binary::read("./d3d-full_9k_sfc.osh",lib.world(), &internal_mesh);
-  // auto app_mesh = Omega_h::Mesh{&lib};
-  // Omega_h::binary::read("./d3d-full_9k_sfc.osh", lib.world(), &app_mesh);
   assert(internal_mesh.dim() == 2 && app_mesh.dim() == 2);
   auto point1 = std::chrono::steady_clock::now();
   test_standalone(internal_mesh, app_mesh);

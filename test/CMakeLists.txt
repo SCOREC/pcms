@@ -209,7 +209,6 @@ if (WDMCPL_ENABLE_C)
     endif ()
 endif ()
 if(WDMCPL_ENABLE_Fortran)
-    #find_package(MPI REQUIRED)
     add_executable(test_proxy_coupling_xgc_client_fortran test_proxy_coupling_xgc_client.f90)
     target_link_libraries(test_proxy_coupling_xgc_client_fortran PUBLIC wdmcpl::fortranapi MPI::MPI_Fortran flcl::flcl)
     dual_mpi_test(TESTNAME xgc_fortran_proxy_to_omega

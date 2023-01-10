@@ -1,38 +1,24 @@
-add_library(capi client.cpp)
-add_library(wdmcpl::capi ALIAS capi)
-target_link_libraries(capi PUBLIC wdmcpl::wdmcpl)
+add_library(wdmcpl_capi client.cpp)
+add_library(wdmcpl::capi ALIAS wdmcpl_capi)
+target_link_libraries(wdmcpl_capi PUBLIC wdmcpl::core)
 
-target_include_directories(capi
+target_include_directories(wdmcpl_capi
         PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>" # this makes our include path wdmcpl/capi
-        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/capi>")
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/wdmcpl/capi>")
 
-set_target_properties(capi PROPERTIES
-        PUBLIC_HEADER "client.h")
+set_target_properties(wdmcpl_capi PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/client.h
+         OUTPUT_NAME wdmcplcapi
+         EXPORT_NAME capi)
 install(
-        TARGETS capi
-        EXPORT wdmcpl-capi-targets
+        TARGETS wdmcpl_capi
+        EXPORT wdmcpl_capi-targets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/capi
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-#configure_package_config_file(
-#        "${CMAKE_SOURCE_DIR}/config.cmake.in"
-#        "${CMAKE_BINARY_DIR}/wdmcpl-config.cmake"
-#        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wdmcpl
-#)
-#write_basic_package_version_file(
-#        "${PROJECT_BINARY_DIR}/wdmcpl-config-version.cmake"
-#        COMPATIBILITY AnyNewerVersion)
-#
-#install(FILES
-#        "${PROJECT_BINARY_DIR}/wdmcpl-config.cmake"
-#        "${PROJECT_BINARY_DIR}/wdmcpl-config-version.cmake"
-#        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wdmcpl)
-
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/wdmcpl/capi/)
 install(
-        EXPORT wdmcpl-capi-targets
+        EXPORT wdmcpl_capi-targets
         NAMESPACE wdmcpl::
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/wdmcpl)

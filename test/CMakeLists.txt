@@ -14,12 +14,12 @@ message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
 
 if (WDMCPL_ENABLE_OMEGA_H)
     add_library(test_support test_support.cpp)
-    target_link_libraries(test_support wdmcpl) #for omegah and redev
+    target_link_libraries(test_support wdmcpl::core ) #for omegah and redev
 endif ()
 
 function(add_exe NAME)
     add_executable(${NAME} ${NAME}.cpp)
-    target_link_libraries(${NAME} wdmcpl)
+    target_link_libraries(${NAME} wdmcpl::core)
     if (WDMCPL_ENABLE_OMEGA_H)
         target_link_libraries(${NAME} test_support)
     endif ()
@@ -129,7 +129,7 @@ if (WDMCPL_ENABLE_OMEGA_H)
             NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
 
     add_executable(proxy_coupling test_proxy_coupling.cpp)
-    target_link_libraries(proxy_coupling PUBLIC wdmcpl::wdmcpl test_support)
+    target_link_libraries(proxy_coupling PUBLIC wdmcpl::core test_support)
     tri_mpi_test(TESTNAME test_proxy_coupling_26p
             TIMEOUT 12
             NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
@@ -173,7 +173,7 @@ endif ()
 
 if (WDMCPL_ENABLE_OMEGA_H)
     add_executable(field_transfer_example field_transfer_example.cpp)
-    target_link_libraries(field_transfer_example PUBLIC wdmcpl::wdmcpl)
+    target_link_libraries(field_transfer_example PUBLIC wdmcpl::core)
     list(APPEND WDMCPL_UNIT_TEST_SOURCES
             test_field_transfer.cpp
             test_uniform_grid.cpp
@@ -182,7 +182,7 @@ if (WDMCPL_ENABLE_OMEGA_H)
             )
 endif ()
 add_executable(unit_tests ${WDMCPL_UNIT_TEST_SOURCES})
-target_link_libraries(unit_tests PUBLIC Catch2::Catch2 wdmcpl::wdmcpl)
+target_link_libraries(unit_tests PUBLIC Catch2::Catch2 wdmcpl::core)
 target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(Catch)
@@ -196,7 +196,7 @@ if (WDMCPL_ENABLE_C)
         target_link_libraries(test_proxy_couple_xgc_c_interface PUBLIC wdmcpl::capi MPI::MPI_C flcl::flcl Kokkos::kokkos)
         if (WDMCPL_ENABLE_OMEGA_H)
             add_executable(test_proxy_couple_xgc_cpp_interface test_proxy_coupling_xgc_server.cpp)
-            target_link_libraries(test_proxy_couple_xgc_cpp_interface PUBLIC wdmcpl::wdmcpl MPI::MPI_C test_support)
+            target_link_libraries(test_proxy_couple_xgc_cpp_interface PUBLIC wdmcpl::core MPI::MPI_C test_support)
             dual_mpi_test(TESTNAME xgc_proxy_to_xgc
                     TIMEOUT 10
                     NAME1 cinterface EXE1 $<TARGET_FILE:test_proxy_couple_xgc_c_interface> PROCS1 1 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt

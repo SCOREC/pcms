@@ -189,7 +189,15 @@ include(Catch)
 catch_discover_tests(unit_tests)
 
 if (WDMCPL_ENABLE_C)
-    find_package(flcl REQUIRED)
+    #include(FetchContent)
+    #FetchContent_Declare(kokkos-fortran-interop
+    #  GIT_REPOSITORY https://github.com/kokkos/kokkos-fortran-interop.git
+    #  GIT_TAG develop
+    #  )
+    #set(FLCL_BUILD_EXAMPLES OFF)
+    #set(FLCL_BUILD_TESTS OFF)
+    #FetchContent_MakeAvailable(kokkos-fortran-interop)
+    find_package(flcl)
     find_package(Kokkos REQUIRED)
     if (WDMCPL_ENABLE_XGC)
         add_executable(test_proxy_couple_xgc_c_interface test_proxy_coupling_xgc_client.c)

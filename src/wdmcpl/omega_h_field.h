@@ -5,13 +5,15 @@
 #include <Omega_h_mesh.hpp>
 #include "wdmcpl/field.h"
 #include "wdmcpl/coordinate_systems.h"
-#include <Kokkos_core.hpp>
+#include <Kokkos_Core.hpp>
 #include <wdmcpl/assert.h>
 #include <Omega_h_for.hpp>
 #include "wdmcpl/arrays.h"
+#include "wdmcpl/array_mask.h"
 #include "wdmcpl/point_search.h"
 #include <redev_variant_tools.h>
 #include "wdmcpl/transfer_field.h"
+#include "wdmcpl/memory_spaces.h"
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
 
@@ -26,6 +28,26 @@ struct OmegaHMemorySpace
 
 namespace detail
 {
+template <typename T>
+struct memory_space_selector<Omega_h::Read<T>, void>
+{
+  using type = typename OmegaHMemorySpace::type;
+};
+template <typename T>
+struct memory_space_selector<Omega_h::Write<T>, void>
+{
+  using type = typename OmegaHMemorySpace::type;
+};
+template <typename T>
+struct memory_space_selector<Omega_h::HostRead<T>, void>
+{
+  using type = typename wdmcpl::HostMemorySpace;
+};
+template <typename T>
+struct memory_space_selector<Omega_h::HostWrite<T>, void>
+{
+  using type = typename wdmcpl::HostMemorySpace;
+};
 template <typename T, int dim = 1>
 Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
                               const Omega_h::Read<LO>& mask, LO size)
@@ -53,6 +75,7 @@ template <typename T,
 class OmegaHField
 {
 public:
+  using memory_space = OmegaHMemorySpace::type;
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
 
@@ -76,24 +99,18 @@ public:
   {
     if (mask.exists()) {
 
+      using ExecutionSpace = typename memory_space::execution_space;
+      auto policy = Kokkos::RangePolicy<ExecutionSpace>(0, mask.size());
       // we use a parallel scan to construct the mask mapping so that filtering
       // can happen in parallel. This method gives us the index to fill into the
       // filtered array
       WDMCPL_ALWAYS_ASSERT(mesh.nents(0) == mask.size());
       Omega_h::Write<LO> index_mask(mask.size());
+      auto index_mask_view = make_array_view(index_mask);
+      auto mask_view = make_const_array_view(mask);
       Kokkos::parallel_scan(
-        mask.size(),
-        KOKKOS_LAMBDA(LO i, LO & update, bool final) {
-          update += (mask[i] > 0);
-          if (final) {
-            index_mask[i] = update;
-          }
-        },
-        size_);
-      // set index mask to 0 anywhere that the original mask is 0
-      Kokkos::parallel_for(
-        mask.size(), KOKKOS_LAMBDA(LO i) { index_mask[i] *= mask[i]; });
-
+        policy, detail::ComputeMaskAV{index_mask_view, mask_view}, size_);
+      Kokkos::parallel_for(policy, detail::ScaleAV{index_mask_view, mask_view});
       mask_ = index_mask;
     }
   }
@@ -196,6 +213,8 @@ auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
     }
     return coords;
   }
+  // should never be here. Quash warning
+  return Omega_h::Reals{};
 }
 
 /**
@@ -321,6 +340,27 @@ auto evaluate(
   return values;
 }
 
+template <typename T, typename Method, typename CoordinateElementType>
+auto evaluate(
+  const OmegaHField<T, CoordinateElementType>& field, Method&& m,
+  ScalarArrayView<const CoordinateElementType, HostMemorySpace> coordinates)
+  -> std::enable_if_t<
+    !std::is_same_v<typename OmegaHMemorySpace::type,
+                    HostMemorySpace>,
+    Omega_h::HostRead<T>>
+
+{
+  auto coords_view =
+    Kokkos::View<const CoordinateElementType, Kokkos::HostSpace,
+                 Kokkos::MemoryTraits<Kokkos::Unmanaged>>(&coordinates[0],
+                                                          coordinates.size());
+  using exe_space = typename OmegaHMemorySpace::type::execution_space;
+  auto coordinates_d =
+    Kokkos::create_mirror_view_and_copy(exe_space(), coords_view);
+  return Omega_h::HostRead<T>(evaluate(field, std::forward<Method>(m),
+                                       make_const_array_view(coordinates_d)));
+}
+
 } // namespace wdmcpl
 namespace Omega_h
 {
@@ -365,9 +405,9 @@ public:
     return field_.GetName();
   }
   // REQUIRED
-  int Serialize(
-    ScalarArrayView<T, memory_space> buffer,
-    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
+  int Serialize(ScalarArrayView<T, wdmcpl::HostMemorySpace> buffer,
+                ScalarArrayView<const wdmcpl::LO, wdmcpl::HostMemorySpace>
+                  permutation) const
   {
     // host copy of filtered field data array
     const auto array_h = Omega_h::HostRead(get_nodal_data(field_));
@@ -380,16 +420,17 @@ public:
     return array_h.size();
   }
   // REQUIRED
-  void Deserialize(
-    ScalarArrayView<const T, memory_space> buffer,
-    ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
+  void Deserialize(ScalarArrayView<const T, wdmcpl::HostMemorySpace> buffer,
+                   ScalarArrayView<const wdmcpl::LO, wdmcpl::HostMemorySpace>
+                     permutation) const
   {
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
-    Omega_h::Write<T> sorted_buffer(buffer.size());
+    Omega_h::HostWrite<T> sorted_buffer(buffer.size());
     for (size_t i = 0; i < buffer.size(); ++i) {
       sorted_buffer[i] = buffer[permutation[i]];
     }
-    set_nodal_data(field_, make_array_view(Omega_h::Read(sorted_buffer)));
+    const auto sorted_buffer_d = Omega_h::Read<T>(sorted_buffer);
+    set_nodal_data(field_, make_array_view(sorted_buffer_d));
   }
 
   [[nodiscard]] std::vector<GO> GetGids() const

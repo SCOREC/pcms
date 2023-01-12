@@ -150,6 +150,7 @@ struct memory_space_selector<T, std::void_t<typename T::memory_space>>
 {
   using type = typename T::memory_space;
 };
+
 template <typename T>
 using memory_space_selector_t = typename memory_space_selector<T>::type;
 

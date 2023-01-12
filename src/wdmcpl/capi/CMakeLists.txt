@@ -1,6 +1,6 @@
 add_library(wdmcpl_capi client.cpp)
 add_library(wdmcpl::capi ALIAS wdmcpl_capi)
-target_link_libraries(wdmcpl_capi PUBLIC wdmcpl::core)
+target_link_libraries(wdmcpl_capi PRIVATE wdmcpl::core)
 
 target_include_directories(wdmcpl_capi
         PUBLIC

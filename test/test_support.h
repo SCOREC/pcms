@@ -8,6 +8,9 @@
 #include <Omega_h_array_ops.hpp>
 #include <redev.h>
 #include <redev_comm.h>
+#include <wdmcpl/external/span.h>
+#include <wdmcpl/memory_spaces.h>
+#include <wdmcpl/omega_h_field.h>
 
 namespace test_support {
 
@@ -115,6 +118,100 @@ std::vector<size_t> sortIndexes(const T &v) {
        [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
   return idx;
 }
+/**
+ * return 1 if the specificed model entity is part of the overlap region, 0
+ * otherwise. Device function must be defined inline
+ */
+OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id) {
+  // the TOMMS generated geometric model has
+  // entity IDs that increase with the distance
+  // from the magnetic axis
+  if ((id >= 22 && id <= 34) && (dim >= 0  && dim <=2 )) {
+    return 1;
+  }
+  return 0;
+}
+/**
+ * On the server we mark the vertices on each process that are in the overlap
+ * region and are owned by the process as defined by the Classification
+ * Partition GetRank(modelEntity) function.  The ownership of mesh entities on
+ * the mesh partition boundary is not guaranteed to match the ownership of the
+ * geometric model entities defined by the Classification Partition so we must
+ * use GetRank(modelEntity) to ensure consistency with data incoming from
+ * the client processes.
+ *
+ * On the client side we only care that each mesh vertex is sent by exactly one
+ * client process (to the server process returned by GetRank(modelEntity)) so
+ * using the ownership of mesh entities following the mesh partition ownership
+ * is OK. The function markMeshOverlapRegion(...) supports this.
+ */
+Omega_h::Read<Omega_h::I8> markServerOverlapRegion(Omega_h::Mesh& mesh,
+                             const redev::ClassPtn& classPtn);
+/**
+ * Create the tag 'isOverlap' for each mesh vertex whose value is 1 if the
+ * vertex is classified on a model entity in the closure of the geometric model
+ * faces forming the overlap region; the value is 0 otherwise.
+ * OnlyIncludesOverlapping and owned verts
+ */
+Omega_h::Read<Omega_h::I8> markOverlapMeshEntities(Omega_h::Mesh& mesh);
+redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
+                                     std::string_view cpnFileName);
+template <typename T1, typename T2>
+struct Sum
+{
+  Sum(T1 arr1, T2 arr2) : arr1_(arr1), arr2_(arr2) {}
+  KOKKOS_INLINE_FUNCTION
+  void operator()(int i) const noexcept { arr1_[i] += arr2_[i]; }
+  T1 arr1_;
+  T2 arr2_;
+};
+template <typename T1, typename ScalarT>
+struct Divide
+{
+  Divide(T1 arr1, ScalarT scalar) : arr1_(arr1), scalar_(scalar) {}
+  KOKKOS_INLINE_FUNCTION
+  void operator()(int i) const noexcept { arr1_[i] /= scalar_; }
+  T1 arr1_;
+  ScalarT scalar_;
+};
+
+// TODO: move to be internal to wdmcpl
+struct MeanCombiner
+{
+  void operator()(
+    const nonstd::span<const std::reference_wrapper<wdmcpl::InternalField>>&
+      fields,
+    wdmcpl::InternalField& combined_variant) const
+  {
+
+    // Internal fields are OmegaHFields
+    using execution_space = typename wdmcpl::OmegaHMemorySpace::type::execution_space;
+    std::visit(
+      [&fields](auto&& combined_field) {
+        using T = typename std::remove_reference_t<
+          decltype(combined_field)>::value_type;
+        Omega_h::Write<T> combined_array(combined_field.Size());
+        for (auto& field_variant : fields) {
+          std::visit(
+            [&combined_array, &combined_field](auto&& field) {
+              WDMCPL_ALWAYS_ASSERT(field.Size() == combined_array.size());
+              auto field_array = get_nodal_data(field);
+              auto policy =
+                Kokkos::RangePolicy<execution_space>(0, field_array.size());
+              Kokkos::parallel_for(policy, Sum{combined_array, field_array});
+            },
+            field_variant.get());
+        }
+        auto num_fields = fields.size();
+        auto policy =
+          Kokkos::RangePolicy<execution_space>(0, combined_array.size());
+        Kokkos::parallel_for(policy, Divide{combined_array, num_fields});
+        set_nodal_data(combined_field,
+                       make_array_view(Omega_h::Read(combined_array)));
+      },
+      combined_variant);
+  }
+};
 
 }
 #endif

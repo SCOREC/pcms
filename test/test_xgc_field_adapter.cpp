@@ -88,33 +88,43 @@ TEMPLATE_TEST_CASE("XGC Field Adapter", "[adapter]", wdmcpl::LO, wdmcpl::Real)
     });
   std::cout << "Num in overlap: " << num_in_overlap << "\n";
 
+  std::cerr<<"creating addapter\n";
   XGCFieldAdapter<TestType> field_adapter("fa", make_array_view(dummy_data),
                                           reverse_classification, in_overlap);
+  std::cerr<<"getting gids\n";
   auto gids = field_adapter.GetGids();
   REQUIRE(gids.size() == static_cast<size_t>(num_in_overlap));
+  std::cerr<<"checking gids\n";
   REQUIRE(check_gids(gids, data_size, reverse_classification, in_overlap) == 0);
   std::vector<TestType> buffer;
   std::vector<wdmcpl::LO> permutation;
+  std::cerr<<"serializing gids\n";
   auto serialize_size = field_adapter.Serialize(
     make_array_view(buffer), make_const_array_view(permutation));
   REQUIRE(serialize_size == num_in_overlap);
   buffer.resize(serialize_size);
   field_adapter.Serialize(make_array_view(buffer),
                           make_const_array_view(permutation));
+  std::cerr<<"checking gids\n";
   // TODO test with not empty permutation array
   REQUIRE(check_gids(buffer, data_size, reverse_classification, in_overlap) ==
           0);
 
+  std::cerr<<"deserialize gids\n";
   // verify that deserializing data writes same values back into dummy data
   field_adapter.Deserialize(make_const_array_view(buffer),
                             make_const_array_view(permutation));
+  std::cerr<<"check gids\n";
   REQUIRE(check_data(dummy_data, reverse_classification, in_overlap) == 0);
   // modify the buffer and verify that the correct data is written into the
   // dummy_data
+  std::cerr<<"set data\n";
   for (auto& val : buffer) {
     val += 5;
   }
+  std::cerr<<"deserialize data\n";
   field_adapter.Deserialize(make_const_array_view(buffer),
                             make_const_array_view(permutation));
+  std::cerr<<"check data\n";
   REQUIRE(check_data(dummy_data, reverse_classification, in_overlap, 5) == 0);
 }

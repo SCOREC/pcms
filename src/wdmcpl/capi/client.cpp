@@ -15,11 +15,11 @@ using FieldAdapterVariant =
   std::variant<std::monostate, wdmcpl::XGCFieldAdapter<double>,
                wdmcpl::XGCFieldAdapter<float>, wdmcpl::XGCFieldAdapter<int>,
                wdmcpl::XGCFieldAdapter<long>
-#ifdef WDMCPL_HAS_OMEGA_H
-               ,
-               wdmcpl::OmegaHFieldAdapter<double>,
-               wdmcpl::OmegaHFieldAdapter<int>
-#endif
+//#ifdef WDMCPL_HAS_OMEGA_H
+//               ,
+//               wdmcpl::OmegaHFieldAdapter<double>,
+//               wdmcpl::OmegaHFieldAdapter<int>
+//#endif
                >;
 
 } // namespace wdmcpl

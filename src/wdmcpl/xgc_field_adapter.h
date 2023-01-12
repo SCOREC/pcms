@@ -41,7 +41,7 @@ public:
         }
       }
     }
-    mask_ = ArrayMask<memory_space>{make_array_view(mask)};
+    mask_ = ArrayMask<memory_space>{make_const_array_view(mask)};
     WDMCPL_ALWAYS_ASSERT(!mask_.empty());
     //// XGC meshes are naively ordered in iteration order (full mesh on every
     //// cpu)
@@ -76,7 +76,9 @@ public:
     std::vector<GO> gids(mask_.Size());
     auto v1 = make_array_view(gids_);
     auto v2 = make_array_view(gids);
+    std::cerr<<"APPLY\n";
     mask_.Apply(v1, v2);
+    std::cerr<<"DONE APPLY\n";
     return gids;
   }
   // REQUIRED
@@ -152,38 +154,26 @@ auto get_nodal_coordinates(
     coordinates;
   return coordinates;
 }
-template <typename T, typename CoordinateElementType>
+template <typename T, typename CoordinateElementType, typename MemorySpace>
 auto evaluate(
   const XGCFieldAdapter<T, CoordinateElementType>& field,
   Lagrange<1> /* method */,
-  ScalarArrayView<
-    const CoordinateElementType,
-    typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
-    coordinates)
-  -> Kokkos::View<
-    T*, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+  ScalarArrayView<const CoordinateElementType, MemorySpace> coordinates)
+  -> Kokkos::View<T*, MemorySpace>
 {
-  Kokkos::View<T*,
-               typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
-    values("data", coordinates.size() / 2);
+  Kokkos::View<T*, MemorySpace> values("data", coordinates.size() / 2);
   std::cerr << "Evaluation of XGC Field not implemented yet!\n";
   std::abort();
   return values;
 }
-template <typename T, typename CoordinateElementType>
+template <typename T, typename CoordinateElementType, typename MemorySpace>
 auto evaluate(
   const XGCFieldAdapter<T, CoordinateElementType>& field,
   NearestNeighbor /* method */,
-  ScalarArrayView<
-    const CoordinateElementType,
-    typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
-    coordinates)
-  -> Kokkos::View<
-    T*, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+  ScalarArrayView<const CoordinateElementType, MemorySpace> coordinates)
+  -> Kokkos::View<T*, MemorySpace>
 {
-  Kokkos::View<T*,
-               typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
-    values("data", coordinates.size() / 2);
+  Kokkos::View<T*, MemorySpace> values("data", coordinates.size() / 2);
   std::cerr << "Evaluation of XGC Field not implemented yet!\n";
   std::abort();
   return values;

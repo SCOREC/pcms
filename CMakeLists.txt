@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(wdmcpl VERSION 0.0.3 LANGUAGES CXX)
+project(wdmcpl VERSION 0.0.4 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)

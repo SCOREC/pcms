@@ -19,7 +19,7 @@ module overlap
     end function in_overlap
 end module overlap
 
-Program MAIN
+Program main
     use wdmcpl
     use mpi
     use flcl_util_kokkos_mod
@@ -89,4 +89,4 @@ Program MAIN
     call kokkos_finalize()
     call MPI_FINALIZE(ierror)
 
-End Program MAIN
+End Program main

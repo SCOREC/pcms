@@ -67,6 +67,24 @@ Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
     });
   return filtered_field;
 }
+struct GetRankOmegaH {
+  GetRankOmegaH(int i, Omega_h::HostRead<Omega_h::I8> dims,
+                Omega_h::HostRead<Omega_h::ClassId> ids) : i_(i), ids_(ids), dims_(dims) {}
+  auto operator()(const redev::ClassPtn& ptn) const {
+    const auto ent =
+    redev::ClassPtn::ModelEnt({dims_[i_], ids_[i_]});
+    return ptn.GetRank(ent);
+  }
+  auto operator()(const redev::RCBPtn& /*unused*/) {
+    std::cerr << "RCB partition not handled yet\n";
+    std::terminate();
+    return 0;
+  }
+  int i_;
+  Omega_h::HostRead<Omega_h::ClassId> ids_;
+  Omega_h::HostRead<Omega_h::I8> dims_;
+
+};
 } // namespace detail
 
 template <typename T,
@@ -242,13 +260,13 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
           array[i] = mask[i] ? data(mask[i] - 1) : original_data[i];
         });
-      mesh.set_tag(0, field.GetName(), Omega_h::Read(array));
+      mesh.set_tag(0, field.GetName(), Omega_h::Read<U>(array));
     } else {
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
           array[i] = mask[i] ? data(mask[i] - 1) : 0;
         });
-      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
+      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<U>(array));
     }
   } else {
     WDMCPL_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh.nents(0));
@@ -256,9 +274,9 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
     Omega_h::parallel_for(
       data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
     if (has_tag) {
-      mesh.set_tag(0, field.GetName(), Omega_h::Read(array));
+      mesh.set_tag(0, field.GetName(), Omega_h::Read<U>(array));
     } else {
-      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read(array));
+      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<U>(array));
     }
   }
   WDMCPL_ALWAYS_ASSERT(mesh.has_tag(0, field.GetName()));
@@ -414,7 +432,7 @@ public:
                   permutation) const
   {
     // host copy of filtered field data array
-    const auto array_h = Omega_h::HostRead(get_nodal_data(field_));
+    const auto array_h = Omega_h::HostRead<T>(get_nodal_data(field_));
     if (buffer.size() > 0) {
       for (LO i = 0, j = 0; i < array_h.size(); i++) {
         // FIXME j==i, can't we just get rid of j, or am i missing something
@@ -441,7 +459,7 @@ public:
   {
     auto gids = field_.GetGids();
     if (gids.size() > 0) {
-      auto gids_h = Omega_h::HostRead(gids);
+      auto gids_h = Omega_h::HostRead<GO>(gids);
       return {&gids_h[0], &(gids_h[gids_h.size() - 1]) + 1};
     }
     return {};
@@ -450,27 +468,15 @@ public:
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const
   {
-    auto classIds_h = Omega_h::HostRead(field_.GetClassIDs());
-    auto classDims_h = Omega_h::HostRead(field_.GetClassDims());
+    auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(field_.GetClassIDs());
+    auto classDims_h = Omega_h::HostRead<Omega_h::I8>(field_.GetClassDims());
 
     // local_index number of vertices going to each destination process by
     // calling getRank - degree array
     wdmcpl::ReversePartitionMap reverse_partition;
     wdmcpl::LO local_index = 0;
     for (auto i = 0; i < classIds_h.size(); i++) {
-      auto dr = std::visit(
-        redev::overloaded{
-          [&classDims_h, &classIds_h, &i](const redev::ClassPtn& ptn) {
-            const auto ent =
-              redev::ClassPtn::ModelEnt({classDims_h[i], classIds_h[i]});
-            return ptn.GetRank(ent);
-          },
-          [](const redev::RCBPtn& /*ptn*/) {
-            std::cerr << "RCB partition not handled yet\n";
-            std::terminate();
-            return 0;
-          }},
-        partition);
+      auto dr = std::visit(detail::GetRankOmegaH{i,classDims_h,classIds_h}, partition);
       reverse_partition[dr].emplace_back(local_index++);
     }
     return reverse_partition;

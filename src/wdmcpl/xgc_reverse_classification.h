@@ -8,7 +8,7 @@
 #include "wdmcpl/external/mdspan.hpp"
 #include "wdmcpl/arrays.h"
 #include "wdmcpl/memory_spaces.h"
-#include <filesystem>
+//#include <filesystem>
 #ifdef WDMCPL_HAS_OMEGA_H
 #include <Omega_h_mesh.hpp>
 #include "wdmcpl/assert.h"
@@ -79,14 +79,12 @@ private:
   LO total_verts_{0};
 };
 
-ReverseClassificationVertex ReadReverseClassificationVertex(
-  std::filesystem::path&);
+ReverseClassificationVertex ReadReverseClassificationVertex(std::string);
 ReverseClassificationVertex ReadReverseClassificationVertex(std::istream&);
 ReverseClassificationVertex ReadReverseClassificationVertex(std::istream&,
                                                             MPI_Comm,
                                                             int root = 0);
-ReverseClassificationVertex ReadReverseClassificationVertex(
-  std::filesystem::path&, MPI_Comm, int root = 0);
+ReverseClassificationVertex ReadReverseClassificationVertex(std::string, MPI_Comm, int root = 0);
 
 #ifdef WDMCPL_HAS_OMEGA_H
 enum class IndexBase {
@@ -101,10 +99,10 @@ template <typename T = Omega_h::LO>
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   // transfer vtx classification to host
   auto classIds_h =
-    Omega_h::HostRead(mesh.get_array<Omega_h::ClassId>(0, "class_id"));
+    Omega_h::HostRead<Omega_h::ClassId>(mesh.get_array<Omega_h::ClassId>(0, "class_id"));
   auto classDims_h =
-    Omega_h::HostRead(mesh.get_array<Omega_h::I8>(0, "class_dim"));
-  auto vertid = Omega_h::HostRead(mesh.get_array<T>(0, numbering));
+    Omega_h::HostRead<Omega_h::I8>(mesh.get_array<Omega_h::I8>(0, "class_dim"));
+  auto vertid = Omega_h::HostRead<T>(mesh.get_array<T>(0, numbering));
   wdmcpl::ReverseClassificationVertex rc;
   WDMCPL_ALWAYS_ASSERT(classDims_h.size() == classIds_h.size());
   for (int i = 0; i < classDims_h.size(); ++i) {

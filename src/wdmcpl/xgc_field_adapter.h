@@ -11,6 +11,24 @@
 
 namespace wdmcpl
 {
+namespace detail {
+  // Needed since NVHPC doesn't work with overloaded
+  struct GetRank {
+    using GeomType = DimID;
+    GetRank(const GeomType& geom) : geom_(geom) {}
+        auto operator()(const redev::ClassPtn& ptn) const {
+          const auto ent = redev::ClassPtn::ModelEnt(
+            {geom_.dim, geom_.id});
+          return ptn.GetRank(ent);
+        }
+        auto operator()(const redev::RCBPtn& /*unused*/) const {
+          std::cerr << "RCB partition not handled yet\n";
+          std::terminate();
+          return 0;
+        }
+  const GeomType& geom_;
+  };
+}
 
 template <typename T, typename CoordinateElementType = Real>
 class XGCFieldAdapter
@@ -76,11 +94,10 @@ public:
     std::vector<GO> gids(mask_.Size());
     auto v1 = make_array_view(gids_);
     auto v2 = make_array_view(gids);
-    std::cerr<<"APPLY\n";
     mask_.Apply(v1, v2);
-    std::cerr<<"DONE APPLY\n";
     return gids;
   }
+
   // REQUIRED
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const
@@ -92,18 +109,7 @@ public:
       // if the geometry is in specified overlap region
       if (in_overlap_(geom.first.dim, geom.first.id)) {
 
-        auto dr = std::visit(
-          redev::overloaded{[&geom](const redev::ClassPtn& ptn) {
-                              const auto ent = redev::ClassPtn::ModelEnt(
-                                {geom.first.dim, geom.first.id});
-                              return ptn.GetRank(ent);
-                            },
-                            [](const redev::RCBPtn& /* unused */) {
-                              std::cerr << "RCB partition not handled yet\n";
-                              std::terminate();
-                              return 0;
-                            }},
-          partition);
+        auto dr = std::visit(detail::GetRank{geom.first}, partition);
         auto [it, inserted] = reverse_partition.try_emplace(dr);
         // the map gives the local iteration order of the global ids
         auto map = mask_.GetMap();

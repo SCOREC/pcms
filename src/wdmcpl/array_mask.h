@@ -62,10 +62,10 @@ public:
     Kokkos::View<LO*, MemorySpace> index_mask("mask", mask.size());
     auto policy = Kokkos::RangePolicy<execution_space>(0, mask.size());
     auto index_mask_view = make_array_view(index_mask);
-    Kokkos::parallel_scan(policy, detail::ComputeMaskAV{index_mask_view, mask},
+    Kokkos::parallel_scan(policy,detail::ComputeMaskAV<MemorySpace>{index_mask_view, mask},
                           num_active_entries_);
     //// set index mask to 0 anywhere that the original mask is 0
-    Kokkos::parallel_for(policy, detail::ScaleAV{index_mask_view, mask});
+    Kokkos::parallel_for(policy, detail::ScaleAV<MemorySpace>{index_mask_view, mask});
     // does a shallow copy
     mask_ = index_mask;
   }

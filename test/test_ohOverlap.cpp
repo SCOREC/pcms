@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
     ///////////////////  SERVER /////////////////////////
     std::string_view cpnFileName(argv[3]);
     auto partition = setupServerPartition(mesh,cpnFileName);
-    auto rdv = redev::Redev(MPI_COMM_WORLD,partition,static_cast<redev::ProcessType>(isRdv));
+    auto rdv = redev::Redev(MPI_COMM_WORLD,redev::Partition{partition},static_cast<redev::ProcessType>(isRdv));
     auto comm = setupComms(rdv,name);
     auto isOverlap_h = markMeshOverlapRegion(mesh);
     ts::OutMsg appOut = ts::OutMsg(); //FIXME is this needed?
@@ -188,7 +188,7 @@ int main(int argc, char** argv) {
   } else {
     ///////////////////  CLIENT /////////////////////////
     auto partition = setupClientPartition(mesh);
-    auto rdv = redev::Redev(MPI_COMM_WORLD,std::move(partition),static_cast<redev::ProcessType>(isRdv));
+    auto rdv = redev::Redev(MPI_COMM_WORLD,redev::Partition{std::move(partition)},static_cast<redev::ProcessType>(isRdv));
     auto comm = setupComms(rdv,name);
     auto isOverlap_h = markMeshOverlapRegion(mesh);
     //////////////////////////////////////////////////////

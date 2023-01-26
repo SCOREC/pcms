@@ -1,6 +1,5 @@
 #include <wdmcpl/xgc_reverse_classification.h>
 #include <catch2/catch.hpp>
-#include <filesystem>
 #include <sstream>
 
 static constexpr auto test_data = R"(
@@ -24,8 +23,6 @@ static constexpr auto test_data = R"(
 )";
 
 TEST_CASE("reverse classification") {
-  //std::filesystem::path rc_file{"/Users/jacobmerson/Downloads/meshRclassification.txt"};
-  //auto rc = wdmcpl::ReadReverseClassificationVertex(rc_file);
   std::stringstream ss{test_data};
   auto rc = wdmcpl::ReadReverseClassificationVertex(ss);
   {

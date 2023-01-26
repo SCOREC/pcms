@@ -105,7 +105,7 @@ void client(Omega_h::Mesh& mesh, std::string fieldName, const int clientId) {
   if(!rank) fprintf(stderr, "clientId %d\n", clientId);
 
   auto partition = setupClientPartition(mesh);
-  auto rdv = redev::Redev(MPI_COMM_WORLD,std::move(partition),static_cast<redev::ProcessType>(isRdv));
+  auto rdv = redev::Redev(MPI_COMM_WORLD,redev::Partition{std::move(partition)},static_cast<redev::ProcessType>(isRdv));
   auto comm = setupComms(rdv,fieldName,clientId);
 
   auto isOverlap_h = markMeshOverlapRegion(mesh);

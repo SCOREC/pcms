@@ -229,7 +229,7 @@ struct MeanCombiner
           Kokkos::RangePolicy<execution_space>(0, combined_array.size());
         Kokkos::parallel_for(policy, Divide{combined_array, num_fields});
         set_nodal_data(combined_field,
-                       make_array_view(Omega_h::Read(combined_array)));
+                       make_array_view(Omega_h::Read<T>(combined_array)));
       },
       combined_variant);
   }

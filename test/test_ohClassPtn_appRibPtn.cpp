@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     ts::writeVtk(mesh,"appSplit",0);
   }
   auto partition = redev::ClassPtn(MPI_COMM_WORLD,classPartition.ranks,classPartition.modelEnts);
-  redev::Redev rdv(MPI_COMM_WORLD,std::move(partition),static_cast<redev::ProcessType>(isRdv));
+  redev::Redev rdv(MPI_COMM_WORLD,redev::Partition{std::move(partition)},static_cast<redev::ProcessType>(isRdv));
 
   const std::string name = "meshVtxIds";
   const int rdvRanks = 2;

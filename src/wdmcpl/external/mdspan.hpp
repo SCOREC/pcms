@@ -1,6 +1,6 @@
 #ifndef _MDSPAN_SINGLE_HEADER_INCLUDE_GUARD_
 #define _MDSPAN_SINGLE_HEADER_INCLUDE_GUARD_
-#  include <version>
+//#  include <version>
 #  include <type_traits>
 #  include <utility>
 #include <type_traits> // std::is_void
@@ -10,7 +10,7 @@
 #include <cstddef>  // size_t
 #include <limits>   // numeric_limits
 #include <array>
-#include <span>
+//#include <span>
 #include <utility> // integer_sequence
 #include <cstddef>
 #include <cstddef> // size_t
@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <numeric>
 #include <array>
-#include<concepts>
+//#include<concepts>
 #include <tuple> // std::apply
 #include <utility> // std::pair
 #include <cassert>

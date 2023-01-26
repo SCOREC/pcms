@@ -38,9 +38,9 @@ void wdmcpl_destroy_client(WdmCplClientHandle* client)
 WdmCplReverseClassificationHandle* wdmcpl_load_reverse_classification(
   const char* file, MPI_Comm comm)
 {
-  std::filesystem::path filepath{file};
+  //std::filesystem::path filepath{file};
   auto* rc = new wdmcpl::ReverseClassificationVertex{
-    wdmcpl::ReadReverseClassificationVertex(filepath, comm)};
+    wdmcpl::ReadReverseClassificationVertex(file, comm)};
   return reinterpret_cast<WdmCplReverseClassificationHandle*>(rc);
 }
 void wdmcpl_destroy_reverse_classification(

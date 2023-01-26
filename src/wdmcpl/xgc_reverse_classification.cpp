@@ -94,18 +94,18 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& instr,
   }
 }
 ReverseClassificationVertex ReadReverseClassificationVertex(
-  std::filesystem::path& classification_file)
+  std::string classification_file)
 {
-  WDMCPL_ALWAYS_ASSERT(classification_file.has_filename());
+  //WDMCPL_ALWAYS_ASSERT(classification_file.has_filename());
   std::ifstream infile(classification_file);
   WDMCPL_ALWAYS_ASSERT(infile.is_open() && infile.good());
   return ReadReverseClassificationVertex(infile);
 }
 
 ReverseClassificationVertex ReadReverseClassificationVertex(
-  std::filesystem::path& classification_file, MPI_Comm comm, int root)
+  std::string classification_file, MPI_Comm comm, int root)
 {
-  WDMCPL_ALWAYS_ASSERT(classification_file.has_filename());
+  //WDMCPL_ALWAYS_ASSERT(classification_file.has_filename());
   std::ifstream infile(classification_file);
   if(!infile.is_open()) {
     std::cerr<<"Cannot open reverse classification file "<<classification_file<<"\n";

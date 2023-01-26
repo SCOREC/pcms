@@ -5,6 +5,7 @@
 #include <algorithm>           // std::sort, std::stable_sort
 #include <fstream>             // ifstream
 #include <mpi.h>
+#include <redev_exclusive_scan.h>
 
 namespace test_support
 {
@@ -494,9 +495,9 @@ CSR getRdvOutPermutation(Omega_h::Mesh& mesh, const redev::GOs& inGids)
     REDEV_ALWAYS_ASSERT(j != gids_h.size()); // found
     perm.off[iGids[j]]++;
   }
-  // create the offsets array from the counts
-  std::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0);
-  // fill the permutation array
+  //create the offsets array from the counts
+  redev::exclusive_scan(perm.off.begin(), perm.off.end(), perm.off.begin(), 0);
+  //fill the permutation array
   perm.val.resize(perm.off.back());
   redev::LOs count(gids_h.size()); // how many times each gid was written
   j = 0;

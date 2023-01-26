@@ -1,6 +1,7 @@
 #ifndef WDM_COUPLING_CAPI_CLIENT_H
 #define WDM_COUPLING_CAPI_CLIENT_H
 #include <mpi.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

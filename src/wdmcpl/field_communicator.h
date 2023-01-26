@@ -2,6 +2,8 @@
 #define WDM_COUPLING_FIELD_COMMUNICATOR_H
 #include <redev.h>
 #include "wdmcpl/field.h"
+#include <numeric>
+#include "wdmcpl/inclusive_scan.h"
 namespace wdmcpl
 {
 
@@ -30,19 +32,21 @@ OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
   }
   out.offset.resize(counts.size() + 1);
   out.offset[0] = 0;
-  std::inclusive_scan(counts.begin(), counts.end(),
+  wdmcpl::inclusive_scan(counts.begin(), counts.end(),
                       std::next(out.offset.begin(), 1));
   return out;
+}
+size_t count_entries(const ReversePartitionMap& reverse_partition) {
+  size_t num_entries = 0;
+  for(const auto& v : reverse_partition) {
+    num_entries += v.second.size();
+  }
+  return num_entries;
 }
 // note this function can be parallelized by making use of the offsets
 redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
 {
-
-  auto num_entries = std::transform_reduce(
-    reverse_partition.begin(), reverse_partition.end(), 0, std::plus<>(),
-    [](const std::pair<const LO, std::vector<LO>>& v) {
-      return v.second.size();
-    });
+  auto num_entries = count_entries(reverse_partition);
   redev::LOs permutation(num_entries);
   LO entry = 0;
   for (auto& rank : reverse_partition) {

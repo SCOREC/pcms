@@ -16,6 +16,11 @@ option(WDMCPL_ENABLE_CLIENT "enable the coupling client implementation" ON)
 option(WDMCPL_ENABLE_XGC "enable xgc field adapter" ON)
 option(WDMCPL_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
 option(WDMCPL_ENABLE_C "Enable wdmcpl C api" ON)
+
+# find package before fortran enabled, so we don't require the adios2 fortran interfaces
+# this is important because adios2 build with clang/gfortran is broken
+find_package(redev 4.0.0 REQUIRED)
+
 if (WDMCPL_ENABLE_C)
   enable_language(C)
   option(WDMCPL_ENABLE_Fortran "Enable wdmcpl fortran api" ON)
@@ -30,7 +35,6 @@ endif ()
 
 set(MPI_CXX_SKIP_MPICXX ON)
 find_package(MPI REQUIRED)
-find_package(redev 4.0.0 REQUIRED)
 message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
 if (WDMCPL_ENABLE_OMEGA_H)
   find_package(Omega_h REQUIRED VERSION 10)

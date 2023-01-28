@@ -12,10 +12,10 @@ AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
   std::array<Real, 2> max{coords(0, 0), coords(1, 0)};
   std::array<Real, 2> min{coords(0, 0), coords(1, 0)};
   for (int i = 1; i < 3; ++i) {
-    max[0] = Kokkos::fmax(max[0], coords(0, i));
-    max[1] = Kokkos::fmax(max[1], coords(1, i));
-    min[0] = Kokkos::fmin(min[0], coords(0, i));
-    min[1] = Kokkos::fmin(min[1], coords(1, i));
+    max[0] = std::fmax(max[0], coords(0, i));
+    max[1] = std::fmax(max[1], coords(1, i));
+    min[0] = std::fmin(min[0], coords(0, i));
+    min[1] = std::fmin(min[1], coords(1, i));
   }
   return {.center = {(max[0] + min[0]) / 2.0, (max[1] + min[1]) / 2.0},
           .half_width = {(max[0] - min[0]) / 2.0, (max[1] - min[1]) / 2.0}};

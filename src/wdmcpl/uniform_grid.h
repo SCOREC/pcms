@@ -37,7 +37,7 @@ public:
         indexes[dim - (i + 1)] = divisions[i] - 1;
       } else {
         indexes[dim - (i + 1)] = 
-          static_cast<LO>(Kokkos::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
+          static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
       }
     }
     return GetCellIndex(indexes[0], indexes[1]);

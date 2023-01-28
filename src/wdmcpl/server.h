@@ -195,8 +195,29 @@ public:
   }
   void Run() const
   {
-    // possible we may need to add a splitter operation here. will evaluate if
+    // possible we may need to add a splitter operation here.
     // needed splitter(combined_field, internal_fields_);
+    // for current use case, we copy the combined field
+    // into application internal fields
+    std::visit(
+      [this](const auto& combined_field) {
+        for (auto& field : coupled_fields_) {
+          std::visit(
+            [&](auto& internal_field) {
+             constexpr bool can_copy = std::is_same_v<typename std::remove_reference_t<std::remove_cv_t<decltype(combined_field)>>::value_type,
+                                                      typename std::remove_reference_t<std::remove_cv_t<decltype(internal_field)>>::value_type>;
+              if constexpr (can_copy)
+              {
+                copy_field(combined_field, internal_field);
+              }
+              else {
+                interpolate_field(combined_field, internal_field);
+              }
+            },
+            field.get().GetInternalField());
+        }
+      },
+      combined_field_);
     for (auto& field : coupled_fields_) {
       field.get().SyncInternalToNative();
       field.get().Send();

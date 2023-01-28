@@ -170,7 +170,6 @@ struct GridTriIntersectionFunctor
   {
     const auto grid_cell_bbox = grid_(0).GetCellBBOX(row);
     LO num_intersections = 0;
-
     // hierarchical parallel may make be very beneficial here...
     for (LO elem_idx = 0; elem_idx < nelems_; ++elem_idx) {
       const auto elem_tri2verts = Omega_h::gather_verts<3>(tris2verts_, elem_idx);
@@ -246,7 +245,6 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
     // create array that's size of number of candidates x num coords to store
     // parametric inversion
     for (auto i = candidates_begin; i < candidates_end; ++i) {
-    //for (auto i = 0; i<1; ++i) {
      auto elem_tri2verts =
         Omega_h::gather_verts<3>(tris2verts, candidate_map.entries(i));
       // 2d mesh with 2d coords, but 3 triangles

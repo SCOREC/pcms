@@ -113,6 +113,9 @@ public:
       Kokkos::parallel_for(policy, detail::ScaleAV{index_mask_view, mask_view});
       mask_ = index_mask;
     }
+    else {
+      size_ = mesh.nents(0);
+    }
   }
 
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }

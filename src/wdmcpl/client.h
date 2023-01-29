@@ -72,13 +72,13 @@ public:
     return &(it->second);
   }
 
-  // take a string& since unordered_map cannot be searched with string_view
+  // take a string& since map cannot be searched with string_view
   // (heterogeneous lookup)
   void SendField(const std::string& name)
   {
     detail::find_or_error(name, fields_).Send();
   };
-  // take a string& since unordered_map cannot be searched with string_view
+  // take a string& since map cannot be searched with string_view
   // (heterogeneous lookup)
   void ReceiveField(const std::string& name)
   {
@@ -93,7 +93,9 @@ private:
   std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
-  std::unordered_map<std::string, CoupledField> fields_;
+  // map rather than unordered_map is necessary to avoid iterator invalidation.
+  // This is important because we pass pointers to the fields out of this class
+  std::map<std::string, CoupledField> fields_;
 };
 } // namespace wdmcpl
 

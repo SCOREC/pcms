@@ -3,6 +3,7 @@
 #include "wdmcpl/common.h"
 #include "wdmcpl/field_communicator.h"
 #include "wdmcpl/omega_h_field.h"
+#include <map>
 
 namespace wdmcpl
 {
@@ -10,8 +11,7 @@ namespace detail
 {
 template <typename T, typename... Args>
 auto& find_or_create_internal_field(
-  const std::string& key,
-  std::unordered_map<std::string, InternalField>& internal_fields,
+  const std::string& key, std::map<std::string, InternalField>& internal_fields,
   Args&&... args)
 {
   auto [it, inserted] = internal_fields.try_emplace(
@@ -204,13 +204,14 @@ public:
         for (auto& field : coupled_fields_) {
           std::visit(
             [&](auto& internal_field) {
-             constexpr bool can_copy = std::is_same_v<typename std::remove_reference_t<std::remove_cv_t<decltype(combined_field)>>::value_type,
-                                                      typename std::remove_reference_t<std::remove_cv_t<decltype(internal_field)>>::value_type>;
-              if constexpr (can_copy)
-              {
+              constexpr bool can_copy = std::is_same_v<
+                typename std::remove_reference_t<
+                  std::remove_cv_t<decltype(combined_field)>>::value_type,
+                typename std::remove_reference_t<
+                  std::remove_cv_t<decltype(internal_field)>>::value_type>;
+              if constexpr (can_copy) {
                 copy_field(combined_field, internal_field);
-              }
-              else {
+              } else {
                 interpolate_field(combined_field, internal_field);
               }
             },
@@ -339,12 +340,15 @@ private:
   std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
-  std::unordered_map<std::string, ConvertibleCoupledField> fields_;
+  // map is used rather than unordered_map because we give pointers to the
+  // internal data and rehash of unordered_map can cause pointer invalidation.
+  // map is less cache friendly, but pointers are not invalidated.
+  std::map<std::string, ConvertibleCoupledField> fields_;
   // xgc_coupler owns internal fields since both gather/scatter ops use these
-  std::unordered_map<std::string, InternalField> internal_fields_;
+  std::map<std::string, InternalField> internal_fields_;
   // gather and scatter operations have reference to internal fields
-  std::unordered_map<std::string, ScatterOperation> scatter_operations_;
-  std::unordered_map<std::string, GatherOperation> gather_operations_;
+  std::map<std::string, ScatterOperation> scatter_operations_;
+  std::map<std::string, GatherOperation> gather_operations_;
   Omega_h::Mesh& internal_mesh_;
 };
 } // namespace wdmcpl

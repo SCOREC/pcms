@@ -1,9 +1,9 @@
 #ifndef WDM_COUPLING_COMMON_H
 #define WDM_COUPLING_COMMON_H
 #include <redev.h>
-#include <unordered_map>
 #include "wdmcpl/transfer_field.h"
 #include "wdmcpl/assert.h"
+#include <map>
 namespace wdmcpl
 {
 using ProcessType = redev::ProcessType;
@@ -15,7 +15,7 @@ namespace detail
 // helper function for dealing with field maps
 template <typename T, typename U>
 auto& find_or_error(const std::string& name,
-                    const std::unordered_map<T, U>& map)
+                    const std::map<T, U>& map)
 {
   auto it = map.find(name);
   WDMCPL_ALWAYS_ASSERT(it != map.end());
@@ -23,7 +23,7 @@ auto& find_or_error(const std::string& name,
 }
 
 template <typename T, typename U>
-auto& find_or_error(const std::string& name, std::unordered_map<T, U>& map)
+auto& find_or_error(const std::string& name, std::map<T, U>& map)
 {
   auto it = map.find(name);
   WDMCPL_ALWAYS_ASSERT(it != map.end());
@@ -31,7 +31,7 @@ auto& find_or_error(const std::string& name, std::unordered_map<T, U>& map)
 }
 template <typename T, typename U>
 auto find_many_or_error(const std::vector<T>& keys,
-                        const std::unordered_map<T, U>& map)
+                        const std::map<T, U>& map)
 {
 
   std::vector<std::reference_wrapper<U>> results;
@@ -44,7 +44,7 @@ auto find_many_or_error(const std::vector<T>& keys,
 }
 template <typename T, typename U>
 auto find_many_or_error(const std::vector<T>& keys,
-                        std::unordered_map<T, U>& map)
+                        std::map<T, U>& map)
 {
 
   std::vector<std::reference_wrapper<U>> results;

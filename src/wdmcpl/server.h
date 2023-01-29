@@ -330,11 +330,20 @@ public:
     }
     return &(it->second);
   }
-  [[nodiscard]] const redev::Partition& GetPartition() const
+  [[nodiscard]] const redev::Partition& GetPartition() const noexcept
   {
     return redev_.GetPartition();
   }
-  [[nodiscard]] Omega_h::Mesh& GetMesh() { return internal_mesh_; }
+  [[nodiscard]] Omega_h::Mesh& GetMesh() noexcept { return internal_mesh_; }
+
+  [[nodiscard]] const auto& GetInternalFields() const noexcept {return internal_fields_;}
+
+  // TODO: consider an "advanced api" wrapper of some sort and protect direct access
+  // to the internal fields with passkey idom or some other way. User could get unexpected
+  // behavior if they mess with the internal field map.
+  /// This function should not be used directly it is experimental for Philip
+  /// to do Benesh development. Expect that it will be removed in the future.
+  [[nodiscard]] auto& GetInternalFields() noexcept {return internal_fields_;}
 
 private:
   std::string name_;

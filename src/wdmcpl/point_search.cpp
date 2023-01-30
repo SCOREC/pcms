@@ -260,7 +260,6 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
     {
       results(p) = GridPointSearch::Result{-1,{0,0,0}};
     }
-
   });
 
   return results;

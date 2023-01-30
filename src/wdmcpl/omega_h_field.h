@@ -228,14 +228,15 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
                     ScalarArrayView<const U, OmegaHMemorySpace::type> data)
   -> void
 {
+  static_assert(std::is_convertible_v<T,U>, "must be able to convert nodal data into the field types data");
   auto& mesh = field.GetMesh();
   const auto has_tag = mesh.has_tag(0, field.GetName());
   if (field.HasMask()) {
     auto& mask = field.GetMask();
     WDMCPL_ALWAYS_ASSERT(mask.size() == mesh.nents(0));
-    Omega_h::Write<U> array(mask.size());
+    Omega_h::Write<T> array(mask.size());
     if (has_tag) {
-      auto original_data = mesh.template get_array<U>(0, field.GetName());
+      auto original_data = mesh.template get_array<T>(0, field.GetName());
       WDMCPL_ALWAYS_ASSERT(original_data.size() == mask.size());
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
@@ -251,7 +252,7 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
     }
   } else {
     WDMCPL_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh.nents(0));
-    Omega_h::Write<U> array(data.size());
+    Omega_h::Write<T> array(data.size());
     Omega_h::parallel_for(
       data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
     if (has_tag) {

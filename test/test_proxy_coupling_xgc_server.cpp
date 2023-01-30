@@ -41,7 +41,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     rc = ConstructRCFromOmegaHMesh<GO>(mesh, "global", wdmcpl::IndexBase::Zero);
   }
 
-  auto is_overlap = ts::markServerOverlapRegion(mesh, partition);
+  auto is_overlap = ts::markServerOverlapRegion(mesh, partition,ts::isModelEntInOverlap);
   std::vector<GO> data(mesh.nverts());
 
   auto field_adapter = wdmcpl::XGCFieldAdapter<GO>(
@@ -78,7 +78,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     numbering = "global";
   }
 
-  auto is_overlap = ts::markServerOverlapRegion(mesh, partition);
+  auto is_overlap = ts::markServerOverlapRegion(mesh, partition,ts::isModelEntInOverlap);
   std::vector<GO> data(mesh.nverts());
 
   auto field_adapter =

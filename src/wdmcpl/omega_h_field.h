@@ -54,14 +54,14 @@ Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
 {
   static_assert(dim > 0, "array dimension must be >0");
   Omega_h::Write<T> filtered_field(size * dim);
-  WDMCPL_ALWAYS_ASSERT(array.size() == mask.size());
+  WDMCPL_ALWAYS_ASSERT(array.size() == mask.size()*dim);
   WDMCPL_ALWAYS_ASSERT(filtered_field.size() <= array.size());
   Omega_h::parallel_for(
     mask.size(), OMEGA_H_LAMBDA(LO i) {
       if (mask[i]) {
         const auto idx = mask[i] - 1;
         for (int j = 0; j < dim; ++j) {
-          filtered_field[idx * dim + j] = array[i];
+          filtered_field[idx * dim + j] = array[i*dim+j];
         }
       }
     });

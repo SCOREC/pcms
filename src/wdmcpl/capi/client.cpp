@@ -126,6 +126,9 @@ WdmCplFieldAdapterHandle* wdmcpl_create_xgc_field_adapter(
       wdmcpl_create_xgc_field_adapter_t<long int>(
         name, data, size, *reverse_classification, in_overlap, *field_adapter);
       break;
+    default:
+      printf("tyring to create XGC adapter with invalid type! %d", data_type);
+      std::abort();
   }
   return reinterpret_cast<WdmCplFieldAdapterHandle*>(field_adapter);
 }

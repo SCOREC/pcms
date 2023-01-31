@@ -226,3 +226,5 @@ if(WDMCPL_ENABLE_Fortran)
             NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 2 ARGS2 ${d3d1p} ${d3d2p_cpn} 1)
 endif()
 
+add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)
+target_link_libraries(xgc_n0_server PUBLIC wdmcpl::core test_support)

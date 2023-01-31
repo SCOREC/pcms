@@ -167,7 +167,21 @@ public:
     if (global_id_name_.empty()) {
       gid_array = mesh_.globals(0);
     } else {
-      gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
+      auto tag = mesh_.get_tagbase(0, global_id_name_);
+      if(Omega_h::is<GO>(tag)) {
+        gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
+      }
+      else if (Omega_h::is<LO>(tag)) {
+        auto array = mesh_.get_array<Omega_h::LO>(0, global_id_name_);
+         Omega_h::Write<Omega_h::GO> globals(array.size());
+         Omega_h::parallel_for(array.size(), OMEGA_H_LAMBDA(int i){globals[i] = array[i];});
+         gid_array = Omega_h::Read(globals);
+      }
+      else {
+        std::cerr<<"Weird tag type for global arrays.\n";
+        std::abort();
+      }
+      //gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
     }
     if (HasMask()) {
       return detail::filter_array(gid_array, GetMask(), Size());

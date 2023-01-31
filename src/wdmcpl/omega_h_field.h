@@ -220,14 +220,6 @@ auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
   return full_field;
 }
 
-// TODO Remove as customization point
-template <typename T, typename CoordinateElementType>
-auto get_nodal_gids(const OmegaHField<T, CoordinateElementType>& field)
-  -> Omega_h::Read<Omega_h::GO>
-{
-  return field.GetGids();
-}
-
 // TODO since Omega_h owns coordinate data, we could potentially
 // return a view of the data without lifetime issues.
 template <typename T, typename CoordinateElementType>

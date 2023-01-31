@@ -89,7 +89,7 @@ public:
   }
 
   // REQUIRED
-  [[nodiscard]] const std::vector<GO> GetGids() const
+  [[nodiscard]] std::vector<GO> GetGids() const
   {
     std::vector<GO> gids(mask_.Size());
     auto v1 = make_array_view(gids_);

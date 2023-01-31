@@ -132,23 +132,25 @@ public:
     FieldAdapterT& field_adapter,
     redev::TransportType transport_type = redev::TransportType::BP4,
     adios2::Params params = adios2::Params{{"Streaming", "On"},
-                                           {"OpenTimeoutSecs", "30"}})
+                                           {"OpenTimeoutSecs", "30"}},
+    std::string_view path="")
     : mpi_comm_(mpi_comm),
       comm_buffer_{},
       message_permutation_{},
       buffer_size_needs_update_{true},
       field_adapter_(field_adapter),
       redev_{redev},
-      name_{std::move(name)}
+      name_{std::move(name)},
+      path_{std::string(path)}
   {
     std::string transport_name = name_;
-    comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type);
+    comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type, path);
     // set up GID comm to do setup phase and get the
     // FIXME: use  one directional comm instead of the adios bidirectional
     // comm
     transport_name = transport_name.append("_gids");
     gid_comm_ = redev_.CreateAdiosClient<wdmcpl::GO>(transport_name, params,
-                                                     transport_type);
+                                                     transport_type,path_);
     UpdateLayout();
   }
 
@@ -222,6 +224,7 @@ private:
   FieldAdapterT& field_adapter_;
   redev::Redev& redev_;
   std::string name_;
+  std::string path_;
 };
 template <>
 struct FieldCommunicator<void>

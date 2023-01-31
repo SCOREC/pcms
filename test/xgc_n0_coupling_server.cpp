@@ -44,22 +44,25 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       return 0;
     });
   std::vector<wdmcpl::ConvertibleCoupledField*> potential_fields(nphi);
+  std::cerr<<"ADDING FIELDS\n";
   for (int i = 0; i < nphi; ++i) {
     std::stringstream field1_name;
-    field1_name << "deltaf1/"
-                << "dpot_plane_" << i;
-    cpl.AddField(field1_name.str(),
+    field1_name << "dpot_plane_" << i;
+    std::cerr<<field1_name.str()<<"\n";
+    potential_fields[i] = cpl.AddField(field1_name.str(),
                  wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>(
                    field1_name.str(), mesh, is_overlap, numbering),
                  FieldTransferMethod::Copy, // to Omega_h
                  FieldEvaluationMethod::None,
                  FieldTransferMethod::Copy, // from Omega_h
-                 FieldEvaluationMethod::None, is_overlap);
+                 FieldEvaluationMethod::None, is_overlap,"deltaf1/");
+    std::cerr<<field1_name.str()<<" DONE\n";
   }
+  std::cerr<<"SEND/Recv loop started\n";
   while (true) {
-
     // TODO: do this w/o blocking
     for (auto* field : potential_fields) {
+      WDMCPL_ALWAYS_ASSERT(field != nullptr);
       field->Receive();
     }
     for (auto* field : potential_fields) {

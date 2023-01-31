@@ -10,12 +10,14 @@ class CoupledField
 public:
   template <typename FieldAdapterT>
   CoupledField(const std::string& name, FieldAdapterT field_adapter,
-               redev::Redev& redev, MPI_Comm mpi_comm)
+               redev::Redev& redev, MPI_Comm mpi_comm,
+               redev::TransportType transport_type,
+               adios2::Params params)
   {
 
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
-        name, std::move(field_adapter), redev, mpi_comm);
+        name, std::move(field_adapter), redev, mpi_comm, transport_type, std::move(params));
   }
 
   void Send() { coupled_field_->Send(); }
@@ -31,15 +33,17 @@ public:
   {
     using value_type = typename FieldAdapterT::value_type;
 
-    CoupledFieldModel(FieldAdapterT&& field_adapter,
-                      FieldCommunicator<CommT>&& comm)
-      : field_adapter_(std::move(field_adapter)), comm_(std::move(comm))
-    {
-    }
+    //CoupledFieldModel(FieldAdapterT&& field_adapter,
+    //                  FieldCommunicator<CommT>&& comm)
+    //  : field_adapter_(std::move(field_adapter)), comm_(std::move(comm))
+    //{
+    //}
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
-                      redev::Redev& redev, MPI_Comm mpi_comm)
+                      redev::Redev& redev, MPI_Comm mpi_comm,
+                      redev::TransportType transport_type, adios2::Params&& params)
       : field_adapter_(std::move(field_adapter)),
-        comm_(FieldCommunicator<CommT>(name, redev, mpi_comm, field_adapter_))
+        comm_(FieldCommunicator<CommT>(name, redev, mpi_comm, field_adapter_,
+                                       transport_type, std::move(params)))
     {
     }
     void Send() final { comm_.Send(); };
@@ -60,10 +64,13 @@ public:
   {
   }
   template <typename FieldAdapterT>
-  CoupledField* AddField(std::string unique_name, FieldAdapterT field_adapter)
+  CoupledField* AddField(std::string unique_name, FieldAdapterT field_adapter,
+                         redev::TransportType transport_type=redev::TransportType::BP4,
+                         adios2::Params params = {{"Streaming", "On"},
+                                                  {"OpenTimeoutSecs", "400"}})
   {
     auto [it, inserted] = fields_.template try_emplace(
-      unique_name, unique_name, std::move(field_adapter), redev_, mpi_comm_);
+      unique_name, unique_name, std::move(field_adapter), redev_, mpi_comm_,transport_type,params);
     if (!inserted) {
       std::cerr << "OHField with this name" << unique_name
                 << "already exists!\n";

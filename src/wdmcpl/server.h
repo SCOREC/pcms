@@ -52,7 +52,10 @@ public:
                           Omega_h::Mesh& internal_mesh,
                           TransferOptions native_to_internal,
                           TransferOptions internal_to_native,
-                          Omega_h::Read<Omega_h::I8> internal_field_mask = {})
+                          Omega_h::Read<Omega_h::I8> internal_field_mask,
+                          redev::TransportType transport_type,
+                          adios2::Params params,
+                          std::string path)
     : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
                                   InternalCoordinateElement>(
         name + ".__internal__", internal_mesh, internal_field_mask)}
@@ -60,7 +63,7 @@ public:
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
         name, std::move(field_adapter), redev, mpi_comm,
-        std::move(native_to_internal), std::move(internal_to_native));
+        std::move(native_to_internal), std::move(internal_to_native),transport_type, std::move(params), std::move(path));
   }
 
   void Send() { coupled_field_->Send(); }
@@ -107,10 +110,13 @@ public:
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
                       redev::Redev& redev, MPI_Comm mpi_comm,
                       TransferOptions&& native_to_internal,
-                      TransferOptions&& internal_to_native)
+                      TransferOptions&& internal_to_native,
+                      redev::TransportType transport_type,
+                      adios2::Params&& params,
+                      std::string_view path)
       : field_adapter_(std::move(field_adapter)),
         comm_(FieldCommunicator<FieldAdapterT>(name, redev, mpi_comm,
-                                               field_adapter_)),
+                                               field_adapter_, transport_type, params, path)),
         native_to_internal_(std::move(native_to_internal)),
         internal_to_native_(std::move(internal_to_native))
     {
@@ -242,6 +248,8 @@ public:
       internal_mesh_(mesh)
   {
   }
+  // FIXME should take a file path for the parameters, not take adios2 params.
+  // These fields are supposed to be agnostic to adios2...
   template <typename FieldAdapterT>
   ConvertibleCoupledField* AddField(
     std::string unique_name, FieldAdapterT field_adapter,
@@ -249,14 +257,18 @@ public:
     FieldEvaluationMethod to_field_eval_method,
     FieldTransferMethod from_field_transfer_method,
     FieldEvaluationMethod from_field_eval_method,
-    Omega_h::Read<Omega_h::I8> internal_field_mask = {})
+    Omega_h::Read<Omega_h::I8> internal_field_mask = {},
+    std::string path = "",
+    redev::TransportType transport_type = redev::TransportType::BP4,
+    adios2::Params params = {{"Streaming", "On"},
+                   {"OpenTimeoutSecs", "30"}})
   {
     auto [it, inserted] = fields_.template try_emplace(
       unique_name, unique_name, std::move(field_adapter), redev_, mpi_comm_,
       internal_mesh_,
       TransferOptions{to_field_transfer_method, to_field_eval_method},
       TransferOptions{from_field_transfer_method, from_field_eval_method},
-      internal_field_mask);
+      internal_field_mask, transport_type, std::move(params),std::move(path));
     if (!inserted) {
       std::cerr << "OHField with this name" << unique_name
                 << "already exists!\n";

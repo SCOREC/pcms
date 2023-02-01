@@ -43,38 +43,56 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       }
       return 0;
     });
-  std::vector<wdmcpl::ConvertibleCoupledField*> potential_fields(nphi*2);
-  std::cerr<<"ADDING FIELDS\n";
+  std::vector<wdmcpl::ConvertibleCoupledField*> potential_fields(nphi * 2);
+  std::vector<wdmcpl::ScatterOperation*> scatter_ops(nphi);
+  std::vector<wdmcpl::GatherOperation*> gather_ops(nphi);
+  std::cerr << "ADDING FIELDS\n";
   for (int i = 0; i < nphi; ++i) {
     std::stringstream field1_name;
     field1_name << "dpot_plane_" << i;
-    std::cerr<<field1_name.str()<<"\n";
-    potential_fields[2*i] = cpl.AddField(field1_name.str(),
-                 wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>(
-                   field1_name.str(), mesh, is_overlap, numbering),
-                 FieldTransferMethod::Copy, // to Omega_h
-                 FieldEvaluationMethod::None,
-                 FieldTransferMethod::Copy, // from Omega_h
-                 FieldEvaluationMethod::None, is_overlap,"deltaf1/");
-    potential_fields[2*i+1] = cpl.AddField(field1_name.str(),
-                                         wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>(
-                                         field1_name.str(), mesh, is_overlap, numbering),
-                                         FieldTransferMethod::Copy, // to Omega_h
-                                         FieldEvaluationMethod::None,
-                                         FieldTransferMethod::Copy, // from Omega_h
-                                         FieldEvaluationMethod::None, is_overlap,"deltaf2/");
-    std::cerr<<field1_name.str()<<" DONE\n";
+    std::cerr << field1_name.str() << "\n";
+    potential_fields[2 * i] =
+      cpl.AddField(field1_name.str(),
+                   wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>(
+                     field1_name.str(), mesh, is_overlap, numbering),
+                   FieldTransferMethod::Copy, // to Omega_h
+                   FieldEvaluationMethod::None,
+                   FieldTransferMethod::Copy, // from Omega_h
+                   FieldEvaluationMethod::None, is_overlap, "deltaf1/");
+    potential_fields[2 * i + 1] =
+      cpl.AddField(field1_name.str(),
+                   wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>(
+                     field1_name.str(), mesh, is_overlap, numbering),
+                   FieldTransferMethod::Copy, // to Omega_h
+                   FieldEvaluationMethod::None,
+                   FieldTransferMethod::Copy, // from Omega_h
+                   FieldEvaluationMethod::None, is_overlap, "deltaf2/");
+    gather_ops[i] = cpl.AddGatherFieldsOp(
+      field1_name.str(),
+      {"deltaf1/" + field1_name.str(), "deltaf2/" + field1_name.str()},
+      "combined" + field1_name.str(), ts::MeanCombiner{}, is_overlap);
+    scatter_ops[i] = cpl.AddScatterFieldsOp(
+      field1_name.str(), "combined" + field1_name.str(),
+      {"deltaf1/" + field1_name.str(), "deltaf2/" + field1_name.str()},
+      is_overlap);
+    std::cerr << field1_name.str() << " DONE\n";
   }
-  std::cerr<<"SEND/Recv loop started\n";
+  std::cerr << "SEND/Recv loop started\n";
   while (true) {
+    for(auto* gather : gather_ops) {
+      gather->Run();
+    }
+    for(auto* scatter : scatter_ops) {
+      scatter->Run();
+    }
     // TODO: do this w/o blocking...
-    for (auto* field : potential_fields) {
-      WDMCPL_ALWAYS_ASSERT(field != nullptr);
-      field->Receive();
-    }
-    for (auto* field : potential_fields) {
-      field->Send();
-    }
+    //for (auto* field : potential_fields) {
+    //  WDMCPL_ALWAYS_ASSERT(field != nullptr);
+    //  field->Receive();
+    //}
+    //for (auto* field : potential_fields) {
+    //  field->Send();
+    //}
   }
 }
 

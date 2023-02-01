@@ -65,7 +65,7 @@ public:
   }
   template <typename FieldAdapterT>
   CoupledField* AddField(std::string unique_name, FieldAdapterT field_adapter,
-                         redev::TransportType transport_type=redev::TransportType::BP4,
+                         redev::TransportType transport_type=redev::TransportType::SST,
                          adios2::Params params = {{"Streaming", "On"},
                                                   {"OpenTimeoutSecs", "400"}})
   {

@@ -1,4 +1,5 @@
 add_library(wdmcpl_fortranapi wdmcpl.f90 client_wrap.c)
+target_compile_definitions(wdmcpl_fortranapi PUBLIC HAVE_MPI)
 add_library(wdmcpl::fortranapi ALIAS wdmcpl_fortranapi)
 set_target_properties(wdmcpl_fortranapi PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/fortran
         OUTPUT_NAME wdmcplfortranapi

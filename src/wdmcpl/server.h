@@ -264,7 +264,7 @@ public:
                    {"OpenTimeoutSecs", "30"}})
   {
     auto [it, inserted] = fields_.template try_emplace(
-      unique_name, unique_name, std::move(field_adapter), redev_, mpi_comm_,
+      path+unique_name, unique_name, std::move(field_adapter), redev_, mpi_comm_,
       internal_mesh_,
       TransferOptions{to_field_transfer_method, to_field_eval_method},
       TransferOptions{from_field_transfer_method, from_field_eval_method},

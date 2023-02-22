@@ -266,13 +266,13 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
           array[i] = mask[i] ? data(mask[i] - 1) : original_data[i];
         });
-      mesh.set_tag(0, field.GetName(), Omega_h::Read<U>(array));
+      mesh.set_tag(0, field.GetName(), Omega_h::Read<T>(array));
     } else {
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
           array[i] = mask[i] ? data(mask[i] - 1) : 0;
         });
-      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<U>(array));
+      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<T>(array));
     }
   } else {
     WDMCPL_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh.nents(0));
@@ -280,9 +280,9 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
     Omega_h::parallel_for(
       data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
     if (has_tag) {
-      mesh.set_tag(0, field.GetName(), Omega_h::Read<U>(array));
+      mesh.set_tag(0, field.GetName(), Omega_h::Read<T>(array));
     } else {
-      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<U>(array));
+      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<T>(array));
     }
   }
   WDMCPL_ALWAYS_ASSERT(mesh.has_tag(0, field.GetName()));

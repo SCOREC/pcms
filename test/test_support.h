@@ -147,8 +147,8 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
   }
   return 0;
 }
-using EntInOverlapFunc = std::function<Omega_h::I8(const int, const int)>;
-static_assert(std::is_constructible_v<EntInOverlapFunc, decltype(isModelEntInOverlap)>);
+//using EntInOverlapFunc = std::function<Omega_h::I8(const int, const int)>;
+//static_assert(std::is_constructible_v<EntInOverlapFunc, decltype(isModelEntInOverlap)>);
 /**
  * On the server we mark the vertices on each process that are in the overlap
  * region and are owned by the process as defined by the Classification
@@ -163,17 +163,71 @@ static_assert(std::is_constructible_v<EntInOverlapFunc, decltype(isModelEntInOve
  * using the ownership of mesh entities following the mesh partition ownership
  * is OK. The function markMeshOverlapRegion(...) supports this.
  */
+template <typename EntInOverlapFunc>
 Omega_h::Read<Omega_h::I8> markServerOverlapRegion(
   Omega_h::Mesh& mesh, const redev::ClassPtn& classPtn,
-  const EntInOverlapFunc& entInOverlap);
+  EntInOverlapFunc&& entInOverlap) {
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  // transfer vtx classification to host
+  auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
+  auto classIds_h = Omega_h::HostRead(classIds);
+  auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
+  auto classDims_h = Omega_h::HostRead(classDims);
+  auto isOverlap = Omega_h::Write<Omega_h::I8>(classIds.size(), "isOverlap");
+  Omega_h::parallel_for(
+    classIds.size(), OMEGA_H_LAMBDA(int i) {
+      isOverlap[i] = entInOverlap(classDims[i], classIds[i]);
+    });
+  auto owned_h = Omega_h::HostRead(mesh.owned(0));
+  auto isOverlap_h = Omega_h::HostRead<Omega_h::I8>(isOverlap);
+  // mask to only class partition owned entities
+  auto isOverlapOwned = Omega_h::HostWrite<Omega_h::I8>(
+    classIds.size(), "isOverlapAndOwnsModelEntInClassPartition");
+  for (int i = 0; i < mesh.nverts(); i++) {
+    redev::ClassPtn::ModelEnt ent(classDims_h[i], classIds_h[i]);
+    auto destRank = classPtn.GetRank(ent);
+    auto isModelEntOwned = (destRank == rank);
+    isOverlapOwned[i] = isModelEntOwned && isOverlap_h[i];
+    if (owned_h[i] && !isModelEntOwned) {
+      fprintf(stderr, "%d owner conflict %d ent (%d,%d) owner %d owned %d\n",
+              rank, i, classDims_h[i], classIds_h[i], destRank, owned_h[i]);
+    }
+  }
+  auto isOverlapOwned_dr = Omega_h::Read<Omega_h::I8>(isOverlapOwned);
+  // auto isOverlapOwned_hr = Omega_h::HostRead(isOverlapOwned_dr);
+  mesh.add_tag(0, "isOverlap", 1, isOverlapOwned_dr);
+  return isOverlapOwned_dr;
+
+}
 /**
  * Create the tag 'isOverlap' for each mesh vertex whose value is 1 if the
  * vertex is classified on a model entity in the closure of the geometric model
  * faces forming the overlap region; the value is 0 otherwise.
  * OnlyIncludesOverlapping and owned verts
  */
+template <typename EntInOverlapFunc>
 Omega_h::Read<Omega_h::I8> markOverlapMeshEntities(
-  Omega_h::Mesh& mesh, const EntInOverlapFunc& entInOverlap);
+  Omega_h::Mesh& mesh, EntInOverlapFunc&& entInOverlap) {
+  // transfer vtx classification to host
+  auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
+  auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
+  auto isOverlap = Omega_h::Write<Omega_h::I8>(classIds.size(), "isOverlap");
+  auto markOverlap = OMEGA_H_LAMBDA(int i)
+  {
+    isOverlap[i] = entInOverlap(classDims[i], classIds[i]);
+  };
+  Omega_h::parallel_for(classIds.size(), markOverlap);
+  auto isOwned = mesh.owned(0);
+  // try masking out to only owned entities
+  Omega_h::parallel_for(
+    isOverlap.size(),
+    OMEGA_H_LAMBDA(int i) { isOverlap[i] = (isOwned[i] && isOverlap[i]); });
+
+  auto isOverlap_r = Omega_h::read(isOverlap);
+  mesh.add_tag(0, "isOverlap", 1, isOverlap_r);
+  return isOverlap_r;
+}
 
 redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
                                      std::string_view cpnFileName);

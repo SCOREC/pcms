@@ -33,11 +33,6 @@ public:
   {
     using value_type = typename FieldAdapterT::value_type;
 
-    //CoupledFieldModel(FieldAdapterT&& field_adapter,
-    //                  FieldCommunicator<CommT>&& comm)
-    //  : field_adapter_(std::move(field_adapter)), comm_(std::move(comm))
-    //{
-    //}
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
                       redev::Redev& redev, MPI_Comm mpi_comm,
                       redev::TransportType transport_type, adios2::Params&& params)

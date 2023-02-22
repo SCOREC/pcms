@@ -5,6 +5,7 @@
 #include "test_support.h"
 #include <wdmcpl/omega_h_field.h>
 #include <wdmcpl/xgc_field_adapter.h>
+#include <chrono>
 
 using wdmcpl::ConstructRCFromOmegaHMesh;
 using wdmcpl::Copy;
@@ -13,6 +14,7 @@ using wdmcpl::CouplerServer;
 using wdmcpl::FieldEvaluationMethod;
 using wdmcpl::FieldTransferMethod;
 using wdmcpl::GO;
+using wdmcpl::LO;
 using wdmcpl::Lagrange;
 using wdmcpl::make_array_view;
 using wdmcpl::OmegaHField;
@@ -29,20 +31,45 @@ namespace ts = test_support;
 void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
                     std::string_view cpn_file, int nphi)
 {
+  std::chrono::duration<double> elapsed_seconds;
+  double min, max, avg;
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+  auto time1 = std::chrono::steady_clock::now();
+  // Should construct the global ids
+  //Omega_h::reorder_by_hilbert(&mesh); 
+  //auto ids = mesh.get_array<LO>(0,"simNumbering");
+  //auto gids_array = Omega_h::Write<GO>(ids.size());
+  //Omega_h::parallel_for(ids.size(),OMEGA_H_LAMBDA(int i){
+  //  gids_array[i] = ids[i] - 1;
+  //});
+  //if(mesh.has_tag(0,"global")) {
+  //  mesh.set_tag<GO>(0, "global", gids_array); 
+  //} else {
+  //  mesh.add_tag<GO>(0, "global", 1, gids_array); 
+  //}
+
+
   wdmcpl::CouplerServer cpl("xgc_n0_coupling", comm,
-                            ts::setupServerPartition(mesh, cpn_file), mesh);
+                            redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
-  ReverseClassificationVertex rc;
   std::string numbering = "simNumbering";
   WDMCPL_ALWAYS_ASSERT(mesh.has_tag(0, numbering));
 
   auto is_overlap = ts::markServerOverlapRegion(
-    mesh, partition, [](const int dim, const int id) {
-      if (id >= 1 && id <= 2) {
+    mesh, partition, KOKKOS_LAMBDA(const int dim, const int id) {
+      //if (id >= 1 && id <= 2) {
+      //  return 1;
+      //}
+      if (id >= 100 && id <= 140) {
         return 1;
       }
       return 0;
     });
+  auto time2 = std::chrono::steady_clock::now();
+  elapsed_seconds = time2-time1;
+  ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
+  if(!rank) ts::printTime("Initialize Coupler/Mesh", min, max, avg);
   std::vector<wdmcpl::ConvertibleCoupledField*> potential_fields(nphi * 2);
   std::vector<wdmcpl::ScatterOperation*> scatter_ops(nphi);
   std::vector<wdmcpl::GatherOperation*> gather_ops(nphi);
@@ -77,14 +104,26 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       is_overlap);
     std::cerr << field1_name.str() << " DONE\n";
   }
-  std::cerr << "SEND/Recv loop started\n";
+  auto time3 = std::chrono::steady_clock::now();
+  elapsed_seconds = time3-time2;
+  ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
+  if(!rank) ts::printTime("Add Meshes", min, max, avg);
   while (true) {
+    auto sr_time1 = std::chrono::steady_clock::now();
     for(auto* gather : gather_ops) {
       gather->Run();
     }
+    auto sr_time2 = std::chrono::steady_clock::now();
+    elapsed_seconds = sr_time2-sr_time1;
+    ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
+    if(!rank) ts::printTime("Gather", min, max, avg);
     for(auto* scatter : scatter_ops) {
       scatter->Run();
     }
+    auto sr_time3 = std::chrono::steady_clock::now();
+    elapsed_seconds = sr_time3-sr_time2;
+    ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
+    if(!rank) ts::printTime("Scatter", min, max, avg);
     // TODO: do this w/o blocking...
     //for (auto* field : potential_fields) {
     //  WDMCPL_ALWAYS_ASSERT(field != nullptr);

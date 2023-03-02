@@ -11,24 +11,27 @@
 
 namespace wdmcpl
 {
-namespace detail {
-  // Needed since NVHPC doesn't work with overloaded
-  struct GetRank {
-    using GeomType = DimID;
-    GetRank(const GeomType& geom) : geom_(geom) {}
-        auto operator()(const redev::ClassPtn& ptn) const {
-          const auto ent = redev::ClassPtn::ModelEnt(
-            {geom_.dim, geom_.id});
-          return ptn.GetRank(ent);
-        }
-        auto operator()(const redev::RCBPtn& /*unused*/) const {
-          std::cerr << "RCB partition not handled yet\n";
-          std::terminate();
-          return 0;
-        }
+namespace detail
+{
+// Needed since NVHPC doesn't work with overloaded
+struct GetRank
+{
+  using GeomType = DimID;
+  GetRank(const GeomType& geom) : geom_(geom) {}
+  auto operator()(const redev::ClassPtn& ptn) const
+  {
+    const auto ent = redev::ClassPtn::ModelEnt({geom_.dim, geom_.id});
+    return ptn.GetRank(ent);
+  }
+  auto operator()(const redev::RCBPtn& /*unused*/) const
+  {
+    std::cerr << "RCB partition not handled yet\n";
+    std::terminate();
+    return 0;
+  }
   const GeomType& geom_;
-  };
-}
+};
+} // namespace detail
 
 template <typename T, typename CoordinateElementType = Real>
 class XGCFieldAdapter
@@ -72,10 +75,12 @@ public:
   {
     static_assert(std::is_same_v<memory_space, wdmcpl::HostMemorySpace>,
                   "gpu space unhandled\n");
-    auto const_data =
-      ScalarArrayView<const T, memory_space>{data_.data_handle(), data_.size()};
-    if (buffer.size() > 0) {
-      mask_.Apply(const_data, buffer, permutation);
+    if(RankParticipatesCouplingCommunication()) {
+      auto const_data =
+        ScalarArrayView<const T, memory_space>{data_.data_handle(), data_.size()};
+      if (buffer.size() > 0) {
+        mask_.Apply(const_data, buffer, permutation);
+      }
     }
     return mask_.Size();
   }
@@ -85,7 +90,9 @@ public:
   {
     static_assert(std::is_same_v<memory_space, wdmcpl::HostMemorySpace>,
                   "gpu space unhandled\n");
-    mask_.ToFullArray(buffer, data_, permutation);
+    if(RankParticipatesCouplingCommunication()) {
+      mask_.ToFullArray(buffer, data_, permutation);
+    }
   }
 
   // REQUIRED
@@ -122,6 +129,10 @@ public:
       }
     }
     return reverse_partition;
+  }
+  [[nodiscard]] bool RankParticipatesCouplingCommunication() const noexcept
+  {
+    return true;
   }
 
 private:

@@ -54,28 +54,33 @@ Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
 {
   static_assert(dim > 0, "array dimension must be >0");
   Omega_h::Write<T> filtered_field(size * dim);
-  WDMCPL_ALWAYS_ASSERT(array.size() == mask.size()*dim);
+  WDMCPL_ALWAYS_ASSERT(array.size() == mask.size() * dim);
   WDMCPL_ALWAYS_ASSERT(filtered_field.size() <= array.size());
   Omega_h::parallel_for(
     mask.size(), OMEGA_H_LAMBDA(LO i) {
       if (mask[i]) {
         const auto idx = mask[i] - 1;
         for (int j = 0; j < dim; ++j) {
-          filtered_field[idx * dim + j] = array[i*dim+j];
+          filtered_field[idx * dim + j] = array[i * dim + j];
         }
       }
     });
   return filtered_field;
 }
-struct GetRankOmegaH {
+struct GetRankOmegaH
+{
   GetRankOmegaH(int i, Omega_h::HostRead<Omega_h::I8> dims,
-                Omega_h::HostRead<Omega_h::ClassId> ids) : i_(i), ids_(ids), dims_(dims) {}
-  auto operator()(const redev::ClassPtn& ptn) const {
-    const auto ent =
-    redev::ClassPtn::ModelEnt({dims_[i_], ids_[i_]});
+                Omega_h::HostRead<Omega_h::ClassId> ids)
+    : i_(i), ids_(ids), dims_(dims)
+  {
+  }
+  auto operator()(const redev::ClassPtn& ptn) const
+  {
+    const auto ent = redev::ClassPtn::ModelEnt({dims_[i_], ids_[i_]});
     return ptn.GetRank(ent);
   }
-  auto operator()(const redev::RCBPtn& /*unused*/) {
+  auto operator()(const redev::RCBPtn& /*unused*/)
+  {
     std::cerr << "RCB partition not handled yet\n";
     std::terminate();
     return 0;
@@ -83,7 +88,6 @@ struct GetRankOmegaH {
   int i_;
   Omega_h::HostRead<Omega_h::ClassId> ids_;
   Omega_h::HostRead<Omega_h::I8> dims_;
-
 };
 } // namespace detail
 
@@ -130,8 +134,7 @@ public:
         policy, detail::ComputeMaskAV{index_mask_view, mask_view}, size_);
       Kokkos::parallel_for(policy, detail::ScaleAV{index_mask_view, mask_view});
       mask_ = index_mask;
-    }
-    else {
+    } else {
       size_ = mesh.nents(0);
     }
   }
@@ -168,20 +171,19 @@ public:
       gid_array = mesh_.globals(0);
     } else {
       auto tag = mesh_.get_tagbase(0, global_id_name_);
-      if(Omega_h::is<GO>(tag)) {
+      if (Omega_h::is<GO>(tag)) {
         gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
-      }
-      else if (Omega_h::is<LO>(tag)) {
+      } else if (Omega_h::is<LO>(tag)) {
         auto array = mesh_.get_array<Omega_h::LO>(0, global_id_name_);
-         Omega_h::Write<Omega_h::GO> globals(array.size());
-         Omega_h::parallel_for(array.size(), OMEGA_H_LAMBDA(int i){globals[i] = array[i];});
-         gid_array = Omega_h::Read(globals);
-      }
-      else {
-        std::cerr<<"Weird tag type for global arrays.\n";
+        Omega_h::Write<Omega_h::GO> globals(array.size());
+        Omega_h::parallel_for(
+          array.size(), OMEGA_H_LAMBDA(int i) { globals[i] = array[i]; });
+        gid_array = Omega_h::Read(globals);
+      } else {
+        std::cerr << "Weird tag type for global arrays.\n";
         std::abort();
       }
-      //gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
+      // gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
     }
     if (HasMask()) {
       return detail::filter_array(gid_array, GetMask(), Size());
@@ -252,7 +254,8 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
                     ScalarArrayView<const U, OmegaHMemorySpace::type> data)
   -> void
 {
-  static_assert(std::is_convertible_v<T,U>, "must be able to convert nodal data into the field types data");
+  static_assert(std::is_convertible_v<T, U>,
+                "must be able to convert nodal data into the field types data");
   auto& mesh = field.GetMesh();
   const auto has_tag = mesh.has_tag(0, field.GetName());
   if (field.HasMask()) {
@@ -373,8 +376,7 @@ auto evaluate(
   const OmegaHField<T, CoordinateElementType>& field, Method&& m,
   ScalarArrayView<const CoordinateElementType, HostMemorySpace> coordinates)
   -> std::enable_if_t<
-    !std::is_same_v<typename OmegaHMemorySpace::type,
-                    HostMemorySpace>,
+    !std::is_same_v<typename OmegaHMemorySpace::type, HostMemorySpace>,
     Omega_h::HostRead<T>>
 
 {
@@ -482,7 +484,8 @@ public:
     wdmcpl::ReversePartitionMap reverse_partition;
     wdmcpl::LO local_index = 0;
     for (auto i = 0; i < classIds_h.size(); i++) {
-      auto dr = std::visit(detail::GetRankOmegaH{i,classDims_h,classIds_h}, partition);
+      auto dr = std::visit(detail::GetRankOmegaH{i, classDims_h, classIds_h},
+                           partition);
       reverse_partition[dr].emplace_back(local_index++);
     }
     return reverse_partition;
@@ -498,6 +501,7 @@ public:
   {
     return field_;
   }
+  [[nodiscard]] bool RankParticipatesCouplingCommunication() const noexcept { return true; }
 
 private:
   OmegaHField<T, CoordinateElementType> field_;

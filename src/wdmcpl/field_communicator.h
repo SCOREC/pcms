@@ -143,15 +143,19 @@ public:
       name_{std::move(name)},
       path_{std::string(path)}
   {
-    std::string transport_name = name_;
-    comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type, path);
-    // set up GID comm to do setup phase and get the
-    // FIXME: use  one directional comm instead of the adios bidirectional
-    // comm
-    transport_name = transport_name.append("_gids");
-    gid_comm_ = redev_.CreateAdiosClient<wdmcpl::GO>(transport_name, params,
-                                                     transport_type,path_);
-    UpdateLayout();
+    if(field_adapter_.RankParticipatesCouplingCommunication()) {
+      std::string transport_name = name_;
+      comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type, path);
+      // set up GID comm to do setup phase and get the
+      // FIXME: use  one directional comm instead of the adios bidirectional
+      // comm
+      transport_name = transport_name.append("_gids");
+      gid_comm_ = redev_.CreateAdiosClient<wdmcpl::GO>(transport_name, params,
+                                                       transport_type,path_);
+      UpdateLayout();
+    } else {
+      comm_ = redev_.CreateNoOpClient<T>();
+    }
   }
 
   FieldCommunicator(const FieldCommunicator&) = delete;

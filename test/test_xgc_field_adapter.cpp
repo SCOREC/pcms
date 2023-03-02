@@ -89,7 +89,7 @@ TEMPLATE_TEST_CASE("XGC Field Adapter", "[adapter]", wdmcpl::LO, wdmcpl::Real)
   std::cout << "Num in overlap: " << num_in_overlap << "\n";
 
   std::cerr<<"creating addapter\n";
-  XGCFieldAdapter<TestType> field_adapter("fa", make_array_view(dummy_data),
+  XGCFieldAdapter<TestType> field_adapter("fa", MPI_COMM_SELF, make_array_view(dummy_data),
                                           reverse_classification, in_overlap);
   std::cerr<<"getting gids\n";
   auto gids = field_adapter.GetGids();

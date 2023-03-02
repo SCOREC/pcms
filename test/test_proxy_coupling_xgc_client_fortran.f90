@@ -62,7 +62,7 @@ Program main
         data(ix) = ix
     end do
 
-    xgc_adapter = wdmcpl_create_xgc_field_adapter("a1", c_loc(data_pointer),&
+    xgc_adapter = wdmcpl_create_xgc_field_adapter("a1", MPI_COMM_SELF, c_loc(data_pointer),&
             nverts, WDMCPL_LONG_INT, reverse_classification, in_overlap)
     field = wdmcpl_add_field(client, "xgc_gids", xgc_adapter)
     call wdmcpl_send_field(field)

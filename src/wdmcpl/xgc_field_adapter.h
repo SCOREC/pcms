@@ -40,12 +40,23 @@ public:
   using memory_space = HostMemorySpace;
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
-  /// The xgc field adapter does not currently deal with parallel meshes since
-  /// XGC meshes are always on a single rank
-  XGCFieldAdapter(std::string name, ScalarArrayView<T, memory_space> data,
+  /**
+   *
+   * @param name name of the field
+   * @param plane_communicator the communicator of all ranks corresponding to a
+   * given XGC plane. This corresponds to sml_plane_comm
+   * @param data a view of the data to be used as the field definition
+   * @param reverse_classification the reverse classification data for the XGC
+   * field
+   * @param in_overlap a function describing if an entity defined by the
+   * geometric dimension and ID
+   */
+  XGCFieldAdapter(std::string name, MPI_Comm plane_communicator,
+                  ScalarArrayView<T, memory_space> data,
                   const ReverseClassificationVertex& reverse_classification,
                   std::function<int8_t(int, int)> in_overlap)
     : name_(std::move(name)),
+      plane_comm_(plane_communicator),
       data_(data),
       gids_(data.size()),
       reverse_classification_(reverse_classification),
@@ -67,6 +78,7 @@ public:
     //// XGC meshes are naively ordered in iteration order (full mesh on every
     //// cpu)
     std::iota(gids_.begin(), gids_.end(), static_cast<GO>(0));
+    MPI_Comm_rank(plane_comm_, &plane_rank_);
   }
 
   int Serialize(
@@ -75,9 +87,9 @@ public:
   {
     static_assert(std::is_same_v<memory_space, wdmcpl::HostMemorySpace>,
                   "gpu space unhandled\n");
-    if(RankParticipatesCouplingCommunication()) {
-      auto const_data =
-        ScalarArrayView<const T, memory_space>{data_.data_handle(), data_.size()};
+    if (RankParticipatesCouplingCommunication()) {
+      auto const_data = ScalarArrayView<const T, memory_space>{
+        data_.data_handle(), data_.size()};
       if (buffer.size() > 0) {
         mask_.Apply(const_data, buffer, permutation);
       }
@@ -90,8 +102,12 @@ public:
   {
     static_assert(std::is_same_v<memory_space, wdmcpl::HostMemorySpace>,
                   "gpu space unhandled\n");
-    if(RankParticipatesCouplingCommunication()) {
+    if (RankParticipatesCouplingCommunication()) {
       mask_.ToFullArray(buffer, data_, permutation);
+    } else {
+      // duplicate the data on the root rank of the plane to all other ranks
+      MPI_Bcast(data_.data_handle(), data_.size(),
+                redev::getMpiType(value_type{}), plane_root_, plane_comm_);
     }
   }
 
@@ -132,16 +148,20 @@ public:
   }
   [[nodiscard]] bool RankParticipatesCouplingCommunication() const noexcept
   {
-    return true;
+    // only do adios communications on 0 rank of the XGC fields
+    return (plane_rank_ == plane_root_);
   }
 
 private:
   std::string name_;
+  MPI_Comm plane_comm_;
+  int plane_rank_;
   ScalarArrayView<T, memory_space> data_;
   std::vector<GO> gids_;
   const ReverseClassificationVertex& reverse_classification_;
   std::function<int8_t(int, int)> in_overlap_;
   ArrayMask<memory_space> mask_;
+  static constexpr int plane_root_{0};
 };
 
 struct ReadXGCNodeClassificationResult

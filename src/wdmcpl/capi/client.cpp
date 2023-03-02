@@ -91,17 +91,17 @@ void wdmcpl_receive_field(WdmCplFieldHandle* field_handle)
 }
 template <typename T>
 void wdmcpl_create_xgc_field_adapter_t(
-  const char* name, void* data, int size,
+  const char* name, MPI_Comm comm, void* data, int size,
   const wdmcpl::ReverseClassificationVertex& reverse_classification,
   in_overlap_function in_overlap, wdmcpl::FieldAdapterVariant& field_adapter)
 {
   wdmcpl::ScalarArrayView<T, wdmcpl::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<wdmcpl::XGCFieldAdapter<T>>(
-    name, data_view, reverse_classification, in_overlap);
+    name, comm, data_view, reverse_classification, in_overlap);
 }
 WdmCplFieldAdapterHandle* wdmcpl_create_xgc_field_adapter(
-  const char* name, void* data, int size, WdmCplType data_type,
+  const char* name, MPI_Comm comm, void* data, int size, WdmCplType data_type,
   const WdmCplReverseClassificationHandle* rc, in_overlap_function in_overlap)
 {
   auto* field_adapter = new wdmcpl::FieldAdapterVariant{};
@@ -112,19 +112,19 @@ WdmCplFieldAdapterHandle* wdmcpl_create_xgc_field_adapter(
   switch (data_type) {
     case WDMCPL_DOUBLE:
       wdmcpl_create_xgc_field_adapter_t<double>(
-        name, data, size, *reverse_classification, in_overlap, *field_adapter);
+        name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
       break;
     case WDMCPL_FLOAT:
       wdmcpl_create_xgc_field_adapter_t<float>(
-        name, data, size, *reverse_classification, in_overlap, *field_adapter);
+        name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
       break;
     case WDMCPL_INT:
       wdmcpl_create_xgc_field_adapter_t<int>(
-        name, data, size, *reverse_classification, in_overlap, *field_adapter);
+        name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
       break;
     case WDMCPL_LONG_INT:
       wdmcpl_create_xgc_field_adapter_t<long int>(
-        name, data, size, *reverse_classification, in_overlap, *field_adapter);
+        name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
       break;
     default:
       printf("tyring to create XGC adapter with invalid type! %d", data_type);

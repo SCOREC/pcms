@@ -45,7 +45,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   std::vector<GO> data(mesh.nverts());
 
   auto field_adapter = wdmcpl::XGCFieldAdapter<GO>(
-    "xgc_gids", make_array_view(data), rc, ts::isModelEntInOverlap);
+    "xgc_gids", comm, make_array_view(data), rc, ts::isModelEntInOverlap);
   cpl.AddField("xgc_gids", std::move(field_adapter),
                FieldTransferMethod::Copy, // to Omega_h
                FieldEvaluationMethod::None,

@@ -52,7 +52,7 @@ int wdmcpl_reverse_classification_count_verts(
 // C doesn't have a builtin bool type, so we use int for compatability with C++
 typedef int8_t (*in_overlap_function)(int, int);
 WdmCplFieldAdapterHandle* wdmcpl_create_xgc_field_adapter(
-  const char* name, void* data, int size, WdmCplType data_type,
+  const char* name, MPI_Comm plane_comm, void* data, int size, WdmCplType data_type,
   const WdmCplReverseClassificationHandle* rc, in_overlap_function in_overlap);
 
 void wdmcpl_destroy_field_adapter(WdmCplFieldAdapterHandle*);

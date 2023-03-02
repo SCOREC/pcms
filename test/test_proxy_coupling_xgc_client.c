@@ -32,7 +32,7 @@ int main(int argc, char** argv)
   const int nverts = wdmcpl_reverse_classification_count_verts(rc);
   long int* data = calloc(nverts, sizeof(long int));
   WdmCplFieldAdapterHandle* xgc_adapter = wdmcpl_create_xgc_field_adapter(
-    "adapter1", data, nverts, WDMCPL_LONG_INT, rc, &in_overlap);
+    "adapter1", MPI_COMM_SELF, data, nverts, WDMCPL_LONG_INT, rc, &in_overlap);
   WdmCplFieldHandle* field = wdmcpl_add_field(client, "xgc_gids", xgc_adapter);
   for (int i = 0; i < nverts; ++i) {
     data[i] = i;

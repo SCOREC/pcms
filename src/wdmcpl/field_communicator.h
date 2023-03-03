@@ -180,6 +180,7 @@ public:
    * @WARNING this function mut be called on *both* the client and server
    * after any modifications on the client
    */
+private:
   void UpdateLayout()
   {
     auto gids = field_adapter_.GetGids();

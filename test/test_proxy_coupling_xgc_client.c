@@ -25,17 +25,24 @@ int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
   c_kokkos_initialize_without_args();
-  WdmCplClientHandle* client = wdmcpl_create_client("proxy_couple", MPI_COMM_WORLD);
+  WdmCplClientHandle* client =
+    wdmcpl_create_client("proxy_couple", MPI_COMM_SELF);
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   const char* rc_file = argv[1];
   WdmCplReverseClassificationHandle* rc =
     wdmcpl_load_reverse_classification(rc_file, MPI_COMM_WORLD);
   const int nverts = wdmcpl_reverse_classification_count_verts(rc);
   long int* data = calloc(nverts, sizeof(long int));
   WdmCplFieldAdapterHandle* xgc_adapter = wdmcpl_create_xgc_field_adapter(
-    "adapter1", MPI_COMM_SELF, data, nverts, WDMCPL_LONG_INT, rc, &in_overlap);
+    "adapter1", MPI_COMM_WORLD, data, nverts, WDMCPL_LONG_INT, rc, &in_overlap);
   WdmCplFieldHandle* field = wdmcpl_add_field(client, "xgc_gids", xgc_adapter);
-  for (int i = 0; i < nverts; ++i) {
-    data[i] = i;
+  // only set the data on rank 0 so that we can verify that XGC Adapter
+  // properly broadcasting to the other ranks.
+  if (rank == 0) {
+    for (int i = 0; i < nverts; ++i) {
+      data[i] = i;
+    }
   }
   wdmcpl_send_field(field);
   wdmcpl_receive_field(field);

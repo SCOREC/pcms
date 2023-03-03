@@ -189,14 +189,6 @@ include(Catch)
 catch_discover_tests(unit_tests)
 
 if (WDMCPL_ENABLE_C)
-    #include(FetchContent)
-    #FetchContent_Declare(kokkos-fortran-interop
-    #  GIT_REPOSITORY https://github.com/kokkos/kokkos-fortran-interop.git
-    #  GIT_TAG develop
-    #  )
-    #set(FLCL_BUILD_EXAMPLES OFF)
-    #set(FLCL_BUILD_TESTS OFF)
-    #FetchContent_MakeAvailable(kokkos-fortran-interop)
     find_package(flcl)
     find_package(Kokkos REQUIRED)
     if (WDMCPL_ENABLE_XGC)
@@ -211,7 +203,7 @@ if (WDMCPL_ENABLE_C)
                     NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 1 ARGS2 ${d3d1p} ${d3d1p_cpn} 0)
             dual_mpi_test(TESTNAME xgc_proxy_to_omega
                     TIMEOUT 10
-                    NAME1 cinterface EXE1 $<TARGET_FILE:test_proxy_couple_xgc_c_interface> PROCS1 1 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
+                    NAME1 cinterface EXE1 $<TARGET_FILE:test_proxy_couple_xgc_c_interface> PROCS1 2 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
                     NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 2 ARGS2 ${d3d1p} ${d3d2p_cpn} 1)
         endif ()
     endif ()

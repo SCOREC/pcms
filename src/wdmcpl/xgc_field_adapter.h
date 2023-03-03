@@ -93,8 +93,9 @@ public:
       if (buffer.size() > 0) {
         mask_.Apply(const_data, buffer, permutation);
       }
+      return mask_.Size();
     }
-    return mask_.Size();
+    return 0;
   }
   void Deserialize(
     ScalarArrayView<const T, memory_space> buffer,
@@ -104,11 +105,10 @@ public:
                   "gpu space unhandled\n");
     if (RankParticipatesCouplingCommunication()) {
       mask_.ToFullArray(buffer, data_, permutation);
-    } else {
-      // duplicate the data on the root rank of the plane to all other ranks
-      MPI_Bcast(data_.data_handle(), data_.size(),
-                redev::getMpiType(value_type{}), plane_root_, plane_comm_);
     }
+    // duplicate the data on the root rank of the plane to all other ranks
+    MPI_Bcast(data_.data_handle(), data_.size(),
+              redev::getMpiType(value_type{}), plane_root_, plane_comm_);
   }
 
   // REQUIRED

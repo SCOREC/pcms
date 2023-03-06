@@ -4,6 +4,7 @@
 #include "wdmcpl/field_communicator.h"
 #include "wdmcpl/omega_h_field.h"
 #include <map>
+#include <typeinfo>
 
 namespace wdmcpl
 {
@@ -84,12 +85,26 @@ public:
   {
     return internal_field_;
   }
+  template <typename T>
+  [[nodiscard]]
+  T* GetFieldAdapter() const {
+    if(typeid(T) == coupled_field_->GetFieldAdapterType()) {
+      auto* adapter = coupled_field_->GetFieldAdapter();
+      return reinterpret_cast<T*>(adapter);
+    }
+    std::cerr<<"Requested type does not match field adapter type\n";
+    std::abort();
+  }
   struct CoupledFieldConcept
   {
     virtual void Send() = 0;
     virtual void Receive() = 0;
     virtual void SyncNativeToInternal(InternalField&) = 0;
     virtual void SyncInternalToNative(const InternalField&) = 0;
+    [[nodiscard]]
+    virtual const std::type_info& GetFieldAdapterType() const noexcept = 0;
+    [[nodiscard]]
+    virtual void* GetFieldAdapter() noexcept = 0;
     virtual ~CoupledFieldConcept() = default;
   };
   template <typename FieldAdapterT, typename CommT>
@@ -104,7 +119,8 @@ public:
       : field_adapter_(std::move(field_adapter)),
         comm_(std::move(comm)),
         native_to_internal_(std::move(native_to_internal)),
-        internal_to_native_(std::move(internal_to_native))
+        internal_to_native_(std::move(internal_to_native)),
+        type_info_(typeid(FieldAdapterT))
     {
     }
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
@@ -118,7 +134,8 @@ public:
         comm_(FieldCommunicator<FieldAdapterT>(name, redev, mpi_comm,
                                                field_adapter_, transport_type, params, path)),
         native_to_internal_(std::move(native_to_internal)),
-        internal_to_native_(std::move(internal_to_native))
+        internal_to_native_(std::move(internal_to_native)),
+        type_info_(typeid(FieldAdapterT))
     {
     }
     void Send() final { comm_.Send(); };
@@ -135,11 +152,14 @@ public:
                                   internal_to_native_.transfer_method,
                                   internal_to_native_.evaluation_method);
     };
+    virtual const std::type_info& GetFieldAdapterType() const noexcept { return type_info_; }
+    virtual void* GetFieldAdapter() noexcept { return reinterpret_cast<void*>(&field_adapter_); };
 
     FieldAdapterT field_adapter_;
     FieldCommunicator<CommT> comm_;
     TransferOptions native_to_internal_;
     TransferOptions internal_to_native_;
+    const std::type_info& type_info_;
   };
 
 private:

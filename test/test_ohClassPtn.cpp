@@ -33,7 +33,8 @@ int main(int argc, char** argv) {
   redev::Redev rdv(MPI_COMM_WORLD,redev::Partition{std::move(partition)},static_cast<redev::ProcessType>(isRdv));
   const std::string name = "meshVtxIds";
   adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "2"}};
-  auto commPair = rdv.CreateAdiosClient<redev::GO>(name,params,redev::TransportType::BP4);
+  auto channel = rdv.CreateAdiosChannel(name, params, redev::TransportType::BP4);
+  auto commPair = channel.CreateComm<redev::GO>(name);
 
   //build dest, offsets, and permutation arrays
   ts::OutMsg appOut = !isRdv ? ts::prepareAppOutMessage(mesh, std::get<decltype(partition)>(rdv.GetPartition())) : ts::OutMsg();
@@ -64,11 +65,11 @@ int main(int argc, char** argv) {
         msgs[appOut.permute[i]] = gids_h[i];
       }
       auto start = std::chrono::steady_clock::now();
-      commPair.Send(msgs.data());
+      commPair.Send(msgs.data(),redev::Mode::Synchronous);
       ts::getAndPrintTime(start,name + " write",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = commPair.Recv();
+      const auto msgs = commPair.Recv(redev::Mode::Synchronous);
       const auto rdvIn = commPair.GetInMessageLayout();
       REDEV_ALWAYS_ASSERT(rdvIn.offset == redev::GOs({0,6,19}));
       REDEV_ALWAYS_ASSERT(rdvIn.srcRanks == redev::GOs({0,0}));

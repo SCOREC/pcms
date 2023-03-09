@@ -141,17 +141,11 @@ public:
       field_adapter_(field_adapter),
       redev_{redev},
       name_{std::move(name)},
-      path_{std::string(path)}
+      channel_{redev_.CreateAdiosChannel(name_, std::move(params), transport_type, std::move(path))}
   {
     if(field_adapter_.RankParticipatesCouplingCommunication()) {
-      std::string transport_name = name_;
-      comm_ = redev_.CreateAdiosClient<T>(transport_name, params, transport_type, path);
-      // set up GID comm to do setup phase and get the
-      // FIXME: use  one directional comm instead of the adios bidirectional
-      // comm
-      transport_name = transport_name.append("_gids");
-      gid_comm_ = redev_.CreateAdiosClient<wdmcpl::GO>(transport_name, params,
-                                                       transport_type,path_);
+      comm_ = channel_.CreateComm<T>(name_);
+      gid_comm_ = channel_.CreateComm<GO>(name_+"_gids");
       UpdateLayout();
     } else {
       comm_ = redev_.CreateNoOpClient<T>();
@@ -169,11 +163,11 @@ public:
     REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
     auto buffer = make_array_view(comm_buffer_);
     field_adapter_.Serialize(buffer, make_const_array_view(message_permutation_));
-    comm_.Send(buffer.data_handle());
+    comm_.Send(buffer.data_handle(), redev::Mode::Synchronous);
   }
   void Receive()
   {
-    auto data = comm_.Recv();
+    auto data = comm_.Recv(redev::Mode::Synchronous);
     field_adapter_.Deserialize(make_const_array_view(data), make_const_array_view(message_permutation_));
   }
   /** update the permutation array and buffer sizes upon mesh change
@@ -197,9 +191,9 @@ private:
       for (size_t i = 0; i < gids.size(); ++i) {
         gid_msgs[message_permutation_[i]] = gids[i];
       }
-      gid_comm_.Send(gid_msgs.data());
+      gid_comm_.Send(gid_msgs.data(), redev::Mode::Synchronous);
     } else {
-      auto recv_gids = gid_comm_.Recv();
+      auto recv_gids = gid_comm_.Recv(redev::Mode::Synchronous);
       int rank, nproc;
       MPI_Comm_rank(mpi_comm_, &rank);
       MPI_Comm_size(mpi_comm_, &nproc);
@@ -229,7 +223,8 @@ private:
   FieldAdapterT& field_adapter_;
   redev::Redev& redev_;
   std::string name_;
-  std::string path_;
+  //std::string path_;
+  redev::BidirectionalChannel channel_;
 };
 template <>
 struct FieldCommunicator<void>

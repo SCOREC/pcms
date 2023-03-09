@@ -44,7 +44,8 @@ int main(int argc, char** argv) {
   const int appRanks = 2;
 
   adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "2"}};
-  auto commPair = rdv.CreateAdiosClient<redev::GO>(name,params,redev::TransportType::BP4);
+  auto channel = rdv.CreateAdiosChannel(name, params, redev::TransportType::BP4);
+  auto commPair = channel.CreateComm<redev::GO>(name);
 
   //Build the dest, offsets, and permutation arrays for the forward
   //send from non-rendezvous to rendezvous.
@@ -74,11 +75,11 @@ int main(int argc, char** argv) {
         msgs[appOut.permute[i]] = gids_h[i];
       }
       auto start = std::chrono::steady_clock::now();
-      commPair.Send(msgs.data());
+      commPair.Send(msgs.data(),redev::Mode::Synchronous);
       ts::getAndPrintTime(start,name + " appWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = commPair.Recv();
+      const auto msgs = commPair.Recv(redev::Mode::Synchronous);
       ts::getAndPrintTime(start,name + " rdvRead",rank);
       //attach the ids to the mesh
       if(iter==0) {
@@ -119,11 +120,11 @@ int main(int argc, char** argv) {
         }
       }
       auto start = std::chrono::steady_clock::now();
-      commPair.Send(msgs.data());
+      commPair.Send(msgs.data(),redev::Mode::Synchronous);
       ts::getAndPrintTime(start,name + " rdvWrite",rank);
     } else {
       auto start = std::chrono::steady_clock::now();
-      const auto msgs = commPair.Recv();
+      const auto msgs = commPair.Recv(redev::Mode::Synchronous);
       ts::getAndPrintTime(start,name + " appRead",rank);
       { //check incoming messages are in the correct order
         auto gids = mesh.globals(0);

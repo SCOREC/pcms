@@ -31,7 +31,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  wdmcpl::CouplerServer cpl("proxy_couple", comm,
+  wdmcpl::CouplerServer cpl("proxy_couple_server", comm,
                             redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   ReverseClassificationVertex rc;
@@ -43,19 +43,20 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
   auto is_overlap = ts::markServerOverlapRegion(mesh, partition,ts::isModelEntInOverlap);
   std::vector<GO> data(mesh.nverts());
+  auto* application = cpl.AddApplication("proxy_couple");
 
   auto field_adapter = wdmcpl::XGCFieldAdapter<GO>(
     "xgc_gids", comm, make_array_view(data), rc, ts::isModelEntInOverlap);
-  cpl.AddField("xgc_gids", std::move(field_adapter),
+  application->AddField("xgc_gids", std::move(field_adapter),
                FieldTransferMethod::Copy, // to Omega_h
                FieldEvaluationMethod::None,
                FieldTransferMethod::Copy, // from Omega_h
                FieldEvaluationMethod::None, is_overlap);
   do {
-    cpl.ReceiveField("xgc_gids");
-    cpl.SendField("xgc_gids");
-    cpl.ReceiveField("xgc_gids");
-    cpl.SendField("xgc_gids");
+    application->ReceiveField("xgc_gids");
+    application->SendField("xgc_gids");
+    application->ReceiveField("xgc_gids");
+    application->SendField("xgc_gids");
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }
@@ -65,9 +66,10 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  wdmcpl::CouplerServer cpl("proxy_couple", comm,
+  wdmcpl::CouplerServer cpl("proxy_couple_server", comm,
                             redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
+  auto* application = cpl.AddApplication("proxy_couple");
   ReverseClassificationVertex rc;
   std::string numbering;
   if (mesh.has_tag(0, "simNumbering")) {
@@ -83,16 +85,16 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
 
   auto field_adapter =
     wdmcpl::OmegaHFieldAdapter<GO>("xgc_gids", mesh, is_overlap, numbering);
-  cpl.AddField("xgc_gids", std::move(field_adapter),
+  application->AddField("xgc_gids", std::move(field_adapter),
                FieldTransferMethod::Copy, // to Omega_h
                FieldEvaluationMethod::None,
                FieldTransferMethod::Copy, // from Omega_h
                FieldEvaluationMethod::None, is_overlap);
   do {
-    cpl.ReceiveField("xgc_gids");
-    cpl.SendField("xgc_gids");
-    cpl.ReceiveField("xgc_gids");
-    cpl.SendField("xgc_gids");
+    application->ReceiveField("xgc_gids");
+    application->SendField("xgc_gids");
+    application->ReceiveField("xgc_gids");
+    application->SendField("xgc_gids");
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }

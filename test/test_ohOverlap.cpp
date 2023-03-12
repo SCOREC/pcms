@@ -69,9 +69,9 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh, std::string_view cpnFi
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
 
-auto setupComms(redev::Redev& rdv, std::string_view name) {
+auto setupComms(redev::Redev& rdv, std::string name) {
   adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
-  auto channel = rdv.CreateAdiosChannel(name,params,redev::TransportType::BP4);
+  auto channel = rdv.CreateAdiosChannel(std::move(name),params,redev::TransportType::BP4);
   return channel.CreateComm<redev::GO>(std::string(name));
 }
 

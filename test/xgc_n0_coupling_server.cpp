@@ -30,17 +30,17 @@ namespace ts = test_support;
 //
 
 [[nodiscard]]
-static wdmcpl::ConvertibleCoupledField* AddField(wdmcpl::CouplerServer &coupler, const std::string& name, const std::string& path, Omega_h::Read<Omega_h::I8> is_overlap, const std::string& numbering, Omega_h::Mesh& mesh, int plane) {
-
+static wdmcpl::ConvertibleCoupledField* AddField(wdmcpl::Application *application, const std::string& name, const std::string& path, Omega_h::Read<Omega_h::I8> is_overlap, const std::string& numbering, Omega_h::Mesh& mesh, int plane) {
+      WDMCPL_ALWAYS_ASSERT(application != nullptr);
       std::stringstream field_name;
       field_name << path << name << "_" << plane;
-      return coupler.AddField(field_name.str(),
+      return application->AddField(field_name.str(),
                    wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>(
                      field_name.str(), mesh, is_overlap, numbering),
                    FieldTransferMethod::Copy, // to Omega_h
                    FieldEvaluationMethod::None,
                    FieldTransferMethod::Copy, // from Omega_h
-                   FieldEvaluationMethod::None, is_overlap, path);
+                   FieldEvaluationMethod::None, is_overlap);
 }
 
 struct XGCAnalysis {
@@ -100,7 +100,8 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   std::string numbering = "simNumbering";
   WDMCPL_ALWAYS_ASSERT(mesh.has_tag(0, numbering));
-
+  auto* core = cpl.AddApplication("core", "core/");
+  auto* edge = cpl.AddApplication("edge", "core/");
   auto is_overlap = ts::markServerOverlapRegion(
     mesh, partition, KOKKOS_LAMBDA(const int dim, const int id) {
       //if (id >= 1 && id <= 2) {
@@ -122,34 +123,34 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   XGCAnalysis edge_analysis;
   std::cerr << "ADDING FIELDS\n";
   for (int i = 0; i < nphi; ++i) {
-    core_analysis.dpot[0].push_back(AddField(cpl, "dpot_1_plane", "core/", 
+    core_analysis.dpot[0].push_back(AddField(core, "dpot_1_plane", "core/", 
                                              is_overlap, numbering, mesh, i));
-    core_analysis.dpot[1].push_back(AddField(cpl, "dpot_2_plane", "core/", 
+    core_analysis.dpot[1].push_back(AddField(core, "dpot_2_plane", "core/", 
                                              is_overlap, numbering, mesh, i));
-    core_analysis.pot0.push_back(AddField(cpl, "pot0_plane", "core/",
+    core_analysis.pot0.push_back(AddField(core, "pot0_plane", "core/",
                                           is_overlap, numbering, mesh, i));
-    core_analysis.edensity[0].push_back(AddField(cpl, "edensity_1_plane", "core/", 
+    core_analysis.edensity[0].push_back(AddField(core, "edensity_1_plane", "core/", 
                                              is_overlap, numbering, mesh, i));
-    core_analysis.edensity[1].push_back(AddField(cpl, "edensity_2_plane", "core/", 
+    core_analysis.edensity[1].push_back(AddField(core, "edensity_2_plane", "core/", 
                                              is_overlap, numbering, mesh, i));
-    core_analysis.idensity[0].push_back(AddField(cpl, "idensity_1_plane", "core/", 
+    core_analysis.idensity[0].push_back(AddField(core, "idensity_1_plane", "core/", 
                                              is_overlap, numbering, mesh, i));
-    core_analysis.idensity[1].push_back(AddField(cpl, "idensity_2_plane", "core/", 
+    core_analysis.idensity[1].push_back(AddField(core, "idensity_2_plane", "core/", 
                                              is_overlap, numbering, mesh, i));
 
-    edge_analysis.dpot[0].push_back(AddField(cpl, "dpot_1_plane", "edge/", 
+    edge_analysis.dpot[0].push_back(AddField(edge, "dpot_1_plane", "edge/", 
                                              is_overlap, numbering, mesh, i));
-    edge_analysis.dpot[1].push_back(AddField(cpl, "dpot_2_plane", "edge/", 
+    edge_analysis.dpot[1].push_back(AddField(edge, "dpot_2_plane", "edge/", 
                                              is_overlap, numbering, mesh, i));
-    edge_analysis.pot0.push_back(AddField(cpl, "pot0_plane", "edge/",
+    edge_analysis.pot0.push_back(AddField(edge, "pot0_plane", "edge/",
                                           is_overlap, numbering, mesh, i));
-    edge_analysis.edensity[0].push_back(AddField(cpl, "edensity_1_plane", "edge/", 
+    edge_analysis.edensity[0].push_back(AddField(edge, "edensity_1_plane", "edge/", 
                                              is_overlap, numbering, mesh, i));
-    edge_analysis.edensity[1].push_back(AddField(cpl, "edensity_2_plane", "edge/", 
+    edge_analysis.edensity[1].push_back(AddField(edge, "edensity_2_plane", "edge/", 
                                              is_overlap, numbering, mesh, i));
-    edge_analysis.idensity[0].push_back(AddField(cpl, "idensity_1_plane", "edge/", 
+    edge_analysis.idensity[0].push_back(AddField(edge, "idensity_1_plane", "edge/", 
                                              is_overlap, numbering, mesh, i));
-    edge_analysis.idensity[1].push_back(AddField(cpl, "idensity_2_plane", "edge/", 
+    edge_analysis.idensity[1].push_back(AddField(edge, "idensity_2_plane", "edge/", 
                                              is_overlap, numbering, mesh, i));
 
     // gather density from core/edge to density

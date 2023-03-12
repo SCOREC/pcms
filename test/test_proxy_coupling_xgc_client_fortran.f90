@@ -53,7 +53,7 @@ Program main
     end do
     rc_file = trim(args(1))
 
-    client = wdmcpl_create_client("Fortran", MPI_COMM_WORLD)
+    client = wdmcpl_create_client("proxy_couple", MPI_COMM_WORLD)
     reverse_classification = wdmcpl_load_reverse_classification(rc_file, MPI_COMM_WORLD)
     nverts = wdmcpl_reverse_classification_count_verts(reverse_classification)
     allocate(data(nverts))

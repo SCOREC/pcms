@@ -5,6 +5,10 @@ if (NOT EXISTS ${WDMCPL_TEST_DATA_DIR})
     message(FATAL_ERROR "WDMCPL_TEST_DATA_DIR \"${WDMCPL_TEST_DATA_DIR}\" is not accessible")
 endif ()
 
+include(ProcessorCount)
+ProcessorCount(HOST_NPROC)
+message("TESTING ON SYSTEM WITH ${HOST_NPROC} CPU Cores")
+
 message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
 message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
 set(VALGRIND_EXECUTABLE "none" CACHE FILEPATH "path to valgrind executable")
@@ -115,27 +119,31 @@ if (WDMCPL_ENABLE_OMEGA_H)
     set(d3d16p_cpn ${WDMCPL_TEST_DATA_DIR}/d3d/16p.cpn)
     set(d3d16p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p16.osh/)
     add_exe(test_ohOverlap)
-    dual_mpi_test(TESTNAME test_ohOverlap_d3d_20p
-            TIMEOUT 10
-            NAME1 rdv EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
-            NAME2 app EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
+    if(HOST_NPROC GREATER 10)
+        dual_mpi_test(TESTNAME test_ohOverlap_d3d_20p
+                TIMEOUT 10
+                NAME1 rdv EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
+                NAME2 app EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
+    endif()
 
     set(d3d8p ${WDMCPL_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p8.osh/)
     add_exe(test_twoClientOverlap)
-    tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
-            TIMEOUT 12
-            NAME1 rdv EXE1 ./test_twoClientOverlap PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
-            NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
-            NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
-
+    if(HOST_NPROC GREATER 14)
+        tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
+                TIMEOUT 12
+                NAME1 rdv EXE1 ./test_twoClientOverlap PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
+                NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
+                NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+    endif()
     add_executable(proxy_coupling test_proxy_coupling.cpp)
     target_link_libraries(proxy_coupling PUBLIC wdmcpl::core test_support)
-    tri_mpi_test(TESTNAME test_proxy_coupling_26p
-            TIMEOUT 12
-            NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
-            NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
-            NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
-
+    if(HOST_NPROC GREATER 13)
+        tri_mpi_test(TESTNAME test_proxy_coupling_26p
+                TIMEOUT 12
+                NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
+                NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+                NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+    endif()
     tri_mpi_test(TESTNAME test_proxy_coupling_4p
             TIMEOUT 12
             NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
@@ -146,16 +154,20 @@ if (WDMCPL_ENABLE_OMEGA_H)
             NAME1 rdv EXE1 ./proxy_coupling PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
             NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
             NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
-    tri_mpi_test(TESTNAME test_proxy_coupling_32p
-            TIMEOUT 12
-            NAME1 rdv EXE1 ./proxy_coupling PROCS1 8 ARGS1 -1 ${d3d1p} ${d3d8p_cpn}
-            NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
-            NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
-    tri_mpi_test(TESTNAME test_proxy_coupling_40p
-            TIMEOUT 16
-            NAME1 rdv EXE1 ./proxy_coupling PROCS1 16 ARGS1 -1 ${d3d1p} ${d3d16p_cpn}
-            NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
-            NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+    if(HOST_NPROC GREATER 16)
+        tri_mpi_test(TESTNAME test_proxy_coupling_32p
+                TIMEOUT 12
+                NAME1 rdv EXE1 ./proxy_coupling PROCS1 8 ARGS1 -1 ${d3d1p} ${d3d8p_cpn}
+                NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+                NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+    endif()
+    if(HOST_NPROC GREATER 20)
+        tri_mpi_test(TESTNAME test_proxy_coupling_40p
+                TIMEOUT 16
+                NAME1 rdv EXE1 ./proxy_coupling PROCS1 16 ARGS1 -1 ${d3d1p} ${d3d16p_cpn}
+                NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+                NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+    endif()
 endif ()
 # unit tests
 find_package(Catch2 2 REQUIRED)

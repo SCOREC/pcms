@@ -7,8 +7,8 @@
 #include <redev_variant_tools.h>
 #include "test_support.h"
 #include <wdmcpl/omega_h_field.h>
-
-
+#include <chrono>
+#include <thread>
 
 using wdmcpl::Copy;
 using wdmcpl::CouplerClient;
@@ -21,29 +21,32 @@ using wdmcpl::make_array_view;
 using wdmcpl::OmegaHField;
 using wdmcpl::OmegaHFieldAdapter;
 
+using namespace std::chrono_literals;
+
 static constexpr bool done = true;
 namespace ts = test_support;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  CouplerClient cpl("proxy_couple", comm);
-  auto is_overlap = ts::markOverlapMeshEntities(mesh,ts::isModelEntInOverlap);
-  cpl.AddField("delta_f_gids",
+  CouplerClient cpl("proxy_couple_xgc_delta_f", comm);
+
+  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::isModelEntInOverlap);
+  cpl.AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
-    cpl.SendField("delta_f_gids");    //(Alt) df_gid_field->Send();
-    cpl.ReceiveField("delta_f_gids"); //(Alt) df_gid_field->Receive();
+    cpl.SendField("gids");    //(Alt) df_gid_field->Send();
+    cpl.ReceiveField("gids"); //(Alt) df_gid_field->Receive();
   } while (!done);
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  wdmcpl::CouplerClient cpl("proxy_couple", comm);
-  auto is_overlap = ts::markOverlapMeshEntities(mesh,ts::isModelEntInOverlap);
-  cpl.AddField("total_f_gids",
+  wdmcpl::CouplerClient cpl("proxy_couple_xgc_total_f", comm);
+  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::isModelEntInOverlap);
+  cpl.AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
-    cpl.SendField("total_f_gids");    //(Alt) tf_gid_field->Send();
-    cpl.ReceiveField("total_f_gids"); //(Alt) tf_gid_field->Receive();
+    cpl.SendField("gids");    //(Alt) tf_gid_field->Send();
+    cpl.ReceiveField("gids"); //(Alt) tf_gid_field->Receive();
   } while (!done);
 }
 void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
@@ -51,22 +54,36 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  wdmcpl::CouplerServer cpl("proxy_couple", comm,
-                            redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+  wdmcpl::CouplerServer cpl(
+    "proxy_couple", comm,
+    redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+  //std::this_thread::sleep_for(60s);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
-  auto is_overlap = ts::markServerOverlapRegion(mesh, partition,ts::isModelEntInOverlap);
-  cpl.AddField("total_f_gids",
-               OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap),
-               FieldTransferMethod::Copy, // to Omega_h
-               FieldEvaluationMethod::None,
-               FieldTransferMethod::Copy, // from Omega_h
-               FieldEvaluationMethod::None, is_overlap);
-  cpl.AddField(
-    "delta_f_gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap),
+  auto is_overlap =
+    ts::markServerOverlapRegion(mesh, partition, ts::isModelEntInOverlap);
+  auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f");
+  auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");
+  // TODO, fields should have a transfer policy rather than parameters
+  auto* total_f_gids = total_f->AddField(
+    "gids", OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap),
+    FieldTransferMethod::Copy, // to Omega_h
+    FieldEvaluationMethod::None,
+    FieldTransferMethod::Copy, // from Omega_h
+    FieldEvaluationMethod::None, is_overlap);
+  auto* delta_f_gids = delta_f->AddField(
+    "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap),
     FieldTransferMethod::Copy, FieldEvaluationMethod::None,
     FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
-  // CombinerFunction is a functor that takes a vector of omega_h fields
-  // combines their values and sets the combined values into the resultant field
+  do {
+    total_f_gids->Receive();
+    delta_f_gids->Receive();
+    total_f_gids->Send();
+    delta_f_gids->Send();
+  } while(!done);
+  /*
+  // CombinerFunction is a functor that takes a vector of omega_h
+  // fields combines their values and sets the combined values into the
+  // resultant field
   auto* gather =
     cpl.AddGatherFieldsOp("cpl1", {"total_f_gids", "delta_f_gids"},
                           "combined_gids", ts::MeanCombiner{}, is_overlap);
@@ -88,6 +105,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
     scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
   } while (!done);
+  */
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }
 

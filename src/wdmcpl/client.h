@@ -10,14 +10,12 @@ class CoupledField
 public:
   template <typename FieldAdapterT>
   CoupledField(const std::string& name, FieldAdapterT field_adapter,
-               redev::Redev& redev, MPI_Comm mpi_comm,
-               redev::TransportType transport_type,
-               adios2::Params params)
+               MPI_Comm mpi_comm, redev::Redev& redev, redev::BidirectionalChannel& channel)
   {
 
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
-        name, std::move(field_adapter), redev, mpi_comm, transport_type, std::move(params));
+        name, std::move(field_adapter), mpi_comm, redev, channel);
   }
 
   void Send() { coupled_field_->Send(); }
@@ -34,11 +32,11 @@ public:
     using value_type = typename FieldAdapterT::value_type;
 
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
-                      redev::Redev& redev, MPI_Comm mpi_comm,
-                      redev::TransportType transport_type, adios2::Params&& params)
+                      MPI_Comm mpi_comm,
+                      redev::Redev& redev,
+                      redev::BidirectionalChannel& channel)
       : field_adapter_(std::move(field_adapter)),
-        comm_(FieldCommunicator<CommT>(name, redev, mpi_comm, field_adapter_,
-                                       transport_type, std::move(params)))
+        comm_(FieldCommunicator<CommT>(name, mpi_comm, redev, channel, field_adapter_))
     {
     }
     void Send() final { comm_.Send(); };
@@ -54,21 +52,35 @@ private:
 class CouplerClient
 {
 public:
-  CouplerClient(std::string name, MPI_Comm comm)
-    : name_(std::move(name)), mpi_comm_(comm), redev_(comm)
+  CouplerClient(std::string name, MPI_Comm comm,
+                redev::TransportType transport_type = redev::TransportType::BP4,
+                adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}},
+                std::string path="")
+    : name_(std::move(name)), mpi_comm_(comm), redev_(comm),
+      channel_{redev_.CreateAdiosChannel(name_, std::move(params),
+                                  transport_type, std::move(path))}
   {
   }
-  template <typename FieldAdapterT>
-  CoupledField* AddField(std::string unique_name, FieldAdapterT field_adapter,
-                         redev::TransportType transport_type=redev::TransportType::BP4,
-                         adios2::Params params = {{"Streaming", "On"},
-                                                  {"OpenTimeoutSecs", "400"}})
+
+  [[nodiscard]] const redev::Partition& GetPartition() const
   {
-    auto [it, inserted] = fields_.template try_emplace(
-      unique_name, unique_name, std::move(field_adapter), redev_, mpi_comm_,transport_type,params);
+    return redev_.GetPartition();
+  }
+  void BeginSendCommunicationPhase() { channel_.BeginSendCommunicationPhase(); }
+  void EndSendPhase() { channel_.EndSendCommunicationPhase(); }
+  void BeginReceivePhase() { channel_.BeginReceiveCommunicationPhase(); }
+  void EndReceivePhase() { channel_.EndReceiveCommunicationPhase(); }
+
+  template <typename FieldAdapterT>
+  CoupledField* AddField(
+    std::string name, FieldAdapterT field_adapter,
+    redev::TransportType transport_type = redev::TransportType::BP4,
+    adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}})
+  {
+    auto [it, inserted] = fields_.template try_emplace(name, name, std::move(field_adapter),
+                                                       mpi_comm_, redev_, channel_);
     if (!inserted) {
-      std::cerr << "OHField with this name" << unique_name
-                << "already exists!\n";
+      std::cerr << "OHField with this name" << name << "already exists!\n";
       std::terminate();
     }
     return &(it->second);
@@ -86,10 +98,6 @@ public:
   {
     detail::find_or_error(name, fields_).Receive();
   };
-  [[nodiscard]] const redev::Partition& GetPartition() const
-  {
-    return redev_.GetPartition();
-  }
 
 private:
   std::string name_;
@@ -98,6 +106,8 @@ private:
   // map rather than unordered_map is necessary to avoid iterator invalidation.
   // This is important because we pass pointers to the fields out of this class
   std::map<std::string, CoupledField> fields_;
+  redev::BidirectionalChannel channel_;
+
 };
 } // namespace wdmcpl
 

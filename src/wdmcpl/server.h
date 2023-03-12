@@ -48,23 +48,22 @@ public:
       std::move(native_to_internal), std::move(internal_to_native));
   }
   template <typename FieldAdapterT>
-  ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
-                          redev::Redev& redev, MPI_Comm mpi_comm,
+  ConvertibleCoupledField(const std::string& name,
+                          FieldAdapterT field_adapter, MPI_Comm mpi_comm,
+                          redev::Redev& redev,
+                          redev::BidirectionalChannel& channel,
                           Omega_h::Mesh& internal_mesh,
                           TransferOptions native_to_internal,
                           TransferOptions internal_to_native,
-                          Omega_h::Read<Omega_h::I8> internal_field_mask,
-                          redev::TransportType transport_type,
-                          adios2::Params params,
-                          std::string path)
+                          Omega_h::Read<Omega_h::I8> internal_field_mask)
     : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
                                   InternalCoordinateElement>(
         name + ".__internal__", internal_mesh, internal_field_mask)}
   {
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
-        name, std::move(field_adapter), redev, mpi_comm,
-        std::move(native_to_internal), std::move(internal_to_native),transport_type, std::move(params), std::move(path));
+        name, std::move(field_adapter), mpi_comm, redev, channel,
+        std::move(native_to_internal), std::move(internal_to_native));
   }
 
   void Send() { coupled_field_->Send(); }
@@ -124,15 +123,11 @@ public:
     {
     }
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
-                      redev::Redev& redev, MPI_Comm mpi_comm,
+                      MPI_Comm mpi_comm, redev::Redev& redev, redev::BidirectionalChannel& channel,
                       TransferOptions&& native_to_internal,
-                      TransferOptions&& internal_to_native,
-                      redev::TransportType transport_type,
-                      adios2::Params&& params,
-                      std::string_view path)
+                      TransferOptions&& internal_to_native)
       : field_adapter_(std::move(field_adapter)),
-        comm_(FieldCommunicator<FieldAdapterT>(name, redev, mpi_comm,
-                                               field_adapter_, transport_type, params, path)),
+        comm_(FieldCommunicator<FieldAdapterT>(name, mpi_comm, redev, channel,field_adapter_)),
         native_to_internal_(std::move(native_to_internal)),
         internal_to_native_(std::move(internal_to_native)),
         type_info_(typeid(FieldAdapterT))
@@ -169,6 +164,67 @@ private:
   // This comes at the cost of a slightly larger type with need to use the get<>
   // function
   InternalField internal_field_;
+};
+// TODO: strategy to merge Server/CLient Application and Fields
+class Application
+{
+public:
+  Application(std::string name, redev::Redev& rdv,
+              MPI_Comm comm,
+              redev::Redev& redev,
+              Omega_h::Mesh& internal_mesh,
+              adios2::Params params, redev::TransportType transport_type,
+              std::string path)
+    :
+      mpi_comm_(comm),
+      redev_(redev),
+      channel_{rdv.CreateAdiosChannel(std::move(name), std::move(params),
+                                      transport_type, std::move(path))},
+      internal_mesh_{internal_mesh}
+  {
+  }
+  // FIXME should take a file path for the parameters, not take adios2 params.
+  // These fields are supposed to be agnostic to adios2...
+  template <typename FieldAdapterT>
+  ConvertibleCoupledField* AddField(
+    std::string name, FieldAdapterT&& field_adapter,
+    FieldTransferMethod to_field_transfer_method,
+    FieldEvaluationMethod to_field_eval_method,
+    FieldTransferMethod from_field_transfer_method,
+    FieldEvaluationMethod from_field_eval_method,
+    Omega_h::Read<Omega_h::I8> internal_field_mask = {})
+  {
+    auto [it, inserted] = fields_.template try_emplace(
+      name, name, std::forward<FieldAdapterT>(field_adapter),
+      mpi_comm_, redev_, channel_,
+      internal_mesh_,
+      TransferOptions{to_field_transfer_method, to_field_eval_method},
+      TransferOptions{from_field_transfer_method, from_field_eval_method},
+      internal_field_mask);
+    if (!inserted) {
+      std::cerr << "OHField with this name" << name << "already exists!\n";
+      std::terminate();
+    }
+    return &(it->second);
+  }
+  void SendField(const std::string& name)
+  {
+    detail::find_or_error(name, fields_).Send();
+  };
+  void ReceiveField(const std::string& name)
+  {
+    detail::find_or_error(name, fields_).Receive();
+  };
+
+private:
+  MPI_Comm mpi_comm_;
+  redev::Redev& redev_;
+  redev::BidirectionalChannel channel_;
+  // map is used rather than unordered_map because we give pointers to the
+  // internal data and rehash of unordered_map can cause pointer invalidation.
+  // map is less cache friendly, but pointers are not invalidated.
+  std::map<std::string, ConvertibleCoupledField> fields_;
+  Omega_h::Mesh& internal_mesh_;
 };
 class GatherOperation
 {
@@ -268,30 +324,17 @@ public:
       internal_mesh_(mesh)
   {
   }
-  // FIXME should take a file path for the parameters, not take adios2 params.
-  // These fields are supposed to be agnostic to adios2...
-  template <typename FieldAdapterT>
-  ConvertibleCoupledField* AddField(
-    std::string unique_name, FieldAdapterT field_adapter,
-    FieldTransferMethod to_field_transfer_method,
-    FieldEvaluationMethod to_field_eval_method,
-    FieldTransferMethod from_field_transfer_method,
-    FieldEvaluationMethod from_field_eval_method,
-    Omega_h::Read<Omega_h::I8> internal_field_mask = {},
-    std::string path = "",
+  Application* AddApplication(
+    std::string name, std::string path = "",
     redev::TransportType transport_type = redev::TransportType::BP4,
-    adios2::Params params = {{"Streaming", "On"},
-                   {"OpenTimeoutSecs", "400"}})
+    adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}})
   {
-    auto [it, inserted] = fields_.template try_emplace(
-      path+unique_name, unique_name, std::move(field_adapter), redev_, mpi_comm_,
-      internal_mesh_,
-      TransferOptions{to_field_transfer_method, to_field_eval_method},
-      TransferOptions{from_field_transfer_method, from_field_eval_method},
-      internal_field_mask, transport_type, std::move(params),std::move(path));
+    auto key = path + name;
+    auto [it, inserted] = applications_.template try_emplace(
+      key, std::move(name), redev_, mpi_comm_, redev_, internal_mesh_, std::move(params),
+      transport_type, std::move(path));
     if (!inserted) {
-      std::cerr << "OHField with this name" << unique_name
-                << "already exists!\n";
+      std::cerr << "Application with name " << name << "already exists!\n";
       std::terminate();
     }
     return &(it->second);
@@ -307,15 +350,6 @@ public:
   {
     detail::find_or_error(name, gather_operations_).Run();
   }
-  void SendField(const std::string& name)
-  {
-    detail::find_or_error(name, fields_).Send();
-  };
-  void ReceiveField(const std::string& name)
-  {
-    detail::find_or_error(name, fields_).Receive();
-  }
-
   template <typename CombinedFieldT = Real>
   [[nodiscard]]
   GatherOperation* AddGatherFieldsOp(
@@ -339,20 +373,18 @@ public:
     }
     return &(it->second);
   }
-
-  // TODO: refactor searchnx/seachny into search input parameter struct
-  template <typename CombinedFieldT = Real>
-  [[nodiscard]]
-  GatherOperation* AddGatherFieldsOp(
-    const std::string& name, const std::vector<std::string>& fields_to_gather,
-    const std::string& internal_field_name, CombinerFunction func,
-    Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
-  {
-    auto gather_fields = detail::find_many_or_error(fields_to_gather, fields_);
-    return AddGatherFieldsOp(name, std::move(gather_fields), internal_field_name,
-                     std::forward<CombinerFunction>(func), std::move(mask),
-                     std::move(global_id_name));
-  }
+ // template <typename CombinedFieldT = Real>
+ // [[nodiscard]]
+ // GatherOperation* AddGatherFieldsOp(
+ //   const std::string& name, const std::vector<std::string>& fields_to_gather,
+ //   const std::string& internal_field_name, CombinerFunction func,
+ //   Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
+ // {
+ //   auto gather_fields = detail::find_many_or_error(fields_to_gather, fields_);
+ //   return AddGatherFieldsOp(name, std::move(gather_fields), internal_field_name,
+ //                    std::forward<CombinerFunction>(func), std::move(mask),
+ //                    std::move(global_id_name));
+ // }
   template <typename CombinedFieldT = Real>
   [[nodiscard]]
   ScatterOperation* AddScatterFieldsOp(
@@ -375,47 +407,48 @@ public:
     }
     return &(it->second);
   }
-  template <typename CombinedFieldT = Real>
-  [[nodiscard]]
-  ScatterOperation* AddScatterFieldsOp(
-    const std::string& name, const std::string& internal_field_name,
-    const std::vector<std::string>& fields_to_scatter,
-    Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
-  {
-    auto scatter_fields =
-      detail::find_many_or_error(fields_to_scatter, fields_);
-    return AddScatterFieldsOp(name, internal_field_name,
-                       std::move(scatter_fields), std::move(mask),
-                       std::move(global_id_name));
-  }
+ // template <typename CombinedFieldT = Real>
+ // [[nodiscard]]
+ // ScatterOperation* AddScatterFieldsOp(
+ //   const std::string& name, const std::string& internal_field_name,
+ //   const std::vector<std::string>& fields_to_scatter,
+ //   Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
+ // {
+ //   auto scatter_fields =
+ //     detail::find_many_or_error(fields_to_scatter, fields_);
+ //   return AddScatterFieldsOp(name, internal_field_name,
+ //                      std::move(scatter_fields), std::move(mask),
+ //                      std::move(global_id_name));
+ // }
   [[nodiscard]] const redev::Partition& GetPartition() const noexcept
   {
     return redev_.GetPartition();
   }
   [[nodiscard]] Omega_h::Mesh& GetMesh() noexcept { return internal_mesh_; }
 
-  [[nodiscard]] const auto& GetInternalFields() const noexcept {return internal_fields_;}
+  [[nodiscard]] const auto& GetInternalFields() const noexcept
+  {
+    return internal_fields_;
+  }
 
-  // TODO: consider an "advanced api" wrapper of some sort and protect direct access
-  // to the internal fields with passkey idom or some other way. User could get unexpected
-  // behavior if they mess with the internal field map.
+  // TODO: consider an "advanced api" wrapper of some sort and protect direct
+  // access to the internal fields with passkey idom or some other way. User
+  // could get unexpected behavior if they mess with the internal field map.
   /// This function should not be used directly it is experimental for Philip
   /// to do Benesh development. Expect that it will be removed in the future.
-  [[nodiscard]] auto& GetInternalFields() noexcept {return internal_fields_;}
+  [[nodiscard]] auto& GetInternalFields() noexcept { return internal_fields_; }
 
 private:
   std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
-  // map is used rather than unordered_map because we give pointers to the
-  // internal data and rehash of unordered_map can cause pointer invalidation.
-  // map is less cache friendly, but pointers are not invalidated.
-  std::map<std::string, ConvertibleCoupledField> fields_;
   // xgc_coupler owns internal fields since both gather/scatter ops use these
+  // these internal fields correspond to the "Combined" fields
   std::map<std::string, InternalField> internal_fields_;
   // gather and scatter operations have reference to internal fields
   std::map<std::string, ScatterOperation> scatter_operations_;
   std::map<std::string, GatherOperation> gather_operations_;
+  std::map<std::string, Application> applications_;
   Omega_h::Mesh& internal_mesh_;
 };
 } // namespace wdmcpl

@@ -121,6 +121,9 @@ bool HasDuplicates(std::vector<T> v)
   return it != v.end();
 }
 } // namespace detail
+
+using redev::Mode;
+
 template <typename FieldAdapterT>
 struct FieldCommunicator
 {
@@ -128,27 +131,24 @@ struct FieldCommunicator
 
 public:
   FieldCommunicator(
-    std::string name, redev::Redev& redev, MPI_Comm mpi_comm,
-    FieldAdapterT& field_adapter,
-    redev::TransportType transport_type = redev::TransportType::BP4,
-    adios2::Params params = adios2::Params{{"Streaming", "On"},
-                                           {"OpenTimeoutSecs", "30"}},
-    std::string_view path="")
+    std::string name, MPI_Comm mpi_comm,
+    redev::Redev& redev,
+    redev::BidirectionalChannel & channel,
+    FieldAdapterT& field_adapter)
     : mpi_comm_(mpi_comm),
       comm_buffer_{},
       message_permutation_{},
       buffer_size_needs_update_{true},
       field_adapter_(field_adapter),
-      redev_{redev},
       name_{std::move(name)},
-      channel_{redev_.CreateAdiosChannel(name_, std::move(params), transport_type, std::move(path))}
+      redev_(redev)
   {
     if(field_adapter_.RankParticipatesCouplingCommunication()) {
-      comm_ = channel_.CreateComm<T>(name_);
-      gid_comm_ = channel_.CreateComm<GO>(name_+"_gids");
+      comm_ = channel.CreateComm<T>(name_);
+      gid_comm_ = channel.CreateComm<GO>(name_+"_gids");
       UpdateLayout();
     } else {
-      comm_ = redev_.CreateNoOpClient<T>();
+      comm_ = channel.CreateNoOpComm<T>();
     }
   }
 
@@ -157,17 +157,17 @@ public:
   FieldCommunicator& operator=(const FieldCommunicator&) = delete;
   FieldCommunicator& operator=(FieldCommunicator&&) = default;
 
-  void Send()
+  void Send(Mode mode = Mode::Synchronous)
   {
     auto n = field_adapter_.Serialize({}, {});
     REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
     auto buffer = make_array_view(comm_buffer_);
     field_adapter_.Serialize(buffer, make_const_array_view(message_permutation_));
-    comm_.Send(buffer.data_handle(), redev::Mode::Synchronous);
+    comm_.Send(buffer.data_handle(), mode);
   }
-  void Receive()
+  void Receive(Mode mode = Mode::Synchronous)
   {
-    auto data = comm_.Recv(redev::Mode::Synchronous);
+    auto data = comm_.Recv(mode);
     field_adapter_.Deserialize(make_const_array_view(data), make_const_array_view(message_permutation_));
   }
   /** update the permutation array and buffer sizes upon mesh change
@@ -223,8 +223,6 @@ private:
   FieldAdapterT& field_adapter_;
   redev::Redev& redev_;
   std::string name_;
-  //std::string path_;
-  redev::BidirectionalChannel channel_;
 };
 template <>
 struct FieldCommunicator<void>

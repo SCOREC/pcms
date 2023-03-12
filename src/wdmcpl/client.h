@@ -66,10 +66,6 @@ public:
   {
     return redev_.GetPartition();
   }
-  void BeginSendCommunicationPhase() { channel_.BeginSendCommunicationPhase(); }
-  void EndSendPhase() { channel_.EndSendCommunicationPhase(); }
-  void BeginReceivePhase() { channel_.BeginReceiveCommunicationPhase(); }
-  void EndReceivePhase() { channel_.EndReceiveCommunicationPhase(); }
 
   template <typename FieldAdapterT>
   CoupledField* AddField(

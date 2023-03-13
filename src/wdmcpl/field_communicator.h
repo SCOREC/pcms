@@ -227,8 +227,8 @@ private:
 template <>
 struct FieldCommunicator<void>
 {
-  void Send() {}
-  void Receive() {}
+  void Send(Mode={}) {}
+  void Receive(Mode={}) {}
 };
 } // namespace wdmcpl
 

@@ -66,8 +66,8 @@ public:
         std::move(native_to_internal), std::move(internal_to_native));
   }
 
-  void Send() { coupled_field_->Send(); }
-  void Receive() { coupled_field_->Receive(); }
+  void Send(Mode mode = Mode::Synchronous) { coupled_field_->Send(mode); }
+  void Receive(Mode mode = Mode::Synchronous) { coupled_field_->Receive(mode); }
   void SyncNativeToInternal()
   {
     coupled_field_->SyncNativeToInternal(internal_field_);
@@ -96,8 +96,8 @@ public:
   }
   struct CoupledFieldConcept
   {
-    virtual void Send() = 0;
-    virtual void Receive() = 0;
+    virtual void Send(Mode) = 0;
+    virtual void Receive(Mode) = 0;
     virtual void SyncNativeToInternal(InternalField&) = 0;
     virtual void SyncInternalToNative(const InternalField&) = 0;
     [[nodiscard]]
@@ -133,8 +133,8 @@ public:
         type_info_(typeid(FieldAdapterT))
     {
     }
-    void Send() final { comm_.Send(); };
-    void Receive() final { comm_.Receive(); };
+    void Send(Mode mode) final { comm_.Send(mode); };
+    void Receive(Mode mode) final { comm_.Receive(mode); };
     void SyncNativeToInternal(InternalField& internal_field) final
     {
       ConvertFieldAdapterToOmegaH(field_adapter_, internal_field,
@@ -207,13 +207,13 @@ public:
     }
     return &(it->second);
   }
-  void SendField(const std::string& name)
+  void SendField(const std::string& name, Mode mode=Mode::Synchronous)
   {
-    detail::find_or_error(name, fields_).Send();
+    detail::find_or_error(name, fields_).Send(mode);
   };
-  void ReceiveField(const std::string& name)
+  void ReceiveField(const std::string& name, Mode mode=Mode::Synchronous)
   {
-    detail::find_or_error(name, fields_).Receive();
+    detail::find_or_error(name, fields_).Receive(mode);
   };
 
 private:
@@ -246,7 +246,7 @@ public:
   void Run() const
   {
     for (auto& field : coupled_fields_) {
-      field.get().Receive();
+      field.get().Receive(Mode::Synchronous);
       field.get().SyncNativeToInternal();
     }
     combiner_(internal_fields_, combined_field_);
@@ -303,7 +303,7 @@ public:
       combined_field_);
     for (auto& field : coupled_fields_) {
       field.get().SyncInternalToNative();
-      field.get().Send();
+      field.get().Send(Mode::Synchronous);
     }
   };
 

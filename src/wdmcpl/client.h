@@ -18,12 +18,12 @@ public:
         name, std::move(field_adapter), mpi_comm, redev, channel);
   }
 
-  void Send() { coupled_field_->Send(); }
-  void Receive() { coupled_field_->Receive(); }
+  void Send(Mode mode = Mode::Synchronous) { coupled_field_->Send(mode); }
+  void Receive(Mode mode = Mode::Synchronous) { coupled_field_->Receive(mode); }
   struct CoupledFieldConcept
   {
-    virtual void Send() = 0;
-    virtual void Receive() = 0;
+    virtual void Send(Mode) = 0;
+    virtual void Receive(Mode) = 0;
     virtual ~CoupledFieldConcept() = default;
   };
   template <typename FieldAdapterT, typename CommT>
@@ -39,8 +39,8 @@ public:
         comm_(FieldCommunicator<CommT>(name, mpi_comm, redev, channel, field_adapter_))
     {
     }
-    void Send() final { comm_.Send(); };
-    void Receive() final { comm_.Receive(); };
+    void Send(Mode mode) final { comm_.Send(mode); };
+    void Receive(Mode mode) final { comm_.Receive(mode); };
 
     FieldAdapterT field_adapter_;
     FieldCommunicator<CommT> comm_;
@@ -84,15 +84,15 @@ public:
 
   // take a string& since map cannot be searched with string_view
   // (heterogeneous lookup)
-  void SendField(const std::string& name)
+  void SendField(const std::string& name, Mode mode=Mode::Synchronous)
   {
-    detail::find_or_error(name, fields_).Send();
+    detail::find_or_error(name, fields_).Send(mode);
   };
   // take a string& since map cannot be searched with string_view
   // (heterogeneous lookup)
-  void ReceiveField(const std::string& name)
+  void ReceiveField(const std::string& name, Mode mode=Mode::Synchronous)
   {
-    detail::find_or_error(name, fields_).Receive();
+    detail::find_or_error(name, fields_).Receive(mode);
   };
 
 private:

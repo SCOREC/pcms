@@ -74,21 +74,14 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap),
     FieldTransferMethod::Copy, FieldEvaluationMethod::None,
     FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
-  do {
-    total_f_gids->Receive();
-    delta_f_gids->Receive();
-    total_f_gids->Send();
-    delta_f_gids->Send();
-  } while(!done);
-  /*
   // CombinerFunction is a functor that takes a vector of omega_h
   // fields combines their values and sets the combined values into the
   // resultant field
   auto* gather =
-    cpl.AddGatherFieldsOp("cpl1", {"total_f_gids", "delta_f_gids"},
+    cpl.AddGatherFieldsOp("cpl1", {*total_f_gids, *delta_f_gids},
                           "combined_gids", ts::MeanCombiner{}, is_overlap);
   auto* scatter = cpl.AddScatterFieldsOp(
-    "cpl1", "combined_gids", {"total_f_gids", "delta_f_gids"}, is_overlap);
+    "cpl1", "combined_gids", {*total_f_gids, *delta_f_gids}, is_overlap);
   // for case with symmetric Gather/Scatter we have
   // auto [gather, scatter] = cpl.AddSymmetricGatherScatterOp("cpl1",
   // {"total_f_gids", "delta_f_gids"},
@@ -105,7 +98,6 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
     scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
   } while (!done);
-  */
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }
 

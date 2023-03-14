@@ -204,27 +204,39 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   while (true) {
     auto sr_time1 = std::chrono::steady_clock::now();
     // gather density fields (Core+Edge)
+    core->BeginReceivePhase();
+    edge->BeginReceivePhase();
     for(auto* gather : gather_density_ops) {
       gather->Run();
     }
+    core->EndSendPhase();
+    edge->EndSendPhase();
     auto sr_time2 = std::chrono::steady_clock::now();
     elapsed_seconds = sr_time2-sr_time1;
     ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
     if(!rank) ts::printTime("Gather", min, max, avg);
+    core->BeginReceivePhase();
+    edge->BeginReceivePhase();
     // Scatter density field (Edge)
     for(auto* scatter : scatter_density_ops) {
       scatter->Run();
     }
+    core->EndReceivePhase();
+    edge->EndReceivePhase();
     auto sr_time3 = std::chrono::steady_clock::now();
     elapsed_seconds = sr_time3-sr_time2;
     ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
     if(!rank) ts::printTime("Scatter", min, max, avg);
 
+    core->BeginReceivePhase();
+    edge->BeginReceivePhase();
     // deal with phi fields (pot0/dpot1/dpot2)
     // 1. reveive fields from Edge
     ReceiveFields(edge_analysis.dpot[0]);
     ReceiveFields(edge_analysis.dpot[1]);
     ReceiveFields(edge_analysis.pot0);
+    core->EndReceivePhase();
+    edge->EndReceivePhase();
     // 2. Copy fields from Edge->Core
     // Since we know that both native fields are Omega_h,
     // we don't need to sync to the internal and combined
@@ -235,10 +247,14 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     CopyFields(edge_analysis.dpot[0], core_analysis.dpot[0]);
     CopyFields(edge_analysis.dpot[1], core_analysis.dpot[1]);
     CopyFields(edge_analysis.pot0, core_analysis.pot0);
+    core->BeginSendPhase();
+    edge->BeginSendPhase();
     // 3. Send fields to Core
     SendFields(edge_analysis.dpot[0]);
     SendFields(edge_analysis.dpot[1]);
     SendFields(edge_analysis.pot0);
+    core->EndSendPhase();
+    edge->EndSendPhase();
 
   }
 }

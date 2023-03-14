@@ -33,12 +33,13 @@ OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
   out.offset.resize(counts.size() + 1);
   out.offset[0] = 0;
   wdmcpl::inclusive_scan(counts.begin(), counts.end(),
-                      std::next(out.offset.begin(), 1));
+                         std::next(out.offset.begin(), 1));
   return out;
 }
-size_t count_entries(const ReversePartitionMap& reverse_partition) {
+size_t count_entries(const ReversePartitionMap& reverse_partition)
+{
   size_t num_entries = 0;
-  for(const auto& v : reverse_partition) {
+  for (const auto& v : reverse_partition) {
     num_entries += v.second.size();
   }
   return num_entries;
@@ -124,18 +125,18 @@ bool HasDuplicates(std::vector<T> v)
 
 using redev::Mode;
 
+// TODO refactor to take application rather than channel
 template <typename FieldAdapterT>
 struct FieldCommunicator
 {
   using T = typename FieldAdapterT::value_type;
 
 public:
-  FieldCommunicator(
-    std::string name, MPI_Comm mpi_comm,
-    redev::Redev& redev,
-    redev::BidirectionalChannel & channel,
-    FieldAdapterT& field_adapter)
+  FieldCommunicator(std::string name, MPI_Comm mpi_comm, redev::Redev& redev,
+                    redev::BidirectionalChannel& channel,
+                    FieldAdapterT& field_adapter)
     : mpi_comm_(mpi_comm),
+      channel_(channel),
       comm_buffer_{},
       message_permutation_{},
       buffer_size_needs_update_{true},
@@ -143,9 +144,9 @@ public:
       name_{std::move(name)},
       redev_(redev)
   {
-    if(field_adapter_.RankParticipatesCouplingCommunication()) {
+    if (field_adapter_.RankParticipatesCouplingCommunication()) {
       comm_ = channel.CreateComm<T>(name_);
-      gid_comm_ = channel.CreateComm<GO>(name_+"_gids");
+      gid_comm_ = channel.CreateComm<GO>(name_ + "_gids");
       UpdateLayout();
     } else {
       comm_ = channel.CreateNoOpComm<T>();
@@ -159,16 +160,22 @@ public:
 
   void Send(Mode mode = Mode::Synchronous)
   {
+    WDMCPL_ALWAYS_ASSERT((mode != Mode::Synchronous) ==
+                         channel_.InSendCommunicationPhase());
     auto n = field_adapter_.Serialize({}, {});
     REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
     auto buffer = make_array_view(comm_buffer_);
-    field_adapter_.Serialize(buffer, make_const_array_view(message_permutation_));
+    field_adapter_.Serialize(buffer,
+                             make_const_array_view(message_permutation_));
     comm_.Send(buffer.data_handle(), mode);
   }
   void Receive(Mode mode = Mode::Synchronous)
   {
+    WDMCPL_ALWAYS_ASSERT((mode != Mode::Synchronous) ==
+                         channel_.InReceiveCommunicationPhase());
     auto data = comm_.Recv(mode);
-    field_adapter_.Deserialize(make_const_array_view(data), make_const_array_view(message_permutation_));
+    field_adapter_.Deserialize(make_const_array_view(data),
+                               make_const_array_view(message_permutation_));
   }
   /** update the permutation array and buffer sizes upon mesh change
    * @WARNING this function mut be called on *both* the client and server
@@ -199,7 +206,8 @@ private:
       MPI_Comm_size(mpi_comm_, &nproc);
       // we require that the layout for the gids and the message are the same
       const auto in_message_layout = gid_comm_.GetInMessageLayout();
-      auto out_message = detail::ConstructOutMessage(rank, nproc, in_message_layout);
+      auto out_message =
+        detail::ConstructOutMessage(rank, nproc, in_message_layout);
       comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
       // construct server permutation array
       // Verify that there are no duplicate entries in the received
@@ -213,6 +221,7 @@ private:
 
 private:
   MPI_Comm mpi_comm_;
+  redev::BidirectionalChannel& channel_;
   std::vector<T> comm_buffer_;
   std::vector<wdmcpl::LO> message_permutation_;
   redev::BidirectionalComm<T> comm_;
@@ -227,8 +236,8 @@ private:
 template <>
 struct FieldCommunicator<void>
 {
-  void Send(Mode={}) {}
-  void Receive(Mode={}) {}
+  void Send(Mode = {}) {}
+  void Receive(Mode = {}) {}
 };
 } // namespace wdmcpl
 

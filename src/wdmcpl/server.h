@@ -48,9 +48,8 @@ public:
       std::move(native_to_internal), std::move(internal_to_native));
   }
   template <typename FieldAdapterT>
-  ConvertibleCoupledField(const std::string& name,
-                          FieldAdapterT field_adapter, MPI_Comm mpi_comm,
-                          redev::Redev& redev,
+  ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
+                          MPI_Comm mpi_comm, redev::Redev& redev,
                           redev::BidirectionalChannel& channel,
                           Omega_h::Mesh& internal_mesh,
                           TransferOptions native_to_internal,
@@ -85,13 +84,13 @@ public:
     return internal_field_;
   }
   template <typename T>
-  [[nodiscard]]
-  T* GetFieldAdapter() const {
-    if(typeid(T) == coupled_field_->GetFieldAdapterType()) {
+  [[nodiscard]] T* GetFieldAdapter() const
+  {
+    if (typeid(T) == coupled_field_->GetFieldAdapterType()) {
       auto* adapter = coupled_field_->GetFieldAdapter();
       return reinterpret_cast<T*>(adapter);
     }
-    std::cerr<<"Requested type does not match field adapter type\n";
+    std::cerr << "Requested type does not match field adapter type\n";
     std::abort();
   }
   struct CoupledFieldConcept
@@ -100,10 +99,9 @@ public:
     virtual void Receive(Mode) = 0;
     virtual void SyncNativeToInternal(InternalField&) = 0;
     virtual void SyncInternalToNative(const InternalField&) = 0;
-    [[nodiscard]]
-    virtual const std::type_info& GetFieldAdapterType() const noexcept = 0;
-    [[nodiscard]]
-    virtual void* GetFieldAdapter() noexcept = 0;
+    [[nodiscard]] virtual const std::type_info& GetFieldAdapterType()
+      const noexcept = 0;
+    [[nodiscard]] virtual void* GetFieldAdapter() noexcept = 0;
     virtual ~CoupledFieldConcept() = default;
   };
   template <typename FieldAdapterT, typename CommT>
@@ -123,11 +121,13 @@ public:
     {
     }
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
-                      MPI_Comm mpi_comm, redev::Redev& redev, redev::BidirectionalChannel& channel,
+                      MPI_Comm mpi_comm, redev::Redev& redev,
+                      redev::BidirectionalChannel& channel,
                       TransferOptions&& native_to_internal,
                       TransferOptions&& internal_to_native)
       : field_adapter_(std::move(field_adapter)),
-        comm_(FieldCommunicator<FieldAdapterT>(name, mpi_comm, redev, channel,field_adapter_)),
+        comm_(FieldCommunicator<FieldAdapterT>(name, mpi_comm, redev, channel,
+                                               field_adapter_)),
         native_to_internal_(std::move(native_to_internal)),
         internal_to_native_(std::move(internal_to_native)),
         type_info_(typeid(FieldAdapterT))
@@ -147,8 +147,14 @@ public:
                                   internal_to_native_.transfer_method,
                                   internal_to_native_.evaluation_method);
     };
-    virtual const std::type_info& GetFieldAdapterType() const noexcept { return type_info_; }
-    virtual void* GetFieldAdapter() noexcept { return reinterpret_cast<void*>(&field_adapter_); };
+    virtual const std::type_info& GetFieldAdapterType() const noexcept
+    {
+      return type_info_;
+    }
+    virtual void* GetFieldAdapter() noexcept
+    {
+      return reinterpret_cast<void*>(&field_adapter_);
+    };
 
     FieldAdapterT field_adapter_;
     FieldCommunicator<CommT> comm_;
@@ -169,14 +175,11 @@ private:
 class Application
 {
 public:
-  Application(std::string name, redev::Redev& rdv,
-              MPI_Comm comm,
-              redev::Redev& redev,
-              Omega_h::Mesh& internal_mesh,
+  Application(std::string name, redev::Redev& rdv, MPI_Comm comm,
+              redev::Redev& redev, Omega_h::Mesh& internal_mesh,
               adios2::Params params, redev::TransportType transport_type,
               std::string path)
-    :
-      mpi_comm_(comm),
+    : mpi_comm_(comm),
       redev_(redev),
       channel_{rdv.CreateAdiosChannel(std::move(name), std::move(params),
                                       transport_type, std::move(path))},
@@ -195,9 +198,8 @@ public:
     Omega_h::Read<Omega_h::I8> internal_field_mask = {})
   {
     auto [it, inserted] = fields_.template try_emplace(
-      name, name, std::forward<FieldAdapterT>(field_adapter),
-      mpi_comm_, redev_, channel_,
-      internal_mesh_,
+      name, name, std::forward<FieldAdapterT>(field_adapter), mpi_comm_, redev_,
+      channel_, internal_mesh_,
       TransferOptions{to_field_transfer_method, to_field_eval_method},
       TransferOptions{from_field_transfer_method, from_field_eval_method},
       internal_field_mask);
@@ -207,14 +209,28 @@ public:
     }
     return &(it->second);
   }
-  void SendField(const std::string& name, Mode mode=Mode::Synchronous)
+  void SendField(const std::string& name, Mode mode = Mode::Synchronous)
   {
+    WDMCPL_ALWAYS_ASSERT((mode!=Mode::Synchronous) == InSendPhase());
     detail::find_or_error(name, fields_).Send(mode);
   };
-  void ReceiveField(const std::string& name, Mode mode=Mode::Synchronous)
+  void ReceiveField(const std::string& name, Mode mode = Mode::Synchronous)
   {
+    WDMCPL_ALWAYS_ASSERT((mode!=Mode::Synchronous) == InReceivePhase());
     detail::find_or_error(name, fields_).Receive(mode);
   };
+  [[nodiscard]] bool InSendPhase() const noexcept
+  {
+    return channel_.InSendCommunicationPhase();
+  }
+  [[nodiscard]] bool InReceivePhase() const noexcept
+  {
+    return channel_.InReceiveCommunicationPhase();
+  }
+  void BeginSendPhase() { channel_.BeginSendCommunicationPhase(); }
+  void EndSendPhase() { channel_.EndSendCommunicationPhase(); }
+  void BeginReceivePhase() { channel_.BeginReceiveCommunicationPhase(); }
+  void EndReceivePhase() { channel_.EndReceiveCommunicationPhase(); }
 
 private:
   MPI_Comm mpi_comm_;
@@ -331,8 +347,8 @@ public:
   {
     auto key = path + name;
     auto [it, inserted] = applications_.template try_emplace(
-      key, std::move(name), redev_, mpi_comm_, redev_, internal_mesh_, std::move(params),
-      transport_type, std::move(path));
+      key, std::move(name), redev_, mpi_comm_, redev_, internal_mesh_,
+      std::move(params), transport_type, std::move(path));
     if (!inserted) {
       std::cerr << "Application with name " << name << "already exists!\n";
       std::terminate();
@@ -351,8 +367,7 @@ public:
     detail::find_or_error(name, gather_operations_).Run();
   }
   template <typename CombinedFieldT = Real>
-  [[nodiscard]]
-  GatherOperation* AddGatherFieldsOp(
+  [[nodiscard]] GatherOperation* AddGatherFieldsOp(
     const std::string& name,
     std::vector<std::reference_wrapper<ConvertibleCoupledField>> gather_fields,
     const std::string& internal_field_name, CombinerFunction func,
@@ -373,21 +388,22 @@ public:
     }
     return &(it->second);
   }
- // template <typename CombinedFieldT = Real>
- // [[nodiscard]]
- // GatherOperation* AddGatherFieldsOp(
- //   const std::string& name, const std::vector<std::string>& fields_to_gather,
- //   const std::string& internal_field_name, CombinerFunction func,
- //   Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
- // {
- //   auto gather_fields = detail::find_many_or_error(fields_to_gather, fields_);
- //   return AddGatherFieldsOp(name, std::move(gather_fields), internal_field_name,
- //                    std::forward<CombinerFunction>(func), std::move(mask),
- //                    std::move(global_id_name));
- // }
+  // template <typename CombinedFieldT = Real>
+  // [[nodiscard]]
+  // GatherOperation* AddGatherFieldsOp(
+  //   const std::string& name, const std::vector<std::string>&
+  //   fields_to_gather, const std::string& internal_field_name,
+  //   CombinerFunction func, Omega_h::Read<Omega_h::I8> mask = {}, std::string
+  //   global_id_name = "")
+  // {
+  //   auto gather_fields = detail::find_many_or_error(fields_to_gather,
+  //   fields_); return AddGatherFieldsOp(name, std::move(gather_fields),
+  //   internal_field_name,
+  //                    std::forward<CombinerFunction>(func), std::move(mask),
+  //                    std::move(global_id_name));
+  // }
   template <typename CombinedFieldT = Real>
-  [[nodiscard]]
-  ScatterOperation* AddScatterFieldsOp(
+  [[nodiscard]] ScatterOperation* AddScatterFieldsOp(
     const std::string& name, const std::string& internal_field_name,
     std::vector<std::reference_wrapper<ConvertibleCoupledField>> scatter_fields,
     Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
@@ -407,19 +423,19 @@ public:
     }
     return &(it->second);
   }
- // template <typename CombinedFieldT = Real>
- // [[nodiscard]]
- // ScatterOperation* AddScatterFieldsOp(
- //   const std::string& name, const std::string& internal_field_name,
- //   const std::vector<std::string>& fields_to_scatter,
- //   Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
- // {
- //   auto scatter_fields =
- //     detail::find_many_or_error(fields_to_scatter, fields_);
- //   return AddScatterFieldsOp(name, internal_field_name,
- //                      std::move(scatter_fields), std::move(mask),
- //                      std::move(global_id_name));
- // }
+  // template <typename CombinedFieldT = Real>
+  // [[nodiscard]]
+  // ScatterOperation* AddScatterFieldsOp(
+  //   const std::string& name, const std::string& internal_field_name,
+  //   const std::vector<std::string>& fields_to_scatter,
+  //   Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
+  // {
+  //   auto scatter_fields =
+  //     detail::find_many_or_error(fields_to_scatter, fields_);
+  //   return AddScatterFieldsOp(name, internal_field_name,
+  //                      std::move(scatter_fields), std::move(mask),
+  //                      std::move(global_id_name));
+  // }
   [[nodiscard]] const redev::Partition& GetPartition() const noexcept
   {
     return redev_.GetPartition();

@@ -86,14 +86,28 @@ public:
   // (heterogeneous lookup)
   void SendField(const std::string& name, Mode mode=Mode::Synchronous)
   {
+    WDMCPL_ALWAYS_ASSERT((mode!=Mode::Synchronous) == InSendPhase());
     detail::find_or_error(name, fields_).Send(mode);
   };
   // take a string& since map cannot be searched with string_view
   // (heterogeneous lookup)
   void ReceiveField(const std::string& name, Mode mode=Mode::Synchronous)
   {
+    WDMCPL_ALWAYS_ASSERT((mode!=Mode::Synchronous) == InReceivePhase());
     detail::find_or_error(name, fields_).Receive(mode);
   };
+  [[nodiscard]] bool InSendPhase() const noexcept
+  {
+    return channel_.InSendCommunicationPhase();
+  }
+  [[nodiscard]] bool InReceivePhase() const noexcept
+  {
+    return channel_.InReceiveCommunicationPhase();
+  }
+  void BeginSendPhase() { channel_.BeginSendCommunicationPhase(); }
+  void EndSendPhase() { channel_.EndSendCommunicationPhase(); }
+  void BeginReceivePhase() { channel_.BeginReceiveCommunicationPhase(); }
+  void EndReceivePhase() { channel_.EndReceiveCommunicationPhase(); }
 
 private:
   std::string name_;

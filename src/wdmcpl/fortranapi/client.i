@@ -53,4 +53,8 @@ void wdmcpl_receive_field_name(WdmCplClientHandle*, const char* name);
 void wdmcpl_send_field(WdmCplFieldHandle*);
 void wdmcpl_receive_field(WdmCplFieldHandle*);
 
+void wdmcpl_begin_send_phase(WdmCplClientHandle*);
+void wdmcpl_end_send_phase(WdmCplClientHandle*);
+void wdmcpl_begin_receive_phase(WdmCplClientHandle*);
+void wdmcpl_end_receive_phase(WdmCplClientHandle*);
 

@@ -380,4 +380,36 @@ SWIGEXPORT void _wrap_wdmcpl_receive_field(SwigClassWrapper *farg1) {
 }
 
 
+SWIGEXPORT void _wrap_wdmcpl_begin_send_phase(SwigClassWrapper *farg1) {
+  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  
+  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  wdmcpl_begin_send_phase(arg1);
+}
+
+
+SWIGEXPORT void _wrap_wdmcpl_end_send_phase(SwigClassWrapper *farg1) {
+  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  
+  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  wdmcpl_end_send_phase(arg1);
+}
+
+
+SWIGEXPORT void _wrap_wdmcpl_begin_receive_phase(SwigClassWrapper *farg1) {
+  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  
+  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  wdmcpl_begin_receive_phase(arg1);
+}
+
+
+SWIGEXPORT void _wrap_wdmcpl_end_receive_phase(SwigClassWrapper *farg1) {
+  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  
+  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  wdmcpl_end_receive_phase(arg1);
+}
+
+
 

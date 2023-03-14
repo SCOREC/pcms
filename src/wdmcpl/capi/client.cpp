@@ -153,3 +153,19 @@ int wdmcpl_reverse_classification_count_verts(
                            return current + verts.second.size();
                          });
 }
+void wdmcpl_begin_send_phase(WdmCplClientHandle* h) {
+  auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(h);
+  client ->BeginSendPhase();
+}
+void wdmcpl_end_send_phase(WdmCplClientHandle* h) {
+  auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(h);
+  client ->EndSendPhase();
+}
+void wdmcpl_begin_receive_phase(WdmCplClientHandle* h ) {
+  auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(h);
+  client ->BeginReceivePhase();
+}
+void wdmcpl_end_receive_phase(WdmCplClientHandle* h) {
+  auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(h);
+  client ->EndReceivePhase();
+}

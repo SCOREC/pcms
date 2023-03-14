@@ -66,7 +66,7 @@ public:
   }
 
   void Send(Mode mode = Mode::Synchronous) { coupled_field_->Send(mode); }
-  void Receive(Mode mode = Mode::Synchronous) { coupled_field_->Receive(mode); }
+  void Receive() { coupled_field_->Receive(); }
   void SyncNativeToInternal()
   {
     coupled_field_->SyncNativeToInternal(internal_field_);
@@ -96,7 +96,7 @@ public:
   struct CoupledFieldConcept
   {
     virtual void Send(Mode) = 0;
-    virtual void Receive(Mode) = 0;
+    virtual void Receive() = 0;
     virtual void SyncNativeToInternal(InternalField&) = 0;
     virtual void SyncInternalToNative(const InternalField&) = 0;
     [[nodiscard]] virtual const std::type_info& GetFieldAdapterType()
@@ -134,7 +134,7 @@ public:
     {
     }
     void Send(Mode mode) final { comm_.Send(mode); };
-    void Receive(Mode mode) final { comm_.Receive(mode); };
+    void Receive() final { comm_.Receive(); };
     void SyncNativeToInternal(InternalField& internal_field) final
     {
       ConvertFieldAdapterToOmegaH(field_adapter_, internal_field,
@@ -211,13 +211,13 @@ public:
   }
   void SendField(const std::string& name, Mode mode = Mode::Synchronous)
   {
-    WDMCPL_ALWAYS_ASSERT((mode!=Mode::Synchronous) == InSendPhase());
+    WDMCPL_ALWAYS_ASSERT(InSendPhase());
     detail::find_or_error(name, fields_).Send(mode);
   };
-  void ReceiveField(const std::string& name, Mode mode = Mode::Synchronous)
+  void ReceiveField(const std::string& name)
   {
-    WDMCPL_ALWAYS_ASSERT((mode!=Mode::Synchronous) == InReceivePhase());
-    detail::find_or_error(name, fields_).Receive(mode);
+    WDMCPL_ALWAYS_ASSERT(InReceivePhase());
+    detail::find_or_error(name, fields_).Receive();
   };
   [[nodiscard]] bool InSendPhase() const noexcept
   {
@@ -231,6 +231,15 @@ public:
   void EndSendPhase() { channel_.EndSendCommunicationPhase(); }
   void BeginReceivePhase() { channel_.BeginReceiveCommunicationPhase(); }
   void EndReceivePhase() { channel_.EndReceiveCommunicationPhase(); }
+
+  template <typename Func, typename... Args>
+  auto SendPhase(const Func& func, Args&&... args) {
+    return channel_.SendPhase(func, std::forward<Args>(args)...);
+  }
+  template <typename Func, typename... Args>
+  auto ReceivePhase(const Func& func, Args&&... args) {
+    return channel_.ReceivePhase(func, std::forward<Args>(args)...);
+  }
 
 private:
   MPI_Comm mpi_comm_;
@@ -262,7 +271,7 @@ public:
   void Run() const
   {
     for (auto& field : coupled_fields_) {
-      field.get().Receive(Mode::Synchronous);
+      field.get().Receive();
       field.get().SyncNativeToInternal();
     }
     combiner_(internal_fields_, combined_field_);

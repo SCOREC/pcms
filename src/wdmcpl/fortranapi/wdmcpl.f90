@@ -63,6 +63,10 @@ module wdmcpl
  public :: wdmcpl_receive_field_name
  public :: wdmcpl_send_field
  public :: wdmcpl_receive_field
+ public :: wdmcpl_begin_send_phase
+ public :: wdmcpl_end_send_phase
+ public :: wdmcpl_begin_receive_phase
+ public :: wdmcpl_end_receive_phase
 
 ! FUNCTION POINTER DECLARATIONS
 abstract interface
@@ -187,6 +191,34 @@ end subroutine
 
 subroutine swigc_wdmcpl_receive_field(farg1) &
 bind(C, name="_wrap_wdmcpl_receive_field")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+end subroutine
+
+subroutine swigc_wdmcpl_begin_send_phase(farg1) &
+bind(C, name="_wrap_wdmcpl_begin_send_phase")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+end subroutine
+
+subroutine swigc_wdmcpl_end_send_phase(farg1) &
+bind(C, name="_wrap_wdmcpl_end_send_phase")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+end subroutine
+
+subroutine swigc_wdmcpl_begin_receive_phase(farg1) &
+bind(C, name="_wrap_wdmcpl_begin_receive_phase")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+end subroutine
+
+subroutine swigc_wdmcpl_end_receive_phase(farg1) &
+bind(C, name="_wrap_wdmcpl_end_receive_phase")
 use, intrinsic :: ISO_C_BINDING
 import :: swigclasswrapper
 type(SwigClassWrapper), intent(in) :: farg1
@@ -383,6 +415,42 @@ type(SwigClassWrapper) :: farg1
 
 farg1 = arg0%swigdata
 call swigc_wdmcpl_receive_field(farg1)
+end subroutine
+
+subroutine wdmcpl_begin_send_phase(arg0)
+use, intrinsic :: ISO_C_BINDING
+class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+type(SwigClassWrapper) :: farg1 
+
+farg1 = arg0%swigdata
+call swigc_wdmcpl_begin_send_phase(farg1)
+end subroutine
+
+subroutine wdmcpl_end_send_phase(arg0)
+use, intrinsic :: ISO_C_BINDING
+class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+type(SwigClassWrapper) :: farg1 
+
+farg1 = arg0%swigdata
+call swigc_wdmcpl_end_send_phase(farg1)
+end subroutine
+
+subroutine wdmcpl_begin_receive_phase(arg0)
+use, intrinsic :: ISO_C_BINDING
+class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+type(SwigClassWrapper) :: farg1 
+
+farg1 = arg0%swigdata
+call swigc_wdmcpl_begin_receive_phase(farg1)
+end subroutine
+
+subroutine wdmcpl_end_receive_phase(arg0)
+use, intrinsic :: ISO_C_BINDING
+class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+type(SwigClassWrapper) :: farg1 
+
+farg1 = arg0%swigdata
+call swigc_wdmcpl_end_receive_phase(farg1)
 end subroutine
 
 

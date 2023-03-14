@@ -33,9 +33,19 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::isModelEntInOverlap);
   cpl.AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  cpl.AddField("gids2",
+               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
-    cpl.SendField("gids");    //(Alt) df_gid_field->Send();
-    cpl.ReceiveField("gids"); //(Alt) df_gid_field->Receive();
+    for(int i=0; i<1; ++i) {
+      cpl.BeginSendPhase();
+      cpl.SendField("gids");    //(Alt) df_gid_field->Send();
+      cpl.SendField("gids2");    //(Alt) df_gid_field->Send();
+      cpl.EndSendPhase();
+      cpl.BeginReceivePhase();
+      cpl.ReceiveField("gids"); //(Alt) df_gid_field->Receive();
+      cpl.EndReceivePhase();
+      //cpl.ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
+    }
   } while (!done);
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
@@ -45,8 +55,14 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   cpl.AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
-    cpl.SendField("gids");    //(Alt) tf_gid_field->Send();
-    cpl.ReceiveField("gids"); //(Alt) tf_gid_field->Receive();
+    for(int i=0; i<1; ++i) {
+      cpl.BeginSendPhase();
+      cpl.SendField("gids");    //(Alt) tf_gid_field->Send();
+      cpl.EndSendPhase();
+      cpl.BeginReceivePhase();
+      cpl.ReceiveField("gids"); //(Alt) tf_gid_field->Receive();
+      cpl.EndReceivePhase();
+    }
   } while (!done);
 }
 void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
@@ -74,6 +90,10 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap),
     FieldTransferMethod::Copy, FieldEvaluationMethod::None,
     FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
+  auto* delta_f_gids2 = delta_f->AddField(
+    "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap),
+    FieldTransferMethod::Copy, FieldEvaluationMethod::None,
+    FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
   // CombinerFunction is a functor that takes a vector of omega_h
   // fields combines their values and sets the combined values into the
   // resultant field
@@ -87,16 +107,34 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // {"total_f_gids", "delta_f_gids"},
   //                      "combined_gids", MeanCombiner{});
   do {
-    //  Gather OHField
-    // 1. receives any member fields .Receive()
-    // 2. field_transfer native to internal
-    // 3. combine internal fields into combined internal field
-    gather->Run(); // alt cpl.GatherFields("cpl1")
-    // Scatter OHField
-    // 1. OHField transfer internal to native
-    // 2. Send data to members
-    // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
-    scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
+    for(int i=0; i<1; ++i) {
+      //  Gather OHField
+      // 1. receives any member fields .Receive()
+      // 2. field_transfer native to internal
+      // 3. combine internal fields into combined internal field
+      //gather->Run(); // alt cpl.GatherFields("cpl1")
+      //gather->Run(); // alt cpl.GatherFields("cpl1")
+      total_f->BeginReceivePhase();
+      total_f_gids->Receive();
+      total_f->EndReceivePhase();
+      delta_f->BeginReceivePhase();
+      delta_f_gids->Receive();
+      delta_f_gids2->Receive();
+      delta_f->EndReceivePhase();
+      // Scatter OHField
+      // 1. OHField transfer internal to native
+      // 2. Send data to members
+      // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
+      //scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
+      total_f->BeginSendPhase();
+      total_f_gids->Send();
+      total_f->EndSendPhase();
+      delta_f->BeginSendPhase();
+      delta_f_gids->Send(wdmcpl::Mode::Deferred);
+      delta_f_gids2->Send(wdmcpl::Mode::Deferred);
+      delta_f->EndSendPhase();
+
+    }
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }

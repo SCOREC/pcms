@@ -160,8 +160,7 @@ public:
 
   void Send(Mode mode = Mode::Synchronous)
   {
-    WDMCPL_ALWAYS_ASSERT((mode != Mode::Synchronous) ==
-                         channel_.InSendCommunicationPhase());
+    WDMCPL_ALWAYS_ASSERT(channel_.InSendCommunicationPhase());
     auto n = field_adapter_.Serialize({}, {});
     REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
     auto buffer = make_array_view(comm_buffer_);
@@ -169,11 +168,13 @@ public:
                              make_const_array_view(message_permutation_));
     comm_.Send(buffer.data_handle(), mode);
   }
-  void Receive(Mode mode = Mode::Synchronous)
+  void Receive()
   {
-    WDMCPL_ALWAYS_ASSERT((mode != Mode::Synchronous) ==
-                         channel_.InReceiveCommunicationPhase());
-    auto data = comm_.Recv(mode);
+    WDMCPL_ALWAYS_ASSERT(channel_.InReceiveCommunicationPhase());
+    // Current implementation requires that Receive is always called in Sync
+    // mode because we make an immediate call to deserialize after a call to
+    // receive.
+    auto data = comm_.Recv(Mode::Synchronous);
     field_adapter_.Deserialize(make_const_array_view(data),
                                make_const_array_view(message_permutation_));
   }
@@ -198,9 +199,13 @@ private:
       for (size_t i = 0; i < gids.size(); ++i) {
         gid_msgs[message_permutation_[i]] = gids[i];
       }
-      gid_comm_.Send(gid_msgs.data(), redev::Mode::Synchronous);
+      channel_.BeginSendCommunicationPhase();
+      gid_comm_.Send(gid_msgs.data());
+      channel_.EndSendCommunicationPhase();
     } else {
-      auto recv_gids = gid_comm_.Recv(redev::Mode::Synchronous);
+      channel_.BeginReceiveCommunicationPhase();
+      auto recv_gids = gid_comm_.Recv();
+      channel_.EndReceiveCommunicationPhase();
       int rank, nproc;
       MPI_Comm_rank(mpi_comm_, &rank);
       MPI_Comm_size(mpi_comm_, &nproc);

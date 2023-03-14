@@ -12,18 +12,17 @@ public:
   CoupledField(const std::string& name, FieldAdapterT field_adapter,
                MPI_Comm mpi_comm, redev::Redev& redev, redev::BidirectionalChannel& channel)
   {
-
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
         name, std::move(field_adapter), mpi_comm, redev, channel);
   }
 
   void Send(Mode mode = Mode::Synchronous) { coupled_field_->Send(mode); }
-  void Receive(Mode mode = Mode::Synchronous) { coupled_field_->Receive(mode); }
+  void Receive() { coupled_field_->Receive(); }
   struct CoupledFieldConcept
   {
     virtual void Send(Mode) = 0;
-    virtual void Receive(Mode) = 0;
+    virtual void Receive() = 0;
     virtual ~CoupledFieldConcept() = default;
   };
   template <typename FieldAdapterT, typename CommT>
@@ -40,7 +39,7 @@ public:
     {
     }
     void Send(Mode mode) final { comm_.Send(mode); };
-    void Receive(Mode mode) final { comm_.Receive(mode); };
+    void Receive() final { comm_.Receive(); };
 
     FieldAdapterT field_adapter_;
     FieldCommunicator<CommT> comm_;
@@ -69,9 +68,7 @@ public:
 
   template <typename FieldAdapterT>
   CoupledField* AddField(
-    std::string name, FieldAdapterT field_adapter,
-    redev::TransportType transport_type = redev::TransportType::BP4,
-    adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}})
+    std::string name, FieldAdapterT field_adapter)
   {
     auto [it, inserted] = fields_.template try_emplace(name, name, std::move(field_adapter),
                                                        mpi_comm_, redev_, channel_);
@@ -86,15 +83,15 @@ public:
   // (heterogeneous lookup)
   void SendField(const std::string& name, Mode mode=Mode::Synchronous)
   {
-    WDMCPL_ALWAYS_ASSERT((mode!=Mode::Synchronous) == InSendPhase());
+    WDMCPL_ALWAYS_ASSERT(InSendPhase());
     detail::find_or_error(name, fields_).Send(mode);
   };
   // take a string& since map cannot be searched with string_view
   // (heterogeneous lookup)
-  void ReceiveField(const std::string& name, Mode mode=Mode::Synchronous)
+  void ReceiveField(const std::string& name)
   {
-    WDMCPL_ALWAYS_ASSERT((mode!=Mode::Synchronous) == InReceivePhase());
-    detail::find_or_error(name, fields_).Receive(mode);
+    WDMCPL_ALWAYS_ASSERT(InReceivePhase());
+    detail::find_or_error(name, fields_).Receive();
   };
   [[nodiscard]] bool InSendPhase() const noexcept
   {

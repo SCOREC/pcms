@@ -65,8 +65,12 @@ Program main
     xgc_adapter = wdmcpl_create_xgc_field_adapter("a1", MPI_COMM_SELF, c_loc(data_pointer),&
             nverts, WDMCPL_LONG_INT, reverse_classification, in_overlap)
     field = wdmcpl_add_field(client, "xgc_gids", xgc_adapter)
+    call wdmcpl_begin_send_phase(client)
     call wdmcpl_send_field(field)
+    call wdmcpl_end_send_phase(client)
+    call wdmcpl_begin_receive_phase(client)
     call wdmcpl_receive_field(field)
+    call wdmcpl_end_receive_phase(client)
     do ix = 1, nverts
         if(data(ix) /= ix) then
             print*, "ERROR (1): data[",ix,"] should be ",ix," not ",data(ix),"."
@@ -74,8 +78,12 @@ Program main
         end if
         data(ix) = 2*ix
     end do
+    call wdmcpl_begin_send_phase(client)
     call wdmcpl_send_field_name(client,"xgc_gids")
+    call wdmcpl_end_send_phase(client)
+    call wdmcpl_begin_receive_phase(client)
     call wdmcpl_receive_field_name(client,"xgc_gids")
+    call wdmcpl_end_receive_phase(client)
     do ix = 1, nverts
         if(data(ix) /= 2*ix) then
             print*, "ERROR (2): data[",ix,"] should be ",2*ix," not ",data(ix),"."

@@ -30,7 +30,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   CouplerClient cpl("proxy_couple_xgc_delta_f", comm);
 
-  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::isModelEntInOverlap);
+  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
   cpl.AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   cpl.AddField("gids2",
@@ -51,7 +51,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   wdmcpl::CouplerClient cpl("proxy_couple_xgc_total_f", comm);
-  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::isModelEntInOverlap);
+  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
   cpl.AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
@@ -76,7 +76,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   //std::this_thread::sleep_for(60s);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto is_overlap =
-    ts::markServerOverlapRegion(mesh, partition, ts::isModelEntInOverlap);
+    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
   auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f");
   auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");
   // TODO, fields should have a transfer policy rather than parameters

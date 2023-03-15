@@ -133,20 +133,25 @@ std::vector<size_t> sortIndexes(const T& v)
                    [&v](size_t i1, size_t i2) { return v[i1] < v[i2]; });
   return idx;
 }
+
+struct IsModelEntInOverlap {
 /**
  * return 1 if the specificed model entity is part of the overlap region, 0
  * otherwise. Device function must be defined inline
  */
-OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
-{
-  // the TOMMS generated geometric model has
-  // entity IDs that increase with the distance
-  // from the magnetic axis
-  if ((id >= 22 && id <= 34) && (dim >= 0 && dim <= 2)) {
-    return 1;
+  KOKKOS_INLINE_FUNCTION Omega_h::I8 operator()(const int dim, const int id) const noexcept
+  {
+    // the TOMMS generated geometric model has
+    // entity IDs that increase with the distance
+    // from the magnetic axis
+    if ((id >= 22 && id <= 34) && (dim >= 0 && dim <= 2)) {
+      return 1;
+    }
+    return 0;
   }
-  return 0;
-}
+};
+
+
 //using EntInOverlapFunc = std::function<Omega_h::I8(const int, const int)>;
 //static_assert(std::is_constructible_v<EntInOverlapFunc, decltype(isModelEntInOverlap)>);
 /**
@@ -162,6 +167,7 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
  * client process (to the server process returned by GetRank(modelEntity)) so
  * using the ownership of mesh entities following the mesh partition ownership
  * is OK. The function markMeshOverlapRegion(...) supports this.
+ *
  */
 template <typename EntInOverlapFunc>
 Omega_h::Read<Omega_h::I8> markServerOverlapRegion(
@@ -205,6 +211,7 @@ Omega_h::Read<Omega_h::I8> markServerOverlapRegion(
  * vertex is classified on a model entity in the closure of the geometric model
  * faces forming the overlap region; the value is 0 otherwise.
  * OnlyIncludesOverlapping and owned verts
+ *
  */
 template <typename EntInOverlapFunc>
 Omega_h::Read<Omega_h::I8> markOverlapMeshEntities(
@@ -213,11 +220,7 @@ Omega_h::Read<Omega_h::I8> markOverlapMeshEntities(
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
   auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
   auto isOverlap = Omega_h::Write<Omega_h::I8>(classIds.size(), "isOverlap");
-  auto markOverlap = OMEGA_H_LAMBDA(int i)
-  {
-    isOverlap[i] = entInOverlap(classDims[i], classIds[i]);
-  };
-  Omega_h::parallel_for(classIds.size(), markOverlap);
+  Omega_h::parallel_for(classIds.size(),OMEGA_H_LAMBDA(int i){isOverlap[i] = entInOverlap(classDims[i], classIds[i]);});
   auto isOwned = mesh.owned(0);
   // try masking out to only owned entities
   Omega_h::parallel_for(

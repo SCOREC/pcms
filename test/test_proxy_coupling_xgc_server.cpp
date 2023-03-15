@@ -41,12 +41,12 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   }
 
   auto is_overlap =
-    ts::markServerOverlapRegion(mesh, partition, ts::isModelEntInOverlap);
+    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
   std::vector<GO> data(mesh.nverts());
   auto* application = cpl.AddApplication("proxy_couple");
 
   auto field_adapter = wdmcpl::XGCFieldAdapter<GO>(
-    "xgc_gids", comm, make_array_view(data), rc, ts::isModelEntInOverlap);
+    "xgc_gids", comm, make_array_view(data), rc, ts::IsModelEntInOverlap{});
   application->AddField("xgc_gids", std::move(field_adapter),
                         FieldTransferMethod::Copy, // to Omega_h
                         FieldEvaluationMethod::None,
@@ -82,7 +82,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   }
 
   auto is_overlap =
-    ts::markServerOverlapRegion(mesh, partition, ts::isModelEntInOverlap);
+    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
   std::vector<GO> data(mesh.nverts());
 
   auto field_adapter =

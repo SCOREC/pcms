@@ -101,15 +101,15 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   std::string numbering = "simNumbering";
   WDMCPL_ALWAYS_ASSERT(mesh.has_tag(0, numbering));
   auto* core = cpl.AddApplication("core", "core/");
-  auto* edge = cpl.AddApplication("edge", "core/");
+  auto* edge = cpl.AddApplication("edge", "edge/");
   auto is_overlap = ts::markServerOverlapRegion(
     mesh, partition, KOKKOS_LAMBDA(const int dim, const int id) {
-      //if (id >= 1 && id <= 2) {
-      //  return 1;
-      //}
-      if (id >= 100 && id <= 140) {
+      if (id >= 1 && id <= 2) {
         return 1;
       }
+      //if (id >= 100 && id <= 140) {
+      //  return 1;
+      //}
       return 0;
     });
   auto time2 = std::chrono::steady_clock::now();

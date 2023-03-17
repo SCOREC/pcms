@@ -25,10 +25,14 @@ int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
   c_kokkos_initialize_without_args();
-  WdmCplClientHandle* client =
-    wdmcpl_create_client("proxy_couple", MPI_COMM_SELF);
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  const int rank_participates = (rank ==0);
+  // client comm is NULL on any ranks that shouldn't participate in CouplingCommunication
+  MPI_Comm client_comm;
+  MPI_Comm_split(MPI_COMM_WORLD,rank_participates?0:MPI_UNDEFINED,rank,&client_comm);
+  WdmCplClientHandle* client =
+    wdmcpl_create_client("proxy_couple", client_comm);
   const char* rc_file = argv[1];
   WdmCplReverseClassificationHandle* rc =
     wdmcpl_load_reverse_classification(rc_file, MPI_COMM_WORLD);

@@ -190,7 +190,6 @@ public:
     }
     return gid_array;
   }
-
 private:
   std::string name_;
   Omega_h::Mesh& mesh_;
@@ -501,7 +500,6 @@ public:
   {
     return field_;
   }
-  [[nodiscard]] bool RankParticipatesCouplingCommunication() const noexcept { return true; }
 
 private:
   OmegaHField<T, CoordinateElementType> field_;

@@ -145,7 +145,7 @@ if (WDMCPL_ENABLE_OMEGA_H)
                 NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
     endif()
     tri_mpi_test(TESTNAME test_proxy_coupling_4p
-            TIMEOUT 12
+            TIMEOUT 10
             NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
             NAME2 client0 EXE2 ./proxy_coupling PROCS2 1 ARGS2 0 ${d3d1p} ignored
             NAME3 client1 EXE3 ./proxy_coupling PROCS3 1 ARGS3 1 ${d3d1p} ignored)

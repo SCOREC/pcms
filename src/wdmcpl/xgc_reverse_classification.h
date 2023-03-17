@@ -95,8 +95,6 @@ template <typename T = Omega_h::LO>
 [[nodiscard]] ReverseClassificationVertex ConstructRCFromOmegaHMesh(
   Omega_h::Mesh& mesh, std::string numbering = "simNumbering", IndexBase index_base=IndexBase::One)
 {
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   // transfer vtx classification to host
   auto classIds_h =
     Omega_h::HostRead<Omega_h::ClassId>(mesh.get_array<Omega_h::ClassId>(0, "class_id"));

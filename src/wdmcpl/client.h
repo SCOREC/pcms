@@ -10,7 +10,7 @@ class CoupledField
 public:
   template <typename FieldAdapterT>
   CoupledField(const std::string& name, FieldAdapterT field_adapter,
-               MPI_Comm mpi_comm, redev::Redev& redev, redev::BidirectionalChannel& channel)
+               MPI_Comm mpi_comm, redev::Redev& redev, redev::Channel& channel)
   {
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
@@ -33,7 +33,7 @@ public:
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
                       MPI_Comm mpi_comm,
                       redev::Redev& redev,
-                      redev::BidirectionalChannel& channel)
+                      redev::Channel& channel)
       : field_adapter_(std::move(field_adapter)),
         comm_(FieldCommunicator<CommT>(name, mpi_comm, redev, channel, field_adapter_))
     {
@@ -52,7 +52,7 @@ class CouplerClient
 {
 public:
   CouplerClient(std::string name, MPI_Comm comm,
-                redev::TransportType transport_type = redev::TransportType::BP4,
+                redev::TransportType transport_type = redev::TransportType::SST,
                 adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}},
                 std::string path="")
     : name_(std::move(name)), mpi_comm_(comm), redev_(comm),
@@ -113,7 +113,7 @@ private:
   // map rather than unordered_map is necessary to avoid iterator invalidation.
   // This is important because we pass pointers to the fields out of this class
   std::map<std::string, CoupledField> fields_;
-  redev::BidirectionalChannel channel_;
+  redev::Channel channel_;
 
 };
 } // namespace wdmcpl

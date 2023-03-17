@@ -24,6 +24,7 @@ using wdmcpl::OmegaHFieldAdapter;
 using namespace std::chrono_literals;
 
 static constexpr bool done = true;
+static constexpr int COMM_ROUNDS = 4;
 namespace ts = test_support;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
@@ -36,15 +37,15 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   cpl.AddField("gids2",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
-    for(int i=0; i<1; ++i) {
+    for (int i = 0; i < COMM_ROUNDS; ++i) {
       cpl.BeginSendPhase();
-      cpl.SendField("gids");    //(Alt) df_gid_field->Send();
-      cpl.SendField("gids2");    //(Alt) df_gid_field->Send();
+      cpl.SendField("gids");  //(Alt) df_gid_field->Send();
+      cpl.SendField("gids2"); //(Alt) df_gid_field->Send();
       cpl.EndSendPhase();
       cpl.BeginReceivePhase();
       cpl.ReceiveField("gids"); //(Alt) df_gid_field->Receive();
       cpl.EndReceivePhase();
-      //cpl.ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
+      // cpl.ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
     }
   } while (!done);
 }
@@ -55,9 +56,9 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   cpl.AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
-    for(int i=0; i<1; ++i) {
+    for (int i = 0; i < COMM_ROUNDS; ++i) {
       cpl.BeginSendPhase();
-      cpl.SendField("gids");    //(Alt) tf_gid_field->Send();
+      cpl.SendField("gids"); //(Alt) tf_gid_field->Send();
       cpl.EndSendPhase();
       cpl.BeginReceivePhase();
       cpl.ReceiveField("gids"); //(Alt) tf_gid_field->Receive();
@@ -73,7 +74,6 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   wdmcpl::CouplerServer cpl(
     "proxy_couple", comm,
     redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
-  //std::this_thread::sleep_for(60s);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
@@ -107,33 +107,28 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // {"total_f_gids", "delta_f_gids"},
   //                      "combined_gids", MeanCombiner{});
   do {
-    for(int i=0; i<1; ++i) {
+    for (int i = 0; i < COMM_ROUNDS; ++i) {
       //  Gather OHField
       // 1. receives any member fields .Receive()
       // 2. field_transfer native to internal
       // 3. combine internal fields into combined internal field
-      //gather->Run(); // alt cpl.GatherFields("cpl1")
-      //gather->Run(); // alt cpl.GatherFields("cpl1")
-      total_f->BeginReceivePhase();
-      total_f_gids->Receive();
-      total_f->EndReceivePhase();
-      delta_f->BeginReceivePhase();
-      delta_f_gids->Receive();
-      delta_f_gids2->Receive();
-      delta_f->EndReceivePhase();
+      // gather->Run(); // alt cpl.GatherFields("cpl1")
+      // gather->Run(); // alt cpl.GatherFields("cpl1")
+      total_f->ReceivePhase([&]() { total_f_gids->Receive(); });
+      delta_f->ReceivePhase([&]() {
+        delta_f_gids->Receive();
+        delta_f_gids2->Receive();
+      });
       // Scatter OHField
       // 1. OHField transfer internal to native
       // 2. Send data to members
       // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
-      //scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
-      total_f->BeginSendPhase();
-      total_f_gids->Send();
-      total_f->EndSendPhase();
-      delta_f->BeginSendPhase();
-      delta_f_gids->Send(wdmcpl::Mode::Deferred);
-      delta_f_gids2->Send(wdmcpl::Mode::Deferred);
-      delta_f->EndSendPhase();
-
+      // scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
+      total_f->SendPhase([&]() { total_f_gids->Send(); });
+      delta_f->SendPhase([&]() {
+        delta_f_gids->Send(wdmcpl::Mode::Deferred);
+        delta_f_gids2->Send(wdmcpl::Mode::Deferred);
+      });
     }
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());

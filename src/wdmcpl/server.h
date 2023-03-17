@@ -50,7 +50,7 @@ public:
   template <typename FieldAdapterT>
   ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
                           MPI_Comm mpi_comm, redev::Redev& redev,
-                          redev::BidirectionalChannel& channel,
+                          redev::Channel& channel,
                           Omega_h::Mesh& internal_mesh,
                           TransferOptions native_to_internal,
                           TransferOptions internal_to_native,
@@ -122,7 +122,7 @@ public:
     }
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
                       MPI_Comm mpi_comm, redev::Redev& redev,
-                      redev::BidirectionalChannel& channel,
+                      redev::Channel& channel,
                       TransferOptions&& native_to_internal,
                       TransferOptions&& internal_to_native)
       : field_adapter_(std::move(field_adapter)),
@@ -244,7 +244,7 @@ public:
 private:
   MPI_Comm mpi_comm_;
   redev::Redev& redev_;
-  redev::BidirectionalChannel channel_;
+  redev::Channel channel_;
   // map is used rather than unordered_map because we give pointers to the
   // internal data and rehash of unordered_map can cause pointer invalidation.
   // map is less cache friendly, but pointers are not invalidated.
@@ -351,7 +351,7 @@ public:
   }
   Application* AddApplication(
     std::string name, std::string path = "",
-    redev::TransportType transport_type = redev::TransportType::BP4,
+    redev::TransportType transport_type = redev::TransportType::SST,
     adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}})
   {
     auto key = path + name;

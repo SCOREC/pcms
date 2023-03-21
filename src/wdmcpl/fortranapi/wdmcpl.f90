@@ -54,6 +54,7 @@ module wdmcpl
   type(SwigClassWrapper), public :: swigdata
  end type
  public :: wdmcpl_create_xgc_field_adapter
+ public :: wdmcpl_create_dummy_field_adapter
  public :: wdmcpl_destroy_field_adapter
  type, public :: SWIGTYPE_p_WdmCplFieldHandle
   type(SwigClassWrapper), public :: swigdata
@@ -145,6 +146,14 @@ type(C_FUNPTR), value :: farg7
 type(SwigClassWrapper) :: fresult
 end function
 
+function swigc_wdmcpl_create_dummy_field_adapter() &
+bind(C, name="_wrap_wdmcpl_create_dummy_field_adapter") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper) :: fresult
+end function
+
 subroutine swigc_wdmcpl_destroy_field_adapter(farg1) &
 bind(C, name="_wrap_wdmcpl_destroy_field_adapter")
 use, intrinsic :: ISO_C_BINDING
@@ -152,7 +161,7 @@ import :: swigclasswrapper
 type(SwigClassWrapper), intent(in) :: farg1
 end subroutine
 
-function swigc_wdmcpl_add_field(farg1, farg2, farg3) &
+function swigc_wdmcpl_add_field(farg1, farg2, farg3, farg4) &
 bind(C, name="_wrap_wdmcpl_add_field") &
 result(fresult)
 use, intrinsic :: ISO_C_BINDING
@@ -161,6 +170,7 @@ import :: swigclasswrapper
 type(SwigClassWrapper), intent(in) :: farg1
 type(SwigArrayWrapper) :: farg2
 type(SwigClassWrapper), intent(in) :: farg3
+integer(C_INT), intent(in) :: farg4
 type(SwigClassWrapper) :: fresult
 end function
 
@@ -344,6 +354,16 @@ fresult = swigc_wdmcpl_create_xgc_field_adapter(farg1, farg2, farg3, farg4, farg
 swig_result%swigdata = fresult
 end function
 
+function wdmcpl_create_dummy_field_adapter() &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(SWIGTYPE_p_WdmCplFieldAdapterHandle) :: swig_result
+type(SwigClassWrapper) :: fresult 
+
+fresult = swigc_wdmcpl_create_dummy_field_adapter()
+swig_result%swigdata = fresult
+end function
+
 subroutine wdmcpl_destroy_field_adapter(arg0)
 use, intrinsic :: ISO_C_BINDING
 class(SWIGTYPE_p_WdmCplFieldAdapterHandle), intent(in) :: arg0
@@ -353,23 +373,26 @@ farg1 = arg0%swigdata
 call swigc_wdmcpl_destroy_field_adapter(farg1)
 end subroutine
 
-function wdmcpl_add_field(client_handle, name, adapter_handle) &
+function wdmcpl_add_field(client_handle, name, adapter_handle, participates) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
 type(SWIGTYPE_p_WdmCplFieldHandle) :: swig_result
 class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: client_handle
 character(len=*), target :: name
 class(SWIGTYPE_p_WdmCplFieldAdapterHandle), intent(in) :: adapter_handle
+integer(C_INT), intent(in) :: participates
 type(SwigClassWrapper) :: fresult 
 type(SwigClassWrapper) :: farg1 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 
 type(SwigArrayWrapper) :: farg2 
 type(SwigClassWrapper) :: farg3 
+integer(C_INT) :: farg4 
 
 farg1 = client_handle%swigdata
 call SWIGTM_fin_char_Sm_(name, farg2, farg2_temp)
 farg3 = adapter_handle%swigdata
-fresult = swigc_wdmcpl_add_field(farg1, farg2, farg3)
+farg4 = participates
+fresult = swigc_wdmcpl_add_field(farg1, farg2, farg3, farg4)
 swig_result%swigdata = fresult
 end function
 

@@ -72,7 +72,7 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh, std::string_view cpnFi
 auto setupComms(redev::Redev& rdv, std::string name) {
   adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
   auto channel = rdv.CreateAdiosChannel(std::move(name),params,redev::TransportType::BP4);
-  return channel.CreateComm<redev::GO>(std::string(name));
+  return channel.CreateComm<redev::GO>(std::string(name),rdv.GetMPIComm());
 }
 
 Omega_h::HostRead<Omega_h::I8> markMeshOverlapRegion(Omega_h::Mesh& mesh) {

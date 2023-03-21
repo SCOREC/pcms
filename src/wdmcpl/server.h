@@ -351,7 +351,7 @@ public:
   }
   Application* AddApplication(
     std::string name, std::string path = "",
-    redev::TransportType transport_type = redev::TransportType::SST,
+    redev::TransportType transport_type = redev::TransportType::BP4,
     adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}})
   {
     auto key = path + name;

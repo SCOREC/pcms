@@ -10,11 +10,19 @@ class CoupledField
 public:
   template <typename FieldAdapterT>
   CoupledField(const std::string& name, FieldAdapterT field_adapter,
-               MPI_Comm mpi_comm, redev::Redev& redev, redev::Channel& channel)
+               MPI_Comm mpi_comm, redev::Redev& redev, redev::Channel& channel,
+               bool participates)
   {
+    MPI_Comm mpi_comm_subset = MPI_COMM_NULL;
+    WDMCPL_ALWAYS_ASSERT((mpi_comm==MPI_COMM_NULL)?(participates==false):true);
+    if(mpi_comm != MPI_COMM_NULL) {
+      int rank = -1;
+      MPI_Comm_rank(mpi_comm, &rank);
+      MPI_Comm_split(mpi_comm, participates?0:MPI_UNDEFINED, rank, &mpi_comm_subset);
+    }
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
-        name, std::move(field_adapter), mpi_comm, redev, channel);
+        name, std::move(field_adapter), mpi_comm_subset, redev, channel,participates);
   }
 
   void Send(Mode mode = Mode::Synchronous) { coupled_field_->Send(mode); }
@@ -31,16 +39,20 @@ public:
     using value_type = typename FieldAdapterT::value_type;
 
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
-                      MPI_Comm mpi_comm,
+                      MPI_Comm mpi_comm_subset,
                       redev::Redev& redev,
-                      redev::Channel& channel)
-      : field_adapter_(std::move(field_adapter)),
-        comm_(FieldCommunicator<CommT>(name, mpi_comm, redev, channel, field_adapter_))
+                      redev::Channel& channel,
+                      bool participates)
+      : mpi_comm_subset_(mpi_comm_subset),
+        field_adapter_(std::move(field_adapter)),
+        comm_(FieldCommunicator<CommT>(name, mpi_comm_subset_, redev, channel, field_adapter_))
     {
     }
     void Send(Mode mode) final { comm_.Send(mode); };
     void Receive() final { comm_.Receive(); };
+    ~CoupledFieldModel(){if(mpi_comm_subset_!=MPI_COMM_NULL) MPI_Comm_free(&mpi_comm_subset_);}
 
+    MPI_Comm mpi_comm_subset_;
     FieldAdapterT field_adapter_;
     FieldCommunicator<CommT> comm_;
   };
@@ -52,7 +64,7 @@ class CouplerClient
 {
 public:
   CouplerClient(std::string name, MPI_Comm comm,
-                redev::TransportType transport_type = redev::TransportType::SST,
+                redev::TransportType transport_type = redev::TransportType::BP4,
                 adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}},
                 std::string path="")
     : name_(std::move(name)), mpi_comm_(comm), redev_(comm),
@@ -68,10 +80,10 @@ public:
 
   template <typename FieldAdapterT>
   CoupledField* AddField(
-    std::string name, FieldAdapterT field_adapter)
+    std::string name, FieldAdapterT field_adapter, bool participates=true)
   {
     auto [it, inserted] = fields_.template try_emplace(name, name, std::move(field_adapter),
-                                                       mpi_comm_, redev_, channel_);
+                                                       mpi_comm_, redev_, channel_,participates);
     if (!inserted) {
       std::cerr << "OHField with this name" << name << "already exists!\n";
       std::terminate();

@@ -76,7 +76,7 @@ auto setupComms(redev::Redev& rdv, std::string_view name, const int clientId) {
   std::stringstream clientName;
   clientName << name << "Client" << clientId;
   auto channel = rdv.CreateAdiosChannel(clientName.str(), params,static_cast<redev::TransportType>(isSST) );
-  return channel.CreateComm<redev::GO>(clientName.str());
+  return channel.CreateComm<redev::GO>(clientName.str(), rdv.GetMPIComm());
 }
 
 Omega_h::HostRead<Omega_h::I8> markMeshOverlapRegion(Omega_h::Mesh& mesh) {

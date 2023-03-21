@@ -42,22 +42,44 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
-  std::vector<GO> data(mesh.nverts());
   auto* application = cpl.AddApplication("proxy_couple");
 
-  auto field_adapter = wdmcpl::XGCFieldAdapter<GO>(
-    "xgc_gids", comm, make_array_view(data), rc, ts::IsModelEntInOverlap{});
-  application->AddField("xgc_gids", std::move(field_adapter),
-                        FieldTransferMethod::Copy, // to Omega_h
-                        FieldEvaluationMethod::None,
-                        FieldTransferMethod::Copy, // from Omega_h
-                        FieldEvaluationMethod::None, is_overlap);
+  constexpr int nplanes = 2;
+  std::array<std::vector<GO>, nplanes> data;
+  std::vector<wdmcpl::ConvertibleCoupledField*> fields;
+  for (int i = 0; i < nplanes; ++i) {
+    data[i].resize(mesh.nverts());
+    std::stringstream ss;
+    ss << "xgc_gids_plane_" << i;
+    auto field_adapter = wdmcpl::XGCFieldAdapter<GO>(
+      ss.str(), comm, make_array_view(data[i]), rc, ts::IsModelEntInOverlap{});
+    fields.push_back(
+      application->AddField(ss.str(), std::move(field_adapter),
+                            FieldTransferMethod::Copy, // to Omega_h
+                            FieldEvaluationMethod::None,
+                            FieldTransferMethod::Copy, // from Omega_h
+                            FieldEvaluationMethod::None, is_overlap));
+  }
+
   do {
-    application->ReceivePhase([&]() { application->ReceiveField("xgc_gids"); });
-    application->SendPhase([&]() { application->SendField("xgc_gids"); });
-    application->ReceivePhase([&]() { application->ReceiveField("xgc_gids"); });
-    application->SendPhase([&]() { application->SendField("xgc_gids"); });
+    application->ReceivePhase([&]() {
+      std::for_each(fields.begin(), fields.end(),
+                    [](wdmcpl::ConvertibleCoupledField* f) { f->Receive(); });
+    });
+    application->SendPhase([&]() {
+      std::for_each(fields.begin(), fields.end(),
+                    [](wdmcpl::ConvertibleCoupledField* f) { f->Send(); });
+    });
+    application->ReceivePhase([&]() {
+      std::for_each(fields.begin(), fields.end(),
+                    [](wdmcpl::ConvertibleCoupledField* f) { f->Receive(); });
+    });
+    application->SendPhase([&]() {
+      std::for_each(fields.begin(), fields.end(),
+                    [](wdmcpl::ConvertibleCoupledField* f) { f->Send(); });
+    });
   } while (!done);
+
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }
 void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
@@ -83,26 +105,37 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
 
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
-  std::vector<GO> data(mesh.nverts());
-  constexpr int nplanes = 1;
+  constexpr int nplanes = 2;
   std::vector<wdmcpl::ConvertibleCoupledField*> fields;
-  for(int i=0; i<nplanes; ++i) {
+  for (int i = 0; i < nplanes; ++i) {
     std::stringstream ss;
-    //ss << "xgc_gids_plane_"<<i;
-    ss << "xgc_gids";
+    ss << "xgc_gids_plane_" << i;
     auto field_adapter =
       wdmcpl::OmegaHFieldAdapter<GO>(ss.str(), mesh, is_overlap, numbering);
-    fields.push_back(application->AddField(ss.str(), std::move(field_adapter),
-                          FieldTransferMethod::Copy, // to Omega_h
-                          FieldEvaluationMethod::None,
-                          FieldTransferMethod::Copy, // from Omega_h
-                          FieldEvaluationMethod::None, is_overlap));
+    fields.push_back(
+      application->AddField(ss.str(), std::move(field_adapter),
+                            FieldTransferMethod::Copy, // to Omega_h
+                            FieldEvaluationMethod::None,
+                            FieldTransferMethod::Copy, // from Omega_h
+                            FieldEvaluationMethod::None, is_overlap));
   }
   do {
-    application->ReceivePhase([&]() { std::for_each(fields.begin(), fields.end(), [](wdmcpl::ConvertibleCoupledField* f){f->Receive();});});
-    application->SendPhase([&]() { std::for_each(fields.begin(), fields.end(), [](wdmcpl::ConvertibleCoupledField* f){f->Send();});});
-    application->ReceivePhase([&]() { std::for_each(fields.begin(), fields.end(), [](wdmcpl::ConvertibleCoupledField* f){f->Receive();});});
-    application->SendPhase([&]() { std::for_each(fields.begin(), fields.end(), [](wdmcpl::ConvertibleCoupledField* f){f->Send();});});
+    application->ReceivePhase([&]() {
+      std::for_each(fields.begin(), fields.end(),
+                    [](wdmcpl::ConvertibleCoupledField* f) { f->Receive(); });
+    });
+    application->SendPhase([&]() {
+      std::for_each(fields.begin(), fields.end(),
+                    [](wdmcpl::ConvertibleCoupledField* f) { f->Send(); });
+    });
+    application->ReceivePhase([&]() {
+      std::for_each(fields.begin(), fields.end(),
+                    [](wdmcpl::ConvertibleCoupledField* f) { f->Receive(); });
+    });
+    application->SendPhase([&]() {
+      std::for_each(fields.begin(), fields.end(),
+                    [](wdmcpl::ConvertibleCoupledField* f) { f->Send(); });
+    });
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }

@@ -55,10 +55,14 @@ WdmCplFieldAdapterHandle* wdmcpl_create_xgc_field_adapter(
   const char* name, MPI_Comm plane_comm, void* data, int size, WdmCplType data_type,
   const WdmCplReverseClassificationHandle* rc, in_overlap_function in_overlap);
 
+WdmCplFieldAdapterHandle* wdmcpl_create_dummy_field_adapter();
+
 void wdmcpl_destroy_field_adapter(WdmCplFieldAdapterHandle*);
 
-WdmCplFieldHandle* wdmcpl_add_field(WdmCplClientHandle* client_handle, const char* name,
-                      WdmCplFieldAdapterHandle* adapter_handle);
+WdmCplFieldHandle* wdmcpl_add_field(WdmCplClientHandle* client_handle,
+                                    const char* name,
+                                    WdmCplFieldAdapterHandle* adapter_handle,
+                                    int participates);
 void wdmcpl_send_field_name(WdmCplClientHandle*, const char* name);
 void wdmcpl_receive_field_name(WdmCplClientHandle*, const char* name);
 

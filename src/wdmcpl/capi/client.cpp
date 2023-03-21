@@ -8,13 +8,15 @@
 // #endif
 #include <fstream>
 #include "wdmcpl/xgc_reverse_classification.h"
+#include "wdmcpl/dummy_field_adapter.h"
 namespace wdmcpl
 {
 // Note that we have a closed set of types that can be used in the C interface
 using FieldAdapterVariant =
   std::variant<std::monostate, wdmcpl::XGCFieldAdapter<double>,
                wdmcpl::XGCFieldAdapter<float>, wdmcpl::XGCFieldAdapter<int>,
-               wdmcpl::XGCFieldAdapter<long>
+               wdmcpl::XGCFieldAdapter<long>,
+               wdmcpl::DummyFieldAdapter
 //#ifdef WDMCPL_HAS_OMEGA_H
 //               ,
 //               wdmcpl::OmegaHFieldAdapter<double>,
@@ -52,18 +54,20 @@ void wdmcpl_destroy_reverse_classification(
 
 WdmCplFieldHandle* wdmcpl_add_field(WdmCplClientHandle* client_handle,
                                     const char* name,
-                                    WdmCplFieldAdapterHandle* adapter_handle)
+                                    WdmCplFieldAdapterHandle* adapter_handle,
+                                    int participates)
 {
 
   auto* adapter =
     reinterpret_cast<wdmcpl::FieldAdapterVariant*>(adapter_handle);
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
+  WDMCPL_ALWAYS_ASSERT(client != nullptr);
   WDMCPL_ALWAYS_ASSERT(adapter != nullptr);
   wdmcpl::CoupledField* field = std::visit(
     redev::overloaded{
       [](const std::monostate&) -> wdmcpl::CoupledField* { return nullptr; },
-      [&name, &client](const auto& field_adapter) {
-        return client->AddField(name, field_adapter);
+      [&name, &client, participates](const auto& field_adapter) {
+        return client->AddField(name, field_adapter, participates);
       }},
     *adapter);
   return reinterpret_cast<WdmCplFieldHandle*>(field);
@@ -71,22 +75,26 @@ WdmCplFieldHandle* wdmcpl_add_field(WdmCplClientHandle* client_handle,
 void wdmcpl_send_field_name(WdmCplClientHandle* client_handle, const char* name)
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
+  WDMCPL_ALWAYS_ASSERT(client != nullptr);
   client->SendField(name);
 }
 void wdmcpl_receive_field_name(WdmCplClientHandle* client_handle,
                                const char* name)
 {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
+  WDMCPL_ALWAYS_ASSERT(client != nullptr);
   client->ReceiveField(name);
 }
 void wdmcpl_send_field(WdmCplFieldHandle* field_handle)
 {
   auto* field = reinterpret_cast<wdmcpl::CoupledField*>(field_handle);
+  WDMCPL_ALWAYS_ASSERT(field != nullptr);
   field->Send();
 }
 void wdmcpl_receive_field(WdmCplFieldHandle* field_handle)
 {
   auto* field = reinterpret_cast<wdmcpl::CoupledField*>(field_handle);
+  WDMCPL_ALWAYS_ASSERT(field != nullptr);
   field->Receive();
 }
 template <typename T>
@@ -95,6 +103,7 @@ void wdmcpl_create_xgc_field_adapter_t(
   const wdmcpl::ReverseClassificationVertex& reverse_classification,
   in_overlap_function in_overlap, wdmcpl::FieldAdapterVariant& field_adapter)
 {
+  WDMCPL_ALWAYS_ASSERT((size >0) ? (data!=nullptr) : true);
   wdmcpl::ScalarArrayView<T, wdmcpl::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<wdmcpl::XGCFieldAdapter<T>>(
@@ -132,6 +141,10 @@ WdmCplFieldAdapterHandle* wdmcpl_create_xgc_field_adapter(
   }
   return reinterpret_cast<WdmCplFieldAdapterHandle*>(field_adapter);
 }
+WdmCplFieldAdapterHandle* wdmcpl_create_dummy_field_adapter() {
+  auto* field_adapter = new wdmcpl::FieldAdapterVariant{wdmcpl::DummyFieldAdapter{}};
+  return reinterpret_cast<WdmCplFieldAdapterHandle*>(field_adapter);
+}
 
 void wdmcpl_destroy_field_adapter(WdmCplFieldAdapterHandle* adapter_handle)
 {
@@ -147,6 +160,7 @@ int wdmcpl_reverse_classification_count_verts(
 {
   auto* reverse_classification =
     reinterpret_cast<const wdmcpl::ReverseClassificationVertex*>(rc);
+  WDMCPL_ALWAYS_ASSERT(reverse_classification != nullptr);
   return std::accumulate(reverse_classification->begin(),
                          reverse_classification->end(), 0,
                          [](auto current, const auto& verts) {
@@ -155,17 +169,21 @@ int wdmcpl_reverse_classification_count_verts(
 }
 void wdmcpl_begin_send_phase(WdmCplClientHandle* h) {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(h);
+  WDMCPL_ALWAYS_ASSERT(client != nullptr);
   client ->BeginSendPhase();
 }
 void wdmcpl_end_send_phase(WdmCplClientHandle* h) {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(h);
+  WDMCPL_ALWAYS_ASSERT(client != nullptr);
   client ->EndSendPhase();
 }
 void wdmcpl_begin_receive_phase(WdmCplClientHandle* h ) {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(h);
+  WDMCPL_ALWAYS_ASSERT(client != nullptr);
   client ->BeginReceivePhase();
 }
 void wdmcpl_end_receive_phase(WdmCplClientHandle* h) {
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(h);
+  WDMCPL_ALWAYS_ASSERT(client != nullptr);
   client ->EndReceivePhase();
 }

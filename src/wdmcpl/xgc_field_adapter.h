@@ -63,22 +63,24 @@ public:
       in_overlap_(in_overlap)
   {
     // WDMCPL_ALWAYS_ASSERT(reverse_classification.nverts() == data.size());
-    Kokkos::View<int8_t*, HostMemorySpace> mask("mask", data.size());
-    WDMCPL_ALWAYS_ASSERT((bool)in_overlap);
-    for (auto& geom : reverse_classification_) {
-      if (in_overlap(geom.first.dim, geom.first.id)) {
-        for (auto vert : geom.second) {
-          WDMCPL_ALWAYS_ASSERT(vert < data.size());
-          mask(vert) = 1;
+    MPI_Comm_rank(plane_comm_, &plane_rank_);
+    if (RankParticipatesCouplingCommunication()) {
+      Kokkos::View<int8_t*, HostMemorySpace> mask("mask", data.size());
+      WDMCPL_ALWAYS_ASSERT((bool)in_overlap);
+      for (auto& geom : reverse_classification_) {
+        if (in_overlap(geom.first.dim, geom.first.id)) {
+          for (auto vert : geom.second) {
+            WDMCPL_ALWAYS_ASSERT(vert < data.size());
+            mask(vert) = 1;
+          }
         }
       }
+      mask_ = ArrayMask<memory_space>{make_const_array_view(mask)};
+      WDMCPL_ALWAYS_ASSERT(!mask_.empty());
+      //// XGC meshes are naively ordered in iteration order (full mesh on every
+      //// cpu)
+      std::iota(gids_.begin(), gids_.end(), static_cast<GO>(0));
     }
-    mask_ = ArrayMask<memory_space>{make_const_array_view(mask)};
-    WDMCPL_ALWAYS_ASSERT(!mask_.empty());
-    //// XGC meshes are naively ordered in iteration order (full mesh on every
-    //// cpu)
-    std::iota(gids_.begin(), gids_.end(), static_cast<GO>(0));
-    MPI_Comm_rank(plane_comm_, &plane_rank_);
   }
 
   int Serialize(
@@ -114,37 +116,44 @@ public:
   // REQUIRED
   [[nodiscard]] std::vector<GO> GetGids() const
   {
-    std::vector<GO> gids(mask_.Size());
-    auto v1 = make_array_view(gids_);
-    auto v2 = make_array_view(gids);
-    mask_.Apply(v1, v2);
-    return gids;
+    if (RankParticipatesCouplingCommunication()) {
+      std::vector<GO> gids(mask_.Size());
+      auto v1 = make_array_view(gids_);
+      auto v2 = make_array_view(gids);
+      mask_.Apply(v1, v2);
+      return gids;
+    }
+    return {};
   }
 
   // REQUIRED
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const
   {
-    wdmcpl::ReversePartitionMap reverse_partition;
-    // in_overlap_ must contain a function!
-    WDMCPL_ALWAYS_ASSERT(static_cast<bool>(in_overlap_));
-    for (const auto& geom : reverse_classification_) {
-      // if the geometry is in specified overlap region
-      if (in_overlap_(geom.first.dim, geom.first.id)) {
+    if (RankParticipatesCouplingCommunication()) {
 
-        auto dr = std::visit(detail::GetRank{geom.first}, partition);
-        auto [it, inserted] = reverse_partition.try_emplace(dr);
-        // the map gives the local iteration order of the global ids
-        auto map = mask_.GetMap();
-        std::transform(geom.second.begin(), geom.second.end(),
-                       std::back_inserter(it->second), [&map](auto v) {
-                         auto idx = map[v];
-                         WDMCPL_ALWAYS_ASSERT(idx > 0);
-                         return idx - 1;
-                       });
+      wdmcpl::ReversePartitionMap reverse_partition;
+      // in_overlap_ must contain a function!
+      WDMCPL_ALWAYS_ASSERT(static_cast<bool>(in_overlap_));
+      for (const auto& geom : reverse_classification_) {
+        // if the geometry is in specified overlap region
+        if (in_overlap_(geom.first.dim, geom.first.id)) {
+
+          auto dr = std::visit(detail::GetRank{geom.first}, partition);
+          auto [it, inserted] = reverse_partition.try_emplace(dr);
+          // the map gives the local iteration order of the global ids
+          auto map = mask_.GetMap();
+          std::transform(geom.second.begin(), geom.second.end(),
+                         std::back_inserter(it->second), [&map](auto v) {
+                           auto idx = map[v];
+                           WDMCPL_ALWAYS_ASSERT(idx > 0);
+                           return idx - 1;
+                         });
+        }
       }
+      return reverse_partition;
     }
-    return reverse_partition;
+    return {};
   }
   [[nodiscard]] bool RankParticipatesCouplingCommunication() const noexcept
   {

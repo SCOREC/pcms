@@ -319,6 +319,17 @@ SWIGEXPORT SwigClassWrapper _wrap_wdmcpl_create_xgc_field_adapter(SwigArrayWrapp
 }
 
 
+SWIGEXPORT SwigClassWrapper _wrap_wdmcpl_create_dummy_field_adapter() {
+  SwigClassWrapper fresult ;
+  WdmCplFieldAdapterHandle *result = 0 ;
+  
+  result = (WdmCplFieldAdapterHandle *)wdmcpl_create_dummy_field_adapter();
+  fresult.cptr = (void*)result;
+  fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
+  return fresult;
+}
+
+
 SWIGEXPORT void _wrap_wdmcpl_destroy_field_adapter(SwigClassWrapper *farg1) {
   WdmCplFieldAdapterHandle *arg1 = (WdmCplFieldAdapterHandle *) 0 ;
   
@@ -327,17 +338,19 @@ SWIGEXPORT void _wrap_wdmcpl_destroy_field_adapter(SwigClassWrapper *farg1) {
 }
 
 
-SWIGEXPORT SwigClassWrapper _wrap_wdmcpl_add_field(SwigClassWrapper *farg1, SwigArrayWrapper *farg2, SwigClassWrapper *farg3) {
+SWIGEXPORT SwigClassWrapper _wrap_wdmcpl_add_field(SwigClassWrapper *farg1, SwigArrayWrapper *farg2, SwigClassWrapper *farg3, int const *farg4) {
   SwigClassWrapper fresult ;
   WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
   char *arg2 = (char *) 0 ;
   WdmCplFieldAdapterHandle *arg3 = (WdmCplFieldAdapterHandle *) 0 ;
+  int arg4 ;
   WdmCplFieldHandle *result = 0 ;
   
   arg1 = (WdmCplClientHandle *)farg1->cptr;
   arg2 = (char *)(farg2->data);
   arg3 = (WdmCplFieldAdapterHandle *)farg3->cptr;
-  result = (WdmCplFieldHandle *)wdmcpl_add_field(arg1,(char const *)arg2,arg3);
+  arg4 = (int)(*farg4);
+  result = (WdmCplFieldHandle *)wdmcpl_add_field(arg1,(char const *)arg2,arg3,arg4);
   fresult.cptr = (void*)result;
   fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
   return fresult;

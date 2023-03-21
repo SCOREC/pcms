@@ -144,9 +144,14 @@ public:
       name_{std::move(name)},
       redev_(redev)
   {
-    comm_ = channel.CreateComm<T>(name_);
-    gid_comm_ = channel.CreateComm<GO>(name_ + "_gids");
-    UpdateLayout();
+    comm_ = channel.CreateComm<T>(name_, mpi_comm_);
+    gid_comm_ = channel.CreateComm<GO>(name_ + "_gids", mpi_comm_);
+    if(mpi_comm != MPI_COMM_NULL) {
+      UpdateLayout();
+    }
+    else {
+      UpdateLayoutNull();
+    }
   }
 
   FieldCommunicator(const FieldCommunicator&) = delete;
@@ -179,9 +184,11 @@ public:
    * after any modifications on the client
    */
 private:
+  // note channel_ operations are collective on full channel comm
+  // comm_ operations should only be called on ranks with
   void UpdateLayout()
   {
-    if (mpi_comm_ != MPI_COMM_NULL) {
+    //if (mpi_comm_ != MPI_COMM_NULL) {
       auto gids = field_adapter_.GetGids();
       if (redev_.GetProcessType() == redev::ProcessType::Client) {
         const ReversePartitionMap reverse_partition =
@@ -219,6 +226,17 @@ private:
         message_permutation_ = detail::ConstructPermutation(gids, recv_gids);
       }
       comm_buffer_.resize(message_permutation_.size());
+    //}
+  }
+  void UpdateLayoutNull()
+  {
+    //if (mpi_comm_ != MPI_COMM_NULL) {
+    if (redev_.GetProcessType() == redev::ProcessType::Client) {
+      channel_.BeginSendCommunicationPhase();
+      channel_.EndSendCommunicationPhase();
+    } else {
+      channel_.BeginReceiveCommunicationPhase();
+      channel_.EndReceiveCommunicationPhase();
     }
   }
 

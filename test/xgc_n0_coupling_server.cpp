@@ -33,10 +33,10 @@ namespace ts = test_support;
 static wdmcpl::ConvertibleCoupledField* AddField(wdmcpl::Application *application, const std::string& name, const std::string& path, Omega_h::Read<Omega_h::I8> is_overlap, const std::string& numbering, Omega_h::Mesh& mesh, int plane) {
       WDMCPL_ALWAYS_ASSERT(application != nullptr);
       std::stringstream field_name;
-      field_name << path << name << "_" << plane;
+      field_name << name << "_" << plane;
       return application->AddField(field_name.str(),
                    wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>(
-                     field_name.str(), mesh, is_overlap, numbering),
+                   path+field_name.str(), mesh, is_overlap, numbering),
                    FieldTransferMethod::Copy, // to Omega_h
                    FieldEvaluationMethod::None,
                    FieldTransferMethod::Copy, // from Omega_h

@@ -52,6 +52,25 @@ void wdmcpl_destroy_reverse_classification(
     delete reinterpret_cast<wdmcpl::ReverseClassificationVertex*>(rc);
 }
 
+struct AddFieldVariantOperators {
+  AddFieldVariantOperators(const char* name, wdmcpl::CouplerClient* client, int participates)
+  : name_(name), client_(client), participates_(participates)
+  {
+  }
+
+  [[nodiscard]]
+  wdmcpl::CoupledField* operator()(const std::monostate&) const noexcept { return nullptr; }
+  template <typename FieldAdapter>
+  [[nodiscard]]
+  wdmcpl::CoupledField* operator()(const FieldAdapter& field_adapter) const noexcept {
+        return client_->AddField(name_, field_adapter, participates_);
+  }
+
+  const char* name_;
+  wdmcpl::CouplerClient* client_;
+  bool participates_;
+};
+
 WdmCplFieldHandle* wdmcpl_add_field(WdmCplClientHandle* client_handle,
                                     const char* name,
                                     WdmCplFieldAdapterHandle* adapter_handle,
@@ -63,13 +82,14 @@ WdmCplFieldHandle* wdmcpl_add_field(WdmCplClientHandle* client_handle,
   auto* client = reinterpret_cast<wdmcpl::CouplerClient*>(client_handle);
   WDMCPL_ALWAYS_ASSERT(client != nullptr);
   WDMCPL_ALWAYS_ASSERT(adapter != nullptr);
-  wdmcpl::CoupledField* field = std::visit(
-    redev::overloaded{
-      [](const std::monostate&) -> wdmcpl::CoupledField* { return nullptr; },
-      [&name, &client, participates](const auto& field_adapter) {
-        return client->AddField(name, field_adapter, participates);
-      }},
-    *adapter);
+  //wdmcpl::CoupledField* field = std::visit(
+  //  redev::overloaded{
+  //    [](const std::monostate&) -> wdmcpl::CoupledField* { return nullptr; },
+  //    [&name, &client, participates](const auto& field_adapter) {
+  //      return client->AddField(name, field_adapter, participates);
+  //    }},
+  //  *adapter);
+  wdmcpl::CoupledField* field = std::visit(AddFieldVariantOperators{name, client, participates},*adapter);
   return reinterpret_cast<WdmCplFieldHandle*>(field);
 }
 void wdmcpl_send_field_name(WdmCplClientHandle* client_handle, const char* name)

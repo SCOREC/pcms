@@ -1,4 +1,4 @@
-# WDMApp Coupling
+# PCMS: Parallel Coupler For Multimodel Simulations
 
 Adios2-based coupler for XGC and GENE
 

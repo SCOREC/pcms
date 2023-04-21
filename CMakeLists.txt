@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(wdmcpl VERSION 0.0.4 LANGUAGES CXX)
+project(wdmcpl VERSION 0.0.5 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -19,7 +19,7 @@ option(WDMCPL_ENABLE_C "Enable wdmcpl C api" ON)
 
 # find package before fortran enabled, so we don't require the adios2 fortran interfaces
 # this is important because adios2 build with clang/gfortran is broken
-find_package(redev 4.0.0 REQUIRED)
+find_package(redev 4.3.0 REQUIRED)
 
 if (WDMCPL_ENABLE_C)
   enable_language(C)

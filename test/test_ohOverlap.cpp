@@ -69,9 +69,10 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh, std::string_view cpnFi
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
 
-auto setupComms(redev::Redev& rdv, std::string_view name) {
+auto setupComms(redev::Redev& rdv, std::string name) {
   adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
-  return rdv.CreateAdiosClient<redev::GO>(name,params,redev::TransportType::BP4);
+  auto channel = rdv.CreateAdiosChannel(std::move(name),params,redev::TransportType::BP4);
+  return channel.CreateComm<redev::GO>(std::string(name),rdv.GetMPIComm());
 }
 
 Omega_h::HostRead<Omega_h::I8> markMeshOverlapRegion(Omega_h::Mesh& mesh) {
@@ -115,7 +116,7 @@ int main(int argc, char** argv) {
     ///////////////////  SERVER /////////////////////////
     std::string_view cpnFileName(argv[3]);
     auto partition = setupServerPartition(mesh,cpnFileName);
-    auto rdv = redev::Redev(MPI_COMM_WORLD,partition,static_cast<redev::ProcessType>(isRdv));
+    auto rdv = redev::Redev(MPI_COMM_WORLD,redev::Partition{partition},static_cast<redev::ProcessType>(isRdv));
     auto comm = setupComms(rdv,name);
     auto isOverlap_h = markMeshOverlapRegion(mesh);
     ts::OutMsg appOut = ts::OutMsg(); //FIXME is this needed?
@@ -127,7 +128,7 @@ int main(int argc, char** argv) {
     //the non-rendezvous app sends global vtx ids to rendezvous
     //////////////////////////////////////////////////////
     auto start = std::chrono::steady_clock::now();
-    const auto msgsIn = comm.Recv();
+    const auto msgsIn = comm.Recv(redev::Mode::Synchronous);
     ts::getAndPrintTime(start,name + " rdvRead",rank);
     //We have received the first input message in the rendezvous
     //processes.  Using the meta data of the incoming message we will:
@@ -162,7 +163,7 @@ int main(int argc, char** argv) {
       }
     }
     start = std::chrono::steady_clock::now();
-    comm.Send(msgs.data());
+    comm.Send(msgs.data(),redev::Mode::Synchronous);
     ts::getAndPrintTime(start,name + " rdvWrite",rank);
     //////////////////////////////////////////////////////
     //communication loop
@@ -171,7 +172,7 @@ int main(int argc, char** argv) {
       if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
       //receive from client
       auto start = std::chrono::steady_clock::now();
-      const auto msgsIn = comm.Recv();
+      const auto msgsIn = comm.Recv(redev::Mode::Synchronous);
       ts::getAndPrintTime(start,name + " rdvRead",rank);
       ts::checkAndAttachIds(mesh, "inVtxGids", msgsIn, rdvInPermute);
       //send to client
@@ -182,13 +183,13 @@ int main(int argc, char** argv) {
         }
       }
       start = std::chrono::steady_clock::now();
-      comm.Send(msgs.data());
+      comm.Send(msgs.data(),redev::Mode::Synchronous);
       ts::getAndPrintTime(start,name + " rdvWrite",rank);
     } //end iter loop
   } else {
     ///////////////////  CLIENT /////////////////////////
     auto partition = setupClientPartition(mesh);
-    auto rdv = redev::Redev(MPI_COMM_WORLD,std::move(partition),static_cast<redev::ProcessType>(isRdv));
+    auto rdv = redev::Redev(MPI_COMM_WORLD,redev::Partition{std::move(partition)},static_cast<redev::ProcessType>(isRdv));
     auto comm = setupComms(rdv,name);
     auto isOverlap_h = markMeshOverlapRegion(mesh);
     //////////////////////////////////////////////////////
@@ -203,19 +204,19 @@ int main(int argc, char** argv) {
     auto gids_h = Omega_h::HostRead(gids);
     redev::GOs msgs(isOverlap_h.size(),0);
     int j=0;
-    for(size_t i=0; i<gids_h.size(); i++) {
+    for(wdmcpl::LO i=0; i<gids_h.size(); i++) {
       if( isOverlap_h[i] ) {
         msgs[appOut.permute[j++]] = gids_h[i];
       }
     }
     auto start = std::chrono::steady_clock::now();
-    comm.Send(msgs.data());
+    comm.Send(msgs.data(),redev::Mode::Synchronous);
     ts::getAndPrintTime(start,name + " appWrite",rank);
     //////////////////////////////////////////////////////
     //the rendezvous app sends global vtx ids to non-rendezvous
     //////////////////////////////////////////////////////
     start = std::chrono::steady_clock::now();
-    const auto msgsIn = comm.Recv();
+    const auto msgsIn = comm.Recv(redev::Mode::Synchronous);
     ts::getAndPrintTime(start,name + " appRead",rank);
     clientCheckIncomingMessages(mesh,isOverlap_h,msgsIn,appOut);
     //////////////////////////////////////////////////////
@@ -225,17 +226,17 @@ int main(int argc, char** argv) {
       if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
       //send to server
       int j=0;
-      for(size_t i=0; i<gids_h.size(); i++) {
+      for(wdmcpl::LO i=0; i<gids_h.size(); i++) {
         if( isOverlap_h[i] ) {
           msgs[appOut.permute[j++]] = gids_h[i];
         }
       }
       auto start = std::chrono::steady_clock::now();
-      comm.Send(msgs.data());
+      comm.Send(msgs.data(),redev::Mode::Synchronous);
       ts::getAndPrintTime(start,name + " appWrite",rank);
       //receive from server
       start = std::chrono::steady_clock::now();
-      const auto msgsIn = comm.Recv();
+      const auto msgsIn = comm.Recv(redev::Mode::Synchronous);
       ts::getAndPrintTime(start,name + " appRead",rank);
       clientCheckIncomingMessages(mesh,isOverlap_h,msgsIn,appOut);
     } //end iter loop

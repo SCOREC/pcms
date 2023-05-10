@@ -201,33 +201,39 @@ include(Catch)
 catch_discover_tests(unit_tests)
 
 if (WDMCPL_ENABLE_C)
-    find_package(flcl)
+    find_package(flcl QUIET)
     find_package(Kokkos REQUIRED)
     if (WDMCPL_ENABLE_XGC)
-        add_executable(test_proxy_couple_xgc_c_interface test_proxy_coupling_xgc_client.c)
-        target_link_libraries(test_proxy_couple_xgc_c_interface PUBLIC wdmcpl::capi MPI::MPI_C flcl::flcl Kokkos::kokkos)
+        if(flcl_FOUND)
+            add_executable(test_proxy_couple_xgc_c_interface test_proxy_coupling_xgc_client.c)
+            target_link_libraries(test_proxy_couple_xgc_c_interface PUBLIC wdmcpl::capi MPI::MPI_C flcl::flcl Kokkos::kokkos)
+        endif()
         if (WDMCPL_ENABLE_OMEGA_H)
             add_executable(test_proxy_couple_xgc_cpp_interface test_proxy_coupling_xgc_server.cpp)
             target_link_libraries(test_proxy_couple_xgc_cpp_interface PUBLIC wdmcpl::core MPI::MPI_C test_support)
-            dual_mpi_test(TESTNAME xgc_proxy_to_xgc
-                    TIMEOUT 10
-                    NAME1 cinterface EXE1 $<TARGET_FILE:test_proxy_couple_xgc_c_interface> PROCS1 2 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
-                    NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 1 ARGS2 ${d3d1p} ${d3d1p_cpn} 0)
-            dual_mpi_test(TESTNAME xgc_proxy_to_omega
-                    TIMEOUT 10
-                    NAME1 cinterface EXE1 $<TARGET_FILE:test_proxy_couple_xgc_c_interface> PROCS1 4 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
-                    NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 2 ARGS2 ${d3d1p} ${d3d2p_cpn} 1)
+            if(flcl_FOUND)
+                dual_mpi_test(TESTNAME xgc_proxy_to_xgc
+                        TIMEOUT 10
+                        NAME1 cinterface EXE1 $<TARGET_FILE:test_proxy_couple_xgc_c_interface> PROCS1 2 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
+                        NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 1 ARGS2 ${d3d1p} ${d3d1p_cpn} 0)
+                dual_mpi_test(TESTNAME xgc_proxy_to_omega
+                        TIMEOUT 10
+                        NAME1 cinterface EXE1 $<TARGET_FILE:test_proxy_couple_xgc_c_interface> PROCS1 4 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
+                        NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 2 ARGS2 ${d3d1p} ${d3d2p_cpn} 1)
+            endif()
         endif ()
     endif ()
 endif ()
 if(WDMCPL_ENABLE_Fortran)
-    add_executable(test_proxy_coupling_xgc_client_fortran test_proxy_coupling_xgc_client_fortran.f90)
-    target_link_libraries(test_proxy_coupling_xgc_client_fortran PUBLIC wdmcpl::fortranapi MPI::MPI_Fortran flcl::flcl)
-    set_target_properties(test_proxy_coupling_xgc_client_fortran PROPERTIES LINKER_LANGUAGE Fortran)
-    dual_mpi_test(TESTNAME xgc_fortran_proxy_to_omega
-            TIMEOUT 10
-            NAME1 finterface EXE1 $<TARGET_FILE:test_proxy_coupling_xgc_client_fortran> PROCS1 2 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
-            NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 2 ARGS2 ${d3d1p} ${d3d2p_cpn} 1)
+    if(flcl_FOUND)
+        add_executable(test_proxy_coupling_xgc_client_fortran test_proxy_coupling_xgc_client_fortran.f90)
+        target_link_libraries(test_proxy_coupling_xgc_client_fortran PUBLIC wdmcpl::fortranapi MPI::MPI_Fortran flcl::flcl)
+        set_target_properties(test_proxy_coupling_xgc_client_fortran PROPERTIES LINKER_LANGUAGE Fortran)
+        dual_mpi_test(TESTNAME xgc_fortran_proxy_to_omega
+                TIMEOUT 10
+                NAME1 finterface EXE1 $<TARGET_FILE:test_proxy_coupling_xgc_client_fortran> PROCS1 2 ARGS1 ${WDMCPL_TEST_DATA_DIR}/d3d/meshRclassification.txt
+                NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 2 ARGS2 ${d3d1p} ${d3d2p_cpn} 1)
+    endif()
 endif()
 
 add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)

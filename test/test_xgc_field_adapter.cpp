@@ -95,7 +95,7 @@ TEMPLATE_TEST_CASE("XGC Field Adapter", "[adapter]", wdmcpl::LO, wdmcpl::Real)
   auto gids = field_adapter.GetGids();
   REQUIRE(gids.size() == static_cast<size_t>(num_in_overlap));
   std::cerr<<"checking gids\n";
-  REQUIRE(check_gids(gids, data_size, reverse_classification, in_overlap) == 0);
+  REQUIRE(check_gids(gids, data_size, reverse_classification, in_overlap,1) == 0);
   std::vector<TestType> buffer;
   std::vector<wdmcpl::LO> permutation;
   std::cerr<<"serializing gids\n";

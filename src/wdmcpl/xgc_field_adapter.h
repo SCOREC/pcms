@@ -78,8 +78,8 @@ public:
       mask_ = ArrayMask<memory_space>{make_const_array_view(mask)};
       WDMCPL_ALWAYS_ASSERT(!mask_.empty());
       //// XGC meshes are naively ordered in iteration order (full mesh on every
-      //// cpu)
-      std::iota(gids_.begin(), gids_.end(), static_cast<GO>(0));
+      //// cpu) First ID in XGC is 1!
+      std::iota(gids_.begin(), gids_.end(), static_cast<GO>(1));
     }
   }
 
@@ -150,6 +150,14 @@ public:
                            return idx - 1;
                          });
         }
+      }
+
+      // Rather than convert an explicit forward classification,
+      // we can construct the reverse partitionbased on the geometry
+      // and sort the node ids after to get the iteration order correct
+      // in XGC the local iteration order maps directly to the global ids
+      for(auto& [rank, idxs] : reverse_partition) {
+        std::sort(idxs.begin(), idxs.end());
       }
       return reverse_partition;
     }

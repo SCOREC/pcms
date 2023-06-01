@@ -33,7 +33,10 @@ namespace ts = test_support;
 static wdmcpl::ConvertibleCoupledField* AddField(wdmcpl::Application *application, const std::string& name, const std::string& path, Omega_h::Read<Omega_h::I8> is_overlap, const std::string& numbering, Omega_h::Mesh& mesh, int plane) {
       WDMCPL_ALWAYS_ASSERT(application != nullptr);
       std::stringstream field_name;
-      field_name << name << "_" << plane;
+      field_name << name;
+      if(plane >=0) {
+        field_name<< "_" << plane;
+      }
       return application->AddField(field_name.str(),
                    wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>(
                    path+field_name.str(), mesh, is_overlap, numbering),
@@ -49,6 +52,7 @@ struct XGCAnalysis {
   FieldVec pot0;
   std::array<FieldVec,2> edensity;
   std::array<FieldVec,2> idensity;
+  wdmcpl::ConvertibleCoupledField* psi;
 };
 
 static void ReceiveFields(const std::vector<wdmcpl::ConvertibleCoupledField*> & fields) {
@@ -234,10 +238,26 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
                                              is_overlap, numbering, mesh, i));
 
   }
+  core_analysis.psi = AddField(core, "psi", "core/", 
+                                           is_overlap, numbering, mesh, -1);
+  edge_analysis.psi = AddField(edge, "psi", "edge/", 
+                                           is_overlap, numbering, mesh, -1);
   auto time3 = std::chrono::steady_clock::now();
   elapsed_seconds = time3-time2;
   ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
   if(!rank) ts::printTime("Add Meshes", min, max, avg);
+
+  edge->BeginReceivePhase();
+  edge_analysis.psi->Receive();
+  edge->EndReceivePhase();
+  core->BeginReceivePhase();
+  core_analysis.psi->Receive();
+  core->EndReceivePhase();
+  auto time4 = std::chrono::steady_clock::now();
+  elapsed_seconds = time4-time3;
+  ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
+  if(!rank) ts::printTime("Receive Psi", min, max, avg);
+
   while (true) {
     SendRecvPotential(core, edge, core_analysis, edge_analysis, rank);
     SendRecvDensity(core, edge, core_analysis, edge_analysis, rank);

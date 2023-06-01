@@ -183,7 +183,6 @@ public:
         std::cerr << "Weird tag type for global arrays.\n";
         std::abort();
       }
-      // gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
     }
     if (HasMask()) {
       return detail::filter_array(gid_array, GetMask(), Size());
@@ -441,9 +440,8 @@ public:
     // host copy of filtered field data array
     const auto array_h = Omega_h::HostRead<T>(get_nodal_data(field_));
     if (buffer.size() > 0) {
-      for (LO i = 0, j = 0; i < array_h.size(); i++) {
-        // FIXME j==i, can't we just get rid of j, or am i missing something
-        buffer[permutation[j++]] = array_h[i];
+      for (LO i = 0; i < array_h.size(); i++) {
+        buffer[i] = array_h[permutation[i]];
       }
     }
     return array_h.size();
@@ -456,7 +454,7 @@ public:
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
     Omega_h::HostWrite<T> sorted_buffer(buffer.size());
     for (size_t i = 0; i < buffer.size(); ++i) {
-      sorted_buffer[i] = buffer[permutation[i]];
+      sorted_buffer[permutation[i]] = buffer[i];
     }
     const auto sorted_buffer_d = Omega_h::Read<T>(sorted_buffer);
     set_nodal_data(field_, make_array_view(sorted_buffer_d));

@@ -69,6 +69,7 @@ redev::LOs ConstructPermutation(const std::vector<wdmcpl::GO>& local_gids,
                                 const std::vector<wdmcpl::GO>& received_gids)
 {
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
+  REDEV_ALWAYS_ASSERT(std::is_permutation(local_gids.begin(), local_gids.end(), received_gids.begin()));
   std::map<wdmcpl::GO, wdmcpl::LO> global_to_local_ids;
   for (size_t i = 0; i < local_gids.size(); ++i) {
     global_to_local_ids[local_gids[i]] = i;

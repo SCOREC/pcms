@@ -14,6 +14,7 @@ set(WDMCPL_HEADERS
         wdmcpl/memory_spaces.h
         wdmcpl/types.h
         wdmcpl/array_mask.h
+        wdmcpl/inclusive_scan.h
         )
 
 set(WDMCPL_SOURCES
@@ -122,6 +123,9 @@ install(
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/wdmcpl)
+# install external headers
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/wdmcpl/external/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/wdmcpl/external)
 install(
   EXPORT wdmcpl-targets
   NAMESPACE wdmcpl::

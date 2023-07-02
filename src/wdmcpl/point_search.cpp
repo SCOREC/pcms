@@ -110,7 +110,9 @@ bool bbox_verts_within_triangle(const AABBox<2>& bbox, const Omega_h::Matrix<2,3
  * Check if a triangle element represented by 3 coordinates in two dimensions
  * intersects with a bounding box
  */
-[[nodiscard]] bool triangle_intersects_bbox(const Omega_h::Matrix<2, 3>& coords,
+[[nodiscard]]
+KOKKOS_INLINE_FUNCTION
+bool triangle_intersects_bbox(const Omega_h::Matrix<2, 3>& coords,
                                             const AABBox<2>& bbox)
 {
   // triangle and grid cell bounding box intersect

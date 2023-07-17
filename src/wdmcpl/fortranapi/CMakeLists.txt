@@ -6,7 +6,7 @@ set_target_properties(wdmcpl_fortranapi PROPERTIES Fortran_MODULE_DIRECTORY ${CM
         EXPORT_NAME fortranapi)
 target_include_directories(wdmcpl_fortranapi PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:wdmcpl::fortranapi,Fortran_MODULE_DIRECTORY>>
                                                     $<INSTALL_INTERFACE:${CMAKE_INSTALL_LIBDIR}/fortran>)
-target_link_libraries(wdmcpl_fortranapi PRIVATE wdmcpl::capi)
+target_link_libraries(wdmcpl_fortranapi PRIVATE wdmcpl::capi PUBLIC Kokkos::kokkos)
 INSTALL(DIRECTORY $<TARGET_PROPERTY:wdmcpl::fortranapi,Fortran_MODULE_DIRECTORY>
         DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(

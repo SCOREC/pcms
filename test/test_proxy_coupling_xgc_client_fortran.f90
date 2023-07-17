@@ -22,7 +22,6 @@ end module overlap
 Program main
     use wdmcpl
     use mpi
-    use flcl_util_kokkos_mod
     use overlap
     use, intrinsic :: ISO_C_BINDING
     implicit none
@@ -45,7 +44,7 @@ Program main
     character(100) :: name
 
     call MPI_INIT(ierror)
-    call kokkos_initialize_without_args();
+    call wdmcpl_kokkos_initialize_without_args()
     call MPI_COMM_SIZE(MPI_COMM_WORLD, world_size, ierror)
     call MPI_COMM_RANK(MPI_COMM_WORLD, world_rank, ierror)
     num_args = command_argument_count()
@@ -135,7 +134,7 @@ Program main
         call MPI_Comm_free(client_comm, ierror)
     end if
     call MPI_Comm_free(plane_comm, ierror)
-    call kokkos_finalize()
+    call wdmcpl_kokkos_finalize()
     call MPI_FINALIZE(ierror)
 
 End Program main

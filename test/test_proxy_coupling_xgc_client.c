@@ -1,7 +1,7 @@
 #include <wdmcpl/capi/client.h>
+#include <wdmcpl/capi/kokkos.h>
 #include <mpi.h>
 #include <stdlib.h>
-#include <flcl-util-cxx.h>
 #include <printf.h>
 
 int8_t in_overlap(int dimension, int id)
@@ -24,7 +24,7 @@ int8_t in_overlap(int dimension, int id)
 int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
-  c_kokkos_initialize_without_args();
+  wdmcpl_kokkos_initialize_without_args();
   int world_rank = -1, world_size = -1, plane_rank = -1, plane_size = -1,
       client_rank = -1, client_size = -1;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
     MPI_Comm_free(&client_comm);
   }
   MPI_Comm_free(&plane_comm);
-  c_kokkos_finalize();
+  wdmcpl_kokkos_finalize();
   MPI_Finalize();
   return 0;
 }

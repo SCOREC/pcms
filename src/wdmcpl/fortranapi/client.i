@@ -1,6 +1,7 @@
 %module wdmcpl
 %{
 #include "wdmcpl/capi/client.h"
+#include "wdmcpl/capi/kokkos.h"
 %}
 %include <../external/flibhpc/include/mpi.i>
 %include <stdint.i>
@@ -62,3 +63,5 @@ void wdmcpl_end_send_phase(WdmCplClientHandle*);
 void wdmcpl_begin_receive_phase(WdmCplClientHandle*);
 void wdmcpl_end_receive_phase(WdmCplClientHandle*);
 
+void wdmcpl_kokkos_initialize_without_args();
+void wdmcpl_kokkos_finalize();

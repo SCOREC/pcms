@@ -1,4 +1,4 @@
-add_library(wdmcpl_capi client.cpp)
+add_library(wdmcpl_capi client.cpp kokkos.cpp)
 add_library(wdmcpl::capi ALIAS wdmcpl_capi)
 target_link_libraries(wdmcpl_capi PUBLIC MPI::MPI_C PRIVATE wdmcpl::core)
 
@@ -7,7 +7,8 @@ target_include_directories(wdmcpl_capi
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>" # this makes our include path wdmcpl/capi
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/wdmcpl/capi>")
 
-set_target_properties(wdmcpl_capi PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/client.h
+set(CAPI_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/client.h ${CMAKE_CURRENT_SOURCE_DIR}/kokkos.h)
+set_target_properties(wdmcpl_capi PROPERTIES PUBLIC_HEADER "${CAPI_HEADERS}"
          OUTPUT_NAME wdmcplcapi
          EXPORT_NAME capi)
 install(

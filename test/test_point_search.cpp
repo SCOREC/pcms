@@ -1,4 +1,5 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <wdmcpl/point_search.h>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
@@ -186,16 +187,16 @@ TEST_CASE("uniform grid search") {
     {
       auto [idx,coords] = results_h(0);
       REQUIRE(idx == 0);
-      REQUIRE(coords[0] == Approx(1));
-      REQUIRE(coords[1] == Approx(0));
-      REQUIRE(coords[2] == Approx(0));
+      REQUIRE(coords[0] == Catch::Approx(1));
+      REQUIRE(coords[1] == Catch::Approx(0));
+      REQUIRE(coords[2] == Catch::Approx(0));
     }
     {
       auto [idx,coords] = results_h(1);
       REQUIRE(idx == 91);
-      REQUIRE(coords[0] == Approx(0.5));
-      REQUIRE(coords[1] == Approx(0.1));
-      REQUIRE(coords[2] == Approx(0.4));
+      REQUIRE(coords[0] == Catch::Approx(0.5));
+      REQUIRE(coords[1] == Catch::Approx(0.1));
+      REQUIRE(coords[2] == Catch::Approx(0.4));
     }
   }
   // feature needs to be added

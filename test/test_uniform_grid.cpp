@@ -1,4 +1,5 @@
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <wdmcpl/uniform_grid.h>
 
 using wdmcpl::UniformGrid;
@@ -22,15 +23,15 @@ TEST_CASE("uniform grid")
   {
     std::array bboxes{uniform_grid.GetCellBBOX(0), uniform_grid.GetCellBBOX(1),
                       uniform_grid.GetCellBBOX(119)};
-    REQUIRE(bboxes[0].center[0] == Approx(0.5));
-    REQUIRE(bboxes[0].center[1] == Approx(0.5));
-    REQUIRE(bboxes[1].center[0] == Approx(1.5));
-    REQUIRE(bboxes[1].center[1] == Approx(0.5));
-    REQUIRE(bboxes[2].center[0] == Approx(9.5));
-    REQUIRE(bboxes[2].center[1] == Approx(11.5));
+    REQUIRE(bboxes[0].center[0] == Catch::Approx(0.5));
+    REQUIRE(bboxes[0].center[1] == Catch::Approx(0.5));
+    REQUIRE(bboxes[1].center[0] == Catch::Approx(1.5));
+    REQUIRE(bboxes[1].center[1] == Catch::Approx(0.5));
+    REQUIRE(bboxes[2].center[0] == Catch::Approx(9.5));
+    REQUIRE(bboxes[2].center[1] == Catch::Approx(11.5));
     for (const auto& bbox : bboxes) {
       for (int i = 0; i < bbox.dim; ++i) {
-        REQUIRE(bbox.half_width[i] == Approx(0.5));
+        REQUIRE(bbox.half_width[i] == Catch::Approx(0.5));
       }
     }
   }

@@ -1,5 +1,5 @@
 #include <wdmcpl/xgc_reverse_classification.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <sstream>
 
 static constexpr auto test_data = R"(

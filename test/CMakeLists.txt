@@ -170,7 +170,7 @@ if (WDMCPL_ENABLE_OMEGA_H)
     endif()
 endif ()
 # unit tests
-find_package(Catch2 2)
+find_package(Catch2 3)
 if(Catch2_FOUND)
   message(STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
   set(WDMCPL_UNIT_TEST_SOURCES

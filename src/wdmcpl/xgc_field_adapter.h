@@ -8,6 +8,7 @@
 #include "wdmcpl/xgc_reverse_classification.h"
 #include "wdmcpl/assert.h"
 #include "wdmcpl/array_mask.h"
+#include "wdmcpl/profile.h"
 
 namespace wdmcpl
 {
@@ -20,11 +21,13 @@ struct GetRank
   GetRank(const GeomType& geom) : geom_(geom) {}
   auto operator()(const redev::ClassPtn& ptn) const
   {
+    WDMCPL_FUNCTION_TIMER;
     const auto ent = redev::ClassPtn::ModelEnt({geom_.dim, geom_.id});
     return ptn.GetRank(ent);
   }
   auto operator()(const redev::RCBPtn& /*unused*/) const
   {
+    WDMCPL_FUNCTION_TIMER;
     std::cerr << "RCB partition not handled yet\n";
     std::terminate();
     return 0;
@@ -62,6 +65,7 @@ public:
       reverse_classification_(reverse_classification),
       in_overlap_(in_overlap)
   {
+    WDMCPL_FUNCTION_TIMER;
     // WDMCPL_ALWAYS_ASSERT(reverse_classification.nverts() == data.size());
     MPI_Comm_rank(plane_comm_, &plane_rank_);
     if (RankParticipatesCouplingCommunication()) {
@@ -87,6 +91,7 @@ public:
     ScalarArrayView<T, memory_space> buffer,
     ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
   {
+    WDMCPL_FUNCTION_TIMER;
     static_assert(std::is_same_v<memory_space, wdmcpl::HostMemorySpace>,
                   "gpu space unhandled\n");
     if (RankParticipatesCouplingCommunication()) {
@@ -103,6 +108,7 @@ public:
     ScalarArrayView<const T, memory_space> buffer,
     ScalarArrayView<const wdmcpl::LO, memory_space> permutation) const
   {
+    WDMCPL_FUNCTION_TIMER;
     static_assert(std::is_same_v<memory_space, wdmcpl::HostMemorySpace>,
                   "gpu space unhandled\n");
     if (RankParticipatesCouplingCommunication()) {
@@ -116,6 +122,7 @@ public:
   // REQUIRED
   [[nodiscard]] std::vector<GO> GetGids() const
   {
+    WDMCPL_FUNCTION_TIMER;
     if (RankParticipatesCouplingCommunication()) {
       std::vector<GO> gids(mask_.Size());
       auto v1 = make_array_view(gids_);
@@ -130,6 +137,7 @@ public:
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const
   {
+    WDMCPL_FUNCTION_TIMER;
     if (RankParticipatesCouplingCommunication()) {
 
       wdmcpl::ReversePartitionMap reverse_partition;
@@ -156,7 +164,7 @@ public:
       // we can construct the reverse partitionbased on the geometry
       // and sort the node ids after to get the iteration order correct
       // in XGC the local iteration order maps directly to the global ids
-      for(auto& [rank, idxs] : reverse_partition) {
+      for (auto& [rank, idxs] : reverse_partition) {
         std::sort(idxs.begin(), idxs.end());
       }
       return reverse_partition;
@@ -165,6 +173,7 @@ public:
   }
   [[nodiscard]] bool RankParticipatesCouplingCommunication() const noexcept
   {
+    WDMCPL_FUNCTION_TIMER;
     // only do adios communications on 0 rank of the XGC fields
     return (plane_rank_ == plane_root_);
   }
@@ -203,6 +212,7 @@ template <typename T, typename CoordinateElementType>
 auto get_nodal_coordinates(
   const XGCFieldAdapter<T, CoordinateElementType>& field)
 {
+  WDMCPL_FUNCTION_TIMER;
   Kokkos::View<CoordinateElementType*,
                typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
     coordinates;
@@ -215,6 +225,7 @@ auto evaluate(
   ScalarArrayView<const CoordinateElementType, MemorySpace> coordinates)
   -> Kokkos::View<T*, MemorySpace>
 {
+  WDMCPL_FUNCTION_TIMER;
   Kokkos::View<T*, MemorySpace> values("data", coordinates.size() / 2);
   std::cerr << "Evaluation of XGC Field not implemented yet!\n";
   std::abort();
@@ -227,6 +238,7 @@ auto evaluate(
   ScalarArrayView<const CoordinateElementType, MemorySpace> coordinates)
   -> Kokkos::View<T*, MemorySpace>
 {
+  WDMCPL_FUNCTION_TIMER;
   Kokkos::View<T*, MemorySpace> values("data", coordinates.size() / 2);
   std::cerr << "Evaluation of XGC Field not implemented yet!\n";
   std::abort();
@@ -240,6 +252,7 @@ auto set_nodal_data(
     const U, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
     data) -> void
 {
+  WDMCPL_FUNCTION_TIMER;
 }
 
 } // namespace wdmcpl

@@ -15,6 +15,7 @@ set(WDMCPL_HEADERS
         wdmcpl/types.h
         wdmcpl/array_mask.h
         wdmcpl/inclusive_scan.h
+        wdmcpl/profile.h
         )
 
 set(WDMCPL_SOURCES
@@ -42,6 +43,7 @@ if (WDMCPL_ENABLE_SERVER)
 endif ()
 
 find_package(Kokkos REQUIRED)
+find_package(perfstubs REQUIRED)
 
 add_library(wdmcpl_core ${WDMCPL_SOURCES})
 set_target_properties(wdmcpl_core PROPERTIES
@@ -49,7 +51,7 @@ set_target_properties(wdmcpl_core PROPERTIES
         EXPORT_NAME core)
 add_library(wdmcpl::core ALIAS wdmcpl_core)
 target_compile_features(wdmcpl_core PUBLIC cxx_std_17)
-target_link_libraries(wdmcpl_core PUBLIC redev::redev MPI::MPI_CXX Kokkos::kokkos)
+target_link_libraries(wdmcpl_core PUBLIC redev::redev MPI::MPI_CXX Kokkos::kokkos perfstubs)
 if(WDMCPL_ENABLE_OMEGA_H)
   target_link_libraries(wdmcpl_core PUBLIC Omega_h::omega_h)
   target_compile_definitions(wdmcpl_core PUBLIC -DWDMCPL_HAS_OMEGA_H)

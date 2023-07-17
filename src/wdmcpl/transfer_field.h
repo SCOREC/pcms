@@ -4,6 +4,7 @@
 #include "wdmcpl/arrays.h"
 #include "wdmcpl/field_evaluation_methods.h"
 #include "wdmcpl/field.h"
+#include "wdmcpl/profile.h"
 
 namespace wdmcpl
 {
@@ -18,6 +19,7 @@ namespace wdmcpl
 template <typename Field>
 void copy_field(const Field& source_field, Field& target_field)
 {
+  WDMCPL_FUNCTION_TIMER;
   const auto source_data = get_nodal_data(source_field);
   set_nodal_data(target_field, make_array_view(source_data));
 }
@@ -27,6 +29,7 @@ template <typename SourceField, typename TargetField,
 void interpolate_field(const SourceField& source_field,
                        TargetField& target_field, EvaluationMethod method = {})
 {
+  WDMCPL_FUNCTION_TIMER;
   // TODO: same_topology
   // if (same_topology(source_field, target_field)) {
   //  copy_field(source_field,target_field);
@@ -78,6 +81,7 @@ void transfer_field(const SourceField& source, TargetField& target,
                     FieldTransferMethod transfer_method,
                     FieldEvaluationMethod evaluation_method)
 {
+  WDMCPL_FUNCTION_TIMER;
   switch (transfer_method) {
     case FieldTransferMethod::None: return;
     case FieldTransferMethod::Copy:

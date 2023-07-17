@@ -3,6 +3,7 @@
 #include "wdmcpl/common.h"
 #include "wdmcpl/field_communicator.h"
 #include "wdmcpl/omega_h_field.h"
+#include "wdmcpl/profile.h"
 #include <map>
 #include <typeinfo>
 
@@ -43,6 +44,7 @@ public:
                                   InternalCoordinateElement>(
         name + ".__internal__", internal_mesh, internal_field_mask)}
   {
+    WDMCPL_FUNCTION_TIMER;
     coupled_field_ = std::make_unique<CoupledFieldModel<FieldAdapterT, CommT>>(
       std::move(field_adapter), std::move(field_comm),
       std::move(native_to_internal), std::move(internal_to_native));
@@ -50,8 +52,7 @@ public:
   template <typename FieldAdapterT>
   ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
                           MPI_Comm mpi_comm, redev::Redev& redev,
-                          redev::Channel& channel,
-                          Omega_h::Mesh& internal_mesh,
+                          redev::Channel& channel, Omega_h::Mesh& internal_mesh,
                           TransferOptions native_to_internal,
                           TransferOptions internal_to_native,
                           Omega_h::Read<Omega_h::I8> internal_field_mask)
@@ -59,33 +60,47 @@ public:
                                   InternalCoordinateElement>(
         name + ".__internal__", internal_mesh, internal_field_mask)}
   {
+    WDMCPL_FUNCTION_TIMER;
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
         name, std::move(field_adapter), mpi_comm, redev, channel,
         std::move(native_to_internal), std::move(internal_to_native));
   }
 
-  void Send(Mode mode = Mode::Synchronous) { coupled_field_->Send(mode); }
-  void Receive() { coupled_field_->Receive(); }
+  void Send(Mode mode = Mode::Synchronous)
+  {
+    WDMCPL_FUNCTION_TIMER;
+    coupled_field_->Send(mode);
+  }
+  void Receive()
+  {
+    WDMCPL_FUNCTION_TIMER;
+    coupled_field_->Receive();
+  }
   void SyncNativeToInternal()
   {
+    WDMCPL_FUNCTION_TIMER;
     coupled_field_->SyncNativeToInternal(internal_field_);
   }
   void SyncInternalToNative()
   {
+    WDMCPL_FUNCTION_TIMER;
     coupled_field_->SyncInternalToNative(internal_field_);
   }
   [[nodiscard]] InternalField& GetInternalField() noexcept
   {
+    WDMCPL_FUNCTION_TIMER;
     return internal_field_;
   }
   [[nodiscard]] const InternalField& GetInternalField() const noexcept
   {
+    WDMCPL_FUNCTION_TIMER;
     return internal_field_;
   }
   template <typename T>
   [[nodiscard]] T* GetFieldAdapter() const
   {
+    WDMCPL_FUNCTION_TIMER;
     if (typeid(T) == coupled_field_->GetFieldAdapterType()) {
       auto* adapter = coupled_field_->GetFieldAdapter();
       return reinterpret_cast<T*>(adapter);
@@ -119,6 +134,7 @@ public:
         internal_to_native_(std::move(internal_to_native)),
         type_info_(typeid(FieldAdapterT))
     {
+      WDMCPL_FUNCTION_TIMER;
     }
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
                       MPI_Comm mpi_comm, redev::Redev& redev,
@@ -132,17 +148,28 @@ public:
         internal_to_native_(std::move(internal_to_native)),
         type_info_(typeid(FieldAdapterT))
     {
+      WDMCPL_FUNCTION_TIMER;
     }
-    void Send(Mode mode) final { comm_.Send(mode); };
-    void Receive() final { comm_.Receive(); };
+    void Send(Mode mode) final
+    {
+      WDMCPL_FUNCTION_TIMER;
+      comm_.Send(mode);
+    };
+    void Receive() final
+    {
+      WDMCPL_FUNCTION_TIMER;
+      comm_.Receive();
+    };
     void SyncNativeToInternal(InternalField& internal_field) final
     {
+      WDMCPL_FUNCTION_TIMER;
       ConvertFieldAdapterToOmegaH(field_adapter_, internal_field,
                                   native_to_internal_.transfer_method,
                                   native_to_internal_.evaluation_method);
     };
     void SyncInternalToNative(const InternalField& internal_field) final
     {
+      WDMCPL_FUNCTION_TIMER;
       ConvertOmegaHToFieldAdapter(internal_field, field_adapter_,
                                   internal_to_native_.transfer_method,
                                   internal_to_native_.evaluation_method);
@@ -185,6 +212,7 @@ public:
                                       transport_type, std::move(path))},
       internal_mesh_{internal_mesh}
   {
+    WDMCPL_FUNCTION_TIMER;
   }
   // FIXME should take a file path for the parameters, not take adios2 params.
   // These fields are supposed to be agnostic to adios2...
@@ -197,6 +225,7 @@ public:
     FieldEvaluationMethod from_field_eval_method,
     Omega_h::Read<Omega_h::I8> internal_field_mask = {})
   {
+    WDMCPL_FUNCTION_TIMER;
     auto [it, inserted] = fields_.template try_emplace(
       name, name, std::forward<FieldAdapterT>(field_adapter), mpi_comm_, redev_,
       channel_, internal_mesh_,
@@ -211,33 +240,57 @@ public:
   }
   void SendField(const std::string& name, Mode mode = Mode::Synchronous)
   {
+    WDMCPL_FUNCTION_TIMER;
     WDMCPL_ALWAYS_ASSERT(InSendPhase());
     detail::find_or_error(name, fields_).Send(mode);
   };
   void ReceiveField(const std::string& name)
   {
+    WDMCPL_FUNCTION_TIMER;
     WDMCPL_ALWAYS_ASSERT(InReceivePhase());
     detail::find_or_error(name, fields_).Receive();
   };
   [[nodiscard]] bool InSendPhase() const noexcept
   {
+    WDMCPL_FUNCTION_TIMER;
     return channel_.InSendCommunicationPhase();
   }
   [[nodiscard]] bool InReceivePhase() const noexcept
   {
+    WDMCPL_FUNCTION_TIMER;
     return channel_.InReceiveCommunicationPhase();
   }
-  void BeginSendPhase() { channel_.BeginSendCommunicationPhase(); }
-  void EndSendPhase() { channel_.EndSendCommunicationPhase(); }
-  void BeginReceivePhase() { channel_.BeginReceiveCommunicationPhase(); }
-  void EndReceivePhase() { channel_.EndReceiveCommunicationPhase(); }
+  void BeginSendPhase()
+  {
+    WDMCPL_FUNCTION_TIMER;
+    channel_.BeginSendCommunicationPhase();
+  }
+  void EndSendPhase()
+  {
+    WDMCPL_FUNCTION_TIMER;
+    channel_.EndSendCommunicationPhase();
+  }
+  void BeginReceivePhase()
+  {
+    WDMCPL_FUNCTION_TIMER;
+    channel_.BeginReceiveCommunicationPhase();
+  }
+  void EndReceivePhase()
+  {
+    WDMCPL_FUNCTION_TIMER;
+    channel_.EndReceiveCommunicationPhase();
+  }
 
   template <typename Func, typename... Args>
-  auto SendPhase(const Func& func, Args&&... args) {
+  auto SendPhase(const Func& func, Args&&... args)
+  {
+    WDMCPL_FUNCTION_TIMER;
     return channel_.SendPhase(func, std::forward<Args>(args)...);
   }
   template <typename Func, typename... Args>
-  auto ReceivePhase(const Func& func, Args&&... args) {
+  auto ReceivePhase(const Func& func, Args&&... args)
+  {
+    WDMCPL_FUNCTION_TIMER;
     return channel_.ReceivePhase(func, std::forward<Args>(args)...);
   }
 
@@ -261,6 +314,7 @@ public:
       combined_field_(combined_field),
       combiner_(std::move(combiner))
   {
+    WDMCPL_FUNCTION_TIMER;
     internal_fields_.reserve(coupled_fields_.size());
     std::transform(coupled_fields_.begin(), coupled_fields_.end(),
                    std::back_inserter(internal_fields_),
@@ -270,6 +324,7 @@ public:
   }
   void Run() const
   {
+    WDMCPL_FUNCTION_TIMER;
     for (auto& field : coupled_fields_) {
       field.get().Receive();
       field.get().SyncNativeToInternal();
@@ -292,6 +347,7 @@ public:
     : coupled_fields_(std::move(fields_to_scatter)),
       combined_field_{combined_field}
   {
+    WDMCPL_FUNCTION_TIMER;
 
     internal_fields_.reserve(coupled_fields_.size());
     std::transform(begin(coupled_fields_), end(coupled_fields_),
@@ -302,6 +358,7 @@ public:
   }
   void Run() const
   {
+    WDMCPL_FUNCTION_TIMER;
     // possible we may need to add a splitter operation here.
     // needed splitter(combined_field, internal_fields_);
     // for current use case, we copy the combined field
@@ -348,12 +405,14 @@ public:
       redev_({comm, std::move(partition), ProcessType::Server}),
       internal_mesh_(mesh)
   {
+    WDMCPL_FUNCTION_TIMER;
   }
   Application* AddApplication(
     std::string name, std::string path = "",
     redev::TransportType transport_type = redev::TransportType::BP4,
     adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}})
   {
+    WDMCPL_FUNCTION_TIMER;
     auto key = path + name;
     auto [it, inserted] = applications_.template try_emplace(
       key, std::move(name), redev_, mpi_comm_, redev_, internal_mesh_,
@@ -368,11 +427,13 @@ public:
   // here we take a string, not string_view since we need to search map
   void ScatterFields(const std::string& name)
   {
+    WDMCPL_FUNCTION_TIMER;
     detail::find_or_error(name, scatter_operations_).Run();
   }
   // here we take a string, not string_view since we need to search map
   void GatherFields(const std::string& name)
   {
+    WDMCPL_FUNCTION_TIMER;
     detail::find_or_error(name, gather_operations_).Run();
   }
   template <typename CombinedFieldT = Real>
@@ -382,6 +443,7 @@ public:
     const std::string& internal_field_name, CombinerFunction func,
     Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
   {
+    WDMCPL_FUNCTION_TIMER;
     static constexpr int search_nx = 10;
     static constexpr int search_ny = 10;
 
@@ -417,6 +479,7 @@ public:
     std::vector<std::reference_wrapper<ConvertibleCoupledField>> scatter_fields,
     Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
   {
+    WDMCPL_FUNCTION_TIMER;
     static constexpr int search_nx = 10;
     static constexpr int search_ny = 10;
 

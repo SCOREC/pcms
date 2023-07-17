@@ -5,7 +5,7 @@
 #define WDMCPL_ALWAYS_ASSERT(cond) do {          \
   if (! (cond)) {                               \
     char omsg[2048];                            \
-    sprintf(omsg, "%s failed at %s + %d \n",    \
+    snprintf(omsg, 2048, "%s failed at %s + %d \n",    \
       #cond, __FILE__, __LINE__);               \
     wdmcpl::Wdmcpl_Assert_Fail(omsg);             \
   }                                             \

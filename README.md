@@ -48,11 +48,10 @@ ctest --test-dir buildWdmCpl --output-on-failure
 ## Spack based build
 1. Install spack
    ```console
-   $ mkidir /lore/$USER/spack
+   $ mkdir /lore/$USER/spack
    $ cd /lore/$USER/spack
    $ git clone -c feature.manyFiles=true -b releases/v0.20 https://github.com/spack/spack.git
    $ . spack/share/spack/setup-env.sh
-   $ spack compilers find
    ```
    We can also add the spack setup line into the `~/.bashrc` with `echo ". spack/share/spack/setup-env.sh" >> ~/.bashrc". This will load the spack setup script every time we start our terminal session.
 
@@ -66,14 +65,14 @@ ctest --test-dir buildWdmCpl --output-on-failure
 3. Add Spack binary mirror
    Addding the binary mirrors will avoid some compilation by downloading prebuilt binaries when available.
    ```console
-   $ spack mirror add v0.20.1 https://binaries.spack.io/v0.20.
+   $ spack mirror add v0.20.1 https://binaries.spack.io/v0.20.1
    $ spack buildcache keys --install --trust
    ```
 5. Install PCMS repo
     ```console
     $ mkdir /lore/$USER/pcms-coupler
     $ cd /lore/$USER/pcms-coupler
-    $ git clone https://github.com/jacobmerson/pcms
+    $ git clone -b pcms-spack https://github.com/jacobmerson/pcms
     $ cd pcms/spack
     $ spack env create -d env spack.yaml
     $ cd env

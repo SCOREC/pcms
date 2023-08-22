@@ -13,6 +13,7 @@ Adios2-based xgc_coupler for XGC and GENE
 
 ## Build Instructions
 
+## Build with modules
 SCOREC Rhel7 environment
 
 ```
@@ -43,6 +44,45 @@ cmake --build buildWdmCpl --target install
 
 ctest --test-dir buildWdmCpl --output-on-failure
 ```
+
+## Spack based build
+1. Install spack
+   ```console
+   $ mkidir /lore/$USER/spack
+   $ cd /lore/$USER/spack
+   $ git clone -c feature.manyFiles=true -b releases/v0.20 https://github.com/spack/spack.git
+   $ . spack/share/spack/setup-env.sh
+   $ spack compilers find
+   ```
+   We can also add the spack setup line into the `~/.bashrc` with `echo ". spack/share/spack/setup-env.sh" >> ~/.bashrc". This will load the spack setup script every time we start our terminal session.
+
+2. Get PCMS spack repo
+   The following commands will add the pcms recipe files to spack. They are not currently installed inthe upstream spack repository.
+   ```console
+   $ git clone https://github.com/jacobmerson/pcms-spack.git
+   $ spack repo add pcms-spack/pcms
+   ```
+   
+3. Add Spack binary mirror
+   Addding the binary mirrors will avoid some compilation by downloading prebuilt binaries when available.
+   ```console
+   $ spack mirror add v0.20.1 https://binaries.spack.io/v0.20.
+   $ spack buildcache keys --install --trust
+   ```
+5. Install PCMS repo
+    ```console
+    $ mkdir /lore/$USER/pcms-coupler
+    $ cd /lore/$USER/pcms-coupler
+    $ git clone https://github.com/jacobmerson/pcms
+    $ cd pcms/spack
+    $ spack env create -d env spack.yaml
+    $ cd env
+    $ spack env activate .
+    $ spack install
+    ```
+    
+At this point hopefully, spack will now install all of the relavant dependencies and a baseline build of PCMS. The default environment has PCMS in develop mode. To modify and recompile PCMS you can modify the code and rerun `spack install`.
+
 
 ### BUILD TODO
 - create a spack environment that's part of this project that can build the whole stack.

@@ -51,16 +51,16 @@ int main(int argc, char** argv)
   printf("world: %d %d; plane: %d %d ; client: %d %d\n", world_rank, world_size,
          plane_rank, plane_size, client_rank, client_size);
 
-  WdmCplClientHandle* client =
+  PcmsClientHandle* client =
     pcms_create_client("proxy_couple", client_comm);
   const char* rc_file = argv[1];
-  WdmCplReverseClassificationHandle* rc =
+  PcmsReverseClassificationHandle* rc =
     pcms_load_reverse_classification(rc_file, MPI_COMM_WORLD);
   const int nverts = pcms_reverse_classification_count_verts(rc);
   // long int* data[nplanes];
   long int* data = calloc(nverts, sizeof(long int));
-  WdmCplFieldHandle* field[nplanes];
-  WdmCplFieldAdapterHandle* field_adapters[nplanes];
+  PcmsFieldHandle* field[nplanes];
+  PcmsFieldAdapterHandle* field_adapters[nplanes];
   for (int i = 0; i < nplanes; ++i) {
     char field_name[100];
     sprintf(field_name, "xgc_gids_plane_%d", i);
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
     int communicating_rank = (i == plane) && (plane_rank == 0);
     if (plane == i) {
       field_adapters[i] = pcms_create_xgc_field_adapter(
-        "adapter1", plane_comm, data, nverts, WDMCPL_LONG_INT, rc, &in_overlap);
+        "adapter1", plane_comm, data, nverts, PCMS_LONG_INT, rc, &in_overlap);
     } else {
       field_adapters[i] = pcms_create_dummy_field_adapter();
     }

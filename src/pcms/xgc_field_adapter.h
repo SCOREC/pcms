@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_XGC_FIELD_ADAPTER_H
-#define WDM_COUPLING_XGC_FIELD_ADAPTER_H
+#ifndef PCMS_COUPLING_XGC_FIELD_ADAPTER_H
+#define PCMS_COUPLING_XGC_FIELD_ADAPTER_H
 #include "pcms/types.h"
 #include "pcms/memory_spaces.h"
 #include "pcms/field.h"
@@ -21,13 +21,13 @@ struct GetRank
   GetRank(const GeomType& geom) : geom_(geom) {}
   auto operator()(const redev::ClassPtn& ptn) const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     const auto ent = redev::ClassPtn::ModelEnt({geom_.dim, geom_.id});
     return ptn.GetRank(ent);
   }
   auto operator()(const redev::RCBPtn& /*unused*/) const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     std::cerr << "RCB partition not handled yet\n";
     std::terminate();
     return 0;
@@ -65,22 +65,22 @@ public:
       reverse_classification_(reverse_classification),
       in_overlap_(in_overlap)
   {
-    WDMCPL_FUNCTION_TIMER;
-    // WDMCPL_ALWAYS_ASSERT(reverse_classification.nverts() == data.size());
+    PCMS_FUNCTION_TIMER;
+    // PCMS_ALWAYS_ASSERT(reverse_classification.nverts() == data.size());
     MPI_Comm_rank(plane_comm_, &plane_rank_);
     if (RankParticipatesCouplingCommunication()) {
       Kokkos::View<int8_t*, HostMemorySpace> mask("mask", data.size());
-      WDMCPL_ALWAYS_ASSERT((bool)in_overlap);
+      PCMS_ALWAYS_ASSERT((bool)in_overlap);
       for (auto& geom : reverse_classification_) {
         if (in_overlap(geom.first.dim, geom.first.id)) {
           for (auto vert : geom.second) {
-            WDMCPL_ALWAYS_ASSERT(vert < data.size());
+            PCMS_ALWAYS_ASSERT(vert < data.size());
             mask(vert) = 1;
           }
         }
       }
       mask_ = ArrayMask<memory_space>{make_const_array_view(mask)};
-      WDMCPL_ALWAYS_ASSERT(!mask_.empty());
+      PCMS_ALWAYS_ASSERT(!mask_.empty());
       //// XGC meshes are naively ordered in iteration order (full mesh on every
       //// cpu) First ID in XGC is 1!
       std::iota(gids_.begin(), gids_.end(), static_cast<GO>(1));
@@ -91,7 +91,7 @@ public:
     ScalarArrayView<T, memory_space> buffer,
     ScalarArrayView<const pcms::LO, memory_space> permutation) const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     static_assert(std::is_same_v<memory_space, pcms::HostMemorySpace>,
                   "gpu space unhandled\n");
     if (RankParticipatesCouplingCommunication()) {
@@ -108,7 +108,7 @@ public:
     ScalarArrayView<const T, memory_space> buffer,
     ScalarArrayView<const pcms::LO, memory_space> permutation) const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     static_assert(std::is_same_v<memory_space, pcms::HostMemorySpace>,
                   "gpu space unhandled\n");
     if (RankParticipatesCouplingCommunication()) {
@@ -122,7 +122,7 @@ public:
   // REQUIRED
   [[nodiscard]] std::vector<GO> GetGids() const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     if (RankParticipatesCouplingCommunication()) {
       std::vector<GO> gids(mask_.Size());
       auto v1 = make_array_view(gids_);
@@ -137,12 +137,12 @@ public:
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     if (RankParticipatesCouplingCommunication()) {
 
       pcms::ReversePartitionMap reverse_partition;
       // in_overlap_ must contain a function!
-      WDMCPL_ALWAYS_ASSERT(static_cast<bool>(in_overlap_));
+      PCMS_ALWAYS_ASSERT(static_cast<bool>(in_overlap_));
       for (const auto& geom : reverse_classification_) {
         // if the geometry is in specified overlap region
         if (in_overlap_(geom.first.dim, geom.first.id)) {
@@ -154,7 +154,7 @@ public:
           std::transform(geom.second.begin(), geom.second.end(),
                          std::back_inserter(it->second), [&map](auto v) {
                            auto idx = map[v];
-                           WDMCPL_ALWAYS_ASSERT(idx > 0);
+                           PCMS_ALWAYS_ASSERT(idx > 0);
                            return idx - 1;
                          });
         }
@@ -173,7 +173,7 @@ public:
   }
   [[nodiscard]] bool RankParticipatesCouplingCommunication() const noexcept
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     // only do adios communications on 0 rank of the XGC fields
     return (plane_rank_ == plane_root_);
   }
@@ -212,7 +212,7 @@ template <typename T, typename CoordinateElementType>
 auto get_nodal_coordinates(
   const XGCFieldAdapter<T, CoordinateElementType>& field)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   Kokkos::View<CoordinateElementType*,
                typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
     coordinates;
@@ -225,7 +225,7 @@ auto evaluate(
   ScalarArrayView<const CoordinateElementType, MemorySpace> coordinates)
   -> Kokkos::View<T*, MemorySpace>
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   Kokkos::View<T*, MemorySpace> values("data", coordinates.size() / 2);
   std::cerr << "Evaluation of XGC Field not implemented yet!\n";
   std::abort();
@@ -238,7 +238,7 @@ auto evaluate(
   ScalarArrayView<const CoordinateElementType, MemorySpace> coordinates)
   -> Kokkos::View<T*, MemorySpace>
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   Kokkos::View<T*, MemorySpace> values("data", coordinates.size() / 2);
   std::cerr << "Evaluation of XGC Field not implemented yet!\n";
   std::abort();
@@ -252,9 +252,9 @@ auto set_nodal_data(
     const U, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
     data) -> void
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
 }
 
 } // namespace pcms
 
-#endif // WDM_COUPLING_XGC_FIELD_ADAPTER_H
+#endif // PCMS_COUPLING_XGC_FIELD_ADAPTER_H

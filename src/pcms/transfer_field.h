@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_TRANSFER_FIELD_H
-#define WDM_COUPLING_TRANSFER_FIELD_H
+#ifndef PCMS_COUPLING_TRANSFER_FIELD_H
+#define PCMS_COUPLING_TRANSFER_FIELD_H
 #include <utility>
 #include "pcms/arrays.h"
 #include "pcms/field_evaluation_methods.h"
@@ -19,7 +19,7 @@ namespace pcms
 template <typename Field>
 void copy_field(const Field& source_field, Field& target_field)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   const auto source_data = get_nodal_data(source_field);
   set_nodal_data(target_field, make_array_view(source_data));
 }
@@ -29,7 +29,7 @@ template <typename SourceField, typename TargetField,
 void interpolate_field(const SourceField& source_field,
                        TargetField& target_field, EvaluationMethod method = {})
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   // TODO: same_topology
   // if (same_topology(source_field, target_field)) {
   //  copy_field(source_field,target_field);
@@ -81,7 +81,7 @@ void transfer_field(const SourceField& source, TargetField& target,
                     FieldTransferMethod transfer_method,
                     FieldEvaluationMethod evaluation_method)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   switch (transfer_method) {
     case FieldTransferMethod::None: return;
     case FieldTransferMethod::Copy:
@@ -113,4 +113,4 @@ void transfer_field(const SourceField& source, TargetField& target,
 
 } // namespace pcms
 
-#endif // WDM_COUPLING_TRANSFER_FIELD_H
+#endif // PCMS_COUPLING_TRANSFER_FIELD_H

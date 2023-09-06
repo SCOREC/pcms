@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_TYPES_H
-#define WDM_COUPLING_TYPES_H
+#ifndef PCMS_COUPLING_TYPES_H
+#define PCMS_COUPLING_TYPES_H
 #include <redev_types.h>
 namespace pcms
 {
@@ -41,4 +41,4 @@ using type_identity_t = typename type_identity<T>::type;
 
 } // namespace pcms
 
-#endif // WDM_COUPLING_TYPES_H
+#endif // PCMS_COUPLING_TYPES_H

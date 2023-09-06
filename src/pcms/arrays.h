@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_ARRAYS_H
-#define WDM_COUPLING_ARRAYS_H
+#ifndef PCMS_COUPLING_ARRAYS_H
+#define PCMS_COUPLING_ARRAYS_H
 #include "pcms/external/mdspan.hpp"
 #include "pcms/types.h"
 #include "pcms/coordinate.h"
@@ -207,4 +207,4 @@ auto make_const_array_view(T& array) -> ScalarArrayView<const ElementType, Memor
   return ScalarArrayView<const ElementType, MemorySpace>{data(array), size(array)};
 }
 } // namespace pcms
-#endif // WDM_COUPLING_ARRAYS_H
+#endif // PCMS_COUPLING_ARRAYS_H

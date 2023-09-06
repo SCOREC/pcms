@@ -10,24 +10,24 @@ module pcms
 
  ! DECLARATION CONSTRUCTS
  public :: in_overlap_func
- ! enum WdmCplAdapterType
+ ! enum PcmsAdapterType
  enum, bind(c)
-  enumerator :: WDMCPL_ADAPTER_XGC
-  enumerator :: WDMCPL_ADAPTER_OMEGAH
-  enumerator :: WDMCPL_ADAPTER_GENE
-  enumerator :: WDMCPL_ADAPTER_GEM
+  enumerator :: PCMS_ADAPTER_XGC
+  enumerator :: PCMS_ADAPTER_OMEGAH
+  enumerator :: PCMS_ADAPTER_GENE
+  enumerator :: PCMS_ADAPTER_GEM
  end enum
- integer, parameter, public :: WdmCplAdapterType = kind(WDMCPL_ADAPTER_XGC)
- public :: WDMCPL_ADAPTER_XGC, WDMCPL_ADAPTER_OMEGAH, WDMCPL_ADAPTER_GENE, WDMCPL_ADAPTER_GEM
- ! enum WdmCplType
+ integer, parameter, public :: PcmsAdapterType = kind(PCMS_ADAPTER_XGC)
+ public :: PCMS_ADAPTER_XGC, PCMS_ADAPTER_OMEGAH, PCMS_ADAPTER_GENE, PCMS_ADAPTER_GEM
+ ! enum PcmsType
  enum, bind(c)
-  enumerator :: WDMCPL_FLOAT
-  enumerator :: WDMCPL_DOUBLE
-  enumerator :: WDMCPL_INT
-  enumerator :: WDMCPL_LONG_INT
+  enumerator :: PCMS_FLOAT
+  enumerator :: PCMS_DOUBLE
+  enumerator :: PCMS_INT
+  enumerator :: PCMS_LONG_INT
  end enum
- integer, parameter, public :: WdmCplType = kind(WDMCPL_FLOAT)
- public :: WDMCPL_FLOAT, WDMCPL_DOUBLE, WDMCPL_INT, WDMCPL_LONG_INT
+ integer, parameter, public :: PcmsType = kind(PCMS_FLOAT)
+ public :: PCMS_FLOAT, PCMS_DOUBLE, PCMS_INT, PCMS_LONG_INT
 
  integer, parameter :: swig_cmem_own_bit = 0
  integer, parameter :: swig_cmem_rvalue_bit = 1
@@ -39,24 +39,24 @@ module pcms
   type(C_PTR), public :: data = C_NULL_PTR
   integer(C_SIZE_T), public :: size = 0
  end type
- type, public :: SWIGTYPE_p_WdmCplClientHandle
+ type, public :: SWIGTYPE_p_PcmsClientHandle
   type(SwigClassWrapper), public :: swigdata
  end type
  public :: pcms_create_client
  public :: pcms_destroy_client
- type, public :: SWIGTYPE_p_WdmCplReverseClassificationHandle
+ type, public :: SWIGTYPE_p_PcmsReverseClassificationHandle
   type(SwigClassWrapper), public :: swigdata
  end type
  public :: pcms_load_reverse_classification
  public :: pcms_destroy_reverse_classification
  public :: pcms_reverse_classification_count_verts
- type, public :: SWIGTYPE_p_WdmCplFieldAdapterHandle
+ type, public :: SWIGTYPE_p_PcmsFieldAdapterHandle
   type(SwigClassWrapper), public :: swigdata
  end type
  public :: pcms_create_xgc_field_adapter
  public :: pcms_create_dummy_field_adapter
  public :: pcms_destroy_field_adapter
- type, public :: SWIGTYPE_p_WdmCplFieldHandle
+ type, public :: SWIGTYPE_p_PcmsFieldHandle
   type(SwigClassWrapper), public :: swigdata
  end type
  public :: pcms_add_field
@@ -272,7 +272,7 @@ end subroutine
 function pcms_create_client(name, comm) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(SWIGTYPE_p_WdmCplClientHandle) :: swig_result
+type(SWIGTYPE_p_PcmsClientHandle) :: swig_result
 character(len=*), target :: name
 integer :: comm
 type(SwigClassWrapper) :: fresult 
@@ -288,7 +288,7 @@ end function
 
 subroutine pcms_destroy_client(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsClientHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -298,7 +298,7 @@ end subroutine
 function pcms_load_reverse_classification(file, comm) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(SWIGTYPE_p_WdmCplReverseClassificationHandle) :: swig_result
+type(SWIGTYPE_p_PcmsReverseClassificationHandle) :: swig_result
 character(len=*), target :: file
 integer :: comm
 type(SwigClassWrapper) :: fresult 
@@ -314,7 +314,7 @@ end function
 
 subroutine pcms_destroy_reverse_classification(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplReverseClassificationHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsReverseClassificationHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -325,7 +325,7 @@ function pcms_reverse_classification_count_verts(arg0) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
 integer(C_INT) :: swig_result
-class(SWIGTYPE_p_WdmCplReverseClassificationHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsReverseClassificationHandle), intent(in) :: arg0
 integer(C_INT) :: fresult 
 type(SwigClassWrapper) :: farg1 
 
@@ -337,13 +337,13 @@ end function
 function pcms_create_xgc_field_adapter(name, plane_comm, data, size, data_type, rc, in_overlap) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(SWIGTYPE_p_WdmCplFieldAdapterHandle) :: swig_result
+type(SWIGTYPE_p_PcmsFieldAdapterHandle) :: swig_result
 character(len=*), target :: name
 integer :: plane_comm
 type(C_PTR), intent(in) :: data
 integer(C_INT), intent(in) :: size
-integer(WdmCplType), intent(in) :: data_type
-class(SWIGTYPE_p_WdmCplReverseClassificationHandle), intent(in) :: rc
+integer(PcmsType), intent(in) :: data_type
+class(SWIGTYPE_p_PcmsReverseClassificationHandle), intent(in) :: rc
 procedure(in_overlap_func) :: in_overlap
 type(SwigClassWrapper) :: fresult 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg1_temp 
@@ -369,7 +369,7 @@ end function
 function pcms_create_dummy_field_adapter() &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(SWIGTYPE_p_WdmCplFieldAdapterHandle) :: swig_result
+type(SWIGTYPE_p_PcmsFieldAdapterHandle) :: swig_result
 type(SwigClassWrapper) :: fresult 
 
 fresult = swigc_pcms_create_dummy_field_adapter()
@@ -378,7 +378,7 @@ end function
 
 subroutine pcms_destroy_field_adapter(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplFieldAdapterHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsFieldAdapterHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -388,10 +388,10 @@ end subroutine
 function pcms_add_field(client_handle, name, adapter_handle, participates) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(SWIGTYPE_p_WdmCplFieldHandle) :: swig_result
-class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: client_handle
+type(SWIGTYPE_p_PcmsFieldHandle) :: swig_result
+class(SWIGTYPE_p_PcmsClientHandle), intent(in) :: client_handle
 character(len=*), target :: name
-class(SWIGTYPE_p_WdmCplFieldAdapterHandle), intent(in) :: adapter_handle
+class(SWIGTYPE_p_PcmsFieldAdapterHandle), intent(in) :: adapter_handle
 integer(C_INT), intent(in) :: participates
 type(SwigClassWrapper) :: fresult 
 type(SwigClassWrapper) :: farg1 
@@ -410,7 +410,7 @@ end function
 
 subroutine pcms_send_field_name(arg0, name)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsClientHandle), intent(in) :: arg0
 character(len=*), target :: name
 type(SwigClassWrapper) :: farg1 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 
@@ -423,7 +423,7 @@ end subroutine
 
 subroutine pcms_receive_field_name(arg0, name)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsClientHandle), intent(in) :: arg0
 character(len=*), target :: name
 type(SwigClassWrapper) :: farg1 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 
@@ -436,7 +436,7 @@ end subroutine
 
 subroutine pcms_send_field(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplFieldHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsFieldHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -445,7 +445,7 @@ end subroutine
 
 subroutine pcms_receive_field(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplFieldHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsFieldHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -454,7 +454,7 @@ end subroutine
 
 subroutine pcms_begin_send_phase(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsClientHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -463,7 +463,7 @@ end subroutine
 
 subroutine pcms_end_send_phase(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsClientHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -472,7 +472,7 @@ end subroutine
 
 subroutine pcms_begin_receive_phase(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsClientHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata
@@ -481,7 +481,7 @@ end subroutine
 
 subroutine pcms_end_receive_phase(arg0)
 use, intrinsic :: ISO_C_BINDING
-class(SWIGTYPE_p_WdmCplClientHandle), intent(in) :: arg0
+class(SWIGTYPE_p_PcmsClientHandle), intent(in) :: arg0
 type(SwigClassWrapper) :: farg1 
 
 farg1 = arg0%swigdata

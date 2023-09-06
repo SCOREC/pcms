@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_XGC_REVERSE_CLASSIFICATION_H
-#define WDM_COUPLING_XGC_REVERSE_CLASSIFICATION_H
+#ifndef PCMS_COUPLING_XGC_REVERSE_CLASSIFICATION_H
+#define PCMS_COUPLING_XGC_REVERSE_CLASSIFICATION_H
 #include <Kokkos_Core.hpp>
 #include <mpi.h>
 #include "pcms/types.h"
@@ -9,7 +9,7 @@
 #include "pcms/arrays.h"
 #include "pcms/memory_spaces.h"
 //#include <filesystem>
-#ifdef WDMCPL_HAS_OMEGA_H
+#ifdef PCMS_HAS_OMEGA_H
 #include <Omega_h_mesh.hpp>
 #include "pcms/assert.h"
 #endif
@@ -86,7 +86,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream&,
                                                             int root = 0);
 ReverseClassificationVertex ReadReverseClassificationVertex(std::string, MPI_Comm, int root = 0);
 
-#ifdef WDMCPL_HAS_OMEGA_H
+#ifdef PCMS_HAS_OMEGA_H
 enum class IndexBase {
   Zero = 0,
   One = 1
@@ -102,13 +102,13 @@ template <typename T = Omega_h::LO>
     Omega_h::HostRead<Omega_h::I8>(mesh.get_array<Omega_h::I8>(0, "class_dim"));
   auto vertid = Omega_h::HostRead<T>(mesh.get_array<T>(0, numbering));
   pcms::ReverseClassificationVertex rc;
-  WDMCPL_ALWAYS_ASSERT(classDims_h.size() == classIds_h.size());
+  PCMS_ALWAYS_ASSERT(classDims_h.size() == classIds_h.size());
   for (int i = 0; i < classDims_h.size(); ++i) {
     pcms::DimID geom{classDims_h[i], classIds_h[i]};
     if(index_base == IndexBase::Zero) {
       rc.Insert(geom, vertid[i]);
     } else {
-      WDMCPL_ALWAYS_ASSERT(vertid[i] > 0);
+      PCMS_ALWAYS_ASSERT(vertid[i] > 0);
       rc.Insert(geom, vertid[i] - 1);
     }
   }
@@ -118,4 +118,4 @@ template <typename T = Omega_h::LO>
 #endif
 } // namespace pcms
 
-#endif // WDM_COUPLING_XGC_REVERSE_CLASSIFICATION_H
+#endif // PCMS_COUPLING_XGC_REVERSE_CLASSIFICATION_H

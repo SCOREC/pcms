@@ -229,7 +229,7 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_client(SwigArrayWrapper *farg1, in
   SwigClassWrapper fresult ;
   char *arg1 = (char *) 0 ;
   MPI_Comm arg2 ;
-  WdmCplClientHandle *result = 0 ;
+  PcmsClientHandle *result = 0 ;
   
   arg1 = (char *)(farg1->data);
 #ifdef HAVE_MPI
@@ -237,7 +237,7 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_client(SwigArrayWrapper *farg1, in
 #else
   arg2 = *farg2;
 #endif
-  result = (WdmCplClientHandle *)pcms_create_client((char const *)arg1,arg2);
+  result = (PcmsClientHandle *)pcms_create_client((char const *)arg1,arg2);
   fresult.cptr = (void*)result;
   fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
   return fresult;
@@ -245,9 +245,9 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_client(SwigArrayWrapper *farg1, in
 
 
 SWIGEXPORT void _wrap_pcms_destroy_client(SwigClassWrapper *farg1) {
-  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
   
-  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  arg1 = (PcmsClientHandle *)farg1->cptr;
   pcms_destroy_client(arg1);
 }
 
@@ -256,7 +256,7 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_load_reverse_classification(SwigArrayWrap
   SwigClassWrapper fresult ;
   char *arg1 = (char *) 0 ;
   MPI_Comm arg2 ;
-  WdmCplReverseClassificationHandle *result = 0 ;
+  PcmsReverseClassificationHandle *result = 0 ;
   
   arg1 = (char *)(farg1->data);
 #ifdef HAVE_MPI
@@ -264,7 +264,7 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_load_reverse_classification(SwigArrayWrap
 #else
   arg2 = *farg2;
 #endif
-  result = (WdmCplReverseClassificationHandle *)pcms_load_reverse_classification((char const *)arg1,arg2);
+  result = (PcmsReverseClassificationHandle *)pcms_load_reverse_classification((char const *)arg1,arg2);
   fresult.cptr = (void*)result;
   fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
   return fresult;
@@ -272,19 +272,19 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_load_reverse_classification(SwigArrayWrap
 
 
 SWIGEXPORT void _wrap_pcms_destroy_reverse_classification(SwigClassWrapper *farg1) {
-  WdmCplReverseClassificationHandle *arg1 = (WdmCplReverseClassificationHandle *) 0 ;
+  PcmsReverseClassificationHandle *arg1 = (PcmsReverseClassificationHandle *) 0 ;
   
-  arg1 = (WdmCplReverseClassificationHandle *)farg1->cptr;
+  arg1 = (PcmsReverseClassificationHandle *)farg1->cptr;
   pcms_destroy_reverse_classification(arg1);
 }
 
 
 SWIGEXPORT int _wrap_pcms_reverse_classification_count_verts(SwigClassWrapper *farg1) {
   int fresult ;
-  WdmCplReverseClassificationHandle *arg1 = (WdmCplReverseClassificationHandle *) 0 ;
+  PcmsReverseClassificationHandle *arg1 = (PcmsReverseClassificationHandle *) 0 ;
   int result;
   
-  arg1 = (WdmCplReverseClassificationHandle *)farg1->cptr;
+  arg1 = (PcmsReverseClassificationHandle *)farg1->cptr;
   result = (int)pcms_reverse_classification_count_verts(arg1);
   fresult = (int)(result);
   return fresult;
@@ -297,10 +297,10 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(SwigArrayWrapper
   MPI_Comm arg2 ;
   void *arg3 = (void *) 0 ;
   int arg4 ;
-  WdmCplType arg5 ;
-  WdmCplReverseClassificationHandle *arg6 = (WdmCplReverseClassificationHandle *) 0 ;
+  PcmsType arg5 ;
+  PcmsReverseClassificationHandle *arg6 = (PcmsReverseClassificationHandle *) 0 ;
   in_overlap_function arg7 = (in_overlap_function) 0 ;
-  WdmCplFieldAdapterHandle *result = 0 ;
+  PcmsFieldAdapterHandle *result = 0 ;
   
   arg1 = (char *)(farg1->data);
 #ifdef HAVE_MPI
@@ -310,10 +310,10 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(SwigArrayWrapper
 #endif
   arg3 = (void *)(*farg3);
   arg4 = (int)(*farg4);
-  arg5 = (WdmCplType)(*farg5);
-  arg6 = (WdmCplReverseClassificationHandle *)farg6->cptr;
+  arg5 = (PcmsType)(*farg5);
+  arg6 = (PcmsReverseClassificationHandle *)farg6->cptr;
   arg7 = (in_overlap_function)(*farg7);
-  result = (WdmCplFieldAdapterHandle *)pcms_create_xgc_field_adapter((char const *)arg1,arg2,arg3,arg4,arg5,(WdmCplReverseClassificationHandle const *)arg6,arg7);
+  result = (PcmsFieldAdapterHandle *)pcms_create_xgc_field_adapter((char const *)arg1,arg2,arg3,arg4,arg5,(PcmsReverseClassificationHandle const *)arg6,arg7);
   fresult.cptr = (void*)result;
   fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
   return fresult;
@@ -322,9 +322,9 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(SwigArrayWrapper
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_dummy_field_adapter() {
   SwigClassWrapper fresult ;
-  WdmCplFieldAdapterHandle *result = 0 ;
+  PcmsFieldAdapterHandle *result = 0 ;
   
-  result = (WdmCplFieldAdapterHandle *)pcms_create_dummy_field_adapter();
+  result = (PcmsFieldAdapterHandle *)pcms_create_dummy_field_adapter();
   fresult.cptr = (void*)result;
   fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
   return fresult;
@@ -332,26 +332,26 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_dummy_field_adapter() {
 
 
 SWIGEXPORT void _wrap_pcms_destroy_field_adapter(SwigClassWrapper *farg1) {
-  WdmCplFieldAdapterHandle *arg1 = (WdmCplFieldAdapterHandle *) 0 ;
+  PcmsFieldAdapterHandle *arg1 = (PcmsFieldAdapterHandle *) 0 ;
   
-  arg1 = (WdmCplFieldAdapterHandle *)farg1->cptr;
+  arg1 = (PcmsFieldAdapterHandle *)farg1->cptr;
   pcms_destroy_field_adapter(arg1);
 }
 
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_add_field(SwigClassWrapper *farg1, SwigArrayWrapper *farg2, SwigClassWrapper *farg3, int const *farg4) {
   SwigClassWrapper fresult ;
-  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
   char *arg2 = (char *) 0 ;
-  WdmCplFieldAdapterHandle *arg3 = (WdmCplFieldAdapterHandle *) 0 ;
+  PcmsFieldAdapterHandle *arg3 = (PcmsFieldAdapterHandle *) 0 ;
   int arg4 ;
-  WdmCplFieldHandle *result = 0 ;
+  PcmsFieldHandle *result = 0 ;
   
-  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  arg1 = (PcmsClientHandle *)farg1->cptr;
   arg2 = (char *)(farg2->data);
-  arg3 = (WdmCplFieldAdapterHandle *)farg3->cptr;
+  arg3 = (PcmsFieldAdapterHandle *)farg3->cptr;
   arg4 = (int)(*farg4);
-  result = (WdmCplFieldHandle *)pcms_add_field(arg1,(char const *)arg2,arg3,arg4);
+  result = (PcmsFieldHandle *)pcms_add_field(arg1,(char const *)arg2,arg3,arg4);
   fresult.cptr = (void*)result;
   fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
   return fresult;
@@ -359,69 +359,69 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_add_field(SwigClassWrapper *farg1, SwigAr
 
 
 SWIGEXPORT void _wrap_pcms_send_field_name(SwigClassWrapper *farg1, SwigArrayWrapper *farg2) {
-  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
   char *arg2 = (char *) 0 ;
   
-  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  arg1 = (PcmsClientHandle *)farg1->cptr;
   arg2 = (char *)(farg2->data);
   pcms_send_field_name(arg1,(char const *)arg2);
 }
 
 
 SWIGEXPORT void _wrap_pcms_receive_field_name(SwigClassWrapper *farg1, SwigArrayWrapper *farg2) {
-  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
   char *arg2 = (char *) 0 ;
   
-  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  arg1 = (PcmsClientHandle *)farg1->cptr;
   arg2 = (char *)(farg2->data);
   pcms_receive_field_name(arg1,(char const *)arg2);
 }
 
 
 SWIGEXPORT void _wrap_pcms_send_field(SwigClassWrapper *farg1) {
-  WdmCplFieldHandle *arg1 = (WdmCplFieldHandle *) 0 ;
+  PcmsFieldHandle *arg1 = (PcmsFieldHandle *) 0 ;
   
-  arg1 = (WdmCplFieldHandle *)farg1->cptr;
+  arg1 = (PcmsFieldHandle *)farg1->cptr;
   pcms_send_field(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_receive_field(SwigClassWrapper *farg1) {
-  WdmCplFieldHandle *arg1 = (WdmCplFieldHandle *) 0 ;
+  PcmsFieldHandle *arg1 = (PcmsFieldHandle *) 0 ;
   
-  arg1 = (WdmCplFieldHandle *)farg1->cptr;
+  arg1 = (PcmsFieldHandle *)farg1->cptr;
   pcms_receive_field(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_begin_send_phase(SwigClassWrapper *farg1) {
-  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
   
-  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  arg1 = (PcmsClientHandle *)farg1->cptr;
   pcms_begin_send_phase(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_end_send_phase(SwigClassWrapper *farg1) {
-  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
   
-  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  arg1 = (PcmsClientHandle *)farg1->cptr;
   pcms_end_send_phase(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_begin_receive_phase(SwigClassWrapper *farg1) {
-  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
   
-  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  arg1 = (PcmsClientHandle *)farg1->cptr;
   pcms_begin_receive_phase(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_end_receive_phase(SwigClassWrapper *farg1) {
-  WdmCplClientHandle *arg1 = (WdmCplClientHandle *) 0 ;
+  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
   
-  arg1 = (WdmCplClientHandle *)farg1->cptr;
+  arg1 = (PcmsClientHandle *)farg1->cptr;
   pcms_end_receive_phase(arg1);
 }
 

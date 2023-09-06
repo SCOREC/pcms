@@ -5,15 +5,15 @@ find_dependency(redev CONFIG HINTS @redev_DIR@)
 find_dependency(Kokkos CONFIG HINTS @Kokkos_DIR@)
 find_dependency(MPI)
 
-if(@WDMCPL_ENABLE_OMEGA_H@)
+if(@PCMS_ENABLE_OMEGA_H@)
     find_dependency(Omega_h CONFIG HINTS @Omega_h_DIR@)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_core-targets.cmake")
-if(@WDMCPL_ENABLE_C@)
+if(@PCMS_ENABLE_C@)
     include("${CMAKE_CURRENT_LIST_DIR}/pcms_capi-targets.cmake")
 endif()
-if(@WDMCPL_ENABLE_Fortran@)
+if(@PCMS_ENABLE_Fortran@)
     include("${CMAKE_CURRENT_LIST_DIR}/pcms_fortranapi-targets.cmake")
 endif()
 

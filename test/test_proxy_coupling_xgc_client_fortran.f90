@@ -29,10 +29,10 @@ Program main
     integer, parameter :: nplanes = 2
 
     integer :: num_args, ix, nverts, ierror
-    type(SWIGTYPE_p_WdmCplClientHandle) :: client
-    type(SWIGTYPE_p_WdmCplReverseClassificationHandle) :: reverse_classification
-    type(SWIGTYPE_p_WdmCplFieldHandle), dimension(2) :: fields
-    type(SWIGTYPE_p_WdmCplFieldAdapterHandle), dimension(2) :: adapters
+    type(SWIGTYPE_p_PcmsClientHandle) :: client
+    type(SWIGTYPE_p_PcmsReverseClassificationHandle) :: reverse_classification
+    type(SWIGTYPE_p_PcmsFieldHandle), dimension(2) :: fields
+    type(SWIGTYPE_p_PcmsFieldAdapterHandle), dimension(2) :: adapters
     character(len = 80), dimension(:), allocatable :: args
     character(len = :), allocatable :: rc_file
     integer(C_LONG), allocatable, target :: data(:)
@@ -82,7 +82,7 @@ Program main
         name = 'xgc_gids_plane_' // trim(plane_str)
         if (plane .eq. ix) then
             adapters(ix+1) = pcms_create_xgc_field_adapter(trim(name), MPI_COMM_SELF, c_loc(data_pointer), &
-                    size(data_pointer), WDMCPL_LONG_INT, reverse_classification, in_overlap)
+                    size(data_pointer), PCMS_LONG_INT, reverse_classification, in_overlap)
         else
             adapters(ix+1) = pcms_create_dummy_field_adapter()
         end if

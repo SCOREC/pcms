@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_COORDINATE_TRANSFORM_H
-#define WDM_COUPLING_COORDINATE_TRANSFORM_H
+#ifndef PCMS_COUPLING_COORDINATE_TRANSFORM_H
+#define PCMS_COUPLING_COORDINATE_TRANSFORM_H
 #include "coordinate.h"
 #include "coordinate_systems.h"
 namespace pcms {
@@ -27,4 +27,4 @@ constexpr Coordinate<Cylindrical> CoordinateTransform(Coordinate<Cartesian> coor
 
 }
 
-#endif // WDM_COUPLING_COORDINATE_TRANSFORM_H
+#endif // PCMS_COUPLING_COORDINATE_TRANSFORM_H

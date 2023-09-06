@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_COORDINATE_H
-#define WDM_COUPLING_COORDINATE_H
+#ifndef PCMS_COUPLING_COORDINATE_H
+#define PCMS_COUPLING_COORDINATE_H
 #include <array>
 #include "pcms/external/span.h"
 #include "pcms/types.h"
@@ -46,4 +46,4 @@ private:
 
 } // namespace pcms
 
-#endif // WDM_COUPLING_COORDINATE_H
+#endif // PCMS_COUPLING_COORDINATE_H

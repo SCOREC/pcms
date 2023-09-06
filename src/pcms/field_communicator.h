@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_FIELD_COMMUNICATOR_H
-#define WDM_COUPLING_FIELD_COMMUNICATOR_H
+#ifndef PCMS_COUPLING_FIELD_COMMUNICATOR_H
+#define PCMS_COUPLING_FIELD_COMMUNICATOR_H
 #include <redev.h>
 #include "pcms/field.h"
 #include <numeric>
@@ -21,7 +21,7 @@ struct OutMsg
 // the array of data to send
 OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   OutMsg out;
   redev::LOs counts;
   counts.reserve(reverse_partition.size());
@@ -40,7 +40,7 @@ OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
 }
 size_t count_entries(const ReversePartitionMap& reverse_partition)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   size_t num_entries = 0;
   for (const auto& v : reverse_partition) {
     num_entries += v.second.size();
@@ -50,13 +50,13 @@ size_t count_entries(const ReversePartitionMap& reverse_partition)
 // note this function can be parallelized by making use of the offsets
 redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   auto num_entries = count_entries(reverse_partition);
   redev::LOs permutation(num_entries);
   LO entry = 0;
   for (auto& rank : reverse_partition) {
     for (auto& idx : rank.second) {
-      WDMCPL_ALWAYS_ASSERT(idx < num_entries);
+      PCMS_ALWAYS_ASSERT(idx < num_entries);
       permutation[idx] = entry++;
     }
   }
@@ -72,7 +72,7 @@ redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
 redev::LOs ConstructPermutation(const std::vector<pcms::GO>& local_gids,
                                 const std::vector<pcms::GO>& received_gids)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
   REDEV_ALWAYS_ASSERT(std::is_permutation(local_gids.begin(), local_gids.end(), received_gids.begin()));
   std::map<pcms::GO, pcms::LO> global_to_local_ids;
@@ -89,7 +89,7 @@ redev::LOs ConstructPermutation(const std::vector<pcms::GO>& local_gids,
 OutMsg ConstructOutMessage(int rank, int nproc,
                            const redev::InMessageLayout& in)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   REDEV_ALWAYS_ASSERT(!in.srcRanks.empty());
   // auto nAppProcs =
   // Omega_h::divide_no_remainder(in.srcRanks.size(),static_cast<size_t>(nproc));
@@ -123,7 +123,7 @@ OutMsg ConstructOutMessage(int rank, int nproc,
 template <typename T>
 bool HasDuplicates(std::vector<T> v)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   std::sort(v.begin(), v.end());
   auto it = std::adjacent_find(v.begin(), v.end());
   return it != v.end();
@@ -151,7 +151,7 @@ public:
       name_{std::move(name)},
       redev_(redev)
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     comm_ = channel.CreateComm<T>(name_, mpi_comm_);
     gid_comm_ = channel.CreateComm<GO>(name_ + "_gids", mpi_comm_);
     if(mpi_comm != MPI_COMM_NULL) {
@@ -169,8 +169,8 @@ public:
 
   void Send(Mode mode = Mode::Synchronous)
   {
-    WDMCPL_FUNCTION_TIMER;
-    WDMCPL_ALWAYS_ASSERT(channel_.InSendCommunicationPhase());
+    PCMS_FUNCTION_TIMER;
+    PCMS_ALWAYS_ASSERT(channel_.InSendCommunicationPhase());
     auto n = field_adapter_.Serialize({}, {});
     REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
     auto buffer = make_array_view(comm_buffer_);
@@ -180,8 +180,8 @@ public:
   }
   void Receive()
   {
-    WDMCPL_FUNCTION_TIMER;
-    WDMCPL_ALWAYS_ASSERT(channel_.InReceiveCommunicationPhase());
+    PCMS_FUNCTION_TIMER;
+    PCMS_ALWAYS_ASSERT(channel_.InReceiveCommunicationPhase());
     // Current implementation requires that Receive is always called in Sync
     // mode because we make an immediate call to deserialize after a call to
     // receive.
@@ -198,7 +198,7 @@ private:
   // comm_ operations should only be called on ranks with
   void UpdateLayout()
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     //if (mpi_comm_ != MPI_COMM_NULL) {
       auto gids = field_adapter_.GetGids();
       if (redev_.GetProcessType() == redev::ProcessType::Client) {
@@ -241,7 +241,7 @@ private:
   }
   void UpdateLayoutNull()
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     //if (mpi_comm_ != MPI_COMM_NULL) {
     if (redev_.GetProcessType() == redev::ProcessType::Client) {
       channel_.BeginSendCommunicationPhase();
@@ -274,4 +274,4 @@ struct FieldCommunicator<void>
 };
 } // namespace pcms
 
-#endif // WDM_COUPLING_FIELD_COMMUNICATOR_H
+#endif // PCMS_COUPLING_FIELD_COMMUNICATOR_H

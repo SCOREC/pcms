@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_ARRAY_MASK_H
-#define WDM_COUPLING_ARRAY_MASK_H
+#ifndef PCMS_COUPLING_ARRAY_MASK_H
+#define PCMS_COUPLING_ARRAY_MASK_H
 #include "pcms/arrays.h"
 #include <Kokkos_Core.hpp>
 namespace pcms
@@ -76,9 +76,9 @@ public:
     const -> void
   {
     // it doesn't make sense to call this function when the mask is empty!
-    WDMCPL_ALWAYS_ASSERT(!empty());
-    WDMCPL_ALWAYS_ASSERT(data.size() == mask_.size());
-    WDMCPL_ALWAYS_ASSERT(filtered_data.size() ==
+    PCMS_ALWAYS_ASSERT(!empty());
+    PCMS_ALWAYS_ASSERT(data.size() == mask_.size());
+    PCMS_ALWAYS_ASSERT(filtered_data.size() ==
                          static_cast<size_t>(num_active_entries_));
 
     auto policy = Kokkos::RangePolicy<execution_space>(0, mask_.size());
@@ -102,8 +102,8 @@ public:
     -> Kokkos::View<T, MemorySpace>
   {
     // it doesn't make sense to call this function when the mask is empty!
-    WDMCPL_ALWAYS_ASSERT(!empty());
-    WDMCPL_ALWAYS_ASSERT(data.size() == mask_.size());
+    PCMS_ALWAYS_ASSERT(!empty());
+    PCMS_ALWAYS_ASSERT(data.size() == mask_.size());
     Kokkos::View<T, MemorySpace> filtered_data("filtered data",
                                                num_active_entries_);
     Apply(data, make_array_view(filtered_data));
@@ -122,15 +122,15 @@ public:
   {
     if (empty()) {
       if (filtered_data.data_handle() != output_array.data_handle()) {
-        WDMCPL_ALWAYS_ASSERT(output_array.size() == filtered_data.size());
+        PCMS_ALWAYS_ASSERT(output_array.size() == filtered_data.size());
         Kokkos::parallel_for(
           Kokkos::RangePolicy<execution_space>(0, filtered_data.size()),
           KOKKOS_LAMBDA(LO i) { output_array(i) = filtered_data(i); });
       }
     } else {
 
-      WDMCPL_ALWAYS_ASSERT((LO)output_array.size() == mask_.size());
-      WDMCPL_ALWAYS_ASSERT((LO)filtered_data.size() == num_active_entries_);
+      PCMS_ALWAYS_ASSERT((LO)output_array.size() == mask_.size());
+      PCMS_ALWAYS_ASSERT((LO)filtered_data.size() == num_active_entries_);
       REDEV_ALWAYS_ASSERT(filtered_data.size() == permutation.size() ||
                           permutation.empty());
       auto mask = mask_;
@@ -162,4 +162,4 @@ private:
 };
 } // namespace pcms
 
-#endif // WDM_COUPLING_ARRAY_MASK_H
+#endif // PCMS_COUPLING_ARRAY_MASK_H

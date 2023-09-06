@@ -1,5 +1,5 @@
 # TODO split out the field transfer library
-set(WDMCPL_HEADERS
+set(PCMS_HEADERS
         pcms.h
         pcms/arrays.h
         pcms/assert.h
@@ -18,60 +18,60 @@ set(WDMCPL_HEADERS
         pcms/profile.h
         )
 
-set(WDMCPL_SOURCES
+set(PCMS_SOURCES
         pcms.cpp
         pcms/assert.cpp
         pcms/xgc_field_adapter.h)
-set(WDMCPL_SOURCES pcms.cpp pcms/assert.cpp)
-if(WDMCPL_ENABLE_XGC)
-  list(APPEND WDMCPL_SOURCES  pcms/xgc_reverse_classification.cpp)
-  list(APPEND WDMCPL_HEADERS pcms/xgc_reverse_classification.h)
+set(PCMS_SOURCES pcms.cpp pcms/assert.cpp)
+if(PCMS_ENABLE_XGC)
+  list(APPEND PCMS_SOURCES  pcms/xgc_reverse_classification.cpp)
+  list(APPEND PCMS_HEADERS pcms/xgc_reverse_classification.h)
 endif()
-if (WDMCPL_ENABLE_OMEGA_H)
-  list(APPEND WDMCPL_SOURCES pcms/point_search.cpp)
-  list(APPEND WDMCPL_HEADERS
+if (PCMS_ENABLE_OMEGA_H)
+  list(APPEND PCMS_SOURCES pcms/point_search.cpp)
+  list(APPEND PCMS_HEADERS
           pcms/omega_h_field.h
           pcms/transfer_field.h
           pcms/uniform_grid.h
           pcms/point_search.h)
 endif ()
-if (WDMCPL_ENABLE_SERVER)
-  if (NOT WDMCPL_ENABLE_OMEGA_H)
-    message(ERROR "WDMCPL_ENABLE_OMEGA_H is required for server implementation")
+if (PCMS_ENABLE_SERVER)
+  if (NOT PCMS_ENABLE_OMEGA_H)
+    message(ERROR "PCMS_ENABLE_OMEGA_H is required for server implementation")
   endif ()
-  list(APPEND WDMCPL_HEADERS pcms/server.h)
+  list(APPEND PCMS_HEADERS pcms/server.h)
 endif ()
 
 find_package(Kokkos REQUIRED)
 find_package(perfstubs REQUIRED)
 
-add_library(pcms_core ${WDMCPL_SOURCES})
+add_library(pcms_core ${PCMS_SOURCES})
 set_target_properties(pcms_core PROPERTIES
         OUTPUT_NAME pcmscore
         EXPORT_NAME core)
 add_library(pcms::core ALIAS pcms_core)
 target_compile_features(pcms_core PUBLIC cxx_std_17)
 target_link_libraries(pcms_core PUBLIC redev::redev MPI::MPI_CXX Kokkos::kokkos perfstubs)
-if(WDMCPL_ENABLE_OMEGA_H)
+if(PCMS_ENABLE_OMEGA_H)
   target_link_libraries(pcms_core PUBLIC Omega_h::omega_h)
-  target_compile_definitions(pcms_core PUBLIC -DWDMCPL_HAS_OMEGA_H)
+  target_compile_definitions(pcms_core PUBLIC -DPCMS_HAS_OMEGA_H)
 endif()
-if(WDMCPL_ENABLE_SERVER)
-  target_compile_definitions(pcms_core PUBLIC -DWDMCPL_HAS_SERVER)
+if(PCMS_ENABLE_SERVER)
+  target_compile_definitions(pcms_core PUBLIC -DPCMS_HAS_SERVER)
 endif()
-if(WDMCPL_ENABLE_CLIENT)
-  list(APPEND WDMCPL_HEADERS pcms/client.h)
-  target_compile_definitions(pcms_core PUBLIC -DWDMCPL_HAS_CLIENT)
+if(PCMS_ENABLE_CLIENT)
+  list(APPEND PCMS_HEADERS pcms/client.h)
+  target_compile_definitions(pcms_core PUBLIC -DPCMS_HAS_CLIENT)
 endif()
 
-if(WDMCPL_HAS_ASAN)
+if(PCMS_HAS_ASAN)
   target_compile_options(pcms_core PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 endif()
 
 
 ## export the library
 set_target_properties(pcms_core PROPERTIES
-  PUBLIC_HEADER "${WDMCPL_HEADERS}")
+  PUBLIC_HEADER "${PCMS_HEADERS}")
 target_include_directories(pcms_core
   PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
@@ -108,11 +108,11 @@ add_library(pcms_pcms INTERFACE)
 target_link_libraries(pcms_pcms INTERFACE pcms::core)
 set_target_properties(pcms_pcms PROPERTIES
         EXPORT_NAME pcms)
-if (WDMCPL_ENABLE_C)
+if (PCMS_ENABLE_C)
   add_subdirectory(pcms/capi)
   target_link_libraries(pcms_pcms INTERFACE pcms::capi)
 endif ()
-if(WDMCPL_ENABLE_Fortran)
+if(PCMS_ENABLE_Fortran)
   add_subdirectory(pcms/fortranapi)
   target_link_libraries(pcms_pcms INTERFACE pcms::fortranapi)
 endif()

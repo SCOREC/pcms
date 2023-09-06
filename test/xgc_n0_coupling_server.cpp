@@ -25,7 +25,7 @@ namespace ts = test_support;
 
 [[nodiscard]]
 static pcms::ConvertibleCoupledField* AddField(pcms::Application *application, const std::string& name, const std::string& path, Omega_h::Read<Omega_h::I8> is_overlap, const std::string& numbering, Omega_h::Mesh& mesh, int plane) {
-      WDMCPL_ALWAYS_ASSERT(application != nullptr);
+      PCMS_ALWAYS_ASSERT(application != nullptr);
       std::stringstream field_name;
       field_name << name;
       if(plane >=0) {
@@ -62,7 +62,7 @@ static void SendFields(const std::vector<pcms::ConvertibleCoupledField*> & field
 }
 static void CopyFields(const std::vector<pcms::ConvertibleCoupledField*> & from_fields,
                        const std::vector<pcms::ConvertibleCoupledField*> & to_fields) {
-  WDMCPL_ALWAYS_ASSERT(from_fields.size() == to_fields.size());
+  PCMS_ALWAYS_ASSERT(from_fields.size() == to_fields.size());
   for(size_t i=0; i<from_fields.size(); ++i) {
     const auto* from = from_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
     auto* to = to_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
@@ -88,7 +88,7 @@ static void AverageAndSetField(const pcms::OmegaHField<T> & a, pcms::OmegaHField
  */
 static void AverageAndSetFields(const std::vector<pcms::ConvertibleCoupledField*> & from_fields,
                        const std::vector<pcms::ConvertibleCoupledField*> & to_fields) {
-  WDMCPL_ALWAYS_ASSERT(from_fields.size() == to_fields.size());
+  PCMS_ALWAYS_ASSERT(from_fields.size() == to_fields.size());
   for(size_t i=0; i<from_fields.size(); ++i) {
     const auto* from = from_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
     auto* to = to_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
@@ -201,7 +201,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
                             redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   std::string numbering = "simNumbering";
-  WDMCPL_ALWAYS_ASSERT(mesh.has_tag(0, numbering));
+  PCMS_ALWAYS_ASSERT(mesh.has_tag(0, numbering));
   auto* core = cpl.AddApplication("core", "core/");
   auto* edge = cpl.AddApplication("edge", "edge/");
   auto is_overlap = ts::markServerOverlapRegion(

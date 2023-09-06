@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_MEMORY_SPACES_H
-#define WDM_COUPLING_MEMORY_SPACES_H
+#ifndef PCMS_COUPLING_MEMORY_SPACES_H
+#define PCMS_COUPLING_MEMORY_SPACES_H
 #include <Kokkos_Core.hpp>
 
 namespace pcms {
@@ -11,4 +11,4 @@ using DefaultExecutionSpace = Kokkos::DefaultExecutionSpace;
 
 }
 
-#endif // WDM_COUPLING_MEMORY_SPACES_H
+#endif // PCMS_COUPLING_MEMORY_SPACES_H

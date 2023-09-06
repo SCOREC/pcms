@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_OMEGA_H_FIELD_H
-#define WDM_COUPLING_OMEGA_H_FIELD_H
+#ifndef PCMS_COUPLING_OMEGA_H_FIELD_H
+#define PCMS_COUPLING_OMEGA_H_FIELD_H
 #include "pcms/types.h"
 #include "pcms/external/span.h"
 #include <Omega_h_mesh.hpp>
@@ -53,11 +53,11 @@ template <typename T, int dim = 1>
 Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
                               const Omega_h::Read<LO>& mask, LO size)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   static_assert(dim > 0, "array dimension must be >0");
   Omega_h::Write<T> filtered_field(size * dim);
-  WDMCPL_ALWAYS_ASSERT(array.size() == mask.size() * dim);
-  WDMCPL_ALWAYS_ASSERT(filtered_field.size() <= array.size());
+  PCMS_ALWAYS_ASSERT(array.size() == mask.size() * dim);
+  PCMS_ALWAYS_ASSERT(filtered_field.size() <= array.size());
   Omega_h::parallel_for(
     mask.size(), OMEGA_H_LAMBDA(LO i) {
       if (mask[i]) {
@@ -75,17 +75,17 @@ struct GetRankOmegaH
                 Omega_h::HostRead<Omega_h::ClassId> ids)
     : i_(i), ids_(ids), dims_(dims)
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
   }
   auto operator()(const redev::ClassPtn& ptn) const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     const auto ent = redev::ClassPtn::ModelEnt({dims_[i_], ids_[i_]});
     return ptn.GetRank(ent);
   }
   auto operator()(const redev::RCBPtn& /*unused*/)
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     std::cerr << "RCB partition not handled yet\n";
     std::terminate();
     return 0;
@@ -115,7 +115,7 @@ public:
       size_(mesh.nents(0)),
       global_id_name_(std::move(global_id_name))
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
   }
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
               Omega_h::Read<Omega_h::I8> mask, std::string global_id_name = "",
@@ -125,7 +125,7 @@ public:
       search_{mesh, search_nx, search_ny},
       global_id_name_(std::move(global_id_name))
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     if (mask.exists()) {
 
       using ExecutionSpace = typename memory_space::execution_space;
@@ -133,7 +133,7 @@ public:
       // we use a parallel scan to construct the mask mapping so that filtering
       // can happen in parallel. This method gives us the index to fill into the
       // filtered array
-      WDMCPL_ALWAYS_ASSERT(mesh.nents(0) == mask.size());
+      PCMS_ALWAYS_ASSERT(mesh.nents(0) == mask.size());
       Omega_h::Write<LO> index_mask(mask.size());
       auto index_mask_view = make_array_view(index_mask);
       auto mask_view = make_const_array_view(mask);
@@ -156,12 +156,12 @@ public:
   [[nodiscard]] LO Size() const noexcept { return size_; }
   // pass through to search function
   auto Search(Kokkos::View<Real* [2]> points) const {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     return search_(points); }
 
   [[nodiscard]] Omega_h::Read<Omega_h::ClassId> GetClassIDs() const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     if (HasMask())
       return detail::filter_array(
         mesh_.get_array<Omega_h::ClassId>(0, "class_id"), GetMask(), Size());
@@ -169,7 +169,7 @@ public:
   }
   [[nodiscard]] Omega_h::Read<Omega_h::I8> GetClassDims() const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     if (HasMask())
       return detail::filter_array(mesh_.get_array<Omega_h::I8>(0, "class_dim"),
                                   GetMask(), Size());
@@ -177,7 +177,7 @@ public:
   }
   [[nodiscard]] Omega_h::Read<Omega_h::GO> GetGids() const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     Omega_h::Read<Omega_h::GO> gid_array;
     if (global_id_name_.empty()) {
       gid_array = mesh_.globals(0);
@@ -225,7 +225,7 @@ template <typename T, typename CoordinateElementType>
 auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
   -> Omega_h::Read<T>
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   auto full_field = field.GetMesh().template get_array<T>(0, field.GetName());
   if (field.HasMask()) {
     return detail::filter_array<T>(full_field, field.GetMask(), field.Size());
@@ -238,7 +238,7 @@ auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
 template <typename T, typename CoordinateElementType>
 auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   static constexpr auto coordinate_dimension = 2;
   if constexpr (detail::HasCoordinateSystem<CoordinateElementType>::value) {
     const auto coords = field.GetMesh().coords();
@@ -266,18 +266,18 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
                     ScalarArrayView<const U, OmegaHMemorySpace::type> data)
   -> void
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   static_assert(std::is_convertible_v<T, U>,
                 "must be able to convert nodal data into the field types data");
   auto& mesh = field.GetMesh();
   const auto has_tag = mesh.has_tag(0, field.GetName());
   if (field.HasMask()) {
     auto& mask = field.GetMask();
-    WDMCPL_ALWAYS_ASSERT(mask.size() == mesh.nents(0));
+    PCMS_ALWAYS_ASSERT(mask.size() == mesh.nents(0));
     Omega_h::Write<T> array(mask.size());
     if (has_tag) {
       auto original_data = mesh.template get_array<T>(0, field.GetName());
-      WDMCPL_ALWAYS_ASSERT(original_data.size() == mask.size());
+      PCMS_ALWAYS_ASSERT(original_data.size() == mask.size());
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
           array[i] = mask[i] ? data(mask[i] - 1) : original_data[i];
@@ -291,7 +291,7 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
       mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<T>(array));
     }
   } else {
-    WDMCPL_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh.nents(0));
+    PCMS_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh.nents(0));
     Omega_h::Write<T> array(data.size());
     Omega_h::parallel_for(
       data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
@@ -301,7 +301,7 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
       mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<T>(array));
     }
   }
-  WDMCPL_ALWAYS_ASSERT(mesh.has_tag(0, field.GetName()));
+  PCMS_ALWAYS_ASSERT(mesh.has_tag(0, field.GetName()));
 }
 
 // TODO abstract out repeat parts of lagrange/nearest neighbor evaluation
@@ -311,7 +311,7 @@ auto evaluate(
   ScalarArrayView<const CoordinateElementType, OmegaHMemorySpace::type>
     coordinates) -> Omega_h::Read<T>
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   Omega_h::Write<T> values(coordinates.size() / 2);
   auto tris2verts = field.GetMesh().ask_elem_verts();
   auto field_values = field.GetMesh().template get_array<T>(0, field.GetName());
@@ -351,7 +351,7 @@ auto evaluate(
   ScalarArrayView<const CoordinateElementType, OmegaHMemorySpace::type>
     coordinates) -> Omega_h::Read<T>
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   Omega_h::Write<T> values(coordinates.size() / 2);
   auto tris2verts = field.GetMesh().ask_elem_verts();
   auto field_values = field.GetMesh().template get_array<T>(0, field.GetName());
@@ -395,7 +395,7 @@ auto evaluate(
     Omega_h::HostRead<T>>
 
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   auto coords_view =
     Kokkos::View<const CoordinateElementType, Kokkos::HostSpace,
                  Kokkos::MemoryTraits<Kokkos::Unmanaged>>(&coordinates[0],
@@ -414,7 +414,7 @@ template <typename T>
 auto make_array_view(const Omega_h::Read<T>& array)
   -> pcms::ScalarArrayView<const T, typename pcms::OmegaHMemorySpace::type>
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   pcms::ScalarArrayView<const T, typename pcms::OmegaHMemorySpace::type>
     view(array.data(), array.size());
   return view;
@@ -437,7 +437,7 @@ public:
     : field_{std::move(name), mesh, std::move(global_id_name), search_nx,
              search_ny}
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
   }
 
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
@@ -447,7 +447,7 @@ public:
     : field_{std::move(name),           mesh,      mask,
              std::move(global_id_name), search_nx, search_ny}
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
   }
   [[nodiscard]] const std::string& GetName() const noexcept
   {
@@ -458,7 +458,7 @@ public:
                 ScalarArrayView<const pcms::LO, pcms::HostMemorySpace>
                   permutation) const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     // host copy of filtered field data array
     const auto array_h = Omega_h::HostRead<T>(get_nodal_data(field_));
     if (buffer.size() > 0) {
@@ -473,7 +473,7 @@ public:
                    ScalarArrayView<const pcms::LO, pcms::HostMemorySpace>
                      permutation) const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
     Omega_h::HostWrite<T> sorted_buffer(buffer.size());
     for (size_t i = 0; i < buffer.size(); ++i) {
@@ -485,7 +485,7 @@ public:
 
   [[nodiscard]] std::vector<GO> GetGids() const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     auto gids = field_.GetGids();
     if (gids.size() > 0) {
       auto gids_h = Omega_h::HostRead<GO>(gids);
@@ -497,7 +497,7 @@ public:
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const
   {
-    WDMCPL_FUNCTION_TIMER;
+    PCMS_FUNCTION_TIMER;
     auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(field_.GetClassIDs());
     auto classDims_h = Omega_h::HostRead<Omega_h::I8>(field_.GetClassDims());
 
@@ -533,7 +533,7 @@ void ConvertFieldAdapterToOmegaH(const FieldAdapter& adapter,
                                  FieldTransferMethod ftm,
                                  FieldEvaluationMethod fem)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   std::visit(
     [&](auto&& internal_field) {
       transfer_field(adapter, internal_field, ftm, fem);
@@ -546,7 +546,7 @@ void ConvertOmegaHToFieldAdapter(const InternalField& internal,
                                  FieldAdapter& adapter, FieldTransferMethod ftm,
                                  FieldEvaluationMethod fem)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   std::visit(
     [&](auto&& internal_field) {
       transfer_field(internal_field, adapter, ftm, fem);
@@ -561,7 +561,7 @@ void ConvertFieldAdapterToOmegaH(const OmegaHFieldAdapter<T, C>& adapter,
                                  FieldTransferMethod ftm,
                                  FieldEvaluationMethod fem)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   std::visit(
     [&](auto&& internal_field) {
       transfer_field(adapter.GetField(), internal_field, ftm, fem);
@@ -574,7 +574,7 @@ void ConvertOmegaHToFieldAdapter(const InternalField& internal,
                                  FieldTransferMethod ftm,
                                  FieldEvaluationMethod fem)
 {
-  WDMCPL_FUNCTION_TIMER;
+  PCMS_FUNCTION_TIMER;
   std::visit(
     [&](auto&& internal_field) {
       transfer_field(internal_field, adapter.GetField(), ftm, fem);
@@ -584,4 +584,4 @@ void ConvertOmegaHToFieldAdapter(const InternalField& internal,
 
 } // namespace pcms
 
-#endif // WDM_COUPLING_OMEGA_H_FIELD_H
+#endif // PCMS_COUPLING_OMEGA_H_FIELD_H

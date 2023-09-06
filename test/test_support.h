@@ -273,7 +273,7 @@ struct MeanCombiner
         for (auto& field_variant : fields) {
           std::visit(
             [&combined_array, &combined_field](auto&& field) {
-              WDMCPL_ALWAYS_ASSERT(field.Size() == combined_array.size());
+              PCMS_ALWAYS_ASSERT(field.Size() == combined_array.size());
               auto field_array = get_nodal_data(field);
               auto policy =
                 Kokkos::RangePolicy<execution_space>(0, field_array.size());

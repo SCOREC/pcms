@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_BOUNDING_BOX_H
-#define WDM_COUPLING_BOUNDING_BOX_H
+#ifndef PCMS_COUPLING_BOUNDING_BOX_H
+#define PCMS_COUPLING_BOUNDING_BOX_H
 #include "pcms/types.h"
 #include <Kokkos_Core.hpp>
 #include <array>
@@ -28,4 +28,4 @@ bool intersects(const AABBox<dim>& a, const AABBox<dim>& b)
 }
 } // namespace pcms
 
-#endif // WDM_COUPLING_BOUNDING_BOX_H
+#endif // PCMS_COUPLING_BOUNDING_BOX_H

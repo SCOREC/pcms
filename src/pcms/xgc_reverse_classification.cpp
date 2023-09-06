@@ -22,7 +22,7 @@ void ReverseClassificationVertex::Deserialize(
   ScalarArrayView<LO, pcms::HostMemorySpace> serialized_data)
 {
   // expect to deserialize into an empty reverse classification class
-  WDMCPL_ALWAYS_ASSERT(data_.empty());
+  PCMS_ALWAYS_ASSERT(data_.empty());
   size_t i = 0;
   while (i < serialized_data.size()) {
     DimID geom{.dim = serialized_data[i], .id = serialized_data[i + 1]};
@@ -31,7 +31,7 @@ void ReverseClassificationVertex::Deserialize(
     for (size_t j = i; j < i + nverts; ++j) {
       data_[geom].insert(serialized_data[j]);
     }
-    WDMCPL_ALWAYS_ASSERT(data_[geom].size() == static_cast<size_t>(nverts));
+    PCMS_ALWAYS_ASSERT(data_[geom].size() == static_cast<size_t>(nverts));
     i += nverts;
   }
 }
@@ -84,7 +84,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& instr,
     size_t sz = 0;
     MPI_Bcast(&sz, 1, MPI_INT64_T, root, comm);
     std::vector<LO> serialized_rc(sz);
-    WDMCPL_ALWAYS_ASSERT(serialized_rc.size() == sz);
+    PCMS_ALWAYS_ASSERT(serialized_rc.size() == sz);
     MPI_Bcast(serialized_rc.data(), sz, MPI_INT32_T, root, comm);
     pcms::ScalarArrayView<pcms::LO, pcms::HostMemorySpace> av{
       serialized_rc.data(), serialized_rc.size()};
@@ -96,21 +96,21 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& instr,
 ReverseClassificationVertex ReadReverseClassificationVertex(
   std::string classification_file)
 {
-  //WDMCPL_ALWAYS_ASSERT(classification_file.has_filename());
+  //PCMS_ALWAYS_ASSERT(classification_file.has_filename());
   std::ifstream infile(classification_file);
-  WDMCPL_ALWAYS_ASSERT(infile.is_open() && infile.good());
+  PCMS_ALWAYS_ASSERT(infile.is_open() && infile.good());
   return ReadReverseClassificationVertex(infile);
 }
 
 ReverseClassificationVertex ReadReverseClassificationVertex(
   std::string classification_file, MPI_Comm comm, int root)
 {
-  //WDMCPL_ALWAYS_ASSERT(classification_file.has_filename());
+  //PCMS_ALWAYS_ASSERT(classification_file.has_filename());
   std::ifstream infile(classification_file);
   if(!infile.is_open()) {
     std::cerr<<"Cannot open reverse classification file "<<classification_file<<"\n";
   }
-  WDMCPL_ALWAYS_ASSERT(infile.is_open());
+  PCMS_ALWAYS_ASSERT(infile.is_open());
   return ReadReverseClassificationVertex(infile, comm, root);
 }
 

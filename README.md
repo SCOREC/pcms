@@ -37,7 +37,7 @@ cmake -S wdmapp_coupling -B buildWdmCpl \
 -Dredev_ROOT=/path/to/redev/install \
 -DOmega_h_ROOT=/path/to/omegah/install \
 -DCMAKE_INSTALL_PREFIX=$PWD/buildWdmCpl/install \
--DWDMCPL_TEST_DATA_DIR=$PWD/wdmapp_testcases \
+-DPCMS_TEST_DATA_DIR=$PWD/wdmapp_testcases \
 -DCatch2_ROOT=/path/to/catch2/install
 
 cmake --build buildWdmCpl --target install

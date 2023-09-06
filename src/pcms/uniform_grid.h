@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_UNIFORM_GRID_H
-#define WDM_COUPLING_UNIFORM_GRID_H
+#ifndef PCMS_COUPLING_UNIFORM_GRID_H
+#define PCMS_COUPLING_UNIFORM_GRID_H
 #include "pcms/bounding_box.h"
 #include "Omega_h_vector.hpp"
 #include <iostream>
@@ -64,4 +64,4 @@ public:
 };
 } // namespace pcms
 
-#endif // WDM_COUPLING_UNIFORM_GRID_H
+#endif // PCMS_COUPLING_UNIFORM_GRID_H

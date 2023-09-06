@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_FIELD_H
-#define WDM_COUPLING_FIELD_H
+#ifndef PCMS_COUPLING_FIELD_H
+#define PCMS_COUPLING_FIELD_H
 #include "pcms/external/span.h"
 #include "pcms/types.h"
 #include "pcms/arrays.h"
@@ -58,4 +58,4 @@ public:
 */
 } // namespace pcms
 
-#endif // WDM_COUPLING_FIELD_H
+#endif // PCMS_COUPLING_FIELD_H

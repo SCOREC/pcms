@@ -5,3 +5,4 @@
 .vscode
 *.swp
 .spack-env
+*.bak

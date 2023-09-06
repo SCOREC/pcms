@@ -1,5 +1,5 @@
-#ifndef WDM_COUPLING_POINT_SEARCH_H
-#define WDM_COUPLING_POINT_SEARCH_H
+#ifndef PCMS_COUPLING_POINT_SEARCH_H
+#define PCMS_COUPLING_POINT_SEARCH_H
 #include <unordered_map>
 #include <Kokkos_Core.hpp>
 #include <Omega_h_mesh.hpp>
@@ -56,4 +56,4 @@ private:
 };
 
 } // namespace detail
-#endif // WDM_COUPLING_POINT_SEARCH_H
+#endif // PCMS_COUPLING_POINT_SEARCH_H

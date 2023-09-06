@@ -1,5 +1,5 @@
-#ifndef WDMCPL_INCLUSIVE_SCAN_H
-#define WDMCPL_INCLUSIVE_SCAN_H
+#ifndef PCMS_INCLUSIVE_SCAN_H
+#define PCMS_INCLUSIVE_SCAN_H
 namespace pcms {
   template <typename InputIt, typename OutputIt>
   OutputIt inclusive_scan(InputIt first, InputIt last, OutputIt d_first) {

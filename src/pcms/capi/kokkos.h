@@ -1,5 +1,5 @@
-#ifndef WDMCPL_SRC_WDMCPL_CAPI_KOKKOS_H
-#define WDMCPL_SRC_WDMCPL_CAPI_KOKKOS_H
+#ifndef PCMS_SRC_PCMS_CAPI_KOKKOS_H
+#define PCMS_SRC_PCMS_CAPI_KOKKOS_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,4 +13,4 @@ void pcms_kokkos_finalize();
 #endif
 
 
-#endif // WDMCPL_SRC_WDMCPL_CAPI_KOKKOS_H
+#endif // PCMS_SRC_PCMS_CAPI_KOKKOS_H

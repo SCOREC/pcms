@@ -6,7 +6,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>
 #include <Omega_h_scalar.hpp> // divide_no_remainder
-#include "wdmcpl.h"
+#include "pcms.h"
 #include "test_support.h"
 
 namespace ts = test_support;
@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
     auto gids_h = Omega_h::HostRead(gids);
     redev::GOs msgs(isOverlap_h.size(),0);
     int j=0;
-    for(wdmcpl::LO i=0; i<gids_h.size(); i++) {
+    for(pcms::LO i=0; i<gids_h.size(); i++) {
       if( isOverlap_h[i] ) {
         msgs[appOut.permute[j++]] = gids_h[i];
       }
@@ -226,7 +226,7 @@ int main(int argc, char** argv) {
       if(!rank) fprintf(stderr, "isRdv %d iter %d\n", isRdv, iter);
       //send to server
       int j=0;
-      for(wdmcpl::LO i=0; i<gids_h.size(); i++) {
+      for(pcms::LO i=0; i<gids_h.size(); i++) {
         if( isOverlap_h[i] ) {
           msgs[appOut.permute[j++]] = gids_h[i];
         }

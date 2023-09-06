@@ -1,5 +1,5 @@
-#include <wdmcpl/xgc_reverse_classification.h>
-#include <catch2/catch.hpp>
+#include <pcms/xgc_reverse_classification.h>
+#include <catch2/catch_test_macros.hpp>
 #include <sstream>
 
 static constexpr auto test_data = R"(
@@ -24,7 +24,7 @@ static constexpr auto test_data = R"(
 
 TEST_CASE("reverse classification") {
   std::stringstream ss{test_data};
-  auto rc = wdmcpl::ReadReverseClassificationVertex(ss);
+  auto rc = pcms::ReadReverseClassificationVertex(ss);
   {
     const auto* q = rc.Query({2,20});
     REQUIRE(q == nullptr);
@@ -33,12 +33,12 @@ TEST_CASE("reverse classification") {
     const auto* q = rc.Query({2,1});
     REQUIRE(q!=nullptr);
     REQUIRE(q->size() == 3);
-    std::set<wdmcpl::LO> s{4, 5, 6};
+    std::set<pcms::LO> s{4, 5, 6};
     REQUIRE(s == *q);
   }
   auto vec = rc.Serialize();
-  wdmcpl::ReverseClassificationVertex rc_deserialized;
-  wdmcpl::ScalarArrayView<wdmcpl::LO, wdmcpl::HostMemorySpace> av{vec.data(),vec.size()};
+  pcms::ReverseClassificationVertex rc_deserialized;
+  pcms::ScalarArrayView<pcms::LO, pcms::HostMemorySpace> av{vec.data(),vec.size()};
   rc_deserialized.Deserialize(av);
   REQUIRE(rc_deserialized == rc);
 }

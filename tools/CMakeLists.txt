@@ -1,4 +1,6 @@
-if(WDMCPL_ENABLE_XGC AND WDMCPL_ENABLE_OMEGA_H)
+if(PCMS_ENABLE_XGC AND PCMS_ENABLE_OMEGA_H)
     add_executable(osh2XgcRC XgcRCfromOsh.cpp)
-    target_link_libraries(osh2XgcRC wdmcpl::core Omega_h::omega_h)
+    target_link_libraries(osh2XgcRC pcms::core Omega_h::omega_h)
+    add_executable(cpn_gen CpnFromOsh.cpp)
+    target_link_libraries(cpn_gen Omega_h::omega_h)
 endif()

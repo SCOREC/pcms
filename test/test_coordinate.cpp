@@ -1,15 +1,16 @@
-#include <catch2/catch.hpp>
-#include <wdmcpl/coordinate.h>
-#include <wdmcpl/coordinate_systems.h>
-#include <wdmcpl/external/mdspan.hpp>
-#include <wdmcpl/arrays.h>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
+#include <pcms/coordinate.h>
+#include <pcms/coordinate_systems.h>
+#include <pcms/external/mdspan.hpp>
+#include <pcms/arrays.h>
 
-using wdmcpl::Cartesian;
-using wdmcpl::Coordinate;
-using wdmcpl::Cartesian;
-using wdmcpl::Cylindrical;
-using wdmcpl::CoordinateElement;
-using wdmcpl::Real;
+using pcms::Cartesian;
+using pcms::Coordinate;
+using pcms::Cartesian;
+using pcms::Cylindrical;
+using pcms::CoordinateElement;
+using pcms::Real;
 
 #if __cplusplus >= 202002L
   // coordinates from different coordinate systems should not be equality comparable
@@ -22,28 +23,28 @@ TEST_CASE( "Coordinate Strong type works", "[coordinate]" ) {
   SECTION("Values()")
   {
     auto values = cart.Values();
-    REQUIRE(values[0] == Approx(1.0));
-    REQUIRE(values[1] == Approx(2.0));
-    REQUIRE(values[2] == Approx(3.0));
+    REQUIRE(values[0] == Catch::Approx(1.0));
+    REQUIRE(values[1] == Catch::Approx(2.0));
+    REQUIRE(values[2] == Catch::Approx(3.0));
     values = cyl.Values();
-    REQUIRE(values[0] == Approx(4.0));
-    REQUIRE(values[1] == Approx(5.0));
-    REQUIRE(values[2] == Approx(6.0));
+    REQUIRE(values[0] == Catch::Approx(4.0));
+    REQUIRE(values[1] == Catch::Approx(5.0));
+    REQUIRE(values[2] == Catch::Approx(6.0));
   }
   SECTION("operator[]"){
-    REQUIRE(cart[0] == Approx(1.0));
-    REQUIRE(cart[1] == Approx(2.0));
-    REQUIRE(cart[2] == Approx(3.0));
-    REQUIRE(cyl[0] == Approx(4.0));
-    REQUIRE(cyl[1] == Approx(5.0));
-    REQUIRE(cyl[2] == Approx(6.0));
+    REQUIRE(cart[0] == Catch::Approx(1.0));
+    REQUIRE(cart[1] == Catch::Approx(2.0));
+    REQUIRE(cart[2] == Catch::Approx(3.0));
+    REQUIRE(cyl[0] == Catch::Approx(4.0));
+    REQUIRE(cyl[1] == Catch::Approx(5.0));
+    REQUIRE(cyl[2] == Catch::Approx(6.0));
   }
 }
 /*
 TEST_CASE( "Coordinate value type works", "[coordinate]" ) {
   using CartVal = CoordinateElement<Cartesian> ;
   namespace stdex = std::experimental;
-  wdmcpl::CoordinateMDArray<double,Cartesian> a(2);
+  pcms::CoordinateMDArray<double,Cartesian> a(2);
 
   std::experimental::mdarray<
     double,
@@ -57,18 +58,18 @@ TEST_CASE( "Coordinate value type works", "[coordinate]" ) {
       a(i,j) = CartVal{count++};
     }
   }
-  REQUIRE(a(0,0).underlying() == Approx(1.0));
-  REQUIRE(a(0,1).underlying() == Approx(2.0));
-  REQUIRE(a(0,2).underlying() == Approx(3.0));
-  REQUIRE(a(1,0).underlying() == Approx(4.0));
-  REQUIRE(a(1,1).underlying() == Approx(5.0));
-  REQUIRE(a(1,2).underlying() == Approx(6.0));
+  REQUIRE(a(0,0).underlying() == Catch::Approx(1.0));
+  REQUIRE(a(0,1).underlying() == Catch::Approx(2.0));
+  REQUIRE(a(0,2).underlying() == Catch::Approx(3.0));
+  REQUIRE(a(1,0).underlying() == Catch::Approx(4.0));
+  REQUIRE(a(1,1).underlying() == Catch::Approx(5.0));
+  REQUIRE(a(1,2).underlying() == Catch::Approx(6.0));
 
-  REQUIRE(bla(0,0) == Approx(1.0));
-  REQUIRE(bla(0,1) == Approx(2.0));
-  REQUIRE(bla(0,2) == Approx(3.0));
-  REQUIRE(bla(1,0) == Approx(4.0));
-  REQUIRE(bla(1,1) == Approx(5.0));
-  REQUIRE(bla(1,2) == Approx(6.0));
+  REQUIRE(bla(0,0) == Catch::Approx(1.0));
+  REQUIRE(bla(0,1) == Catch::Approx(2.0));
+  REQUIRE(bla(0,2) == Catch::Approx(3.0));
+  REQUIRE(bla(1,0) == Catch::Approx(4.0));
+  REQUIRE(bla(1,1) == Catch::Approx(5.0));
+  REQUIRE(bla(1,2) == Catch::Approx(6.0));
 }
  */

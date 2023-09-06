@@ -1,20 +1,20 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_vtk.hpp>
-#include <wdmcpl/transfer_field.h>
-#include <wdmcpl/omega_h_field.h>
+#include <pcms/transfer_field.h>
+#include <pcms/omega_h_field.h>
 // for transfer operation dummy test
-#include <wdmcpl.h>
+#include <pcms.h>
 #include <chrono>
 
-using wdmcpl::Real;
-using OHField = wdmcpl::OmegaHField<Real, Real>;
-using OHShim = wdmcpl::OmegaHFieldAdapter<Real, Real>;
-using wdmcpl::copy_field;
-using wdmcpl::get_nodal_coordinates;
-using wdmcpl::get_nodal_data;
-using wdmcpl::interpolate_field;
-using wdmcpl::make_array_view;
-using wdmcpl::set_nodal_data;
+using pcms::Real;
+using OHField = pcms::OmegaHField<Real, Real>;
+using OHShim = pcms::OmegaHFieldAdapter<Real, Real>;
+using pcms::copy_field;
+using pcms::get_nodal_coordinates;
+using pcms::get_nodal_data;
+using pcms::interpolate_field;
+using pcms::make_array_view;
+using pcms::set_nodal_data;
 
 inline constexpr int num_trials = 1000;
 
@@ -41,14 +41,14 @@ struct MeanCombiner
 void SetApplicationFields(const OHField& app_a_field,
                           const OHField& app_b_field);
 
-using wdmcpl::ConvertibleCoupledField;
-using wdmcpl::FieldEvaluationMethod;
-using wdmcpl::FieldTransferMethod;
-using wdmcpl::GatherOperation;
-using wdmcpl::ProcessType;
-using wdmcpl::TransferOptions;
-using wdmcpl::FieldCommunicator;
-using wdmcpl::InternalField;
+using pcms::ConvertibleCoupledField;
+using pcms::FieldEvaluationMethod;
+using pcms::FieldTransferMethod;
+using pcms::GatherOperation;
+using pcms::ProcessType;
+using pcms::TransferOptions;
+using pcms::FieldCommunicator;
+using pcms::InternalField;
 
 void test_gather_operation(Omega_h::Mesh& internal_mesh,
                            Omega_h::Mesh& app_mesh)
@@ -106,9 +106,9 @@ void test_standalone(Omega_h::Mesh& internal_mesh, Omega_h::Mesh& app_mesh)
   OHField internal_combined("internal_combined", internal_mesh);
 
   for (int i = 0; i < num_trials; ++i) {
-    interpolate_field(app_a_field, internal_app_a_field, wdmcpl::Lagrange<1>{});
+    interpolate_field(app_a_field, internal_app_a_field, pcms::Lagrange<1>{});
     interpolate_field(app_b_field, internal_app_b_field,
-                      wdmcpl::NearestNeighbor{});
+                      pcms::NearestNeighbor{});
 
     // combine after interpolation
     MeanCombiner combiner{};

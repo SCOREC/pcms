@@ -1,0 +1,7 @@
+#ifndef PCMS_SRC_PCMS_PROFILE_H
+#define PCMS_SRC_PCMS_PROFILE_H
+#include <perfstubs_api/timer.h>
+
+#define PCMS_FUNCTION_TIMER PERFSTUBS_SCOPED_TIMER_FUNC()
+
+#endif // PCMS_SRC_PCMS_PROFILE_H

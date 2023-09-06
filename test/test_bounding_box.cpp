@@ -1,8 +1,8 @@
-#include <catch2/catch.hpp>
-#include <wdmcpl/bounding_box.h>
+#include <catch2/catch_test_macros.hpp>
+#include <pcms/bounding_box.h>
 
-using wdmcpl::AABBox;
-using wdmcpl::intersects;
+using pcms::AABBox;
+using pcms::intersects;
 #include <iostream>
 
 TEST_CASE("test intersection") {

@@ -1,16 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <wdmcpl/coordinate.h>
-#include <wdmcpl/coordinate_systems.h>
-#include <wdmcpl/external/mdspan.hpp>
-#include <wdmcpl/arrays.h>
+#include <pcms/coordinate.h>
+#include <pcms/coordinate_systems.h>
+#include <pcms/external/mdspan.hpp>
+#include <pcms/arrays.h>
 
-using wdmcpl::Cartesian;
-using wdmcpl::Coordinate;
-using wdmcpl::Cartesian;
-using wdmcpl::Cylindrical;
-using wdmcpl::CoordinateElement;
-using wdmcpl::Real;
+using pcms::Cartesian;
+using pcms::Coordinate;
+using pcms::Cartesian;
+using pcms::Cylindrical;
+using pcms::CoordinateElement;
+using pcms::Real;
 
 #if __cplusplus >= 202002L
   // coordinates from different coordinate systems should not be equality comparable
@@ -44,7 +44,7 @@ TEST_CASE( "Coordinate Strong type works", "[coordinate]" ) {
 TEST_CASE( "Coordinate value type works", "[coordinate]" ) {
   using CartVal = CoordinateElement<Cartesian> ;
   namespace stdex = std::experimental;
-  wdmcpl::CoordinateMDArray<double,Cartesian> a(2);
+  pcms::CoordinateMDArray<double,Cartesian> a(2);
 
   std::experimental::mdarray<
     double,

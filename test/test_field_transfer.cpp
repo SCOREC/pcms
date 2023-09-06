@@ -1,5 +1,5 @@
-#include <wdmcpl/transfer_field.h>
-#include <wdmcpl/omega_h_field.h>
+#include <pcms/transfer_field.h>
+#include <pcms/omega_h_field.h>
 #include <catch2/catch_test_macros.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
@@ -10,13 +10,13 @@ TEST_CASE("field copy", "[field transfer]")
   Omega_h::Library lib;
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  wdmcpl::OmegaHField<wdmcpl::LO> f1("source", mesh);
+  pcms::OmegaHField<pcms::LO> f1("source", mesh);
   Omega_h::Write<int> data(mesh.nents(0));
   Omega_h::parallel_for(
     data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });
-  mesh.add_tag<wdmcpl::LO>(0, "source", 1, data);
-  wdmcpl::OmegaHField<wdmcpl::LO> f2("target", mesh);
-  wdmcpl::copy_field(f1, f2);
+  mesh.add_tag<pcms::LO>(0, "source", 1, data);
+  pcms::OmegaHField<pcms::LO> f2("target", mesh);
+  pcms::copy_field(f1, f2);
   auto target_array = mesh.get_array<int>(0, "target");
   REQUIRE(target_array.size() == mesh.nents(0));
   int result = 0;
@@ -40,16 +40,16 @@ TEST_CASE("field interpolation (identical fields)", "[field transfer]")
   Omega_h::Library lib;
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  wdmcpl::OmegaHField<wdmcpl::LO> f1("source", mesh);
+  pcms::OmegaHField<pcms::LO> f1("source", mesh);
   Omega_h::Write<int> data(mesh.nents(0));
   Omega_h::parallel_for(
     data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });
-  mesh.add_tag<wdmcpl::LO>(0, "source", 1, data);
-  wdmcpl::OmegaHField<wdmcpl::LO> f2("target", mesh);
+  mesh.add_tag<pcms::LO>(0, "source", 1, data);
+  pcms::OmegaHField<pcms::LO> f2("target", mesh);
 
   SECTION("Nearest Neighbor")
   {
-    wdmcpl::interpolate_field(f1, f2, wdmcpl::NearestNeighbor{});
+    pcms::interpolate_field(f1, f2, pcms::NearestNeighbor{});
     auto target_array = mesh.get_array<int>(0, "target");
     REQUIRE(target_array.size() == mesh.nents(0));
     int result = sum_array(target_array);
@@ -58,7 +58,7 @@ TEST_CASE("field interpolation (identical fields)", "[field transfer]")
   }
   SECTION("Lagrange<1>")
   {
-    wdmcpl::interpolate_field(f1, f2, wdmcpl::Lagrange<1>{});
+    pcms::interpolate_field(f1, f2, pcms::Lagrange<1>{});
     auto target_array = mesh.get_array<int>(0, "target");
     REQUIRE(target_array.size() == mesh.nents(0));
     int result = sum_array(target_array);

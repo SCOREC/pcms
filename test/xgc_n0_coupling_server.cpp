@@ -1,20 +1,20 @@
-#include <wdmcpl.h>
-#include <wdmcpl/types.h>
+#include <pcms.h>
+#include <pcms/types.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
 #include "test_support.h"
-#include <wdmcpl/omega_h_field.h>
-#include <wdmcpl/xgc_field_adapter.h>
+#include <pcms/omega_h_field.h>
+#include <pcms/xgc_field_adapter.h>
 #include <chrono>
 
-using wdmcpl::Copy;
-using wdmcpl::CouplerClient;
-using wdmcpl::CouplerServer;
-using wdmcpl::FieldEvaluationMethod;
-using wdmcpl::FieldTransferMethod;
-using wdmcpl::GO;
-using wdmcpl::LO;
-using wdmcpl::OmegaHFieldAdapter;
+using pcms::Copy;
+using pcms::CouplerClient;
+using pcms::CouplerServer;
+using pcms::FieldEvaluationMethod;
+using pcms::FieldTransferMethod;
+using pcms::GO;
+using pcms::LO;
+using pcms::OmegaHFieldAdapter;
 
 namespace ts = test_support;
 
@@ -24,7 +24,7 @@ namespace ts = test_support;
 //
 
 [[nodiscard]]
-static wdmcpl::ConvertibleCoupledField* AddField(wdmcpl::Application *application, const std::string& name, const std::string& path, Omega_h::Read<Omega_h::I8> is_overlap, const std::string& numbering, Omega_h::Mesh& mesh, int plane) {
+static pcms::ConvertibleCoupledField* AddField(pcms::Application *application, const std::string& name, const std::string& path, Omega_h::Read<Omega_h::I8> is_overlap, const std::string& numbering, Omega_h::Mesh& mesh, int plane) {
       WDMCPL_ALWAYS_ASSERT(application != nullptr);
       std::stringstream field_name;
       field_name << name;
@@ -32,7 +32,7 @@ static wdmcpl::ConvertibleCoupledField* AddField(wdmcpl::Application *applicatio
         field_name<< "_" << plane;
       }
       return application->AddField(field_name.str(),
-                   wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>(
+                   pcms::OmegaHFieldAdapter<pcms::Real>(
                    path+field_name.str(), mesh, is_overlap, numbering),
                    FieldTransferMethod::Copy, // to Omega_h
                    FieldEvaluationMethod::None,
@@ -41,62 +41,62 @@ static wdmcpl::ConvertibleCoupledField* AddField(wdmcpl::Application *applicatio
 }
 
 struct XGCAnalysis {
-  using FieldVec = std::vector<wdmcpl::ConvertibleCoupledField*>;
+  using FieldVec = std::vector<pcms::ConvertibleCoupledField*>;
   std::array<FieldVec,2> dpot;
   FieldVec pot0;
   std::array<FieldVec,2> edensity;
   std::array<FieldVec,2> idensity;
-  wdmcpl::ConvertibleCoupledField* psi;
-  wdmcpl::ConvertibleCoupledField* gids;
+  pcms::ConvertibleCoupledField* psi;
+  pcms::ConvertibleCoupledField* gids;
 };
 
-static void ReceiveFields(const std::vector<wdmcpl::ConvertibleCoupledField*> & fields) {
+static void ReceiveFields(const std::vector<pcms::ConvertibleCoupledField*> & fields) {
   for(auto* field : fields) {
     field->Receive();
   }
 }
-static void SendFields(const std::vector<wdmcpl::ConvertibleCoupledField*> & fields) {
+static void SendFields(const std::vector<pcms::ConvertibleCoupledField*> & fields) {
   for(auto* field : fields) {
     field->Send();
   }
 }
-static void CopyFields(const std::vector<wdmcpl::ConvertibleCoupledField*> & from_fields,
-                       const std::vector<wdmcpl::ConvertibleCoupledField*> & to_fields) {
+static void CopyFields(const std::vector<pcms::ConvertibleCoupledField*> & from_fields,
+                       const std::vector<pcms::ConvertibleCoupledField*> & to_fields) {
   WDMCPL_ALWAYS_ASSERT(from_fields.size() == to_fields.size());
   for(size_t i=0; i<from_fields.size(); ++i) {
-    const auto* from = from_fields[i]->GetFieldAdapter<wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>>();
-    auto* to = to_fields[i]->GetFieldAdapter<wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>>();
+    const auto* from = from_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
+    auto* to = to_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
     copy_field(from->GetField(), to->GetField());
   }
 }
 
 template <typename T>
-static void AverageAndSetField(const wdmcpl::OmegaHField<T> & a, wdmcpl::OmegaHField<T> & b) {
+static void AverageAndSetField(const pcms::OmegaHField<T> & a, pcms::OmegaHField<T> & b) {
   const auto a_data = get_nodal_data(a);
   const auto b_data = get_nodal_data(b);
   Omega_h::Write<T> combined_data(a_data.size());
   Omega_h::parallel_for(combined_data.size(), OMEGA_H_LAMBDA(size_t i) {
     combined_data[i] = (a_data[i] + b_data[i]) / 2.0;
   });
-  auto combined_view = wdmcpl::make_array_view(Omega_h::Read<T>(combined_data));
-  wdmcpl::set_nodal_data(b, combined_view);
+  auto combined_view = pcms::make_array_view(Omega_h::Read<T>(combined_data));
+  pcms::set_nodal_data(b, combined_view);
 }
 
 /*
  * Takes the average of each pair of fields and sets the results in the the second
  * argument
  */
-static void AverageAndSetFields(const std::vector<wdmcpl::ConvertibleCoupledField*> & from_fields,
-                       const std::vector<wdmcpl::ConvertibleCoupledField*> & to_fields) {
+static void AverageAndSetFields(const std::vector<pcms::ConvertibleCoupledField*> & from_fields,
+                       const std::vector<pcms::ConvertibleCoupledField*> & to_fields) {
   WDMCPL_ALWAYS_ASSERT(from_fields.size() == to_fields.size());
   for(size_t i=0; i<from_fields.size(); ++i) {
-    const auto* from = from_fields[i]->GetFieldAdapter<wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>>();
-    auto* to = to_fields[i]->GetFieldAdapter<wdmcpl::OmegaHFieldAdapter<wdmcpl::Real>>();
+    const auto* from = from_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
+    auto* to = to_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
     AverageAndSetField(from->GetField(),to->GetField());
   }
 }
 
-void SendRecvDensity(wdmcpl::Application* core, wdmcpl::Application* edge, XGCAnalysis& core_analysis, XGCAnalysis& edge_analysis, int rank) {
+void SendRecvDensity(pcms::Application* core, pcms::Application* edge, XGCAnalysis& core_analysis, XGCAnalysis& edge_analysis, int rank) {
 
     std::chrono::duration<double> elapsed_seconds;
     double min, max, avg;
@@ -146,7 +146,7 @@ void SendRecvDensity(wdmcpl::Application* core, wdmcpl::Application* edge, XGCAn
     ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);
     if(!rank) ts::printTime("Send Density", min, max, avg);
 }
-void SendRecvPotential(wdmcpl::Application* core, wdmcpl::Application* edge, XGCAnalysis& core_analysis, XGCAnalysis& edge_analysis, int rank) {
+void SendRecvPotential(pcms::Application* core, pcms::Application* edge, XGCAnalysis& core_analysis, XGCAnalysis& edge_analysis, int rank) {
 
     std::chrono::duration<double> elapsed_seconds;
      double min, max, avg;
@@ -197,7 +197,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   auto time1 = std::chrono::steady_clock::now();
 
 
-  wdmcpl::CouplerServer cpl("xgc_n0_coupling", comm,
+  pcms::CouplerServer cpl("xgc_n0_coupling", comm,
                             redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   std::string numbering = "simNumbering";

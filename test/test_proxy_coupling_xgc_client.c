@@ -1,5 +1,5 @@
-#include <wdmcpl/capi/client.h>
-#include <wdmcpl/capi/kokkos.h>
+#include <pcms/capi/client.h>
+#include <pcms/capi/kokkos.h>
 #include <mpi.h>
 #include <stdlib.h>
 #include <printf.h>
@@ -24,7 +24,7 @@ int8_t in_overlap(int dimension, int id)
 int main(int argc, char** argv)
 {
   MPI_Init(&argc, &argv);
-  wdmcpl_kokkos_initialize_without_args();
+  pcms_kokkos_initialize_without_args();
   int world_rank = -1, world_size = -1, plane_rank = -1, plane_size = -1,
       client_rank = -1, client_size = -1;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
@@ -52,11 +52,11 @@ int main(int argc, char** argv)
          plane_rank, plane_size, client_rank, client_size);
 
   WdmCplClientHandle* client =
-    wdmcpl_create_client("proxy_couple", client_comm);
+    pcms_create_client("proxy_couple", client_comm);
   const char* rc_file = argv[1];
   WdmCplReverseClassificationHandle* rc =
-    wdmcpl_load_reverse_classification(rc_file, MPI_COMM_WORLD);
-  const int nverts = wdmcpl_reverse_classification_count_verts(rc);
+    pcms_load_reverse_classification(rc_file, MPI_COMM_WORLD);
+  const int nverts = pcms_reverse_classification_count_verts(rc);
   // long int* data[nplanes];
   long int* data = calloc(nverts, sizeof(long int));
   WdmCplFieldHandle* field[nplanes];
@@ -67,12 +67,12 @@ int main(int argc, char** argv)
     printf("%s\n", field_name);
     int communicating_rank = (i == plane) && (plane_rank == 0);
     if (plane == i) {
-      field_adapters[i] = wdmcpl_create_xgc_field_adapter(
+      field_adapters[i] = pcms_create_xgc_field_adapter(
         "adapter1", plane_comm, data, nverts, WDMCPL_LONG_INT, rc, &in_overlap);
     } else {
-      field_adapters[i] = wdmcpl_create_dummy_field_adapter();
+      field_adapters[i] = pcms_create_dummy_field_adapter();
     }
-    field[i] = wdmcpl_add_field(client, field_name, field_adapters[i],
+    field[i] = pcms_add_field(client, field_name, field_adapters[i],
                                 communicating_rank);
   }
   // only set the data on plane_rank 0 so that we can verify that XGC Adapter
@@ -82,12 +82,12 @@ int main(int argc, char** argv)
       data[i] = i;
     }
   }
-  wdmcpl_begin_send_phase(client);
-  wdmcpl_send_field(field[plane]);
-  wdmcpl_end_send_phase(client);
-  wdmcpl_begin_receive_phase(client);
-  wdmcpl_receive_field(field[plane]);
-  wdmcpl_end_receive_phase(client);
+  pcms_begin_send_phase(client);
+  pcms_send_field(field[plane]);
+  pcms_end_send_phase(client);
+  pcms_begin_receive_phase(client);
+  pcms_receive_field(field[plane]);
+  pcms_end_receive_phase(client);
   // check data on all ranks. This should be set either from RDV communication
   // or the broadcast in the XGC Field Adapter
   for (int i = 0; i < nverts; ++i) {
@@ -103,12 +103,12 @@ int main(int argc, char** argv)
       data[i] *= 2;
     }
   }
-  wdmcpl_begin_send_phase(client);
-  wdmcpl_send_field(field[plane]);
-  wdmcpl_end_send_phase(client);
-  wdmcpl_begin_receive_phase(client);
-  wdmcpl_receive_field(field[plane]);
-  wdmcpl_end_receive_phase(client);
+  pcms_begin_send_phase(client);
+  pcms_send_field(field[plane]);
+  pcms_end_send_phase(client);
+  pcms_begin_receive_phase(client);
+  pcms_receive_field(field[plane]);
+  pcms_end_receive_phase(client);
   // check data on all ranks. This should be set either from RDV communication
   // or the broadcast in the XGC Field Adapter
   for (int i = 0; i < nverts; ++i) {
@@ -118,16 +118,16 @@ int main(int argc, char** argv)
     }
   }
   for (int i = 0; i < nplanes; ++i) {
-    wdmcpl_destroy_field_adapter(field_adapters[i]);
+    pcms_destroy_field_adapter(field_adapters[i]);
   }
   free(data);
-  wdmcpl_destroy_reverse_classification(rc);
-  wdmcpl_destroy_client(client);
+  pcms_destroy_reverse_classification(rc);
+  pcms_destroy_client(client);
   if(client_comm != MPI_COMM_NULL) {
     MPI_Comm_free(&client_comm);
   }
   MPI_Comm_free(&plane_comm);
-  wdmcpl_kokkos_finalize();
+  pcms_kokkos_finalize();
   MPI_Finalize();
   return 0;
 }

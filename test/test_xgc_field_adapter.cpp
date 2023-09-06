@@ -1,13 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
-#include <wdmcpl/xgc_field_adapter.h>
+#include <pcms/xgc_field_adapter.h>
 #include <algorithm>
 
-using wdmcpl::DimID;
-using wdmcpl::make_array_view;
-using wdmcpl::make_const_array_view;
-using wdmcpl::ReverseClassificationVertex;
-using wdmcpl::XGCFieldAdapter;
+using pcms::DimID;
+using pcms::make_array_view;
+using pcms::make_const_array_view;
+using pcms::ReverseClassificationVertex;
+using pcms::XGCFieldAdapter;
 
 ReverseClassificationVertex create_dummy_rc(int size)
 {
@@ -56,7 +56,7 @@ int check_gids(const std::vector<T>& gids, int size,
       if (cnt > verts.size()) {
         return 2;
       }
-      std::vector<wdmcpl::GO> sorted_verts{verts.begin(), verts.end()};
+      std::vector<pcms::GO> sorted_verts{verts.begin(), verts.end()};
       std::sort(sorted_verts.begin(), sorted_verts.end());
       for (auto v : sorted_verts) {
         if (!is_close(gids[cnt++], v + offset)) {
@@ -73,7 +73,7 @@ bool in_overlap(int, int id)
   return (id == 0);
 }
 
-TEMPLATE_TEST_CASE("XGC Field Adapter", "[adapter]", wdmcpl::LO, wdmcpl::Real)
+TEMPLATE_TEST_CASE("XGC Field Adapter", "[adapter]", pcms::LO, pcms::Real)
 {
   static constexpr auto data_size = 100;
   // serialize, deserialize, getgids, reverse_partition_map
@@ -98,7 +98,7 @@ TEMPLATE_TEST_CASE("XGC Field Adapter", "[adapter]", wdmcpl::LO, wdmcpl::Real)
   std::cerr<<"checking gids\n";
   REQUIRE(check_gids(gids, data_size, reverse_classification, in_overlap,1) == 0);
   std::vector<TestType> buffer;
-  std::vector<wdmcpl::LO> permutation;
+  std::vector<pcms::LO> permutation;
   std::cerr<<"serializing gids\n";
   auto serialize_size = field_adapter.Serialize(
     make_array_view(buffer), make_const_array_view(permutation));

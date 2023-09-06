@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <wdmcpl/uniform_grid.h>
+#include <pcms/uniform_grid.h>
 
-using wdmcpl::UniformGrid;
+using pcms::UniformGrid;
 
 TEST_CASE("uniform grid")
 {

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(wdmcpl VERSION 0.0.5 LANGUAGES CXX)
+project(pcms VERSION 0.0.5 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -15,7 +15,7 @@ option(WDMCPL_ENABLE_CLIENT "enable the coupling client implementation" ON)
 
 option(WDMCPL_ENABLE_XGC "enable xgc field adapter" ON)
 option(WDMCPL_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
-option(WDMCPL_ENABLE_C "Enable wdmcpl C api" ON)
+option(WDMCPL_ENABLE_C "Enable pcms C api" ON)
 
 # find package before fortran enabled, so we don't require the adios2 fortran interfaces
 # this is important because adios2 build with clang/gfortran is broken
@@ -23,7 +23,7 @@ find_package(redev 4.3.0 REQUIRED)
 
 if (WDMCPL_ENABLE_C)
   enable_language(C)
-  option(WDMCPL_ENABLE_Fortran "Enable wdmcpl fortran api" ON)
+  option(WDMCPL_ENABLE_Fortran "Enable pcms fortran api" ON)
   if(WDMCPL_ENABLE_Fortran)
     enable_language(Fortran)
   endif()

@@ -20,7 +20,7 @@ contains
 end module overlap
 
 Program main
-    use wdmcpl
+    use pcms
     use mpi
     use overlap
     use, intrinsic :: ISO_C_BINDING
@@ -44,7 +44,7 @@ Program main
     character(100) :: name
 
     call MPI_INIT(ierror)
-    call wdmcpl_kokkos_initialize_without_args()
+    call pcms_kokkos_initialize_without_args()
     call MPI_COMM_SIZE(MPI_COMM_WORLD, world_size, ierror)
     call MPI_COMM_RANK(MPI_COMM_WORLD, world_rank, ierror)
     num_args = command_argument_count()
@@ -71,9 +71,9 @@ Program main
         client_size = -1
     end if
 
-    client = wdmcpl_create_client("proxy_couple", client_comm)
-    reverse_classification = wdmcpl_load_reverse_classification(rc_file, MPI_COMM_WORLD)
-    nverts = wdmcpl_reverse_classification_count_verts(reverse_classification)
+    client = pcms_create_client("proxy_couple", client_comm)
+    reverse_classification = pcms_load_reverse_classification(rc_file, MPI_COMM_WORLD)
+    nverts = pcms_reverse_classification_count_verts(reverse_classification)
     allocate(data(nverts))
     data_pointer => data
 
@@ -81,16 +81,16 @@ Program main
         write(plane_str, '(i0)') ix
         name = 'xgc_gids_plane_' // trim(plane_str)
         if (plane .eq. ix) then
-            adapters(ix+1) = wdmcpl_create_xgc_field_adapter(trim(name), MPI_COMM_SELF, c_loc(data_pointer), &
+            adapters(ix+1) = pcms_create_xgc_field_adapter(trim(name), MPI_COMM_SELF, c_loc(data_pointer), &
                     size(data_pointer), WDMCPL_LONG_INT, reverse_classification, in_overlap)
         else
-            adapters(ix+1) = wdmcpl_create_dummy_field_adapter()
+            adapters(ix+1) = pcms_create_dummy_field_adapter()
         end if
         if ((plane_rank .eq. 0) .and.  (ix .eq. plane)) then
             ! field participates in the communication
-            fields(ix+1) = wdmcpl_add_field(client, trim(name), adapters(ix+1), 1)
+            fields(ix+1) = pcms_add_field(client, trim(name), adapters(ix+1), 1)
         else
-            fields(ix+1) = wdmcpl_add_field(client, trim(name), adapters(ix+1), 0)
+            fields(ix+1) = pcms_add_field(client, trim(name), adapters(ix+1), 0)
         end if
     end do
     if(plane_rank .eq. 0) then
@@ -98,12 +98,12 @@ Program main
             data(ix) = ix
         end do
     endif
-    call wdmcpl_begin_send_phase(client)
-    call wdmcpl_send_field(fields(plane+1))
-    call wdmcpl_end_send_phase(client)
-    call wdmcpl_begin_receive_phase(client)
-    call wdmcpl_receive_field(fields(plane+1))
-    call wdmcpl_end_receive_phase(client)
+    call pcms_begin_send_phase(client)
+    call pcms_send_field(fields(plane+1))
+    call pcms_end_send_phase(client)
+    call pcms_begin_receive_phase(client)
+    call pcms_receive_field(fields(plane+1))
+    call pcms_end_receive_phase(client)
     do ix = 1, nverts
         if(data(ix) /= ix) then
             print*, "ERROR (1): data[", ix, "] should be ", ix, " not ", data(ix), "."
@@ -113,12 +113,12 @@ Program main
     if (plane_rank .eq. 0) then
         data = data * 2
     end if
-    call wdmcpl_begin_send_phase(client)
-    call wdmcpl_send_field(fields(plane+1))
-    call wdmcpl_end_send_phase(client)
-    call wdmcpl_begin_receive_phase(client)
-    call wdmcpl_receive_field(fields(plane+1))
-    call wdmcpl_end_receive_phase(client)
+    call pcms_begin_send_phase(client)
+    call pcms_send_field(fields(plane+1))
+    call pcms_end_send_phase(client)
+    call pcms_begin_receive_phase(client)
+    call pcms_receive_field(fields(plane+1))
+    call pcms_end_receive_phase(client)
     do ix = 1, nverts
         if(data(ix) /= 2 * ix) then
             print*, "ERROR (2): data[", ix, "] should be ", 2 * ix, " not ", data(ix), "."
@@ -126,15 +126,15 @@ Program main
         end if
     end do
     do ix = 1, nplanes
-        call wdmcpl_destroy_field_adapter(adapters(ix))
+        call pcms_destroy_field_adapter(adapters(ix))
     end do
-    call wdmcpl_destroy_reverse_classification(reverse_classification)
-    call wdmcpl_destroy_client(client)
+    call pcms_destroy_reverse_classification(reverse_classification)
+    call pcms_destroy_client(client)
     if (client_comm .ne. MPI_COMM_NULL) then
         call MPI_Comm_free(client_comm, ierror)
     end if
     call MPI_Comm_free(plane_comm, ierror)
-    call wdmcpl_kokkos_finalize()
+    call pcms_kokkos_finalize()
     call MPI_FINALIZE(ierror)
 
 End Program main

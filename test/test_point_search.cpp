@@ -1,12 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <wdmcpl/point_search.h>
+#include <pcms/point_search.h>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 
-using wdmcpl::AABBox;
-using wdmcpl::barycentric_from_global;
-using wdmcpl::UniformGrid;
+using pcms::AABBox;
+using pcms::barycentric_from_global;
+using pcms::UniformGrid;
 
 TEST_CASE("global to local")
 {
@@ -34,7 +34,7 @@ TEST_CASE("global to local")
 }
 TEST_CASE("Triangle AABB intersection")
 {
-  using wdmcpl::triangle_intersects_bbox;
+  using pcms::triangle_intersects_bbox;
   AABBox<2> unit_square{.center = {0, 0}, .half_width = {0.5, 0.5}};
   SECTION("Triangle outside bbox")
   {
@@ -80,7 +80,7 @@ TEST_CASE("Triangle AABB intersection")
 }
 TEST_CASE("Triangle BBox Intersection Regression")
 {
-  using wdmcpl::triangle_intersects_bbox;
+  using pcms::triangle_intersects_bbox;
   AABBox<2> bbox{.center = {0.10833333, 0.10833333},
                  .half_width = {0.00833333, 0.00833333}};
   REQUIRE(triangle_intersects_bbox({{0, 0}, {0.1, 0}, {0.1, 0.1}}, bbox) ==
@@ -102,8 +102,8 @@ TEST_CASE("Triangle BBox Intersection Regression")
 }
 
 template <typename T>
-bool num_candidates_within_range(const T& intersection_map, wdmcpl::LO min,
-                                 wdmcpl::LO max)
+bool num_candidates_within_range(const T& intersection_map, pcms::LO min,
+                                 pcms::LO max)
 {
   using size_type = typename T::size_type;
   using MinMax = Kokkos::MinMax<size_type, Kokkos::HostSpace>;
@@ -140,7 +140,7 @@ TEST_CASE("construct intersection map")
     auto grid_h = Kokkos::create_mirror_view(grid_d);
     grid_h(0) = UniformGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
     Kokkos::deep_copy(grid_d, grid_h);
-    auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());
+    auto intersection_map = pcms::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());
     // assert(cudaSuccess == cudaDeviceSynchronize());
     REQUIRE(intersection_map.numRows() == 100);
     REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
@@ -152,21 +152,21 @@ TEST_CASE("construct intersection map")
     grid_h(0) = UniformGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
     Kokkos::deep_copy(grid_d, grid_h);
     // require number of candidates is >=1 and <=6
-    auto intersection_map = wdmcpl::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());
+    auto intersection_map = pcms::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());
 
     REQUIRE(intersection_map.numRows() == 3600);
     REQUIRE(num_candidates_within_range(intersection_map, 1, 6));
   }
 }
 TEST_CASE("uniform grid search") {
-  using wdmcpl::GridPointSearch;
+  using pcms::GridPointSearch;
   auto lib = Omega_h::Library{};
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
   GridPointSearch search{mesh,10,10};
-  Kokkos::View<wdmcpl::Real*[2]> points("test_points", 5);
-  //Kokkos::View<wdmcpl::Real*[2]> points("test_points", 1);
+  Kokkos::View<pcms::Real*[2]> points("test_points", 5);
+  //Kokkos::View<pcms::Real*[2]> points("test_points", 1);
   auto points_h = Kokkos::create_mirror_view(points);
   points_h(0,0) = 0;
   points_h(0,1) = 0;

@@ -4,3 +4,5 @@
 .DS_Store
 .vscode
 *.swp
+.spack-env
+*.bak

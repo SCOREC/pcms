@@ -8,9 +8,9 @@
 #include <Omega_h_array_ops.hpp>
 #include <redev.h>
 #include <redev_comm.h>
-#include <wdmcpl/external/span.h>
-#include <wdmcpl/memory_spaces.h>
-#include <wdmcpl/omega_h_field.h>
+#include <pcms/external/span.h>
+#include <pcms/memory_spaces.h>
+#include <pcms/omega_h_field.h>
 #include <functional>
 
 namespace test_support
@@ -253,18 +253,18 @@ struct Divide
   ScalarT scalar_;
 };
 
-// TODO: move to be internal to wdmcpl
+// TODO: move to be internal to pcms
 struct MeanCombiner
 {
   void operator()(
-    const nonstd::span<const std::reference_wrapper<wdmcpl::InternalField>>&
+    const nonstd::span<const std::reference_wrapper<pcms::InternalField>>&
       fields,
-    wdmcpl::InternalField& combined_variant) const
+    pcms::InternalField& combined_variant) const
   {
 
     // Internal fields are OmegaHFields
     using execution_space =
-      typename wdmcpl::OmegaHMemorySpace::type::execution_space;
+      typename pcms::OmegaHMemorySpace::type::execution_space;
     std::visit(
       [&fields](auto&& combined_field) {
         using T = typename std::remove_reference_t<
@@ -273,7 +273,7 @@ struct MeanCombiner
         for (auto& field_variant : fields) {
           std::visit(
             [&combined_array, &combined_field](auto&& field) {
-              WDMCPL_ALWAYS_ASSERT(field.Size() == combined_array.size());
+              PCMS_ALWAYS_ASSERT(field.Size() == combined_array.size());
               auto field_array = get_nodal_data(field);
               auto policy =
                 Kokkos::RangePolicy<execution_space>(0, field_array.size());

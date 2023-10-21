@@ -6,7 +6,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 struct PcmsClientHandle { void* pointer; };
 typedef struct PcmsClientHandle PcmsClientHandle;
 struct PcmsOmegaHMeshHandle { void* pointer; };

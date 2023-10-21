@@ -45,7 +45,6 @@ PcmsReverseClassificationHandle pcms_load_reverse_classification(
     pcms::ReadReverseClassificationVertex(file, comm)};
   return {reinterpret_cast<void*>(rc)};
 }
-
 void pcms_destroy_reverse_classification(
   PcmsReverseClassificationHandle rc)
 {

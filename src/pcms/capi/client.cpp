@@ -51,7 +51,6 @@ void pcms_destroy_reverse_classification(
   if (rc.pointer != nullptr)
     delete reinterpret_cast<pcms::ReverseClassificationVertex*>(rc.pointer);
 }
-
 struct AddFieldVariantOperators {
   AddFieldVariantOperators(const char* name, pcms::CouplerClient* client, int participates)
   : name_(name), client_(client), participates_(participates)

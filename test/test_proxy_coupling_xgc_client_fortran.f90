@@ -29,10 +29,10 @@ Program main
     integer, parameter :: nplanes = 2
 
     integer :: num_args, ix, nverts, ierror
-    type(SWIGTYPE_p_PcmsClientHandle) :: client
-    type(SWIGTYPE_p_PcmsReverseClassificationHandle) :: reverse_classification
-    type(SWIGTYPE_p_PcmsFieldHandle), dimension(2) :: fields
-    type(SWIGTYPE_p_PcmsFieldAdapterHandle), dimension(2) :: adapters
+    type(PcmsClientHandle) :: client
+    type(PcmsReverseClassificationHandle) :: reverse_classification
+    type(PcmsFieldHandle), dimension(2) :: fields
+    type(PcmsFieldAdapterHandle), dimension(2) :: adapters
     character(len = 80), dimension(:), allocatable :: args
     character(len = :), allocatable :: rc_file
     integer(C_LONG), allocatable, target :: data(:)

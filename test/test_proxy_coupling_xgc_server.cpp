@@ -93,14 +93,16 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto* application = cpl.AddApplication("proxy_couple");
-  ReverseClassificationVertex rc;
   std::string numbering;
   if (mesh.has_tag(0, "simNumbering")) {
-    rc = ConstructRCFromOmegaHMesh(mesh, "simNumbering");
     numbering = "simNumbering";
   } else {
-    rc = ConstructRCFromOmegaHMesh<GO>(mesh, "global", pcms::IndexBase::Zero);
-    numbering = "global";
+    Omega_h::Write<GO> gids(mesh.nverts());
+    auto globals = mesh.globals(0);
+    Omega_h::parallel_for(
+      mesh.nverts(), OMEGA_H_LAMBDA(int i) { gids[i] = globals[i] + 1; });
+    mesh.add_tag<GO>(0, "simNumbering", 1, Omega_h::Read(gids));
+    numbering = "simNumbering";
   }
 
   auto is_overlap =
@@ -158,7 +160,7 @@ int main(int argc, char** argv)
 
   const auto meshFile = argv[1];
   const auto classPartitionFile = argv[2];
-  int coupler_type = std::atoi(argv[3]);
+  int coupler_type = std::stoi(argv[3]);
 
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(meshFile, lib.world(), &mesh);

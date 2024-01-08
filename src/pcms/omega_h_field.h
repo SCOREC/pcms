@@ -15,6 +15,8 @@
 #include "pcms/transfer_field.h"
 #include "pcms/memory_spaces.h"
 #include "pcms/profile.h"
+#include <optional>
+
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
 
@@ -107,22 +109,18 @@ public:
   using coordinate_element_type = CoordinateElementType;
 
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
-              std::string global_id_name = "", int search_nx = 10,
-              int search_ny = 10)
+              std::string global_id_name = "") 
     : name_(std::move(name)),
       mesh_(mesh),
-      search_{mesh, search_nx, search_ny},
       size_(mesh.nents(0)),
       global_id_name_(std::move(global_id_name))
   {
     PCMS_FUNCTION_TIMER;
   }
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
-              Omega_h::Read<Omega_h::I8> mask, std::string global_id_name = "",
-              int search_nx = 10, int search_ny = 10)
+              Omega_h::Read<Omega_h::I8> mask, std::string global_id_name = "")
     : name_(std::move(name)),
       mesh_(mesh),
-      search_{mesh, search_nx, search_ny},
       global_id_name_(std::move(global_id_name))
   {
     PCMS_FUNCTION_TIMER;
@@ -154,10 +152,17 @@ public:
   };
   [[nodiscard]] bool HasMask() const noexcept { return mask_.exists(); };
   [[nodiscard]] LO Size() const noexcept { return size_; }
-  // pass through to search function
-  auto Search(Kokkos::View<Real* [2]> points) const {
+  void ConstructSearch(int nx, int ny)
+  {
     PCMS_FUNCTION_TIMER;
-    return search_(points); }
+    search_ = GridPointSearch(mesh_, nx, ny);
+  }
+  // pass through to search function
+  [[nodiscard]] auto Search(Kokkos::View<Real* [2]> points) const {
+    PCMS_FUNCTION_TIMER;
+    PCMS_ALWAYS_ASSERT(search_.has_value() && "search data structure must be constructed before use");
+    return (*search_)(points); 
+  }
 
   [[nodiscard]] Omega_h::Read<Omega_h::ClassId> GetClassIDs() const
   {
@@ -204,7 +209,7 @@ public:
 private:
   std::string name_;
   Omega_h::Mesh& mesh_;
-  GridPointSearch search_;
+  std::optional<GridPointSearch> search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;
   LO size_;
@@ -432,20 +437,17 @@ public:
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
-                     std::string global_id_name = "", int search_nx = 10,
-                     int search_ny = 10)
-    : field_{std::move(name), mesh, std::move(global_id_name), search_nx,
-             search_ny}
+                     std::string global_id_name = "")
+    : field_{std::move(name), mesh, std::move(global_id_name)}
   {
     PCMS_FUNCTION_TIMER;
   }
 
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
                      Omega_h::Read<Omega_h::I8> mask,
-                     std::string global_id_name = "", int search_nx = 10,
-                     int search_ny = 10)
+                     std::string global_id_name = "")
     : field_{std::move(name),           mesh,      mask,
-             std::move(global_id_name), search_nx, search_ny}
+             std::move(global_id_name)}
   {
     PCMS_FUNCTION_TIMER;
   }

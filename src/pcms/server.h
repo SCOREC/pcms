@@ -449,7 +449,10 @@ public:
 
     auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
       internal_field_name, internal_fields_, internal_mesh_, mask,
-      std::move(global_id_name), search_nx, search_ny);
+      std::move(global_id_name));
+    std::visit([&](auto& field) {
+      field.ConstructSearch(search_nx, search_ny);
+    },combined);
     auto [it, inserted] = gather_operations_.template try_emplace(
       name, std::move(gather_fields), combined, std::move(func));
     if (!inserted) {
@@ -485,7 +488,10 @@ public:
 
     auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
       internal_field_name, internal_fields_, internal_mesh_, mask,
-      std::move(global_id_name), search_nx, search_ny);
+      std::move(global_id_name));
+    std::visit([&](auto& field) {
+      field.ConstructSearch(search_nx, search_ny);
+    },combined);
     auto [it, inserted] = scatter_operations_.template try_emplace(
       name, std::move(scatter_fields), combined);
 

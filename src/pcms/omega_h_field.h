@@ -107,11 +107,11 @@ public:
   using memory_space = OmegaHMemorySpace::type;
   using value_type = T;
   using coordinate_element_type = CoordinateElementType;
-
+  OmegaHField(Omega_h::Mesh& mesh) : mesh_(&mesh), size_(mesh.nents(0)) {}
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
               std::string global_id_name = "") 
     : name_(std::move(name)),
-      mesh_(mesh),
+      mesh_(&mesh),
       size_(mesh.nents(0)),
       global_id_name_(std::move(global_id_name))
   {
@@ -120,7 +120,7 @@ public:
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
               Omega_h::Read<Omega_h::I8> mask, std::string global_id_name = "")
     : name_(std::move(name)),
-      mesh_(mesh),
+      mesh_(&mesh),
       global_id_name_(std::move(global_id_name))
   {
     PCMS_FUNCTION_TIMER;
@@ -145,7 +145,9 @@ public:
   }
 
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
-  [[nodiscard]] Omega_h::Mesh& GetMesh() const noexcept { return mesh_; }
+  [[nodiscard]] Omega_h::Mesh& GetMesh() const noexcept { 
+    return *mesh_; 
+  }
   [[nodiscard]] const Omega_h::Read<LO>& GetMask() const noexcept
   {
     return mask_;
@@ -155,7 +157,7 @@ public:
   void ConstructSearch(int nx, int ny)
   {
     PCMS_FUNCTION_TIMER;
-    search_ = GridPointSearch(mesh_, nx, ny);
+    search_ = GridPointSearch(*mesh_, nx, ny);
   }
   // pass through to search function
   [[nodiscard]] auto Search(Kokkos::View<Real* [2]> points) const {
@@ -169,29 +171,29 @@ public:
     PCMS_FUNCTION_TIMER;
     if (HasMask())
       return detail::filter_array(
-        mesh_.get_array<Omega_h::ClassId>(0, "class_id"), GetMask(), Size());
-    return mesh_.get_array<Omega_h::ClassId>(0, "class_id");
+        mesh_->get_array<Omega_h::ClassId>(0, "class_id"), GetMask(), Size());
+    return mesh_->get_array<Omega_h::ClassId>(0, "class_id");
   }
   [[nodiscard]] Omega_h::Read<Omega_h::I8> GetClassDims() const
   {
     PCMS_FUNCTION_TIMER;
     if (HasMask())
-      return detail::filter_array(mesh_.get_array<Omega_h::I8>(0, "class_dim"),
+      return detail::filter_array(mesh_->get_array<Omega_h::I8>(0, "class_dim"),
                                   GetMask(), Size());
-    return mesh_.get_array<Omega_h::I8>(0, "class_dim");
+    return mesh_->get_array<Omega_h::I8>(0, "class_dim");
   }
   [[nodiscard]] Omega_h::Read<Omega_h::GO> GetGids() const
   {
     PCMS_FUNCTION_TIMER;
     Omega_h::Read<Omega_h::GO> gid_array;
     if (global_id_name_.empty()) {
-      gid_array = mesh_.globals(0);
+      gid_array = mesh_->globals(0);
     } else {
-      auto tag = mesh_.get_tagbase(0, global_id_name_);
+      auto tag = mesh_->get_tagbase(0, global_id_name_);
       if (Omega_h::is<GO>(tag)) {
-        gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
+        gid_array = mesh_->get_array<Omega_h::GO>(0, global_id_name_);
       } else if (Omega_h::is<LO>(tag)) {
-        auto array = mesh_.get_array<Omega_h::LO>(0, global_id_name_);
+        auto array = mesh_->get_array<Omega_h::LO>(0, global_id_name_);
         Omega_h::Write<Omega_h::GO> globals(array.size());
         Omega_h::parallel_for(
           array.size(), OMEGA_H_LAMBDA(int i) { globals[i] = array[i]; });
@@ -208,7 +210,7 @@ public:
   }
 private:
   std::string name_;
-  Omega_h::Mesh& mesh_;
+  Omega_h::Mesh* mesh_;
   std::optional<GridPointSearch> search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;
@@ -438,18 +440,30 @@ public:
   using coordinate_element_type = CoordinateElementType;
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
                      std::string global_id_name = "")
-    : field_{std::move(name), mesh, std::move(global_id_name)}
+    : OmegaHFieldAdapter(name, mesh, Omega_h::Read<Omega_h::I8>{},
+                         global_id_name)
   {
     PCMS_FUNCTION_TIMER;
   }
 
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
                      Omega_h::Read<Omega_h::I8> mask,
-                     std::string global_id_name = "")
-    : field_{std::move(name),           mesh,      mask,
-             std::move(global_id_name)}
+                     std::string global_id_name = "") : field_(mesh)
   {
     PCMS_FUNCTION_TIMER;
+    Omega_h::Write<Omega_h::I8> owned_mask(mesh.nents(0));
+    auto owned = mesh.owned(0);
+    Omega_h::parallel_for(
+      owned_mask.size(), OMEGA_H_LAMBDA(LO i) { 
+      if(mask.exists()) {
+        owned_mask[i] = mask[i] && owned[i];
+        }
+      else {
+          owned_mask[i] = owned[i];
+        }
+      });
+    field_ = OmegaHField<T, CoordinateElementType>(name,           mesh,      Omega_h::Read<Omega_h::I8>(owned_mask),
+             global_id_name);
   }
   [[nodiscard]] const std::string& GetName() const noexcept
   {

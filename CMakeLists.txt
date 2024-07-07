@@ -3,6 +3,7 @@ project(pcms VERSION 0.0.5 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 option(PCMS_ENABLE_ASAN "enable address sanitizer" OFF)
 set(PCMS_HAS_ASAN OFF)

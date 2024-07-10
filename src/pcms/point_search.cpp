@@ -244,6 +244,11 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
     auto candidates_begin = candidate_map.row_map(cell_id);
     auto candidates_end = candidate_map.row_map(cell_id + 1);
     bool found = false;
+
+    auto nearest_triange = candidates_begin;
+    Omega_h::Real distance_to_nearest { INFINITY };
+    Omega_h::Vector<3> parametric_coords_to_nearest;
+
     // create array that's size of number of candidates x num coords to store
     // parametric inversion
     for (auto i = candidates_begin; i < candidates_end; ++i) {
@@ -252,15 +257,23 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
       // 2d mesh with 2d coords, but 3 triangles
      auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
      auto parametric_coords = barycentric_from_global(point, vertex_coords);
-      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
-        results(p) = GridPointSearch::Result{candidate_map.entries(i), parametric_coords};
-        found = true;
-        break;
-      }
+     const auto centroid = Omega_h::average(vertex_coords);
+
+     if (const auto distance = Omega_h::norm(point - centroid);distance < distance_to_nearest) {
+       nearest_triange = i;
+       distance_to_nearest = distance;
+       parametric_coords_to_nearest = parametric_coords;
+     }
+
+     if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
+       results(p) = GridPointSearch::Result{candidate_map.entries(i), parametric_coords};
+       found = true;
+       break;
+     }
     }
     if(!found)
     {
-      results(p) = GridPointSearch::Result{-1,{0,0,0}};
+      results(p) = GridPointSearch::Result{-1 * candidate_map.entries(nearest_triange),parametric_coords_to_nearest};
     }
   });
 

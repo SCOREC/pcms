@@ -2,6 +2,34 @@
 #include <Omega_h_mesh.hpp>
 #include <bitset>
 
+// From https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
+double distance_from_line(const double x0, const double y0, const double x1, const double y1, const double x2, const double y2)
+{
+  const Omega_h::Vector<2> p1 = { x1, y1 };
+  const Omega_h::Vector<2> p2 = { x2, y2 };
+  auto disp = p2 - p1;
+
+  return std::abs(disp[1]*x0 - disp[0]*y0 + x2*y1 - y2*x1) / Omega_h::norm(disp);
+}
+
+// Law of Cosines, where a, b, c and gamma are defined here: https://en.wikipedia.org/wiki/Law_of_cosines#Use_in_solving_triangles
+double angle_from_side_lengths(const double a, const double b, const double c)
+{
+  return std::acos((a*a + b*b - c*c) / 2*a*b);
+}
+
+bool normal_intersects_segment(const Omega_h::Few<double, 2> a, const Omega_h::Few<double, 2> b, const Omega_h::Few<double, 2> c)
+{
+  const auto ab_len = Omega_h::norm(a - b);
+  const auto bc_len = Omega_h::norm(b -c);
+  const auto ac_len = Omega_h::norm(a - c);
+
+  const double angle1 = angle_from_side_lengths(bc_len, ac_len, ab_len);
+  const double angle2 = angle_from_side_lengths(bc_len, ab_len, ac_len);
+
+  return angle1 <= (Omega_h::PI / 2) && angle2 <= (Omega_h::PI / 2);
+}
+
 namespace pcms
 {
 constexpr Real fuzz = 1E-6;
@@ -259,11 +287,49 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
      auto parametric_coords = barycentric_from_global(point, vertex_coords);
      const auto centroid = Omega_h::average(vertex_coords);
 
-     if (const auto distance = Omega_h::norm(point - centroid);distance < distance_to_nearest) {
-       nearest_triange = i;
-       distance_to_nearest = distance;
-       parametric_coords_to_nearest = parametric_coords;
-     }
+     auto vertex_a = vertex_coords[0];
+     auto vertex_b = vertex_coords[1];
+     auto vertex_c = vertex_coords[2];
+
+      const bool within_ab = normal_intersects_segment(point, vertex_a, vertex_b);
+      const bool within_bc = normal_intersects_segment(point, vertex_b, vertex_c);
+      const bool within_ac = normal_intersects_segment(point, vertex_a, vertex_c);
+
+      if (within_ab || within_bc || within_ac) {
+       const auto xa = vertex_a[0];
+       const auto ya = vertex_a[1];
+       const auto xb = vertex_b[0];
+       const auto yb = vertex_b[1];
+       const auto xc = vertex_c[0];
+       const auto yc = vertex_c[1];
+
+       const auto xp = point[0];
+       const auto yp = point[1];
+
+        const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
+        const auto distance_to_bc = distance_from_line(xp, yp, xb, yb, xc, yc);
+        const auto distance_to_ac = distance_from_line(xp, yp, xc, yc, xa, ya);
+
+        if (within_ab) {
+          if (distance_to_ab < distance_to_nearest) {
+            nearest_triange = i;
+            distance_to_nearest = distance_to_ab;
+            parametric_coords_to_nearest = parametric_coords;
+          }
+        } else if (within_bc) {
+          if (distance_to_bc < distance_to_nearest) {
+            nearest_triange = i;
+            distance_to_nearest = distance_to_bc;
+            parametric_coords_to_nearest = parametric_coords;
+          }
+        }
+
+        if (distance_to_ac < distance_to_nearest) {
+          nearest_triange = i;
+          distance_to_nearest = distance_to_ac;
+          parametric_coords_to_nearest = parametric_coords;
+        }
+      }
 
      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
        results(p) = GridPointSearch::Result{candidate_map.entries(i), parametric_coords};

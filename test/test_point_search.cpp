@@ -202,8 +202,8 @@ TEST_CASE("uniform grid search") {
   // feature needs to be added
   SECTION("Global coordinate outisde mesh", "[!mayfail]") {
     auto out_of_bounds = results_h(2);
-    auto top_left = results_h(3);
-    REQUIRE(-1*out_of_bounds.tri_id == top_left.tri_id);
+    auto top_right = results_h(3);
+    REQUIRE(-1*out_of_bounds.tri_id == top_right.tri_id);
     out_of_bounds = results_h(4);
     auto bot_left = results_h(0);
     REQUIRE(-1*out_of_bounds.tri_id == bot_left.tri_id);

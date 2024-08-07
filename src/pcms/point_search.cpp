@@ -329,6 +329,14 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
           distance_to_nearest = distance_to_ac;
           parametric_coords_to_nearest = parametric_coords;
         }
+      } else {
+        for (const auto vertex: vertex_coords) {
+          if (const auto distance = Omega_h::norm(point - vertex);distance < distance_to_nearest) {
+           nearest_triange = i;
+           distance_to_nearest = distance;
+           parametric_coords_to_nearest = parametric_coords;
+         }
+        }
       }
 
      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {

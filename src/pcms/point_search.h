@@ -33,6 +33,14 @@ class GridPointSearch
 public:
   static constexpr auto dim = 2;
   struct Result {
+    enum class Dimensionality
+    {
+      VERTEX = 0,
+      EDGE = 1,
+      FACE = 2
+    };
+
+    Dimensionality dimensionality;
     LO tri_id;
     Omega_h::Vector<dim + 1> parametric_coords;
   };

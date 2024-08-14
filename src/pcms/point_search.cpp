@@ -273,15 +273,20 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
     auto candidates_end = candidate_map.row_map(cell_id + 1);
     bool found = false;
 
-    auto nearest_triange = candidates_begin;
+    auto nearest_triangle = candidates_begin;
+    auto dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
     Omega_h::Real distance_to_nearest { INFINITY };
     Omega_h::Vector<3> parametric_coords_to_nearest;
+
+    // auto trisToEdges = mesh_.ask_down(Omega_h::FACE, OMEGA_H_EDGE);
+    // auto trisToVerts = mesh_.ask_down(Omega_h::FACE, OMEGA_H_VERT);
 
     // create array that's size of number of candidates x num coords to store
     // parametric inversion
     for (auto i = candidates_begin; i < candidates_end; ++i) {
-     auto elem_tri2verts =
-        Omega_h::gather_verts<3>(tris2verts, candidate_map.entries(i));
+      int triangleID = candidate_map.entries(i);
+      auto elem_tri2verts =
+        Omega_h::gather_verts<3>(tris2verts, triangleID);
       // 2d mesh with 2d coords, but 3 triangles
      auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
      auto parametric_coords = barycentric_from_global(point, vertex_coords);
@@ -312,27 +317,31 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
 
         if (within_ab) {
           if (distance_to_ab < distance_to_nearest) {
-            nearest_triange = i;
+            dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
+            nearest_triangle = i;
             distance_to_nearest = distance_to_ab;
             parametric_coords_to_nearest = parametric_coords;
           }
         } else if (within_bc) {
           if (distance_to_bc < distance_to_nearest) {
-            nearest_triange = i;
+            dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
+            nearest_triangle = i;
             distance_to_nearest = distance_to_bc;
             parametric_coords_to_nearest = parametric_coords;
           }
         }
 
         if (distance_to_ac < distance_to_nearest) {
-          nearest_triange = i;
+          dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
+          nearest_triangle = i;
           distance_to_nearest = distance_to_ac;
           parametric_coords_to_nearest = parametric_coords;
         }
       } else {
         for (const auto vertex: vertex_coords) {
           if (const auto distance = Omega_h::norm(point - vertex);distance < distance_to_nearest) {
-           nearest_triange = i;
+            dimensionality = GridPointSearch::Result::Dimensionality::VERTEX;
+           nearest_triangle = i;
            distance_to_nearest = distance;
            parametric_coords_to_nearest = parametric_coords;
          }
@@ -340,14 +349,14 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
       }
 
      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
-       results(p) = GridPointSearch::Result{candidate_map.entries(i), parametric_coords};
+       results(p) = GridPointSearch::Result{GridPointSearch::Result::Dimensionality::FACE, triangleID, parametric_coords};
        found = true;
        break;
      }
     }
     if(!found)
     {
-      results(p) = GridPointSearch::Result{-1 * candidate_map.entries(nearest_triange),parametric_coords_to_nearest};
+      results(p) = GridPointSearch::Result{dimensionality, -1 * candidate_map.entries(nearest_triangle), parametric_coords_to_nearest};
     }
   });
 

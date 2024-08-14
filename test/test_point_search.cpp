@@ -185,14 +185,14 @@ TEST_CASE("uniform grid search") {
   SECTION("global coordinate within mesh")
   {
     {
-      auto [idx,coords] = results_h(0);
+      auto [dim, idx,coords] = results_h(0);
       REQUIRE(idx == 0);
       REQUIRE(coords[0] == Catch::Approx(1));
       REQUIRE(coords[1] == Catch::Approx(0));
       REQUIRE(coords[2] == Catch::Approx(0));
     }
     {
-      auto [idx,coords] = results_h(1);
+      auto [dim, idx,coords] = results_h(1);
       REQUIRE(idx == 91);
       REQUIRE(coords[0] == Catch::Approx(0.5));
       REQUIRE(coords[1] == Catch::Approx(0.1));
@@ -203,9 +203,11 @@ TEST_CASE("uniform grid search") {
   SECTION("Global coordinate outisde mesh", "[!mayfail]") {
     auto out_of_bounds = results_h(2);
     auto top_right = results_h(3);
+    REQUIRE(out_of_bounds.dimensionality == GridPointSearch::Result::Dimensionality::VERTEX);
     REQUIRE(-1*out_of_bounds.tri_id == top_right.tri_id);
     out_of_bounds = results_h(4);
     auto bot_left = results_h(0);
+    REQUIRE(out_of_bounds.dimensionality == GridPointSearch::Result::Dimensionality::VERTEX);
     REQUIRE(-1*out_of_bounds.tri_id == bot_left.tri_id);
   }
 }

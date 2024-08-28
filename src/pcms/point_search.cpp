@@ -277,10 +277,6 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
     auto dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
     Omega_h::Real distance_to_nearest { INFINITY };
     Omega_h::Vector<3> parametric_coords_to_nearest;
-
-    // auto trisToEdges = mesh_.ask_down(Omega_h::FACE, OMEGA_H_EDGE);
-    // auto trisToVerts = mesh_.ask_down(Omega_h::FACE, OMEGA_H_VERT);
-
     // create array that's size of number of candidates x num coords to store
     // parametric inversion
     for (auto i = candidates_begin; i < candidates_end; ++i) {
@@ -290,7 +286,6 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
       // 2d mesh with 2d coords, but 3 triangles
      auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
      auto parametric_coords = barycentric_from_global(point, vertex_coords);
-     const auto centroid = Omega_h::average(vertex_coords);
 
      auto vertex_a = vertex_coords[0];
      auto vertex_b = vertex_coords[1];
@@ -311,11 +306,8 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
        const auto xp = point[0];
        const auto yp = point[1];
 
-        const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
-        const auto distance_to_bc = distance_from_line(xp, yp, xb, yb, xc, yc);
-        const auto distance_to_ac = distance_from_line(xp, yp, xc, yc, xa, ya);
-
         if (within_ab) {
+          const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
           if (distance_to_ab < distance_to_nearest) {
             dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
             nearest_triangle = i;
@@ -323,6 +315,7 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
             parametric_coords_to_nearest = parametric_coords;
           }
         } else if (within_bc) {
+          const auto distance_to_bc = distance_from_line(xp, yp, xb, yb, xc, yc);
           if (distance_to_bc < distance_to_nearest) {
             dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
             nearest_triangle = i;
@@ -331,6 +324,7 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
           }
         }
 
+        const auto distance_to_ac = distance_from_line(xp, yp, xc, yc, xa, ya);
         if (distance_to_ac < distance_to_nearest) {
           dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
           nearest_triangle = i;

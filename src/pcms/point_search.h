@@ -57,6 +57,9 @@ public:
 
 private:
   Omega_h::Mesh mesh_;
+  Omega_h::Adj tris2edges_adj_;
+  Omega_h::Adj tris2verts_adj_;
+  Omega_h::Adj edges2verts_adj_;
   Kokkos::View<UniformGrid[1]> grid_{"uniform grid"};
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;

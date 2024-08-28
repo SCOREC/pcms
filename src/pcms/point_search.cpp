@@ -264,6 +264,9 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
   auto grid = grid_; 
   auto candidate_map = candidate_map_;
   auto tris2verts = tris2verts_;
+  auto tris2verts_adj = tris2verts_adj_;
+  auto tris2edges_adj = tris2edges_adj_;
+  auto edges2verts_adj = edges2verts_adj_;
   auto coords = coords_;
   Kokkos::parallel_for(points.extent(0), KOKKOS_LAMBDA(int p) {
     Omega_h::Vector<2> point(std::initializer_list<double>{points(p,0), points(p,1)});
@@ -332,9 +335,17 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
           parametric_coords_to_nearest = parametric_coords;
         }
       } else {
-        for (const auto vertex: vertex_coords) {
+        // Every triangle (face) is connected to 3 vertices
+        const auto f2v_start_index = triangleID * 3;
+        for (int j = 0; j < 3; ++j) {
+          // Get the vertex ID from the connectivity array
+          int vertexID = tris2verts_adj_.ab2b[f2v_start_index + j];
+          // Get the vertex coordinates from the mesh using vertexID
+          const Omega_h::Few<double, 2> vertex =
+            Omega_h::get_vector<2>(coords, vertexID);
+
           if (const auto distance = Omega_h::norm(point - vertex);distance < distance_to_nearest) {
-            dimensionality = GridPointSearch::Result::Dimensionality::VERTEX;
+           dimensionality = GridPointSearch::Result::Dimensionality::VERTEX;
            nearest_triangle = i;
            distance_to_nearest = distance;
            parametric_coords_to_nearest = parametric_coords;
@@ -369,5 +380,8 @@ GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
   candidate_map_ = detail::construct_intersection_map(mesh, grid_, grid_h(0).GetNumCells());
   coords_ = mesh.coords();
   tris2verts_ = mesh.ask_elem_verts();
+  tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
+  tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
+  edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
 }
 } // namespace pcms

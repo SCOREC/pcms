@@ -165,7 +165,7 @@ TEST_CASE("uniform grid search") {
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
   GridPointSearch search{mesh,10,10};
-  Kokkos::View<pcms::Real*[2]> points("test_points", 5);
+  Kokkos::View<pcms::Real*[2]> points("test_points", 7);
   //Kokkos::View<pcms::Real*[2]> points("test_points", 1);
   auto points_h = Kokkos::create_mirror_view(points);
   points_h(0,0) = 0;
@@ -178,6 +178,10 @@ TEST_CASE("uniform grid search") {
   points_h(3,1) = 1;
   points_h(4,0) = -1;
   points_h(4,1) = -1;
+  points_h(5, 0) = 1.01;
+  points_h(5, 1) = 0.95;
+  points_h(6, 0) = 0.05;
+  points_h(6, 1) = -0.01;
   Kokkos::deep_copy(points, points_h);
   auto results = search(points);
   auto results_h = Kokkos::create_mirror_view(results);
@@ -186,6 +190,7 @@ TEST_CASE("uniform grid search") {
   {
     {
       auto [dim, idx,coords] = results_h(0);
+      REQUIRE(dim == GridPointSearch::Result::Dimensionality::FACE);
       REQUIRE(idx == 0);
       REQUIRE(coords[0] == Catch::Approx(1));
       REQUIRE(coords[1] == Catch::Approx(0));
@@ -193,6 +198,7 @@ TEST_CASE("uniform grid search") {
     }
     {
       auto [dim, idx,coords] = results_h(1);
+      REQUIRE(dim == GridPointSearch::Result::Dimensionality::FACE);
       REQUIRE(idx == 91);
       REQUIRE(coords[0] == Catch::Approx(0.5));
       REQUIRE(coords[1] == Catch::Approx(0.1));
@@ -200,14 +206,25 @@ TEST_CASE("uniform grid search") {
     }
   }
   // feature needs to be added
-  SECTION("Global coordinate outisde mesh", "[!mayfail]") {
+  SECTION("Global coordinate outside mesh", "[!mayfail]") {
     auto out_of_bounds = results_h(2);
     auto top_right = results_h(3);
     REQUIRE(out_of_bounds.dimensionality == GridPointSearch::Result::Dimensionality::VERTEX);
     REQUIRE(-1*out_of_bounds.tri_id == top_right.tri_id);
+
     out_of_bounds = results_h(4);
     auto bot_left = results_h(0);
     REQUIRE(out_of_bounds.dimensionality == GridPointSearch::Result::Dimensionality::VERTEX);
     REQUIRE(-1*out_of_bounds.tri_id == bot_left.tri_id);
+
+    out_of_bounds = results_h(5);
+    REQUIRE(out_of_bounds.dimensionality ==
+            GridPointSearch::Result::Dimensionality::EDGE);
+    REQUIRE(-1 * out_of_bounds.tri_id == top_right.tri_id);
+
+    out_of_bounds = results_h(6);
+    REQUIRE(out_of_bounds.dimensionality ==
+            GridPointSearch::Result::Dimensionality::EDGE);
+    REQUIRE(-1 * out_of_bounds.tri_id == bot_left.tri_id);
   }
 }

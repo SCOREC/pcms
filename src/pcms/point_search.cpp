@@ -290,67 +290,50 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
      auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
      auto parametric_coords = barycentric_from_global(point, vertex_coords);
 
-     auto vertex_a = vertex_coords[0];
-     auto vertex_b = vertex_coords[1];
-     auto vertex_c = vertex_coords[2];
+     for (int j = 0; j < 3; ++j) {
+       // Every triangle (face) is connected to 3 edges
+       const int edgeID = tris2edges_adj.ab2b[triangleID * 3 + j];
 
-      const bool within_ab = normal_intersects_segment(point, vertex_a, vertex_b);
-      const bool within_bc = normal_intersects_segment(point, vertex_b, vertex_c);
-      const bool within_ac = normal_intersects_segment(point, vertex_a, vertex_c);
+       auto vertex_a_id = edges2verts_adj.ab2b[edgeID * 2];
+       auto vertex_b_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
 
-      if (within_ab || within_bc || within_ac) {
+       auto vertex_a = Omega_h::get_vector<2>(coords, vertex_a_id);
+       auto vertex_b = Omega_h::get_vector<2>(coords, vertex_b_id);
+
+       if (!normal_intersects_segment(point, vertex_a, vertex_b)) continue;
+
        const auto xa = vertex_a[0];
        const auto ya = vertex_a[1];
        const auto xb = vertex_b[0];
        const auto yb = vertex_b[1];
-       const auto xc = vertex_c[0];
-       const auto yc = vertex_c[1];
 
        const auto xp = point[0];
        const auto yp = point[1];
 
-        if (within_ab) {
-          const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
-          if (distance_to_ab < distance_to_nearest) {
-            dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
-            nearest_triangle = i;
-            distance_to_nearest = distance_to_ab;
-            parametric_coords_to_nearest = parametric_coords;
-          }
-        } else if (within_bc) {
-          const auto distance_to_bc = distance_from_line(xp, yp, xb, yb, xc, yc);
-          if (distance_to_bc < distance_to_nearest) {
-            dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
-            nearest_triangle = i;
-            distance_to_nearest = distance_to_bc;
-            parametric_coords_to_nearest = parametric_coords;
-          }
-        }
+       const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
 
-        const auto distance_to_ac = distance_from_line(xp, yp, xc, yc, xa, ya);
-        if (distance_to_ac < distance_to_nearest) {
-          dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
-          nearest_triangle = i;
-          distance_to_nearest = distance_to_ac;
-          parametric_coords_to_nearest = parametric_coords;
-        }
-      } else {
-        // Every triangle (face) is connected to 3 vertices
-        const auto f2v_start_index = triangleID * 3;
-        for (int j = 0; j < 3; ++j) {
-          // Get the vertex ID from the connectivity array
-          int vertexID = tris2verts_adj_.ab2b[f2v_start_index + j];
-          // Get the vertex coordinates from the mesh using vertexID
-          const Omega_h::Few<double, 2> vertex =
-            Omega_h::get_vector<2>(coords, vertexID);
+       if (distance_to_ab >= distance_to_nearest) { continue; }
 
-          if (const auto distance = Omega_h::norm(point - vertex);distance < distance_to_nearest) {
-           dimensionality = GridPointSearch::Result::Dimensionality::VERTEX;
-           nearest_triangle = i;
-           distance_to_nearest = distance;
-           parametric_coords_to_nearest = parametric_coords;
-         }
-        }
+       dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
+       nearest_triangle = i;
+       distance_to_nearest = distance_to_ab;
+       parametric_coords_to_nearest = parametric_coords;
+      }
+
+      // Every triangle (face) is connected to 3 vertices
+      for (int j = 0; j < 3; ++j) {
+        // Get the vertex ID from the connectivity array
+        const int vertexID = tris2verts_adj_.ab2b[triangleID * 3 + j];
+        // Get the vertex coordinates from the mesh using vertexID
+        const Omega_h::Few<double, 2> vertex =
+          Omega_h::get_vector<2>(coords, vertexID);
+
+        if (const auto distance = Omega_h::norm(point - vertex);distance < distance_to_nearest) {
+         dimensionality = GridPointSearch::Result::Dimensionality::VERTEX;
+         nearest_triangle = i;
+         distance_to_nearest = distance;
+         parametric_coords_to_nearest = parametric_coords;
+       }
       }
 
      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {

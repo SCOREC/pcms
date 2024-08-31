@@ -237,3 +237,6 @@ endif()
 
 add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)
 target_link_libraries(xgc_n0_server PUBLIC pcms::core test_support)
+
+add_executable(test_fusion_io test_fusion_io.cpp)
+target_link_libraries(test_fusion_io PUBLIC pcms::core fusionio::fusionio_fusionio)

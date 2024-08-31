@@ -16,6 +16,7 @@ set(PCMS_HEADERS
         pcms/array_mask.h
         pcms/inclusive_scan.h
         pcms/profile.h
+        pcms/fusion_io_lib.h
         )
 
 set(PCMS_SOURCES

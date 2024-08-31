@@ -49,6 +49,8 @@ endif()
 ## https://github.com/FFTW/fftw3/issues/130
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(fftw REQUIRED IMPORTED_TARGET fftw3>=3.3)
+find_package(fusionio)
+pkg_check_modules(HDF5 REQUIRED IMPORTED_TARGET hdf5)
 
 add_subdirectory(src)
 

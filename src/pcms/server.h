@@ -72,10 +72,10 @@ public:
     PCMS_FUNCTION_TIMER;
     coupled_field_->Send(mode);
   }
-  void Receive()
+  void Receive(Mode mode=Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
-    coupled_field_->Receive();
+    coupled_field_->Receive(mode);
   }
   void SyncNativeToInternal()
   {
@@ -111,7 +111,7 @@ public:
   struct CoupledFieldConcept
   {
     virtual void Send(Mode) = 0;
-    virtual void Receive() = 0;
+    virtual void Receive(Mode) = 0;
     virtual void SyncNativeToInternal(InternalField&) = 0;
     virtual void SyncInternalToNative(const InternalField&) = 0;
     [[nodiscard]] virtual const std::type_info& GetFieldAdapterType()
@@ -155,10 +155,10 @@ public:
       PCMS_FUNCTION_TIMER;
       comm_.Send(mode);
     };
-    void Receive() final
+    void Receive(Mode mode) final
     {
       PCMS_FUNCTION_TIMER;
-      comm_.Receive();
+      comm_.Receive(mode);
     };
     void SyncNativeToInternal(InternalField& internal_field) final
     {
@@ -244,11 +244,11 @@ public:
     PCMS_ALWAYS_ASSERT(InSendPhase());
     detail::find_or_error(name, fields_).Send(mode);
   };
-  void ReceiveField(const std::string& name)
+  void ReceiveField(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InReceivePhase());
-    detail::find_or_error(name, fields_).Receive();
+    detail::find_or_error(name, fields_).Receive(mode);
   };
   [[nodiscard]] bool InSendPhase() const noexcept
   {
@@ -449,7 +449,10 @@ public:
 
     auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
       internal_field_name, internal_fields_, internal_mesh_, mask,
-      std::move(global_id_name), search_nx, search_ny);
+      std::move(global_id_name));
+    std::visit([&](auto& field) {
+      field.ConstructSearch(search_nx, search_ny);
+    },combined);
     auto [it, inserted] = gather_operations_.template try_emplace(
       name, std::move(gather_fields), combined, std::move(func));
     if (!inserted) {
@@ -485,7 +488,10 @@ public:
 
     auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
       internal_field_name, internal_fields_, internal_mesh_, mask,
-      std::move(global_id_name), search_nx, search_ny);
+      std::move(global_id_name));
+    std::visit([&](auto& field) {
+      field.ConstructSearch(search_nx, search_ny);
+    },combined);
     auto [it, inserted] = scatter_operations_.template try_emplace(
       name, std::move(scatter_fields), combined);
 

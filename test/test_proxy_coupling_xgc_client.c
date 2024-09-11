@@ -2,7 +2,8 @@
 #include <pcms/capi/kokkos.h>
 #include <mpi.h>
 #include <stdlib.h>
-#include <printf.h>
+#include <stdio.h>
+
 
 int8_t in_overlap(int dimension, int id)
 {
@@ -51,16 +52,16 @@ int main(int argc, char** argv)
   printf("world: %d %d; plane: %d %d ; client: %d %d\n", world_rank, world_size,
          plane_rank, plane_size, client_rank, client_size);
 
-  PcmsClientHandle* client =
+  PcmsClientHandle client =
     pcms_create_client("proxy_couple", client_comm);
   const char* rc_file = argv[1];
-  PcmsReverseClassificationHandle* rc =
+  PcmsReverseClassificationHandle rc =
     pcms_load_reverse_classification(rc_file, MPI_COMM_WORLD);
   const int nverts = pcms_reverse_classification_count_verts(rc);
   // long int* data[nplanes];
   long int* data = calloc(nverts, sizeof(long int));
-  PcmsFieldHandle* field[nplanes];
-  PcmsFieldAdapterHandle* field_adapters[nplanes];
+  PcmsFieldHandle field[nplanes];
+  PcmsFieldAdapterHandle field_adapters[nplanes];
   for (int i = 0; i < nplanes; ++i) {
     char field_name[100];
     sprintf(field_name, "xgc_gids_plane_%d", i);

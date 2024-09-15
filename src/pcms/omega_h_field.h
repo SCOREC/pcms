@@ -6,6 +6,7 @@
 #include "pcms/field.h"
 #include "pcms/coordinate_systems.h"
 #include <Kokkos_Core.hpp>
+#include <array>
 #include <pcms/assert.h>
 #include <Omega_h_for.hpp>
 #include "pcms/arrays.h"
@@ -71,28 +72,26 @@ Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
 }
 struct GetRankOmegaH
 {
-  GetRankOmegaH(int i, Omega_h::HostRead<Omega_h::I8> dims,
-                Omega_h::HostRead<Omega_h::ClassId> ids)
-    : i_(i), ids_(ids), dims_(dims)
+  GetRankOmegaH(int i, Omega_h::I8 dim, Omega_h::ClassId id, std::array<pcms::Real,3> & coord)
+    : i_(i), id_(id), dim_(dim), coord_(coord)
   {
     PCMS_FUNCTION_TIMER;
   }
   auto operator()(const redev::ClassPtn& ptn) const
   {
     PCMS_FUNCTION_TIMER;
-    const auto ent = redev::ClassPtn::ModelEnt({dims_[i_], ids_[i_]});
+    const auto ent = redev::ClassPtn::ModelEnt({dim_, id_});
     return ptn.GetRank(ent);
   }
-  auto operator()(const redev::RCBPtn& /*unused*/)
+  auto operator()(const redev::RCBPtn& ptn)
   {
     PCMS_FUNCTION_TIMER;
-    std::cerr << "RCB partition not handled yet\n";
-    std::terminate();
-    return 0;
+    return ptn.GetRank(coord_);
   }
   int i_;
-  Omega_h::HostRead<Omega_h::ClassId> ids_;
-  Omega_h::HostRead<Omega_h::I8> dims_;
+  Omega_h::ClassId id_;
+  Omega_h::I8 dim_;
+  std::array<pcms::Real,3> coord_;
 };
 } // namespace detail
 
@@ -500,13 +499,19 @@ public:
     PCMS_FUNCTION_TIMER;
     auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(field_.GetClassIDs());
     auto classDims_h = Omega_h::HostRead<Omega_h::I8>(field_.GetClassDims());
+    const auto coords = Omega_h::HostRead(field_.GetMesh().coords());
+    auto dim = field_.GetMesh().dim();
 
     // local_index number of vertices going to each destination process by
     // calling getRank - degree array
+    std::array<pcms::Real, 3> coord;
     pcms::ReversePartitionMap reverse_partition;
     pcms::LO local_index = 0;
     for (auto i = 0; i < classIds_h.size(); i++) {
-      auto dr = std::visit(detail::GetRankOmegaH{i, classDims_h, classIds_h},
+      coord[0] = coords[i * dim];
+      coord[1] = coords[i * dim + 1];
+      coord[2] = (dim == 3) ? coords[i * dim + 2] : 0.0;
+      auto dr = std::visit(detail::GetRankOmegaH{i, classDims_h[i], classIds_h[i], coord},
                            partition);
       reverse_partition[dr].emplace_back(local_index++);
     }

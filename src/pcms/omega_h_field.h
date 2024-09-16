@@ -30,6 +30,13 @@ struct OmegaHMemorySpace
 
 namespace detail
 {
+enum class mesh_entity_type {
+  VERTEX = 0,
+  EDGE = 1,
+  FACE = 2,
+  REGION = 3
+};
+
 template <typename T>
 struct memory_space_selector<Omega_h::Read<T>, void>
 {
@@ -107,22 +114,26 @@ public:
 
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
               std::string global_id_name = "", int search_nx = 10,
-              int search_ny = 10)
+              int search_ny = 10, 
+              detail::mesh_entity_type entity_type = detail::mesh_entity_type::VERTEX)
     : name_(std::move(name)),
       mesh_(mesh),
       search_{mesh, search_nx, search_ny},
-      size_(mesh.nents(0)),
-      global_id_name_(std::move(global_id_name))
+      size_(mesh.nents(static_cast<int>(entity_type))),
+      global_id_name_(std::move(global_id_name)),
+      entity_type_(entity_type)
   {
     PCMS_FUNCTION_TIMER;
   }
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
               Omega_h::Read<Omega_h::I8> mask, std::string global_id_name = "",
-              int search_nx = 10, int search_ny = 10)
+              int search_nx = 10, int search_ny = 10, 
+              detail::mesh_entity_type entity_type = detail::mesh_entity_type::VERTEX)
     : name_(std::move(name)),
       mesh_(mesh),
       search_{mesh, search_nx, search_ny},
-      global_id_name_(std::move(global_id_name))
+      global_id_name_(std::move(global_id_name)),
+      entity_type_(entity_type)
   {
     PCMS_FUNCTION_TIMER;
     if (mask.exists()) {
@@ -132,7 +143,8 @@ public:
       // we use a parallel scan to construct the mask mapping so that filtering
       // can happen in parallel. This method gives us the index to fill into the
       // filtered array
-      PCMS_ALWAYS_ASSERT(mesh.nents(0) == mask.size());
+      printf("name: %s, ent %d | %d, mask size %d, ent size %d\n", name_.c_str(), static_cast<int>(entity_type_), static_cast<int>(entity_type), mask.size(), mesh.nents(static_cast<int>(entity_type_)));
+      PCMS_ALWAYS_ASSERT(mesh.nents(static_cast<int>(entity_type_)) == mask.size());
       Omega_h::Write<LO> index_mask(mask.size());
       auto index_mask_view = make_array_view(index_mask);
       auto mask_view = make_const_array_view(mask);
@@ -141,7 +153,7 @@ public:
       Kokkos::parallel_for(policy, detail::ScaleAV{index_mask_view, mask_view});
       mask_ = index_mask;
     } else {
-      size_ = mesh.nents(0);
+      size_ = mesh.nents(static_cast<int>(entity_type_));
     }
   }
 
@@ -152,6 +164,10 @@ public:
     return mask_;
   };
   [[nodiscard]] bool HasMask() const noexcept { return mask_.exists(); };
+  [[nodiscard]] pcms::detail::mesh_entity_type GetEntityType() const noexcept
+  {
+    return entity_type_;
+  }
   [[nodiscard]] LO Size() const noexcept { return size_; }
   // pass through to search function
   auto Search(Kokkos::View<Real* [2]> points) const {
@@ -163,29 +179,29 @@ public:
     PCMS_FUNCTION_TIMER;
     if (HasMask())
       return detail::filter_array(
-        mesh_.get_array<Omega_h::ClassId>(0, "class_id"), GetMask(), Size());
-    return mesh_.get_array<Omega_h::ClassId>(0, "class_id");
+        mesh_.get_array<Omega_h::ClassId>(static_cast<int>(entity_type_), "class_id"), GetMask(), Size());
+    return mesh_.get_array<Omega_h::ClassId>(static_cast<int>(entity_type_), "class_id");
   }
   [[nodiscard]] Omega_h::Read<Omega_h::I8> GetClassDims() const
   {
     PCMS_FUNCTION_TIMER;
     if (HasMask())
-      return detail::filter_array(mesh_.get_array<Omega_h::I8>(0, "class_dim"),
+      return detail::filter_array(mesh_.get_array<Omega_h::I8>(static_cast<int>(entity_type_), "class_dim"),
                                   GetMask(), Size());
-    return mesh_.get_array<Omega_h::I8>(0, "class_dim");
+    return mesh_.get_array<Omega_h::I8>(static_cast<int>(entity_type_), "class_dim");
   }
   [[nodiscard]] Omega_h::Read<Omega_h::GO> GetGids() const
   {
     PCMS_FUNCTION_TIMER;
     Omega_h::Read<Omega_h::GO> gid_array;
     if (global_id_name_.empty()) {
-      gid_array = mesh_.globals(0);
+      gid_array = mesh_.globals(static_cast<int>(entity_type_));
     } else {
-      auto tag = mesh_.get_tagbase(0, global_id_name_);
+      auto tag = mesh_.get_tagbase(static_cast<int>(entity_type_), global_id_name_);
       if (Omega_h::is<GO>(tag)) {
-        gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
+        gid_array = mesh_.get_array<Omega_h::GO>(static_cast<int>(entity_type_), global_id_name_);
       } else if (Omega_h::is<LO>(tag)) {
-        auto array = mesh_.get_array<Omega_h::LO>(0, global_id_name_);
+        auto array = mesh_.get_array<Omega_h::LO>(static_cast<int>(entity_type_), global_id_name_);
         Omega_h::Write<Omega_h::GO> globals(array.size());
         Omega_h::parallel_for(
           array.size(), OMEGA_H_LAMBDA(int i) { globals[i] = array[i]; });
@@ -208,6 +224,7 @@ private:
   Omega_h::Read<LO> mask_;
   LO size_;
   std::string global_id_name_;
+  detail::mesh_entity_type entity_type_;
 };
 
 using InternalCoordinateElement = Real;
@@ -225,7 +242,7 @@ auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
   -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
-  auto full_field = field.GetMesh().template get_array<T>(0, field.GetName());
+  auto full_field = field.GetMesh().template get_array<T>(static_cast<int>(field.GetEntityType()), field.GetName());
   if (field.HasMask()) {
     return detail::filter_array<T>(full_field, field.GetMask(), field.Size());
   }
@@ -240,12 +257,14 @@ auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
   PCMS_FUNCTION_TIMER;
   static constexpr auto coordinate_dimension = 2;
   if constexpr (detail::HasCoordinateSystem<CoordinateElementType>::value) {
-    const auto coords = field.GetMesh().coords();
+    //const auto coords = field.GetMesh().coords();
+    const auto coords = get_ent_centroids(field.GetMesh(), static_cast<int>(field.GetEntityType()));
     return MDArray<CoordinateElementType>{};
     // FIXME implement copy to
     throw;
   } else {
-    auto coords = Omega_h::Reals{field.GetMesh().coords()};
+    //auto coords = Omega_h::Reals{field.GetMesh().coords()};
+    auto coords = get_ent_centroids(field.GetMesh(), static_cast<int>(field.GetEntityType()));
     if (field.HasMask()) {
       return detail::filter_array<typename decltype(coords)::value_type,
                                   coordinate_dimension>(coords, field.GetMask(),
@@ -269,38 +288,39 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
   static_assert(std::is_convertible_v<T, U>,
                 "must be able to convert nodal data into the field types data");
   auto& mesh = field.GetMesh();
-  const auto has_tag = mesh.has_tag(0, field.GetName());
+  auto entity_type = field.GetEntityType();
+  const auto has_tag = mesh.has_tag(static_cast<int>(entity_type), field.GetName());
   if (field.HasMask()) {
     auto& mask = field.GetMask();
-    PCMS_ALWAYS_ASSERT(mask.size() == mesh.nents(0));
+    PCMS_ALWAYS_ASSERT(mask.size() == mesh.nents(static_cast<int>(entity_type)));
     Omega_h::Write<T> array(mask.size());
     if (has_tag) {
-      auto original_data = mesh.template get_array<T>(0, field.GetName());
+      auto original_data = mesh.template get_array<T>(static_cast<int>(entity_type), field.GetName());
       PCMS_ALWAYS_ASSERT(original_data.size() == mask.size());
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
           array[i] = mask[i] ? data(mask[i] - 1) : original_data[i];
         });
-      mesh.set_tag(0, field.GetName(), Omega_h::Read<T>(array));
+      mesh.set_tag(static_cast<int>(entity_type), field.GetName(), Omega_h::Read<T>(array));
     } else {
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
           array[i] = mask[i] ? data(mask[i] - 1) : 0;
         });
-      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<T>(array));
+      mesh.add_tag(static_cast<int>(entity_type), field.GetName(), 1, Omega_h::Read<T>(array));
     }
   } else {
-    PCMS_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh.nents(0));
+    PCMS_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh.nents(static_cast<int>(entity_type)));
     Omega_h::Write<T> array(data.size());
     Omega_h::parallel_for(
       data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
     if (has_tag) {
-      mesh.set_tag(0, field.GetName(), Omega_h::Read<T>(array));
+      mesh.set_tag(static_cast<int>(entity_type), field.GetName(), Omega_h::Read<T>(array));
     } else {
-      mesh.add_tag(0, field.GetName(), 1, Omega_h::Read<T>(array));
+      mesh.add_tag(static_cast<int>(entity_type), field.GetName(), 1, Omega_h::Read<T>(array));
     }
   }
-  PCMS_ALWAYS_ASSERT(mesh.has_tag(0, field.GetName()));
+  PCMS_ALWAYS_ASSERT(mesh.has_tag(static_cast<int>(entity_type), field.GetName()));
 }
 
 // TODO abstract out repeat parts of lagrange/nearest neighbor evaluation
@@ -418,6 +438,42 @@ auto make_array_view(const Omega_h::Read<T>& array)
     view(array.data(), array.size());
   return view;
 }
+
+// ? how the above works without inline but this doesn't
+inline Omega_h::Reals get_ent_centroids(Omega_h::Mesh& mesh, int entity_type)
+{
+  PCMS_FUNCTION_TIMER;
+  PCMS_ALWAYS_ASSERT(entity_type >= 0 && entity_type <= 3);
+  if (entity_type == 0) {
+    return mesh.coords();
+  }
+  else {
+    auto coords = mesh.coords();
+    int dim = mesh.dim();
+    auto ent2verts = mesh.ask_down(entity_type, Omega_h::VERT).ab2b;
+    auto nents = mesh.nents(entity_type);
+    Omega_h::Write<Real> ent_coords(nents * dim);
+    
+    auto calc_coords = OMEGA_H_LAMBDA(LO ent) {
+      if (dim == 2){
+        auto verts = Omega_h::gather_verts<3>(ent2verts, ent);
+        auto ent_vert_coords = Omega_h::gather_vectors<3, 2>(coords, verts);
+        auto ent_centroid = Omega_h::average(ent_vert_coords);
+        ent_coords[ent * dim] = ent_centroid[0];
+        ent_coords[ent * dim + 1] = ent_centroid[1];
+      } else if (dim == 3){
+        auto verts = Omega_h::gather_verts<4>(ent2verts, ent);
+        auto ent_vert_coords = Omega_h::gather_vectors<4, 3>(coords, verts);
+        auto ent_centroid = Omega_h::average(ent_vert_coords);
+        ent_coords[ent * dim] = ent_centroid[0];
+        ent_coords[ent * dim + 1] = ent_centroid[1];
+        ent_coords[ent * dim + 2] = ent_centroid[2];
+      }
+    };
+    Omega_h::parallel_for(nents, calc_coords);
+    return Omega_h::Reals((ent_coords));
+  }
+}
 } // namespace Omega_h
 
 namespace pcms
@@ -432,21 +488,23 @@ public:
   using coordinate_element_type = CoordinateElementType;
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
                      std::string global_id_name = "", int search_nx = 10,
-                     int search_ny = 10)
+                     int search_ny = 10, detail::mesh_entity_type entity_type = detail::mesh_entity_type::VERTEX)
     : field_{std::move(name), mesh, std::move(global_id_name), search_nx,
-             search_ny}
+             search_ny, entity_type}, entity_type_{entity_type}
   {
     PCMS_FUNCTION_TIMER;
+    printf("name: %s, ent %d | %d\n", name.c_str(), static_cast<int>(entity_type_), static_cast<int>(entity_type));
   }
 
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
                      Omega_h::Read<Omega_h::I8> mask,
                      std::string global_id_name = "", int search_nx = 10,
-                     int search_ny = 10)
+                     int search_ny = 10, detail::mesh_entity_type entity_type = detail::mesh_entity_type::VERTEX)
     : field_{std::move(name),           mesh,      mask,
-             std::move(global_id_name), search_nx, search_ny}
+             std::move(global_id_name), search_nx, search_ny, entity_type}, entity_type_{entity_type}
   {
     PCMS_FUNCTION_TIMER;
+    printf("name: %s, ent %d | %d\n", name.c_str(), static_cast<int>(entity_type_), static_cast<int>(entity_type));
   }
   [[nodiscard]] const std::string& GetName() const noexcept
   {
@@ -499,7 +557,8 @@ public:
     PCMS_FUNCTION_TIMER;
     auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(field_.GetClassIDs());
     auto classDims_h = Omega_h::HostRead<Omega_h::I8>(field_.GetClassDims());
-    const auto coords = Omega_h::HostRead(field_.GetMesh().coords());
+    //const auto coords = Omega_h::HostRead(field_.GetMesh().coords());
+    const auto coords = Omega_h::HostRead(get_ent_centroids(field_.GetMesh(), static_cast<int>(entity_type_)));
     auto dim = field_.GetMesh().dim();
 
     // local_index number of vertices going to each destination process by
@@ -529,8 +588,14 @@ public:
     return field_;
   }
 
+  [[nodiscard]] pcms::detail::mesh_entity_type GetEntityType() const noexcept
+  {
+    return entity_type_;
+  }
+
 private:
   OmegaHField<T, CoordinateElementType> field_;
+  pcms::detail::mesh_entity_type entity_type_;
 };
 template <typename FieldAdapter>
 void ConvertFieldAdapterToOmegaH(const FieldAdapter& adapter,

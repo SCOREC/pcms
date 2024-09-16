@@ -42,7 +42,7 @@ public:
                           Omega_h::Read<Omega_h::I8> internal_field_mask = {})
     : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
                                   InternalCoordinateElement>(
-        name + ".__internal__", internal_mesh, internal_field_mask)}
+        name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
   {
     PCMS_FUNCTION_TIMER;
     coupled_field_ = std::make_unique<CoupledFieldModel<FieldAdapterT, CommT>>(
@@ -58,7 +58,7 @@ public:
                           Omega_h::Read<Omega_h::I8> internal_field_mask)
     : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
                                   InternalCoordinateElement>(
-        name + ".__internal__", internal_mesh, internal_field_mask)}
+        name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
   {
     PCMS_FUNCTION_TIMER;
     coupled_field_ =

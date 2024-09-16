@@ -1,5 +1,6 @@
 #ifndef PCMS_COUPLING_XGC_FIELD_ADAPTER_H
 #define PCMS_COUPLING_XGC_FIELD_ADAPTER_H
+#include "omega_h_field.h"
 #include "pcms/types.h"
 #include "pcms/memory_spaces.h"
 #include "pcms/field.h"
@@ -176,6 +177,11 @@ public:
     PCMS_FUNCTION_TIMER;
     // only do adios communications on 0 rank of the XGC fields
     return (plane_rank_ == plane_root_);
+  }
+
+  [[nodiscard]] pcms::detail::mesh_entity_type GetEntityType() const noexcept
+  {
+    return pcms::detail::mesh_entity_type::VERTEX;
   }
 
 private:

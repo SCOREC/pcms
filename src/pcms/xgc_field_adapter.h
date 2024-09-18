@@ -179,9 +179,9 @@ public:
     return (plane_rank_ == plane_root_);
   }
 
-  [[nodiscard]] pcms::detail::mesh_entity_type GetEntityType() const noexcept
+  [[nodiscard]] pcms::mesh_entity_type GetEntityType() const noexcept
   {
-    return pcms::detail::mesh_entity_type::VERTEX;
+    return pcms::mesh_entity_type::VERTEX;
   }
 
 private:

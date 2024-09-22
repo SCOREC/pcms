@@ -1,0 +1,6 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/interpolatorTargets.cmake")
+
+# Optional: Make the package more discoverable by exposing the include directories
+set(INTERPOLATOR_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@/include/interpolator")

@@ -4,7 +4,6 @@
 #include "MLSCoefficients.hpp"
 #include "adj_search_dega2.hpp"
 #include "adj_search.hpp"
-#include "points.hpp"
 
 using namespace Omega_h;
 using namespace pcms;
@@ -12,18 +11,26 @@ using namespace pcms;
 Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
-                              const SupportResults& support, const LO& dim,
-                              Write<Real> radii2) {
+                              const SupportResults& support, const LO& dim, 
+			      const LO& degree, Write<Real> radii2) {
   const auto nvertices_source = source_coordinates.size() / dim;
   const auto nvertices_target = target_coordinates.size() / dim;
 
   // Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> range_policy(1,
   // nvertices_target);
 
+  static_assert(degree > 0," the degree of polynomial basis should be atleast 1");
+
   Kokkos::View<size_t*> shmem_each_team(
       "stores the size required for each team", nvertices_target);
-  // Write<int> shmem_each_team(nvertices_target, 0, "stores the size required
-  // for each team member");
+  
+  MatViewType slice_length("stores slice length of  polynomial basis", degree, dim);
+  
+  Kokkos::deep_copy(slice_length, 0.0);
+  
+  basisSliceLengths(slice_length);
+
+  auto basis_size = basisSize(slice_length);
 
   Kokkos::parallel_for(
       "calculate the size required for scratch for each team", nvertices_target,
@@ -34,10 +41,10 @@ Write<Real> mls_interpolation(const Reals source_values,
 
         size_t total_shared_size = 0;
 
-        total_shared_size += ScratchMatView::shmem_size(6, 6) * 4;
-        total_shared_size += ScratchMatView::shmem_size(6, nsupports) * 2;
-        total_shared_size += ScratchMatView::shmem_size(nsupports, 6);
-        total_shared_size += ScratchVecView::shmem_size(6);
+        total_shared_size += ScratchMatView::shmem_size(basis_size, basis_size) * 4;
+        total_shared_size += ScratchMatView::shmem_size(basis_size, nsupports) * 2;
+        total_shared_size += ScratchMatView::shmem_size(nsupports, basis_size);
+        total_shared_size += ScratchVecView::shmem_size(basis_size);
         total_shared_size += ScratchVecView::shmem_size(nsupports) * 3;
         total_shared_size += ScratchMatView::shmem_size(nsupports, 2);
         shmem_each_team(i) = total_shared_size;
@@ -71,30 +78,33 @@ Write<Real> mls_interpolation(const Reals source_values,
 
         int nsupports = end_ptr - start_ptr;
 
-        ScratchMatView local_source_points(team.team_scratch(0), nsupports, 2);
+        ScratchMatView local_source_points(team.team_scratch(0), nsupports, dim);
         int count = -1;
         for (int j = start_ptr; j < end_ptr; ++j) {
           count++;
           auto index = support.supports_idx[j];
           local_source_points(count, 0) = source_coordinates[index * dim];
           local_source_points(count, 1) = source_coordinates[index * dim + 1];
+	  if (dim == 3){
+	      local_source_points(count, 2) = 
+	  }
         }
 
-        ScratchMatView lower(team.team_scratch(0), 6, 6);
+        ScratchMatView lower(team.team_scratch(0), basis_size, basis_size);
 
-        ScratchMatView forward_matrix(team.team_scratch(0), 6, 6);
+        ScratchMatView forward_matrix(team.team_scratch(0), basis_size, basis_size);
 
-        ScratchMatView moment_matrix(team.team_scratch(0), 6, 6);
+        ScratchMatView moment_matrix(team.team_scratch(0), basis_size, basis_size);
 
-        ScratchMatView inv_mat(team.team_scratch(0), 6, 6);
+        ScratchMatView inv_mat(team.team_scratch(0), basis_size, basis_size);
 
-        ScratchMatView V(team.team_scratch(0), nsupports, 6);
+        ScratchMatView V(team.team_scratch(0), nsupports, basis_size);
 
-        ScratchMatView Ptphi(team.team_scratch(0), 6, nsupports);
+        ScratchMatView Ptphi(team.team_scratch(0), basis_size, nsupports);
 
-        ScratchMatView resultant_matrix(team.team_scratch(0), 6, nsupports);
+        ScratchMatView resultant_matrix(team.team_scratch(0), basis_size, nsupports);
 
-        ScratchVecView targetMonomialVec(team.team_scratch(0), 6);
+        ScratchVecView targetMonomialVec(team.team_scratch(0), basis_size);
 
         ScratchVecView SupportValues(team.team_scratch(0), nsupports);
 
@@ -102,39 +112,55 @@ Write<Real> mls_interpolation(const Reals source_values,
 
         ScratchVecView Phi(team.team_scratch(0), nsupports);
 
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, 6), [=](int j) {
-          for (int k = 0; k < 6; ++k) {
-            lower(j, k) = 0;
-            forward_matrix(j, k) = 0;
-            moment_matrix(j, k) = 0;
-            inv_mat(j, k) = 0;
-          }
 
-          targetMonomialVec(j) = 0;
-          for (int k = 0; k < nsupports; ++k) {
-            resultant_matrix(j, k) = 0;
-
-            Ptphi(j, k) = 0;
-          }
-        });
-
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports),
-                             [=](int j) {
-                               for (int k = 0; k < 6; ++k) {
-                                 V(j, k) = 0;
-                               }
-
-                               SupportValues(j) = 0;
-                               result(j) = 0;
-                               Phi(j) = 0;
-                             });
-
+	Kokkos::deep_copy(lower, 0.0);
+	Kokkos::deep_copy(forward_matrix, 0.0);
+	Kokkos::deep_copy(moment_matrix, 0.0);
+	Kokkos::deep_copy(inv_matrix, 0.0);
+	Kokkos::deep_copy(V, 0.0);
+	Kokkos::deep_copy(Ptphi, 0.0);
+	Kokkos::deep_copy(resultant_matrix, 0.0);
+	Kokkos::deep_copy(targetMonomialVec, 0.0);
+	Kokkos::deep_copy(SupportValues, 0.0);
+	Kokkos::deep_copy(result, 0.0);
+	Kokkos::deep_copy(Phi, 0.0);
+        
+//	Kokkos::parallel_for(Kokkos::TeamThreadRange(team, 6), [=](int j) {
+//          for (int k = 0; k < 6; ++k) {
+//            lower(j, k) = 0;
+//            forward_matrix(j, k) = 0;
+//            moment_matrix(j, k) = 0;
+//            inv_mat(j, k) = 0;
+//          }
+//
+//          targetMonomialVec(j) = 0;
+//          for (int k = 0; k < nsupports; ++k) {
+//            resultant_matrix(j, k) = 0;
+//
+//            Ptphi(j, k) = 0;
+//          }
+//        });
+//
+//        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports),
+//                             [=](int j) {
+//                               for (int k = 0; k < 6; ++k) {
+//                                 V(j, k) = 0;
+//                               }
+//
+//                               SupportValues(j) = 0;
+//                               result(j) = 0;
+//                               Phi(j) = 0;
+//                             });
+//
         Coord target_point;
 
         target_point.x = target_coordinates[i * dim];
 
         target_point.y = target_coordinates[i * dim + 1];
-
+	
+	if (dim == 3){
+	    target_point.z = target_coordinates[i * dim + 2];
+	}
         BasisPoly(targetMonomialVec, target_point);
 
         Kokkos::parallel_for(

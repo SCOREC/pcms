@@ -21,7 +21,7 @@ double func(Coord& p) {
 // finds the slice lengths of the of the polynomial basis
 
 KOKKOS_INLINE_FUNCTION
-void basisSliceLengths(MatViewType array){
+void basisSliceLengths(MatViewType& array){
     dim = array.extent(0);
     degree = array.extent(1);
     for (int i = 0; i < dim; ++i){

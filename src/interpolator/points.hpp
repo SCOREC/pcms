@@ -5,7 +5,7 @@
 #include <Kokkos_Random.hpp>
 
 struct Coord {
-  double x, y;
+  double x, y, z;
 };
 
 using range_policy = typename Kokkos::RangePolicy<>;
@@ -25,6 +25,7 @@ using ScratchVecView =
 
 using PointsViewType = Kokkos::View<Coord*>;
 
+using MatViewType = Kokkos::View<int**>
 struct Points {
   PointsViewType coordinates;
 };

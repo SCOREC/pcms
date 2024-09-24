@@ -7,6 +7,9 @@
 
 #define PI_M 3.14159265358979323846
 
+static constexpr MAX_DIM = 3;
+
+
 KOKKOS_INLINE_FUNCTION
 double func(Coord& p) {
   auto x = (p.x - 0.5) * PI_M * 2;
@@ -15,17 +18,84 @@ double func(Coord& p) {
   return Z;
 }
 
-// polynomial basis vector
+// finds the slice lengths of the of the polynomial basis
+
 KOKKOS_INLINE_FUNCTION
-void BasisPoly(ScratchVecView basis_monomial, Coord& p1) {
-  basis_monomial(0) = 1.0;
-  basis_monomial(1) = p1.x;
-  basis_monomial(2) = p1.y;
-  basis_monomial(3) = p1.x * p1.x;
-  basis_monomial(4) = p1.x * p1.y;
-  basis_monomial(5) = p1.y * p1.y;
+void basisSliceLengths(MatViewType array){
+    dim = array.extent(0);
+    degree = array.extent(1);
+    for (int i = 0; i < dim; ++i){
+	array(0,i) = 1;
+    }
+
+    for (int j = 0; j < degree; ++j){
+	array(j, 0) = 1;
+    }
+
+    for (int i = 1; i < degree; ++i){
+	for (int j = 1; j < dim; ++j){
+	    array(i, j) = array(i-1,j) + array(i,j-1);
+	}
+    }
+
 }
 
+// finds the size of the polynomial basis vector 
+KOKKOS_INLINE_FUNCTION
+int basisSize(const MatViewType& array){
+    int sum = 1;
+    for (int i = 1; i < degree; ++i){
+	for (int j = 1; j < dim; ++j){
+	    sum += array(i, j);
+	}
+    }
+}
+
+// evaluates the polynomial basis 
+
+KOKKOS_INLINE_FUNCTION
+void BasisPoly(ScratchVecView basis_monomial, const MatViewType& slice_length, Coord &p){
+    
+    basis_monomial(0) = 1;
+    dim = slice_length.extent(0);
+    degree = slice_length.extent(1);
+    
+    int prev_col = 0;
+    int curr_col = 1;
+
+    double point[MAX_DIM];
+    point[0] = p.x;
+    point[1] = p.y;
+    
+    if (dim == 3){
+	point[2] = p.z;
+    }
+
+    for (int i = 0; i < degree; ++i){
+	int offset = curr_col;
+	for (int j = 0; j < dim; ++j){
+	    for (k = 0; k < slice_length(i,j); ++k){
+		basis_monomial(offset + i) = basis_polynomial(prev_col +k) * point[j]; 
+		loc_offset += slice_length(i,j);
+
+	    }
+
+	    prev_col = curr_col;
+	    curr_col = offset;
+	}
+    }
+}
+// polynomial basis vector
+//KOKKOS_INLINE_FUNCTION
+//void BasisPoly(ScratchVecView basis_monomial, Coord& p1) {
+//  basis_monomial(0) = 1.0;
+//  basis_monomial(1) = p1.x;
+//  basis_monomial(2) = p1.y;
+//  basis_monomial(3) = p1.x * p1.x;
+//  basis_monomial(4) = p1.x * p1.y;
+//  basis_monomial(5) = p1.y * p1.y;
+//}
+//
 // radial basis function
 KOKKOS_INLINE_FUNCTION
 double rbf(double r_sq, double rho_sq) {
@@ -51,9 +121,14 @@ KOKKOS_INLINE_FUNCTION
 void VandermondeMatrix(ScratchMatView V, ScratchMatView local_source_points,
                        int j) {
   int N = local_source_points.extent(0);
+  int dim = local_source_points.extent(1);
+
   Coord source_point;
   source_point.x = local_source_points(j, 0);
   source_point.y = local_source_points(j, 1);
+  if (dim == 3){
+      source_point.z = local_source_points(j, 2);
+  }
   ScratchVecView basis_monomial = Kokkos::subview(V, j, Kokkos::ALL());
   BasisPoly(basis_monomial, source_point);
 }

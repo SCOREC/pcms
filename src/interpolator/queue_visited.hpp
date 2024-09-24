@@ -7,13 +7,14 @@
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_reduce.hpp>
-#define MAX_SIZE 500
+#define MAX_SIZE_QUEUE 500
+#define MAX_SIZE_TRACK 800
 using namespace std;
 using namespace Omega_h;
 
 class queue {
  private:
-  Real queue_array[MAX_SIZE];
+  LO queue_array[MAX_SIZE_QUEUE];
   int first = 0, last = -1, count = 0;
 
  public:
@@ -41,7 +42,7 @@ class queue {
 
 class track {
  private:
-  Real tracking_array[MAX_SIZE];
+  LO tracking_array[MAX_SIZE_TRACK];
   int first = 0, last = -1, count = 0;
 
  public:
@@ -63,14 +64,22 @@ class track {
 
 OMEGA_H_INLINE
 void queue::push_back(const int& item) {
-  last = (last + 1) % MAX_SIZE;
+  if (count == MAX_SIZE_QUEUE) {
+    printf("queue is full %d\n", count);
+    return;
+  }
+  last = (last + 1) % MAX_SIZE_QUEUE;
   queue_array[last] = item;
   count++;
 }
 
 OMEGA_H_INLINE
 void queue::pop_front() {
-  first = (first + 1) % MAX_SIZE;
+  if (count == 0) {
+    printf("queue is empty\n");
+    return;
+  }
+  first = (first + 1) % MAX_SIZE_QUEUE;
   count--;
 }
 
@@ -81,19 +90,25 @@ OMEGA_H_INLINE
 bool queue::isEmpty() const { return count == 0; }
 
 OMEGA_H_INLINE
-bool queue::isFull() const { return count == MAX_SIZE; }
+bool queue::isFull() const { return count == MAX_SIZE_QUEUE; }
 
 OMEGA_H_INLINE
 void track::push_back(const int& item) {
-  last = (last + 1) % MAX_SIZE;
+  if (count == MAX_SIZE_TRACK) {
+    printf("track is full %d\n", count);
+    return;
+  }
+  last = (last + 1) % MAX_SIZE_TRACK;
   tracking_array[last] = item;
   count++;
 }
 
 OMEGA_H_INLINE
 bool track::notVisited(const int& item) {
+  int id;
   for (int i = 0; i < count; ++i) {
-    if (tracking_array[i] == item) {
+    id = (first + i) % MAX_SIZE_TRACK;
+    if (tracking_array[id] == item) {
       return false;
     }
   }

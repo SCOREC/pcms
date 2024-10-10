@@ -15,21 +15,20 @@ set(HEADER_FILES
 
 install(FILES ${HEADER_FILES} DESTINATION include/pcms/interpolator)
 
+add_library(pcms_interpolator INTERFACE)
 
-add_library(interpolator INTERFACE)
+target_link_libraries(pcms_interpolator INTERFACE pcms::core)
 
-target_include_directories(interpolator INTERFACE
+target_include_directories(pcms_interpolator INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../pcms>
-    $<INSTALL_INTERFACE:include/pcms/interpolator>)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/pcms/interpolator>)
 
-target_link_libraries(interpolator INTERFACE pcms::core)
 
-install(TARGETS interpolator
+install(TARGETS pcms_interpolator
     EXPORT interpolatorTargets
     INCLUDES DESTINATION include/pcms/interpolator)
 
-add_subdirectory(test)
 
 install(EXPORT interpolatorTargets
     FILE interpolatorTargets.cmake

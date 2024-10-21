@@ -18,39 +18,42 @@ double func(Coord& p) {
   return Z;
 }
 
-// finds the slice lengths of the of the polynomial basis
+// computes the slice lengths of the of the polynomial basis
 
-KOKKOS_INLINE_FUNCTION
-void basisSliceLengths(MatViewType& array){
-    int dim = array.extent(0);
-    int degree = array.extent(1);
-    for (int i = 0; i < dim; ++i){
-	array(0,i) = 1;
+void basisSliceLengths(Kokkos::View<int**, Kokkos::HostSpace>& array){
+    int degree = array.extent(0);
+    int dim = array.extent(1);
+    
+    for (int j = 0; j < dim; ++j){
+	array(0, j) = 1; 
     }
 
-    for (int j = 0; j < degree; ++j){
-	array(j, 0) = 1;
+    for (int i = 0; i < degree; ++i){
+	array(i, 0) = 1;
     }
 
     for (int i = 1; i < degree; ++i){
 	for (int j = 1; j < dim; ++j){
-	    array(i, j) = array(i-1,j) + array(i,j-1);
-	}
+            array(i, j) = array(i , j - 1) + array(i - 1, j);
+        }
     }
+
 
 }
 
 // finds the size of the polynomial basis vector 
-KOKKOS_INLINE_FUNCTION
-int basisSize(const MatViewType& array){
+int basisSize(const Kokkos::View<int**, Kokkos::HostSpace>& array){
     int sum = 1;
-    int dim = array.extent(0);
-    int degree = array.extent(1);
+    int degree = array.extent(0);
+    int dim = array.extent(1);
+
     for (int i = 0; i < degree; ++i){
-	for (int j = 0; j < dim; ++j){
+        for (int j = 0; j < dim; ++j){
 	    sum += array(i, j);
-	}
+        }
     }
+
+    return sum; 
 }
 
 // evaluates the polynomial basis 
@@ -59,8 +62,8 @@ KOKKOS_INLINE_FUNCTION
 void BasisPoly(ScratchVecView basis_monomial, const MatViewType& slice_length, Coord &p){
     
     basis_monomial(0) = 1;
-    int dim = slice_length.extent(0);
-    int degree = slice_length.extent(1);
+    int dim = slice_length.extent(1);
+    int degree = slice_length.extent(0);
     
     int prev_col = 0;
     int curr_col = 1;
@@ -77,14 +80,14 @@ void BasisPoly(ScratchVecView basis_monomial, const MatViewType& slice_length, C
 	int offset = curr_col;
 	for (int j = 0; j < dim; ++j){
 	    for (int k = 0; k < slice_length(i,j); ++k){
-		basis_monomial(offset + i) = basis_monomial(prev_col +k) * point[j]; 
-		offset += slice_length(i,j);
-
+		basis_monomial(offset + k) = basis_monomial(prev_col +k) * point[j]; 
 	    }
 
-	    prev_col = curr_col;
-	    curr_col = offset;
+	    offset += slice_length(i,j);
 	}
+
+	prev_col = curr_col;
+	curr_col = offset;
     }
 }
 // polynomial basis vector

@@ -4,6 +4,7 @@
 #include "MLSCoefficients.hpp"
 #include "adj_search_dega2.hpp"
 #include "adj_search.hpp"
+#include <cassert>
 
 using namespace Omega_h;
 using namespace pcms;
@@ -23,14 +24,18 @@ Write<Real> mls_interpolation(const Reals source_values,
 
   Kokkos::View<size_t*> shmem_each_team(
       "stores the size required for each team", nvertices_target);
+ 
+ 
+
+  Kokkos::View<int**, Kokkos::HostSpace> host_slice_length("stores slice length of  polynomial basis in host", degree, dim);
+  MatViewType slice_length("stores slice length of polynomial basis in device", degree, dim); 
+  Kokkos::deep_copy(host_slice_length, 0);
   
-  MatViewType slice_length("stores slice length of  polynomial basis", degree, dim);
-  
-  Kokkos::deep_copy(slice_length, 0.0);
-  
-  basisSliceLengths(slice_length);
+  basisSliceLengths(host_slice_length);
 
   auto basis_size = basisSize(slice_length);
+  
+  Kokkos::deep_copy(slice_length, host_slice_length);
 
   Kokkos::parallel_for(
       "calculate the size required for scratch for each team", nvertices_target,
@@ -41,7 +46,7 @@ Write<Real> mls_interpolation(const Reals source_values,
 
         size_t total_shared_size = 0;
 
-        total_shared_size += ScratchMatView::shmem_size(basis_size, basis_size) * 4;
+        total_shared_size += ScratchMatView::shmem_size(basis_size, basis_size) * 4; 
         total_shared_size += ScratchMatView::shmem_size(basis_size, nsupports) * 2;
         total_shared_size += ScratchMatView::shmem_size(nsupports, basis_size);
         total_shared_size += ScratchVecView::shmem_size(basis_size);
@@ -59,7 +64,6 @@ Write<Real> mls_interpolation(const Reals source_values,
         }
       },
       Kokkos::Max<size_t>(shared_size));
-  printf("shared size = %d \n", shared_size);
 
   Write<Real> approx_target_values(nvertices_target, 0,
                                    "approximated target values");
@@ -67,7 +71,8 @@ Write<Real> mls_interpolation(const Reals source_values,
   team_policy tp(nvertices_target, Kokkos::AUTO);
 
   int scratch_size = tp.scratch_size_max(0);
-  printf("scratch size is %d \n", scratch_size);
+  
+  assert(shared_size > scratch_size && "The required scratch size exceeds the max available scratch size");
 
   Kokkos::parallel_for(
       "MLS coefficients", tp.set_scratch_size(0, Kokkos::PerTeam(shared_size)),
@@ -125,8 +130,8 @@ Write<Real> mls_interpolation(const Reals source_values,
 //	Kokkos::deep_copy(result, 0.0);
 //	Kokkos::deep_copy(Phi, 0.0);
 //        
-     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, 6), [=](int j) {
-         for (int k = 0; k < 6; ++k) {
+     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, basis_size), [=](int j) {
+         for (int k = 0; k < basis_size; ++k) {
            lower(j, k) = 0;
            forward_matrix(j, k) = 0;
            moment_matrix(j, k) = 0;
@@ -143,7 +148,7 @@ Write<Real> mls_interpolation(const Reals source_values,
 
        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports),
                             [=](int j) {
-                              for (int k = 0; k < 6; ++k) {
+                              for (int k = 0; k < basis_size; ++k) {
                                 V(j, k) = 0;
                               }
 

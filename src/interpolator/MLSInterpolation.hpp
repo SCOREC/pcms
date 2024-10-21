@@ -148,6 +148,17 @@ Write<Real> mls_interpolation(const Reals source_values,
               PhiVector(Phi, target_point, local_source_points, j, radii2[i]);
             });
 
+        // sum phi
+        double sum_phi = 0;
+        Kokkos::parallel_reduce(
+            Kokkos::TeamThreadRange(team, nsupports),
+            [=](const int j, double& lsum) { lsum += Phi(j); }, sum_phi);
+        
+        // normalize phi with sum_phi
+        Kokkos::parallel_for(
+            Kokkos::TeamThreadRange(team, nsupports),
+            [=](int j) { Phi(j) = Phi(j) / sum_phi; });
+
         team.team_barrier();
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports),

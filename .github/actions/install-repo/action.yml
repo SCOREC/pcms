@@ -12,12 +12,12 @@ runs:
   using: "composite"
   steps:
 
-  # - name: Cache ${{inputs.repo-name}} Build
-  #   uses: actions/cache@v3
-  #   id: build-${{inputs.repo-name}}
-  #   with:
-  #     key: build-${{inputs.repo-name}}
-  #     path: ${{ runner.temp }}/build-${{inputs.repo-name}}
+  - name: Cache ${{inputs.repo-name}} Build
+    uses: actions/cache@v3
+    id: build-${{inputs.repo-name}}
+    with:
+      key: build-${{inputs.repo-name}}
+      path: ${{ runner.temp }}/build-${{inputs.repo-name}}
       
   - name: ${{inputs.repo-name}} Checkout repo
     if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}

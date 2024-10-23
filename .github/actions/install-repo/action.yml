@@ -16,6 +16,7 @@ runs:
 
   - name: Cache ${{inputs.repo-name}} Build
     uses: actions/cache@v3
+    id: build-kokkos
     with:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}

@@ -39,6 +39,7 @@ runs:
       -DKokkos_ENABLE_CUDA_LAMBDA=off
       -DKokkos_ENABLE_DEBUG=on
   
-  # - name: ${{inputs.repo-name}} Build
-  #   if: ${{ steps.build-${{inputs.repo-name}}.outputs.cache-hit != 'true' }}
-  #   run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install
+  - name: ${{inputs.repo-name}} Build
+    shell: bash
+    if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
+    run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install

@@ -37,6 +37,8 @@ jobs:
 
     # Build Kokkos
 
+    - uses: actions/checkout@v4
+
     - name: build kokkos
       uses: ./.github/actions/install-repo
       with:

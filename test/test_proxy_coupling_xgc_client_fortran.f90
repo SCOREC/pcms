@@ -33,7 +33,7 @@ Program main
     type(PcmsReverseClassificationHandle) :: reverse_classification
     type(PcmsFieldHandle), dimension(2) :: fields
     type(PcmsFieldAdapterHandle), dimension(2) :: adapters
-    character(len = 80), dimension(:), allocatable :: args
+    character(len = 200), dimension(:), allocatable :: args
     character(len = :), allocatable :: rc_file
     integer(C_LONG), allocatable, target :: data(:)
     integer(C_LONG), pointer :: data_pointer(:)
@@ -57,7 +57,7 @@ Program main
     end do
     rc_file = trim(args(1))
 
-    plane = mod(world_rank, plane)
+    plane = nplanes
     call MPI_Comm_split(MPI_COMM_WORLD, plane, world_rank, plane_comm, ierror)
     call MPI_Comm_rank(plane_comm, plane_rank, ierror)
     call MPI_Comm_size(plane_comm, plane_size, ierror)

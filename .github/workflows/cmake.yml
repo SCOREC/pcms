@@ -14,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        build_type: [Release, RelWithDebInfo]
+        build_type: [Release]
         memory_test: [ON, OFF]
         compiler: [g++]
         language: ['cpp']

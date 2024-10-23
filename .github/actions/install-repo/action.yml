@@ -28,6 +28,7 @@ runs:
       path: ${{inputs.repo-name}}
 
   - name: ${{inputs.repo-name}} Configure CMake
+    shell: bash
     if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
     run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
       -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install

@@ -38,7 +38,7 @@ jobs:
     # Build Kokkos
 
     - name: build kokkos
-        uses: OWNER/hello-world-composite-action@SHA
+        uses: ./.github/actions/install-repo
         with:
           repo-name: 'kokkos'
           repo-path: 'kokkos/kokkos'

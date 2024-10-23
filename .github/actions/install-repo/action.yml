@@ -20,7 +20,7 @@ runs:
   #     path: ${{ runner.temp }}/build-${{inputs.repo-name}}
       
   - name: ${{inputs.repo-name}} Checkout repo
-    if: ${{ steps.build-kokkos.outputs.cache-hit != 'true' }}
+    if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
     uses: actions/checkout@v3
     with:
       repository: ${{inputs.repo-path}}

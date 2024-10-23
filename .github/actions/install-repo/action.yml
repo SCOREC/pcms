@@ -7,6 +7,8 @@ inputs:
     required: true
   repo-ref:
     required: true
+  options:
+    required: true
 
 runs:
   using: "composite"
@@ -31,12 +33,7 @@ runs:
     if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
     run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
       -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
-      -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
-      -DKokkos_ENABLE_SERIAL=ON
-      -DKokkos_ENABLE_OPENMP=off
-      -DKokkos_ENABLE_CUDA=off
-      -DKokkos_ENABLE_CUDA_LAMBDA=off
-      -DKokkos_ENABLE_DEBUG=on
+      ${{inputs.options}}
   
   - name: ${{inputs.repo-name}} Build
     shell: bash

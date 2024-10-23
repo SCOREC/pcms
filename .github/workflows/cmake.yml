@@ -1,0 +1,45 @@
+name: build-test
+on: 
+  push:
+  schedule:
+    - cron: '12 14 * * 3'
+
+jobs:
+  buildTest:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      matrix:
+        build_type: [Release, RelWithDebInfo]
+        memory_test: [ON, OFF]
+        compiler: [g++]
+        language: ['cpp']
+        exclude:
+          - build_type: Release
+            memory_test: ON
+          - build_type: RelWithDebInfo
+            memory_test: OFF
+      
+    steps:
+
+    - name: Update packages
+      run: sudo apt-get update
+
+    - name: Install mpi
+      run: sudo apt-get install -yq mpich libmpich-dev
+
+    - name: Install Valgrind
+      run: sudo apt-get install -yq valgrind
+
+    # Build Kokkos
+
+    - name: build kokkos
+        uses: OWNER/hello-world-composite-action@SHA
+        with:
+          repo-name: 'kokkos'
+          repo-path: 'kokkos/kokkos'
+          repo-ref: '4.2.00'

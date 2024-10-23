@@ -1,43 +1,54 @@
-name: install-repo
-
-inputs:
-  repo-name:
-    required: true
-  repo-path:
-    required: true
-  repo-ref:
-    required: true
-
+name: 'Hello World'
+description: 'Greet someone'
 runs:
   using: "composite"
   steps:
+    - name: Set Greeting
+      run: echo "Hello world"
+      shell: bash
 
-  - name: Cache ${{inputs.repo-name}} Build
-    uses: actions/cache@v3
-    id: build-${{inputs.repo-name}}
-    with:
-      key: build-${{inputs.repo-name}}
-      path: ${{ runner.temp }}/build-${{inputs.repo-name}}
+
+
+# name: install-repo
+
+# inputs:
+#   repo-name:
+#     required: true
+#   repo-path:
+#     required: true
+#   repo-ref:
+#     required: true
+
+# runs:
+#   using: "composite"
+#   steps:
+
+#   - name: Cache ${{inputs.repo-name}} Build
+#     uses: actions/cache@v3
+#     id: build-${{inputs.repo-name}}
+#     with:
+#       key: build-${{inputs.repo-name}}
+#       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
       
-  - name: ${{inputs.repo-name}} Checkout repo
-    if: ${{ steps.build-${{inputs.repo-name}}.outputs.cache-hit != 'true' }}
-    uses: actions/checkout@v3
-    with:
-      repository: ${{inputs.repo-path}}
-      ref: ${{inputs.repo-ref}}
-      path: ${{inputs.repo-name}}
+#   - name: ${{inputs.repo-name}} Checkout repo
+#     if: ${{ steps.build-${{inputs.repo-name}}.outputs.cache-hit != 'true' }}
+#     uses: actions/checkout@v3
+#     with:
+#       repository: ${{inputs.repo-path}}
+#       ref: ${{inputs.repo-ref}}
+#       path: ${{inputs.repo-name}}
 
-  - name: ${{inputs.repo-name}} Configure CMake
-    if: ${{ steps.build-${{inputs.repo-name}}.outputs.cache-hit != 'true' }}
-    run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
-      -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
-      -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
-      -DKokkos_ENABLE_SERIAL=ON
-      -DKokkos_ENABLE_OPENMP=off
-      -DKokkos_ENABLE_CUDA=off
-      -DKokkos_ENABLE_CUDA_LAMBDA=off
-      -DKokkos_ENABLE_DEBUG=on
+#   - name: ${{inputs.repo-name}} Configure CMake
+#     if: ${{ steps.build-${{inputs.repo-name}}.outputs.cache-hit != 'true' }}
+#     run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
+#       -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
+#       -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+#       -DKokkos_ENABLE_SERIAL=ON
+#       -DKokkos_ENABLE_OPENMP=off
+#       -DKokkos_ENABLE_CUDA=off
+#       -DKokkos_ENABLE_CUDA_LAMBDA=off
+#       -DKokkos_ENABLE_DEBUG=on
   
-  - name: ${{inputs.repo-name}} Build
-    if: ${{ steps.build-${{inputs.repo-name}}.outputs.cache-hit != 'true' }}
-    run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install
+#   - name: ${{inputs.repo-name}} Build
+#     if: ${{ steps.build-${{inputs.repo-name}}.outputs.cache-hit != 'true' }}
+#     run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install

@@ -38,8 +38,8 @@ jobs:
     # Build Kokkos
 
     - name: build kokkos
-        uses: ./.github/actions/install-repo
-        with:
-          repo-name: 'kokkos'
-          repo-path: 'kokkos/kokkos'
-          repo-ref: '4.2.00'
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'kokkos'
+        repo-path: 'kokkos/kokkos'
+        repo-ref: '4.2.00'

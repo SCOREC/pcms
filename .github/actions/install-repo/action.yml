@@ -21,11 +21,15 @@ runs:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
 
-  - if: ${{ steps.build-kokkos.outputs.cache-hit == 'true'}}
+
+  - run: echo "CACHE_HIT=${'steps.build-kokkos.outputs.cache-hit'}" >> $GITHUB_ENV
+      
+
+  - if: ${{ CACHE_HIT == 'false'}}
     shell: bash
     run: echo "hello false"
   
-  - if: ${{ steps.build-kokkos.outputs.cache-hit == 'true'}}
+  - if: ${{ CACHE_HIT == 'true'}}
     shell: bash
     run: echo "hello true"
       

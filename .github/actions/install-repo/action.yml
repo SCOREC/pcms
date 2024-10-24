@@ -21,11 +21,11 @@ runs:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
 
-  - if: ${{ steps["build-kokkos"].outputs.cache-hit == 'false'}}
+  - if: ${{ steps['build-kokkos'].outputs.cache-hit == 'false'}}
     shell: bash
     run: echo "hello false"
   
-  - if: ${{ steps["build-kokkos"].outputs.cache-hit == 'true'}}
+  - if: ${{ steps['build-kokkos'].outputs.cache-hit == 'true'}}
     shell: bash
     run: echo "hello true"
       

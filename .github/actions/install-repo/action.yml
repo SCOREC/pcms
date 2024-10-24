@@ -16,13 +16,13 @@ runs:
 
   - name: Check Cache
     uses: actions/cache@v3
-    id: build-kokkos
+    id: check-cache
     with:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
       
   - name: Checkout Repo
-    if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
+    if: ${{ !steps.check-cache.outputs.cache-hit }}
     uses: actions/checkout@v3
     with:
       repository: ${{inputs.repo-path}}
@@ -31,12 +31,12 @@ runs:
 
   - name: Configure CMake
     shell: bash
-    if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
+    if: ${{ !steps.check-cache.outputs.cache-hit }}
     run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
       -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
       ${{inputs.options}}
   
   - name: Build Cmake
     shell: bash
-    if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
+    if: ${{ !steps.check-cache.outputs.cache-hit }}
     run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install

@@ -94,14 +94,14 @@ jobs:
         cache: true
         options: '-DCMAKE_BUILD_TYPE=Release
                   -DBUILD_SHARED_LIBS=off
-                  -DOmega_h_USE_Kokkos=off
+                  -DOmega_h_USE_Kokkos=on
                   -DOmega_h_USE_CUDA=off
                   -DOmega_h_USE_MPI=on
                   -DMPIEXEC_EXECUTABLE=srun
                   -DBUILD_TESTING=off
                   -DCMAKE_C_COMPILER=mpicc
                   -DCMAKE_CXX_COMPILER=mpicxx
-                  -DKokkos_PREFIX=${{ runner.temp }}/build-kokkos/install'
+                  -DKokkos_PREFIX=${{ runner.temp }}/build-kokkos/install/lib/cmake'
 
     - name: build Catch2
       uses: ./.github/actions/install-repo

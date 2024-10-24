@@ -141,3 +141,10 @@ jobs:
 
     # - name: Install Valgrind
     #   run: sudo apt-get install -yq valgrind
+
+    - name: Run CTest
+      run: ctest --test-dir ${{ runner.temp }}/build-pumi-pic
+
+    - name: Print Test
+      if: always()
+      run: cat ${{ runner.temp }}/build-pcms/Testing/Temporary/LastTest.log

@@ -21,7 +21,7 @@ runs:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
 
-  - if: ${{ steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
+  - if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
     shell: bash
     run: echo "hello false"
       

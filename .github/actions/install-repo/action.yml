@@ -20,6 +20,10 @@ runs:
     with:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
+
+  - if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
+    shell: bash
+    run: echo "hello world"
       
   - name: ${{inputs.repo-name}} Checkout repo
     if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}

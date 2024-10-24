@@ -143,7 +143,7 @@ jobs:
     #   run: sudo apt-get install -yq valgrind
 
     - name: Run CTest
-      run: ctest --test-dir ${{ runner.temp }}/build-pumi-pic
+      run: ctest --test-dir ${{ runner.temp }}/build-pcms
 
     - name: Print Test
       if: always()

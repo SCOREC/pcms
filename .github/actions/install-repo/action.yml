@@ -22,26 +22,26 @@ runs:
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
 
   - name : print message
-    if: ${{ format('!steps.build-{0}.outputs.cache-hit', inputs.repo-name)}}
+    if: ${{ !steps.build-kokkos.outputs.cache-hit }}
     shell: bash
     run: echo "hello world"
       
-  - name: ${{inputs.repo-name}} Checkout repo
-    if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
-    uses: actions/checkout@v3
-    with:
-      repository: ${{inputs.repo-path}}
-      ref: ${{inputs.repo-ref}}
-      path: ${{inputs.repo-name}}
+  # - name: ${{inputs.repo-name}} Checkout repo
+  #   if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
+  #   uses: actions/checkout@v3
+  #   with:
+  #     repository: ${{inputs.repo-path}}
+  #     ref: ${{inputs.repo-ref}}
+  #     path: ${{inputs.repo-name}}
 
-  - name: ${{inputs.repo-name}} Configure CMake
-    shell: bash
-    if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
-    run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
-      -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
-      ${{inputs.options}}
+  # - name: ${{inputs.repo-name}} Configure CMake
+  #   shell: bash
+  #   if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
+  #   run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
+  #     -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
+  #     ${{inputs.options}}
   
-  - name: ${{inputs.repo-name}} Build
-    shell: bash
-    if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
-    run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install
+  # - name: ${{inputs.repo-name}} Build
+  #   shell: bash
+  #   if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
+  #   run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install

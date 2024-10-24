@@ -117,7 +117,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         repository: jacobmerson/pcms_testcases
-        path: ${{ runner.temp }}/pcms_testcases
+        path: pcms_testcases
 
     - name: Install fftw3
       run: sudo apt-get install -yq fftw3 fftw3-dev pkg-config
@@ -137,7 +137,7 @@ jobs:
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
-                  -DPCMS_TEST_DATA_DIR=${{ runner.temp }}/pcms_testcases'
+                  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases'
 
     # - name: Install Valgrind
     #   run: sudo apt-get install -yq valgrind

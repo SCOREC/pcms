@@ -18,7 +18,7 @@ runs:
   steps:
 
   - name: Check Cache
-    if: ${{cache}}
+    if: ${{inputs.cache}}
     uses: actions/cache@v3
     id: check-cache
     with:

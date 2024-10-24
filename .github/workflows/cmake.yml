@@ -133,7 +133,7 @@ jobs:
                   -DCMAKE_C_COMPILER=mpicc
                   -DCMAKE_CXX_COMPILER=mpicxx
                   -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev
-                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/lib/cmake/perfstubs
+                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2

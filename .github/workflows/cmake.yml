@@ -132,9 +132,9 @@ jobs:
         options: '-DCMAKE_BUILD_TYPE=Release
                   -DCMAKE_C_COMPILER=mpicc
                   -DCMAKE_CXX_COMPILER=mpicxx
-                  -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib64/cmake/redev
-                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/lib64/cmake/perfstubs
-                  -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib64/cmake/Omega_h
-                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib64/cmake/Kokkos
-                  -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib64/cmake/Catch2
+                  -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev
+                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/lib/cmake/perfstubs
+                  -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
+                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
+                  -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DPCMS_TEST_DATA_DIR=${{ runner.temp }}/pcms_testcases'

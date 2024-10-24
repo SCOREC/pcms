@@ -22,7 +22,7 @@ runs:
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
 
   - name : print message
-    if: true
+    if: false
     shell: bash
     run: echo "hello world"
       

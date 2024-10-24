@@ -55,7 +55,7 @@ jobs:
       with:
         repo-name: 'ADIOS2'
         repo-path: 'ornladios/ADIOS2'
-        repo-ref: 'master'
+        repo-ref: ''
         options: '-DADIOS2_USE_CUDA=off
                   -DCMAKE_BUILD_TYPE=Release
                   -DCMAKE_CXX_COMPILER=mpicxx
@@ -66,7 +66,7 @@ jobs:
       with:
         repo-name: 'perfstubs'
         repo-path: 'UO-OACISS/perfstubs'
-        repo-ref: 'master'
+        repo-ref: ''
         options: '-DCMAKE_BUILD_TYPE=Release
                   -DCMAKE_CXX_COMPILER=mpicxx
                   -DCMAKE_C_COMPILER=mpicc'
@@ -76,7 +76,7 @@ jobs:
       with:
         repo-name: 'redev'
         repo-path: 'SCOREC/redev'
-        repo-ref: 'main'
+        repo-ref: ''
         options: '-DCMAKE_BUILD_TYPE=Release
                   -DCMAKE_CXX_COMPILER=mpicxx
                   -DCMAKE_C_COMPILER=mpicc
@@ -100,3 +100,12 @@ jobs:
                   -DCMAKE_C_COMPILER=mpicc
                   -DCMAKE_CXX_COMPILER=mpicxx
                   -DKokkos_PREFIX=${{ runner.temp }}/build-kokkos/install'
+
+    - name: build Catch2
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'Catch2'
+        repo-path: 'catchorg/Catch2'
+        repo-ref: ''
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_CXX_COMPILER=mpicxx'

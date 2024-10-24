@@ -21,13 +21,9 @@ runs:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
 
-  - if: ${{ steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit == 'false'}}
+  - if: ${{ steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
     shell: bash
     run: echo "hello false"
-  
-  - if: ${{ steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit == 'true'}}
-    shell: bash
-    run: echo "hello true"
       
   # - name: ${{inputs.repo-name}} Checkout repo
   #   if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}

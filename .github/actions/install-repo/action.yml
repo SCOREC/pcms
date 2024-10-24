@@ -21,11 +21,11 @@ runs:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
 
-  - if: format('false', inputs.repo-name)
+  - if: [format('false', inputs.repo-name)]
     shell: bash
     run: echo "hello false"
   
-  - if: format('true', inputs.repo-name)
+  - if: [format('true', inputs.repo-name)]
     shell: bash
     run: echo "hello true"
       

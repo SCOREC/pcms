@@ -20,27 +20,23 @@ runs:
     with:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
-
-  - if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
-    shell: bash
-    run: echo "hello false"
       
-  # - name: ${{inputs.repo-name}} Checkout repo
-  #   if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
-  #   uses: actions/checkout@v3
-  #   with:
-  #     repository: ${{inputs.repo-path}}
-  #     ref: ${{inputs.repo-ref}}
-  #     path: ${{inputs.repo-name}}
+  - name: ${{inputs.repo-name}} Checkout repo
+    if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
+    uses: actions/checkout@v3
+    with:
+      repository: ${{inputs.repo-path}}
+      ref: ${{inputs.repo-ref}}
+      path: ${{inputs.repo-name}}
 
-  # - name: ${{inputs.repo-name}} Configure CMake
-  #   shell: bash
-  #   if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
-  #   run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
-  #     -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
-  #     ${{inputs.options}}
+  - name: ${{inputs.repo-name}} Configure CMake
+    shell: bash
+    if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
+    run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
+      -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
+      ${{inputs.options}}
   
-  # - name: ${{inputs.repo-name}} Build
-  #   shell: bash
-  #   if: ${{ steps.build-[inputs.repo-name].outputs.cache-hit != 'true' }}
-  #   run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install
+  - name: ${{inputs.repo-name}} Build
+    shell: bash
+    if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
+    run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install

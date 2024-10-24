@@ -9,12 +9,16 @@ inputs:
     required: true
   options:
     required: true
+  cache:
+    required: true
+    type: boolean
 
 runs:
   using: "composite"
   steps:
 
   - name: Check Cache
+    if: ${{cache}}
     uses: actions/cache@v3
     id: check-cache
     with:
@@ -29,13 +33,13 @@ runs:
       path: ${{inputs.repo-name}}
 
   - name: Configure CMake
-    shell: bash
     if: ${{ !steps.check-cache.outputs.cache-hit }}
+    shell: bash
     run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
       -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
       ${{inputs.options}}
   
   - name: Build Cmake
-    shell: bash
     if: ${{ !steps.check-cache.outputs.cache-hit }}
+    shell: bash
     run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install

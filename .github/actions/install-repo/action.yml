@@ -22,7 +22,7 @@ runs:
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
 
   - name : print message
-    if: ${{ !steps.build-kokkos.outputs.cache-hit }}
+    if: true
     shell: bash
     run: echo "hello world"
       

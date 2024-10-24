@@ -62,11 +62,26 @@ jobs:
                   -DCMAKE_C_COMPILER=mpicc'
 
     - name: build perfstubs
-    uses: ./.github/actions/install-repo
-    with:
-      repo-name: 'perfstubs'
-      repo-path: 'UO-OACISS/perfstubs'
-      repo-ref: 'master'
-      options: '-DCMAKE_BUILD_TYPE=Release
-                -DCMAKE_CXX_COMPILER=mpicxx
-                -DCMAKE_C_COMPILER=mpicc'
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'perfstubs'
+        repo-path: 'UO-OACISS/perfstubs'
+        repo-ref: 'master'
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_CXX_COMPILER=mpicxx
+                  -DCMAKE_C_COMPILER=mpicc'
+
+    - name: build redev
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'redev'
+        repo-path: 'SCOREC/redev'
+        repo-ref: 'master'
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_CXX_COMPILER=mpicxx
+                  -DCMAKE_C_COMPILER=mpicc
+                  -DMPIEXEC_EXECUTABLE=`which srun`
+                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs
+                  -DADIOS2_ROOT=${{ runner.temp }}/build-ADIOS2/install'
+                  
+                  

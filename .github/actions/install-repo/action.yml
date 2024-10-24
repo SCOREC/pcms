@@ -14,14 +14,14 @@ runs:
   using: "composite"
   steps:
 
-  - name: Cache ${{inputs.repo-name}} Build
+  - name: Check Cache
     uses: actions/cache@v3
     id: build-kokkos
     with:
       key: build-${{inputs.repo-name}}
       path: ${{ runner.temp }}/build-${{inputs.repo-name}}
       
-  - name: ${{inputs.repo-name}} Checkout repo
+  - name: Checkout Repo
     if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
     uses: actions/checkout@v3
     with:
@@ -29,14 +29,14 @@ runs:
       ref: ${{inputs.repo-ref}}
       path: ${{inputs.repo-name}}
 
-  - name: ${{inputs.repo-name}} Configure CMake
+  - name: Configure CMake
     shell: bash
     if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
     run: cmake -S $GITHUB_WORKSPACE/${{inputs.repo-name}} -B ${{ runner.temp }}/build-${{inputs.repo-name}}
       -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/build-${{inputs.repo-name}}/install
       ${{inputs.options}}
   
-  - name: ${{inputs.repo-name}} Build
+  - name: Build Cmake
     shell: bash
     if: ${{ !steps[format('build-{0}', inputs.repo-name)].outputs.cache-hit }}
     run: cmake --build ${{ runner.temp }}/build-${{inputs.repo-name}} -j8 --target install

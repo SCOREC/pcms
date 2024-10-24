@@ -50,13 +50,23 @@ jobs:
                   -DKokkos_ENABLE_CUDA_LAMBDA=off
                   -DKokkos_ENABLE_DEBUG=on'
 
-    # - name: build ADIOS2
-    #   uses: ./.github/actions/install-repo
-    #   with:
-    #     repo-name: 'ADIOS2'
-    #     repo-path: 'ornladios/ADIOS2'
-    #     repo-ref: 'master'
-    #     options: '-DADIOS2_USE_CUDA=off
-    #               -DCMAKE_BUILD_TYPE=Release
-    #               -DCMAKE_CXX_COMPILER=mpicxx
-    #               -DCMAKE_C_COMPILER=mpicc'
+    - name: build ADIOS2
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'ADIOS2'
+        repo-path: 'ornladios/ADIOS2'
+        repo-ref: 'master'
+        options: '-DADIOS2_USE_CUDA=off
+                  -DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_CXX_COMPILER=mpicxx
+                  -DCMAKE_C_COMPILER=mpicc'
+
+    - name: build perfstubs
+    uses: ./.github/actions/install-repo
+    with:
+      repo-name: 'perfstubs'
+      repo-path: 'UO-OACISS/perfstubs'
+      repo-ref: 'master'
+      options: '-DCMAKE_BUILD_TYPE=Release
+                -DCMAKE_CXX_COMPILER=mpicxx
+                -DCMAKE_C_COMPILER=mpicc'

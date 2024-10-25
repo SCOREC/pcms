@@ -28,14 +28,16 @@ Write<Real> mls_interpolation(const Reals source_values,
  
 
   Kokkos::View<int**, Kokkos::HostSpace> host_slice_length("stores slice length of  polynomial basis in host", degree, dim);
-  MatViewType slice_length("stores slice length of polynomial basis in device", degree, dim); 
   Kokkos::deep_copy(host_slice_length, 0);
   
   basisSliceLengths(host_slice_length);
 
-  auto basis_size = basisSize(slice_length);
-  
-  Kokkos::deep_copy(slice_length, host_slice_length);
+  auto basis_size = basisSize(host_slice_length);
+  printf("basis_size is %d\n", basis_size); 
+  MatViewType slice_length("stores slice length of polynomial basis in device", degree, dim); 
+  auto slice_length_hd = Kokkos::create_mirror_view(slice_length);
+  Kokkos::deep_copy(slice_length_hd, host_slice_length);
+  Kokkos::deep_copy(slice_length, slice_length_hd);
 
   Kokkos::parallel_for(
       "calculate the size required for scratch for each team", nvertices_target,
@@ -72,7 +74,7 @@ Write<Real> mls_interpolation(const Reals source_values,
 
   int scratch_size = tp.scratch_size_max(0);
   
-  assert(shared_size > scratch_size && "The required scratch size exceeds the max available scratch size");
+  assert(scratch_size > shared_size && "The required scratch size exceeds the max available scratch size");
 
   Kokkos::parallel_for(
       "MLS coefficients", tp.set_scratch_size(0, Kokkos::PerTeam(shared_size)),
@@ -169,8 +171,9 @@ Write<Real> mls_interpolation(const Reals source_values,
         BasisPoly(targetMonomialVec, slice_length, target_point);
 
         Kokkos::parallel_for(
-            Kokkos::TeamThreadRange(team, nsupports),
-            [=](int j) { VandermondeMatrix(V, local_source_points, j, slice_length); });
+            Kokkos::TeamThreadRange(team, nsupports),[=](int j) { 
+		VandermondeMatrix(V, local_source_points, j, slice_length); 
+	});
 
         team.team_barrier();
 

@@ -14,7 +14,7 @@ KOKKOS_INLINE_FUNCTION
 double func(Coord& p) {
   auto x = (p.x - 0.5) * PI_M * 2;
   auto y = (p.y - 0.5) * PI_M * 2;
-  double Z = sin(x) * sin(y);
+  double Z = sin(x) * sin(y) + 2;
   return Z;
 }
 
@@ -90,18 +90,8 @@ void BasisPoly(ScratchVecView basis_monomial, const MatViewType& slice_length, C
 	curr_col = offset;
     }
 }
-// polynomial basis vector
-//KOKKOS_INLINE_FUNCTION
-//void BasisPoly(ScratchVecView basis_monomial, Coord& p1) {
-//  basis_monomial(0) = 1.0;
-//  basis_monomial(1) = p1.x;
-//  basis_monomial(2) = p1.y;
-//  basis_monomial(3) = p1.x * p1.x;
-//  basis_monomial(4) = p1.x * p1.y;
-//  basis_monomial(5) = p1.y * p1.y;
-//}
-//
-// radial basis function
+
+
 KOKKOS_INLINE_FUNCTION
 double rbf(double r_sq, double rho_sq) {
   double phi;
@@ -123,8 +113,8 @@ double rbf(double r_sq, double rho_sq) {
 
 // create vandermondeMatrix
 KOKKOS_INLINE_FUNCTION
-void VandermondeMatrix(ScratchMatView& V, const ScratchMatView& local_source_points,
-                       int j, const MatViewType& slice_length) {
+void VandermondeMatrix(ScratchMatView V, const ScratchMatView local_source_points,
+                       int j, const MatViewType slice_length) {
   int N = local_source_points.extent(0);
   int dim = local_source_points.extent(1);
 
@@ -153,8 +143,8 @@ void PTphiMatrix(ScratchMatView pt_phi, ScratchMatView V, ScratchVecView Phi,
 
 // radial basis function vector
 KOKKOS_INLINE_FUNCTION
-void PhiVector(ScratchVecView& Phi, const Coord& target_point,
-               const ScratchMatView& local_source_points, int j,
+void PhiVector(ScratchVecView Phi, const Coord target_point,
+               const ScratchMatView local_source_points, int j,
                double cuttoff_dis_sq) {
   int N = local_source_points.extent(0);
   double dx = target_point.x - local_source_points(j, 0);

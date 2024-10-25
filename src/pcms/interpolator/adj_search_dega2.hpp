@@ -33,7 +33,7 @@ class FindSupports {
   FindSupports(Mesh& mesh_) : mesh(mesh_) {};
 
   void adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSupports,
-                      Write<LO>& support_idx, Write<Real>& radii2,
+                      Write<LO>& support_idx, Write<Real>& radii2, 
                       bool is_build_csr_call);
 };
 
@@ -41,7 +41,6 @@ void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSupports,
                                   Write<LO>& support_idx, Write<Real>& radii2,
                                   bool is_build_csr_call) {
   // Mesh Info
-  LO min_num_supports = 20;  // TODO: make this an input parameter
   const auto& mesh_coords = mesh.coords();
   const auto& nvertices = mesh.nverts();
   const auto& dim = mesh.dim();
@@ -185,8 +184,7 @@ struct SupportResults {
   Write<Real> radii2;  // squared radii of the supports
 };
 
-SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance) {
-  LO min_support = 12;
+SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance, LO min_support) {
   SupportResults support;
 
   FindSupports search(mesh);

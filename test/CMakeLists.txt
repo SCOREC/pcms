@@ -193,6 +193,7 @@ if(Catch2_FOUND)
               test_omega_h_copy.cpp
               test_point_search.cpp
 	      test_mls_basis.cpp
+	      test_rbf_interp.cpp
               )
   endif ()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})

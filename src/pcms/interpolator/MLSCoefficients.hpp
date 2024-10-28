@@ -19,7 +19,9 @@ double func(Coord& p) {
 }
 
 // computes the slice lengths of the of the polynomial basis
+//
 
+KOKKOS_INLINE_FUNCTION
 void basisSliceLengths(Kokkos::View<int**, Kokkos::HostSpace>& array){
     int degree = array.extent(0);
     int dim = array.extent(1);
@@ -42,6 +44,8 @@ void basisSliceLengths(Kokkos::View<int**, Kokkos::HostSpace>& array){
 }
 
 // finds the size of the polynomial basis vector 
+
+KOKKOS_INLINE_FUNCTION
 int basisSize(const Kokkos::View<int**, Kokkos::HostSpace>& array){
     int sum = 1;
     int degree = array.extent(0);

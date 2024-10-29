@@ -35,12 +35,12 @@ public:
   FindSupports(Mesh& source_mesh_, Mesh& target_mesh_)
     : source_mesh(source_mesh_), target_mesh(target_mesh_) {};
 
-  void adjBasedSearch(const Write<LO>& supports_ptr, Write<LO>& nSupports,
+  void adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSupports,
                       Write<LO>& support_idx, Write<Real>& radii2,
                       bool is_build_csr_call);
 };
 
-void FindSupports::adjBasedSearch(const Write<LO>& supports_ptr,
+void FindSupports::adjBasedSearch(Write<LO>& supports_ptr,
                                   Write<LO>& nSupports, Write<LO>& support_idx,
                                   Write<Real>& radii2, bool is_build_csr_call)
 {

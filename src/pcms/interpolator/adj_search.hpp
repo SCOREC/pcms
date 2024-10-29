@@ -33,14 +33,15 @@ class FindSupports {
   FindSupports(Mesh& source_mesh_, Mesh& target_mesh_)
       : source_mesh(source_mesh_), target_mesh(target_mesh_) {};
 
-  void adjBasedSearch(const Real& cutoffDistance, const Write<LO>& supports_ptr,
-                      Write<LO>& nSupports, Write<LO>& support_idx);
+  void adjBasedSearch(const Write<LO>& supports_ptr,
+                      Write<LO>& nSupports, Write<LO>& support_idx,
+                      Write<Real>& radii2, bool is_build_csr_call);
 };
 
-void FindSupports::adjBasedSearch(const Real& cutoffDistance,
-                                  const Write<LO>& supports_ptr,
+void FindSupports::adjBasedSearch(const Write<LO>& supports_ptr,
                                   Write<LO>& nSupports,
-                                  Write<LO>& support_idx) {
+                                  Write<LO>& support_idx,
+                                  Write<Real>& radii2, bool is_build_csr_call) {
   //  Source Mesh Info
 
   const auto& sourcePoints_coords = source_mesh.coords();
@@ -81,6 +82,7 @@ void FindSupports::adjBasedSearch(const Real& cutoffDistance,
       OMEGA_H_LAMBDA(const LO id) {
         queue queue;
         track visited;
+        Real cutoffDistance = radii2[id];
 
         LO source_cell_id = results(id).tri_id;
 
@@ -100,7 +102,7 @@ void FindSupports::adjBasedSearch(const Real& cutoffDistance,
 
         LO start_counter;
 
-        if (support_idx.size() > 0) {
+        if (!is_build_csr_call) {
           start_counter = supports_ptr[id];
         }
 
@@ -120,7 +122,7 @@ void FindSupports::adjBasedSearch(const Real& cutoffDistance,
           if (dist <= cutoffDistance) {
             count++;
             queue.push_back(vert_id);
-            if (support_idx.size() > 0) {
+            if (!is_build_csr_call) {
               LO idx_count = count - 1;
               support_idx[start_counter + idx_count] = vert_id;
             }
@@ -151,7 +153,7 @@ void FindSupports::adjBasedSearch(const Real& cutoffDistance,
               if (dist <= cutoffDistance) {
                 count++;
                 queue.push_back(neighborIndex);
-                if (support_idx.size() > 0) {
+                if (!is_build_csr_call) {
                   LO idx_count = count - 1;
                   support_idx[start_counter + idx_count] = neighborIndex;
                 }
@@ -163,15 +165,41 @@ void FindSupports::adjBasedSearch(const Real& cutoffDistance,
         nSupports[id] = count;
       },
       "count the number of supports in each target point");
+  if (is_build_csr_call == false) {
+    // print supports for target 22
+    parallel_for(
+      nvertices_target, // for each target vertex which is a node for this
+                 // calculateDistance
+      OMEGA_H_LAMBDA(const LO id) {
+        if (id == 623) {
+          LO start_ptr = supports_ptr[id];   // start support location for the
+                                             // current target vertex
+          LO end_ptr = supports_ptr[id + 1]; // end support location for the
+                                             // current target vertex
+          printf("Target vertex: %d\n with %d num supports: nSupports[id]=%d",
+                 id, end_ptr - start_ptr, nSupports[id]);
+          for (LO i = start_ptr; i < end_ptr;
+               ++i) { // loop over adj cells to the target vertex
+            LO cell_id = support_idx[i];
+            printf(", %d", cell_id);
+          }
+          printf("\n");
+        }
+      } // end of lambda
+    );
+  }
 }
 
 struct SupportResults {
   Write<LO> supports_ptr;
   Write<LO> supports_idx;
+  Write<Real> radii2;  // squared radii of the supports
 };
 
 SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
-                               Real& cutoffDistance) {
+                               Real& cutoffDistance, LO min_req_support = 12,
+                               bool adapt_radius = true)
+{
   SupportResults support;
 
   FindSupports search(source_mesh, target_mesh);
@@ -182,11 +210,71 @@ SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
 
   Write<LO> nSupports(nvertices_target, 0,
                       "number of supports in each target vertex");
+  printf("Cut off distance: %f\n", cutoffDistance);
+  Write<Real> radii2 = Write<Real>(nvertices_target, cutoffDistance,
+                                   "squared radii of the supports");
 
-  search.adjBasedSearch(cutoffDistance, support.supports_ptr, nSupports,
-                        support.supports_idx);
+  if (!adapt_radius) {
+    printf("Fixed radius search... \n");
+    search.adjBasedSearch(support.supports_ptr, nSupports, support.supports_idx,
+                          radii2, true);
+  } else {
+    printf("Adaptive radius search... \n");
+    int r_adjust_loop = 0;
+    while (true) {
+      nSupports = Write<LO>(nvertices_target, 0,
+                            "number of supports in each target vertex");
+      // find maximum radius
+      Real max_radius = 0.0;
+      Kokkos::parallel_reduce(
+        "find max radius", nvertices_target,
+        OMEGA_H_LAMBDA(const LO i, Real& local_max) {
+          local_max = (radii2[i] > local_max) ? radii2[i] : local_max;
+        },
+        Kokkos::Max<Real>(max_radius));
+      printf("Loop %d: max_radius: %f\n", r_adjust_loop, max_radius);
 
-  Kokkos::fence();
+      SupportResults support; // create support every time to avoid complexity
+
+      search.adjBasedSearch(support.supports_ptr, nSupports,
+                            support.supports_idx, radii2, true);
+
+      Kokkos::fence();
+      //* find the minimum number of supports
+      LO min_supports_found = 0;
+      Kokkos::Min<LO> min_reducer(min_supports_found);
+      Kokkos::parallel_reduce(
+        "find min number of supports", nvertices_target,
+        OMEGA_H_LAMBDA(const LO i, LO& local_min) {
+          min_reducer.join(local_min, nSupports[i]);
+        },
+        min_reducer);
+
+      printf("min_supports_found: %d at loop %d, max_radius %f\n",
+             min_supports_found, r_adjust_loop, max_radius);
+      r_adjust_loop++;
+
+      if (min_supports_found >= min_req_support) {
+        break;
+      }
+
+      Kokkos::fence();
+
+      // * update radius if nSupport is less that min_req_support
+      parallel_for(
+        nvertices_target, OMEGA_H_LAMBDA(const LO i) {
+          if (nSupports[i] < min_req_support) {
+            Real factor = Real(min_req_support) / Real(nSupports[i]);
+            factor = (factor > 1.1 || nSupports[i] == 0) ? 1.1 : factor;
+            radii2[i] *= factor;
+          }
+          // nSupports[i] = 0; // reset the number of supports ? not sure if
+          // needed
+        });
+    }
+
+    printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
+  }
 
   support.supports_ptr =
       Write<LO>(nvertices_target + 1, 0,
@@ -209,8 +297,12 @@ SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
   support.supports_idx = Write<LO>(
       total_supports, 0, "index of source supports of each target node");
 
-  search.adjBasedSearch(cutoffDistance, support.supports_ptr, nSupports,
-                        support.supports_idx);
+  search.adjBasedSearch(support.supports_ptr, nSupports,
+                        support.supports_idx, radii2, false);
+
+  support.radii2 = radii2;
+
+  target_mesh.add_tag<Real>(VERT, "radii2", 1, support.radii2);
 
   return support;
 }

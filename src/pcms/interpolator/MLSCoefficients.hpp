@@ -9,9 +9,9 @@
 
 static constexpr int MAX_DIM = 3;
 
-
 KOKKOS_INLINE_FUNCTION
-double func(Coord& p) {
+double func(Coord& p)
+{
   auto x = (p.x - 0.5) * PI_M * 2;
   auto y = (p.y - 0.5) * PI_M * 2;
   double Z = sin(x) * sin(y) + 2;
@@ -22,82 +22,84 @@ double func(Coord& p) {
 //
 
 KOKKOS_INLINE_FUNCTION
-void basisSliceLengths(Kokkos::View<int**, Kokkos::HostSpace>& array){
-    int degree = array.extent(0);
-    int dim = array.extent(1);
-    
-    for (int j = 0; j < dim; ++j){
-	array(0, j) = 1; 
+void basisSliceLengths(Kokkos::View<int**, Kokkos::HostSpace>& array)
+{
+  int degree = array.extent(0);
+  int dim = array.extent(1);
+
+  for (int j = 0; j < dim; ++j) {
+    array(0, j) = 1;
+  }
+
+  for (int i = 0; i < degree; ++i) {
+    array(i, 0) = 1;
+  }
+
+  for (int i = 1; i < degree; ++i) {
+    for (int j = 1; j < dim; ++j) {
+      array(i, j) = array(i, j - 1) + array(i - 1, j);
     }
-
-    for (int i = 0; i < degree; ++i){
-	array(i, 0) = 1;
-    }
-
-    for (int i = 1; i < degree; ++i){
-	for (int j = 1; j < dim; ++j){
-            array(i, j) = array(i , j - 1) + array(i - 1, j);
-        }
-    }
-
-
+  }
 }
 
-// finds the size of the polynomial basis vector 
+// finds the size of the polynomial basis vector
 
 KOKKOS_INLINE_FUNCTION
-int basisSize(const Kokkos::View<int**, Kokkos::HostSpace>& array){
-    int sum = 1;
-    int degree = array.extent(0);
-    int dim = array.extent(1);
+int basisSize(const Kokkos::View<int**, Kokkos::HostSpace>& array)
+{
+  int sum = 1;
+  int degree = array.extent(0);
+  int dim = array.extent(1);
 
-    for (int i = 0; i < degree; ++i){
-        for (int j = 0; j < dim; ++j){
-	    sum += array(i, j);
-        }
+  for (int i = 0; i < degree; ++i) {
+    for (int j = 0; j < dim; ++j) {
+      sum += array(i, j);
     }
+  }
 
-    return sum; 
+  return sum;
 }
 
-// evaluates the polynomial basis 
+// evaluates the polynomial basis
 
 KOKKOS_INLINE_FUNCTION
-void BasisPoly(ScratchVecView basis_monomial, const MatViewType& slice_length, Coord &p){
-    
-    basis_monomial(0) = 1;
-    int dim = slice_length.extent(1);
-    int degree = slice_length.extent(0);
-    
-    int prev_col = 0;
-    int curr_col = 1;
+void BasisPoly(ScratchVecView basis_monomial, const MatViewType& slice_length,
+               Coord& p)
+{
 
-    double point[MAX_DIM];
-    point[0] = p.x;
-    point[1] = p.y;
-    
-    if (dim == 3){
-	point[2] = p.z;
+  basis_monomial(0) = 1;
+  int dim = slice_length.extent(1);
+  int degree = slice_length.extent(0);
+
+  int prev_col = 0;
+  int curr_col = 1;
+
+  double point[MAX_DIM];
+  point[0] = p.x;
+  point[1] = p.y;
+
+  if (dim == 3) {
+    point[2] = p.z;
+  }
+
+  for (int i = 0; i < degree; ++i) {
+    int offset = curr_col;
+    for (int j = 0; j < dim; ++j) {
+      for (int k = 0; k < slice_length(i, j); ++k) {
+        basis_monomial(offset + k) = basis_monomial(prev_col + k) * point[j];
+      }
+
+      offset += slice_length(i, j);
     }
 
-    for (int i = 0; i < degree; ++i){
-	int offset = curr_col;
-	for (int j = 0; j < dim; ++j){
-	    for (int k = 0; k < slice_length(i,j); ++k){
-		basis_monomial(offset + k) = basis_monomial(prev_col +k) * point[j]; 
-	    }
-
-	    offset += slice_length(i,j);
-	}
-
-	prev_col = curr_col;
-	curr_col = offset;
-    }
+    prev_col = curr_col;
+    curr_col = offset;
+  }
 }
 
-
 KOKKOS_INLINE_FUNCTION
-double rbf(double r_sq, double rho_sq) {
+double rbf(double r_sq, double rho_sq)
+{
   double phi;
   double r = sqrt(r_sq);
   double rho = sqrt(rho_sq);
@@ -117,16 +119,18 @@ double rbf(double r_sq, double rho_sq) {
 
 // create vandermondeMatrix
 KOKKOS_INLINE_FUNCTION
-void VandermondeMatrix(ScratchMatView V, const ScratchMatView local_source_points,
-                       int j, const MatViewType slice_length) {
+void VandermondeMatrix(ScratchMatView V,
+                       const ScratchMatView local_source_points, int j,
+                       const MatViewType slice_length)
+{
   int N = local_source_points.extent(0);
   int dim = local_source_points.extent(1);
 
   Coord source_point;
   source_point.x = local_source_points(j, 0);
   source_point.y = local_source_points(j, 1);
-  if (dim == 3){
-      source_point.z = local_source_points(j, 2);
+  if (dim == 3) {
+    source_point.z = local_source_points(j, 2);
   }
   ScratchVecView basis_monomial = Kokkos::subview(V, j, Kokkos::ALL());
   BasisPoly(basis_monomial, slice_length, source_point);
@@ -135,7 +139,8 @@ void VandermondeMatrix(ScratchMatView V, const ScratchMatView local_source_point
 // moment matrix
 KOKKOS_INLINE_FUNCTION
 void PTphiMatrix(ScratchMatView pt_phi, ScratchMatView V, ScratchVecView Phi,
-                 int j) {
+                 int j)
+{
   int M = V.extent(0);
   int N = V.extent(1);
 
@@ -149,7 +154,8 @@ void PTphiMatrix(ScratchMatView pt_phi, ScratchMatView V, ScratchVecView Phi,
 KOKKOS_INLINE_FUNCTION
 void PhiVector(ScratchVecView Phi, const Coord target_point,
                const ScratchMatView local_source_points, int j,
-               double cuttoff_dis_sq) {
+               double cuttoff_dis_sq)
+{
   int N = local_source_points.extent(0);
   double dx = target_point.x - local_source_points(j, 0);
   double dy = target_point.y - local_source_points(j, 1);
@@ -160,7 +166,8 @@ void PhiVector(ScratchVecView Phi, const Coord target_point,
 // matrix matrix multiplication
 KOKKOS_INLINE_FUNCTION
 void MatMatMul(member_type team, ScratchMatView& moment_matrix,
-               const ScratchMatView& pt_phi, const ScratchMatView& vandermonde) {
+               const ScratchMatView& pt_phi, const ScratchMatView& vandermonde)
+{
   int M = pt_phi.extent(0);
   int N = vandermonde.extent(1);
   int K = pt_phi.extent(1);
@@ -169,11 +176,11 @@ void MatMatMul(member_type team, ScratchMatView& moment_matrix,
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, N), [=](const int j) {
       double sum = 0.0;
       Kokkos::parallel_reduce(
-          Kokkos::ThreadVectorRange(team, K),
-          [=](const int k, double& lsum) {
-            lsum += pt_phi(i, k) * vandermonde(k, j);
-          },
-          sum);
+        Kokkos::ThreadVectorRange(team, K),
+        [=](const int k, double& lsum) {
+          lsum += pt_phi(i, k) * vandermonde(k, j);
+        },
+        sum);
       moment_matrix(i, j) = sum;
     });
   });
@@ -181,16 +188,17 @@ void MatMatMul(member_type team, ScratchMatView& moment_matrix,
 
 // Matrix vector multiplication
 KOKKOS_INLINE_FUNCTION
-void MatVecMul(member_type team, const ScratchVecView& vector, const ScratchMatView& matrix,
-               ScratchVecView& result) {
+void MatVecMul(member_type team, const ScratchVecView& vector,
+               const ScratchMatView& matrix, ScratchVecView& result)
+{
   int M = matrix.extent(0);
   int N = matrix.extent(1);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, N), [=](const int i) {
     double sum = 0;
     Kokkos::parallel_reduce(
-        Kokkos::ThreadVectorRange(team, M),
-        [=](const int j, double& lsum) { lsum += vector(j) * matrix(j, i); },
-        sum);
+      Kokkos::ThreadVectorRange(team, M),
+      [=](const int j, double& lsum) { lsum += vector(j) * matrix(j, i); },
+      sum);
     result(i) = sum;
   });
   // team.team_barrier();
@@ -199,7 +207,8 @@ void MatVecMul(member_type team, const ScratchVecView& vector, const ScratchMatV
 // dot product
 KOKKOS_INLINE_FUNCTION
 void dot_product(member_type team, const ScratchVecView& result_sub,
-                 const ScratchVecView& SupportValues_sub, double& target_value) {
+                 const ScratchVecView& SupportValues_sub, double& target_value)
+{
   int N = result_sub.extent(0);
   for (int j = 0; j < N; ++j) {
     target_value += result_sub(j) * SupportValues_sub[j];
@@ -209,7 +218,9 @@ void dot_product(member_type team, const ScratchVecView& result_sub,
 // moment matrix
 KOKKOS_INLINE_FUNCTION
 void PtphiPMatrix(ScratchMatView& moment_matrix, member_type team,
-                  const ScratchMatView& pt_phi, const ScratchMatView& vandermonde) {
+                  const ScratchMatView& pt_phi,
+                  const ScratchMatView& vandermonde)
+{
   int M = pt_phi.extent(0);
   int N = vandermonde.extent(1);
   int K = pt_phi.extent(1);
@@ -218,11 +229,11 @@ void PtphiPMatrix(ScratchMatView& moment_matrix, member_type team,
     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, N), [=](const int j) {
       double sum = 0.0;
       Kokkos::parallel_reduce(
-          Kokkos::ThreadVectorRange(team, K),
-          [=](const int k, double& lsum) {
-            lsum += pt_phi(i, k) * vandermonde(k, j);
-          },
-          sum);
+        Kokkos::ThreadVectorRange(team, K),
+        [=](const int k, double& lsum) {
+          lsum += pt_phi(i, k) * vandermonde(k, j);
+        },
+        sum);
       moment_matrix(i, j) = sum;
     });
   });
@@ -232,7 +243,8 @@ void PtphiPMatrix(ScratchMatView& moment_matrix, member_type team,
 KOKKOS_INLINE_FUNCTION
 void inverse_matrix(member_type team, const ScratchMatView& matrix,
                     ScratchMatView& lower, ScratchMatView& forward_matrix,
-                    ScratchMatView& solution) {
+                    ScratchMatView& solution)
+{
   int N = matrix.extent(0);
 
   for (int j = 0; j < N; ++j) {
@@ -261,7 +273,7 @@ void inverse_matrix(member_type team, const ScratchMatView& matrix,
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, N), [=](const int i) {
     forward_matrix(i, i) = 1.0 / lower(i, i);
     for (int j = i + 1; j < N; ++j) {
-      forward_matrix(j, i) = 0.0;  // Initialize to zero
+      forward_matrix(j, i) = 0.0; // Initialize to zero
       for (int k = 0; k < j; ++k) {
         forward_matrix(j, i) -= lower(j, k) * forward_matrix(k, i);
       }

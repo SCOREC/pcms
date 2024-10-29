@@ -4,7 +4,8 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 
-struct Coord {
+struct Coord
+{
   double x, y, z;
 };
 
@@ -14,19 +15,20 @@ using member_type = typename Kokkos::TeamPolicy<>::member_type;
 
 // alias for scratch view
 using ScratchSpace =
-    typename Kokkos::DefaultExecutionSpace::scratch_memory_space;
+  typename Kokkos::DefaultExecutionSpace::scratch_memory_space;
 
 using ScratchMatView =
-    typename Kokkos::View<double**, Kokkos::LayoutRight, ScratchSpace,
-                          Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+  typename Kokkos::View<double**, Kokkos::LayoutRight, ScratchSpace,
+                        Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 using ScratchVecView =
-    typename Kokkos::View<double*, ScratchSpace,
-                          Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+  typename Kokkos::View<double*, ScratchSpace,
+                        Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
 using PointsViewType = Kokkos::View<Coord*>;
 
 using MatViewType = Kokkos::View<int**>;
-struct Points {
+struct Points
+{
   PointsViewType coordinates;
 };
 

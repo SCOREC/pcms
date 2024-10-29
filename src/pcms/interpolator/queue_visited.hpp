@@ -12,12 +12,13 @@
 using namespace std;
 using namespace Omega_h;
 
-class queue {
- private:
+class queue
+{
+private:
   LO queue_array[MAX_SIZE_QUEUE];
   int first = 0, last = -1, count = 0;
 
- public:
+public:
   OMEGA_H_INLINE
   queue() {}
 
@@ -40,12 +41,13 @@ class queue {
   bool isFull() const;
 };
 
-class track {
- private:
+class track
+{
+private:
   LO tracking_array[MAX_SIZE_TRACK];
   int first = 0, last = -1, count = 0;
 
- public:
+public:
   OMEGA_H_INLINE
   track() {}
 
@@ -63,7 +65,8 @@ class track {
 };
 
 OMEGA_H_INLINE
-void queue::push_back(const int& item) {
+void queue::push_back(const int& item)
+{
   if (count == MAX_SIZE_QUEUE) {
     printf("queue is full %d\n", count);
     return;
@@ -74,7 +77,8 @@ void queue::push_back(const int& item) {
 }
 
 OMEGA_H_INLINE
-void queue::pop_front() {
+void queue::pop_front()
+{
   if (count == 0) {
     printf("queue is empty\n");
     return;
@@ -84,16 +88,26 @@ void queue::pop_front() {
 }
 
 OMEGA_H_INLINE
-int queue::front() { return queue_array[first]; }
+int queue::front()
+{
+  return queue_array[first];
+}
 
 OMEGA_H_INLINE
-bool queue::isEmpty() const { return count == 0; }
+bool queue::isEmpty() const
+{
+  return count == 0;
+}
 
 OMEGA_H_INLINE
-bool queue::isFull() const { return count == MAX_SIZE_QUEUE; }
+bool queue::isFull() const
+{
+  return count == MAX_SIZE_QUEUE;
+}
 
 OMEGA_H_INLINE
-void track::push_back(const int& item) {
+void track::push_back(const int& item)
+{
   if (count == MAX_SIZE_TRACK) {
     printf("track is full %d\n", count);
     return;
@@ -104,7 +118,8 @@ void track::push_back(const int& item) {
 }
 
 OMEGA_H_INLINE
-bool track::notVisited(const int& item) {
+bool track::notVisited(const int& item)
+{
   int id;
   for (int i = 0; i < count; ++i) {
     id = (first + i) % MAX_SIZE_TRACK;
@@ -116,6 +131,9 @@ bool track::notVisited(const int& item) {
 }
 
 OMEGA_H_INLINE
-int track::size() { return count; }
+int track::size()
+{
+  return count;
+}
 
 #endif

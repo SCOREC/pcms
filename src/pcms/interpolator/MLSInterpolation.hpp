@@ -2,7 +2,6 @@
 #define MLS_INTERPOLATION_HPP
 
 #include "MLSCoefficients.hpp"
-#include "adj_search_dega2.hpp"
 #include "adj_search.hpp"
 #include <cassert>
 

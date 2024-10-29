@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <pcms/interpolator/adj_search_dega2.hpp>
 #include <pcms/interpolator/MLSInterpolation.hpp>
 #include <pcms/interpolator/MLSCoefficients.hpp>
 #include <Omega_h_mesh.hpp>

@@ -4,7 +4,7 @@
 #include "MLSCoefficients.hpp"
 #include "adj_search.hpp"
 #include <cassert>
-
+#include <cmath>
 using namespace Omega_h;
 using namespace pcms;
 
@@ -221,6 +221,7 @@ Write<Real> mls_interpolation(const Reals source_values,
         double tgt_value = 0;
         dot_product(team, result, SupportValues, tgt_value);
         if (team.team_rank() == 0) {
+	  OMEGA_H_CHECK_PRINTF(!std::isnan(tgt_value),"Nan at %d\n",i);
           approx_target_values[i] = tgt_value;
         }
       });

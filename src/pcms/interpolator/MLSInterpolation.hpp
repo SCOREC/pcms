@@ -6,7 +6,6 @@
 #include <cassert>
 #include <cmath>
 using namespace Omega_h;
-using namespace pcms;
 
 Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
@@ -186,6 +185,10 @@ Write<Real> mls_interpolation(const Reals source_values,
 
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
+          OMEGA_H_CHECK_PRINTF(
+            radii2[i] > 0,
+            "ERROR: radius2 has to be positive but found to be %.16f\n",
+            radii2[i]);
           PhiVector(Phi, target_point, local_source_points, j, radii2[i]);
         });
 
@@ -194,10 +197,19 @@ Write<Real> mls_interpolation(const Reals source_values,
       Kokkos::parallel_reduce(
         Kokkos::TeamThreadRange(team, nsupports),
         [=](const int j, double& lsum) { lsum += Phi(j); }, sum_phi);
+      OMEGA_H_CHECK_PRINTF(!std::isnan(sum_phi),
+                           "ERROR: sum_phi is NaN for i=%d\n", i);
+      OMEGA_H_CHECK_PRINTF(sum_phi != 0, "ERROR: sum_phi is zero for i=%d\n",
+                           i);
 
       // normalize phi with sum_phi
-      Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports),
-                           [=](int j) { Phi(j) = Phi(j) / sum_phi; });
+      Kokkos::parallel_for(
+        Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
+          OMEGA_H_CHECK_PRINTF(
+            !std::isnan(Phi(j)),
+            "ERROR: Phi(j) is NaN before normalization for j = %d\n", j);
+          Phi(j) = Phi(j) / sum_phi;
+        });
 
       team.team_barrier();
 
@@ -222,6 +234,8 @@ Write<Real> mls_interpolation(const Reals source_values,
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](const int i) {
           SupportValues(i) = source_values[support.supports_idx[start_ptr + i]];
+          OMEGA_H_CHECK_PRINTF(!std::isnan(SupportValues(i)),
+                               "ERROR: NaN found: at support %d\n", i);
         });
 
       double tgt_value = 0;

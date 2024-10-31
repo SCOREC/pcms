@@ -2,6 +2,7 @@
 #define MLS_COEFFICIENTS_HPP
 
 #include <cmath>
+#include <Omega_h_fail.hpp>
 
 #include "points.hpp"
 
@@ -102,6 +103,9 @@ double rbf(double r_sq, double rho_sq)
 {
   double phi;
   double r = sqrt(r_sq);
+  OMEGA_H_CHECK_PRINTF(
+    rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
+    rho_sq);
   double rho = sqrt(rho_sq);
   double ratio = r / rho;
   double limit = 1 - ratio;
@@ -114,6 +118,9 @@ double rbf(double r_sq, double rho_sq)
     phi = phi * pow(limit, 6);
   }
 
+  OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
+                       "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                       r_sq, rho_sq);
   return phi;
 }
 
@@ -146,7 +153,14 @@ void PTphiMatrix(ScratchMatView pt_phi, ScratchMatView V, ScratchVecView Phi,
 
   ScratchVecView vandermonde_mat_row = Kokkos::subview(V, j, Kokkos::ALL());
   for (int k = 0; k < N; k++) {
+    OMEGA_H_CHECK_PRINTF(!std::isnan(vandermonde_mat_row(k)),
+                         "ERROR: vandermonde_mat_row is NaN for k = %d\n", k);
+    OMEGA_H_CHECK_PRINTF(!std::isnan(Phi(j)),
+                         "ERROR: Phi(j) in PTphiMatrix is NaN for j = %d\n", j);
     pt_phi(k, j) = vandermonde_mat_row(k) * Phi(j);
+    OMEGA_H_CHECK_PRINTF(
+      !std::isnan(pt_phi(k, j)),
+      "ERROR: pt_phi in PTphiMatrix is NaN for k = %d, j = %d\n", k, j);
   }
 }
 
@@ -161,6 +175,10 @@ void PhiVector(ScratchVecView Phi, const Coord target_point,
   double dy = target_point.y - local_source_points(j, 1);
   double ds_sq = dx * dx + dy * dy;
   Phi(j) = rbf(ds_sq, cuttoff_dis_sq);
+  OMEGA_H_CHECK_PRINTF(!std::isnan(Phi(j)),
+                       "ERROR: Phi(j) in PhiVector is NaN for j = %d "
+                       "ds_sq=%.16f, cuttoff_dis_sq=%.16f",
+                       j, ds_sq, cuttoff_dis_sq);
 }
 
 // matrix matrix multiplication
@@ -178,9 +196,15 @@ void MatMatMul(member_type team, ScratchMatView& moment_matrix,
       Kokkos::parallel_reduce(
         Kokkos::ThreadVectorRange(team, K),
         [=](const int k, double& lsum) {
+          OMEGA_H_CHECK_PRINTF(!std::isnan(pt_phi(i, k)),
+                               "ERROR: pt_phi is NaN for i = %d\n", i);
+          OMEGA_H_CHECK_PRINTF(!std::isnan(vandermonde(k, j)),
+                               "ERROR: vandermonde is NaN for k = %d\n", k);
           lsum += pt_phi(i, k) * vandermonde(k, j);
         },
         sum);
+      OMEGA_H_CHECK_PRINTF(!std::isnan(sum),
+                           "ERROR: sum is NaN for i = %d, j = %d\n", i, j);
       moment_matrix(i, j) = sum;
     });
   });
@@ -200,6 +224,8 @@ void MatVecMul(member_type team, const ScratchVecView& vector,
       [=](const int j, double& lsum) { lsum += vector(j) * matrix(j, i); },
       sum);
     result(i) = sum;
+    OMEGA_H_CHECK_PRINTF(!std::isnan(result(i)),
+                         "ERROR: sum is NaN for i = %d\n", i);
   });
   // team.team_barrier();
 }
@@ -213,6 +239,8 @@ void dot_product(member_type team, const ScratchVecView& result_sub,
   for (int j = 0; j < N; ++j) {
     target_value += result_sub(j) * SupportValues_sub[j];
   }
+  OMEGA_H_CHECK_PRINTF(!std::isnan(target_value),
+                       "ERROR: NaN found in dot_product: N: %d\n", N);
 }
 
 // moment matrix
@@ -253,7 +281,16 @@ void inverse_matrix(member_type team, const ScratchMatView& matrix,
       for (int k = 0; k < j; ++k) {
         sum += lower(j, k) * lower(j, k);
       }
+      OMEGA_H_CHECK_PRINTF(!std::isnan(matrix(j, j)),
+                           "ERROR: matrix(j,j) is NaN: j = %d\n", j);
+      OMEGA_H_CHECK_PRINTF(
+        matrix(j, j) - sum >= -1e-10, // TODO: how to check this reliably?
+        "ERROR: (matrix(j,j) - sum) is negative: mat(jj)=%.16f, sum = %.16f \n",
+        matrix(j, j), sum);
       lower(j, j) = sqrt(matrix(j, j) - sum);
+      OMEGA_H_CHECK_PRINTF(!std::isnan(lower(j, j)),
+                           "Lower in inverse_matrix is NaN (j,j) = (%d,%d)\n",
+                           j, j);
     });
 
     team.team_barrier();
@@ -265,6 +302,12 @@ void inverse_matrix(member_type team, const ScratchMatView& matrix,
       }
       lower(i, j) = (matrix(i, j) - inner_sum) / lower(j, j);
       lower(j, i) = lower(i, j);
+      OMEGA_H_CHECK_PRINTF(!std::isnan(lower(i, j)),
+                           "Lower in inverse_matrix is NaN (i,j) = (%d,%d)\n",
+                           i, j);
+      OMEGA_H_CHECK_PRINTF(!std::isnan(lower(j, i)),
+                           "Lower in inverse_matrix is NaN (j,i) = (%d,%d)\n",
+                           j, i);
     });
 
     team.team_barrier();
@@ -278,6 +321,9 @@ void inverse_matrix(member_type team, const ScratchMatView& matrix,
         forward_matrix(j, i) -= lower(j, k) * forward_matrix(k, i);
       }
       forward_matrix(j, i) /= lower(j, j);
+      OMEGA_H_CHECK_PRINTF(!std::isnan(forward_matrix(j, i)),
+                           "Forward in inverse_matrix is NaN (j,i) = (%d,%d)\n",
+                           j, i);
     }
   });
 
@@ -291,6 +337,9 @@ void inverse_matrix(member_type team, const ScratchMatView& matrix,
         solution(j, i) -= lower(j, k) * solution(k, i);
       }
       solution(j, i) /= lower(j, j);
+      OMEGA_H_CHECK_PRINTF(
+        !std::isnan(solution(j, i)),
+        "Solution in inverse_matrix is NaN (j,i) = (%d,%d)\n", j, i);
     }
   });
 }

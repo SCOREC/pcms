@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 project(Interpolator)
 
 set(HEADER_FILES
-    adj_search_dega2.hpp
     MLSInterpolation.hpp
     points.hpp
     adj_search.hpp

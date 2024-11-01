@@ -1,12 +1,9 @@
 #!/bin/bash -e
 
-name=$1
-branch=$2
+branch=$1
 
-cd $SCRATCH/globus-compute/$name-test
-
-echo $name
-echo $branch
+cd $SCRATCH/globus-compute/pcms-test
+source env.sh
 
 # # kokkos
 # rm build-kokkos -rf
@@ -90,22 +87,22 @@ echo $branch
 # cmake --build build-Catch2 -j2 --target install
 
 # pcms
-# rm pcms -rf
-# rm build-pcms -rf
-# rm pcms_testcases -rf
+rm pcms -rf
+rm build-pcms -rf
+rm pcms_testcases -rf
 
-# git clone https://github.com/SCOREC/pcms.git
-# cd pcms && git checkout $branch && cd -
-# git clone git@github.com:jacobmerson/pcms_testcases.git
+git clone https://github.com/SCOREC/pcms.git
+cd pcms && git checkout $branch && cd -
+git clone git@github.com:jacobmerson/pcms_testcases.git
 
-# cmake -S pcms -B build-pcms \
-#   -DCMAKE_C_COMPILER=cc \
-#   -DCMAKE_CXX_COMPILER=CC \
-#   -DCMAKE_BUILD_TYPE=Release \
-#   -Dredev_DIR=$PWD/build-redev/install/lib64/cmake/redev \
-#   -Dperfstubs_DIR=$PWD/build-perfstubs \
-#   -DOmega_h_DIR=$PWD/build-omega_h/install/lib64/cmake/Omega_h/ \
-#   -DKokkos_DIR=$PWD/build-kokkos/install/lib64/cmake/Kokkos/ \
-#   -DCatch2_DIR=$PWD/build-Catch2/install/lib64/cmake/Catch2/ \
-#   -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
-# cmake --build build-pcms -j8
+cmake -S pcms -B build-pcms \
+  -DCMAKE_C_COMPILER=cc \
+  -DCMAKE_CXX_COMPILER=CC \
+  -DCMAKE_BUILD_TYPE=Release \
+  -Dredev_DIR=$PWD/build-redev/install/lib64/cmake/redev \
+  -Dperfstubs_DIR=$PWD/build-perfstubs \
+  -DOmega_h_DIR=$PWD/build-omega_h/install/lib64/cmake/Omega_h/ \
+  -DKokkos_DIR=$PWD/build-kokkos/install/lib64/cmake/Kokkos/ \
+  -DCatch2_DIR=$PWD/build-Catch2/install/lib64/cmake/Catch2/ \
+  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
+cmake --build build-pcms -j8

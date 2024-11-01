@@ -23,7 +23,7 @@ with open('perlmutter/install.sh', 'rb') as file:
 def run_on_endpoint(name, branch, install_file):
     import subprocess
 
-    install = subprocess.run([install_file], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    install = subprocess.run(["pwd"], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return (install, None)
 
 gce = Executor(endpoint_id = endpoint)

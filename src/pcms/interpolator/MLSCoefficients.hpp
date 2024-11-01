@@ -20,8 +20,6 @@ double func(Coord& p)
 }
 
 // computes the slice lengths of the of the polynomial basis
-//
-
 KOKKOS_INLINE_FUNCTION
 void basisSliceLengths(Kokkos::View<int**, Kokkos::HostSpace>& array)
 {
@@ -44,7 +42,6 @@ void basisSliceLengths(Kokkos::View<int**, Kokkos::HostSpace>& array)
 }
 
 // finds the size of the polynomial basis vector
-
 KOKKOS_INLINE_FUNCTION
 int basisSize(const Kokkos::View<int**, Kokkos::HostSpace>& array)
 {
@@ -62,12 +59,10 @@ int basisSize(const Kokkos::View<int**, Kokkos::HostSpace>& array)
 }
 
 // evaluates the polynomial basis
-
 KOKKOS_INLINE_FUNCTION
 void BasisPoly(ScratchVecView basis_monomial, const MatViewType& slice_length,
                Coord& p)
 {
-
   basis_monomial(0) = 1;
   int dim = slice_length.extent(1);
   int degree = slice_length.extent(0);

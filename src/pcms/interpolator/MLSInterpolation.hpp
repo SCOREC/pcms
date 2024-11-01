@@ -28,7 +28,6 @@ Write<Real> mls_interpolation(const Reals source_values,
   Kokkos::View<int**, Kokkos::HostSpace> host_slice_length(
     "stores slice length of  polynomial basis in host", degree, dim);
   Kokkos::deep_copy(host_slice_length, 0);
-
   basisSliceLengths(host_slice_length);
 
   auto basis_size = basisSize(host_slice_length);
@@ -85,7 +84,6 @@ Write<Real> mls_interpolation(const Reals source_values,
       int i = team.league_rank();
       int start_ptr = support.supports_ptr[i];
       int end_ptr = support.supports_ptr[i + 1];
-
       int nsupports = end_ptr - start_ptr;
 
       ScratchMatView local_source_points(team.team_scratch(0), nsupports, dim);
@@ -166,9 +164,7 @@ Write<Real> mls_interpolation(const Reals source_values,
                            });
 
       Coord target_point;
-
       target_point.x = target_coordinates[i * dim];
-
       target_point.y = target_coordinates[i * dim + 1];
 
       if (dim == 3) {

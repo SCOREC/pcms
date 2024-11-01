@@ -20,14 +20,14 @@ with open('perlmutter/env.sh', 'rb') as file:
 with open('perlmutter/install.sh', 'rb') as file:
     install_file = file.read()
 
-def run_on_endpoint(name, branch):
+def run_on_endpoint(name, branch, install_file):
     import subprocess
 
     install = subprocess.run([install_file], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return (install, None)
 
 gce = Executor(endpoint_id = endpoint)
-future = gce.submit(run_on_endpoint, name, branch)
+future = gce.submit(run_on_endpoint, name, branch, install_file)
 result = future.result()
 
 os.popen("mkdir -p "+name+"-result").read()

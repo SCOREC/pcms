@@ -36,5 +36,5 @@ with open(name+"-result/Build.log", "w") as text_file:
     text_file.close()
 if result[0].returncode == 0:
     with open(name+"-result/Test.log", "w") as text_file:
-        text_file.write("%s" % result[1].stdout)
+        text_file.write("%s" % (result[1] and result[1].stdout))
         text_file.close()

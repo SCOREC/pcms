@@ -373,7 +373,8 @@ SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
                                    "squared radii of the supports");
 
   if (!adapt_radius) {
-    printf("INFO: Fixed radius search... \n");
+    printf("INFO: Fixed radius search *(disregarding required minimum "
+           "support)*... \n");
     search.adjBasedSearch(support.supports_ptr, nSupports, support.supports_idx,
                           radii2, true);
   } else {
@@ -472,53 +473,60 @@ SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
                                    "squared radii of the supports");
   printf("INFO: Cutoff distance: %f\n", cutoffDistance);
 
-  int r_adjust_loop = 0;
-  while (true) { // until the number of minimum support is met
-    Real max_radius = 0.0;
-    Kokkos::parallel_reduce(
-      "find max radius", nvertices_target,
-      OMEGA_H_LAMBDA(const LO i, Real& local_max) {
-        local_max = (radii2[i] > local_max) ? radii2[i] : local_max;
-      },
-      Kokkos::Max<Real>(max_radius));
-    printf("INFO: Loop %d: max_radius: %f\n", r_adjust_loop, max_radius);
+  if (!adapt_radius) {
+    printf("INFO: Fixed radius search *(disregarding required minimum "
+           "support)* ... \n");
+    search.adjBasedSearch(support.supports_ptr, nSupports, support.supports_idx,
+                          radii2, true);
+  } else {
+    printf("INFO: Adaptive radius search... \n");
+    int r_adjust_loop = 0;
+    while (true) { // until the number of minimum support is met
+      Real max_radius = 0.0;
+      Kokkos::parallel_reduce(
+        "find max radius", nvertices_target,
+        OMEGA_H_LAMBDA(const LO i, Real& local_max) {
+          local_max = (radii2[i] > local_max) ? radii2[i] : local_max;
+        },
+        Kokkos::Max<Real>(max_radius));
+      printf("INFO: Loop %d: max_radius: %f\n", r_adjust_loop, max_radius);
 
-    nSupports = Write<LO>(nvertices_target, 0,
-                          "number of supports in each target vertex");
-    SupportResults support; // create support every time to avoid complexity
-    search.adjBasedSearchCentroidNodes(support.supports_ptr, nSupports,
-                                       support.supports_idx, radii2, true);
+      nSupports = Write<LO>(nvertices_target, 0,
+                            "number of supports in each target vertex");
+      SupportResults support; // create support every time to avoid complexity
+      search.adjBasedSearchCentroidNodes(support.supports_ptr, nSupports,
+                                         support.supports_idx, radii2, true);
 
-    Kokkos::fence();
-    LO min_nSupports = 0;
-    Kokkos::parallel_reduce(
-      "find min number of supports", nvertices_target,
-      OMEGA_H_LAMBDA(const LO i, LO& local_min) {
-        local_min = (nSupports[i] < local_min) ? nSupports[i] : local_min;
-      },
-      Kokkos::Min<LO>(min_nSupports));
+      Kokkos::fence();
+      LO min_nSupports = 0;
+      Kokkos::parallel_reduce(
+        "find min number of supports", nvertices_target,
+        OMEGA_H_LAMBDA(const LO i, LO& local_min) {
+          local_min = (nSupports[i] < local_min) ? nSupports[i] : local_min;
+        },
+        Kokkos::Min<LO>(min_nSupports));
 
-    printf("min_nSupports: %d at loop %d, max_radius %f\n", min_nSupports,
-           r_adjust_loop, max_radius);
-    r_adjust_loop++;
+      printf("min_nSupports: %d at loop %d, max_radius %f\n", min_nSupports,
+             r_adjust_loop, max_radius);
+      r_adjust_loop++;
 
-    if (min_nSupports >= min_support) {
-      break;
-    }
+      if (min_nSupports >= min_support) {
+        break;
+      }
 
-    Kokkos::fence();
-    parallel_for(
-      nvertices_target, OMEGA_H_LAMBDA(const LO i) {
-        if (nSupports[i] < min_support) {
-          Real factor = Real(min_support) / Real(nSupports[i]);
-          factor = (nSupports[i] == 0 || factor > 1.5) ? 1.5 : factor;
-          radii2[i] *= factor;
-        }
-        nSupports[i] = 0; // ? might not be needed
-      });
-  } // while loop
-
-  printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
+      Kokkos::fence();
+      parallel_for(
+        nvertices_target, OMEGA_H_LAMBDA(const LO i) {
+          if (nSupports[i] < min_support) {
+            Real factor = Real(min_support) / Real(nSupports[i]);
+            factor = (nSupports[i] == 0 || factor > 1.5) ? 1.5 : factor;
+            radii2[i] *= factor;
+          }
+          nSupports[i] = 0; // ? might not be needed
+        });
+    } // while loop
+    printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
+  } // adaptive radius search
 
   // offset array for the supports of each target vertex
   support.supports_ptr = Write<LO>(

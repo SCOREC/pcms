@@ -14,10 +14,10 @@ name = sys.argv[1]
 branch = sys.argv[2]
 endpoint = sys.argv[3]
 
-with open('perlmutter/env.sh', 'rb') as file:
+with open('perlmutter/env.sh', 'r') as file:
     env_file = file.read()
 
-with open('perlmutter/install.sh', 'rb') as file:
+with open('perlmutter/install.sh', 'r') as file:
     install_file = file.read()
 
 def run_on_endpoint(name, branch, env_file, install_file):
@@ -31,7 +31,8 @@ def run_on_endpoint(name, branch, env_file, install_file):
         text_file.write("%s" % install_file)
         text_file.close()
 
-    install_command = "cd {0}-test && source env.sh && ./install.sh {0} {1}".format(name, branch)
+    # install_command = "cd {0}-test && source env.sh && ./install.sh {0} {1}".format(name, branch)
+    install_command = "cd {0}-test && ls".format(name, branch)
     install = subprocess.run([install_command], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return (install, None)
 

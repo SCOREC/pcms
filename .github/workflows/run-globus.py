@@ -41,7 +41,7 @@ def run_on_endpoint(name, branch, env_file, install_file, run_file):
     install_command = "cd {0}-test && chmod +x install.sh && ./install.sh {1}".format(name, branch)
     install_result = subprocess.run([install_command], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    if install_result.returncode == 0:
+    if install_result.returncode != 0:
         return (install_result, None)
 
     run_command = "cd {0}-test && chmod +x run.sh && ./run.sh".format(name)

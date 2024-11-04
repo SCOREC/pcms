@@ -48,12 +48,12 @@ jobs:
 
     - name: print build log
       working-directory: ${{ github.event.repository.name }}/.github/workflows
-      run: cat ${{ github.event.repository.name }}-result/Build.log
+      run: cat Build.log
 
     - name: print test log
       working-directory: ${{ github.event.repository.name }}/.github/workflows
-      run: cat ${{ github.event.repository.name }}-result/Test.log
+      run: cat Test.log
 
     - name: check failed test
       working-directory: ${{ github.event.repository.name }}/.github/workflows
-      run: if grep "Failed" ${{ github.event.repository.name }}-result/Test.log; then return 1; fi
+      run: if grep "Failed" Test.log; then return 1; fi

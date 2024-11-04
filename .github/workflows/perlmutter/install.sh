@@ -91,9 +91,9 @@ rm pcms -rf
 rm build-pcms -rf
 rm pcms_testcases -rf
 
+git clone git@github.com:jacobmerson/pcms_testcases.git
 git clone https://github.com/SCOREC/pcms.git
 cd pcms && git checkout $branch && cd -
-git clone git@github.com:jacobmerson/pcms_testcases.git
 
 cmake -S pcms -B build-pcms \
   -DCMAKE_C_COMPILER=cc \

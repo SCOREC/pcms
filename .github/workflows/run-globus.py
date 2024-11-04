@@ -20,7 +20,10 @@ with open('perlmutter/env.sh', 'r') as file:
 with open('perlmutter/install.sh', 'r') as file:
     install_file = file.read()
 
-def run_on_endpoint(name, branch, env_file, install_file):
+with open('perlmutter/run.sh', 'r') as file:
+    run_file = file.read()
+
+def run_on_endpoint(name, branch, env_file, install_file, run_file):
     import subprocess
 
     with open(name+"-test/env.sh", "w") as text_file:
@@ -30,20 +33,25 @@ def run_on_endpoint(name, branch, env_file, install_file):
     with open(name+"-test/install.sh", "w") as text_file:
         text_file.write("%s" % install_file)
         text_file.close()
+    
+    with open(name+"-test/run.sh", "w") as text_file:
+        text_file.write("%s" % run_file)
+        text_file.close()
 
     install_command = "cd {0}-test && chmod +x install.sh && ./install.sh {1}".format(name, branch)
-    install = subprocess.run([install_command], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    return (install, None)
+    install_result = subprocess.run([install_command], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    return (install_result, None)
 
 gce = Executor(endpoint_id = endpoint)
-future = gce.submit(run_on_endpoint, name, branch, env_file, install_file)
+future = gce.submit(run_on_endpoint, name, branch, env_file, install_file, run_file)
 result = future.result()
 
-os.popen("mkdir -p "+name+"-result").read()
-with open(name+"-result/Build.log", "w") as text_file:
+with open("Build.log", "w") as text_file:
     text_file.write("%s" % result[0].stdout)
     text_file.close()
-if result[0].returncode == 0:
-    with open(name+"-result/Test.log", "w") as text_file:
-        text_file.write("%s" % (result[1] and result[1].stdout))
+
+if result[1] != None:
+    with open("Test.log", "w") as text_file:
+        text_file.write("%s" % result[1].stdout)
         text_file.close()

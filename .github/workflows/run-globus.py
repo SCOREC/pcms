@@ -15,11 +15,6 @@ name = sys.argv[2]
 branch = sys.argv[3]
 endpoint = sys.argv[4]
 
-print(machine)
-print(name)
-print(branch)
-print(endpoint)
-
 with open(machine+'/env.sh', 'r') as file:
     env_file = file.read()
 
@@ -29,22 +24,20 @@ with open(machine+'/install.sh', 'r') as file:
 with open(machine+'/run.sh', 'r') as file:
     run_file = file.read()
 
-print(env_file)
+def run_on_endpoint(name, branch, env_file, install_file, run_file):
+    import subprocess
 
-# def run_on_endpoint(name, branch, env_file, install_file, run_file):
-#     import subprocess
+    with open(name+"-test/env.sh", "w") as text_file:
+        text_file.write("%s" % env_file)
+        text_file.close()
 
-#     with open(name+"-test/env.sh", "w") as text_file:
-#         text_file.write("%s" % env_file)
-#         text_file.close()
-
-#     with open(name+"-test/install.sh", "w") as text_file:
-#         text_file.write("%s" % install_file)
-#         text_file.close()
+    with open(name+"-test/install.sh", "w") as text_file:
+        text_file.write("%s" % install_file)
+        text_file.close()
     
-#     with open(name+"-test/run.sh", "w") as text_file:
-#         text_file.write("%s" % run_file)
-#         text_file.close()
+    with open(name+"-test/run.sh", "w") as text_file:
+        text_file.write("%s" % run_file)
+        text_file.close()
 
     # install_command = "cd {0}-test && chmod +x install.sh && ./install.sh {1} 2>&1 | tee install.log".format(name, branch)
     # install_result = subprocess.run([install_command], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -57,9 +50,9 @@ print(env_file)
 
     # return (install_result, run_result)
 
-# gce = Executor(endpoint_id = endpoint)
-# future = gce.submit(run_on_endpoint, name, branch, env_file, install_file, run_file)
-# result = future.result()
+gce = Executor(endpoint_id = endpoint)
+future = gce.submit(run_on_endpoint, name, branch, env_file, install_file, run_file)
+result = future.result()
 
 # with open("Build.log", "w") as text_file:
 #     text_file.write("%s" % result[0].stdout)

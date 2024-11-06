@@ -39,26 +39,26 @@ def run_on_endpoint(name, branch, env_file, install_file, run_file):
         text_file.write("%s" % run_file)
         text_file.close()
 
-    # install_command = "cd {0}-test && chmod +x install.sh && ./install.sh {1} 2>&1 | tee install.log".format(name, branch)
-    # install_result = subprocess.run([install_command], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    install_command = "cd {0}-test && chmod +x install.sh && ./install.sh {1} 2>&1 | tee build.log".format(name, branch)
+    install_result = subprocess.run([install_command], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    # if install_result.returncode != 0:
-    # return (install_result, None)
+    if install_result.returncode != 0:
+    return (install_result, None)
 
-    # run_command = "cd {0}-test && chmod +x run.sh && ./run.sh".format(name)
-    # run_result = subprocess.run([run_command], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    run_command = "cd {0}-test && chmod +x run.sh && ./run.sh 2>&1 | tee test.log".format(name)
+    run_result = subprocess.run([run_command], shell=True, encoding="utf_8", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    # return (install_result, run_result)
+    return (install_result, run_result)
 
 gce = Executor(endpoint_id = endpoint)
 future = gce.submit(run_on_endpoint, name, branch, env_file, install_file, run_file)
 result = future.result()
 
-# with open("Build.log", "w") as text_file:
-#     text_file.write("%s" % result[0].stdout)
-#     text_file.close()
+with open("Build.log", "w") as text_file:
+    text_file.write("%s" % result[0].stdout)
+    text_file.close()
 
-# if result[1] != None:
-#     with open("Test.log", "w") as text_file:
-#         text_file.write("%s" % result[1].stdout)
-#         text_file.close()
+if result[1] != None:
+    with open("Test.log", "w") as text_file:
+        text_file.write("%s" % result[1].stdout)
+        text_file.close()

@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         build_type: [Release]
-        memory_test: [$valgrind, $valgrind_off]
+        memory_test: [${{valgrind}}, ${{valgrind_off}}]
         compiler: [g++]
         language: ['cpp']
         exclude:

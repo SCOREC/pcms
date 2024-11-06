@@ -1,4 +1,4 @@
-name: install-repo
+name: Install-Repo
 
 inputs:
   repo-name:

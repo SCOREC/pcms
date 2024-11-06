@@ -1,6 +1,4 @@
-name: Systems
-on:
-  push:
+name: Globus-Systems
 
 concurrency:
   group: systems-${{ github.event.repository.name }}

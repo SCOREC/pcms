@@ -1,8 +1,12 @@
-name: build-test
+name: Test-Build
 on: 
   push:
   schedule:
     - cron: '12 14 * * 3'
+
+env:
+  valgrind:ON
+  valgrind_off:OFF
 
 jobs:
   buildTest:
@@ -15,7 +19,7 @@ jobs:
     strategy:
       matrix:
         build_type: [Release]
-        memory_test: [ON, OFF]
+        memory_test: [$valgrind, $valgrind_off]
         compiler: [g++]
         language: ['cpp']
         exclude:

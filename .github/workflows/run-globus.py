@@ -10,17 +10,18 @@ from globus_compute_sdk import Executor
 import sys
 import os
 
-name = sys.argv[1]
-branch = sys.argv[2]
-endpoint = sys.argv[3]
+machine = sys.argv[1]
+name = sys.argv[2]
+branch = sys.argv[3]
+endpoint = sys.argv[4]
 
-with open('perlmutter/env.sh', 'r') as file:
+with open(machine+'/env.sh', 'r') as file:
     env_file = file.read()
 
-with open('perlmutter/install.sh', 'r') as file:
+with open(machine+'/install.sh', 'r') as file:
     install_file = file.read()
 
-with open('perlmutter/run.sh', 'r') as file:
+with open(machine+'/run.sh', 'r') as file:
     run_file = file.read()
 
 def run_on_endpoint(name, branch, env_file, install_file, run_file):

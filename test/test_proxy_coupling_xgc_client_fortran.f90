@@ -57,7 +57,7 @@ Program main
     end do
     rc_file = trim(args(1))
 
-    plane = nplanes
+    plane = mod(world_rank, nplanes)
     call MPI_Comm_split(MPI_COMM_WORLD, plane, world_rank, plane_comm, ierror)
     call MPI_Comm_rank(plane_comm, plane_rank, ierror)
     call MPI_Comm_size(plane_comm, plane_size, ierror)

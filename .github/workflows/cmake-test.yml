@@ -4,12 +4,8 @@ on:
   schedule:
     - cron: '12 14 * * 3'
 
-env:
-  valgrind:ON
-  valgrind_off:OFF
-
 jobs:
-  buildTest:
+  test-build:
     runs-on: ubuntu-latest
 
     defaults:
@@ -19,7 +15,7 @@ jobs:
     strategy:
       matrix:
         build_type: [Release]
-        memory_test: [${{valgrind}}, ${{valgrind_off}}]
+        memory_test: [ON, OFF]
         compiler: [g++]
         language: ['cpp']
         exclude:

@@ -1,11 +1,14 @@
 name: Globus-Systems
 
+on:
+  push:
+
 concurrency:
   group: systems-${{ github.event.repository.name }}
   cancel-in-progress: true
 
 jobs:
-  test:
+  globus-test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:

@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-${{ inputs.machine }}:
+  run-globus:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

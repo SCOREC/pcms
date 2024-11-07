@@ -5,7 +5,7 @@ on:
     - cron: '12 14 * * 3'
 
 jobs:
-  globus-test:
+  perlmutter-test:
     uses: ./.github/workflows/globus-test.yml
     secrets: inherit
     with:

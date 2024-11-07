@@ -1,16 +1,9 @@
 name: Test-Build
-on: 
-  push:
+on:
   schedule:
     - cron: '12 14 * * 3'
 
 jobs:
-  perlmutter-test:
-    uses: SCOREC/github-actions/.github/workflows/globus-test.yml@main
-    secrets: inherit
-    with:
-      machine: "perlmutter"
-
   test-build:
     runs-on: ubuntu-latest
 

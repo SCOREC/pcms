@@ -1,0 +1,10 @@
+name: Globus-Systems
+on:
+  push:
+
+jobs:
+  perlmutter-test:
+    uses: SCOREC/github-actions/.github/workflows/globus-test.yml@main
+    secrets: inherit
+    with:
+      machine: "perlmutter"

@@ -6,8 +6,7 @@ on:
 
 jobs:
   perlmutter-test:
-    uses: SCOREC/github-actions/.github/workflows/globus-test.yml@master
-    secrets: inherit
+    uses: scorec/github-actions/.github/workflows/globus-test.yml@master
     with:
       machine: "perlmutter"
 

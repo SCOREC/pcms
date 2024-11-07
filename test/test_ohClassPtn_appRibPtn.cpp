@@ -52,7 +52,7 @@ int main(int argc, char** argv)
   const int rdvRanks = 2;
   const int appRanks = 2;
 
-  adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "2"}};
+  adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
   auto channel =
     rdv.CreateAdiosChannel(name, params, redev::TransportType::BP4);
   auto commPair = channel.CreateComm<redev::GO>(name,rdv.GetMPIComm());

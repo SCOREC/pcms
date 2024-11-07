@@ -5,6 +5,7 @@ on:
     inputs:
       machine:
         required: true
+        type: string
 
 concurrency:
   group: systems-${{ github.event.repository.name }}

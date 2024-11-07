@@ -1,7 +1,7 @@
 name: Test-Build
 on:
   schedule:
-    - cron: '12 14 * * 3' 
+    - cron: '12 14 * * 3'
 
 jobs:
   test-build:

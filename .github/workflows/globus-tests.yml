@@ -2,7 +2,7 @@ name: Globus-Systems
 on:
   push:
   schedule:
-    - cron: '12 14 * * 3' 
+    - cron: '12 14 * * 3'
 
 jobs:
   perlmutter-test:

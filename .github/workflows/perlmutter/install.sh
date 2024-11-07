@@ -99,8 +99,9 @@ cmake -S pcms -B build-pcms \
   -DCMAKE_C_COMPILER=cc \
   -DCMAKE_CXX_COMPILER=CC \
   -DCMAKE_BUILD_TYPE=Release \
-  -Dredev_DIR=$PWD/build-redev/install/lib64/cmake/redev \
+  -DPCMS_TIMEOUT=100 \
   -Dperfstubs_DIR=$PWD/build-perfstubs \
+  -Dredev_DIR=$PWD/build-redev/install/lib64/cmake/redev \
   -DOmega_h_DIR=$PWD/build-omega_h/install/lib64/cmake/Omega_h/ \
   -DKokkos_DIR=$PWD/build-kokkos/install/lib64/cmake/Kokkos/ \
   -DCatch2_DIR=$PWD/build-Catch2/install/lib64/cmake/Catch2/ \

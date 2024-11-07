@@ -1,7 +1,10 @@
 name: Globus-Systems
 
 on:
-  push:
+  workflow_call:
+    inputs:
+      machine:
+        required: true
 
 concurrency:
   group: systems-${{ github.event.repository.name }}
@@ -11,9 +14,6 @@ jobs:
   globus-test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    strategy:
-      matrix:
-        machine: ["perlmutter"]
 
     steps:
 
@@ -43,9 +43,9 @@ jobs:
       run: |
         export GLOBUS_COMPUTE_CLIENT_ID="$GLOBUS_ID"
         export GLOBUS_COMPUTE_CLIENT_SECRET="$GLOBUS_SECRET"
-        if [ ${{ matrix.machine }} == "perlmutter" ]; then TARGET_ENDPOINT=0dd4499a-8d76-4977-bae9-841e4bb2f616; fi
-        if [ ${{ matrix.machine }} == "frontier" ]; then TARGET_ENDPOINT=d625c6cf-de7a-4228-ac44-56247a642fe0; fi
-        python run-globus.py ${{ matrix.machine }} ${{ github.event.repository.name }} ${{ github.sha }} $TARGET_ENDPOINT
+        if [ ${{ inputs.machine }} == "perlmutter" ]; then TARGET_ENDPOINT=0dd4499a-8d76-4977-bae9-841e4bb2f616; fi
+        if [ ${{ inputs.machine }} == "frontier" ]; then TARGET_ENDPOINT=d625c6cf-de7a-4228-ac44-56247a642fe0; fi
+        python run-globus.py ${{ inputs.machine }} ${{ github.event.repository.name }} ${{ github.sha }} $TARGET_ENDPOINT
 
     - name: print build log
       working-directory: ${{ github.event.repository.name }}/.github/workflows

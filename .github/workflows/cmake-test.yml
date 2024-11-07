@@ -5,6 +5,12 @@ on:
     - cron: '12 14 * * 3'
 
 jobs:
+  globus-test:
+    uses: ./.github/workflows/globus-test.yml
+    secrets: inherit
+    with:
+      machine: "perlmutter"
+
   test-build:
     runs-on: ubuntu-latest
 

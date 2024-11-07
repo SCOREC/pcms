@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
     std::string_view cpnFileName(argv[3]);
     auto partition = setupServerPartition(mesh,cpnFileName);
     auto rdv = redev::Redev(MPI_COMM_WORLD,redev::Partition{partition},static_cast<redev::ProcessType>(isRdv));
-    adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
+    adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
     auto channel = rdv.CreateAdiosChannel(std::string(name),params,redev::TransportType::BP4);
     auto comm = channel.CreateComm<redev::GO>(std::string(name),rdv.GetMPIComm());
     auto isOverlap_h = markMeshOverlapRegion(mesh);
@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
     ///////////////////  CLIENT /////////////////////////
     auto partition = setupClientPartition(mesh);
     auto rdv = redev::Redev(MPI_COMM_WORLD,redev::Partition{std::move(partition)},static_cast<redev::ProcessType>(isRdv));
-    adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
+    adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
     auto channel = rdv.CreateAdiosChannel(std::string(name),params,redev::TransportType::BP4);
     auto comm = channel.CreateComm<redev::GO>(std::string(name),rdv.GetMPIComm());
     auto isOverlap_h = markMeshOverlapRegion(mesh);

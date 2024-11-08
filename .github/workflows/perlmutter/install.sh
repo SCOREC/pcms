@@ -3,7 +3,8 @@
 branch=$1
 
 cd $SCRATCH/globus-compute/pcms-test
-source env.sh
+
+module load cray-fftw
 
 # # kokkos
 # rm build-kokkos -rf

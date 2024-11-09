@@ -7,8 +7,6 @@
 namespace pcms
 {
 using ProcessType = redev::ProcessType;
-class GatherOperation;
-class ScatterOperation;
 
 namespace detail
 {

@@ -304,96 +304,6 @@ private:
   std::map<std::string, ConvertibleCoupledField> fields_;
   Omega_h::Mesh& internal_mesh_;
 };
-class GatherOperation
-{
-public:
-  GatherOperation(std::vector<std::reference_wrapper<ConvertibleCoupledField>>
-                    fields_to_gather,
-                  InternalField& combined_field, CombinerFunction combiner)
-    : coupled_fields_(std::move(fields_to_gather)),
-      combined_field_(combined_field),
-      combiner_(std::move(combiner))
-  {
-    PCMS_FUNCTION_TIMER;
-    internal_fields_.reserve(coupled_fields_.size());
-    std::transform(coupled_fields_.begin(), coupled_fields_.end(),
-                   std::back_inserter(internal_fields_),
-                   [](ConvertibleCoupledField& fld) {
-                     return std::ref(fld.GetInternalField());
-                   });
-  }
-  void Run() const
-  {
-    PCMS_FUNCTION_TIMER;
-    for (auto& field : coupled_fields_) {
-      field.get().Receive();
-      field.get().SyncNativeToInternal();
-    }
-    combiner_(internal_fields_, combined_field_);
-  };
-
-private:
-  std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_;
-  std::vector<std::reference_wrapper<InternalField>> internal_fields_;
-  InternalField& combined_field_;
-  CombinerFunction combiner_;
-};
-class ScatterOperation
-{
-public:
-  ScatterOperation(std::vector<std::reference_wrapper<ConvertibleCoupledField>>
-                     fields_to_scatter,
-                   InternalField& combined_field)
-    : coupled_fields_(std::move(fields_to_scatter)),
-      combined_field_{combined_field}
-  {
-    PCMS_FUNCTION_TIMER;
-
-    internal_fields_.reserve(coupled_fields_.size());
-    std::transform(begin(coupled_fields_), end(coupled_fields_),
-                   std::back_inserter(internal_fields_),
-                   [](ConvertibleCoupledField& fld) {
-                     return std::ref(fld.GetInternalField());
-                   });
-  }
-  void Run() const
-  {
-    PCMS_FUNCTION_TIMER;
-    // possible we may need to add a splitter operation here.
-    // needed splitter(combined_field, internal_fields_);
-    // for current use case, we copy the combined field
-    // into application internal fields
-    std::visit(
-      [this](const auto& combined_field) {
-        for (auto& field : coupled_fields_) {
-          std::visit(
-            [&](auto& internal_field) {
-              constexpr bool can_copy = std::is_same_v<
-                typename std::remove_reference_t<
-                  std::remove_cv_t<decltype(combined_field)>>::value_type,
-                typename std::remove_reference_t<
-                  std::remove_cv_t<decltype(internal_field)>>::value_type>;
-              if constexpr (can_copy) {
-                copy_field(combined_field, internal_field);
-              } else {
-                interpolate_field(combined_field, internal_field);
-              }
-            },
-            field.get().GetInternalField());
-        }
-      },
-      combined_field_);
-    for (auto& field : coupled_fields_) {
-      field.get().SyncInternalToNative();
-      field.get().Send(Mode::Synchronous);
-    }
-  };
-
-private:
-  std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_;
-  std::vector<std::reference_wrapper<InternalField>> internal_fields_;
-  InternalField& combined_field_;
-};
 
 class CouplerServer
 {
@@ -424,96 +334,7 @@ public:
     return &(it->second);
   }
 
-  // here we take a string, not string_view since we need to search map
-  void ScatterFields(const std::string& name)
-  {
-    PCMS_FUNCTION_TIMER;
-    detail::find_or_error(name, scatter_operations_).Run();
-  }
-  // here we take a string, not string_view since we need to search map
-  void GatherFields(const std::string& name)
-  {
-    PCMS_FUNCTION_TIMER;
-    detail::find_or_error(name, gather_operations_).Run();
-  }
   template <typename CombinedFieldT = Real>
-  [[nodiscard]] GatherOperation* AddGatherFieldsOp(
-    const std::string& name,
-    std::vector<std::reference_wrapper<ConvertibleCoupledField>> gather_fields,
-    const std::string& internal_field_name, CombinerFunction func,
-    Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
-  {
-    PCMS_FUNCTION_TIMER;
-    static constexpr int search_nx = 10;
-    static constexpr int search_ny = 10;
-
-    auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
-      internal_field_name, internal_fields_, internal_mesh_, mask,
-      std::move(global_id_name));
-    std::visit([&](auto& field) {
-      field.ConstructSearch(search_nx, search_ny);
-    },combined);
-    auto [it, inserted] = gather_operations_.template try_emplace(
-      name, std::move(gather_fields), combined, std::move(func));
-    if (!inserted) {
-      std::cerr << "GatherOperation with this name" << name
-                << "already exists!\n";
-      std::terminate();
-    }
-    return &(it->second);
-  }
-  // template <typename CombinedFieldT = Real>
-  // [[nodiscard]]
-  // GatherOperation* AddGatherFieldsOp(
-  //   const std::string& name, const std::vector<std::string>&
-  //   fields_to_gather, const std::string& internal_field_name,
-  //   CombinerFunction func, Omega_h::Read<Omega_h::I8> mask = {}, std::string
-  //   global_id_name = "")
-  // {
-  //   auto gather_fields = detail::find_many_or_error(fields_to_gather,
-  //   fields_); return AddGatherFieldsOp(name, std::move(gather_fields),
-  //   internal_field_name,
-  //                    std::forward<CombinerFunction>(func), std::move(mask),
-  //                    std::move(global_id_name));
-  // }
-  template <typename CombinedFieldT = Real>
-  [[nodiscard]] ScatterOperation* AddScatterFieldsOp(
-    const std::string& name, const std::string& internal_field_name,
-    std::vector<std::reference_wrapper<ConvertibleCoupledField>> scatter_fields,
-    Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
-  {
-    PCMS_FUNCTION_TIMER;
-    static constexpr int search_nx = 10;
-    static constexpr int search_ny = 10;
-
-    auto& combined = detail::find_or_create_internal_field<CombinedFieldT>(
-      internal_field_name, internal_fields_, internal_mesh_, mask,
-      std::move(global_id_name));
-    std::visit([&](auto& field) {
-      field.ConstructSearch(search_nx, search_ny);
-    },combined);
-    auto [it, inserted] = scatter_operations_.template try_emplace(
-      name, std::move(scatter_fields), combined);
-
-    if (!inserted) {
-      std::cerr << "Scatter with this name" << name << "already exists!\n";
-      std::terminate();
-    }
-    return &(it->second);
-  }
-  // template <typename CombinedFieldT = Real>
-  // [[nodiscard]]
-  // ScatterOperation* AddScatterFieldsOp(
-  //   const std::string& name, const std::string& internal_field_name,
-  //   const std::vector<std::string>& fields_to_scatter,
-  //   Omega_h::Read<Omega_h::I8> mask = {}, std::string global_id_name = "")
-  // {
-  //   auto scatter_fields =
-  //     detail::find_many_or_error(fields_to_scatter, fields_);
-  //   return AddScatterFieldsOp(name, internal_field_name,
-  //                      std::move(scatter_fields), std::move(mask),
-  //                      std::move(global_id_name));
-  // }
   [[nodiscard]] const redev::Partition& GetPartition() const noexcept
   {
     return redev_.GetPartition();
@@ -536,12 +357,7 @@ private:
   std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
-  // xgc_coupler owns internal fields since both gather/scatter ops use these
-  // these internal fields correspond to the "Combined" fields
   std::map<std::string, InternalField> internal_fields_;
-  // gather and scatter operations have reference to internal fields
-  std::map<std::string, ScatterOperation> scatter_operations_;
-  std::map<std::string, GatherOperation> gather_operations_;
   std::map<std::string, Application> applications_;
   Omega_h::Mesh& internal_mesh_;
 };

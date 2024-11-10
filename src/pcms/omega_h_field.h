@@ -427,25 +427,6 @@ auto make_array_view(const Omega_h::Read<T>& array)
   return view;
 }
 } // namespace Omega_h
-namespace detail {
-
-struct OwnershipMaskFunctor{
-  OwnershipMaskFunctor(Omega_h::Read<Omega_h::I8> owned,
-                       Omega_h::Read<Omega_h::I8> mask,
-                       Omega_h::Write<Omega_h::I8> owned_mask) : owned_(owned), mask_(mask), owned_mask_(owned_mask) {}
-  operator()(pcms::LO i) { 
-    if(mask.exists()) {
-      owned_mask_[i] = mask_[i] && owned_[i];
-    }
-    else {
-        owned_mask_[i] = owned_[i];
-      }
-    }
-  Omega_h::Read<Omega_h::I8> &owned_;
-  Omega_h::Read<Omega_h::I8> &mask_;
-  Omega_h::Write<Omega_h::I8> &owned_mask_;
-};
-}
 
 namespace pcms
 {
@@ -472,7 +453,15 @@ public:
     PCMS_FUNCTION_TIMER;
     Omega_h::Write<Omega_h::I8> owned_mask(mesh.nents(0));
     auto owned = mesh.owned(0);
-    Kokkos::parallel_for(owned_mask.size(), detail::OwnershipMaskFunctor{owned, mask, owned_mask);
+    Omega_h::parallel_for(
+      owned_mask.size(), OMEGA_H_LAMBDA(LO i) { 
+      if(mask.exists()) {
+        owned_mask[i] = mask[i] && owned[i];
+        }
+      else {
+          owned_mask[i] = owned[i];
+        }
+      });
     field_ = OmegaHField<T, CoordinateElementType>(name,           mesh,      Omega_h::Read<Omega_h::I8>(owned_mask),
              global_id_name);
   }

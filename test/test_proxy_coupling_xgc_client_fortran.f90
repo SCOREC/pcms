@@ -21,11 +21,12 @@ end module overlap
 
 Program main
     use pcms
-    use mpi
+    !use mpi
     use overlap
     use, intrinsic :: ISO_C_BINDING
     implicit none
-    !    include "mpif.h"
+    include "mpif.h"
+
     integer, parameter :: nplanes = 2
 
     integer :: num_args, ix, nverts, ierror

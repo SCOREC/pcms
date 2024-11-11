@@ -9,12 +9,19 @@ include(ProcessorCount)
 ProcessorCount(HOST_NPROC)
 message("TESTING ON SYSTEM WITH ${HOST_NPROC} CPU Cores")
 
+# openmpi 5 fails if oversubscribing
+set(MPIEXEC_PREFLAGS "--oversubscribe")
+
 message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
+message(STATUS "MPIEXEC_PREFLAGS:  ${MPIEXEC_PREFLAGS}")
+message(STATUS "MPIEXEC_POSTFLAGS:  ${MPIEXEC_POSTFLAGS}")
 message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
 set(VALGRIND_EXECUTABLE "none" CACHE FILEPATH "path to valgrind executable")
 set(VALGRIND_ARGS "none" CACHE STRING "specify valgrind options; logging (--log-file=%p_<name>.vg) is enabled by default if VALGRIND_EXECUTABLE is set")
 message(STATUS "VALGRIND_EXECUTABLE: ${VALGRIND_EXECUTABLE}")
 message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
+
+set(MPI_RUNCMD "${MPIEXEC_EXECUTABLE} ${MPIEXEC_PREFLAGS}")
 
 if (PCMS_ENABLE_OMEGA_H)
     add_library(test_support test_support.cpp)
@@ -51,11 +58,11 @@ function(mpi_test TESTNAME PROCS EXE)
     removeBpFiles(${TESTNAME}_cleanup)
     if (${VALGRIND_EXECUTABLE} MATCHES "none")
         add_test(NAME ${TESTNAME}
-                COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} ${EXE} ${ARGN})
+		COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} ${MPIEXEC_PREFLAGS} ${EXE} ${MPIEXEC_POSTFLAGS} ${ARGN})
     else ()
         add_test(NAME ${TESTNAME}
                 COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${PROCS}
-                ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS} ${EXE} ${ARGN})
+		${MPIEXEC_PREFLAGS} ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS} ${EXE} ${MPIEXEC_POSTFLAGS} ${ARGN})
     endif ()
 endfunction(mpi_test)
 
@@ -67,7 +74,7 @@ function(dual_mpi_test)
     increaseTimeoutForValgrind(${DUALTEST_TIMEOUT} DUALTEST_TIMEOUT)
     add_test(NAME ${DUALTEST_TESTNAME}
             COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
-            ${MPIEXEC_EXECUTABLE}
+	    ${MPI_RUNCMD}
             ${MPIEXEC_NUMPROC_FLAG}
             ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS}
             ${DUALTEST_NAME1} ${DUALTEST_PROCS1} ${DUALTEST_EXE1} "${DUALTEST_ARGS1}"
@@ -83,7 +90,7 @@ function(tri_mpi_test)
     increaseTimeoutForValgrind(${TRITEST_TIMEOUT} TRITEST_TIMEOUT)
     add_test(NAME ${TRITEST_TESTNAME}
             COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
-            ${MPIEXEC_EXECUTABLE}
+	    ${MPI_RUNCMD}
             ${MPIEXEC_NUMPROC_FLAG}
             ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS}
             ${TRITEST_NAME1} ${TRITEST_PROCS1} ${TRITEST_EXE1} "${TRITEST_ARGS1}"
@@ -121,7 +128,7 @@ if (PCMS_ENABLE_OMEGA_H)
     add_exe(test_ohOverlap)
     if(HOST_NPROC GREATER 10)
         dual_mpi_test(TESTNAME test_ohOverlap_d3d_20p
-                TIMEOUT 10
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
                 NAME2 app EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
     endif()
@@ -130,7 +137,7 @@ if (PCMS_ENABLE_OMEGA_H)
     add_exe(test_twoClientOverlap)
     if(HOST_NPROC GREATER 14)
         tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
-                TIMEOUT 12
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./test_twoClientOverlap PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
                 NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
@@ -144,21 +151,21 @@ if (PCMS_ENABLE_OMEGA_H)
             NAME3 client1 EXE3 ./proxy_coupling PROCS3 1 ARGS3 1 ${d3d1p} ignored)
     if(HOST_NPROC GREATER 13)
         tri_mpi_test(TESTNAME test_proxy_coupling_26p
-                TIMEOUT 12
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
                 NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
     endif()
     if (HOST_NPROC GREATER 14)
         tri_mpi_test(TESTNAME test_proxy_coupling_28p
-                TIMEOUT 12
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./proxy_coupling PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
                 NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
     endif ()
     if(HOST_NPROC GREATER 16)
         tri_mpi_test(TESTNAME test_proxy_coupling_32p
-                TIMEOUT 12
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./proxy_coupling PROCS1 8 ARGS1 -1 ${d3d1p} ${d3d8p_cpn}
                 NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)

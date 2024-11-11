@@ -34,7 +34,7 @@ Program main
     type(PcmsReverseClassificationHandle) :: reverse_classification
     type(PcmsFieldHandle), dimension(2) :: fields
     type(PcmsFieldAdapterHandle), dimension(2) :: adapters
-    character(len = 80), dimension(:), allocatable :: args
+    character(len = 200), dimension(:), allocatable :: args
     character(len = :), allocatable :: rc_file
     integer(C_LONG), allocatable, target :: data(:)
     integer(C_LONG), pointer :: data_pointer(:)
@@ -48,6 +48,7 @@ Program main
     call pcms_kokkos_initialize_without_args()
     call MPI_COMM_SIZE(MPI_COMM_WORLD, world_size, ierror)
     call MPI_COMM_RANK(MPI_COMM_WORLD, world_rank, ierror)
+    print*, "INFO: MPI Initialized"
     num_args = command_argument_count()
     if (num_args /= 1) then
         stop 1
@@ -58,7 +59,8 @@ Program main
     end do
     rc_file = trim(args(1))
 
-    plane = mod(world_rank, plane)
+    print*, "INFO:  splitting comms"
+    plane = mod(world_rank, nplanes)
     call MPI_Comm_split(MPI_COMM_WORLD, plane, world_rank, plane_comm, ierror)
     call MPI_Comm_rank(plane_comm, plane_rank, ierror)
     call MPI_Comm_size(plane_comm, plane_size, ierror)
@@ -72,9 +74,13 @@ Program main
         client_size = -1
     end if
 
+    print*, "INFO:  Creating client"
     client = pcms_create_client("proxy_couple", client_comm)
+    print*, "INFO:  Load Reverse Classification ", rc_file
     reverse_classification = pcms_load_reverse_classification(rc_file, MPI_COMM_WORLD)
+    print*, "INFO:  Count Reverse Classification Verts"
     nverts = pcms_reverse_classification_count_verts(reverse_classification)
+    print*, "INFO:  Allocating Data"
     allocate(data(nverts))
     data_pointer => data
 

@@ -109,7 +109,7 @@ TEST_CASE("mls_interp_test")
       target_points.coordinates(j).y = target_coordinates[j * dim + 1];
     });
 
-  SECTION("test interpo degree 1 poly degree 0")
+  SECTION("test interpolation degree 1, function degree 0")
   {
 
     int degree = 1;
@@ -152,11 +152,11 @@ TEST_CASE("mls_interp_test")
     }
   }
 
-  SECTION("test interpolation degree 1 poly degree 1")
+  SECTION("test interpolation degree 1, function degree 1")
   {
 
-    int degree = 2;
-    LO min_num_supports = 16;
+    int degree = 1;
+    LO min_num_supports = 10;
 
     Write<Real> source_values(nfaces, 0, "exact target values");
 
@@ -281,7 +281,7 @@ TEST_CASE("mls_interp_test")
     }
   }
 
-  SECTION("test interpolation degree 2 poly degree 2")
+  SECTION("test interpolation degree 2, function degree 2")
   {
 
     int degree = 2;
@@ -324,7 +324,7 @@ TEST_CASE("mls_interp_test")
     }
   }
 
-  SECTION("test interpolation degree 3 poly degree 2")
+  SECTION("test interpolation degree 3, function degree 2")
   {
 
     int degree = 3;
@@ -367,7 +367,7 @@ TEST_CASE("mls_interp_test")
     }
   }
 
-  SECTION("test interpolation degree 3 poly degree 3")
+  SECTION("test interpolation degree 3, function degree 3")
   {
 
     int degree = 3;

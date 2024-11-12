@@ -1,7 +1,8 @@
 name: Globus-Systems
 on:
   schedule:
-    - cron: '12 14 * * 3' 
+    # Monday 8:35 UTC or 04:35 EDT
+    - cron: '35 8 * * 1'
 
 jobs:
   perlmutter-test:

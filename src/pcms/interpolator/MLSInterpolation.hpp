@@ -5,14 +5,23 @@
 #include "adj_search.hpp"
 #include <cassert>
 #include <cmath>
+#include <type_traits>
+#include <Kokkos_Core.hpp>
+
 using namespace Omega_h;
 
+template <typename Func>
 Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
-                              const LO& degree, Write<Real> radii2)
+                              const LO& degree, Write<Real> radii2,
+                              Func rbf_func)
 {
+  static_assert(std::is_invocable_r_v<double, Func, double, double>,
+                "rbf_func, takes radius and cutoff, returns weight");
+  static_assert(!std::is_pointer_v<Func>,
+                "function pointer will fail in GPU execution context");
   const auto nvertices_source = source_coordinates.size() / dim;
   const auto nvertices_target = target_coordinates.size() / dim;
 
@@ -185,7 +194,8 @@ Write<Real> mls_interpolation(const Reals source_values,
             radii2[i] > 0,
             "ERROR: radius2 has to be positive but found to be %.16f\n",
             radii2[i]);
-          PhiVector(Phi, target_point, local_source_points, j, radii2[i]);
+          PhiVector(Phi, target_point, local_source_points, j, radii2[i],
+                    rbf_func);
         });
 
       // sum phi

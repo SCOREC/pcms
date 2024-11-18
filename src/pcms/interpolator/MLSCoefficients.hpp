@@ -5,6 +5,7 @@
 #include <Omega_h_fail.hpp>
 
 #include "points.hpp"
+#include <type_traits>
 
 #define PI_M 3.14159265358979323846
 
@@ -93,32 +94,6 @@ void BasisPoly(ScratchVecView basis_monomial, const MatViewType& slice_length,
   }
 }
 
-KOKKOS_INLINE_FUNCTION
-double rbf(double r_sq, double rho_sq)
-{
-  double phi;
-  double r = sqrt(r_sq);
-  OMEGA_H_CHECK_PRINTF(
-    rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
-    rho_sq);
-  double rho = sqrt(rho_sq);
-  double ratio = r / rho;
-  double limit = 1 - ratio;
-  if (limit < 0) {
-    phi = 0;
-
-  } else {
-    phi = 5 * pow(ratio, 5) + 30 * pow(ratio, 4) + 72 * pow(ratio, 3) +
-          82 * pow(ratio, 2) + 36 * ratio + 6;
-    phi = phi * pow(limit, 6);
-  }
-
-  OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
-                       "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
-                       r_sq, rho_sq);
-  return phi;
-}
-
 // create vandermondeMatrix
 KOKKOS_INLINE_FUNCTION
 void VandermondeMatrix(ScratchMatView V,
@@ -160,16 +135,20 @@ void PTphiMatrix(ScratchMatView pt_phi, ScratchMatView V, ScratchVecView Phi,
 }
 
 // radial basis function vector
-KOKKOS_INLINE_FUNCTION
-void PhiVector(ScratchVecView Phi, const Coord target_point,
-               const ScratchMatView local_source_points, int j,
-               double cuttoff_dis_sq)
+template <typename Func,
+          std::enable_if_t<std::is_invocable_r_v<double, Func, double, double>,
+                           bool> = true>
+KOKKOS_INLINE_FUNCTION void PhiVector(ScratchVecView Phi,
+                                      const Coord target_point,
+                                      const ScratchMatView local_source_points,
+                                      int j, double cuttoff_dis_sq,
+                                      Func rbf_func)
 {
   int N = local_source_points.extent(0);
   double dx = target_point.x - local_source_points(j, 0);
   double dy = target_point.y - local_source_points(j, 1);
   double ds_sq = dx * dx + dy * dy;
-  Phi(j) = rbf(ds_sq, cuttoff_dis_sq);
+  Phi(j) = rbf_func(ds_sq, cuttoff_dis_sq);
   OMEGA_H_CHECK_PRINTF(!std::isnan(Phi(j)),
                        "ERROR: Phi(j) in PhiVector is NaN for j = %d "
                        "ds_sq=%.16f, cuttoff_dis_sq=%.16f",

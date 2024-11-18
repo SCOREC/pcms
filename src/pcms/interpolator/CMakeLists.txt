@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(Interpolator)
 
-set(HEADER_FILES
+set(PCMS_FIELD_TRANSFER_HEADERS
     MLSInterpolation.hpp
     points.hpp
     adj_search.hpp
@@ -10,13 +10,18 @@ set(HEADER_FILES
     queue_visited.hpp
     linear_interpolant.hpp
     multidimarray.hpp
+    MLS_rbf_options.hpp
 )
 
-install(FILES ${HEADER_FILES} DESTINATION include/pcms/interpolator)
+set(PCMS_FIELD_TRANSFER_SOURCES
+    MLS_rbf_options.cpp
+)
+install(FILES ${PCMS_FIELD_TRANSFER_HEADERS} DESTINATION include/pcms/interpolator)
 
-add_library(pcms_interpolator INTERFACE)
 
-target_link_libraries(pcms_interpolator INTERFACE pcms::core)
+add_library(pcms_interpolator ${PCMS_FIELD_TRANSFER_SOURCES})
+
+target_link_libraries(pcms_interpolator PUBLIC pcms::core)
 
 target_include_directories(pcms_interpolator INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -26,7 +31,8 @@ target_include_directories(pcms_interpolator INTERFACE
 
 install(TARGETS pcms_interpolator
     EXPORT interpolatorTargets
-    INCLUDES DESTINATION include/pcms/interpolator)
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/interpolator
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}) 
 
 
 install(EXPORT interpolatorTargets

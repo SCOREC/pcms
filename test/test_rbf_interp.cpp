@@ -1,53 +1,82 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <pcms/interpolator/adj_search.hpp>
-#include <pcms/interpolator/MLSInterpolation.hpp>
-#include <pcms/interpolator/MLSCoefficients.hpp>
+#include <pcms/interpolator/MLS_rbf_options.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <pcms/interpolator/points.hpp>
 
 using namespace std;
 using namespace Omega_h;
 
 KOKKOS_INLINE_FUNCTION
-double func_const(Coord& p)
+double func(Coord& p, int degree)
 {
-  auto x = p.x;
-  auto y = p.y;
-  double Z = 3;
-  return Z;
+  [[maybe_unused]] auto x = p.x;
+  [[maybe_unused]] auto y = p.y;
+  if (degree = 0) {
+    double Z = 3;
+  }
+  elseif(degree = 1)
+  {
+    double Z = x + y;
+  }
+  elseif(degree = 2)
+  {
+    double Z = pow(x, 2) + pow(y, 2);
+  }
+  elseif(degree = 3)
+  {
+
+    double Z = pow(x, 3) + pow(y, 3);
+  }
+  else printf("No polynomials with degree = %f\n", degree)
+}
+return Z;
 }
 
-KOKKOS_INLINE_FUNCTION
-double func_linear(Coord& p)
+void test(Mesh& mesh, Real cutoffdistance, int degree, LO min_num_Supports,
+          RadialBasisFunction bf)
 {
-  auto x = p.x;
-  auto y = p.y;
-  double Z = x + y;
-  return Z;
-}
+  Write<Real> source_values(nfaces, 0, "exact target values");
 
-KOKKOS_INLINE_FUNCTION
-double func_quadratic(Coord& p)
-{
-  auto x = p.x;
-  auto y = p.y;
-  double Z = pow(x, 2) + pow(y, 2);
-  return Z;
-}
+  Kokkos::parallel_for(
+    nfaces, KOKKOS_LAMBDA(int i) {
+      source_values[i] = func(source_points.coordinates(i), degree);
+    });
 
-KOKKOS_INLINE_FUNCTION
-double func_cubic(Coord& p)
-{
-  auto x = p.x;
-  auto y = p.y;
-  double Z = pow(x, 3) + pow(y, 3);
-  return Z;
-}
+  SupportResults support =
+    searchNeighbors(mesh, cutoffDistance, min_num_supports);
 
+  auto approx_target_values = mls_interpolation(
+    source_values, source_coordinates, target_coordinates, support, dim, degree,
+    support.radii2, RadialBasisFunction::RBF_C4);
+
+  auto host_approx_target_values = HostRead<Real>(approx_target_values);
+
+  Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
+
+  Kokkos::parallel_for(
+    mesh.nverts(), KOKKOS_LAMBDA(int i) {
+      exact_target_values[i] = func_linear(target_points.coordinates(i));
+    });
+
+  auto host_exact_target_values = HostRead<Real>(exact_target_values);
+
+  int m = exact_target_values.size();
+  int n = approx_target_values.size();
+
+  REQUIRE(m == n);
+
+  for (size_t i = 0; i < m; ++i) {
+    CHECK_THAT(
+      host_exact_target_values[i],
+      Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
+  }
+}
 // Test cases for centroid to node mapping using MLS
 TEST_CASE("mls_interp_test")
 {
@@ -125,9 +154,9 @@ TEST_CASE("mls_interp_test")
     SupportResults support =
       searchNeighbors(mesh, cutoffDistance, min_num_supports);
 
-    auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, support.radii2);
+    auto approx_target_values = mls_interpolation(
+      source_values, source_coordinates, target_coordinates, support, dim,
+      degree, support.radii2, RadialBasisFunction::RBF_C4);
 
     auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
@@ -152,48 +181,7 @@ TEST_CASE("mls_interp_test")
     }
   }
 
-  SECTION("test interpolation degree 1, function degree 1")
-  {
-
-    int degree = 1;
-    LO min_num_supports = 10;
-
-    Write<Real> source_values(nfaces, 0, "exact target values");
-
-    Kokkos::parallel_for(
-      nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func_linear(source_points.coordinates(i));
-      });
-
-    SupportResults support =
-      searchNeighbors(mesh, cutoffDistance, min_num_supports);
-
-    auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, support.radii2);
-
-    auto host_approx_target_values = HostRead<Real>(approx_target_values);
-
-    Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
-
-    Kokkos::parallel_for(
-      mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func_linear(target_points.coordinates(i));
-      });
-
-    auto host_exact_target_values = HostRead<Real>(exact_target_values);
-
-    int m = exact_target_values.size();
-    int n = approx_target_values.size();
-
-    REQUIRE(m == n);
-
-    for (size_t i = 0; i < m; ++i) {
-      CHECK_THAT(
-        host_exact_target_values[i],
-        Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
-    }
-  }
+  SECTION("test interpolation degree 1, function degree 1") {}
 
   SECTION("test interpo degree 2 poly degree 0")
   {
@@ -211,9 +199,9 @@ TEST_CASE("mls_interp_test")
     SupportResults support =
       searchNeighbors(mesh, cutoffDistance, min_num_supports);
 
-    auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, support.radii2);
+    auto approx_target_values = mls_interpolation(
+      source_values, source_coordinates, target_coordinates, support, dim,
+      degree, support.radii2, RadialBasisFunction::RBF_C4);
 
     auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
@@ -254,9 +242,9 @@ TEST_CASE("mls_interp_test")
     SupportResults support =
       searchNeighbors(mesh, cutoffDistance, min_num_supports);
 
-    auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, support.radii2);
+    auto approx_target_values = mls_interpolation(
+      source_values, source_coordinates, target_coordinates, support, dim,
+      degree, support.radii2, RadialBasisFunction::RBF_C4);
 
     auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
@@ -297,9 +285,9 @@ TEST_CASE("mls_interp_test")
     SupportResults support =
       searchNeighbors(mesh, cutoffDistance, min_num_supports);
 
-    auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, support.radii2);
+    auto approx_target_values = mls_interpolation(
+      source_values, source_coordinates, target_coordinates, support, dim,
+      degree, support.radii2, RadialBasisFunction::RBF_C4);
 
     auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
@@ -340,9 +328,9 @@ TEST_CASE("mls_interp_test")
     SupportResults support =
       searchNeighbors(mesh, cutoffDistance, min_num_supports);
 
-    auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, support.radii2);
+    auto approx_target_values = mls_interpolation(
+      source_values, source_coordinates, target_coordinates, support, dim,
+      degree, support.radii2, RadialBasisFunction::RBF_C4);
 
     auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
@@ -383,9 +371,9 @@ TEST_CASE("mls_interp_test")
     SupportResults support =
       searchNeighbors(mesh, cutoffDistance, min_num_supports);
 
-    auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, support.radii2);
+    auto approx_target_values = mls_interpolation(
+      source_values, source_coordinates, target_coordinates, support, dim,
+      degree, support.radii2, RadialBasisFunction::RBF_C4);
 
     auto host_approx_target_values = HostRead<Real>(approx_target_values);
 

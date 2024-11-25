@@ -23,7 +23,7 @@ namespace pcms {
   }
 
   template<typename... Args>
-  PP_INLINE
+  KOKKOS_INLINE_FUNCTION
   void pPrintInfo(const char* fmt, const Args&... args) {
     #if defined(SPDLOG_ENABLED) && defined(PCMS_PRINT_ENABLED) && !defined(ACTIVE_GPU_EXECUTION)
       spdlog::info("{}", fmt::sprintf(fmt, args...));

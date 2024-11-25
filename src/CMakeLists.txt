@@ -16,12 +16,19 @@ set(PCMS_HEADERS
         pcms/array_mask.h
         pcms/inclusive_scan.h
         pcms/profile.h
+        pcms/print.h
         )
 
 set(PCMS_SOURCES
         pcms.cpp
         pcms/assert.cpp
         pcms/xgc_field_adapter.h)
+
+configure_file(
+  pcms/version.h.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/pcms/version.h
+)
+
 set(PCMS_SOURCES pcms.cpp pcms/assert.cpp)
 if(PCMS_ENABLE_XGC)
   list(APPEND PCMS_SOURCES  pcms/xgc_reverse_classification.cpp)

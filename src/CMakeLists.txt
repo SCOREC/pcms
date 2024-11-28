@@ -26,7 +26,7 @@ set(PCMS_SOURCES
 
 configure_file(
   pcms/version.h.in
-  ${CMAKE_CURRENT_SOURCE_DIR}/pcms/version.h
+  pcms/version.h
 )
 
 set(PCMS_SOURCES pcms.cpp pcms/assert.cpp)
@@ -81,6 +81,7 @@ set_target_properties(pcms_core PROPERTIES
   PUBLIC_HEADER "${PCMS_HEADERS}")
 target_include_directories(pcms_core
   PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 install(

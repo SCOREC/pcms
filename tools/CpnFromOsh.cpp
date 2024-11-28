@@ -9,7 +9,7 @@
 int main(int argc, char** argv)
 {
   if (argc != 3) {
-    pPrintError("Usage: %s <mesh file> <nparts>\n", argv[0]);
+    pcms::pPrintError("Usage: %s <mesh file> <nparts>\n", argv[0]);
     std::abort();
   }
   Omega_h::Library lib(&argc, &argv);

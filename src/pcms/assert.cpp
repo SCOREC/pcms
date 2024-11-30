@@ -4,7 +4,7 @@
 #include <cstdlib>
 namespace pcms {
 void Pcms_Assert_Fail(const char* msg) {
-  pPrintError("%s", msg);
+  printError("%s", msg);
   abort();
 }
 }

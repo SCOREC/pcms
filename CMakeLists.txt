@@ -17,7 +17,7 @@ option(PCMS_ENABLE_XGC "enable xgc field adapter" ON)
 option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
 option(PCMS_ENABLE_C "Enable pcms C api" ON)
 
-option(PCMS_PRINT_ENABLED "PUMIPIC print statements enabled" ON)
+option(PCMS_PRINT_ENABLED "PCMS print statements enabled" ON)
 find_package(spdlog QUIET)
 
 # find package before fortran enabled, so we don't require the adios2 fortran interfaces

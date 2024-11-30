@@ -1,6 +1,7 @@
-#pragma once
+#ifndef PCMS_PRINT_H
+#define PCMS_PRINT_H
 
-#ifdef SPDLOG_ENABLED
+#ifdef PCMS_SPDLOG_ENABLED
   #include "spdlog/spdlog.h"
   #include <spdlog/fmt/bundled/printf.h>
 #endif
@@ -13,23 +14,31 @@ namespace pcms {
     #define ACTIVE_GPU_EXECUTION
   #endif
 
+  FILE* getStdout();
+  FILE* getStderr();
+
+  void setStdout(FILE* out);
+  void setStderr(FILE* err);
+
   template<typename... Args>
-  void pPrintError(const char* fmt, const Args&... args) {
-    #if defined(SPDLOG_ENABLED) && defined(PCMS_PRINT_ENABLED)
+  void printError(const char* fmt, const Args&... args) {
+    #if defined(PCMS_SPDLOG_ENABLED) && defined(PCMS_PRINT_ENABLED)
       spdlog::error("{}", fmt::sprintf(fmt, args...));
     #elif defined(PCMS_PRINT_ENABLED)
-      fprintf(stderr, fmt, args...);
+      fprintf(getStdout(), fmt, args...);
     #endif
   }
 
   template<typename... Args>
   KOKKOS_INLINE_FUNCTION
-  void pPrintInfo(const char* fmt, const Args&... args) {
-    #if defined(SPDLOG_ENABLED) && defined(PCMS_PRINT_ENABLED) && !defined(ACTIVE_GPU_EXECUTION)
+  void printInfo(const char* fmt, const Args&... args) {
+    #if defined(PCMS_SPDLOG_ENABLED) && defined(PCMS_PRINT_ENABLED) && !defined(ACTIVE_GPU_EXECUTION)
       spdlog::info("{}", fmt::sprintf(fmt, args...));
-    #elif defined(PCMS_PRINT_ENABLED)
-      Kokkos::printf(fmt, args...);
+    #elif defined(PCMS_PRINT_ENABLED) && !defined(ACTIVE_GPU_EXECUTION)
+      fprintf(getStdout(), fmt, args...);
     #endif
   }
 
 }
+
+#endif //PCMS_PRINT_H

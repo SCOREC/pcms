@@ -156,7 +156,7 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
         name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
       break;
     default:
-      pcms::pPrintError("tyring to create XGC adapter with invalid type! %d", data_type);
+      pcms::printError("tyring to create XGC adapter with invalid type!\n");
       std::abort();
   }
   return {reinterpret_cast<void*>(field_adapter)};

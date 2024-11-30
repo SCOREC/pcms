@@ -7,7 +7,7 @@
 int main(int argc, char** argv)
 {
   if ((argc != 2) && (argc != 3)) {
-    pcms::pPrintError("Usage: %s <mesh file> <numbering>\n", argv[0]);
+    pcms::printError("Usage: %s <mesh file> <numbering>\n", argv[0]);
     std::abort();
   }
   Omega_h::Library lib(&argc, &argv);

@@ -22,6 +22,7 @@ set(PCMS_HEADERS
 set(PCMS_SOURCES
         pcms.cpp
         pcms/assert.cpp
+        pcms/print.cpp
         pcms/xgc_field_adapter.h)
 
 configure_file(
@@ -29,7 +30,6 @@ configure_file(
   pcms/version.h
 )
 
-set(PCMS_SOURCES pcms.cpp pcms/assert.cpp)
 if(PCMS_ENABLE_XGC)
   list(APPEND PCMS_SOURCES  pcms/xgc_reverse_classification.cpp)
   list(APPEND PCMS_HEADERS pcms/xgc_reverse_classification.h)
@@ -73,6 +73,17 @@ endif()
 
 if(PCMS_HAS_ASAN)
   target_compile_options(pcms_core PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+endif()
+
+if(PCMS_PRINT_ENABLED)
+  add_definitions(-DPCMS_PRINT_ENABLED)
+  target_compile_definitions(pcms_core INTERFACE -DPCMS_PRINT_ENABLED)
+endif()
+
+if (spdlog_FOUND)
+  add_definitions(-DPCMS_SPDLOG_ENABLED)
+  target_compile_definitions(pcms_core INTERFACE -DPCMS_SPDLOG_ENABLED)
+  target_link_libraries(pcms_core PUBLIC spdlog::spdlog)
 endif()
 
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(pcms VERSION 0.0.7 LANGUAGES CXX)
+project(pcms VERSION 0.1.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)

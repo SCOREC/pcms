@@ -2,19 +2,19 @@
 
 namespace pcms {
 
-  FILE* pp_stdout = stdout;
-  FILE* pp_stderr = stderr;
+  FILE* pcms_stdout = stdout;
+  FILE* pcms_stderr = stderr;
 
-  FILE* getStdout() { return pp_stdout; }
-  FILE* getStderr() { return pp_stderr; }
+  FILE* getStdout() { return pcms_stdout; }
+  FILE* getStderr() { return pcms_stderr; }
 
   void setStdout(FILE* out) {
     assert(out != NULL);
-    pp_stdout = out;
+    pcms_stdout = out;
   }
 
   void setStderr(FILE* err) {
     assert(err != NULL);
-    pp_stderr = err;
+    pcms_stderr = err;
   }
 }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(pcms VERSION 0.0.5 LANGUAGES CXX)
+project(pcms VERSION 0.1.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -16,6 +16,9 @@ option(PCMS_ENABLE_CLIENT "enable the coupling client implementation" ON)
 option(PCMS_ENABLE_XGC "enable xgc field adapter" ON)
 option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
 option(PCMS_ENABLE_C "Enable pcms C api" ON)
+
+option(PCMS_PRINT_ENABLED "PCMS print statements enabled" ON)
+find_package(spdlog QUIET)
 
 # find package before fortran enabled, so we don't require the adios2 fortran interfaces
 # this is important because adios2 build with clang/gfortran is broken
@@ -53,6 +56,22 @@ pkg_check_modules(fftw REQUIRED IMPORTED_TARGET fftw3>=3.3)
 add_subdirectory(src)
 
 include(CTest)
+include(test/testing.cmake)
+#define 'smoke tests' to test the install
+add_custom_target(test_install DEPENDS check) # maintain test_install target
+if(NOT BUILD_TESTING)
+  add_custom_target(check
+    COMMAND ${CMAKE_CTEST_COMMAND} -R smoke_test
+    COMMENT "Test installed PUMIPic utilities")
+endif()
+
+add_executable(smoke_test test/test_ohClassPtn.cpp)
+target_link_libraries(smoke_test pcms::core test_support)
+dual_mpi_test(TESTNAME smoke_test
+        TIMEOUT 4
+        NAME1 rdv EXE1 ./smoke_test PROCS1 2 ARGS1 1 ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/
+        NAME2 app EXE2 ./smoke_test PROCS2 1 ARGS2 0 ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/)
+
 if(BUILD_TESTING)
   add_subdirectory(test)
 endif()

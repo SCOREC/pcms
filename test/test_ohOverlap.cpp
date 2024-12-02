@@ -8,6 +8,7 @@
 #include <Omega_h_scalar.hpp> // divide_no_remainder
 #include "pcms.h"
 #include "test_support.h"
+#include <pcms/version.h>
 
 namespace ts = test_support;
 
@@ -103,6 +104,7 @@ int main(int argc, char** argv) {
   OMEGA_H_CHECK(argc == 4);
   const auto isRdv = atoi(argv[1]);
   REDEV_ALWAYS_ASSERT(isRdv==1 || isRdv==0);
+  printf("VERSION: %s\n", pcms::pcms_version());
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[2], lib.world(), &mesh);
   const std::string name = "meshVtxIds";

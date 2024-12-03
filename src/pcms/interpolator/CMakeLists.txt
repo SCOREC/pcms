@@ -1,6 +1,7 @@
-cmake_minimum_required(VERSION 3.20)
+#cmake_minimum_required(VERSION 3.20)
+#project(Interpolator)
 
-project(Interpolator)
+find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_TRANSFER_HEADERS
     MLSInterpolation.hpp
@@ -20,13 +21,18 @@ install(FILES ${PCMS_FIELD_TRANSFER_HEADERS} DESTINATION include/pcms/interpolat
 
 
 add_library(pcms_interpolator ${PCMS_FIELD_TRANSFER_SOURCES})
+set_target_properties(pcms_interpolator PROPERTIES
+        OUTPUT_NAME pcmsinterpolator
+        EXPORT_NAME interpolator)
+add_library(pcms::interpolator ALIAS pcms_interpolator)
 
-target_link_libraries(pcms_interpolator PUBLIC pcms::core)
+
+target_link_libraries(pcms_interpolator PUBLIC pcms::core Kokkos::kokkoskernels)
 
 target_include_directories(pcms_interpolator INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/pcms/interpolator>)
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 
 install(TARGETS pcms_interpolator
@@ -36,7 +42,7 @@ install(TARGETS pcms_interpolator
 
 
 install(EXPORT interpolatorTargets
-    FILE interpolatorTargets.cmake
+    FILE pcms_interpolator-targets.cmake
     NAMESPACE pcms::
-    DESTINATION lib/cmake/pcms)
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
 

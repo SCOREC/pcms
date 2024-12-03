@@ -8,6 +8,8 @@
 #include <Omega_h_library.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <pcms/interpolator/points.hpp>
+#include <vector>
+#include <iostream>
 
 using namespace std;
 using namespace Omega_h;
@@ -17,64 +19,57 @@ double func(Coord& p, int degree)
 {
   [[maybe_unused]] auto x = p.x;
   [[maybe_unused]] auto y = p.y;
-  if (degree = 0) {
-    double Z = 3;
-  }
-  elseif(degree = 1)
-  {
-    double Z = x + y;
-  }
-  elseif(degree = 2)
-  {
-    double Z = pow(x, 2) + pow(y, 2);
-  }
-  elseif(degree = 3)
-  {
+  if (degree == 0) {
+    return 3;
+  } else if (degree == 1) {
+    return x + y;
+  } else if (degree == 2) {
+    return pow(x, 2) + pow(y, 2);
+  } else if (degree == 3) {
 
-    double Z = pow(x, 3) + pow(y, 3);
+    return pow(x, 3) + pow(y, 3);
+  } else {
+    printf("No polynomials with degree = %d\n", degree);
   }
-  else printf("No polynomials with degree = %f\n", degree)
-}
-return Z;
+  return -1;
 }
 
-void test(Mesh& mesh, Real cutoffdistance, int degree, LO min_num_Supports,
-          RadialBasisFunction bf)
+void test(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
+          Reals source_values, Reals exact_target_values,
+          Reals source_coordinates, Reals target_coordinates)
 {
-  Write<Real> source_values(nfaces, 0, "exact target values");
 
-  Kokkos::parallel_for(
-    nfaces, KOKKOS_LAMBDA(int i) {
-      source_values[i] = func(source_points.coordinates(i), degree);
-    });
+  int dim = mesh.dim();
+  Real tolerance = 0.0005;
+
+  std::vector<RadialBasisFunction> rbf_types = {
+    RadialBasisFunction::RBF_GAUSSIAN, RadialBasisFunction::RBF_C4,
+    RadialBasisFunction::RBF_CONST
+
+  };
 
   SupportResults support =
     searchNeighbors(mesh, cutoffDistance, min_num_supports);
 
-  auto approx_target_values = mls_interpolation(
-    source_values, source_coordinates, target_coordinates, support, dim, degree,
-    support.radii2, RadialBasisFunction::RBF_C4);
+  for (const auto& rbf : rbf_types) {
+    auto approx_target_values =
+      mls_interpolation(source_values, source_coordinates, target_coordinates,
+                        support, dim, degree, support.radii2, rbf);
 
-  auto host_approx_target_values = HostRead<Real>(approx_target_values);
+    auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
-  Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
+    auto host_exact_target_values = HostRead<Real>(exact_target_values);
 
-  Kokkos::parallel_for(
-    mesh.nverts(), KOKKOS_LAMBDA(int i) {
-      exact_target_values[i] = func_linear(target_points.coordinates(i));
-    });
+    int m = exact_target_values.size();
+    int n = approx_target_values.size();
 
-  auto host_exact_target_values = HostRead<Real>(exact_target_values);
+    REQUIRE(m == n);
 
-  int m = exact_target_values.size();
-  int n = approx_target_values.size();
-
-  REQUIRE(m == n);
-
-  for (size_t i = 0; i < m; ++i) {
-    CHECK_THAT(
-      host_exact_target_values[i],
-      Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
+    for (size_t i = 0; i < m; ++i) {
+      CHECK_THAT(
+        host_exact_target_values[i],
+        Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
+    }
   }
 }
 // Test cases for centroid to node mapping using MLS
@@ -87,7 +82,6 @@ TEST_CASE("mls_interp_test")
   auto mesh = build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
 
   Real cutoffDistance = 0.3;
-  Real tolerance = 0.05;
   cutoffDistance = cutoffDistance * cutoffDistance;
 
   const auto dim = mesh.dim();
@@ -100,7 +94,7 @@ TEST_CASE("mls_interp_test")
 
   Write<Real> radii2(
     ntargets, cutoffDistance,
-    "populate initial square of cutoffdistance to all target points");
+    "populate initial square of cutoffDistance to all target points");
   Write<Real> source_coordinates(
     dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
 
@@ -148,40 +142,45 @@ TEST_CASE("mls_interp_test")
 
     Kokkos::parallel_for(
       nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func_const(source_points.coordinates(i));
+        source_values[i] = func(source_points.coordinates(i), degree - 1);
       });
-
-    SupportResults support =
-      searchNeighbors(mesh, cutoffDistance, min_num_supports);
-
-    auto approx_target_values = mls_interpolation(
-      source_values, source_coordinates, target_coordinates, support, dim,
-      degree, support.radii2, RadialBasisFunction::RBF_C4);
-
-    auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
     Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
 
     Kokkos::parallel_for(
       mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func_const(target_points.coordinates(i));
+        exact_target_values[i] = func(target_points.coordinates(i), degree - 1);
       });
 
-    auto host_exact_target_values = HostRead<Real>(exact_target_values);
-
-    int m = exact_target_values.size();
-    int n = approx_target_values.size();
-
-    REQUIRE(m == n);
-
-    for (size_t i = 0; i < m; ++i) {
-      CHECK_THAT(
-        host_exact_target_values[i],
-        Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
-    }
+    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+         Reals(exact_target_values), Reals(source_coordinates),
+         Reals(target_coordinates));
   }
 
-  SECTION("test interpolation degree 1, function degree 1") {}
+  SECTION("test interpolation degree 1, function degree 1")
+  {
+
+    int degree = 1;
+    LO min_num_supports = 10;
+
+    Write<Real> source_values(nfaces, 0, "exact target values");
+
+    Kokkos::parallel_for(
+      nfaces, KOKKOS_LAMBDA(int i) {
+        source_values[i] = func(source_points.coordinates(i), degree);
+      });
+
+    Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
+
+    Kokkos::parallel_for(
+      mesh.nverts(), KOKKOS_LAMBDA(int i) {
+        exact_target_values[i] = func(target_points.coordinates(i), degree);
+      });
+
+    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+         Reals(exact_target_values), Reals(source_coordinates),
+         Reals(target_coordinates));
+  }
 
   SECTION("test interpo degree 2 poly degree 0")
   {
@@ -193,37 +192,19 @@ TEST_CASE("mls_interp_test")
 
     Kokkos::parallel_for(
       nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func_const(source_points.coordinates(i));
+        source_values[i] = func(source_points.coordinates(i), degree - 2);
       });
-
-    SupportResults support =
-      searchNeighbors(mesh, cutoffDistance, min_num_supports);
-
-    auto approx_target_values = mls_interpolation(
-      source_values, source_coordinates, target_coordinates, support, dim,
-      degree, support.radii2, RadialBasisFunction::RBF_C4);
-
-    auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
     Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
 
     Kokkos::parallel_for(
       mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func_const(target_points.coordinates(i));
+        exact_target_values[i] = func(target_points.coordinates(i), degree - 2);
       });
 
-    auto host_exact_target_values = HostRead<Real>(exact_target_values);
-
-    int m = exact_target_values.size();
-    int n = approx_target_values.size();
-
-    REQUIRE(m == n);
-
-    for (size_t i = 0; i < m; ++i) {
-      CHECK_THAT(
-        host_exact_target_values[i],
-        Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
-    }
+    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+         Reals(exact_target_values), Reals(source_coordinates),
+         Reals(target_coordinates));
   }
 
   SECTION("test interpolation degree 2 poly degree 1")
@@ -236,37 +217,19 @@ TEST_CASE("mls_interp_test")
 
     Kokkos::parallel_for(
       nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func_linear(source_points.coordinates(i));
+        source_values[i] = func(source_points.coordinates(i), degree - 1);
       });
-
-    SupportResults support =
-      searchNeighbors(mesh, cutoffDistance, min_num_supports);
-
-    auto approx_target_values = mls_interpolation(
-      source_values, source_coordinates, target_coordinates, support, dim,
-      degree, support.radii2, RadialBasisFunction::RBF_C4);
-
-    auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
     Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
 
     Kokkos::parallel_for(
       mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func_linear(target_points.coordinates(i));
+        exact_target_values[i] = func(target_points.coordinates(i), degree - 1);
       });
 
-    auto host_exact_target_values = HostRead<Real>(exact_target_values);
-
-    int m = exact_target_values.size();
-    int n = approx_target_values.size();
-
-    REQUIRE(m == n);
-
-    for (size_t i = 0; i < m; ++i) {
-      CHECK_THAT(
-        host_exact_target_values[i],
-        Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
-    }
+    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+         Reals(exact_target_values), Reals(source_coordinates),
+         Reals(target_coordinates));
   }
 
   SECTION("test interpolation degree 2, function degree 2")
@@ -279,37 +242,19 @@ TEST_CASE("mls_interp_test")
 
     Kokkos::parallel_for(
       nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func_quadratic(source_points.coordinates(i));
+        source_values[i] = func(source_points.coordinates(i), degree);
       });
-
-    SupportResults support =
-      searchNeighbors(mesh, cutoffDistance, min_num_supports);
-
-    auto approx_target_values = mls_interpolation(
-      source_values, source_coordinates, target_coordinates, support, dim,
-      degree, support.radii2, RadialBasisFunction::RBF_C4);
-
-    auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
     Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
 
     Kokkos::parallel_for(
       mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func_quadratic(target_points.coordinates(i));
+        exact_target_values[i] = func(target_points.coordinates(i), degree);
       });
 
-    auto host_exact_target_values = HostRead<Real>(exact_target_values);
-
-    int m = exact_target_values.size();
-    int n = approx_target_values.size();
-
-    REQUIRE(m == n);
-
-    for (size_t i = 0; i < m; ++i) {
-      CHECK_THAT(
-        host_exact_target_values[i],
-        Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
-    }
+    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+         Reals(exact_target_values), Reals(source_coordinates),
+         Reals(target_coordinates));
   }
 
   SECTION("test interpolation degree 3, function degree 2")
@@ -322,37 +267,19 @@ TEST_CASE("mls_interp_test")
 
     Kokkos::parallel_for(
       nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func_quadratic(source_points.coordinates(i));
+        source_values[i] = func(source_points.coordinates(i), degree - 1);
       });
-
-    SupportResults support =
-      searchNeighbors(mesh, cutoffDistance, min_num_supports);
-
-    auto approx_target_values = mls_interpolation(
-      source_values, source_coordinates, target_coordinates, support, dim,
-      degree, support.radii2, RadialBasisFunction::RBF_C4);
-
-    auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
     Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
 
     Kokkos::parallel_for(
       mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func_quadratic(target_points.coordinates(i));
+        exact_target_values[i] = func(target_points.coordinates(i), degree - 1);
       });
 
-    auto host_exact_target_values = HostRead<Real>(exact_target_values);
-
-    int m = exact_target_values.size();
-    int n = approx_target_values.size();
-
-    REQUIRE(m == n);
-
-    for (size_t i = 0; i < m; ++i) {
-      CHECK_THAT(
-        host_exact_target_values[i],
-        Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
-    }
+    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+         Reals(exact_target_values), Reals(source_coordinates),
+         Reals(target_coordinates));
   }
 
   SECTION("test interpolation degree 3, function degree 3")
@@ -365,36 +292,18 @@ TEST_CASE("mls_interp_test")
 
     Kokkos::parallel_for(
       nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func_cubic(source_points.coordinates(i));
+        source_values[i] = func(source_points.coordinates(i), degree);
       });
-
-    SupportResults support =
-      searchNeighbors(mesh, cutoffDistance, min_num_supports);
-
-    auto approx_target_values = mls_interpolation(
-      source_values, source_coordinates, target_coordinates, support, dim,
-      degree, support.radii2, RadialBasisFunction::RBF_C4);
-
-    auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
     Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
 
     Kokkos::parallel_for(
       mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func_cubic(target_points.coordinates(i));
+        exact_target_values[i] = func(target_points.coordinates(i), degree);
       });
 
-    auto host_exact_target_values = HostRead<Real>(exact_target_values);
-
-    int m = exact_target_values.size();
-    int n = approx_target_values.size();
-
-    REQUIRE(m == n);
-
-    for (size_t i = 0; i < m; ++i) {
-      CHECK_THAT(
-        host_exact_target_values[i],
-        Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
-    }
+    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+         Reals(exact_target_values), Reals(source_coordinates),
+         Reals(target_coordinates));
   }
 }

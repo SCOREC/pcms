@@ -9,7 +9,7 @@ enum class RadialBasisFunction : LO
 {
   RBF_GAUSSIAN = 0,
   RBF_C4,
-  RBF_CONSTANT
+  RBF_CONST
 
 };
 

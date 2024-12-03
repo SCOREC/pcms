@@ -127,7 +127,7 @@ Write<Real> mls_interpolation(const Reals source_values,
                           support, dim, degree, radii2, RBF_C4{});
       break;
 
-    case RadialBasisFunction::RBF_CONSTANT:
+    case RadialBasisFunction::RBF_CONST:
       interpolated_values =
         mls_interpolation(source_values, source_coordinates, target_coordinates,
                           support, dim, degree, radii2, RBF_CONST{});

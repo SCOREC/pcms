@@ -149,7 +149,13 @@ enum {
     SWIG_MEM_RVALUE = 0x02,
 };
 
-
+#define SWIG_check_nonnull(PTR, TYPENAME, FNAME, FUNCNAME, RETURNNULL)         \
+  if (!(PTR)) {                                                                \
+    SWIG_exception_impl(FUNCNAME, SWIG_NullReferenceError,                     \
+                        "Cannot pass null " TYPENAME " (class " FNAME ") "     \
+                        "as a reference",                                      \
+                        RETURNNULL);                                           \
+  }
 
 #define SWIG_VERSION 0x040101
 #define SWIGFORTRAN
@@ -211,6 +217,41 @@ SWIGINTERN SwigClassWrapper SwigClassWrapper_uninitialized() {
 # endif
 #endif
 
+#include <string.h>
+
+SWIGINTERN void SWIG_assign(SwigClassWrapper* self, SwigClassWrapper other)
+{
+    if (self->cptr == NULL) {
+      /* LHS is unassigned */
+      if (other.cmemflags & SWIG_MEM_RVALUE) {
+        /* Capture pointer from RHS, clear 'moving' flag */
+        self->cptr = other.cptr;
+        self->cmemflags = other.cmemflags & (~SWIG_MEM_RVALUE);
+      } else {
+        /* Become a reference to the other object */
+        self->cptr = other.cptr;
+        self->cmemflags = other.cmemflags & (~SWIG_MEM_OWN);
+      }
+    } else if (other.cptr == NULL) {
+      /* Replace LHS with a null pointer */
+      free(self->cptr);
+      *self = SwigClassWrapper_uninitialized();
+    } else if (self->cptr == other.cptr) {
+      /* Self-assignment: ignore */
+    } else {
+      if (self->cmemflags & SWIG_MEM_OWN) {
+        free(self->cptr);
+      }
+      self->cptr = other.cptr;
+      if (other.cmemflags & SWIG_MEM_RVALUE) {
+        /* Capture RHS */
+        self->cmemflags = other.cmemflags & ~SWIG_MEM_RVALUE;
+      } else {
+        /* Point to RHS */
+        self->cmemflags = other.cmemflags & ~SWIG_MEM_OWN;
+      }
+    }
+}
 
 typedef struct {
     void* data;
@@ -225,29 +266,339 @@ SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized() {
   return result;
 }
 
+SWIGEXPORT void _wrap_PcmsClientHandle_pointer_set(SwigClassWrapper* farg1,
+                                                   void const** farg2)
+{
+  struct PcmsClientHandle* arg1 = (struct PcmsClientHandle*)0;
+  void* arg2 = (void*)0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsClientHandle *",
+                     "PcmsClientHandle", "PcmsClientHandle::pointer", return);
+  arg1 = (struct PcmsClientHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+      (arg1)->pointer = arg2;
+}
+
+SWIGEXPORT void* _wrap_PcmsClientHandle_pointer_get(SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsClientHandle* arg1 = (struct PcmsClientHandle*)0;
+  void* result = 0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsClientHandle *",
+                     "PcmsClientHandle", "PcmsClientHandle::pointer", return 0);
+  arg1 = (struct PcmsClientHandle*)farg1->cptr;
+  result = (void*)((arg1)->pointer);
+  fresult = (void*)(result);
+  return fresult;
+}
+
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsClientHandle()
+{
+  SwigClassWrapper fresult;
+  struct PcmsClientHandle* result = 0;
+
+  result = (struct PcmsClientHandle*)calloc(1, sizeof(struct PcmsClientHandle));
+  fresult.cptr = (void*)result;
+  fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
+  return fresult;
+}
+
+SWIGEXPORT void _wrap_delete_PcmsClientHandle(SwigClassWrapper* farg1)
+{
+  struct PcmsClientHandle* arg1 = (struct PcmsClientHandle*)0;
+
+  arg1 = (struct PcmsClientHandle*)farg1->cptr;
+  free((char*)arg1);
+}
+
+SWIGEXPORT void _wrap_PcmsClientHandle_op_assign__(SwigClassWrapper* farg1,
+                                                   SwigClassWrapper* farg2)
+{
+  struct PcmsClientHandle* arg1 = (struct PcmsClientHandle*)0;
+  struct PcmsClientHandle* arg2 = 0;
+
+  (void)sizeof(arg1);
+  (void)sizeof(arg2);
+  SWIG_assign(farg1, *farg2);
+}
+
+SWIGEXPORT void _wrap_PcmsOmegaHMeshHandle_pointer_set(SwigClassWrapper* farg1,
+                                                       void const** farg2)
+{
+  struct PcmsOmegaHMeshHandle* arg1 = (struct PcmsOmegaHMeshHandle*)0;
+  void* arg2 = (void*)0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsOmegaHMeshHandle *",
+                     "PcmsOmegaHMeshHandle", "PcmsOmegaHMeshHandle::pointer",
+                     return);
+  arg1 = (struct PcmsOmegaHMeshHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+      (arg1)->pointer = arg2;
+}
+
+SWIGEXPORT void* _wrap_PcmsOmegaHMeshHandle_pointer_get(SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsOmegaHMeshHandle* arg1 = (struct PcmsOmegaHMeshHandle*)0;
+  void* result = 0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsOmegaHMeshHandle *",
+                     "PcmsOmegaHMeshHandle", "PcmsOmegaHMeshHandle::pointer",
+                     return 0);
+  arg1 = (struct PcmsOmegaHMeshHandle*)farg1->cptr;
+  result = (void*)((arg1)->pointer);
+  fresult = (void*)(result);
+  return fresult;
+}
+
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsOmegaHMeshHandle()
+{
+  SwigClassWrapper fresult;
+  struct PcmsOmegaHMeshHandle* result = 0;
+
+  result = (struct PcmsOmegaHMeshHandle*)calloc(
+    1, sizeof(struct PcmsOmegaHMeshHandle));
+  fresult.cptr = (void*)result;
+  fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
+  return fresult;
+}
+
+SWIGEXPORT void _wrap_delete_PcmsOmegaHMeshHandle(SwigClassWrapper* farg1)
+{
+  struct PcmsOmegaHMeshHandle* arg1 = (struct PcmsOmegaHMeshHandle*)0;
+
+  arg1 = (struct PcmsOmegaHMeshHandle*)farg1->cptr;
+  free((char*)arg1);
+}
+
+SWIGEXPORT void _wrap_PcmsOmegaHMeshHandle_op_assign__(SwigClassWrapper* farg1,
+                                                       SwigClassWrapper* farg2)
+{
+  struct PcmsOmegaHMeshHandle* arg1 = (struct PcmsOmegaHMeshHandle*)0;
+  struct PcmsOmegaHMeshHandle* arg2 = 0;
+
+  (void)sizeof(arg1);
+  (void)sizeof(arg2);
+  SWIG_assign(farg1, *farg2);
+}
+
+SWIGEXPORT void _wrap_PcmsReverseClassificationHandle_pointer_set(
+  SwigClassWrapper* farg1, void const** farg2)
+{
+  struct PcmsReverseClassificationHandle* arg1 =
+    (struct PcmsReverseClassificationHandle*)0;
+  void* arg2 = (void*)0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsReverseClassificationHandle *",
+                     "PcmsReverseClassificationHandle",
+                     "PcmsReverseClassificationHandle::pointer", return);
+  arg1 = (struct PcmsReverseClassificationHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+      (arg1)->pointer = arg2;
+}
+
+SWIGEXPORT void* _wrap_PcmsReverseClassificationHandle_pointer_get(
+  SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsReverseClassificationHandle* arg1 =
+    (struct PcmsReverseClassificationHandle*)0;
+  void* result = 0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsReverseClassificationHandle *",
+                     "PcmsReverseClassificationHandle",
+                     "PcmsReverseClassificationHandle::pointer", return 0);
+  arg1 = (struct PcmsReverseClassificationHandle*)farg1->cptr;
+  result = (void*)((arg1)->pointer);
+  fresult = (void*)(result);
+  return fresult;
+}
+
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsReverseClassificationHandle()
+{
+  SwigClassWrapper fresult;
+  struct PcmsReverseClassificationHandle* result = 0;
+
+  result = (struct PcmsReverseClassificationHandle*)calloc(
+    1, sizeof(struct PcmsReverseClassificationHandle));
+  fresult.cptr = (void*)result;
+  fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
+  return fresult;
+}
+
+SWIGEXPORT void _wrap_delete_PcmsReverseClassificationHandle(
+  SwigClassWrapper* farg1)
+{
+  struct PcmsReverseClassificationHandle* arg1 =
+    (struct PcmsReverseClassificationHandle*)0;
+
+  arg1 = (struct PcmsReverseClassificationHandle*)farg1->cptr;
+  free((char*)arg1);
+}
+
+SWIGEXPORT void _wrap_PcmsReverseClassificationHandle_op_assign__(
+  SwigClassWrapper* farg1, SwigClassWrapper* farg2)
+{
+  struct PcmsReverseClassificationHandle* arg1 =
+    (struct PcmsReverseClassificationHandle*)0;
+  struct PcmsReverseClassificationHandle* arg2 = 0;
+
+  (void)sizeof(arg1);
+  (void)sizeof(arg2);
+  SWIG_assign(farg1, *farg2);
+}
+
+SWIGEXPORT void _wrap_PcmsFieldAdapterHandle_pointer_set(
+  SwigClassWrapper* farg1, void const** farg2)
+{
+  struct PcmsFieldAdapterHandle* arg1 = (struct PcmsFieldAdapterHandle*)0;
+  void* arg2 = (void*)0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsFieldAdapterHandle *",
+                     "PcmsFieldAdapterHandle",
+                     "PcmsFieldAdapterHandle::pointer", return);
+  arg1 = (struct PcmsFieldAdapterHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+      (arg1)->pointer = arg2;
+}
+
+SWIGEXPORT void* _wrap_PcmsFieldAdapterHandle_pointer_get(
+  SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsFieldAdapterHandle* arg1 = (struct PcmsFieldAdapterHandle*)0;
+  void* result = 0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsFieldAdapterHandle *",
+                     "PcmsFieldAdapterHandle",
+                     "PcmsFieldAdapterHandle::pointer", return 0);
+  arg1 = (struct PcmsFieldAdapterHandle*)farg1->cptr;
+  result = (void*)((arg1)->pointer);
+  fresult = (void*)(result);
+  return fresult;
+}
+
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsFieldAdapterHandle()
+{
+  SwigClassWrapper fresult;
+  struct PcmsFieldAdapterHandle* result = 0;
+
+  result = (struct PcmsFieldAdapterHandle*)calloc(
+    1, sizeof(struct PcmsFieldAdapterHandle));
+  fresult.cptr = (void*)result;
+  fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
+  return fresult;
+}
+
+SWIGEXPORT void _wrap_delete_PcmsFieldAdapterHandle(SwigClassWrapper* farg1)
+{
+  struct PcmsFieldAdapterHandle* arg1 = (struct PcmsFieldAdapterHandle*)0;
+
+  arg1 = (struct PcmsFieldAdapterHandle*)farg1->cptr;
+  free((char*)arg1);
+}
+
+SWIGEXPORT void _wrap_PcmsFieldAdapterHandle_op_assign__(
+  SwigClassWrapper* farg1, SwigClassWrapper* farg2)
+{
+  struct PcmsFieldAdapterHandle* arg1 = (struct PcmsFieldAdapterHandle*)0;
+  struct PcmsFieldAdapterHandle* arg2 = 0;
+
+  (void)sizeof(arg1);
+  (void)sizeof(arg2);
+  SWIG_assign(farg1, *farg2);
+}
+
+SWIGEXPORT void _wrap_PcmsFieldHandle_pointer_set(SwigClassWrapper* farg1,
+                                                  void const** farg2)
+{
+  struct PcmsFieldHandle* arg1 = (struct PcmsFieldHandle*)0;
+  void* arg2 = (void*)0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsFieldHandle *", "PcmsFieldHandle",
+                     "PcmsFieldHandle::pointer", return);
+  arg1 = (struct PcmsFieldHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+      (arg1)->pointer = arg2;
+}
+
+SWIGEXPORT void* _wrap_PcmsFieldHandle_pointer_get(SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsFieldHandle* arg1 = (struct PcmsFieldHandle*)0;
+  void* result = 0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsFieldHandle *", "PcmsFieldHandle",
+                     "PcmsFieldHandle::pointer", return 0);
+  arg1 = (struct PcmsFieldHandle*)farg1->cptr;
+  result = (void*)((arg1)->pointer);
+  fresult = (void*)(result);
+  return fresult;
+}
+
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsFieldHandle()
+{
+  SwigClassWrapper fresult;
+  struct PcmsFieldHandle* result = 0;
+
+  result = (struct PcmsFieldHandle*)calloc(1, sizeof(struct PcmsFieldHandle));
+  fresult.cptr = (void*)result;
+  fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
+  return fresult;
+}
+
+SWIGEXPORT void _wrap_delete_PcmsFieldHandle(SwigClassWrapper* farg1)
+{
+  struct PcmsFieldHandle* arg1 = (struct PcmsFieldHandle*)0;
+
+  arg1 = (struct PcmsFieldHandle*)farg1->cptr;
+  free((char*)arg1);
+}
+
+SWIGEXPORT void _wrap_PcmsFieldHandle_op_assign__(SwigClassWrapper* farg1,
+                                                  SwigClassWrapper* farg2)
+{
+  struct PcmsFieldHandle* arg1 = (struct PcmsFieldHandle*)0;
+  struct PcmsFieldHandle* arg2 = 0;
+
+  (void)sizeof(arg1);
+  (void)sizeof(arg2);
+  SWIG_assign(farg1, *farg2);
+}
+
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_client(SwigArrayWrapper *farg1, int const *farg2) {
   SwigClassWrapper fresult ;
   char *arg1 = (char *) 0 ;
   MPI_Comm arg2 ;
-  PcmsClientHandle *result = 0 ;
-  
+  PcmsClientHandle result;
+
   arg1 = (char *)(farg1->data);
 #ifdef HAVE_MPI
   arg2 = MPI_Comm_f2c((MPI_Fint)*farg2);
 #else
   arg2 = *farg2;
 #endif
-  result = (PcmsClientHandle *)pcms_create_client((char const *)arg1,arg2);
-  fresult.cptr = (void*)result;
-  fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
+  result = pcms_create_client((char const*)arg1, arg2);
+  fresult.cptr = (PcmsClientHandle*)memcpy(
+    (PcmsClientHandle*)calloc(1, sizeof(PcmsClientHandle)), &result,
+    sizeof(PcmsClientHandle));
+  fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
 
 SWIGEXPORT void _wrap_pcms_destroy_client(SwigClassWrapper *farg1) {
-  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
-  
-  arg1 = (PcmsClientHandle *)farg1->cptr;
+  PcmsClientHandle arg1;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
+                     "pcms_destroy_client(PcmsClientHandle)", return);
+  arg1 = *((PcmsClientHandle*)(farg1->cptr));
   pcms_destroy_client(arg1);
 }
 
@@ -256,35 +607,48 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_load_reverse_classification(SwigArrayWrap
   SwigClassWrapper fresult ;
   char *arg1 = (char *) 0 ;
   MPI_Comm arg2 ;
-  PcmsReverseClassificationHandle *result = 0 ;
-  
+  PcmsReverseClassificationHandle result;
+
   arg1 = (char *)(farg1->data);
 #ifdef HAVE_MPI
   arg2 = MPI_Comm_f2c((MPI_Fint)*farg2);
 #else
   arg2 = *farg2;
 #endif
-  result = (PcmsReverseClassificationHandle *)pcms_load_reverse_classification((char const *)arg1,arg2);
-  fresult.cptr = (void*)result;
-  fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
+  result = pcms_load_reverse_classification((char const*)arg1, arg2);
+  fresult.cptr = (PcmsReverseClassificationHandle*)memcpy(
+    (PcmsReverseClassificationHandle*)calloc(
+      1, sizeof(PcmsReverseClassificationHandle)),
+    &result, sizeof(PcmsReverseClassificationHandle));
+  fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
 
 SWIGEXPORT void _wrap_pcms_destroy_reverse_classification(SwigClassWrapper *farg1) {
-  PcmsReverseClassificationHandle *arg1 = (PcmsReverseClassificationHandle *) 0 ;
-  
-  arg1 = (PcmsReverseClassificationHandle *)farg1->cptr;
+  PcmsReverseClassificationHandle arg1;
+
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsReverseClassificationHandle",
+    "PcmsReverseClassificationHandle",
+    "pcms_destroy_reverse_classification(PcmsReverseClassificationHandle)",
+    return);
+  arg1 = *((PcmsReverseClassificationHandle*)(farg1->cptr));
   pcms_destroy_reverse_classification(arg1);
 }
 
 
 SWIGEXPORT int _wrap_pcms_reverse_classification_count_verts(SwigClassWrapper *farg1) {
   int fresult ;
-  PcmsReverseClassificationHandle *arg1 = (PcmsReverseClassificationHandle *) 0 ;
+  PcmsReverseClassificationHandle arg1;
   int result;
-  
-  arg1 = (PcmsReverseClassificationHandle *)farg1->cptr;
+
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsReverseClassificationHandle",
+    "PcmsReverseClassificationHandle",
+    "pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle)",
+    return 0);
+  arg1 = *((PcmsReverseClassificationHandle*)(farg1->cptr));
   result = (int)pcms_reverse_classification_count_verts(arg1);
   fresult = (int)(result);
   return fresult;
@@ -298,10 +662,10 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(SwigArrayWrapper
   void *arg3 = (void *) 0 ;
   int arg4 ;
   PcmsType arg5 ;
-  PcmsReverseClassificationHandle *arg6 = (PcmsReverseClassificationHandle *) 0 ;
+  PcmsReverseClassificationHandle arg6;
   in_overlap_function arg7 = (in_overlap_function) 0 ;
-  PcmsFieldAdapterHandle *result = 0 ;
-  
+  PcmsFieldAdapterHandle result;
+
   arg1 = (char *)(farg1->data);
 #ifdef HAVE_MPI
   arg2 = MPI_Comm_f2c((MPI_Fint)*farg2);
@@ -311,117 +675,159 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(SwigArrayWrapper
   arg3 = (void *)(*farg3);
   arg4 = (int)(*farg4);
   arg5 = (PcmsType)(*farg5);
-  arg6 = (PcmsReverseClassificationHandle *)farg6->cptr;
+  SWIG_check_nonnull(
+    farg6->cptr, "PcmsReverseClassificationHandle",
+    "PcmsReverseClassificationHandle",
+    "pcms_create_xgc_field_adapter(char const *,MPI_Comm,void "
+    "*,int,PcmsType,PcmsReverseClassificationHandle const,in_overlap_function)",
+    return SwigClassWrapper_uninitialized());
+  arg6 = *((PcmsReverseClassificationHandle*)(farg6->cptr));
   arg7 = (in_overlap_function)(*farg7);
-  result = (PcmsFieldAdapterHandle *)pcms_create_xgc_field_adapter((char const *)arg1,arg2,arg3,arg4,arg5,(PcmsReverseClassificationHandle const *)arg6,arg7);
-  fresult.cptr = (void*)result;
-  fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
+  result = pcms_create_xgc_field_adapter((char const*)arg1, arg2, arg3, arg4,
+                                         arg5, arg6, arg7);
+  fresult.cptr = (PcmsFieldAdapterHandle*)memcpy(
+    (PcmsFieldAdapterHandle*)calloc(1, sizeof(PcmsFieldAdapterHandle)), &result,
+    sizeof(PcmsFieldAdapterHandle));
+  fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_dummy_field_adapter() {
   SwigClassWrapper fresult ;
-  PcmsFieldAdapterHandle *result = 0 ;
-  
-  result = (PcmsFieldAdapterHandle *)pcms_create_dummy_field_adapter();
-  fresult.cptr = (void*)result;
-  fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
+  PcmsFieldAdapterHandle result;
+
+  result = pcms_create_dummy_field_adapter();
+  fresult.cptr = (PcmsFieldAdapterHandle*)memcpy(
+    (PcmsFieldAdapterHandle*)calloc(1, sizeof(PcmsFieldAdapterHandle)), &result,
+    sizeof(PcmsFieldAdapterHandle));
+  fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
 
 SWIGEXPORT void _wrap_pcms_destroy_field_adapter(SwigClassWrapper *farg1) {
-  PcmsFieldAdapterHandle *arg1 = (PcmsFieldAdapterHandle *) 0 ;
-  
-  arg1 = (PcmsFieldAdapterHandle *)farg1->cptr;
+  PcmsFieldAdapterHandle arg1;
+
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsFieldAdapterHandle", "PcmsFieldAdapterHandle",
+    "pcms_destroy_field_adapter(PcmsFieldAdapterHandle)", return);
+  arg1 = *((PcmsFieldAdapterHandle*)(farg1->cptr));
   pcms_destroy_field_adapter(arg1);
 }
 
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_add_field(SwigClassWrapper *farg1, SwigArrayWrapper *farg2, SwigClassWrapper *farg3, int const *farg4) {
   SwigClassWrapper fresult ;
-  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
+  PcmsClientHandle arg1;
   char *arg2 = (char *) 0 ;
-  PcmsFieldAdapterHandle *arg3 = (PcmsFieldAdapterHandle *) 0 ;
+  PcmsFieldAdapterHandle arg3;
   int arg4 ;
-  PcmsFieldHandle *result = 0 ;
-  
-  arg1 = (PcmsClientHandle *)farg1->cptr;
+  PcmsFieldHandle result;
+
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
+    "pcms_add_field(PcmsClientHandle,char const *,PcmsFieldAdapterHandle,int)",
+    return SwigClassWrapper_uninitialized());
+  arg1 = *((PcmsClientHandle*)(farg1->cptr));
   arg2 = (char *)(farg2->data);
-  arg3 = (PcmsFieldAdapterHandle *)farg3->cptr;
+  SWIG_check_nonnull(
+    farg3->cptr, "PcmsFieldAdapterHandle", "PcmsFieldAdapterHandle",
+    "pcms_add_field(PcmsClientHandle,char const *,PcmsFieldAdapterHandle,int)",
+    return SwigClassWrapper_uninitialized());
+  arg3 = *((PcmsFieldAdapterHandle*)(farg3->cptr));
   arg4 = (int)(*farg4);
-  result = (PcmsFieldHandle *)pcms_add_field(arg1,(char const *)arg2,arg3,arg4);
-  fresult.cptr = (void*)result;
-  fresult.cmemflags = SWIG_MEM_RVALUE | (0 ? SWIG_MEM_OWN : 0);
+  result = pcms_add_field(arg1, (char const*)arg2, arg3, arg4);
+  fresult.cptr = (PcmsFieldHandle*)memcpy(
+    (PcmsFieldHandle*)calloc(1, sizeof(PcmsFieldHandle)), &result,
+    sizeof(PcmsFieldHandle));
+  fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
 
 SWIGEXPORT void _wrap_pcms_send_field_name(SwigClassWrapper *farg1, SwigArrayWrapper *farg2) {
-  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
+  PcmsClientHandle arg1;
   char *arg2 = (char *) 0 ;
-  
-  arg1 = (PcmsClientHandle *)farg1->cptr;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
+                     "pcms_send_field_name(PcmsClientHandle,char const *)",
+                     return);
+  arg1 = *((PcmsClientHandle*)(farg1->cptr));
   arg2 = (char *)(farg2->data);
   pcms_send_field_name(arg1,(char const *)arg2);
 }
 
 
 SWIGEXPORT void _wrap_pcms_receive_field_name(SwigClassWrapper *farg1, SwigArrayWrapper *farg2) {
-  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
+  PcmsClientHandle arg1;
   char *arg2 = (char *) 0 ;
-  
-  arg1 = (PcmsClientHandle *)farg1->cptr;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
+                     "pcms_receive_field_name(PcmsClientHandle,char const *)",
+                     return);
+  arg1 = *((PcmsClientHandle*)(farg1->cptr));
   arg2 = (char *)(farg2->data);
   pcms_receive_field_name(arg1,(char const *)arg2);
 }
 
 
 SWIGEXPORT void _wrap_pcms_send_field(SwigClassWrapper *farg1) {
-  PcmsFieldHandle *arg1 = (PcmsFieldHandle *) 0 ;
-  
-  arg1 = (PcmsFieldHandle *)farg1->cptr;
+  PcmsFieldHandle arg1;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsFieldHandle", "PcmsFieldHandle",
+                     "pcms_send_field(PcmsFieldHandle)", return);
+  arg1 = *((PcmsFieldHandle*)(farg1->cptr));
   pcms_send_field(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_receive_field(SwigClassWrapper *farg1) {
-  PcmsFieldHandle *arg1 = (PcmsFieldHandle *) 0 ;
-  
-  arg1 = (PcmsFieldHandle *)farg1->cptr;
+  PcmsFieldHandle arg1;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsFieldHandle", "PcmsFieldHandle",
+                     "pcms_receive_field(PcmsFieldHandle)", return);
+  arg1 = *((PcmsFieldHandle*)(farg1->cptr));
   pcms_receive_field(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_begin_send_phase(SwigClassWrapper *farg1) {
-  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
-  
-  arg1 = (PcmsClientHandle *)farg1->cptr;
+  PcmsClientHandle arg1;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
+                     "pcms_begin_send_phase(PcmsClientHandle)", return);
+  arg1 = *((PcmsClientHandle*)(farg1->cptr));
   pcms_begin_send_phase(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_end_send_phase(SwigClassWrapper *farg1) {
-  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
-  
-  arg1 = (PcmsClientHandle *)farg1->cptr;
+  PcmsClientHandle arg1;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
+                     "pcms_end_send_phase(PcmsClientHandle)", return);
+  arg1 = *((PcmsClientHandle*)(farg1->cptr));
   pcms_end_send_phase(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_begin_receive_phase(SwigClassWrapper *farg1) {
-  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
-  
-  arg1 = (PcmsClientHandle *)farg1->cptr;
+  PcmsClientHandle arg1;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
+                     "pcms_begin_receive_phase(PcmsClientHandle)", return);
+  arg1 = *((PcmsClientHandle*)(farg1->cptr));
   pcms_begin_receive_phase(arg1);
 }
 
 
 SWIGEXPORT void _wrap_pcms_end_receive_phase(SwigClassWrapper *farg1) {
-  PcmsClientHandle *arg1 = (PcmsClientHandle *) 0 ;
-  
-  arg1 = (PcmsClientHandle *)farg1->cptr;
+  PcmsClientHandle arg1;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
+                     "pcms_end_receive_phase(PcmsClientHandle)", return);
+  arg1 = *((PcmsClientHandle*)(farg1->cptr));
   pcms_end_receive_phase(arg1);
 }
 

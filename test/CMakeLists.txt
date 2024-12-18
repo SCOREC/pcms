@@ -16,82 +16,6 @@ set(VALGRIND_ARGS "none" CACHE STRING "specify valgrind options; logging (--log-
 message(STATUS "VALGRIND_EXECUTABLE: ${VALGRIND_EXECUTABLE}")
 message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
 
-if (PCMS_ENABLE_OMEGA_H)
-    add_library(test_support test_support.cpp)
-    target_link_libraries(test_support pcms::core ) #for omegah and redev
-endif ()
-
-function(add_exe NAME)
-    add_executable(${NAME} ${NAME}.cpp)
-    target_link_libraries(${NAME} pcms::core)
-    if (PCMS_ENABLE_OMEGA_H)
-        target_link_libraries(${NAME} test_support)
-    endif ()
-    target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-    if (PCMS_HAS_ASAN)
-        target_compile_options(${NAME} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
-        target_link_libraries(${NAME} asan rt)
-    endif ()
-endfunction(add_exe)
-
-function(removeBpFiles TESTNAME)
-    add_test(NAME ${TESTNAME} COMMAND ${CMAKE_COMMAND}
-            -P ${CMAKE_SOURCE_DIR}/ctest/removeBpFiles.cmake)
-endfunction()
-
-function(increaseTimeoutForValgrind TIME TIME_VAR_OUT)
-    set(factor 10)
-    if (NOT ${VALGRIND_EXECUTABLE} MATCHES "none")
-        math(EXPR TIME_OUT "${TIME} * ${factor}")
-        set(${TIME_VAR_OUT} ${TIME_OUT} PARENT_SCOPE)
-    endif ()
-endfunction()
-
-function(mpi_test TESTNAME PROCS EXE)
-    removeBpFiles(${TESTNAME}_cleanup)
-    if (${VALGRIND_EXECUTABLE} MATCHES "none")
-        add_test(NAME ${TESTNAME}
-                COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${PROCS} ${EXE} ${ARGN})
-    else ()
-        add_test(NAME ${TESTNAME}
-                COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${PROCS}
-                ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS} ${EXE} ${ARGN})
-    endif ()
-endfunction(mpi_test)
-
-function(dual_mpi_test)
-    set(oneValueArgs TESTNAME TIMEOUT NAME1 NAME2 EXE1 EXE2 PROCS1 PROCS2)
-    set(multiValueArgs ARGS1 ARGS2)
-    cmake_parse_arguments(DUALTEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    removeBpFiles(${DUALTEST_TESTNAME}_cleanup)
-    increaseTimeoutForValgrind(${DUALTEST_TIMEOUT} DUALTEST_TIMEOUT)
-    add_test(NAME ${DUALTEST_TESTNAME}
-            COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
-            ${MPIEXEC_EXECUTABLE}
-            ${MPIEXEC_NUMPROC_FLAG}
-            ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS}
-            ${DUALTEST_NAME1} ${DUALTEST_PROCS1} ${DUALTEST_EXE1} "${DUALTEST_ARGS1}"
-            ${DUALTEST_NAME2} ${DUALTEST_PROCS2} ${DUALTEST_EXE2} "${DUALTEST_ARGS2}")
-    set_tests_properties(${DUALTEST_TESTNAME} PROPERTIES TIMEOUT ${DUALTEST_TIMEOUT})
-endfunction(dual_mpi_test)
-
-function(tri_mpi_test)
-    set(oneValueArgs TESTNAME TIMEOUT NAME1 NAME2 NAME3 EXE1 EXE2 EXE3 PROCS1 PROCS2 PROCS3)
-    set(multiValueArgs ARGS1 ARGS2 ARGS3)
-    cmake_parse_arguments(TRITEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    removeBpFiles(${TRITEST_TESTNAME}_cleanup)
-    increaseTimeoutForValgrind(${TRITEST_TIMEOUT} TRITEST_TIMEOUT)
-    add_test(NAME ${TRITEST_TESTNAME}
-            COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
-            ${MPIEXEC_EXECUTABLE}
-            ${MPIEXEC_NUMPROC_FLAG}
-            ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS}
-            ${TRITEST_NAME1} ${TRITEST_PROCS1} ${TRITEST_EXE1} "${TRITEST_ARGS1}"
-            ${TRITEST_NAME2} ${TRITEST_PROCS2} ${TRITEST_EXE2} "${TRITEST_ARGS2}"
-            ${TRITEST_NAME3} ${TRITEST_PROCS3} ${TRITEST_EXE3} "${TRITEST_ARGS3}")
-    set_tests_properties(${TRITEST_TESTNAME} PROPERTIES TIMEOUT ${TRITEST_TIMEOUT})
-endfunction(tri_mpi_test)
-
 #helper variables for readability
 set(rendezvous 1)
 set(notRendezvous 0)
@@ -137,6 +61,11 @@ if (PCMS_ENABLE_OMEGA_H)
     endif()
     add_executable(proxy_coupling test_proxy_coupling.cpp)
     target_link_libraries(proxy_coupling PUBLIC pcms::core test_support)
+    tri_mpi_test(TESTNAME test_proxy_coupling_4p
+            TIMEOUT 10
+            NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
+            NAME2 client0 EXE2 ./proxy_coupling PROCS2 1 ARGS2 0 ${d3d1p} ignored
+            NAME3 client1 EXE3 ./proxy_coupling PROCS3 1 ARGS3 1 ${d3d1p} ignored)
     if(HOST_NPROC GREATER 13)
         tri_mpi_test(TESTNAME test_proxy_coupling_26p
                 TIMEOUT 12
@@ -144,16 +73,13 @@ if (PCMS_ENABLE_OMEGA_H)
                 NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
     endif()
-    tri_mpi_test(TESTNAME test_proxy_coupling_4p
-            TIMEOUT 10
-            NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
-            NAME2 client0 EXE2 ./proxy_coupling PROCS2 1 ARGS2 0 ${d3d1p} ignored
-            NAME3 client1 EXE3 ./proxy_coupling PROCS3 1 ARGS3 1 ${d3d1p} ignored)
-    tri_mpi_test(TESTNAME test_proxy_coupling
-            TIMEOUT 12
-            NAME1 rdv EXE1 ./proxy_coupling PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
-            NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
-            NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+    if (HOST_NPROC GREATER 14)
+        tri_mpi_test(TESTNAME test_proxy_coupling_28p
+                TIMEOUT 12
+                NAME1 rdv EXE1 ./proxy_coupling PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
+                NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
+                NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+    endif ()
     if(HOST_NPROC GREATER 16)
         tri_mpi_test(TESTNAME test_proxy_coupling_32p
                 TIMEOUT 12

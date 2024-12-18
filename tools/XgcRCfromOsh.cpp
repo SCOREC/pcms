@@ -1,12 +1,13 @@
 #include <Omega_h_file.hpp>
 #include <pcms/xgc_reverse_classification.h>
+#include "pcms/print.h"
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_tag.hpp>
 
 int main(int argc, char** argv)
 {
   if ((argc != 2) && (argc != 3)) {
-    printf("Usage: %s <mesh file> <numbering>\n", argv[0]);
+    pcms::printError("Usage: %s <mesh file> <numbering>\n", argv[0]);
     std::abort();
   }
   Omega_h::Library lib(&argc, &argv);

@@ -9,6 +9,7 @@
 #include <fstream>
 #include "pcms/xgc_reverse_classification.h"
 #include "pcms/dummy_field_adapter.h"
+#include "pcms/print.h"
 namespace pcms
 {
 // Note that we have a closed set of types that can be used in the C interface
@@ -26,32 +27,31 @@ using FieldAdapterVariant =
 
 } // namespace pcms
 
-[[nodiscard]] PcmsClientHandle* pcms_create_client(const char* name,
+[[nodiscard]] PcmsClientHandle pcms_create_client(const char* name,
                                                        MPI_Comm comm)
 {
   auto* client = new pcms::CouplerClient(name, comm);
-  return reinterpret_cast<PcmsClientHandle*>(client);
+  return {reinterpret_cast<void*>(client)};
 }
-void pcms_destroy_client(PcmsClientHandle* client)
+void pcms_destroy_client(PcmsClientHandle client)
 {
-  if (client != nullptr)
-    delete reinterpret_cast<pcms::CouplerClient*>(client);
+  if (client.pointer != nullptr)
+    delete reinterpret_cast<pcms::CouplerClient*>(client.pointer);
 }
-PcmsReverseClassificationHandle* pcms_load_reverse_classification(
+PcmsReverseClassificationHandle pcms_load_reverse_classification(
   const char* file, MPI_Comm comm)
 {
   //std::filesystem::path filepath{file};
   auto* rc = new pcms::ReverseClassificationVertex{
     pcms::ReadReverseClassificationVertex(file, comm)};
-  return reinterpret_cast<PcmsReverseClassificationHandle*>(rc);
+  return {reinterpret_cast<void*>(rc)};
 }
 void pcms_destroy_reverse_classification(
-  PcmsReverseClassificationHandle* rc)
+  PcmsReverseClassificationHandle rc)
 {
-  if (rc != nullptr)
-    delete reinterpret_cast<pcms::ReverseClassificationVertex*>(rc);
+  if (rc.pointer != nullptr)
+    delete reinterpret_cast<pcms::ReverseClassificationVertex*>(rc.pointer);
 }
-
 struct AddFieldVariantOperators {
   AddFieldVariantOperators(const char* name, pcms::CouplerClient* client, int participates)
   : name_(name), client_(client), participates_(participates)
@@ -71,15 +71,15 @@ struct AddFieldVariantOperators {
   bool participates_;
 };
 
-PcmsFieldHandle* pcms_add_field(PcmsClientHandle* client_handle,
+PcmsFieldHandle pcms_add_field(PcmsClientHandle client_handle,
                                     const char* name,
-                                    PcmsFieldAdapterHandle* adapter_handle,
+                                    PcmsFieldAdapterHandle adapter_handle,
                                     int participates)
 {
 
   auto* adapter =
-    reinterpret_cast<pcms::FieldAdapterVariant*>(adapter_handle);
-  auto* client = reinterpret_cast<pcms::CouplerClient*>(client_handle);
+    reinterpret_cast<pcms::FieldAdapterVariant*>(adapter_handle.pointer);
+  auto* client = reinterpret_cast<pcms::CouplerClient*>(client_handle.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
   PCMS_ALWAYS_ASSERT(adapter != nullptr);
   //pcms::CoupledField* field = std::visit(
@@ -90,30 +90,30 @@ PcmsFieldHandle* pcms_add_field(PcmsClientHandle* client_handle,
   //    }},
   //  *adapter);
   pcms::CoupledField* field = std::visit(AddFieldVariantOperators{name, client, participates},*adapter);
-  return reinterpret_cast<PcmsFieldHandle*>(field);
+  return {reinterpret_cast<void*>(field)};
 }
-void pcms_send_field_name(PcmsClientHandle* client_handle, const char* name)
+void pcms_send_field_name(PcmsClientHandle client_handle, const char* name)
 {
-  auto* client = reinterpret_cast<pcms::CouplerClient*>(client_handle);
+  auto* client = reinterpret_cast<pcms::CouplerClient*>(client_handle.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
   client->SendField(name);
 }
-void pcms_receive_field_name(PcmsClientHandle* client_handle,
+void pcms_receive_field_name(PcmsClientHandle client_handle,
                                const char* name)
 {
-  auto* client = reinterpret_cast<pcms::CouplerClient*>(client_handle);
+  auto* client = reinterpret_cast<pcms::CouplerClient*>(client_handle.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
   client->ReceiveField(name);
 }
-void pcms_send_field(PcmsFieldHandle* field_handle)
+void pcms_send_field(PcmsFieldHandle field_handle)
 {
-  auto* field = reinterpret_cast<pcms::CoupledField*>(field_handle);
+  auto* field = reinterpret_cast<pcms::CoupledField*>(field_handle.pointer);
   PCMS_ALWAYS_ASSERT(field != nullptr);
   field->Send();
 }
-void pcms_receive_field(PcmsFieldHandle* field_handle)
+void pcms_receive_field(PcmsFieldHandle field_handle)
 {
-  auto* field = reinterpret_cast<pcms::CoupledField*>(field_handle);
+  auto* field = reinterpret_cast<pcms::CoupledField*>(field_handle.pointer);
   PCMS_ALWAYS_ASSERT(field != nullptr);
   field->Receive();
 }
@@ -129,14 +129,14 @@ void pcms_create_xgc_field_adapter_t(
   field_adapter.emplace<pcms::XGCFieldAdapter<T>>(
     name, comm, data_view, reverse_classification, in_overlap);
 }
-PcmsFieldAdapterHandle* pcms_create_xgc_field_adapter(
+PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   const char* name, MPI_Comm comm, void* data, int size, PcmsType data_type,
-  const PcmsReverseClassificationHandle* rc, in_overlap_function in_overlap)
+  const PcmsReverseClassificationHandle rc, in_overlap_function in_overlap)
 {
   auto* field_adapter = new pcms::FieldAdapterVariant{};
-  PCMS_ALWAYS_ASSERT(rc != nullptr);
+  PCMS_ALWAYS_ASSERT(rc.pointer != nullptr);
   auto* reverse_classification =
-    reinterpret_cast<const pcms::ReverseClassificationVertex*>(rc);
+    reinterpret_cast<const pcms::ReverseClassificationVertex*>(rc.pointer);
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
   switch (data_type) {
     case PCMS_DOUBLE:
@@ -156,30 +156,30 @@ PcmsFieldAdapterHandle* pcms_create_xgc_field_adapter(
         name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
       break;
     default:
-      printf("tyring to create XGC adapter with invalid type! %d", data_type);
+      pcms::printError("tyring to create XGC adapter with invalid type!\n");
       std::abort();
   }
-  return reinterpret_cast<PcmsFieldAdapterHandle*>(field_adapter);
+  return {reinterpret_cast<void*>(field_adapter)};
 }
-PcmsFieldAdapterHandle* pcms_create_dummy_field_adapter() {
+PcmsFieldAdapterHandle pcms_create_dummy_field_adapter() {
   auto* field_adapter = new pcms::FieldAdapterVariant{pcms::DummyFieldAdapter{}};
-  return reinterpret_cast<PcmsFieldAdapterHandle*>(field_adapter);
+  return {reinterpret_cast<void*>(field_adapter)};
 }
 
-void pcms_destroy_field_adapter(PcmsFieldAdapterHandle* adapter_handle)
+void pcms_destroy_field_adapter(PcmsFieldAdapterHandle adapter_handle)
 {
   auto* adapter =
-    reinterpret_cast<pcms::FieldAdapterVariant*>(adapter_handle);
+    reinterpret_cast<pcms::FieldAdapterVariant*>(adapter_handle.pointer);
   if (adapter != nullptr) {
     delete adapter;
     adapter = nullptr;
   }
 }
 int pcms_reverse_classification_count_verts(
-  PcmsReverseClassificationHandle* rc)
+  PcmsReverseClassificationHandle rc)
 {
   auto* reverse_classification =
-    reinterpret_cast<const pcms::ReverseClassificationVertex*>(rc);
+    reinterpret_cast<const pcms::ReverseClassificationVertex*>(rc.pointer);
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
   return std::accumulate(reverse_classification->begin(),
                          reverse_classification->end(), 0,
@@ -187,23 +187,23 @@ int pcms_reverse_classification_count_verts(
                            return current + verts.second.size();
                          });
 }
-void pcms_begin_send_phase(PcmsClientHandle* h) {
-  auto* client = reinterpret_cast<pcms::CouplerClient*>(h);
+void pcms_begin_send_phase(PcmsClientHandle h) {
+  auto* client = reinterpret_cast<pcms::CouplerClient*>(h.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
   client ->BeginSendPhase();
 }
-void pcms_end_send_phase(PcmsClientHandle* h) {
-  auto* client = reinterpret_cast<pcms::CouplerClient*>(h);
+void pcms_end_send_phase(PcmsClientHandle h) {
+  auto* client = reinterpret_cast<pcms::CouplerClient*>(h.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
   client ->EndSendPhase();
 }
-void pcms_begin_receive_phase(PcmsClientHandle* h ) {
-  auto* client = reinterpret_cast<pcms::CouplerClient*>(h);
+void pcms_begin_receive_phase(PcmsClientHandle h ) {
+  auto* client = reinterpret_cast<pcms::CouplerClient*>(h.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
   client ->BeginReceivePhase();
 }
-void pcms_end_receive_phase(PcmsClientHandle* h) {
-  auto* client = reinterpret_cast<pcms::CouplerClient*>(h);
+void pcms_end_receive_phase(PcmsClientHandle h) {
+  auto* client = reinterpret_cast<pcms::CouplerClient*>(h.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
   client ->EndReceivePhase();
 }

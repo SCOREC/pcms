@@ -2,11 +2,6 @@ include(ProcessorCount)
 ProcessorCount(HOST_NPROC)
 message("TESTING ON SYSTEM WITH ${HOST_NPROC} CPU Cores")
 
-message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
-message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
-message(STATUS "VALGRIND_EXECUTABLE: ${VALGRIND_EXECUTABLE}")
-message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
-
 #helper variables for readability
 set(rendezvous 1)
 set(notRendezvous 0)

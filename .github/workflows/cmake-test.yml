@@ -130,7 +130,7 @@ jobs:
         path: pcms_testcases
 
     - name: Install fftw3
-      run: sudo apt-get install -yq fftw3 pkg-config
+      run: sudo apt-get install -yq libfftw3-dev pkg-config
 
     - name: build pcms
       uses: ./.github/actions/install-repo

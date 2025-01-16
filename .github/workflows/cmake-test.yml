@@ -48,6 +48,16 @@ jobs:
                   -DKokkos_ENABLE_CUDA_LAMBDA=off
                   -DKokkos_ENABLE_DEBUG=on'
 
+    - name: build kokkos-kernels
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'kokkos-kernels'
+        repo-path: 'kokkos/kokkos-kernels'
+        repo-ref: '4.2.00'
+        cache: true
+        options: '-DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
+
     - name: build ADIOS2
       uses: ./.github/actions/install-repo
       with:
@@ -137,6 +147,7 @@ jobs:
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
+                  -DKokkosKernels_DIR=${{ runner.temp }}/build-kokkos-kernels/install/lib/cmake/KokkosKernels
                   -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases'
 
     # - name: Install Valgrind

@@ -156,16 +156,16 @@ jobs:
                   -DCMAKE_Fortran_COMPILER=`which mpifort`
                   -DCMAKE_BUILD_TYPE=Release
                   -DPCMS_TIMEOUT=0
-                  -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib64/cmake/Catch2/
-                  -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib64/cmake/Omega_h/
-                  -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib64/cmake/redev/
-                  -Dflcl_DIR=${{ runner.temp }}/build-kokkos-fortran-interop/install/lib64/cmake/flcl/
+                  -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2/
+                  -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h/
+                  -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev/
+                  -Dflcl_DIR=${{ runner.temp }}/build-kokkos-fortran-interop/install/lib/cmake/flcl/
                   -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
-                  -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib64/cmake/adios2/
+                  -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2/
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake/
-                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib64/cmake/Kokkos/
-                  -DKokkosKernels_DIR=${{ runner.temp }}/build-kokkos-kernels/install/lib64/cmake/KokkosKernels/
+                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos/
+                  -DKokkosKernels_DIR=${{ runner.temp }}/build-kokkos-kernels/install/lib/cmake/KokkosKernels/
                   -DBUILD_TESTING=ON'
 
     # - name: Install Valgrind

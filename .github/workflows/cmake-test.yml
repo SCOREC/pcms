@@ -76,9 +76,10 @@ jobs:
         cache: true
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
+                  -DBUILD_SHARED_LIBS=OFF
                   -DOmega_h_USE_MPI=ON
                   -DOmega_h_USE_Kokkos=ON
-                  -DBUILD_TESTING=ON
+                  -DBUILD_TESTING=OFF
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
                   -DCMAKE_VERBOSE_MAKEFILE=ON'

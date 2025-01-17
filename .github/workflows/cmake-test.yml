@@ -51,7 +51,7 @@ jobs:
         repo-ref: '4.2.00'
         cache: true
         options: '-DCMAKE_CXX_STANDARD=17
-                  -DBUILD_SHARED_LIBS=ON
+                  -DBUILD_SHARED_LIBS=OFF
                   -DKokkos_ENABLE_SERIAL=ON
                   -DKokkos_ENABLE_OPENMP=ON
                   -DKokkos_ENABLE_CUDA=OFF
@@ -66,7 +66,7 @@ jobs:
         repo-ref: '4.2.00'
         cache: true
         options: '-DCMAKE_CXX_STANDARD=17
-                  -DBUILD_SHARED_LIBS=ON
+                  -DBUILD_SHARED_LIBS=OFF
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
 
     - name: build omega_h
@@ -78,7 +78,7 @@ jobs:
         cache: true
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
-                  -DBUILD_SHARED_LIBS=ON
+                  -DBUILD_SHARED_LIBS=OFF
                   -DOmega_h_USE_MPI=ON
                   -DOmega_h_USE_Kokkos=ON
                   -DBUILD_TESTING=OFF
@@ -129,7 +129,7 @@ jobs:
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DCMAKE_BUILD_TYPE=Release
-                  -DBUILD_SHARED_LIBS=ON
+                  -DBUILD_SHARED_LIBS=OFF
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake'
 

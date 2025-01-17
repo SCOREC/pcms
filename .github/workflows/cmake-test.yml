@@ -55,8 +55,7 @@ jobs:
                   -DKokkos_ENABLE_OPENMP=ON
                   -DKokkos_ENABLE_CUDA=OFF
                   -DKokkos_ENABLE_CUDA_LAMBDA=OFF
-                  -DKokkos_ENABLE_CUDA_CONSTEXPR=OFF
-                  -DBUILD_SHARED_LIBS=ON'
+                  -DKokkos_ENABLE_CUDA_CONSTEXPR=OFF'
 
     - name: build kokkos-kernels
       uses: ./.github/actions/install-repo
@@ -66,8 +65,7 @@ jobs:
         repo-ref: '4.2.00'
         cache: true
         options: '-DCMAKE_CXX_STANDARD=17
-                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
-                  -DBUILD_SHARED_LIBS=ON'
+                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
 
     - name: build omega_h
       uses: ./.github/actions/install-repo
@@ -82,10 +80,8 @@ jobs:
                   -DOmega_h_USE_Kokkos=ON
                   -DBUILD_TESTING=ON
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
-                  -DBUILD_SHARED_LIBS=OFF
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
-                  -DCMAKE_VERBOSE_MAKEFILE=ON
-                  -DBUILD_SHARED_LIBS=ON'
+                  -DCMAKE_VERBOSE_MAKEFILE=ON'
     
     - name: build perfstubs
       uses: ./.github/actions/install-repo
@@ -131,7 +127,6 @@ jobs:
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DCMAKE_BUILD_TYPE=Release
-                  -DBUILD_SHARED_LIBS=ON
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake'
 

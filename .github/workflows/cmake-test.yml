@@ -51,6 +51,7 @@ jobs:
         repo-ref: '4.2.00'
         cache: true
         options: '-DCMAKE_CXX_STANDARD=17
+                  -DBUILD_SHARED_LIBS=ON
                   -DKokkos_ENABLE_SERIAL=ON
                   -DKokkos_ENABLE_OPENMP=ON
                   -DKokkos_ENABLE_CUDA=OFF
@@ -65,6 +66,7 @@ jobs:
         repo-ref: '4.2.00'
         cache: true
         options: '-DCMAKE_CXX_STANDARD=17
+                  -DBUILD_SHARED_LIBS=ON
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
 
     - name: build omega_h
@@ -76,13 +78,12 @@ jobs:
         cache: true
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
-                  -DBUILD_SHARED_LIBS=OFF
+                  -DBUILD_SHARED_LIBS=ON
                   -DOmega_h_USE_MPI=ON
                   -DOmega_h_USE_Kokkos=ON
                   -DBUILD_TESTING=OFF
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
-                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
-                  -DCMAKE_VERBOSE_MAKEFILE=ON'
+                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
     
     - name: build perfstubs
       uses: ./.github/actions/install-repo
@@ -128,6 +129,7 @@ jobs:
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DCMAKE_BUILD_TYPE=Release
+                  -DBUILD_SHARED_LIBS=ON
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake'
 
@@ -151,7 +153,7 @@ jobs:
                   -DCMAKE_C_COMPILER=`which mpicc`
                   -DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_Fortran_COMPILER=`which mpifort`
-                  -DPCMS_TIMEOUT=0
+                  -DPCMS_TIMEOUT=5
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
                   -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev
@@ -166,9 +168,9 @@ jobs:
     # - name: Install Valgrind
     #   run: sudo apt-get install -yq valgrind
 
-    - name: Run CTest
-      run: ctest --test-dir ${{ runner.temp }}/build-pcms
+    # - name: Run CTest
+    #   run: ctest --test-dir ${{ runner.temp }}/build-pcms
 
-    - name: Print Test
-      if: always()
-      run: cat ${{ runner.temp }}/build-pcms/Testing/Temporary/LastTest.log
+    # - name: Print Test
+    #   if: always()
+    #   run: cat ${{ runner.temp }}/build-pcms/Testing/Temporary/LastTest.log

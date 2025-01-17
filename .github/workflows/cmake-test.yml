@@ -132,7 +132,7 @@ jobs:
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DCMAKE_BUILD_TYPE=Release
                   -DBUILD_SHARED_LIBS=ON
-                  -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2/
+                  -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake'
 
     - name: checkout pcms_testcases
@@ -151,22 +151,21 @@ jobs:
         repo-path: 'SCOREC/pcms'
         repo-ref: ''
         cache: false
-        options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
+        options: '-DCMAKE_BUILD_TYPE=Release
                   -DCMAKE_C_COMPILER=`which mpicc`
+                  -DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_Fortran_COMPILER=`which mpifort`
-                  -DCMAKE_BUILD_TYPE=Release
                   -DPCMS_TIMEOUT=0
-                  -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2/
-                  -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h/
-                  -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev/
-                  -Dflcl_DIR=${{ runner.temp }}/build-kokkos-fortran-interop/install/lib/cmake/flcl/
-                  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
+                  -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
+                  -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
+                  -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev
+                  -Dflcl_DIR=${{ runner.temp }}/build-kokkos-fortran-interop/install/lib/cmake/flcl
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
-                  -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2/
-                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake/
-                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos/
+                  -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
+                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake
+                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
                   -DKokkosKernels_DIR=${{ runner.temp }}/build-kokkos-kernels/install/lib/cmake/KokkosKernels/
-                  -DBUILD_TESTING=ON'
+                  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases'
 
     # - name: Install Valgrind
     #   run: sudo apt-get install -yq valgrind

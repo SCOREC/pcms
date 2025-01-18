@@ -170,7 +170,7 @@ jobs:
 
     - name: Run CTest
       run: |
-        OMP_NUM_THREADS=1
+        export OMP_NUM_THREADS=1
         ctest --test-dir ${{ runner.temp }}/build-pcms
 
     - name: Print Test

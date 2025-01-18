@@ -48,7 +48,7 @@ if (PCMS_ENABLE_OMEGA_H)
 endif()
 #adios2 adds C and Fortran depending on how it was built
 find_package(ADIOS2 2.5 REQUIRED)
-find_package(Kokkos 3.0 REQUIRED)
+find_package(Kokkos 4.5 REQUIRED)
 
 ## use pkgconfig since the fftw autoconf install produces
 ## broken cmake config files

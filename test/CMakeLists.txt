@@ -121,6 +121,7 @@ if(Catch2_FOUND)
 	      test_mls_basis.cpp
 	      test_rbf_interp.cpp
 	      test_linear_solver.cpp
+              test_interpolation_class.cpp
               )
   endif ()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})

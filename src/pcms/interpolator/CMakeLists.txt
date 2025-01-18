@@ -12,10 +12,12 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     linear_interpolant.hpp
     multidimarray.hpp
     MLS_rbf_options.hpp
+        interpolation_base.h
 )
 
 set(PCMS_FIELD_TRANSFER_SOURCES
     MLS_rbf_options.cpp
+        interpolation_base.cpp
 )
 install(FILES ${PCMS_FIELD_TRANSFER_HEADERS} DESTINATION include/pcms/interpolator)
 

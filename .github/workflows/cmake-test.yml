@@ -169,7 +169,9 @@ jobs:
     #   run: sudo apt-get install -yq valgrind
 
     - name: Run CTest
-      run: ctest --test-dir ${{ runner.temp }}/build-pcms
+      run: |
+        OMP_NUM_THREADS=1
+        ctest --test-dir ${{ runner.temp }}/build-pcms
 
     - name: Print Test
       if: always()

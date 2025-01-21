@@ -1,6 +1,3 @@
-#cmake_minimum_required(VERSION 3.20)
-#project(Interpolator)
-
 find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_TRANSFER_HEADERS
@@ -28,11 +25,6 @@ add_library(pcms::interpolator ALIAS pcms_interpolator)
 
 
 target_link_libraries(pcms_interpolator PUBLIC pcms::core Kokkos::kokkoskernels)
-
-target_include_directories(pcms_interpolator INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 
 install(TARGETS pcms_interpolator

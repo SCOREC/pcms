@@ -8,8 +8,8 @@
 
 TEST_CASE("solver test")
 {
-  // This test computes A^TQA and A^TQ b for the normal equation A^TQA x = A^TQ
-  // b; where A(n,m) (n >= m) is a rectangular matrix, Q(m,m) is a diagonal
+  // This test computes P^TQP and P^TQ b for the normal equation P^TQP x = P^TQ
+  // b where P(n,m) (n >= m) is a rectangular matrix, Q(m,m) is a diagonal
   // matrix with diagonal elements stored as vector and b(n,1) is a vector
   SECTION("check convert normal equation ")
   {
@@ -24,21 +24,22 @@ TEST_CASE("solver test")
 
     Kokkos::View<double**> b("rhs vector", nvertices_target, nsupports);
 
-    Kokkos::View<double***> A("vandermonde matrix", nvertices_target, nsupports,
+    Kokkos::View<double***> P("vandermonde matrix", nvertices_target, nsupports,
                               size);
 
-    Kokkos::View<double***> TransAQA("moment matrix", nvertices_target, size,
+    Kokkos::View<double***> TransPQP("moment matrix", nvertices_target, size,
                                      size);
 
-    Kokkos::View<double***> TransAQ("moment matrix", nvertices_target, size,
+    Kokkos::View<double***> TransPQ("scaled matrix", nvertices_target, size,
                                     nsupports);
 
-    Kokkos::View<double**> TransAQb("transformed rhs", nvertices_target, size);
+    Kokkos::View<double**> TransPQb("transformed rhs", nvertices_target, size);
 
-    Kokkos::View<double**> solution("transformed rhs", nvertices_target, size);
+    Kokkos::View<double**> solution("solution unknown vector", nvertices_target,
+                                    size);
 
     auto host_Q = Kokkos::create_mirror_view(Q);
-    auto host_A = Kokkos::create_mirror_view(A);
+    auto host_P = Kokkos::create_mirror_view(P);
     auto host_b = Kokkos::create_mirror_view(b);
 
     host_Q(0, 0) = 1.0;
@@ -51,21 +52,21 @@ TEST_CASE("solver test")
 
     Kokkos::deep_copy(Q, host_Q);
 
-    host_A(0, 0, 0) = 1.0;
-    host_A(0, 0, 1) = 2.0;
-    host_A(0, 1, 0) = 3.0;
-    host_A(0, 1, 1) = 4.0;
-    host_A(0, 2, 0) = 5.0;
-    host_A(0, 2, 1) = 6.0;
+    host_P(0, 0, 0) = 1.0;
+    host_P(0, 0, 1) = 2.0;
+    host_P(0, 1, 0) = 3.0;
+    host_P(0, 1, 1) = 4.0;
+    host_P(0, 2, 0) = 5.0;
+    host_P(0, 2, 1) = 6.0;
 
-    host_A(1, 0, 0) = 2.0;
-    host_A(1, 0, 1) = 3.0;
-    host_A(1, 1, 0) = 1.0;
-    host_A(1, 1, 1) = -1.0;
-    host_A(1, 2, 0) = 4.0;
-    host_A(1, 2, 1) = 1.0;
+    host_P(1, 0, 0) = 2.0;
+    host_P(1, 0, 1) = 3.0;
+    host_P(1, 1, 0) = 1.0;
+    host_P(1, 1, 1) = -1.0;
+    host_P(1, 2, 0) = 4.0;
+    host_P(1, 2, 1) = 1.0;
 
-    Kokkos::deep_copy(A, host_A);
+    Kokkos::deep_copy(P, host_P);
 
     host_b(0, 0) = 7.0;
     host_b(0, 1) = 8.0;
@@ -92,7 +93,7 @@ TEST_CASE("solver test")
                                phi(j) = Q(i, j);
                                support_values(j) = b(i, j);
                                for (int k = 0; k < size; ++k) {
-                                 vandermonde_matrix(j, k) = A(i, j, k);
+                                 vandermonde_matrix(j, k) = P(i, j, k);
                                }
                              });
 
@@ -104,9 +105,9 @@ TEST_CASE("solver test")
         team.team_barrier();
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size), [=](int j) {
-          TransAQb(i, j) = result.transformed_rhs(j);
+          TransPQb(i, j) = result.transformed_rhs(j);
           for (int k = 0; k < size; ++k) {
-            TransAQA(i, j, k) = result.square_matrix(j, k);
+            TransPQP(i, j, k) = result.square_matrix(j, k);
           }
         });
 
@@ -115,7 +116,7 @@ TEST_CASE("solver test")
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports),
                              [=](int j) {
                                for (int k = 0; k < size; ++k) {
-                                 TransAQ(i, k, j) = result.scaled_matrix(k, j);
+                                 TransPQ(i, k, j) = result.scaled_matrix(k, j);
                                }
                              });
 
@@ -132,14 +133,14 @@ TEST_CASE("solver test")
         team.team_barrier();
       });
 
-    auto host_result_lhs = Kokkos::create_mirror_view(TransAQA);
-    auto host_result_rhs = Kokkos::create_mirror_view(TransAQb);
-    auto host_result_scaled = Kokkos::create_mirror_view(TransAQ);
+    auto host_result_lhs = Kokkos::create_mirror_view(TransPQP);
+    auto host_result_rhs = Kokkos::create_mirror_view(TransPQb);
+    auto host_result_scaled = Kokkos::create_mirror_view(TransPQ);
     auto host_result_solution = Kokkos::create_mirror_view(solution);
 
-    Kokkos::deep_copy(host_result_lhs, TransAQA);
-    Kokkos::deep_copy(host_result_rhs, TransAQb);
-    Kokkos::deep_copy(host_result_scaled, TransAQ);
+    Kokkos::deep_copy(host_result_lhs, TransPQP);
+    Kokkos::deep_copy(host_result_rhs, TransPQb);
+    Kokkos::deep_copy(host_result_scaled, TransPQ);
     Kokkos::deep_copy(host_result_solution, solution);
 
     Kokkos::View<double***, Kokkos::HostSpace> expected_lhs_matrix(

@@ -1,0 +1,14 @@
+added comments and kokkoskernel dot product function 
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# On branch general_mls
+# Changes to be committed:
+#	modified:   MLSCoefficients.hpp
+#
+# Changes not staged for commit:
+#	modified:   MLSInterpolation.hpp
+#	modified:   adj_search.hpp
+#	modified:   queue_visited.hpp
+#	modified:   ../../../test/test_linear_solver.cpp
+#

@@ -117,8 +117,8 @@ void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSupports,
   parallel_for(
     nvertices_target,
     OMEGA_H_LAMBDA(const LO id) {
-      queue queue;
-      track visited;
+      Queue queue;
+      Track visited;
       Real cutoffDistance = radii2[id];
 
       LO source_cell_id = results(id).tri_id;
@@ -262,8 +262,8 @@ void FindSupports::adjBasedSearchCentroidNodes(Write<LO>& supports_ptr,
   parallel_for(
     nvertices,
     OMEGA_H_LAMBDA(const LO id) {
-      queue queue;
-      track visited;
+      Queue queue;
+      Track visited;
       const LO num_verts_in_dim = dim + 1;
       Real target_coords[max_dim];
       Real support_coords[max_dim];

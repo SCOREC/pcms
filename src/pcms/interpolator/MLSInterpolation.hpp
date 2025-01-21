@@ -7,9 +7,23 @@
 #include <cmath>
 #include <type_traits>
 #include <Kokkos_Core.hpp>
-
+#include <KokkosBlas1_team_dot.hpp>
 using namespace Omega_h;
 
+/**
+ * @brief maps the data from source mesh to target mesh
+ * @param source_values Source field values from source mesh
+ * @param source_coordinates The coordinates of control points of source field
+ * @param target_coordinates The coordinates of control points of target field
+ * @param support The object that enpasulates support info
+ * @param dim The dimension of the simulations
+ * @param degree The degree of the interpolation order
+ * @param radii2 The array of the square of cutoff distance
+ * @param rbf_func The radial basis function choice
+ * @return interpolated field in target mesh
+ *
+ *
+ */
 template <typename Func>
 Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
@@ -24,12 +38,6 @@ Write<Real> mls_interpolation(const Reals source_values,
                 "function pointer will fail in GPU execution context");
   const auto nvertices_source = source_coordinates.size() / dim;
   const auto nvertices_target = target_coordinates.size() / dim;
-
-  // Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace> range_policy(1,
-  // nvertices_target);
-
-  // static_assert(degree > 0," the degree of polynomial basis should be atleast
-  // 1");
 
   Kokkos::View<size_t*> shmem_each_team(
     "stores the size required for each team", nvertices_target);
@@ -112,14 +120,6 @@ Write<Real> mls_interpolation(const Reals source_values,
       // rbf function values of source supports Phi(n,n)
       ScratchVecView phi_vector(team.team_scratch(0), nsupports);
 
-      // stores P^T Q
-      //      ScratchMatView scaled_vandermonde_matrix(team.team_scratch(0),
-      //      basis_size, nsupports);
-
-      // stores P^T Q P
-      //     ScratchMatView moment_matrix(team.team_scratch(0),
-      //     basis_size,basis_size);
-
       // stores known vector (b)
       ScratchVecView support_values(team.team_scratch(0), nsupports);
 
@@ -143,7 +143,7 @@ Write<Real> mls_interpolation(const Reals source_values,
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, basis_size),
                            [=](int j) {
                              //			    for (int k = 0; k <
-                             //basis_size; ++k) {
+                             // basis_size; ++k) {
                              //                               moment_matrix(j,
                              //                               k) = 0;
                              //                             }
@@ -178,10 +178,11 @@ Write<Real> mls_interpolation(const Reals source_values,
       }
       BasisPoly(target_basis_vector, slice_length, target_point);
 
-      // VandermondeMatrix vandermonde_matrix(nsupports, basis_size)
-      // vandermonde Matrix is created with the basis vector
-      // of source supports stacking on top of each other
-      //
+      /** VandermondeMatrix vandermonde_matrix(nsupports, basis_size)
+       *	  vandermonde Matrix is created with the basis vector
+       * of source supports stacking on top of each other
+       */
+
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
           CreateVandermondeMatrix(vandermonde_matrix, local_source_points, j,
@@ -190,10 +191,12 @@ Write<Real> mls_interpolation(const Reals source_values,
 
       team.team_barrier();
 
-      // PhiVector(nsupports) is the array of rbf functions evaluated at the
-      // source supports In the actual implementation, Phi(nsupports, nsupports)
-      // is the diagonal matrix & each diagonal element is the phi evalauted at
-      // each source points
+      /** PhiVector(nsupports) is the array of rbf functions evaluated at the
+       * source supports In the actual implementation, Phi(nsupports, nsupports)
+       * is the diagonal matrix & each diagonal element is the phi evaluated at
+       * each source points
+       */
+
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
           OMEGA_H_CHECK_PRINTF(
@@ -204,31 +207,11 @@ Write<Real> mls_interpolation(const Reals source_values,
                     rbf_func);
         });
 
-      //      // sum phi
-      //      double sum_phi = 0;
-      //      Kokkos::parallel_reduce(
-      //        Kokkos::TeamThreadRange(team, nsupports),
-      //        [=](const int j, double& lsum) { lsum += Phi(j); }, sum_phi);
-      //      OMEGA_H_CHECK_PRINTF(!std::isnan(sum_phi),
-      //                           "ERROR: sum_phi is NaN for i=%d\n", i);
-      //      OMEGA_H_CHECK_PRINTF(sum_phi != 0, "ERROR: sum_phi is zero for
-      //      i=%d\n",
-      //                           i);
-      //
-      //      // normalize phi with sum_phi
-      //      Kokkos::parallel_for(
-      //        Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
-      //          OMEGA_H_CHECK_PRINTF(
-      //            !std::isnan(Phi(j)),
-      //            "ERROR: Phi(j) is NaN before normalization for j = %d\n",
-      //            j);
-      //          Phi(j) = Phi(j) / sum_phi;
-      //        });
-      //
       team.team_barrier();
 
-      // support_values(nsupports) (or known rhs vector b) is the vector of the
-      // quantity that we want interpolate
+      /** support_values(nsupports) (or known rhs vector b) is the vector of the
+       * quantity that we want interpolate
+       */
 
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](const int i) {
@@ -251,9 +234,14 @@ Write<Real> mls_interpolation(const Reals source_values,
 
       team.team_barrier();
 
-      double target_value = 0;
-      dot_product(team, result.transformed_rhs, target_basis_vector,
-                  target_value);
+      // implemented the kokkoskernels dot product function
+      // need to verify
+      double target_value = KokkosBlas::Experimental::dot(
+        team, result.transformed_rhs, target_basis_vector);
+
+      //      double target_value = 0;
+      //      dot_product(team, result.transformed_rhs, target_basis_vector,
+      //                  target_value);
 
       if (team.team_rank() == 0) {
         OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n", i);

@@ -1,5 +1,5 @@
-#ifndef MLS_COEFFICIENTS_HPP
-#define MLS_COEFFICIENTS_HPP
+#ifndef PCMS_INTERPOLATOR_MLS_COEFFICIENTS_HPP
+#define PCMS_INTERPOLATOR_MLS_COEFFICIENTS_HPP
 
 #include <cmath>
 #include <Omega_h_fail.hpp>
@@ -13,20 +13,38 @@
 #include "points.hpp"
 #include <type_traits>
 
-#define PI_M 3.14159265358979323846
-
 static constexpr int MAX_DIM = 3;
 
-KOKKOS_INLINE_FUNCTION
-double func(Coord& p)
-{
-  auto x = (p.x - 0.5) * PI_M * 2;
-  auto y = (p.y - 0.5) * PI_M * 2;
-  double Z = sin(x) * sin(y) + 2;
-  return Z;
-}
+/**
+ * basisSliceLengths, basissSize and BasisPoly are needed to evaluate the
+ * polynomial basis for any degree and dimension For instance, polynomial basis
+ * vector for dim = 2 and degree = 3 at the point A(x,y) looks like {1, x, y,
+ * xx, xy, yy, xxx, xxy, xyy,yyy}. The slices can be written as [1] degree 0 [x]
+ * & [y]                degree 1 [xx] &  [xy, yy]         degree 2 [xxx] & [xxy,
+ * xyy, yyy]  degree 3
+ *
+ * the recursive pattern becomes:
+ * [1]                      degree 0
+ * x*[1] & y*[1]            degree 1
+ * x*[x] & y*[x, y]         degree 2
+ * xx*[x] & y*[xx,xy,yy]    degree 3
+ *
+ * lengths of the slices:
+ * Degree \ Dim | x | y |
+ * =========================
+ *        1     | 1 | 1 |
+ *        2     | 1 | 2 |
+ *        3     | 1 | 3 |
+ */
 
-// computes the slice lengths of the of the polynomial basis
+/**
+ * @brief computes the slice lengths of the polynomial basis
+ * @param array: takes kokkos view array as an input and computes the lengths of
+ * slices and fills the array
+ *
+ * @notes it takes a host array as an input, could have done for device
+ * but there was a race conditions for a device
+ */
 KOKKOS_INLINE_FUNCTION
 void basisSliceLengths(Kokkos::View<int**, Kokkos::HostSpace>& array)
 {
@@ -48,7 +66,16 @@ void basisSliceLengths(Kokkos::View<int**, Kokkos::HostSpace>& array)
   }
 }
 
-// finds the size of the polynomial basis vector
+/**
+ * @brief computes the size of the polynomial basis vector
+ *
+ * @param array: it is the array of the slices length
+ * @return sum: sum of each element of slice lengths array gives the basis
+ * vector size
+ *
+ * @note it takes the host array
+ */
+
 KOKKOS_INLINE_FUNCTION
 int basisSize(const Kokkos::View<int**, Kokkos::HostSpace>& array)
 {
@@ -65,9 +92,22 @@ int basisSize(const Kokkos::View<int**, Kokkos::HostSpace>& array)
   return sum;
 }
 
-// evaluates the polynomial basis
+/**
+ * @brief evaluates the polynomial basis
+ *   for example, if it dim = 2 and degree = 2
+ *   the basis_vector looks like
+ *   basis_vector = {1,x,y,xx,xy,yy}
+ *
+ *   @param basis_vector: basis_vector 1D array is initialised and passed as
+ * input
+ *   @param slice_length: slice length is the 2D array that consists of the
+ * length of slices
+ *   @param p: instance of an class type Coord
+ *
+ *   @return basis_vector filled with polynomial basis
+ */
 KOKKOS_INLINE_FUNCTION
-void BasisPoly(ScratchVecView basis_vector, const MatViewType& slice_length,
+void BasisPoly(ScratchVecView& basis_vector, const MatViewType& slice_length,
                Coord& p)
 {
   basis_vector(0) = 1;
@@ -103,8 +143,8 @@ void BasisPoly(ScratchVecView basis_vector, const MatViewType& slice_length,
 // create vandermondeMatrix
 KOKKOS_INLINE_FUNCTION
 void CreateVandermondeMatrix(ScratchMatView vandermonde_matrix,
-                             const ScratchMatView local_source_points, int j,
-                             const MatViewType slice_length)
+                             const ScratchMatView& local_source_points, int j,
+                             const MatViewType& slice_length)
 {
   int N = local_source_points.extent(0);
   int dim = local_source_points.extent(1);
@@ -145,8 +185,8 @@ KOKKOS_INLINE_FUNCTION void PhiVector(ScratchVecView Phi,
 // A^Tb --> A^T(n,m) b(m)
 KOKKOS_INLINE_FUNCTION
 void ScaleColumnTransMatrix(ScratchMatView result_matrix,
-                            const ScratchMatView matrix,
-                            const ScratchVecView vector, member_type team,
+                            const ScratchMatView& matrix,
+                            const ScratchVecView& vector, member_type team,
                             int j)
 {
 
@@ -156,39 +196,15 @@ void ScaleColumnTransMatrix(ScratchMatView result_matrix,
   ScratchVecView matrix_row = Kokkos::subview(matrix, j, Kokkos::ALL());
   for (int k = 0; k < N; k++) {
     OMEGA_H_CHECK_PRINTF(!std::isnan(matrix_row(k)),
-                         "ERROR: vandermonde_mat_row is NaN for k = %d\n", k);
+                         "ERROR: given matrix is NaN for k = %d\n", k);
     OMEGA_H_CHECK_PRINTF(!std::isnan(vector(j)),
-                         "ERROR: Phi(j) in PTphiMatrix is NaN for j = %d\n", j);
+                         "ERROR: given vector is NaN for j = %d\n", j);
     result_matrix(k, j) = matrix_row(k) * vector(j);
-    OMEGA_H_CHECK_PRINTF(
-      !std::isnan(result_matrix(k, j)),
-      "ERROR: pt_phi in PTphiMatrix is NaN for k = %d, j = %d\n", k, j);
+    OMEGA_H_CHECK_PRINTF(!std::isnan(result_matrix(k, j)),
+                         "ERROR: result_matrix is NaN for k = %d, j = %d\n", k,
+                         j);
   }
 }
-
-// KOKKOS_INLINE_FUNCTION
-// void PtphiPMatrix(ScratchMatView& moment_matrix, member_type team,
-//                   const ScratchMatView& pt_phi,
-//                   const ScratchMatView& vandermonde)
-//{
-//   int M = pt_phi.extent(0);
-//   int N = vandermonde.extent(1);
-//   int K = pt_phi.extent(1);
-//
-//   Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, M), [=](const int i) {
-//     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, N), [=](const int j) {
-//       double sum = 0.0;
-//       Kokkos::parallel_reduce(
-//         Kokkos::ThreadVectorRange(team, K),
-//         [=](const int k, double& lsum) {
-//           lsum += pt_phi(i, k) * vandermonde(k, j);
-//         },
-//         sum);
-//       moment_matrix(i, j) = sum;
-//     });
-//   });
-// }
-//
 
 // dot product
 KOKKOS_INLINE_FUNCTION
@@ -203,61 +219,22 @@ void dot_product(member_type team, const ScratchVecView& result_sub,
                        "ERROR: NaN found in dot_product: N: %d\n", N);
 }
 
-// matrix matrix multiplication
-// KOKKOS_INLINE_FUNCTION
-// void MatMatMul(member_type team, ScratchMatView& moment_matrix,
-//               const ScratchMatView& pt_phi, const ScratchMatView&
-//               vandermonde)
-//{
-//  int M = pt_phi.extent(0);
-//  int N = vandermonde.extent(1);
-//  int K = pt_phi.extent(1);
-//
-//  Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, M), [=](const int i) {
-//    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, N), [=](const int j) {
-//      double sum = 0.0;
-//      Kokkos::parallel_reduce(
-//        Kokkos::ThreadVectorRange(team, K),
-//        [=](const int k, double& lsum) {
-//          OMEGA_H_CHECK_PRINTF(!std::isnan(pt_phi(i, k)),
-//                               "ERROR: pt_phi is NaN for i = %d\n", i);
-//          OMEGA_H_CHECK_PRINTF(!std::isnan(vandermonde(k, j)),
-//                               "ERROR: vandermonde is NaN for k = %d\n", k);
-//          lsum += pt_phi(i, k) * vandermonde(k, j);
-//        },
-//        sum);
-//      OMEGA_H_CHECK_PRINTF(!std::isnan(sum),
-//                           "ERROR: sum is NaN for i = %d, j = %d\n", i, j);
-//      moment_matrix(i, j) = sum;
-//    });
-//  });
-//}
-////
-// Matrix vector multiplication
-
-// KOKKOS_INLINE_FUNCTION
-// void MatVecMul(member_type team, const ScratchVecView& vector,
-//                const ScratchMatView& matrix, ScratchVecView& result)
-//{
-//   int M = matrix.extent(0);
-//   int N = matrix.extent(1);
-//   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, N), [=](const int i) {
-//     double sum = 0;
-//     Kokkos::parallel_reduce(
-//       Kokkos::ThreadVectorRange(team, M),
-//       [=](const int j, double& lsum) { lsum += vector(j) * matrix(j, i); },
-//       sum);
-//     result(i) = sum;
-//     OMEGA_H_CHECK_PRINTF(!std::isnan(result(i)),
-//                          "ERROR: sum is NaN for i = %d\n", i);
-//   });
-//   // team.team_barrier();
-// }
-//
-
 // TODO: Implement QR decomposition to solve the linear system
 // convert normal equation P^T Q P x = P^T Q b to Ax = b';
 // A = P^T Q P & b' = P^T Q b
+
+/**
+ * @struct ResultConvertNormal
+ * @brief Represents the results from P^T Q(scaled matrix), P^T Q P (square
+ * matrix) and P^T Q b (transformed rhs)
+ *
+ * scaled_matrix is the matrix obtained after scaling the column of the given
+ * matrix square_matrix is the matrix obtained after P^T Q P operations
+ * transformed_rhs is obtained after P^T b operation
+ *
+ * This class is used to store the scaled matrix, square matrix and transformed
+ * rhs
+ */
 
 struct ResultConvertNormal
 {
@@ -284,7 +261,6 @@ ResultConvertNormal ConvertNormalEq(const ScratchMatView matrix,
   result.transformed_rhs = ScratchVecView(team.team_scratch(0), n);
 
   // performing P^T Q
-
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n), [=](int j) {
     for (int k = 0; k < m; ++k) {
       result.scaled_matrix(j, k) = 0;
@@ -299,6 +275,7 @@ ResultConvertNormal ConvertNormalEq(const ScratchMatView matrix,
   });
 
   team.team_barrier();
+
   // performing (P^T Q P)
   KokkosBatched::TeamGemm<
     member_type, KokkosBatched::Trans::NoTranspose,
@@ -309,10 +286,6 @@ ResultConvertNormal ConvertNormalEq(const ScratchMatView matrix,
 
   team.team_barrier();
 
-  //    KokkosBlas::Experimental::TeamGemv<member_type,
-  //    KokkosBlas::Trans::NoTranspose,
-  //    KokkosBlas::Algo::Gemv::Unblocked>(team, 1.0, result.scaled_matrix, rhs,
-  //    0.0, result.transformed_rhs);
   KokkosBlas::Experimental::
     Gemv<KokkosBlas::Mode::Team, KokkosBlas::Algo::Gemv::Unblocked>::invoke(
       team, 'N', 1.0, result.scaled_matrix, rhs, 0.0, result.transformed_rhs);
@@ -322,9 +295,17 @@ ResultConvertNormal ConvertNormalEq(const ScratchMatView matrix,
   return result;
 }
 
-/// solve A x =  b using LU decomposition
-// inputs rhs, overwrites rhs and returns rhs
-
+/**
+ * @brief Solves the matrix equation Ax = b
+ *
+ * This function uses LU decomposition to solve the matrix equation
+ *
+ * @param square_matrix The given matrix A (must be square)
+ * @param rhs The known vector b
+ * @return rhs The unknown vector x after solving matrix equation is overwritten
+ * in rhs
+ *
+ */
 KOKKOS_INLINE_FUNCTION
 void SolveMatrix(const ScratchMatView square_matrix, const ScratchVecView rhs,
                  member_type team)
@@ -343,84 +324,4 @@ void SolveMatrix(const ScratchMatView square_matrix, const ScratchVecView rhs,
     KokkosBatched::Algo::SolveLU::Unblocked>::invoke(team, square_matrix, rhs);
 }
 
-//// moment matrix
-//
-//// inverse matrix
-// KOKKOS_INLINE_FUNCTION
-// void inverse_matrix(member_type team, const ScratchMatView& matrix,
-//                     ScratchMatView& lower, ScratchMatView& forward_matrix,
-//                     ScratchMatView& solution)
-//{
-//   int N = matrix.extent(0);
-//
-//   for (int j = 0; j < N; ++j) {
-//     Kokkos::single(Kokkos::PerTeam(team), [=]() {
-//       double sum = 0;
-//       for (int k = 0; k < j; ++k) {
-//         sum += lower(j, k) * lower(j, k);
-//       }
-//       OMEGA_H_CHECK_PRINTF(!std::isnan(matrix(j, j)),
-//                            "ERROR: matrix(j,j) is NaN: j = %d\n", j);
-//       OMEGA_H_CHECK_PRINTF(
-//         matrix(j, j) - sum >= -1e-10, // TODO: how to check this reliably?
-//         "ERROR: (matrix(j,j) - sum) is negative: mat(jj)=%.16f, sum = %.16f
-//         \n", matrix(j, j), sum);
-//       lower(j, j) = sqrt(matrix(j, j) - sum);
-//       OMEGA_H_CHECK_PRINTF(!std::isnan(lower(j, j)),
-//                            "Lower in inverse_matrix is NaN (j,j) =
-//                            (%d,%d)\n", j, j);
-//     });
-//
-//     team.team_barrier();
-//
-//     Kokkos::parallel_for(Kokkos::TeamVectorRange(team, j + 1, N), [=](int i)
-//     {
-//       double inner_sum = 0;
-//       for (int k = 0; k < j; ++k) {
-//         inner_sum += lower(i, k) * lower(j, k);
-//       }
-//       lower(i, j) = (matrix(i, j) - inner_sum) / lower(j, j);
-//       lower(j, i) = lower(i, j);
-//       OMEGA_H_CHECK_PRINTF(!std::isnan(lower(i, j)),
-//                            "Lower in inverse_matrix is NaN (i,j) =
-//                            (%d,%d)\n", i, j);
-//       OMEGA_H_CHECK_PRINTF(!std::isnan(lower(j, i)),
-//                            "Lower in inverse_matrix is NaN (j,i) =
-//                            (%d,%d)\n", j, i);
-//     });
-//
-//     team.team_barrier();
-//   }
-//
-//   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, N), [=](const int i) {
-//     forward_matrix(i, i) = 1.0 / lower(i, i);
-//     for (int j = i + 1; j < N; ++j) {
-//       forward_matrix(j, i) = 0.0; // Initialize to zero
-//       for (int k = 0; k < j; ++k) {
-//         forward_matrix(j, i) -= lower(j, k) * forward_matrix(k, i);
-//       }
-//       forward_matrix(j, i) /= lower(j, j);
-//       OMEGA_H_CHECK_PRINTF(!std::isnan(forward_matrix(j, i)),
-//                            "Forward in inverse_matrix is NaN (j,i) =
-//                            (%d,%d)\n", j, i);
-//     }
-//   });
-//
-//   team.team_barrier();
-//
-//   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, N), [=](const int i) {
-//     solution(N - 1, i) = forward_matrix(N - 1, i) / lower(N - 1, N - 1);
-//     for (int j = N - 2; j >= 0; --j) {
-//       solution(j, i) = forward_matrix(j, i);
-//       for (int k = j + 1; k < N; ++k) {
-//         solution(j, i) -= lower(j, k) * solution(k, i);
-//       }
-//       solution(j, i) /= lower(j, j);
-//       OMEGA_H_CHECK_PRINTF(
-//         !std::isnan(solution(j, i)),
-//         "Solution in inverse_matrix is NaN (j,i) = (%d,%d)\n", j, i);
-//     }
-//   });
-// }
-//
 #endif

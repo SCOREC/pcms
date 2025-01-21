@@ -1,0 +1,150 @@
+name: Test-Build
+on:
+  push:
+  schedule:
+    - cron: '12 14 * * 3' 
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      matrix:
+        build_type: [Release]
+        memory_test: [ON, OFF]
+        compiler: [g++]
+        language: ['cpp']
+        exclude:
+          - build_type: Release
+            memory_test: ON
+          - build_type: RelWithDebInfo
+            memory_test: OFF
+      
+    steps:
+
+    - name: Update packages
+      run: sudo apt-get update
+
+    - name: Install mpi
+      run: sudo apt-get install -yq mpich libmpich-dev
+
+    - uses: actions/checkout@v4
+
+    - name: build kokkos
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'kokkos'
+        repo-path: 'kokkos/kokkos'
+        repo-ref: '4.2.00'
+        cache: true
+        options: '-DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+                  -DKokkos_ENABLE_SERIAL=ON
+                  -DKokkos_ENABLE_OPENMP=off
+                  -DKokkos_ENABLE_CUDA=off
+                  -DKokkos_ENABLE_CUDA_LAMBDA=off
+                  -DKokkos_ENABLE_DEBUG=on'
+
+    - name: build ADIOS2
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'ADIOS2'
+        repo-path: 'ornladios/ADIOS2'
+        repo-ref: ''
+        cache: true
+        options: '-DADIOS2_USE_CUDA=off
+                  -DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_CXX_COMPILER=mpicxx
+                  -DCMAKE_C_COMPILER=mpicc'
+
+    - name: build perfstubs
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'perfstubs'
+        repo-path: 'UO-OACISS/perfstubs'
+        repo-ref: ''
+        cache: true
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_CXX_COMPILER=mpicxx
+                  -DCMAKE_C_COMPILER=mpicc'
+
+    - name: build redev
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'redev'
+        repo-path: 'SCOREC/redev'
+        repo-ref: ''
+        cache: true
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_CXX_COMPILER=mpicxx
+                  -DCMAKE_C_COMPILER=mpicc
+                  -DMPIEXEC_EXECUTABLE=`which srun`
+                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs
+                  -DADIOS2_ROOT=${{ runner.temp }}/build-ADIOS2/install'
+                  
+    - name: build omega_h
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'omega_h'
+        repo-path: 'SCOREC/omega_h'
+        repo-ref: ''
+        cache: true
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DBUILD_SHARED_LIBS=off
+                  -DOmega_h_USE_Kokkos=on
+                  -DOmega_h_USE_CUDA=off
+                  -DOmega_h_USE_MPI=on
+                  -DMPIEXEC_EXECUTABLE=srun
+                  -DBUILD_TESTING=off
+                  -DCMAKE_C_COMPILER=mpicc
+                  -DCMAKE_CXX_COMPILER=mpicxx
+                  -DKokkos_PREFIX=${{ runner.temp }}/build-kokkos/install/lib/cmake'
+
+    - name: build Catch2
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'Catch2'
+        repo-path: 'catchorg/Catch2'
+        repo-ref: ''
+        cache: true
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_CXX_COMPILER=mpicxx'
+
+    - name: checkout pcms_testcases
+      uses: actions/checkout@v3
+      with:
+        repository: jacobmerson/pcms_testcases
+        path: pcms_testcases
+
+    - name: Install fftw3
+      run: sudo apt-get install -yq fftw3 fftw3-dev pkg-config
+
+    - name: build pcms
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'pcms'
+        repo-path: 'SCOREC/pcms'
+        repo-ref: ''
+        cache: false
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_C_COMPILER=mpicc
+                  -DCMAKE_CXX_COMPILER=mpicxx
+                  -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev
+                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs
+                  -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
+                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
+                  -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
+                  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases'
+
+    # - name: Install Valgrind
+    #   run: sudo apt-get install -yq valgrind
+
+    # - name: Run CTest
+    #   run: ctest --test-dir ${{ runner.temp }}/build-pcms
+
+    # - name: Print Test
+    #   if: always()
+    #   run: cat ${{ runner.temp }}/build-pcms/Testing/Temporary/LastTest.log

@@ -24,7 +24,7 @@ Real calculateDistance(const Real* p1, const Real* p2, const int dim)
   return dx * dx + dy * dy + dz * dz;
 }
 
-void checkTargetPoints(
+inline void checkTargetPoints(
   const Kokkos::View<pcms::GridPointSearch::Result*>& results)
 {
   Kokkos::fence();
@@ -43,9 +43,10 @@ void checkTargetPoints(
   printf("\n");
 }
 
-void printSupportsForTarget(const LO target_id, const Write<LO>& supports_ptr,
-                            const Write<LO>& nSupports,
-                            const Write<LO>& support_idx)
+inline void printSupportsForTarget(const LO target_id,
+                                   const Write<LO>& supports_ptr,
+                                   const Write<LO>& nSupports,
+                                   const Write<LO>& support_idx)
 {
   parallel_for(
     nSupports.size(), OMEGA_H_LAMBDA(const LO id) {
@@ -84,9 +85,11 @@ public:
                                    Write<Real>& radii2, bool is_build_csr_call);
 };
 
-void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSupports,
-                                  Write<LO>& support_idx, Write<Real>& radii2,
-                                  bool is_build_csr_call)
+inline void FindSupports::adjBasedSearch(Write<LO>& supports_ptr,
+                                         Write<LO>& nSupports,
+                                         Write<LO>& support_idx,
+                                         Write<Real>& radii2,
+                                         bool is_build_csr_call)
 {
 
   const auto& sourcePoints_coords = source_mesh.coords();
@@ -226,11 +229,11 @@ void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSupports,
   }
 }
 
-void FindSupports::adjBasedSearchCentroidNodes(Write<LO>& supports_ptr,
-                                               Write<LO>& nSupports,
-                                               Write<LO>& support_idx,
-                                               Write<Real>& radii2,
-                                               bool is_build_csr_call)
+inline void FindSupports::adjBasedSearchCentroidNodes(Write<LO>& supports_ptr,
+                                                      Write<LO>& nSupports,
+                                                      Write<LO>& support_idx,
+                                                      Write<Real>& radii2,
+                                                      bool is_build_csr_call)
 {
   // Mesh Info
   const auto& mesh_coords = source_mesh.coords();
@@ -357,9 +360,10 @@ struct SupportResults
   Write<Real> radii2; // squared radii of the supports
 };
 
-SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
-                               Real& cutoffDistance, LO min_req_support = 12,
-                               bool adapt_radius = true)
+inline SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
+                                      Real& cutoffDistance,
+                                      LO min_req_support = 12,
+                                      bool adapt_radius = true)
 {
   SupportResults support;
   FindSupports search(source_mesh, target_mesh);
@@ -459,8 +463,9 @@ SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
   return support;
 }
 
-SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
-                               LO min_support = 12, bool adapt_radius = true)
+inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
+                                      LO min_support = 12,
+                                      bool adapt_radius = true)
 {
   SupportResults support;
   FindSupports search(mesh);

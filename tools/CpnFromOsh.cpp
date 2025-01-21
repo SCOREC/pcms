@@ -4,11 +4,12 @@
 #include <array>
 #include <map>
 #include <numeric>
+#include "pcms/print.h"
 
 int main(int argc, char** argv)
 {
   if (argc != 3) {
-    printf("Usage: %s <mesh file> <nparts>\n", argv[0]);
+    pcms::printError("Usage: %s <mesh file> <nparts>\n", argv[0]);
     std::abort();
   }
   Omega_h::Library lib(&argc, &argv);
@@ -40,15 +41,14 @@ int main(int argc, char** argv)
   // roughly how many verts per part
   const auto verts_per_part = total_verts_in_faces / nparts;
 
-  std::cout << nfaces <<"\n";
-  int idx=0;
-  for(int i=0; i<nfaces; ++i) {
-      std::cout<<i+1<<" "<<idx<<"\n";
-      if(verts_per_face[i] > verts_per_part*(idx+1)) {
-        idx++;
-      }
+  std::cout << nfaces << "\n";
+  int idx = 0;
+  for (int i = 0; i < nfaces; ++i) {
+    std::cout << i + 1 << " " << idx << "\n";
+    if (verts_per_face[i] > verts_per_part * (idx + 1)) {
+      idx++;
+    }
   }
-
 
   return 0;
 }

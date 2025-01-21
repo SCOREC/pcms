@@ -3,6 +3,7 @@
 #include "pcms/common.h"
 #include "pcms/field_communicator.h"
 #include "pcms/profile.h"
+
 namespace pcms
 {
 
@@ -17,7 +18,7 @@ public:
     PCMS_FUNCTION_TIMER;
     MPI_Comm mpi_comm_subset = MPI_COMM_NULL;
     PCMS_ALWAYS_ASSERT((mpi_comm == MPI_COMM_NULL) ? (participates == false)
-                                                     : true);
+                                                   : true);
     if (mpi_comm != MPI_COMM_NULL) {
       int rank = -1;
       MPI_Comm_rank(mpi_comm, &rank);
@@ -86,6 +87,7 @@ public:
 private:
   std::unique_ptr<CoupledFieldConcept> coupled_field_;
 };
+
 class CouplerClient
 {
 public:

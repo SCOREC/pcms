@@ -1,9 +1,12 @@
 #include "pcms/assert.h"
+#include "pcms/print.h"
 #include <cstdio>
 #include <cstdlib>
-namespace pcms {
-void Pcms_Assert_Fail(const char* msg) {
-  fprintf(stderr, "%s", msg);
+namespace pcms
+{
+void Pcms_Assert_Fail(const char* msg)
+{
+  printError("%s", msg);
   abort();
 }
-}
+} // namespace pcms

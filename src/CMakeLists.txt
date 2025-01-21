@@ -16,13 +16,20 @@ set(PCMS_HEADERS
         pcms/array_mask.h
         pcms/inclusive_scan.h
         pcms/profile.h
+        pcms/print.h
         )
 
 set(PCMS_SOURCES
         pcms.cpp
         pcms/assert.cpp
+        pcms/print.cpp
         pcms/xgc_field_adapter.h)
-set(PCMS_SOURCES pcms.cpp pcms/assert.cpp)
+
+configure_file(
+  pcms/version.h.in
+  pcms/version.h
+)
+
 if(PCMS_ENABLE_XGC)
   list(APPEND PCMS_SOURCES  pcms/xgc_reverse_classification.cpp)
   list(APPEND PCMS_HEADERS pcms/xgc_reverse_classification.h)
@@ -68,12 +75,24 @@ if(PCMS_HAS_ASAN)
   target_compile_options(pcms_core PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 endif()
 
+if(PCMS_PRINT_ENABLED)
+  add_definitions(-DPCMS_PRINT_ENABLED)
+  target_compile_definitions(pcms_core INTERFACE -DPCMS_PRINT_ENABLED)
+endif()
+
+if (spdlog_FOUND)
+  add_definitions(-DPCMS_SPDLOG_ENABLED)
+  target_compile_definitions(pcms_core INTERFACE -DPCMS_SPDLOG_ENABLED)
+  target_link_libraries(pcms_core PUBLIC spdlog::spdlog)
+endif()
+
 
 ## export the library
 set_target_properties(pcms_core PROPERTIES
   PUBLIC_HEADER "${PCMS_HEADERS}")
 target_include_directories(pcms_core
   PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 install(

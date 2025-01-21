@@ -41,10 +41,10 @@ int main(int argc, char** argv)
   redev::Redev rdv(MPI_COMM_WORLD, redev::Partition{std::move(partition)},
                    static_cast<redev::ProcessType>(isRdv));
   const std::string name = "meshVtxIds";
-  adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "2"}};
+  adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
   auto channel =
     rdv.CreateAdiosChannel(name, params, redev::TransportType::BP4);
-  auto commPair = channel.CreateComm<redev::GO>(name,rdv.GetMPIComm());
+  auto commPair = channel.CreateComm<redev::GO>(name, rdv.GetMPIComm());
 
   // build dest, offsets, and permutation arrays
   ts::OutMsg appOut =
@@ -103,6 +103,6 @@ int main(int argc, char** argv)
       ts::checkAndAttachIds(mesh, "inVtxGids", msgs, rdvInPermute);
       ts::writeVtk(mesh, "rdvInGids", iter);
     } // end non-rdv -> rdv
-  }   // end iter loop
+  } // end iter loop
   return 0;
 }

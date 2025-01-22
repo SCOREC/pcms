@@ -19,8 +19,8 @@ class InterpolationBase
    * @param target_field The field to interpolate to
    */
   virtual void eval(
-    const pcms::ScalarArrayView<double, pcms::HostMemorySpace>& source_field,
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace>& target_field) = 0;
+    pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_field,
+    pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field) = 0;
 };
 
 /**
@@ -31,34 +31,42 @@ class MLSInterpolationHandler : public InterpolationBase
 
 public:
   void eval(
-    const pcms::ScalarArrayView<double, pcms::HostMemorySpace>& source_field,
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace>& target_field)
-    override;
+    pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_field,
+    pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field) override;
 
-  MLSInterpolationHandler(const std::string& source_mesh_fname,
-                   const std::string& target_mesh_fname, double radius,
-                   bool adapt_radius = true);
+  /**
+   * @brief Vertex to Vertex interpolation for two given meshes
+   * @param source_mesh The source mesh
+   * @param target_mesh The target mesh
+   * @param radius The cutoff radius for the MLS interpolation
+   * @param adapt_radius Whether to adapt the radius based on the local density
+   */
+  MLSInterpolationHandler(Omega_h::Mesh& source_mesh,
+                          Omega_h::Mesh& target_mesh, double radius,
+                          bool adapt_radius = true);
 
-  MLSInterpolationHandler(Omega_h::Mesh source_mesh, Omega_h::Mesh target_mesh,
-                   double radius, bool adapt_radius = true);
+  /**
+   * @brief Centroids to Vertices interpolation for a single mesh
+   * @param source_mesh The source mesh
+   * @param radius The cutoff radius for the MLS interpolation
+   * @param adapt_radius Whether to adapt the radius based on the local density
+   */
+  MLSInterpolationHandler(Omega_h::Mesh& source_mesh, double radius,
+                          bool adapt_radius = true);
 
-  MLSInterpolationHandler(const std::string& source_mesh_fname, double radius,
-                   bool adapt_radius = true);
-
-  MLSInterpolationHandler(Omega_h::Mesh source_mesh, double radius,
-                   bool adapt_radius = true);
+  size_t getSourceSize();
+  size_t getTargetSize();
 
 private:
   double radius_;
   bool adapt_radius_;
   bool single_mesh_ = false;
 
-  std::string interpolation_type_;
+  //std::string interpolation_type_;
 
-  Omega_h::Library library_;
-  Omega_h::Mesh source_mesh_;
+  Omega_h::Mesh& source_mesh_;
   // TODO: handle what to do with this when only 1 mesh is provided
-  Omega_h::Mesh target_mesh_;
+  Omega_h::Mesh& target_mesh_;
   Omega_h::Reals source_coords_;
   Omega_h::Reals target_coords_;
 
@@ -67,7 +75,7 @@ private:
   Omega_h::HostWrite<Omega_h::Real> target_field_;
   Omega_h::HostWrite<Omega_h::Real> source_field_;
 
-  void find_supports(int min_req_supports = 12);
+  void find_supports(int min_req_supports = 10);
 };
 
 #endif // PCMS_INTERPOLATION_BASE_H

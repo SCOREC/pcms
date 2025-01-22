@@ -39,10 +39,14 @@ public:
    * @param source_mesh The source mesh
    * @param target_mesh The target mesh
    * @param radius The cutoff radius for the MLS interpolation
+   * @param min_req_supports The minimum number of source locations required for
+   * interpolation
+   * @param degree The degree of the polynomial used in the MLS interpolation
    * @param adapt_radius Whether to adapt the radius based on the local density
    */
   MLSInterpolationHandler(Omega_h::Mesh& source_mesh,
                           Omega_h::Mesh& target_mesh, double radius,
+                          uint min_req_supports = 10, uint degree = 3,
                           bool adapt_radius = true);
 
   /**
@@ -52,6 +56,7 @@ public:
    * @param adapt_radius Whether to adapt the radius based on the local density
    */
   MLSInterpolationHandler(Omega_h::Mesh& source_mesh, double radius,
+                          uint min_req_supports = 10, uint degree = 3,
                           bool adapt_radius = true);
 
   size_t getSourceSize();
@@ -61,8 +66,10 @@ private:
   double radius_;
   bool adapt_radius_;
   bool single_mesh_ = false;
+  uint degree_;
+  uint min_req_supports_;
 
-  //std::string interpolation_type_;
+  // InterpolationType interpolation_type_;
 
   Omega_h::Mesh& source_mesh_;
   // TODO: handle what to do with this when only 1 mesh is provided
@@ -75,7 +82,7 @@ private:
   Omega_h::HostWrite<Omega_h::Real> target_field_;
   Omega_h::HostWrite<Omega_h::Real> source_field_;
 
-  void find_supports(int min_req_supports = 10);
+  void find_supports(uint min_req_supports = 10);
 };
 
 #endif // PCMS_INTERPOLATION_BASE_H

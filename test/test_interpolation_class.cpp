@@ -11,6 +11,10 @@
 #include <vector>
 #include <iostream>
 
+bool isClose(Omega_h::HostWrite<Omega_h::Real>& array1,
+             Omega_h::HostWrite<Omega_h::Real>& array2,
+             double percent_diff = 0.1);
+
 /**
  * @brief Create sin(x)cos(y) + 2 at each vertex of the mesh
  */
@@ -72,7 +76,7 @@ TEST_CASE("Test MLSInterpolationHandler: Single Mesh")
   printf("[INFO] Mesh created with %d vertices and %d faces\n",
          source_mesh.nverts(), source_mesh.nfaces());
 
-  auto mls_single = MLSInterpolationHandler(source_mesh, 0.12, true);
+  auto mls_single = MLSInterpolationHandler(source_mesh, 0.12, 12, 3, true);
 
   Omega_h::Write<Omega_h::Real> sinxcosy_node(source_mesh.nverts(),
                                               "sinxcosy_node");
@@ -83,15 +87,12 @@ TEST_CASE("Test MLSInterpolationHandler: Single Mesh")
 
   Omega_h::HostWrite<double> source_data_host_write(sinxcosy_centroid);
   Omega_h::HostWrite<double> interpolated_data_hwrite(source_mesh.nverts());
-  Omega_h::HostWrite<double> target_data_expected(source_mesh.nverts());
+  Omega_h::HostWrite<double> exact_values_at_nodes(sinxcosy_node);
 
   pcms::ScalarArrayView<double, pcms::HostMemorySpace> sourceArrayView(
     source_data_host_write.data(), source_data_host_write.size());
   pcms::ScalarArrayView<double, pcms::HostMemorySpace> interpolatedArrayView(
     interpolated_data_hwrite.data(), interpolated_data_hwrite.size());
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace>
-    sinxcosyarrayview_target_expected(target_data_expected.data(),
-                                      target_data_expected.size());
 
   OMEGA_H_CHECK_PRINTF(sourceArrayView.size() == mls_single.getSourceSize(),
                        "Source size mismatch: %zu vs %zu\n",
@@ -102,4 +103,28 @@ TEST_CASE("Test MLSInterpolationHandler: Single Mesh")
     mls_single.getTargetSize());
 
   mls_single.eval(sourceArrayView, interpolatedArrayView);
+
+  REQUIRE(isClose(exact_values_at_nodes, interpolated_data_hwrite, 10.0) ==
+          true);
+}
+
+bool isClose(Omega_h::HostWrite<Omega_h::Real>& array1,
+             Omega_h::HostWrite<Omega_h::Real>& array2, double percent_diff)
+{
+  if (array1.size() != array2.size()) {
+    fprintf(stderr, "[ERROR] Arrays are not of the same size: %d vs %d\n",
+            array1.size(), array2.size());
+    return false;
+  }
+
+  double eps = percent_diff / 100.0;
+  for (int i = 0; i < array1.size(); i++) {
+    if (std::abs(array1[i] - array2[i]) > eps * std::abs(array2[i])) {
+      fprintf(stderr, "[ERROR] Arrays differ at index %d: %.16f vs %.16f\n", i,
+              array1[i], array2[i]);
+      return false;
+    }
+  }
+
+  return true;
 }

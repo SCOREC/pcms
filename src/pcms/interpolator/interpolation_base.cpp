@@ -31,10 +31,13 @@ Omega_h::Reals getCentroids(Omega_h::Mesh& mesh)
 
 MLSInterpolationHandler::MLSInterpolationHandler(Omega_h::Mesh& source_mesh,
                                                  double radius,
-                                                 bool adapt_radius)
+                                                 uint min_req_support,
+                                                 uint degree, bool adapt_radius)
   : source_mesh_(source_mesh),
     target_mesh_(source_mesh),
     radius_(radius),
+    min_req_supports_(min_req_support),
+    degree_(degree),
     adapt_radius_(adapt_radius)
 {
   single_mesh_ = true;
@@ -51,16 +54,17 @@ MLSInterpolationHandler::MLSInterpolationHandler(Omega_h::Mesh& source_mesh,
   target_field_ =
     Omega_h::HostWrite<Omega_h::Real>(source_mesh_.nverts(), "target field");
 
-  find_supports(10);
+  find_supports(min_req_supports_);
 }
 
-MLSInterpolationHandler::MLSInterpolationHandler(Omega_h::Mesh& source_mesh,
-                                                 Omega_h::Mesh& target_mesh,
-                                                 const double radius,
-                                                 const bool adapt_radius)
+MLSInterpolationHandler::MLSInterpolationHandler(
+  Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh, const double radius,
+  uint min_req_support, uint degree, const bool adapt_radius)
   : source_mesh_(source_mesh),
     target_mesh_(target_mesh),
     radius_(radius),
+    min_req_supports_(min_req_support),
+    degree_(degree),
     adapt_radius_(adapt_radius)
 {
   OMEGA_H_CHECK_PRINTF(source_mesh_.dim() == 2 && target_mesh_.dim() == 2,
@@ -75,7 +79,7 @@ MLSInterpolationHandler::MLSInterpolationHandler(Omega_h::Mesh& source_mesh,
   target_field_ =
     Omega_h::HostWrite<Omega_h::Real>(target_mesh_.nverts(), "target field");
 
-  find_supports(10);
+  find_supports(min_req_supports_);
 }
 
 // TODO : find way to avoid this copy
@@ -124,13 +128,13 @@ void MLSInterpolationHandler::eval(
 
   auto target_field_write = mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
-    4, supports_.radii2, RadialBasisFunction::RBF_GAUSSIAN);
+    degree_, supports_.radii2, RadialBasisFunction::RBF_GAUSSIAN);
 
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_field_write);
   copyHostWrite2ScalarArrayView(target_field_, target_field);
 }
 
-void MLSInterpolationHandler::find_supports(const int min_req_support)
+void MLSInterpolationHandler::find_supports(const uint min_req_support)
 {
   if (single_mesh_) {
     supports_ =

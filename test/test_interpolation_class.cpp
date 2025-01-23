@@ -11,6 +11,22 @@
 #include <vector>
 #include <iostream>
 
+void translate_mesh(Omega_h::Mesh* mesh, Omega_h::Vector<2> translation_vector) {
+  auto coords = mesh->coords();
+  auto nverts = mesh->nverts();
+  auto out = Write<Real>(coords.size());
+
+  auto f = OMEGA_H_LAMBDA(LO i) {
+    auto coord = get_vector<2>(coords, i);
+    coord = coord + translation_vector;
+    set_vector<2>(out, i, coord);
+  };
+
+  parallel_for(nverts, f);
+  mesh->set_coords(Reals(out));
+}
+
+
 bool isClose(Omega_h::HostWrite<Omega_h::Real>& array1,
              Omega_h::HostWrite<Omega_h::Real>& array2,
              double percent_diff = 0.1);
@@ -66,46 +82,90 @@ void node2CentroidInterpolation(Omega_h::Mesh& mesh,
   Omega_h::parallel_for(nfaces, averageSinCos, "averageSinCos");
 }
 
-TEST_CASE("Test MLSInterpolationHandler: Single Mesh")
+TEST_CASE("Test MLSInterpolationHandler")
 {
+  fprintf(stdout, "[INFO] Starting MLS Interpolation Test...\n");
   auto lib = Library{};
   auto world = lib.world();
   auto source_mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-
   printf("[INFO] Mesh created with %d vertices and %d faces\n",
          source_mesh.nverts(), source_mesh.nfaces());
 
-  auto mls_single = MLSInterpolationHandler(source_mesh, 0.12, 12, 3, true);
+  Omega_h::Write<Omega_h::Real> source_sinxcosy_node(source_mesh.nverts(),
+                                                     "source_sinxcosy_node");
+  createSinxCosyAtVertex(source_mesh, source_sinxcosy_node);
 
-  Omega_h::Write<Omega_h::Real> sinxcosy_node(source_mesh.nverts(),
-                                              "sinxcosy_node");
-  createSinxCosyAtVertex(source_mesh, sinxcosy_node);
-  Omega_h::Write<Omega_h::Real> sinxcosy_centroid(source_mesh.nfaces(),
-                                                  "sinxcosy_centroid");
-  node2CentroidInterpolation(source_mesh, sinxcosy_node, sinxcosy_centroid);
+  SECTION("Single Mesh")
+  {
+    fprintf(stdout, "\n-------------------- Single Mesh Interpolation Test Started --------------------\n");
+    auto mls_single = MLSInterpolationHandler(source_mesh, 0.12, 12, 3, true);
 
-  Omega_h::HostWrite<double> source_data_host_write(sinxcosy_centroid);
-  Omega_h::HostWrite<double> interpolated_data_hwrite(source_mesh.nverts());
-  Omega_h::HostWrite<double> exact_values_at_nodes(sinxcosy_node);
+    Omega_h::Write<Omega_h::Real> sinxcosy_centroid(source_mesh.nfaces(),
+                                                    "sinxcosy_centroid");
+    node2CentroidInterpolation(source_mesh, source_sinxcosy_node,
+                               sinxcosy_centroid);
 
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> sourceArrayView(
-    source_data_host_write.data(), source_data_host_write.size());
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> interpolatedArrayView(
-    interpolated_data_hwrite.data(), interpolated_data_hwrite.size());
+    Omega_h::HostWrite<double> source_data_host_write(sinxcosy_centroid);
+    Omega_h::HostWrite<double> interpolated_data_hwrite(source_mesh.nverts());
+    Omega_h::HostWrite<double> exact_values_at_nodes(source_sinxcosy_node);
 
-  OMEGA_H_CHECK_PRINTF(sourceArrayView.size() == mls_single.getSourceSize(),
-                       "Source size mismatch: %zu vs %zu\n",
-                       sourceArrayView.size(), mls_single.getSourceSize());
-  OMEGA_H_CHECK_PRINTF(
-    interpolatedArrayView.size() == mls_single.getTargetSize(),
-    "Target size mismatch: %zu vs %zu\n", interpolatedArrayView.size(),
-    mls_single.getTargetSize());
+    pcms::ScalarArrayView<double, pcms::HostMemorySpace> sourceArrayView(
+      source_data_host_write.data(), source_data_host_write.size());
+    pcms::ScalarArrayView<double, pcms::HostMemorySpace> interpolatedArrayView(
+      interpolated_data_hwrite.data(), interpolated_data_hwrite.size());
 
-  mls_single.eval(sourceArrayView, interpolatedArrayView);
+    OMEGA_H_CHECK_PRINTF(sourceArrayView.size() == mls_single.getSourceSize(),
+                         "Source size mismatch: %zu vs %zu\n",
+                         sourceArrayView.size(), mls_single.getSourceSize());
+    OMEGA_H_CHECK_PRINTF(
+      interpolatedArrayView.size() == mls_single.getTargetSize(),
+      "Target size mismatch: %zu vs %zu\n", interpolatedArrayView.size(),
+      mls_single.getTargetSize());
 
-  REQUIRE(isClose(exact_values_at_nodes, interpolated_data_hwrite, 10.0) ==
-          true);
+    mls_single.eval(sourceArrayView, interpolatedArrayView);
+
+    REQUIRE(isClose(exact_values_at_nodes, interpolated_data_hwrite, 10.0) ==
+            true);
+    fprintf(stdout, "[****] Single Mesh Interpolation Test Passed with %.2f%% tolerance!\n", 10.0);
+  }
+
+  SECTION("Double Mesh")
+  {
+    fprintf(stdout, "\n-------------------- Double Mesh Interpolation Test Started --------------------\n");
+    auto target_mesh =
+      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 0.999, 0.999, 1, 17, 17, 0, false);
+    printf("[INFO] Target Mesh created with %d vertices and %d faces\n",
+           target_mesh.nverts(), target_mesh.nfaces());
+
+    // TODO: This is a way around. https://github.com/SCOREC/pcms/pull/148#discussion_r1926204199
+    translate_mesh(&target_mesh, Omega_h::Vector<2>{(1.0-0.999)/2.0, (1.0-0.999)/2.0});
+
+    auto mls_double =
+      MLSInterpolationHandler(source_mesh, target_mesh, 0.12, 12, 3, true);
+
+    Omega_h::HostWrite<double> source_data_host_write(source_sinxcosy_node);
+    Omega_h::HostWrite<double> interpolated_data_hwrite(
+      mls_double.getTargetSize());
+
+    pcms::ScalarArrayView<double, pcms::HostMemorySpace> sourceArrayView(
+      source_data_host_write.data(), source_data_host_write.size());
+    pcms::ScalarArrayView<double, pcms::HostMemorySpace> interpolatedArrayView(
+      interpolated_data_hwrite.data(), interpolated_data_hwrite.size());
+
+    mls_double.eval(sourceArrayView, interpolatedArrayView);
+
+    Omega_h::Write<Omega_h::Real> exact_target_sinxcosy_node(
+      target_mesh.nverts(), "target_sinxcosy_node");
+    createSinxCosyAtVertex(target_mesh, exact_target_sinxcosy_node);
+    Omega_h::HostWrite<double> exact_target_sinxcosy_node_hwrite(
+      exact_target_sinxcosy_node);
+
+    REQUIRE(isClose(interpolated_data_hwrite, exact_target_sinxcosy_node_hwrite,
+                    10.0) == true);
+
+    fprintf(stdout, "[INFO] Double Mesh Interpolation Test Passed with %.2f%% tolerance!\n", 10.0);
+  }
 }
 
 bool isClose(Omega_h::HostWrite<Omega_h::Real>& array1,

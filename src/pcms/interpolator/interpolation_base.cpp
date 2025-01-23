@@ -126,6 +126,7 @@ void MLSInterpolationHandler::eval(
 
   copyHostScalarArrayView2HostWrite(source_field, source_field_);
 
+  // TODO: make the basis function a template or pass it as a parameter
   auto target_field_write = mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
     degree_, supports_.radii2, RadialBasisFunction::RBF_GAUSSIAN);
@@ -144,10 +145,15 @@ void MLSInterpolationHandler::find_supports(const uint min_req_support)
                                 min_req_support, adapt_radius_);
   }
 
-  OMEGA_H_CHECK_PRINTF(
-    supports_.radii2[0] > 1e-10,
-    "Radius squared has to be more than zero found found [0] = %f\n",
-    supports_.radii2[0]);
+#ifndef NDEBUG
+  Omega_h::HostRead<Omega_h::Real> hostRadii2(supports_.radii2);
+  for (size_t i = 0; i < hostRadii2.size(); ++i) {
+    OMEGA_H_CHECK_PRINTF(
+      hostRadii2[i] > 1e-10,
+      "Radius squared has to be more than zero found found [%zu] = %f\n", i,
+      hostRadii2[i]);
+  }
+#endif
 }
 
 size_t MLSInterpolationHandler::getSourceSize()

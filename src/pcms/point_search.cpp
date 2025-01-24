@@ -3,6 +3,7 @@
 #include <bitset>
 
 // From https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
+KOKKOS_INLINE_FUNCTION
 double distance_from_line(const double x0, const double y0, const double x1, const double y1, const double x2, const double y2)
 {
   const Omega_h::Vector<2> p1 = { x1, y1 };
@@ -13,11 +14,13 @@ double distance_from_line(const double x0, const double y0, const double x1, con
 }
 
 // Law of Cosines, where a, b, c and gamma are defined here: https://en.wikipedia.org/wiki/Law_of_cosines#Use_in_solving_triangles
+KOKKOS_INLINE_FUNCTION
 double angle_from_side_lengths(const double a, const double b, const double c)
 {
   return std::acos((a*a + b*b - c*c) / 2*a*b);
 }
 
+KOKKOS_INLINE_FUNCTION
 bool normal_intersects_segment(const Omega_h::Few<double, 2> a, const Omega_h::Few<double, 2> b, const Omega_h::Few<double, 2> c)
 {
   const auto ab_len = Omega_h::norm(a - b);

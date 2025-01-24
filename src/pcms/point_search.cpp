@@ -326,7 +326,7 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
       // Every triangle (face) is connected to 3 vertices
       for (int j = 0; j < 3; ++j) {
         // Get the vertex ID from the connectivity array
-        const int vertexID = tris2verts_adj_.ab2b[triangleID * 3 + j];
+        const int vertexID = tris2verts_adj.ab2b[triangleID * 3 + j];
         // Get the vertex coordinates from the mesh using vertexID
         const Omega_h::Few<double, 2> vertex =
           Omega_h::get_vector<2>(coords, vertexID);

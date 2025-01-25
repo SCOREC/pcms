@@ -1,6 +1,6 @@
 #ifndef PCMS_COUPLING_ARRAYS_H
 #define PCMS_COUPLING_ARRAYS_H
-#include "pcms/external/mdspan.hpp"
+#include "mdspan/mdspan.hpp"
 #include "pcms/types.h"
 #include "pcms/coordinate.h"
 #include "pcms/external/span.h"
@@ -14,7 +14,7 @@ namespace detail
 
 template <typename ElementType, typename MemorySpace>
 struct memory_space_accessor
-  : public std::experimental::default_accessor<ElementType>
+  : public Kokkos::default_accessor<ElementType>
 {
   using memory_space = MemorySpace;
 };
@@ -39,7 +39,7 @@ nonstd::span<typename ArrayType::value_type> GetSpan(ArrayType /* unused */)
 template <typename ContainerType, typename ElementType, typename Extents,
           typename LayoutPolicy, typename AccessorPolicy>
 auto make_mdspan(const ContainerType& /* unused */)
-  -> std::experimental::mdspan<ElementType, Extents, LayoutPolicy,
+  -> Kokkos::mdspan<ElementType, Extents, LayoutPolicy,
                                AccessorPolicy>
 {
   static_assert(detail::dependent_always_false<ContainerType>::type,
@@ -95,39 +95,21 @@ private:
   Container data_;
 };
 
-template <typename ElementType, typename CoordinateSystem,
-          typename LayoutPolicy = std::experimental::layout_right,
-          typename Container =
-            std::vector<CoordinateElement<CoordinateSystem, ElementType>>,
-          size_t N = 3>
-
-using CoordinateMDArray = std::experimental::mdarray<
-  CoordinateElement<CoordinateSystem, ElementType>,
-  std::experimental::extents<int, std::experimental::dynamic_extent, N>,
-  LayoutPolicy, Container>;
-
-template <typename ElementType,
-          typename LayoutPolicy = std::experimental::layout_right,
-          typename Container = std::vector<ElementType>>
-using MDArray = std::experimental::mdarray<
-  ElementType,
-  std::experimental::extents<int, std::experimental::dynamic_extent, 1>,
-  LayoutPolicy, Container>;
 
 template <typename ElementType, typename CoordinateSystem, typename MemorySpace,
           size_t N = 1>
-using CoordinateArrayView = std::experimental::mdspan<
+using CoordinateArrayView = Kokkos::mdspan<
   CoordinateElement<ElementType, CoordinateSystem>,
-  std::experimental::extents<LO, std::experimental::dynamic_extent, N>,
-  std::experimental::layout_right,
+  Kokkos::extents<LO, Kokkos::dynamic_extent, N>,
+  Kokkos::layout_right,
   detail::memory_space_accessor<ElementType, MemorySpace>>;
 
 // TODO make_mdspan
 
 template <typename ElementType, typename MemorySpace>
-using ScalarArrayView = std::experimental::mdspan<
-  ElementType, std::experimental::dextents<LO, 1>,
-  std::experimental::layout_right,
+using ScalarArrayView = Kokkos::mdspan<
+  ElementType, Kokkos::dextents<LO, 1>,
+  Kokkos::layout_right,
   detail::memory_space_accessor<std::remove_reference_t<ElementType>,
                                 MemorySpace>>;
 

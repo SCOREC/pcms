@@ -266,7 +266,7 @@ auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
   if constexpr (detail::HasCoordinateSystem<CoordinateElementType>::value) {
     //const auto coords = field.GetMesh().coords();
     const auto coords = get_ent_centroids(field.GetMesh(), mesh_entity_to_int(field.GetEntityType()));
-    return MDArray<CoordinateElementType>{};
+    return coords;
     // FIXME implement copy to
     throw;
   } else {

@@ -14,6 +14,8 @@
 using namespace std;
 using namespace Omega_h;
 
+namespace {
+
 KOKKOS_INLINE_FUNCTION
 double func(Coord& p, int degree)
 {
@@ -72,8 +74,11 @@ void test(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
     }
   }
 }
+
+} // end anonymous namespace
+
 // Test cases for centroid to node mapping using MLS
-TEST_CASE("mls_interp_test")
+TEST_CASE("meshfields_spr_test")
 {
 
   auto lib = Library{};

@@ -56,6 +56,11 @@ find_package(Kokkos 4.5 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(fftw REQUIRED IMPORTED_TARGET fftw3>=3.3)
 
+option(PCMS_ENABLE_MESHFIELDS "enable MeshFields test" OFF)
+if(PCMS_ENABLE_MESHFIELDS)
+  find_package(meshfields REQUIRED)
+endif()
+
 add_subdirectory(src)
 
 include(CTest)

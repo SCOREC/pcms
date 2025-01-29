@@ -113,7 +113,15 @@ if(Catch2_FOUND)
 	      test_linear_solver.cpp
               )
   endif ()
+
+  if (PCMS_ENABLE_MESHFIELDS)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_spr_meshfields.cpp)
+  endif()
+
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
+  if (PCMS_ENABLE_MESHFIELDS)
+    target_link_libraries(unit_tests PUBLIC meshfields::meshfields)
+  endif()
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core pcms_interpolator)
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

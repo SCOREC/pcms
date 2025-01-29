@@ -17,6 +17,7 @@ set(PCMS_HEADERS
         pcms/inclusive_scan.h
         pcms/profile.h
         pcms/print.h
+        pcms/partition.h
         )
 
 set(PCMS_SOURCES

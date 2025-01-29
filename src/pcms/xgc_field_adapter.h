@@ -13,30 +13,6 @@
 
 namespace pcms
 {
-namespace detail
-{
-// Needed since NVHPC doesn't work with overloaded
-struct GetRank
-{
-  using GeomType = DimID;
-  GetRank(const GeomType& geom) : geom_(geom) {}
-  auto operator()(const redev::ClassPtn& ptn) const
-  {
-    PCMS_FUNCTION_TIMER;
-    const auto ent = redev::ClassPtn::ModelEnt({geom_.dim, geom_.id});
-    return ptn.GetRank(ent);
-  }
-  auto operator()(const redev::RCBPtn& /*unused*/) const
-  {
-    PCMS_FUNCTION_TIMER;
-    std::cerr << "RCB partition not handled yet\n";
-    std::terminate();
-    return 0;
-  }
-  const GeomType& geom_;
-};
-} // namespace detail
-
 template <typename T, typename CoordinateElementType = Real>
 class XGCFieldAdapter
 {
@@ -144,11 +120,12 @@ public:
       pcms::ReversePartitionMap reverse_partition;
       // in_overlap_ must contain a function!
       PCMS_ALWAYS_ASSERT(static_cast<bool>(in_overlap_));
+      Partition part{partition};
       for (const auto& geom : reverse_classification_) {
         // if the geometry is in specified overlap region
         if (in_overlap_(geom.first.dim, geom.first.id)) {
 
-          auto dr = std::visit(detail::GetRank{geom.first}, partition);
+          auto dr = part.GetDr(geom.first.id, geom.first.dim);
           auto [it, inserted] = reverse_partition.try_emplace(dr);
           // the map gives the local iteration order of the global ids
           auto map = mask_.GetMap();

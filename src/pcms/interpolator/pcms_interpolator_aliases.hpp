@@ -2,6 +2,10 @@
 #define PCMS_INTERPOLATOR_ALIASES_HPP
 
 #include <Kokkos_Core.hpp>
+#include "../arrays.h"
+
+namespace pcms
+{
 
 struct Coord
 {
@@ -23,8 +27,21 @@ using ScratchVecView =
   typename Kokkos::View<double*, ScratchSpace,
                         Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
+using PointsViewType = Kokkos::View<Coord*>;
+
+struct Points
+{
+  PointsViewType coordinates;
+};
+
 using IntDeviceMatView = Kokkos::View<int**>;
 using IntDeviceVecView = Kokkos::View<int*>;
 using IntHostMatView = Kokkos::View<int**, Kokkos::HostSpace>;
 
+using RealDefaultScalarArrayView =
+  ScalarArrayView<double, DefaultExecutionSpace>;
+using RealConstDefaultScalarArrayView =
+  ScalarArrayView<const double, DefaultExecutionSpace>;
+
+} // namespace pcms
 #endif

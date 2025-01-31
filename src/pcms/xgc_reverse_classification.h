@@ -5,7 +5,7 @@
 #include "pcms/types.h"
 #include <unordered_map>
 #include <set>
-#include "pcms/external/mdspan.hpp"
+#include "mdspan/mdspan.hpp"
 #include "pcms/arrays.h"
 #include "pcms/memory_spaces.h"
 //#include <filesystem>

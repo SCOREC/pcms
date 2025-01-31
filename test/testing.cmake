@@ -3,6 +3,21 @@ if (PCMS_ENABLE_OMEGA_H)
     target_link_libraries(test_support pcms::core ) #for omegah and redev
 endif ()
 
+# TODO use submodule FetchContent/ExternalProject/ExternalData
+set(PCMS_TEST_DATA_DIR "" CACHE PATH
+        "Path to a local copy of the pcms_coupling_data repo.")
+if (NOT EXISTS ${PCMS_TEST_DATA_DIR})
+    message(FATAL_ERROR "PCMS_TEST_DATA_DIR \"${PCMS_TEST_DATA_DIR}\" is not accessible")
+endif ()
+
+set(VALGRIND_EXECUTABLE "none" CACHE FILEPATH "path to valgrind executable")
+set(VALGRIND_ARGS "none" CACHE STRING "specify valgrind options; logging (--log-file=%p_<name>.vg) is enabled by default if VALGRIND_EXECUTABLE is set")
+
+message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
+message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
+message(STATUS "VALGRIND_EXECUTABLE: ${VALGRIND_EXECUTABLE}")
+message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
+
 function(add_exe NAME)
     add_executable(${NAME} ${NAME}.cpp)
     target_link_libraries(${NAME} pcms::core)

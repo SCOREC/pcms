@@ -1,18 +1,17 @@
 find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_TRANSFER_HEADERS
-    MLSInterpolation.hpp
-    points.hpp
+    pcms_interpolator_aliases.hpp
     adj_search.hpp
-    MLSCoefficients.hpp
+    mls_interpolation_impl.hpp
     queue_visited.hpp
     linear_interpolant.hpp
     multidimarray.hpp
-    MLS_rbf_options.hpp
+    mls_interpolation.hpp
 )
 
 set(PCMS_FIELD_TRANSFER_SOURCES
-    MLS_rbf_options.cpp
+    mls_interpolation.cpp
 )
 install(FILES ${PCMS_FIELD_TRANSFER_HEADERS} DESTINATION include/pcms/interpolator)
 

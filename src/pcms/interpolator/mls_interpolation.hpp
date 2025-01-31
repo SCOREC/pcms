@@ -1,10 +1,12 @@
 #ifndef MLS_RBF_OPTIONS_HPP
 #define MLS_RBF_OPTIONS_HPP
 
-#include "adj_search.hpp"
+#include "mls_interpolation_impl.hpp"
 
 using namespace Omega_h;
 
+namespace pcms
+{
 enum class RadialBasisFunction : LO
 {
   RBF_GAUSSIAN = 0,
@@ -19,5 +21,5 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const SupportResults& support, const LO& dim,
                               const LO& degree, Write<Real> radii2,
                               RadialBasisFunction bf);
-
+} // namespace pcms
 #endif

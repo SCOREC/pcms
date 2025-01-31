@@ -1,8 +1,7 @@
-#ifndef POINTS_HPP
-#define POINTS_HPP
+#ifndef PCMS_INTERPOLATOR_ALIASES_HPP
+#define PCMS_INTERPOLATOR_ALIASES_HPP
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Random.hpp>
 
 struct Coord
 {
@@ -24,12 +23,8 @@ using ScratchVecView =
   typename Kokkos::View<double*, ScratchSpace,
                         Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
-using PointsViewType = Kokkos::View<Coord*>;
-
-using MatViewType = Kokkos::View<int**>;
-struct Points
-{
-  PointsViewType coordinates;
-};
+using IntDeviceMatView = Kokkos::View<int**>;
+using IntDeviceVecView = Kokkos::View<int*>;
+using IntHostMatView = Kokkos::View<int**, Kokkos::HostSpace>;
 
 #endif

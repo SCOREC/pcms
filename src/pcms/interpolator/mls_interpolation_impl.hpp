@@ -1,0 +1,575 @@
+#ifndef PCMS_INTERPOLATOR_MLS_INTERPOLATION_IMP_HPP
+#define PCMS_INTERPOLATOR_MLS_INTERPOLATION_IMP_HPP
+
+#include <cmath>
+#include <Omega_h_fail.hpp>
+#include <type_traits>
+
+#include <KokkosBatched_Util.hpp>
+#include <KokkosBatched_LU_Decl.hpp>
+#include <KokkosBatched_LU_Team_Impl.hpp>
+#include <KokkosBatched_SolveLU_Decl.hpp>
+#include <KokkosBatched_Gemm_Decl.hpp>
+#include <KokkosBlas.hpp>
+#include <KokkosBlas1_team_dot.hpp>
+#include <Kokkos_StdAlgorithms.hpp>
+
+#include "pcms_interpolator_aliases.hpp"
+#include "adj_search.hpp"
+#include "../assert.h"
+#include "../profile.h"
+
+static constexpr int MAX_DIM = 3;
+
+/**
+ * calculate_basis_slice_lengths, calculate_basis_vector_size and
+ * eval_basis_vector are needed to evaluate the polynomial basis for any degree
+ * and dimension For instance, polynomial basis vector for dim = 2 and degree =
+ * 3 at the point (x,y) looks like {1, x, y, xx, xy, yy, xxx, xxy, xyy,yyy}. The
+ * slices can be written as [1]                      degree 0 [x] & [y] degree 1
+ * [xx] &  [xy, yy]         degree 2
+ * [xxx] & [xxy,xyy, yyy]   degree 3
+ *
+ * the recursive pattern becomes:
+ * [1]                      degree 0
+ * x*[1] & y*[1]            degree 1
+ * x*[x] & y*[x, y]         degree 2
+ * xx*[x] & y*[xx,xy,yy]    degree 3
+ *
+ * lengths of the slices:
+ * Degree \ Dim | x | y |
+ * =========================
+ *        1     | 1 | 1 |
+ *        2     | 1 | 2 |
+ *        3     | 1 | 3 |
+ */
+
+namespace pcms
+{
+
+namespace detail
+{
+/**
+ * @brief Computes the slice lengths of the polynomial basis
+ *
+ * This function takes kokkos view array as an input and computes the lengths of
+ * slices and fills the array
+ *
+ * @param[in,out] array The 2D array
+ *
+ * @note It takes a host array as an input, could have done for device
+ * but there was a race conditions for a device
+ */
+void calculate_basis_slice_lengths(IntHostMatView& array);
+
+/**
+ * @brief Computes the size of the polynomial basis vector
+ *
+ * @param array The 2D array of the slices length
+ * @return The basis vector size
+ *
+ * @note It takes the host array
+ */
+int calculate_basis_vector_size(const IntHostMatView& array);
+
+/**
+ * @brief Calculates the scratch size required
+ *
+ * This function uses the size of the vectors and matrices and
+ * calculates the scratch size required in each team and extracts the
+ * maximum shared size
+ *
+ * @param None
+ *
+ * @return The scratch size
+ */
+int calculate_scratch_shared_size();
+
+/**
+ * @brief Evaluates the polynomial basis
+ *
+ *   for example, if it dim = 2 and degree = 2, the basis_vector looks like
+ *   basis_vector = {1,x,y,xx,xy,yy}
+ *
+ *   @param[in] slice_length A 2D array of slices length
+ *   @param[in] p A reference to the coordinate struct
+ *   @param[in,out] basis_vector The polynomial basis vector
+ *
+ */
+KOKKOS_INLINE_FUNCTION
+void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
+                       ScratchVecView& basis_vector)
+{
+  basis_vector(0) = 1;
+  int dim = slice_length.extent(1);
+  int degree = slice_length.extent(0);
+
+  int prev_col = 0;
+  int curr_col = 1;
+
+  double point[MAX_DIM];
+  point[0] = p.x;
+  point[1] = p.y;
+
+  if (dim == 3) {
+    point[2] = p.z;
+  }
+
+  for (int i = 0; i < degree; ++i) {
+    int offset = curr_col;
+    for (int j = 0; j < dim; ++j) {
+      for (int k = 0; k < slice_length(i, j); ++k) {
+        basis_vector(offset + k) = basis_vector(prev_col + k) * point[j];
+      }
+
+      offset += slice_length(i, j);
+    }
+
+    prev_col = curr_col;
+    curr_col = offset;
+  }
+}
+
+/**
+ * @brief Creates a vandermonde matrix
+ *
+ * @param[in] local_source_points The coordinates of the local supports
+ * @param[in] j The jth row
+ * @param[in] slice_length The slice lengths of the polynomial basis
+ * @param[in,out] vandermonde_matrix The Vandermonde Matrix
+ *
+ */
+KOKKOS_INLINE_FUNCTION
+void create_vandermonde_matrix(const ScratchMatView& local_source_points, int j,
+                               const IntDeviceMatView& slice_length,
+                               ScratchMatView vandermonde_matrix)
+{
+  int N = local_source_points.extent(0);
+  int dim = local_source_points.extent(1);
+
+  Coord source_point;
+  source_point.x = local_source_points(j, 0);
+  source_point.y = local_source_points(j, 1);
+  if (dim == 3) {
+    source_point.z = local_source_points(j, 2);
+  }
+  ScratchVecView basis_vector_supports =
+    Kokkos::subview(vandermonde_matrix, j, Kokkos::ALL());
+  eval_basis_vector(slice_length, source_point, basis_vector_supports);
+}
+
+/**
+ *@brief Computes basis function vector
+ *
+ *This function takes a basis function the user wants and calculates the value
+ *for each local source supports
+ *
+ * @tparam Func The type of the radial basis function
+ * @param[in] target_point The coordinate of the target point where the
+ *interpolation is carried out
+ * @param[in] source_points The coordinates of the source support points
+ * @param[in] j The jth row
+ * @param[in] cutoff_dis_sq The cutoff radius squared
+ * @param[in] rbf_func The radial basis function of choice
+ * @param[in, out] phi A radial basis function value
+ *
+ */
+template <typename Func,
+          std::enable_if_t<std::is_invocable_r_v<double, Func, double, double>,
+                           bool> = true>
+KOKKOS_INLINE_FUNCTION void PhiVector(const Coord& target_point,
+                                      const ScratchMatView& local_source_points,
+                                      int j, double cuttoff_dis_sq,
+                                      Func rbf_func, ScratchVecView phi)
+{
+  int N = local_source_points.extent(0);
+  double dx = target_point.x - local_source_points(j, 0);
+  double dy = target_point.y - local_source_points(j, 1);
+  double ds_sq = dx * dx + dy * dy;
+  phi(j) = rbf_func(ds_sq, cuttoff_dis_sq);
+  OMEGA_H_CHECK_PRINTF(!std::isnan(phi(j)),
+                       "ERROR: Phi(j) in PhiVector is NaN for j = %d "
+                       "ds_sq=%.16f, cuttoff_dis_sq=%.16f",
+                       j, ds_sq, cuttoff_dis_sq);
+}
+
+/**
+ * @brief Scales the column of the transpose of the given matrix
+ *
+ * This function takes a matrix P(m,n) and vector phi(m) and scales the
+ * each column of the transpose of P by each corresponding element in vector
+ * phi
+ *
+ * @param[in] matrix The matrix
+ * @param[in] vector The vector
+ * @param[in] team The team member
+ * @param[in, out] result_matrix
+ *
+ */
+KOKKOS_INLINE_FUNCTION
+void scale_column_trans_matrix(const ScratchMatView& matrix,
+                               const ScratchVecView& vector, member_type team,
+                               int j, ScratchMatView result_matrix)
+{
+
+  int M = matrix.extent(0);
+  int N = matrix.extent(1);
+
+  ScratchVecView matrix_row = Kokkos::subview(matrix, j, Kokkos::ALL());
+  for (int k = 0; k < N; k++) {
+    OMEGA_H_CHECK_PRINTF(!std::isnan(matrix_row(k)),
+                         "ERROR: given matrix is NaN for k = %d\n", k);
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(vector(j)),
+                         "ERROR: given vector is NaN for j = %d\n", j);
+
+    result_matrix(k, j) = matrix_row(k) * vector(j);
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(result_matrix(k, j)),
+                         "ERROR: result_matrix is NaN for k = %d, j = %d\n", k,
+                         j);
+  }
+}
+
+/**
+ * @struct ResultConvertNormal
+ * @brief Stores the results of matrix and vector transformations.
+ *
+ * This struct represents the results of the following operations:
+ * - `P^T Q` (scaled matrix): The matrix obtained after scaling the columns of
+ * the given matrix.
+ * - `P^T Q P` (square matrix): The matrix obtained after performing the `P^T Q
+ * P` operation.
+ * - `P^T b` (transformed RHS): The vector obtained after applying the `P^T b`
+ * operation.
+ *
+ * The struct is used to store:
+ * - The scaled matrix (`scaled_matrix`).
+ * - The square matrix (`square_matrix`).
+ * - The transformed right-hand side vector (`transformed_rhs`).
+ */
+struct ResultConvertNormal
+{
+  ScratchMatView scaled_matrix;
+  ScratchMatView square_matrix;
+  ScratchVecView transformed_rhs;
+};
+
+/**
+ * @brief Converts a normal equation into a simplified form.
+ *
+ * This function takes a matrix, a basis/weight vector, and a right-hand side
+ * (RHS) vector and computes the scaled matrix, square matrix, and transformed
+ * RHS.
+ *
+ * For example, the normal equation `P^T Q P x = P^T Q b` is converted into the
+ * form `Ax = b'`, where:
+ * - `A` (square matrix) = `P^T Q P`
+ * - `b'` (transformed RHS) = `P^T Q b`
+ *
+ * @param matrix The input matrix.
+ * @param weight_vector The weight or basis vector.
+ * @param rhs The right-hand side vector of the equation.
+ * @param team The team member executing the task (optional, if applicable).
+ *
+ * @return The result of the normal equation conversion as a struct containing:
+ * - The scaled matrix.
+ * - The square matrix.
+ * - The transformed RHS.
+ *
+ * @todo Implement QR decomposition to solve the linear system.
+ */
+KOKKOS_INLINE_FUNCTION
+ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
+                                            const ScratchVecView& weight_vector,
+                                            const ScratchVecView& rhs,
+                                            member_type team)
+{
+
+  int m = matrix.extent(0);
+  int n = matrix.extent(1);
+
+  ResultConvertNormal result;
+
+  result.scaled_matrix = ScratchMatView(team.team_scratch(0), n, m);
+
+  result.square_matrix = ScratchMatView(team.team_scratch(0), n, n);
+
+  result.transformed_rhs = ScratchVecView(team.team_scratch(0), n);
+
+  // performing P^T Q
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n), [=](int j) {
+    for (int k = 0; k < m; ++k) {
+      result.scaled_matrix(j, k) = 0;
+    }
+  });
+
+  team.team_barrier();
+
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, m), [=](int j) {
+    scale_column_trans_matrix(matrix, weight_vector, team, j,
+                              result.scaled_matrix);
+  });
+
+  team.team_barrier();
+
+  // performing (P^T Q P)
+  KokkosBatched::TeamGemm<
+    member_type, KokkosBatched::Trans::NoTranspose,
+    KokkosBatched::Trans::NoTranspose,
+    KokkosBatched::Algo::Gemm::Unblocked>::invoke(team, 1.0,
+                                                  result.scaled_matrix, matrix,
+                                                  0.0, result.square_matrix);
+
+  team.team_barrier();
+
+  KokkosBlas::Experimental::
+    Gemv<KokkosBlas::Mode::Team, KokkosBlas::Algo::Gemv::Unblocked>::invoke(
+      team, 'N', 1.0, result.scaled_matrix, rhs, 0.0, result.transformed_rhs);
+
+  team.team_barrier();
+
+  return result;
+}
+
+/**
+ * @brief Solves the matrix equation Ax = b' using LU decomposition.
+ *
+ * This function solves the given matrix equation using LU decomposition.
+ * The solution vector `x'` overwrites the input `rhs` vector.
+ *
+ * @param square_matrix The input matrix A (must be square).
+ * @param rhs The right-hand side vector b. After execution, it is overwritten
+ * with the solution vector x.
+ * @param team The team member executing the task.
+ *
+ * @return None. The solution is directly written to the `rhs` vector.
+ */
+KOKKOS_INLINE_FUNCTION
+void solve_matrix(const ScratchMatView& square_matrix,
+                  const ScratchVecView& rhs, member_type team)
+{
+
+  // Perform LU decomposition
+  KokkosBatched::TeamLU<
+    member_type, KokkosBatched::Algo::LU::Unblocked>::invoke(team,
+                                                             square_matrix);
+
+  team.team_barrier();
+
+  //   Solve the equation with forward and backward solves
+  KokkosBatched::TeamSolveLU<
+    member_type, KokkosBatched::Trans::NoTranspose,
+    KokkosBatched::Algo::SolveLU::Unblocked>::invoke(team, square_matrix, rhs);
+}
+
+/**
+ * @brief Fills the kokkos scratch view
+ *
+ * @param value The value to be populated
+ * @param team The team member
+ * @param matrix The scratch matrix
+ *
+ */
+KOKKOS_INLINE_FUNCTION
+void fill(double value, member_type team, ScratchMatView matrix)
+{
+
+  int row = matrix.extent(0);
+  int col = matrix.extent(1);
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int j) {
+    for (int k = 0; k < col; ++k) {
+      matrix(j, k) = value;
+    }
+  });
+}
+
+/**
+ * @brief Fills the kokkos scratch view
+ *
+ * @param value The value to be populated
+ * @param team The team member
+ * @param vector The scratch vector
+ *
+ */
+KOKKOS_INLINE_FUNCTION
+void fill(double value, member_type team, ScratchVecView vector)
+{
+
+  int size = vector.extent(0);
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
+                       [=](int j) { vector(j) = value; });
+}
+
+/**
+ * @brief maps the data from source mesh to target mesh
+ * @param source_values Source field values from source mesh
+ * @param source_coordinates The coordinates of control points of source field
+ * @param target_coordinates The coordinates of control points of target field
+ * @param support The object that enpasulates support info
+ * @param dim The dimension of the simulations
+ * @param degree The degree of the interpolation order
+ * @param radii2 The array of the square of cutoff distance
+ * @param rbf_func The radial basis function choice
+ * @return interpolated field in target mesh
+ *
+ *
+ */
+template <typename Func>
+Write<Real> mls_interpolation(const Reals source_values,
+                              const Reals source_coordinates,
+                              const Reals target_coordinates,
+                              const SupportResults& support, const LO& dim,
+                              const LO& degree, Write<Real> radii2,
+                              Func rbf_func)
+{
+  PCMS_FUNCTION_TIMER;
+  static_assert(std::is_invocable_r_v<double, Func, double, double>,
+                "rbf_func, takes radius and cutoff, returns weight");
+  static_assert(!std::is_pointer_v<Func>,
+                "function pointer will fail in GPU execution context");
+  const auto nvertices_source = source_coordinates.size() / dim;
+  const auto nvertices_target = target_coordinates.size() / dim;
+
+  IntHostMatView host_slice_length(
+    "stores slice length of  polynomial basis in host", degree, dim);
+  Kokkos::deep_copy(host_slice_length, 0);
+  calculate_basis_slice_lengths(host_slice_length);
+
+  auto basis_size = calculate_basis_vector_size(host_slice_length);
+
+  IntDeviceMatView slice_length(
+    "stores slice length of polynomial basis in device", degree, dim);
+  auto slice_length_hd = Kokkos::create_mirror_view(slice_length);
+  Kokkos::deep_copy(slice_length_hd, host_slice_length);
+  Kokkos::deep_copy(slice_length, slice_length_hd);
+  Write<Real> approx_target_values(nvertices_target, 0,
+                                   "approximated target values");
+
+  int shared_size = calculate_scratch_shared_size();
+
+  team_policy tp(nvertices_target, Kokkos::AUTO);
+
+  int scratch_size = tp.scratch_size_max(0);
+
+  PCMS_ALWAYS_ASSERT(scratch_size > shared_size);
+
+  // calculates the interpolated values
+  Kokkos::parallel_for(
+    "MLS coefficients", tp.set_scratch_size(0, Kokkos::PerTeam(shared_size)),
+    KOKKOS_LAMBDA(const member_type& team) {
+      int i = team.league_rank();
+      int start_ptr = support.supports_ptr[i];
+      int end_ptr = support.supports_ptr[i + 1];
+      int nsupports = end_ptr - start_ptr;
+
+      ScratchMatView local_source_points(team.team_scratch(0), nsupports, dim);
+      int count = -1;
+      for (int j = start_ptr; j < end_ptr; ++j) {
+        count++;
+        auto index = support.supports_idx[j];
+        local_source_points(count, 0) = source_coordinates[index * dim];
+        local_source_points(count, 1) = source_coordinates[index * dim + 1];
+        if (dim == 3) {
+          local_source_points(count, 2) = source_coordinates[index * dim + 2];
+        }
+      }
+
+      //  vondermonde matrix P from the vectors of basis vector of supports
+      ScratchMatView vandermonde_matrix(team.team_scratch(0), nsupports,
+                                        basis_size);
+
+      // rbf function values of source supports Phi(n,n)
+      ScratchVecView phi_vector(team.team_scratch(0), nsupports);
+
+      // stores known vector (b)
+      ScratchVecView support_values(team.team_scratch(0), nsupports);
+
+      // basis of target
+      ScratchVecView target_basis_vector(team.team_scratch(0), basis_size);
+
+      // Initialize the scratch matrices and  vectors
+      fill(0.0, team, vandermonde_matrix);
+      fill(0.0, team, phi_vector);
+      fill(0.0, team, support_values);
+      fill(0.0, team, target_basis_vector);
+
+      // evaluates the basis vector of a given target point
+      Coord target_point;
+      target_point.x = target_coordinates[i * dim];
+      target_point.y = target_coordinates[i * dim + 1];
+
+      if (dim == 3) {
+        target_point.z = target_coordinates[i * dim + 2];
+      }
+      eval_basis_vector(slice_length, target_point, target_basis_vector);
+
+      /** vandermonde_matrix(nsupports, basis_size) vandermonde Matrix is
+       * created with the basis vector of source supports stacking on top of
+       * each other
+       */
+
+      Kokkos::parallel_for(
+        Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
+          create_vandermonde_matrix(local_source_points, j, slice_length,
+                                    vandermonde_matrix);
+        });
+
+      team.team_barrier();
+
+      /** PhiVector(nsupports) is the array of rbf functions evaluated at the
+       * source supports In the actual implementation, Phi(nsupports, nsupports)
+       * is the diagonal matrix & each diagonal element is the phi evaluated at
+       * each source points
+       */
+
+      Kokkos::parallel_for(
+        Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
+          OMEGA_H_CHECK_PRINTF(
+            radii2[i] > 0,
+            "ERROR: radius2 has to be positive but found to be %.16f\n",
+            radii2[i]);
+          PhiVector(target_point, local_source_points, j, radii2[i], rbf_func,
+                    phi_vector);
+        });
+
+      team.team_barrier();
+
+      /** support_values(nsupports) (or known rhs vector b) is the vector of the
+       * quantity that we want interpolate
+       */
+      Kokkos::parallel_for(
+        Kokkos::TeamThreadRange(team, nsupports), [=](const int i) {
+          support_values(i) =
+            source_values[support.supports_idx[start_ptr + i]];
+          OMEGA_H_CHECK_PRINTF(!std::isnan(support_values(i)),
+                               "ERROR: NaN found: at support %d\n", i);
+        });
+
+      team.team_barrier();
+
+      auto result = convert_normal_equation(vandermonde_matrix, phi_vector,
+                                            support_values, team);
+
+      team.team_barrier();
+
+      // It stores the solution in rhs vector itself
+      solve_matrix(result.square_matrix, result.transformed_rhs, team);
+
+      team.team_barrier();
+
+      double target_value = KokkosBlas::Experimental::dot(
+        team, result.transformed_rhs, target_basis_vector);
+
+      if (team.team_rank() == 0) {
+        OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n", i);
+        approx_target_values[i] = target_value;
+      }
+    });
+
+  return approx_target_values;
+}
+
+} // namespace detail
+} // namespace pcms
+#endif

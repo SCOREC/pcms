@@ -1,10 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/interpolator/MLSCoefficients.hpp>
+#include <pcms/interpolator/mls_interpolation_impl.hpp>
+#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_fail.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+
+using namespace pcms;
+using namespace pcms::detail;
 
 TEST_CASE("solver test")
 {
@@ -99,8 +103,8 @@ TEST_CASE("solver test")
 
         team.team_barrier();
 
-        auto result =
-          ConvertNormalEq(vandermonde_matrix, phi, support_values, team);
+        auto result = convert_normal_equation(vandermonde_matrix, phi,
+                                              support_values, team);
 
         team.team_barrier();
 
@@ -122,7 +126,7 @@ TEST_CASE("solver test")
 
         team.team_barrier();
 
-        SolveMatrix(result.square_matrix, result.transformed_rhs, team);
+        solve_matrix(result.square_matrix, result.transformed_rhs, team);
 
         team.team_barrier();
 

@@ -1,18 +1,19 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <pcms/interpolator/adj_search.hpp>
-#include <pcms/interpolator/MLS_rbf_options.hpp>
+#include <pcms/interpolator/mls_interpolation.hpp>
+#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <pcms/interpolator/points.hpp>
 #include <vector>
 #include <iostream>
 
 using namespace std;
 using namespace Omega_h;
+using namespace pcms;
 
 KOKKOS_INLINE_FUNCTION
 double func(Coord& p, int degree)

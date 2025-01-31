@@ -1,8 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/interpolator/MLSCoefficients.hpp>
+#include <pcms/interpolator/mls_interpolation.hpp>
+#include <pcms/interpolator/mls_interpolation_impl.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
+
+using namespace pcms;
 
 TEST_CASE("basis test")
 {
@@ -14,8 +17,8 @@ TEST_CASE("basis test")
     const int degree = 3;
     Kokkos::View<int**, Kokkos::HostSpace> array("array", degree, dim);
     Kokkos::deep_copy(array, 0);
-    basisSliceLengths(array);
-    auto size = basisSize(array);
+    detail::calculate_basis_slice_lengths(array);
+    auto size = detail::calculate_basis_vector_size(array);
 
     int expected[degree][dim] = {{1, 1, 1}, {1, 2, 3}, {1, 3, 6}};
 
@@ -27,7 +30,7 @@ TEST_CASE("basis test")
 
     REQUIRE(size == 20);
 
-    MatViewType d_array("array in device", degree, dim);
+    IntDeviceMatView d_array("array in device", degree, dim);
     auto array_hd = Kokkos::create_mirror_view(d_array);
     Kokkos::deep_copy(array_hd, array);
     Kokkos::deep_copy(d_array, array_hd);
@@ -52,7 +55,7 @@ TEST_CASE("basis test")
         target_point.y = coords[i][1];
         target_point.z = coords[i][2];
 
-        BasisPoly(basis_vector, d_array, target_point);
+        detail::eval_basis_vector(d_array, target_point, basis_vector);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { results(i, j) = basis_vector(j); });
@@ -106,9 +109,9 @@ TEST_CASE("basis test")
     const int degree = 1;
     Kokkos::View<int**, Kokkos::HostSpace> array("array", degree, dim);
     Kokkos::deep_copy(array, 0);
-    basisSliceLengths(array);
+    detail::calculate_basis_slice_lengths(array);
 
-    auto size = basisSize(array);
+    auto size = detail::calculate_basis_vector_size(array);
 
     int expected[degree][dim] = {
       {1, 1, 1},
@@ -122,7 +125,7 @@ TEST_CASE("basis test")
 
     REQUIRE(size == 4);
 
-    MatViewType d_array("array in device", degree, dim);
+    IntDeviceMatView d_array("array in device", degree, dim);
     auto array_hd = Kokkos::create_mirror_view(d_array);
     Kokkos::deep_copy(array_hd, array);
     Kokkos::deep_copy(d_array, array_hd);
@@ -147,7 +150,7 @@ TEST_CASE("basis test")
         target_point.y = coords[i][1];
         target_point.z = coords[i][2];
 
-        BasisPoly(basis_vector, d_array, target_point);
+        detail::eval_basis_vector(d_array, target_point, basis_vector);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { results(i, j) = basis_vector(j); });
@@ -183,13 +186,13 @@ TEST_CASE("basis test")
     Kokkos::View<int**, Kokkos::HostSpace> host_slice_length("array", degree,
                                                              dim);
     Kokkos::deep_copy(host_slice_length, 0);
-    basisSliceLengths(host_slice_length);
+    detail::calculate_basis_slice_lengths(host_slice_length);
 
-    MatViewType slice_length("slice array in device", degree, dim);
+    IntDeviceMatView slice_length("slice array in device", degree, dim);
     auto slice_length_hd = Kokkos::create_mirror_view(slice_length);
     Kokkos::deep_copy(slice_length_hd, host_slice_length);
     Kokkos::deep_copy(slice_length, slice_length_hd);
-    auto size = basisSize(host_slice_length);
+    auto size = detail::calculate_basis_vector_size(host_slice_length);
     int nvertices_target = 2;
     int nsupports = 5;
     Kokkos::View<double**> points("vandermonde matrix", nvertices_target,
@@ -240,8 +243,8 @@ TEST_CASE("basis test")
 
         Kokkos::parallel_for(
           Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
-            CreateVandermondeMatrix(vandermonde_matrix, local_source_points, j,
-                                    slice_length);
+            detail::create_vandermonde_matrix(local_source_points, j,
+                                              slice_length, vandermonde_matrix);
           });
 
         Kokkos::parallel_for(

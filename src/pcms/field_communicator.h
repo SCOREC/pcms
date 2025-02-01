@@ -5,6 +5,8 @@
 #include <numeric>
 #include "pcms/inclusive_scan.h"
 #include "pcms/profile.h"
+#include "pcms/partition.h"
+
 namespace pcms
 {
 
@@ -203,7 +205,7 @@ private:
       auto gids = field_adapter_.GetGids();
       if (redev_.GetProcessType() == redev::ProcessType::Client) {
         const ReversePartitionMap reverse_partition =
-          field_adapter_.GetReversePartitionMap(redev_.GetPartition());
+          field_adapter_.GetReversePartitionMap(Partition{redev_.GetPartition()});
         auto out_message = ConstructOutMessage(reverse_partition);
         comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
         gid_comm_.SetOutMessageLayout(out_message.dest, out_message.offset);

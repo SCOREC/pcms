@@ -7,7 +7,7 @@ namespace pcms
 {
   struct GetRank
   {
-    GetRank(LO id, LO dim, std::array<Real,3>& coord)
+    GetRank(const LO id, const LO dim, const std::array<Real,3>& coord)
       : id_(id), dim_(dim), coord_(coord)
     {
       PCMS_FUNCTION_TIMER;
@@ -35,7 +35,7 @@ namespace pcms
       PCMS_FUNCTION_TIMER;
     }
 
-    auto GetDr(LO id, LO dim, std::array<Real,3> coord = {})
+    auto GetDr(const LO id, const LO dim, const std::array<Real,3> coord = {}) const
     {
       return std::visit(GetRank{id, dim, coord}, partition_);
     }

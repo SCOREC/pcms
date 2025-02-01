@@ -535,7 +535,7 @@ public:
   }
   // REQUIRED
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
-    const redev::Partition& partition) const
+    const Partition& partition) const
   {
     PCMS_FUNCTION_TIMER;
     auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(field_.GetClassIDs());
@@ -549,12 +549,11 @@ public:
     std::array<pcms::Real, 3> coord;
     pcms::ReversePartitionMap reverse_partition;
     pcms::LO local_index = 0;
-    Partition part{partition};
     for (auto i = 0; i < classIds_h.size(); i++) {
       coord[0] = coords[i * dim];
       coord[1] = coords[i * dim + 1];
       coord[2] = (dim == 3) ? coords[i * dim + 2] : 0.0;
-      auto dr = part.GetDr(classIds_h[i], classDims_h[i], coord);
+      auto dr = partition.GetDr(classIds_h[i], classDims_h[i], coord);
       reverse_partition[dr].emplace_back(local_index++);
     }
     return reverse_partition;

@@ -112,7 +112,7 @@ public:
 
   // REQUIRED
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
-    const redev::Partition& partition) const
+    const Partition& partition) const
   {
     PCMS_FUNCTION_TIMER;
     if (RankParticipatesCouplingCommunication()) {
@@ -120,12 +120,11 @@ public:
       pcms::ReversePartitionMap reverse_partition;
       // in_overlap_ must contain a function!
       PCMS_ALWAYS_ASSERT(static_cast<bool>(in_overlap_));
-      Partition part{partition};
       for (const auto& geom : reverse_classification_) {
         // if the geometry is in specified overlap region
         if (in_overlap_(geom.first.dim, geom.first.id)) {
 
-          auto dr = part.GetDr(geom.first.id, geom.first.dim);
+          auto dr = partition.GetDr(geom.first.id, geom.first.dim);
           auto [it, inserted] = reverse_partition.try_emplace(dr);
           // the map gives the local iteration order of the global ids
           auto map = mask_.GetMap();

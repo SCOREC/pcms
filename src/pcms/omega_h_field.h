@@ -17,6 +17,7 @@
 #include "pcms/transfer_field.h"
 #include "pcms/memory_spaces.h"
 #include "pcms/profile.h"
+#include "pcms/partition.h"
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
 
@@ -85,29 +86,6 @@ Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
     });
   return filtered_field;
 }
-struct GetRankOmegaH
-{
-  GetRankOmegaH(int i, Omega_h::I8 dim, Omega_h::ClassId id, std::array<pcms::Real,3> & coord)
-    : i_(i), id_(id), dim_(dim), coord_(coord)
-  {
-    PCMS_FUNCTION_TIMER;
-  }
-  auto operator()(const redev::ClassPtn& ptn) const
-  {
-    PCMS_FUNCTION_TIMER;
-    const auto ent = redev::ClassPtn::ModelEnt({dim_, id_});
-    return ptn.GetRank(ent);
-  }
-  auto operator()(const redev::RCBPtn& ptn)
-  {
-    PCMS_FUNCTION_TIMER;
-    return ptn.GetRank(coord_);
-  }
-  int i_;
-  Omega_h::ClassId id_;
-  Omega_h::I8 dim_;
-  std::array<pcms::Real,3> coord_;
-};
 } // namespace detail
 
 template <typename T,
@@ -557,7 +535,7 @@ public:
   }
   // REQUIRED
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
-    const redev::Partition& partition) const
+    const Partition& partition) const
   {
     PCMS_FUNCTION_TIMER;
     auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(field_.GetClassIDs());
@@ -575,8 +553,7 @@ public:
       coord[0] = coords[i * dim];
       coord[1] = coords[i * dim + 1];
       coord[2] = (dim == 3) ? coords[i * dim + 2] : 0.0;
-      auto dr = std::visit(detail::GetRankOmegaH{i, classDims_h[i], classIds_h[i], coord},
-                           partition);
+      auto dr = partition.GetDr(classIds_h[i], classDims_h[i], coord);
       reverse_partition[dr].emplace_back(local_index++);
     }
     return reverse_partition;

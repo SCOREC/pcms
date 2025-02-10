@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <pcms/interpolator/adj_search.hpp>
-#include <pcms/interpolator/MLS_rbf_options.hpp>
+#include <pcms/interpolator/MLSInterpolation.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
@@ -36,7 +36,14 @@ double func(Coord& p, int degree)
   return -1;
 }
 
-void test(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
+struct NoOpFunctor {
+OMEGA_H_INLINE
+double operator()(double, double) const {
+  return 1.0;
+}
+};
+
+void test(Mesh& mesh, Omega_h::Graph& patches, int degree, LO min_num_supports,
           Reals source_values, Reals exact_target_values,
           Reals source_coordinates, Reals target_coordinates)
 {
@@ -44,34 +51,26 @@ void test(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
   int dim = mesh.dim();
   Real tolerance = 0.0005;
 
-  std::vector<RadialBasisFunction> rbf_types = {
-    RadialBasisFunction::RBF_GAUSSIAN, RadialBasisFunction::RBF_C4,
-    RadialBasisFunction::RBF_CONST
+  Omega_h::Write<Real> ignored;
+  SupportResults support{patches.a2ab,patches.ab2b,ignored};
 
-  };
+  auto approx_target_values =
+    mls_interpolation (source_values, source_coordinates, target_coordinates,
+        support, dim, degree, support.radii2, NoOpFunctor{});
 
-  SupportResults support =
-    searchNeighbors(mesh, cutoffDistance, min_num_supports);
+  auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
-  for (const auto& rbf : rbf_types) {
-    auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, support.radii2, rbf);
+  auto host_exact_target_values = HostRead<Real>(exact_target_values);
 
-    auto host_approx_target_values = HostRead<Real>(approx_target_values);
+  int m = exact_target_values.size();
+  int n = approx_target_values.size();
 
-    auto host_exact_target_values = HostRead<Real>(exact_target_values);
+  REQUIRE(m == n);
 
-    int m = exact_target_values.size();
-    int n = approx_target_values.size();
-
-    REQUIRE(m == n);
-
-    for (size_t i = 0; i < m; ++i) {
-      CHECK_THAT(
+  for (size_t i = 0; i < m; ++i) {
+    CHECK_THAT(
         host_exact_target_values[i],
         Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
-    }
   }
 }
 
@@ -86,8 +85,10 @@ TEST_CASE("meshfields_spr_test")
   auto rank = lib.world()->rank();
   auto mesh = build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
 
-  Real cutoffDistance = 0.3;
-  cutoffDistance = cutoffDistance * cutoffDistance;
+  const auto minPatchSize = 3;
+  auto patches = mesh.get_vtx_patches(minPatchSize); //Omega_h::Graph returned
+
+  Real ignored = 1.0;
 
   const auto dim = mesh.dim();
 
@@ -97,9 +98,7 @@ TEST_CASE("meshfields_spr_test")
 
   const auto& ntargets = mesh.nverts();
 
-  Write<Real> radii2(
-    ntargets, cutoffDistance,
-    "populate initial square of cutoffDistance to all target points");
+  Write<Real> radii2(ntargets, ignored, "ignored");
   Write<Real> source_coordinates(
     dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
 
@@ -157,7 +156,7 @@ TEST_CASE("meshfields_spr_test")
         exact_target_values[i] = func(target_points.coordinates(i), degree - 1);
       });
 
-    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+    test(mesh, patches, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
   }
@@ -182,7 +181,7 @@ TEST_CASE("meshfields_spr_test")
         exact_target_values[i] = func(target_points.coordinates(i), degree);
       });
 
-    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+    test(mesh, patches, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
   }
@@ -207,7 +206,7 @@ TEST_CASE("meshfields_spr_test")
         exact_target_values[i] = func(target_points.coordinates(i), degree - 2);
       });
 
-    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+    test(mesh, patches, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
   }
@@ -232,7 +231,7 @@ TEST_CASE("meshfields_spr_test")
         exact_target_values[i] = func(target_points.coordinates(i), degree - 1);
       });
 
-    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+    test(mesh, patches, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
   }
@@ -257,7 +256,7 @@ TEST_CASE("meshfields_spr_test")
         exact_target_values[i] = func(target_points.coordinates(i), degree);
       });
 
-    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+    test(mesh, patches, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
   }
@@ -282,7 +281,7 @@ TEST_CASE("meshfields_spr_test")
         exact_target_values[i] = func(target_points.coordinates(i), degree - 1);
       });
 
-    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+    test(mesh, patches, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
   }
@@ -307,7 +306,7 @@ TEST_CASE("meshfields_spr_test")
         exact_target_values[i] = func(target_points.coordinates(i), degree);
       });
 
-    test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
+    test(mesh, patches, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
   }

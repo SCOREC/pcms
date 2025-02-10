@@ -355,8 +355,8 @@ inline void FindSupports::adjBasedSearchCentroidNodes(Write<LO>& supports_ptr,
 
 struct SupportResults
 {
-  Write<LO> supports_ptr;
-  Write<LO> supports_idx;
+  LOs supports_ptr;
+  LOs supports_idx;
   Write<Real> radii2; // squared radii of the supports
 };
 
@@ -365,7 +365,6 @@ inline SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
                                       LO min_req_support = 12,
                                       bool adapt_radius = true)
 {
-  SupportResults support;
   FindSupports search(source_mesh, target_mesh);
   LO nvertices_source = source_mesh.nverts();
   LO nvertices_target = target_mesh.nverts();
@@ -376,10 +375,13 @@ inline SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
   Write<Real> radii2 = Write<Real>(nvertices_target, cutoffDistance,
                                    "squared radii of the supports");
 
+  Write<LO> supports_ptr;
+  Write<LO> supports_idx;
+
   if (!adapt_radius) {
     printf("INFO: Fixed radius search *(disregarding required minimum "
            "support)*... \n");
-    search.adjBasedSearch(support.supports_ptr, nSupports, support.supports_idx,
+    search.adjBasedSearch(supports_ptr, nSupports, supports_idx,
                           radii2, true);
   } else {
     printf("INFO: Adaptive radius search... \n");
@@ -397,10 +399,12 @@ inline SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
         Kokkos::Max<Real>(max_radius));
       printf("INFO: Loop %d: max_radius: %f\n", r_adjust_loop, max_radius);
 
-      SupportResults support; // create support every time to avoid complexity
+      // create storage every time to avoid complexity
+      Write<LO> supports_ptr;
+      Write<LO> supports_idx;
       Kokkos::fence();
-      search.adjBasedSearch(support.supports_ptr, nSupports,
-                            support.supports_idx, radii2, true);
+      search.adjBasedSearch(supports_ptr, nSupports,
+                            supports_idx, radii2, true);
       Kokkos::fence();
 
       LO min_supports_found = 0;
@@ -435,7 +439,7 @@ inline SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
     printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
   }
 
-  support.supports_ptr = Write<LO>(
+  supports_ptr = Write<LO>(
     nvertices_target + 1, 0, "number of support source vertices in CSR format");
 
   LO total_supports = 0;
@@ -445,29 +449,29 @@ inline SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
     OMEGA_H_LAMBDA(int j, int& update, bool final) {
       update += nSupports[j];
       if (final) {
-        support.supports_ptr[j + 1] = update;
+        supports_ptr[j + 1] = update;
       }
     },
     total_supports);
 
   Kokkos::fence();
 
-  support.supports_idx = Write<LO>(
+  supports_idx = Write<LO>(
     total_supports, 0, "index of source supports of each target node");
 
-  search.adjBasedSearch(support.supports_ptr, nSupports, support.supports_idx,
+  search.adjBasedSearch(supports_ptr, nSupports, supports_idx,
                         radii2, false);
 
-  support.radii2 = radii2;
-  target_mesh.add_tag<Real>(VERT, "radii2", 1, support.radii2);
-  return support;
+  target_mesh.add_tag<Real>(VERT, "radii2", 1, radii2);
+  return SupportResults{read(supports_ptr), read(supports_idx), radii2};
 }
 
 inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
                                       LO min_support = 12,
                                       bool adapt_radius = true)
 {
-  SupportResults support;
+  Write<LO> supports_ptr;
+  Write<LO> supports_idx;
   FindSupports search(mesh);
   LO nvertices_target = mesh.nverts();
   Write<LO> nSupports(nvertices_target, 0,
@@ -481,7 +485,7 @@ inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
   if (!adapt_radius) {
     printf("INFO: Fixed radius search *(disregarding required minimum "
            "support)* ... \n");
-    search.adjBasedSearch(support.supports_ptr, nSupports, support.supports_idx,
+    search.adjBasedSearch(supports_ptr, nSupports, supports_idx,
                           radii2, true);
   } else {
     printf("INFO: Adaptive radius search... \n");
@@ -499,8 +503,8 @@ inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
       nSupports = Write<LO>(nvertices_target, 0,
                             "number of supports in each target vertex");
       SupportResults support; // create support every time to avoid complexity
-      search.adjBasedSearchCentroidNodes(support.supports_ptr, nSupports,
-                                         support.supports_idx, radii2, true);
+      search.adjBasedSearchCentroidNodes(supports_ptr, nSupports,
+                                         supports_idx, radii2, true);
 
       Kokkos::fence();
       LO min_nSupports = 0;
@@ -534,7 +538,7 @@ inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
   } // adaptive radius search
 
   // offset array for the supports of each target vertex
-  support.supports_ptr = Write<LO>(
+  supports_ptr = Write<LO>(
     nvertices_target + 1, 0, "number of support source vertices in CSR format");
 
   LO total_supports = 0;
@@ -543,7 +547,7 @@ inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
     OMEGA_H_LAMBDA(int j, int& update, bool final) {
       update += nSupports[j];
       if (final) {
-        support.supports_ptr[j + 1] = update;
+        supports_ptr[j + 1] = update;
       }
     },
     total_supports);
@@ -551,16 +555,15 @@ inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
   printf("INFO: Inside searchNeighbors 3\n");
   Kokkos::fence();
 
-  support.supports_idx = Write<LO>(
+  supports_idx = Write<LO>(
     total_supports, 0, "index of source supports of each target node");
   printf("INFO: Total_supports: %d\n", total_supports);
 
-  search.adjBasedSearchCentroidNodes(support.supports_ptr, nSupports,
-                                     support.supports_idx, radii2, false);
+  search.adjBasedSearchCentroidNodes(supports_ptr, nSupports,
+                                     supports_idx, radii2, false);
 
-  support.radii2 = radii2;
   mesh.add_tag<Omega_h::Real>(VERT, "support_radius", 1, radii2);
-  return support;
+  return SupportResults{read(supports_ptr), read(supports_idx), radii2};
 }
 
 #endif

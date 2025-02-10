@@ -33,6 +33,14 @@ class GridPointSearch
 public:
   static constexpr auto dim = 2;
   struct Result {
+    enum class Dimensionality
+    {
+      VERTEX = 0,
+      EDGE = 1,
+      FACE = 2
+    };
+
+    Dimensionality dimensionality;
     LO tri_id;
     Omega_h::Vector<dim + 1> parametric_coords;
   };
@@ -49,6 +57,9 @@ public:
 
 private:
   Omega_h::Mesh mesh_;
+  Omega_h::Adj tris2edges_adj_;
+  Omega_h::Adj tris2verts_adj_;
+  Omega_h::Adj edges2verts_adj_;
   Kokkos::View<UniformGrid[1]> grid_{"uniform grid"};
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;

@@ -16,6 +16,11 @@ using namespace Omega_h;
 
 namespace {
 
+std::string getTestName(size_t interp_degree, size_t func_degree) {
+  return "test interpolation degree " + std::to_string(interp_degree) +
+    ", polynomial degree func_degree " + std::to_string(func_degree);
+}
+
 KOKKOS_INLINE_FUNCTION
 double func(pcms::Coord& p, int degree)
 {
@@ -36,7 +41,7 @@ double func(pcms::Coord& p, int degree)
   return -1;
 }
 
-void test(Mesh& mesh, Omega_h::Graph& patches, int degree, LO min_num_supports,
+void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
           Reals source_values, Reals exact_target_values,
           Reals source_coordinates, Reals target_coordinates)
 {
@@ -76,13 +81,8 @@ TEST_CASE("meshfields_spr_test")
   auto lib = Library{};
   auto world = lib.world();
   auto rank = lib.world()->rank();
-  auto mesh = build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 3, 3, 0, false);
+  auto mesh = build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 6, 6, 0, false);
   std::cout << "mesh: elms " << mesh.nelems() << " verts " << mesh.nverts() << "\n";
-
-  const auto minPatchSize = 3;
-  auto patches = mesh.get_vtx_patches(minPatchSize); //Omega_h::Graph returned
-
-  Real ignored = 1.0;
 
   const auto dim = mesh.dim();
 
@@ -92,7 +92,6 @@ TEST_CASE("meshfields_spr_test")
 
   const auto& ntargets = mesh.nverts();
 
-  Write<Real> radii2(ntargets, ignored, "ignored");
   Write<Real> source_coordinates(
     dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
 
@@ -130,178 +129,35 @@ TEST_CASE("meshfields_spr_test")
       target_points.coordinates(j).y = target_coordinates[j * dim + 1];
     });
 
-  SECTION("test interpolation degree 1, function degree 0")
-  {
 
-    int degree = 1;
-    LO min_num_supports = 10;
+  //Define tests
+  for(size_t interp_degree=1; interp_degree<=3; interp_degree++) {
+    for(int func_degree=interp_degree; func_degree>=0; func_degree--) {
+      SECTION(getTestName(interp_degree, func_degree).c_str()) {
+        std::cerr << "start " << interp_degree << ", " << func_degree << " \n";
+        const auto minPatchSize = interp_degree+2;
+        std::cerr << "minPatchSize " << minPatchSize << "\n";
+        auto patches = mesh.get_vtx_patches(minPatchSize); //Omega_h::Graph returned
 
-    Write<Real> source_values(nfaces, 0, "exact target values");
+        Write<Real> source_values(nfaces, 0, "exact target values");
 
-    Kokkos::parallel_for(
-      nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func(source_points.coordinates(i), degree - 1);
-      });
+        Kokkos::parallel_for(
+            nfaces, KOKKOS_LAMBDA(int i) {
+            source_values[i] = func(source_points.coordinates(i), func_degree);
+            });
 
-    Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
+        Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
 
-    Kokkos::parallel_for(
-      mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func(target_points.coordinates(i), degree - 1);
-      });
+        Kokkos::parallel_for(
+            mesh.nverts(), KOKKOS_LAMBDA(int i) {
+            exact_target_values[i] = func(target_points.coordinates(i), func_degree);
+            });
 
-    test(mesh, patches, degree, min_num_supports, Reals(source_values),
-         Reals(exact_target_values), Reals(source_coordinates),
-         Reals(target_coordinates));
-  }
-
-  SECTION("test interpolation degree 1, function degree 1")
-  {
-
-    int degree = 1;
-    LO min_num_supports = 10;
-
-    Write<Real> source_values(nfaces, 0, "exact target values");
-
-    Kokkos::parallel_for(
-      nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func(source_points.coordinates(i), degree);
-      });
-
-    Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
-
-    Kokkos::parallel_for(
-      mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func(target_points.coordinates(i), degree);
-      });
-
-    test(mesh, patches, degree, min_num_supports, Reals(source_values),
-         Reals(exact_target_values), Reals(source_coordinates),
-         Reals(target_coordinates));
-  }
-
-  SECTION("test interpo degree 2 poly degree 0")
-  {
-
-    int degree = 2;
-    LO min_num_supports = 16;
-
-    Write<Real> source_values(nfaces, 0, "exact target values");
-
-    Kokkos::parallel_for(
-      nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func(source_points.coordinates(i), degree - 2);
-      });
-
-    Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
-
-    Kokkos::parallel_for(
-      mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func(target_points.coordinates(i), degree - 2);
-      });
-
-    test(mesh, patches, degree, min_num_supports, Reals(source_values),
-         Reals(exact_target_values), Reals(source_coordinates),
-         Reals(target_coordinates));
-  }
-
-  SECTION("test interpolation degree 2 poly degree 1")
-  {
-
-    int degree = 2;
-    LO min_num_supports = 16;
-
-    Write<Real> source_values(nfaces, 0, "exact target values");
-
-    Kokkos::parallel_for(
-      nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func(source_points.coordinates(i), degree - 1);
-      });
-
-    Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
-
-    Kokkos::parallel_for(
-      mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func(target_points.coordinates(i), degree - 1);
-      });
-
-    test(mesh, patches, degree, min_num_supports, Reals(source_values),
-         Reals(exact_target_values), Reals(source_coordinates),
-         Reals(target_coordinates));
-  }
-
-  SECTION("test interpolation degree 2, function degree 2")
-  {
-
-    int degree = 2;
-    LO min_num_supports = 16;
-
-    Write<Real> source_values(nfaces, 0, "exact target values");
-
-    Kokkos::parallel_for(
-      nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func(source_points.coordinates(i), degree);
-      });
-
-    Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
-
-    Kokkos::parallel_for(
-      mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func(target_points.coordinates(i), degree);
-      });
-
-    test(mesh, patches, degree, min_num_supports, Reals(source_values),
-         Reals(exact_target_values), Reals(source_coordinates),
-         Reals(target_coordinates));
-  }
-
-  SECTION("test interpolation degree 3, function degree 2")
-  {
-
-    int degree = 3;
-    LO min_num_supports = 20;
-
-    Write<Real> source_values(nfaces, 0, "exact target values");
-
-    Kokkos::parallel_for(
-      nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func(source_points.coordinates(i), degree - 1);
-      });
-
-    Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
-
-    Kokkos::parallel_for(
-      mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func(target_points.coordinates(i), degree - 1);
-      });
-
-    test(mesh, patches, degree, min_num_supports, Reals(source_values),
-         Reals(exact_target_values), Reals(source_coordinates),
-         Reals(target_coordinates));
-  }
-
-  SECTION("test interpolation degree 3, function degree 3")
-  {
-
-    int degree = 3;
-    LO min_num_supports = 20;
-
-    Write<Real> source_values(nfaces, 0, "exact target values");
-
-    Kokkos::parallel_for(
-      nfaces, KOKKOS_LAMBDA(int i) {
-        source_values[i] = func(source_points.coordinates(i), degree);
-      });
-
-    Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
-
-    Kokkos::parallel_for(
-      mesh.nverts(), KOKKOS_LAMBDA(int i) {
-        exact_target_values[i] = func(target_points.coordinates(i), degree);
-      });
-
-    test(mesh, patches, degree, min_num_supports, Reals(source_values),
-         Reals(exact_target_values), Reals(source_coordinates),
-         Reals(target_coordinates));
+        test(mesh, patches, interp_degree, Reals(source_values),
+            Reals(exact_target_values), Reals(source_coordinates),
+            Reals(target_coordinates));
+        std::cerr << "done " << interp_degree << ", " << func_degree << " \n";
+      } //end SECTION
+    }
   }
 }

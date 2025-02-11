@@ -18,7 +18,7 @@ namespace {
 
 std::string getTestName(size_t interp_degree, size_t func_degree) {
   return "test interpolation degree " + std::to_string(interp_degree) +
-    ", polynomial degree func_degree " + std::to_string(func_degree);
+    ", polynomial degree " + std::to_string(func_degree);
 }
 
 KOKKOS_INLINE_FUNCTION

@@ -44,7 +44,7 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree, LO min_num_supports,
   int dim = mesh.dim();
   Real tolerance = 0.0005;
 
-  Omega_h::Write<Real> ignored;
+  Omega_h::Write<Real> ignored(patches.ab2b.size(), 1);
   SupportResults support{patches.a2ab,patches.ab2b,ignored};
 
   auto approx_target_values =
@@ -76,7 +76,8 @@ TEST_CASE("meshfields_spr_test")
   auto lib = Library{};
   auto world = lib.world();
   auto rank = lib.world()->rank();
-  auto mesh = build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
+  auto mesh = build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 3, 3, 0, false);
+  std::cout << "mesh: elms " << mesh.nelems() << " verts " << mesh.nverts() << "\n";
 
   const auto minPatchSize = 3;
   auto patches = mesh.get_vtx_patches(minPatchSize); //Omega_h::Graph returned

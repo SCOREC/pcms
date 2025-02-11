@@ -1,13 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <pcms/interpolator/adj_search.hpp>
-#include <pcms/interpolator/MLSInterpolation.hpp>
+#include <pcms/interpolator/mls_interpolation.hpp>
+#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <pcms/interpolator/points.hpp>
 #include <vector>
 #include <iostream>
 
@@ -17,7 +17,7 @@ using namespace Omega_h;
 namespace {
 
 KOKKOS_INLINE_FUNCTION
-double func(Coord& p, int degree)
+double func(pcms::Coord& p, int degree)
 {
   [[maybe_unused]] auto x = p.x;
   [[maybe_unused]] auto y = p.y;
@@ -36,13 +36,6 @@ double func(Coord& p, int degree)
   return -1;
 }
 
-struct NoOpFunctor {
-OMEGA_H_INLINE
-double operator()(double, double) const {
-  return 1.0;
-}
-};
-
 void test(Mesh& mesh, Omega_h::Graph& patches, int degree, LO min_num_supports,
           Reals source_values, Reals exact_target_values,
           Reals source_coordinates, Reals target_coordinates)
@@ -55,8 +48,8 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree, LO min_num_supports,
   SupportResults support{patches.a2ab,patches.ab2b,ignored};
 
   auto approx_target_values =
-    mls_interpolation (source_values, source_coordinates, target_coordinates,
-        support, dim, degree, support.radii2, NoOpFunctor{});
+    pcms::mls_interpolation (source_values, source_coordinates, target_coordinates,
+        support, dim, degree, support.radii2, pcms::RadialBasisFunction::NO_OP);
 
   auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
@@ -116,20 +109,20 @@ TEST_CASE("meshfields_spr_test")
       source_coordinates[index + 1] = centroid[1];
     });
 
-  Points source_points;
+  pcms::Points source_points;
 
   source_points.coordinates =
-    PointsViewType("Number of local source supports", nfaces);
+    pcms::PointsViewType("Number of local source supports", nfaces);
   Kokkos::parallel_for(
     "target points", nfaces, KOKKOS_LAMBDA(int j) {
       source_points.coordinates(j).x = source_coordinates[j * dim];
       source_points.coordinates(j).y = source_coordinates[j * dim + 1];
     });
 
-  Points target_points;
+  pcms::Points target_points;
 
   target_points.coordinates =
-    PointsViewType("Number of local source supports", mesh.nverts());
+    pcms::PointsViewType("Number of local source supports", mesh.nverts());
   Kokkos::parallel_for(
     "target points", mesh.nverts(), KOKKOS_LAMBDA(int j) {
       target_points.coordinates(j).x = target_coordinates[j * dim];

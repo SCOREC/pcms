@@ -101,6 +101,15 @@ struct RBF_CONST
   }
 };
 
+// NOOP Functor
+//
+struct NoOp {
+OMEGA_H_INLINE
+double operator()(double, double) const {
+  return 1.0;
+}
+};
+
 Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
@@ -131,6 +140,13 @@ Write<Real> mls_interpolation(const Reals source_values,
         source_values, source_coordinates, target_coordinates, support, radii2,
         dim, degree, RBF_CONST{});
       break;
+
+    case RadialBasisFunction::NO_OP:
+      interpolated_values = detail::mls_interpolation(
+        source_values, source_coordinates, target_coordinates, support, radii2,
+        dim, degree, NoOp{});
+      break;
+
   }
 
   return interpolated_values;

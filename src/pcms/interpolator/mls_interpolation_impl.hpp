@@ -459,9 +459,9 @@ Write<Real> mls_interpolation(const Reals source_values,
   Kokkos::parallel_for(
     "MLS coefficients", tp.set_scratch_size(0, Kokkos::PerTeam(shared_size)),
     KOKKOS_LAMBDA(const member_type& team) {
-      int i = team.league_rank();
-      int start_ptr = support.supports_ptr[i];
-      int end_ptr = support.supports_ptr[i + 1];
+      int league_rank = team.league_rank();
+      int start_ptr = support.supports_ptr[league_rank];
+      int end_ptr = support.supports_ptr[league_rank + 1];
       int nsupports = end_ptr - start_ptr;
 
       ScratchMatView local_source_points(team.team_scratch(0), nsupports, dim);
@@ -497,11 +497,11 @@ Write<Real> mls_interpolation(const Reals source_values,
 
       // evaluates the basis vector of a given target point
       Coord target_point;
-      target_point.x = target_coordinates[i * dim];
-      target_point.y = target_coordinates[i * dim + 1];
+      target_point.x = target_coordinates[league_rank * dim];
+      target_point.y = target_coordinates[league_rank * dim + 1];
 
       if (dim == 3) {
-        target_point.z = target_coordinates[i * dim + 2];
+        target_point.z = target_coordinates[league_rank * dim + 2];
       }
       eval_basis_vector(slice_length, target_point, target_basis_vector);
 
@@ -524,14 +524,14 @@ Write<Real> mls_interpolation(const Reals source_values,
        * evaluated at each source points
        */
 
+      OMEGA_H_CHECK_PRINTF(
+        radii2[league_rank] > 0,
+        "ERROR: radius2 has to be positive but found to be %.16f\n",
+        radii2[league_rank]);
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
-          OMEGA_H_CHECK_PRINTF(
-            radii2[i] > 0,
-            "ERROR: radius2 has to be positive but found to be %.16f\n",
-            radii2[i]);
-          compute_phi_vector(target_point, local_source_points, j, radii2[i],
-                             rbf_func, phi_vector);
+          compute_phi_vector(target_point, local_source_points, j,
+                             radii2[league_rank], rbf_func, phi_vector);
         });
 
       team.team_barrier();
@@ -540,11 +540,11 @@ Write<Real> mls_interpolation(const Reals source_values,
        * quantity that we want interpolate
        */
       Kokkos::parallel_for(
-        Kokkos::TeamThreadRange(team, nsupports), [=](const int i) {
-          support_values(i) =
-            source_values[support.supports_idx[start_ptr + i]];
-          OMEGA_H_CHECK_PRINTF(!std::isnan(support_values(i)),
-                               "ERROR: NaN found: at support %d\n", i);
+        Kokkos::TeamThreadRange(team, nsupports), [=](const int j) {
+          support_values(j) =
+            source_values[support.supports_idx[start_ptr + j]];
+          OMEGA_H_CHECK_PRINTF(!std::isnan(support_values(j)),
+                               "ERROR: NaN found: at support %d\n", j);
         });
 
       team.team_barrier();
@@ -563,8 +563,9 @@ Write<Real> mls_interpolation(const Reals source_values,
         team, result.transformed_rhs, target_basis_vector);
 
       if (team.team_rank() == 0) {
-        OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n", i);
-        approx_target_values[i] = target_value;
+        OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
+                             league_rank);
+        approx_target_values[league_rank] = target_value;
       }
     });
 
@@ -704,11 +705,11 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
           OMEGA_H_CHECK_PRINTF(
-            radii2[j] > 0,
+            radii2[league_rank] > 0,
             "ERROR: radius2 has to be positive but found to be %.16f\n",
-            radii2[j]);
-          compute_phi_vector(target_point, local_source_points, j, radii2[league_rank],
-                             rbf_func, phi_vector);
+            radii2[league_rank]);
+          compute_phi_vector(target_point, local_source_points, j,
+                             radii2[league_rank], rbf_func, phi_vector);
         });
 
       team.team_barrier();
@@ -740,7 +741,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         team, result.transformed_rhs, target_basis_vector);
 
       if (team.team_rank() == 0) {
-        OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n", league_rank);
+        OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
+                             league_rank);
         approx_target_values[league_rank] = target_value;
       }
     });

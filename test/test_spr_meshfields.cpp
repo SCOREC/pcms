@@ -16,6 +16,21 @@ using namespace Omega_h;
 
 namespace {
 
+void print_patches(Omega_h::Graph& patches) {
+  auto offsets = HostRead(patches.a2ab);
+  auto values = HostRead(patches.ab2b);
+  std::cout << "num patches " << patches.nnodes() << "\n";
+  for(int patch=0; patch<patches.nnodes(); patch++) {
+    std::cout << "patch " << patch << " patchElms ";
+    for (auto valIdx = offsets[patch]; valIdx < offsets[patch + 1]; ++valIdx) {
+      auto patchElm = values[valIdx];
+      std::cout << patchElm << " ";
+    }
+    std::cout << "\n";
+  }
+
+}
+
 std::string getTestName(size_t interp_degree, size_t func_degree) {
   return "test interpolation degree " + std::to_string(interp_degree) +
     ", polynomial degree " + std::to_string(func_degree);
@@ -57,6 +72,8 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
         support, dim, degree, support.radii2, pcms::RadialBasisFunction::NO_OP);
 
   auto host_approx_target_values = HostRead<Real>(approx_target_values);
+  mesh.add_tag(OMEGA_H_VERT, "approx_target_values", 1, read(approx_target_values));
+  Omega_h::vtk::write_parallel("box.vtk", &mesh);
 
   auto host_exact_target_values = HostRead<Real>(exact_target_values);
 
@@ -81,7 +98,9 @@ TEST_CASE("meshfields_spr_test")
   auto lib = Library{};
   auto world = lib.world();
   auto rank = lib.world()->rank();
-  auto mesh = build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 6, 6, 0, false);
+  const auto boxSize = 1.0;
+  const auto nElms = 6;
+  auto mesh = build_box(world, OMEGA_H_SIMPLEX, boxSize, boxSize, 0, nElms, nElms, 0, false);
   std::cout << "mesh: elms " << mesh.nelems() << " verts " << mesh.nverts() << "\n";
 
   const auto dim = mesh.dim();
@@ -137,7 +156,8 @@ TEST_CASE("meshfields_spr_test")
         std::cerr << "start " << interp_degree << ", " << func_degree << " \n";
         const auto minPatchSize = interp_degree+2;
         std::cerr << "minPatchSize " << minPatchSize << "\n";
-        auto patches = mesh.get_vtx_patches(minPatchSize); //Omega_h::Graph returned
+        auto patches = mesh.get_vtx_patches(minPatchSize);
+        print_patches(patches);
 
         Write<Real> source_values(nfaces, 0, "exact target values");
 
@@ -145,6 +165,7 @@ TEST_CASE("meshfields_spr_test")
             nfaces, KOKKOS_LAMBDA(int i) {
             source_values[i] = func(source_points.coordinates(i), func_degree);
             });
+        mesh.add_tag(mesh.dim(), "source_values", 1, read(source_values));
 
         Write<Real> exact_target_values(mesh.nverts(), 0, "exact target values");
 
@@ -152,6 +173,7 @@ TEST_CASE("meshfields_spr_test")
             mesh.nverts(), KOKKOS_LAMBDA(int i) {
             exact_target_values[i] = func(target_points.coordinates(i), func_degree);
             });
+        mesh.add_tag(OMEGA_H_VERT, "target_values", 1, read(exact_target_values));
 
         test(mesh, patches, interp_degree, Reals(source_values),
             Reals(exact_target_values), Reals(source_coordinates),

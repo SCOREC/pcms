@@ -289,11 +289,11 @@ ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
   int m = matrix.extent(0);
   int n = matrix.extent(1);
 
-  scaled_matrix = ScratchMatView(team.team_scratch(0), n, m);
+  ScratchMatView scaled_matrix(team.team_scratch(0), n, m);
 
-  square_matrix = ScratchMatView(team.team_scratch(0), n, n);
+  ScratchMatView square_matrix(team.team_scratch(0), n, n);
 
-  transformed_rhs = ScratchVecView(team.team_scratch(0), n);
+  ScratchVecView transformed_rhs(team.team_scratch(0), n);
 
   // performing P^T Q
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n), [=](int j) {
@@ -399,176 +399,6 @@ void fill(double value, member_type team, ScratchVecView vector)
 
 /**
  * @brief Maps the data from source mesh to target mesh
- * @param source_values Source field values from source mesh
- * @param source_coordinates The coordinates of control points of source field
- * @param target_coordinates The coordinates of control points of target field
- * @param support The object that enpasulates support info
- * @param dim The dimension of the simulations
- * @param degree The degree of the interpolation order
- * @param rbf_func The radial basis function choice
- * @return interpolated field in target mesh
- *
- *
- */
-template <typename Func>
-Write<Real> mls_interpolation(const Reals source_values,
-                              const Reals source_coordinates,
-                              const Reals target_coordinates,
-                              const SupportResults& support, const LO& dim,
-                              const LO& degree, Func rbf_func)
-{
-  PCMS_FUNCTION_TIMER;
-  static_assert(std::is_invocable_r_v<double, Func, double, double>,
-                "rbf_func, takes radius and cutoff, returns weight");
-  static_assert(!std::is_pointer_v<Func>,
-                "function pointer will fail in GPU execution context");
-  const auto nvertices_source = source_coordinates.size() / dim;
-  const auto nvertices_target = target_coordinates.size() / dim;
-
-  IntHostMatView host_slice_length(
-    "stores slice length of  polynomial basis in host", degree, dim);
-  Kokkos::deep_copy(host_slice_length, 0);
-  calculate_basis_slice_lengths(host_slice_length);
-
-  auto basis_size = calculate_basis_vector_size(host_slice_length);
-
-  IntDeviceMatView slice_length(
-    "stores slice length of polynomial basis in device", degree, dim);
-  auto slice_length_hd = Kokkos::create_mirror_view(slice_length);
-  Kokkos::deep_copy(slice_length_hd, host_slice_length);
-  Kokkos::deep_copy(slice_length, slice_length_hd);
-  Write<Real> approx_target_values(nvertices_target, 0,
-                                   "approximated target values");
-
-  int shared_size =
-    calculate_scratch_shared_size(support, nvertices_target, basis_size);
-
-  team_policy tp(nvertices_target, Kokkos::AUTO);
-
-  int scratch_size = tp.scratch_size_max(0);
-
-  PCMS_ALWAYS_ASSERT(scratch_size > shared_size);
-
-  // calculates the interpolated values
-  Kokkos::parallel_for(
-    "MLS coefficients", tp.set_scratch_size(0, Kokkos::PerTeam(shared_size)),
-    KOKKOS_LAMBDA(const member_type& team) {
-      int league_rank = team.league_rank();
-      int start_ptr = support.supports_ptr[league_rank];
-      int end_ptr = support.supports_ptr[league_rank + 1];
-      int nsupports = end_ptr - start_ptr;
-
-      ScratchMatView local_source_points(team.team_scratch(0), nsupports, dim);
-      int count = -1;
-      for (int j = start_ptr; j < end_ptr; ++j) {
-        count++;
-        auto index = support.supports_idx[j];
-        local_source_points(count, 0) = source_coordinates[index * dim];
-        local_source_points(count, 1) = source_coordinates[index * dim + 1];
-        if (dim == 3) {
-          local_source_points(count, 2) = source_coordinates[index * dim + 2];
-        }
-      }
-
-      //  vondermonde matrix P from the vectors of basis vector of supports
-      ScratchMatView vandermonde_matrix(team.team_scratch(0), nsupports,
-                                        basis_size);
-
-      // rbf function values of source supports Phi(n,n)
-      ScratchVecView phi_vector(team.team_scratch(0), nsupports);
-
-      // stores known vector (b)
-      ScratchVecView support_values(team.team_scratch(0), nsupports);
-
-      // basis of target
-      ScratchVecView target_basis_vector(team.team_scratch(0), basis_size);
-
-      // Initialize the scratch matrices and  vectors
-      fill(0.0, team, vandermonde_matrix);
-      fill(0.0, team, phi_vector);
-      fill(0.0, team, support_values);
-      fill(0.0, team, target_basis_vector);
-
-      // evaluates the basis vector of a given target point
-      Coord target_point;
-      target_point.x = target_coordinates[league_rank * dim];
-      target_point.y = target_coordinates[league_rank * dim + 1];
-
-      if (dim == 3) {
-        target_point.z = target_coordinates[league_rank * dim + 2];
-      }
-      eval_basis_vector(slice_length, target_point, target_basis_vector);
-
-      /** vandermonde_matrix(nsupports, basis_size) vandermonde Matrix is
-       * created with the basis vector of source supports stacking on top of
-       * each other
-       */
-
-      Kokkos::parallel_for(
-        Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
-          create_vandermonde_matrix(local_source_points, j, slice_length,
-                                    vandermonde_matrix);
-        });
-
-      team.team_barrier();
-
-      /** compute_phi_vector(nsupports) is the array of rbf functions evaluated
-       * at the source supports In the actual implementation, Phi(nsupports,
-       * nsupports) is the diagonal matrix & each diagonal element is the phi
-       * evaluated at each source points
-       */
-
-      OMEGA_H_CHECK_PRINTF(
-        support.radii2[league_rank] > 0,
-        "ERROR: radius2 has to be positive but found to be %.16f\n",
-        support.radii2[league_rank]);
-      Kokkos::parallel_for(
-        Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
-          compute_phi_vector(target_point, local_source_points, j,
-                             support.radii2[league_rank], rbf_func, phi_vector);
-        });
-
-      team.team_barrier();
-
-      /** support_values(nsupports) (or known rhs vector b) is the vector of the
-       * quantity that we want interpolate
-       */
-      Kokkos::parallel_for(
-        Kokkos::TeamThreadRange(team, nsupports), [=](const int j) {
-          support_values(j) =
-            source_values[support.supports_idx[start_ptr + j]];
-          OMEGA_H_CHECK_PRINTF(!std::isnan(support_values(j)),
-                               "ERROR: NaN found: at support %d\n", j);
-        });
-
-      team.team_barrier();
-
-      auto result = convert_normal_equation(vandermonde_matrix, phi_vector,
-                                            support_values, team);
-
-      team.team_barrier();
-
-      // It stores the solution in rhs vector itself
-      solve_matrix(square_matrix, transformed_rhs, team);
-
-      team.team_barrier();
-
-      double target_value = KokkosBlas::Experimental::dot(team, transformed_rhs,
-                                                          target_basis_vector);
-
-      if (team.team_rank() == 0) {
-        OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
-                             league_rank);
-        approx_target_values[league_rank] = target_value;
-      }
-    });
-
-  return approx_target_values;
-}
-
-/**
- * @brief \overload
- * Maps the data from source mesh to target mesh
  *
  * @param source_values Scalar array view of source field values
  * @param source_coordinates Scalar array view of the coordinates of control
@@ -726,12 +556,12 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       team.team_barrier();
 
       // It stores the solution in rhs vector itself
-      solve_matrix(square_matrix, transformed_rhs, team);
+      solve_matrix(result.square_matrix, result.transformed_rhs, team);
 
       team.team_barrier();
 
-      double target_value = KokkosBlas::Experimental::dot(team, transformed_rhs,
-                                                          target_basis_vector);
+      double target_value = KokkosBlas::Experimental::dot(
+        team, result.transformed_rhs, target_basis_vector);
 
       if (team.team_rank() == 0) {
         OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",

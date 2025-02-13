@@ -559,7 +559,7 @@ inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
                                      radii2, false);
 
   mesh.add_tag<Omega_h::Real>(VERT, "support_radius", 1, radii2);
-  return SupportResults{read(supports_ptr), read(supports_idx), radii2};
+  return SupportResults{read(supports_ptr), read(supports_idx)};
 }
 
 #endif

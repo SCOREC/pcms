@@ -7,6 +7,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
+#include <Omega_h_array_ops.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <vector>
 #include <iostream>
@@ -71,6 +72,10 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
     pcms::mls_interpolation (source_values, source_coordinates, target_coordinates,
         support, dim, degree, support.radii2, pcms::RadialBasisFunction::NO_OP);
 
+  const auto delta_abs = Omega_h::fabs_each(Omega_h::subtract_each(exact_target_values,read(approx_target_values)));
+  const auto max_delta_abs = Omega_h::get_max(delta_abs);
+  std::cout << "max_delta_abs " << max_delta_abs << "\n";
+
   auto host_approx_target_values = HostRead<Real>(approx_target_values);
   mesh.add_tag(OMEGA_H_VERT, "approx_target_values", 1, read(approx_target_values));
   Omega_h::vtk::write_parallel("box.vtk", &mesh);
@@ -83,6 +88,7 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
   REQUIRE(m == n);
 
   for (size_t i = 0; i < m; ++i) {
+    std::cout << "vtx " << i << "\n";
     CHECK_THAT(
         host_exact_target_values[i],
         Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));

@@ -289,26 +289,23 @@ ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
   int m = matrix.extent(0);
   int n = matrix.extent(1);
 
-  ResultConvertNormal result;
+  scaled_matrix = ScratchMatView(team.team_scratch(0), n, m);
 
-  result.scaled_matrix = ScratchMatView(team.team_scratch(0), n, m);
+  square_matrix = ScratchMatView(team.team_scratch(0), n, n);
 
-  result.square_matrix = ScratchMatView(team.team_scratch(0), n, n);
-
-  result.transformed_rhs = ScratchVecView(team.team_scratch(0), n);
+  transformed_rhs = ScratchVecView(team.team_scratch(0), n);
 
   // performing P^T Q
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n), [=](int j) {
     for (int k = 0; k < m; ++k) {
-      result.scaled_matrix(j, k) = 0;
+      scaled_matrix(j, k) = 0;
     }
   });
 
   team.team_barrier();
 
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, m), [=](int j) {
-    scale_column_trans_matrix(matrix, weight_vector, team, j,
-                              result.scaled_matrix);
+    scale_column_trans_matrix(matrix, weight_vector, team, j, scaled_matrix);
   });
 
   team.team_barrier();
@@ -317,19 +314,18 @@ ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
   KokkosBatched::TeamGemm<
     member_type, KokkosBatched::Trans::NoTranspose,
     KokkosBatched::Trans::NoTranspose,
-    KokkosBatched::Algo::Gemm::Unblocked>::invoke(team, 1.0,
-                                                  result.scaled_matrix, matrix,
-                                                  0.0, result.square_matrix);
+    KokkosBatched::Algo::Gemm::Unblocked>::invoke(team, 1.0, scaled_matrix,
+                                                  matrix, 0.0, square_matrix);
 
   team.team_barrier();
 
   KokkosBlas::Experimental::
     Gemv<KokkosBlas::Mode::Team, KokkosBlas::Algo::Gemv::Unblocked>::invoke(
-      team, 'N', 1.0, result.scaled_matrix, rhs, 0.0, result.transformed_rhs);
+      team, 'N', 1.0, scaled_matrix, rhs, 0.0, transformed_rhs);
 
   team.team_barrier();
 
-  return result;
+  return ResultConvertNormal{scaled_matrix, square_matrix, transformed_rhs};
 }
 
 /**
@@ -409,7 +405,6 @@ void fill(double value, member_type team, ScratchVecView vector)
  * @param support The object that enpasulates support info
  * @param dim The dimension of the simulations
  * @param degree The degree of the interpolation order
- * @param radii2 The array of the square of cutoff distance
  * @param rbf_func The radial basis function choice
  * @return interpolated field in target mesh
  *
@@ -420,8 +415,7 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
-                              const LO& degree, Write<Real> radii2,
-                              Func rbf_func)
+                              const LO& degree, Func rbf_func)
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_invocable_r_v<double, Func, double, double>,
@@ -525,13 +519,13 @@ Write<Real> mls_interpolation(const Reals source_values,
        */
 
       OMEGA_H_CHECK_PRINTF(
-        radii2[league_rank] > 0,
+        support.radii2[league_rank] > 0,
         "ERROR: radius2 has to be positive but found to be %.16f\n",
-        radii2[league_rank]);
+        support.radii2[league_rank]);
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
           compute_phi_vector(target_point, local_source_points, j,
-                             radii2[league_rank], rbf_func, phi_vector);
+                             support.radii2[league_rank], rbf_func, phi_vector);
         });
 
       team.team_barrier();
@@ -555,12 +549,12 @@ Write<Real> mls_interpolation(const Reals source_values,
       team.team_barrier();
 
       // It stores the solution in rhs vector itself
-      solve_matrix(result.square_matrix, result.transformed_rhs, team);
+      solve_matrix(square_matrix, transformed_rhs, team);
 
       team.team_barrier();
 
-      double target_value = KokkosBlas::Experimental::dot(
-        team, result.transformed_rhs, target_basis_vector);
+      double target_value = KokkosBlas::Experimental::dot(team, transformed_rhs,
+                                                          target_basis_vector);
 
       if (team.team_rank() == 0) {
         OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
@@ -584,7 +578,6 @@ Write<Real> mls_interpolation(const Reals source_values,
  * @param support The object that enpasulates support info
  * @param dim The dimension of the simulations
  * @param degree The degree of the interpolation order
- * @param radii2 Scalar array view of the square of cutoff distance
  * @param rbf_func The radial basis function choice
  * @param[in/out] Scalar array view of the interpolated field in target mesh
  *
@@ -595,8 +588,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
                        RealConstDefaultScalarArrayView source_coordinates,
                        RealConstDefaultScalarArrayView target_coordinates,
                        const SupportResults& support, const LO& dim,
-                       const LO& degree, RealDefaultScalarArrayView radii2,
-                       Func rbf_func,
+                       const LO& degree, Func rbf_func,
                        RealDefaultScalarArrayView approx_target_values)
 {
   PCMS_FUNCTION_TIMER;
@@ -696,6 +688,11 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       team.team_barrier();
 
+      OMEGA_H_CHECK_PRINTF(
+        support.radii2[league_rank] > 0,
+        "ERROR: radius2 has to be positive but found to be %.16f\n",
+        support.radii2[league_rank]);
+
       /** phi(nsupports) is the array of rbf functions evaluated at the
        * source supports In the actual implementation, Phi(nsupports, nsupports)
        * is the diagonal matrix & each diagonal element is the phi evaluated at
@@ -704,12 +701,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
-          OMEGA_H_CHECK_PRINTF(
-            radii2[league_rank] > 0,
-            "ERROR: radius2 has to be positive but found to be %.16f\n",
-            radii2[league_rank]);
           compute_phi_vector(target_point, local_source_points, j,
-                             radii2[league_rank], rbf_func, phi_vector);
+                             support.radii2[league_rank], rbf_func, phi_vector);
         });
 
       team.team_barrier();
@@ -733,12 +726,12 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       team.team_barrier();
 
       // It stores the solution in rhs vector itself
-      solve_matrix(result.square_matrix, result.transformed_rhs, team);
+      solve_matrix(square_matrix, transformed_rhs, team);
 
       team.team_barrier();
 
-      double target_value = KokkosBlas::Experimental::dot(
-        team, result.transformed_rhs, target_basis_vector);
+      double target_value = KokkosBlas::Experimental::dot(team, transformed_rhs,
+                                                          target_basis_vector);
 
       if (team.team_rank() == 0) {
         OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
@@ -760,7 +753,6 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
  * @param support The object that enpasulates support info
  * @param dim The dimension of the simulations
  * @param degree The degree of the interpolation order
- * @param radii2 Write array of the square of cutoff distance
  * @param rbf_func The radial basis function choice
  * @return  Write array of the interpolated field in target mesh
  *
@@ -770,8 +762,8 @@ template <typename Func>
 Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
-                              const SupportResults& support, Write<Real> radii2,
-                              const LO& dim, const LO& degree, Func rbf_func)
+                              const SupportResults& support, const LO& dim,
+                              const LO& degree, Func rbf_func)
 {
   const auto nvertices_source = source_coordinates.size() / dim;
 
@@ -786,7 +778,8 @@ Write<Real> mls_interpolation(const Reals source_values,
   RealConstDefaultScalarArrayView target_coordinates_array_view(
     target_coordinates.data(), target_coordinates.size());
 
-  RealDefaultScalarArrayView radii2_array_view(radii2.data(), radii2.size());
+  RealDefaultScalarArrayView radii2_array_view(support.radii2.data(),
+                                               support.radii2.size());
 
   Write<Real> interpolated_values(nvertices_target, 0,
                                   "approximated target values");
@@ -796,8 +789,7 @@ Write<Real> mls_interpolation(const Reals source_values,
 
   mls_interpolation(source_values_array_view, source_coordinates_array_view,
                     target_coordinates_array_view, support, dim, degree,
-                    radii2_array_view, rbf_func,
-                    interpolated_values_array_view);
+                    rbf_func, interpolated_values_array_view);
 
   return interpolated_values;
 }

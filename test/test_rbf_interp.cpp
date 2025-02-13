@@ -55,7 +55,7 @@ void test(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
   for (const auto& rbf : rbf_types) {
     auto approx_target_values =
       mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, support.radii2, rbf);
+                        support, dim, degree, rbf);
 
     auto host_approx_target_values = HostRead<Real>(approx_target_values);
 
@@ -93,9 +93,6 @@ TEST_CASE("mls_interp_test")
 
   const auto& ntargets = mesh.nverts();
 
-  Write<Real> radii2(
-    ntargets, cutoffDistance,
-    "populate initial square of cutoffDistance to all target points");
   Write<Real> source_coordinates(
     dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
 
@@ -114,7 +111,6 @@ TEST_CASE("mls_interp_test")
     });
 
   Points source_points;
-
   source_points.coordinates =
     PointsViewType("Number of local source supports", nfaces);
   Kokkos::parallel_for(

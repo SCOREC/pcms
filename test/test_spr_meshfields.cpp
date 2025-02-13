@@ -160,7 +160,10 @@ TEST_CASE("meshfields_spr_test")
     for(int func_degree=interp_degree; func_degree>=0; func_degree--) {
       SECTION(getTestName(interp_degree, func_degree).c_str()) {
         std::cerr << "start " << interp_degree << ", " << func_degree << " \n";
-        const auto minPatchSize = interp_degree+2;
+        int minPatchSize;
+        if(interp_degree == 1) minPatchSize = 3;
+        if(interp_degree == 2) minPatchSize = 8; //why so large?
+        if(interp_degree == 3) minPatchSize = 10; //why so large?
         std::cerr << "minPatchSize " << minPatchSize << "\n";
         auto patches = mesh.get_vtx_patches(minPatchSize);
         print_patches(patches);

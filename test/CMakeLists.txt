@@ -131,6 +131,13 @@ else()
 message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()
 
+if (PCMS_ENABLE_MESHFIELDS)
+  add_executable(thwaites_adapt thwaites_adapt.cpp)
+  target_link_libraries(thwaites_adapt PUBLIC meshfields::meshfields)
+  target_link_libraries(thwaites_adapt PUBLIC pcms::core pcms_interpolator)
+  target_include_directories(thwaites_adapt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
 if (PCMS_ENABLE_C)
     find_package(Kokkos REQUIRED)
     if (PCMS_ENABLE_XGC)

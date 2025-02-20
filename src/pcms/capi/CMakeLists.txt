@@ -23,3 +23,7 @@ install(
         EXPORT pcms_capi-targets
         NAMESPACE pcms::
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+
+add_library(pcms_interpolator_capi interpolator.cpp kokkos.cpp)
+add_library(pcms::interpolator::capi ALIAS pcms_interpolator_capi)
+target_link_libraries(pcms_interpolator_capi PUBLIC MPI::MPI_C PRIVATE pcms::interpolator)

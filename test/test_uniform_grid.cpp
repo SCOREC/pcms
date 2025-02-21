@@ -2,11 +2,11 @@
 #include <catch2/catch_approx.hpp>
 #include <pcms/uniform_grid.h>
 
-using pcms::UniformGrid;
+using pcms::Uniform2DGrid;
 
 TEST_CASE("uniform grid")
 {
-  UniformGrid uniform_grid{
+  Uniform2DGrid uniform_grid{
     .edge_length = {10, 12}, .bot_left = {0, 0}, .divisions = {10, 12}};
   REQUIRE(uniform_grid.GetNumCells() == 120);
   // Omega_h::Vector<2> point{0,0};

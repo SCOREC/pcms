@@ -6,10 +6,11 @@
 #include <numeric>
 namespace pcms
 {
+
+template <unsigned dim = 2>
 struct UniformGrid
 {
   // Make private?
-  static constexpr int dim = 2;
   std::array<Real, dim> edge_length;
   std::array<Real, dim> bot_left;
   std::array<LO, dim> divisions;
@@ -62,6 +63,9 @@ public:
     return i * divisions[0] + j;
   }
 };
+
+using Uniform2DGrid = UniformGrid<>;
+
 } // namespace pcms
 
 #endif // PCMS_COUPLING_UNIFORM_GRID_H

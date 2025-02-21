@@ -6,7 +6,7 @@
 
 using pcms::AABBox;
 using pcms::barycentric_from_global;
-using pcms::UniformGrid;
+using pcms::Uniform2DGrid;
 
 TEST_CASE("global to local")
 {
@@ -136,9 +136,9 @@ TEST_CASE("construct intersection map")
   REQUIRE(mesh.dim() == 2);
   SECTION("grid bbox overlap")
   {
-    Kokkos::View<UniformGrid[1]> grid_d("uniform grid");
+    Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
     auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = UniformGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
+    grid_h(0) = Uniform2DGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
     Kokkos::deep_copy(grid_d, grid_h);
     auto intersection_map = pcms::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());
     // assert(cudaSuccess == cudaDeviceSynchronize());
@@ -147,9 +147,9 @@ TEST_CASE("construct intersection map")
   }
   SECTION("fine grid")
   {
-    Kokkos::View<UniformGrid[1]> grid_d("uniform grid");
+    Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
     auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = UniformGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
+    grid_h(0) = Uniform2DGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
     Kokkos::deep_copy(grid_d, grid_h);
     // require number of candidates is >=1 and <=6
     auto intersection_map = pcms::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());

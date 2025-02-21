@@ -42,14 +42,14 @@ void release_oh_mesh(PcmsInterpolatorOHMeshHandle oh_mesh){
   }
 }
 
-void pcms_interpolate(PcmsInterpolatorHandle interpolator, double* input, int input_size, double* output, int output_size) {
+void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input, int input_size, void* output, int output_size) {
   auto* mls_interpolator = reinterpret_cast<MLSInterpolationHandler*>(interpolator.pointer);
 
   OMEGA_H_CHECK_PRINTF(input_size == mls_interpolator->getSourceSize(), "Input array size does not match the source size %d != %d\n", input_size, mls_interpolator->getSourceSize());
   OMEGA_H_CHECK_PRINTF(output_size == mls_interpolator->getTargetSize(), "Output array size does not match the target size %d != %d\n", output_size, mls_interpolator->getTargetSize());
 
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> input_array(input, input_size);
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> output_array(output, output_size);
+  pcms::ScalarArrayView<double, pcms::HostMemorySpace> input_array(reinterpret_cast<double*>(input), input_size);
+  pcms::ScalarArrayView<double, pcms::HostMemorySpace> output_array(reinterpret_cast<double*> (output), output_size);
 
   mls_interpolator->eval(input_array, output_array);
 }

@@ -31,7 +31,7 @@ PcmsInterpolatorOHMeshHandle read_oh_mesh(const char* filename);
 void release_oh_mesh(PcmsInterpolatorOHMeshHandle oh_mesh_handle);
 
 
-void pcms_interpolate(PcmsInterpolatorHandle interpolator, double* input, int input_size, double* output, int output_size);
+void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input, int input_size, void* output, int output_size);
 
 
 

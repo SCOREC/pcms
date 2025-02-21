@@ -282,25 +282,63 @@ SWIGINTERN void SWIG_assign(SwigClassWrapper* self, SwigClassWrapper other) {
   }
 }
 
-SWIGEXPORT void _wrap_PcmsInterpolatorOHMeshHandle_pointer_set(SwigClassWrapper *farg1, void const **farg2) {
+
+typedef struct {
+    void* data;
+    size_t size;
+} SwigArrayWrapper;
+
+
+SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized() {
+  SwigArrayWrapper result;
+  result.data = NULL;
+  result.size = 0;
+  return result;
+}
+
+SWIGEXPORT void _wrap_PcmsInterpolatorOHMeshHandle_mesh_handle_set(SwigClassWrapper *farg1, void const **farg2) {
   struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
   void *arg2 = (void *) 0 ;
   
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::pointer", return );
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::mesh_handle", return );
   arg1 = (struct PcmsInterpolatorOHMeshHandle *)farg1->cptr;
   arg2 = (void *)(*farg2);
-  if (arg1) (arg1)->pointer = arg2;
+  if (arg1) (arg1)->mesh_handle = arg2;
 }
 
 
-SWIGEXPORT void * _wrap_PcmsInterpolatorOHMeshHandle_pointer_get(SwigClassWrapper *farg1) {
+SWIGEXPORT void * _wrap_PcmsInterpolatorOHMeshHandle_mesh_handle_get(SwigClassWrapper *farg1) {
   void * fresult ;
   struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
   void *result = 0 ;
   
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::pointer", return 0);
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::mesh_handle", return 0);
   arg1 = (struct PcmsInterpolatorOHMeshHandle *)farg1->cptr;
-  result = (void *) ((arg1)->pointer);
+  result = (void *) ((arg1)->mesh_handle);
+  fresult = (void *)(result);
+  return fresult;
+}
+
+
+SWIGEXPORT void _wrap_PcmsInterpolatorOHMeshHandle_lib_handle_set(SwigClassWrapper *farg1, void const **farg2) {
+  struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
+  void *arg2 = (void *) 0 ;
+  
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::lib_handle", return );
+  arg1 = (struct PcmsInterpolatorOHMeshHandle *)farg1->cptr;
+  arg2 = (void *)(*farg2);
+  if (arg1) (arg1)->lib_handle = arg2;
+}
+
+
+SWIGEXPORT void * _wrap_PcmsInterpolatorOHMeshHandle_lib_handle_get(SwigClassWrapper *farg1) {
+  void * fresult ;
+  struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
+  void *result = 0 ;
+  
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::lib_handle", return 0);
+  arg1 = (struct PcmsInterpolatorOHMeshHandle *)farg1->cptr;
+  result = (void *) ((arg1)->lib_handle);
   fresult = (void *)(result);
   return fresult;
 }
@@ -422,6 +460,28 @@ SWIGEXPORT void _wrap_pcms_kokkos_initialize_without_args() {
 
 SWIGEXPORT void _wrap_pcms_kokkos_finalize() {
   pcms_kokkos_finalize();
+}
+
+
+SWIGEXPORT SwigClassWrapper _wrap_read_oh_mesh(SwigArrayWrapper *farg1) {
+  SwigClassWrapper fresult ;
+  char *arg1 = (char *) 0 ;
+  PcmsInterpolatorOHMeshHandle result;
+  
+  arg1 = (char *)(farg1->data);
+  result = read_oh_mesh((char const *)arg1);
+  fresult.cptr = (PcmsInterpolatorOHMeshHandle *)memcpy((PcmsInterpolatorOHMeshHandle *)calloc(1,sizeof(PcmsInterpolatorOHMeshHandle)),&result,sizeof(PcmsInterpolatorOHMeshHandle));
+  fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
+  return fresult;
+}
+
+
+SWIGEXPORT void _wrap_release_oh_mesh(SwigClassWrapper *farg1) {
+  PcmsInterpolatorOHMeshHandle arg1 ;
+  
+  SWIG_check_nonnull(farg1->cptr, "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle", "release_oh_mesh(PcmsInterpolatorOHMeshHandle)", return );
+  arg1 = *((PcmsInterpolatorOHMeshHandle *)(farg1->cptr));
+  release_oh_mesh(arg1);
 }
 
 

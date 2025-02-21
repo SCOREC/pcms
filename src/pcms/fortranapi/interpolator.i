@@ -9,7 +9,8 @@
 
 struct PcmsInterpolatorOHMeshHandle
 {
-  void* pointer;
+  void* mesh_handle;
+  void* lib_handle;
 };
 typedef struct PcmsInterpolatorOHMeshHandle PcmsInterpolatorOHMeshHandle;
 
@@ -25,3 +26,6 @@ void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator);
 
 void pcms_kokkos_initialize_without_args();
 void pcms_kokkos_finalize();
+
+PcmsInterpolatorOHMeshHandle read_oh_mesh(const char* filename);
+void release_oh_mesh(PcmsInterpolatorOHMeshHandle oh_mesh);

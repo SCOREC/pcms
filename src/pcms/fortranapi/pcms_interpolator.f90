@@ -20,8 +20,10 @@ module pcms_interpolator
  type, public :: PcmsInterpolatorOHMeshHandle
   type(SwigClassWrapper), public :: swigdata
  contains
-  procedure :: set_pointer => swigf_PcmsInterpolatorOHMeshHandle_pointer_set
-  procedure :: get_pointer => swigf_PcmsInterpolatorOHMeshHandle_pointer_get
+  procedure :: set_mesh_handle => swigf_PcmsInterpolatorOHMeshHandle_mesh_handle_set
+  procedure :: get_mesh_handle => swigf_PcmsInterpolatorOHMeshHandle_mesh_handle_get
+  procedure :: set_lib_handle => swigf_PcmsInterpolatorOHMeshHandle_lib_handle_set
+  procedure :: get_lib_handle => swigf_PcmsInterpolatorOHMeshHandle_lib_handle_get
   procedure :: release => swigf_PcmsInterpolatorOHMeshHandle_release
   procedure, private :: swigf_PcmsInterpolatorOHMeshHandle_op_assign__
   generic :: assignment(=) => swigf_PcmsInterpolatorOHMeshHandle_op_assign__
@@ -40,6 +42,12 @@ module pcms_interpolator
  public :: pcms_destroy_interpolator
  public :: pcms_kokkos_initialize_without_args
  public :: pcms_kokkos_finalize
+ type, bind(C) :: SwigArrayWrapper
+  type(C_PTR), public :: data = C_NULL_PTR
+  integer(C_SIZE_T), public :: size = 0
+ end type
+ public :: read_oh_mesh
+ public :: release_oh_mesh
  interface PcmsInterpolatorHandle
   module procedure swigf_new_PcmsInterpolatorHandle
  end interface
@@ -49,16 +57,33 @@ module pcms_interpolator
 
 ! WRAPPER DECLARATIONS
 interface
-subroutine swigc_PcmsInterpolatorOHMeshHandle_pointer_set(farg1, farg2) &
-bind(C, name="_wrap_PcmsInterpolatorOHMeshHandle_pointer_set")
+subroutine swigc_PcmsInterpolatorOHMeshHandle_mesh_handle_set(farg1, farg2) &
+bind(C, name="_wrap_PcmsInterpolatorOHMeshHandle_mesh_handle_set")
 use, intrinsic :: ISO_C_BINDING
 import :: swigclasswrapper
 type(SwigClassWrapper), intent(in) :: farg1
 type(C_PTR), intent(in) :: farg2
 end subroutine
 
-function swigc_PcmsInterpolatorOHMeshHandle_pointer_get(farg1) &
-bind(C, name="_wrap_PcmsInterpolatorOHMeshHandle_pointer_get") &
+function swigc_PcmsInterpolatorOHMeshHandle_mesh_handle_get(farg1) &
+bind(C, name="_wrap_PcmsInterpolatorOHMeshHandle_mesh_handle_get") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR) :: fresult
+end function
+
+subroutine swigc_PcmsInterpolatorOHMeshHandle_lib_handle_set(farg1, farg2) &
+bind(C, name="_wrap_PcmsInterpolatorOHMeshHandle_lib_handle_set")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR), intent(in) :: farg2
+end subroutine
+
+function swigc_PcmsInterpolatorOHMeshHandle_lib_handle_get(farg1) &
+bind(C, name="_wrap_PcmsInterpolatorOHMeshHandle_lib_handle_get") &
 result(fresult)
 use, intrinsic :: ISO_C_BINDING
 import :: swigclasswrapper
@@ -156,24 +181,41 @@ bind(C, name="_wrap_pcms_kokkos_finalize")
 use, intrinsic :: ISO_C_BINDING
 end subroutine
 
+function swigc_read_oh_mesh(farg1) &
+bind(C, name="_wrap_read_oh_mesh") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigarraywrapper
+import :: swigclasswrapper
+type(SwigArrayWrapper) :: farg1
+type(SwigClassWrapper) :: fresult
+end function
+
+subroutine swigc_release_oh_mesh(farg1) &
+bind(C, name="_wrap_release_oh_mesh")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+end subroutine
+
 end interface
 
 
 contains
  ! MODULE SUBPROGRAMS
-subroutine swigf_PcmsInterpolatorOHMeshHandle_pointer_set(self, pointer)
+subroutine swigf_PcmsInterpolatorOHMeshHandle_mesh_handle_set(self, mesh_handle)
 use, intrinsic :: ISO_C_BINDING
 class(PcmsInterpolatorOHMeshHandle), intent(in) :: self
-type(C_PTR), intent(in) :: pointer
+type(C_PTR), intent(in) :: mesh_handle
 type(SwigClassWrapper) :: farg1 
 type(C_PTR) :: farg2 
 
 farg1 = self%swigdata
-farg2 = pointer
-call swigc_PcmsInterpolatorOHMeshHandle_pointer_set(farg1, farg2)
+farg2 = mesh_handle
+call swigc_PcmsInterpolatorOHMeshHandle_mesh_handle_set(farg1, farg2)
 end subroutine
 
-function swigf_PcmsInterpolatorOHMeshHandle_pointer_get(self) &
+function swigf_PcmsInterpolatorOHMeshHandle_mesh_handle_get(self) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR) :: swig_result
@@ -182,7 +224,32 @@ type(C_PTR) :: fresult
 type(SwigClassWrapper) :: farg1 
 
 farg1 = self%swigdata
-fresult = swigc_PcmsInterpolatorOHMeshHandle_pointer_get(farg1)
+fresult = swigc_PcmsInterpolatorOHMeshHandle_mesh_handle_get(farg1)
+swig_result = fresult
+end function
+
+subroutine swigf_PcmsInterpolatorOHMeshHandle_lib_handle_set(self, lib_handle)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsInterpolatorOHMeshHandle), intent(in) :: self
+type(C_PTR), intent(in) :: lib_handle
+type(SwigClassWrapper) :: farg1 
+type(C_PTR) :: farg2 
+
+farg1 = self%swigdata
+farg2 = lib_handle
+call swigc_PcmsInterpolatorOHMeshHandle_lib_handle_set(farg1, farg2)
+end subroutine
+
+function swigf_PcmsInterpolatorOHMeshHandle_lib_handle_get(self) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR) :: swig_result
+class(PcmsInterpolatorOHMeshHandle), intent(in) :: self
+type(C_PTR) :: fresult 
+type(SwigClassWrapper) :: farg1 
+
+farg1 = self%swigdata
+fresult = swigc_PcmsInterpolatorOHMeshHandle_lib_handle_get(farg1)
 swig_result = fresult
 end function
 
@@ -320,6 +387,47 @@ subroutine pcms_kokkos_finalize()
 use, intrinsic :: ISO_C_BINDING
 
 call swigc_pcms_kokkos_finalize()
+end subroutine
+
+
+subroutine SWIGTM_fin_char_Sm_(finp, iminp, temp)
+  use, intrinsic :: ISO_C_BINDING
+  character(len=*), intent(in) :: finp
+  type(SwigArrayWrapper), intent(out) :: iminp
+  character(kind=C_CHAR), dimension(:), target, allocatable, intent(out) :: temp
+  integer :: i
+
+  allocate(character(kind=C_CHAR) :: temp(len(finp) + 1))
+  do i=1,len(finp)
+    temp(i) = char(ichar(finp(i:i)), kind=C_CHAR)
+  end do
+  i = len(finp) + 1
+  temp(i) = C_NULL_CHAR ! C finp compatibility
+  iminp%data = c_loc(temp)
+  iminp%size = len(finp, kind=C_SIZE_T)
+end subroutine
+
+function read_oh_mesh(filename) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsInterpolatorOHMeshHandle) :: swig_result
+character(len=*), intent(in) :: filename
+type(SwigClassWrapper) :: fresult 
+character(kind=C_CHAR), dimension(:), allocatable, target :: farg1_temp 
+type(SwigArrayWrapper) :: farg1 
+
+call SWIGTM_fin_char_Sm_(filename, farg1, farg1_temp)
+fresult = swigc_read_oh_mesh(farg1)
+swig_result%swigdata = fresult
+end function
+
+subroutine release_oh_mesh(oh_mesh)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsInterpolatorOHMeshHandle), intent(in) :: oh_mesh
+type(SwigClassWrapper) :: farg1 
+
+farg1 = oh_mesh%swigdata
+call swigc_release_oh_mesh(farg1)
 end subroutine
 
 

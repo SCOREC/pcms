@@ -26,20 +26,18 @@ public:
   //[[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const T& point) const
   [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Omega_h::Vector<2>& point) const
   {
-    std::array<Real, dim> distance_within_grid{point[0] - bot_left[0],
-                                               point[1] - bot_left[1]};
-    std::array<LO, dim> indexes{-1, -1};
+    std::array<Real, dim> distance_within_grid;
+    std::transform(point.begin(), point.begin() + dim, bot_left.begin(),
+                   distance_within_grid.begin(), std::minus<>());
+    
+    std::array<LO, dim> indexes;
+    indexes.fill(-1);
+
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
     for (int i = 0; i < dim; ++i) {
-      if (distance_within_grid[i] <= 0) {
-        indexes[dim - (i + 1)] = 0;
-      } else if (distance_within_grid[i] >= edge_length[i]) {
-        indexes[dim - (i + 1)] = divisions[i] - 1;
-      } else {
-        indexes[dim - (i + 1)] = 
-          static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
-      }
+      auto index = static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
+      indexes[dim - (i + 1)] = std::clamp(index, 0, divisions[i] - 1);
     }
     return GetCellIndex(indexes[0], indexes[1]);
   }

@@ -39,7 +39,7 @@ public:
       auto index = static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
       indexes[dim - (i + 1)] = std::clamp(index, 0, divisions[i] - 1);
     }
-    return GetCellIndex(indexes[0], indexes[1]);
+    return GetCellIndex(indexes);
   }
   [[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<dim> GetCellBBOX(LO idx) const
   {
@@ -55,10 +55,16 @@ public:
   {
     return {idx / divisions[0], idx % divisions[0]};
   }
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO GetCellIndex(LO i, LO j) const
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO GetCellIndex(const std::array<LO, dim>& point) const
   {
-    OMEGA_H_CHECK(i >= 0 && j >= 0 && i < divisions[1] && j < divisions[0]);
-    return i * divisions[0] + j;
+    LO idx = 0;
+    for (int i = 0; i < dim -1; i++) {
+      idx += point[i] * divisions[i];
+    }
+
+    idx += point[dim - 1];
+    return idx;
   }
 };
 

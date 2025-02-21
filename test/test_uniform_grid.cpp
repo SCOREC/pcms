@@ -44,7 +44,7 @@ TEST_CASE("uniform grid")
     REQUIRE(l == 9);
   }
   SECTION("GetCellIndex") {
-    REQUIRE(0 == uniform_grid.GetCellIndex(0,0));
-    REQUIRE(119 == uniform_grid.GetCellIndex(11,9));
+    REQUIRE(0 == uniform_grid.GetCellIndex({0,0}));
+    REQUIRE(119 == uniform_grid.GetCellIndex({11,9}));
   }
 }

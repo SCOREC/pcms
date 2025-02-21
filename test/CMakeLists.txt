@@ -161,6 +161,11 @@ if(PCMS_ENABLE_Fortran)
             TIMEOUT 10
             NAME1 finterface EXE1 $<TARGET_FILE:test_proxy_coupling_xgc_client_fortran> PROCS1 2 ARGS1 ${PCMS_TEST_DATA_DIR}/d3d/meshRclassification.txt
             NAME2 cppinterface EXE2 $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface> PROCS2 2 ARGS2 ${d3d1p} ${d3d2p_cpn} 1)
+
+    add_executable(test_interpolation_fortran test_interpolation.f90)
+    target_link_libraries(test_interpolation_fortran PUBLIC pcms::interpolator::fortranapi)
+    set_target_properties(test_interpolation_fortran PROPERTIES LINKER_LANGUAGE CXX)
+    mpi_test(test_interpolation_fortran 1 test_interpolation_fortran)
 endif()
 
 add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)

@@ -26,6 +26,8 @@ void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator)
 
 PcmsInterpolatorOHMeshHandle read_oh_mesh(const char * filename){
   auto fname = std::string(filename);
+  // trim the filename since it is coming from c or fortran api which may have extra spaces at the end
+  fname.erase(fname.find_last_not_of(" \n\r\t")+1);
   auto* oh_lib = new Omega_h::Library();
   auto* mesh = new Omega_h::Mesh(Omega_h::binary::read(fname, oh_lib->world()));
 

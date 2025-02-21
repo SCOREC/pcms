@@ -14,11 +14,14 @@ extern "C" {
 struct PcmsInterpolatorHandle { void* pointer; };
 typedef struct PcmsInterpolatorHandle PcmsInterpolatorHandle;
 
+struct PcmsInterpolatorOHMeshHandle { void* pointer; };
+typedef struct PcmsInterpolatorOHMeshHandle PcmsInterpolatorOHMeshHandle;
+
 /*
 enum for interpolation type
 */
 
-PcmsInterpolatorHandle pcms_create_interpolator(void* oh_mesh, double radius);
+PcmsInterpolatorHandle pcms_create_interpolator(PcmsInterpolatorOHMeshHandle oh_mesh, double radius);
 void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator);
 
 

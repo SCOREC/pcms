@@ -485,4 +485,21 @@ SWIGEXPORT void _wrap_release_oh_mesh(SwigClassWrapper *farg1) {
 }
 
 
+SWIGEXPORT void _wrap_pcms_interpolate(SwigClassWrapper *farg1, SwigClassWrapper *farg2, int const *farg3, SwigClassWrapper *farg4, int const *farg5) {
+  PcmsInterpolatorHandle arg1 ;
+  double *arg2 = (double *) 0 ;
+  int arg3 ;
+  double *arg4 = (double *) 0 ;
+  int arg5 ;
+  
+  SWIG_check_nonnull(farg1->cptr, "PcmsInterpolatorHandle", "PcmsInterpolatorHandle", "pcms_interpolate(PcmsInterpolatorHandle,double *,int,double *,int)", return );
+  arg1 = *((PcmsInterpolatorHandle *)(farg1->cptr));
+  arg2 = (double *)farg2->cptr;
+  arg3 = (int)(*farg3);
+  arg4 = (double *)farg4->cptr;
+  arg5 = (int)(*farg5);
+  pcms_interpolate(arg1,arg2,arg3,arg4,arg5);
+}
+
+
 

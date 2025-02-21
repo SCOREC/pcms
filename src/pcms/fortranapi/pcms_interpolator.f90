@@ -48,6 +48,10 @@ module pcms_interpolator
  end type
  public :: read_oh_mesh
  public :: release_oh_mesh
+ type, public :: SWIGTYPE_p_double
+  type(SwigClassWrapper), public :: swigdata
+ end type
+ public :: pcms_interpolate
  interface PcmsInterpolatorHandle
   module procedure swigf_new_PcmsInterpolatorHandle
  end interface
@@ -196,6 +200,17 @@ bind(C, name="_wrap_release_oh_mesh")
 use, intrinsic :: ISO_C_BINDING
 import :: swigclasswrapper
 type(SwigClassWrapper), intent(in) :: farg1
+end subroutine
+
+subroutine swigc_pcms_interpolate(farg1, farg2, farg3, farg4, farg5) &
+bind(C, name="_wrap_pcms_interpolate")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(SwigClassWrapper), intent(in) :: farg2
+integer(C_INT), intent(in) :: farg3
+type(SwigClassWrapper), intent(in) :: farg4
+integer(C_INT), intent(in) :: farg5
 end subroutine
 
 end interface
@@ -428,6 +443,27 @@ type(SwigClassWrapper) :: farg1
 
 farg1 = oh_mesh%swigdata
 call swigc_release_oh_mesh(farg1)
+end subroutine
+
+subroutine pcms_interpolate(interpolator, input, input_size, output, output_size)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsInterpolatorHandle), intent(in) :: interpolator
+class(SWIGTYPE_p_double), intent(in) :: input
+integer(C_INT), intent(in) :: input_size
+class(SWIGTYPE_p_double), intent(in) :: output
+integer(C_INT), intent(in) :: output_size
+type(SwigClassWrapper) :: farg1 
+type(SwigClassWrapper) :: farg2 
+integer(C_INT) :: farg3 
+type(SwigClassWrapper) :: farg4 
+integer(C_INT) :: farg5 
+
+farg1 = interpolator%swigdata
+farg2 = input%swigdata
+farg3 = input_size
+farg4 = output%swigdata
+farg5 = output_size
+call swigc_pcms_interpolate(farg1, farg2, farg3, farg4, farg5)
 end subroutine
 
 

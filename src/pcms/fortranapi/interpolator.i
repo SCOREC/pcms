@@ -1,0 +1,27 @@
+%module pcms_interpolator
+%{
+#include "pcms/capi/interpolator.h"
+#include "pcms/capi/kokkos.h"
+%}
+%include <../external/flibhpc/include/mpi.i>
+%include <stdint.i>
+%include <typemaps.i>
+
+struct PcmsInterpolatorOHMeshHandle
+{
+  void* pointer;
+};
+typedef struct PcmsInterpolatorOHMeshHandle PcmsInterpolatorOHMeshHandle;
+
+struct PcmsInterpolatorHandle {
+  void* pointer;
+};
+typedef struct PcmsInterpolatorHandle PcmsInterpolatorHandle;
+
+
+
+PcmsInterpolatorHandle pcms_create_interpolator(PcmsInterpolatorOHMeshHandle oh_mesh, double radius);
+void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator);
+
+void pcms_kokkos_initialize_without_args();
+void pcms_kokkos_finalize();

@@ -165,7 +165,7 @@ if(PCMS_ENABLE_Fortran)
     add_executable(test_interpolation_fortran test_interpolation.f90)
     target_link_libraries(test_interpolation_fortran PUBLIC pcms::interpolator::fortranapi)
     set_target_properties(test_interpolation_fortran PROPERTIES LINKER_LANGUAGE CXX)
-    mpi_test(test_interpolation_fortran 1 test_interpolation_fortran)
+    mpi_test(test_interpolation_fortran 1 ./test_interpolation_fortran ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh)
 endif()
 
 add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)

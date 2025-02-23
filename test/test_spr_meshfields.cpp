@@ -88,7 +88,7 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
   REQUIRE(m == n);
 
   for (size_t i = 0; i < m; ++i) {
-    std::cout << "vtx " << i << "\n";
+//    std::cout << "vtx " << i << "\n";
     CHECK_THAT(
         host_exact_target_values[i],
         Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
@@ -106,7 +106,10 @@ TEST_CASE("meshfields_spr_test")
   auto rank = lib.world()->rank();
   const auto boxSize = 1.0;
   const auto nElms = 6;
-  auto mesh = build_box(world, OMEGA_H_SIMPLEX, boxSize, boxSize, 0, nElms, nElms, 0, false);
+  const auto thwaitesMeshFile = "/lore/smithc11/projects/landice/thwaites_basal/thwaites_basalClass.osh";
+  Omega_h::Mesh mesh(&lib);
+  Omega_h::binary::read(thwaitesMeshFile, lib.world(), &mesh);
+  //auto mesh = build_box(world, OMEGA_H_SIMPLEX, boxSize, boxSize, 0, nElms, nElms, 0, false);
   std::cout << "mesh: elms " << mesh.nelems() << " verts " << mesh.nverts() << "\n";
 
   const auto dim = mesh.dim();
@@ -162,11 +165,11 @@ TEST_CASE("meshfields_spr_test")
         std::cerr << "start " << interp_degree << ", " << func_degree << " \n";
         int minPatchSize;
         if(interp_degree == 1) minPatchSize = 3;
-        if(interp_degree == 2) minPatchSize = 8; //why so large?
+        if(interp_degree == 2) minPatchSize = 16; //why so large?
         if(interp_degree == 3) minPatchSize = 10; //why so large?
         std::cerr << "minPatchSize " << minPatchSize << "\n";
         auto patches = mesh.get_vtx_patches(minPatchSize);
-        print_patches(patches);
+        //print_patches(patches);
 
         Write<Real> source_values(nfaces, 0, "exact target values");
 

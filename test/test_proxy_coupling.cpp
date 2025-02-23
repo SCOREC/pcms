@@ -13,8 +13,6 @@
 using pcms::Copy;
 using pcms::CouplerClient;
 using pcms::CouplerServer;
-using pcms::FieldEvaluationMethod;
-using pcms::FieldTransferMethod;
 using pcms::GO;
 using pcms::Lagrange;
 using pcms::make_array_view;
@@ -82,48 +80,20 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // TODO, fields should have a transfer policy rather than parameters
   auto* total_f_gids = total_f->AddField(
     "gids", OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap),
-    FieldTransferMethod::Copy, // to Omega_h
-    FieldEvaluationMethod::None,
-    FieldTransferMethod::Copy, // from Omega_h
-    FieldEvaluationMethod::None, is_overlap);
+    is_overlap);
   auto* delta_f_gids = delta_f->AddField(
     "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap),
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None,
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
+    is_overlap);
   auto* delta_f_gids2 = delta_f->AddField(
     "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap),
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None,
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
-  // CombinerFunction is a functor that takes a vector of omega_h
-  // fields combines their values and sets the combined values into the
-  // resultant field
-  auto* gather =
-    cpl.AddGatherFieldsOp("cpl1", {*total_f_gids, *delta_f_gids},
-                          "combined_gids", ts::MeanCombiner{}, is_overlap);
-  auto* scatter = cpl.AddScatterFieldsOp(
-    "cpl1", "combined_gids", {*total_f_gids, *delta_f_gids}, is_overlap);
-  // for case with symmetric Gather/Scatter we have
-  // auto [gather, scatter] = cpl.AddSymmetricGatherScatterOp("cpl1",
-  // {"total_f_gids", "delta_f_gids"},
-  //                      "combined_gids", MeanCombiner{});
+    is_overlap);
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      //  Gather OHField
-      // 1. receives any member fields .Receive()
-      // 2. field_transfer native to internal
-      // 3. combine internal fields into combined internal field
-      // gather->Run(); // alt cpl.GatherFields("cpl1")
-      // gather->Run(); // alt cpl.GatherFields("cpl1")
       total_f->ReceivePhase([&]() { total_f_gids->Receive(); });
       delta_f->ReceivePhase([&]() {
         delta_f_gids->Receive();
         delta_f_gids2->Receive();
       });
-      // Scatter OHField
-      // 1. OHField transfer internal to native
-      // 2. Send data to members
-      // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
-      // scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
       total_f->SendPhase([&]() { total_f_gids->Send(); });
       delta_f->SendPhase([&]() {
         delta_f_gids->Send(pcms::Mode::Deferred);

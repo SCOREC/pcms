@@ -11,6 +11,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 
 using namespace std;
 using namespace Omega_h;
@@ -28,6 +29,26 @@ void print_patches(Omega_h::Graph& patches) {
       std::cout << patchElm << " ";
     }
     std::cout << "\n";
+  }
+}
+
+void print_patch_vals(Omega_h::Graph& patches_d, Reals vtxCoords_d, Reals elmSrcVals_d, size_t vtx) {
+  const auto meshDim = 2;
+  const auto offsets = HostRead(patches_d.a2ab);
+  const auto values = HostRead(patches_d.ab2b);
+  const auto vtxCoords = HostRead(vtxCoords_d);
+  const auto elmSrcVals = HostRead(elmSrcVals_d);
+  std::cout << std::setprecision (15);
+  std::cout << "num patches " << patches_d.nnodes() << "\n";
+  for(int patch=0; patch<patches_d.nnodes(); patch++) {
+    if(patch == vtx) {
+      std::cout << "vtxCoords[" << patch << "] " << vtxCoords[patch*meshDim] << " " << vtxCoords[patch*meshDim+1] << "\n";
+      for (auto valIdx = offsets[patch]; valIdx < offsets[patch + 1]; ++valIdx) {
+        auto patchElm = values[valIdx];
+        std::cout << "elmSrcVal[" << patchElm << "] " << elmSrcVals[patchElm] << "\n";
+      }
+      std::cout << "\n";
+    }
   }
 
 }
@@ -88,7 +109,13 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
   REQUIRE(m == n);
 
   for (size_t i = 0; i < m; ++i) {
-//    std::cout << "vtx " << i << "\n";
+    if( delta_abs[i] > tolerance ) {
+      std::cout << std::setprecision (15);
+      std::cout << "exact_target_values[" << i << "] " << exact_target_values[i] << "\n";
+      std::cout << "approx_target_values[" << i << "] " << approx_target_values[i] << "\n";
+      std::cout << "abs(exact-approx) " << delta_abs[i] << "\n";
+      print_patch_vals(patches, target_coordinates, source_values, i);
+    }
     CHECK_THAT(
         host_exact_target_values[i],
         Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
@@ -165,7 +192,7 @@ TEST_CASE("meshfields_spr_test")
         std::cerr << "start " << interp_degree << ", " << func_degree << " \n";
         int minPatchSize;
         if(interp_degree == 1) minPatchSize = 3;
-        if(interp_degree == 2) minPatchSize = 16; //why so large?
+        if(interp_degree == 2) minPatchSize = 8; //why so large?
         if(interp_degree == 3) minPatchSize = 10; //why so large?
         std::cerr << "minPatchSize " << minPatchSize << "\n";
         auto patches = mesh.get_vtx_patches(minPatchSize);

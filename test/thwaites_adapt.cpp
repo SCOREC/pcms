@@ -98,10 +98,13 @@ void setupFieldTransfer(AdaptOpts& opts) {
 //}
 
 /**
- * for now this will be a stub that returns an analytic
- * linear field at elm centroids
+ * retrieve the effective strain rate from the mesh
+ *
+ * despite the name being 'effective_stress' it is the effective strain:
+ * the frobenius norm of  the strain tensor
   */
 Reals getEffectiveStrainRate(Mesh& mesh) {
+  return mesh.get_array<Real>(2, "effective_stress");
 }
 
 int main(int argc, char** argv) {
@@ -116,7 +119,8 @@ int main(int argc, char** argv) {
   Omega_h::binary::read(argv[1], world, &mesh);
 
   Omega_h::vtk::write_parallel("beforeClassFix_edges.vtk", &mesh, 1);
-  classify_by_angles(&mesh,60*(Omega_h::PI/180)); //NEEDED?
+
+  auto effectiveStrain = getEffectiveStrainRate(mesh);
 
   const std::string vtkFileName = std::string(argv[2]) + ".vtk";
   Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);

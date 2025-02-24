@@ -32,7 +32,8 @@ void print_patches(Omega_h::Graph& patches) {
   }
 }
 
-void print_patch_vals(Omega_h::Graph& patches_d, Reals vtxCoords_d, Reals elmSrcVals_d, size_t vtx) {
+void print_patch_vals(Omega_h::Graph& patches_d, Reals vtxCoords_d,
+    Reals elmSrcVals_d, Reals elmCentroids, size_t vtx) {
   const auto meshDim = 2;
   const auto offsets = HostRead(patches_d.a2ab);
   const auto values = HostRead(patches_d.ab2b);
@@ -43,9 +44,13 @@ void print_patch_vals(Omega_h::Graph& patches_d, Reals vtxCoords_d, Reals elmSrc
   for(int patch=0; patch<patches_d.nnodes(); patch++) {
     if(patch == vtx) {
       std::cout << "vtxCoords[" << patch << "] " << vtxCoords[patch*meshDim] << " " << vtxCoords[patch*meshDim+1] << "\n";
+      std::cout << "<elementIdx> <centroid x> <centroid y> <source_value>\n";
       for (auto valIdx = offsets[patch]; valIdx < offsets[patch + 1]; ++valIdx) {
         auto patchElm = values[valIdx];
-        std::cout << "elmSrcVal[" << patchElm << "] " << elmSrcVals[patchElm] << "\n";
+        std::cout <<  patchElm << " " 
+                  << elmCentroids[patchElm*meshDim] << " "
+                  << elmCentroids[patchElm*meshDim+1] << " "
+                  << elmSrcVals[patchElm] << "\n";
       }
       std::cout << "\n";
     }
@@ -114,7 +119,7 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
       std::cout << "exact_target_values[" << i << "] " << exact_target_values[i] << "\n";
       std::cout << "approx_target_values[" << i << "] " << approx_target_values[i] << "\n";
       std::cout << "abs(exact-approx) " << delta_abs[i] << "\n";
-      print_patch_vals(patches, target_coordinates, source_values, i);
+      print_patch_vals(patches, target_coordinates, source_values, source_coordinates, i);
     }
     CHECK_THAT(
         host_exact_target_values[i],

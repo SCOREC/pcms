@@ -8,7 +8,7 @@
 #include "Omega_h_for.hpp"
 #include "Omega_h_shape.hpp"
 #include "Omega_h_timer.hpp"
-#include "Omega_h_recover.hpp" //recover_hessians
+#include "Omega_h_recover.hpp" //project_by_fit
 #include <Omega_h_file.hpp> //Omega_h::binary
 #include <Omega_h_atomics.hpp> //Omega_h::atomic_fetch_add
 #include <sstream> //ostringstream
@@ -85,18 +85,6 @@ void setupFieldTransfer(AdaptOpts& opts) {
   }
 }
 
-//Reals recoverField(Mesh& mesh) {
-//  const auto interpDegree = 2;
-//  auto patches = mesh.get_vtx_patches(minPatchSize);
-//  int dim = mesh.dim();
-//  Omega_h::Write<Real> ignored(patches.ab2b.size(), 1);
-//  SupportResults support{patches.a2ab,patches.ab2b,ignored};
-//  auto approx_target_values =
-//    pcms::mls_interpolation(source_values, source_coordinates, target_coordinates,
-//        support, dim, degree, support.radii2, pcms::RadialBasisFunction::NO_OP);
-//  return approx_target_values;
-//}
-
 /**
  * retrieve the effective strain rate from the mesh
  *
@@ -105,6 +93,10 @@ void setupFieldTransfer(AdaptOpts& opts) {
   */
 Reals getEffectiveStrainRate(Mesh& mesh) {
   return mesh.get_array<Real>(2, "effective_stress");
+}
+
+Reals recoverLinearStrain(Mesh& mesh, Reals effectiveStrain) {
+  return project_by_fit(&mesh, effectiveStrain);
 }
 
 int main(int argc, char** argv) {
@@ -121,6 +113,8 @@ int main(int argc, char** argv) {
   Omega_h::vtk::write_parallel("beforeClassFix_edges.vtk", &mesh, 1);
 
   auto effectiveStrain = getEffectiveStrainRate(mesh);
+  auto recoveredStrain = recoverLinearStrain(mesh,effectiveStrain);
+  mesh.add_tag<Real>(VERT, "recoveredStrain", 1, recoveredStrain);
 
   const std::string vtkFileName = std::string(argv[2]) + ".vtk";
   Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);

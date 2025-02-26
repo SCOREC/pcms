@@ -101,6 +101,7 @@ int main(int argc, char** argv) {
 
   SelfProduct sp(estimation,omf);
   sp.process(coordFe);
+  std::cout << "SelfProduct: " << Kokkos::sqrt(sp.r) << "\n";
 
   const std::string vtkFileName = std::string(argv[2]) + ".vtk";
   Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);

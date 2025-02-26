@@ -124,6 +124,11 @@ class SelfProduct : public SInt
     OmegahMeshField& omf;
 };
 
-
+template<typename EstimationT, typename OmegahMeshField, typename FieldElement>
+void computeSizeFactor(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
+  SelfProduct sp(e,omf);
+  sp.process(coordFe);
+  std::cout << "SelfProduct: " << Kokkos::sqrt(sp.r) << "\n";
+}
 
 #endif

@@ -124,11 +124,78 @@ class SelfProduct : public SInt
     OmegahMeshField& omf;
 };
 
+/* computes the integral over the element of the
+   sum of the squared differences between the
+   original and recovered fields */
+template<typename EstimationT, typename OmegahMeshField> 
+class Error : public SInt
+{
+  public:
+    Error(EstimationT& estimation_in, OmegahMeshField& omf_in):
+      SInt(estimation_in.integration_order),
+      estimation(estimation_in),
+      omf(omf_in)
+    {
+    }
+    void atPoints(Kokkos::View<MeshField::Real**> p,
+                  Kokkos::View<MeshField::Real*> w,
+                  Kokkos::View<MeshField::Real*> dV)
+    {
+      std::cerr << "SelfProduct::atPoints(...)\n";
+      const size_t numPtsPerElem = p.extent(0)/estimation.mesh.nelems();
+      //FIXME eps isn't a ShapeField so we can't call 
+      //      omf.triangleLocalPointEval.  For now, just get
+      //      the value from the element and assert that there is
+      //      one integration point per element.
+      assert(numPtsPerElem == 1);
+      auto eps_star_atPts = omf.triangleLocalPointEval(p,numPtsPerElem,
+          estimation.eps_star);
+      double meshDim = estimation.mesh.dim();
+      double orderP = estimation.recovered_order;
+
+      const auto& eps = estimation.eps;
+      r = 0;
+      Kokkos::parallel_reduce(
+        "eval", estimation.mesh.nelems(),
+        KOKKOS_LAMBDA(const int &elm, MeshField::Real &r_local) {
+          const auto first = elm * numPtsPerElem;
+          const auto last = first + numPtsPerElem;
+          const auto eps_elm = eps[elm];
+          MeshField::Real sum = 0;
+          for (auto pt = first; pt < last; pt++) {
+            const auto eps_star_Pt = eps_star_atPts(pt,0);
+            const auto diff = eps_elm - eps_star_Pt;
+            const auto wPt = w(pt);
+            const auto dVPt = dV(pt);
+            sum += (diff * diff) * wPt * dVPt;
+          }
+          r_local += pow(sqrt(sum), ((2 * meshDim) / (2 * orderP + meshDim)));
+        },
+        r);
+
+    }
+    EstimationT& estimation;
+    OmegahMeshField& omf;
+};
+
 template<typename EstimationT, typename OmegahMeshField, typename FieldElement>
 void computeSizeFactor(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
   SelfProduct sp(e,omf);
   sp.process(coordFe);
-  std::cout << "SelfProduct: " << Kokkos::sqrt(sp.r) << "\n";
+  const double epsStarNorm = Kokkos::sqrt(sp.r);
+  std::cout << "SelfProduct: " << epsStarNorm << "\n";
+
+  Error errorIntegrator(e,omf);
+  errorIntegrator.process(coordFe);
+  std::cout << "Error: " << errorIntegrator.r << "\n";
+
+  const double a = e.tolerance * e.tolerance * // (n^hat)^2
+             epsStarNorm * epsStarNorm; // ||e*||^2
+  const double b = a / errorIntegrator.r; // term in parenthesis in section 4 of spr.tex
+  const double p = e.recovered_order;
+  e.size_factor = pow(b, 1.0 / (2.0 * p));
+  std::cout << "size_factor: " << e.size_factor << "\n";
+
 }
 
 #endif

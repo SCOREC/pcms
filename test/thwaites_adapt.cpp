@@ -95,9 +95,9 @@ int main(int argc, char** argv) {
   const auto [shp, map] = MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);
 
-  const auto tolerance = 1e-6; //FIXME - set to 'adaptRatio' in apf::spr
+  const auto adaptRatio = 0.1; //same value used in scorec/core:cws/sprThwaites test/spr_test.cc
   auto estimation = Estimation(mesh, effectiveStrain,
-      recoveredStrainField, tolerance);
+      recoveredStrainField, adaptRatio);
 
   computeSizeFactor(estimation, omf, coordFe);
 

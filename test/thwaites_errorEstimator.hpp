@@ -40,11 +40,11 @@ class Estimation {
     /* note that getOrder being used to convey this meaning
        is a bit of a hack, but looks decent if you don't
        try to define the FieldShape API too rigorously */
-    integration_order = -1; //FIXME get from eps_star
+    integration_order = 1; //FIXME get from eps_star
     /* so far recovery order is directly tied to the
        mesh's coordinate field order, coordinate this
        with field recovery code */
-    recovered_order = -1; //FIXME
+    recovered_order = 1; //FIXME
   }
   Omega_h::Mesh& mesh;
   /* the maximum polynomial order that can be
@@ -99,7 +99,7 @@ class SelfProduct : public SInt
     {
 
       std::cerr << "SelfProduct::atPoints(...)\n";
-      const size_t numPtsPerElem = p.size()/estimation.mesh.nelems();
+      const size_t numPtsPerElem = p.extent(0)/estimation.mesh.nelems();
       auto eps_star_atPts = omf.triangleLocalPointEval(p,numPtsPerElem,
           estimation.eps_star);
 

@@ -76,7 +76,7 @@ class Estimation {
      desired element size = current size * current error * size_factor */
   Omega_h::Real size_factor;
   /* a temporary field storing desired sizes at elements */
-  Omega_h::Reals element_size;
+  Kokkos::View<MeshField::Real*> element_size;
   /* the resulting size field, recovered from the element_size field
      (using a local average recovery method much weaker than SPR) */
   Omega_h::Reals size;
@@ -177,21 +177,16 @@ class Error : public SInt
     }
     EstimationT& estimation;
     OmegahMeshField& omf;
-    Kokkos::View<MeshField::Real*> errorNorm; // $\|e_\epsilon\|^{-\frac{2}{2p+d}}_e$
+    Kokkos::View<MeshField::Real*> errorNorm; // (||e_eps||_e)^(-2/(2p+d))
 };
 
 //TODO move this into Estimation class
-template<typename EstimationT, typename OmegahMeshField, typename FieldElement>
-void computeSizeFactor(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
+template<typename EstimationT, typename OmegahMeshField, typename FieldElement, typename ErrorT>
+void computeSizeFactor(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe, ErrorT& errorIntegrator) {
   SelfProduct sp(e,omf);
   sp.process(coordFe);
   const double epsStarNorm = Kokkos::sqrt(sp.r);
   std::cout << "SelfProduct: " << epsStarNorm << "\n";
-
-  Error errorIntegrator(e,omf);
-  errorIntegrator.process(coordFe);
-  std::cout << "Error: " << errorIntegrator.r << "\n";
-
   const double a = e.tolerance * e.tolerance * // (n^hat)^2
              epsStarNorm * epsStarNorm; // ||e*||^2
   const double b = a / errorIntegrator.r; // term in parenthesis in section 4 of spr.tex
@@ -201,9 +196,28 @@ void computeSizeFactor(EstimationT& e, OmegahMeshField& omf, FieldElement& coord
 
 }
 
+/* computes h_e^new from section 4 of spr.tex */
+template<typename EstimationT, typename ErrorT>
+void getElementSizeField(EstimationT& e, ErrorT& errorIntegrator) {
+  Kokkos::View<MeshField::Real*> eSize("eSize", e.mesh.nelems());
+  const auto errorNorm = errorIntegrator.errorNorm;
+  const auto size_factor = e.size_factor;
+  const auto currentElmSize = e.mesh.ask_sizes();
+  Kokkos::parallel_for(e.mesh.nelems(), KOKKOS_LAMBDA(const int elm) {
+    const double h = currentElmSize[elm]; // h_e^current //FIXME
+    eSize(elm) = h * errorNorm(elm) * size_factor;
+  });
+  e.element_size = eSize;
+}
+
 template<typename EstimationT, typename OmegahMeshField, typename FieldElement>
 void estimateError(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
-  computeSizeFactor(e, omf, coordFe);
+  Error errorIntegrator(e,omf);
+  errorIntegrator.process(coordFe);
+  std::cout << "Error: " << errorIntegrator.r << "\n";
+  computeSizeFactor(e, omf, coordFe, errorIntegrator);
+  getElementSizeField(e, errorIntegrator);
+//  averageSizeField(e);
 }
 
 #endif

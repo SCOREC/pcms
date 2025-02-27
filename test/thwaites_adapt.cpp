@@ -65,6 +65,12 @@ void setFieldAtVertices(Omega_h::Mesh &mesh, Reals recoveredStrain, ShapeField f
                           setFieldAtVertices, "setFieldAtVertices");
 }
 
+void printTriCount(Mesh* mesh) {
+  const auto nTri = mesh->nglobal_ents(2);
+  if (!mesh->comm()->rank())
+    std::cout << "nTri: " << nTri << "\n";
+}
+
 int main(int argc, char** argv) {
   feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);  // Enable all floating point exceptions but FE_INEXACT
   auto lib = Library(&argc, &argv);
@@ -99,13 +105,30 @@ int main(int argc, char** argv) {
   auto estimation = Estimation(mesh, effectiveStrain,
       recoveredStrainField, adaptRatio);
 
-  const auto sizeField = getSprSizeField(estimation, omf, coordFe);
-  Omega_h::Write<MeshField::Real> sizeField_oh(sizeField);
-  mesh.add_tag<Real>(VERT, "sizeField", 1, sizeField_oh);
+  const auto tgtLength = getSprSizeField(estimation, omf, coordFe);
+  Omega_h::Write<MeshField::Real> tgtLength_oh(tgtLength);
+  mesh.add_tag<Real>(VERT, "tgtLength", 1, tgtLength_oh);
 
-  const std::string vtkFileName = std::string(argv[2]) + ".vtk";
+  { //write vtk
+  const std::string vtkFileName = "beforeAdapt" + std::string(argv[2]) + ".vtk";
   Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);
-  const std::string vtkFileName_edges = std::string(argv[2]) + "_edges.vtk";
+  const std::string vtkFileName_edges = "beforeAdapt" + std::string(argv[2]) + "_edges.vtk";
   Omega_h::vtk::write_parallel(vtkFileName_edges, &mesh, 1);
+  }
+
+  //adapt
+  auto opts = Omega_h::AdaptOpts(&mesh);
+  //setupFieldTransfer(opts); //FIXME - add this back
+  printTriCount(&mesh);
+
+  auto verbose = true;
+  const auto isos = Omega_h::isos_from_lengths(tgtLength_oh);
+  Omega_h::grade_fix_adapt(&mesh, opts, isos, verbose);
+
+  { //write vtk
+  const std::string vtkFileName = "afterAdapt" + std::string(argv[2]) + ".vtk";
+  Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);
+  }
+
   return 0;
 }

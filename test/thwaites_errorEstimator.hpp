@@ -229,7 +229,8 @@ averageToVertex(Omega_h::Mesh& mesh, const Kokkos::View<MeshField::Real*>& elmSi
 }
 
 template<typename EstimationT, typename OmegahMeshField, typename FieldElement>
-void getSprSizeField(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
+Kokkos::View<MeshField::Real*>
+getSprSizeField(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
   Error errorIntegrator(e,omf);
   errorIntegrator.process(coordFe);
   std::cout << "Error: " << errorIntegrator.r << "\n";

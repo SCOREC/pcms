@@ -100,6 +100,8 @@ int main(int argc, char** argv) {
       recoveredStrainField, adaptRatio);
 
   const auto sizeField = getSprSizeField(estimation, omf, coordFe);
+  Omega_h::Write<MeshField::Real> sizeField_oh(sizeField);
+  mesh.add_tag<Real>(VERT, "sizeField", 1, sizeField_oh);
 
   const std::string vtkFileName = std::string(argv[2]) + ".vtk";
   Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);

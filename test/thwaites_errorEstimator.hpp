@@ -134,7 +134,8 @@ class Error : public SInt
     Error(EstimationT& estimation_in, OmegahMeshField& omf_in):
       SInt(estimation_in.integration_order),
       estimation(estimation_in),
-      omf(omf_in)
+      omf(omf_in),
+      errorNorm("errorNorm", estimation_in.mesh.nelems())
     {
     }
     void atPoints(Kokkos::View<MeshField::Real**> p,
@@ -169,15 +170,17 @@ class Error : public SInt
             const auto dVPt = dV(pt);
             sum += (diff * diff) * wPt * dVPt;
           }
-          r_local += pow(sqrt(sum), ((2 * meshDim) / (2 * orderP + meshDim)));
+          r_local += Kokkos::pow(Kokkos::sqrt(sum), ((2 * meshDim) / (2 * orderP + meshDim)));
+          errorNorm(elm) = Kokkos::pow(Kokkos::sqrt(sum), -(2 / (2 * orderP + meshDim)));  
         },
-        r);
-
+        r); // $\sum_{i=1}^n \|e_\epsilon\|^{\frac{2d}{2p+d}}$ 
     }
     EstimationT& estimation;
     OmegahMeshField& omf;
+    Kokkos::View<MeshField::Real*> errorNorm; // $\|e_\epsilon\|^{-\frac{2}{2p+d}}_e$
 };
 
+//TODO move this into Estimation class
 template<typename EstimationT, typename OmegahMeshField, typename FieldElement>
 void computeSizeFactor(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
   SelfProduct sp(e,omf);
@@ -193,9 +196,14 @@ void computeSizeFactor(EstimationT& e, OmegahMeshField& omf, FieldElement& coord
              epsStarNorm * epsStarNorm; // ||e*||^2
   const double b = a / errorIntegrator.r; // term in parenthesis in section 4 of spr.tex
   const double p = e.recovered_order;
-  e.size_factor = pow(b, 1.0 / (2.0 * p));
+  e.size_factor = Kokkos::pow(b, 1.0 / (2.0 * p));
   std::cout << "size_factor: " << e.size_factor << "\n";
 
+}
+
+template<typename EstimationT, typename OmegahMeshField, typename FieldElement>
+void estimateError(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
+  computeSizeFactor(e, omf, coordFe);
 }
 
 #endif

@@ -210,14 +210,32 @@ void getElementSizeField(EstimationT& e, ErrorT& errorIntegrator) {
   e.element_size = eSize;
 }
 
+Kokkos::View<MeshField::Real*>
+averageToVertex(Omega_h::Mesh& mesh, const Kokkos::View<MeshField::Real*>& elmSize) {
+  Kokkos::View<MeshField::Real*> sizeField("sizeField", mesh.nverts());
+  const auto v2e = mesh.ask_up(Omega_h::VERT, mesh.dim());
+  const auto v2e_offsets = v2e.a2ab;
+  const auto v2e_values = v2e.ab2b;
+  Kokkos::parallel_for(mesh.nverts(), KOKKOS_LAMBDA(const int vtx) {
+    MeshField::Real s = 0;
+    for (auto idx = v2e_offsets[vtx]; idx < v2e_offsets[vtx + 1]; ++idx) {
+      const auto elm = v2e_values[idx];
+      s += elmSize(elm);
+    }
+    const auto numUpElms = v2e_offsets[vtx+1] - v2e_offsets[vtx];
+    sizeField(vtx) =  s / numUpElms;
+  });
+  return sizeField;
+}
+
 template<typename EstimationT, typename OmegahMeshField, typename FieldElement>
-void estimateError(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
+void getSprSizeField(EstimationT& e, OmegahMeshField& omf, FieldElement& coordFe) {
   Error errorIntegrator(e,omf);
   errorIntegrator.process(coordFe);
   std::cout << "Error: " << errorIntegrator.r << "\n";
   computeSizeFactor(e, omf, coordFe, errorIntegrator);
   getElementSizeField(e, errorIntegrator);
-//  averageSizeField(e);
+  return averageToVertex(e.mesh, e.element_size);
 }
 
 #endif

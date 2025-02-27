@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
   auto estimation = Estimation(mesh, effectiveStrain,
       recoveredStrainField, adaptRatio);
 
-  estimateError(estimation, omf, coordFe);
+  const auto sizeField = getSprSizeField(estimation, omf, coordFe);
 
   const std::string vtkFileName = std::string(argv[2]) + ".vtk";
   Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);

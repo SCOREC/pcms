@@ -74,13 +74,19 @@ void printTriCount(Mesh* mesh) {
 int main(int argc, char** argv) {
   feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);  // Enable all floating point exceptions but FE_INEXACT
   auto lib = Library(&argc, &argv);
-  if( argc != 3 ) {
-    fprintf(stderr, "Usage: %s inputMesh.osh outputMeshPrefix\n", argv[0]);
+  if( argc != 4 ) {
+    fprintf(stderr, "Usage: %s inputMesh.osh outputMeshPrefix adaptRatio\n", argv[0]);
     exit(EXIT_FAILURE);
   }
   auto world = lib.world();
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[1], world, &mesh);
+  const auto prefix = std::string(argv[2]);
+  //adaptRatio = 0.1 is used in scorec/core:cws/sprThwaites test/spr_test.cc
+  const MeshField::Real adaptRatio = std::stof(argv[3]);
+  std::cout << "input mesh: " << argv[1] << " outputMeshPrefix: "
+            << prefix << " adaptRatio: " << adaptRatio << "\n";
+  const auto outname = prefix + "adaptRatio_" + std::string(argv[3]);
 
   Omega_h::vtk::write_parallel("beforeClassFix_edges.vtk", &mesh, 1);
 
@@ -101,7 +107,6 @@ int main(int argc, char** argv) {
   const auto [shp, map] = MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);
 
-  const auto adaptRatio = 0.1; //same value used in scorec/core:cws/sprThwaites test/spr_test.cc
   auto estimation = Estimation(mesh, effectiveStrain,
       recoveredStrainField, adaptRatio);
 
@@ -110,14 +115,15 @@ int main(int argc, char** argv) {
   mesh.add_tag<Real>(VERT, "tgtLength", 1, tgtLength_oh);
 
   { //write vtk
-  const std::string vtkFileName = "beforeAdapt" + std::string(argv[2]) + ".vtk";
+  const std::string vtkFileName = "beforeAdapt" + outname + ".vtk";
   Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);
-  const std::string vtkFileName_edges = "beforeAdapt" + std::string(argv[2]) + "_edges.vtk";
+  const std::string vtkFileName_edges = "beforeAdapt" + outname + "_edges.vtk";
   Omega_h::vtk::write_parallel(vtkFileName_edges, &mesh, 1);
   }
 
   //adapt
   auto opts = Omega_h::AdaptOpts(&mesh);
+  //opts.max_length_allowed = 64; //made the mesh even coarser....
   //setupFieldTransfer(opts); //FIXME - add this back
   printTriCount(&mesh);
 
@@ -126,7 +132,7 @@ int main(int argc, char** argv) {
   Omega_h::grade_fix_adapt(&mesh, opts, isos, verbose);
 
   { //write vtk
-  const std::string vtkFileName = "afterAdapt" + std::string(argv[2]) + ".vtk";
+  const std::string vtkFileName = "afterAdapt" + outname + ".vtk";
   Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);
   }
 

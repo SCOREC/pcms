@@ -203,8 +203,9 @@ void getElementSizeField(EstimationT& e, ErrorT& errorIntegrator) {
   const auto errorNorm = errorIntegrator.errorNorm;
   const auto size_factor = e.size_factor;
   const auto currentElmSize = e.mesh.ask_sizes();
+  e.mesh.template add_tag<MeshField::Real>(e.mesh.dim(), "curElmSize", 1, currentElmSize);
   Kokkos::parallel_for(e.mesh.nelems(), KOKKOS_LAMBDA(const int elm) {
-    const double h = currentElmSize[elm]; // h_e^current //FIXME
+    const double h = currentElmSize[elm]; // h_e^current
     eSize(elm) = h * errorNorm(elm) * size_factor;
   });
   e.element_size = eSize;

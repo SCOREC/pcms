@@ -84,9 +84,18 @@ int main(int argc, char** argv) {
   const auto prefix = std::string(argv[2]);
   //adaptRatio = 0.1 is used in scorec/core:cws/sprThwaites test/spr_test.cc
   const MeshField::Real adaptRatio = std::stof(argv[3]);
+  auto max_size = Real(16); //roughly maintains the boundary shape 
+                            //in the downstream parts of the domain
+                            //where there is significant coarsening
+  auto min_size = Real(1);  //roughly the smallest edge length in the
+                            //source mesh
   std::cout << "input mesh: " << argv[1] << " outputMeshPrefix: "
-            << prefix << " adaptRatio: " << adaptRatio << "\n";
-  const auto outname = prefix + "adaptRatio_" + std::string(argv[3]);
+            << prefix << " adaptRatio: " << adaptRatio
+            << " max_size: " << max_size
+            << " min_size: " << min_size << "\n";
+  const auto outname = prefix + "_adaptRatio_" + std::string(argv[3]) +
+                       "_maxSz_" + std::to_string(max_size) +
+                       "_minSz_" + std::to_string(min_size);
 
   Omega_h::vtk::write_parallel("beforeClassFix_edges.vtk", &mesh, 1);
 
@@ -123,13 +132,13 @@ int main(int argc, char** argv) {
 
   //adapt
   auto opts = Omega_h::AdaptOpts(&mesh);
-  //opts.max_length_allowed = 64; //made the mesh even coarser....
   //setupFieldTransfer(opts); //FIXME - add this back
   printTriCount(&mesh);
 
   auto verbose = true;
   const auto isos = Omega_h::isos_from_lengths(tgtLength_oh);
-  Omega_h::grade_fix_adapt(&mesh, opts, isos, verbose);
+  auto metric = clamp_metrics(mesh.nverts(), isos, min_size, max_size);
+  Omega_h::grade_fix_adapt(&mesh, opts, metric, verbose);
 
   { //write vtk
   const std::string vtkFileName = "afterAdapt" + outname + ".vtk";

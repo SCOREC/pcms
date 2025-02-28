@@ -27,7 +27,8 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 using namespace Omega_h;
 
 void setupFieldTransfer(AdaptOpts& opts) {
-  opts.xfer_opts.type_map["velocity"] = OMEGA_H_LINEAR_INTERP;
+  opts.xfer_opts.type_map["solution_1"] = OMEGA_H_LINEAR_INTERP;
+  opts.xfer_opts.type_map["solution_2"] = OMEGA_H_LINEAR_INTERP;
   opts.xfer_opts.type_map["ice_thickness"] = OMEGA_H_LINEAR_INTERP;
   const int numLayers = 11;
   for(int i=1; i<=numLayers; i++) {
@@ -132,7 +133,7 @@ int main(int argc, char** argv) {
 
   //adapt
   auto opts = Omega_h::AdaptOpts(&mesh);
-  //setupFieldTransfer(opts); //FIXME - add this back
+  setupFieldTransfer(opts);
   printTriCount(&mesh);
 
   auto verbose = true;
@@ -140,10 +141,13 @@ int main(int argc, char** argv) {
   auto metric = clamp_metrics(mesh.nverts(), isos, min_size, max_size);
   Omega_h::grade_fix_adapt(&mesh, opts, metric, verbose);
 
-  { //write vtk
-  const std::string vtkFileName = "afterAdapt" + outname + ".vtk";
-  Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);
+  { //write vtk and osh for adapted mesh
+  const std::string outfilename = "afterAdapt" + outname;
+  Omega_h::vtk::write_parallel(outfilename + ".vtk", &mesh, 2);
+  Omega_h::binary::write(outfilename + ".osh", &mesh);
+  std::cout << "wrote adapted mesh: " << outfilename + ".osh" << "\n";
   }
+
 
   return 0;
 }

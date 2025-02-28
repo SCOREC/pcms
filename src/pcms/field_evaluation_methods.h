@@ -21,17 +21,6 @@ struct NearestNeighbor
 
 struct Copy{};
 
-enum class FieldTransferMethod {
-  None,
-  Interpolate,
-  Copy
-};
-enum class FieldEvaluationMethod {
-  None,
-  Lagrange1,
-  NearestNeighbor
-};
-
 } // namespace pcms
 
 #endif // PCMS_COUPLING_FIELD_EVALUATION_METHODS_H

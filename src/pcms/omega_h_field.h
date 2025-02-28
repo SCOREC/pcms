@@ -579,61 +579,6 @@ private:
   OmegaHField<T, CoordinateElementType> field_;
   mesh_entity_type entity_type_;
 };
-template <typename FieldAdapter>
-void ConvertFieldAdapterToOmegaH(const FieldAdapter& adapter,
-                                 InternalField internal,
-                                 FieldTransferMethod ftm,
-                                 FieldEvaluationMethod fem)
-{
-  PCMS_FUNCTION_TIMER;
-  std::visit(
-    [&](auto&& internal_field) {
-      transfer_field(adapter, internal_field, ftm, fem);
-    },
-    internal);
-}
-
-template <typename FieldAdapter>
-void ConvertOmegaHToFieldAdapter(const InternalField& internal,
-                                 FieldAdapter& adapter, FieldTransferMethod ftm,
-                                 FieldEvaluationMethod fem)
-{
-  PCMS_FUNCTION_TIMER;
-  std::visit(
-    [&](auto&& internal_field) {
-      transfer_field(internal_field, adapter, ftm, fem);
-    },
-    internal);
-}
-// Specializations for the Omega_h field adapter class since get/set are
-// implemented on the OmegaHFieldClass which is owned by the field adapter
-template <typename T, typename C>
-void ConvertFieldAdapterToOmegaH(const OmegaHFieldAdapter<T, C>& adapter,
-                                 InternalField internal,
-                                 FieldTransferMethod ftm,
-                                 FieldEvaluationMethod fem)
-{
-  PCMS_FUNCTION_TIMER;
-  std::visit(
-    [&](auto&& internal_field) {
-      transfer_field(adapter.GetField(), internal_field, ftm, fem);
-    },
-    internal);
-}
-template <typename T, typename C>
-void ConvertOmegaHToFieldAdapter(const InternalField& internal,
-                                 OmegaHFieldAdapter<T, C>& adapter,
-                                 FieldTransferMethod ftm,
-                                 FieldEvaluationMethod fem)
-{
-  PCMS_FUNCTION_TIMER;
-  std::visit(
-    [&](auto&& internal_field) {
-      transfer_field(internal_field, adapter.GetField(), ftm, fem);
-    },
-    internal);
-}
-
 } // namespace pcms
 
 #endif // PCMS_COUPLING_OMEGA_H_FIELD_H

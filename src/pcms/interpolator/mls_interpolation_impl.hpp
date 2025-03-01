@@ -84,7 +84,21 @@ int calculate_basis_vector_size(const IntHostMatView& array);
  * @return The scratch size
  */
 int calculate_scratch_shared_size(const SupportResults& support,
-                                  const int nvertices_target, int basis_size);
+                                  const int ntargets, int basis_size);
+/**
+ *
+ * @brief Performs minmax normalization
+ *
+ * This function takes coordinates and dimension
+ * and outputs the normalized coordinates
+ *
+ * @param coordinates The Coordinates
+ * @param dim The Dimension
+ *
+ * @return normalized coordinates The normlaised coordinates
+ */
+Reals min_max_normalization(RealConstDefaultScalarArrayView coordinates,
+                            int dim);
 
 /**
  * @brief Evaluates the polynomial basis
@@ -128,6 +142,49 @@ void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
 
     prev_col = curr_col;
     curr_col = offset;
+  }
+}
+
+/**
+ *  @Brief Normalizes the support coordinates about the given target point
+ *
+ *  This function takes the pivot point Coord object
+ *  and support coordinates as input and gives normalized coordinates
+ *
+ *  @param[in] team The team member
+ *  @param[in, out] pivot The Coord object that stores the coordinate of the
+ *target pivot
+ *  @param[in,out] support_coordinates The orginal coordinates when in, when out
+ *  		normalized coordinates
+ **
+ */
+KOKKOS_INLINE_FUNCTION
+void normalize_coordinates(member_type team, Coord& pivot,
+                           ScratchMatView& support_coordinates)
+{
+  int nsupports = support_coordinates.extent(0);
+  int dim = support_coordinates.extent(1);
+
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports), [=](int i) {
+    Real pivot_point[MAX_DIM];
+
+    pivot_point[0] = pivot.x;
+    pivot_point[1] = pivot.y;
+
+    if (dim == 3) {
+      pivot_point[2] = pivot.z;
+    }
+
+    for (int j = 0; j < dim; ++j) {
+      support_coordinates(i, j) -= pivot_point[j];
+    }
+  });
+
+  pivot.x = 0;
+  pivot.y = 0;
+
+  if (dim == 3) {
+    pivot.z = 0;
   }
 }
 
@@ -427,8 +484,26 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
   static_assert(!std::is_pointer_v<Func>,
                 "function pointer will fail in GPU execution context");
 
-  const auto nvertices_source = source_coordinates.size() / dim;
-  const auto nvertices_target = target_coordinates.size() / dim;
+  int nsources = source_coordinates.size() / dim;
+
+  OMEGA_H_CHECK_PRINTF(
+    source_values.size() == nsources,
+    "[ERROR] The size of the source values and source coordinates is not same. "
+    "The current sizes are :\n"
+    "source_values_size = %d, source_coordinates_size = %d\n",
+    source_values.size(), nsources);
+
+  const auto ntargets = target_coordinates.size() / dim;
+
+  OMEGA_H_CHECK_PRINTF(
+    approx_target_values.size() == ntargets,
+    "[ERROR] The size of the approx target values and the number of targets is "
+    "not same. The current numbers are :\n"
+    "approx_target_values = %d, ntargets = %d\n",
+    approx_target_values.size(), ntargets);
+
+  //  auto source_coordinates = min_max_normalization(src_coordinates, dim);
+  //  auto target_coordinates = min_max_normalization(tgt_coordinates, dim);
 
   IntHostMatView host_slice_length(
     "stores slice length of  polynomial basis in host", degree, dim);
@@ -447,9 +522,9 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
   Kokkos::deep_copy(slice_length, slice_length_hd);
 
   int shared_size =
-    calculate_scratch_shared_size(support, nvertices_target, basis_size);
+    calculate_scratch_shared_size(support, ntargets, basis_size);
 
-  team_policy tp(nvertices_target, Kokkos::AUTO);
+  team_policy tp(ntargets, Kokkos::AUTO);
 
   int scratch_size = tp.scratch_size_max(0);
 
@@ -464,7 +539,30 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       int end_ptr = support.supports_ptr[league_rank + 1];
       int nsupports = end_ptr - start_ptr;
 
+      // local_source_point stores the coordinates of source supports of a given
+      // target
       ScratchMatView local_source_points(team.team_scratch(0), nsupports, dim);
+
+      // rbf function values of source supports Phi(n,n)
+      ScratchVecView phi_vector(team.team_scratch(0), nsupports);
+
+      //  vondermonde matrix P from the vectors of basis vector of supports
+      ScratchMatView vandermonde_matrix(team.team_scratch(0), nsupports,
+                                        basis_size);
+      // stores known vector (b)
+      ScratchVecView support_values(team.team_scratch(0), nsupports);
+
+      // basis of target
+      ScratchVecView target_basis_vector(team.team_scratch(0), basis_size);
+
+      // Initialize the scratch matrices and  vectors
+      fill(0.0, team, local_source_points);
+      fill(0.0, team, vandermonde_matrix);
+      fill(0.0, team, phi_vector);
+      fill(0.0, team, support_values);
+      fill(0.0, team, target_basis_vector);
+
+      // storing the coords of local supports
       int count = -1;
       for (int j = start_ptr; j < end_ptr; ++j) {
         count++;
@@ -476,25 +574,6 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         }
       }
 
-      //  vondermonde matrix P from the vectors of basis vector of supports
-      ScratchMatView vandermonde_matrix(team.team_scratch(0), nsupports,
-                                        basis_size);
-
-      // rbf function values of source supports Phi(n,n)
-      ScratchVecView phi_vector(team.team_scratch(0), nsupports);
-
-      // stores known vector (b)
-      ScratchVecView support_values(team.team_scratch(0), nsupports);
-
-      // basis of target
-      ScratchVecView target_basis_vector(team.team_scratch(0), basis_size);
-
-      // Initialize the scratch matrices and  vectors
-      fill(0.0, team, vandermonde_matrix);
-      fill(0.0, team, phi_vector);
-      fill(0.0, team, support_values);
-      fill(0.0, team, target_basis_vector);
-
       // evaluates the basis vector of a given target point
       Coord target_point;
       target_point.x = target_coordinates[league_rank * dim];
@@ -503,6 +582,40 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       if (dim == 3) {
         target_point.z = target_coordinates[league_rank * dim + 2];
       }
+
+      /** phi(nsupports) is the array of rbf functions evaluated at the
+       * source supports In the actual implementation, Phi(nsupports, nsupports)
+       * is the diagonal matrix & each diagonal element is the phi evaluated at
+       * each source points
+       *
+       * step 1: evaluate the phi vector
+       */
+
+      Kokkos::parallel_for(
+        Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
+          compute_phi_vector(target_point, local_source_points, j,
+                             support.radii2[league_rank], rbf_func, phi_vector);
+        });
+
+      team.team_barrier();
+
+      /**
+       *
+       * the local_source_points is of the type ScratchMatView with
+       * coordinates information; row is number of local supports
+       * & column is dim
+       *
+       * step 2: normalize local source supports and target point
+       */
+
+      // normalize_coordinates(team, target_point, local_source_points);
+
+      // team.team_barrier();
+      /**
+       *
+       * this can evaluate monomial basis vector for any degree of polynomial
+       * step 3: call basis vector evaluation function (eval_basis_vector);
+       */
       eval_basis_vector(slice_length, target_point, target_basis_vector);
 
       /** vandermonde_matrix(nsupports, basis_size) vandermonde Matrix is
@@ -522,20 +635,6 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         support.radii2[league_rank] > 0,
         "ERROR: radius2 has to be positive but found to be %.16f\n",
         support.radii2[league_rank]);
-
-      /** phi(nsupports) is the array of rbf functions evaluated at the
-       * source supports In the actual implementation, Phi(nsupports, nsupports)
-       * is the diagonal matrix & each diagonal element is the phi evaluated at
-       * each source points
-       */
-
-      Kokkos::parallel_for(
-        Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
-          compute_phi_vector(target_point, local_source_points, j,
-                             support.radii2[league_rank], rbf_func, phi_vector);
-        });
-
-      team.team_barrier();
 
       /** support_values(nsupports) (or known rhs vector b) is the vector of the
        * quantity that we want interpolate
@@ -595,9 +694,9 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const SupportResults& support, const LO& dim,
                               const LO& degree, Func rbf_func)
 {
-  const auto nvertices_source = source_coordinates.size() / dim;
+  const auto nsources = source_coordinates.size() / dim;
 
-  const auto nvertices_target = target_coordinates.size() / dim;
+  const auto ntargets = target_coordinates.size() / dim;
 
   RealConstDefaultScalarArrayView source_values_array_view(
     source_values.data(), source_values.size());
@@ -611,8 +710,7 @@ Write<Real> mls_interpolation(const Reals source_values,
   RealDefaultScalarArrayView radii2_array_view(support.radii2.data(),
                                                support.radii2.size());
 
-  Write<Real> interpolated_values(nvertices_target, 0,
-                                  "approximated target values");
+  Write<Real> interpolated_values(ntargets, 0, "approximated target values");
 
   RealDefaultScalarArrayView interpolated_values_array_view(
     interpolated_values.data(), interpolated_values.size());

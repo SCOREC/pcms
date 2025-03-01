@@ -3,7 +3,7 @@
 
 #include <Kokkos_Core.hpp>
 #include "../arrays.h"
-
+#include <Omega_h_array_ops.hpp>
 namespace pcms
 {
 

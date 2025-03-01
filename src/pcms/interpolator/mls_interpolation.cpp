@@ -11,12 +11,12 @@ struct RBF_GAUSSIAN
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    OMEGA_H_CHECK_PRINTF(rho_sq > 0,
+    OMEGA_H_CHECK_PRINTF(rho_sq >= 0,
                          "ERROR: square of cutoff distance should always be "
                          "positive but the value is %.16f\n",
                          rho_sq);
 
-    OMEGA_H_CHECK_PRINTF(r_sq > 0,
+    OMEGA_H_CHECK_PRINTF(r_sq >= 0,
                          "ERROR: square of  distance should always be positive "
                          "but the value is %.16f\n",
                          r_sq);
@@ -213,5 +213,53 @@ int calculate_scratch_shared_size(const SupportResults& support,
 
   return shared_size;
 }
+
+Reals min_max_normalization(RealConstDefaultScalarArrayView coordinates,
+                            int dim = 2)
+{
+  int num_points = coordinates.size() / dim;
+
+  int coords_size = coordinates.size();
+
+  Write<Real> x_coordinates(num_points, 0, "x coordinates");
+
+  Write<Real> y_coordinates(num_points, 0, "y coordinates");
+
+  parallel_for(
+    "separates x and y coordinates", num_points, KOKKOS_LAMBDA(const int id) {
+      int index = id * dim;
+
+      x_coordinates[id] = coordinates[index];
+      y_coordinates[id] = coordinates[index + 1];
+    });
+
+  HostRead<Real> host_x(read(x_coordinates));
+  HostRead<Real> host_y(read(y_coordinates));
+
+  const auto min_x = Omega_h::get_min(read(x_coordinates));
+  const auto min_y = Omega_h::get_min(read(y_coordinates));
+
+  const auto max_x = Omega_h::get_max(read(x_coordinates));
+  const auto max_y = Omega_h::get_max(read(y_coordinates));
+
+  printf(" [min_x, max_x] : [%12.6f , %12.6f]\n", min_x, max_x);
+  printf(" [min_y, max_y] : [%12.6f , %12.6f]\n", min_y, max_y);
+  const auto del_x = max_x - min_x;
+  const auto del_y = max_y - min_y;
+
+  printf(" [delx, dely] : [%12.6f , %12.6f]\n", del_x, del_y);
+  Write<Real> normalized_coordinates(coords_size, 0,
+                                     "stores scaled coordinates");
+
+  parallel_for(
+    "scale coordinates", num_points, KOKKOS_LAMBDA(const int id) {
+      int index = id * dim;
+      normalized_coordinates[index] = (x_coordinates[id] - min_x) / del_x;
+      normalized_coordinates[index + 1] = (y_coordinates[id] - min_y) / del_y;
+    });
+
+  return read(normalized_coordinates);
+}
+
 } // namespace detail
 } // namespace pcms

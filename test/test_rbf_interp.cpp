@@ -63,7 +63,6 @@ void test(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
 
     int m = exact_target_values.size();
     int n = approx_target_values.size();
-
     REQUIRE(m == n);
 
     for (size_t i = 0; i < m; ++i) {
@@ -74,7 +73,7 @@ void test(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
   }
 }
 // Test cases for centroid to node mapping using MLS
-TEST_CASE("mls_interp_test")
+TEST_CASE("test_mls_interpolation")
 {
 
   auto lib = Library{};
@@ -131,7 +130,7 @@ TEST_CASE("mls_interp_test")
 
   SECTION("test interpolation degree 1, function degree 0")
   {
-
+    std::cout << "-------starting test: d0p1------------" << "\n";
     int degree = 1;
     LO min_num_supports = 10;
 
@@ -152,11 +151,15 @@ TEST_CASE("mls_interp_test")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+
+    std::cout << " The test for d=0, p=1, passed " << "\n";
+    std::cout << "----------finishing  test: d0p1-------" << "\n";
   }
 
   SECTION("test interpolation degree 1, function degree 1")
   {
 
+    std::cout << "--------starting test: d1p1---------" << "\n";
     int degree = 1;
     LO min_num_supports = 10;
 
@@ -177,11 +180,13 @@ TEST_CASE("mls_interp_test")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+    std::cout << "------------finishing test: d1p1--------" << "\n";
   }
 
   SECTION("test interpo degree 2 poly degree 0")
   {
 
+    std::cout << "-------------starting test: d0p2------------" << "\n";
     int degree = 2;
     LO min_num_supports = 16;
 
@@ -202,11 +207,13 @@ TEST_CASE("mls_interp_test")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+    std::cout << "-------------finishing test: d0p2------------" << "\n";
   }
 
   SECTION("test interpolation degree 2 poly degree 1")
   {
 
+    std::cout << "----------------satrting test: d1p2--------------" << "\n";
     int degree = 2;
     LO min_num_supports = 16;
 
@@ -227,11 +234,13 @@ TEST_CASE("mls_interp_test")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+    std::cout << "----------------finishing test: d1p2--------------" << "\n";
   }
 
   SECTION("test interpolation degree 2, function degree 2")
   {
 
+    std::cout << "-------------starting test: d2p2--------------------" << "\n";
     int degree = 2;
     LO min_num_supports = 16;
 
@@ -252,11 +261,14 @@ TEST_CASE("mls_interp_test")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+    std::cout << "-------------finishing test: d2p2--------------------"
+              << "\n";
   }
 
   SECTION("test interpolation degree 3, function degree 2")
   {
 
+    std::cout << "-------------starting test: d2p3--------------------" << "\n";
     int degree = 3;
     LO min_num_supports = 20;
 
@@ -277,11 +289,14 @@ TEST_CASE("mls_interp_test")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+    std::cout << "-------------finishing test: d2p3--------------------"
+              << "\n";
   }
 
   SECTION("test interpolation degree 3, function degree 3")
   {
 
+    std::cout << "-------------starting test: d3p3--------------------" << "\n";
     int degree = 3;
     LO min_num_supports = 20;
 
@@ -302,5 +317,8 @@ TEST_CASE("mls_interp_test")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+
+    std::cout << "-------------finishing test: d3p3--------------------"
+              << "\n";
   }
 }

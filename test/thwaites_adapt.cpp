@@ -84,8 +84,8 @@ void printTriCount(Mesh* mesh) {
 int main(int argc, char** argv) {
   feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);  // Enable all floating point exceptions but FE_INEXACT
   auto lib = Library(&argc, &argv);
-  if( argc != 4 ) {
-    fprintf(stderr, "Usage: %s inputMesh.osh outputMeshPrefix adaptRatio\n", argv[0]);
+  if( argc != 6 ) {
+    fprintf(stderr, "Usage: %s inputMesh.osh outputMeshPrefix adaptRatio min_size max_size\n", argv[0]);
     exit(EXIT_FAILURE);
   }
   auto world = lib.world();
@@ -94,11 +94,10 @@ int main(int argc, char** argv) {
   const auto prefix = std::string(argv[2]);
   //adaptRatio = 0.1 is used in scorec/core:cws/sprThwaites test/spr_test.cc
   const MeshField::Real adaptRatio = std::stof(argv[3]);
-  auto max_size = Real(16); //roughly maintains the boundary shape 
-                            //in the downstream parts of the domain
-                            //where there is significant coarsening
-  auto min_size = Real(1);  //roughly the smallest edge length in the
-                            //source mesh
+  const MeshField::Real min_size = std::stof(argv[4]); //the smallest edge length in initial mesh is 1
+  const MeshField::Real max_size = std::stof(argv[5]); //a value of 8 or 16 roughly maintains the boundary shape
+                                                       //in the downstream parts of the domain
+                                                       //where there is significant coarsening
   std::cout << "input mesh: " << argv[1] << " outputMeshPrefix: "
             << prefix << " adaptRatio: " << adaptRatio
             << " max_size: " << max_size
@@ -106,8 +105,6 @@ int main(int argc, char** argv) {
   const auto outname = prefix + "_adaptRatio_" + std::string(argv[3]) +
                        "_maxSz_" + std::to_string(max_size) +
                        "_minSz_" + std::to_string(min_size);
-
-  Omega_h::vtk::write_parallel("beforeClassFix_edges.vtk", &mesh, 1);
 
   auto effectiveStrain = getEffectiveStrainRate(mesh);
   auto recoveredStrain = recoverLinearStrain(mesh,effectiveStrain);

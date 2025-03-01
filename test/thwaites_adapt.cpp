@@ -36,6 +36,9 @@ void setupFieldTransfer(AdaptOpts& opts) {
   opts.xfer_opts.type_map["prescribed_velocity_1"] = OMEGA_H_LINEAR_INTERP;
   opts.xfer_opts.type_map["prescribed_velocity_2"] = OMEGA_H_LINEAR_INTERP;
   opts.xfer_opts.type_map["observed_surface_velocity_rms"] = OMEGA_H_LINEAR_INTERP;
+  opts.xfer_opts.type_map["observed_surface_velocity_1"] = OMEGA_H_LINEAR_INTERP;
+  opts.xfer_opts.type_map["observed_surface_velocity_2"] = OMEGA_H_LINEAR_INTERP;
+  opts.xfer_opts.type_map["stiffening_factor_log"] = OMEGA_H_LINEAR_INTERP;
   const int numLayers = 11;
   for(int i=1; i<=numLayers; i++) {
     std::stringstream ss;

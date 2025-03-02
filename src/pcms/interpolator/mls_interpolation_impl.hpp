@@ -97,8 +97,7 @@ int calculate_scratch_shared_size(const SupportResults& support,
  *
  * @return normalized coordinates The normlaised coordinates
  */
-Reals min_max_normalization(RealConstDefaultScalarArrayView coordinates,
-                            int dim);
+Reals min_max_normalization(Reals& coordinates, int dim);
 
 /**
  * @brief Evaluates the polynomial basis
@@ -159,8 +158,8 @@ void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
  **
  */
 KOKKOS_INLINE_FUNCTION
-void normalize_coordinates(member_type team, Coord& pivot,
-                           ScratchMatView& support_coordinates)
+void normalize_supports(member_type team, Coord& pivot,
+                        ScratchMatView& support_coordinates)
 {
   int nsupports = support_coordinates.extent(0);
   int dim = support_coordinates.extent(1);
@@ -588,7 +587,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
        * is the diagonal matrix & each diagonal element is the phi evaluated at
        * each source points
        *
-       * step 1: evaluate the phi vector
+       * step 1: evaluate the phi vector with the original dimension
        */
 
       Kokkos::parallel_for(
@@ -608,9 +607,9 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
        * step 2: normalize local source supports and target point
        */
 
-      // normalize_coordinates(team, target_point, local_source_points);
+      normalize_supports(team, target_point, local_source_points);
 
-      // team.team_barrier();
+      team.team_barrier();
       /**
        *
        * this can evaluate monomial basis vector for any degree of polynomial
@@ -621,8 +620,9 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       /** vandermonde_matrix(nsupports, basis_size) vandermonde Matrix is
        * created with the basis vector of source supports stacking on top of
        * each other
+       *
+       * step 4: create vandermonde matrix
        */
-
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
           create_vandermonde_matrix(local_source_points, j, slice_length,
@@ -638,6 +638,9 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       /** support_values(nsupports) (or known rhs vector b) is the vector of the
        * quantity that we want interpolate
+       *
+       *
+       * step 4: find local supports function values
        */
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](const int j) {
@@ -649,6 +652,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       team.team_barrier();
 
+      // convert normal equation to Ax = b where A is a square matrix
       auto result = convert_normal_equation(vandermonde_matrix, phi_vector,
                                             support_values, team);
 

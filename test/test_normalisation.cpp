@@ -31,19 +31,6 @@ Reals fillFromMatrix(const Matrix<2, 10>& matrix)
 TEST_CASE("test_normalization_routine")
 {
 
-  SECTION("check min max omega_h function")
-  {
-    Reals vector({0.45, 0.12, -2.04, 1.52, -0.22, 0.96, 5.6});
-
-    const auto min_value = get_min(vector);
-    const auto max_value = get_max(vector);
-
-    printf("min value : %f , max_value : %f", min_value, max_value);
-    REQUIRE(min_value == -2.04);
-    REQUIRE(max_value == 5.6);
-
-  } // end SECTION
-
   SECTION("test_minmax_normalization")
   {
 
@@ -52,26 +39,14 @@ TEST_CASE("test_normalization_routine")
     Real tolerance = 1E-5;
     int num_points = 10;
 
-    Omega_h::Matrix<2, 10> matrix{{0.45, 3.18},
-                                  {0.12, -1.2},
-                                  {-2.04, -1.45},
-                                  {
-                                    1.52,
-                                    -0.98,
-                                  },
-                                  {-0.22, 1.45},
-                                  {0.96, 3.62},
-                                  {-0.26, -1.62},
-                                  {0.82, 4.22},
-                                  {5.6, 3.62},
+    Omega_h::Matrix<2, 10> matrix{{0.45, 3.18},   {0.12, -1.2},  {-2.04, -1.45},
+                                  {1.52, -0.98},  {-0.22, 1.45}, {0.96, 3.62},
+                                  {-0.26, -1.62}, {0.82, 4.22},  {5.6, 3.62},
                                   {1.2, 1.2}};
 
     auto coordinates = fillFromMatrix(matrix);
 
-    RealConstDefaultScalarArrayView coordinates_scalar_array_view(
-      coordinates.data(), 20);
-
-    auto results = min_max_normalization(coordinates_scalar_array_view, 2);
+    auto results = pcms::detail::min_max_normalization(coordinates, 2);
 
     printf("results after normalization");
     HostRead<Real> host_results(results);
@@ -99,6 +74,8 @@ TEST_CASE("test_normalization_routine")
       CAPTURE(i, host_results[index + 1], expected_results[i][1], tolerance);
       CHECK_THAT(host_results[index + 1],
                  Catch::Matchers::WithinAbs(expected_results[i][1], tolerance));
+
+      printf("-------------the test for min_max starts-----------\n");
     }
 
   } // end SECTION
@@ -133,6 +110,10 @@ TEST_CASE("test_normalization_routine")
     REQUIRE(total_coordinates == 54);
     Write<Real> normalized_support_coordinates(
       total_coordinates, 0, "coordinates after normalization");
+
+    Write<Real> normalized_target_coordinates(
+      total_coordinates, 0, "coordinates after normalization");
+
     Write<Real> all_support_coordinates(total_coordinates, 0,
                                         "support coordinates all");
     Write<Real> all_target_coordinates(total_coordinates, 0,
@@ -174,28 +155,48 @@ TEST_CASE("test_normalization_routine")
           });
 
         team.team_barrier();
-        detail::normalize_coordinates(team, target_point, local_supports);
+        detail::normalize_supports(team, target_point, local_supports);
 
         Kokkos::parallel_for(
           Kokkos::TeamThreadRange(team, num_supports), [=](int i) {
             for (int j = 0; j < dim; ++j) {
               int index = league_rank * num_supports * dim + i * dim + j;
               normalized_support_coordinates[index] = local_supports(i, j);
+              if (j == 0) {
+                normalized_target_coordinates[index] = target_point.x;
+              } else if (j == 1) {
+                normalized_target_coordinates[index] = target_point.y;
+              } else {
+                normalized_target_coordinates[index] = target_point.z;
+              }
             }
           });
       });
 
     auto host_all_support_coordinates =
       HostRead<Real>(read(all_support_coordinates));
-    auto host_normalized_support_coordinates =
-      HostRead<Real>(read(normalized_support_coordinates));
+
     auto host_all_target_coordinates =
       HostRead<Real>(read(all_target_coordinates));
+
+    auto host_normalized_support_coordinates =
+      HostRead<Real>(read(normalized_support_coordinates));
+
+    auto host_normalized_target_coordinates =
+      HostRead<Real>(read(normalized_target_coordinates));
+
     for (int i = 0; i < total_coordinates; ++i) {
-      auto result =
+      auto result_support =
         host_all_support_coordinates[i] - host_all_target_coordinates[i];
+
+      auto result_target =
+        host_all_target_coordinates[i] - host_all_target_coordinates[i];
+
       CHECK_THAT(host_normalized_support_coordinates[i],
-                 Catch::Matchers::WithinAbs(result, tolerance));
+                 Catch::Matchers::WithinAbs(result_support, tolerance));
+
+      CHECK_THAT(host_normalized_target_coordinates[i],
+                 Catch::Matchers::WithinAbs(result_target, tolerance));
     }
   } // end SECTION
 

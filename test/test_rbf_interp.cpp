@@ -66,6 +66,8 @@ void test(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
     REQUIRE(m == n);
 
     for (size_t i = 0; i < m; ++i) {
+      CAPTURE(i, host_exact_target_values[i], host_approx_target_values[i],
+              tolerance);
       CHECK_THAT(
         host_exact_target_values[i],
         Catch::Matchers::WithinAbs(host_approx_target_values[i], tolerance));
@@ -180,6 +182,8 @@ TEST_CASE("test_mls_interpolation")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+
+    std::cout << " The test for d=1, p=1, passed " << "\n";
     std::cout << "------------finishing test: d1p1--------" << "\n";
   }
 
@@ -207,6 +211,8 @@ TEST_CASE("test_mls_interpolation")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+
+    std::cout << " The test for d=0, p=2, passed " << "\n";
     std::cout << "-------------finishing test: d0p2------------" << "\n";
   }
 
@@ -234,6 +240,8 @@ TEST_CASE("test_mls_interpolation")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+
+    std::cout << " The test for d=1, p=2, passed " << "\n";
     std::cout << "----------------finishing test: d1p2--------------" << "\n";
   }
 
@@ -261,6 +269,7 @@ TEST_CASE("test_mls_interpolation")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+    std::cout << " The test for d=2, p=2, passed " << "\n";
     std::cout << "-------------finishing test: d2p2--------------------"
               << "\n";
   }
@@ -289,6 +298,7 @@ TEST_CASE("test_mls_interpolation")
     test(mesh, cutoffDistance, degree, min_num_supports, Reals(source_values),
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
+    std::cout << " The test for d=2, p=3, passed " << "\n";
     std::cout << "-------------finishing test: d2p3--------------------"
               << "\n";
   }
@@ -318,6 +328,7 @@ TEST_CASE("test_mls_interpolation")
          Reals(exact_target_values), Reals(source_coordinates),
          Reals(target_coordinates));
 
+    std::cout << " The test for d=3, p=3, passed " << "\n";
     std::cout << "-------------finishing test: d3p3--------------------"
               << "\n";
   }

@@ -214,8 +214,7 @@ int calculate_scratch_shared_size(const SupportResults& support,
   return shared_size;
 }
 
-Reals min_max_normalization(RealConstDefaultScalarArrayView coordinates,
-                            int dim = 2)
+Reals min_max_normalization(Reals& coordinates, int dim = 2)
 {
   int num_points = coordinates.size() / dim;
 

@@ -16,6 +16,8 @@
 #include <Omega_h_dbg.hpp>
 #include <Omega_h_for.hpp>
 
+#include <pcms/interpolator/mls_interpolation.hpp> //mls_interpolation
+
 #include "thwaites_errorEstimator.hpp"
 
 //detect floating point exceptions
@@ -61,6 +63,90 @@ Reals recoverLinearStrain(Mesh& mesh, Reals effectiveStrain) {
   return project_by_fit(&mesh, effectiveStrain);
 }
 
+Reals getElementCentroids(Mesh& mesh, Reals vtxCoords) {
+  assert(mesh.dim() == 2);
+  Write<Real> centroids(
+    mesh.dim() * mesh.nelems(), 0, "stores coordinates of cell centroid of each element");
+
+  const auto& faces2nodes = mesh.ask_down(FACE, VERT).ab2b;
+
+  Kokkos::parallel_for(
+    "calculate the centroid in each tri element", mesh.nelems(),
+    OMEGA_H_LAMBDA(const LO id) {
+      const auto current_el_verts = gather_verts<3>(faces2nodes, id);
+      const Omega_h::Few<Omega_h::Vector<2>, 3> current_el_vert_coords =
+        gather_vectors<3, 2>(vtxCoords, current_el_verts);
+      auto centroid = average(current_el_vert_coords);
+      int index = 2 * id;
+      centroids[index] = centroid[0];
+      centroids[index + 1] = centroid[1];
+    });
+
+  return read(centroids);
+}
+
+Reals min_max_normalization_coordinates(const Reals& coordinates, int dim = 2) {
+  int num_points = coordinates.size() / dim;
+
+  int coords_size = coordinates.size();
+
+  Write<Real> x_coordinates(num_points, 0, "x coordinates");
+
+  Write<Real> y_coordinates(num_points, 0, "y coordinates");
+
+  parallel_for(
+      "separates x and y coordinates", num_points, KOKKOS_LAMBDA(const int id) {
+      int index = id * dim;
+      x_coordinates[id] = coordinates[index];
+      y_coordinates[id] = coordinates[index + 1];
+      });
+
+
+  const auto min_x = Omega_h::get_min(read(x_coordinates));
+  const auto min_y = Omega_h::get_min(read(y_coordinates));
+
+  const auto max_x = Omega_h::get_max(read(x_coordinates));
+  const auto max_y = Omega_h::get_max(read(y_coordinates));
+
+  const auto del_x = max_x - min_x;
+  const auto del_y = max_y - min_y;
+
+  Write<Real> normalized_coordinates(coords_size, 0,
+      "stores scaled coordinates");
+
+  parallel_for(
+      "scale coordinates", num_points, KOKKOS_LAMBDA(const int id) {
+      int index = id * dim;
+      normalized_coordinates[index] = (x_coordinates[id] - min_x) / del_x;
+      normalized_coordinates[index + 1] = (y_coordinates[id] - min_y) / del_y;
+      });
+
+  return read(normalized_coordinates);
+}
+
+Reals recoverLinearStrainPCMS(Mesh& mesh, Reals effectiveStrain) {
+  const auto dim = mesh.dim();
+  const Real tolerance = 5e-4;
+
+  // min_max normalise target coordinates
+  const auto& target_coordinates_original = mesh.coords();
+  auto target_coordinates = min_max_normalization_coordinates(target_coordinates_original, dim);
+
+  const auto source_coordinates = getElementCentroids(mesh, target_coordinates);
+
+  const auto min_patch_size = 3;
+  const auto patches = mesh.get_vtx_patches(min_patch_size);
+  Omega_h::Write<Real> ignored(patches.ab2b.size(), 1);
+  SupportResults support{patches.a2ab,patches.ab2b,ignored};
+
+  const auto interp_degree = 1;
+  const auto source_values = effectiveStrain;
+  auto linearStrain =
+    pcms::mls_interpolation (source_values, source_coordinates, target_coordinates,
+        support, dim, interp_degree, support.radii2, pcms::RadialBasisFunction::NO_OP);
+  return linearStrain;
+}
+
 Reals computeError(Mesh& mesh, Reals effectiveStrain, Reals recoveredStrain) {
   return Reals(mesh.nelems());
 }
@@ -80,6 +166,7 @@ void printTriCount(Mesh* mesh) {
   if (!mesh->comm()->rank())
     std::cout << "nTri: " << nTri << "\n";
 }
+
 
 int main(int argc, char** argv) {
   feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);  // Enable all floating point exceptions but FE_INEXACT

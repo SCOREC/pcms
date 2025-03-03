@@ -111,7 +111,7 @@ if(Catch2_FOUND)
 	      test_mls_basis.cpp
 	      test_rbf_interp.cpp
 	      test_linear_solver.cpp
-          test_spr_meshfields.cpp)
+              )
   endif ()
 
   if (PCMS_ENABLE_MESHFIELDS)

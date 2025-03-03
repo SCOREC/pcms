@@ -501,9 +501,6 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
     "approx_target_values = %d, ntargets = %d\n",
     approx_target_values.size(), ntargets);
 
-  //  auto source_coordinates = min_max_normalization(src_coordinates, dim);
-  //  auto target_coordinates = min_max_normalization(tgt_coordinates, dim);
-
   IntHostMatView host_slice_length(
     "stores slice length of  polynomial basis in host", degree, dim);
 
@@ -598,6 +595,22 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       team.team_barrier();
 
+      /** support_values(nsupports) (or known rhs vector b) is the vector of the
+       * quantity that we want interpolate
+       *
+       *
+       * step 4: find local supports function values
+       */
+      Kokkos::parallel_for(
+        Kokkos::TeamThreadRange(team, nsupports), [=](const int j) {
+          support_values(j) =
+            source_values[support.supports_idx[start_ptr + j]];
+          OMEGA_H_CHECK_PRINTF(!std::isnan(support_values(j)),
+                               "ERROR: NaN found: at support %d\n", j);
+        });
+
+      team.team_barrier();
+
       /**
        *
        * the local_source_points is of the type ScratchMatView with
@@ -635,22 +648,6 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         support.radii2[league_rank] > 0,
         "ERROR: radius2 has to be positive but found to be %.16f\n",
         support.radii2[league_rank]);
-
-      /** support_values(nsupports) (or known rhs vector b) is the vector of the
-       * quantity that we want interpolate
-       *
-       *
-       * step 4: find local supports function values
-       */
-      Kokkos::parallel_for(
-        Kokkos::TeamThreadRange(team, nsupports), [=](const int j) {
-          support_values(j) =
-            source_values[support.supports_idx[start_ptr + j]];
-          OMEGA_H_CHECK_PRINTF(!std::isnan(support_values(j)),
-                               "ERROR: NaN found: at support %d\n", j);
-        });
-
-      team.team_barrier();
 
       // convert normal equation to Ax = b where A is a square matrix
       auto result = convert_normal_equation(vandermonde_matrix, phi_vector,

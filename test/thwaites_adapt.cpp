@@ -147,10 +147,6 @@ Reals recoverLinearStrainPCMS(Mesh& mesh, Reals effectiveStrain) {
   return linearStrain;
 }
 
-Reals computeError(Mesh& mesh, Reals effectiveStrain, Reals recoveredStrain) {
-  return Reals(mesh.nelems());
-}
-
 template <typename ShapeField>
 void setFieldAtVertices(Omega_h::Mesh &mesh, Reals recoveredStrain, ShapeField field) {
   const auto MeshDim = mesh.dim();
@@ -195,8 +191,13 @@ int main(int argc, char** argv) {
 
   auto effectiveStrain = getEffectiveStrainRate(mesh);
   auto recoveredStrain = recoverLinearStrain(mesh,effectiveStrain);
+  auto recoveredStrainPCMS = recoverLinearStrainPCMS(mesh,effectiveStrain);
   mesh.add_tag<Real>(VERT, "recoveredStrain", 1, recoveredStrain);
-  auto error = computeError(mesh,effectiveStrain,recoveredStrain);
+  mesh.add_tag<Real>(VERT, "recoveredStrainPCMS", 1, recoveredStrainPCMS);
+
+  const auto delta_abs = Omega_h::fabs_each(Omega_h::subtract_each(recoveredStrain,recoveredStrainPCMS));
+  const auto max_delta_abs = Omega_h::get_max(delta_abs);
+  std::cout << "mls_interpolation vs project_by_fit max_delta_abs " << max_delta_abs << "\n";
 
   MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
         mesh);

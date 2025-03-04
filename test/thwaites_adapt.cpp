@@ -124,7 +124,8 @@ Reals min_max_normalization_coordinates(const Reals& coordinates, int dim = 2) {
   return read(normalized_coordinates);
 }
 
-Reals recoverLinearStrainPCMS(Mesh& mesh, Reals effectiveStrain) {
+Reals recoverStrainPCMS(Mesh& mesh, Reals effectiveStrain, size_t degree) {
+  assert(degree > 0 && degree < 4);
   const auto dim = mesh.dim();
   const Real tolerance = 5e-4;
 
@@ -134,17 +135,22 @@ Reals recoverLinearStrainPCMS(Mesh& mesh, Reals effectiveStrain) {
 
   const auto source_coordinates = getElementCentroids(mesh, target_coordinates);
 
-  const auto min_patch_size = 3;
+  size_t min_patch_size = 0;
+  if(degree==1)
+    min_patch_size = 3;
+  if(degree==2)
+    min_patch_size = 6;
+  if(degree==3)
+    min_patch_size = 10;
   const auto patches = mesh.get_vtx_patches(min_patch_size);
   Omega_h::Write<Real> ignored(patches.ab2b.size(), 1);
   SupportResults support{patches.a2ab,patches.ab2b,ignored};
 
-  const auto interp_degree = 1;
   const auto source_values = effectiveStrain;
-  auto linearStrain =
+  auto recovered =
     pcms::mls_interpolation (source_values, source_coordinates, target_coordinates,
-        support, dim, interp_degree, support.radii2, pcms::RadialBasisFunction::NO_OP);
-  return linearStrain;
+        support, dim, degree, support.radii2, pcms::RadialBasisFunction::NO_OP);
+  return recovered;
 }
 
 template <typename ShapeField>
@@ -191,7 +197,8 @@ int main(int argc, char** argv) {
 
   auto effectiveStrain = getEffectiveStrainRate(mesh);
   auto recoveredStrain = recoverLinearStrain(mesh,effectiveStrain);
-  auto recoveredStrainPCMS = recoverLinearStrainPCMS(mesh,effectiveStrain);
+  const auto recoveredFieldDegree = 2;
+  auto recoveredStrainPCMS = recoverStrainPCMS(mesh,effectiveStrain, recoveredFieldDegree);
   mesh.add_tag<Real>(VERT, "recoveredStrain", 1, recoveredStrain);
   mesh.add_tag<Real>(VERT, "recoveredStrainPCMS", 1, recoveredStrainPCMS);
 
@@ -205,7 +212,7 @@ int main(int argc, char** argv) {
   const auto MeshDim = 2;
   const auto ShapeOrder = 1;
   auto recoveredStrainField = omf.CreateLagrangeField<Real, ShapeOrder, MeshDim>();
-  setFieldAtVertices(mesh, recoveredStrain, recoveredStrainField);
+  setFieldAtVertices(mesh, recoveredStrainPCMS, recoveredStrainField);
 
   auto coordField = omf.getCoordField();
   const auto [shp, map] = MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);

@@ -13,11 +13,16 @@
 #include <KokkosBlas.hpp>
 #include <KokkosBlas1_team_dot.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
-
 #include "pcms_interpolator_aliases.hpp"
 #include "adj_search.hpp"
 #include "../assert.h"
 #include "../profile.h"
+#include "pcms_interpolator_array_ops.hpp"
+
+#include <KokkosBatched_ApplyQ_Decl.hpp> //KokkosBlas::ApplyQ
+#include <KokkosBatched_QR_Decl.hpp>     //KokkosBlas::QR
+#include <KokkosBatched_Trsv_Decl.hpp>   //KokkosBlas::Trsv
+#include <KokkosBlas2_gemv.hpp>          //KokkosBlas::gemv
 
 static constexpr int MAX_DIM = 3;
 
@@ -109,6 +114,9 @@ Reals min_max_normalization(Reals& coordinates, int dim);
  *   @param[in] p A reference to the coordinate struct
  *   @param[in,out] basis_vector The polynomial basis vector
  *
+ *   @note the basis_vector size is more than basis_size
+ *   to accomodate with the output from qr
+ *
  */
 KOKKOS_INLINE_FUNCTION
 void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
@@ -185,6 +193,44 @@ void normalize_supports(member_type team, Coord& pivot,
   if (dim == 3) {
     pivot.z = 0;
   }
+}
+
+/**
+ * @brief Fills the kokkos scratch view
+ *
+ * @param value The value to be populated
+ * @param team The team member
+ * @param matrix The scratch matrix
+ *
+ */
+KOKKOS_INLINE_FUNCTION
+void fill(double value, member_type team, ScratchMatView matrix)
+{
+
+  int row = matrix.extent(0);
+  int col = matrix.extent(1);
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int j) {
+    for (int k = 0; k < col; ++k) {
+      matrix(j, k) = value;
+    }
+  });
+}
+
+/**
+ * @brief Fills the kokkos scratch view
+ *
+ * @param value The value to be populated
+ * @param team The team member
+ * @param vector The scratch vector
+ *
+ */
+KOKKOS_INLINE_FUNCTION
+void fill(double value, member_type team, ScratchVecView vector)
+{
+
+  int size = vector.extent(0);
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
+                       [=](int j) { vector(j) = value; });
 }
 
 /**
@@ -288,21 +334,22 @@ void scale_column_trans_matrix(const ScratchMatView& matrix,
 }
 
 KOKKOS_INLINE_FUNCTION
-void eval_row_scaling(member_type team, int i,
-                      const ScratchVecView& diagonal_entries,
-                      ScratchMatView& matrix)
+void eval_row_scaling(member_type team, int i, ScratchVecView diagonal_entries,
+                      ScratchMatView matrix)
 {
 
   int row = matrix.extent(0);
   int column = matrix.extent(1);
-  int vector_size = diagonal_entries.size() OMEGA_H_CHECK_PRINTF(
+  int vector_size = diagonal_entries.size();
+
+  OMEGA_H_CHECK_PRINTF(
     vector_size == row,
     "[ERROR]: for row scaling the size of diagonal entries vector should be "
     "equal to the row of the matrix which is to be scaled\n"
     "size of vector = %d, row of a matrix = %d\n",
     vector_size, row);
-  ScratchVecView matrix_row = Kokkos::subview(matrix, j, Kokkos::ALL());
-  for (int j = 0; j < column; ++k) {
+  ScratchVecView matrix_row = Kokkos::subview(matrix, i, Kokkos::ALL());
+  for (int j = 0; j < column; ++j) {
     matrix(i, j) *=
       diagonal_entries(i); // scales each row of a matrix with corresponding
                            // entry in digonal entries vector
@@ -436,42 +483,54 @@ void solve_matrix(const ScratchMatView& square_matrix,
     KokkosBatched::Algo::SolveLU::Unblocked>::invoke(team, square_matrix, rhs);
 }
 
-/**
- * @brief Fills the kokkos scratch view
- *
- * @param value The value to be populated
- * @param team The team member
- * @param matrix The scratch matrix
- *
- */
 KOKKOS_INLINE_FUNCTION
-void fill(double value, member_type team, ScratchMatView matrix)
+void solve_weighted_matrix_serial_qr(member_type team, int league_rank,
+                                     ScratchVecView& weight,
+                                     ScratchMatView& matrix,
+                                     ScratchVecView& rhs_values)
 {
 
   int row = matrix.extent(0);
-  int col = matrix.extent(1);
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int j) {
-    for (int k = 0; k < col; ++k) {
-      matrix(j, k) = value;
-    }
+
+  int column = matrix.extent(1);
+
+  int weight_size = weight.size();
+
+  find_sq_root_each(team, weight);
+
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
+    eval_row_scaling(team, league_rank, weight, matrix);
   });
-}
 
-/**
- * @brief Fills the kokkos scratch view
- *
- * @param value The value to be populated
- * @param team The team member
- * @param vector The scratch vector
- *
- */
-KOKKOS_INLINE_FUNCTION
-void fill(double value, member_type team, ScratchVecView vector)
-{
+  // initilize tau array
+  ScratchVecView tau(team.team_scratch(0), column);
+  fill(0.0, team, tau);
 
-  int size = vector.extent(0);
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
-                       [=](int j) { vector(j) = value; });
+  // initialize work array
+  ScratchVecView work(team.team_scratch(0), column);
+  fill(0.0, team, work);
+
+  // for serial run
+  if (league_rank == 0) {
+
+    // compute QR factorization of matrix and stores the R in A and
+    // tau is used to recover Q
+    KokkosBatched::SerialQR<KokkosBlas::Algo::QR::Unblocked>::invoke(matrix,
+                                                                     tau, work);
+
+    // b = Q^{T}b
+
+    KokkosBatched::SerialApplyQ<
+      KokkosBatched::Side::Left, KokkosBatched::Trans::Transpose,
+      KokkosBlas::Algo::ApplyQ::Unblocked>::invoke(matrix, tau, rhs_values,
+                                                   work);
+
+    // b = R^{-1}b
+    KokkosBatched::SerialTrsv<
+      KokkosBatched::Uplo::Upper, KokkosBatched::Trans::NoTranspose,
+      KokkosBatched::Diag::NonUnit,
+      KokkosBlas::Algo::Trsv::Unblocked>::invoke(1.0, matrix, rhs_values);
+  }
 }
 
 /**
@@ -570,7 +629,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       ScratchVecView support_values(team.team_scratch(0), nsupports);
 
       // basis of target
-      ScratchVecView target_basis_vector(team.team_scratch(0), basis_size);
+      ScratchVecView target_basis_vector(team.team_scratch(0), nsupports);
 
       // Initialize the scratch matrices and  vectors
       fill(0.0, team, local_source_points);
@@ -680,10 +739,13 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       // It stores the solution in rhs vector itself
       //      solve_matrix(result.square_matrix, result.transformed_rhs, team);
 
+      solve_weighted_matrix_serial_qr(team, league_rank, phi_vector,
+                                      vandermonde_matrix, support_values);
+
       team.team_barrier();
 
-      double target_value = KokkosBlas::Experimental::dot(
-        team, result.transformed_rhs, target_basis_vector);
+      double target_value = KokkosBlas::Experimental::dot(team, support_values,
+                                                          target_basis_vector);
 
       if (team.team_rank() == 0) {
         OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",

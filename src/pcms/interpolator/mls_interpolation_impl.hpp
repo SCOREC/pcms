@@ -287,6 +287,27 @@ void scale_column_trans_matrix(const ScratchMatView& matrix,
   }
 }
 
+KOKKOS_INLINE_FUNCTION
+void eval_row_scaling(member_type team, int i,
+                      const ScratchVecView& diagonal_entries,
+                      ScratchMatView& matrix)
+{
+
+  int row = matrix.extent(0);
+  int column = matrix.extent(1);
+  int vector_size = diagonal_entries.size() OMEGA_H_CHECK_PRINTF(
+    vector_size == row,
+    "[ERROR]: for row scaling the size of diagonal entries vector should be "
+    "equal to the row of the matrix which is to be scaled\n"
+    "size of vector = %d, row of a matrix = %d\n",
+    vector_size, row);
+  ScratchVecView matrix_row = Kokkos::subview(matrix, j, Kokkos::ALL());
+  for (int j = 0; j < column; ++k) {
+    matrix(i, j) *=
+      diagonal_entries(i); // scales each row of a matrix with corresponding
+                           // entry in digonal entries vector
+  }
+}
 /**
  * @struct ResultConvertNormal
  * @brief Stores the results of matrix and vector transformations.
@@ -620,9 +641,9 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
        * step 2: normalize local source supports and target point
        */
 
-      normalize_supports(team, target_point, local_source_points);
+      //      normalize_supports(team, target_point, local_source_points);
 
-      team.team_barrier();
+      //      team.team_barrier();
       /**
        *
        * this can evaluate monomial basis vector for any degree of polynomial
@@ -650,13 +671,14 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         support.radii2[league_rank]);
 
       // convert normal equation to Ax = b where A is a square matrix
-      auto result = convert_normal_equation(vandermonde_matrix, phi_vector,
-                                            support_values, team);
+      //      auto result = convert_normal_equation(vandermonde_matrix,
+      //      phi_vector,
+      //                                            support_values, team);
 
-      team.team_barrier();
+      //      team.team_barrier();
 
       // It stores the solution in rhs vector itself
-      solve_matrix(result.square_matrix, result.transformed_rhs, team);
+      //      solve_matrix(result.square_matrix, result.transformed_rhs, team);
 
       team.team_barrier();
 

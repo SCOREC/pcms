@@ -17,6 +17,7 @@ using team_policy = typename Kokkos::TeamPolicy<>;
 using member_type = typename Kokkos::TeamPolicy<>::member_type;
 
 // alias for scratch view
+
 using ScratchSpace =
   typename Kokkos::DefaultExecutionSpace::scratch_memory_space;
 

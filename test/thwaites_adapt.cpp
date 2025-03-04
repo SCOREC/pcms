@@ -28,6 +28,47 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 using namespace Omega_h;
 
+
+//DEBUG {
+void print_patches(Omega_h::Graph& patches) {
+  auto offsets = HostRead(patches.a2ab);
+  auto values = HostRead(patches.ab2b);
+  std::cout << "num patches " << patches.nnodes() << "\n";
+  for(int patch=0; patch<patches.nnodes(); patch++) {
+    std::cout << "patch " << patch << " patchElms ";
+    for (auto valIdx = offsets[patch]; valIdx < offsets[patch + 1]; ++valIdx) {
+      auto patchElm = values[valIdx];
+      std::cout << patchElm << " ";
+    }
+    std::cout << "\n";
+  }
+}
+
+void print_patch_vals(const Omega_h::Graph& patches_d, Reals vtxCoords_d,
+    Reals elmSrcVals_d, Reals elmCentroids, size_t vtx) {
+  const auto meshDim = 2;
+  const auto offsets = HostRead(patches_d.a2ab);
+  const auto values = HostRead(patches_d.ab2b);
+  const auto vtxCoords = HostRead(vtxCoords_d);
+  const auto elmSrcVals = HostRead(elmSrcVals_d);
+  std::cout << std::setprecision (15);
+  for(int patch=0; patch<patches_d.nnodes(); patch++) {
+    if(patch == vtx) {
+      std::cout << "vtxCoords[" << patch << "] " << vtxCoords[patch*meshDim] << " " << vtxCoords[patch*meshDim+1] << "\n";
+      std::cout << "<elementIdx> <centroid x> <centroid y> <source_value>\n";
+      for (auto valIdx = offsets[patch]; valIdx < offsets[patch + 1]; ++valIdx) {
+        auto patchElm = values[valIdx];
+        std::cout <<  patchElm << " "
+                  << elmCentroids[patchElm*meshDim] << " "
+                  << elmCentroids[patchElm*meshDim+1] << " "
+                  << elmSrcVals[patchElm] << "\n";
+      }
+      std::cout << "\n";
+    }
+  }
+}
+//END DEBUG }
+
 void setupFieldTransfer(AdaptOpts& opts) {
   opts.xfer_opts.type_map["solution_1"] = OMEGA_H_LINEAR_INTERP;
   opts.xfer_opts.type_map["solution_2"] = OMEGA_H_LINEAR_INTERP;
@@ -150,6 +191,18 @@ Reals recoverStrainPCMS(Mesh& mesh, Reals effectiveStrain, size_t degree) {
   auto recovered =
     pcms::mls_interpolation (source_values, source_coordinates, target_coordinates,
         support, dim, degree, support.radii2, pcms::RadialBasisFunction::NO_OP);
+
+  //DEBUG {
+  //print problematic patches
+  const auto recoveredStrainPCMS_h = Omega_h::HostRead<Omega_h::Real>(recovered);
+  const auto bad_points = {4849, 5053};
+  for( auto& pt : bad_points ) {
+    std::cout << std::setprecision (15);
+    std::cout << "recoveredStrainMlsInterp[" << pt << "] " << recoveredStrainPCMS_h[pt] << "\n";
+    print_patch_vals(patches, target_coordinates, source_values, source_coordinates, pt);
+  }
+  //END DEBUG }
+
   return recovered;
 }
 
@@ -205,6 +258,7 @@ int main(int argc, char** argv) {
   const auto delta_abs = Omega_h::fabs_each(Omega_h::subtract_each(recoveredStrain,recoveredStrainPCMS));
   const auto max_delta_abs = Omega_h::get_max(delta_abs);
   std::cout << "mls_interpolation vs project_by_fit max_delta_abs " << max_delta_abs << "\n";
+
 
   MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
         mesh);

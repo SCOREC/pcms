@@ -139,7 +139,7 @@ Reals recoverStrainPCMS(Mesh& mesh, Reals effectiveStrain, size_t degree) {
   if(degree==1)
     min_patch_size = 3;
   if(degree==2)
-    min_patch_size = 6;
+    min_patch_size = 10; //6 results in a noisy field
   if(degree==3)
     min_patch_size = 10;
   const auto patches = mesh.get_vtx_patches(min_patch_size);

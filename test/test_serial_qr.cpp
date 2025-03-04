@@ -135,13 +135,13 @@ TEST_CASE("test_qr_serial")
                                                                            x);
     });
 
-  typename ColVectorViewType::HostMirror sol_host =
+  typename RowVectorViewType::HostMirror sol_host =
     Kokkos::create_mirror_view(x);
   Kokkos::deep_copy(sol_host, x);
 
-  for (int i = 0; i < sol_host.size(); ++i) {
-    REQUIRE(sol_host.size() == kx_host.size());
+  for (int i = 0; i < kx_host.size(); ++i) {
+    REQUIRE(sol_host.size() == 16);
     CAPTURE(sol_host(i), kx_host(i), 1e-15);
-    CHECK_THAT(sol_host(i), CATCH::Matchers::WithinAbs(kx_host[i], 1e-15));
+    CHECK_THAT(sol_host(i), Catch::Matchers::WithinAbs(kx_host[i], 1e-15));
   }
 }

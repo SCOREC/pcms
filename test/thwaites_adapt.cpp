@@ -170,15 +170,15 @@ Reals min_max_normalization_coordinates(const Reals& coordinates, int dim = 2) {
 
 Reals recoverMagVelocityPCMS(Mesh& mesh, Reals magVelocity, size_t degree, size_t minPatchSize) {
   assert(degree > 0 && degree < 4);
-  assert(minPatchSize > 0 && minPatchSize < 20);
+  assert(minPatchSize > degree && minPatchSize < 20);
   assert(magVelocity.size() == mesh.nverts());
   assert(mesh.nverts() > 0);
   const auto dim = mesh.dim();
   const Real tolerance = 5e-4;
 
-  const auto target_coordinates = mesh.coords();
+  auto target_coordinates = min_max_normalization_coordinates(mesh.coords(), dim);
 
-  const auto source_coordinates = mesh.coords();
+  auto source_coordinates = min_max_normalization_coordinates(mesh.coords(), dim);
 
   const auto patches = mesh.get_vtx_patches(minPatchSize, VERT);
   Omega_h::Write<Real> ignored(patches.ab2b.size(), 1);
@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
   Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);
   }
 
-  const auto recoveredFieldDegree = 2;
+  const auto recoveredFieldDegree = 2;  // deg=1, minPatchSize=3 looks fine; deg=2, minPatchSize=6 has problems
   auto recoveredMagVelocityPCMS = recoverMagVelocityPCMS(mesh, magVelocity, recoveredFieldDegree, minPatchSize);
   mesh.add_tag<Real>(VERT, "recoveredMagVelocityPCMS", 1, recoveredMagVelocityPCMS);
 

@@ -174,7 +174,8 @@ int calculate_basis_vector_size(const IntHostMatView& array)
 }
 
 int calculate_scratch_shared_size(const SupportResults& support,
-                                  const int nvertices_target, int basis_size)
+                                  const int nvertices_target, int basis_size,
+                                  int dim)
 {
 
   IntDeviceVecView shmem_each_team("stores the size required for each team",
@@ -186,15 +187,25 @@ int calculate_scratch_shared_size(const SupportResults& support,
       int end_ptr = support.supports_ptr[i + 1];
       int nsupports = end_ptr - start_ptr;
 
+      int max_size;
+      int min_size;
+      if (nsupports > basis_size) {
+        max_size = nsupports;
+        min_size = basis_size;
+      } else {
+        max_size = basis_size;
+        min_size = nsupports;
+      }
       size_t total_shared_size = 0;
-
       total_shared_size += ScratchMatView::shmem_size(basis_size, basis_size);
       total_shared_size += ScratchMatView::shmem_size(basis_size, nsupports);
       total_shared_size += ScratchMatView::shmem_size(nsupports, basis_size);
       total_shared_size += ScratchVecView::shmem_size(basis_size);
-      total_shared_size += ScratchVecView::shmem_size(nsupports) * 3;
-      total_shared_size += ScratchMatView::shmem_size(nsupports, 2);
-      total_shared_size += ScratchMatView::shmem_size(nsupports, 1);
+      total_shared_size += ScratchVecView::shmem_size(nsupports);
+      total_shared_size += ScratchMatView::shmem_size(nsupports, dim);
+      total_shared_size += ScratchMatView::shmem_size(nsupports, nsupports);
+      // total_shared_size += ScratchVecView::shmem_size(max_size);
+      // total_shared_size += ScratchVecView::shmem_size(min_size);
       shmem_each_team(i) = total_shared_size;
     });
 

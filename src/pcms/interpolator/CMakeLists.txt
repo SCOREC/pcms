@@ -8,7 +8,7 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     linear_interpolant.hpp
     multidimarray.hpp
     mls_interpolation.hpp
-	pcms_interpolator_array_ops.hpp
+	pcms_interpolator_view_utils.hpp
 )
 
 set(PCMS_FIELD_TRANSFER_SOURCES

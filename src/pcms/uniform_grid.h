@@ -24,10 +24,10 @@ public:
   // take the view as a template because it might be a subview type
   //template <typename T>
   //[[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const T& point) const
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Omega_h::Vector<2>& point) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Omega_h::Vector<dim>& point) const
   {
     std::array<Real, dim> distance_within_grid;
-    std::transform(point.begin(), point.begin() + dim, bot_left.begin(),
+    std::transform(point.begin(), point.end(), bot_left.begin(),
                    distance_within_grid.begin(), std::minus<>());
     
     std::array<LO, dim> indexes;
@@ -56,14 +56,16 @@ public:
     return {idx / divisions[0], idx % divisions[0]};
   }
 
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO GetCellIndex(const std::array<LO, dim>& point) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO GetCellIndex(const std::array<LO, dim>& dimensionedIndex) const
   {
     LO idx = 0;
-    for (int i = 0; i < dim -1; i++) {
-      idx += point[i] * divisions[i];
+    LO stride = 1;
+
+    for (int i = dim - 1; i >= 0; --i) {
+      idx += dimensionedIndex[i] * stride;
+      stride *= divisions[dim - 1 - i];
     }
 
-    idx += point[dim - 1];
     return idx;
   }
 };

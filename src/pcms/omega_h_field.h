@@ -1,7 +1,6 @@
 #ifndef PCMS_COUPLING_OMEGA_H_FIELD_H
 #define PCMS_COUPLING_OMEGA_H_FIELD_H
 #include "pcms/types.h"
-#include "pcms/external/span.h"
 #include <Omega_h_mesh.hpp>
 #include "pcms/field.h"
 #include "pcms/coordinate_systems.h"

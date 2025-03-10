@@ -24,7 +24,13 @@ set(PCMS_SOURCES
         pcms.cpp
         pcms/assert.cpp
         pcms/print.cpp
-        pcms/adapter/xgc/xgc_field_adapter.h)
+        pcms/adapter/xgc/xgc_field_adapter.h
+        pcms/coordinate_system.h
+        pcms/field_layout.h
+        pcms/adapter/omega_h/omega_h_field_layout.h
+        pcms/adapter/omega_h/omega_h_field2.h
+        pcms/adapter/omega_h/omega_h_field_layout.cpp
+        pcms/adapter/omega_h/omega_h_field2.cpp)
 
 configure_file(
   pcms/version.h.in

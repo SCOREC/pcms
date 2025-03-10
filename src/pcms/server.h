@@ -19,8 +19,7 @@ public:
                           FieldCommunicator<CommT> field_comm,
                           Omega_h::Mesh& internal_mesh,
                           Omega_h::Read<Omega_h::I8> internal_field_mask = {})
-    : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
-                                  InternalCoordinateElement>(
+    : internal_field_{OmegaHField<typename FieldAdapterT::value_type>(
         name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
   {
     PCMS_FUNCTION_TIMER;
@@ -32,8 +31,7 @@ public:
                           MPI_Comm mpi_comm, redev::Redev& redev,
                           redev::Channel& channel, Omega_h::Mesh& internal_mesh,
                           Omega_h::Read<Omega_h::I8> internal_field_mask)
-    : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
-                                  InternalCoordinateElement>(
+    : internal_field_{OmegaHField<typename FieldAdapterT::value_type>(
         name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
   {
     PCMS_FUNCTION_TIMER;

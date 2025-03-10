@@ -19,7 +19,7 @@ std::vector<LO> ReverseClassificationVertex::Serialize() const
   return serialized_data;
 }
 void ReverseClassificationVertex::Deserialize(
-  ScalarArrayView<LO, pcms::HostMemorySpace> serialized_data)
+  Rank1View<LO, pcms::HostMemorySpace> serialized_data)
 {
   // expect to deserialize into an empty reverse classification class
   PCMS_ALWAYS_ASSERT(data_.empty());
@@ -86,7 +86,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& instr,
     std::vector<LO> serialized_rc(sz);
     PCMS_ALWAYS_ASSERT(serialized_rc.size() == sz);
     MPI_Bcast(serialized_rc.data(), sz, MPI_INT32_T, root, comm);
-    pcms::ScalarArrayView<pcms::LO, pcms::HostMemorySpace> av{
+    pcms::Rank1View<pcms::LO, pcms::HostMemorySpace> av{
       serialized_rc.data(), serialized_rc.size()};
     ReverseClassificationVertex rc;
     rc.Deserialize(av);
@@ -115,7 +115,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(
 }
 
 void ReverseClassificationVertex::Insert(
-  const DimID& key, ScalarArrayView<LO, pcms::HostMemorySpace> data)
+  const DimID& key, Rank1View<LO, pcms::HostMemorySpace> data)
 {
   // mdspan doesn't have begin currently. This should be switched
   // to range based for-loop

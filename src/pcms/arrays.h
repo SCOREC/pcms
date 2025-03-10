@@ -11,8 +11,7 @@ namespace detail
 {
 
 template <typename ElementType, typename MemorySpace>
-struct memory_space_accessor
-  : public Kokkos::default_accessor<ElementType>
+struct memory_space_accessor : public Kokkos::default_accessor<ElementType>
 {
   using memory_space = MemorySpace;
 };
@@ -22,8 +21,7 @@ struct memory_space_accessor
 template <typename ContainerType, typename ElementType, typename Extents,
           typename LayoutPolicy, typename AccessorPolicy>
 auto make_mdspan(const ContainerType& /* unused */)
-  -> Kokkos::mdspan<ElementType, Extents, LayoutPolicy,
-                               AccessorPolicy>
+  -> Kokkos::mdspan<ElementType, Extents, LayoutPolicy, AccessorPolicy>
 {
   static_assert(detail::dependent_always_false<ContainerType>::type,
                 "creating mdspan is not implemented for type");
@@ -31,12 +29,20 @@ auto make_mdspan(const ContainerType& /* unused */)
 
 // TODO make_mdspan
 
+template <int Rank, typename ElementType, typename MemorySpace>
+using View =
+  Kokkos::mdspan<ElementType, Kokkos::dextents<LO, Rank>, Kokkos::layout_right,
+                 detail::memory_space_accessor<
+                   std::remove_reference_t<ElementType>, MemorySpace>>;
+
 template <typename ElementType, typename MemorySpace>
-using ScalarArrayView = Kokkos::mdspan<
-  ElementType, Kokkos::dextents<LO, 1>,
-  Kokkos::layout_right,
-  detail::memory_space_accessor<std::remove_reference_t<ElementType>,
-                                MemorySpace>>;
+using Rank1View = View<1, ElementType, MemorySpace>;
+
+template <typename ElementType, typename MemorySpace>
+using Rank2View = View<1, ElementType, MemorySpace>;
+
+template <typename MemorySpace>
+using GlobalIDView = Rank1View<GO, MemorySpace>;
 
 namespace detail
 {
@@ -89,29 +95,29 @@ using element_type_t = typename arr_trait<T, HasValueType<T>::value>::type;
 template <typename T, typename MemorySpace = detail::memory_space_selector_t<T>,
           typename ElementType = detail::element_type_t<T>>
 auto make_array_view(const T& array)
-  -> ScalarArrayView<const ElementType, MemorySpace>
+  -> Rank1View<const ElementType, MemorySpace>
 {
   using std::data;
   using std::size;
-  return ScalarArrayView<const ElementType, MemorySpace>{data(array),
-                                                         size(array)};
+  return Rank1View<const ElementType, MemorySpace>{data(array), size(array)};
 }
 template <typename T, typename MemorySpace = detail::memory_space_selector_t<T>,
           typename ElementType = detail::element_type_t<T>>
-auto make_array_view(T& array) -> ScalarArrayView<ElementType, MemorySpace>
+auto make_array_view(T& array) -> Rank1View<ElementType, MemorySpace>
 {
   using std::data;
   using std::size;
-  return ScalarArrayView<ElementType, MemorySpace>{data(array), size(array)};
+  return Rank1View<ElementType, MemorySpace>{data(array), size(array)};
 }
 
 template <typename T, typename MemorySpace = detail::memory_space_selector_t<T>,
-  typename ElementType = detail::element_type_t<T>>
-auto make_const_array_view(T& array) -> ScalarArrayView<const ElementType, MemorySpace>
+          typename ElementType = detail::element_type_t<T>>
+auto make_const_array_view(T& array)
+  -> Rank1View<const ElementType, MemorySpace>
 {
   using std::data;
   using std::size;
-  return ScalarArrayView<const ElementType, MemorySpace>{data(array), size(array)};
+  return Rank1View<const ElementType, MemorySpace>{data(array), size(array)};
 }
 } // namespace pcms
 #endif // PCMS_COUPLING_ARRAYS_H

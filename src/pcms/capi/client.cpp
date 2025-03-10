@@ -131,8 +131,8 @@ void pcms_create_xgc_field_adapter_t(
   const pcms::ReverseClassificationVertex& reverse_classification,
   in_overlap_function in_overlap, pcms::FieldAdapterVariant& field_adapter)
 {
-  PCMS_ALWAYS_ASSERT((size > 0) ? (data != nullptr) : true);
-  pcms::ScalarArrayView<T, pcms::HostMemorySpace> data_view(
+  PCMS_ALWAYS_ASSERT((size >0) ? (data!=nullptr) : true);
+  pcms::Rank1View<T, pcms::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<pcms::XGCFieldAdapter<T>>(
     name, comm, data_view, reverse_classification, in_overlap);

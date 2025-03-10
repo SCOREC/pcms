@@ -1,4 +1,4 @@
-#include "pcms/xgc_reverse_classification.h"
+#include "xgc_reverse_classification.h"
 #include "mpi.h"
 #include <fstream>
 #include "pcms/assert.h"

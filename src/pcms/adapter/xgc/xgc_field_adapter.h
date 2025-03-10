@@ -1,12 +1,12 @@
 #ifndef PCMS_COUPLING_XGC_FIELD_ADAPTER_H
 #define PCMS_COUPLING_XGC_FIELD_ADAPTER_H
-#include "omega_h_field.h"
+#include "pcms/adapter/omega_h/omega_h_field.h"
 #include "pcms/types.h"
 #include "pcms/memory_spaces.h"
 #include "pcms/field.h"
 #include <vector>
 #include <redev_variant_tools.h>
-#include "pcms/xgc_reverse_classification.h"
+#include "xgc_reverse_classification.h"
 #include "pcms/assert.h"
 #include "pcms/array_mask.h"
 #include "pcms/profile.h"

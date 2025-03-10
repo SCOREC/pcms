@@ -32,7 +32,7 @@ public:
    * geometric dimension and ID
    */
   XGCFieldAdapter(std::string name, MPI_Comm plane_communicator,
-                  ScalarArrayView<T, memory_space> data,
+                  Rank1View<T, memory_space> data,
                   const ReverseClassificationVertex& reverse_classification,
                   std::function<int8_t(int, int)> in_overlap)
     : name_(std::move(name)),
@@ -64,15 +64,15 @@ public:
     }
   }
 
-  int Serialize(
-    ScalarArrayView<T, memory_space> buffer,
-    ScalarArrayView<const pcms::LO, memory_space> permutation) const
+  int Serialize(Rank1View<T, memory_space> buffer,
+                Rank1View<const pcms::LO, memory_space> permutation) const
   {
     PCMS_FUNCTION_TIMER;
     static_assert(std::is_same_v<memory_space, pcms::HostMemorySpace>,
                   "gpu space unhandled\n");
     if (RankParticipatesCouplingCommunication()) {
-      auto const_data = ScalarArrayView<const T, memory_space>{
+      auto const_data =
+        Rank1View<const T, memory_space>{
         data_.data_handle(), data_.size()};
       if (buffer.size() > 0) {
         mask_.Apply(const_data, buffer, permutation);
@@ -81,9 +81,8 @@ public:
     }
     return 0;
   }
-  void Deserialize(
-    ScalarArrayView<const T, memory_space> buffer,
-    ScalarArrayView<const pcms::LO, memory_space> permutation) const
+  void Deserialize(Rank1View<const T, memory_space> buffer,
+                   Rank1View<const pcms::LO, memory_space> permutation) const
   {
     PCMS_FUNCTION_TIMER;
     static_assert(std::is_same_v<memory_space, pcms::HostMemorySpace>,
@@ -164,7 +163,7 @@ private:
   std::string name_;
   MPI_Comm plane_comm_;
   int plane_rank_;
-  ScalarArrayView<T, memory_space> data_;
+  Rank1View<T, memory_space> data_;
   std::vector<GO> gids_;
   const ReverseClassificationVertex& reverse_classification_;
   std::function<int8_t(int, int)> in_overlap_;
@@ -204,7 +203,7 @@ template <typename T, typename CoordinateElementType, typename MemorySpace>
 auto evaluate(
   const XGCFieldAdapter<T, CoordinateElementType>& field,
   Lagrange<1> /* method */,
-  ScalarArrayView<const CoordinateElementType, MemorySpace> coordinates)
+              Rank1View<const CoordinateElementType, MemorySpace> coordinates)
   -> Kokkos::View<T*, MemorySpace>
 {
   PCMS_FUNCTION_TIMER;
@@ -217,7 +216,7 @@ template <typename T, typename CoordinateElementType, typename MemorySpace>
 auto evaluate(
   const XGCFieldAdapter<T, CoordinateElementType>& field,
   NearestNeighbor /* method */,
-  ScalarArrayView<const CoordinateElementType, MemorySpace> coordinates)
+              Rank1View<const CoordinateElementType, MemorySpace> coordinates)
   -> Kokkos::View<T*, MemorySpace>
 {
   PCMS_FUNCTION_TIMER;
@@ -230,7 +229,7 @@ auto evaluate(
 template <typename T, typename CoordinateElementType, typename U>
 auto set_nodal_data(
   const XGCFieldAdapter<T, CoordinateElementType>& field,
-  ScalarArrayView<
+  Rank1View<
     const U, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
     data) -> void
 {

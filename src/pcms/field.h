@@ -45,11 +45,11 @@ public:
   using value_type = T;
   virtual const std::string& GetName() const noexcept = 0;
   virtual int Serialize(
-    ScalarArrayView<T, MemorySpace> buffer,
-    ScalarArrayView<const pcms::LO, MemorySpace> permutation) const = 0;
+    Rank1View<T, MemorySpace> buffer,
+    Rank1View<const pcms::LO, MemorySpace> permutation) const = 0;
   virtual void Deserialize(
-    ScalarArrayView<T, MemorySpace> buffer,
-    ScalarArrayView<const pcms::LO, MemorySpace> permutation) const = 0;
+    Rank1View<T, MemorySpace> buffer,
+    Rank1View<const pcms::LO, MemorySpace> permutation) const = 0;
   virtual std::vector<GO> GetGids() const = 0;
   virtual ReversePartitionMap GetReversePartitionMap(
     const redev::Partition& partition) const = 0;

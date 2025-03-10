@@ -265,7 +265,7 @@ auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
  */
 template <typename T, typename CoordinateElementType, typename U>
 auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
-                    ScalarArrayView<const U, OmegaHMemorySpace::type> data)
+                    Rank1View<const U, OmegaHMemorySpace::type> data)
   -> void
 {
   PCMS_FUNCTION_TIMER;
@@ -311,7 +311,7 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
 template <typename T, typename CoordinateElementType>
 auto evaluate(
   const OmegaHField<T, CoordinateElementType>& field, Lagrange<1> /* method */,
-  ScalarArrayView<const CoordinateElementType, OmegaHMemorySpace::type>
+  Rank1View<const CoordinateElementType, OmegaHMemorySpace::type>
     coordinates) -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
@@ -351,7 +351,7 @@ template <typename T, typename CoordinateElementType>
 auto evaluate(
   const OmegaHField<T, CoordinateElementType>& field,
   NearestNeighbor /* method */,
-  ScalarArrayView<const CoordinateElementType, OmegaHMemorySpace::type>
+  Rank1View<const CoordinateElementType, OmegaHMemorySpace::type>
     coordinates) -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
@@ -392,7 +392,7 @@ auto evaluate(
 template <typename T, typename Method, typename CoordinateElementType>
 auto evaluate(
   const OmegaHField<T, CoordinateElementType>& field, Method&& m,
-  ScalarArrayView<const CoordinateElementType, HostMemorySpace> coordinates)
+  Rank1View<const CoordinateElementType, HostMemorySpace> coordinates)
   -> std::enable_if_t<
     !std::is_same_v<typename OmegaHMemorySpace::type, HostMemorySpace>,
     Omega_h::HostRead<T>>
@@ -415,10 +415,10 @@ namespace Omega_h
 {
 template <typename T>
 auto make_array_view(const Omega_h::Read<T>& array)
-  -> pcms::ScalarArrayView<const T, typename pcms::OmegaHMemorySpace::type>
+  -> pcms::Rank1View<const T, typename pcms::OmegaHMemorySpace::type>
 {
   PCMS_FUNCTION_TIMER;
-  pcms::ScalarArrayView<const T, typename pcms::OmegaHMemorySpace::type>
+  pcms::Rank1View<const T, typename pcms::OmegaHMemorySpace::type>
     view(array.data(), array.size());
   return view;
 }
@@ -493,8 +493,9 @@ public:
     return field_.GetName();
   }
   // REQUIRED
-  int Serialize(ScalarArrayView<T, pcms::HostMemorySpace> buffer,
-                ScalarArrayView<const pcms::LO, pcms::HostMemorySpace>
+  int Serialize(
+    Rank1View<T, pcms::HostMemorySpace> buffer,
+    Rank1View<const pcms::LO, pcms::HostMemorySpace>
                   permutation) const
   {
     PCMS_FUNCTION_TIMER;
@@ -508,8 +509,9 @@ public:
     return array_h.size();
   }
   // REQUIRED
-  void Deserialize(ScalarArrayView<const T, pcms::HostMemorySpace> buffer,
-                   ScalarArrayView<const pcms::LO, pcms::HostMemorySpace>
+  void Deserialize(
+    Rank1View<const T, pcms::HostMemorySpace> buffer,
+    Rank1View<const pcms::LO, pcms::HostMemorySpace>
                      permutation) const
   {
     PCMS_FUNCTION_TIMER;

@@ -52,12 +52,10 @@ public:
   // each geometric entity in iteration order (for xgc) where the gids are in
   // ascending order
   using DataMapType = std::unordered_map<DimID, std::set<LO>>;
-  void Insert(const DimID& key,
-              ScalarArrayView<LO, pcms::HostMemorySpace> data);
+  void Insert(const DimID& key, Rank1View<LO, pcms::HostMemorySpace> data);
   void Insert(const DimID& key, LO data);
   [[nodiscard]] std::vector<LO> Serialize() const;
-  void Deserialize(
-    ScalarArrayView<LO, pcms::HostMemorySpace> serialized_data);
+  void Deserialize(Rank1View<LO, pcms::HostMemorySpace> serialized_data);
   [[nodiscard]] bool operator==(const ReverseClassificationVertex& other) const;
   [[nodiscard]] const std::set<LO>* Query(const DimID& geometry) const noexcept;
   [[nodiscard]] DataMapType::iterator begin() noexcept { return data_.begin(); }

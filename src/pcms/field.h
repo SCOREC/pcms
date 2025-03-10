@@ -1,6 +1,5 @@
 #ifndef PCMS_COUPLING_FIELD_H
 #define PCMS_COUPLING_FIELD_H
-#include "pcms/external/span.h"
 #include "pcms/types.h"
 #include "pcms/arrays.h"
 #include "pcms/memory_spaces.h"

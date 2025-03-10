@@ -8,7 +8,6 @@
 #include <Omega_h_array_ops.hpp>
 #include <redev.h>
 #include <redev_comm.h>
-#include <pcms/external/span.h>
 #include <pcms/memory_spaces.h>
 #include <pcms/omega_h_field.h>
 #include <functional>

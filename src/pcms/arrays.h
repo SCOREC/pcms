@@ -3,7 +3,6 @@
 #include "mdspan/mdspan.hpp"
 #include "pcms/types.h"
 #include "pcms/coordinate.h"
-#include "pcms/external/span.h"
 #include "pcms/memory_spaces.h"
 
 namespace pcms
@@ -29,13 +28,6 @@ struct coordinate_accessor
 
 } // namespace detail
 
-template <typename ArrayType>
-nonstd::span<typename ArrayType::value_type> GetSpan(ArrayType /* unused */)
-{
-  static_assert(detail::dependent_always_false<ArrayType>::type,
-                "creating span is not implemented for type");
-}
-
 template <typename ContainerType, typename ElementType, typename Extents,
           typename LayoutPolicy, typename AccessorPolicy>
 auto make_mdspan(const ContainerType& /* unused */)
@@ -45,56 +37,6 @@ auto make_mdspan(const ContainerType& /* unused */)
   static_assert(detail::dependent_always_false<ContainerType>::type,
                 "creating mdspan is not implemented for type");
 }
-
-template <typename CoordinateSystemT, typename ArrayType, typename DataType,
-          typename ExeSpace>
-class CoordinateArray
-{
-public:
-  CoordinateArray(ArrayType array) : data_(std::move(array)) {}
-  using coordinate_system = CoordinateSystemT;
-  using execution_space = ExeSpace;
-  using ArrayType::const_pointer;
-  using ArrayType::const_reference;
-  using ArrayType::pointer;
-  using ArrayType::reference;
-  using ArrayType::value_type;
-
-  // TODO convert this to mdspan
-  auto GetSpan() const
-  {
-    // return make_mdspan
-    return pcms::GetSpan<ArrayType, DataType>(data_);
-  }
-
-private:
-  ArrayType data_;
-};
-
-// Array wrapper
-// TODO convert instances of this to mdarray
-template <typename Container, typename ExeSpace>
-class ScalarArray
-{
-public:
-  ScalarArray(Container array) : data_(std::move(array)) {}
-  using execution_space = ExeSpace;
-  using value_type = typename Container::value_type;
-  using pointer = typename Container::pointer;
-  using reference = typename Container::reference;
-  using const_pointer = typename Container::const_pointer;
-  using const_reference = typename Container::const_reference;
-  // nonstd::span<DataType> GetSpan() { return
-  // pcms::GetSpan<Container,DataType>(data_); }
-  nonstd::span<const value_type> GetSpan() const
-  {
-    return pcms::GetSpan<Container>(data_);
-  }
-
-private:
-  Container data_;
-};
-
 
 template <typename ElementType, typename CoordinateSystem, typename MemorySpace,
           size_t N = 1>

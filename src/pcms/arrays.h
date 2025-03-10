@@ -2,7 +2,6 @@
 #define PCMS_COUPLING_ARRAYS_H
 #include "mdspan/mdspan.hpp"
 #include "pcms/types.h"
-#include "pcms/coordinate.h"
 #include "pcms/memory_spaces.h"
 
 namespace pcms
@@ -18,14 +17,6 @@ struct memory_space_accessor
   using memory_space = MemorySpace;
 };
 
-template <typename ElementType, typename CoordinateSystem, typename MemorySpace>
-struct coordinate_accessor
-  : public memory_space_accessor<ElementType, MemorySpace>
-{
-  using coordinate_system = CoordinateSystem;
-  using memory_space = MemorySpace;
-};
-
 } // namespace detail
 
 template <typename ContainerType, typename ElementType, typename Extents,
@@ -37,14 +28,6 @@ auto make_mdspan(const ContainerType& /* unused */)
   static_assert(detail::dependent_always_false<ContainerType>::type,
                 "creating mdspan is not implemented for type");
 }
-
-template <typename ElementType, typename CoordinateSystem, typename MemorySpace,
-          size_t N = 1>
-using CoordinateArrayView = Kokkos::mdspan<
-  CoordinateElement<ElementType, CoordinateSystem>,
-  Kokkos::extents<LO, Kokkos::dynamic_extent, N>,
-  Kokkos::layout_right,
-  detail::memory_space_accessor<ElementType, MemorySpace>>;
 
 // TODO make_mdspan
 

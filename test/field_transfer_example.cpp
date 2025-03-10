@@ -7,8 +7,8 @@
 #include <chrono>
 
 using pcms::Real;
-using OHField = pcms::OmegaHField<Real, Real>;
-using OHShim = pcms::OmegaHFieldAdapter<Real, Real>;
+using OHField = pcms::OmegaHField<Real>;
+using OHShim = pcms::OmegaHFieldAdapter<Real>;
 using pcms::copy_field;
 using pcms::get_nodal_coordinates;
 using pcms::get_nodal_data;

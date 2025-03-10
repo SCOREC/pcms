@@ -55,6 +55,61 @@ public:
     const redev::Partition& partition) const = 0;
 };
 */
+
+
+struct LocalizationHint {
+  void* data = nullptr;
+};
+
+/*
+* A field expresses the highest level view of operations
+* that a user can perform on a field
+* Note results must be tagged by the coordinate system type
+* Shape functions can be thought of as a particular field type.
+ */
+template <typename T>
+class Field {
+  /*
+  * specify the coordinates to evaluate the field
+   */
+  /*
+  virtual void SetEvaluationCoordinates(CoordinateView coordinates, LocalizationHint hint = {}) = 0;
+
+  // returns a hint that can be given to the Evaluate method
+  // this can be useful to cache data if you have multiple sets of coordinates you may evaluate
+  virtual LocalizationHint GetLocalizationHint(CoordinateView coordinates) = 0;
+
+  // always takes 3D view, dof holder #, dimension, component
+  // underlying allocated buffer needs to be #dof holder * # components
+  // We return a FieldDataView to make sure we get both the data, and the coordinate system that the data is in
+  virtual void Evaluate(FieldDataView<T> results) = 0;
+
+  // should offer component wise version?
+  // if data is scalar results are vector, if data is
+  // Results should use same coordinate frame as Coordinates passed in
+  virtual void EvaluateGradient(FieldDataView<T> results) = 0;
+
+  virtual void SetDOFHolderData(FieldDataView<T> data) = 0;
+  virtual CoordinateView GetDOFHolderCoordinates() = 0;
+
+  virtual const FieldLayout &GetLayout() = 0;
+  // number of physical dimensions (typically 1-6)
+  //int GetDimension();
+  virtual bool CanEvaluateGradient() = 0;
+  */
+  int Serialize(
+    Rank1View<T, pcms::HostMemorySpace> buffer,
+    Rank1View<const pcms::LO, pcms::HostMemorySpace>
+      permutation) const = 0;
+
+  void Deserialize(
+    Rank1View<const T, pcms::HostMemorySpace> buffer,
+    Rank1View<const pcms::LO, pcms::HostMemorySpace>
+      permutation) const = 0;
+
+  virtual ~Field() noexcept = default;
+};
+
 } // namespace pcms
 
 #endif // PCMS_COUPLING_FIELD_H

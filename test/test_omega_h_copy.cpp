@@ -24,8 +24,8 @@ TEST_CASE("copy omega_h_field data")
     mesh.add_tag<int>(0,"copied",1,zeros);
   }
   SECTION("No filter") {
-    pcms::OmegaHField<int,double> original("test_ids",mesh);
-    pcms::OmegaHField<int,double> copied("copied",mesh);
+    pcms::OmegaHField<int> original("test_ids",mesh);
+    pcms::OmegaHField<int> copied("copied",mesh);
     REQUIRE(original.Size() == copied.Size());
     pcms::copy_field(original,copied);
     auto copied_array = pcms::get_nodal_data(copied);
@@ -39,8 +39,8 @@ TEST_CASE("copy omega_h_field data")
   }
   SECTION("trivial positive mask"){
     Omega_h::Write<Omega_h::I8> mask(nverts,1);
-    pcms::OmegaHField<int,double> original("test_ids",mesh, mask);
-    pcms::OmegaHField<int,double> copied("copied",mesh,mask);
+    pcms::OmegaHField<int> original("test_ids",mesh, mask);
+    pcms::OmegaHField<int> copied("copied",mesh,mask);
     REQUIRE(original.Size() == copied.Size());
     pcms::copy_field(original,copied);
     auto copied_array = pcms::get_nodal_data(copied);
@@ -56,8 +56,8 @@ TEST_CASE("copy omega_h_field data")
     Omega_h::Write<Omega_h::I8> mask(nverts,0);
     Omega_h::parallel_for(
       nverts, OMEGA_H_LAMBDA(int i) { mask[i] = i%2; });
-    pcms::OmegaHField<int,double> original("test_ids",mesh,mask);
-    pcms::OmegaHField<int,double> copied("copied",mesh,mask);
+    pcms::OmegaHField<int> original("test_ids",mesh,mask);
+    pcms::OmegaHField<int> copied("copied",mesh,mask);
     REQUIRE(original.Size() == copied.Size());
     pcms::copy_field(original,copied);
     auto copied_array = pcms::get_nodal_data(copied);

@@ -88,15 +88,12 @@ Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
 }
 } // namespace detail
 
-template <typename T,
-          typename CoordinateElementType =
-            Real> // CoordinateElement<Cartesian, Real>>
+template <typename T> // CoordinateElement<Cartesian, Real>>
 class OmegaHField
 {
 public:
   using memory_space = OmegaHMemorySpace::type;
   using value_type = T;
-  using coordinate_element_type = CoordinateElementType;
 
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
               std::string global_id_name = "",
@@ -217,18 +214,17 @@ private:
   mesh_entity_type entity_type_;
 };
 
-using InternalCoordinateElement = Real;
 // internal field can only be one of the types supported by Omega_h
 // The coordinate element for all internal fields is the same since
 // all internal fields are on the same mesh
 using InternalField =
-  std::variant<OmegaHField<Omega_h::I8, InternalCoordinateElement>,
-               OmegaHField<Omega_h::I32, InternalCoordinateElement>,
-               OmegaHField<Omega_h::I64, InternalCoordinateElement>,
-               OmegaHField<Omega_h::Real, InternalCoordinateElement>>;
+  std::variant<OmegaHField<Omega_h::I8>,
+               OmegaHField<Omega_h::I32>,
+               OmegaHField<Omega_h::I64>,
+               OmegaHField<Omega_h::Real>>;
 
-template <typename T, typename CoordinateElementType>
-auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
+template <typename T>
+auto get_nodal_data(const OmegaHField<T>& field)
   -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
@@ -241,27 +237,19 @@ auto get_nodal_data(const OmegaHField<T, CoordinateElementType>& field)
 
 // TODO since Omega_h owns coordinate data, we could potentially
 // return a view of the data without lifetime issues.
-template <typename T, typename CoordinateElementType>
-auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
+template <typename T>
+auto get_nodal_coordinates(const OmegaHField<T>& field)
 {
   PCMS_FUNCTION_TIMER;
   static constexpr auto coordinate_dimension = 2;
-  if constexpr (detail::HasCoordinateSystem<CoordinateElementType>::value) {
-    //const auto coords = field.GetMesh().coords();
-    const auto coords = get_ent_centroids(field.GetMesh(), mesh_entity_to_int(field.GetEntityType()));
-    return coords;
-    // FIXME implement copy to
-    throw;
-  } else {
-    //auto coords = Omega_h::Reals{field.GetMesh().coords()};
-    auto coords = get_ent_centroids(field.GetMesh(), mesh_entity_to_int(field.GetEntityType()));
-    if (field.HasMask()) {
-      return detail::filter_array<typename decltype(coords)::value_type,
-                                  coordinate_dimension>(coords, field.GetMask(),
-                                                        field.Size());
-    }
-    return coords;
+  auto coords = get_ent_centroids(field.GetMesh(), mesh_entity_to_int(field.GetEntityType()));
+  if (field.HasMask()) {
+    // FIXME dimension should be made runtime parameter
+    return detail::filter_array<typename decltype(coords)::value_type,
+                                coordinate_dimension>(coords, field.GetMask(),
+                                                      field.Size());
   }
+  return coords;
   // should never be here. Quash warning
   return Omega_h::Reals{};
 }
@@ -269,8 +257,8 @@ auto get_nodal_coordinates(const OmegaHField<T, CoordinateElementType>& field)
 /**
  * Sets the data on the entire mesh
  */
-template <typename T, typename CoordinateElementType, typename U>
-auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
+template <typename T, typename U>
+auto set_nodal_data(const OmegaHField<T>& field,
                     Rank1View<const U, OmegaHMemorySpace::type> data)
   -> void
 {
@@ -314,10 +302,10 @@ auto set_nodal_data(const OmegaHField<T, CoordinateElementType>& field,
 }
 
 // TODO abstract out repeat parts of lagrange/nearest neighbor evaluation
-template <typename T, typename CoordinateElementType>
+template <typename T>
 auto evaluate(
-  const OmegaHField<T, CoordinateElementType>& field, Lagrange<1> /* method */,
-  Rank1View<const CoordinateElementType, OmegaHMemorySpace::type>
+  const OmegaHField<T>& field, Lagrange<1> /* method */,
+  Rank1View<const double, OmegaHMemorySpace::type>
     coordinates) -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
@@ -353,11 +341,11 @@ auto evaluate(
   return values;
 }
 
-template <typename T, typename CoordinateElementType>
+template <typename T>
 auto evaluate(
-  const OmegaHField<T, CoordinateElementType>& field,
+  const OmegaHField<T>& field,
   NearestNeighbor /* method */,
-  Rank1View<const CoordinateElementType, OmegaHMemorySpace::type>
+  Rank1View<const double, OmegaHMemorySpace::type>
     coordinates) -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
@@ -395,10 +383,10 @@ auto evaluate(
   return values;
 }
 
-template <typename T, typename Method, typename CoordinateElementType>
+template <typename T, typename Method>
 auto evaluate(
-  const OmegaHField<T, CoordinateElementType>& field, Method&& m,
-  Rank1View<const CoordinateElementType, HostMemorySpace> coordinates)
+  const OmegaHField<T>& field, Method&& m,
+  Rank1View<const double, HostMemorySpace> coordinates)
   -> std::enable_if_t<
     !std::is_same_v<typename OmegaHMemorySpace::type, HostMemorySpace>,
     Omega_h::HostRead<T>>
@@ -406,7 +394,7 @@ auto evaluate(
 {
   PCMS_FUNCTION_TIMER;
   auto coords_view =
-    Kokkos::View<const CoordinateElementType, Kokkos::HostSpace,
+    Kokkos::View<const double, Kokkos::HostSpace,
                  Kokkos::MemoryTraits<Kokkos::Unmanaged>>(&coordinates[0],
                                                           coordinates.size());
   using exe_space = typename OmegaHMemorySpace::type::execution_space;
@@ -469,13 +457,12 @@ inline Omega_h::Reals get_ent_centroids(Omega_h::Mesh& mesh, int entity_type)
 namespace pcms
 {
 
-template <typename T, typename CoordinateElementType = Real>
+template <typename T>
 class OmegaHFieldAdapter
 {
 public:
   using memory_space = OmegaHMemorySpace::type;
   using value_type = T;
-  using coordinate_element_type = CoordinateElementType;
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
                      std::string global_id_name = "", int search_nx = 10,
                      int search_ny = 10, mesh_entity_type entity_type = mesh_entity_type::VERTEX)
@@ -566,12 +553,12 @@ public:
     return reverse_partition;
   }
   // NOT REQUIRED PART OF FieldAdapter interface
-  [[nodiscard]] OmegaHField<T, CoordinateElementType>& GetField() noexcept
+  [[nodiscard]] OmegaHField<T>& GetField() noexcept
   {
     return field_;
   }
   // NOT REQUIRED PART OF FieldAdapter interface
-  [[nodiscard]] const OmegaHField<T, CoordinateElementType>& GetField()
+  [[nodiscard]] const OmegaHField<T>& GetField()
     const noexcept
   {
     return field_;
@@ -583,7 +570,7 @@ public:
   }
 
 private:
-  OmegaHField<T, CoordinateElementType> field_;
+  OmegaHField<T> field_;
   mesh_entity_type entity_type_;
 };
 } // namespace pcms

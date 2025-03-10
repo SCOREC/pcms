@@ -234,63 +234,7 @@ Omega_h::Read<Omega_h::I8> markOverlapMeshEntities(
 
 redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
                                      std::string_view cpnFileName);
-template <typename T1, typename T2>
-struct Sum
-{
-  Sum(T1 arr1, T2 arr2) : arr1_(arr1), arr2_(arr2) {}
-  KOKKOS_INLINE_FUNCTION
-  void operator()(int i) const noexcept { arr1_[i] += arr2_[i]; }
-  T1 arr1_;
-  T2 arr2_;
-};
-template <typename T1, typename ScalarT>
-struct Divide
-{
-  Divide(T1 arr1, ScalarT scalar) : arr1_(arr1), scalar_(scalar) {}
-  KOKKOS_INLINE_FUNCTION
-  void operator()(int i) const noexcept { arr1_[i] /= scalar_; }
-  T1 arr1_;
-  ScalarT scalar_;
-};
 
-// TODO: move to be internal to pcms
-struct MeanCombiner
-{
-  void operator()(
-    const nonstd::span<const std::reference_wrapper<pcms::InternalField>>&
-      fields,
-    pcms::InternalField& combined_variant) const
-  {
-
-    // Internal fields are OmegaHFields
-    using execution_space =
-      typename pcms::OmegaHMemorySpace::type::execution_space;
-    std::visit(
-      [&fields](auto&& combined_field) {
-        using T = typename std::remove_reference_t<
-          decltype(combined_field)>::value_type;
-        Omega_h::Write<T> combined_array(combined_field.Size());
-        for (auto& field_variant : fields) {
-          std::visit(
-            [&combined_array, &combined_field](auto&& field) {
-              PCMS_ALWAYS_ASSERT(field.Size() == combined_array.size());
-              auto field_array = get_nodal_data(field);
-              auto policy =
-                Kokkos::RangePolicy<execution_space>(0, field_array.size());
-              Kokkos::parallel_for(policy, Sum{combined_array, field_array});
-            },
-            field_variant.get());
-        }
-        auto num_fields = fields.size();
-        auto policy =
-          Kokkos::RangePolicy<execution_space>(0, combined_array.size());
-        Kokkos::parallel_for(policy, Divide{combined_array, num_fields});
-        set_nodal_data(combined_field,
-                       make_array_view(Omega_h::Read<T>(combined_array)));
-      },
-      combined_variant);
-  }
-};
 
 } // namespace test_support
 #endif

@@ -2,7 +2,7 @@
 #define PCMS_COUPLING_SERVER_H
 #include "pcms/common.h"
 #include "pcms/field_communicator.h"
-#include "pcms/omega_h_field.h"
+#include "pcms/adapter/omega_h/omega_h_field.h"
 #include "pcms/profile.h"
 #include <map>
 #include <typeinfo>

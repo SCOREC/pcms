@@ -1,4 +1,4 @@
-#include <pcms/xgc_reverse_classification.h>
+#include "pcms/adapter/xgc/xgc_reverse_classification.h"
 #include <catch2/catch_test_macros.hpp>
 #include <sstream>
 

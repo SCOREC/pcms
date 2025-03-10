@@ -4,7 +4,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
 #include <pcms/transfer_field.h>
-#include <pcms/omega_h_field.h>
+#include "pcms/adapter/omega_h/omega_h_field.h"
 #include <Kokkos_Core.hpp>
 
 TEST_CASE("copy omega_h_field data")

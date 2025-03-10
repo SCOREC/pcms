@@ -9,7 +9,7 @@
 #include <redev.h>
 #include <redev_comm.h>
 #include <pcms/memory_spaces.h>
-#include <pcms/omega_h_field.h>
+#include "pcms/adapter/omega_h/omega_h_field.h"
 #include <functional>
 
 namespace test_support

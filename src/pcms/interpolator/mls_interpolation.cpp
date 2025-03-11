@@ -197,13 +197,21 @@ int calculate_scratch_shared_size(const SupportResults& support,
         min_size = nsupports;
       }
       size_t total_shared_size = 0;
-      total_shared_size += ScratchMatView::shmem_size(basis_size, basis_size);
-      total_shared_size += ScratchMatView::shmem_size(basis_size, nsupports);
-      total_shared_size += ScratchMatView::shmem_size(nsupports, basis_size);
-      total_shared_size += ScratchVecView::shmem_size(basis_size);
-      total_shared_size += ScratchVecView::shmem_size(nsupports);
-      total_shared_size += ScratchMatView::shmem_size(nsupports, dim);
-      total_shared_size += ScratchMatView::shmem_size(nsupports, nsupports);
+      total_shared_size +=
+        ScratchMatView::shmem_size(basis_size, basis_size); // Vt
+      total_shared_size +=
+        ScratchMatView::shmem_size(basis_size, nsupports) * 2; // temp_matrix
+      total_shared_size +=
+        ScratchMatView::shmem_size(nsupports, basis_size); // vandermonde matrix
+      total_shared_size +=
+        ScratchVecView::shmem_size(basis_size) *
+        3; // sigma, target_basis_vector, solution_coefficients
+      total_shared_size += ScratchVecView::shmem_size(nsupports) *
+                           3; // work, phi_vector, support_values
+      total_shared_size +=
+        ScratchMatView::shmem_size(nsupports, dim); // local_source_points
+      total_shared_size +=
+        ScratchMatView::shmem_size(nsupports, nsupports) * 2; // U, Ut
       // total_shared_size += ScratchVecView::shmem_size(max_size);
       // total_shared_size += ScratchVecView::shmem_size(min_size);
       shmem_each_team(i) = total_shared_size;

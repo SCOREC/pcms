@@ -87,7 +87,7 @@ ScratchMatView find_transpose(member_type team, const ScratchMatView& matrix)
   fill(0.0, team, transMatrix);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
     for (int j = 0; j < column; ++j) {
-      transMatrix(j, i) = matrix(j, i);
+      transMatrix(i, j) = matrix(j, i);
     }
   });
   return transMatrix;
@@ -104,8 +104,8 @@ void fill_diagonal(member_type team, const ScratchVecView& diagonal_entries,
 }
 
 KOKKOS_INLINE_FUNCTION
-void eval_row_scaling(member_type team, const ScratchVecView& diagonal_entries,
-                      ScratchMatView& matrix)
+void eval_row_scaling(member_type team, ScratchVecView diagonal_entries,
+                      ScratchMatView matrix)
 {
 
   int row = matrix.extent(0);
@@ -122,27 +122,49 @@ void eval_row_scaling(member_type team, const ScratchVecView& diagonal_entries,
     for (int j = 0; j < column; ++j) {
       matrix(i, j) *=
         diagonal_entries(i); // scales each row of a matrix with a corresponding
-                             // value in a digonal entries
-    });
-
+    } // value in a digonal entries
+  });
 }
 
 KOKKOS_INLINE_FUNCTION
-void scale_and_adjust(member_type team, const ScratchVecView& diagonal_entries, ScratchMatView& matrixToScale, ScratchMatView& adjustedMatrix){
-    size_t rowA = matrixToScale.extent(0);
-    size_t columnA = matrixToScale.extent(1);
+void eval_rhs_scaling(member_type team, ScratchVecView diagonal_entries,
+                      ScratchVecView rhs_values)
+{
 
-    size_t rowB = adjustedMatrix.extent(0);
-    size_t columnB = adjustedMatrix.extent(0);
+  int weight_size = diagonal_entries.size();
+  int rhs_size = rhs_values.size();
 
-    OMEGA_CHECK(columnB == rowA)
-    eval_row_scaling(team, diagonal_entries, matrixtoScale);
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, rowB), [=](int i) {
-      for (int j = 0; j < columnB; == j) {
-        adjustedMatrix(i, j) = matrixtoScale(i, j);
-      }
-    });
+  OMEGA_H_CHECK_PRINTF(
+    weight_size == rhs_size,
+    "[ERROR]: for row scaling the size of diagonal entries vector should be "
+    "equal or less than the row of the matrix which is to be scaled\n"
+    "size of weight vector = %d, size of a rhs vector = %d\n",
+    weight_size, rhs_size);
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, weight_size), [=](int i) {
+    rhs_values(i) *= diagonal_entries(
+      i); // scales each element  of a rhs with a corresponding weights
+  });
 }
-} // end namespace pcms
-} // end namespace detail
+
+KOKKOS_INLINE_FUNCTION
+void scale_and_adjust(member_type team, ScratchVecView& diagonal_entries,
+                      ScratchMatView& matrixToScale,
+                      ScratchMatView& adjustedMatrix)
+{
+  size_t rowA = matrixToScale.extent(0);
+  size_t colA = matrixToScale.extent(1);
+
+  size_t rowB = adjustedMatrix.extent(0);
+  size_t colB = adjustedMatrix.extent(1);
+
+  OMEGA_H_CHECK(colB == rowA);
+  eval_row_scaling(team, diagonal_entries, matrixToScale);
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, rowB), [=](int i) {
+    for (int j = 0; j < colB; ++j) {
+      adjustedMatrix(i, j) = matrixToScale(i, j);
+    }
+  });
+}
+} // namespace detail
+} // namespace pcms
 #endif

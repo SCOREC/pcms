@@ -158,7 +158,7 @@ class Error : public SInt
       r = 0;
       Kokkos::parallel_reduce(
         "eval", estimation.mesh.nelems(),
-        KOKKOS_LAMBDA(const int &elm, MeshField::Real &r_local) {
+        KOKKOS_CLASS_LAMBDA(const int &elm, MeshField::Real &r_local) {
           const auto first = elm * numPtsPerElem;
           const auto last = first + numPtsPerElem;
           const auto eps_elm = eps[elm];

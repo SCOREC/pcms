@@ -53,9 +53,19 @@ public:
                      .half_width = half_width};
     return bbox;
   }
+
   [[nodiscard]] KOKKOS_INLINE_FUNCTION std::array<LO, dim> GetDimensionedIndex(LO idx) const
   {
-    return {idx / divisions[0], idx % divisions[0]};
+    LO stride = std::accumulate(divisions.begin(), std::prev(divisions.end()), 1, std::multiplies<LO>{});
+    std::array<LO, dim> result;
+
+    for (int i = 0; i < dim; ++i) {
+      result[i] = idx / stride;
+      idx -= result[i] * stride;
+      stride /= divisions[i];
+    }
+
+    return result;
   }
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION LO GetCellIndex(std::array<LO, dim> dimensionedIndex) const

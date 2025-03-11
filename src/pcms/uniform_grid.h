@@ -33,17 +33,19 @@ public:
     std::array<LO, dim> indexes;
     indexes.fill(-1);
 
-    // note that the indexes refer to row/columns which have the opposite order
-    // of the coordinates i.e. x,y
     for (int i = 0; i < dim; ++i) {
       auto index = static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
-      indexes[dim - (i + 1)] = std::clamp(index, 0, divisions[i] - 1);
+      indexes[i] = std::clamp(index, 0, divisions[i] - 1);
     }
+    // note that the indexes refer to row/columns which have the opposite order
+    // of the coordinates i.e. x,y
+    std::reverse(indexes.begin(), indexes.end());
     return GetCellIndex(indexes);
   }
+
   [[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<dim> GetCellBBOX(LO idx) const
   {
-    auto [i, j] = GetTwoDCellIndex(idx);
+    auto [i, j] = GetDimensionedIndex(idx);
     std::array<Real, dim> half_width = {edge_length[0] / (2.0 * divisions[0]),
                                         edge_length[1] / (2.0 * divisions[1])};
     AABBox<dim> bbox{.center = {(2.0 * j + 1.0) * half_width[0]+bot_left[0],
@@ -51,19 +53,23 @@ public:
                      .half_width = half_width};
     return bbox;
   }
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION std::array<LO, 2> GetTwoDCellIndex(LO idx) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION std::array<LO, dim> GetDimensionedIndex(LO idx) const
   {
     return {idx / divisions[0], idx % divisions[0]};
   }
 
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO GetCellIndex(const std::array<LO, dim>& dimensionedIndex) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO GetCellIndex(std::array<LO, dim> dimensionedIndex) const
   {
+    // note that the indexes refer to row/columns which have the opposite order
+    // of the coordinates i.e. x,y
+    std::reverse(dimensionedIndex.begin(), dimensionedIndex.end());
+
     LO idx = 0;
     LO stride = 1;
 
-    for (int i = dim - 1; i >= 0; --i) {
+    for (int i = 0; i < dim; ++i) {
       idx += dimensionedIndex[i] * stride;
-      stride *= divisions[dim - 1 - i];
+      stride *= divisions[i];
     }
 
     return idx;

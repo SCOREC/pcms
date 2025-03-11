@@ -36,10 +36,10 @@ TEST_CASE("uniform grid")
     }
   }
   SECTION("GetTwoDCellIndex") {
-    auto [i,j] = uniform_grid.GetTwoDCellIndex(0);
+    auto [i,j] = uniform_grid.GetDimensionedIndex(0);
     REQUIRE(i == 0);
     REQUIRE(j == 0);
-    auto [k,l] = uniform_grid.GetTwoDCellIndex(119);
+    auto [k,l] = uniform_grid.GetDimensionedIndex(119);
     REQUIRE(k == 11);
     REQUIRE(l == 9);
   }

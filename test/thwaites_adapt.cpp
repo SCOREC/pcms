@@ -126,7 +126,6 @@ Reals min_max_normalization_coordinates(const Reals& coordinates, int dim = 2) {
 
 Reals recoverLinearStrainPCMS(Mesh& mesh, Reals effectiveStrain) {
   const auto dim = mesh.dim();
-  const Real tolerance = 5e-4;
 
   // min_max normalise target coordinates
   const auto& target_coordinates_original = mesh.coords();

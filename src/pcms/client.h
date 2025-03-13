@@ -108,6 +108,20 @@ public:
     PCMS_FUNCTION_TIMER;
   }
 
+  CouplerClient(std::string name, MPI_Comm comm, redev::Partition partition,
+                redev::TransportType transport_type = redev::TransportType::BP4,
+                adios2::Params params = {{"Streaming", "On"},
+                                         {"OpenTimeoutSecs", "400"}},
+                std::string path = "")
+    : name_(std::move(name)),
+      mpi_comm_(comm),
+      redev_({comm, std::move(partition)}),
+      channel_{redev_.CreateAdiosChannel(name_, std::move(params),
+                                         transport_type, std::move(path))}
+  {
+    PCMS_FUNCTION_TIMER;
+  }
+
   [[nodiscard]] const redev::Partition& GetPartition() const
   {
     PCMS_FUNCTION_TIMER;

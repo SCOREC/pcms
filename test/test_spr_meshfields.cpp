@@ -65,14 +65,14 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree, Reals source_values,
 {
 
   int dim = mesh.dim();
-  Real tolerance = 1e-3;
+  Real tolerance = 0.0005;
 
-  Omega_h::Write<Real> ignored(patches.a2ab.size(), 1);
+  Omega_h::Write<Real> ignored(patches.a2ab.size() - 1, 1);
   SupportResults support{patches.a2ab, patches.ab2b, ignored};
 
   auto approx_target_values = pcms::mls_interpolation(
     source_values, source_coordinates, target_coordinates, support, dim, degree,
-    pcms::RadialBasisFunction::RBF_CONST);
+    pcms::RadialBasisFunction::NO_OP);
 
   const auto delta_abs = Omega_h::fabs_each(
     Omega_h::subtract_each(exact_target_values, read(approx_target_values)));
@@ -92,7 +92,6 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree, Reals source_values,
   REQUIRE(m == n);
 
   for (size_t i = 0; i < m; ++i) {
-    //   std::cout << "vtx " << i << "\n";
     //    std::cout << "vtx " << i << "\n";
     CHECK_THAT(
       host_exact_target_values[i],
@@ -111,20 +110,18 @@ TEST_CASE("meshfields_spr_test")
   auto rank = lib.world()->rank();
   const auto boxSize = 1.0;
   const auto nElms = 6;
-  // auto mesh = build_box(world, OMEGA_H_SIMPLEX, boxSize, boxSize, 0, nElms,
-  // nElms, 0, false);
+  //  auto mesh = build_box(world, OMEGA_H_SIMPLEX, boxSize, boxSize, 0, nElms,
+  //  nElms, 0, false);
+  //
+  Omega_h::Mesh mesh(&lib);
   const auto thwaitesMeshFile =
     "/lore/smithc11/projects/landice/thwaites_basal/thwaites_basalClass.osh";
-  Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(thwaitesMeshFile, lib.world(), &mesh);
-  // auto mesh = build_box(world, OMEGA_H_SIMPLEX, boxSize, boxSize, 0, nElms,
-  // nElms, 0, false);
   std::cout << "mesh: elms " << mesh.nelems() << " verts " << mesh.nverts()
             << "\n";
 
   const auto dim = mesh.dim();
 
-  // const auto& target_coordinates = mesh.coords();
   const auto& target_coordinates = mesh.coords();
 
   const auto& nfaces = mesh.nfaces();
@@ -184,7 +181,6 @@ TEST_CASE("meshfields_spr_test")
         std::cerr << "minPatchSize " << minPatchSize << "\n";
         auto patches = mesh.get_vtx_patches(minPatchSize);
         // print_patches(patches);
-        // print_patches(patches);
 
         Write<Real> source_values(nfaces, 0, "exact target values");
 
@@ -204,7 +200,7 @@ TEST_CASE("meshfields_spr_test")
           });
         mesh.add_tag(OMEGA_H_VERT, "target_values", 1,
                      read(exact_target_values));
-
+        std::cerr << "I am here above test\n";
         test(mesh, patches, interp_degree, Reals(source_values),
              Reals(exact_target_values), Reals(source_coordinates),
              Reals(target_coordinates));

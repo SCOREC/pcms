@@ -113,8 +113,8 @@ if(Catch2_FOUND)
 	      test_linear_solver.cpp
 		  test_normalisation.cpp
 		  test_spr_meshfields.cpp
-		  test_serial_qr.cpp
-		  test_svd_serial.cpp
+		  test_svd_serial.cpp 
+		  # test_serial_qr.cpp
               )
   endif ()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})

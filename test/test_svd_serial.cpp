@@ -275,7 +275,7 @@ TEST_CASE("test_serial_svd")
           rhs(i) = rhs_data[i];
         });
 
-        detail::solve_matrix_serial_svd(team, weight, rhs, A, x);
+        detail::solve_matrix_svd(team, weight, rhs, A, x);
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, column),
                              [=](int i) { result(i) = x(i); });
       });

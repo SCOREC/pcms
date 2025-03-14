@@ -78,6 +78,15 @@ void find_inverse_each(member_type team, ScratchVecView& array)
 }
 
 KOKKOS_INLINE_FUNCTION
+void calculate_shrinkage_factor(member_type team, double lambda,
+                                ScratchVecView& sigma)
+{
+  int size = sigma.size();
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size), [=](int i) {
+    sigma(i) /= (sigma(i) * sigma(i) + lambda);
+  });
+}
+KOKKOS_INLINE_FUNCTION
 ScratchMatView find_transpose(member_type team, const ScratchMatView& matrix)
 {
   int row = matrix.extent(0);

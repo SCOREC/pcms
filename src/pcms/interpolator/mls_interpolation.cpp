@@ -24,7 +24,7 @@ struct RBF_GAUSSIAN
     // 'a' is a spreading factor/decay factor
     // the value of 'a' is higher if the data is localized
     // the value of 'a' is smaller if the data is farther
-    int a = 20;
+    int a = 2;
 
     double r = sqrt(r_sq);
     double rho = sqrt(rho_sq);
@@ -101,6 +101,12 @@ struct RBF_CONST
   }
 };
 
+struct NoOp
+{
+  OMEGA_H_INLINE
+  double operator()(double, double) const { return 1.0; }
+};
+
 Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
@@ -129,6 +135,12 @@ Write<Real> mls_interpolation(const Reals source_values,
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
         degree, RBF_CONST{});
+      break;
+
+    case RadialBasisFunction::NO_OP:
+      interpolated_values = detail::mls_interpolation(
+        source_values, source_coordinates, target_coordinates, support, dim,
+        degree, NoOp{});
       break;
   }
 

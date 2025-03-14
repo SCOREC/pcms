@@ -64,7 +64,7 @@ public:
         printf("[%s] (League %d) %s: ", logLevelToString(level),
                team.league_rank(), name);
         for (int i = 0; i < vector.size(); ++i) {
-          printf("%12.6f", vector(i));
+          printf("%12.6f\n", vector(i));
         }
         printf("\n");
       });
@@ -119,6 +119,7 @@ private:
       case LogLevel::ERROR: return "ERROR";
 
       case LogLevel::DEBUG: return "DEBUG";
+      default: return "UNKNOWN";
     }
   }
 };

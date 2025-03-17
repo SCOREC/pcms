@@ -69,14 +69,11 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh, std::string_view cpnFi
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
 
-auto setupComms(redev::Redev& rdv, std::string_view name, const int clientId) {
+auto setupComms(redev::Redev& rdv, std::string clientName, const int clientId) {
   const bool isSST = false;
-  adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "12"}};
+  adios2::Params params{ {"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
   REDEV_ALWAYS_ASSERT(clientId == 0 || clientId ==1);
-  std::stringstream clientName;
-  clientName << name << "Client" << clientId;
-  auto channel = rdv.CreateAdiosChannel(clientName.str(), params,static_cast<redev::TransportType>(isSST) );
-  return channel.CreateComm<redev::GO>(clientName.str(), rdv.GetMPIComm());
+  return rdv.CreateAdiosChannel(clientName, params,static_cast<redev::TransportType>(isSST) );
 }
 
 Omega_h::HostRead<Omega_h::I8> markMeshOverlapRegion(Omega_h::Mesh& mesh) {
@@ -107,7 +104,10 @@ void client(Omega_h::Mesh& mesh, std::string fieldName, const int clientId) {
 
   auto partition = setupClientPartition(mesh);
   auto rdv = redev::Redev(MPI_COMM_WORLD,redev::Partition{std::move(partition)},static_cast<redev::ProcessType>(isRdv));
-  auto comm = setupComms(rdv,fieldName,clientId);
+  std::stringstream clientName;
+  clientName << fieldName << "Client" << clientId;
+  auto channel = setupComms(rdv,clientName.str(),clientId);
+  auto comm = channel.CreateComm<redev::GO>(clientName.str(), rdv.GetMPIComm());
 
   auto isOverlap_h = markMeshOverlapRegion(mesh);
   //////////////////////////////////////////////////////
@@ -128,13 +128,17 @@ void client(Omega_h::Mesh& mesh, std::string fieldName, const int clientId) {
     }
   }
   auto start = std::chrono::steady_clock::now();
+  channel.BeginSendCommunicationPhase();
   comm.Send(msgs.data(),redev::Mode::Synchronous);
+  channel.EndSendCommunicationPhase();
   ts::getAndPrintTime(start,fieldName + " appWrite",rank);
   //////////////////////////////////////////////////////
   //the rendezvous app sends global vtx ids to non-rendezvous
   //////////////////////////////////////////////////////
   start = std::chrono::steady_clock::now();
+  channel.BeginReceiveCommunicationPhase();
   const auto msgsIn = comm.Recv(redev::Mode::Synchronous);
+  channel.EndReceiveCommunicationPhase();
   ts::getAndPrintTime(start,fieldName + " appRead",rank);
   clientCheckIncomingMessages(mesh,isOverlap_h,msgsIn,appOut);
   //////////////////////////////////////////////////////
@@ -150,11 +154,15 @@ void client(Omega_h::Mesh& mesh, std::string fieldName, const int clientId) {
       }
     }
     auto start = std::chrono::steady_clock::now();
+    channel.BeginSendCommunicationPhase();
     comm.Send(msgs.data(),redev::Mode::Synchronous);
+    channel.EndSendCommunicationPhase();
     ts::getAndPrintTime(start,fieldName + " appWrite",rank);
     //receive from server
     start = std::chrono::steady_clock::now();
+    channel.BeginReceiveCommunicationPhase();
     const auto msgsIn = comm.Recv(redev::Mode::Synchronous);
+    channel.EndReceiveCommunicationPhase();
     ts::getAndPrintTime(start,fieldName + " appRead",rank);
     clientCheckIncomingMessages(mesh,isOverlap_h,msgsIn,appOut);
   } //end iter loop
@@ -166,13 +174,15 @@ struct ClientMetaData {
   ts::OutMsg outMsg;
 };
 
-void serverReceiveFromClient(ClientMetaData& clientMeta,
+void serverReceiveFromClient(ClientMetaData& clientMeta, redev::Channel& channel,
     redev::BidirectionalComm<redev::GO>& comm, Omega_h::Mesh& mesh,
     std::string_view fieldName, const int rank, const int clientId) {
   std::stringstream ss;
   ss << fieldName << " rdvRead clientId " << clientId;
   auto start = std::chrono::steady_clock::now();
+  channel.BeginReceiveCommunicationPhase();
   const auto msgsIn = comm.Recv(redev::Mode::Synchronous);
+  channel.EndReceiveCommunicationPhase();
   ts::getAndPrintTime(start,ss.str(),rank);
   auto rdvIn = comm.GetInMessageLayout();
   //setup outbound meta data
@@ -192,7 +202,7 @@ void serverReceiveFromClient(ClientMetaData& clientMeta,
   ts::checkAndAttachIds(mesh, ss.str(), msgsIn, clientMeta.inPermute);
 }
 
-void serverSendToClient(ClientMetaData& clientMeta,
+void serverSendToClient(ClientMetaData& clientMeta, redev::Channel& channel,
     redev::BidirectionalComm<redev::GO>& comm, Omega_h::Mesh& mesh,
     Omega_h::HostRead<Omega_h::I8>& isOverlap_h,
     std::string_view fieldName, const int rank, const int clientId) {
@@ -209,7 +219,9 @@ void serverSendToClient(ClientMetaData& clientMeta,
   std::stringstream ss;
   ss << fieldName << " rdvWrite clientId " << clientId;
   auto start = std::chrono::steady_clock::now();
+  channel.BeginSendCommunicationPhase();
   comm.Send(msgs.data());
+  channel.EndSendCommunicationPhase();
   ts::getAndPrintTime(start,ss.str(),rank);
 }
 
@@ -219,20 +231,28 @@ void server(Omega_h::Mesh& mesh, std::string fieldName, std::string_view cpnFile
   const auto rank = ohComm->rank();
   auto partition = setupServerPartition(mesh,cpnFileName);
   auto rdv = redev::Redev(MPI_COMM_WORLD,std::move(partition),static_cast<redev::ProcessType>(isRdv));
-  auto commClient0 = setupComms(rdv,fieldName,0);
-  auto commClient1 = setupComms(rdv,fieldName,1);
+
+  std::stringstream clientName0;
+  clientName0 << fieldName << "Client0";
+  std::stringstream clientName1;
+  clientName1 << fieldName << "Client1";
+  auto channel0 = setupComms(rdv,clientName0.str(),0);
+  auto channel1 = setupComms(rdv,clientName1.str(),1);
+
+  auto commClient0 = channel0.CreateComm<redev::GO>(clientName0.str(), rdv.GetMPIComm());
+  auto commClient1 = channel1.CreateComm<redev::GO>(clientName1.str(), rdv.GetMPIComm());
 
   auto isOverlap_h = markMeshOverlapRegion(mesh);
   //TODO - Document why rendezvous needs two permutations but the app does not
   ClientMetaData client0;
   ClientMetaData client1;
 
-  serverReceiveFromClient(client0,commClient0,mesh,fieldName,rank,0);
-  serverReceiveFromClient(client1,commClient1,mesh,fieldName,rank,1);
+  serverReceiveFromClient(client0,channel0,commClient0,mesh,fieldName,rank,0);
+  serverReceiveFromClient(client1,channel1,commClient1,mesh,fieldName,rank,1);
   ts::writeVtk(mesh,"rdvInGids",0);
 
-  serverSendToClient(client0,commClient0,mesh,isOverlap_h,fieldName,rank,0);
-  serverSendToClient(client1,commClient1,mesh,isOverlap_h,fieldName,rank,1);
+  serverSendToClient(client0,channel0,commClient0,mesh,isOverlap_h,fieldName,rank,0);
+  serverSendToClient(client1,channel1,commClient1,mesh,isOverlap_h,fieldName,rank,1);
   //////////////////////////////////////////////////////
   //communication loop
   //////////////////////////////////////////////////////
@@ -249,8 +269,8 @@ void server(Omega_h::Mesh& mesh, std::string fieldName, std::string_view cpnFile
     ts::getAndPrintTime(start,fieldName + " rdvRead clientId 1",rank);
     ts::checkAndAttachIds(mesh, "inVtxGidsClient1", msgsIn1, client1.inPermute);
     //send to clients
-    serverSendToClient(client0,commClient0,mesh,isOverlap_h,fieldName,rank,0);
-    serverSendToClient(client1,commClient1,mesh,isOverlap_h,fieldName,rank,1);
+    serverSendToClient(client0,channel0,commClient0,mesh,isOverlap_h,fieldName,rank,0);
+    serverSendToClient(client1,channel1,commClient1,mesh,isOverlap_h,fieldName,rank,1);
   } //end iter loop
 }
 

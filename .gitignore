@@ -7,3 +7,4 @@
 .spack-env
 *.bak
 testdata
+.nfs*

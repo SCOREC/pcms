@@ -16,19 +16,18 @@ namespace pcms
 using FieldAdapterVariant =
   std::variant<std::monostate, pcms::XGCFieldAdapter<double>,
                pcms::XGCFieldAdapter<float>, pcms::XGCFieldAdapter<int>,
-               pcms::XGCFieldAdapter<long>,
-               pcms::DummyFieldAdapter
-//#ifdef PCMS_HAS_OMEGA_H
-//               ,
-//               pcms::OmegaHFieldAdapter<double>,
-//               pcms::OmegaHFieldAdapter<int>
-//#endif
+               pcms::XGCFieldAdapter<long>, pcms::DummyFieldAdapter
+               // #ifdef PCMS_HAS_OMEGA_H
+               //                ,
+               //                pcms::OmegaHFieldAdapter<double>,
+               //                pcms::OmegaHFieldAdapter<int>
+               // #endif
                >;
 
 } // namespace pcms
 
 [[nodiscard]] PcmsClientHandle pcms_create_client(const char* name,
-                                                       MPI_Comm comm)
+                                                  MPI_Comm comm)
 {
   auto* client = new pcms::CouplerClient(name, comm);
   return {reinterpret_cast<void*>(client)};
@@ -41,29 +40,35 @@ void pcms_destroy_client(PcmsClientHandle client)
 PcmsReverseClassificationHandle pcms_load_reverse_classification(
   const char* file, MPI_Comm comm)
 {
-  //std::filesystem::path filepath{file};
+  // std::filesystem::path filepath{file};
   auto* rc = new pcms::ReverseClassificationVertex{
     pcms::ReadReverseClassificationVertex(file, comm)};
   return {reinterpret_cast<void*>(rc)};
 }
-void pcms_destroy_reverse_classification(
-  PcmsReverseClassificationHandle rc)
+void pcms_destroy_reverse_classification(PcmsReverseClassificationHandle rc)
 {
   if (rc.pointer != nullptr)
     delete reinterpret_cast<pcms::ReverseClassificationVertex*>(rc.pointer);
 }
-struct AddFieldVariantOperators {
-  AddFieldVariantOperators(const char* name, pcms::CouplerClient* client, int participates)
-  : name_(name), client_(client), participates_(participates)
+struct AddFieldVariantOperators
+{
+  AddFieldVariantOperators(const char* name, pcms::CouplerClient* client,
+                           int participates)
+    : name_(name), client_(client), participates_(participates)
   {
   }
 
   [[nodiscard]]
-  pcms::CoupledField* operator()(const std::monostate&) const noexcept { return nullptr; }
+  pcms::CoupledField* operator()(const std::monostate&) const noexcept
+  {
+    return nullptr;
+  }
   template <typename FieldAdapter>
   [[nodiscard]]
-  pcms::CoupledField* operator()(const FieldAdapter& field_adapter) const noexcept {
-        return client_->AddField(name_, field_adapter, participates_);
+  pcms::CoupledField* operator()(
+    const FieldAdapter& field_adapter) const noexcept
+  {
+    return client_->AddField(name_, field_adapter, participates_);
   }
 
   const char* name_;
@@ -71,10 +76,9 @@ struct AddFieldVariantOperators {
   bool participates_;
 };
 
-PcmsFieldHandle pcms_add_field(PcmsClientHandle client_handle,
-                                    const char* name,
-                                    PcmsFieldAdapterHandle adapter_handle,
-                                    int participates)
+PcmsFieldHandle pcms_add_field(PcmsClientHandle client_handle, const char* name,
+                               PcmsFieldAdapterHandle adapter_handle,
+                               int participates)
 {
 
   auto* adapter =
@@ -82,14 +86,15 @@ PcmsFieldHandle pcms_add_field(PcmsClientHandle client_handle,
   auto* client = reinterpret_cast<pcms::CouplerClient*>(client_handle.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
   PCMS_ALWAYS_ASSERT(adapter != nullptr);
-  //pcms::CoupledField* field = std::visit(
-  //  redev::overloaded{
-  //    [](const std::monostate&) -> pcms::CoupledField* { return nullptr; },
-  //    [&name, &client, participates](const auto& field_adapter) {
-  //      return client->AddField(name, field_adapter, participates);
-  //    }},
-  //  *adapter);
-  pcms::CoupledField* field = std::visit(AddFieldVariantOperators{name, client, participates},*adapter);
+  // pcms::CoupledField* field = std::visit(
+  //   redev::overloaded{
+  //     [](const std::monostate&) -> pcms::CoupledField* { return nullptr; },
+  //     [&name, &client, participates](const auto& field_adapter) {
+  //       return client->AddField(name, field_adapter, participates);
+  //     }},
+  //   *adapter);
+  pcms::CoupledField* field =
+    std::visit(AddFieldVariantOperators{name, client, participates}, *adapter);
   return {reinterpret_cast<void*>(field)};
 }
 void pcms_send_field_name(PcmsClientHandle client_handle, const char* name)
@@ -98,8 +103,7 @@ void pcms_send_field_name(PcmsClientHandle client_handle, const char* name)
   PCMS_ALWAYS_ASSERT(client != nullptr);
   client->SendField(name);
 }
-void pcms_receive_field_name(PcmsClientHandle client_handle,
-                               const char* name)
+void pcms_receive_field_name(PcmsClientHandle client_handle, const char* name)
 {
   auto* client = reinterpret_cast<pcms::CouplerClient*>(client_handle.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
@@ -123,7 +127,7 @@ void pcms_create_xgc_field_adapter_t(
   const pcms::ReverseClassificationVertex& reverse_classification,
   in_overlap_function in_overlap, pcms::FieldAdapterVariant& field_adapter)
 {
-  PCMS_ALWAYS_ASSERT((size >0) ? (data!=nullptr) : true);
+  PCMS_ALWAYS_ASSERT((size > 0) ? (data != nullptr) : true);
   pcms::ScalarArrayView<T, pcms::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<pcms::XGCFieldAdapter<T>>(
@@ -140,20 +144,24 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
   switch (data_type) {
     case PCMS_DOUBLE:
-      pcms_create_xgc_field_adapter_t<double>(
-        name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<double>(name, comm, data, size,
+                                              *reverse_classification,
+                                              in_overlap, *field_adapter);
       break;
     case PCMS_FLOAT:
-      pcms_create_xgc_field_adapter_t<float>(
-        name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<float>(name, comm, data, size,
+                                             *reverse_classification,
+                                             in_overlap, *field_adapter);
       break;
     case PCMS_INT:
-      pcms_create_xgc_field_adapter_t<int>(
-        name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<int>(name, comm, data, size,
+                                           *reverse_classification, in_overlap,
+                                           *field_adapter);
       break;
     case PCMS_LONG_INT:
-      pcms_create_xgc_field_adapter_t<long int>(
-        name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<long int>(name, comm, data, size,
+                                                *reverse_classification,
+                                                in_overlap, *field_adapter);
       break;
     default:
       pcms::printError("tyring to create XGC adapter with invalid type!\n");
@@ -161,8 +169,10 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   }
   return {reinterpret_cast<void*>(field_adapter)};
 }
-PcmsFieldAdapterHandle pcms_create_dummy_field_adapter() {
-  auto* field_adapter = new pcms::FieldAdapterVariant{pcms::DummyFieldAdapter{}};
+PcmsFieldAdapterHandle pcms_create_dummy_field_adapter()
+{
+  auto* field_adapter =
+    new pcms::FieldAdapterVariant{pcms::DummyFieldAdapter{}};
   return {reinterpret_cast<void*>(field_adapter)};
 }
 
@@ -175,8 +185,7 @@ void pcms_destroy_field_adapter(PcmsFieldAdapterHandle adapter_handle)
     adapter = nullptr;
   }
 }
-int pcms_reverse_classification_count_verts(
-  PcmsReverseClassificationHandle rc)
+int pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle rc)
 {
   auto* reverse_classification =
     reinterpret_cast<const pcms::ReverseClassificationVertex*>(rc.pointer);
@@ -187,23 +196,27 @@ int pcms_reverse_classification_count_verts(
                            return current + verts.second.size();
                          });
 }
-void pcms_begin_send_phase(PcmsClientHandle h) {
+void pcms_begin_send_phase(PcmsClientHandle h)
+{
   auto* client = reinterpret_cast<pcms::CouplerClient*>(h.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
-  client ->BeginSendPhase();
+  client->BeginSendPhase();
 }
-void pcms_end_send_phase(PcmsClientHandle h) {
+void pcms_end_send_phase(PcmsClientHandle h)
+{
   auto* client = reinterpret_cast<pcms::CouplerClient*>(h.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
-  client ->EndSendPhase();
+  client->EndSendPhase();
 }
-void pcms_begin_receive_phase(PcmsClientHandle h ) {
+void pcms_begin_receive_phase(PcmsClientHandle h)
+{
   auto* client = reinterpret_cast<pcms::CouplerClient*>(h.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
-  client ->BeginReceivePhase();
+  client->BeginReceivePhase();
 }
-void pcms_end_receive_phase(PcmsClientHandle h) {
+void pcms_end_receive_phase(PcmsClientHandle h)
+{
   auto* client = reinterpret_cast<pcms::CouplerClient*>(h.pointer);
   PCMS_ALWAYS_ASSERT(client != nullptr);
-  client ->EndReceivePhase();
+  client->EndReceivePhase();
 }

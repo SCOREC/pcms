@@ -137,6 +137,9 @@ if(PCMS_ENABLE_Fortran)
   target_link_libraries(pcms_pcms INTERFACE pcms::fortranapi)
 endif()
 
+
+add_subdirectory(pcms/interpolator)
+
 install(
         TARGETS pcms_pcms
         EXPORT pcms-targets

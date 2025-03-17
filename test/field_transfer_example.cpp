@@ -42,58 +42,9 @@ void SetApplicationFields(const OHField& app_a_field,
                           const OHField& app_b_field);
 
 using pcms::ConvertibleCoupledField;
-using pcms::FieldEvaluationMethod;
-using pcms::FieldTransferMethod;
-using pcms::GatherOperation;
 using pcms::ProcessType;
-using pcms::TransferOptions;
 using pcms::FieldCommunicator;
 using pcms::InternalField;
-
-void test_gather_operation(Omega_h::Mesh& internal_mesh,
-                           Omega_h::Mesh& app_mesh)
-{
-  OHField app_a_field("gather_app_a", app_mesh);
-  OHField app_b_field("gather_app_b", app_mesh);
-  SetApplicationFields(app_a_field, app_b_field);
-  InternalField combined_field(OHField("gather_combined", internal_mesh));
-  TransferOptions transfer_lag1{FieldTransferMethod::Interpolate,
-                                FieldEvaluationMethod::Lagrange1};
-  TransferOptions transfer_nn{FieldTransferMethod::Interpolate,
-                              FieldEvaluationMethod::NearestNeighbor};
-  std::vector<ConvertibleCoupledField> coupled_fields;
-  coupled_fields.reserve(2);
-  coupled_fields.emplace_back("gather_app_a", OHShim("gather_app_a", app_mesh),
-                              FieldCommunicator<void>(), internal_mesh,
-                              transfer_lag1, transfer_lag1);
-  coupled_fields.emplace_back("gather_app_b", OHShim("gather_app_b", app_mesh),
-                              FieldCommunicator<void>(), internal_mesh,
-                              transfer_nn, transfer_lag1);
-  std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_view;
-  std::transform(coupled_fields.begin(),coupled_fields.end(),std::back_inserter(coupled_fields_view),
-                 [](ConvertibleCoupledField& field){return std::ref(field);}
-                 );
-  GatherOperation gather(
-    coupled_fields_view, combined_field,
-    [](nonstd::span<const std::reference_wrapper<InternalField>> fields,
-       InternalField& combined_field) {
-      std::vector<std::reference_wrapper<OHField>> typed_fields;
-      typed_fields.reserve(fields.size());
-
-      // this transform is here to let us use the same combiner as with the
-      // hand-rolled solution (test_standalone).
-      std::transform(fields.begin(), fields.end(),
-                     std::back_inserter(typed_fields),
-                     [](const std::reference_wrapper<InternalField>& internal) {
-                       return std::ref(std::get<OHField>(internal.get()));
-                     });
-      auto& typed_combined_field = std::get<OHField>(combined_field);
-      std::invoke(MeanCombiner{}, typed_fields, typed_combined_field);
-    });
-  for (int i = 0; i < num_trials; ++i) {
-    gather.Run();
-  }
-}
 
 void test_standalone(Omega_h::Mesh& internal_mesh, Omega_h::Mesh& app_mesh)
 {
@@ -150,19 +101,15 @@ int main(int argc, char** argv)
   auto point1 = std::chrono::steady_clock::now();
   test_standalone(internal_mesh, app_mesh);
   auto point2 = std::chrono::steady_clock::now();
-  test_gather_operation(internal_mesh, app_mesh);
-  auto point3 = std::chrono::steady_clock::now();
 
   Omega_h::vtk::write_parallel("internal_mesh.vtk", &internal_mesh,
                                internal_mesh.dim());
   Omega_h::vtk::write_parallel("app_mesh.vtk", &app_mesh, app_mesh.dim());
-  auto point4 = std::chrono::steady_clock::now();
+  auto point3 = std::chrono::steady_clock::now();
   std::cout << "Test Standalone: "
             << std::chrono::duration<double>(point2 - point1).count() << "\n";
-  std::cout << "Test Gather: "
-            << std::chrono::duration<double>(point3 - point2).count() << "\n";
   std::cout << "Write Files: "
-            << std::chrono::duration<double>(point4 - point3).count() << "\n";
+            << std::chrono::duration<double>(point3 - point2).count() << "\n";
 
   return 0;
 }

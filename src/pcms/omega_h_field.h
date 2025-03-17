@@ -17,6 +17,7 @@
 #include "pcms/transfer_field.h"
 #include "pcms/memory_spaces.h"
 #include "pcms/profile.h"
+#include "pcms/partition.h"
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
 
@@ -85,29 +86,6 @@ Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
     });
   return filtered_field;
 }
-struct GetRankOmegaH
-{
-  GetRankOmegaH(int i, Omega_h::I8 dim, Omega_h::ClassId id, std::array<pcms::Real,3> & coord)
-    : i_(i), id_(id), dim_(dim), coord_(coord)
-  {
-    PCMS_FUNCTION_TIMER;
-  }
-  auto operator()(const redev::ClassPtn& ptn) const
-  {
-    PCMS_FUNCTION_TIMER;
-    const auto ent = redev::ClassPtn::ModelEnt({dim_, id_});
-    return ptn.GetRank(ent);
-  }
-  auto operator()(const redev::RCBPtn& ptn)
-  {
-    PCMS_FUNCTION_TIMER;
-    return ptn.GetRank(coord_);
-  }
-  int i_;
-  Omega_h::ClassId id_;
-  Omega_h::I8 dim_;
-  std::array<pcms::Real,3> coord_;
-};
 } // namespace detail
 
 template <typename T,
@@ -352,7 +330,7 @@ auto evaluate(
 
   Kokkos::parallel_for(
     results.size(), KOKKOS_LAMBDA(LO i) {
-      auto [elem_idx, coord] = results(i);
+      auto [dim, elem_idx, coord] = results(i);
       // TODO deal with case for elem_idx < 0 (point outside of mesh)
       KOKKOS_ASSERT(elem_idx >= 0);
       const auto elem_tri2verts =
@@ -392,7 +370,7 @@ auto evaluate(
 
   Kokkos::parallel_for(
     results.size(), KOKKOS_LAMBDA(LO i) {
-      auto [elem_idx, coord] = results(i);
+      auto [dim, elem_idx, coord] = results(i);
       // TODO deal with case for elem_idx < 0 (point outside of mesh)
       KOKKOS_ASSERT(elem_idx >= 0);
       const auto elem_tri2verts =
@@ -557,7 +535,7 @@ public:
   }
   // REQUIRED
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
-    const redev::Partition& partition) const
+    const Partition& partition) const
   {
     PCMS_FUNCTION_TIMER;
     auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(field_.GetClassIDs());
@@ -575,8 +553,7 @@ public:
       coord[0] = coords[i * dim];
       coord[1] = coords[i * dim + 1];
       coord[2] = (dim == 3) ? coords[i * dim + 2] : 0.0;
-      auto dr = std::visit(detail::GetRankOmegaH{i, classDims_h[i], classIds_h[i], coord},
-                           partition);
+      auto dr = partition.GetDr(classIds_h[i], classDims_h[i], coord);
       reverse_partition[dr].emplace_back(local_index++);
     }
     return reverse_partition;
@@ -602,61 +579,6 @@ private:
   OmegaHField<T, CoordinateElementType> field_;
   mesh_entity_type entity_type_;
 };
-template <typename FieldAdapter>
-void ConvertFieldAdapterToOmegaH(const FieldAdapter& adapter,
-                                 InternalField internal,
-                                 FieldTransferMethod ftm,
-                                 FieldEvaluationMethod fem)
-{
-  PCMS_FUNCTION_TIMER;
-  std::visit(
-    [&](auto&& internal_field) {
-      transfer_field(adapter, internal_field, ftm, fem);
-    },
-    internal);
-}
-
-template <typename FieldAdapter>
-void ConvertOmegaHToFieldAdapter(const InternalField& internal,
-                                 FieldAdapter& adapter, FieldTransferMethod ftm,
-                                 FieldEvaluationMethod fem)
-{
-  PCMS_FUNCTION_TIMER;
-  std::visit(
-    [&](auto&& internal_field) {
-      transfer_field(internal_field, adapter, ftm, fem);
-    },
-    internal);
-}
-// Specializations for the Omega_h field adapter class since get/set are
-// implemented on the OmegaHFieldClass which is owned by the field adapter
-template <typename T, typename C>
-void ConvertFieldAdapterToOmegaH(const OmegaHFieldAdapter<T, C>& adapter,
-                                 InternalField internal,
-                                 FieldTransferMethod ftm,
-                                 FieldEvaluationMethod fem)
-{
-  PCMS_FUNCTION_TIMER;
-  std::visit(
-    [&](auto&& internal_field) {
-      transfer_field(adapter.GetField(), internal_field, ftm, fem);
-    },
-    internal);
-}
-template <typename T, typename C>
-void ConvertOmegaHToFieldAdapter(const InternalField& internal,
-                                 OmegaHFieldAdapter<T, C>& adapter,
-                                 FieldTransferMethod ftm,
-                                 FieldEvaluationMethod fem)
-{
-  PCMS_FUNCTION_TIMER;
-  std::visit(
-    [&](auto&& internal_field) {
-      transfer_field(internal_field, adapter.GetField(), ftm, fem);
-    },
-    internal);
-}
-
 } // namespace pcms
 
 #endif // PCMS_COUPLING_OMEGA_H_FIELD_H

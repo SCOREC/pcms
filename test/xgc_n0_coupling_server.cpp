@@ -10,8 +10,6 @@
 using pcms::Copy;
 using pcms::CouplerClient;
 using pcms::CouplerServer;
-using pcms::FieldEvaluationMethod;
-using pcms::FieldTransferMethod;
 using pcms::GO;
 using pcms::LO;
 using pcms::OmegaHFieldAdapter;
@@ -34,10 +32,7 @@ static pcms::ConvertibleCoupledField* AddField(pcms::Application *application, c
       return application->AddField(field_name.str(),
                    pcms::OmegaHFieldAdapter<pcms::Real>(
                    path+field_name.str(), mesh, is_overlap, numbering),
-                   FieldTransferMethod::Copy, // to Omega_h
-                   FieldEvaluationMethod::None,
-                   FieldTransferMethod::Copy, // from Omega_h
-                   FieldEvaluationMethod::None, is_overlap);
+                   is_overlap);
 }
 
 struct XGCAnalysis {

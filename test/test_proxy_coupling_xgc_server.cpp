@@ -11,8 +11,6 @@ using pcms::ConstructRCFromOmegaHMesh;
 using pcms::Copy;
 using pcms::CouplerClient;
 using pcms::CouplerServer;
-using pcms::FieldEvaluationMethod;
-using pcms::FieldTransferMethod;
 using pcms::GO;
 using pcms::Lagrange;
 using pcms::make_array_view;
@@ -54,11 +52,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     auto field_adapter = pcms::XGCFieldAdapter<GO>(
       ss.str(), comm, make_array_view(data[i]), rc, ts::IsModelEntInOverlap{});
     fields.push_back(
-      application->AddField(ss.str(), std::move(field_adapter),
-                            FieldTransferMethod::Copy, // to Omega_h
-                            FieldEvaluationMethod::None,
-                            FieldTransferMethod::Copy, // from Omega_h
-                            FieldEvaluationMethod::None, is_overlap));
+      application->AddField(ss.str(), std::move(field_adapter), is_overlap));
   }
 
   do {
@@ -115,11 +109,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     auto field_adapter =
       pcms::OmegaHFieldAdapter<GO>(ss.str(), mesh, is_overlap, numbering);
     fields.push_back(
-      application->AddField(ss.str(), std::move(field_adapter),
-                            FieldTransferMethod::Copy, // to Omega_h
-                            FieldEvaluationMethod::None,
-                            FieldTransferMethod::Copy, // from Omega_h
-                            FieldEvaluationMethod::None, is_overlap));
+      application->AddField(ss.str(), std::move(field_adapter), is_overlap));
   }
   do {
     application->ReceivePhase([&]() {

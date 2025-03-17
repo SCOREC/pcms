@@ -49,8 +49,6 @@ int main(int argc, char** argv)
                    static_cast<redev::ProcessType>(isRdv));
 
   const std::string name = "meshVtxIds";
-  const int rdvRanks = 2;
-  const int appRanks = 2;
 
   adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
   auto channel =

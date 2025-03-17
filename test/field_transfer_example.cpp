@@ -42,10 +42,7 @@ void SetApplicationFields(const OHField& app_a_field,
                           const OHField& app_b_field);
 
 using pcms::ConvertibleCoupledField;
-using pcms::FieldEvaluationMethod;
-using pcms::FieldTransferMethod;
 using pcms::ProcessType;
-using pcms::TransferOptions;
 using pcms::FieldCommunicator;
 using pcms::InternalField;
 
@@ -104,16 +101,15 @@ int main(int argc, char** argv)
   auto point1 = std::chrono::steady_clock::now();
   test_standalone(internal_mesh, app_mesh);
   auto point2 = std::chrono::steady_clock::now();
-  auto point3 = std::chrono::steady_clock::now();
 
   Omega_h::vtk::write_parallel("internal_mesh.vtk", &internal_mesh,
                                internal_mesh.dim());
   Omega_h::vtk::write_parallel("app_mesh.vtk", &app_mesh, app_mesh.dim());
-  auto point4 = std::chrono::steady_clock::now();
+  auto point3 = std::chrono::steady_clock::now();
   std::cout << "Test Standalone: "
             << std::chrono::duration<double>(point2 - point1).count() << "\n";
   std::cout << "Write Files: "
-            << std::chrono::duration<double>(point4 - point3).count() << "\n";
+            << std::chrono::duration<double>(point3 - point2).count() << "\n";
 
   return 0;
 }

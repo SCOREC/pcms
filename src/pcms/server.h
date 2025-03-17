@@ -9,25 +9,6 @@
 
 namespace pcms
 {
-namespace detail
-{
-template <typename T, typename... Args>
-auto& find_or_create_internal_field(
-  const std::string& key, std::map<std::string, InternalField>& internal_fields,
-  Args&&... args)
-{
-  auto [it, inserted] = internal_fields.try_emplace(
-    key, std::in_place_type<OmegaHField<T, InternalCoordinateElement>>, key,
-    std::forward<Args>(args)...);
-  PCMS_ALWAYS_ASSERT(
-    (std::holds_alternative<OmegaHField<T, InternalCoordinateElement>>(
-      it->second)));
-  return it->second;
-}
-} // namespace detail
-using CombinerFunction = std::function<void(
-  nonstd::span<const std::reference_wrapper<InternalField>>, InternalField&)>;
-
 // TODO: come up with better name for this...Don't like CoupledFieldServer
 // because it's necessarily tied to the Server of the xgc_coupler
 class ConvertibleCoupledField
@@ -37,34 +18,28 @@ public:
   ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
                           FieldCommunicator<CommT> field_comm,
                           Omega_h::Mesh& internal_mesh,
-                          TransferOptions native_to_internal,
-                          TransferOptions internal_to_native,
                           Omega_h::Read<Omega_h::I8> internal_field_mask = {})
     : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
                                   InternalCoordinateElement>(
-        name + ".__internal__", internal_mesh, internal_field_mask)}
+        name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
   {
     PCMS_FUNCTION_TIMER;
     coupled_field_ = std::make_unique<CoupledFieldModel<FieldAdapterT, CommT>>(
-      std::move(field_adapter), std::move(field_comm),
-      std::move(native_to_internal), std::move(internal_to_native));
+      std::move(field_adapter), std::move(field_comm));
   }
   template <typename FieldAdapterT>
   ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
                           MPI_Comm mpi_comm, redev::Redev& redev,
                           redev::Channel& channel, Omega_h::Mesh& internal_mesh,
-                          TransferOptions native_to_internal,
-                          TransferOptions internal_to_native,
                           Omega_h::Read<Omega_h::I8> internal_field_mask)
     : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
                                   InternalCoordinateElement>(
-        name + ".__internal__", internal_mesh, internal_field_mask)}
+        name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
   {
     PCMS_FUNCTION_TIMER;
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
-        name, std::move(field_adapter), mpi_comm, redev, channel,
-        std::move(native_to_internal), std::move(internal_to_native));
+        name, std::move(field_adapter), mpi_comm, redev, channel);
   }
 
   void Send(Mode mode = Mode::Synchronous)
@@ -76,16 +51,6 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     coupled_field_->Receive(mode);
-  }
-  void SyncNativeToInternal()
-  {
-    PCMS_FUNCTION_TIMER;
-    coupled_field_->SyncNativeToInternal(internal_field_);
-  }
-  void SyncInternalToNative()
-  {
-    PCMS_FUNCTION_TIMER;
-    coupled_field_->SyncInternalToNative(internal_field_);
   }
   [[nodiscard]] InternalField& GetInternalField() noexcept
   {
@@ -112,8 +77,6 @@ public:
   {
     virtual void Send(Mode) = 0;
     virtual void Receive(Mode) = 0;
-    virtual void SyncNativeToInternal(InternalField&) = 0;
-    virtual void SyncInternalToNative(const InternalField&) = 0;
     [[nodiscard]] virtual const std::type_info& GetFieldAdapterType()
       const noexcept = 0;
     [[nodiscard]] virtual void* GetFieldAdapter() noexcept = 0;
@@ -125,27 +88,19 @@ public:
     using value_type = typename FieldAdapterT::value_type;
 
     CoupledFieldModel(FieldAdapterT&& field_adapter,
-                      FieldCommunicator<CommT>&& comm,
-                      TransferOptions&& native_to_internal,
-                      TransferOptions&& internal_to_native)
+                      FieldCommunicator<CommT>&& comm)
       : field_adapter_(std::move(field_adapter)),
         comm_(std::move(comm)),
-        native_to_internal_(std::move(native_to_internal)),
-        internal_to_native_(std::move(internal_to_native)),
         type_info_(typeid(FieldAdapterT))
     {
       PCMS_FUNCTION_TIMER;
     }
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
                       MPI_Comm mpi_comm, redev::Redev& redev,
-                      redev::Channel& channel,
-                      TransferOptions&& native_to_internal,
-                      TransferOptions&& internal_to_native)
+                      redev::Channel& channel)
       : field_adapter_(std::move(field_adapter)),
         comm_(FieldCommunicator<FieldAdapterT>(name, mpi_comm, redev, channel,
                                                field_adapter_)),
-        native_to_internal_(std::move(native_to_internal)),
-        internal_to_native_(std::move(internal_to_native)),
         type_info_(typeid(FieldAdapterT))
     {
       PCMS_FUNCTION_TIMER;
@@ -160,20 +115,6 @@ public:
       PCMS_FUNCTION_TIMER;
       comm_.Receive(mode);
     };
-    void SyncNativeToInternal(InternalField& internal_field) final
-    {
-      PCMS_FUNCTION_TIMER;
-      ConvertFieldAdapterToOmegaH(field_adapter_, internal_field,
-                                  native_to_internal_.transfer_method,
-                                  native_to_internal_.evaluation_method);
-    };
-    void SyncInternalToNative(const InternalField& internal_field) final
-    {
-      PCMS_FUNCTION_TIMER;
-      ConvertOmegaHToFieldAdapter(internal_field, field_adapter_,
-                                  internal_to_native_.transfer_method,
-                                  internal_to_native_.evaluation_method);
-    };
     virtual const std::type_info& GetFieldAdapterType() const noexcept
     {
       return type_info_;
@@ -185,8 +126,6 @@ public:
 
     FieldAdapterT field_adapter_;
     FieldCommunicator<CommT> comm_;
-    TransferOptions native_to_internal_;
-    TransferOptions internal_to_native_;
     const std::type_info& type_info_;
   };
 
@@ -219,18 +158,12 @@ public:
   template <typename FieldAdapterT>
   ConvertibleCoupledField* AddField(
     std::string name, FieldAdapterT&& field_adapter,
-    FieldTransferMethod to_field_transfer_method,
-    FieldEvaluationMethod to_field_eval_method,
-    FieldTransferMethod from_field_transfer_method,
-    FieldEvaluationMethod from_field_eval_method,
     Omega_h::Read<Omega_h::I8> internal_field_mask = {})
   {
     PCMS_FUNCTION_TIMER;
     auto [it, inserted] = fields_.template try_emplace(
       name, name, std::forward<FieldAdapterT>(field_adapter), mpi_comm_, redev_,
       channel_, internal_mesh_,
-      TransferOptions{to_field_transfer_method, to_field_eval_method},
-      TransferOptions{from_field_transfer_method, from_field_eval_method},
       internal_field_mask);
     if (!inserted) {
       std::cerr << "OHField with this name" << name << "already exists!\n";
@@ -304,6 +237,96 @@ private:
   std::map<std::string, ConvertibleCoupledField> fields_;
   Omega_h::Mesh& internal_mesh_;
 };
+class GatherOperation
+{
+public:
+  GatherOperation(std::vector<std::reference_wrapper<ConvertibleCoupledField>>
+                    fields_to_gather,
+                  InternalField& combined_field, CombinerFunction combiner)
+    : coupled_fields_(std::move(fields_to_gather)),
+      combined_field_(combined_field),
+      combiner_(std::move(combiner))
+  {
+    PCMS_FUNCTION_TIMER;
+    internal_fields_.reserve(coupled_fields_.size());
+    std::transform(coupled_fields_.begin(), coupled_fields_.end(),
+                   std::back_inserter(internal_fields_),
+                   [](ConvertibleCoupledField& fld) {
+                     return std::ref(fld.GetInternalField());
+                   });
+  }
+  void Run() const
+  {
+    PCMS_FUNCTION_TIMER;
+    for (auto& field : coupled_fields_) {
+      field.get().Receive();
+      field.get().SyncNativeToInternal();
+    }
+    combiner_(internal_fields_, combined_field_);
+  };
+
+private:
+  std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_;
+  std::vector<std::reference_wrapper<InternalField>> internal_fields_;
+  InternalField& combined_field_;
+  CombinerFunction combiner_;
+};
+class ScatterOperation
+{
+public:
+  ScatterOperation(std::vector<std::reference_wrapper<ConvertibleCoupledField>>
+                     fields_to_scatter,
+                   InternalField& combined_field)
+    : coupled_fields_(std::move(fields_to_scatter)),
+      combined_field_{combined_field}
+  {
+    PCMS_FUNCTION_TIMER;
+
+    internal_fields_.reserve(coupled_fields_.size());
+    std::transform(begin(coupled_fields_), end(coupled_fields_),
+                   std::back_inserter(internal_fields_),
+                   [](ConvertibleCoupledField& fld) {
+                     return std::ref(fld.GetInternalField());
+                   });
+  }
+  void Run() const
+  {
+    PCMS_FUNCTION_TIMER;
+    // possible we may need to add a splitter operation here.
+    // needed splitter(combined_field, internal_fields_);
+    // for current use case, we copy the combined field
+    // into application internal fields
+    std::visit(
+      [this](const auto& combined_field) {
+        for (auto& field : coupled_fields_) {
+          std::visit(
+            [&](auto& internal_field) {
+              constexpr bool can_copy = std::is_same_v<
+                typename std::remove_reference_t<
+                  std::remove_cv_t<decltype(combined_field)>>::value_type,
+                typename std::remove_reference_t<
+                  std::remove_cv_t<decltype(internal_field)>>::value_type>;
+              if constexpr (can_copy) {
+                copy_field(combined_field, internal_field);
+              } else {
+                interpolate_field(combined_field, internal_field);
+              }
+            },
+            field.get().GetInternalField());
+        }
+      },
+      combined_field_);
+    for (auto& field : coupled_fields_) {
+      field.get().SyncInternalToNative();
+      field.get().Send(Mode::Synchronous);
+    }
+  };
+
+private:
+  std::vector<std::reference_wrapper<ConvertibleCoupledField>> coupled_fields_;
+  std::vector<std::reference_wrapper<InternalField>> internal_fields_;
+  InternalField& combined_field_;
+};
 
 class CouplerServer
 {
@@ -334,7 +357,6 @@ public:
     return &(it->second);
   }
 
-  template <typename CombinedFieldT = Real>
   [[nodiscard]] const redev::Partition& GetPartition() const noexcept
   {
     return redev_.GetPartition();
@@ -357,7 +379,10 @@ private:
   std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
+  // xgc_coupler owns internal fields since both gather/scatter ops use these
+  // these internal fields correspond to the "Combined" fields
   std::map<std::string, InternalField> internal_fields_;
+  // gather and scatter operations have reference to internal fields
   std::map<std::string, Application> applications_;
   Omega_h::Mesh& internal_mesh_;
 };

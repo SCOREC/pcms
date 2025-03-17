@@ -54,12 +54,6 @@ auto find_many_or_error(const std::vector<T>& keys,
   return results;
 }
 } // namespace detail
-
-struct TransferOptions
-{
-  FieldTransferMethod transfer_method;
-  FieldEvaluationMethod evaluation_method;
-};
 } // namespace pcms
 
 #endif // PCMS_COUPLING_COMMON_H

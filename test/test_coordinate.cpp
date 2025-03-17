@@ -2,7 +2,7 @@
 #include <catch2/catch_approx.hpp>
 #include <pcms/coordinate.h>
 #include <pcms/coordinate_systems.h>
-#include <pcms/external/mdspan.hpp>
+#include "mdspan/mdspan.hpp"
 #include <pcms/arrays.h>
 
 using pcms::Cartesian;
@@ -46,10 +46,10 @@ TEST_CASE( "Coordinate value type works", "[coordinate]" ) {
   namespace stdex = std::experimental;
   pcms::CoordinateMDArray<double,Cartesian> a(2);
 
-  std::experimental::mdarray<
+  Kokkos::mdarray<
     double,
-    std::experimental::extents<int, std::experimental::dynamic_extent, 3>,
-    std::experimental::layout_right, Omega_h::Write<double> > bla(2);
+    Kokkos::extents<int, Kokkos::dynamic_extent, 3>,
+    Kokkos::layout_right, Omega_h::Write<double> > bla(2);
 
   double count = 1.0;
   for(int i=0; i<a.extent(0); ++i) {

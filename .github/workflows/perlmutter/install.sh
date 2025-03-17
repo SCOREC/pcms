@@ -9,7 +9,7 @@ module load cray-fftw
 # # kokkos
 # rm build-kokkos -rf
 # # rm kokkos -rf
-# git clone -b 4.2.00 https://github.com/kokkos/kokkos.git
+# git clone -b 4.5.00 https://github.com/kokkos/kokkos.git
 # cmake -S kokkos -B build-kokkos \
 #   -DCMAKE_INSTALL_PREFIX=build-kokkos/install \
 #   -DCMAKE_BUILD_TYPE="Release" \
@@ -100,7 +100,7 @@ cmake -S pcms -B build-pcms \
   -DCMAKE_C_COMPILER=cc \
   -DCMAKE_CXX_COMPILER=CC \
   -DCMAKE_BUILD_TYPE=Release \
-  -DPCMS_TIMEOUT=0 \
+  -DPCMS_TIMEOUT=100 \
   -Dperfstubs_DIR=$PWD/build-perfstubs \
   -Dredev_DIR=$PWD/build-redev/install/lib64/cmake/redev \
   -DOmega_h_DIR=$PWD/build-omega_h/install/lib64/cmake/Omega_h/ \

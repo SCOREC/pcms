@@ -1,5 +1,6 @@
 #ifndef PCMS_COUPLING_XGC_FIELD_ADAPTER_H
 #define PCMS_COUPLING_XGC_FIELD_ADAPTER_H
+#include "omega_h_field.h"
 #include "pcms/types.h"
 #include "pcms/memory_spaces.h"
 #include "pcms/field.h"
@@ -12,30 +13,6 @@
 
 namespace pcms
 {
-namespace detail
-{
-// Needed since NVHPC doesn't work with overloaded
-struct GetRank
-{
-  using GeomType = DimID;
-  GetRank(const GeomType& geom) : geom_(geom) {}
-  auto operator()(const redev::ClassPtn& ptn) const
-  {
-    PCMS_FUNCTION_TIMER;
-    const auto ent = redev::ClassPtn::ModelEnt({geom_.dim, geom_.id});
-    return ptn.GetRank(ent);
-  }
-  auto operator()(const redev::RCBPtn& /*unused*/) const
-  {
-    PCMS_FUNCTION_TIMER;
-    std::cerr << "RCB partition not handled yet\n";
-    std::terminate();
-    return 0;
-  }
-  const GeomType& geom_;
-};
-} // namespace detail
-
 template <typename T, typename CoordinateElementType = Real>
 class XGCFieldAdapter
 {
@@ -135,7 +112,7 @@ public:
 
   // REQUIRED
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
-    const redev::Partition& partition) const
+    const Partition& partition) const
   {
     PCMS_FUNCTION_TIMER;
     if (RankParticipatesCouplingCommunication()) {
@@ -147,7 +124,7 @@ public:
         // if the geometry is in specified overlap region
         if (in_overlap_(geom.first.dim, geom.first.id)) {
 
-          auto dr = std::visit(detail::GetRank{geom.first}, partition);
+          auto dr = partition.GetDr(geom.first.id, geom.first.dim);
           auto [it, inserted] = reverse_partition.try_emplace(dr);
           // the map gives the local iteration order of the global ids
           auto map = mask_.GetMap();
@@ -176,6 +153,11 @@ public:
     PCMS_FUNCTION_TIMER;
     // only do adios communications on 0 rank of the XGC fields
     return (plane_rank_ == plane_root_);
+  }
+
+  [[nodiscard]] pcms::mesh_entity_type GetEntityType() const noexcept
+  {
+    return pcms::mesh_entity_type::VERTEX;
   }
 
 private:

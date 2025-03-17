@@ -9,6 +9,7 @@
 #include <fstream>
 #include "pcms/xgc_reverse_classification.h"
 #include "pcms/dummy_field_adapter.h"
+#include "pcms/print.h"
 namespace pcms
 {
 // Note that we have a closed set of types that can be used in the C interface
@@ -155,7 +156,7 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
         name, comm, data, size, *reverse_classification, in_overlap, *field_adapter);
       break;
     default:
-      printf("tyring to create XGC adapter with invalid type! %d", data_type);
+      pcms::printError("tyring to create XGC adapter with invalid type!\n");
       std::abort();
   }
   return {reinterpret_cast<void*>(field_adapter)};

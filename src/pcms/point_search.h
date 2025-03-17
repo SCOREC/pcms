@@ -17,7 +17,7 @@ namespace pcms
 // used
 namespace detail {
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<UniformGrid[1]> grid, int num_grid_cells);
+construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid, int num_grid_cells);
 }
 KOKKOS_FUNCTION
 Omega_h::Vector<3> barycentric_from_global(
@@ -33,6 +33,14 @@ class GridPointSearch
 public:
   static constexpr auto dim = 2;
   struct Result {
+    enum class Dimensionality
+    {
+      VERTEX = 0,
+      EDGE = 1,
+      FACE = 2
+    };
+
+    Dimensionality dimensionality;
     LO tri_id;
     Omega_h::Vector<dim + 1> parametric_coords;
   };
@@ -49,7 +57,10 @@ public:
 
 private:
   Omega_h::Mesh mesh_;
-  Kokkos::View<UniformGrid[1]> grid_{"uniform grid"};
+  Omega_h::Adj tris2edges_adj_;
+  Omega_h::Adj tris2verts_adj_;
+  Omega_h::Adj edges2verts_adj_;
+  Kokkos::View<Uniform2DGrid[1]> grid_{"uniform grid"};
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;

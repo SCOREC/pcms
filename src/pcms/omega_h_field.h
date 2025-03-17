@@ -18,6 +18,7 @@
 #include "pcms/memory_spaces.h"
 #include "pcms/profile.h"
 #include "pcms/partition.h"
+#include <optional>
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
 
@@ -99,12 +100,10 @@ public:
   using coordinate_element_type = CoordinateElementType;
 
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
-              std::string global_id_name = "", int search_nx = 10,
-              int search_ny = 10,
+              std::string global_id_name = "",
               mesh_entity_type entity_type = mesh_entity_type::VERTEX)
     : name_(std::move(name)),
       mesh_(mesh),
-      search_{mesh, search_nx, search_ny},
       size_(mesh.nents(mesh_entity_to_int(entity_type))),
       global_id_name_(std::move(global_id_name)),
       entity_type_(entity_type)
@@ -117,7 +116,6 @@ public:
               mesh_entity_type entity_type = mesh_entity_type::VERTEX)
     : name_(std::move(name)),
       mesh_(mesh),
-      search_{mesh, search_nx, search_ny},
       global_id_name_(std::move(global_id_name)),
       entity_type_(entity_type)
   {
@@ -210,7 +208,8 @@ public:
   }
 private:
   std::string name_;
-  Omega_h::Mesh* mesh_;
+  Omega_h::Mesh& mesh_;
+  // TODO make this a pointer and introduce base class to Search for alternative search methods
   std::optional<GridPointSearch> search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;

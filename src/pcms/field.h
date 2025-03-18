@@ -82,6 +82,8 @@ public:
 
   virtual Kokkos::View<const T*> GetNodalData() const = 0;
 
+  virtual Kokkos::View<const T*> GetNodalCoordinates() const = 0;
+
   virtual void SetNodalData(Kokkos::View<const T*> data) = 0;
 
   /*

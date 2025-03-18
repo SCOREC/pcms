@@ -103,8 +103,9 @@ TEST_CASE("solver test")
 
         team.team_barrier();
 
+        double lambda = 0.5;
         auto result = convert_normal_equation(vandermonde_matrix, phi,
-                                              support_values, team);
+                                              support_values, team, lambda);
 
         team.team_barrier();
 
@@ -159,10 +160,10 @@ TEST_CASE("solver test")
     Kokkos::View<double**, Kokkos::HostSpace> expected_solution(
       "expected solution", nvertices_target, size);
 
-    expected_lhs_matrix(0, 0, 0) = 35.0;
+    expected_lhs_matrix(0, 0, 0) = 35.5;
     expected_lhs_matrix(0, 0, 1) = 44.0;
     expected_lhs_matrix(0, 1, 0) = 44.0;
-    expected_lhs_matrix(0, 1, 1) = 56.0;
+    expected_lhs_matrix(0, 1, 1) = 56.5;
 
     expected_rhs_vector(0, 0) = 76.0;
     expected_rhs_vector(0, 1) = 100.0;
@@ -174,13 +175,13 @@ TEST_CASE("solver test")
     expected_scaled_matrix(0, 1, 1) = 4.0;
     expected_scaled_matrix(0, 1, 2) = 6.0;
 
-    expected_solution(0, 0) = -6.0;
-    expected_solution(0, 1) = 6.5;
+    expected_solution(0, 0) = -1.519713;
+    expected_solution(0, 1) = 2.953405;
 
-    expected_lhs_matrix(1, 0, 0) = 30.0;
+    expected_lhs_matrix(1, 0, 0) = 30.5;
     expected_lhs_matrix(1, 0, 1) = 20.0;
     expected_lhs_matrix(1, 1, 0) = 20.0;
-    expected_lhs_matrix(1, 1, 1) = 30.0;
+    expected_lhs_matrix(1, 1, 1) = 30.5;
 
     expected_rhs_vector(1, 0) = 70.0;
     expected_rhs_vector(1, 1) = 40.0;
@@ -192,8 +193,8 @@ TEST_CASE("solver test")
     expected_scaled_matrix(1, 1, 1) = -2.0;
     expected_scaled_matrix(1, 1, 2) = 1.0;
 
-    expected_solution(1, 0) = 2.6;
-    expected_solution(1, 1) = -0.4;
+    expected_solution(1, 0) = 2.517680;
+    expected_solution(1, 1) = -0.339463;
 
     for (int i = 0; i < nvertices_target; ++i) {
       for (int j = 0; j < size; ++j) {
@@ -203,7 +204,7 @@ TEST_CASE("solver test")
                  i, j, l);
           REQUIRE_THAT(
             expected_scaled_matrix(i, j, l),
-            Catch::Matchers::WithinAbs(host_result_scaled(i, j, l), 1E-10));
+            Catch::Matchers::WithinAbs(host_result_scaled(i, j, l), 1E-6));
         }
       }
       for (int j = 0; j < size; ++j) {
@@ -213,14 +214,14 @@ TEST_CASE("solver test")
                  k);
           REQUIRE_THAT(
             expected_lhs_matrix(i, j, k),
-            Catch::Matchers::WithinAbs(host_result_lhs(i, j, k), 1E-10));
+            Catch::Matchers::WithinAbs(host_result_lhs(i, j, k), 1E-6));
         }
       }
       for (int j = 0; j < size; ++j) {
         printf("A^T Q b: (%f,%f) at (%d,%d)\n", expected_rhs_vector(i, j),
                host_result_rhs(i, j), i, j);
         REQUIRE_THAT(expected_rhs_vector(i, j),
-                     Catch::Matchers::WithinAbs(host_result_rhs(i, j), 1E-10));
+                     Catch::Matchers::WithinAbs(host_result_rhs(i, j), 1E-6));
       }
 
       for (int j = 0; j < size; ++j) {
@@ -228,7 +229,7 @@ TEST_CASE("solver test")
                host_result_solution(i, j), i, j);
         REQUIRE_THAT(
           expected_solution(i, j),
-          Catch::Matchers::WithinAbs(host_result_solution(i, j), 1E-10));
+          Catch::Matchers::WithinAbs(host_result_solution(i, j), 1E-6));
       }
     }
   }

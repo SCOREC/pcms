@@ -236,9 +236,7 @@ void add_regularization(const member_type& team, ScratchMatView& square_matrix,
                         Real lambda_factor)
 {
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, square_matrix.extent(0)),
-                       [=](int i) {
-                         square_matrix(i, i) += lambda_factor;
-                       });
+                       [=](int i) { square_matrix(i, i) += lambda_factor; });
 }
 
 /**
@@ -636,7 +634,7 @@ Write<Real> mls_interpolation(const Reals source_values,
 
   mls_interpolation(source_values_array_view, source_coordinates_array_view,
                     target_coordinates_array_view, support, dim, degree,
-                    rbf_func, interpolated_values_array_view);
+                    rbf_func, interpolated_values_array_view, lambda_factor);
 
   return interpolated_values;
 }

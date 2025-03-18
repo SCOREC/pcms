@@ -231,6 +231,16 @@ void scale_column_trans_matrix(const ScratchMatView& matrix,
   }
 }
 
+KOKKOS_INLINE_FUNCTION
+void add_regularization(const member_type& team, ScratchMatView& square_matrix,
+                        Real lambda_factor)
+{
+  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, square_matrix.extent(0)),
+                       [=](int i) {
+                         square_matrix(i, i) += lambda_factor;
+                       });
+}
+
 /**
  * @struct ResultConvertNormal
  * @brief Stores the results of matrix and vector transformations.
@@ -283,7 +293,8 @@ KOKKOS_INLINE_FUNCTION
 ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
                                             const ScratchVecView& weight_vector,
                                             const ScratchVecView& rhs,
-                                            member_type team)
+                                            member_type team,
+                                            double lambda_factor)
 {
 
   int m = matrix.extent(0);
@@ -316,6 +327,10 @@ ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
     KokkosBatched::Trans::NoTranspose,
     KokkosBatched::Algo::Gemm::Unblocked>::invoke(team, 1.0, scaled_matrix,
                                                   matrix, 0.0, square_matrix);
+
+  team.team_barrier();
+
+  add_regularization(team, square_matrix, lambda_factor);
 
   team.team_barrier();
 
@@ -419,7 +434,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
                        RealConstDefaultScalarArrayView target_coordinates,
                        const SupportResults& support, const LO& dim,
                        const LO& degree, Func rbf_func,
-                       RealDefaultScalarArrayView approx_target_values)
+                       RealDefaultScalarArrayView approx_target_values,
+                       double lambda_factor)
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_invocable_r_v<double, Func, double, double>,
@@ -550,8 +566,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       team.team_barrier();
 
-      auto result = convert_normal_equation(vandermonde_matrix, phi_vector,
-                                            support_values, team);
+      auto result = convert_normal_equation(
+        vandermonde_matrix, phi_vector, support_values, team, lambda_factor);
 
       team.team_barrier();
 
@@ -593,7 +609,8 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
-                              const LO& degree, Func rbf_func)
+                              const LO& degree, Func rbf_func,
+                              double lambda_factor)
 {
   const auto nvertices_source = source_coordinates.size() / dim;
 

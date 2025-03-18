@@ -76,41 +76,6 @@ void interpolate_field(const SourceField& source_field,
     set_nodal_data(target_field, make_array_view(data));
   }
 }
-template <typename SourceField, typename TargetField>
-void transfer_field(const SourceField& source, TargetField& target,
-                    FieldTransferMethod transfer_method,
-                    FieldEvaluationMethod evaluation_method)
-{
-  PCMS_FUNCTION_TIMER;
-  switch (transfer_method) {
-    case FieldTransferMethod::None: return;
-    case FieldTransferMethod::Copy:
-      if constexpr(std::is_same_v<SourceField, TargetField>) {
-        copy_field(source, target);
-      }
-      else {
-        std::cerr<<"Source field and destination field must have same type to copy!\n";
-        std::abort();
-      }
-      return;
-    case FieldTransferMethod::Interpolate:
-      switch (evaluation_method) {
-        case FieldEvaluationMethod::None:
-          std::cerr << "Cannot interpolate field with no evaluation method!";
-          std::terminate();
-        case FieldEvaluationMethod::Lagrange1:
-          interpolate_field(source, target, Lagrange<1>{});
-          break;
-        case FieldEvaluationMethod::NearestNeighbor:
-          interpolate_field(source, target, NearestNeighbor{});
-          break;
-          // no default case for compiler error on missing cases
-      }
-      return;
-      // no default case for compiler error on missing transfer method
-  }
-}
-
 } // namespace pcms
 
 #endif // PCMS_COUPLING_TRANSFER_FIELD_H

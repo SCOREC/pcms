@@ -111,6 +111,12 @@ public:
     return redev_.GetPartition();
   }
 
+  /**
+   * @known_issue
+   * The redev partion has to be same as the partition of the OH mesh.
+   * It asserts the number of elements sent and received are same.
+   * otherwise, ConstructPermutation() will fail.
+  */
   template <typename FieldAdapterT>
   CoupledField* AddField(std::string name, FieldAdapterT field_adapter,
                          bool participates = true)

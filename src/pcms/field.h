@@ -1,9 +1,12 @@
 #ifndef PCMS_COUPLING_FIELD_H
 #define PCMS_COUPLING_FIELD_H
+#include "adapter/omega_h/omega_h_field.h"
 #include "pcms/types.h"
 #include "pcms/arrays.h"
 #include "pcms/memory_spaces.h"
 #include <map>
+#include <string>
+#include <Kokkos_Core.hpp>
 #include <redev.h> // TODO remove this include
 #include "pcms/field_evaluation_methods.h" // TODO remove this include
 #include "pcms/coordinate_system.h"
@@ -71,6 +74,16 @@ struct LocalizationHint {
 template <typename T>
 class FieldT {
 public:
+  virtual const std::string& GetName() const = 0;
+
+  virtual mesh_entity_type GetEntityType() const = 0;
+
+  virtual CoordinateSystem GetCoordinateSystem() const = 0;
+
+  virtual Kokkos::View<const T*> GetNodalData() const = 0;
+
+  virtual void SetNodalData(Kokkos::View<const T*> data) = 0;
+
   /*
   * specify the coordinates to evaluate the field
    */
@@ -116,6 +129,9 @@ using FieldPtr = std::variant< FieldT<int8_t>*,
                                FieldT<int64_t>*,
                                FieldT<float>*,
                                FieldT<double>*>;
+
+
+
 } // namespace pcms
 
 #endif // PCMS_COUPLING_FIELD_H

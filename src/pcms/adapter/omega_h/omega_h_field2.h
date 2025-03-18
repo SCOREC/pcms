@@ -1,6 +1,9 @@
 #ifndef PCMS_OMEGA_H_FIELD2_H
 #define PCMS_OMEGA_H_FIELD2_H
 
+#include <Kokkos_Core.hpp>
+#include <vector>
+
 #include "pcms/types.h"
 #include "pcms/field.h"
 #include "pcms/coordinate_system.h"
@@ -15,11 +18,20 @@ public:
   OmegaHField2(std::string name, CoordinateSystem coordinate_system,
                const OmegaHFieldLayout& layout, Omega_h::Mesh& mesh);
 
-  void SetEvaluationCoordinates(CoordinateView<HostMemorySpace> coordinates,
-                                LocalizationHint hint = {}) override;
+  std::string& GetName() const override;
+
+  mesh_entity_type GetEntityType() const override;
+
+  CoordinateSystem GetCoordinateSystem() const override;
+
+  Kokkos::View<const Real*> GetNodalData() const override;
+
+  void SetNodalData(Kokkos::View<const Real*> data) override;
+
+  void SetEvaluationCoordinates(LocalizationHint hint) override;
 
   LocalizationHint GetLocalizationHint(
-    CoordinateView<HostMemorySpace> coordinates) override;
+    CoordinateView<HostMemorySpace> coordinate_view) override;
 
   void Evaluate(FieldDataView<double, HostMemorySpace> results) override;
 
@@ -41,9 +53,11 @@ public:
   ~OmegaHField2() noexcept = default;
 
 private:
+  std::string name_;
   CoordinateSystem coordinate_system_;
   const OmegaHFieldLayout& layout_;
   Omega_h::Mesh& mesh_;
+  Kokkos::View<GridPointSearch::Result*> *hint_ = nullptr;
 };
 
 } // namespace pcms

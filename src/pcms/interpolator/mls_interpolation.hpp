@@ -19,6 +19,7 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
-                              const LO& degree, RadialBasisFunction bf);
+                              const LO& degree, RadialBasisFunction bf,
+                              double lambda_factor = 0);
 } // namespace pcms
 #endif

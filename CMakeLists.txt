@@ -61,6 +61,11 @@ if(PCMS_ENABLE_MESHFIELDS)
   find_package(meshfields REQUIRED)
 endif()
 
+option(PCMS_ENABLE_PETSC "enable PETSC" OFF)
+if(PCMS_ENABLE_PETSC)
+  pkg_check_modules(PETSC REQUIRED IMPORTED_TARGET PETSc>=3.22.0)
+endif()
+
 add_subdirectory(src)
 
 include(CTest)

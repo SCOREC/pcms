@@ -60,5 +60,9 @@ int main(int argc, char** argv) {
 
   auto foo = buildMassMatrix(mesh, coordFe);
 
+  mesh.add_tag(2, "massMatrix", 3*3, Omega_h::read(Omega_h::Write<MeshField::Real>(foo)));
+
+  Omega_h::vtk::write_parallel("massMatrix.vtk", &mesh, 2);
+
   return 0;
 }

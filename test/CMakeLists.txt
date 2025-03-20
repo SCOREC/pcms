@@ -136,6 +136,10 @@ if (PCMS_ENABLE_MESHFIELDS)
   target_link_libraries(thwaites_adapt PUBLIC meshfields::meshfields)
   target_link_libraries(thwaites_adapt PUBLIC pcms::core pcms_interpolator)
   target_include_directories(thwaites_adapt PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+  add_executable(massMatrix massMatrix.cpp)
+  target_link_libraries(massMatrix PUBLIC meshfields::meshfields)
+  target_include_directories(massMatrix PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 if (PCMS_ENABLE_C)

@@ -16,7 +16,8 @@
 #include <Omega_h_dbg.hpp>
 #include <Omega_h_for.hpp>
 
-#include "thwaites_errorEstimator.hpp"
+#include <MeshField.hpp>
+#include "massMatrixIntegrator.hpp"
 
 //detect floating point exceptions
 #include <fenv.h>
@@ -39,8 +40,8 @@ void setFieldAtVertices(Omega_h::Mesh &mesh, ShapeField field, const MeshField::
 int main(int argc, char** argv) {
   feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);  // Enable all floating point exceptions but FE_INEXACT
   auto lib = Library(&argc, &argv);
-  if( argc != 6 ) {
-    fprintf(stderr, "Usage: %s inputMesh.osh outputMeshPrefix adaptRatio min_size max_size\n", argv[0]);
+  if( argc != 3 ) {
+    fprintf(stderr, "Usage: %s inputMesh.osh outputMeshPrefix\n", argv[0]);
     exit(EXIT_FAILURE);
   }
   auto world = lib.world();
@@ -52,20 +53,12 @@ int main(int argc, char** argv) {
   MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
         mesh);
 
-  const auto MeshDim = 2;
   const auto ShapeOrder = 1;
-  auto constantField = omf.CreateLagrangeField<Real, ShapeOrder, MeshDim>();
-  setFieldAtVertices(mesh, constantField, 1.0);
-
   auto coordField = omf.getCoordField();
   const auto [shp, map] = MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);
 
-  auto estimation = buildMassMatrix(mesh, constantField, coordFe);
-
-  const auto tgtLength = getSprSizeField(estimation, omf, coordFe);
-  Omega_h::Write<MeshField::Real> tgtLength_oh(tgtLength);
-  mesh.add_tag<Real>(VERT, "tgtLength", 1, tgtLength_oh);
+  auto foo = buildMassMatrix(mesh, coordFe);
 
   return 0;
 }

@@ -58,9 +58,9 @@ int main(int argc, char** argv) {
   const auto [shp, map] = MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);
 
-  auto foo = buildMassMatrix(mesh, coordFe);
+  auto massMatrix = buildMassMatrix(mesh, coordFe);
 
-  mesh.add_tag(2, "massMatrix", 3*3, Omega_h::read(Omega_h::Write<MeshField::Real>(foo)));
+  mesh.add_tag(2, "massMatrix", 3*3, Omega_h::read(Omega_h::Write<MeshField::Real>(massMatrix)));
 
   Omega_h::vtk::write_parallel("massMatrix.vtk", &mesh, 2);
 

@@ -19,6 +19,9 @@
 #include <MeshField.hpp>
 #include "massMatrixIntegrator.hpp"
 
+#include <petscmat.h>
+#include <petscvec_kokkos.hpp>
+
 //detect floating point exceptions
 #include <fenv.h>
 
@@ -37,7 +40,32 @@ void setFieldAtVertices(Omega_h::Mesh &mesh, ShapeField field, const MeshField::
                           setFieldAtVertices, "setFieldAtVertices");
 }
 
+//FIXME remove the hard coded 3x3
+static PetscErrorCode CreateMatrix(Omega_h::Mesh& mesh, Mat *A) {
+  PetscInt *oor, *ooc, cnt = 0;
+  PetscFunctionBeginUser;
+  PetscCall(MatCreate(PETSC_COMM_WORLD, A));
+  PetscCall(MatSetSizes(*A, mesh.nverts(), mesh.nverts(), PETSC_DECIDE, PETSC_DECIDE));
+  PetscCall(MatSetFromOptions(*A));
+  /* determine for each entry in each element stiffness matrix the global row and column */
+  /* since the element is triangular with piecewise linear basis functions there are three degrees of freedom per element, one for each vertex */
+  PetscCall(PetscMalloc2(3 * 3 * mesh.nelems(), &oor, 3 * 3 * mesh.nelems(), &ooc));
+  for (PetscInt e = 0; e < mesh.nelems(); e++) {
+    for (PetscInt vi = 0; vi < 3; vi++) {
+      for (PetscInt vj = 0; vj < 3; vj++) {
+        oor[cnt]   = fe->vertices[3 * e + vi]; //FIXME - elmToVtx
+        ooc[cnt++] = fe->vertices[3 * e + vj]; //FIXME - elmToVtx
+      }
+    }
+  }
+  PetscCall(MatSetPreallocationCOO(*A, 3 * 3 * mesh.nelems(), oor, ooc));
+  PetscCall(PetscFree2(oor, ooc));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
 int main(int argc, char** argv) {
+  PetscCall(PetscInitialize(&argc,&argv,NULL,NULL));
   feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);  // Enable all floating point exceptions but FE_INEXACT
   auto lib = Library(&argc, &argv);
   if( argc != 3 ) {
@@ -58,11 +86,21 @@ int main(int argc, char** argv) {
   const auto [shp, map] = MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);
 
-  auto massMatrix = buildMassMatrix(mesh, coordFe);
+  auto elmMassMatrix = buildMassMatrix(mesh, coordFe);
 
-  mesh.add_tag(2, "massMatrix", 3*3, Omega_h::read(Omega_h::Write<MeshField::Real>(massMatrix)));
+  mesh.add_tag(2, "elmMassMatrix", 3*3, Omega_h::read(Omega_h::Write<MeshField::Real>(elmMassMatrix)));
 
   Omega_h::vtk::write_parallel("massMatrix.vtk", &mesh, 2);
+
+  Mat mass;
+  PetscCall(CreateMatrix(mesh, mass));
+  PetscCall(MatZeroEntries(mass));
+  PetscCall(MatSetValuesCOO(mass, elmMassMatrix.data(), INSERT_VALUES));
+  if( mesh.nelems() < 10 ) {
+    PetscCall(MatView(mass, PETSC_VIEWER_STDOUT_WORLD));
+  }
+  PetscCall(MatDestroy(&mass));
+  PetscCall(PetscFinalize());
 
   return 0;
 }

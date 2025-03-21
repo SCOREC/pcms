@@ -67,9 +67,9 @@ static PetscErrorCode CreateMatrix(Omega_h::Mesh& mesh, Mat *A) {
 
 
 int main(int argc, char** argv) {
+  auto lib = Library(&argc, &argv); //initializes MPI
   PetscCall(PetscInitialize(&argc,&argv,NULL,NULL));
   feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);  // Enable all floating point exceptions but FE_INEXACT
-  auto lib = Library(&argc, &argv);
   if( argc != 3 ) {
     fprintf(stderr, "Usage: %s inputMesh.osh outputMeshPrefix\n", argv[0]);
     exit(EXIT_FAILURE);
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
   Mat mass;
   PetscCall(CreateMatrix(mesh, &mass));
   PetscCall(MatZeroEntries(mass));
-  PetscCall(MatSetValuesCOO(mass, elmMassMatrix.data(), INSERT_VALUES)); //FIXME fails here
+  PetscCall(MatSetValuesCOO(mass, elmMassMatrix.data(), INSERT_VALUES)); //FIXME fails here on gpu, calls into host implementation... AFAIK, petsc checks the type of the input array of values to decide which backend to use...
   if( mesh.nelems() < 10 ) {
     PetscCall(MatView(mass, PETSC_VIEWER_STDOUT_WORLD));
   }

@@ -154,14 +154,13 @@ public:
   void ConstructSearch(int nx, int ny)
   {
     PCMS_FUNCTION_TIMER;
-    search_ = GridPointSearch2D(mesh_, nx, ny);
+    search_ = std::make_unique<GridPointSearch2D>(mesh_, nx, ny);
   }
   // pass through to search function
   [[nodiscard]] auto Search(Kokkos::View<Real* [2]> points) const
   {
     PCMS_FUNCTION_TIMER;
-    PCMS_ALWAYS_ASSERT(search_.has_value() &&
-                       "search data structure must be constructed before use");
+    PCMS_ALWAYS_ASSERT(search_ != nullptr && "search data structure must be constructed before use");
     return (*search_)(points);
   }
 
@@ -221,7 +220,7 @@ private:
   std::string name_;
   Omega_h::Mesh& mesh_;
   // TODO make this a pointer and introduce base class to Search for alternative search methods
-  std::optional<GridPointSearch2D> search_;
+  std::unique_ptr<PointLocalizationSearch2D> search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;
   LO size_;

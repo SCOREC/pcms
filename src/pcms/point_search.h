@@ -48,6 +48,8 @@ public:
   virtual Kokkos::View<Result*> operator()(Kokkos::View<Real*[dim] > point) const = 0;
 };
 
+using PointLocalizationSearch2D = PointLocalizationSearch<2>;
+
 template <int dim>
 class GridPointSearch : public PointLocalizationSearch<dim>
 {
@@ -55,12 +57,12 @@ class GridPointSearch : public PointLocalizationSearch<dim>
 };
 
 template <>
-class GridPointSearch<2> : public PointLocalizationSearch<2>
+class GridPointSearch<2> : public PointLocalizationSearch2D
 {
   using CandidateMapT = Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
 
 public:
-  using Result = PointLocalizationSearch::Result;
+  using Result = PointLocalizationSearch2D::Result;
 
   GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny);
   /**

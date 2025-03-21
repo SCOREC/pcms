@@ -40,8 +40,9 @@ void setFieldAtVertices(Omega_h::Mesh &mesh, ShapeField field, const MeshField::
                           setFieldAtVertices, "setFieldAtVertices");
 }
 
-//FIXME remove the hard coded 3s
 static PetscErrorCode CreateMatrix(Omega_h::Mesh& mesh, Mat *A) {
+  const auto numNodesPerTri = 3; //FIXME query the mesh
+  const auto matSize = numNodesPerTri*numNodesPerTri*mesh.nelems();
   auto elmVerts = Omega_h::HostRead(mesh.ask_elem_verts());
   PetscInt *oor, *ooc, cnt = 0;
   PetscFunctionBeginUser;
@@ -50,16 +51,16 @@ static PetscErrorCode CreateMatrix(Omega_h::Mesh& mesh, Mat *A) {
   PetscCall(MatSetFromOptions(*A));
   /* determine for each entry in each element stiffness matrix the global row and column */
   /* since the element is triangular with piecewise linear basis functions there are three degrees of freedom per element, one for each vertex */
-  PetscCall(PetscMalloc2(3 * 3 * mesh.nelems(), &oor, 3 * 3 * mesh.nelems(), &ooc));
+  PetscCall(PetscMalloc2(matSize, &oor, matSize, &ooc));
   for (PetscInt e = 0; e < mesh.nelems(); e++) {
-    for (PetscInt vi = 0; vi < 3; vi++) {
-      for (PetscInt vj = 0; vj < 3; vj++) {
-        oor[cnt]   = elmVerts[3 * e + vi];
-        ooc[cnt++] = elmVerts[3 * e + vj];
+    for (PetscInt vi = 0; vi < numNodesPerTri; vi++) {
+      for (PetscInt vj = 0; vj < numNodesPerTri; vj++) {
+        oor[cnt]   = elmVerts[numNodesPerTri * e + vi];
+        ooc[cnt++] = elmVerts[numNodesPerTri * e + vj];
       }
     }
   }
-  PetscCall(MatSetPreallocationCOO(*A, 3 * 3 * mesh.nelems(), oor, ooc));
+  PetscCall(MatSetPreallocationCOO(*A, matSize, oor, ooc));
   PetscCall(PetscFree2(oor, ooc));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -19,8 +19,8 @@
 #include <MeshField.hpp>
 #include "massMatrixIntegrator.hpp"
 
-#include <petscmat.h>
 #include <petscvec_kokkos.hpp>
+#include <petscmat.h>
 
 //detect floating point exceptions
 #include <fenv.h>
@@ -40,8 +40,9 @@ void setFieldAtVertices(Omega_h::Mesh &mesh, ShapeField field, const MeshField::
                           setFieldAtVertices, "setFieldAtVertices");
 }
 
-//FIXME remove the hard coded 3x3
+//FIXME remove the hard coded 3s
 static PetscErrorCode CreateMatrix(Omega_h::Mesh& mesh, Mat *A) {
+  auto elmVerts = Omega_h::HostRead(mesh.ask_elem_verts());
   PetscInt *oor, *ooc, cnt = 0;
   PetscFunctionBeginUser;
   PetscCall(MatCreate(PETSC_COMM_WORLD, A));
@@ -53,8 +54,8 @@ static PetscErrorCode CreateMatrix(Omega_h::Mesh& mesh, Mat *A) {
   for (PetscInt e = 0; e < mesh.nelems(); e++) {
     for (PetscInt vi = 0; vi < 3; vi++) {
       for (PetscInt vj = 0; vj < 3; vj++) {
-        oor[cnt]   = fe->vertices[3 * e + vi]; //FIXME - elmToVtx
-        ooc[cnt++] = fe->vertices[3 * e + vj]; //FIXME - elmToVtx
+        oor[cnt]   = elmVerts[3 * e + vi];
+        ooc[cnt++] = elmVerts[3 * e + vj];
       }
     }
   }
@@ -93,9 +94,9 @@ int main(int argc, char** argv) {
   Omega_h::vtk::write_parallel("massMatrix.vtk", &mesh, 2);
 
   Mat mass;
-  PetscCall(CreateMatrix(mesh, mass));
+  PetscCall(CreateMatrix(mesh, &mass));
   PetscCall(MatZeroEntries(mass));
-  PetscCall(MatSetValuesCOO(mass, elmMassMatrix.data(), INSERT_VALUES));
+  PetscCall(MatSetValuesCOO(mass, elmMassMatrix.data(), INSERT_VALUES)); //FIXME fails here
   if( mesh.nelems() < 10 ) {
     PetscCall(MatView(mass, PETSC_VIEWER_STDOUT_WORLD));
   }

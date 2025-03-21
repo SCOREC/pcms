@@ -154,7 +154,7 @@ public:
   void ConstructSearch(int nx, int ny)
   {
     PCMS_FUNCTION_TIMER;
-    search_ = GridPointSearch(mesh_, nx, ny);
+    search_ = GridPointSearch2D(mesh_, nx, ny);
   }
   // pass through to search function
   [[nodiscard]] auto Search(Kokkos::View<Real* [2]> points) const
@@ -220,9 +220,8 @@ public:
 private:
   std::string name_;
   Omega_h::Mesh& mesh_;
-  // TODO make this a pointer and introduce base class to Search for alternative
-  // search methods
-  std::optional<GridPointSearch> search_;
+  // TODO make this a pointer and introduce base class to Search for alternative search methods
+  std::optional<GridPointSearch2D> search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;
   LO size_;

@@ -24,7 +24,7 @@ Omega_h::Real calculateDistance(const Omega_h::Real* p1,
 }
 
 inline void checkTargetPoints(
-  const Kokkos::View<pcms::GridPointSearch::Result*>& results)
+  const Kokkos::View<pcms::GridPointSearch2D::Result*>& results)
 {
   Kokkos::fence();
   printf("INFO: Checking target points...\n");
@@ -117,7 +117,7 @@ inline void FindSupports::adjBasedSearch(
     });
   Kokkos::fence();
 
-  pcms::GridPointSearch search_cell(source_mesh, 10, 10);
+  pcms::GridPointSearch2D search_cell(source_mesh, 10, 10);
   auto results = search_cell(target_points);
   checkTargetPoints(results);
 

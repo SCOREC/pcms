@@ -24,7 +24,7 @@ struct RBF_GAUSSIAN
     // 'a' is a spreading factor/decay factor
     // the value of 'a' is higher if the data is localized
     // the value of 'a' is smaller if the data is farther
-    int a = 2;
+    int a = 5;
 
     double r = sqrt(r_sq);
     double rho = sqrt(rho_sq);
@@ -272,12 +272,9 @@ Reals min_max_normalization(Reals& coordinates, int dim = 2)
   const auto max_x = Omega_h::get_max(read(x_coordinates));
   const auto max_y = Omega_h::get_max(read(y_coordinates));
 
-  printf(" [min_x, max_x] : [%12.6f , %12.6f]\n", min_x, max_x);
-  printf(" [min_y, max_y] : [%12.6f , %12.6f]\n", min_y, max_y);
   const auto del_x = max_x - min_x;
   const auto del_y = max_y - min_y;
 
-  printf(" [delx, dely] : [%12.6f , %12.6f]\n", del_x, del_y);
   Write<Real> normalized_coordinates(coords_size, 0,
                                      "stores scaled coordinates");
 

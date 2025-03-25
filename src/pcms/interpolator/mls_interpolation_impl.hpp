@@ -15,8 +15,8 @@
 #include <Kokkos_StdAlgorithms.hpp>
 #include "pcms_interpolator_aliases.hpp"
 #include "adj_search.hpp"
-#include "../assert.h"
-#include "../profile.h"
+#include "pcms/assert.h"
+#include "pcms/profile.h"
 #include "pcms_interpolator_view_utils.hpp"
 #include "pcms_interpolator_logger.hpp"
 

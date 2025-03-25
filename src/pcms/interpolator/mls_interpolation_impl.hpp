@@ -116,8 +116,6 @@ Reals min_max_normalization(Reals& coordinates, int dim);
  *   @param[in] p A reference to the coordinate struct
  *   @param[in,out] basis_vector The polynomial basis vector
  *
- *   @note the basis_vector size is more than basis_size
- *   to accomodate with the output from qr
  *
  */
 KOKKOS_INLINE_FUNCTION

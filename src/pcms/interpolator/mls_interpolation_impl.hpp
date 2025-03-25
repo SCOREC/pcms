@@ -20,9 +20,6 @@
 #include "pcms_interpolator_view_utils.hpp"
 #include "pcms_interpolator_logger.hpp"
 
-// #include <KokkosBatched_ApplyQ_Decl.hpp> //KokkosBlas::ApplyQ
-// #include <KokkosBatched_QR_Decl.hpp>     //KokkosBlas::QR
-// #include <KokkosBatched_Trsv_Decl.hpp>   //KokkosBlas::Trsv
 #include <KokkosBlas2_gemv.hpp> //KokkosBlas::gemv
 #include "KokkosBatched_SVD_Decl.hpp"
 #include "KokkosBatched_SVD_Serial_Impl.hpp"
@@ -431,7 +428,7 @@ void solve_matrix(const ScratchMatView& square_matrix,
 KOKKOS_INLINE_FUNCTION
 void solve_matrix_svd(member_type team, const ScratchVecView& weight,
                       ScratchVecView rhs_values, ScratchMatView matrix,
-                      ScratchVecView solution_vector, double lambda = 0)
+                      ScratchVecView solution_vector, double lambda = 1e-2)
 {
 
   int row = matrix.extent(0);
@@ -440,8 +437,8 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
 
   int weight_size = weight.size();
 
-  printf("inside svd solver \n");
-  Logger logger(21);
+  // printf("inside svd solver \n");
+  // Logger logger(21);
   OMEGA_H_CHECK_PRINTF(
     weight_size == row,
     "the size of the weight vector should be equal to the row of the matrix\n"
@@ -450,17 +447,17 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
   // find_sq_root_each(team, weight);
 
   eval_row_scaling(team, weight, matrix);
-  logger.logMatrix(team, LogLevel::DEBUG, matrix, "QA : ");
+  // logger.logMatrix(team, LogLevel::DEBUG, matrix, "QA : ");
 
   team.team_barrier();
 
   eval_rhs_scaling(team, weight, rhs_values);
-  logger.logVector(team, LogLevel::DEBUG, rhs_values, "Qb : ");
+  //  logger.logVector(team, LogLevel::DEBUG, rhs_values, "Qb : ");
   // A = UEV^T
   // initilize U (orthogonal matrices)  array
   ScratchMatView U(team.team_scratch(1), row, row);
   fill(-5.0, team, U);
-  logger.logMatrix(team, LogLevel::DEBUG, U, "initialised U : ");
+  //  logger.logMatrix(team, LogLevel::DEBUG, U, "initialised U : ");
   // initialize Vt
   ScratchMatView Vt(team.team_scratch(1), column, column);
   fill(-5.0, team, Vt);
@@ -486,44 +483,45 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
     KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), matrix, U,
                                      sigma, Vt, work, 1e-6);
 
-    logger.logMatrix(team, LogLevel::DEBUG, U, "U : ");
-    logger.logVector(team, LogLevel::DEBUG, sigma, "S : ");
-    logger.logMatrix(team, LogLevel::DEBUG, Vt, "Vt : ");
-    // A = UEV^T
-    // find_inverse_each(team, sigma);
+    // logger.logMatrix(team, LogLevel::DEBUG, U, "U : ");
+    // logger.logVector(team, LogLevel::DEBUG, sigma, "S : ");
+    // logger.logMatrix(team, LogLevel::DEBUG, Vt, "Vt : ");
+    //  A = UEV^T
+    //  find_inverse_each(team, sigma);
 
     calculate_shrinkage_factor(team, lambda, sigma);
 
-    logger.logVector(team, LogLevel::DEBUG, sigma,
-                     "S/(S^2 + gamma) (basis_size x nsupports) : ");
+    // logger.logVector(team, LogLevel::DEBUG, sigma,
+    //                 "S/(S^2 + gamma) (basis_size x nsupports) : ");
 
     // A = UEV^T
 
     auto Ut = find_transpose(team, U);
 
-    logger.logMatrix(team, LogLevel::DEBUG, Ut, "Ut (nsupprts x nsupports) : ");
+    // logger.logMatrix(team, LogLevel::DEBUG, Ut, "Ut (nsupprts x nsupports) :
+    // ");
 
     scale_and_adjust(team, sigma, Ut, temp_matrix); // S^-1 U^T
 
-    logger.logMatrix(team, LogLevel::DEBUG, temp_matrix,
-                     "S^-1Ut (basis_size x nsupports) : ");
+    // logger.logMatrix(team, LogLevel::DEBUG, temp_matrix,
+    //                 "S^-1Ut (basis_size x nsupports) : ");
 
     KokkosBatched::SerialGemm<
       KokkosBatched::Trans::Transpose, KokkosBatched::Trans::NoTranspose,
       KokkosBatched::Algo::Gemm::Unblocked>::invoke(1.0, Vt, temp_matrix, 0.0,
                                                     vsigmaInvUtMul);
 
-    logger.logMatrix(team, LogLevel::DEBUG, vsigmaInvUtMul,
-                     "VS^-1Ut (basis_size x nsupports) : ");
+    // logger.logMatrix(team, LogLevel::DEBUG, vsigmaInvUtMul,
+    //                  "VS^-1Ut (basis_size x nsupports) : ");
     KokkosBlas::SerialGemv<
       KokkosBlas::Trans::NoTranspose,
       KokkosBlas::Algo::Gemv::Unblocked>::invoke(1.0, vsigmaInvUtMul,
                                                  rhs_values, 0.0,
                                                  solution_vector);
-    logger.logVector(team, LogLevel::DEBUG, solution_vector,
-                     "VS^-1Ut (basis_size x nsupports) : ");
+    // logger.logVector(team, LogLevel::DEBUG, solution_vector,
+    //                  "VS^-1Ut (basis_size x nsupports) : ");
   }
-  printf("coming out form svd solver..\n");
+  // printf("coming out form svd solver..\n");
 }
 // KOKKOS_INLINE_FUNCTION
 // void solve_weighted_matrix_serial_qr(const member_type& team,
@@ -654,17 +652,17 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
   // calculates the interpolated values
   Kokkos::parallel_for(
-    "MLS coefficients", tp.set_scratch_size(1, Kokkos::PerTeam(shared_size)),
+    "MLS coefficients", tp.set_scratch_size(1, Kokkos::PerTeam(scratch_size)),
     KOKKOS_LAMBDA(const member_type& team) {
       int league_rank = team.league_rank();
       int start_ptr = support.supports_ptr[league_rank];
       int end_ptr = support.supports_ptr[league_rank + 1];
       int nsupports = end_ptr - start_ptr;
       printf("calculating for %d target point\n", league_rank);
-      Logger logger(21);
-      // logger.log(team, LogLevel::INFO, "The search starts from here....\n");
-      // local_source_point stores the coordinates of source supports of a
-      // given target
+      // Logger logger(21);
+      //  logger.log(team, LogLevel::INFO, "The search starts from here....\n");
+      //  local_source_point stores the coordinates of source supports of a
+      //  given target
       ScratchMatView local_source_points(team.team_scratch(1), nsupports, dim);
 
       // rbf function values of source supports Phi(n,n)
@@ -703,8 +701,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         }
       }
 
-      logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
-                       "The local source points (x, y, z):\n ");
+      // logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
+      //                 "The local source points (x, y, z):\n ");
 
       Coord target_point;
       target_point.x = target_coordinates[league_rank * dim];
@@ -714,8 +712,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         target_point.z = target_coordinates[league_rank * dim + 2];
       }
 
-      logger.logStruct(team, LogLevel::DEBUG, target_point,
-                       "Target Point before pivoting :\n");
+      // logger.logStruct(team, LogLevel::DEBUG, target_point,
+      //                  "Target Point before pivoting :\n");
       /** phi(nsupports) is the array of rbf functions evaluated at the
        * source supports In the actual implementation, Phi(nsupports,
        * nsupports) is the diagonal matrix & each diagonal element is the phi
@@ -730,8 +728,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
                              support.radii2[league_rank], rbf_func, phi_vector);
         });
 
-      logger.logVector(team, LogLevel::DEBUG, phi_vector,
-                       "Phi Values: (phi)\n ");
+      // logger.logVector(team, LogLevel::DEBUG, phi_vector,
+      //                  "Phi Values: (phi)\n ");
       team.team_barrier();
 
       /** support_values(nsupports) (or known rhs vector b) is the vector of
@@ -749,8 +747,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         });
 
       team.team_barrier();
-      logger.logVector(team, LogLevel::DEBUG, support_values,
-                       "Support Values (b):\n ");
+      // logger.logVector(team, LogLevel::DEBUG, support_values,
+      //                  "Support Values (b):\n ");
 
       /**
        *
@@ -762,8 +760,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
        */
 
       normalize_supports(team, target_point, local_source_points);
-      logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
-                       "Local Source points after pivoting");
+      // logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
+      //                  "Local Source points after pivoting");
       team.team_barrier();
       /**
        *
@@ -773,8 +771,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
        */
       eval_basis_vector(slice_length, target_point, target_basis_vector);
 
-      logger.logVector(team, LogLevel::DEBUG, target_basis_vector,
-                       "target basis vector after pivot : ");
+      // logger.logVector(team, LogLevel::DEBUG, target_basis_vector,
+      //                 "target basis vector after pivot : ");
       /** vandermonde_matrix(nsupports, basis_size) vandermonde Matrix is
        * created with the basis vector of source supports stacking on top of
        * each other
@@ -789,8 +787,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       team.team_barrier();
 
-      logger.logMatrix(team, LogLevel::DEBUG, vandermonde_matrix,
-                       "Vandermonde  matrix : ");
+      // logger.logMatrix(team, LogLevel::DEBUG, vandermonde_matrix,
+      //                "Vandermonde  matrix : ");
 
       OMEGA_H_CHECK_PRINTF(
         support.radii2[league_rank] > 0,
@@ -800,13 +798,14 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       solve_matrix_svd(team, phi_vector, support_values, vandermonde_matrix,
                        solution_coefficients);
       team.team_barrier();
-      logger.logVector(team, LogLevel::DEBUG, solution_coefficients,
-                       "Solution Vector : ");
+      // logger.logVector(team, LogLevel::DEBUG, solution_coefficients,
+      //                 "Solution Vector : ");
 
       double target_value = KokkosBlas::Experimental::dot(
         team, solution_coefficients, target_basis_vector);
 
-      logger.logScalar(team, LogLevel::DEBUG, target_value, "target_value : ");
+      // logger.logScalar(team, LogLevel::DEBUG, target_value, "target_value :
+      // ");
       if (team.team_rank() == 0) {
         OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
                              league_rank);

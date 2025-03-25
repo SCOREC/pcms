@@ -141,6 +141,7 @@ if (PCMS_ENABLE_MESHFIELDS)
     add_executable(massMatrix massMatrix.cpp)
     target_link_libraries(massMatrix PUBLIC meshfields::meshfields PkgConfig::PETSC)
     target_include_directories(massMatrix PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    mpi_test(massMatrix_gpu ./massMatrix 1 /space/cwsmith/pcms/omega_h/meshes/plate_6elem.osh plate_6elem -mat_type aijkokkos -use_gpu_aware_mpi 0)
   endif()
 endif()
 

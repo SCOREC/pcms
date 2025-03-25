@@ -1,28 +1,36 @@
 #include "omega_h_field2.h"
 #include "omega_h_field.h"
-#include "pcms/adapter/omega_h/omega_h_field_layout.h"
 #include "pcms/adapter/omega_h/omega_h_field2.h"
+#include <memory>
 
 namespace pcms
 {
+OmegaHFIeld2LocalizationHint::OmegaHFIeld2LocalizationHint() {}
+
+OmegaHFIeld2LocalizationHint::OmegaHFIeld2LocalizationHint(
+  Kokkos::View<GridPointSearch::Result*> search_results)
+  : search_results_(search_results)
+{
+}
+
+Kokkos::View<GridPointSearch::Result*> OmegaHFIeld2LocalizationHint::GetResults()
+{
+  return search_results_;
+}
+
 /*
  * Field
  */
 OmegaHField2::OmegaHField2(std::string name, CoordinateSystem coordinate_system,
                          const OmegaHFieldLayout& layout, Omega_h::Mesh& mesh)
   : name_(name), coordinate_system_(coordinate_system), layout_(layout),
-    mesh_(mesh)
+    mesh_(mesh), search_(mesh, 10, 10)
 {
 }
 
-std::string& OmegaHField2::GetName() const
+const std::string& OmegaHField2::GetName() const
 {
   return name_;
-}
-
-mesh_entity_type OmegaHField2::GetEntityType() const
-{
-  return mesh_entity_type::VERTEX;
 }
 
 CoordinateSystem OmegaHField2::GetCoordinateSystem() const
@@ -30,28 +38,38 @@ CoordinateSystem OmegaHField2::GetCoordinateSystem() const
   return coordinate_system_;
 }
 
-Kokkos::View<const Real*> OmegaHField2::GetNodalData() const
+Rank1View<const Real, pcms::HostMemorySpace> OmegaHField2::GetNodalData() const
 {
-  return mesh_.template get_array<Real>(0, name_).view();
+  auto array = mesh_.template get_array<Real>(0, name_);
+  return Rank1View<const Real, pcms::HostMemorySpace>{std::data(array), std::size(array)};
 }
 
-void OmegaHField2::SetNodalData(Kokkos::View<const Real*> data)
+Rank1View<const Real, pcms::HostMemorySpace> OmegaHField2::GetNodalCoordinates()
+  const
+{
+  auto array = Omega_h::get_ent_centroids(mesh_, 0);
+  return Rank1View<const Real, pcms::HostMemorySpace>{std::data(array), std::size(array)};
+}
+
+void OmegaHField2::SetNodalData(
+  Rank1View<const Real, pcms::HostMemorySpace> data)
 {
   const auto has_tag = mesh_.has_tag(0, name_);
   PCMS_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh_.nents(0));
-  Omega_h::Write<T> array(data.size());
+  Omega_h::Write<Real> array(data.size());
   Omega_h::parallel_for(
     data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
   if (has_tag) {
-    mesh_.set_tag(0, name_, Omega_h::Read<T>(array));
+    mesh_.set_tag(0, name_, Omega_h::Read<Real>(array));
   } else {
-    mesh_.add_tag(0, name_, 1, Omega_h::Read<T>(array));
+    mesh_.add_tag(0, name_, 1, Omega_h::Read<Real>(array));
   }
 }
 
 void OmegaHField2::SetEvaluationCoordinates(LocalizationHint hint)
 {
-  hint_ = (Kokkos::View<GridPointSearch::Result*> *) hint.data;
+  hint_ = OmegaHFIeld2LocalizationHint{
+    *((OmegaHFIeld2LocalizationHint*)hint.data.get())};
 }
 
 LocalizationHint OmegaHField2::GetLocalizationHint(
@@ -59,7 +77,7 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
 {
   // TODO decide if we want to implicitly perform the coordinate transformations
   // when possible
-  if (coordinates.GetCoordinateSystem() != coordinate_system_) {
+  if (coordinate_view.GetCoordinateSystem() != coordinate_system_) {
     // TODO when moved to PCMS throw PCMS exception
     throw std::runtime_error("Coordinate system mismatch");
   }
@@ -68,12 +86,13 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
   Kokkos::View<Real* [2]> coords("coords", coordinates.size() / 2);
   Kokkos::parallel_for(
     coordinates.size() / 2, KOKKOS_LAMBDA(LO i) {
-      coords(i, 0) = coordinates(2 * i);
-      coords(i, 1) = coordinates(2 * i + 1);
+      coords(i, 0) = coordinates(0, i);
+      coords(i, 1) = coordinates(1, i);
     });
-  auto results = field.Search(coords);
+  auto results = search_(coords);
+  auto hint = std::make_shared<OmegaHFIeld2LocalizationHint>(results);
 
-  return LocalizationHint { results };
+  return LocalizationHint{hint};
 }
 
 void OmegaHField2::Evaluate(FieldDataView<double, HostMemorySpace> results)
@@ -85,7 +104,9 @@ void OmegaHField2::Evaluate(FieldDataView<double, HostMemorySpace> results)
     throw std::runtime_error("Coordinate system mismatch");
   }
 
-  if (!hint_) {
+  auto search_results = hint_.GetResults();
+
+  if (!search_results.is_allocated()) {
     // TODO when moved to PCMS throw PCMS exception
     throw std::runtime_error("Evaluation coordinates not set");
   }
@@ -93,10 +114,9 @@ void OmegaHField2::Evaluate(FieldDataView<double, HostMemorySpace> results)
   auto tris2verts = mesh_.ask_elem_verts();
   auto field_values = mesh_.template get_array<Real>(0, name_);
 
-  auto search_results = *hint_;
-  Omega_h::Write<T> values(search_results.size());
+  Rank1View<double, HostMemorySpace> values = results.GetValues();
 
-  switch (layout_.location) {
+  switch (layout_.GetLocation()) {
     case OmegaHFieldLayoutLocation::Linear:
       Kokkos::parallel_for(
         search_results.size(), KOKKOS_LAMBDA(LO i) {
@@ -109,17 +129,14 @@ void OmegaHField2::Evaluate(FieldDataView<double, HostMemorySpace> results)
           for (int j = 0; j < 3; ++j) {
             val += field_values[elem_tri2verts[j]] * coord[j];
           }
-          if constexpr (std::is_integral_v<T>) {
-            val = std::round(val);
-          }
           values[i] = val;
         });
       break;
 
-    case OmegaHFieldLayoutLocation::Piecewise:
+    case OmegaHFieldLayoutLocation::PieceWise:
       Kokkos::parallel_for(
-        results.size(), KOKKOS_LAMBDA(LO i) {
-          auto [dim, elem_idx, coord] = results(i);
+        search_results.size(), KOKKOS_LAMBDA(LO i) {
+          auto [dim, elem_idx, coord] = search_results(i);
           // TODO deal with case for elem_idx < 0 (point outside of mesh)
           KOKKOS_ASSERT(elem_idx >= 0);
           const auto elem_tri2verts =
@@ -138,19 +155,6 @@ void OmegaHField2::Evaluate(FieldDataView<double, HostMemorySpace> results)
         });
       break;
   }
-
-  // if field is piecewise
-  // 1. use localization to get the appropriate element
-  // 2. get the face/region value in the element
-  // OPEN Question: what to do if point is on the interface between two regions?
-  // a) return mean?, b) return 2 values?, c) pick one at random
-
-  // if the field is linear:
-  // 1. use localization to get the appropriate element
-  // 2. get vertexes of the element (e2v map)
-  // 3. get the values of the vertexes
-  // 4. get barycentric coordinates of the point in the element
-  // 5. interpolate the values of the vertexes to the point
 }
 
 void OmegaHField2::EvaluateGradient(FieldDataView<double, HostMemorySpace> results)
@@ -183,26 +187,18 @@ void OmegaHField2::Deserialize(
 {
 }
 
-void OmegaHField2::Copy(OmegaHField2& target) const
+void OmegaHField2::SetDOFHolderData(FieldDataView<Real, HostMemorySpace> data)
 {
-  auto own_field = mesh_.template get_array<T>(0, name_);
-  auto mesh = target.mesh_;
-  std::string& name = target.name_;
 
-  const auto has_tag = mesh.has_tag(0, name);
-  PCMS_ALWAYS_ASSERT(static_cast<LO>(own_field.size()) == mesh.nents(0));
-  Omega_h::Write<T> array(own_field.size());
-  Omega_h::parallel_for(
-    own_field.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = own_field(i); });
-  if (has_tag) {
-    mesh.set_tag(0, name, Omega_h::Read<T>(array));
-  } else {
-    mesh.add_tag(0, name, 1, Omega_h::Read<T>(array));
-  }
+  // TODO when moved to PCMS throw PCMS exception
+  throw std::runtime_error("Not implemented");
 }
 
-void OmegaHField2::Interpolate(OmegaHField2& target) const {
+CoordinateView<HostMemorySpace> OmegaHField2::GetDOFHolderCoordinates()
+{
 
+  // TODO when moved to PCMS throw PCMS exception
+  throw std::runtime_error("Not implemented");
 }
 
 } // namespace pcms

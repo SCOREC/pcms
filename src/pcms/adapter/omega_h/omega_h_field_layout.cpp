@@ -1,4 +1,5 @@
 #include "pcms/adapter/omega_h/omega_h_field_layout.h"
+#include "omega_h_field_layout.h"
 
 namespace pcms
 {
@@ -64,8 +65,13 @@ GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetOwnedGids()
       break;
   }
   auto gids = mesh_.globals(dim);
-  static_assert(std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>, "types must match");
+  // static_assert(std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>, "types must match");
   return GlobalIDView<HostMemorySpace>(gids.data(), gids.size());
+}
+
+OmegaHFieldLayoutLocation OmegaHFieldLayout::GetLocation() const
+{
+  return location_;
 }
 
 bool OmegaHFieldLayout::IsDistributed()

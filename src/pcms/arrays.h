@@ -39,7 +39,7 @@ template <typename ElementType, typename MemorySpace>
 using Rank1View = View<1, ElementType, MemorySpace>;
 
 template <typename ElementType, typename MemorySpace>
-using Rank2View = View<1, ElementType, MemorySpace>;
+using Rank2View = View<2, ElementType, MemorySpace>;
 
 template <typename MemorySpace>
 using GlobalIDView = View<1, const GO, MemorySpace, GO>;

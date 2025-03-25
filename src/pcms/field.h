@@ -1,10 +1,10 @@
 #ifndef PCMS_COUPLING_FIELD_H
 #define PCMS_COUPLING_FIELD_H
-#include "adapter/omega_h/omega_h_field.h"
 #include "pcms/types.h"
 #include "pcms/arrays.h"
 #include "pcms/memory_spaces.h"
 #include <map>
+#include <memory>
 #include <string>
 #include <Kokkos_Core.hpp>
 #include <redev.h> // TODO remove this include
@@ -40,16 +40,17 @@ using ReversePartitionMap = std::map<pcms::LO, std::vector<pcms::LO>>;
 template <typename T, typename MemorySpace>
 class FieldDataView {
 public:
+  FieldDataView(Rank1View<T, MemorySpace> values, CoordinateSystem coordinate_system) : values(values), coordinate_system(coordinate_system) {}
   LO Size() {return values.size(); }
   CoordinateSystem GetCoordinateSystem() { return coordinate_system; }
 
-  [[nodiscard]] Rank2View<const T, MemorySpace> GetValues() const noexcept { return values; }
-  [[nodiscard]] Rank2View<T, MemorySpace> GetValues() noexcept { return values; }
+  [[nodiscard]] Rank1View<const T, MemorySpace> GetValues() const noexcept { return values; }
+  [[nodiscard]] Rank1View<T, MemorySpace> GetValues() noexcept { return values; }
 
   // Note: currently don't beleive we should allow changing the coordinate system
 
 private:
-  Rank2View<T, MemorySpace> values;
+  Rank1View<T, MemorySpace> values;
   CoordinateSystem coordinate_system;
 };
 
@@ -62,7 +63,7 @@ private:
 * interface. May re-evaluate the need
 */
 struct LocalizationHint {
-  void* data = nullptr;
+  std::shared_ptr<void> data = nullptr;
 };
 
 /*
@@ -76,20 +77,18 @@ class FieldT {
 public:
   virtual const std::string& GetName() const = 0;
 
-  virtual mesh_entity_type GetEntityType() const = 0;
-
   virtual CoordinateSystem GetCoordinateSystem() const = 0;
 
-  virtual Kokkos::View<const T*> GetNodalData() const = 0;
+  virtual Rank1View<const T, pcms::HostMemorySpace> GetNodalData() const = 0;
 
-  virtual Kokkos::View<const T*> GetNodalCoordinates() const = 0;
+  virtual Rank1View<const T, pcms::HostMemorySpace> GetNodalCoordinates() const = 0;
 
-  virtual void SetNodalData(Kokkos::View<const T*> data) = 0;
+  virtual void SetNodalData(Rank1View<const T, pcms::HostMemorySpace> data) = 0;
 
   /*
   * specify the coordinates to evaluate the field
    */
-  virtual void SetEvaluationCoordinates(CoordinateView<HostMemorySpace> coordinates, LocalizationHint hint = {}) = 0;
+  virtual void SetEvaluationCoordinates(LocalizationHint hint) = 0;
 
   // returns a hint that can be given to the Evaluate method
   // this can be useful to cache data if you have multiple sets of coordinates you may evaluate

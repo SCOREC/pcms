@@ -2,6 +2,7 @@
 #define PCMS_TRANSFER_FIELD2_H_
 #include <utility>
 #include <typeinfo>
+#include "arrays.h"
 #include "field.h"
 #include "pcms/arrays.h"
 #include "pcms/field_evaluation_methods.h"
@@ -11,7 +12,8 @@
 namespace pcms
 {
 
-void copy_field2(const FieldT& source, FieldT& target)
+template <typename T>
+void copy_field2(const FieldT<T>& source, FieldT<T>& target)
 {
   if (typeid(source) != typeid(target)) {
     // TODO when moved to PCMS throw PCMS exception
@@ -21,7 +23,8 @@ void copy_field2(const FieldT& source, FieldT& target)
   target.SetNodalData(source.GetNodalData());
 }
 
-void interpolate_field2(const FieldT& source, FieldT& target)
+template <typename T>
+void interpolate_field2(const FieldT<T>& source, FieldT<T>& target)
 {
   if (source.GetCoordinateSystem() != target.GetCoordinateSystem()) {
     // TODO when moved to PCMS throw PCMS exception
@@ -30,11 +33,12 @@ void interpolate_field2(const FieldT& source, FieldT& target)
 
   auto coordinates = target.GetNodalCoordinates();
   CoordinateView view(source.GetCoordinateSystem(), make_const_array_view(coordinates));
-  FieldDataView<Real, HostMemorySpace> view{{}, source.GetCoordinateSystem()};
+  std::vector<double> evaluation(coordinates.size() / 2);
+  FieldDataView<Real, HostMemorySpace> data_view{make_array_view(evaluation), source.GetCoordinateSystem()};
   auto locale = source.GetLocalizationHint(view);
   source.SetEvaluationCoordinates(locale);
-  source.Evaluate(view);
-  target.SetNodalData(view);
+  source.Evaluate(data_view);
+  target.SetNodalData(data_view);
 }
 
 } // namespace pcms

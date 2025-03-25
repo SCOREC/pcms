@@ -24,6 +24,7 @@ public:
   GO GetNumGlobalDofHolder() override;
 
   GlobalIDView<HostMemorySpace> GetOwnedGids() override;
+  OmegaHFieldLayoutLocation GetLocation() const;
 
   // returns true if the field layout is distributed
   // if the field layout is distributed, the owned and global dofs are the same

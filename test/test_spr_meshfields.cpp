@@ -173,11 +173,11 @@ TEST_CASE("meshfields_spr_test")
         std::cerr << "start " << interp_degree << ", " << func_degree << " \n";
         int minPatchSize;
         if (interp_degree == 1)
-          minPatchSize = 3;
+          minPatchSize = 4;
         if (interp_degree == 2)
-          minPatchSize = 8; // why so large?
-        if (interp_degree == 3)
           minPatchSize = 10; // why so large?
+        if (interp_degree == 3)
+          minPatchSize = 12; // why so large?
         std::cerr << "minPatchSize " << minPatchSize << "\n";
         auto patches = mesh.get_vtx_patches(minPatchSize);
         // print_patches(patches);

@@ -119,7 +119,7 @@ Reals min_max_normalization(Reals& coordinates, int dim);
  *
  */
 KOKKOS_INLINE_FUNCTION
-void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
+void eval_basis_vector(const IntDeviceMatView& slice_length, const double* p,
                        ScratchVecView& basis_vector)
 {
   basis_vector(0) = 1;
@@ -130,11 +130,9 @@ void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
   int curr_col = 1;
 
   double point[MAX_DIM];
-  point[0] = p.x;
-  point[1] = p.y;
 
-  if (dim == 3) {
-    point[2] = p.z;
+  for (int i = 0; i < dim; ++i) {
+    point[i] = p[i];
   }
 
   for (int i = 0; i < degree; ++i) {
@@ -166,7 +164,7 @@ void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
  **
  */
 KOKKOS_INLINE_FUNCTION
-void normalize_supports(member_type team, Coord& pivot,
+void normalize_supports(member_type team, double* target_point,
                         ScratchMatView& support_coordinates)
 {
   int nsupports = support_coordinates.extent(0);
@@ -175,23 +173,13 @@ void normalize_supports(member_type team, Coord& pivot,
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports), [=](int i) {
     Real pivot_point[MAX_DIM];
 
-    pivot_point[0] = pivot.x;
-    pivot_point[1] = pivot.y;
-
-    if (dim == 3) {
-      pivot_point[2] = pivot.z;
-    }
-
     for (int j = 0; j < dim; ++j) {
-      support_coordinates(i, j) -= pivot_point[j];
+      support_coordinates(i, j) -= target_point[j];
     }
   });
 
-  pivot.x = 0;
-  pivot.y = 0;
-
-  if (dim == 3) {
-    pivot.z = 0;
+  for (int j = 0; j < dim; ++j) {
+    target_point[j] = 0.0;
   }
 }
 
@@ -212,12 +200,11 @@ void create_vandermonde_matrix(const ScratchMatView& local_source_points, int j,
   int N = local_source_points.extent(0);
   int dim = local_source_points.extent(1);
 
-  Coord source_point;
-  source_point.x = local_source_points(j, 0);
-  source_point.y = local_source_points(j, 1);
-  if (dim == 3) {
-    source_point.z = local_source_points(j, 2);
+  double source_point[MAX_DIM] = {};
+  for (int i = 0; i < dim; ++i) {
+    source_point[i] = local_source_points(j, i);
   }
+
   ScratchVecView basis_vector_supports =
     Kokkos::subview(vandermonde_matrix, j, Kokkos::ALL());
   eval_basis_vector(slice_length, source_point, basis_vector_supports);
@@ -243,13 +230,19 @@ template <typename Func,
           std::enable_if_t<std::is_invocable_r_v<double, Func, double, double>,
                            bool> = true>
 KOKKOS_INLINE_FUNCTION void compute_phi_vector(
-  const Coord& target_point, const ScratchMatView& local_source_points, int j,
+  const double* target_point, const ScratchMatView& local_source_points, int j,
   double cuttoff_dis_sq, Func rbf_func, ScratchVecView phi)
 {
   int N = local_source_points.extent(0);
-  double dx = target_point.x - local_source_points(j, 0);
-  double dy = target_point.y - local_source_points(j, 1);
-  double ds_sq = dx * dx + dy * dy;
+  int dim = local_source_points.extent(1);
+
+  double ds_sq = 0;
+
+  double ds_sq = 0;
+  for (int i = 0; i < dim; ++i) {
+    double temp = target_point[i] - local_source_points(j, i);
+    ds_sq += temp * temp;
+  }
   phi(j) = rbf_func(ds_sq, cuttoff_dis_sq);
   OMEGA_H_CHECK_PRINTF(!std::isnan(phi(j)),
                        "ERROR: Phi(j) in compute_phi_vector is NaN for j = %d "
@@ -611,20 +604,16 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       for (int j = start_ptr; j < end_ptr; ++j) {
         count++;
         auto index = support.supports_idx[j];
-        local_source_points(count, 0) = source_coordinates[index * dim];
-        local_source_points(count, 1) = source_coordinates[index * dim + 1];
-        if (dim == 3) {
-          local_source_points(count, 2) = source_coordinates[index * dim + 2];
+
+        for (int i = 0; i < dim; ++i) {
+          local_source_points(count, i) = source_coordinates[index * dim + i];
         }
       }
 
-      // target_point
-      Coord target_point;
-      target_point.x = target_coordinates[league_rank * dim];
-      target_point.y = target_coordinates[league_rank * dim + 1];
+      double target_point[MAX_DIM] = {};
 
-      if (dim == 3) {
-        target_point.z = target_coordinates[league_rank * dim + 2];
+      for (int i = 0; i < dim; ++i) {
+        target_point[i] = target_coordinates[league_rank * dim + i];
       }
 
       /** phi(nsupports) is the array of rbf functions evaluated at the

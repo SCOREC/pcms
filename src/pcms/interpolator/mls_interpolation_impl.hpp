@@ -238,7 +238,6 @@ KOKKOS_INLINE_FUNCTION void compute_phi_vector(
 
   double ds_sq = 0;
 
-  double ds_sq = 0;
   for (int i = 0; i < dim; ++i) {
     double temp = target_point[i] - local_source_points(j, i);
     ds_sq += temp * temp;
@@ -419,7 +418,7 @@ void solve_matrix(const ScratchMatView& square_matrix,
 KOKKOS_INLINE_FUNCTION
 void solve_matrix_svd(member_type team, const ScratchVecView& weight,
                       ScratchVecView rhs_values, ScratchMatView matrix,
-                      ScratchVecView solution_vector, double lambda = 1e-2)
+                      ScratchVecView solution_vector, double lambda)
 {
 
   int row = matrix.extent(0);
@@ -466,7 +465,7 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
 
   if (team.team_rank() == 0) {
     KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), matrix, U,
-                                     sigma, Vt, work, 1e-6);
+                                     sigma, Vt, work, 1e-8);
 
     // calculate sigma(i) / (sigma(i)^2 + lambda)
     calculate_shrinkage_factor(team, lambda, sigma);
@@ -510,7 +509,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
                        RealConstDefaultScalarArrayView target_coordinates,
                        const SupportResults& support, const LO& dim,
                        const LO& degree, Func rbf_func,
-                       RealDefaultScalarArrayView approx_target_values)
+                       RealDefaultScalarArrayView approx_target_values,
+                       double lambda)
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_invocable_r_v<double, Func, double, double>,
@@ -687,7 +687,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         support.radii2[league_rank]);
 
       solve_matrix_svd(team, phi_vector, support_values, vandermonde_matrix,
-                       solution_coefficients);
+                       solution_coefficients, lambda);
       team.team_barrier();
 
       double target_value = KokkosBlas::Experimental::dot(
@@ -723,7 +723,7 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
-                              const LO& degree, Func rbf_func)
+                              const LO& degree, Func rbf_func, double lambda)
 {
   const auto nsources = source_coordinates.size() / dim;
 
@@ -748,7 +748,7 @@ Write<Real> mls_interpolation(const Reals source_values,
 
   mls_interpolation(source_values_array_view, source_coordinates_array_view,
                     target_coordinates_array_view, support, dim, degree,
-                    rbf_func, interpolated_values_array_view);
+                    rbf_func, interpolated_values_array_view, lambda);
 
   return interpolated_values;
 }

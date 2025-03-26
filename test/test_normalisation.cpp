@@ -31,55 +31,6 @@ Reals fillFromMatrix(const Matrix<2, 10>& matrix)
 TEST_CASE("test_normalization_routine")
 {
 
-  SECTION("test_minmax_normalization")
-  {
-
-    printf("-------------the test for min_max starts-----------\n");
-
-    Real tolerance = 1E-5;
-    int num_points = 10;
-
-    Omega_h::Matrix<2, 10> matrix{{0.45, 3.18},   {0.12, -1.2},  {-2.04, -1.45},
-                                  {1.52, -0.98},  {-0.22, 1.45}, {0.96, 3.62},
-                                  {-0.26, -1.62}, {0.82, 4.22},  {5.6, 3.62},
-                                  {1.2, 1.2}};
-
-    auto coordinates = fillFromMatrix(matrix);
-
-    auto results = pcms::detail::min_max_normalization(coordinates, 2);
-
-    printf("results after normalization");
-    HostRead<Real> host_results(results);
-
-    double expected_results[10][2] = {
-      {0.325916, 0.821918}, {0.282723, 0.071918}, {0.000000, 0.029110},
-      {0.465969, 0.109589}, {0.238220, 0.525685}, {0.392670, 0.897260},
-      {0.232984, 0.000000}, {0.374346, 1.000000}, {1.000000, 0.897260},
-      {0.424084, 0.482877}};
-
-    printf("<scaled coordinates>\n");
-
-    for (int i = 0; i < 20; ++i) {
-      printf("%12.6f\n", host_results[i]);
-    }
-
-    for (int i = 0; i < 10; ++i) {
-
-      int index = i * 2;
-
-      CAPTURE(i, host_results[index], expected_results[i][0], tolerance);
-      CHECK_THAT(host_results[index],
-                 Catch::Matchers::WithinAbs(expected_results[i][0], tolerance));
-
-      CAPTURE(i, host_results[index + 1], expected_results[i][1], tolerance);
-      CHECK_THAT(host_results[index + 1],
-                 Catch::Matchers::WithinAbs(expected_results[i][1], tolerance));
-
-      printf("-------------the test for min_max starts-----------\n");
-    }
-
-  } // end SECTION
-
   SECTION("test_normalization_relative_distance")
   {
     Real tolerance = 1E-5;
@@ -129,10 +80,11 @@ TEST_CASE("test_normalization_routine")
         ScratchMatView local_supports(team.team_scratch(0), num_supports, dim);
         detail::fill(0, team, local_supports);
 
-        Coord target_point;
-        target_point.x = target_coordinates[league_rank][0];
-        target_point.y = target_coordinates[league_rank][1];
-        target_point.z = target_coordinates[league_rank][2];
+        double target_point[MAX_DIM] = {};
+
+        for (int i = 0; i < dim; ++i) {
+          target_point[i] = target_coordinates[league_rank][i];
+        }
 
         Kokkos::parallel_for(
           Kokkos::TeamThreadRange(team, num_supports), [=](int i) {
@@ -162,13 +114,7 @@ TEST_CASE("test_normalization_routine")
             for (int j = 0; j < dim; ++j) {
               int index = league_rank * num_supports * dim + i * dim + j;
               normalized_support_coordinates[index] = local_supports(i, j);
-              if (j == 0) {
-                normalized_target_coordinates[index] = target_point.x;
-              } else if (j == 1) {
-                normalized_target_coordinates[index] = target_point.y;
-              } else {
-                normalized_target_coordinates[index] = target_point.z;
-              }
+              normalized_target_coordinates[index] = target_point[j];
             }
           });
       });

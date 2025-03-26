@@ -47,13 +47,13 @@ TEST_CASE("basis test")
       KOKKOS_LAMBDA(const member_type& team) {
         int i = team.league_rank();
         ScratchVecView basis_vector(team.team_scratch(0), size);
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
-                             [=](int j) { basis_vector(j) = 0; });
+        pcms::detail::fill(0, team, basis_vector);
 
-        Coord target_point;
-        target_point.x = coords[i][0];
-        target_point.y = coords[i][1];
-        target_point.z = coords[i][2];
+        double target_point[MAX_DIM] = {};
+
+        for (int j = 0; j < dim; ++j) {
+          target_point[j] = coords[i][j];
+        }
 
         detail::eval_basis_vector(d_array, target_point, basis_vector);
 
@@ -145,10 +145,11 @@ TEST_CASE("basis test")
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { basis_vector(j) = 0; });
 
-        Coord target_point;
-        target_point.x = coords[i][0];
-        target_point.y = coords[i][1];
-        target_point.z = coords[i][2];
+        double target_point[MAX_DIM] = {};
+
+        for (int j = 0; j < dim; ++j) {
+          target_point[j] = coords[i][j];
+        }
 
         detail::eval_basis_vector(d_array, target_point, basis_vector);
 

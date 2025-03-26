@@ -72,7 +72,7 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree, Reals source_values,
 
   auto approx_target_values = pcms::mls_interpolation(
     source_values, source_coordinates, target_coordinates, support, dim, degree,
-    pcms::RadialBasisFunction::NO_OP);
+    pcms::RadialBasisFunction::NO_OP, 1e-5);
 
   const auto delta_abs = Omega_h::fabs_each(
     Omega_h::subtract_each(exact_target_values, read(approx_target_values)));

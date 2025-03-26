@@ -18,6 +18,7 @@ set(PCMS_HEADERS
         pcms/profile.h
         pcms/print.h
         pcms/partition.h
+        pcms/coupler.h
         )
 
 set(PCMS_SOURCES

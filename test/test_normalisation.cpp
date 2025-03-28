@@ -10,14 +10,11 @@
 #include <vector>
 #include <iostream>
 #include <Omega_h_array_ops.hpp>
-using namespace std;
-using namespace Omega_h;
-using namespace pcms;
 
-Reals fillFromMatrix(const Matrix<2, 10>& matrix)
+Omega_h::Omega_h::Reals fillFromMatrix(const Omega_h::Matrix<2, 10>& matrix)
 {
   int num_points = 10;
-  Write<Real> array(20, 0, "array to store coordinates");
+  Omega_h::Write<Omega_h::Real> array(20, 0, "array to store coordinates");
   parallel_for(
     "fills the array view from matrix", num_points, KOKKOS_LAMBDA(const int i) {
       int index = i * 2;
@@ -25,7 +22,7 @@ Reals fillFromMatrix(const Matrix<2, 10>& matrix)
       array[index] = matrix[i][0];
       array[index + 1] = matrix[i][1];
     });
-  return read(array);
+  return Omega_h::read(array);
 }
 
 TEST_CASE("test_normalization_routine")
@@ -33,7 +30,7 @@ TEST_CASE("test_normalization_routine")
 
   SECTION("test_normalization_relative_distance")
   {
-    Real tolerance = 1E-5;
+    Omega_h::Real tolerance = 1E-5;
     int nvertices_target = 3;
 
     Omega_h::Matrix<3, 3> target_coordinates{
@@ -59,16 +56,16 @@ TEST_CASE("test_normalization_routine")
     auto total_coordinates = Omega_h::get_sum(nsupports) * dim;
 
     REQUIRE(total_coordinates == 54);
-    Write<Real> normalized_support_coordinates(
+    Omega_h::Write<Omega_h::Real> normalized_support_coordinates(
       total_coordinates, 0, "coordinates after normalization");
 
-    Write<Real> normalized_target_coordinates(
+    Omega_h::Write<Omega_h::Real> normalized_target_coordinates(
       total_coordinates, 0, "coordinates after normalization");
 
-    Write<Real> all_support_coordinates(total_coordinates, 0,
-                                        "support coordinates all");
-    Write<Real> all_target_coordinates(total_coordinates, 0,
-                                       "target coordinates all");
+    Omega_h::Write<Omega_h::Real> all_support_coordinates(
+      total_coordinates, 0, "support coordinates all");
+    Omega_h::Write<Omega_h::Real> all_target_coordinates(
+      total_coordinates, 0, "target coordinates all");
 
     team_policy tp(nvertices_target, Kokkos::AUTO);
     Kokkos::parallel_for(
@@ -77,7 +74,8 @@ TEST_CASE("test_normalization_routine")
         int league_rank = team.league_rank();
 
         int num_supports = nsupports[league_rank];
-        ScratchMatView local_supports(team.team_scratch(0), num_supports, dim);
+        pcms::ScratchMatView local_supports(team.team_scratch(0), num_supports,
+                                            dim);
         detail::fill(0, team, local_supports);
 
         double target_point[MAX_DIM] = {};
@@ -87,7 +85,7 @@ TEST_CASE("test_normalization_routine")
         }
 
         Kokkos::parallel_for(
-          Kokkos::TeamThreadRange(team, num_supports), [=](int i) {
+          Kokkos::TeamThOmega_h::readRange(team, num_supports), [=](int i) {
             for (int j = 0; j < dim; ++j) {
               int index = league_rank * num_supports * dim + i * dim + j;
 
@@ -110,7 +108,7 @@ TEST_CASE("test_normalization_routine")
         detail::normalize_supports(team, target_point, local_supports);
 
         Kokkos::parallel_for(
-          Kokkos::TeamThreadRange(team, num_supports), [=](int i) {
+          Kokkos::TeamThOmega_h::readRange(team, num_supports), [=](int i) {
             for (int j = 0; j < dim; ++j) {
               int index = league_rank * num_supports * dim + i * dim + j;
               normalized_support_coordinates[index] = local_supports(i, j);
@@ -120,16 +118,16 @@ TEST_CASE("test_normalization_routine")
       });
 
     auto host_all_support_coordinates =
-      HostRead<Real>(read(all_support_coordinates));
+      Omega_h::HostRead<Omega_h::Real>(Omega_h::read(all_support_coordinates));
 
     auto host_all_target_coordinates =
-      HostRead<Real>(read(all_target_coordinates));
+      Omega_h::HostRead<Omega_h::Real>(Omega_h::read(all_target_coordinates));
 
-    auto host_normalized_support_coordinates =
-      HostRead<Real>(read(normalized_support_coordinates));
+    auto host_normalized_support_coordinates = Omega_h::HostRead<Omega_h::Real>(
+      Omega_h::read(normalized_support_coordinates));
 
-    auto host_normalized_target_coordinates =
-      HostRead<Real>(read(normalized_target_coordinates));
+    auto host_normalized_target_coordinates = Omega_h::HostRead<Omega_h::Real>(
+      Omega_h::read(normalized_target_coordinates));
 
     for (int i = 0; i < total_coordinates; ++i) {
       auto result_support =

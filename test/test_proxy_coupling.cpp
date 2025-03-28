@@ -71,7 +71,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // user responsibility to keep it alive!
   pcms::CouplerServer cpl(
     "proxy_couple", comm,
-    redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
@@ -79,14 +79,11 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");
   // TODO, fields should have a transfer policy rather than parameters
   auto* total_f_gids = total_f->AddField(
-    "gids", OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap),
-    is_overlap);
+    "gids", OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap));
   auto* delta_f_gids = delta_f->AddField(
-    "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap),
-    is_overlap);
+    "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap));
   auto* delta_f_gids2 = delta_f->AddField(
-    "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap),
-    is_overlap);
+    "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap));
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       total_f->ReceivePhase([&]() { total_f_gids->Receive(); });

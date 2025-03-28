@@ -174,11 +174,11 @@ public:
   };
   // take a string& since map cannot be searched with string_view
   // (heterogeneous lookup)
-  void ReceiveField(const std::string& name)
+  void ReceiveField(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InReceivePhase());
-    detail::find_or_error(name, fields_).Receive();
+    detail::find_or_error(name, fields_).Receive(mode);
   };
   [[nodiscard]] bool InSendPhase() const noexcept
   {
@@ -209,6 +209,19 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     channel_.EndReceiveCommunicationPhase();
+  }
+
+  template <typename Func, typename... Args>
+  auto SendPhase(const Func& func, Args&&... args)
+  {
+    PCMS_FUNCTION_TIMER;
+    return channel_.SendPhase(func, std::forward<Args>(args)...);
+  }
+  template <typename Func, typename... Args>
+  auto ReceivePhase(const Func& func, Args&&... args)
+  {
+    PCMS_FUNCTION_TIMER;
+    return channel_.ReceivePhase(func, std::forward<Args>(args)...);
   }
 
 private:

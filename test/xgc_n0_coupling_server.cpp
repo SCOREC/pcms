@@ -30,8 +30,7 @@ static pcms::ConvertibleCoupledField* AddField(pcms::Application *application, c
       }
       return application->AddField(field_name.str(),
                    pcms::OmegaHFieldAdapter<pcms::Real>(
-                   path+field_name.str(), mesh, is_overlap, numbering),
-                   is_overlap);
+                   path+field_name.str(), mesh, is_overlap, numbering));
 }
 
 struct XGCAnalysis {
@@ -192,7 +191,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
 
 
   pcms::CouplerServer cpl("xgc_n0_coupling", comm,
-                            redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+                            redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   std::string numbering = "simNumbering";
   PCMS_ALWAYS_ASSERT(mesh.has_tag(0, numbering));

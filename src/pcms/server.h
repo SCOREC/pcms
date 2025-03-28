@@ -110,14 +110,13 @@ class Application
 {
 public:
   Application(std::string name, redev::Redev& rdv, MPI_Comm comm,
-              redev::Redev& redev, Omega_h::Mesh& internal_mesh,
-              adios2::Params params, redev::TransportType transport_type,
+              redev::Redev& redev, adios2::Params params,
+              redev::TransportType transport_type,
               std::string path)
     : mpi_comm_(comm),
       redev_(redev),
       channel_{rdv.CreateAdiosChannel(std::move(name), std::move(params),
-                                      transport_type, std::move(path))},
-      internal_mesh_{internal_mesh}
+                                      transport_type, std::move(path))}
   {
     PCMS_FUNCTION_TIMER;
   }
@@ -125,15 +124,14 @@ public:
   // These fields are supposed to be agnostic to adios2...
   template <typename FieldAdapterT>
   ConvertibleCoupledField* AddField(
-    std::string name, FieldAdapterT&& field_adapter,
-    Omega_h::Read<Omega_h::I8> internal_field_mask = {})
+    std::string name, FieldAdapterT&& field_adapter)
   {
     PCMS_FUNCTION_TIMER;
     auto [it, inserted] = fields_.template try_emplace(
       name, name, std::forward<FieldAdapterT>(field_adapter), mpi_comm_, redev_,
       channel_);
     if (!inserted) {
-      std::cerr << "OHField with this name" << name << "already exists!\n";
+      std::cerr << "Field with this name" << name << "already exists!\n";
       std::terminate();
     }
     return &(it->second);
@@ -202,18 +200,15 @@ private:
   // internal data and rehash of unordered_map can cause pointer invalidation.
   // map is less cache friendly, but pointers are not invalidated.
   std::map<std::string, ConvertibleCoupledField> fields_;
-  Omega_h::Mesh& internal_mesh_;
 };
 
 class CouplerServer
 {
 public:
-  CouplerServer(std::string name, MPI_Comm comm, redev::Partition partition,
-                Omega_h::Mesh& mesh)
+  CouplerServer(std::string name, MPI_Comm comm, redev::Partition partition)
     : name_(std::move(name)),
       mpi_comm_(comm),
-      redev_({comm, std::move(partition), ProcessType::Server}),
-      internal_mesh_(mesh)
+      redev_({comm, std::move(partition), ProcessType::Server})
   {
     PCMS_FUNCTION_TIMER;
   }
@@ -225,7 +220,7 @@ public:
     PCMS_FUNCTION_TIMER;
     auto key = path + name;
     auto [it, inserted] = applications_.template try_emplace(
-      key, std::move(name), redev_, mpi_comm_, redev_, internal_mesh_,
+      key, std::move(name), redev_, mpi_comm_, redev_,
       std::move(params), transport_type, std::move(path));
     if (!inserted) {
       std::cerr << "Application with name " << name << "already exists!\n";
@@ -238,30 +233,13 @@ public:
   {
     return redev_.GetPartition();
   }
-  [[nodiscard]] Omega_h::Mesh& GetMesh() noexcept { return internal_mesh_; }
-
-  [[nodiscard]] const auto& GetInternalFields() const noexcept
-  {
-    return internal_fields_;
-  }
-
-  // TODO: consider an "advanced api" wrapper of some sort and protect direct
-  // access to the internal fields with passkey idom or some other way. User
-  // could get unexpected behavior if they mess with the internal field map.
-  /// This function should not be used directly it is experimental for Philip
-  /// to do Benesh development. Expect that it will be removed in the future.
-  [[nodiscard]] auto& GetInternalFields() noexcept { return internal_fields_; }
 
 private:
   std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
-  // xgc_coupler owns internal fields since both gather/scatter ops use these
-  // these internal fields correspond to the "Combined" fields
-  std::map<std::string, InternalField> internal_fields_;
   // gather and scatter operations have reference to internal fields
   std::map<std::string, Application> applications_;
-  Omega_h::Mesh& internal_mesh_;
 };
 } // namespace pcms
 #endif // PCMS_COUPLING_SERVER_H

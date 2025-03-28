@@ -28,7 +28,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // user responsibility to keep it alive!
   pcms::CouplerServer cpl(
     "proxy_couple_server", comm,
-    redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   ReverseClassificationVertex rc;
   if (mesh.has_tag(0, "simNumbering")) {
@@ -51,7 +51,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     auto field_adapter = pcms::XGCFieldAdapter<GO>(
       ss.str(), comm, make_array_view(data[i]), rc, ts::IsModelEntInOverlap{});
     fields.push_back(
-      application->AddField(ss.str(), std::move(field_adapter), is_overlap));
+      application->AddField(ss.str(), std::move(field_adapter)));
   }
 
   do {
@@ -83,7 +83,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   // user responsibility to keep it alive!
   pcms::CouplerServer cpl(
     "proxy_couple_server", comm,
-    redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto* application = cpl.AddApplication("proxy_couple");
   std::string numbering;
@@ -108,7 +108,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     auto field_adapter =
       pcms::OmegaHFieldAdapter<GO>(ss.str(), mesh, is_overlap, numbering);
     fields.push_back(
-      application->AddField(ss.str(), std::move(field_adapter), is_overlap));
+      application->AddField(ss.str(), std::move(field_adapter)));
   }
   do {
     application->ReceivePhase([&]() {

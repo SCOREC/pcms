@@ -36,15 +36,29 @@ public:
     PCMS_FUNCTION_TIMER;
     coupled_field_->Send(mode);
   }
-  void Receive()
+  void Receive(Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
-    coupled_field_->Receive();
+    coupled_field_->Receive(mode);
+  }
+  template <typename T>
+  [[nodiscard]] T* GetFieldAdapter() const
+  {
+    PCMS_FUNCTION_TIMER;
+    if (typeid(T) == coupled_field_->GetFieldAdapterType()) {
+      auto* adapter = coupled_field_->GetFieldAdapter();
+      return reinterpret_cast<T*>(adapter);
+    }
+    std::cerr << "Requested type does not match field adapter type\n";
+    std::abort();
   }
   struct CoupledFieldConcept
   {
     virtual void Send(Mode) = 0;
-    virtual void Receive() = 0;
+    virtual void Receive(Mode) = 0;
+    [[nodiscard]] virtual const std::type_info& GetFieldAdapterType()
+      const noexcept = 0;
+    [[nodiscard]] virtual void* GetFieldAdapter() noexcept = 0;
     virtual ~CoupledFieldConcept() = default;
   };
   template <typename FieldAdapterT, typename CommT>
@@ -58,7 +72,8 @@ public:
       : mpi_comm_subset_(mpi_comm_subset),
         field_adapter_(std::move(field_adapter)),
         comm_(FieldCommunicator<CommT>(name, mpi_comm_subset_, redev, channel,
-                                       field_adapter_))
+                                       field_adapter_)),
+        type_info_(typeid(FieldAdapterT))
     {
       PCMS_FUNCTION_TIMER;
     }
@@ -67,10 +82,18 @@ public:
       PCMS_FUNCTION_TIMER;
       comm_.Send(mode);
     };
-    void Receive() final
+    void Receive(Mode mode) final
     {
       PCMS_FUNCTION_TIMER;
-      comm_.Receive();
+      comm_.Receive(mode);
+    };
+    virtual const std::type_info& GetFieldAdapterType() const noexcept
+    {
+      return type_info_;
+    }
+    virtual void* GetFieldAdapter() noexcept
+    {
+      return reinterpret_cast<void*>(&field_adapter_);
     };
     ~CoupledFieldModel()
     {
@@ -82,6 +105,7 @@ public:
     MPI_Comm mpi_comm_subset_;
     FieldAdapterT field_adapter_;
     FieldCommunicator<CommT> comm_;
+    const std::type_info& type_info_;
   };
 
 private:

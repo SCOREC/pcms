@@ -14,27 +14,10 @@ namespace pcms
 class ConvertibleCoupledField
 {
 public:
-  template <typename FieldAdapterT, typename CommT>
-  ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
-                          FieldCommunicator<CommT> field_comm,
-                          Omega_h::Mesh& internal_mesh,
-                          Omega_h::Read<Omega_h::I8> internal_field_mask = {})
-    : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
-                                  InternalCoordinateElement>(
-        name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
-  {
-    PCMS_FUNCTION_TIMER;
-    coupled_field_ = std::make_unique<CoupledFieldModel<FieldAdapterT, CommT>>(
-      std::move(field_adapter), std::move(field_comm));
-  }
   template <typename FieldAdapterT>
   ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
                           MPI_Comm mpi_comm, redev::Redev& redev,
-                          redev::Channel& channel, Omega_h::Mesh& internal_mesh,
-                          Omega_h::Read<Omega_h::I8> internal_field_mask)
-    : internal_field_{OmegaHField<typename FieldAdapterT::value_type,
-                                  InternalCoordinateElement>(
-        name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
+                          redev::Channel& channel)
   {
     PCMS_FUNCTION_TIMER;
     coupled_field_ =
@@ -51,16 +34,6 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     coupled_field_->Receive(mode);
-  }
-  [[nodiscard]] InternalField& GetInternalField() noexcept
-  {
-    PCMS_FUNCTION_TIMER;
-    return internal_field_;
-  }
-  [[nodiscard]] const InternalField& GetInternalField() const noexcept
-  {
-    PCMS_FUNCTION_TIMER;
-    return internal_field_;
   }
   template <typename T>
   [[nodiscard]] T* GetFieldAdapter() const
@@ -131,11 +104,6 @@ public:
 
 private:
   std::unique_ptr<CoupledFieldConcept> coupled_field_;
-  // even though we know the type of the internal field,
-  // we store it as the InternalField variant since this avoids any copies
-  // This comes at the cost of a slightly larger type with need to use the get<>
-  // function
-  InternalField internal_field_;
 };
 // TODO: strategy to merge Server/CLient Application and Fields
 class Application
@@ -163,8 +131,7 @@ public:
     PCMS_FUNCTION_TIMER;
     auto [it, inserted] = fields_.template try_emplace(
       name, name, std::forward<FieldAdapterT>(field_adapter), mpi_comm_, redev_,
-      channel_, internal_mesh_,
-      internal_field_mask);
+      channel_);
     if (!inserted) {
       std::cerr << "OHField with this name" << name << "already exists!\n";
       std::terminate();

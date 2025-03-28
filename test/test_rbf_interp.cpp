@@ -44,7 +44,6 @@ void test(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
   Real tolerance = 5e-4;
 
   std::vector<RadialBasisFunction> rbf_types = {
-    // RadialBasisFunction::RBF_GAUSSIAN
     RadialBasisFunction::RBF_GAUSSIAN, RadialBasisFunction::RBF_C4,
     RadialBasisFunction::RBF_CONST
 

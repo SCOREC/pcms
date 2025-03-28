@@ -9,7 +9,6 @@
 
 using pcms::ConstructRCFromOmegaHMesh;
 using pcms::Copy;
-using pcms::CouplerClient;
 using pcms::CouplerServer;
 using pcms::GO;
 using pcms::Lagrange;

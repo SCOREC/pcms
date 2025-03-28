@@ -11,7 +11,7 @@
 #include <thread>
 
 using pcms::Copy;
-using pcms::CouplerClient;
+using pcms::Coupler;
 using pcms::CouplerServer;
 using pcms::GO;
 using pcms::Lagrange;
@@ -27,7 +27,7 @@ namespace ts = test_support;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  CouplerClient cpl("proxy_couple_xgc_delta_f", comm);
+  Coupler cpl("proxy_couple_xgc_delta_f", comm);
 
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
   cpl.AddField("gids",
@@ -49,7 +49,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  pcms::CouplerClient cpl("proxy_couple_xgc_total_f", comm);
+  pcms::Coupler cpl("proxy_couple_xgc_total_f", comm);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
   cpl.AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));

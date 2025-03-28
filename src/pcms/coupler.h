@@ -91,21 +91,22 @@ private:
 class Coupler
 {
 private:
-  redev::Redev SetUpRedev(bool isRdv, redev::Partition partition) {
-    if (isRdv)
+  redev::Redev SetUpRedev(bool isServer, redev::Partition partition) {
+    if (isServer)
       return redev::Redev(mpi_comm_, std::move(partition));
     else
       return redev::Redev(mpi_comm_);
   }
 public:
-  Coupler(std::string name, MPI_Comm comm, bool isRdv, redev::Partition partition,
+  Coupler(std::string name, MPI_Comm comm, bool isServer = false, 
+                redev::Partition partition = redev::Partition{redev::RCBPtn()},
                 redev::TransportType transport_type = redev::TransportType::BP4,
                 adios2::Params params = {{"Streaming", "On"},
                                          {"OpenTimeoutSecs", "60"}},
                 std::string path = "")
     : name_(std::move(name)),
       mpi_comm_(comm),
-      redev_(SetUpRedev(isRdv, std::move(partition))),
+      redev_(SetUpRedev(isServer, std::move(partition))),
       channel_{redev_.CreateAdiosChannel(name_, std::move(params),
                                          transport_type, std::move(path))}
   {

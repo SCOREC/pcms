@@ -43,7 +43,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
   constexpr int nplanes = 2;
   std::array<std::vector<GO>, nplanes> data;
-  std::vector<pcms::ConvertibleCoupledField*> fields;
+  std::vector<pcms::CoupledField*> fields;
   for (int i = 0; i < nplanes; ++i) {
     data[i].resize(mesh.nverts());
     std::stringstream ss;
@@ -57,19 +57,19 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   do {
     application->ReceivePhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Receive(); });
+                    [](pcms::CoupledField* f) { f->Receive(); });
     });
     application->SendPhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Send(); });
+                    [](pcms::CoupledField* f) { f->Send(); });
     });
     application->ReceivePhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Receive(); });
+                    [](pcms::CoupledField* f) { f->Receive(); });
     });
     application->SendPhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Send(); });
+                    [](pcms::CoupledField* f) { f->Send(); });
     });
   } while (!done);
 
@@ -101,7 +101,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
   constexpr int nplanes = 2;
-  std::vector<pcms::ConvertibleCoupledField*> fields;
+  std::vector<pcms::CoupledField*> fields;
   for (int i = 0; i < nplanes; ++i) {
     std::stringstream ss;
     ss << "xgc_gids_plane_" << i;
@@ -113,19 +113,19 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   do {
     application->ReceivePhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Receive(); });
+                    [](pcms::CoupledField* f) { f->Receive(); });
     });
     application->SendPhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Send(); });
+                    [](pcms::CoupledField* f) { f->Send(); });
     });
     application->ReceivePhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Receive(); });
+                    [](pcms::CoupledField* f) { f->Receive(); });
     });
     application->SendPhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Send(); });
+                    [](pcms::CoupledField* f) { f->Send(); });
     });
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());

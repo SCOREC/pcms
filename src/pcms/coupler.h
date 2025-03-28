@@ -13,7 +13,7 @@ public:
   template <typename FieldAdapterT>
   CoupledField(const std::string& name, FieldAdapterT field_adapter,
                MPI_Comm mpi_comm, redev::Redev& redev, redev::Channel& channel,
-               bool participates)
+               bool participates = true)
   {
     PCMS_FUNCTION_TIMER;
     MPI_Comm mpi_comm_subset = MPI_COMM_NULL;

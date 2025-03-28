@@ -4,107 +4,12 @@
 #include "pcms/field_communicator.h"
 #include "pcms/omega_h_field.h"
 #include "pcms/profile.h"
+#include "pcms/coupler.h"
 #include <map>
 #include <typeinfo>
 
 namespace pcms
 {
-// TODO: come up with better name for this...Don't like CoupledFieldServer
-// because it's necessarily tied to the Server of the xgc_coupler
-class ConvertibleCoupledField
-{
-public:
-  template <typename FieldAdapterT>
-  ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
-                          MPI_Comm mpi_comm, redev::Redev& redev,
-                          redev::Channel& channel)
-  {
-    PCMS_FUNCTION_TIMER;
-    coupled_field_ =
-      std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
-        name, std::move(field_adapter), mpi_comm, redev, channel);
-  }
-
-  void Send(Mode mode = Mode::Synchronous)
-  {
-    PCMS_FUNCTION_TIMER;
-    coupled_field_->Send(mode);
-  }
-  void Receive(Mode mode=Mode::Synchronous)
-  {
-    PCMS_FUNCTION_TIMER;
-    coupled_field_->Receive(mode);
-  }
-  template <typename T>
-  [[nodiscard]] T* GetFieldAdapter() const
-  {
-    PCMS_FUNCTION_TIMER;
-    if (typeid(T) == coupled_field_->GetFieldAdapterType()) {
-      auto* adapter = coupled_field_->GetFieldAdapter();
-      return reinterpret_cast<T*>(adapter);
-    }
-    std::cerr << "Requested type does not match field adapter type\n";
-    std::abort();
-  }
-  struct CoupledFieldConcept
-  {
-    virtual void Send(Mode) = 0;
-    virtual void Receive(Mode) = 0;
-    [[nodiscard]] virtual const std::type_info& GetFieldAdapterType()
-      const noexcept = 0;
-    [[nodiscard]] virtual void* GetFieldAdapter() noexcept = 0;
-    virtual ~CoupledFieldConcept() = default;
-  };
-  template <typename FieldAdapterT, typename CommT>
-  struct CoupledFieldModel final : CoupledFieldConcept
-  {
-    using value_type = typename FieldAdapterT::value_type;
-
-    CoupledFieldModel(FieldAdapterT&& field_adapter,
-                      FieldCommunicator<CommT>&& comm)
-      : field_adapter_(std::move(field_adapter)),
-        comm_(std::move(comm)),
-        type_info_(typeid(FieldAdapterT))
-    {
-      PCMS_FUNCTION_TIMER;
-    }
-    CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
-                      MPI_Comm mpi_comm, redev::Redev& redev,
-                      redev::Channel& channel)
-      : field_adapter_(std::move(field_adapter)),
-        comm_(FieldCommunicator<FieldAdapterT>(name, mpi_comm, redev, channel,
-                                               field_adapter_)),
-        type_info_(typeid(FieldAdapterT))
-    {
-      PCMS_FUNCTION_TIMER;
-    }
-    void Send(Mode mode) final
-    {
-      PCMS_FUNCTION_TIMER;
-      comm_.Send(mode);
-    };
-    void Receive(Mode mode) final
-    {
-      PCMS_FUNCTION_TIMER;
-      comm_.Receive(mode);
-    };
-    virtual const std::type_info& GetFieldAdapterType() const noexcept
-    {
-      return type_info_;
-    }
-    virtual void* GetFieldAdapter() noexcept
-    {
-      return reinterpret_cast<void*>(&field_adapter_);
-    };
-
-    FieldAdapterT field_adapter_;
-    FieldCommunicator<CommT> comm_;
-    const std::type_info& type_info_;
-  };
-
-private:
-  std::unique_ptr<CoupledFieldConcept> coupled_field_;
-};
 // TODO: strategy to merge Server/CLient Application and Fields
 class Application
 {
@@ -123,7 +28,7 @@ public:
   // FIXME should take a file path for the parameters, not take adios2 params.
   // These fields are supposed to be agnostic to adios2...
   template <typename FieldAdapterT>
-  ConvertibleCoupledField* AddField(
+  CoupledField* AddField(
     std::string name, FieldAdapterT&& field_adapter)
   {
     PCMS_FUNCTION_TIMER;
@@ -199,7 +104,7 @@ private:
   // map is used rather than unordered_map because we give pointers to the
   // internal data and rehash of unordered_map can cause pointer invalidation.
   // map is less cache friendly, but pointers are not invalidated.
-  std::map<std::string, ConvertibleCoupledField> fields_;
+  std::map<std::string, CoupledField> fields_;
 };
 
 class CouplerServer

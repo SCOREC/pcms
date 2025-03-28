@@ -2,6 +2,7 @@
 #include <iostream>
 #include <pcms.h>
 #include <pcms/types.h>
+#include <pcms/coupler.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
 #include <redev_variant_tools.h>
@@ -11,7 +12,6 @@
 #include <thread>
 
 using pcms::Copy;
-using pcms::Coupler;
 using pcms::CouplerServer;
 using pcms::GO;
 using pcms::Lagrange;
@@ -27,7 +27,7 @@ namespace ts = test_support;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  Coupler cpl("proxy_couple_xgc_delta_f", comm);
+  pcms::Coupler cpl("proxy_couple_xgc_delta_f", comm);
 
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
   cpl.AddField("gids",

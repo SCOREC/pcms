@@ -179,7 +179,6 @@ TEST_CASE("meshfields_spr_test")
           minPatchSize = 12; // why so large?
         std::cerr << "minPatchSize " << minPatchSize << "\n";
         auto patches = mesh.get_vtx_patches(minPatchSize);
-        // print_patches(patches);
 
         Write<Omega_h::Real> source_values(nfaces, 0, "exact target values");
 

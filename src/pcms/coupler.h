@@ -128,10 +128,9 @@ public:
                 adios2::Params params = {{"Streaming", "On"},
                                          {"OpenTimeoutSecs", "60"}},
                 std::string path = "")
-    : name_(std::move(name)),
-      mpi_comm_(comm),
+    : mpi_comm_(comm),
       redev_(SetUpRedev(isServer, std::move(partition))),
-      channel_{redev_.CreateAdiosChannel(name_, std::move(params),
+      channel_{redev_.CreateAdiosChannel(std::move(name), std::move(params),
                                          transport_type, std::move(path))}
   {
     PCMS_FUNCTION_TIMER;
@@ -225,7 +224,6 @@ public:
   }
 
 private:
-  std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
   // map rather than unordered_map is necessary to avoid iterator invalidation.

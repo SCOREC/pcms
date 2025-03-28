@@ -62,7 +62,7 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
 {
 
   int dim = mesh.dim();
-  Omega_h::Realtolerance = 0.0005;
+  Omega_h::Real tolerance = 0.0005;
 
   Omega_h::Write<Omega_h::Real> ignored(patches.a2ab.size() - 1, 1);
   SupportResults support{patches.a2ab, patches.ab2b, ignored};
@@ -115,7 +115,7 @@ TEST_CASE("meshfields_spr_test")
   Omega_h::Mesh mesh(&lib);
   const auto thwaitesMeshFile =
     "/lore/smithc11/projects/landice/thwaites_basal/thwaites_basalClass.osh";
-  Omega_h::binary::Omega_h::read(thwaitesMeshFile, lib.world(), &mesh);
+  Omega_h::binary::read(thwaitesMeshFile, lib.world(), &mesh);
   std::cout << "mesh: elms " << mesh.nelems() << " verts " << mesh.nverts()
             << "\n";
 
@@ -199,7 +199,6 @@ TEST_CASE("meshfields_spr_test")
           });
         mesh.add_tag(OMEGA_H_VERT, "target_values", 1,
                      Omega_h::read(exact_target_values));
-        std::cerr << "I am here above test\n";
         test(mesh, patches, interp_degree, Omega_h::Reals(source_values),
              Omega_h::Reals(exact_target_values),
              Omega_h::Reals(source_coordinates),

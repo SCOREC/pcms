@@ -11,7 +11,7 @@
 #include <iostream>
 #include <Omega_h_array_ops.hpp>
 
-Omega_h::Omega_h::Reals fillFromMatrix(const Omega_h::Matrix<2, 10>& matrix)
+Omega_h::Reals fillFromMatrix(const Omega_h::Matrix<2, 10>& matrix)
 {
   int num_points = 10;
   Omega_h::Write<Omega_h::Real> array(20, 0, "array to store coordinates");
@@ -67,16 +67,16 @@ TEST_CASE("test_normalization_routine")
     Omega_h::Write<Omega_h::Real> all_target_coordinates(
       total_coordinates, 0, "target coordinates all");
 
-    team_policy tp(nvertices_target, Kokkos::AUTO);
+    pcms::team_policy tp(nvertices_target, Kokkos::AUTO);
     Kokkos::parallel_for(
       "inside team", tp.set_scratch_size(0, Kokkos::PerTeam(200)),
-      KOKKOS_LAMBDA(const member_type& team) {
+      KOKKOS_LAMBDA(const pcms::member_type& team) {
         int league_rank = team.league_rank();
 
         int num_supports = nsupports[league_rank];
         pcms::ScratchMatView local_supports(team.team_scratch(0), num_supports,
                                             dim);
-        detail::fill(0, team, local_supports);
+        pcms::detail::fill(0, team, local_supports);
 
         double target_point[MAX_DIM] = {};
 
@@ -85,7 +85,7 @@ TEST_CASE("test_normalization_routine")
         }
 
         Kokkos::parallel_for(
-          Kokkos::TeamThOmega_h::readRange(team, num_supports), [=](int i) {
+          Kokkos::TeamThreadRange(team, num_supports), [=](int i) {
             for (int j = 0; j < dim; ++j) {
               int index = league_rank * num_supports * dim + i * dim + j;
 
@@ -105,10 +105,10 @@ TEST_CASE("test_normalization_routine")
           });
 
         team.team_barrier();
-        detail::normalize_supports(team, target_point, local_supports);
+        pcms::detail::normalize_supports(team, target_point, local_supports);
 
         Kokkos::parallel_for(
-          Kokkos::TeamThOmega_h::readRange(team, num_supports), [=](int i) {
+          Kokkos::TeamThreadRange(team, num_supports), [=](int i) {
             for (int j = 0; j < dim; ++j) {
               int index = league_rank * num_supports * dim + i * dim + j;
               normalized_support_coordinates[index] = local_supports(i, j);

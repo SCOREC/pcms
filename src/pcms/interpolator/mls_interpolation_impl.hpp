@@ -26,7 +26,7 @@
 #include <KokkosBlas2_serial_gemv_impl.hpp>
 #include <KokkosBatched_Gemm_Decl.hpp>
 
-static constexpr int MAX_DIM = 3;
+static constexpr int MAX_DIM = 6;
 
 /**
  * calculate_basis_slice_lengths, calculate_basis_vector_size and
@@ -164,7 +164,7 @@ void eval_basis_vector(const IntDeviceMatView& slice_length, const double* p,
  **
  */
 KOKKOS_INLINE_FUNCTION
-void normalize_supports(member_type team, double* target_point,
+void normalize_supports(const member_type& team, double* target_point,
                         ScratchMatView& support_coordinates)
 {
   int nsupports = support_coordinates.extent(0);
@@ -465,7 +465,7 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
 
   if (team.team_rank() == 0) {
     KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), matrix, U,
-                                     sigma, Vt, work, 1e-8);
+                                     sigma, Vt, work, 1e-6);
 
     // calculate sigma(i) / (sigma(i)^2 + lambda)
     calculate_shrinkage_factor(team, lambda, sigma);

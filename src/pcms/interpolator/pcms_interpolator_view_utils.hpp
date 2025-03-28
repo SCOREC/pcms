@@ -5,6 +5,7 @@
 #include <Omega_h_array_ops.hpp>
 #include <cmath>
 #include <Omega_h_fail.hpp>
+#include <Kokkos_MathematicalFunctions.hpp>
 
 namespace pcms
 {
@@ -59,7 +60,7 @@ void find_sq_root_each(member_type team, ScratchVecView& array)
       "[Error:] Square root of a negative number is invalid!\n"
       "value is %12.6f\n",
       array(i));
-    array(i) = sqrt(array(i));
+    array(i) = Kokkos::sqrt(array(i));
   });
 }
 

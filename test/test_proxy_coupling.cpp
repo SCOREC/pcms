@@ -12,7 +12,6 @@
 #include <thread>
 
 using pcms::Copy;
-using pcms::CouplerServer;
 using pcms::GO;
 using pcms::Lagrange;
 using pcms::make_array_view;
@@ -70,7 +69,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
   pcms::CouplerServer cpl(
-    "proxy_couple", comm,
+    "proxy_couple", comm, true,
     redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto is_overlap =

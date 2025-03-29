@@ -10,17 +10,16 @@
 
 namespace pcms
 {
-// TODO: strategy to merge Server/CLient Application and Fields
 class Application
 {
 public:
-  Application(std::string name, redev::Redev& rdv, MPI_Comm comm,
+  Application(std::string name, MPI_Comm comm,
               redev::Redev& redev, adios2::Params params,
               redev::TransportType transport_type,
               std::string path)
     : mpi_comm_(comm),
       redev_(redev),
-      channel_{rdv.CreateAdiosChannel(std::move(name), std::move(params),
+      channel_{redev_.CreateAdiosChannel(std::move(name), std::move(params),
                                       transport_type, std::move(path))}
   {
     PCMS_FUNCTION_TIMER;
@@ -109,23 +108,30 @@ private:
 
 class CouplerServer
 {
+private:
+  redev::Redev SetUpRedev(bool isServer, redev::Partition partition) {
+    if (isServer)
+      return redev::Redev(mpi_comm_, std::move(partition), ProcessType::Server);
+    else
+      return redev::Redev(mpi_comm_);
+  }
 public:
-  CouplerServer(std::string name, MPI_Comm comm, redev::Partition partition)
+  CouplerServer(std::string name, MPI_Comm comm, bool isServer, redev::Partition partition)
     : name_(std::move(name)),
       mpi_comm_(comm),
-      redev_({comm, std::move(partition), ProcessType::Server})
+      redev_(SetUpRedev(isServer, std::move(partition)))
   {
     PCMS_FUNCTION_TIMER;
   }
   Application* AddApplication(
     std::string name, std::string path = "",
     redev::TransportType transport_type = redev::TransportType::BP4,
-    adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}})
+    adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}})
   {
     PCMS_FUNCTION_TIMER;
     auto key = path + name;
     auto [it, inserted] = applications_.template try_emplace(
-      key, std::move(name), redev_, mpi_comm_, redev_,
+      key, std::move(name), mpi_comm_, redev_,
       std::move(params), transport_type, std::move(path));
     if (!inserted) {
       std::cerr << "Application with name " << name << "already exists!\n";

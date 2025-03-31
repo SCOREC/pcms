@@ -1,8 +1,13 @@
 cmake_minimum_required(VERSION 3.19)
-project(pcms VERSION 0.1.1 LANGUAGES CXX)
+project(pcms VERSION 0.1.2 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+
+# use _ROOT variables for configurations
+cmake_policy(SET CMP0074 NEW)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 option(PCMS_ENABLE_ASAN "enable address sanitizer" OFF)
 set(PCMS_HAS_ASAN OFF)
@@ -47,14 +52,8 @@ if (PCMS_ENABLE_OMEGA_H)
   endif()
 endif()
 #adios2 adds C and Fortran depending on how it was built
-find_package(ADIOS2 2.5 REQUIRED)
-find_package(Kokkos 4.5 REQUIRED)
-
-## use pkgconfig since the fftw autoconf install produces
-## broken cmake config files
-## https://github.com/FFTW/fftw3/issues/130
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(fftw REQUIRED IMPORTED_TARGET fftw3>=3.3)
+find_package(ADIOS2 CONFIG 2.5 REQUIRED)
+find_package(Kokkos CONFIG 4.5 REQUIRED)
 
 add_subdirectory(src)
 

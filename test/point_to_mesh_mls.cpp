@@ -399,7 +399,7 @@ inline void test_interpolation_point_to_mesh(
   target_values = temp_values;
 }
 
-    TEST_CASE("testpoint to mesh mls svd") {
+    TEST_CASE("test point to mesh mls svd") {
 
     std::string filePath = "/lore/elahis/pcmsrelated/BOUT.dmp.bp";
     // Read the first time step (index 0)

@@ -9,7 +9,8 @@ extern "C" {
 
 struct PcmsClientHandle
 {
-  void* pointer;
+  void* couplerPointer;
+  void* appPointer;
 };
 typedef struct PcmsClientHandle PcmsClientHandle;
 struct PcmsOmegaHMeshHandle

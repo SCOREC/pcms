@@ -28,12 +28,12 @@ public:
   // These fields are supposed to be agnostic to adios2...
   template <typename FieldAdapterT>
   CoupledField* AddField(
-    std::string name, FieldAdapterT&& field_adapter)
+    std::string name, FieldAdapterT&& field_adapter, bool participates = true)
   {
     PCMS_FUNCTION_TIMER;
     auto [it, inserted] = fields_.template try_emplace(
       name, name, std::forward<FieldAdapterT>(field_adapter), mpi_comm_, redev_,
-      channel_);
+      channel_, participates);
     if (!inserted) {
       std::cerr << "Field with this name" << name << "already exists!\n";
       std::terminate();

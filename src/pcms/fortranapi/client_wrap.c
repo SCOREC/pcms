@@ -277,7 +277,7 @@ SWIGEXPORT void _wrap_PcmsClientHandle_pointer_set(SwigClassWrapper* farg1,
   arg1 = (struct PcmsClientHandle*)farg1->cptr;
   arg2 = (void*)(*farg2);
   if (arg1)
-      (arg1)->pointer = arg2;
+      (arg1)->appPointer = arg2;
 }
 
 SWIGEXPORT void* _wrap_PcmsClientHandle_pointer_get(SwigClassWrapper* farg1)
@@ -289,7 +289,7 @@ SWIGEXPORT void* _wrap_PcmsClientHandle_pointer_get(SwigClassWrapper* farg1)
   SWIG_check_nonnull(farg1->cptr, "struct PcmsClientHandle *",
                      "PcmsClientHandle", "PcmsClientHandle::pointer", return 0);
   arg1 = (struct PcmsClientHandle*)farg1->cptr;
-  result = (void*)((arg1)->pointer);
+  result = (void*)((arg1)->appPointer);
   fresult = (void*)(result);
   return fresult;
 }

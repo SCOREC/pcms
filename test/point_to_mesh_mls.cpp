@@ -48,7 +48,7 @@ std::vector<double> readTeData(const std::string& filePath, MPI_Comm comm = MPI_
         io.SetEngine("BP");
     }
 
-    // Open the file in STREAMING mode (not RandomAccess)
+    // Open the file in STREAMING mode
     adios2::Engine reader = io.Open(filePath, adios2::Mode::Read, comm);
     if (!reader) {
         std::cerr << "Error: Failed to open file " << filePath << std::endl;
@@ -125,53 +125,15 @@ std::vector<double> readTeData(const std::string& filePath, MPI_Comm comm = MPI_
     return Te_data;
 }
 
-// std::vector<std::pair<std::vector<double>, double>> generateSourcePointsWithTe(const std::vector<double>& Te_data) {
-//     const int radial = 20;      // R direction points (Nx)
-//     const int poloidal = 10;    // Z direction points (Ny)
-//     const int toroidal = 20;    // θ direction points (Nz)
-
-//     double R_min = 1.4, R_max = 2.6;
-//     double Z_min = -0.6, Z_max = 0.6;
-//     double dy = 0.18; // Toroidal angle step size
-//     double dR = (R_max - R_min) / (radial - 1);
-//     double dZ = (Z_max - Z_min) / (poloidal - 1);
-
-//     std::vector<std::pair<std::vector<double>, double>> source_points_with_Te;
-
-//     for (int i = 0; i < radial; ++i) {
-//         double R = R_min + i * dR;
-//         for (int j = 0; j < poloidal; ++j) {
-//             double Z = Z_min + j * dZ;
-//             for (int k = 0; k < toroidal; ++k) {
-//                 double theta = k * dy;
-
-//                 // Convert to Cartesian coordinates
-//                 double x = R * cos(theta);
-//                 double y = R * sin(theta);
-//                 double z = Z;
-
-//                 // Get the correct Te value
-//                 size_t index = i * (10 * 20) + j * 20 + k;  // (radial * poloidal * toroidal)
-//                 double Te_value = Te_data[index];
-
-//                 // Store (x, y, z) with corresponding Te
-//                 source_points_with_Te.push_back({{x, y, z}, Te_value});
-//             }
-//         }
-//     }
-//     return source_points_with_Te;
-// }
-
 std::vector<std::pair<std::vector<double>, double>> generateSourcePointsWithTe(const std::vector<double>& Te_data) {
     const int radial = 20;      // R direction points (Nx)
-    const int poloidal = 20;    // Z direction points (Ny)
-    // const int poloidal = 10;    // Z direction points (Ny)
-    const int toroidal = 10;    // θ direction points (Nz)
+    const int poloidal = 20;    // Z direction points (Nz)
+    const int toroidal = 10;    // θ direction points (Ny)
 
     double R_min = 1.4, R_max = 2.6;
     // double Z_min = -0.6, Z_max = 0.6;
     double Z_min = 0.0, Z_max = 1.2;
-    double dy = 0.18; // From BOUT file (dy is the toroidal angle step)
+    double dy = 0.18; 
     double dR = (R_max - R_min) / (radial - 1);
     double dZ = (Z_max - Z_min) / (poloidal - 1);
 
@@ -189,7 +151,7 @@ std::vector<std::pair<std::vector<double>, double>> generateSourcePointsWithTe(c
                 double y = R * sin(theta);
                 double z = Z;
 
-                // Compute correct Te index (column-major: k + Nz * (j + Ny * i))
+                // Compute correct Te index (column-major: k + Ny * (j + Nz * i))
                 size_t index = k + toroidal * (j + poloidal * i);
 
                 // Bounds check to prevent errors
@@ -207,26 +169,6 @@ std::vector<std::pair<std::vector<double>, double>> generateSourcePointsWithTe(c
     }
     return source_points_with_Te;
 }
-
-// KOKKOS_INLINE_FUNCTION
-// double evaluatePolynomial(const Coord& p, int degree) {
-//   auto x = p.x;
-//   auto y = p.y;
-//   auto z = p.z; 
-
-//   if (degree == 0) {
-//     return 3.0;
-//   } else if (degree == 1) {
-//     return x + y + z; 
-//   } else if (degree == 2) {
-//     return (x * x) + (y * y) + (z * z); 
-//   } else if (degree == 3) {
-//     return (x * x * x) + (y * y * y) + (z * z * z); 
-//   } else {
-//     printf("No polynomials with degree = %d\n", degree);
-//     return 0.0;
-//   }
-// }
 
 // n² search to find neighbors (Brute force search)
 inline SupportResults findNeighbors(
@@ -332,159 +274,47 @@ inline SupportResults findNeighbors(
     return results;
 }
 
-// inline void test_interpolation_point_to_mesh(Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
-//           Reals source_values, Write<Real>& target_values,
-//           Reals source_coordinates, Reals target_coordinates)
-// {
-//   int dim = mesh.dim();
-//   assert(dim==3);
-// //   Real tolerance = 0.05;
-
-//   std::vector<RadialBasisFunction> rbf_types = {
-//     RadialBasisFunction::RBF_GAUSSIAN, RadialBasisFunction::RBF_C4,
-//     RadialBasisFunction::RBF_CONST
-//   };
-
-//   // Ensure `source_coordinates` and `target_coordinates` are valid
-//   REQUIRE(source_coordinates.size() % dim == 0);
-//   REQUIRE(target_coordinates.size() % dim == 0);
-
-//   size_t num_sources = source_coordinates.size() / dim;
-//   size_t num_targets = target_coordinates.size() / dim;
-
-//   // Convert `Reals` to host std::vector<std::vector<double>> format
-//   std::vector<std::vector<double>> host_source_data(num_sources, std::vector<double>(dim));
-//   std::vector<std::vector<double>> host_target_data(num_targets, std::vector<double>(dim));
-
-//   // Read `Reals` into `HostRead<Real>` once to avoid redundant memory copies
-//   auto host_source_coords = HostRead<Real>(source_coordinates);
-//   auto host_target_coords = HostRead<Real>(target_coordinates);
-
-//   for (size_t i = 0; i < num_sources; ++i) {
-//       for (int d = 0; d < dim; ++d) {
-//           host_source_data[i][d] = host_source_coords[i * dim + d];
-//       }
-//   }
-//   for (size_t i = 0; i < num_targets; ++i) {
-//       for (int d = 0; d < dim; ++d) {
-//           host_target_data[i][d] = host_target_coords[i * dim + d];
-//       }
-//   }
-
-//   // Perform neighbor search
-//   SupportResults support = findNeighbors(host_source_data, host_target_data, cutoffDistance);
-
-//   // Ensure neighbor search results are valid
-//   CHECK(support.supports_ptr.size() == num_targets + 1);
-//   CHECK(support.supports_idx.size() > 0);  // Ensure we found at least one neighbor
-
-// //   for (const auto& rbf : rbf_types) {
-// //     auto approx_target_values =
-// //       mls_interpolation(source_values, source_coordinates, target_coordinates,
-// //                         support, dim, degree, support.radii2, rbf);
-
-// //     // Assign the interpolated values back to target_values
-// //     Write<Real> temp_values(num_targets, 0.0, "temporary target values");
-
-// //     // Convert `approx_target_values` (Reals) into `Read<Real>` before copying
-// //     Kokkos::parallel_for("copy MLS results to target values", num_targets, KOKKOS_LAMBDA(int i) {
-// //         temp_values[i] = approx_target_values[i]; 
-// //     });
-
-// //     if (rbf == RadialBasisFunction::RBF_C4) {
-// //         target_values = temp_values;
-// //     }
-
-//     for (const auto& rbf : rbf_types) {
-//         auto approx_target_values =
-//         mls_interpolation(source_values, source_coordinates, target_coordinates,
-//                             support, dim, degree, support.radii2, rbf);
-
-//         // Allocate target array and initialize
-//         Write<Real> temp_values(num_targets, 0.0, "temporary target values");
-
-//         // Copy MLS results into temp_values with basic sanity check
-//         Kokkos::parallel_for("copy and sanitize MLS results", num_targets, KOKKOS_LAMBDA(int i) {
-//             Real val = approx_target_values[i];
-
-//             // Sanitize: replace bad values with one and zero 
-//             if (!Kokkos::isfinite(val) || val > 1.1) {
-//                 val = 1.0;
-//             }
-//             else if (val < 0.0){
-//                 val = 0.0;
-//             }
-
-//             temp_values[i] = val;
-//         });
-
-//         // Only assign to output for RBF_C4
-//         if (rbf == RadialBasisFunction::RBF_C4) {
-//             target_values = temp_values;
-//         }
-
-//     // // Debugging: Print interpolated values
-//     // auto host_target_values = HostRead<Real>(target_values);
-//     // std::cout << "\nInterpolated Target Te values (first 10 targets) after MLS:\n";
-//     // for (size_t i = 0; i < std::min(num_targets, size_t(10)); ++i) {
-//     //     std::cout << "Target " << i << " | MLS Interpolated Te = " 
-//     //               << host_target_values[i] << "\n";
-//     // }
-//   }
-// }
-
-using TeamPolicy = Kokkos::TeamPolicy<ExecSpace>;
-using MemberType = TeamPolicy::member_type;
-
-using ScratchSpace = ExecSpace::scratch_memory_space;
-using MatView = Kokkos::View<double**, Kokkos::LayoutRight, ScratchSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
-using VecView = Kokkos::View<double*, ScratchSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
-
 inline void test_interpolation_point_to_mesh(
-    Mesh& mesh, Real cutoffDistance, int degree, LO min_num_supports,
+    Mesh& mesh, double cutoffDistance,
     Reals source_values, Write<Real>& target_values,
     Reals source_coordinates, Reals target_coordinates,
     const SupportResults& support)
 {
-  using ExecSpace = Kokkos::DefaultExecutionSpace;
-  using TeamPolicy = Kokkos::TeamPolicy<ExecSpace>;
-  using MemberType = TeamPolicy::member_type;
-  using ScratchSpace = typename MemberType::scratch_memory_space;
+  using ExecSpace     = Kokkos::DefaultExecutionSpace;
+  using TeamPolicy    = Kokkos::TeamPolicy<ExecSpace>;
+  using MemberType    = TeamPolicy::member_type;
+  using ScratchSpace  = typename MemberType::scratch_memory_space;
 
   using MatView = Kokkos::View<double**, Kokkos::LayoutRight, ScratchSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
   using VecView = Kokkos::View<double*, ScratchSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
-  int dim = mesh.dim();
+  const int dim = mesh.dim();
   const size_t num_targets = target_values.size();
+  constexpr int basis_size = 10; // Quadratic: [1, x, y, z, x², y², z², xy, xz, yz]
 
-  // Convert to device views
   auto d_supports_ptr = support.supports_ptr;
   auto d_supports_idx = support.supports_idx;
-  auto d_radii2 = support.radii2;
+  auto d_radii2       = support.radii2;
 
-  // Output buffer
   Write<Real> temp_values(num_targets, "svd interpolated values");
 
-  // Determine max number of supports for scratch space allocation
+  // Find max support
   LO max_support = 0;
   auto host_ptr = HostRead<LO>(d_supports_ptr);
-  for (size_t i = 0; i < num_targets; ++i) {
+  for (size_t i = 0; i < num_targets; ++i)
     max_support = std::max(max_support, host_ptr[i + 1] - host_ptr[i]);
-  }
 
-  constexpr int basis_size = 3;  // For [1, x, y]
-
-  int bytes_per_double = sizeof(double);
-  int scratch_bytes = bytes_per_double * (
-      max_support * basis_size +  // A
-      max_support +               // b
-      basis_size +                // x
-      max_support +               // weights
-      basis_size +               // sigma
-      basis_size * basis_size +  // Vt
-      max_support * max_support +// U
-      max_support +              // work
-      basis_size                 // Ut_b
+  const int bytes_per_double = sizeof(double);
+  const int scratch_bytes = bytes_per_double * (
+    max_support * basis_size +   // A
+    max_support +                // b
+    basis_size +                 // x
+    max_support +                // weights
+    basis_size +                // sigma
+    basis_size * basis_size +   // Vt
+    max_support * max_support + // U
+    max_support +               // work
+    basis_size                  // Ut_b
   );
 
   TeamPolicy policy(num_targets, Kokkos::AUTO);
@@ -493,8 +323,10 @@ inline void test_interpolation_point_to_mesh(
   Kokkos::parallel_for("MLS-SVD Interpolation", policy, KOKKOS_LAMBDA(const MemberType& team) {
     const int i = team.league_rank();
     const LO start = d_supports_ptr[i];
-    const LO end = d_supports_ptr[i + 1];
+    const LO end   = d_supports_ptr[i + 1];
     const int nsupports = end - start;
+
+    if (nsupports < basis_size) return;
 
     MatView A(team.team_scratch(1), nsupports, basis_size);
     VecView b(team.team_scratch(1), nsupports);
@@ -506,50 +338,60 @@ inline void test_interpolation_point_to_mesh(
     VecView work(team.team_scratch(1), nsupports);
     VecView Ut_b(team.team_scratch(1), basis_size);
 
-    // Fill A, b, weights
+    const double h = 0.5 * cutoffDistance;
+
     for (int j = 0; j < nsupports; ++j) {
       const int idx = d_supports_idx[start + j];
       double x_s = source_coordinates[idx * dim + 0];
       double y_s = source_coordinates[idx * dim + 1];
-      A(j, 0) = 1.0;
-      A(j, 1) = x_s;
-      A(j, 2) = y_s;
-      b(j) = source_values[idx];
-      weights(j) = 1.0;  // Uniform weights
+      double z_s = source_coordinates[idx * dim + 2];
+      double r2  = d_radii2[start + j];
+      double w   = exp(-r2 / (h * h));
+      weights(j) = w;
+
+      A(j, 0) = w * 1.0;
+      A(j, 1) = w * x_s;
+      A(j, 2) = w * y_s;
+      A(j, 3) = w * z_s;
+      A(j, 4) = w * x_s * x_s;
+      A(j, 5) = w * y_s * y_s;
+      A(j, 6) = w * z_s * z_s;
+      A(j, 7) = w * x_s * y_s;
+      A(j, 8) = w * x_s * z_s;
+      A(j, 9) = w * y_s * z_s;
+
+      b(j) = w * source_values[idx];
     }
 
-    // Compute SVD
+    // SVD solve
     if (team.team_rank() == 0) {
-      KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), A, U, sigma, Vt, work);
+      KokkosBatched::SerialSVD::invoke(
+        KokkosBatched::SVD_USV_Tag(), A, U, sigma, Vt, work);
     }
     team.team_barrier();
 
-    // Compute U^T * b
     for (int k = 0; k < basis_size; ++k) {
       Ut_b(k) = 0.0;
-      for (int j = 0; j < nsupports; ++j) {
+      for (int j = 0; j < nsupports; ++j)
         Ut_b(k) += U(j, k) * b(j);
-      }
     }
 
-    // Solve x = V^T^T * diag(1/sigma) * U^T * b
     for (int irow = 0; irow < basis_size; ++irow) {
       double val = 0.0;
-      for (int j = 0; j < basis_size; ++j) {
-        if (sigma(j) > 1e-10) {
+      for (int j = 0; j < basis_size; ++j)
+        if (sigma(j) > 1e-10)
           val += Vt(j, irow) * (Ut_b(j) / sigma(j));
-        }
-      }
       x(irow) = val;
     }
 
-    // Evaluate interpolant at target
     double xt = target_coordinates[i * dim + 0];
     double yt = target_coordinates[i * dim + 1];
-    Real interpolated = x(0) + x(1) * xt + x(2) * yt;
+    double zt = target_coordinates[i * dim + 2];
 
-    // if (!Kokkos::isfinite(interpolated) || interpolated > 1.1) interpolated = 1.0;
-    // else if (interpolated < 0.0) interpolated = 0.0;
+    Real interpolated =
+      x(0) + x(1)*xt + x(2)*yt + x(3)*zt +
+      x(4)*xt*xt + x(5)*yt*yt + x(6)*zt*zt +
+      x(7)*xt*yt + x(8)*xt*zt + x(9)*yt*zt;
 
     temp_values[i] = interpolated;
   });
@@ -557,7 +399,7 @@ inline void test_interpolation_point_to_mesh(
   target_values = temp_values;
 }
 
-    TEST_CASE("testpoint to mesh mls") {
+    TEST_CASE("testpoint to mesh mls svd") {
 
     std::string filePath = "/lore/elahis/pcmsrelated/BOUT.dmp.bp";
     // Read the first time step (index 0)
@@ -582,13 +424,12 @@ inline void test_interpolation_point_to_mesh(
     // std::cout << "Z range after shifting: [" << min_zz << ", " << max_zz << "]\n";
 
     Real cutoffDistance = 0.45;
-    cutoffDistance = cutoffDistance * cutoffDistance;  // Squared for efficiency
+    cutoffDistance = cutoffDistance * cutoffDistance; 
 
     const int dim = mesh.dim();
     const auto& target_coordinates = mesh.coords();
     const auto ntargets = mesh.nverts();
 
-    // Generate source points
     auto source_data = generateSourcePointsWithTe(Te_data);
     size_t numSources = source_data.size();
 
@@ -606,14 +447,14 @@ inline void test_interpolation_point_to_mesh(
     std::vector<std::vector<double>> host_target_data;
     auto host_target_coords = HostRead<Real>(target_coordinates);
 
-    // // Now filter target points using this bounding box
+    // Filtering target points
     for (size_t i = 0; i < ntargets; ++i) {
         double x = host_target_coords[i * 3];
         double y = host_target_coords[i * 3 + 1];
         double z = host_target_coords[i * 3 + 2];
 
         double r = std::sqrt(x * x + y * y);
-        double theta = std::atan2(y, x);  // Gives value in [-π, π]
+        double theta = std::atan2(y, x); 
 
         // Normalize theta to [0, 2π] if needed
         if (theta < 0) theta += 2 * M_PI;
@@ -794,7 +635,6 @@ inline void test_interpolation_point_to_mesh(
 
     for (size_t i = 0; i < ntargets_filtered; ++i) {
         for (int d = 0; d < dim; ++d) {
-            // host_target_view(i, d) = host_target_coords[i * dim + d];
             host_target_view(i, d) = host_target_data[i][d];
         }
     }
@@ -835,8 +675,6 @@ inline void test_interpolation_point_to_mesh(
     //         target_coordinates_flat[i * 3 + 2] = target_view(i, 2);
     //     });
 
-
-
     //     test_interpolation_point_to_mesh(
     //         mesh, cutoffDistance, degree, min_num_supports,
     //         Reals(source_values), target_values,
@@ -852,8 +690,6 @@ inline void test_interpolation_point_to_mesh(
     // }
 
     SECTION("Two-way MLS interpolation: Source → Target → Source") {
-        int degree = 1;
-        LO min_num_supports = 10;
 
         // First Interpolation: Source → Target
         Write<Real> source_values(numSources, 0.0, "source Te values");
@@ -895,8 +731,7 @@ inline void test_interpolation_point_to_mesh(
 
         // Perform first MLS interpolation: `source → target`
         test_interpolation_point_to_mesh(
-            mesh, cutoffDistance, degree, min_num_supports,
-            Reals(source_values), target_values,
+            mesh, cutoffDistance, Reals(source_values), target_values,
             Reals(source_coordinates_flat), Reals(target_coordinates_flat),
             support
         );
@@ -968,11 +803,13 @@ inline void test_interpolation_point_to_mesh(
         //     std::cout << "Target " << i << " | Te = " << host_target_values_debug[i] << "\n";
         // }
 
+        Real second_cutoffDistance = cutoffDistance * 1.5;
+
         // Find new neighbors (target → source)
         SupportResults support_target_to_source = findNeighbors(
             host_new_source_data, 
             host_new_target_data,
-            cutoffDistance
+            second_cutoffDistance
         );
 
         // Ensure neighbors are found
@@ -984,38 +821,14 @@ inline void test_interpolation_point_to_mesh(
         for (size_t i = 0; i < std::min(numSources, size_t(10)); ++i) {
             int num_neighbors = host_supports_ptr_new[i + 1] - host_supports_ptr_new[i];
             std::cout << "Source " << i << " has " << num_neighbors << " neighbors.\n";
-        }
-
-        Real second_cutoffDistance = cutoffDistance * 2; 
+        } 
 
         // Perform second MLS interpolation: `target → source`
         test_interpolation_point_to_mesh(
-            mesh, second_cutoffDistance, degree, min_num_supports,
-            Reals(new_source_values), recovered_source_values,
+            mesh, cutoffDistance, Reals(new_source_values), recovered_source_values,
             Reals(new_source_coordinates), Reals(new_target_coordinates),
             support_target_to_source
         );
-
-        // Assign a default backup value instead of leaving it as NaN
-        // Atomic counter for NaN replacements
-        Kokkos::View<int> nan_count("nan_count");
-
-        // // Parallel loop to replace NaN values and count them
-        // Kokkos::parallel_for("fix NaN values", numSources, KOKKOS_LAMBDA(const size_t i) {
-        //     if (Kokkos::isnan(recovered_source_values[i])) {
-        //         recovered_source_values[i] = source_values[i];  // Replace NaN with original Te value
-        //         Kokkos::atomic_increment(&nan_count());  // Increment the counter
-        //     }
-        // });
-
-        // Copy back the NaN count to host
-        int host_nan_count = 0;
-        Kokkos::deep_copy(host_nan_count, nan_count);
-
-        // Print the total number of replacements
-        std::cout << "Total NaN values replaced: " << host_nan_count << std::endl;
-
-
 
         // Compare original vs recovered values
         auto host_original_source_values = HostRead<Real>(source_values);
@@ -1085,7 +898,6 @@ inline void test_interpolation_point_to_mesh(
         std::cout << "Te_Original  : min = " << min_orig << ", max = " << max_orig << "\n";
         std::cout << "Te_Recovered : min = " << min_recv << ", max = " << max_recv << "\n";
         std::cout << "Te_Target    : min = " << min_target << ", max = " << max_target << "\n";
-
 
         std::cout << "Saved source data to source_points.txt\n";
         std::cout << "Saved target data to target_points.txt\n";

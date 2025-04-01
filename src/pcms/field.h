@@ -85,11 +85,6 @@ public:
 
   virtual void SetNodalData(Rank1View<const T, pcms::HostMemorySpace> data) = 0;
 
-  /*
-  * specify the coordinates to evaluate the field
-   */
-  virtual void SetEvaluationCoordinates(LocalizationHint hint) = 0;
-
   // returns a hint that can be given to the Evaluate method
   // this can be useful to cache data if you have multiple sets of coordinates you may evaluate
   virtual LocalizationHint GetLocalizationHint(CoordinateView<HostMemorySpace> coordinates) = 0;
@@ -97,7 +92,7 @@ public:
   // always takes 3D view, dof holder #, dimension, component
   // underlying allocated buffer needs to be #dof holder * # components
   // We return a FieldDataView to make sure we get both the data, and the coordinate system that the data is in
-  virtual void Evaluate(FieldDataView<T, HostMemorySpace> results) = 0;
+  virtual void Evaluate(LocalizationHint location, FieldDataView<T, HostMemorySpace> results) = 0;
 
   // should offer component wise version?
   // if data is scalar results are vector, if data is

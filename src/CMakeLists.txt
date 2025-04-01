@@ -46,6 +46,7 @@ if (PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_HEADERS
           pcms/adapter/omega_h/omega_h_field.h
           pcms/transfer_field.h
+          pcms/transfer_field2.h
           pcms/uniform_grid.h
           pcms/point_search.h)
 endif ()

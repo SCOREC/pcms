@@ -45,12 +45,10 @@ public:
 
   void SetNodalData(Rank1View<const Real, pcms::HostMemorySpace> data) override;
 
-  void SetEvaluationCoordinates(LocalizationHint hint) override;
-
   LocalizationHint GetLocalizationHint(
     CoordinateView<HostMemorySpace> coordinate_view) override;
 
-  void Evaluate(FieldDataView<double, HostMemorySpace> results) override;
+  void Evaluate(LocalizationHint location, FieldDataView<double, HostMemorySpace> results) override;
 
   void EvaluateGradient(
     FieldDataView<double, HostMemorySpace> results) override;
@@ -78,7 +76,6 @@ private:
   const OmegaHFieldLayout& layout_;
   Omega_h::Mesh& mesh_;
   GridPointSearch search_;
-  OmegaHFIeld2LocalizationHint hint_;
 };
 
 } // namespace pcms

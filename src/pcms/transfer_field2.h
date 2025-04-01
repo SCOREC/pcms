@@ -36,8 +36,7 @@ void interpolate_field2(const FieldT<T>& source, FieldT<T>& target)
   std::vector<double> evaluation(coordinates.size() / 2);
   FieldDataView<Real, HostMemorySpace> data_view{make_array_view(evaluation), source.GetCoordinateSystem()};
   auto locale = source.GetLocalizationHint(view);
-  source.SetEvaluationCoordinates(locale);
-  source.Evaluate(data_view);
+  source.Evaluate(locale, data_view);
   target.SetNodalData(data_view);
 }
 

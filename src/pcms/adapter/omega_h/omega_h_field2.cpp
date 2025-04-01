@@ -66,12 +66,6 @@ void OmegaHField2::SetNodalData(
   }
 }
 
-void OmegaHField2::SetEvaluationCoordinates(LocalizationHint hint)
-{
-  hint_ = OmegaHFIeld2LocalizationHint{
-    *((OmegaHFIeld2LocalizationHint*)hint.data.get())};
-}
-
 LocalizationHint OmegaHField2::GetLocalizationHint(
   CoordinateView<HostMemorySpace> coordinate_view)
 {
@@ -86,8 +80,8 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
   Kokkos::View<Real* [2]> coords("coords", coordinates.size() / 2);
   Kokkos::parallel_for(
     coordinates.size() / 2, KOKKOS_LAMBDA(LO i) {
-      coords(i, 0) = coordinates(0, i);
-      coords(i, 1) = coordinates(1, i);
+      coords(i, 0) = coordinates(i, 0);
+      coords(i, 1) = coordinates(i, 1);
     });
   auto results = search_(coords);
   auto hint = std::make_shared<OmegaHFIeld2LocalizationHint>(results);
@@ -95,7 +89,8 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
   return LocalizationHint{hint};
 }
 
-void OmegaHField2::Evaluate(FieldDataView<double, HostMemorySpace> results)
+void OmegaHField2::Evaluate(LocalizationHint location,
+                            FieldDataView<double, HostMemorySpace> results)
 {
   // TODO decide if we want to implicitly perform the coordinate transformations
   // when possible
@@ -104,7 +99,10 @@ void OmegaHField2::Evaluate(FieldDataView<double, HostMemorySpace> results)
     throw std::runtime_error("Coordinate system mismatch");
   }
 
-  auto search_results = hint_.GetResults();
+  OmegaHFIeld2LocalizationHint hint =
+    *((OmegaHFIeld2LocalizationHint*)location.data.get());
+
+  auto search_results = hint.GetResults();
 
   if (!search_results.is_allocated()) {
     // TODO when moved to PCMS throw PCMS exception

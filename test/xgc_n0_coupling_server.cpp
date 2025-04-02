@@ -189,7 +189,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   auto time1 = std::chrono::steady_clock::now();
 
 
-  pcms::CouplerServer cpl("xgc_n0_coupling", comm, true,
+  pcms::Coupler cpl("xgc_n0_coupling", comm, true,
                             redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   std::string numbering = "simNumbering";

@@ -1,8 +1,12 @@
 #ifndef PCMS_H_
 #define PCMS_H_
 
-#ifdef PCMS_HAS_SERVER
-#include "pcms/server.h"
-#endif
+#include "pcms/common.h"
+#include "pcms/field_communicator.h"
+#include "pcms/omega_h_field.h"
+#include "pcms/profile.h"
+#include "pcms/coupler.h"
+#include <map>
+#include <typeinfo>
 
 #endif

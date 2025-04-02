@@ -1,8 +1,6 @@
 #include "client.h"
 #include "pcms.h"
 #include "pcms/xgc_field_adapter.h"
-#include "pcms/coupler.h"
-#include "pcms/server.h"
 #include <variant>
 #include <redev_variant_tools.h>
 // #ifdef PCMS_HAS_OMEGA_H
@@ -31,7 +29,7 @@ using FieldAdapterVariant =
 [[nodiscard]] PcmsClientHandle pcms_create_client(const char* name,
                                                   MPI_Comm comm)
 {
-  auto* coupler = new pcms::CouplerServer(name, comm, false, {});
+  auto* coupler = new pcms::Coupler(name, comm, false, {});
   auto* app = coupler->AddApplication(name);
   PcmsClientHandle handle;
   handle.couplerPointer = reinterpret_cast<void*>(coupler);
@@ -41,7 +39,7 @@ using FieldAdapterVariant =
 void pcms_destroy_client(PcmsClientHandle client)
 {
   if (client.couplerPointer != nullptr)
-    delete reinterpret_cast<pcms::CouplerServer*>(client.couplerPointer);
+    delete reinterpret_cast<pcms::Coupler*>(client.couplerPointer);
 }
 PcmsReverseClassificationHandle pcms_load_reverse_classification(
   const char* file, MPI_Comm comm)

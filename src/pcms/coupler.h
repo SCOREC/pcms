@@ -112,67 +112,42 @@ private:
   std::unique_ptr<CoupledFieldConcept> coupled_field_;
 };
 
-class Coupler
+class Application
 {
-private:
-  redev::Redev SetUpRedev(bool isServer, redev::Partition partition) {
-    if (isServer)
-      return redev::Redev(mpi_comm_, std::move(partition));
-    else
-      return redev::Redev(mpi_comm_);
-  }
 public:
-  Coupler(std::string name, MPI_Comm comm, bool isServer = false, 
-                redev::Partition partition = redev::Partition{redev::RCBPtn()},
-                redev::TransportType transport_type = redev::TransportType::BP4,
-                adios2::Params params = {{"Streaming", "On"},
-                                         {"OpenTimeoutSecs", "60"}},
-                std::string path = "")
+  Application(std::string name, MPI_Comm comm,
+              redev::Redev& redev, adios2::Params params,
+              redev::TransportType transport_type,
+              std::string path)
     : mpi_comm_(comm),
-      redev_(SetUpRedev(isServer, std::move(partition))),
+      redev_(redev),
       channel_{redev_.CreateAdiosChannel(std::move(name), std::move(params),
-                                         transport_type, std::move(path))}
+                                      transport_type, std::move(path))}
   {
     PCMS_FUNCTION_TIMER;
   }
-
-  [[nodiscard]] const redev::Partition& GetPartition() const
-  {
-    PCMS_FUNCTION_TIMER;
-    return redev_.GetPartition();
-  }
-
-  /**
-   * @known_issue
-   * The redev partion has to be same as the partition of the OH mesh.
-   * It asserts the number of elements sent and received are same.
-   * otherwise, ConstructPermutation() will fail.
-  */
+  // FIXME should take a file path for the parameters, not take adios2 params.
+  // These fields are supposed to be agnostic to adios2...
   template <typename FieldAdapterT>
-  CoupledField* AddField(std::string name, FieldAdapterT field_adapter,
-                         bool participates = true)
+  CoupledField* AddField(
+    std::string name, FieldAdapterT&& field_adapter, bool participates = true)
   {
     PCMS_FUNCTION_TIMER;
-    auto [it, inserted] =
-      fields_.template try_emplace(name, name, std::move(field_adapter),
-                                   mpi_comm_, redev_, channel_, participates);
+    auto [it, inserted] = fields_.template try_emplace(
+      name, name, std::forward<FieldAdapterT>(field_adapter), mpi_comm_, redev_,
+      channel_, participates);
     if (!inserted) {
-      std::cerr << "OHField with this name" << name << "already exists!\n";
+      std::cerr << "Field with this name" << name << "already exists!\n";
       std::terminate();
     }
     return &(it->second);
   }
-
-  // take a string& since map cannot be searched with string_view
-  // (heterogeneous lookup)
   void SendField(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InSendPhase());
     detail::find_or_error(name, fields_).Send(mode);
   };
-  // take a string& since map cannot be searched with string_view
-  // (heterogeneous lookup)
   void ReceiveField(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
@@ -225,12 +200,61 @@ public:
 
 private:
   MPI_Comm mpi_comm_;
-  redev::Redev redev_;
-  // map rather than unordered_map is necessary to avoid iterator invalidation.
-  // This is important because we pass pointers to the fields out of this class
-  std::map<std::string, CoupledField> fields_;
+  redev::Redev& redev_;
   redev::Channel channel_;
+  // map is used rather than unordered_map because we give pointers to the
+  // internal data and rehash of unordered_map can cause pointer invalidation.
+  // map is less cache friendly, but pointers are not invalidated.
+  std::map<std::string, CoupledField> fields_;
 };
+
+class Coupler
+{
+private:
+  redev::Redev SetUpRedev(bool isServer, redev::Partition partition) {
+    if (isServer)
+      return redev::Redev(mpi_comm_, std::move(partition), ProcessType::Server);
+    else
+      return redev::Redev(mpi_comm_);
+  }
+public:
+  Coupler(std::string name, MPI_Comm comm, bool isServer, redev::Partition partition)
+    : name_(std::move(name)),
+      mpi_comm_(comm),
+      redev_(SetUpRedev(isServer, std::move(partition)))
+  {
+    PCMS_FUNCTION_TIMER;
+  }
+  Application* AddApplication(
+    std::string name, std::string path = "",
+    redev::TransportType transport_type = redev::TransportType::BP4,
+    adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}})
+  {
+    PCMS_FUNCTION_TIMER;
+    auto key = path + name;
+    auto [it, inserted] = applications_.template try_emplace(
+      key, std::move(name), mpi_comm_, redev_,
+      std::move(params), transport_type, std::move(path));
+    if (!inserted) {
+      std::cerr << "Application with name " << name << "already exists!\n";
+      std::terminate();
+    }
+    return &(it->second);
+  }
+
+  [[nodiscard]] const redev::Partition& GetPartition() const noexcept
+  {
+    return redev_.GetPartition();
+  }
+
+private:
+  std::string name_;
+  MPI_Comm mpi_comm_;
+  redev::Redev redev_;
+  // gather and scatter operations have reference to internal fields
+  std::map<std::string, Application> applications_;
+};
+
 } // namespace pcms
 
 #endif // PCMS_COUPLER_H

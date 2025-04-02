@@ -6,7 +6,5 @@
 #include "pcms/omega_h_field.h"
 #include "pcms/profile.h"
 #include "pcms/coupler.h"
-#include <map>
-#include <typeinfo>
 
 #endif

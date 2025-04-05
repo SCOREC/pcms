@@ -51,6 +51,31 @@ AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
   return {.center = {(max[0] + min[0]) / 2.0, (max[1] + min[1]) / 2.0},
           .half_width = {(max[0] - min[0]) / 2.0, (max[1] - min[1]) / 2.0}};
 }
+
+template <unsigned dim>
+AABBox<dim> simplex_bbox(const Omega_h::Matrix<dim, dim + 1>& coords)
+{
+  std::array<Real, dim> max{coords(0, 0), coords(1, 0)};
+  std::array<Real, dim> min{coords(0, 0), coords(1, 0)};
+
+  for (int i = 1; i < dim + 1; ++i) {
+    for (int j = 0; j < dim; ++j) {
+      max[j] = std::fmax(max[j], coords(j, i));
+      min[j] = std::fmin(min[j], coords(j, i));
+    }
+  }
+
+  std::array<Real, dim> center;
+  std::array<Real, dim> half_width;
+
+  for (int j = 0; j < dim; ++j) {
+    center[j] = (max[j] + min[j]) / 2.0;
+    half_width[j] = (max[j] - min[j]) / 2.0;
+  }
+
+  return {.center = center, .half_width = half_width};
+}
+
 // Liang, You-Dong, and B. A. Barsky. “A New Concept and Method for Line
 // Clipping.” ACM Transactions on Graphics 3, no. 1 (January 1984): 1–22.
 // https://doi.org/10.1145/357332.357333.
@@ -111,13 +136,14 @@ bool line_intersects_bbox(const Omega_h::Vector<2>& p0,
   return false;
 }
 
+template <unsigned dim>
 [[nodiscard]] KOKKOS_INLINE_FUNCTION
-bool within_bbox(const Omega_h::Vector<2> coord, const AABBox<2> & bbox) noexcept {
-  auto left = bbox.center[0] - bbox.half_width[0];
-  auto right = bbox.center[0] + bbox.half_width[0];
-  auto bot = bbox.center[1] - bbox.half_width[1];
-  auto top = bbox.center[1] + bbox.half_width[1];
-  return (coord[0]>=left) && (coord[0]<=right) && (coord[1] >= bot) && (coord[1]<=top);
+bool within_bbox(const Omega_h::Vector<dim> coord, const AABBox<dim> & bbox) noexcept {
+  for (int i = 0; i < dim; ++i) {
+    if (coord[i] < bbox.center[i] - bbox.half_width[i]) return false;
+    if (coord[i] > bbox.center[i] + bbox.half_width[i]) return false;
+  }
+  return true;
 }
 
 [[nodiscard]] KOKKOS_INLINE_FUNCTION
@@ -149,9 +175,9 @@ bool triangle_intersects_bbox(const Omega_h::Matrix<2, 3>& coords,
   // triangle and grid cell bounding box intersect
   if (intersects(triangle_bbox(coords), bbox)) {
     // if any of the triangle verts inside of bbox
-    if (within_bbox(coords[0], bbox) ||
-        within_bbox(coords[1], bbox) ||
-        within_bbox(coords[2], bbox)) {
+    if (within_bbox<2>(coords[0], bbox) ||
+        within_bbox<2>(coords[1], bbox) ||
+        within_bbox<2>(coords[2], bbox)) {
       return true;
     }
     // if any of the bbox verts are within the triangle
@@ -168,6 +194,15 @@ bool triangle_intersects_bbox(const Omega_h::Matrix<2, 3>& coords,
   return false;
 }
 
+template <unsigned dim>
+[[nodiscard]]
+KOKKOS_FUNCTION
+bool simplex_intersects_bbox(const Omega_h::Matrix<dim, dim + 1>& coords, const AABBox<dim>& bbox)
+{
+  return intersects(simplex_bbox<dim>(coords), bbox);
+  // TODO: Add refined cases from triangle_intersects_bbox
+}
+
 namespace detail
 {
 /**
@@ -180,9 +215,9 @@ namespace detail
  * \Warning since this uses Omega_h data which is only available in the
  * "Default" Execution space, the should not be used in an alternative EXE space
  */
-struct GridTriIntersectionFunctor
+struct GridTriIntersectionFunctor2D
 {
-  GridTriIntersectionFunctor(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid)
+  GridTriIntersectionFunctor2D(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid)
     : mesh_(mesh),
       tris2verts_(mesh_.ask_elem_verts()),
       coords_(mesh_.coords()),
@@ -190,7 +225,7 @@ struct GridTriIntersectionFunctor
       nelems_(mesh_.nelems())
   {
     if (mesh_.dim() != 2) {
-      std::cerr << "GridTriIntersection currently only developed for 2D "
+      std::cerr << "GridTriIntersection2D currently only developed for 2D "
                    "triangular meshes\n";
       std::terminate();
     }
@@ -227,13 +262,60 @@ public:
   LO nelems_;
 };
 
+struct GridTriIntersectionFunctor3D
+{
+  GridTriIntersectionFunctor3D(Omega_h::Mesh& mesh, Kokkos::View<Uniform3DGrid[1]> grid)
+    : mesh_(mesh),
+      tets2verts_(mesh_.ask_elem_verts()),
+      coords_(mesh_.coords()),
+      grid_(grid),
+      nelems_(mesh_.nelems())
+  {
+    if (mesh_.dim() != 3) {
+      std::cerr << "GridTriIntersection3D currently only developed for 3D "
+                   "triangular meshes\n";
+      std::terminate();
+    }
+  }
+  /// Two-pass functor. On the first pass we set the number of grid/triangle
+  /// intersections. On the second pass we fill the CSR array with the indexes
+  /// to the triangles intersecting with the current grid cell (row)
+  KOKKOS_INLINE_FUNCTION
+  LO operator()(LO row, LO* fill) const
+  {
+    const auto grid_cell_bbox = grid_(0).GetCellBBOX(row);
+    LO num_intersections = 0;
+    // hierarchical parallel may make be very beneficial here...
+    for (LO elem_idx = 0; elem_idx < nelems_; ++elem_idx) {
+      const auto elem_tet2verts = Omega_h::gather_verts<4>(tets2verts_, elem_idx);
+      // 2d mesh with 2d coords, but 3 triangles
+      const auto vertex_coords = Omega_h::gather_vectors<4, 3>(coords_, elem_tet2verts);
+      if (simplex_intersects_bbox<3>(vertex_coords, grid_cell_bbox)) {
+        if (fill) {
+          fill[num_intersections] = elem_idx;
+        }
+        ++num_intersections;
+      }
+    }
+    return num_intersections;
+  }
+
+private:
+  Omega_h::Mesh& mesh_;
+  Omega_h::LOs tets2verts_;
+  Omega_h::Reals coords_;
+  Kokkos::View<Uniform3DGrid[1]> grid_;
+public:
+  LO nelems_;
+};
+
 // num_grid_cells should be result of grid.GetNumCells(), take as argument to avoid extra copy
 // of grid from gpu to cpu
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid, int num_grid_cells)
 {
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  auto f = detail::GridTriIntersectionFunctor{mesh, grid};
+  auto f = detail::GridTriIntersectionFunctor2D{mesh, grid};
   Kokkos::count_and_fill_crs(intersection_map, num_grid_cells, f);
   return intersection_map;
 }
@@ -260,7 +342,7 @@ OMEGA_H_INLINE double myreduce(const Omega_h::Vector<n> & x, Op op) OMEGA_H_NOEX
 
 Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::View<Real*[DIM] > points) const
 {
-  Kokkos::View<GridPointSearch::Result*> results("point search result", points.extent(0));
+  Kokkos::View<GridPointSearch2D::Result*> results("point search result", points.extent(0));
   auto num_rows = candidate_map_.numRows();
   // needed so that we don't capture this ptr which will be memory error on cuda
   auto grid = grid_; 
@@ -279,7 +361,7 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
     bool found = false;
 
     auto nearest_triangle = candidates_begin;
-    auto dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
+    auto dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
     Omega_h::Real distance_to_nearest { INFINITY };
     Omega_h::Vector<3> parametric_coords_to_nearest;
     // create array that's size of number of candidates x num coords to store
@@ -292,7 +374,7 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
       auto parametric_coords = barycentric_from_global(point, vertex_coords);
 
       if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
-        results(p) = GridPointSearch::Result{GridPointSearch::Result::Dimensionality::FACE, triangleID, parametric_coords};
+        results(p) = GridPointSearch2D::Result{GridPointSearch2D::Result::Dimensionality::FACE, triangleID, parametric_coords};
         found = true;
         break;
       }
@@ -321,7 +403,7 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
 
        if (distance_to_ab >= distance_to_nearest) { continue; }
 
-       dimensionality = GridPointSearch::Result::Dimensionality::EDGE;
+       dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
        nearest_triangle = i;
        distance_to_nearest = distance_to_ab;
        parametric_coords_to_nearest = parametric_coords;
@@ -336,7 +418,7 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
           Omega_h::get_vector<2>(coords, vertexID);
 
         if (const auto distance = Omega_h::norm(point - vertex);distance < distance_to_nearest) {
-         dimensionality = GridPointSearch::Result::Dimensionality::VERTEX;
+         dimensionality = GridPointSearch2D::Result::Dimensionality::VERTEX;
          nearest_triangle = i;
          distance_to_nearest = distance;
          parametric_coords_to_nearest = parametric_coords;
@@ -345,14 +427,14 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
     }
     if(!found)
     {
-      results(p) = GridPointSearch::Result{dimensionality, -1 * candidate_map.entries(nearest_triangle), parametric_coords_to_nearest};
+      results(p) = GridPointSearch2D::Result{dimensionality, -1 * candidate_map.entries(nearest_triangle), parametric_coords_to_nearest};
     }
   });
 
   return results;
 }
 
-GridPointSearch<2>::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
+GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);

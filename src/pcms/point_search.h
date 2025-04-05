@@ -43,28 +43,21 @@ public:
     Omega_h::Vector<dim + 1> parametric_coords;
   };
 
-  static constexpr auto DIM = 2;
+  static constexpr auto DIM = dim;
 
   virtual Kokkos::View<Result*> operator()(Kokkos::View<Real*[dim] > point) const = 0;
 };
 
 using PointLocalizationSearch2D = PointLocalizationSearch<2>;
 
-template <int dim>
-class GridPointSearch : public PointLocalizationSearch<dim>
-{
-  static_assert(false, "Not implemented");
-};
-
-template <>
-class GridPointSearch<2> : public PointLocalizationSearch2D
+class GridPointSearch2D : public PointLocalizationSearch2D
 {
   using CandidateMapT = Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
 
 public:
   using Result = PointLocalizationSearch2D::Result;
 
-  GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny);
+  GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny);
   /**
    *  given a point in global coordinates give the id of the triangle that the
    * point lies within and the parametric coordinate of the point within the
@@ -84,8 +77,6 @@ private:
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
 };
-
-using GridPointSearch2D = GridPointSearch<2>;
 
 } // namespace detail
 #endif // PCMS_COUPLING_POINT_SEARCH_H

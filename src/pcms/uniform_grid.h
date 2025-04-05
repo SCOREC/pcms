@@ -27,9 +27,11 @@ public:
   [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Omega_h::Vector<dim>& point) const
   {
     std::array<Real, dim> distance_within_grid;
-    std::transform(point.begin(), point.end(), bot_left.begin(),
-                   distance_within_grid.begin(), std::minus<>());
-    
+
+    for (int i = 0; i < dim; ++i) {
+      distance_within_grid[i] = point[i] - bot_left[i];
+    }
+
     std::array<LO, dim> indexes;
 
     for (auto& index : indexes) {
@@ -53,7 +55,12 @@ public:
   [[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<dim> GetCellBBOX(LO idx) const
   {
     auto index = GetDimensionedIndex(idx);
-    std::reverse(index.begin(), index.end());
+
+    for (size_t i = 0, j = index.size() - 1; i < j; ++i, --j) {
+      auto temp = index[i];
+      index[i] = index[j];
+      index[j] = temp;
+    }
 
     std::array<Real, dim> half_width, center;
 

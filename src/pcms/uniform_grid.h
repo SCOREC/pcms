@@ -31,7 +31,10 @@ public:
                    distance_within_grid.begin(), std::minus<>());
     
     std::array<LO, dim> indexes;
-    indexes.fill(-1);
+
+    for (auto& index : indexes) {
+      index = -1;
+    }
 
     for (int i = 0; i < dim; ++i) {
       auto index = static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
@@ -39,7 +42,11 @@ public:
     }
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
-    std::reverse(indexes.begin(), indexes.end());
+    for (size_t i = 0, j = indexes.size() - 1; i < j; ++i, --j) {
+      auto temp = indexes[i];
+      indexes[i] = indexes[j];
+      indexes[j] = temp;
+    }
     return GetCellIndex(indexes);
   }
 
@@ -50,9 +57,9 @@ public:
 
     std::array<Real, dim> half_width, center;
 
-    std::transform(edge_length.begin(), edge_length.end(), divisions.begin(), half_width.begin(), [](const Real edge_length, const LO division) {
-      return edge_length / division / 2;
-    });
+    for (int i = 0; i < dim; ++i) {
+      half_width[i] = edge_length[i] / divisions[i] / 2;
+    }
 
     for (int i = 0; i < dim; ++i) {
       center[i] = (2.0 * index[i] + 1.0) * half_width[i] + bot_left[i];
@@ -63,7 +70,10 @@ public:
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION std::array<LO, dim> GetDimensionedIndex(LO idx) const
   {
-    LO stride = std::accumulate(divisions.begin(), std::prev(divisions.end()), 1, std::multiplies<LO>{});
+    LO stride = 1;
+    for (std::size_t i = 0; i < divisions.size() - 1; ++i) {
+      stride *= divisions[i];
+    }
     std::array<LO, dim> result;
 
     for (int i = 0; i < dim; ++i) {
@@ -79,7 +89,11 @@ public:
   {
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
-    std::reverse(dimensionedIndex.begin(), dimensionedIndex.end());
+    for (size_t i = 0, j = dimensionedIndex.size() - 1; i < j; ++i, --j) {
+      auto temp = dimensionedIndex[i];
+      dimensionedIndex[i] = dimensionedIndex[j];
+      dimensionedIndex[j] = temp;
+    }
 
     LO idx = 0;
     LO stride = 1;

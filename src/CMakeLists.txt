@@ -18,6 +18,7 @@ set(PCMS_HEADERS
         pcms/profile.h
         pcms/print.h
         pcms/partition.h
+        pcms/coupler.h
         )
 
 set(PCMS_SOURCES
@@ -43,12 +44,6 @@ if (PCMS_ENABLE_OMEGA_H)
           pcms/uniform_grid.h
           pcms/point_search.h)
 endif ()
-if (PCMS_ENABLE_SERVER)
-  if (NOT PCMS_ENABLE_OMEGA_H)
-    message(ERROR "PCMS_ENABLE_OMEGA_H is required for server implementation")
-  endif ()
-  list(APPEND PCMS_HEADERS pcms/server.h)
-endif ()
 
 find_package(Kokkos REQUIRED)
 find_package(perfstubs REQUIRED)
@@ -66,10 +61,6 @@ if(PCMS_ENABLE_OMEGA_H)
 endif()
 if(PCMS_ENABLE_SERVER)
   target_compile_definitions(pcms_core PUBLIC -DPCMS_HAS_SERVER)
-endif()
-if(PCMS_ENABLE_CLIENT)
-  list(APPEND PCMS_HEADERS pcms/client.h)
-  target_compile_definitions(pcms_core PUBLIC -DPCMS_HAS_CLIENT)
 endif()
 
 if(PCMS_HAS_ASAN)

@@ -2,7 +2,6 @@
 #define PCMS_COUPLING_UNIFORM_GRID_H
 #include "pcms/bounding_box.h"
 #include "Omega_h_vector.hpp"
-#include <iostream>
 #include <numeric>
 namespace pcms
 {
@@ -44,23 +43,14 @@ public:
     }
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
-    for (size_t i = 0, j = indexes.size() - 1; i < j; ++i, --j) {
-      auto temp = indexes[i];
-      indexes[i] = indexes[j];
-      indexes[j] = temp;
-    }
+    reverse(indexes);
     return GetCellIndex(indexes);
   }
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<dim> GetCellBBOX(LO idx) const
   {
     auto index = GetDimensionedIndex(idx);
-
-    for (size_t i = 0, j = index.size() - 1; i < j; ++i, --j) {
-      auto temp = index[i];
-      index[i] = index[j];
-      index[j] = temp;
-    }
+    reverse(index);
 
     std::array<Real, dim> half_width, center;
 
@@ -96,11 +86,7 @@ public:
   {
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
-    for (size_t i = 0, j = dimensionedIndex.size() - 1; i < j; ++i, --j) {
-      auto temp = dimensionedIndex[i];
-      dimensionedIndex[i] = dimensionedIndex[j];
-      dimensionedIndex[j] = temp;
-    }
+    reverse(dimensionedIndex);
 
     LO idx = 0;
     LO stride = 1;
@@ -111,6 +97,17 @@ public:
     }
 
     return idx;
+  }
+
+private:
+  template <typename T, std::size_t N>
+  KOKKOS_INLINE_FUNCTION static void reverse(std::array<T, N>& arr)
+  {
+    for (size_t i = 0, j = arr.size() - 1; i < j; ++i, --j) {
+      auto temp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = temp;
+    }
   }
 };
 

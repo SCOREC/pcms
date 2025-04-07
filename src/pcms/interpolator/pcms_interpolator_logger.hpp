@@ -47,9 +47,27 @@ public:
 
     if (team.league_rank() == selected_league_rank_) {
       Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        printf("[%s] (League %d) %s: ", logLevelToString(level),
+        printf("[%s] (League %d) %s: \n", logLevelToString(level),
                team.league_rank(), name);
         printf("(%12.6f, %12.6f)", p.x, p.y);
+        printf("\n");
+      });
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  void logArray(const member_type& team, const LogLevel level,
+                const double* array, const int size, const char* name)
+  {
+
+    if (team.league_rank() == selected_league_rank_) {
+      Kokkos::single(Kokkos::PerTeam(team), [&]() {
+        printf("[%s] (League %d) %s: \n", logLevelToString(level),
+               team.league_rank(), name);
+
+        for (int i = 0; i < size; ++i) {
+          printf("%12.6f\n", array[i]);
+        }
         printf("\n");
       });
     }
@@ -61,7 +79,7 @@ public:
   {
     if (team.league_rank() == selected_league_rank_) {
       Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        printf("[%s] (League %d) %s: ", logLevelToString(level),
+        printf("[%s] (League %d) %s: \n", logLevelToString(level),
                team.league_rank(), name);
         for (int i = 0; i < vector.size(); ++i) {
           printf("%12.6f\n", vector(i));
@@ -82,7 +100,7 @@ public:
                team.league_rank(), name);
         for (int i = 0; i < matrix.extent(0); ++i) {
           for (int j = 0; j < matrix.extent(1); ++j) {
-            printf("%12.6f", matrix(i, j));
+            printf("%20.8f", matrix(i, j));
           }
           printf("\n");
         }
@@ -99,7 +117,7 @@ public:
   {
     if (team.league_rank() == selected_league_rank_) {
       Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        printf("[%s] (League %d) %s: ", logLevelToString(level),
+        printf("[%s] (League %d) %s: \n", logLevelToString(level),
                team.league_rank(), name);
         printf("%12.6f", value);
         printf("\n");

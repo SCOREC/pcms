@@ -9,7 +9,6 @@
 #include <KokkosBatched_LU_Decl.hpp>
 #include <KokkosBatched_LU_Team_Impl.hpp>
 #include <KokkosBatched_SolveLU_Decl.hpp>
-#include <KokkosBatched_Gemm_Decl.hpp>
 #include <KokkosBlas.hpp>
 #include <KokkosBlas1_team_dot.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
@@ -467,7 +466,6 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
     KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), matrix, U,
                                      sigma, Vt, work, 1e-6);
 
-    // calculate sigma(i) / (sigma(i)^2 + lambda)
     calculate_shrinkage_factor(team, lambda, sigma);
 
     auto Ut = find_transpose(team, U);
@@ -599,6 +597,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       fill(0.0, team, target_basis_vector);
       fill(0.0, team, solution_coefficients);
 
+      Logger logger(10);
       // storing the coords of local supports
       int count = -1;
       for (int j = start_ptr; j < end_ptr; ++j) {
@@ -610,11 +609,16 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         }
       }
 
+      logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
+                       "Support Coordinates");
       double target_point[MAX_DIM] = {};
 
       for (int i = 0; i < dim; ++i) {
         target_point[i] = target_coordinates[league_rank * dim + i];
       }
+
+      logger.logArray(team, LogLevel::DEBUG, target_point, dim,
+                      "Target points");
 
       /** phi(nsupports) is the array of rbf functions evaluated at the
        * source supports In the actual implementation, Phi(nsupports,
@@ -647,6 +651,9 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         });
 
       team.team_barrier();
+
+      logger.log(team, LogLevel::DEBUG, "The search  starts");
+      logger.logVector(team, LogLevel::DEBUG, support_values, "Support values");
 
       /**
        *
@@ -681,6 +688,9 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       team.team_barrier();
 
+      logger.logMatrix(team, LogLevel::DEBUG, vandermonde_matrix,
+                       "vandermonde matrix");
+
       OMEGA_H_CHECK_PRINTF(
         support.radii2[league_rank] > 0,
         "ERROR: radius2 has to be positive but found to be %.16f\n",
@@ -692,7 +702,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       double target_value = KokkosBlas::Experimental::dot(
         team, solution_coefficients, target_basis_vector);
-
+      logger.logScalar(team, LogLevel::DEBUG, target_value,
+                       "interpolated value");
       if (team.team_rank() == 0) {
         OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
                              league_rank);

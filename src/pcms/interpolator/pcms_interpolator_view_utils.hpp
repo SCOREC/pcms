@@ -175,6 +175,7 @@ void scale_and_adjust(member_type team, ScratchVecView& diagonal_entries,
     }
   });
 }
+
 } // namespace detail
 } // namespace pcms
 #endif

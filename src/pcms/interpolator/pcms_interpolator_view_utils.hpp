@@ -93,7 +93,7 @@ ScratchMatView find_transpose(member_type team, const ScratchMatView& matrix)
   int row = matrix.extent(0);
   int column = matrix.extent(1);
 
-  ScratchMatView transMatrix(team.team_scratch(0), column, row);
+  ScratchMatView transMatrix(team.team_scratch(1), column, row);
   fill(0.0, team, transMatrix);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
     for (int j = 0; j < column; ++j) {
@@ -167,6 +167,7 @@ void scale_and_adjust(member_type team, ScratchVecView& diagonal_entries,
   size_t rowB = adjustedMatrix.extent(0);
   size_t colB = adjustedMatrix.extent(1);
 
+  size_t nWeights = diagonal_entries.extent(0);
   OMEGA_H_CHECK(colB == rowA);
   eval_row_scaling(team, diagonal_entries, matrixToScale);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, rowB), [=](int i) {

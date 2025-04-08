@@ -55,7 +55,7 @@ TEST_CASE("test_serial_svd")
     Kokkos::View<double**> result("result", row, column);
     team_policy tp(1, Kokkos::AUTO);
     Kokkos::parallel_for(
-      "Solve SVD", tp.set_scratch_size(1, Kokkos::PerTeam(500)),
+      "Solve SVD", tp.set_scratch_size(1, Kokkos::PerTeam(2000)),
       KOKKOS_LAMBDA(const member_type& team) {
         ScratchMatView A(team.team_scratch(1), row, column);
         ScratchMatView U(team.team_scratch(1), row, row);
@@ -70,71 +70,35 @@ TEST_CASE("test_serial_svd")
         });
 
         ScratchMatView sigma_mat(team.team_scratch(1), row, column);
+        detail::fill(0.0, team, sigma_mat);
         ScratchMatView Usigma(team.team_scratch(1), row, column);
         detail::fill(0.0, team, Usigma);
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
-          for (int j = 0; j < column; ++j) {
-            sigma_mat(i, j) = (i == j) ? sigma(i) : 0.0;
-          }
-        });
 
         if (team.team_rank() == 0) {
-          printf("I am above svd solver function");
-          printf("A before SVD:\n");
-          for (int i = 0; i < row; ++i) {
-            for (int j = 0; j < column; ++j) {
-              printf("%f ", A(i, j));
-            }
-            printf("\n");
-          }
 
           KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), A, U,
                                            sigma, Vt, work, 1e-6);
 
-          printf("=== Sigma Values ===\n");
           for (int i = 0; i < column; ++i) {
-            printf("sigma[%d] = %f\n", i, sigma(i));
+            sigma_mat(i, i) = sigma(i);
           }
 
-          printf("\n=== First few entries of U ===\n");
-          for (int i = 0; i < row; ++i) {
-            for (int j = 0; j < row; ++j) {
-              printf("%f ", U(i, j));
-            }
-            printf("\n");
-          }
-
-          printf("\n=== First few entries of Vt ===\n");
-          for (int i = 0; i < column; ++i) {
-            for (int j = 0; j < column; ++j) {
-              printf("%f ", Vt(i, j));
-            }
-            printf("\n");
-          }
-
-          printf("=============================\n");
-
-          printf("I am below svd solver function");
-          KokkosBatched::TeamGemm<
+          KokkosBatched::SerialGemm<
             KokkosBatched::Trans::NoTranspose,
             KokkosBatched::Trans::NoTranspose,
             KokkosBatched::Algo::Gemm::Unblocked>::invoke(1.0, U, sigma_mat,
                                                           0.0, Usigma);
 
-          printf("I am below serialgemm");
-          KokkosBatched::TeamGemm<
+          KokkosBatched::SerialGemm<
             KokkosBatched::Trans::NoTranspose,
             KokkosBatched::Trans::NoTranspose,
             KokkosBatched::Algo::Gemm::Unblocked>::invoke(1.0, Usigma, Vt, 0.0,
                                                           reconstructedA);
-          printf("I am below another serialgemm");
         }
         team.team_barrier();
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
           for (int j = 0; j < column; ++j) {
             result(i, j) = reconstructedA(i, j);
-            printf("Copied reconstructedA(%d,%d) = %f\n", i, j,
-                   reconstructedA(i, j));
           }
         });
       });
@@ -160,7 +124,7 @@ TEST_CASE("test_serial_svd")
     Kokkos::deep_copy(transpose_expected, 0.0);
     team_policy tp(1, Kokkos::AUTO);
     Kokkos::parallel_for(
-      "Solve SVD", tp.set_scratch_size(1, Kokkos::PerTeam(500)),
+      "Solve SVD", tp.set_scratch_size(1, Kokkos::PerTeam(1000)),
       KOKKOS_LAMBDA(const member_type& team) {
         ScratchMatView A(team.team_scratch(1), row, column);
         ScratchMatView U(team.team_scratch(1), row, row);
@@ -178,21 +142,23 @@ TEST_CASE("test_serial_svd")
                                            sigma, Vt, work);
         }
         team.team_barrier();
-        // detail::fill(0.0, team, sigma_inv_expected);
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
           for (int j = 0; j < row; ++j) {
             transpose_expected(i, j) = U(j, i);
           }
         });
-        auto transposedU = detail::find_transpose(team, U);
-        team.team_barrier();
 
+        team.team_barrier();
+        auto transposedU = detail::find_transpose(team, U);
+
+        team.team_barrier();
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
           for (int j = 0; j < row; ++j) {
             result(i, j) = transposedU(i, j);
           }
         });
       });
+
     auto host_result = Kokkos::create_mirror_view(result);
     auto host_expected = Kokkos::create_mirror_view(transpose_expected);
     Kokkos::deep_copy(host_result, result);
@@ -225,7 +191,7 @@ TEST_CASE("test_serial_svd")
     Kokkos::deep_copy(result, 0.0);
     team_policy tp(1, Kokkos::AUTO);
     Kokkos::parallel_for(
-      "Solve SVD", tp.set_scratch_size(1, Kokkos::PerTeam(500)),
+      "Solve SVD", tp.set_scratch_size(1, Kokkos::PerTeam(1000)),
       KOKKOS_LAMBDA(const member_type& team) {
         ScratchMatView A(team.team_scratch(1), row, column);
         ScratchVecView weight(team.team_scratch(1), row);
@@ -264,7 +230,7 @@ TEST_CASE("test_serial_svd")
     constexpr int rowB = 3; // Adjusted matrix (3x6)
     constexpr int colB = 6;
 
-    Kokkos::View<double**> A_data("Device A data", row, column);
+    Kokkos::View<double**> A_data("Device A data", rowA, colA);
     auto host_A_data = Kokkos::create_mirror_view(A_data);
 
     host_A_data(0, 0) = 4.0;
@@ -306,7 +272,8 @@ TEST_CASE("test_serial_svd")
 
     Kokkos::deep_copy(A_data, host_A_data);
 
-    Kokkos::View<double*> diagonal_entries_data("Device rhs data");
+    Kokkos::View<double*> diagonal_entries_data("Device diagonal entries data",
+                                                rowB);
     auto host_diagonal_entries_data =
       Kokkos::create_mirror_view(diagonal_entries_data);
 
@@ -324,9 +291,10 @@ TEST_CASE("test_serial_svd")
     Kokkos::deep_copy(result, 0.0);
     team_policy tp(1, Kokkos::AUTO);
     Kokkos::parallel_for(
-      tp.set_scratch_size(1, Kokkos::PerTeam(500)),
+      tp.set_scratch_size(1, Kokkos::PerTeam(1000)),
       KOKKOS_LAMBDA(const member_type& team) {
         ScratchMatView A(team.team_scratch(1), rowA, colA);
+        detail::fill(0.0, team, A);
         ScratchMatView result_matrix(team.team_scratch(1), rowB, colB);
         ScratchVecView weight(team.team_scratch(1), rowB);
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, rowA), [=](int i) {
@@ -342,6 +310,17 @@ TEST_CASE("test_serial_svd")
         });
 
         team.team_barrier();
+        if (team.team_rank() == 0) {
+          for (int i = 0; i < rowA; ++i) {
+            for (int j = 0; j < colA; ++j) {
+              printf("A(%d,%d) = %f\n", i, j, A(i, j));
+            }
+          }
+
+          for (int i = 0; i < rowB; ++i) {
+            printf("weight(%d) = %f\n", i, weight(i));
+          }
+        }
 
         detail::scale_and_adjust(team, weight, A, result_matrix);
         team.team_barrier();
@@ -354,8 +333,9 @@ TEST_CASE("test_serial_svd")
     auto host_result = Kokkos::create_mirror_view(result);
     Kokkos::deep_copy(host_result, result);
 
-    for (int i = 0; i < row; ++i) {
-      for (int j = 0; j < row; ++j) {
+    for (int i = 0; i < rowB; ++i) {
+      for (int j = 0; j < colB; ++j) {
+        CAPTURE(i, j, host_result(i, j), expected_result[i][j]);
         CHECK_THAT(host_result(i, j), Catch::Matchers::WithinAbs(
                                         expected_result[i][j], tolerance));
       }
@@ -368,7 +348,7 @@ TEST_CASE("test_serial_svd")
     Kokkos::View<double*> result("result", column);
     team_policy tp(1, Kokkos::AUTO);
     Kokkos::parallel_for(
-      "Solve SVD", tp.set_scratch_size(1, Kokkos::PerTeam(800)),
+      "Solve SVD", tp.set_scratch_size(1, Kokkos::PerTeam(1000)),
       KOKKOS_LAMBDA(const member_type& team) {
         ScratchMatView A(team.team_scratch(1), row, column);
         ScratchVecView rhs(team.team_scratch(1), row);
@@ -384,7 +364,32 @@ TEST_CASE("test_serial_svd")
           rhs(i) = rhs_data(i);
         });
 
-        detail::solve_matrix_svd(team, weight, rhs, A, x, 0);
+        team.team_barrier();
+
+        if (team.team_rank() == 0) {
+          printf("\n[A matrix before solve_matrix_svd]\n");
+          for (int i = 0; i < row; ++i) {
+            for (int j = 0; j < column; ++j) {
+              printf("A(%d, %d) = %f\t", i, j, A(i, j));
+            }
+            printf("\n");
+          }
+
+          printf("[rhs vector before solve_matrix_svd]\n");
+          for (int i = 0; i < row; ++i) {
+            printf("rhs[%d] = %f\n", i, rhs(i));
+          }
+        }
+
+        team.team_barrier();
+        detail::solve_matrix_svd(team, weight, rhs, A, x, 1e-12);
+        team.team_barrier();
+        if (team.team_rank() == 0) {
+          printf("[solution vector x after solve_matrix_svd]\n");
+          for (int i = 0; i < column; ++i) {
+            printf("x[%d] = %f\n", i, x(i));
+          }
+        }
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, column),
                              [=](int i) { result(i) = x(i); });
       });
@@ -392,6 +397,7 @@ TEST_CASE("test_serial_svd")
     Kokkos::deep_copy(host_result, result);
 
     for (int i = 0; i < column; ++i) {
+      CAPTURE(i, host_result(i), expected_solution[i]);
       CHECK_THAT(host_result(i),
                  Catch::Matchers::WithinAbs(expected_solution[i], tolerance));
     }

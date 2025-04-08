@@ -437,6 +437,7 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
   team.team_barrier();
 
   eval_rhs_scaling(team, weight, rhs_values);
+  team.team_barrier();
 
   // initilize U (orthogonal matrices)  array
   ScratchMatView U(team.team_scratch(1), row, row);
@@ -465,24 +466,26 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
   if (team.team_rank() == 0) {
     KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), matrix, U,
                                      sigma, Vt, work, 1e-6);
-
-    calculate_shrinkage_factor(team, lambda, sigma);
-
-    auto Ut = find_transpose(team, U);
-
-    scale_and_adjust(team, sigma, Ut, temp_matrix); // S^-1 U^T
-
-    KokkosBatched::SerialGemm<
-      KokkosBatched::Trans::Transpose, KokkosBatched::Trans::NoTranspose,
-      KokkosBatched::Algo::Gemm::Unblocked>::invoke(1.0, Vt, temp_matrix, 0.0,
-                                                    vsigmaInvUtMul);
-
-    KokkosBlas::SerialGemv<
-      KokkosBlas::Trans::NoTranspose,
-      KokkosBlas::Algo::Gemv::Unblocked>::invoke(1.0, vsigmaInvUtMul,
-                                                 rhs_values, 0.0,
-                                                 solution_vector);
   }
+  team.team_barrier();
+
+  calculate_shrinkage_factor(team, lambda, sigma);
+
+  auto Ut = find_transpose(team, U);
+
+  scale_and_adjust(team, sigma, Ut, temp_matrix); // S^-1 U^T
+
+  KokkosBatched::TeamGemm<
+    member_type, KokkosBatched::Trans::Transpose,
+    KokkosBatched::Trans::NoTranspose,
+    KokkosBatched::Algo::Gemm::Unblocked>::invoke(team, 1.0, Vt, temp_matrix,
+                                                  0.0, vsigmaInvUtMul);
+
+  KokkosBlas::TeamGemv<
+    member_type, KokkosBlas::Trans::NoTranspose,
+    KokkosBlas::Algo::Gemv::Unblocked>::invoke(team, 1.0, vsigmaInvUtMul,
+                                               rhs_values, 0.0,
+                                               solution_vector);
 }
 
 /**

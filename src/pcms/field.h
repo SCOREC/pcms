@@ -79,30 +79,25 @@ public:
 
   virtual CoordinateSystem GetCoordinateSystem() const = 0;
 
-  virtual Rank1View<const T, pcms::HostMemorySpace> GetNodalData() const = 0;
-
-  virtual Rank1View<const T, pcms::HostMemorySpace> GetNodalCoordinates() const = 0;
-
-  virtual void SetNodalData(Rank1View<const T, pcms::HostMemorySpace> data) = 0;
-
   // returns a hint that can be given to the Evaluate method
   // this can be useful to cache data if you have multiple sets of coordinates you may evaluate
-  virtual LocalizationHint GetLocalizationHint(CoordinateView<HostMemorySpace> coordinates) = 0;
+  virtual LocalizationHint GetLocalizationHint(CoordinateView<HostMemorySpace> coordinates) const = 0;
 
   // always takes 3D view, dof holder #, dimension, component
   // underlying allocated buffer needs to be #dof holder * # components
   // We return a FieldDataView to make sure we get both the data, and the coordinate system that the data is in
-  virtual void Evaluate(LocalizationHint location, FieldDataView<T, HostMemorySpace> results) = 0;
+  virtual void Evaluate(LocalizationHint location, FieldDataView<T, HostMemorySpace> results) const = 0;
 
   // should offer component wise version?
   // if data is scalar results are vector, if data is
   // Results should use same coordinate frame as Coordinates passed in
   virtual void EvaluateGradient(FieldDataView<T, HostMemorySpace> results) = 0;
 
-  virtual void SetDOFHolderData(FieldDataView<T, HostMemorySpace> data) = 0;
-  virtual CoordinateView<HostMemorySpace> GetDOFHolderCoordinates() = 0;
+  virtual FieldDataView<const T, HostMemorySpace> GetDOFHolderData() const = 0;
+  virtual void SetDOFHolderData(FieldDataView<const T, HostMemorySpace> data) = 0;
+  virtual CoordinateView<HostMemorySpace> GetDOFHolderCoordinates() const = 0;
 
-  virtual const FieldLayout &GetLayout() = 0;
+  virtual const FieldLayout &GetLayout() const = 0;
   // number of physical dimensions (typically 1-6)
   //int GetDimension();
   virtual bool CanEvaluateGradient() = 0;

@@ -109,6 +109,7 @@ if(Catch2_FOUND)
               test_omega_h_copy.cpp
               test_point_search.cpp
               test_field_evaluation.cpp
+              test_field_interpolation.cpp
               test_field_copy.cpp
               )
   endif ()

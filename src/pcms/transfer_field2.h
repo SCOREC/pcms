@@ -20,7 +20,7 @@ void copy_field2(const FieldT<T>& source, FieldT<T>& target)
     throw std::runtime_error("Mismatched types");
   }
 
-  target.SetNodalData(source.GetNodalData());
+  target.SetDOFHolderData(source.GetDOFHolderData());
 }
 
 template <typename T>
@@ -31,13 +31,14 @@ void interpolate_field2(const FieldT<T>& source, FieldT<T>& target)
     throw std::runtime_error("Coordinate system mismatch");
   }
 
-  auto coordinates = target.GetNodalCoordinates();
-  CoordinateView view(source.GetCoordinateSystem(), make_const_array_view(coordinates));
-  std::vector<double> evaluation(coordinates.size() / 2);
+  auto coords = source.GetDOFHolderCoordinates();
+  std::vector<double> evaluation(coords.GetCoordinates().size() / 2);
   FieldDataView<Real, HostMemorySpace> data_view{make_array_view(evaluation), source.GetCoordinateSystem()};
-  auto locale = source.GetLocalizationHint(view);
+  auto locale = source.GetLocalizationHint(coords);
   source.Evaluate(locale, data_view);
-  target.SetNodalData(data_view);
+  Rank1View<const double, HostMemorySpace> array_view{evaluation.data(), evaluation.size()};
+  FieldDataView<const Real, HostMemorySpace> data_const_view{array_view, source.GetCoordinateSystem()};
+  target.SetDOFHolderData(data_const_view);
 }
 
 } // namespace pcms

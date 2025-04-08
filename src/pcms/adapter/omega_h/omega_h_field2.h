@@ -38,22 +38,15 @@ public:
 
   CoordinateSystem GetCoordinateSystem() const override;
 
-  Rank1View<const Real, pcms::HostMemorySpace> GetNodalData() const override;
-
-  Rank1View<const Real, pcms::HostMemorySpace> GetNodalCoordinates()
-    const override;
-
-  void SetNodalData(Rank1View<const Real, pcms::HostMemorySpace> data) override;
-
   LocalizationHint GetLocalizationHint(
-    CoordinateView<HostMemorySpace> coordinate_view) override;
+    CoordinateView<HostMemorySpace> coordinate_view) const override;
 
-  void Evaluate(LocalizationHint location, FieldDataView<double, HostMemorySpace> results) override;
+  void Evaluate(LocalizationHint location, FieldDataView<double, HostMemorySpace> results) const override;
 
   void EvaluateGradient(
     FieldDataView<double, HostMemorySpace> results) override;
 
-  const FieldLayout& GetLayout() override;
+  const FieldLayout& GetLayout() const override;
 
   bool CanEvaluateGradient() override;
 
@@ -65,8 +58,9 @@ public:
                    Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
     const override;
 
-  void SetDOFHolderData(FieldDataView<Real, HostMemorySpace> data);
-  CoordinateView<HostMemorySpace> GetDOFHolderCoordinates();
+  FieldDataView<const Real, HostMemorySpace> GetDOFHolderData() const override;
+  void SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) override;
+  CoordinateView<HostMemorySpace> GetDOFHolderCoordinates() const;
 
   ~OmegaHField2() noexcept = default;
 

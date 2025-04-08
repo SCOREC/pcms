@@ -14,12 +14,12 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
 {
 }
 
-int OmegaHFieldLayout::GetNumComponents()
+int OmegaHFieldLayout::GetNumComponents() const
 {
   return num_components_;
 }
 // nodes for standard lagrange FEM
-LO OmegaHFieldLayout::GetNumOwnedDofHolder()
+LO OmegaHFieldLayout::GetNumOwnedDofHolder() const
 {
   switch (location_) {
     case OmegaHFieldLayoutLocation::PieceWise:
@@ -35,7 +35,7 @@ LO OmegaHFieldLayout::GetNumOwnedDofHolder()
   return 0;
 }
 
-GO OmegaHFieldLayout::GetNumGlobalDofHolder()
+GO OmegaHFieldLayout::GetNumGlobalDofHolder() const
 {
   switch (location_) {
     case OmegaHFieldLayoutLocation::PieceWise:

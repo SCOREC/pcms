@@ -8,16 +8,16 @@ class FieldLayout
 {
 public:
   // number of components
-  int virtual GetNumComponents() = 0;
+  int virtual GetNumComponents() const = 0;
 
   // nodes for standard lagrange FEM
-  LO virtual GetNumOwnedDofHolder() = 0;
-  GO virtual GetNumGlobalDofHolder() = 0;
+  LO virtual GetNumOwnedDofHolder() const = 0;
+  GO virtual GetNumGlobalDofHolder() const = 0;
 
   // size of buffer that needs to be allocated to represent the field
   // # components * NumDOFHolder
-  LO OwnedSize() { return GetNumComponents() * GetNumOwnedDofHolder(); };
-  GO GlobalSize() { return GetNumComponents() * GetNumGlobalDofHolder(); };
+  LO OwnedSize() const { return GetNumComponents() * GetNumOwnedDofHolder(); };
+  GO GlobalSize() const { return GetNumComponents() * GetNumGlobalDofHolder(); };
 
   virtual GlobalIDView<HostMemorySpace> GetOwnedGids() = 0;
 

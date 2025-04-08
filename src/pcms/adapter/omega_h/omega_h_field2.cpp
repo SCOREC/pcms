@@ -38,27 +38,31 @@ CoordinateSystem OmegaHField2::GetCoordinateSystem() const
   return coordinate_system_;
 }
 
-Rank1View<const Real, pcms::HostMemorySpace> OmegaHField2::GetNodalData() const
+FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData() const
 {
   auto array = mesh_.template get_array<Real>(0, name_);
-  return Rank1View<const Real, pcms::HostMemorySpace>{std::data(array), std::size(array)};
+  Rank1View<const Real, pcms::HostMemorySpace> array_view{std::data(array), std::size(array)};
+  FieldDataView<const Real, HostMemorySpace> data_view{array_view, GetCoordinateSystem()};
+  return data_view;
+};
+
+CoordinateView<HostMemorySpace> OmegaHField2::GetDOFHolderCoordinates() const
+{
+  auto coords = Omega_h::get_ent_centroids(mesh_, 0);
+  Rank2View<const double, HostMemorySpace> coords_view(coords.data(), coords.size() / 2, 2);
+  return CoordinateView<HostMemorySpace>{GetCoordinateSystem(), coords_view};
 }
 
-Rank1View<const Real, pcms::HostMemorySpace> OmegaHField2::GetNodalCoordinates()
-  const
-{
-  auto array = Omega_h::get_ent_centroids(mesh_, 0);
-  return Rank1View<const Real, pcms::HostMemorySpace>{std::data(array), std::size(array)};
-}
-
-void OmegaHField2::SetNodalData(
-  Rank1View<const Real, pcms::HostMemorySpace> data)
-{
+void OmegaHField2::SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) {
+  if (data.GetCoordinateSystem() != coordinate_system_) {
+    throw std::runtime_error("Coordinate system mismatch");
+  }
   const auto has_tag = mesh_.has_tag(0, name_);
-  PCMS_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh_.nents(0));
-  Omega_h::Write<Real> array(data.size());
+  Rank1View<const double, HostMemorySpace> values = data.GetValues();
+  PCMS_ALWAYS_ASSERT(static_cast<LO>(values.size()) == mesh_.nents(0));
+  Omega_h::Write<Real> array(values.size());
   Omega_h::parallel_for(
-    data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
+    values.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = values[i]; });
   if (has_tag) {
     mesh_.set_tag(0, name_, Omega_h::Read<Real>(array));
   } else {
@@ -67,7 +71,7 @@ void OmegaHField2::SetNodalData(
 }
 
 LocalizationHint OmegaHField2::GetLocalizationHint(
-  CoordinateView<HostMemorySpace> coordinate_view)
+  CoordinateView<HostMemorySpace> coordinate_view) const
 {
   // TODO decide if we want to implicitly perform the coordinate transformations
   // when possible
@@ -90,7 +94,7 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
 }
 
 void OmegaHField2::Evaluate(LocalizationHint location,
-                            FieldDataView<double, HostMemorySpace> results)
+                            FieldDataView<double, HostMemorySpace> results) const
 {
   // TODO decide if we want to implicitly perform the coordinate transformations
   // when possible
@@ -161,7 +165,7 @@ void OmegaHField2::EvaluateGradient(FieldDataView<double, HostMemorySpace> resul
   throw std::runtime_error("Not implemented");
 }
 
-const FieldLayout& OmegaHField2::GetLayout()
+const FieldLayout& OmegaHField2::GetLayout() const
 {
   return layout_;
 }
@@ -183,20 +187,6 @@ void OmegaHField2::Deserialize(
   Rank1View<const double, pcms::HostMemorySpace> buffer,
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) const
 {
-}
-
-void OmegaHField2::SetDOFHolderData(FieldDataView<Real, HostMemorySpace> data)
-{
-
-  // TODO when moved to PCMS throw PCMS exception
-  throw std::runtime_error("Not implemented");
-}
-
-CoordinateView<HostMemorySpace> OmegaHField2::GetDOFHolderCoordinates()
-{
-
-  // TODO when moved to PCMS throw PCMS exception
-  throw std::runtime_error("Not implemented");
 }
 
 } // namespace pcms

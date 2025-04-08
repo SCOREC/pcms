@@ -16,7 +16,7 @@ template <typename MemorySpace>
 class CoordinateView {
 public:
 
-  CoordinateView(CoordinateSystem cs, Rank2View<Real, MemorySpace> coords) noexcept
+  CoordinateView(CoordinateSystem cs, Rank2View<const Real, MemorySpace> coords) noexcept
     : coordinate_system_(cs), coordinates_(coords) {}
 
   [[nodiscard]] CoordinateSystem GetCoordinateSystem() const noexcept { return coordinate_system_; }
@@ -26,12 +26,12 @@ public:
   // would prefer if these operations were limited to use by CoordinateTransformation
   // as they are unsafe (i.e., you can break class invariant)
   // passkey pattern?
-  [[nodiscard]] Rank2View<Real, MemorySpace> GetCoordinates() noexcept { return coordinates_; }
+  [[nodiscard]] Rank2View<const Real, MemorySpace> GetCoordinates() noexcept { return coordinates_; }
   void SetCoordinateSystem(CoordinateSystem cs) noexcept { coordinate_system_ = cs; }
 
 private:
   CoordinateSystem coordinate_system_;
-  Rank2View<Real, MemorySpace> coordinates_;
+  Rank2View<const Real, MemorySpace> coordinates_;
 };
 
 class CoordinateTransformation {

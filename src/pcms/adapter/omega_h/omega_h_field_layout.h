@@ -18,10 +18,10 @@ enum class OmegaHFieldLayoutLocation {
 class OmegaHFieldLayout : public FieldLayout {
 public:
   OmegaHFieldLayout(Omega_h::Mesh& mesh, OmegaHFieldLayoutLocation location, int num_components);
-  int GetNumComponents() override;
+  int GetNumComponents() const override;
   // nodes for standard lagrange FEM
-  LO GetNumOwnedDofHolder() override;
-  GO GetNumGlobalDofHolder() override;
+  LO GetNumOwnedDofHolder() const override;
+  GO GetNumGlobalDofHolder() const override;
 
   GlobalIDView<HostMemorySpace> GetOwnedGids() override;
   OmegaHFieldLayoutLocation GetLocation() const;

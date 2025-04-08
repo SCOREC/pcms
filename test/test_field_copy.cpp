@@ -29,13 +29,13 @@ TEST_CASE("copy omega_h_field2 data")
   pcms::OmegaHField2 original("test_ids", pcms::CoordinateSystem::Cartesian, layout, mesh);
   pcms::OmegaHField2 copied("copied", pcms::CoordinateSystem::Cartesian, layout, mesh);
   pcms::copy_field2(original, copied);
-  auto copied_array = copied.GetNodalData();
+  auto copied_array = copied.GetDOFHolderData().GetValues();
   REQUIRE(copied_array.size() == nverts);
   int sum = 0;
   Kokkos::parallel_reduce(
     nverts,
     KOKKOS_LAMBDA(int i, int& local_sum) {
-      local_sum += std::abs(ids[i] - copied_array[i]) < 1e-6;
+      local_sum += std::abs(ids[i] - copied_array[i]) < 1e-12;
     },
     sum);
   REQUIRE(sum == nverts);

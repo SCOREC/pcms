@@ -2,7 +2,6 @@
 #define PCMS_COUPLING_UNIFORM_GRID_H
 #include "pcms/bounding_box.h"
 #include "Omega_h_vector.hpp"
-#include <iostream>
 #include <numeric>
 namespace pcms
 {
@@ -27,11 +26,16 @@ public:
   [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Omega_h::Vector<dim>& point) const
   {
     std::array<Real, dim> distance_within_grid;
-    std::transform(point.begin(), point.end(), bot_left.begin(),
-                   distance_within_grid.begin(), std::minus<>());
-    
+
+    for (int i = 0; i < dim; ++i) {
+      distance_within_grid[i] = point[i] - bot_left[i];
+    }
+
     std::array<LO, dim> indexes;
-    indexes.fill(-1);
+
+    for (auto& index : indexes) {
+      index = -1;
+    }
 
     for (int i = 0; i < dim; ++i) {
       auto index = static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
@@ -39,20 +43,20 @@ public:
     }
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
-    std::reverse(indexes.begin(), indexes.end());
+    reverse(indexes);
     return GetCellIndex(indexes);
   }
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<dim> GetCellBBOX(LO idx) const
   {
     auto index = GetDimensionedIndex(idx);
-    std::reverse(index.begin(), index.end());
+    reverse(index);
 
     std::array<Real, dim> half_width, center;
 
-    std::transform(edge_length.begin(), edge_length.end(), divisions.begin(), half_width.begin(), [](const Real edge_length, const LO division) {
-      return edge_length / division / 2;
-    });
+    for (int i = 0; i < dim; ++i) {
+      half_width[i] = edge_length[i] / divisions[i] / 2;
+    }
 
     for (int i = 0; i < dim; ++i) {
       center[i] = (2.0 * index[i] + 1.0) * half_width[i] + bot_left[i];
@@ -63,7 +67,10 @@ public:
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION std::array<LO, dim> GetDimensionedIndex(LO idx) const
   {
-    LO stride = std::accumulate(divisions.begin(), std::prev(divisions.end()), 1, std::multiplies<LO>{});
+    LO stride = 1;
+    for (std::size_t i = 0; i < divisions.size() - 1; ++i) {
+      stride *= divisions[i];
+    }
     std::array<LO, dim> result;
 
     for (int i = 0; i < dim; ++i) {
@@ -79,7 +86,7 @@ public:
   {
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
-    std::reverse(dimensionedIndex.begin(), dimensionedIndex.end());
+    reverse(dimensionedIndex);
 
     LO idx = 0;
     LO stride = 1;
@@ -90,6 +97,17 @@ public:
     }
 
     return idx;
+  }
+
+private:
+  template <typename T, std::size_t N>
+  KOKKOS_INLINE_FUNCTION static void reverse(std::array<T, N>& arr)
+  {
+    for (size_t i = 0, j = arr.size() - 1; i < j; ++i, --j) {
+      auto temp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = temp;
+    }
   }
 };
 

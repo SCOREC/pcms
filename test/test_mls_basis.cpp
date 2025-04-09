@@ -205,17 +205,17 @@ TEST_CASE("basis test")
     auto host_vandermonde_matrix_combined =
       Kokkos::create_mirror_view(vandermonde_matrix_combined);
 
-    host_points(0, 1) = 0.5;
-    host_points(0, 2) = 0.1;
-    host_points(0, 3) = 0.3;
-    host_points(0, 4) = 0.2;
-    host_points(0, 5) = 0.6;
+    host_points(0, 0) = 0.5;
+    host_points(0, 1) = 0.1;
+    host_points(0, 2) = 0.3;
+    host_points(0, 3) = 0.2;
+    host_points(0, 4) = 0.6;
 
-    host_points(1, 1) = 1.1;
-    host_points(1, 2) = 2.6;
-    host_points(1, 3) = 0.8;
-    host_points(1, 4) = 0.4;
-    host_points(1, 5) = 1.7;
+    host_points(1, 0) = 1.1;
+    host_points(1, 1) = 2.6;
+    host_points(1, 2) = 0.8;
+    host_points(1, 3) = 0.4;
+    host_points(1, 4) = 1.7;
 
     Kokkos::deep_copy(points, host_points);
 

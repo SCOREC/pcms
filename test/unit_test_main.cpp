@@ -6,8 +6,11 @@
 int main( int argc, char* argv[] )
 {
   MPI_Init(&argc, &argv);
-  Kokkos::ScopeGuard kokkos{};
-  int result = Catch::Session().run(argc, argv);
+  int result = 0;
+  {
+    Kokkos::ScopeGuard kokkos{};
+    result = Catch::Session().run(argc, argv);
+  }
   MPI_Finalize();
   return result;
 }

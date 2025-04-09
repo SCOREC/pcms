@@ -101,7 +101,7 @@ TEST_CASE("LU solver test")
         team.team_barrier();
 
         auto result = pcms::detail::convert_normal_equation(
-          vandermonde_matrix, phi, support_values, team);
+          vandermonde_matrix, phi, support_values, team, 0.0);
 
         team.team_barrier();
 

@@ -346,8 +346,7 @@ KOKKOS_INLINE_FUNCTION
 ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
                                             const ScratchVecView& weight_vector,
                                             const ScratchVecView& rhs,
-                                            member_type team,
-                                            double lambda_factor)
+                                            member_type team, double lambda)
 {
 
   int m = matrix.extent(0);
@@ -383,7 +382,7 @@ ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
 
   team.team_barrier();
 
-  add_regularization(team, square_matrix, lambda_factor);
+  add_regularization(team, square_matrix, lambda);
 
   team.team_barrier();
 
@@ -701,7 +700,6 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
           create_vandermonde_matrix(local_source_points, j, slice_length,
                                     vandermonde_matrix);
         });
->>>>>>> mls_interpolation_svd_solver
 
       team.team_barrier();
 

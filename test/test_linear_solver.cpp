@@ -7,10 +7,7 @@
 #include <Omega_h_fail.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-using namespace pcms;
-using namespace pcms::detail;
-
-TEST_CASE("solver test")
+TEST_CASE("LU solver test")
 {
   // This test computes P^TQP and P^TQ b for the normal equation P^TQP x = P^TQ
   // b where P(n,m) (n >= m) is a rectangular matrix, Q(m,m) is a diagonal
@@ -82,15 +79,15 @@ TEST_CASE("solver test")
 
     Kokkos::deep_copy(b, host_b);
 
-    team_policy tp(nvertices_target, Kokkos::AUTO);
+    pcms::team_policy tp(nvertices_target, Kokkos::AUTO);
     Kokkos::parallel_for(
       "inside team", tp.set_scratch_size(0, Kokkos::PerTeam(200)),
-      KOKKOS_LAMBDA(const member_type& team) {
+      KOKKOS_LAMBDA(const pcms::member_type& team) {
         int i = team.league_rank();
-        ScratchMatView vandermonde_matrix(team.team_scratch(0), nsupports,
-                                          size);
-        ScratchVecView phi(team.team_scratch(0), nsupports);
-        ScratchVecView support_values(team.team_scratch(0), nsupports);
+        pcms::ScratchMatView vandermonde_matrix(team.team_scratch(0), nsupports,
+                                                size);
+        pcms::ScratchVecView phi(team.team_scratch(0), nsupports);
+        pcms::ScratchVecView support_values(team.team_scratch(0), nsupports);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports),
                              [=](int j) {
@@ -103,9 +100,8 @@ TEST_CASE("solver test")
 
         team.team_barrier();
 
-        double lambda = 0.5;
-        auto result = convert_normal_equation(vandermonde_matrix, phi,
-                                              support_values, team, lambda);
+        auto result = pcms::detail::convert_normal_equation(
+          vandermonde_matrix, phi, support_values, team);
 
         team.team_barrier();
 
@@ -127,7 +123,8 @@ TEST_CASE("solver test")
 
         team.team_barrier();
 
-        solve_matrix(result.square_matrix, result.transformed_rhs, team);
+        pcms::detail::solve_matrix(result.square_matrix, result.transformed_rhs,
+                                   team);
 
         team.team_barrier();
 

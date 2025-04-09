@@ -11,7 +11,8 @@ enum class RadialBasisFunction : LO
 {
   RBF_GAUSSIAN = 0,
   RBF_C4,
-  RBF_CONST
+  RBF_CONST,
+  NO_OP
 
 };
 
@@ -20,6 +21,6 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
                               const LO& degree, RadialBasisFunction bf,
-                              double lambda_factor = 0);
+                              double lambda = 0);
 } // namespace pcms
 #endif

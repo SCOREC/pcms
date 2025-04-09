@@ -11,12 +11,12 @@ struct RBF_GAUSSIAN
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    OMEGA_H_CHECK_PRINTF(rho_sq > 0,
+    OMEGA_H_CHECK_PRINTF(rho_sq >= 0,
                          "ERROR: square of cutoff distance should always be "
                          "positive but the value is %.16f\n",
                          rho_sq);
 
-    OMEGA_H_CHECK_PRINTF(r_sq > 0,
+    OMEGA_H_CHECK_PRINTF(r_sq >= 0,
                          "ERROR: square of  distance should always be positive "
                          "but the value is %.16f\n",
                          r_sq);
@@ -24,7 +24,7 @@ struct RBF_GAUSSIAN
     // 'a' is a spreading factor/decay factor
     // the value of 'a' is higher if the data is localized
     // the value of 'a' is smaller if the data is farther
-    int a = 20;
+    int a = 5;
 
     double r = sqrt(r_sq);
     double rho = sqrt(rho_sq);
@@ -101,12 +101,18 @@ struct RBF_CONST
   }
 };
 
+struct NoOp
+{
+  OMEGA_H_INLINE
+  double operator()(double, double) const { return 1.0; }
+};
+
 Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
                               const LO& degree, RadialBasisFunction bf,
-                              double lambda_factor)
+                              double lambda)
 {
 
   const auto nvertices_target = target_coordinates.size() / dim;
@@ -117,19 +123,25 @@ Write<Real> mls_interpolation(const Reals source_values,
     case RadialBasisFunction::RBF_GAUSSIAN:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_GAUSSIAN{}, lambda_factor);
+        degree, RBF_GAUSSIAN{}, lambda);
       break;
 
     case RadialBasisFunction::RBF_C4:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_C4{}, lambda_factor);
+        degree, RBF_C4{}, lambda);
       break;
 
     case RadialBasisFunction::RBF_CONST:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_CONST{}, lambda_factor);
+        degree, RBF_CONST{}, lambda);
+      break;
+
+    case RadialBasisFunction::NO_OP:
+      interpolated_values = detail::mls_interpolation(
+        source_values, source_coordinates, target_coordinates, support, dim,
+        degree, NoOp{}, lambda);
       break;
   }
 
@@ -175,7 +187,8 @@ int calculate_basis_vector_size(const IntHostMatView& array)
 }
 
 int calculate_scratch_shared_size(const SupportResults& support,
-                                  const int nvertices_target, int basis_size)
+                                  const int nvertices_target, int basis_size,
+                                  int dim)
 {
 
   IntDeviceVecView shmem_each_team("stores the size required for each team",
@@ -187,21 +200,34 @@ int calculate_scratch_shared_size(const SupportResults& support,
       int end_ptr = support.supports_ptr[i + 1];
       int nsupports = end_ptr - start_ptr;
 
+      int max_size;
+      int min_size;
+      if (nsupports > basis_size) {
+        max_size = nsupports;
+        min_size = basis_size;
+      } else {
+        max_size = basis_size;
+        min_size = nsupports;
+      }
       size_t total_shared_size = 0;
-
-      total_shared_size += ScratchMatView::shmem_size(basis_size, basis_size);
-      total_shared_size += ScratchMatView::shmem_size(basis_size, nsupports);
-      total_shared_size += ScratchMatView::shmem_size(nsupports, basis_size);
-      total_shared_size += ScratchVecView::shmem_size(basis_size);
-      total_shared_size += ScratchVecView::shmem_size(nsupports) * 3;
-      total_shared_size += ScratchMatView::shmem_size(nsupports, 2);
-      total_shared_size += ScratchMatView::shmem_size(nsupports, 1);
+      total_shared_size +=
+        ScratchMatView::shmem_size(basis_size, basis_size); // Vt
+      total_shared_size +=
+        ScratchMatView::shmem_size(basis_size, nsupports) * 2; // temp_matrix
+      total_shared_size +=
+        ScratchMatView::shmem_size(nsupports, basis_size); // vandermonde matrix
+      total_shared_size +=
+        ScratchVecView::shmem_size(basis_size) *
+        3; // sigma, target_basis_vector, solution_coefficients
+      total_shared_size += ScratchVecView::shmem_size(nsupports) *
+                           3; // work, phi_vector, support_values
+      total_shared_size +=
+        ScratchMatView::shmem_size(nsupports, dim); // local_source_points
+      total_shared_size +=
+        ScratchMatView::shmem_size(nsupports, nsupports) * 2; // U, Ut
       shmem_each_team(i) = total_shared_size;
     });
 
-  // namespace KE = Kokkos::Experimental;
-  // auto shared_size = KE::max_element(Kokkos::DefaultExecutionSpace(),
-  // shmem_each_team); printf("shared size = %d", shared_size);
   int shared_size = 0;
   Kokkos::parallel_reduce(
     "find_max", nvertices_target,
@@ -214,5 +240,6 @@ int calculate_scratch_shared_size(const SupportResults& support,
 
   return shared_size;
 }
+
 } // namespace detail
 } // namespace pcms

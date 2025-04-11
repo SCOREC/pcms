@@ -44,6 +44,7 @@ public:
   static constexpr auto DIM = dim;
 
   virtual Kokkos::View<Result*> operator()(Kokkos::View<Real*[dim] > point) const = 0;
+  virtual ~PointLocalizationSearch() = default;
 };
 
 using PointLocalizationSearch2D = PointLocalizationSearch<2>;

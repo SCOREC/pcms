@@ -163,6 +163,38 @@ bool bbox_verts_within_triangle(const AABBox<2>& bbox, const Omega_h::Matrix<2,3
   return false;
 }
 
+template <int dim>
+[[nodiscard]] KOKKOS_INLINE_FUNCTION
+bool bbox_verts_within_simplex(const AABBox<dim>& bbox, const Omega_h::Matrix<dim,dim+1>& coords)
+{
+  // each dimension has a pair of opposing "walls"
+  // 2D: { [left, right], [top, bottom] } -> { left, right, top, bottom }
+  // 3D: { [left, right], [top, bottom], [front, back] } -> { left, ..., back }
+  std::array<Real, dim * 2> bbox_walls {};
+  for (int i = 0; i < dim; i++) {
+    bbox_walls[i * 2] = bbox.center[i] - bbox.half_width[i];
+    bbox_walls[i * 2 + 1] = bbox.center[i] + bbox.half_width[i];
+  }
+
+  // 1 << dim == 2 ** dim == num vertices in ndim bounding box / hypercube
+  // Each vertex is a just a unique combination of walls
+  // eg [left, bottom] (2D) or [right, top, front] (3)
+  for (unsigned i = 0; i < 1 << dim; ++i) {
+    // conveniently, i acts a bit field representing the current combination
+    Omega_h::Vector<dim> vert;
+    for (unsigned j = 0; j < dim; ++j) {
+      // eg 110 = 6 = [left, top, back]
+      // eg 01 = 1 = [right, top]
+      vert[j] = (i >> j) & 1 ? bbox_walls[j * 2] : bbox_walls[j * 2 + 1];
+    }
+    auto xi = Omega_h::barycentric_from_global<dim, dim>(vert, coords);
+    if (Omega_h::is_barycentric_inside(xi, fuzz)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Check if a triangle element represented by 3 coordinates in two dimensions
  * intersects with a bounding box

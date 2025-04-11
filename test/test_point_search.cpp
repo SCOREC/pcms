@@ -139,7 +139,7 @@ TEST_CASE("construct intersection map")
     auto grid_h = Kokkos::create_mirror_view(grid_d);
     grid_h(0) = Uniform2DGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
     Kokkos::deep_copy(grid_d, grid_h);
-    auto intersection_map = pcms::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());
+    auto intersection_map = pcms::detail::construct_intersection_map_2d(mesh, grid_d, grid_h(0).GetNumCells());
     // assert(cudaSuccess == cudaDeviceSynchronize());
     REQUIRE(intersection_map.numRows() == 100);
     REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
@@ -151,7 +151,7 @@ TEST_CASE("construct intersection map")
     grid_h(0) = Uniform2DGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
     Kokkos::deep_copy(grid_d, grid_h);
     // require number of candidates is >=1 and <=6
-    auto intersection_map = pcms::detail::construct_intersection_map(mesh, grid_d, grid_h(0).GetNumCells());
+    auto intersection_map = pcms::detail::construct_intersection_map_2d(mesh, grid_d, grid_h(0).GetNumCells());
 
     REQUIRE(intersection_map.numRows() == 3600);
     REQUIRE(num_candidates_within_range(intersection_map, 1, 6));

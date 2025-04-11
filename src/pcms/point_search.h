@@ -17,7 +17,7 @@ namespace pcms
 // used
 namespace detail {
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid, int num_grid_cells);
+construct_intersection_map_2d(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid, int num_grid_cells);
 }
 KOKKOS_FUNCTION
 
@@ -48,6 +48,7 @@ public:
 };
 
 using PointLocalizationSearch2D = PointLocalizationSearch<2>;
+using PointLocalizationSearch3D = PointLocalizationSearch<3>;
 
 class GridPointSearch2D : public PointLocalizationSearch2D
 {
@@ -72,6 +73,34 @@ private:
   Omega_h::Adj tris2verts_adj_;
   Omega_h::Adj edges2verts_adj_;
   Kokkos::View<Uniform2DGrid[1]> grid_{"uniform grid"};
+  CandidateMapT candidate_map_;
+  Omega_h::LOs tris2verts_;
+  Omega_h::Reals coords_;
+};
+
+class GridPointSearch3D : public PointLocalizationSearch3D
+{
+  using CandidateMapT = Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
+
+public:
+  using Result = PointLocalizationSearch3D::Result;
+
+  GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz);
+  /**
+   *  given a point in global coordinates give the id of the triangle that the
+   * point lies within and the parametric coordinate of the point within the
+   * triangle. If the point does not lie within any triangle element. Then the
+   * id will be a negative number and (TODO) will return a negative id of the
+   * closest element
+   */
+  Kokkos::View<Result*> operator()(Kokkos::View<Real* [DIM]> point) const override;
+
+private:
+  Omega_h::Mesh mesh_;
+  Omega_h::Adj tris2edges_adj_;
+  Omega_h::Adj tris2verts_adj_;
+  Omega_h::Adj edges2verts_adj_;
+  Kokkos::View<UniformGrid<DIM>[1]> grid_{"uniform grid"};
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;

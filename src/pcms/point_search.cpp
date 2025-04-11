@@ -320,7 +320,6 @@ struct GridTriIntersectionFunctor3D
     // hierarchical parallel may make be very beneficial here...
     for (LO elem_idx = 0; elem_idx < nelems_; ++elem_idx) {
       const auto elem_tet2verts = Omega_h::gather_verts<4>(tets2verts_, elem_idx);
-      // 2d mesh with 2d coords, but 3 triangles
       const auto vertex_coords = Omega_h::gather_vectors<4, 3>(coords_, elem_tet2verts);
       if (simplex_intersects_bbox<3>(vertex_coords, grid_cell_bbox)) {
         if (fill) {
@@ -344,10 +343,19 @@ public:
 // num_grid_cells should be result of grid.GetNumCells(), take as argument to avoid extra copy
 // of grid from gpu to cpu
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid, int num_grid_cells)
+construct_intersection_map_2d(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid, int num_grid_cells)
 {
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
   auto f = detail::GridTriIntersectionFunctor2D{mesh, grid};
+  Kokkos::count_and_fill_crs(intersection_map, num_grid_cells, f);
+  return intersection_map;
+}
+
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_3d(Omega_h::Mesh& mesh, Kokkos::View<Uniform3DGrid[1]> grid, int num_grid_cells)
+{
+  Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
+  auto f = detail::GridTriIntersectionFunctor3D{mesh, grid};
   Kokkos::count_and_fill_crs(intersection_map, num_grid_cells, f);
   return intersection_map;
 }
@@ -463,7 +471,89 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny)
     .bot_left = {mesh_bbox.min[0], mesh_bbox.min[1]},
     .divisions = {Nx, Ny}};
   Kokkos::deep_copy(grid_, grid_h);
-  candidate_map_ = detail::construct_intersection_map(mesh, grid_, grid_h(0).GetNumCells());
+  candidate_map_ = detail::construct_intersection_map_2d(mesh, grid_, grid_h(0).GetNumCells());
+  coords_ = mesh.coords();
+  tris2verts_ = mesh.ask_elem_verts();
+  tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
+  tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
+  edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
+}
+
+Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(Kokkos::View<Real*[DIM] > points) const
+{
+  Kokkos::View<GridPointSearch3D::Result*> results("point search result", points.extent(0));
+  auto num_rows = candidate_map_.numRows();
+  // needed so that we don't capture this ptr which will be memory error on cuda
+  auto grid = grid_;
+  auto candidate_map = candidate_map_;
+  auto tris2verts = tris2verts_;
+  auto tris2verts_adj = tris2verts_adj_;
+  auto tris2edges_adj = tris2edges_adj_;
+  auto edges2verts_adj = edges2verts_adj_;
+  auto coords = coords_;
+  Kokkos::parallel_for(points.extent(0), KOKKOS_LAMBDA(int p) {
+
+    Omega_h::Vector<DIM> point;
+    for (int i = 0; i < DIM; ++i) {
+      point[i] = points(p, i);
+    }
+
+    auto cell_id = grid(0).ClosestCellID(point);
+    assert(cell_id < num_rows && cell_id >= 0);
+    auto candidates_begin = candidate_map.row_map(cell_id);
+    auto candidates_end = candidate_map.row_map(cell_id + 1);
+    bool found = false;
+
+    auto nearest_triangle = candidates_begin;
+    auto dimensionality = GridPointSearch3D::Result::Dimensionality::EDGE;
+    Omega_h::Real distance_to_nearest { INFINITY };
+    Omega_h::Vector<DIM + 1> parametric_coords_to_nearest;
+    // create array that's size of number of candidates x num coords to store
+    // parametric inversion
+    for (auto i = candidates_begin; i < candidates_end; ++i) {
+      const int triangleID = candidate_map.entries(i);
+      const auto elem_tri2verts = Omega_h::gather_verts<DIM + 1>(tris2verts, triangleID);
+      auto vertex_coords = Omega_h::gather_vectors<DIM + 1, DIM>(coords, elem_tri2verts);
+      auto parametric_coords = Omega_h::barycentric_from_global<DIM, DIM>(point, vertex_coords);
+
+      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
+        results(p) = GridPointSearch3D::Result{GridPointSearch3D::Result::Dimensionality::FACE, triangleID, parametric_coords};
+        found = true;
+        break;
+      }
+
+      // TODO: Get nearest element if no triangle found
+    }
+    if(!found)
+    {
+      results(p) = GridPointSearch3D::Result{dimensionality, -1 * candidate_map.entries(nearest_triangle), parametric_coords_to_nearest};
+    }
+  });
+
+  return results;
+}
+
+GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz)
+{
+  auto mesh_bbox = Omega_h::get_bounding_box<3>(&mesh);
+  auto grid_h = Kokkos::create_mirror_view(grid_);
+
+  std::array<Real, DIM> edge_lengths {};
+  std::array<Real, DIM> bot_left {};
+
+  for (int i = 0; i < DIM; ++i) {
+    edge_lengths[i] = mesh_bbox.max[i] - mesh_bbox.min[i];
+    bot_left[i] = mesh_bbox.min[i];
+  }
+
+  grid_h(0) = Uniform3DGrid {
+    .edge_length = edge_lengths,
+    .bot_left = bot_left,
+    .divisions = {Nx, Ny, Nz}
+  };
+
+  Kokkos::deep_copy(grid_, grid_h);
+  candidate_map_ = detail::construct_intersection_map_3d(mesh, grid_, grid_h(0).GetNumCells());
   coords_ = mesh.coords();
   tris2verts_ = mesh.ask_elem_verts();
   tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);

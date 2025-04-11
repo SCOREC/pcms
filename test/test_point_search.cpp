@@ -5,7 +5,6 @@
 #include <Omega_h_build.hpp>
 
 using pcms::AABBox;
-using pcms::barycentric_from_global;
 using pcms::Uniform2DGrid;
 
 TEST_CASE("global to local")
@@ -14,7 +13,7 @@ TEST_CASE("global to local")
   SECTION("check verts")
   {
     for (int i = 0; i < coords.size(); ++i) {
-      auto xi = barycentric_from_global(coords[i], coords);
+      auto xi = Omega_h::barycentric_from_global<2, 2>(coords[i], coords);
       Omega_h::Vector<3> hand_xi{0, 0, 0};
       hand_xi[i] = 1;
       printf("[%f,%f,%f] == [%f,%f,%f]\n", xi[0], xi[1], xi[2], hand_xi[0],
@@ -25,7 +24,7 @@ TEST_CASE("global to local")
   SECTION("check point")
   {
     Omega_h::Vector<2> point{0.5, 0.5};
-    auto xi = barycentric_from_global(point, coords);
+    auto xi = Omega_h::barycentric_from_global<2, 2>(point, coords);
     Omega_h::Vector<3> hand_xi{0.25, 0.25, 0.5};
     printf("[%f,%f,%f] == [%f,%f,%f]\n", xi[0], xi[1], xi[2], hand_xi[0],
            hand_xi[1], hand_xi[2]);

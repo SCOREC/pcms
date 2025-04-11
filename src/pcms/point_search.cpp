@@ -152,13 +152,13 @@ bool bbox_verts_within_triangle(const AABBox<2>& bbox, const Omega_h::Matrix<2,3
   auto right = bbox.center[0] + bbox.half_width[0];
   auto bot = bbox.center[1] - bbox.half_width[1];
   auto top = bbox.center[1] + bbox.half_width[1];
-  auto xi = barycentric_from_global({left,bot}, coords);
+  auto xi = Omega_h::barycentric_from_global<2, 2>({left,bot}, coords);
   if(Omega_h::is_barycentric_inside(xi, fuzz)){ return true;}
-  xi = barycentric_from_global({left,top}, coords);
+  xi = Omega_h::barycentric_from_global<2, 2>({left,top}, coords);
   if(Omega_h::is_barycentric_inside(xi, fuzz)){ return true;}
-  xi = barycentric_from_global({right,top}, coords);
+  xi = Omega_h::barycentric_from_global<2, 2>({right,top}, coords);
   if(Omega_h::is_barycentric_inside(xi, fuzz)){ return true;}
-  xi = barycentric_from_global({right,bot}, coords);
+  xi = Omega_h::barycentric_from_global<2, 2>({right,bot}, coords);
   if(Omega_h::is_barycentric_inside(xi, fuzz)){ return true;}
   return false;
 }
@@ -321,18 +321,6 @@ construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> g
 }
 } // namespace detail
 
-KOKKOS_FUNCTION
-Omega_h::Vector<3> barycentric_from_global(
-  const Omega_h::Vector<2>& point, const Omega_h::Matrix<2, 3>& vertex_coords)
-{
-  const auto inverse_basis =
-    Omega_h::pseudo_invert(Omega_h::simplex_basis<2, 2>(vertex_coords));
-  auto xi = inverse_basis * (point - vertex_coords[0]);
-  // note omega_h form_barycentric is currently broken.
-  // see https://github.com/sandialabs/omega_h/issues/389
-  return {1 - xi[0] - xi[1], xi[0], xi[1]};
-}
-
 template <int n,  typename Op>
 OMEGA_H_INLINE double myreduce(const Omega_h::Vector<n> & x, Op op) OMEGA_H_NOEXCEPT {
   auto out = x[0];
@@ -371,7 +359,7 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
       const auto elem_tri2verts = Omega_h::gather_verts<3>(tris2verts, triangleID);
       // 2d mesh with 2d coords, but 3 triangles
       auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
-      auto parametric_coords = barycentric_from_global(point, vertex_coords);
+      auto parametric_coords = Omega_h::barycentric_from_global<2, 2>(point, vertex_coords);
 
       if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
         results(p) = GridPointSearch2D::Result{GridPointSearch2D::Result::Dimensionality::FACE, triangleID, parametric_coords};

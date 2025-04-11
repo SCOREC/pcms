@@ -20,8 +20,6 @@ Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid, int num_grid_cells);
 }
 KOKKOS_FUNCTION
-Omega_h::Vector<3> barycentric_from_global(
-  const Omega_h::Vector<2>& point, const Omega_h::Matrix<2, 3>& vertex_coords);
 
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
   const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox);

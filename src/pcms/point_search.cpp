@@ -177,9 +177,11 @@ bool bbox_verts_within_simplex(const AABBox<dim>& bbox, const Omega_h::Matrix<di
   }
 
   // 1 << dim == 2 ** dim == num vertices in ndim bounding box / hypercube
+  constexpr unsigned num_verts = 1 << dim;
+
   // Each vertex is a just a unique combination of walls
   // eg [left, bottom] (2D) or [right, top, front] (3)
-  for (unsigned i = 0; i < 1 << dim; ++i) {
+  for (unsigned i = 0; i < num_verts; ++i) {
     // conveniently, i acts a bit field representing the current combination
     Omega_h::Vector<dim> vert;
     for (unsigned j = 0; j < dim; ++j) {
@@ -517,7 +519,7 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(Kokkos::V
       auto parametric_coords = Omega_h::barycentric_from_global<DIM, DIM>(point, vertex_coords);
 
       if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
-        results(p) = GridPointSearch3D::Result{GridPointSearch3D::Result::Dimensionality::FACE, triangleID, parametric_coords};
+        results(p) = GridPointSearch3D::Result{GridPointSearch3D::Result::Dimensionality::REGION, triangleID, parametric_coords};
         found = true;
         break;
       }

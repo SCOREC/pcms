@@ -33,7 +33,8 @@ public:
     {
       VERTEX = 0,
       EDGE = 1,
-      FACE = 2
+      FACE = 2,
+      REGION = 3
     };
 
     Dimensionality dimensionality;

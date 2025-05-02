@@ -3,6 +3,7 @@
 #include <pcms/interpolator/mls_interpolation.hpp>
 #include <pcms/interpolator/mls_interpolation_impl.hpp>
 #include <pcms/interpolator/pcms_interpolator_view_utils.hpp>
+#include <pcms/point_search.h>
 #include "KokkosBatched_SVD_Decl.hpp"
 #include "KokkosBatched_SVD_Serial_Impl.hpp"
 #include <KokkosBlas2_serial_gemv_impl.hpp>
@@ -274,6 +275,185 @@ inline SupportResults findNeighbors(
     return results;
 }
 
+SupportResults findNeighborsUniformGrid(
+    const std::vector<std::vector<double>>& host_source_points,
+    const std::vector<std::vector<double>>& host_target_points,
+    double cutoffDistance)
+{
+    static_assert(std::is_trivially_copyable<pcms::UniformGrid<3>>::value,
+                  "UniformGrid<3> must be trivially copyable to store in Kokkos::View.");
+
+    using ExecSpace = Kokkos::DefaultExecutionSpace;
+    using MemorySpace = ExecSpace::memory_space;
+
+    SupportResults results;
+    const LO numSources = host_source_points.size();
+    const LO numTargets = host_target_points.size();
+    if (numSources == 0 || numTargets == 0) return results;
+
+    // Copy source and target points to Kokkos Views
+    Kokkos::View<double**> source("source", numSources, 3);
+    Kokkos::View<double**> target("target", numTargets, 3);
+    auto hsrc = Kokkos::create_mirror_view(source);
+    auto htar = Kokkos::create_mirror_view(target);
+    for (LO i = 0; i < numSources; ++i)
+        for (int d = 0; d < 3; ++d)
+            hsrc(i, d) = host_source_points[i][d];
+    for (LO i = 0; i < numTargets; ++i)
+        for (int d = 0; d < 3; ++d)
+            htar(i, d) = host_target_points[i][d];
+    Kokkos::deep_copy(source, hsrc);
+    Kokkos::deep_copy(target, htar);
+
+    // Compute bounding box of the source points
+    std::array<Real, 3> min_coord, max_coord;
+    for (int d = 0; d < 3; ++d) min_coord[d] = max_coord[d] = hsrc(0, d);
+    for (LO i = 1; i < numSources; ++i)
+        for (int d = 0; d < 3; ++d) {
+            min_coord[d] = std::min(min_coord[d], hsrc(i, d));
+            max_coord[d] = std::max(max_coord[d], hsrc(i, d));
+        }
+
+    // Build a uniform grid that bounds the source points
+    pcms::UniformGrid<3> grid;
+    for (int d = 0; d < 3; ++d) {
+        grid.edge_length[d] = max_coord[d] - min_coord[d];
+        grid.bot_left[d] = min_coord[d];
+        grid.divisions[d] = std::max(static_cast<LO>(grid.edge_length[d] / cutoffDistance), LO(1));
+    }
+
+    // Copy the grid to device memory
+    LO numCells = grid.GetNumCells();
+    Kokkos::View<pcms::UniformGrid<3>*> grid_view("grid_view", 1);
+    auto hgrid = Kokkos::create_mirror_view(grid_view);
+    hgrid(0) = grid;
+    Kokkos::deep_copy(grid_view, hgrid);
+
+    // Precompute cell_size on host
+    std::array<double, 3> cell_size_host;
+    for (int d = 0; d < 3; ++d)
+        cell_size_host[d] = grid.edge_length[d] / grid.divisions[d];
+
+    // Copy cell_size to device
+    Kokkos::View<double[3], MemorySpace> cell_size_view("cell_size_view");
+    auto h_cell_size_view = Kokkos::create_mirror_view(cell_size_view);
+    for (int d = 0; d < 3; ++d)
+        h_cell_size_view(d) = cell_size_host[d];
+    Kokkos::deep_copy(cell_size_view, h_cell_size_view);
+
+    // Count how many source points fall into each grid cell
+    Kokkos::View<LO*, MemorySpace> cell_counts("cell_counts", numCells);
+    Kokkos::parallel_for("Count sources per cell", numSources, KOKKOS_LAMBDA(LO i) {
+        auto grid = grid_view(0);
+        Omega_h::Vector<3> p;
+        for (int d = 0; d < 3; ++d)
+            p[d] = source(i, d);
+
+        LO cell_id = grid.ClosestCellID(p);
+        Kokkos::atomic_increment(&cell_counts(cell_id));
+    });
+
+    // Compute cell_ptrs using prefix scan
+    Kokkos::View<LO*, MemorySpace> cell_ptrs("cell_ptrs", numCells + 1);
+    Kokkos::parallel_scan("Scan cell counts", numCells + 1, KOKKOS_LAMBDA(LO i, LO& acc, const bool final) {
+        if (final) cell_ptrs(i) = acc;
+        if (i < numCells) acc += cell_counts(i);
+    });
+
+    // Get total number of binned sources
+    LO total_sources = 0;
+    Kokkos::deep_copy(total_sources, Kokkos::subview(cell_ptrs, numCells));
+
+    Kokkos::View<LO*, MemorySpace> cell_indices("cell_indices", total_sources);
+    Kokkos::View<LO*, MemorySpace> cell_offsets("cell_offsets", numCells);
+    Kokkos::deep_copy(cell_offsets, 0);
+
+    Kokkos::parallel_for("Fill cell bins", numSources, KOKKOS_LAMBDA(LO i) {
+        auto grid = grid_view(0); 
+        
+        Omega_h::Vector<3> p;
+        for (int d = 0; d < 3; ++d)
+            p[d] = source(i, d);
+
+        LO cid = grid.ClosestCellID(p);  
+        LO offset = Kokkos::atomic_fetch_add(&cell_offsets(cid), 1);  
+        cell_indices(cell_ptrs(cid) + offset) = i;  
+    });
+
+    // Count number of neighbors per target
+    Kokkos::View<LO*> supports_ptr("supports_ptr", numTargets + 1);
+    Kokkos::View<LO*> support_counts("support_counts", numTargets);
+    pcms::detail::GridRadialNeighborFunctor<3> functor{
+        target, source, grid_view, cell_ptrs, cell_indices, cutoffDistance, numCells, cell_size_view
+    };
+
+    Kokkos::parallel_for("Count neighbors", numTargets, KOKKOS_LAMBDA(LO i) {
+        support_counts(i) = functor(i, nullptr);
+    });
+
+    Kokkos::parallel_scan("Scan support counts", numTargets + 1, KOKKOS_LAMBDA(LO i, LO& acc, const bool final) {
+        if (final) supports_ptr(i) = acc;
+        if (i < numTargets) acc += support_counts(i);
+    });
+
+    LO total_neighbors = 0;
+    Kokkos::deep_copy(total_neighbors, Kokkos::subview(supports_ptr, numTargets));
+    Kokkos::View<LO*> supports_idx("supports_idx", total_neighbors);
+    Kokkos::View<Real*> radii2("radii2", total_neighbors);
+    
+    // Fill the neighbors and compute squared distances
+    Kokkos::parallel_for("Fill neighbors", numTargets, KOKKOS_LAMBDA(LO i) {
+        LO offset = supports_ptr(i);
+        LO* ptr = &supports_idx(offset);
+        LO actual_count = functor(i, ptr);
+        double pt[3];
+        for (int d = 0; d < 3; ++d) pt[d] = target(i, d);
+        for (LO j = 0; j < actual_count; ++j) {
+            double q[3];
+            for (int d = 0; d < 3; ++d) q[d] = source(ptr[j], d);
+            Real r2 = 0.0;
+            for (int d = 0; d < 3; ++d)
+                r2 += (pt[d] - q[d]) * (pt[d] - q[d]);
+            radii2(offset + j) = r2;
+        }
+    });
+
+    // Allocate Omega_h::Write arrays directly on device
+    Omega_h::Write<LO> ptr_w(supports_ptr.extent(0));
+    Omega_h::Write<LO> idx_w(supports_idx.extent(0));
+    Omega_h::Write<Real> rad_w(radii2.extent(0));
+
+    // Fill Omega_h::Write using Kokkos parallel_for (device-safe)
+    Kokkos::parallel_for("copy ptr_w", ptr_w.size(), KOKKOS_LAMBDA(LO i) {
+    ptr_w[i] = supports_ptr(i);
+    });
+    Kokkos::parallel_for("copy idx_w", idx_w.size(), KOKKOS_LAMBDA(LO i) {
+    idx_w[i] = supports_idx(i);
+    });
+    Kokkos::parallel_for("copy rad_w", rad_w.size(), KOKKOS_LAMBDA(LO i) {
+    rad_w[i] = radii2(i);
+    });
+
+    // Omega_h::Write<LO> ptr_w(supports_ptr.size());
+    // Omega_h::Write<LO> idx_w(supports_idx.size());
+    // Omega_h::Write<Real> rad_w(radii2.size());
+
+    // auto k_ptr_w = Kokkos::View<LO*, MemorySpace>(ptr_w.data(), ptr_w.size());
+    // auto k_idx_w = Kokkos::View<LO*, MemorySpace>(idx_w.data(), idx_w.size());
+    // auto k_rad_w = Kokkos::View<Real*, MemorySpace>(rad_w.data(), rad_w.size());
+
+    // Kokkos::deep_copy(k_ptr_w, supports_ptr);
+    // Kokkos::deep_copy(k_idx_w, supports_idx);
+    // Kokkos::deep_copy(k_rad_w, radii2);
+
+    // Store in output struct
+    results.supports_ptr = ptr_w;
+    results.supports_idx = idx_w;
+    results.radii2       = rad_w;
+
+    return results;
+}
+
 inline void test_interpolation_point_to_mesh(
     Mesh& mesh, double cutoffDistance,
     Reals source_values, Write<Real>& target_values,
@@ -399,7 +579,7 @@ inline void test_interpolation_point_to_mesh(
   target_values = temp_values;
 }
 
-    TEST_CASE("test point to mesh mls svd") {
+    TEST_CASE("point to mesh mls svd") {
 
     std::string filePath = "/lore/elahis/pcmsrelated/BOUT.dmp.bp";
     // Read the first time step (index 0)
@@ -423,8 +603,8 @@ inline void test_interpolation_point_to_mesh(
     // }
     // std::cout << "Z range after shifting: [" << min_zz << ", " << max_zz << "]\n";
 
-    Real cutoffDistance = 0.45;
-    cutoffDistance = cutoffDistance * cutoffDistance; 
+    Real cutoffDistance = 0.35;
+    // cutoffDistance = cutoffDistance * cutoffDistance; 
 
     const int dim = mesh.dim();
     const auto& target_coordinates = mesh.coords();
@@ -534,8 +714,7 @@ inline void test_interpolation_point_to_mesh(
         source_coordinates.push_back({p.first[0], p.first[1], p.first[2]}); 
     }
 
-    // Now call findNeighbors with the correct data format
-    SupportResults support = findNeighbors(source_coordinates, host_target_data, cutoffDistance);
+    SupportResults support = findNeighborsUniformGrid(source_coordinates, host_target_data, cutoffDistance);
 
     auto host_supports_ptr = HostRead<LO>(support.supports_ptr);
     auto host_supports_idx = HostRead<LO>(support.supports_idx);
@@ -585,7 +764,7 @@ inline void test_interpolation_point_to_mesh(
             double dz = host_target_data[i][2] - host_source_data[neighbor_index].first[2];
 
             double dist_sq = dx * dx + dy * dy + dz * dz;
-            CHECK(dist_sq <= cutoffDistance);
+            CHECK(dist_sq <= cutoffDistance* cutoffDistance);
         }
     }
 
@@ -806,7 +985,7 @@ inline void test_interpolation_point_to_mesh(
         Real second_cutoffDistance = cutoffDistance * 1.5;
 
         // Find new neighbors (target → source)
-        SupportResults support_target_to_source = findNeighbors(
+        SupportResults support_target_to_source = findNeighborsUniformGrid(
             host_new_source_data, 
             host_new_target_data,
             second_cutoffDistance

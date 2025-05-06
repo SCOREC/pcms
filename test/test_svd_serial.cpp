@@ -382,7 +382,7 @@ TEST_CASE("test_serial_svd")
         }
 
         team.team_barrier();
-        detail::solve_matrix_svd(team, weight, rhs, A, x, 1e-12);
+        detail::solve_matrix_svd(team, weight, rhs, A, x, 0, 1e-12);
         team.team_barrier();
         if (team.team_rank() == 0) {
           printf("[solution vector x after solve_matrix_svd]\n");

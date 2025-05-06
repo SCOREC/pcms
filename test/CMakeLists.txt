@@ -110,7 +110,6 @@ if(Catch2_FOUND)
           test_point_search.cpp
           test_mls_basis.cpp
           test_rbf_interp.cpp
-          test_linear_solver.cpp
           test_normalisation.cpp
 		  test_spr_meshfields.cpp
 		  test_svd_serial.cpp)

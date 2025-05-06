@@ -11,6 +11,16 @@
 #ifndef PCMS_INTERPOLATION_BASE_H
 #define PCMS_INTERPOLATION_BASE_H
 
+void copyHostScalarArrayView2HostWrite(
+    pcms::ScalarArrayView<double, pcms::HostMemorySpace> source,
+    Omega_h::HostWrite<Omega_h::Real>& target);
+
+void copyHostWrite2ScalarArrayView(
+  const Omega_h::HostWrite<Omega_h::Real>& source,
+  pcms::ScalarArrayView<double, pcms::HostMemorySpace> target);
+
+Omega_h::Reals getCentroids(Omega_h::Mesh& mesh);
+
 class InterpolationBase
 {
   /**
@@ -21,6 +31,44 @@ class InterpolationBase
   virtual void eval(
     pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_field,
     pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field) = 0;
+};
+
+/**
+  *@brief Meshless interpolation using MLS
+*/
+class MLSPointCloudInterpolation : public InterpolationBase
+{
+public:
+
+    MLSPointCloudInterpolation(pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_points,
+                            pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_points, int dim, double radius,
+                            uint min_req_supports = 10, uint degree = 3, bool adapt_radius = true);
+
+    void eval(
+        pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_field,
+        pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field) override;
+
+    SupportResults getSupports() { return supports_; }
+
+  private:
+    int dim_;
+    double radius_;
+    bool adapt_radius_;
+    bool single_mesh_ = false;
+    uint degree_;
+    uint min_req_supports_;
+
+    // InterpolationType interpolation_type_;
+
+    Omega_h::Reals source_coords_;
+    Omega_h::Reals target_coords_;
+
+    SupportResults supports_;
+
+    Omega_h::HostWrite<Omega_h::Real> target_field_;
+    Omega_h::HostWrite<Omega_h::Real> source_field_;
+
+    void find_supports(uint min_req_supports = 10);
 };
 
 /**
@@ -61,6 +109,8 @@ public:
 
   size_t getSourceSize();
   size_t getTargetSize();
+
+  SupportResults getSupports() { return supports_; }
 
 private:
   double radius_;

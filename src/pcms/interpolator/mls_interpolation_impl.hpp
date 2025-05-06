@@ -612,7 +612,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       fill(0.0, team, target_basis_vector);
       fill(0.0, team, solution_coefficients);
 
-      Logger logger(10);
+      Logger logger(15);
       // storing the coords of local supports
       int count = -1;
       for (int j = start_ptr; j < end_ptr; ++j) {
@@ -707,6 +707,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
                        "vandermonde matrix");
 
       OMEGA_H_CHECK_PRINTF(
+
         support.radii2[league_rank] > 0,
         "ERROR: radius2 has to be positive but found to be %.16f\n",
         support.radii2[league_rank]);
@@ -717,6 +718,9 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       double target_value = KokkosBlas::Experimental::dot(
         team, solution_coefficients, target_basis_vector);
+
+      // printf("Target Point : %d \t\t Value: %5.6f\n", league_rank,
+      // target_value);
       logger.logScalar(team, LogLevel::DEBUG, target_value,
                        "interpolated value");
       if (team.team_rank() == 0) {

@@ -112,7 +112,7 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
                               const LO& degree, RadialBasisFunction bf,
-                              double lambda)
+                              double lambda, double tol)
 {
 
   const auto nvertices_target = target_coordinates.size() / dim;
@@ -123,25 +123,25 @@ Write<Real> mls_interpolation(const Reals source_values,
     case RadialBasisFunction::RBF_GAUSSIAN:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_GAUSSIAN{}, lambda);
+        degree, RBF_GAUSSIAN{}, lambda, tol);
       break;
 
     case RadialBasisFunction::RBF_C4:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_C4{}, lambda);
+        degree, RBF_C4{}, lambda, tol);
       break;
 
     case RadialBasisFunction::RBF_CONST:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_CONST{}, lambda);
+        degree, RBF_CONST{}, lambda, tol);
       break;
 
     case RadialBasisFunction::NO_OP:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, NoOp{}, lambda);
+        degree, NoOp{}, lambda, tol);
       break;
   }
 

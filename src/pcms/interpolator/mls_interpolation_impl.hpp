@@ -409,8 +409,8 @@ ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
  * @return None. The solution is directly written to the `rhs` vector.
  */
 KOKKOS_INLINE_FUNCTION
-void solve_matrix(const ScratchMatView& square_matrix,
-                  const ScratchVecView& rhs, member_type team)
+void solve_matrix_lu(const ScratchMatView& square_matrix,
+                     const ScratchVecView& rhs, member_type team)
 {
 
   // Perform LU decomposition
@@ -426,10 +426,36 @@ void solve_matrix(const ScratchMatView& square_matrix,
     KokkosBatched::Algo::SolveLU::Unblocked>::invoke(team, square_matrix, rhs);
 }
 
+/**
+ * @brief Solves a regularized linear system Ax = b using SVD decomposition
+ * within a Kokkos parallel team.
+ *
+ * This function solves a (possibly overdetermined) linear system using Singular
+ * Value Decomposition (SVD), The regularization term (lambda) helps stabilize
+ * the solution especially in ill-conditioned cases.
+ *
+ *
+ * @param team The Kokkos team member executing this function.
+ * @param weight A scratch-space vector of weights (RBF weights).
+ * @param rhs_values A scratch-space vector representing the right-hand side
+ * vector b (m). It may be modified during the computation.
+ * @param matrix A scratch-space matrix representing the system matrix A (m x
+ * n).
+ * @param solution_vector The output vector x (n). It will contain the computed
+ * solution after the function completes.
+ * @param lambda The regularization coefficient. Set to 0.0 for pure SVD; use a
+ * positive value for Tikhonov regularization.
+ * @param tol  The  tolerance threshold used to discard small singular values in
+ * the decomposition
+ *
+ *
+ * @note This function does not return a value; the solution is written directly
+ * to `solution_vector`.
+ */
 KOKKOS_INLINE_FUNCTION
 void solve_matrix_svd(member_type team, const ScratchVecView& weight,
                       ScratchVecView rhs_values, ScratchMatView matrix,
-                      ScratchVecView solution_vector, double lambda)
+                      ScratchVecView solution_vector, double lambda, double tol)
 {
 
   int row = matrix.extent(0);
@@ -477,7 +503,7 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
 
   if (team.team_rank() == 0) {
     KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), matrix, U,
-                                     sigma, Vt, work, 1e-6);
+                                     sigma, Vt, work, tol);
   }
   team.team_barrier();
 
@@ -523,7 +549,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
                        const SupportResults& support, const LO& dim,
                        const LO& degree, Func rbf_func,
                        RealDefaultScalarArrayView approx_target_values,
-                       double lambda)
+                       double lambda, double tol)
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_invocable_r_v<double, Func, double, double>,
@@ -714,7 +740,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         support.radii2[league_rank]);
 
       solve_matrix_svd(team, phi_vector, support_values, vandermonde_matrix,
-                       solution_coefficients, lambda);
+                       solution_coefficients, lambda, tol);
       team.team_barrier();
 
       double target_value = KokkosBlas::Experimental::dot(
@@ -754,7 +780,8 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
-                              const LO& degree, Func rbf_func, double lambda)
+                              const LO& degree, Func rbf_func, double lambda,
+                              double tol)
 {
   const auto nsources = source_coordinates.size() / dim;
 
@@ -779,7 +806,7 @@ Write<Real> mls_interpolation(const Reals source_values,
 
   mls_interpolation(source_values_array_view, source_coordinates_array_view,
                     target_coordinates_array_view, support, dim, degree,
-                    rbf_func, interpolated_values_array_view, lambda);
+                    rbf_func, interpolated_values_array_view, lambda, tol);
 
   return interpolated_values;
 }

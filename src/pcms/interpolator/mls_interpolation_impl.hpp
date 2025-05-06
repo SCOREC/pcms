@@ -612,8 +612,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       fill(0.0, team, target_basis_vector);
       fill(0.0, team, solution_coefficients);
 
-      Logger logger(15);
-      // storing the coords of local supports
+      // Logger logger(15);
+      //  storing the coords of local supports
       int count = -1;
       for (int j = start_ptr; j < end_ptr; ++j) {
         count++;
@@ -624,16 +624,16 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         }
       }
 
-      logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
-                       "Support Coordinates");
+      // logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
+      //                  "Support Coordinates");
       double target_point[MAX_DIM] = {};
 
       for (int i = 0; i < dim; ++i) {
         target_point[i] = target_coordinates[league_rank * dim + i];
       }
 
-      logger.logArray(team, LogLevel::DEBUG, target_point, dim,
-                      "Target points");
+      // logger.logArray(team, LogLevel::DEBUG, target_point, dim,
+      //                 "Target points");
 
       /** phi(nsupports) is the array of rbf functions evaluated at the
        * source supports In the actual implementation, Phi(nsupports,
@@ -667,8 +667,9 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       team.team_barrier();
 
-      logger.log(team, LogLevel::DEBUG, "The search  starts");
-      logger.logVector(team, LogLevel::DEBUG, support_values, "Support values");
+      // logger.log(team, LogLevel::DEBUG, "The search  starts");
+      // logger.logVector(team, LogLevel::DEBUG, support_values, "Support
+      // values");
 
       /**
        *
@@ -703,8 +704,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       team.team_barrier();
 
-      logger.logMatrix(team, LogLevel::DEBUG, vandermonde_matrix,
-                       "vandermonde matrix");
+      // logger.logMatrix(team, LogLevel::DEBUG, vandermonde_matrix,
+      //                  "vandermonde matrix");
 
       OMEGA_H_CHECK_PRINTF(
 
@@ -721,8 +722,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       // printf("Target Point : %d \t\t Value: %5.6f\n", league_rank,
       // target_value);
-      logger.logScalar(team, LogLevel::DEBUG, target_value,
-                       "interpolated value");
+      // logger.logScalar(team, LogLevel::DEBUG, target_value,
+      //                  "interpolated value");
       if (team.team_rank() == 0) {
         OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
                              league_rank);

@@ -286,149 +286,11 @@ void scale_column_trans_matrix(const ScratchMatView& matrix,
   }
 }
 
-KOKKOS_INLINE_FUNCTION
-void add_regularization(const member_type& team, ScratchMatView& square_matrix,
-                        Real lambda_factor)
-{
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, square_matrix.extent(0)),
-                       [=](int i) { square_matrix(i, i) += lambda_factor; });
 }
 
 /**
- * @struct ResultConvertNormal
- * @brief Stores the results of matrix and vector transformations.
- *
- * This struct represents the results of the following operations:
- * - `P^T Q` (scaled matrix): The matrix obtained after scaling the columns of
- * the given matrix.
- * - `P^T Q P` (square matrix): The matrix obtained after performing the `P^T Q
- * P` operation.
- * - `P^T b` (transformed RHS): The vector obtained after applying the `P^T b`
- * operation.
- *
- * The struct is used to store:
- * - The scaled matrix (`scaled_matrix`).
- * - The square matrix (`square_matrix`).
- * - The transformed right-hand side vector (`transformed_rhs`).
- */
-struct ResultConvertNormal
-{
-  ScratchMatView scaled_matrix;
-  ScratchMatView square_matrix;
-  ScratchVecView transformed_rhs;
-};
-
-/**
- * @brief Converts a normal equation into a simplified form.
- *
- * This function takes a matrix, a basis/weight vector, and a right-hand side
- * (RHS) vector and computes the scaled matrix, square matrix, and transformed
- * RHS.
- *
- * For example, the normal equation `P^T Q P x = P^T Q b` is converted into the
- * form `Ax = b'`, where:
- * - `A` (square matrix) = `P^T Q P`
- * - `b'` (transformed RHS) = `P^T Q b`
- *
- * @param matrix The input matrix.
- * @param weight_vector The weight or basis vector.
- * @param rhs The right-hand side vector of the equation.
- * @param team The team member executing the task (optional, if applicable).
- *
- * @return The result of the normal equation conversion as a struct containing:
- * - The scaled matrix.
- * - The square matrix.
- * - The transformed RHS.
- *
- * @todo Implement QR decomposition to solve the linear system.
- */
-KOKKOS_INLINE_FUNCTION
-ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
-                                            const ScratchVecView& weight_vector,
-                                            const ScratchVecView& rhs,
-                                            member_type team, double lambda)
-{
-
-  int m = matrix.extent(0);
-  int n = matrix.extent(1);
-
-  ScratchMatView scaled_matrix(team.team_scratch(1), n, m);
-
-  ScratchMatView square_matrix(team.team_scratch(1), n, n);
-
-  ScratchVecView transformed_rhs(team.team_scratch(1), n);
-
-  // performing P^T Q
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n), [=](int j) {
-    for (int k = 0; k < m; ++k) {
-      scaled_matrix(j, k) = 0;
-    }
-  });
-
-  team.team_barrier();
-
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, m), [=](int j) {
-    scale_column_trans_matrix(matrix, weight_vector, team, j, scaled_matrix);
-  });
-
-  team.team_barrier();
-
-  // performing (P^T Q P)
-  KokkosBatched::TeamGemm<
-    member_type, KokkosBatched::Trans::NoTranspose,
-    KokkosBatched::Trans::NoTranspose,
-    KokkosBatched::Algo::Gemm::Unblocked>::invoke(team, 1.0, scaled_matrix,
-                                                  matrix, 0.0, square_matrix);
-
-  team.team_barrier();
-
-  add_regularization(team, square_matrix, lambda);
-
-  team.team_barrier();
-
-  KokkosBlas::Experimental::
-    Gemv<KokkosBlas::Mode::Team, KokkosBlas::Algo::Gemv::Unblocked>::invoke(
-      team, 'N', 1.0, scaled_matrix, rhs, 0.0, transformed_rhs);
-
-  team.team_barrier();
-
-  return ResultConvertNormal{scaled_matrix, square_matrix, transformed_rhs};
-}
-
-/**
- * @brief Solves the matrix equation Ax = b' using LU decomposition.
- *
- * This function solves the given matrix equation using LU decomposition.
- * The solution vector `x'` overwrites the input `rhs` vector.
- *
- * @param square_matrix The input matrix A (must be square).
- * @param rhs The right-hand side vector b. After execution, it is overwritten
- * with the solution vector x.
- * @param team The team member executing the task.
- *
- * @return None. The solution is directly written to the `rhs` vector.
- */
-KOKKOS_INLINE_FUNCTION
-void solve_matrix_lu(const ScratchMatView& square_matrix,
-                     const ScratchVecView& rhs, member_type team)
-{
-
-  // Perform LU decomposition
-  KokkosBatched::TeamLU<
-    member_type, KokkosBatched::Algo::LU::Unblocked>::invoke(team,
-                                                             square_matrix);
-
-  team.team_barrier();
-
-  //   Solve the equation with forward and backward solves
-  KokkosBatched::TeamSolveLU<
-    member_type, KokkosBatched::Trans::NoTranspose,
-    KokkosBatched::Algo::SolveLU::Unblocked>::invoke(team, square_matrix, rhs);
-}
-
-/**
- * @brief Solves a regularized linear system Ax = b using SVD decomposition
- * within a Kokkos parallel team.
+ * @brief Solves a regularized weighted linear system WAx = Wb using SVD
+ * decomposition within a Kokkos parallel team.
  *
  * This function solves a (possibly overdetermined) linear system using Singular
  * Value Decomposition (SVD), The regularization term (lambda) helps stabilize
@@ -436,15 +298,22 @@ void solve_matrix_lu(const ScratchMatView& square_matrix,
  *
  *
  * @param team The Kokkos team member executing this function.
- * @param weight A scratch-space vector of weights (RBF weights).
+ *
+ * @param weight A scratch-space vector of RBF weights (diagonal elements of
+ * weight matrix W). size is m.
+ *
  * @param rhs_values A scratch-space vector representing the right-hand side
  * vector b (m). It may be modified during the computation.
+ *
  * @param matrix A scratch-space matrix representing the system matrix A (m x
  * n).
+ *
  * @param solution_vector The output vector x (n). It will contain the computed
  * solution after the function completes.
+ *
  * @param lambda The regularization coefficient. Set to 0.0 for pure SVD; use a
  * positive value for Tikhonov regularization.
+ *
  * @param tol  The  tolerance threshold used to discard small singular values in
  * the decomposition
  *

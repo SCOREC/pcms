@@ -5,10 +5,23 @@ branch=$1
 cd $SCRATCH/globus-compute/pcms-test
 
 module load cray-fftw
+module load cmake
+
+export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:\
+build-kokkos/install:\
+build-ADIOS2/install:\
+build-perfstubs/install/lib64:\
+build-redev/install:\
+build-omega_h/install:\
+build-Catch2/install:\
+build-kokkos-kernels/install:\
+build-pcms/install
+
+
 
 # # kokkos
 # rm build-kokkos -rf
-# # rm kokkos -rf
+# rm kokkos -rf
 # git clone -b 4.5.00 https://github.com/kokkos/kokkos.git
 # cmake -S kokkos -B build-kokkos \
 #   -DCMAKE_INSTALL_PREFIX=build-kokkos/install \
@@ -23,6 +36,19 @@ module load cray-fftw
 #   -DKokkos_ENABLE_DEBUG=off
 # cmake --build build-kokkos -j 24 --target install
 
+
+# # kokkos-kernels
+# rm kokkos-kernels -rf
+# git clone -b 4.2.00 git@github.com:kokkos/kokkos-kernels.git
+
+# rm build-kokkos-kernels -rf
+# cmake -S kokkos-kernels -B build-kokkos-kernels \
+#   -DCMAKE_INSTALL_PREFIX=$PWD/build-kokkos-kernels/install \
+#   -DCMAKE_CXX_COMPILER=CC \
+#   -DCMAKE_CXX_STANDARD=17
+# cmake --build build-kokkos-kernels -j24 --target install
+
+
 # # ADIOS2
 # rm build-ADIOS2 -rf
 # # rm ADIOS2 -rf
@@ -35,6 +61,7 @@ module load cray-fftw
 #   -DCMAKE_C_COMPILER=cc
 # cmake --build build-ADIOS2 --target install -j8
 
+
 # # perfstubs
 # rm build-perfstubs -rf
 # # rm perfstubs -rf
@@ -45,6 +72,7 @@ module load cray-fftw
 #   -DCMAKE_INSTALL_PREFIX=build-perfstubs/install
 # cmake --build build-perfstubs -j2 --target install
 
+
 # # redev
 # rm build-redev -rf
 # # rm redev -rf
@@ -54,10 +82,9 @@ module load cray-fftw
 #   -DCMAKE_C_COMPILER=cc \
 #   -DMPIEXEC_EXECUTABLE=`which srun` \
 #   -DCMAKE_BUILD_TYPE=Release \
-#   -DCMAKE_INSTALL_PREFIX=build-redev/install \
-#   -Dperfstubs_DIR=$PWD/build-perfstubs \
-#   -DADIOS2_ROOT=build-ADIOS2/install
+#   -DCMAKE_INSTALL_PREFIX=build-redev/install
 # cmake --build build-redev -j2 --target install
+
 
 # # omega_h
 # rm build-omega_h -rf
@@ -74,9 +101,9 @@ module load cray-fftw
 #   -DMPIEXEC_EXECUTABLE=srun \
 #   -DBUILD_TESTING=off  \
 #   -DCMAKE_C_COMPILER=cc \
-#   -DCMAKE_CXX_COMPILER=CC \
-#   -DKokkos_PREFIX=build-kokkos/install/lib64/cmake
+#   -DCMAKE_CXX_COMPILER=CC
 # cmake --build build-omega_h -j24 --target install
+
 
 # # Catch2
 # rm build-Catch2 -rf
@@ -86,6 +113,7 @@ module load cray-fftw
 #   -DCMAKE_INSTALL_PREFIX=$PWD/build-Catch2/install \
 #   -DCMAKE_CXX_COMPILER=CC
 # cmake --build build-Catch2 -j2 --target install
+
 
 # pcms
 rm pcms -rf
@@ -101,10 +129,6 @@ cmake -S pcms -B build-pcms \
   -DCMAKE_CXX_COMPILER=CC \
   -DCMAKE_BUILD_TYPE=Release \
   -DPCMS_TIMEOUT=100 \
-  -Dperfstubs_DIR=$PWD/build-perfstubs \
-  -Dredev_DIR=$PWD/build-redev/install/lib64/cmake/redev \
-  -DOmega_h_DIR=$PWD/build-omega_h/install/lib64/cmake/Omega_h/ \
-  -DKokkos_DIR=$PWD/build-kokkos/install/lib64/cmake/Kokkos/ \
-  -DCatch2_DIR=$PWD/build-Catch2/install/lib64/cmake/Catch2/ \
+  -DCMAKE_CXX_STANDARD=20 \
   -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
 cmake --build build-pcms -j8

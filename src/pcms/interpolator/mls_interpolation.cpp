@@ -117,8 +117,7 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
                               const LO& degree, RadialBasisFunction bf,
-                              double lambda, double tol,
-                              double decay_factor = 5.0)
+                              double lambda, double tol, double decay_factor)
 {
 
   const auto nvertices_target = target_coordinates.size() / dim;

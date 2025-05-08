@@ -83,6 +83,6 @@ Write<Real> mls_interpolation(const Omega_h::Reals source_values,
                               const SupportResults& support,
                               const Omega_h::LO& dim, const Omega_h::LO& degree,
                               RadialBasisFunction bf, double lambda = 0,
-                              double tol = 1e-6);
+                              double tol = 1e-6, double decay_factor = 5.0);
 } // namespace pcms
 #endif

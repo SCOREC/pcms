@@ -3,8 +3,6 @@
 
 #include "mls_interpolation_impl.hpp"
 
-using namespace Omega_h;
-
 namespace pcms
 {
 
@@ -58,7 +56,8 @@ enum class RadialBasisFunction : LO
  * @param target_coordinates   A flat array of target point coordinates. Length
  * should be `num_targets * dim`.
  * @param support              A data structure holding neighbor information for
- * each target (in CSR format).
+ * 								each target (in
+ * CSR format).
  * @param dim                  Dimension
  * @param degree               Polynomial degree
  * @param bf                   The radial basis function used for weighting
@@ -78,11 +77,12 @@ enum class RadialBasisFunction : LO
  * `num_points * dim`.
  * - The result array length will match the number of target points.
  */
-Write<Real> mls_interpolation(const Reals source_values,
-                              const Reals source_coordinates,
-                              const Reals target_coordinates,
-                              const SupportResults& support, const LO& dim,
-                              const LO& degree, RadialBasisFunction bf,
-                              double lambda = 0, double tol = 1e-6);
+Write<Real> mls_interpolation(const Omega_h::Reals source_values,
+                              const Omega_h::Reals source_coordinates,
+                              const Omega_h::Reals target_coordinates,
+                              const SupportResults& support,
+                              const Omega_h::LO& dim, const Omega_h::LO& degree,
+                              RadialBasisFunction bf, double lambda = 0,
+                              double tol = 1e-6);
 } // namespace pcms
 #endif

@@ -7,6 +7,14 @@ namespace pcms
 // RBF_GAUSSIAN Functor
 struct RBF_GAUSSIAN
 {
+  // 'a' is a spreading factor/decay factor
+  // the value of 'a' is higher if the data is localized
+  // the value of 'a' is smaller if the data is farther
+
+  double a;
+
+  RBF_GAUSSIAN(double a_val) : a(a_val) {}
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
@@ -20,11 +28,6 @@ struct RBF_GAUSSIAN
                          "ERROR: square of  distance should always be positive "
                          "but the value is %.16f\n",
                          r_sq);
-
-    // 'a' is a spreading factor/decay factor
-    // the value of 'a' is higher if the data is localized
-    // the value of 'a' is smaller if the data is farther
-    int a = 5;
 
     double r = sqrt(r_sq);
     double rho = sqrt(rho_sq);
@@ -45,6 +48,7 @@ struct RBF_GAUSSIAN
 // RBF_C4 Functor
 struct RBF_C4
 {
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
@@ -76,6 +80,7 @@ struct RBF_C4
 //
 struct RBF_CONST
 {
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
@@ -112,7 +117,8 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
                               const LO& degree, RadialBasisFunction bf,
-                              double lambda, double tol)
+                              double lambda, double tol,
+                              double decay_factor = 5.0)
 {
 
   const auto nvertices_target = target_coordinates.size() / dim;
@@ -123,7 +129,7 @@ Write<Real> mls_interpolation(const Reals source_values,
     case RadialBasisFunction::RBF_GAUSSIAN:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_GAUSSIAN{}, lambda, tol);
+        degree, RBF_GAUSSIAN{decay_factor}, lambda, tol);
       break;
 
     case RadialBasisFunction::RBF_C4:

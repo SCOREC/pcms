@@ -55,6 +55,7 @@ public:
     }
   }
 
+  // log array
   KOKKOS_INLINE_FUNCTION
   void logArray(const member_type& team, const LogLevel level,
                 const double* array, const int size, const char* name)
@@ -89,7 +90,7 @@ public:
     }
   }
 
-  // log scratch vector
+  // log scratch matrix
   KOKKOS_INLINE_FUNCTION
   void logMatrix(const member_type& team, const LogLevel level,
                  const ScratchMatView& matrix, const char* name) const

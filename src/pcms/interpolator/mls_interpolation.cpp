@@ -112,18 +112,17 @@ struct NoOp
   double operator()(double, double) const { return 1.0; }
 };
 
-Write<Real> mls_interpolation(const Reals source_values,
-                              const Reals source_coordinates,
-                              const Reals target_coordinates,
-                              const SupportResults& support, const LO& dim,
-                              const LO& degree, RadialBasisFunction bf,
-                              double lambda, double tol, double decay_factor)
+Omega_h::Write<Omega_h::Real> mls_interpolation(
+  const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
+  const Omega_h::Reals target_coordinates, const SupportResults& support,
+  const Omega_h::LO& dim, const Omega_h::LO& degree, RadialBasisFunction bf,
+  double lambda, double tol, double decay_factor)
 {
 
   const auto nvertices_target = target_coordinates.size() / dim;
 
-  Write<Real> interpolated_values(nvertices_target, 0,
-                                  "approximated target values");
+  Omega_h::Write<Omega_h::Real> interpolated_values(
+    nvertices_target, 0, "approximated target values");
   switch (bf) {
     case RadialBasisFunction::RBF_GAUSSIAN:
       interpolated_values = detail::mls_interpolation(

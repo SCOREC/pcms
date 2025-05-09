@@ -12,16 +12,16 @@
 #include <KokkosBlas.hpp>
 #include <KokkosBlas1_team_dot.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
-#include "pcms_interpolator_aliases.hpp"
-#include "adj_search.hpp"
-#include "pcms/assert.h"
-#include "pcms/profile.h"
-#include "pcms_interpolator_view_utils.hpp"
-#include "pcms_interpolator_logger.hpp"
+#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
+#include <pcms/interpolator/adj_search.hpp>
+#include <pcms/assert.h>
+#include <pcms/profile.h>
+#include <pcms/interpolator/pcms_interpolator_view_utils.hpp>
+#include <pcms/interpolator/pcms_interpolator_logger.hpp>
 
 #include <KokkosBlas2_gemv.hpp> //KokkosBlas::gemv
-#include "KokkosBatched_SVD_Decl.hpp"
-#include "KokkosBatched_SVD_Serial_Impl.hpp"
+#include <KokkosBatched_SVD_Decl.hpp>
+#include <KokkosBatched_SVD_Serial_Impl.hpp>
 #include <KokkosBlas2_serial_gemv_impl.hpp>
 #include <KokkosBatched_Gemm_Decl.hpp>
 
@@ -103,7 +103,7 @@ int calculate_scratch_shared_size(const SupportResults& support,
  *
  * @return normalized coordinates The normlaised coordinates
  */
-Reals min_max_normalization(Reals& coordinates, int dim);
+Omega_h::Reals min_max_normalization(Omega_h::Reals& coordinates, int dim);
 
 /**
  * @brief Evaluates the polynomial basis
@@ -415,8 +415,8 @@ template <typename Func>
 void mls_interpolation(RealConstDefaultScalarArrayView source_values,
                        RealConstDefaultScalarArrayView source_coordinates,
                        RealConstDefaultScalarArrayView target_coordinates,
-                       const SupportResults& support, const LO& dim,
-                       const LO& degree, Func rbf_func,
+                       const SupportResults& support, const Omega_h::LO& dim,
+                       const Omega_h::LO& degree, Func rbf_func,
                        RealDefaultScalarArrayView approx_target_values,
                        double lambda, double tol)
 {
@@ -508,7 +508,14 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       fill(0.0, team, solution_coefficients);
 
       // Logger logger(15);
-      //  storing the coords of local supports
+
+      /**
+       *
+       * the local_source_points is of the type ScratchMatView with
+       * coordinates information; row is number of local supports
+       * & column is dim
+       */
+
       int count = -1;
       for (int j = start_ptr; j < end_ptr; ++j) {
         count++;
@@ -550,7 +557,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
        * the quantity that we want interpolate
        *
        *
-       * step 4: find local supports function values
+       * step 2: find local supports function values
        */
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](const int j) {
@@ -567,12 +574,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       // values");
 
       /**
-       *
-       * the local_source_points is of the type ScratchMatView with
-       * coordinates information; row is number of local supports
-       * & column is dim
-       *
-       * step 2: normalize local source supports and target point
+       * step 3: normalize local source supports and target point
        */
 
       normalize_supports(team, target_point, local_source_points);
@@ -581,7 +583,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
        *
        * evaluates the basis vector of a given target point Coord target_point;
        * this can evaluate monomial basis vector for any degree of polynomial
-       * step 3: call basis vector evaluation function (eval_basis_vector);
+       *
+       * step 4: call basis vector evaluation function (eval_basis_vector);
        */
       eval_basis_vector(slice_length, target_point, target_basis_vector);
 
@@ -589,7 +592,7 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
        * created with the basis vector of source supports stacking on top of
        * each other
        *
-       * step 4: create vandermonde matrix
+       * step 5: create vandermonde matrix
        */
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
@@ -608,6 +611,10 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         "ERROR: radius2 has to be positive but found to be %.16f\n",
         support.radii2[league_rank]);
 
+      /**
+       * step 6: solve overdetermined system using SVD
+       *
+       */
       solve_matrix_svd(team, phi_vector, support_values, vandermonde_matrix,
                        solution_coefficients, lambda, tol);
       team.team_barrier();
@@ -640,17 +647,16 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
  * @param dim The dimension of the simulations
  * @param degree The degree of the interpolation order
  * @param rbf_func The radial basis function choice
- * @return  Write array of the interpolated field in target mesh
+ * @return  Omega_h::Write array of the interpolated field in target mesh
  *
  *
  */
 template <typename Func>
-Write<Real> mls_interpolation(const Reals source_values,
-                              const Reals source_coordinates,
-                              const Reals target_coordinates,
-                              const SupportResults& support, const LO& dim,
-                              const LO& degree, Func rbf_func, double lambda,
-                              double tol)
+Omega_h::Write<Omega_h::Real> mls_interpolation(
+  const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
+  const Omega_h::Reals target_coordinates, const SupportResults& support,
+  const Omega_h::LO& dim, const Omega_h::LO& degree, Func rbf_func,
+  double lambda, double tol)
 {
   const auto nsources = source_coordinates.size() / dim;
 
@@ -668,7 +674,8 @@ Write<Real> mls_interpolation(const Reals source_values,
   RealDefaultScalarArrayView radii2_array_view(support.radii2.data(),
                                                support.radii2.size());
 
-  Write<Real> interpolated_values(ntargets, 0, "approximated target values");
+  Omega_h::Write<Omega_h::Real> interpolated_values(
+    ntargets, 0, "approximated target values");
 
   RealDefaultScalarArrayView interpolated_values_array_view(
     interpolated_values.data(), interpolated_values.size());
@@ -682,4 +689,5 @@ Write<Real> mls_interpolation(const Reals source_values,
 
 } // namespace detail
 } // namespace pcms
+
 #endif

@@ -64,6 +64,14 @@ void find_sq_root_each(member_type team, ScratchVecView& array)
   });
 }
 
+/**
+ *
+ *@brief Finds the inverse of each element in an array
+ *
+ *@param team The team member
+ *@param array The scratch vector view
+ *
+ */
 KOKKOS_INLINE_FUNCTION
 void find_inverse_each(member_type team, ScratchVecView& array)
 {
@@ -78,6 +86,14 @@ void find_inverse_each(member_type team, ScratchVecView& array)
   });
 }
 
+/**
+ *@brief Evaluates the shrinkage factor in SVD (S/(S^2 + lambda)
+ *
+ *@param team The team member
+ *@param lambda The regularization parameter
+ *@param sigma The scratch vector view of singular values
+ *
+ */
 KOKKOS_INLINE_FUNCTION
 void calculate_shrinkage_factor(member_type team, double lambda,
                                 ScratchVecView& sigma)
@@ -87,6 +103,15 @@ void calculate_shrinkage_factor(member_type team, double lambda,
     sigma(i) /= (sigma(i) * sigma(i) + lambda);
   });
 }
+
+/**
+ *
+ *@brief Finds the transpose of the scratch matrix
+ *
+ *@param team The team member
+ *@param array The scratch matrix view
+ *
+ */
 KOKKOS_INLINE_FUNCTION
 ScratchMatView find_transpose(member_type team, const ScratchMatView& matrix)
 {
@@ -103,6 +128,16 @@ ScratchMatView find_transpose(member_type team, const ScratchMatView& matrix)
   return transMatrix;
 }
 
+/**
+ *
+ *@brief Fills the diagonal entries of a matrix
+ *
+ *@param team The team member
+ *@param diagonal_entries The scratch vector view of the entries thats to be
+ *filled in a matrix diagonal
+ *@param array The scratch matrix whose digonal entries to be filled
+ *
+ */
 KOKKOS_INLINE_FUNCTION
 void fill_diagonal(member_type team, const ScratchVecView& diagonal_entries,
                    ScratchMatView& matrix)
@@ -113,6 +148,24 @@ void fill_diagonal(member_type team, const ScratchVecView& diagonal_entries,
                        [=](int i) { matrix(i, i) = diagonal_entries(i); });
 }
 
+/**
+ * @brief Scales each row of the input matrix by corresponding diagonal values.
+ *
+ * This function performs **row scaling** of the matrix, meaning each row `i`
+ * of the matrix is multiplied by the scalar value `diagonal_entries(i)`.
+ *
+ * Mathematically, if the matrix is `A` and the diagonal scaling matrix is `D_A
+ * = diag(diagonal_entries)`, the operation performed is:
+ *
+ *     A_scaled = D_A * A
+ *
+ * where `D_A` is a diagonal matrix that scales rows of `A`.
+ *
+ * @param team Kokkos team member used for team-level parallelism
+ * @param diagonal_entries A vector of diagonal values used for scaling (should
+ * match or be smaller than the number of rows)
+ * @param matrix The 2D matrix whose rows will be scaled
+ */
 KOKKOS_INLINE_FUNCTION
 void eval_row_scaling(member_type team, ScratchVecView diagonal_entries,
                       ScratchMatView matrix)
@@ -136,6 +189,21 @@ void eval_row_scaling(member_type team, ScratchVecView diagonal_entries,
   });
 }
 
+/**
+ * @brief Scales the right-hand-side (RHS) vector using the given diagonal
+ * weights.
+ *
+ * This function performs element-wise scaling of the RHS vector. Each entry
+ * `rhs_values(i)` is multiplied by the corresponding entry
+ * `diagonal_entries(i)`.
+ *
+ * Mathematically:
+ *     rhs_scaled(i) = diagonal_entries(i) * rhs_values(i)
+ *
+ * @param team Kokkos team member used for team-level parallelism
+ * @param diagonal_entries A vector of scaling weights (same size as rhs_values)
+ * @param rhs_values The RHS vector to be scaled
+ */
 KOKKOS_INLINE_FUNCTION
 void eval_rhs_scaling(member_type team, ScratchVecView diagonal_entries,
                       ScratchVecView rhs_values)
@@ -156,6 +224,28 @@ void eval_rhs_scaling(member_type team, ScratchVecView diagonal_entries,
   });
 }
 
+/**
+ * @brief Scales the input matrix row-wise and writes the result into an
+ * adjusted matrix.
+ *
+ * This function first scales the rows of `matrixToScale` using the
+ * corresponding entries from `diagonal_entries` (i.e., performs D * A, where D
+ * is a diagonal matrix), and then copies the scaled values into
+ * `adjustedMatrix`.
+ *
+ * Preconditions:
+ * - The number of columns in `adjustedMatrix` must match the number of rows in
+ * `matrixToScale` (colB == rowA)
+ * - `diagonal_entries` must have size ≤ rowA (validated inside
+ * `eval_row_scaling`)
+ *
+ * Typical use case: used in evaluating SV in U^TSV for SVD solver
+ *
+ * @param team Kokkos team member used for team-level parallelism
+ * @param diagonal_entries A vector of scaling values for each row
+ * @param matrixToScale The matrix to be row-scaled (modified in place)
+ * @param adjustedMatrix The output matrix to store the scaled version
+ */
 KOKKOS_INLINE_FUNCTION
 void scale_and_adjust(member_type team, ScratchVecView& diagonal_entries,
                       ScratchMatView& matrixToScale,
@@ -179,4 +269,5 @@ void scale_and_adjust(member_type team, ScratchVecView& diagonal_entries,
 
 } // namespace detail
 } // namespace pcms
+
 #endif

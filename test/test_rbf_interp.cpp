@@ -31,8 +31,8 @@ double func(pcms::Coord& p, int degree)
   return -1;
 }
 
-void test(Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
-          LO min_num_supports, Omega_h::Reals source_values,
+void test(Omega_h::Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
+          Omega_h::LO min_num_supports, Omega_h::Reals source_values,
           Omega_h::Reals exact_target_values, Omega_h::Reals source_coordinates,
           Omega_h::Reals target_coordinates)
 {
@@ -77,10 +77,11 @@ void test(Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
 TEST_CASE("test_mls_interpolation")
 {
 
-  auto lib = Library{};
+  auto lib = Omega_h::Library{};
   auto world = lib.world();
   auto rank = lib.world()->rank();
-  auto mesh = build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
 
   Omega_h::Real cutoffDistance = 0.3;
   cutoffDistance = cutoffDistance * cutoffDistance;
@@ -96,15 +97,15 @@ TEST_CASE("test_mls_interpolation")
   Omega_h::Write<Omega_h::Real> source_coordinates(
     dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
 
-  const auto& faces2nodes = mesh.ask_down(FACE, VERT).ab2b;
+  const auto& faces2nodes = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
 
   Kokkos::parallel_for(
     "calculate the centroid in each tri element", nfaces,
-    OMEGA_H_LAMBDA(const LO id) {
-      const auto current_el_verts = gather_verts<3>(faces2nodes, id);
+    OMEGA_H_LAMBDA(const Omega_h::LO id) {
+      const auto current_el_verts = Omega_h::gather_verts<3>(faces2nodes, id);
       const Omega_h::Few<Omega_h::Vector<2>, 3> current_el_vert_coords =
-        gather_vectors<3, 2>(target_coordinates, current_el_verts);
-      auto centroid = average(current_el_vert_coords);
+        Omega_h::gather_vectors<3, 2>(target_coordinates, current_el_verts);
+      auto centroid = Omega_h::average(current_el_vert_coords);
       int index = 2 * id;
       source_coordinates[index] = centroid[0];
       source_coordinates[index + 1] = centroid[1];
@@ -133,7 +134,7 @@ TEST_CASE("test_mls_interpolation")
   {
     std::cout << "-------starting test: d0p1------------" << "\n";
     int degree = 1;
-    LO min_num_supports = 10;
+    Omega_h::LO min_num_supports = 10;
 
     Omega_h::Write<Omega_h::Real> source_values(nfaces, 0,
                                                 "exact target values");
@@ -165,7 +166,7 @@ TEST_CASE("test_mls_interpolation")
 
     std::cout << "--------starting test: d1p1---------" << "\n";
     int degree = 1;
-    LO min_num_supports = 10;
+    Omega_h::LO min_num_supports = 10;
 
     Omega_h::Write<Omega_h::Real> source_values(nfaces, 0,
                                                 "exact target values");
@@ -197,7 +198,7 @@ TEST_CASE("test_mls_interpolation")
 
     std::cout << "-------------starting test: d0p2------------" << "\n";
     int degree = 2;
-    LO min_num_supports = 16;
+    Omega_h::LO min_num_supports = 16;
 
     Omega_h::Write<Omega_h::Real> source_values(nfaces, 0,
                                                 "exact target values");
@@ -229,7 +230,7 @@ TEST_CASE("test_mls_interpolation")
 
     std::cout << "----------------satrting test: d1p2--------------" << "\n";
     int degree = 2;
-    LO min_num_supports = 16;
+    Omega_h::LO min_num_supports = 16;
 
     Omega_h::Write<Omega_h::Real> source_values(nfaces, 0,
                                                 "exact target values");
@@ -261,7 +262,7 @@ TEST_CASE("test_mls_interpolation")
 
     std::cout << "-------------starting test: d2p2--------------------" << "\n";
     int degree = 2;
-    LO min_num_supports = 16;
+    Omega_h::LO min_num_supports = 16;
 
     Omega_h::Write<Omega_h::Real> source_values(nfaces, 0,
                                                 "exact target values");
@@ -293,7 +294,7 @@ TEST_CASE("test_mls_interpolation")
 
     std::cout << "-------------starting test: d2p3--------------------" << "\n";
     int degree = 3;
-    LO min_num_supports = 20;
+    Omega_h::LO min_num_supports = 20;
 
     Omega_h::Write<Omega_h::Real> source_values(nfaces, 0,
                                                 "exact target values");
@@ -325,7 +326,7 @@ TEST_CASE("test_mls_interpolation")
 
     std::cout << "-------------starting test: d3p3--------------------" << "\n";
     int degree = 3;
-    LO min_num_supports = 20;
+    Omega_h::LO min_num_supports = 20;
 
     Omega_h::Write<Omega_h::Real> source_values(nfaces, 0,
                                                 "exact target values");

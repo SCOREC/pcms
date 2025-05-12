@@ -15,7 +15,7 @@ Omega_h::Reals fillFromMatrix(const Omega_h::Matrix<2, 10>& matrix)
 {
   int num_points = 10;
   Omega_h::Write<Omega_h::Real> array(20, 0, "array to store coordinates");
-  parallel_for(
+  Kokkos::parallel_for(
     "fills the array view from matrix", num_points, KOKKOS_LAMBDA(const int i) {
       int index = i * 2;
 
@@ -50,7 +50,7 @@ TEST_CASE("test_normalization_routine")
                                             {0.12, 4.29, 1.98},
                                             {1.24, 1.54, 4.2}};
 
-    LOs nsupports({6, 8, 4}, "number of supports");
+    Omega_h::LOs nsupports({6, 8, 4}, "number of supports");
     int dim = 3;
 
     auto total_coordinates = Omega_h::get_sum(nsupports) * dim;

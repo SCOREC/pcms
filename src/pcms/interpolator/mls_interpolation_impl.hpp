@@ -286,8 +286,6 @@ void scale_column_trans_matrix(const ScratchMatView& matrix,
   }
 }
 
-}
-
 /**
  * @brief Solves a regularized weighted linear system WAx = Wb using SVD
  * decomposition within a Kokkos parallel team.

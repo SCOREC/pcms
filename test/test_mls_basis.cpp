@@ -5,8 +5,6 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 
-using namespace pcms;
-
 TEST_CASE("basis test")
 {
   SECTION("check basis slice lengths, size of the basis vector and basis "
@@ -17,8 +15,8 @@ TEST_CASE("basis test")
     const int degree = 3;
     Kokkos::View<int**, Kokkos::HostSpace> array("array", degree, dim);
     Kokkos::deep_copy(array, 0);
-    detail::calculate_basis_slice_lengths(array);
-    auto size = detail::calculate_basis_vector_size(array);
+    pcms::detail::calculate_basis_slice_lengths(array);
+    auto size = pcms::detail::calculate_basis_vector_size(array);
 
     int expected[degree][dim] = {{1, 1, 1}, {1, 2, 3}, {1, 3, 6}};
 
@@ -30,7 +28,7 @@ TEST_CASE("basis test")
 
     REQUIRE(size == 20);
 
-    IntDeviceMatView d_array("array in device", degree, dim);
+    pcms::IntDeviceMatView d_array("array in device", degree, dim);
     auto array_hd = Kokkos::create_mirror_view(d_array);
     Kokkos::deep_copy(array_hd, array);
     Kokkos::deep_copy(d_array, array_hd);
@@ -41,21 +39,21 @@ TEST_CASE("basis test")
 
     auto host_results = Kokkos::create_mirror_view(results);
 
-    team_policy tp(nvertices_target, Kokkos::AUTO);
+    pcms::team_policy tp(nvertices_target, Kokkos::AUTO);
     Kokkos::parallel_for(
       "inside team", tp.set_scratch_size(0, Kokkos::PerTeam(200)),
-      KOKKOS_LAMBDA(const member_type& team) {
+      KOKKOS_LAMBDA(const pcms::member_type& team) {
         int i = team.league_rank();
-        ScratchVecView basis_vector(team.team_scratch(0), size);
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
-                             [=](int j) { basis_vector(j) = 0; });
+        pcms::ScratchVecView basis_vector(team.team_scratch(0), size);
+        pcms::detail::fill(0, team, basis_vector);
 
-        Coord target_point;
-        target_point.x = coords[i][0];
-        target_point.y = coords[i][1];
-        target_point.z = coords[i][2];
+        double target_point[MAX_DIM] = {};
 
-        detail::eval_basis_vector(d_array, target_point, basis_vector);
+        for (int j = 0; j < dim; ++j) {
+          target_point[j] = coords[i][j];
+        }
+
+        pcms::detail::eval_basis_vector(d_array, target_point, basis_vector);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { results(i, j) = basis_vector(j); });
@@ -109,9 +107,9 @@ TEST_CASE("basis test")
     const int degree = 1;
     Kokkos::View<int**, Kokkos::HostSpace> array("array", degree, dim);
     Kokkos::deep_copy(array, 0);
-    detail::calculate_basis_slice_lengths(array);
+    pcms::detail::calculate_basis_slice_lengths(array);
 
-    auto size = detail::calculate_basis_vector_size(array);
+    auto size = pcms::detail::calculate_basis_vector_size(array);
 
     int expected[degree][dim] = {
       {1, 1, 1},
@@ -125,7 +123,7 @@ TEST_CASE("basis test")
 
     REQUIRE(size == 4);
 
-    IntDeviceMatView d_array("array in device", degree, dim);
+    pcms::IntDeviceMatView d_array("array in device", degree, dim);
     auto array_hd = Kokkos::create_mirror_view(d_array);
     Kokkos::deep_copy(array_hd, array);
     Kokkos::deep_copy(d_array, array_hd);
@@ -136,21 +134,22 @@ TEST_CASE("basis test")
 
     auto host_results = Kokkos::create_mirror_view(results);
 
-    team_policy tp(nvertices_target, Kokkos::AUTO);
+    pcms::team_policy tp(nvertices_target, Kokkos::AUTO);
     Kokkos::parallel_for(
       "inside team", tp.set_scratch_size(0, Kokkos::PerTeam(200)),
-      KOKKOS_LAMBDA(const member_type& team) {
+      KOKKOS_LAMBDA(const pcms::member_type& team) {
         int i = team.league_rank();
-        ScratchVecView basis_vector(team.team_scratch(0), size);
+        pcms::ScratchVecView basis_vector(team.team_scratch(0), size);
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { basis_vector(j) = 0; });
 
-        Coord target_point;
-        target_point.x = coords[i][0];
-        target_point.y = coords[i][1];
-        target_point.z = coords[i][2];
+        double target_point[MAX_DIM] = {};
 
-        detail::eval_basis_vector(d_array, target_point, basis_vector);
+        for (int j = 0; j < dim; ++j) {
+          target_point[j] = coords[i][j];
+        }
+
+        pcms::detail::eval_basis_vector(d_array, target_point, basis_vector);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { results(i, j) = basis_vector(j); });
@@ -186,13 +185,13 @@ TEST_CASE("basis test")
     Kokkos::View<int**, Kokkos::HostSpace> host_slice_length("array", degree,
                                                              dim);
     Kokkos::deep_copy(host_slice_length, 0);
-    detail::calculate_basis_slice_lengths(host_slice_length);
+    pcms::detail::calculate_basis_slice_lengths(host_slice_length);
 
-    IntDeviceMatView slice_length("slice array in device", degree, dim);
+    pcms::IntDeviceMatView slice_length("slice array in device", degree, dim);
     auto slice_length_hd = Kokkos::create_mirror_view(slice_length);
     Kokkos::deep_copy(slice_length_hd, host_slice_length);
     Kokkos::deep_copy(slice_length, slice_length_hd);
-    auto size = detail::calculate_basis_vector_size(host_slice_length);
+    auto size = pcms::detail::calculate_basis_vector_size(host_slice_length);
     int nvertices_target = 2;
     int nsupports = 5;
     Kokkos::View<double**> points("vandermonde matrix", nvertices_target,
@@ -219,15 +218,16 @@ TEST_CASE("basis test")
 
     Kokkos::deep_copy(points, host_points);
 
-    team_policy tp(nvertices_target, Kokkos::AUTO);
+    pcms::team_policy tp(nvertices_target, Kokkos::AUTO);
     Kokkos::parallel_for(
       "inside team", tp.set_scratch_size(0, Kokkos::PerTeam(200)),
-      KOKKOS_LAMBDA(const member_type& team) {
+      KOKKOS_LAMBDA(const pcms::member_type& team) {
         int i = team.league_rank();
-        ScratchMatView vandermonde_matrix(team.team_scratch(0), nsupports,
-                                          size);
+        pcms::ScratchMatView vandermonde_matrix(team.team_scratch(0), nsupports,
+                                                size);
 
-        ScratchMatView local_source_points(team.team_scratch(0), nsupports, 1);
+        pcms::ScratchMatView local_source_points(team.team_scratch(0),
+                                                 nsupports, 1);
         for (int j = 0; j < nsupports; ++j) {
           local_source_points(j, 0) = points(i, j);
         }
@@ -243,8 +243,8 @@ TEST_CASE("basis test")
 
         Kokkos::parallel_for(
           Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
-            detail::create_vandermonde_matrix(local_source_points, j,
-                                              slice_length, vandermonde_matrix);
+            pcms::detail::create_vandermonde_matrix(
+              local_source_points, j, slice_length, vandermonde_matrix);
           });
 
         Kokkos::parallel_for(

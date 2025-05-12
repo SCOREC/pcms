@@ -1,5 +1,6 @@
+#include <pcms/interpolator/mls_interpolation.hpp>
+#include <Kokkos_MathematicalFunctions.hpp>
 #include <cmath>
-#include "mls_interpolation.hpp"
 
 namespace pcms
 {
@@ -7,27 +8,30 @@ namespace pcms
 // RBF_GAUSSIAN Functor
 struct RBF_GAUSSIAN
 {
+  // 'a' is a spreading factor/decay factor
+  // the value of 'a' is higher if the data is localized
+  // the value of 'a' is smaller if the data is farther
+
+  double a;
+
+  RBF_GAUSSIAN(double a_val) : a(a_val) {}
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    OMEGA_H_CHECK_PRINTF(rho_sq > 0,
+    OMEGA_H_CHECK_PRINTF(rho_sq >= 0,
                          "ERROR: square of cutoff distance should always be "
                          "positive but the value is %.16f\n",
                          rho_sq);
 
-    OMEGA_H_CHECK_PRINTF(r_sq > 0,
+    OMEGA_H_CHECK_PRINTF(r_sq >= 0,
                          "ERROR: square of  distance should always be positive "
                          "but the value is %.16f\n",
                          r_sq);
 
-    // 'a' is a spreading factor/decay factor
-    // the value of 'a' is higher if the data is localized
-    // the value of 'a' is smaller if the data is farther
-    int a = 20;
-
-    double r = sqrt(r_sq);
-    double rho = sqrt(rho_sq);
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
 
@@ -35,7 +39,7 @@ struct RBF_GAUSSIAN
       phi = 0;
 
     } else {
-      phi = exp(-a * a * r * r);
+      phi = Kokkos::exp(-a * a * r * r);
     }
 
     return phi;
@@ -45,15 +49,16 @@ struct RBF_GAUSSIAN
 // RBF_C4 Functor
 struct RBF_C4
 {
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    double r = sqrt(r_sq);
+    double r = Kokkos::sqrt(r_sq);
     OMEGA_H_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
-    double rho = sqrt(rho_sq);
+    double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
     if (limit < 0) {
@@ -76,15 +81,16 @@ struct RBF_C4
 //
 struct RBF_CONST
 {
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    double r = sqrt(r_sq);
+    double r = Kokkos::sqrt(r_sq);
     OMEGA_H_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
-    double rho = sqrt(rho_sq);
+    double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
     if (limit < 0) {
@@ -101,34 +107,46 @@ struct RBF_CONST
   }
 };
 
-Write<Real> mls_interpolation(const Reals source_values,
-                              const Reals source_coordinates,
-                              const Reals target_coordinates,
-                              const SupportResults& support, const LO& dim,
-                              const LO& degree, RadialBasisFunction bf)
+struct NoOp
+{
+  OMEGA_H_INLINE
+  double operator()(double, double) const { return 1.0; }
+};
+
+Omega_h::Write<Omega_h::Real> mls_interpolation(
+  const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
+  const Omega_h::Reals target_coordinates, const SupportResults& support,
+  const Omega_h::LO& dim, const Omega_h::LO& degree, RadialBasisFunction bf,
+  double lambda, double tol, double decay_factor)
 {
 
   const auto nvertices_target = target_coordinates.size() / dim;
 
-  Write<Real> interpolated_values(nvertices_target, 0,
-                                  "approximated target values");
+  Omega_h::Write<Omega_h::Real> interpolated_values(
+    nvertices_target, 0, "approximated target values");
   switch (bf) {
     case RadialBasisFunction::RBF_GAUSSIAN:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_GAUSSIAN{});
+        degree, RBF_GAUSSIAN{decay_factor}, lambda, tol);
       break;
 
     case RadialBasisFunction::RBF_C4:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_C4{});
+        degree, RBF_C4{}, lambda, tol);
       break;
 
     case RadialBasisFunction::RBF_CONST:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_CONST{});
+        degree, RBF_CONST{}, lambda, tol);
+      break;
+
+    case RadialBasisFunction::NO_OP:
+      interpolated_values = detail::mls_interpolation(
+        source_values, source_coordinates, target_coordinates, support, dim,
+        degree, NoOp{}, lambda, tol);
       break;
   }
 
@@ -174,7 +192,8 @@ int calculate_basis_vector_size(const IntHostMatView& array)
 }
 
 int calculate_scratch_shared_size(const SupportResults& support,
-                                  const int nvertices_target, int basis_size)
+                                  const int nvertices_target, int basis_size,
+                                  int dim)
 {
 
   IntDeviceVecView shmem_each_team("stores the size required for each team",
@@ -186,21 +205,34 @@ int calculate_scratch_shared_size(const SupportResults& support,
       int end_ptr = support.supports_ptr[i + 1];
       int nsupports = end_ptr - start_ptr;
 
+      int max_size;
+      int min_size;
+      if (nsupports > basis_size) {
+        max_size = nsupports;
+        min_size = basis_size;
+      } else {
+        max_size = basis_size;
+        min_size = nsupports;
+      }
       size_t total_shared_size = 0;
-
-      total_shared_size += ScratchMatView::shmem_size(basis_size, basis_size);
-      total_shared_size += ScratchMatView::shmem_size(basis_size, nsupports);
-      total_shared_size += ScratchMatView::shmem_size(nsupports, basis_size);
-      total_shared_size += ScratchVecView::shmem_size(basis_size);
-      total_shared_size += ScratchVecView::shmem_size(nsupports) * 3;
-      total_shared_size += ScratchMatView::shmem_size(nsupports, 2);
-      total_shared_size += ScratchMatView::shmem_size(nsupports, 1);
+      total_shared_size +=
+        ScratchMatView::shmem_size(basis_size, basis_size); // Vt
+      total_shared_size +=
+        ScratchMatView::shmem_size(basis_size, nsupports) * 2; // temp_matrix
+      total_shared_size +=
+        ScratchMatView::shmem_size(nsupports, basis_size); // vandermonde matrix
+      total_shared_size +=
+        ScratchVecView::shmem_size(basis_size) *
+        3; // sigma, target_basis_vector, solution_coefficients
+      total_shared_size += ScratchVecView::shmem_size(nsupports) *
+                           3; // work, phi_vector, support_values
+      total_shared_size +=
+        ScratchMatView::shmem_size(nsupports, dim); // local_source_points
+      total_shared_size +=
+        ScratchMatView::shmem_size(nsupports, nsupports) * 2; // U, Ut
       shmem_each_team(i) = total_shared_size;
     });
 
-  // namespace KE = Kokkos::Experimental;
-  // auto shared_size = KE::max_element(Kokkos::DefaultExecutionSpace(),
-  // shmem_each_team); printf("shared size = %d", shared_size);
   int shared_size = 0;
   Kokkos::parallel_reduce(
     "find_max", nvertices_target,
@@ -213,5 +245,6 @@ int calculate_scratch_shared_size(const SupportResults& support,
 
   return shared_size;
 }
+
 } // namespace detail
 } // namespace pcms

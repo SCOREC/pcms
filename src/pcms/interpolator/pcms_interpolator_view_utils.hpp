@@ -1,7 +1,7 @@
 #ifndef PCMS_INTERPOLATOR_ARRAY_OPS_HPP
 #define PCMS_INTERPOLATOR_ARRAY_OPS_HPP
 
-#include "pcms_interpolator_aliases.hpp"
+#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
 #include <Omega_h_array_ops.hpp>
 #include <cmath>
 #include <Omega_h_fail.hpp>

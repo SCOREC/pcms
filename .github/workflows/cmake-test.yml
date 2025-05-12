@@ -48,7 +48,7 @@ jobs:
       with:
         repo-name: 'kokkos'
         repo-path: 'kokkos/kokkos'
-        repo-ref: '4.5.00'
+        repo-ref: '4.6.01'
         cache: true
         options: '-DCMAKE_CXX_STANDARD=17
                   -DBUILD_SHARED_LIBS=OFF
@@ -63,7 +63,7 @@ jobs:
       with:
         repo-name: 'kokkos-kernels'
         repo-path: 'kokkos/kokkos-kernels'
-        repo-ref: '4.2.00'
+        repo-ref: '4.6.01'
         cache: true
         options: '-DCMAKE_CXX_STANDARD=17
                   -DBUILD_SHARED_LIBS=OFF

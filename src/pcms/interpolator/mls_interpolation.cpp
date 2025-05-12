@@ -1,5 +1,6 @@
+#include <pcms/interpolator/mls_interpolation.hpp>
+#include <Kokkos_MathematicalFunctions.hpp>
 #include <cmath>
-#include "mls_interpolation.hpp"
 
 namespace pcms
 {
@@ -29,8 +30,8 @@ struct RBF_GAUSSIAN
                          "but the value is %.16f\n",
                          r_sq);
 
-    double r = sqrt(r_sq);
-    double rho = sqrt(rho_sq);
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
 
@@ -38,7 +39,7 @@ struct RBF_GAUSSIAN
       phi = 0;
 
     } else {
-      phi = exp(-a * a * r * r);
+      phi = Kokkos::exp(-a * a * r * r);
     }
 
     return phi;
@@ -53,11 +54,11 @@ struct RBF_C4
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    double r = sqrt(r_sq);
+    double r = Kokkos::sqrt(r_sq);
     OMEGA_H_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
-    double rho = sqrt(rho_sq);
+    double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
     if (limit < 0) {
@@ -85,11 +86,11 @@ struct RBF_CONST
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    double r = sqrt(r_sq);
+    double r = Kokkos::sqrt(r_sq);
     OMEGA_H_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
-    double rho = sqrt(rho_sq);
+    double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
     if (limit < 0) {

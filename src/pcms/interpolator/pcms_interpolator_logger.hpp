@@ -1,7 +1,8 @@
 #ifndef PCMS_INTERPOLATOR_LOGGER_HPP
 #define PCMS_INTERPOLATOR_LOGGER_HPP
 
-#include "pcms_interpolator_aliases.hpp"
+#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
+#include <Kokkos_Printf.hpp>
 
 namespace pcms
 {
@@ -32,10 +33,10 @@ public:
   {
     if (team.league_rank() == selected_league_rank_) {
       Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        printf("[%s] (League %d) ", logLevelToString(level),
-               team.league_rank());
-        printf(fmt, args...);
-        printf("\n");
+        Kokkos::printf("[%s] (League %d) ", logLevelToString(level),
+                       team.league_rank());
+        Kokkos::printf(fmt, args...);
+        Kokkos::printf("\n");
       });
     }
   }
@@ -47,10 +48,10 @@ public:
 
     if (team.league_rank() == selected_league_rank_) {
       Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        printf("[%s] (League %d) %s: \n", logLevelToString(level),
-               team.league_rank(), name);
-        printf("(%12.6f, %12.6f)", p.x, p.y);
-        printf("\n");
+        Kokkos::printf("[%s] (League %d) %s: \n", logLevelToString(level),
+                       team.league_rank(), name);
+        Kokkos::printf("(%12.6f, %12.6f)", p.x, p.y);
+        Kokkos::printf("\n");
       });
     }
   }
@@ -63,13 +64,13 @@ public:
 
     if (team.league_rank() == selected_league_rank_) {
       Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        printf("[%s] (League %d) %s: \n", logLevelToString(level),
-               team.league_rank(), name);
+        Kokkos::printf("[%s] (League %d) %s: \n", logLevelToString(level),
+                       team.league_rank(), name);
 
         for (int i = 0; i < size; ++i) {
-          printf("%12.6f\n", array[i]);
+          Kokkos::printf("%12.6f\n", array[i]);
         }
-        printf("\n");
+        Kokkos::printf("\n");
       });
     }
   }
@@ -80,12 +81,12 @@ public:
   {
     if (team.league_rank() == selected_league_rank_) {
       Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        printf("[%s] (League %d) %s: \n", logLevelToString(level),
-               team.league_rank(), name);
+        Kokkos::printf("[%s] (League %d) %s: \n", logLevelToString(level),
+                       team.league_rank(), name);
         for (int i = 0; i < vector.size(); ++i) {
-          printf("%12.6f\n", vector(i));
+          Kokkos::printf("%12.6f\n", vector(i));
         }
-        printf("\n");
+        Kokkos::printf("\n");
       });
     }
   }
@@ -97,16 +98,16 @@ public:
   {
     if (team.league_rank() == selected_league_rank_) {
       Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        printf("[%s] (League %d) %s: \n", logLevelToString(level),
-               team.league_rank(), name);
+        Kokkos::printf("[%s] (League %d) %s: \n", logLevelToString(level),
+                       team.league_rank(), name);
         for (int i = 0; i < matrix.extent(0); ++i) {
           for (int j = 0; j < matrix.extent(1); ++j) {
-            printf("%20.8f", matrix(i, j));
+            Kokkos::printf("%20.8f", matrix(i, j));
           }
-          printf("\n");
+          Kokkos::printf("\n");
         }
 
-        printf("\n");
+        Kokkos::printf("\n");
       });
     }
   }
@@ -118,10 +119,10 @@ public:
   {
     if (team.league_rank() == selected_league_rank_) {
       Kokkos::single(Kokkos::PerTeam(team), [&]() {
-        printf("[%s] (League %d) %s: \n", logLevelToString(level),
-               team.league_rank(), name);
-        printf("%12.6f", value);
-        printf("\n");
+        Kokkos::printf("[%s] (League %d) %s: \n", logLevelToString(level),
+                       team.league_rank(), name);
+        Kokkos::printf("%12.6f", value);
+        Kokkos::printf("\n");
       });
     }
   }

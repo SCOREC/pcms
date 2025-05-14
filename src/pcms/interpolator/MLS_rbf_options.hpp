@@ -18,6 +18,6 @@ Write<Real> mls_interpolation(const Reals source_values,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
                               const LO& degree, Write<Real> radii2,
-                              RadialBasisFunction bf);
+                              RadialBasisFunction bf, bool partitioned=false, int num_partitions=1);
 
 #endif

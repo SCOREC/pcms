@@ -102,6 +102,8 @@ MLSPointCloudInterpolation::MLSPointCloudInterpolation(
                                                        "source points");
   Omega_h::HostWrite<Omega_h::Real> target_coords_host(target_points.size(),
                                                        "target points");
+  printf("Source Points size: %zu\n", source_points.size());
+  printf("Target Points size: %zu\n", target_points.size());
   for (int i = 0; i < source_points.size(); ++i) {
     source_coords_host[i] = source_points[i];
   }
@@ -131,13 +133,29 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
   supports_.radii2 = Omega_h::Write<Omega_h::Real>(n_targets, radius_);
   supports_.supports_ptr = Omega_h::Write<LO>(n_targets + 1, 0);
 
+  printf("First 10 Target Points with %d points:\n", n_targets);
+  Omega_h::parallel_for("print target points", 10,
+    OMEGA_H_LAMBDA(const int& i) {
+      printf("Target Point %d: (%f, %f)\n", i,
+             target_coords_[i * 2 + 0], target_coords_[i * 2 + 1]);
+    });
+  printf("First 10 Source Points with %d points:\n", n_sources);
+        Omega_h::parallel_for("print source points", 10,
+        OMEGA_H_LAMBDA(const int& i) {
+        printf("Source Point %d: (%f, %f)\n", i,
+                 source_coords_[i * 2 + 0], source_coords_[i * 2 + 1]);
+        });
+
   auto radii2_l = supports_.radii2;
   auto num_supports = Omega_h::Write<LO>(n_targets, 0);
   auto target_coords_l = target_coords_;
   auto source_coords_l = source_coords_;
 
   uint min_supports_found = 0;
-  while (min_supports_found < min_req_supports) {
+  uint max_supports_found = 0;
+  // radius adjustment loop
+  while (min_supports_found < min_req_supports ||
+         max_supports_found > 3 * min_req_supports) {
     // n^2 search, compare each point with all other points
     Kokkos::parallel_for(
       "n^2 search", n_targets, KOKKOS_LAMBDA(const int& target_id) {
@@ -157,10 +175,11 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
             pointDistance(source_coord[0], source_coord[1], source_coord[2],
                           target_coord[0], target_coord[1], target_coord[2]);
           if (dist2 <= target_radius2) {
-            num_supports[target_id]++;
+            num_supports[target_id] = num_supports[target_id] + 1;
           }
         }
       });
+    Kokkos::fence();
 
     if (!adapt_radius) {
       break;
@@ -174,30 +193,47 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
       },
       min_reducer);
 
-    // increase radius if not enough supports
-    if (min_supports_found < min_req_supports) {
-      printf("Insufficient number of minimum supports found (%d), increasing "
-             "radius\n",
-             min_supports_found);
+    Kokkos::Max<uint> max_reducer(max_supports_found);
+        Kokkos::parallel_reduce(
+                "find number of supports", num_supports.size(),
+                KOKKOS_LAMBDA(const int& i, uint& local_max) {
+                max_reducer.join(local_max, num_supports[i]);
+                },
+                max_reducer);
+
+
+    // increase radius if not enough supports or too many supports
+    if (min_supports_found < min_req_supports || max_supports_found > 3 * min_req_supports) {
+      printf("Adjusting radius:(min: %d max: %d) min_req_supports: %d\n",
+             min_supports_found, max_supports_found, min_req_supports);
 
       Kokkos::fence();
       Omega_h::parallel_for(
         "increase radius", n_targets, OMEGA_H_LAMBDA(const int& i) {
-          LO& nsupports = num_supports[i];
+          LO nsupports = num_supports[i];
           if (nsupports < min_req_supports) {
             double factor = Real(min_req_supports) / Real(nsupports);
+            OMEGA_H_CHECK_PRINTF(factor > 1.0,
+                                         "Factor should be more than 1.0: %f\n", factor);
             factor = (nsupports == 0 || factor > 1.5) ? 1.5 : factor;
+            radii2_l[i] *= factor;
+          } else if (nsupports > 3 * min_req_supports) { // if too many supports
+            double factor = Real(min_req_supports) / Real(nsupports);
+            OMEGA_H_CHECK_PRINTF(factor < 1.0,
+                                 "Factor should be less than 1.0: %f\n", factor);
+            factor = (factor < 0.1) ? 0.33 : factor;
             radii2_l[i] *= factor;
           }
           num_supports[i] = 0; // reset the support pointer
         });
     }
   }
-  printf("Supports found: %d\n", min_supports_found);
+  printf("Supports found: min: %d max: %d\n", min_supports_found, max_supports_found);
 
   // parallel scan for fill the support index with cumulative sum
   auto support_ptr_l = supports_.supports_ptr;
   uint total_supports = 0;
+  Kokkos::fence();
   Kokkos::parallel_scan(
     "scan", n_targets,
     KOKKOS_LAMBDA(const int& i, uint& update, const bool final) {
@@ -242,6 +278,7 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
         }
       }
     });
+  Kokkos::fence();
 }
 
 // TODO : find way to avoid this copy
@@ -286,10 +323,16 @@ void MLSPointCloudInterpolation::eval(
 
   copyHostScalarArrayView2HostWrite(source_field, source_field_);
 
+  // print source field
+  printf("Source Field on host: ");
+        for (int i = 0; i < source_field_.size(); ++i) {
+        printf("%f ", source_field_[i]);
+        }
+
   // TODO: make the basis function a template or pass it as a parameter
   auto target_field_write = mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
-    degree_, supports_.radii2, RadialBasisFunction::RBF_GAUSSIAN);
+    degree_, supports_.radii2, RadialBasisFunction::RBF_GAUSSIAN, true, 1000);
 
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_field_write);
   copyHostWrite2ScalarArrayView(target_field_, target_field);

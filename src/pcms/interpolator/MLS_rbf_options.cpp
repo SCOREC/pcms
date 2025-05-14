@@ -102,36 +102,92 @@ struct RBF_CONST
   }
 };
 
+std::vector<int> get_partitions(int total_size, int num_partitions)
+{
+  std::vector<int> partitions(num_partitions + 1);
+  int partition_size = total_size / num_partitions;
+  for (int i = 0; i < num_partitions; ++i) {
+    partitions[i] = i * partition_size;
+  }
+  partitions[num_partitions] = total_size;
+  return partitions;
+}
+
+// TODO move this to Omega_h
+#ifdef OMEGA_H_USE_KOKKOS
+Reals get_subview(Reals const& input_read, std::size_t min, std::size_t max) {
+  // if min max contains full range, return the original view
+  if (min == 0 && max == input_read.size()) {
+        return input_read;
+  }
+  if (min > max || max > input_read.size()) {
+    throw std::out_of_range("Invalid range for subview: min or max out of bounds");
+  }
+
+  auto subview = Kokkos::subview(input_read.view(), Kokkos::make_pair(min, max));
+
+  // for now, copy the subview to a new Reals object
+  // TODO need a constructor for Reals that takes a Kokkos::Subview
+  Write<Real> subview_copy(subview.size());
+  Kokkos::parallel_for(
+    "CopySubView", subview.size(),
+    KOKKOS_LAMBDA(const int i) { subview_copy[i] = subview[i]; });
+
+    Kokkos::fence();
+    return subview_copy;
+}
+#endif
+
 Write<Real> mls_interpolation(const Reals source_values,
                               const Reals source_coordinates,
                               const Reals target_coordinates,
                               const SupportResults& support, const LO& dim,
                               const LO& degree, Write<Real> radii2,
-                              RadialBasisFunction bf)
+                              RadialBasisFunction bf, bool partitioned, int num_partitions)
 {
-
+  assert(!(partitioned==true && num_partitions<=0));
+  if (!partitioned) { num_partitions = 1; }
   const auto nvertices_target = target_coordinates.size() / dim;
+  auto partition_indices = get_partitions(nvertices_target, num_partitions);
 
   Write<Real> interpolated_values(nvertices_target, 0,
                                   "approximated target values");
-  switch (bf) {
-    case RadialBasisFunction::RBF_GAUSSIAN:
-      interpolated_values =
-        mls_interpolation(source_values, source_coordinates, target_coordinates,
-                          support, dim, degree, radii2, RBF_GAUSSIAN{});
-      break;
+  for(int part=0; part < num_partitions; ++part) {
 
-    case RadialBasisFunction::RBF_C4:
-      interpolated_values =
-        mls_interpolation(source_values, source_coordinates, target_coordinates,
-                          support, dim, degree, radii2, RBF_C4{});
-      break;
+    auto min = partition_indices[part];
+    auto max = partition_indices[part + 1];
+    printf("!!Partition %d: min = %d, max = %d\n", part, min, max);
+    auto partitioned_target_coordinates =
+      get_subview(target_coordinates, min*dim, max*dim);
+    Write<Real> partitioned_interpolated_values(max - min, 0,
+                                        "partitioned approximated target values");
 
-    case RadialBasisFunction::RBF_CONST:
-      interpolated_values =
-        mls_interpolation(source_values, source_coordinates, target_coordinates,
-                          support, dim, degree, radii2, RBF_CONST{});
-      break;
+
+    switch (bf) {
+      case RadialBasisFunction::RBF_GAUSSIAN:
+        partitioned_interpolated_values = mls_interpolation(
+          source_values, source_coordinates, partitioned_target_coordinates, support, dim,
+          degree, radii2, RBF_GAUSSIAN{});
+        break;
+
+      case RadialBasisFunction::RBF_C4:
+        partitioned_interpolated_values = mls_interpolation(
+          source_values, source_coordinates, partitioned_target_coordinates, support, dim,
+          degree, radii2, RBF_C4{});
+        break;
+
+      case RadialBasisFunction::RBF_CONST:
+        partitioned_interpolated_values = mls_interpolation(
+          source_values, source_coordinates, partitioned_target_coordinates, support, dim,
+          degree, radii2, RBF_CONST{});
+        break;
+    }
+    // copy the partitioned interpolated values to the full array
+    Omega_h::parallel_for(
+      "copy_partitioned_interpolated_values", max - min,
+      OMEGA_H_LAMBDA(const int i) {
+        interpolated_values[min + i] = partitioned_interpolated_values[i];
+      });
   }
 
   return interpolated_values;

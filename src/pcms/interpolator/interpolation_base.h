@@ -49,6 +49,8 @@ public:
         pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field) override;
 
     SupportResults getSupports() { return supports_; }
+    size_t getSourceSize() { return source_coords_.size()/dim_; }
+    size_t getTargetSize() { return target_coords_.size()/dim_; }
 
   private:
     int dim_;

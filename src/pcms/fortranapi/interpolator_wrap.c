@@ -428,6 +428,81 @@ SWIGEXPORT void _wrap_PcmsInterpolatorHandle_op_assign__(SwigClassWrapper *farg1
 }
 
 
+SWIGEXPORT void _wrap_PcmsPointBasedInterpolatorHandle_pointer_set(SwigClassWrapper *farg1, void const **farg2) {
+  struct PcmsPointBasedInterpolatorHandle *arg1 = (struct PcmsPointBasedInterpolatorHandle *) 0 ;
+  void *arg2 = (void *) 0 ;
+  
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsPointBasedInterpolatorHandle *", "PcmsPointBasedInterpolatorHandle", "PcmsPointBasedInterpolatorHandle::pointer", return );
+  arg1 = (struct PcmsPointBasedInterpolatorHandle *)farg1->cptr;
+  arg2 = (void *)(*farg2);
+  if (arg1) (arg1)->pointer = arg2;
+}
+
+
+SWIGEXPORT void * _wrap_PcmsPointBasedInterpolatorHandle_pointer_get(SwigClassWrapper *farg1) {
+  void * fresult ;
+  struct PcmsPointBasedInterpolatorHandle *arg1 = (struct PcmsPointBasedInterpolatorHandle *) 0 ;
+  void *result = 0 ;
+  
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsPointBasedInterpolatorHandle *", "PcmsPointBasedInterpolatorHandle", "PcmsPointBasedInterpolatorHandle::pointer", return 0);
+  arg1 = (struct PcmsPointBasedInterpolatorHandle *)farg1->cptr;
+  result = (void *) ((arg1)->pointer);
+  fresult = (void *)(result);
+  return fresult;
+}
+
+
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsPointBasedInterpolatorHandle() {
+  SwigClassWrapper fresult ;
+  struct PcmsPointBasedInterpolatorHandle *result = 0 ;
+  
+  result = (struct PcmsPointBasedInterpolatorHandle *)calloc(1, sizeof(struct PcmsPointBasedInterpolatorHandle));
+  fresult.cptr = (void*)result;
+  fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
+  return fresult;
+}
+
+
+SWIGEXPORT void _wrap_delete_PcmsPointBasedInterpolatorHandle(SwigClassWrapper *farg1) {
+  struct PcmsPointBasedInterpolatorHandle *arg1 = (struct PcmsPointBasedInterpolatorHandle *) 0 ;
+  
+  arg1 = (struct PcmsPointBasedInterpolatorHandle *)farg1->cptr;
+  free((char *) arg1);
+}
+
+
+SWIGEXPORT void _wrap_PcmsPointBasedInterpolatorHandle_op_assign__(SwigClassWrapper *farg1, SwigClassWrapper *farg2) {
+  struct PcmsPointBasedInterpolatorHandle *arg1 = (struct PcmsPointBasedInterpolatorHandle *) 0 ;
+  struct PcmsPointBasedInterpolatorHandle *arg2 = 0 ;
+  
+  (void)sizeof(arg1);
+  (void)sizeof(arg2);
+  SWIG_assign(farg1, *farg2);
+  
+}
+
+
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_point_based_interpolator(void const **farg1, int const *farg2, void const **farg3, int const *farg4, double const *farg5) {
+  SwigClassWrapper fresult ;
+  void *arg1 = (void *) 0 ;
+  int arg2 ;
+  void *arg3 = (void *) 0 ;
+  int arg4 ;
+  double arg5 ;
+  PcmsPointBasedInterpolatorHandle result;
+  
+  arg1 = (void *)(*farg1);
+  arg2 = (int)(*farg2);
+  arg3 = (void *)(*farg3);
+  arg4 = (int)(*farg4);
+  arg5 = (double)(*farg5);
+  result = pcms_create_point_based_interpolator(arg1,arg2,arg3,arg4,arg5);
+  fresult.cptr = (PcmsPointBasedInterpolatorHandle *)memcpy((PcmsPointBasedInterpolatorHandle *)calloc(1,sizeof(PcmsPointBasedInterpolatorHandle)),&result,sizeof(PcmsPointBasedInterpolatorHandle));
+  fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
+  return fresult;
+}
+
+
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_interpolator(SwigClassWrapper *farg1, double const *farg2) {
   SwigClassWrapper fresult ;
   PcmsInterpolatorOHMeshHandle arg1 ;
@@ -450,6 +525,15 @@ SWIGEXPORT void _wrap_pcms_destroy_interpolator(SwigClassWrapper *farg1) {
   SWIG_check_nonnull(farg1->cptr, "PcmsInterpolatorHandle", "PcmsInterpolatorHandle", "pcms_destroy_interpolator(PcmsInterpolatorHandle)", return );
   arg1 = *((PcmsInterpolatorHandle *)(farg1->cptr));
   pcms_destroy_interpolator(arg1);
+}
+
+
+SWIGEXPORT void _wrap_pcms_destroy_point_based_interpolator(SwigClassWrapper *farg1) {
+  PcmsPointBasedInterpolatorHandle arg1 ;
+  
+  SWIG_check_nonnull(farg1->cptr, "PcmsPointBasedInterpolatorHandle", "PcmsPointBasedInterpolatorHandle", "pcms_destroy_point_based_interpolator(PcmsPointBasedInterpolatorHandle)", return );
+  arg1 = *((PcmsPointBasedInterpolatorHandle *)(farg1->cptr));
+  pcms_destroy_point_based_interpolator(arg1);
 }
 
 
@@ -499,6 +583,23 @@ SWIGEXPORT void _wrap_pcms_interpolate(SwigClassWrapper *farg1, void const **far
   arg4 = (void *)(*farg4);
   arg5 = (int)(*farg5);
   pcms_interpolate(arg1,arg2,arg3,arg4,arg5);
+}
+
+
+SWIGEXPORT void _wrap_pcms_interpolate_point_based(SwigClassWrapper *farg1, void const **farg2, int const *farg3, void const **farg4, int const *farg5) {
+  PcmsPointBasedInterpolatorHandle arg1 ;
+  void *arg2 = (void *) 0 ;
+  int arg3 ;
+  void *arg4 = (void *) 0 ;
+  int arg5 ;
+  
+  SWIG_check_nonnull(farg1->cptr, "PcmsPointBasedInterpolatorHandle", "PcmsPointBasedInterpolatorHandle", "pcms_interpolate_point_based(PcmsPointBasedInterpolatorHandle,void *,int,void *,int)", return );
+  arg1 = *((PcmsPointBasedInterpolatorHandle *)(farg1->cptr));
+  arg2 = (void *)(*farg2);
+  arg3 = (int)(*farg3);
+  arg4 = (void *)(*farg4);
+  arg5 = (int)(*farg5);
+  pcms_interpolate_point_based(arg1,arg2,arg3,arg4,arg5);
 }
 
 

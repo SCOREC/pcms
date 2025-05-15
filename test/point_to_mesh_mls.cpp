@@ -22,9 +22,17 @@
 #include <mpi.h>
 #include <fstream>
 #include <string>
+#include <filesystem>
 
 using namespace Omega_h;
 using namespace pcms;
+
+namespace fs = std::filesystem;
+
+// __FILE__ is ".../pcms/test/point_to_mesh_mls.cpp"
+static const fs::path src_file = __FILE__;
+static const fs::path test_dir = src_file.parent_path();            // .../pcms/test
+static const fs::path data_dir = test_dir / "data";                 // .../pcms/test/data
 
 std::vector<double> readTeData(const std::string& filePath, MPI_Comm comm = MPI_COMM_WORLD) {
     int rank, size;
@@ -581,7 +589,7 @@ inline void test_interpolation_point_to_mesh(
 
     TEST_CASE("point to mesh mls svd") {
 
-    std::string filePath = "/lore/elahis/pcmsrelated/BOUT.dmp.bp";
+    const std::string filePath  = (data_dir / "BOUT.dmp.bp").string();
     // Read the first time step (index 0)
     std::vector<double> Te_data = readTeData(filePath);
 
@@ -1029,7 +1037,7 @@ inline void test_interpolation_point_to_mesh(
         auto host_target_Te = HostRead<Real>(target_values);  // Target values after first interpolation
 
         // Save source data to source_points.txt
-        std::ofstream sourceFile("/lore/elahis/pcmsrelated/source_points.txt");
+        std::ofstream    sourceFile { (data_dir / "source_points.txt").string() };
         sourceFile << "X_source Y_source Z_source Te_Original Te_Recovered\n";
         for (size_t i = 0; i < numSources; ++i) {
             double x = host_source_coords[i * 3];
@@ -1042,7 +1050,7 @@ inline void test_interpolation_point_to_mesh(
         sourceFile.close();
 
         // Save target data to target_points.txt
-        std::ofstream targetFile("/lore/elahis/pcmsrelated/target_points.txt");
+        std::ofstream    targetFile { (data_dir / "target_points.txt").string() };
         targetFile << "X_target Y_target Z_target Te_Target_Interpolated\n";
         for (size_t i = 0; i < ntargets_filtered; ++i) {
             double x = host_target_coords[i * 3];

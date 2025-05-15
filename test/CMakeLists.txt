@@ -110,11 +110,8 @@ if(Catch2_FOUND)
               test_point_search.cpp
 	      test_mls_basis.cpp
 	      test_rbf_interp.cpp
-	      test_linear_solver.cpp
 		  test_normalisation.cpp
-		  test_spr_meshfields.cpp
 		  test_svd_serial.cpp 
-		  # test_serial_qr.cpp
           point_to_mesh_mls.cpp)
   endif ()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})

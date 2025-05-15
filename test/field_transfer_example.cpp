@@ -41,7 +41,7 @@ struct MeanCombiner
 void SetApplicationFields(const OHField& app_a_field,
                           const OHField& app_b_field);
 
-using pcms::ConvertibleCoupledField;
+using pcms::CoupledField;
 using pcms::ProcessType;
 using pcms::FieldCommunicator;
 using pcms::InternalField;

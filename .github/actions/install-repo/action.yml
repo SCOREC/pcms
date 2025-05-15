@@ -21,8 +21,8 @@ runs:
     uses: actions/cache@v3
     id: check-cache
     with:
-      key: build-${{ inputs.repo-name }}
-      path: ${{ runner.temp }}/build-${{ inputs.repo-name }}
+      key: build-${{ inputs.repo-name }}-${{ inputs.repo-ref}}
+      path: ${{ runner.temp }}/build-${{ inputs.repo-name }}-${{ inputs.repo-ref}}
       
   - name: Checkout Repo
     uses: actions/checkout@v3

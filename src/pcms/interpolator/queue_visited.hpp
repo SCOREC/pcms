@@ -9,13 +9,11 @@
 #include <Omega_h_reduce.hpp>
 #define MAX_SIZE_QUEUE 500
 #define MAX_SIZE_TRACK 800
-using namespace std;
-using namespace Omega_h;
 
 class Queue
 {
 private:
-  LO queue_array[MAX_SIZE_QUEUE];
+  Omega_h::LO queue_array[MAX_SIZE_QUEUE];
   int first = 0, last = -1, count = 0;
 
 public:
@@ -44,7 +42,7 @@ public:
 class Track
 {
 private:
-  LO tracking_array[MAX_SIZE_TRACK];
+  Omega_h::LO tracking_array[MAX_SIZE_TRACK];
   int first = 0, last = -1, count = 0;
 
 public:

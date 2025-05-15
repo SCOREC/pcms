@@ -12,16 +12,13 @@
 #include <vector>
 #include <iostream>
 
-using namespace std;
-using namespace Omega_h;
-
 namespace
 {
 
 void print_patches(Omega_h::Graph& patches)
 {
-  auto offsets = HostRead(patches.a2ab);
-  auto values = HostRead(patches.ab2b);
+  auto offsets = Omega_h::HostRead(patches.a2ab);
+  auto values = Omega_h::HostRead(patches.ab2b);
   std::cout << "num patches " << patches.nnodes() << "\n";
   for (int patch = 0; patch < patches.nnodes(); patch++) {
     std::cout << "patch " << patch << " patchElms ";
@@ -59,32 +56,34 @@ double func(pcms::Coord& p, int degree)
   return -1;
 }
 
-void test(Mesh& mesh, Omega_h::Graph& patches, int degree, Reals source_values,
-          Reals exact_target_values, Reals source_coordinates,
-          Reals target_coordinates)
+void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
+          Omega_h::Reals source_values, Omega_h::Reals exact_target_values,
+          Omega_h::Reals source_coordinates, Omega_h::Reals target_coordinates)
 {
 
   int dim = mesh.dim();
-  Real tolerance = 0.0005;
+  Omega_h::Real tolerance = 0.0005;
 
-  Omega_h::Write<Real> ignored(patches.a2ab.size() - 1, 1);
+  Omega_h::Write<Omega_h::Real> ignored(patches.a2ab.size() - 1, 1);
   SupportResults support{patches.a2ab, patches.ab2b, ignored};
 
   auto approx_target_values = pcms::mls_interpolation(
     source_values, source_coordinates, target_coordinates, support, dim, degree,
-    pcms::RadialBasisFunction::NO_OP);
+    pcms::RadialBasisFunction::NO_OP, 1e-5);
 
-  const auto delta_abs = Omega_h::fabs_each(
-    Omega_h::subtract_each(exact_target_values, read(approx_target_values)));
+  const auto delta_abs = Omega_h::fabs_each(Omega_h::subtract_each(
+    exact_target_values, Omega_h::read(approx_target_values)));
   const auto max_delta_abs = Omega_h::get_max(delta_abs);
   std::cout << "max_delta_abs " << max_delta_abs << "\n";
 
-  auto host_approx_target_values = HostRead<Real>(approx_target_values);
+  auto host_approx_target_values =
+    Omega_h::HostRead<Omega_h::Real>(approx_target_values);
   mesh.add_tag(OMEGA_H_VERT, "approx_target_values", 1,
-               read(approx_target_values));
+               Omega_h::read(approx_target_values));
   Omega_h::vtk::write_parallel("box.vtk", &mesh);
 
-  auto host_exact_target_values = HostRead<Real>(exact_target_values);
+  auto host_exact_target_values =
+    Omega_h::HostRead<Omega_h::Real>(exact_target_values);
 
   int m = exact_target_values.size();
   int n = approx_target_values.size();
@@ -128,7 +127,7 @@ TEST_CASE("meshfields_spr_test")
 
   const auto& ntargets = mesh.nverts();
 
-  Write<Real> source_coordinates(
+  Write<Omega_h::Real> source_coordinates(
     dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
 
   const auto& faces2nodes = mesh.ask_down(FACE, VERT).ab2b;
@@ -173,25 +172,25 @@ TEST_CASE("meshfields_spr_test")
         std::cerr << "start " << interp_degree << ", " << func_degree << " \n";
         int minPatchSize;
         if (interp_degree == 1)
-          minPatchSize = 3;
+          minPatchSize = 4;
         if (interp_degree == 2)
-          minPatchSize = 8; // why so large?
-        if (interp_degree == 3)
           minPatchSize = 10; // why so large?
+        if (interp_degree == 3)
+          minPatchSize = 12; // why so large?
         std::cerr << "minPatchSize " << minPatchSize << "\n";
         auto patches = mesh.get_vtx_patches(minPatchSize);
-        // print_patches(patches);
 
-        Write<Real> source_values(nfaces, 0, "exact target values");
+        Write<Omega_h::Real> source_values(nfaces, 0, "exact target values");
 
         Kokkos::parallel_for(
           nfaces, KOKKOS_LAMBDA(int i) {
             source_values[i] = func(source_points.coordinates(i), func_degree);
           });
-        mesh.add_tag(mesh.dim(), "source_values", 1, read(source_values));
+        mesh.add_tag(mesh.dim(), "source_values", 1,
+                     Omega_h::read(source_values));
 
-        Write<Real> exact_target_values(mesh.nverts(), 0,
-                                        "exact target values");
+        Write<Omega_h::Real> exact_target_values(mesh.nverts(), 0,
+                                                 "exact target values");
 
         Kokkos::parallel_for(
           mesh.nverts(), KOKKOS_LAMBDA(int i) {
@@ -199,11 +198,11 @@ TEST_CASE("meshfields_spr_test")
               func(target_points.coordinates(i), func_degree);
           });
         mesh.add_tag(OMEGA_H_VERT, "target_values", 1,
-                     read(exact_target_values));
-        std::cerr << "I am here above test\n";
-        test(mesh, patches, interp_degree, Reals(source_values),
-             Reals(exact_target_values), Reals(source_coordinates),
-             Reals(target_coordinates));
+                     Omega_h::read(exact_target_values));
+        test(mesh, patches, interp_degree, Omega_h::Reals(source_values),
+             Omega_h::Reals(exact_target_values),
+             Omega_h::Reals(source_coordinates),
+             Omega_h::Reals(target_coordinates));
         std::cerr << "done " << interp_degree << ", " << func_degree << " \n";
       } // end SECTION
     }

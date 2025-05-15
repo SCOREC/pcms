@@ -9,27 +9,23 @@
 #include <KokkosBatched_LU_Decl.hpp>
 #include <KokkosBatched_LU_Team_Impl.hpp>
 #include <KokkosBatched_SolveLU_Decl.hpp>
-#include <KokkosBatched_Gemm_Decl.hpp>
 #include <KokkosBlas.hpp>
 #include <KokkosBlas1_team_dot.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
-#include "pcms_interpolator_aliases.hpp"
-#include "adj_search.hpp"
-#include "../assert.h"
-#include "../profile.h"
-#include "pcms_interpolator_view_utils.hpp"
-#include "pcms_interpolator_logger.hpp"
+#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
+#include <pcms/interpolator/adj_search.hpp>
+#include <pcms/assert.h>
+#include <pcms/profile.h>
+#include <pcms/interpolator/pcms_interpolator_view_utils.hpp>
+#include <pcms/interpolator/pcms_interpolator_logger.hpp>
 
-// #include <KokkosBatched_ApplyQ_Decl.hpp> //KokkosBlas::ApplyQ
-// #include <KokkosBatched_QR_Decl.hpp>     //KokkosBlas::QR
-// #include <KokkosBatched_Trsv_Decl.hpp>   //KokkosBlas::Trsv
 #include <KokkosBlas2_gemv.hpp> //KokkosBlas::gemv
-#include "KokkosBatched_SVD_Decl.hpp"
-#include "KokkosBatched_SVD_Serial_Impl.hpp"
+#include <KokkosBatched_SVD_Decl.hpp>
+#include <KokkosBatched_SVD_Serial_Impl.hpp>
 #include <KokkosBlas2_serial_gemv_impl.hpp>
 #include <KokkosBatched_Gemm_Decl.hpp>
 
-static constexpr int MAX_DIM = 3;
+static constexpr int MAX_DIM = 6;
 
 /**
  * calculate_basis_slice_lengths, calculate_basis_vector_size and
@@ -107,7 +103,7 @@ int calculate_scratch_shared_size(const SupportResults& support,
  *
  * @return normalized coordinates The normlaised coordinates
  */
-Reals min_max_normalization(Reals& coordinates, int dim);
+Omega_h::Reals min_max_normalization(Omega_h::Reals& coordinates, int dim);
 
 /**
  * @brief Evaluates the polynomial basis
@@ -119,12 +115,10 @@ Reals min_max_normalization(Reals& coordinates, int dim);
  *   @param[in] p A reference to the coordinate struct
  *   @param[in,out] basis_vector The polynomial basis vector
  *
- *   @note the basis_vector size is more than basis_size
- *   to accomodate with the output from qr
  *
  */
 KOKKOS_INLINE_FUNCTION
-void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
+void eval_basis_vector(const IntDeviceMatView& slice_length, const double* p,
                        ScratchVecView& basis_vector)
 {
   basis_vector(0) = 1;
@@ -135,11 +129,9 @@ void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
   int curr_col = 1;
 
   double point[MAX_DIM];
-  point[0] = p.x;
-  point[1] = p.y;
 
-  if (dim == 3) {
-    point[2] = p.z;
+  for (int i = 0; i < dim; ++i) {
+    point[i] = p[i];
   }
 
   for (int i = 0; i < degree; ++i) {
@@ -171,7 +163,7 @@ void eval_basis_vector(const IntDeviceMatView& slice_length, const Coord& p,
  **
  */
 KOKKOS_INLINE_FUNCTION
-void normalize_supports(member_type team, Coord& pivot,
+void normalize_supports(const member_type& team, double* target_point,
                         ScratchMatView& support_coordinates)
 {
   int nsupports = support_coordinates.extent(0);
@@ -180,23 +172,13 @@ void normalize_supports(member_type team, Coord& pivot,
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports), [=](int i) {
     Real pivot_point[MAX_DIM];
 
-    pivot_point[0] = pivot.x;
-    pivot_point[1] = pivot.y;
-
-    if (dim == 3) {
-      pivot_point[2] = pivot.z;
-    }
-
     for (int j = 0; j < dim; ++j) {
-      support_coordinates(i, j) -= pivot_point[j];
+      support_coordinates(i, j) -= target_point[j];
     }
   });
 
-  pivot.x = 0;
-  pivot.y = 0;
-
-  if (dim == 3) {
-    pivot.z = 0;
+  for (int j = 0; j < dim; ++j) {
+    target_point[j] = 0.0;
   }
 }
 
@@ -217,12 +199,11 @@ void create_vandermonde_matrix(const ScratchMatView& local_source_points, int j,
   int N = local_source_points.extent(0);
   int dim = local_source_points.extent(1);
 
-  Coord source_point;
-  source_point.x = local_source_points(j, 0);
-  source_point.y = local_source_points(j, 1);
-  if (dim == 3) {
-    source_point.z = local_source_points(j, 2);
+  double source_point[MAX_DIM] = {};
+  for (int i = 0; i < dim; ++i) {
+    source_point[i] = local_source_points(j, i);
   }
+
   ScratchVecView basis_vector_supports =
     Kokkos::subview(vandermonde_matrix, j, Kokkos::ALL());
   eval_basis_vector(slice_length, source_point, basis_vector_supports);
@@ -248,13 +229,18 @@ template <typename Func,
           std::enable_if_t<std::is_invocable_r_v<double, Func, double, double>,
                            bool> = true>
 KOKKOS_INLINE_FUNCTION void compute_phi_vector(
-  const Coord& target_point, const ScratchMatView& local_source_points, int j,
+  const double* target_point, const ScratchMatView& local_source_points, int j,
   double cuttoff_dis_sq, Func rbf_func, ScratchVecView phi)
 {
   int N = local_source_points.extent(0);
-  double dx = target_point.x - local_source_points(j, 0);
-  double dy = target_point.y - local_source_points(j, 1);
-  double ds_sq = dx * dx + dy * dy;
+  int dim = local_source_points.extent(1);
+
+  double ds_sq = 0;
+
+  for (int i = 0; i < dim; ++i) {
+    double temp = target_point[i] - local_source_points(j, i);
+    ds_sq += temp * temp;
+  }
   phi(j) = rbf_func(ds_sq, cuttoff_dis_sq);
   OMEGA_H_CHECK_PRINTF(!std::isnan(phi(j)),
                        "ERROR: Phi(j) in compute_phi_vector is NaN for j = %d "
@@ -301,137 +287,42 @@ void scale_column_trans_matrix(const ScratchMatView& matrix,
 }
 
 /**
- * @struct ResultConvertNormal
- * @brief Stores the results of matrix and vector transformations.
+ * @brief Solves a regularized weighted linear system WAx = Wb using SVD
+ * decomposition within a Kokkos parallel team.
  *
- * This struct represents the results of the following operations:
- * - `P^T Q` (scaled matrix): The matrix obtained after scaling the columns of
- * the given matrix.
- * - `P^T Q P` (square matrix): The matrix obtained after performing the `P^T Q
- * P` operation.
- * - `P^T b` (transformed RHS): The vector obtained after applying the `P^T b`
- * operation.
+ * This function solves a (possibly overdetermined) linear system using Singular
+ * Value Decomposition (SVD), The regularization term (lambda) helps stabilize
+ * the solution especially in ill-conditioned cases.
  *
- * The struct is used to store:
- * - The scaled matrix (`scaled_matrix`).
- * - The square matrix (`square_matrix`).
- * - The transformed right-hand side vector (`transformed_rhs`).
+ *
+ * @param team The Kokkos team member executing this function.
+ *
+ * @param weight A scratch-space vector of RBF weights (diagonal elements of
+ * weight matrix W). size is m.
+ *
+ * @param rhs_values A scratch-space vector representing the right-hand side
+ * vector b (m). It may be modified during the computation.
+ *
+ * @param matrix A scratch-space matrix representing the system matrix A (m x
+ * n).
+ *
+ * @param solution_vector The output vector x (n). It will contain the computed
+ * solution after the function completes.
+ *
+ * @param lambda The regularization coefficient. Set to 0.0 for pure SVD; use a
+ * positive value for Tikhonov regularization.
+ *
+ * @param tol  The  tolerance threshold used to discard small singular values in
+ * the decomposition
+ *
+ *
+ * @note This function does not return a value; the solution is written directly
+ * to `solution_vector`.
  */
-struct ResultConvertNormal
-{
-  ScratchMatView scaled_matrix;
-  ScratchMatView square_matrix;
-  ScratchVecView transformed_rhs;
-};
-
-/**
- * @brief Converts a normal equation into a simplified form.
- *
- * This function takes a matrix, a basis/weight vector, and a right-hand side
- * (RHS) vector and computes the scaled matrix, square matrix, and transformed
- * RHS.
- *
- * For example, the normal equation `P^T Q P x = P^T Q b` is converted into the
- * form `Ax = b'`, where:
- * - `A` (square matrix) = `P^T Q P`
- * - `b'` (transformed RHS) = `P^T Q b`
- *
- * @param matrix The input matrix.
- * @param weight_vector The weight or basis vector.
- * @param rhs The right-hand side vector of the equation.
- * @param team The team member executing the task (optional, if applicable).
- *
- * @return The result of the normal equation conversion as a struct containing:
- * - The scaled matrix.
- * - The square matrix.
- * - The transformed RHS.
- *
- * @todo Implement QR decomposition to solve the linear system.
- */
-KOKKOS_INLINE_FUNCTION
-ResultConvertNormal convert_normal_equation(const ScratchMatView& matrix,
-                                            const ScratchVecView& weight_vector,
-                                            const ScratchVecView& rhs,
-                                            member_type team)
-{
-
-  int m = matrix.extent(0);
-  int n = matrix.extent(1);
-
-  ScratchMatView scaled_matrix(team.team_scratch(1), n, m);
-
-  ScratchMatView square_matrix(team.team_scratch(1), n, n);
-
-  ScratchVecView transformed_rhs(team.team_scratch(1), n);
-
-  // performing P^T Q
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, n), [=](int j) {
-    for (int k = 0; k < m; ++k) {
-      scaled_matrix(j, k) = 0;
-    }
-  });
-
-  team.team_barrier();
-
-  Kokkos::parallel_for(Kokkos::TeamThreadRange(team, m), [=](int j) {
-    scale_column_trans_matrix(matrix, weight_vector, team, j, scaled_matrix);
-  });
-
-  team.team_barrier();
-
-  // performing (P^T Q P)
-  KokkosBatched::TeamGemm<
-    member_type, KokkosBatched::Trans::NoTranspose,
-    KokkosBatched::Trans::NoTranspose,
-    KokkosBatched::Algo::Gemm::Unblocked>::invoke(team, 1.0, scaled_matrix,
-                                                  matrix, 0.0, square_matrix);
-
-  team.team_barrier();
-
-  KokkosBlas::Experimental::
-    Gemv<KokkosBlas::Mode::Team, KokkosBlas::Algo::Gemv::Unblocked>::invoke(
-      team, 'N', 1.0, scaled_matrix, rhs, 0.0, transformed_rhs);
-
-  team.team_barrier();
-
-  return ResultConvertNormal{scaled_matrix, square_matrix, transformed_rhs};
-}
-
-/**
- * @brief Solves the matrix equation Ax = b' using LU decomposition.
- *
- * This function solves the given matrix equation using LU decomposition.
- * The solution vector `x'` overwrites the input `rhs` vector.
- *
- * @param square_matrix The input matrix A (must be square).
- * @param rhs The right-hand side vector b. After execution, it is overwritten
- * with the solution vector x.
- * @param team The team member executing the task.
- *
- * @return None. The solution is directly written to the `rhs` vector.
- */
-KOKKOS_INLINE_FUNCTION
-void solve_matrix(const ScratchMatView& square_matrix,
-                  const ScratchVecView& rhs, member_type team)
-{
-
-  // Perform LU decomposition
-  KokkosBatched::TeamLU<
-    member_type, KokkosBatched::Algo::LU::Unblocked>::invoke(team,
-                                                             square_matrix);
-
-  team.team_barrier();
-
-  //   Solve the equation with forward and backward solves
-  KokkosBatched::TeamSolveLU<
-    member_type, KokkosBatched::Trans::NoTranspose,
-    KokkosBatched::Algo::SolveLU::Unblocked>::invoke(team, square_matrix, rhs);
-}
-
 KOKKOS_INLINE_FUNCTION
 void solve_matrix_svd(member_type team, const ScratchVecView& weight,
                       ScratchVecView rhs_values, ScratchMatView matrix,
-                      ScratchVecView solution_vector, double lambda = 0)
+                      ScratchVecView solution_vector, double lambda, double tol)
 {
 
   int row = matrix.extent(0);
@@ -440,142 +331,67 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
 
   int weight_size = weight.size();
 
-  printf("inside svd solver \n");
-  Logger logger(21);
   OMEGA_H_CHECK_PRINTF(
     weight_size == row,
     "the size of the weight vector should be equal to the row of the matrix\n"
     "weight vector size = %d, row of matrix = %d\n",
     weight_size, row);
-  // find_sq_root_each(team, weight);
 
   eval_row_scaling(team, weight, matrix);
-  logger.logMatrix(team, LogLevel::DEBUG, matrix, "QA : ");
 
   team.team_barrier();
 
   eval_rhs_scaling(team, weight, rhs_values);
-  logger.logVector(team, LogLevel::DEBUG, rhs_values, "Qb : ");
-  // A = UEV^T
+  team.team_barrier();
+
   // initilize U (orthogonal matrices)  array
   ScratchMatView U(team.team_scratch(1), row, row);
   fill(-5.0, team, U);
-  logger.logMatrix(team, LogLevel::DEBUG, U, "initialised U : ");
+
   // initialize Vt
   ScratchMatView Vt(team.team_scratch(1), column, column);
   fill(-5.0, team, Vt);
 
-  // int maxrank = std::min(row, column);
-
+  // initialize sigma
   ScratchVecView sigma(team.team_scratch(1), column);
   fill(-5.0, team, sigma);
 
+  // initialize work
   ScratchVecView work(team.team_scratch(1), row);
   fill(-5.0, team, work);
 
-  // sigma_mat_inv
+  // initialise sigma_mat_inv  S^-1
   ScratchMatView temp_matrix(team.team_scratch(1), column, row);
   fill(0, team, temp_matrix);
 
+  // initialise V S^-1 U^T
   ScratchMatView vsigmaInvUtMul(team.team_scratch(1), column, row);
   fill(0, team, vsigmaInvUtMul);
 
-  // for serial run
-  // if (team.league_rank() == 0) {
   if (team.team_rank() == 0) {
     KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), matrix, U,
-                                     sigma, Vt, work, 1e-6);
-
-    logger.logMatrix(team, LogLevel::DEBUG, U, "U : ");
-    logger.logVector(team, LogLevel::DEBUG, sigma, "S : ");
-    logger.logMatrix(team, LogLevel::DEBUG, Vt, "Vt : ");
-    // A = UEV^T
-    // find_inverse_each(team, sigma);
-
-    calculate_shrinkage_factor(team, lambda, sigma);
-
-    logger.logVector(team, LogLevel::DEBUG, sigma,
-                     "S/(S^2 + gamma) (basis_size x nsupports) : ");
-
-    // A = UEV^T
-
-    auto Ut = find_transpose(team, U);
-
-    logger.logMatrix(team, LogLevel::DEBUG, Ut, "Ut (nsupprts x nsupports) : ");
-
-    scale_and_adjust(team, sigma, Ut, temp_matrix); // S^-1 U^T
-
-    logger.logMatrix(team, LogLevel::DEBUG, temp_matrix,
-                     "S^-1Ut (basis_size x nsupports) : ");
-
-    KokkosBatched::SerialGemm<
-      KokkosBatched::Trans::Transpose, KokkosBatched::Trans::NoTranspose,
-      KokkosBatched::Algo::Gemm::Unblocked>::invoke(1.0, Vt, temp_matrix, 0.0,
-                                                    vsigmaInvUtMul);
-
-    logger.logMatrix(team, LogLevel::DEBUG, vsigmaInvUtMul,
-                     "VS^-1Ut (basis_size x nsupports) : ");
-    KokkosBlas::SerialGemv<
-      KokkosBlas::Trans::NoTranspose,
-      KokkosBlas::Algo::Gemv::Unblocked>::invoke(1.0, vsigmaInvUtMul,
-                                                 rhs_values, 0.0,
-                                                 solution_vector);
-    logger.logVector(team, LogLevel::DEBUG, solution_vector,
-                     "VS^-1Ut (basis_size x nsupports) : ");
+                                     sigma, Vt, work, tol);
   }
-  printf("coming out form svd solver..\n");
+  team.team_barrier();
+
+  calculate_shrinkage_factor(team, lambda, sigma);
+
+  auto Ut = find_transpose(team, U);
+
+  scale_and_adjust(team, sigma, Ut, temp_matrix); // S^-1 U^T
+
+  KokkosBatched::TeamGemm<
+    member_type, KokkosBatched::Trans::Transpose,
+    KokkosBatched::Trans::NoTranspose,
+    KokkosBatched::Algo::Gemm::Unblocked>::invoke(team, 1.0, Vt, temp_matrix,
+                                                  0.0, vsigmaInvUtMul);
+
+  KokkosBlas::TeamGemv<
+    member_type, KokkosBlas::Trans::NoTranspose,
+    KokkosBlas::Algo::Gemv::Unblocked>::invoke(team, 1.0, vsigmaInvUtMul,
+                                               rhs_values, 0.0,
+                                               solution_vector);
 }
-// KOKKOS_INLINE_FUNCTION
-// void solve_weighted_matrix_serial_qr(const member_type& team,
-//                                      const int league_rank,
-//                                      ScratchVecView weight,
-//                                      ScratchMatView& matrix,
-//                                      ScratchVecView& rhs_values)
-//{
-//
-//   int row = matrix.extent(0);
-//
-//   int column = matrix.extent(1);
-//
-//   int weight_size = weight.size();
-//
-//   find_sq_root_each(team, weight);
-//
-//   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row),
-//                        [=](int i) { eval_row_scaling(team, weight, matrix);
-//                        });
-//
-//   // initilize tau array
-//   ScratchVecView tau(team.team_scratch(1), column);
-//   fill(0.0, team, tau);
-//
-//   // initialize work array
-//   ScratchVecView work(team.team_scratch(1), column);
-//   fill(0.0, team, work);
-//
-//   // for serial run
-//   if (league_rank == 0) {
-//
-//     // compute QR factorization of matrix and stores the R in A and
-//     // tau is used to recover Q
-//     KokkosBatched::SerialQR<KokkosBlas::Algo::QR::Unblocked>::invoke(matrix,
-//                                                                      tau,
-//                                                                      work);
-//
-//     // b = Q^{T}b
-//
-//     KokkosBatched::SerialApplyQ<
-//       KokkosBatched::Side::Left, KokkosBatched::Trans::Transpose,
-//       KokkosBlas::Algo::ApplyQ::Unblocked>::invoke(matrix, tau, rhs_values,
-//                                                    work);
-//
-//     // b = R^{-1}b
-//     KokkosBatched::SerialTrsv<
-//       KokkosBatched::Uplo::Upper, KokkosBatched::Trans::NoTranspose,
-//       KokkosBatched::Diag::NonUnit,
-//       KokkosBlas::Algo::Trsv::Unblocked>::invoke(1.0, matrix, rhs_values);
-//   }
-// }
 
 /**
  * @brief Maps the data from source mesh to target mesh
@@ -585,7 +401,7 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
  * points of source field
  * @param target_coordinates Scalar array view of the coordinates of control
  * points of target field
- * @param support The object that enpasulates support info
+ * @param support The object that encapsulates support info
  * @param dim The dimension of the simulations
  * @param degree The degree of the interpolation order
  * @param rbf_func The radial basis function choice
@@ -597,9 +413,10 @@ template <typename Func>
 void mls_interpolation(RealConstDefaultScalarArrayView source_values,
                        RealConstDefaultScalarArrayView source_coordinates,
                        RealConstDefaultScalarArrayView target_coordinates,
-                       const SupportResults& support, const LO& dim,
-                       const LO& degree, Func rbf_func,
-                       RealDefaultScalarArrayView approx_target_values)
+                       const SupportResults& support, const Omega_h::LO& dim,
+                       const Omega_h::LO& degree, Func rbf_func,
+                       RealDefaultScalarArrayView approx_target_values,
+                       double lambda, double tol)
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_invocable_r_v<double, Func, double, double>,
@@ -654,17 +471,15 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
   // calculates the interpolated values
   Kokkos::parallel_for(
-    "MLS coefficients", tp.set_scratch_size(1, Kokkos::PerTeam(shared_size)),
+    "MLS coefficients", tp.set_scratch_size(1, Kokkos::PerTeam(scratch_size)),
     KOKKOS_LAMBDA(const member_type& team) {
       int league_rank = team.league_rank();
       int start_ptr = support.supports_ptr[league_rank];
       int end_ptr = support.supports_ptr[league_rank + 1];
       int nsupports = end_ptr - start_ptr;
-      printf("calculating for %d target point\n", league_rank);
-      Logger logger(21);
-      // logger.log(team, LogLevel::INFO, "The search starts from here....\n");
-      // local_source_point stores the coordinates of source supports of a
-      // given target
+
+      //  local_source_point stores the coordinates of source supports of a
+      //  given target
       ScratchMatView local_source_points(team.team_scratch(1), nsupports, dim);
 
       // rbf function values of source supports Phi(n,n)
@@ -680,8 +495,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       ScratchVecView target_basis_vector(team.team_scratch(1), basis_size);
 
       // solution coefficients (solution vector)
-      //
       ScratchVecView solution_coefficients(team.team_scratch(1), basis_size);
+
       // Initialize the scratch matrices and  vectors
       fill(0.0, team, local_source_points);
       fill(0.0, team, vandermonde_matrix);
@@ -690,32 +505,36 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
       fill(0.0, team, target_basis_vector);
       fill(0.0, team, solution_coefficients);
 
-      // logger.log(team, LogLevel::INFO, "The search starts from here....\n");
-      // storing the coords of local supports
+      // Logger logger(15);
+
+      /**
+       *
+       * the local_source_points is of the type ScratchMatView with
+       * coordinates information; row is number of local supports
+       * & column is dim
+       */
+
       int count = -1;
       for (int j = start_ptr; j < end_ptr; ++j) {
         count++;
         auto index = support.supports_idx[j];
-        local_source_points(count, 0) = source_coordinates[index * dim];
-        local_source_points(count, 1) = source_coordinates[index * dim + 1];
-        if (dim == 3) {
-          local_source_points(count, 2) = source_coordinates[index * dim + 2];
+
+        for (int i = 0; i < dim; ++i) {
+          local_source_points(count, i) = source_coordinates[index * dim + i];
         }
       }
 
-      logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
-                       "The local source points (x, y, z):\n ");
+      // logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
+      //                  "Support Coordinates");
+      double target_point[MAX_DIM] = {};
 
-      Coord target_point;
-      target_point.x = target_coordinates[league_rank * dim];
-      target_point.y = target_coordinates[league_rank * dim + 1];
-
-      if (dim == 3) {
-        target_point.z = target_coordinates[league_rank * dim + 2];
+      for (int i = 0; i < dim; ++i) {
+        target_point[i] = target_coordinates[league_rank * dim + i];
       }
 
-      logger.logStruct(team, LogLevel::DEBUG, target_point,
-                       "Target Point before pivoting :\n");
+      // logger.logArray(team, LogLevel::DEBUG, target_point, dim,
+      //                 "Target points");
+
       /** phi(nsupports) is the array of rbf functions evaluated at the
        * source supports In the actual implementation, Phi(nsupports,
        * nsupports) is the diagonal matrix & each diagonal element is the phi
@@ -730,15 +549,13 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
                              support.radii2[league_rank], rbf_func, phi_vector);
         });
 
-      logger.logVector(team, LogLevel::DEBUG, phi_vector,
-                       "Phi Values: (phi)\n ");
       team.team_barrier();
 
       /** support_values(nsupports) (or known rhs vector b) is the vector of
        * the quantity that we want interpolate
        *
        *
-       * step 4: find local supports function values
+       * step 2: find local supports function values
        */
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](const int j) {
@@ -749,37 +566,31 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
         });
 
       team.team_barrier();
-      logger.logVector(team, LogLevel::DEBUG, support_values,
-                       "Support Values (b):\n ");
+
+      // logger.log(team, LogLevel::DEBUG, "The search  starts");
+      // logger.logVector(team, LogLevel::DEBUG, support_values, "Support
+      // values");
 
       /**
-       *
-       * the local_source_points is of the type ScratchMatView with
-       * coordinates information; row is number of local supports
-       * & column is dim
-       *
-       * step 2: normalize local source supports and target point
+       * step 3: normalize local source supports and target point
        */
 
       normalize_supports(team, target_point, local_source_points);
-      logger.logMatrix(team, LogLevel::DEBUG, local_source_points,
-                       "Local Source points after pivoting");
       team.team_barrier();
       /**
        *
        * evaluates the basis vector of a given target point Coord target_point;
        * this can evaluate monomial basis vector for any degree of polynomial
-       * step 3: call basis vector evaluation function (eval_basis_vector);
+       *
+       * step 4: call basis vector evaluation function (eval_basis_vector);
        */
       eval_basis_vector(slice_length, target_point, target_basis_vector);
 
-      logger.logVector(team, LogLevel::DEBUG, target_basis_vector,
-                       "target basis vector after pivot : ");
       /** vandermonde_matrix(nsupports, basis_size) vandermonde Matrix is
        * created with the basis vector of source supports stacking on top of
        * each other
        *
-       * step 4: create vandermonde matrix
+       * step 5: create vandermonde matrix
        */
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
@@ -789,24 +600,30 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
 
       team.team_barrier();
 
-      logger.logMatrix(team, LogLevel::DEBUG, vandermonde_matrix,
-                       "Vandermonde  matrix : ");
+      // logger.logMatrix(team, LogLevel::DEBUG, vandermonde_matrix,
+      //                  "vandermonde matrix");
 
       OMEGA_H_CHECK_PRINTF(
+
         support.radii2[league_rank] > 0,
         "ERROR: radius2 has to be positive but found to be %.16f\n",
         support.radii2[league_rank]);
 
+      /**
+       * step 6: solve overdetermined system using SVD
+       *
+       */
       solve_matrix_svd(team, phi_vector, support_values, vandermonde_matrix,
-                       solution_coefficients);
+                       solution_coefficients, lambda, tol);
       team.team_barrier();
-      logger.logVector(team, LogLevel::DEBUG, solution_coefficients,
-                       "Solution Vector : ");
 
       double target_value = KokkosBlas::Experimental::dot(
         team, solution_coefficients, target_basis_vector);
 
-      logger.logScalar(team, LogLevel::DEBUG, target_value, "target_value : ");
+      // printf("Target Point : %d \t\t Value: %5.6f\n", league_rank,
+      // target_value);
+      // logger.logScalar(team, LogLevel::DEBUG, target_value,
+      //                  "interpolated value");
       if (team.team_rank() == 0) {
         OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
                              league_rank);
@@ -828,16 +645,16 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
  * @param dim The dimension of the simulations
  * @param degree The degree of the interpolation order
  * @param rbf_func The radial basis function choice
- * @return  Write array of the interpolated field in target mesh
+ * @return  Omega_h::Write array of the interpolated field in target mesh
  *
  *
  */
 template <typename Func>
-Write<Real> mls_interpolation(const Reals source_values,
-                              const Reals source_coordinates,
-                              const Reals target_coordinates,
-                              const SupportResults& support, const LO& dim,
-                              const LO& degree, Func rbf_func)
+Omega_h::Write<Omega_h::Real> mls_interpolation(
+  const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
+  const Omega_h::Reals target_coordinates, const SupportResults& support,
+  const Omega_h::LO& dim, const Omega_h::LO& degree, Func rbf_func,
+  double lambda, double tol)
 {
   const auto nsources = source_coordinates.size() / dim;
 
@@ -855,18 +672,20 @@ Write<Real> mls_interpolation(const Reals source_values,
   RealDefaultScalarArrayView radii2_array_view(support.radii2.data(),
                                                support.radii2.size());
 
-  Write<Real> interpolated_values(ntargets, 0, "approximated target values");
+  Omega_h::Write<Omega_h::Real> interpolated_values(
+    ntargets, 0, "approximated target values");
 
   RealDefaultScalarArrayView interpolated_values_array_view(
     interpolated_values.data(), interpolated_values.size());
 
   mls_interpolation(source_values_array_view, source_coordinates_array_view,
                     target_coordinates_array_view, support, dim, degree,
-                    rbf_func, interpolated_values_array_view);
+                    rbf_func, interpolated_values_array_view, lambda, tol);
 
   return interpolated_values;
 }
 
 } // namespace detail
 } // namespace pcms
+
 #endif

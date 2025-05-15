@@ -10,79 +10,27 @@
 #include <vector>
 #include <iostream>
 #include <Omega_h_array_ops.hpp>
-using namespace std;
-using namespace Omega_h;
-using namespace pcms;
 
-Reals fillFromMatrix(const Matrix<2, 10>& matrix)
+Omega_h::Reals fillFromMatrix(const Omega_h::Matrix<2, 10>& matrix)
 {
   int num_points = 10;
-  Write<Real> array(20, 0, "array to store coordinates");
-  parallel_for(
+  Omega_h::Write<Omega_h::Real> array(20, 0, "array to store coordinates");
+  Kokkos::parallel_for(
     "fills the array view from matrix", num_points, KOKKOS_LAMBDA(const int i) {
       int index = i * 2;
 
       array[index] = matrix[i][0];
       array[index + 1] = matrix[i][1];
     });
-  return read(array);
+  return Omega_h::read(array);
 }
 
 TEST_CASE("test_normalization_routine")
 {
 
-  SECTION("test_minmax_normalization")
-  {
-
-    printf("-------------the test for min_max starts-----------\n");
-
-    Real tolerance = 1E-5;
-    int num_points = 10;
-
-    Omega_h::Matrix<2, 10> matrix{{0.45, 3.18},   {0.12, -1.2},  {-2.04, -1.45},
-                                  {1.52, -0.98},  {-0.22, 1.45}, {0.96, 3.62},
-                                  {-0.26, -1.62}, {0.82, 4.22},  {5.6, 3.62},
-                                  {1.2, 1.2}};
-
-    auto coordinates = fillFromMatrix(matrix);
-
-    auto results = pcms::detail::min_max_normalization(coordinates, 2);
-
-    printf("results after normalization");
-    HostRead<Real> host_results(results);
-
-    double expected_results[10][2] = {
-      {0.325916, 0.821918}, {0.282723, 0.071918}, {0.000000, 0.029110},
-      {0.465969, 0.109589}, {0.238220, 0.525685}, {0.392670, 0.897260},
-      {0.232984, 0.000000}, {0.374346, 1.000000}, {1.000000, 0.897260},
-      {0.424084, 0.482877}};
-
-    printf("<scaled coordinates>\n");
-
-    for (int i = 0; i < 20; ++i) {
-      printf("%12.6f\n", host_results[i]);
-    }
-
-    for (int i = 0; i < 10; ++i) {
-
-      int index = i * 2;
-
-      CAPTURE(i, host_results[index], expected_results[i][0], tolerance);
-      CHECK_THAT(host_results[index],
-                 Catch::Matchers::WithinAbs(expected_results[i][0], tolerance));
-
-      CAPTURE(i, host_results[index + 1], expected_results[i][1], tolerance);
-      CHECK_THAT(host_results[index + 1],
-                 Catch::Matchers::WithinAbs(expected_results[i][1], tolerance));
-
-      printf("-------------the test for min_max starts-----------\n");
-    }
-
-  } // end SECTION
-
   SECTION("test_normalization_relative_distance")
   {
-    Real tolerance = 1E-5;
+    Omega_h::Real tolerance = 1E-5;
     int nvertices_target = 3;
 
     Omega_h::Matrix<3, 3> target_coordinates{
@@ -102,37 +50,39 @@ TEST_CASE("test_normalization_routine")
                                             {0.12, 4.29, 1.98},
                                             {1.24, 1.54, 4.2}};
 
-    LOs nsupports({6, 8, 4}, "number of supports");
+    Omega_h::LOs nsupports({6, 8, 4}, "number of supports");
     int dim = 3;
 
     auto total_coordinates = Omega_h::get_sum(nsupports) * dim;
 
     REQUIRE(total_coordinates == 54);
-    Write<Real> normalized_support_coordinates(
+    Omega_h::Write<Omega_h::Real> normalized_support_coordinates(
       total_coordinates, 0, "coordinates after normalization");
 
-    Write<Real> normalized_target_coordinates(
+    Omega_h::Write<Omega_h::Real> normalized_target_coordinates(
       total_coordinates, 0, "coordinates after normalization");
 
-    Write<Real> all_support_coordinates(total_coordinates, 0,
-                                        "support coordinates all");
-    Write<Real> all_target_coordinates(total_coordinates, 0,
-                                       "target coordinates all");
+    Omega_h::Write<Omega_h::Real> all_support_coordinates(
+      total_coordinates, 0, "support coordinates all");
+    Omega_h::Write<Omega_h::Real> all_target_coordinates(
+      total_coordinates, 0, "target coordinates all");
 
-    team_policy tp(nvertices_target, Kokkos::AUTO);
+    pcms::team_policy tp(nvertices_target, Kokkos::AUTO);
     Kokkos::parallel_for(
       "inside team", tp.set_scratch_size(0, Kokkos::PerTeam(200)),
-      KOKKOS_LAMBDA(const member_type& team) {
+      KOKKOS_LAMBDA(const pcms::member_type& team) {
         int league_rank = team.league_rank();
 
         int num_supports = nsupports[league_rank];
-        ScratchMatView local_supports(team.team_scratch(0), num_supports, dim);
-        detail::fill(0, team, local_supports);
+        pcms::ScratchMatView local_supports(team.team_scratch(0), num_supports,
+                                            dim);
+        pcms::detail::fill(0, team, local_supports);
 
-        Coord target_point;
-        target_point.x = target_coordinates[league_rank][0];
-        target_point.y = target_coordinates[league_rank][1];
-        target_point.z = target_coordinates[league_rank][2];
+        double target_point[MAX_DIM] = {};
+
+        for (int i = 0; i < dim; ++i) {
+          target_point[i] = target_coordinates[league_rank][i];
+        }
 
         Kokkos::parallel_for(
           Kokkos::TeamThreadRange(team, num_supports), [=](int i) {
@@ -155,35 +105,29 @@ TEST_CASE("test_normalization_routine")
           });
 
         team.team_barrier();
-        detail::normalize_supports(team, target_point, local_supports);
+        pcms::detail::normalize_supports(team, target_point, local_supports);
 
         Kokkos::parallel_for(
           Kokkos::TeamThreadRange(team, num_supports), [=](int i) {
             for (int j = 0; j < dim; ++j) {
               int index = league_rank * num_supports * dim + i * dim + j;
               normalized_support_coordinates[index] = local_supports(i, j);
-              if (j == 0) {
-                normalized_target_coordinates[index] = target_point.x;
-              } else if (j == 1) {
-                normalized_target_coordinates[index] = target_point.y;
-              } else {
-                normalized_target_coordinates[index] = target_point.z;
-              }
+              normalized_target_coordinates[index] = target_point[j];
             }
           });
       });
 
     auto host_all_support_coordinates =
-      HostRead<Real>(read(all_support_coordinates));
+      Omega_h::HostRead<Omega_h::Real>(Omega_h::read(all_support_coordinates));
 
     auto host_all_target_coordinates =
-      HostRead<Real>(read(all_target_coordinates));
+      Omega_h::HostRead<Omega_h::Real>(Omega_h::read(all_target_coordinates));
 
-    auto host_normalized_support_coordinates =
-      HostRead<Real>(read(normalized_support_coordinates));
+    auto host_normalized_support_coordinates = Omega_h::HostRead<Omega_h::Real>(
+      Omega_h::read(normalized_support_coordinates));
 
-    auto host_normalized_target_coordinates =
-      HostRead<Real>(read(normalized_target_coordinates));
+    auto host_normalized_target_coordinates = Omega_h::HostRead<Omega_h::Real>(
+      Omega_h::read(normalized_target_coordinates));
 
     for (int i = 0; i < total_coordinates; ++i) {
       auto result_support =

@@ -1,5 +1,6 @@
+#include <pcms/interpolator/mls_interpolation.hpp>
+#include <Kokkos_MathematicalFunctions.hpp>
 #include <cmath>
-#include "mls_interpolation.hpp"
 
 namespace pcms
 {
@@ -7,6 +8,14 @@ namespace pcms
 // RBF_GAUSSIAN Functor
 struct RBF_GAUSSIAN
 {
+  // 'a' is a spreading factor/decay factor
+  // the value of 'a' is higher if the data is localized
+  // the value of 'a' is smaller if the data is farther
+
+  double a;
+
+  RBF_GAUSSIAN(double a_val) : a(a_val) {}
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
@@ -21,13 +30,8 @@ struct RBF_GAUSSIAN
                          "but the value is %.16f\n",
                          r_sq);
 
-    // 'a' is a spreading factor/decay factor
-    // the value of 'a' is higher if the data is localized
-    // the value of 'a' is smaller if the data is farther
-    int a = 2;
-
-    double r = sqrt(r_sq);
-    double rho = sqrt(rho_sq);
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
 
@@ -35,7 +39,7 @@ struct RBF_GAUSSIAN
       phi = 0;
 
     } else {
-      phi = exp(-a * a * r * r);
+      phi = Kokkos::exp(-a * a * r * r);
     }
 
     return phi;
@@ -45,15 +49,16 @@ struct RBF_GAUSSIAN
 // RBF_C4 Functor
 struct RBF_C4
 {
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    double r = sqrt(r_sq);
+    double r = Kokkos::sqrt(r_sq);
     OMEGA_H_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
-    double rho = sqrt(rho_sq);
+    double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
     if (limit < 0) {
@@ -76,15 +81,16 @@ struct RBF_C4
 //
 struct RBF_CONST
 {
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    double r = sqrt(r_sq);
+    double r = Kokkos::sqrt(r_sq);
     OMEGA_H_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
-    double rho = sqrt(rho_sq);
+    double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
     if (limit < 0) {
@@ -107,40 +113,40 @@ struct NoOp
   double operator()(double, double) const { return 1.0; }
 };
 
-Write<Real> mls_interpolation(const Reals source_values,
-                              const Reals source_coordinates,
-                              const Reals target_coordinates,
-                              const SupportResults& support, const LO& dim,
-                              const LO& degree, RadialBasisFunction bf)
+Omega_h::Write<Omega_h::Real> mls_interpolation(
+  const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
+  const Omega_h::Reals target_coordinates, const SupportResults& support,
+  const Omega_h::LO& dim, const Omega_h::LO& degree, RadialBasisFunction bf,
+  double lambda, double tol, double decay_factor)
 {
 
   const auto nvertices_target = target_coordinates.size() / dim;
 
-  Write<Real> interpolated_values(nvertices_target, 0,
-                                  "approximated target values");
+  Omega_h::Write<Omega_h::Real> interpolated_values(
+    nvertices_target, 0, "approximated target values");
   switch (bf) {
     case RadialBasisFunction::RBF_GAUSSIAN:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_GAUSSIAN{});
+        degree, RBF_GAUSSIAN{decay_factor}, lambda, tol);
       break;
 
     case RadialBasisFunction::RBF_C4:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_C4{});
+        degree, RBF_C4{}, lambda, tol);
       break;
 
     case RadialBasisFunction::RBF_CONST:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_CONST{});
+        degree, RBF_CONST{}, lambda, tol);
       break;
 
     case RadialBasisFunction::NO_OP:
       interpolated_values = detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, NoOp{});
+        degree, NoOp{}, lambda, tol);
       break;
   }
 
@@ -224,14 +230,9 @@ int calculate_scratch_shared_size(const SupportResults& support,
         ScratchMatView::shmem_size(nsupports, dim); // local_source_points
       total_shared_size +=
         ScratchMatView::shmem_size(nsupports, nsupports) * 2; // U, Ut
-      // total_shared_size += ScratchVecView::shmem_size(max_size);
-      // total_shared_size += ScratchVecView::shmem_size(min_size);
       shmem_each_team(i) = total_shared_size;
     });
 
-  // namespace KE = Kokkos::Experimental;
-  // auto shared_size = KE::max_element(Kokkos::DefaultExecutionSpace(),
-  // shmem_each_team); printf("shared size = %d", shared_size);
   int shared_size = 0;
   Kokkos::parallel_reduce(
     "find_max", nvertices_target,
@@ -243,52 +244,6 @@ int calculate_scratch_shared_size(const SupportResults& support,
     Kokkos::Max<int>(shared_size));
 
   return shared_size;
-}
-
-Reals min_max_normalization(Reals& coordinates, int dim = 2)
-{
-  int num_points = coordinates.size() / dim;
-
-  int coords_size = coordinates.size();
-
-  Write<Real> x_coordinates(num_points, 0, "x coordinates");
-
-  Write<Real> y_coordinates(num_points, 0, "y coordinates");
-
-  parallel_for(
-    "separates x and y coordinates", num_points, KOKKOS_LAMBDA(const int id) {
-      int index = id * dim;
-
-      x_coordinates[id] = coordinates[index];
-      y_coordinates[id] = coordinates[index + 1];
-    });
-
-  HostRead<Real> host_x(read(x_coordinates));
-  HostRead<Real> host_y(read(y_coordinates));
-
-  const auto min_x = Omega_h::get_min(read(x_coordinates));
-  const auto min_y = Omega_h::get_min(read(y_coordinates));
-
-  const auto max_x = Omega_h::get_max(read(x_coordinates));
-  const auto max_y = Omega_h::get_max(read(y_coordinates));
-
-  printf(" [min_x, max_x] : [%12.6f , %12.6f]\n", min_x, max_x);
-  printf(" [min_y, max_y] : [%12.6f , %12.6f]\n", min_y, max_y);
-  const auto del_x = max_x - min_x;
-  const auto del_y = max_y - min_y;
-
-  printf(" [delx, dely] : [%12.6f , %12.6f]\n", del_x, del_y);
-  Write<Real> normalized_coordinates(coords_size, 0,
-                                     "stores scaled coordinates");
-
-  parallel_for(
-    "scale coordinates", num_points, KOKKOS_LAMBDA(const int id) {
-      int index = id * dim;
-      normalized_coordinates[index] = (x_coordinates[id] - min_x) / del_x;
-      normalized_coordinates[index + 1] = (y_coordinates[id] - min_y) / del_y;
-    });
-
-  return read(normalized_coordinates);
 }
 
 } // namespace detail

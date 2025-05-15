@@ -115,9 +115,7 @@ if(Catch2_FOUND)
 		  test_spr_meshfields.cpp
 		  test_svd_serial.cpp 
 		  # test_serial_qr.cpp
-          # test_n2_search_mls.cpp
-          point_to_mesh_mls.cpp
-              )
+          point_to_mesh_mls.cpp)
   endif ()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core pcms_interpolator)

@@ -8,10 +8,6 @@
 #include <chrono>
 
 using pcms::Copy;
-using pcms::CouplerClient;
-using pcms::CouplerServer;
-using pcms::FieldEvaluationMethod;
-using pcms::FieldTransferMethod;
 using pcms::GO;
 using pcms::LO;
 using pcms::OmegaHFieldAdapter;
@@ -24,7 +20,7 @@ namespace ts = test_support;
 //
 
 [[nodiscard]]
-static pcms::ConvertibleCoupledField* AddField(pcms::Application *application, const std::string& name, const std::string& path, Omega_h::Read<Omega_h::I8> is_overlap, const std::string& numbering, Omega_h::Mesh& mesh, int plane) {
+static pcms::CoupledField* AddField(pcms::Application *application, const std::string& name, const std::string& path, Omega_h::Read<Omega_h::I8> is_overlap, const std::string& numbering, Omega_h::Mesh& mesh, int plane) {
       PCMS_ALWAYS_ASSERT(application != nullptr);
       std::stringstream field_name;
       field_name << name;
@@ -33,35 +29,31 @@ static pcms::ConvertibleCoupledField* AddField(pcms::Application *application, c
       }
       return application->AddField(field_name.str(),
                    pcms::OmegaHFieldAdapter<pcms::Real>(
-                   path+field_name.str(), mesh, is_overlap, numbering),
-                   FieldTransferMethod::Copy, // to Omega_h
-                   FieldEvaluationMethod::None,
-                   FieldTransferMethod::Copy, // from Omega_h
-                   FieldEvaluationMethod::None, is_overlap);
+                   path+field_name.str(), mesh, is_overlap, numbering));
 }
 
 struct XGCAnalysis {
-  using FieldVec = std::vector<pcms::ConvertibleCoupledField*>;
+  using FieldVec = std::vector<pcms::CoupledField*>;
   std::array<FieldVec,2> dpot;
   FieldVec pot0;
   std::array<FieldVec,2> edensity;
   std::array<FieldVec,2> idensity;
-  pcms::ConvertibleCoupledField* psi;
-  pcms::ConvertibleCoupledField* gids;
+  pcms::CoupledField* psi;
+  pcms::CoupledField* gids;
 };
 
-static void ReceiveFields(const std::vector<pcms::ConvertibleCoupledField*> & fields) {
+static void ReceiveFields(const std::vector<pcms::CoupledField*> & fields) {
   for(auto* field : fields) {
     field->Receive();
   }
 }
-static void SendFields(const std::vector<pcms::ConvertibleCoupledField*> & fields) {
+static void SendFields(const std::vector<pcms::CoupledField*> & fields) {
   for(auto* field : fields) {
     field->Send();
   }
 }
-static void CopyFields(const std::vector<pcms::ConvertibleCoupledField*> & from_fields,
-                       const std::vector<pcms::ConvertibleCoupledField*> & to_fields) {
+static void CopyFields(const std::vector<pcms::CoupledField*> & from_fields,
+                       const std::vector<pcms::CoupledField*> & to_fields) {
   PCMS_ALWAYS_ASSERT(from_fields.size() == to_fields.size());
   for(size_t i=0; i<from_fields.size(); ++i) {
     const auto* from = from_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
@@ -86,8 +78,8 @@ static void AverageAndSetField(const pcms::OmegaHField<T> & a, pcms::OmegaHField
  * Takes the average of each pair of fields and sets the results in the the second
  * argument
  */
-static void AverageAndSetFields(const std::vector<pcms::ConvertibleCoupledField*> & from_fields,
-                       const std::vector<pcms::ConvertibleCoupledField*> & to_fields) {
+static void AverageAndSetFields(const std::vector<pcms::CoupledField*> & from_fields,
+                       const std::vector<pcms::CoupledField*> & to_fields) {
   PCMS_ALWAYS_ASSERT(from_fields.size() == to_fields.size());
   for(size_t i=0; i<from_fields.size(); ++i) {
     const auto* from = from_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
@@ -197,8 +189,8 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   auto time1 = std::chrono::steady_clock::now();
 
 
-  pcms::CouplerServer cpl("xgc_n0_coupling", comm,
-                            redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+  pcms::Coupler cpl("xgc_n0_coupling", comm, true,
+                            redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   std::string numbering = "simNumbering";
   PCMS_ALWAYS_ASSERT(mesh.has_tag(0, numbering));

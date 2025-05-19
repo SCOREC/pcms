@@ -1,7 +1,7 @@
 //
 // Created by Fuad Hasan on 1/12/25.
 //
-#include "MLSInterpolation.hpp"
+#include "mls_interpolation.hpp"
 #include "adj_search.hpp"
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>

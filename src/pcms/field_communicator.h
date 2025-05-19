@@ -5,10 +5,12 @@
 #include <numeric>
 #include "pcms/inclusive_scan.h"
 #include "pcms/profile.h"
+#include "pcms/partition.h"
+
 namespace pcms
 {
 
-namespace detail
+namespace
 {
 struct OutMsg
 {
@@ -73,6 +75,14 @@ redev::LOs ConstructPermutation(const std::vector<pcms::GO>& local_gids,
                                 const std::vector<pcms::GO>& received_gids)
 {
   PCMS_FUNCTION_TIMER;
+
+  if(local_gids.size() != received_gids.size()) {
+  std::stringstream ss;
+  ss <<" :local_gids.size() [" << local_gids.size() << "] does not match received_gids.size() [" << received_gids.size() << "]\n";
+  std::cerr<<ss.str();
+  std::abort();
+  }
+
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
   REDEV_ALWAYS_ASSERT(std::is_permutation(local_gids.begin(), local_gids.end(), received_gids.begin()));
   std::map<pcms::GO, pcms::LO> global_to_local_ids;
@@ -128,7 +138,7 @@ bool HasDuplicates(std::vector<T> v)
   auto it = std::adjacent_find(v.begin(), v.end());
   return it != v.end();
 }
-} // namespace detail
+} // namespace
 
 using redev::Mode;
 
@@ -178,14 +188,14 @@ public:
                              make_const_array_view(message_permutation_));
     comm_.Send(buffer.data_handle(), mode);
   }
-  void Receive()
+  void Receive(Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(channel_.InReceiveCommunicationPhase());
     // Current implementation requires that Receive is always called in Sync
     // mode because we make an immediate call to deserialize after a call to
     // receive.
-    auto data = comm_.Recv(Mode::Synchronous);
+    auto data = comm_.Recv(mode);
     field_adapter_.Deserialize(make_const_array_view(data),
                                make_const_array_view(message_permutation_));
   }
@@ -203,11 +213,11 @@ private:
       auto gids = field_adapter_.GetGids();
       if (redev_.GetProcessType() == redev::ProcessType::Client) {
         const ReversePartitionMap reverse_partition =
-          field_adapter_.GetReversePartitionMap(redev_.GetPartition());
-        auto out_message = detail::ConstructOutMessage(reverse_partition);
+          field_adapter_.GetReversePartitionMap(Partition{redev_.GetPartition()});
+        auto out_message = ConstructOutMessage(reverse_partition);
         comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
         gid_comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
-        message_permutation_ = detail::ConstructPermutation(reverse_partition);
+        message_permutation_ = ConstructPermutation(reverse_partition);
         // use permutation array to send the gids
         std::vector<pcms::GO> gid_msgs(gids.size());
         REDEV_ALWAYS_ASSERT(gids.size() == message_permutation_.size());
@@ -227,14 +237,14 @@ private:
         // we require that the layout for the gids and the message are the same
         const auto in_message_layout = gid_comm_.GetInMessageLayout();
         auto out_message =
-          detail::ConstructOutMessage(rank, nproc, in_message_layout);
+          ConstructOutMessage(rank, nproc, in_message_layout);
         comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
         // construct server permutation array
         // Verify that there are no duplicate entries in the received
         // data. Duplicate data indicates that sender is not sending data from
         // only the owned rank
-        REDEV_ALWAYS_ASSERT(!detail::HasDuplicates(recv_gids));
-        message_permutation_ = detail::ConstructPermutation(gids, recv_gids);
+        REDEV_ALWAYS_ASSERT(!HasDuplicates(recv_gids));
+        message_permutation_ = ConstructPermutation(gids, recv_gids);
       }
       comm_buffer_.resize(message_permutation_.size());
     //}

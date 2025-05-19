@@ -9,10 +9,6 @@
 
 using pcms::ConstructRCFromOmegaHMesh;
 using pcms::Copy;
-using pcms::CouplerClient;
-using pcms::CouplerServer;
-using pcms::FieldEvaluationMethod;
-using pcms::FieldTransferMethod;
 using pcms::GO;
 using pcms::Lagrange;
 using pcms::make_array_view;
@@ -29,9 +25,9 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  pcms::CouplerServer cpl(
-    "proxy_couple_server", comm,
-    redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+  pcms::Coupler cpl(
+    "proxy_couple_server", comm, true,
+    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   ReverseClassificationVertex rc;
   if (mesh.has_tag(0, "simNumbering")) {
@@ -46,7 +42,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
   constexpr int nplanes = 2;
   std::array<std::vector<GO>, nplanes> data;
-  std::vector<pcms::ConvertibleCoupledField*> fields;
+  std::vector<pcms::CoupledField*> fields;
   for (int i = 0; i < nplanes; ++i) {
     data[i].resize(mesh.nverts());
     std::stringstream ss;
@@ -54,29 +50,25 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     auto field_adapter = pcms::XGCFieldAdapter<GO>(
       ss.str(), comm, make_array_view(data[i]), rc, ts::IsModelEntInOverlap{});
     fields.push_back(
-      application->AddField(ss.str(), std::move(field_adapter),
-                            FieldTransferMethod::Copy, // to Omega_h
-                            FieldEvaluationMethod::None,
-                            FieldTransferMethod::Copy, // from Omega_h
-                            FieldEvaluationMethod::None, is_overlap));
+      application->AddField(ss.str(), std::move(field_adapter)));
   }
 
   do {
     application->ReceivePhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Receive(); });
+                    [](pcms::CoupledField* f) { f->Receive(); });
     });
     application->SendPhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Send(); });
+                    [](pcms::CoupledField* f) { f->Send(); });
     });
     application->ReceivePhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Receive(); });
+                    [](pcms::CoupledField* f) { f->Receive(); });
     });
     application->SendPhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Send(); });
+                    [](pcms::CoupledField* f) { f->Send(); });
     });
   } while (!done);
 
@@ -88,9 +80,9 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  pcms::CouplerServer cpl(
-    "proxy_couple_server", comm,
-    redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+  pcms::Coupler cpl(
+    "proxy_couple_server", comm, true,
+    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto* application = cpl.AddApplication("proxy_couple");
   std::string numbering;
@@ -108,35 +100,31 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
   constexpr int nplanes = 2;
-  std::vector<pcms::ConvertibleCoupledField*> fields;
+  std::vector<pcms::CoupledField*> fields;
   for (int i = 0; i < nplanes; ++i) {
     std::stringstream ss;
     ss << "xgc_gids_plane_" << i;
     auto field_adapter =
       pcms::OmegaHFieldAdapter<GO>(ss.str(), mesh, is_overlap, numbering);
     fields.push_back(
-      application->AddField(ss.str(), std::move(field_adapter),
-                            FieldTransferMethod::Copy, // to Omega_h
-                            FieldEvaluationMethod::None,
-                            FieldTransferMethod::Copy, // from Omega_h
-                            FieldEvaluationMethod::None, is_overlap));
+      application->AddField(ss.str(), std::move(field_adapter)));
   }
   do {
     application->ReceivePhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Receive(); });
+                    [](pcms::CoupledField* f) { f->Receive(); });
     });
     application->SendPhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Send(); });
+                    [](pcms::CoupledField* f) { f->Send(); });
     });
     application->ReceivePhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Receive(); });
+                    [](pcms::CoupledField* f) { f->Receive(); });
     });
     application->SendPhase([&]() {
       std::for_each(fields.begin(), fields.end(),
-                    [](pcms::ConvertibleCoupledField* f) { f->Send(); });
+                    [](pcms::CoupledField* f) { f->Send(); });
     });
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());

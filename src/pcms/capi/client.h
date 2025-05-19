@@ -7,15 +7,31 @@
 extern "C" {
 #endif
 
-struct PcmsClientHandle { void* pointer; };
+struct PcmsClientHandle
+{
+  void* couplerPointer;
+  void* appPointer;
+};
 typedef struct PcmsClientHandle PcmsClientHandle;
-struct PcmsOmegaHMeshHandle { void* pointer; };
+struct PcmsOmegaHMeshHandle
+{
+  void* pointer;
+};
 typedef struct PcmsOmegaHMeshHandle PcmsOmegaHMeshHandle;
-struct PcmsReverseClassificationHandle { void* pointer; };
+struct PcmsReverseClassificationHandle
+{
+  void* pointer;
+};
 typedef struct PcmsReverseClassificationHandle PcmsReverseClassificationHandle;
-struct PcmsFieldAdapterHandle { void* pointer; };
+struct PcmsFieldAdapterHandle
+{
+  void* pointer;
+};
 typedef struct PcmsFieldAdapterHandle PcmsFieldAdapterHandle;
-struct PcmsFieldHandle { void* pointer; };
+struct PcmsFieldHandle
+{
+  void* pointer;
+};
 typedef struct PcmsFieldHandle PcmsFieldHandle;
 
 enum PcmsAdapterType
@@ -35,7 +51,7 @@ enum PcmsType
 };
 typedef enum PcmsType PcmsType;
 
-//change to a struct holding a pointer
+// change to a struct holding a pointer
 PcmsClientHandle pcms_create_client(const char* name, MPI_Comm comm);
 void pcms_destroy_client(PcmsClientHandle);
 
@@ -47,24 +63,23 @@ void pcms_destroy_reverse_classification(PcmsReverseClassificationHandle);
 // this function is helpful for test cases so we can compute the total number of
 // vertexes in the mesh without reading additional files. This function is not
 // likely to be needed for production cases
-int pcms_reverse_classification_count_verts(
-  PcmsReverseClassificationHandle);
+int pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle);
 
 // takes in overlap function takes a geometric dimension and a geometric id
 // C doesn't have a builtin bool type, so we use int for compatability with C++
 typedef int8_t (*in_overlap_function)(int, int);
 PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
-  const char* name, MPI_Comm plane_comm, void* data, int size, PcmsType data_type,
-  const PcmsReverseClassificationHandle rc, in_overlap_function in_overlap);
+  const char* name, MPI_Comm plane_comm, void* data, int size,
+  PcmsType data_type, const PcmsReverseClassificationHandle rc,
+  in_overlap_function in_overlap);
 
 PcmsFieldAdapterHandle pcms_create_dummy_field_adapter();
 
 void pcms_destroy_field_adapter(PcmsFieldAdapterHandle);
 
-PcmsFieldHandle pcms_add_field(PcmsClientHandle client_handle,
-                                    const char* name,
-                                    PcmsFieldAdapterHandle adapter_handle,
-                                    int participates);
+PcmsFieldHandle pcms_add_field(PcmsClientHandle client_handle, const char* name,
+                               PcmsFieldAdapterHandle adapter_handle,
+                               int participates);
 void pcms_send_field_name(PcmsClientHandle, const char* name);
 void pcms_receive_field_name(PcmsClientHandle, const char* name);
 

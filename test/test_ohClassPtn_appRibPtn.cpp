@@ -49,13 +49,11 @@ int main(int argc, char** argv)
                    static_cast<redev::ProcessType>(isRdv));
 
   const std::string name = "meshVtxIds";
-  const int rdvRanks = 2;
-  const int appRanks = 2;
 
   adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
   auto channel =
     rdv.CreateAdiosChannel(name, params, redev::TransportType::BP4);
-  auto commPair = channel.CreateComm<redev::GO>(name,rdv.GetMPIComm());
+  auto commPair = channel.CreateComm<redev::GO>(name, rdv.GetMPIComm());
 
   // Build the dest, offsets, and permutation arrays for the forward
   // send from non-rendezvous to rendezvous.
@@ -151,6 +149,6 @@ int main(int argc, char** argv)
         }
       }
     } // end rdv -> non-rdv
-  }   // end iter loop
+  } // end iter loop
   return 0;
 }

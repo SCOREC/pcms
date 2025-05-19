@@ -5,15 +5,14 @@
 
 #include "queue_visited.hpp"
 
-using namespace Omega_h;
-
 static constexpr int max_dim = 3;
 
 // TODO change this into span/mdspan
 OMEGA_H_INLINE
-Real calculateDistance(const Real* p1, const Real* p2, const int dim)
+Omega_h::Real calculateDistance(const Omega_h::Real* p1,
+                                const Omega_h::Real* p2, const int dim)
 {
-  Real dx, dy, dz;
+  Omega_h::Real dx, dy, dz;
   dx = p1[0] - p2[0];
   dy = p1[1] - p2[1];
   if (dim != 3) {
@@ -29,7 +28,7 @@ inline void checkTargetPoints(
 {
   Kokkos::fence();
   printf("INFO: Checking target points...\n");
-  auto check_target_points = OMEGA_H_LAMBDA(LO i)
+  auto check_target_points = OMEGA_H_LAMBDA(Omega_h::LO i)
   {
     if (results(i).tri_id < 0) {
       OMEGA_H_CHECK_PRINTF(results(i).tri_id >= 0,
@@ -38,24 +37,26 @@ inline void checkTargetPoints(
       printf("%d, ", i);
     }
   };
-  parallel_for(results.size(), check_target_points, "check_target_points");
+  Omega_h::parallel_for(results.size(), check_target_points,
+                        "check_target_points");
   Kokkos::fence();
   printf("\n");
 }
 
-inline void printSupportsForTarget(const LO target_id, const Write<LO>& supports_ptr,
-                            const Write<LO>& nSupports,
-                            const Write<LO>& support_idx)
+inline void printSupportsForTarget(
+  const Omega_h::LO target_id, const Omega_h::Write<Omega_h::LO>& supports_ptr,
+  const Omega_h::Write<Omega_h::LO>& nSupports,
+  const Omega_h::Write<Omega_h::LO>& support_idx)
 {
-  parallel_for(
-    nSupports.size(), OMEGA_H_LAMBDA(const LO id) {
+  Omega_h::parallel_for(
+    nSupports.size(), OMEGA_H_LAMBDA(const Omega_h::LO id) {
       if (id == target_id) {
-        LO start_ptr = supports_ptr[id];
-        LO end_ptr = supports_ptr[id + 1];
+        Omega_h::LO start_ptr = supports_ptr[id];
+        Omega_h::LO end_ptr = supports_ptr[id + 1];
         printf("Target vertex: %d\n with %d num supports: nSupports[id]=%d", id,
                end_ptr - start_ptr, nSupports[id]);
-        for (LO i = start_ptr; i < end_ptr; ++i) {
-          LO cell_id = support_idx[i];
+        for (Omega_h::LO i = start_ptr; i < end_ptr; ++i) {
+          Omega_h::LO cell_id = support_idx[i];
           printf(", %d", cell_id);
         }
         printf("\n");
@@ -66,27 +67,34 @@ inline void printSupportsForTarget(const LO target_id, const Write<LO>& supports
 class FindSupports
 {
 private:
-  Mesh& source_mesh;
-  Mesh& target_mesh; // TODO it's null when one mesh is used
+  Omega_h::Mesh& source_mesh;
+  Omega_h::Mesh& target_mesh; // TODO it's null when one mesh is used
 
 public:
-  FindSupports(Mesh& source_mesh_, Mesh& target_mesh_)
+  FindSupports(Omega_h::Mesh& source_mesh_, Omega_h::Mesh& target_mesh_)
     : source_mesh(source_mesh_), target_mesh(target_mesh_) {};
 
-  FindSupports(Mesh& mesh_) : source_mesh(mesh_), target_mesh(mesh_) {};
+  FindSupports(Omega_h::Mesh& mesh_)
+    : source_mesh(mesh_), target_mesh(mesh_) {};
 
-  void adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSupports,
-                      Write<LO>& support_idx, Write<Real>& radii2,
+  void adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
+                      Omega_h::Write<Omega_h::LO>& nSupports,
+                      Omega_h::Write<Omega_h::LO>& support_idx,
+                      Omega_h::Write<Omega_h::Real>& radii2,
                       bool is_build_csr_call);
 
-  void adjBasedSearchCentroidNodes(Write<LO>& supports_ptr,
-                                   Write<LO>& nSupports, Write<LO>& support_idx,
-                                   Write<Real>& radii2, bool is_build_csr_call);
+  void adjBasedSearchCentroidNodes(Omega_h::Write<Omega_h::LO>& supports_ptr,
+                                   Omega_h::Write<Omega_h::LO>& nSupports,
+                                   Omega_h::Write<Omega_h::LO>& support_idx,
+                                   Omega_h::Write<Omega_h::Real>& radii2,
+                                   bool is_build_csr_call);
 };
 
-inline void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSupports,
-                                  Write<LO>& support_idx, Write<Real>& radii2,
-                                  bool is_build_csr_call)
+inline void FindSupports::adjBasedSearch(
+  Omega_h::Write<Omega_h::LO>& supports_ptr,
+  Omega_h::Write<Omega_h::LO>& nSupports,
+  Omega_h::Write<Omega_h::LO>& support_idx,
+  Omega_h::Write<Omega_h::Real>& radii2, bool is_build_csr_call)
 {
 
   const auto& sourcePoints_coords = source_mesh.coords();
@@ -97,14 +105,15 @@ inline void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSu
   const auto nvertices_target = target_mesh.nverts();
   OMEGA_H_CHECK(radii2.size() == nvertices_target);
 
-  const auto& vert2vert = source_mesh.ask_star(VERT);
+  const auto& vert2vert = source_mesh.ask_star(Omega_h::VERT);
   const auto& v2v_ptr = vert2vert.a2ab;
   const auto& v2v_data = vert2vert.ab2b;
   const auto& cells2verts = source_mesh.ask_verts_of(dim);
 
-  Kokkos::View<pcms::Real* [2]> target_points("test_points", nvertices_target);
-  parallel_for(
-    nvertices_target, OMEGA_H_LAMBDA(const LO i) {
+  Kokkos::View<Omega_h::Real* [2]> target_points("test_points",
+                                                 nvertices_target);
+  Omega_h::parallel_for(
+    nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
       target_points(i, 0) = targetPoints_coords[i * dim];
       target_points(i, 1) = targetPoints_coords[i * dim + 1];
     });
@@ -114,30 +123,30 @@ inline void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSu
   auto results = search_cell(target_points);
   checkTargetPoints(results);
 
-  parallel_for(
+  Omega_h::parallel_for(
     nvertices_target,
-    OMEGA_H_LAMBDA(const LO id) {
-      queue queue;
-      track visited;
-      Real cutoffDistance = radii2[id];
+    OMEGA_H_LAMBDA(const Omega_h::LO id) {
+      Queue queue;
+      Track visited;
+      Omega_h::Real cutoffDistance = radii2[id];
 
-      LO source_cell_id = results(id).tri_id;
+      Omega_h::LO source_cell_id = results(id).tri_id;
       OMEGA_H_CHECK_PRINTF(
         source_cell_id >= 0,
         "ERROR: Source cell id not found for target %d (%f,%f)\n", id,
         target_points(id, 0), target_points(id, 1));
 
-      const LO num_verts_in_dim = dim + 1;
-      LO start_ptr = source_cell_id * num_verts_in_dim;
-      LO end_ptr = start_ptr + num_verts_in_dim;
-      Real target_coords[max_dim];
-      Real support_coords[max_dim];
+      const Omega_h::LO num_verts_in_dim = dim + 1;
+      Omega_h::LO start_ptr = source_cell_id * num_verts_in_dim;
+      Omega_h::LO end_ptr = start_ptr + num_verts_in_dim;
+      Omega_h::Real target_coords[max_dim];
+      Omega_h::Real support_coords[max_dim];
 
-      for (LO k = 0; k < dim; ++k) {
+      for (Omega_h::LO k = 0; k < dim; ++k) {
         target_coords[k] = target_points(id, k);
       }
 
-      LO start_counter;
+      Omega_h::LO start_counter;
       if (!is_build_csr_call) {
         start_counter = supports_ptr[id];
       }
@@ -153,15 +162,16 @@ inline void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSu
       // * Method
 
       int count = 0;
-      for (LO i = start_ptr; i < end_ptr; ++i) {
-        LO vert_id = cells2verts[i];
+      for (Omega_h::LO i = start_ptr; i < end_ptr; ++i) {
+        Omega_h::LO vert_id = cells2verts[i];
         visited.push_back(vert_id);
 
-        for (LO k = 0; k < dim; ++k) {
+        for (Omega_h::LO k = 0; k < dim; ++k) {
           support_coords[k] = sourcePoints_coords[vert_id * dim + k];
         }
 
-        Real dist = calculateDistance(target_coords, support_coords, dim);
+        Omega_h::Real dist =
+          calculateDistance(target_coords, support_coords, dim);
         if (dist <= cutoffDistance) {
           count++;
           if (count >= 500) {
@@ -175,19 +185,19 @@ inline void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSu
           }
           queue.push_back(vert_id);
           if (!is_build_csr_call) {
-            LO idx_count = count - 1;
+            Omega_h::LO idx_count = count - 1;
             support_idx[start_counter + idx_count] = vert_id;
           }
         }
       }
 
       while (!queue.isEmpty()) {
-        LO currentVertex = queue.front();
+        Omega_h::LO currentVertex = queue.front();
         queue.pop_front();
-        LO start = v2v_ptr[currentVertex];
-        LO end = v2v_ptr[currentVertex + 1];
+        Omega_h::LO start = v2v_ptr[currentVertex];
+        Omega_h::LO end = v2v_ptr[currentVertex + 1];
 
-        for (LO i = start; i < end; ++i) {
+        for (Omega_h::LO i = start; i < end; ++i) {
           auto neighborIndex = v2v_data[i];
 
           // check if neighbor index is already in the queue to be checked
@@ -199,7 +209,8 @@ inline void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSu
               support_coords[k] = sourcePoints_coords[neighborIndex * dim + k];
             }
 
-            Real dist = calculateDistance(target_coords, support_coords, dim);
+            Omega_h::Real dist =
+              calculateDistance(target_coords, support_coords, dim);
 
             if (dist <= cutoffDistance) {
               count++;
@@ -210,7 +221,7 @@ inline void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSu
               }
               queue.push_back(neighborIndex);
               if (!is_build_csr_call) {
-                LO idx_count = count - 1;
+                Omega_h::LO idx_count = count - 1;
                 support_idx[start_counter + idx_count] = neighborIndex;
               }
             }
@@ -226,11 +237,11 @@ inline void FindSupports::adjBasedSearch(Write<LO>& supports_ptr, Write<LO>& nSu
   }
 }
 
-inline void FindSupports::adjBasedSearchCentroidNodes(Write<LO>& supports_ptr,
-                                               Write<LO>& nSupports,
-                                               Write<LO>& support_idx,
-                                               Write<Real>& radii2,
-                                               bool is_build_csr_call)
+inline void FindSupports::adjBasedSearchCentroidNodes(
+  Omega_h::Write<Omega_h::LO>& supports_ptr,
+  Omega_h::Write<Omega_h::LO>& nSupports,
+  Omega_h::Write<Omega_h::LO>& support_idx,
+  Omega_h::Write<Omega_h::Real>& radii2, bool is_build_csr_call)
 {
   // Mesh Info
   const auto& mesh_coords = source_mesh.coords();
@@ -238,81 +249,83 @@ inline void FindSupports::adjBasedSearchCentroidNodes(Write<LO>& supports_ptr,
   const auto& dim = source_mesh.dim();
   const auto& nfaces = source_mesh.nfaces();
 
-  const auto& nodes2faces = source_mesh.ask_up(VERT, FACE);
+  const auto& nodes2faces = source_mesh.ask_up(Omega_h::VERT, Omega_h::FACE);
   const auto& n2f_ptr = nodes2faces.a2ab;
   const auto& n2f_data = nodes2faces.ab2b;
-  const auto& faces2nodes = source_mesh.ask_down(FACE, VERT).ab2b;
+  const auto& faces2nodes =
+    source_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
 
-  Write<Real> cell_centroids(
+  Omega_h::Write<Omega_h::Real> cell_centroids(
     dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
 
-  parallel_for(
+  Omega_h::parallel_for(
     "calculate the centroid in each tri element", nfaces,
-    OMEGA_H_LAMBDA(const LO id) {
-      const auto current_el_verts = gather_verts<3>(faces2nodes, id);
+    OMEGA_H_LAMBDA(const Omega_h::LO id) {
+      const auto current_el_verts = Omega_h::gather_verts<3>(faces2nodes, id);
       const Omega_h::Few<Omega_h::Vector<2>, 3> current_el_vert_coords =
-        gather_vectors<3, 2>(mesh_coords, current_el_verts);
-      auto centroid = average(current_el_vert_coords);
+        Omega_h::gather_vectors<3, 2>(mesh_coords, current_el_verts);
+      auto centroid = Omega_h::average(current_el_vert_coords);
       int index = dim * id;
       cell_centroids[index] = centroid[0];
       cell_centroids[index + 1] = centroid[1];
     });
   // * Got the adj data and cell centroids
 
-  parallel_for(
+  Omega_h::parallel_for(
     nvertices,
-    OMEGA_H_LAMBDA(const LO id) {
-      queue queue;
-      track visited;
-      const LO num_verts_in_dim = dim + 1;
-      Real target_coords[max_dim];
-      Real support_coords[max_dim];
-      Real cutoffDistance = radii2[id];
+    OMEGA_H_LAMBDA(const Omega_h::LO id) {
+      Queue queue;
+      Track visited;
+      const Omega_h::LO num_verts_in_dim = dim + 1;
+      Omega_h::Real target_coords[max_dim];
+      Omega_h::Real support_coords[max_dim];
+      Omega_h::Real cutoffDistance = radii2[id];
 
       //? copying the target vertex coordinates
-      for (LO k = 0; k < dim; ++k) {
+      for (Omega_h::LO k = 0; k < dim; ++k) {
         target_coords[k] = mesh_coords[id * dim + k];
       }
 
-      LO start_counter;
+      Omega_h::LO start_counter;
       if (!is_build_csr_call) {
         start_counter = supports_ptr[id];
       }
-      LO start_ptr = n2f_ptr[id];
-      LO end_ptr = n2f_ptr[id + 1];
+      Omega_h::LO start_ptr = n2f_ptr[id];
+      Omega_h::LO end_ptr = n2f_ptr[id + 1];
 
       int count = 0;
-      for (LO i = start_ptr; i < end_ptr; ++i) {
-        LO cell_id = n2f_data[i];
+      for (Omega_h::LO i = start_ptr; i < end_ptr; ++i) {
+        Omega_h::LO cell_id = n2f_data[i];
         visited.push_back(cell_id);
 
-        for (LO k = 0; k < dim; ++k) {
+        for (Omega_h::LO k = 0; k < dim; ++k) {
           support_coords[k] = cell_centroids[cell_id * dim + k];
         }
 
-        Real dist = calculateDistance(target_coords, support_coords, dim);
+        Omega_h::Real dist =
+          calculateDistance(target_coords, support_coords, dim);
         if (dist <= cutoffDistance) {
           count++;
           queue.push_back(cell_id);
           if (!is_build_csr_call) {
-            LO idx_count = count - 1;
+            Omega_h::LO idx_count = count - 1;
             support_idx[start_counter + idx_count] = cell_id;
           }
         }
       }
 
       while (!queue.isEmpty()) { // ? can queue be empty?
-        LO currentCell = queue.front();
+        Omega_h::LO currentCell = queue.front();
         queue.pop_front();
-        LO start = currentCell * num_verts_in_dim;
-        LO end = start + num_verts_in_dim;
+        Omega_h::LO start = currentCell * num_verts_in_dim;
+        Omega_h::LO end = start + num_verts_in_dim;
 
-        for (LO i = start; i < end; ++i) {
-          LO current_vert_id = faces2nodes[i];
-          LO start_ptr_current_vert = n2f_ptr[current_vert_id];
-          LO end_ptr_vert_current_vert = n2f_ptr[current_vert_id + 1];
-          for (LO j = start_ptr_current_vert; j < end_ptr_vert_current_vert;
-               ++j) {
+        for (Omega_h::LO i = start; i < end; ++i) {
+          Omega_h::LO current_vert_id = faces2nodes[i];
+          Omega_h::LO start_ptr_current_vert = n2f_ptr[current_vert_id];
+          Omega_h::LO end_ptr_vert_current_vert = n2f_ptr[current_vert_id + 1];
+          for (Omega_h::LO j = start_ptr_current_vert;
+               j < end_ptr_vert_current_vert; ++j) {
             auto neighbor_cell_index = n2f_data[j];
 
             // check if neighbor index is already in the queue to be checked
@@ -325,13 +338,14 @@ inline void FindSupports::adjBasedSearchCentroidNodes(Write<LO>& supports_ptr,
                   cell_centroids[neighbor_cell_index * dim + k];
               }
 
-              Real dist = calculateDistance(target_coords, support_coords, dim);
+              Omega_h::Real dist =
+                calculateDistance(target_coords, support_coords, dim);
 
               if (dist <= cutoffDistance) {
                 count++;
                 queue.push_back(neighbor_cell_index);
                 if (!is_build_csr_call) {
-                  LO idx_count = count - 1;
+                  Omega_h::LO idx_count = count - 1;
                   support_idx[start_counter + idx_count] = neighbor_cell_index;
                 } // end of support_idx check
               } // end of distance check
@@ -352,58 +366,63 @@ inline void FindSupports::adjBasedSearchCentroidNodes(Write<LO>& supports_ptr,
 
 struct SupportResults
 {
-  Write<LO> supports_ptr;
-  Write<LO> supports_idx;
-  Write<Real> radii2; // squared radii of the supports
+  Omega_h::LOs supports_ptr;
+  Omega_h::LOs supports_idx;
+  Omega_h::Write<Omega_h::Real> radii2;
 };
 
-inline SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
-                               Real& cutoffDistance, LO min_req_support = 12,
-                               bool adapt_radius = true)
+inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
+                                      Omega_h::Mesh& target_mesh,
+                                      Omega_h::Real& cutoffDistance,
+                                      Omega_h::LO min_req_support = 12,
+                                      bool adapt_radius = true)
 {
-  SupportResults support;
   FindSupports search(source_mesh, target_mesh);
-  LO nvertices_source = source_mesh.nverts();
-  LO nvertices_target = target_mesh.nverts();
+  Omega_h::LO nvertices_source = source_mesh.nverts();
+  Omega_h::LO nvertices_target = target_mesh.nverts();
 
-  Write<LO> nSupports(nvertices_target, 0,
-                      "number of supports in each target vertex");
+  Omega_h::Write<Omega_h::LO> nSupports(
+    nvertices_target, 0, "number of supports in each target vertex");
   printf("INFO: Cut off distance: %f\n", cutoffDistance);
-  Write<Real> radii2 = Write<Real>(nvertices_target, cutoffDistance,
-                                   "squared radii of the supports");
+  Omega_h::Write<Omega_h::Real> radii2 = Omega_h::Write<Omega_h::Real>(
+    nvertices_target, cutoffDistance, "squared radii of the supports");
+
+  Omega_h::Write<Omega_h::LO> supports_ptr;
+  Omega_h::Write<Omega_h::LO> supports_idx;
 
   if (!adapt_radius) {
     printf("INFO: Fixed radius search *(disregarding required minimum "
            "support)*... \n");
-    search.adjBasedSearch(support.supports_ptr, nSupports, support.supports_idx,
-                          radii2, true);
+    search.adjBasedSearch(supports_ptr, nSupports, supports_idx, radii2, true);
   } else {
     printf("INFO: Adaptive radius search... \n");
     int r_adjust_loop = 0;
     while (true) {
-      nSupports = Write<LO>(nvertices_target, 0,
-                            "number of supports in each target vertex");
+      nSupports = Omega_h::Write<Omega_h::LO>(
+        nvertices_target, 0, "number of supports in each target vertex");
 
-      Real max_radius = 0.0;
+      Omega_h::Real max_radius = 0.0;
       Kokkos::parallel_reduce(
         "find max radius", nvertices_target,
-        OMEGA_H_LAMBDA(const LO i, Real& local_max) {
+        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::Real& local_max) {
           local_max = (radii2[i] > local_max) ? radii2[i] : local_max;
         },
-        Kokkos::Max<Real>(max_radius));
+        Kokkos::Max<Omega_h::Real>(max_radius));
       printf("INFO: Loop %d: max_radius: %f\n", r_adjust_loop, max_radius);
 
-      SupportResults support; // create support every time to avoid complexity
+      // create storage every time to avoid complexity
+      Omega_h::Write<Omega_h::LO> supports_ptr;
+      Omega_h::Write<Omega_h::LO> supports_idx;
       Kokkos::fence();
-      search.adjBasedSearch(support.supports_ptr, nSupports,
-                            support.supports_idx, radii2, true);
+      search.adjBasedSearch(supports_ptr, nSupports, supports_idx, radii2,
+                            true);
       Kokkos::fence();
 
-      LO min_supports_found = 0;
-      Kokkos::Min<LO> min_reducer(min_supports_found);
+      Omega_h::LO min_supports_found = 0;
+      Kokkos::Min<Omega_h::LO> min_reducer(min_supports_found);
       Kokkos::parallel_reduce(
         "find min number of supports", nvertices_target,
-        OMEGA_H_LAMBDA(const LO i, LO& local_min) {
+        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::LO& local_min) {
           min_reducer.join(local_min, nSupports[i]);
         },
         min_reducer);
@@ -417,10 +436,11 @@ inline SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
       }
 
       Kokkos::fence();
-      parallel_for(
-        nvertices_target, OMEGA_H_LAMBDA(const LO i) {
+      Omega_h::parallel_for(
+        nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
           if (nSupports[i] < min_req_support) {
-            Real factor = Real(min_req_support) / Real(nSupports[i]);
+            Omega_h::Real factor =
+              Omega_h::Real(min_req_support) / Omega_h::Real(nSupports[i]);
             factor = (factor > 1.1 || nSupports[i] == 0) ? 1.1 : factor;
             radii2[i] = radii2[i] * factor;
           }
@@ -431,80 +451,80 @@ inline SupportResults searchNeighbors(Mesh& source_mesh, Mesh& target_mesh,
     printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
   }
 
-  support.supports_ptr = Write<LO>(
+  supports_ptr = Omega_h::Write<Omega_h::LO>(
     nvertices_target + 1, 0, "number of support source vertices in CSR format");
 
-  LO total_supports = 0;
+  Omega_h::LO total_supports = 0;
 
   Kokkos::parallel_scan(
     nvertices_target,
     OMEGA_H_LAMBDA(int j, int& update, bool final) {
       update += nSupports[j];
       if (final) {
-        support.supports_ptr[j + 1] = update;
+        supports_ptr[j + 1] = update;
       }
     },
     total_supports);
 
   Kokkos::fence();
 
-  support.supports_idx = Write<LO>(
+  supports_idx = Omega_h::Write<Omega_h::LO>(
     total_supports, 0, "index of source supports of each target node");
 
-  search.adjBasedSearch(support.supports_ptr, nSupports, support.supports_idx,
-                        radii2, false);
+  search.adjBasedSearch(supports_ptr, nSupports, supports_idx, radii2, false);
 
-  support.radii2 = radii2;
-  target_mesh.add_tag<Real>(VERT, "radii2", 1, support.radii2);
-  return support;
+  target_mesh.add_tag<Omega_h::Real>(Omega_h::VERT, "radii2", 1, radii2);
+  return SupportResults{read(supports_ptr), read(supports_idx), radii2};
 }
 
-inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
-                               LO min_support = 12, bool adapt_radius = true)
+inline SupportResults searchNeighbors(Omega_h::Mesh& mesh,
+                                      Omega_h::Real cutoffDistance,
+                                      Omega_h::LO min_support = 12,
+                                      bool adapt_radius = true)
 {
-  SupportResults support;
+  Omega_h::Write<Omega_h::LO> supports_ptr;
+  Omega_h::Write<Omega_h::LO> supports_idx;
   FindSupports search(mesh);
-  LO nvertices_target = mesh.nverts();
-  Write<LO> nSupports(nvertices_target, 0,
-                      "number of supports in each target vertex");
+  Omega_h::LO nvertices_target = mesh.nverts();
+  Omega_h::Write<Omega_h::LO> nSupports(
+    nvertices_target, 0, "number of supports in each target vertex");
 
   printf("INFO: Inside searchNeighbors 1\n");
-  Write<Real> radii2 = Write<Real>(nvertices_target, cutoffDistance,
-                                   "squared radii of the supports");
+  Omega_h::Write<Omega_h::Real> radii2 = Omega_h::Write<Omega_h::Real>(
+    nvertices_target, cutoffDistance, "squared radii of the supports");
   printf("INFO: Cutoff distance: %f\n", cutoffDistance);
 
   if (!adapt_radius) {
     printf("INFO: Fixed radius search *(disregarding required minimum "
            "support)* ... \n");
-    search.adjBasedSearch(support.supports_ptr, nSupports, support.supports_idx,
-                          radii2, true);
+    search.adjBasedSearch(supports_ptr, nSupports, supports_idx, radii2, true);
   } else {
     printf("INFO: Adaptive radius search... \n");
     int r_adjust_loop = 0;
     while (true) { // until the number of minimum support is met
-      Real max_radius = 0.0;
+      Omega_h::Real max_radius = 0.0;
       Kokkos::parallel_reduce(
         "find max radius", nvertices_target,
-        OMEGA_H_LAMBDA(const LO i, Real& local_max) {
+        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::Real& local_max) {
           local_max = (radii2[i] > local_max) ? radii2[i] : local_max;
         },
-        Kokkos::Max<Real>(max_radius));
+        Kokkos::Max<Omega_h::Real>(max_radius));
       printf("INFO: Loop %d: max_radius: %f\n", r_adjust_loop, max_radius);
 
-      nSupports = Write<LO>(nvertices_target, 0,
-                            "number of supports in each target vertex");
+      nSupports = Omega_h::Write<Omega_h::LO>(
+        nvertices_target, 0, "number of supports in each target vertex");
       SupportResults support; // create support every time to avoid complexity
-      search.adjBasedSearchCentroidNodes(support.supports_ptr, nSupports,
-                                         support.supports_idx, radii2, true);
+      search.adjBasedSearchCentroidNodes(supports_ptr, nSupports, supports_idx,
+                                         radii2, true);
 
       Kokkos::fence();
-      LO min_nSupports = 0;
+      Omega_h::LO min_nSupports = 0;
       Kokkos::parallel_reduce(
         "find min number of supports", nvertices_target,
-        OMEGA_H_LAMBDA(const LO i, LO& local_min) {
+        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::LO& local_min) {
           local_min = (nSupports[i] < local_min) ? nSupports[i] : local_min;
         },
-        Kokkos::Min<LO>(min_nSupports));
+        Kokkos::Min<Omega_h::LO>(min_nSupports));
 
       printf("min_nSupports: %d at loop %d, max_radius %f\n", min_nSupports,
              r_adjust_loop, max_radius);
@@ -515,10 +535,11 @@ inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
       }
 
       Kokkos::fence();
-      parallel_for(
-        nvertices_target, OMEGA_H_LAMBDA(const LO i) {
+      Omega_h::parallel_for(
+        nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
           if (nSupports[i] < min_support) {
-            Real factor = Real(min_support) / Real(nSupports[i]);
+            Omega_h::Real factor =
+              Omega_h::Real(min_support) / Omega_h::Real(nSupports[i]);
             factor = (nSupports[i] == 0 || factor > 1.5) ? 1.5 : factor;
             radii2[i] *= factor;
           }
@@ -529,16 +550,16 @@ inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
   } // adaptive radius search
 
   // offset array for the supports of each target vertex
-  support.supports_ptr = Write<LO>(
+  supports_ptr = Omega_h::Write<Omega_h::LO>(
     nvertices_target + 1, 0, "number of support source vertices in CSR format");
 
-  LO total_supports = 0;
+  Omega_h::LO total_supports = 0;
   Kokkos::parallel_scan(
     nvertices_target,
     OMEGA_H_LAMBDA(int j, int& update, bool final) {
       update += nSupports[j];
       if (final) {
-        support.supports_ptr[j + 1] = update;
+        supports_ptr[j + 1] = update;
       }
     },
     total_supports);
@@ -546,16 +567,15 @@ inline SupportResults searchNeighbors(Mesh& mesh, Real cutoffDistance,
   printf("INFO: Inside searchNeighbors 3\n");
   Kokkos::fence();
 
-  support.supports_idx = Write<LO>(
+  supports_idx = Omega_h::Write<Omega_h::LO>(
     total_supports, 0, "index of source supports of each target node");
   printf("INFO: Total_supports: %d\n", total_supports);
 
-  search.adjBasedSearchCentroidNodes(support.supports_ptr, nSupports,
-                                     support.supports_idx, radii2, false);
+  search.adjBasedSearchCentroidNodes(supports_ptr, nSupports, supports_idx,
+                                     radii2, false);
 
-  support.radii2 = radii2;
-  mesh.add_tag<Omega_h::Real>(VERT, "support_radius", 1, radii2);
-  return support;
+  mesh.add_tag<Omega_h::Real>(Omega_h::VERT, "support_radius", 1, radii2);
+  return SupportResults{read(supports_ptr), read(supports_idx), radii2};
 }
 
 #endif

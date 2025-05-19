@@ -3,7 +3,6 @@
 //
 
 #include "interpolation_base.h"
-#include "MLS_rbf_options.hpp"
 
 #include <execution>
 
@@ -125,13 +124,13 @@ double pointDistance(const double x1, const double y1, const double z1,
 
 void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
 {
-  LO n_targets = target_coords_.size() / dim_;
-  LO n_sources = source_coords_.size() / dim_;
+  Omega_h::LO n_targets = target_coords_.size() / dim_;
+  Omega_h::LO n_sources = source_coords_.size() / dim_;
   auto adapt_radius = adapt_radius_;
   auto dim = dim_;
 
-  supports_.radii2 = Omega_h::Write<Omega_h::Real>(n_targets, radius_);
-  supports_.supports_ptr = Omega_h::Write<LO>(n_targets + 1, 0);
+  // supports_.radii2 = Omega_h::Write<Omega_h::Real>(n_targets, radius_);
+  // supports_.supports_ptr = Omega_h::Write<Omega_h::LO>(n_targets + 1, 0);
 
   printf("First 10 Target Points with %d points:\n", n_targets);
   Omega_h::parallel_for("print target points", 10,
@@ -146,8 +145,8 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
                  source_coords_[i * 2 + 0], source_coords_[i * 2 + 1]);
         });
 
-  auto radii2_l = supports_.radii2;
-  auto num_supports = Omega_h::Write<LO>(n_targets, 0);
+  auto radii2_l = Omega_h::Write<Omega_h::Real>(n_targets, radius_);
+  auto num_supports = Omega_h::Write<Omega_h::LO>(n_targets, 0);
   auto target_coords_l = target_coords_;
   auto source_coords_l = source_coords_;
 
@@ -210,15 +209,15 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
       Kokkos::fence();
       Omega_h::parallel_for(
         "increase radius", n_targets, OMEGA_H_LAMBDA(const int& i) {
-          LO nsupports = num_supports[i];
+          Omega_h::LO nsupports = num_supports[i];
           if (nsupports < min_req_supports) {
-            double factor = Real(min_req_supports) / Real(nsupports);
+            double factor = Omega_h::Real(min_req_supports) / Omega_h::Real(nsupports);
             OMEGA_H_CHECK_PRINTF(factor > 1.0,
                                          "Factor should be more than 1.0: %f\n", factor);
             factor = (nsupports == 0 || factor > 1.5) ? 1.5 : factor;
             radii2_l[i] *= factor;
           } else if (nsupports > 3 * min_req_supports) { // if too many supports
-            double factor = Real(min_req_supports) / Real(nsupports);
+            double factor = Omega_h::Real(min_req_supports) / Omega_h::Real(nsupports);
             OMEGA_H_CHECK_PRINTF(factor < 1.0,
                                  "Factor should be less than 1.0: %f\n", factor);
             factor = (factor < 0.1) ? 0.33 : factor;
@@ -231,7 +230,7 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
   printf("Supports found: min: %d max: %d\n", min_supports_found, max_supports_found);
 
   // parallel scan for fill the support index with cumulative sum
-  auto support_ptr_l = supports_.supports_ptr;
+  auto support_ptr_l = Omega_h::Write<Omega_h::LO>(n_targets + 1, 0);
   uint total_supports = 0;
   Kokkos::fence();
   Kokkos::parallel_scan(
@@ -246,8 +245,8 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
 
   printf("Total supports found: %d\n", total_supports);
   // resize the support index
-  supports_.supports_idx = Omega_h::Write<LO>(total_supports, 0);
-  auto support_idx_l = supports_.supports_idx;
+  // supports_.supports_idx = Omega_h::Write<Omega_h::LO>(total_supports, 0);
+  auto support_idx_l = Omega_h::Write<Omega_h::LO>(total_supports, 0);
 
   // fill the support index
   Kokkos::parallel_for(
@@ -279,6 +278,11 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
       }
     });
   Kokkos::fence();
+
+  // copy the support index to the supports
+  supports_.radii2 = radii2_l;
+  supports_.supports_ptr = Omega_h::LOs(support_ptr_l);
+  supports_.supports_idx = Omega_h::LOs (support_idx_l);
 }
 
 // TODO : find way to avoid this copy
@@ -332,7 +336,7 @@ void MLSPointCloudInterpolation::eval(
   // TODO: make the basis function a template or pass it as a parameter
   auto target_field_write = mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
-    degree_, supports_.radii2, RadialBasisFunction::RBF_GAUSSIAN, true, 1000);
+    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN);
 
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_field_write);
   copyHostWrite2ScalarArrayView(target_field_, target_field);
@@ -357,7 +361,7 @@ void MLSInterpolationHandler::eval(
   // TODO: make the basis function a template or pass it as a parameter
   auto target_field_write = mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
-    degree_, supports_.radii2, RadialBasisFunction::RBF_GAUSSIAN);
+    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN);
 
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_field_write);
   copyHostWrite2ScalarArrayView(target_field_, target_field);

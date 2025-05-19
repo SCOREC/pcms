@@ -1,23 +1,21 @@
-#cmake_minimum_required(VERSION 3.20)
-#project(Interpolator)
-
 find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_TRANSFER_HEADERS
-    MLSInterpolation.hpp
-    points.hpp
+    pcms_interpolator_aliases.hpp
     adj_search.hpp
-    MLSCoefficients.hpp
+    mls_interpolation_impl.hpp
     queue_visited.hpp
     linear_interpolant.hpp
     multidimarray.hpp
-    MLS_rbf_options.hpp
-        interpolation_base.h
+    mls_interpolation.hpp
+    pcms_interpolator_view_utils.hpp
+    pcms_interpolator_logger.hpp
+    interpolation_base.h
 )
 
 set(PCMS_FIELD_TRANSFER_SOURCES
-    MLS_rbf_options.cpp
-        interpolation_base.cpp
+    mls_interpolation.cpp
+    interpolation_base.cpp
 )
 install(FILES ${PCMS_FIELD_TRANSFER_HEADERS} DESTINATION include/pcms/interpolator)
 

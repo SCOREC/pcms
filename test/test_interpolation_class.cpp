@@ -42,17 +42,17 @@ void translate_mesh(Omega_h::Mesh* mesh, Omega_h::Vector<2> translation_vector)
 {
   auto coords = mesh->coords();
   auto nverts = mesh->nverts();
-  auto out = Write<Real>(coords.size());
+  auto out = Omega_h::Write<Omega_h::Real>(coords.size());
 
-  auto f = OMEGA_H_LAMBDA(LO i)
+  auto f = OMEGA_H_LAMBDA(Omega_h::LO i)
   {
-    auto coord = get_vector<2>(coords, i);
+    auto coord = Omega_h::get_vector<2>(coords, i);
     coord = coord + translation_vector;
-    set_vector<2>(out, i, coord);
+    Omega_h::set_vector<2>(out, i, coord);
   };
 
-  parallel_for(nverts, f);
-  mesh->set_coords(Reals(out));
+  Omega_h::parallel_for(nverts, f);
+  mesh->set_coords(Omega_h::Reals(out));
 }
 
 bool isClose(Omega_h::HostWrite<Omega_h::Real>& array1,
@@ -113,7 +113,7 @@ void node2CentroidInterpolation(Omega_h::Mesh& mesh,
 TEST_CASE("Test MLSInterpolationHandler")
 {
   fprintf(stdout, "[INFO] Starting MLS Interpolation Test...\n");
-  auto lib = Library{};
+  auto lib = Omega_h::Library{};
   auto world = lib.world();
   auto source_mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);

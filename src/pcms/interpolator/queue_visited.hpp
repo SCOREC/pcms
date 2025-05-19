@@ -9,21 +9,19 @@
 #include <Omega_h_reduce.hpp>
 #define MAX_SIZE_QUEUE 500
 #define MAX_SIZE_TRACK 800
-using namespace std;
-using namespace Omega_h;
 
-class queue
+class Queue
 {
 private:
-  LO queue_array[MAX_SIZE_QUEUE];
+  Omega_h::LO queue_array[MAX_SIZE_QUEUE];
   int first = 0, last = -1, count = 0;
 
 public:
   OMEGA_H_INLINE
-  queue() {}
+  Queue() {}
 
   OMEGA_H_INLINE
-  ~queue() {}
+  ~Queue() {}
 
   OMEGA_H_INLINE
   void push_back(const int& item);
@@ -41,18 +39,18 @@ public:
   bool isFull() const;
 };
 
-class track
+class Track
 {
 private:
-  LO tracking_array[MAX_SIZE_TRACK];
+  Omega_h::LO tracking_array[MAX_SIZE_TRACK];
   int first = 0, last = -1, count = 0;
 
 public:
   OMEGA_H_INLINE
-  track() {}
+  Track() {}
 
   OMEGA_H_INLINE
-  ~track() {}
+  ~Track() {}
 
   OMEGA_H_INLINE
   void push_back(const int& item);
@@ -65,7 +63,7 @@ public:
 };
 
 OMEGA_H_INLINE
-void queue::push_back(const int& item)
+void Queue::push_back(const int& item)
 {
   if (count == MAX_SIZE_QUEUE) {
     printf("queue is full %d\n", count);
@@ -77,7 +75,7 @@ void queue::push_back(const int& item)
 }
 
 OMEGA_H_INLINE
-void queue::pop_front()
+void Queue::pop_front()
 {
   if (count == 0) {
     printf("queue is empty\n");
@@ -88,25 +86,25 @@ void queue::pop_front()
 }
 
 OMEGA_H_INLINE
-int queue::front()
+int Queue::front()
 {
   return queue_array[first];
 }
 
 OMEGA_H_INLINE
-bool queue::isEmpty() const
+bool Queue::isEmpty() const
 {
   return count == 0;
 }
 
 OMEGA_H_INLINE
-bool queue::isFull() const
+bool Queue::isFull() const
 {
   return count == MAX_SIZE_QUEUE;
 }
 
 OMEGA_H_INLINE
-void track::push_back(const int& item)
+void Track::push_back(const int& item)
 {
   if (count == MAX_SIZE_TRACK) {
     printf("track is full %d\n", count);
@@ -118,7 +116,7 @@ void track::push_back(const int& item)
 }
 
 OMEGA_H_INLINE
-bool track::notVisited(const int& item)
+bool Track::notVisited(const int& item)
 {
   int id;
   for (int i = 0; i < count; ++i) {
@@ -131,7 +129,7 @@ bool track::notVisited(const int& item)
 }
 
 OMEGA_H_INLINE
-int track::size()
+int Track::size()
 {
   return count;
 }

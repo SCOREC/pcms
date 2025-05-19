@@ -8,7 +8,7 @@ public:
   using value_type = int;
   [[nodiscard]] std::vector<GO> GetGids() const { return {}; }
   [[nodiscard]] ReversePartitionMap GetReversePartitionMap(
-    const redev::Partition& partition) const
+    const Partition& partition) const
   {
     return {};
   }

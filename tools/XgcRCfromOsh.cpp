@@ -26,10 +26,10 @@ int main(int argc, char** argv)
   }
   if (Omega_h::is<Omega_h::LO>(tag)) {
     std::cout << pcms::ConstructRCFromOmegaHMesh<Omega_h::LO>(mesh, numbering,
-                                                                index_base);
+                                                              index_base);
   } else if (Omega_h::is<Omega_h::GO>(tag)) {
     std::cout << pcms::ConstructRCFromOmegaHMesh<Omega_h::GO>(mesh, numbering,
-                                                                index_base);
+                                                              index_base);
   } else {
     std::cerr << "IDs should be either be LO or GO\n";
     std::abort();

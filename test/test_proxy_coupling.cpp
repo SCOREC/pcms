@@ -11,10 +11,6 @@
 #include <thread>
 
 using pcms::Copy;
-using pcms::CouplerClient;
-using pcms::CouplerServer;
-using pcms::FieldEvaluationMethod;
-using pcms::FieldTransferMethod;
 using pcms::GO;
 using pcms::Lagrange;
 using pcms::make_array_view;
@@ -29,40 +25,42 @@ namespace ts = test_support;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  CouplerClient cpl("proxy_couple_xgc_delta_f", comm);
+  pcms::Coupler coupler("proxy_couple", comm, false, {});
+  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f");
 
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
-  cpl.AddField("gids",
+  app->AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
-  cpl.AddField("gids2",
+  app->AddField("gids2",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      cpl.BeginSendPhase();
-      cpl.SendField("gids");  //(Alt) df_gid_field->Send();
-      cpl.SendField("gids2"); //(Alt) df_gid_field->Send();
-      cpl.EndSendPhase();
-      cpl.BeginReceivePhase();
-      cpl.ReceiveField("gids"); //(Alt) df_gid_field->Receive();
-      cpl.EndReceivePhase();
+      app->BeginSendPhase();
+      app->SendField("gids");  //(Alt) df_gid_field->Send();
+      app->SendField("gids2"); //(Alt) df_gid_field->Send();
+      app->EndSendPhase();
+      app->BeginReceivePhase();
+      app->ReceiveField("gids"); //(Alt) df_gid_field->Receive();
+      app->EndReceivePhase();
       // cpl.ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
     }
   } while (!done);
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  pcms::CouplerClient cpl("proxy_couple_xgc_total_f", comm);
+  pcms::Coupler coupler("proxy_couple", comm, false, {});
+  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f");
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
-  cpl.AddField("gids",
+  app->AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      cpl.BeginSendPhase();
-      cpl.SendField("gids"); //(Alt) tf_gid_field->Send();
-      cpl.EndSendPhase();
-      cpl.BeginReceivePhase();
-      cpl.ReceiveField("gids"); //(Alt) tf_gid_field->Receive();
-      cpl.EndReceivePhase();
+      app->BeginSendPhase();
+      app->SendField("gids"); //(Alt) tf_gid_field->Send();
+      app->EndSendPhase();
+      app->BeginReceivePhase();
+      app->ReceiveField("gids"); //(Alt) tf_gid_field->Receive();
+      app->EndReceivePhase();
     }
   } while (!done);
 }
@@ -71,9 +69,9 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  pcms::CouplerServer cpl(
-    "proxy_couple", comm,
-    redev::Partition{ts::setupServerPartition(mesh, cpn_file)}, mesh);
+  pcms::Coupler cpl(
+    "proxy_couple", comm, true,
+    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
@@ -81,49 +79,18 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");
   // TODO, fields should have a transfer policy rather than parameters
   auto* total_f_gids = total_f->AddField(
-    "gids", OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap),
-    FieldTransferMethod::Copy, // to Omega_h
-    FieldEvaluationMethod::None,
-    FieldTransferMethod::Copy, // from Omega_h
-    FieldEvaluationMethod::None, is_overlap);
+    "gids", OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap));
   auto* delta_f_gids = delta_f->AddField(
-    "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap),
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None,
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
+    "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap));
   auto* delta_f_gids2 = delta_f->AddField(
-    "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap),
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None,
-    FieldTransferMethod::Copy, FieldEvaluationMethod::None, is_overlap);
-  // CombinerFunction is a functor that takes a vector of omega_h
-  // fields combines their values and sets the combined values into the
-  // resultant field
-  auto* gather =
-    cpl.AddGatherFieldsOp("cpl1", {*total_f_gids, *delta_f_gids},
-                          "combined_gids", ts::MeanCombiner{}, is_overlap);
-  auto* scatter = cpl.AddScatterFieldsOp(
-    "cpl1", "combined_gids", {*total_f_gids, *delta_f_gids}, is_overlap);
-  // for case with symmetric Gather/Scatter we have
-  // auto [gather, scatter] = cpl.AddSymmetricGatherScatterOp("cpl1",
-  // {"total_f_gids", "delta_f_gids"},
-  //                      "combined_gids", MeanCombiner{});
+    "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap));
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      //  Gather OHField
-      // 1. receives any member fields .Receive()
-      // 2. field_transfer native to internal
-      // 3. combine internal fields into combined internal field
-      // gather->Run(); // alt cpl.GatherFields("cpl1")
-      // gather->Run(); // alt cpl.GatherFields("cpl1")
       total_f->ReceivePhase([&]() { total_f_gids->Receive(); });
       delta_f->ReceivePhase([&]() {
         delta_f_gids->Receive();
         delta_f_gids2->Receive();
       });
-      // Scatter OHField
-      // 1. OHField transfer internal to native
-      // 2. Send data to members
-      // cpl.ScatterFields("cpl1"); // (Alt) scatter->Run();
-      // scatter->Run(); // (Alt) cpl.ScatterFields("cpl1")
       total_f->SendPhase([&]() { total_f_gids->Send(); });
       delta_f->SendPhase([&]() {
         delta_f_gids->Send(pcms::Mode::Deferred);

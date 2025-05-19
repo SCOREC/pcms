@@ -23,14 +23,13 @@
       snprintf(omsg, 2048, "%s failed at %s + %d on rank %d\n", #cond,         \
                __FILE__, __LINE__, rank);                                      \
       pcms::Pcms_Assert_Fail(omsg);                                            \
-    }                                             \
-} while (0)
+    }                                                                          \
+  } while (0)
 
-
-namespace pcms {
-//from scorec/core/pcu_fail.h
-void Pcms_Assert_Fail(const char* msg) __attribute__ ((noreturn));
-}
-
+namespace pcms
+{
+// from scorec/core/pcu_fail.h
+void Pcms_Assert_Fail(const char* msg) __attribute__((noreturn));
+} // namespace pcms
 
 #endif // PCMS_COUPLING_ASSERT_H

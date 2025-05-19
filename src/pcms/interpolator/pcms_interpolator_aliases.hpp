@@ -1,8 +1,11 @@
-#ifndef POINTS_HPP
-#define POINTS_HPP
+#ifndef PCMS_INTERPOLATOR_ALIASES_HPP
+#define PCMS_INTERPOLATOR_ALIASES_HPP
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Random.hpp>
+#include "pcms/arrays.h"
+
+namespace pcms
+{
 
 struct Coord
 {
@@ -14,6 +17,7 @@ using team_policy = typename Kokkos::TeamPolicy<>;
 using member_type = typename Kokkos::TeamPolicy<>::member_type;
 
 // alias for scratch view
+
 using ScratchSpace =
   typename Kokkos::DefaultExecutionSpace::scratch_memory_space;
 
@@ -26,10 +30,19 @@ using ScratchVecView =
 
 using PointsViewType = Kokkos::View<Coord*>;
 
-using MatViewType = Kokkos::View<int**>;
 struct Points
 {
   PointsViewType coordinates;
 };
 
+using IntDeviceMatView = Kokkos::View<int**>;
+using IntDeviceVecView = Kokkos::View<int*>;
+using IntHostMatView = Kokkos::View<int**, Kokkos::HostSpace>;
+
+using RealDefaultScalarArrayView =
+  ScalarArrayView<double, DefaultExecutionSpace>;
+using RealConstDefaultScalarArrayView =
+  ScalarArrayView<const double, DefaultExecutionSpace>;
+
+} // namespace pcms
 #endif

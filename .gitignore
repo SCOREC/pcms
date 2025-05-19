@@ -6,4 +6,5 @@
 *.swp
 .spack-env
 *.bak
+testdata
 .nfs*

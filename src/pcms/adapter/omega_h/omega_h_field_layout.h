@@ -9,6 +9,7 @@
 #include "pcms/field.h"
 
 namespace pcms {
+using ReversePartitionMap = std::map<pcms::LO, std::vector<pcms::LO>>;
 
 enum class OmegaHFieldLayoutLocation {
   PieceWise,
@@ -17,21 +18,29 @@ enum class OmegaHFieldLayoutLocation {
 
 class OmegaHFieldLayout : public FieldLayout {
 public:
-  OmegaHFieldLayout(Omega_h::Mesh& mesh, OmegaHFieldLayoutLocation location, int num_components);
+  OmegaHFieldLayout(Omega_h::Mesh& mesh, OmegaHFieldLayoutLocation location, int num_components, std::string global_id_name_ = "");
   int GetNumComponents() const override;
   // nodes for standard lagrange FEM
   LO GetNumOwnedDofHolder() const override;
   GO GetNumGlobalDofHolder() const override;
 
   GlobalIDView<HostMemorySpace> GetOwnedGids() override;
+  GlobalIDView<HostMemorySpace> GetGids() const override;
   OmegaHFieldLayoutLocation GetLocation() const;
 
   // returns true if the field layout is distributed
   // if the field layout is distributed, the owned and global dofs are the same
   bool IsDistributed() override;
 
+  ReversePartitionMap GetReversePartitionMap(
+    const redev::Partition& partition) const override;
+
 private:
+  Omega_h::Read<Omega_h::ClassId> GetClassIDs() const;
+  Omega_h::Read<Omega_h::I8> GetClassDims() const;
+
   Omega_h::Mesh& mesh_;
+  std::string global_id_name_;
   OmegaHFieldLayoutLocation location_;
   int num_components_;
 };

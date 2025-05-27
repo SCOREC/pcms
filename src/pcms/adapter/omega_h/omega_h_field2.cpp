@@ -180,13 +180,28 @@ int OmegaHField2::Serialize(
   Rank1View<double, pcms::HostMemorySpace> buffer,
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) const
 {
-  return 1;
+  // host copy of filtered field data array
+  const auto array_h = GetDOFHolderData().GetValues();
+  if (buffer.size() > 0) {
+    for (LO i = 0; i < array_h.size(); i++) {
+      buffer[i] = array_h[permutation[i]];
+    }
+  }
+  return array_h.size();
 }
 
 void OmegaHField2::Deserialize(
   Rank1View<const double, pcms::HostMemorySpace> buffer,
-  Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) const
+  Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
 {
+  REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
+  Omega_h::HostWrite<Real> sorted_buffer(buffer.size());
+  for (size_t i = 0; i < buffer.size(); ++i) {
+    sorted_buffer[permutation[i]] = buffer[i];
+  }
+  const auto sorted_buffer_d = Omega_h::Read<Real>(sorted_buffer);
+  Rank1View<const Real, HostMemorySpace> sorted_buffer_view{std::data(sorted_buffer_d), std::size(sorted_buffer_d)};
+  FieldDataView<const Real, HostMemorySpace> field_view{sorted_buffer_view, GetCoordinateSystem()};
+  SetDOFHolderData(field_view);
 }
-
 } // namespace pcms

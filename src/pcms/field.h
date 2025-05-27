@@ -41,8 +41,8 @@ template <typename T, typename MemorySpace>
 class FieldDataView {
 public:
   FieldDataView(Rank1View<T, MemorySpace> values, CoordinateSystem coordinate_system) : values(values), coordinate_system(coordinate_system) {}
-  LO Size() {return values.size(); }
-  CoordinateSystem GetCoordinateSystem() { return coordinate_system; }
+  LO Size() const {return values.size(); }
+  CoordinateSystem GetCoordinateSystem() const { return coordinate_system; }
 
   [[nodiscard]] Rank1View<const T, MemorySpace> GetValues() const noexcept { return values; }
   [[nodiscard]] Rank1View<T, MemorySpace> GetValues() noexcept { return values; }
@@ -110,7 +110,7 @@ public:
   virtual void Deserialize(
     Rank1View<const T, pcms::HostMemorySpace> buffer,
     Rank1View<const pcms::LO, pcms::HostMemorySpace>
-      permutation) const = 0;
+      permutation) = 0;
 
   virtual ~FieldT() noexcept = default;
 };

@@ -47,6 +47,14 @@ if (PCMS_ENABLE_OMEGA_H)
                 NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
     endif()
+    add_executable(field_communication test_field_communication.cpp)
+    target_link_libraries(field_communication PUBLIC pcms::core test_support)
+    if(HOST_NPROC GREATER_EQUAL 2)
+        dual_mpi_test(TESTNAME test_field_communication_4p
+                TIMEOUT 10
+                NAME1 server EXE1 ./field_communication PROCS1 1 ARGS1 0
+                NAME2 client EXE2 ./field_communication PROCS2 1 ARGS2 1)
+    endif()
     add_executable(proxy_coupling test_proxy_coupling.cpp)
     target_link_libraries(proxy_coupling PUBLIC pcms::core test_support)
     if(HOST_NPROC GREATER_EQUAL 4)

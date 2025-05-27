@@ -1,9 +1,12 @@
 #ifndef PCMS_FIELD_LAYOUT_H
 #define PCMS_FIELD_LAYOUT_H
+#include <redev.h>
 #include "pcms/arrays.h"
 
 namespace pcms
 {
+using ReversePartitionMap = std::map<pcms::LO, std::vector<pcms::LO>>;
+
 class FieldLayout
 {
 public:
@@ -20,6 +23,7 @@ public:
   GO GlobalSize() const { return GetNumComponents() * GetNumGlobalDofHolder(); };
 
   virtual GlobalIDView<HostMemorySpace> GetOwnedGids() = 0;
+  virtual GlobalIDView<HostMemorySpace> GetGids() const = 0;
 
   // returns true if the field layout is distributed
   // if the field layout is distributed, the owned and global dofs are the same
@@ -27,6 +31,9 @@ public:
 
   // This class should construct the permutation arrays that are needed
   // for serialization / deserialization
+
+  virtual ReversePartitionMap GetReversePartitionMap(
+    const redev::Partition& partition) const = 0;
 
   // Serialize, Derserialize, ReversePartitionMap?
   // GetOwnedDofHolderCoordinates(CoordinateSystem);

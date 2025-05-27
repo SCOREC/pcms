@@ -56,7 +56,7 @@ public:
 
   void Deserialize(Rank1View<const double, pcms::HostMemorySpace> buffer,
                    Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
-    const override;
+    override;
 
   FieldDataView<const Real, HostMemorySpace> GetDOFHolderData() const override;
   void SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) override;

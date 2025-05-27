@@ -10,6 +10,7 @@ set(PCMS_HEADERS
         pcms/coordinate_transform.h
         pcms/field.h
         pcms/field_communicator.h
+        pcms/field_communicator2.h
         pcms/field_evaluation_methods.h
         pcms/memory_spaces.h
         pcms/types.h

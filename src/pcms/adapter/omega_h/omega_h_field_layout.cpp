@@ -2,6 +2,7 @@
 #include "pcms/adapter/omega_h/omega_h_field_layout.h"
 #include "omega_h_field_layout.h"
 #include "pcms/inclusive_scan.h"
+#include "pcms/profile.h"
 
 namespace pcms
 {
@@ -56,6 +57,7 @@ GO OmegaHFieldLayout::GetNumGlobalDofHolder() const
 
 GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetOwnedGids()
 {
+  PCMS_FUNCTION_TIMER;
   int dim = 0;
   switch (location_) {
     case OmegaHFieldLayoutLocation::PieceWise:
@@ -74,25 +76,26 @@ GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetOwnedGids()
 
 GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const
 {
-    Omega_h::Read<Omega_h::GO> gid_array;
-    if (global_id_name_.empty()) {
-      gid_array = mesh_.globals(0);
+  PCMS_FUNCTION_TIMER;
+  Omega_h::Read<Omega_h::GO> gid_array;
+  if (global_id_name_.empty()) {
+    gid_array = mesh_.globals(0);
+  } else {
+    auto tag = mesh_.get_tagbase(0, global_id_name_);
+    if (Omega_h::is<GO>(tag)) {
+      gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
+    } else if (Omega_h::is<LO>(tag)) {
+      auto array = mesh_.get_array<Omega_h::LO>(0, global_id_name_);
+      Omega_h::Write<Omega_h::GO> globals(array.size());
+      Omega_h::parallel_for(
+        array.size(), OMEGA_H_LAMBDA(int i) { globals[i] = array[i]; });
+      gid_array = Omega_h::Read(globals);
     } else {
-      auto tag = mesh_.get_tagbase(0, global_id_name_);
-      if (Omega_h::is<GO>(tag)) {
-        gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
-      } else if (Omega_h::is<LO>(tag)) {
-        auto array = mesh_.get_array<Omega_h::LO>(0, global_id_name_);
-        Omega_h::Write<Omega_h::GO> globals(array.size());
-        Omega_h::parallel_for(
-          array.size(), OMEGA_H_LAMBDA(int i) { globals[i] = array[i]; });
-        gid_array = Omega_h::Read(globals);
-      } else {
-        std::cerr << "Weird tag type for global arrays.\n";
-        std::abort();
-      }
+      std::cerr << "Weird tag type for global arrays.\n";
+      std::abort();
     }
-    return GlobalIDView<HostMemorySpace>(gid_array.data(), gid_array.size());
+  }
+  return GlobalIDView<HostMemorySpace>(gid_array.data(), gid_array.size());
 }
 
 OmegaHFieldLayoutLocation OmegaHFieldLayout::GetLocation() const
@@ -107,17 +110,20 @@ bool OmegaHFieldLayout::IsDistributed()
 
 Omega_h::Read<Omega_h::ClassId> OmegaHFieldLayout::GetClassIDs() const
 {
+  PCMS_FUNCTION_TIMER;
   return mesh_.get_array<Omega_h::ClassId>(0, "class_id");
 }
 
 Omega_h::Read<Omega_h::I8> OmegaHFieldLayout::GetClassDims() const
 {
+  PCMS_FUNCTION_TIMER;
   return mesh_.get_array<Omega_h::I8>(0, "class_dim");
 }
 
 ReversePartitionMap OmegaHFieldLayout::GetReversePartitionMap(
   const redev::Partition& partition) const
 {
+  PCMS_FUNCTION_TIMER;
   auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(GetClassIDs());
   auto classDims_h = Omega_h::HostRead<Omega_h::I8>(GetClassDims());
   const auto coords = Omega_h::HostRead(Omega_h::get_ent_centroids(mesh_, 0));

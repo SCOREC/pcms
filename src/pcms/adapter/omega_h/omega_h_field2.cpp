@@ -40,6 +40,7 @@ CoordinateSystem OmegaHField2::GetCoordinateSystem() const
 
 FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData() const
 {
+  PCMS_FUNCTION_TIMER;
   auto array = mesh_.template get_array<Real>(0, name_);
   Rank1View<const Real, pcms::HostMemorySpace> array_view{std::data(array), std::size(array)};
   FieldDataView<const Real, HostMemorySpace> data_view{array_view, GetCoordinateSystem()};
@@ -48,12 +49,14 @@ FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData() cons
 
 CoordinateView<HostMemorySpace> OmegaHField2::GetDOFHolderCoordinates() const
 {
+  PCMS_FUNCTION_TIMER;
   auto coords = Omega_h::get_ent_centroids(mesh_, 0);
   Rank2View<const double, HostMemorySpace> coords_view(coords.data(), coords.size() / 2, 2);
   return CoordinateView<HostMemorySpace>{GetCoordinateSystem(), coords_view};
 }
 
 void OmegaHField2::SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) {
+  PCMS_FUNCTION_TIMER;
   if (data.GetCoordinateSystem() != coordinate_system_) {
     throw std::runtime_error("Coordinate system mismatch");
   }
@@ -73,6 +76,7 @@ void OmegaHField2::SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> d
 LocalizationHint OmegaHField2::GetLocalizationHint(
   CoordinateView<HostMemorySpace> coordinate_view) const
 {
+  PCMS_FUNCTION_TIMER;
   // TODO decide if we want to implicitly perform the coordinate transformations
   // when possible
   if (coordinate_view.GetCoordinateSystem() != coordinate_system_) {
@@ -96,6 +100,7 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
 void OmegaHField2::Evaluate(LocalizationHint location,
                             FieldDataView<double, HostMemorySpace> results) const
 {
+  PCMS_FUNCTION_TIMER;
   // TODO decide if we want to implicitly perform the coordinate transformations
   // when possible
   if (results.GetCoordinateSystem() != coordinate_system_) {
@@ -180,6 +185,7 @@ int OmegaHField2::Serialize(
   Rank1View<double, pcms::HostMemorySpace> buffer,
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) const
 {
+  PCMS_FUNCTION_TIMER;
   // host copy of filtered field data array
   const auto array_h = GetDOFHolderData().GetValues();
   if (buffer.size() > 0) {
@@ -194,6 +200,7 @@ void OmegaHField2::Deserialize(
   Rank1View<const double, pcms::HostMemorySpace> buffer,
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
 {
+  PCMS_FUNCTION_TIMER;
   REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
   Omega_h::HostWrite<Real> sorted_buffer(buffer.size());
   for (size_t i = 0; i < buffer.size(); ++i) {

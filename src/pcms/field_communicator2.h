@@ -2,6 +2,7 @@
 #define FIELD_COMMUNICATOR2_H_
 
 #include "pcms/field.h"
+#include "pcms/profile.h"
 #include "pcms/assert.h"
 #include "pcms/inclusive_scan.h"
 #include "pcms/arrays.h"
@@ -22,6 +23,7 @@ struct OutMsg
 // the array of data to send
 OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
 {
+  PCMS_FUNCTION_TIMER;
   OutMsg out;
   redev::LOs counts;
   counts.reserve(reverse_partition.size());
@@ -41,6 +43,7 @@ OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
 
 size_t count_entries(const ReversePartitionMap& reverse_partition)
 {
+  PCMS_FUNCTION_TIMER;
   size_t num_entries = 0;
   for (const auto& v : reverse_partition) {
     num_entries += v.second.size();
@@ -51,6 +54,7 @@ size_t count_entries(const ReversePartitionMap& reverse_partition)
 // note this function can be parallelized by making use of the offsets
 redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
 {
+  PCMS_FUNCTION_TIMER;
   auto num_entries = count_entries(reverse_partition);
   redev::LOs permutation(num_entries);
   LO entry = 0;
@@ -73,6 +77,7 @@ redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
 redev::LOs ConstructPermutation(GlobalIDView<HostMemorySpace> local_gids,
                                 GlobalIDView<HostMemorySpace> received_gids)
 {
+  PCMS_FUNCTION_TIMER;
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
   REDEV_ALWAYS_ASSERT(std::is_permutation(
     local_gids.data_handle(), local_gids.data_handle() + local_gids.size(),
@@ -92,6 +97,7 @@ redev::LOs ConstructPermutation(GlobalIDView<HostMemorySpace> local_gids,
 OutMsg ConstructOutMessage(int rank, int nproc,
                            const redev::InMessageLayout& in)
 {
+  PCMS_FUNCTION_TIMER;
   REDEV_ALWAYS_ASSERT(!in.srcRanks.empty());
   // auto nAppProcs =
   // Omega_h::divide_no_remainder(in.srcRanks.size(),static_cast<size_t>(nproc));
@@ -125,6 +131,7 @@ OutMsg ConstructOutMessage(int rank, int nproc,
 template <typename T>
 bool HasDuplicates(std::vector<T> v)
 {
+  PCMS_FUNCTION_TIMER;
   std::sort(v.begin(), v.end());
   auto it = std::adjacent_find(v.begin(), v.end());
   return it != v.end();
@@ -157,6 +164,7 @@ public:
 
   void Send(redev::Mode mode = redev::Mode::Synchronous)
   {
+    PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(channel_.InSendCommunicationPhase());
     auto n = field_.Serialize({}, {});
     REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
@@ -167,6 +175,7 @@ public:
 
   void Receive()
   {
+    PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(channel_.InReceiveCommunicationPhase());
     // Current implementation requires that Receive is always called in Sync
     // mode because we make an immediate call to deserialize after a call to
@@ -178,6 +187,7 @@ public:
 
   void UpdateLayout()
   {
+    PCMS_FUNCTION_TIMER;
     auto gids = field_.GetLayout().GetGids();
     if (redev_.GetProcessType() == redev::ProcessType::Client) {
       const ReversePartitionMap reverse_partition =
@@ -220,6 +230,7 @@ public:
 
   void UpdateLayoutNull()
   {
+    PCMS_FUNCTION_TIMER;
     if (redev_.GetProcessType() == redev::ProcessType::Client) {
       channel_.BeginSendCommunicationPhase();
       channel_.EndSendCommunicationPhase();

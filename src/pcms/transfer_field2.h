@@ -15,6 +15,7 @@ namespace pcms
 template <typename T>
 void copy_field2(const FieldT<T>& source, FieldT<T>& target)
 {
+  PCMS_FUNCTION_TIMER;
   if (typeid(source) != typeid(target)) {
     // TODO when moved to PCMS throw PCMS exception
     throw std::runtime_error("Mismatched types");
@@ -26,6 +27,7 @@ void copy_field2(const FieldT<T>& source, FieldT<T>& target)
 template <typename T>
 void interpolate_field2(const FieldT<T>& source, FieldT<T>& target)
 {
+  PCMS_FUNCTION_TIMER;
   if (source.GetCoordinateSystem() != target.GetCoordinateSystem()) {
     // TODO when moved to PCMS throw PCMS exception
     throw std::runtime_error("Coordinate system mismatch");

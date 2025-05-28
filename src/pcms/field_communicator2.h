@@ -1,6 +1,7 @@
 #ifndef FIELD_COMMUNICATOR2_H_
 #define FIELD_COMMUNICATOR2_H_
 
+#include "pcms/field_layout.h"
 #include "pcms/field.h"
 #include "pcms/profile.h"
 #include "pcms/assert.h"
@@ -143,13 +144,13 @@ class FieldCommunicator2
 {
 public:
   FieldCommunicator2(std::string name, MPI_Comm mpi_comm, redev::Redev& redev,
-                     redev::Channel& channel, FieldT<T>& field)
+                     redev::Channel& channel, FieldLayout& layout)
     : mpi_comm_(mpi_comm),
       channel_(channel),
       comm_buffer_{},
       message_permutation_{},
       buffer_size_needs_update_{true},
-      field_(field),
+      layout_(layout),
       name_{std::move(name)},
       redev_(redev)
   {
@@ -162,36 +163,38 @@ public:
     }
   }
 
-  void Send(redev::Mode mode = redev::Mode::Synchronous)
+  void Send(const FieldT<T>& field, redev::Mode mode = redev::Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(channel_.InSendCommunicationPhase());
-    auto n = field_.Serialize({}, {});
+    PCMS_ALWAYS_ASSERT(&field.GetLayout() == &layout_);
+    auto n = field.Serialize({}, {});
     REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
     auto buffer = make_array_view(comm_buffer_);
-    field_.Serialize(buffer, make_const_array_view(message_permutation_));
+    field.Serialize(buffer, make_const_array_view(message_permutation_));
     comm_.Send(buffer.data_handle(), mode);
   }
 
-  void Receive()
+  void Receive(FieldT<T>& field)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(channel_.InReceiveCommunicationPhase());
+    PCMS_ALWAYS_ASSERT(&field.GetLayout() == &layout_);
     // Current implementation requires that Receive is always called in Sync
     // mode because we make an immediate call to deserialize after a call to
     // receive.
     auto data = comm_.Recv(redev::Mode::Synchronous);
-    field_.Deserialize(make_const_array_view(data),
+    field.Deserialize(make_const_array_view(data),
                        make_const_array_view(message_permutation_));
   }
 
   void UpdateLayout()
   {
     PCMS_FUNCTION_TIMER;
-    auto gids = field_.GetLayout().GetGids();
+    auto gids = layout_.GetGids();
     if (redev_.GetProcessType() == redev::ProcessType::Client) {
       const ReversePartitionMap reverse_partition =
-        field_.GetLayout().GetReversePartitionMap(
+        layout_.GetReversePartitionMap(
           redev::Partition{redev_.GetPartition()});
       auto out_message = ConstructOutMessage(reverse_partition);
       comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
@@ -248,7 +251,7 @@ private:
   redev::BidirectionalComm<T> comm_;
   redev::BidirectionalComm<GO> gid_comm_;
   bool buffer_size_needs_update_;
-  FieldT<T>& field_;
+  FieldLayout& layout_;
   redev::Redev& redev_;
   std::string name_;
 };

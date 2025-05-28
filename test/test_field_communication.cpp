@@ -21,9 +21,9 @@ void client(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
     mesh, pcms::OmegaHFieldLayoutLocation::PieceWise, 2);
   pcms::OmegaHField2 test("test", pcms::CoordinateSystem::Cartesian, layout,
                           mesh);
-  pcms::FieldCommunicator2<pcms::Real> field_comm("test_comm", comm, rdv, channel, test);
+  pcms::FieldCommunicator2<pcms::Real> field_comm("test_comm", comm, rdv, channel, layout);
   channel.BeginSendCommunicationPhase();
-  field_comm.Send();
+  field_comm.Send(test);
   channel.EndSendCommunicationPhase();
 }
 
@@ -38,9 +38,9 @@ void server(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
     mesh, pcms::OmegaHFieldLayoutLocation::PieceWise, 2);
   pcms::OmegaHField2 test("test", pcms::CoordinateSystem::Cartesian, layout,
                           mesh);
-  pcms::FieldCommunicator2<pcms::Real> field_comm("test_comm", comm, rdv, channel, test);
+  pcms::FieldCommunicator2<pcms::Real> field_comm("test_comm", comm, rdv, channel, layout);
   channel.BeginReceiveCommunicationPhase();
-  field_comm.Receive();
+  field_comm.Receive(test);
   channel.EndReceiveCommunicationPhase();
 
   auto copied_array = test.GetDOFHolderData().GetValues();

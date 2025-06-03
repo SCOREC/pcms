@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
@@ -5,9 +6,27 @@
 #include <redev.h>
 #include "pcms/adapter/omega_h/omega_h_field2.h"
 #include "pcms/field_communicator2.h"
+#include "pcms/field_communicator.h"
 #include "test_support.h"
 
 namespace ts = test_support;
+
+struct Timer {
+  Timer() {
+    start_ = std::chrono::high_resolution_clock::now();
+  }
+
+  void stop() {
+    end_ = std::chrono::high_resolution_clock::now();
+  }
+
+  auto elapsed() {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(end_ - start_).count();
+  }
+
+  std::chrono::system_clock::time_point start_;
+  std::chrono::system_clock::time_point end_;
+};
 
 void client(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::Mesh& mesh)
 {
@@ -15,16 +34,34 @@ void client(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
   Omega_h::Write<double> ids(nverts);
   Omega_h::parallel_for(
     nverts, OMEGA_H_LAMBDA(int i) { ids[i] = i; });
-  mesh.add_tag<double>(0, "test", 1, Omega_h::Read(ids));
+  mesh.add_tag<double>(0, "field", 1, Omega_h::Read(ids));
 
   auto layout = pcms::OmegaHFieldLayout(
     mesh, pcms::OmegaHFieldLayoutLocation::PieceWise, 2);
-  pcms::OmegaHField2 test("test", pcms::CoordinateSystem::Cartesian, layout,
+  pcms::OmegaHField2 new_field("field", pcms::CoordinateSystem::Cartesian, layout,
                           mesh);
-  pcms::FieldCommunicator2<pcms::Real> field_comm("test_comm", comm, rdv, channel, layout);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm("new_comm", comm, rdv, channel, layout);
+  pcms::FieldCommunicator2<pcms::Real> new_comm(layout_comm, new_field);
+
+  pcms::OmegaHFieldAdapter<double> old_field("field", mesh);
+  pcms::FieldCommunicator<pcms::OmegaHFieldAdapter<double>> old_comm("old_comm", comm, rdv, channel, old_field);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  Timer old_time{};
   channel.BeginSendCommunicationPhase();
-  field_comm.Send(test);
+  old_comm.Send();
   channel.EndSendCommunicationPhase();
+  old_time.stop();
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  Timer new_time{};
+  channel.BeginSendCommunicationPhase();
+  new_comm.Send();
+  channel.EndSendCommunicationPhase();
+  new_time.stop();
+
+  std::cerr << "Old fields: " << old_time.elapsed() << " ns\n";
+  std::cerr << "New fields: " << new_time.elapsed() << " ns\n";
 }
 
 void server(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::Mesh& mesh) {
@@ -32,25 +69,37 @@ void server(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
   Omega_h::Write<double> ids(nverts);
   Omega_h::parallel_for(
     nverts, OMEGA_H_LAMBDA(int i) { ids[i] = 0; });
-  mesh.add_tag<double>(0, "test", 1, Omega_h::Read(ids));
+  mesh.add_tag<double>(0, "field", 1, Omega_h::Read(ids));
 
   auto layout = pcms::OmegaHFieldLayout(
     mesh, pcms::OmegaHFieldLayoutLocation::PieceWise, 2);
-  pcms::OmegaHField2 test("test", pcms::CoordinateSystem::Cartesian, layout,
+  pcms::OmegaHField2 new_field("field", pcms::CoordinateSystem::Cartesian, layout,
                           mesh);
-  pcms::FieldCommunicator2<pcms::Real> field_comm("test_comm", comm, rdv, channel, layout);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm("new_comm", comm, rdv, channel, layout);
+  pcms::FieldCommunicator2<pcms::Real> new_comm(layout_comm, new_field);
+
+
+  pcms::OmegaHFieldAdapter<double> old_field("field", mesh);
+  pcms::FieldCommunicator<pcms::OmegaHFieldAdapter<double>> old_comm("old_comm", comm, rdv, channel, old_field);
+
+  MPI_Barrier(MPI_COMM_WORLD);
   channel.BeginReceiveCommunicationPhase();
-  field_comm.Receive(test);
+  old_comm.Receive();
   channel.EndReceiveCommunicationPhase();
 
-  auto copied_array = test.GetDOFHolderData().GetValues();
+  MPI_Barrier(MPI_COMM_WORLD);
+  channel.BeginReceiveCommunicationPhase();
+  new_comm.Receive();
+  channel.EndReceiveCommunicationPhase();
 
-  int expected = (nverts * (nverts - 1)) / 2;
+  auto copied_array = new_field.GetDOFHolderData().GetValues();
+
+  int expected = nverts;
   int sum = 0;
   Kokkos::parallel_reduce(
     nverts,
     KOKKOS_LAMBDA(int i, int& local_sum) {
-      local_sum += (int) copied_array[i];
+      local_sum += (int) copied_array[i] == i;
     },
     sum);
 

@@ -182,7 +182,7 @@ namespace detail
  */
 struct GridTriIntersectionFunctor
 {
-  GridTriIntersectionFunctor(Omega_h::Mesh& mesh, Kokkos::View<UniformGrid[1]> grid)
+  GridTriIntersectionFunctor(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid)
     : mesh_(mesh),
       tris2verts_(mesh_.ask_elem_verts()),
       coords_(mesh_.coords()),
@@ -222,7 +222,7 @@ private:
   Omega_h::Mesh& mesh_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
-  Kokkos::View<UniformGrid[1]> grid_;
+  Kokkos::View<Uniform2DGrid[1]> grid_;
 public:
   LO nelems_;
 };
@@ -230,7 +230,7 @@ public:
 // num_grid_cells should be result of grid.GetNumCells(), take as argument to avoid extra copy
 // of grid from gpu to cpu
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<UniformGrid[1]> grid, int num_grid_cells)
+construct_intersection_map(Omega_h::Mesh& mesh, Kokkos::View<Uniform2DGrid[1]> grid, int num_grid_cells)
 {
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
   auto f = detail::GridTriIntersectionFunctor{mesh, grid};
@@ -286,12 +286,17 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
     // create array that's size of number of candidates x num coords to store
     // parametric inversion
     for (auto i = candidates_begin; i < candidates_end; ++i) {
-      int triangleID = candidate_map.entries(i);
-      auto elem_tri2verts =
-        Omega_h::gather_verts<3>(tris2verts, triangleID);
+      const int triangleID = candidate_map.entries(i);
+      const auto elem_tri2verts = Omega_h::gather_verts<3>(tris2verts, triangleID);
       // 2d mesh with 2d coords, but 3 triangles
-     auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
-     auto parametric_coords = barycentric_from_global(point, vertex_coords);
+      auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
+      auto parametric_coords = barycentric_from_global(point, vertex_coords);
+
+      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
+        results(p) = GridPointSearch::Result{GridPointSearch::Result::Dimensionality::FACE, triangleID, parametric_coords};
+        found = true;
+        break;
+      }
 
      for (int j = 0; j < 3; ++j) {
        // Every triangle (face) is connected to 3 edges
@@ -338,12 +343,6 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(Kokkos::View<
          parametric_coords_to_nearest = parametric_coords;
        }
       }
-
-     if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
-       results(p) = GridPointSearch::Result{GridPointSearch::Result::Dimensionality::FACE, triangleID, parametric_coords};
-       found = true;
-       break;
-     }
     }
     if(!found)
     {
@@ -358,7 +357,7 @@ GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);
-  grid_h(0) = UniformGrid{.edge_length = {mesh_bbox.max[0] - mesh_bbox.min[0],
+  grid_h(0) = Uniform2DGrid{.edge_length = {mesh_bbox.max[0] - mesh_bbox.min[0],
                            mesh_bbox.max[1] - mesh_bbox.min[1]},
     .bot_left = {mesh_bbox.min[0], mesh_bbox.min[1]},
     .divisions = {Nx, Ny}};

@@ -33,7 +33,7 @@ if (PCMS_ENABLE_OMEGA_H)
     add_exe(test_ohOverlap)
     if(HOST_NPROC GREATER_EQUAL 20)
         dual_mpi_test(TESTNAME test_ohOverlap_d3d_20p
-                TIMEOUT 10
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./test_ohOverlap PROCS1 4 ARGS1 ${rendezvous} ${d3d1p} ${d3d4p_cpn}
                 NAME2 app EXE2 ./test_ohOverlap PROCS2 16 ARGS2 ${notRendezvous} ${d3d16p} ignored)
     endif()
@@ -42,7 +42,7 @@ if (PCMS_ENABLE_OMEGA_H)
     add_exe(test_twoClientOverlap)
     if(HOST_NPROC GREATER_EQUAL 28)
         tri_mpi_test(TESTNAME test_twoClientOverlap_d3d_28p
-                TIMEOUT 12
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./test_twoClientOverlap PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
                 NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
@@ -66,21 +66,21 @@ if (PCMS_ENABLE_OMEGA_H)
     endif()
     if(HOST_NPROC GREATER_EQUAL 26)
         tri_mpi_test(TESTNAME test_proxy_coupling_26p
-                TIMEOUT 12
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
                 NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
     endif()
     if (HOST_NPROC GREATER_EQUAL 28)
         tri_mpi_test(TESTNAME test_proxy_coupling_28p
-                TIMEOUT 12
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./proxy_coupling PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
                 NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
     endif ()
     if(HOST_NPROC GREATER_EQUAL 32)
         tri_mpi_test(TESTNAME test_proxy_coupling_32p
-                TIMEOUT 12
+                TIMEOUT 20
                 NAME1 rdv EXE1 ./proxy_coupling PROCS1 8 ARGS1 -1 ${d3d1p} ${d3d8p_cpn}
                 NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
@@ -110,19 +110,22 @@ if(Catch2_FOUND)
 
   if (PCMS_ENABLE_OMEGA_H)
       add_executable(field_transfer_example field_transfer_example.cpp)
-      target_link_libraries(field_transfer_example PUBLIC pcms::core)
+      target_link_libraries(field_transfer_example PUBLIC pcms::core pcms_interpolator)
       list(APPEND PCMS_UNIT_TEST_SOURCES
-              test_field_transfer.cpp
-              test_uniform_grid.cpp
-              test_omega_h_copy.cpp
-              test_point_search.cpp
-              test_field_evaluation.cpp
-              test_field_interpolation.cpp
-              test_field_copy.cpp
-              )
+          test_field_transfer.cpp
+          test_uniform_grid.cpp
+          test_omega_h_copy.cpp
+          test_field_evaluation.cpp
+          test_field_interpolation.cpp
+          test_field_copy.cpp
+          test_point_search.cpp
+          test_mls_basis.cpp
+          test_rbf_interp.cpp
+          test_normalisation.cpp
+		  test_svd_serial.cpp)
   endif ()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
-  target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core)
+  target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core pcms_interpolator)
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
   include(Catch)

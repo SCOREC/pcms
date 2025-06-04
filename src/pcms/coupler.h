@@ -1,43 +1,34 @@
-#ifndef PCMS_COUPLING_SERVER_H
-#define PCMS_COUPLING_SERVER_H
+#ifndef PCMS_COUPLER_H
+#define PCMS_COUPLER_H
 #include "pcms/common.h"
 #include "pcms/field_communicator.h"
-#include "pcms/adapter/omega_h/omega_h_field.h"
 #include "pcms/profile.h"
-#include <map>
-#include <typeinfo>
 
 namespace pcms
 {
-// TODO: come up with better name for this...Don't like CoupledFieldServer
-// because it's necessarily tied to the Server of the xgc_coupler
-class ConvertibleCoupledField
+
+class CoupledField
 {
 public:
-  template <typename FieldAdapterT, typename CommT>
-  ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
-                          FieldCommunicator<CommT> field_comm,
-                          Omega_h::Mesh& internal_mesh,
-                          Omega_h::Read<Omega_h::I8> internal_field_mask = {})
-    : internal_field_{OmegaHField<typename FieldAdapterT::value_type>(
-        name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
-  {
-    PCMS_FUNCTION_TIMER;
-    coupled_field_ = std::make_unique<CoupledFieldModel<FieldAdapterT, CommT>>(
-      std::move(field_adapter), std::move(field_comm));
-  }
   template <typename FieldAdapterT>
-  ConvertibleCoupledField(const std::string& name, FieldAdapterT field_adapter,
-                          MPI_Comm mpi_comm, redev::Redev& redev,
-                          redev::Channel& channel, Omega_h::Mesh& internal_mesh,
-                          Omega_h::Read<Omega_h::I8> internal_field_mask)
-    : internal_field_{OmegaHField<typename FieldAdapterT::value_type>(
-        name + ".__internal__", internal_mesh, internal_field_mask, "", 10, 10, field_adapter.GetEntityType())}
+  CoupledField(const std::string& name, FieldAdapterT field_adapter,
+               MPI_Comm mpi_comm, redev::Redev& redev, redev::Channel& channel,
+               bool participates = true)
   {
     PCMS_FUNCTION_TIMER;
+    MPI_Comm mpi_comm_subset = MPI_COMM_NULL;
+    PCMS_ALWAYS_ASSERT((mpi_comm == MPI_COMM_NULL) ? (participates == false)
+                                                   : true);
+    if (mpi_comm != MPI_COMM_NULL) {
+      int rank = -1;
+      MPI_Comm_rank(mpi_comm, &rank);
+      MPI_Comm_split(mpi_comm, participates ? 0 : MPI_UNDEFINED, rank,
+                     &mpi_comm_subset);
+    }
     coupled_field_ =
       std::make_unique<CoupledFieldModel<FieldAdapterT, FieldAdapterT>>(
-        name, std::move(field_adapter), mpi_comm, redev, channel);
+        name, std::move(field_adapter), mpi_comm_subset, redev, channel,
+        participates);
   }
 
   void Send(Mode mode = Mode::Synchronous)
@@ -45,20 +36,10 @@ public:
     PCMS_FUNCTION_TIMER;
     coupled_field_->Send(mode);
   }
-  void Receive()
+  void Receive(Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
-    coupled_field_->Receive();
-  }
-  [[nodiscard]] InternalField& GetInternalField() noexcept
-  {
-    PCMS_FUNCTION_TIMER;
-    return internal_field_;
-  }
-  [[nodiscard]] const InternalField& GetInternalField() const noexcept
-  {
-    PCMS_FUNCTION_TIMER;
-    return internal_field_;
+    coupled_field_->Receive(mode);
   }
   template <typename T>
   [[nodiscard]] T* GetFieldAdapter() const
@@ -74,7 +55,7 @@ public:
   struct CoupledFieldConcept
   {
     virtual void Send(Mode) = 0;
-    virtual void Receive() = 0;
+    virtual void Receive(Mode) = 0;
     [[nodiscard]] virtual const std::type_info& GetFieldAdapterType()
       const noexcept = 0;
     [[nodiscard]] virtual void* GetFieldAdapter() noexcept = 0;
@@ -85,20 +66,13 @@ public:
   {
     using value_type = typename FieldAdapterT::value_type;
 
-    CoupledFieldModel(FieldAdapterT&& field_adapter,
-                      FieldCommunicator<CommT>&& comm)
-      : field_adapter_(std::move(field_adapter)),
-        comm_(std::move(comm)),
-        type_info_(typeid(FieldAdapterT))
-    {
-      PCMS_FUNCTION_TIMER;
-    }
     CoupledFieldModel(const std::string& name, FieldAdapterT&& field_adapter,
-                      MPI_Comm mpi_comm, redev::Redev& redev,
-                      redev::Channel& channel)
-      : field_adapter_(std::move(field_adapter)),
-        comm_(FieldCommunicator<FieldAdapterT>(name, mpi_comm, redev, channel,
-                                               field_adapter_)),
+                      MPI_Comm mpi_comm_subset, redev::Redev& redev,
+                      redev::Channel& channel, bool participates)
+      : mpi_comm_subset_(mpi_comm_subset),
+        field_adapter_(std::move(field_adapter)),
+        comm_(FieldCommunicator<CommT>(name, mpi_comm_subset_, redev, channel,
+                                       field_adapter_)),
         type_info_(typeid(FieldAdapterT))
     {
       PCMS_FUNCTION_TIMER;
@@ -108,10 +82,10 @@ public:
       PCMS_FUNCTION_TIMER;
       comm_.Send(mode);
     };
-    void Receive() final
+    void Receive(Mode mode) final
     {
       PCMS_FUNCTION_TIMER;
-      comm_.Receive();
+      comm_.Receive(mode);
     };
     virtual const std::type_info& GetFieldAdapterType() const noexcept
     {
@@ -121,7 +95,14 @@ public:
     {
       return reinterpret_cast<void*>(&field_adapter_);
     };
+    ~CoupledFieldModel()
+    {
+      PCMS_FUNCTION_TIMER;
+      if (mpi_comm_subset_ != MPI_COMM_NULL)
+        MPI_Comm_free(&mpi_comm_subset_);
+    }
 
+    MPI_Comm mpi_comm_subset_;
     FieldAdapterT field_adapter_;
     FieldCommunicator<CommT> comm_;
     const std::type_info& type_info_;
@@ -129,42 +110,34 @@ public:
 
 private:
   std::unique_ptr<CoupledFieldConcept> coupled_field_;
-  // even though we know the type of the internal field,
-  // we store it as the InternalField variant since this avoids any copies
-  // This comes at the cost of a slightly larger type with need to use the get<>
-  // function
-  InternalField internal_field_;
 };
-// TODO: strategy to merge Server/CLient Application and Fields
+
 class Application
 {
 public:
-  Application(std::string name, redev::Redev& rdv, MPI_Comm comm,
-              redev::Redev& redev, Omega_h::Mesh& internal_mesh,
-              adios2::Params params, redev::TransportType transport_type,
+  Application(std::string name, MPI_Comm comm,
+              redev::Redev& redev, adios2::Params params,
+              redev::TransportType transport_type,
               std::string path)
     : mpi_comm_(comm),
       redev_(redev),
-      channel_{rdv.CreateAdiosChannel(std::move(name), std::move(params),
-                                      transport_type, std::move(path))},
-      internal_mesh_{internal_mesh}
+      channel_{redev_.CreateAdiosChannel(std::move(name), std::move(params),
+                                      transport_type, std::move(path))}
   {
     PCMS_FUNCTION_TIMER;
   }
   // FIXME should take a file path for the parameters, not take adios2 params.
   // These fields are supposed to be agnostic to adios2...
   template <typename FieldAdapterT>
-  ConvertibleCoupledField* AddField(
-    std::string name, FieldAdapterT&& field_adapter,
-    Omega_h::Read<Omega_h::I8> internal_field_mask = {})
+  CoupledField* AddField(
+    std::string name, FieldAdapterT&& field_adapter, bool participates = true)
   {
     PCMS_FUNCTION_TIMER;
     auto [it, inserted] = fields_.template try_emplace(
       name, name, std::forward<FieldAdapterT>(field_adapter), mpi_comm_, redev_,
-      channel_, internal_mesh_,
-      internal_field_mask);
+      channel_, participates);
     if (!inserted) {
-      std::cerr << "OHField with this name" << name << "already exists!\n";
+      std::cerr << "Field with this name" << name << "already exists!\n";
       std::terminate();
     }
     return &(it->second);
@@ -175,11 +148,11 @@ public:
     PCMS_ALWAYS_ASSERT(InSendPhase());
     detail::find_or_error(name, fields_).Send(mode);
   };
-  void ReceiveField(const std::string& name)
+  void ReceiveField(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InReceivePhase());
-    detail::find_or_error(name, fields_).Receive();
+    detail::find_or_error(name, fields_).Receive(mode);
   };
   [[nodiscard]] bool InSendPhase() const noexcept
   {
@@ -232,31 +205,35 @@ private:
   // map is used rather than unordered_map because we give pointers to the
   // internal data and rehash of unordered_map can cause pointer invalidation.
   // map is less cache friendly, but pointers are not invalidated.
-  std::map<std::string, ConvertibleCoupledField> fields_;
-  Omega_h::Mesh& internal_mesh_;
+  std::map<std::string, CoupledField> fields_;
 };
 
-class CouplerServer
+class Coupler
 {
+private:
+  redev::Redev SetUpRedev(bool isServer, redev::Partition partition) {
+    if (isServer)
+      return redev::Redev(mpi_comm_, std::move(partition), ProcessType::Server);
+    else
+      return redev::Redev(mpi_comm_);
+  }
 public:
-  CouplerServer(std::string name, MPI_Comm comm, redev::Partition partition,
-                Omega_h::Mesh& mesh)
+  Coupler(std::string name, MPI_Comm comm, bool isServer, redev::Partition partition)
     : name_(std::move(name)),
       mpi_comm_(comm),
-      redev_({comm, std::move(partition), ProcessType::Server}),
-      internal_mesh_(mesh)
+      redev_(SetUpRedev(isServer, std::move(partition)))
   {
     PCMS_FUNCTION_TIMER;
   }
   Application* AddApplication(
     std::string name, std::string path = "",
     redev::TransportType transport_type = redev::TransportType::BP4,
-    adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "400"}})
+    adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}})
   {
     PCMS_FUNCTION_TIMER;
     auto key = path + name;
     auto [it, inserted] = applications_.template try_emplace(
-      key, std::move(name), redev_, mpi_comm_, redev_, internal_mesh_,
+      key, std::move(name), mpi_comm_, redev_,
       std::move(params), transport_type, std::move(path));
     if (!inserted) {
       std::cerr << "Application with name " << name << "already exists!\n";
@@ -269,30 +246,15 @@ public:
   {
     return redev_.GetPartition();
   }
-  [[nodiscard]] Omega_h::Mesh& GetMesh() noexcept { return internal_mesh_; }
-
-  [[nodiscard]] const auto& GetInternalFields() const noexcept
-  {
-    return internal_fields_;
-  }
-
-  // TODO: consider an "advanced api" wrapper of some sort and protect direct
-  // access to the internal fields with passkey idom or some other way. User
-  // could get unexpected behavior if they mess with the internal field map.
-  /// This function should not be used directly it is experimental for Philip
-  /// to do Benesh development. Expect that it will be removed in the future.
-  [[nodiscard]] auto& GetInternalFields() noexcept { return internal_fields_; }
 
 private:
   std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
-  // xgc_coupler owns internal fields since both gather/scatter ops use these
-  // these internal fields correspond to the "Combined" fields
-  std::map<std::string, InternalField> internal_fields_;
   // gather and scatter operations have reference to internal fields
   std::map<std::string, Application> applications_;
-  Omega_h::Mesh& internal_mesh_;
 };
+
 } // namespace pcms
-#endif // PCMS_COUPLING_SERVER_H
+
+#endif // PCMS_COUPLER_H

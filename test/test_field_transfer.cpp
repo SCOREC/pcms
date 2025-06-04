@@ -41,6 +41,7 @@ TEST_CASE("field interpolation (identical fields)", "[field transfer]")
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
   pcms::OmegaHField<pcms::LO> f1("source", mesh);
+  f1.ConstructSearch(10,10);
   Omega_h::Write<int> data(mesh.nents(0));
   Omega_h::parallel_for(
     data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });

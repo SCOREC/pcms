@@ -234,6 +234,5 @@ Omega_h::Read<Omega_h::I8> markOverlapMeshEntities(
 redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
                                      std::string_view cpnFileName);
 
-
 } // namespace test_support
 #endif

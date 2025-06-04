@@ -18,5 +18,6 @@ if(@PCMS_ENABLE_Fortran@)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/pcms-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/pcms_interpolator-targets.cmake")
 # must be called at the end of the config file
 check_required_components(pcms)

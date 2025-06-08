@@ -3,9 +3,6 @@
 #include "pcms/adapter/xgc/xgc_field_adapter.h"
 #include <variant>
 #include <redev_variant_tools.h>
-// #ifdef PCMS_HAS_OMEGA_H
-//   #include "pcms/omega_h_field.h"
-// #endif
 #include <fstream>
 #include "pcms/adapter/xgc/xgc_reverse_classification.h"
 #include "pcms/dummy_field_adapter.h"

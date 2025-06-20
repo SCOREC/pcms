@@ -54,6 +54,7 @@ endif()
 #adios2 adds C and Fortran depending on how it was built
 find_package(ADIOS2 CONFIG 2.5 REQUIRED)
 find_package(Kokkos CONFIG 4.5 REQUIRED)
+find_package(meshFields REQUIRED)
 
 add_subdirectory(src)
 

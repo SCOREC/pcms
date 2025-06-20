@@ -62,7 +62,7 @@ set_target_properties(pcms_core PROPERTIES
         EXPORT_NAME core)
 add_library(pcms::core ALIAS pcms_core)
 target_compile_features(pcms_core PUBLIC cxx_std_17)
-target_link_libraries(pcms_core PUBLIC redev::redev MPI::MPI_CXX Kokkos::kokkos perfstubs)
+target_link_libraries(pcms_core PUBLIC meshfields::meshfields redev::redev MPI::MPI_CXX Kokkos::kokkos perfstubs)
 if(PCMS_ENABLE_OMEGA_H)
   target_link_libraries(pcms_core PUBLIC Omega_h::omega_h)
   target_compile_definitions(pcms_core PUBLIC -DPCMS_HAS_OMEGA_H)

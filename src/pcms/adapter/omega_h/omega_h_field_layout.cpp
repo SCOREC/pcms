@@ -10,12 +10,56 @@ namespace pcms
  * Field Layout
  */
 
+template <typename T>
+Omega_h::Write<Omega_h::GO> GetGidsHelper(LO total_ents,
+                                          std::array<int, 4> nodes_per_dim,
+                                          Omega_h::Mesh& mesh,
+                                          const std::string& global_id_name)
+{
+  PCMS_FUNCTION_TIMER;
+  static_assert(
+    std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>,
+    "types must match");
+
+  Omega_h::Write<Omega_h::GO> owned_gids(total_ents);
+  LO offset = 0;
+  for (int i = 0; i <= mesh.dim(); ++i) {
+    if (nodes_per_dim[i]) {
+      auto dim_gids = mesh.get_array<T>(i, global_id_name);
+      Omega_h::parallel_for(
+        dim_gids.size(),
+        OMEGA_H_LAMBDA(int i) { owned_gids[i + offset] = dim_gids[i]; });
+      offset += dim_gids.size();
+    }
+  }
+
+  return owned_gids;
+}
+
 OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
-                                     OmegaHFieldLayoutLocation location,
+                                     std::array<int, 4> nodes_per_dim,
                                      int num_components,
                                      std::string global_id_name)
-  : mesh_(mesh), global_id_name_(global_id_name), location_(location), num_components_(num_components)
+  : mesh_(mesh),
+    nodes_per_dim_(nodes_per_dim),
+    num_components_(num_components),
+    global_id_name_(global_id_name)
 {
+  LO total_ents = 0;
+  for (int i = 0; i <= mesh.dim(); ++i) {
+    if (nodes_per_dim[i])
+      total_ents += mesh.nglobal_ents(i);
+  }
+
+  auto tag = mesh_.get_tagbase(0, global_id_name_);
+  if (Omega_h::is<GO>(tag)) {
+    gids_ = GetGidsHelper<GO>(total_ents, nodes_per_dim, mesh, global_id_name);
+  } else if (Omega_h::is<LO>(tag)) {
+    gids_ = GetGidsHelper<LO>(total_ents, nodes_per_dim, mesh, global_id_name);
+  } else {
+    std::cerr << "Weird tag type for global arrays.\n";
+    std::abort();
+  }
 }
 
 int OmegaHFieldLayout::GetNumComponents() const
@@ -25,82 +69,36 @@ int OmegaHFieldLayout::GetNumComponents() const
 // nodes for standard lagrange FEM
 LO OmegaHFieldLayout::GetNumOwnedDofHolder() const
 {
-  switch (location_) {
-    case OmegaHFieldLayoutLocation::PieceWise:
-      // global ids are faces in 2D and regions in 3D
-      return mesh_.nents(mesh_.dim());
-      break;
-    case OmegaHFieldLayoutLocation::Linear:
-      // global ids are vertices
-      return mesh_.nents(0);
-      break;
+  LO count = 0;
+  for (int i = 0; i <= mesh_.dim(); ++i) {
+    count += mesh_.nents(i) * nodes_per_dim_[i];
   }
-  // should never reach here, but return 0 to avoid compiler warning
-  return 0;
+  return count;
 }
 
 GO OmegaHFieldLayout::GetNumGlobalDofHolder() const
 {
-  switch (location_) {
-    case OmegaHFieldLayoutLocation::PieceWise:
-      // global ids are faces in 2D and regions in 3D
-      return mesh_.nglobal_ents(mesh_.dim());
-      break;
-    case OmegaHFieldLayoutLocation::Linear:
-      // global ids are vertices
-      return mesh_.nglobal_ents(0);
-      break;
+  LO count = 0;
+  for (int i = 0; i <= mesh_.dim(); ++i) {
+    count += mesh_.nglobal_ents(i) * nodes_per_dim_[i];
   }
-  // should never reach here, but return 0 to avoid compiler warning
-  return 0;
+  return count;
 }
 
-GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetOwnedGids()
+std::array<int, 4> OmegaHFieldLayout::GetNodesPerDim() const
 {
-  PCMS_FUNCTION_TIMER;
-  int dim = 0;
-  switch (location_) {
-    case OmegaHFieldLayoutLocation::PieceWise:
-      // global ids are faces in 2D and regions in 3D
-      dim = mesh_.dim();
-      break;
-    case OmegaHFieldLayoutLocation::Linear:
-      // ids are just global ids of the vertex
-      dim = 0;
-      break;
-  }
-  auto gids = mesh_.globals(dim);
+  return nodes_per_dim_;
+}
+
+GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetOwnedGids() const
+{
   static_assert(std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>, "types must match");
-  return GlobalIDView<HostMemorySpace>(gids.data(), gids.size());
+  return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
 }
 
 GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const
 {
-  PCMS_FUNCTION_TIMER;
-  Omega_h::Read<Omega_h::GO> gid_array;
-  if (global_id_name_.empty()) {
-    gid_array = mesh_.globals(0);
-  } else {
-    auto tag = mesh_.get_tagbase(0, global_id_name_);
-    if (Omega_h::is<GO>(tag)) {
-      gid_array = mesh_.get_array<Omega_h::GO>(0, global_id_name_);
-    } else if (Omega_h::is<LO>(tag)) {
-      auto array = mesh_.get_array<Omega_h::LO>(0, global_id_name_);
-      Omega_h::Write<Omega_h::GO> globals(array.size());
-      Omega_h::parallel_for(
-        array.size(), OMEGA_H_LAMBDA(int i) { globals[i] = array[i]; });
-      gid_array = Omega_h::Read(globals);
-    } else {
-      std::cerr << "Weird tag type for global arrays.\n";
-      std::abort();
-    }
-  }
-  return GlobalIDView<HostMemorySpace>(gid_array.data(), gid_array.size());
-}
-
-OmegaHFieldLayoutLocation OmegaHFieldLayout::GetLocation() const
-{
-  return location_;
+  return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
 }
 
 bool OmegaHFieldLayout::IsDistributed()

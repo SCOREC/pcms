@@ -25,8 +25,13 @@ TEST_CASE("copy omega_h_field2 data")
     mesh.add_tag<double>(0, "copied", 1, zeros);
   }
   auto layout =
-    pcms::OmegaHFieldLayout(mesh, pcms::OmegaHFieldLayoutLocation::PieceWise, 2);
+    pcms::OmegaHFieldLayout(mesh, {1, 0, 0, 0}, 1);
   pcms::OmegaHField2 original("test_ids", pcms::CoordinateSystem::Cartesian, layout, mesh);
+  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
+    std::data(ids), std::size(ids)};
+  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
+    array_view, original.GetCoordinateSystem()};
+  original.SetDOFHolderData(field_data_view);
   pcms::OmegaHField2 copied("copied", pcms::CoordinateSystem::Cartesian, layout, mesh);
   pcms::copy_field2(original, copied);
   auto copied_array = copied.GetDOFHolderData().GetValues();

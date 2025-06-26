@@ -15,7 +15,7 @@ TEST_CASE("evaluate omega_h_field")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto layout =
-    pcms::OmegaHFieldLayout(mesh, pcms::OmegaHFieldLayoutLocation::Linear, 2);
+    pcms::OmegaHFieldLayout(mesh, {1, 0, 0, 0}, 1);
   const auto nverts = mesh.nents(0);
   auto mesh_coords = mesh.coords();
   auto f = [](double x, double y) { return std::sin(20 * x * y) / 10 + 0.5; };
@@ -30,6 +30,11 @@ TEST_CASE("evaluate omega_h_field")
   mesh.add_tag<double>(0, "test_f", 1, Omega_h::Read(test_f));
   pcms::OmegaHField2 field("test_f", pcms::CoordinateSystem::Cartesian, layout,
                            mesh);
+  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
+    std::data(test_f), std::size(test_f)};
+  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
+    array_view, field.GetCoordinateSystem()};
+  field.SetDOFHolderData(field_data_view);
 
   std::vector<double> coords = {
     0.7681, 0.886,

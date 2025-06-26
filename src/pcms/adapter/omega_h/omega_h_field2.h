@@ -2,6 +2,7 @@
 #define PCMS_OMEGA_H_FIELD2_H
 
 #include <Kokkos_Core.hpp>
+#include <MeshField.hpp>
 #include <memory>
 
 #include "pcms/adapter/omega_h/omega_h_field_layout.h"
@@ -12,21 +13,6 @@
 
 namespace pcms
 {
-
-class OmegaHFIeld2LocalizationHint
-{
-public:
-  OmegaHFIeld2LocalizationHint();
-
-  OmegaHFIeld2LocalizationHint(
-    Kokkos::View<GridPointSearch::Result*> search_results);
-
-  Kokkos::View<GridPointSearch::Result*> GetResults();
-
-private:
-  Kokkos::View<GridPointSearch::Result*> search_results_;
-};
-
 // TODO template over possible OmegaHField2Types
 class OmegaHField2 : public FieldT<Real>
 {
@@ -69,7 +55,10 @@ private:
   CoordinateSystem coordinate_system_;
   const OmegaHFieldLayout& layout_;
   Omega_h::Mesh& mesh_;
+  MeshField::OmegahMeshField<DefaultExecutionSpace, 2> mesh_field_;
+  decltype(mesh_field_.template CreateLagrangeField<Real, 1>()) shape_field_;
   GridPointSearch search_;
+  Kokkos::View<Real*> dof_holder_data_;
 };
 
 } // namespace pcms

@@ -37,7 +37,7 @@ void client(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
   mesh.add_tag<double>(0, "field", 1, Omega_h::Read(ids));
 
   auto layout = pcms::OmegaHFieldLayout(
-    mesh, pcms::OmegaHFieldLayoutLocation::PieceWise, 2);
+    mesh, {1, 0, 0, 0}, 2);
   pcms::OmegaHField2 new_field("field", pcms::CoordinateSystem::Cartesian, layout,
                           mesh);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm("new_comm", comm, rdv, channel, layout);
@@ -72,7 +72,7 @@ void server(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
   mesh.add_tag<double>(0, "field", 1, Omega_h::Read(ids));
 
   auto layout = pcms::OmegaHFieldLayout(
-    mesh, pcms::OmegaHFieldLayoutLocation::PieceWise, 2);
+    mesh, {1, 0, 0, 0}, 2);
   pcms::OmegaHField2 new_field("field", pcms::CoordinateSystem::Cartesian, layout,
                           mesh);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm("new_comm", comm, rdv, channel, layout);
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
   const auto clientId = atoi(argv[1]);
 
   auto mesh =
-    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 100, 100, 0, false);
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
   bool isRdv = clientId == 0;
   const auto classPartition =
     isRdv ? ts::CreateClassificationPartition(mesh) : ts::ClassificationPartition();

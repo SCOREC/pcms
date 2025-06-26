@@ -22,7 +22,7 @@ public:
   LO OwnedSize() const { return GetNumComponents() * GetNumOwnedDofHolder(); };
   GO GlobalSize() const { return GetNumComponents() * GetNumGlobalDofHolder(); };
 
-  virtual GlobalIDView<HostMemorySpace> GetOwnedGids() = 0;
+  virtual GlobalIDView<HostMemorySpace> GetOwnedGids() const = 0;
   virtual GlobalIDView<HostMemorySpace> GetGids() const = 0;
 
   // returns true if the field layout is distributed

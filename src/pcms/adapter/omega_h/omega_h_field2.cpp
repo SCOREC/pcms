@@ -5,26 +5,60 @@
 
 namespace pcms
 {
-OmegaHFIeld2LocalizationHint::OmegaHFIeld2LocalizationHint() {}
-
-OmegaHFIeld2LocalizationHint::OmegaHFIeld2LocalizationHint(
-  Kokkos::View<GridPointSearch::Result*> search_results)
-  : search_results_(search_results)
+struct OmegaHField2LocalizationHint
 {
-}
+  OmegaHField2LocalizationHint(
+    Omega_h::Mesh& mesh, Kokkos::View<GridPointSearch::Result*> search_results)
+    : offsets_("", mesh.nelems() + 1),
+      coordinates_("", search_results.size(), mesh.dim() + 1),
+      indices_("", search_results.size())
+  {
+    Kokkos::View<LO*> elem_counts("", mesh.nelems());
 
-Kokkos::View<GridPointSearch::Result*> OmegaHFIeld2LocalizationHint::GetResults()
-{
-  return search_results_;
-}
+    for (LO i = 0; i < search_results.size(); ++i) {
+        auto [dim, elem_idx, coord] = search_results(i);
+        elem_counts[elem_idx] += 1;
+    }
+
+    LO total;
+    Kokkos::parallel_scan(
+      mesh.nelems(),
+      KOKKOS_LAMBDA(LO i, LO & partial, bool is_final) {
+        if (is_final)
+          offsets_(i) = partial;
+        partial += elem_counts(i);
+      }, total);
+    offsets_(mesh.nelems()) = total;
+
+    for (LO i = 0; i < search_results.size(); ++i) {
+        auto [dim, elem_idx, coord] = search_results(i);
+        elem_counts(elem_idx) -= 1;
+        LO index = offsets_(elem_idx) + elem_counts(elem_idx);
+        for (int j = 1; j <= mesh.dim(); ++j)
+          coordinates_(index, j - 1) = coord[j];
+        coordinates_(index, mesh.dim()) = coord[0];
+        indices_(index) = i;
+    }
+  }
+
+  Kokkos::View<LO*> offsets_;
+  Kokkos::View<Real**> coordinates_;
+  Kokkos::View<LO*> indices_;
+};
 
 /*
  * Field
  */
 OmegaHField2::OmegaHField2(std::string name, CoordinateSystem coordinate_system,
-                         const OmegaHFieldLayout& layout, Omega_h::Mesh& mesh)
-  : name_(name), coordinate_system_(coordinate_system), layout_(layout),
-    mesh_(mesh), search_(mesh, 10, 10)
+                           const OmegaHFieldLayout& layout, Omega_h::Mesh& mesh)
+  : name_(name),
+    coordinate_system_(coordinate_system),
+    layout_(layout),
+    mesh_(mesh),
+    mesh_field_(mesh),
+    shape_field_(mesh_field_.template CreateLagrangeField<Real, 1>()),
+    search_(mesh, 10, 10),
+    dof_holder_data_("", layout.GetNumOwnedDofHolder() * layout.GetNumComponents())
 {
 }
 
@@ -38,12 +72,34 @@ CoordinateSystem OmegaHField2::GetCoordinateSystem() const
   return coordinate_system_;
 }
 
-FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData() const
+FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
+  const
 {
   PCMS_FUNCTION_TIMER;
-  auto array = mesh_.template get_array<Real>(0, name_);
-  Rank1View<const Real, pcms::HostMemorySpace> array_view{std::data(array), std::size(array)};
-  FieldDataView<const Real, HostMemorySpace> data_view{array_view, GetCoordinateSystem()};
+  auto nodes_per_dim = layout_.GetNodesPerDim();
+  auto num_components = layout_.GetNumComponents();
+  size_t offset = 0;
+  for (int i = 0; i <= mesh_.dim(); ++i) {
+    if (nodes_per_dim[i]) {
+      auto topo = static_cast<MeshField::Mesh_Topology>(i);
+      size_t stride = nodes_per_dim[i] * num_components;
+      Omega_h::parallel_for(
+        mesh_.nents(i), OMEGA_H_LAMBDA(size_t ent) {
+          for (int n = 0; n < nodes_per_dim[i]; ++n) {
+            for (int c = 0; c < num_components; ++c) {
+              dof_holder_data_(offset + ent * stride + n * num_components + c) =
+                shape_field_(ent, n, c, topo);
+            }
+          }
+        });
+      offset += stride * mesh_.nents(i);
+    }
+  }
+
+  Rank1View<const Real, pcms::HostMemorySpace> array_view{
+    std::data(dof_holder_data_), std::size(dof_holder_data_)};
+  FieldDataView<const Real, HostMemorySpace> data_view{array_view,
+                                                       GetCoordinateSystem()};
   return data_view;
 };
 
@@ -60,16 +116,28 @@ void OmegaHField2::SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> d
   if (data.GetCoordinateSystem() != coordinate_system_) {
     throw std::runtime_error("Coordinate system mismatch");
   }
-  const auto has_tag = mesh_.has_tag(0, name_);
+
   Rank1View<const double, HostMemorySpace> values = data.GetValues();
-  PCMS_ALWAYS_ASSERT(static_cast<LO>(values.size()) == mesh_.nents(0));
-  Omega_h::Write<Real> array(values.size());
-  Omega_h::parallel_for(
-    values.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = values[i]; });
-  if (has_tag) {
-    mesh_.set_tag(0, name_, Omega_h::Read<Real>(array));
-  } else {
-    mesh_.add_tag(0, name_, 1, Omega_h::Read<Real>(array));
+  auto nodes_per_dim = layout_.GetNodesPerDim();
+  auto num_components = layout_.GetNumComponents();
+  PCMS_ALWAYS_ASSERT(static_cast<LO>(values.size()) ==
+                     layout_.GetNumOwnedDofHolder() * num_components);
+  size_t offset = 0;
+  for (int i = 0; i <= mesh_.dim(); ++i) {
+    if (nodes_per_dim[i]) {
+      auto topo = static_cast<MeshField::Mesh_Topology>(i);
+      size_t stride = nodes_per_dim[i] * num_components;
+      Omega_h::parallel_for(
+        mesh_.nents(i), OMEGA_H_LAMBDA(size_t ent) {
+          for (int n = 0; n < nodes_per_dim[i]; ++n) {
+            for (int c = 0; c < num_components; ++c) {
+              shape_field_(ent, n, c, topo) =
+                values[offset + ent * stride + n * num_components + c];
+            }
+          }
+        });
+      offset += stride * mesh_.nents(i);
+    }
   }
 }
 
@@ -92,7 +160,7 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
       coords(i, 1) = coordinates(i, 1);
     });
   auto results = search_(coords);
-  auto hint = std::make_shared<OmegaHFIeld2LocalizationHint>(results);
+  auto hint = std::make_shared<OmegaHField2LocalizationHint>(mesh_, results);
 
   return LocalizationHint{hint};
 }
@@ -108,60 +176,18 @@ void OmegaHField2::Evaluate(LocalizationHint location,
     throw std::runtime_error("Coordinate system mismatch");
   }
 
-  OmegaHFIeld2LocalizationHint hint =
-    *((OmegaHFIeld2LocalizationHint*)location.data.get());
+  OmegaHField2LocalizationHint hint =
+    *((OmegaHField2LocalizationHint*)location.data.get());
 
-  auto search_results = hint.GetResults();
-
-  if (!search_results.is_allocated()) {
-    // TODO when moved to PCMS throw PCMS exception
-    throw std::runtime_error("Evaluation coordinates not set");
-  }
-
-  auto tris2verts = mesh_.ask_elem_verts();
-  auto field_values = mesh_.template get_array<Real>(0, name_);
+  auto eval_results =
+    const_cast<OmegaHField2*>(this)->mesh_field_.triangleLocalPointEval(
+      hint.coordinates_, hint.offsets_, shape_field_);
 
   Rank1View<double, HostMemorySpace> values = results.GetValues();
 
-  switch (layout_.GetLocation()) {
-    case OmegaHFieldLayoutLocation::Linear:
-      Kokkos::parallel_for(
-        search_results.size(), KOKKOS_LAMBDA(LO i) {
-          auto [dim, elem_idx, coord] = search_results(i);
-          // TODO deal with case for elem_idx < 0 (point outside of mesh)
-          KOKKOS_ASSERT(elem_idx >= 0);
-          const auto elem_tri2verts =
-            Omega_h::gather_verts<3>(tris2verts, elem_idx);
-          Real val = 0;
-          for (int j = 0; j < 3; ++j) {
-            val += field_values[elem_tri2verts[j]] * coord[j];
-          }
-          values[i] = val;
-        });
-      break;
-
-    case OmegaHFieldLayoutLocation::PieceWise:
-      Kokkos::parallel_for(
-        search_results.size(), KOKKOS_LAMBDA(LO i) {
-          auto [dim, elem_idx, coord] = search_results(i);
-          // TODO deal with case for elem_idx < 0 (point outside of mesh)
-          KOKKOS_ASSERT(elem_idx >= 0);
-          const auto elem_tri2verts =
-            Omega_h::gather_verts<3>(tris2verts, elem_idx);
-          // value is closest to point has the largest coordinate
-          int vert = 0;
-          auto max_val = coord[0];
-          for (int j = 1; j <= 2; ++j) {
-            auto next_val = coord[j];
-            if (next_val > max_val) {
-              max_val = next_val;
-              vert = j;
-            }
-          }
-          values[i] = field_values[elem_tri2verts[vert]];
-        });
-      break;
-  }
+  Kokkos::parallel_for(
+    eval_results.size(),
+    KOKKOS_LAMBDA(LO i) { values[hint.indices_(i)] = eval_results(i, 0); });
 }
 
 void OmegaHField2::EvaluateGradient(FieldDataView<double, HostMemorySpace> results)

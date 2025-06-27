@@ -62,32 +62,6 @@ static void CopyFields(const std::vector<pcms::CoupledField*> & from_fields,
   }
 }
 
-template <typename T>
-static void AverageAndSetField(const pcms::OmegaHField<T> & a, pcms::OmegaHField<T> & b) {
-  const auto a_data = get_nodal_data(a);
-  const auto b_data = get_nodal_data(b);
-  Omega_h::Write<T> combined_data(a_data.size());
-  Omega_h::parallel_for(combined_data.size(), OMEGA_H_LAMBDA(size_t i) {
-    combined_data[i] = (a_data[i] + b_data[i]) / 2.0;
-  });
-  auto combined_view = pcms::make_array_view(Omega_h::Read<T>(combined_data));
-  pcms::set_nodal_data(b, combined_view);
-}
-
-/*
- * Takes the average of each pair of fields and sets the results in the the second
- * argument
- */
-static void AverageAndSetFields(const std::vector<pcms::CoupledField*> & from_fields,
-                       const std::vector<pcms::CoupledField*> & to_fields) {
-  PCMS_ALWAYS_ASSERT(from_fields.size() == to_fields.size());
-  for(size_t i=0; i<from_fields.size(); ++i) {
-    const auto* from = from_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
-    auto* to = to_fields[i]->GetFieldAdapter<pcms::OmegaHFieldAdapter<pcms::Real>>();
-    AverageAndSetField(from->GetField(),to->GetField());
-  }
-}
-
 void SendRecvDensity(pcms::Application* core, pcms::Application* edge, XGCAnalysis& core_analysis, XGCAnalysis& edge_analysis, int rank) {
 
     std::chrono::duration<double> elapsed_seconds;
@@ -118,10 +92,6 @@ void SendRecvDensity(pcms::Application* core, pcms::Application* edge, XGCAnalys
     CopyFields(core_analysis.edensity[1], edge_analysis.edensity[1]);
     CopyFields(core_analysis.idensity[0], edge_analysis.idensity[0]);
     CopyFields(core_analysis.idensity[1], edge_analysis.idensity[1]);
-    //AverageAndSetFields(core_analysis.edensity[0], edge_analysis.edensity[0]);
-    //AverageAndSetFields(core_analysis.edensity[1], edge_analysis.edensity[1]);
-    //AverageAndSetFields(core_analysis.idensity[0], edge_analysis.idensity[0]);
-    //AverageAndSetFields(core_analysis.idensity[1], edge_analysis.idensity[1]);
 
     sr_time1 = std::chrono::steady_clock::now();
     elapsed_seconds = sr_time1-sr_time2;

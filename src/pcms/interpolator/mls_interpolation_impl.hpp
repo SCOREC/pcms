@@ -465,8 +465,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
   team_policy tp(ntargets, Kokkos::AUTO);
 
   int scratch_size = tp.scratch_size_max(1);
-  printf("Scratch Size = %d\n", scratch_size);
-  printf("Shared Size = %d\n", shared_size);
+  // printf("Scratch Size = %d\n", scratch_size);
+  // printf("Shared Size = %d\n", shared_size);
   PCMS_ALWAYS_ASSERT(scratch_size > shared_size);
 
   // calculates the interpolated values

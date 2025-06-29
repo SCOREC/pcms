@@ -1,8 +1,13 @@
 name: Test-Build
 on:
   push:
-  schedule:
-    - cron: '12 14 * * 3' 
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
   test-build:

@@ -9,7 +9,7 @@
 #include <fstream>
 #include "pcms/xgc_reverse_classification.h"
 #include "pcms/dummy_field_adapter.h"
-#include "pcms/print.h"
+#include "pcms/assert.h"
 namespace pcms
 {
 // Note that we have a closed set of types that can be used in the C interface
@@ -168,8 +168,7 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
                                                 in_overlap, *field_adapter);
       break;
     default:
-      pcms::printError("tyring to create XGC adapter with invalid type!\n");
-      std::abort();
+      PCMS_ALWAYS_ASSERT(false, MPI_COMM_WORLD, "tyring to create XGC adapter with invalid type!\n");
   }
   return {reinterpret_cast<void*>(field_adapter)};
 }

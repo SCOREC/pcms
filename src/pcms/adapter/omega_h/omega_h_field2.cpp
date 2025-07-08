@@ -5,6 +5,64 @@
 
 namespace pcms
 {
+template <int Dim, int Order>
+class MeshFieldBackendImpl : public MeshFieldBackend
+{
+public:
+  MeshFieldBackendImpl(Omega_h::Mesh& mesh)
+    : mesh_(mesh),
+      mesh_field_(mesh),
+      shape_field_(mesh_field_.template CreateLagrangeField<Real, Order>())
+  {
+  }
+
+  Kokkos::View<Real* [1]> evaluate(Kokkos::View<Real**> localCoords,
+                                   Kokkos::View<LO*> offsets) const override {
+    auto self = const_cast<MeshFieldBackendImpl<Dim, Order>*>(this);
+    return self->mesh_field_.triangleLocalPointEval(localCoords, offsets,
+                                                    shape_field_);
+  }
+
+  void SetData(Rank1View<const Real, HostMemorySpace> data, size_t num_nodes,
+               size_t num_components, int dim) override
+  {
+    size_t stride = num_nodes * num_components;
+    auto topo = static_cast<MeshField::Mesh_Topology>(dim);
+    Omega_h::parallel_for(
+      mesh_.nents(dim), OMEGA_H_LAMBDA(size_t ent) {
+        for (int n = 0; n < num_nodes; ++n) {
+          for (int c = 0; c < num_components; ++c) {
+            shape_field_(ent, n, c, topo) =
+              data[ent * stride + n * num_components + c];
+          }
+        }
+      });
+  }
+
+  void GetData(Rank1View<Real, HostMemorySpace> data, size_t num_nodes,
+               size_t num_components, int dim) const override
+  {
+    size_t stride = num_nodes * num_components;
+    auto topo = static_cast<MeshField::Mesh_Topology>(dim);
+    Omega_h::parallel_for(
+      mesh_.nents(dim), OMEGA_H_LAMBDA(size_t ent) {
+        for (int n = 0; n < num_nodes; ++n) {
+          for (int c = 0; c < num_components; ++c) {
+            data[ent * stride + n * num_components + c] =
+              shape_field_(ent, n, c, topo);
+          }
+        }
+      });
+  }
+
+private:
+  Omega_h::Mesh& mesh_;
+  MeshField::OmegahMeshField<DefaultExecutionSpace, Dim> mesh_field_;
+  using ShapeField =
+    decltype(mesh_field_.template CreateLagrangeField<Real, Order>());
+  ShapeField shape_field_;
+};
+
 struct OmegaHField2LocalizationHint
 {
   OmegaHField2LocalizationHint(
@@ -55,11 +113,31 @@ OmegaHField2::OmegaHField2(std::string name, CoordinateSystem coordinate_system,
     coordinate_system_(coordinate_system),
     layout_(layout),
     mesh_(mesh),
-    mesh_field_(mesh),
-    shape_field_(mesh_field_.template CreateLagrangeField<Real, 1>()),
     search_(mesh, 10, 10),
     dof_holder_data_("", layout.GetNumOwnedDofHolder() * layout.GetNumComponents())
 {
+  auto nodes_per_dim = layout.GetNodesPerDim();
+  if (nodes_per_dim[2] == 0 && nodes_per_dim[3] == 0) {
+    if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 0) {
+        switch (mesh.dim()) {
+          case 1:
+            mesh_field_ = std::make_unique<MeshFieldBackendImpl<1, 1>>(mesh);
+            break;
+          case 2:
+            mesh_field_ = std::make_unique<MeshFieldBackendImpl<2, 1>>(mesh);
+            break;
+        }
+    } else if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 1) {
+        switch (mesh.dim()) {
+          case 2:
+            mesh_field_ = std::make_unique<MeshFieldBackendImpl<2, 2>>(mesh);
+            break;
+          case 3:
+            mesh_field_ = std::make_unique<MeshFieldBackendImpl<3, 2>>(mesh);
+            break;
+        }
+    }
+  }
 }
 
 const std::string& OmegaHField2::GetName() const
@@ -81,18 +159,10 @@ FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
   size_t offset = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i]) {
-      auto topo = static_cast<MeshField::Mesh_Topology>(i);
-      size_t stride = nodes_per_dim[i] * num_components;
-      Omega_h::parallel_for(
-        mesh_.nents(i), OMEGA_H_LAMBDA(size_t ent) {
-          for (int n = 0; n < nodes_per_dim[i]; ++n) {
-            for (int c = 0; c < num_components; ++c) {
-              dof_holder_data_(offset + ent * stride + n * num_components + c) =
-                shape_field_(ent, n, c, topo);
-            }
-          }
-        });
-      offset += stride * mesh_.nents(i);
+      size_t len = mesh_.nents(i) * nodes_per_dim[i] * num_components;
+      Rank1View<Real, HostMemorySpace> subspan{std::data(dof_holder_data_) + offset, len};
+      mesh_field_->GetData(subspan, nodes_per_dim[i], num_components, i);
+      offset += len;
     }
   }
 
@@ -106,9 +176,8 @@ FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
 CoordinateView<HostMemorySpace> OmegaHField2::GetDOFHolderCoordinates() const
 {
   PCMS_FUNCTION_TIMER;
-  auto coords = Omega_h::get_ent_centroids(mesh_, 0);
-  Rank2View<const double, HostMemorySpace> coords_view(coords.data(), coords.size() / 2, 2);
-  return CoordinateView<HostMemorySpace>{GetCoordinateSystem(), coords_view};
+  return CoordinateView<HostMemorySpace>{GetCoordinateSystem(),
+                                         layout_.GetDOFHolderCoordinates()};
 }
 
 void OmegaHField2::SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) {
@@ -117,7 +186,7 @@ void OmegaHField2::SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> d
     throw std::runtime_error("Coordinate system mismatch");
   }
 
-  Rank1View<const double, HostMemorySpace> values = data.GetValues();
+  Rank1View<const Real, HostMemorySpace> values = data.GetValues();
   auto nodes_per_dim = layout_.GetNodesPerDim();
   auto num_components = layout_.GetNumComponents();
   PCMS_ALWAYS_ASSERT(static_cast<LO>(values.size()) ==
@@ -125,18 +194,10 @@ void OmegaHField2::SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> d
   size_t offset = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i]) {
-      auto topo = static_cast<MeshField::Mesh_Topology>(i);
-      size_t stride = nodes_per_dim[i] * num_components;
-      Omega_h::parallel_for(
-        mesh_.nents(i), OMEGA_H_LAMBDA(size_t ent) {
-          for (int n = 0; n < nodes_per_dim[i]; ++n) {
-            for (int c = 0; c < num_components; ++c) {
-              shape_field_(ent, n, c, topo) =
-                values[offset + ent * stride + n * num_components + c];
-            }
-          }
-        });
-      offset += stride * mesh_.nents(i);
+      size_t len = mesh_.nents(i) * nodes_per_dim[i] * num_components;
+      Rank1View<const Real, HostMemorySpace> subspan{values.data_handle() + offset, len};
+      mesh_field_->SetData(subspan, nodes_per_dim[i], num_components, i);
+      offset += len;
     }
   }
 }
@@ -179,9 +240,7 @@ void OmegaHField2::Evaluate(LocalizationHint location,
   OmegaHField2LocalizationHint hint =
     *((OmegaHField2LocalizationHint*)location.data.get());
 
-  auto eval_results =
-    const_cast<OmegaHField2*>(this)->mesh_field_.triangleLocalPointEval(
-      hint.coordinates_, hint.offsets_, shape_field_);
+  auto eval_results = mesh_field_->evaluate(hint.coordinates_, hint.offsets_);
 
   Rank1View<double, HostMemorySpace> values = results.GetValues();
 

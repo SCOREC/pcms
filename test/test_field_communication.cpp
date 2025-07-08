@@ -37,7 +37,7 @@ void client(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
   mesh.add_tag<double>(0, "field", 1, Omega_h::Read(ids));
 
   auto layout = pcms::OmegaHFieldLayout(
-    mesh, {1, 0, 0, 0}, 2);
+    mesh, {1, 0, 0, 0}, 1);
   pcms::OmegaHField2 new_field("field", pcms::CoordinateSystem::Cartesian, layout,
                           mesh);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm("new_comm", comm, rdv, channel, layout);
@@ -72,7 +72,7 @@ void server(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
   mesh.add_tag<double>(0, "field", 1, Omega_h::Read(ids));
 
   auto layout = pcms::OmegaHFieldLayout(
-    mesh, {1, 0, 0, 0}, 2);
+    mesh, {1, 0, 0, 0}, 1);
   pcms::OmegaHField2 new_field("field", pcms::CoordinateSystem::Cartesian, layout,
                           mesh);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm("new_comm", comm, rdv, channel, layout);

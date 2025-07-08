@@ -23,6 +23,7 @@ public:
 
   GlobalIDView<HostMemorySpace> GetOwnedGids() const override;
   GlobalIDView<HostMemorySpace> GetGids() const override;
+  Rank2View<const Real, HostMemorySpace> GetDOFHolderCoordinates() const;
 
   // returns true if the field layout is distributed
   // if the field layout is distributed, the owned and global dofs are the same
@@ -42,6 +43,7 @@ private:
   std::string global_id_name_;
   int num_components_;
   std::array<int, 4> nodes_per_dim_;
+  Kokkos::View<Real **> dof_holder_coords_;
 };
 
 }

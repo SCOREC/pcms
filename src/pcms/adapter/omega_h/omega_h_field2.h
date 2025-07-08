@@ -13,6 +13,17 @@
 
 namespace pcms
 {
+class MeshFieldBackend
+{
+public:
+  virtual Kokkos::View<Real* [1]> evaluate(Kokkos::View<Real**> localCoords,
+                                           Kokkos::View<LO*> offsets) const = 0;
+  virtual void SetData(Rank1View<const Real, HostMemorySpace> data,
+                       size_t num_nodes, size_t num_components, int dim) = 0;
+  virtual void GetData(Rank1View<Real, HostMemorySpace> data, size_t num_nodes,
+                       size_t num_components, int dim) const = 0;
+};
+
 // TODO template over possible OmegaHField2Types
 class OmegaHField2 : public FieldT<Real>
 {
@@ -55,8 +66,7 @@ private:
   CoordinateSystem coordinate_system_;
   const OmegaHFieldLayout& layout_;
   Omega_h::Mesh& mesh_;
-  MeshField::OmegahMeshField<DefaultExecutionSpace, 2> mesh_field_;
-  decltype(mesh_field_.template CreateLagrangeField<Real, 1>()) shape_field_;
+  std::unique_ptr<MeshFieldBackend> mesh_field_;
   GridPointSearch search_;
   Kokkos::View<Real*> dof_holder_data_;
 };

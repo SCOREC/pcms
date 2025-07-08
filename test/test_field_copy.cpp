@@ -8,40 +8,48 @@
 #include "pcms/adapter/omega_h/omega_h_field2.h"
 #include <Kokkos_Core.hpp>
 
-TEST_CASE("copy omega_h_field2 data")
+void test_copy(Omega_h::CommPtr world, int dim, std::array<int, 4> nodes_per_dim,
+               int num_components)
 {
-  auto lib = Omega_h::Library{};
-  auto world = lib.world();
+  int nx = 100;
+  int ny = dim > 1 ? 100 : 0;
+  int nz = dim > 2 ? 100 : 0;
+
   auto mesh =
-    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 100, 100, 0, false);
-  const auto nverts = mesh.nents(0);
-  Omega_h::Write<double> ids(nverts);
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, nx, ny, nz, false);
+  pcms::OmegaHFieldLayout layout(mesh, nodes_per_dim, num_components);
+  int ndata = layout.GetNumOwnedDofHolder() * num_components;
+  Omega_h::Write<double> ids(ndata);
   Omega_h::parallel_for(
-    nverts, OMEGA_H_LAMBDA(int i) { ids[i] = i; });
-  mesh.add_tag<double>(0, "test_ids", 1, Omega_h::Read(ids));
-  const bool tag_already_exists = GENERATE(true, false);
-  if (tag_already_exists) {
-    Omega_h::Write<double> zeros(nverts, 0);
-    mesh.add_tag<double>(0, "copied", 1, zeros);
-  }
-  auto layout =
-    pcms::OmegaHFieldLayout(mesh, {1, 0, 0, 0}, 1);
-  pcms::OmegaHField2 original("test_ids", pcms::CoordinateSystem::Cartesian, layout, mesh);
+    ndata, OMEGA_H_LAMBDA(int i) { ids[i] = i; });
+
+  pcms::OmegaHField2 original("", pcms::CoordinateSystem::Cartesian, layout,
+                              mesh);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
     std::data(ids), std::size(ids)};
   pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
     array_view, original.GetCoordinateSystem()};
   original.SetDOFHolderData(field_data_view);
-  pcms::OmegaHField2 copied("copied", pcms::CoordinateSystem::Cartesian, layout, mesh);
+
+  pcms::OmegaHField2 copied("", pcms::CoordinateSystem::Cartesian, layout,
+                            mesh);
   pcms::copy_field2(original, copied);
   auto copied_array = copied.GetDOFHolderData().GetValues();
-  REQUIRE(copied_array.size() == nverts);
+
+  REQUIRE(copied_array.size() == ndata);
   int sum = 0;
   Kokkos::parallel_reduce(
-    nverts,
+    ndata,
     KOKKOS_LAMBDA(int i, int& local_sum) {
       local_sum += std::abs(ids[i] - copied_array[i]) < 1e-12;
     },
     sum);
-  REQUIRE(sum == nverts);
+  REQUIRE(sum == ndata);
+}
+
+TEST_CASE("copy omega_h_field2 data")
+{
+  auto lib = Omega_h::Library{};
+  test_copy(lib.world(), 2, {1, 0, 0, 0}, 1);
+  test_copy(lib.world(), 2, {1, 1, 0, 0}, 1);
 }

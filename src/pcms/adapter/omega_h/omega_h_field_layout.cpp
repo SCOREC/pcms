@@ -43,7 +43,8 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
   : mesh_(mesh),
     nodes_per_dim_(nodes_per_dim),
     num_components_(num_components),
-    global_id_name_(global_id_name)
+    global_id_name_(global_id_name),
+    dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim())
 {
   LO total_ents = 0;
   for (int i = 0; i <= mesh.dim(); ++i) {
@@ -59,6 +60,41 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
   } else {
     std::cerr << "Weird tag type for global arrays.\n";
     std::abort();
+  }
+
+  auto coords = mesh_.coords();
+
+  size_t offset = 0;
+  for (int i = 0; i <= mesh_.dim(); ++i) {
+    if (nodes_per_dim[i] == 1) {
+      if (i == 0) {
+        Kokkos::parallel_for(
+          mesh_.nents(0), KOKKOS_LAMBDA(LO i) {
+            dof_holder_coords_(offset + i, 0) = coords[2 * i + 0];
+            dof_holder_coords_(offset + i, 1) = coords[2 * i + 1];
+          });
+      } else if (i == 1) {
+        auto edge_verts = mesh_.ask_verts_of(1);
+        Kokkos::parallel_for(
+          mesh_.nents(1), KOKKOS_LAMBDA(LO i) {
+            auto verts = Omega_h::gather_verts<2>(edge_verts, i);
+            Real x0 = coords[2 * verts[0] + 0];
+            Real y0 = coords[2 * verts[0] + 1];
+            Real x1 = coords[2 * verts[1] + 0];
+            Real y1 = coords[2 * verts[1] + 1];
+            dof_holder_coords_(offset + i, 0) = (x0 + x1) / 2;
+            dof_holder_coords_(offset + i, 1) = (y0 + y1) / 2;
+          });
+      } else {
+        std::cerr << "Unsupported" << std::endl;
+        std::abort();
+      }
+    } else if (nodes_per_dim[i] != 0) {
+      std::cerr << "Unsupported" << std::endl;
+      std::abort();
+    }
+
+    offset += mesh.nents(i);
   }
 }
 
@@ -99,6 +135,13 @@ GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetOwnedGids() const
 GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const
 {
   return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
+}
+
+Rank2View<const Real, HostMemorySpace>
+OmegaHFieldLayout::GetDOFHolderCoordinates() const
+{
+  return Rank2View<const Real, HostMemorySpace>(
+    dof_holder_coords_.data(), dof_holder_coords_.extent(0), 2);
 }
 
 bool OmegaHFieldLayout::IsDistributed()

@@ -38,13 +38,19 @@ void client(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
 
   auto layout = pcms::OmegaHFieldLayout(
     mesh, {1, 0, 0, 0}, 1);
-  pcms::OmegaHField2 new_field("field", pcms::CoordinateSystem::Cartesian, layout,
-                          mesh);
+  pcms::OmegaHField2 new_field("", pcms::CoordinateSystem::Cartesian, layout,
+                               mesh);
+  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
+    std::data(ids), std::size(ids)};
+  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
+    array_view, new_field.GetCoordinateSystem()};
+  new_field.SetDOFHolderData(field_data_view);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm("new_comm", comm, rdv, channel, layout);
   pcms::FieldCommunicator2<pcms::Real> new_comm(layout_comm, new_field);
 
   pcms::OmegaHFieldAdapter<double> old_field("field", mesh);
   pcms::FieldCommunicator<pcms::OmegaHFieldAdapter<double>> old_comm("old_comm", comm, rdv, channel, old_field);
+
 
   MPI_Barrier(MPI_COMM_WORLD);
   Timer old_time{};
@@ -77,7 +83,6 @@ void server(MPI_Comm comm, redev::Redev& rdv, redev::Channel& channel, Omega_h::
                           mesh);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm("new_comm", comm, rdv, channel, layout);
   pcms::FieldCommunicator2<pcms::Real> new_comm(layout_comm, new_field);
-
 
   pcms::OmegaHFieldAdapter<double> old_field("field", mesh);
   pcms::FieldCommunicator<pcms::OmegaHFieldAdapter<double>> old_comm("old_comm", comm, rdv, channel, old_field);

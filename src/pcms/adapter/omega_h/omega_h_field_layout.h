@@ -11,8 +11,6 @@
 #include <array>
 
 namespace pcms {
-using ReversePartitionMap = std::map<pcms::LO, std::vector<pcms::LO>>;
-
 class OmegaHFieldLayout : public FieldLayout {
 public:
   OmegaHFieldLayout(Omega_h::Mesh& mesh, std::array<int, 4> nodes_per_dim, int num_components, std::string global_id_name = "global");
@@ -29,7 +27,10 @@ public:
   // if the field layout is distributed, the owned and global dofs are the same
   bool IsDistributed() override;
 
-  ReversePartitionMap GetReversePartitionMap(
+  size_t GetNumEnts() const;
+  std::array<size_t, 4> GetEntOffsets() const override;
+
+  ReversePartitionMap2 GetReversePartitionMap(
     const redev::Partition& partition) const override;
 
   std::array<int, 4> GetNodesPerDim() const;
@@ -44,6 +45,8 @@ private:
   int num_components_;
   std::array<int, 4> nodes_per_dim_;
   Kokkos::View<Real **> dof_holder_coords_;
+  Omega_h::Write<Omega_h::ClassId> class_ids_;
+  Omega_h::Write<Omega_h::I8> class_dims_;
 };
 
 }

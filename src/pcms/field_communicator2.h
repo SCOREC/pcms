@@ -28,7 +28,7 @@ public:
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(layout_comm_.GetChannel().InSendCommunicationPhase());
     auto n = field_.Serialize({}, {});
-    REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n));
+    REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n + 4));
     auto buffer = make_array_view(comm_buffer_);
     field_.Serialize(buffer, layout_comm_.GetPermutationArray());
     layout_comm_.Send(buffer.data_handle(), mode);

@@ -5,7 +5,16 @@
 
 namespace pcms
 {
+struct PartitionMapping
+{
+  std::vector<LO> indices;
+  std::array<int, 4> ent_offsets;
+
+  PartitionMapping() { ent_offsets.fill(0); }
+};
+
 using ReversePartitionMap = std::map<pcms::LO, std::vector<pcms::LO>>;
+using ReversePartitionMap2 = std::map<pcms::LO, PartitionMapping>;
 
 class FieldLayout
 {
@@ -31,8 +40,11 @@ public:
 
   // This class should construct the permutation arrays that are needed
   // for serialization / deserialization
+  //
 
-  virtual ReversePartitionMap GetReversePartitionMap(
+  virtual std::array<size_t, 4> GetEntOffsets() const = 0;
+
+  virtual ReversePartitionMap2 GetReversePartitionMap(
     const redev::Partition& partition) const = 0;
 
   // Serialize, Derserialize, ReversePartitionMap?

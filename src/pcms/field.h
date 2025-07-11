@@ -35,7 +35,6 @@ struct HasCoordinateSystem<T, VoidT<typename T::coordinate_system>>
  * Key: result of partition object i.e. rank that the data is sent to on coupling server
  * Value: Vector of local index (ordered)
  */
-using ReversePartitionMap = std::map<pcms::LO, std::vector<pcms::LO>>;
 
 template <typename T, typename MemorySpace>
 class FieldDataView {

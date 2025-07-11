@@ -23,7 +23,7 @@ struct OutMsg
 // reverse partition is a map that has the partition rank as a key
 // and the values are an vector where each entry is the index into
 // the array of data to send
-OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
+OutMsg ConstructOutMessage(const ReversePartitionMap2& reverse_partition)
 {
   PCMS_FUNCTION_TIMER;
   OutMsg out;
@@ -34,7 +34,7 @@ OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
   // number of entries for each rank
   for (auto& rank : reverse_partition) {
     out.dest.push_back(rank.first);
-    counts.push_back(rank.second.size());
+    counts.push_back(rank.second.indices.size() + rank.second.ent_offsets.size());
   }
   out.offset.resize(counts.size() + 1);
   out.offset[0] = 0;
@@ -43,27 +43,38 @@ OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
   return out;
 }
 
-size_t count_entries(const ReversePartitionMap& reverse_partition)
+size_t count_entries(const ReversePartitionMap2& reverse_partition)
 {
   PCMS_FUNCTION_TIMER;
   size_t num_entries = 0;
   for (const auto& v : reverse_partition) {
-    num_entries += v.second.size();
+    num_entries += v.second.indices.size() + v.second.ent_offsets.size();
   }
   return num_entries;
 }
 
 // note this function can be parallelized by making use of the offsets
-redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
+redev::LOs ConstructPermutation(const ReversePartitionMap2& reverse_partition,
+                                std::array<size_t, 4> permutation_offsets)
 {
   PCMS_FUNCTION_TIMER;
   auto num_entries = count_entries(reverse_partition);
   redev::LOs permutation(num_entries);
   LO entry = 0;
   for (auto& rank : reverse_partition) {
-    for (auto& idx : rank.second) {
-      PCMS_ALWAYS_ASSERT(idx < num_entries);
-      permutation[idx] = entry++;
+    entry += 4;
+
+    for (int e = 0; e < rank.second.ent_offsets.size(); ++e) {
+      int start = rank.second.ent_offsets[e];
+      int end = e + 1 < rank.second.ent_offsets.size()
+                  ? rank.second.ent_offsets[e + 1]
+                  : rank.second.indices.size();
+      for (int i = start; i < end; ++i) {
+        LO index = rank.second.indices[i];
+        size_t p_index = permutation_offsets[e] + index;
+        PCMS_ALWAYS_ASSERT(p_index < permutation.size());
+        permutation[p_index] = entry++;
+      }
     }
   }
   return permutation;
@@ -77,9 +88,11 @@ redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
  * @return permutation array such that GIDS(Permutation[i]) = msgs
  */
 redev::LOs ConstructPermutation(GlobalIDView<HostMemorySpace> local_gids,
-                                GlobalIDView<HostMemorySpace> received_gids)
+                                GlobalIDView<HostMemorySpace> received_msg)
 {
   PCMS_FUNCTION_TIMER;
+  GlobalIDView<HostMemorySpace> received_gids(received_msg.data_handle() + 4,
+                                              received_msg.size() - 4);
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
   REDEV_ALWAYS_ASSERT(std::is_permutation(
     local_gids.data_handle(), local_gids.data_handle() + local_gids.size(),
@@ -91,7 +104,7 @@ redev::LOs ConstructPermutation(GlobalIDView<HostMemorySpace> local_gids,
   redev::LOs permutation;
   permutation.reserve(local_gids.size());
   for (size_t i = 0; i < received_gids.size(); ++i) {
-    permutation.push_back(global_to_local_ids[received_gids[i]]);
+    permutation.push_back(global_to_local_ids[received_gids[i]] + 4);
   }
   return permutation;
 }
@@ -130,13 +143,28 @@ OutMsg ConstructOutMessage(int rank, int nproc,
   return out;
 }
 
-template <typename T>
-bool HasDuplicates(std::vector<T> v)
+template <typename ItBegin, typename ItEnd>
+bool HasDuplicates(ItBegin begin, ItEnd end)
 {
   PCMS_FUNCTION_TIMER;
-  std::sort(v.begin(), v.end());
-  auto it = std::adjacent_find(v.begin(), v.end());
-  return it != v.end();
+  std::sort(begin, end);
+  auto it = std::adjacent_find(begin, end);
+  return it != end;
+}
+
+template <typename T>
+bool IsValid(std::vector<T> recv_msg)
+{
+  auto gids = recv_msg.begin() + 4;
+  for (int i = 0; i < 4; ++i) {
+    auto begin = gids + recv_msg[i];
+    auto end = i + 1 < 4 ? gids + recv_msg[i + 1] : recv_msg.end();
+    if (HasDuplicates(begin, end)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 } // namespace
 
@@ -191,22 +219,30 @@ public:
 
     PCMS_FUNCTION_TIMER;
     auto gids = layout_.GetGids();
+    auto ent_offsets = layout_.GetEntOffsets();
     if (redev_.GetProcessType() == redev::ProcessType::Client) {
-      const ReversePartitionMap reverse_partition =
+      const ReversePartitionMap2 reverse_partition =
         layout_.GetReversePartitionMap(
           redev::Partition{redev_.GetPartition()});
       auto out_message = ConstructOutMessage(reverse_partition);
       comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
       gid_comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
-      message_permutation_ = ConstructPermutation(reverse_partition);
+      message_permutation_ = ConstructPermutation(reverse_partition, ent_offsets);
       // use permutation array to send the gids
-      std::vector<pcms::GO> gid_msgs(gids.size());
-      REDEV_ALWAYS_ASSERT(gids.size() == message_permutation_.size());
+      std::vector<pcms::GO> msg(gids.size() + reverse_partition.size() * 4);
+      REDEV_ALWAYS_ASSERT(msg.size() == message_permutation_.size());
+      int ent_dim = 0;
       for (size_t i = 0; i < gids.size(); ++i) {
-        gid_msgs[message_permutation_[i]] = gids[i];
+        msg[message_permutation_[i]] = gids[i];
+      }
+      for (auto& rank : reverse_partition) {
+        size_t i_offsets = message_permutation_[rank.second.indices[0]] - 4;
+        for (int i = 0; i < rank.second.ent_offsets.size(); ++i) {
+          msg[i_offsets + i] = rank.second.ent_offsets[i];
+        }
       }
       channel_.BeginSendCommunicationPhase();
-      gid_comm_.Send(gid_msgs.data());
+      gid_comm_.Send(msg.data());
       channel_.EndSendCommunicationPhase();
     } else {
       channel_.BeginReceiveCommunicationPhase();
@@ -223,7 +259,7 @@ public:
       // Verify that there are no duplicate entries in the received
       // data. Duplicate data indicates that sender is not sending data from
       // only the owned rank
-      REDEV_ALWAYS_ASSERT(!HasDuplicates(recv_gids));
+      REDEV_ALWAYS_ASSERT(IsValid(recv_gids));
       GlobalIDView<HostMemorySpace> recv_gids_view(recv_gids.data(), recv_gids.size());
       message_permutation_ = ConstructPermutation(gids, recv_gids_view);
     }

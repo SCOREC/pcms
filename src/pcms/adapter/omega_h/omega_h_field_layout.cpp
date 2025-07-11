@@ -44,8 +44,11 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
     nodes_per_dim_(nodes_per_dim),
     num_components_(num_components),
     global_id_name_(global_id_name),
-    dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim())
+    dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim()),
+    class_ids_(GetNumEnts()),
+    class_dims_(class_ids_.size())
 {
+  PCMS_FUNCTION_TIMER;
   LO total_ents = 0;
   for (int i = 0; i <= mesh.dim(); ++i) {
     if (nodes_per_dim[i])
@@ -95,6 +98,23 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
     }
 
     offset += mesh.nents(i);
+  }
+
+  offset = 0;
+  for (int i = 0; i <= mesh_.dim(); ++i) {
+    if (nodes_per_dim_[i]) {
+      auto ids = mesh_.get_array<Omega_h::ClassId>(i, "class_id");
+      auto dims = mesh_.get_array<Omega_h::I8>(i, "class_dim");
+      PCMS_ALWAYS_ASSERT(ids.size() == dims.size() &&
+                         dims.size() == mesh_.nents(i));
+
+      Omega_h::parallel_for(
+        mesh_.nents(i), OMEGA_H_LAMBDA(LO i) {
+          class_ids_[offset + i] = ids[i];
+          class_dims_[offset + i] = dims[i];
+        });
+      offset += mesh.nents(i);
+    }
   }
 }
 
@@ -152,36 +172,75 @@ bool OmegaHFieldLayout::IsDistributed()
 Omega_h::Read<Omega_h::ClassId> OmegaHFieldLayout::GetClassIDs() const
 {
   PCMS_FUNCTION_TIMER;
-  return mesh_.get_array<Omega_h::ClassId>(0, "class_id");
+  return Omega_h::Read(class_ids_);
 }
 
 Omega_h::Read<Omega_h::I8> OmegaHFieldLayout::GetClassDims() const
 {
   PCMS_FUNCTION_TIMER;
-  return mesh_.get_array<Omega_h::I8>(0, "class_dim");
+  return Omega_h::Read(class_dims_);
 }
 
-ReversePartitionMap OmegaHFieldLayout::GetReversePartitionMap(
+size_t OmegaHFieldLayout::GetNumEnts() const {
+  size_t n = 0;
+  for (int i = 0; i <= mesh_.dim(); ++i) {
+    if (nodes_per_dim_[i])
+      n += mesh_.nents(i);
+  }
+  return n;
+}
+
+std::array<size_t, 4> OmegaHFieldLayout::GetEntOffsets() const
+{
+  std::array<size_t, 4> offsets{};
+  size_t offset = 0;
+  for (int i = 0; i < offsets.size(); ++i) {
+    offsets[i] = offset;
+    if (i <= mesh_.dim())
+      offset += mesh_.nents(i);
+  }
+  return offsets;
+}
+
+ReversePartitionMap2 OmegaHFieldLayout::GetReversePartitionMap(
   const redev::Partition& partition) const
 {
   PCMS_FUNCTION_TIMER;
   auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(GetClassIDs());
   auto classDims_h = Omega_h::HostRead<Omega_h::I8>(GetClassDims());
-  const auto coords = Omega_h::HostRead(Omega_h::get_ent_centroids(mesh_, 0));
+  const auto coords = GetDOFHolderCoordinates();
   auto dim = mesh_.dim();
+
+  PCMS_ALWAYS_ASSERT(classDims_h.size() == classIds_h.size() &&
+                     classIds_h.size() == coords.extent(0));
 
   // local_index number of vertices going to each destination process by
   // calling getRank - degree array
   std::array<pcms::Real, 3> coord;
-  pcms::ReversePartitionMap reverse_partition;
-  pcms::LO local_index = 0;
-  for (auto i = 0; i < classIds_h.size(); i++) {
-    coord[0] = coords[i * dim];
-    coord[1] = coords[i * dim + 1];
-    coord[2] = (dim == 3) ? coords[i * dim + 2] : 0.0;
-    auto dr = std::visit(GetRank{classIds_h[i], classDims_h[i], coord}, partition);
-    reverse_partition[dr].emplace_back(local_index++);
+  ReversePartitionMap2 reverse_partition;
+  LO local_index = 0;
+  for (int ent_dim = 0; ent_dim <= mesh_.dim(); ++ent_dim) {
+    if (nodes_per_dim_[ent_dim] == 0)
+      continue;
+
+    for (LO i = 0; i < mesh_.nents(ent_dim); ++i) {
+      coord[0] = coords(local_index, 0);
+      coord[1] = coords(local_index, 1);
+      coord[2] = (dim > 2) ? coords(local_index, 2) : 0.0;
+
+      auto dr = std::visit(
+        GetRank{classIds_h[local_index], classDims_h[local_index], coord},
+        partition);
+      reverse_partition[dr].indices.emplace_back(local_index);
+      local_index += 1;
+
+      const auto n = reverse_partition[dr].ent_offsets.size();
+      for (int e = ent_dim + 1; e < n; ++e) {
+        reverse_partition[dr].ent_offsets[e] += 1;
+      }
+    }
   }
+
   return reverse_partition;
 }
 

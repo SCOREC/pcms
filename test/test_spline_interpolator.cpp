@@ -98,57 +98,6 @@ void generate_gt_2d(Rank1View<double, TestMemorySpace> gt_splinv,
       });
 }
 
-void compare_1doutput(Rank2View<double, TestMemorySpace> splinv,
-                      Rank1View<double, TestMemorySpace> gt_splinv,
-                      const double gt_dif, const double gt_difr,
-                      std::string label) {
-  // Compare the output of splinv with gt_splinv
-  double result_fdif = 0.0;
-  double result_fdifr = 0.0;
-  Kokkos::parallel_reduce(
-      "compare_splinv", splinv.extent(0),
-      KOKKOS_LAMBDA(const int i, double &max_fdif, double &max_fdifr) {
-        if (splinv(i, 0) != 0.0) {
-          double dif = Kokkos::abs(splinv(i, 0) - gt_splinv(i));
-          max_fdif = Kokkos::max(max_fdif, dif);
-          max_fdifr = Kokkos::max(max_fdifr, dif / gt_splinv(i));
-        }
-      },
-      Kokkos::Max<double>(result_fdif), Kokkos::Max<double>(result_fdifr));
-  double fdif = result_fdif;
-  double fdifr = result_fdifr;
-  std::cout << "1d " << label << " max absolute difference: " << fdif
-            << ", relative difference: " << fdifr << std::endl;
-  assert(are_equal(fdif, gt_dif));
-  assert(are_equal(fdifr, gt_difr));
-}
-
-void compare_output(Rank2View<double, TestMemorySpace> splinv,
-                    Rank1View<double, TestMemorySpace> gt_splinv,
-                    const double gt_dif, const double gt_difr,
-                    std::string label) {
-  // Compare the output of splinv with gt_splinv
-  double result_fdif = 0.0;
-  double result_fdifr = 0.0;
-  Kokkos::parallel_reduce(
-      "compare_splinv", splinv.extent(0),
-      KOKKOS_LAMBDA(const int i, double &max_fdif, double &max_fdifr) {
-        if (splinv(i, 0) != 0.0) {
-          double dif = Kokkos::abs(splinv(i, 0) - gt_splinv(i));
-          max_fdif = Kokkos::max(max_fdif, dif);
-          max_fdifr = Kokkos::max(max_fdifr,
-                                  dif / (0.5 * (splinv(i, 0) + gt_splinv(i))));
-        }
-      },
-      Kokkos::Max<double>(result_fdif), Kokkos::Max<double>(result_fdifr));
-  double fdif = result_fdif;
-  double fdifr = result_fdifr;
-  std::cout << "2d " << label << " max absolute difference: " << fdif
-            << ", relative difference: " << fdifr << std::endl;
-  assert(are_equal(fdif, gt_dif));
-  assert(are_equal(fdifr, gt_difr));
-}
-
 void compare(Rank2View<double, TestMemorySpace> splinv,
              Rank1View<double, TestMemorySpace> gt_splinv,
              Rank1View<double, HostMemorySpace> res, std::string label) {

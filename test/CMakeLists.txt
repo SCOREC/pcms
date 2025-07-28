@@ -111,7 +111,8 @@ if(Catch2_FOUND)
           test_mls_basis.cpp
           test_rbf_interp.cpp
           test_normalisation.cpp
-		  test_svd_serial.cpp)
+		  test_svd_serial.cpp
+          test_spline_interpolator.cpp)
   endif ()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core pcms_interpolator)

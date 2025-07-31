@@ -1,4 +1,3 @@
-
 #ifndef MLS_RBF_OPTIONS_HPP
 #define MLS_RBF_OPTIONS_HPP
 
@@ -58,6 +57,7 @@ T get_element_from_span(Rank1View<T, MemorySpace> span, LO index) {
 template <typename T, typename MemorySpace> class CubicSplineInterpolator {
 private:
   Kokkos::View<T *, MemorySpace> coefficients_;
+
 public:
   CubicSplineInterpolator() = default;
   using execution_space = typename MemorySpace::execution_space;
@@ -67,7 +67,8 @@ public:
   Kokkos::View<T *, MemorySpace> get_coefficients();
   void set_coefficients(Kokkos::View<T *, MemorySpace> coefficients);
   static void sanity_check(Rank1View<T, MemorySpace> x, const T &ztol);
-  void initialize_fspl(Rank2View<T, MemorySpace> fspl, Rank1View<T, MemorySpace> values);
+  void initialize_fspl(Rank2View<T, MemorySpace> fspl,
+                       Rank1View<T, MemorySpace> values);
 
   static KOKKOS_INLINE_FUNCTION void range_check(T &xget, T &zxget,
                                                  Rank1View<T, MemorySpace> x,
@@ -95,7 +96,8 @@ public:
                                   const LO &ibcxmin, const T &bcxmin,
                                   const LO &ibcxmax, const T &bcxmax,
                                   Rank1View<T, MemorySpace> wk);
-  ExplicitCubicSplineInterpolator(Rank1View<T, MemorySpace> x, Rank1View<T, MemorySpace> values,
+  ExplicitCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
+                                  Rank1View<T, MemorySpace> values,
                                   const LO &ibcxmin, const T &bcxmin,
                                   const LO &ibcxmax, const T &bcxmax);
   ExplicitCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
@@ -144,11 +146,12 @@ public:
                                  const LO &ibcxmin, const T &bcxmin,
                                  const LO &ibcxmax, const T &bcxmax,
                                  Rank1View<T, MemorySpace> wk);
-  CompactCubicSplineInterpolator(Rank1View<T, MemorySpace> x, Rank1View<T, MemorySpace> values,
-                                  const LO &ibcxmin, const T &bcxmin,
-                                  const LO &ibcxmax, const T &bcxmax);
   CompactCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
-                                  Rank1View<T, MemorySpace> values);
+                                 Rank1View<T, MemorySpace> values,
+                                 const LO &ibcxmin, const T &bcxmin,
+                                 const LO &ibcxmax, const T &bcxmax);
+  CompactCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
+                                 Rank1View<T, MemorySpace> values);
   void setup(Rank1View<T, MemorySpace> x, const LO &nx,
              Rank2View<T, MemorySpace> fspl, Rank2View<T, MemorySpace> fspl4,
              const LO &ibcxmin, const T &bcxmin, const LO &ibcxmax,
@@ -210,27 +213,23 @@ public:
   );
 
   ExplicitBiCubicSplineInterpolator(
-      Rank1View<T, MemorySpace> x,             // size: inx
-      Rank1View<T, MemorySpace> th,    // size: inth
-      Rank1View<T, MemorySpace> values, 
-      LO ibcxmin,
+      Rank1View<T, MemorySpace> x,  // size: inx
+      Rank1View<T, MemorySpace> th, // size: inth
+      Rank1View<T, MemorySpace> values, LO ibcxmin,
       Rank1View<T, MemorySpace> bcxmin, // size: inth (used if ibcxmin = 1 or 2)
       LO ibcxmax,
       Rank1View<T, MemorySpace> bcxmax, // size: inth (used if ibcxmax = 1 or 2)
       LO ibcthmin,
       Rank1View<T, MemorySpace>
           bcthmin, // size: inx (used if ibcthmin = 1 or 2)
-      LO ibcthmax,
-      Rank1View<T, MemorySpace> bcthmax
-  );
+      LO ibcthmax, Rank1View<T, MemorySpace> bcthmax);
 
-  ExplicitBiCubicSplineInterpolator(
-      Rank1View<T, MemorySpace> x,             // size: inx
-      Rank1View<T, MemorySpace> th,    // size: inth
-      Rank1View<T, MemorySpace> values
-  );
+  ExplicitBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x,  // size: inx
+                                    Rank1View<T, MemorySpace> th, // size: inth
+                                    Rank1View<T, MemorySpace> values);
 
-  void initialize_fspl(Rank4View<T, MemorySpace> fspl, Rank1View<T, MemorySpace> values);
+  void initialize_fspl(Rank4View<T, MemorySpace> fspl,
+                       Rank1View<T, MemorySpace> values);
 
   static void solve_spline(
       Rank1View<T, MemorySpace> x,             // size: inx
@@ -307,12 +306,13 @@ public:
                                    Rank1View<T, MemorySpace> bcxmax, LO ibcymin,
                                    Rank1View<T, MemorySpace> bcymin, LO ibcymax,
                                    Rank1View<T, MemorySpace> bcymax);
-  
+
   CompactBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
                                    Rank1View<T, MemorySpace> y,
                                    Rank1View<T, MemorySpace> values);
-  
-  void initialize_fspl(Rank3View<T, MemorySpace> fspl, Rank1View<T, MemorySpace> values);
+
+  void initialize_fspl(Rank3View<T, MemorySpace> fspl,
+                       Rank1View<T, MemorySpace> values);
 
   static void solve_spline(Rank1View<T, MemorySpace> x, LO nx,
                            Rank1View<T, MemorySpace> y, LO ny,
@@ -349,7 +349,8 @@ public:
 };
 
 template <typename T, typename MemorySpace>
-Kokkos::View<T *, MemorySpace> CubicSplineInterpolator<T, MemorySpace>::get_coefficients() {
+Kokkos::View<T *, MemorySpace>
+CubicSplineInterpolator<T, MemorySpace>::get_coefficients() {
   return coefficients_;
 }
 
@@ -396,7 +397,8 @@ void CubicSplineInterpolator<T, MemorySpace>::sanity_check(
 }
 
 template <typename T, typename MemorySpace>
-void CubicSplineInterpolator<T, MemorySpace>::initialize_fspl(Rank2View<T, MemorySpace> fspl, Rank1View<T, MemorySpace> values) {
+void CubicSplineInterpolator<T, MemorySpace>::initialize_fspl(
+    Rank2View<T, MemorySpace> fspl, Rank1View<T, MemorySpace> values) {
   Kokkos::parallel_for(
       "set_coefficients", Kokkos::RangePolicy<execution_space>(0, this->nx_),
       KOKKOS_LAMBDA(const LO i) { fspl(0, i) = values(i); });
@@ -421,9 +423,6 @@ ExplicitCubicSplineInterpolator<T, MemorySpace>::
   Kokkos::View<T *, MemorySpace> fspl_view("coefficients", 4 * this->nx_);
   CubicSplineInterpolator<T, MemorySpace>::set_coefficients(fspl_view);
   auto fspl = Rank2View<T, MemorySpace>(fspl_view.data(), 4, this->nx_);
-  // Kokkos::parallel_for(
-  //     "set_coefficients", Kokkos::RangePolicy<execution_space>(0, this->nx_),
-  //     KOKKOS_LAMBDA(const LO i) { fspl(0, i) = values(i); });
   CubicSplineInterpolator<T, MemorySpace>::initialize_fspl(fspl, values);
 
   Kokkos::View<T *, MemorySpace> wk_view("working space", 10);
@@ -437,9 +436,11 @@ ExplicitCubicSplineInterpolator<T, MemorySpace>::
 template <typename T, typename MemorySpace>
 ExplicitCubicSplineInterpolator<T, MemorySpace>::
     ExplicitCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
-                                    Rank1View<T, MemorySpace> values) : ExplicitCubicSplineInterpolator(
-      x, values, 0, 0, 0, 0){  // Delegates to primary constructor
-    std::cout << "Not a knot boundary condition is applied by default" << std::endl;
+                                    Rank1View<T, MemorySpace> values)
+    : ExplicitCubicSplineInterpolator(x, values, 0, 0, 0,
+                                      0) { // Delegates to primary constructor
+  std::cout << "Not a knot boundary condition is applied by default"
+            << std::endl;
 }
 
 template <typename T, typename MemorySpace>
@@ -491,11 +492,9 @@ CompactCubicSplineInterpolator<T, MemorySpace>::CompactCubicSplineInterpolator(
 }
 
 template <typename T, typename MemorySpace>
-CompactCubicSplineInterpolator<T, MemorySpace>::
-    CompactCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
-                                    Rank1View<T, MemorySpace> values,
-                                    const LO &ibcxmin, const T &bcxmin,
-                                    const LO &ibcxmax, const T &bcxmax) {
+CompactCubicSplineInterpolator<T, MemorySpace>::CompactCubicSplineInterpolator(
+    Rank1View<T, MemorySpace> x, Rank1View<T, MemorySpace> values,
+    const LO &ibcxmin, const T &bcxmin, const LO &ibcxmax, const T &bcxmax) {
   PCMS_ALWAYS_ASSERT(x.extent(0) >= 2);
   ibc_check(ibcxmin, "1d spline", "xmin", -1, 7);
   if (ibcxmin >= 0)
@@ -507,12 +506,10 @@ CompactCubicSplineInterpolator<T, MemorySpace>::
   Kokkos::View<T *, MemorySpace> fspl_view("coefficients", 2 * this->nx_);
   CubicSplineInterpolator<T, MemorySpace>::set_coefficients(fspl_view);
   auto fspl = Rank2View<T, MemorySpace>(fspl_view.data(), 2, this->nx_);
-  // Kokkos::parallel_for(
-  //     "set_coefficients", Kokkos::RangePolicy<execution_space>(0, this->nx_),
-  //     KOKKOS_LAMBDA(const LO i) { fspl(0, i) = values(i); });
   CubicSplineInterpolator<T, MemorySpace>::initialize_fspl(fspl, values);
 
-  Kokkos::View<T *, MemorySpace> fspl4_view("explicit coefficients", 4 * this->nx_);
+  Kokkos::View<T *, MemorySpace> fspl4_view("explicit coefficients",
+                                            4 * this->nx_);
   auto fspl4 = Rank2View<T, MemorySpace>(fspl4_view.data(), 4, this->nx_);
   Kokkos::View<T *, MemorySpace> wk_view("working space", 10);
   auto wk = Rank1View<T, MemorySpace>(wk_view.data(), 10);
@@ -523,11 +520,12 @@ CompactCubicSplineInterpolator<T, MemorySpace>::
 }
 
 template <typename T, typename MemorySpace>
-CompactCubicSplineInterpolator<T, MemorySpace>::
-    CompactCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
-                                    Rank1View<T, MemorySpace> fx) : CompactCubicSplineInterpolator(
-      x, fx, 0, 0, 0, 0){  // Delegates to primary constructor
-    std::cout << "Not a knot boundary condition is applied by default" << std::endl;
+CompactCubicSplineInterpolator<T, MemorySpace>::CompactCubicSplineInterpolator(
+    Rank1View<T, MemorySpace> x, Rank1View<T, MemorySpace> fx)
+    : CompactCubicSplineInterpolator(x, fx, 0, 0, 0,
+                                     0) { // Delegates to primary constructor
+  std::cout << "Not a knot boundary condition is applied by default"
+            << std::endl;
 }
 
 template <typename T, typename MemorySpace>
@@ -1180,8 +1178,8 @@ void ExplicitCubicSplineInterpolator<T, MemorySpace>::evaluate(
 }
 
 template <typename T, typename MemorySpace>
-void ExplicitCubicSplineInterpolator<T, MemorySpace>::evaluate(Rank1View<T, MemorySpace> xvec,
-                                                               Rank2View<T, MemorySpace> fval) {
+void ExplicitCubicSplineInterpolator<T, MemorySpace>::evaluate(
+    Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval) {
   std::array<LO, 3> ict_arr = {1, 0, 0};
   evaluate(Kokkos::View<LO *, MemorySpace>(ict_arr.data(), 3), xvec, fval);
 };
@@ -1204,8 +1202,8 @@ void CompactCubicSplineInterpolator<T, MemorySpace>::evaluate(
 
 // TODO: evluation functions are exactly the same, so put them in base class?
 template <typename T, typename MemorySpace>
-void CompactCubicSplineInterpolator<T, MemorySpace>::evaluate(Rank1View<T, MemorySpace> xvec,
-                                                               Rank2View<T, MemorySpace> fval) {
+void CompactCubicSplineInterpolator<T, MemorySpace>::evaluate(
+    Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval) {
   std::array<LO, 3> ict_arr = {1, 0, 0};
   evaluate(Kokkos::View<LO *, MemorySpace>(ict_arr.data(), 3), xvec, fval);
 };
@@ -1366,23 +1364,23 @@ ExplicitBiCubicSplineInterpolator<T, MemorySpace>::
   fspl_ = fspl;
 }
 
-template<typename T, typename MemorySpace>
-void ExplicitBiCubicSplineInterpolator<T, MemorySpace>::initialize_fspl(Rank4View<T, MemorySpace> fspl, Rank1View<T, MemorySpace> values) {
-    LO ny = this->ny_;
-    Kokkos::parallel_for(
+template <typename T, typename MemorySpace>
+void ExplicitBiCubicSplineInterpolator<T, MemorySpace>::initialize_fspl(
+    Rank4View<T, MemorySpace> fspl, Rank1View<T, MemorySpace> values) {
+  LO ny = this->ny_;
+  Kokkos::parallel_for(
       Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {ny, this->nx_}),
-        KOKKOS_LAMBDA(const LO ith, const LO ix) {
-          fspl(0, 0, ix, ith) = values(ix * ny + ith);
+      KOKKOS_LAMBDA(const LO ith, const LO ix) {
+        fspl(0, 0, ix, ith) = values(ix * ny + ith);
       });
 }
 
 template <typename T, typename MemorySpace>
 ExplicitBiCubicSplineInterpolator<T, MemorySpace>::
     ExplicitBiCubicSplineInterpolator(
-        Rank1View<T, MemorySpace> x,             // size: inx
-        Rank1View<T, MemorySpace> th,    // size: inth
-        Rank1View<T, MemorySpace> values, 
-        LO ibcxmin,
+        Rank1View<T, MemorySpace> x,  // size: inx
+        Rank1View<T, MemorySpace> th, // size: inth
+        Rank1View<T, MemorySpace> values, LO ibcxmin,
         Rank1View<T, MemorySpace>
             bcxmin, // size: inth (used if ibcxmin = 1 or 2)
         LO ibcxmax,
@@ -1393,7 +1391,7 @@ ExplicitBiCubicSplineInterpolator<T, MemorySpace>::
             bcthmin, // size: inx (used if ibcthmin = 1 or 2)
         LO ibcthmax,
         Rank1View<T, MemorySpace>
-            bcthmax                 // size: inx (used if ibcthmax = 1 or 2)
+            bcthmax // size: inx (used if ibcthmax = 1 or 2)
     ) {
   PCMS_ALWAYS_ASSERT(x.extent(0) >= 2);
   PCMS_ALWAYS_ASSERT(th.extent(0) >= 2);
@@ -1413,28 +1411,34 @@ ExplicitBiCubicSplineInterpolator<T, MemorySpace>::
   this->y_ = th;
   this->ny_ = th.extent(0);
 
-  Kokkos::View<T *, MemorySpace> fspl_view("fspl view", 4 * 4 * this->nx_ * this->ny_);
+  Kokkos::View<T *, MemorySpace> fspl_view("fspl view",
+                                           4 * 4 * this->nx_ * this->ny_);
   CubicSplineInterpolator<T, MemorySpace>::set_coefficients(fspl_view);
-  auto fspl = Rank4View<T, MemorySpace>(
-      fspl_view.data(), 4, 4, this->nx_, this->ny_);
+  auto fspl =
+      Rank4View<T, MemorySpace>(fspl_view.data(), 4, 4, this->nx_, this->ny_);
   initialize_fspl(fspl, values);
-  
-  Kokkos::View<T *, MemorySpace> wk_view("wk", 9 * this->nx_ * this->ny_);
-  auto wk = Rank1View<T, MemorySpace>(wk_view.data(), 9 * this->nx_ * this->ny_);
 
-  solve_spline(x, this->nx_, th, this->ny_, fspl, ibcxmin, bcxmin, ibcxmax, bcxmax,
-               ibcthmin, bcthmin, ibcthmax, bcthmax, wk);
+  Kokkos::View<T *, MemorySpace> wk_view("wk", 9 * this->nx_ * this->ny_);
+  auto wk =
+      Rank1View<T, MemorySpace>(wk_view.data(), 9 * this->nx_ * this->ny_);
+
+  solve_spline(x, this->nx_, th, this->ny_, fspl, ibcxmin, bcxmin, ibcxmax,
+               bcxmax, ibcthmin, bcthmin, ibcthmax, bcthmax, wk);
 
   this->fspl_ = fspl;
 }
 
 template <typename T, typename MemorySpace>
 ExplicitBiCubicSplineInterpolator<T, MemorySpace>::
-    ExplicitBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x,             // size: inx
-        Rank1View<T, MemorySpace> th,    // size: inth
-        Rank1View<T, MemorySpace> values): ExplicitBiCubicSplineInterpolator(
-      x, th, values, 0, {}, 0, {},  0, {},  0, {}){  // Delegates to primary constructor
-    std::cout << "Not a knot boundary condition is applied by default" << std::endl;
+    ExplicitBiCubicSplineInterpolator(
+        Rank1View<T, MemorySpace> x,  // size: inx
+        Rank1View<T, MemorySpace> th, // size: inth
+        Rank1View<T, MemorySpace> values)
+    : ExplicitBiCubicSplineInterpolator(
+          x, th, values, 0, {}, 0, {}, 0, {}, 0,
+          {}) { // Delegates to primary constructor
+  std::cout << "Not a knot boundary condition is applied by default"
+            << std::endl;
 }
 
 template <typename T, typename MemorySpace>
@@ -1735,15 +1739,15 @@ void ExplicitBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
 }
 
 template <typename T, typename MemorySpace>
-void ExplicitBiCubicSplineInterpolator<T, MemorySpace>::evaluate(Rank1View<T, MemorySpace> xvec,
-    Rank1View<T, MemorySpace> yvec, Rank2View<T, MemorySpace> fval) {
+void ExplicitBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
+    Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
+    Rank2View<T, MemorySpace> fval) {
   LO ict_arr[10] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   Kokkos::View<LO *, MemorySpace> ict("select", 10);
   Kokkos::parallel_for(
       Kokkos::RangePolicy<execution_space>(0, ict.size()),
       KOKKOS_LAMBDA(const LO i) { ict(i) = ict_arr[i]; });
   evaluate(ict, xvec, yvec, fval);
-  
 }
 
 template <typename T, typename MemorySpace>
@@ -1766,15 +1770,15 @@ void CompactBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
 }
 
 template <typename T, typename MemorySpace>
-void CompactBiCubicSplineInterpolator<T, MemorySpace>::evaluate(Rank1View<T, MemorySpace> xvec,
-    Rank1View<T, MemorySpace> yvec, Rank2View<T, MemorySpace> fval) {
+void CompactBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
+    Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
+    Rank2View<T, MemorySpace> fval) {
   LO ict_arr[10] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   Kokkos::View<LO *, MemorySpace> ict("select", 10);
   Kokkos::parallel_for(
       Kokkos::RangePolicy<execution_space>(0, ict.size()),
       KOKKOS_LAMBDA(const LO i) { ict(i) = ict_arr[i]; });
   evaluate(ict, xvec, yvec, fval);
-  
 }
 
 template <typename T, typename MemorySpace>
@@ -2067,55 +2071,59 @@ CompactBiCubicSplineInterpolator<T, MemorySpace>::
 
 template <typename T, typename MemorySpace>
 void CompactBiCubicSplineInterpolator<T, MemorySpace>::initialize_fspl(
-  Rank3View<T, MemorySpace> fspl, Rank1View<T, MemorySpace> values) {
+    Rank3View<T, MemorySpace> fspl, Rank1View<T, MemorySpace> values) {
   LO ny = this->ny_;
   Kokkos::parallel_for(
       Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {ny, this->nx_}),
       KOKKOS_LAMBDA(const LO ith, const LO ix) {
         fspl(0, ix, ith) = values(ix * ny + ith);
       });
-    }
-
+}
 
 template <typename T, typename MemorySpace>
-CompactBiCubicSplineInterpolator<T, MemorySpace>::CompactBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
-                                   Rank1View<T, MemorySpace> y,
-                                   Rank1View<T, MemorySpace> values, LO ibcxmin,
-                                   Rank1View<T, MemorySpace> bcxmin, LO ibcxmax,
-                                   Rank1View<T, MemorySpace> bcxmax, LO ibcymin,
-                                   Rank1View<T, MemorySpace> bcymin, LO ibcymax,
-                                   Rank1View<T, MemorySpace> bcymax) {
-  this->x_ = x;   // Store the x-coordinates
-  this->y_ = y;   // Store the y-coordinates
+CompactBiCubicSplineInterpolator<T, MemorySpace>::
+    CompactBiCubicSplineInterpolator(
+        Rank1View<T, MemorySpace> x, Rank1View<T, MemorySpace> y,
+        Rank1View<T, MemorySpace> values, LO ibcxmin,
+        Rank1View<T, MemorySpace> bcxmin, LO ibcxmax,
+        Rank1View<T, MemorySpace> bcxmax, LO ibcymin,
+        Rank1View<T, MemorySpace> bcymin, LO ibcymax,
+        Rank1View<T, MemorySpace> bcymax) {
+  this->x_ = x;            // Store the x-coordinates
+  this->y_ = y;            // Store the y-coordinates
   this->nx_ = x.extent(0); // Store the number of x-coordinates
   this->ny_ = y.extent(0); // Store the number of y-coordinates
 
-  Kokkos::View<T *, MemorySpace> fspl_view("fspl view", 4 * this->nx_ * this->ny_);
+  Kokkos::View<T *, MemorySpace> fspl_view("fspl view",
+                                           4 * this->nx_ * this->ny_);
   CubicSplineInterpolator<T, MemorySpace>::set_coefficients(fspl_view);
-  auto fspl = Rank3View<T, MemorySpace>(
-      fspl_view.data(), 4, this->nx_, this->ny_);
+  auto fspl =
+      Rank3View<T, MemorySpace>(fspl_view.data(), 4, this->nx_, this->ny_);
   // Kokkos::parallel_for(
   //     Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {this->ny_, this->nx_}),
   //     KOKKOS_LAMBDA(const int ith, const int ix) {
   //       fspl(0, ix, ith) = values(ix * this->ny_ + ith);
   //     });
   initialize_fspl(fspl, values);
-  
-  Kokkos::View<T *, MemorySpace> wk_view("wk", 9 * this->nx_ * this->ny_);
-  auto wk = Rank1View<T, MemorySpace>(wk_view.data(), 9 * this->nx_ * this->ny_);
 
-  solve_spline(x, this->nx_, y, this->ny_, fspl, ibcxmin, bcxmin, ibcxmax, bcxmax, ibcymin,
-               bcymin, ibcymax, bcymax, wk);
+  Kokkos::View<T *, MemorySpace> wk_view("wk", 9 * this->nx_ * this->ny_);
+  auto wk =
+      Rank1View<T, MemorySpace>(wk_view.data(), 9 * this->nx_ * this->ny_);
+
+  solve_spline(x, this->nx_, y, this->ny_, fspl, ibcxmin, bcxmin, ibcxmax,
+               bcxmax, ibcymin, bcymin, ibcymax, bcymax, wk);
   this->f_ = fspl; // Store the spline coefficients
 }
 
 template <typename T, typename MemorySpace>
 CompactBiCubicSplineInterpolator<T, MemorySpace>::
-    CompactBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x,             // size: inx
-        Rank1View<T, MemorySpace> y,    // size: inth
-        Rank1View<T, MemorySpace> values): CompactBiCubicSplineInterpolator(
-      x, y, values, 0, {}, 0, {}, 0, {},  0, {}){  // Delegates to primary constructor
-    std::cout << "Not a knot boundary condition is applied by default" << std::endl;
+    CompactBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x, // size: inx
+                                     Rank1View<T, MemorySpace> y, // size: inth
+                                     Rank1View<T, MemorySpace> values)
+    : CompactBiCubicSplineInterpolator(x, y, values, 0, {}, 0, {}, 0, {}, 0,
+                                       {}) { // Delegates to primary constructor
+  std::cout << "Not a knot boundary condition is applied by default"
+            << std::endl;
 }
 
 template <typename T, typename MemorySpace>

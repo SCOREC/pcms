@@ -1,37 +1,14 @@
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_approx.hpp>
 #include "mdspan/mdspan.hpp"
 #include "pcms.h"
 #include <Kokkos_Core.hpp>
+#include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <pcms/interpolator/spline_interpolator.hpp>
 
 using namespace pcms;
 
 using TestMemorySpace = Kokkos::DefaultExecutionSpace;
-
-
-void print_4dmdspan(
-    const Rank4View<double, TestMemorySpace> &span) {
-  Kokkos::parallel_for(
-      Kokkos::MDRangePolicy<Kokkos::Rank<4>>({0, 0, 0, 0},
-                                             {span.extent(0), span.extent(1),
-                                              span.extent(2), span.extent(3)}),
-      KOKKOS_LAMBDA(int i, int j, int k, int l) {
-        printf("span(%d, %d, %d, %d) = %f\n", i, j, k, l, span(i, j, k, l));
-      });
-}
-
-void print_3dmdspan(
-    const Rank3View<double, TestMemorySpace> &span) {
-  Kokkos::parallel_for(
-      Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0, 0, 0},
-                                             {span.extent(0), span.extent(1),
-                                              span.extent(2)}),
-      KOKKOS_LAMBDA(int i, int j, int k) {
-        printf("span(%d, %d, %d) = %f\n", i, j, k, span(i, j, k));
-      });
-}
 
 bool are_equal(double a, double b, double tolerance = 1e-7) {
   return std::abs(a - b) < tolerance;
@@ -175,62 +152,38 @@ void reset_2dspan(Rank2View<double, TestMemorySpace> span) {
 }
 
 void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
-             Rank1View<double, TestMemorySpace> f,
-             Rank1View<double, TestMemorySpace> fd,
-             Rank2View<double, TestMemorySpace> fspl,
-             Rank2View<double, TestMemorySpace> fspp,
-             Rank2View<double, TestMemorySpace> fs2, int nt,
+             Rank1View<double, TestMemorySpace> f, int nt,
              Rank1View<double, TestMemorySpace> xt,
              Rank1View<double, TestMemorySpace> ft,
-             Rank2View<double, TestMemorySpace> xpkg,
-             Rank2View<double, TestMemorySpace> testa1,
-             Rank2View<double, TestMemorySpace> testa2,
-             Rank2View<double, TestMemorySpace> testa3,
-             Rank1View<double, TestMemorySpace> wk,
-             Rank1View<double, TestMemorySpace> wk2,
              Kokkos::View<double *, HostMemorySpace> res_1d) {
   using std::data;
   using std::size;
 
-  Kokkos::parallel_for(
-      Kokkos::RangePolicy<TestMemorySpace>(0, ns), KOKKOS_LAMBDA(const int i) {
-        fspl(0, i) = f(i);
-        fspp(0, i) = f(i);
-        fs2(0, i) = f(i);
-      });
-
-  Kokkos::View<double *, TestMemorySpace> fspl4_view("fspl4_view", 40);
-  auto fspl4 = Rank2View<double, TestMemorySpace>(fspl4_view.data(), 4, 10);
+  Kokkos::View<double *, TestMemorySpace> splinv_view("splinv_view", 3 * nt);
+  auto splinv = Rank2View<double, TestMemorySpace>(splinv_view.data(), nt, 3);
+  reset_2dspan(splinv);
 
   // interpolator.cspline(x, ns, fspl, 1, 1, 1, 1, wk);
   ExplicitCubicSplineInterpolator<double, TestMemorySpace>
       explicit_interpolator(x, f, 1, 1, 1, 1);
-
-  int ict_arr[3] = {1, 0, 0};
-  Kokkos::View<int *, TestMemorySpace> ict("ict", 3);
-  Kokkos::parallel_for(
-      Kokkos::RangePolicy<TestMemorySpace>(0, ict.size()),
-      KOKKOS_LAMBDA(const int i) { ict(i) = ict_arr[i]; });
-
-  Kokkos::View<double *, TestMemorySpace> splinv_view("splinv_view", 3000);
-  auto splinv = Rank2View<double, TestMemorySpace>(splinv_view.data(), 1000, 3);
-  reset_2dspan(splinv);
   explicit_interpolator.evaluate(xt, splinv);
 
   auto res1 = Rank1View<double, HostMemorySpace>(res_1d.data(), 2);
   compare(splinv, ft, res1, "cspline");
-
   reset_2dspan(splinv);
+
   ExplicitCubicSplineInterpolator<double, TestMemorySpace>
       explicit_interpolator_periodic(x, f, -1, 0, -1, 0);
   explicit_interpolator_periodic.evaluate(xt, splinv);
+
   auto res2 = Rank1View<double, HostMemorySpace>(res_1d.data() + 2, 2);
   compare(splinv, ft, res2, "cspline_periodic");
-
   reset_2dspan(splinv);
+
   CompactCubicSplineInterpolator<double, TestMemorySpace> compact_interpolator(
-      x, f, 1, 1,1 ,1);
+      x, f, 1, 1, 1, 1);
   compact_interpolator.evaluate(xt, splinv);
+
   auto res3 = Rank1View<double, HostMemorySpace>(res_1d.data() + 4, 2);
   compare(splinv, ft, res3, "compact_cubic");
 }
@@ -242,51 +195,26 @@ void pspltest1(Kokkos::View<double *, HostMemorySpace> res_1d) {
 
   // Local arrays
   Kokkos::View<double *, TestMemorySpace> zdum_view("zdum_view", 1000);
-  Kokkos::View<double *, TestMemorySpace> testa1_view("testa1_view", 1000);
-  Kokkos::View<double *, TestMemorySpace> testa2_view("testa2_view", 1000);
-  Kokkos::View<double *, TestMemorySpace> testa3_view("testa3_view", 1000);
   Kokkos::View<double *, TestMemorySpace> xtest_view("xtest_view", 1000);
   Kokkos::View<double *, TestMemorySpace> ftest_view("ftest_view", 1000);
   Kokkos::View<double *, TestMemorySpace> x_view("x_view", 10);
   Kokkos::View<double *, TestMemorySpace> zcos_view("zcos_view", 10);
   Kokkos::View<double *, TestMemorySpace> z2sin_view("z2sin_view", 10);
-  Kokkos::View<double *, TestMemorySpace> xpkg_view("xpkg_view", 10 * 4);
-  Kokkos::View<double *, TestMemorySpace> fs_view("fs_view", 40);
-  Kokkos::View<double *, TestMemorySpace> fsp_view("fsp_view", 40);
-  Kokkos::View<double *, TestMemorySpace> fs2_view("fs2_view", 20);
 
   // Prepare test data
   tset(1000, xtest_view, ftest_view, zdum_view, zero - 0.1, pi2 + 0.1);
   tset(inum, x_view, z2sin_view, zcos_view, zero, pi2);
 
-  Kokkos::parallel_for(
-      Kokkos::RangePolicy<TestMemorySpace>(0, inum),
-      KOKKOS_LAMBDA(const int ix) { zcos_view(ix) = std::cos(x_view(ix)); });
-
-  auto zdum = Rank1View<double, TestMemorySpace>(zdum_view.data(), 10);
-
-  auto wk2_view =
-      Kokkos::View<double *, TestMemorySpace>(zdum_view.data(), 1000);
-  auto wk2 = Rank1View<double, TestMemorySpace>(wk2_view.data(), 10);
-
-  auto testa1 = Rank2View<double, TestMemorySpace>(testa1_view.data(), 1000, 3);
-  auto testa2 = Rank2View<double, TestMemorySpace>(testa2_view.data(), 1000, 3);
-  auto testa3 = Rank2View<double, TestMemorySpace>(testa3_view.data(), 1000, 3);
   auto x = Rank1View<double, TestMemorySpace>(x_view.data(), x_view.size());
-  auto zcos =
-      Rank1View<double, TestMemorySpace>(zcos_view.data(), zcos_view.size());
+
   auto z2sin =
       Rank1View<double, TestMemorySpace>(z2sin_view.data(), z2sin_view.size());
-  auto fs = Rank2View<double, TestMemorySpace>(fs_view.data(), 4, 10);
-  auto fsp = Rank2View<double, TestMemorySpace>(fsp_view.data(), 4, 10);
-  auto fs2 = Rank2View<double, TestMemorySpace>(fs2_view.data(), 2, 10);
-  auto xpkg = Rank2View<double, TestMemorySpace>(xpkg_view.data(), 10, 4);
+
   auto xtest = Rank1View<double, TestMemorySpace>(xtest_view.data(), 1000);
   auto ftest = Rank1View<double, TestMemorySpace>(ftest_view.data(), 1000);
 
   // Call test function
-  dotest1(inum, x, z2sin, zcos, fs, fsp, fs2, 1000, xtest, ftest, xpkg, testa1,
-          testa2, testa3, zdum, wk2, res_1d);
+  dotest1(inum, x, z2sin, 1000, xtest, ftest, res_1d);
 }
 
 void dotest2(Rank1View<double, TestMemorySpace> x,
@@ -295,8 +223,6 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
              Rank1View<double, TestMemorySpace> fth,
              Rank1View<double, TestMemorySpace> dfth, int nth,
              Rank4View<double, TestMemorySpace> f,
-             Rank3View<double, TestMemorySpace> fh,
-             Rank2View<double, TestMemorySpace> flin,
              Rank1View<double, TestMemorySpace> bcx1,
              Rank1View<double, TestMemorySpace> bcx2,
              Rank1View<double, TestMemorySpace> bcth1,
@@ -306,42 +232,21 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
              Rank1View<double, TestMemorySpace> thtest,
              Rank1View<double, TestMemorySpace> fthtest, int ntest,
              Kokkos::View<double *, HostMemorySpace> res_2d) {
-  Kokkos::parallel_for(
-      Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nth, nx}),
-      KOKKOS_LAMBDA(const int ith, const int ix) {
-        flin(ix, ith) = f(0, 0, ix, ith);          // f
-        fh(0, ix, ith) = f(0, 0, ix, ith);         // f
-        fh(1, ix, ith) = 2.0 * f(0, 0, ix, ith);   // df/dx
-        fh(2, ix, ith) = fx(ix) * dfth(ith);       // df/dy
-        fh(3, ix, ith) = 2.0 * fx(ix) * dfth(ith); // d2f/dxdy
-      });
-  
-  Kokkos::View<double *, TestMemorySpace> values_view("f_vec", nth * nx);
+
+  Kokkos::View<double *, TestMemorySpace> values_view("values_view", nth * nx);
   Kokkos::parallel_for(
       Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nth, nx}),
       KOKKOS_LAMBDA(const int ith, const int ix) {
         values_view(ix * nth + ith) = f(0, 0, ix, ith);
       });
+  auto values =
+      Rank1View<double, TestMemorySpace>(values_view.data(), nth * nx);
 
-  auto values = Rank1View<double, TestMemorySpace>(values_view.data(), nth * nx);
-
-  int nbc = 1;
-  Kokkos::View<double *, TestMemorySpace> wk_vec("wk_vec", 900);
-  auto wk = Rank1View<double, TestMemorySpace>(wk_vec.data(), 900);
   bset(fx, nx, fth, nth, bcx1, bcx2, bcth1, bcth2);
-
-  ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>
-      explicit_interpolator(x, th, values, nbc, bcx1, nbc, bcx2, nbc, bcth1,
-                            nbc, bcth2);
   Kokkos::View<double *, TestMemorySpace> splinv_view("splinv_view", 400000);
   auto splinv =
       Rank2View<double, TestMemorySpace>(splinv_view.data(), 40000, 10);
   reset_2dspan(splinv);
-  int isel_arr[10] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  Kokkos::View<int *, TestMemorySpace> isel("isel", 10);
-  Kokkos::parallel_for(
-      Kokkos::RangePolicy<TestMemorySpace>(0, isel.size()),
-      KOKKOS_LAMBDA(const int i) { isel(i) = isel_arr[i]; });
 
   Kokkos::View<double *, TestMemorySpace> xtest_grid_view("xtest_grid_view",
                                                           40000);
@@ -357,17 +262,19 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
       Rank1View<double, TestMemorySpace>(splinv_gt_view.data(), 40000);
   generate_gt_2d(splinv_gt, fxtest, fthtest, ntest);
 
-  // TODO: evaluate function raise memeory acess violation
+  ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>
+      explicit_interpolator(x, th, values, 1, bcx1, 1, bcx2, 1, bcth1, 1,
+                            bcth2);
   explicit_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
 
   auto res1 = Rank1View<double, HostMemorySpace>(res_2d.data(), 2);
   compare_2d(splinv, splinv_gt, res1, "bcspline");
-
   reset_2dspan(splinv);
+
   CompactBiCubicSplineInterpolator<double, TestMemorySpace>
-      compact_interpolator(x, th, values, nbc, bcx1, nbc, bcx2, nbc, bcth1,
-                           nbc, bcth2);
+      compact_interpolator(x, th, values, 1, bcx1, 1, bcx2, 1, bcth1, 1, bcth2);
   compact_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
+
   auto res2 = Rank1View<double, HostMemorySpace>(res_2d.data() + 2, 2);
   compare_2d(splinv, splinv_gt, res2, "mkbicub");
 
@@ -391,28 +298,18 @@ void pspltest2(Kokkos::View<double *, HostMemorySpace> res_2d) {
   Kokkos::View<double *, TestMemorySpace> stest_view("stest_view", 200);
   Kokkos::View<double *, TestMemorySpace> ctest_view("ctest_view", 200);
   Kokkos::View<double *, TestMemorySpace> f1_view("f1_view", 1600);
-  Kokkos::View<double *, TestMemorySpace> f2_view("f2_view", 6400);
-  Kokkos::View<double *, TestMemorySpace> f4_view("f4_view", 4 * 4 * 40 * 40);
   Kokkos::View<double *, TestMemorySpace> bcx1_view("bcx1_view", 40);
   Kokkos::View<double *, TestMemorySpace> bcx2_view("bcx2_view", 40);
   Kokkos::View<double *, TestMemorySpace> bcth1_view("bcth1_view", 40);
   Kokkos::View<double *, TestMemorySpace> bcth2_view("bcth2_view", 40);
-  Kokkos::View<double *, TestMemorySpace> fh_view("fh_view", 400);
-  Kokkos::View<double *, TestMemorySpace> flin_view("flin_view", 100);
 
   xset(10, x1_view, ex1_view, zero, one);
-  // xset(20, x2_view, ex2_view, zero, one);
-  // xset(40, x4_view, ex4_view, zero, one);
   xset(200, xtest_view, extest_view, zero, one);
 
   tset(10, t1_view, st1_view, ct1_view, zero, pi2);
-  // tset(20, t2_view, st2_view, ct2_view, zero, pi2);
-  // tset(40, t4_view, st4_view, ct4_view, zero, pi2);
   tset(200, ttest_view, stest_view, ctest_view, zero, pi2);
 
   ffset(10, ex1_view, st1_view, f1_view);
-  // ffset(20, ex2_view, st2_view, f2_view);
-  // ffset(40, ex4_view, st4_view, f4_view);
 
   auto x1 = Rank1View<double, TestMemorySpace>(x1_view.data(), x1_view.size());
   auto ex1 =
@@ -424,10 +321,6 @@ void pspltest2(Kokkos::View<double *, HostMemorySpace> res_2d) {
       Rank1View<double, TestMemorySpace>(ct1_view.data(), ct1_view.size());
   auto f1 = Rank4View<double, TestMemorySpace>(f1_view.data(),
                                                Kokkos::extents{4, 4, 10, 10});
-  auto flin = Rank2View<double, TestMemorySpace>(flin_view.data(), 10, 10);
-
-  auto fh = Rank3View<double, TestMemorySpace>(fh_view.data(), 4, 10, 10);
-
   auto bcx1 =
       Rank1View<double, TestMemorySpace>(bcx1_view.data(), bcx1_view.size());
   auto bcx2 =
@@ -446,16 +339,8 @@ void pspltest2(Kokkos::View<double *, HostMemorySpace> res_2d) {
   auto stest =
       Rank1View<double, TestMemorySpace>(stest_view.data(), stest_view.size());
 
-  dotest2(x1, ex1, 10, t1, st1, ct1, 10, f1, fh, flin, bcx1, bcx2, bcth1, bcth2,
-          xtest, extest, ttest, stest, 200, res_2d);
-
-  // dotest2(x2,ex2,20,t2,st2,ct2,20,f2,fh,flin,
-  //     bcx1,bcx2,bcth1,bcth2,
-  //     xtest,extest,ttest,stest,200);
-
-  // dotest2(x4,ex4,40,t4,st4,ct4,40,f4,fh,flin,
-  //     bcx1,bcx2,bcth1,bcth2,
-  //     xtest,extest,ttest,stest,200);
+  dotest2(x1, ex1, 10, t1, st1, ct1, 10, f1, bcx1, bcx2, bcth1, bcth2, xtest,
+          extest, ttest, stest, 200, res_2d);
 }
 
 TEST_CASE("test_cubic_spline_interpolator") {
@@ -465,8 +350,8 @@ TEST_CASE("test_cubic_spline_interpolator") {
   Kokkos::Timer timer;
   {
     Kokkos::View<double *, HostMemorySpace> res_1d("res_1d", 6);
-    double gt_1d[6] =
-    {6.7572E-04, 6.6529E-04, 6.8669E-04, 6.7622E-04, 6.7572E-04, 6.6529E-04};
+    double gt_1d[6] = {6.7572E-04, 6.6529E-04, 6.8669E-04,
+                       6.7622E-04, 6.7572E-04, 6.6529E-04};
     pspltest1(res_1d);
     for (int i = 0; i < 6; ++i) {
       REQUIRE(are_equal(res_1d(i), gt_1d[i]));

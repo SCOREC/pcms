@@ -1,4 +1,4 @@
-#include <pcms/xgc_reverse_classification.h>
+#include "pcms/adapter/xgc/xgc_reverse_classification.h"
 #include <catch2/catch_test_macros.hpp>
 #include <sstream>
 
@@ -38,7 +38,7 @@ TEST_CASE("reverse classification") {
   }
   auto vec = rc.Serialize();
   pcms::ReverseClassificationVertex rc_deserialized;
-  pcms::ScalarArrayView<pcms::LO, pcms::HostMemorySpace> av{vec.data(),vec.size()};
+  pcms::Rank1View<pcms::LO, pcms::HostMemorySpace> av{vec.data(),vec.size()};
   rc_deserialized.Deserialize(av);
   REQUIRE(rc_deserialized == rc);
 }

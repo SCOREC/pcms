@@ -25,7 +25,7 @@ set(PCMS_SOURCES
         pcms.cpp
         pcms/assert.cpp
         pcms/print.cpp
-        pcms/xgc_field_adapter.h)
+        pcms/adapter/xgc/xgc_field_adapter.h)
 
 configure_file(
   pcms/version.h.in
@@ -33,13 +33,13 @@ configure_file(
 )
 
 if(PCMS_ENABLE_XGC)
-  list(APPEND PCMS_SOURCES  pcms/xgc_reverse_classification.cpp)
-  list(APPEND PCMS_HEADERS pcms/xgc_reverse_classification.h)
+  list(APPEND PCMS_SOURCES pcms/adapter/xgc/xgc_reverse_classification.cpp)
+  list(APPEND PCMS_HEADERS pcms/adapter/xgc/xgc_reverse_classification.h)
 endif()
 if (PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_SOURCES pcms/point_search.cpp)
   list(APPEND PCMS_HEADERS
-          pcms/omega_h_field.h
+          pcms/adapter/omega_h/omega_h_field.h
           pcms/transfer_field.h
           pcms/uniform_grid.h
           pcms/point_search.h)

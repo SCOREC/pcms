@@ -75,30 +75,109 @@ void isUniformAscending(Rank1View<T, MemorySpace> x, const T &ztol) {
 
 // TODO: better documentation
 // TODO: add more checks/assetions for input parameters
-
+/** \brief ExplicitCubicSplineInterpolator class
+  * 
+  * \details This class provides methods for 1d explicit cubic spline interpolation and serves as a base
+  * class for higher dimensions and compact cubic spline interpolator implementations.
+  *
+  * The 1d explicit cubic spline are evaluated using the following formula:
+  *     s(x)=C(1,i)+(x-x(i))*C(2,i)+(x-x(i))**2*C(3,i)+(x-x(i))**3*C(4,i)
+  *         for x(i).le.x.le.x(i+1)
+  * where C(1,i), C(2,i), C(3,i), and C(4,i) are the coefficients of the cubic spline.
+  * 
+  * Performance considerations: The memory cost of coeeficients are:
+  * - explicit -- 4**dimension*(N1*N2*...*Nn)
+  * - compact  -- 2**dimension*(N1*N2*...*Nn)
+  * Explicit spline representation offers better performance in 1D cases. (Compact representations actually
+  * call the explicit spline setup functions.) Compact spline representation provides performance advantages
+  * in higher dimensions due to memory efficiency gains that outweigh the modest increase in computational 
+  * cost.
+  */
 template <typename T, typename MemorySpace>
 class ExplicitCubicSplineInterpolator {
 public:
   using execution_space = typename MemorySpace::execution_space;
   using member_type = typename Kokkos::TeamPolicy<execution_space>::member_type;
   ExplicitCubicSplineInterpolator() = default;
-
+  
+  /** \brief Construct the interpolator object and set up the coefficients 
+    * 
+    * \param x input grid points
+    * \param values values of given grid points
+    * \param ibcxmin bounday condition flag at x(0)
+    * \param bcxmin bounday condition data at x(0)
+    * \param ibcxmax bounday condition flag at x(-1)
+    * \param bcxmax bounday condition data at x(-1)
+    *
+    * \details The boundary condition flags can take the following values:
+    * ibcxmin=-1 | ibcxmax=-1  --  periodic boundary condition, where 
+    *     s'(x(0))=s'(x(-1)) and s''(x(0))=s''(x(-1)).
+    * ibcxmin=0 | ibcxmax=0  --  not-a-knot boundary condition.
+    * ibcxmin=1 | ibcxmax=1  --  first derivative match at x(0) or x(-1).
+    * ibcxmin=2 | ibcxmax=2  --  second derivative match at x(0) or x(-1).
+    * ibcxmin=3 | ibcxmax=3  --  first derivative equal to zero at x(0) or x(-1).
+    * ibcxmin=4 | ibcxmax=4  --  second derivative equal to zero at x(0) or x(-1).
+    * ibcxmin=5 | ibcxmax=5  --  first derivative matches the first divided difference.
+    * ibcxmin=6 | ibcxmax=6  --  second derivative matches the second divided difference.
+    * ibcxmin=7 | ibcxmax=7  --  third derivative matches the third divided difference.
+    */
   ExplicitCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
                                   Rank1View<T, MemorySpace> values,
                                   const LO &ibcxmin, const T &bcxmin,
                                   const LO &ibcxmax, const T &bcxmax);
+
+  /** \brief Construct the interpolator object and set up the coefficients with default boundary conditions
+    * 
+    * \param x input grid points
+    * \param values values of given grid points
+    *
+    * \details The boundary condition flags are set to 0, which corresponds to not-a-knot boundary condition.
+    */
   ExplicitCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
                                   Rank1View<T, MemorySpace> values);
-
+  
+  /** \brief Evaluate the function value of cubic spline at given points
+    * 
+    * \param xvec input points where the spline is evaluated
+    * \param fval output values of the spline at given points
+    *
+    * \details The size of fval should match the size of xvec.
+    */
   void evaluate(Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval);
-
+  
+  /** \brief Evaluate the cubic spline at given points with selector
+    * 
+    * \param selector selector array indicating which derivatives to compute
+    * \param xvec input points where the spline is evaluated
+    * \param fval output values of the spline at given points
+    *
+    * \details The size of fval should match the size of xvec and the size of selector.
+    * The selector array can be used to specify which derivatives to compute. For example,
+    * if selector = {1, 1, 0}, then the function value and first derivative will be computed.
+    */
   void evaluate(Kokkos::View<LO *, MemorySpace> selector,
                 Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval);
 
+  /** \brief Evaluate the cubic spline at a single point with selector
+    * 
+    * \param xget input point where the spline is evaluated
+    * \param selector selector array indicating which derivatives to compute
+    * \param fval output values of the spline at given point
+    * \param x input grid points
+    * \param nx number of grid points
+    * \param fspl spline coefficients
+    * \param ier error flag, 0 if successful, non-zero otherwise
+    *
+    * \details A static function that can be used to evaluate the cubic spline at a single point.
+    * Note that this function does nothing when tje input point is out of the grid range (ier is set to non-zero).
+    */
   static KOKKOS_INLINE_FUNCTION void
   eval(T xget, Kokkos::View<LO *, MemorySpace> iselect,
        Rank1View<T, MemorySpace> fval, Rank1View<T, MemorySpace> x,
        const LO &nx, Rank2View<T, MemorySpace> fspl, LO &ier);
+  
+  /** \brief Set up the internal working space and coefficients
+    */
   void setup(Rank1View<T, MemorySpace> x, const LO &nx,
              Rank1View<T, MemorySpace> values, const LO &ibcxmin,
              const T &bcxmin, const LO &ibcxmax, const T &bcxmax);
@@ -117,6 +196,8 @@ protected:
   static KOKKOS_INLINE_FUNCTION void
   inGrid(T &xget, T &zxget, Rank1View<T, MemorySpace> x, const LO &nx, LO &ier);
 
+  /** \brief Solve the cubic spline coefficients
+    */
   static KOKKOS_FUNCTION void solve_spline(Rank1View<T, MemorySpace> x,
                                            const LO &nx,
                                            Rank2View<T, MemorySpace> fspl,
@@ -126,17 +207,49 @@ protected:
 
 private:
   Kokkos::View<T *, MemorySpace> coefficients_;
-
+  
+  /** \brief Evaluate the point given location in the grid
+    * 
+    * \param selector selector array indicating which derivatives to compute
+    * \param fval output values of the spline at given points
+    * \param i index of the grid point
+    * \param dx displacement from the grid point
+    * \param fspl spline coefficients
+    */
   static KOKKOS_INLINE_FUNCTION void
   evalfn(Kokkos::View<LO *, MemorySpace> selector,
          Rank1View<T, MemorySpace> fval, const LO &i, const T &dx,
          Rank2View<T, MemorySpace> fspl);
-
+  
+  /** \brief Lookup the grid point and compute the displacement
+    * 
+    * \param xget input point where the spline is evaluated
+    * \param x input grid points
+    * \param nx number of grid points
+    * \param i index of the grid point
+    * \param dx displacement from the grid point
+    * \param ier error flag, 0 if successful, non-zero otherwise
+    */
   static KOKKOS_INLINE_FUNCTION void lookup(T xget, Rank1View<T, MemorySpace> x,
                                             const LO &nx, LO &i, T &dx,
                                             LO &ier);
 };
 
+/**
+ * CompactCubicSplineInterpolator class
+ * This class provides methods for 1d compact cubic spline interpolation.
+ * It inherits from ExplicitCubicSplineInterpolator and implements the
+ * compact representation of cubic spline coefficients.
+ *
+ * The 1d compact cubic spline are evaluated using the following formula:
+ * If x(i).le.x.le.x(i+1), let
+ *   h = (x(i+1)-x(i))
+ *   p = (x-x(i))/h
+ *   q = 1-p
+ *   s(x)= q*D(1,i) + p*D(1,i+1) + 
+ *       (h**2/6)*{[q**3-q]*D(2,i) + [p**3-p]*D(2,i+1)}
+ * where D(1,i) and D(2,i) are the coefficients of the compact cubic spline.
+ */ 
 template <typename T, typename MemorySpace>
 class CompactCubicSplineInterpolator
     : public ExplicitCubicSplineInterpolator<T, MemorySpace> {
@@ -145,24 +258,71 @@ public:
       typename ExplicitCubicSplineInterpolator<T, MemorySpace>::execution_space;
   using member_type = typename Kokkos::TeamPolicy<execution_space>::member_type;
   CompactCubicSplineInterpolator() = default;
+  /** \brief Construct the interpolator object and set up the coefficients
+    * 
+    * \param x input grid points
+    * \param values values of given grid points
+    * \param ibcxmin bounday condition flag at x(0)
+    * \param bcxmin bounday condition data at x(0)
+    * \param ibcxmax bounday condition flag at x(-1)
+    * \param bcxmax bounday condition data at x(-1)
+    *
+    * \details The boundary condition flags can take the same values as in ExplicitCubicSplineInterpolator.
+    */
   CompactCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
                                  Rank1View<T, MemorySpace> values,
                                  const LO &ibcxmin, const T &bcxmin,
                                  const LO &ibcxmax, const T &bcxmax);
+  
+  /** \brief Construct the interpolator object and set up the coefficients with default boundary conditions
+    * 
+    * \param x input grid points
+    * \param values values of given grid points
+    */
   CompactCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
                                  Rank1View<T, MemorySpace> values);
+
+  /** \brief Set up the internal working space and coefficients
+    */
   void setup(Rank1View<T, MemorySpace> x, const LO &nx,
              Rank1View<T, MemorySpace> values, const LO &ibcxmin,
              const T &bcxmin, const LO &ibcxmax, const T &bcxmax);
+
+  /** \brief Evaluate the function value of compact cubic spline at given points
+    * 
+    * \param xvec input points where the spline is evaluated
+    * \param fval output values of the spline at given points
+    */
   void evaluate(Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval);
 
+  /** \brief Evaluate the compact cubic spline at given points with selector
+    * 
+    * \param selector selector array indicating which derivatives to compute
+    * \param xvec input points where the spline is evaluated
+    * \param fval output values of the spline at given points
+    *
+    * \details The selector follows the same rules as in ExplicitCubicSplineInterpolator.
+    */
   void evaluate(Kokkos::View<LO *, MemorySpace> selector,
                 Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval);
+
+  /** \brief Evaluate the compact cubic spline at a single point with selector
+    * 
+    * \param xget input point where the spline is evaluated
+    * \param ict selector array indicating which derivatives to compute
+    * \param fval output values of the spline at given point
+    * \param x input grid points
+    * \param nx number of grid points
+    * \param fs2 compact spline coefficients
+    * \param ier error flag, 0 if successful, non-zero otherwise
+    */
   static KOKKOS_INLINE_FUNCTION void
   eval(T xget, Kokkos::View<LO *, MemorySpace> ict,
        Rank1View<T, MemorySpace> fval, Rank1View<T, MemorySpace> x,
        const LO &nx, Rank2View<T, MemorySpace> fs2, LO &ier);
 
+  /** \brief Solve the cubic spline coefficients
+    */
   static KOKKOS_FUNCTION void
   solve_spline(Rank1View<T, MemorySpace> x, const LO &nx,
                Rank2View<T, MemorySpace> fspl, Rank2View<T, MemorySpace> fspl4,
@@ -170,16 +330,48 @@ public:
                const T &bcxmax, Rank1View<T, MemorySpace> wk);
 
 protected:
+  /** \brief Evaluate the point given location in the grid
+    *
+    * \param selector selector array indicating which derivatives to compute
+    * \param fval output values of the spline at given points
+    * \param i index of the grid point
+    * \param xparam displacement from the grid point
+    * \param hx step size in the x direction
+    * \param hxi inverse step size in the x direction
+    * \param fs2 compact spline coefficients
+    */
   static KOKKOS_INLINE_FUNCTION void
   evalfn(Kokkos::View<LO *, MemorySpace> selector,
          Rank1View<T, MemorySpace> fval, const LO &i, const T &xparam,
          const T &hx, const T &hxi, Rank2View<T, MemorySpace> fs2);
 
+  /** \brief Lookup the grid point and compute the displacement
+    * 
+    * \param xget input point where the spline is evaluated
+    * \param x input grid points
+    * \param nx number of grid points
+    * \param i index of the grid point
+    * \param xparam displacement from the grid point
+    * \param hx step size in the x direction
+    * \param hxi inverse step size in the x direction
+    * \param ier error flag, 0 if successful, non-zero otherwise
+    */
   static KOKKOS_INLINE_FUNCTION void lookup(T xget, Rank1View<T, MemorySpace> x,
                                             const LO &nx, LO &i, T &xparam,
                                             T &hx, T &hxi, LO &ier);
 };
 
+/** \brief BiCubicSplineInterpolator class
+ * This class provides methods for 2D explicit bicubic spline interpolation.
+ * It inherits from ExplicitCubicSplineInterpolator and implements the bicubic representation of cubic spline coefficients.
+ *
+ * The 2D explicit bicubic spline are evaluated using the following formula:
+ *     s(x,y)=  C11 + dx*C21 + dx**2*C31 + dx**3*C41
+ *         +dy*(C12 + dx*C22 + dx**2*C32 + dx**3*C42)
+ *      +dy**2*(C13 + dx*C23 + dx**2*C33 + dx**3*C43)
+ *      +dy**3*(C14 + dx*C24 + dx**2*C34 + dx**3*C44)
+  * where Cij are the coefficients of the bicubic spline.
+ */
 template <typename T, typename MemorySpace>
 class ExplicitBiCubicSplineInterpolator
     : public ExplicitCubicSplineInterpolator<T, MemorySpace> {
@@ -190,33 +382,60 @@ public:
 
   ExplicitBiCubicSplineInterpolator() = default;
 
+  /** \brief Construct the interpolator object and set up the coefficients
+    * 
+    * \param x input grid points in x direction
+    * \param y input grid points in y direction
+    * \param values values of given grid points
+    * \param ibcxmin boundary condition flag at x(0)
+    * \param bcxmin boundary condition data at x(0)
+    * \param ibcxmax boundary condition flag at x(-1)
+    * \param bcxmax boundary condition data at x(-1)
+    * \param ibcymin boundary condition flag at y(0)
+    * \param bcymin boundary condition data at y(0)
+    * \param ibcymax boundary condition flag at y(-1)
+    * \param bcymax boundary condition data at y(-1)
+    *
+    * \details The boundary condition flags take the same values as in ExplicitCubicSplineInterpolator
+    * at each direction.
+    */
   ExplicitBiCubicSplineInterpolator(
-      Rank1View<T, MemorySpace> x, // size: inx
-      Rank1View<T, MemorySpace> y, // size: iny
+      Rank1View<T, MemorySpace> x,
+      Rank1View<T, MemorySpace> y,
       Rank1View<T, MemorySpace> values, LO ibcxmin,
-      Rank1View<T, MemorySpace> bcxmin, // size: iny (used if ibcxmin = 1 or 2)
+      Rank1View<T, MemorySpace> bcxmin,
       LO ibcxmax,
-      Rank1View<T, MemorySpace> bcxmax, // size: iny (used if ibcxmax = 1 or 2)
+      Rank1View<T, MemorySpace> bcxmax,
       LO ibcymin,
-      Rank1View<T, MemorySpace> bcymin, // size: inx (used if ibcymin = 1 or 2)
+      Rank1View<T, MemorySpace> bcymin,
       LO ibcymax, Rank1View<T, MemorySpace> bcymax);
 
-  ExplicitBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x, // size: inx
-                                    Rank1View<T, MemorySpace> y, // size: iny
+  /** \brief Construct the interpolator object and set up the coefficients with default boundary conditions
+    * 
+    * \param x input grid points in x direction
+    * \param y input grid points in y direction
+    * \param values values of given grid points
+    */
+  ExplicitBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
+                                    Rank1View<T, MemorySpace> y,
                                     Rank1View<T, MemorySpace> values);
+  /** \brief Set up the internal working space and coefficients
+    */
   void setup(
-      Rank1View<T, MemorySpace> x, // size: inx
-      Rank1View<T, MemorySpace> y, // size: iny
+      Rank1View<T, MemorySpace> x,
+      Rank1View<T, MemorySpace> y,
       Rank1View<T, MemorySpace> values, LO ibcxmin,
-      Rank1View<T, MemorySpace> bcxmin, // size: iny (used if ibcxmin = 1 or 2)
+      Rank1View<T, MemorySpace> bcxmin,
       LO ibcxmax,
-      Rank1View<T, MemorySpace> bcxmax, // size: iny (used if ibcxmax = 1 or 2)
+      Rank1View<T, MemorySpace> bcxmax,
       LO ibcymin,
-      Rank1View<T, MemorySpace> bcymin, // size: inx (used if ibcymin = 1 or 2)
+      Rank1View<T, MemorySpace> bcymin,
       LO ibcymax,
-      Rank1View<T, MemorySpace> bcymax // size: inx (used if ibcymax = 1 or 2)
+      Rank1View<T, MemorySpace> bcymax
   );
 
+  /** \brief Solve the coefficients of the bicubic spline
+    */
   static void solve_spline(
       Rank1View<T, MemorySpace> x,            // size: inx
       LO inx, Rank1View<T, MemorySpace> y,    // size: iny
@@ -232,18 +451,63 @@ public:
       Rank1View<T, MemorySpace> wk      // size: nwk
   );
 
+  /** \brief Detect if the boundary conditions are homogeneous
+    * 
+    * \param bcmin boundary condition data
+    * \param ibcmin boundary condition flag
+    * \param iflg2 flag indicating if the boundary conditions are
+    * \param nx number of grid points in x direction
+    *
+    * \details A homogeneous boundary condition  set A has the property that if 
+    * s1(x,y) satisfies A, then (for any real number c) c*S1 also satisfies A, 
+    * and, if both s1(x,y) and s2(x,y) satisfy A then so also does s1+s2.
+    */
   static void correction_detect(Rank1View<T, MemorySpace> bcmin, LO &ibcmin,
                                 LO &iflg2, LO &nx);
 
+  /** \brief Evaluate the bicubic spline at a single point with selector
+    * 
+    * \param xget input point in x direction where the spline is evaluated
+    * \param yget input point in y direction where the spline is evaluated
+    * \param iselect selector array indicating which derivatives to compute
+    * \param fval output values of the spline at given point
+    * \param x input grid points in x direction
+    * \param nx number of grid points in x direction
+    * \param y input grid points in y direction
+    * \param ny number of grid points in y direction
+    * \param fspl bicubic spline coefficients
+    * \param ier error flag, 0 if successful, non-zero otherwise
+    */
   static KOKKOS_INLINE_FUNCTION void
   eval(T xget, T yget, Kokkos::View<LO *, MemorySpace> iselect,
        Rank1View<T, MemorySpace> fval, Rank1View<T, MemorySpace> x,
        const LO &nx, Rank1View<T, MemorySpace> y, const LO &ny,
        Rank4View<T, MemorySpace> fspl, LO &ier);
 
+  /** \brief Evaluate the bicubic spline at given points
+    * 
+    * \param xvec input points in x direction where the spline is evaluated
+    * \param yvec input points in y direction where the spline is evaluated
+    * \param fval output values of the spline at given points
+    */
   void evaluate(Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
                 Rank2View<T, MemorySpace> fval);
 
+  /** \brief Evaluate the bicubic spline at given points with selector
+    * 
+    * \param iselect selector array indicating which derivatives to compute
+    * \param xvec input points in x direction where the spline is evaluated
+    * \param yvec input points in y direction where the spline is evaluated
+    * \param fval output values of the spline at given points
+    *
+    * \details The selector follows the the following rules:
+    *   iselect(1)=1 -- evaluate f
+    *   iselect(2)=1 -- evaluate df/dx
+    *   iselect(3)=1 -- evaluate df/dy
+    *   iselect(4)=1 -- evaluate d2f/dx2
+    *   iselect(5)=1 -- evaluate d2f/dy2
+    *   iselect(6)=1 -- evaluate d2f/dxdy
+    */
   void evaluate(Kokkos::View<LO *, MemorySpace> iselect,
                 Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
                 Rank2View<T, MemorySpace> fval);
@@ -260,23 +524,67 @@ protected:
                     Rank1View<T, MemorySpace> bcymax);
 
 private:
+  /** \brief Lookup the grid point and compute the displacement
+    * 
+    * \param xget input point in x direction where the spline is evaluated
+    * \param yget input point in y direction where the spline is evaluated
+    * \param x input grid points in x direction
+    * \param nx number of grid points in x direction
+    * \param y input grid points in y direction
+    * \param ny number of grid points in y direction
+    * \param i index of the grid point in x direction
+    * \param j index of the grid point in y direction
+    * \param dx displacement from the grid point in x direction
+    * \param dy displacement from the grid point in y direction
+    * \param ier error flag, 0 if successful, non-zero otherwise
+    */
   static KOKKOS_INLINE_FUNCTION void
   lookup(T xget, T yget, Rank1View<T, MemorySpace> x, const LO &nx,
          Rank1View<T, MemorySpace> y, const LO &ny, LO &i, LO &j, T &dx, T &dy,
          LO &ier);
 
+  /** \brief Evaluate the bicubic spline at given grid cell
+    *
+    * \param ict selector array indicating which derivatives to compute
+    * \param fval output values of the spline at given grid cell
+    * \param i index of the grid cell in x direction
+    * \param j index of the grid cell in y direction
+    * \param dx displacement from the grid cell in x direction
+    * \param dy displacement from the grid cell in y direction
+    * \param fspl bicubic spline coefficients
+    */
   static KOKKOS_INLINE_FUNCTION void evalfn(
-      Kokkos::View<LO *, MemorySpace>
-          ict, // Selector array for which derivatives to compute
-      Rank1View<T, MemorySpace> fval, // Output array: size [ivd, *] (flattened)
-      const LO &i,                    // Grid cell indices in x direction
-      const LO &j,                    // Grid cell indices in y direction
-      const T &dx,                    // x displacements within cells
-      const T &dy,                    // y displacements within cells
-      Rank4View<T, MemorySpace> fspl  // Spline coefficients: [4, 4, nx, ny]
+      Kokkos::View<LO *, MemorySpace> ict, 
+      Rank1View<T, MemorySpace> fval,
+      const LO &i,
+      const LO &j,
+      const T &dx,
+      const T &dy,
+      Rank4View<T, MemorySpace> fspl
   );
 };
 
+/** \brief CompactBiCubicSplineInterpolator class
+ * This class provides methods for 2D compact bicubic spline interpolation.
+ * It inherits from ExplicitBiCubicSplineInterpolator and implements the compact representation of bicubic spline coefficients.
+ *
+ * The 2D compact bicubic spline are evaluated using the following formula:
+ * for x(i).le.x.le.x(i+1) and y(j).le.y.le.y(j+1), let
+ *   hx = x(i+1)-x(i)    hy = y(j+1)-y(j)
+ *   px = (x-x(i))/hx    py = (y-y(j))/hy
+ *   qx = 1-px           qy = 1-py
+ *   rx = (px**3-px)     ry = (py**3-py)
+ *   sx = (qx**3-qx)     sy = (qy**3-qy)
+ *
+ *  s(x,y) = qx*(qy*D(1,i,j)+py*D(1,i,j+1)) + 
+ *        px*(qy*D(1,i+1,j)+py*D(1,i+1,j+1)) + 
+ *        (hx**2/6)*{sx*(qy*D(2,i,j)+py*D(2,i,j+1)) + 
+ *                   rx*(qy*D(2,i+1,j)+py*D(2,i+1,j+1))} +
+ *        (hy**2/6)*{qx*(sy*D(3,i,j)+ry*D(3,i,j+1)) + 
+ *                   px*(sy*D(3,i+1,j)+ry*D(3,i+1,j+1))} +
+ *        (hx**2*hy**2/36)*{sx*(sy*D(4,i,j)+ry*D(4,i,j+1)) + 
+ *                   rx*(sy*D(4,i+1,j)+ry*D(4,i+1,j+1))}
+ */
 template <typename T, typename MemorySpace>
 class CompactBiCubicSplineInterpolator
     : public ExplicitBiCubicSplineInterpolator<T, MemorySpace> {
@@ -287,6 +595,23 @@ public:
 
   CompactBiCubicSplineInterpolator() = default;
 
+  /** \brief Construct the interpolator object and set up the coefficients
+    * 
+    * \param x input grid points in x direction
+    * \param y input grid points in y direction
+    * \param values values of given grid points
+    * \param ibcxmin boundary condition flag at x(0)
+    * \param bcxmin boundary condition data at x(0)
+    * \param ibcxmax boundary condition flag at x(-1)
+    * \param bcxmax boundary condition data at x(-1)
+    * \param ibcymin boundary condition flag at y(0)
+    * \param bcymin boundary condition data at y(0)
+    * \param ibcymax boundary condition flag at y(-1)
+    * \param bcymax boundary condition data at y(-1)
+    *
+    * \details The boundary condition flags take the same values as in ExplicitCubicSplineInterpolator
+    * at each direction.
+    */
   CompactBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
                                    Rank1View<T, MemorySpace> y,
                                    Rank1View<T, MemorySpace> values, LO ibcxmin,
@@ -295,10 +620,17 @@ public:
                                    Rank1View<T, MemorySpace> bcymin, LO ibcymax,
                                    Rank1View<T, MemorySpace> bcymax);
 
+  /** \brief Construct the interpolator object and set up the coefficients with default boundary conditions
+    * \param x input grid points in x direction
+    * \param y input grid points in y direction
+    * \param values values of given grid points
+    */
   CompactBiCubicSplineInterpolator(Rank1View<T, MemorySpace> x,
                                    Rank1View<T, MemorySpace> y,
                                    Rank1View<T, MemorySpace> values);
 
+  /** \brief Set up the internal working space and coefficients
+    */
   void setup(Rank1View<T, MemorySpace> x, Rank1View<T, MemorySpace> y,
              Rank1View<T, MemorySpace> values, LO ibcxmin,
              Rank1View<T, MemorySpace> bcxmin, LO ibcxmax,
@@ -306,6 +638,8 @@ public:
              Rank1View<T, MemorySpace> bcymin, LO ibcymax,
              Rank1View<T, MemorySpace> bcymax);
 
+  /** \brief Solve the coefficients of the compact bicubic spline
+    */
   static void solve_spline(Rank1View<T, MemorySpace> x, LO nx,
                            Rank1View<T, MemorySpace> y, LO ny,
                            Rank3View<T, MemorySpace> f, LO ibcxmin,
@@ -315,15 +649,43 @@ public:
                            Rank1View<T, MemorySpace> bcymax,
                            Rank1View<T, MemorySpace> wk);
 
+  /** \brief Evaluate the bicubic spline at a single point with selector
+    *
+    * \param xget input point in x direction where the spline is evaluated
+    * \param yget input point in y direction where the spline is evaluated
+    * \param ict selector array indicating which derivatives to compute
+    * \param fval output values of the spline at given point
+    * \param x input grid points in x direction
+    * \param nx number of grid points in x direction
+    * \param y input grid points in y direction
+    * \param ny number of grid points in y direction
+    * \param f bicubic spline coefficients
+    * \param ier error flag, 0 if successful, non-zero otherwise
+    */
   static KOKKOS_INLINE_FUNCTION void
   eval(T xget, T yget, Kokkos::View<LO *, MemorySpace> ict,
        Rank1View<T, MemorySpace> fval, // output (size depends on ict)
        Rank1View<T, MemorySpace> x, const LO &nx, Rank1View<T, MemorySpace> y,
        const LO &ny, Rank3View<T, MemorySpace> f, LO &ier);
 
+  /** \brief Evaluate the bicubic spline at given points
+    *
+    * \param xvec input points in x direction where the spline is evaluated
+    * \param yvec input points in y direction where the spline is evaluated
+    * \param fval output values of the spline at given points
+    */
   void evaluate(Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
                 Rank2View<T, MemorySpace> fval);
 
+  /** \brief Evaluate the bicubic spline at given points with selector
+    *
+    * \param iselect selector array indicating which derivatives to compute
+    * \param xvec input points in x direction where the spline is evaluated
+    * \param yvec input points in y direction where the spline is evaluated
+    * \param fval output values of the spline at given points
+    *
+    * \details The selector follows the same rules as in ExplicitBiCubicSplineInterpolator.
+    */
   void evaluate(Kokkos::View<LO *, MemorySpace> iselect,
                 Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
                 Rank2View<T, MemorySpace> fval);
@@ -332,11 +694,43 @@ protected:
   Rank3View<T, MemorySpace> fspl_;
 
 private:
+  /** \brief Lookup the grid point and compute the displacement
+    * 
+    * \param xget input point in x direction where the spline is evaluated
+    * \param yget input point in y direction where the spline is evaluated
+    * \param x input grid points in x direction
+    * \param nx number of grid points in x direction
+    * \param y input grid points in y direction
+    * \param ny number of grid points in y direction
+    * \param i index of the grid point in x direction
+    * \param j index of the grid point in y direction
+    * \param xparam displacement from the grid point in x direction
+    * \param hx step size in the x direction
+    * \param hxi inverse step size in the x direction
+    * \param yparam displacement from the grid point in y direction
+    * \param hy step size in the y direction
+    * \param hyi inverse step size in the y direction
+    * \param ier error flag, 0 if successful, non-zero otherwise
+    */
   static KOKKOS_INLINE_FUNCTION void
   lookup(T xget, T yget, Rank1View<T, MemorySpace> x, const LO &nx,
          Rank1View<T, MemorySpace> y, const LO &ny, LO &i, LO &j, T &xparam,
          T &yparam, T &hx, T &hxi, T &hy, T &hyi, LO &ier);
 
+  /** \brief Evaluate the bicubic spline at given grid cell
+    * 
+    * /param ict selector array indicating which derivatives to compute
+    * \param fval output values of the spline at given grid cell
+    * \param i index of the grid cell in x direction
+    * \param j index of the grid cell in y direction
+    * \param xparam displacement from the grid cell in x direction
+    * \param yparam displacement from the grid cell in y direction 
+    * \param hx step size in the x direction
+    * \param hxi inverse step size in the x direction
+    * \param hy step size in the y direction
+    * \param hyi inverse step size in the y direction
+    * \param f bicubic spline coefficients
+    */
   static KOKKOS_INLINE_FUNCTION void
   evalfn(Kokkos::View<LO *, MemorySpace> ict, LO ivec, LO ivecd,
          Rank1View<T, MemorySpace> fval, const LO &i, const LO &j,
@@ -476,6 +870,17 @@ void CompactCubicSplineInterpolator<T, MemorySpace>::setup(
   this->fspl_ = fspl;
 }
 
+/** \brief Solve for 1d spline coefficients.
+ * 
+ * \param k_bc1 boundary condition flag at x(0)
+ * \param k_bcn boundary condition flag at x(-1)
+ * \param n number of grid points
+ * \param x input grid points
+ * \param f output coefficients of the cubic spline
+ * \param wk working space for the spline solver
+ *
+ * \details Originally developed by Wayne Houlberg in Fortran.
+ */
 template <typename T, typename MemorySpace>
 KOKKOS_FUNCTION void v_spline(const LO &k_bc1, const LO &k_bcn, const LO &n,
                               Rank1View<T, MemorySpace> x,
@@ -1647,8 +2052,8 @@ template <typename T, typename MemorySpace>
 void ExplicitBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
     Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
     Rank2View<T, MemorySpace> fval) {
-  LO ict_arr[10] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  Kokkos::View<LO *, MemorySpace> ict("select", 10);
+  LO ict_arr[6] = {1, 0, 0, 0, 0, 0};
+  Kokkos::View<LO *, MemorySpace> ict("select", 6);
   Kokkos::parallel_for(
       Kokkos::RangePolicy<execution_space>(0, ict.size()),
       KOKKOS_LAMBDA(const LO i) { ict(i) = ict_arr[i]; });
@@ -1678,8 +2083,8 @@ template <typename T, typename MemorySpace>
 void CompactBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
     Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
     Rank2View<T, MemorySpace> fval) {
-  LO ict_arr[10] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  Kokkos::View<LO *, MemorySpace> ict("select", 10);
+  LO ict_arr[6] = {1, 0, 0, 0, 0, 0};
+  Kokkos::View<LO *, MemorySpace> ict("select", 6);
   Kokkos::parallel_for(
       Kokkos::RangePolicy<execution_space>(0, ict.size()),
       KOKKOS_LAMBDA(const LO i) { ict(i) = ict_arr[i]; });

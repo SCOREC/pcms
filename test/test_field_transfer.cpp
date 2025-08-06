@@ -1,5 +1,5 @@
 #include <pcms/transfer_field.h>
-#include <pcms/omega_h_field.h>
+#include "pcms/adapter/omega_h/omega_h_field.h"
 #include <catch2/catch_test_macros.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>

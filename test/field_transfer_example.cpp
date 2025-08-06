@@ -1,14 +1,14 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_vtk.hpp>
 #include <pcms/transfer_field.h>
-#include <pcms/omega_h_field.h>
+#include "pcms/adapter/omega_h/omega_h_field.h"
 // for transfer operation dummy test
 #include <pcms.h>
 #include <chrono>
 
 using pcms::Real;
-using OHField = pcms::OmegaHField<Real, Real>;
-using OHShim = pcms::OmegaHFieldAdapter<Real, Real>;
+using OHField = pcms::OmegaHField<Real>;
+using OHShim = pcms::OmegaHFieldAdapter<Real>;
 using pcms::copy_field;
 using pcms::get_nodal_coordinates;
 using pcms::get_nodal_data;

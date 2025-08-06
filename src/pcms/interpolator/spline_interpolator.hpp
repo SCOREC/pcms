@@ -11,31 +11,6 @@
 
 namespace pcms {
 
-// Todo: remove this once target PR is merged
-// Declaration of customized Kokkos types copied from existing PR
-template <typename ElementType, typename MemorySpace>
-struct memory_space_accessor : public Kokkos::default_accessor<ElementType> {
-  using memory_space = MemorySpace;
-};
-
-template <LO Rank, typename ElementType, typename MemorySpace>
-using View = Kokkos::mdspan<
-    ElementType, Kokkos::dextents<LO, Rank>, Kokkos::layout_right,
-    detail::memory_space_accessor<std::remove_reference_t<ElementType>,
-                                  MemorySpace>>;
-
-template <typename ElementType, typename MemorySpace>
-using Rank1View = View<1, ElementType, MemorySpace>;
-
-template <typename ElementType, typename MemorySpace>
-using Rank2View = View<2, ElementType, MemorySpace>;
-
-template <typename ElementType, typename MemorySpace>
-using Rank3View = View<3, ElementType, MemorySpace>;
-
-template <typename ElementType, typename MemorySpace>
-using Rank4View = View<4, ElementType, MemorySpace>;
-
 void ibc_check(LO ibc, const std::string &slbl, const std::string &xlbl,
                LO imin, LO imax) {
 

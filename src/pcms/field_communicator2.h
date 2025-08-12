@@ -20,7 +20,7 @@ public:
     : comm_buffer_{}, layout_comm_(layout_comm), field_(field)
   {
     PCMS_ALWAYS_ASSERT(&layout_comm.GetLayout() == &field.GetLayout());
-    comm_buffer_.resize(layout_comm.GetPermutationArray().size());
+    comm_buffer_.resize(layout_comm.GetMsgSize());
   }
 
   void Send(redev::Mode mode = redev::Mode::Synchronous)
@@ -28,7 +28,6 @@ public:
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(layout_comm_.GetChannel().InSendCommunicationPhase());
     auto n = field_.Serialize({}, {});
-    REDEV_ALWAYS_ASSERT(comm_buffer_.size() == static_cast<size_t>(n + 4));
     auto buffer = make_array_view(comm_buffer_);
     field_.Serialize(buffer, layout_comm_.GetPermutationArray());
     layout_comm_.Send(buffer.data_handle(), mode);
@@ -43,7 +42,7 @@ public:
     // receive.
     auto data = layout_comm_.Recv(redev::Mode::Synchronous);
     field_.Deserialize(make_const_array_view(data),
-                      layout_comm_.GetPermutationArray());
+                       layout_comm_.GetPermutationArray());
   }
 
 private:

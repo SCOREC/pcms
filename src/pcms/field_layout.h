@@ -1,6 +1,7 @@
 #ifndef PCMS_FIELD_LAYOUT_H
 #define PCMS_FIELD_LAYOUT_H
 #include <redev.h>
+#include <Omega_h_mesh.hpp>
 #include "pcms/arrays.h"
 
 namespace pcms
@@ -8,7 +9,7 @@ namespace pcms
 struct PartitionMapping
 {
   std::vector<LO> indices;
-  std::array<int, 4> ent_offsets;
+  std::array<int, 5> ent_offsets;
 
   PartitionMapping() { ent_offsets.fill(0); }
 };
@@ -31,7 +32,7 @@ public:
   LO OwnedSize() const { return GetNumComponents() * GetNumOwnedDofHolder(); };
   GO GlobalSize() const { return GetNumComponents() * GetNumGlobalDofHolder(); };
 
-  virtual GlobalIDView<HostMemorySpace> GetOwnedGids() const = 0;
+  virtual Omega_h::Read<Omega_h::I8> GetOwned() const = 0;
   virtual GlobalIDView<HostMemorySpace> GetGids() const = 0;
 
   // returns true if the field layout is distributed
@@ -42,7 +43,8 @@ public:
   // for serialization / deserialization
   //
 
-  virtual std::array<size_t, 4> GetEntOffsets() const = 0;
+  virtual std::array<size_t, 5> GetEntOffsets() const = 0;
+  virtual Omega_h::Mesh& GetMesh() const = 0;
 
   virtual ReversePartitionMap2 GetReversePartitionMap(
     const redev::Partition& partition) const = 0;

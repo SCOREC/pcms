@@ -33,6 +33,8 @@ Omega_h::Write<Omega_h::GO> GetGidsHelper(LO total_ents,
     }
   }
 
+  PCMS_ALWAYS_ASSERT(offset == total_ents);
+
   return owned_gids;
 }
 
@@ -46,14 +48,11 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
     global_id_name_(global_id_name),
     dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim()),
     class_ids_(GetNumEnts()),
-    class_dims_(class_ids_.size())
+    class_dims_(class_ids_.size()),
+    owned_(class_dims_.size())
 {
   PCMS_FUNCTION_TIMER;
-  LO total_ents = 0;
-  for (int i = 0; i <= mesh.dim(); ++i) {
-    if (nodes_per_dim[i])
-      total_ents += mesh.nglobal_ents(i);
-  }
+  LO total_ents = GetNumEnts();
 
   auto tag = mesh_.get_tagbase(0, global_id_name_);
   if (Omega_h::is<GO>(tag)) {
@@ -105,6 +104,7 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
     if (nodes_per_dim_[i]) {
       auto ids = mesh_.get_array<Omega_h::ClassId>(i, "class_id");
       auto dims = mesh_.get_array<Omega_h::I8>(i, "class_dim");
+      auto owned = mesh_.owned(i);
       PCMS_ALWAYS_ASSERT(ids.size() == dims.size() &&
                          dims.size() == mesh_.nents(i));
 
@@ -112,6 +112,7 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
         mesh_.nents(i), OMEGA_H_LAMBDA(LO i) {
           class_ids_[offset + i] = ids[i];
           class_dims_[offset + i] = dims[i];
+          owned_[offset + i] = owned[i];
         });
       offset += mesh.nents(i);
     }
@@ -122,7 +123,7 @@ int OmegaHFieldLayout::GetNumComponents() const
 {
   return num_components_;
 }
-// nodes for standard lagrange FEM
+
 LO OmegaHFieldLayout::GetNumOwnedDofHolder() const
 {
   LO count = 0;
@@ -146,14 +147,14 @@ std::array<int, 4> OmegaHFieldLayout::GetNodesPerDim() const
   return nodes_per_dim_;
 }
 
-GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetOwnedGids() const
+Omega_h::Read<Omega_h::I8> OmegaHFieldLayout::GetOwned() const
 {
-  static_assert(std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>, "types must match");
-  return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
+  return owned_;
 }
 
 GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const
 {
+  static_assert(std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>, "types must match");
   return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
 }
 
@@ -190,15 +191,16 @@ size_t OmegaHFieldLayout::GetNumEnts() const {
   return n;
 }
 
-std::array<size_t, 4> OmegaHFieldLayout::GetEntOffsets() const
+std::array<size_t, 5> OmegaHFieldLayout::GetEntOffsets() const
 {
-  std::array<size_t, 4> offsets{};
+  std::array<size_t, 5> offsets{};
   size_t offset = 0;
   for (int i = 0; i < offsets.size(); ++i) {
     offsets[i] = offset;
-    if (i <= mesh_.dim())
+    if (i <= mesh_.dim() && nodes_per_dim_[i])
       offset += mesh_.nents(i);
   }
+  offsets[offsets.size() - 1] = offset;
   return offsets;
 }
 

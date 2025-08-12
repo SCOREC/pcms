@@ -286,7 +286,6 @@ void OmegaHField2::Deserialize(
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
 {
   PCMS_FUNCTION_TIMER;
-  REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size() + 4);
   Omega_h::HostWrite<Real> sorted_buffer(permutation.size());
   for (size_t i = 0; i < sorted_buffer.size(); ++i) {
     sorted_buffer[i] = buffer[permutation[i]];

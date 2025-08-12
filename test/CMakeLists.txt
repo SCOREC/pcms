@@ -49,9 +49,9 @@ if (PCMS_ENABLE_OMEGA_H)
     endif()
     add_executable(field_communication test_field_communication.cpp)
     target_link_libraries(field_communication PUBLIC pcms::core test_support)
-    if(HOST_NPROC GREATER_EQUAL 2)
+    if(HOST_NPROC GREATER_EQUAL 4)
         dual_mpi_test(TESTNAME test_field_communication_4p
-                TIMEOUT 10
+                TIMEOUT 40
                 NAME1 server EXE1 ./field_communication PROCS1 1 ARGS1 0
                 NAME2 client EXE2 ./field_communication PROCS2 1 ARGS2 1)
     endif()

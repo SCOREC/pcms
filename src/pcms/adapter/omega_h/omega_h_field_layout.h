@@ -19,7 +19,7 @@ public:
   LO GetNumOwnedDofHolder() const override;
   GO GetNumGlobalDofHolder() const override;
 
-  GlobalIDView<HostMemorySpace> GetOwnedGids() const override;
+  Omega_h::Read<Omega_h::I8> GetOwned() const override;
   GlobalIDView<HostMemorySpace> GetGids() const override;
   Rank2View<const Real, HostMemorySpace> GetDOFHolderCoordinates() const;
 
@@ -28,12 +28,14 @@ public:
   bool IsDistributed() override;
 
   size_t GetNumEnts() const;
-  std::array<size_t, 4> GetEntOffsets() const override;
+  std::array<size_t, 5> GetEntOffsets() const override;
 
   ReversePartitionMap2 GetReversePartitionMap(
     const redev::Partition& partition) const override;
 
   std::array<int, 4> GetNodesPerDim() const;
+
+  Omega_h::Mesh& GetMesh() const override { return mesh_; };
 
 private:
   Omega_h::Read<Omega_h::ClassId> GetClassIDs() const;
@@ -47,6 +49,7 @@ private:
   Kokkos::View<Real **> dof_holder_coords_;
   Omega_h::Write<Omega_h::ClassId> class_ids_;
   Omega_h::Write<Omega_h::I8> class_dims_;
+  Omega_h::Write<Omega_h::I8> owned_;
 };
 
 }

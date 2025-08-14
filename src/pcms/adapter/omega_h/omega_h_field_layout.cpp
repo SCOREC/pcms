@@ -210,6 +210,7 @@ ReversePartitionMap2 OmegaHFieldLayout::GetReversePartitionMap(
   PCMS_FUNCTION_TIMER;
   auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(GetClassIDs());
   auto classDims_h = Omega_h::HostRead<Omega_h::I8>(GetClassDims());
+  auto owned = GetOwned();
   const auto coords = GetDOFHolderCoordinates();
   auto dim = mesh_.dim();
 
@@ -225,7 +226,9 @@ ReversePartitionMap2 OmegaHFieldLayout::GetReversePartitionMap(
     if (nodes_per_dim_[ent_dim] == 0)
       continue;
 
-    for (LO i = 0; i < mesh_.nents(ent_dim); ++i) {
+    for (LO i = 0; i < mesh_.nents(ent_dim); ++i, ++local_index) {
+      if (!owned[local_index]) continue;
+
       coord[0] = coords(local_index, 0);
       coord[1] = coords(local_index, 1);
       coord[2] = (dim > 2) ? coords(local_index, 2) : 0.0;
@@ -234,7 +237,6 @@ ReversePartitionMap2 OmegaHFieldLayout::GetReversePartitionMap(
         GetRank{classIds_h[local_index], classDims_h[local_index], coord},
         partition);
       reverse_partition[dr].indices.emplace_back(local_index);
-      local_index += 1;
 
       const auto n = reverse_partition[dr].ent_offsets.size();
       for (int e = ent_dim + 1; e < n; ++e) {

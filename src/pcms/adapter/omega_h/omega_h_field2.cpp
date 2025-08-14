@@ -274,8 +274,10 @@ int OmegaHField2::Serialize(
   // host copy of filtered field data array
   const auto array_h = GetDOFHolderData().GetValues();
   if (buffer.size() > 0) {
+    auto owned = layout_.GetOwned();
     for (LO i = 0; i < array_h.size(); i++) {
-      buffer[permutation[i]] = array_h[i];
+      if (owned[i])
+        buffer[permutation[i]] = array_h[i];
     }
   }
   return array_h.size();
@@ -287,8 +289,10 @@ void OmegaHField2::Deserialize(
 {
   PCMS_FUNCTION_TIMER;
   Omega_h::HostWrite<Real> sorted_buffer(permutation.size());
+  auto owned = layout_.GetOwned();
   for (size_t i = 0; i < sorted_buffer.size(); ++i) {
-    sorted_buffer[i] = buffer[permutation[i]];
+    if (owned[i])
+      sorted_buffer[i] = buffer[permutation[i]];
   }
   const auto sorted_buffer_d = Omega_h::Read<Real>(sorted_buffer);
   Rank1View<const Real, HostMemorySpace> sorted_buffer_view{std::data(sorted_buffer_d), std::size(sorted_buffer_d)};

@@ -54,10 +54,9 @@ size_t count_entries(const ReversePartitionMap2& reverse_partition)
 }
 
 // note this function can be parallelized by making use of the offsets
-redev::LOs ConstructPermutation(const ReversePartitionMap2& reverse_partition)
+redev::LOs ConstructPermutation(const ReversePartitionMap2& reverse_partition, size_t num_entries, int* length)
 {
   PCMS_FUNCTION_TIMER;
-  auto num_entries = count_entries(reverse_partition);
   redev::LOs permutation(num_entries);
   LO entry = 0;
   for (auto& rank : reverse_partition) {
@@ -74,6 +73,7 @@ redev::LOs ConstructPermutation(const ReversePartitionMap2& reverse_partition)
       }
     }
   }
+  *length = entry;
   return permutation;
 }
 
@@ -240,20 +240,23 @@ public:
 
     PCMS_FUNCTION_TIMER;
     auto gids = layout_.GetGids();
+    auto owned = layout_.GetOwned();
     auto ent_offsets = layout_.GetEntOffsets();
     if (redev_.GetProcessType() == redev::ProcessType::Client) {
       const ReversePartitionMap2 reverse_partition =
         layout_.GetReversePartitionMap(
           redev::Partition{redev_.GetPartition()});
       auto out_message = ConstructOutMessage(reverse_partition);
+      int length;
       comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
       gid_comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
-      message_permutation_ = ConstructPermutation(reverse_partition);
+      message_permutation_ = ConstructPermutation(reverse_partition, gids.size(), &length);
       // use permutation array to send the gids
-      msg_size_ = gids.size() + reverse_partition.size() * 5;
+      msg_size_ = length;
       std::vector<pcms::GO> msg(msg_size_);
       for (size_t i = 0; i < gids.size(); ++i) {
-        msg[message_permutation_[i]] = gids[i];
+        if (owned[i])
+          msg[message_permutation_[i]] = gids[i];
       }
       for (auto& rank : reverse_partition) {
         size_t i_offsets = message_permutation_[rank.second.indices[0]] - 5;

@@ -16,6 +16,7 @@ namespace pcms
 class MeshFieldBackend
 {
 public:
+  virtual ~MeshFieldBackend() = default;
   virtual Kokkos::View<Real* [1]> evaluate(Kokkos::View<Real**> localCoords,
                                            Kokkos::View<LO*> offsets) const = 0;
   virtual void SetData(Rank1View<const Real, HostMemorySpace> data,

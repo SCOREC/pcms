@@ -14,87 +14,26 @@
 
 namespace ts = test_support;
 
-void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
-             std::array<int, 4> layout_arr, const adios2::Params& params)
-{
-  redev::Redev rdv(MPI_COMM_WORLD);
-  auto channel =
-    rdv.CreateAdiosChannel("field2_chan", params, redev::TransportType::BP4);
-
-  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1);
-  auto gids = layout.GetGids();
-  const auto n = layout.GetNumOwnedDofHolder();
-  Omega_h::Write<double> ids(n);
-  PCMS_ALWAYS_ASSERT(n == gids.size());
-  Omega_h::parallel_for(
-    n, OMEGA_H_LAMBDA(int i) { ids[i] = gids[i]; });
-
-  pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
-  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
-    std::data(ids), std::size(ids)};
-  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field.GetCoordinateSystem()};
-  field.SetDOFHolderData(field_data_view);
-
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name, comm, rdv, channel, layout);
-  pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, field);
-
-  channel.BeginSendCommunicationPhase();
-  field_comm.Send();
-  channel.EndSendCommunicationPhase();
-
-  channel.BeginReceiveCommunicationPhase();
-  field_comm.Receive();
-  channel.EndReceiveCommunicationPhase();
-
-  auto copied_array = field.GetDOFHolderData().GetValues();
-
-  auto owned = layout.GetOwned();
-  int expected = 0;
-  int sum = 0;
-  Kokkos::parallel_reduce(
-    owned.size(),
-    KOKKOS_LAMBDA(int i, int& local_sum) {
-      local_sum += owned[i] != 0;
-    },
-    expected);
-  Kokkos::parallel_reduce(
-    n,
-    KOKKOS_LAMBDA(int i, int& local_sum) {
-      if (owned[i])
-        local_sum += (int) copied_array[i] == gids[i] + 1;
-    },
-    sum);
-
-  if (sum != expected) {
-    std::cerr << "2nd field Communication Failed, expected " << expected << " got "
-              << sum << std::endl;
-    exit(EXIT_FAILURE);
-  }
-  else {
-    std::cerr << "2nd Passed\n";
-  }
-}
-
 ts::ClassificationPartition getClassificationPartition(Omega_h::Mesh& mesh) {
   ts::ClassificationPartition cp;
   std::map<redev::ClassPtn::ModelEnt, int> ent_to_rank;
 
-  auto ids = mesh.get_array<Omega_h::ClassId>(0, "class_id");
-  auto dims = mesh.get_array<Omega_h::I8>(0, "class_dim");
-  auto remotes = mesh.ask_owners(0);
+  for (int e = 0; e <= 0; ++e) {
+    auto ids = mesh.get_array<Omega_h::ClassId>(e, "class_id");
+    auto dims = mesh.get_array<Omega_h::I8>(e, "class_dim");
+    auto remotes = mesh.ask_owners(e);
 
-  for (int i = 0; i < mesh.nents(0); ++i) {
-    redev::ClassPtn::ModelEnt ent({dims[i], ids[i]});
-    int rank = remotes.ranks[i];
-    auto it = ent_to_rank.find(ent);
-    if (it == ent_to_rank.end()) {
-      ent_to_rank[ent] = rank;
-      cp.ranks.push_back(rank);
-      cp.modelEnts.push_back(ent);
-    }
-    else {
-      PCMS_ALWAYS_ASSERT(rank == it->second);
+    for (int i = 0; i < mesh.nents(e); ++i) {
+      redev::ClassPtn::ModelEnt ent({dims[i], ids[i]});
+      int rank = remotes.ranks[i];
+      auto it = ent_to_rank.find(ent);
+      if (it == ent_to_rank.end()) {
+        ent_to_rank[ent] = rank;
+        cp.ranks.push_back(rank);
+        cp.modelEnts.push_back(ent);
+      } else {
+        PCMS_ALWAYS_ASSERT(rank == it->second);
+      }
     }
   }
 
@@ -114,38 +53,61 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
   return redev::ClassPtn(MPI_COMM_WORLD, ptn.ranks, ptn.modelEnts);
 }
 
-void server2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
-             std::array<int, 4> layout_arr, const adios2::Params& params,
-             const std::string& cpn_filename)
+void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
+             std::array<int, 4> layout_arr, const adios2::Params& params)
 {
-  redev::Redev rdv(
-    MPI_COMM_WORLD,
-    redev::Partition{setupServerPartition(mesh, cpn_filename)},
-    redev::ProcessType::Server);
+  redev::Redev rdv(MPI_COMM_WORLD);
   auto channel =
-    rdv.CreateAdiosChannel("field2_chan", params, redev::TransportType::BP4);
+    rdv.CreateAdiosChannel("field2_chan1", params, redev::TransportType::BP4);
 
   auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1);
+  auto gids = layout.GetGids();
   const auto n = layout.GetNumOwnedDofHolder();
   Omega_h::Write<double> ids(n);
+  PCMS_ALWAYS_ASSERT(n == gids.size());
   Omega_h::parallel_for(
-    n, OMEGA_H_LAMBDA(int i) { ids[i] = 0; });
+    n, OMEGA_H_LAMBDA(int i) { ids[i] = gids[i]; });
 
   pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
+  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
+    std::data(ids), std::size(ids)};
+  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
+    array_view, field.GetCoordinateSystem()};
+  field.SetDOFHolderData(field_data_view);
 
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name, comm, rdv, channel, layout);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "1", comm, rdv, channel, layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, field);
 
-  MPI_Barrier(MPI_COMM_WORLD);
+  channel.BeginSendCommunicationPhase();
+  field_comm.Send();
+  channel.EndSendCommunicationPhase();
+}
+
+void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
+             std::array<int, 4> layout_arr, const adios2::Params& params)
+{
+  redev::Redev rdv(MPI_COMM_WORLD);
+  auto channel =
+    rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
+
+  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1);
+  auto gids = layout.GetGids();
+  const auto n = layout.GetNumOwnedDofHolder();
+
+  pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "2", comm, rdv, channel, layout);
+  pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, field);
+
   channel.BeginReceiveCommunicationPhase();
   field_comm.Receive();
   channel.EndReceiveCommunicationPhase();
 
   auto copied_array = field.GetDOFHolderData().GetValues();
-  auto gids = layout.GetGids();
   auto owned = layout.GetOwned();
 
-  PCMS_ALWAYS_ASSERT(gids.size() == n);
+  PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());
+  PCMS_ALWAYS_ASSERT(owned.size() == gids.size());
+
   int expected = 0;
   int sum = 0;
   Kokkos::parallel_reduce(
@@ -168,22 +130,42 @@ void server2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     exit(EXIT_FAILURE);
   }
   else {
-    std::cerr << "Passed\n";
+    std::cerr << "Field Communication Passed\n";
   }
+}
 
-  PCMS_ALWAYS_ASSERT(n == gids.size());
+void server2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
+             std::array<int, 4> layout_arr, const adios2::Params& params,
+             const std::string& cpn_filename)
+{
+  redev::Redev rdv(
+    MPI_COMM_WORLD,
+    redev::Partition{setupServerPartition(mesh, cpn_filename)},
+    redev::ProcessType::Server);
+  auto channel1 =
+    rdv.CreateAdiosChannel("field2_chan1", params, redev::TransportType::BP4);
+  auto channel2 =
+    rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
+
+  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1);
+  const auto n = layout.GetNumOwnedDofHolder();
+  Omega_h::Write<double> ids(n);
   Omega_h::parallel_for(
-    n, OMEGA_H_LAMBDA(int i) { ids[i] = gids[i] + 1; });
+    n, OMEGA_H_LAMBDA(int i) { ids[i] = 0; });
 
-  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
-    std::data(ids), std::size(ids)};
-  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field.GetCoordinateSystem()};
-  field.SetDOFHolderData(field_data_view);
+  pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm1(comm_name + "1", comm, rdv, channel1, layout);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm2(comm_name + "2", comm, rdv, channel2, layout);
+  pcms::FieldCommunicator2<pcms::Real> field_comm1(layout_comm1, field);
+  pcms::FieldCommunicator2<pcms::Real> field_comm2(layout_comm2, field);
 
-  channel.BeginSendCommunicationPhase();
-  field_comm.Send();
-  channel.EndSendCommunicationPhase();
+  channel1.BeginReceiveCommunicationPhase();
+  field_comm1.Receive();
+  channel1.EndReceiveCommunicationPhase();
+
+  channel2.BeginSendCommunicationPhase();
+  field_comm2.Send();
+  channel2.EndSendCommunicationPhase();
 }
 
 int main(int argc, char** argv)
@@ -192,27 +174,31 @@ int main(int argc, char** argv)
   auto world = lib.world();
   int rank = world->rank();
   if (argc != 2) {
-    std::cerr << "Usage: " << argv[0] << " <clientId=0|1>\n";
+    std::cerr << "Usage: " << argv[0] << " <clientId=-1|0|1>\n";
     exit(EXIT_FAILURE);
   }
   int clientId = atoi(argv[1]);
-  REDEV_ALWAYS_ASSERT(clientId >= 0 && clientId <= 1);
+  REDEV_ALWAYS_ASSERT(clientId >= -1 && clientId <= 1);
 
   Omega_h::Mesh mesh;
   adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
   MPI_Comm mpi_comm = lib.world()->get_impl();
 
   switch (clientId) {
+    case -1:
+      mesh = Omega_h::binary::read("123.osh", world);
+      server2(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params, "123_2.cpn");
+      break;
     case 0:
-      mesh = Omega_h::binary::read("d3d.osh", world);
-      server2(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params, "d3d_1.cpn");
+      mesh = Omega_h::binary::read("123_p4.osh", world);
+      client1(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params);
       break;
     case 1:
-      mesh = Omega_h::binary::read("d3d.osh", world);
+      mesh = Omega_h::binary::read("123_p4.osh", world);
       client2(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params);
       break;
     default:
-      std::cerr << "Unhandled client id (should be 0,1)\n";
+      std::cerr << "Unhandled client id (should be -1,0,1)\n";
       exit(EXIT_FAILURE);
   }
 

@@ -149,7 +149,7 @@ endif ()
 if(PCMS_ENABLE_Fortran)
     add_executable(test_proxy_coupling_xgc_client_fortran test_proxy_coupling_xgc_client_fortran.f90)
     target_link_libraries(test_proxy_coupling_xgc_client_fortran PUBLIC pcms::fortranapi MPI::MPI_Fortran)
-    set_target_properties(test_proxy_coupling_xgc_client_fortran PROPERTIES LINKER_LANGUAGE CXX)
+    set_target_properties(test_proxy_coupling_xgc_client_fortran PROPERTIES LINKER_LANGUAGE Fortran)
     if(HOST_NPROC GREATER_EQUAL 4)
         dual_mpi_test(TESTNAME xgc_fortran_proxy_to_omega
                 TIMEOUT 10

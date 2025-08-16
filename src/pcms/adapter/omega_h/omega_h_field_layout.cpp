@@ -49,7 +49,7 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
     dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim()),
     class_ids_(GetNumEnts()),
     class_dims_(class_ids_.size()),
-    owned_(class_dims_.size())
+    owned_("", class_dims_.size())
 {
   PCMS_FUNCTION_TIMER;
   LO total_ents = GetNumEnts();
@@ -147,9 +147,10 @@ std::array<int, 4> OmegaHFieldLayout::GetNodesPerDim() const
   return nodes_per_dim_;
 }
 
-Omega_h::Read<Omega_h::I8> OmegaHFieldLayout::GetOwned() const
+Rank1View<const bool, HostMemorySpace> OmegaHFieldLayout::GetOwned() const
 {
-  return owned_;
+  Rank1View<const bool, HostMemorySpace> owned{std::data(owned_), std::size(owned_)};
+  return owned;
 }
 
 GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const

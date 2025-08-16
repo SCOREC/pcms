@@ -19,7 +19,7 @@ public:
   LO GetNumOwnedDofHolder() const override;
   GO GetNumGlobalDofHolder() const override;
 
-  Omega_h::Read<Omega_h::I8> GetOwned() const override;
+  Rank1View<const bool, HostMemorySpace> GetOwned() const override;
   GlobalIDView<HostMemorySpace> GetGids() const override;
   Rank2View<const Real, HostMemorySpace> GetDOFHolderCoordinates() const;
 
@@ -35,8 +35,6 @@ public:
 
   std::array<int, 4> GetNodesPerDim() const;
 
-  Omega_h::Mesh& GetMesh() const override { return mesh_; };
-
 private:
   Omega_h::Read<Omega_h::ClassId> GetClassIDs() const;
   Omega_h::Read<Omega_h::I8> GetClassDims() const;
@@ -49,7 +47,7 @@ private:
   Kokkos::View<Real **> dof_holder_coords_;
   Omega_h::Write<Omega_h::ClassId> class_ids_;
   Omega_h::Write<Omega_h::I8> class_dims_;
-  Omega_h::Write<Omega_h::I8> owned_;
+  Kokkos::View<bool*> owned_;
 };
 
 }

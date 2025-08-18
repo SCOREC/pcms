@@ -31,11 +31,7 @@ struct RBF_GAUSSIAN
                          r_sq);
 
     double r = Kokkos::sqrt(r_sq);
-    double rho = Kokkos::sqrt(rho_sq);
-    double ratio = r / rho;
-    double limit = 1 - ratio;
-
-    if (limit < 0) {
+    if (rho_sq < r_sq) {
       phi = 0;
 
     } else {
@@ -55,13 +51,14 @@ struct RBF_C4
   {
     double phi;
     double r = Kokkos::sqrt(r_sq);
-    OMEGA_H_CHECK_PRINTF(
-      rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
-      rho_sq);
     double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
-    if (limit < 0) {
+
+    OMEGA_H_CHECK_PRINTF(
+      rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
+      rho_sq);
+    if (rho_sq < r_sq) {
       phi = 0;
 
     } else {
@@ -86,15 +83,12 @@ struct RBF_CONST
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    double r = Kokkos::sqrt(r_sq);
     OMEGA_H_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
-    double rho = Kokkos::sqrt(rho_sq);
-    double ratio = r / rho;
-    double limit = 1 - ratio;
-    if (limit < 0) {
-      phi = 0;
+
+    if (rho_sq < r_sq) {
+      phi = 0.0;
 
     } else {
       phi = 1.0;
@@ -111,6 +105,104 @@ struct NoOp
 {
   OMEGA_H_INLINE
   double operator()(double, double) const { return 1.0; }
+};
+
+struct RBF_MULTIQUADRIC
+{
+  OMEGA_H_INLINE
+  double operator()(double r_sq, double rho_sq) const
+  {
+    double phi;
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho;
+    if (rho_sq < r_sq) {
+      phi = 0.0;
+    } else {
+      phi = Kokkos::sqrt(1.0 + ratio * ratio);
+    }
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
+                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                         r_sq, rho_sq);
+
+    return phi;
+  }
+};
+
+struct RBF_INVMULTIQUADRIC
+{
+  OMEGA_H_INLINE
+  double operator()(double r_sq, double rho_sq) const
+  {
+    double phi;
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho if (rho_sq < r_sq)
+    {
+      phi = 0.0;
+    }
+    else
+    {
+      phi = 1.0 / Kokkos::sqrt(1.0 + ratio * ratio);
+    }
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
+                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                         r_sq, rho_sq);
+
+    return phi;
+  }
+};
+
+struct RBF_THINPLATESPLINE
+{
+  OMEGA_H_INLINE
+  double operator()(double r_sq, double rho_sq) const
+  {
+    double phi;
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho if (rho_sq < r_sq)
+    {
+      phi = 0.0;
+    }
+    else
+    {
+      phi = r * r * Kokkos::log(ratio);
+    }
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
+                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                         r_sq, rho_sq);
+
+    return phi;
+  }
+};
+
+struct RBF_CUBIC
+{
+  OMEGA_H_INLINE
+  double operator()(double r_sq, double rho_sq) const
+  {
+    double phi;
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho double limit = 1 - ratio if (rho_sq < r_sq)
+    {
+      phi = 0.0;
+    }
+    else
+    {
+      phi = limit * limit * limit;
+    }
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
+                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                         r_sq, rho_sq);
+
+    return phi;
+  }
 };
 
 Omega_h::Write<Omega_h::Real> mls_interpolation(

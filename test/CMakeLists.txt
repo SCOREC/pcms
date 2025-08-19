@@ -104,14 +104,15 @@ if(Catch2_FOUND)
       add_executable(field_transfer_example field_transfer_example.cpp)
       target_link_libraries(field_transfer_example PUBLIC pcms::core pcms_interpolator)
       list(APPEND PCMS_UNIT_TEST_SOURCES
-          test_field_transfer.cpp
-          test_uniform_grid.cpp
-          test_omega_h_copy.cpp
-          test_point_search.cpp
-          test_mls_basis.cpp
-          test_rbf_interp.cpp
-          test_normalisation.cpp
-		  test_svd_serial.cpp)
+              test_field_transfer.cpp
+              test_uniform_grid.cpp
+              test_omega_h_copy.cpp
+              test_point_search.cpp
+	      test_mls_basis.cpp
+	      test_rbf_interp.cpp
+		  test_normalisation.cpp
+		  test_svd_serial.cpp 
+          point_to_mesh_mls.cpp)
   endif ()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core pcms_interpolator)

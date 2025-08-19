@@ -228,3 +228,152 @@ TEST_CASE("uniform grid search") {
     REQUIRE(-1 * out_of_bounds.tri_id == bot_left.tri_id);
   }
 }
+
+TEST_CASE("radial_intersects_bbox 2D") {
+  using pcms::detail::radial_intersects_bbox;
+  using pcms::AABBox;
+
+  AABBox<2> box{.center = {0.0, 0.0}, .half_width = {0.5, 0.5}};
+  double cutoff_squared = 0.25;
+
+  SECTION("Point outside cutoff") {
+    double pt[2] = {1.5, 0.0};
+    REQUIRE_FALSE(radial_intersects_bbox<2>(pt, box, cutoff_squared));
+  }
+
+  SECTION("Point on edge of cutoff") {
+    double pt[2] = {1.0, 0.0};
+    REQUIRE(radial_intersects_bbox<2>(pt, box, 1.0));
+  }
+
+  SECTION("Point inside AABB") {
+    double pt[2] = {0.0, 0.0};
+    REQUIRE(radial_intersects_bbox<2>(pt, box, cutoff_squared));
+  }
+
+  SECTION("Point close to corner") {
+    double pt[2] = {0.8, 0.8};
+    REQUIRE_FALSE(radial_intersects_bbox<2>(pt, box, 0.1));
+    REQUIRE(radial_intersects_bbox<2>(pt, box, 0.64));
+  }
+
+  SECTION("Radial region partially overlaps box") {
+    double pt[2] = {1.0, 0.0};
+    REQUIRE(radial_intersects_bbox<2>(pt, box, 0.3)); // cutoff_squared=0.3 (~0.55 radius)
+  }
+
+  SECTION("Point on AABB edge") {
+    double pt[2] = {0.5, 0.0}; // Exactly on the box edge
+    REQUIRE(radial_intersects_bbox<2>(pt, box, 0.25));
+  }
+
+  SECTION("Negative coordinate check") {
+    double pt[2] = {-1.5, 0.0};
+    REQUIRE_FALSE(radial_intersects_bbox<2>(pt, box, 0.25));
+  }
+
+  SECTION("Excess in one axis only") {
+    double pt[2] = {1.0, 0.0}; // Excess in x-axis but within y-axis
+    REQUIRE(radial_intersects_bbox<2>(pt, box, 1.0));
+  }
+}
+
+TEST_CASE("GridRadialNeighborFunctor 2D") {
+  using namespace pcms;
+  using detail::GridRadialNeighborFunctor;
+
+  const int dim = 2;
+  const int num_sources = 4;
+  const int num_targets = 2;
+  double cutoff = 1.0;
+
+  // Allocate Views in the default memory space (device if enabled)
+  Kokkos::View<double**> sources("sources", num_sources, dim);
+  Kokkos::View<double**> targets("targets", num_targets, dim);
+  
+  // Initialize via host mirrors
+  auto hsources = Kokkos::create_mirror_view(sources);
+  auto htargets = Kokkos::create_mirror_view(targets);
+
+  // Source points (2x2 grid)
+  hsources(0,0) = 0.0; hsources(0,1) = 0.0;
+  hsources(1,0) = 1.0; hsources(1,1) = 0.0;
+  hsources(2,0) = 0.0; hsources(2,1) = 1.0;
+  hsources(3,0) = 1.0; hsources(3,1) = 1.0;
+
+  // Target points
+  htargets(0,0) = 0.5; htargets(0,1) = 0.5;  // Center
+  htargets(1,0) = 2.0; htargets(1,1) = 2.0;  // Outside
+
+  Kokkos::deep_copy(sources, hsources);
+  Kokkos::deep_copy(targets, htargets);
+
+  // Grid setup matching production code
+  UniformGrid<2> grid;
+  grid.bot_left = {-0.5, -0.5};
+  grid.edge_length = {2.0, 2.0};
+  grid.divisions = {2, 2};
+
+  Kokkos::View<UniformGrid<2>*> grid_view("grid", 1);
+  auto hgrid = Kokkos::create_mirror_view(grid_view);
+  hgrid(0) = grid;
+  Kokkos::deep_copy(grid_view, hgrid);
+
+  // Compute cell_size and copy to device
+  std::array<double, 2> cell_size_host;
+  for (int d = 0; d < 2; ++d)
+    cell_size_host[d] = grid.edge_length[d] / grid.divisions[d];
+
+  Kokkos::View<double[2]> cell_size_view("cell_size_view");
+  auto h_cell_size_view = Kokkos::create_mirror_view(cell_size_view);
+  for (int d = 0; d < 2; ++d)
+    h_cell_size_view(d) = cell_size_host[d];
+  Kokkos::deep_copy(cell_size_view, h_cell_size_view);
+
+  // Cell data initialization (all sources in cell 0)
+  Kokkos::View<LO*> cell_ptrs("cell_ptrs", 5);
+  Kokkos::View<LO*> cell_indices("cell_indices", 4);
+  
+  auto hptrs = Kokkos::create_mirror_view(cell_ptrs);
+  auto hidx = Kokkos::create_mirror_view(cell_indices);
+  hptrs(0) = 0; hptrs(1) = 4; hptrs(2) = 4; hptrs(3) = 4; hptrs(4) = 4;
+  for (int i=0; i<4; ++i) hidx(i) = i;
+  
+  Kokkos::deep_copy(cell_ptrs, hptrs);
+  Kokkos::deep_copy(cell_indices, hidx);
+
+  // Updated functor with cell_size_view
+  GridRadialNeighborFunctor<2> functor(
+    targets, sources, grid_view, cell_ptrs, cell_indices, cutoff, 4, cell_size_view
+  );
+
+  SECTION("Target inside should find 4 neighbors") {
+    Kokkos::View<LO*> d_neighbors("neighbors", 4);
+    Kokkos::View<LO> d_count("count");
+
+    Kokkos::parallel_for("test_inside", 1, KOKKOS_LAMBDA(const int) {
+      d_count() = functor(0, d_neighbors.data());
+    });
+
+    auto h_count = Kokkos::create_mirror_view(d_count);
+    auto h_neighbors = Kokkos::create_mirror_view(d_neighbors);
+    Kokkos::deep_copy(h_count, d_count);
+    Kokkos::deep_copy(h_neighbors, d_neighbors);
+
+    REQUIRE(h_count() == 4);
+  }
+
+  SECTION("Target outside should find no neighbors") {
+    Kokkos::View<LO*> d_neighbors("neighbors", 4);
+    Kokkos::View<LO> d_count("count");
+
+    Kokkos::parallel_for("test_outside", 1, KOKKOS_LAMBDA(const int) {
+      d_count() = functor(1, d_neighbors.data());
+    });
+
+    auto h_count = Kokkos::create_mirror_view(d_count);
+    Kokkos::deep_copy(h_count, d_count);
+
+    REQUIRE(h_count() == 0);
+  }
+}

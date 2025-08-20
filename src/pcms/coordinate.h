@@ -1,7 +1,6 @@
 #ifndef PCMS_COUPLING_COORDINATE_H
 #define PCMS_COUPLING_COORDINATE_H
 #include <array>
-#include "pcms/external/span.h"
 #include "pcms/types.h"
 #include <Kokkos_Macros.hpp>
 namespace pcms

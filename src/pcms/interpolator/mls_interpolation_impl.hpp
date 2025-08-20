@@ -173,8 +173,6 @@ void normalize_supports(const member_type& team, double* target_point,
   int dim = support_coordinates.extent(1);
 
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports), [=](int i) {
-    Real pivot_point[MAX_DIM];
-
     for (int j = 0; j < dim; ++j) {
       support_coordinates(i, j) -= target_point[j];
     }

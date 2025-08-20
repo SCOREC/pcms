@@ -4,7 +4,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
 #include <pcms/transfer_field.h>
-#include <pcms/omega_h_field.h>
+#include "pcms/adapter/omega_h/omega_h_field.h"
 #include <Kokkos_Core.hpp>
 
 TEST_CASE("copy omega_h_field data")
@@ -24,8 +24,8 @@ TEST_CASE("copy omega_h_field data")
     mesh.add_tag<int>(0,"copied",1,zeros);
   }
   SECTION("No filter") {
-    pcms::OmegaHField<int,double> original("test_ids",mesh);
-    pcms::OmegaHField<int,double> copied("copied",mesh);
+    pcms::OmegaHField<int> original("test_ids",mesh);
+    pcms::OmegaHField<int> copied("copied",mesh);
     REQUIRE(original.Size() == copied.Size());
     pcms::copy_field(original,copied);
     auto copied_array = pcms::get_nodal_data(copied);
@@ -39,8 +39,8 @@ TEST_CASE("copy omega_h_field data")
   }
   SECTION("trivial positive mask"){
     Omega_h::Write<Omega_h::I8> mask(nverts,1);
-    pcms::OmegaHField<int,double> original("test_ids",mesh, mask);
-    pcms::OmegaHField<int,double> copied("copied",mesh,mask);
+    pcms::OmegaHField<int> original("test_ids",mesh, mask);
+    pcms::OmegaHField<int> copied("copied",mesh,mask);
     REQUIRE(original.Size() == copied.Size());
     pcms::copy_field(original,copied);
     auto copied_array = pcms::get_nodal_data(copied);
@@ -56,8 +56,8 @@ TEST_CASE("copy omega_h_field data")
     Omega_h::Write<Omega_h::I8> mask(nverts,0);
     Omega_h::parallel_for(
       nverts, OMEGA_H_LAMBDA(int i) { mask[i] = i%2; });
-    pcms::OmegaHField<int,double> original("test_ids",mesh,mask);
-    pcms::OmegaHField<int,double> copied("copied",mesh,mask);
+    pcms::OmegaHField<int> original("test_ids",mesh,mask);
+    pcms::OmegaHField<int> copied("copied",mesh,mask);
     REQUIRE(original.Size() == copied.Size());
     pcms::copy_field(original,copied);
     auto copied_array = pcms::get_nodal_data(copied);

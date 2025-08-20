@@ -297,15 +297,6 @@ int calculate_scratch_shared_size(const SupportResults& support,
       int end_ptr = support.supports_ptr[i + 1];
       int nsupports = end_ptr - start_ptr;
 
-      int max_size;
-      int min_size;
-      if (nsupports > basis_size) {
-        max_size = nsupports;
-        min_size = basis_size;
-      } else {
-        max_size = basis_size;
-        min_size = nsupports;
-      }
       size_t total_shared_size = 0;
       total_shared_size +=
         ScratchMatView::shmem_size(basis_size, basis_size); // Vt

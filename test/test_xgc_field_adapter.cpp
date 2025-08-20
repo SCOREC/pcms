@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
-#include <pcms/xgc_field_adapter.h>
+#include "pcms/adapter/xgc/xgc_field_adapter.h"
 #include <algorithm>
 
 using pcms::DimID;

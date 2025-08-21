@@ -12,7 +12,7 @@ public:
   MeshFieldBackendImpl(Omega_h::Mesh& mesh)
     : mesh_(mesh),
       mesh_field_(mesh),
-      shape_field_(mesh_field_.template CreateLagrangeField<Real, Order>())
+      shape_field_(mesh_field_.template CreateLagrangeField<Real, Order, 1>())
   {
   }
 
@@ -59,7 +59,7 @@ private:
   Omega_h::Mesh& mesh_;
   MeshField::OmegahMeshField<DefaultExecutionSpace, Dim> mesh_field_;
   using ShapeField =
-    decltype(mesh_field_.template CreateLagrangeField<Real, Order>());
+    decltype(mesh_field_.template CreateLagrangeField<Real, Order, 1>());
   ShapeField shape_field_;
 };
 

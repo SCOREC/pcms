@@ -105,7 +105,7 @@ if(Catch2_FOUND)
           test_bounding_box.cpp)
   if (PCMS_ENABLE_XGC)
       list(APPEND PCMS_UNIT_TEST_SOURCES
-              test_xgc_reverse_classifcation.cpp
+              test_xgc_reverse_classification.cpp
               test_xgc_field_adapter.cpp)
   endif ()
 
@@ -161,7 +161,7 @@ endif ()
 if(PCMS_ENABLE_Fortran)
     add_executable(test_proxy_coupling_xgc_client_fortran test_proxy_coupling_xgc_client_fortran.f90)
     target_link_libraries(test_proxy_coupling_xgc_client_fortran PUBLIC pcms::fortranapi MPI::MPI_Fortran)
-    set_target_properties(test_proxy_coupling_xgc_client_fortran PROPERTIES LINKER_LANGUAGE CXX)
+    set_target_properties(test_proxy_coupling_xgc_client_fortran PROPERTIES LINKER_LANGUAGE Fortran)
     if(HOST_NPROC GREATER_EQUAL 4)
         dual_mpi_test(TESTNAME xgc_fortran_proxy_to_omega
                 TIMEOUT 10

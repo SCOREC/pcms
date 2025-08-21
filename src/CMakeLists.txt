@@ -36,7 +36,8 @@ set(PCMS_SOURCES
         pcms/adapter/point_cloud/point_cloud_layout.cpp
         pcms/adapter/point_cloud/point_cloud.cpp
         pcms/adapter/omega_h/omega_h_field_layout.cpp
-        pcms/adapter/omega_h/omega_h_field2.cpp)
+        pcms/adapter/omega_h/omega_h_field2.cpp
+        pcms/adapter/xgc/xgc_field_adapter.h)
 
 configure_file(
   pcms/version.h.in

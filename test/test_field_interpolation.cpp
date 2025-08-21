@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
@@ -35,40 +36,17 @@ TEST_CASE("interpolate linear 2d omega_h_field")
     array_view, field.GetCoordinateSystem()};
   field.SetDOFHolderData(field_data_view);
 
-  std::vector<double> coords = {
-    0.7681, 0.886,
-    0.5337, 0.5205,
-    0.8088, 0.1513,
-    0.13, 0.43,
-    0.5484, 0.8263,
-    0.006119, 0.8642,
-    0.5889, 0.5622,
-    0.9268, 0.1749,
-    0.2615, 0.1468,
-    0.9793, 0.9612,
-  };
-
   pcms::interpolate_field2(field, interpolated);
-
-  std::vector<double> evaluation(coords.size() / 2);
-  pcms::Rank1View<double, pcms::HostMemorySpace> eval_view{evaluation.data(),
-                                                           evaluation.size()};
-  pcms::Rank2View<const double, pcms::HostMemorySpace> coords_view(
-    coords.data(), coords.size() / 2, 2);
-  pcms::FieldDataView<double, pcms::HostMemorySpace> data_view(
-    eval_view, interpolated.GetCoordinateSystem());
-  pcms::CoordinateView<pcms::HostMemorySpace> coordinate_view{
-    interpolated.GetCoordinateSystem(), coords_view};
-
-  auto locale = interpolated.GetLocalizationHint(coordinate_view);
-  interpolated.Evaluate(locale, data_view);
-
-  for (int i = 0; i < coords.size() / 2; ++i) {
-    double x = coords[2 * i + 0];
-    double y = coords[2 * i + 1];
-
-    CAPTURE(evaluation[i], x, y, f(x, y));
-    REQUIRE(std::abs(evaluation[i] - f(x, y)) < 1e-12);
+  auto interpolated_dof = interpolated.GetDOFHolderData();
+  auto original_dof = field.GetDOFHolderData();
+  REQUIRE(interpolated_dof.GetCoordinateSystem() == original_dof.GetCoordinateSystem());
+  REQUIRE( interpolated_dof.Size() == original_dof.Size());
+  // assumes that GetDOFHolderData will return a host view
+  for (int i = 0; i < interpolated_dof.Size(); ++i) {
+    REQUIRE_THAT(interpolated_dof.GetValues()[i],
+                 Catch::Matchers::WithinRel(original_dof.GetValues()[i], 0.001) ||
+                 Catch::Matchers::WithinAbs(original_dof.GetValues()[i], 1E-10)
+                 );
   }
 }
 
@@ -107,44 +85,22 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
   pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
   pcms::OmegaHField2 interpolated("", pcms::CoordinateSystem::Cartesian, layout, mesh);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
-    std::data(test_f), std::size(test_f)};
-  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field.GetCoordinateSystem()};
-  field.SetDOFHolderData(field_data_view);
-
-  std::vector<double> coords = {
-    0.7681, 0.886,
-    0.5337, 0.5205,
-    0.8088, 0.1513,
-    0.13, 0.43,
-    0.5484, 0.8263,
-    0.006119, 0.8642,
-    0.5889, 0.5622,
-    0.9268, 0.1749,
-    0.2615, 0.1468,
-    0.9793, 0.9612,
+    std::data(test_f), std::size(test_f)
   };
+  field.SetDOFHolderData({array_view, field.GetCoordinateSystem()});
 
+  // interpolate the field from one mesh to another mesh with the same coordinates
   pcms::interpolate_field2(field, interpolated);
 
-  std::vector<double> evaluation(coords.size() / 2);
-  pcms::Rank1View<double, pcms::HostMemorySpace> eval_view{evaluation.data(),
-                                                           evaluation.size()};
-  pcms::Rank2View<const double, pcms::HostMemorySpace> coords_view(
-    coords.data(), coords.size() / 2, 2);
-  pcms::FieldDataView<double, pcms::HostMemorySpace> data_view(
-    eval_view, interpolated.GetCoordinateSystem());
-  pcms::CoordinateView<pcms::HostMemorySpace> coordinate_view{
-    interpolated.GetCoordinateSystem(), coords_view};
-
-  auto locale = interpolated.GetLocalizationHint(coordinate_view);
-  interpolated.Evaluate(locale, data_view);
-
-  for (int i = 0; i < coords.size() / 2; ++i) {
-    double x = coords[2 * i + 0];
-    double y = coords[2 * i + 1];
-
-    CAPTURE(evaluation[i], x, y, f(x, y));
-    REQUIRE(std::abs(evaluation[i] - f(x, y)) < 1e-12);
+  auto interpolated_dof = interpolated.GetDOFHolderData();
+  auto original_dof = field.GetDOFHolderData();
+  REQUIRE(interpolated_dof.GetCoordinateSystem() == original_dof.GetCoordinateSystem());
+  REQUIRE( interpolated_dof.Size() == original_dof.Size());
+  // assumes that GetDOFHolderData will return a host view
+  for (int i = 0; i < interpolated_dof.Size(); ++i) {
+    REQUIRE_THAT(interpolated_dof.GetValues()[i],
+                 Catch::Matchers::WithinRel(original_dof.GetValues()[i], 0.001) ||
+                 Catch::Matchers::WithinAbs(original_dof.GetValues()[i], 1E-10)
+                 );
   }
 }

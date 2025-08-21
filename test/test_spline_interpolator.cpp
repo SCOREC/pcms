@@ -165,7 +165,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
 
   // interpolator.cspline(x, ns, fspl, 1, 1, 1, 1, wk);
   ExplicitCubicSplineInterpolator<double, TestMemorySpace>
-      explicit_interpolator(x, f, 1, 1, 1, 1);
+      explicit_interpolator(x, f, BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1,
+                            BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
   explicit_interpolator.evaluate(xt, splinv);
 
   auto res1 = Rank1View<double, HostMemorySpace>(res_1d.data(), 2);
@@ -173,7 +174,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
   reset_2dspan(splinv);
 
   ExplicitCubicSplineInterpolator<double, TestMemorySpace>
-      explicit_interpolator_periodic(x, f, -1, 0, -1, 0);
+      explicit_interpolator_periodic(x, f, BoundaryCondition::PERIODIC, 0,
+                                     BoundaryCondition::PERIODIC, 0);
   explicit_interpolator_periodic.evaluate(xt, splinv);
 
   auto res2 = Rank1View<double, HostMemorySpace>(res_1d.data() + 2, 2);
@@ -181,7 +183,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
   reset_2dspan(splinv);
 
   CompactCubicSplineInterpolator<double, TestMemorySpace> compact_interpolator(
-      x, f, 1, 1, 1, 1);
+      x, f, BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1,
+      BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
   compact_interpolator.evaluate(xt, splinv);
 
   auto res3 = Rank1View<double, HostMemorySpace>(res_1d.data() + 4, 2);
@@ -263,8 +266,11 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
   generate_gt_2d(splinv_gt, fxtest, fthtest, ntest);
 
   ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>
-      explicit_interpolator(x, th, values, 1, bcx1, 1, bcx2, 1, bcth1, 1,
-                            bcth2);
+      explicit_interpolator(x, th, values,
+                            BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx1,
+                            BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx2,
+                            BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth1,
+                            BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
   explicit_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
 
   auto res1 = Rank1View<double, HostMemorySpace>(res_2d.data(), 2);
@@ -272,7 +278,11 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
   reset_2dspan(splinv);
 
   CompactBiCubicSplineInterpolator<double, TestMemorySpace>
-      compact_interpolator(x, th, values, 1, bcx1, 1, bcx2, 1, bcth1, 1, bcth2);
+      compact_interpolator(x, th, values,
+                           BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx1,
+                           BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx2,
+                           BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth1,
+                           BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
   compact_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
 
   auto res2 = Rank1View<double, HostMemorySpace>(res_2d.data() + 2, 2);

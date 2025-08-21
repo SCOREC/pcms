@@ -20,6 +20,12 @@ set(PCMS_HEADERS
         pcms/print.h
         pcms/partition.h
         pcms/coupler.h
+        pcms/coordinate_system.h
+        pcms/field_layout.h
+        pcms/adapter/point_cloud/point_cloud_layout.h
+        pcms/adapter/point_cloud/point_cloud.h
+        pcms/adapter/omega_h/omega_h_field_layout.h
+        pcms/adapter/omega_h/omega_h_field2.h
         )
 
 set(PCMS_SOURCES
@@ -27,12 +33,6 @@ set(PCMS_SOURCES
         pcms/assert.cpp
         pcms/print.cpp
         pcms/adapter/xgc/xgc_field_adapter.h
-        pcms/coordinate_system.h
-        pcms/field_layout.h
-        pcms/adapter/point_cloud/point_cloud_layout.h
-        pcms/adapter/point_cloud/point_cloud.h
-        pcms/adapter/omega_h/omega_h_field_layout.h
-        pcms/adapter/omega_h/omega_h_field2.h
         pcms/adapter/point_cloud/point_cloud_layout.cpp
         pcms/adapter/point_cloud/point_cloud.cpp
         pcms/adapter/omega_h/omega_h_field_layout.cpp

@@ -82,25 +82,34 @@ struct OmegaHField2LocalizationHint
     Kokkos::parallel_scan(
       mesh.nelems(),
       KOKKOS_LAMBDA(LO i, LO & partial, bool is_final) {
-        if (is_final)
+        if (is_final) {
           offsets_(i) = partial;
+        }
         partial += elem_counts(i);
       }, total);
     offsets_(mesh.nelems()) = total;
 
     for (LO i = 0; i < search_results.size(); ++i) {
         auto [dim, elem_idx, coord] = search_results(i);
+        // currently don't handle case where point is on a boundary
+        PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh.dim());
+        // element should be inside the domain (positive)
+        PCMS_ALWAYS_ASSERT(elem_idx >= 0 && elem_idx < mesh.nelems());
         elem_counts(elem_idx) -= 1;
         LO index = offsets_(elem_idx) + elem_counts(elem_idx);
-        for (int j = 1; j <= mesh.dim(); ++j)
-          coordinates_(index, j - 1) = coord[j];
-        coordinates_(index, mesh.dim()) = coord[0];
+        for (int j = 0; j < (mesh.dim()+1); ++j) {
+          coordinates_(index,  j) = coord[j];
+        }
+        //coordinates_(index, mesh.dim()) = coord[0];
         indices_(index) = i;
     }
   }
 
+  // offsets is the number of points in each element
   Kokkos::View<LO*> offsets_;
+  // coordinates are the parametric coordinates of each point
   Kokkos::View<Real**> coordinates_;
+  // indices are the index of the original point
   Kokkos::View<LO*> indices_;
 };
 

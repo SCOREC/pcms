@@ -66,7 +66,7 @@ size_t PointCloudLayout::GetNumEnts() const
 std::array<size_t, 5> PointCloudLayout::GetEntOffsets() const
 {
   std::array<size_t, 5> offsets{};
-  for (int i = 0; i < offsets.size(); ++i)
+  for (size_t i = 0; i < offsets.size(); ++i)
     offsets[i] = coords_.extent(0);
   offsets[0] = 0;
   return offsets;
@@ -75,14 +75,14 @@ std::array<size_t, 5> PointCloudLayout::GetEntOffsets() const
 std::array<int, 4> PointCloudLayout::GetNodesPerDim() const
 {
   std::array<int, 4> nodes{};
-  for (int i = 0; i < nodes.size(); ++i)
+  for (size_t i = 0; i < nodes.size(); ++i)
     nodes[i] = 0;
   nodes[0] = 1;
   return nodes;
 }
 
 ReversePartitionMap2 PointCloudLayout::GetReversePartitionMap(
-  const redev::Partition& partition) const
+  const redev::Partition& /* unused */) const
 {
   throw std::runtime_error("Unimplemented");
 }

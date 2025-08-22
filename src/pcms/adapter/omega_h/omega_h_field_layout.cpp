@@ -44,10 +44,10 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
                                      CoordinateSystem coordinate_system,
                                      std::string global_id_name)
   : mesh_(mesh),
-    nodes_per_dim_(nodes_per_dim),
+    global_id_name_(global_id_name),
     num_components_(num_components),
     coordinate_system_(coordinate_system),
-    global_id_name_(global_id_name),
+    nodes_per_dim_(nodes_per_dim),
     dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim()),
     class_ids_(GetNumEnts()),
     class_dims_(class_ids_.size()),
@@ -199,9 +199,9 @@ std::array<size_t, 5> OmegaHFieldLayout::GetEntOffsets() const
 {
   std::array<size_t, 5> offsets{};
   size_t offset = 0;
-  for (int i = 0; i < offsets.size(); ++i) {
+  for (size_t i = 0; i < offsets.size(); ++i) {
     offsets[i] = offset;
-    if (i <= mesh_.dim() && nodes_per_dim_[i])
+    if (i <= static_cast<size_t>(mesh_.dim()) && nodes_per_dim_[i])
       offset += mesh_.nents(i);
   }
   offsets[offsets.size() - 1] = offset;
@@ -243,7 +243,7 @@ ReversePartitionMap2 OmegaHFieldLayout::GetReversePartitionMap(
       reverse_partition[dr].indices.emplace_back(local_index);
 
       const auto n = reverse_partition[dr].ent_offsets.size();
-      for (int e = ent_dim + 1; e < n; ++e) {
+      for (size_t e = ent_dim + 1; e < n; ++e) {
         reverse_partition[dr].ent_offsets[e] += 1;
       }
     }

@@ -42,7 +42,7 @@ public:
   [[nodiscard]] Rank1View<const T, MemorySpace> GetValues() const noexcept { return values_; }
   [[nodiscard]] Rank1View<T, MemorySpace> GetValues() noexcept { return values_; }
 
-  // Note: currently don't beleive we should allow changing the coordinate system
+  // Note: currently don't believe we should allow changing the coordinate system
 
 private:
   Rank1View<T, MemorySpace> values_;

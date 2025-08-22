@@ -56,7 +56,7 @@ void PointCloud::SetDOFHolderData(
   }
 
   Rank1View<const Real, HostMemorySpace> values = data.GetValues();
-  PCMS_ALWAYS_ASSERT(static_cast<LO>(values.size()) == data_.size());
+  PCMS_ALWAYS_ASSERT(values.size() == data_.size());
   Kokkos::parallel_for(
     values.size(), KOKKOS_LAMBDA(int i) { data_(i) = values[i]; });
 }
@@ -68,13 +68,13 @@ LocalizationHint PointCloud::GetLocalizationHint(
   return LocalizationHint{hint};
 }
 
-void PointCloud::Evaluate(LocalizationHint location,
-                          FieldDataView<double, HostMemorySpace> results) const
+void PointCloud::Evaluate(LocalizationHint /* unused */,
+                          FieldDataView<double, HostMemorySpace> /* unused */) const
 {
   throw std::runtime_error("Not implemented");
 }
 
-void PointCloud::EvaluateGradient(FieldDataView<double, HostMemorySpace> results)
+void PointCloud::EvaluateGradient(FieldDataView<double, HostMemorySpace> /* unused */)
 {
   throw std::runtime_error("Not implemented");
 }

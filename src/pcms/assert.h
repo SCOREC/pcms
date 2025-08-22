@@ -15,6 +15,7 @@
 #define PCMS_ALWAYS_ASSERT(...) VA_SELECT(PCMS_ALWAYS_ASSERT, __VA_ARGS__)
 #define PCMS_ALWAYS_ASSERT_1(cond) PCMS_ALWAYS_ASSERT_2(cond, MPI_COMM_WORLD)
 #define PCMS_ALWAYS_ASSERT_2(pcms_macro_cond, pcms_macro_comm)                                                  \
+  /* NOLINTBEGIN(modernize-avoid-c-arrays,cppcoreguidelines-avoid-do-while,cppcoreguidelines-avoid-c-arrays)*/ \
   do {                                                                                               \
     if (!(pcms_macro_cond)) {                                                                                   \
       int pcms_macro_rank = -1;                                                                      \
@@ -24,8 +25,10 @@
                __FILE__, __LINE__, pcms_macro_rank);                                                 \
       pcms::Pcms_Assert_Fail(pcms_macro_omsg);                                                       \
     }                                                                                                \
-  } while (0)
+  } while (0) \
+  /* NOLINTEND(modernize-avoid-c-arrays,cppcoreguidelines-avoid-do-while,cppcoreguidelines-avoid-c-arrays)*/
 #define PCMS_ALWAYS_ASSERT_3(pcms_macro_cond, pcms_macro_comm, pcms_macro_msg)                                  \
+  /* NOLINTBEGIN(modernize-avoid-c-arrays,cppcoreguidelines-avoid-do-while,cppcoreguidelines-avoid-c-arrays)*/ \
   do {                                                                                               \
     if (!(pcms_macro_cond)) {                                                                                   \
       int pcms_macro_rank = -1;                                                                      \
@@ -35,7 +38,8 @@
                __FILE__, __LINE__, pcms_macro_rank, pcms_macro_msg);                                 \
       pcms::Pcms_Assert_Fail(pcms_macro_omsg);                                                       \
     }                                                                                                \
-  } while (0)
+  } while (0) \
+  /* NOLINTEND(modernize-avoid-c-arrays,cppcoreguidelines-avoid-do-while,cppcoreguidelines-avoid-c-arrays)*/
 
 namespace pcms {
 // from scorec/core/pcu_fail.h

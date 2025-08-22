@@ -27,7 +27,7 @@ public:
   {
     std::array<Real, dim> distance_within_grid;
 
-    for (int i = 0; i < dim; ++i) {
+    for (size_t i = 0; i < dim; ++i) {
       distance_within_grid[i] = point[i] - bot_left[i];
     }
 
@@ -37,7 +37,7 @@ public:
       index = -1;
     }
 
-    for (int i = 0; i < dim; ++i) {
+    for (size_t i = 0; i < dim; ++i) {
       auto index = static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
       indexes[i] = Kokkos::clamp(index, 0, divisions[i] - 1);
     }
@@ -54,11 +54,11 @@ public:
 
     std::array<Real, dim> half_width, center;
 
-    for (int i = 0; i < dim; ++i) {
+    for (size_t i = 0; i < dim; ++i) {
       half_width[i] = edge_length[i] / divisions[i] / 2;
     }
 
-    for (int i = 0; i < dim; ++i) {
+    for (size_t i = 0; i < dim; ++i) {
       center[i] = (2.0 * index[i] + 1.0) * half_width[i] + bot_left[i];
     }
 
@@ -73,7 +73,7 @@ public:
     }
     std::array<LO, dim> result;
 
-    for (int i = 0; i < dim; ++i) {
+    for (size_t i = 0; i < dim; ++i) {
       result[i] = idx / stride;
       idx -= result[i] * stride;
       stride /= divisions[i];
@@ -91,7 +91,7 @@ public:
     LO idx = 0;
     LO stride = 1;
 
-    for (int i = 0; i < dim; ++i) {
+    for (size_t i = 0; i < dim; ++i) {
       idx += dimensionedIndex[i] * stride;
       stride *= divisions[i];
     }

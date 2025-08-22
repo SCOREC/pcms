@@ -30,8 +30,8 @@ public:
     auto topo = static_cast<MeshField::Mesh_Topology>(dim);
     Omega_h::parallel_for(
       mesh_.nents(dim), OMEGA_H_LAMBDA(size_t ent) {
-        for (int n = 0; n < num_nodes; ++n) {
-          for (int c = 0; c < num_components; ++c) {
+        for (size_t n = 0; n < num_nodes; ++n) {
+          for (size_t c = 0; c < num_components; ++c) {
             shape_field_(ent, n, c, topo) =
               data[ent * stride + n * num_components + c];
           }
@@ -46,8 +46,8 @@ public:
     auto topo = static_cast<MeshField::Mesh_Topology>(dim);
     Omega_h::parallel_for(
       mesh_.nents(dim), OMEGA_H_LAMBDA(size_t ent) {
-        for (int n = 0; n < num_nodes; ++n) {
-          for (int c = 0; c < num_components; ++c) {
+        for (size_t n = 0; n < num_nodes; ++n) {
+          for (size_t c = 0; c < num_components; ++c) {
             data[ent * stride + n * num_components + c] =
               shape_field_(ent, n, c, topo);
           }
@@ -73,7 +73,7 @@ struct OmegaHField2LocalizationHint
   {
     Kokkos::View<LO*> elem_counts("", mesh.nelems());
 
-    for (LO i = 0; i < search_results.size(); ++i) {
+    for (size_t i = 0; i < search_results.size(); ++i) {
         auto [dim, elem_idx, coord] = search_results(i);
         elem_counts[elem_idx] += 1;
     }
@@ -89,7 +89,7 @@ struct OmegaHField2LocalizationHint
       }, total);
     offsets_(mesh.nelems()) = total;
 
-    for (LO i = 0; i < search_results.size(); ++i) {
+    for (size_t i = 0; i < search_results.size(); ++i) {
         auto [dim, elem_idx, coord] = search_results(i);
         // currently don't handle case where point is on a boundary
         PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh.dim());
@@ -246,7 +246,7 @@ void OmegaHField2::Evaluate(LocalizationHint location,
     KOKKOS_LAMBDA(LO i) { values[hint.indices_(i)] = eval_results(i, 0); });
 }
 
-void OmegaHField2::EvaluateGradient(FieldDataView<double, HostMemorySpace> results)
+void OmegaHField2::EvaluateGradient(FieldDataView<double, HostMemorySpace> /* unused */)
 {
   // TODO when moved to PCMS throw PCMS exception
   throw std::runtime_error("Not implemented");
@@ -272,7 +272,7 @@ int OmegaHField2::Serialize(
   const auto array_h = GetDOFHolderData().GetValues();
   if (buffer.size() > 0) {
     auto owned = layout_.GetOwned();
-    for (LO i = 0; i < array_h.size(); i++) {
+    for (size_t i = 0; i < array_h.size(); i++) {
       if (owned[i])
         buffer[permutation[i]] = array_h[i];
     }
@@ -287,7 +287,7 @@ void OmegaHField2::Deserialize(
   PCMS_FUNCTION_TIMER;
   Omega_h::HostWrite<Real> sorted_buffer(permutation.size());
   auto owned = layout_.GetOwned();
-  for (size_t i = 0; i < sorted_buffer.size(); ++i) {
+  for (LO i = 0; i < sorted_buffer.size(); ++i) {
     if (owned[i])
       sorted_buffer[i] = buffer[permutation[i]];
   }

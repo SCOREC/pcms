@@ -252,12 +252,9 @@ void scale_and_adjust(member_type team, ScratchVecView& diagonal_entries,
                       ScratchMatView& adjustedMatrix)
 {
   size_t rowA = matrixToScale.extent(0);
-  size_t colA = matrixToScale.extent(1);
 
   size_t rowB = adjustedMatrix.extent(0);
   size_t colB = adjustedMatrix.extent(1);
-
-  size_t nWeights = diagonal_entries.extent(0);
   OMEGA_H_CHECK(colB == rowA);
   eval_row_scaling(team, diagonal_entries, matrixToScale);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, rowB), [=](int i) {

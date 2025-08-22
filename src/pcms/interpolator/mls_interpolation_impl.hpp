@@ -194,7 +194,6 @@ void create_vandermonde_matrix(const ScratchMatView& local_source_points, int j,
                                const IntDeviceMatView& slice_length,
                                ScratchMatView vandermonde_matrix)
 {
-  int N = local_source_points.extent(0);
   int dim = local_source_points.extent(1);
 
   double source_point[MAX_DIM] = {};
@@ -261,11 +260,10 @@ KOKKOS_INLINE_FUNCTION void compute_phi_vector(
  */
 KOKKOS_INLINE_FUNCTION
 void scale_column_trans_matrix(const ScratchMatView& matrix,
-                               const ScratchVecView& vector, member_type team,
+                               const ScratchVecView& vector, member_type /*unused*/,
                                int j, ScratchMatView result_matrix)
 {
 
-  int M = matrix.extent(0);
   int N = matrix.extent(1);
 
   ScratchVecView matrix_row = Kokkos::subview(matrix, j, Kokkos::ALL());

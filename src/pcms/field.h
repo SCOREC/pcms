@@ -39,18 +39,18 @@ struct HasCoordinateSystem<T, VoidT<typename T::coordinate_system>>
 template <typename T, typename MemorySpace>
 class FieldDataView {
 public:
-  FieldDataView(Rank1View<T, MemorySpace> values, CoordinateSystem coordinate_system) : values(values), coordinate_system(coordinate_system) {}
-  LO Size() const {return values.size(); }
-  CoordinateSystem GetCoordinateSystem() const { return coordinate_system; }
+  FieldDataView(Rank1View<T, MemorySpace> values, CoordinateSystem coordinate_system) : values_(values), coordinate_system_(coordinate_system) {}
+  LO Size() const {return values_.size(); }
+  CoordinateSystem GetCoordinateSystem() const { return coordinate_system_; }
 
-  [[nodiscard]] Rank1View<const T, MemorySpace> GetValues() const noexcept { return values; }
-  [[nodiscard]] Rank1View<T, MemorySpace> GetValues() noexcept { return values; }
+  [[nodiscard]] Rank1View<const T, MemorySpace> GetValues() const noexcept { return values_; }
+  [[nodiscard]] Rank1View<T, MemorySpace> GetValues() noexcept { return values_; }
 
   // Note: currently don't beleive we should allow changing the coordinate system
 
 private:
-  Rank1View<T, MemorySpace> values;
-  CoordinateSystem coordinate_system;
+  Rank1View<T, MemorySpace> values_;
+  CoordinateSystem coordinate_system_;
 };
 
 

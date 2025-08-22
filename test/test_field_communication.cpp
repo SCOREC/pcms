@@ -173,12 +173,16 @@ int main(int argc, char** argv)
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
   int rank = world->rank();
-  if (argc != 2) {
-    std::cerr << "Usage: " << argv[0] << " <clientId=-1|0|1>\n";
+  if (argc != 4) {
+    std::cerr << "Usage: " << argv[0]
+              << " <clientId=-1|0|1> /path/to/omega_h/mesh"
+              << "/path/to/partitionFile.cpn\n";
     exit(EXIT_FAILURE);
   }
   int clientId = atoi(argv[1]);
   REDEV_ALWAYS_ASSERT(clientId >= -1 && clientId <= 1);
+  const auto meshFile = argv[2];
+  const auto classPartitionFile = argv[3];
 
   Omega_h::Mesh mesh;
   adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
@@ -186,15 +190,15 @@ int main(int argc, char** argv)
 
   switch (clientId) {
     case -1:
-      mesh = Omega_h::binary::read("123.osh", world);
-      server2(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params, "123_2.cpn");
+      mesh = Omega_h::binary::read(meshFile, world);
+      server2(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params, classPartitionFile);
       break;
     case 0:
-      mesh = Omega_h::binary::read("123_p4.osh", world);
+      mesh = Omega_h::binary::read(meshFile, world);
       client1(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params);
       break;
     case 1:
-      mesh = Omega_h::binary::read("123_p4.osh", world);
+      mesh = Omega_h::binary::read(meshFile, world);
       client2(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params);
       break;
     default:

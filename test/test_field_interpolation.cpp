@@ -17,7 +17,7 @@ TEST_CASE("interpolate linear 2d omega_h_field")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto layout =
-    pcms::OmegaHFieldLayout(mesh, {1, 0, 0, 0}, 1);
+    pcms::OmegaHFieldLayout(mesh, {1, 0, 0, 0}, 1, pcms::CoordinateSystem::Cartesian);
   const auto nverts = mesh.nents(0);
   auto mesh_coords = mesh.coords();
   auto f = [](double x, double y) { return -0.3 * x + 0.5 * y; };
@@ -28,8 +28,8 @@ TEST_CASE("interpolate linear 2d omega_h_field")
       double y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
-  pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
-  pcms::OmegaHField2 interpolated("", pcms::CoordinateSystem::Cartesian, layout, mesh);
+  pcms::OmegaHField2 field("", layout, mesh);
+  pcms::OmegaHField2 interpolated("", layout, mesh);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
     std::data(test_f), std::size(test_f)};
   pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
@@ -57,7 +57,7 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto layout =
-    pcms::OmegaHFieldLayout(mesh, {1, 1, 0, 0}, 1);
+    pcms::OmegaHFieldLayout(mesh, {1, 1, 0, 0}, 1, pcms::CoordinateSystem::Cartesian);
   const auto nverts = mesh.nents(0);
   const auto nedges = mesh.nents(1);
   auto mesh_coords = mesh.coords();
@@ -82,8 +82,8 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
       test_f[nverts + i] = f(cx, cy);
     });
 
-  pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
-  pcms::OmegaHField2 interpolated("", pcms::CoordinateSystem::Cartesian, layout, mesh);
+  pcms::OmegaHField2 field("", layout, mesh);
+  pcms::OmegaHField2 interpolated("", layout, mesh);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
     std::data(test_f), std::size(test_f)
   };

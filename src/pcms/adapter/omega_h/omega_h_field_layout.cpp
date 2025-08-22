@@ -41,10 +41,12 @@ Omega_h::Write<Omega_h::GO> GetGidsHelper(LO total_ents,
 OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
                                      std::array<int, 4> nodes_per_dim,
                                      int num_components,
+                                     CoordinateSystem coordinate_system,
                                      std::string global_id_name)
   : mesh_(mesh),
     nodes_per_dim_(nodes_per_dim),
     num_components_(num_components),
+    coordinate_system_(coordinate_system),
     global_id_name_(global_id_name),
     dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim()),
     class_ids_(GetNumEnts()),
@@ -159,11 +161,12 @@ GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const
   return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
 }
 
-Rank2View<const Real, HostMemorySpace>
+CoordinateView<HostMemorySpace>
 OmegaHFieldLayout::GetDOFHolderCoordinates() const
 {
-  return Rank2View<const Real, HostMemorySpace>(
+  Rank2View<const Real, HostMemorySpace> coords_view(
     dof_holder_coords_.data(), dof_holder_coords_.extent(0), 2);
+  return CoordinateView<HostMemorySpace>{coordinate_system_, coords_view};
 }
 
 bool OmegaHFieldLayout::IsDistributed()
@@ -212,7 +215,7 @@ ReversePartitionMap2 OmegaHFieldLayout::GetReversePartitionMap(
   auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(GetClassIDs());
   auto classDims_h = Omega_h::HostRead<Omega_h::I8>(GetClassDims());
   auto owned = GetOwned();
-  const auto coords = GetDOFHolderCoordinates();
+  const auto coords = GetDOFHolderCoordinates().GetCoordinates();
   auto dim = mesh_.dim();
 
   PCMS_ALWAYS_ASSERT(classDims_h.size() == classIds_h.size() &&

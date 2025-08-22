@@ -31,11 +31,7 @@ struct HasCoordinateSystem<T, VoidT<typename T::coordinate_system>>
 
 } // namespace detail
 
-/**
- * Key: result of partition object i.e. rank that the data is sent to on coupling server
- * Value: Vector of local index (ordered)
- */
-
+// TODO should the view store the layout and data, not just coordinate system and data?
 template <typename T, typename MemorySpace>
 class FieldDataView {
 public:
@@ -76,7 +72,7 @@ class FieldT {
 public:
   virtual const std::string& GetName() const = 0;
 
-  virtual CoordinateSystem GetCoordinateSystem() const = 0;
+  CoordinateSystem GetCoordinateSystem() const { return GetLayout().GetDOFHolderCoordinates().GetCoordinateSystem(); }
 
   // returns a hint that can be given to the Evaluate method
   // this can be useful to cache data if you have multiple sets of coordinates you may evaluate
@@ -94,7 +90,6 @@ public:
 
   virtual FieldDataView<const T, HostMemorySpace> GetDOFHolderData() const = 0;
   virtual void SetDOFHolderData(FieldDataView<const T, HostMemorySpace> data) = 0;
-  virtual CoordinateView<HostMemorySpace> GetDOFHolderCoordinates() const = 0;
 
   virtual const FieldLayout &GetLayout() const = 0;
   // number of physical dimensions (typically 1-6)

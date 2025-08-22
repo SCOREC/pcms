@@ -29,12 +29,10 @@ public:
 class OmegaHField2 : public FieldT<Real>
 {
 public:
-  OmegaHField2(std::string name, CoordinateSystem coordinate_system,
-               const OmegaHFieldLayout& layout, Omega_h::Mesh& mesh);
+  OmegaHField2(std::string name, const OmegaHFieldLayout& layout, Omega_h::Mesh& mesh);
 
   const std::string& GetName() const override;
 
-  CoordinateSystem GetCoordinateSystem() const override;
 
   LocalizationHint GetLocalizationHint(
     CoordinateView<HostMemorySpace> coordinate_view) const override;
@@ -58,13 +56,11 @@ public:
 
   FieldDataView<const Real, HostMemorySpace> GetDOFHolderData() const override;
   void SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) override;
-  CoordinateView<HostMemorySpace> GetDOFHolderCoordinates() const;
 
   ~OmegaHField2() noexcept = default;
 
 private:
   std::string name_;
-  CoordinateSystem coordinate_system_;
   const OmegaHFieldLayout& layout_;
   Omega_h::Mesh& mesh_;
   std::unique_ptr<MeshFieldBackend> mesh_field_;

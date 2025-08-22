@@ -14,8 +14,6 @@ public:
 
   const std::string& GetName() const override;
 
-  CoordinateSystem GetCoordinateSystem() const override;
-
   LocalizationHint GetLocalizationHint(
     CoordinateView<HostMemorySpace> coordinate_view) const override;
 
@@ -38,7 +36,6 @@ public:
 
   FieldDataView<const Real, HostMemorySpace> GetDOFHolderData() const override;
   void SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) override;
-  CoordinateView<HostMemorySpace> GetDOFHolderCoordinates() const;
 private:
   std::string name_;
   CoordinateSystem coordinate_system_;

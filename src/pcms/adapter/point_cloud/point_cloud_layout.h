@@ -9,7 +9,7 @@ namespace pcms
 class PointCloudLayout : public FieldLayout
 {
 public:
-  PointCloudLayout(int dim, Kokkos::View<Real**> coords);
+  PointCloudLayout(int dim, Kokkos::View<Real**> coords, CoordinateSystem coordinate_system);
   int GetNumComponents() const override;
   // nodes for standard lagrange FEM
   LO GetNumOwnedDofHolder() const override;
@@ -17,7 +17,7 @@ public:
 
   Rank1View<const bool, HostMemorySpace> GetOwned() const override;
   GlobalIDView<HostMemorySpace> GetGids() const override;
-  Rank2View<const Real, HostMemorySpace> GetDOFHolderCoordinates() const;
+  CoordinateView<HostMemorySpace> GetDOFHolderCoordinates() const override;
 
   bool IsDistributed() override;
   size_t GetNumEnts() const;
@@ -31,6 +31,7 @@ public:
 private:
   int dim_;
   int compoents_;
+  CoordinateSystem coordinate_system_;
   Kokkos::View<Real**> coords_;
   Kokkos::View<bool*> owned_;
   Kokkos::View<GO*> gids_;

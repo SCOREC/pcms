@@ -2,8 +2,9 @@
 
 namespace pcms
 {
-PointCloudLayout::PointCloudLayout(int dim, Kokkos::View<Real**> coords)
+PointCloudLayout::PointCloudLayout(int dim, Kokkos::View<Real**> coords, CoordinateSystem coordinate_system)
   : dim_(dim),
+    coordinate_system_(coordinate_system),
     coords_(coords),
     owned_("", coords.extent(0)),
     gids_("", coords.extent(0))
@@ -44,11 +45,12 @@ GlobalIDView<HostMemorySpace> PointCloudLayout::GetGids() const
   return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
 }
 
-Rank2View<const Real, HostMemorySpace>
+CoordinateView<HostMemorySpace>
 PointCloudLayout::GetDOFHolderCoordinates() const
 {
-  return Rank2View<const Real, HostMemorySpace>(coords_.data(),
+  Rank2View<const Real, HostMemorySpace> coords_view(coords_.data(),
                                                 coords_.extent(0), 2);
+  return CoordinateView<HostMemorySpace>{coordinate_system_, coords_view};
 }
 
 bool PointCloudLayout::IsDistributed()

@@ -2,6 +2,7 @@
 #define PCMS_FIELD_LAYOUT_H
 #include <redev.h>
 #include "pcms/arrays.h"
+#include "pcms/coordinate_system.h"
 
 namespace pcms
 {
@@ -46,6 +47,8 @@ public:
 
   virtual ReversePartitionMap2 GetReversePartitionMap(
     const redev::Partition& partition) const = 0;
+
+  virtual CoordinateView<HostMemorySpace> GetDOFHolderCoordinates() const = 0;
 
   // Serialize, Derserialize, ReversePartitionMap?
   // GetOwnedDofHolderCoordinates(CoordinateSystem);

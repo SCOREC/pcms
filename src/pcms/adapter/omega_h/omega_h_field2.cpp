@@ -116,10 +116,9 @@ struct OmegaHField2LocalizationHint
 /*
  * Field
  */
-OmegaHField2::OmegaHField2(std::string name, CoordinateSystem coordinate_system,
+OmegaHField2::OmegaHField2(std::string name,
                            const OmegaHFieldLayout& layout, Omega_h::Mesh& mesh)
   : name_(name),
-    coordinate_system_(coordinate_system),
     layout_(layout),
     mesh_(mesh),
     search_(mesh, 10, 10),
@@ -154,11 +153,6 @@ const std::string& OmegaHField2::GetName() const
   return name_;
 }
 
-CoordinateSystem OmegaHField2::GetCoordinateSystem() const
-{
-  return coordinate_system_;
-}
-
 FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
   const
 {
@@ -178,20 +172,15 @@ FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
   Rank1View<const Real, pcms::HostMemorySpace> array_view{
     std::data(dof_holder_data_), std::size(dof_holder_data_)};
   FieldDataView<const Real, HostMemorySpace> data_view{array_view,
-                                                       GetCoordinateSystem()};
+                                                       layout_.GetDOFHolderCoordinates().GetCoordinateSystem()};
   return data_view;
 };
 
-CoordinateView<HostMemorySpace> OmegaHField2::GetDOFHolderCoordinates() const
-{
-  PCMS_FUNCTION_TIMER;
-  return CoordinateView<HostMemorySpace>{GetCoordinateSystem(),
-                                         layout_.GetDOFHolderCoordinates()};
-}
 
 void OmegaHField2::SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) {
   PCMS_FUNCTION_TIMER;
-  if (data.GetCoordinateSystem() != coordinate_system_) {
+  // TODO should we check that the layout matches, not just the coordinate system?
+  if (data.GetCoordinateSystem() != layout_.GetDOFHolderCoordinates().GetCoordinateSystem()) {
     throw std::runtime_error("Coordinate system mismatch");
   }
 
@@ -215,9 +204,8 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
   CoordinateView<HostMemorySpace> coordinate_view) const
 {
   PCMS_FUNCTION_TIMER;
-  // TODO decide if we want to implicitly perform the coordinate transformations
-  // when possible
-  if (coordinate_view.GetCoordinateSystem() != coordinate_system_) {
+  // TODO decide if we want to implicitly perform the coordinate transformations when possible
+  if (coordinate_view.GetCoordinateSystem() != layout_.GetDOFHolderCoordinates().GetCoordinateSystem()) {
     // TODO when moved to PCMS throw PCMS exception
     throw std::runtime_error("Coordinate system mismatch");
   }
@@ -241,7 +229,7 @@ void OmegaHField2::Evaluate(LocalizationHint location,
   PCMS_FUNCTION_TIMER;
   // TODO decide if we want to implicitly perform the coordinate transformations
   // when possible
-  if (results.GetCoordinateSystem() != coordinate_system_) {
+  if (results.GetCoordinateSystem() != layout_.GetDOFHolderCoordinates().GetCoordinateSystem()) {
     // TODO when moved to PCMS throw PCMS exception
     throw std::runtime_error("Coordinate system mismatch");
   }
@@ -305,7 +293,7 @@ void OmegaHField2::Deserialize(
   }
   const auto sorted_buffer_d = Omega_h::Read<Real>(sorted_buffer);
   Rank1View<const Real, HostMemorySpace> sorted_buffer_view{std::data(sorted_buffer_d), std::size(sorted_buffer_d)};
-  FieldDataView<const Real, HostMemorySpace> field_view{sorted_buffer_view, GetCoordinateSystem()};
+  FieldDataView<const Real, HostMemorySpace> field_view{sorted_buffer_view, layout_.GetDOFHolderCoordinates().GetCoordinateSystem()};
   SetDOFHolderData(field_view);
 }
 } // namespace pcms

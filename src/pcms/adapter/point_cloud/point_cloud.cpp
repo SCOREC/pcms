@@ -28,7 +28,7 @@ PointCloud::PointCloud(std::string name, CoordinateSystem coordinate_system,
   : name_(name),
     coordinate_system_(coordinate_system),
     layout_(layout),
-    data_("", layout_.GetDOFHolderCoordinates().extent(0))
+    data_("", layout_.GetDOFHolderCoordinates().GetCoordinates().extent(0))
 {
 }
 
@@ -37,25 +37,15 @@ const std::string& PointCloud::GetName() const
   return name_;
 }
 
-CoordinateSystem PointCloud::GetCoordinateSystem() const
-{
-  return coordinate_system_;
-}
-
 FieldDataView<const Real, HostMemorySpace> PointCloud::GetDOFHolderData() const
 {
   Rank1View<const Real, pcms::HostMemorySpace> array_view{std::data(data_),
                                                           std::size(data_)};
   FieldDataView<const Real, HostMemorySpace> data_view{array_view,
-                                                       GetCoordinateSystem()};
+                                                       layout_.GetDOFHolderCoordinates().GetCoordinateSystem()};
   return data_view;
 }
 
-CoordinateView<HostMemorySpace> PointCloud::GetDOFHolderCoordinates() const
-{
-  return CoordinateView<HostMemorySpace>{GetCoordinateSystem(),
-                                         layout_.GetDOFHolderCoordinates()};
-}
 
 void PointCloud::SetDOFHolderData(
   FieldDataView<const Real, HostMemorySpace> data)

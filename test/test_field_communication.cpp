@@ -60,7 +60,7 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto channel =
     rdv.CreateAdiosChannel("field2_chan1", params, redev::TransportType::BP4);
 
-  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1);
+  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1, pcms::CoordinateSystem::Cartesian);
   auto gids = layout.GetGids();
   const auto n = layout.GetNumOwnedDofHolder();
   Omega_h::Write<double> ids(n);
@@ -68,7 +68,7 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   Omega_h::parallel_for(
     n, OMEGA_H_LAMBDA(int i) { ids[i] = gids[i]; });
 
-  pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
+  pcms::OmegaHField2 field("", layout, mesh);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
     std::data(ids), std::size(ids)};
   pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
@@ -90,11 +90,11 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto channel =
     rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
 
-  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1);
+  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1, pcms::CoordinateSystem::Cartesian);
   auto gids = layout.GetGids();
   const auto n = layout.GetNumOwnedDofHolder();
 
-  pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
+  pcms::OmegaHField2 field("", layout, mesh);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "2", comm, rdv, channel, layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, field);
 
@@ -147,13 +147,13 @@ void server2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto channel2 =
     rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
 
-  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1);
+  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1, pcms::CoordinateSystem::Cartesian);
   const auto n = layout.GetNumOwnedDofHolder();
   Omega_h::Write<double> ids(n);
   Omega_h::parallel_for(
     n, OMEGA_H_LAMBDA(int i) { ids[i] = 0; });
 
-  pcms::OmegaHField2 field("", pcms::CoordinateSystem::Cartesian, layout, mesh);
+  pcms::OmegaHField2 field("", layout, mesh);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm1(comm_name + "1", comm, rdv, channel1, layout);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm2(comm_name + "2", comm, rdv, channel2, layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm1(layout_comm1, field);

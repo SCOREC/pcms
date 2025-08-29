@@ -23,6 +23,18 @@ T get_element_from_span(Rank1View<T, MemorySpace> span, LO index) {
   return element;
 }
 
+/** \brief Check if the grid is uniformly spaced and ascending
+ *
+ * \param x input grid points
+ * \param ztol tolerance for uniformity check
+ * \return true if the grid is uniformly spaced and ascending, false otherwise
+ *
+ * \details This function checks if the input grid points are uniformly spaced
+ * and in ascending order. It calculates the average spacing and verifies that
+ * each interval between consecutive points is within a specified tolerance of
+ * this average spacing. The tolerance is defined as a fraction (ztol) of the
+ * average spacing.
+ */
 template <typename T, typename MemorySpace>
 bool isUniformAscending(Rank1View<T, MemorySpace> x, T ztol) {
   using execution_space = typename MemorySpace::execution_space;
@@ -52,6 +64,19 @@ void grid_valid(Rank1View<T, MemorySpace> x) {
   PCMS_ALWAYS_ASSERT(is_uniform_ascending);
 }
 
+/** \brief Clamp xget to the grid range [x[0], x[nx-1]] with tolerance
+ *
+ * \param xget input coordinate
+ * \param zxget output clamped coordinate
+ * \param x input grid points
+ * \param nx number of grid points
+ * \param ier error flag (0 = no error, 1 = out of range)
+ *
+ * \details If xget is outside the range [x[0], x[nx-1]], then check if it is
+ * within a small tolerance of the range. If it is within the tolerance, then
+ * clamp it to the nearest boundary value. If it is outside the tolerance, then
+ * set the error flag ier to 1.
+ */
 template <typename T, typename MemorySpace>
 KOKKOS_INLINE_FUNCTION void clamp_to_grid_range(T xget, T &zxget,
                                                 Rank1View<T, MemorySpace> x,

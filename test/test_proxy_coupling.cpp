@@ -20,7 +20,7 @@ using pcms::OmegaHFieldAdapter;
 using namespace std::chrono_literals;
 
 static constexpr bool done = true;
-static constexpr int COMM_ROUNDS = 4;
+static constexpr int COMM_ROUNDS = 10;
 namespace ts = test_support;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)

@@ -21,12 +21,13 @@ using namespace std::chrono_literals;
 
 static constexpr bool done = true;
 static constexpr int COMM_ROUNDS = 10;
+static const auto transport = redev::TransportType::SST;
 namespace ts = test_support;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   pcms::Coupler coupler("proxy_couple", comm, false, {});
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f");
+  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f", "", transport);
 
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
   app->AddField("gids",
@@ -51,7 +52,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   pcms::Coupler coupler("proxy_couple", comm, false, {});
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f");
+  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f", "", transport);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
@@ -79,8 +80,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
-  auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f");
-  auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");
+  auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f", "", transport);
+  auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f", "", transport);
   // TODO, fields should have a transfer policy rather than parameters
   auto* total_f_gids = total_f->AddField(
     "gids", OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap));

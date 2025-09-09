@@ -28,10 +28,12 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   pcms::Coupler coupler("proxy_couple", comm, false, {});
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f");
 
-  auto is_overlap =
-    ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
-  app->AddField("gids", OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
-  app->AddField("gids2", OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
+  app->AddField("gids",
+               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  app->AddField("gids2",
+               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  PCMS_FUNCTION_TIMER
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       app->BeginSendPhase();
@@ -44,6 +46,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       // cpl.ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
     }
   } while (!done);
+  MPI_Barrier(comm);
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {

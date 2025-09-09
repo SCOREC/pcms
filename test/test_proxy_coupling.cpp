@@ -70,7 +70,6 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 }
 void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
-  PCMS_FUNCTION_TIMER
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!

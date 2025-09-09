@@ -53,6 +53,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  PCMS_FUNCTION_TIMER
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       app->BeginSendPhase();
@@ -63,9 +64,11 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       app->EndReceivePhase();
     }
   } while (!done);
+  MPI_Barrier(comm);
 }
 void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
+  PCMS_FUNCTION_TIMER
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
@@ -84,6 +87,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap));
   auto* delta_f_gids2 = delta_f->AddField(
     "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap));
+  {
+  PCMS_FUNCTION_TIMER
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       total_f->ReceivePhase([&]() { total_f_gids->Receive(); });
@@ -98,6 +103,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
       });
     }
   } while (!done);
+  MPI_Barrier(comm);
+  }
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }
 

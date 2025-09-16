@@ -49,15 +49,17 @@ module pcms_interpolator
   generic :: assignment(=) => swigf_PcmsPointBasedInterpolatorHandle_op_assign__
  end type PcmsPointBasedInterpolatorHandle
  public :: pcms_create_point_based_interpolator
+ type, bind(C) :: SwigArrayWrapper
+  type(C_PTR), public :: data = C_NULL_PTR
+  integer(C_SIZE_T), public :: size = 0
+ end type
+ public :: pcms_create_degas2xgc_interpolator
+ public :: pcms_create_degas2xgcnode_interpolator
  public :: pcms_create_interpolator
  public :: pcms_destroy_interpolator
  public :: pcms_destroy_point_based_interpolator
  public :: pcms_kokkos_initialize_without_args
  public :: pcms_kokkos_finalize
- type, bind(C) :: SwigArrayWrapper
-  type(C_PTR), public :: data = C_NULL_PTR
-  integer(C_SIZE_T), public :: size = 0
- end type
  public :: read_oh_mesh
  public :: release_oh_mesh
  public :: pcms_interpolate
@@ -221,6 +223,31 @@ integer(C_INT), intent(in) :: farg2
 type(C_PTR), intent(in) :: farg3
 integer(C_INT), intent(in) :: farg4
 real(C_DOUBLE), intent(in) :: farg5
+type(SwigClassWrapper) :: fresult
+end function
+
+function swigc_pcms_create_degas2xgc_interpolator(farg1, farg2, farg3) &
+bind(C, name="_wrap_pcms_create_degas2xgc_interpolator") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigarraywrapper
+import :: swigclasswrapper
+type(SwigArrayWrapper) :: farg1
+type(SwigArrayWrapper) :: farg2
+real(C_DOUBLE), intent(in) :: farg3
+type(SwigClassWrapper) :: fresult
+end function
+
+function swigc_pcms_create_degas2xgcnode_interpolator(farg1, farg2, farg3, farg4) &
+bind(C, name="_wrap_pcms_create_degas2xgcnode_interpolator") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigarraywrapper
+import :: swigclasswrapper
+type(C_PTR), intent(in) :: farg1
+integer(C_INT), intent(in) :: farg2
+type(SwigArrayWrapper) :: farg3
+real(C_DOUBLE), intent(in) :: farg4
 type(SwigClassWrapper) :: fresult
 end function
 
@@ -538,6 +565,68 @@ fresult = swigc_pcms_create_point_based_interpolator(farg1, farg2, farg3, farg4,
 swig_result%swigdata = fresult
 end function
 
+
+subroutine SWIGTM_fin_char_Sm_(finp, iminp, temp)
+  use, intrinsic :: ISO_C_BINDING
+  character(len=*), intent(in) :: finp
+  type(SwigArrayWrapper), intent(out) :: iminp
+  character(kind=C_CHAR), dimension(:), target, allocatable, intent(out) :: temp
+  integer :: i
+
+  allocate(character(kind=C_CHAR) :: temp(len(finp) + 1))
+  do i=1,len(finp)
+    temp(i) = char(ichar(finp(i:i)), kind=C_CHAR)
+  end do
+  i = len(finp) + 1
+  temp(i) = C_NULL_CHAR ! C finp compatibility
+  iminp%data = c_loc(temp)
+  iminp%size = len(finp, kind=C_SIZE_T)
+end subroutine
+
+function pcms_create_degas2xgc_interpolator(xgc_mesh_filename, dg2_mesh_filename, radius) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsPointBasedInterpolatorHandle) :: swig_result
+character(len=*), intent(in) :: xgc_mesh_filename
+character(len=*), intent(in) :: dg2_mesh_filename
+real(C_DOUBLE), intent(in) :: radius
+type(SwigClassWrapper) :: fresult 
+character(kind=C_CHAR), dimension(:), allocatable, target :: farg1_temp 
+type(SwigArrayWrapper) :: farg1 
+character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 
+type(SwigArrayWrapper) :: farg2 
+real(C_DOUBLE) :: farg3 
+
+call SWIGTM_fin_char_Sm_(xgc_mesh_filename, farg1, farg1_temp)
+call SWIGTM_fin_char_Sm_(dg2_mesh_filename, farg2, farg2_temp)
+farg3 = radius
+fresult = swigc_pcms_create_degas2xgc_interpolator(farg1, farg2, farg3)
+swig_result%swigdata = fresult
+end function
+
+function pcms_create_degas2xgcnode_interpolator(target_points, target_points_size, dg2_mesh_filename, radius) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsPointBasedInterpolatorHandle) :: swig_result
+type(C_PTR), intent(in) :: target_points
+integer(C_INT), intent(in) :: target_points_size
+character(len=*), intent(in) :: dg2_mesh_filename
+real(C_DOUBLE), intent(in) :: radius
+type(SwigClassWrapper) :: fresult 
+type(C_PTR) :: farg1 
+integer(C_INT) :: farg2 
+character(kind=C_CHAR), dimension(:), allocatable, target :: farg3_temp 
+type(SwigArrayWrapper) :: farg3 
+real(C_DOUBLE) :: farg4 
+
+farg1 = target_points
+farg2 = target_points_size
+call SWIGTM_fin_char_Sm_(dg2_mesh_filename, farg3, farg3_temp)
+farg4 = radius
+fresult = swigc_pcms_create_degas2xgcnode_interpolator(farg1, farg2, farg3, farg4)
+swig_result%swigdata = fresult
+end function
+
 function pcms_create_interpolator(oh_mesh, radius) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
@@ -582,24 +671,6 @@ subroutine pcms_kokkos_finalize()
 use, intrinsic :: ISO_C_BINDING
 
 call swigc_pcms_kokkos_finalize()
-end subroutine
-
-
-subroutine SWIGTM_fin_char_Sm_(finp, iminp, temp)
-  use, intrinsic :: ISO_C_BINDING
-  character(len=*), intent(in) :: finp
-  type(SwigArrayWrapper), intent(out) :: iminp
-  character(kind=C_CHAR), dimension(:), target, allocatable, intent(out) :: temp
-  integer :: i
-
-  allocate(character(kind=C_CHAR) :: temp(len(finp) + 1))
-  do i=1,len(finp)
-    temp(i) = char(ichar(finp(i:i)), kind=C_CHAR)
-  end do
-  i = len(finp) + 1
-  temp(i) = C_NULL_CHAR ! C finp compatibility
-  iminp%data = c_loc(temp)
-  iminp%size = len(finp, kind=C_SIZE_T)
 end subroutine
 
 function read_oh_mesh(filename) &

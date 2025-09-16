@@ -23,7 +23,7 @@ PcmsPointBasedInterpolatorHandle pcms_create_point_based_interpolator(void* sour
 
   auto source_points_view = pcms::ScalarArrayView<double, pcms::HostMemorySpace>(reinterpret_cast<double*>(source_points), source_points_size);
   auto target_points_view = pcms::ScalarArrayView<double, pcms::HostMemorySpace>(reinterpret_cast<double*>(target_points), target_points_size);
-  auto* interpolator = new MLSPointCloudInterpolation(source_points_view, target_points_view, 2, radius, 12, 3, true);
+  auto* interpolator = new MLSPointCloudInterpolation(source_points_view, target_points_view, 2, radius, 15, 3, true);
   return {reinterpret_cast<void*>(interpolator)};
 }
 
@@ -80,5 +80,5 @@ void pcms_interpolate_point_based(PcmsPointBasedInterpolatorHandle interpolator,
   pcms::ScalarArrayView<double, pcms::HostMemorySpace> input_array(reinterpret_cast<double*>(input), input_size);
   pcms::ScalarArrayView<double, pcms::HostMemorySpace> output_array(reinterpret_cast<double*> (output), output_size);
 
-  mls_interpolator->eval(input_array, output_array);
+    mls_interpolator->eval(input_array, output_array);
 }

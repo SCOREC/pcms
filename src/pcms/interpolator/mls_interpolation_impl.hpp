@@ -176,9 +176,12 @@ void normalize_supports(const member_type& team, double* target_point,
       support_coordinates(i, j) -= target_point[j];
     }
   });
+  team.team_barrier();
 
-  for (int j = 0; j < dim; ++j) {
-    target_point[j] = 0.0;
+  if (team.league_rank() == 0) {
+  	for (int j = 0; j < dim; ++j) {
+    		target_point[j] = 0.0;
+  	}
   }
 }
 

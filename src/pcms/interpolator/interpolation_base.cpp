@@ -101,8 +101,6 @@ MLSPointCloudInterpolation::MLSPointCloudInterpolation(
                                                        "source points");
   Omega_h::HostWrite<Omega_h::Real> target_coords_host(target_points.size(),
                                                        "target points");
-  printf("Source Points size: %zu\n", source_points.size());
-  printf("Target Points size: %zu\n", target_points.size());
   for (int i = 0; i < source_points.size(); ++i) {
     source_coords_host[i] = source_points[i];
   }
@@ -324,19 +322,16 @@ void MLSPointCloudInterpolation::eval(
   OMEGA_H_CHECK_PRINTF(source_field.size() == source_coords_.size() / dim_,
                        "Target Data and Target Points size mismatch: %zu %d\n",
                        source_field.size(), source_coords_.size() / dim_);
+  for (int i=0; i<10; i++){
+	  printf("i = %d	field = %f\n", i, source_field[i]);
+  }
 
   copyHostScalarArrayView2HostWrite(source_field, source_field_);
-
-  // print source field
-  printf("Source Field on host: ");
-        for (int i = 0; i < source_field_.size(); ++i) {
-        printf("%f ", source_field_[i]);
-        }
 
   // TODO: make the basis function a template or pass it as a parameter
   auto target_field_write = mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
-    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN);
+    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN, 10, 1e-6, 15);
 
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_field_write);
   copyHostWrite2ScalarArrayView(target_field_, target_field);
@@ -361,7 +356,7 @@ void MLSInterpolationHandler::eval(
   // TODO: make the basis function a template or pass it as a parameter
   auto target_field_write = mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
-    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN);
+    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN, 10, 1e-6, 15);
 
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_field_write);
   copyHostWrite2ScalarArrayView(target_field_, target_field);

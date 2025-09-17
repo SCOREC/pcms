@@ -28,7 +28,7 @@ PcmsPointBasedInterpolatorHandle pcms_create_point_based_interpolator(void* sour
                                                                       void* target_points, int target_points_size, double radius);
 PcmsPointBasedInterpolatorHandle pcms_create_degas2xgc_interpolator(const char* xgc_mesh_filename, const char* dg2_mesh_filename, double radius);
 PcmsPointBasedInterpolatorHandle pcms_create_degas2xgcnode_interpolator(void* target_points, int target_points_size,
-                                                                const char* dg2_mesh_filename, double radius);
+                                                                const char* dg2_mesh_filename, double radius, void* dg2_elem_count);
 PcmsInterpolatorHandle pcms_create_interpolator(PcmsInterpolatorOHMeshHandle oh_mesh, double radius);
 void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator);
 void pcms_destroy_point_based_interpolator(PcmsPointBasedInterpolatorHandle interpolator);

@@ -520,19 +520,21 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgc_interpolator(SwigArrayWr
 }
 
 
-SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgcnode_interpolator(void const **farg1, int const *farg2, SwigArrayWrapper *farg3, double const *farg4) {
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgcnode_interpolator(void const **farg1, int const *farg2, SwigArrayWrapper *farg3, double const *farg4, void const **farg5) {
   SwigClassWrapper fresult ;
   void *arg1 = (void *) 0 ;
   int arg2 ;
   char *arg3 = (char *) 0 ;
   double arg4 ;
+  void *arg5 = (void *) 0 ;
   PcmsPointBasedInterpolatorHandle result;
   
   arg1 = (void *)(*farg1);
   arg2 = (int)(*farg2);
   arg3 = (char *)(farg3->data);
   arg4 = (double)(*farg4);
-  result = pcms_create_degas2xgcnode_interpolator(arg1,arg2,(char const *)arg3,arg4);
+  arg5 = (void *)(*farg5);
+  result = pcms_create_degas2xgcnode_interpolator(arg1,arg2,(char const *)arg3,arg4,arg5);
   fresult.cptr = (PcmsPointBasedInterpolatorHandle *)memcpy((PcmsPointBasedInterpolatorHandle *)calloc(1,sizeof(PcmsPointBasedInterpolatorHandle)),&result,sizeof(PcmsPointBasedInterpolatorHandle));
   fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;

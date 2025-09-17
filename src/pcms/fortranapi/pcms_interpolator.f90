@@ -238,7 +238,7 @@ real(C_DOUBLE), intent(in) :: farg3
 type(SwigClassWrapper) :: fresult
 end function
 
-function swigc_pcms_create_degas2xgcnode_interpolator(farg1, farg2, farg3, farg4) &
+function swigc_pcms_create_degas2xgcnode_interpolator(farg1, farg2, farg3, farg4, farg5) &
 bind(C, name="_wrap_pcms_create_degas2xgcnode_interpolator") &
 result(fresult)
 use, intrinsic :: ISO_C_BINDING
@@ -248,6 +248,7 @@ type(C_PTR), intent(in) :: farg1
 integer(C_INT), intent(in) :: farg2
 type(SwigArrayWrapper) :: farg3
 real(C_DOUBLE), intent(in) :: farg4
+type(C_PTR), intent(in) :: farg5
 type(SwigClassWrapper) :: fresult
 end function
 
@@ -604,7 +605,7 @@ fresult = swigc_pcms_create_degas2xgc_interpolator(farg1, farg2, farg3)
 swig_result%swigdata = fresult
 end function
 
-function pcms_create_degas2xgcnode_interpolator(target_points, target_points_size, dg2_mesh_filename, radius) &
+function pcms_create_degas2xgcnode_interpolator(target_points, target_points_size, dg2_mesh_filename, radius, dg2_elem_count) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
 type(PcmsPointBasedInterpolatorHandle) :: swig_result
@@ -612,18 +613,21 @@ type(C_PTR), intent(in) :: target_points
 integer(C_INT), intent(in) :: target_points_size
 character(len=*), intent(in) :: dg2_mesh_filename
 real(C_DOUBLE), intent(in) :: radius
+type(C_PTR), intent(in) :: dg2_elem_count
 type(SwigClassWrapper) :: fresult 
 type(C_PTR) :: farg1 
 integer(C_INT) :: farg2 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg3_temp 
 type(SwigArrayWrapper) :: farg3 
 real(C_DOUBLE) :: farg4 
+type(C_PTR) :: farg5 
 
 farg1 = target_points
 farg2 = target_points_size
 call SWIGTM_fin_char_Sm_(dg2_mesh_filename, farg3, farg3_temp)
 farg4 = radius
-fresult = swigc_pcms_create_degas2xgcnode_interpolator(farg1, farg2, farg3, farg4)
+farg5 = dg2_elem_count
+fresult = swigc_pcms_create_degas2xgcnode_interpolator(farg1, farg2, farg3, farg4, farg5)
 swig_result%swigdata = fresult
 end function
 

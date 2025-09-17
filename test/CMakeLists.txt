@@ -434,7 +434,7 @@ if(PCMS_ENABLE_Fortran)
   target_link_libraries(test_proxy_coupling_xgc_client_fortran
                         PUBLIC pcms::fortranapi MPI::MPI_Fortran)
   set_target_properties(test_proxy_coupling_xgc_client_fortran
-                        PROPERTIES LINKER_LANGUAGE CXX)
+                        PROPERTIES LINKER_LANGUAGE Fortran)
   if(HOST_NPROC GREATER_EQUAL 4)
     dual_mpi_test(
       TESTNAME

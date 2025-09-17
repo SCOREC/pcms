@@ -43,7 +43,7 @@ public:
     for (int i = 0; i < dim; ++i) {
       auto index = static_cast<LO>(
         std::floor(distance_within_grid[i] * divisions[i] / edge_length[i]));
-      indexes[i] = std::clamp(index, 0, divisions[i] - 1);
+      indexes[i] = Kokkos::clamp(index, 0, divisions[i] - 1);
     }
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y

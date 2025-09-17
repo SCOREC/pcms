@@ -65,6 +65,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   app->AddField("gids2",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   PCMS_FUNCTION_TIMER
+  const auto start{std::chrono::steady_clock::now()};
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       app->BeginSendPhase();
@@ -79,6 +80,9 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
     }
   } while (!done);
   MPI_Barrier(comm);
+  const auto finish{std::chrono::steady_clock::now()};
+  const std::chrono::duration<double> elapsed_seconds{finish - start};
+  if(!rank) std::cerr << "xgc_delta_f " << elapsed_seconds.count() << "\n";
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
@@ -92,6 +96,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   PCMS_FUNCTION_TIMER
+  const auto start{std::chrono::steady_clock::now()};
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       app->BeginSendPhase();
@@ -104,6 +109,9 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
     }
   } while (!done);
   MPI_Barrier(comm);
+  const auto finish{std::chrono::steady_clock::now()};
+  const std::chrono::duration<double> elapsed_seconds{finish - start};
+  if(!rank) std::cerr << "xgc_total_f " << elapsed_seconds.count() << "\n";
 }
 void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
@@ -131,6 +139,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap));
   {
   PCMS_FUNCTION_TIMER
+  const auto start{std::chrono::steady_clock::now()};
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       total_f->ReceivePhase([&]() { total_f_gids->Receive(); });
@@ -147,6 +156,9 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     }
   } while (!done);
   MPI_Barrier(comm);
+  const auto finish{std::chrono::steady_clock::now()};
+  const std::chrono::duration<double> elapsed_seconds{finish - start};
+  if(!rank) std::cerr << "xgc_coupler " << elapsed_seconds.count() << "\n";
   }
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }

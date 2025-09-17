@@ -15,15 +15,18 @@ struct UniformGrid
   std::array<LO, dim> divisions;
 
 public:
-  [[nodiscard]] LO GetNumCells() const {
-    return std::accumulate(divisions.begin(), divisions.end(), 1, std::multiplies<LO>{});
+  [[nodiscard]] LO GetNumCells() const
+  {
+    return std::accumulate(divisions.begin(), divisions.end(), 1,
+                           std::multiplies<LO>{});
   }
   /// return the grid cell ID that the input point is inside or closest to if
   /// the point lies outside
   // take the view as a template because it might be a subview type
-  //template <typename T>
+  // template <typename T>
   //[[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const T& point) const
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Omega_h::Vector<dim>& point) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO
+  ClosestCellID(const Omega_h::Vector<dim>& point) const
   {
     std::array<Real, dim> distance_within_grid;
 
@@ -38,7 +41,8 @@ public:
     }
 
     for (int i = 0; i < dim; ++i) {
-      auto index = static_cast<LO>(std::floor(distance_within_grid[i] * divisions[i]/edge_length[i]));
+      auto index = static_cast<LO>(
+        std::floor(distance_within_grid[i] * divisions[i] / edge_length[i]));
       indexes[i] = std::clamp(index, 0, divisions[i] - 1);
     }
     // note that the indexes refer to row/columns which have the opposite order
@@ -62,10 +66,11 @@ public:
       center[i] = (2.0 * index[i] + 1.0) * half_width[i] + bot_left[i];
     }
 
-    return { .center = center, .half_width = half_width };
+    return {.center = center, .half_width = half_width};
   }
 
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION std::array<LO, dim> GetDimensionedIndex(LO idx) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION std::array<LO, dim> GetDimensionedIndex(
+    LO idx) const
   {
     LO stride = 1;
     for (std::size_t i = 0; i < divisions.size() - 1; ++i) {
@@ -82,7 +87,8 @@ public:
     return result;
   }
 
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO GetCellIndex(std::array<LO, dim> dimensionedIndex) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO
+  GetCellIndex(std::array<LO, dim> dimensionedIndex) const
   {
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y

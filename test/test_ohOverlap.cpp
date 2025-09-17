@@ -149,7 +149,7 @@ int main(int argc, char** argv)
     //- compute the permutation from the incoming vertex global ids to the
     //   on-process global ids
     //- set the message layout for the reverse (rendezvous->non-rendezvous) send
-    //by
+    // by
     //   building the dest and offsets array.
     //- compute the reverse send's permutation array using the layout of
     //   global vertex ids in 'msgsIn'.

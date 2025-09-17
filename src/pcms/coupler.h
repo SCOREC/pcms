@@ -116,22 +116,21 @@ private:
 class Application
 {
 public:
-  Application(std::string name, MPI_Comm comm,
-              redev::Redev& redev, adios2::Params params,
-              redev::TransportType transport_type,
+  Application(std::string name, MPI_Comm comm, redev::Redev& redev,
+              adios2::Params params, redev::TransportType transport_type,
               std::string path)
     : mpi_comm_(comm),
       redev_(redev),
       channel_{redev_.CreateAdiosChannel(std::move(name), std::move(params),
-                                      transport_type, std::move(path))}
+                                         transport_type, std::move(path))}
   {
     PCMS_FUNCTION_TIMER;
   }
   // FIXME should take a file path for the parameters, not take adios2 params.
   // These fields are supposed to be agnostic to adios2...
   template <typename FieldAdapterT>
-  CoupledField* AddField(
-    std::string name, FieldAdapterT&& field_adapter, bool participates = true)
+  CoupledField* AddField(std::string name, FieldAdapterT&& field_adapter,
+                         bool participates = true)
   {
     PCMS_FUNCTION_TIMER;
     auto [it, inserted] = fields_.template try_emplace(
@@ -212,14 +211,17 @@ private:
 class Coupler
 {
 private:
-  redev::Redev SetUpRedev(bool isServer, redev::Partition partition) {
+  redev::Redev SetUpRedev(bool isServer, redev::Partition partition)
+  {
     if (isServer)
       return redev::Redev(mpi_comm_, std::move(partition), ProcessType::Server);
     else
       return redev::Redev(mpi_comm_);
   }
+
 public:
-  Coupler(std::string name, MPI_Comm comm, bool isServer, redev::Partition partition)
+  Coupler(std::string name, MPI_Comm comm, bool isServer,
+          redev::Partition partition)
     : name_(std::move(name)),
       mpi_comm_(comm),
       redev_(SetUpRedev(isServer, std::move(partition)))
@@ -234,8 +236,8 @@ public:
     PCMS_FUNCTION_TIMER;
     auto key = path + name;
     auto [it, inserted] = applications_.template try_emplace(
-      key, std::move(name), mpi_comm_, redev_,
-      std::move(params), transport_type, std::move(path));
+      key, std::move(name), mpi_comm_, redev_, std::move(params),
+      transport_type, std::move(path));
     if (!inserted) {
       std::cerr << "Application with name " << name << "already exists!\n";
       std::terminate();

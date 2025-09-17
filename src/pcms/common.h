@@ -12,8 +12,7 @@ namespace detail
 {
 // helper function for dealing with field maps
 template <typename T, typename U>
-auto& find_or_error(const std::string& name,
-                    const std::map<T, U>& map)
+auto& find_or_error(const std::string& name, const std::map<T, U>& map)
 {
   auto it = map.find(name);
   PCMS_ALWAYS_ASSERT(it != map.end());
@@ -28,8 +27,7 @@ auto& find_or_error(const std::string& name, std::map<T, U>& map)
   return it->second;
 }
 template <typename T, typename U>
-auto find_many_or_error(const std::vector<T>& keys,
-                        const std::map<T, U>& map)
+auto find_many_or_error(const std::vector<T>& keys, const std::map<T, U>& map)
 {
 
   std::vector<std::reference_wrapper<U>> results;
@@ -41,8 +39,7 @@ auto find_many_or_error(const std::vector<T>& keys,
   return results;
 }
 template <typename T, typename U>
-auto find_many_or_error(const std::vector<T>& keys,
-                        std::map<T, U>& map)
+auto find_many_or_error(const std::vector<T>& keys, std::map<T, U>& map)
 {
 
   std::vector<std::reference_wrapper<U>> results;

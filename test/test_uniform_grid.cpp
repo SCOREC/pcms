@@ -35,16 +35,18 @@ TEST_CASE("uniform grid")
       }
     }
   }
-  SECTION("GetTwoDCellIndex") {
-    auto [i,j] = uniform_grid.GetDimensionedIndex(0);
+  SECTION("GetTwoDCellIndex")
+  {
+    auto [i, j] = uniform_grid.GetDimensionedIndex(0);
     REQUIRE(i == 0);
     REQUIRE(j == 0);
-    auto [k,l] = uniform_grid.GetDimensionedIndex(119);
+    auto [k, l] = uniform_grid.GetDimensionedIndex(119);
     REQUIRE(k == 11);
     REQUIRE(l == 9);
   }
-  SECTION("GetCellIndex") {
-    REQUIRE(0 == uniform_grid.GetCellIndex({0,0}));
-    REQUIRE(119 == uniform_grid.GetCellIndex({11,9}));
+  SECTION("GetCellIndex")
+  {
+    REQUIRE(0 == uniform_grid.GetCellIndex({0, 0}));
+    REQUIRE(119 == uniform_grid.GetCellIndex({11, 9}));
   }
 }

@@ -25,7 +25,8 @@ if(Gmsh_EXECUTABLE)
 
   if(Gmsh_VERSION_STRING)
     # Gmsh_VERSION example: "4.4.1-git-ba5563507"
-    string(REGEX REPLACE "^([.0-9]+).*" "\\1" Gmsh_VERSION_STRING "${Gmsh_VERSION_STRING}")
+    string(REGEX REPLACE "^([.0-9]+).*" "\\1" Gmsh_VERSION_STRING
+                         "${Gmsh_VERSION_STRING}")
     # Extract version components
     string(REPLACE "." ";" Gmsh_version "${Gmsh_VERSION_STRING}")
     list(LENGTH Gmsh_version Gmsh_VERSION_COUNT)
@@ -54,12 +55,8 @@ find_library(Gmsh_LIBRARIES NAMES gmsh)
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
   Gmsh
-  FOUND_VAR
-  Gmsh_FOUND
-  REQUIRED_VARS
-  Gmsh_LIBRARIES
-  Gmsh_INCLUDE_DIRS
-  VERSION_VAR
-  Gmsh_VERSION_STRING)
+  FOUND_VAR Gmsh_FOUND
+  REQUIRED_VARS Gmsh_LIBRARIES Gmsh_INCLUDE_DIRS
+  VERSION_VAR Gmsh_VERSION_STRING)
 
 mark_as_advanced(Gmsh_EXECUTABLE Gmsh_INCLUDE_DIR Gmsh_LIBRARIES)

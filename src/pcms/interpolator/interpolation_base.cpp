@@ -151,6 +151,8 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
   uint min_supports_found = 0;
   uint max_supports_found = 0;
   // radius adjustment loop
+  int loop_count = 0;
+  int max_count = 100;
   while (min_supports_found < min_req_supports ||
          max_supports_found > 3 * min_req_supports) {
     // n^2 search, compare each point with all other points
@@ -182,6 +184,15 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
       break;
     }
 
+    loop_count++;
+    Kokkos::fence();
+    if (loop_count > 100) {
+      printf("Loop count exceeded 100 and still not converged.\n"
+        "Manually check if the number of minimum and maximum supports are reasonable.\n"
+        "There are situations when it may not converge.\n");
+      break;
+    }
+
     Kokkos::Min<uint> min_reducer(min_supports_found);
     Kokkos::parallel_reduce(
       "find number of supports", num_supports.size(),
@@ -201,8 +212,8 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
 
     // increase radius if not enough supports or too many supports
     if (min_supports_found < min_req_supports || max_supports_found > 3 * min_req_supports) {
-      printf("Adjusting radius:(min: %d max: %d) min_req_supports: %d\n",
-             min_supports_found, max_supports_found, min_req_supports);
+      printf("Adjusting radius iter %d:(min: %d max: %d) min_req_supports: %d\n",
+             loop_count, min_supports_found, max_supports_found, min_req_supports);
 
       Kokkos::fence();
       Omega_h::parallel_for(
@@ -225,7 +236,7 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
         });
     }
   }
-  printf("Supports found: min: %d max: %d\n", min_supports_found, max_supports_found);
+  printf("Searched %d times and supports found: min: %d max: %d\n", loop_count, min_supports_found, max_supports_found);
 
   // parallel scan for fill the support index with cumulative sum
   auto support_ptr_l = Omega_h::Write<Omega_h::LO>(n_targets + 1, 0);

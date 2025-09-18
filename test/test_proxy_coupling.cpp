@@ -205,5 +205,6 @@ int main(int argc, char** argv)
       std::cerr << "Unhandled client id (should be -1, 0,1)\n";
       exit(EXIT_FAILURE);
   }
+  if(!rank) std::cerr << "done " << "\n";
   return 0;
 }

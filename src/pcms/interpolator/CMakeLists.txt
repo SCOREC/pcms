@@ -10,8 +10,7 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     mls_interpolation.hpp
     pcms_interpolator_view_utils.hpp
     pcms_interpolator_logger.hpp
-    spline_interpolator.hpp
-)
+    spline_interpolator.hpp)
 
 set(PCMS_FIELD_TRANSFER_SOURCES mls_interpolation.cpp)
 install(FILES ${PCMS_FIELD_TRANSFER_HEADERS}

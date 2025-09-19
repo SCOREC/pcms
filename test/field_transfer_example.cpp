@@ -34,7 +34,9 @@ struct MeanCombiner
     }
     auto num_fields = fields.size();
     Omega_h::parallel_for(
-      field_size, OMEGA_H_LAMBDA(int i) { combined_array[i] = combined_array[i] / num_fields; });
+      field_size, OMEGA_H_LAMBDA(int i) {
+        combined_array[i] = combined_array[i] / num_fields;
+      });
     set_nodal_data(combined, make_array_view(Omega_h::Read(combined_array)));
   }
 };
@@ -42,9 +44,9 @@ void SetApplicationFields(const OHField& app_a_field,
                           const OHField& app_b_field);
 
 using pcms::CoupledField;
-using pcms::ProcessType;
 using pcms::FieldCommunicator;
 using pcms::InternalField;
+using pcms::ProcessType;
 
 void test_standalone(Omega_h::Mesh& internal_mesh, Omega_h::Mesh& app_mesh)
 {

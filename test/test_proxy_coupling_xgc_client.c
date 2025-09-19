@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
 int8_t in_overlap(int dimension, int id)
 {
   // the TOMMS generated geometric model has
@@ -52,8 +51,7 @@ int main(int argc, char** argv)
   printf("world: %d %d; plane: %d %d ; client: %d %d\n", world_rank, world_size,
          plane_rank, plane_size, client_rank, client_size);
 
-  PcmsClientHandle client =
-    pcms_create_client("proxy_couple", client_comm);
+  PcmsClientHandle client = pcms_create_client("proxy_couple", client_comm);
   const char* rc_file = argv[1];
   PcmsReverseClassificationHandle rc =
     pcms_load_reverse_classification(rc_file, MPI_COMM_WORLD);
@@ -73,8 +71,8 @@ int main(int argc, char** argv)
     } else {
       field_adapters[i] = pcms_create_dummy_field_adapter();
     }
-    field[i] = pcms_add_field(client, field_name, field_adapters[i],
-                                communicating_rank);
+    field[i] =
+      pcms_add_field(client, field_name, field_adapters[i], communicating_rank);
   }
   // only set the data on plane_rank 0 so that we can verify that XGC Adapter
   // properly broadcasting to the other ranks.
@@ -124,7 +122,7 @@ int main(int argc, char** argv)
   free(data);
   pcms_destroy_reverse_classification(rc);
   pcms_destroy_client(client);
-  if(client_comm != MPI_COMM_NULL) {
+  if (client_comm != MPI_COMM_NULL) {
     MPI_Comm_free(&client_comm);
   }
   MPI_Comm_free(&plane_comm);

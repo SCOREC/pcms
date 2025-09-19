@@ -28,11 +28,10 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   pcms::Coupler coupler("proxy_couple", comm, false, {});
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f");
 
-  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
-  app->AddField("gids",
-               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
-  app->AddField("gids2",
-               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  auto is_overlap =
+    ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
+  app->AddField("gids", OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  app->AddField("gids2", OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       app->BeginSendPhase();
@@ -50,9 +49,9 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   pcms::Coupler coupler("proxy_couple", comm, false, {});
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f");
-  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
-  app->AddField("gids",
-               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  auto is_overlap =
+    ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
+  app->AddField("gids", OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       app->BeginSendPhase();
@@ -69,9 +68,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  pcms::Coupler cpl(
-    "proxy_couple", comm, true,
-    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
+  pcms::Coupler cpl("proxy_couple", comm, true,
+                    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});

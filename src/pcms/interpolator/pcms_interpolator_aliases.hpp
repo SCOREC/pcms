@@ -39,8 +39,7 @@ using IntDeviceMatView = Kokkos::View<int**>;
 using IntDeviceVecView = Kokkos::View<int*>;
 using IntHostMatView = Kokkos::View<int**, Kokkos::HostSpace>;
 
-using RealDefaultScalarArrayView =
-  Rank1View<double, DefaultExecutionSpace>;
+using RealDefaultScalarArrayView = Rank1View<double, DefaultExecutionSpace>;
 using RealConstDefaultScalarArrayView =
   Rank1View<const double, DefaultExecutionSpace>;
 

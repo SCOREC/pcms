@@ -111,7 +111,7 @@ public:
     : parametric_coords(parametric_coords_),
       values(values_),
       indices(indices_),
-      dimensions(dimensions_) {};
+      dimensions(dimensions_){};
 
   RealVecView linear_interpolation()
   {

@@ -62,24 +62,26 @@ public:
     Kokkos::View<LO*, MemorySpace> index_mask("mask", mask.size());
     auto policy = Kokkos::RangePolicy<execution_space>(0, mask.size());
     auto index_mask_view = make_array_view(index_mask);
-    Kokkos::parallel_scan(policy,detail::ComputeMaskAV<MemorySpace>{index_mask_view, mask},
-                          num_active_entries_);
+    Kokkos::parallel_scan(
+      policy, detail::ComputeMaskAV<MemorySpace>{index_mask_view, mask},
+      num_active_entries_);
     //// set index mask to 0 anywhere that the original mask is 0
-    Kokkos::parallel_for(policy, detail::ScaleAV<MemorySpace>{index_mask_view, mask});
+    Kokkos::parallel_for(policy,
+                         detail::ScaleAV<MemorySpace>{index_mask_view, mask});
     // does a shallow copy
     mask_ = index_mask;
   }
   template <typename T>
   auto Apply(Rank1View<const T, MemorySpace> data,
              Rank1View<T, MemorySpace> filtered_data,
-             Rank1View<const pcms::LO, MemorySpace> permutation = {})
-    const -> void
+             Rank1View<const pcms::LO, MemorySpace> permutation = {}) const
+    -> void
   {
     // it doesn't make sense to call this function when the mask is empty!
     PCMS_ALWAYS_ASSERT(!empty());
     PCMS_ALWAYS_ASSERT(data.size() == mask_.size());
     PCMS_ALWAYS_ASSERT(filtered_data.size() ==
-                         static_cast<size_t>(num_active_entries_));
+                       static_cast<size_t>(num_active_entries_));
 
     auto policy = Kokkos::RangePolicy<execution_space>(0, mask_.size());
     // make local copy of the mask_ view to avoid problem with passing in "this"
@@ -117,8 +119,7 @@ public:
   auto ToFullArray(
     Rank1View<const T, MemorySpace> filtered_data,
     Rank1View<T, MemorySpace> output_array,
-    Rank1View<const pcms::LO, MemorySpace> permutation = {}) const
-    -> void
+    Rank1View<const pcms::LO, MemorySpace> permutation = {}) const -> void
   {
     if (empty()) {
       if (filtered_data.data_handle() != output_array.data_handle()) {

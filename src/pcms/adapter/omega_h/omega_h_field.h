@@ -30,7 +30,8 @@ struct OmegaHMemorySpace
   using type = typename Kokkos::DefaultExecutionSpace::memory_space;
 };
 
-enum class mesh_entity_type : int{
+enum class mesh_entity_type : int
+{
   VERTEX = 0,
   EDGE = 1,
   FACE = 2,
@@ -39,10 +40,11 @@ enum class mesh_entity_type : int{
 
 inline int mesh_entity_to_int(mesh_entity_type entity_type)
 {
-  static_assert(std::is_same_v<std::underlying_type_t<mesh_entity_type>, int>, "mesh_entity_type must be an int");
+  static_assert(
+    std::is_same_v<std::underlying_type_t<mesh_entity_type>, int>,
+    "mesh_entity_type must be an int");
   return static_cast<std::underlying_type_t<mesh_entity_type>>(entity_type);
 }
-
 
 namespace detail
 {
@@ -123,7 +125,8 @@ public:
       // we use a parallel scan to construct the mask mapping so that filtering
       // can happen in parallel. This method gives us the index to fill into the
       // filtered array
-      PCMS_ALWAYS_ASSERT(mesh.nents(mesh_entity_to_int(entity_type_)) == mask.size());
+      PCMS_ALWAYS_ASSERT(mesh.nents(mesh_entity_to_int(entity_type_)) ==
+                         mask.size());
       Omega_h::Write<LO> index_mask(mask.size());
       auto index_mask_view = make_array_view(index_mask);
       auto mask_view = make_const_array_view(mask);
@@ -154,9 +157,11 @@ public:
     search_ = GridPointSearch(mesh_, nx, ny);
   }
   // pass through to search function
-  [[nodiscard]] auto Search(Kokkos::View<Real* [2]> points) const {
+  [[nodiscard]] auto Search(Kokkos::View<Real* [2]> points) const
+  {
     PCMS_FUNCTION_TIMER;
-    PCMS_ALWAYS_ASSERT(search_.has_value() && "search data structure must be constructed before use");
+    PCMS_ALWAYS_ASSERT(search_.has_value() &&
+                       "search data structure must be constructed before use");
     return (*search_)(points);
   }
 
@@ -165,16 +170,22 @@ public:
     PCMS_FUNCTION_TIMER;
     if (HasMask())
       return detail::filter_array(
-        mesh_.get_array<Omega_h::ClassId>(mesh_entity_to_int(entity_type_), "class_id"), GetMask(), Size());
-    return mesh_.get_array<Omega_h::ClassId>(mesh_entity_to_int(entity_type_), "class_id");
+        mesh_.get_array<Omega_h::ClassId>(mesh_entity_to_int(entity_type_),
+                                          "class_id"),
+        GetMask(), Size());
+    return mesh_.get_array<Omega_h::ClassId>(mesh_entity_to_int(entity_type_),
+                                             "class_id");
   }
   [[nodiscard]] Omega_h::Read<Omega_h::I8> GetClassDims() const
   {
     PCMS_FUNCTION_TIMER;
     if (HasMask())
-      return detail::filter_array(mesh_.get_array<Omega_h::I8>(mesh_entity_to_int(entity_type_), "class_dim"),
-                                  GetMask(), Size());
-    return mesh_.get_array<Omega_h::I8>(mesh_entity_to_int(entity_type_), "class_dim");
+      return detail::filter_array(
+        mesh_.get_array<Omega_h::I8>(mesh_entity_to_int(entity_type_),
+                                     "class_dim"),
+        GetMask(), Size());
+    return mesh_.get_array<Omega_h::I8>(mesh_entity_to_int(entity_type_),
+                                        "class_dim");
   }
   [[nodiscard]] Omega_h::Read<Omega_h::GO> GetGids() const
   {
@@ -183,11 +194,14 @@ public:
     if (global_id_name_.empty()) {
       gid_array = mesh_.globals(mesh_entity_to_int(entity_type_));
     } else {
-      auto tag = mesh_.get_tagbase(mesh_entity_to_int(entity_type_), global_id_name_);
+      auto tag =
+        mesh_.get_tagbase(mesh_entity_to_int(entity_type_), global_id_name_);
       if (Omega_h::is<GO>(tag)) {
-        gid_array = mesh_.get_array<Omega_h::GO>(mesh_entity_to_int(entity_type_), global_id_name_);
+        gid_array = mesh_.get_array<Omega_h::GO>(
+          mesh_entity_to_int(entity_type_), global_id_name_);
       } else if (Omega_h::is<LO>(tag)) {
-        auto array = mesh_.get_array<Omega_h::LO>(mesh_entity_to_int(entity_type_), global_id_name_);
+        auto array = mesh_.get_array<Omega_h::LO>(
+          mesh_entity_to_int(entity_type_), global_id_name_);
         Omega_h::Write<Omega_h::GO> globals(array.size());
         Omega_h::parallel_for(
           array.size(), OMEGA_H_LAMBDA(int i) { globals[i] = array[i]; });
@@ -202,10 +216,12 @@ public:
     }
     return gid_array;
   }
+
 private:
   std::string name_;
   Omega_h::Mesh& mesh_;
-  // TODO make this a pointer and introduce base class to Search for alternative search methods
+  // TODO make this a pointer and introduce base class to Search for alternative
+  // search methods
   std::optional<GridPointSearch> search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;
@@ -218,17 +234,15 @@ private:
 // The coordinate element for all internal fields is the same since
 // all internal fields are on the same mesh
 using InternalField =
-  std::variant<OmegaHField<Omega_h::I8>,
-               OmegaHField<Omega_h::I32>,
-               OmegaHField<Omega_h::I64>,
-               OmegaHField<Omega_h::Real>>;
+  std::variant<OmegaHField<Omega_h::I8>, OmegaHField<Omega_h::I32>,
+               OmegaHField<Omega_h::I64>, OmegaHField<Omega_h::Real>>;
 
 template <typename T>
-auto get_nodal_data(const OmegaHField<T>& field)
-  -> Omega_h::Read<T>
+auto get_nodal_data(const OmegaHField<T>& field) -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
-  auto full_field = field.GetMesh().template get_array<T>(mesh_entity_to_int(field.GetEntityType()), field.GetName());
+  auto full_field = field.GetMesh().template get_array<T>(
+    mesh_entity_to_int(field.GetEntityType()), field.GetName());
   if (field.HasMask()) {
     return detail::filter_array<T>(full_field, field.GetMask(), field.Size());
   }
@@ -242,7 +256,8 @@ auto get_nodal_coordinates(const OmegaHField<T>& field)
 {
   PCMS_FUNCTION_TIMER;
   static constexpr auto coordinate_dimension = 2;
-  auto coords = get_ent_centroids(field.GetMesh(), mesh_entity_to_int(field.GetEntityType()));
+  auto coords = get_ent_centroids(field.GetMesh(),
+                                  mesh_entity_to_int(field.GetEntityType()));
   if (field.HasMask()) {
     // FIXME dimension should be made runtime parameter
     return detail::filter_array<typename decltype(coords)::value_type,
@@ -259,54 +274,61 @@ auto get_nodal_coordinates(const OmegaHField<T>& field)
  */
 template <typename T, typename U>
 auto set_nodal_data(const OmegaHField<T>& field,
-                    Rank1View<const U, OmegaHMemorySpace::type> data)
-  -> void
+                    Rank1View<const U, OmegaHMemorySpace::type> data) -> void
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_convertible_v<T, U>,
                 "must be able to convert nodal data into the field types data");
   auto& mesh = field.GetMesh();
   auto entity_type = field.GetEntityType();
-  const auto has_tag = mesh.has_tag(mesh_entity_to_int(entity_type), field.GetName());
+  const auto has_tag =
+    mesh.has_tag(mesh_entity_to_int(entity_type), field.GetName());
   if (field.HasMask()) {
     auto& mask = field.GetMask();
-    PCMS_ALWAYS_ASSERT(mask.size() == mesh.nents(mesh_entity_to_int(entity_type)));
+    PCMS_ALWAYS_ASSERT(mask.size() ==
+                       mesh.nents(mesh_entity_to_int(entity_type)));
     Omega_h::Write<T> array(mask.size());
     if (has_tag) {
-      auto original_data = mesh.template get_array<T>(mesh_entity_to_int(entity_type), field.GetName());
+      auto original_data = mesh.template get_array<T>(
+        mesh_entity_to_int(entity_type), field.GetName());
       PCMS_ALWAYS_ASSERT(original_data.size() == mask.size());
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
           array[i] = mask[i] ? data(mask[i] - 1) : original_data[i];
         });
-      mesh.set_tag(mesh_entity_to_int(entity_type), field.GetName(), Omega_h::Read<T>(array));
+      mesh.set_tag(mesh_entity_to_int(entity_type), field.GetName(),
+                   Omega_h::Read<T>(array));
     } else {
       Omega_h::parallel_for(
         mask.size(), OMEGA_H_LAMBDA(size_t i) {
           array[i] = mask[i] ? data(mask[i] - 1) : 0;
         });
-      mesh.add_tag(mesh_entity_to_int(entity_type), field.GetName(), 1, Omega_h::Read<T>(array));
+      mesh.add_tag(mesh_entity_to_int(entity_type), field.GetName(), 1,
+                   Omega_h::Read<T>(array));
     }
   } else {
-    PCMS_ALWAYS_ASSERT(static_cast<LO>(data.size()) == mesh.nents(mesh_entity_to_int(entity_type)));
+    PCMS_ALWAYS_ASSERT(static_cast<LO>(data.size()) ==
+                       mesh.nents(mesh_entity_to_int(entity_type)));
     Omega_h::Write<T> array(data.size());
     Omega_h::parallel_for(
       data.size(), OMEGA_H_LAMBDA(size_t i) { array[i] = data(i); });
     if (has_tag) {
-      mesh.set_tag(mesh_entity_to_int(entity_type), field.GetName(), Omega_h::Read<T>(array));
+      mesh.set_tag(mesh_entity_to_int(entity_type), field.GetName(),
+                   Omega_h::Read<T>(array));
     } else {
-      mesh.add_tag(mesh_entity_to_int(entity_type), field.GetName(), 1, Omega_h::Read<T>(array));
+      mesh.add_tag(mesh_entity_to_int(entity_type), field.GetName(), 1,
+                   Omega_h::Read<T>(array));
     }
   }
-  PCMS_ALWAYS_ASSERT(mesh.has_tag(mesh_entity_to_int(entity_type), field.GetName()));
+  PCMS_ALWAYS_ASSERT(
+    mesh.has_tag(mesh_entity_to_int(entity_type), field.GetName()));
 }
 
 // TODO abstract out repeat parts of lagrange/nearest neighbor evaluation
 template <typename T>
-auto evaluate(
-  const OmegaHField<T>& field, Lagrange<1> /* method */,
-  Rank1View<const double, OmegaHMemorySpace::type>
-    coordinates) -> Omega_h::Read<T>
+auto evaluate(const OmegaHField<T>& field, Lagrange<1> /* method */,
+              Rank1View<const double, OmegaHMemorySpace::type> coordinates)
+  -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
   Omega_h::Write<T> values(coordinates.size() / 2);
@@ -342,11 +364,9 @@ auto evaluate(
 }
 
 template <typename T>
-auto evaluate(
-  const OmegaHField<T>& field,
-  NearestNeighbor /* method */,
-  Rank1View<const double, OmegaHMemorySpace::type>
-    coordinates) -> Omega_h::Read<T>
+auto evaluate(const OmegaHField<T>& field, NearestNeighbor /* method */,
+              Rank1View<const double, OmegaHMemorySpace::type> coordinates)
+  -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
   Omega_h::Write<T> values(coordinates.size() / 2);
@@ -384,19 +404,17 @@ auto evaluate(
 }
 
 template <typename T, typename Method>
-auto evaluate(
-  const OmegaHField<T>& field, Method&& m,
-  Rank1View<const double, HostMemorySpace> coordinates)
+auto evaluate(const OmegaHField<T>& field, Method&& m,
+              Rank1View<const double, HostMemorySpace> coordinates)
   -> std::enable_if_t<
     !std::is_same_v<typename OmegaHMemorySpace::type, HostMemorySpace>,
     Omega_h::HostRead<T>>
 
 {
   PCMS_FUNCTION_TIMER;
-  auto coords_view =
-    Kokkos::View<const double, Kokkos::HostSpace,
-                 Kokkos::MemoryTraits<Kokkos::Unmanaged>>(&coordinates[0],
-                                                          coordinates.size());
+  auto coords_view = Kokkos::View<const double, Kokkos::HostSpace,
+                                  Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
+    &coordinates[0], coordinates.size());
   using exe_space = typename OmegaHMemorySpace::type::execution_space;
   auto coordinates_d =
     Kokkos::create_mirror_view_and_copy(exe_space(), coords_view);
@@ -412,8 +430,8 @@ auto make_array_view(const Omega_h::Read<T>& array)
   -> pcms::Rank1View<const T, typename pcms::OmegaHMemorySpace::type>
 {
   PCMS_FUNCTION_TIMER;
-  pcms::Rank1View<const T, typename pcms::OmegaHMemorySpace::type>
-    view(array.data(), array.size());
+  pcms::Rank1View<const T, typename pcms::OmegaHMemorySpace::type> view(
+    array.data(), array.size());
   return view;
 }
 
@@ -424,22 +442,22 @@ inline Omega_h::Reals get_ent_centroids(Omega_h::Mesh& mesh, int entity_type)
   PCMS_ALWAYS_ASSERT(entity_type >= 0 && entity_type <= 3);
   if (entity_type == 0) {
     return mesh.coords();
-  }
-  else {
+  } else {
     auto coords = mesh.coords();
     int dim = mesh.dim();
     auto ent2verts = mesh.ask_down(entity_type, Omega_h::VERT).ab2b;
     auto nents = mesh.nents(entity_type);
     Omega_h::Write<Real> ent_coords(nents * dim);
 
-    auto calc_coords = OMEGA_H_LAMBDA(LO ent) {
-      if (dim == 2){
+    auto calc_coords = OMEGA_H_LAMBDA(LO ent)
+    {
+      if (dim == 2) {
         auto verts = Omega_h::gather_verts<3>(ent2verts, ent);
         auto ent_vert_coords = Omega_h::gather_vectors<3, 2>(coords, verts);
         auto ent_centroid = Omega_h::average(ent_vert_coords);
         ent_coords[ent * dim] = ent_centroid[0];
         ent_coords[ent * dim + 1] = ent_centroid[1];
-      } else if (dim == 3){
+      } else if (dim == 3) {
         auto verts = Omega_h::gather_verts<4>(ent2verts, ent);
         auto ent_vert_coords = Omega_h::gather_vectors<4, 3>(coords, verts);
         auto ent_centroid = Omega_h::average(ent_vert_coords);
@@ -465,9 +483,11 @@ public:
   using value_type = T;
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
                      std::string global_id_name = "", int search_nx = 10,
-                     int search_ny = 10, mesh_entity_type entity_type = mesh_entity_type::VERTEX)
-    : field_{std::move(name), mesh, std::move(global_id_name), search_nx,
-             search_ny, entity_type}, entity_type_{entity_type}
+                     int search_ny = 10,
+                     mesh_entity_type entity_type = mesh_entity_type::VERTEX)
+    : field_{std::move(name), mesh,      std::move(global_id_name),
+             search_nx,       search_ny, entity_type},
+      entity_type_{entity_type}
   {
     PCMS_FUNCTION_TIMER;
   }
@@ -475,9 +495,11 @@ public:
   OmegaHFieldAdapter(std::string name, Omega_h::Mesh& mesh,
                      Omega_h::Read<Omega_h::I8> mask,
                      std::string global_id_name = "", int search_nx = 10,
-                     int search_ny = 10, mesh_entity_type entity_type = mesh_entity_type::VERTEX)
-    : field_{std::move(name),           mesh,      mask,
-             std::move(global_id_name), search_nx, search_ny, entity_type}, entity_type_{entity_type}
+                     int search_ny = 10,
+                     mesh_entity_type entity_type = mesh_entity_type::VERTEX)
+    : field_{std::move(name), mesh,      mask,       std::move(global_id_name),
+             search_nx,       search_ny, entity_type},
+      entity_type_{entity_type}
   {
     PCMS_FUNCTION_TIMER;
   }
@@ -488,8 +510,7 @@ public:
   // REQUIRED
   int Serialize(
     Rank1View<T, pcms::HostMemorySpace> buffer,
-    Rank1View<const pcms::LO, pcms::HostMemorySpace>
-                  permutation) const
+    Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) const
   {
     PCMS_FUNCTION_TIMER;
     // host copy of filtered field data array
@@ -504,8 +525,7 @@ public:
   // REQUIRED
   void Deserialize(
     Rank1View<const T, pcms::HostMemorySpace> buffer,
-    Rank1View<const pcms::LO, pcms::HostMemorySpace>
-                     permutation) const
+    Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) const
   {
     PCMS_FUNCTION_TIMER;
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
@@ -534,8 +554,9 @@ public:
     PCMS_FUNCTION_TIMER;
     auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(field_.GetClassIDs());
     auto classDims_h = Omega_h::HostRead<Omega_h::I8>(field_.GetClassDims());
-    //const auto coords = Omega_h::HostRead(field_.GetMesh().coords());
-    const auto coords = Omega_h::HostRead(get_ent_centroids(field_.GetMesh(), mesh_entity_to_int(entity_type_)));
+    // const auto coords = Omega_h::HostRead(field_.GetMesh().coords());
+    const auto coords = Omega_h::HostRead(
+      get_ent_centroids(field_.GetMesh(), mesh_entity_to_int(entity_type_)));
     auto dim = field_.GetMesh().dim();
 
     // local_index number of vertices going to each destination process by
@@ -553,13 +574,9 @@ public:
     return reverse_partition;
   }
   // NOT REQUIRED PART OF FieldAdapter interface
-  [[nodiscard]] OmegaHField<T>& GetField() noexcept
-  {
-    return field_;
-  }
+  [[nodiscard]] OmegaHField<T>& GetField() noexcept { return field_; }
   // NOT REQUIRED PART OF FieldAdapter interface
-  [[nodiscard]] const OmegaHField<T>& GetField()
-    const noexcept
+  [[nodiscard]] const OmegaHField<T>& GetField() const noexcept
   {
     return field_;
   }

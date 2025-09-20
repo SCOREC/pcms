@@ -40,9 +40,8 @@ enum class mesh_entity_type : int
 
 inline int mesh_entity_to_int(mesh_entity_type entity_type)
 {
-  static_assert(
-    std::is_same_v<std::underlying_type_t<mesh_entity_type>, int>,
-    "mesh_entity_type must be an int");
+  static_assert(std::is_same_v<std::underlying_type_t<mesh_entity_type>, int>,
+                "mesh_entity_type must be an int");
   return static_cast<std::underlying_type_t<mesh_entity_type>>(entity_type);
 }
 

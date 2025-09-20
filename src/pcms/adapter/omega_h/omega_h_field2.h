@@ -29,7 +29,7 @@ public:
 class OmegaHField2 : public FieldT<Real>
 {
 public:
-  OmegaHField2(std::string name, const OmegaHFieldLayout& layout, Omega_h::Mesh& mesh);
+  OmegaHField2(std::string name, const OmegaHFieldLayout& layout);
 
   const std::string& GetName() const override;
 

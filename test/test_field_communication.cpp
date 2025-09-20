@@ -10,6 +10,7 @@
 #include "pcms/adapter/omega_h/omega_h_field2.h"
 #include "pcms/field_communicator2.h"
 #include "pcms/field_communicator.h"
+#include "pcms/create_field.h"
 #include "test_support.h"
 
 namespace ts = test_support;
@@ -54,29 +55,30 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
 }
 
 void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
-             std::array<int, 4> layout_arr, const adios2::Params& params)
+             int order, const adios2::Params& params)
 {
   redev::Redev rdv(MPI_COMM_WORLD);
   auto channel =
     rdv.CreateAdiosChannel("field2_chan1", params, redev::TransportType::BP4);
 
-  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1, pcms::CoordinateSystem::Cartesian);
-  auto gids = layout.GetGids();
-  const auto n = layout.GetNumOwnedDofHolder();
+  auto layout = pcms::CreateLagrangeLayout(mesh, order, 1,
+                                           pcms::CoordinateSystem::Cartesian);
+  auto gids = layout->GetGids();
+  const auto n = layout->GetNumOwnedDofHolder();
   Omega_h::Write<double> ids(n);
   PCMS_ALWAYS_ASSERT(n == gids.size());
   Omega_h::parallel_for(
     n, OMEGA_H_LAMBDA(int i) { ids[i] = gids[i]; });
 
-  pcms::OmegaHField2 field("", layout, mesh);
+  auto field = pcms::CreateField("", *layout);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
     std::data(ids), std::size(ids)};
   pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field.GetCoordinateSystem()};
-  field.SetDOFHolderData(field_data_view);
+    array_view, field->GetCoordinateSystem()};
+  field->SetDOFHolderData(field_data_view);
 
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "1", comm, rdv, channel, layout);
-  pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, field);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "1", comm, rdv, channel, *layout);
+  pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, *field);
 
   channel.BeginSendCommunicationPhase();
   field_comm.Send();
@@ -84,26 +86,27 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
 }
 
 void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
-             std::array<int, 4> layout_arr, const adios2::Params& params)
+             int order, const adios2::Params& params)
 {
   redev::Redev rdv(MPI_COMM_WORLD);
   auto channel =
     rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
 
-  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1, pcms::CoordinateSystem::Cartesian);
-  auto gids = layout.GetGids();
-  const auto n = layout.GetNumOwnedDofHolder();
+  auto layout = pcms::CreateLagrangeLayout(mesh, order, 1,
+                                           pcms::CoordinateSystem::Cartesian);
+  auto gids = layout->GetGids();
+  const auto n = layout->GetNumOwnedDofHolder();
 
-  pcms::OmegaHField2 field("", layout, mesh);
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "2", comm, rdv, channel, layout);
-  pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, field);
+  auto field = pcms::CreateField("", *layout);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "2", comm, rdv, channel, *layout);
+  pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, *field);
 
   channel.BeginReceiveCommunicationPhase();
   field_comm.Receive();
   channel.EndReceiveCommunicationPhase();
 
-  auto copied_array = field.GetDOFHolderData().GetValues();
-  auto owned = layout.GetOwned();
+  auto copied_array = field->GetDOFHolderData().GetValues();
+  auto owned = layout->GetOwned();
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());
   PCMS_ALWAYS_ASSERT(owned.size() == gids.size());
@@ -135,29 +138,29 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
 }
 
 void server2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
-             std::array<int, 4> layout_arr, const adios2::Params& params,
+             int order, const adios2::Params& params,
              const std::string& cpn_filename)
 {
-  redev::Redev rdv(
-    MPI_COMM_WORLD,
-    redev::Partition{setupServerPartition(mesh, cpn_filename)},
-    redev::ProcessType::Server);
+  redev::Redev rdv(MPI_COMM_WORLD,
+                   redev::Partition{setupServerPartition(mesh, cpn_filename)},
+                   redev::ProcessType::Server);
   auto channel1 =
     rdv.CreateAdiosChannel("field2_chan1", params, redev::TransportType::BP4);
   auto channel2 =
     rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
 
-  auto layout = pcms::OmegaHFieldLayout(mesh, layout_arr, 1, pcms::CoordinateSystem::Cartesian);
-  const auto n = layout.GetNumOwnedDofHolder();
+  auto layout = pcms::CreateLagrangeLayout(mesh, order, 1,
+                                           pcms::CoordinateSystem::Cartesian);
+  const auto n = layout->GetNumOwnedDofHolder();
   Omega_h::Write<double> ids(n);
   Omega_h::parallel_for(
     n, OMEGA_H_LAMBDA(int i) { ids[i] = 0; });
 
-  pcms::OmegaHField2 field("", layout, mesh);
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm1(comm_name + "1", comm, rdv, channel1, layout);
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm2(comm_name + "2", comm, rdv, channel2, layout);
-  pcms::FieldCommunicator2<pcms::Real> field_comm1(layout_comm1, field);
-  pcms::FieldCommunicator2<pcms::Real> field_comm2(layout_comm2, field);
+  auto field = pcms::CreateField("", *layout);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm1(comm_name + "1", comm, rdv, channel1, *layout);
+  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm2(comm_name + "2", comm, rdv, channel2, *layout);
+  pcms::FieldCommunicator2<pcms::Real> field_comm1(layout_comm1, *field);
+  pcms::FieldCommunicator2<pcms::Real> field_comm2(layout_comm2, *field);
 
   channel1.BeginReceiveCommunicationPhase();
   field_comm1.Receive();
@@ -191,15 +194,15 @@ int main(int argc, char** argv)
   switch (clientId) {
     case -1:
       mesh = Omega_h::binary::read(meshFile, world);
-      server2(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params, classPartitionFile);
+      server2(mpi_comm, mesh, "lin_field_comm", 1, params, classPartitionFile);
       break;
     case 0:
       mesh = Omega_h::binary::read(meshFile, world);
-      client1(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params);
+      client1(mpi_comm, mesh, "lin_field_comm", 1, params);
       break;
     case 1:
       mesh = Omega_h::binary::read(meshFile, world);
-      client2(mpi_comm, mesh, "lin_field_comm", {1, 0, 0, 0}, params);
+      client2(mpi_comm, mesh, "lin_field_comm", 1, params);
       break;
     default:
       std::cerr << "Unhandled client id (should be -1,0,1)\n";

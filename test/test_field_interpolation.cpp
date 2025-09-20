@@ -7,6 +7,7 @@
 #include <pcms/transfer_field2.h>
 #include "pcms/adapter/omega_h/omega_h_field.h"
 #include "pcms/adapter/omega_h/omega_h_field2.h"
+#include "pcms/create_field.h"
 #include <Kokkos_Core.hpp>
 #include <vector>
 
@@ -17,7 +18,7 @@ TEST_CASE("interpolate linear 2d omega_h_field")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto layout =
-    pcms::OmegaHFieldLayout(mesh, {1, 0, 0, 0}, 1, pcms::CoordinateSystem::Cartesian);
+    pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
   const auto nverts = mesh.nents(0);
   auto mesh_coords = mesh.coords();
   auto f = [](double x, double y) { return -0.3 * x + 0.5 * y; };
@@ -28,17 +29,17 @@ TEST_CASE("interpolate linear 2d omega_h_field")
       double y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
-  pcms::OmegaHField2 field("", layout, mesh);
-  pcms::OmegaHField2 interpolated("", layout, mesh);
+  auto field = pcms::CreateField("", *layout);
+  auto interpolated = pcms::CreateField("", *layout);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
     std::data(test_f), std::size(test_f)};
   pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field.GetCoordinateSystem()};
-  field.SetDOFHolderData(field_data_view);
+    array_view, field->GetCoordinateSystem()};
+  field->SetDOFHolderData(field_data_view);
 
-  pcms::interpolate_field2(field, interpolated);
-  auto interpolated_dof = interpolated.GetDOFHolderData();
-  auto original_dof = field.GetDOFHolderData();
+  pcms::interpolate_field2(*field, *interpolated);
+  auto interpolated_dof = interpolated->GetDOFHolderData();
+  auto original_dof = field->GetDOFHolderData();
   REQUIRE(interpolated_dof.GetCoordinateSystem() == original_dof.GetCoordinateSystem());
   REQUIRE( interpolated_dof.Size() == original_dof.Size());
   // assumes that GetDOFHolderData will return a host view
@@ -57,7 +58,7 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto layout =
-    pcms::OmegaHFieldLayout(mesh, {1, 1, 0, 0}, 1, pcms::CoordinateSystem::Cartesian);
+    pcms::CreateLagrangeLayout(mesh, 2, 1, pcms::CoordinateSystem::Cartesian);
   const auto nverts = mesh.nents(0);
   const auto nedges = mesh.nents(1);
   auto mesh_coords = mesh.coords();
@@ -82,18 +83,18 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
       test_f[nverts + i] = f(cx, cy);
     });
 
-  pcms::OmegaHField2 field("", layout, mesh);
-  pcms::OmegaHField2 interpolated("", layout, mesh);
+  auto field = pcms::CreateField("", *layout);
+  auto interpolated = pcms::CreateField("", *layout);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
     std::data(test_f), std::size(test_f)
   };
-  field.SetDOFHolderData({array_view, field.GetCoordinateSystem()});
+  field->SetDOFHolderData({array_view, field->GetCoordinateSystem()});
 
   // interpolate the field from one mesh to another mesh with the same coordinates
-  pcms::interpolate_field2(field, interpolated);
+  pcms::interpolate_field2(*field, *interpolated);
 
-  auto interpolated_dof = interpolated.GetDOFHolderData();
-  auto original_dof = field.GetDOFHolderData();
+  auto interpolated_dof = interpolated->GetDOFHolderData();
+  auto original_dof = field->GetDOFHolderData();
   REQUIRE(interpolated_dof.GetCoordinateSystem() == original_dof.GetCoordinateSystem());
   REQUIRE( interpolated_dof.Size() == original_dof.Size());
   // assumes that GetDOFHolderData will return a host view

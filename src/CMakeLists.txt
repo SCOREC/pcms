@@ -9,6 +9,7 @@ set(PCMS_HEADERS
         pcms/coordinate_systems.h
         pcms/coordinate_transform.h
         pcms/field.h
+        pcms/create_field.h
         pcms/field_communicator.h
         pcms/field_communicator2.h
         pcms/field_evaluation_methods.h
@@ -32,6 +33,7 @@ set(PCMS_SOURCES
         pcms.cpp
         pcms/assert.cpp
         pcms/print.cpp
+        pcms/create_field.cpp
         pcms/adapter/xgc/xgc_field_adapter.h
         pcms/adapter/point_cloud/point_cloud_layout.cpp
         pcms/adapter/point_cloud/point_cloud.cpp

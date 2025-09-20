@@ -117,33 +117,33 @@ struct OmegaHField2LocalizationHint
  * Field
  */
 OmegaHField2::OmegaHField2(std::string name,
-                           const OmegaHFieldLayout& layout, Omega_h::Mesh& mesh)
+                           const OmegaHFieldLayout& layout)
   : name_(name),
     layout_(layout),
-    mesh_(mesh),
-    search_(mesh, 10, 10),
+    mesh_(layout.GetMesh()),
+    search_(mesh_, 10, 10),
     dof_holder_data_("", layout.GetNumOwnedDofHolder() * layout.GetNumComponents())
 {
   auto nodes_per_dim = layout.GetNodesPerDim();
   if (nodes_per_dim[2] == 0 && nodes_per_dim[3] == 0) {
     if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 0) {
-        switch (mesh.dim()) {
-          case 1:
-            mesh_field_ = std::make_unique<MeshFieldBackendImpl<1, 1>>(mesh);
-            break;
-          case 2:
-            mesh_field_ = std::make_unique<MeshFieldBackendImpl<2, 1>>(mesh);
-            break;
-        }
+      switch (mesh_.dim()) {
+        case 1:
+          mesh_field_ = std::make_unique<MeshFieldBackendImpl<1, 1>>(mesh_);
+          break;
+        case 2:
+          mesh_field_ = std::make_unique<MeshFieldBackendImpl<2, 1>>(mesh_);
+          break;
+      }
     } else if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 1) {
-        switch (mesh.dim()) {
-          case 2:
-            mesh_field_ = std::make_unique<MeshFieldBackendImpl<2, 2>>(mesh);
-            break;
-          case 3:
-            mesh_field_ = std::make_unique<MeshFieldBackendImpl<3, 2>>(mesh);
-            break;
-        }
+      switch (mesh_.dim()) {
+        case 2:
+          mesh_field_ = std::make_unique<MeshFieldBackendImpl<2, 2>>(mesh_);
+          break;
+        case 3:
+          mesh_field_ = std::make_unique<MeshFieldBackendImpl<3, 2>>(mesh_);
+          break;
+      }
     }
   }
 }

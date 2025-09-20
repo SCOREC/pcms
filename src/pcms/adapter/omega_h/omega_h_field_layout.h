@@ -27,13 +27,14 @@ public:
   // if the field layout is distributed, the owned and global dofs are the same
   bool IsDistributed() override;
 
-  size_t GetNumEnts() const;
   std::array<size_t, 5> GetEntOffsets() const override;
 
   ReversePartitionMap2 GetReversePartitionMap(
     const redev::Partition& partition) const override;
 
   std::array<int, 4> GetNodesPerDim() const;
+  size_t GetNumEnts() const;
+  Omega_h::Mesh& GetMesh() const;
 
 private:
   Omega_h::Read<Omega_h::ClassId> GetClassIDs() const;

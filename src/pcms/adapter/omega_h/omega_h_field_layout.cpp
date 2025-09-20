@@ -195,6 +195,11 @@ size_t OmegaHFieldLayout::GetNumEnts() const {
   return n;
 }
 
+Omega_h::Mesh& OmegaHFieldLayout::GetMesh() const
+{
+  return mesh_;
+}
+
 std::array<size_t, 5> OmegaHFieldLayout::GetEntOffsets() const
 {
   std::array<size_t, 5> offsets{};

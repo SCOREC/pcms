@@ -5,6 +5,7 @@
 #include <Omega_h_for.hpp>
 #include "pcms/adapter/omega_h/omega_h_field.h"
 #include "pcms/adapter/omega_h/omega_h_field2.h"
+#include "pcms/create_field.h"
 #include <Kokkos_Core.hpp>
 #include <vector>
 
@@ -15,7 +16,7 @@ TEST_CASE("evaluate linear 2d omega_h_field")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto layout =
-    pcms::OmegaHFieldLayout(mesh, {1, 0, 0, 0}, 1, pcms::CoordinateSystem::Cartesian);
+    pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
   const auto nverts = mesh.nents(0);
   auto mesh_coords = mesh.coords();
   auto f = [](double x, double y) { return std::sin(20 * x * y) / 2 + 0.5; };
@@ -27,12 +28,12 @@ TEST_CASE("evaluate linear 2d omega_h_field")
       double y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
-  pcms::OmegaHField2 field("", layout, mesh);
+  auto field = pcms::CreateField("", *layout);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
     std::data(test_f), std::size(test_f)};
   pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field.GetCoordinateSystem()};
-  field.SetDOFHolderData(field_data_view);
+    array_view, field->GetCoordinateSystem()};
+  field->SetDOFHolderData(field_data_view);
 
   std::vector<double> coords = {
     0.7681, 0.886,
@@ -53,12 +54,12 @@ TEST_CASE("evaluate linear 2d omega_h_field")
   pcms::Rank2View<const double, pcms::HostMemorySpace> coords_view(
     coords.data(), coords.size() / 2, 2);
   pcms::FieldDataView<double, pcms::HostMemorySpace> data_view(
-    eval_view, field.GetCoordinateSystem());
+    eval_view, field->GetCoordinateSystem());
   pcms::CoordinateView<pcms::HostMemorySpace> coordinate_view{
-    field.GetCoordinateSystem(), coords_view};
+    field->GetCoordinateSystem(), coords_view};
 
-  auto locale = field.GetLocalizationHint(coordinate_view);
-  field.Evaluate(locale, data_view);
+  auto locale = field->GetLocalizationHint(coordinate_view);
+  field->Evaluate(locale, data_view);
 
   for (int i = 0; i < coords.size() / 2; ++i) {
     double x = coords[2 * i + 0];
@@ -78,7 +79,8 @@ TEST_CASE("evaluate quadratic 2d omega_h_field")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto layout = pcms::OmegaHFieldLayout(mesh, {1, 1, 0, 0}, 1, pcms::CoordinateSystem::Cartesian);
+  auto layout =
+    pcms::CreateLagrangeLayout(mesh, 2, 1, pcms::CoordinateSystem::Cartesian);
   const auto nverts = mesh.nents(0);
   const auto nedges = mesh.nents(1);
   auto mesh_coords = mesh.coords();
@@ -103,12 +105,12 @@ TEST_CASE("evaluate quadratic 2d omega_h_field")
       test_f[nverts + i] = f(cx, cy);
     });
 
-  pcms::OmegaHField2 field("", layout, mesh);
+  auto field = pcms::CreateField("", *layout);
   pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
     std::data(test_f), std::size(test_f)};
   pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field.GetCoordinateSystem()};
-  field.SetDOFHolderData(field_data_view);
+    array_view, field->GetCoordinateSystem()};
+  field->SetDOFHolderData(field_data_view);
 
   std::vector<double> coords = {
     0.7681, 0.886,
@@ -129,12 +131,12 @@ TEST_CASE("evaluate quadratic 2d omega_h_field")
   pcms::Rank2View<const double, pcms::HostMemorySpace> coords_view(
     coords.data(), coords.size() / 2, 2);
   pcms::FieldDataView<double, pcms::HostMemorySpace> data_view(
-    eval_view, field.GetCoordinateSystem());
+    eval_view, field->GetCoordinateSystem());
   pcms::CoordinateView<pcms::HostMemorySpace> coordinate_view{
-    field.GetCoordinateSystem(), coords_view};
+    field->GetCoordinateSystem(), coords_view};
 
-  auto locale = field.GetLocalizationHint(coordinate_view);
-  field.Evaluate(locale, data_view);
+  auto locale = field->GetLocalizationHint(coordinate_view);
+  field->Evaluate(locale, data_view);
 
   for (int i = 0; i < coords.size() / 2; ++i) {
     double x = coords[2 * i + 0];

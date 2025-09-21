@@ -7,7 +7,7 @@
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-
+#include <pcms/print.h>
 
 //[[nodiscard]]
 PcmsInterpolatorHandle pcms_create_interpolator(PcmsInterpolatorOHMeshHandle oh_mesh, double radius)
@@ -67,34 +67,60 @@ PcmsPointBasedInterpolatorHandle pcms_create_degas2xgc_interpolator(const char* 
     radius);
 }
 
+Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename, int& num_elements)
+{
+  auto fname = std::string(mesh_filename);
+  fname = fname.erase(fname.find_last_not_of(" \n\r\t")+1);
+  pcms::printInfo("The interpolator got dg2 mesh file: %s\n", fname.c_str());
+  auto mesh_lib = Omega_h::Library(nullptr, nullptr, MPI_COMM_SELF);
+  auto mesh = Omega_h::binary::read(fname, mesh_lib.world());
+  auto elem_centroids = getCentroids(mesh);
+  num_elements = mesh.nelems();
+  OMEGA_H_CHECK_PRINTF(num_elements * 2 == elem_centroids.size(),
+    "Mesh element centroids size does not match the number of elements %d != %d\n", num_elements * 2, elem_centroids.size());
+
+  pcms::printInfo("Number of element centroids: %d\n", elem_centroids.size()/2);
+  OMEGA_H_CHECK_PRINTF(mesh.dim() == 2, "Mesh dimension is not 2D %d\n", mesh.dim());
+
+  return {elem_centroids};
+}
+
+void write_void_int_pointer(void* pointer, int value)
+{
+  if (pointer) {
+    int* dg2_elem_count_int = reinterpret_cast<int*>(pointer);
+    *dg2_elem_count_int = value;
+  } else {
+    pcms::printError("Error: NULL pointer provided to write integer value\n");
+  }
+}
+
 PcmsPointBasedInterpolatorHandle pcms_create_degas2xgcnode_interpolator(void* target_points, int target_points_size,
                                                                 const char* dg2_mesh_filename, double radius, void* dg2_elem_count)
 {
   // same as above pcms_create_degas2xgc_interpolator but the target points are provided by the user
   // this is useful when the corresponding xgc mesh is not available
 
-  auto dg2_fname = std::string(dg2_mesh_filename);
-  dg2_fname = dg2_fname.erase(dg2_fname.find_last_not_of(" \n\r\t")+1);
-  printf("The interpolator got dg2 mesh file: %s\n", dg2_fname.c_str());
-  auto dg2_mesh_lib = Omega_h::Library(nullptr, nullptr, MPI_COMM_SELF);
-  auto dg2_mesh = Omega_h::binary::read(dg2_fname, dg2_mesh_lib.world());
-
-  OMEGA_H_CHECK_PRINTF(dg2_mesh.dim() == 2, "DG2 mesh dimension is not 2D %d\n", dg2_mesh.dim());
-  auto dg2_num_elems = dg2_mesh.nelems();
-  if (dg2_elem_count) {
-    int* dg2_elem_count_int = reinterpret_cast<int*>(dg2_elem_count);
-    *dg2_elem_count_int = dg2_num_elems;
-  }
-  auto dg2_elem_centroids = getCentroids(dg2_mesh);
-  OMEGA_H_CHECK_PRINTF(dg2_num_elems * 2 == dg2_elem_centroids.size(),
-    "DG2 mesh element centroids size does not match the number of elements %d != %d\n", dg2_num_elems * 2, dg2_elem_centroids.size());
-
-  Omega_h::HostRead<Omega_h::Real> dg2_elem_centroids_host(dg2_elem_centroids);
-  printf("Number of DG2 element centroids: %d\n", dg2_elem_centroids.size()/2);
+  int dg2_num_elems = 0;
+  auto dg2_elem_centroids_host = read_mesh_centroids(dg2_mesh_filename, dg2_num_elems);
+  write_void_int_pointer(dg2_elem_count, dg2_num_elems);
 
   return pcms_create_point_based_interpolator(
     (void*) dg2_elem_centroids_host.data(), dg2_elem_centroids_host.size(),
     target_points, target_points_size,
+    radius);
+}
+
+PcmsPointBasedInterpolatorHandle pcms_create_xgcnodedegas2_interpolator(const char* dg2_mesh_filename, void* source_points, int source_points_size,
+                                                                double radius, void* dg2_elem_count)
+{
+  int dg2_num_elems = 0;
+  auto dg2_elem_centroids_host = read_mesh_centroids(dg2_mesh_filename, dg2_num_elems);
+  write_void_int_pointer(dg2_elem_count, dg2_num_elems);
+
+  return pcms_create_point_based_interpolator(
+    source_points, source_points_size,
+    (void*) dg2_elem_centroids_host.data(), dg2_elem_centroids_host.size(),
     radius);
 }
 

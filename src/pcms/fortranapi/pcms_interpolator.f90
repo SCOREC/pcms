@@ -55,6 +55,7 @@ module pcms_interpolator
  end type
  public :: pcms_create_degas2xgc_interpolator
  public :: pcms_create_degas2xgcnode_interpolator
+ public :: pcms_create_xgcnodedegas2_interpolator
  public :: pcms_create_interpolator
  public :: pcms_destroy_interpolator
  public :: pcms_destroy_point_based_interpolator
@@ -247,6 +248,20 @@ import :: swigclasswrapper
 type(C_PTR), intent(in) :: farg1
 integer(C_INT), intent(in) :: farg2
 type(SwigArrayWrapper) :: farg3
+real(C_DOUBLE), intent(in) :: farg4
+type(C_PTR), intent(in) :: farg5
+type(SwigClassWrapper) :: fresult
+end function
+
+function swigc_pcms_create_xgcnodedegas2_interpolator(farg1, farg2, farg3, farg4, farg5) &
+bind(C, name="_wrap_pcms_create_xgcnodedegas2_interpolator") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigarraywrapper
+import :: swigclasswrapper
+type(SwigArrayWrapper) :: farg1
+type(C_PTR), intent(in) :: farg2
+integer(C_INT), intent(in) :: farg3
 real(C_DOUBLE), intent(in) :: farg4
 type(C_PTR), intent(in) :: farg5
 type(SwigClassWrapper) :: fresult
@@ -628,6 +643,32 @@ call SWIGTM_fin_char_Sm_(dg2_mesh_filename, farg3, farg3_temp)
 farg4 = radius
 farg5 = dg2_elem_count
 fresult = swigc_pcms_create_degas2xgcnode_interpolator(farg1, farg2, farg3, farg4, farg5)
+swig_result%swigdata = fresult
+end function
+
+function pcms_create_xgcnodedegas2_interpolator(dg2_mesh_filename, source_points, source_points_size, radius, dg2_elem_count) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsPointBasedInterpolatorHandle) :: swig_result
+character(len=*), intent(in) :: dg2_mesh_filename
+type(C_PTR), intent(in) :: source_points
+integer(C_INT), intent(in) :: source_points_size
+real(C_DOUBLE), intent(in) :: radius
+type(C_PTR), intent(in) :: dg2_elem_count
+type(SwigClassWrapper) :: fresult 
+character(kind=C_CHAR), dimension(:), allocatable, target :: farg1_temp 
+type(SwigArrayWrapper) :: farg1 
+type(C_PTR) :: farg2 
+integer(C_INT) :: farg3 
+real(C_DOUBLE) :: farg4 
+type(C_PTR) :: farg5 
+
+call SWIGTM_fin_char_Sm_(dg2_mesh_filename, farg1, farg1_temp)
+farg2 = source_points
+farg3 = source_points_size
+farg4 = radius
+farg5 = dg2_elem_count
+fresult = swigc_pcms_create_xgcnodedegas2_interpolator(farg1, farg2, farg3, farg4, farg5)
 swig_result%swigdata = fresult
 end function
 

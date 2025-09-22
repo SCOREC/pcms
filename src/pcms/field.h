@@ -1,5 +1,6 @@
 #ifndef PCMS_COUPLING_FIELD_H
 #define PCMS_COUPLING_FIELD_H
+#include "field_layout.h"
 #include "pcms/types.h"
 #include "pcms/arrays.h"
 #include "pcms/memory_spaces.h"
@@ -61,6 +62,8 @@ struct LocalizationHint {
   std::shared_ptr<void> data = nullptr;
 };
 
+class FieldLayout;
+
 /*
 * A field expresses the highest level view of operations
 * that a user can perform on a field
@@ -70,8 +73,6 @@ struct LocalizationHint {
 template <typename T>
 class FieldT {
 public:
-  virtual const std::string& GetName() const = 0;
-
   CoordinateSystem GetCoordinateSystem() const { return GetLayout().GetDOFHolderCoordinates().GetCoordinateSystem(); }
 
   // returns a hint that can be given to the Evaluate method
@@ -88,8 +89,8 @@ public:
   // Results should use same coordinate frame as Coordinates passed in
   virtual void EvaluateGradient(FieldDataView<T, HostMemorySpace> results) = 0;
 
-  virtual FieldDataView<const T, HostMemorySpace> GetDOFHolderData() const = 0;
-  virtual void SetDOFHolderData(FieldDataView<const T, HostMemorySpace> data) = 0;
+  virtual Rank1View<const T, HostMemorySpace> GetDOFHolderData() const = 0;
+  virtual void SetDOFHolderData(Rank1View<const T, HostMemorySpace> data) = 0;
 
   virtual const FieldLayout &GetLayout() const = 0;
   // number of physical dimensions (typically 1-6)

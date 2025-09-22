@@ -10,6 +10,9 @@ class PointCloudLayout : public FieldLayout
 {
 public:
   PointCloudLayout(int dim, Kokkos::View<Real**> coords, CoordinateSystem coordinate_system);
+
+  std::unique_ptr<FieldT<Real>> CreateField() const override;
+
   int GetNumComponents() const override;
   // nodes for standard lagrange FEM
   LO GetNumOwnedDofHolder() const override;

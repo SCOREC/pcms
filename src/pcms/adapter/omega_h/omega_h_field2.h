@@ -29,9 +29,7 @@ public:
 class OmegaHField2 : public FieldT<Real>
 {
 public:
-  OmegaHField2(std::string name, const OmegaHFieldLayout& layout);
-
-  const std::string& GetName() const override;
+  OmegaHField2(const OmegaHFieldLayout& layout);
 
 
   LocalizationHint GetLocalizationHint(
@@ -54,13 +52,12 @@ public:
                    Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
     override;
 
-  FieldDataView<const Real, HostMemorySpace> GetDOFHolderData() const override;
-  void SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) override;
+  Rank1View<const Real, HostMemorySpace> GetDOFHolderData() const override;
+  void SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data) override;
 
   ~OmegaHField2() noexcept = default;
 
 private:
-  std::string name_;
   const OmegaHFieldLayout& layout_;
   Omega_h::Mesh& mesh_;
   std::unique_ptr<MeshFieldBackend> mesh_field_;

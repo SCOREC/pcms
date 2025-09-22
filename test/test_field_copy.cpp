@@ -24,16 +24,12 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
   Omega_h::parallel_for(
     ndata, OMEGA_H_LAMBDA(int i) { ids[i] = i; });
 
-  auto original = pcms::CreateField("", *layout);
-  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
-    std::data(ids), std::size(ids)};
-  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, original->GetCoordinateSystem()};
-  original->SetDOFHolderData(field_data_view);
+  auto original = layout->CreateField();
+  original->SetDOFHolderData(pcms::make_const_array_view(ids));
 
-  auto copied = pcms::CreateField("", *layout);
+  auto copied = layout->CreateField();
   pcms::copy_field2(*original, *copied);
-  auto copied_array = copied->GetDOFHolderData().GetValues();
+  auto copied_array = copied->GetDOFHolderData();
 
   REQUIRE(copied_array.size() == ndata);
   int sum = 0;

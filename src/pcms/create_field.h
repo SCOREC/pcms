@@ -14,9 +14,6 @@ namespace pcms
 std::unique_ptr<FieldLayout> CreateLagrangeLayout(
   Omega_h::Mesh& mesh, int order, int num_components,
   CoordinateSystem coordinate_system);
-
-std::unique_ptr<FieldT<Real>> CreateField(std::string name,
-                                          FieldLayout& layout);
 } // namespace pcms
 
 #endif // CREATE_FIELD_H_

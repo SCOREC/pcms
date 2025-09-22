@@ -28,12 +28,8 @@ TEST_CASE("evaluate linear 2d omega_h_field")
       double y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
-  auto field = pcms::CreateField("", *layout);
-  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
-    std::data(test_f), std::size(test_f)};
-  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field->GetCoordinateSystem()};
-  field->SetDOFHolderData(field_data_view);
+  auto field = layout->CreateField();
+  field->SetDOFHolderData(pcms::make_const_array_view(test_f));
 
   std::vector<double> coords = {
     0.7681, 0.886,
@@ -105,12 +101,8 @@ TEST_CASE("evaluate quadratic 2d omega_h_field")
       test_f[nverts + i] = f(cx, cy);
     });
 
-  auto field = pcms::CreateField("", *layout);
-  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
-    std::data(test_f), std::size(test_f)};
-  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field->GetCoordinateSystem()};
-  field->SetDOFHolderData(field_data_view);
+  auto field = layout->CreateField();
+  field->SetDOFHolderData(pcms::make_const_array_view(test_f));
 
   std::vector<double> coords = {
     0.7681, 0.886,

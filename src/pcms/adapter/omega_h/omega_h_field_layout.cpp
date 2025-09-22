@@ -1,8 +1,10 @@
 #include "omega_h_field.h"
+#include "omega_h_field2.h"
 #include "pcms/adapter/omega_h/omega_h_field_layout.h"
 #include "omega_h_field_layout.h"
 #include "pcms/inclusive_scan.h"
 #include "pcms/profile.h"
+#include <memory>
 
 namespace pcms
 {
@@ -121,6 +123,11 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
   }
 }
 
+std::unique_ptr<FieldT<Real>> OmegaHFieldLayout::CreateField() const
+{
+  return std::make_unique<OmegaHField2>(*this);
+}
+
 int OmegaHFieldLayout::GetNumComponents() const
 {
   return num_components_;
@@ -151,8 +158,7 @@ std::array<int, 4> OmegaHFieldLayout::GetNodesPerDim() const
 
 Rank1View<const bool, HostMemorySpace> OmegaHFieldLayout::GetOwned() const
 {
-  Rank1View<const bool, HostMemorySpace> owned{std::data(owned_), std::size(owned_)};
-  return owned;
+  return make_const_array_view(owned_);
 }
 
 GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const

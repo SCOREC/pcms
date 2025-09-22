@@ -116,10 +116,8 @@ struct OmegaHField2LocalizationHint
 /*
  * Field
  */
-OmegaHField2::OmegaHField2(std::string name,
-                           const OmegaHFieldLayout& layout)
-  : name_(name),
-    layout_(layout),
+OmegaHField2::OmegaHField2(const OmegaHFieldLayout& layout)
+  : layout_(layout),
     mesh_(layout.GetMesh()),
     search_(mesh_, 10, 10),
     dof_holder_data_("", layout.GetNumOwnedDofHolder() * layout.GetNumComponents())
@@ -148,12 +146,7 @@ OmegaHField2::OmegaHField2(std::string name,
   }
 }
 
-const std::string& OmegaHField2::GetName() const
-{
-  return name_;
-}
-
-FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
+Rank1View<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
   const
 {
   PCMS_FUNCTION_TIMER;
@@ -169,31 +162,21 @@ FieldDataView<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
     }
   }
 
-  Rank1View<const Real, pcms::HostMemorySpace> array_view{
-    std::data(dof_holder_data_), std::size(dof_holder_data_)};
-  FieldDataView<const Real, HostMemorySpace> data_view{array_view,
-                                                       layout_.GetDOFHolderCoordinates().GetCoordinateSystem()};
-  return data_view;
+  return make_const_array_view(dof_holder_data_);
 };
 
-
-void OmegaHField2::SetDOFHolderData(FieldDataView<const Real, HostMemorySpace> data) {
+void OmegaHField2::SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data) {
   PCMS_FUNCTION_TIMER;
-  // TODO should we check that the layout matches, not just the coordinate system?
-  if (data.GetCoordinateSystem() != layout_.GetDOFHolderCoordinates().GetCoordinateSystem()) {
-    throw std::runtime_error("Coordinate system mismatch");
-  }
 
-  Rank1View<const Real, HostMemorySpace> values = data.GetValues();
   auto nodes_per_dim = layout_.GetNodesPerDim();
   auto num_components = layout_.GetNumComponents();
-  PCMS_ALWAYS_ASSERT(static_cast<LO>(values.size()) ==
+  PCMS_ALWAYS_ASSERT(static_cast<LO>(data.size()) ==
                      layout_.GetNumOwnedDofHolder() * num_components);
   size_t offset = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i]) {
       size_t len = mesh_.nents(i) * nodes_per_dim[i] * num_components;
-      Rank1View<const Real, HostMemorySpace> subspan{values.data_handle() + offset, len};
+      Rank1View<const Real, HostMemorySpace> subspan{data.data_handle() + offset, len};
       mesh_field_->SetData(subspan, nodes_per_dim[i], num_components, i);
       offset += len;
     }
@@ -269,7 +252,7 @@ int OmegaHField2::Serialize(
 {
   PCMS_FUNCTION_TIMER;
   // host copy of filtered field data array
-  const auto array_h = GetDOFHolderData().GetValues();
+  const auto array_h = GetDOFHolderData();
   if (buffer.size() > 0) {
     auto owned = layout_.GetOwned();
     for (size_t i = 0; i < array_h.size(); i++) {
@@ -292,8 +275,6 @@ void OmegaHField2::Deserialize(
       sorted_buffer[i] = buffer[permutation[i]];
   }
   const auto sorted_buffer_d = Omega_h::Read<Real>(sorted_buffer);
-  Rank1View<const Real, HostMemorySpace> sorted_buffer_view{std::data(sorted_buffer_d), std::size(sorted_buffer_d)};
-  FieldDataView<const Real, HostMemorySpace> field_view{sorted_buffer_view, layout_.GetDOFHolderCoordinates().GetCoordinateSystem()};
-  SetDOFHolderData(field_view);
+  SetDOFHolderData(pcms::make_const_array_view(sorted_buffer_d));
 }
 } // namespace pcms

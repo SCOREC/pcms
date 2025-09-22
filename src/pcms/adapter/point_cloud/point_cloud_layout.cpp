@@ -1,4 +1,6 @@
 #include "point_cloud_layout.h"
+#include "point_cloud.h"
+#include <memory>
 
 namespace pcms
 {
@@ -18,6 +20,11 @@ PointCloudLayout::PointCloudLayout(int dim, Kokkos::View<Real**> coords, Coordin
     });
 }
 
+std::unique_ptr<FieldT<Real>> PointCloudLayout::CreateField() const
+{
+  return std::make_unique<PointCloud>(*this);
+}
+
 int PointCloudLayout::GetNumComponents() const
 {
     return compoents_;
@@ -35,8 +42,7 @@ GO PointCloudLayout::GetNumGlobalDofHolder() const
 
 Rank1View<const bool, HostMemorySpace> PointCloudLayout::GetOwned() const
 {
-    return Rank1View<const bool, HostMemorySpace>{std::data(owned_),
-                                                  std::size(owned_)};
+    return make_const_array_view(owned_);
 }
 
 GlobalIDView<HostMemorySpace> PointCloudLayout::GetGids() const

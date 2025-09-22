@@ -23,13 +23,4 @@ std::unique_ptr<FieldLayout> CreateLagrangeLayout(
                                              num_components, coordinate_system);
 }
 
-std::unique_ptr<FieldT<Real>> CreateField(std::string name, FieldLayout& layout)
-{
-  if (OmegaHFieldLayout* l = dynamic_cast<OmegaHFieldLayout*>(&layout)) {
-    return std::make_unique<OmegaHField2>(name, *l);
-  } else {
-    throw std::runtime_error("Unknown layout");
-  }
-}
-
 } // namespace pcms

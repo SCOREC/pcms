@@ -29,24 +29,19 @@ TEST_CASE("interpolate linear 2d omega_h_field")
       double y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
-  auto field = pcms::CreateField("", *layout);
-  auto interpolated = pcms::CreateField("", *layout);
-  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
-    std::data(test_f), std::size(test_f)};
-  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field->GetCoordinateSystem()};
-  field->SetDOFHolderData(field_data_view);
+  auto field = layout->CreateField();
+  auto interpolated = layout->CreateField();
+  field->SetDOFHolderData(pcms::make_const_array_view(test_f));
 
   pcms::interpolate_field2(*field, *interpolated);
   auto interpolated_dof = interpolated->GetDOFHolderData();
   auto original_dof = field->GetDOFHolderData();
-  REQUIRE(interpolated_dof.GetCoordinateSystem() == original_dof.GetCoordinateSystem());
-  REQUIRE( interpolated_dof.Size() == original_dof.Size());
+  REQUIRE( interpolated_dof.size() == original_dof.size());
   // assumes that GetDOFHolderData will return a host view
-  for (int i = 0; i < interpolated_dof.Size(); ++i) {
-    REQUIRE_THAT(interpolated_dof.GetValues()[i],
-                 Catch::Matchers::WithinRel(original_dof.GetValues()[i], 0.001) ||
-                 Catch::Matchers::WithinAbs(original_dof.GetValues()[i], 1E-10)
+  for (int i = 0; i < interpolated_dof.size(); ++i) {
+    REQUIRE_THAT(interpolated_dof[i],
+                 Catch::Matchers::WithinRel(original_dof[i], 0.001) ||
+                 Catch::Matchers::WithinAbs(original_dof[i], 1E-10)
                  );
   }
 }
@@ -83,25 +78,21 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
       test_f[nverts + i] = f(cx, cy);
     });
 
-  auto field = pcms::CreateField("", *layout);
-  auto interpolated = pcms::CreateField("", *layout);
-  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
-    std::data(test_f), std::size(test_f)
-  };
-  field->SetDOFHolderData({array_view, field->GetCoordinateSystem()});
+  auto field = layout->CreateField();
+  auto interpolated = layout->CreateField();
+  field->SetDOFHolderData(pcms::make_const_array_view(test_f));
 
   // interpolate the field from one mesh to another mesh with the same coordinates
   pcms::interpolate_field2(*field, *interpolated);
 
   auto interpolated_dof = interpolated->GetDOFHolderData();
   auto original_dof = field->GetDOFHolderData();
-  REQUIRE(interpolated_dof.GetCoordinateSystem() == original_dof.GetCoordinateSystem());
-  REQUIRE( interpolated_dof.Size() == original_dof.Size());
+  REQUIRE( interpolated_dof.size() == original_dof.size());
   // assumes that GetDOFHolderData will return a host view
-  for (int i = 0; i < interpolated_dof.Size(); ++i) {
-    REQUIRE_THAT(interpolated_dof.GetValues()[i],
-                 Catch::Matchers::WithinRel(original_dof.GetValues()[i], 0.001) ||
-                 Catch::Matchers::WithinAbs(original_dof.GetValues()[i], 1E-10)
+  for (int i = 0; i < interpolated_dof.size(); ++i) {
+    REQUIRE_THAT(interpolated_dof[i],
+                 Catch::Matchers::WithinRel(original_dof[i], 0.001) ||
+                 Catch::Matchers::WithinAbs(original_dof[i], 1E-10)
                  );
   }
 }

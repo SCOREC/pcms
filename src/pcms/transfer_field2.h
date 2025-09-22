@@ -38,9 +38,7 @@ void interpolate_field2(const FieldT<T>& source, FieldT<T>& target)
   FieldDataView<Real, HostMemorySpace> data_view{make_array_view(evaluation), source.GetCoordinateSystem()};
   auto locale = source.GetLocalizationHint(coords);
   source.Evaluate(locale, data_view);
-  Rank1View<const double, HostMemorySpace> array_view{evaluation.data(), evaluation.size()};
-  FieldDataView<const Real, HostMemorySpace> data_const_view{array_view, source.GetCoordinateSystem()};
-  target.SetDOFHolderData(data_const_view);
+  target.SetDOFHolderData(make_const_array_view(evaluation));
 }
 
 } // namespace pcms

@@ -23,42 +23,24 @@ struct PointCloudLocalizationHint
   Kokkos::View<Real**> coordinates_;
 };
 
-PointCloud::PointCloud(std::string name, CoordinateSystem coordinate_system,
-                       const PointCloudLayout& layout)
-  : name_(name),
-    coordinate_system_(coordinate_system),
-    layout_(layout),
+PointCloud::PointCloud(const PointCloudLayout& layout)
+  : layout_(layout),
     data_("", layout_.GetDOFHolderCoordinates().GetCoordinates().extent(0))
 {
 }
 
-const std::string& PointCloud::GetName() const
+Rank1View<const Real, HostMemorySpace> PointCloud::GetDOFHolderData() const
 {
-  return name_;
+  return make_const_array_view(data_);
 }
-
-FieldDataView<const Real, HostMemorySpace> PointCloud::GetDOFHolderData() const
-{
-  Rank1View<const Real, pcms::HostMemorySpace> array_view{std::data(data_),
-                                                          std::size(data_)};
-  FieldDataView<const Real, HostMemorySpace> data_view{array_view,
-                                                       layout_.GetDOFHolderCoordinates().GetCoordinateSystem()};
-  return data_view;
-}
-
 
 void PointCloud::SetDOFHolderData(
-  FieldDataView<const Real, HostMemorySpace> data)
+  Rank1View<const Real, HostMemorySpace> data)
 {
   PCMS_FUNCTION_TIMER;
-  if (data.GetCoordinateSystem() != coordinate_system_) {
-    throw std::runtime_error("Coordinate system mismatch");
-  }
-
-  Rank1View<const Real, HostMemorySpace> values = data.GetValues();
-  PCMS_ALWAYS_ASSERT(values.size() == data_.size());
+  PCMS_ALWAYS_ASSERT(data.size() == data_.size());
   Kokkos::parallel_for(
-    values.size(), KOKKOS_LAMBDA(int i) { data_(i) = values[i]; });
+    data.size(), KOKKOS_LAMBDA(int i) { data_(i) = data[i]; });
 }
 
 LocalizationHint PointCloud::GetLocalizationHint(

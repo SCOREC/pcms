@@ -1,6 +1,8 @@
 #ifndef PCMS_FIELD_LAYOUT_H
 #define PCMS_FIELD_LAYOUT_H
+#include <memory>
 #include <redev.h>
+#include "pcms/field.h"
 #include "pcms/arrays.h"
 #include "pcms/coordinate_system.h"
 
@@ -17,9 +19,14 @@ struct PartitionMapping
 using ReversePartitionMap = std::map<pcms::LO, std::vector<pcms::LO>>;
 using ReversePartitionMap2 = std::map<pcms::LO, PartitionMapping>;
 
+template <typename T>
+class FieldT;
+
 class FieldLayout
 {
 public:
+  virtual std::unique_ptr<FieldT<Real>> CreateField() const = 0;
+
   // number of components
   int virtual GetNumComponents() const = 0;
 

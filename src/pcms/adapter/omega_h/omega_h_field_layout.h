@@ -14,6 +14,9 @@ namespace pcms {
 class OmegaHFieldLayout : public FieldLayout {
 public:
   OmegaHFieldLayout(Omega_h::Mesh& mesh, std::array<int, 4> nodes_per_dim, int num_components, CoordinateSystem coordinate_system, std::string global_id_name = "global");
+
+  std::unique_ptr<FieldT<Real>> CreateField() const override;
+
   int GetNumComponents() const override;
   // nodes for standard lagrange FEM
   LO GetNumOwnedDofHolder() const override;

@@ -70,12 +70,8 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   Omega_h::parallel_for(
     n, OMEGA_H_LAMBDA(int i) { ids[i] = gids[i]; });
 
-  auto field = pcms::CreateField("", *layout);
-  pcms::Rank1View<const double, pcms::HostMemorySpace> array_view{
-    std::data(ids), std::size(ids)};
-  pcms::FieldDataView<const double, pcms::HostMemorySpace> field_data_view{
-    array_view, field->GetCoordinateSystem()};
-  field->SetDOFHolderData(field_data_view);
+  auto field = layout->CreateField();
+  field->SetDOFHolderData(pcms::make_const_array_view(ids));
 
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "1", comm, rdv, channel, *layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, *field);
@@ -97,7 +93,7 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto gids = layout->GetGids();
   const auto n = layout->GetNumOwnedDofHolder();
 
-  auto field = pcms::CreateField("", *layout);
+  auto field = layout->CreateField();
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "2", comm, rdv, channel, *layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, *field);
 
@@ -105,7 +101,7 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   field_comm.Receive();
   channel.EndReceiveCommunicationPhase();
 
-  auto copied_array = field->GetDOFHolderData().GetValues();
+  auto copied_array = field->GetDOFHolderData();
   auto owned = layout->GetOwned();
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());
@@ -156,7 +152,7 @@ void server2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   Omega_h::parallel_for(
     n, OMEGA_H_LAMBDA(int i) { ids[i] = 0; });
 
-  auto field = pcms::CreateField("", *layout);
+  auto field = layout->CreateField();
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm1(comm_name + "1", comm, rdv, channel1, *layout);
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm2(comm_name + "2", comm, rdv, channel2, *layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm1(layout_comm1, *field);

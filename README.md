@@ -6,7 +6,8 @@ Adios2-based xgc_coupler for XGC and GENE
 
 - CMake 3.19+
 - MPI
-- FFTW 3.3.8+
+- Kokkos
+- KokkosKernels
 - redev 3.0.0+ (https://github.com/SCOREC/redev)
 - Omega\_h 10.2.0+ with MPI enabled (https://github.com/SCOREC/omega_h)
 - Catch2 2.\* (for unit tests) (https://github.com/catchorg/Catch2/tree/v2.13.8)
@@ -17,32 +18,173 @@ Adios2-based xgc_coupler for XGC and GENE
 SCOREC Rhel7 environment
 
 ```
-module unuse /opt/scorec/spack/lmod/linux-rhel7-x86_64/Core
-module use /opt/scorec/spack/v0154_2/lmod/linux-rhel7-x86_64/Core
-module load \
-gcc/10.1.0 \
-mpich \
-cmake/3.20.0 \
-fftw \
-gdb
+module use /opt/scorec/spack/rhel9/v0201_4/lmod/linux-rhel9-x86_64/Core/
+module load gcc/12.3.0-iil3lno
+module load mpich/4.1.1-xpoyz4t
+module load cmake/3.26.3-2duxfcd
+// no need to load CUDA if not using GPUs
+module load cuda/12.1.1-zxa4msk
 ```
 
-Build, install, and test
+### Build dependencies with CPU
 
 ```
-git clone git@github.com:SCOREC/wdmapp_testcases.git #test data
-git clone git@github.com:SCOREC/wdmapp_coupling.git
+git clone --branch 4.6.01 --depth 1 git@github.com:kokkos/kokkos.git
+cmake -S kokkos -B build-kokkos \
+  -DCMAKE_INSTALL_PREFIX=build-kokkos/install \
+  -DCMAKE_CXX_STANDARD=17 \
+  -DKokkos_ENABLE_SERIAL=ON \
+  -DKokkos_ENABLE_OPENMP=OFF \
+  -DKokkos_ENABLE_CUDA=OFF \
+  -DKokkos_ENABLE_CUDA_LAMBDA=OFF \
+  -DKokkos_ENABLE_CUDA_CONSTEXPR=OFF \
+  -DBUILD_SHARED_LIBS=OFF
+cmake --build build-kokkos --target install
 
-cmake -S wdmapp_coupling -B buildWdmCpl \
--Dredev_ROOT=/path/to/redev/install \
--DOmega_h_ROOT=/path/to/omegah/install \
--DCMAKE_INSTALL_PREFIX=$PWD/buildWdmCpl/install \
--DPCMS_TEST_DATA_DIR=$PWD/wdmapp_testcases \
--DCatch2_ROOT=/path/to/catch2/install
+git clone --branch 4.6.01 --depth 1 git@github.com:kokkos/kokkos-kernels.git
+cmake -S kokkos-kernels -B build-kokkos-kernels \
+  -DCMAKE_INSTALL_PREFIX=build-kokkos-kernels/install \
+  -DCMAKE_CXX_STANDARD=17 \
+  -DKokkos_ROOT=$PWD/build-kokkos/install/lib64/cmake \
+  -DBUILD_SHARED_LIBS=OFF
+cmake --build build-kokkos-kernels --target install
 
-cmake --build buildWdmCpl --target install
+git clone git@github.com:SCOREC/omega_h.git
+cmake -S omega_h -B build-omega_h \
+  -DCMAKE_INSTALL_PREFIX=$PWD/build-omega_h/install \
+  -DCMAKE_C_COMPILER=mpicc \
+  -DCMAKE_CXX_COMPILER=mpicxx \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DOmega_h_USE_Kokkos=ON \
+  -DOmega_h_USE_CUDA=OFF \
+  -DOmega_h_USE_MPI=ON  \
+  -DMPIEXEC_EXECUTABLE=mpirun \
+  -DBUILD_TESTING=OFF  \
+  -DKokkos_PREFIX=$PWD/build-kokkos/install/lib64/cmake
+cmake --build build-omega_h --target install
 
-ctest --test-dir buildWdmCpl --output-on-failure
+git clone git@github.com:ornladios/ADIOS2.git
+cmake -S ADIOS2 -B build-ADIOS2 \
+  -DCMAKE_INSTALL_PREFIX=build-ADIOS2/install \
+  -DADIOS2_USE_CUDA=OFF \
+  -DADIOS2_USE_ZFP=off
+cmake --build build-ADIOS2 --target install
+
+git clone git@github.com:UO-OACISS/perfstubs.git
+cmake -S perfstubs -B build-perfstubs \
+  -DCMAKE_CXX_COMPILER=mpicxx \
+  -DCMAKE_INSTALL_PREFIX=build-perfstubs/install
+cmake --build build-perfstubs --target install
+
+git clone git@github.com:catchorg/Catch2
+cmake -S Catch2 -B build-Catch2 \
+  -DCMAKE_INSTALL_PREFIX=$PWD/build-Catch2/install
+cmake --build build-Catch2 --target install
+
+git clone git@github.com:SCOREC/redev.git
+cmake -S redev -B build-redev \
+  -DCMAKE_CXX_COMPILER=mpicxx \
+  -DMPIEXEC_EXECUTABLE=mpirun \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DCMAKE_INSTALL_PREFIX=build-redev/install \
+  -DADIOS2_DIR=$PWD/build-ADIOS2/install/lib64/cmake/adios2 \
+  -Dperfstubs_DIR=$PWD/build-perfstubs/install/lib/cmake
+cmake --build build-redev --target install
+```
+### Build dependencies with CUDA
+```
+git clone --branch 4.6.01 --depth 1 git@github.com:kokkos/kokkos.git
+cmake -S kokkos -B build-kokkos \
+  -DCMAKE_INSTALL_PREFIX=build-kokkos/install \
+  -DCMAKE_CXX_STANDARD=17 \
+  -DCMAKE_BUILD_TYPE="Release" \
+  -DCMAKE_CXX_COMPILER=$PWD/kokkos/bin/nvcc_wrapper \
+  -DKokkos_ARCH_AMPERE80=ON \
+  -DKokkos_ENABLE_SERIAL=ON \
+  -DKokkos_ENABLE_OPENMP=off \
+  -DKokkos_ENABLE_CUDA=on \
+  -DKokkos_ENABLE_CUDA_LAMBDA=on \
+  -DKokkos_ENABLE_CUDA_CONSTEXPR=on \
+  -DKokkos_ENABLE_DEBUG=off
+cmake --build build-kokkos --target install
+
+git clone --branch 4.6.01 --depth 1 git@github.com:kokkos/kokkos-kernels.git
+cmake -S kokkos-kernels -B build-kokkos-kernels \
+  -DCMAKE_INSTALL_PREFIX=build-kokkos-kernels/install \
+  -DCMAKE_CXX_STANDARD=17 \
+  -DKokkos_ROOT=$PWD/build-kokkos/install/lib64/cmake \
+  -DBUILD_SHARED_LIBS=off
+cmake --build build-kokkos-kernels --target install
+
+git clone git@github.com:SCOREC/omega_h.git
+cmake -S omega_h -B build-omega_h \
+  -DCMAKE_INSTALL_PREFIX=build-omega_h/install \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=off \
+  -DOmega_h_USE_Kokkos=ON \
+  -DOmega_h_USE_CUDA=on \
+  -DOmega_h_CUDA_ARCH=80 \
+  -DOmega_h_USE_MPI=on  \
+  -DMPIEXEC_EXECUTABLE=mpirun \
+  -DBUILD_TESTING=off  \
+  -DCMAKE_C_COMPILER=mpicc \
+  -DCMAKE_CXX_COMPILER=mpicxx \
+  -DKokkos_PREFIX=$PWD/build-kokkos/install/lib64/cmake
+cmake --build build-omega_h --target install
+
+git clone git@github.com:ornladios/ADIOS2.git
+cmake -S ADIOS2 -B build-ADIOS2 \
+  -DCMAKE_INSTALL_PREFIX=build-ADIOS2/install \
+  -DADIOS2_USE_CUDA=on \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_COMPILER=mpicxx \
+  -DCMAKE_C_COMPILER=mpicc \
+  -DADIOS2_USE_ZFP=off
+cmake --build build-ADIOS2 --target install
+
+git clone git@github.com:UO-OACISS/perfstubs.git
+cmake -S perfstubs -B build-perfstubs \
+  -DCMAKE_CXX_COMPILER=mpicxx \
+  -DCMAKE_INSTALL_PREFIX=build-perfstubs/install
+cmake --build build-perfstubs --target install
+
+git clone git@github.com:SCOREC/redev.git
+cmake -S redev -B build-redev \
+  -DCMAKE_CXX_COMPILER=mpicxx \
+  -DMPIEXEC_EXECUTABLE=mpirun \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DCMAKE_INSTALL_PREFIX=build-redev/install \
+  -DADIOS2_DIR=$PWD/build-ADIOS2/install/lib64/cmake/adios2 \
+  -Dperfstubs_DIR=$PWD/build-perfstubs/install/lib/cmake
+cmake --build build-redev --target install
+
+git clone git@github.com:catchorg/Catch2
+cmake -S Catch2 -B build-Catch2 \
+  -DCMAKE_INSTALL_PREFIX=$PWD/build-Catch2/install
+cmake --build build-Catch2 --target install
+```
+### Build, install, and test pcms
+```
+git clone git@github.com:jacobmerson/pcms_testcases.git // test data
+git clone git@github.com:SCOREC/pcms.git
+
+cmake -S pcms -B build-pcms \
+  -DCMAKE_C_COMPILER=mpicc \
+  -DCMAKE_CXX_COMPILER=mpicxx \
+  -DCMAKE_Fortran_COMPILER=mpifort \
+  -DCMAKE_BUILD_TYPE="Debug" \
+  -DPCMS_TIMEOUT=100 \
+  -Dredev_DIR=$PWD/build-redev/install/lib64/cmake/redev \
+  -DOmega_h_DIR=$PWD/build-omega_h/install/lib64/cmake/Omega_h/ \
+  -Dperfstubs_DIR=$PWD/build-perfstubs/install/lib/cmake \
+  -DCatch2_DIR=$PWD/build-Catch2/install/lib64/cmake/Catch2/ \
+  -DKokkosKernels_DIR=$PWD/build-kokkos-kernels/install/lib64/cmake/KokkosKernels/ \
+  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
+cmake --build build-pcms -j 8
+
+ctest --test-dir build-pcms --output-on-failure
 ```
 
 ## Spack based build

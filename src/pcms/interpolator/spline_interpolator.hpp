@@ -8,6 +8,7 @@
 #include "pcms/types.h"
 #include <Kokkos_Core.hpp>
 #include <cmath>
+#include <iostream>
 
 namespace pcms
 {

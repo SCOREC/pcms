@@ -1,6 +1,7 @@
 #ifndef PCMS_COUPLING_ARRAY_MASK_H
 #define PCMS_COUPLING_ARRAY_MASK_H
 #include "pcms/arrays.h"
+#include "pcms/assert.h"
 #include <Kokkos_Core.hpp>
 namespace pcms
 {

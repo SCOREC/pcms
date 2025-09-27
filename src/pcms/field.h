@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 #include <Kokkos_Core.hpp>
-#include <redev.h> // TODO remove this include
+#include <redev.h>                         // TODO remove this include
 #include "pcms/field_evaluation_methods.h" // TODO remove this include
 #include "pcms/coordinate_system.h"
 #include "pcms/field_layout.h"
@@ -32,33 +32,47 @@ struct HasCoordinateSystem<T, VoidT<typename T::coordinate_system>>
 
 } // namespace detail
 
-// TODO should the view store the layout and data, not just coordinate system and data?
+// TODO should the view store the layout and data, not just coordinate system
+// and data?
 template <typename T, typename MemorySpace>
-class FieldDataView {
+class FieldDataView
+{
 public:
-  FieldDataView(Rank1View<T, MemorySpace> values, CoordinateSystem coordinate_system) : values_(values), coordinate_system_(coordinate_system) {}
-  LO Size() const {return values_.size(); }
+  FieldDataView(Rank1View<T, MemorySpace> values,
+                CoordinateSystem coordinate_system)
+    : values_(values), coordinate_system_(coordinate_system)
+  {
+  }
+  LO Size() const { return values_.size(); }
   CoordinateSystem GetCoordinateSystem() const { return coordinate_system_; }
 
-  [[nodiscard]] Rank1View<const T, MemorySpace> GetValues() const noexcept { return values_; }
-  [[nodiscard]] Rank1View<T, MemorySpace> GetValues() noexcept { return values_; }
+  [[nodiscard]] Rank1View<const T, MemorySpace> GetValues() const noexcept
+  {
+    return values_;
+  }
+  [[nodiscard]] Rank1View<T, MemorySpace> GetValues() noexcept
+  {
+    return values_;
+  }
 
-  // Note: currently don't believe we should allow changing the coordinate system
+  // Note: currently don't believe we should allow changing the coordinate
+  // system
 
 private:
   Rank1View<T, MemorySpace> values_;
   CoordinateSystem coordinate_system_;
 };
 
-
 /*
-* The LocalizationHint can hold any data that the underlying field finds useful.
-* This is essentially a method to store an external cache of localization information.
-* The API of the Field does allow for internal cacheing as well, however some wrapped
-* Fields may use a C interface. This avoids the need for additional wrapping of the C
-* interface. May re-evaluate the need
-*/
-struct LocalizationHint {
+ * The LocalizationHint can hold any data that the underlying field finds
+ * useful. This is essentially a method to store an external cache of
+ * localization information. The API of the Field does allow for internal
+ * cacheing as well, however some wrapped Fields may use a C interface. This
+ * avoids the need for additional wrapping of the C interface. May re-evaluate
+ * the need
+ */
+struct LocalizationHint
+{
   std::shared_ptr<void> data = nullptr;
 };
 
@@ -71,18 +85,26 @@ class FieldLayout;
  * Shape functions can be thought of as a particular field type.
  */
 template <typename T>
-class FieldT {
+class FieldT
+{
 public:
-  CoordinateSystem GetCoordinateSystem() const { return GetLayout().GetDOFHolderCoordinates().GetCoordinateSystem(); }
+  CoordinateSystem GetCoordinateSystem() const
+  {
+    return GetLayout().GetDOFHolderCoordinates().GetCoordinateSystem();
+  }
 
   // returns a hint that can be given to the Evaluate method
-  // this can be useful to cache data if you have multiple sets of coordinates you may evaluate
-  virtual LocalizationHint GetLocalizationHint(CoordinateView<HostMemorySpace> coordinates) const = 0;
+  // this can be useful to cache data if you have multiple sets of coordinates
+  // you may evaluate
+  virtual LocalizationHint GetLocalizationHint(
+    CoordinateView<HostMemorySpace> coordinates) const = 0;
 
   // always takes 3D view, dof holder #, dimension, component
   // underlying allocated buffer needs to be #dof holder * # components
-  // We return a FieldDataView to make sure we get both the data, and the coordinate system that the data is in
-  virtual void Evaluate(LocalizationHint location, FieldDataView<T, HostMemorySpace> results) const = 0;
+  // We return a FieldDataView to make sure we get both the data, and the
+  // coordinate system that the data is in
+  virtual void Evaluate(LocalizationHint location,
+                        FieldDataView<T, HostMemorySpace> results) const = 0;
 
   // should offer component wise version?
   // if data is scalar results are vector, if data is
@@ -92,9 +114,9 @@ public:
   virtual Rank1View<const T, HostMemorySpace> GetDOFHolderData() const = 0;
   virtual void SetDOFHolderData(Rank1View<const T, HostMemorySpace> data) = 0;
 
-  virtual const FieldLayout &GetLayout() const = 0;
+  virtual const FieldLayout& GetLayout() const = 0;
   // number of physical dimensions (typically 1-6)
-  //int GetDimension();
+  // int GetDimension();
   virtual bool CanEvaluateGradient() = 0;
 
   virtual int Serialize(
@@ -103,19 +125,14 @@ public:
 
   virtual void Deserialize(
     Rank1View<const T, pcms::HostMemorySpace> buffer,
-    Rank1View<const pcms::LO, pcms::HostMemorySpace>
-      permutation) = 0;
+    Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) = 0;
 
   virtual ~FieldT() noexcept = default;
 };
 // Should statically instantiate types
-using FieldPtr = std::variant< FieldT<int8_t>*,
-                               FieldT<int32_t>*,
-                               FieldT<int64_t>*,
-                               FieldT<float>*,
-                               FieldT<double>*>;
-
-
+using FieldPtr =
+  std::variant<FieldT<int8_t>*, FieldT<int32_t>*, FieldT<int64_t>*,
+               FieldT<float>*, FieldT<double>*>;
 
 } // namespace pcms
 

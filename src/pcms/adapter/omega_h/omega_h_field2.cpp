@@ -17,7 +17,8 @@ public:
   }
 
   Kokkos::View<Real* [1]> evaluate(Kokkos::View<Real**> localCoords,
-                                   Kokkos::View<LO*> offsets) const override {
+                                   Kokkos::View<LO*> offsets) const override
+  {
     auto self = const_cast<MeshFieldBackendImpl<Dim, Order>*>(this);
     return self->mesh_field_.triangleLocalPointEval(localCoords, offsets,
                                                     shape_field_);
@@ -74,8 +75,8 @@ struct OmegaHField2LocalizationHint
     Kokkos::View<LO*> elem_counts("", mesh.nelems());
 
     for (size_t i = 0; i < search_results.size(); ++i) {
-        auto [dim, elem_idx, coord] = search_results(i);
-        elem_counts[elem_idx] += 1;
+      auto [dim, elem_idx, coord] = search_results(i);
+      elem_counts[elem_idx] += 1;
     }
 
     LO total;
@@ -86,22 +87,23 @@ struct OmegaHField2LocalizationHint
           offsets_(i) = partial;
         }
         partial += elem_counts(i);
-      }, total);
+      },
+      total);
     offsets_(mesh.nelems()) = total;
 
     for (size_t i = 0; i < search_results.size(); ++i) {
-        auto [dim, elem_idx, coord] = search_results(i);
-        // currently don't handle case where point is on a boundary
-        PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh.dim());
-        // element should be inside the domain (positive)
-        PCMS_ALWAYS_ASSERT(elem_idx >= 0 && elem_idx < mesh.nelems());
-        elem_counts(elem_idx) -= 1;
-        LO index = offsets_(elem_idx) + elem_counts(elem_idx);
-        for (int j = 0; j < (mesh.dim()+1); ++j) {
-          coordinates_(index,  j) = coord[j];
-        }
-        //coordinates_(index, mesh.dim()) = coord[0];
-        indices_(index) = i;
+      auto [dim, elem_idx, coord] = search_results(i);
+      // currently don't handle case where point is on a boundary
+      PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh.dim());
+      // element should be inside the domain (positive)
+      PCMS_ALWAYS_ASSERT(elem_idx >= 0 && elem_idx < mesh.nelems());
+      elem_counts(elem_idx) -= 1;
+      LO index = offsets_(elem_idx) + elem_counts(elem_idx);
+      for (int j = 0; j < (mesh.dim() + 1); ++j) {
+        coordinates_(index, j) = coord[j];
+      }
+      // coordinates_(index, mesh.dim()) = coord[0];
+      indices_(index) = i;
     }
   }
 
@@ -120,7 +122,8 @@ OmegaHField2::OmegaHField2(const OmegaHFieldLayout& layout)
   : layout_(layout),
     mesh_(layout.GetMesh()),
     search_(mesh_, 10, 10),
-    dof_holder_data_("", layout.GetNumOwnedDofHolder() * layout.GetNumComponents())
+    dof_holder_data_("",
+                     layout.GetNumOwnedDofHolder() * layout.GetNumComponents())
 {
   auto nodes_per_dim = layout.GetNodesPerDim();
   if (nodes_per_dim[2] == 0 && nodes_per_dim[3] == 0) {
@@ -146,8 +149,7 @@ OmegaHField2::OmegaHField2(const OmegaHFieldLayout& layout)
   }
 }
 
-Rank1View<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
-  const
+Rank1View<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData() const
 {
   PCMS_FUNCTION_TIMER;
   auto nodes_per_dim = layout_.GetNodesPerDim();
@@ -156,7 +158,8 @@ Rank1View<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i]) {
       size_t len = mesh_.nents(i) * nodes_per_dim[i] * num_components;
-      Rank1View<Real, HostMemorySpace> subspan{std::data(dof_holder_data_) + offset, len};
+      Rank1View<Real, HostMemorySpace> subspan{
+        std::data(dof_holder_data_) + offset, len};
       mesh_field_->GetData(subspan, nodes_per_dim[i], num_components, i);
       offset += len;
     }
@@ -165,7 +168,8 @@ Rank1View<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData()
   return make_const_array_view(dof_holder_data_);
 };
 
-void OmegaHField2::SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data) {
+void OmegaHField2::SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data)
+{
   PCMS_FUNCTION_TIMER;
 
   auto nodes_per_dim = layout_.GetNodesPerDim();
@@ -176,7 +180,8 @@ void OmegaHField2::SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data)
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i]) {
       size_t len = mesh_.nents(i) * nodes_per_dim[i] * num_components;
-      Rank1View<const Real, HostMemorySpace> subspan{data.data_handle() + offset, len};
+      Rank1View<const Real, HostMemorySpace> subspan{
+        data.data_handle() + offset, len};
       mesh_field_->SetData(subspan, nodes_per_dim[i], num_components, i);
       offset += len;
     }
@@ -187,8 +192,10 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
   CoordinateView<HostMemorySpace> coordinate_view) const
 {
   PCMS_FUNCTION_TIMER;
-  // TODO decide if we want to implicitly perform the coordinate transformations when possible
-  if (coordinate_view.GetCoordinateSystem() != layout_.GetDOFHolderCoordinates().GetCoordinateSystem()) {
+  // TODO decide if we want to implicitly perform the coordinate transformations
+  // when possible
+  if (coordinate_view.GetCoordinateSystem() !=
+      layout_.GetDOFHolderCoordinates().GetCoordinateSystem()) {
     // TODO when moved to PCMS throw PCMS exception
     throw std::runtime_error("Coordinate system mismatch");
   }
@@ -206,13 +213,15 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
   return LocalizationHint{hint};
 }
 
-void OmegaHField2::Evaluate(LocalizationHint location,
-                            FieldDataView<double, HostMemorySpace> results) const
+void OmegaHField2::Evaluate(
+  LocalizationHint location,
+  FieldDataView<double, HostMemorySpace> results) const
 {
   PCMS_FUNCTION_TIMER;
   // TODO decide if we want to implicitly perform the coordinate transformations
   // when possible
-  if (results.GetCoordinateSystem() != layout_.GetDOFHolderCoordinates().GetCoordinateSystem()) {
+  if (results.GetCoordinateSystem() !=
+      layout_.GetDOFHolderCoordinates().GetCoordinateSystem()) {
     // TODO when moved to PCMS throw PCMS exception
     throw std::runtime_error("Coordinate system mismatch");
   }
@@ -229,7 +238,8 @@ void OmegaHField2::Evaluate(LocalizationHint location,
     KOKKOS_LAMBDA(LO i) { values[hint.indices_(i)] = eval_results(i, 0); });
 }
 
-void OmegaHField2::EvaluateGradient(FieldDataView<double, HostMemorySpace> /* unused */)
+void OmegaHField2::EvaluateGradient(
+  FieldDataView<double, HostMemorySpace> /* unused */)
 {
   // TODO when moved to PCMS throw PCMS exception
   throw std::runtime_error("Not implemented");

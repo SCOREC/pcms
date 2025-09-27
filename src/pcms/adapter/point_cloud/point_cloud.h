@@ -5,15 +5,18 @@
 #include "pcms/arrays.h"
 #include "point_cloud_layout.h"
 
-namespace pcms {
-class PointCloud : public FieldT<Real> {
+namespace pcms
+{
+class PointCloud : public FieldT<Real>
+{
 public:
   PointCloud(const PointCloudLayout& layout);
 
   LocalizationHint GetLocalizationHint(
     CoordinateView<HostMemorySpace> coordinate_view) const override;
 
-  void Evaluate(LocalizationHint location, FieldDataView<double, HostMemorySpace> results) const override;
+  void Evaluate(LocalizationHint location,
+                FieldDataView<double, HostMemorySpace> results) const override;
 
   void EvaluateGradient(
     FieldDataView<double, HostMemorySpace> results) override;
@@ -26,16 +29,17 @@ public:
                 Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
     const override;
 
-  void Deserialize(Rank1View<const double, pcms::HostMemorySpace> buffer,
-                   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
-    override;
+  void Deserialize(
+    Rank1View<const double, pcms::HostMemorySpace> buffer,
+    Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) override;
 
   Rank1View<const Real, HostMemorySpace> GetDOFHolderData() const override;
   void SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data) override;
+
 private:
   const PointCloudLayout& layout_;
   Kokkos::View<Real*> data_;
 };
-}
+} // namespace pcms
 
 #endif // POINT_CLOUD_H_

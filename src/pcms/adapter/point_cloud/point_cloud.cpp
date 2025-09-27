@@ -34,8 +34,7 @@ Rank1View<const Real, HostMemorySpace> PointCloud::GetDOFHolderData() const
   return make_const_array_view(data_);
 }
 
-void PointCloud::SetDOFHolderData(
-  Rank1View<const Real, HostMemorySpace> data)
+void PointCloud::SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data)
 {
   PCMS_FUNCTION_TIMER;
   PCMS_ALWAYS_ASSERT(data.size() == data_.size());
@@ -50,13 +49,15 @@ LocalizationHint PointCloud::GetLocalizationHint(
   return LocalizationHint{hint};
 }
 
-void PointCloud::Evaluate(LocalizationHint /* unused */,
-                          FieldDataView<double, HostMemorySpace> /* unused */) const
+void PointCloud::Evaluate(
+  LocalizationHint /* unused */,
+  FieldDataView<double, HostMemorySpace> /* unused */) const
 {
   throw std::runtime_error("Not implemented");
 }
 
-void PointCloud::EvaluateGradient(FieldDataView<double, HostMemorySpace> /* unused */)
+void PointCloud::EvaluateGradient(
+  FieldDataView<double, HostMemorySpace> /* unused */)
 {
   throw std::runtime_error("Not implemented");
 }
@@ -78,7 +79,8 @@ int PointCloud::Serialize(
   PCMS_FUNCTION_TIMER;
   if (buffer.size() > 0) {
     Kokkos::parallel_for(
-      data_.size(), KOKKOS_LAMBDA(int i) { buffer[permutation[i]] = data_(i); });
+      data_.size(),
+      KOKKOS_LAMBDA(int i) { buffer[permutation[i]] = data_(i); });
   }
   return data_.size();
 }
@@ -87,9 +89,9 @@ void PointCloud::Deserialize(
   Rank1View<const double, pcms::HostMemorySpace> buffer,
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
 {
-    PCMS_FUNCTION_TIMER;
-    Kokkos::parallel_for(
-      data_.size(), KOKKOS_LAMBDA(int i) { data_(i) = buffer[permutation[i]]; });
+  PCMS_FUNCTION_TIMER;
+  Kokkos::parallel_for(
+    data_.size(), KOKKOS_LAMBDA(int i) { data_(i) = buffer[permutation[i]]; });
 }
 
 } // namespace pcms

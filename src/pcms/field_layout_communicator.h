@@ -10,7 +10,8 @@
 #include "pcms/arrays.h"
 #include <redev.h>
 
-namespace pcms {
+namespace pcms
+{
 
 namespace field_layout_communicator
 {
@@ -34,12 +35,13 @@ OutMsg ConstructOutMessage(const ReversePartitionMap2& reverse_partition)
   // number of entries for each rank
   for (auto& rank : reverse_partition) {
     out.dest.push_back(rank.first);
-    counts.push_back(rank.second.indices.size() + rank.second.ent_offsets.size());
+    counts.push_back(rank.second.indices.size() +
+                     rank.second.ent_offsets.size());
   }
   out.offset.resize(counts.size() + 1);
   out.offset[0] = 0;
   pcms::inclusive_scan(counts.begin(), counts.end(),
-                         std::next(out.offset.begin(), 1));
+                       std::next(out.offset.begin(), 1));
   return out;
 }
 
@@ -54,7 +56,8 @@ size_t count_entries(const ReversePartitionMap2& reverse_partition)
 }
 
 // note this function can be parallelized by making use of the offsets
-redev::LOs ConstructPermutation(const ReversePartitionMap2& reverse_partition, size_t num_entries, int* length)
+redev::LOs ConstructPermutation(const ReversePartitionMap2& reverse_partition,
+                                size_t num_entries, int* length)
 {
   PCMS_FUNCTION_TIMER;
   redev::LOs permutation(num_entries);
@@ -92,7 +95,8 @@ redev::LOs ConstructPermutation(GlobalIDView<HostMemorySpace> local_gids,
   std::array<std::map<pcms::GO, pcms::LO>, 4> gid_to_buffer_index;
   size_t offset = 0;
   while (true) {
-    GlobalIDView<HostMemorySpace> received_offsets(received_msg.data_handle() + offset, 5);
+    GlobalIDView<HostMemorySpace> received_offsets(
+      received_msg.data_handle() + offset, 5);
     int length = received_offsets[received_offsets.size() - 1];
     GlobalIDView<HostMemorySpace> received_gids(
       received_msg.data_handle() + offset + 5, length);
@@ -109,7 +113,8 @@ redev::LOs ConstructPermutation(GlobalIDView<HostMemorySpace> local_gids,
     }
 
     offset += length + 5;
-    if (offset >= received_msg.size()) break;
+    if (offset >= received_msg.size())
+      break;
   }
 
   LO local_index = 0;
@@ -185,7 +190,7 @@ bool IsValid(std::vector<T> recv_msg)
 
   return true;
 }
-} // namespace
+} // namespace field_layout_communicator
 
 template <typename T>
 class FieldLayoutCommunicator
@@ -244,13 +249,13 @@ public:
     auto ent_offsets = layout_.GetEntOffsets();
     if (redev_.GetProcessType() == redev::ProcessType::Client) {
       const ReversePartitionMap2 reverse_partition =
-        layout_.GetReversePartitionMap(
-          redev::Partition{redev_.GetPartition()});
+        layout_.GetReversePartitionMap(redev::Partition{redev_.GetPartition()});
       auto out_message = ConstructOutMessage(reverse_partition);
       int length;
       comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
       gid_comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
-      message_permutation_ = ConstructPermutation(reverse_partition, gids.size(), &length);
+      message_permutation_ =
+        ConstructPermutation(reverse_partition, gids.size(), &length);
       // use permutation array to send the gids
       msg_size_ = length;
       std::vector<pcms::GO> msg(msg_size_);
@@ -287,7 +292,8 @@ public:
       GlobalIDView<HostMemorySpace> recv_gids_view(recv_gids.data(),
                                                    recv_gids.size());
 
-      message_permutation_ = ConstructPermutation(gids, recv_gids_view, ent_offsets);
+      message_permutation_ =
+        ConstructPermutation(gids, recv_gids_view, ent_offsets);
       msg_size_ = recv_gids.size();
     }
   }

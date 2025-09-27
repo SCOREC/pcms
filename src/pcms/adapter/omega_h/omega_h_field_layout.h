@@ -10,10 +10,14 @@
 
 #include <array>
 
-namespace pcms {
-class OmegaHFieldLayout : public FieldLayout {
+namespace pcms
+{
+class OmegaHFieldLayout : public FieldLayout
+{
 public:
-  OmegaHFieldLayout(Omega_h::Mesh& mesh, std::array<int, 4> nodes_per_dim, int num_components, CoordinateSystem coordinate_system, std::string global_id_name = "global");
+  OmegaHFieldLayout(Omega_h::Mesh& mesh, std::array<int, 4> nodes_per_dim,
+                    int num_components, CoordinateSystem coordinate_system,
+                    std::string global_id_name = "global");
 
   std::unique_ptr<FieldT<Real>> CreateField() const override;
 
@@ -49,11 +53,11 @@ private:
   int num_components_;
   CoordinateSystem coordinate_system_;
   std::array<int, 4> nodes_per_dim_;
-  Kokkos::View<Real **> dof_holder_coords_;
+  Kokkos::View<Real**> dof_holder_coords_;
   Omega_h::Write<Omega_h::ClassId> class_ids_;
   Omega_h::Write<Omega_h::I8> class_dims_;
   Kokkos::View<bool*> owned_;
 };
 
-}
+} // namespace pcms
 #endif // PCMS_OMEGA_H_FIELD_LAYOUT_H

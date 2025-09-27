@@ -37,7 +37,10 @@ public:
   // size of buffer that needs to be allocated to represent the field
   // # components * NumDOFHolder
   LO OwnedSize() const { return GetNumComponents() * GetNumOwnedDofHolder(); };
-  GO GlobalSize() const { return GetNumComponents() * GetNumGlobalDofHolder(); };
+  GO GlobalSize() const
+  {
+    return GetNumComponents() * GetNumGlobalDofHolder();
+  };
 
   virtual Rank1View<const bool, HostMemorySpace> GetOwned() const = 0;
   virtual GlobalIDView<HostMemorySpace> GetGids() const = 0;

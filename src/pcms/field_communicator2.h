@@ -10,7 +10,8 @@
 #include "pcms/arrays.h"
 #include <redev.h>
 
-namespace pcms {
+namespace pcms
+{
 
 template <typename T>
 class FieldCommunicator2

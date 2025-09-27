@@ -4,7 +4,8 @@
 
 namespace pcms
 {
-PointCloudLayout::PointCloudLayout(int dim, Kokkos::View<Real**> coords, CoordinateSystem coordinate_system)
+PointCloudLayout::PointCloudLayout(int dim, Kokkos::View<Real**> coords,
+                                   CoordinateSystem coordinate_system)
   : dim_(dim),
     coordinate_system_(coordinate_system),
     coords_(coords),
@@ -27,35 +28,37 @@ std::unique_ptr<FieldT<Real>> PointCloudLayout::CreateField() const
 
 int PointCloudLayout::GetNumComponents() const
 {
-    return compoents_;
+  return compoents_;
 }
 
 LO PointCloudLayout::GetNumOwnedDofHolder() const
 {
-    return coords_.extent(0);
+  return coords_.extent(0);
 }
 
 GO PointCloudLayout::GetNumGlobalDofHolder() const
 {
-    return coords_.extent(0);
+  return coords_.extent(0);
 }
 
 Rank1View<const bool, HostMemorySpace> PointCloudLayout::GetOwned() const
 {
-    return make_const_array_view(owned_);
+  return make_const_array_view(owned_);
 }
 
 GlobalIDView<HostMemorySpace> PointCloudLayout::GetGids() const
 {
-  static_assert(std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>, "types must match");
+  static_assert(
+    std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>,
+    "types must match");
   return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
 }
 
-CoordinateView<HostMemorySpace>
-PointCloudLayout::GetDOFHolderCoordinates() const
+CoordinateView<HostMemorySpace> PointCloudLayout::GetDOFHolderCoordinates()
+  const
 {
   Rank2View<const Real, HostMemorySpace> coords_view(coords_.data(),
-                                                coords_.extent(0), 2);
+                                                     coords_.extent(0), 2);
   return CoordinateView<HostMemorySpace>{coordinate_system_, coords_view};
 }
 

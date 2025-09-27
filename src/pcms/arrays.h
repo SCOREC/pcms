@@ -29,11 +29,12 @@ auto make_mdspan(const ContainerType& /* unused */)
 
 // TODO make_mdspan
 
-template <int Rank, typename ElementType, typename MemorySpace, typename IndexType=LO>
-using View =
-  Kokkos::mdspan<ElementType, Kokkos::dextents<IndexType, Rank>, Kokkos::layout_right,
-                 detail::memory_space_accessor<
-                   std::remove_reference_t<ElementType>, MemorySpace>>;
+template <int Rank, typename ElementType, typename MemorySpace,
+          typename IndexType = LO>
+using View = Kokkos::mdspan<
+  ElementType, Kokkos::dextents<IndexType, Rank>, Kokkos::layout_right,
+  detail::memory_space_accessor<std::remove_reference_t<ElementType>,
+                                MemorySpace>>;
 
 template <typename ElementType, typename MemorySpace>
 using Rank1View = View<1, ElementType, MemorySpace>;

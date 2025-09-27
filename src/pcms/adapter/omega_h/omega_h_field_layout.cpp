@@ -163,12 +163,14 @@ Rank1View<const bool, HostMemorySpace> OmegaHFieldLayout::GetOwned() const
 
 GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const
 {
-  static_assert(std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>, "types must match");
+  static_assert(
+    std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>,
+    "types must match");
   return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
 }
 
-CoordinateView<HostMemorySpace>
-OmegaHFieldLayout::GetDOFHolderCoordinates() const
+CoordinateView<HostMemorySpace> OmegaHFieldLayout::GetDOFHolderCoordinates()
+  const
 {
   Rank2View<const Real, HostMemorySpace> coords_view(
     dof_holder_coords_.data(), dof_holder_coords_.extent(0), 2);
@@ -192,7 +194,8 @@ Omega_h::Read<Omega_h::I8> OmegaHFieldLayout::GetClassDims() const
   return Omega_h::Read(class_dims_);
 }
 
-size_t OmegaHFieldLayout::GetNumEnts() const {
+size_t OmegaHFieldLayout::GetNumEnts() const
+{
   size_t n = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim_[i])
@@ -242,7 +245,8 @@ ReversePartitionMap2 OmegaHFieldLayout::GetReversePartitionMap(
       continue;
 
     for (LO i = 0; i < mesh_.nents(ent_dim); ++i, ++local_index) {
-      if (!owned[local_index]) continue;
+      if (!owned[local_index])
+        continue;
 
       coord[0] = coords(local_index, 0);
       coord[1] = coords(local_index, 1);

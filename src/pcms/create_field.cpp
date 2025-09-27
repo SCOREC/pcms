@@ -4,7 +4,8 @@
 
 #include <utility>
 
-namespace pcms {
+namespace pcms
+{
 
 std::unique_ptr<FieldLayout> CreateLagrangeLayout(
   Omega_h::Mesh& mesh, int order, int num_components,

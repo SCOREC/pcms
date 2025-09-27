@@ -45,4 +45,4 @@ struct Partition
 };
 } // namespace pcms
 
-#endif //PCMS_PARTITION_H
+#endif // PCMS_PARTITION_H

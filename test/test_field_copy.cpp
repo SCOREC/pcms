@@ -21,8 +21,7 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
                                            pcms::CoordinateSystem::Cartesian);
   int ndata = layout->GetNumOwnedDofHolder() * num_components;
   Omega_h::Write<double> ids(ndata);
-  Omega_h::parallel_for(
-    ndata, OMEGA_H_LAMBDA(int i) { ids[i] = i; });
+  Omega_h::parallel_for(ndata, OMEGA_H_LAMBDA(int i) { ids[i] = i; });
 
   auto original = layout->CreateField();
   original->SetDOFHolderData(pcms::make_const_array_view(ids));

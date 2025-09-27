@@ -9,7 +9,8 @@ namespace pcms
 class PointCloudLayout : public FieldLayout
 {
 public:
-  PointCloudLayout(int dim, Kokkos::View<Real**> coords, CoordinateSystem coordinate_system);
+  PointCloudLayout(int dim, Kokkos::View<Real**> coords,
+                   CoordinateSystem coordinate_system);
 
   std::unique_ptr<FieldT<Real>> CreateField() const override;
 

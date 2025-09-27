@@ -31,11 +31,11 @@ class OmegaHField2 : public FieldT<Real>
 public:
   OmegaHField2(const OmegaHFieldLayout& layout);
 
-
   LocalizationHint GetLocalizationHint(
     CoordinateView<HostMemorySpace> coordinate_view) const override;
 
-  void Evaluate(LocalizationHint location, FieldDataView<double, HostMemorySpace> results) const override;
+  void Evaluate(LocalizationHint location,
+                FieldDataView<double, HostMemorySpace> results) const override;
 
   void EvaluateGradient(
     FieldDataView<double, HostMemorySpace> results) override;
@@ -48,9 +48,9 @@ public:
                 Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
     const override;
 
-  void Deserialize(Rank1View<const double, pcms::HostMemorySpace> buffer,
-                   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
-    override;
+  void Deserialize(
+    Rank1View<const double, pcms::HostMemorySpace> buffer,
+    Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) override;
 
   Rank1View<const Real, HostMemorySpace> GetDOFHolderData() const override;
   void SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data) override;

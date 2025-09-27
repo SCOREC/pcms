@@ -41,6 +41,12 @@ using Rank1View = View<1, ElementType, MemorySpace>;
 template <typename ElementType, typename MemorySpace>
 using Rank2View = View<2, ElementType, MemorySpace>;
 
+template <typename ElementType, typename MemorySpace>
+using Rank3View = View<3, ElementType, MemorySpace>;
+
+template <typename ElementType, typename MemorySpace>
+using Rank4View = View<4, ElementType, MemorySpace>;
+
 template <typename MemorySpace>
 using GlobalIDView = View<1, const GO, MemorySpace, GO>;
 

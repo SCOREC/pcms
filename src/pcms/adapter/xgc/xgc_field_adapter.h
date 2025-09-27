@@ -72,8 +72,7 @@ public:
                   "gpu space unhandled\n");
     if (RankParticipatesCouplingCommunication()) {
       auto const_data =
-        Rank1View<const T, memory_space>{
-        data_.data_handle(), data_.size()};
+        Rank1View<const T, memory_space>{data_.data_handle(), data_.size()};
       if (buffer.size() > 0) {
         mask_.Apply(const_data, buffer, permutation);
       }
@@ -200,9 +199,8 @@ auto get_nodal_coordinates(
   return coordinates;
 }
 template <typename T, typename CoordinateElementType, typename MemorySpace>
-auto evaluate(
-  const XGCFieldAdapter<T, CoordinateElementType>& field,
-  Lagrange<1> /* method */,
+auto evaluate(const XGCFieldAdapter<T, CoordinateElementType>& field,
+              Lagrange<1> /* method */,
               Rank1View<const CoordinateElementType, MemorySpace> coordinates)
   -> Kokkos::View<T*, MemorySpace>
 {
@@ -213,9 +211,8 @@ auto evaluate(
   return values;
 }
 template <typename T, typename CoordinateElementType, typename MemorySpace>
-auto evaluate(
-  const XGCFieldAdapter<T, CoordinateElementType>& field,
-  NearestNeighbor /* method */,
+auto evaluate(const XGCFieldAdapter<T, CoordinateElementType>& field,
+              NearestNeighbor /* method */,
               Rank1View<const CoordinateElementType, MemorySpace> coordinates)
   -> Kokkos::View<T*, MemorySpace>
 {
@@ -229,8 +226,8 @@ auto evaluate(
 template <typename T, typename CoordinateElementType, typename U>
 auto set_nodal_data(
   const XGCFieldAdapter<T, CoordinateElementType>& field,
-  Rank1View<
-    const U, typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
+  Rank1View<const U,
+            typename XGCFieldAdapter<T, CoordinateElementType>::memory_space>
     data) -> void
 {
   PCMS_FUNCTION_TIMER;

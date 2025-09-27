@@ -37,7 +37,7 @@ OutMsg ConstructOutMessage(const ReversePartitionMap& reverse_partition)
   out.offset.resize(counts.size() + 1);
   out.offset[0] = 0;
   pcms::inclusive_scan(counts.begin(), counts.end(),
-                         std::next(out.offset.begin(), 1));
+                       std::next(out.offset.begin(), 1));
   return out;
 }
 size_t count_entries(const ReversePartitionMap& reverse_partition)
@@ -76,15 +76,18 @@ redev::LOs ConstructPermutation(const std::vector<pcms::GO>& local_gids,
 {
   PCMS_FUNCTION_TIMER;
 
-  if(local_gids.size() != received_gids.size()) {
-  std::stringstream ss;
-  ss <<" :local_gids.size() [" << local_gids.size() << "] does not match received_gids.size() [" << received_gids.size() << "]\n";
-  std::cerr<<ss.str();
-  std::abort();
+  if (local_gids.size() != received_gids.size()) {
+    std::stringstream ss;
+    ss << " :local_gids.size() [" << local_gids.size()
+       << "] does not match received_gids.size() [" << received_gids.size()
+       << "]\n";
+    std::cerr << ss.str();
+    std::abort();
   }
 
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
-  REDEV_ALWAYS_ASSERT(std::is_permutation(local_gids.begin(), local_gids.end(), received_gids.begin()));
+  REDEV_ALWAYS_ASSERT(std::is_permutation(local_gids.begin(), local_gids.end(),
+                                          received_gids.begin()));
   std::map<pcms::GO, pcms::LO> global_to_local_ids;
   for (size_t i = 0; i < local_gids.size(); ++i) {
     global_to_local_ids[local_gids[i]] = i;
@@ -150,8 +153,7 @@ struct FieldCommunicator
 
 public:
   FieldCommunicator(std::string name, MPI_Comm mpi_comm, redev::Redev& redev,
-                    redev::Channel& channel,
-                    FieldAdapterT& field_adapter)
+                    redev::Channel& channel, FieldAdapterT& field_adapter)
     : mpi_comm_(mpi_comm),
       channel_(channel),
       comm_buffer_{},
@@ -164,10 +166,9 @@ public:
     PCMS_FUNCTION_TIMER;
     comm_ = channel.CreateComm<T>(name_, mpi_comm_);
     gid_comm_ = channel.CreateComm<GO>(name_ + "_gids", mpi_comm_);
-    if(mpi_comm != MPI_COMM_NULL) {
+    if (mpi_comm != MPI_COMM_NULL) {
       UpdateLayout();
-    }
-    else {
+    } else {
       UpdateLayoutNull();
     }
   }
@@ -209,50 +210,49 @@ private:
   void UpdateLayout()
   {
     PCMS_FUNCTION_TIMER;
-    //if (mpi_comm_ != MPI_COMM_NULL) {
-      auto gids = field_adapter_.GetGids();
-      if (redev_.GetProcessType() == redev::ProcessType::Client) {
-        const ReversePartitionMap reverse_partition =
-          field_adapter_.GetReversePartitionMap(Partition{redev_.GetPartition()});
-        auto out_message = ConstructOutMessage(reverse_partition);
-        comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
-        gid_comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
-        message_permutation_ = ConstructPermutation(reverse_partition);
-        // use permutation array to send the gids
-        std::vector<pcms::GO> gid_msgs(gids.size());
-        REDEV_ALWAYS_ASSERT(gids.size() == message_permutation_.size());
-        for (size_t i = 0; i < gids.size(); ++i) {
-          gid_msgs[message_permutation_[i]] = gids[i];
-        }
-        channel_.BeginSendCommunicationPhase();
-        gid_comm_.Send(gid_msgs.data());
-        channel_.EndSendCommunicationPhase();
-      } else {
-        channel_.BeginReceiveCommunicationPhase();
-        auto recv_gids = gid_comm_.Recv();
-        channel_.EndReceiveCommunicationPhase();
-        int rank, nproc;
-        MPI_Comm_rank(mpi_comm_, &rank);
-        MPI_Comm_size(mpi_comm_, &nproc);
-        // we require that the layout for the gids and the message are the same
-        const auto in_message_layout = gid_comm_.GetInMessageLayout();
-        auto out_message =
-          ConstructOutMessage(rank, nproc, in_message_layout);
-        comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
-        // construct server permutation array
-        // Verify that there are no duplicate entries in the received
-        // data. Duplicate data indicates that sender is not sending data from
-        // only the owned rank
-        REDEV_ALWAYS_ASSERT(!HasDuplicates(recv_gids));
-        message_permutation_ = ConstructPermutation(gids, recv_gids);
+    // if (mpi_comm_ != MPI_COMM_NULL) {
+    auto gids = field_adapter_.GetGids();
+    if (redev_.GetProcessType() == redev::ProcessType::Client) {
+      const ReversePartitionMap reverse_partition =
+        field_adapter_.GetReversePartitionMap(Partition{redev_.GetPartition()});
+      auto out_message = ConstructOutMessage(reverse_partition);
+      comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
+      gid_comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
+      message_permutation_ = ConstructPermutation(reverse_partition);
+      // use permutation array to send the gids
+      std::vector<pcms::GO> gid_msgs(gids.size());
+      REDEV_ALWAYS_ASSERT(gids.size() == message_permutation_.size());
+      for (size_t i = 0; i < gids.size(); ++i) {
+        gid_msgs[message_permutation_[i]] = gids[i];
       }
-      comm_buffer_.resize(message_permutation_.size());
+      channel_.BeginSendCommunicationPhase();
+      gid_comm_.Send(gid_msgs.data());
+      channel_.EndSendCommunicationPhase();
+    } else {
+      channel_.BeginReceiveCommunicationPhase();
+      auto recv_gids = gid_comm_.Recv();
+      channel_.EndReceiveCommunicationPhase();
+      int rank, nproc;
+      MPI_Comm_rank(mpi_comm_, &rank);
+      MPI_Comm_size(mpi_comm_, &nproc);
+      // we require that the layout for the gids and the message are the same
+      const auto in_message_layout = gid_comm_.GetInMessageLayout();
+      auto out_message = ConstructOutMessage(rank, nproc, in_message_layout);
+      comm_.SetOutMessageLayout(out_message.dest, out_message.offset);
+      // construct server permutation array
+      // Verify that there are no duplicate entries in the received
+      // data. Duplicate data indicates that sender is not sending data from
+      // only the owned rank
+      REDEV_ALWAYS_ASSERT(!HasDuplicates(recv_gids));
+      message_permutation_ = ConstructPermutation(gids, recv_gids);
+    }
+    comm_buffer_.resize(message_permutation_.size());
     //}
   }
   void UpdateLayoutNull()
   {
     PCMS_FUNCTION_TIMER;
-    //if (mpi_comm_ != MPI_COMM_NULL) {
+    // if (mpi_comm_ != MPI_COMM_NULL) {
     if (redev_.GetProcessType() == redev::ProcessType::Client) {
       channel_.BeginSendCommunicationPhase();
       channel_.EndSendCommunicationPhase();

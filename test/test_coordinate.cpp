@@ -7,19 +7,21 @@
 
 using pcms::Cartesian;
 using pcms::Coordinate;
-using pcms::Cartesian;
-using pcms::Cylindrical;
 using pcms::CoordinateElement;
+using pcms::Cylindrical;
 using pcms::Real;
 
 #if __cplusplus >= 202002L
-  // coordinates from different coordinate systems should not be equality comparable
-  static_assert(!std::equality_comparable_with<Coordinate<Cartesian>,Coordinate<Cylindrical>>);
+// coordinates from different coordinate systems should not be equality
+// comparable
+static_assert(!std::equality_comparable_with<Coordinate<Cartesian>,
+                                             Coordinate<Cylindrical>>);
 #endif
 
-TEST_CASE( "Coordinate Strong type works", "[coordinate]" ) {
-  Coordinate<Cartesian> cart{1.0,2.0,3.0};
-  Coordinate<Cylindrical> cyl{4.0,5.0,6.0};
+TEST_CASE("Coordinate Strong type works", "[coordinate]")
+{
+  Coordinate<Cartesian> cart{1.0, 2.0, 3.0};
+  Coordinate<Cylindrical> cyl{4.0, 5.0, 6.0};
   SECTION("Values()")
   {
     auto values = cart.Values();
@@ -31,7 +33,8 @@ TEST_CASE( "Coordinate Strong type works", "[coordinate]" ) {
     REQUIRE(values[1] == Catch::Approx(5.0));
     REQUIRE(values[2] == Catch::Approx(6.0));
   }
-  SECTION("operator[]"){
+  SECTION("operator[]")
+  {
     REQUIRE(cart[0] == Catch::Approx(1.0));
     REQUIRE(cart[1] == Catch::Approx(2.0));
     REQUIRE(cart[2] == Catch::Approx(3.0));

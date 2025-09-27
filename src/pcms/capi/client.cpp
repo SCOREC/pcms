@@ -165,7 +165,8 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
                                                 in_overlap, *field_adapter);
       break;
     default:
-      PCMS_ALWAYS_ASSERT(false, MPI_COMM_WORLD, "tyring to create XGC adapter with invalid type!\n");
+      PCMS_ALWAYS_ASSERT(false, MPI_COMM_WORLD,
+                         "tyring to create XGC adapter with invalid type!\n");
   }
   return {reinterpret_cast<void*>(field_adapter)};
 }

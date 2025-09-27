@@ -41,16 +41,13 @@ set(PCMS_SOURCES
         pcms/adapter/omega_h/omega_h_field2.cpp
         pcms/adapter/xgc/xgc_field_adapter.h)
 
-configure_file(
-  pcms/version.h.in
-  pcms/version.h
-)
+configure_file(pcms/version.h.in pcms/version.h)
 
 if(PCMS_ENABLE_XGC)
   list(APPEND PCMS_SOURCES pcms/adapter/xgc/xgc_reverse_classification.cpp)
   list(APPEND PCMS_HEADERS pcms/adapter/xgc/xgc_reverse_classification.h)
 endif()
-if (PCMS_ENABLE_OMEGA_H)
+if(PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_SOURCES pcms/point_search.cpp)
   list(APPEND PCMS_HEADERS
           pcms/adapter/omega_h/omega_h_field.h
@@ -64,9 +61,8 @@ find_package(Kokkos REQUIRED)
 find_package(perfstubs REQUIRED)
 
 add_library(pcms_core ${PCMS_SOURCES})
-set_target_properties(pcms_core PROPERTIES
-        OUTPUT_NAME pcmscore
-        EXPORT_NAME core)
+set_target_properties(pcms_core PROPERTIES OUTPUT_NAME pcmscore EXPORT_NAME
+                                                                core)
 add_library(pcms::core ALIAS pcms_core)
 target_compile_features(pcms_core PUBLIC cxx_std_17)
 target_link_libraries(pcms_core PUBLIC meshfields::meshfields redev::redev MPI::MPI_CXX Kokkos::kokkos perfstubs)
@@ -79,7 +75,8 @@ if(PCMS_ENABLE_SERVER)
 endif()
 
 if(PCMS_HAS_ASAN)
-  target_compile_options(pcms_core PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+  target_compile_options(pcms_core PRIVATE -fsanitize=address
+                                           -fno-omit-frame-pointer)
 endif()
 
 if(PCMS_PRINT_ENABLED)
@@ -87,43 +84,39 @@ if(PCMS_PRINT_ENABLED)
   target_compile_definitions(pcms_core INTERFACE -DPCMS_PRINT_ENABLED)
 endif()
 
-if (spdlog_FOUND)
+if(spdlog_FOUND)
   add_definitions(-DPCMS_SPDLOG_ENABLED)
   target_compile_definitions(pcms_core INTERFACE -DPCMS_SPDLOG_ENABLED)
   target_link_libraries(pcms_core PUBLIC spdlog::spdlog)
 endif()
 
-
-## export the library
-set_target_properties(pcms_core PROPERTIES
-  PUBLIC_HEADER "${PCMS_HEADERS}")
-target_include_directories(pcms_core
-  PUBLIC
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
-  "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+# export the library
+set_target_properties(pcms_core PROPERTIES PUBLIC_HEADER "${PCMS_HEADERS}")
+target_include_directories(
+  pcms_core
+  PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
+         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 install(
   TARGETS pcms_core
   EXPORT pcms_core-targets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  INCLUDES
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms)
 
 configure_package_config_file(
-  "${CMAKE_SOURCE_DIR}/config.cmake.in"
-  "${CMAKE_BINARY_DIR}/pcms-config.cmake"
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms
-)
+  "${CMAKE_SOURCE_DIR}/config.cmake.in" "${CMAKE_BINARY_DIR}/pcms-config.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
 write_basic_package_version_file(
   "${PROJECT_BINARY_DIR}/pcms-config-version.cmake"
   COMPATIBILITY AnyNewerVersion)
 
-install(FILES
-  "${PROJECT_BINARY_DIR}/pcms-config.cmake"
-  "${PROJECT_BINARY_DIR}/pcms-config-version.cmake"
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+install(FILES "${PROJECT_BINARY_DIR}/pcms-config.cmake"
+              "${PROJECT_BINARY_DIR}/pcms-config-version.cmake"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
 
 install(
   EXPORT pcms_core-targets
@@ -132,28 +125,27 @@ install(
 
 add_library(pcms_pcms INTERFACE)
 target_link_libraries(pcms_pcms INTERFACE pcms::core)
-set_target_properties(pcms_pcms PROPERTIES
-        EXPORT_NAME pcms)
-if (PCMS_ENABLE_C)
+set_target_properties(pcms_pcms PROPERTIES EXPORT_NAME pcms)
+if(PCMS_ENABLE_C)
   add_subdirectory(pcms/capi)
   target_link_libraries(pcms_pcms INTERFACE pcms::capi)
-endif ()
+endif()
 if(PCMS_ENABLE_Fortran)
   add_subdirectory(pcms/fortranapi)
   target_link_libraries(pcms_pcms INTERFACE pcms::fortranapi)
 endif()
 
-
 add_subdirectory(pcms/interpolator)
 
 install(
-        TARGETS pcms_pcms
-        EXPORT pcms-targets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms)
+  TARGETS pcms_pcms
+  EXPORT pcms-targets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms)
 # install external headers
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/pcms/external/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/external)

@@ -65,10 +65,10 @@ struct LocalizationHint {
 class FieldLayout;
 
 /*
-* A field expresses the highest level view of operations
-* that a user can perform on a field
-* Note results must be tagged by the coordinate system type
-* Shape functions can be thought of as a particular field type.
+ * A field expresses the highest level view of operations
+ * that a user can perform on a field
+ * Note results must be tagged by the coordinate system type
+ * Shape functions can be thought of as a particular field type.
  */
 template <typename T>
 class FieldT {
@@ -99,8 +99,7 @@ public:
 
   virtual int Serialize(
     Rank1View<T, pcms::HostMemorySpace> buffer,
-    Rank1View<const pcms::LO, pcms::HostMemorySpace>
-      permutation) const = 0;
+    Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) const = 0;
 
   virtual void Deserialize(
     Rank1View<const T, pcms::HostMemorySpace> buffer,

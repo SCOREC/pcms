@@ -10,32 +10,28 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     mls_interpolation.hpp
     pcms_interpolator_view_utils.hpp
     pcms_interpolator_logger.hpp
-)
+    spline_interpolator.hpp)
 
-set(PCMS_FIELD_TRANSFER_SOURCES
-    mls_interpolation.cpp
-)
-install(FILES ${PCMS_FIELD_TRANSFER_HEADERS} DESTINATION include/pcms/interpolator)
-
+set(PCMS_FIELD_TRANSFER_SOURCES mls_interpolation.cpp)
+install(FILES ${PCMS_FIELD_TRANSFER_HEADERS}
+        DESTINATION include/pcms/interpolator)
 
 add_library(pcms_interpolator ${PCMS_FIELD_TRANSFER_SOURCES})
-set_target_properties(pcms_interpolator PROPERTIES
-        OUTPUT_NAME pcmsinterpolator
-        EXPORT_NAME interpolator)
+set_target_properties(pcms_interpolator PROPERTIES OUTPUT_NAME pcmsinterpolator
+                                                   EXPORT_NAME interpolator)
 add_library(pcms::interpolator ALIAS pcms_interpolator)
-
 
 target_link_libraries(pcms_interpolator PUBLIC pcms::core Kokkos::kokkoskernels)
 
+install(
+  TARGETS pcms_interpolator
+  EXPORT interpolatorTargets
+  INCLUDES
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/interpolator
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-install(TARGETS pcms_interpolator
-    EXPORT interpolatorTargets
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/interpolator
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}) 
-
-
-install(EXPORT interpolatorTargets
-    FILE pcms_interpolator-targets.cmake
-    NAMESPACE pcms::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
-
+install(
+  EXPORT interpolatorTargets
+  FILE pcms_interpolator-targets.cmake
+  NAMESPACE pcms::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)

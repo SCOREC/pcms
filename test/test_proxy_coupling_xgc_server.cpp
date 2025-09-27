@@ -25,9 +25,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  pcms::Coupler cpl(
-    "proxy_couple_server", comm, true,
-    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
+  pcms::Coupler cpl("proxy_couple_server", comm, true,
+                    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   ReverseClassificationVertex rc;
   if (mesh.has_tag(0, "simNumbering")) {
@@ -49,8 +48,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     ss << "xgc_gids_plane_" << i;
     auto field_adapter = pcms::XGCFieldAdapter<GO>(
       ss.str(), comm, make_array_view(data[i]), rc, ts::IsModelEntInOverlap{});
-    fields.push_back(
-      application->AddField(ss.str(), std::move(field_adapter)));
+    fields.push_back(application->AddField(ss.str(), std::move(field_adapter)));
   }
 
   do {
@@ -80,9 +78,8 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  pcms::Coupler cpl(
-    "proxy_couple_server", comm, true,
-    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
+  pcms::Coupler cpl("proxy_couple_server", comm, true,
+                    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto* application = cpl.AddApplication("proxy_couple");
   std::string numbering;
@@ -106,8 +103,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     ss << "xgc_gids_plane_" << i;
     auto field_adapter =
       pcms::OmegaHFieldAdapter<GO>(ss.str(), mesh, is_overlap, numbering);
-    fields.push_back(
-      application->AddField(ss.str(), std::move(field_adapter)));
+    fields.push_back(application->AddField(ss.str(), std::move(field_adapter)));
   }
   do {
     application->ReceivePhase([&]() {

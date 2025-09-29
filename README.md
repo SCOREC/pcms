@@ -192,7 +192,7 @@ ctest --test-dir build-pcms --output-on-failure
    ```console
    $ mkdir /lore/$USER/spack
    $ cd /lore/$USER/spack
-   $ git clone -c feature.manyFiles=true -b releases/v0.20 https://github.com/spack/spack.git
+   $ git clone -c feature.manyFiles=true -b releases/v1.0 https://github.com/spack/spack.git
    $ . spack/share/spack/setup-env.sh
    ```
    We can also add the spack setup line into the `~/.bashrc` with `echo ". spack/share/spack/setup-env.sh" >> ~/.bashrc". This will load the spack setup script every time we start our terminal session.
@@ -201,16 +201,10 @@ ctest --test-dir build-pcms --output-on-failure
    The following commands will add the pcms recipe files to spack. They are not currently installed inthe upstream spack repository.
    ```console
    $ git clone https://github.com/jacobmerson/pcms-spack.git
-   $ spack repo add pcms-spack/pcms
+   $ spack repo add pcms-spack/spack_repo/pcms
    ```
    
-3. Add Spack binary mirror
-   Addding the binary mirrors will avoid some compilation by downloading prebuilt binaries when available.
-   ```console
-   $ spack mirror add v0.20.1 https://binaries.spack.io/v0.20.1
-   $ spack buildcache keys --install --trust
-   ```
-5. Install PCMS repo
+3. Install PCMS repo
     ```console
     $ mkdir /lore/$USER/pcms-coupler
     $ cd /lore/$USER/pcms-coupler

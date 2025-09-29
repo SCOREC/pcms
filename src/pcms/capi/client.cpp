@@ -1,15 +1,12 @@
 #include "client.h"
 #include "pcms.h"
-#include "pcms/xgc_field_adapter.h"
+#include "pcms/adapter/xgc/xgc_field_adapter.h"
 #include <variant>
 #include <redev_variant_tools.h>
-// #ifdef PCMS_HAS_OMEGA_H
-//   #include "pcms/omega_h_field.h"
-// #endif
 #include <fstream>
-#include "pcms/xgc_reverse_classification.h"
+#include "pcms/adapter/xgc/xgc_reverse_classification.h"
 #include "pcms/dummy_field_adapter.h"
-#include "pcms/print.h"
+#include "pcms/assert.h"
 namespace pcms
 {
 // Note that we have a closed set of types that can be used in the C interface
@@ -132,7 +129,7 @@ void pcms_create_xgc_field_adapter_t(
   in_overlap_function in_overlap, pcms::FieldAdapterVariant& field_adapter)
 {
   PCMS_ALWAYS_ASSERT((size > 0) ? (data != nullptr) : true);
-  pcms::ScalarArrayView<T, pcms::HostMemorySpace> data_view(
+  pcms::Rank1View<T, pcms::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<pcms::XGCFieldAdapter<T>>(
     name, comm, data_view, reverse_classification, in_overlap);
@@ -168,8 +165,8 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
                                                 in_overlap, *field_adapter);
       break;
     default:
-      pcms::printError("tyring to create XGC adapter with invalid type!\n");
-      std::abort();
+      PCMS_ALWAYS_ASSERT(false, MPI_COMM_WORLD,
+                         "tyring to create XGC adapter with invalid type!\n");
   }
   return {reinterpret_cast<void*>(field_adapter)};
 }

@@ -4,120 +4,131 @@
  *
  * Do not make changes to this file unless you know what you are doing - modify
  * the SWIG interface file instead.
- * ----------------------------------------------------------------------------- */
+ * -----------------------------------------------------------------------------
+ */
 /* -----------------------------------------------------------------------------
  *  This section contains generic SWIG labels for method/variable
  *  declarations/attributes, and other compiler dependent labels.
- * ----------------------------------------------------------------------------- */
+ * -----------------------------------------------------------------------------
+ */
 
-/* template workaround for compilers that cannot correctly implement the C++ standard */
+/* template workaround for compilers that cannot correctly implement the C++
+ * standard */
 #ifndef SWIGTEMPLATEDISAMBIGUATOR
-# if defined(__SUNPRO_CC) && (__SUNPRO_CC <= 0x560)
-#  define SWIGTEMPLATEDISAMBIGUATOR template
-# elif defined(__HP_aCC)
-/* Needed even with `aCC -AA' when `aCC -V' reports HP ANSI C++ B3910B A.03.55 */
-/* If we find a maximum version that requires this, the test would be __HP_aCC <= 35500 for A.03.55 */
-#  define SWIGTEMPLATEDISAMBIGUATOR template
-# else
-#  define SWIGTEMPLATEDISAMBIGUATOR
-# endif
+#if defined(__SUNPRO_CC) && (__SUNPRO_CC <= 0x560)
+#define SWIGTEMPLATEDISAMBIGUATOR template
+#elif defined(__HP_aCC)
+/* Needed even with `aCC -AA' when `aCC -V' reports HP ANSI C++ B3910B A.03.55
+ */
+/* If we find a maximum version that requires this, the test would be __HP_aCC
+ * <= 35500 for A.03.55 */
+#define SWIGTEMPLATEDISAMBIGUATOR template
+#else
+#define SWIGTEMPLATEDISAMBIGUATOR
+#endif
 #endif
 
 /* inline attribute */
 #ifndef SWIGINLINE
-# if defined(__cplusplus) || (defined(__GNUC__) && !defined(__STRICT_ANSI__))
-#   define SWIGINLINE inline
-# else
-#   define SWIGINLINE
-# endif
+#if defined(__cplusplus) || (defined(__GNUC__) && !defined(__STRICT_ANSI__))
+#define SWIGINLINE inline
+#else
+#define SWIGINLINE
+#endif
 #endif
 
 /* attribute recognised by some compilers to avoid 'unused' warnings */
 #ifndef SWIGUNUSED
-# if defined(__GNUC__)
-#   if !(defined(__cplusplus)) || (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
-#     define SWIGUNUSED __attribute__ ((__unused__))
-#   else
-#     define SWIGUNUSED
-#   endif
-# elif defined(__ICC)
-#   define SWIGUNUSED __attribute__ ((__unused__))
-# else
-#   define SWIGUNUSED
-# endif
+#if defined(__GNUC__)
+#if !(defined(__cplusplus)) ||                                                 \
+  (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
+#define SWIGUNUSED __attribute__((__unused__))
+#else
+#define SWIGUNUSED
+#endif
+#elif defined(__ICC)
+#define SWIGUNUSED __attribute__((__unused__))
+#else
+#define SWIGUNUSED
+#endif
 #endif
 
 #ifndef SWIG_MSC_UNSUPPRESS_4505
-# if defined(_MSC_VER)
-#   pragma warning(disable : 4505) /* unreferenced local function has been removed */
-# endif
+#if defined(_MSC_VER)
+#pragma warning(                                                               \
+  disable : 4505) /* unreferenced local function has been removed */
+#endif
 #endif
 
 #ifndef SWIGUNUSEDPARM
-# ifdef __cplusplus
-#   define SWIGUNUSEDPARM(p)
-# else
-#   define SWIGUNUSEDPARM(p) p SWIGUNUSED
-# endif
+#ifdef __cplusplus
+#define SWIGUNUSEDPARM(p)
+#else
+#define SWIGUNUSEDPARM(p) p SWIGUNUSED
+#endif
 #endif
 
 /* internal SWIG method */
 #ifndef SWIGINTERN
-# define SWIGINTERN static SWIGUNUSED
+#define SWIGINTERN static SWIGUNUSED
 #endif
 
 /* internal inline SWIG method */
 #ifndef SWIGINTERNINLINE
-# define SWIGINTERNINLINE SWIGINTERN SWIGINLINE
+#define SWIGINTERNINLINE SWIGINTERN SWIGINLINE
 #endif
 
 /* exporting methods */
 #if defined(__GNUC__)
-#  if (__GNUC__ >= 4) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)
-#    ifndef GCC_HASCLASSVISIBILITY
-#      define GCC_HASCLASSVISIBILITY
-#    endif
-#  endif
+#if (__GNUC__ >= 4) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)
+#ifndef GCC_HASCLASSVISIBILITY
+#define GCC_HASCLASSVISIBILITY
+#endif
+#endif
 #endif
 
 #ifndef SWIGEXPORT
-# if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
-#   if defined(STATIC_LINKED)
-#     define SWIGEXPORT
-#   else
-#     define SWIGEXPORT __declspec(dllexport)
-#   endif
-# else
-#   if defined(__GNUC__) && defined(GCC_HASCLASSVISIBILITY)
-#     define SWIGEXPORT __attribute__ ((visibility("default")))
-#   else
-#     define SWIGEXPORT
-#   endif
-# endif
+#if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
+#if defined(STATIC_LINKED)
+#define SWIGEXPORT
+#else
+#define SWIGEXPORT __declspec(dllexport)
+#endif
+#else
+#if defined(__GNUC__) && defined(GCC_HASCLASSVISIBILITY)
+#define SWIGEXPORT __attribute__((visibility("default")))
+#else
+#define SWIGEXPORT
+#endif
+#endif
 #endif
 
 /* calling conventions for Windows */
 #ifndef SWIGSTDCALL
-# if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
-#   define SWIGSTDCALL __stdcall
-# else
-#   define SWIGSTDCALL
-# endif
+#if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
+#define SWIGSTDCALL __stdcall
+#else
+#define SWIGSTDCALL
+#endif
 #endif
 
 /* Deal with Microsoft's attempt at deprecating C standard runtime functions */
-#if !defined(SWIG_NO_CRT_SECURE_NO_DEPRECATE) && defined(_MSC_VER) && !defined(_CRT_SECURE_NO_DEPRECATE)
-# define _CRT_SECURE_NO_DEPRECATE
+#if !defined(SWIG_NO_CRT_SECURE_NO_DEPRECATE) && defined(_MSC_VER) &&          \
+  !defined(_CRT_SECURE_NO_DEPRECATE)
+#define _CRT_SECURE_NO_DEPRECATE
 #endif
 
-/* Deal with Microsoft's attempt at deprecating methods in the standard C++ library */
-#if !defined(SWIG_NO_SCL_SECURE_NO_DEPRECATE) && defined(_MSC_VER) && !defined(_SCL_SECURE_NO_DEPRECATE)
-# define _SCL_SECURE_NO_DEPRECATE
+/* Deal with Microsoft's attempt at deprecating methods in the standard C++
+ * library */
+#if !defined(SWIG_NO_SCL_SECURE_NO_DEPRECATE) && defined(_MSC_VER) &&          \
+  !defined(_SCL_SECURE_NO_DEPRECATE)
+#define _SCL_SECURE_NO_DEPRECATE
 #endif
 
 /* Deal with Apple's deprecated 'AssertMacros.h' from Carbon-framework */
-#if defined(__APPLE__) && !defined(__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES)
-# define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
+#if defined(__APPLE__) &&                                                      \
+  !defined(__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES)
+#define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
 #endif
 
 /* Intel's compiler complains if a variable which was never initialised is
@@ -126,27 +137,29 @@
  * See: https://github.com/swig/swig/issues/192 for more discussion.
  */
 #ifdef __INTEL_COMPILER
-# pragma warning disable 592
+#pragma warning disable 592
 #endif
-
 
 #ifndef SWIGEXTERN
-# ifdef __cplusplus
-#   define SWIGEXTERN extern
-# else
-#   define SWIGEXTERN
-# endif
+#ifdef __cplusplus
+#define SWIGEXTERN extern
+#else
+#define SWIGEXTERN
+#endif
 #endif
 
-
 #include <assert.h>
-#define SWIG_exception_impl(DECL, CODE, MSG, RETURNNULL) \
- { printf("In " DECL ": " MSG); assert(0); RETURNNULL; }
+#define SWIG_exception_impl(DECL, CODE, MSG, RETURNNULL)                       \
+  {                                                                            \
+    printf("In " DECL ": " MSG);                                               \
+    assert(0);                                                                 \
+    RETURNNULL;                                                                \
+  }
 
-
-enum {
-    SWIG_MEM_OWN = 0x01,
-    SWIG_MEM_RVALUE = 0x02,
+enum
+{
+  SWIG_MEM_OWN = 0x01,
+  SWIG_MEM_RVALUE = 0x02,
 };
 
 #define SWIG_check_nonnull(PTR, TYPENAME, FNAME, FUNCNAME, RETURNNULL)         \
@@ -161,105 +174,103 @@ enum {
 #define SWIGFORTRAN
 
 #include <stdio.h>
-#if (defined(_MSC_VER) && (_MSC_VER < 1900)) || defined(__BORLANDC__) || defined(_WATCOM)
-# ifndef snprintf
-#  define snprintf _snprintf
-# endif
+#if (defined(_MSC_VER) && (_MSC_VER < 1900)) || defined(__BORLANDC__) ||       \
+  defined(_WATCOM)
+#ifndef snprintf
+#define snprintf _snprintf
 #endif
-
+#endif
 
 /* Support for the `contract` feature.
  *
  * Note that RETURNNULL is first because it's inserted via a 'Replaceall' in
  * the fortran.cxx file.
  */
-#define SWIG_contract_assert(RETURNNULL, EXPR, MSG) \
- if (!(EXPR)) { SWIG_exception_impl("$decl", SWIG_ValueError, MSG, RETURNNULL); } 
+#define SWIG_contract_assert(RETURNNULL, EXPR, MSG)                            \
+  if (!(EXPR)) {                                                               \
+    SWIG_exception_impl("$decl", SWIG_ValueError, MSG, RETURNNULL);            \
+  }
 
-
-#define SWIG_as_voidptr(a) (void *)((const void *)(a)) 
-#define SWIG_as_voidptrptr(a) ((void)SWIG_as_voidptr(*a),(void**)(a)) 
-
+#define SWIG_as_voidptr(a) (void*)((const void*)(a))
+#define SWIG_as_voidptrptr(a) ((void)SWIG_as_voidptr(*a), (void**)(a))
 
 #include "pcms/capi/client.h"
 #include "pcms/capi/kokkos.h"
-
 
 #ifdef HAVE_MPI
 #include <mpi.h>
 #endif
 
-
 #include <stdint.h>
 
-
-typedef struct {
-    void* cptr;
-    int cmemflags;
+typedef struct
+{
+  void* cptr;
+  int cmemflags;
 } SwigClassWrapper;
 
-
-SWIGINTERN SwigClassWrapper SwigClassWrapper_uninitialized() {
-    SwigClassWrapper result;
-    result.cptr = NULL;
-    result.cmemflags = 0;
-    return result;
+SWIGINTERN SwigClassWrapper SwigClassWrapper_uninitialized()
+{
+  SwigClassWrapper result;
+  result.cptr = NULL;
+  result.cmemflags = 0;
+  return result;
 }
-
 
 #include <stdlib.h>
 #ifdef _MSC_VER
-# ifndef strtoull
-#  define strtoull _strtoui64
-# endif
-# ifndef strtoll
-#  define strtoll _strtoi64
-# endif
+#ifndef strtoull
+#define strtoull _strtoui64
+#endif
+#ifndef strtoll
+#define strtoll _strtoi64
+#endif
 #endif
 
 #include <string.h>
 
 SWIGINTERN void SWIG_assign(SwigClassWrapper* self, SwigClassWrapper other)
 {
-    if (self->cptr == NULL) {
-      /* LHS is unassigned */
-      if (other.cmemflags & SWIG_MEM_RVALUE) {
-        /* Capture pointer from RHS, clear 'moving' flag */
-        self->cptr = other.cptr;
-        self->cmemflags = other.cmemflags & (~SWIG_MEM_RVALUE);
-      } else {
-        /* Become a reference to the other object */
-        self->cptr = other.cptr;
-        self->cmemflags = other.cmemflags & (~SWIG_MEM_OWN);
-      }
-    } else if (other.cptr == NULL) {
-      /* Replace LHS with a null pointer */
-      free(self->cptr);
-      *self = SwigClassWrapper_uninitialized();
-    } else if (self->cptr == other.cptr) {
-      /* Self-assignment: ignore */
-    } else {
-      if (self->cmemflags & SWIG_MEM_OWN) {
-        free(self->cptr);
-      }
+  if (self->cptr == NULL) {
+    /* LHS is unassigned */
+    if (other.cmemflags & SWIG_MEM_RVALUE) {
+      /* Capture pointer from RHS, clear 'moving' flag */
       self->cptr = other.cptr;
-      if (other.cmemflags & SWIG_MEM_RVALUE) {
-        /* Capture RHS */
-        self->cmemflags = other.cmemflags & ~SWIG_MEM_RVALUE;
-      } else {
-        /* Point to RHS */
-        self->cmemflags = other.cmemflags & ~SWIG_MEM_OWN;
-      }
+      self->cmemflags = other.cmemflags & (~SWIG_MEM_RVALUE);
+    } else {
+      /* Become a reference to the other object */
+      self->cptr = other.cptr;
+      self->cmemflags = other.cmemflags & (~SWIG_MEM_OWN);
     }
+  } else if (other.cptr == NULL) {
+    /* Replace LHS with a null pointer */
+    free(self->cptr);
+    *self = SwigClassWrapper_uninitialized();
+  } else if (self->cptr == other.cptr) {
+    /* Self-assignment: ignore */
+  } else {
+    if (self->cmemflags & SWIG_MEM_OWN) {
+      free(self->cptr);
+    }
+    self->cptr = other.cptr;
+    if (other.cmemflags & SWIG_MEM_RVALUE) {
+      /* Capture RHS */
+      self->cmemflags = other.cmemflags & ~SWIG_MEM_RVALUE;
+    } else {
+      /* Point to RHS */
+      self->cmemflags = other.cmemflags & ~SWIG_MEM_OWN;
+    }
+  }
 }
 
-typedef struct {
-    void* data;
-    size_t size;
+typedef struct
+{
+  void* data;
+  size_t size;
 } SwigArrayWrapper;
 
-
-SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized() {
+SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized()
+{
   SwigArrayWrapper result;
   result.data = NULL;
   result.size = 0;
@@ -277,7 +288,7 @@ SWIGEXPORT void _wrap_PcmsClientHandle_pointer_set(SwigClassWrapper* farg1,
   arg1 = (struct PcmsClientHandle*)farg1->cptr;
   arg2 = (void*)(*farg2);
   if (arg1)
-      (arg1)->appPointer = arg2;
+    (arg1)->appPointer = arg2;
 }
 
 SWIGEXPORT void* _wrap_PcmsClientHandle_pointer_get(SwigClassWrapper* farg1)
@@ -336,7 +347,7 @@ SWIGEXPORT void _wrap_PcmsOmegaHMeshHandle_pointer_set(SwigClassWrapper* farg1,
   arg1 = (struct PcmsOmegaHMeshHandle*)farg1->cptr;
   arg2 = (void*)(*farg2);
   if (arg1)
-      (arg1)->pointer = arg2;
+    (arg1)->pointer = arg2;
 }
 
 SWIGEXPORT void* _wrap_PcmsOmegaHMeshHandle_pointer_get(SwigClassWrapper* farg1)
@@ -398,7 +409,7 @@ SWIGEXPORT void _wrap_PcmsReverseClassificationHandle_pointer_set(
   arg1 = (struct PcmsReverseClassificationHandle*)farg1->cptr;
   arg2 = (void*)(*farg2);
   if (arg1)
-      (arg1)->pointer = arg2;
+    (arg1)->pointer = arg2;
 }
 
 SWIGEXPORT void* _wrap_PcmsReverseClassificationHandle_pointer_get(
@@ -464,7 +475,7 @@ SWIGEXPORT void _wrap_PcmsFieldAdapterHandle_pointer_set(
   arg1 = (struct PcmsFieldAdapterHandle*)farg1->cptr;
   arg2 = (void*)(*farg2);
   if (arg1)
-      (arg1)->pointer = arg2;
+    (arg1)->pointer = arg2;
 }
 
 SWIGEXPORT void* _wrap_PcmsFieldAdapterHandle_pointer_get(
@@ -525,7 +536,7 @@ SWIGEXPORT void _wrap_PcmsFieldHandle_pointer_set(SwigClassWrapper* farg1,
   arg1 = (struct PcmsFieldHandle*)farg1->cptr;
   arg2 = (void*)(*farg2);
   if (arg1)
-      (arg1)->pointer = arg2;
+    (arg1)->pointer = arg2;
 }
 
 SWIGEXPORT void* _wrap_PcmsFieldHandle_pointer_get(SwigClassWrapper* farg1)
@@ -572,13 +583,15 @@ SWIGEXPORT void _wrap_PcmsFieldHandle_op_assign__(SwigClassWrapper* farg1,
   SWIG_assign(farg1, *farg2);
 }
 
-SWIGEXPORT SwigClassWrapper _wrap_pcms_create_client(SwigArrayWrapper *farg1, int const *farg2) {
-  SwigClassWrapper fresult ;
-  char *arg1 = (char *) 0 ;
-  MPI_Comm arg2 ;
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_client(SwigArrayWrapper* farg1,
+                                                     int const* farg2)
+{
+  SwigClassWrapper fresult;
+  char* arg1 = (char*)0;
+  MPI_Comm arg2;
   PcmsClientHandle result;
 
-  arg1 = (char *)(farg1->data);
+  arg1 = (char*)(farg1->data);
 #ifdef HAVE_MPI
   arg2 = MPI_Comm_f2c((MPI_Fint)*farg2);
 #else
@@ -592,8 +605,8 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_client(SwigArrayWrapper *farg1, in
   return fresult;
 }
 
-
-SWIGEXPORT void _wrap_pcms_destroy_client(SwigClassWrapper *farg1) {
+SWIGEXPORT void _wrap_pcms_destroy_client(SwigClassWrapper* farg1)
+{
   PcmsClientHandle arg1;
 
   SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
@@ -602,14 +615,15 @@ SWIGEXPORT void _wrap_pcms_destroy_client(SwigClassWrapper *farg1) {
   pcms_destroy_client(arg1);
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_pcms_load_reverse_classification(SwigArrayWrapper *farg1, int const *farg2) {
-  SwigClassWrapper fresult ;
-  char *arg1 = (char *) 0 ;
-  MPI_Comm arg2 ;
+SWIGEXPORT SwigClassWrapper _wrap_pcms_load_reverse_classification(
+  SwigArrayWrapper* farg1, int const* farg2)
+{
+  SwigClassWrapper fresult;
+  char* arg1 = (char*)0;
+  MPI_Comm arg2;
   PcmsReverseClassificationHandle result;
 
-  arg1 = (char *)(farg1->data);
+  arg1 = (char*)(farg1->data);
 #ifdef HAVE_MPI
   arg2 = MPI_Comm_f2c((MPI_Fint)*farg2);
 #else
@@ -624,8 +638,9 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_load_reverse_classification(SwigArrayWrap
   return fresult;
 }
 
-
-SWIGEXPORT void _wrap_pcms_destroy_reverse_classification(SwigClassWrapper *farg1) {
+SWIGEXPORT void _wrap_pcms_destroy_reverse_classification(
+  SwigClassWrapper* farg1)
+{
   PcmsReverseClassificationHandle arg1;
 
   SWIG_check_nonnull(
@@ -637,9 +652,10 @@ SWIGEXPORT void _wrap_pcms_destroy_reverse_classification(SwigClassWrapper *farg
   pcms_destroy_reverse_classification(arg1);
 }
 
-
-SWIGEXPORT int _wrap_pcms_reverse_classification_count_verts(SwigClassWrapper *farg1) {
-  int fresult ;
+SWIGEXPORT int _wrap_pcms_reverse_classification_count_verts(
+  SwigClassWrapper* farg1)
+{
+  int fresult;
   PcmsReverseClassificationHandle arg1;
   int result;
 
@@ -654,25 +670,28 @@ SWIGEXPORT int _wrap_pcms_reverse_classification_count_verts(SwigClassWrapper *f
   return fresult;
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(SwigArrayWrapper *farg1, int const *farg2, void const **farg3, int const *farg4, int const *farg5, SwigClassWrapper *farg6, in_overlap_function farg7) {
-  SwigClassWrapper fresult ;
-  char *arg1 = (char *) 0 ;
-  MPI_Comm arg2 ;
-  void *arg3 = (void *) 0 ;
-  int arg4 ;
-  PcmsType arg5 ;
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(
+  SwigArrayWrapper* farg1, int const* farg2, void const** farg3,
+  int const* farg4, int const* farg5, SwigClassWrapper* farg6,
+  in_overlap_function farg7)
+{
+  SwigClassWrapper fresult;
+  char* arg1 = (char*)0;
+  MPI_Comm arg2;
+  void* arg3 = (void*)0;
+  int arg4;
+  PcmsType arg5;
   PcmsReverseClassificationHandle arg6;
-  in_overlap_function arg7 = (in_overlap_function) 0 ;
+  in_overlap_function arg7 = (in_overlap_function)0;
   PcmsFieldAdapterHandle result;
 
-  arg1 = (char *)(farg1->data);
+  arg1 = (char*)(farg1->data);
 #ifdef HAVE_MPI
   arg2 = MPI_Comm_f2c((MPI_Fint)*farg2);
 #else
   arg2 = *farg2;
 #endif
-  arg3 = (void *)(*farg3);
+  arg3 = (void*)(*farg3);
   arg4 = (int)(*farg4);
   arg5 = (PcmsType)(*farg5);
   SWIG_check_nonnull(
@@ -692,9 +711,9 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(SwigArrayWrapper
   return fresult;
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_pcms_create_dummy_field_adapter() {
-  SwigClassWrapper fresult ;
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_dummy_field_adapter()
+{
+  SwigClassWrapper fresult;
   PcmsFieldAdapterHandle result;
 
   result = pcms_create_dummy_field_adapter();
@@ -705,8 +724,8 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_dummy_field_adapter() {
   return fresult;
 }
 
-
-SWIGEXPORT void _wrap_pcms_destroy_field_adapter(SwigClassWrapper *farg1) {
+SWIGEXPORT void _wrap_pcms_destroy_field_adapter(SwigClassWrapper* farg1)
+{
   PcmsFieldAdapterHandle arg1;
 
   SWIG_check_nonnull(
@@ -716,13 +735,16 @@ SWIGEXPORT void _wrap_pcms_destroy_field_adapter(SwigClassWrapper *farg1) {
   pcms_destroy_field_adapter(arg1);
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_pcms_add_field(SwigClassWrapper *farg1, SwigArrayWrapper *farg2, SwigClassWrapper *farg3, int const *farg4) {
-  SwigClassWrapper fresult ;
+SWIGEXPORT SwigClassWrapper _wrap_pcms_add_field(SwigClassWrapper* farg1,
+                                                 SwigArrayWrapper* farg2,
+                                                 SwigClassWrapper* farg3,
+                                                 int const* farg4)
+{
+  SwigClassWrapper fresult;
   PcmsClientHandle arg1;
-  char *arg2 = (char *) 0 ;
+  char* arg2 = (char*)0;
   PcmsFieldAdapterHandle arg3;
-  int arg4 ;
+  int arg4;
   PcmsFieldHandle result;
 
   SWIG_check_nonnull(
@@ -730,7 +752,7 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_add_field(SwigClassWrapper *farg1, SwigAr
     "pcms_add_field(PcmsClientHandle,char const *,PcmsFieldAdapterHandle,int)",
     return SwigClassWrapper_uninitialized());
   arg1 = *((PcmsClientHandle*)(farg1->cptr));
-  arg2 = (char *)(farg2->data);
+  arg2 = (char*)(farg2->data);
   SWIG_check_nonnull(
     farg3->cptr, "PcmsFieldAdapterHandle", "PcmsFieldAdapterHandle",
     "pcms_add_field(PcmsClientHandle,char const *,PcmsFieldAdapterHandle,int)",
@@ -745,34 +767,36 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_add_field(SwigClassWrapper *farg1, SwigAr
   return fresult;
 }
 
-
-SWIGEXPORT void _wrap_pcms_send_field_name(SwigClassWrapper *farg1, SwigArrayWrapper *farg2) {
+SWIGEXPORT void _wrap_pcms_send_field_name(SwigClassWrapper* farg1,
+                                           SwigArrayWrapper* farg2)
+{
   PcmsClientHandle arg1;
-  char *arg2 = (char *) 0 ;
+  char* arg2 = (char*)0;
 
   SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
                      "pcms_send_field_name(PcmsClientHandle,char const *)",
                      return);
   arg1 = *((PcmsClientHandle*)(farg1->cptr));
-  arg2 = (char *)(farg2->data);
-  pcms_send_field_name(arg1,(char const *)arg2);
+  arg2 = (char*)(farg2->data);
+  pcms_send_field_name(arg1, (char const*)arg2);
 }
 
-
-SWIGEXPORT void _wrap_pcms_receive_field_name(SwigClassWrapper *farg1, SwigArrayWrapper *farg2) {
+SWIGEXPORT void _wrap_pcms_receive_field_name(SwigClassWrapper* farg1,
+                                              SwigArrayWrapper* farg2)
+{
   PcmsClientHandle arg1;
-  char *arg2 = (char *) 0 ;
+  char* arg2 = (char*)0;
 
   SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
                      "pcms_receive_field_name(PcmsClientHandle,char const *)",
                      return);
   arg1 = *((PcmsClientHandle*)(farg1->cptr));
-  arg2 = (char *)(farg2->data);
-  pcms_receive_field_name(arg1,(char const *)arg2);
+  arg2 = (char*)(farg2->data);
+  pcms_receive_field_name(arg1, (char const*)arg2);
 }
 
-
-SWIGEXPORT void _wrap_pcms_send_field(SwigClassWrapper *farg1) {
+SWIGEXPORT void _wrap_pcms_send_field(SwigClassWrapper* farg1)
+{
   PcmsFieldHandle arg1;
 
   SWIG_check_nonnull(farg1->cptr, "PcmsFieldHandle", "PcmsFieldHandle",
@@ -781,8 +805,8 @@ SWIGEXPORT void _wrap_pcms_send_field(SwigClassWrapper *farg1) {
   pcms_send_field(arg1);
 }
 
-
-SWIGEXPORT void _wrap_pcms_receive_field(SwigClassWrapper *farg1) {
+SWIGEXPORT void _wrap_pcms_receive_field(SwigClassWrapper* farg1)
+{
   PcmsFieldHandle arg1;
 
   SWIG_check_nonnull(farg1->cptr, "PcmsFieldHandle", "PcmsFieldHandle",
@@ -791,8 +815,8 @@ SWIGEXPORT void _wrap_pcms_receive_field(SwigClassWrapper *farg1) {
   pcms_receive_field(arg1);
 }
 
-
-SWIGEXPORT void _wrap_pcms_begin_send_phase(SwigClassWrapper *farg1) {
+SWIGEXPORT void _wrap_pcms_begin_send_phase(SwigClassWrapper* farg1)
+{
   PcmsClientHandle arg1;
 
   SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
@@ -801,8 +825,8 @@ SWIGEXPORT void _wrap_pcms_begin_send_phase(SwigClassWrapper *farg1) {
   pcms_begin_send_phase(arg1);
 }
 
-
-SWIGEXPORT void _wrap_pcms_end_send_phase(SwigClassWrapper *farg1) {
+SWIGEXPORT void _wrap_pcms_end_send_phase(SwigClassWrapper* farg1)
+{
   PcmsClientHandle arg1;
 
   SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
@@ -811,8 +835,8 @@ SWIGEXPORT void _wrap_pcms_end_send_phase(SwigClassWrapper *farg1) {
   pcms_end_send_phase(arg1);
 }
 
-
-SWIGEXPORT void _wrap_pcms_begin_receive_phase(SwigClassWrapper *farg1) {
+SWIGEXPORT void _wrap_pcms_begin_receive_phase(SwigClassWrapper* farg1)
+{
   PcmsClientHandle arg1;
 
   SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
@@ -821,8 +845,8 @@ SWIGEXPORT void _wrap_pcms_begin_receive_phase(SwigClassWrapper *farg1) {
   pcms_begin_receive_phase(arg1);
 }
 
-
-SWIGEXPORT void _wrap_pcms_end_receive_phase(SwigClassWrapper *farg1) {
+SWIGEXPORT void _wrap_pcms_end_receive_phase(SwigClassWrapper* farg1)
+{
   PcmsClientHandle arg1;
 
   SWIG_check_nonnull(farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
@@ -831,15 +855,12 @@ SWIGEXPORT void _wrap_pcms_end_receive_phase(SwigClassWrapper *farg1) {
   pcms_end_receive_phase(arg1);
 }
 
-
-SWIGEXPORT void _wrap_pcms_kokkos_initialize_without_args() {
+SWIGEXPORT void _wrap_pcms_kokkos_initialize_without_args()
+{
   pcms_kokkos_initialize_without_args();
 }
 
-
-SWIGEXPORT void _wrap_pcms_kokkos_finalize() {
+SWIGEXPORT void _wrap_pcms_kokkos_finalize()
+{
   pcms_kokkos_finalize();
 }
-
-
-

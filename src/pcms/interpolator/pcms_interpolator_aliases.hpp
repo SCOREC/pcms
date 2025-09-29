@@ -39,10 +39,9 @@ using IntDeviceMatView = Kokkos::View<int**>;
 using IntDeviceVecView = Kokkos::View<int*>;
 using IntHostMatView = Kokkos::View<int**, Kokkos::HostSpace>;
 
-using RealDefaultScalarArrayView =
-  ScalarArrayView<double, DefaultExecutionSpace>;
+using RealDefaultScalarArrayView = Rank1View<double, DefaultExecutionSpace>;
 using RealConstDefaultScalarArrayView =
-  ScalarArrayView<const double, DefaultExecutionSpace>;
+  Rank1View<const double, DefaultExecutionSpace>;
 
 } // namespace pcms
 #endif

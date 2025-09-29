@@ -12,5 +12,4 @@ void pcms_kokkos_finalize();
 }
 #endif
 
-
 #endif // PCMS_SRC_PCMS_CAPI_KOKKOS_H

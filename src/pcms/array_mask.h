@@ -1,6 +1,7 @@
 #ifndef PCMS_COUPLING_ARRAY_MASK_H
 #define PCMS_COUPLING_ARRAY_MASK_H
 #include "pcms/arrays.h"
+#include "pcms/assert.h"
 #include <Kokkos_Core.hpp>
 namespace pcms
 {
@@ -11,8 +12,8 @@ namespace detail
 template <typename MemorySpace>
 struct ComputeMaskAV
 {
-  explicit ComputeMaskAV(ScalarArrayView<LO, MemorySpace> index_mask,
-                         ScalarArrayView<const int8_t, MemorySpace> mask)
+  explicit ComputeMaskAV(Rank1View<LO, MemorySpace> index_mask,
+                         Rank1View<const int8_t, MemorySpace> mask)
     : mask_(mask), index_mask_(index_mask)
   {
   }
@@ -24,22 +25,22 @@ struct ComputeMaskAV
       index_mask_(i) = update;
     }
   }
-  ScalarArrayView<LO, MemorySpace> index_mask_;
-  ScalarArrayView<const int8_t, MemorySpace> mask_;
+  Rank1View<LO, MemorySpace> index_mask_;
+  Rank1View<const int8_t, MemorySpace> mask_;
 };
 template <typename MemorySpace>
 struct ScaleAV
 {
-  explicit ScaleAV(ScalarArrayView<LO, MemorySpace> arr,
-                   ScalarArrayView<const int8_t, MemorySpace> s)
+  explicit ScaleAV(Rank1View<LO, MemorySpace> arr,
+                   Rank1View<const int8_t, MemorySpace> s)
     : arr_(arr), s_(s)
   {
   }
   KOKKOS_INLINE_FUNCTION
   void operator()(int i) const noexcept { arr_[i] *= s_[i]; }
 
-  ScalarArrayView<LO, MemorySpace> arr_;
-  ScalarArrayView<const int8_t, MemorySpace> s_;
+  Rank1View<LO, MemorySpace> arr_;
+  Rank1View<const int8_t, MemorySpace> s_;
 };
 
 } // namespace detail
@@ -53,7 +54,7 @@ public:
   ArrayMask() = default;
   // takes a mask where each entry is 1 for including the entry and 0 for
   // excluding the entry
-  explicit ArrayMask(ScalarArrayView<const int8_t, MemorySpace> mask)
+  explicit ArrayMask(Rank1View<const int8_t, MemorySpace> mask)
     : num_active_entries_(0)
   {
     // we use a parallel scan to construct the mask mapping so that filtering
@@ -62,24 +63,26 @@ public:
     Kokkos::View<LO*, MemorySpace> index_mask("mask", mask.size());
     auto policy = Kokkos::RangePolicy<execution_space>(0, mask.size());
     auto index_mask_view = make_array_view(index_mask);
-    Kokkos::parallel_scan(policy,detail::ComputeMaskAV<MemorySpace>{index_mask_view, mask},
-                          num_active_entries_);
+    Kokkos::parallel_scan(
+      policy, detail::ComputeMaskAV<MemorySpace>{index_mask_view, mask},
+      num_active_entries_);
     //// set index mask to 0 anywhere that the original mask is 0
-    Kokkos::parallel_for(policy, detail::ScaleAV<MemorySpace>{index_mask_view, mask});
+    Kokkos::parallel_for(policy,
+                         detail::ScaleAV<MemorySpace>{index_mask_view, mask});
     // does a shallow copy
     mask_ = index_mask;
   }
   template <typename T>
-  auto Apply(ScalarArrayView<const T, MemorySpace> data,
-             ScalarArrayView<T, MemorySpace> filtered_data,
-             ScalarArrayView<const pcms::LO, MemorySpace> permutation = {})
-    const -> void
+  auto Apply(Rank1View<const T, MemorySpace> data,
+             Rank1View<T, MemorySpace> filtered_data,
+             Rank1View<const pcms::LO, MemorySpace> permutation = {}) const
+    -> void
   {
     // it doesn't make sense to call this function when the mask is empty!
     PCMS_ALWAYS_ASSERT(!empty());
     PCMS_ALWAYS_ASSERT(data.size() == mask_.size());
     PCMS_ALWAYS_ASSERT(filtered_data.size() ==
-                         static_cast<size_t>(num_active_entries_));
+                       static_cast<size_t>(num_active_entries_));
 
     auto policy = Kokkos::RangePolicy<execution_space>(0, mask_.size());
     // make local copy of the mask_ view to avoid problem with passing in "this"
@@ -98,7 +101,7 @@ public:
       });
   }
   template <typename T>
-  [[nodiscard]] auto Apply(const ScalarArrayView<T, MemorySpace> data) const
+  [[nodiscard]] auto Apply(const Rank1View<T, MemorySpace> data) const
     -> Kokkos::View<T, MemorySpace>
   {
     // it doesn't make sense to call this function when the mask is empty!
@@ -115,10 +118,9 @@ public:
   /// on the active entries in the filter
   template <typename T>
   auto ToFullArray(
-    ScalarArrayView<const T, MemorySpace> filtered_data,
-    ScalarArrayView<T, MemorySpace> output_array,
-    ScalarArrayView<const pcms::LO, MemorySpace> permutation = {}) const
-    -> void
+    Rank1View<const T, MemorySpace> filtered_data,
+    Rank1View<T, MemorySpace> output_array,
+    Rank1View<const pcms::LO, MemorySpace> permutation = {}) const -> void
   {
     if (empty()) {
       if (filtered_data.data_handle() != output_array.data_handle()) {

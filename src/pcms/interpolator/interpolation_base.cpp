@@ -82,8 +82,8 @@ MLSInterpolationHandler::MLSInterpolationHandler(
 }
 
 MLSPointCloudInterpolation::MLSPointCloudInterpolation(
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_points,
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_points, int dim,
+  pcms::Rank1View<double, pcms::HostMemorySpace> source_points,
+  pcms::Rank1View<double, pcms::HostMemorySpace> target_points, int dim,
   double radius, uint min_req_supports, uint degree, bool adapt_radius)
   : dim_(dim),
     radius_(radius),
@@ -296,7 +296,7 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
 
 // TODO : find way to avoid this copy
 void copyHostScalarArrayView2HostWrite(
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> source,
+  pcms::Rank1View<double, pcms::HostMemorySpace> source,
   Omega_h::HostWrite<Omega_h::Real>& target)
 {
   OMEGA_H_CHECK_PRINTF(
@@ -310,7 +310,7 @@ void copyHostScalarArrayView2HostWrite(
 }
 void copyHostWrite2ScalarArrayView(
   const Omega_h::HostWrite<Omega_h::Real>& source,
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> target)
+  pcms::Rank1View<double, pcms::HostMemorySpace> target)
 {
   OMEGA_H_CHECK_PRINTF(
     source.size() == target.size(),
@@ -323,8 +323,8 @@ void copyHostWrite2ScalarArrayView(
 }
 
 void MLSPointCloudInterpolation::eval(
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_field,
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field)
+  pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
+  pcms::Rank1View<double, pcms::HostMemorySpace> target_field)
 {
   OMEGA_H_CHECK_PRINTF(target_field.size() == target_coords_.size() / dim_,
                        "Source Data and Source Points size mismatch: %zu %d\n",
@@ -349,8 +349,8 @@ void MLSPointCloudInterpolation::eval(
 }
 
 void MLSInterpolationHandler::eval(
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_field,
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field)
+  pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
+  pcms::Rank1View<double, pcms::HostMemorySpace> target_field)
 {
   OMEGA_H_CHECK_PRINTF(
     target_field.size() == target_coords_.size() / target_mesh_.dim(),

@@ -21,8 +21,8 @@ PcmsInterpolatorHandle pcms_create_interpolator(PcmsInterpolatorOHMeshHandle oh_
 PcmsPointBasedInterpolatorHandle pcms_create_point_based_interpolator(void* source_points, int source_points_size,
                                                             void* target_points, int target_points_size, double radius) {
 
-  auto source_points_view = pcms::ScalarArrayView<double, pcms::HostMemorySpace>(reinterpret_cast<double*>(source_points), source_points_size);
-  auto target_points_view = pcms::ScalarArrayView<double, pcms::HostMemorySpace>(reinterpret_cast<double*>(target_points), target_points_size);
+  auto source_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(reinterpret_cast<double*>(source_points), source_points_size);
+  auto target_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(reinterpret_cast<double*>(target_points), target_points_size);
   auto* interpolator = new MLSPointCloudInterpolation(source_points_view, target_points_view, 2, radius, 15, 3, true);
   return {reinterpret_cast<void*>(interpolator)};
 }
@@ -162,8 +162,8 @@ void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input, int inpu
   OMEGA_H_CHECK_PRINTF(input_size == mls_interpolator->getSourceSize(), "Input array size does not match the source size %d != %d\n", input_size, mls_interpolator->getSourceSize());
   OMEGA_H_CHECK_PRINTF(output_size == mls_interpolator->getTargetSize(), "Output array size does not match the target size %d != %d\n", output_size, mls_interpolator->getTargetSize());
 
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> input_array(reinterpret_cast<double*>(input), input_size);
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> output_array(reinterpret_cast<double*> (output), output_size);
+  pcms::Rank1View<double, pcms::HostMemorySpace> input_array(reinterpret_cast<double*>(input), input_size);
+  pcms::Rank1View<double, pcms::HostMemorySpace> output_array(reinterpret_cast<double*> (output), output_size);
 
   mls_interpolator->eval(input_array, output_array);
 }
@@ -174,8 +174,8 @@ void pcms_interpolate_point_based(PcmsPointBasedInterpolatorHandle interpolator,
   OMEGA_H_CHECK_PRINTF(input_size == mls_interpolator->getSourceSize(), "Input array size does not match the source size %d != %d\n", input_size, mls_interpolator->getSourceSize());
   OMEGA_H_CHECK_PRINTF(output_size == mls_interpolator->getTargetSize(), "Output array size does not match the target size %d != %d\n", output_size, mls_interpolator->getTargetSize());
 
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> input_array(reinterpret_cast<double*>(input), input_size);
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> output_array(reinterpret_cast<double*> (output), output_size);
+  pcms::Rank1View<double, pcms::HostMemorySpace> input_array(reinterpret_cast<double*>(input), input_size);
+  pcms::Rank1View<double, pcms::HostMemorySpace> output_array(reinterpret_cast<double*> (output), output_size);
 
     mls_interpolator->eval(input_array, output_array);
 }

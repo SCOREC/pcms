@@ -8,7 +8,7 @@
 #include "mdspan/mdspan.hpp"
 #include "pcms/arrays.h"
 #include "pcms/memory_spaces.h"
-//#include <filesystem>
+// #include <filesystem>
 #ifdef PCMS_HAS_OMEGA_H
 #include <Omega_h_mesh.hpp>
 #include "pcms/assert.h"
@@ -52,12 +52,10 @@ public:
   // each geometric entity in iteration order (for xgc) where the gids are in
   // ascending order
   using DataMapType = std::unordered_map<DimID, std::set<LO>>;
-  void Insert(const DimID& key,
-              ScalarArrayView<LO, pcms::HostMemorySpace> data);
+  void Insert(const DimID& key, Rank1View<LO, pcms::HostMemorySpace> data);
   void Insert(const DimID& key, LO data);
   [[nodiscard]] std::vector<LO> Serialize() const;
-  void Deserialize(
-    ScalarArrayView<LO, pcms::HostMemorySpace> serialized_data);
+  void Deserialize(Rank1View<LO, pcms::HostMemorySpace> serialized_data);
   [[nodiscard]] bool operator==(const ReverseClassificationVertex& other) const;
   [[nodiscard]] const std::set<LO>* Query(const DimID& geometry) const noexcept;
   [[nodiscard]] DataMapType::iterator begin() noexcept { return data_.begin(); }
@@ -84,20 +82,24 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream&);
 ReverseClassificationVertex ReadReverseClassificationVertex(std::istream&,
                                                             MPI_Comm,
                                                             int root = 0);
-ReverseClassificationVertex ReadReverseClassificationVertex(std::string, MPI_Comm, int root = 0);
+ReverseClassificationVertex ReadReverseClassificationVertex(std::string,
+                                                            MPI_Comm,
+                                                            int root = 0);
 
 #ifdef PCMS_HAS_OMEGA_H
-enum class IndexBase {
+enum class IndexBase
+{
   Zero = 0,
   One = 1
 };
 template <typename T = Omega_h::LO>
 [[nodiscard]] ReverseClassificationVertex ConstructRCFromOmegaHMesh(
-  Omega_h::Mesh& mesh, std::string numbering = "simNumbering", IndexBase index_base=IndexBase::One)
+  Omega_h::Mesh& mesh, std::string numbering = "simNumbering",
+  IndexBase index_base = IndexBase::One)
 {
   // transfer vtx classification to host
-  auto classIds_h =
-    Omega_h::HostRead<Omega_h::ClassId>(mesh.get_array<Omega_h::ClassId>(0, "class_id"));
+  auto classIds_h = Omega_h::HostRead<Omega_h::ClassId>(
+    mesh.get_array<Omega_h::ClassId>(0, "class_id"));
   auto classDims_h =
     Omega_h::HostRead<Omega_h::I8>(mesh.get_array<Omega_h::I8>(0, "class_dim"));
   auto vertid = Omega_h::HostRead<T>(mesh.get_array<T>(0, numbering));
@@ -105,7 +107,7 @@ template <typename T = Omega_h::LO>
   PCMS_ALWAYS_ASSERT(classDims_h.size() == classIds_h.size());
   for (int i = 0; i < classDims_h.size(); ++i) {
     pcms::DimID geom{classDims_h[i], classIds_h[i]};
-    if(index_base == IndexBase::Zero) {
+    if (index_base == IndexBase::Zero) {
       rc.Insert(geom, vertid[i]);
     } else {
       PCMS_ALWAYS_ASSERT(vertid[i] > 0);

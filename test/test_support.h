@@ -8,9 +8,8 @@
 #include <Omega_h_array_ops.hpp>
 #include <redev.h>
 #include <redev_comm.h>
-#include <pcms/external/span.h>
 #include <pcms/memory_spaces.h>
-#include <pcms/omega_h_field.h>
+#include "pcms/adapter/omega_h/omega_h_field.h"
 #include <functional>
 
 namespace test_support
@@ -134,12 +133,14 @@ std::vector<size_t> sortIndexes(const T& v)
   return idx;
 }
 
-struct IsModelEntInOverlap {
-/**
- * return 1 if the specificed model entity is part of the overlap region, 0
- * otherwise. Device function must be defined inline
- */
-  KOKKOS_INLINE_FUNCTION Omega_h::I8 operator()(const int dim, const int id) const noexcept
+struct IsModelEntInOverlap
+{
+  /**
+   * return 1 if the specificed model entity is part of the overlap region, 0
+   * otherwise. Device function must be defined inline
+   */
+  KOKKOS_INLINE_FUNCTION Omega_h::I8 operator()(const int dim,
+                                                const int id) const noexcept
   {
     // the TOMMS generated geometric model has
     // entity IDs that increase with the distance
@@ -151,9 +152,9 @@ struct IsModelEntInOverlap {
   }
 };
 
-
-//using EntInOverlapFunc = std::function<Omega_h::I8(const int, const int)>;
-//static_assert(std::is_constructible_v<EntInOverlapFunc, decltype(isModelEntInOverlap)>);
+// using EntInOverlapFunc = std::function<Omega_h::I8(const int, const int)>;
+// static_assert(std::is_constructible_v<EntInOverlapFunc,
+// decltype(isModelEntInOverlap)>);
 /**
  * On the server we mark the vertices on each process that are in the overlap
  * region and are owned by the process as defined by the Classification
@@ -172,7 +173,8 @@ struct IsModelEntInOverlap {
 template <typename EntInOverlapFunc>
 Omega_h::Read<Omega_h::I8> markServerOverlapRegion(
   Omega_h::Mesh& mesh, const redev::ClassPtn& classPtn,
-  EntInOverlapFunc&& entInOverlap) {
+  EntInOverlapFunc&& entInOverlap)
+{
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   // transfer vtx classification to host
@@ -204,7 +206,6 @@ Omega_h::Read<Omega_h::I8> markServerOverlapRegion(
   // auto isOverlapOwned_hr = Omega_h::HostRead(isOverlapOwned_dr);
   mesh.add_tag(0, "isOverlap", 1, isOverlapOwned_dr);
   return isOverlapOwned_dr;
-
 }
 /**
  * Create the tag 'isOverlap' for each mesh vertex whose value is 1 if the
@@ -215,12 +216,16 @@ Omega_h::Read<Omega_h::I8> markServerOverlapRegion(
  */
 template <typename EntInOverlapFunc>
 Omega_h::Read<Omega_h::I8> markOverlapMeshEntities(
-  Omega_h::Mesh& mesh, EntInOverlapFunc&& entInOverlap) {
+  Omega_h::Mesh& mesh, EntInOverlapFunc&& entInOverlap)
+{
   // transfer vtx classification to host
   auto classIds = mesh.get_array<Omega_h::ClassId>(0, "class_id");
   auto classDims = mesh.get_array<Omega_h::I8>(0, "class_dim");
   auto isOverlap = Omega_h::Write<Omega_h::I8>(classIds.size(), "isOverlap");
-  Omega_h::parallel_for(classIds.size(),OMEGA_H_LAMBDA(int i){isOverlap[i] = entInOverlap(classDims[i], classIds[i]);});
+  Omega_h::parallel_for(
+    classIds.size(), OMEGA_H_LAMBDA(int i) {
+      isOverlap[i] = entInOverlap(classDims[i], classIds[i]);
+    });
   auto isOwned = mesh.owned(0);
   // try masking out to only owned entities
   Omega_h::parallel_for(

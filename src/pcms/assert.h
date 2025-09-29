@@ -25,6 +25,17 @@
       pcms::Pcms_Assert_Fail(omsg);                                            \
     }                                                                          \
   } while (0)
+#define PCMS_ALWAYS_ASSERT_3(cond, comm, msg)                                  \
+  do {                                                                         \
+    if (!(cond)) {                                                             \
+      int rank = -1;                                                           \
+      MPI_Comm_rank(comm, &rank);                                              \
+      char omsg[2048];                                                         \
+      snprintf(omsg, 2048, "%s failed at %s + %d on rank %d: %s\n", #cond,     \
+               __FILE__, __LINE__, rank, msg);                                 \
+      pcms::Pcms_Assert_Fail(omsg);                                            \
+    }                                                                          \
+  } while (0)
 
 namespace pcms
 {

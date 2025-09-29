@@ -170,8 +170,6 @@ void normalize_supports(const member_type& team, double* target_point,
   int dim = support_coordinates.extent(1);
 
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nsupports), [=](int i) {
-    Real pivot_point[MAX_DIM];
-
     for (int j = 0; j < dim; ++j) {
       support_coordinates(i, j) -= target_point[j];
     }
@@ -468,8 +466,8 @@ void mls_interpolation(RealConstDefaultScalarArrayView source_values,
   team_policy tp(ntargets, Kokkos::AUTO);
 
   int scratch_size = tp.scratch_size_max(1);
-  printf("Scratch Size = %d\n", scratch_size);
-  printf("Shared Size = %d\n", shared_size);
+  // printf("Scratch Size = %d\n", scratch_size);
+  // printf("Shared Size = %d\n", shared_size);
   PCMS_ALWAYS_ASSERT(scratch_size > shared_size);
 
   // calculates the interpolated values

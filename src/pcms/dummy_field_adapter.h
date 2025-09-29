@@ -1,5 +1,8 @@
 #ifndef PCMS_SRC_PCMS_DUMMY_FIELD_ADAPTER_H
 #define PCMS_SRC_PCMS_DUMMY_FIELD_ADAPTER_H
+#include "pcms/field.h"
+#include "pcms/partition.h"
+#include <vector>
 namespace pcms
 {
 class DummyFieldAdapter

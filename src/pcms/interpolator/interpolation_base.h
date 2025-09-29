@@ -12,12 +12,12 @@
 #define PCMS_INTERPOLATION_BASE_H
 
 void copyHostScalarArrayView2HostWrite(
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace> source,
+    pcms::Rank1View<double, pcms::HostMemorySpace> source,
     Omega_h::HostWrite<Omega_h::Real>& target);
 
 void copyHostWrite2ScalarArrayView(
   const Omega_h::HostWrite<Omega_h::Real>& source,
-  pcms::ScalarArrayView<double, pcms::HostMemorySpace> target);
+  pcms::Rank1View<double, pcms::HostMemorySpace> target);
 
 Omega_h::Reals getCentroids(Omega_h::Mesh& mesh);
 
@@ -29,8 +29,8 @@ class InterpolationBase
    * @param target_field The field to interpolate to
    */
   virtual void eval(
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_field,
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field) = 0;
+    pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
+    pcms::Rank1View<double, pcms::HostMemorySpace> target_field) = 0;
 };
 
 /**
@@ -40,13 +40,13 @@ class MLSPointCloudInterpolation : public InterpolationBase
 {
 public:
 
-    MLSPointCloudInterpolation(pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_points,
-                            pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_points, int dim, double radius,
+    MLSPointCloudInterpolation(pcms::Rank1View<double, pcms::HostMemorySpace> source_points,
+                            pcms::Rank1View<double, pcms::HostMemorySpace> target_points, int dim, double radius,
                             uint min_req_supports = 10, uint degree = 3, bool adapt_radius = true);
 
     void eval(
-        pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_field,
-        pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field) override;
+        pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
+        pcms::Rank1View<double, pcms::HostMemorySpace> target_field) override;
 
     SupportResults getSupports() { return supports_; }
     size_t getSourceSize() { return source_coords_.size()/dim_; }
@@ -81,8 +81,8 @@ class MLSInterpolationHandler : public InterpolationBase
 
 public:
   void eval(
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace> source_field,
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace> target_field) override;
+    pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
+    pcms::Rank1View<double, pcms::HostMemorySpace> target_field) override;
 
   /**
    * @brief Vertex to Vertex interpolation for two given meshes

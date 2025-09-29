@@ -1,4 +1,4 @@
-#include "pcms/xgc_reverse_classification.h"
+#include "xgc_reverse_classification.h"
 #include "mpi.h"
 #include <fstream>
 #include "pcms/assert.h"
@@ -19,7 +19,7 @@ std::vector<LO> ReverseClassificationVertex::Serialize() const
   return serialized_data;
 }
 void ReverseClassificationVertex::Deserialize(
-  ScalarArrayView<LO, pcms::HostMemorySpace> serialized_data)
+  Rank1View<LO, pcms::HostMemorySpace> serialized_data)
 {
   // expect to deserialize into an empty reverse classification class
   PCMS_ALWAYS_ASSERT(data_.empty());
@@ -86,8 +86,8 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& instr,
     std::vector<LO> serialized_rc(sz);
     PCMS_ALWAYS_ASSERT(serialized_rc.size() == sz);
     MPI_Bcast(serialized_rc.data(), sz, MPI_INT32_T, root, comm);
-    pcms::ScalarArrayView<pcms::LO, pcms::HostMemorySpace> av{
-      serialized_rc.data(), serialized_rc.size()};
+    pcms::Rank1View<pcms::LO, pcms::HostMemorySpace> av{serialized_rc.data(),
+                                                        serialized_rc.size()};
     ReverseClassificationVertex rc;
     rc.Deserialize(av);
     return rc;
@@ -96,7 +96,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& instr,
 ReverseClassificationVertex ReadReverseClassificationVertex(
   std::string classification_file)
 {
-  //PCMS_ALWAYS_ASSERT(classification_file.has_filename());
+  // PCMS_ALWAYS_ASSERT(classification_file.has_filename());
   std::ifstream infile(classification_file);
   PCMS_ALWAYS_ASSERT(infile.is_open() && infile.good());
   return ReadReverseClassificationVertex(infile);
@@ -105,17 +105,18 @@ ReverseClassificationVertex ReadReverseClassificationVertex(
 ReverseClassificationVertex ReadReverseClassificationVertex(
   std::string classification_file, MPI_Comm comm, int root)
 {
-  //PCMS_ALWAYS_ASSERT(classification_file.has_filename());
+  // PCMS_ALWAYS_ASSERT(classification_file.has_filename());
   std::ifstream infile(classification_file);
-  if(!infile.is_open()) {
-    std::cerr<<"Cannot open reverse classification file "<<classification_file<<"\n";
+  if (!infile.is_open()) {
+    std::cerr << "Cannot open reverse classification file "
+              << classification_file << "\n";
   }
   PCMS_ALWAYS_ASSERT(infile.is_open());
   return ReadReverseClassificationVertex(infile, comm, root);
 }
 
 void ReverseClassificationVertex::Insert(
-  const DimID& key, ScalarArrayView<LO, pcms::HostMemorySpace> data)
+  const DimID& key, Rank1View<LO, pcms::HostMemorySpace> data)
 {
   // mdspan doesn't have begin currently. This should be switched
   // to range based for-loop
@@ -146,11 +147,11 @@ const std::set<LO>* ReverseClassificationVertex::Query(
 }
 std::ostream& operator<<(std::ostream& os, const ReverseClassificationVertex& v)
 {
-  os << v.GetTotalVerts()<<"\n";
+  os << v.GetTotalVerts() << "\n";
   for (auto& geom : v) {
     os << geom.first.dim << " " << geom.first.id << "\n";
     for (auto& vert : geom.second) {
-      os << vert+1 << " ";
+      os << vert + 1 << " ";
     }
     os << "\n";
   }

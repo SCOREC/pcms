@@ -140,7 +140,7 @@ TEST_CASE("Test MLSInterpolationHandler")
       source_points_host_write[i] = source_points_host[i];
     }
     auto source_points_view =
-      pcms::ScalarArrayView<double, pcms::HostMemorySpace>(
+      pcms::Rank1View<double, pcms::HostMemorySpace>(
         source_points_host_write.data(), source_points_host_write.size());
 
     auto target_points_reals = source_mesh.coords();
@@ -152,7 +152,7 @@ TEST_CASE("Test MLSInterpolationHandler")
       target_points_host_write[i] = target_points_host[i];
     }
     auto target_points_view =
-      pcms::ScalarArrayView<double, pcms::HostMemorySpace>(
+      pcms::Rank1View<double, pcms::HostMemorySpace>(
         target_points_host_write.data(), target_points_host_write.size());
     REQUIRE(source_mesh.dim() == 2);
     printf("Point cloud based search...\n");
@@ -170,11 +170,11 @@ TEST_CASE("Test MLSInterpolationHandler")
       source_mesh.nverts());
     Omega_h::HostWrite<double> exact_values_at_nodes(source_sinxcosy_node);
 
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace> sourceArrayView(
+    pcms::Rank1View<double, pcms::HostMemorySpace> sourceArrayView(
       source_data_host_write.data(), source_data_host_write.size());
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace> interpolatedArrayView(
+    pcms::Rank1View<double, pcms::HostMemorySpace> interpolatedArrayView(
       interpolated_data_hwrite.data(), interpolated_data_hwrite.size());
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace>
+    pcms::Rank1View<double, pcms::HostMemorySpace>
       point_cloud_interpolatedArrayView(
         point_cloud_interpolated_data_hwrite.data(),
         point_cloud_interpolated_data_hwrite.size());
@@ -273,9 +273,9 @@ TEST_CASE("Test MLSInterpolationHandler")
     Omega_h::HostWrite<double> interpolated_data_hwrite(
       mls_double.getTargetSize());
 
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace> sourceArrayView(
+    pcms::Rank1View<double, pcms::HostMemorySpace> sourceArrayView(
       source_data_host_write.data(), source_data_host_write.size());
-    pcms::ScalarArrayView<double, pcms::HostMemorySpace> interpolatedArrayView(
+    pcms::Rank1View<double, pcms::HostMemorySpace> interpolatedArrayView(
       interpolated_data_hwrite.data(), interpolated_data_hwrite.size());
 
     mls_double.eval(sourceArrayView, interpolatedArrayView);

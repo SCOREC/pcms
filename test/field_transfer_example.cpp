@@ -1,14 +1,14 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_vtk.hpp>
 #include <pcms/transfer_field.h>
-#include <pcms/omega_h_field.h>
+#include "pcms/adapter/omega_h/omega_h_field.h"
 // for transfer operation dummy test
 #include <pcms.h>
 #include <chrono>
 
 using pcms::Real;
-using OHField = pcms::OmegaHField<Real, Real>;
-using OHShim = pcms::OmegaHFieldAdapter<Real, Real>;
+using OHField = pcms::OmegaHField<Real>;
+using OHShim = pcms::OmegaHFieldAdapter<Real>;
 using pcms::copy_field;
 using pcms::get_nodal_coordinates;
 using pcms::get_nodal_data;
@@ -34,7 +34,9 @@ struct MeanCombiner
     }
     auto num_fields = fields.size();
     Omega_h::parallel_for(
-      field_size, OMEGA_H_LAMBDA(int i) { combined_array[i] = combined_array[i] / num_fields; });
+      field_size, OMEGA_H_LAMBDA(int i) {
+        combined_array[i] = combined_array[i] / num_fields;
+      });
     set_nodal_data(combined, make_array_view(Omega_h::Read(combined_array)));
   }
 };
@@ -42,9 +44,9 @@ void SetApplicationFields(const OHField& app_a_field,
                           const OHField& app_b_field);
 
 using pcms::CoupledField;
-using pcms::ProcessType;
 using pcms::FieldCommunicator;
 using pcms::InternalField;
+using pcms::ProcessType;
 
 void test_standalone(Omega_h::Mesh& internal_mesh, Omega_h::Mesh& app_mesh)
 {

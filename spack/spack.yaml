@@ -9,13 +9,19 @@ spack:
   concretizer:
     unify: true
 
-  config:
-    install_missing_compilers: true
-  # add package specs to the `specs` list
-  # example includes for SCOREC RHEL7
-  include:
-  - ../scorec/rhel7/packages.yaml
-  - ../scorec/rhel7/compilers.yaml
+  packages:
+    all:
+      providers:
+        mpi: [mpich]
+    gcc:
+      externals:
+      - spec: gcc@12.4.0 languages:='c,c++,fortran'
+        prefix: /opt/scorec/spack/rhel9/v0222_2/install/linux-rhel9-x86_64_v3/gcc-11.4.1/gcc-12.4.0-5xg2r2h6cc5mckmjid2g6bftg5kh3cof
+        extra_attributes:
+          compilers:
+            c: /opt/scorec/spack/rhel9/v0222_2/install/linux-rhel9-x86_64_v3/gcc-11.4.1/gcc-12.4.0-5xg2r2h6cc5mckmjid2g6bftg5kh3cof/bin/gcc
+            cxx: /opt/scorec/spack/rhel9/v0222_2/install/linux-rhel9-x86_64_v3/gcc-11.4.1/gcc-12.4.0-5xg2r2h6cc5mckmjid2g6bftg5kh3cof/bin/g++
+            fortran: /opt/scorec/spack/rhel9/v0222_2/install/linux-rhel9-x86_64_v3/gcc-11.4.1/gcc-12.4.0-5xg2r2h6cc5mckmjid2g6bftg5kh3cof/bin/gfortran
   develop:
     pcms:
       spec: pcms@develop

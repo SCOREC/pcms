@@ -47,10 +47,10 @@ see issue #<###>
 ## Maintain CI/CD
 
 Current CI/CD contains:
-- Cmake build and test using GitHub Actions triggered on pushes and pull requests to the `develop`,`main` branch
-- Format check using clang-format and cmake-format
-- Static code analysis using clang-tidy
-- Weekly globus build/test in supercomputer Perlmutter
-- Nightly build in [CDash dashboard](https://my.cdash.org/index.php?project=SCOREC)
+- Cmake build and test using GitHub Actions triggered on pushes and pull requests to the `develop`,`main` branch. The workflow file is [`.github/workflows/cmake-test.yml`](https://github.com/SCOREC/pcms/blob/develop/.github/workflows/cmake-test.yml).
+- Format check using clang-format and cmake-format. Workflow file is [`.github/workflows/format-check.yml`](https://github.com/SCOREC/pcms/blob/develop/.github/workflows/format-check.yml).
+- Static code analysis using clang-tidy. Combined in the main cmake workflow at [`.github/workflows/cmake-test.yml`](https://github.com/SCOREC/pcms/blob/develop/.github/workflows/cmake-test.yml).
+- Weekly globus build/test in supercomputer Perlmutter. Workflow file is in [`.github/workflows/perlmutter/`](https://github.com/SCOREC/pcms/tree/develop/.github/workflows/perlmutter) directory.
+- Nightly build in [CDash dashboard](https://my.cdash.org/index.php?project=SCOREC). The build script is in [`cdash/`](https://github.com/SCOREC/pcms/tree/develop/cdash) directory. The script is triggered by a cron job on a SCOREC workstation daily at early morning.
 
 To maintain the CI/CD pipeline, ensure that any changes to the build or test processes are reflected in those workflow file. Regularly review the workflow for updates to dependencies or tools used in the pipeline. When adding new steps to the CI/CD process, ensure they are properly integrated and tested to avoid disruptions. Try to avoid third party actions for security and maintenance reasons.

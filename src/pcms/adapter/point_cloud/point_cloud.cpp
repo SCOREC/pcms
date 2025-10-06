@@ -51,13 +51,13 @@ LocalizationHint PointCloud::GetLocalizationHint(
 
 void PointCloud::Evaluate(
   LocalizationHint /* unused */,
-  FieldDataView<double, HostMemorySpace> /* unused */) const
+  FieldDataView<Real, HostMemorySpace> /* unused */) const
 {
   throw std::runtime_error("Not implemented");
 }
 
 void PointCloud::EvaluateGradient(
-  FieldDataView<double, HostMemorySpace> /* unused */)
+  FieldDataView<Real, HostMemorySpace> /* unused */)
 {
   throw std::runtime_error("Not implemented");
 }
@@ -73,7 +73,7 @@ bool PointCloud::CanEvaluateGradient()
 }
 
 int PointCloud::Serialize(
-  Rank1View<double, pcms::HostMemorySpace> buffer,
+  Rank1View<Real, pcms::HostMemorySpace> buffer,
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) const
 {
   PCMS_FUNCTION_TIMER;
@@ -86,7 +86,7 @@ int PointCloud::Serialize(
 }
 
 void PointCloud::Deserialize(
-  Rank1View<const double, pcms::HostMemorySpace> buffer,
+  Rank1View<const Real, pcms::HostMemorySpace> buffer,
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
 {
   PCMS_FUNCTION_TIMER;

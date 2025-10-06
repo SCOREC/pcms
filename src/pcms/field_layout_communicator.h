@@ -63,7 +63,7 @@ redev::LOs ConstructPermutation(const ReversePartitionMap2& reverse_partition,
   redev::LOs permutation(num_entries);
   LO entry = 0;
   for (auto& rank : reverse_partition) {
-    entry += 5;
+    entry += ent_offsets_len;
 
     for (int e = 0; e < rank.second.ent_offsets.size() - 1; ++e) {
       int start = rank.second.ent_offsets[e];
@@ -89,30 +89,31 @@ redev::LOs ConstructPermutation(const ReversePartitionMap2& reverse_partition,
  */
 redev::LOs ConstructPermutation(GlobalIDView<HostMemorySpace> local_gids,
                                 GlobalIDView<HostMemorySpace> received_msg,
-                                std::array<size_t, 5> ent_offsets)
+                                EntOffsetsArray ent_offsets)
 {
   PCMS_FUNCTION_TIMER;
   std::array<std::map<pcms::GO, pcms::LO>, 4> gid_to_buffer_index;
   size_t offset = 0;
   while (true) {
     GlobalIDView<HostMemorySpace> received_offsets(
-      received_msg.data_handle() + offset, 5);
+      received_msg.data_handle() + offset, ent_offsets_len);
     int length = received_offsets[received_offsets.size() - 1];
     GlobalIDView<HostMemorySpace> received_gids(
-      received_msg.data_handle() + offset + 5, length);
+      received_msg.data_handle() + offset + ent_offsets_len, length);
 
-    PCMS_ALWAYS_ASSERT(offset + 5 + length - 1 < received_msg.size());
+    PCMS_ALWAYS_ASSERT(offset + ent_offsets_len + length - 1 <
+                       received_msg.size());
 
     for (int e = 0; e < received_offsets.size() - 1; ++e) {
       size_t start = received_offsets[e];
       size_t end = received_offsets[e + 1];
 
       for (int i = start; i < end; ++i) {
-        gid_to_buffer_index[e][received_gids[i]] = offset + 5 + i;
+        gid_to_buffer_index[e][received_gids[i]] = offset + ent_offsets_len + i;
       }
     }
 
-    offset += length + 5;
+    offset += length + ent_offsets_len;
     if (offset >= received_msg.size())
       break;
   }
@@ -264,7 +265,8 @@ public:
           msg[message_permutation_[i]] = gids[i];
       }
       for (auto& rank : reverse_partition) {
-        size_t i_offsets = message_permutation_[rank.second.indices[0]] - 5;
+        size_t i_offsets =
+          message_permutation_[rank.second.indices[0]] - ent_offsets_len;
         for (int i = 0; i < rank.second.ent_offsets.size(); ++i) {
           msg[i_offsets + i] = rank.second.ent_offsets[i];
         }

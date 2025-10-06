@@ -35,21 +35,20 @@ public:
     CoordinateView<HostMemorySpace> coordinate_view) const override;
 
   void Evaluate(LocalizationHint location,
-                FieldDataView<double, HostMemorySpace> results) const override;
+                FieldDataView<Real, HostMemorySpace> results) const override;
 
-  void EvaluateGradient(
-    FieldDataView<double, HostMemorySpace> results) override;
+  void EvaluateGradient(FieldDataView<Real, HostMemorySpace> results) override;
 
   const FieldLayout& GetLayout() const override;
 
   bool CanEvaluateGradient() override;
 
-  int Serialize(Rank1View<double, pcms::HostMemorySpace> buffer,
+  int Serialize(Rank1View<Real, pcms::HostMemorySpace> buffer,
                 Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
     const override;
 
   void Deserialize(
-    Rank1View<const double, pcms::HostMemorySpace> buffer,
+    Rank1View<const Real, pcms::HostMemorySpace> buffer,
     Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) override;
 
   Rank1View<const Real, HostMemorySpace> GetDOFHolderData() const override;

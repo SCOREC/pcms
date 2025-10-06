@@ -209,9 +209,9 @@ Omega_h::Mesh& OmegaHFieldLayout::GetMesh() const
   return mesh_;
 }
 
-std::array<size_t, 5> OmegaHFieldLayout::GetEntOffsets() const
+EntOffsetsArray OmegaHFieldLayout::GetEntOffsets() const
 {
-  std::array<size_t, 5> offsets{};
+  EntOffsetsArray offsets{};
   size_t offset = 0;
   for (size_t i = 0; i < offsets.size(); ++i) {
     offsets[i] = offset;

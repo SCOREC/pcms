@@ -8,10 +8,14 @@
 
 namespace pcms
 {
+
+constexpr int ent_offsets_len = 5;
+typedef std::array<size_t, ent_offsets_len> EntOffsetsArray;
+
 struct PartitionMapping
 {
   std::vector<LO> indices;
-  std::array<int, 5> ent_offsets;
+  EntOffsetsArray ent_offsets;
 
   PartitionMapping() { ent_offsets.fill(0); }
 };
@@ -53,7 +57,7 @@ public:
   // for serialization / deserialization
   //
 
-  virtual std::array<size_t, 5> GetEntOffsets() const = 0;
+  virtual EntOffsetsArray GetEntOffsets() const = 0;
 
   virtual ReversePartitionMap2 GetReversePartitionMap(
     const redev::Partition& partition) const = 0;

@@ -11,6 +11,8 @@
 #include <Kokkos_Core.hpp>
 #include <vector>
 
+using pcms::Real;
+
 TEST_CASE("interpolate linear 2d omega_h_field")
 {
   auto lib = Omega_h::Library{};
@@ -21,12 +23,12 @@ TEST_CASE("interpolate linear 2d omega_h_field")
     pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
   const auto nverts = mesh.nents(0);
   auto mesh_coords = mesh.coords();
-  auto f = [](double x, double y) { return -0.3 * x + 0.5 * y; };
-  Omega_h::Write<double> test_f(nverts);
+  auto f = [](Real x, Real y) { return -0.3 * x + 0.5 * y; };
+  Omega_h::Write<Real> test_f(nverts);
   Omega_h::parallel_for(
     nverts, OMEGA_H_LAMBDA(int i) {
-      double x = mesh_coords[2 * i + 0];
-      double y = mesh_coords[2 * i + 1];
+      Real x = mesh_coords[2 * i + 0];
+      Real y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
   auto field = layout->CreateField();
@@ -57,23 +59,23 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
   const auto nedges = mesh.nents(1);
   auto mesh_coords = mesh.coords();
   auto edge_verts = mesh.ask_verts_of(1);
-  auto f = [](double x, double y) { return -0.3 * x + 0.5 * y; };
-  Omega_h::Write<double> test_f(nverts + nedges);
+  auto f = [](Real x, Real y) { return -0.3 * x + 0.5 * y; };
+  Omega_h::Write<Real> test_f(nverts + nedges);
   Omega_h::parallel_for(
     nverts, OMEGA_H_LAMBDA(int i) {
-      double x = mesh_coords[2 * i + 0];
-      double y = mesh_coords[2 * i + 1];
+      Real x = mesh_coords[2 * i + 0];
+      Real y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
   Omega_h::parallel_for(
     nedges, OMEGA_H_LAMBDA(int i) {
       auto endpoints = Omega_h::gather_verts<2>(edge_verts, i);
-      double x0 = mesh_coords[2 * endpoints[0] + 0];
-      double y0 = mesh_coords[2 * endpoints[0] + 1];
-      double x1 = mesh_coords[2 * endpoints[1] + 0];
-      double y1 = mesh_coords[2 * endpoints[1] + 1];
-      double cx = (x0 + x1) / 2;
-      double cy = (y0 + y1) / 2;
+      Real x0 = mesh_coords[2 * endpoints[0] + 0];
+      Real y0 = mesh_coords[2 * endpoints[0] + 1];
+      Real x1 = mesh_coords[2 * endpoints[1] + 0];
+      Real y1 = mesh_coords[2 * endpoints[1] + 1];
+      Real cx = (x0 + x1) / 2;
+      Real cy = (y0 + y1) / 2;
       test_f[nverts + i] = f(cx, cy);
     });
 

@@ -14,6 +14,7 @@
 #include "test_support.h"
 
 namespace ts = test_support;
+using pcms::Real;
 
 ts::ClassificationPartition getClassificationPartition(Omega_h::Mesh& mesh)
 {
@@ -66,7 +67,7 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
                                            pcms::CoordinateSystem::Cartesian);
   auto gids = layout->GetGids();
   const auto n = layout->GetNumOwnedDofHolder();
-  Omega_h::Write<double> ids(n);
+  Omega_h::Write<Real> ids(n);
   PCMS_ALWAYS_ASSERT(n == gids.size());
   Omega_h::parallel_for(n, OMEGA_H_LAMBDA(int i) { ids[i] = gids[i]; });
 
@@ -132,9 +133,9 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   }
 }
 
-void server2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
-             int order, const adios2::Params& params,
-             const std::string& cpn_filename)
+void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
+            int order, const adios2::Params& params,
+            const std::string& cpn_filename)
 {
   redev::Redev rdv(MPI_COMM_WORLD,
                    redev::Partition{setupServerPartition(mesh, cpn_filename)},
@@ -147,7 +148,7 @@ void server2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto layout = pcms::CreateLagrangeLayout(mesh, order, 1,
                                            pcms::CoordinateSystem::Cartesian);
   const auto n = layout->GetNumOwnedDofHolder();
-  Omega_h::Write<double> ids(n);
+  Omega_h::Write<Real> ids(n);
   Omega_h::parallel_for(n, OMEGA_H_LAMBDA(int i) { ids[i] = 0; });
 
   auto field = layout->CreateField();
@@ -183,23 +184,16 @@ int main(int argc, char** argv)
   const auto meshFile = argv[2];
   const auto classPartitionFile = argv[3];
 
-  Omega_h::Mesh mesh;
+  Omega_h::Mesh mesh = Omega_h::binary::read(meshFile, world);
   adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
   MPI_Comm mpi_comm = lib.world()->get_impl();
 
   switch (clientId) {
     case -1:
-      mesh = Omega_h::binary::read(meshFile, world);
-      server2(mpi_comm, mesh, "lin_field_comm", 1, params, classPartitionFile);
+      server(mpi_comm, mesh, "lin_field_comm", 1, params, classPartitionFile);
       break;
-    case 0:
-      mesh = Omega_h::binary::read(meshFile, world);
-      client1(mpi_comm, mesh, "lin_field_comm", 1, params);
-      break;
-    case 1:
-      mesh = Omega_h::binary::read(meshFile, world);
-      client2(mpi_comm, mesh, "lin_field_comm", 1, params);
-      break;
+    case 0: client1(mpi_comm, mesh, "lin_field_comm", 1, params); break;
+    case 1: client2(mpi_comm, mesh, "lin_field_comm", 1, params); break;
     default:
       std::cerr << "Unhandled client id (should be -1,0,1)\n";
       exit(EXIT_FAILURE);

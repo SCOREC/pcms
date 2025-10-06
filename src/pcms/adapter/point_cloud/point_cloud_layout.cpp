@@ -12,7 +12,7 @@ PointCloudLayout::PointCloudLayout(int dim, Kokkos::View<Real**> coords,
     owned_("", coords.extent(0)),
     gids_("", coords.extent(0))
 {
-  compoents_ = 1;
+  components_ = 1;
 
   Kokkos::parallel_for(
     owned_.size(), KOKKOS_LAMBDA(int i) {
@@ -28,7 +28,7 @@ std::unique_ptr<FieldT<Real>> PointCloudLayout::CreateField() const
 
 int PointCloudLayout::GetNumComponents() const
 {
-  return compoents_;
+  return components_;
 }
 
 LO PointCloudLayout::GetNumOwnedDofHolder() const
@@ -72,9 +72,9 @@ size_t PointCloudLayout::GetNumEnts() const
   return coords_.extent(0);
 }
 
-std::array<size_t, 5> PointCloudLayout::GetEntOffsets() const
+EntOffsetsArray PointCloudLayout::GetEntOffsets() const
 {
-  std::array<size_t, 5> offsets{};
+  EntOffsetsArray offsets{};
   for (size_t i = 0; i < offsets.size(); ++i)
     offsets[i] = coords_.extent(0);
   offsets[0] = 0;

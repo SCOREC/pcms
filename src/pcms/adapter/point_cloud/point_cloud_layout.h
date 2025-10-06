@@ -25,7 +25,7 @@ public:
 
   bool IsDistributed() override;
   size_t GetNumEnts() const;
-  std::array<size_t, 5> GetEntOffsets() const override;
+  EntOffsetsArray GetEntOffsets() const override;
 
   ReversePartitionMap2 GetReversePartitionMap(
     const redev::Partition& partition) const override;
@@ -34,7 +34,7 @@ public:
 
 private:
   int dim_;
-  int compoents_;
+  int components_;
   CoordinateSystem coordinate_system_;
   Kokkos::View<Real**> coords_;
   Kokkos::View<bool*> owned_;

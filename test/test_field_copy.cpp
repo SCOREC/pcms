@@ -9,6 +9,8 @@
 #include "pcms/create_field.h"
 #include <Kokkos_Core.hpp>
 
+using pcms::Real;
+
 void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
 {
   int nx = 100;
@@ -20,7 +22,7 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
   auto layout = pcms::CreateLagrangeLayout(mesh, order, num_components,
                                            pcms::CoordinateSystem::Cartesian);
   int ndata = layout->GetNumOwnedDofHolder() * num_components;
-  Omega_h::Write<double> ids(ndata);
+  Omega_h::Write<Real> ids(ndata);
   Omega_h::parallel_for(ndata, OMEGA_H_LAMBDA(int i) { ids[i] = i; });
 
   auto original = layout->CreateField();

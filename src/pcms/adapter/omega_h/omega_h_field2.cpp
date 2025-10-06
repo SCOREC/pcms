@@ -213,9 +213,8 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
   return LocalizationHint{hint};
 }
 
-void OmegaHField2::Evaluate(
-  LocalizationHint location,
-  FieldDataView<double, HostMemorySpace> results) const
+void OmegaHField2::Evaluate(LocalizationHint location,
+                            FieldDataView<Real, HostMemorySpace> results) const
 {
   PCMS_FUNCTION_TIMER;
   // TODO decide if we want to implicitly perform the coordinate transformations
@@ -231,7 +230,7 @@ void OmegaHField2::Evaluate(
 
   auto eval_results = mesh_field_->evaluate(hint.coordinates_, hint.offsets_);
 
-  Rank1View<double, HostMemorySpace> values = results.GetValues();
+  Rank1View<Real, HostMemorySpace> values = results.GetValues();
 
   Kokkos::parallel_for(
     eval_results.size(),
@@ -239,7 +238,7 @@ void OmegaHField2::Evaluate(
 }
 
 void OmegaHField2::EvaluateGradient(
-  FieldDataView<double, HostMemorySpace> /* unused */)
+  FieldDataView<Real, HostMemorySpace> /* unused */)
 {
   // TODO when moved to PCMS throw PCMS exception
   throw std::runtime_error("Not implemented");
@@ -257,7 +256,7 @@ bool OmegaHField2::CanEvaluateGradient()
 }
 
 int OmegaHField2::Serialize(
-  Rank1View<double, pcms::HostMemorySpace> buffer,
+  Rank1View<Real, pcms::HostMemorySpace> buffer,
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) const
 {
   PCMS_FUNCTION_TIMER;
@@ -274,7 +273,7 @@ int OmegaHField2::Serialize(
 }
 
 void OmegaHField2::Deserialize(
-  Rank1View<const double, pcms::HostMemorySpace> buffer,
+  Rank1View<const Real, pcms::HostMemorySpace> buffer,
   Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation)
 {
   PCMS_FUNCTION_TIMER;

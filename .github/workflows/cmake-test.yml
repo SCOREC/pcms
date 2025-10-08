@@ -91,6 +91,19 @@ jobs:
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
     
+    - name: build meshFields
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'meshFields'
+        repo-path: 'SCOREC/meshFields'
+        repo-ref: ''
+        cache: true
+        options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
+                  -DCMAKE_C_COMPILER=`which mpicc`
+                  -DMPIEXEC_EXECUTABLE=`which mpirun`
+                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
+                  -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h'
+
     - name: build perfstubs
       uses: ./.github/actions/install-repo
       with:
@@ -163,6 +176,7 @@ jobs:
                   -DPCMS_TIMEOUT=5
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
+                  -DmeshFields_DIR=${{ runner.temp }}/build-meshFields/install/lib/cmake/meshFields
                   -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev
                   -Dflcl_DIR=${{ runner.temp }}/build-kokkos-fortran-interop/install/lib/cmake/flcl
                   -DMPIEXEC_EXECUTABLE=`which mpirun`

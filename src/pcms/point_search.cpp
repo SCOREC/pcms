@@ -409,34 +409,35 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
         break;
       }
 
-     for (int j = 0; j < 3; ++j) {
-       // Every triangle (face) is connected to 3 edges
-       const int edgeID = tris2edges_adj.ab2b[triangleID * 3 + j];
+      for (int j = 0; j < 3; ++j) {
+        // Every triangle (face) is connected to 3 edges
+        const int edgeID = tris2edges_adj.ab2b[triangleID * 3 + j];
 
-       auto vertex_a_id = edges2verts_adj.ab2b[edgeID * 2];
-       auto vertex_b_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
+        auto vertex_a_id = edges2verts_adj.ab2b[edgeID * 2];
+        auto vertex_b_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
 
-       auto vertex_a = Omega_h::get_vector<2>(coords, vertex_a_id);
-       auto vertex_b = Omega_h::get_vector<2>(coords, vertex_b_id);
+        auto vertex_a = Omega_h::get_vector<2>(coords, vertex_a_id);
+        auto vertex_b = Omega_h::get_vector<2>(coords, vertex_b_id);
 
-       if (!normal_intersects_segment(point, vertex_a, vertex_b)) continue;
+        if (!normal_intersects_segment(point, vertex_a, vertex_b))
+          continue;
 
-       const auto xa = vertex_a[0];
-       const auto ya = vertex_a[1];
-       const auto xb = vertex_b[0];
-       const auto yb = vertex_b[1];
+        const auto xa = vertex_a[0];
+        const auto ya = vertex_a[1];
+        const auto xb = vertex_b[0];
+        const auto yb = vertex_b[1];
 
-       const auto xp = point[0];
-       const auto yp = point[1];
+        const auto xp = point[0];
+        const auto yp = point[1];
 
-       const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
+        const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
 
-       if (distance_to_ab >= distance_to_nearest) { continue; }
+        if (distance_to_ab >= distance_to_nearest) continue;
 
-       dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
-       nearest_triangle = i;
-       distance_to_nearest = distance_to_ab;
-       parametric_coords_to_nearest = parametric_coords;
+        dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
+        nearest_triangle = i;
+        distance_to_nearest = distance_to_ab;
+        parametric_coords_to_nearest = parametric_coords;
       }
 
       // Every triangle (face) is connected to 3 vertices
@@ -447,12 +448,13 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
         const Omega_h::Few<double, 2> vertex =
           Omega_h::get_vector<2>(coords, vertexID);
 
-        if (const auto distance = Omega_h::norm(point - vertex);distance < distance_to_nearest) {
-         dimensionality = GridPointSearch2D::Result::Dimensionality::VERTEX;
-         nearest_triangle = i;
-         distance_to_nearest = distance;
-         parametric_coords_to_nearest = parametric_coords;
-       }
+        if (const auto distance = Omega_h::norm(point - vertex);
+            distance < distance_to_nearest) {
+          dimensionality = GridPointSearch2D::Result::Dimensionality::VERTEX;
+          nearest_triangle = i;
+          distance_to_nearest = distance;
+          parametric_coords_to_nearest = parametric_coords;
+        }
       }
     }
     if(!found)
@@ -465,6 +467,13 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
 }
 
 GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny)
+  : GridPointSearch2D(mesh, Nx, Ny, { })
+{
+  Kokkos::deep_copy(tolerances_, 0);
+}
+
+GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny, PointSearchTolerances tolerances)
+  : PointLocalizationSearch(tolerances)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);

@@ -44,8 +44,15 @@ public:
 
   static constexpr auto DIM = dim;
 
+  using PointSearchTolerances = Kokkos::View<Real[DIM]>;
+
+  explicit PointLocalizationSearch(PointSearchTolerances tolerances) : tolerances_(tolerances){ }
+
   virtual Kokkos::View<Result*> operator()(Kokkos::View<Real*[dim] > point) const = 0;
   virtual ~PointLocalizationSearch() = default;
+
+protected:
+  PointSearchTolerances tolerances_;
 };
 
 using PointLocalizationSearch2D = PointLocalizationSearch<2>;
@@ -59,6 +66,8 @@ public:
   using Result = PointLocalizationSearch2D::Result;
 
   GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny);
+  GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny, PointSearchTolerances tolerances);
+
   /**
    *  given a point in global coordinates give the id of the triangle that the
    * point lies within and the parametric coordinate of the point within the

@@ -409,6 +409,32 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
         break;
       }
 
+      // Every triangle (face) is connected to 3 vertices
+      for (int j = 0; j < 3; ++j) {
+        // Get the vertex ID from the connectivity array
+        const int vertexID = tris2verts_adj.ab2b[triangleID * 3 + j];
+        // Get the vertex coordinates from the mesh using vertexID
+        const Omega_h::Few<double, 2> vertex =
+          Omega_h::get_vector<2>(coords, vertexID);
+
+        const auto distance = Omega_h::norm(point - vertex);
+        if (distance > tolerances_[0]) continue;
+
+        if (distance < distance_to_nearest) {
+          dimensionality = GridPointSearch2D::Result::Dimensionality::VERTEX;
+          nearest_triangle = i;
+          distance_to_nearest = distance;
+          parametric_coords_to_nearest = parametric_coords;
+        }
+      }
+
+      if (dimensionality == Result::Dimensionality::VERTEX) {
+        results(p) = GridPointSearch2D::Result{dimensionality, -1 * candidate_map.entries(nearest_triangle), parametric_coords_to_nearest};
+        continue;
+      }
+
+      dimensionality = Result::Dimensionality::FACE;
+
       for (int j = 0; j < 3; ++j) {
         // Every triangle (face) is connected to 3 edges
         const int edgeID = tris2edges_adj.ab2b[triangleID * 3 + j];
@@ -432,35 +458,18 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
 
         const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
 
-        if (distance_to_ab >= distance_to_nearest) continue;
+        if (distance_to_ab > tolerances_[1]) continue;
 
-        dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
-        nearest_triangle = i;
-        distance_to_nearest = distance_to_ab;
-        parametric_coords_to_nearest = parametric_coords;
-      }
-
-      // Every triangle (face) is connected to 3 vertices
-      for (int j = 0; j < 3; ++j) {
-        // Get the vertex ID from the connectivity array
-        const int vertexID = tris2verts_adj.ab2b[triangleID * 3 + j];
-        // Get the vertex coordinates from the mesh using vertexID
-        const Omega_h::Few<double, 2> vertex =
-          Omega_h::get_vector<2>(coords, vertexID);
-
-        if (const auto distance = Omega_h::norm(point - vertex);
-            distance < distance_to_nearest) {
-          dimensionality = GridPointSearch2D::Result::Dimensionality::VERTEX;
+        if (distance_to_ab < distance_to_nearest) {
+          dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
           nearest_triangle = i;
-          distance_to_nearest = distance;
+          distance_to_nearest = distance_to_ab;
           parametric_coords_to_nearest = parametric_coords;
         }
       }
     }
-    if(!found)
-    {
-      results(p) = GridPointSearch2D::Result{dimensionality, -1 * candidate_map.entries(nearest_triangle), parametric_coords_to_nearest};
-    }
+
+    results(p) = GridPointSearch2D::Result{dimensionality, -1 * candidate_map.entries(nearest_triangle), parametric_coords_to_nearest};
   });
 
   return results;

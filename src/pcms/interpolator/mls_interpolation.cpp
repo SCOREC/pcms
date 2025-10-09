@@ -5,12 +5,13 @@
 namespace pcms
 {
 
-// RBF_GAUSSIAN Functor
+// 'a' is a shape parameter
+// the value of 'a' is higher if the data is localized
+// the value of 'a' is smaller if the data is farther
+
+// gaussian
 struct RBF_GAUSSIAN
 {
-  // 'a' is a spreading factor/decay factor
-  // the value of 'a' is higher if the data is localized
-  // the value of 'a' is smaller if the data is farther
 
   double a;
 
@@ -42,7 +43,7 @@ struct RBF_GAUSSIAN
   }
 };
 
-// RBF_C4 Functor
+// c4
 struct RBF_C4
 {
 
@@ -74,8 +75,7 @@ struct RBF_C4
   }
 };
 
-// RBF_const Functor
-//
+// constant/uniform
 struct RBF_CONST
 {
 
@@ -101,25 +101,30 @@ struct RBF_CONST
   }
 };
 
+// no operations
 struct NoOp
 {
   OMEGA_H_INLINE
   double operator()(double, double) const { return 1.0; }
 };
 
+// multiquadric
 struct RBF_MULTIQUADRIC
 {
+
+  double a;
+  RBF_MULTIQUADRIC(double a_val) : a(a_val) {}
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
     double r = Kokkos::sqrt(r_sq);
     double rho = Kokkos::sqrt(rho_sq);
-    double ratio = r / rho;
     if (rho_sq < r_sq) {
       phi = 0.0;
     } else {
-      phi = Kokkos::sqrt(1.0 + ratio * ratio);
+      phi = Kokkos::sqrt(1.0 + a * a * r * r);
     }
 
     OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
@@ -130,21 +135,22 @@ struct RBF_MULTIQUADRIC
   }
 };
 
+// inverse multiquadric
 struct RBF_INVMULTIQUADRIC
 {
+  double a;
+  RBF_INVMULTIQUADRIC(double a_val) : a(a_val) {}
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
     double r = Kokkos::sqrt(r_sq);
     double rho = Kokkos::sqrt(rho_sq);
-    double ratio = r / rho if (rho_sq < r_sq)
-    {
+    if (rho_sq < r_sq) {
       phi = 0.0;
-    }
-    else
-    {
-      phi = 1.0 / Kokkos::sqrt(1.0 + ratio * ratio);
+    } else {
+      phi = 1.0 / Kokkos::sqrt(1.0 + a * a * r * r);
     }
 
     OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
@@ -155,6 +161,7 @@ struct RBF_INVMULTIQUADRIC
   }
 };
 
+// thin plate spline
 struct RBF_THINPLATESPLINE
 {
   OMEGA_H_INLINE
@@ -163,13 +170,11 @@ struct RBF_THINPLATESPLINE
     double phi;
     double r = Kokkos::sqrt(r_sq);
     double rho = Kokkos::sqrt(rho_sq);
-    double ratio = r / rho if (rho_sq < r_sq)
-    {
+
+    if (rho_sq < r_sq) {
       phi = 0.0;
-    }
-    else
-    {
-      phi = r * r * Kokkos::log(ratio);
+    } else {
+      phi = r * r * Kokkos::log(r);
     }
 
     OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
@@ -180,6 +185,7 @@ struct RBF_THINPLATESPLINE
   }
 };
 
+// cubic
 struct RBF_CUBIC
 {
   OMEGA_H_INLINE
@@ -188,13 +194,10 @@ struct RBF_CUBIC
     double phi;
     double r = Kokkos::sqrt(r_sq);
     double rho = Kokkos::sqrt(rho_sq);
-    double ratio = r / rho double limit = 1 - ratio if (rho_sq < r_sq)
-    {
+    if (rho_sq < r_sq) {
       phi = 0.0;
-    }
-    else
-    {
-      phi = limit * limit * limit;
+    } else {
+      phi = r * r * r;
     }
 
     OMEGA_H_CHECK_PRINTF(!std::isnan(phi),

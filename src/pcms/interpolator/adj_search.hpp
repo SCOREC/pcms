@@ -4,6 +4,7 @@
 #include <pcms/point_search.h>
 
 #include "queue_visited.hpp"
+#include <Kokkos_MathematicalFunctions.hpp>
 
 static constexpr int max_dim = 3;
 
@@ -121,7 +122,7 @@ inline void FindSupports::adjBasedSearch(
 
   pcms::GridPointSearch search_cell(source_mesh, 10, 10);
   auto results = search_cell(target_points);
-  checkTargetPoints(results);
+  // checkTargetPoints(results);
 
   Omega_h::parallel_for(
     nvertices_target,
@@ -129,8 +130,12 @@ inline void FindSupports::adjBasedSearch(
       Queue queue;
       Track visited;
       Omega_h::Real cutoffDistance = radii2[id];
-
       Omega_h::LO source_cell_id = results(id).tri_id;
+      // printf("target = %d source cell id : %d\n",id, source_cell_id);
+      //  if the point lies outside the mesh, it returns the negative cell id
+      //  making the negative cell id to positive
+      if (source_cell_id < 0)
+        source_cell_id = Kokkos::abs(source_cell_id);
       OMEGA_H_CHECK_PRINTF(
         source_cell_id >= 0,
         "ERROR: Source cell id not found for target %d (%f,%f)\n", id,

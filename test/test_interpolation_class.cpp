@@ -116,7 +116,7 @@ TEST_CASE("Test MLSInterpolationHandler")
   auto lib = Omega_h::Library{};
   auto world = lib.world();
   auto source_mesh =
-    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 20, 20, 0, false);
   printf("[INFO] Mesh created with %d vertices and %d faces\n",
          source_mesh.nverts(), source_mesh.nfaces());
 
@@ -157,7 +157,7 @@ TEST_CASE("Test MLSInterpolationHandler")
     REQUIRE(source_mesh.dim() == 2);
     printf("Point cloud based search...\n");
     auto point_mls = MLSPointCloudInterpolation(
-      source_points_view, target_points_view, 2, 0.12, 12, 3, true);
+      source_points_view, target_points_view, 2, 0.12, 15, 3, true);
 
     Omega_h::Write<Omega_h::Real> sinxcosy_centroid(source_mesh.nfaces(),
                                                     "sinxcosy_centroid");
@@ -191,6 +191,13 @@ TEST_CASE("Test MLSInterpolationHandler")
     mls_single.eval(sourceArrayView, interpolatedArrayView);
     printf("Evaluating Point Cloud Based MLS Interpolation...\n");
     point_mls.eval(sourceArrayView, point_cloud_interpolatedArrayView);
+
+    // write the meshes in vtk format with the interpolated values as tag to visualize the interpolated values
+    source_mesh.add_tag<double>(Omega_h::VERT, "mesh_interpolated_sinxcosy", 1, Omega_h::Write<double>(interpolated_data_hwrite));
+    source_mesh.add_tag<double>(Omega_h::VERT, "point_cloud_interpolated_sinxcosy", 1,  Omega_h::Write(point_cloud_interpolated_data_hwrite));
+    source_mesh.add_tag<double>(Omega_h::VERT, "exact_sinxcosy", 1, Omega_h::Write(exact_values_at_nodes));
+    source_mesh.add_tag<double>(Omega_h::FACE, "centroid_sinxcosy", 1, sinxcosy_centroid);
+    Omega_h::vtk::write_parallel("source_mesh_with_tags_to_debug.vtk", &source_mesh);
 
     REQUIRE(isClose(exact_values_at_nodes, interpolated_data_hwrite, 10.0) ==
             true);

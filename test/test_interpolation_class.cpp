@@ -129,7 +129,7 @@ TEST_CASE("Test MLSInterpolationHandler")
     fprintf(stdout, "\n-------------------- Single Mesh Interpolation Test "
                     "Started --------------------\n");
     printf("Mesh based search...\n");
-    auto mls_single = MLSInterpolationHandler(source_mesh, 0.12, 12, 3, true);
+    auto mls_single = MLSInterpolationHandler(source_mesh, 0.12, 15, 3, true);
 
     auto source_points_reals = getCentroids(source_mesh);
     auto source_points_host =

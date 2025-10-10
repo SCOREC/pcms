@@ -89,9 +89,10 @@ MLSPointCloudInterpolation::MLSPointCloudInterpolation(
     radius_(radius),
     adapt_radius_(adapt_radius),
     degree_(degree),
-    min_req_supports_(min_req_supports)
+    min_req_supports_(min_req_supports),
+    n_targets_(target_points.size()/dim),
+    n_sources_(source_points.size()/dim)
 {
-
   source_field_ = Omega_h::HostWrite<Omega_h::Real>(source_points.size() / dim_,
                                                     "source field");
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_points.size() / dim_,
@@ -101,6 +102,7 @@ MLSPointCloudInterpolation::MLSPointCloudInterpolation(
                                                        "source points");
   Omega_h::HostWrite<Omega_h::Real> target_coords_host(target_points.size(),
                                                        "target points");
+  // TODO Remove these copies
   for (int i = 0; i < source_points.size(); ++i) {
     source_coords_host[i] = source_points[i];
   }
@@ -110,7 +112,7 @@ MLSPointCloudInterpolation::MLSPointCloudInterpolation(
   source_coords_ = Omega_h::Reals(source_coords_host);
   target_coords_ = Omega_h::Reals(target_coords_host);
 
-  find_supports(min_req_supports_);
+  find_supports(min_req_supports_, 3 * min_req_supports_, 100);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -120,130 +122,66 @@ double pointDistance(const double x1, const double y1, const double z1,
   return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2);
 }
 
-void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
+void minmax(
+  Omega_h::Read<Omega_h::LO> num_supports, uint& min_supports_found,
+  uint& max_supports_found)
 {
-  Omega_h::LO n_targets = target_coords_.size() / dim_;
-  Omega_h::LO n_sources = source_coords_.size() / dim_;
-  auto adapt_radius = adapt_radius_;
-  auto dim = dim_;
+  using minMaxReducerType = Kokkos::MinMax<uint, Kokkos::HostSpace>;
+  using minMaxValueType = minMaxReducerType::value_type;
+  minMaxValueType minmax;
+  Kokkos::parallel_reduce(
+    num_supports.size(),
+    KOKKOS_LAMBDA(int i, minMaxValueType& update) {
+      if (num_supports[i] < update.min_val)
+        update.min_val = num_supports[i];
+      if (num_supports[i] > update.max_val)
+        update.max_val = num_supports[i];
+    },
+    minMaxReducerType(minmax));
+  Kokkos::fence();
+  min_supports_found = minmax.min_val;
+  max_supports_found = minmax.max_val;
+}
 
-  // supports_.radii2 = Omega_h::Write<Omega_h::Real>(n_targets, radius_);
-  // supports_.supports_ptr = Omega_h::Write<Omega_h::LO>(n_targets + 1, 0);
-
-  printf("First 10 Target Points with %d points:\n", n_targets);
-  Omega_h::parallel_for("print target points", 10,
-    OMEGA_H_LAMBDA(const int& i) {
-      printf("Target Point %d: (%f, %f)\n", i,
-             target_coords_[i * 2 + 0], target_coords_[i * 2 + 1]);
+void adapt_radii(
+  uint min_req_supports, uint max_allowed_supports, Omega_h::LO n_targets,
+  Omega_h::Write<Omega_h::Real> radii2_l,
+  Omega_h::Write<Omega_h::LO> num_supports)
+{
+  Omega_h::parallel_for(
+    "increase radius", n_targets, OMEGA_H_LAMBDA(const int& i) {
+      Omega_h::LO nsupports = num_supports[i];
+      if (nsupports < min_req_supports) {
+        double factor =
+          Omega_h::Real(min_req_supports) / Omega_h::Real(nsupports);
+        OMEGA_H_CHECK_PRINTF(factor > 1.0,
+                             "Factor should be more than 1.0: %f\n", factor);
+        factor = (nsupports == 0 || factor > 1.5) ? 1.5 : factor;
+        radii2_l[i] *= factor;
+      } else if (nsupports > max_allowed_supports) { // if too many supports
+        double factor =
+          Omega_h::Real(min_req_supports) / Omega_h::Real(nsupports);
+        OMEGA_H_CHECK_PRINTF(factor < 1.0,
+                             "Factor should be less than 1.0: %f\n", factor);
+        factor = (factor < 0.1) ? 0.33 : factor;
+        radii2_l[i] *= factor;
+      }
+      num_supports[i] = 0; // reset the support pointer
     });
-  printf("First 10 Source Points with %d points:\n", n_sources);
-        Omega_h::parallel_for("print source points", 10,
-        OMEGA_H_LAMBDA(const int& i) {
-        printf("Source Point %d: (%f, %f)\n", i,
-                 source_coords_[i * 2 + 0], source_coords_[i * 2 + 1]);
-        });
+  Kokkos::fence();
+}
 
-  auto radii2_l = Omega_h::Write<Omega_h::Real>(n_targets, radius_);
-  auto num_supports = Omega_h::Write<Omega_h::LO>(n_targets, 0);
-  auto target_coords_l = target_coords_;
-  auto source_coords_l = source_coords_;
-
-  uint min_supports_found = 0;
-  uint max_supports_found = 0;
-  // radius adjustment loop
-  int loop_count = 0;
-  int max_count = 100;
-  while (min_supports_found < min_req_supports ||
-         max_supports_found > 3 * min_req_supports) {
-    // n^2 search, compare each point with all other points
-    Kokkos::parallel_for(
-      "n^2 search", n_targets, KOKKOS_LAMBDA(const int& target_id) {
-        auto target_coord = Omega_h::Vector<3>{0, 0, 0};
-        for (int d = 0; d < dim; ++d) {
-          target_coord[d] = target_coords_l[target_id * dim + d];
-        }
-        auto target_radius2 = radii2_l[target_id];
-
-        // TODO: parallel with kokkos parallel_for
-        for (int i = 0; i < n_sources; ++i) {
-          auto source_coord = Omega_h::Vector<3>{0, 0, 0};
-          for (int d = 0; d < dim; ++d) {
-            source_coord[d] = source_coords_l[i * dim + d];
-          }
-          auto dist2 =
-            pointDistance(source_coord[0], source_coord[1], source_coord[2],
-                          target_coord[0], target_coord[1], target_coord[2]);
-          if (dist2 <= target_radius2) {
-            num_supports[target_id] = num_supports[target_id] + 1;
-          }
-        }
-      });
-    Kokkos::fence();
-
-    if (!adapt_radius) {
-      break;
-    }
-
-    loop_count++;
-    Kokkos::fence();
-    if (loop_count > 100) {
-      printf("Loop count exceeded 100 and still not converged.\n"
-        "Manually check if the number of minimum and maximum supports are reasonable.\n"
-        "There are situations when it may not converge.\n");
-      break;
-    }
-
-    Kokkos::Min<uint> min_reducer(min_supports_found);
-    Kokkos::parallel_reduce(
-      "find number of supports", num_supports.size(),
-      KOKKOS_LAMBDA(const int& i, uint& local_min) {
-        min_reducer.join(local_min, num_supports[i]);
-      },
-      min_reducer);
-
-    Kokkos::Max<uint> max_reducer(max_supports_found);
-        Kokkos::parallel_reduce(
-                "find number of supports", num_supports.size(),
-                KOKKOS_LAMBDA(const int& i, uint& local_max) {
-                max_reducer.join(local_max, num_supports[i]);
-                },
-                max_reducer);
-
-
-    // increase radius if not enough supports or too many supports
-    if (min_supports_found < min_req_supports || max_supports_found > 3 * min_req_supports) {
-      printf("Adjusting radius iter %d:(min: %d max: %d) min_req_supports: %d\n",
-             loop_count, min_supports_found, max_supports_found, min_req_supports);
-
-      Kokkos::fence();
-      Omega_h::parallel_for(
-        "increase radius", n_targets, OMEGA_H_LAMBDA(const int& i) {
-          Omega_h::LO nsupports = num_supports[i];
-          if (nsupports < min_req_supports) {
-            double factor = Omega_h::Real(min_req_supports) / Omega_h::Real(nsupports);
-            OMEGA_H_CHECK_PRINTF(factor > 1.0,
-                                         "Factor should be more than 1.0: %f\n", factor);
-            factor = (nsupports == 0 || factor > 1.5) ? 1.5 : factor;
-            radii2_l[i] *= factor;
-          } else if (nsupports > 3 * min_req_supports) { // if too many supports
-            double factor = Omega_h::Real(min_req_supports) / Omega_h::Real(nsupports);
-            OMEGA_H_CHECK_PRINTF(factor < 1.0,
-                                 "Factor should be less than 1.0: %f\n", factor);
-            factor = (factor < 0.1) ? 0.33 : factor;
-            radii2_l[i] *= factor;
-          }
-          num_supports[i] = 0; // reset the support pointer
-        });
-    }
-  }
-  printf("Searched %d times and supports found: min: %d max: %d\n", loop_count, min_supports_found, max_supports_found);
-
+// TODO Merge this with distance based search like NeighborSearch for consistency
+void MLSPointCloudInterpolation::fill_support_structure(
+  Omega_h::Write<Omega_h::Real> radii2_l,
+  Omega_h::Write<Omega_h::LO> num_supports)
+{
   // parallel scan for fill the support index with cumulative sum
-  auto support_ptr_l = Omega_h::Write<Omega_h::LO>(n_targets + 1, 0);
+  auto support_ptr_l = Omega_h::Write<Omega_h::LO>(n_targets_ + 1, 0);
   uint total_supports = 0;
   Kokkos::fence();
   Kokkos::parallel_scan(
-    "scan", n_targets,
+    "scan", n_targets_,
     KOKKOS_LAMBDA(const int& i, uint& update, const bool final) {
       update += num_supports[i];
       if (final) {
@@ -258,8 +196,12 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
   auto support_idx_l = Omega_h::Write<Omega_h::LO>(total_supports, 0);
 
   // fill the support index
+  const auto dim = dim_;
+  const auto target_coords_l = target_coords_;
+  const auto source_coords_l = source_coords_;
+  const auto n_sources = n_sources_;
   Kokkos::parallel_for(
-    "fill support index", n_targets, KOKKOS_LAMBDA(const int& target_id) {
+    "fill support index", n_targets_, KOKKOS_LAMBDA(const int& target_id) {
       auto target_radius2 = radii2_l[target_id];
       auto target_coord = Omega_h::Vector<3>{0, 0, 0};
       for (int d = 0; d < dim; ++d) {
@@ -280,9 +222,10 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
         if (dist2 <= target_radius2) {
           support_idx_l[start_ptr] = source_id;
           start_ptr++;
-          OMEGA_H_CHECK_PRINTF(start_ptr <= end_ptr,
-                               "Support index out of bounds:start %d end %d target_id %d\n",
-                               start_ptr, end_ptr, target_id);
+          OMEGA_H_CHECK_PRINTF(
+            start_ptr <= end_ptr,
+            "Support index out of bounds:start %d end %d target_id %d\n",
+            start_ptr, end_ptr, target_id);
         }
       }
     });
@@ -291,7 +234,96 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports)
   // copy the support index to the supports
   supports_.radii2 = radii2_l;
   supports_.supports_ptr = Omega_h::LOs(support_ptr_l);
-  supports_.supports_idx = Omega_h::LOs (support_idx_l);
+  supports_.supports_idx = Omega_h::LOs(support_idx_l);
+}
+
+void MLSPointCloudInterpolation::distance_based_pointcloud_search(
+  Omega_h::Write<Omega_h::Real> radii2_l,
+  Omega_h::Write<Omega_h::LO> num_supports) const
+{
+  // n^2 search, compare each point with all other points
+  const auto dim = dim_;
+  const auto target_coords_l = target_coords_;
+  const auto source_coords_l = source_coords_;
+  const auto n_sources = n_sources_;
+  const auto n_targets = n_targets_;
+  Kokkos::parallel_for(
+    "n^2 search", n_targets, KOKKOS_LAMBDA(const int& target_id) {
+      auto target_coord = Omega_h::Vector<3>{0, 0, 0};
+      for (int d = 0; d < dim; ++d) {
+        target_coord[d] = target_coords_l[target_id * dim + d];
+      }
+      auto target_radius2 = radii2_l[target_id];
+
+      // TODO: parallel with kokkos parallel_for
+      for (int i = 0; i < n_sources; ++i) {
+        auto source_coord = Omega_h::Vector<3>{0, 0, 0};
+        for (int d = 0; d < dim; ++d) {
+          source_coord[d] = source_coords_l[i * dim + d];
+        }
+        auto dist2 =
+          pointDistance(source_coord[0], source_coord[1], source_coord[2],
+                        target_coord[0], target_coord[1], target_coord[2]);
+        if (dist2 <= target_radius2) {
+          num_supports[target_id]++; // only one thread is updating
+        }
+      }
+    });
+  Kokkos::fence();
+}
+
+void MLSPointCloudInterpolation::find_supports(uint min_req_supports,
+                                               uint max_allowed_supports, uint max_count)
+{
+#ifndef NDEBUG
+  printf("First 10 Target Points with %d points:\n", n_targets_);
+  Omega_h::parallel_for("print target points", 10,
+    OMEGA_H_LAMBDA(const int& i) {
+      printf("Target Point %d: (%f, %f)\n", i,
+             target_coords_[i * 2 + 0], target_coords_[i * 2 + 1]);
+    });
+  printf("First 10 Source Points with %d points:\n", n_sources_);
+        Omega_h::parallel_for("print source points", 10,
+        OMEGA_H_LAMBDA(const int& i) {
+        printf("Source Point %d: (%f, %f)\n", i,
+                 source_coords_[i * 2 + 0], source_coords_[i * 2 + 1]);
+        });
+#endif
+
+  auto radii2_l = Omega_h::Write<Omega_h::Real>(n_targets_, radius_);
+  auto num_supports = Omega_h::Write<Omega_h::LO>(n_targets_, 0);
+
+  uint min_supports_found = 0;
+  uint max_supports_found = 0;
+  // radius adjustment loop
+  int loop_count = 0;
+  while (!within_number_of_support_range(min_supports_found, max_supports_found, min_req_supports, max_allowed_supports)) {
+    distance_based_pointcloud_search(radii2_l, num_supports);
+
+    loop_count++;
+    if (!adapt_radius_) { break; }
+
+    Kokkos::fence();
+    if (loop_count > max_count) {
+      printf("Loop count exceeded 100 and still not converged.\n"
+        "Manually check if the number of minimum and maximum supports are reasonable.\n"
+        "There are situations when it may not converge.\n");
+      break;
+    }
+
+    // find minimum and maximum number of supports found
+    minmax(num_supports, min_supports_found, max_supports_found);
+
+    // increase radius if not enough supports or too many supports
+    if (!within_number_of_support_range(min_supports_found, max_supports_found, min_req_supports, max_allowed_supports)) {
+      printf("Adjusting radius: Iter %d:(min: %d max: %d) Min Req: %d Max Allowed %d\n",
+             loop_count, min_supports_found, max_supports_found, min_req_supports, max_allowed_supports);
+      adapt_radii(min_req_supports, max_allowed_supports, n_targets_, radii2_l,num_supports);
+    }
+  }
+  printf("Searched %d times and supports found: min: %d max: %d\n", loop_count, min_supports_found, max_supports_found);
+
+  fill_support_structure(radii2_l, num_supports);
 }
 
 // TODO : find way to avoid this copy
@@ -388,7 +420,7 @@ void MLSInterpolationHandler::find_supports(const uint min_req_support)
   for (size_t i = 0; i < hostRadii2.size(); ++i) {
     OMEGA_H_CHECK_PRINTF(
       hostRadii2[i] > 1e-10,
-      "Radius squared has to be more than zero found found [%zu] = %f\n", i,
+      "Radius squared has to be more than zero. Found [%zu] = %f\n", i,
       hostRadii2[i]);
   }
 #endif

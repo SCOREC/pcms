@@ -11,6 +11,7 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     pcms_interpolator_view_utils.hpp
     pcms_interpolator_logger.hpp
     interpolation_base.h
+    interpolation_helpers.h
     spline_interpolator.hpp)
 
 set(PCMS_FIELD_TRANSFER_SOURCES

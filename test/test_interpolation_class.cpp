@@ -263,18 +263,18 @@ TEST_CASE("Test MLSInterpolationHandler")
   {
     fprintf(stdout, "\n-------------------- Double Mesh Interpolation Test "
                     "Started --------------------\n");
-    auto target_mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 0.999, 0.999,
+    auto target_mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1,
                                           1, 17, 17, 0, false);
     printf("[INFO] Target Mesh created with %d vertices and %d faces\n",
            target_mesh.nverts(), target_mesh.nfaces());
 
     // TODO: This is a way around.
     // https://github.com/SCOREC/pcms/pull/148#discussion_r1926204199
-    translate_mesh(&target_mesh, Omega_h::Vector<2>{(1.0 - 0.999) / 2.0,
-                                                    (1.0 - 0.999) / 2.0});
+    //translate_mesh(&target_mesh, Omega_h::Vector<2>{(1.0 - 0.999) / 2.0,
+    //                                                (1.0 - 0.999) / 2.0});
 
     auto mls_double =
-      MLSInterpolationHandler(source_mesh, target_mesh, 0.12, 12, 3, true);
+      MLSInterpolationHandler(source_mesh, target_mesh, 0.12, 15, 3, true);
 
     Omega_h::HostWrite<double> source_data_host_write(source_sinxcosy_node);
     Omega_h::HostWrite<double> interpolated_data_hwrite(

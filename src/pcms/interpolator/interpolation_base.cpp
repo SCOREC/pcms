@@ -3,6 +3,7 @@
 //
 
 #include "interpolation_base.h"
+#include "interpolation_helpers.h"
 
 #include <execution>
 

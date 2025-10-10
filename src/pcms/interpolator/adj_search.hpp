@@ -2,6 +2,7 @@
 #define ADJ_SEARCH_HPP
 
 #include <pcms/point_search.h>
+#include "interpolation_helpers.h" // for helper functions
 
 #include "queue_visited.hpp"
 
@@ -246,7 +247,6 @@ inline void FindSupports::adjBasedSearchCentroidNodes(
   const auto& mesh_coords = source_mesh.coords();
   const auto& nvertices = source_mesh.nverts();
   const auto& dim = source_mesh.dim();
-  const auto& nfaces = source_mesh.nfaces();
 
   const auto& nodes2faces = source_mesh.ask_up(Omega_h::VERT, Omega_h::FACE);
   const auto& n2f_ptr = nodes2faces.a2ab;
@@ -254,20 +254,7 @@ inline void FindSupports::adjBasedSearchCentroidNodes(
   const auto& faces2nodes =
     source_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
 
-  Omega_h::Write<Omega_h::Real> cell_centroids(
-    dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
-
-  Omega_h::parallel_for(
-    "calculate the centroid in each tri element", nfaces,
-    OMEGA_H_LAMBDA(const Omega_h::LO id) {
-      const auto current_el_verts = Omega_h::gather_verts<3>(faces2nodes, id);
-      const Omega_h::Few<Omega_h::Vector<2>, 3> current_el_vert_coords =
-        Omega_h::gather_vectors<3, 2>(mesh_coords, current_el_verts);
-      auto centroid = Omega_h::average(current_el_vert_coords);
-      int index = dim * id;
-      cell_centroids[index] = centroid[0];
-      cell_centroids[index + 1] = centroid[1];
-    });
+   auto cell_centroids = getCentroids(source_mesh);
   // * Got the adj data and cell centroids
 
   Omega_h::parallel_for(
@@ -417,34 +404,19 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
                             true);
       Kokkos::fence();
 
-      Omega_h::LO min_supports_found = 0;
-      Kokkos::Min<Omega_h::LO> min_reducer(min_supports_found);
-      Kokkos::parallel_reduce(
-        "find min number of supports", nvertices_target,
-        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::LO& local_min) {
-          min_reducer.join(local_min, nSupports[i]);
-        },
-        min_reducer);
-      printf("INFO: min_supports_found: %d at loop %d, max_radius %f\n",
-             min_supports_found, r_adjust_loop, max_radius);
-
+      uint min_supports_found = 0;
+      uint max_supports_found = 0;
+      minmax(nSupports, min_supports_found, max_supports_found);
       r_adjust_loop++;
-      Kokkos::fence();
-      if (min_supports_found >= min_req_support) {
+      printf("Iter: %d min_nSupports: %d max_nSupports: %d, max_radius %f\n",
+             r_adjust_loop, min_supports_found,
+             max_supports_found, max_radius);
+
+      if (within_number_of_support_range(min_supports_found, max_supports_found, min_req_support, 3*min_req_support)) {
         break;
       }
 
-      Kokkos::fence();
-      Omega_h::parallel_for(
-        nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
-          if (nSupports[i] < min_req_support) {
-            Omega_h::Real factor =
-              Omega_h::Real(min_req_support) / Omega_h::Real(nSupports[i]);
-            factor = (factor > 1.1 || nSupports[i] == 0) ? 1.1 : factor;
-            radii2[i] = radii2[i] * factor;
-          }
-        });
-      Kokkos::fence();
+      adapt_radii(min_req_support, 3*min_req_support, nvertices_target, radii2, nSupports);
     }
 
     printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
@@ -517,33 +489,20 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& mesh,
                                          radii2, true);
 
       Kokkos::fence();
-      Omega_h::LO min_nSupports = 0;
-      Kokkos::parallel_reduce(
-        "find min number of supports", nvertices_target,
-        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::LO& local_min) {
-          local_min = (nSupports[i] < local_min) ? nSupports[i] : local_min;
-        },
-        Kokkos::Min<Omega_h::LO>(min_nSupports));
+      uint min_nSupports = 0;
+      uint max_nSupports = 0;
+      minmax(nSupports, min_nSupports, max_nSupports);
 
-      printf("min_nSupports: %d at loop %d, max_radius %f\n", min_nSupports,
-             r_adjust_loop, max_radius);
       r_adjust_loop++;
+      printf("Iter: %d min_nSupports: %d max_nSupports: %d at loop %d, max_radius %f\n",
+             r_adjust_loop, min_nSupports,
+             max_nSupports, r_adjust_loop, max_radius);
 
-      if (min_nSupports >= min_support) {
+      if (within_number_of_support_range(min_nSupports, max_nSupports, min_support, 3*min_support)) {
         break;
       }
 
-      Kokkos::fence();
-      Omega_h::parallel_for(
-        nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
-          if (nSupports[i] < min_support) {
-            Omega_h::Real factor =
-              Omega_h::Real(min_support) / Omega_h::Real(nSupports[i]);
-            factor = (nSupports[i] == 0 || factor > 1.5) ? 1.5 : factor;
-            radii2[i] *= factor;
-          }
-          nSupports[i] = 0; // ? might not be needed
-        });
+      adapt_radii(min_support, 3*min_support, radii2.size(), radii2, nSupports);
     } // while loop
     printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
   } // adaptive radius search

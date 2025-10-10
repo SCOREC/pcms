@@ -412,8 +412,8 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
       Omega_h::Write<Omega_h::LO> temp_supports_ptr;
       Omega_h::Write<Omega_h::LO> temp_supports_idx;
       Kokkos::fence();
-      search.adjBasedSearch(temp_supports_ptr, nSupports, temp_supports_idx, radii2,
-                            true);
+      search.adjBasedSearch(temp_supports_ptr, nSupports, temp_supports_idx,
+                            radii2, true);
       Kokkos::fence();
 
       Omega_h::LO min_supports_found = 0;

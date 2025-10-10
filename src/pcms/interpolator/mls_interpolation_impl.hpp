@@ -260,8 +260,9 @@ KOKKOS_INLINE_FUNCTION void compute_phi_vector(
  */
 KOKKOS_INLINE_FUNCTION
 void scale_column_trans_matrix(const ScratchMatView& matrix,
-                               const ScratchVecView& vector, member_type /*unused*/,
-                               int j, ScratchMatView result_matrix)
+                               const ScratchVecView& vector,
+                               member_type /*unused*/, int j,
+                               ScratchMatView result_matrix)
 {
 
   int N = matrix.extent(1);
@@ -411,8 +412,8 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
                        RealConstDefaultRank1View target_coordinates,
                        const SupportResults& support, const Omega_h::LO& dim,
                        const Omega_h::LO& degree, Func rbf_func,
-                       RealDefaultRank1View approx_target_values,
-                       double lambda, double tol)
+                       RealDefaultRank1View approx_target_values, double lambda,
+                       double tol)
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_invocable_r_v<double, Func, double, double>,
@@ -656,8 +657,8 @@ Omega_h::Write<Omega_h::Real> mls_interpolation(
 
   const auto ntargets = target_coordinates.size() / dim;
 
-  RealConstDefaultRank1View source_values_array_view(
-    source_values.data(), source_values.size());
+  RealConstDefaultRank1View source_values_array_view(source_values.data(),
+                                                     source_values.size());
 
   RealConstDefaultRank1View source_coordinates_array_view(
     source_coordinates.data(), source_coordinates.size());
@@ -666,7 +667,7 @@ Omega_h::Write<Omega_h::Real> mls_interpolation(
     target_coordinates.data(), target_coordinates.size());
 
   RealDefaultRank1View radii2_array_view(support.radii2.data(),
-                                               support.radii2.size());
+                                         support.radii2.size());
 
   Omega_h::Write<Omega_h::Real> interpolated_values(
     ntargets, 0, "approximated target values");

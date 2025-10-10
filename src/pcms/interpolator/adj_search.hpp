@@ -254,7 +254,7 @@ inline void FindSupports::adjBasedSearchCentroidNodes(
   const auto& faces2nodes =
     source_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
 
-   auto cell_centroids = getCentroids(source_mesh);
+  auto cell_centroids = getCentroids(source_mesh);
   // * Got the adj data and cell centroids
 
   Omega_h::parallel_for(
@@ -409,14 +409,16 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
       minmax(nSupports, min_supports_found, max_supports_found);
       r_adjust_loop++;
       printf("Iter: %d min_nSupports: %d max_nSupports: %d, max_radius %f\n",
-             r_adjust_loop, min_supports_found,
-             max_supports_found, max_radius);
+             r_adjust_loop, min_supports_found, max_supports_found, max_radius);
 
-      if (within_number_of_support_range(min_supports_found, max_supports_found, min_req_support, 3*min_req_support)) {
+      if (within_number_of_support_range(min_supports_found, max_supports_found,
+                                         min_req_support,
+                                         3 * min_req_support)) {
         break;
       }
 
-      adapt_radii(min_req_support, 3*min_req_support, nvertices_target, radii2, nSupports);
+      adapt_radii(min_req_support, 3 * min_req_support, nvertices_target,
+                  radii2, nSupports);
     }
 
     printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
@@ -494,15 +496,18 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& mesh,
       minmax(nSupports, min_nSupports, max_nSupports);
 
       r_adjust_loop++;
-      printf("Iter: %d min_nSupports: %d max_nSupports: %d at loop %d, max_radius %f\n",
-             r_adjust_loop, min_nSupports,
-             max_nSupports, r_adjust_loop, max_radius);
+      printf("Iter: %d min_nSupports: %d max_nSupports: %d at loop %d, "
+             "max_radius %f\n",
+             r_adjust_loop, min_nSupports, max_nSupports, r_adjust_loop,
+             max_radius);
 
-      if (within_number_of_support_range(min_nSupports, max_nSupports, min_support, 3*min_support)) {
+      if (within_number_of_support_range(min_nSupports, max_nSupports,
+                                         min_support, 3 * min_support)) {
         break;
       }
 
-      adapt_radii(min_support, 3*min_support, radii2.size(), radii2, nSupports);
+      adapt_radii(min_support, 3 * min_support, radii2.size(), radii2,
+                  nSupports);
     } // while loop
     printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
   } // adaptive radius search

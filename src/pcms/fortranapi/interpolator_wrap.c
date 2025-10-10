@@ -4,120 +4,131 @@
  *
  * Do not make changes to this file unless you know what you are doing - modify
  * the SWIG interface file instead.
- * ----------------------------------------------------------------------------- */
+ * -----------------------------------------------------------------------------
+ */
 /* -----------------------------------------------------------------------------
  *  This section contains generic SWIG labels for method/variable
  *  declarations/attributes, and other compiler dependent labels.
- * ----------------------------------------------------------------------------- */
+ * -----------------------------------------------------------------------------
+ */
 
-/* template workaround for compilers that cannot correctly implement the C++ standard */
+/* template workaround for compilers that cannot correctly implement the C++
+ * standard */
 #ifndef SWIGTEMPLATEDISAMBIGUATOR
-# if defined(__SUNPRO_CC) && (__SUNPRO_CC <= 0x560)
-#  define SWIGTEMPLATEDISAMBIGUATOR template
-# elif defined(__HP_aCC)
-/* Needed even with `aCC -AA' when `aCC -V' reports HP ANSI C++ B3910B A.03.55 */
-/* If we find a maximum version that requires this, the test would be __HP_aCC <= 35500 for A.03.55 */
-#  define SWIGTEMPLATEDISAMBIGUATOR template
-# else
-#  define SWIGTEMPLATEDISAMBIGUATOR
-# endif
+#if defined(__SUNPRO_CC) && (__SUNPRO_CC <= 0x560)
+#define SWIGTEMPLATEDISAMBIGUATOR template
+#elif defined(__HP_aCC)
+/* Needed even with `aCC -AA' when `aCC -V' reports HP ANSI C++ B3910B A.03.55
+ */
+/* If we find a maximum version that requires this, the test would be __HP_aCC
+ * <= 35500 for A.03.55 */
+#define SWIGTEMPLATEDISAMBIGUATOR template
+#else
+#define SWIGTEMPLATEDISAMBIGUATOR
+#endif
 #endif
 
 /* inline attribute */
 #ifndef SWIGINLINE
-# if defined(__cplusplus) || (defined(__GNUC__) && !defined(__STRICT_ANSI__))
-#   define SWIGINLINE inline
-# else
-#   define SWIGINLINE
-# endif
+#if defined(__cplusplus) || (defined(__GNUC__) && !defined(__STRICT_ANSI__))
+#define SWIGINLINE inline
+#else
+#define SWIGINLINE
+#endif
 #endif
 
 /* attribute recognised by some compilers to avoid 'unused' warnings */
 #ifndef SWIGUNUSED
-# if defined(__GNUC__)
-#   if !(defined(__cplusplus)) || (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
-#     define SWIGUNUSED __attribute__ ((__unused__))
-#   else
-#     define SWIGUNUSED
-#   endif
-# elif defined(__ICC)
-#   define SWIGUNUSED __attribute__ ((__unused__))
-# else
-#   define SWIGUNUSED
-# endif
+#if defined(__GNUC__)
+#if !(defined(__cplusplus)) ||                                                 \
+  (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
+#define SWIGUNUSED __attribute__((__unused__))
+#else
+#define SWIGUNUSED
+#endif
+#elif defined(__ICC)
+#define SWIGUNUSED __attribute__((__unused__))
+#else
+#define SWIGUNUSED
+#endif
 #endif
 
 #ifndef SWIG_MSC_UNSUPPRESS_4505
-# if defined(_MSC_VER)
-#   pragma warning(disable : 4505) /* unreferenced local function has been removed */
-# endif
+#if defined(_MSC_VER)
+#pragma warning(                                                               \
+  disable : 4505) /* unreferenced local function has been removed */
+#endif
 #endif
 
 #ifndef SWIGUNUSEDPARM
-# ifdef __cplusplus
-#   define SWIGUNUSEDPARM(p)
-# else
-#   define SWIGUNUSEDPARM(p) p SWIGUNUSED
-# endif
+#ifdef __cplusplus
+#define SWIGUNUSEDPARM(p)
+#else
+#define SWIGUNUSEDPARM(p) p SWIGUNUSED
+#endif
 #endif
 
 /* internal SWIG method */
 #ifndef SWIGINTERN
-# define SWIGINTERN static SWIGUNUSED
+#define SWIGINTERN static SWIGUNUSED
 #endif
 
 /* internal inline SWIG method */
 #ifndef SWIGINTERNINLINE
-# define SWIGINTERNINLINE SWIGINTERN SWIGINLINE
+#define SWIGINTERNINLINE SWIGINTERN SWIGINLINE
 #endif
 
 /* exporting methods */
 #if defined(__GNUC__)
-#  if (__GNUC__ >= 4) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)
-#    ifndef GCC_HASCLASSVISIBILITY
-#      define GCC_HASCLASSVISIBILITY
-#    endif
-#  endif
+#if (__GNUC__ >= 4) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)
+#ifndef GCC_HASCLASSVISIBILITY
+#define GCC_HASCLASSVISIBILITY
+#endif
+#endif
 #endif
 
 #ifndef SWIGEXPORT
-# if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
-#   if defined(STATIC_LINKED)
-#     define SWIGEXPORT
-#   else
-#     define SWIGEXPORT __declspec(dllexport)
-#   endif
-# else
-#   if defined(__GNUC__) && defined(GCC_HASCLASSVISIBILITY)
-#     define SWIGEXPORT __attribute__ ((visibility("default")))
-#   else
-#     define SWIGEXPORT
-#   endif
-# endif
+#if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
+#if defined(STATIC_LINKED)
+#define SWIGEXPORT
+#else
+#define SWIGEXPORT __declspec(dllexport)
+#endif
+#else
+#if defined(__GNUC__) && defined(GCC_HASCLASSVISIBILITY)
+#define SWIGEXPORT __attribute__((visibility("default")))
+#else
+#define SWIGEXPORT
+#endif
+#endif
 #endif
 
 /* calling conventions for Windows */
 #ifndef SWIGSTDCALL
-# if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
-#   define SWIGSTDCALL __stdcall
-# else
-#   define SWIGSTDCALL
-# endif
+#if defined(_WIN32) || defined(__WIN32__) || defined(__CYGWIN__)
+#define SWIGSTDCALL __stdcall
+#else
+#define SWIGSTDCALL
+#endif
 #endif
 
 /* Deal with Microsoft's attempt at deprecating C standard runtime functions */
-#if !defined(SWIG_NO_CRT_SECURE_NO_DEPRECATE) && defined(_MSC_VER) && !defined(_CRT_SECURE_NO_DEPRECATE)
-# define _CRT_SECURE_NO_DEPRECATE
+#if !defined(SWIG_NO_CRT_SECURE_NO_DEPRECATE) && defined(_MSC_VER) &&          \
+  !defined(_CRT_SECURE_NO_DEPRECATE)
+#define _CRT_SECURE_NO_DEPRECATE
 #endif
 
-/* Deal with Microsoft's attempt at deprecating methods in the standard C++ library */
-#if !defined(SWIG_NO_SCL_SECURE_NO_DEPRECATE) && defined(_MSC_VER) && !defined(_SCL_SECURE_NO_DEPRECATE)
-# define _SCL_SECURE_NO_DEPRECATE
+/* Deal with Microsoft's attempt at deprecating methods in the standard C++
+ * library */
+#if !defined(SWIG_NO_SCL_SECURE_NO_DEPRECATE) && defined(_MSC_VER) &&          \
+  !defined(_SCL_SECURE_NO_DEPRECATE)
+#define _SCL_SECURE_NO_DEPRECATE
 #endif
 
 /* Deal with Apple's deprecated 'AssertMacros.h' from Carbon-framework */
-#if defined(__APPLE__) && !defined(__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES)
-# define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
+#if defined(__APPLE__) &&                                                      \
+  !defined(__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES)
+#define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
 #endif
 
 /* Intel's compiler complains if a variable which was never initialised is
@@ -126,130 +137,124 @@
  * See: https://github.com/swig/swig/issues/192 for more discussion.
  */
 #ifdef __INTEL_COMPILER
-# pragma warning disable 592
+#pragma warning disable 592
 #endif
 
-#if __cplusplus >=201103L
-# define SWIG_NULLPTR nullptr
+#if __cplusplus >= 201103L
+#define SWIG_NULLPTR nullptr
 #else
-# define SWIG_NULLPTR NULL
-#endif 
-
+#define SWIG_NULLPTR NULL
+#endif
 
 /* C99 and C++11 should provide snprintf, but define SWIG_NO_SNPRINTF
  * if you're missing it.
  */
-#if ((defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L) || \
-     (defined __cplusplus && __cplusplus >= 201103L) || \
-     defined SWIG_HAVE_SNPRINTF) && \
-    !defined SWIG_NO_SNPRINTF
-# define SWIG_snprintf(O,S,F,A) snprintf(O,S,F,A)
-# define SWIG_snprintf2(O,S,F,A,B) snprintf(O,S,F,A,B)
+#if ((defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L) ||              \
+     (defined __cplusplus && __cplusplus >= 201103L) ||                        \
+     defined SWIG_HAVE_SNPRINTF) &&                                            \
+  !defined SWIG_NO_SNPRINTF
+#define SWIG_snprintf(O, S, F, A) snprintf(O, S, F, A)
+#define SWIG_snprintf2(O, S, F, A, B) snprintf(O, S, F, A, B)
 #else
 /* Fallback versions ignore the buffer size, but most of our uses either have a
  * fixed maximum possible size or dynamically allocate a buffer that's large
  * enough.
  */
-# define SWIG_snprintf(O,S,F,A) sprintf(O,F,A)
-# define SWIG_snprintf2(O,S,F,A,B) sprintf(O,F,A,B)
+#define SWIG_snprintf(O, S, F, A) sprintf(O, F, A)
+#define SWIG_snprintf2(O, S, F, A, B) sprintf(O, F, A, B)
 #endif
-
-
 
 #ifndef SWIGEXTERN
-# ifdef __cplusplus
-#   define SWIGEXTERN extern
-# else
-#   define SWIGEXTERN
-# endif
+#ifdef __cplusplus
+#define SWIGEXTERN extern
+#else
+#define SWIGEXTERN
+#endif
 #endif
 
-
 #include <assert.h>
-#define SWIG_exception_impl(DECL, CODE, MSG, RETURNNULL) \
- { printf("In " DECL ": " MSG); assert(0); RETURNNULL; }
-
-
-enum {
-    SWIG_MEM_OWN = 0x01,
-    SWIG_MEM_RVALUE = 0x02,
-};
-
-
-#define SWIG_check_nonnull(PTR, TYPENAME, FNAME, FUNCNAME, RETURNNULL) \
-  if (!(PTR)) { \
-    SWIG_exception_impl(FUNCNAME, SWIG_NullReferenceError, \
-                        "Cannot pass null " TYPENAME " (class " FNAME ") " \
-                        "as a reference", RETURNNULL); \
+#define SWIG_exception_impl(DECL, CODE, MSG, RETURNNULL)                       \
+  {                                                                            \
+    printf("In " DECL ": " MSG);                                               \
+    assert(0);                                                                 \
+    RETURNNULL;                                                                \
   }
 
+enum
+{
+  SWIG_MEM_OWN = 0x01,
+  SWIG_MEM_RVALUE = 0x02,
+};
 
+#define SWIG_check_nonnull(PTR, TYPENAME, FNAME, FUNCNAME, RETURNNULL)         \
+  if (!(PTR)) {                                                                \
+    SWIG_exception_impl(FUNCNAME, SWIG_NullReferenceError,                     \
+                        "Cannot pass null " TYPENAME " (class " FNAME ") "     \
+                        "as a reference",                                      \
+                        RETURNNULL);                                           \
+  }
 
 #define SWIG_VERSION 0x040200
 #define SWIGFORTRAN
 
 #include <stdio.h>
-#if (defined(_MSC_VER) && (_MSC_VER < 1900)) || defined(__BORLANDC__) || defined(_WATCOM)
-# ifndef snprintf
-#  define snprintf _snprintf
-# endif
+#if (defined(_MSC_VER) && (_MSC_VER < 1900)) || defined(__BORLANDC__) ||       \
+  defined(_WATCOM)
+#ifndef snprintf
+#define snprintf _snprintf
 #endif
-
+#endif
 
 /* Support for the `contract` feature.
  *
  * Note that RETURNNULL is first because it's inserted via a 'Replaceall' in
  * the fortran.cxx file.
  */
-#define SWIG_contract_assert(RETURNNULL, EXPR, MSG) \
- if (!(EXPR)) { SWIG_exception_impl("$decl", SWIG_ValueError, MSG, RETURNNULL); } 
+#define SWIG_contract_assert(RETURNNULL, EXPR, MSG)                            \
+  if (!(EXPR)) {                                                               \
+    SWIG_exception_impl("$decl", SWIG_ValueError, MSG, RETURNNULL);            \
+  }
 
-
-#define SWIG_as_voidptr(a) (void *)((const void *)(a)) 
-#define SWIG_as_voidptrptr(a) ((void)SWIG_as_voidptr(*a),(void**)(a)) 
-
+#define SWIG_as_voidptr(a) (void*)((const void*)(a))
+#define SWIG_as_voidptrptr(a) ((void)SWIG_as_voidptr(*a), (void**)(a))
 
 #include "pcms/capi/interpolator.h"
 #include "pcms/capi/kokkos.h"
-
 
 #ifdef HAVE_MPI
 #include <mpi.h>
 #endif
 
-
 #include <stdint.h>
 
-
-typedef struct {
-    void* cptr;
-    int cmemflags;
+typedef struct
+{
+  void* cptr;
+  int cmemflags;
 } SwigClassWrapper;
 
-
-SWIGINTERN SwigClassWrapper SwigClassWrapper_uninitialized() {
-    SwigClassWrapper result;
-    result.cptr = NULL;
-    result.cmemflags = 0;
-    return result;
+SWIGINTERN SwigClassWrapper SwigClassWrapper_uninitialized()
+{
+  SwigClassWrapper result;
+  result.cptr = NULL;
+  result.cmemflags = 0;
+  return result;
 }
-
 
 #include <stdlib.h>
 #ifdef _MSC_VER
-# ifndef strtoull
-#  define strtoull _strtoui64
-# endif
-# ifndef strtoll
-#  define strtoll _strtoi64
-# endif
+#ifndef strtoull
+#define strtoull _strtoui64
 #endif
-
+#ifndef strtoll
+#define strtoll _strtoi64
+#endif
+#endif
 
 #include <string.h>
 
-
-SWIGINTERN void SWIG_assign(SwigClassWrapper* self, SwigClassWrapper other) {
+SWIGINTERN void SWIG_assign(SwigClassWrapper* self, SwigClassWrapper other)
+{
   if (self->cptr == NULL) {
     /* LHS is unassigned */
     if (other.cmemflags & SWIG_MEM_RVALUE) {
@@ -282,384 +287,477 @@ SWIGINTERN void SWIG_assign(SwigClassWrapper* self, SwigClassWrapper other) {
   }
 }
 
-
-typedef struct {
-    void* data;
-    size_t size;
+typedef struct
+{
+  void* data;
+  size_t size;
 } SwigArrayWrapper;
 
-
-SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized() {
+SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized()
+{
   SwigArrayWrapper result;
   result.data = NULL;
   result.size = 0;
   return result;
 }
 
-SWIGEXPORT void _wrap_PcmsInterpolatorOHMeshHandle_mesh_handle_set(SwigClassWrapper *farg1, void const **farg2) {
-  struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
-  void *arg2 = (void *) 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::mesh_handle", return );
-  arg1 = (struct PcmsInterpolatorOHMeshHandle *)farg1->cptr;
-  arg2 = (void *)(*farg2);
-  if (arg1) (arg1)->mesh_handle = arg2;
+SWIGEXPORT void _wrap_PcmsInterpolatorOHMeshHandle_mesh_handle_set(
+  SwigClassWrapper* farg1, void const** farg2)
+{
+  struct PcmsInterpolatorOHMeshHandle* arg1 =
+    (struct PcmsInterpolatorOHMeshHandle*)0;
+  void* arg2 = (void*)0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *",
+                     "PcmsInterpolatorOHMeshHandle",
+                     "PcmsInterpolatorOHMeshHandle::mesh_handle", return);
+  arg1 = (struct PcmsInterpolatorOHMeshHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+    (arg1)->mesh_handle = arg2;
 }
 
+SWIGEXPORT void* _wrap_PcmsInterpolatorOHMeshHandle_mesh_handle_get(
+  SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsInterpolatorOHMeshHandle* arg1 =
+    (struct PcmsInterpolatorOHMeshHandle*)0;
+  void* result = 0;
 
-SWIGEXPORT void * _wrap_PcmsInterpolatorOHMeshHandle_mesh_handle_get(SwigClassWrapper *farg1) {
-  void * fresult ;
-  struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
-  void *result = 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::mesh_handle", return 0);
-  arg1 = (struct PcmsInterpolatorOHMeshHandle *)farg1->cptr;
-  result = (void *) ((arg1)->mesh_handle);
-  fresult = (void *)(result);
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *",
+                     "PcmsInterpolatorOHMeshHandle",
+                     "PcmsInterpolatorOHMeshHandle::mesh_handle", return 0);
+  arg1 = (struct PcmsInterpolatorOHMeshHandle*)farg1->cptr;
+  result = (void*)((arg1)->mesh_handle);
+  fresult = (void*)(result);
   return fresult;
 }
 
+SWIGEXPORT void _wrap_PcmsInterpolatorOHMeshHandle_lib_handle_set(
+  SwigClassWrapper* farg1, void const** farg2)
+{
+  struct PcmsInterpolatorOHMeshHandle* arg1 =
+    (struct PcmsInterpolatorOHMeshHandle*)0;
+  void* arg2 = (void*)0;
 
-SWIGEXPORT void _wrap_PcmsInterpolatorOHMeshHandle_lib_handle_set(SwigClassWrapper *farg1, void const **farg2) {
-  struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
-  void *arg2 = (void *) 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::lib_handle", return );
-  arg1 = (struct PcmsInterpolatorOHMeshHandle *)farg1->cptr;
-  arg2 = (void *)(*farg2);
-  if (arg1) (arg1)->lib_handle = arg2;
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *",
+                     "PcmsInterpolatorOHMeshHandle",
+                     "PcmsInterpolatorOHMeshHandle::lib_handle", return);
+  arg1 = (struct PcmsInterpolatorOHMeshHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+    (arg1)->lib_handle = arg2;
 }
 
+SWIGEXPORT void* _wrap_PcmsInterpolatorOHMeshHandle_lib_handle_get(
+  SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsInterpolatorOHMeshHandle* arg1 =
+    (struct PcmsInterpolatorOHMeshHandle*)0;
+  void* result = 0;
 
-SWIGEXPORT void * _wrap_PcmsInterpolatorOHMeshHandle_lib_handle_get(SwigClassWrapper *farg1) {
-  void * fresult ;
-  struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
-  void *result = 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *", "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle::lib_handle", return 0);
-  arg1 = (struct PcmsInterpolatorOHMeshHandle *)farg1->cptr;
-  result = (void *) ((arg1)->lib_handle);
-  fresult = (void *)(result);
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorOHMeshHandle *",
+                     "PcmsInterpolatorOHMeshHandle",
+                     "PcmsInterpolatorOHMeshHandle::lib_handle", return 0);
+  arg1 = (struct PcmsInterpolatorOHMeshHandle*)farg1->cptr;
+  result = (void*)((arg1)->lib_handle);
+  fresult = (void*)(result);
   return fresult;
 }
 
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsInterpolatorOHMeshHandle()
+{
+  SwigClassWrapper fresult;
+  struct PcmsInterpolatorOHMeshHandle* result = 0;
 
-SWIGEXPORT SwigClassWrapper _wrap_new_PcmsInterpolatorOHMeshHandle() {
-  SwigClassWrapper fresult ;
-  struct PcmsInterpolatorOHMeshHandle *result = 0 ;
-  
-  result = (struct PcmsInterpolatorOHMeshHandle *)calloc(1, sizeof(struct PcmsInterpolatorOHMeshHandle));
+  result = (struct PcmsInterpolatorOHMeshHandle*)calloc(
+    1, sizeof(struct PcmsInterpolatorOHMeshHandle));
   fresult.cptr = (void*)result;
   fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
   return fresult;
 }
 
+SWIGEXPORT void _wrap_delete_PcmsInterpolatorOHMeshHandle(
+  SwigClassWrapper* farg1)
+{
+  struct PcmsInterpolatorOHMeshHandle* arg1 =
+    (struct PcmsInterpolatorOHMeshHandle*)0;
 
-SWIGEXPORT void _wrap_delete_PcmsInterpolatorOHMeshHandle(SwigClassWrapper *farg1) {
-  struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
-  
-  arg1 = (struct PcmsInterpolatorOHMeshHandle *)farg1->cptr;
-  free((char *) arg1);
+  arg1 = (struct PcmsInterpolatorOHMeshHandle*)farg1->cptr;
+  free((char*)arg1);
 }
 
+SWIGEXPORT void _wrap_PcmsInterpolatorOHMeshHandle_op_assign__(
+  SwigClassWrapper* farg1, SwigClassWrapper* farg2)
+{
+  struct PcmsInterpolatorOHMeshHandle* arg1 =
+    (struct PcmsInterpolatorOHMeshHandle*)0;
+  struct PcmsInterpolatorOHMeshHandle* arg2 = 0;
 
-SWIGEXPORT void _wrap_PcmsInterpolatorOHMeshHandle_op_assign__(SwigClassWrapper *farg1, SwigClassWrapper *farg2) {
-  struct PcmsInterpolatorOHMeshHandle *arg1 = (struct PcmsInterpolatorOHMeshHandle *) 0 ;
-  struct PcmsInterpolatorOHMeshHandle *arg2 = 0 ;
-  
   (void)sizeof(arg1);
   (void)sizeof(arg2);
   SWIG_assign(farg1, *farg2);
-  
 }
 
+SWIGEXPORT void _wrap_PcmsInterpolatorHandle_pointer_set(
+  SwigClassWrapper* farg1, void const** farg2)
+{
+  struct PcmsInterpolatorHandle* arg1 = (struct PcmsInterpolatorHandle*)0;
+  void* arg2 = (void*)0;
 
-SWIGEXPORT void _wrap_PcmsInterpolatorHandle_pointer_set(SwigClassWrapper *farg1, void const **farg2) {
-  struct PcmsInterpolatorHandle *arg1 = (struct PcmsInterpolatorHandle *) 0 ;
-  void *arg2 = (void *) 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorHandle *", "PcmsInterpolatorHandle", "PcmsInterpolatorHandle::pointer", return );
-  arg1 = (struct PcmsInterpolatorHandle *)farg1->cptr;
-  arg2 = (void *)(*farg2);
-  if (arg1) (arg1)->pointer = arg2;
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorHandle *",
+                     "PcmsInterpolatorHandle",
+                     "PcmsInterpolatorHandle::pointer", return);
+  arg1 = (struct PcmsInterpolatorHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+    (arg1)->pointer = arg2;
 }
 
+SWIGEXPORT void* _wrap_PcmsInterpolatorHandle_pointer_get(
+  SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsInterpolatorHandle* arg1 = (struct PcmsInterpolatorHandle*)0;
+  void* result = 0;
 
-SWIGEXPORT void * _wrap_PcmsInterpolatorHandle_pointer_get(SwigClassWrapper *farg1) {
-  void * fresult ;
-  struct PcmsInterpolatorHandle *arg1 = (struct PcmsInterpolatorHandle *) 0 ;
-  void *result = 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorHandle *", "PcmsInterpolatorHandle", "PcmsInterpolatorHandle::pointer", return 0);
-  arg1 = (struct PcmsInterpolatorHandle *)farg1->cptr;
-  result = (void *) ((arg1)->pointer);
-  fresult = (void *)(result);
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsInterpolatorHandle *",
+                     "PcmsInterpolatorHandle",
+                     "PcmsInterpolatorHandle::pointer", return 0);
+  arg1 = (struct PcmsInterpolatorHandle*)farg1->cptr;
+  result = (void*)((arg1)->pointer);
+  fresult = (void*)(result);
   return fresult;
 }
 
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsInterpolatorHandle()
+{
+  SwigClassWrapper fresult;
+  struct PcmsInterpolatorHandle* result = 0;
 
-SWIGEXPORT SwigClassWrapper _wrap_new_PcmsInterpolatorHandle() {
-  SwigClassWrapper fresult ;
-  struct PcmsInterpolatorHandle *result = 0 ;
-  
-  result = (struct PcmsInterpolatorHandle *)calloc(1, sizeof(struct PcmsInterpolatorHandle));
+  result = (struct PcmsInterpolatorHandle*)calloc(
+    1, sizeof(struct PcmsInterpolatorHandle));
   fresult.cptr = (void*)result;
   fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
   return fresult;
 }
 
+SWIGEXPORT void _wrap_delete_PcmsInterpolatorHandle(SwigClassWrapper* farg1)
+{
+  struct PcmsInterpolatorHandle* arg1 = (struct PcmsInterpolatorHandle*)0;
 
-SWIGEXPORT void _wrap_delete_PcmsInterpolatorHandle(SwigClassWrapper *farg1) {
-  struct PcmsInterpolatorHandle *arg1 = (struct PcmsInterpolatorHandle *) 0 ;
-  
-  arg1 = (struct PcmsInterpolatorHandle *)farg1->cptr;
-  free((char *) arg1);
+  arg1 = (struct PcmsInterpolatorHandle*)farg1->cptr;
+  free((char*)arg1);
 }
 
+SWIGEXPORT void _wrap_PcmsInterpolatorHandle_op_assign__(
+  SwigClassWrapper* farg1, SwigClassWrapper* farg2)
+{
+  struct PcmsInterpolatorHandle* arg1 = (struct PcmsInterpolatorHandle*)0;
+  struct PcmsInterpolatorHandle* arg2 = 0;
 
-SWIGEXPORT void _wrap_PcmsInterpolatorHandle_op_assign__(SwigClassWrapper *farg1, SwigClassWrapper *farg2) {
-  struct PcmsInterpolatorHandle *arg1 = (struct PcmsInterpolatorHandle *) 0 ;
-  struct PcmsInterpolatorHandle *arg2 = 0 ;
-  
   (void)sizeof(arg1);
   (void)sizeof(arg2);
   SWIG_assign(farg1, *farg2);
-  
 }
 
+SWIGEXPORT void _wrap_PcmsPointBasedInterpolatorHandle_pointer_set(
+  SwigClassWrapper* farg1, void const** farg2)
+{
+  struct PcmsPointBasedInterpolatorHandle* arg1 =
+    (struct PcmsPointBasedInterpolatorHandle*)0;
+  void* arg2 = (void*)0;
 
-SWIGEXPORT void _wrap_PcmsPointBasedInterpolatorHandle_pointer_set(SwigClassWrapper *farg1, void const **farg2) {
-  struct PcmsPointBasedInterpolatorHandle *arg1 = (struct PcmsPointBasedInterpolatorHandle *) 0 ;
-  void *arg2 = (void *) 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsPointBasedInterpolatorHandle *", "PcmsPointBasedInterpolatorHandle", "PcmsPointBasedInterpolatorHandle::pointer", return );
-  arg1 = (struct PcmsPointBasedInterpolatorHandle *)farg1->cptr;
-  arg2 = (void *)(*farg2);
-  if (arg1) (arg1)->pointer = arg2;
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsPointBasedInterpolatorHandle *",
+                     "PcmsPointBasedInterpolatorHandle",
+                     "PcmsPointBasedInterpolatorHandle::pointer", return);
+  arg1 = (struct PcmsPointBasedInterpolatorHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+    (arg1)->pointer = arg2;
 }
 
+SWIGEXPORT void* _wrap_PcmsPointBasedInterpolatorHandle_pointer_get(
+  SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsPointBasedInterpolatorHandle* arg1 =
+    (struct PcmsPointBasedInterpolatorHandle*)0;
+  void* result = 0;
 
-SWIGEXPORT void * _wrap_PcmsPointBasedInterpolatorHandle_pointer_get(SwigClassWrapper *farg1) {
-  void * fresult ;
-  struct PcmsPointBasedInterpolatorHandle *arg1 = (struct PcmsPointBasedInterpolatorHandle *) 0 ;
-  void *result = 0 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "struct PcmsPointBasedInterpolatorHandle *", "PcmsPointBasedInterpolatorHandle", "PcmsPointBasedInterpolatorHandle::pointer", return 0);
-  arg1 = (struct PcmsPointBasedInterpolatorHandle *)farg1->cptr;
-  result = (void *) ((arg1)->pointer);
-  fresult = (void *)(result);
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsPointBasedInterpolatorHandle *",
+                     "PcmsPointBasedInterpolatorHandle",
+                     "PcmsPointBasedInterpolatorHandle::pointer", return 0);
+  arg1 = (struct PcmsPointBasedInterpolatorHandle*)farg1->cptr;
+  result = (void*)((arg1)->pointer);
+  fresult = (void*)(result);
   return fresult;
 }
 
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsPointBasedInterpolatorHandle()
+{
+  SwigClassWrapper fresult;
+  struct PcmsPointBasedInterpolatorHandle* result = 0;
 
-SWIGEXPORT SwigClassWrapper _wrap_new_PcmsPointBasedInterpolatorHandle() {
-  SwigClassWrapper fresult ;
-  struct PcmsPointBasedInterpolatorHandle *result = 0 ;
-  
-  result = (struct PcmsPointBasedInterpolatorHandle *)calloc(1, sizeof(struct PcmsPointBasedInterpolatorHandle));
+  result = (struct PcmsPointBasedInterpolatorHandle*)calloc(
+    1, sizeof(struct PcmsPointBasedInterpolatorHandle));
   fresult.cptr = (void*)result;
   fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
   return fresult;
 }
 
+SWIGEXPORT void _wrap_delete_PcmsPointBasedInterpolatorHandle(
+  SwigClassWrapper* farg1)
+{
+  struct PcmsPointBasedInterpolatorHandle* arg1 =
+    (struct PcmsPointBasedInterpolatorHandle*)0;
 
-SWIGEXPORT void _wrap_delete_PcmsPointBasedInterpolatorHandle(SwigClassWrapper *farg1) {
-  struct PcmsPointBasedInterpolatorHandle *arg1 = (struct PcmsPointBasedInterpolatorHandle *) 0 ;
-  
-  arg1 = (struct PcmsPointBasedInterpolatorHandle *)farg1->cptr;
-  free((char *) arg1);
+  arg1 = (struct PcmsPointBasedInterpolatorHandle*)farg1->cptr;
+  free((char*)arg1);
 }
 
+SWIGEXPORT void _wrap_PcmsPointBasedInterpolatorHandle_op_assign__(
+  SwigClassWrapper* farg1, SwigClassWrapper* farg2)
+{
+  struct PcmsPointBasedInterpolatorHandle* arg1 =
+    (struct PcmsPointBasedInterpolatorHandle*)0;
+  struct PcmsPointBasedInterpolatorHandle* arg2 = 0;
 
-SWIGEXPORT void _wrap_PcmsPointBasedInterpolatorHandle_op_assign__(SwigClassWrapper *farg1, SwigClassWrapper *farg2) {
-  struct PcmsPointBasedInterpolatorHandle *arg1 = (struct PcmsPointBasedInterpolatorHandle *) 0 ;
-  struct PcmsPointBasedInterpolatorHandle *arg2 = 0 ;
-  
   (void)sizeof(arg1);
   (void)sizeof(arg2);
   SWIG_assign(farg1, *farg2);
-  
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_pcms_create_point_based_interpolator(void const **farg1, int const *farg2, void const **farg3, int const *farg4, double const *farg5) {
-  SwigClassWrapper fresult ;
-  void *arg1 = (void *) 0 ;
-  int arg2 ;
-  void *arg3 = (void *) 0 ;
-  int arg4 ;
-  double arg5 ;
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_point_based_interpolator(
+  void const** farg1, int const* farg2, void const** farg3, int const* farg4,
+  double const* farg5)
+{
+  SwigClassWrapper fresult;
+  void* arg1 = (void*)0;
+  int arg2;
+  void* arg3 = (void*)0;
+  int arg4;
+  double arg5;
   PcmsPointBasedInterpolatorHandle result;
-  
-  arg1 = (void *)(*farg1);
+
+  arg1 = (void*)(*farg1);
   arg2 = (int)(*farg2);
-  arg3 = (void *)(*farg3);
+  arg3 = (void*)(*farg3);
   arg4 = (int)(*farg4);
   arg5 = (double)(*farg5);
-  result = pcms_create_point_based_interpolator(arg1,arg2,arg3,arg4,arg5);
-  fresult.cptr = (PcmsPointBasedInterpolatorHandle *)memcpy((PcmsPointBasedInterpolatorHandle *)calloc(1,sizeof(PcmsPointBasedInterpolatorHandle)),&result,sizeof(PcmsPointBasedInterpolatorHandle));
+  result = pcms_create_point_based_interpolator(arg1, arg2, arg3, arg4, arg5);
+  fresult.cptr = (PcmsPointBasedInterpolatorHandle*)memcpy(
+    (PcmsPointBasedInterpolatorHandle*)calloc(
+      1, sizeof(PcmsPointBasedInterpolatorHandle)),
+    &result, sizeof(PcmsPointBasedInterpolatorHandle));
   fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgc_interpolator(SwigArrayWrapper *farg1, SwigArrayWrapper *farg2, double const *farg3) {
-  SwigClassWrapper fresult ;
-  char *arg1 = (char *) 0 ;
-  char *arg2 = (char *) 0 ;
-  double arg3 ;
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgc_interpolator(
+  SwigArrayWrapper* farg1, SwigArrayWrapper* farg2, double const* farg3)
+{
+  SwigClassWrapper fresult;
+  char* arg1 = (char*)0;
+  char* arg2 = (char*)0;
+  double arg3;
   PcmsPointBasedInterpolatorHandle result;
-  
-  arg1 = (char *)(farg1->data);
-  arg2 = (char *)(farg2->data);
+
+  arg1 = (char*)(farg1->data);
+  arg2 = (char*)(farg2->data);
   arg3 = (double)(*farg3);
-  result = pcms_create_degas2xgc_interpolator((char const *)arg1,(char const *)arg2,arg3);
-  fresult.cptr = (PcmsPointBasedInterpolatorHandle *)memcpy((PcmsPointBasedInterpolatorHandle *)calloc(1,sizeof(PcmsPointBasedInterpolatorHandle)),&result,sizeof(PcmsPointBasedInterpolatorHandle));
+  result = pcms_create_degas2xgc_interpolator((char const*)arg1,
+                                              (char const*)arg2, arg3);
+  fresult.cptr = (PcmsPointBasedInterpolatorHandle*)memcpy(
+    (PcmsPointBasedInterpolatorHandle*)calloc(
+      1, sizeof(PcmsPointBasedInterpolatorHandle)),
+    &result, sizeof(PcmsPointBasedInterpolatorHandle));
   fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgcnode_interpolator(void const **farg1, int const *farg2, SwigArrayWrapper *farg3, double const *farg4, void const **farg5) {
-  SwigClassWrapper fresult ;
-  void *arg1 = (void *) 0 ;
-  int arg2 ;
-  char *arg3 = (char *) 0 ;
-  double arg4 ;
-  void *arg5 = (void *) 0 ;
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgcnode_interpolator(
+  void const** farg1, int const* farg2, SwigArrayWrapper* farg3,
+  double const* farg4, void const** farg5)
+{
+  SwigClassWrapper fresult;
+  void* arg1 = (void*)0;
+  int arg2;
+  char* arg3 = (char*)0;
+  double arg4;
+  void* arg5 = (void*)0;
   PcmsPointBasedInterpolatorHandle result;
-  
-  arg1 = (void *)(*farg1);
+
+  arg1 = (void*)(*farg1);
   arg2 = (int)(*farg2);
-  arg3 = (char *)(farg3->data);
+  arg3 = (char*)(farg3->data);
   arg4 = (double)(*farg4);
-  arg5 = (void *)(*farg5);
-  result = pcms_create_degas2xgcnode_interpolator(arg1,arg2,(char const *)arg3,arg4,arg5);
-  fresult.cptr = (PcmsPointBasedInterpolatorHandle *)memcpy((PcmsPointBasedInterpolatorHandle *)calloc(1,sizeof(PcmsPointBasedInterpolatorHandle)),&result,sizeof(PcmsPointBasedInterpolatorHandle));
+  arg5 = (void*)(*farg5);
+  result = pcms_create_degas2xgcnode_interpolator(arg1, arg2, (char const*)arg3,
+                                                  arg4, arg5);
+  fresult.cptr = (PcmsPointBasedInterpolatorHandle*)memcpy(
+    (PcmsPointBasedInterpolatorHandle*)calloc(
+      1, sizeof(PcmsPointBasedInterpolatorHandle)),
+    &result, sizeof(PcmsPointBasedInterpolatorHandle));
   fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgcnodedegas2_interpolator(SwigArrayWrapper *farg1, void const **farg2, int const *farg3, double const *farg4, void const **farg5) {
-  SwigClassWrapper fresult ;
-  char *arg1 = (char *) 0 ;
-  void *arg2 = (void *) 0 ;
-  int arg3 ;
-  double arg4 ;
-  void *arg5 = (void *) 0 ;
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgcnodedegas2_interpolator(
+  SwigArrayWrapper* farg1, void const** farg2, int const* farg3,
+  double const* farg4, void const** farg5)
+{
+  SwigClassWrapper fresult;
+  char* arg1 = (char*)0;
+  void* arg2 = (void*)0;
+  int arg3;
+  double arg4;
+  void* arg5 = (void*)0;
   PcmsPointBasedInterpolatorHandle result;
-  
-  arg1 = (char *)(farg1->data);
-  arg2 = (void *)(*farg2);
+
+  arg1 = (char*)(farg1->data);
+  arg2 = (void*)(*farg2);
   arg3 = (int)(*farg3);
   arg4 = (double)(*farg4);
-  arg5 = (void *)(*farg5);
-  result = pcms_create_xgcnodedegas2_interpolator((char const *)arg1,arg2,arg3,arg4,arg5);
-  fresult.cptr = (PcmsPointBasedInterpolatorHandle *)memcpy((PcmsPointBasedInterpolatorHandle *)calloc(1,sizeof(PcmsPointBasedInterpolatorHandle)),&result,sizeof(PcmsPointBasedInterpolatorHandle));
+  arg5 = (void*)(*farg5);
+  result = pcms_create_xgcnodedegas2_interpolator((char const*)arg1, arg2, arg3,
+                                                  arg4, arg5);
+  fresult.cptr = (PcmsPointBasedInterpolatorHandle*)memcpy(
+    (PcmsPointBasedInterpolatorHandle*)calloc(
+      1, sizeof(PcmsPointBasedInterpolatorHandle)),
+    &result, sizeof(PcmsPointBasedInterpolatorHandle));
   fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_pcms_create_interpolator(SwigClassWrapper *farg1, double const *farg2) {
-  SwigClassWrapper fresult ;
-  PcmsInterpolatorOHMeshHandle arg1 ;
-  double arg2 ;
+SWIGEXPORT SwigClassWrapper
+_wrap_pcms_create_interpolator(SwigClassWrapper* farg1, double const* farg2)
+{
+  SwigClassWrapper fresult;
+  PcmsInterpolatorOHMeshHandle arg1;
+  double arg2;
   PcmsInterpolatorHandle result;
-  
-  SWIG_check_nonnull(farg1->cptr, "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle", "pcms_create_interpolator(PcmsInterpolatorOHMeshHandle,double)", return SwigClassWrapper_uninitialized());
-  arg1 = *((PcmsInterpolatorOHMeshHandle *)(farg1->cptr));
+
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle",
+    "pcms_create_interpolator(PcmsInterpolatorOHMeshHandle,double)",
+    return SwigClassWrapper_uninitialized());
+  arg1 = *((PcmsInterpolatorOHMeshHandle*)(farg1->cptr));
   arg2 = (double)(*farg2);
-  result = pcms_create_interpolator(arg1,arg2);
-  fresult.cptr = (PcmsInterpolatorHandle *)memcpy((PcmsInterpolatorHandle *)calloc(1,sizeof(PcmsInterpolatorHandle)),&result,sizeof(PcmsInterpolatorHandle));
+  result = pcms_create_interpolator(arg1, arg2);
+  fresult.cptr = (PcmsInterpolatorHandle*)memcpy(
+    (PcmsInterpolatorHandle*)calloc(1, sizeof(PcmsInterpolatorHandle)), &result,
+    sizeof(PcmsInterpolatorHandle));
   fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
+SWIGEXPORT void _wrap_pcms_destroy_interpolator(SwigClassWrapper* farg1)
+{
+  PcmsInterpolatorHandle arg1;
 
-SWIGEXPORT void _wrap_pcms_destroy_interpolator(SwigClassWrapper *farg1) {
-  PcmsInterpolatorHandle arg1 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "PcmsInterpolatorHandle", "PcmsInterpolatorHandle", "pcms_destroy_interpolator(PcmsInterpolatorHandle)", return );
-  arg1 = *((PcmsInterpolatorHandle *)(farg1->cptr));
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsInterpolatorHandle", "PcmsInterpolatorHandle",
+    "pcms_destroy_interpolator(PcmsInterpolatorHandle)", return);
+  arg1 = *((PcmsInterpolatorHandle*)(farg1->cptr));
   pcms_destroy_interpolator(arg1);
 }
 
+SWIGEXPORT void _wrap_pcms_destroy_point_based_interpolator(
+  SwigClassWrapper* farg1)
+{
+  PcmsPointBasedInterpolatorHandle arg1;
 
-SWIGEXPORT void _wrap_pcms_destroy_point_based_interpolator(SwigClassWrapper *farg1) {
-  PcmsPointBasedInterpolatorHandle arg1 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "PcmsPointBasedInterpolatorHandle", "PcmsPointBasedInterpolatorHandle", "pcms_destroy_point_based_interpolator(PcmsPointBasedInterpolatorHandle)", return );
-  arg1 = *((PcmsPointBasedInterpolatorHandle *)(farg1->cptr));
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsPointBasedInterpolatorHandle",
+    "PcmsPointBasedInterpolatorHandle",
+    "pcms_destroy_point_based_interpolator(PcmsPointBasedInterpolatorHandle)",
+    return);
+  arg1 = *((PcmsPointBasedInterpolatorHandle*)(farg1->cptr));
   pcms_destroy_point_based_interpolator(arg1);
 }
 
-
-SWIGEXPORT void _wrap_pcms_kokkos_initialize_without_args() {
+SWIGEXPORT void _wrap_pcms_kokkos_initialize_without_args()
+{
   pcms_kokkos_initialize_without_args();
 }
 
-
-SWIGEXPORT void _wrap_pcms_kokkos_finalize() {
+SWIGEXPORT void _wrap_pcms_kokkos_finalize()
+{
   pcms_kokkos_finalize();
 }
 
-
-SWIGEXPORT SwigClassWrapper _wrap_read_oh_mesh(SwigArrayWrapper *farg1) {
-  SwigClassWrapper fresult ;
-  char *arg1 = (char *) 0 ;
+SWIGEXPORT SwigClassWrapper _wrap_read_oh_mesh(SwigArrayWrapper* farg1)
+{
+  SwigClassWrapper fresult;
+  char* arg1 = (char*)0;
   PcmsInterpolatorOHMeshHandle result;
-  
-  arg1 = (char *)(farg1->data);
-  result = read_oh_mesh((char const *)arg1);
-  fresult.cptr = (PcmsInterpolatorOHMeshHandle *)memcpy((PcmsInterpolatorOHMeshHandle *)calloc(1,sizeof(PcmsInterpolatorOHMeshHandle)),&result,sizeof(PcmsInterpolatorOHMeshHandle));
+
+  arg1 = (char*)(farg1->data);
+  result = read_oh_mesh((char const*)arg1);
+  fresult.cptr = (PcmsInterpolatorOHMeshHandle*)memcpy(
+    (PcmsInterpolatorOHMeshHandle*)calloc(1,
+                                          sizeof(PcmsInterpolatorOHMeshHandle)),
+    &result, sizeof(PcmsInterpolatorOHMeshHandle));
   fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
 }
 
+SWIGEXPORT void _wrap_release_oh_mesh(SwigClassWrapper* farg1)
+{
+  PcmsInterpolatorOHMeshHandle arg1;
 
-SWIGEXPORT void _wrap_release_oh_mesh(SwigClassWrapper *farg1) {
-  PcmsInterpolatorOHMeshHandle arg1 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "PcmsInterpolatorOHMeshHandle", "PcmsInterpolatorOHMeshHandle", "release_oh_mesh(PcmsInterpolatorOHMeshHandle)", return );
-  arg1 = *((PcmsInterpolatorOHMeshHandle *)(farg1->cptr));
+  SWIG_check_nonnull(farg1->cptr, "PcmsInterpolatorOHMeshHandle",
+                     "PcmsInterpolatorOHMeshHandle",
+                     "release_oh_mesh(PcmsInterpolatorOHMeshHandle)", return);
+  arg1 = *((PcmsInterpolatorOHMeshHandle*)(farg1->cptr));
   release_oh_mesh(arg1);
 }
 
+SWIGEXPORT void _wrap_pcms_interpolate(SwigClassWrapper* farg1,
+                                       void const** farg2, int const* farg3,
+                                       void const** farg4, int const* farg5)
+{
+  PcmsInterpolatorHandle arg1;
+  void* arg2 = (void*)0;
+  int arg3;
+  void* arg4 = (void*)0;
+  int arg5;
 
-SWIGEXPORT void _wrap_pcms_interpolate(SwigClassWrapper *farg1, void const **farg2, int const *farg3, void const **farg4, int const *farg5) {
-  PcmsInterpolatorHandle arg1 ;
-  void *arg2 = (void *) 0 ;
-  int arg3 ;
-  void *arg4 = (void *) 0 ;
-  int arg5 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "PcmsInterpolatorHandle", "PcmsInterpolatorHandle", "pcms_interpolate(PcmsInterpolatorHandle,void *,int,void *,int)", return );
-  arg1 = *((PcmsInterpolatorHandle *)(farg1->cptr));
-  arg2 = (void *)(*farg2);
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsInterpolatorHandle", "PcmsInterpolatorHandle",
+    "pcms_interpolate(PcmsInterpolatorHandle,void *,int,void *,int)", return);
+  arg1 = *((PcmsInterpolatorHandle*)(farg1->cptr));
+  arg2 = (void*)(*farg2);
   arg3 = (int)(*farg3);
-  arg4 = (void *)(*farg4);
+  arg4 = (void*)(*farg4);
   arg5 = (int)(*farg5);
-  pcms_interpolate(arg1,arg2,arg3,arg4,arg5);
+  pcms_interpolate(arg1, arg2, arg3, arg4, arg5);
 }
 
+SWIGEXPORT void _wrap_pcms_interpolate_point_based(SwigClassWrapper* farg1,
+                                                   void const** farg2,
+                                                   int const* farg3,
+                                                   void const** farg4,
+                                                   int const* farg5)
+{
+  PcmsPointBasedInterpolatorHandle arg1;
+  void* arg2 = (void*)0;
+  int arg3;
+  void* arg4 = (void*)0;
+  int arg5;
 
-SWIGEXPORT void _wrap_pcms_interpolate_point_based(SwigClassWrapper *farg1, void const **farg2, int const *farg3, void const **farg4, int const *farg5) {
-  PcmsPointBasedInterpolatorHandle arg1 ;
-  void *arg2 = (void *) 0 ;
-  int arg3 ;
-  void *arg4 = (void *) 0 ;
-  int arg5 ;
-  
-  SWIG_check_nonnull(farg1->cptr, "PcmsPointBasedInterpolatorHandle", "PcmsPointBasedInterpolatorHandle", "pcms_interpolate_point_based(PcmsPointBasedInterpolatorHandle,void *,int,void *,int)", return );
-  arg1 = *((PcmsPointBasedInterpolatorHandle *)(farg1->cptr));
-  arg2 = (void *)(*farg2);
+  SWIG_check_nonnull(farg1->cptr, "PcmsPointBasedInterpolatorHandle",
+                     "PcmsPointBasedInterpolatorHandle",
+                     "pcms_interpolate_point_based("
+                     "PcmsPointBasedInterpolatorHandle,void *,int,void *,int)",
+                     return);
+  arg1 = *((PcmsPointBasedInterpolatorHandle*)(farg1->cptr));
+  arg2 = (void*)(*farg2);
   arg3 = (int)(*farg3);
-  arg4 = (void *)(*farg4);
+  arg4 = (void*)(*farg4);
   arg5 = (int)(*farg5);
-  pcms_interpolate_point_based(arg1,arg2,arg3,arg4,arg5);
+  pcms_interpolate_point_based(arg1, arg2, arg3, arg4, arg5);
 }
-
-
-

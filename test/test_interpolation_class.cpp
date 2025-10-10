@@ -139,9 +139,8 @@ TEST_CASE("Test MLSInterpolationHandler")
     for (int i = 0; i < source_points_host.size(); i++) {
       source_points_host_write[i] = source_points_host[i];
     }
-    auto source_points_view =
-      pcms::Rank1View<double, pcms::HostMemorySpace>(
-        source_points_host_write.data(), source_points_host_write.size());
+    auto source_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+      source_points_host_write.data(), source_points_host_write.size());
 
     auto target_points_reals = source_mesh.coords();
     auto target_points_host =
@@ -151,9 +150,8 @@ TEST_CASE("Test MLSInterpolationHandler")
     for (int i = 0; i < target_points_host.size(); i++) {
       target_points_host_write[i] = target_points_host[i];
     }
-    auto target_points_view =
-      pcms::Rank1View<double, pcms::HostMemorySpace>(
-        target_points_host_write.data(), target_points_host_write.size());
+    auto target_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+      target_points_host_write.data(), target_points_host_write.size());
     REQUIRE(source_mesh.dim() == 2);
     printf("Point cloud based search...\n");
     auto point_mls = MLSPointCloudInterpolation(
@@ -192,12 +190,20 @@ TEST_CASE("Test MLSInterpolationHandler")
     printf("Evaluating Point Cloud Based MLS Interpolation...\n");
     point_mls.eval(sourceArrayView, point_cloud_interpolatedArrayView);
 
-    // write the meshes in vtk format with the interpolated values as tag to visualize the interpolated values
-    source_mesh.add_tag<double>(Omega_h::VERT, "mesh_interpolated_sinxcosy", 1, Omega_h::Write<double>(interpolated_data_hwrite));
-    source_mesh.add_tag<double>(Omega_h::VERT, "point_cloud_interpolated_sinxcosy", 1,  Omega_h::Write(point_cloud_interpolated_data_hwrite));
-    source_mesh.add_tag<double>(Omega_h::VERT, "exact_sinxcosy", 1, Omega_h::Write(exact_values_at_nodes));
-    source_mesh.add_tag<double>(Omega_h::FACE, "centroid_sinxcosy", 1, sinxcosy_centroid);
-    Omega_h::vtk::write_parallel("source_mesh_with_tags_to_debug.vtk", &source_mesh);
+    // write the meshes in vtk format with the interpolated values as tag to
+    // visualize the interpolated values
+    source_mesh.add_tag<double>(
+      Omega_h::VERT, "mesh_interpolated_sinxcosy", 1,
+      Omega_h::Write<double>(interpolated_data_hwrite));
+    source_mesh.add_tag<double>(
+      Omega_h::VERT, "point_cloud_interpolated_sinxcosy", 1,
+      Omega_h::Write(point_cloud_interpolated_data_hwrite));
+    source_mesh.add_tag<double>(Omega_h::VERT, "exact_sinxcosy", 1,
+                                Omega_h::Write(exact_values_at_nodes));
+    source_mesh.add_tag<double>(Omega_h::FACE, "centroid_sinxcosy", 1,
+                                sinxcosy_centroid);
+    Omega_h::vtk::write_parallel("source_mesh_with_tags_to_debug.vtk",
+                                 &source_mesh);
 
     REQUIRE(isClose(exact_values_at_nodes, interpolated_data_hwrite, 10.0) ==
             true);
@@ -263,14 +269,14 @@ TEST_CASE("Test MLSInterpolationHandler")
   {
     fprintf(stdout, "\n-------------------- Double Mesh Interpolation Test "
                     "Started --------------------\n");
-    auto target_mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1,
-                                          1, 17, 17, 0, false);
+    auto target_mesh =
+      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 17, 17, 0, false);
     printf("[INFO] Target Mesh created with %d vertices and %d faces\n",
            target_mesh.nverts(), target_mesh.nfaces());
 
     // TODO: This is a way around.
     // https://github.com/SCOREC/pcms/pull/148#discussion_r1926204199
-    //translate_mesh(&target_mesh, Omega_h::Vector<2>{(1.0 - 0.999) / 2.0,
+    // translate_mesh(&target_mesh, Omega_h::Vector<2>{(1.0 - 0.999) / 2.0,
     //                                                (1.0 - 0.999) / 2.0});
 
     auto mls_double =

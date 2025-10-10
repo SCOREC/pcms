@@ -7,10 +7,9 @@
 #include "adj_search.hpp"
 #include "interpolation_helpers.h"
 #include <Omega_h_file.hpp>
-//#include <Omega_h_library.hpp>
+// #include <Omega_h_library.hpp>
 #include <pcms/arrays.h>
 #include <string>
-
 
 class InterpolationBase
 {
@@ -25,51 +24,51 @@ class InterpolationBase
 };
 
 /**
-  *@brief Meshless interpolation using MLS
-*/
+ *@brief Meshless interpolation using MLS
+ */
 class MLSPointCloudInterpolation : public InterpolationBase
 {
 public:
+  MLSPointCloudInterpolation(
+    pcms::Rank1View<double, pcms::HostMemorySpace> source_points,
+    pcms::Rank1View<double, pcms::HostMemorySpace> target_points, int dim,
+    double radius, uint min_req_supports = 10, uint degree = 3,
+    bool adapt_radius = true);
 
-    MLSPointCloudInterpolation(pcms::Rank1View<double, pcms::HostMemorySpace> source_points,
-                            pcms::Rank1View<double, pcms::HostMemorySpace> target_points, int dim, double radius,
-                            uint min_req_supports = 10, uint degree = 3, bool adapt_radius = true);
+  void eval(
+    pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
+    pcms::Rank1View<double, pcms::HostMemorySpace> target_field) override;
 
-    void eval(
-        pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
-        pcms::Rank1View<double, pcms::HostMemorySpace> target_field) override;
+  SupportResults getSupports() { return supports_; }
+  size_t getSourceSize() const { return source_coords_.size() / dim_; }
+  size_t getTargetSize() const { return target_coords_.size() / dim_; }
 
-    SupportResults getSupports() { return supports_; }
-    size_t getSourceSize() const { return source_coords_.size()/dim_; }
-    size_t getTargetSize() const { return target_coords_.size()/dim_; }
+private:
+  int dim_;
+  double radius_;
+  bool adapt_radius_;
+  // bool single_mesh_ = false;
+  uint degree_;
+  uint min_req_supports_;
 
-  private:
-    int dim_;
-    double radius_;
-    bool adapt_radius_;
-    //bool single_mesh_ = false;
-    uint degree_;
-    uint min_req_supports_;
+  // InterpolationType interpolation_type_;
+  Omega_h::LO n_sources_ = 0;
+  Omega_h::LO n_targets_ = 0;
+  Omega_h::Reals source_coords_;
+  Omega_h::Reals target_coords_;
 
-    // InterpolationType interpolation_type_;
-    Omega_h::LO n_sources_ = 0;
-    Omega_h::LO n_targets_ = 0;
-    Omega_h::Reals source_coords_;
-    Omega_h::Reals target_coords_;
+  SupportResults supports_;
 
-    SupportResults supports_;
+  Omega_h::HostWrite<Omega_h::Real> target_field_;
+  Omega_h::HostWrite<Omega_h::Real> source_field_;
 
-    Omega_h::HostWrite<Omega_h::Real> target_field_;
-    Omega_h::HostWrite<Omega_h::Real> source_field_;
-
-    void fill_support_structure(
-                 Omega_h::Write<Omega_h::Real> radii2_l,
-                 Omega_h::Write<Omega_h::LO> num_supports);
-    void distance_based_pointcloud_search(
-      Omega_h::Write<Omega_h::Real> radii2_l,
-      Omega_h::Write<Omega_h::LO> num_supports) const;
-    void find_supports(uint min_req_supports = 10,
-                       uint max_allowed_supports = 30, uint max_count=100);
+  void fill_support_structure(Omega_h::Write<Omega_h::Real> radii2_l,
+                              Omega_h::Write<Omega_h::LO> num_supports);
+  void distance_based_pointcloud_search(
+    Omega_h::Write<Omega_h::Real> radii2_l,
+    Omega_h::Write<Omega_h::LO> num_supports) const;
+  void find_supports(uint min_req_supports = 10, uint max_allowed_supports = 30,
+                     uint max_count = 100);
 };
 
 /**

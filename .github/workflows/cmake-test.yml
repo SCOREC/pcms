@@ -213,6 +213,7 @@ jobs:
                   -DPCMS_TIMEOUT=5 \
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2 \
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h \
+                  -DmeshFields_DIR=${{ runner.temp }}/build-meshFields/install/lib/cmake/meshFields \
                   -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev \
                   -Dflcl_DIR=${{ runner.temp }}/build-kokkos-fortran-interop/install/lib/cmake/flcl \
                   -DMPIEXEC_EXECUTABLE=mpirun \

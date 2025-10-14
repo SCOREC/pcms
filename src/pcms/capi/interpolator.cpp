@@ -20,7 +20,8 @@ PcmsInterpolatorHandle pcms_create_interpolator(
 
 PcmsPointBasedInterpolatorHandle pcms_create_point_based_interpolator(
   void* source_points, int source_points_size, void* target_points,
-  int target_points_size, double radius)
+  int target_points_size, double radius, int degree, int min_req_supports,
+  double lambda, double decay_factor)
 {
 
   auto source_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
@@ -28,12 +29,14 @@ PcmsPointBasedInterpolatorHandle pcms_create_point_based_interpolator(
   auto target_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
     reinterpret_cast<double*>(target_points), target_points_size);
   auto* interpolator = new MLSPointCloudInterpolation(
-    source_points_view, target_points_view, 2, radius, 15, 3, true);
+    source_points_view, target_points_view, 2, radius, min_req_supports, degree,
+    true, lambda, decay_factor);
   return {reinterpret_cast<void*>(interpolator)};
 }
 
 PcmsPointBasedInterpolatorHandle pcms_create_degas2xgc_interpolator(
-  const char* xgc_mesh_filename, const char* dg2_mesh_filename, double radius)
+  const char* xgc_mesh_filename, const char* dg2_mesh_filename, double radius,
+  int degree, int min_req_supports, double lambda, double decay_factor)
 {
   // use the xgc_mesh_nodes as source points and
   // dg2 element centroids as target points
@@ -78,7 +81,8 @@ PcmsPointBasedInterpolatorHandle pcms_create_degas2xgc_interpolator(
 
   return pcms_create_point_based_interpolator(
     (void*)dg2_elem_centroids_host.data(), dg2_elem_centroids.size(),
-    (void*)xgc_nodes_host.data(), xgc_nodes.size(), radius);
+    (void*)xgc_nodes_host.data(), xgc_nodes.size(), radius, degree,
+    min_req_supports, lambda, decay_factor);
 }
 
 Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
@@ -116,7 +120,8 @@ void write_void_int_pointer(void* pointer, int value)
 
 PcmsPointBasedInterpolatorHandle pcms_create_degas2xgcnode_interpolator(
   void* target_points, int target_points_size, const char* dg2_mesh_filename,
-  double radius, void* dg2_elem_count)
+  double radius, void* dg2_elem_count, int degree, int min_req_supports,
+  double lambda, double decay_factor)
 {
   // same as above pcms_create_degas2xgc_interpolator but the target points are
   // provided by the user this is useful when the corresponding xgc mesh is not
@@ -129,12 +134,14 @@ PcmsPointBasedInterpolatorHandle pcms_create_degas2xgcnode_interpolator(
 
   return pcms_create_point_based_interpolator(
     (void*)dg2_elem_centroids_host.data(), dg2_elem_centroids_host.size(),
-    target_points, target_points_size, radius);
+    target_points, target_points_size, radius, degree, min_req_supports, lambda,
+    decay_factor);
 }
 
 PcmsPointBasedInterpolatorHandle pcms_create_xgcnodedegas2_interpolator(
   const char* dg2_mesh_filename, void* source_points, int source_points_size,
-  double radius, void* dg2_elem_count)
+  double radius, void* dg2_elem_count, int degree, int min_req_supports,
+  double lambda, double decay_factor)
 {
   int dg2_num_elems = 0;
   auto dg2_elem_centroids_host =
@@ -143,7 +150,8 @@ PcmsPointBasedInterpolatorHandle pcms_create_xgcnodedegas2_interpolator(
 
   return pcms_create_point_based_interpolator(
     source_points, source_points_size, (void*)dg2_elem_centroids_host.data(),
-    dg2_elem_centroids_host.size(), radius);
+    dg2_elem_centroids_host.size(), radius, degree, min_req_supports, lambda,
+    decay_factor);
 }
 
 void pcms_destroy_point_based_interpolator(

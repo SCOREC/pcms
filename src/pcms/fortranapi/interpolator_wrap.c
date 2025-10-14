@@ -532,7 +532,8 @@ SWIGEXPORT void _wrap_PcmsPointBasedInterpolatorHandle_op_assign__(
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_point_based_interpolator(
   void const** farg1, int const* farg2, void const** farg3, int const* farg4,
-  double const* farg5)
+  double const* farg5, int const* farg6, int const* farg7, double const* farg8,
+  double const* farg9)
 {
   SwigClassWrapper fresult;
   void* arg1 = (void*)0;
@@ -540,6 +541,10 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_point_based_interpolator(
   void* arg3 = (void*)0;
   int arg4;
   double arg5;
+  int arg6;
+  int arg7;
+  double arg8;
+  double arg9;
   PcmsPointBasedInterpolatorHandle result;
 
   arg1 = (void*)(*farg1);
@@ -547,7 +552,12 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_point_based_interpolator(
   arg3 = (void*)(*farg3);
   arg4 = (int)(*farg4);
   arg5 = (double)(*farg5);
-  result = pcms_create_point_based_interpolator(arg1, arg2, arg3, arg4, arg5);
+  arg6 = (int)(*farg6);
+  arg7 = (int)(*farg7);
+  arg8 = (double)(*farg8);
+  arg9 = (double)(*farg9);
+  result = pcms_create_point_based_interpolator(arg1, arg2, arg3, arg4, arg5,
+                                                arg6, arg7, arg8, arg9);
   fresult.cptr = (PcmsPointBasedInterpolatorHandle*)memcpy(
     (PcmsPointBasedInterpolatorHandle*)calloc(
       1, sizeof(PcmsPointBasedInterpolatorHandle)),
@@ -557,19 +567,28 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_point_based_interpolator(
 }
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgc_interpolator(
-  SwigArrayWrapper* farg1, SwigArrayWrapper* farg2, double const* farg3)
+  SwigArrayWrapper* farg1, SwigArrayWrapper* farg2, double const* farg3,
+  int const* farg4, int const* farg5, double const* farg6, double const* farg7)
 {
   SwigClassWrapper fresult;
   char* arg1 = (char*)0;
   char* arg2 = (char*)0;
   double arg3;
+  int arg4;
+  int arg5;
+  double arg6;
+  double arg7;
   PcmsPointBasedInterpolatorHandle result;
 
   arg1 = (char*)(farg1->data);
   arg2 = (char*)(farg2->data);
   arg3 = (double)(*farg3);
-  result = pcms_create_degas2xgc_interpolator((char const*)arg1,
-                                              (char const*)arg2, arg3);
+  arg4 = (int)(*farg4);
+  arg5 = (int)(*farg5);
+  arg6 = (double)(*farg6);
+  arg7 = (double)(*farg7);
+  result = pcms_create_degas2xgc_interpolator(
+    (char const*)arg1, (char const*)arg2, arg3, arg4, arg5, arg6, arg7);
   fresult.cptr = (PcmsPointBasedInterpolatorHandle*)memcpy(
     (PcmsPointBasedInterpolatorHandle*)calloc(
       1, sizeof(PcmsPointBasedInterpolatorHandle)),
@@ -580,7 +599,8 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgc_interpolator(
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgcnode_interpolator(
   void const** farg1, int const* farg2, SwigArrayWrapper* farg3,
-  double const* farg4, void const** farg5)
+  double const* farg4, void const** farg5, int const* farg6, int const* farg7,
+  double const* farg8, double const* farg9)
 {
   SwigClassWrapper fresult;
   void* arg1 = (void*)0;
@@ -588,6 +608,10 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgcnode_interpolator(
   char* arg3 = (char*)0;
   double arg4;
   void* arg5 = (void*)0;
+  int arg6;
+  int arg7;
+  double arg8;
+  double arg9;
   PcmsPointBasedInterpolatorHandle result;
 
   arg1 = (void*)(*farg1);
@@ -595,8 +619,12 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgcnode_interpolator(
   arg3 = (char*)(farg3->data);
   arg4 = (double)(*farg4);
   arg5 = (void*)(*farg5);
-  result = pcms_create_degas2xgcnode_interpolator(arg1, arg2, (char const*)arg3,
-                                                  arg4, arg5);
+  arg6 = (int)(*farg6);
+  arg7 = (int)(*farg7);
+  arg8 = (double)(*farg8);
+  arg9 = (double)(*farg9);
+  result = pcms_create_degas2xgcnode_interpolator(
+    arg1, arg2, (char const*)arg3, arg4, arg5, arg6, arg7, arg8, arg9);
   fresult.cptr = (PcmsPointBasedInterpolatorHandle*)memcpy(
     (PcmsPointBasedInterpolatorHandle*)calloc(
       1, sizeof(PcmsPointBasedInterpolatorHandle)),
@@ -607,7 +635,8 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_degas2xgcnode_interpolator(
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgcnodedegas2_interpolator(
   SwigArrayWrapper* farg1, void const** farg2, int const* farg3,
-  double const* farg4, void const** farg5)
+  double const* farg4, void const** farg5, int const* farg6, int const* farg7,
+  double const* farg8, double const* farg9)
 {
   SwigClassWrapper fresult;
   char* arg1 = (char*)0;
@@ -615,6 +644,10 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgcnodedegas2_interpolator(
   int arg3;
   double arg4;
   void* arg5 = (void*)0;
+  int arg6;
+  int arg7;
+  double arg8;
+  double arg9;
   PcmsPointBasedInterpolatorHandle result;
 
   arg1 = (char*)(farg1->data);
@@ -622,8 +655,12 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgcnodedegas2_interpolator(
   arg3 = (int)(*farg3);
   arg4 = (double)(*farg4);
   arg5 = (void*)(*farg5);
-  result = pcms_create_xgcnodedegas2_interpolator((char const*)arg1, arg2, arg3,
-                                                  arg4, arg5);
+  arg6 = (int)(*farg6);
+  arg7 = (int)(*farg7);
+  arg8 = (double)(*farg8);
+  arg9 = (double)(*farg9);
+  result = pcms_create_xgcnodedegas2_interpolator(
+    (char const*)arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
   fresult.cptr = (PcmsPointBasedInterpolatorHandle*)memcpy(
     (PcmsPointBasedInterpolatorHandle*)calloc(
       1, sizeof(PcmsPointBasedInterpolatorHandle)),

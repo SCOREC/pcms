@@ -85,14 +85,17 @@ MLSInterpolationHandler::MLSInterpolationHandler(
 MLSPointCloudInterpolation::MLSPointCloudInterpolation(
   pcms::Rank1View<double, pcms::HostMemorySpace> source_points,
   pcms::Rank1View<double, pcms::HostMemorySpace> target_points, int dim,
-  double radius, uint min_req_supports, uint degree, bool adapt_radius)
+  double radius, uint min_req_supports, uint degree, bool adapt_radius,
+  double lambda, double decay_factor)
   : dim_(dim),
     radius_(radius),
     adapt_radius_(adapt_radius),
     degree_(degree),
     min_req_supports_(min_req_supports),
     n_targets_(target_points.size() / dim),
-    n_sources_(source_points.size() / dim)
+    n_sources_(source_points.size() / dim),
+    lambda_(lambda),
+    decay_factor_(decay_factor)
 {
   source_field_ = Omega_h::HostWrite<Omega_h::Real>(source_points.size() / dim_,
                                                     "source field");
@@ -388,7 +391,8 @@ void MLSPointCloudInterpolation::eval(
   // TODO: make the basis function a template or pass it as a parameter
   auto target_field_write = mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
-    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN, 0, 1e-6, 5);
+    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN, lambda_, 1e-6,
+    decay_factor_);
 
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_field_write);
   copyHostWrite2ScalarArrayView(target_field_, target_field);

@@ -33,7 +33,7 @@ public:
     pcms::Rank1View<double, pcms::HostMemorySpace> source_points,
     pcms::Rank1View<double, pcms::HostMemorySpace> target_points, int dim,
     double radius, uint min_req_supports = 10, uint degree = 3,
-    bool adapt_radius = true);
+    bool adapt_radius = true, double lambda = 0.0, double decay_factor = 5.0);
 
   void eval(
     pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
@@ -50,6 +50,8 @@ private:
   // bool single_mesh_ = false;
   uint degree_;
   uint min_req_supports_;
+  double lambda_;
+  double decay_factor_;
 
   // InterpolationType interpolation_type_;
   Omega_h::LO n_sources_ = 0;

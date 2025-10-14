@@ -190,7 +190,7 @@ void MLSPointCloudInterpolation::fill_support_structure(
     },
     total_supports);
 
-  printf("Total supports found: %d\n", total_supports);
+  pcms::printInfo("Total supports found: %d\n", total_supports);
   // resize the support index
   // supports_.supports_idx = Omega_h::Write<Omega_h::LO>(total_supports, 0);
   auto support_idx_l = Omega_h::Write<Omega_h::LO>(total_supports, 0);
@@ -277,13 +277,13 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports,
                                                uint max_count)
 {
 #ifndef NDEBUG
-  printf("First 10 Target Points with %d points:\n", n_targets_);
+  pcms::printInfo("First 10 Target Points with %d points:\n", n_targets_);
   Omega_h::parallel_for(
     "print target points", 10, OMEGA_H_LAMBDA(const int& i) {
       printf("Target Point %d: (%f, %f)\n", i, target_coords_[i * 2 + 0],
              target_coords_[i * 2 + 1]);
     });
-  printf("First 10 Source Points with %d points:\n", n_sources_);
+  pcms::printInfo("First 10 Source Points with %d points:\n", n_sources_);
   Omega_h::parallel_for(
     "print source points", 10, OMEGA_H_LAMBDA(const int& i) {
       printf("Source Point %d: (%f, %f)\n", i, source_coords_[i * 2 + 0],
@@ -310,10 +310,11 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports,
 
     Kokkos::fence();
     if (loop_count > max_count) {
-      printf("Loop count exceeded 100 and still not converged.\n"
-             "Manually check if the number of minimum and maximum supports are "
-             "reasonable.\n"
-             "There are situations when it may not converge.\n");
+      pcms::printError(
+        "Loop count exceeded 100 and still not converged.\n"
+        "Manually check if the number of minimum and maximum supports are "
+        "reasonable.\n"
+        "There are situations when it may not converge.\n");
       break;
     }
 
@@ -324,16 +325,17 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports,
     if (!within_number_of_support_range(min_supports_found, max_supports_found,
                                         min_req_supports,
                                         max_allowed_supports)) {
-      printf("Adjusting radius: Iter %d:(min: %d max: %d) Min Req: %d Max "
-             "Allowed %d\n",
-             loop_count, min_supports_found, max_supports_found,
-             min_req_supports, max_allowed_supports);
+      pcms::printInfo(
+        "Adjusting radius: Iter %d:(min: %d max: %d) Min Req: %d Max "
+        "Allowed %d\n",
+        loop_count, min_supports_found, max_supports_found, min_req_supports,
+        max_allowed_supports);
       adapt_radii(min_req_supports, max_allowed_supports, n_targets_, radii2_l,
                   num_supports);
     }
   }
-  printf("Searched %d times and supports found: min: %d max: %d\n", loop_count,
-         min_supports_found, max_supports_found);
+  pcms::printInfo("Searched %d times and supports found: min: %d max: %d\n",
+                  loop_count, min_supports_found, max_supports_found);
 
   fill_support_structure(radii2_l, num_supports);
 }
@@ -378,7 +380,7 @@ void MLSPointCloudInterpolation::eval(
                        "Target Data and Target Points size mismatch: %zu %d\n",
                        source_field.size(), source_coords_.size() / dim_);
   for (int i = 0; i < 10; i++) {
-    printf("i = %d	field = %f\n", i, source_field[i]);
+    pcms::printInfo("i = %d	field = %f\n", i, source_field[i]);
   }
 
   copyHostScalarArrayView2HostWrite(source_field, source_field_);

@@ -8,6 +8,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/interpolator/interpolation_base.h>
+#include <pcms/print.h>
 
 #include <vector>
 #include <iostream>
@@ -31,7 +32,8 @@ bool areArraysEqualUnordered(const Omega_h::HostRead<Omega_h::LO>& array1,
 
   // Compare the frequency maps
   if (freq1 != freq2) {
-    printf("[ERROR] Arrays differ in the range [%d, %d)\n", start, end);
+    pcms::printError("[ERROR] Arrays differ in the range [%d, %d)\n", start,
+                     end);
     return false;
   }
 
@@ -112,13 +114,13 @@ void node2CentroidInterpolation(Omega_h::Mesh& mesh,
 
 TEST_CASE("Test MLSInterpolationHandler")
 {
-  fprintf(stdout, "[INFO] Starting MLS Interpolation Test...\n");
+  pcms::printInfo("[INFO] Starting MLS Interpolation Test...\n");
   auto lib = Omega_h::Library{};
   auto world = lib.world();
   auto source_mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 20, 20, 0, false);
-  printf("[INFO] Mesh created with %d vertices and %d faces\n",
-         source_mesh.nverts(), source_mesh.nfaces());
+  pcms::printInfo("[INFO] Mesh created with %d vertices and %d faces\n",
+                  source_mesh.nverts(), source_mesh.nfaces());
 
   Omega_h::Write<Omega_h::Real> source_sinxcosy_node(source_mesh.nverts(),
                                                      "source_sinxcosy_node");
@@ -126,9 +128,9 @@ TEST_CASE("Test MLSInterpolationHandler")
 
   SECTION("Single Mesh")
   {
-    fprintf(stdout, "\n-------------------- Single Mesh Interpolation Test "
+    pcms::printInfo("\n-------------------- Single Mesh Interpolation Test "
                     "Started --------------------\n");
-    printf("Mesh based search...\n");
+    pcms::printInfo("Mesh based search...\n");
     auto mls_single = MLSInterpolationHandler(source_mesh, 0.12, 15, 3, true);
 
     auto source_points_reals = getCentroids(source_mesh);
@@ -153,7 +155,7 @@ TEST_CASE("Test MLSInterpolationHandler")
     auto target_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
       target_points_host_write.data(), target_points_host_write.size());
     REQUIRE(source_mesh.dim() == 2);
-    printf("Point cloud based search...\n");
+    pcms::printInfo("Point cloud based search...\n");
     auto point_mls = MLSPointCloudInterpolation(
       source_points_view, target_points_view, 2, 0.12, 15, 3, true);
 
@@ -185,9 +187,9 @@ TEST_CASE("Test MLSInterpolationHandler")
       "Target size mismatch: %zu vs %zu\n", interpolatedArrayView.size(),
       mls_single.getTargetSize());
 
-    printf("Evaluating Mesh based MLS Interpolation...\n");
+    pcms::printInfo("Evaluating Mesh based MLS Interpolation...\n");
     mls_single.eval(sourceArrayView, interpolatedArrayView);
-    printf("Evaluating Point Cloud Based MLS Interpolation...\n");
+    pcms::printInfo("Evaluating Point Cloud Based MLS Interpolation...\n");
     point_mls.eval(sourceArrayView, point_cloud_interpolatedArrayView);
 
     // write the meshes in vtk format with the interpolated values as tag to
@@ -207,8 +209,7 @@ TEST_CASE("Test MLSInterpolationHandler")
 
     REQUIRE(isClose(exact_values_at_nodes, interpolated_data_hwrite, 10.0) ==
             true);
-    fprintf(
-      stdout,
+    pcms::printInfo(
       "[****] Single Mesh Interpolation Test Passed with %.2f%% tolerance!\n",
       10.0);
 
@@ -247,15 +248,15 @@ TEST_CASE("Test MLSInterpolationHandler")
     }
 
     // Check if the point cloud interpolation is same as the MLS interpolation
-    printf("Interpolated data size: %d\n",
-           point_cloud_interpolated_data_hwrite.size());
+    pcms::printInfo("Interpolated data size: %d\n",
+                    point_cloud_interpolated_data_hwrite.size());
     REQUIRE(point_cloud_interpolated_data_hwrite.size() ==
             interpolated_data_hwrite.size());
 
     for (int i = 0; i < interpolated_data_hwrite.size(); i++) {
-      printf("Interpolated data: %d, %.16f, %.16f\n", i,
-             interpolated_data_hwrite[i],
-             point_cloud_interpolated_data_hwrite[i]);
+      pcms::printInfo("Interpolated data: %d, %.16f, %.16f\n", i,
+                      interpolated_data_hwrite[i],
+                      point_cloud_interpolated_data_hwrite[i]);
       if (i == 0 || i == 78)
         continue; // FIXME
 
@@ -267,12 +268,13 @@ TEST_CASE("Test MLSInterpolationHandler")
 
   SECTION("Double Mesh")
   {
-    fprintf(stdout, "\n-------------------- Double Mesh Interpolation Test "
+    pcms::printInfo("\n-------------------- Double Mesh Interpolation Test "
                     "Started --------------------\n");
     auto target_mesh =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 17, 17, 0, false);
-    printf("[INFO] Target Mesh created with %d vertices and %d faces\n",
-           target_mesh.nverts(), target_mesh.nfaces());
+    pcms::printInfo(
+      "[INFO] Target Mesh created with %d vertices and %d faces\n",
+      target_mesh.nverts(), target_mesh.nfaces());
 
     // TODO: This is a way around.
     // https://github.com/SCOREC/pcms/pull/148#discussion_r1926204199
@@ -302,8 +304,7 @@ TEST_CASE("Test MLSInterpolationHandler")
     REQUIRE(isClose(interpolated_data_hwrite, exact_target_sinxcosy_node_hwrite,
                     10.0) == true);
 
-    fprintf(
-      stdout,
+    pcms::printInfo(
       "[INFO] Double Mesh Interpolation Test Passed with %.2f%% tolerance!\n",
       10.0);
   }
@@ -313,16 +314,16 @@ bool isClose(Omega_h::HostWrite<Omega_h::Real>& array1,
              Omega_h::HostWrite<Omega_h::Real>& array2, double percent_diff)
 {
   if (array1.size() != array2.size()) {
-    fprintf(stderr, "[ERROR] Arrays are not of the same size: %d vs %d\n",
-            array1.size(), array2.size());
+    pcms::printError("[ERROR] Arrays are not of the same size: %d vs %d\n",
+                     array1.size(), array2.size());
     return false;
   }
 
   double eps = percent_diff / 100.0;
   for (int i = 0; i < array1.size(); i++) {
     if (std::abs(array1[i] - array2[i]) > eps * std::abs(array2[i])) {
-      fprintf(stderr, "[ERROR] Arrays differ at index %d: %.16f vs %.16f\n", i,
-              array1[i], array2[i]);
+      pcms::printError("[ERROR] Arrays differ at index %d: %.16f vs %.16f\n", i,
+                       array1[i], array2[i]);
       return false;
     }
   }

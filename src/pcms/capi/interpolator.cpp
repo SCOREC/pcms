@@ -45,8 +45,9 @@ PcmsPointBasedInterpolatorHandle pcms_create_degas2xgc_interpolator(
   // have extra spaces at the end
   xgc_fname = xgc_fname.erase(xgc_fname.find_last_not_of(" \n\r\t") + 1);
   dg2_fname = dg2_fname.erase(dg2_fname.find_last_not_of(" \n\r\t") + 1);
-  printf("The interpolator got xgc mesh file: %s and dg2 mesh file: %s\n",
-         xgc_fname.c_str(), dg2_fname.c_str());
+  pcms::printInfo(
+    "The interpolator got xgc mesh file: %s and dg2 mesh file: %s\n",
+    xgc_fname.c_str(), dg2_fname.c_str());
 
   // read the meshes
   auto xgc_mesh_lib = Omega_h::Library();

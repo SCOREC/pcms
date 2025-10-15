@@ -53,9 +53,12 @@ PcmsPointBasedInterpolatorHandle pcms_create_degas2xgc_interpolator(
     xgc_fname.c_str(), dg2_fname.c_str());
 
   // read the meshes
-  auto xgc_mesh_lib = Omega_h::Library();
+  MPI_Comm xgc_comm, dg2_comm;
+  MPI_Comm_dup(MPI_COMM_SELF, &xgc_comm);
+  MPI_Comm_dup(MPI_COMM_SELF, &dg2_comm);
+  auto xgc_mesh_lib = Omega_h::Library(nullptr, nullptr, xgc_comm);
   auto xgc_mesh = Omega_h::binary::read(xgc_fname, xgc_mesh_lib.world());
-  auto dg2_mesh_lib = Omega_h::Library();
+  auto dg2_mesh_lib = Omega_h::Library(nullptr, nullptr, dg2_comm);
   auto dg2_mesh = Omega_h::binary::read(dg2_fname, dg2_mesh_lib.world());
 
   auto xgc_nodes = xgc_mesh.coords();

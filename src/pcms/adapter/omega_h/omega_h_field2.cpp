@@ -122,8 +122,7 @@ OmegaHField2::OmegaHField2(const OmegaHFieldLayout& layout)
   : layout_(layout),
     mesh_(layout.GetMesh()),
     search_(mesh_, 10, 10),
-    dof_holder_data_("",
-                     layout.GetNumOwnedDofHolder() * layout.GetNumComponents())
+    dof_holder_data_("", static_cast<size_t>(layout.OwnedSize()))
 {
   auto nodes_per_dim = layout.GetNodesPerDim();
   if (nodes_per_dim[2] == 0 && nodes_per_dim[3] == 0) {
@@ -135,6 +134,7 @@ OmegaHField2::OmegaHField2(const OmegaHFieldLayout& layout)
         case 2:
           mesh_field_ = std::make_unique<MeshFieldBackendImpl<2, 1>>(mesh_);
           break;
+        default: break; // backend is null
       }
     } else if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 1) {
       switch (mesh_.dim()) {
@@ -144,6 +144,7 @@ OmegaHField2::OmegaHField2(const OmegaHFieldLayout& layout)
         case 3:
           mesh_field_ = std::make_unique<MeshFieldBackendImpl<3, 2>>(mesh_);
           break;
+        default: break; // backend is null
       }
     }
   }
@@ -157,7 +158,8 @@ Rank1View<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData() const
   size_t offset = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i]) {
-      size_t len = mesh_.nents(i) * nodes_per_dim[i] * num_components;
+      size_t len =
+        static_cast<size_t>(mesh_.nents(i) * nodes_per_dim[i] * num_components);
       Rank1View<Real, HostMemorySpace> subspan{
         std::data(dof_holder_data_) + offset, len};
       mesh_field_->GetData(subspan, nodes_per_dim[i], num_components, i);
@@ -179,7 +181,8 @@ void OmegaHField2::SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data)
   size_t offset = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i]) {
-      size_t len = mesh_.nents(i) * nodes_per_dim[i] * num_components;
+      size_t len =
+        static_cast<size_t>(mesh_.nents(i) * nodes_per_dim[i] * num_components);
       Rank1View<const Real, HostMemorySpace> subspan{
         data.data_handle() + offset, len};
       mesh_field_->SetData(subspan, nodes_per_dim[i], num_components, i);
@@ -226,7 +229,7 @@ void OmegaHField2::Evaluate(LocalizationHint location,
   }
 
   OmegaHField2LocalizationHint hint =
-    *((OmegaHField2LocalizationHint*)location.data.get());
+    *reinterpret_cast<OmegaHField2LocalizationHint*>(location.data.get());
 
   auto eval_results = mesh_field_->evaluate(hint.coordinates_, hint.offsets_);
 

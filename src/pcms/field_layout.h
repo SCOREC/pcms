@@ -10,7 +10,7 @@ namespace pcms
 {
 
 constexpr int ent_offsets_len = 5;
-typedef std::array<size_t, ent_offsets_len> EntOffsetsArray;
+using EntOffsetsArray = std::array<size_t, ent_offsets_len>;
 
 struct PartitionMapping
 {

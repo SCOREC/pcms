@@ -10,9 +10,20 @@
 #include <Omega_h_for.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
-constexpr static double abs_tol = 1e-18;
-constexpr static double rel_tol = 1e-12;
+constexpr static double abs_tol = 1e-18; /// abs tolerance
+constexpr static double rel_tol = 1e-12; /// rel tolerance
 
+/**
+ * @brief Stores results of mesh element intersections for conservative
+ * transfer.
+ *
+ * Contains mappings from each target element to the list of source elements
+ * that intersect with it. Used to guide integration over overlapping regions.
+ *
+ * - `tgt2src_offsets[i]` is the offset into `tgt2src_indices` where source
+ *    elements for target element `i` begin.
+ * - `tgt2src_indices` contains flattened indices of source elements per target.
+ */
 struct IntersectionResults
 {
   Omega_h::LOs tgt2src_offsets;
@@ -77,6 +88,31 @@ inline Kokkos::View<Omega_h::Real* [2]> compute_centroid(Omega_h::Mesh& mesh)
 
   return cell_centroids;
 }
+/**
+ * @brief Performs adjacency-based intersection search between target and source
+ * elements.
+ *
+ * For each target element, starting from the source element that contains its
+ * centroid, a queue-based BFS traversal is used over the adjacency graph of
+ * source elements. If an element intersects the target triangle (based on area
+ * tolerance), it is included.
+ *
+ * @param tgt2src_offsets Offsets array (only used when writing indices).
+ * @param[out] nIntersections Number of intersecting source elements per target
+ * element.
+ * @param[out] tgt2src_indices Indices of intersecting source elements.
+ * @param is_count_only If true, only counts intersections; if false, also fills
+ * tgt2src_indices.
+ *
+ * @note This method assumes 2D linear triangles and uses
+ * `r3d::intersect_simplices` for geometric intersection.
+ *
+ * @see r3d::intersect_simplices, intersectTargets
+ */
+void FindIntersections::adjBasedIntersectSearch(
+  const Omega_h::LOs& tgt2src_offsets,
+  Omega_h::Write<Omega_h::LO>& nIntersections,
+  Omega_h::Write<Omega_h::LO>& tgt2src_indices, bool is_count_only);
 
 void FindIntersections::adjBasedIntersectSearch(
   const Omega_h::LOs& tgt2src_offsets,
@@ -183,6 +219,26 @@ void FindIntersections::adjBasedIntersectSearch(
     }, // end of lambda
     "count the number of intersections for each target element");
 }
+
+/**
+ * @brief Computes source-target element intersections for conservative
+ * projection.
+ *
+ * For each target element in the target mesh, this function identifies source
+ * elements from the source mesh that geometrically intersect with it using an
+ * adjacency-based breadth-first search strategy. The result is returned as a
+ * compact mapping.
+ *
+ * @param source_mesh The source Omega_h mesh.
+ * @param target_mesh The target Omega_h mesh.
+ * @return An IntersectionResults struct containing target-to-source mapping
+ * data.
+ *
+ * @note The intersection test is done using 2D polygon intersection routines
+ * from r3d. Only valid (non-degenerate) polygonal intersections are included.
+ *
+ * @see FindIntersections::adjBasedIntersectSearch
+ */
 
 IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
                                      Omega_h::Mesh& target_mesh)

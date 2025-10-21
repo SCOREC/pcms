@@ -129,20 +129,6 @@ inline PetscErrorCode calculateMassMatrix(Omega_h::Mesh& mesh, Mat* mass_out)
 
   auto host_elmMassMatrix = Kokkos::create_mirror_view(elmMassMatrix);
 
-  /*
-  std::cerr << " DEBUG: printing the element mass matrix \n";
-  for (int i = 0; i < host_elmMassMatrix.size(); ++i) {
-    std::cout << host_elmMassMatrix[i] << " ";
-  }
-
-  */
-
-  // std::cout << "\n";
-  // mesh.add_tag(2, "elmMassMatrix", 3 * 3,
-  //              Omega_h::read(Omega_h::Write<MeshField::Real>(elmMassMatrix)));
-
-  //  Omega_h::vtk::write_parallel("massMatrix.vtk", &mesh, 2);
-
   Mat mass;
   PetscCall(CreateMatrix(mesh, &mass));
   PetscBool is_kokkos;

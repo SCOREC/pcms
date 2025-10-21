@@ -1,3 +1,20 @@
+/**
+ * @file conservative_projection_solver.hpp
+ * @brief Solves the conservative projection of scalar fields between
+ * non-matching meshes.
+ *
+ * Provides the main interface to perform Galerkin projection of scalar fields
+ * from a source mesh to a target mesh using conservative transfer using a
+ * supermesh generated from mesh intersections.
+ *
+ * The solver computes the right-hand side (load vector), assembles the mass
+ * matrix, and solves the resulting linear system to obtain projected nodal
+ * values.
+ *
+ * @created by Abhiyan Paudel
+ * @date August 2025
+ */
+
 #ifndef PCMS_INTERPOLATOR_GALERKIN_PROJECTION_SOLVER_HPP
 #ifndef PCMS_INTERPOLATOR_GALERKIN_PROJECTION_SOLVER_HPP
 
@@ -76,8 +93,8 @@ static Vec solveLinearSystem(Mat A, Vec b)
 }
 
 /**
- * @brief Solves a conservative projection problem to transfer scalar field
- * values onto a target mesh.
+ * @brief Solves a conservative galerkin projection problem to transfer scalar
+ * field values onto a target mesh.
  *
  * This function assembles and solves a linear system of the form:
  * \f[
@@ -89,7 +106,7 @@ static Vec solveLinearSystem(Mat A, Vec b)
  * - \f$f\f$ is the load vector computed on the supermesh,
  * - \f$x\f$ is the unknown nodal field on the target mesh (solution).
  *
- * The method computes the conservative field transfer between two nonconforming
+ * The method computes the conservative field transfer between two non-matching
  * meshes using mesh  intersections (supermesh).
  *
  * ### Algorithm Steps:

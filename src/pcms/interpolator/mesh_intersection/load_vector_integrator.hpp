@@ -1,3 +1,23 @@
+/**
+ * @file load_vector_integrator.hpp
+ * @brief Functions for computing load vectors in conservative field projection.
+ *
+ * This file implements routines to compute the element-wise load vector
+ * (right-hand side) contributions used in Galerkin projection of scalar
+ * fields from a source mesh to a target mesh.
+ *
+ * The integration is performed over polygonal intersections (supermesh) between
+ * source and target elements using barycentric quadrature. The resulting values
+ * represent unassembled local contributions that can later be combined into a
+ * global load vector.
+ *
+ * @note
+ * - Assumes 2D linear triangular meshes.
+ * - Intersection data is provided via the `IntersectionResults` structure.
+ *
+ * @created by Abhiyan Paudel
+ * @date August 2025
+ */
 #ifndef PCMS_INTERPOLATOR_LOAD_VECTOR_INTEGRATOR_HPP
 #define PCMS_INTERPOLATOR_LOAD_VECTOR_INTEGRATOR_HPP
 

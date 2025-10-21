@@ -1,16 +1,16 @@
 /**
- * @file calculateLoadVector.hpp
- * @brief Utilities for assembling load vectors in finite element field transfer
- * routines.
+ * @file calculate_load_vector.hpp
+ * @brief Routines for assembling global load vector in conservative field
+ * projection.
  *
- * This header defines functions for constructing global load vectors for finite
- * element meshes required for conservative field transfer methods between
- * source and target meshes. It leverages Omega_h mesh data structures and PETSc
- * for vector assembly and storage.
+ * Provides functionality to compute and assemble the global load vector
+ * used in Galerkin-based conservative field transfer between non-conforming
+ * meshes.
  *
- * Typical usage involves computing element-wise load vector contributions
- * and assembling them into a global PETSc vector in COO format.
+ * @created by Abhiyan Paudel
+ * @date August 2025
  */
+
 #ifndef PCMS_INTERPOLATOR_CALCULATE_LOAD_VECTOR_HPP
 #define PCMS_INTERPOLATOR_CALCULATE_LOAD_VECTOR_HPP
 #include <Omega_h_adapt.hpp>
@@ -55,6 +55,7 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
  * field values.
  * @param intersection Precomputed intersection data for each target element.
  *                     Includes the number and indices of intersecting source
+ * elements.
  * @param source_values Nodal scalar field values defined on the source mesh.
  * @param[out] loadVec_out Pointer to a PETSc Vec where the assembled load
  * vector will be stored.

@@ -73,10 +73,9 @@ private:
 
 public:
   FindSupports(Omega_h::Mesh& source_mesh_, Omega_h::Mesh& target_mesh_)
-    : source_mesh(source_mesh_), target_mesh(target_mesh_) {};
+    : source_mesh(source_mesh_), target_mesh(target_mesh_){};
 
-  FindSupports(Omega_h::Mesh& mesh_)
-    : source_mesh(mesh_), target_mesh(mesh_) {};
+  FindSupports(Omega_h::Mesh& mesh_) : source_mesh(mesh_), target_mesh(mesh_){};
 
   void adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
                       Omega_h::Write<Omega_h::LO>& nSupports,

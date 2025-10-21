@@ -22,7 +22,7 @@ runs:
     id: check-cache
     with:
       key: build-${{ inputs.repo-name }}-${{ inputs.repo-ref}}
-      path: ${{ runner.temp }}/build-${{ inputs.repo-name }}-${{ inputs.repo-ref}}
+      path: ${{ runner.temp }}/build-${{ inputs.repo-name }}
       
   - name: Checkout Repo
     uses: actions/checkout@v3

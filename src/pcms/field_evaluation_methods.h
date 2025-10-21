@@ -19,7 +19,8 @@ struct Lagrange<0>
 struct NearestNeighbor
 {};
 
-struct Copy{};
+struct Copy
+{};
 
 } // namespace pcms
 

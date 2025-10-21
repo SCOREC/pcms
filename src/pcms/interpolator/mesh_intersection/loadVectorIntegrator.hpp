@@ -356,47 +356,76 @@ Kokkos::View<MeshField::Real*> buildLoadVector(
   return elmLoadVector;
 }
 
-/**
- * @brief Stores scalar error metrics for supermesh-based field projection
- * diagnostics.
- *
- * This structure holds two exactly computable error measures that quantify
- * the accuracy and conservation properties of field transfer between
- * nonconforming meshes. Both metrics are evaluated on the *supermesh*—the
- * polygonal intersection mesh constructed between the source and target meshes.
- *
- * - **`proj_err`** — The L2 projection error between the projected source and
- * target fields, integrated over the supermesh. By definition of the supermesh,
- * both fields are representable in the same function superspace, allowing exact
- * evaluation (up to roundoff) of
- *   \f$ g = P_S^D(q_D) - P_S^T(q_T) = q_D - q_T \f$.
- *   The Galerkin projection being optimal in the L2 norm, this value measures
- *   the exact difference between the donor and recipient fields.
- *
- * - **`cons_err`** — The relative conservation error, representing the
- * imbalance between the total scalar quantities of the projected source and
- * projected target fields over the supermesh domain.
- *
- * The use of the supermesh provides a common integration space that contains
- * the basis functions of both meshes. As a result, both projection and
- * conservation errors are exactly computable without additional search or
- * remapping operations. Only the evaluation of the parent basis functions is
- * required.
- *
- * @note
- * - Errors are computed on the supermesh, not on the original target mesh.
- * - The projection error corresponds to the L2 norm difference between source
- *   and target representations.
- * - The conservation error measures the total integral imbalance over the
- * supermesh.
- *
- * @see evaluate_proj_and_cons_errors, IntersectionResults
- */
+/// Holds projection and conservation error metrics returned by
+/// evaluate_pro_and_cons_errors().
 struct Errors
 {
   double proj_err; ///< L2 projection error computed on the supermesh.
   double cons_err; ///< Relative conservation error over the supermesh.
 };
+
+/**
+ * @brief Computes projection and conservation errors over the supermesh for
+ * scalar field transfer.
+ *
+ * This function quantifies the accuracy and conservation properties of
+ * conservative field transfer between nonconforming meshes using
+ * supermesh-based integration. It returns a struct containing two error
+ * metrics:
+ *
+ * - **Projection Error (`proj_err`)** — Measures the L2 norm of the difference
+ * between the projected source field and the target field over the
+ * supermesh.This reflects how accurately the field has been projected.
+ *
+ * - **Conservation Error (`cons_err`)** — Relative difference in the integrated
+ * field values between source and target representations. This captures
+ * conservation loss across the transfer.
+ *
+ * ### Mathematical Definitions:
+ * \f[
+ *   \text{proj\_err} = \frac{ \| q_D - q_T \|_{L_2(\Omega_S)} }
+ *                           { \| q_D \|_{L_2(\Omega_S)} }, \quad
+ *   \text{cons\_err} = \frac{ \left| \int_{\Omega_S} q_D - \int_{\Omega_S} q_T
+ * \right| } { \left| \int_{\Omega_S} q_D \right| }
+ * \f]
+ *
+ * where:
+ * - \f$q_D\f$ is the scalar field defined on the source mesh (mesh from where
+ * the field is defined),
+ * - \f$q_T\f$ is the projected field on the target mesh (mesh to where the
+ * field is projected),
+ * - \f$\Omega_S\f$ is the supermesh formed by polygonal intersections of source
+ * and target elements.
+ *
+ * Integration is performed by triangulating each intersection region and
+ * applying barycentric quadrature. Degenerate or near-zero-area triangles are
+ * skipped based on area tolerance.
+ *
+ *
+ * @param target_mesh The target mesh object receiving the projected scalar
+ * field.
+ * @param source_mesh The source mesh object containing the original scalar
+ * field values.
+ * @param intersection Precomputed intersection data for each target element.
+ *                     Includes the number and indices of intersecting source
+ * elements.
+ * @param target_values Nodal scalar field values evaluated on the target mesh
+ * using galerkin projection.
+ * @param source_values Scalar field values defined at the nodes of the source
+ * mesh.
+ *
+ *
+ * @return A struct containing:
+ *   - `proj_err`: Exact L2 projection error over the supermesh.
+ *   - `cons_err`: Relative conservation error over the supermesh.
+ *
+ * @note
+ * - Assumes 2D linear (P1) triangular elements.
+ * - Ideal for validating conservative transfer schemes or testing projection
+ * fidelity.
+ *
+ * @see IntersectionResults, buildLoadVector
+ */
 
 Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
                                      Omega_h::Mesh& source_mesh,

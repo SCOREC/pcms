@@ -1,13 +1,18 @@
 /**
  * @file calculateLoadVector.hpp
- * @brief Functions for calculating load vector on finite element meshes
+ * @brief Utilities for assembling load vectors in finite element field transfer
+ * routines.
  *
- * This file contains functions for creating and computing load vectors
- * for finite element calculations using Omega_h mesh structures and PETSc.
+ * This header defines functions for constructing global load vectors for finite
+ * element meshes required for conservative field transfer methods between
+ * source and target meshes. It leverages Omega_h mesh data structures and PETSc
+ * for vector assembly and storage.
+ *
+ * Typical usage involves computing element-wise load vector contributions
+ * and assembling them into a global PETSc vector in COO format.
  */
-
-#ifndef COMPUTING_AT_SCALE_CALCULATE_LOAD_VECTOR_HPP
-#define COMPUTING_AT_SCALE_CALCULATE_LOAD_VECTOR_HPP
+#ifndef PCMS_INTERPOLATOR_CALCULATE_LOAD_VECTOR_HPP
+#define PCMS_INTERPOLATOR_CALCULATE_LOAD_VECTOR_HPP
 #include <Omega_h_adapt.hpp>
 #include <Omega_h_array_ops.hpp>
 #include <Omega_h_atomics.hpp> //Omega_h::atomic_fetch_add
@@ -37,17 +42,36 @@ using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 /**
- * @brief Calculates the load
+ * @brief Assembles the global load vector.
  *
- * This function constructs a mass matrix based on the provided mesh using
- * a finite element approach. It creates coordinate field elements, builds
- * the mass matrix using the massMatrixIntegrator, and sets up the PETSc matrix
- * with appropriate values.
+ * This function computes the unassembled local load vector contributions for
+ * each triangular element in the target mesh using `buildLoadVector()` and then
+ * assembles them into a global PETSc vector in COO format.
  *
- * @param mesh The Omega_h mesh to calculate the mass matrix for
- * @param[out] mass_out Pointer to the resulting mass matrix
- * @return PetscErrorCode PETSc error code (PETSC_SUCCESS if successful)
+ *
+ * @param target_mesh The target Omega_h mesh to which the scalar field is being
+ * projected.
+ * @param source_mesh The source Omega_h mesh containing the original scalar
+ * field values.
+ * @param intersection Precomputed intersection data for each target element.
+ *                     Includes the number and indices of intersecting source
+ * @param source_values Nodal scalar field values defined on the source mesh.
+ * @param[out] loadVec_out Pointer to a PETSc Vec where the assembled load
+ * vector will be stored.
+ *
+ * @return PetscErrorCode Returns PETSC_SUCCESS if successful, or an appropriate
+ * PETSc error code otherwise.
+ *
+ * @note
+ * - Works for 2D linear triangular elements.
+ * - Uses COO-style preallocation and insertion into the PETSc vector.
+ * - Internally calls `buildLoadVector()` to compute per-element contributions.
+ * - The resulting vector is used as the right-hand side (RHS) in a projection
+ * solve.
+ *
+ * @see buildLoadVector,IntersectionResults
  */
+
 inline PetscErrorCode calculateLoadVector(
   Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
   const IntersectionResults& intersection, const Omega_h::Reals& source_values,
@@ -72,18 +96,6 @@ inline PetscErrorCode calculateLoadVector(
   auto hostElmLoadVector = Kokkos::create_mirror_view(elmLoadVector);
   Kokkos::deep_copy(hostElmLoadVector, elmLoadVector);
 
-  /*
-  std::cerr << " DEBUG: printing the load vector \n";
-  for (int i = 0; i < hostElmLoadVector.size(); ++i) {
-    std::cout << hostElmLoadVector[i] << " ";
-  }
-  std::cout << "\n";
-
-  target_mesh.add_tag(2, "elmLoadVector", 3,
-               Omega_h::read(Omega_h::Write<MeshField::Real>(elmLoadVector)));
-
-  Omega_h::vtk::write_parallel("loadVector.vtk", &target_mesh, 2);
-  */
   PetscInt idx = 0;
   for (PetscInt e = 0; e < target_mesh.nelems(); ++e) {
     for (PetscInt vi = 0; vi < numNodesPerTri; ++vi) {

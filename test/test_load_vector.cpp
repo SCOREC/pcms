@@ -51,19 +51,23 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
   auto intersection = intersectTargets(source_mesh, target_mesh);
   SECTION("check localization routine for coincident cases")
   {
-    Kokkos::View<Omega_h::Real* [2]> point("point", 3);
-    point(0, 0) = 0.0;
-    point(0, 1) = 0.0;
-    point(1, 0) = 1.0;
-    point(0, 1) = 0.0;
-    point(2, 0) = 1.0;
-    point(2, 1) = 1.0;
+    Kokkos::View<Omega_h::Real* [2]> points("test_points", 3);
+    auto points_h = Kokkos::create_mirror_view(points);
+    points_h(0, 0) = 0.0;
+    points_h(0, 1) = 0.0;
+    points_h(1, 0) = 1.0;
+    points_h(0, 1) = 0.0;
+    points_h(2, 0) = 1.0;
+    points_h(2, 1) = 1.0;
 
+    Kokkos::deep_copy(points, points_h);
     pcms::GridPointSearch search_cell(target_mesh, 20, 20);
-    auto d_results = search_cell(point);
 
-    auto h_results =
-      Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), d_results);
+    auto d_results = search_cell(points);
+
+    auto h_results = Kokkos::create_mirror_view(d_results);
+
+    Kokkos::deep_copy(h_results, d_results);
 
     REQUIRE(h_results.extent(0) == 3);
 
@@ -84,7 +88,7 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
     Omega_h::Write<Omega_h::Real> values(source_mesh.nverts(), 1.0);
 
     auto load_vector =
-      buildLoadVector(target_mesh, source_mesh, intersection, values);
+      pcms::buildLoadVector(target_mesh, source_mesh, intersection, values);
 
     auto load_vector_host = Kokkos::create_mirror(load_vector);
     Kokkos::deep_copy(load_vector_host, load_vector);
@@ -101,7 +105,7 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
     Omega_h::Write<double> zero_field(source_mesh.nverts(), 0.0);
 
     auto load_vector =
-      buildLoadVector(target_mesh, source_mesh, intersection, zero_field);
+      pcms::buildLoadVector(target_mesh, source_mesh, intersection, zero_field);
 
     auto load_vector_host = Kokkos::create_mirror_view(load_vector);
     Kokkos::deep_copy(load_vector_host, load_vector);
@@ -120,8 +124,8 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
 
     Omega_h::Write<double> constant_field(source_mesh.nverts(), 2.0);
 
-    auto load_vector =
-      buildLoadVector(target_mesh, source_mesh, intersection, constant_field);
+    auto load_vector = pcms::buildLoadVector(target_mesh, source_mesh,
+                                             intersection, constant_field);
 
     auto load_vector_host = Kokkos::create_mirror_view(load_vector);
     Kokkos::deep_copy(load_vector_host, load_vector);

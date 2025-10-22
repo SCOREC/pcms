@@ -121,10 +121,11 @@ struct RBF_MULTIQUADRIC
     double phi;
     double r = Kokkos::sqrt(r_sq);
     double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho;
     if (rho_sq < r_sq) {
       phi = 0.0;
     } else {
-      phi = Kokkos::sqrt(1.0 + a * a * r * r);
+      phi = Kokkos::sqrt(1.0 + a * a * ratio * ratio);
     }
 
     OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
@@ -147,10 +148,11 @@ struct RBF_INVMULTIQUADRIC
     double phi;
     double r = Kokkos::sqrt(r_sq);
     double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho;
     if (rho_sq < r_sq) {
       phi = 0.0;
     } else {
-      phi = 1.0 / Kokkos::sqrt(1.0 + a * a * r * r);
+      phi = 1.0 / Kokkos::sqrt(1.0 + a * a * ratio * ratio);
     }
 
     OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
@@ -164,17 +166,22 @@ struct RBF_INVMULTIQUADRIC
 // thin plate spline
 struct RBF_THINPLATESPLINE
 {
+  double a;
+  RBF_THINPLATESPLINE(double a_val) : a(a_val) {}
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
     double r = Kokkos::sqrt(r_sq);
     double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho;
 
     if (rho_sq < r_sq) {
       phi = 0.0;
     } else {
-      phi = r * r * Kokkos::log(r);
+      phi =
+        a * a * ratio * ratio * Kokkos::log(a * ratio); // a shouldnot be zero
     }
 
     OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
@@ -188,16 +195,21 @@ struct RBF_THINPLATESPLINE
 // cubic
 struct RBF_CUBIC
 {
+
+  double a;
+  RBF_INVMULTIQUADRIC(double a_val) : a(a_val) {}
+
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
     double r = Kokkos::sqrt(r_sq);
     double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho;
     if (rho_sq < r_sq) {
       phi = 0.0;
     } else {
-      phi = r * r * r;
+      phi = a * a * a * ratio * ratio * ratio;
     }
 
     OMEGA_H_CHECK_PRINTF(!std::isnan(phi),

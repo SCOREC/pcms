@@ -38,7 +38,9 @@ private:
 
 public:
   FindIntersections(Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh)
-    : source_mesh_(source_mesh), target_mesh_(target_mesh) {};
+    : source_mesh_(source_mesh), target_mesh_(target_mesh)
+  {
+  }
 
   void adjBasedIntersectSearch(const Omega_h::LOs& tgt2src_offsets,
                                Omega_h::Write<Omega_h::LO>& nIntersections,

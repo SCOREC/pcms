@@ -516,7 +516,7 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
             Kokkos::fabs(Omega_h::triangle_area_from_basis(basis));
           sum_area += area;
 
-          const double EPS_AREA = abs_tol + rel_tol * ploy_area;
+          const double EPS_AREA = abs_tol + rel_tol * poly_area;
           if (area <= EPS_AREA)
             continue; // drops duplicates and colinear/degenerates
 

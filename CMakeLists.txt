@@ -73,9 +73,14 @@ if (PCMS_ENABLE_PETSC)
 	if (NOT PETSC_DIR OR NOT PETSC_ARCH)
 		message(FATAL_ERROR "PETSC_DIR and PETSC_ARCH must be provided when PETSc is not CMake-enabled")
 	endif()
+	message(STATUS "PETSC_DIR = ${PETSC_DIR}")
+	message(STATUS "PETSC_ARCH = ${PETSC_ARCH}")
+	
 	set(PETSC_INCLUDE_DIRS "${PETSC_DIR}/include" "${PETSC_DIR}/${PETSC_ARCH}/include")
 	set(PETSC_LIB_DIR "${PETSC_DIR}/${PETSC_ARCH}/lib")
-	find_library(PETSC_LIBRARY NAMES petsc HINTS ${PETSC_LIB_DIR} REQUIRED)
+
+	message(STATUS "PETSC_LIB_DIR = ${PETSC_LIB_DIR}")
+	find_library(PETSC_LIBRARY petsc HINTS ${PETSC_LIB_DIR})
 
 	if (NOT PETSC_LIBRARY)
 		message(FATAL_ERROR "Couldnot find libpetsc in ${PETSC_LIB_DIR}")

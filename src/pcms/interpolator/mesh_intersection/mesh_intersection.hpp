@@ -109,10 +109,6 @@ inline Kokkos::View<Omega_h::Real* [2]> compute_centroid(Omega_h::Mesh& mesh)
  *
  * @see r3d::intersect_simplices, intersectTargets
  */
-void FindIntersections::adjBasedIntersectSearch(
-  const Omega_h::LOs& tgt2src_offsets,
-  Omega_h::Write<Omega_h::LO>& nIntersections,
-  Omega_h::Write<Omega_h::LO>& tgt2src_indices, bool is_count_only);
 
 void FindIntersections::adjBasedIntersectSearch(
   const Omega_h::LOs& tgt2src_offsets,

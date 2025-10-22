@@ -24,8 +24,8 @@ if (PCMS_ENABLE_MESHFIELDS)
 endif()
 
 if (PCMS_ENABLE_PETSC)
-    target_include_directories(pcms_mesh_intersection PUBLIC ${PETSC_INCLUDES})
-    target_link_libraries(pcms_mesh_intersection PUBLIC ${PETSC_LIBRARIES})
+	target_include_directories(pcms_mesh_intersection PUBLIC ${PCMS_PETSC_INCLUDES})
+	target_link_libraries(pcms_mesh_intersection PUBLIC ${PCMS_PETSC_LIBRARIES})
 endif()
 
 target_compile_definitions(pcms_mesh_intersection PUBLIC R3D_USE_CUDA)
@@ -36,7 +36,6 @@ install(FILES ${MESH_INTERSECTION_HEADERS}
 install(TARGETS pcms_mesh_intersection
         EXPORT meshIntersectionTargets
         INCLUDES DESTINATION include/pcms/interpolator/mesh_intersection
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(EXPORT meshIntersectionTargets

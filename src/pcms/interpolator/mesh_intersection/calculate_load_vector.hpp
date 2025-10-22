@@ -73,6 +73,9 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
  * @see buildLoadVector,IntersectionResults
  */
 
+namespace pcms
+{
+
 inline PetscErrorCode calculateLoadVector(
   Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
   const IntersectionResults& intersection, const Omega_h::Reals& source_values,
@@ -122,5 +125,5 @@ inline PetscErrorCode calculateLoadVector(
   *loadVec_out = vec;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
+} // namespace pcms
 #endif

@@ -112,6 +112,9 @@ static PetscErrorCode CreateMatrix(Omega_h::Mesh& mesh, Mat* A)
  * @param[out] mass_out Pointer to the resulting mass matrix
  * @return PetscErrorCode PETSc error code (PETSC_SUCCESS if successful)
  */
+
+namespace pcms
+{
 inline PetscErrorCode calculateMassMatrix(Omega_h::Mesh& mesh, Mat* mass_out)
 {
   PetscFunctionBeginUser;
@@ -149,5 +152,5 @@ inline PetscErrorCode calculateMassMatrix(Omega_h::Mesh& mesh, Mat* mass_out)
   *mass_out = mass;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
+} // namespace pcms
 #endif

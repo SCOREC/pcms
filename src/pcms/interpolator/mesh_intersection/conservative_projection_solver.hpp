@@ -125,6 +125,9 @@ static Vec solveLinearSystem(Mat A, Vec b)
  *
  *
  */
+
+namespace pcms
+{
 Omega_h::Reals solveGalerkinProjection(Omega_h::Mesh& target_mesh,
                                        Omega_h::Mesh& source_mesh,
                                        const IntersectionResults& intersection,
@@ -217,5 +220,6 @@ Omega_h::Reals rhsVectorMI(Omega_h::Mesh& target_mesh,
 
   return Omega_h::read(rhsvector);
 }
+} // namespace pcms
 
 #endif // PCMS_INTERPOLATOR_GALERKIN_PROJECTION_SOLVER_HPP

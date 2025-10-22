@@ -277,6 +277,8 @@ struct IntegrationData
  * @see IntersectionResults
  */
 
+namespace pcms
+{
 Kokkos::View<MeshField::Real*> buildLoadVector(
   Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
   const IntersectionResults& intersection, const Omega_h::Reals& source_values)
@@ -375,7 +377,7 @@ Kokkos::View<MeshField::Real*> buildLoadVector(
 
   return elmLoadVector;
 }
-
+} // namespace pcms
 /// Holds projection and conservation error metrics returned by
 /// evaluate_pro_and_cons_errors().
 struct Errors

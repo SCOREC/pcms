@@ -10,6 +10,8 @@
 #include <MeshField_ShapeField.hpp>
 #include <Omega_h_mesh.hpp>
 
+namespace pcms
+{
 // computes the mass matrix for each element
 template <typename FieldElement>
 class MassMatrixIntegrator : public MeshField::Integrator
@@ -77,5 +79,5 @@ Kokkos::View<MeshField::Real*> buildMassMatrix(Omega_h::Mesh& mesh,
   mmi.process(coordFe);
   return mmi.elmMassMatrix;
 }
-
+} // namespace pcms
 #endif

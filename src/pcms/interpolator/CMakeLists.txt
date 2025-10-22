@@ -13,6 +13,8 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     spline_interpolator.hpp)
 
 set(PCMS_FIELD_TRANSFER_SOURCES mls_interpolation.cpp)
+
+add_subdirectory(mesh_intersection)
 install(FILES ${PCMS_FIELD_TRANSFER_HEADERS}
         DESTINATION include/pcms/interpolator)
 
@@ -21,7 +23,7 @@ set_target_properties(pcms_interpolator PROPERTIES OUTPUT_NAME pcmsinterpolator
                                                    EXPORT_NAME interpolator)
 add_library(pcms::interpolator ALIAS pcms_interpolator)
 
-target_link_libraries(pcms_interpolator PUBLIC pcms::core Kokkos::kokkoskernels)
+target_link_libraries(pcms_interpolator PUBLIC pcms::core Kokkos::kokkoskernels pcms_mesh_intersection)
 
 install(
   TARGETS pcms_interpolator

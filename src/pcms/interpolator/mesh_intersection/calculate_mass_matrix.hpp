@@ -28,7 +28,7 @@
 #include <petscvec_kokkos.hpp>
 #include <sstream> //ostringstream
 
-#include "massMatrixIntegrator.hpp"
+#include <pcms/interpolator/mesh_intersection/mass_matrix_integrator.hpp>
 #include <MeshField.hpp>
 
 #include <petscmat.h>

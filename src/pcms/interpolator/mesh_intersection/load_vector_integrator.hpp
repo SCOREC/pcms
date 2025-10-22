@@ -25,7 +25,7 @@
 #include <MeshField_Integrate.hpp>
 #include <MeshField_Shape.hpp>
 #include <vector>
-#include "mesh_intersection.hpp"
+#include <pcms/interpolator/mesh_intersection/mesh_intersection.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
 /**

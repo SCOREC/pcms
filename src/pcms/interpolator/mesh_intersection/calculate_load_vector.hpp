@@ -30,7 +30,7 @@
 #include <petscvec_kokkos.hpp>
 #include <sstream> //ostringstream
 
-#include "loadVectorIntegrator.hpp"
+#include <pcms/interpolator/mesh_interscetion/load_vector_integrator.hpp>
 #include <MeshField.hpp>
 
 #include <petscmat.h>

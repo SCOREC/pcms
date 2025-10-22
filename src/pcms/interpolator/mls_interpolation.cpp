@@ -197,7 +197,7 @@ struct RBF_CUBIC
 {
 
   double a;
-  RBF_INVMULTIQUADRIC(double a_val) : a(a_val) {}
+  RBF_CUBIC(double a_val) : a(a_val) {}
 
   OMEGA_H_INLINE
   double operator()(double r_sq, double rho_sq) const

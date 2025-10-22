@@ -61,6 +61,30 @@ endif()
 find_package(ADIOS2 CONFIG 2.5 REQUIRED)
 find_package(Kokkos CONFIG 4.5 REQUIRED)
 
+option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" OFF)
+option(PCMS_ENABLE_PETSC "Enable PETSc support" OFF)
+
+if (PCMS_ENABLE_MESHFIELDS)
+	find_package(meshfields REQUIRED)
+	message(STATUS "Found MeshFields: ${meshfields_DIR} (found version ${meshfields_VERSION})")
+endif()
+
+if (PCMS_ENABLE_PETSC)
+	if (NOT PETSC_DIR OR NOT PETSC_ARCH)
+		message(FATAL_ERROR "PETSC_DIR and PETSC_ARCH must be provided when PETSc is not CMake-enabled")
+	endif()
+	set(PETSC_INCLUDE_DIRS "${PETSC_DIR}/include" "${PETSC_DIR}/${PETSC_ARCH}/include")
+	set(PETSC_LIB_DIR "${PETSC_DIR}/${PETSC_ARCH}/lib")
+	find_library(PETSC_LIBRARY NAMES petsc HINTS ${PETSC_LIB_DIR} REQUIRED)
+
+	if (NOT PETSC_LIBRARY)
+		message(FATAL_ERROR "Couldnot find libpetsc in ${PETSC_LIB_DIR}")
+	endif()
+
+	set(PCMS_PETSC_INCLUDES ${PETSC_INCLUDE_DIRS} CACHE INTERNAL "")
+	set(PCMS_PETSC_LIBRARIES ${PETSC_LIBRARY} CACHE INTERNAL "")
+
+endif()
 add_subdirectory(src)
 
 include(CTest)

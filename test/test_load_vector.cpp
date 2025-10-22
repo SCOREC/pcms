@@ -137,10 +137,3 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
     }
   }
 }
-
-int main(int argc, char* argv[])
-{
-  Kokkos::ScopeGuard guard(argc, argv);
-  Omega_h::Library lib(&argc, &argv);
-  return Catch::Session().run(argc, argv);
-}

@@ -158,8 +158,9 @@ Rank1View<const Real, HostMemorySpace> OmegaHField2::GetDOFHolderData() const
   size_t offset = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i]) {
-      size_t len =
-        static_cast<size_t>(mesh_.nents(i) * nodes_per_dim[i] * num_components);
+      size_t len = static_cast<size_t>(mesh_.nents(i)) *
+                   static_cast<size_t>(nodes_per_dim[i]) *
+                   static_cast<size_t>(num_components);
       Rank1View<Real, HostMemorySpace> subspan{
         std::data(dof_holder_data_) + offset, len};
       mesh_field_->GetData(subspan, nodes_per_dim[i], num_components, i);
@@ -181,8 +182,9 @@ void OmegaHField2::SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data)
   size_t offset = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i]) {
-      size_t len =
-        static_cast<size_t>(mesh_.nents(i) * nodes_per_dim[i] * num_components);
+      size_t len = static_cast<size_t>(mesh_.nents(i)) *
+                   static_cast<size_t>(nodes_per_dim[i]) *
+                   static_cast<size_t>(num_components);
       Rank1View<const Real, HostMemorySpace> subspan{
         data.data_handle() + offset, len};
       mesh_field_->SetData(subspan, nodes_per_dim[i], num_components, i);

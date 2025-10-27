@@ -5,7 +5,7 @@
 #include <redev_variant_tools.h>
 #include <fstream>
 #include "pcms/adapter/xgc/xgc_reverse_classification.h"
-#include "pcms/dummy_field_adapter.h"
+#include "pcms/adapter/dummy_field_adapter.h"
 #include "pcms/assert.h"
 namespace pcms
 {

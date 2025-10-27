@@ -61,6 +61,8 @@ endif()
 find_package(ADIOS2 CONFIG 2.5 REQUIRED)
 find_package(Kokkos CONFIG 4.5 REQUIRED)
 
+find_package(meshfields REQUIRED)
+
 add_subdirectory(src)
 
 include(CTest)

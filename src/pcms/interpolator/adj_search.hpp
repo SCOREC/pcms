@@ -97,7 +97,6 @@ inline void FindSupports::adjBasedSearch(
 {
 
   const auto& sourcePoints_coords = source_mesh.coords();
-  const auto nvertices_source = source_mesh.nverts();
   const auto dim = source_mesh.dim();
 
   const auto& targetPoints_coords = target_mesh.coords();
@@ -377,7 +376,6 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
                                       bool adapt_radius = true)
 {
   FindSupports search(source_mesh, target_mesh);
-  Omega_h::LO nvertices_source = source_mesh.nverts();
   Omega_h::LO nvertices_target = target_mesh.nverts();
 
   Omega_h::Write<Omega_h::LO> nSupports(
@@ -410,11 +408,12 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
       printf("INFO: Loop %d: max_radius: %f\n", r_adjust_loop, max_radius);
 
       // create storage every time to avoid complexity
-      Omega_h::Write<Omega_h::LO> supports_ptr;
-      Omega_h::Write<Omega_h::LO> supports_idx;
+      // FIXME avoid repeated dynamic allocation
+      Omega_h::Write<Omega_h::LO> temp_supports_ptr;
+      Omega_h::Write<Omega_h::LO> temp_supports_idx;
       Kokkos::fence();
-      search.adjBasedSearch(supports_ptr, nSupports, supports_idx, radii2,
-                            true);
+      search.adjBasedSearch(temp_supports_ptr, nSupports, temp_supports_idx,
+                            radii2, true);
       Kokkos::fence();
 
       Omega_h::LO min_supports_found = 0;

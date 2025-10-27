@@ -9,7 +9,9 @@ set(PCMS_HEADERS
     pcms/coordinate_systems.h
     pcms/coordinate_transform.h
     pcms/field.h
+    pcms/create_field.h
     pcms/field_communicator.h
+    pcms/field_communicator2.h
     pcms/field_evaluation_methods.h
     pcms/memory_spaces.h
     pcms/types.h
@@ -18,10 +20,25 @@ set(PCMS_HEADERS
     pcms/profile.h
     pcms/print.h
     pcms/partition.h
-    pcms/coupler.h)
+    pcms/coupler.h
+    pcms/coordinate_system.h
+    pcms/field_layout.h
+    pcms/adapter/point_cloud/point_cloud_layout.h
+    pcms/adapter/point_cloud/point_cloud.h
+    pcms/adapter/omega_h/omega_h_field_layout.h
+    pcms/adapter/omega_h/omega_h_field2.h)
 
-set(PCMS_SOURCES pcms.cpp pcms/assert.cpp pcms/print.cpp
-                 pcms/adapter/xgc/xgc_field_adapter.h)
+set(PCMS_SOURCES
+    pcms.cpp
+    pcms/assert.cpp
+    pcms/print.cpp
+    pcms/create_field.cpp
+    pcms/adapter/xgc/xgc_field_adapter.h
+    pcms/adapter/point_cloud/point_cloud_layout.cpp
+    pcms/adapter/point_cloud/point_cloud.cpp
+    pcms/adapter/omega_h/omega_h_field_layout.cpp
+    pcms/adapter/omega_h/omega_h_field2.cpp
+    pcms/adapter/xgc/xgc_field_adapter.h)
 
 configure_file(pcms/version.h.in pcms/version.h)
 
@@ -31,8 +48,14 @@ if(PCMS_ENABLE_XGC)
 endif()
 if(PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_SOURCES pcms/point_search.cpp)
-  list(APPEND PCMS_HEADERS pcms/adapter/omega_h/omega_h_field.h
-       pcms/transfer_field.h pcms/uniform_grid.h pcms/point_search.h)
+  list(
+    APPEND
+    PCMS_HEADERS
+    pcms/adapter/omega_h/omega_h_field.h
+    pcms/transfer_field.h
+    pcms/transfer_field2.h
+    pcms/uniform_grid.h
+    pcms/point_search.h)
 endif()
 
 find_package(Kokkos REQUIRED)
@@ -43,8 +66,8 @@ set_target_properties(pcms_core PROPERTIES OUTPUT_NAME pcmscore EXPORT_NAME
                                                                 core)
 add_library(pcms::core ALIAS pcms_core)
 target_compile_features(pcms_core PUBLIC cxx_std_17)
-target_link_libraries(pcms_core PUBLIC redev::redev MPI::MPI_CXX Kokkos::kokkos
-                                       perfstubs)
+target_link_libraries(pcms_core PUBLIC meshfields::meshfields redev::redev
+                                       MPI::MPI_CXX Kokkos::kokkos perfstubs)
 if(PCMS_ENABLE_OMEGA_H)
   target_link_libraries(pcms_core PUBLIC Omega_h::omega_h)
   target_compile_definitions(pcms_core PUBLIC -DPCMS_HAS_OMEGA_H)

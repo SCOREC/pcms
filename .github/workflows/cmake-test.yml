@@ -194,9 +194,9 @@ jobs:
     #   if: matrix.clang_tidy == 'OFF'
     #   run: sudo apt-get install -yq valgrind
 
-    # - name: Run CTest
-    #   if: matrix.clang_tidy == 'OFF'
-    #   run: ctest --test-dir ${{ runner.temp }}/build-pcms
+    - name: Run CTest
+      if: matrix.clang_tidy == 'OFF'
+      run: ctest --test-dir ${{ runner.temp }}/build-pcms
 
     # - name: Print Test
     #   if: matrix.clang_tidy == 'OFF'

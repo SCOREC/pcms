@@ -476,12 +476,12 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
 }
 
 GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny)
-  : GridPointSearch2D(mesh, Nx, Ny, { })
+  : GridPointSearch2D(mesh, Nx, Ny, PointSearchTolerances { "point search 2d tolerances" })
 {
   Kokkos::deep_copy(tolerances_, 0);
 }
 
-GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny, PointSearchTolerances tolerances)
+GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny, const PointSearchTolerances& tolerances)
   : PointLocalizationSearch(tolerances)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
@@ -554,6 +554,14 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(Kokkos::V
 }
 
 GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz)
+  : GridPointSearch3D(mesh, Nx, Ny, Nz,  PointSearchTolerances { "point search 3d tolerances" })
+{
+  Kokkos::deep_copy(tolerances_, 0);
+}
+
+GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
+                                     const PointSearchTolerances& tolerances)
+                                       : PointLocalizationSearch(tolerances)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<3>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);

@@ -209,21 +209,21 @@ TEST_CASE("uniform grid search") {
     auto out_of_bounds = results_h(2);
     auto top_right = results_h(3);
     REQUIRE(out_of_bounds.dimensionality == GridPointSearch2D::Result::Dimensionality::VERTEX);
-    REQUIRE(-1*out_of_bounds.tri_id == top_right.tri_id);
+    REQUIRE(-1*out_of_bounds.element_id == top_right.element_id);
 
     out_of_bounds = results_h(4);
     auto bot_left = results_h(0);
     REQUIRE(out_of_bounds.dimensionality == GridPointSearch2D::Result::Dimensionality::VERTEX);
-    REQUIRE(-1*out_of_bounds.tri_id == bot_left.tri_id);
+    REQUIRE(-1*out_of_bounds.element_id == bot_left.element_id);
 
     out_of_bounds = results_h(5);
     REQUIRE(out_of_bounds.dimensionality ==
             GridPointSearch2D::Result::Dimensionality::EDGE);
-    REQUIRE(-1 * out_of_bounds.tri_id == top_right.tri_id);
+    REQUIRE(-1 * out_of_bounds.element_id == top_right.element_id);
 
     out_of_bounds = results_h(6);
     REQUIRE(out_of_bounds.dimensionality ==
             GridPointSearch2D::Result::Dimensionality::EDGE);
-    REQUIRE(-1 * out_of_bounds.tri_id == bot_left.tri_id);
+    REQUIRE(-1 * out_of_bounds.element_id == bot_left.element_id);
   }
 }

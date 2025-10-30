@@ -1,11 +1,13 @@
 #ifndef PCMS_COUPLING_POINT_SEARCH_H
 #define PCMS_COUPLING_POINT_SEARCH_H
-#include <unordered_map>
+#include <cassert>
+
 #include <Kokkos_Core.hpp>
 #include <Omega_h_mesh.hpp>
-#include "types.h"
 #include <Omega_h_bbox.hpp>
 #include <Omega_h_shape.hpp>
+
+#include "types.h"
 #include "pcms/uniform_grid.h"
 #include "pcms/bounding_box.h"
 
@@ -38,7 +40,7 @@ public:
     };
 
     Dimensionality dimensionality;
-    LO tri_id;
+    LO element_id;
     Omega_h::Vector<dim + 1> parametric_coords;
   };
 
@@ -46,7 +48,10 @@ public:
 
   using PointSearchTolerances = Kokkos::View<Real[DIM]>;
 
-  explicit PointLocalizationSearch(PointSearchTolerances tolerances) : tolerances_(tolerances){ }
+  explicit PointLocalizationSearch(const PointSearchTolerances& tolerances) : tolerances_(tolerances)
+  {
+    assert(tolerances_.is_allocated());
+  }
 
   virtual Kokkos::View<Result*> operator()(Kokkos::View<Real*[dim] > point) const = 0;
   virtual ~PointLocalizationSearch() = default;
@@ -66,7 +71,7 @@ public:
   using Result = PointLocalizationSearch2D::Result;
 
   GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny);
-  GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny, PointSearchTolerances tolerances);
+  GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny, const PointSearchTolerances& tolerances);
 
   /**
    *  given a point in global coordinates give the id of the triangle that the
@@ -96,6 +101,8 @@ public:
   using Result = PointLocalizationSearch3D::Result;
 
   GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz);
+  GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz, const PointSearchTolerances& tolerances);
+
   /**
    *  given a point in global coordinates give the id of the triangle that the
    * point lies within and the parametric coordinate of the point within the

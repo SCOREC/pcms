@@ -163,7 +163,12 @@ TEST_CASE("uniform grid search") {
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  GridPointSearch2D search{mesh,10,10};
+  auto tolerances = GridPointSearch2D::PointSearchTolerances { "point search 2d tolerances" };
+  tolerances(0) = 0.01;
+  tolerances(1) = 0.01;
+
+  GridPointSearch2D search{mesh,10,10, tolerances};
+
   Kokkos::View<pcms::Real*[2]> points("test_points", 7);
   //Kokkos::View<pcms::Real*[2]> points("test_points", 1);
   auto points_h = Kokkos::create_mirror_view(points);
@@ -189,7 +194,10 @@ TEST_CASE("uniform grid search") {
   {
     {
       auto [dim, idx,coords] = results_h(0);
-      REQUIRE(dim == GridPointSearch2D::Result::Dimensionality::FACE);
+
+      CAPTURE(idx);
+
+      REQUIRE(dim == GridPointSearch2D::Result::Dimensionality::VERTEX);
       REQUIRE(idx == 0);
       REQUIRE(coords[0] == Catch::Approx(1));
       REQUIRE(coords[1] == Catch::Approx(0));
@@ -197,7 +205,7 @@ TEST_CASE("uniform grid search") {
     }
     {
       auto [dim, idx,coords] = results_h(1);
-      REQUIRE(dim == GridPointSearch2D::Result::Dimensionality::FACE);
+      REQUIRE(dim == GridPointSearch2D::Result::Dimensionality::EDGE);
       REQUIRE(idx == 91);
       REQUIRE(coords[0] == Catch::Approx(0.5));
       REQUIRE(coords[1] == Catch::Approx(0.1));

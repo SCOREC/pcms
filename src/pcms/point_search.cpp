@@ -382,16 +382,20 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
   auto tris2edges_adj = tris2edges_adj_;
   auto edges2verts_adj = edges2verts_adj_;
   auto coords = coords_;
+  auto tolerances = tolerances_;
   Kokkos::parallel_for(points.extent(0), KOKKOS_LAMBDA(int p) {
     Omega_h::Vector<2> point(std::initializer_list<double>{points(p,0), points(p,1)});
     auto cell_id = grid(0).ClosestCellID(point);
     assert(cell_id < num_rows && cell_id >= 0);
     auto candidates_begin = candidate_map.row_map(cell_id);
     auto candidates_end = candidate_map.row_map(cell_id + 1);
-    bool found = false;
 
-    auto nearest_triangle = candidates_begin;
-    auto dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
+    bool vertex_found = false;
+    bool edge_found = false;
+    bool inside_cell = false;
+
+    auto nearest_element_id = candidates_begin;
+    auto dimensionality = GridPointSearch2D::Result::Dimensionality::REGION;
     Omega_h::Real distance_to_nearest { INFINITY };
     Omega_h::Vector<3> parametric_coords_to_nearest;
     // create array that's size of number of candidates x num coords to store
@@ -403,12 +407,6 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
       auto vertex_coords = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
       auto parametric_coords = Omega_h::barycentric_from_global<2, 2>(point, vertex_coords);
 
-      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
-        results(p) = GridPointSearch2D::Result{GridPointSearch2D::Result::Dimensionality::FACE, triangleID, parametric_coords};
-        found = true;
-        break;
-      }
-
       // Every triangle (face) is connected to 3 vertices
       for (int j = 0; j < 3; ++j) {
         // Get the vertex ID from the connectivity array
@@ -418,22 +416,21 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
           Omega_h::get_vector<2>(coords, vertexID);
 
         const auto distance = Omega_h::norm(point - vertex);
-        if (distance > tolerances_[0]) continue;
 
         if (distance < distance_to_nearest) {
           dimensionality = GridPointSearch2D::Result::Dimensionality::VERTEX;
-          nearest_triangle = i;
+          nearest_element_id = vertexID;
           distance_to_nearest = distance;
           parametric_coords_to_nearest = parametric_coords;
+
+          if (distance < tolerances(0)) {
+            vertex_found = true;
+          };
         }
       }
 
-      if (dimensionality == Result::Dimensionality::VERTEX) {
-        results(p) = GridPointSearch2D::Result{dimensionality, -1 * candidate_map.entries(nearest_triangle), parametric_coords_to_nearest};
-        continue;
-      }
-
-      dimensionality = Result::Dimensionality::FACE;
+      if (vertex_found)
+        break;
 
       for (int j = 0; j < 3; ++j) {
         // Every triangle (face) is connected to 3 edges
@@ -458,18 +455,35 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
 
         const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
 
-        if (distance_to_ab > tolerances_[1]) continue;
-
         if (distance_to_ab < distance_to_nearest) {
+          edge_found = true;
           dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
-          nearest_triangle = i;
+          nearest_element_id = edgeID;
           distance_to_nearest = distance_to_ab;
           parametric_coords_to_nearest = parametric_coords;
+
+          if (distance_to_ab < tolerances(1)) {
+            edge_found = true;
+          };
         }
+      }
+
+      if (edge_found)
+        break;
+
+      if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
+        dimensionality = GridPointSearch2D::Result::Dimensionality::FACE;
+        nearest_element_id = triangleID;
+        parametric_coords_to_nearest = parametric_coords;
+        inside_cell = true;
+
+        // results(p) = GridPointSearch2D::Result{GridPointSearch2D::Result::Dimensionality::FACE, triangleID, parametric_coords};
+        // return;
       }
     }
 
-    results(p) = GridPointSearch2D::Result{dimensionality, -1 * candidate_map.entries(nearest_triangle), parametric_coords_to_nearest};
+    const int inside_mesh = vertex_found || edge_found || inside_cell ? 1 : -1;
+    results(p) = GridPointSearch2D::Result{dimensionality, inside_mesh * nearest_element_id, parametric_coords_to_nearest};
   });
 
   return results;

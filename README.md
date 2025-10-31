@@ -232,8 +232,5 @@ Another Executing Approach: One would also comment out the BUILDING_TESTING in C
 
 Assign the full path of testdatas to test_dir in the test_init.cc file; Use "mpirun -np 4 bin/test_init" for the execution.   
 
-## Code Notes
-
-- `Part1` refers to the core (GENE/GEM) application
-- `Part3` refers to the edges (XGC) application
-
+## Creating Archive for Release
+`git archive --format=tar.gz -o /tmp/pcms.tar.gz --prefix=pcms/ develop`

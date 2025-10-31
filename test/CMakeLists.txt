@@ -136,6 +136,45 @@ if(PCMS_ENABLE_OMEGA_H)
       ${d3d8p}
       ignored)
   endif()
+  add_executable(field_communication test_field_communication.cpp)
+  target_link_libraries(field_communication PUBLIC pcms::core test_support)
+  if(HOST_NPROC GREATER_EQUAL 4)
+    tri_mpi_test(
+      TESTNAME
+      test_field_communication_4p
+      TIMEOUT
+      40
+      NAME1
+      server
+      EXE1
+      ./field_communication
+      PROCS1
+      2
+      ARGS1
+      -1
+      ${PCMS_TEST_DATA_DIR}/123mesh/123.osh
+      ${PCMS_TEST_DATA_DIR}/123mesh/123_2.cpn
+      NAME2
+      client1
+      EXE2
+      ./field_communication
+      PROCS2
+      4
+      ARGS2
+      0
+      ${PCMS_TEST_DATA_DIR}/123mesh/123_p4.osh
+      ignored
+      NAME3
+      client2
+      EXE3
+      ./field_communication
+      PROCS3
+      4
+      ARGS3
+      1
+      ${PCMS_TEST_DATA_DIR}/123mesh/123_p4.osh
+      ignored)
+  endif()
   add_executable(proxy_coupling test_proxy_coupling.cpp)
   target_link_libraries(proxy_coupling PUBLIC pcms::core test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
@@ -346,6 +385,9 @@ if(Catch2_FOUND)
       test_field_transfer.cpp
       test_uniform_grid.cpp
       test_omega_h_copy.cpp
+      test_field_evaluation.cpp
+      test_field_interpolation.cpp
+      test_field_copy.cpp
       test_point_search.cpp
       test_mls_basis.cpp
       test_rbf_interp.cpp

@@ -61,7 +61,7 @@ endif()
 find_package(ADIOS2 CONFIG 2.5 REQUIRED)
 find_package(Kokkos CONFIG 4.5 REQUIRED)
 
-option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" OFF)
+option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" ON)
 option(PCMS_ENABLE_PETSC "Enable PETSc support" OFF)
 
 if (PCMS_ENABLE_MESHFIELDS)
@@ -91,6 +91,7 @@ if (PCMS_ENABLE_PETSC)
 	set(PCMS_PETSC_LIBRARIES ${PETSC_LIBRARY} CACHE INTERNAL "")
 
 endif()
+
 add_subdirectory(src)
 
 include(CTest)

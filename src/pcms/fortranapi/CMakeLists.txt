@@ -4,8 +4,7 @@ add_library(pcms::fortranapi ALIAS pcms_fortranapi)
 set_target_properties(
   pcms_fortranapi
   PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/fortran
-             OUTPUT_NAME pcmsfortranapi
-             EXPORT_NAME fortranapi)
+             OUTPUT_NAME pcmsfortranapi EXPORT_NAME fortranapi)
 target_include_directories(
   pcms_fortranapi
   PUBLIC

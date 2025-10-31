@@ -1,3 +1,4 @@
+# Now it is separated to avoid affecting MPICH is not compatible with Ubuntu-latest and bear is not compatible with OPENMPI. This workflow should be merged after either compatibility issue is resolved.
 name: Clang-Tidy Check
 on:
   push:
@@ -10,7 +11,7 @@ on:
       - develop
 
 jobs:
-  test-build:
+  clang-tidy-check:
     runs-on: ubuntu-latest
 
     defaults:

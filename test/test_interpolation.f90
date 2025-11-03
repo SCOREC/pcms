@@ -65,7 +65,7 @@ program test_interpolation
     call pcms_interpolate(interpolator, c_loc(source_at_face), num_faces, c_loc(target_at_vertex), num_vertices)
 
     !!!!!!!!!!!!!!! Test !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! This is not checking the correcteness of the interpolation
+    ! This is not checking the correctness of the interpolation
     ! It only shows the functionality of the interpolation fortran API
 
     ! print the interpolated values

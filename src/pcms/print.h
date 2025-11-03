@@ -43,6 +43,22 @@ KOKKOS_INLINE_FUNCTION void printInfo(const char* fmt, const Args&... args)
 #endif
 }
 
+template <typename... Args>
+KOKKOS_INLINE_FUNCTION void printDebugInfo(const char* fmt, const Args&... args)
+{
+#if !defined(NDEBUG) && defined(PCMS_PRINT_ENABLED)
+#if !defined(ACTIVE_GPU_EXECUTION)
+#if defined(PCMS_SPDLOG_ENABLED)
+  spdlog::debug("{}", fmt::sprintf(fmt, args...));
+#else
+  fprintf(getStdout(), fmt, args...);
+#endif
+#else // For GPU execution
+  printf(fmt, args...);
+#endif
+#endif
+}
+
 } // namespace pcms
 
 #endif // PCMS_PRINT_H

@@ -120,12 +120,14 @@ MLSPointCloudInterpolation::MLSPointCloudInterpolation(
 }
 
 KOKKOS_INLINE_FUNCTION
-double pointDistance(const double x1, const double y1, const double z1,
-                     const double x2, const double y2, const double z2)
+double pointDistanceSquared(const double x1, const double y1, const double z1,
+                            const double x2, const double y2, const double z2)
 {
   return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2);
 }
 
+// replace with Kokkos::minmax_element when out of experimental
+// https://kokkos.org/kokkos-core-wiki/API/algorithms/std-algorithms/all/StdMinMaxElement.html
 void minmax(Omega_h::Read<Omega_h::LO> num_supports, uint& min_supports_found,
             uint& max_supports_found)
 {
@@ -219,9 +221,9 @@ void MLSPointCloudInterpolation::fill_support_structure(
         for (int d = 0; d < dim; ++d) {
           source_coord[d] = source_coords_l[source_id * dim + d];
         }
-        auto dist2 =
-          pointDistance(source_coord[0], source_coord[1], source_coord[2],
-                        target_coord[0], target_coord[1], target_coord[2]);
+        auto dist2 = pointDistanceSquared(source_coord[0], source_coord[1],
+                                          source_coord[2], target_coord[0],
+                                          target_coord[1], target_coord[2]);
         if (dist2 <= target_radius2) {
           support_idx_l[start_ptr] = source_id;
           start_ptr++;
@@ -240,6 +242,7 @@ void MLSPointCloudInterpolation::fill_support_structure(
   supports_.supports_idx = Omega_h::LOs(support_idx_l);
 }
 
+// use uniform grid based point search when available
 void MLSPointCloudInterpolation::distance_based_pointcloud_search(
   Omega_h::Write<Omega_h::Real> radii2_l,
   Omega_h::Write<Omega_h::LO> num_supports) const
@@ -264,9 +267,9 @@ void MLSPointCloudInterpolation::distance_based_pointcloud_search(
         for (int d = 0; d < dim; ++d) {
           source_coord[d] = source_coords_l[i * dim + d];
         }
-        auto dist2 =
-          pointDistance(source_coord[0], source_coord[1], source_coord[2],
-                        target_coord[0], target_coord[1], target_coord[2]);
+        auto dist2 = pointDistanceSquared(source_coord[0], source_coord[1],
+                                          source_coord[2], target_coord[0],
+                                          target_coord[1], target_coord[2]);
         if (dist2 <= target_radius2) {
           num_supports[target_id]++; // only one thread is updating
         }
@@ -279,20 +282,20 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports,
                                                uint max_allowed_supports,
                                                uint max_count)
 {
-#ifndef NDEBUG
-  pcms::printInfo("First 10 Target Points with %d points:\n", n_targets_);
+  pcms::printDebugInfo("First 10 Target Points with %d points:\n", n_targets_);
   Omega_h::parallel_for(
     "print target points", 10, OMEGA_H_LAMBDA(const int& i) {
-      printf("Target Point %d: (%f, %f)\n", i, target_coords_[i * 2 + 0],
-             target_coords_[i * 2 + 1]);
+      pcms::printDebugInfo("Target Point %d: (%f, %f)\n", i,
+                           target_coords_[i * 2 + 0],
+                           target_coords_[i * 2 + 1]);
     });
-  pcms::printInfo("First 10 Source Points with %d points:\n", n_sources_);
+  pcms::printDebugInfo("First 10 Source Points with %d points:\n", n_sources_);
   Omega_h::parallel_for(
     "print source points", 10, OMEGA_H_LAMBDA(const int& i) {
-      printf("Source Point %d: (%f, %f)\n", i, source_coords_[i * 2 + 0],
-             source_coords_[i * 2 + 1]);
+      pcms::printDebugInfo("Source Point %d: (%f, %f)\n", i,
+                           source_coords_[i * 2 + 0],
+                           source_coords_[i * 2 + 1]);
     });
-#endif
 
   auto radii2_l = Omega_h::Write<Omega_h::Real>(n_targets_, radius_);
   auto num_supports = Omega_h::Write<Omega_h::LO>(n_targets_, 0);
@@ -352,6 +355,9 @@ void copyHostScalarArrayView2HostWrite(
     source.size() == target.size(),
     "Size mismatch in copy_data_from_ScalarArray_to_HostWrite: %zu %d\n",
     source.size(), target.size());
+  OMEGA_H_CHECK_PRINTF(source.data_handle() != target.data(),
+                       "Source and Target contain the same pointer %p\n",
+                       source.data_handle());
 
   for (int i = 0; i < source.size(); ++i) {
     target[i] = source[i];
@@ -383,7 +389,7 @@ void MLSPointCloudInterpolation::eval(
                        "Target Data and Target Points size mismatch: %zu %d\n",
                        source_field.size(), source_coords_.size() / dim_);
   for (int i = 0; i < 10; i++) {
-    pcms::printInfo("i = %d	field = %f\n", i, source_field[i]);
+    pcms::printDebugInfo("i = %d	field = %f\n", i, source_field[i]);
   }
 
   copyHostScalarArrayView2HostWrite(source_field, source_field_);

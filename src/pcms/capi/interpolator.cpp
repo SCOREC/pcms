@@ -2,8 +2,8 @@
 // Created by hasanm4 on 2/17/25.
 //
 #include <pcms/capi/kokkos.h>
-#include "interpolator.h"
-#include <interpolation_base.h>
+#include <pcms/capi/interpolator.h>
+#include <pcms/interpolator/interpolation_base.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>

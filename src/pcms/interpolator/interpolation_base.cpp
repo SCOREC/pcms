@@ -371,6 +371,9 @@ void copyHostWrite2ScalarArrayView(
     source.size() == target.size(),
     "Size mismatch in copy_data_from_HostWrite_to_ScalarArray: %d %zu\n",
     source.size(), target.size());
+  OMEGA_H_CHECK_PRINTF(source.data() != target.data_handle(),
+                       "Source and Target contain the same pointer %p\n",
+                       source.data());
 
   for (int i = 0; i < source.size(); ++i) {
     target[i] = source[i];

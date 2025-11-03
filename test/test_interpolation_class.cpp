@@ -257,8 +257,6 @@ TEST_CASE("Test MLSInterpolationHandler")
       pcms::printInfo("Interpolated data: %d, %.16f, %.16f\n", i,
                       interpolated_data_hwrite[i],
                       point_cloud_interpolated_data_hwrite[i]);
-      if (i == 0 || i == 78)
-        continue; // FIXME
 
       REQUIRE_THAT(
         point_cloud_interpolated_data_hwrite[i],

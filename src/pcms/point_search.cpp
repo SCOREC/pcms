@@ -188,7 +188,7 @@ template <int dim>
   // each dimension has a pair of opposing "walls"
   // 2D: { [left, right], [top, bottom] } -> { left, right, top, bottom }
   // 3D: { [left, right], [top, bottom], [front, back] } -> { left, ..., back }
-  std::array<Real, dim * 2> bbox_walls{};
+  std::array<Real, dim * 2ul> bbox_walls{};
   for (int i = 0; i < dim; i++) {
     bbox_walls[i * 2] = bbox.center[i] - bbox.half_width[i];
     bbox_walls[i * 2 + 1] = bbox.center[i] + bbox.half_width[i];

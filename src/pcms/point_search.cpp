@@ -456,7 +456,6 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(Kokkos::V
         const auto distance_to_ab = distance_from_line(xp, yp, xa, ya, xb, yb);
 
         if (distance_to_ab < distance_to_nearest) {
-          edge_found = true;
           dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
           nearest_element_id = edgeID;
           distance_to_nearest = distance_to_ab;

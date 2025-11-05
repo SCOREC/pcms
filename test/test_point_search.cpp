@@ -111,7 +111,8 @@ bool num_candidates_within_range(const T& intersection_map, pcms::LO min,
   Kokkos::parallel_reduce(
     intersection_map.numRows(),
     KOKKOS_LAMBDA(const int i, result_type& update) {
-      auto num_candidates = intersection_map.row_map(i + 1) - intersection_map.row_map(i);
+      auto num_candidates =
+        intersection_map.row_map(i + 1) - intersection_map.row_map(i);
       if (num_candidates > update.max_val)
         update.max_val = num_candidates;
       if (num_candidates < update.min_val)
@@ -123,11 +124,11 @@ bool num_candidates_within_range(const T& intersection_map, pcms::LO min,
     std::cerr << result.min_val << ' ' << result.max_val << '\n';
   return within_range;
 }
-//extern Omega_h::Library omega_h_library;
+// extern Omega_h::Library omega_h_library;
 
 TEST_CASE("construct intersection map")
 {
-  //auto world = omega_h_library.world();
+  // auto world = omega_h_library.world();
   auto lib = Omega_h::Library{};
   auto world = lib.world();
   auto mesh =
@@ -137,9 +138,11 @@ TEST_CASE("construct intersection map")
   {
     Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
     auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = Uniform2DGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
+    grid_h(0) = Uniform2DGrid{
+      .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
     Kokkos::deep_copy(grid_d, grid_h);
-    auto intersection_map = pcms::detail::construct_intersection_map_2d(mesh, grid_d, grid_h(0).GetNumCells());
+    auto intersection_map = pcms::detail::construct_intersection_map_2d(
+      mesh, grid_d, grid_h(0).GetNumCells());
     // assert(cudaSuccess == cudaDeviceSynchronize());
     REQUIRE(intersection_map.numRows() == 100);
     REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
@@ -148,40 +151,44 @@ TEST_CASE("construct intersection map")
   {
     Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
     auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = Uniform2DGrid{.edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
+    grid_h(0) = Uniform2DGrid{
+      .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
     Kokkos::deep_copy(grid_d, grid_h);
     // require number of candidates is >=1 and <=6
-    auto intersection_map = pcms::detail::construct_intersection_map_2d(mesh, grid_d, grid_h(0).GetNumCells());
+    auto intersection_map = pcms::detail::construct_intersection_map_2d(
+      mesh, grid_d, grid_h(0).GetNumCells());
 
     REQUIRE(intersection_map.numRows() == 3600);
     REQUIRE(num_candidates_within_range(intersection_map, 1, 6));
   }
 }
-TEST_CASE("uniform grid search") {
+TEST_CASE("uniform grid search")
+{
   using pcms::GridPointSearch2D;
   auto lib = Omega_h::Library{};
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  auto tolerances = GridPointSearch2D::PointSearchTolerances { "point search 2d tolerances" };
+  auto tolerances =
+    GridPointSearch2D::PointSearchTolerances{"point search 2d tolerances"};
   tolerances(0) = 0.01;
   tolerances(1) = 0.01;
 
-  GridPointSearch2D search{mesh,10,10, tolerances};
+  GridPointSearch2D search{mesh, 10, 10, tolerances};
 
-  Kokkos::View<pcms::Real*[2]> points("test_points", 8);
-  //Kokkos::View<pcms::Real*[2]> points("test_points", 1);
+  Kokkos::View<pcms::Real* [2]> points("test_points", 8);
+  // Kokkos::View<pcms::Real*[2]> points("test_points", 1);
   auto points_h = Kokkos::create_mirror_view(points);
-  points_h(0,0) = 0;
-  points_h(0,1) = 0;
-  points_h(1,0) = 0.55;
-  points_h(1,1) = 0.54;
-  points_h(2,0) = 100;
-  points_h(2,1) = 100;
-  points_h(3,0) = 1;
-  points_h(3,1) = 1;
-  points_h(4,0) = -1;
-  points_h(4,1) = -1;
+  points_h(0, 0) = 0;
+  points_h(0, 1) = 0;
+  points_h(1, 0) = 0.55;
+  points_h(1, 1) = 0.54;
+  points_h(2, 0) = 100;
+  points_h(2, 1) = 100;
+  points_h(3, 0) = 1;
+  points_h(3, 1) = 1;
+  points_h(4, 0) = -1;
+  points_h(4, 1) = -1;
   points_h(5, 0) = 1.01;
   points_h(5, 1) = 0.95;
   points_h(6, 0) = 0.05;
@@ -195,7 +202,7 @@ TEST_CASE("uniform grid search") {
   SECTION("global coordinate within mesh")
   {
     {
-      auto [dim, idx,coords] = results_h(0);
+      auto [dim, idx, coords] = results_h(0);
 
       CAPTURE(idx);
 
@@ -206,7 +213,7 @@ TEST_CASE("uniform grid search") {
       REQUIRE(coords[2] == Catch::Approx(0));
     }
     {
-      auto [dim, idx,coords] = results_h(1);
+      auto [dim, idx, coords] = results_h(1);
       REQUIRE(dim == GridPointSearch2D::Result::Dimensionality::EDGE);
       REQUIRE(idx == 156);
       REQUIRE(coords[0] == Catch::Approx(0.5));
@@ -214,22 +221,25 @@ TEST_CASE("uniform grid search") {
       REQUIRE(coords[2] == Catch::Approx(0.4));
     }
     {
-      auto [dim, idx,coords] = results_h(7);
+      auto [dim, idx, coords] = results_h(7);
       REQUIRE(dim == GridPointSearch2D::Result::Dimensionality::FACE);
       REQUIRE(idx == 0);
     }
   }
   // feature needs to be added
-  SECTION("Global coordinate outside mesh", "[!mayfail]") {
+  SECTION("Global coordinate outside mesh", "[!mayfail]")
+  {
     auto out_of_bounds = results_h(2);
     auto top_right = results_h(3);
-    REQUIRE(out_of_bounds.dimensionality == GridPointSearch2D::Result::Dimensionality::VERTEX);
-    REQUIRE(-1*out_of_bounds.element_id == top_right.element_id);
+    REQUIRE(out_of_bounds.dimensionality ==
+            GridPointSearch2D::Result::Dimensionality::VERTEX);
+    REQUIRE(-1 * out_of_bounds.element_id == top_right.element_id);
 
     out_of_bounds = results_h(4);
     auto bot_left = results_h(0);
-    REQUIRE(out_of_bounds.dimensionality == GridPointSearch2D::Result::Dimensionality::VERTEX);
-    REQUIRE(-1*out_of_bounds.element_id == bot_left.element_id);
+    REQUIRE(out_of_bounds.dimensionality ==
+            GridPointSearch2D::Result::Dimensionality::VERTEX);
+    REQUIRE(-1 * out_of_bounds.element_id == bot_left.element_id);
 
     out_of_bounds = results_h(5);
     REQUIRE(out_of_bounds.dimensionality ==

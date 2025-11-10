@@ -219,7 +219,7 @@ public:
 private:
   std::string name_;
   Omega_h::Mesh& mesh_;
-  // TODO make this a pointer and introduce base class to Search for alternative search methods
+  // TODO: introduce base class to Search for alternative search methods
   std::unique_ptr<PointLocalizationSearch2D> search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;

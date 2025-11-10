@@ -331,7 +331,7 @@ struct GridTriIntersectionFunctor3D
   {
     if (mesh_.dim() != 3) {
       std::cerr << "GridTriIntersection3D currently only developed for 3D "
-                   "triangular meshes\n";
+                   "tetrahedral meshes\n";
       std::terminate();
     }
   }

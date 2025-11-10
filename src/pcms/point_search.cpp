@@ -61,9 +61,12 @@ AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
 template <unsigned dim>
 AABBox<dim> simplex_bbox(const Omega_h::Matrix<dim, dim + 1>& coords)
 {
-  std::array<Real, dim> max{coords(0, 0), coords(1, 0)};
-  std::array<Real, dim> min{coords(0, 0), coords(1, 0)};
-
+  std::array<Real, dim> max;
+  std::array<Real, dim> min;
+  for (int j = 0; j < dim; ++j) {
+    max[j] = coords(j, 0);
+    min[j] = coords(j, 0);
+  }
   for (int i = 1; i < dim + 1; ++i) {
     for (int j = 0; j < dim; ++j) {
       max[j] = std::fmax(max[j], coords(j, i));

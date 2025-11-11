@@ -136,7 +136,7 @@ jobs:
       with:
         repo-name: 'ADIOS2-openmpi'
         repo-path: 'ornladios/ADIOS2'
-        repo-ref: ''
+        repo-ref: 'v2.10.2'
         cache: true
         options: '-DADIOS2_USE_CUDA=OFF'
 

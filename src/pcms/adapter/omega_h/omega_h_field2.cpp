@@ -67,7 +67,7 @@ private:
 struct OmegaHField2LocalizationHint
 {
   OmegaHField2LocalizationHint(
-    Omega_h::Mesh& mesh, Kokkos::View<GridPointSearch::Result*> search_results)
+    Omega_h::Mesh& mesh, Kokkos::View<GridPointSearch2D::Result*> search_results)
     : offsets_("", mesh.nelems() + 1),
       coordinates_("", search_results.size(), mesh.dim() + 1),
       indices_("", search_results.size())

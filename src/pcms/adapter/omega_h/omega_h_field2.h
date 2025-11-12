@@ -60,7 +60,7 @@ private:
   const OmegaHFieldLayout& layout_;
   Omega_h::Mesh& mesh_;
   std::unique_ptr<MeshFieldBackend> mesh_field_;
-  GridPointSearch search_;
+  GridPointSearch2D search_;
   Kokkos::View<Real*> dof_holder_data_;
 };
 

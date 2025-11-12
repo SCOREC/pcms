@@ -62,6 +62,7 @@ jobs:
                   -DBUILD_SHARED_LIBS=OFF
                   -DKokkos_ENABLE_SERIAL=ON
                   -DKokkos_ENABLE_OPENMP=OFF
+                  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                   -DKokkos_ENABLE_CUDA=OFF
                   -DKokkos_ENABLE_CUDA_LAMBDA=OFF
                   -DKokkos_ENABLE_CUDA_CONSTEXPR=OFF'
@@ -75,6 +76,7 @@ jobs:
         cache: true
         options: '-DCMAKE_CXX_STANDARD=17
                   -DBUILD_SHARED_LIBS=OFF
+                  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
 
     - name: build omega_h
@@ -136,7 +138,7 @@ jobs:
       with:
         repo-name: 'ADIOS2'
         repo-path: 'ornladios/ADIOS2'
-        repo-ref: ''
+        repo-ref: 'v2.10.2'
         cache: true
         options: '-DADIOS2_USE_CUDA=OFF'
 
@@ -153,6 +155,27 @@ jobs:
                   -DBUILD_SHARED_LIBS=OFF
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake'
+
+    - name: Cache PETSc
+      id: cache-petsc
+      uses: actions/cache@v3
+      with:
+        path: ${{ runner.temp }}/petsc
+        key: build-petsc
+    
+    - name: build petsc
+      if: steps.cache-petsc.outputs.cache-hit != 'true'
+      run: |
+        cd ${{ runner.temp }}
+        git clone -b release https://gitlab.com/petsc/petsc.git petsc
+        cd petsc
+        ./configure \
+          PETSC_ARCH=ubuntu-kokkos \
+          --with-kokkos-dir="${{ runner.temp }}/build-kokkos/install/" \
+          --with-kokkos-kernels-dir="${{ runner.temp }}/build-kokkos-kernels/install/" \
+          --with-cuda=0 \
+          --download-fblaslapack
+        make all check
 
     - name: checkout pcms_testcases
       uses: actions/checkout@v3
@@ -175,6 +198,9 @@ jobs:
                   -DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_Fortran_COMPILER=`which mpifort`
                   -DMPIEXEC_PREFLAGS="--oversubscribe"
+                  -DPCMS_ENABLE_PETSC=ON
+                  -DPETSC_DIR=${{ runner.temp }}/petsc
+                  -DPETSC_ARCH=ubuntu-kokkos
                   -DPCMS_TIMEOUT=10
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h

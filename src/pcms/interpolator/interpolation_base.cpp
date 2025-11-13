@@ -416,7 +416,7 @@ void MLSInterpolationHandler::find_supports(const uint min_req_support)
 #endif
 }
 
-size_t MLSInterpolationHandler::getSourceSize()
+size_t MLSInterpolationHandler::getSourceSize() const
 {
   if (single_mesh_) {
     return source_mesh_.nfaces();
@@ -425,7 +425,7 @@ size_t MLSInterpolationHandler::getSourceSize()
   }
 }
 
-size_t MLSInterpolationHandler::getTargetSize()
+size_t MLSInterpolationHandler::getTargetSize() const
 {
   if (single_mesh_) {
     return source_mesh_.nverts();

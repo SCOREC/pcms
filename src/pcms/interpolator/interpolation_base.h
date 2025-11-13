@@ -12,20 +12,35 @@
 
 class InterpolationBase
 {
+public:
+  virtual ~InterpolationBase() = default;
   /**
    * @brief Evaluate the interpolation
    * @param source_field The field to interpolate from
    * @param target_field The field to interpolate to
    */
   virtual void eval(
+    // TODO: Should these be templated to support different types?
     pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
     pcms::Rank1View<double, pcms::HostMemorySpace> target_field) = 0;
+
+  /**
+   * @brief Get the size of the source field
+   * @return size_t The size of the source field
+   */
+  virtual size_t getSourceSize() const = 0;
+
+  /**
+   * @brief Get the size of the target field
+   * @return size_t The size of the target field
+   */
+  virtual size_t getTargetSize() const = 0;
 };
 
 /**
- *@brief Meshless interpolation using MLS
+ *@brief Meshless Point-Cloud Based Interpolation Using MLS
  */
-class MLSPointCloudInterpolation : public InterpolationBase
+class MLSPointCloudInterpolation final : public InterpolationBase
 {
 public:
   template <typename SourceType, typename TargetType>
@@ -77,14 +92,13 @@ public:
     pcms::Rank1View<double, pcms::HostMemorySpace> target_field) override;
 
   SupportResults getSupports() { return supports_; }
-  size_t getSourceSize() const { return source_coords_.size() / dim_; }
-  size_t getTargetSize() const { return target_coords_.size() / dim_; }
+  size_t getSourceSize() const override { return source_coords_.size() / dim_; }
+  size_t getTargetSize() const override { return target_coords_.size() / dim_; }
 
 private:
   int dim_;
   double radius_;
   bool adapt_radius_;
-  // bool single_mesh_ = false;
   uint degree_;
   uint min_req_supports_;
   double lambda_;
@@ -113,7 +127,7 @@ private:
 /**
  * @brief Moving Least Square Radial Basis Function Interpolation
  */
-class MLSInterpolationHandler : public InterpolationBase
+class MLSInterpolationHandler final : public InterpolationBase
 {
 
 public:
@@ -148,8 +162,8 @@ public:
                           uint min_req_supports = 10, uint degree = 3,
                           bool adapt_radius = true);
 
-  size_t getSourceSize();
-  size_t getTargetSize();
+  size_t getSourceSize() const override;
+  size_t getTargetSize() const override;
 
   SupportResults getSupports() { return supports_; }
 

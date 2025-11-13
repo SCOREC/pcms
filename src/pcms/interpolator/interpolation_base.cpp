@@ -29,10 +29,9 @@ Omega_h::Reals getCentroids(Omega_h::Mesh& mesh)
   return {centroids};
 }
 
-MLSInterpolationHandler::MLSInterpolationHandler(Omega_h::Mesh& source_mesh,
-                                                 double radius,
-                                                 uint min_req_support,
-                                                 uint degree, bool adapt_radius)
+MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
+                                           double radius, uint min_req_support,
+                                           uint degree, bool adapt_radius)
   : source_mesh_(source_mesh),
     target_mesh_(source_mesh),
     radius_(radius),
@@ -57,9 +56,11 @@ MLSInterpolationHandler::MLSInterpolationHandler(Omega_h::Mesh& source_mesh,
   find_supports(min_req_supports_);
 }
 
-MLSInterpolationHandler::MLSInterpolationHandler(
-  Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh, const double radius,
-  uint min_req_support, uint degree, const bool adapt_radius)
+MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
+                                           Omega_h::Mesh& target_mesh,
+                                           const double radius,
+                                           uint min_req_support, uint degree,
+                                           const bool adapt_radius)
   : source_mesh_(source_mesh),
     target_mesh_(target_mesh),
     radius_(radius),
@@ -370,7 +371,7 @@ void MLSPointCloudInterpolation::eval(
   copyHostWrite2ScalarArrayView(target_field_, target_field);
 }
 
-void MLSInterpolationHandler::eval(
+void MLSMeshInterpolation::eval(
   pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
   pcms::Rank1View<double, pcms::HostMemorySpace> target_field)
 {
@@ -395,7 +396,7 @@ void MLSInterpolationHandler::eval(
   copyHostWrite2ScalarArrayView(target_field_, target_field);
 }
 
-void MLSInterpolationHandler::find_supports(const uint min_req_support)
+void MLSMeshInterpolation::find_supports(const uint min_req_support)
 {
   if (single_mesh_) {
     supports_ =
@@ -416,7 +417,7 @@ void MLSInterpolationHandler::find_supports(const uint min_req_support)
 #endif
 }
 
-size_t MLSInterpolationHandler::getSourceSize() const
+size_t MLSMeshInterpolation::getSourceSize() const
 {
   if (single_mesh_) {
     return source_mesh_.nfaces();
@@ -425,7 +426,7 @@ size_t MLSInterpolationHandler::getSourceSize() const
   }
 }
 
-size_t MLSInterpolationHandler::getTargetSize() const
+size_t MLSMeshInterpolation::getTargetSize() const
 {
   if (single_mesh_) {
     return source_mesh_.nverts();

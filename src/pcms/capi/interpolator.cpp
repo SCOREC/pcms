@@ -14,7 +14,7 @@ PcmsInterpolatorHandle pcms_create_interpolator(
   PcmsInterpolatorOHMeshHandle oh_mesh, double radius)
 {
   auto* source_mesh = reinterpret_cast<Omega_h::Mesh*>(oh_mesh.mesh_handle);
-  auto* interpolator = new MLSInterpolationHandler(*source_mesh, radius);
+  auto* interpolator = new MLSMeshInterpolation(*source_mesh, radius);
   return {reinterpret_cast<void*>(interpolator)};
 }
 
@@ -168,7 +168,7 @@ void pcms_destroy_point_based_interpolator(
 void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator)
 {
   if (interpolator.pointer != nullptr) {
-    delete reinterpret_cast<MLSInterpolationHandler*>(interpolator.pointer);
+    delete reinterpret_cast<MLSMeshInterpolation*>(interpolator.pointer);
   }
 }
 
@@ -197,7 +197,7 @@ void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
                       int input_size, void* output, int output_size)
 {
   auto* mls_interpolator =
-    reinterpret_cast<MLSInterpolationHandler*>(interpolator.pointer);
+    reinterpret_cast<MLSMeshInterpolation*>(interpolator.pointer);
 
   OMEGA_H_CHECK_PRINTF(
     input_size == mls_interpolator->getSourceSize(),

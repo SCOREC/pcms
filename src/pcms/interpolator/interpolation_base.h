@@ -127,7 +127,7 @@ private:
 /**
  * @brief Moving Least Square Radial Basis Function Interpolation
  */
-class MLSInterpolationHandler final : public InterpolationBase
+class MLSMeshInterpolation final : public InterpolationBase
 {
 
 public:
@@ -145,10 +145,9 @@ public:
    * @param degree The degree of the polynomial used in the MLS interpolation
    * @param adapt_radius Whether to adapt the radius based on the local density
    */
-  MLSInterpolationHandler(Omega_h::Mesh& source_mesh,
-                          Omega_h::Mesh& target_mesh, double radius,
-                          uint min_req_supports = 10, uint degree = 3,
-                          bool adapt_radius = true);
+  MLSMeshInterpolation(Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
+                       double radius, uint min_req_supports = 10,
+                       uint degree = 3, bool adapt_radius = true);
 
   /**
    * @brief Centroids to Vertices interpolation for a single mesh
@@ -158,9 +157,9 @@ public:
    * @param min_req_supports Min number of source locations required
    * @param degree The degree of the polynomial used in the MLS interpolation
    */
-  MLSInterpolationHandler(Omega_h::Mesh& source_mesh, double radius,
-                          uint min_req_supports = 10, uint degree = 3,
-                          bool adapt_radius = true);
+  MLSMeshInterpolation(Omega_h::Mesh& source_mesh, double radius,
+                       uint min_req_supports = 10, uint degree = 3,
+                       bool adapt_radius = true);
 
   size_t getSourceSize() const override;
   size_t getTargetSize() const override;

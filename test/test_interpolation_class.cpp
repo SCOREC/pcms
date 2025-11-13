@@ -112,7 +112,7 @@ void node2CentroidInterpolation(Omega_h::Mesh& mesh,
   Omega_h::parallel_for(nfaces, averageSinCos, "averageSinCos");
 }
 
-TEST_CASE("Test MLSInterpolationHandler")
+TEST_CASE("Test MLSMeshInterpolation")
 {
   pcms::printInfo("[INFO] Starting MLS Interpolation Test...\n");
   auto lib = Omega_h::Library{};
@@ -131,7 +131,7 @@ TEST_CASE("Test MLSInterpolationHandler")
     pcms::printInfo("\n-------------------- Single Mesh Interpolation Test "
                     "Started --------------------\n");
     pcms::printInfo("Mesh based search...\n");
-    auto mls_single = MLSInterpolationHandler(source_mesh, 0.12, 15, 3, true);
+    auto mls_single = MLSMeshInterpolation(source_mesh, 0.12, 15, 3, true);
 
     auto source_points_reals = getCentroids(source_mesh);
     auto source_points_host =
@@ -280,7 +280,7 @@ TEST_CASE("Test MLSInterpolationHandler")
     //                                                (1.0 - 0.999) / 2.0});
 
     auto mls_double =
-      MLSInterpolationHandler(source_mesh, target_mesh, 0.12, 15, 3, true);
+      MLSMeshInterpolation(source_mesh, target_mesh, 0.12, 15, 3, true);
 
     Omega_h::HostWrite<double> source_data_host_write(source_sinxcosy_node);
     Omega_h::HostWrite<double> interpolated_data_hwrite(

@@ -84,10 +84,10 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
 
   auto xgc_to_degas2_interpolator =
     MLSPointCloudInterpolation(xgc_mesh_points_view, degas2_mesh_centroids_view,
-                               2, 0.1, 10, 1, true, 0.0, 5.0);
+                               2, 0.00001, 10, 1, true, 0.0, 50.0);
   auto degas2_to_xgc_interpolator =
     MLSPointCloudInterpolation(degas2_mesh_centroids_view, xgc_mesh_points_view,
-                               2, 0.1, 10, 1, true, 0.0, 5.0);
+                               2, 0.00001, 10, 1, true, 0.0, 50.0);
   printf("[INFO] Interpolators initialized.\n");
 
   // Read Fields from Files

@@ -7,7 +7,6 @@
 #include "adj_search.hpp"
 #include "interpolation_helpers.h"
 #include <Omega_h_file.hpp>
-// #include <Omega_h_library.hpp>
 #include <pcms/arrays.h>
 #include <string>
 
@@ -29,11 +28,49 @@ class InterpolationBase
 class MLSPointCloudInterpolation : public InterpolationBase
 {
 public:
+  template <typename SourceType, typename TargetType>
   MLSPointCloudInterpolation(
-    pcms::Rank1View<double, pcms::HostMemorySpace> source_points,
-    pcms::Rank1View<double, pcms::HostMemorySpace> target_points, int dim,
+    pcms::Rank1View<SourceType, pcms::HostMemorySpace> source_points,
+    pcms::Rank1View<TargetType, pcms::HostMemorySpace> target_points, int dim,
     double radius, uint min_req_supports = 10, uint degree = 3,
-    bool adapt_radius = true, double lambda = 0.0, double decay_factor = 5.0);
+    bool adapt_radius = true, double lambda = 0.0, double decay_factor = 5.0)
+    : dim_(dim),
+      radius_(radius),
+      adapt_radius_(adapt_radius),
+      degree_(degree),
+      min_req_supports_(min_req_supports),
+      n_targets_(target_points.size() / dim),
+      n_sources_(source_points.size() / dim),
+      lambda_(lambda),
+      decay_factor_(decay_factor)
+  {
+    // check if source and target types can fall back to const double
+    static_assert(std::is_convertible_v<SourceType, const Omega_h::Real>,
+                  "SourceType must be convertible to const double");
+    static_assert(std::is_convertible_v<TargetType, const Omega_h::Real>,
+                  "TargetType must be convertible to const double");
+
+    source_field_ = Omega_h::HostWrite<Omega_h::Real>(
+      source_points.size() / dim_, "source field");
+    target_field_ = Omega_h::HostWrite<Omega_h::Real>(
+      target_points.size() / dim_, "target field");
+
+    Omega_h::HostWrite<Omega_h::Real> source_coords_host(source_points.size(),
+                                                         "source points");
+    Omega_h::HostWrite<Omega_h::Real> target_coords_host(target_points.size(),
+                                                         "target points");
+    // TODO Remove these copies
+    for (int i = 0; i < source_points.size(); ++i) {
+      source_coords_host[i] = source_points[i];
+    }
+    for (int i = 0; i < target_points.size(); ++i) {
+      target_coords_host[i] = target_points[i];
+    }
+    source_coords_ = Omega_h::Reals(source_coords_host);
+    target_coords_ = Omega_h::Reals(target_coords_host);
+
+    find_supports(min_req_supports_, 3 * min_req_supports_, 100);
+  }
 
   void eval(
     pcms::Rank1View<double, pcms::HostMemorySpace> source_field,

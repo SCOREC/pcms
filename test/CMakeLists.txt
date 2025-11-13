@@ -358,8 +358,23 @@ if(Catch2_FOUND)
                                           pcms_interpolator)
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
+  add_executable(test_interpolation_on_ltx_mesh test_interpolation_on_ltx_mesh.cpp)
+  target_link_libraries(test_interpolation_on_ltx_mesh PUBLIC Catch2::Catch2WithMain
+                                                        pcms::core
+                                                        pcms_interpolator)
+  target_include_directories(test_interpolation_on_ltx_mesh PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+  add_test(NAME test_interpolation_on_ltx_mesh
+          COMMAND test_interpolation_on_ltx_mesh
+                  --degas2_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx_graded_gauss.osh
+                  --ltx_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx
+                  --xgc_node_data ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/density_temp_node_rank0.txt
+                  --degas2_centroid_data ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/density_temp_centroid_rank0.txt
+  )
+  # TODO: how can we avoid repeating this but still getting command line args for filenames?
+
   include(Catch)
   catch_discover_tests(unit_tests)
+  #catch_discover_tests(test_interpolation_on_ltx_mesh)
 else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()

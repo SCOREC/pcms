@@ -82,43 +82,6 @@ MLSInterpolationHandler::MLSInterpolationHandler(
   find_supports(min_req_supports_);
 }
 
-MLSPointCloudInterpolation::MLSPointCloudInterpolation(
-  pcms::Rank1View<double, pcms::HostMemorySpace> source_points,
-  pcms::Rank1View<double, pcms::HostMemorySpace> target_points, int dim,
-  double radius, uint min_req_supports, uint degree, bool adapt_radius,
-  double lambda, double decay_factor)
-  : dim_(dim),
-    radius_(radius),
-    adapt_radius_(adapt_radius),
-    degree_(degree),
-    min_req_supports_(min_req_supports),
-    n_targets_(target_points.size() / dim),
-    n_sources_(source_points.size() / dim),
-    lambda_(lambda),
-    decay_factor_(decay_factor)
-{
-  source_field_ = Omega_h::HostWrite<Omega_h::Real>(source_points.size() / dim_,
-                                                    "source field");
-  target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_points.size() / dim_,
-                                                    "target field");
-
-  Omega_h::HostWrite<Omega_h::Real> source_coords_host(source_points.size(),
-                                                       "source points");
-  Omega_h::HostWrite<Omega_h::Real> target_coords_host(target_points.size(),
-                                                       "target points");
-  // TODO Remove these copies
-  for (int i = 0; i < source_points.size(); ++i) {
-    source_coords_host[i] = source_points[i];
-  }
-  for (int i = 0; i < target_points.size(); ++i) {
-    target_coords_host[i] = target_points[i];
-  }
-  source_coords_ = Omega_h::Reals(source_coords_host);
-  target_coords_ = Omega_h::Reals(target_coords_host);
-
-  find_supports(min_req_supports_, 3 * min_req_supports_, 100);
-}
-
 KOKKOS_INLINE_FUNCTION
 double pointDistanceSquared(const double x1, const double y1, const double z1,
                             const double x2, const double y2, const double z2)

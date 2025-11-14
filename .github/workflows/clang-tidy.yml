@@ -62,7 +62,6 @@ jobs:
                   -DBUILD_SHARED_LIBS=OFF
                   -DKokkos_ENABLE_SERIAL=ON
                   -DKokkos_ENABLE_OPENMP=OFF
-                  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                   -DKokkos_ENABLE_CUDA=OFF
                   -DKokkos_ENABLE_CUDA_LAMBDA=OFF
                   -DKokkos_ENABLE_CUDA_CONSTEXPR=OFF'
@@ -76,7 +75,6 @@ jobs:
         cache: true
         options: '-DCMAKE_CXX_STANDARD=17
                   -DBUILD_SHARED_LIBS=OFF
-                  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos-openmpi/install/lib/cmake/Kokkos'
 
     - name: build omega_h
@@ -161,6 +159,7 @@ jobs:
           --with-kokkos-dir="${{ runner.temp }}/build-kokkos-openmpi/install/" \
           --with-kokkos-kernels-dir="${{ runner.temp }}/build-kokkos-kernels-openmpi/install/" \
           --with-cuda=0 \
+          --with-shared-libraries=0 \
           --download-fblaslapack
         make all
 

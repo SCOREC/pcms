@@ -367,8 +367,7 @@ if(Catch2_FOUND)
           COMMAND test_interpolation_on_ltx_mesh
                   --degas2_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx_graded_gauss.osh
                   --ltx_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx
-                  --xgc_node_data ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/density_temp_node_rank0.txt
-                  --degas2_centroid_data ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/density_temp_centroid_rank0.txt
+                  --data_root ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/
   )
   # TODO: how can we avoid repeating this but still getting command line args for filenames?
 

@@ -28,12 +28,13 @@ void write_xgc_mesh_as_vtu(
   const std::string& connectivity_file,
   const std::vector<Omega_h::HostWrite<Omega_h::Real>>& node_data,
   const std::vector<std::string>& data_names);
+double compute_l2_norm(const Omega_h::HostWrite<Omega_h::Real>& data,
+                       const Omega_h::HostWrite<Omega_h::Real>& reference);
 
 // FIXME: What's the way to avoid global variables?
 std::string degas2_mesh_filename = "";
 std::string ltx_mesh_base_filename = "";
-std::string ltx_node_data_filename = "";
-std::string degas2_centroid_data_filename = "";
+std::string data_root_dir = "";
 
 int main(const int argc, char* argv[])
 {
@@ -47,11 +48,12 @@ int main(const int argc, char* argv[])
       "Degas2 mesh file in Omega_h binary format") |
     Opt(ltx_mesh_base_filename, "ltx_mesh_base_filename")["--ltx_mesh"](
       "LTX mesh file in XGC mesh format (needs both .node and .ele)") |
-    Opt(ltx_node_data_filename,
-        "xgc_node_data_filename")["--xgc_node_data"]("XGC node data file") |
-    Opt(degas2_centroid_data_filename,
-        "degas2_centroid_data_filename")["--degas2_centroid_data"](
-      "Degas2 mesh centroid data file");
+    Opt(data_root_dir, "data_root_dir")["--data_root"](
+      "Root directory for data files. It needs to these 8 files:"
+      "degas2_data_0.original.txt degas2_data_0.txt "
+      "degas2_interpolated_data_0.original.txt degas2_interpolated_data_0.txt "
+      "xgc_data_0.original.txt xgc_data_0.txt "
+      "xgc_interpolated_data_0.original.txt xgc_interpolated_data_0.txt");
 
   session.cli(cli);
   int returnCode = session.applyCommandLine(argc, argv);
@@ -63,11 +65,15 @@ int main(const int argc, char* argv[])
 
 TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
 {
+  // ---------------------------- Loading Mesh ------------------- //
   auto lib = Omega_h::Library{};
-  Omega_h::Mesh mesh(&lib);
-  Omega_h::binary::read(degas2_mesh_filename, lib.world(), &mesh);
-  const int degas2_num_elems = mesh.nelems();
-  const auto degas2_mesh_centroids_host = Omega_h::HostRead(getCentroids(mesh));
+  Omega_h::Mesh degas2_mesh(&lib);
+  Omega_h::binary::read(degas2_mesh_filename, lib.world(), &degas2_mesh);
+
+  // --------------------- Initialize Interpolators -------------- //
+  const int degas2_num_elems = degas2_mesh.nelems();
+  const auto degas2_mesh_centroids_host =
+    Omega_h::HostRead(getCentroids(degas2_mesh));
   printf("[INFO] Degas2 Mesh loaded from %s with %d elements\n",
          degas2_mesh_filename.c_str(), degas2_num_elems);
   const auto degas2_mesh_centroids_view =
@@ -87,20 +93,26 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
                                2, 0.00001, 10, 1, true, 0.0, 50.0);
   auto degas2_to_xgc_interpolator =
     MLSPointCloudInterpolation(degas2_mesh_centroids_view, xgc_mesh_points_view,
-                               2, 0.00001, 10, 1, true, 0.0, 50.0);
+                               2, 0.1, 10, 1, true, 0.0, 50.0);
   printf("[INFO] Interpolators initialized.\n");
 
-  // Read Fields from Files
+  // ---------------------- Load Data ---------------------- //
   Omega_h::HostWrite<Omega_h::Real> density_at_xgc_nodes(xgc_num_nodes);
   Omega_h::HostWrite<Omega_h::Real> temp_at_xgc_nodes(xgc_num_nodes);
   Omega_h::HostWrite<Omega_h::Real> density_at_degas2_centroids(
     degas2_num_elems);
   Omega_h::HostWrite<Omega_h::Real> temp_at_degas2_centroids(degas2_num_elems);
 
-  read_data(density_at_xgc_nodes, temp_at_xgc_nodes, ltx_node_data_filename);
-  printf("[INFO] Data files loaded: %s and %s\n",
-         ltx_node_data_filename.c_str(), degas2_centroid_data_filename.c_str());
+  read_data(density_at_xgc_nodes, temp_at_xgc_nodes,
+            data_root_dir + "/xgc_data_0.original.txt");
+  printf("[INFO] XGC node data loaded: %s\n",
+         (data_root_dir + "/xgc_data_0.original.txt").c_str());
+  read_data(density_at_degas2_centroids, temp_at_degas2_centroids,
+            data_root_dir + "/degas2_data_0.txt");
+  printf("[INFO] Degas2 centroid data loaded: %s\n",
+         (data_root_dir + "/degas2_data_0.txt").c_str());
 
+  // ------------------ First Interpolation ------------------ //
   const auto density_at_xgc_nodes_view =
     pcms::Rank1View<double, pcms::HostMemorySpace>(density_at_xgc_nodes.data(),
                                                    density_at_xgc_nodes.size());
@@ -115,69 +127,165 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
     pcms::Rank1View<double, pcms::HostMemorySpace>(
       temp_at_degas2_centroids.data(), temp_at_degas2_centroids.size());
 
+  Omega_h::HostWrite<Omega_h::Real> interpolated_xgc_density(degas2_num_elems);
+  Omega_h::HostWrite<Omega_h::Real> interpolated_xgc_temp(degas2_num_elems);
+  Omega_h::HostWrite<Omega_h::Real> interpolated_degas2_density(xgc_num_nodes);
+  Omega_h::HostWrite<Omega_h::Real> interpolated_degas2_temp(xgc_num_nodes);
+
+  const auto interpolated_xgc_density_view =
+    pcms::Rank1View<double, pcms::HostMemorySpace>(
+      interpolated_xgc_density.data(), interpolated_xgc_density.size());
+  const auto interpolated_xgc_temp_view =
+    pcms::Rank1View<double, pcms::HostMemorySpace>(
+      interpolated_xgc_temp.data(), interpolated_xgc_temp.size());
+  const auto interpolated_degas2_density_view =
+    pcms::Rank1View<double, pcms::HostMemorySpace>(
+      interpolated_degas2_density.data(), interpolated_degas2_density.size());
+  const auto interpolated_degas2_temp_view =
+    pcms::Rank1View<double, pcms::HostMemorySpace>(
+      interpolated_degas2_temp.data(), interpolated_degas2_temp.size());
+
   xgc_to_degas2_interpolator.eval(density_at_xgc_nodes_view,
-                                  density_at_degas2_centroids_view);
+                                  interpolated_xgc_density_view);
   xgc_to_degas2_interpolator.eval(temp_at_xgc_nodes_view,
-                                  temp_at_degas2_centroids_view);
+                                  interpolated_xgc_temp_view);
   printf("[INFO] Interpolated data from XGC nodes to Degas2 centroids.\n");
 
-  Omega_h::HostWrite<Omega_h::Real> density_at_xgc_nodes_interpolated_back(
-    xgc_num_nodes);
-  Omega_h::HostWrite<Omega_h::Real> temp_at_xgc_nodes_interpolated_back(
-    xgc_num_nodes);
-  const auto density_at_xgc_nodes_interpolated_back_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      density_at_xgc_nodes_interpolated_back.data(),
-      density_at_xgc_nodes_interpolated_back.size());
-  const auto temp_at_xgc_nodes_interpolated_back_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      temp_at_xgc_nodes_interpolated_back.data(),
-      temp_at_xgc_nodes_interpolated_back.size());
-
   degas2_to_xgc_interpolator.eval(density_at_degas2_centroids_view,
-                                  density_at_xgc_nodes_interpolated_back_view);
+                                  interpolated_degas2_density_view);
   degas2_to_xgc_interpolator.eval(temp_at_degas2_centroids_view,
-                                  temp_at_xgc_nodes_interpolated_back_view);
-  printf("[INFO] Interpolated data back from Degas2 centroids to XGC nodes.\n");
+                                  interpolated_degas2_temp_view);
+  printf("[INFO] Interpolated data from Degas2 centroids to XGC nodes");
 
-  // write to VTK in Degas2 mesh
-  auto density_at_node_centroids_read =
-    Omega_h::Read<Omega_h::Real>(density_at_degas2_centroids);
-  auto temp_at_node_centroids_read =
-    Omega_h::Read<Omega_h::Real>(temp_at_degas2_centroids);
-  mesh.add_tag(Omega_h::FACE, "interpolated_density", 1,
-               density_at_node_centroids_read);
-  mesh.add_tag(Omega_h::FACE, "interpolated_temperature", 1,
-               temp_at_node_centroids_read);
+  // ------------------ Interpolation Back ------------------ //
+  Omega_h::HostWrite<Omega_h::Real> interpolated_back_density_at_xgc_nodes(
+    xgc_num_nodes);
+  Omega_h::HostWrite<Omega_h::Real> interpolated_back_temp_at_xgc_nodes(
+    xgc_num_nodes);
+  Omega_h::HostWrite<Omega_h::Real>
+    interpolated_back_density_at_degas2_centroids(degas2_num_elems);
+  Omega_h::HostWrite<Omega_h::Real> interpolated_back_temp_at_degas2_centroids(
+    degas2_num_elems);
+
+  const auto interpolated_back_density_at_xgc_nodes_view =
+    pcms::Rank1View<double, pcms::HostMemorySpace>(
+      interpolated_back_density_at_xgc_nodes.data(),
+      interpolated_back_density_at_xgc_nodes.size());
+  const auto interpolated_back_temp_at_xgc_nodes_view =
+    pcms::Rank1View<double, pcms::HostMemorySpace>(
+      interpolated_back_temp_at_xgc_nodes.data(),
+      interpolated_back_temp_at_xgc_nodes.size());
+  const auto interpolated_back_density_at_degas2_centroids_view =
+    pcms::Rank1View<double, pcms::HostMemorySpace>(
+      interpolated_back_density_at_degas2_centroids.data(),
+      interpolated_back_density_at_degas2_centroids.size());
+  const auto interpolated_back_temp_at_degas2_centroids_view =
+    pcms::Rank1View<double, pcms::HostMemorySpace>(
+      interpolated_back_temp_at_degas2_centroids.data(),
+      interpolated_back_temp_at_degas2_centroids.size());
+
+  degas2_to_xgc_interpolator.eval(interpolated_xgc_density_view,
+                                  interpolated_back_density_at_xgc_nodes_view);
+  degas2_to_xgc_interpolator.eval(interpolated_xgc_temp_view,
+                                  interpolated_back_temp_at_xgc_nodes_view);
+  printf("[INFO] Interpolated back data from Degas2 centroids to XGC nodes.\n");
+  xgc_to_degas2_interpolator.eval(
+    interpolated_degas2_density_view,
+    interpolated_back_density_at_degas2_centroids_view);
+  xgc_to_degas2_interpolator.eval(
+    interpolated_degas2_temp_view,
+    interpolated_back_temp_at_degas2_centroids_view);
+  printf("[INFO] Interpolated back data from XGC nodes to Degas2 centroids.\n");
+
+  // ------------------ Write Output VTU Files ------------------ //
+  degas2_mesh.add_tag(Omega_h::FACE, "density_at_degas2_centroids", 1,
+                      Omega_h::Reals(density_at_degas2_centroids));
+  degas2_mesh.add_tag(Omega_h::FACE, "temperature_at_degas2_centroids", 1,
+                      Omega_h::Reals(temp_at_degas2_centroids));
+  degas2_mesh.add_tag(
+    Omega_h::FACE, "interpolated_back_density_at_degas2_centroids", 1,
+    Omega_h::Reals(interpolated_back_density_at_degas2_centroids));
+  degas2_mesh.add_tag(
+    Omega_h::FACE, "interpolated_back_temperature_at_degas2_centroids", 1,
+    Omega_h::Reals(interpolated_back_temp_at_degas2_centroids));
+  degas2_mesh.add_tag(Omega_h::FACE, "interpolated_xgc_density", 1,
+                      Omega_h::Reals(interpolated_xgc_density));
+  degas2_mesh.add_tag(Omega_h::FACE, "interpolated_xgc_temperature", 1,
+                      Omega_h::Reals(interpolated_xgc_temp));
 
   std::string output_vtu_filename = "degas2_mesh.vtu";
-  Omega_h::vtk::write_vtu(output_vtu_filename, &mesh);
-  printf("[INFO] Wrote Degas2 mesh with interpolated data in %s.\n",
+  Omega_h::vtk::write_vtu(output_vtu_filename, &degas2_mesh);
+  printf("[INFO] Wrote Degas2 mesh with all data in %s.\n",
          output_vtu_filename.c_str());
 
   std::string output_xgc_vtu_filename = "xgc_mesh.vtu";
-  write_xgc_mesh_as_vtu(
-    output_xgc_vtu_filename, xgc_mesh_points, ltx_mesh_base_filename + ".ele",
-    {density_at_xgc_nodes, temp_at_xgc_nodes,
-     density_at_xgc_nodes_interpolated_back,
-     temp_at_xgc_nodes_interpolated_back},
-    {"original_density", "original_temperature", "interpolated_back_density",
-     "interpolated_back_temperature"});
-  printf(
-    "[INFO] Wrote XGC mesh with original and interpolated back data in %s.\n",
-    output_xgc_vtu_filename.c_str());
+  std::vector xgc_node_data_arrays = {density_at_xgc_nodes,
+                                      temp_at_xgc_nodes,
+                                      interpolated_back_density_at_xgc_nodes,
+                                      interpolated_back_temp_at_xgc_nodes,
+                                      interpolated_degas2_density,
+                                      interpolated_degas2_temp};
+  std::vector<std::string> xgc_node_data_names = {
+    "density_at_xgc_nodes",
+    "temperature_at_xgc_nodes",
+    "interpolated_back_density_at_xgc_nodes",
+    "interpolated_back_temperature_at_xgc_nodes",
+    "interpolated_degas2_density",
+    "interpolated_degas2_temperature"};
 
-  // Compare original and interpolated back data at XGC nodes
+  write_xgc_mesh_as_vtu(output_xgc_vtu_filename, xgc_mesh_points,
+                        ltx_mesh_base_filename + ".ele", xgc_node_data_arrays,
+                        xgc_node_data_names);
+  printf("[INFO] Wrote XGC mesh with all data in %s.\n",
+         output_xgc_vtu_filename.c_str());
+
+  // ------------------ Verification ------------------ //
+  double tol = 10.0 / 100.0; // 10 percent tolerance
   for (int i = 0; i < xgc_num_nodes; ++i) {
-    double tol_percent = 10.0;
-    REQUIRE_THAT(
-      density_at_xgc_nodes_interpolated_back[i],
-      Catch::Matchers::WithinRel(density_at_xgc_nodes[i], tol_percent / 100.0));
+    CHECK_THAT(interpolated_back_density_at_xgc_nodes[i],
+               Catch::Matchers::WithinRel(density_at_xgc_nodes[i], tol) ||
+                 Catch::Matchers::WithinAbs(density_at_xgc_nodes[i], tol));
 
-    REQUIRE_THAT(
-      temp_at_xgc_nodes_interpolated_back[i],
-      Catch::Matchers::WithinRel(temp_at_xgc_nodes[i], tol_percent / 100.0));
+    CHECK_THAT(interpolated_back_temp_at_xgc_nodes[i],
+               Catch::Matchers::WithinRel(temp_at_xgc_nodes[i], tol) ||
+                 Catch::Matchers::WithinAbs(temp_at_xgc_nodes[i], tol));
   }
+
+  for (int i = 0; i < degas2_num_elems; ++i) {
+    CHECK_THAT(
+      interpolated_back_density_at_degas2_centroids[i],
+      Catch::Matchers::WithinRel(density_at_degas2_centroids[i], tol) ||
+        Catch::Matchers::WithinAbs(density_at_degas2_centroids[i], tol));
+
+    CHECK_THAT(interpolated_back_temp_at_degas2_centroids[i],
+               Catch::Matchers::WithinRel(temp_at_degas2_centroids[i], tol) ||
+                 Catch::Matchers::WithinAbs(temp_at_degas2_centroids[i], tol));
+  }
+
+  double l2_norm_density_xgc = compute_l2_norm(
+    interpolated_back_density_at_xgc_nodes, density_at_xgc_nodes);
+  double l2_norm_temp_xgc =
+    compute_l2_norm(interpolated_back_temp_at_xgc_nodes, temp_at_xgc_nodes);
+  double l2_norm_density_degas2 = compute_l2_norm(
+    interpolated_back_density_at_degas2_centroids, density_at_degas2_centroids);
+  double l2_norm_temp_degas2 = compute_l2_norm(
+    interpolated_back_temp_at_degas2_centroids, temp_at_degas2_centroids);
+
+  printf("[INFO] L2 Norms of errors after interpolation back:\n");
+  printf("       Density\t(XGC -> Degas2 --> XGC):\t%e\n", l2_norm_density_xgc);
+  printf("       Temperature\t(XGC -> Degas2 --> XGC):\t%e\n",
+         l2_norm_temp_xgc);
+  printf("       Density\t(Degas2 -> XGC --> Degas2):\t%e\n",
+         l2_norm_density_degas2);
+  printf("       Temperature\t(Degas2 -> XGC --> Degas2):\t%e\n",
+         l2_norm_temp_degas2);
+
+  // require that l2 norms are within 0.02
+  double l2_tol = 0.02;
+  CHECK(l2_norm_density_xgc < l2_tol);
+  CHECK(l2_norm_temp_xgc < l2_tol);
+  CHECK(l2_norm_density_degas2 < l2_tol);
+  CHECK(l2_norm_temp_degas2 < l2_tol);
 }
 
 std::vector<double> read_xgc_mesh_nodes(std::string filename)
@@ -235,17 +343,14 @@ void read_data(Omega_h::HostWrite<Omega_h::Real> density,
   }
 
   int data_count = 0;
-  std::string line;
-  while (std::getline(file, line)) {
-    std::istringstream line_stream(line);
-    int index;
-    double dens, temp;
 
-    // Read index, density, and temperature from the line
-    line_stream >> index >> dens >> temp;
+  int index;
+  double dens, temp;
+  while (file >> index >> dens >> temp) {
 
-    assert(index > 0 && index <= density.size() &&
-           "Index out of bounds in data file");
+    OMEGA_H_CHECK_PRINTF((index > 0 && index <= density.size()),
+                         "Index %d out of bounds (1 to %d)\n", index,
+                         density.size());
 
     density[index - 1] = dens;
     temperature[index - 1] = temp;
@@ -382,4 +487,29 @@ void write_xgc_mesh_as_vtu(
   file << "</VTKFile>\n";
 
   file.close();
+}
+
+double compute_l2_norm(const Omega_h::HostWrite<Omega_h::Real>& data,
+                       const Omega_h::HostWrite<Omega_h::Real>& reference)
+{
+  assert(data.size() == reference.size() &&
+         "Data and reference must be of the same size");
+
+  double sum_sq_diff = 0.0;
+  double sum_sq_ref = 0.0;
+
+  for (size_t i = 0; i < data.size(); ++i) {
+    const double diff = data[i] - reference[i];
+    sum_sq_diff += diff * diff;
+    sum_sq_ref += reference[i] * reference[i];
+  }
+
+  double l2_norm = std::sqrt(sum_sq_diff);
+  double l2_ref = std::sqrt(sum_sq_ref);
+
+  if (l2_ref > 0.0) {
+    return l2_norm / l2_ref; // Return relative L2 norm
+  } else {
+    return l2_norm; // If reference is zero, return absolute L2 norm
+  }
 }

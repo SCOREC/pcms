@@ -58,7 +58,7 @@ redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
   LO entry = 0;
   for (auto& rank : reverse_partition) {
     for (auto& idx : rank.second) {
-      PCMS_ALWAYS_ASSERT(idx < num_entries);
+      PCMS_ALWAYS_ASSERT(static_cast<size_t>(idx) < num_entries);
       permutation[idx] = entry++;
     }
   }

@@ -1,6 +1,7 @@
 #ifndef PCMS_PARTITION_H
 #define PCMS_PARTITION_H
 #include "pcms/common.h"
+#include "pcms/profile.h"
 
 namespace pcms
 {

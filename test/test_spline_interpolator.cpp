@@ -340,8 +340,8 @@ void pspltest2(Kokkos::View<double*, HostMemorySpace> res_2d)
     Rank1View<double, TestMemorySpace>(st1_view.data(), st1_view.size());
   auto ct1 =
     Rank1View<double, TestMemorySpace>(ct1_view.data(), ct1_view.size());
-  auto f1 = Rank4View<double, TestMemorySpace>(f1_view.data(),
-                                               Kokkos::extents{4, 4, 10, 10});
+  auto f1 = Rank4View<double, TestMemorySpace>(
+    f1_view.data(), Kokkos::extents<LO, 4, 4, 10, 10>());
   auto bcx1 =
     Rank1View<double, TestMemorySpace>(bcx1_view.data(), bcx1_view.size());
   auto bcx2 =

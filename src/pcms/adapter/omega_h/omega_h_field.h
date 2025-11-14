@@ -97,7 +97,8 @@ public:
   using value_type = T;
 
   OmegaHField(std::string name, Omega_h::Mesh& mesh,
-              std::string global_id_name = "",
+              std::string global_id_name = "", int search_nx = 10,
+              int search_ny = 10,
               mesh_entity_type entity_type = mesh_entity_type::VERTEX)
     : name_(std::move(name)),
       mesh_(mesh),

@@ -15,9 +15,7 @@ target_include_directories(
 set(CAPI_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/client.h
                  ${CMAKE_CURRENT_SOURCE_DIR}/kokkos.h)
 set_target_properties(
-  pcms_capi
-  PROPERTIES PUBLIC_HEADER "${CAPI_HEADERS}"
-             OUTPUT_NAME pcmscapi
+  pcms_capi PROPERTIES PUBLIC_HEADER "${CAPI_HEADERS}" OUTPUT_NAME pcmscapi
              EXPORT_NAME capi)
 
 add_library(pcms_interpolator_capi interpolator.cpp kokkos.cpp)

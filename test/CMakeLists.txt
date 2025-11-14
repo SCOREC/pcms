@@ -451,6 +451,19 @@ if(PCMS_ENABLE_Fortran)
                         PUBLIC pcms::fortranapi MPI::MPI_Fortran)
   set_target_properties(test_proxy_coupling_xgc_client_fortran
                         PROPERTIES LINKER_LANGUAGE Fortran)
+
+  add_executable(test_interpolation_fortran_api
+                 test_interpolation.f90)
+  target_link_libraries(test_interpolation_fortran_api
+                        PUBLIC pcms::interpolator::fortranapi)
+  set_target_properties(test_interpolation_fortran_api
+                       PROPERTIES LINKER_LANGUAGE Fortran)
+  add_test(
+    NAME test_interpolation_fortran_api
+    COMMAND
+    $<TARGET_FILE:test_interpolation_fortran_api> ${PCMS_TEST_DATA_DIR}/square10x102D.osh 200 121
+  )
+
   if(HOST_NPROC GREATER_EQUAL 4)
     dual_mpi_test(
       TESTNAME

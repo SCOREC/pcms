@@ -6,7 +6,7 @@ program test_interpolation
     implicit none
 
     !!!!!!!!!!!!!! Declare the variables !!!!!!!!!!!!!!
-    type(PcmsInterpolatorHandle) :: interpolator
+    type(PcmsInterpolatorHandle) :: interpolator, point_cloud_interpolator
     type(PcmsInterpolatorOHMeshHandle) :: mesh
     character(len=100) :: filename, num_faces_str, num_vertices_str
     real(8) :: radius
@@ -14,6 +14,13 @@ program test_interpolation
     integer :: i
     ! Didn't use real(c_double) to show that it works with real(8) as well
     real(8), allocatable, target :: source_at_face(:), target_at_vertex(:)
+
+    real(8), allocatable, target :: point_cloud_source_points(:)
+    real(8), allocatable, target :: point_cloud_target_points(:)
+    real(8), allocatable, target :: point_cloud_source_values(:)
+    real(8), allocatable, target :: point_cloud_target_values(:)
+    integer :: num_point_cloud_source_points
+    integer :: num_point_cloud_target_points
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -78,8 +85,72 @@ program test_interpolation
         end if
     end do
 
+    print *, "Mesh Node to Cell Centroid Interpolation successful!"
+
+    !!!!!!!!!!!!!!!!! 2D Point Cloud Interpolator Test !!!!!!!!!!!!!!!!!!!!
+    num_point_cloud_source_points = 9 ! first order interpolation needs at least 6 points
+    num_point_cloud_target_points = 4
+    allocate(point_cloud_source_points(2 * num_point_cloud_source_points))
+    allocate(point_cloud_target_points(2 * num_point_cloud_target_points))
+    allocate(point_cloud_source_values(num_point_cloud_source_points))
+    allocate(point_cloud_target_values(num_point_cloud_target_points))
+
+    !!!!!! Geometry of the Point Clouds !!!!!!
+    !       *(0,1)            *(0.5,1)            *(1,1)
+    !         |                                     |
+    !         |    @(.25,.75)           @(.75,.75)  |
+    !       *(0,0.5)          *(0.5,0.5)          *(1,0.5)
+    !         |    @(.25,.25)           @(.75,.25)  |
+    !         |                                     |
+    !       *(0,0)            *(0.5,0)            *(1,0)
+    !     ----------------------------------------------------> X
+    !    * -> Source Points
+    !    @ -> Target Points
+    !    All source points have value 2.0
+
+    point_cloud_source_points = [0.0d0, 0.0d0, &
+                                 1.0d0, 0.0d0, &
+                                 0.0d0, 1.0d0, &
+                                 1.0d0, 1.0d0, &
+                                 0.5d0, 0.5d0, &
+                                 0.0d0, 0.5d0, &
+                                 1.0d0, 0.5d0, &
+                                 0.5d0, 0.0d0, &
+                                 0.5d0, 1.0d0]
+    point_cloud_source_values = [2.0d0, 2.0d0, 2.0d0, 2.0d0, 2.0d0, 2.0d0, 2.0d0, 2.0d0, 2.0d0]
+    point_cloud_target_points = [0.25d0, 0.25d0, &
+                                 0.75d0, 0.25d0, &
+                                 0.25d0, 0.75d0, &
+                                 0.75d0, 0.75d0]
+
+    point_cloud_interpolator = pcms_create_point_based_interpolator(c_loc(point_cloud_source_points), &
+                                                                        num_point_cloud_source_points*2, &
+                                                                        c_loc(point_cloud_target_points), &
+                                                                        num_point_cloud_target_points*2, &
+                                                                        1.0d0, & ! radius
+                                                                        1, & ! degree
+                                                                        6, &! min neighbors
+                                                                        0.0d0, & ! lambda
+                                                                        5.0d0) ! decay factor
+
+    call pcms_interpolate(point_cloud_interpolator, c_loc(point_cloud_source_values), &
+                          num_point_cloud_source_points, &
+                          c_loc(point_cloud_target_values), &
+                          num_point_cloud_target_points)
+
+    ! print the interpolated values
+    do i = 1, num_point_cloud_target_points
+        print *, "Point Cloud Target Point ", i, " value: ", point_cloud_target_values(i)
+        ! if values are not close to 2.0, then the interpolation is not working; exit with error
+        if (abs(point_cloud_target_values(i) - 2.0d0) > 1.0d-6) then
+            print *, "Point Cloud Interpolation failed, expected about 2.0, got ", point_cloud_target_values(i)
+        end if
+    end do
+    print *, "2D Point Cloud Interpolation successful!"
+
     !!!!!!!!!!!!!!!! Destroy !!!!!!!!!!!!!!!!!!!!!!!!
     call pcms_destroy_interpolator(interpolator)
+    call pcms_destroy_interpolator(point_cloud_interpolator)
     call release_oh_mesh(mesh)
 
     call pcms_kokkos_finalize()

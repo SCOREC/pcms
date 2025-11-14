@@ -38,16 +38,6 @@ module pcms_interpolator
   procedure, private :: swigf_PcmsInterpolatorHandle_op_assign__
   generic :: assignment(=) => swigf_PcmsInterpolatorHandle_op_assign__
  end type PcmsInterpolatorHandle
- ! struct struct PcmsPointBasedInterpolatorHandle
- type, public :: PcmsPointBasedInterpolatorHandle
-  type(SwigClassWrapper), public :: swigdata
- contains
-  procedure :: set_pointer => swigf_PcmsPointBasedInterpolatorHandle_pointer_set
-  procedure :: get_pointer => swigf_PcmsPointBasedInterpolatorHandle_pointer_get
-  procedure :: release => swigf_PcmsPointBasedInterpolatorHandle_release
-  procedure, private :: swigf_PcmsPointBasedInterpolatorHandle_op_assign__
-  generic :: assignment(=) => swigf_PcmsPointBasedInterpolatorHandle_op_assign__
- end type PcmsPointBasedInterpolatorHandle
  public :: pcms_create_point_based_interpolator
  type, bind(C) :: SwigArrayWrapper
   type(C_PTR), public :: data = C_NULL_PTR
@@ -58,16 +48,11 @@ module pcms_interpolator
  public :: pcms_create_xgcnodedegas2_interpolator
  public :: pcms_create_interpolator
  public :: pcms_destroy_interpolator
- public :: pcms_destroy_point_based_interpolator
  public :: pcms_kokkos_initialize_without_args
  public :: pcms_kokkos_finalize
  public :: read_oh_mesh
  public :: release_oh_mesh
  public :: pcms_interpolate
- public :: pcms_interpolate_point_based
- interface PcmsPointBasedInterpolatorHandle
-  module procedure swigf_new_PcmsPointBasedInterpolatorHandle
- end interface
  interface PcmsInterpolatorHandle
   module procedure swigf_new_PcmsInterpolatorHandle
  end interface
@@ -174,46 +159,6 @@ type(SwigClassWrapper), intent(inout) :: farg1
 type(SwigClassWrapper), intent(in) :: farg2
 end subroutine
 
-subroutine swigc_PcmsPointBasedInterpolatorHandle_pointer_set(farg1, farg2) &
-bind(C, name="_wrap_PcmsPointBasedInterpolatorHandle_pointer_set")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-type(C_PTR), intent(in) :: farg2
-end subroutine
-
-function swigc_PcmsPointBasedInterpolatorHandle_pointer_get(farg1) &
-bind(C, name="_wrap_PcmsPointBasedInterpolatorHandle_pointer_get") &
-result(fresult)
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-type(C_PTR) :: fresult
-end function
-
-function swigc_new_PcmsPointBasedInterpolatorHandle() &
-bind(C, name="_wrap_new_PcmsPointBasedInterpolatorHandle") &
-result(fresult)
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper) :: fresult
-end function
-
-subroutine swigc_delete_PcmsPointBasedInterpolatorHandle(farg1) &
-bind(C, name="_wrap_delete_PcmsPointBasedInterpolatorHandle")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(inout) :: farg1
-end subroutine
-
-subroutine swigc_PcmsPointBasedInterpolatorHandle_op_assign__(farg1, farg2) &
-bind(C, name="_wrap_PcmsPointBasedInterpolatorHandle_op_assign__")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(inout) :: farg1
-type(SwigClassWrapper), intent(in) :: farg2
-end subroutine
-
 function swigc_pcms_create_point_based_interpolator(farg1, farg2, farg3, farg4, farg5, farg6, farg7, farg8, farg9) &
 bind(C, name="_wrap_pcms_create_point_based_interpolator") &
 result(fresult)
@@ -300,13 +245,6 @@ import :: swigclasswrapper
 type(SwigClassWrapper), intent(in) :: farg1
 end subroutine
 
-subroutine swigc_pcms_destroy_point_based_interpolator(farg1) &
-bind(C, name="_wrap_pcms_destroy_point_based_interpolator")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-end subroutine
-
 subroutine swigc_pcms_kokkos_initialize_without_args() &
 bind(C, name="_wrap_pcms_kokkos_initialize_without_args")
 use, intrinsic :: ISO_C_BINDING
@@ -336,17 +274,6 @@ end subroutine
 
 subroutine swigc_pcms_interpolate(farg1, farg2, farg3, farg4, farg5) &
 bind(C, name="_wrap_pcms_interpolate")
-use, intrinsic :: ISO_C_BINDING
-import :: swigclasswrapper
-type(SwigClassWrapper), intent(in) :: farg1
-type(C_PTR), intent(in) :: farg2
-integer(C_INT), intent(in) :: farg3
-type(C_PTR), intent(in) :: farg4
-integer(C_INT), intent(in) :: farg5
-end subroutine
-
-subroutine swigc_pcms_interpolate_point_based(farg1, farg2, farg3, farg4, farg5) &
-bind(C, name="_wrap_pcms_interpolate_point_based")
 use, intrinsic :: ISO_C_BINDING
 import :: swigclasswrapper
 type(SwigClassWrapper), intent(in) :: farg1
@@ -510,73 +437,11 @@ call swigc_PcmsInterpolatorHandle_op_assign__(farg1, farg2)
 self%swigdata = farg1
 end subroutine
 
-subroutine swigf_PcmsPointBasedInterpolatorHandle_pointer_set(self, pointer)
-use, intrinsic :: ISO_C_BINDING
-class(PcmsPointBasedInterpolatorHandle), intent(in) :: self
-type(C_PTR), intent(in) :: pointer
-type(SwigClassWrapper) :: farg1 
-type(C_PTR) :: farg2 
-
-farg1 = self%swigdata
-farg2 = pointer
-call swigc_PcmsPointBasedInterpolatorHandle_pointer_set(farg1, farg2)
-end subroutine
-
-function swigf_PcmsPointBasedInterpolatorHandle_pointer_get(self) &
-result(swig_result)
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR) :: swig_result
-class(PcmsPointBasedInterpolatorHandle), intent(in) :: self
-type(C_PTR) :: fresult 
-type(SwigClassWrapper) :: farg1 
-
-farg1 = self%swigdata
-fresult = swigc_PcmsPointBasedInterpolatorHandle_pointer_get(farg1)
-swig_result = fresult
-end function
-
-function swigf_new_PcmsPointBasedInterpolatorHandle() &
-result(self)
-use, intrinsic :: ISO_C_BINDING
-type(PcmsPointBasedInterpolatorHandle) :: self
-type(SwigClassWrapper) :: fresult 
-
-fresult = swigc_new_PcmsPointBasedInterpolatorHandle()
-self%swigdata = fresult
-end function
-
-subroutine swigf_PcmsPointBasedInterpolatorHandle_release(self)
-use, intrinsic :: ISO_C_BINDING
-class(PcmsPointBasedInterpolatorHandle), intent(inout) :: self
-type(SwigClassWrapper) :: farg1 
-
-farg1 = self%swigdata
-if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
-call swigc_delete_PcmsPointBasedInterpolatorHandle(farg1)
-endif
-farg1%cptr = C_NULL_PTR
-farg1%cmemflags = 0
-self%swigdata = farg1
-end subroutine
-
-subroutine swigf_PcmsPointBasedInterpolatorHandle_op_assign__(self, other)
-use, intrinsic :: ISO_C_BINDING
-class(PcmsPointBasedInterpolatorHandle), intent(inout) :: self
-type(PcmsPointBasedInterpolatorHandle), intent(in) :: other
-type(SwigClassWrapper) :: farg1 
-type(SwigClassWrapper) :: farg2 
-
-farg1 = self%swigdata
-farg2 = other%swigdata
-call swigc_PcmsPointBasedInterpolatorHandle_op_assign__(farg1, farg2)
-self%swigdata = farg1
-end subroutine
-
 function pcms_create_point_based_interpolator(source_points, source_points_size, target_points, target_points_size, radius, &
   degree, min_req_supports, lambda, decay_factor) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(PcmsPointBasedInterpolatorHandle) :: swig_result
+type(PcmsInterpolatorHandle) :: swig_result
 type(C_PTR), intent(in) :: source_points
 integer(C_INT), intent(in) :: source_points_size
 type(C_PTR), intent(in) :: target_points
@@ -632,7 +497,7 @@ function pcms_create_degas2xgc_interpolator(xgc_mesh_filename, dg2_mesh_filename
   decay_factor) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(PcmsPointBasedInterpolatorHandle) :: swig_result
+type(PcmsInterpolatorHandle) :: swig_result
 character(len=*), intent(in) :: xgc_mesh_filename
 character(len=*), intent(in) :: dg2_mesh_filename
 real(C_DOUBLE), intent(in) :: radius
@@ -666,7 +531,7 @@ function pcms_create_degas2xgcnode_interpolator(target_points, target_points_siz
   degree, min_req_supports, lambda, decay_factor) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(PcmsPointBasedInterpolatorHandle) :: swig_result
+type(PcmsInterpolatorHandle) :: swig_result
 type(C_PTR), intent(in) :: target_points
 integer(C_INT), intent(in) :: target_points_size
 character(len=*), intent(in) :: dg2_mesh_filename
@@ -705,7 +570,7 @@ function pcms_create_xgcnodedegas2_interpolator(dg2_mesh_filename, source_points
   degree, min_req_supports, lambda, decay_factor) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
-type(PcmsPointBasedInterpolatorHandle) :: swig_result
+type(PcmsInterpolatorHandle) :: swig_result
 character(len=*), intent(in) :: dg2_mesh_filename
 type(C_PTR), intent(in) :: source_points
 integer(C_INT), intent(in) :: source_points_size
@@ -765,15 +630,6 @@ farg1 = interpolator%swigdata
 call swigc_pcms_destroy_interpolator(farg1)
 end subroutine
 
-subroutine pcms_destroy_point_based_interpolator(interpolator)
-use, intrinsic :: ISO_C_BINDING
-type(PcmsPointBasedInterpolatorHandle), intent(in) :: interpolator
-type(SwigClassWrapper) :: farg1 
-
-farg1 = interpolator%swigdata
-call swigc_pcms_destroy_point_based_interpolator(farg1)
-end subroutine
-
 subroutine pcms_kokkos_initialize_without_args()
 use, intrinsic :: ISO_C_BINDING
 
@@ -828,27 +684,6 @@ farg3 = input_size
 farg4 = output
 farg5 = output_size
 call swigc_pcms_interpolate(farg1, farg2, farg3, farg4, farg5)
-end subroutine
-
-subroutine pcms_interpolate_point_based(interpolator, input, input_size, output, output_size)
-use, intrinsic :: ISO_C_BINDING
-type(PcmsPointBasedInterpolatorHandle), intent(in) :: interpolator
-type(C_PTR), intent(in) :: input
-integer(C_INT), intent(in) :: input_size
-type(C_PTR), intent(in) :: output
-integer(C_INT), intent(in) :: output_size
-type(SwigClassWrapper) :: farg1 
-type(C_PTR) :: farg2 
-integer(C_INT) :: farg3 
-type(C_PTR) :: farg4 
-integer(C_INT) :: farg5 
-
-farg1 = interpolator%swigdata
-farg2 = input
-farg3 = input_size
-farg4 = output
-farg5 = output_size
-call swigc_pcms_interpolate_point_based(farg1, farg2, farg3, farg4, farg5)
 end subroutine
 
 

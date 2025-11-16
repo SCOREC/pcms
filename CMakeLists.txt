@@ -62,7 +62,7 @@ if(PCMS_ENABLE_OMEGA_H)
   endif()
 endif()
 # adios2 adds C and Fortran depending on how it was built
-find_package(ADIOS2 CONFIG 2.5 REQUIRED)
+find_package(ADIOS2 CONFIG 2.10.2 REQUIRED)
 find_package(Kokkos CONFIG 4.5 REQUIRED)
 
 find_package(meshfields REQUIRED)

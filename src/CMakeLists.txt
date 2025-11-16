@@ -86,7 +86,7 @@ if(PCMS_PRINT_ENABLED)
   target_compile_definitions(pcms_core INTERFACE -DPCMS_PRINT_ENABLED)
 endif()
 
-if(spdlog_FOUND)
+if(PCMS_ENABLE_SPDLOG)
   add_definitions(-DPCMS_SPDLOG_ENABLED)
   target_compile_definitions(pcms_core INTERFACE -DPCMS_SPDLOG_ENABLED)
   target_link_libraries(pcms_core PUBLIC spdlog::spdlog)

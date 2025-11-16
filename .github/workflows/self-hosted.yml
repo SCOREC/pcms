@@ -1,0 +1,295 @@
+name: pr_comment_trigger_self_hosted
+
+# Controls when the workflow will run
+on:
+  issue_comment:
+    types: [created]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build_and_test:
+    permissions:
+      contents: read
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, linux, x64, gpu]
+
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/runtests') &&
+      ((github.event.comment.user.login == 'cwsmith') ||
+       (github.event.comment.user.login == 'jacobmerson'))
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
+          submodules: recursive
+          path: 'omegah_${{ github.event.issue.number }}' #under $GITHUB_WORKSPACE
+
+      - name: setup
+        id: setup
+        shell: bash
+        run: |
+          echo "github.workspace ${{github.workspace}}"
+
+          date=`date +%F-%H-%M`
+          workDir=${{github.workspace}}/omegahCI_${date}
+          mkdir -p $workDir
+          echo "PCMS_WORK_DIR=$workDir" >> $GITHUB_ENV
+          echo "workDir $workDir"
+
+          cat << 'EOF' > $workDir/envGcc13.sh #quotes prevent variable expansion in doc contents
+          set +e #avoid exiting when lua modules return non-zero on 'warning' messages
+          source /etc/profile #provides module command
+          module use /opt/scorec/spack/rhel9/v0222_2/lmod/linux-rhel9-x86_64/Core/
+          module load gcc/13.2.0-4eahhas
+          module load mpich/4.2.3-62uy3hd
+          module load cmake/3.30.5-5e54py4
+          module load cuda/12.6.2-gqq65nw
+          module load simmetrix-simmodsuite/2025.1-250602dev-qwdg7cn
+          set -e
+          EOF
+
+      - name: build dependencies
+        id: build_deps
+        shell: bash
+        run: |
+          workDir=$PCMS_WORK_DIR
+          source $workDir/envGcc13.sh
+
+          # adios2 with and without cuda
+          git clone https://github.com/ornladios/ADIOS2.git ${workDir}/ADIOS2
+
+          adiosbdir=${workDir}/build-ADIOS2-cuda
+          cmake -S ${workDir}/ADIOS2 -B $adiosbdir \
+            -DCMAKE_INSTALL_PREFIX=$adiosbdir/install \
+            -DADIOS2_USE_CUDA=on \
+            -DADIOS2_USE_ZFP=off
+          cmake --build $adiosbdir --target install -j 4
+          echo "ADIOS_CUDA_BUILD=$adiosbdir" >> $GITHUB_ENV
+
+          adiosbdir=${workDir}/build-ADIOS2
+          cmake -S ${workDir}/ADIOS2 -B $adiosbdir \
+            -DCMAKE_INSTALL_PREFIX=$adiosbdir/install \
+            -DADIOS2_USE_CUDA=off \
+            -DADIOS2_USE_ZFP=off
+          cmake --build $adiosbdir --target install -j 4
+          echo "ADIOS_BUILD=$adiosbdir" >> $GITHUB_ENV
+
+          # gmsh
+          git clone --branch gmsh_4_14_1 https://gitlab.onelab.info/gmsh/gmsh.git ${workDir}/gmsh
+          gmsbdir=${workDir}/build-gmsh
+          cmake -S ${workDir}/gmsh -B $gmsbdir \
+            -DCMAKE_INSTALL_PREFIX=$gmsbdir/install \
+            -DENABLE_BUILD_DYNAMIC=1 \
+            -DENABLE_BUILD_LIB=ON \
+            -DENABLE_BUILD_SHARED=ON
+          cmake --build $gmsbdir --target install -j 4
+          echo "GMSH_BUILD=$gmsbdir" >> $GITHUB_ENV
+
+          # kokkos - multiple configs
+          git clone https://github.com/kokkos/kokkos.git ${workDir}/kokkos
+
+          kkbdir=${workDir}/build-kokkos-cuda
+          cmake -S ${workDir}/kokkos -B $kkbdir \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_CXX_COMPILER=${workDir}/kokkos/bin/nvcc_wrapper \
+            -DKokkos_ARCH_AMPERE80=ON \
+            -DKokkos_ENABLE_SERIAL=ON \
+            -DKokkos_ENABLE_OPENMP=off \
+            -DKokkos_ENABLE_CUDA=on \
+            -DKokkos_ENABLE_CUDA_LAMBDA=on \
+            -DKokkos_ENABLE_DEBUG=off \
+            -DCMAKE_INSTALL_PREFIX=$kkbdir/install
+          cmake --build $kkbdir --target install -j 4
+          echo "KOKKOS_CUDA_BUILD=$kkbdir" >> $GITHUB_ENV
+
+          kkbdir_serial=${workDir}/build-kokkos-serial
+          cmake -S ${workDir}/kokkos -B $kkbdir_serial \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_CXX_COMPILER=mpicxx \
+            -DKokkos_ENABLE_SERIAL=ON \
+            -DKokkos_ENABLE_OPENMP=off \
+            -DKokkos_ENABLE_CUDA=off \
+            -DKokkos_ENABLE_DEBUG=off \
+            -DCMAKE_INSTALL_PREFIX=$kkbdir_serial/install
+          cmake --build $kkbdir_serial --target install -j 4
+          echo "KOKKOS_SERIAL_BUILD=$kkbdir_serial" >> $GITHUB_ENV
+
+          kkbdir_openmp=${workDir}/build-kokkos-openmp
+          cmake -S ${workDir}/kokkos -B $kkbdir_openmp \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_CXX_COMPILER=mpicxx \
+            -DKokkos_ENABLE_SERIAL=ON \
+            -DKokkos_ENABLE_OPENMP=on \
+            -DKokkos_ENABLE_CUDA=off \
+            -DKokkos_ENABLE_DEBUG=off \
+            -DCMAKE_INSTALL_PREFIX=$kkbdir_openmp/install
+          cmake --build $kkbdir_openmp --target install -j 4
+          echo "KOKKOS_OPENMP_BUILD=$kkbdir_openmp" >> $GITHUB_ENV
+
+      - name: build with Kokkos CUDA backend
+        id: build_kokkos_cuda
+        shell: bash
+        run: |
+          source $PCMS_WORK_DIR/envGcc13.sh
+
+          workDir=$PCMS_WORK_DIR
+          gmsbdir=$GMSH_BUILD
+          adiosbdir=$ADIOS_CUDA_BUILD
+          export CMAKE_PREFIX_PATH="$adiosbdir/install:$gmsbdir/install:$CMAKE_PREFIX_PATH"
+          export LD_LIBRARY_PATH="$gmsbdir/install/lib64:$LD_LIBRARY_PATH"
+
+          # omegah
+          bdir=${workDir}/build-omegah
+          cmake -S omegah_${{ github.event.issue.number }} -B $bdir \
+            -DCMAKE_INSTALL_PREFIX=$bdir/install \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=on  \
+            -DOmega_h_USE_MPI=on  \
+            -DOmega_h_USE_SimModSuite=on \
+            -DOmega_h_USE_SimDiscrete=on \
+            -DSKIP_SIMMETRIX_VERSION_CHECK=on \
+            -DSIM_MPI=mpich4.2.3 \
+            -DOmega_h_USE_Kokkos=on \
+            -DOmega_h_CUDA_ARCH="80" \
+            -DCMAKE_CUDA_ARCHITECTURES="80" \
+            -DKokkos_PREFIX=${KOKKOS_CUDA_BUILD}/install \
+            -DOmega_h_USE_ADIOS2=ON \
+            -DOmega_h_USE_Gmsh=ON \
+            -DGmsh_INCLUDE_DIRS=$gmsbdir/install/include \
+            -DGmsh_LIBRARIES=$gmsbdir/install/lib64/libgmsh.so.4.14.1 \
+            -DBUILD_SHARED_LIBS=on
+          cmake --build $bdir -j 4
+          ctest --test-dir $bdir --output-on-failure
+
+      - name: build without Kokkos
+        id: build_no_kokkos
+        shell: bash
+        run: |
+          source $PCMS_WORK_DIR/envGcc13.sh
+
+          workDir=$PCMS_WORK_DIR
+          gmsbdir=$GMSH_BUILD
+          adiosbdir=$ADIOS_BUILD
+          export CMAKE_PREFIX_PATH="$adiosbdir/install:$gmsbdir/install:$CMAKE_PREFIX_PATH"
+          export LD_LIBRARY_PATH="$gmsbdir/install/lib64:$LD_LIBRARY_PATH"
+
+          bdir=${workDir}/build-omegah-noKokkos
+          cmake -S omegah_${{ github.event.issue.number }} -B $bdir \
+            -DCMAKE_INSTALL_PREFIX=$bdir/install \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=on  \
+            -DOmega_h_USE_MPI=on  \
+            -DOmega_h_USE_SimModSuite=on \
+            -DOmega_h_USE_SimDiscrete=on \
+            -DSKIP_SIMMETRIX_VERSION_CHECK=on \
+            -DSIM_MPI=mpich4.2.3 \
+            -DOmega_h_USE_Kokkos=off \
+            -DOmega_h_USE_ADIOS2=ON \
+            -DOmega_h_USE_Gmsh=ON \
+            -DGmsh_INCLUDE_DIRS=$gmsbdir/install/include \
+            -DGmsh_LIBRARIES=$gmsbdir/install/lib64/libgmsh.so.4.14.1 \
+            -DBUILD_SHARED_LIBS=on
+          cmake --build $bdir -j 4
+          ctest --test-dir $bdir --output-on-failure
+
+      - name: build with Kokkos serial backend
+        id: build_kokkos_serial
+        shell: bash
+        run: |
+          source $PCMS_WORK_DIR/envGcc13.sh
+
+          workDir=$PCMS_WORK_DIR
+          gmsbdir=$GMSH_BUILD
+          adiosbdir=$ADIOS_BUILD
+          export CMAKE_PREFIX_PATH="$adiosbdir/install:$gmsbdir/install:$CMAKE_PREFIX_PATH"
+          export LD_LIBRARY_PATH="$gmsbdir/install/lib64:$LD_LIBRARY_PATH"
+
+          # omegah with kokkos serial backend
+          bdir=${workDir}/build-omegah-kkSerial
+          cmake -S omegah_${{ github.event.issue.number }} -B $bdir \
+            -DCMAKE_INSTALL_PREFIX=$bdir/install \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=on  \
+            -DOmega_h_USE_MPI=on  \
+            -DOmega_h_USE_SimModSuite=on \
+            -DOmega_h_USE_SimDiscrete=on \
+            -DSKIP_SIMMETRIX_VERSION_CHECK=on \
+            -DSIM_MPI=mpich4.2.3 \
+            -DOmega_h_USE_Kokkos=on \
+            -DKokkos_PREFIX=${KOKKOS_SERIAL_BUILD}/install \
+            -DOmega_h_USE_ADIOS2=ON \
+            -DOmega_h_USE_Gmsh=ON \
+            -DGmsh_INCLUDE_DIRS=$gmsbdir/install/include \
+            -DGmsh_LIBRARIES=$gmsbdir/install/lib64/libgmsh.so.4.14.1 \
+            -DBUILD_SHARED_LIBS=on
+          cmake --build $bdir -j 4
+          ctest --test-dir $bdir --output-on-failure
+
+      - name: build with Kokkos OpenMP backend
+        id: build_kokkos_openmp
+        shell: bash
+        run: |
+          source $PCMS_WORK_DIR/envGcc13.sh
+
+          workDir=$PCMS_WORK_DIR
+          gmsbdir=$GMSH_BUILD
+          adiosbdir=$ADIOS_BUILD
+          export CMAKE_PREFIX_PATH="$adiosbdir/install:$gmsbdir/install:$CMAKE_PREFIX_PATH"
+          export LD_LIBRARY_PATH="$gmsbdir/install/lib64:$LD_LIBRARY_PATH"
+
+          # omegah with kokkos OpenMP backend
+          bdir=${workDir}/build-omegah-kkOpenMP
+          cmake -S omegah_${{ github.event.issue.number }} -B $bdir \
+            -DCMAKE_INSTALL_PREFIX=$bdir/install \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=on  \
+            -DOmega_h_USE_MPI=on  \
+            -DOmega_h_USE_SimModSuite=on \
+            -DOmega_h_USE_SimDiscrete=on \
+            -DSKIP_SIMMETRIX_VERSION_CHECK=on \
+            -DSIM_MPI=mpich4.2.3 \
+            -DOmega_h_USE_Kokkos=on \
+            -DKokkos_PREFIX=${KOKKOS_OPENMP_BUILD}/install \
+            -DOmega_h_USE_ADIOS2=ON \
+            -DOmega_h_USE_Gmsh=ON \
+            -DGmsh_INCLUDE_DIRS=$gmsbdir/install/include \
+            -DGmsh_LIBRARIES=$gmsbdir/install/lib64/libgmsh.so.4.14.1 \
+            -DBUILD_SHARED_LIBS=on
+          cmake --build $bdir -j 4
+          export OMP_PROC_BIND=spread
+          export OMP_PLACES=threads
+          export OMP_NUM_THREADS=2 #8 cores on asics, largest test requires 4 ranks
+          ctest --test-dir $bdir --output-on-failure
+
+      - name: Save Result Link
+        if: ${{ !cancelled() }} #prepare report unless the job was cancelled
+        run: |
+          mkdir -p ./pr
+          echo "${{ github.event.issue.number }}"  > ./pr/issueNumber
+          echo "Test Results:" > ./pr/message
+          echo "- Kokkos CUDA: ${{ steps.build_kokkos_cuda.outcome }}" >> ./pr/message
+          echo "- No Kokkos: ${{ steps.build_no_kokkos.outcome }}" >> ./pr/message
+          echo "- Kokkos Serial: ${{ steps.build_kokkos_serial.outcome }}" >> ./pr/message
+          echo "- Kokkos OpenMP: ${{ steps.build_kokkos_openmp.outcome }}" >> ./pr/message
+          echo "" >> ./pr/message
+          echo "[(details)](https://github.com/${{github.repository}}/actions/runs/${{ github.run_id }})" >> ./pr/message
+
+      - name: Upload Result
+        if: ${{ !cancelled() }} #upload unless the job was cancelled
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr
+          path: pr/
+
+      - name: Cleanup
+        if: ${{ !cancelled() }}
+        run: |
+          echo "PCMS_WORK_DIR $PCMS_WORK_DIR"
+          rm -rf $PCMS_WORK_DIR

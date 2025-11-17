@@ -88,6 +88,8 @@ template <typename T>
 class FieldT
 {
 public:
+  using value_type = T;
+
   CoordinateSystem GetCoordinateSystem() const
   {
     return GetLayout().GetDOFHolderCoordinates().GetCoordinateSystem();

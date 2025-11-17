@@ -45,6 +45,17 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
                                      int num_components,
                                      CoordinateSystem coordinate_system,
                                      std::string global_id_name)
+  : OmegaHFieldLayout(mesh, Omega_h::Read<Omega_h::I8>{}, nodes_per_dim,
+                      num_components, coordinate_system, global_id_name)
+{
+}
+
+OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
+                                     Omega_h::Read<Omega_h::I8> mask,
+                                     std::array<int, 4> nodes_per_dim,
+                                     int num_components,
+                                     CoordinateSystem coordinate_system,
+                                     std::string global_id_name)
   : mesh_(mesh),
     global_id_name_(global_id_name),
     num_components_(num_components),
@@ -101,6 +112,21 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
     }
 
     offset += mesh.nents(i);
+  }
+
+  if (mask.exists()) {
+    PCMS_ALWAYS_ASSERT(false);
+    // using ExecutionSpace = HostMemorySpace::execution_space;
+    // auto policy = Kokkos::RangePolicy<ExecutionSpace>(0, mask.size());
+    // PCMS_ALWAYS_ASSERT(GetNumEnts() == mask.size());
+    // Omega_h::Write<LO> index_mask(mask.size());
+    // auto index_mask_view = make_array_view(index_mask);
+    // auto mask_view = make_const_array_view(mask);
+    // size_t size;
+    // Kokkos::parallel_scan(
+    //   policy, detail::ComputeMaskAV{index_mask_view, mask_view}, size);
+    // Kokkos::parallel_for(policy, detail::ScaleAV{index_mask_view, mask_view});
+    // mask_ = index_mask;
   }
 
   offset = 0;

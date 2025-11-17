@@ -74,7 +74,7 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto field = layout->CreateFieldReal();
   field->SetDOFHolderData(pcms::make_const_array_view(ids));
 
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "1", comm,
+  pcms::FieldLayoutCommunicator layout_comm(comm_name + "1", comm,
                                                         rdv, channel, *layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, *field);
 
@@ -96,7 +96,7 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   const auto n = layout->GetNumOwnedDofHolder();
 
   auto field = layout->CreateFieldReal();
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "2", comm,
+  pcms::FieldLayoutCommunicator layout_comm(comm_name + "2", comm,
                                                         rdv, channel, *layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, *field);
 
@@ -152,9 +152,9 @@ void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   Omega_h::parallel_for(n, OMEGA_H_LAMBDA(int i) { ids[i] = 0; });
 
   auto field = layout->CreateFieldReal();
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm1(
+  pcms::FieldLayoutCommunicator layout_comm1(
     comm_name + "1", comm, rdv, channel1, *layout);
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm2(
+  pcms::FieldLayoutCommunicator layout_comm2(
     comm_name + "2", comm, rdv, channel2, *layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm1(layout_comm1, *field);
   pcms::FieldCommunicator2<pcms::Real> field_comm2(layout_comm2, *field);

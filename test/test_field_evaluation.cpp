@@ -29,7 +29,7 @@ TEST_CASE("evaluate linear 2d omega_h_field")
       Real y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
-  auto field = layout->CreateField();
+  auto field = layout->CreateFieldReal();
   field->SetDOFHolderData(pcms::make_const_array_view(test_f));
 
   std::vector<Real> coords = {
@@ -96,7 +96,7 @@ TEST_CASE("evaluate quadratic 2d omega_h_field")
       test_f[nverts + i] = f(cx, cy);
     });
 
-  auto field = layout->CreateField();
+  auto field = layout->CreateFieldReal();
   field->SetDOFHolderData(pcms::make_const_array_view(test_f));
 
   std::vector<Real> coords = {

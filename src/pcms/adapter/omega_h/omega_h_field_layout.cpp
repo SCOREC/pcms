@@ -123,9 +123,9 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
   }
 }
 
-std::unique_ptr<FieldT<Real>> OmegaHFieldLayout::CreateField() const
+std::unique_ptr<FieldT<Real>> OmegaHFieldLayout::CreateFieldReal() const
 {
-  return std::make_unique<OmegaHField2>(*this);
+  return std::make_unique<OmegaHField2<Real>>(*this);
 }
 
 int OmegaHFieldLayout::GetNumComponents() const

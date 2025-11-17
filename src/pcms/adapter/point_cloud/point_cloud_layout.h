@@ -12,7 +12,7 @@ public:
   PointCloudLayout(int dim, Kokkos::View<Real**> coords,
                    CoordinateSystem coordinate_system);
 
-  std::unique_ptr<FieldT<Real>> CreateField() const override;
+  std::unique_ptr<FieldT<Real>> CreateFieldReal() const override;
 
   int GetNumComponents() const override;
   // nodes for standard lagrange FEM

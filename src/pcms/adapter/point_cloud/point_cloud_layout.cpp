@@ -21,7 +21,7 @@ PointCloudLayout::PointCloudLayout(int dim, Kokkos::View<Real**> coords,
     });
 }
 
-std::unique_ptr<FieldT<Real>> PointCloudLayout::CreateField() const
+std::unique_ptr<FieldT<Real>> PointCloudLayout::CreateFieldReal() const
 {
   return std::make_unique<PointCloud>(*this);
 }

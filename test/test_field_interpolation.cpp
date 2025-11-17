@@ -31,8 +31,8 @@ TEST_CASE("interpolate linear 2d omega_h_field")
       Real y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
-  auto field = layout->CreateField();
-  auto interpolated = layout->CreateField();
+  auto field = layout->CreateFieldReal();
+  auto interpolated = layout->CreateFieldReal();
   field->SetDOFHolderData(pcms::make_const_array_view(test_f));
 
   pcms::interpolate_field2(*field, *interpolated);
@@ -79,8 +79,8 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
       test_f[nverts + i] = f(cx, cy);
     });
 
-  auto field = layout->CreateField();
-  auto interpolated = layout->CreateField();
+  auto field = layout->CreateFieldReal();
+  auto interpolated = layout->CreateFieldReal();
   field->SetDOFHolderData(pcms::make_const_array_view(test_f));
 
   // interpolate the field from one mesh to another mesh with the same

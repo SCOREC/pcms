@@ -136,6 +136,14 @@ using FieldPtr =
   std::variant<FieldT<int8_t>*, FieldT<int32_t>*, FieldT<int64_t>*,
                FieldT<float>*, FieldT<double>*>;
 
+template <typename T>
+using OwnedFieldPtrT = std::unique_ptr<FieldT<T>>;
+
+using OwnedFieldPtr =
+  std::variant<OwnedFieldPtrT<int8_t>, OwnedFieldPtrT<int32_t>,
+               OwnedFieldPtrT<int64_t>, OwnedFieldPtrT<float>,
+               OwnedFieldPtrT<double>>;
+
 } // namespace pcms
 
 #endif // PCMS_COUPLING_FIELD_H

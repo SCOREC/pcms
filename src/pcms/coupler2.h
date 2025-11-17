@@ -1,7 +1,9 @@
 #ifndef COUPLER2_H_
 #define COUPLER2_H_
 
+#include "field.h"
 #include "field_communicator2.h"
+#include "field_layout.h"
 #include "field_layout_communicator.h"
 #include "pcms/field_layout.h"
 #include "pcms/field_layout_communicator.h"
@@ -26,9 +28,12 @@ public:
   {
     PCMS_FUNCTION_TIMER;
   }
+
+  const FieldLayout& AddLayout(std::string name, std::unique_ptr<FieldLayout> layout);
+
   // FIXME should take a file path for the parameters, not take adios2 params.
   // These fields are supposed to be agnostic to adios2...
-  void AddField(std::string name, FieldPtr field, bool participates = true);
+  void AddField(std::string name, OwnedFieldPtr field, bool participates = true);
 
   void SendField(const std::string& name, redev::Mode mode = redev::Mode::Synchronous)
   {
@@ -92,12 +97,13 @@ public:
   }
 
 private:
-  FieldLayoutCommunicator& GetLayoutCommunicator(std::string name,
-                                                 const FieldLayout& layout);
+  FieldLayoutCommunicator& GetLayoutCommunicator(const FieldLayout& layout);
 
   MPI_Comm mpi_comm_;
   redev::Redev& redev_;
   redev::Channel channel_;
+  std::vector<std::unique_ptr<FieldLayout>> layouts_;
+  std::vector<OwnedFieldPtr> fields_;
   // map is used rather than unordered_map because we give pointers to the
   // internal data and rehash of unordered_map can cause pointer invalidation.
   // map is less cache friendly, but pointers are not invalidated.

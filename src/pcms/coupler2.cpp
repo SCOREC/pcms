@@ -3,29 +3,61 @@
 namespace pcms {
 
 FieldLayoutCommunicator& Application2::GetLayoutCommunicator(
-  std::string name, const FieldLayout& layout)
+  const FieldLayout& layout)
 {
   PCMS_FUNCTION_TIMER;
-  auto ptr = std::make_unique<FieldLayoutCommunicator>(name, mpi_comm_, redev_,
-                                                       channel_, layout);
-  auto [it, _] = field_layout_communicators_.try_emplace(&layout, std::move(ptr));
-  return *it->second;
+  auto it = field_layout_communicators_.find(&layout);
+  if (it != field_layout_communicators_.end()) {
+    return *it->second;
+  } else {
+    std::cerr << "Field added with external layout\n";
+    std::terminate();
+  }
 }
 
-void Application2::AddField(std::string name, FieldPtr field, bool participates)
+const FieldLayout& Application2::AddLayout(std::string name,
+                                           std::unique_ptr<FieldLayout> layout)
+{
+  layouts_.push_back(std::move(layout));
+  const FieldLayout& layout_ref = *layouts_.back();
+  field_layout_communicators_.emplace(
+    &layout_ref, std::make_unique<FieldLayoutCommunicator>(
+                   name, mpi_comm_, redev_, channel_, layout_ref));
+  return layout_ref;
+}
+
+void Application2::AddField(std::string name, OwnedFieldPtr field, bool participates)
 {
   PCMS_FUNCTION_TIMER;
+
+  fields_.push_back(std::move(field));
+
+  FieldPtr field_ptr = std::visit([this, name](auto& field_ptr) -> FieldPtr {
+    return field_ptr.get();
+  }, fields_.back());
+
+  // FieldCommunicator2Ptr field_communicator = std::visit(
+  //   [this, name](auto &field_ptr) -> FieldCommunicator2Ptr {
+  //     using T = std::remove_pointer_t<decltype(field_ptr.get())>::value_type;
+  //     FieldLayoutCommunicator& layout_communicator =
+  //       GetLayoutCommunicator(field_ptr->GetLayout());
+  //     return std::make_unique<FieldCommunicator2<T>>(layout_communicator,
+  //                                                    fields_.back());
+  //   },
+  //   fields_.back());
+
   FieldCommunicator2Ptr field_communicator = std::visit(
     [this, name](auto* field_ptr) -> FieldCommunicator2Ptr {
       using T = std::remove_pointer_t<decltype(field_ptr)>::value_type;
       FieldLayoutCommunicator& layout_communicator =
-        GetLayoutCommunicator(name, field_ptr->GetLayout());
+        GetLayoutCommunicator(field_ptr->GetLayout());
       return std::make_unique<FieldCommunicator2<T>>(layout_communicator,
                                                      *field_ptr);
     },
-    field);
+    field_ptr);
 
   auto [it, inserted] = field_communicators_.insert_or_assign(name, std::move(field_communicator));
+
   if (!inserted) {
     std::cerr << "Field with this name" << name << "already exists!\n";
     std::terminate();

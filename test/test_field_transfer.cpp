@@ -12,7 +12,8 @@ TEST_CASE("field copy", "[field transfer]")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
   pcms::OmegaHField<pcms::LO> f1("source", mesh);
   Omega_h::Write<int> data(mesh.nents(0));
-  Omega_h::parallel_for(data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });
+  Omega_h::parallel_for(
+    data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });
   mesh.add_tag<pcms::LO>(0, "source", 1, data);
   pcms::OmegaHField<pcms::LO> f2("target", mesh);
   pcms::copy_field(f1, f2);
@@ -42,7 +43,8 @@ TEST_CASE("field interpolation (identical fields)", "[field transfer]")
   pcms::OmegaHField<pcms::LO> f1("source", mesh);
   f1.ConstructSearch(10, 10);
   Omega_h::Write<int> data(mesh.nents(0));
-  Omega_h::parallel_for(data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });
+  Omega_h::parallel_for(
+    data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });
   mesh.add_tag<pcms::LO>(0, "source", 1, data);
   pcms::OmegaHField<pcms::LO> f2("target", mesh);
 

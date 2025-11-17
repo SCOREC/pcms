@@ -125,8 +125,8 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
     // size_t size;
     // Kokkos::parallel_scan(
     //   policy, detail::ComputeMaskAV{index_mask_view, mask_view}, size);
-    // Kokkos::parallel_for(policy, detail::ScaleAV{index_mask_view, mask_view});
-    // mask_ = index_mask;
+    // Kokkos::parallel_for(policy, detail::ScaleAV{index_mask_view,
+    // mask_view}); mask_ = index_mask;
   }
 
   offset = 0;

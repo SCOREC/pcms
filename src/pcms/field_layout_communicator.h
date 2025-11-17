@@ -110,7 +110,8 @@ public:
   MPI_Comm& GetMPIComm() { return mpi_comm_; }
 
   template <typename T>
-  void SetOutMessageLayout(redev::BidirectionalComm<T> &comm) {
+  void SetOutMessageLayout(redev::BidirectionalComm<T>& comm)
+  {
     comm.SetOutMessageLayout(out_msg_.dest, out_msg_.offset);
   }
 

@@ -1,6 +1,7 @@
 #include "coupler2.h"
 
-namespace pcms {
+namespace pcms
+{
 
 FieldLayoutCommunicator& Application2::GetLayoutCommunicator(
   const FieldLayout& layout)
@@ -26,15 +27,16 @@ const FieldLayout& Application2::AddLayout(std::string name,
   return layout_ref;
 }
 
-void Application2::AddField(std::string name, OwnedFieldPtr field, bool participates)
+void Application2::AddField(std::string name, OwnedFieldPtr field,
+                            bool participates)
 {
   PCMS_FUNCTION_TIMER;
 
   fields_.push_back(std::move(field));
 
-  FieldPtr field_ptr = std::visit([this, name](auto& field_ptr) -> FieldPtr {
-    return field_ptr.get();
-  }, fields_.back());
+  FieldPtr field_ptr = std::visit(
+    [this, name](auto& field_ptr) -> FieldPtr { return field_ptr.get(); },
+    fields_.back());
 
   // FieldCommunicator2Ptr field_communicator = std::visit(
   //   [this, name](auto &field_ptr) -> FieldCommunicator2Ptr {
@@ -56,7 +58,8 @@ void Application2::AddField(std::string name, OwnedFieldPtr field, bool particip
     },
     field_ptr);
 
-  auto [it, inserted] = field_communicators_.insert_or_assign(name, std::move(field_communicator));
+  auto [it, inserted] =
+    field_communicators_.insert_or_assign(name, std::move(field_communicator));
 
   if (!inserted) {
     std::cerr << "Field with this name" << name << "already exists!\n";

@@ -29,28 +29,33 @@ public:
     PCMS_FUNCTION_TIMER;
   }
 
-  const FieldLayout& AddLayout(std::string name, std::unique_ptr<FieldLayout> layout);
+  const FieldLayout& AddLayout(std::string name,
+                               std::unique_ptr<FieldLayout> layout);
 
   // FIXME should take a file path for the parameters, not take adios2 params.
   // These fields are supposed to be agnostic to adios2...
-  void AddField(std::string name, OwnedFieldPtr field, bool participates = true);
+  void AddField(std::string name, OwnedFieldPtr field,
+                bool participates = true);
 
-  void SendField(const std::string& name, redev::Mode mode = redev::Mode::Synchronous)
+  void SendField(const std::string& name,
+                 redev::Mode mode = redev::Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InSendPhase());
-    FieldCommunicator2Ptr &communicator = detail::find_or_error(name, field_communicators_);
-    std::visit([mode](auto& field_communicator) {
-      field_communicator->Send(mode);
-    }, communicator);
+    FieldCommunicator2Ptr& communicator =
+      detail::find_or_error(name, field_communicators_);
+    std::visit(
+      [mode](auto& field_communicator) { field_communicator->Send(mode); },
+      communicator);
   };
-  void ReceiveField(const std::string& name, redev::Mode mode = redev::Mode::Synchronous)
+  void ReceiveField(const std::string& name,
+                    redev::Mode mode = redev::Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InReceivePhase());
-    std::visit([mode](auto& field_communicator) {
-      field_communicator->Receive();
-    }, detail::find_or_error(name, field_communicators_));
+    std::visit(
+      [mode](auto& field_communicator) { field_communicator->Receive(); },
+      detail::find_or_error(name, field_communicators_));
   };
   [[nodiscard]] bool InSendPhase() const noexcept
   {

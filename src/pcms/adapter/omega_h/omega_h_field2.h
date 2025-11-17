@@ -22,7 +22,7 @@ class MeshFieldBackend
 public:
   virtual ~MeshFieldBackend() = default;
   virtual Kokkos::View<T* [1]> evaluate(Kokkos::View<Real**> localCoords,
-                                           Kokkos::View<LO*> offsets) const = 0;
+                                        Kokkos::View<LO*> offsets) const = 0;
   virtual void SetData(Rank1View<const T, HostMemorySpace> data,
                        size_t num_nodes, size_t num_components, int dim) = 0;
   virtual void GetData(Rank1View<T, HostMemorySpace> data, size_t num_nodes,
@@ -41,8 +41,7 @@ public:
   }
 
   Kokkos::View<T* [1]> evaluate(Kokkos::View<Real**> localCoords,
-                                   Kokkos::View<LO*> offsets) const override
-  {
+                                Kokkos::View<LO*> offsets) const override {
     auto self = const_cast<MeshFieldBackendImpl<T, Dim, Order>*>(this);
     return self->mesh_field_.triangleLocalPointEval(localCoords, offsets,
                                                     shape_field_);
@@ -154,20 +153,24 @@ public:
       if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 0) {
         switch (mesh_.dim()) {
           case 1:
-            mesh_field_ = std::make_unique<MeshFieldBackendImpl<T, 1, 1>>(mesh_);
+            mesh_field_ =
+              std::make_unique<MeshFieldBackendImpl<T, 1, 1>>(mesh_);
             break;
           case 2:
-            mesh_field_ = std::make_unique<MeshFieldBackendImpl<T, 2, 1>>(mesh_);
+            mesh_field_ =
+              std::make_unique<MeshFieldBackendImpl<T, 2, 1>>(mesh_);
             break;
           default: break; // backend is null
         }
       } else if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 1) {
         switch (mesh_.dim()) {
           case 2:
-            mesh_field_ = std::make_unique<MeshFieldBackendImpl<T, 2, 2>>(mesh_);
+            mesh_field_ =
+              std::make_unique<MeshFieldBackendImpl<T, 2, 2>>(mesh_);
             break;
           case 3:
-            mesh_field_ = std::make_unique<MeshFieldBackendImpl<T, 3, 2>>(mesh_);
+            mesh_field_ =
+              std::make_unique<MeshFieldBackendImpl<T, 3, 2>>(mesh_);
             break;
           default: break; // backend is null
         }

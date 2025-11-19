@@ -115,11 +115,11 @@ public:
                     const PointSearchTolerances& tolerances);
 
   /**
-   *  Given a point in global coordinates, returns the id of the tetrahedron (3D element)
-   * that the point lies within and the parametric coordinate of the point within the
-   * tetrahedron. If the point does not lie within any tetrahedron element, then the
-   * id will be a negative number and (TODO) will return a negative id of the
-   * closest element.
+   *  Given a point in global coordinates, returns the id of the tetrahedron (3D
+   * element) that the point lies within and the parametric coordinate of the
+   * point within the tetrahedron. If the point does not lie within any
+   * tetrahedron element, then the id will be a negative number and (TODO) will
+   * return a negative id of the closest element.
    */
   Kokkos::View<Result*> operator()(
     Kokkos::View<Real* [DIM]> point) const override;

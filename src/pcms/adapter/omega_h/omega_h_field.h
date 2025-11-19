@@ -160,7 +160,8 @@ public:
   [[nodiscard]] auto Search(Kokkos::View<Real* [2]> points) const
   {
     PCMS_FUNCTION_TIMER;
-    PCMS_ALWAYS_ASSERT(search_ != nullptr && "search data structure must be constructed before use");
+    PCMS_ALWAYS_ASSERT(search_ != nullptr &&
+                       "search data structure must be constructed before use");
     return (*search_)(points);
   }
 

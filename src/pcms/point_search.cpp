@@ -612,7 +612,7 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
           break;
         }
 
-        // TODO: Get nearest element if no triangle found
+        // TODO: Get nearest element if no tetrahedron found
       }
       if (!found) {
         results(p) = GridPointSearch3D::Result{

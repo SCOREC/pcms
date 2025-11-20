@@ -309,17 +309,9 @@ std::vector<double> read_xgc_mesh_nodes(std::string filename)
   while (std::getline(file, line)) {
     std::istringstream line_stream(line);
     int node_id;
-    double x, y, z;
-    line_stream >> node_id >> x >> y >> z;
-
-    if (std::abs(z) > 1e-9 || std::isnan(z)) {
-      // the ltx mesh has some 1.0 in the node file, which is fine
-      if (!((std::abs(z) - 1.0) < 1e-9)) {
-        printf("[WARNING] Non-zero Z coordinate found (%f) for node ID %d. "
-               "Expected Z=0 for 2D mesh.\n",
-               z, node_id);
-      }
-    }
+    double x, y;
+    int boundary_attr; // not used
+    line_stream >> node_id >> x >> y >> boundary_attr;
 
     nodes.push_back(x);
     nodes.push_back(y);

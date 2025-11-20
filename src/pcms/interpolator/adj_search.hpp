@@ -361,6 +361,7 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
                                       Omega_h::Mesh& target_mesh,
                                       Omega_h::Real& cutoffDistance,
                                       Omega_h::LO min_req_support = 12,
+                                      Omega_h::LO max_allowed_support = 36,
                                       bool adapt_radius = true)
 {
   FindSupports search(source_mesh, target_mesh);
@@ -419,7 +420,7 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
         break;
       }
 
-      adapt_radii(min_req_support, 3 * min_req_support, nvertices_target,
+      adapt_radii(min_req_support, max_allowed_support, nvertices_target,
                   radii2, nSupports);
     }
 

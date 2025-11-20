@@ -186,7 +186,8 @@ private:
   Omega_h::HostWrite<Omega_h::Real> target_field_;
   Omega_h::HostWrite<Omega_h::Real> source_field_;
 
-  void find_supports(uint min_req_supports = 10);
+  void find_supports(uint min_req_supports = 10,
+                     uint max_allowed_supports = 30);
 };
 
 #endif // PCMS_INTERPOLATION_BASE_H

@@ -248,15 +248,15 @@ TEST_CASE("Test MLSMeshInterpolation")
     }
 
     // Check if the point cloud interpolation is same as the MLS interpolation
-    pcms::printInfo("Interpolated data size: %d\n",
-                    point_cloud_interpolated_data_hwrite.size());
+    pcms::printDebugInfo("Interpolated data size: %d\n",
+                         point_cloud_interpolated_data_hwrite.size());
     REQUIRE(point_cloud_interpolated_data_hwrite.size() ==
             interpolated_data_hwrite.size());
 
     for (int i = 0; i < interpolated_data_hwrite.size(); i++) {
-      pcms::printInfo("Interpolated data: %d, %.16f, %.16f\n", i,
-                      interpolated_data_hwrite[i],
-                      point_cloud_interpolated_data_hwrite[i]);
+      pcms::printDebugInfo("Interpolated data: %d, %.16f, %.16f\n", i,
+                           interpolated_data_hwrite[i],
+                           point_cloud_interpolated_data_hwrite[i]);
 
       REQUIRE_THAT(
         point_cloud_interpolated_data_hwrite[i],

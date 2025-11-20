@@ -53,7 +53,7 @@ MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
   target_field_ =
     Omega_h::HostWrite<Omega_h::Real>(source_mesh_.nverts(), "target field");
 
-  find_supports(min_req_supports_);
+  find_supports(min_req_supports_, 3 * min_req_supports_);
 }
 
 MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
@@ -247,18 +247,20 @@ void MLSPointCloudInterpolation::find_supports(uint min_req_supports,
                                                uint max_count)
 {
   pcms::printDebugInfo("First 10 Target Points with %d points:\n", n_targets_);
+  const auto target_coords_l = target_coords_;
+  const auto source_coords_l = source_coords_;
   Omega_h::parallel_for(
     "print target points", 10, OMEGA_H_LAMBDA(const int& i) {
       pcms::printDebugInfo("Target Point %d: (%f, %f)\n", i,
-                           target_coords_[i * 2 + 0],
-                           target_coords_[i * 2 + 1]);
+                           target_coords_l[i * 2 + 0],
+                           target_coords_l[i * 2 + 1]);
     });
   pcms::printDebugInfo("First 10 Source Points with %d points:\n", n_sources_);
   Omega_h::parallel_for(
     "print source points", 10, OMEGA_H_LAMBDA(const int& i) {
       pcms::printDebugInfo("Source Point %d: (%f, %f)\n", i,
-                           source_coords_[i * 2 + 0],
-                           source_coords_[i * 2 + 1]);
+                           source_coords_l[i * 2 + 0],
+                           source_coords_l[i * 2 + 1]);
     });
 
   auto radii2_l = Omega_h::Write<Omega_h::Real>(n_targets_, radius_);
@@ -396,14 +398,16 @@ void MLSMeshInterpolation::eval(
   copyHostWrite2ScalarArrayView(target_field_, target_field);
 }
 
-void MLSMeshInterpolation::find_supports(const uint min_req_support)
+void MLSMeshInterpolation::find_supports(const uint min_req_supports,
+                                         const uint max_allowed_supports)
 {
   if (single_mesh_) {
     supports_ =
-      searchNeighbors(source_mesh_, radius_, min_req_support, adapt_radius_);
+      searchNeighbors(source_mesh_, radius_, min_req_supports, adapt_radius_);
   } else { // two mesh : vert to vert
-    supports_ = searchNeighbors(source_mesh_, target_mesh_, radius_,
-                                min_req_support, adapt_radius_);
+    supports_ =
+      searchNeighbors(source_mesh_, target_mesh_, radius_, min_req_supports,
+                      max_allowed_supports, adapt_radius_);
   }
 
 #ifndef NDEBUG

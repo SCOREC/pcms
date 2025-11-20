@@ -190,11 +190,11 @@ void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
 
   OMEGA_H_CHECK_PRINTF(
     input_size == mls_interpolator->getSourceSize(),
-    "Input array size does not match the source size %d != %ld\n", input_size,
+    "Input array size does not match the source size %d != %zu\n", input_size,
     mls_interpolator->getSourceSize());
   OMEGA_H_CHECK_PRINTF(
     output_size == mls_interpolator->getTargetSize(),
-    "Output array size does not match the target size %d != %ld\n", output_size,
+    "Output array size does not match the target size %d != %zu\n", output_size,
     mls_interpolator->getTargetSize());
 
   pcms::Rank1View<double, pcms::HostMemorySpace> input_array(

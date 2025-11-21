@@ -393,12 +393,25 @@ if(Catch2_FOUND)
       test_rbf_interp.cpp
       test_normalisation.cpp
       test_spline_interpolator.cpp
-      test_svd_serial.cpp)
+      test_svd_serial.cpp
+      test_interpolation_class.cpp)
   endif()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core
                                           pcms_interpolator)
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+  add_executable(test_interpolation_on_ltx_mesh test_interpolation_on_ltx_mesh.cpp)
+  target_link_libraries(test_interpolation_on_ltx_mesh PUBLIC Catch2::Catch2WithMain
+                                                        pcms::core
+                                                        pcms_interpolator)
+  target_include_directories(test_interpolation_on_ltx_mesh PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+  add_test(NAME test_interpolation_on_ltx_mesh
+          COMMAND test_interpolation_on_ltx_mesh
+                  --degas2_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx_graded_gauss.osh
+                  --ltx_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx
+                  --data_root ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/
+  )
 
   include(Catch)
   catch_discover_tests(unit_tests)
@@ -478,6 +491,19 @@ if(PCMS_ENABLE_Fortran)
                         PUBLIC pcms::fortranapi MPI::MPI_Fortran)
   set_target_properties(test_proxy_coupling_xgc_client_fortran
                         PROPERTIES LINKER_LANGUAGE Fortran)
+
+  add_executable(test_interpolation_fortran_api
+                 test_interpolation.f90)
+  target_link_libraries(test_interpolation_fortran_api
+                        PUBLIC pcms::interpolator::fortranapi)
+  set_target_properties(test_interpolation_fortran_api
+                       PROPERTIES LINKER_LANGUAGE Fortran)
+  add_test(
+    NAME test_interpolation_fortran_api
+    COMMAND
+    $<TARGET_FILE:test_interpolation_fortran_api> ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh 23 19
+  )
+
   if(HOST_NPROC GREATER_EQUAL 4)
     dual_mpi_test(
       TESTNAME

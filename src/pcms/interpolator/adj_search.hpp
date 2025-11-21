@@ -2,6 +2,8 @@
 #define ADJ_SEARCH_HPP
 
 #include <pcms/point_search.h>
+#include <pcms/print.h>
+#include "interpolation_helpers.h" // for helper functions
 
 #include "queue_visited.hpp"
 
@@ -27,7 +29,7 @@ inline void checkTargetPoints(
   const Kokkos::View<pcms::GridPointSearch::Result*>& results)
 {
   Kokkos::fence();
-  printf("INFO: Checking target points...\n");
+  pcms::printInfo("INFO: Checking target points...\n");
   auto check_target_points = OMEGA_H_LAMBDA(Omega_h::LO i)
   {
     if (results(i).tri_id < 0) {
@@ -40,7 +42,7 @@ inline void checkTargetPoints(
   Omega_h::parallel_for(results.size(), check_target_points,
                         "check_target_points");
   Kokkos::fence();
-  printf("\n");
+  pcms::printInfo("\n");
 }
 
 inline void printSupportsForTarget(
@@ -245,7 +247,6 @@ inline void FindSupports::adjBasedSearchCentroidNodes(
   const auto& mesh_coords = source_mesh.coords();
   const auto& nvertices = source_mesh.nverts();
   const auto& dim = source_mesh.dim();
-  const auto& nfaces = source_mesh.nfaces();
 
   const auto& nodes2faces = source_mesh.ask_up(Omega_h::VERT, Omega_h::FACE);
   const auto& n2f_ptr = nodes2faces.a2ab;
@@ -253,20 +254,7 @@ inline void FindSupports::adjBasedSearchCentroidNodes(
   const auto& faces2nodes =
     source_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
 
-  Omega_h::Write<Omega_h::Real> cell_centroids(
-    dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
-
-  Omega_h::parallel_for(
-    "calculate the centroid in each tri element", nfaces,
-    OMEGA_H_LAMBDA(const Omega_h::LO id) {
-      const auto current_el_verts = Omega_h::gather_verts<3>(faces2nodes, id);
-      const Omega_h::Few<Omega_h::Vector<2>, 3> current_el_vert_coords =
-        Omega_h::gather_vectors<3, 2>(mesh_coords, current_el_verts);
-      auto centroid = Omega_h::average(current_el_vert_coords);
-      int index = dim * id;
-      cell_centroids[index] = centroid[0];
-      cell_centroids[index + 1] = centroid[1];
-    });
+  auto cell_centroids = getCentroids(source_mesh);
   // * Got the adj data and cell centroids
 
   Omega_h::parallel_for(
@@ -373,6 +361,7 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
                                       Omega_h::Mesh& target_mesh,
                                       Omega_h::Real& cutoffDistance,
                                       Omega_h::LO min_req_support = 12,
+                                      Omega_h::LO max_allowed_support = 36,
                                       bool adapt_radius = true)
 {
   FindSupports search(source_mesh, target_mesh);
@@ -380,7 +369,7 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
 
   Omega_h::Write<Omega_h::LO> nSupports(
     nvertices_target, 0, "number of supports in each target vertex");
-  printf("INFO: Cut off distance: %f\n", cutoffDistance);
+  pcms::printInfo("INFO: Cut off distance: %f\n", cutoffDistance);
   Omega_h::Write<Omega_h::Real> radii2 = Omega_h::Write<Omega_h::Real>(
     nvertices_target, cutoffDistance, "squared radii of the supports");
 
@@ -388,11 +377,11 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
   Omega_h::Write<Omega_h::LO> supports_idx;
 
   if (!adapt_radius) {
-    printf("INFO: Fixed radius search *(disregarding required minimum "
-           "support)*... \n");
+    pcms::printInfo("INFO: Fixed radius search *(disregarding required minimum "
+                    "support)*... \n");
     search.adjBasedSearch(supports_ptr, nSupports, supports_idx, radii2, true);
   } else {
-    printf("INFO: Adaptive radius search... \n");
+    pcms::printInfo("INFO: Adaptive radius search... \n");
     int r_adjust_loop = 0;
     while (true) {
       nSupports = Omega_h::Write<Omega_h::LO>(
@@ -405,7 +394,8 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
           local_max = (radii2[i] > local_max) ? radii2[i] : local_max;
         },
         Kokkos::Max<Omega_h::Real>(max_radius));
-      printf("INFO: Loop %d: max_radius: %f\n", r_adjust_loop, max_radius);
+      pcms::printInfo("INFO: Loop %d: max_radius: %f\n", r_adjust_loop,
+                      max_radius);
 
       // create storage every time to avoid complexity
       // FIXME avoid repeated dynamic allocation
@@ -416,37 +406,26 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
                             radii2, true);
       Kokkos::fence();
 
-      Omega_h::LO min_supports_found = 0;
-      Kokkos::Min<Omega_h::LO> min_reducer(min_supports_found);
-      Kokkos::parallel_reduce(
-        "find min number of supports", nvertices_target,
-        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::LO& local_min) {
-          min_reducer.join(local_min, nSupports[i]);
-        },
-        min_reducer);
-      printf("INFO: min_supports_found: %d at loop %d, max_radius %f\n",
-             min_supports_found, r_adjust_loop, max_radius);
-
+      uint min_supports_found = 0;
+      uint max_supports_found = 0;
+      minmax(nSupports, min_supports_found, max_supports_found);
       r_adjust_loop++;
-      Kokkos::fence();
-      if (min_supports_found >= min_req_support) {
+      pcms::printInfo(
+        "Iter: %d min_nSupports: %d max_nSupports: %d, max_radius %f\n",
+        r_adjust_loop, min_supports_found, max_supports_found, max_radius);
+
+      if (within_number_of_support_range(min_supports_found, max_supports_found,
+                                         min_req_support,
+                                         3 * min_req_support)) {
         break;
       }
 
-      Kokkos::fence();
-      Omega_h::parallel_for(
-        nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
-          if (nSupports[i] < min_req_support) {
-            Omega_h::Real factor =
-              Omega_h::Real(min_req_support) / Omega_h::Real(nSupports[i]);
-            factor = (factor > 1.1 || nSupports[i] == 0) ? 1.1 : factor;
-            radii2[i] = radii2[i] * factor;
-          }
-        });
-      Kokkos::fence();
+      adapt_radii(min_req_support, max_allowed_support, nvertices_target,
+                  radii2, nSupports);
     }
 
-    printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
+    pcms::printInfo("INFO: Took %d loops to adjust the radius\n",
+                    r_adjust_loop);
   }
 
   supports_ptr = Omega_h::Write<Omega_h::LO>(
@@ -487,17 +466,17 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& mesh,
   Omega_h::Write<Omega_h::LO> nSupports(
     nvertices_target, 0, "number of supports in each target vertex");
 
-  printf("INFO: Inside searchNeighbors 1\n");
+  pcms::printInfo("INFO: Inside searchNeighbors 1\n");
   Omega_h::Write<Omega_h::Real> radii2 = Omega_h::Write<Omega_h::Real>(
     nvertices_target, cutoffDistance, "squared radii of the supports");
-  printf("INFO: Cutoff distance: %f\n", cutoffDistance);
+  pcms::printInfo("INFO: Cutoff distance: %f\n", cutoffDistance);
 
   if (!adapt_radius) {
-    printf("INFO: Fixed radius search *(disregarding required minimum "
-           "support)* ... \n");
+    pcms::printInfo("INFO: Fixed radius search *(disregarding required minimum "
+                    "support)* ... \n");
     search.adjBasedSearch(supports_ptr, nSupports, supports_idx, radii2, true);
   } else {
-    printf("INFO: Adaptive radius search... \n");
+    pcms::printInfo("INFO: Adaptive radius search... \n");
     int r_adjust_loop = 0;
     while (true) { // until the number of minimum support is met
       Omega_h::Real max_radius = 0.0;
@@ -507,7 +486,8 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& mesh,
           local_max = (radii2[i] > local_max) ? radii2[i] : local_max;
         },
         Kokkos::Max<Omega_h::Real>(max_radius));
-      printf("INFO: Loop %d: max_radius: %f\n", r_adjust_loop, max_radius);
+      pcms::printInfo("INFO: Loop %d: max_radius: %f\n", r_adjust_loop,
+                      max_radius);
 
       nSupports = Omega_h::Write<Omega_h::LO>(
         nvertices_target, 0, "number of supports in each target vertex");
@@ -516,35 +496,26 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& mesh,
                                          radii2, true);
 
       Kokkos::fence();
-      Omega_h::LO min_nSupports = 0;
-      Kokkos::parallel_reduce(
-        "find min number of supports", nvertices_target,
-        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::LO& local_min) {
-          local_min = (nSupports[i] < local_min) ? nSupports[i] : local_min;
-        },
-        Kokkos::Min<Omega_h::LO>(min_nSupports));
+      uint min_nSupports = 0;
+      uint max_nSupports = 0;
+      minmax(nSupports, min_nSupports, max_nSupports);
 
-      printf("min_nSupports: %d at loop %d, max_radius %f\n", min_nSupports,
-             r_adjust_loop, max_radius);
       r_adjust_loop++;
+      pcms::printInfo(
+        "Iter: %d min_nSupports: %d max_nSupports: %d at loop %d, "
+        "max_radius %f\n",
+        r_adjust_loop, min_nSupports, max_nSupports, r_adjust_loop, max_radius);
 
-      if (min_nSupports >= min_support) {
+      if (within_number_of_support_range(min_nSupports, max_nSupports,
+                                         min_support, 3 * min_support)) {
         break;
       }
 
-      Kokkos::fence();
-      Omega_h::parallel_for(
-        nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
-          if (nSupports[i] < min_support) {
-            Omega_h::Real factor =
-              Omega_h::Real(min_support) / Omega_h::Real(nSupports[i]);
-            factor = (nSupports[i] == 0 || factor > 1.5) ? 1.5 : factor;
-            radii2[i] *= factor;
-          }
-          nSupports[i] = 0; // ? might not be needed
-        });
+      adapt_radii(min_support, 3 * min_support, radii2.size(), radii2,
+                  nSupports);
     } // while loop
-    printf("INFO: Took %d loops to adjust the radius\n", r_adjust_loop);
+    pcms::printInfo("INFO: Took %d loops to adjust the radius\n",
+                    r_adjust_loop);
   } // adaptive radius search
 
   // offset array for the supports of each target vertex
@@ -562,12 +533,12 @@ inline SupportResults searchNeighbors(Omega_h::Mesh& mesh,
     },
     total_supports);
 
-  printf("INFO: Inside searchNeighbors 3\n");
+  pcms::printInfo("INFO: Inside searchNeighbors 3\n");
   Kokkos::fence();
 
   supports_idx = Omega_h::Write<Omega_h::LO>(
     total_supports, 0, "index of source supports of each target node");
-  printf("INFO: Total_supports: %d\n", total_supports);
+  pcms::printInfo("INFO: Total_supports: %d\n", total_supports);
 
   search.adjBasedSearchCentroidNodes(supports_ptr, nSupports, supports_idx,
                                      radii2, false);

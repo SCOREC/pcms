@@ -31,13 +31,16 @@ Omega_h::Reals getCentroids(Omega_h::Mesh& mesh)
 
 MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
                                            double radius, uint min_req_support,
-                                           uint degree, bool adapt_radius)
+                                           uint degree, bool adapt_radius,
+                                           double lambda, double decay_factor)
   : source_mesh_(source_mesh),
     target_mesh_(source_mesh),
     radius_(radius),
     min_req_supports_(min_req_support),
     degree_(degree),
-    adapt_radius_(adapt_radius)
+    adapt_radius_(adapt_radius),
+    lambda_(lambda),
+    decay_factor_(decay_factor)
 {
   single_mesh_ = true;
   target_coords_ = source_mesh_.coords();
@@ -60,13 +63,16 @@ MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
                                            Omega_h::Mesh& target_mesh,
                                            const double radius,
                                            uint min_req_support, uint degree,
-                                           const bool adapt_radius)
+                                           const bool adapt_radius,
+                                           double lambda, double decay_factor)
   : source_mesh_(source_mesh),
     target_mesh_(target_mesh),
     radius_(radius),
     min_req_supports_(min_req_support),
     degree_(degree),
-    adapt_radius_(adapt_radius)
+    adapt_radius_(adapt_radius),
+    lambda_(lambda),
+    decay_factor_(decay_factor)
 {
   OMEGA_H_CHECK_PRINTF(source_mesh_.dim() == 2 && target_mesh_.dim() == 2,
                        "Only 2D meshes are supported but found %d, %d\n",
@@ -80,7 +86,7 @@ MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
   target_field_ =
     Omega_h::HostWrite<Omega_h::Real>(target_mesh_.nverts(), "target field");
 
-  find_supports(min_req_supports_);
+  find_supports(min_req_supports_, 3 * min_req_supports_);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -391,8 +397,9 @@ void MLSMeshInterpolation::eval(
 
   // TODO: make the basis function a template or pass it as a parameter
   auto target_field_write = mls_interpolation(
-    Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
-    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN, 0, 1e-6, 5);
+    Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_,
+    source_mesh_.dim(), degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN,
+    lambda_, 1e-6, decay_factor_);
 
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_field_write);
   copyHostWrite2ScalarArrayView(target_field_, target_field);

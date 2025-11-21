@@ -147,7 +147,8 @@ public:
    */
   MLSMeshInterpolation(Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
                        double radius, uint min_req_supports = 10,
-                       uint degree = 3, bool adapt_radius = true);
+                       uint degree = 3, bool adapt_radius = true,
+                       double lambda = 0.0, double decay_factor = 5.0);
 
   /**
    * @brief Centroids to Vertices interpolation for a single mesh
@@ -159,7 +160,8 @@ public:
    */
   MLSMeshInterpolation(Omega_h::Mesh& source_mesh, double radius,
                        uint min_req_supports = 10, uint degree = 3,
-                       bool adapt_radius = true);
+                       bool adapt_radius = true, double lambda = 0.0,
+                       double decay_factor = 5.0);
 
   size_t getSourceSize() const override;
   size_t getTargetSize() const override;
@@ -168,6 +170,8 @@ public:
 
 private:
   double radius_;
+  double lambda_;
+  double decay_factor_;
   bool adapt_radius_;
   bool single_mesh_ = false;
   uint degree_;

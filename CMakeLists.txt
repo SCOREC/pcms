@@ -25,7 +25,7 @@ option(PCMS_ENABLE_XGC "enable xgc field adapter" ON)
 option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
 option(PCMS_ENABLE_C "Enable pcms C api" ON)
 
-option(PCMS_PRINT_ENABLED "PCMS print statements enabled" ON)
+option(PCMS_ENABLE_PRINT "PCMS print statements enabled" ON)
 option(PCMS_ENABLE_SPDLOG "use spdlog for logging" ON)
 
 if(PCMS_ENABLE_SPDLOG)

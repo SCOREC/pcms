@@ -23,6 +23,8 @@ set(PCMS_HEADERS
     pcms/coupler.h
     pcms/coordinate_system.h
     pcms/field_layout.h
+    pcms/version.h
+    pcms/configuration.h
     pcms/adapter/point_cloud/point_cloud_layout.h
     pcms/adapter/point_cloud/point_cloud.h
     pcms/adapter/omega_h/omega_h_field_layout.h
@@ -41,6 +43,8 @@ set(PCMS_SOURCES
     pcms/adapter/xgc/xgc_field_adapter.h)
 
 configure_file(pcms/version.h.in pcms/version.h)
+configure_file(pcms/configuration.h.in pcms/configuration.h)
+
 
 if(PCMS_ENABLE_XGC)
   list(APPEND PCMS_SOURCES pcms/adapter/xgc/xgc_reverse_classification.cpp)
@@ -70,10 +74,6 @@ target_link_libraries(pcms_core PUBLIC meshfields::meshfields redev::redev
                                        MPI::MPI_CXX Kokkos::kokkos perfstubs)
 if(PCMS_ENABLE_OMEGA_H)
   target_link_libraries(pcms_core PUBLIC Omega_h::omega_h)
-  target_compile_definitions(pcms_core PUBLIC -DPCMS_HAS_OMEGA_H)
-endif()
-if(PCMS_ENABLE_SERVER)
-  target_compile_definitions(pcms_core PUBLIC -DPCMS_HAS_SERVER)
 endif()
 
 if(PCMS_HAS_ASAN)
@@ -81,14 +81,7 @@ if(PCMS_HAS_ASAN)
                                            -fno-omit-frame-pointer)
 endif()
 
-if(PCMS_PRINT_ENABLED)
-  add_definitions(-DPCMS_PRINT_ENABLED)
-  target_compile_definitions(pcms_core INTERFACE -DPCMS_PRINT_ENABLED)
-endif()
-
 if(PCMS_ENABLE_SPDLOG)
-  add_definitions(-DPCMS_SPDLOG_ENABLED)
-  target_compile_definitions(pcms_core INTERFACE -DPCMS_SPDLOG_ENABLED)
   target_link_libraries(pcms_core PUBLIC spdlog::spdlog)
 endif()
 

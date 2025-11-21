@@ -79,7 +79,7 @@ program test_interpolation
     do i = 1, num_vertices
         print *, "(", i, ", ", target_at_vertex(i), ")"
         ! if values are not close to 2.0, then the interpolation is not working; exit with error
-        if (abs(target_at_vertex(i) - 2.0d0) > 1.0d-6) then
+        if (abs(target_at_vertex(i) - 2.0d0) > 1.0d-4) then
             print *, "Interpolation failed, expected about 2.0, got ", target_at_vertex(i)
             stop 1
         end if

@@ -503,7 +503,7 @@ if(PCMS_ENABLE_Fortran)
   add_test(
     NAME test_interpolation_fortran_api
     COMMAND
-    $<TARGET_FILE:test_interpolation_fortran_api> ${PCMS_TEST_DATA_DIR}/square10x102D.osh 200 121
+    $<TARGET_FILE:test_interpolation_fortran_api> ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh 23 19
   )
 
   if(HOST_NPROC GREATER_EQUAL 4)

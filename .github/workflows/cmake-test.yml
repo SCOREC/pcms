@@ -217,7 +217,7 @@ jobs:
     #   run: sudo apt-get install -yq valgrind
 
     - name: Run CTest
-      run: ctest --test-dir ${{ runner.temp }}/build-pcms
+      run: ctest --test-dir ${{ runner.temp }}/build-pcms --output-on-failure
 
-    # - name: Print Test
-    #   run: cat ${{ runner.temp }}/build-pcms/Testing/Temporary/LastTest.log
+    - name: Print Test
+      run: cat ${{ runner.temp }}/build-pcms/Testing/Temporary/LastTest.log

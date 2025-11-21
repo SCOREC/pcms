@@ -34,9 +34,6 @@ PcmsInterpolatorHandle pcms_create_point_based_interpolator(
   void* source_points, int source_points_size, void* target_points,
   int target_points_size, double radius, int degree, int min_req_supports,
   double lambda, double decay_factor);
-PcmsInterpolatorHandle pcms_create_degas2xgc_interpolator(
-  const char* xgc_mesh_filename, const char* dg2_mesh_filename, double radius,
-  int degree, int min_req_supports, double lambda, double decay_factor);
 PcmsInterpolatorHandle pcms_create_degas2xgcnode_interpolator(
   void* target_points, int target_points_size, const char* dg2_mesh_filename,
   double radius, void* dg2_elem_count, int degree, int min_req_supports,

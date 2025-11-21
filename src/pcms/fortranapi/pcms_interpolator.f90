@@ -43,7 +43,6 @@ module pcms_interpolator
   type(C_PTR), public :: data = C_NULL_PTR
   integer(C_SIZE_T), public :: size = 0
  end type
- public :: pcms_create_degas2xgc_interpolator
  public :: pcms_create_degas2xgcnode_interpolator
  public :: pcms_create_xgcnodedegas2_interpolator
  public :: pcms_create_interpolator
@@ -173,22 +172,6 @@ integer(C_INT), intent(in) :: farg6
 integer(C_INT), intent(in) :: farg7
 real(C_DOUBLE), intent(in) :: farg8
 real(C_DOUBLE), intent(in) :: farg9
-type(SwigClassWrapper) :: fresult
-end function
-
-function swigc_pcms_create_degas2xgc_interpolator(farg1, farg2, farg3, farg4, farg5, farg6, farg7) &
-bind(C, name="_wrap_pcms_create_degas2xgc_interpolator") &
-result(fresult)
-use, intrinsic :: ISO_C_BINDING
-import :: swigarraywrapper
-import :: swigclasswrapper
-type(SwigArrayWrapper) :: farg1
-type(SwigArrayWrapper) :: farg2
-real(C_DOUBLE), intent(in) :: farg3
-integer(C_INT), intent(in) :: farg4
-integer(C_INT), intent(in) :: farg5
-real(C_DOUBLE), intent(in) :: farg6
-real(C_DOUBLE), intent(in) :: farg7
 type(SwigClassWrapper) :: fresult
 end function
 
@@ -492,40 +475,6 @@ subroutine SWIGTM_fin_char_Sm_(finp, iminp, temp)
   iminp%data = c_loc(temp)
   iminp%size = len(finp, kind=C_SIZE_T)
 end subroutine
-
-function pcms_create_degas2xgc_interpolator(xgc_mesh_filename, dg2_mesh_filename, radius, degree, min_req_supports, lambda, &
-  decay_factor) &
-result(swig_result)
-use, intrinsic :: ISO_C_BINDING
-type(PcmsInterpolatorHandle) :: swig_result
-character(len=*), intent(in) :: xgc_mesh_filename
-character(len=*), intent(in) :: dg2_mesh_filename
-real(C_DOUBLE), intent(in) :: radius
-integer(C_INT), intent(in) :: degree
-integer(C_INT), intent(in) :: min_req_supports
-real(C_DOUBLE), intent(in) :: lambda
-real(C_DOUBLE), intent(in) :: decay_factor
-type(SwigClassWrapper) :: fresult 
-character(kind=C_CHAR), dimension(:), allocatable, target :: farg1_temp 
-type(SwigArrayWrapper) :: farg1 
-character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 
-type(SwigArrayWrapper) :: farg2 
-real(C_DOUBLE) :: farg3 
-integer(C_INT) :: farg4 
-integer(C_INT) :: farg5 
-real(C_DOUBLE) :: farg6 
-real(C_DOUBLE) :: farg7 
-
-call SWIGTM_fin_char_Sm_(xgc_mesh_filename, farg1, farg1_temp)
-call SWIGTM_fin_char_Sm_(dg2_mesh_filename, farg2, farg2_temp)
-farg3 = radius
-farg4 = degree
-farg5 = min_req_supports
-farg6 = lambda
-farg7 = decay_factor
-fresult = swigc_pcms_create_degas2xgc_interpolator(farg1, farg2, farg3, farg4, farg5, farg6, farg7)
-swig_result%swigdata = fresult
-end function
 
 function pcms_create_degas2xgcnode_interpolator(target_points, target_points_size, dg2_mesh_filename, radius, dg2_elem_count, &
   degree, min_req_supports, lambda, decay_factor) &

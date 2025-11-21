@@ -412,11 +412,9 @@ if(Catch2_FOUND)
                   --ltx_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx
                   --data_root ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/
   )
-  # TODO: how can we avoid repeating this but still getting command line args for filenames?
 
   include(Catch)
   catch_discover_tests(unit_tests)
-  #catch_discover_tests(test_interpolation_on_ltx_mesh)
 else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()

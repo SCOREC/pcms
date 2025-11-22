@@ -24,14 +24,14 @@ Omega_h::Real calculateDistance(const Omega_h::Real* p1,
 }
 
 inline void checkTargetPoints(
-  const Kokkos::View<pcms::GridPointSearch::Result*>& results)
+  const Kokkos::View<pcms::GridPointSearch2D::Result*>& results)
 {
   Kokkos::fence();
   printf("INFO: Checking target points...\n");
   auto check_target_points = OMEGA_H_LAMBDA(Omega_h::LO i)
   {
-    if (results(i).tri_id < 0) {
-      OMEGA_H_CHECK_PRINTF(results(i).tri_id >= 0,
+    if (results(i).element_id < 0) {
+      OMEGA_H_CHECK_PRINTF(results(i).element_id >= 0,
                            "ERROR: Source cell id not found for target %d\n",
                            i);
       printf("%d, ", i);
@@ -117,7 +117,7 @@ inline void FindSupports::adjBasedSearch(
     });
   Kokkos::fence();
 
-  pcms::GridPointSearch search_cell(source_mesh, 10, 10);
+  pcms::GridPointSearch2D search_cell(source_mesh, 10, 10);
   auto results = search_cell(target_points);
   checkTargetPoints(results);
 
@@ -128,7 +128,7 @@ inline void FindSupports::adjBasedSearch(
       Track visited;
       Omega_h::Real cutoffDistance = radii2[id];
 
-      Omega_h::LO source_cell_id = results(id).tri_id;
+      Omega_h::LO source_cell_id = results(id).element_id;
       OMEGA_H_CHECK_PRINTF(
         source_cell_id >= 0,
         "ERROR: Source cell id not found for target %d (%f,%f)\n", id,

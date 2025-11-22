@@ -5,12 +5,13 @@
 namespace pcms
 {
 
-// RBF_GAUSSIAN Functor
+// 'a' is a shape parameter
+// the value of 'a' is higher if the data is localized
+// the value of 'a' is smaller if the data is farther
+
+// gaussian
 struct RBF_GAUSSIAN
 {
-  // 'a' is a spreading factor/decay factor
-  // the value of 'a' is higher if the data is localized
-  // the value of 'a' is smaller if the data is farther
 
   double a;
 
@@ -31,11 +32,7 @@ struct RBF_GAUSSIAN
                          r_sq);
 
     double r = Kokkos::sqrt(r_sq);
-    double rho = Kokkos::sqrt(rho_sq);
-    double ratio = r / rho;
-    double limit = 1 - ratio;
-
-    if (limit < 0) {
+    if (rho_sq < r_sq) {
       phi = 0;
 
     } else {
@@ -46,7 +43,7 @@ struct RBF_GAUSSIAN
   }
 };
 
-// RBF_C4 Functor
+// c4
 struct RBF_C4
 {
 
@@ -55,13 +52,14 @@ struct RBF_C4
   {
     double phi;
     double r = Kokkos::sqrt(r_sq);
-    OMEGA_H_CHECK_PRINTF(
-      rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
-      rho_sq);
     double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double limit = 1 - ratio;
-    if (limit < 0) {
+
+    OMEGA_H_CHECK_PRINTF(
+      rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
+      rho_sq);
+    if (rho_sq < r_sq) {
       phi = 0;
 
     } else {
@@ -77,8 +75,7 @@ struct RBF_C4
   }
 };
 
-// RBF_const Functor
-//
+// constant/uniform
 struct RBF_CONST
 {
 
@@ -86,15 +83,12 @@ struct RBF_CONST
   double operator()(double r_sq, double rho_sq) const
   {
     double phi;
-    double r = Kokkos::sqrt(r_sq);
     OMEGA_H_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
-    double rho = Kokkos::sqrt(rho_sq);
-    double ratio = r / rho;
-    double limit = 1 - ratio;
-    if (limit < 0) {
-      phi = 0;
+
+    if (rho_sq < r_sq) {
+      phi = 0.0;
 
     } else {
       phi = 1.0;
@@ -107,10 +101,123 @@ struct RBF_CONST
   }
 };
 
+// no operations
 struct NoOp
 {
   OMEGA_H_INLINE
   double operator()(double, double) const { return 1.0; }
+};
+
+// multiquadric
+struct RBF_MULTIQUADRIC
+{
+
+  double a;
+  RBF_MULTIQUADRIC(double a_val) : a(a_val) {}
+
+  OMEGA_H_INLINE
+  double operator()(double r_sq, double rho_sq) const
+  {
+    double phi;
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho;
+    if (rho_sq < r_sq) {
+      phi = 0.0;
+    } else {
+      phi = Kokkos::sqrt(1.0 + a * a * ratio * ratio);
+    }
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
+                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                         r_sq, rho_sq);
+
+    return phi;
+  }
+};
+
+// inverse multiquadric
+struct RBF_INVMULTIQUADRIC
+{
+  double a;
+  RBF_INVMULTIQUADRIC(double a_val) : a(a_val) {}
+
+  OMEGA_H_INLINE
+  double operator()(double r_sq, double rho_sq) const
+  {
+    double phi;
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho;
+    if (rho_sq < r_sq) {
+      phi = 0.0;
+    } else {
+      phi = 1.0 / Kokkos::sqrt(1.0 + a * a * ratio * ratio);
+    }
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
+                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                         r_sq, rho_sq);
+
+    return phi;
+  }
+};
+
+// thin plate spline
+struct RBF_THINPLATESPLINE
+{
+  double a;
+  RBF_THINPLATESPLINE(double a_val) : a(a_val) {}
+
+  OMEGA_H_INLINE
+  double operator()(double r_sq, double rho_sq) const
+  {
+    double phi;
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho;
+
+    if (rho_sq < r_sq) {
+      phi = 0.0;
+    } else {
+      phi =
+        a * a * ratio * ratio * Kokkos::log(a * ratio); // a shouldnot be zero
+    }
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
+                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                         r_sq, rho_sq);
+
+    return phi;
+  }
+};
+
+// cubic
+struct RBF_CUBIC
+{
+
+  double a;
+  RBF_CUBIC(double a_val) : a(a_val) {}
+
+  OMEGA_H_INLINE
+  double operator()(double r_sq, double rho_sq) const
+  {
+    double phi;
+    double r = Kokkos::sqrt(r_sq);
+    double rho = Kokkos::sqrt(rho_sq);
+    double ratio = r / rho;
+    if (rho_sq < r_sq) {
+      phi = 0.0;
+    } else {
+      phi = a * a * a * ratio * ratio * ratio;
+    }
+
+    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
+                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                         r_sq, rho_sq);
+
+    return phi;
+  }
 };
 
 Omega_h::Write<Omega_h::Real> mls_interpolation(

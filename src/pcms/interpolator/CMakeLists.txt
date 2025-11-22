@@ -13,6 +13,8 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     spline_interpolator.hpp)
 
 set(PCMS_FIELD_TRANSFER_SOURCES mls_interpolation.cpp)
+
+add_subdirectory(mesh_intersection)
 install(FILES ${PCMS_FIELD_TRANSFER_HEADERS}
         DESTINATION include/pcms/interpolator)
 

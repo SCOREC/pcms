@@ -30,7 +30,7 @@ namespace pcms
       PCMS_FUNCTION_TIMER;
       PCMS_ALWAYS_ASSERT(channel_.InSendCommunicationPhase());
       comm_.SetCommParams( VarName, msg_size);
-      comm_.Send(msg, VarName, mode);
+      comm_.Send(msg, mode);
     }
     std::vector<T> Receive(std::string VarName, size_t msg_size, Mode mode = Mode::Synchronous)
     {

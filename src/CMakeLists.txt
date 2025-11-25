@@ -52,11 +52,13 @@ if(PCMS_ENABLE_OMEGA_H)
   list(
     APPEND
     PCMS_HEADERS
-    pcms/adapter/omega_h/omega_h_field.h
+    #pcms/adapter/omega_h/omega_h_field.h
     pcms/transfer_field.h
     pcms/transfer_field2.h
     pcms/uniform_grid.h
     pcms/point_search.h)
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pcms/adapter/omega_h/omega_h_field.h
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/adapter/omega_h)
 endif()
 
 find_package(Kokkos REQUIRED)

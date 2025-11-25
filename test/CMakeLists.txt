@@ -96,7 +96,37 @@ if(PCMS_ENABLE_OMEGA_H)
       ${d3d16p}
       ignored)
   endif()
-
+  add_exe(test_GDI)
+  tri_mpi_test(
+          TESTNAME
+          test_GDI
+          TIMEOUT
+          20
+          NAME1
+          app
+          EXE1
+          ./test_GDI
+          PROCS1
+          1
+          ARGS1
+          1
+          NAME2
+          rdv
+          EXE2
+          ./test_GDI
+          PROCS2
+          1
+          ARGS2
+          -1
+          NAME3
+          app
+          EXE3
+          ./test_GDI
+          PROCS3
+          1
+          ARGS3
+          0
+  )
   set(d3d8p ${PCMS_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p8.osh/)
   add_exe(test_twoClientOverlap)
   if(HOST_NPROC GREATER_EQUAL 28)

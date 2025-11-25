@@ -123,12 +123,12 @@ class GlobalDataInterface
   {
     PCMS_FUNCTION_TIMER;
   }
-  void Send(std::unique_ptr<T> msg, size_t msg_size, std::string VarName, Mode mode = Mode::Synchronous)
+  void Send(T* msg, std::string VarName, size_t msg_size, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
-    comm_.Send(msg, msg_size, VarName, mode);
+    comm_.Send(msg, VarName, msg_size, mode);
   }
-  std::vector<T> Receive(std::string VarName, size_t msg_size, Mode mode)
+  std::vector<T> Receive(std::string VarName, size_t msg_size, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     return comm_.Receive(VarName, msg_size, mode);
@@ -172,7 +172,7 @@ public:
   std::unique_ptr<GlobalDataInterface<T>> Add_GDI(std::string name, MPI_Comm mpi_comm)
   {
     PCMS_FUNCTION_TIMER;
-    return  std::make_unique<GlobalDataInterface<T>>(name, mpi_comm, channel_);
+    return  std::make_unique<GlobalDataInterface<T>>(name, mpi_comm, channel_); // Use the existing applivatiocation channel
   }
   void SendField(const std::string& name, Mode mode = Mode::Synchronous)
   {

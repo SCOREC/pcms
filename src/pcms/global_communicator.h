@@ -25,7 +25,7 @@ namespace pcms
     GlobalCommunicator(GlobalCommunicator&&)= default;
     GlobalCommunicator& operator=(GlobalCommunicator&&) = default;
 
-    void Send(T* msg, size_t msg_size, std::string VarName, Mode mode = Mode::Synchronous)
+    void Send(T* msg, std::string VarName, size_t msg_size, Mode mode = Mode::Synchronous)
     {
       PCMS_FUNCTION_TIMER;
       PCMS_ALWAYS_ASSERT(channel_.InSendCommunicationPhase());

@@ -13,6 +13,7 @@ set(PCMS_HEADERS
     pcms/field_communicator.h
     pcms/field_communicator2.h
     pcms/field_evaluation_methods.h
+    pcms/global_communicator.h
     pcms/memory_spaces.h
     pcms/types.h
     pcms/array_mask.h

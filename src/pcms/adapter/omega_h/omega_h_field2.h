@@ -4,6 +4,7 @@
 #include <Kokkos_Core.hpp>
 #include <MeshField.hpp>
 #include <Omega_h_for.hpp>
+#include <array>
 #include <memory>
 
 #include "pcms/adapter/omega_h/omega_h_field_layout.h"
@@ -178,6 +179,62 @@ public:
     }
   }
 
+  static std::array<Kokkos::View<LO*>, 4> create_dim_masks(
+    Omega_h::Mesh& mesh, const Kokkos::View<Omega_h::I8*> elem_mask,
+    std::array<int, 4> nodes_per_dim)
+  {
+    PCMS_ALWAYS_ASSERT(mesh.nelems() == elem_mask.extent(0));
+    std::array<Kokkos::View<LO*>, 4> masks;
+
+    struct Helper
+    {
+      static int factorial(int n)
+      {
+        int f = 1;
+        while (n) {
+          f *= n;
+          --n;
+        }
+        return f;
+      }
+
+      static int ents_per_elem(int dim, int ent_dim)
+      {
+        int n = dim + 1;
+        int m = ent_dim + 1;
+        return factorial(n) / (factorial(m) * factorial(n - m));
+      }
+    };
+
+    for (int d = 0; d <= mesh.dim(); ++d) {
+      if (nodes_per_dim[d]) {
+        Kokkos::realloc(masks[d], mesh.nents(d));
+
+        if (d == mesh.dim()) {
+          Kokkos::parallel_for(
+            masks[d].extent(0),
+            KOKKOS_LAMBDA(LO i) { masks[d](i) = elem_mask(i); });
+        } else {
+          auto adj = mesh.ask_down(mesh.dim(), d).ab2b;
+          int nents = Helper::ents_per_elem(mesh.dim(), d);
+
+          Kokkos::parallel_for(
+            masks[d].extent(0), KOKKOS_LAMBDA(LO i) { masks[d](i) = 0; });
+
+          Kokkos::parallel_for(
+            elem_mask.extent(0), KOKKOS_LAMBDA(LO i) {
+              if (elem_mask(i)) {
+                for (int e = 0; e < nents; ++e)
+                  masks[d](adj[i * nents + e]) = 1;
+              }
+            });
+        }
+      }
+    }
+
+    return masks;
+  }
+
   LocalizationHint GetLocalizationHint(
     CoordinateView<HostMemorySpace> coordinate_view) const override
   {
@@ -325,6 +382,7 @@ private:
   std::unique_ptr<MeshFieldBackend<T>> mesh_field_;
   GridPointSearch search_;
   Kokkos::View<T*> dof_holder_data_;
+  std::array<Kokkos::View<LO*>, 4> dim_masks_;
 };
 
 } // namespace pcms

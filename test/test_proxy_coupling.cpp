@@ -6,7 +6,8 @@
 #include <Omega_h_for.hpp>
 #include <redev_variant_tools.h>
 #include "test_support.h"
-#include "pcms/adapter/omega_h/omega_h_field.h"
+#include "pcms/coupler2.h"
+#include "pcms/create_field.h"
 #include <chrono>
 #include <thread>
 
@@ -25,21 +26,25 @@ namespace ts = test_support;
 
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  pcms::Coupler coupler("proxy_couple", comm, false, {});
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f");
+  pcms::Coupler2 coupler("proxy_couple", comm, false, {});
+  pcms::Application2* app = coupler.AddApplication("proxy_couple_xgc_delta_f");
 
-  auto is_overlap =
-    ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
-  app->AddField("gids", OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
-  app->AddField("gids2", OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  auto& layout = app->AddLayout(
+    "gids",
+    pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian));
+
+  app->AddField("gids", layout.CreateFieldReal());
+  app->AddField("gids2", layout.CreateFieldReal());
+
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       app->BeginSendPhase();
       app->SendField("gids");  //(Alt) df_gid_field->Send();
-      app->SendField("gids2"); //(Alt) df_gid_field->Send();
+      // app->SendField("gids2"); //(Alt) df_gid_field->Send();
       app->EndSendPhase();
       app->BeginReceivePhase();
       app->ReceiveField("gids"); //(Alt) df_gid_field->Receive();
+      // app->ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
       app->EndReceivePhase();
       // cpl.ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
     }
@@ -47,11 +52,15 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 }
 void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
-  pcms::Coupler coupler("proxy_couple", comm, false, {});
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f");
-  auto is_overlap =
-    ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
-  app->AddField("gids", OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  pcms::Coupler2 coupler("proxy_couple", comm, false, {});
+  pcms::Application2* app = coupler.AddApplication("proxy_couple_xgc_total_f");
+
+  auto& layout = app->AddLayout(
+    "gids",
+    pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian));
+
+  app->AddField("gids", layout.CreateFieldReal());
+
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       app->BeginSendPhase();
@@ -68,32 +77,46 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  pcms::Coupler cpl("proxy_couple", comm, true,
-                    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
+  pcms::Coupler2 cpl(
+    "proxy_couple", comm, true,
+    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
-  auto is_overlap =
-    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
+
   auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f");
   auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");
+
+  auto& layout_total = total_f->AddLayout(
+    "gids",
+    pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian));
+
+  auto& layout_delta = delta_f->AddLayout(
+    "gids",
+    pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian));
+
   // TODO, fields should have a transfer policy rather than parameters
-  auto* total_f_gids = total_f->AddField(
-    "gids", OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap));
-  auto* delta_f_gids = delta_f->AddField(
-    "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap));
-  auto* delta_f_gids2 = delta_f->AddField(
-    "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap));
+  total_f->AddField("gids", layout_total.CreateFieldReal());
+  delta_f->AddField("gids", layout_delta.CreateFieldReal());
+  delta_f->AddField("gids2", layout_delta.CreateFieldReal());
+
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      total_f->ReceivePhase([&]() { total_f_gids->Receive(); });
-      delta_f->ReceivePhase([&]() {
-        delta_f_gids->Receive();
-        delta_f_gids2->Receive();
-      });
-      total_f->SendPhase([&]() { total_f_gids->Send(); });
-      delta_f->SendPhase([&]() {
-        delta_f_gids->Send(pcms::Mode::Deferred);
-        delta_f_gids2->Send(pcms::Mode::Deferred);
-      });
+      total_f->BeginReceivePhase();
+      total_f->ReceiveField("gids");
+      total_f->EndReceivePhase();
+
+      delta_f->BeginReceivePhase();
+      delta_f->ReceiveField("gids");
+      // delta_f->ReceiveField("gids2");
+      delta_f->EndReceivePhase();
+
+      total_f->BeginSendPhase();
+      total_f->SendField("gids");
+      total_f->EndSendPhase();
+
+      delta_f->BeginSendPhase();
+      delta_f->SendField("gids", pcms::Mode::Deferred);
+      // delta_f->SendField("gids2", pcms::Mode::Deferred);
+      delta_f->EndSendPhase();
     }
   } while (!done);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());

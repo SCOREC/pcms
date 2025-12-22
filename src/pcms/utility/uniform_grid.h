@@ -1,6 +1,6 @@
 #ifndef PCMS_COUPLING_UNIFORM_GRID_H
 #define PCMS_COUPLING_UNIFORM_GRID_H
-#include "pcms/bounding_box.h"
+#include "pcms/utility/bounding_box.h"
 #include "Omega_h_vector.hpp"
 #include "Omega_h_bbox.hpp"
 #include "Omega_h_mesh.hpp"

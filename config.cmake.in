@@ -17,6 +17,7 @@ if(@PCMS_ENABLE_OMEGA_H@)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_utility-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/pcms_localization-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_core-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_interpolator-targets.cmake")
 

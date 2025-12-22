@@ -3,8 +3,8 @@
 #include "adapter/omega_h/omega_h_field_layout.h"
 #include "adapter/uniform_grid/uniform_grid_field.h"
 #include "adapter/uniform_grid/uniform_grid_field_layout.h"
-#include "uniform_grid.h"
-#include "point_search.h"
+#include "utility/uniform_grid.h"
+#include "localization/point_search.h"
 
 #include <Kokkos_Core.hpp>
 #include <utility>

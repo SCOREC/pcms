@@ -4,7 +4,7 @@
 #include "pcms/adapter/uniform_grid/uniform_grid_field_layout.h"
 #include "pcms/field.h"
 #include "pcms/field_layout.h"
-#include "pcms/uniform_grid.h"
+#include "pcms/utility/uniform_grid.h"
 #include "numpy_array_transform.h"
 
 namespace py = pybind11;

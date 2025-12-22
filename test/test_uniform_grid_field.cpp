@@ -3,7 +3,7 @@
 #include <Kokkos_Core.hpp>
 #include "pcms/adapter/uniform_grid/uniform_grid_field_layout.h"
 #include "pcms/adapter/uniform_grid/uniform_grid_field.h"
-#include "pcms/uniform_grid.h"
+#include "pcms/utility/uniform_grid.h"
 #include "Omega_h_library.hpp"
 #include "Omega_h_build.hpp"
 #include "pcms/transfer_field2.h"

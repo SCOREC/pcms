@@ -8,8 +8,8 @@
 #include <Omega_h_shape.hpp>
 
 #include "pcms/utility/types.h"
-#include "pcms/uniform_grid.h"
-#include "pcms/bounding_box.h"
+#include "pcms/utility/uniform_grid.h"
+#include "pcms/utility/bounding_box.h"
 
 namespace pcms
 {

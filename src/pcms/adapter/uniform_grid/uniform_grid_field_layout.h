@@ -5,7 +5,7 @@
 #include "pcms/field_layout.h"
 #include "pcms/coordinate_system.h"
 #include "pcms/field.h"
-#include "pcms/uniform_grid.h"
+#include "pcms/utility/uniform_grid.h"
 
 #include <array>
 

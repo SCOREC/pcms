@@ -5,7 +5,7 @@
 #include "pcms/utility/types.h"
 #include "pcms/field.h"
 #include "pcms/coordinate_system.h"
-#include "pcms/uniform_grid.h"
+#include "pcms/utility/uniform_grid.h"
 #include <memory>
 
 namespace pcms

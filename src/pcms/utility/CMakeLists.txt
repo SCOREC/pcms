@@ -2,6 +2,7 @@ set(
         PCMS_UTILITY_HEADERS
         arrays.h
         assert.h
+        bounding_box.h
         common.h
         memory_spaces.h
         types.h
@@ -9,6 +10,7 @@ set(
         inclusive_scan.h
         profile.h
         print.h
+        uniform_grid.h
 )
 
 set(

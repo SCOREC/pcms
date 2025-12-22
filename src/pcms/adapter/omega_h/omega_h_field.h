@@ -10,7 +10,7 @@
 #include <Omega_h_for.hpp>
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/array_mask.h"
-#include "pcms/point_search.h"
+#include "pcms/localization/point_search.h"
 #include <redev_variant_tools.h>
 #include <type_traits>
 #include "pcms/transfer_field.h"

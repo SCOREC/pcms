@@ -1,7 +1,7 @@
 #ifndef ADJ_SEARCH_HPP
 #define ADJ_SEARCH_HPP
 
-#include <pcms/point_search.h>
+#include <pcms/localization/point_search.h>
 #include <pcms/utility/print.h>
 #include "interpolation_helpers.h" // for helper functions
 

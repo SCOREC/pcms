@@ -2,7 +2,6 @@
 set(
   PCMS_HEADERS
   pcms.h
-  pcms/bounding_box.h
   pcms/coordinate.h
   pcms/coordinate_systems.h
   pcms/coordinate_transform.h
@@ -19,18 +18,17 @@ set(
   pcms/adapter/point_cloud/point_cloud.h
   pcms/adapter/omega_h/omega_h_field_layout.h
   pcms/adapter/omega_h/omega_h_field2.h
+  pcms/adapter/xgc/xgc_field_adapter.h
 )
 
 set(
   PCMS_SOURCES
   pcms.cpp
   pcms/create_field.cpp
-  pcms/adapter/xgc/xgc_field_adapter.h
   pcms/adapter/point_cloud/point_cloud_layout.cpp
   pcms/adapter/point_cloud/point_cloud.cpp
   pcms/adapter/omega_h/omega_h_field_layout.cpp
   pcms/adapter/omega_h/omega_h_field2.cpp
-  pcms/adapter/xgc/xgc_field_adapter.h
 )
 
 configure_file(pcms/version.h.in pcms/version.h)
@@ -39,25 +37,24 @@ list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h ${CMAKE_CURR
 
 add_subdirectory(pcms/utility)
 
+add_subdirectory(pcms/localization)
+
 
 if(PCMS_ENABLE_XGC)
   list(APPEND PCMS_SOURCES pcms/adapter/xgc/xgc_reverse_classification.cpp)
   list(APPEND PCMS_HEADERS pcms/adapter/xgc/xgc_reverse_classification.h)
 endif()
 if(PCMS_ENABLE_OMEGA_H)
-  list(APPEND PCMS_SOURCES 
-    pcms/point_search.cpp
+  list(APPEND PCMS_SOURCES
     pcms/adapter/uniform_grid/uniform_grid_field_layout.cpp
     pcms/adapter/uniform_grid/uniform_grid_field.cpp
   )
   list(
     APPEND
     PCMS_HEADERS
-    pcms/adapter/omega_h/omega_h_field.h
     pcms/transfer_field.h
     pcms/transfer_field2.h
-    pcms/uniform_grid.h
-    pcms/point_search.h
+    pcms/adapter/omega_h/omega_h_field.h
     pcms/adapter/uniform_grid/uniform_grid_field_layout.h
     pcms/adapter/uniform_grid/uniform_grid_field.h
   )
@@ -75,7 +72,7 @@ add_library(pcms::core ALIAS pcms_core)
 target_compile_features(pcms_core PUBLIC cxx_std_17)
 target_link_libraries(
   pcms_core PUBLIC meshfields::meshfields redev::redev
-  MPI::MPI_CXX Kokkos::kokkos perfstubs pcms::utility
+  MPI::MPI_CXX Kokkos::kokkos perfstubs pcms::utility pcms::localization
 )
 if(PCMS_ENABLE_OMEGA_H)
   target_link_libraries(pcms_core PUBLIC Omega_h::omega_h)

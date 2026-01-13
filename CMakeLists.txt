@@ -18,6 +18,28 @@ if(PCMS_ENABLE_ASAN AND CMAKE_COMPILER_IS_GNUCXX MATCHES 1)
   set(PCMS_HAS_ASAN ON)
 endif()
 
+# based on Professional CMake: A Practical Guide
+# this approach works around some issues with CMakes internal handling using co-compilation
+# this approach affords a separate clang-tidy run step in the CI
+if(PROJECT_IS_TOP_LEVEL)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+
+  find_program(CLANG_TIDY_EXECUTABLE clang-tidy REQUIRED)
+  find_program(RUN_CLANG_TIDY_EXECUTABLE run-clang-tidy REQUIRED)
+
+  set(CLANG_TIDY_CONFIG_FILE ${CMAKE_CURRENT_LIST_DIR}/.clang-tidy)
+
+  message(STATUS "CLANG_TIDY_EXECUTABLE=${CLANG_TIDY_EXECUTABLE}")
+  message(STATUS "RUN_CLANG_TIDY_EXECUTABLE= ${RUN_CLANG_TIDY_EXECUTABLE}")
+  message(STATUS "CLANG_TIDY_CONFIG_FILE=${CLANG_TIDY_CONFIG_FILE}")
+  add_custom_target(run-clang-tidy
+          COMMAND ${RUN_CLANG_TIDY_EXECUTABLE}
+          -clang-tidy-binary ${CLANG_TIDY_EXECUTABLE}
+          -p ${CMAKE_BINARY_DIR}
+          -config-file ${CLANG_TIDY_CONFIG_FILE}
+  )
+endif()
+
 option(PCMS_ENABLE_SERVER "enable the coupling server implementation" ON)
 option(PCMS_ENABLE_CLIENT "enable the coupling client implementation" ON)
 

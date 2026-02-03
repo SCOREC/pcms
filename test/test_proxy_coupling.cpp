@@ -146,12 +146,20 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
         delta_f_gids->Receive();
         delta_f_gids2->Receive();
       });
+      // Get bytes received after receive phase
+      size_t total_f_bytes = total_f_gids->GetBytesReceived();
+      size_t delta_f_gids_bytes = delta_f_gids->GetBytesReceived();
+      size_t delta_f_gids2_bytes = delta_f_gids2->GetBytesReceived();
+      size_t total_bytes = total_f_bytes + delta_f_gids_bytes + delta_f_gids2_bytes;
       total_f->SendPhase([&]() { total_f_gids->Send(); });
       delta_f->SendPhase([&]() {
         delta_f_gids->Send(pcms::Mode::Deferred);
         delta_f_gids2->Send(pcms::Mode::Deferred);
       });
-      if(!rank) fprintf(stderr, "round %d is done\n", i);
+      if(!rank) {
+        fprintf(stderr, "round %d is done - received bytes: total_f=%zu delta_f_gids=%zu delta_f_gids2=%zu total=%zu\n",
+                i, total_f_bytes, delta_f_gids_bytes, delta_f_gids2_bytes, total_bytes);
+      }
     }
   } while (!done);
   MPI_Barrier(comm);

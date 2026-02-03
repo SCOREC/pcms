@@ -42,6 +42,17 @@ public:
     PCMS_FUNCTION_TIMER;
     coupled_field_->Receive(mode);
   }
+
+  /**
+   * Get the number of bytes received in the most recent Receive() call.
+   * @return Number of bytes received on this rank.
+   */
+  [[nodiscard]] size_t GetBytesReceived() const
+  {
+    PCMS_FUNCTION_TIMER;
+    return coupled_field_->GetBytesReceived();
+  }
+
   template <typename T>
   [[nodiscard]] T* GetFieldAdapter() const
   {
@@ -57,6 +68,7 @@ public:
   {
     virtual void Send(Mode) = 0;
     virtual void Receive(Mode) = 0;
+    [[nodiscard]] virtual size_t GetBytesReceived() const = 0;
     [[nodiscard]] virtual const std::type_info& GetFieldAdapterType()
       const noexcept = 0;
     [[nodiscard]] virtual void* GetFieldAdapter() noexcept = 0;
@@ -88,6 +100,11 @@ public:
       PCMS_FUNCTION_TIMER;
       comm_.Receive(mode);
     };
+    size_t GetBytesReceived() const final
+    {
+      PCMS_FUNCTION_TIMER;
+      return comm_.GetBytesReceived();
+    }
     virtual const std::type_info& GetFieldAdapterType() const noexcept
     {
       return type_info_;

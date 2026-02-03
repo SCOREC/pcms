@@ -199,6 +199,17 @@ public:
     field_adapter_.Deserialize(make_const_array_view(data),
                                make_const_array_view(message_permutation_));
   }
+
+  /**
+   * Get the number of bytes received in the most recent Receive() call.
+   * @return Number of bytes received on this rank.
+   */
+  size_t GetBytesReceived() const
+  {
+    PCMS_FUNCTION_TIMER;
+    return comm_.GetBytesReceived();
+  }
+
   /** update the permutation array and buffer sizes upon mesh change
    * @WARNING this function mut be called on *both* the client and server
    * after any modifications on the client
@@ -281,6 +292,7 @@ struct FieldCommunicator<void>
 {
   void Send(Mode = {}) {}
   void Receive(Mode = {}) {}
+  size_t GetBytesReceived() const { return 0; }
 };
 } // namespace pcms
 

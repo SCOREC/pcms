@@ -7,6 +7,7 @@
 #include <redev_variant_tools.h>
 #include "test_support.h"
 #include "pcms/adapter/omega_h/omega_h_field.h"
+#include "pcms/print.h"
 #include <chrono>
 #include <thread>
 
@@ -117,6 +118,11 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
+  //redirect stdout to one file per rank
+  auto fname = std::string("coupler_p") + std::to_string(rank) + ".log";
+  FILE* fhandle = fopen(fname.c_str(), "w");
+  pcms::setStdout(fhandle);
+  pcms::printInfo("mesh numVtx %d\n", mesh.nverts());
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
@@ -156,10 +162,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
         delta_f_gids->Send(pcms::Mode::Deferred);
         delta_f_gids2->Send(pcms::Mode::Deferred);
       });
-      if(!rank) {
-        fprintf(stderr, "round %d is done - received bytes: total_f=%zu delta_f_gids=%zu delta_f_gids2=%zu total=%zu\n",
+      pcms::printInfo("round %d is done - received bytes: total_f=%zu delta_f_gids=%zu delta_f_gids2=%zu total=%zu\n",
                 i, total_f_bytes, delta_f_gids_bytes, delta_f_gids2_bytes, total_bytes);
-      }
     }
   } while (!done);
   MPI_Barrier(comm);
@@ -167,6 +171,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   const std::chrono::duration<double> elapsed_seconds{finish - start};
   if(!rank) std::cerr << "xgc_coupler " << elapsed_seconds.count() << "\n";
   }
+  fclose(fhandle);
   Omega_h::vtk::write_parallel("proxy_couple", &mesh, mesh.dim());
 }
 

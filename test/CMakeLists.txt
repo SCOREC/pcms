@@ -51,10 +51,10 @@ if (PCMS_ENABLE_OMEGA_H)
     target_link_libraries(proxy_coupling PUBLIC pcms::core test_support)
     if(HOST_NPROC GREATER_EQUAL 4)
         tri_mpi_test(TESTNAME test_proxy_coupling_4p
-                TIMEOUT 10
-                NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn}
-                NAME2 client0 EXE2 ./proxy_coupling PROCS2 1 ARGS2 0 ${d3d1p} ignored
-                NAME3 client1 EXE3 ./proxy_coupling PROCS3 1 ARGS3 1 ${d3d1p} ignored)
+                TIMEOUT 30
+                NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn} WAN BP4
+                NAME2 client0 EXE2 ./proxy_coupling PROCS2 1 ARGS2 0 ${d3d1p} ignored WAN BP4
+                NAME3 client1 EXE3 ./proxy_coupling PROCS3 1 ARGS3 1 ${d3d1p} ignored WAN BP4)
     endif()
     if(HOST_NPROC GREATER_EQUAL 26)
         tri_mpi_test(TESTNAME test_proxy_coupling_26p

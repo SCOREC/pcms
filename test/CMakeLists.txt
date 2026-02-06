@@ -369,7 +369,8 @@ if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
   set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp test_coordinate_transform.cpp
-                             test_coordinate.cpp test_bounding_box.cpp)
+                             test_coordinate.cpp test_bounding_box.cpp
+                             test_print.cpp)
   if(PCMS_ENABLE_XGC)
     list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_reverse_classification.cpp
          test_xgc_field_adapter.cpp)

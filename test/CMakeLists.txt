@@ -93,7 +93,8 @@ if(Catch2_FOUND)
           unit_test_main.cpp
           test_coordinate_transform.cpp
           test_coordinate.cpp
-          test_bounding_box.cpp)
+          test_bounding_box.cpp
+          test_print.cpp)
   if (PCMS_ENABLE_XGC)
       list(APPEND PCMS_UNIT_TEST_SOURCES
               test_xgc_reverse_classification.cpp

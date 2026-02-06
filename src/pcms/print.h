@@ -28,7 +28,7 @@ void printError(const char* fmt, const Args&... args)
 #if defined(PCMS_SPDLOG_ENABLED) && defined(PCMS_PRINT_ENABLED)
   spdlog::error("{}", fmt::sprintf(fmt, args...));
 #elif defined(PCMS_PRINT_ENABLED)
-  fprintf(getStdout(), fmt, args...);
+  fprintf(getStderr(), fmt, args...);
 #endif
 }
 

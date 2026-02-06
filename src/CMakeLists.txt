@@ -92,11 +92,22 @@ if(PCMS_HAS_ASAN)
   )
 endif()
 
-# export the library
+if(PCMS_PRINT_ENABLED)
+  add_definitions(-DPCMS_PRINT_ENABLED)
+  target_compile_definitions(pcms_core INTERFACE -DPCMS_PRINT_ENABLED)
+endif()
+
+if (spdlog_FOUND AND PCMS_ENABLE_SPDLOG)
+  add_definitions(-DPCMS_SPDLOG_ENABLED)
+  target_compile_definitions(pcms_core INTERFACE -DPCMS_SPDLOG_ENABLED)
+  target_link_libraries(pcms_core PUBLIC spdlog::spdlog)
+endif()
+
+## export the library
 set_target_properties(pcms_core PROPERTIES PUBLIC_HEADER "${PCMS_HEADERS}")
-target_include_directories(
-  pcms_core
-  PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
+target_include_directories(pcms_core
+  PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>"
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )

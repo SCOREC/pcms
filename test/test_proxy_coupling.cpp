@@ -96,6 +96,12 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+  const auto numOverlapVerts = Omega_h::get_sum(is_overlap);
+  const auto hasOverlapVerts = (numOverlapVerts > 0) ? 1 : 0;
+  const auto numRanksWithOverlapVerts = mesh.comm()->allreduce(hasOverlapVerts, OMEGA_H_SUM);
+  if(rank == 0) {
+    pcms::printInfo("numOverlapVerts %d numRanksWithOverlapVerts %d\n", numOverlapVerts, numRanksWithOverlapVerts);
+  }
   PCMS_FUNCTION_TIMER
   const auto start{std::chrono::steady_clock::now()};
   do {

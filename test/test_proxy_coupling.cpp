@@ -122,13 +122,13 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   auto fname = std::string("coupler_p") + std::to_string(rank) + ".log";
   FILE* fhandle = fopen(fname.c_str(), "w");
   pcms::setStdout(fhandle);
-  pcms::printInfo("mesh numVtx %d\n", mesh.nverts());
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
   pcms::Coupler cpl("proxy_couple", comm, true,
                     redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
+  pcms::printInfo("mesh numVtx %d\n", mesh.nverts());
   auto is_overlap =
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
   const auto adiosEngine = getAdiosEngine();
@@ -142,9 +142,13 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     "gids", OmegaHFieldAdapter<GO>("delta_f_gids", mesh, is_overlap));
   auto* delta_f_gids2 = delta_f->AddField(
     "gids2", OmegaHFieldAdapter<GO>("delta_f_gids2", mesh, is_overlap));
+  const auto numServerOverlapVerts = Omega_h::get_sum(is_overlap);
+
+  pcms::printInfo("numServerOverlapVerts %d\n", numServerOverlapVerts);
+  pcms::printInfo("round, total_f, delta_f_gids, delta_f_gids2, local_total, global_total\n");
   {
   PCMS_FUNCTION_TIMER
-  const auto start{std::chrono::steady_clock::now()};
+  auto start{std::chrono::steady_clock::now()};
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       total_f->ReceivePhase([&]() { total_f_gids->Receive(); });
@@ -152,18 +156,25 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
         delta_f_gids->Receive();
         delta_f_gids2->Receive();
       });
-      // Get bytes received after receive phase
-      size_t total_f_bytes = total_f_gids->GetBytesReceived();
-      size_t delta_f_gids_bytes = delta_f_gids->GetBytesReceived();
-      size_t delta_f_gids2_bytes = delta_f_gids2->GetBytesReceived();
-      size_t total_bytes = total_f_bytes + delta_f_gids_bytes + delta_f_gids2_bytes;
+      // Get bytes received after receive phase, don't include in timing, only
+      // need one round of data
+      if(i == 0) {
+        const auto getBytes_start{std::chrono::steady_clock::now()};
+        size_t total_f_bytes = total_f_gids->GetBytesReceived();
+        size_t delta_f_gids_bytes = delta_f_gids->GetBytesReceived();
+        size_t delta_f_gids2_bytes = delta_f_gids2->GetBytesReceived();
+        size_t total_bytes = total_f_bytes + delta_f_gids_bytes + delta_f_gids2_bytes;
+        size_t global_total_bytes = redev::GetTotalBytesReceived(total_bytes, comm);
+        pcms::printInfo("%d, %zu, %zu, %zu, %zu, %zu\n",
+                  i, total_f_bytes, delta_f_gids_bytes,
+                  delta_f_gids2_bytes, total_bytes, global_total_bytes);
+        start -= std::chrono::steady_clock::now() - getBytes_start;
+      }
       total_f->SendPhase([&]() { total_f_gids->Send(); });
       delta_f->SendPhase([&]() {
         delta_f_gids->Send(pcms::Mode::Deferred);
         delta_f_gids2->Send(pcms::Mode::Deferred);
       });
-      pcms::printInfo("round %d is done - received bytes: total_f=%zu delta_f_gids=%zu delta_f_gids2=%zu total=%zu\n",
-                i, total_f_bytes, delta_f_gids_bytes, delta_f_gids2_bytes, total_bytes);
     }
   } while (!done);
   MPI_Barrier(comm);

@@ -1,11 +1,14 @@
 #ifndef MLS_RBF_OPTIONS_HPP
 #define MLS_RBF_OPTIONS_HPP
 
-#include "mls_interpolation_impl.hpp"
+#include <Omega_h_array.hpp>
+
+// struct holds results neighbor search
+// defined in adj_search
+struct SupportResults;
 
 namespace pcms
 {
-
 /**
  * @brief Enumeration of supported radial basis functions (RBF) for MLS
  *interpolation.
@@ -32,7 +35,7 @@ namespace pcms
  * @note These are intended to be passed into function `mls_interpolation` to
  *control weighting behavior.
  */
-enum class RadialBasisFunction : LO
+enum class RadialBasisFunction
 {
   RBF_GAUSSIAN = 0,
   RBF_C4,

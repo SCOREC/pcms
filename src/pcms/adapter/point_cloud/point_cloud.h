@@ -38,6 +38,7 @@ public:
 private:
   const PointCloudLayout& layout_;
   Kokkos::View<Real*> data_;
+  Kokkos::View<Real*, HostMemorySpace> data_host_;
 };
 } // namespace pcms
 

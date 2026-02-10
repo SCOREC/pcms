@@ -49,14 +49,17 @@ private:
 
   Omega_h::Mesh& mesh_;
   Omega_h::Write<Omega_h::GO> gids_;
+  Omega_h::HostWrite<Omega_h::GO> gids_host_;
   std::string global_id_name_;
   int num_components_;
   CoordinateSystem coordinate_system_;
   std::array<int, 4> nodes_per_dim_;
   Kokkos::View<Real**> dof_holder_coords_;
+  Kokkos::View<Real**, HostMemorySpace> dof_holder_coords_host_;
   Omega_h::Write<Omega_h::ClassId> class_ids_;
   Omega_h::Write<Omega_h::I8> class_dims_;
   Kokkos::View<bool*> owned_;
+  Kokkos::View<bool*, HostMemorySpace> owned_host_;
 };
 
 } // namespace pcms

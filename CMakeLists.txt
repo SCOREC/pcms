@@ -25,8 +25,12 @@ option(PCMS_ENABLE_XGC "enable xgc field adapter" ON)
 option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
 option(PCMS_ENABLE_C "Enable pcms C api" ON)
 
-option(PCMS_PRINT_ENABLED "PCMS print statements enabled" ON)
-find_package(spdlog QUIET)
+option(PCMS_ENABLE_PRINT "PCMS print statements enabled" ON)
+option(PCMS_ENABLE_SPDLOG "use spdlog for logging" ON)
+
+if(PCMS_ENABLE_SPDLOG)
+  find_package(spdlog REQUIRED)
+endif()
 
 # find package before fortran enabled, so we don't require the adios2 fortran
 # interfaces this is important because adios2 build with clang/gfortran is
@@ -58,7 +62,7 @@ if(PCMS_ENABLE_OMEGA_H)
   endif()
 endif()
 # adios2 adds C and Fortran depending on how it was built
-find_package(ADIOS2 CONFIG 2.5 REQUIRED)
+find_package(ADIOS2 CONFIG 2.10.2 REQUIRED)
 find_package(Kokkos CONFIG 4.5 REQUIRED)
 
 find_package(meshfields REQUIRED)

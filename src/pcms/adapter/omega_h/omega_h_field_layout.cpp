@@ -19,9 +19,6 @@ Omega_h::Write<Omega_h::GO> GetGidsHelper(LO total_ents,
                                           const std::string& global_id_name)
 {
   PCMS_FUNCTION_TIMER;
-  static_assert(
-    std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>,
-    "types must match");
 
   Omega_h::Write<Omega_h::GO> owned_gids(total_ents);
   LO offset = 0;
@@ -40,6 +37,95 @@ Omega_h::Write<Omega_h::GO> GetGidsHelper(LO total_ents,
   return owned_gids;
 }
 
+// this is a workaround to specify the parametric coordinates for MeshFields to
+// be replaced when https://github.com/SCOREC/meshFields/issues/70 is resolved
+struct ComputeVertexCoordsFunctor
+{
+  Kokkos::View<Real**> dof_holder_coords_;
+  Omega_h::Reals coords_;
+  size_t offset_;
+
+  ComputeVertexCoordsFunctor(Kokkos::View<Real**> dof_holder_coords,
+                             Omega_h::Reals coords, size_t offset)
+    : dof_holder_coords_(dof_holder_coords), coords_(coords), offset_(offset)
+  {
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(LO i) const
+  {
+    dof_holder_coords_(offset_ + i, 0) = coords_[2 * i + 0];
+    dof_holder_coords_(offset_ + i, 1) = coords_[2 * i + 1];
+  }
+};
+
+// this is a workaround to specify the parametric coordinates for MeshFields to
+// be replaced when https://github.com/SCOREC/meshFields/issues/70 is resolved
+struct ComputeEdgeCoordsFunctor
+{
+  Kokkos::View<Real**> dof_holder_coords_;
+  Omega_h::Reals coords_;
+  Omega_h::LOs edge_verts_;
+  size_t offset_;
+
+  ComputeEdgeCoordsFunctor(Kokkos::View<Real**> dof_holder_coords,
+                           Omega_h::Reals coords, Omega_h::LOs edge_verts,
+                           size_t offset)
+    : dof_holder_coords_(dof_holder_coords),
+      coords_(coords),
+      edge_verts_(edge_verts),
+      offset_(offset)
+  {
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(LO i) const
+  {
+    auto verts = Omega_h::gather_verts<2>(edge_verts_, i);
+    Real x0 = coords_[2 * verts[0] + 0];
+    Real y0 = coords_[2 * verts[0] + 1];
+    Real x1 = coords_[2 * verts[1] + 0];
+    Real y1 = coords_[2 * verts[1] + 1];
+    dof_holder_coords_(offset_ + i, 0) = (x0 + x1) / 2;
+    dof_holder_coords_(offset_ + i, 1) = (y0 + y1) / 2;
+  }
+};
+
+struct CopyClassInfoFunctor
+{
+  Omega_h::Write<Omega_h::ClassId> class_ids_;
+  Omega_h::Write<Omega_h::I8> class_dims_;
+  Kokkos::View<bool*> owned_;
+  Omega_h::Read<Omega_h::ClassId> ids_;
+  Omega_h::Read<Omega_h::I8> dims_;
+  Omega_h::Read<Omega_h::I8> owned_data_;
+  size_t offset_;
+
+  CopyClassInfoFunctor(Omega_h::Write<Omega_h::ClassId> class_ids,
+                       Omega_h::Write<Omega_h::I8> class_dims,
+                       Kokkos::View<bool*> owned,
+                       Omega_h::Read<Omega_h::ClassId> ids,
+                       Omega_h::Read<Omega_h::I8> dims,
+                       Omega_h::Read<Omega_h::I8> owned_data, size_t offset)
+    : class_ids_(class_ids),
+      class_dims_(class_dims),
+      owned_(owned),
+      ids_(ids),
+      dims_(dims),
+      owned_data_(owned_data),
+      offset_(offset)
+  {
+  }
+
+  OMEGA_H_DEVICE
+  void operator()(LO i) const
+  {
+    class_ids_[offset_ + i] = ids_[i];
+    class_dims_[offset_ + i] = dims_[i];
+    owned_[offset_ + i] = owned_data_[i];
+  }
+};
+
 OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
                                      std::array<int, 4> nodes_per_dim,
                                      int num_components,
@@ -51,9 +137,12 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
     coordinate_system_(coordinate_system),
     nodes_per_dim_(nodes_per_dim),
     dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim()),
+    dof_holder_coords_host_("dof_holder_coords_host", GetNumOwnedDofHolder(),
+                            mesh_.dim()),
     class_ids_(GetNumEnts()),
     class_dims_(class_ids_.size()),
-    owned_("", class_dims_.size())
+    owned_("", class_dims_.size()),
+    owned_host_("", class_dims_.size())
 {
   PCMS_FUNCTION_TIMER;
   LO total_ents = GetNumEnts();
@@ -74,23 +163,13 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim[i] == 1) {
       if (i == 0) {
-        Kokkos::parallel_for(
-          mesh_.nents(0), KOKKOS_LAMBDA(LO i) {
-            dof_holder_coords_(offset + i, 0) = coords[2 * i + 0];
-            dof_holder_coords_(offset + i, 1) = coords[2 * i + 1];
-          });
+        ComputeVertexCoordsFunctor functor(dof_holder_coords_, coords, offset);
+        Kokkos::parallel_for(mesh_.nents(0), functor);
       } else if (i == 1) {
         auto edge_verts = mesh_.ask_verts_of(1);
-        Kokkos::parallel_for(
-          mesh_.nents(1), KOKKOS_LAMBDA(LO i) {
-            auto verts = Omega_h::gather_verts<2>(edge_verts, i);
-            Real x0 = coords[2 * verts[0] + 0];
-            Real y0 = coords[2 * verts[0] + 1];
-            Real x1 = coords[2 * verts[1] + 0];
-            Real y1 = coords[2 * verts[1] + 1];
-            dof_holder_coords_(offset + i, 0) = (x0 + x1) / 2;
-            dof_holder_coords_(offset + i, 1) = (y0 + y1) / 2;
-          });
+        ComputeEdgeCoordsFunctor functor(dof_holder_coords_, coords, edge_verts,
+                                         offset);
+        Kokkos::parallel_for(mesh_.nents(1), functor);
       } else {
         std::cerr << "Unsupported" << std::endl;
         std::abort();
@@ -112,15 +191,13 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
       PCMS_ALWAYS_ASSERT(ids.size() == dims.size() &&
                          dims.size() == mesh_.nents(i));
 
-      Omega_h::parallel_for(
-        mesh_.nents(i), OMEGA_H_LAMBDA(LO i) {
-          class_ids_[offset + i] = ids[i];
-          class_dims_[offset + i] = dims[i];
-          owned_[offset + i] = owned[i];
-        });
+      CopyClassInfoFunctor functor(class_ids_, class_dims_, owned_, ids, dims,
+                                   owned, offset);
+      Omega_h::parallel_for(mesh_.nents(i), functor);
       offset += mesh.nents(i);
     }
   }
+  gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
 }
 
 std::unique_ptr<FieldT<Real>> OmegaHFieldLayout::CreateField() const
@@ -158,22 +235,21 @@ std::array<int, 4> OmegaHFieldLayout::GetNodesPerDim() const
 
 Rank1View<const bool, HostMemorySpace> OmegaHFieldLayout::GetOwned() const
 {
-  return make_const_array_view(owned_);
+  Kokkos::deep_copy(owned_host_, owned_);
+  return make_const_array_view(owned_host_);
 }
 
 GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const
 {
-  static_assert(
-    std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>,
-    "types must match");
-  return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
+  return GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size());
 }
 
 CoordinateView<HostMemorySpace> OmegaHFieldLayout::GetDOFHolderCoordinates()
   const
 {
+  deep_copy_mismatch_layouts(dof_holder_coords_host_, dof_holder_coords_);
   Rank2View<const Real, HostMemorySpace> coords_view(
-    dof_holder_coords_.data(), dof_holder_coords_.extent(0), 2);
+    dof_holder_coords_host_.data(), dof_holder_coords_host_.extent(0), 2);
   return CoordinateView<HostMemorySpace>{coordinate_system_, coords_view};
 }
 

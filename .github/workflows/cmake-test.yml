@@ -48,7 +48,7 @@ jobs:
       with:
         repo-name: 'Catch2'
         repo-path: 'catchorg/Catch2'
-        repo-ref: ''
+        repo-ref: 'v3.11.0'
         cache: true
 
     - name: build kokkos
@@ -82,7 +82,7 @@ jobs:
       with:
         repo-name: 'omega_h'
         repo-path: 'SCOREC/omega_h'
-        repo-ref: ''
+        repo-ref: '1765836a00b9a64b8b3791f1442ac52f147e43b2'
         cache: true
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
@@ -98,7 +98,7 @@ jobs:
       with:
         repo-name: 'meshFields'
         repo-path: 'SCOREC/meshFields'
-        repo-ref: ''
+        repo-ref: 'b1482bbba288df210784b2345eae08e34faabdc4'
         cache: true
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
@@ -111,7 +111,7 @@ jobs:
       with:
         repo-name: 'perfstubs'
         repo-path: 'UO-OACISS/perfstubs'
-        repo-ref: ''
+        repo-ref: 'a1fa3feb1d89214e28047f166500351074b5f0c2'
         cache: true
         options: '-DCMAKE_CXX_COMPILER=mpicxx'
 
@@ -120,7 +120,7 @@ jobs:
       with:
         repo-name: 'kokkos-fortran-interop'
         repo-path: 'kokkos/kokkos-fortran-interop'
-        repo-ref: ''
+        repo-ref: 'abae737ce1159c4d7a9165c5629e6f5e6ae91d87'
         cache: true
         options: '-DCMAKE_BUILD_TYPE=Release
                   -DCMAKE_CXX_COMPILER=`which mpicxx`
@@ -145,7 +145,7 @@ jobs:
       with:
         repo-name: 'redev'
         repo-path: 'SCOREC/redev'
-        repo-ref: ''
+        repo-ref: 'ac09848a5f9b89493e8b679c9080b9efe5538376'
         cache: true
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
@@ -154,19 +154,25 @@ jobs:
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake'
 
+    - name: clone petsc
+      id: clone-petsc
+      run: |
+        cd ${{ runner.temp }}
+        git clone -b v3.24.2 https://gitlab.com/petsc/petsc.git petsc
+        cd petsc
+        echo "petsc-commit-hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
     - name: Cache PETSc
       id: cache-petsc
       uses: actions/cache@v3
       with:
         path: ${{ runner.temp }}/petsc
-        key: build-petsc
+        key: build-petsc-${{ steps.clone-petsc.outputs.petsc-commit-hash }}
     
     - name: build petsc
       if: steps.cache-petsc.outputs.cache-hit != 'true'
       run: |
-        cd ${{ runner.temp }}
-        git clone -b release https://gitlab.com/petsc/petsc.git petsc
-        cd petsc
+        cd ${{ runner.temp }}/petsc
         ./configure \
           PETSC_ARCH=ubuntu-kokkos \
           --with-kokkos-dir="${{ runner.temp }}/build-kokkos/install/" \
@@ -201,6 +207,7 @@ jobs:
                   -DPETSC_DIR=${{ runner.temp }}/petsc
                   -DPETSC_ARCH=ubuntu-kokkos
                   -DPCMS_TIMEOUT=10
+                  -DPCMS_ENABLE_SPDLOG=OFF
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
                   -Dmeshfields_DIR=${{ runner.temp }}/build-meshFields/install/lib/cmake/meshfields
@@ -220,4 +227,25 @@ jobs:
       run: ctest --test-dir ${{ runner.temp }}/build-pcms --output-on-failure
 
     - name: Print Test
+      if: always()
       run: cat ${{ runner.temp }}/build-pcms/Testing/Temporary/LastTest.log
+
+    - name: Test PCMS Installation
+      shell: bash
+      run: |
+        # Configure and build the test
+        # it should only ask for pcms_DIR/ROOT to find all dependencies
+        ls ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms
+        echo "-------- PCMS CONFIG -------------"
+        cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms-config.cmake
+        echo "-------- PCMS TARGETS -------------"
+        cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms-targets.cmake
+        echo "-------- PCMS INTERPOLATOR TARGETS -------------"
+        cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms_interpolator-targets.cmake
+        export VERBOSE=1
+        cmake \
+          -B ${{github.workspace}}/examples/external-usage-example/build \
+          -S ${{github.workspace}}/examples/external-usage-example/ \
+          -Dpcms_DIR=${{ runner.temp }}/build-pcms/install/lib/cmake/pcms \
+          --debug-output
+        cmake --build ${{github.workspace}}/examples/external-usage-example/build

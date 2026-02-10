@@ -8,8 +8,9 @@
 #include "mdspan/mdspan.hpp"
 #include "pcms/arrays.h"
 #include "pcms/memory_spaces.h"
+#include "pcms/configuration.h"
 // #include <filesystem>
-#ifdef PCMS_HAS_OMEGA_H
+#ifdef PCMS_ENABLE_OMEGA_H
 #include <Omega_h_mesh.hpp>
 #include "pcms/assert.h"
 #endif
@@ -86,7 +87,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::string,
                                                             MPI_Comm,
                                                             int root = 0);
 
-#ifdef PCMS_HAS_OMEGA_H
+#ifdef PCMS_ENABLE_OMEGA_H
 enum class IndexBase
 {
   Zero = 0,

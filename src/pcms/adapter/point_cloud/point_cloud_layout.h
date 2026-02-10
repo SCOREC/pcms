@@ -39,6 +39,8 @@ private:
   Kokkos::View<Real**> coords_;
   Kokkos::View<bool*> owned_;
   Kokkos::View<GO*> gids_;
+  Kokkos::View<bool*, HostMemorySpace> owned_host_;
+  Kokkos::View<GO*, HostMemorySpace> gids_host_;
 };
 } // namespace pcms
 

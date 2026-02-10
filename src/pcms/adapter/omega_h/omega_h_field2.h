@@ -61,7 +61,7 @@ private:
   Omega_h::Mesh& mesh_;
   std::unique_ptr<MeshFieldBackend> mesh_field_;
   GridPointSearch search_;
-  Kokkos::View<Real*> dof_holder_data_;
+  Kokkos::View<Real*, HostMemorySpace> dof_holder_data_;
 };
 
 } // namespace pcms

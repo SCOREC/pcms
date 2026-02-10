@@ -29,12 +29,16 @@ public:
   {
     size_t stride = num_nodes * num_components;
     auto topo = static_cast<MeshField::Mesh_Topology>(dim);
+    Kokkos::View<Real*, DefaultExecutionSpace::memory_space> data_d(
+      "data_d", data.size());
+    Kokkos::deep_copy(data_d, Kokkos::View<const Real*, HostMemorySpace>(
+                                data.data_handle(), data.size()));
     Omega_h::parallel_for(
       mesh_.nents(dim), OMEGA_H_LAMBDA(size_t ent) {
         for (size_t n = 0; n < num_nodes; ++n) {
           for (size_t c = 0; c < num_components; ++c) {
             shape_field_(ent, n, c, topo) =
-              data[ent * stride + n * num_components + c];
+              data_d[ent * stride + n * num_components + c];
           }
         }
       });
@@ -45,15 +49,20 @@ public:
   {
     size_t stride = num_nodes * num_components;
     auto topo = static_cast<MeshField::Mesh_Topology>(dim);
+    Kokkos::View<Real*, DefaultExecutionSpace::memory_space> data_d(
+      "data_d", data.size());
     Omega_h::parallel_for(
       mesh_.nents(dim), OMEGA_H_LAMBDA(size_t ent) {
         for (size_t n = 0; n < num_nodes; ++n) {
           for (size_t c = 0; c < num_components; ++c) {
-            data[ent * stride + n * num_components + c] =
+            data_d[ent * stride + n * num_components + c] =
               shape_field_(ent, n, c, topo);
           }
         }
       });
+    Kokkos::deep_copy(
+      Kokkos::View<Real*, HostMemorySpace>(data.data_handle(), data.size()),
+      data_d);
   }
 
 private:
@@ -64,15 +73,97 @@ private:
   ShapeField shape_field_;
 };
 
+struct ComputeOffsetsFunctor
+{
+  Kokkos::View<LO*, HostMemorySpace> offsets_;
+  Kokkos::View<LO*, HostMemorySpace> elem_counts_;
+
+  ComputeOffsetsFunctor(Kokkos::View<LO*, HostMemorySpace> offsets,
+                        Kokkos::View<LO*, HostMemorySpace> elem_counts)
+    : offsets_(offsets), elem_counts_(elem_counts)
+  {
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(LO i, LO& partial, bool is_final) const
+  {
+    if (is_final) {
+      offsets_(i) = partial;
+    }
+    partial += elem_counts_(i);
+  }
+};
+
+struct CountPointsPerElementFunctor
+{
+  Kokkos::View<LO*> elem_counts_;
+  Kokkos::View<GridPointSearch::Result*> search_results_;
+
+  CountPointsPerElementFunctor(
+    Kokkos::View<LO*> elem_counts,
+    Kokkos::View<GridPointSearch::Result*> search_results)
+    : elem_counts_(elem_counts), search_results_(search_results)
+  {
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(LO i) const
+  {
+    auto [dim, elem_idx, coord] = search_results_(i);
+    Kokkos::atomic_add(&elem_counts_(elem_idx), 1);
+  }
+};
+
+struct FillCoordinatesAndIndicesFunctor
+{
+  Omega_h::Mesh& mesh_;
+  Kokkos::View<LO*> elem_counts_;
+  Kokkos::View<LO*> offsets_;
+  Kokkos::View<Real**> coordinates_;
+  Kokkos::View<LO*> indices_;
+  Kokkos::View<GridPointSearch::Result*> search_results_;
+
+  FillCoordinatesAndIndicesFunctor(
+    Omega_h::Mesh& mesh, Kokkos::View<LO*> elem_counts,
+    Kokkos::View<LO*> offsets, Kokkos::View<Real**> coordinates,
+    Kokkos::View<LO*> indices,
+    Kokkos::View<GridPointSearch::Result*> search_results)
+    : mesh_(mesh),
+      elem_counts_(elem_counts),
+      offsets_(offsets),
+      coordinates_(coordinates),
+      indices_(indices),
+      search_results_(search_results)
+  {
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(LO i) const
+  {
+    auto [dim, elem_idx, coord] = search_results_(i);
+    // currently don't handle case where point is on a boundary
+    PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh_.dim());
+    // element should be inside the domain (positive)
+    PCMS_ALWAYS_ASSERT(elem_idx >= 0 && elem_idx < mesh_.nelems());
+    LO count = Kokkos::atomic_sub_fetch(&elem_counts_(elem_idx), 1);
+    LO index = offsets_(elem_idx) + count - 1;
+    for (int j = 0; j < (mesh_.dim() + 1); ++j) {
+      coordinates_(index, j) = coord[j];
+    }
+    indices_(index) = i;
+  }
+};
+
 struct OmegaHField2LocalizationHint
 {
   OmegaHField2LocalizationHint(
-    Omega_h::Mesh& mesh, Kokkos::View<GridPointSearch::Result*> search_results)
+    Omega_h::Mesh& mesh,
+    Kokkos::View<GridPointSearch::Result*, HostMemorySpace> search_results)
     : offsets_("", mesh.nelems() + 1),
       coordinates_("", search_results.size(), mesh.dim() + 1),
       indices_("", search_results.size())
   {
-    Kokkos::View<LO*> elem_counts("", mesh.nelems());
+    Kokkos::View<LO*, HostMemorySpace> elem_counts("", mesh.nelems());
 
     for (size_t i = 0; i < search_results.size(); ++i) {
       auto [dim, elem_idx, coord] = search_results(i);
@@ -80,15 +171,12 @@ struct OmegaHField2LocalizationHint
     }
 
     LO total;
+
+    ComputeOffsetsFunctor functor(offsets_, elem_counts);
     Kokkos::parallel_scan(
-      mesh.nelems(),
-      KOKKOS_LAMBDA(LO i, LO & partial, bool is_final) {
-        if (is_final) {
-          offsets_(i) = partial;
-        }
-        partial += elem_counts(i);
-      },
-      total);
+      "ComputeOffsets",
+      Kokkos::RangePolicy<HostMemorySpace::execution_space>(0, mesh.nelems()),
+      functor, total);
     offsets_(mesh.nelems()) = total;
 
     for (size_t i = 0; i < search_results.size(); ++i) {
@@ -108,11 +196,11 @@ struct OmegaHField2LocalizationHint
   }
 
   // offsets is the number of points in each element
-  Kokkos::View<LO*> offsets_;
+  Kokkos::View<LO*, HostMemorySpace> offsets_;
   // coordinates are the parametric coordinates of each point
-  Kokkos::View<Real**> coordinates_;
+  Kokkos::View<Real**, HostMemorySpace> coordinates_;
   // indices are the index of the original point
-  Kokkos::View<LO*> indices_;
+  Kokkos::View<LO*, HostMemorySpace> indices_;
 };
 
 /*
@@ -207,13 +295,14 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
 
   auto coordinates = coordinate_view.GetCoordinates();
   Kokkos::View<Real* [2]> coords("coords", coordinates.size() / 2);
-  Kokkos::parallel_for(
-    coordinates.size() / 2, KOKKOS_LAMBDA(LO i) {
-      coords(i, 0) = coordinates(i, 0);
-      coords(i, 1) = coordinates(i, 1);
-    });
+  auto coordinates_host = Kokkos::View<const Real**, HostMemorySpace>(
+    coordinates.data_handle(), coordinates.extent(0), coordinates.extent(1));
+  deep_copy_mismatch_layouts(coords, coordinates_host);
   auto results = search_(coords);
-  auto hint = std::make_shared<OmegaHField2LocalizationHint>(mesh_, results);
+  Kokkos::View<GridPointSearch::Result*, HostMemorySpace> results_h(
+    "results_h", results.size());
+  Kokkos::deep_copy(results_h, results);
+  auto hint = std::make_shared<OmegaHField2LocalizationHint>(mesh_, results_h);
 
   return LocalizationHint{hint};
 }
@@ -233,13 +322,21 @@ void OmegaHField2::Evaluate(LocalizationHint location,
   OmegaHField2LocalizationHint hint =
     *reinterpret_cast<OmegaHField2LocalizationHint*>(location.data.get());
 
-  auto eval_results = mesh_field_->evaluate(hint.coordinates_, hint.offsets_);
-
+  Kokkos::View<Real**> coordinates_d(
+    "coordinates_d", hint.coordinates_.extent(0), hint.coordinates_.extent(1));
+  deep_copy_mismatch_layouts(coordinates_d, hint.coordinates_);
+  Kokkos::View<LO*> offsets_d("offsets_d", hint.offsets_.extent(0));
+  Kokkos::deep_copy(offsets_d, hint.offsets_);
+  auto eval_results = mesh_field_->evaluate(coordinates_d, offsets_d);
+  Kokkos::View<Real**, HostMemorySpace> eval_results_h(
+    "eval_results_h", eval_results.extent(0), eval_results.extent(1));
+  deep_copy_mismatch_layouts(eval_results_h, eval_results);
   Rank1View<Real, HostMemorySpace> values = results.GetValues();
-
   Kokkos::parallel_for(
-    eval_results.size(),
-    KOKKOS_LAMBDA(LO i) { values[hint.indices_(i)] = eval_results(i, 0); });
+    "CopyEvalResultsToValues",
+    Kokkos::RangePolicy<HostMemorySpace::execution_space>(
+      0, eval_results_h.extent(0)),
+    KOKKOS_LAMBDA(LO i) { values[hint.indices_(i)] = eval_results_h(i, 0); });
 }
 
 void OmegaHField2::EvaluateGradient(
@@ -288,7 +385,7 @@ void OmegaHField2::Deserialize(
     if (owned[i])
       sorted_buffer[i] = buffer[permutation[i]];
   }
-  const auto sorted_buffer_d = Omega_h::Read<Real>(sorted_buffer);
-  SetDOFHolderData(pcms::make_const_array_view(sorted_buffer_d));
+
+  SetDOFHolderData(pcms::make_const_array_view(sorted_buffer));
 }
 } // namespace pcms

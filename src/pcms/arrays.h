@@ -126,5 +126,44 @@ auto make_const_array_view(T& array)
   using std::size;
   return Rank1View<const ElementType, MemorySpace>{data(array), size(array)};
 }
+
+// utility function to deep copy between layout incompatible views
+// layout imcompatible view can't be deep_copied directly between different
+// memory spaces, the workaround is provided from
+// https://kokkos.org/kokkos-core-wiki/API/core/view/deep_copy.html#how-to-get-layout-incompatible-views-copied
+template <typename DestView, typename SrcView>
+auto deep_copy_mismatch_layouts(DestView& dest, const SrcView& src)
+{
+  static_assert(Kokkos::is_view<DestView>::value &&
+                  Kokkos::is_view<SrcView>::value,
+                "Both arguments must be Kokkos::View types");
+
+  using DestMemSpace = typename DestView::memory_space;
+  using SrcMemSpace = typename SrcView::memory_space;
+
+  if constexpr (std::is_same_v<DestMemSpace, HostMemorySpace> &&
+                !std::is_same_v<SrcMemSpace, HostMemorySpace>) {
+    // Device to Host: mirror the device view to host
+    auto src_tmp = Kokkos::create_mirror_view_and_copy(HostMemorySpace(), src);
+    Kokkos::deep_copy(dest, src_tmp);
+  } else if constexpr (!std::is_same_v<DestMemSpace, HostMemorySpace> &&
+                       std::is_same_v<SrcMemSpace, HostMemorySpace>) {
+    // Host to Device: create mirror on device from host view
+    auto dest_tmp = Kokkos::create_mirror_view(dest);
+    Kokkos::deep_copy(dest_tmp, src);
+    Kokkos::deep_copy(dest, dest_tmp);
+  } else {
+    // Same memory space
+    Kokkos::deep_copy(dest, src);
+  }
+}
+
+// utility function to fill a view with sequentially increasing values
+template <typename T>
+void iota_view(Kokkos::View<T*> view, T start = 0)
+{
+  Kokkos::parallel_for(
+    "iota_view", view.extent(0), KOKKOS_LAMBDA(LO i) { view[i] = start + i; });
+}
 } // namespace pcms
 #endif // PCMS_COUPLING_ARRAYS_H

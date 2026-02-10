@@ -13,13 +13,7 @@ namespace pcms
 using FieldAdapterVariant =
   std::variant<std::monostate, pcms::XGCFieldAdapter<double>,
                pcms::XGCFieldAdapter<float>, pcms::XGCFieldAdapter<int>,
-               pcms::XGCFieldAdapter<long>, pcms::DummyFieldAdapter
-               // #ifdef PCMS_HAS_OMEGA_H
-               //                ,
-               //                pcms::OmegaHFieldAdapter<double>,
-               //                pcms::OmegaHFieldAdapter<int>
-               // #endif
-               >;
+               pcms::XGCFieldAdapter<long>, pcms::DummyFieldAdapter>;
 
 } // namespace pcms
 

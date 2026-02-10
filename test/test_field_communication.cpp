@@ -22,13 +22,17 @@ ts::ClassificationPartition getClassificationPartition(Omega_h::Mesh& mesh)
   std::map<redev::ClassPtn::ModelEnt, int> ent_to_rank;
 
   for (int e = 0; e <= 0; ++e) {
-    auto ids = mesh.get_array<Omega_h::ClassId>(e, "class_id");
-    auto dims = mesh.get_array<Omega_h::I8>(e, "class_dim");
+    auto ids_d = mesh.get_array<Omega_h::ClassId>(e, "class_id");
+    auto dims_d = mesh.get_array<Omega_h::I8>(e, "class_dim");
     auto remotes = mesh.ask_owners(e);
+
+    auto ids = Omega_h::HostRead(ids_d);
+    auto dims = Omega_h::HostRead(dims_d);
+    auto remotes_ranks = Omega_h::HostRead(remotes.ranks);
 
     for (int i = 0; i < mesh.nents(e); ++i) {
       redev::ClassPtn::ModelEnt ent({dims[i], ids[i]});
-      int rank = remotes.ranks[i];
+      int rank = remotes_ranks[i];
       auto it = ent_to_rank.find(ent);
       if (it == ent_to_rank.end()) {
         ent_to_rank[ent] = rank;
@@ -39,7 +43,6 @@ ts::ClassificationPartition getClassificationPartition(Omega_h::Mesh& mesh)
       }
     }
   }
-
   return cp;
 }
 
@@ -67,9 +70,11 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
                                            pcms::CoordinateSystem::Cartesian);
   auto gids = layout->GetGids();
   const auto n = layout->GetNumOwnedDofHolder();
-  Omega_h::Write<Real> ids(n);
+  Omega_h::HostWrite<Real> ids(n);
   PCMS_ALWAYS_ASSERT(n == gids.size());
-  Omega_h::parallel_for(n, OMEGA_H_LAMBDA(int i) { ids[i] = gids[i]; });
+  Kokkos::parallel_for(
+    "id gid", Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
+    KOKKOS_LAMBDA(int i) { ids[i] = gids[i]; });
 
   auto field = layout->CreateField();
   field->SetDOFHolderData(pcms::make_const_array_view(ids));
@@ -113,11 +118,14 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   int expected = 0;
   int sum = 0;
   Kokkos::parallel_reduce(
-    owned.size(),
+    "reduce1",
+    Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0,
+                                                                owned.size()),
     KOKKOS_LAMBDA(int i, int& local_sum) { local_sum += owned[i] != 0; },
     expected);
   Kokkos::parallel_reduce(
-    n,
+    "reduce2",
+    Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
     KOKKOS_LAMBDA(int i, int& local_sum) {
       if (owned[i])
         local_sum += (int)copied_array[i] == gids[i];
@@ -148,8 +156,10 @@ void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto layout = pcms::CreateLagrangeLayout(mesh, order, 1,
                                            pcms::CoordinateSystem::Cartesian);
   const auto n = layout->GetNumOwnedDofHolder();
-  Omega_h::Write<Real> ids(n);
-  Omega_h::parallel_for(n, OMEGA_H_LAMBDA(int i) { ids[i] = 0; });
+  Omega_h::HostWrite<Real> ids(n);
+  Kokkos::parallel_for(
+    "id 0", Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
+    KOKKOS_LAMBDA(int i) { ids[i] = 0; });
 
   auto field = layout->CreateField();
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm1(

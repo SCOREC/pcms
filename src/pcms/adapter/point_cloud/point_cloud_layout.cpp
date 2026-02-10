@@ -1,24 +1,26 @@
 #include "point_cloud_layout.h"
 #include "point_cloud.h"
 #include <memory>
+#include <Kokkos_StdAlgorithms.hpp>
 
 namespace pcms
 {
+
 PointCloudLayout::PointCloudLayout(int dim, Kokkos::View<Real**> coords,
                                    CoordinateSystem coordinate_system)
   : dim_(dim),
     coordinate_system_(coordinate_system),
     coords_(coords),
     owned_("", coords.extent(0)),
-    gids_("", coords.extent(0))
+    gids_("", coords.extent(0)),
+    owned_host_("", coords.extent(0)),
+    gids_host_("", coords.extent(0))
 {
   components_ = 1;
 
-  Kokkos::parallel_for(
-    owned_.size(), KOKKOS_LAMBDA(int i) {
-      owned_[i] = 0;
-      gids_[i] = 0;
-    });
+  namespace KE = Kokkos::Experimental;
+  KE::fill(Kokkos::DefaultExecutionSpace(), owned_, true);
+  iota_view(gids_);
 }
 
 std::unique_ptr<FieldT<Real>> PointCloudLayout::CreateField() const
@@ -43,15 +45,14 @@ GO PointCloudLayout::GetNumGlobalDofHolder() const
 
 Rank1View<const bool, HostMemorySpace> PointCloudLayout::GetOwned() const
 {
-  return make_const_array_view(owned_);
+  Kokkos::deep_copy(owned_host_, owned_);
+  return make_const_array_view(owned_host_);
 }
 
 GlobalIDView<HostMemorySpace> PointCloudLayout::GetGids() const
 {
-  static_assert(
-    std::is_same_v<HostMemorySpace, DefaultExecutionSpace::memory_space>,
-    "types must match");
-  return GlobalIDView<HostMemorySpace>(gids_.data(), gids_.size());
+  Kokkos::deep_copy(gids_host_, gids_);
+  return GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size());
 }
 
 CoordinateView<HostMemorySpace> PointCloudLayout::GetDOFHolderCoordinates()

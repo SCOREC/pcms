@@ -916,8 +916,10 @@ KOKKOS_INLINE_FUNCTION void cubic_eval_compact(
 
   // Find the interval containing xget
   cubic_lookup_compact(xget, x, nx, i, xparam, hx, hxi, ier, lookup_tol);
-  if (ier != 0)
+  if (ier != 0) {
+    printf("error in evaluation, ier = %d\n", ier);
     return;
+  }
 
   // Evaluate spline at the points
   cubic_evalfn_compact(ict, fval, i, xparam, hx, hxi, fspl);
@@ -2553,10 +2555,11 @@ struct SolveCompactCubicSplineFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(const member_type& team_member) const
   {
-    Kokkos::single(Kokkos::PerTeam(team_member), [=]() {
-      detail::solve_cubic_spline_compact(x, nx, fspl, fspl4, ibcxmin, bcxmin,
-                                         ibcxmax, bcxmax, wk);
-    });
+    Kokkos::single(
+      Kokkos::PerTeam(team_member), KOKKOS_CLASS_LAMBDA() {
+        detail::solve_cubic_spline_compact(x, nx, fspl, fspl4, ibcxmin, bcxmin,
+                                           ibcxmax, bcxmax, wk);
+      });
   }
 };
 
@@ -2593,10 +2596,11 @@ struct SolveExplicitCubicSplineFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(const member_type& team_member) const
   {
-    Kokkos::single(Kokkos::PerTeam(team_member), [=]() {
-      detail::solve_cubic_spline_explicit(x, nx, fspl, ibcxmin, bcxmin, ibcxmax,
-                                          bcxmax, wk);
-    });
+    Kokkos::single(
+      Kokkos::PerTeam(team_member), KOKKOS_CLASS_LAMBDA() {
+        detail::solve_cubic_spline_explicit(x, nx, fspl, ibcxmin, bcxmin,
+                                            ibcxmax, bcxmax, wk);
+      });
   }
 };
 
@@ -2698,7 +2702,11 @@ void ExplicitCubicSplineInterpolator<T, MemorySpace>::evaluate(
   Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval)
 {
   std::array<LO, 3> ict_arr = {1, 0, 0};
-  evaluate(Kokkos::View<LO*, MemorySpace>(ict_arr.data(), 3), xvec, fval);
+  Kokkos::View<LO*, MemorySpace> selector("select", 3);
+  Kokkos::parallel_for(
+    Kokkos::RangePolicy<execution_space>(0, selector.size()),
+    KOKKOS_LAMBDA(const LO i) { selector(i) = ict_arr[i]; });
+  evaluate(selector, xvec, fval);
 };
 
 template <typename T, typename MemorySpace>
@@ -2727,7 +2735,11 @@ void CompactCubicSplineInterpolator<T, MemorySpace>::evaluate(
   Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval)
 {
   std::array<LO, 3> ict_arr = {1, 0, 0};
-  evaluate(Kokkos::View<LO*, MemorySpace>(ict_arr.data(), 3), xvec, fval);
+  Kokkos::View<LO*, MemorySpace> selector("select", 3);
+  Kokkos::parallel_for(
+    Kokkos::RangePolicy<execution_space>(0, selector.size()),
+    KOKKOS_LAMBDA(const LO i) { selector(i) = ict_arr[i]; });
+  evaluate(selector, xvec, fval);
 };
 
 template <typename T, typename MemorySpace>

@@ -28,15 +28,19 @@ if(PROJECT_IS_TOP_LEVEL)
   find_program(RUN_CLANG_TIDY_EXECUTABLE run-clang-tidy REQUIRED)
 
   set(CLANG_TIDY_CONFIG_FILE ${CMAKE_CURRENT_LIST_DIR}/.clang-tidy)
+  set(CLANG_TIDY_SOURCE_FILTER [=[^(?!.*(\.c|\.i|\.f90)$).*$]=])
 
   message(STATUS "CLANG_TIDY_EXECUTABLE=${CLANG_TIDY_EXECUTABLE}")
   message(STATUS "RUN_CLANG_TIDY_EXECUTABLE= ${RUN_CLANG_TIDY_EXECUTABLE}")
   message(STATUS "CLANG_TIDY_CONFIG_FILE=${CLANG_TIDY_CONFIG_FILE}")
+  message(STATUS "CLANG_TIDY_SOURCE_FILTER=${CLANG_TIDY_SOURCE_FILTER}")
+
   add_custom_target(run-clang-tidy
-          COMMAND ${RUN_CLANG_TIDY_EXECUTABLE}
+          VERBATIM COMMAND ${RUN_CLANG_TIDY_EXECUTABLE}
           -clang-tidy-binary ${CLANG_TIDY_EXECUTABLE}
           -p ${CMAKE_BINARY_DIR}
           -config-file ${CLANG_TIDY_CONFIG_FILE}
+          -source-filter ${CLANG_TIDY_SOURCE_FILTER}
   )
 endif()
 

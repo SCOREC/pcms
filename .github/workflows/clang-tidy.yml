@@ -224,4 +224,5 @@ jobs:
     # TODO need to capture the error code from this
     - name: Run clang-tidy
       run: |
+        clang-tidy --version 
         VERBOSE=1 cmake --build ${{ runner.temp }}/build-pcms -t run-clang-tidy

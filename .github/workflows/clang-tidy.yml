@@ -41,6 +41,11 @@ jobs:
     - name: Install cmake
       run: sudo apt-get install -yq cmake
 
+    - name: Install clang-tidy
+      run: |
+        sudo apt-get update
+        sudo apt-get install -yq clang-tidy-20
+
     - uses: actions/checkout@v4
 
     - name: build Catch2
@@ -215,13 +220,8 @@ jobs:
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos-openmpi/install/lib/cmake/Kokkos \
                   -DKokkosKernels_DIR=${{ runner.temp }}/build-kokkos-kernels-openmpi/install/lib/cmake/KokkosKernels/ \
                   -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
-    
-    - name: Install clang-tidy
-      run: |
-        sudo apt-get update
-        sudo apt-get install -yq clang-tidy-20
-    
+     
     # TODO need to capture the error code from this
     - name: Run clang-tidy
       run: |
-        cmake --build ${{ runner.temp }}/build-pcms -t run-clang-tidy
+        VERBOSE=1 cmake --build ${{ runner.temp }}/build-pcms -t run-clang-tidy

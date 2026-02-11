@@ -219,7 +219,7 @@ jobs:
     - name: Install clang-tidy
       run: |
         sudo apt-get update
-        sudo apt-get install -yq clang-tidy-18
+        sudo apt-get install -yq clang-tidy-20
     
     # TODO need to capture the error code from this
     - name: Run clang-tidy

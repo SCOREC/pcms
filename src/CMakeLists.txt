@@ -12,6 +12,7 @@ set(
   pcms/field.h
   pcms/create_field.h
   pcms/field_communicator.h
+  pcms/global_communicator.h
   pcms/field_communicator2.h
   pcms/field_evaluation_methods.h
   pcms/memory_spaces.h
@@ -63,6 +64,8 @@ if(PCMS_ENABLE_OMEGA_H)
     pcms/transfer_field2.h
     pcms/uniform_grid.h
     pcms/point_search.h
+    #install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pcms/adapter/omega_h/omega_h_field.h
+    #DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/adapter/omega_h)
   )
 endif()
 

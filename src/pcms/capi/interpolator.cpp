@@ -7,7 +7,7 @@
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/print.h>
+#include <pcms/utility/print.h>
 
 //[[nodiscard]]
 PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,

@@ -1,8 +1,8 @@
 #ifndef PCMS_COUPLING_ARRAYS_H
 #define PCMS_COUPLING_ARRAYS_H
 #include "mdspan/mdspan.hpp"
-#include "pcms/types.h"
-#include "pcms/memory_spaces.h"
+#include "pcms/utility/types.h"
+#include "pcms/utility/memory_spaces.h"
 
 namespace pcms
 {

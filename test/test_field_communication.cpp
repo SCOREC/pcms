@@ -74,7 +74,7 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   PCMS_ALWAYS_ASSERT(n == gids.size());
   Kokkos::parallel_for(
     "id gid", Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
-    KOKKOS_LAMBDA(int i) { ids[i] = gids[i]; });
+    [=](int i) { ids[i] = gids[i]; });
 
   auto field = layout->CreateField();
   field->SetDOFHolderData(pcms::make_const_array_view(ids));
@@ -159,7 +159,7 @@ void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   Omega_h::HostWrite<Real> ids(n);
   Kokkos::parallel_for(
     "id 0", Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
-    KOKKOS_LAMBDA(int i) { ids[i] = 0; });
+    [=](int i) { ids[i] = 0; });
 
   auto field = layout->CreateField();
   pcms::FieldLayoutCommunicator<pcms::Real> layout_comm1(

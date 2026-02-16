@@ -8,7 +8,7 @@
 #include <Omega_h_array_ops.hpp>
 #include <redev.h>
 #include <redev_comm.h>
-#include <pcms/memory_spaces.h>
+#include <pcms/utility/memory_spaces.h>
 #include "pcms/adapter/omega_h/omega_h_field.h"
 #include <functional>
 

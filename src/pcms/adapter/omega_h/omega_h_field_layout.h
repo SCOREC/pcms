@@ -3,7 +3,7 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "pcms/arrays.h"
+#include "pcms/utility/arrays.h"
 #include "pcms/field_layout.h"
 #include "pcms/coordinate_system.h"
 #include "pcms/field.h"

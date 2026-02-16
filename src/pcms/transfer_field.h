@@ -1,10 +1,10 @@
 #ifndef PCMS_COUPLING_TRANSFER_FIELD_H
 #define PCMS_COUPLING_TRANSFER_FIELD_H
 #include <utility>
-#include "pcms/arrays.h"
+#include "pcms/utility/arrays.h"
 #include "pcms/field_evaluation_methods.h"
 #include "pcms/field.h"
-#include "pcms/profile.h"
+#include "pcms/utility/profile.h"
 
 namespace pcms
 {

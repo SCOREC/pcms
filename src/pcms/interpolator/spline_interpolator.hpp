@@ -2,10 +2,10 @@
 #define MLS_RBF_OPTIONS_HPP
 
 #include "mdspan/mdspan.hpp"
-#include "pcms/arrays.h"
-#include "pcms/assert.h"
-#include "pcms/memory_spaces.h"
-#include "pcms/types.h"
+#include "pcms/utility/arrays.h"
+#include "pcms/utility/assert.h"
+#include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/types.h"
 #include <Kokkos_Core.hpp>
 #include <cmath>
 #include <iostream>

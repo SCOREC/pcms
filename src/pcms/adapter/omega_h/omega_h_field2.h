@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "pcms/adapter/omega_h/omega_h_field_layout.h"
-#include "pcms/types.h"
+#include "pcms/utility/types.h"
 #include "pcms/field.h"
 #include "pcms/coordinate_system.h"
 #include "pcms/point_search.h"

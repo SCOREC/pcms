@@ -2,7 +2,7 @@
 #define ADJ_SEARCH_HPP
 
 #include <pcms/point_search.h>
-#include <pcms/print.h>
+#include <pcms/utility/print.h>
 #include "interpolation_helpers.h" // for helper functions
 
 #include "queue_visited.hpp"

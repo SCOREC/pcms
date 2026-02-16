@@ -33,8 +33,8 @@ public:
       "data_d", data.size());
     Kokkos::deep_copy(data_d, Kokkos::View<const Real*, HostMemorySpace>(
                                 data.data_handle(), data.size()));
-    Omega_h::parallel_for(
-      mesh_.nents(dim), OMEGA_H_LAMBDA(size_t ent) {
+    Kokkos::parallel_for(
+      mesh_.nents(dim), KOKKOS_CLASS_LAMBDA(size_t ent) {
         for (size_t n = 0; n < num_nodes; ++n) {
           for (size_t c = 0; c < num_components; ++c) {
             shape_field_(ent, n, c, topo) =
@@ -51,8 +51,8 @@ public:
     auto topo = static_cast<MeshField::Mesh_Topology>(dim);
     Kokkos::View<Real*, DefaultExecutionSpace::memory_space> data_d(
       "data_d", data.size());
-    Omega_h::parallel_for(
-      mesh_.nents(dim), OMEGA_H_LAMBDA(size_t ent) {
+    Kokkos::parallel_for(
+      mesh_.nents(dim), KOKKOS_CLASS_LAMBDA(size_t ent) {
         for (size_t n = 0; n < num_nodes; ++n) {
           for (size_t c = 0; c < num_components; ++c) {
             data_d[ent * stride + n * num_components + c] =
@@ -122,6 +122,7 @@ struct FillCoordinatesAndIndicesFunctor
   Kokkos::View<Real**> coordinates_;
   Kokkos::View<LO*> indices_;
   Kokkos::View<GridPointSearch::Result*> search_results_;
+  Omega_h::Int dim_;
 
   FillCoordinatesAndIndicesFunctor(
     Omega_h::Mesh& mesh, Kokkos::View<LO*> elem_counts,
@@ -133,7 +134,8 @@ struct FillCoordinatesAndIndicesFunctor
       offsets_(offsets),
       coordinates_(coordinates),
       indices_(indices),
-      search_results_(search_results)
+      search_results_(search_results),
+      dim_(mesh.dim())
   {
   }
 
@@ -141,13 +143,14 @@ struct FillCoordinatesAndIndicesFunctor
   void operator()(LO i) const
   {
     auto [dim, elem_idx, coord] = search_results_(i);
+    // disable the host assertion macro for device code
     // currently don't handle case where point is on a boundary
-    PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh_.dim());
+    // PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh_.dim());
     // element should be inside the domain (positive)
-    PCMS_ALWAYS_ASSERT(elem_idx >= 0 && elem_idx < mesh_.nelems());
+    // PCMS_ALWAYS_ASSERT(elem_idx >= 0 && elem_idx < mesh_.nelems());
     LO count = Kokkos::atomic_sub_fetch(&elem_counts_(elem_idx), 1);
     LO index = offsets_(elem_idx) + count - 1;
-    for (int j = 0; j < (mesh_.dim() + 1); ++j) {
+    for (int j = 0; j < (dim_ + 1); ++j) {
       coordinates_(index, j) = coord[j];
     }
     indices_(index) = i;

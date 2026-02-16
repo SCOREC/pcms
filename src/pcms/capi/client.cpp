@@ -6,7 +6,7 @@
 #include <fstream>
 #include "pcms/adapter/xgc/xgc_reverse_classification.h"
 #include "pcms/adapter/dummy_field_adapter.h"
-#include "pcms/assert.h"
+#include "pcms/utility/assert.h"
 namespace pcms
 {
 // Note that we have a closed set of types that can be used in the C interface

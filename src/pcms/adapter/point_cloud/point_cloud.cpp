@@ -1,6 +1,6 @@
 #include "point_cloud.h"
-#include "pcms/profile.h"
-#include "pcms/assert.h"
+#include "pcms/utility/profile.h"
+#include "pcms/utility/assert.h"
 
 namespace pcms
 {
@@ -58,7 +58,7 @@ void PointCloud::SetDOFHolderData(Rank1View<const Real, HostMemorySpace> data)
   PCMS_ALWAYS_ASSERT(data.size() == data_.size());
   Kokkos::parallel_for(
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, data.size()),
-    KOKKOS_LAMBDA(int i) { data_host_(i) = data[i]; });
+    KOKKOS_CLASS_LAMBDA(int i) { data_host_(i) = data[i]; });
   Kokkos::deep_copy(data_, data_host_);
 }
 
@@ -100,7 +100,7 @@ int PointCloud::Serialize(
   if (buffer.size() > 0) {
     Kokkos::parallel_for(
       data_.size(),
-      KOKKOS_LAMBDA(int i) { buffer[permutation[i]] = data_(i); });
+      KOKKOS_CLASS_LAMBDA(int i) { buffer[permutation[i]] = data_(i); });
   }
   return data_.size();
 }
@@ -111,7 +111,8 @@ void PointCloud::Deserialize(
 {
   PCMS_FUNCTION_TIMER;
   Kokkos::parallel_for(
-    data_.size(), KOKKOS_LAMBDA(int i) { data_(i) = buffer[permutation[i]]; });
+    data_.size(),
+    KOKKOS_CLASS_LAMBDA(int i) { data_(i) = buffer[permutation[i]]; });
 }
 
 } // namespace pcms

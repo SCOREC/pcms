@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <Kokkos_Core.hpp>
 #include <Omega_h_mesh.hpp>
-#include "types.h"
+#include "pcms/utility/types.h"
 #include <Omega_h_bbox.hpp>
 #include <Omega_h_shape.hpp>
 #include "pcms/uniform_grid.h"

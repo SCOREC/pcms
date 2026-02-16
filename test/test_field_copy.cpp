@@ -25,7 +25,7 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
   Omega_h::HostWrite<Real> ids(ndata);
   Kokkos::parallel_for(
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, ndata),
-    KOKKOS_LAMBDA(int i) { ids[i] = i; });
+    [=](int i) { ids[i] = i; });
 
   auto original = layout->CreateField();
   original->SetDOFHolderData(pcms::make_const_array_view(ids));
@@ -38,7 +38,7 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
   int sum = 0;
   Kokkos::parallel_reduce(
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, ndata),
-    KOKKOS_LAMBDA(int i, int& local_sum) {
+    [=](int i, int& local_sum) {
       local_sum += std::abs(ids[i] - copied_array[i]) < 1e-12;
     },
     sum);

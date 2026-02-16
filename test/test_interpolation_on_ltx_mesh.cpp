@@ -14,7 +14,7 @@
 #include <Omega_h_library.hpp>
 #include <Omega_h_vtk.hpp>
 #include <pcms/interpolator/interpolation_base.h>
-#include <pcms/print.h>
+#include <pcms/utility/print.h>
 
 #include <vector>
 #include <fstream>
@@ -245,7 +245,7 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
          output_xgc_vtu_filename.c_str());
 
   // ------------------ Verification ------------------ //
-  double tol = 10.0 / 100.0; // 10 percent tolerance
+  // double tol = 10.0 / 100.0; // 10 percent tolerance
   // XGC Originated Values
   /*
   for (int i = 0; i < xgc_num_nodes; ++i) {

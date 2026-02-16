@@ -1,21 +1,21 @@
 #ifndef PCMS_COUPLING_OMEGA_H_FIELD_H
 #define PCMS_COUPLING_OMEGA_H_FIELD_H
-#include "pcms/types.h"
+#include "pcms/utility/types.h"
 #include <Omega_h_mesh.hpp>
 #include "pcms/field.h"
 #include "pcms/coordinate_systems.h"
 #include <Kokkos_Core.hpp>
 #include <array>
-#include <pcms/assert.h>
+#include <pcms/utility/assert.h>
 #include <Omega_h_for.hpp>
-#include "pcms/arrays.h"
-#include "pcms/array_mask.h"
+#include "pcms/utility/arrays.h"
+#include "pcms/utility/array_mask.h"
 #include "pcms/point_search.h"
 #include <redev_variant_tools.h>
 #include <type_traits>
 #include "pcms/transfer_field.h"
-#include "pcms/memory_spaces.h"
-#include "pcms/profile.h"
+#include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/profile.h"
 #include "pcms/partition.h"
 #include <optional>
 

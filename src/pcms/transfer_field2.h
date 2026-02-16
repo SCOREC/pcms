@@ -2,11 +2,10 @@
 #define PCMS_TRANSFER_FIELD2_H_
 #include <utility>
 #include <typeinfo>
-#include "arrays.h"
+#include "pcms/utility/arrays.h"
 #include "field.h"
-#include "pcms/arrays.h"
 #include "pcms/field_evaluation_methods.h"
-#include "pcms/profile.h"
+#include "pcms/utility/profile.h"
 #include "pcms/field.h"
 
 namespace pcms

@@ -1,13 +1,14 @@
 #ifndef PCMS_COUPLER_H
 #define PCMS_COUPLER_H
+#include "global_communicator.h"
 #include "pcms/utility/common.h"
 #include "pcms/field_communicator.h"
 #include "pcms/adapter/omega_h/omega_h_field.h"
 #include "pcms/utility/profile.h"
 
+
 namespace pcms
 {
-
 // to avoid having any redev:: types in the user interface
 using ProcessType = redev::ProcessType;
 
@@ -115,7 +116,32 @@ public:
 private:
   std::unique_ptr<CoupledFieldConcept> coupled_field_;
 };
+template <typename T>
+class GlobalDataInterface
+{
+  public:
+  GlobalDataInterface( const std::string& name , MPI_Comm mpi_comm, redev::Channel& channel)
+    : mpi_comm_(mpi_comm), comm_(GlobalCommunicator<T>(name, mpi_comm_, channel)),
+      type_info_(typeid(T))
+  {
+    PCMS_FUNCTION_TIMER;
+  }
+  void Send(T* msg, std::string VarName, size_t msg_size, Mode mode = Mode::Synchronous)
+  {
+    PCMS_FUNCTION_TIMER;
+    comm_.Send(msg, VarName, msg_size, mode);
+  }
+  std::vector<T> Receive(std::string VarName, size_t msg_size, Mode mode = Mode::Synchronous)
+  {
+    PCMS_FUNCTION_TIMER;
+    return comm_.Receive(VarName, msg_size, mode);
+  }
+private:
+  MPI_Comm mpi_comm_;
+  const std::type_info& type_info_;
+  GlobalCommunicator<T> comm_;
 
+};
 class Application
 {
 public:
@@ -144,6 +170,12 @@ public:
       std::terminate();
     }
     return &(it->second);
+  }
+  template <typename T>
+  std::unique_ptr<GlobalDataInterface<T>> Add_GDI(std::string name, MPI_Comm mpi_comm)
+  {
+    PCMS_FUNCTION_TIMER;
+    return  std::make_unique<GlobalDataInterface<T>>(name, mpi_comm, channel_); // Use the existing applivatiocation channel
   }
   void SendField(const std::string& name, Mode mode = Mode::Synchronous)
   {

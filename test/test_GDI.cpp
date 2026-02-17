@@ -1,11 +1,10 @@
+
 #include <Omega_h_mesh.hpp>
-#include <iostream>
-#include <pcms.h>
-#include <pcms/types.h>
 #include <Omega_h_file.hpp>
 #include "test_support.h"
 #include "pcms/adapter/omega_h/omega_h_field.h"
-
+#include "pcms/coupler.h"
+#include <pcms/utility/types.h>
 static constexpr bool done = true;
 static constexpr int COMM_ROUNDS = 1;
 
@@ -15,7 +14,7 @@ void xgc_delta_f(MPI_Comm comm)
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f");
 
   const auto GDI = app->Add_GDI<pcms::GO>("global_comm", comm);
-  auto mean = std::vector<pcms::GO>(1);
+  auto mean = std::vector<long>(1);
   mean[0] = 16;
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {

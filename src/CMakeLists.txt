@@ -1,3 +1,5 @@
+
+
 # TODO split out the field transfer library
 set(
   PCMS_HEADERS
@@ -15,46 +17,42 @@ set(
   pcms/coupler.h
   pcms/coordinate_system.h
   pcms/field_layout.h
-  pcms/adapter/point_cloud/point_cloud_layout.h
-  pcms/adapter/point_cloud/point_cloud.h
-  pcms/adapter/omega_h/omega_h_field_layout.h
-  pcms/adapter/omega_h/omega_h_field2.h
 )
 
 set(
   PCMS_SOURCES
   pcms.cpp
   pcms/create_field.cpp
-  pcms/adapter/xgc/xgc_field_adapter.h
   pcms/adapter/point_cloud/point_cloud_layout.cpp
   pcms/adapter/point_cloud/point_cloud.cpp
   pcms/adapter/omega_h/omega_h_field_layout.cpp
   pcms/adapter/omega_h/omega_h_field2.cpp
-  pcms/adapter/xgc/xgc_field_adapter.h
 )
-
+set(
+  ADAPTER_HEADERS
+  ${CMAKE_SOURCE_DIR}/src/pcms/adapter/point_cloud
+)
 configure_file(pcms/version.h.in pcms/version.h)
 configure_file(pcms/configuration.h.in pcms/configuration.h)
 list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.h)
 
 add_subdirectory(pcms/utility)
 
-
 if(PCMS_ENABLE_XGC)
   list(APPEND PCMS_SOURCES pcms/adapter/xgc/xgc_reverse_classification.cpp)
-  list(APPEND PCMS_HEADERS pcms/adapter/xgc/xgc_reverse_classification.h)
+  list(APPEND ADAPTER_HEADERS ${CMAKE_SOURCE_DIR}/src/pcms/adapter/xgc)
 endif()
 if(PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_SOURCES pcms/point_search.cpp)
   list(
     APPEND
     PCMS_HEADERS
-    pcms/adapter/omega_h/omega_h_field.h
     pcms/transfer_field.h
     pcms/transfer_field2.h
     pcms/uniform_grid.h
     pcms/point_search.h
   )
+  list(APPEND ADAPTER_HEADERS ${CMAKE_SOURCE_DIR}/src/pcms/adapter/omega_h)
 endif()
 
 find_package(Kokkos REQUIRED)
@@ -147,6 +145,14 @@ install(
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
+
+# Mirror the src tree for adapter headers
+foreach(hdr IN LISTS ADAPTER_HEADERS)
+  install(DIRECTORY ${hdr}
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/adapter
+          FILES_MATCHING PATTERN "*.h")
+endforeach ()
+
 # install external headers
 install(
   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/pcms/external/

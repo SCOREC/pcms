@@ -9,7 +9,7 @@ namespace pcms
 
 std::unique_ptr<FieldLayout> CreateLagrangeLayout(
   Omega_h::Mesh& mesh, int order, int num_components,
-  CoordinateSystem coordinate_system)
+  CoordinateSystem coordinate_system, std::string global_id_name)
 {
 
   std::array<int, 4> nodes_per_dim;
@@ -21,7 +21,7 @@ std::unique_ptr<FieldLayout> CreateLagrangeLayout(
   }
 
   return std::make_unique<OmegaHFieldLayout>(mesh, nodes_per_dim,
-                                             num_components, coordinate_system);
+                                             num_components, coordinate_system, global_id_name);
 }
 
 } // namespace pcms

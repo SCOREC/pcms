@@ -133,19 +133,32 @@ std::vector<size_t> sortIndexes(const T& v)
   return idx;
 }
 
-struct IsModelEntInOverlap
-{
-  /**
-   * return 1 if the specificed model entity is part of the overlap region, 0
-   * otherwise. Device function must be defined inline
-   */
-  KOKKOS_INLINE_FUNCTION Omega_h::I8 operator()(const int dim,
-                                                const int id) const noexcept
+struct IsModelEntInOverlap {
+  int minId;
+  int maxId;
+  IsModelEntInOverlap(std::string size) {
+    if(size == "small") {
+      minId = 22;
+      maxId = 34;
+    } else if(size == "large"){
+      minId = 1;
+      maxId = 54; 
+      //model vertex 97 is at the magnetic axis and is not included
+    } else {
+      assert(false);
+    }
+  }
+
+/**
+ * return 1 if the specificed model entity is part of the overlap region, 0
+ * otherwise. Device function must be defined inline
+ */
+  KOKKOS_INLINE_FUNCTION Omega_h::I8 operator()(const int dim, const int id) const noexcept
   {
     // the TOMMS generated geometric model has
     // entity IDs that increase with the distance
     // from the magnetic axis
-    if ((id >= 22 && id <= 34) && (dim >= 0 && dim <= 2)) {
+    if ((id >= minId && id <= maxId) && (dim >= 0 && dim <= 2)) {
       return 1;
     }
     return 0;

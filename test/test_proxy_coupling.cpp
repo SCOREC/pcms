@@ -24,6 +24,7 @@ static constexpr bool done = true;
 static constexpr int COMM_ROUNDS = 10;
 static std::string sstDataTransport;
 static std::string adiosEngine;
+static std::string overlapSize;
 namespace ts = test_support;
 
 auto getAdiosEngine() {
@@ -60,7 +61,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto adiosEngine = getAdiosEngine();
   const auto adiosParams = getAdiosParams(adiosEngine);
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f", "", adiosEngine, adiosParams);
-  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
+  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   app->AddField("gids2",
@@ -93,7 +94,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto adiosEngine = getAdiosEngine();
   const auto adiosParams = getAdiosParams(adiosEngine);
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f", "", adiosEngine, adiosParams);
-  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{});
+  auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   const auto numOverlapVerts = Omega_h::get_sum(is_overlap);
@@ -137,7 +138,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   pcms::printInfo("mesh numVtx %d\n", mesh.nverts());
   auto is_overlap =
-    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
+    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{overlapSize});
   const auto adiosEngine = getAdiosEngine();
   const auto adiosParams = getAdiosParams(adiosEngine);
   auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f", "", adiosEngine, adiosParams);
@@ -202,26 +203,29 @@ int main(int argc, char** argv)
   const int rank = world->rank();
   if(!rank) std::cerr << "mpi thread level: " << provide << "\n";
 
-  if (argc != 6) {
+  if (argc != 7) {
     if (!rank) {
       std::cerr << "Usage: " << argv[0]
                 << " <clientId=-1|0|1> /path/to/omega_h/mesh "
                    "/path/to/partitionFile.cpn "
                    "sstDataTransport=[RDMA|WAN|MPI] "
-                   "adiosEngine=[BP4|SST]\n";
+                   "adiosEngine=[BP4|SST] "
+                   "overlap=[small|large]\n";
     }
     exit(EXIT_FAILURE);
   }
-  OMEGA_H_CHECK(argc == 6);
+  OMEGA_H_CHECK(argc == 7);
   const auto clientId = atoi(argv[1]);
   REDEV_ALWAYS_ASSERT(clientId >= -1 && clientId <= 1);
   const auto meshFile = argv[2];
   const auto classPartitionFile = argv[3];
   sstDataTransport = argv[4];
   adiosEngine = argv[5];
+  overlapSize = argv[6];
+  assert(overlapSize == "small" || overlapSize == "large");
   if(!rank) {
     std::cerr << "inputs: " << clientId << ", " << meshFile << " " << classPartitionFile << " "
-              << sstDataTransport << " " << adiosEngine << "\n";
+              << sstDataTransport << " " << adiosEngine << " " << overlapSize << "\n";
   }
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(meshFile, lib.world(), &mesh);

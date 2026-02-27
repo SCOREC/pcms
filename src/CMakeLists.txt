@@ -1,5 +1,3 @@
-
-
 # TODO split out the field transfer library
 set(
   PCMS_HEADERS
@@ -30,8 +28,13 @@ set(
 )
 set(
   ADAPTER_HEADERS
-  ${CMAKE_SOURCE_DIR}/src/pcms/adapter/point_cloud
+  pcms/adapter/point_cloud/point_cloud_layout.h
+  pcms/adapter/point_cloud/point_cloud.h
+  pcms/adapter/omega_h/omega_h_field_layout.h
+  pcms/adapter/omega_h/omega_h_field2.h
+  pcms/adapter/xgc/xgc_field_adapter.h
 )
+
 configure_file(pcms/version.h.in pcms/version.h)
 configure_file(pcms/configuration.h.in pcms/configuration.h)
 list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.h)
@@ -40,7 +43,7 @@ add_subdirectory(pcms/utility)
 
 if(PCMS_ENABLE_XGC)
   list(APPEND PCMS_SOURCES pcms/adapter/xgc/xgc_reverse_classification.cpp)
-  list(APPEND ADAPTER_HEADERS ${CMAKE_SOURCE_DIR}/src/pcms/adapter/xgc)
+  list(APPEND ADAPTER_HEADERS pcms/adapter/xgc/xgc_reverse_classification.h)
 endif()
 if(PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_SOURCES pcms/point_search.cpp)
@@ -52,7 +55,7 @@ if(PCMS_ENABLE_OMEGA_H)
     pcms/uniform_grid.h
     pcms/point_search.h
   )
-  list(APPEND ADAPTER_HEADERS ${CMAKE_SOURCE_DIR}/src/pcms/adapter/omega_h)
+  list(APPEND ADAPTER_HEADERS pcms/adapter/omega_h/omega_h_field.h)
 endif()
 
 find_package(Kokkos REQUIRED)
@@ -88,6 +91,12 @@ target_include_directories(
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
+target_sources(pcms_core PUBLIC
+        FILE_SET adapters
+        TYPE HEADERS
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/pcms
+        FILES ${ADAPTER_HEADERS}
+)
 install(
   TARGETS pcms_core
   EXPORT pcms_core-targets
@@ -97,6 +106,7 @@ install(
   INCLUDES
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
+  FILE_SET adapters DESTINATION  ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
 
 configure_package_config_file(
@@ -144,14 +154,9 @@ install(
   INCLUDES
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
+  FILE_SET adapters DESTINATION  ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
 
-# Mirror the src tree for adapter headers
-foreach(hdr IN LISTS ADAPTER_HEADERS)
-  install(DIRECTORY ${hdr}
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/adapter
-          FILES_MATCHING PATTERN "*.h")
-endforeach ()
 
 # install external headers
 install(

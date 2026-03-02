@@ -172,6 +172,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
       const auto round_start{std::chrono::steady_clock::now()};
+      std::string timerName = std::string("CommRound") + std::to_string(i);
+      PERFSTUBS_SCOPED_TIMER(timerName.c_str());
       total_f->ReceivePhase([&]() { total_f_gids->Receive(); });
       delta_f->ReceivePhase([&]() {
         delta_f_gids->Receive();
@@ -191,11 +193,22 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
                   delta_f_gids2_bytes, total_bytes, global_total_bytes);
         start -= std::chrono::steady_clock::now() - getBytes_start;
       }
+
+      std::string sendTotfTimerName = std::string("SendTotalf") + std::to_string(i);
+      {
+      PERFSTUBS_SCOPED_TIMER(sendTotfTimerName.c_str());
       total_f->SendPhase([&]() { total_f_gids->Send(); });
+      }
+
+      std::string sendDelfTimerName = std::string("SendDeltaf") + std::to_string(i);
+      {
+      PERFSTUBS_SCOPED_TIMER(sendDelfTimerName.c_str());
       delta_f->SendPhase([&]() {
         delta_f_gids->Send(pcms::Mode::Deferred);
         delta_f_gids2->Send(pcms::Mode::Deferred);
       });
+      }
+
       const auto round_finish{std::chrono::steady_clock::now()};
       const std::chrono::duration<double> round_elapsed_seconds{round_finish - round_start};
       if(!rank) std::cerr << "round " << i << " done in " << round_elapsed_seconds.count() << " seconds\n";

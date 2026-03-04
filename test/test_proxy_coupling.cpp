@@ -127,6 +127,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto adiosParams = getAdiosParams(adiosEngine);
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f", "", adiosEngine, adiosParams);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
+  //TODO - copy global into new tags named deltaf_gids[2]
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("deltaf_gids", mesh, is_overlap));
   app->AddField("gids2",
@@ -156,7 +157,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       app->EndReceivePhase();
 
       // Validate received gids on first round
-      if (i == 0) {
+      if (i == 0) { //TODO check all the rounds - don't time the check
         validate_received_gids("deltaf_gids", mesh, is_overlap, comm);
         validate_received_gids("deltaf_gids2", mesh, is_overlap, comm);
         Omega_h::vtk::write_parallel("xgc_delta_f_r0", &mesh, mesh.dim());
@@ -181,6 +182,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto adiosParams = getAdiosParams(adiosEngine);
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f", "", adiosEngine, adiosParams);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
+  //TODO - copy global into new tag named totalf_gids
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("totalf_gids", mesh, is_overlap));
   const auto numOverlapVerts = Omega_h::get_sum(is_overlap);
@@ -204,7 +206,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       app->EndReceivePhase();
 
       // Validate received gids on first round
-      if (i == 0) {
+      if (i == 0) { //TODO check all the rounds - don't time the check
         validate_received_gids("totalf_gids", mesh, is_overlap, comm);
       }
 
@@ -271,7 +273,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
       });
 
       // Validate received gids on first round
-      if (i == 0) {
+      if (i == 0) { //TODO check all the rounds - don't time the check
         validate_received_gids("total_f_gids", mesh, is_overlap, comm);
         validate_received_gids("delta_f_gids", mesh, is_overlap, comm);
         validate_received_gids("delta_f_gids2", mesh, is_overlap, comm);

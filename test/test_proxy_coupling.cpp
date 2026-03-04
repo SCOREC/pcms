@@ -53,6 +53,68 @@ adios2::Params getAdiosParams(const redev::TransportType engine) {
   return params;
 }
 
+void validate_received_gids(const std::string& field_name, Omega_h::Mesh& mesh,
+                           const Omega_h::Read<Omega_h::I8>& is_overlap, MPI_Comm comm)
+{
+  PERFSTUBS_SCOPED_TIMER("validate_received_gids");
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  // Get the received field data (which contains gids)
+  auto received_gids = mesh.get_array<GO>(0, field_name);
+
+  // Get the mesh's vertex globals
+  auto mesh_globals = mesh.globals(0);
+
+  OMEGA_H_CHECK(received_gids.size() == mesh_globals.size());
+
+  // Check for mismatches on device using parallel_for
+  const auto n = received_gids.size();
+  Omega_h::Write<Omega_h::I8> mismatch_flags(n, 0);
+
+  Omega_h::parallel_for(n, OMEGA_H_LAMBDA(Omega_h::LO i) {
+    // Only check vertices that are in the overlap region (where data is received)
+    if (is_overlap[i]) {
+      if (received_gids[i] != mesh_globals[i]) {
+        mismatch_flags[i] = 1;
+      }
+    }
+  });
+
+  // Count total mismatches
+  const int mismatches = Omega_h::get_sum(Omega_h::Read<Omega_h::I8>(mismatch_flags));
+
+  // If there are mismatches, copy to host and print details for first few
+  if (mismatches > 0) {
+    auto received_gids_h = Omega_h::HostRead<GO>(received_gids);
+    auto mesh_globals_h = Omega_h::HostRead<GO>(mesh_globals);
+    auto mismatch_flags_h = Omega_h::HostRead<Omega_h::I8>(mismatch_flags);
+
+    int printed = 0;
+    for (int i = 0; i < n && printed < 10; ++i) {
+      if (mismatch_flags_h[i]) {
+        std::cerr << "Rank " << rank << " field '" << field_name
+                  << "' mismatch at vertex " << i
+                  << ": received=" << received_gids_h[i]
+                  << " expected=" << mesh_globals_h[i] << "\n";
+        printed++;
+      }
+    }
+  }
+
+  int global_mismatches;
+  MPI_Allreduce(&mismatches, &global_mismatches, 1, MPI_INT, MPI_SUM, comm);
+
+  if (rank == 0) {
+    if (global_mismatches == 0) {
+      std::cerr << "Field " << field_name << " validation passed\n";
+    } else {
+      std::cerr << "Field " << field_name << " validation FAILED: "
+                << global_mismatches << " total mismatches\n";
+    }
+  }
+}
+
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   int rank;
@@ -79,6 +141,12 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       app->ReceiveField("gids"); //(Alt) df_gid_field->Receive();
       app->EndReceivePhase();
       // cpl.ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
+
+      // Validate received gids on first round
+      if (i == 0) {
+        validate_received_gids("global", mesh, is_overlap, comm);
+      }
+
       const auto round_finish{std::chrono::steady_clock::now()};
       const std::chrono::duration<double> round_elapsed_seconds{round_finish - round_start};
       if(!rank) std::cerr << "round " << i << " done in " << round_elapsed_seconds.count() << " seconds\n";
@@ -117,6 +185,12 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       app->BeginReceivePhase();
       app->ReceiveField("gids"); //(Alt) tf_gid_field->Receive();
       app->EndReceivePhase();
+
+      // Validate received gids on first round
+      if (i == 0) {
+        validate_received_gids("global", mesh, is_overlap, comm);
+      }
+
       const auto round_finish{std::chrono::steady_clock::now()};
       const std::chrono::duration<double> round_elapsed_seconds{round_finish - round_start};
       if(!rank) std::cerr << "round " << i << " done in " << round_elapsed_seconds.count() << " seconds\n";
@@ -179,6 +253,14 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
         delta_f_gids->Receive();
         delta_f_gids2->Receive();
       });
+
+      // Validate received gids on first round
+      if (i == 0) {
+        validate_received_gids("total_f_gids", mesh, is_overlap, comm);
+        validate_received_gids("delta_f_gids", mesh, is_overlap, comm);
+        validate_received_gids("delta_f_gids2", mesh, is_overlap, comm);
+      }
+
       // Get bytes received after receive phase, don't include in timing, only
       // need one round of data
       if(i == 0) {

@@ -128,9 +128,9 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f", "", adiosEngine, adiosParams);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
   app->AddField("gids",
-               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+               OmegaHFieldAdapter<GO>("deltaf_gids", mesh, is_overlap));
   app->AddField("gids2",
-               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+               OmegaHFieldAdapter<GO>("deltaf_gids2", mesh, is_overlap));
   PCMS_FUNCTION_TIMER
   const auto start{std::chrono::steady_clock::now()};
   do {
@@ -142,12 +142,13 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       app->EndSendPhase();
       app->BeginReceivePhase();
       app->ReceiveField("gids"); //(Alt) df_gid_field->Receive();
+      app->ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
       app->EndReceivePhase();
-      // cpl.ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
 
       // Validate received gids on first round
       if (i == 0) {
-        validate_received_gids("global", mesh, is_overlap, comm);
+        validate_received_gids("deltaf_gids", mesh, is_overlap, comm);
+        validate_received_gids("deltaf_gids2", mesh, is_overlap, comm);
         Omega_h::vtk::write_parallel("xgc_delta_f_r0", &mesh, mesh.dim());
       }
 
@@ -171,7 +172,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f", "", adiosEngine, adiosParams);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
   app->AddField("gids",
-               OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
+               OmegaHFieldAdapter<GO>("totalf_gids", mesh, is_overlap));
   const auto numOverlapVerts = Omega_h::get_sum(is_overlap);
   const auto hasOverlapVerts = (numOverlapVerts > 0) ? 1 : 0;
   const auto numGlobalOverlapVerts = mesh.comm()->allreduce(numOverlapVerts, OMEGA_H_SUM);
@@ -194,7 +195,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 
       // Validate received gids on first round
       if (i == 0) {
-        validate_received_gids("global", mesh, is_overlap, comm);
+        validate_received_gids("totalf_gids", mesh, is_overlap, comm);
       }
 
       const auto round_finish{std::chrono::steady_clock::now()};

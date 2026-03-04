@@ -131,6 +131,16 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
                OmegaHFieldAdapter<GO>("deltaf_gids", mesh, is_overlap));
   app->AddField("gids2",
                OmegaHFieldAdapter<GO>("deltaf_gids2", mesh, is_overlap));
+
+  const auto numOverlapVerts = Omega_h::get_sum(is_overlap);
+  const auto hasOverlapVerts = (numOverlapVerts > 0) ? 1 : 0;
+  const auto numGlobalOverlapVerts = mesh.comm()->allreduce(numOverlapVerts, OMEGA_H_SUM);
+  const auto numRanksWithOverlapVerts = mesh.comm()->allreduce(hasOverlapVerts, OMEGA_H_SUM);
+  if(rank == 0) {
+    pcms::printInfo("numGlobalOverlapVerts %d numRanksWithOverlapVerts %d\n", numGlobalOverlapVerts, numRanksWithOverlapVerts);
+  }
+
+  Omega_h::vtk::write_parallel("xgc_delta_f", &mesh, mesh.dim());
   PCMS_FUNCTION_TIMER
   const auto start{std::chrono::steady_clock::now()};
   do {

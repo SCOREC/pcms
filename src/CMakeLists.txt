@@ -11,6 +11,7 @@ set(
   pcms/field_communicator.h
   pcms/field_communicator2.h
   pcms/field_evaluation_methods.h
+  pcms/field_layout_communicator.h
   pcms/partition.h
   pcms/coupler.h
   pcms/coordinate_system.h

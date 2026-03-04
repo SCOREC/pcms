@@ -67,6 +67,9 @@ void validate_received_gids(const std::string& field_name, Omega_h::Mesh& mesh,
   auto mesh_globals = mesh.globals(0);
 
   OMEGA_H_CHECK(received_gids.size() == mesh_globals.size());
+  if (received_gids.size() == mesh_globals.size()) {
+    std::cerr << "ERROR: rank " << rank << " received_gids.size() != mesh_globals.size()\n";
+  }
 
   // Check for mismatches on device using parallel_for
   const auto n = received_gids.size();
@@ -145,6 +148,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       // Validate received gids on first round
       if (i == 0) {
         validate_received_gids("global", mesh, is_overlap, comm);
+        Omega_h::vtk::write_parallel("xgc_delta_f_r0", &mesh, mesh.dim());
       }
 
       const auto round_finish{std::chrono::steady_clock::now()};
@@ -170,10 +174,12 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
                OmegaHFieldAdapter<GO>("global", mesh, is_overlap));
   const auto numOverlapVerts = Omega_h::get_sum(is_overlap);
   const auto hasOverlapVerts = (numOverlapVerts > 0) ? 1 : 0;
+  const auto numGlobalOverlapVerts = mesh.comm()->allreduce(numOverlapVerts, OMEGA_H_SUM);
   const auto numRanksWithOverlapVerts = mesh.comm()->allreduce(hasOverlapVerts, OMEGA_H_SUM);
   if(rank == 0) {
-    pcms::printInfo("numOverlapVerts %d numRanksWithOverlapVerts %d\n", numOverlapVerts, numRanksWithOverlapVerts);
+    pcms::printInfo("numGlobalOverlapVerts %d numRanksWithOverlapVerts %d\n", numGlobalOverlapVerts, numRanksWithOverlapVerts);
   }
+
   PCMS_FUNCTION_TIMER
   const auto start{std::chrono::steady_clock::now()};
   do {

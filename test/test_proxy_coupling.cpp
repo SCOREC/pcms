@@ -118,6 +118,12 @@ void validate_received_gids(const std::string& field_name, Omega_h::Mesh& mesh,
   }
 }
 
+Omega_h::Read<GO> createGlobalsCopy(Omega_h::Mesh& mesh) {
+  Omega_h::Write<GO> dup(mesh.nverts());
+  Omega_h::copy_into(mesh.globals(Omega_h::VERT), dup);
+  return Omega_h::read(dup);
+}
+
 void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   int rank;
@@ -127,7 +133,10 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto adiosParams = getAdiosParams(adiosEngine);
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f", "", adiosEngine, adiosParams);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
-  //TODO - copy global into new tags named deltaf_gids[2]
+  auto deltaf_gids_r = createGlobalsCopy(mesh);
+  mesh.add_tag(Omega_h::VERT, "deltaf_gids", 1, deltaf_gids_r);
+  auto deltaf_gids2_r = createGlobalsCopy(mesh);
+  mesh.add_tag(Omega_h::VERT, "deltaf_gids2", 1, deltaf_gids2_r);
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("deltaf_gids", mesh, is_overlap));
   app->AddField("gids2",
@@ -182,7 +191,8 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto adiosParams = getAdiosParams(adiosEngine);
   pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f", "", adiosEngine, adiosParams);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
-  //TODO - copy global into new tag named totalf_gids
+  auto totalf_gids_r = createGlobalsCopy(mesh);
+  mesh.add_tag(Omega_h::VERT, "totalf_gids", 1, totalf_gids_r);
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("totalf_gids", mesh, is_overlap));
   const auto numOverlapVerts = Omega_h::get_sum(is_overlap);

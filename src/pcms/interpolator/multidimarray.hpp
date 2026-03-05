@@ -24,7 +24,7 @@ int calculateIndex(const IntVecView& dimensions, const int* indices)
   return index;
 }
 
-int calculateTotalSize(const HostIntVecView& dimensions)
+inline int calculateTotalSize(const HostIntVecView& dimensions)
 {
   int dim = dimensions.extent(0);
   int size = 1;

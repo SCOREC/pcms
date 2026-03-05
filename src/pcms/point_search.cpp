@@ -41,8 +41,6 @@ bool normal_intersects_segment(const Omega_h::Few<double, 2> a,
 
 namespace pcms
 {
-constexpr Real fuzz = 1E-6;
-
 KOKKOS_INLINE_FUNCTION
 AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
 {
@@ -129,7 +127,7 @@ bool line_intersects_bbox(const Omega_h::Vector<2>& p0,
 }
 
 [[nodiscard]] KOKKOS_INLINE_FUNCTION bool bbox_verts_within_triangle(
-  const AABBox<2>& bbox, const Omega_h::Matrix<2, 3>& coords)
+  const AABBox<2>& bbox, const Omega_h::Matrix<2, 3>& coords, Real fuzz)
 {
   auto left = bbox.center[0] - bbox.half_width[0];
   auto right = bbox.center[0] + bbox.half_width[0];
@@ -160,7 +158,7 @@ bool line_intersects_bbox(const Omega_h::Vector<2>& p0,
  */
 [[nodiscard]]
 KOKKOS_FUNCTION bool triangle_intersects_bbox(
-  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox)
+  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox, Real fuzz)
 {
   // triangle and grid cell bounding box intersect
   if (intersects(triangle_bbox(coords), bbox)) {
@@ -170,7 +168,7 @@ KOKKOS_FUNCTION bool triangle_intersects_bbox(
       return true;
     }
     // if any of the bbox verts are within the triangle
-    if (bbox_verts_within_triangle(bbox, coords)) {
+    if (bbox_verts_within_triangle(bbox, coords, fuzz)) {
       return true;
     }
     // if any of the triangle's edges intersect with the bounding box
@@ -198,11 +196,12 @@ namespace detail
 struct GridTriIntersectionFunctor
 {
   GridTriIntersectionFunctor(Omega_h::Mesh& mesh,
-                             Kokkos::View<Uniform2DGrid[1]> grid)
+                             Kokkos::View<Uniform2DGrid[1]> grid, Real fuzz)
     : mesh_(mesh),
       tris2verts_(mesh_.ask_elem_verts()),
       coords_(mesh_.coords()),
       grid_(grid),
+      fuzz_(fuzz),
       nelems_(mesh_.nelems())
   {
     if (mesh_.dim() != 2) {
@@ -226,7 +225,7 @@ struct GridTriIntersectionFunctor
       // 2d mesh with 2d coords, but 3 triangles
       const auto vertex_coords =
         Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
-      if (triangle_intersects_bbox(vertex_coords, grid_cell_bbox)) {
+      if (triangle_intersects_bbox(vertex_coords, grid_cell_bbox, fuzz_)) {
         if (fill) {
           fill[num_intersections] = elem_idx;
         }
@@ -241,6 +240,7 @@ private:
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
   Kokkos::View<Uniform2DGrid[1]> grid_;
+  Real fuzz_;
 
 public:
   LO nelems_;
@@ -251,10 +251,10 @@ public:
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh,
                            Kokkos::View<Uniform2DGrid[1]> grid,
-                           int num_grid_cells)
+                           int num_grid_cells, Real fuzz)
 {
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  auto f = detail::GridTriIntersectionFunctor{mesh, grid};
+  auto f = detail::GridTriIntersectionFunctor{mesh, grid, fuzz};
   Kokkos::count_and_fill_crs(intersection_map, num_grid_cells, f);
   return intersection_map;
 }
@@ -297,6 +297,7 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(
   auto tris2edges_adj = tris2edges_adj_;
   auto edges2verts_adj = edges2verts_adj_;
   auto coords = coords_;
+  auto fuzz = fuzz_;
   Kokkos::parallel_for(
     points.extent(0), KOKKOS_LAMBDA(int p) {
       Omega_h::Vector<2> point(
@@ -391,7 +392,8 @@ Kokkos::View<GridPointSearch::Result*> GridPointSearch::operator()(
   return results;
 }
 
-GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
+GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny, Real fuzz)
+  : fuzz_(fuzz)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);
@@ -401,8 +403,8 @@ GridPointSearch::GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny)
                   .bot_left = {mesh_bbox.min[0], mesh_bbox.min[1]},
                   .divisions = {Nx, Ny}};
   Kokkos::deep_copy(grid_, grid_h);
-  candidate_map_ =
-    detail::construct_intersection_map(mesh, grid_, grid_h(0).GetNumCells());
+  candidate_map_ = detail::construct_intersection_map(
+    mesh, grid_, grid_h(0).GetNumCells(), fuzz_);
   coords_ = mesh.coords();
   tris2verts_ = mesh.ask_elem_verts();
   tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);

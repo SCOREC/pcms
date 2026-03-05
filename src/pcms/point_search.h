@@ -20,14 +20,15 @@ namespace detail
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map(Omega_h::Mesh& mesh,
                            Kokkos::View<Uniform2DGrid[1]> grid,
-                           int num_grid_cells);
+                           int num_grid_cells, Real fuzz = 1E-12);
 }
 KOKKOS_FUNCTION
 Omega_h::Vector<3> barycentric_from_global(
   const Omega_h::Vector<2>& point, const Omega_h::Matrix<2, 3>& vertex_coords);
 
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
-  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox);
+  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox,
+  Real fuzz = 1E-12);
 
 class GridPointSearch
 {
@@ -50,7 +51,7 @@ public:
     Omega_h::Vector<dim + 1> parametric_coords;
   };
 
-  GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny);
+  GridPointSearch(Omega_h::Mesh& mesh, LO Nx, LO Ny, Real fuzz = 1E-12);
   /**
    *  given a point in global coordinates give the id of the triangle that the
    * point lies within and the parametric coordinate of the point within the
@@ -62,6 +63,7 @@ public:
 
 private:
   Omega_h::Mesh mesh_;
+  Real fuzz_;
   Omega_h::Adj tris2edges_adj_;
   Omega_h::Adj tris2verts_adj_;
   Omega_h::Adj edges2verts_adj_;

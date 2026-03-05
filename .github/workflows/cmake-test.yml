@@ -24,11 +24,14 @@ jobs:
         memory_test: [ON, OFF]
         compiler: [g++]
         language: ['cpp']
+        python_api: [OFF, ON]
         exclude:
           - build_type: Release
             memory_test: ON
           - build_type: RelWithDebInfo
             memory_test: OFF
+          - memory_test: ON
+            python_api: ON
       
     steps:
 
@@ -40,6 +43,12 @@ jobs:
 
     - name: Install cmake
       run: sudo apt-get install -yq cmake
+
+    - name: Install Python and dependencies
+      if: matrix.python_api == 'ON'
+      run: |
+        sudo apt-get install -yq python3 python3-pip python3-dev python3-pybind11 pybind11-dev
+        pip3 install numpy
 
     - uses: actions/checkout@v4
 
@@ -58,8 +67,9 @@ jobs:
         repo-path: 'kokkos/kokkos'
         repo-ref: '4.6.01'
         cache: true
+        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
         options: '-DCMAKE_CXX_STANDARD=17
-                  -DBUILD_SHARED_LIBS=OFF
+                  -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DKokkos_ENABLE_SERIAL=ON
                   -DKokkos_ENABLE_OPENMP=OFF
                   -DKokkos_ENABLE_CUDA=OFF
@@ -73,8 +83,9 @@ jobs:
         repo-path: 'kokkos/kokkos-kernels'
         repo-ref: '4.6.01'
         cache: true
+        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
         options: '-DCMAKE_CXX_STANDARD=17
-                  -DBUILD_SHARED_LIBS=OFF
+                  -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
 
     - name: build omega_h
@@ -84,9 +95,10 @@ jobs:
         repo-path: 'SCOREC/omega_h'
         repo-ref: '1765836a00b9a64b8b3791f1442ac52f147e43b2'
         cache: true
+        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
-                  -DBUILD_SHARED_LIBS=OFF
+                  -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DOmega_h_USE_MPI=ON
                   -DOmega_h_USE_Kokkos=ON
                   -DBUILD_TESTING=OFF
@@ -100,8 +112,10 @@ jobs:
         repo-path: 'SCOREC/meshFields'
         repo-ref: 'b1482bbba288df210784b2345eae08e34faabdc4'
         cache: true
+        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
+                  -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h'
@@ -147,10 +161,11 @@ jobs:
         repo-path: 'SCOREC/redev'
         repo-ref: 'ac09848a5f9b89493e8b679c9080b9efe5538376'
         cache: true
+        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DCMAKE_BUILD_TYPE=Release
-                  -DBUILD_SHARED_LIBS=OFF
+                  -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake'
 
@@ -191,6 +206,11 @@ jobs:
     - name: Install fftw3
       run: sudo apt-get install -yq libfftw3-dev pkg-config
 
+    - name: Set LD_LIBRARY_PATH for shared libraries
+      if: matrix.python_api == 'ON'
+      run: |
+        echo "LD_LIBRARY_PATH=${{ runner.temp }}/build-kokkos/install/lib:${{ runner.temp }}/build-omega_h/install/lib:${{ runner.temp }}/build-meshFields/install/lib:${{ runner.temp }}/build-redev/install/lib:${{ runner.temp }}/build-ADIOS2/install/lib:${{ runner.temp }}/build-perfstubs/install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
     - name: build pcms
       uses: ./.github/actions/install-repo
       with:
@@ -208,6 +228,7 @@ jobs:
                   -DPETSC_ARCH=ubuntu-kokkos
                   -DPCMS_TIMEOUT=10
                   -DPCMS_ENABLE_SPDLOG=OFF
+                  -DPCMS_ENABLE_Python=${{ matrix.python_api }}
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
                   -Dmeshfields_DIR=${{ runner.temp }}/build-meshFields/install/lib/cmake/meshfields
@@ -230,7 +251,20 @@ jobs:
       if: always()
       run: cat ${{ runner.temp }}/build-pcms/Testing/Temporary/LastTest.log
 
+    - name: Run Python API tests
+      if: matrix.python_api == 'ON'
+      run: |
+        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib:$PYTHONPATH
+        export LD_LIBRARY_PATH=${{ runner.temp }}/build-pcms/install/lib:$LD_LIBRARY_PATH
+        cd ${{ github.workspace }}/src/pcms/pythonapi
+        python3 test_file_io.py
+        python3 test_omega_h_field.py
+        python3 test_uniform_grid_field.py
+        python3 test_field_copy.py
+        python3 test_mls_interpolation.py
+
     - name: Test PCMS Installation
+      if: matrix.python_api == 'OFF'
       shell: bash
       run: |
         # Configure and build the test

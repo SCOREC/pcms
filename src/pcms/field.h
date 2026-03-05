@@ -76,6 +76,13 @@ struct LocalizationHint
   std::shared_ptr<void> data = nullptr;
 };
 
+enum class OutOfBoundsMode
+{
+  ERROR,           // Throw error when points are out of bounds
+  FILL,            // Fill out-of-bounds points with a fill value
+  NEAREST_BOUNDARY // Map to nearest boundary cell (extrapolate)
+};
+
 class FieldLayout;
 
 /*
@@ -127,7 +134,21 @@ public:
     Rank1View<const T, pcms::HostMemorySpace> buffer,
     Rank1View<const pcms::LO, pcms::HostMemorySpace> permutation) = 0;
 
+  // Out-of-bounds handling
+  void SetOutOfBoundsMode(OutOfBoundsMode mode, Real fill_value = 0.0)
+  {
+    out_of_bounds_mode_ = mode;
+    fill_value_ = fill_value;
+  }
+
+  OutOfBoundsMode GetOutOfBoundsMode() const { return out_of_bounds_mode_; }
+  Real GetFillValue() const { return fill_value_; }
+
   virtual ~FieldT() noexcept = default;
+
+protected:
+  OutOfBoundsMode out_of_bounds_mode_ = OutOfBoundsMode::ERROR;
+  Real fill_value_ = 0.0;
 };
 // Should statically instantiate types
 using FieldPtr =

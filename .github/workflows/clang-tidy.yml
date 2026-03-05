@@ -237,7 +237,7 @@ jobs:
             echo "$file has clang-tidy issues"
             EXIT_CODE=1
           fi
-        done < <(find src -name "*.cpp" -o -name "*.hpp" -o -name "*.c" -o -name "*.h" -o -name "*.cc" -o -name "*.cxx" | grep -v 'src/pcms/capi/' | grep -v 'src/pcms/fortranapi/')
+        done < <(find src -name "*.cpp" -o -name "*.hpp" -o -name "*.c" -o -name "*.h" -o -name "*.cc" -o -name "*.cxx" | grep -v 'src/pcms/capi/' | grep -v 'src/pcms/fortranapi/' | grep -v 'src/pcms/pythonapi/')
         if [ $EXIT_CODE -eq 1 ]; then
           echo "Some C/C++ files have clang-tidy issues. Please fix them with clang-tidy-18."
           exit 1

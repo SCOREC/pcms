@@ -2,6 +2,8 @@
 #define PCMS_COUPLING_UNIFORM_GRID_H
 #include "pcms/bounding_box.h"
 #include "Omega_h_vector.hpp"
+#include "Omega_h_bbox.hpp"
+#include "Omega_h_mesh.hpp"
 #include <numeric>
 namespace pcms
 {
@@ -69,6 +71,21 @@ public:
     return {.center = center, .half_width = half_width};
   }
 
+  /// Check if a point is within the grid bounds
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION bool IsPointInBounds(
+    const Omega_h::Vector<dim>& point) const
+  {
+    for (size_t i = 0; i < dim; ++i) {
+      Real coord = point[i];
+      Real grid_min = bot_left[i];
+      Real grid_max = bot_left[i] + edge_length[i];
+      if (coord < grid_min || coord > grid_max) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   [[nodiscard]] KOKKOS_INLINE_FUNCTION std::array<LO, dim> GetDimensionedIndex(
     LO idx) const
   {
@@ -118,6 +135,60 @@ private:
 };
 
 using Uniform2DGrid = UniformGrid<>;
+
+/**
+ * \brief Create a uniform grid layout from an Omega_h mesh as a bounding box
+ *
+ * This function computes the bounding box of the given mesh and creates a
+ * uniform Cartesian grid that covers the entire mesh domain. The grid cells
+ * are uniformly distributed across each dimension.
+ *
+ * \tparam dim Spatial dimension of the mesh (2 or 3)
+ * \param mesh The Omega_h mesh to create the grid from
+ * \param divisions Array specifying the number of cells in each dimension
+ * \return UniformGrid<dim> A uniform grid covering the mesh bounding box
+ *
+ */
+template <unsigned dim = 2>
+UniformGrid<dim> CreateUniformGridFromMesh(Omega_h::Mesh& mesh,
+                                           const std::array<LO, dim>& divisions)
+{
+  // Get the bounding box of the mesh
+  auto bbox = Omega_h::get_bounding_box<dim>(&mesh);
+
+  // Calculate edge lengths and bottom-left corner
+  std::array<Real, dim> edge_length;
+  std::array<Real, dim> bot_left;
+
+  for (unsigned i = 0; i < dim; ++i) {
+    bot_left[i] = bbox.min[i];
+    edge_length[i] = bbox.max[i] - bbox.min[i];
+  }
+
+  return UniformGrid<dim>{
+    .edge_length = edge_length, .bot_left = bot_left, .divisions = divisions};
+}
+
+/**
+ * \brief Create a uniform grid with equal divisions in all dimensions
+ *
+ * This is a convenience function that creates a uniform grid with the same
+ * number of cells in each dimension.
+ *
+ * \tparam dim Spatial dimension of the mesh (2 or 3)
+ * \param mesh The Omega_h mesh to create the grid from
+ * \param cells_per_dim Number of cells per dimension (same for all dimensions)
+ * \return UniformGrid<dim> A uniform grid covering the mesh bounding box
+ *
+ */
+template <unsigned dim = 2>
+UniformGrid<dim> CreateUniformGridFromMesh(Omega_h::Mesh& mesh,
+                                           LO cells_per_dim)
+{
+  std::array<LO, dim> divisions;
+  divisions.fill(cells_per_dim);
+  return CreateUniformGridFromMesh<dim>(mesh, divisions);
+}
 
 } // namespace pcms
 

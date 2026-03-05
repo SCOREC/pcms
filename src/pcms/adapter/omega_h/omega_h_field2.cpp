@@ -161,20 +161,70 @@ struct OmegaHField2LocalizationHint
 {
   OmegaHField2LocalizationHint(
     Omega_h::Mesh& mesh,
-    Kokkos::View<GridPointSearch::Result*, HostMemorySpace> search_results)
-    : offsets_("", mesh.nelems() + 1),
-      coordinates_("", search_results.size(), mesh.dim() + 1),
-      indices_("", search_results.size())
+    Kokkos::View<GridPointSearch::Result*, HostMemorySpace> search_results,
+    OutOfBoundsMode mode)
+    : mode_(mode), num_valid_(0), num_missing_(0)
   {
-    Kokkos::View<LO*, HostMemorySpace> elem_counts("", mesh.nelems());
+    // First pass: count valid and invalid points
+    std::vector<size_t> valid_point_indices;
+    std::vector<size_t> missing_point_indices;
 
-    for (size_t i = 0; i < search_results.size(); ++i) {
-      auto [dim, elem_idx, coord] = search_results(i);
+    if (mode_ == OutOfBoundsMode::ERROR) {
+      // Error mode - throw error immediately if any point is out of bounds
+      for (size_t i = 0; i < search_results.size(); ++i) {
+        auto [dim, elem_idx, coord] = search_results(i);
+        bool is_missing =
+          (static_cast<int>(dim) != mesh.dim()) || (elem_idx < 0);
+        PCMS_ALWAYS_ASSERT(!is_missing && "Points found outside mesh domain");
+        valid_point_indices.push_back(i);
+      }
+    } else {
+      // Other modes - collect valid and missing points separately
+      for (size_t i = 0; i < search_results.size(); ++i) {
+        auto [dim, elem_idx, coord] = search_results(i);
+        bool is_missing =
+          (static_cast<int>(dim) != mesh.dim()) || (elem_idx < 0);
+        if (is_missing) {
+          missing_point_indices.push_back(i);
+        } else {
+          valid_point_indices.push_back(i);
+        }
+      }
+    }
+
+    num_valid_ = valid_point_indices.size();
+    num_missing_ = missing_point_indices.size();
+
+    // Handle missing points based on mode
+    if (num_missing_ > 0 && mode_ == OutOfBoundsMode::NEAREST_BOUNDARY) {
+      PCMS_ALWAYS_ASSERT(false && "NEAREST_BOUNDARY mode not implemented yet");
+    }
+
+    // Allocate arrays for valid points only
+    offsets_ = Kokkos::View<LO*, HostMemorySpace>("offsets", mesh.nelems() + 1);
+    coordinates_ = Kokkos::View<Real**, HostMemorySpace>(
+      "coordinates", num_valid_, mesh.dim() + 1);
+    indices_ = Kokkos::View<LO*, HostMemorySpace>("indices", num_valid_);
+
+    // Store missing point indices
+    if (num_missing_ > 0) {
+      missing_indices_ =
+        Kokkos::View<LO*, HostMemorySpace>("missing_indices", num_missing_);
+      for (size_t i = 0; i < num_missing_; ++i) {
+        missing_indices_(i) = static_cast<LO>(missing_point_indices[i]);
+      }
+    }
+
+    // Count points per element (valid points only)
+    Kokkos::View<LO*, HostMemorySpace> elem_counts("elem_counts",
+                                                   mesh.nelems());
+    for (size_t i = 0; i < num_valid_; ++i) {
+      auto [dim, elem_idx, coord] = search_results(valid_point_indices[i]);
       elem_counts[elem_idx] += 1;
     }
 
+    // Compute offsets
     LO total;
-
     ComputeOffsetsFunctor functor(offsets_, elem_counts);
     Kokkos::parallel_scan(
       "ComputeOffsets",
@@ -182,28 +232,31 @@ struct OmegaHField2LocalizationHint
       functor, total);
     offsets_(mesh.nelems()) = total;
 
-    for (size_t i = 0; i < search_results.size(); ++i) {
-      auto [dim, elem_idx, coord] = search_results(i);
-      // currently don't handle case where point is on a boundary
-      PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh.dim());
-      // element should be inside the domain (positive)
-      PCMS_ALWAYS_ASSERT(elem_idx >= 0 && elem_idx < mesh.nelems());
+    // Fill coordinates and indices for valid points
+    for (size_t i = 0; i < num_valid_; ++i) {
+      size_t orig_idx = valid_point_indices[i];
+      auto [dim, elem_idx, coord] = search_results(orig_idx);
       elem_counts(elem_idx) -= 1;
       LO index = offsets_(elem_idx) + elem_counts(elem_idx);
       for (int j = 0; j < (mesh.dim() + 1); ++j) {
         coordinates_(index, j) = coord[j];
       }
-      // coordinates_(index, mesh.dim()) = coord[0];
-      indices_(index) = i;
+      indices_(index) = static_cast<LO>(orig_idx);
     }
   }
+
+  OutOfBoundsMode mode_;
+  size_t num_valid_;
+  size_t num_missing_;
 
   // offsets is the number of points in each element
   Kokkos::View<LO*, HostMemorySpace> offsets_;
   // coordinates are the parametric coordinates of each point
   Kokkos::View<Real**, HostMemorySpace> coordinates_;
-  // indices are the index of the original point
+  // indices are the index of the original point (for valid points)
   Kokkos::View<LO*, HostMemorySpace> indices_;
+  // indices of points not found in mesh
+  Kokkos::View<LO*, HostMemorySpace> missing_indices_;
 };
 
 /*
@@ -213,7 +266,7 @@ OmegaHField2::OmegaHField2(const OmegaHFieldLayout& layout)
   : layout_(layout),
     mesh_(layout.GetMesh()),
     search_(mesh_, 10, 10),
-    dof_holder_data_("", static_cast<size_t>(layout.OwnedSize()))
+    dof_holder_data_("dof_holder_data", static_cast<size_t>(layout.OwnedSize()))
 {
   auto nodes_per_dim = layout.GetNodesPerDim();
   if (nodes_per_dim[2] == 0 && nodes_per_dim[3] == 0) {
@@ -305,7 +358,8 @@ LocalizationHint OmegaHField2::GetLocalizationHint(
   Kokkos::View<GridPointSearch::Result*, HostMemorySpace> results_h(
     "results_h", results.size());
   Kokkos::deep_copy(results_h, results);
-  auto hint = std::make_shared<OmegaHField2LocalizationHint>(mesh_, results_h);
+  auto hint = std::make_shared<OmegaHField2LocalizationHint>(
+    mesh_, results_h, out_of_bounds_mode_);
 
   return LocalizationHint{hint};
 }
@@ -335,11 +389,23 @@ void OmegaHField2::Evaluate(LocalizationHint location,
     "eval_results_h", eval_results.extent(0), eval_results.extent(1));
   deep_copy_mismatch_layouts(eval_results_h, eval_results);
   Rank1View<Real, HostMemorySpace> values = results.GetValues();
+
+  // Copy results for valid points
   Kokkos::parallel_for(
     "CopyEvalResultsToValues",
     Kokkos::RangePolicy<HostMemorySpace::execution_space>(
       0, eval_results_h.extent(0)),
     KOKKOS_LAMBDA(LO i) { values[hint.indices_(i)] = eval_results_h(i, 0); });
+
+  // Handle missing points based on mode
+  if (hint.num_missing_ > 0 && hint.mode_ == OutOfBoundsMode::FILL) {
+    auto fill_val = fill_value_;
+    Kokkos::parallel_for(
+      "FillMissingValues",
+      Kokkos::RangePolicy<HostMemorySpace::execution_space>(0,
+                                                            hint.num_missing_),
+      KOKKOS_LAMBDA(LO i) { values[hint.missing_indices_(i)] = fill_val; });
+  }
 }
 
 void OmegaHField2::EvaluateGradient(
@@ -391,4 +457,5 @@ void OmegaHField2::Deserialize(
 
   SetDOFHolderData(pcms::make_const_array_view(sorted_buffer));
 }
+
 } // namespace pcms

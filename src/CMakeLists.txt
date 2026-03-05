@@ -59,10 +59,12 @@ if(PCMS_ENABLE_OMEGA_H)
     pcms/transfer_field2.h
     pcms/uniform_grid.h
     pcms/point_search.h
+  )
+  list(APPEND ADAPTER_HEADERS
+    pcms/adapter/omega_h/omega_h_field.h
     pcms/adapter/uniform_grid/uniform_grid_field_layout.h
     pcms/adapter/uniform_grid/uniform_grid_field.h
   )
-  list(APPEND ADAPTER_HEADERS pcms/adapter/omega_h/omega_h_field.h)
 endif()
 
 find_package(Kokkos REQUIRED)

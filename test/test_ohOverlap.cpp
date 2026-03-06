@@ -28,9 +28,7 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
   // from the magnetic axis
   if (dim == 2 && (id >= 22 && id <= 34)) {
     return 1;
-  } else if (dim == 1 && (id >= 21 && id <= 34)) {
-    return 1;
-  } else if (dim == 0 && (id >= 21 && id <= 34)) {
+  } else if ((dim == 1 || dim == 0) && (id >= 21 && id <= 34)) {
     return 1;
   }
   return 0;

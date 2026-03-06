@@ -266,7 +266,7 @@ void migrateMeshElms(Omega_h::Mesh& mesh,
     std::map<ModelEnt, int> modelEntToRank;
     for (int i = 0; i < partition.ranks.size(); i++)
       modelEntToRank[partition.modelEnts[i]] = partition.ranks[i];
-    typedef std::map<int, std::vector<int>> miv;
+    using miv = std::map<int, std::vector<int>>;
     miv elemsPerRank;
     for (int i = 0; i < mesh.nelems(); i++) {
       const ModelEnt ent({class_dims_h[i], class_ids_h[i]});

@@ -219,10 +219,12 @@ jobs:
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs-openmpi/install/lib/cmake \
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos-openmpi/install/lib/cmake/Kokkos \
                   -DKokkosKernels_DIR=${{ runner.temp }}/build-kokkos-kernels-openmpi/install/lib/cmake/KokkosKernels/ \
-                  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
+                  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases \
+                  -DCLANG_TIDY_EXECUTABLE="$(command -v clang-tidy-20)" \
+                  -DRUN_CLANG_TIDY_EXECUTABLE="$(command -v run-clang-tidy-20)"
      
     # TODO need to capture the error code from this
     - name: Run clang-tidy
       run: |
-        clang-tidy --version 
+        clang-tidy-20 --version 
         VERBOSE=1 cmake --build ${{ runner.temp }}/build-pcms -t run-clang-tidy

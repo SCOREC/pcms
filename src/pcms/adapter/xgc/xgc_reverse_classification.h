@@ -2,17 +2,17 @@
 #define PCMS_COUPLING_XGC_REVERSE_CLASSIFICATION_H
 #include <Kokkos_Core.hpp>
 #include <mpi.h>
-#include "pcms/types.h"
+#include "pcms/utility/types.h"
 #include <unordered_map>
 #include <set>
 #include "mdspan/mdspan.hpp"
-#include "pcms/arrays.h"
-#include "pcms/memory_spaces.h"
+#include "pcms/utility/arrays.h"
+#include "pcms/utility/memory_spaces.h"
 #include "pcms/configuration.h"
 // #include <filesystem>
 #ifdef PCMS_ENABLE_OMEGA_H
 #include <Omega_h_mesh.hpp>
-#include "pcms/assert.h"
+#include "pcms/utility/assert.h"
 #endif
 
 namespace pcms

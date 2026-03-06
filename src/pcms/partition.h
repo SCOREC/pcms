@@ -1,7 +1,9 @@
 #ifndef PCMS_PARTITION_H
 #define PCMS_PARTITION_H
-#include "pcms/common.h"
-#include "pcms/profile.h"
+#include "pcms/utility/common.h"
+#include "pcms/utility/profile.h"
+#include "pcms/utility/types.h"
+#include <redev_partition.h>
 
 namespace pcms
 {

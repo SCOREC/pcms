@@ -1,6 +1,6 @@
 #ifndef PCMS_COORDINATE_SYSTEM_H
 #define PCMS_COORDINATE_SYSTEM_H
-#include "arrays.h"
+#include "pcms/utility/arrays.h"
 
 namespace pcms
 {

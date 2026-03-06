@@ -2,8 +2,8 @@
 #include "omega_h_field2.h"
 #include "pcms/adapter/omega_h/omega_h_field_layout.h"
 #include "omega_h_field_layout.h"
-#include "pcms/inclusive_scan.h"
-#include "pcms/profile.h"
+#include "pcms/utility/inclusive_scan.h"
+#include "pcms/utility/profile.h"
 #include <memory>
 
 namespace pcms

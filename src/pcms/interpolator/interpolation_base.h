@@ -16,7 +16,7 @@
 #include "adj_search.hpp"
 #include "interpolation_helpers.h"
 #include <Omega_h_file.hpp>
-#include <pcms/arrays.h>
+#include "pcms/utility/arrays.h"
 #include <string>
 
 /**

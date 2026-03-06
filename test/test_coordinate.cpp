@@ -3,7 +3,7 @@
 #include <pcms/coordinate.h>
 #include <pcms/coordinate_systems.h>
 #include "mdspan/mdspan.hpp"
-#include <pcms/arrays.h>
+#include <pcms/utility/arrays.h>
 
 using pcms::Cartesian;
 using pcms::Coordinate;

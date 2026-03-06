@@ -106,7 +106,7 @@ jobs:
           # redev
           git clone https://github.com/SCOREC/redev.git ${workDir}/redev
           cd ${workDir}/redev
-          git checkout 1452ec290dc6f8638019e342758325611e16ad77
+          git checkout ac09848a5f9b89493e8b679c9080b9efe5538376
           cd $workDir
           rdbdir=${workDir}/build-redev
           cmake -S ${workDir}/redev -B $rdbdir \

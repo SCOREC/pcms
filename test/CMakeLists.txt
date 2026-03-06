@@ -394,7 +394,9 @@ if(Catch2_FOUND)
       test_normalisation.cpp
       test_spline_interpolator.cpp
       test_svd_serial.cpp
-      test_interpolation_class.cpp)
+      test_uniform_grid_field.cpp
+      test_interpolation_class.cpp
+      test_omega_h_field2_outofbounds.cpp)
   endif()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core

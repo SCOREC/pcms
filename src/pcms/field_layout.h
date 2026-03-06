@@ -3,7 +3,7 @@
 #include <memory>
 #include <redev.h>
 #include "pcms/field.h"
-#include "pcms/arrays.h"
+#include "pcms/utility/arrays.h"
 #include "pcms/coordinate_system.h"
 
 namespace pcms

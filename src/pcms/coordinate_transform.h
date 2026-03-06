@@ -2,6 +2,7 @@
 #define PCMS_COUPLING_COORDINATE_TRANSFORM_H
 #include "coordinate.h"
 #include "coordinate_systems.h"
+#include <cmath>
 namespace pcms
 {
 template <typename CoordinateSystemTo, typename CoordinateSystemFrom>

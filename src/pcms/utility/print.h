@@ -1,5 +1,7 @@
 #ifndef PCMS_PRINT_H
 #define PCMS_PRINT_H
+#include "pcms/configuration.h"
+#include <cstdio>
 
 #ifdef PCMS_ENABLE_SPDLOG
 #include "spdlog/spdlog.h"

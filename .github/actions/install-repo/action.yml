@@ -11,6 +11,9 @@ inputs:
     required: true
   cache:
     required: true
+  cache-suffix:
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -35,7 +38,7 @@ runs:
     uses: actions/cache@v3
     id: check-cache
     with:
-      key: build-${{ inputs.repo-name }}-${{ steps.get-hash.outputs.commit-hash }}
+      key: build-${{ inputs.repo-name }}-${{ steps.get-hash.outputs.commit-hash }}${{ inputs.cache-suffix }}
       path: ${{ runner.temp }}/build-${{ inputs.repo-name }}
 
   - name: Configure CMake

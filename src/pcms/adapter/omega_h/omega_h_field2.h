@@ -6,13 +6,14 @@
 #include <memory>
 
 #include "pcms/adapter/omega_h/omega_h_field_layout.h"
-#include "pcms/types.h"
+#include "pcms/utility/types.h"
 #include "pcms/field.h"
 #include "pcms/coordinate_system.h"
 #include "pcms/point_search.h"
 
 namespace pcms
 {
+
 class MeshFieldBackend
 {
 public:
@@ -60,7 +61,7 @@ private:
   const OmegaHFieldLayout& layout_;
   Omega_h::Mesh& mesh_;
   std::unique_ptr<MeshFieldBackend> mesh_field_;
-  GridPointSearch search_;
+  GridPointSearch2D search_;
   Kokkos::View<Real*, HostMemorySpace> dof_holder_data_;
 };
 

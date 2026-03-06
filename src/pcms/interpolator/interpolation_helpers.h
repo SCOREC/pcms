@@ -4,7 +4,8 @@
 
 #ifndef PCMS_INTERPOLATION_HELPERS_H
 #define PCMS_INTERPOLATION_HELPERS_H
-#include <pcms/arrays.h>
+#include "pcms/utility/arrays.h"
+#include "pcms/utility/memory_spaces.h"
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array.hpp>
 

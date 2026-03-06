@@ -8,7 +8,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/interpolator/interpolation_base.h>
-#include <pcms/print.h>
+#include <pcms/utility/print.h>
 
 #include <vector>
 #include <iostream>

@@ -2,7 +2,7 @@
 #define POINT_CLOUD_H_
 
 #include "pcms/field.h"
-#include "pcms/arrays.h"
+#include "pcms/utility/arrays.h"
 #include "point_cloud_layout.h"
 
 namespace pcms

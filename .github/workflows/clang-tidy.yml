@@ -179,7 +179,7 @@ jobs:
       with:
         repo-name: 'redev-openmpi'
         repo-path: 'SCOREC/redev'
-        repo-ref: '1452ec290dc6f8638019e342758325611e16ad77'
+        repo-ref: 'ac09848a5f9b89493e8b679c9080b9efe5538376'
         cache: true
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DMPIEXEC_EXECUTABLE=`which mpirun`

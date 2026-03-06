@@ -192,11 +192,10 @@ ctest --test-dir build-pcms --output-on-failure
    ```console
    $ mkdir /lore/$USER/spack
    $ cd /lore/$USER/spack
-   $ git clone -c feature.manyFiles=true -b releases/v1.0 https://github.com/spack/spack.git
+   $ git clone -c feature.manyFiles=true -b v1.0.4 https://github.com/spack/spack.git
    $ . spack/share/spack/setup-env.sh
    ```
-   We can also add the spack setup line into the `~/.bashrc` with `echo ". spack/share/spack/setup-env.sh" >> ~/.bashrc". This will load the spack setup script every time we start our terminal session.
-
+   We can also add the spack setup line into the `~/.bashrc` with `echo ". spack/share/spack/setup-env.sh" >> ~/.bashrc"`. This will load the spack setup script every time we start our terminal session. To make sure latest version of spack packages are available, we can run `spack repo add https://github.com/spack/spack-packages` after loading spack.
 2. Get PCMS spack repo
    The following commands will add the pcms recipe files to spack. They are not currently installed inthe upstream spack repository.
    ```console
@@ -208,7 +207,7 @@ ctest --test-dir build-pcms --output-on-failure
     ```console
     $ mkdir /lore/$USER/pcms-coupler
     $ cd /lore/$USER/pcms-coupler
-    $ git clone -b pcms-spack https://github.com/jacobmerson/pcms
+    $ git clone -b pcms-spack https://github.com/SCOREC/pcms.git
     $ cd pcms/spack
     $ spack env create -d env spack.yaml
     $ cd env
@@ -218,6 +217,22 @@ ctest --test-dir build-pcms --output-on-failure
     
 At this point hopefully, spack will now install all of the relavant dependencies and a baseline build of PCMS. The default environment has PCMS in develop mode. To modify and recompile PCMS you can modify the code and rerun `spack install`.
 
+4. Python API (optional)
+   If you want to use the python API, you can install the `pcms+python` package with spack instaed of `pcms`. This will install the python bindings for PCMS and all of the dependencies needed to use them.
+   ```console
+   $ spack remove pcms
+   $ spack add pcms+python
+   $ spack install
+   ```
+
+   Then add the binded python module to your `PYTHONPATH` environment variable. You can find the install prefix with `find $(spack location -i pcms) -name "*.so" | grep -i pcms`.
+   ```console
+    $ export PYTHONPATH=$<your-path-to-module>:$PYTHONPATH
+    ```
+
+   Test the python API with `python -c "import pcms; print(pcms.__version__)"`. You should see the version of PCMS printed out without any errors. 
+   
+   PS: If you need certain config options for the python API, you can specify them in the spack spec. For example, to build the python API with Exodus support, one compatible config is `pcms+python ^omega-h+trilinos ^trilinos@15.0.0:+exodus ^netcdf-c@4.8.1+mpi`. At this moment, omega-h spack package does not have the exodus support, so you need to manually add `args.append("-Omega_h_USE_SEACASExodus:BOOL=ON")` to the `package.py` file of omega-h in spack before installing pcms with spack.
 
 ### BUILD TODO
 - create a spack environment that's part of this project that can build the whole stack.

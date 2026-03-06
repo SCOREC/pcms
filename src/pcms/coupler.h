@@ -1,12 +1,15 @@
 #ifndef PCMS_COUPLER_H
 #define PCMS_COUPLER_H
-#include "pcms/common.h"
+#include "pcms/utility/common.h"
 #include "pcms/field_communicator.h"
 #include "pcms/adapter/omega_h/omega_h_field.h"
-#include "pcms/profile.h"
+#include "pcms/utility/profile.h"
 
 namespace pcms
 {
+
+// to avoid having any redev:: types in the user interface
+using ProcessType = redev::ProcessType;
 
 class CoupledField
 {

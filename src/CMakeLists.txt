@@ -104,8 +104,7 @@ target_sources(pcms_core PUBLIC
         FILE_SET adapters
         TYPE HEADERS
         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/pcms
-        FILES ${ADAPTER_HEADERS}
-)
+        FILES ${ADAPTER_HEADERS})
 install(
   TARGETS pcms_core
   EXPORT pcms_core-targets

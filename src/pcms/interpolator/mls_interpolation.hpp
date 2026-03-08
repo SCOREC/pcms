@@ -3,12 +3,12 @@
 
 #include <Omega_h_array.hpp>
 
+namespace pcms
+{
 // struct holds results neighbor search
 // defined in adj_search
 struct SupportResults;
 
-namespace pcms
-{
 /**
  * @brief Enumeration of supported radial basis functions (RBF) for MLS
  *interpolation.

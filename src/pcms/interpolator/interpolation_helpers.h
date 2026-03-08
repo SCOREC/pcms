@@ -9,6 +9,8 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array.hpp>
 
+namespace pcms {
+
 void copyHostScalarArrayView2HostWrite(
   pcms::Rank1View<double, pcms::HostMemorySpace> source,
   Omega_h::HostWrite<Omega_h::Real>& target);
@@ -33,5 +35,5 @@ void minmax(Omega_h::Read<Omega_h::LO> num_supports,
 void adapt_radii(unsigned min_req_supports, unsigned max_allowed_supports,
                  Omega_h::LO n_targets, Omega_h::Write<Omega_h::Real> radii2_l,
                  Omega_h::Write<Omega_h::LO> num_supports);
-
+}
 #endif // PCMS_INTERPOLATION_HELPERS_H

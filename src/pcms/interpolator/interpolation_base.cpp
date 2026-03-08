@@ -6,6 +6,7 @@
 #include "interpolation_helpers.h"
 
 #include <execution>
+namespace pcms {
 
 Omega_h::Reals getCentroids(Omega_h::Mesh& mesh)
 {
@@ -547,4 +548,5 @@ size_t MLSMeshInterpolation::getTargetSize() const
   } else {
     return target_mesh_.nverts();
   }
+}
 }

@@ -78,7 +78,7 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
   // --------------------- Initialize Interpolators -------------- //
   const int degas2_num_elems = degas2_mesh.nelems();
   const auto degas2_mesh_centroids_host =
-    Omega_h::HostRead(getCentroids(degas2_mesh));
+    Omega_h::HostRead(pcms::getCentroids(degas2_mesh));
   printf("[INFO] Degas2 Mesh loaded from %s with %d elements\n",
          degas2_mesh_filename.c_str(), degas2_num_elems);
   const auto degas2_mesh_centroids_view =
@@ -94,10 +94,10 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
       xgc_mesh_points.data(), xgc_mesh_points.size());
 
   auto xgc_to_degas2_interpolator =
-    MLSPointCloudInterpolation(xgc_mesh_points_view, degas2_mesh_centroids_view,
+    pcms::MLSPointCloudInterpolation(xgc_mesh_points_view, degas2_mesh_centroids_view,
                                2, 0.000001, 10, 1, true, 0.0, 50.0);
   auto degas2_to_xgc_interpolator =
-    MLSPointCloudInterpolation(degas2_mesh_centroids_view, xgc_mesh_points_view,
+    pcms::MLSPointCloudInterpolation(degas2_mesh_centroids_view, xgc_mesh_points_view,
                                2, 0.01, 10, 1, true, 1e-3, 50.0);
   printf("[INFO] Interpolators initialized.\n");
 

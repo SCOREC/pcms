@@ -132,9 +132,9 @@ TEST_CASE("Test MLSMeshInterpolation")
                     "Started --------------------\n");
     pcms::printInfo("Mesh based search...\n");
     auto mls_single =
-      MLSMeshInterpolation(source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
+      pcms::MLSMeshInterpolation(source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
 
-    auto source_points_reals = getCentroids(source_mesh);
+    auto source_points_reals = pcms::getCentroids(source_mesh);
     auto source_points_host =
       Omega_h::HostRead<Omega_h::Real>(source_points_reals);
     auto source_points_host_write =
@@ -157,7 +157,7 @@ TEST_CASE("Test MLSMeshInterpolation")
       target_points_host_write.data(), target_points_host_write.size());
     REQUIRE(source_mesh.dim() == 2);
     pcms::printInfo("Point cloud based search...\n");
-    auto point_mls = MLSPointCloudInterpolation(
+    auto point_mls = pcms::MLSPointCloudInterpolation(
       source_points_view, target_points_view, 2, 0.12, 15, 3, true, 0.0, 5.0);
 
     Omega_h::Write<Omega_h::Real> sinxcosy_centroid(source_mesh.nfaces(),
@@ -280,7 +280,7 @@ TEST_CASE("Test MLSMeshInterpolation")
     // translate_mesh(&target_mesh, Omega_h::Vector<2>{(1.0 - 0.999) / 2.0,
     //                                                (1.0 - 0.999) / 2.0});
 
-    auto mls_double = MLSMeshInterpolation(source_mesh, target_mesh, 0.12, 15,
+    auto mls_double = pcms::MLSMeshInterpolation(source_mesh, target_mesh, 0.12, 15,
                                            3, true, 0.0, 5.0);
 
     Omega_h::HostWrite<double> source_data_host_write(source_sinxcosy_node);

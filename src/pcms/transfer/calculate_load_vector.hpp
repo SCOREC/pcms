@@ -11,31 +11,9 @@
 
 #ifndef PCMS_INTERPOLATOR_CALCULATE_LOAD_VECTOR_HPP
 #define PCMS_INTERPOLATOR_CALCULATE_LOAD_VECTOR_HPP
-#include <Omega_h_adapt.hpp>
-#include <Omega_h_array_ops.hpp>
-#include <Omega_h_atomics.hpp> //Omega_h::atomic_fetch_add
-#include <Omega_h_build.hpp>
-#include <Omega_h_class.hpp>
-#include <Omega_h_compare.hpp>
-#include <Omega_h_dbg.hpp>
-#include <Omega_h_file.hpp> //Omega_h::binary
-#include <Omega_h_for.hpp>
-#include <Omega_h_recover.hpp> //project_by_fit
-#include <Omega_h_shape.hpp>
-#include <Omega_h_timer.hpp>
-#include <iomanip> //precision
-#include <iostream>
-#include <petscvec_kokkos.hpp>
-#include <sstream> //ostringstream
-
+#include <Omega_h_mesh.hpp>
 #include <pcms/transfer/load_vector_integrator.hpp>
-#include <pcms/utility/memory_spaces.h>
-#include <MeshField.hpp>
-
 #include <petscmat.h>
-
-// detect floating point exceptions
-#include <fenv.h>
 
 /**
  * @brief Assembles the global load vector.
@@ -71,55 +49,10 @@
 
 namespace pcms
 {
-
-inline PetscErrorCode calculateLoadVector(
+// FIXME use PCMS error handling rather than returning a PETSC error code
+PetscErrorCode calculateLoadVector(
   Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
   const IntersectionResults& intersection, const Omega_h::Reals& source_values,
-  Vec* loadVec_out)
-{
-
-  PetscFunctionBeginUser;
-  const int numNodesPerTri = 3;
-
-  const int nnz = target_mesh.nelems() * numNodesPerTri;
-
-  // Allocate COO indices and values
-  PetscInt* coo_i;
-  PetscScalar* coo_vals;
-  PetscCall(PetscMalloc2(nnz, &coo_i, nnz, &coo_vals));
-
-  // Fill COO global indices and values
-  auto elmVerts = Omega_h::HostRead(target_mesh.ask_elem_verts());
-  auto elmLoadVector =
-    buildLoadVector(target_mesh, source_mesh, intersection, source_values);
-
-  auto hostElmLoadVector = Kokkos::create_mirror_view(elmLoadVector);
-  Kokkos::deep_copy(hostElmLoadVector, elmLoadVector);
-
-  PetscInt idx = 0;
-  for (PetscInt e = 0; e < target_mesh.nelems(); ++e) {
-    for (PetscInt vi = 0; vi < numNodesPerTri; ++vi) {
-      coo_i[idx] = elmVerts[numNodesPerTri * e + vi];
-      coo_vals[idx] = hostElmLoadVector(numNodesPerTri * e + vi);
-      ++idx;
-    }
-  }
-
-  // create vector with preallocated COO structure
-  Vec vec;
-  PetscCall(VecCreate(PETSC_COMM_WORLD, &vec));
-  PetscCall(VecSetSizes(vec, target_mesh.nverts(), PETSC_DECIDE));
-  PetscCall(VecSetFromOptions(vec));
-  PetscCall(VecSetPreallocationCOO(vec, nnz, coo_i));
-  PetscCall(VecSetValuesCOO(vec, coo_vals, ADD_VALUES));
-  PetscCall(PetscFree2(coo_i, coo_vals));
-
-  if (target_mesh.nelems() < 10) {
-    PetscCall(VecView(vec, PETSC_VIEWER_STDOUT_WORLD));
-  }
-
-  *loadVec_out = vec;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
+  Vec* loadVec_out);
 } // namespace pcms
 #endif

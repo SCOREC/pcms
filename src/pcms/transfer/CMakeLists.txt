@@ -21,6 +21,12 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     mesh_intersection.hpp)
 
 set(PCMS_FIELD_TRANSFER_SOURCES
+    adj_search.cpp
+    calculate_load_vector.cpp
+    calculate_mass_matrix.cpp
+    conservative_projection_solver.cpp
+    load_vector_integrator.cpp
+    mesh_intersection.cpp
     mls_interpolation.cpp
     interpolation_base.cpp)
 

@@ -39,6 +39,9 @@
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
+namespace pcms
+{
+
 /**
  * @brief Sets a constant value for a field at all mesh vertices
  *
@@ -113,8 +116,6 @@ static PetscErrorCode CreateMatrix(Omega_h::Mesh& mesh, Mat* A)
  * @return PetscErrorCode PETSc error code (PETSC_SUCCESS if successful)
  */
 
-namespace pcms
-{
 inline PetscErrorCode calculateMassMatrix(Omega_h::Mesh& mesh, Mat* mass_out)
 {
   PetscFunctionBeginUser;

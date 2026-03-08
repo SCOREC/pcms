@@ -32,6 +32,9 @@
 #include <pcms/transfer/calculate_load_vector.hpp>
 #include <pcms/transfer/calculate_mass_matrix.hpp>
 
+namespace pcms
+{
+
 /**
  * @brief Solves a linear system Ax = b using PETSc's KSP solvers
  *
@@ -124,8 +127,6 @@ static Vec solveLinearSystem(Mat A, Vec b)
  *
  */
 
-namespace pcms
-{
 Omega_h::Reals solveGalerkinProjection(Omega_h::Mesh& target_mesh,
                                        Omega_h::Mesh& source_mesh,
                                        const IntersectionResults& intersection,

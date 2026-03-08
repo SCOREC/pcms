@@ -254,8 +254,7 @@ jobs:
     - name: Run Python API tests
       if: matrix.python_api == 'ON'
       run: |
-        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib:$PYTHONPATH
-        export LD_LIBRARY_PATH=${{ runner.temp }}/build-pcms/install/lib:$LD_LIBRARY_PATH
+        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib/python3.12/site-packages:$PYTHONPATH
         cd ${{ github.workspace }}/src/pcms/pythonapi
         python3 test_file_io.py
         python3 test_omega_h_field.py

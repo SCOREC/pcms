@@ -145,6 +145,15 @@ struct ScanSupportIdxFunctor
   }
 };
 
+KOKKOS_INLINE_FUNCTION
+Omega_h::Vector<3> load_point(const Omega_h::Reals& coords, int id, int dim)
+{
+  Omega_h::Vector<3> p{0, 0, 0};
+  for (int d = 0; d < dim; ++d)
+    p[d] = coords[id * dim + d];
+  return p;
+}
+
 struct FillSupportIdxFunctor
 {
   const int dim;
@@ -175,19 +184,13 @@ struct FillSupportIdxFunctor
   void operator()(const int& target_id) const
   {
     auto target_radius2 = radii2_l[target_id];
-    auto target_coord = Omega_h::Vector<3>{0, 0, 0};
-    for (int d = 0; d < dim; ++d) {
-      target_coord[d] = target_coords_l[target_id * dim + d];
-    }
+    auto target_coord = load_point(target_coords_l, target_id, dim);
 
     auto start_ptr = support_ptr_l[target_id];
     auto end_ptr = support_ptr_l[target_id + 1];
 
     for (int source_id = 0; source_id < n_sources; source_id++) {
-      auto source_coord = Omega_h::Vector<3>{0, 0, 0};
-      for (int d = 0; d < dim; ++d) {
-        source_coord[d] = source_coords_l[source_id * dim + d];
-      }
+      auto source_coord = load_point(source_coords_l, source_id, dim);
       auto dist2 =
         pcms::distance_squared(&source_coord[0], &target_coord[0], dim);
       if (dist2 <= target_radius2) {
@@ -263,18 +266,12 @@ struct NSquareSearchFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(const int& target_id) const
   {
-    auto target_coord = Omega_h::Vector<3>{0, 0, 0};
-    for (int d = 0; d < dim; ++d) {
-      target_coord[d] = target_coords_l[target_id * dim + d];
-    }
+    auto target_coord = load_point(target_coords_l, target_id, dim);
     auto target_radius2 = radii2_l[target_id];
 
     // TODO: parallel with kokkos parallel_for
     for (int i = 0; i < n_sources; i++) {
-      auto source_coord = Omega_h::Vector<3>{0, 0, 0};
-      for (int d = 0; d < dim; ++d) {
-        source_coord[d] = source_coords_l[i * dim + d];
-      }
+      auto source_coord = load_point(source_coords_l, i, dim);
       auto dist2 =
         pcms::distance_squared(&source_coord[0], &target_coord[0], dim);
       if (dist2 <= target_radius2) {

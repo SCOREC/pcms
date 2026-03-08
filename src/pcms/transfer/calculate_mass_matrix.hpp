@@ -29,15 +29,13 @@
 #include <sstream> //ostringstream
 
 #include <pcms/transfer/mass_matrix_integrator.hpp>
+#include <pcms/utility/memory_spaces.h>
 #include <MeshField.hpp>
 
 #include <petscmat.h>
 
 // detect floating point exceptions
 #include <fenv.h>
-
-using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 namespace pcms
 {
@@ -59,7 +57,7 @@ void setFieldAtVertices(Omega_h::Mesh& mesh, ShapeField field,
   {
     field(0, 0, vtx, MeshField::Vertex) = val;
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()},
+  MeshField::parallel_for(DefaultExecutionSpace(), {0}, {mesh.nverts()},
                           setFieldAtVertices, "setFieldAtVertices");
 }
 
@@ -120,7 +118,8 @@ inline PetscErrorCode calculateMassMatrix(Omega_h::Mesh& mesh, Mat* mass_out)
 {
   PetscFunctionBeginUser;
 
-  MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
+  MeshField::OmegahMeshField<DefaultExecutionSpace, MeshField::KokkosController>
+    omf(
     mesh);
 
   const auto ShapeOrder = 1;

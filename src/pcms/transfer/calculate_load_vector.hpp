@@ -29,15 +29,13 @@
 #include <sstream> //ostringstream
 
 #include <pcms/transfer/load_vector_integrator.hpp>
+#include <pcms/utility/memory_spaces.h>
 #include <MeshField.hpp>
 
 #include <petscmat.h>
 
 // detect floating point exceptions
 #include <fenv.h>
-
-using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 /**
  * @brief Assembles the global load vector.

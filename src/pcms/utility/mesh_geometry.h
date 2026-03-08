@@ -8,6 +8,16 @@
 namespace pcms
 {
 
+KOKKOS_INLINE_FUNCTION
+Omega_h::Real distance_squared(const Omega_h::Real* p1,
+                               const Omega_h::Real* p2, int dim)
+{
+  Omega_h::Real dx = p1[0] - p2[0];
+  Omega_h::Real dy = p1[1] - p2[1];
+  Omega_h::Real dz = (dim == 3) ? (p1[2] - p2[2]) : 0.0;
+  return dx * dx + dy * dy + dz * dz;
+}
+
 inline Omega_h::Reals get_entity_centroids(Omega_h::Mesh& mesh,
                                            Omega_h::Int entity_dim)
 {

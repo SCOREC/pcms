@@ -75,13 +75,6 @@ MLSMeshInterpolation::MLSMeshInterpolation(
   find_supports(min_req_supports_, 3 * min_req_supports_);
 }
 
-KOKKOS_INLINE_FUNCTION
-double pointDistanceSquared(const double x1, const double y1, const double z1,
-                            const double x2, const double y2, const double z2)
-{
-  return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2);
-}
-
 // replace with Kokkos::minmax_element when out of experimental
 // https://kokkos.org/kokkos-core-wiki/API/algorithms/std-algorithms/all/StdMinMaxElement.html
 void minmax(Omega_h::Read<Omega_h::LO> num_supports,
@@ -196,8 +189,7 @@ struct FillSupportIdxFunctor
         source_coord[d] = source_coords_l[source_id * dim + d];
       }
       auto dist2 =
-        pointDistanceSquared(source_coord[0], source_coord[1], source_coord[2],
-                             target_coord[0], target_coord[1], target_coord[2]);
+        pcms::distance_squared(&source_coord[0], &target_coord[0], dim);
       if (dist2 <= target_radius2) {
         supports_idx_l[start_ptr] = source_id;
         start_ptr++;
@@ -284,8 +276,7 @@ struct NSquareSearchFunctor
         source_coord[d] = source_coords_l[i * dim + d];
       }
       auto dist2 =
-        pointDistanceSquared(source_coord[0], source_coord[1], source_coord[2],
-                             target_coord[0], target_coord[1], target_coord[2]);
+        pcms::distance_squared(&source_coord[0], &target_coord[0], dim);
       if (dist2 <= target_radius2) {
         num_supports_l[target_id]++; // only one thread is updating
       }

@@ -475,8 +475,8 @@ void MLSPointCloudInterpolation::eval(
 
   // TODO: make the basis function a template or pass it as a parameter
   auto target_field_write = mls_interpolation(
-    Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_, 2,
-    degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN, lambda_, 1e-6,
+    Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_,
+    dim_, degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN, lambda_, 1e-6,
     decay_factor_);
 
   target_field_ = Omega_h::HostWrite<Omega_h::Real>(target_field_write);

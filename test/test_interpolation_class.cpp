@@ -309,6 +309,51 @@ TEST_CASE("Test MLSMeshInterpolation")
   }
 }
 
+TEST_CASE("MLSPointCloudInterpolation honors provided dimension in eval")
+{
+  auto source_points = Omega_h::HostWrite<Omega_h::Real>(27 * 3);
+  int idx = 0;
+  for (int z = 0; z < 3; ++z) {
+    for (int y = 0; y < 3; ++y) {
+      for (int x = 0; x < 3; ++x) {
+        source_points[idx++] = x;
+        source_points[idx++] = y;
+        source_points[idx++] = z;
+      }
+    }
+  }
+  auto target_points = source_points;
+
+  auto source_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+    source_points.data(), source_points.size());
+  auto target_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+    target_points.data(), target_points.size());
+
+  // Degree-1 polynomial that depends on z to catch accidental 2D behavior.
+  auto source_values = Omega_h::HostWrite<Omega_h::Real>(27);
+  for (int i = 0; i < 27; ++i) {
+    const auto x = source_points[3 * i + 0];
+    const auto y = source_points[3 * i + 1];
+    const auto z = source_points[3 * i + 2];
+    source_values[i] = 1.0 + 2.0 * x - 3.0 * y + 5.0 * z;
+  }
+
+  auto output_values = Omega_h::HostWrite<Omega_h::Real>(27, "output_values");
+  auto source_values_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+    source_values.data(), source_values.size());
+  auto output_values_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+    output_values.data(), output_values.size());
+
+  auto mls = pcms::MLSPointCloudInterpolation(
+    source_points_view, target_points_view, 3, 2.5, 10, 1, true, 0.0, 5.0);
+
+  REQUIRE_NOTHROW(mls.eval(source_values_view, output_values_view));
+  for (int i = 0; i < output_values.size(); ++i) {
+    CHECK_THAT(output_values[i],
+               Catch::Matchers::WithinAbs(source_values[i], 1e-6));
+  }
+}
+
 bool isClose(Omega_h::HostWrite<Omega_h::Real>& array1,
              Omega_h::HostWrite<Omega_h::Real>& array2, double percent_diff)
 {

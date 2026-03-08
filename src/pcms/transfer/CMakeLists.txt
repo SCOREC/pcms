@@ -39,14 +39,9 @@ target_link_libraries(pcms_transfer PUBLIC
     Omega_h::omega_h
     PRIVATE Kokkos::kokkoskernels)
 
-if (PCMS_ENABLE_MESHFIELDS)
-    target_link_libraries(pcms_transfer PUBLIC meshfields::meshfields)
-endif()
+target_link_libraries(pcms_transfer PUBLIC meshfields::meshfields)
 
-if (PCMS_ENABLE_PETSC)
-    target_include_directories(pcms_transfer PUBLIC ${PCMS_PETSC_INCLUDES})
-    target_link_libraries(pcms_transfer PUBLIC ${PCMS_PETSC_LIBRARIES})
-endif()
+target_link_libraries(pcms_transfer PUBLIC PkgConfig::PETSC)
 
 target_include_directories(pcms_transfer INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

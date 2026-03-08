@@ -5,10 +5,14 @@ if [[ ($# == 0) || ("${1}" == "-h" || ${1} == "--help") ]]; then
   exit 1
 fi
 runCmd=${1}
-numProcsFlag=${2}
-valgrindCmd=${3}
-valgrindOptions=${4}
+preFlags=${2}
+numProcsFlag=${3}
+valgrindCmd=${4}
+valgrindOptions=${5}
 valgrindLogging="--log-file=%p"
+if [[ ${preFlags} == "none" ]]; then
+  preFlags=""
+fi
 #clear the valgrind args if they are 'none'
 if [[ ${valgrindCmd} == "none" ]]; then
   valgrindCmd=""
@@ -18,7 +22,7 @@ fi
 if [[ (${valgrindOptions} == "none" && ${valgrindCmd} != "none") ]]; then
   valgrindOptions=""
 fi
-shift 4
+shift 5
 
 
 declare -a PIDS
@@ -33,7 +37,7 @@ run() {
   if [[ -z ${valgrindLogging} ]]; then
     vgLog=""
   fi
-  ${runCmd} ${numProcsFlag} ${procs} ${valgrindCmd} ${vgLog} ${valgrindOptions} ${exe} ${argsArray[@]} &> ${name}.log &
+  ${runCmd} ${preFlags} ${numProcsFlag} ${procs} ${valgrindCmd} ${vgLog} ${valgrindOptions} ${exe} ${argsArray[@]} &> ${name}.log &
   PIDS+=($!)
   LOGS+=(${name}.log)
 }

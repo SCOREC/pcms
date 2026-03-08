@@ -3,8 +3,8 @@
 #include <redev.h>
 #include "pcms/field.h"
 #include <numeric>
-#include "pcms/inclusive_scan.h"
-#include "pcms/profile.h"
+#include "pcms/utility/inclusive_scan.h"
+#include "pcms/utility/profile.h"
 #include "pcms/partition.h"
 
 namespace pcms

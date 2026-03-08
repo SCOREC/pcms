@@ -3,6 +3,8 @@
 
 #include <Kokkos_Core.hpp>
 
+namespace pcms{
+
 using RealMatView = Kokkos::View<double**, Kokkos::LayoutRight>;
 using IntMatView = Kokkos::View<int**, Kokkos::LayoutRight>;
 using RealVecView = Kokkos::View<double*, Kokkos::LayoutRight>;
@@ -24,7 +26,7 @@ int calculateIndex(const IntVecView& dimensions, const int* indices)
   return index;
 }
 
-int calculateTotalSize(const HostIntVecView& dimensions)
+inline int calculateTotalSize(const HostIntVecView& dimensions)
 {
   int dim = dimensions.extent(0);
   int size = 1;
@@ -32,5 +34,6 @@ int calculateTotalSize(const HostIntVecView& dimensions)
     size *= dimensions(i);
   }
   return size;
+}
 }
 #endif

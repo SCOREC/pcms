@@ -1,6 +1,6 @@
 #ifndef PCMS_COUPLING_BOUNDING_BOX_H
 #define PCMS_COUPLING_BOUNDING_BOX_H
-#include "pcms/types.h"
+#include "pcms/utility/types.h"
 #include <Kokkos_Core.hpp>
 #include <array>
 namespace pcms

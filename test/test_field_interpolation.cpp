@@ -23,7 +23,10 @@ TEST_CASE("interpolate linear 2d omega_h_field")
     pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
   const auto nverts = mesh.nents(0);
   auto mesh_coords = mesh.coords();
-  auto f = [](Real x, Real y) { return -0.3 * x + 0.5 * y; };
+  auto f = KOKKOS_LAMBDA(Real x, Real y)
+  {
+    return -0.3 * x + 0.5 * y;
+  };
   Omega_h::Write<Real> test_f(nverts);
   Omega_h::parallel_for(
     nverts, OMEGA_H_LAMBDA(int i) {
@@ -31,9 +34,10 @@ TEST_CASE("interpolate linear 2d omega_h_field")
       Real y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
+  Omega_h::HostWrite<Real> test_f_host(test_f);
   auto field = layout->CreateField();
   auto interpolated = layout->CreateField();
-  field->SetDOFHolderData(pcms::make_const_array_view(test_f));
+  field->SetDOFHolderData(pcms::make_const_array_view(test_f_host));
 
   pcms::interpolate_field2(*field, *interpolated);
   auto interpolated_dof = interpolated->GetDOFHolderData();
@@ -59,7 +63,10 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
   const auto nedges = mesh.nents(1);
   auto mesh_coords = mesh.coords();
   auto edge_verts = mesh.ask_verts_of(1);
-  auto f = [](Real x, Real y) { return -0.3 * x + 0.5 * y; };
+  auto f = KOKKOS_LAMBDA(Real x, Real y)
+  {
+    return -0.3 * x + 0.5 * y;
+  };
   Omega_h::Write<Real> test_f(nverts + nedges);
   Omega_h::parallel_for(
     nverts, OMEGA_H_LAMBDA(int i) {
@@ -79,9 +86,10 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
       test_f[nverts + i] = f(cx, cy);
     });
 
+  Omega_h::HostWrite<Real> test_f_host(test_f);
   auto field = layout->CreateField();
   auto interpolated = layout->CreateField();
-  field->SetDOFHolderData(pcms::make_const_array_view(test_f));
+  field->SetDOFHolderData(pcms::make_const_array_view(test_f_host));
 
   // interpolate the field from one mesh to another mesh with the same
   // coordinates

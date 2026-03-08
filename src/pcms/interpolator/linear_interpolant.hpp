@@ -6,6 +6,8 @@
 #include "multidimarray.hpp"
 #define MAX_DIM 10
 
+namespace pcms {
+
 KOKKOS_INLINE_FUNCTION
 void find_indices(const IntVecView& num_bins, const RealVecView& range,
                   const RealVecView& point, int* indices)
@@ -144,8 +146,9 @@ struct Result
   RealMatView parametric_coords;
 };
 
-Result parametric_indices(const RealMatView& points, const IntVecView& num_bins,
-                          const RealVecView& range)
+inline Result parametric_indices(const RealMatView& points,
+                                 const IntVecView& num_bins,
+                                 const RealVecView& range)
 {
 
   int dim = num_bins.extent(0);
@@ -181,6 +184,7 @@ double test_function(double* coord)
     fun_value += coord[i];
   }
   return fun_value;
+}
 }
 
 #endif

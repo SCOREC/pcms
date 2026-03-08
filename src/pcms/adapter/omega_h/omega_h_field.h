@@ -1,21 +1,22 @@
 #ifndef PCMS_COUPLING_OMEGA_H_FIELD_H
 #define PCMS_COUPLING_OMEGA_H_FIELD_H
-#include "pcms/types.h"
+#include "pcms/utility/types.h"
 #include <Omega_h_mesh.hpp>
 #include "pcms/field.h"
 #include "pcms/coordinate_systems.h"
 #include <Kokkos_Core.hpp>
 #include <array>
-#include <pcms/assert.h>
+#include <pcms/utility/assert.h>
 #include <Omega_h_for.hpp>
-#include "pcms/arrays.h"
-#include "pcms/array_mask.h"
-#include "pcms/point_search.h"
+#include "pcms/utility/arrays.h"
+#include "pcms/utility/array_mask.h"
+#include "pcms/localization/point_search.h"
 #include <redev_variant_tools.h>
 #include <type_traits>
 #include "pcms/transfer_field.h"
-#include "pcms/memory_spaces.h"
-#include "pcms/profile.h"
+#include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/mesh_geometry.h"
+#include "pcms/utility/profile.h"
 #include "pcms/partition.h"
 #include <optional>
 
@@ -154,13 +155,13 @@ public:
   void ConstructSearch(int nx, int ny)
   {
     PCMS_FUNCTION_TIMER;
-    search_ = GridPointSearch(mesh_, nx, ny);
+    search_ = std::make_unique<GridPointSearch2D>(mesh_, nx, ny);
   }
   // pass through to search function
   [[nodiscard]] auto Search(Kokkos::View<Real* [2]> points) const
   {
     PCMS_FUNCTION_TIMER;
-    PCMS_ALWAYS_ASSERT(search_.has_value() &&
+    PCMS_ALWAYS_ASSERT(search_ != nullptr &&
                        "search data structure must be constructed before use");
     return (*search_)(points);
   }
@@ -220,9 +221,8 @@ public:
 private:
   std::string name_;
   Omega_h::Mesh& mesh_;
-  // TODO make this a pointer and introduce base class to Search for alternative
-  // search methods
-  std::optional<GridPointSearch> search_;
+  // TODO: introduce base class to Search for alternative search methods
+  std::unique_ptr<PointLocalizationSearch2D> search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;
   LO size_;
@@ -440,35 +440,7 @@ inline Omega_h::Reals get_ent_centroids(Omega_h::Mesh& mesh, int entity_type)
 {
   PCMS_FUNCTION_TIMER;
   PCMS_ALWAYS_ASSERT(entity_type >= 0 && entity_type <= 3);
-  if (entity_type == 0) {
-    return mesh.coords();
-  } else {
-    auto coords = mesh.coords();
-    int dim = mesh.dim();
-    auto ent2verts = mesh.ask_down(entity_type, Omega_h::VERT).ab2b;
-    auto nents = mesh.nents(entity_type);
-    Omega_h::Write<Real> ent_coords(nents * dim);
-
-    auto calc_coords = OMEGA_H_LAMBDA(LO ent)
-    {
-      if (dim == 2) {
-        auto verts = Omega_h::gather_verts<3>(ent2verts, ent);
-        auto ent_vert_coords = Omega_h::gather_vectors<3, 2>(coords, verts);
-        auto ent_centroid = Omega_h::average(ent_vert_coords);
-        ent_coords[ent * dim] = ent_centroid[0];
-        ent_coords[ent * dim + 1] = ent_centroid[1];
-      } else if (dim == 3) {
-        auto verts = Omega_h::gather_verts<4>(ent2verts, ent);
-        auto ent_vert_coords = Omega_h::gather_vectors<4, 3>(coords, verts);
-        auto ent_centroid = Omega_h::average(ent_vert_coords);
-        ent_coords[ent * dim] = ent_centroid[0];
-        ent_coords[ent * dim + 1] = ent_centroid[1];
-        ent_coords[ent * dim + 2] = ent_centroid[2];
-      }
-    };
-    Omega_h::parallel_for(nents, calc_coords);
-    return Omega_h::Reals((ent_coords));
-  }
+  return pcms::get_entity_centroids(mesh, static_cast<Omega_h::Int>(entity_type));
 }
 } // namespace Omega_h
 

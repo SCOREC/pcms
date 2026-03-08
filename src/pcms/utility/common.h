@@ -1,12 +1,13 @@
 #ifndef PCMS_COUPLING_COMMON_H
 #define PCMS_COUPLING_COMMON_H
-#include <redev.h>
-#include "pcms/transfer_field.h"
-#include "pcms/assert.h"
+#include "pcms/utility/assert.h"
 #include <map>
+#include <string>
+#include <vector>
+#include <algorithm>
+
 namespace pcms
 {
-using ProcessType = redev::ProcessType;
 
 namespace detail
 {

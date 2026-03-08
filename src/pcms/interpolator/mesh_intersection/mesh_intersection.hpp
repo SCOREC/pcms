@@ -1,7 +1,7 @@
 #ifndef PCMS_INTERPOLATOR_MESH_INTERSECTION_HPP
 #define PCMS_INTERPOLATOR_MESH_INTERSECTION_HPP
 
-#include <pcms/point_search.h>
+#include <pcms/localization/point_search.h>
 #include <pcms/interpolator/queue_visited.hpp>
 #include <Omega_h_fail.hpp>
 #include <Omega_h_int_scan.hpp>
@@ -10,6 +10,7 @@
 #include <Omega_h_for.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
+namespace pcms {
 constexpr static double abs_tol = 1e-18; /// abs tolerance
 constexpr static double rel_tol = 1e-12; /// rel tolerance
 
@@ -133,7 +134,7 @@ void FindIntersections::adjBasedIntersectSearch(
 
   auto centroids = compute_centroid(target_mesh_);
 
-  pcms::GridPointSearch search_cell(source_mesh_, 20, 20);
+  pcms::GridPointSearch2D search_cell(source_mesh_, 20, 20);
   auto results = search_cell(centroids);
 
   auto nfaces_target = target_mesh_.nfaces();
@@ -143,7 +144,7 @@ void FindIntersections::adjBasedIntersectSearch(
       Queue queue;
       Track visited;
 
-      auto current_cell_id = results(id).tri_id;
+      auto current_cell_id = results(id).element_id;
       auto current_tgt_elm_area = tgt_elem_areas[id];
 
       OMEGA_H_CHECK_PRINTF(current_cell_id >= 0,
@@ -268,6 +269,7 @@ IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
                                     tgt2src_indices, false);
   return {.tgt2src_offsets = tgt2src_offsets,
           .tgt2src_indices = Omega_h::read(tgt2src_indices)};
+}
 }
 
 #endif

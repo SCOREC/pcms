@@ -4,10 +4,10 @@
 #include "field_layout.h"
 #include "pcms/field_layout.h"
 #include "pcms/field.h"
-#include "pcms/profile.h"
-#include "pcms/assert.h"
-#include "pcms/inclusive_scan.h"
-#include "pcms/arrays.h"
+#include "pcms/utility/profile.h"
+#include "pcms/utility/assert.h"
+#include "pcms/utility/inclusive_scan.h"
+#include "pcms/utility/arrays.h"
 #include <redev.h>
 
 namespace pcms
@@ -118,7 +118,6 @@ redev::LOs ConstructPermutation(GlobalIDView<HostMemorySpace> local_gids,
       break;
   }
 
-  LO local_index = 0;
   redev::LOs permutation;
   permutation.reserve(local_gids.size());
   for (int e = 0; e < ent_offsets.size() - 1; ++e) {

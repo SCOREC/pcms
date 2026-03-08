@@ -48,7 +48,7 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
 
   int num_tgt_elems = target_mesh.nelems();
 
-  auto intersection = intersectTargets(source_mesh, target_mesh);
+  auto intersection = pcms::intersectTargets(source_mesh, target_mesh);
   SECTION("check localization routine for coincident cases")
   {
     Kokkos::View<Omega_h::Real* [2]> points("test_points", 3);
@@ -61,7 +61,7 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
     points_h(2, 1) = 1.0;
 
     Kokkos::deep_copy(points, points_h);
-    pcms::GridPointSearch search_cell(target_mesh, 20, 20);
+    pcms::GridPointSearch2D search_cell(target_mesh, 20, 20);
 
     auto d_results = search_cell(points);
 
@@ -73,11 +73,11 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
 
     for (int i = 0; i < h_results.extent(0); ++i) {
       auto r = h_results(i);
-      std::cout << "tri_id = " << r.tri_id << "\n";
+      std::cout << "tri_id = " << r.element_id << "\n";
       std::cout << "dim = " << static_cast<int>(r.dimensionality) << "\n";
       // std::cout << "parametric = " << r.parametric_coords << "\n";
-      INFO("tri_id : " << r.tri_id);
-      REQUIRE(r.tri_id >= 0);
+      INFO("tri_id : " << r.element_id);
+      REQUIRE(r.element_id >= 0);
     }
   }
 

@@ -46,8 +46,8 @@ void test(Omega_h::Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
 
   };
 
-  SupportResults support =
-    searchNeighbors(mesh, cutoffDistance, min_num_supports);
+  pcms::SupportResults support =
+    pcms::searchNeighbors(mesh, cutoffDistance, min_num_supports);
 
   for (const auto& rbf : rbf_types) {
     auto approx_target_values =

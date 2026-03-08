@@ -21,7 +21,10 @@ TEST_CASE("evaluate linear 2d omega_h_field")
     pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
   const auto nverts = mesh.nents(0);
   auto mesh_coords = mesh.coords();
-  auto f = [](Real x, Real y) { return std::sin(20 * x * y) / 2 + 0.5; };
+  auto f = KOKKOS_LAMBDA(Real x, Real y)
+  {
+    return std::sin(20 * x * y) / 2 + 0.5;
+  };
   Omega_h::Write<Real> test_f(nverts);
   Omega_h::parallel_for(
     nverts, OMEGA_H_LAMBDA(int i) {
@@ -29,8 +32,9 @@ TEST_CASE("evaluate linear 2d omega_h_field")
       Real y = mesh_coords[2 * i + 1];
       test_f[i] = f(x, y);
     });
+  Omega_h::HostWrite<Real> test_f_host(test_f);
   auto field = layout->CreateField();
-  field->SetDOFHolderData(pcms::make_const_array_view(test_f));
+  field->SetDOFHolderData(pcms::make_const_array_view(test_f_host));
 
   std::vector<Real> coords = {
     0.7681, 0.886,  0.5337, 0.5205,   0.8088, 0.1513, 0.13,
@@ -76,7 +80,10 @@ TEST_CASE("evaluate quadratic 2d omega_h_field")
   const auto nedges = mesh.nents(1);
   auto mesh_coords = mesh.coords();
   auto edge_verts = mesh.ask_verts_of(1);
-  auto f = [](Real x, Real y) { return std::sin(20 * x * y) / 2 + 0.5; };
+  auto f = KOKKOS_LAMBDA(Real x, Real y)
+  {
+    return std::sin(20 * x * y) / 2 + 0.5;
+  };
   Omega_h::Write<Real> test_f(nverts + nedges);
   Omega_h::parallel_for(
     nverts, OMEGA_H_LAMBDA(int i) {
@@ -96,8 +103,9 @@ TEST_CASE("evaluate quadratic 2d omega_h_field")
       test_f[nverts + i] = f(cx, cy);
     });
 
+  Omega_h::HostWrite<Real> test_f_host(test_f);
   auto field = layout->CreateField();
-  field->SetDOFHolderData(pcms::make_const_array_view(test_f));
+  field->SetDOFHolderData(pcms::make_const_array_view(test_f_host));
 
   std::vector<Real> coords = {
     0.7681, 0.886,  0.5337, 0.5205,   0.8088, 0.1513, 0.13,

@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <pcms/bounding_box.h>
+#include <pcms/utility/bounding_box.h>
 
 using pcms::AABBox;
 using pcms::intersects;

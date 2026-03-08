@@ -12,10 +12,11 @@
 #include <KokkosBlas.hpp>
 #include <KokkosBlas1_team_dot.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
+#include <pcms/interpolator/mls_interpolation.hpp>
 #include <pcms/interpolator/pcms_interpolator_aliases.hpp>
 #include <pcms/interpolator/adj_search.hpp>
-#include <pcms/assert.h>
-#include <pcms/profile.h>
+#include <pcms/utility/assert.h>
+#include <pcms/utility/profile.h>
 #include <pcms/interpolator/pcms_interpolator_view_utils.hpp>
 #include <pcms/interpolator/pcms_interpolator_logger.hpp>
 

@@ -10,6 +10,8 @@
 #define MAX_SIZE_QUEUE 500
 #define MAX_SIZE_TRACK 800
 
+namespace pcms {
+
 class Queue
 {
 private:
@@ -133,5 +135,5 @@ int Track::size()
 {
   return count;
 }
-
+}
 #endif

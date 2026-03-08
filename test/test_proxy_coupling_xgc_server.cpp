@@ -1,6 +1,6 @@
 #include <iostream>
 #include <pcms.h>
-#include <pcms/types.h>
+#include <pcms/utility/types.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
 #include "test_support.h"

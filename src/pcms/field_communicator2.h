@@ -4,10 +4,10 @@
 #include "field_layout_communicator.h"
 #include "pcms/field_layout.h"
 #include "pcms/field.h"
-#include "pcms/profile.h"
-#include "pcms/assert.h"
-#include "pcms/inclusive_scan.h"
-#include "pcms/arrays.h"
+#include "pcms/utility/profile.h"
+#include "pcms/utility/assert.h"
+#include "pcms/utility/inclusive_scan.h"
+#include "pcms/utility/arrays.h"
 #include <redev.h>
 
 namespace pcms

@@ -1,0 +1,62 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Parallel Coupler for Multimodel Simulations
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Jacob
+    family-names: Merson
+    email: mersoj2@rpi.edu
+    affiliation: Rensselaer Polytechnic Institute
+    orcid: 'https://orcid.org/0000-0002-6813-6532'
+    name-particle: S
+  - given-names: Cameron
+    name-particle: W
+    family-names: Smith
+    affiliation: Rensselaer Polytechnic Institute
+  - given-names: Mark
+    name-particle: S
+    family-names: Shephard
+    affiliation: Rensselaer Polytechnic Institute
+  - given-names: Fuad
+    family-names: Hasan
+    affiliation: Rensselaer Polytechnic Institute
+  - given-names: Abhiyan
+    family-names: Paudel
+    affiliation: Rensselaer Polytechnic Institute
+  - given-names: Angel
+    family-names: Castillo-Crooke
+    affiliation: Rensselaer Polytechnic Institute
+  - given-names: Joyal
+    family-names: Mathew
+    affiliation: Rensselaer Polytechnic Institute
+  - given-names: Mohammad
+    family-names: Elahi
+    affiliation: Rensselaer Polytechnic Institute
+identifiers:
+  - type: doi
+    value: 10.48550/arXiv.2510.18838
+repository-code: 'https://github.com/SCOREC/pcms'
+abstract: >-
+  PCMS provides infrastructure to couple multiple simulation
+  codes at scale on exascale systems. It uses scalable
+  methodologies for transferring data between distributed
+  applications. PCMS takes a hierarchical approach to field
+  transfer using as much information as possible, such as
+  mesh topology, to accommodate conservation and other
+  physical constraints. In the context of limited
+  information, alternative strategies, such as radial basis
+  functions, are used to support field transfer. PCMS has
+  been demonstrated on coupled fusion simulations that make
+  use of volume coupling of high-dimensional data and
+  complex coordinate systems.
+keywords:
+  - HPC
+  - coupling
+  - supercomputing
+  - unstructured-meshes
+license: BSD-3-Clause

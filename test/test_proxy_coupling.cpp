@@ -1,7 +1,7 @@
 #include <Omega_h_mesh.hpp>
 #include <iostream>
 #include <pcms.h>
-#include <pcms/types.h>
+#include <pcms/utility/types.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
 #include <redev_variant_tools.h>

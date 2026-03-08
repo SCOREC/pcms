@@ -1,6 +1,8 @@
 #ifndef PCMS_COUPLING_TYPES_H
 #define PCMS_COUPLING_TYPES_H
-#include <redev_types.h>
+#include <cstdint>
+#include <type_traits>
+
 namespace pcms
 {
 enum class Type

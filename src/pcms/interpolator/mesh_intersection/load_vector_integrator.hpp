@@ -25,6 +25,8 @@
 #include <pcms/interpolator/mesh_intersection/mesh_intersection.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
+namespace pcms
+{
 /**
  * @brief Computes the load vector for each target element in the conservative
  * field transfer.
@@ -165,7 +167,7 @@ struct IntegrationData
    */
   IntegrationData()
   {
-    auto ip_vec = MeshField::getIntegrationPoints(MeshField::Triangle, order);
+    auto ip_vec = MeshField::getIntegrationPoints<MeshField::Triangle>( order);
     std::size_t num_ip = ip_vec.size();
 
     bary_coords = Kokkos::View<MeshField::Vector3*>("bary_coords", num_ip);
@@ -274,8 +276,6 @@ struct IntegrationData
  * @see IntersectionResults
  */
 
-namespace pcms
-{
 Kokkos::View<MeshField::Real*> buildLoadVector(
   Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
   const IntersectionResults& intersection, const Omega_h::Reals& source_values)
@@ -374,7 +374,6 @@ Kokkos::View<MeshField::Real*> buildLoadVector(
 
   return elmLoadVector;
 }
-} // namespace pcms
 /// Holds projection and conservation error metrics returned by
 /// evaluate_pro_and_cons_errors().
 struct Errors
@@ -562,5 +561,6 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
 
   return Errors{.proj_err = proj_err, .cons_err = cons_err};
 }
+} // namespace pcms
 
 #endif

@@ -1,0 +1,221 @@
+name: self-hosted.yml
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build_and_test:
+    # The asics environment is only for launching on self-hosted runners.
+    # Do not use or edit this environment for any other purpose.
+    environment: asics
+    permissions:
+      contents: read
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, linux, x64, gpu]
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+        with:
+          # ref: refs/pull/${{ github.event.issue.number }}/head
+          submodules: recursive
+          path: 'pcms_${{ github.event.id }}' #under $GITHUB_WORKSPACE
+
+      - name: setup
+        id: setup
+        shell: bash
+        run: |
+          echo "github.workspace ${{github.workspace}}"
+          date=`date +%F-%H-%M`
+          workDir=${{github.workspace}}/pcmsCI_${date}
+          mkdir -p $workDir
+          echo "PCMS_WORK_DIR=$workDir" >> $GITHUB_ENV
+          echo "workDir $workDir"
+          cat << 'EOF' > $workDir/envGcc13.sh #quotes prevent variable expansion in doc contents
+          set +e #avoid exiting when lua modules return non-zero on 'warning' messages
+          source /etc/profile #provides module command
+          module use /opt/scorec/spack/rhel9/v0222_2/lmod/linux-rhel9-x86_64/Core/
+          module load gcc/13.2.0-4eahhas
+          module load mpich/4.2.3-62uy3hd
+          module load cmake/3.30.5-5e54py4
+          module load cuda/12.6.2-gqq65nw
+          module load openblas/0.3.28-eubd5ed
+          export LD_LIBRARY_PATH=/opt/scorec/spack/rhel9/v0222_2/install/linux-rhel9-x86_64_v3/gcc-13.2.0/mpich-4.2.3-62uy3hdwqe75fjfskrrysco5i6gqjblv/lib:$LD_LIBRARY_PATH
+          set -e
+          EOF
+
+      - name: build pcms
+        id: build_pcms_kokkos_cuda
+        shell: bash
+        run: |
+          workDir=$PCMS_WORK_DIR
+          source $workDir/envGcc13.sh
+
+          # kokkos
+          git clone  --branch 4.6.01 --depth 1 https://github.com/kokkos/kokkos.git ${workDir}/kokkos
+          kkbdir=${workDir}/build-kokkos
+          cmake -S ${workDir}/kokkos -B $kkbdir \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=$kkbdir/install \
+            -DCMAKE_CXX_COMPILER=${workDir}/kokkos/bin/nvcc_wrapper \
+            -DKokkos_ARCH_AMPERE80=ON \
+            -DKokkos_ENABLE_SERIAL=ON \
+            -DKokkos_ENABLE_OPENMP=off \
+            -DKokkos_ENABLE_CUDA=on \
+            -DKokkos_ENABLE_CUDA_LAMBDA=on \
+            -DKokkos_ENABLE_CUDA_CONSTEXPR=on \
+            -DKokkos_ENABLE_DEBUG=off
+          cmake --build $kkbdir --target install -j 4
+          echo "KOKKOS_BUILD=$kkbdir" >> $GITHUB_ENV
+
+          # kokkos-kernels
+          git clone --branch 4.6.01 --depth 1 https://github.com/kokkos/kokkos-kernels.git ${workDir}/kokkos-kernels
+          kkkbdir=${workDir}/build-kokkos-kernels
+          cmake -S ${workDir}/kokkos-kernels -B $kkkbdir \
+            -DCMAKE_INSTALL_PREFIX=$kkkbdir/install \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DKokkos_ROOT=${kkbdir}/install/ \
+            -DBUILD_SHARED_LIBS=off
+          cmake --build $kkkbdir --target install -j 4
+          echo "KOKKOS_KERNELS_BUILD=$kkkbdir" >> $GITHUB_ENV
+
+          # adios2 with and without cuda
+          git clone --branch v2.10.2 https://github.com/ornladios/ADIOS2.git ${workDir}/ADIOS2
+          adiosbdir=${workDir}/build-ADIOS2
+          cmake -S ${workDir}/ADIOS2 -B $adiosbdir \
+            -DCMAKE_INSTALL_PREFIX=$adiosbdir/install \
+            -DADIOS2_USE_CUDA=on \
+            -DADIOS2_USE_ZFP=off
+          cmake --build $adiosbdir --target install -j 4
+          echo "ADIOS_BUILD=$adiosbdir" >> $GITHUB_ENV
+
+          # perfstubs
+          git clone https://github.com/UO-OACISS/perfstubs.git ${workDir}/perfstubs
+          cd ${workDir}/perfstubs
+          git checkout a1fa3feb1d89214e28047f166500351074b5f0c2
+          cd $workDir
+          psbdir=${workDir}/build-perfstubs
+          cmake -S ${workDir}/perfstubs -B $psbdir \
+            -DCMAKE_INSTALL_PREFIX=$psbdir/install \
+            -DCMAKE_CXX_COMPILER=mpicxx
+          cmake --build $psbdir --target install -j 4
+          echo "PERFSTUBS_BUILD=$psbdir" >> $GITHUB_ENV
+
+          # redev
+          git clone https://github.com/SCOREC/redev.git ${workDir}/redev
+          cd ${workDir}/redev
+          git checkout ac09848a5f9b89493e8b679c9080b9efe5538376
+          cd $workDir
+          rdbdir=${workDir}/build-redev
+          cmake -S ${workDir}/redev -B $rdbdir \
+            -DCMAKE_INSTALL_PREFIX=$rdbdir/install \
+            -DADIOS2_DIR=$adiosbdir/install/lib64/cmake/adios2 \
+            -Dperfstubs_DIR=$psbdir/install/lib/cmake \
+            -DCMAKE_CXX_COMPILER=mpicxx \
+            -DBUILD_SHARED_LIBS=OFF
+          cmake --build $rdbdir --target install -j 4
+          echo "REDEV_BUILD=$rdbdir" >> $GITHUB_ENV
+
+          # omega_h
+          git clone https://github.com/SCOREC/omega_h.git ${workDir}/omegah_h
+          cd omegah_h
+          git checkout 1765836a00b9a64b8b3791f1442ac52f147e43b2
+          cd $workDir
+          ohbdir=${workDir}/build-omega_h
+          cmake -S ${workDir}/omegah_h -B $ohbdir \
+            -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
+            -DKokkos_DIR=${kkbdir}/install/lib64/cmake/Kokkos \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=off \
+            -DOmega_h_USE_Kokkos=ON \
+            -DOmega_h_USE_CUDA=on \
+            -DOmega_h_CUDA_ARCH=80 \
+            -DOmega_h_USE_MPI=on  \
+            -DMPIEXEC_EXECUTABLE=mpirun \
+            -DBUILD_TESTING=off  \
+            -DCMAKE_C_COMPILER=mpicc \
+            -DCMAKE_CXX_COMPILER=mpicxx
+          cmake --build $ohbdir --target install -j 4
+          echo "OMEGA_H_BUILD=$ohbdir" >> $GITHUB_ENV
+
+          # meshfields
+          git clone https://github.com/SCOREC/meshFields.git ${workDir}/meshfields
+          cd ${workDir}/meshfields
+          git checkout b1482bbba288df210784b2345eae08e34faabdc4
+          cd $workDir
+          mfbdir=${workDir}/build-meshfields
+          cmake -S ${workDir}/meshfields -B $mfbdir \
+            -DCMAKE_INSTALL_PREFIX=$mfbdir/install \
+            -DOmega_h_DIR=$ohbdir/install/lib64/cmake/Omega_h \
+            -DKokkos_DIR=${kkbdir}/install/lib64/cmake/Kokkos \
+            -DCMAKE_CXX_COMPILER=mpicxx \
+            -DCMAKE_C_COMPILER=mpicc \
+            -DMPIEXEC_EXECUTABLE=mpirun
+          cmake --build $mfbdir --target install -j 4
+          echo "MESHFIELDS_BUILD=$mfbdir" >> $GITHUB_ENV
+
+          # catch2
+          git clone --branch v3.11.0 https://github.com/catchorg/Catch2.git ${workDir}/Catch2
+          c2bdir=${workDir}/build-Catch2
+          cmake -S ${workDir}/Catch2 -B $c2bdir \
+            -DCMAKE_INSTALL_PREFIX=$c2bdir/install
+          cmake --build $c2bdir --target install -j 4
+          echo "CATCH2_BUILD=$c2bdir" >> $GITHUB_ENV
+
+          # petsc
+          git clone --branch v3.24.2 https://gitlab.com/petsc/petsc.git ${workDir}/petsc
+          cd ${workDir}/petsc
+          ./configure \
+            PETSC_ARCH=cuda-kokkos \
+            --with-kokkos-dir=$kkbdir/install/ \
+            --with-kokkos-kernels-dir=$kkkbdir/install/ \
+            --with-cuda=1 \
+            --with-shared-libraries=0 \
+            --with-openblas-dir="${OPENBLAS_RHEL9_ROOT}"
+          make all check
+          cd $workDir
+          echo "PETSC_BUILD=${workDir}/petsc/cuda-kokkos" >> $GITHUB_ENV
+
+          git clone https://github.com/jacobmerson/pcms_testcases.git ${workDir}/pcms_testcases
+
+          # pcms
+          bdir=${workDir}/build-pcms
+          cmake -S ${{github.workspace}}/pcms_${{ github.event.id }} -B $bdir \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=mpicc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
+            -DPCMS_TIMEOUT=20 \
+            -DPCMS_ENABLE_SPDLOG=OFF \
+            -DPCMS_ENABLE_PETSC=ON \
+            -DPETSC_DIR=${workDir}/petsc \
+            -DPETSC_ARCH=cuda-kokkos \
+            -Dredev_DIR=$rdbdir/install/lib64/cmake/redev/ \
+            -DOmega_h_DIR=$ohbdir/install/lib64/cmake/Omega_h/ \
+            -Dperfstubs_DIR=$psbdir/install/lib/cmake/ \
+            -DADIOS2_DIR=$adiosbdir/install/lib64/cmake/adios2/ \
+            -DCatch2_DIR=$c2bdir/install/lib64/cmake/Catch2/ \
+            -DKokkos_DIR=$kkbdir/install/lib64/cmake/Kokkos/ \
+            -DKokkosKernels_DIR=$kkkbdir/install/lib64/cmake/KokkosKernels/ \
+            -Dmeshfields_DIR=$mfbdir/install/lib64/cmake/meshfields/ \
+            -DPCMS_TEST_DATA_DIR=${workDir}/pcms_testcases/ \
+            -DCMAKE_CXX_EXTENSIONS=Off
+          cmake --build $bdir
+          ctest --test-dir $bdir --output-on-failure
+
+      - name: Save Result Link
+        if: ${{ !cancelled() }} #prepare report unless the job was cancelled
+        run: |
+          mkdir -p ./pr
+          echo "${{ github.event.id }}"  > ./pr/issueNumber
+          echo "Test Results:" > ./pr/message
+          echo "- Kokkos CUDA: ${{ steps.build_pcms_kokkos_cuda.outcome }}" >> ./pr/message
+          echo "" >> ./pr/message
+          echo "[(details)](https://github.com/${{github.repository}}/actions/runs/${{ github.run_id }})" >> ./pr/message
+
+      - name: Cleanup
+        if: ${{ !cancelled() }}
+        run: |
+          echo "PCMS_WORK_DIR $PCMS_WORK_DIR"
+          rm -rf $PCMS_WORK_DIR

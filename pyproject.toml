@@ -1,0 +1,11 @@
+[build-system]
+requires = ["scikit-build-core", "pybind11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pcms"
+version = "0.3.0"
+
+[tool.scikit-build.cmake.define]
+PCMS_ENABLE_Python = true
+PCMS_ENABLE_SPDLOG = false

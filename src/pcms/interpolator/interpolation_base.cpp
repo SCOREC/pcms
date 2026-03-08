@@ -9,13 +9,6 @@
 #include <execution>
 namespace pcms {
 
-Omega_h::Reals getCentroids(Omega_h::Mesh& mesh)
-{
-  OMEGA_H_CHECK_PRINTF(
-    mesh.dim() == 2, "Only 2D meshes are supported but found %d\n", mesh.dim());
-  return pcms::get_entity_centroids(mesh, Omega_h::FACE);
-}
-
 MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
                                            double radius,
                                            unsigned min_req_support,
@@ -32,11 +25,11 @@ MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
 {
   single_mesh_ = true;
   target_coords_ = source_mesh_.coords();
-  source_coords_ = getCentroids(source_mesh_);
 
   OMEGA_H_CHECK_PRINTF(source_mesh_.dim() == 2,
                        "Only 2D meshes are supported but found %d\n",
                        source_mesh_.dim());
+  source_coords_ = pcms::get_entity_centroids(source_mesh_, Omega_h::FACE);
 
   source_field_ =
     Omega_h::HostWrite<Omega_h::Real>(source_mesh_.nfaces(), "source field");

@@ -8,6 +8,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/interpolator/interpolation_base.h>
+#include <pcms/utility/mesh_geometry.h>
 #include <pcms/utility/print.h>
 
 #include <vector>
@@ -134,7 +135,8 @@ TEST_CASE("Test MLSMeshInterpolation")
     auto mls_single =
       pcms::MLSMeshInterpolation(source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
 
-    auto source_points_reals = pcms::getCentroids(source_mesh);
+    auto source_points_reals =
+      pcms::get_entity_centroids(source_mesh, Omega_h::FACE);
     auto source_points_host =
       Omega_h::HostRead<Omega_h::Real>(source_points_reals);
     auto source_points_host_write =

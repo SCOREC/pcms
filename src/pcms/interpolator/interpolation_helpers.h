@@ -19,8 +19,6 @@ void copyHostWrite2ScalarArrayView(
   const Omega_h::HostWrite<Omega_h::Real>& source,
   pcms::Rank1View<double, pcms::HostMemorySpace> target);
 
-Omega_h::Reals getCentroids(Omega_h::Mesh& mesh);
-
 inline bool within_number_of_support_range(unsigned min_supports_found,
                                            unsigned max_supports_found,
                                            unsigned min_req_supports,

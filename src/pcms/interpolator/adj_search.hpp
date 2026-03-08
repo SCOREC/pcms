@@ -246,7 +246,10 @@ inline void FindSupports::adjBasedSearchCentroidNodes(
   const auto& faces2nodes =
     source_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
 
-  auto cell_centroids = getCentroids(source_mesh);
+  OMEGA_H_CHECK_PRINTF(source_mesh.dim() == 2,
+                       "Only 2D meshes are supported but found %d\n",
+                       source_mesh.dim());
+  auto cell_centroids = pcms::get_entity_centroids(source_mesh, Omega_h::FACE);
   // * Got the adj data and cell centroids
 
   Omega_h::parallel_for(

@@ -7,6 +7,7 @@
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
+#include <pcms/utility/mesh_geometry.h>
 #include <pcms/utility/print.h>
 
 //[[nodiscard]]
@@ -42,7 +43,9 @@ Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
   pcms::printInfo("The interpolator got dg2 mesh file: %s\n", fname.c_str());
   auto mesh_lib = Omega_h::Library(nullptr, nullptr, MPI_COMM_SELF);
   auto mesh = Omega_h::binary::read(fname, mesh_lib.world());
-  auto elem_centroids = pcms::getCentroids(mesh);
+  OMEGA_H_CHECK_PRINTF(mesh.dim() == 2, "Mesh dimension is not 2D %d\n",
+                       mesh.dim());
+  auto elem_centroids = pcms::get_entity_centroids(mesh, Omega_h::FACE);
   num_elements = mesh.nelems();
   OMEGA_H_CHECK_PRINTF(num_elements * 2 == elem_centroids.size(),
                        "Mesh element centroids size does not match the number "
@@ -51,8 +54,6 @@ Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
 
   pcms::printInfo("Number of element centroids: %d\n",
                   elem_centroids.size() / 2);
-  OMEGA_H_CHECK_PRINTF(mesh.dim() == 2, "Mesh dimension is not 2D %d\n",
-                       mesh.dim());
 
   return {elem_centroids};
 }

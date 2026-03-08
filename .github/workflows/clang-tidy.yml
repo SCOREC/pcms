@@ -220,6 +220,7 @@ jobs:
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos-openmpi/install/lib/cmake/Kokkos \
                   -DKokkosKernels_DIR=${{ runner.temp }}/build-kokkos-kernels-openmpi/install/lib/cmake/KokkosKernels/ \
                   -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases \
+                  -DPCMS_ENABLE_CLANG_TIDY=ON \
                   -DCLANG_TIDY_EXECUTABLE="$(command -v clang-tidy-20)" \
                   -DRUN_CLANG_TIDY_EXECUTABLE="$(command -v run-clang-tidy-20)"
      

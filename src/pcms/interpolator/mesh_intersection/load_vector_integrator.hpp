@@ -14,9 +14,6 @@
  * @note
  * - Assumes 2D linear triangular meshes.
  * - Intersection data is provided via the `IntersectionResults` structure.
- *
- * @created by Abhiyan Paudel
- * @date August 2025
  */
 #ifndef PCMS_INTERPOLATOR_LOAD_VECTOR_INTEGRATOR_HPP
 #define PCMS_INTERPOLATOR_LOAD_VECTOR_INTEGRATOR_HPP
@@ -208,7 +205,7 @@ struct IntegrationData
  * polygon.
  *
  * @param poly The polygon to process, represented as an `r3d::Polytope<2>`.
- * 			   Each vertex includes a list of two neighbor indices
+ *          Each vertex includes a list of two neighbor indices
  * (`pnbrs[2]`) forming the cycle.
  *
  * @param[out] order An output array to store the CCW vertex order. Must be

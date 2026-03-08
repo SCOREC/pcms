@@ -24,8 +24,8 @@ if (PCMS_ENABLE_MESHFIELDS)
 endif()
 
 if (PCMS_ENABLE_PETSC)
-	target_include_directories(pcms_mesh_intersection PUBLIC ${PCMS_PETSC_INCLUDES})
-	target_link_libraries(pcms_mesh_intersection PUBLIC ${PCMS_PETSC_LIBRARIES})
+  target_include_directories(pcms_mesh_intersection PUBLIC ${PCMS_PETSC_INCLUDES})
+  target_link_libraries(pcms_mesh_intersection PUBLIC ${PCMS_PETSC_LIBRARIES})
 endif()
 
 target_compile_definitions(pcms_mesh_intersection PUBLIC R3D_USE_CUDA)

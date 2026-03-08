@@ -53,7 +53,7 @@ void fill(double value, member_type team, ScratchVecView vector)
  * @brief Evaluates the square root of each element in scratch view
  *
  * @param team The team member
- * @pram array The scratch vector
+ * @param array The scratch vector
  *
  */
 KOKKOS_INLINE_FUNCTION

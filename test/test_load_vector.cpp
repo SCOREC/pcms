@@ -23,7 +23,7 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
     0.0, 1.0  // v3
   });
 
-  // Target Mesh with two traingles
+  // Target Mesh with two triangles
   // Two triangles, CCW
   // T0: (v0,v1,v3) = (0,1,3)
   // T1: (v1,v2,v3) = (1,2,3)
@@ -33,7 +33,7 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
   Omega_h::build_from_elems_and_coords(&target_mesh, OMEGA_H_SIMPLEX, 2,
                                        ev2v_source, coords);
 
-  // Source Mesh with two traingles
+  // Source Mesh with two triangles
   // Two triangles, CCW
   // T0: (v0,v1,v3) = (0,1,2)
   // T1: (v1,v2,v3) = (0,2,3)
@@ -56,7 +56,7 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
     points_h(0, 0) = 0.0;
     points_h(0, 1) = 0.0;
     points_h(1, 0) = 1.0;
-    points_h(0, 1) = 0.0;
+    points_h(1, 1) = 0.0;
     points_h(2, 0) = 1.0;
     points_h(2, 1) = 1.0;
 
@@ -119,7 +119,7 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
           "source elements")
   {
     // the source elements are triangle1 (0,0), (1,0) & (1,1) and triangle2
-    // (0,0), (1,1) & (0,1) the target elements are traingle1 (0,0), (1,0) &
+    // (0,0), (1,1) & (0,1) the target elements are triangle1 (0,0), (1,0) &
     // (0,1) and triangle2 (1,0), (1,1) & (0,1)
 
     Omega_h::Write<double> constant_field(source_mesh.nverts(), 2.0);

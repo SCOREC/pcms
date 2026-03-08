@@ -181,7 +181,7 @@ struct RBF_THINPLATESPLINE
       phi = 0.0;
     } else {
       phi =
-        a * a * ratio * ratio * Kokkos::log(a * ratio); // a shouldnot be zero
+        a * a * ratio * ratio * Kokkos::log(a * ratio); // a should not be zero
     }
 
     OMEGA_H_CHECK_PRINTF(!std::isnan(phi),

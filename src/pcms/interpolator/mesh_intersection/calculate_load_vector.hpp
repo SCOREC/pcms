@@ -7,8 +7,6 @@
  * used in Galerkin-based conservative field transfer between non-conforming
  * meshes.
  *
- * @created by Abhiyan Paudel
- * @date August 2025
  */
 
 #ifndef PCMS_INTERPOLATOR_CALCULATE_LOAD_VECTOR_HPP
@@ -30,7 +28,7 @@
 #include <petscvec_kokkos.hpp>
 #include <sstream> //ostringstream
 
-#include <pcms/interpolator/mesh_interscetion/load_vector_integrator.hpp>
+#include <pcms/interpolator/mesh_intersection/load_vector_integrator.hpp>
 #include <MeshField.hpp>
 
 #include <petscmat.h>

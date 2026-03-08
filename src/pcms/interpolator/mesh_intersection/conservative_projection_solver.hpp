@@ -11,12 +11,10 @@
  * matrix, and solves the resulting linear system to obtain projected nodal
  * values.
  *
- * @created by Abhiyan Paudel
- * @date August 2025
  */
 
 #ifndef PCMS_INTERPOLATOR_GALERKIN_PROJECTION_SOLVER_HPP
-#ifndef PCMS_INTERPOLATOR_GALERKIN_PROJECTION_SOLVER_HPP
+#define PCMS_INTERPOLATOR_GALERKIN_PROJECTION_SOLVER_HPP
 
 #include <Kokkos_Core.hpp>
 #include <MeshField_Shape.hpp>

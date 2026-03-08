@@ -34,7 +34,7 @@ static constexpr int MAX_DIM = 6;
  * 3 at the point (x,y) looks like {1, x, y, xx, xy, yy, xxx, xxy, xyy,yyy}. The
  * slices can be written as
  * [1]                      degree 0
- * [x] & [y] 				degree 1
+ * [x] & [y]         degree 1
  * [xx] &  [xy, yy]         degree 2
  * [xxx] & [xxy,xyy, yyy]   degree 3
  *
@@ -162,7 +162,7 @@ void eval_basis_vector(const IntDeviceMatView& slice_length, const double* p,
  *  @param[in, out] pivot The Coord object that stores the coordinate of the
  *target pivot
  *  @param[in,out] support_coordinates The orginal coordinates when in, when out
- *  		normalized coordinates
+ *      normalized coordinates
  **
  */
 KOKKOS_INLINE_FUNCTION

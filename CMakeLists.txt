@@ -104,6 +104,7 @@ if(PROJECT_IS_TOP_LEVEL)
       VERBATIM COMMAND ${RUN_CLANG_TIDY_EXECUTABLE}
       -clang-tidy-binary ${CLANG_TIDY_EXECUTABLE}
       -p ${CMAKE_BINARY_DIR}
+      -quiet
       -config-file ${CLANG_TIDY_CONFIG_FILE}
       -source-filter ${CLANG_TIDY_SOURCE_FILTER}
       ${_clang_tidy_extra_args}

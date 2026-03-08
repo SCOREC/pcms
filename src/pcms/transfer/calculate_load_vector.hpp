@@ -28,7 +28,7 @@
 #include <petscvec_kokkos.hpp>
 #include <sstream> //ostringstream
 
-#include <pcms/interpolator/mesh_intersection/load_vector_integrator.hpp>
+#include <pcms/transfer/load_vector_integrator.hpp>
 #include <MeshField.hpp>
 
 #include <petscmat.h>

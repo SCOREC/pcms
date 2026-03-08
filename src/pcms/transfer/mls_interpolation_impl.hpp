@@ -12,13 +12,13 @@
 #include <KokkosBlas.hpp>
 #include <KokkosBlas1_team_dot.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
-#include <pcms/interpolator/mls_interpolation.hpp>
-#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
-#include <pcms/interpolator/adj_search.hpp>
+#include <pcms/transfer/mls_interpolation.hpp>
+#include <pcms/transfer/pcms_interpolator_aliases.hpp>
+#include <pcms/transfer/adj_search.hpp>
 #include <pcms/utility/assert.h>
 #include <pcms/utility/profile.h>
-#include <pcms/interpolator/pcms_interpolator_view_utils.hpp>
-#include <pcms/interpolator/pcms_interpolator_logger.hpp>
+#include <pcms/transfer/pcms_interpolator_view_utils.hpp>
+#include <pcms/transfer/pcms_interpolator_logger.hpp>
 
 #include <KokkosBlas2_gemv.hpp> //KokkosBlas::gemv
 #include <KokkosBatched_SVD_Decl.hpp>

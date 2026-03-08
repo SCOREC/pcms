@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/interpolator/mls_interpolation_impl.hpp>
-#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
-#include <pcms/interpolator/pcms_interpolator_view_utils.hpp>
+#include <pcms/transfer/mls_interpolation_impl.hpp>
+#include <pcms/transfer/pcms_interpolator_aliases.hpp>
+#include <pcms/transfer/pcms_interpolator_view_utils.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "KokkosBatched_SVD_Decl.hpp"
 #include "KokkosBatched_SVD_Serial_Impl.hpp"

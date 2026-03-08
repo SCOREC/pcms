@@ -8,7 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <string>
-#include <pcms/interpolator/mesh_intersection/load_vector_integrator.hpp>
+#include <pcms/transfer/load_vector_integrator.hpp>
 
 TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
 {

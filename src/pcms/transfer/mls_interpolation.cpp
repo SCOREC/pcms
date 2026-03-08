@@ -1,5 +1,5 @@
-#include <pcms/interpolator/mls_interpolation.hpp>
-#include <pcms/interpolator/mls_interpolation_impl.hpp>
+#include <pcms/transfer/mls_interpolation.hpp>
+#include <pcms/transfer/mls_interpolation_impl.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 #include <cmath>
 

@@ -2,8 +2,8 @@
 #include <pybind11/numpy.h>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array_ops.hpp>
-#include <pcms/interpolator/mls_interpolation.hpp>
-#include <pcms/interpolator/adj_search.hpp>
+#include <pcms/transfer/mls_interpolation.hpp>
+#include <pcms/transfer/adj_search.hpp>
 #include <pcms/utility/mesh_geometry.h>
 #include "numpy_array_transform.h"
 

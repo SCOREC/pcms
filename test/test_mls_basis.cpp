@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/interpolator/mls_interpolation.hpp>
-#include <pcms/interpolator/mls_interpolation_impl.hpp>
+#include <pcms/transfer/mls_interpolation.hpp>
+#include <pcms/transfer/mls_interpolation_impl.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 

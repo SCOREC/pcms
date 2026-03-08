@@ -22,7 +22,7 @@
 #include <MeshField_Integrate.hpp>
 #include <MeshField_Shape.hpp>
 #include <vector>
-#include <pcms/interpolator/mesh_intersection/mesh_intersection.hpp>
+#include <pcms/transfer/mesh_intersection.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
 namespace pcms

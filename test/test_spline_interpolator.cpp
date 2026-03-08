@@ -4,7 +4,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
-#include <pcms/interpolator/spline_interpolator.hpp>
+#include <pcms/transfer/spline_interpolator.hpp>
 
 using namespace pcms;
 

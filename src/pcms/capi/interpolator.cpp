@@ -3,7 +3,7 @@
 //
 #include <pcms/capi/kokkos.h>
 #include <pcms/capi/interpolator.h>
-#include <pcms/interpolator/interpolation_base.h>
+#include <pcms/transfer/interpolation_base.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>

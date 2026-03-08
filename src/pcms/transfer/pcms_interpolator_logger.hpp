@@ -1,7 +1,7 @@
 #ifndef PCMS_INTERPOLATOR_LOGGER_HPP
 #define PCMS_INTERPOLATOR_LOGGER_HPP
 
-#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
+#include <pcms/transfer/pcms_interpolator_aliases.hpp>
 #include <Kokkos_Printf.hpp>
 
 namespace pcms

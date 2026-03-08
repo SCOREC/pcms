@@ -29,8 +29,8 @@
 #include <petscsys.h>
 #include <petscvec.h>
 
-#include <pcms/interpolator/mesh_intersection/calculate_load_vector.hpp>
-#include <pcms/interpolator/mesh_intersection/calculate_mass_matrix.hpp>
+#include <pcms/transfer/calculate_load_vector.hpp>
+#include <pcms/transfer/calculate_mass_matrix.hpp>
 
 /**
  * @brief Solves a linear system Ax = b using PETSc's KSP solvers

@@ -396,6 +396,7 @@ if(Catch2_FOUND)
       test_svd_serial.cpp
       test_uniform_grid_field.cpp
       test_interpolation_class.cpp
+      test_mesh_geometry.cpp
       test_omega_h_field2_outofbounds.cpp)
   endif()
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})

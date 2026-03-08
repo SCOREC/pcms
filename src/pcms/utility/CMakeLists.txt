@@ -4,6 +4,7 @@ set(
         assert.h
         bounding_box.h
         common.h
+        mesh_geometry.h
         memory_spaces.h
         types.h
         array_mask.h

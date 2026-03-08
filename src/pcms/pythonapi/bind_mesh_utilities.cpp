@@ -4,6 +4,7 @@
 #include <Omega_h_array_ops.hpp>
 #include <pcms/interpolator/mls_interpolation.hpp>
 #include <pcms/interpolator/adj_search.hpp>
+#include <pcms/utility/mesh_geometry.h>
 #include "numpy_array_transform.h"
 
 namespace py = pybind11;
@@ -15,29 +16,7 @@ namespace pcms
 py::array_t<double> compute_entity_centroids(Omega_h::Mesh& mesh,
                                              Omega_h::Int entity_dim)
 {
-  const auto dim = mesh.dim();
-  const auto nents = mesh.nents(entity_dim);
-  const auto ent2verts = mesh.ask_down(entity_dim, Omega_h::VERT).ab2b;
-  const auto coords = mesh.coords();
-  Omega_h::Write<Omega_h::Real> centroids(dim * nents, 0.0, "entity centroids");
-
-  if (dim == 2 && entity_dim == 2) {
-    Kokkos::parallel_for(
-      "entity_centroids_tri2d", nents, OMEGA_H_LAMBDA(const Omega_h::LO id) {
-        const auto current_el_verts = Omega_h::gather_verts<3>(ent2verts, id);
-        const Omega_h::Few<Omega_h::Vector<2>, 3> current_el_vert_coords =
-          Omega_h::gather_vectors<3, 2>(coords, current_el_verts);
-        auto centroid = Omega_h::average(current_el_vert_coords);
-        int index = 2 * id;
-        centroids[index] = centroid[0];
-        centroids[index + 1] = centroid[1];
-      });
-  } else {
-    throw std::runtime_error(
-      "Centroid computation not implemented for this dimension combination");
-  }
-
-  return omega_h_read_to_numpy(Omega_h::read(centroids));
+  return omega_h_read_to_numpy(pcms::get_entity_centroids(mesh, entity_dim));
 }
 
 // Helper function to determine patch size based on interpolation degree

@@ -4,6 +4,7 @@
 
 #include "interpolation_base.h"
 #include "interpolation_helpers.h"
+#include "pcms/utility/mesh_geometry.h"
 
 #include <execution>
 namespace pcms {
@@ -12,22 +13,7 @@ Omega_h::Reals getCentroids(Omega_h::Mesh& mesh)
 {
   OMEGA_H_CHECK_PRINTF(
     mesh.dim() == 2, "Only 2D meshes are supported but found %d\n", mesh.dim());
-
-  const auto& coords = mesh.coords();
-  Omega_h::Write<Omega_h::Real> centroids(mesh.nfaces() * mesh.dim(), 0.0);
-
-  auto face2node = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
-  Omega_h::parallel_for(
-    mesh.nfaces(), OMEGA_H_LAMBDA(Omega_h::LO face) {
-      auto nodes = Omega_h::gather_verts<3>(face2node, face);
-      Omega_h::Few<Omega_h::Vector<2>, 3> face_coords =
-        Omega_h::gather_vectors<3, 2>(coords, nodes);
-      Omega_h::Vector<2> centroid = Omega_h::average(face_coords);
-      centroids[2 * face + 0] = centroid[0];
-      centroids[2 * face + 1] = centroid[1];
-    });
-
-  return {centroids};
+  return pcms::get_entity_centroids(mesh, Omega_h::FACE);
 }
 
 MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,

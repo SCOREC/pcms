@@ -15,6 +15,7 @@
 #include <type_traits>
 #include "pcms/transfer_field.h"
 #include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/mesh_geometry.h"
 #include "pcms/utility/profile.h"
 #include "pcms/partition.h"
 #include <optional>
@@ -439,35 +440,7 @@ inline Omega_h::Reals get_ent_centroids(Omega_h::Mesh& mesh, int entity_type)
 {
   PCMS_FUNCTION_TIMER;
   PCMS_ALWAYS_ASSERT(entity_type >= 0 && entity_type <= 3);
-  if (entity_type == 0) {
-    return mesh.coords();
-  } else {
-    auto coords = mesh.coords();
-    int dim = mesh.dim();
-    auto ent2verts = mesh.ask_down(entity_type, Omega_h::VERT).ab2b;
-    auto nents = mesh.nents(entity_type);
-    Omega_h::Write<Real> ent_coords(nents * dim);
-
-    auto calc_coords = OMEGA_H_LAMBDA(LO ent)
-    {
-      if (dim == 2) {
-        auto verts = Omega_h::gather_verts<3>(ent2verts, ent);
-        auto ent_vert_coords = Omega_h::gather_vectors<3, 2>(coords, verts);
-        auto ent_centroid = Omega_h::average(ent_vert_coords);
-        ent_coords[ent * dim] = ent_centroid[0];
-        ent_coords[ent * dim + 1] = ent_centroid[1];
-      } else if (dim == 3) {
-        auto verts = Omega_h::gather_verts<4>(ent2verts, ent);
-        auto ent_vert_coords = Omega_h::gather_vectors<4, 3>(coords, verts);
-        auto ent_centroid = Omega_h::average(ent_vert_coords);
-        ent_coords[ent * dim] = ent_centroid[0];
-        ent_coords[ent * dim + 1] = ent_centroid[1];
-        ent_coords[ent * dim + 2] = ent_centroid[2];
-      }
-    };
-    Omega_h::parallel_for(nents, calc_coords);
-    return Omega_h::Reals((ent_coords));
-  }
+  return pcms::get_entity_centroids(mesh, static_cast<Omega_h::Int>(entity_type));
 }
 } // namespace Omega_h
 

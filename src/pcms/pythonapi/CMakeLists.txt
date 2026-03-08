@@ -22,10 +22,14 @@ target_link_libraries(pcms PRIVATE Kokkos::kokkos pybind11::module MPI::MPI_C pc
 # scikit-build-core will set this variable
 if(SKBUILD)
   set(PCMS_PYTHON_INSTALL_LOCATION "${SKBUILD_PLATLIB_DIR}")
-# this is useful for direct CMake installation into python.
-# This enables spack environment installation to directly load the PyOmega_h module
 else()
+  # this is useful for direct CMake installation into python.
+  # This enables spack environment installation to directly load the PyOmega_h module
   set(PCMS_PYTHON_INSTALL_LOCATION "${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages")
+  # Ensure the extension can resolve pcms shared libraries from a standard
+  # prefix install layout (e.g. Spack), where the module lives under
+  # <prefix>/<libdir>/pythonX.Y/site-packages and core libs live in <libdir>.
+  set_target_properties(pcms PROPERTIES INSTALL_RPATH "\$ORIGIN;\$ORIGIN/../../../")
 endif()
 
 

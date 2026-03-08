@@ -48,8 +48,6 @@ if (PCMS_ENABLE_PETSC)
     target_link_libraries(pcms_transfer PUBLIC ${PCMS_PETSC_LIBRARIES})
 endif()
 
-target_compile_definitions(pcms_transfer PUBLIC R3D_USE_CUDA)
-
 target_include_directories(pcms_transfer INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>

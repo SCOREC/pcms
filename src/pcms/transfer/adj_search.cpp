@@ -64,6 +64,35 @@ static Omega_h::Write<Omega_h::LO> build_support_offsets(
   return supports_ptr;
 }
 
+OMEGA_H_INLINE void add_support_if_unvisited_and_within_cutoff(
+  const Omega_h::LO candidate_id, const Omega_h::Real cutoff_distance,
+  const Omega_h::Real* target_coords, const Omega_h::Reals& support_coords_view,
+  const Omega_h::LO dim, Track& visited, Queue& queue, int& count,
+  const bool is_build_csr_call, const Omega_h::LO start_counter,
+  Omega_h::Write<Omega_h::LO> support_idx)
+{
+  if (!visited.notVisited(candidate_id))
+    return;
+
+  visited.push_back(candidate_id);
+
+  Omega_h::Real candidate_coords[max_dim];
+  for (Omega_h::LO k = 0; k < dim; ++k) {
+    candidate_coords[k] = support_coords_view[candidate_id * dim + k];
+  }
+
+  const Omega_h::Real dist =
+    pcms::distance_squared(target_coords, candidate_coords, dim);
+  if (dist <= cutoff_distance) {
+    count++;
+    queue.push_back(candidate_id);
+    if (!is_build_csr_call) {
+      const Omega_h::LO idx_count = count - 1;
+      support_idx[start_counter + idx_count] = candidate_id;
+    }
+  }
+}
+
 void FindSupports::adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
                                   Omega_h::Write<Omega_h::LO>& nSupports,
                                   Omega_h::Write<Omega_h::LO>& support_idx,
@@ -117,7 +146,6 @@ void FindSupports::adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
       Omega_h::LO start_ptr = source_cell_id * num_verts_in_dim;
       Omega_h::LO end_ptr = start_ptr + num_verts_in_dim;
       Omega_h::Real target_coords[max_dim];
-      Omega_h::Real support_coords[max_dim];
 
       for (Omega_h::LO k = 0; k < dim; ++k) {
         target_coords[k] = target_points(id, k);
@@ -141,30 +169,18 @@ void FindSupports::adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
       int count = 0;
       for (Omega_h::LO i = start_ptr; i < end_ptr; ++i) {
         Omega_h::LO vert_id = cells2verts[i];
-        visited.push_back(vert_id);
-
-        for (Omega_h::LO k = 0; k < dim; ++k) {
-          support_coords[k] = sourcePoints_coords[vert_id * dim + k];
-        }
-
-        Omega_h::Real dist =
-          pcms::distance_squared(target_coords, support_coords, dim);
-        if (dist <= cutoffDistance) {
-          count++;
-          if (count >= 500) {
-            printf(
-              "Warning: count exceeds 500 for target %d with %d supports\n", id,
-              end_ptr - start_ptr);
-            printf("Warning: Target %d: coors: (%f, %f) and support %d: "
-                   "coords: (%f, %f)\n",
-                   id, target_coords[0], target_coords[1], vert_id,
-                   support_coords[0], support_coords[1]);
-          }
-          queue.push_back(vert_id);
-          if (!is_build_csr_call) {
-            Omega_h::LO idx_count = count - 1;
-            support_idx[start_counter + idx_count] = vert_id;
-          }
+        const int count_before = count;
+        add_support_if_unvisited_and_within_cutoff(
+          vert_id, cutoffDistance, target_coords, sourcePoints_coords, dim,
+          visited, queue, count, is_build_csr_call, start_counter, support_idx);
+        if (count > count_before && count >= 500) {
+          printf("Warning: count exceeds 500 for target %d with %d supports\n",
+                 id, end_ptr - start_ptr);
+          printf("Warning: Target %d: coors: (%f, %f) and support %d: "
+                 "coords: (%f, %f)\n",
+                 id, target_coords[0], target_coords[1], vert_id,
+                 sourcePoints_coords[vert_id * dim + 0],
+                 sourcePoints_coords[vert_id * dim + 1]);
         }
       }
 
@@ -180,28 +196,15 @@ void FindSupports::adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
           // check if neighbor index is already in the queue to be checked
           // TODO refactor this into a function
 
-          if (visited.notVisited(neighborIndex)) {
-            visited.push_back(neighborIndex);
-            for (int k = 0; k < dim; ++k) {
-              support_coords[k] = sourcePoints_coords[neighborIndex * dim + k];
-            }
-
-            Omega_h::Real dist =
-              pcms::distance_squared(target_coords, support_coords, dim);
-
-            if (dist <= cutoffDistance) {
-              count++;
-              if (count >= 500) {
-                printf("Warning: count exceeds 500 for target %d with start %d "
-                       "and end %d radius2 %f adding neighbor %d\n",
-                       id, start, end, cutoffDistance, neighborIndex);
-              }
-              queue.push_back(neighborIndex);
-              if (!is_build_csr_call) {
-                Omega_h::LO idx_count = count - 1;
-                support_idx[start_counter + idx_count] = neighborIndex;
-              }
-            }
+          const int count_before = count;
+          add_support_if_unvisited_and_within_cutoff(
+            neighborIndex, cutoffDistance, target_coords, sourcePoints_coords,
+            dim, visited, queue, count, is_build_csr_call, start_counter,
+            support_idx);
+          if (count > count_before && count >= 500) {
+            printf("Warning: count exceeds 500 for target %d with start %d "
+                   "and end %d radius2 %f adding neighbor %d\n",
+                   id, start, end, cutoffDistance, neighborIndex);
           }
         }
       } // end of while loop
@@ -244,7 +247,6 @@ void FindSupports::adjBasedSearchCentroidNodes(
       Track visited;
       const Omega_h::LO num_verts_in_dim = dim + 1;
       Omega_h::Real target_coords[max_dim];
-      Omega_h::Real support_coords[max_dim];
       Omega_h::Real cutoffDistance = radii2[id];
 
       //? copying the target vertex coordinates
@@ -262,22 +264,9 @@ void FindSupports::adjBasedSearchCentroidNodes(
       int count = 0;
       for (Omega_h::LO i = start_ptr; i < end_ptr; ++i) {
         Omega_h::LO cell_id = n2f_data[i];
-        visited.push_back(cell_id);
-
-        for (Omega_h::LO k = 0; k < dim; ++k) {
-          support_coords[k] = cell_centroids[cell_id * dim + k];
-        }
-
-        Omega_h::Real dist =
-          pcms::distance_squared(target_coords, support_coords, dim);
-        if (dist <= cutoffDistance) {
-          count++;
-          queue.push_back(cell_id);
-          if (!is_build_csr_call) {
-            Omega_h::LO idx_count = count - 1;
-            support_idx[start_counter + idx_count] = cell_id;
-          }
-        }
+        add_support_if_unvisited_and_within_cutoff(
+          cell_id, cutoffDistance, target_coords, cell_centroids, dim, visited,
+          queue, count, is_build_csr_call, start_counter, support_idx);
       }
 
       while (!queue.isEmpty()) { // ? can queue be empty?
@@ -297,25 +286,10 @@ void FindSupports::adjBasedSearchCentroidNodes(
             // check if neighbor index is already in the queue to be checked
             // TODO refactor this into a function
 
-            if (visited.notVisited(neighbor_cell_index)) {
-              visited.push_back(neighbor_cell_index);
-              for (int k = 0; k < dim; ++k) {
-                support_coords[k] =
-                  cell_centroids[neighbor_cell_index * dim + k];
-              }
-
-              Omega_h::Real dist =
-                pcms::distance_squared(target_coords, support_coords, dim);
-
-              if (dist <= cutoffDistance) {
-                count++;
-                queue.push_back(neighbor_cell_index);
-                if (!is_build_csr_call) {
-                  Omega_h::LO idx_count = count - 1;
-                  support_idx[start_counter + idx_count] = neighbor_cell_index;
-                } // end of support_idx check
-              } // end of distance check
-            } // end of not visited check
+            add_support_if_unvisited_and_within_cutoff(
+              neighbor_cell_index, cutoffDistance, target_coords,
+              cell_centroids, dim, visited, queue, count, is_build_csr_call,
+              start_counter, support_idx);
           } // end of loop over adj cells to the current vertex
         } // end of loop over nodes
 

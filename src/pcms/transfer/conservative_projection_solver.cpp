@@ -63,6 +63,27 @@ static Vec solveLinearSystem(Mat A, Vec b) {
 
   return x;
 }
+
+static Omega_h::Reals vecToOmegaHReals(Vec vec) {
+  PetscInt n = 0;
+  PetscErrorCode ierr = VecGetSize(vec, &n);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  const PetscScalar *array = nullptr;
+  ierr = VecGetArrayRead(vec, &array);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  auto values_host = Omega_h::HostWrite<Omega_h::Real>(n);
+  for (PetscInt i = 0; i < n; ++i) {
+    values_host[i] = array[i];
+  }
+
+  ierr = VecRestoreArrayRead(vec, &array);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  return Omega_h::Reals(values_host);
+}
+
 Omega_h::Reals solveGalerkinProjection(Omega_h::Mesh &target_mesh,
                                        Omega_h::Mesh &source_mesh,
                                        const IntersectionResults &intersection,
@@ -89,27 +110,7 @@ Omega_h::Reals solveGalerkinProjection(Omega_h::Mesh &target_mesh,
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
   Vec x = solveLinearSystem(mass, vec);
-
-  Omega_h::Write<Omega_h::Real> solution_vector(
-    target_mesh.nverts(),
-    0,
-    "stores the solution coefficients");
-
-  PetscScalar *array;
-
-  ierr = VecGetArray(x, &array);
-
-  CHKERRABORT(PETSC_COMM_WORLD, ierr);
-
-  auto solution_host = Omega_h::HostWrite<Omega_h::Real>(target_mesh.nverts());
-
-  for (PetscInt i = 0; i < target_mesh.nverts(); ++i) {
-    solution_host[i] = array[i];
-  }
-
-  solution_vector = Omega_h::Write<Omega_h::Real>(solution_host);
-  ierr = VecRestoreArray(x, &array);
-  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+  auto solution_vector = vecToOmegaHReals(x);
 
   ierr = VecDestroy(&x);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
@@ -120,7 +121,7 @@ Omega_h::Reals solveGalerkinProjection(Omega_h::Mesh &target_mesh,
   ierr = VecDestroy(&vec);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
-  return Omega_h::read(solution_vector);
+  return solution_vector;
 }
 Omega_h::Reals rhsVectorMI(Omega_h::Mesh &target_mesh,
                            Omega_h::Mesh &source_mesh,
@@ -135,28 +136,11 @@ Omega_h::Reals rhsVectorMI(Omega_h::Mesh &target_mesh,
                              &vec);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
-  Omega_h::Write<Omega_h::Real> rhsvector(target_mesh.nverts(),
-                                          0,
-                                          "stores the rhs vector"); {
-    PetscErrorCode ierr;
-    PetscScalar *array;
-    ierr = VecGetArray(vec, &array);
-    CHKERRABORT(PETSC_COMM_WORLD, ierr);
-
-    auto rhsvec_host = Omega_h::HostWrite<Omega_h::Real>(target_mesh.nverts());
-
-    for (PetscInt i = 0; i < target_mesh.nverts(); ++i) {
-      rhsvec_host[i] = array[i];
-    }
-
-    rhsvector = Omega_h::Write<Omega_h::Real>(rhsvec_host);
-    ierr = VecRestoreArray(vec, &array);
-    CHKERRABORT(PETSC_COMM_WORLD, ierr);
-  }
+  auto rhsvector = vecToOmegaHReals(vec);
 
   ierr = VecDestroy(&vec);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
-  return Omega_h::read(rhsvector);
+  return rhsvector;
 }
 }

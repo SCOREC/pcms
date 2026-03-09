@@ -1,5 +1,5 @@
-#ifndef PCMS_INTERPOLATOR_ALIASES_HPP
-#define PCMS_INTERPOLATOR_ALIASES_HPP
+#ifndef PCMS_TRANSFER_ALIASES_HPP
+#define PCMS_TRANSFER_ALIASES_HPP
 
 #include <Kokkos_Core.hpp>
 #include "pcms/utility/arrays.h"

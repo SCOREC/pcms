@@ -8,8 +8,8 @@
  * for finite element calculations using Omega_h mesh structures and PETSc.
  */
 
-#ifndef PCMS_INTERPOLATOR_CALCULATE_MASS_MATRIX_HPP
-#define PCMS_INTERPOLATOR_CALCULATE_MASS_MATRIX_HPP
+#ifndef PCMS_TRANSFER_CALCULATE_MASS_MATRIX_HPP
+#define PCMS_TRANSFER_CALCULATE_MASS_MATRIX_HPP
 
 #include <Omega_h_adapt.hpp>
 #include <Omega_h_array_ops.hpp>

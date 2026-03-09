@@ -1,5 +1,5 @@
-#ifndef ADJ_SEARCH_HPP
-#define ADJ_SEARCH_HPP
+#ifndef PCMS_TRANSFER_ADJ_SEARCH_HPP
+#define PCMS_TRANSFER_ADJ_SEARCH_HPP
 
 #include <pcms/localization/point_search.h>
 #include <pcms/utility/mesh_geometry.h>
@@ -58,4 +58,4 @@ SupportResults searchNeighbors(Omega_h::Mesh& mesh,
                                       bool adapt_radius = true);
 }
 
-#endif
+#endif // PCMS_TRANSFER_ADJ_SEARCH_HPP

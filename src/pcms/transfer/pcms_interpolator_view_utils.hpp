@@ -1,5 +1,5 @@
-#ifndef PCMS_INTERPOLATOR_ARRAY_OPS_HPP
-#define PCMS_INTERPOLATOR_ARRAY_OPS_HPP
+#ifndef PCMS_TRANSFER_ARRAY_OPS_HPP
+#define PCMS_TRANSFER_ARRAY_OPS_HPP
 
 #include <pcms/transfer/pcms_interpolator_aliases.hpp>
 #include <Omega_h_array_ops.hpp>

@@ -15,8 +15,8 @@
  * - Assumes 2D linear triangular meshes.
  * - Intersection data is provided via the `IntersectionResults` structure.
  */
-#ifndef PCMS_INTERPOLATOR_LOAD_VECTOR_INTEGRATOR_HPP
-#define PCMS_INTERPOLATOR_LOAD_VECTOR_INTEGRATOR_HPP
+#ifndef PCMS_TRANSFER_LOAD_VECTOR_INTEGRATOR_HPP
+#define PCMS_TRANSFER_LOAD_VECTOR_INTEGRATOR_HPP
 
 #include <Omega_h_shape.hpp>
 #include <MeshField_Integrate.hpp>

@@ -1,5 +1,5 @@
-#ifndef PCMS_INTERPOLATOR_MESH_INTERSECTION_HPP
-#define PCMS_INTERPOLATOR_MESH_INTERSECTION_HPP
+#ifndef PCMS_TRANSFER_MESH_INTERSECTION_HPP
+#define PCMS_TRANSFER_MESH_INTERSECTION_HPP
 
 #include <pcms/localization/point_search.h>
 #include <pcms/transfer/queue_visited.hpp>
@@ -114,4 +114,4 @@ IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
                                      Omega_h::Mesh& target_mesh);
 }
 
-#endif
+#endif // PCMS_TRANSFER_MESH_INTERSECTION_HPP

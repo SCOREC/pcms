@@ -13,8 +13,8 @@
  *
  */
 
-#ifndef PCMS_INTERPOLATOR_GALERKIN_PROJECTION_SOLVER_HPP
-#define PCMS_INTERPOLATOR_GALERKIN_PROJECTION_SOLVER_HPP
+#ifndef PCMS_TRANSFER_GALERKIN_PROJECTION_SOLVER_HPP
+#define PCMS_TRANSFER_GALERKIN_PROJECTION_SOLVER_HPP
 
 #include <Omega_h_array.hpp>
 #include <Omega_h_mesh.hpp>
@@ -69,4 +69,4 @@ Omega_h::Reals rhsVectorMI(Omega_h::Mesh& target_mesh,
                            const Omega_h::Reals& source_values);
 } // namespace pcms
 
-#endif // PCMS_INTERPOLATOR_GALERKIN_PROJECTION_SOLVER_HPP
+#endif // PCMS_TRANSFER_GALERKIN_PROJECTION_SOLVER_HPP

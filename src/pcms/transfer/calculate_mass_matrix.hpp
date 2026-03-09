@@ -11,31 +11,8 @@
 #ifndef PCMS_TRANSFER_CALCULATE_MASS_MATRIX_HPP
 #define PCMS_TRANSFER_CALCULATE_MASS_MATRIX_HPP
 
-#include <Omega_h_adapt.hpp>
-#include <Omega_h_array_ops.hpp>
-#include <Omega_h_atomics.hpp> //Omega_h::atomic_fetch_add
-#include <Omega_h_build.hpp>
-#include <Omega_h_class.hpp>
-#include <Omega_h_compare.hpp>
-#include <Omega_h_dbg.hpp>
-#include <Omega_h_file.hpp> //Omega_h::binary
-#include <Omega_h_for.hpp>
-#include <Omega_h_recover.hpp> //project_by_fit
-#include <Omega_h_shape.hpp>
-#include <Omega_h_timer.hpp>
-#include <iomanip> //precision
-#include <iostream>
-#include <petscvec_kokkos.hpp>
-#include <sstream> //ostringstream
-
-#include <pcms/transfer/mass_matrix_integrator.hpp>
-#include <pcms/utility/memory_spaces.h>
-#include <MeshField.hpp>
-
+#include <Omega_h_mesh.hpp>
 #include <petscmat.h>
-
-// detect floating point exceptions
-#include <fenv.h>
 
 namespace pcms
 {

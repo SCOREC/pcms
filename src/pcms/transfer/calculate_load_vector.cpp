@@ -1,5 +1,6 @@
 #include "pcms/transfer/calculate_load_vector.hpp"
 #include "pcms/transfer/coo_assembly_utils.hpp"
+#include "pcms/transfer/load_vector_integrator.hpp"
 
 namespace pcms {
 PetscErrorCode calculateLoadVector(Omega_h::Mesh &target_mesh,

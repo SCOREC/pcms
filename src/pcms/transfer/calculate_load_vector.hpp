@@ -12,8 +12,8 @@
 #ifndef PCMS_TRANSFER_CALCULATE_LOAD_VECTOR_HPP
 #define PCMS_TRANSFER_CALCULATE_LOAD_VECTOR_HPP
 #include <Omega_h_mesh.hpp>
-#include <pcms/transfer/load_vector_integrator.hpp>
-#include <petscmat.h>
+#include <pcms/transfer/mesh_intersection.hpp>
+#include <petscvec.h>
 
 /**
  * @brief Assembles the global load vector.

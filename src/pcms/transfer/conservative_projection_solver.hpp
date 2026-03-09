@@ -19,7 +19,7 @@
 #include <Omega_h_array.hpp>
 #include <Omega_h_mesh.hpp>
 
-#include <pcms/transfer/calculate_load_vector.hpp>
+#include <pcms/transfer/mesh_intersection.hpp>
 
 namespace pcms
 {

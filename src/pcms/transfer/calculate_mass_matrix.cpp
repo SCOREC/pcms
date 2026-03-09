@@ -1,5 +1,7 @@
 #include "pcms/transfer/calculate_mass_matrix.hpp"
 #include "pcms/transfer/coo_assembly_utils.hpp"
+#include "pcms/transfer/mass_matrix_integrator.hpp"
+#include "pcms/utility/memory_spaces.h"
 
 namespace pcms {
 /**

@@ -3,6 +3,7 @@
 #include <petscksp.h>
 
 #include "pcms/transfer/conservative_projection_solver.hpp"
+#include "pcms/transfer/calculate_load_vector.hpp"
 #include "pcms/transfer/calculate_mass_matrix.hpp"
 
 namespace pcms {

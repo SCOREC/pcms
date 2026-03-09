@@ -4,7 +4,6 @@
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_shape.hpp>
-#include <petscsys.h>
 
 #include <pcms/transfer/conservative_projection_solver.hpp>
 #include <pcms/transfer/mesh_intersection.hpp>
@@ -37,23 +36,10 @@ double integrate_linear_field(Omega_h::Mesh& mesh, const Omega_h::Reals& u)
   return integral;
 }
 
-void ensure_petsc_initialized()
-{
-  PetscBool is_initialized = PETSC_FALSE;
-  PetscErrorCode ierr = PetscInitialized(&is_initialized);
-  REQUIRE(ierr == PETSC_SUCCESS);
-  if (!is_initialized) {
-    ierr = PetscInitializeNoArguments();
-    REQUIRE(ierr == PETSC_SUCCESS);
-  }
-}
-
 } // namespace
 
 TEST_CASE("mesh intersection linear/constant conservation", "[transfer][mesh_intersection]")
 {
-  ensure_petsc_initialized();
-
   Omega_h::Library lib;
 
   Omega_h::Reals coords({

@@ -68,6 +68,25 @@ static Omega_h::Write<Omega_h::LO> build_support_offsets(
   return supports_ptr;
 }
 
+OMEGA_H_INLINE void copy_from_rank1_view(const Omega_h::Reals& view,
+                                         const Omega_h::LO id,
+                                         const Omega_h::LO dim,
+                                         Omega_h::Real* out)
+{
+  for (Omega_h::LO k = 0; k < dim; ++k) {
+    out[k] = view[id * dim + k];
+  }
+}
+
+OMEGA_H_INLINE void copy_from_rank2_view(
+  const Kokkos::View<Omega_h::Real* [2]>& view, const Omega_h::LO id,
+  const Omega_h::LO dim, Omega_h::Real* out)
+{
+  for (Omega_h::LO k = 0; k < dim; ++k) {
+    out[k] = view(id, k);
+  }
+}
+
 OMEGA_H_INLINE void add_support_if_unvisited_and_within_cutoff(
   const Omega_h::LO candidate_id, const Omega_h::Real cutoff_distance,
   const Omega_h::Real* target_coords, const Omega_h::Reals& support_coords_view,
@@ -150,12 +169,9 @@ void FindSupports::adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
       Omega_h::LO start_ptr = source_cell_id * num_verts_in_dim;
       Omega_h::LO end_ptr = start_ptr + num_verts_in_dim;
       Omega_h::Real target_coords[max_dim];
+      copy_from_rank2_view(target_points, id, dim, target_coords);
 
-      for (Omega_h::LO k = 0; k < dim; ++k) {
-        target_coords[k] = target_points(id, k);
-      }
-
-      Omega_h::LO start_counter;
+      Omega_h::LO start_counter = 0;
       if (!is_build_csr_call) {
         start_counter = supports_ptr[id];
       }
@@ -253,12 +269,9 @@ void FindSupports::adjBasedSearchCentroidNodes(
       Omega_h::Real target_coords[max_dim];
       Omega_h::Real cutoffDistance = radii2[id];
 
-      //? copying the target vertex coordinates
-      for (Omega_h::LO k = 0; k < dim; ++k) {
-        target_coords[k] = mesh_coords[id * dim + k];
-      }
+      copy_from_rank1_view(mesh_coords, id, dim, target_coords);
 
-      Omega_h::LO start_counter;
+      Omega_h::LO start_counter = 0;
       if (!is_build_csr_call) {
         start_counter = supports_ptr[id];
       }

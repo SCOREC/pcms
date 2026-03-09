@@ -25,6 +25,7 @@ set(PCMS_FIELD_TRANSFER_SOURCES
     calculate_load_vector.cpp
     calculate_mass_matrix.cpp
     conservative_projection_solver.cpp
+    coo_assembly_utils.cpp
     load_vector_integrator.cpp
     mesh_intersection.cpp
     mls_interpolation.cpp

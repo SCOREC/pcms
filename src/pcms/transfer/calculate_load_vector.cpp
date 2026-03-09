@@ -1,4 +1,5 @@
 #include "pcms/transfer/calculate_load_vector.hpp"
+#include "pcms/transfer/coo_assembly_utils.hpp"
 
 namespace pcms {
 PetscErrorCode calculateLoadVector(Omega_h::Mesh &target_mesh,
@@ -8,30 +9,25 @@ PetscErrorCode calculateLoadVector(Omega_h::Mesh &target_mesh,
   Vec*loadVec_out) {
 
   PetscFunctionBeginUser;
-  const int numNodesPerTri = 3;
+  PetscInt nnz = 0;
+  PetscInt* coo_i = nullptr;
+  PetscCall(build_linear_triangle_coo_rows(target_mesh, &coo_i, &nnz));
+  PetscScalar* coo_vals = nullptr;
+  PetscCall(PetscMalloc1(nnz, &coo_vals));
 
-  const int nnz = target_mesh.nelems() * numNodesPerTri;
-
-  // Allocate COO indices and values
-  PetscInt* coo_i;
-  PetscScalar* coo_vals;
-  PetscCall(PetscMalloc2(nnz, &coo_i, nnz, &coo_vals));
-
-  // Fill COO global indices and values
-  auto elmVerts = Omega_h::HostRead(target_mesh.ask_elem_verts());
+  // Fill COO values
   auto elmLoadVector =
       buildLoadVector(target_mesh, source_mesh, intersection, source_values);
 
   auto hostElmLoadVector = Kokkos::create_mirror_view(elmLoadVector);
   Kokkos::deep_copy(hostElmLoadVector, elmLoadVector);
+  PetscCheck(static_cast<PetscInt>(hostElmLoadVector.extent(0)) == nnz,
+             PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ,
+             "Element load vector size (%d) does not match COO nnz (%d)",
+             static_cast<PetscInt>(hostElmLoadVector.extent(0)), nnz);
 
-  PetscInt idx = 0;
-  for (PetscInt e = 0; e < target_mesh.nelems(); ++e) {
-    for (PetscInt vi = 0; vi < numNodesPerTri; ++vi) {
-      coo_i[idx] = elmVerts[numNodesPerTri * e + vi];
-      coo_vals[idx] = hostElmLoadVector(numNodesPerTri * e + vi);
-      ++idx;
-    }
+  for (PetscInt e = 0; e < nnz; ++e) {
+    coo_vals[e] = hostElmLoadVector(e);
   }
 
   // create vector with preallocated COO structure
@@ -41,7 +37,8 @@ PetscErrorCode calculateLoadVector(Omega_h::Mesh &target_mesh,
   PetscCall(VecSetFromOptions(vec));
   PetscCall(VecSetPreallocationCOO(vec, nnz, coo_i));
   PetscCall(VecSetValuesCOO(vec, coo_vals, ADD_VALUES));
-  PetscCall(PetscFree2(coo_i, coo_vals));
+  PetscCall(PetscFree(coo_i));
+  PetscCall(PetscFree(coo_vals));
 
   if (target_mesh.nelems() < 10) {
     PetscCall(VecView(vec, PETSC_VIEWER_STDOUT_WORLD));

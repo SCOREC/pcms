@@ -1,4 +1,5 @@
 #include "pcms/transfer/calculate_mass_matrix.hpp"
+#include "pcms/transfer/coo_assembly_utils.hpp"
 
 namespace pcms {
 /**
@@ -12,31 +13,19 @@ namespace pcms {
  * @param[out] A Pointer to the PETSc matrix to be created
  * @return PetscErrorCode PETSc error code (PETSC_SUCCESS if successful)
  */
-static PetscErrorCode CreateMatrix(Omega_h::Mesh &mesh, Mat*A) {
-  const auto numNodesPerTri = 3; // FIXME query the mesh
-  const auto matSize = numNodesPerTri * numNodesPerTri * mesh.nelems();
-  auto elmVerts = Omega_h::HostRead(mesh.ask_elem_verts());
-  PetscInt *oor, *ooc, cnt = 0;
+static PetscErrorCode create_linear_triangle_coo_matrix(Omega_h::Mesh &mesh, Mat*A) {
+  PetscInt* coo_rows = nullptr;
+  PetscInt* coo_cols = nullptr;
+  PetscInt matSize = 0;
   PetscFunctionBeginUser;
   PetscCall(MatCreate(PETSC_COMM_WORLD, A));
   PetscCall(
     MatSetSizes(*A, mesh.nverts(), mesh.nverts(), PETSC_DECIDE, PETSC_DECIDE));
   PetscCall(MatSetFromOptions(*A));
-  /* determine for each entry in each element stiffness matrix the global row
-   * and column */
-  /* since the element is triangular with piecewise linear basis functions there
-   * are three degrees of freedom per element, one for each vertex */
-  PetscCall(PetscMalloc2(matSize, &oor, matSize, &ooc));
-  for (PetscInt e = 0; e < mesh.nelems(); e++) {
-    for (PetscInt vi = 0; vi < numNodesPerTri; vi++) {
-      for (PetscInt vj = 0; vj < numNodesPerTri; vj++) {
-        oor[cnt] = elmVerts[numNodesPerTri * e + vi];
-        ooc[cnt++] = elmVerts[numNodesPerTri * e + vj];
-      }
-    }
-  }
-  PetscCall(MatSetPreallocationCOO(*A, matSize, oor, ooc));
-  PetscCall(PetscFree2(oor, ooc));
+  PetscCall(
+    build_linear_triangle_coo_rows_cols(mesh, &coo_rows, &coo_cols, &matSize));
+  PetscCall(MatSetPreallocationCOO(*A, matSize, coo_rows, coo_cols));
+  PetscCall(PetscFree2(coo_rows, coo_cols));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 PetscErrorCode calculateMassMatrix(Omega_h::Mesh &mesh, Mat*mass_out) {
@@ -53,14 +42,15 @@ PetscErrorCode calculateMassMatrix(Omega_h::Mesh &mesh, Mat*mass_out) {
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);
 
   auto elmMassMatrix = buildMassMatrix(mesh, coordFe);
-
-  auto host_elmMassMatrix = Kokkos::create_mirror_view(elmMassMatrix);
+  const PetscInt expected_nnz = 9 * mesh.nelems();
+  PetscCheck(static_cast<PetscInt>(elmMassMatrix.extent(0)) == expected_nnz,
+             PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ,
+             "Element mass data size (%d) does not match expected linear COO "
+             "entries (%d)",
+             static_cast<PetscInt>(elmMassMatrix.extent(0)), expected_nnz);
 
   Mat mass;
-  PetscCall(CreateMatrix(mesh, &mass));
-  PetscBool is_kokkos;
-  PetscCall(
-    PetscObjectBaseTypeCompare((PetscObject)mass, MATSEQAIJKOKKOS, &is_kokkos));
+  PetscCall(create_linear_triangle_coo_matrix(mesh, &mass));
   PetscCall(MatZeroEntries(mass));
   PetscCall(
     MatSetValuesCOO(mass, elmMassMatrix.data(),

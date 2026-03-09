@@ -1,6 +1,7 @@
 #include "pcms/transfer/load_vector_integrator.hpp"
 
-namespace pcms {
+namespace pcms
+{
 
 /**
  * @brief Converts barycentric coordinates to global (physical) coordinates.
@@ -117,12 +118,10 @@ namespace pcms {
  * @see r3d::Polytope
  */
 
-[[nodiscard]] OMEGA_H_INLINE int get_polygon_cycle_ccw(
+OMEGA_H_INLINE void get_polygon_cycle_ccw(
   const r3d::Polytope<2>& poly, int* order)
 {
   const int m = poly.nverts;
-  if (m <= 0)
-    return 0;
   order[0] = 0;
   int prev = -1;
   int curr = 0;
@@ -134,20 +133,71 @@ namespace pcms {
     prev = curr;
     curr = next;
   }
-  return m;
 }
 
-Kokkos::View<MeshField::Real *> buildLoadVector(Omega_h::Mesh &target_mesh,
-  Omega_h::Mesh &source_mesh,
-  const IntersectionResults &intersection,
-  const Omega_h::Reals &source_values) {
+template <typename TriangleOp>
+OMEGA_H_INLINE void for_each_intersection_subtriangle(
+  const int elm, const IntersectionResults& intersection,
+  const Omega_h::Reals& tgt_coords, const Omega_h::Reals& src_coords,
+  const Omega_h::LOs& tgt_faces2nodes, const Omega_h::LOs& src_faces2nodes,
+  TriangleOp&& op)
+{
+  auto tgt_elm_vert_coords =
+    get_vert_coords_of_elem(tgt_coords, tgt_faces2nodes, elm);
+  const int start = intersection.tgt2src_offsets[elm];
+  const int end = intersection.tgt2src_offsets[elm + 1];
+
+  for (int i = start; i < end; ++i) {
+    const int current_src_elm = intersection.tgt2src_indices[i];
+    auto src_elm_vert_coords =
+      get_vert_coords_of_elem(src_coords, src_faces2nodes, current_src_elm);
+    r3d::Polytope<2> poly;
+    r3d::intersect_simplices(poly, tgt_elm_vert_coords, src_elm_vert_coords);
+    auto nverts = poly.nverts;
+    int order[r3d::MaxVerts<2>::value];
+    get_polygon_cycle_ccw(poly, order);
+    auto poly_area = r3d::measure(poly);
+
+    for (int j = 1; j < nverts - 1; ++j) {
+      // build triangle from poly.verts[order[0]], poly.verts[order[j]],
+      // poly.verts[order[j+2]]
+      auto& p0 = poly.verts[order[0]].pos;
+      auto& p1 = poly.verts[order[j]].pos;
+      auto& p2 = poly.verts[order[j + 1]].pos;
+
+      Omega_h::Few<Omega_h::Vector<2>, 3> tri_coords;
+      tri_coords[0] = {p0[0], p0[1]};
+      tri_coords[1] = {p1[0], p1[1]};
+      tri_coords[2] = {p2[0], p2[1]};
+
+      Omega_h::Few<Omega_h::Vector<2>, 2> basis;
+      basis[0] = tri_coords[1] - tri_coords[0];
+      basis[1] = tri_coords[2] - tri_coords[0];
+
+      Omega_h::Real area =
+        Kokkos::fabs(Omega_h::triangle_area_from_basis(basis));
+
+      const double EPS_AREA = abs_tol + rel_tol * poly_area;
+      if (area <= EPS_AREA)
+        continue; // drops duplicates and colinear/degenerates
+
+      op(tri_coords, tgt_elm_vert_coords, src_elm_vert_coords, current_src_elm,
+         area);
+    }
+  }
+}
+
+Kokkos::View<MeshField::Real*> buildLoadVector(
+  Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
+  const IntersectionResults& intersection, const Omega_h::Reals& source_values)
+{
 
   const auto& tgt_coords = target_mesh.coords();
   const auto& src_coords = source_mesh.coords();
   const auto& tgt_faces2nodes =
-      target_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
+    target_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
   const auto& src_faces2nodes =
-      source_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
+    source_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
 
   IntegrationData<2> integrationPoints;
   int npts = integrationPoints.size();
@@ -155,54 +205,17 @@ Kokkos::View<MeshField::Real *> buildLoadVector(Omega_h::Mesh &target_mesh,
   // TODO: Make it generalised; hardcoded for liner 2D
   Kokkos::View<MeshField::Real*> elmLoadVector("elmLoadVector",
                                                target_mesh.nelems() * 3);
-  int count = 0;
   Kokkos::parallel_for(
     "calculate load vector", target_mesh.nelems(),
     KOKKOS_LAMBDA(const int& elm) {
-      auto tgt_elm_vert_coords =
-          get_vert_coords_of_elem(tgt_coords, tgt_faces2nodes, elm);
-      const int start = intersection.tgt2src_offsets[elm];
-      const int end = intersection.tgt2src_offsets[elm + 1];
       Omega_h::Vector<3> part_integration = {0.0, 0.0, 0.0};
-
-      for (int i = start; i < end; ++i) {
-        const int current_src_elm = intersection.tgt2src_indices[i];
-        auto src_elm_vert_coords =
-            get_vert_coords_of_elem(src_coords, src_faces2nodes, current_src_elm);
-        r3d::Polytope<2> poly;
-        r3d::intersect_simplices(poly, tgt_elm_vert_coords,
-                                 src_elm_vert_coords);
-        auto nverts = poly.nverts;
-        int order[r3d::MaxVerts<2>::value];
-        auto m = get_polygon_cycle_ccw(poly, order);
-        auto poly_area = r3d::measure(poly);
-        double sum_area = 0;
-        for (int j = 1; j < nverts - 1; ++j) {
-          // build triangle from poly.verts[order[0]], poly.verts[order[j]],
-          // poly.verts[order[j+1]]
-          auto& p0 = poly.verts[order[0]].pos;
-          auto& p1 = poly.verts[order[j]].pos;
-          auto& p2 = poly.verts[order[j + 1]].pos;
-
-          Omega_h::Few<Omega_h::Vector<2>, 3> tri_coords;
-
-          tri_coords[0] = {p0[0], p0[1]};
-          tri_coords[1] = {p1[0], p1[1]};
-          tri_coords[2] = {p2[0], p2[1]};
-
-          Omega_h::Few<Omega_h::Vector<2>, 2> basis;
-
-          basis[0] = tri_coords[1] - tri_coords[0];
-          basis[1] = tri_coords[2] - tri_coords[0];
-
-          Omega_h::Real area =
-              Kokkos::fabs(Omega_h::triangle_area_from_basis(basis));
-          sum_area += area;
-
-          const double EPS_AREA = abs_tol + rel_tol * poly_area;
-          if (area <= EPS_AREA)
-            continue; // drops duplicates and colinear/degenerates
-
+      for_each_intersection_subtriangle(
+        elm, intersection, tgt_coords, src_coords, tgt_faces2nodes,
+        src_faces2nodes,
+        [&](const Omega_h::Few<Omega_h::Vector<2>, 3>& tri_coords,
+            const r3d::Few<r3d::Vector<2>, 3>& tgt_elm_vert_coords,
+            const r3d::Few<r3d::Vector<2>, 3>& src_elm_vert_coords,
+            const int current_src_elm, const Omega_h::Real area) {
           for (int ip = 0; ip < npts; ++ip) {
             auto bary = integrationPoints.bary_coords(ip);
             auto weight = integrationPoints.weights(ip);
@@ -212,11 +225,11 @@ Kokkos::View<MeshField::Real *> buildLoadVector(Omega_h::Mesh &target_mesh,
 
             // evaluate shape function (barycentric wrt target for linear)
             auto shape_fn =
-                evaluate_barycentric(real_coords, tgt_elm_vert_coords);
+              evaluate_barycentric(real_coords, tgt_elm_vert_coords);
 
             // evaluate function at point (barycentric wrt source for linear)
             auto src_bary =
-                evaluate_barycentric(real_coords, src_elm_vert_coords);
+              evaluate_barycentric(real_coords, src_elm_vert_coords);
             auto fval = evaluate_function_value(source_values, src_faces2nodes,
                                                 src_bary, current_src_elm);
 
@@ -225,8 +238,7 @@ Kokkos::View<MeshField::Real *> buildLoadVector(Omega_h::Mesh &target_mesh,
               part_integration[k] += shape_fn[k] * fval * weight * 2 * area;
             }
           }
-        }
-      }
+        });
 
       for (int j = 0; j < 3; ++j) {
         elmLoadVector(elm * 3 + j) = part_integration[j];
@@ -235,18 +247,19 @@ Kokkos::View<MeshField::Real *> buildLoadVector(Omega_h::Mesh &target_mesh,
 
   return elmLoadVector;
 }
-Errors evaluate_proj_and_cons_errors(Omega_h::Mesh &target_mesh,
-  Omega_h::Mesh &source_mesh,
-  const IntersectionResults &intersection,
-  const Omega_h::Reals &target_values,
-  const Omega_h::Reals &source_values) {
+Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
+                                     Omega_h::Mesh& source_mesh,
+                                     const IntersectionResults& intersection,
+                                     const Omega_h::Reals& target_values,
+                                     const Omega_h::Reals& source_values)
+{
 
   const auto& tgt_coords = target_mesh.coords();
   const auto& src_coords = source_mesh.coords();
   const auto& tgt_faces2nodes =
-      target_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
+    target_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
   const auto& src_faces2nodes =
-      source_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
+    source_mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
 
   IntegrationData<2> integrationPoints;
   int npts = integrationPoints.size();
@@ -259,52 +272,14 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh &target_mesh,
   Kokkos::parallel_for(
     "evaluate relative errors", target_mesh.nelems(),
     KOKKOS_LAMBDA(const int& elm) {
-      auto tgt_elm_vert_coords =
-          get_vert_coords_of_elem(tgt_coords, tgt_faces2nodes, elm);
-      const int start = intersection.tgt2src_offsets[elm];
-      const int end = intersection.tgt2src_offsets[elm + 1];
-
       double N2 = 0.0, D2 = 0.0, C = 0.0, QD = 0.0;
-
-      for (int i = start; i < end; ++i) {
-        const int current_src_elm = intersection.tgt2src_indices[i];
-        auto src_elm_vert_coords =
-            get_vert_coords_of_elem(src_coords, src_faces2nodes, current_src_elm);
-        r3d::Polytope<2> poly;
-        r3d::intersect_simplices(poly, tgt_elm_vert_coords,
-                                 src_elm_vert_coords);
-        auto nverts = poly.nverts;
-        int order[r3d::MaxVerts<2>::value];
-        auto m = get_polygon_cycle_ccw(poly, order);
-        auto poly_area = r3d::measure(poly);
-
-        double sum_area = 0.0;
-        for (int j = 1; j < nverts - 1; ++j) {
-          // build triangle from poly.verts[order[0]], poly.verts[order[j]],
-          // poly.verts[order[j+1]]
-          auto& p0 = poly.verts[order[0]].pos;
-          auto& p1 = poly.verts[order[j]].pos;
-          auto& p2 = poly.verts[order[j + 1]].pos;
-
-          Omega_h::Few<Omega_h::Vector<2>, 3> tri_coords;
-
-          tri_coords[0] = {p0[0], p0[1]};
-          tri_coords[1] = {p1[0], p1[1]};
-          tri_coords[2] = {p2[0], p2[1]};
-
-          Omega_h::Few<Omega_h::Vector<2>, 2> basis;
-
-          basis[0] = tri_coords[1] - tri_coords[0];
-          basis[1] = tri_coords[2] - tri_coords[0];
-
-          Omega_h::Real area =
-              Kokkos::fabs(Omega_h::triangle_area_from_basis(basis));
-          sum_area += area;
-
-          const double EPS_AREA = abs_tol + rel_tol * poly_area;
-          if (area <= EPS_AREA)
-            continue; // drops duplicates and colinear/degenerates
-
+      for_each_intersection_subtriangle(
+        elm, intersection, tgt_coords, src_coords, tgt_faces2nodes,
+        src_faces2nodes,
+        [&](const Omega_h::Few<Omega_h::Vector<2>, 3>& tri_coords,
+            const r3d::Few<r3d::Vector<2>, 3>& tgt_elm_vert_coords,
+            const r3d::Few<r3d::Vector<2>, 3>& src_elm_vert_coords,
+            const int current_src_elm, const Omega_h::Real area) {
           for (int ip = 0; ip < npts; ++ip) {
             auto bary = integrationPoints.bary_coords(ip);
             auto weight = integrationPoints.weights(ip);
@@ -312,7 +287,7 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh &target_mesh,
             // convert barycentric to real coords in triangle
             auto real_coords = global_from_barycentric(bary, tri_coords);
             auto tgt_bary =
-                evaluate_barycentric(real_coords, tgt_elm_vert_coords);
+              evaluate_barycentric(real_coords, tgt_elm_vert_coords);
 
             // evaluate shape function (barycentric wrt target for linear)
             auto tgtVal = evaluate_function_value(
@@ -320,7 +295,7 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh &target_mesh,
 
             // evaluate function at point (barycentric wrt source for linear)
             auto src_bary =
-                evaluate_barycentric(real_coords, src_elm_vert_coords);
+              evaluate_barycentric(real_coords, src_elm_vert_coords);
             auto srcVal = evaluate_function_value(
               source_values, src_faces2nodes, src_bary, current_src_elm);
 
@@ -332,8 +307,7 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh &target_mesh,
             C += diff * w;
             QD += srcVal * w;
           }
-        }
-      }
+        });
 
       Kokkos::atomic_add(&accum(0), N2);
       Kokkos::atomic_add(&accum(1), D2);
@@ -344,10 +318,10 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh &target_mesh,
   auto h_accum = Kokkos::create_mirror(accum);
   Kokkos::deep_copy(h_accum, accum);
   const double proj_err =
-      Kokkos::sqrt(h_accum(0)) / Kokkos::max(Kokkos::sqrt(h_accum(1)), EPS_DEN);
+    Kokkos::sqrt(h_accum(0)) / Kokkos::max(Kokkos::sqrt(h_accum(1)), EPS_DEN);
   const double cons_err =
-      Kokkos::fabs(h_accum(2)) / Kokkos::max(Kokkos::fabs(h_accum(3)), EPS_DEN);
+    Kokkos::fabs(h_accum(2)) / Kokkos::max(Kokkos::fabs(h_accum(3)), EPS_DEN);
 
   return Errors{.proj_err = proj_err, .cons_err = cons_err};
 }
-}
+} // namespace pcms

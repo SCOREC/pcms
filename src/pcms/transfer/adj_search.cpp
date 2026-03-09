@@ -430,7 +430,6 @@ SupportResults searchNeighbors(Omega_h::Mesh& mesh,
 
       nSupports = Omega_h::Write<Omega_h::LO>(
         nvertices_target, 0, "number of supports in each target vertex");
-      SupportResults support; // create support every time to avoid complexity
       search.adjBasedSearchCentroidNodes(supports_ptr, nSupports, supports_idx,
                                          radii2, true);
 

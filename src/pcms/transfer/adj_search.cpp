@@ -1,6 +1,7 @@
 #include "pcms/transfer/adj_search.hpp"
 
-namespace pcms {
+namespace pcms
+{
 
 static void checkTargetPoints(
   const Kokkos::View<pcms::GridPointSearch2D::Result*>& results)
@@ -42,11 +43,32 @@ static void printSupportsForTarget(
     });
 }
 
-void FindSupports::adjBasedSearch(
-  Omega_h::Write<Omega_h::LO>& supports_ptr,
-  Omega_h::Write<Omega_h::LO>& nSupports,
-  Omega_h::Write<Omega_h::LO>& support_idx,
-  Omega_h::Write<Omega_h::Real>& radii2, bool is_build_csr_call)
+static Omega_h::Write<Omega_h::LO> build_support_offsets(
+  const Omega_h::LO nvertices_target,
+  const Omega_h::Write<Omega_h::LO>& nSupports, Omega_h::LO& total_supports)
+{
+  auto supports_ptr = Omega_h::Write<Omega_h::LO>(
+    nvertices_target + 1, 0, "number of support source vertices in CSR format");
+
+  total_supports = 0;
+  Kokkos::parallel_scan(
+    nvertices_target,
+    OMEGA_H_LAMBDA(int j, int& update, bool final) {
+      update += nSupports[j];
+      if (final) {
+        supports_ptr[j + 1] = update;
+      }
+    },
+    total_supports);
+
+  return supports_ptr;
+}
+
+void FindSupports::adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
+                                  Omega_h::Write<Omega_h::LO>& nSupports,
+                                  Omega_h::Write<Omega_h::LO>& support_idx,
+                                  Omega_h::Write<Omega_h::Real>& radii2,
+                                  bool is_build_csr_call)
 {
 
   const auto& sourcePoints_coords = source_mesh.coords();
@@ -307,12 +329,13 @@ void FindSupports::adjBasedSearchCentroidNodes(
     // printSupportsForTarget(2057,  supports_ptr, nSupports, support_idx);
   }
 }
-SupportResults searchNeighbors(Omega_h::Mesh &source_mesh,
-  Omega_h::Mesh &target_mesh,
-  Omega_h::Real &cutoffDistance,
-  Omega_h::LO min_req_support,
-  Omega_h::LO max_allowed_support,
-  bool adapt_radius) {
+SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
+                               Omega_h::Mesh& target_mesh,
+                               Omega_h::Real& cutoffDistance,
+                               Omega_h::LO min_req_support,
+                               Omega_h::LO max_allowed_support,
+                               bool adapt_radius)
+{
   FindSupports search(source_mesh, target_mesh);
   Omega_h::LO nvertices_target = target_mesh.nverts();
 
@@ -327,7 +350,7 @@ SupportResults searchNeighbors(Omega_h::Mesh &source_mesh,
 
   if (!adapt_radius) {
     pcms::printInfo("INFO: Fixed radius search *(disregarding required minimum "
-      "support)*... \n");
+                    "support)*... \n");
     search.adjBasedSearch(supports_ptr, nSupports, supports_idx, radii2, true);
   } else {
     pcms::printInfo("INFO: Adaptive radius search... \n");
@@ -377,20 +400,9 @@ SupportResults searchNeighbors(Omega_h::Mesh &source_mesh,
                     r_adjust_loop);
   }
 
-  supports_ptr = Omega_h::Write<Omega_h::LO>(
-    nvertices_target + 1, 0, "number of support source vertices in CSR format");
-
   Omega_h::LO total_supports = 0;
-
-  Kokkos::parallel_scan(
-    nvertices_target,
-    OMEGA_H_LAMBDA(int j, int& update, bool final) {
-      update += nSupports[j];
-      if (final) {
-        supports_ptr[j + 1] = update;
-      }
-    },
-    total_supports);
+  supports_ptr =
+    build_support_offsets(nvertices_target, nSupports, total_supports);
 
   Kokkos::fence();
 
@@ -402,10 +414,10 @@ SupportResults searchNeighbors(Omega_h::Mesh &source_mesh,
   target_mesh.add_tag<Omega_h::Real>(Omega_h::VERT, "radii2", 1, radii2);
   return SupportResults{read(supports_ptr), read(supports_idx), radii2};
 }
-SupportResults searchNeighbors(Omega_h::Mesh &mesh,
-  Omega_h::Real cutoffDistance,
-  Omega_h::LO min_support,
-  bool adapt_radius) {
+SupportResults searchNeighbors(Omega_h::Mesh& mesh,
+                               Omega_h::Real cutoffDistance,
+                               Omega_h::LO min_support, bool adapt_radius)
+{
   Omega_h::Write<Omega_h::LO> supports_ptr;
   Omega_h::Write<Omega_h::LO> supports_idx;
   FindSupports search(mesh);
@@ -420,7 +432,7 @@ SupportResults searchNeighbors(Omega_h::Mesh &mesh,
 
   if (!adapt_radius) {
     pcms::printInfo("INFO: Fixed radius search *(disregarding required minimum "
-      "support)* ... \n");
+                    "support)* ... \n");
     search.adjBasedSearch(supports_ptr, nSupports, supports_idx, radii2, true);
   } else {
     pcms::printInfo("INFO: Adaptive radius search... \n");
@@ -466,19 +478,9 @@ SupportResults searchNeighbors(Omega_h::Mesh &mesh,
   } // adaptive radius search
 
   // offset array for the supports of each target vertex
-  supports_ptr = Omega_h::Write<Omega_h::LO>(
-    nvertices_target + 1, 0, "number of support source vertices in CSR format");
-
   Omega_h::LO total_supports = 0;
-  Kokkos::parallel_scan(
-    nvertices_target,
-    OMEGA_H_LAMBDA(int j, int& update, bool final) {
-      update += nSupports[j];
-      if (final) {
-        supports_ptr[j + 1] = update;
-      }
-    },
-    total_supports);
+  supports_ptr =
+    build_support_offsets(nvertices_target, nSupports, total_supports);
 
   pcms::printInfo("INFO: Inside searchNeighbors 3\n");
   Kokkos::fence();
@@ -493,4 +495,4 @@ SupportResults searchNeighbors(Omega_h::Mesh &mesh,
   mesh.add_tag<Omega_h::Real>(Omega_h::VERT, "support_radius", 1, radii2);
   return SupportResults{read(supports_ptr), read(supports_idx), radii2};
 }
-}
+} // namespace pcms

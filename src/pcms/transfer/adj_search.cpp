@@ -1,4 +1,5 @@
 #include "pcms/transfer/adj_search.hpp"
+#include <Omega_h_array_ops.hpp>
 
 namespace pcms
 {
@@ -350,13 +351,7 @@ SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
       nSupports = Omega_h::Write<Omega_h::LO>(
         nvertices_target, 0, "number of supports in each target vertex");
 
-      Omega_h::Real max_radius = 0.0;
-      Kokkos::parallel_reduce(
-        "find max radius", nvertices_target,
-        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::Real& local_max) {
-          local_max = (radii2[i] > local_max) ? radii2[i] : local_max;
-        },
-        Kokkos::Max<Omega_h::Real>(max_radius));
+      const auto max_radius = Omega_h::get_max(Omega_h::read(radii2));
       pcms::printInfo("INFO: Loop %d: max_radius: %f\n", r_adjust_loop,
                       max_radius);
 
@@ -429,13 +424,7 @@ SupportResults searchNeighbors(Omega_h::Mesh& mesh,
     pcms::printInfo("INFO: Adaptive radius search... \n");
     int r_adjust_loop = 0;
     while (true) { // until the number of minimum support is met
-      Omega_h::Real max_radius = 0.0;
-      Kokkos::parallel_reduce(
-        "find max radius", nvertices_target,
-        OMEGA_H_LAMBDA(const Omega_h::LO i, Omega_h::Real& local_max) {
-          local_max = (radii2[i] > local_max) ? radii2[i] : local_max;
-        },
-        Kokkos::Max<Omega_h::Real>(max_radius));
+      const auto max_radius = Omega_h::get_max(Omega_h::read(radii2));
       pcms::printInfo("INFO: Loop %d: max_radius: %f\n", r_adjust_loop,
                       max_radius);
 

@@ -3,7 +3,9 @@
 namespace pcms
 {
 
-static void checkTargetPoints(
+// Debug helper retained intentionally: useful for diagnosing point-localization
+// failures while developing support-search logic.
+[[maybe_unused]] static void checkTargetPoints(
   const Kokkos::View<pcms::GridPointSearch2D::Result*>& results)
 {
   Kokkos::fence();
@@ -22,7 +24,9 @@ static void checkTargetPoints(
   Kokkos::fence();
   pcms::printInfo("\n");
 }
-static void printSupportsForTarget(
+// Debug helper retained intentionally: useful for tracing CSR support contents
+// for a specific target id during local debugging.
+[[maybe_unused]] static void printSupportsForTarget(
   const Omega_h::LO target_id, const Omega_h::Write<Omega_h::LO>& supports_ptr,
   const Omega_h::Write<Omega_h::LO>& nSupports,
   const Omega_h::Write<Omega_h::LO>& support_idx)

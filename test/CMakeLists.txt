@@ -401,7 +401,9 @@ if(Catch2_FOUND)
   endif()
 
   if (PCMS_ENABLE_MESHFIELDS)
-    list(APPEND PCMS_UNIT_TEST_SOURCES test_load_vector.cpp)
+    list(APPEND PCMS_UNIT_TEST_SOURCES
+      test_load_vector.cpp
+      test_mesh_intersection_field_transfer.cpp)
   endif()
 
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})

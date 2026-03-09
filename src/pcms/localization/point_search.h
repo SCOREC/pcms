@@ -59,7 +59,7 @@ public:
   }
 
   virtual Kokkos::View<Result*> operator()(
-    Kokkos::View<Real* [dim]> point) const = 0;
+    Kokkos::View<const Real* [dim]> point) const = 0;
   virtual ~PointLocalizationSearch() = default;
 
 protected:
@@ -89,7 +89,7 @@ public:
    * closest element
    */
   Kokkos::View<Result*> operator()(
-    Kokkos::View<Real* [DIM]> point) const override;
+    Kokkos::View<const Real* [DIM]> point) const override;
 
 private:
   Omega_h::Mesh mesh_;
@@ -124,7 +124,7 @@ public:
    * return a negative id of the closest element.
    */
   Kokkos::View<Result*> operator()(
-    Kokkos::View<Real* [DIM]> point) const override;
+    Kokkos::View<const Real* [DIM]> point) const override;
 
 private:
   Omega_h::Mesh mesh_;

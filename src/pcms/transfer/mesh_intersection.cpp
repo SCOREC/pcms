@@ -1,28 +1,7 @@
 #include "pcms/transfer/mesh_intersection.hpp"
+#include "pcms/utility/mesh_geometry.h"
 
 namespace pcms {
-
-inline Kokkos::View<Omega_h::Real *[2]> compute_centroid(Omega_h::Mesh &mesh) {
-  const auto &mesh_coords = mesh.coords();
-  const auto &faces2nodes = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
-  const auto &nfaces = mesh.nfaces();
-
-  Kokkos::View<Omega_h::Real *[2]> cell_centroids("centroid coordinates",
-                                                  nfaces);
-  Omega_h::parallel_for(
-    "calculate the centroid in each tri element",
-    nfaces,
-    OMEGA_H_LAMBDA(const Omega_h::LO id) {
-      const auto current_el_verts = Omega_h::gather_verts<3>(faces2nodes, id);
-      const Omega_h::Few<Omega_h::Vector<2>, 3> current_el_vert_coords =
-          Omega_h::gather_vectors<3, 2>(mesh_coords, current_el_verts);
-      auto centroid = Omega_h::average(current_el_vert_coords);
-      cell_centroids(id, 0) = centroid[0];
-      cell_centroids(id, 1) = centroid[1];
-    });
-
-  return cell_centroids;
-}
 void FindIntersections::adjBasedIntersectSearch(
   const Omega_h::LOs& tgt2src_offsets,
   Omega_h::Write<Omega_h::LO>& nIntersections,
@@ -42,7 +21,10 @@ void FindIntersections::adjBasedIntersectSearch(
   const auto& t2tt = t2t.a2ab;
   const auto& tt2t = t2t.ab2b;
 
-  auto centroids = compute_centroid(target_mesh_);
+  const auto flat_centroids =
+    pcms::get_entity_centroids(target_mesh_, Omega_h::FACE);
+  auto centroids = Kokkos::View<const Omega_h::Real *[2]>(
+    flat_centroids.data(), target_mesh_.nfaces());
 
   pcms::GridPointSearch2D search_cell(source_mesh_, 20, 20);
   auto results = search_cell(centroids);

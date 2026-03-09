@@ -393,7 +393,7 @@ OMEGA_H_INLINE double myreduce(const Omega_h::Vector<n>& x,
 }
 
 Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
-  Kokkos::View<Real* [DIM]> points) const
+  Kokkos::View<const Real* [DIM]> points) const
 {
   Kokkos::View<GridPointSearch2D::Result*> results("point search result",
                                                    points.extent(0));
@@ -543,7 +543,7 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
 }
 
 Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
-  Kokkos::View<Real* [DIM]> points) const
+  Kokkos::View<const Real* [DIM]> points) const
 {
   Kokkos::View<GridPointSearch3D::Result*> results("point search result",
                                                    points.extent(0));

@@ -1,6 +1,6 @@
 
-#ifndef INTERPOLANT_HPP
-#define INTERPOLANT_HPP
+#ifndef PCMS_TRANSFER_LINEAR_INTERPOLANT_HPP
+#define PCMS_TRANSFER_LINEAR_INTERPOLANT_HPP
 
 #include <iostream>
 #include "multidimarray.hpp"
@@ -187,4 +187,4 @@ double test_function(double* coord)
 }
 }
 
-#endif
+#endif // PCMS_TRANSFER_LINEAR_INTERPOLANT_HPP

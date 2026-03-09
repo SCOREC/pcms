@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_MASS_MATRIX_INTEGRATOR_H
-#define PCMS_TRANSFER_MASS_MATRIX_INTEGRATOR_H
+#ifndef PCMS_TRANSFER_MASS_MATRIX_INTEGRATOR_HPP
+#define PCMS_TRANSFER_MASS_MATRIX_INTEGRATOR_HPP
 
 #include <KokkosController.hpp>
 #include <MeshField.hpp>
@@ -80,4 +80,4 @@ Kokkos::View<MeshField::Real*> buildMassMatrix(Omega_h::Mesh& mesh,
   return mmi.elmMassMatrix;
 }
 } // namespace pcms
-#endif
+#endif // PCMS_TRANSFER_MASS_MATRIX_INTEGRATOR_HPP

@@ -2,8 +2,8 @@
 // Created by hasanm4 on 10/10/25.
 //
 
-#ifndef PCMS_INTERPOLATION_HELPERS_H
-#define PCMS_INTERPOLATION_HELPERS_H
+#ifndef PCMS_TRANSFER_INTERPOLATION_HELPERS_H
+#define PCMS_TRANSFER_INTERPOLATION_HELPERS_H
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
 #include <Omega_h_mesh.hpp>
@@ -34,4 +34,4 @@ void adapt_radii(unsigned min_req_supports, unsigned max_allowed_supports,
                  Omega_h::LO n_targets, Omega_h::Write<Omega_h::Real> radii2_l,
                  Omega_h::Write<Omega_h::LO> num_supports);
 }
-#endif // PCMS_INTERPOLATION_HELPERS_H
+#endif // PCMS_TRANSFER_INTERPOLATION_HELPERS_H

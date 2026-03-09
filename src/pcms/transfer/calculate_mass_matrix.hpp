@@ -54,4 +54,4 @@ namespace pcms
 
 PetscErrorCode calculateMassMatrix(Omega_h::Mesh& mesh, Mat* mass_out);
 } // namespace pcms
-#endif
+#endif // PCMS_TRANSFER_CALCULATE_MASS_MATRIX_HPP

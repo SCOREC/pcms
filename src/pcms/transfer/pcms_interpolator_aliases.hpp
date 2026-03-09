@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_ALIASES_HPP
-#define PCMS_TRANSFER_ALIASES_HPP
+#ifndef PCMS_TRANSFER_PCMS_INTERPOLATOR_ALIASES_HPP
+#define PCMS_TRANSFER_PCMS_INTERPOLATOR_ALIASES_HPP
 
 #include <Kokkos_Core.hpp>
 #include "pcms/utility/arrays.h"
@@ -44,4 +44,4 @@ using RealConstDefaultRank1View =
   Rank1View<const double, DefaultExecutionSpace>;
 
 } // namespace pcms
-#endif
+#endif // PCMS_TRANSFER_PCMS_INTERPOLATOR_ALIASES_HPP

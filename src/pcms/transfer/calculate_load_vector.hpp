@@ -55,4 +55,4 @@ PetscErrorCode calculateLoadVector(
   const IntersectionResults& intersection, const Omega_h::Reals& source_values,
   Vec* loadVec_out);
 } // namespace pcms
-#endif
+#endif // PCMS_TRANSFER_CALCULATE_LOAD_VECTOR_HPP

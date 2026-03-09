@@ -218,4 +218,4 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
                                      const Omega_h::Reals& source_values);
 } // namespace pcms
 
-#endif
+#endif // PCMS_TRANSFER_LOAD_VECTOR_INTEGRATOR_HPP

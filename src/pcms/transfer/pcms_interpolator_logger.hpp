@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_LOGGER_HPP
-#define PCMS_TRANSFER_LOGGER_HPP
+#ifndef PCMS_TRANSFER_PCMS_INTERPOLATOR_LOGGER_HPP
+#define PCMS_TRANSFER_PCMS_INTERPOLATOR_LOGGER_HPP
 
 #include <pcms/transfer/pcms_interpolator_aliases.hpp>
 #include <Kokkos_Printf.hpp>
@@ -144,4 +144,4 @@ private:
   }
 };
 } // end namespace pcms
-#endif
+#endif // PCMS_TRANSFER_PCMS_INTERPOLATOR_LOGGER_HPP

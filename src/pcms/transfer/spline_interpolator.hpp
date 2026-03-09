@@ -1,5 +1,5 @@
-#ifndef MLS_RBF_OPTIONS_HPP
-#define MLS_RBF_OPTIONS_HPP
+#ifndef PCMS_TRANSFER_SPLINE_INTERPOLATOR_HPP
+#define PCMS_TRANSFER_SPLINE_INTERPOLATOR_HPP
 
 #include "mdspan/mdspan.hpp"
 #include "pcms/utility/arrays.h"
@@ -2949,4 +2949,4 @@ CompactBiCubicSplineInterpolator<T, MemorySpace>::
 }
 
 } // namespace pcms
-#endif
+#endif // PCMS_TRANSFER_SPLINE_INTERPOLATOR_HPP

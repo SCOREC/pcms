@@ -1,5 +1,5 @@
-#ifndef QUEUE_VISITED_HPP
-#define QUEUE_VISITED_HPP
+#ifndef PCMS_TRANSFER_QUEUE_VISITED_HPP
+#define PCMS_TRANSFER_QUEUE_VISITED_HPP
 
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
@@ -136,4 +136,4 @@ int Track::size()
   return count;
 }
 }
-#endif
+#endif // PCMS_TRANSFER_QUEUE_VISITED_HPP

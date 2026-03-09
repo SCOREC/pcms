@@ -1,5 +1,5 @@
-#ifndef MULTIDIMARRAY_HPP
-#define MULTIDIMARRAY_HPP
+#ifndef PCMS_TRANSFER_MULTIDIMARRAY_HPP
+#define PCMS_TRANSFER_MULTIDIMARRAY_HPP
 
 #include <Kokkos_Core.hpp>
 
@@ -36,4 +36,4 @@ inline int calculateTotalSize(const HostIntVecView& dimensions)
   return size;
 }
 }
-#endif
+#endif // PCMS_TRANSFER_MULTIDIMARRAY_HPP

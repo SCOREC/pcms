@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_MLS_INTERPOLATION_IMP_HPP
-#define PCMS_TRANSFER_MLS_INTERPOLATION_IMP_HPP
+#ifndef PCMS_TRANSFER_MLS_INTERPOLATION_IMPL_HPP
+#define PCMS_TRANSFER_MLS_INTERPOLATION_IMPL_HPP
 
 #include <cmath>
 #include <Omega_h_fail.hpp>
@@ -691,4 +691,4 @@ Omega_h::Write<Omega_h::Real> mls_interpolation(
 } // namespace detail
 } // namespace pcms
 
-#endif
+#endif // PCMS_TRANSFER_MLS_INTERPOLATION_IMPL_HPP

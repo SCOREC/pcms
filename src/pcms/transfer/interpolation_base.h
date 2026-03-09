@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef PCMS_INTERPOLATION_BASE_H
-#define PCMS_INTERPOLATION_BASE_H
+#ifndef PCMS_TRANSFER_INTERPOLATION_BASE_H
+#define PCMS_TRANSFER_INTERPOLATION_BASE_H
 
 #include "mls_interpolation.hpp"
 #include "adj_search.hpp"
@@ -296,4 +296,4 @@ private:
 };
 }
 
-#endif // PCMS_INTERPOLATION_BASE_H
+#endif // PCMS_TRANSFER_INTERPOLATION_BASE_H

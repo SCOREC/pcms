@@ -1,5 +1,5 @@
-#ifndef MLS_RBF_OPTIONS_HPP
-#define MLS_RBF_OPTIONS_HPP
+#ifndef PCMS_TRANSFER_MLS_INTERPOLATION_HPP
+#define PCMS_TRANSFER_MLS_INTERPOLATION_HPP
 
 #include <Omega_h_array.hpp>
 
@@ -139,4 +139,4 @@ Omega_h::Write<Omega_h::Real> mls_interpolation(
   const Omega_h::LO& dim, const Omega_h::LO& degree, RadialBasisFunction bf,
   double lambda = 0, double tol = 1e-6, double decay_factor = 5.0);
 } // namespace pcms
-#endif
+#endif // PCMS_TRANSFER_MLS_INTERPOLATION_HPP

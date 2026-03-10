@@ -50,6 +50,8 @@ target_link_libraries(pcms_transfer PUBLIC meshfields::meshfields)
 
 target_link_libraries(pcms_transfer PUBLIC PkgConfig::PETSC)
 
+target_compile_definitions(pcms_transfer PUBLIC R3D_USE_KOKKOS)
+
 target_include_directories(pcms_transfer INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>

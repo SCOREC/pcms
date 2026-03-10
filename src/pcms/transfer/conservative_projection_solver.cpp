@@ -27,7 +27,7 @@ static Vec solveLinearSystem(Mat A, Vec b)
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
   Vec x;
-  ierr = VecCreateSeqKokkos(PETSC_COMM_SELF, n, &x);
+  ierr = VecCreateSeqKokkos(PETSC_COMM_WORLD, n, &x);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
   KSP ksp;

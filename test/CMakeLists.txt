@@ -403,6 +403,7 @@ if(Catch2_FOUND)
   if (PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES
       test_load_vector.cpp
+	  test_intersections.cpp
       test_mesh_intersection_field_transfer.cpp)
   endif()
 

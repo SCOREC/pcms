@@ -95,44 +95,155 @@ namespace pcms
 
   return value;
 }
+
 /**
- * @brief Computes the counter-clockwise (CCW) vertex ordering of a 2D polygon.
+ * @brief Deduplicate, reorder, and orient a 2D polygon produced by r3d.
  *
- * Given a 2D polygon stored in an `r3d::Polytope<2>` struct where each vertex
- * has exactly two neighbors. This function reconstructs the CCW traversal order
- * of the polygon's vertices and stores the result in the provided `order`
- * array.
+ * This function performs all necessary cleanup and reconstruction of a polygon
+ * returned by `r3d::intersect_simplices()`, which may contain:
+ *  - duplicated vertices,
+ *  - unordered vertex lists,
+ *  - invalid or inconsistent neighbor links (`pnbrs`),
+ *  - negative orientation (CW instead of CCW).
  *
- * The traversal begins at vertex 0 and proceeds by selecting the neighbor that
- * is not previously visited vertex, thereby completing a full loop around the
- * polygon.
+ * The cleanup proceeds with the following stages:
  *
- * @param poly The polygon to process, represented as an `r3d::Polytope<2>`.
- *          Each vertex includes a list of two neighbor indices
- * (`pnbrs[2]`) forming the cycle.
+ * **(1) Geometric deduplication:**
+ * Vertices whose coordinates are equal within a tolerance `tol` are collapsed
+ * into a single unique vertex. A compacted vertex list is built.
  *
- * @param[out] order An output array to store the CCW vertex order. Must be
- * preallocated to hold at least `poly.nverts` size.
- * @return The number of vertices in the polygon (i.e., `poly.nverts`)
+ * **(2) CCW vertex reordering:**
+ * The remaining unique vertices are sorted by their polar angle around the
+ * polygon centroid. This yields a globally consistent counter-clockwise (CCW)
+ *
+ *
+ * **(3) Rebuilding neighbor links:**
+ * After sorting, each vertex's two neighbors (`pnbrs[0]` and `pnbrs[1]`) are
+ * reassigned to form a closed CCW cycle:
+ *
+ *      pnbrs[0] = previous vertex in CCW order
+ *      pnbrs[1] = next     vertex in CCW order
+ *
+ *
+ *
+ * @param poly The polygon to clean, and reorder.
+ *
+ * @param tol Tolerance for geometric duplicate detection (default: 1e-12).
+ *
+ * @return The number of unique, CCW-ordered vertices remaining in the polygon.
  *
  * @see r3d::Polytope
+ * @see r3d::measure
+ * @see r3d::intersect_simplices
  */
 
-OMEGA_H_INLINE void get_polygon_cycle_ccw(
-  const r3d::Polytope<2>& poly, int* order)
+[[nodiscard]] OMEGA_H_INLINE int remove_duplicate_vertices_and_fix_links(
+  r3d::Polytope<2>& poly, const double tol = 1e-12)
 {
-  const int m = poly.nverts;
-  order[0] = 0;
-  int prev = -1;
-  int curr = 0;
-  for (int s = 1; s < m; ++s) {
-    const int a = poly.verts[curr].pnbrs[0];
-    const int b = poly.verts[curr].pnbrs[1];
-    const int next = (a != prev ? a : b); // pick neighbor that's not 'prev'
-    order[s] = next;
-    prev = curr;
-    curr = next;
+
+  const int old_n = poly.nverts;
+  int new_n = 0;
+
+  int old2new[r3d::MaxVerts<2>::value];
+  for (int i = 0; i < old_n; ++i) {
+    old2new[i] = -1;
   }
+
+  // geometric deupliactes filtering
+  for (int i = 0; i < old_n; ++i) {
+    const auto& pi = poly.verts[i].pos;
+    bool dup = false;
+    for (int j = 0; j < new_n; ++j) {
+      const auto& pj = poly.verts[j].pos;
+      if (Kokkos::fabs(pi[0] - pj[0]) < tol &&
+          Kokkos::fabs(pi[1] - pj[1]) < tol) {
+        dup = true;
+        old2new[i] = j;
+        break;
+      }
+    }
+    if (!dup) {
+      old2new[i] = new_n;
+      poly.verts[new_n] = poly.verts[i];
+      ++new_n;
+    }
+  }
+  poly.nverts = new_n;
+
+  //  CCW reorder verts by angle about centroid
+  if (new_n >= 3) {
+    // centroid
+    double cx = 0.0;
+    double cy = 0.0;
+    for (int i = 0; i < new_n; ++i) {
+      cx += poly.verts[i].pos[0];
+      cy += poly.verts[i].pos[1];
+    }
+    cx /= new_n;
+    cy /= new_n;
+
+    // angle sort
+    int order[r3d::MaxVerts<2>::value];
+    for (int i = 0; i < new_n; ++i) {
+      order[i] = i;
+    }
+
+    for (int i = 0; i < new_n - 1; ++i) {
+      for (int j = i + 1; j < new_n; ++j) {
+        const double a1 = Kokkos::atan2(poly.verts[order[i]].pos[1] - cy,
+                                        poly.verts[order[i]].pos[0] - cx);
+        const double a2 = Kokkos::atan2(poly.verts[order[j]].pos[1] - cy,
+                                        poly.verts[order[j]].pos[0] - cx);
+        if (a1 > a2) {
+          int t = order[i];
+          order[i] = order[j];
+          order[j] = t;
+        }
+      }
+    }
+
+    r3d::Vertex<2> tmp[r3d::MaxVerts<2>::value];
+    for (int i = 0; i < new_n; ++i) {
+      tmp[i] = poly.verts[order[i]];
+    }
+
+    for (int i = 0; i < new_n; ++i) {
+      poly.verts[i] = tmp[i];
+    }
+
+    //  set circular neighbors consistent with verts[] order
+    for (int i = 0; i < new_n; ++i) {
+      const int prev = (i - 1 + new_n) % new_n;
+      const int next = (i + 1) % new_n;
+      poly.verts[i].pnbrs[0] = prev; // CCW prev
+      poly.verts[i].pnbrs[1] = next; // CCW next
+    }
+
+    //  ensure positive orientation (if measure is still negative, reverse)
+    double area = r3d::measure(poly);
+    if (area < 0.0) {
+      // reverse verts and relink
+      for (int i = 0; i < new_n / 2; ++i) {
+        r3d::Vertex<2> t = poly.verts[i];
+        poly.verts[i] = poly.verts[new_n - 1 - i];
+        poly.verts[new_n - 1 - i] = t;
+      }
+      for (int i = 0; i < new_n; ++i) {
+        const int prev = (i - 1 + new_n) % new_n;
+        const int next = (i + 1) % new_n;
+        poly.verts[i].pnbrs[0] = prev;
+        poly.verts[i].pnbrs[1] = next;
+      }
+    }
+  } else {
+    // clear links
+    for (int i = 0; i < new_n; ++i) {
+      poly.verts[i].pnbrs[0] = -1;
+      poly.verts[i].pnbrs[1] = -1;
+    }
+  }
+
+  return new_n;
 }
 
 template <typename TriangleOp>
@@ -153,9 +264,8 @@ OMEGA_H_INLINE void for_each_intersection_subtriangle(
       get_vert_coords_of_elem(src_coords, src_faces2nodes, current_src_elm);
     r3d::Polytope<2> poly;
     r3d::intersect_simplices(poly, tgt_elm_vert_coords, src_elm_vert_coords);
-    auto nverts = poly.nverts;
-    int order[r3d::MaxVerts<2>::value];
-    get_polygon_cycle_ccw(poly, order);
+    auto nverts = remove_duplicate_vertices_and_fix_links(poly, 1e-12);
+    ;
     auto poly_area = r3d::measure(poly);
 
     for (int j = 1; j < nverts - 1; ++j) {

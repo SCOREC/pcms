@@ -27,21 +27,21 @@ TEST_CASE("Load vector computation on intersected regions", "[load_vector]")
   // Two triangles, CCW
   // T0: (v0,v1,v3) = (0,1,3)
   // T1: (v1,v2,v3) = (1,2,3)
-  Omega_h::LOs ev2v_source({0, 1, 3, 1, 2, 3});
+  Omega_h::LOs ev2v_target({0, 1, 3, 1, 2, 3});
 
   Omega_h::Mesh target_mesh(&lib);
   Omega_h::build_from_elems_and_coords(&target_mesh, OMEGA_H_SIMPLEX, 2,
-                                       ev2v_source, coords);
+                                       ev2v_target, coords);
 
   // Source Mesh with two triangles
   // Two triangles, CCW
   // T0: (v0,v1,v3) = (0,1,2)
   // T1: (v1,v2,v3) = (0,2,3)
-  Omega_h::LOs ev2v_target({0, 1, 2, 0, 2, 3});
+  Omega_h::LOs ev2v_source({0, 1, 2, 0, 2, 3});
 
   Omega_h::Mesh source_mesh(&lib);
   Omega_h::build_from_elems_and_coords(&source_mesh, OMEGA_H_SIMPLEX, 2,
-                                       ev2v_target, coords);
+                                       ev2v_source, coords);
 
   REQUIRE(source_mesh.dim() == 2);
   REQUIRE(target_mesh.dim() == 2);

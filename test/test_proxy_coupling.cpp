@@ -219,6 +219,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 
       // Validate received gids on first round
       if (i == 0) { //TODO check all the rounds - don't time the check
+        Omega_h::vtk::write_parallel("totalf_r0.vtk", &mesh, mesh.dim());
         validate_received_gids("totalf_validate_", "totalf_gids", mesh, is_overlap, comm);
       }
 

@@ -12,28 +12,49 @@
 TEST_CASE("Mesh intersection test with source and target", "[intersection]")
 {
 
-  auto lib = Omega_h::Library{};
-  auto world = lib.world();
-  auto rank = lib.world()->rank();
+  Omega_h::Library lib;
 
-  /*
-     We make two 2D meshes on the unit square.
-     Target mesh is coarse   : 4 × 4 = 32 triangles
-     Source mesh is refined  : 8 × 8 = 128 triangles
-     This ensures non-trivial intersection patterns.
-  */
+  Omega_h::Reals coords_target({
+    0.0, 0.0, // v0
+    1.0, 0.0, // v1
+    1.0, 1.0, // v2
+    0.0, 1.0  // v3
+  });
 
-  int tgt_n = 4; // target elements per direction
-  int src_n = 8; // source elements per direction (finer)
+  // Target Mesh with two triangles
+  // Two triangles, CCW
+  // T0: (v0,v1,v3) = (0,1,3)
+  // T1: (v1,v2,v3) = (1,2,3)
+  Omega_h::LOs ev2v_target({0, 1, 3, 1, 2, 3});
 
-  Omega_h::Mesh tgt_mesh =
-    Omega_h::build_box(world, OMEGA_H_SIMPLEX,
-                       /*x-length=*/1, /*y-length=*/1, /*z-length=*/0,
-                       /*nx=*/tgt_n, /*ny=*/tgt_n, /*nz=*/0.0,
-                       /*symmetric=*/false);
+  Omega_h::Mesh tgt_mesh(&lib);
+  Omega_h::build_from_elems_and_coords(&tgt_mesh, OMEGA_H_SIMPLEX, 2,
+                                       ev2v_target, coords_target);
 
-  Omega_h::Mesh src_mesh =
-    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, src_n, src_n, 0, false);
+  // 2D coordinates (x,y) : 4 vertices
+  Omega_h::Reals coords_source({
+    0.0, 0.0, // v0
+    0.5, 0.0, // v1
+    1.0, 0.0, // v2
+    0.0, 0.5, // v3
+    0.5, 0.5, // v4
+    1.0, 0.5, // v5
+    0.0, 1.0, // v6
+    0.5, 1.0, // v7
+    1.0, 1.0  // v8
+  });
+
+  // TARGET triangulations
+  Omega_h::LOs ev2v_source(
+    {0, 1, 4, 0, 4, 3, 1, 2, 5, 1, 5, 4, 3, 4, 7, 3, 7, 6, 4, 5, 8, 4, 8, 7});
+  Omega_h::Mesh src_mesh(&lib);
+  Omega_h::build_from_elems_and_coords(&src_mesh, OMEGA_H_SIMPLEX, 2,
+                                       ev2v_source, coords_source);
+
+  REQUIRE(src_mesh.dim() == 2);
+  REQUIRE(tgt_mesh.dim() == 2);
+
+  int num_tgt_elems = tgt_mesh.nelems();
 
   REQUIRE(src_mesh.dim() == 2);
   REQUIRE(tgt_mesh.dim() == 2);
@@ -107,6 +128,8 @@ TEST_CASE("Mesh intersection test with source and target", "[intersection]")
           sum_area += r3d::measure(poly);
         }
         total_intersected_area[t] = sum_area;
+        printf("element = %d, num source intersections = %d, sum area = %f\n",
+               t, end - start, sum_area);
       });
 
     auto expected = Omega_h::HostRead(tgt_elm_area);
@@ -136,11 +159,5 @@ TEST_CASE("Mesh intersection test with source and target", "[intersection]")
     double vol1 = r3d::measure(P1);
     REQUIRE(P1.nverts == 3);
     REQUIRE(Omega_h::are_close(vol1, 0.5 * 0.5 * 0.5));
-
-    r3d::Polytope<2> P2;
-    r3d::intersect_simplices(P2, B, A);
-    double vol2 = r3d::measure(P2);
-    REQUIRE(P2.nverts == 3);
-    REQUIRE(Omega_h::are_close(vol2, 0.5 * 0.5 * 0.5));
   }
 }

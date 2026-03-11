@@ -203,9 +203,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto hasOverlapVerts = (numOverlapVerts > 0) ? 1 : 0;
   const auto numGlobalOverlapVerts = mesh.comm()->allreduce(numOverlapVerts, OMEGA_H_SUM);
   const auto numRanksWithOverlapVerts = mesh.comm()->allreduce(hasOverlapVerts, OMEGA_H_SUM);
-  if(rank == 0) {
-    pcms::printInfo("numGlobalOverlapVerts %d numRanksWithOverlapVerts %d\n", numGlobalOverlapVerts, numRanksWithOverlapVerts);
-  }
+  pcms::printInfo("numGlobalOverlapVerts %d numRanksWithOverlapVerts %d numLocalOverlapVerts %d\n", numGlobalOverlapVerts, numRanksWithOverlapVerts, numOverlapVerts);
 
   PCMS_FUNCTION_TIMER
   const auto start{std::chrono::steady_clock::now()};

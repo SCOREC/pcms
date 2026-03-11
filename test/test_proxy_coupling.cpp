@@ -66,8 +66,8 @@ void validate_received_gids(const std::string& field_name, Omega_h::Mesh& mesh,
   // Get the mesh's vertex globals
   auto mesh_globals = mesh.globals(0);
 
-  OMEGA_H_CHECK(received_gids.size() == mesh_globals.size());
-  if (received_gids.size() == mesh_globals.size()) {
+  OMEGA_H_CHECK_OP(received_gids.size(),==, mesh_globals.size());
+  if (received_gids.size() != mesh_globals.size()) {
     std::cerr << "ERROR: rank " << rank << " received_gids.size() != mesh_globals.size()\n";
   }
 
@@ -96,10 +96,13 @@ void validate_received_gids(const std::string& field_name, Omega_h::Mesh& mesh,
     int printed = 0;
     for (int i = 0; i < n && printed < 10; ++i) {
       if (mismatch_flags_h[i]) {
-        std::cerr << "Rank " << rank << " field '" << field_name
-                  << "' mismatch at vertex " << i
-                  << ": received=" << received_gids_h[i]
-                  << " expected=" << mesh_globals_h[i] << "\n";
+        std::stringstream ss;
+        ss << "Rank " << rank << " field '" << field_name
+           << "' mismatch at vertex " << i
+           << ": received=" << received_gids_h[i]
+           << " expected=" << mesh_globals_h[i] << "\n";
+        std::string str = ss.str();
+        pcms::printInfo("%s", str.c_str());
         printed++;
       }
     }
@@ -108,13 +111,12 @@ void validate_received_gids(const std::string& field_name, Omega_h::Mesh& mesh,
   int global_mismatches;
   MPI_Allreduce(&mismatches, &global_mismatches, 1, MPI_INT, MPI_SUM, comm);
 
-  if (rank == 0) {
-    if (global_mismatches == 0) {
-      std::cerr << "Field " << field_name << " validation passed\n";
-    } else {
-      std::cerr << "Field " << field_name << " validation FAILED: "
-                << global_mismatches << " total mismatches\n";
-    }
+  if (rank == 0 && global_mismatches) {
+    std::cerr << "Field " << field_name << " validation FAILED: "
+              << global_mismatches << " total mismatches\n";
+  }
+  if (global_mismatches) {
+    MPI_Abort(comm, 1);
   }
 }
 

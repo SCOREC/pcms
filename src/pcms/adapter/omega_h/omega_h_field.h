@@ -17,6 +17,7 @@
 #include "pcms/memory_spaces.h"
 #include "pcms/profile.h"
 #include "pcms/partition.h"
+#include "pcms/print.h"
 #include <optional>
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)
@@ -585,6 +586,10 @@ public:
       const std::string tag_name = field_.GetName() + "_dest_rank";
       auto dest_ranks_d = Omega_h::Read<Omega_h::LO>(dest_ranks_filtered_h);
       field_.GetMesh().add_tag(ent_dim, tag_name, 1, dest_ranks_d);
+    }
+
+    for( auto& iter : reverse_partition ) {
+      pcms::printInfo("reversePartition rank %d size %d\n", iter.first, iter.second.size());
     }
 
     return reverse_partition;

@@ -154,7 +154,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
     pcms::printInfo("numGlobalOverlapVerts %d numRanksWithOverlapVerts %d\n", numGlobalOverlapVerts, numRanksWithOverlapVerts);
   }
 
-  Omega_h::vtk::write_parallel("xgc_delta_f.vtk", &mesh, mesh.dim());
+  Omega_h::vtk::write_parallel("xgc_delta_f_init.vtk", &mesh, mesh.dim());
   PCMS_FUNCTION_TIMER
   const auto start{std::chrono::steady_clock::now()};
   do {
@@ -173,7 +173,6 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       if (i == 0) { //TODO check all the rounds - don't time the check
         validate_received_gids("deltaf_validate_", "deltaf_gids", mesh, is_overlap, comm);
         validate_received_gids("deltaf_validate_", "deltaf_gids2", mesh, is_overlap, comm);
-        Omega_h::vtk::write_parallel("xgc_delta_f_r0.vtk", &mesh, mesh.dim());
       }
 
       const auto round_finish{std::chrono::steady_clock::now()};
@@ -205,6 +204,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto numRanksWithOverlapVerts = mesh.comm()->allreduce(hasOverlapVerts, OMEGA_H_SUM);
   pcms::printInfo("numGlobalOverlapVerts %d numRanksWithOverlapVerts %d numLocalOverlapVerts %d\n", numGlobalOverlapVerts, numRanksWithOverlapVerts, numOverlapVerts);
 
+  Omega_h::vtk::write_parallel("xgc_total_f_init.vtk", &mesh, mesh.dim());
   PCMS_FUNCTION_TIMER
   const auto start{std::chrono::steady_clock::now()};
   do {
@@ -219,7 +219,6 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 
       // Validate received gids on first round
       if (i == 0) { //TODO check all the rounds - don't time the check
-        Omega_h::vtk::write_parallel("totalf_r0.vtk", &mesh, mesh.dim());
         validate_received_gids("totalf_validate_", "totalf_gids", mesh, is_overlap, comm);
       }
 
@@ -272,6 +271,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
   pcms::printInfo("numServerOverlapVerts %d\n", numServerOverlapVerts);
   pcms::printInfo("round, total_f, delta_f_gids, delta_f_gids2, local_total, global_total\n");
+  Omega_h::vtk::write_parallel("xgc_coupler_init.vtk", &mesh, mesh.dim());
   {
   PCMS_FUNCTION_TIMER
   auto start{std::chrono::steady_clock::now()};
@@ -288,7 +288,6 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
       // Validate received gids on first round
       if (i == 0) { //TODO check all the rounds - don't time the check
-        Omega_h::vtk::write_parallel("coupler_r0.vtk", &mesh, mesh.dim());
         validate_received_gids("coupler_validate_", "total_f_gids", mesh, is_overlap, comm);
         validate_received_gids("coupler_validate_", "delta_f_gids", mesh, is_overlap, comm);
         validate_received_gids("coupler_validate_", "delta_f_gids2", mesh, is_overlap, comm);

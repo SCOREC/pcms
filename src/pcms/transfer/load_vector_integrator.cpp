@@ -269,11 +269,11 @@ OMEGA_H_INLINE void for_each_intersection_subtriangle(
     auto poly_area = r3d::measure(poly);
 
     for (int j = 1; j < nverts - 1; ++j) {
-      // build triangle from poly.verts[order[0]], poly.verts[order[j]],
-      // poly.verts[order[j+2]]
-      auto& p0 = poly.verts[order[0]].pos;
-      auto& p1 = poly.verts[order[j]].pos;
-      auto& p2 = poly.verts[order[j + 1]].pos;
+      // build triangle from poly.verts[0], poly.verts[j],
+      // poly.verts[j+1]
+      auto& p0 = poly.verts[0].pos;
+      auto& p1 = poly.verts[j].pos;
+      auto& p2 = poly.verts[j + 1].pos;
 
       Omega_h::Few<Omega_h::Vector<2>, 3> tri_coords;
       tri_coords[0] = {p0[0], p0[1]};

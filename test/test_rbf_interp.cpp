@@ -94,9 +94,6 @@ TEST_CASE("test_mls_interpolation")
 
   const auto& ntargets = mesh.nverts();
 
-  Omega_h::Write<Omega_h::Real> source_coordinates(
-    dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
-
   const auto& faces2nodes = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
 
   Kokkos::parallel_for(

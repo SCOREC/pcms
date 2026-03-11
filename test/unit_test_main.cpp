@@ -1,7 +1,7 @@
 #include <catch2/catch_session.hpp>
 #include <Kokkos_Core.hpp>
 #include <mpi.h>
-#include <petsc_defaults.h>
+#include <petsc_defaults.hpp>
 
 int main(int argc, char* argv[])
 {

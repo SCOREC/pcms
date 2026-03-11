@@ -53,7 +53,7 @@ adios2::Params getAdiosParams(const redev::TransportType engine) {
   return params;
 }
 
-void validate_received_gids(const std::string& field_name, Omega_h::Mesh& mesh,
+void validate_received_gids(const std::string& prefix, const std::string& field_name, Omega_h::Mesh& mesh,
                            const Omega_h::Read<Omega_h::I8>& is_overlap, MPI_Comm comm)
 {
   PERFSTUBS_SCOPED_TIMER("validate_received_gids");
@@ -83,6 +83,8 @@ void validate_received_gids(const std::string& field_name, Omega_h::Mesh& mesh,
       }
     }
   });
+  mesh.add_tag(Omega_h::VERT, "recvGidDoesNotMatch", 1, Omega_h::read(mismatch_flags));
+  Omega_h::vtk::write_parallel(prefix + field_name + std::string(".vtk"), &mesh, mesh.dim());
 
   // Count total mismatches
   const int mismatches = Omega_h::get_sum(Omega_h::Read<Omega_h::I8>(mismatch_flags));
@@ -169,8 +171,8 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 
       // Validate received gids on first round
       if (i == 0) { //TODO check all the rounds - don't time the check
-        validate_received_gids("deltaf_gids", mesh, is_overlap, comm);
-        validate_received_gids("deltaf_gids2", mesh, is_overlap, comm);
+        validate_received_gids("deltaf_validate_", "deltaf_gids", mesh, is_overlap, comm);
+        validate_received_gids("deltaf_validate_", "deltaf_gids2", mesh, is_overlap, comm);
         Omega_h::vtk::write_parallel("xgc_delta_f_r0.vtk", &mesh, mesh.dim());
       }
 
@@ -219,7 +221,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 
       // Validate received gids on first round
       if (i == 0) { //TODO check all the rounds - don't time the check
-        validate_received_gids("totalf_gids", mesh, is_overlap, comm);
+        validate_received_gids("totalf_validate_", "totalf_gids", mesh, is_overlap, comm);
       }
 
       const auto round_finish{std::chrono::steady_clock::now()};
@@ -287,9 +289,10 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
       // Validate received gids on first round
       if (i == 0) { //TODO check all the rounds - don't time the check
-        validate_received_gids("total_f_gids", mesh, is_overlap, comm);
-        validate_received_gids("delta_f_gids", mesh, is_overlap, comm);
-        validate_received_gids("delta_f_gids2", mesh, is_overlap, comm);
+        Omega_h::vtk::write_parallel("coupler_r0.vtk", &mesh, mesh.dim());
+        validate_received_gids("coupler_validate_", "total_f_gids", mesh, is_overlap, comm);
+        validate_received_gids("coupler_validate_", "delta_f_gids", mesh, is_overlap, comm);
+        validate_received_gids("coupler_validate_", "delta_f_gids2", mesh, is_overlap, comm);
       }
 
       // Get bytes received after receive phase, don't include in timing, only

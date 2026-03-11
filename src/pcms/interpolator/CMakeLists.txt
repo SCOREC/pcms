@@ -16,15 +16,18 @@ set(PCMS_FIELD_TRANSFER_HEADERS
 
 set(PCMS_FIELD_TRANSFER_SOURCES
     mls_interpolation.cpp
-    interpolation_base.cpp)
-install(FILES ${PCMS_FIELD_TRANSFER_HEADERS}
-        DESTINATION include/pcms/interpolator)
-
+    interpolation_base.cpp
+)
 
 add_library(pcms_interpolator ${PCMS_FIELD_TRANSFER_SOURCES})
 set_target_properties(pcms_interpolator PROPERTIES
         OUTPUT_NAME pcmsinterpolator
         EXPORT_NAME interpolator)
+target_sources(pcms_interpolator PUBLIC
+        FILE_SET transformer
+        TYPE HEADERS
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+        FILES ${PCMS_FIELD_TRANSFER_HEADERS})
 add_library(pcms::interpolator ALIAS pcms_interpolator)
 target_compile_features(pcms_interpolator PUBLIC cxx_std_17)
 
@@ -39,8 +42,8 @@ target_include_directories(pcms_interpolator INTERFACE
 install(
   TARGETS pcms_interpolator
   EXPORT pcms_interpolator-targets
-  INCLUDES
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/interpolator
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/interpolator
+  FILE_SET transformer DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 

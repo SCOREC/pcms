@@ -21,7 +21,7 @@ set_target_properties(
 target_sources(pcms_capi_core PUBLIC
         FILE_SET core
         TYPE HEADERS
-        BASE_DIRS ${PROJECT_SOURCE_DIR}/src/pcms
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
         FILES ${CAPI_CORE_HEADERS})
 add_library(pcms_capi_interpolator mesh.cpp interpolator.cpp kokkos.cpp)
 add_library(pcms::capi::interpolator ALIAS pcms_capi_interpolator)
@@ -40,7 +40,7 @@ set_target_properties(pcms_capi_interpolator
 target_sources(pcms_capi_interpolator PUBLIC
         FILE_SET interpolator
         TYPE HEADERS
-        BASE_DIRS ${PROJECT_SOURCE_DIR}/src/pcms
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
         FILES ${CAPI_INTERPOLATOR_HEADERS})
 # high level interface target
 add_library(pcms_capi INTERFACE)

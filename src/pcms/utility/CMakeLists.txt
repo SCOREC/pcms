@@ -39,8 +39,11 @@ if (PCMS_ENABLE_SPDLOG)
 endif ()
 
 ## export the library
-set_target_properties(pcms_utility PROPERTIES PUBLIC_HEADER "${PCMS_UTILITY_HEADERS}")
-
+target_sources(pcms_utility PUBLIC
+        FILE_SET utilities
+        TYPE HEADERS
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/../
+        FILES ${PCMS_UTILITY_HEADERS})
 install(
         TARGETS pcms_utility
         EXPORT pcms_utility-targets
@@ -49,7 +52,7 @@ install(
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         INCLUDES
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/utility
+        FILE_SET utilities DESTINATION  ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
 
 install(

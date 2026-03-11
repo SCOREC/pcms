@@ -562,6 +562,11 @@ public:
     // calling getRank - degree array
     std::array<pcms::Real, 3> coord;
     pcms::ReversePartitionMap reverse_partition;
+
+    // Create array to store destination rank for each filtered entity
+    const auto nents_filtered = classIds_h.size();
+    Omega_h::HostWrite<Omega_h::LO> dest_ranks_filtered_h(nents_filtered);
+
     pcms::LO local_index = 0;
     for (auto i = 0; i < classIds_h.size(); i++) {
       coord[0] = coords[i * dim];
@@ -569,7 +574,39 @@ public:
       coord[2] = (dim == 3) ? coords[i * dim + 2] : 0.0;
       auto dr = partition.GetDr(classIds_h[i], classDims_h[i], coord);
       reverse_partition[dr].emplace_back(local_index++);
+
+      // Store destination rank for this filtered entity
+      dest_ranks_filtered_h[i] = dr;
     }
+
+    // Add destination rank tag to mesh (must be sized for full mesh)
+    const auto ent_dim = mesh_entity_to_int(entity_type_);
+    const auto nents_full = field_.GetMesh().nents(ent_dim);
+
+    if (field_.HasMask()) {
+      // Map from filtered array back to full mesh using mask
+      auto mask_h = Omega_h::HostRead<Omega_h::LO>(field_.GetMask());
+      Omega_h::HostWrite<Omega_h::LO> dest_ranks_full_h(nents_full, -1, 0);
+
+      // mask[i] = 0 means entity i is excluded
+      // mask[i] = k (k > 0) means entity i maps to filtered index k-1
+      for (auto i = 0; i < mask_h.size(); i++) {
+        if (mask_h[i] > 0) {
+          const auto filtered_idx = mask_h[i] - 1;
+          dest_ranks_full_h[i] = dest_ranks_filtered_h[filtered_idx];
+        }
+      }
+
+      const std::string tag_name = field_.GetName() + "_dest_rank";
+      auto dest_ranks_d = Omega_h::Read<Omega_h::LO>(dest_ranks_full_h);
+      field_.GetMesh().add_tag(ent_dim, tag_name, 1, dest_ranks_d);
+    } else {
+      // No mask - filtered array is same as full array
+      const std::string tag_name = field_.GetName() + "_dest_rank";
+      auto dest_ranks_d = Omega_h::Read<Omega_h::LO>(dest_ranks_filtered_h);
+      field_.GetMesh().add_tag(ent_dim, tag_name, 1, dest_ranks_d);
+    }
+
     return reverse_partition;
   }
   // NOT REQUIRED PART OF FieldAdapter interface

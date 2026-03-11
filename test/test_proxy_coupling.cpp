@@ -130,10 +130,10 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
-  pcms::Coupler coupler("proxy_couple", comm, false, {});
+  pcms::Coupler coupler("coupler", comm, false, {});
   const auto adiosEngine = getAdiosEngine();
   const auto adiosParams = getAdiosParams(adiosEngine);
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f", "", adiosEngine, adiosParams);
+  pcms::Application* app = coupler.AddApplication("coupler_xgc_delta_f", "", adiosEngine, adiosParams);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
   auto deltaf_gids_r = createGlobalsCopy(mesh);
   mesh.add_tag(Omega_h::VERT, "deltaf_gids", 1, deltaf_gids_r);
@@ -188,10 +188,10 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
-  pcms::Coupler coupler("proxy_couple", comm, false, {});
+  pcms::Coupler coupler("coupler", comm, false, {});
   const auto adiosEngine = getAdiosEngine();
   const auto adiosParams = getAdiosParams(adiosEngine);
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f", "", adiosEngine, adiosParams);
+  pcms::Application* app = coupler.AddApplication("coupler_xgc_total_f", "", adiosEngine, adiosParams);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
   auto totalf_gids_r = createGlobalsCopy(mesh);
   mesh.add_tag(Omega_h::VERT, "totalf_gids", 1, totalf_gids_r);
@@ -246,7 +246,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
   pcms::Coupler cpl(
-    "proxy_couple", comm, true,
+    "coupler", comm, true,
     redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   pcms::printInfo("mesh numVtx %d\n", mesh.nverts());
@@ -254,8 +254,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{overlapSize});
   const auto adiosEngine = getAdiosEngine();
   const auto adiosParams = getAdiosParams(adiosEngine);
-  auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f", "", adiosEngine, adiosParams);
-  auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f", "", adiosEngine, adiosParams);
+  auto* total_f = cpl.AddApplication("coupler_xgc_total_f", "", adiosEngine, adiosParams);
+  auto* delta_f = cpl.AddApplication("coupler_xgc_delta_f", "", adiosEngine, adiosParams);
   // TODO, fields should have a transfer policy rather than parameters
   auto* total_f_gids = total_f->AddField(
     "gids", OmegaHFieldAdapter<GO>("total_f_gids", mesh, is_overlap));
@@ -333,7 +333,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   if(!rank) std::cerr << "xgc_coupler " << elapsed_seconds.count() << "\n";
   }
   fclose(fhandle);
-  Omega_h::vtk::write_parallel("proxy_couple.vtk", &mesh, mesh.dim());
+  Omega_h::vtk::write_parallel("coupler.vtk", &mesh, mesh.dim());
 }
 
 int main(int argc, char** argv)

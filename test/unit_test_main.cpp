@@ -1,7 +1,7 @@
 #include <catch2/catch_session.hpp>
 #include <Kokkos_Core.hpp>
 #include <mpi.h>
-#include <petsc_defaults.hpp>
+#include <petscsys.h>
 
 int main(int argc, char* argv[])
 {
@@ -15,7 +15,6 @@ int main(int argc, char* argv[])
     PetscInitialized(&petsc_initialized);
     if (!petsc_initialized) {
       PetscInitialize(&argc, &argv, nullptr, nullptr);
-      pcms::apply_petsc_defaults();
       petsc_initialized_by_main = PETSC_TRUE;
     }
     // petsc must be finalized in the kokkos ScopeGuard scope kokkos needs to

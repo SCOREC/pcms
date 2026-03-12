@@ -18,8 +18,7 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     conservative_projection_solver.hpp
     load_vector_integrator.hpp
     mass_matrix_integrator.hpp
-    mesh_intersection.hpp
-	petsc_defaults.hpp)
+    mesh_intersection.hpp)
 
 
 set(PCMS_FIELD_TRANSFER_SOURCES

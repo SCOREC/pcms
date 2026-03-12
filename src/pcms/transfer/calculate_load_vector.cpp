@@ -2,12 +2,14 @@
 #include "pcms/transfer/coo_assembly_utils.hpp"
 #include "pcms/transfer/load_vector_integrator.hpp"
 
-namespace pcms {
-PetscErrorCode calculateLoadVector(Omega_h::Mesh &target_mesh,
-  Omega_h::Mesh &source_mesh,
-  const IntersectionResults &intersection,
-  const Omega_h::Reals &source_values,
-  Vec*loadVec_out) {
+namespace pcms
+{
+PetscErrorCode calculateLoadVector(Omega_h::Mesh& target_mesh,
+                                   Omega_h::Mesh& source_mesh,
+                                   const IntersectionResults& intersection,
+                                   const Omega_h::Reals& source_values,
+                                   Vec* loadVec_out)
+{
 
   PetscFunctionBeginUser;
   PetscInt nnz = 0;
@@ -18,7 +20,7 @@ PetscErrorCode calculateLoadVector(Omega_h::Mesh &target_mesh,
 
   // Fill COO values
   auto elmLoadVector =
-      buildLoadVector(target_mesh, source_mesh, intersection, source_values);
+    buildLoadVector(target_mesh, source_mesh, intersection, source_values);
 
   auto hostElmLoadVector = Kokkos::create_mirror_view(elmLoadVector);
   Kokkos::deep_copy(hostElmLoadVector, elmLoadVector);
@@ -35,7 +37,8 @@ PetscErrorCode calculateLoadVector(Omega_h::Mesh &target_mesh,
   Vec vec;
   PetscCall(VecCreate(PETSC_COMM_WORLD, &vec));
   PetscCall(VecSetSizes(vec, target_mesh.nverts(), PETSC_DECIDE));
-  PetscCall(VecSetFromOptions(vec));
+  PetscCall(VecSetType(vec, VECKOKKOS));
+  //  PetscCall(VecSetFromOptions(vec));
   PetscCall(VecSetPreallocationCOO(vec, nnz, coo_i));
   PetscCall(VecSetValuesCOO(vec, coo_vals, ADD_VALUES));
   PetscCall(PetscFree(coo_i));
@@ -48,4 +51,4 @@ PetscErrorCode calculateLoadVector(Omega_h::Mesh &target_mesh,
   *loadVec_out = vec;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-}
+} // namespace pcms

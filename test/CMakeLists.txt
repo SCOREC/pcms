@@ -47,10 +47,9 @@ if (PCMS_ENABLE_OMEGA_H)
                 NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
                 NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
     endif()
-    add_executable(proxy_coupling test_proxy_coupling.cpp)
-    target_link_libraries(proxy_coupling PUBLIC pcms::core test_support)
+    add_exe(proxy_coupling proxy_coupling.cpp)
     if(HOST_NPROC GREATER_EQUAL 4)
-        tri_mpi_test(TESTNAME test_proxy_coupling_4p
+        tri_mpi_test(TESTNAME proxy_coupling_4p
                 TIMEOUT 30
                 NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn} WAN BP4 small
                 NAME2 client0 EXE2 ./proxy_coupling PROCS2 1 ARGS2 0 ${d3d1p} ignored WAN BP4 small

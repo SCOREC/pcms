@@ -144,26 +144,26 @@ template <unsigned dim>
 }
 
 [[nodiscard]] KOKKOS_INLINE_FUNCTION bool bbox_verts_within_triangle(
-  const AABBox<2>& bbox, const Omega_h::Matrix<2, 3>& coords, Real fuzz)
+  const AABBox<2>& bbox, const Omega_h::Matrix<2, 3>& coords)
 {
   auto left = bbox.center[0] - bbox.half_width[0];
   auto right = bbox.center[0] + bbox.half_width[0];
   auto bot = bbox.center[1] - bbox.half_width[1];
   auto top = bbox.center[1] + bbox.half_width[1];
   auto xi = Omega_h::barycentric_from_global<2, 2>({left, bot}, coords);
-  if (Omega_h::is_barycentric_inside(xi, fuzz)) {
+  if (Omega_h::is_barycentric_inside(xi)) {
     return true;
   }
   xi = Omega_h::barycentric_from_global<2, 2>({left, top}, coords);
-  if (Omega_h::is_barycentric_inside(xi, fuzz)) {
+  if (Omega_h::is_barycentric_inside(xi)) {
     return true;
   }
   xi = Omega_h::barycentric_from_global<2, 2>({right, top}, coords);
-  if (Omega_h::is_barycentric_inside(xi, fuzz)) {
+  if (Omega_h::is_barycentric_inside(xi)) {
     return true;
   }
   xi = Omega_h::barycentric_from_global<2, 2>({right, bot}, coords);
-  if (Omega_h::is_barycentric_inside(xi, fuzz)) {
+  if (Omega_h::is_barycentric_inside(xi)) {
     return true;
   }
   return false;
@@ -197,7 +197,7 @@ template <int dim>
       vert[j] = (i >> j) & 1 ? bbox_walls[j * 2] : bbox_walls[j * 2 + 1];
     }
     auto xi = Omega_h::barycentric_from_global<dim, dim>(vert, coords);
-    if (Omega_h::is_barycentric_inside(xi, fuzz)) {
+    if (Omega_h::is_barycentric_inside(xi)) {
       return true;
     }
   }
@@ -210,7 +210,7 @@ template <int dim>
  */
 [[nodiscard]]
 KOKKOS_FUNCTION bool triangle_intersects_bbox(
-  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox, Real fuzz)
+  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox)
 {
   // triangle and grid cell bounding box intersect
   if (intersects(triangle_bbox(coords), bbox)) {
@@ -220,7 +220,7 @@ KOKKOS_FUNCTION bool triangle_intersects_bbox(
       return true;
     }
     // if any of the bbox verts are within the triangle
-    if (bbox_verts_within_triangle(bbox, coords, fuzz)) {
+    if (bbox_verts_within_triangle(bbox, coords)) {
       return true;
     }
     // if any of the triangle's edges intersect with the bounding box
@@ -257,12 +257,11 @@ namespace detail
 struct GridTriIntersectionFunctor2D
 {
   GridTriIntersectionFunctor2D(Omega_h::Mesh& mesh,
-                               Kokkos::View<Uniform2DGrid[1]> grid, Real fuzz)
+                               Kokkos::View<Uniform2DGrid[1]> grid)
     : mesh_(mesh),
       tris2verts_(mesh_.ask_elem_verts()),
       coords_(mesh_.coords()),
       grid_(grid),
-      fuzz_(fuzz),
       nelems_(mesh_.nelems())
   {
     if (mesh_.dim() != 2) {
@@ -286,7 +285,7 @@ struct GridTriIntersectionFunctor2D
       // 2d mesh with 2d coords, but 3 triangles
       const auto vertex_coords =
         Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
-      if (triangle_intersects_bbox(vertex_coords, grid_cell_bbox, fuzz_)) {
+      if (triangle_intersects_bbox(vertex_coords, grid_cell_bbox)) {
         if (fill) {
           fill[num_intersections] = elem_idx;
         }
@@ -301,7 +300,6 @@ private:
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
   Kokkos::View<Uniform2DGrid[1]> grid_;
-  Real fuzz_;
 
 public:
   LO nelems_;
@@ -362,10 +360,10 @@ public:
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_2d(Omega_h::Mesh& mesh,
                               Kokkos::View<Uniform2DGrid[1]> grid,
-                              int num_grid_cells, Real fuzz)
+                              int num_grid_cells)
 {
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  auto f = detail::GridTriIntersectionFunctor2D{mesh, grid, fuzz};
+  auto f = detail::GridTriIntersectionFunctor2D{mesh, grid};
   Kokkos::count_and_fill_crs(intersection_map, num_grid_cells, f);
   return intersection_map;
 }
@@ -407,7 +405,6 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
   auto edges2verts_adj = edges2verts_adj_;
   auto coords = coords_;
   auto tolerances = tolerances_;
-  auto fuzz = fuzz_;
   Kokkos::parallel_for(
     points.extent(0), KOKKOS_LAMBDA(int p) {
       Omega_h::Vector<2> point(
@@ -493,7 +490,7 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
         if (edge_found)
           break;
 
-        if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
+        if (Omega_h::is_barycentric_inside(parametric_coords)) {
           dimensionality = GridPointSearch2D::Result::Dimensionality::FACE;
           nearest_element_id = triangleID;
           parametric_coords_to_nearest = parametric_coords;
@@ -511,17 +508,15 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
   return results;
 }
 
-GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
-                                     Real fuzz)
+GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny)
   : GridPointSearch2D(mesh, Nx, Ny,
-                      PointSearchTolerances{"point search 2d tolerances"}, fuzz)
+                      PointSearchTolerances{"point search 2d tolerances"})
 {
-  Kokkos::deep_copy(tolerances_, 0);
+  Kokkos::deep_copy(tolerances_, 1E-12);
 }
 
 GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
-                                     const PointSearchTolerances& tolerances,
-                                     Real fuzz)
+                                     const PointSearchTolerances& tolerances)
   : PointLocalizationSearch(tolerances)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
@@ -532,14 +527,13 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
                   .bot_left = {mesh_bbox.min[0], mesh_bbox.min[1]},
                   .divisions = {Nx, Ny}};
   Kokkos::deep_copy(grid_, grid_h);
-  candidate_map_ = detail::construct_intersection_map_2d(
-    mesh, grid_, grid_h(0).GetNumCells(), fuzz_);
+  candidate_map_ =
+    detail::construct_intersection_map_2d(mesh, grid_, grid_h(0).GetNumCells());
   coords_ = mesh.coords();
   tris2verts_ = mesh.ask_elem_verts();
   tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
   tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
   edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
-  fuzz_ = fuzz;
 }
 
 Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
@@ -556,7 +550,6 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
   auto tris2edges_adj = tris2edges_adj_;
   auto edges2verts_adj = edges2verts_adj_;
   auto coords = coords_;
-  auto fuzz = fuzz_;
   Kokkos::parallel_for(
     points.extent(0), KOKKOS_LAMBDA(int p) {
       Omega_h::Vector<DIM> point;
@@ -585,7 +578,7 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
         auto parametric_coords =
           Omega_h::barycentric_from_global<DIM, DIM>(point, vertex_coords);
 
-        if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
+        if (Omega_h::is_barycentric_inside(parametric_coords)) {
           results(p) = GridPointSearch3D::Result{
             GridPointSearch3D::Result::Dimensionality::REGION, triangleID,
             parametric_coords};
@@ -605,17 +598,15 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
   return results;
 }
 
-GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
-                                     Real fuzz)
+GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz)
   : GridPointSearch3D(mesh, Nx, Ny, Nz,
-                      PointSearchTolerances{"point search 3d tolerances"}, fuzz)
+                      PointSearchTolerances{"point search 3d tolerances"})
 {
   Kokkos::deep_copy(tolerances_, 0);
 }
 
 GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
-                                     const PointSearchTolerances& tolerances,
-                                     Real fuzz)
+                                     const PointSearchTolerances& tolerances)
   : PointLocalizationSearch(tolerances)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<3>(&mesh);
@@ -641,6 +632,5 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
   tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
   tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
   edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
-  fuzz_ = fuzz;
 }
 } // namespace pcms

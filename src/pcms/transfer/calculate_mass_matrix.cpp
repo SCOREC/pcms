@@ -3,7 +3,8 @@
 #include "pcms/transfer/mass_matrix_integrator.hpp"
 #include "pcms/utility/memory_spaces.h"
 
-namespace pcms {
+namespace pcms
+{
 /**
  * @brief Creates a PETSc matrix based on mesh connectivity
  *
@@ -15,7 +16,9 @@ namespace pcms {
  * @param[out] A Pointer to the PETSc matrix to be created
  * @return PetscErrorCode PETSc error code (PETSC_SUCCESS if successful)
  */
-static PetscErrorCode create_linear_triangle_coo_matrix(Omega_h::Mesh &mesh, Mat*A) {
+static PetscErrorCode create_linear_triangle_coo_matrix(Omega_h::Mesh& mesh,
+                                                        Mat* A)
+{
   PetscInt* coo_rows = nullptr;
   PetscInt* coo_cols = nullptr;
   PetscInt matSize = 0;
@@ -23,24 +26,27 @@ static PetscErrorCode create_linear_triangle_coo_matrix(Omega_h::Mesh &mesh, Mat
   PetscCall(MatCreate(PETSC_COMM_WORLD, A));
   PetscCall(
     MatSetSizes(*A, mesh.nverts(), mesh.nverts(), PETSC_DECIDE, PETSC_DECIDE));
-  PetscCall(MatSetFromOptions(*A));
+
+  PetscCall(MatSetType(*A, MATAIJKOKKOS));
+  //  PetscCall(MatSetFromOptions(*A));
   PetscCall(
     build_linear_triangle_coo_rows_cols(mesh, &coo_rows, &coo_cols, &matSize));
   PetscCall(MatSetPreallocationCOO(*A, matSize, coo_rows, coo_cols));
   PetscCall(PetscFree2(coo_rows, coo_cols));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-PetscErrorCode calculateMassMatrix(Omega_h::Mesh &mesh, Mat*mass_out) {
+PetscErrorCode calculateMassMatrix(Omega_h::Mesh& mesh, Mat* mass_out)
+{
   PetscFunctionBeginUser;
 
   MeshField::OmegahMeshField<DefaultExecutionSpace, 2,
                              MeshField::KokkosController>
-      omf(mesh);
+    omf(mesh);
 
   const auto ShapeOrder = 1;
   auto coordField = omf.getCoordField();
   const auto [shp, map] =
-      MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
+    MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);
 
   auto elmMassMatrix = buildMassMatrix(mesh, coordFe);
@@ -56,7 +62,7 @@ PetscErrorCode calculateMassMatrix(Omega_h::Mesh &mesh, Mat*mass_out) {
   PetscCall(MatZeroEntries(mass));
   PetscCall(
     MatSetValuesCOO(mass, elmMassMatrix.data(),
-      INSERT_VALUES)); // FIXME fails here on gpu, calls into host
+                    INSERT_VALUES)); // FIXME fails here on gpu, calls into host
   // implementation... AFAIK, petsc checks
   // the type of the input array of values to
   // decide which backend to use...
@@ -68,4 +74,4 @@ PetscErrorCode calculateMassMatrix(Omega_h::Mesh &mesh, Mat*mass_out) {
   *mass_out = mass;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-}
+} // namespace pcms

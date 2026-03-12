@@ -38,7 +38,8 @@ double integrate_linear_field(Omega_h::Mesh& mesh, const Omega_h::Reals& u)
 
 } // namespace
 
-TEST_CASE("mesh intersection linear/constant conservation", "[transfer][mesh_intersection]")
+TEST_CASE("mesh intersection linear/constant conservation",
+          "[transfer][mesh_intersection]")
 {
   Omega_h::Library lib;
 
@@ -61,13 +62,16 @@ TEST_CASE("mesh intersection linear/constant conservation", "[transfer][mesh_int
   Omega_h::build_from_elems_and_coords(&target_mesh, OMEGA_H_SIMPLEX, 2,
                                        ev2v_target, coords);
 
+  const auto src_coords = source_mesh.coords();
+
   auto intersections = pcms::intersectTargets(source_mesh, target_mesh);
 
   SECTION("constant field is preserved and conserved")
   {
     const double c = 2.0;
     Omega_h::Write<Omega_h::Real> source_const(source_mesh.nverts());
-    Omega_h::parallel_for(source_const.size(), OMEGA_H_LAMBDA(int i){source_const[i] = c;} );
+    Omega_h::parallel_for(
+      source_const.size(), OMEGA_H_LAMBDA(int i) { source_const[i] = c; });
 
     auto projected = pcms::solveGalerkinProjection(target_mesh, source_mesh,
                                                    intersections, source_const);
@@ -80,18 +84,20 @@ TEST_CASE("mesh intersection linear/constant conservation", "[transfer][mesh_int
 
     const double source_integral =
       integrate_linear_field(source_mesh, source_const);
-    const double target_integral = integrate_linear_field(target_mesh, projected);
+    const double target_integral =
+      integrate_linear_field(target_mesh, projected);
     REQUIRE(target_integral == Catch::Approx(source_integral).margin(1e-10));
   }
 
   SECTION("linear field is reproduced on target vertices")
   {
     Omega_h::Write<Omega_h::Real> source_linear(source_mesh.nverts());
-    Omega_h::parallel_for(source_mesh.nverts(), OMEGA_H_LAMBDA(int i) {
-      const double x = source_mesh.coords()[2 * i + 0];
-      const double y = source_mesh.coords()[2 * i + 1];
-      source_linear[i] = x + y;
-    });
+    Omega_h::parallel_for(
+      source_mesh.nverts(), OMEGA_H_LAMBDA(int i) {
+        const double x = src_coords[2 * i + 0];
+        const double y = src_coords[2 * i + 1];
+        source_linear[i] = x + y;
+      });
 
     auto projected = pcms::solveGalerkinProjection(
       target_mesh, source_mesh, intersections, source_linear);

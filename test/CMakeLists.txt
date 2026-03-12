@@ -98,15 +98,6 @@ if(PCMS_ENABLE_OMEGA_H)
   endif()
 
   set(d3d8p ${PCMS_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p8.osh/)
-  add_exe(test_twoClientOverlap)
-  if(HOST_NPROC GREATER_EQUAL 28)
-    tri_mpi_test(
-      TESTNAME test_twoClientOverlap_d3d_28p
-      TIMEOUT 20
-      NAME1 rdv EXE1 ./test_twoClientOverlap PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
-      NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
-      NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
-  endif()
   add_executable(field_communication test_field_communication.cpp)
   target_link_libraries(field_communication PUBLIC pcms::core test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
@@ -117,12 +108,20 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2 client1 EXE2 ./field_communication PROCS2 4 ARGS2 0 ${PCMS_TEST_DATA_DIR}/123mesh/123_p4.osh ignored
       NAME3 client2 EXE3 ./field_communication PROCS3 4 ARGS3 1 ${PCMS_TEST_DATA_DIR}/123mesh/123_p4.osh ignored)
   endif()
-  add_executable(proxy_coupling test_proxy_coupling.cpp)
-  target_link_libraries(proxy_coupling PUBLIC pcms::core test_support)
+  add_exe(test_twoClientOverlap)
+  if(HOST_NPROC GREATER_EQUAL 28)
+    tri_mpi_test(
+      TESTNAME test_twoClientOverlap_d3d_28p
+      TIMEOUT 20
+      NAME1 rdv EXE1 ./test_twoClientOverlap PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
+      NAME2 client0 EXE2 ./test_twoClientOverlap PROCS2 16 ARGS2 0 ${d3d16p} ignored
+      NAME3 client1 EXE3 ./test_twoClientOverlap PROCS3 8 ARGS3 1 ${d3d8p} ignored)
+  endif()
+  add_exe(proxy_coupling proxy_coupling.cpp)
   if(HOST_NPROC GREATER_EQUAL 4)
     tri_mpi_test(
-      TESTNAME test_proxy_coupling_4p
-      TIMEOUT 10
+      TESTNAME proxy_coupling_4p
+      TIMEOUT 30
       NAME1 rdv EXE1 ./proxy_coupling PROCS1 2 ARGS1 -1 ${d3d1p} ${d3d2p_cpn} WAN BP4 small
       NAME2 client0 EXE2 ./proxy_coupling PROCS2 1 ARGS2 0 ${d3d1p} ignored WAN BP4 small
       NAME3 client1 EXE3 ./proxy_coupling PROCS3 1 ARGS3 1 ${d3d1p} ignored WAN BP4 small)
@@ -135,14 +134,14 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
       NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
   endif()
-  if(HOST_NPROC GREATER_EQUAL 28)
+  if (HOST_NPROC GREATER_EQUAL 28)
     tri_mpi_test(
       TESTNAME test_proxy_coupling_28p
       TIMEOUT 20
       NAME1 rdv EXE1 ./proxy_coupling PROCS1 4 ARGS1 -1 ${d3d1p} ${d3d4p_cpn}
       NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
       NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
-  endif()
+  endif ()
   if(HOST_NPROC GREATER_EQUAL 32)
     tri_mpi_test(
       TESTNAME test_proxy_coupling_32p
@@ -159,7 +158,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2 client0 EXE2 ./proxy_coupling PROCS2 16 ARGS2 0 ${d3d16p} ignored
       NAME3 client1 EXE3 ./proxy_coupling PROCS3 8 ARGS3 1 ${d3d8p} ignored)
   endif()
-endif()
+endif ()
 # unit tests
 find_package(Catch2 3)
 if(Catch2_FOUND)

@@ -110,32 +110,18 @@ function(dual_mpi_test)
 endfunction(dual_mpi_test)
 
 function(tri_mpi_test)
-  set(oneValueArgs
-      TESTNAME
-      TIMEOUT
-      NAME1
-      NAME2
-      NAME3
-      EXE1
-      EXE2
-      EXE3
-      PROCS1
-      PROCS2
-      PROCS3)
+  set(oneValueArgs TESTNAME TIMEOUT NAME1 NAME2 NAME3 EXE1 EXE2 EXE3 PROCS1 PROCS2 PROCS3)
   set(multiValueArgs ARGS1 ARGS2 ARGS3)
-  cmake_parse_arguments(TRITEST "${options}" "${oneValueArgs}"
-                        "${multiValueArgs}" ${ARGN})
-  removebpfiles(${TRITEST_TESTNAME}_cleanup)
-  increasetimeoutforvalgrind(${TRITEST_TIMEOUT} TRITEST_TIMEOUT)
-  add_test(
-    NAME ${TRITEST_TESTNAME}
-    COMMAND
-      ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh ${MPIEXEC_EXECUTABLE}
-      ${MPIEXEC_PREFLAGS} ${MPIEXEC_NUMPROC_FLAG} ${VALGRIND_EXECUTABLE}
-      ${VALGRIND_ARGS} ${TRITEST_NAME1} ${TRITEST_PROCS1} ${TRITEST_EXE1}
-      "${TRITEST_ARGS1}" ${TRITEST_NAME2} ${TRITEST_PROCS2} ${TRITEST_EXE2}
-      "${TRITEST_ARGS2}" ${TRITEST_NAME3} ${TRITEST_PROCS3} ${TRITEST_EXE3}
-      "${TRITEST_ARGS3}")
-  set_tests_properties(${TRITEST_TESTNAME} PROPERTIES TIMEOUT
-                                                      ${TRITEST_TIMEOUT})
+  cmake_parse_arguments(TRITEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  removeBpFiles(${TRITEST_TESTNAME}_cleanup)
+  increaseTimeoutForValgrind(${TRITEST_TIMEOUT} TRITEST_TIMEOUT)
+  add_test(NAME ${TRITEST_TESTNAME}
+          COMMAND ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh
+          ${MPIEXEC_EXECUTABLE}
+          ${MPIEXEC_NUMPROC_FLAG}
+          ${VALGRIND_EXECUTABLE} ${VALGRIND_ARGS}
+          ${TRITEST_NAME1} ${TRITEST_PROCS1} ${TRITEST_EXE1} "${TRITEST_ARGS1}"
+          ${TRITEST_NAME2} ${TRITEST_PROCS2} ${TRITEST_EXE2} "${TRITEST_ARGS2}"
+          ${TRITEST_NAME3} ${TRITEST_PROCS3} ${TRITEST_EXE3} "${TRITEST_ARGS3}")
+  set_tests_properties(${TRITEST_TESTNAME} PROPERTIES TIMEOUT ${TRITEST_TIMEOUT})
 endfunction(tri_mpi_test)

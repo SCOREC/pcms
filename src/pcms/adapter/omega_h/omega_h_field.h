@@ -17,7 +17,7 @@
 #include "pcms/utility/memory_spaces.h"
 #include "pcms/utility/profile.h"
 #include "pcms/partition.h"
-#include "pcms/print.h"
+#include "pcms/utility/print.h"
 #include <optional>
 
 // FIXME add executtion spaces (don't use kokkos exe spaces directly)

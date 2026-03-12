@@ -92,9 +92,9 @@ if(PCMS_HAS_ASAN)
   )
 endif()
 
-if(PCMS_PRINT_ENABLED)
-  add_definitions(-DPCMS_PRINT_ENABLED)
-  target_compile_definitions(pcms_core INTERFACE -DPCMS_PRINT_ENABLED)
+if(PCMS_ENABLE_PRINT)
+  add_definitions(-DPCMS_ENABLE_PRINT)
+  target_compile_definitions(pcms_core INTERFACE -DPCMS_ENABLE_PRINT)
 endif()
 
 if (spdlog_FOUND AND PCMS_ENABLE_SPDLOG)

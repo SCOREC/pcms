@@ -50,7 +50,7 @@ KOKKOS_INLINE_FUNCTION void printDebugInfo(const char* fmt, const Args&... args)
 {
 #if !defined(NDEBUG) && defined(PCMS_ENABLE_PRINT)
 #if !defined(ACTIVE_GPU_EXECUTION)
-#if defined(PCMS_SPDLOG_ENABLED)
+#if defined(PCMS_ENABLE_SPDLOG)
   spdlog::debug("{}", fmt::sprintf(fmt, args...));
 #else
   fprintf(getStdout(), fmt, args...);

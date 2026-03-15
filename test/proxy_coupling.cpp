@@ -194,7 +194,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto adiosParams = getAdiosParams(adiosEngine);
   pcms::Application* app = coupler.AddApplication("coupler_xgc_total_f", "", adiosEngine, adiosParams);
   auto is_overlap = ts::markOverlapMeshEntities(mesh, ts::IsModelEntInOverlap{overlapSize});
-  auto totalf_gids_r = Omega_h::GOs(mesh.nverts(), 42);
+  auto totalf_gids_r = createGlobalsCopy(mesh);
   mesh.add_tag(Omega_h::VERT, "totalf_gids", 1, totalf_gids_r);
   app->AddField("gids",
                OmegaHFieldAdapter<GO>("totalf_gids", mesh, is_overlap));

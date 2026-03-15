@@ -69,7 +69,7 @@ redev::LOs ConstructPermutation(const ReversePartitionMap& reverse_partition)
  * @param local_gids local gids are the mesh GIDs in local mesh iteration order
  * @param received_gids received GIDs are the GIDS in the order of the incomming
  * message1
- * @return permutation array such that GIDS(Permutation[i]) = msgs
+ * @return permutation array mapping local iteration order to message order
  */
 redev::LOs ConstructPermutation(const std::vector<pcms::GO>& local_gids,
                                 const std::vector<pcms::GO>& received_gids)
@@ -88,14 +88,15 @@ redev::LOs ConstructPermutation(const std::vector<pcms::GO>& local_gids,
   REDEV_ALWAYS_ASSERT(local_gids.size() == received_gids.size());
   REDEV_ALWAYS_ASSERT(std::is_permutation(local_gids.begin(), local_gids.end(),
                                           received_gids.begin()));
-  std::map<pcms::GO, pcms::LO> global_to_local_ids;
-  for (size_t i = 0; i < local_gids.size(); ++i) {
-    global_to_local_ids[local_gids[i]] = i;
+  std::map<pcms::GO, pcms::LO> global_to_message_ids;
+  for (size_t i = 0; i < received_gids.size(); ++i) {
+    global_to_message_ids[received_gids[i]] = i;
   }
+
   redev::LOs permutation;
   permutation.reserve(local_gids.size());
-  for (auto gid : received_gids) {
-    permutation.push_back(global_to_local_ids[gid]);
+  for (size_t i = 0; i < local_gids.size(); ++i) {
+    permutation.push_back(global_to_message_ids[local_gids[i]]);
   }
   return permutation;
 }

@@ -517,7 +517,7 @@ public:
     const auto array_h = Omega_h::HostRead<T>(get_nodal_data(field_));
     if (buffer.size() > 0) {
       for (LO i = 0; i < array_h.size(); i++) {
-        buffer[i] = array_h[permutation[i]];
+        buffer[permutation[i]] = array_h[i];
       }
     }
     return array_h.size();
@@ -531,7 +531,7 @@ public:
     REDEV_ALWAYS_ASSERT(buffer.size() == permutation.size());
     Omega_h::HostWrite<T> sorted_buffer(buffer.size());
     for (size_t i = 0; i < buffer.size(); ++i) {
-      sorted_buffer[permutation[i]] = buffer[i];
+      sorted_buffer[i] = buffer[permutation[i]];
     }
     const auto sorted_buffer_d = Omega_h::Read<T>(sorted_buffer);
     set_nodal_data(field_, make_array_view(sorted_buffer_d));

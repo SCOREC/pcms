@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <pcms/print.h>
+#include <pcms/utility/print.h>
 #include <Kokkos_Core.hpp>
 #include <fstream>
 #include <sstream>

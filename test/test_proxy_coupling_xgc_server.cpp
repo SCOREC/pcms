@@ -19,6 +19,7 @@ using pcms::ReverseClassificationVertex;
 
 static constexpr bool done = true;
 namespace ts = test_support;
+static const std::string overlapSize = "small";
 
 void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 {
@@ -36,7 +37,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   }
 
   auto is_overlap =
-    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
+    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{overlapSize});
   auto* application = cpl.AddApplication("proxy_couple");
 
   constexpr int nplanes = 2;
@@ -47,7 +48,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     std::stringstream ss;
     ss << "xgc_gids_plane_" << i;
     auto field_adapter = pcms::XGCFieldAdapter<GO>(
-      ss.str(), comm, make_array_view(data[i]), rc, ts::IsModelEntInOverlap{});
+      ss.str(), comm, make_array_view(data[i]), rc, ts::IsModelEntInOverlap{overlapSize});
     fields.push_back(application->AddField(ss.str(), std::move(field_adapter)));
   }
 
@@ -95,7 +96,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
   }
 
   auto is_overlap =
-    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{});
+    ts::markServerOverlapRegion(mesh, partition, ts::IsModelEntInOverlap{overlapSize});
   constexpr int nplanes = 2;
   std::vector<pcms::CoupledField*> fields;
   for (int i = 0; i < nplanes; ++i) {

@@ -10,9 +10,9 @@ template <int DIM = 2>
 struct AABBox
 {
   static constexpr int dim = DIM;
-  std::array<Real, dim> center;
+  Kokkos::Array<Real, dim> center;
   // half length of bounding box
-  std::array<Real, dim> half_width;
+  Kokkos::Array<Real, dim> half_width;
 };
 
 template <int dim>

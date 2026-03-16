@@ -58,7 +58,7 @@ public:
     auto index = GetDimensionedIndex(idx);
     reverse(index);
 
-    std::array<Real, dim> half_width, center;
+    Kokkos::Array<Real, dim> half_width, center;
 
     for (size_t i = 0; i < dim; ++i) {
       half_width[i] = edge_length[i] / divisions[i] / 2;

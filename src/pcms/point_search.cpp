@@ -44,10 +44,11 @@ AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
 }
 
 template <unsigned dim>
+KOKKOS_INLINE_FUNCTION
 AABBox<dim> simplex_bbox(const Omega_h::Matrix<dim, dim + 1>& coords)
 {
-  std::array<Real, dim> max;
-  std::array<Real, dim> min;
+  Kokkos::Array<Real, dim> max;
+  Kokkos::Array<Real, dim> min;
   for (int j = 0; j < dim; ++j) {
     max[j] = coords(j, 0);
     min[j] = coords(j, 0);
@@ -59,8 +60,8 @@ AABBox<dim> simplex_bbox(const Omega_h::Matrix<dim, dim + 1>& coords)
     }
   }
 
-  std::array<Real, dim> center;
-  std::array<Real, dim> half_width;
+  Kokkos::Array<Real, dim> center;
+  Kokkos::Array<Real, dim> half_width;
 
   for (int j = 0; j < dim; ++j) {
     center[j] = (max[j] + min[j]) / 2.0;

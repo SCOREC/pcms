@@ -156,10 +156,10 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 
   Omega_h::vtk::write_parallel("xgc_delta_f_init.vtk", &mesh, mesh.dim());
   PCMS_FUNCTION_TIMER
-  const auto start{std::chrono::steady_clock::now()};
+  auto start{std::chrono::steady_clock::now()};
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      const auto round_start{std::chrono::steady_clock::now()};
+      auto round_start{std::chrono::steady_clock::now()};
       app->BeginSendPhase();
       app->SendField("gids");  //(Alt) df_gid_field->Send();
       app->SendField("gids2"); //(Alt) df_gid_field->Send();
@@ -169,8 +169,12 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       app->ReceiveField("gids2"); //(Alt) df_gid_field->Receive();
       app->EndReceivePhase();
 
+      const auto validate_start{std::chrono::steady_clock::now()};
       validate_received_gids("deltaf_validate_", "deltaf_gids", mesh, is_overlap, comm);
       validate_received_gids("deltaf_validate_", "deltaf_gids2", mesh, is_overlap, comm);
+      const auto validate_elapsed = std::chrono::steady_clock::now() - validate_start;
+      start -= validate_elapsed;
+      round_start -= validate_elapsed;
 
       const auto round_finish{std::chrono::steady_clock::now()};
       const std::chrono::duration<double> round_elapsed_seconds{round_finish - round_start};
@@ -203,10 +207,10 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 
   Omega_h::vtk::write_parallel("xgc_total_f_init.vtk", &mesh, mesh.dim());
   PCMS_FUNCTION_TIMER
-  const auto start{std::chrono::steady_clock::now()};
+  auto start{std::chrono::steady_clock::now()};
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      const auto round_start{std::chrono::steady_clock::now()};
+      auto round_start{std::chrono::steady_clock::now()};
       app->BeginSendPhase();
       app->SendField("gids"); //(Alt) tf_gid_field->Send();
       app->EndSendPhase();
@@ -214,7 +218,11 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
       app->ReceiveField("gids"); //(Alt) tf_gid_field->Receive();
       app->EndReceivePhase();
 
+      const auto validate_start{std::chrono::steady_clock::now()};
       validate_received_gids("totalf_validate_", "totalf_gids", mesh, is_overlap, comm);
+      const auto validate_elapsed = std::chrono::steady_clock::now() - validate_start;
+      start -= validate_elapsed;
+      round_start -= validate_elapsed;
 
       const auto round_finish{std::chrono::steady_clock::now()};
       const std::chrono::duration<double> round_elapsed_seconds{round_finish - round_start};
@@ -271,7 +279,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   auto start{std::chrono::steady_clock::now()};
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      const auto round_start{std::chrono::steady_clock::now()};
+      auto round_start{std::chrono::steady_clock::now()};
       std::string timerName = std::string("CommRound") + std::to_string(i);
       PERFSTUBS_SCOPED_TIMER(timerName.c_str());
       total_f->ReceivePhase([&]() { total_f_gids->Receive(); });
@@ -280,9 +288,13 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
         delta_f_gids2->Receive();
       });
 
+      const auto validate_start{std::chrono::steady_clock::now()};
       validate_received_gids("coupler_validate_", "total_f_gids", mesh, is_overlap, comm);
       validate_received_gids("coupler_validate_", "delta_f_gids", mesh, is_overlap, comm);
       validate_received_gids("coupler_validate_", "delta_f_gids2", mesh, is_overlap, comm);
+      auto validate_elapsed = std::chrono::steady_clock::now() - validate_start;
+      start -= validate_elapsed;
+      round_start -= validate_elapsed;
 
       // Get bytes received after receive phase, don't include in timing, only
       // need one round of data

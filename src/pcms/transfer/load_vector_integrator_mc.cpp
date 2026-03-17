@@ -1,4 +1,3 @@
-#include <Omega_h_bbox.cpp>
 #include "pcms/transfer/load_vector_integrator.hpp"
 
 // TODO:: create a function that can sample sobol sequences instead of

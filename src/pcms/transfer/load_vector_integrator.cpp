@@ -297,7 +297,7 @@ OMEGA_H_INLINE void for_each_intersection_subtriangle(
   }
 }
 
-Kokkos::View<MeshField::Real*> buildLoadVector(
+Kokkos::View<MeshField::Real*> buildLoadVectorMI(
   Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
   const IntersectionResults& intersection, const Omega_h::Reals& source_values)
 {
@@ -357,6 +357,7 @@ Kokkos::View<MeshField::Real*> buildLoadVector(
 
   return elmLoadVector;
 }
+
 Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
                                      Omega_h::Mesh& source_mesh,
                                      const IntersectionResults& intersection,

@@ -1,6 +1,5 @@
 #include <Omega_h_bbox.cpp>
-
-constexpr int MAX_POINTS = 1600;
+#include "pcms/transfer/load_vector_integrator.hpp"
 
 // TODO:: create a function that can sample sobol sequences instead of
 // generating in python and reading and using
@@ -174,24 +173,27 @@ Omega_h::Reals evaluate_field_from_point_localization(
 }
 
 KOKKOS_INLINE_FUNCTION
-double montecarlo_integration(const Omega_h::Real* shape_func_values_at_points,
-                              const Omega_h::Real* src_values_at_points,
-                              const int npoints_each_tri, const double volume)
+Omega_h::Vector<3> compute_elm_load_vector_mc(
+  const Kokkos::View<MeshField::Real* [3]>& ref_barycentric_coords,
+  const Omega_h::Reals& field_values_at_points,
+  const Omega_h::Real& elmVolume const int elm)
 {
 
-  double sum = 0;
-
+  const int npoints_each_tri = ref_barycentric_coords.extent(0);
+  Omega_h::Real sum0 = 0.0;
+  Omega_h::Real sum1 = 0.0;
+  Omega_h::Real sum2 = 0.0;
+  const int base = elm * npoints_each_tri;
   for (int i = 0; i < npoints_each_tri; ++i) {
-    sum += shape_func_values_at_points[i] * src_values_at_points[i];
+    const auto f = field_values_at_points[base + i];
+    sum0 += ref_barycentric_coords(i, 0) * f;
+    sum1 += ref_barycentric_coords(i, 1) * f;
+    sum2 += ref_barycentric_coords(i, 2) * f;
   }
-
-  sum *= volume;
-  return sum / npoints_each_tri;
+  return elmVolume / npoints_each_tri * {sum0, sum1, sum2};
 }
 
-// TODO:: for black box coupling we wouldn't be provided with source mesh info
-// and source field this works when source mesh and field are known
-Kokkos::View<MeshField::Real*> loadVectorMCIntegrator(
+Kokkos::View<MeshField::Real*> buildLoadVectorMC(
   Omega_h::Mesh& target_mesh, const Omega_h::Reals& field_values_at_points,
   const int npoints_each_tri, SamplingMethod method,
   const std::string& sobol_filename)
@@ -226,27 +228,8 @@ Kokkos::View<MeshField::Real*> loadVectorMCIntegrator(
   Kokkos::parallel_for(
     "eval load vector using MC", target_mesh.nelems(),
     KOKKOS_LAMBDA(const int elm) {
-      Omega_h::Real N0[MAX_POINTS] = {};
-      Omega_h::Real N1[MAX_POINTS] = {};
-      Omega_h::Real N2[MAX_POINTS] = {};
-      Omega_h::Real src_field_values[MAX_POINTS] = {};
-
-      int base_idx_src_values = elm * npoints_each_tri;
-
-      for (int i = 0; i < npoints_each_tri; ++i) {
-        N0[i] = ref_barycentric_coords(i, 0);
-        N1[i] = ref_barycentric_coords(i, 1);
-        N2[i] = sampled_barycentric_coords(i, 2);
-        src_field_values[i] = field_values_at_points[base_idx_src_values + i];
-      }
-
-      Omega_h::Vector<3> result;
-      result[0] = montecarlo_integration(N0, src_field_values, npoints_each_tri,
-                                         elementsArea[elm]);
-      result[1] = montecarlo_integration(N1, src_field_values, npoints_each_tri,
-                                         elementsArea[elm]);
-      result[2] = montecarlo_integration(N2, src_field_values, npoints_each_tri,
-                                         elementsArea[elm]);
+      auto result = compute_elm_load_vector_mc(
+        ref_barycentric_coords, field_values_at_points, elementsArea[elm], elm);
 
       for (int i = 0; i < 3; ++i) {
         elmLoadVector(elm * subVectorSize + i) = result[i];

@@ -58,10 +58,14 @@ namespace pcms
  *
  */
 
-Omega_h::Reals solveGalerkinProjection(Omega_h::Mesh& target_mesh,
-                                       Omega_h::Mesh& source_mesh,
-                                       const IntersectionResults& intersection,
-                                       const Omega_h::Reals& source_values);
+Omega_h::Reals solveGalerkinProjectionMI(
+  Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
+  const IntersectionResults& intersection, const Omega_h::Reals& source_values);
+
+Omega_h::Reals solveGalerkinProjectionMC(
+  Omega_h::Mesh& target_mesh, const Omega_h::Reals& field_values_at_points,
+  const int npoints_each_tri, SamplingMethod method, Vec* loadVec_out,
+  const std::string sobol_filename = "");
 
 Omega_h::Reals rhsVectorMI(Omega_h::Mesh& target_mesh,
                            Omega_h::Mesh& source_mesh,

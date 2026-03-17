@@ -139,6 +139,7 @@ struct IntegrationData
 Kokkos::View<MeshField::Real*> buildLoadVector(
   Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
   const IntersectionResults& intersection, const Omega_h::Reals& source_values);
+
 /// Holds projection and conservation error metrics returned by
 /// evaluate_pro_and_cons_errors().
 struct Errors
@@ -215,6 +216,87 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
                                      const IntersectionResults& intersection,
                                      const Omega_h::Reals& target_values,
                                      const Omega_h::Reals& source_values);
+
+/**
+ * @brief Read precomputed Sobol barycentric samples from file.
+ *
+ * For now this routine reads barycentric Sobol samples from a text file with a
+ * header row. TODO: replace this with a function that directly generates Sobol
+ * sequence samples and maps them to barycentric coordinates.
+ *
+ * @param[in] file_path Path to the sample file.
+ * @return Device view of shape `(nsamples, 3)` containing barycentric samples.
+ */
+Kokkos::View<MeshField::Real* [3]> read_sobol_barycentric_samples_from_file(
+  std::string file_path);
+
+/**
+ * @brief Generate uniform random barycentric coordinates for triangle sampling.
+ *
+ * Uses the standard square-to-triangle transform to produce barycentric
+ * coordinates uniformly distributed over triangle area.
+ *
+ * @param[in] npoints_each_tri Number of samples to generate.
+ * @return Device view of shape `(npoints_each_tri, 3)`.
+ */
+Kokkos::View<MeshField::Real* [3]> generate_uniform_random_barycentric_coords(
+  const int npoints_each_tri);
+
+/**
+ * @brief Compute global sample coordinates in each element from reference
+ *        barycentric sample coordinates.
+ *
+ * Reuses the same reference-triangle barycentric sample pattern in every target
+ * element and maps each barycentric sample to its corresponding physical
+ * coordinate using the element vertex coordinates.
+ *
+ * @param[in] target_mesh Target triangular mesh.
+ * @param[in] ref_barycentric_coords Reference barycentric coordinates of shape
+ *                                   `(npoints_each_tri, 3)`.
+ * @return Device view of shape `(nelems * npoints_each_tri, 2)` containing the
+ *         global sample coordinates in all elements.
+ */
+Kokkos::View<pcms::Real* [2]> global_coords_from_ref_barycentric_coords(
+  Omega_h::Mesh& target_mesh,
+  const Kokkos::View<MeshField::Real* [3]>& ref_barycentric_coords);
+
+/**
+ * @brief Locate query points in a 2D triangular mesh.
+ *
+ * This routine performs point localization for a set of query points in the
+ * given 2D mesh using a structured grid search. For each query
+ * point, it returns the containing element id together with the associated
+ * parametric coordinates stored in `pcms::GridPointSearch::Result`.
+ *
+ * @param[in] mesh Input 2D mesh in which the query points are to be localized.
+ * @param[in] points Query point coordinates of shape `(npoints, 2)`.
+ *
+ * @return Search results for all query points.
+ *
+ * @note This routine assumes that `mesh` is two-dimensional.
+ */
+Kokkos::View<pcms::GridPointSearch::Result*> localize_points_in_mesh(
+  Omega_h::Mesh& mesh, const Kokkos::View<pcms::Real* [2]>& points);
+
+/**
+ * @brief Evaluate a nodal field at localized query points.
+ *
+ * Uses the containing element id and parametric or barycentric coordinates from
+ * a point-localization step to interpolate the nodal field values at the query
+ * points.
+ *
+ * @param[in] mesh Input triangular mesh.
+ * @param[in] nodal_field_values Field values stored at mesh vertices.
+ * @param[in] results Point-localization results for the query points.
+ * @return Field values evaluated at the query points.
+ *
+ * @note Points with invalid element ids retain the default value `0.0`.
+ */
+Omega_h::Reals evaluate_field_from_point_localization(
+  Omega_h::Mesh& mesh, const Omega_h::Reals& nodal_field_values,
+  const Kokkos::View<pcms::Real* [2]>& points,
+  const Kokkos::View<pcms::GridPointSearch::Result*>& results);
+
 } // namespace pcms
 
 #endif // PCMS_TRANSFER_LOAD_VECTOR_INTEGRATOR_HPP

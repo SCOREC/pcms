@@ -23,7 +23,18 @@
 #include <MeshField_Shape.hpp>
 #include <vector>
 #include <pcms/transfer/mesh_intersection.hpp>
+#include <pcms/localization/point_search.h>
 #include <Kokkos_MathematicalFunctions.hpp>
+#include <Omega_h_bbox.cpp>
+#include <Kokkos_Random.hpp>
+#include <Omega_h_array.hpp>
+#include <Omega_h_for.hpp>
+#include <Omega_h_mesh.hpp>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <cstdint>
+#include <stdexcept>
 
 namespace pcms
 {
@@ -296,6 +307,50 @@ Omega_h::Reals evaluate_field_from_point_localization(
   Omega_h::Mesh& mesh, const Omega_h::Reals& nodal_field_values,
   const Kokkos::View<pcms::Real* [2]>& points,
   const Kokkos::View<pcms::GridPointSearch::Result*>& results);
+
+/**
+ * @brief Compute element-local load vectors using Monte Carlo integration.
+ *
+ * For each target triangle \f$\Omega_t\f$, this routine approximates the local
+ * load-vector entries by uniform Monte Carlo sampling:
+ * \f[
+ * \widehat b_k^{\,t}
+ * = \frac{|\Omega_t|}{N}\sum_{i=1}^N
+ * f^s(\mathbf X_{t,i})\,\psi_k(\mathbf X_{t,i}),
+ * \f]
+ * where \f$N\f$ is the number of sample points in the element,
+ * \f$f^s(\mathbf X_{t,i})\f$ is the source-field value at the sampled point,
+ * and \f$\psi_k\f$ is the local target basis function.
+ *
+ * The sampling points are generated on the reference triangle in barycentric
+ * coordinates and the same reference sample set is reused for all target
+ * elements. For linear triangular elements, the barycentric coordinates are
+ * equal to the local shape-function values, so they are used directly in the
+ * Monte Carlo estimator.
+ *
+ * @param[in] target_mesh Target 2D triangular mesh.
+ * @param[in] field_values_at_points Source-field values evaluated at the
+ * sampled physical points, stored element-by-element.
+ * @param[in] npoints_each_tri Number of Monte Carlo sample points per target
+ *                             triangle.
+ * @param[in] method Sampling method used to generate the reference barycentric
+ *                   coordinates.
+ * @param[in] sobol_filename File containing precomputed Sobol barycentric
+ *                           samples when Sobol sampling is selected.
+ *
+ * @return Flattened element-local load vectors of size
+ *         `3 * target_mesh.nelems()`.
+ *
+ * @note This routine computes element-local contributions only; it does not
+ *       assemble a global load vector.
+ * @note This routine assumes that `field_values_at_points` has already been
+ *       evaluated at the sampled physical points.
+ */
+
+Kokkos::View<MeshField::Real*> buildLoadVectorMC(
+  Omega_h::Mesh& target_mesh, const Omega_h::Reals& field_values_at_points,
+  const int npoints_each_tri, SamplingMethod method,
+  const std::string& sobol_filename)
 
 } // namespace pcms
 

@@ -45,7 +45,7 @@ adios2::Params getAdiosParams(const redev::TransportType engine) {
   if( sstDataTransport == "MPI" )
     params = {{"DataTransport", "MPI"}, {"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
   else if( sstDataTransport == "RDMA" )
-    params = {{"DataTransport", "RDMA"}, {"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
+    params = {{"DataTransport", "RDMA"}, {"Streaming", "On"}, {"OpenTimeoutSecs", "360"}};
   else if( sstDataTransport == "WAN" )
     params = {{"DataTransport", "WAN"}, {"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
   else

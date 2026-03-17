@@ -136,7 +136,7 @@ struct IntegrationData
  * @see IntersectionResults
  */
 
-Kokkos::View<MeshField::Real*> buildLoadVector(
+Kokkos::View<MeshField::Real*> buildLoadVectorMI(
   Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
   const IntersectionResults& intersection, const Omega_h::Reals& source_values);
 

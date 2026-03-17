@@ -102,7 +102,7 @@ PetscErrorCode calculateLoadVectorMI(Omega_h::Mesh& target_mesh,
  */
 PetscErrorCode calculateLoadVectorMC(
   Omega_h::Mesh& target_mesh, const Omega_h::Reals& field_values_at_points,
-  const int npoints_each_tri, SamplingMethod method,
-  const std::string sobol_filename = "", Vec* loadVec_out);
+  const int npoints_each_tri, SamplingMethod method, Vec* loadVec_out,
+  const std::string sobol_filename = "");
 } // namespace pcms
 #endif // PCMS_TRANSFER_CALCULATE_LOAD_VECTOR_HPP

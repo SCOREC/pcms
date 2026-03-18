@@ -73,8 +73,8 @@ TEST_CASE("mesh intersection linear/constant conservation",
     Omega_h::parallel_for(
       source_const.size(), OMEGA_H_LAMBDA(int i) { source_const[i] = c; });
 
-    auto projected = pcms::solveGalerkinProjection(target_mesh, source_mesh,
-                                                   intersections, source_const);
+    auto projected = pcms::solveGalerkinProjectionMI(
+      target_mesh, source_mesh, intersections, source_const);
     auto projected_h = Omega_h::HostRead<Omega_h::Real>(projected);
 
     REQUIRE(static_cast<Omega_h::LO>(projected.size()) == target_mesh.nverts());

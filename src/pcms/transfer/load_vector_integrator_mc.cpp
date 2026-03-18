@@ -1,7 +1,9 @@
 #include "pcms/transfer/load_vector_integrator.hpp"
 
+namespace pcms
+{
 // TODO:: create a function that can sample sobol sequences instead of
-// generating in python and reading and using
+// generating in python and using
 Kokkos::View<MeshField::Real* [3]> read_sobol_barycentric_samples_from_file(
   std::string file_path)
 {
@@ -237,3 +239,4 @@ Kokkos::View<MeshField::Real*> buildLoadVectorMC(
 
   return elmLoadVector;
 }
+} // namespace pcms

@@ -21,7 +21,8 @@ set(PCMS_FIELD_TRANSFER_HEADERS
 
 set(PCMS_FIELD_TRANSFER_SOURCES
     adj_search.cpp
-    load_vector_integrator.cpp
+    load_vector_integrator_mi.cpp
+    load_vector_integrator_mc.cpp
     mesh_intersection.cpp
     mls_interpolation.cpp
     interpolation_base.cpp)

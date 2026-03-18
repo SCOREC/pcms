@@ -86,10 +86,9 @@ static Omega_h::Reals vecToOmegaHReals(Vec vec)
   return Omega_h::Reals(values_host);
 }
 
-Omega_h::Reals solveGalerkinProjection(Omega_h::Mesh& target_mesh,
-                                       Omega_h::Mesh& source_mesh,
-                                       const IntersectionResults& intersection,
-                                       const Omega_h::Reals& source_values)
+Omega_h::Reals solveGalerkinProjectionMI(
+  Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
+  const IntersectionResults& intersection, const Omega_h::Reals& source_values)
 {
   if ((PetscInt)source_values.size() !=
       source_mesh.coords().size() / source_mesh.dim()) {
@@ -105,6 +104,46 @@ Omega_h::Reals solveGalerkinProjection(Omega_h::Mesh& target_mesh,
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
   Vec vec;
+  ierr = calculateLoadVectorMI(target_mesh, source_mesh, intersection,
+                               source_values, &vec);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  Vec x = solveLinearSystem(mass, vec);
+  auto solution_vector = vecToOmegaHReals(x);
+
+  ierr = VecDestroy(&x);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  ierr = MatDestroy(&mass);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  ierr = VecDestroy(&vec);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  return solution_vector;
+}
+
+Omega_h::Reals solveGalerkinProjectionMC(
+  Omega_h::Mesh& target_mesh, const Omega_h::Reals& field_values_at_points,
+  const int npoints_each_tri, SamplingMethod method,
+  const std::string sobol_filename);
+{
+  if ((PetscInt)source_values.size() !=
+      source_mesh.coords().size() / source_mesh.dim()) {
+    std::cerr << "ERROR: source_values size (" << source_values.size()
+              << ") doesn't match expected size ("
+              << source_mesh.coords().size() / source_mesh.dim() << ")"
+              << std::endl;
+    throw std::runtime_error("source_values length mismatch");
+  }
+
+  Mat mass;
+  PetscErrorCode ierr = calculateMassMatrix(target_mesh, &mass);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  Vec vec;
+  ierr = calculateLoadVectorMC(target_mesh, field_values_at_points,
+                               npoints_each_tri, method, &vec, sobol_filename);
   ierr = calculateLoadVector(target_mesh, source_mesh, intersection,
                              source_values, &vec);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
@@ -123,15 +162,16 @@ Omega_h::Reals solveGalerkinProjection(Omega_h::Mesh& target_mesh,
 
   return solution_vector;
 }
-Omega_h::Reals rhsVectorMI(Omega_h::Mesh& target_mesh,
-                           Omega_h::Mesh& source_mesh,
-                           const IntersectionResults& intersection,
-                           const Omega_h::Reals& source_values)
+
+Omega_h::Reals computeRhsVectorMI(Omega_h::Mesh& target_mesh,
+                                  Omega_h::Mesh& source_mesh,
+                                  const IntersectionResults& intersection,
+                                  const Omega_h::Reals& source_values)
 {
   Vec vec;
   PetscErrorCode ierr;
-  ierr = calculateLoadVector(target_mesh, source_mesh, intersection,
-                             source_values, &vec);
+  ierr = calculateLoadVectorMI(target_mesh, source_mesh, intersection,
+                               source_values, &vec);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
   auto rhsvector = vecToOmegaHReals(vec);
@@ -141,4 +181,27 @@ Omega_h::Reals rhsVectorMI(Omega_h::Mesh& target_mesh,
 
   return rhsvector;
 }
+
+Omega_h::Reals computeRhsVectorMC(Omega_h::Mesh& target_mesh,
+                                  const Omega_h::Reals& field_values_at_points,
+                                  const int npoints_each_tri,
+                                  SamplingMethod method,
+                                  const std::string& sobol_filename = "")
+{
+
+  {
+    Vec vec;
+    PetscErrorCode ierr;
+    ierr =
+      calculateLoadVectorMC(target_mesh, field_values_at_points,
+                            npoints_each_tri, method, &vec, sobol_filename);
+    CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+    auto rhsvector = vecToOmegaHReals(vec);
+    ierr = VecDestroy(&vec);
+    CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+    return rhsvector;
+  }
+
 } // namespace pcms

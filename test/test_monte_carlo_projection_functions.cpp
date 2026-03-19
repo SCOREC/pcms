@@ -15,7 +15,7 @@
 
 constexpr double tol = 1e-12;
 
-double linear_field(double x, double y)
+OMEGA_H_INLINE double linear_field(double x, double y)
 {
   return 2.0 * x + 3.0 * y + 1.0;
 }
@@ -111,6 +111,7 @@ TEST_CASE("read_sobol_barycentric_samples_from_file reads header and values",
   out << "1.0 0.0 0.0\n";
   out << "0.0 1.0 0.0\n";
   out << "0.2 0.3 0.5\n";
+  out.close();
 
   auto samples = pcms::read_sobol_barycentric_samples_from_file(filename);
   auto host = Kokkos::create_mirror_view(samples);
@@ -249,7 +250,7 @@ TEST_CASE(
   auto results = pcms::localize_points_in_mesh(mesh, points);
 
   auto field_values = pcms::evaluate_field_from_point_localization(
-    mesh, nodal_field_values, points, results);
+    mesh, nodal_field_values, results);
 
   auto host_points = Kokkos::create_mirror_view(points);
   Kokkos::deep_copy(host_points, points);
@@ -278,7 +279,7 @@ TEST_CASE("evaluate_field_from_point_localization works on multi-element mesh",
   auto results = pcms::localize_points_in_mesh(mesh, points);
 
   auto field_values = pcms::evaluate_field_from_point_localization(
-    mesh, nodal_field_values, points, results);
+    mesh, nodal_field_values, results);
 
   auto host_points = Kokkos::create_mirror_view(points);
   Kokkos::deep_copy(host_points, points);
@@ -312,7 +313,7 @@ TEST_CASE("sampling mapping localization and field evaluation pipeline works",
   auto nodal_field_values = make_linear_nodal_field_values(source_mesh);
 
   auto sampled_field_values = pcms::evaluate_field_from_point_localization(
-    source_mesh, nodal_field_values, sampled_points, results);
+    source_mesh, nodal_field_values, results);
 
   auto host_points = Kokkos::create_mirror_view(sampled_points);
   Kokkos::deep_copy(host_points, sampled_points);

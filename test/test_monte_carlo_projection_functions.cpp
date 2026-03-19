@@ -226,9 +226,9 @@ TEST_CASE("localize_points_in_mesh identifies inside and outside points",
 
   REQUIRE(host_results.extent(0) == 3);
 
-  CHECK(host_results(0).tri_id >= 0);
-  CHECK(host_results(1).tri_id >= 0);
-  CHECK(host_results(2).tri_id < 0);
+  CHECK(host_results(0).element_id >= 0);
+  CHECK(host_results(1).element_id >= 0);
+  CHECK(host_results(2).element_id < 0);
 }
 
 TEST_CASE(

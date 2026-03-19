@@ -5,7 +5,7 @@
 
 namespace pcms
 {
-PetscErrorCode calculateLoadVector(Omega_h::Mesh& target_mesh,
+PetscErrorCode calculateLoadVectorMI(Omega_h::Mesh& target_mesh,
                                    Omega_h::Mesh& source_mesh,
                                    const IntersectionResults& intersection,
                                    const Omega_h::Reals& source_values,

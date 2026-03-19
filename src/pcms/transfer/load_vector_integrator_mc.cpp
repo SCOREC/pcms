@@ -1,4 +1,5 @@
 #include "pcms/transfer/load_vector_integrator.hpp"
+#include "pcms/utility/assert.h"
 
 namespace pcms
 {
@@ -157,7 +158,7 @@ Omega_h::Reals evaluate_field_from_point_localization(
     npoints, OMEGA_H_LAMBDA(int id) {
       field_values_at_points[id] = 0.0;
 
-      const int tri = results[id].tri_id;
+      const int tri = results[id].element_id;
       if (tri < 0)
         return;
       const auto el_verts = Omega_h::gather_verts<3>(faces2nodes, tri);

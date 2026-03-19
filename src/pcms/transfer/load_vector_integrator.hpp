@@ -25,7 +25,7 @@
 #include <pcms/transfer/mesh_intersection.hpp>
 #include <pcms/localization/point_search.h>
 #include <Kokkos_MathematicalFunctions.hpp>
-#include <Omega_h_bbox.cpp>
+#include <Omega_h_bbox.hpp>
 #include <Kokkos_Random.hpp>
 #include <Omega_h_array.hpp>
 #include <Omega_h_for.hpp>
@@ -38,6 +38,8 @@
 
 namespace pcms
 {
+
+enum class SamplingMethod { SOBOL, UNIFORM }; 
 /**
  * @brief Computes the load vector for each target element in the conservative
  * field transfer.
@@ -350,7 +352,7 @@ Omega_h::Reals evaluate_field_from_point_localization(
 Kokkos::View<MeshField::Real*> buildLoadVectorMC(
   Omega_h::Mesh& target_mesh, const Omega_h::Reals& field_values_at_points,
   const int npoints_each_tri, SamplingMethod method,
-  const std::string& sobol_filename)
+  const std::string& sobol_filename);
 
 } // namespace pcms
 

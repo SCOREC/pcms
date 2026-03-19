@@ -90,7 +90,7 @@ Omega_h::Reals solveGalerkinProjectionMI(
  */
 Omega_h::Reals solveGalerkinProjectionMC(
   Omega_h::Mesh& target_mesh, const Omega_h::Reals& field_values_at_points,
-  const int npoints_each_tri, SamplingMethod method, Vec* loadVec_out,
+  const int npoints_each_tri, SamplingMethod method,
   const std::string sobol_filename = "");
 
 /**

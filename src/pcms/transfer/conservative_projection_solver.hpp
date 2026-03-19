@@ -5,7 +5,7 @@
  *
  * Provides the main interface to perform Galerkin projection of scalar fields
  * from a source mesh to a target mesh using conservative transfer using a
- * supermesh generated from mesh intersections.
+ * supermesh generated from mesh intersections or by using stochastic method.
  *
  * The solver computes the right-hand side (load vector), assembles the mass
  * matrix, and solves the resulting linear system to obtain projected nodal
@@ -72,21 +72,72 @@ namespace pcms
 Omega_h::Reals solveGalerkinProjectionMI(
   Omega_h::Mesh& target_mesh, Omega_h::Mesh& source_mesh,
   const IntersectionResults& intersection, const Omega_h::Reals& source_values);
-
 /**
- * @brief Solves the conservative Galerkin projection using Monte Carlo
- * integration of the load vector.
+ * @brief Solve the conservative Galerkin projection using Monte Carlo
+ *        integration of the load vector on the target mesh.
  *
- * @param target_mesh The target Omega_h mesh where the field is projected.
- * @param field_values_at_points Source-field values evaluated at the sampled
- *                               physical points in the target mesh.
- * @param npoints_each_tri Number of sample points used in each target triangle.
- * @param method Sampling method used to define the reference sample pattern.
- * @param loadVec_out PETSc load vector associated with the sampled projection
- *                    data, if required by the workflow.
- * @param sobol_filename Path to the file containing precomputed Sobol samples
- *                       when Sobol sampling is selected.
+ * This routine computes the projected nodal field on the target mesh by
+ * approximating the Galerkin load vector with Monte Carlo integration over each
+ * target element. The sampled source-field values must already be provided at
+ * the physical sample points in each target element.
+ *
+ * The expected workflow is:
+ * 1. Generate or read barycentric sample coordinates on the reference triangle
+ *    using either `generate_uniform_random_barycentric_coords()` or
+ *    `read_sobol_barycentric_samples_from_file()`.
+ * 2. Map those reference barycentric coordinates to physical sample points in
+ *    all target elements using
+ *    `global_coords_from_ref_barycentric_coords()`.
+ * 3. Obtain source-field values at those physical sample points.
+ *    - If a source mesh and source nodal field are available, this is done by
+ *      localizing the sample points in the source mesh using
+ *      `localize_points_in_mesh()` and then evaluating the source field with
+ *      `evaluate_field_from_point_localization()`.
+ *    - If no source mesh is available, this routine may still be used provided
+ *      that the source-field values can be queried directly at physical points,
+ *      for example from a black-box field-evaluation interface.
+ * 4. Pass the resulting sampled values as `field_values_at_points` to this
+ *    routine.
+ *
+ * The array `field_values_at_points` is assumed to be stored element-by-element,
+ * with `npoints_each_tri` consecutive values for each target triangle. That is,
+ * for target element `e` and local sample index `i`, the sampled field value is
+ * stored at:
+ * @code
+ * field_values_at_points[e * npoints_each_tri + i]
+ * @endcode
+ *
+ * When `method == SamplingMethod::SOBOL`, the routine uses the barycentric
+ * samples read from `sobol_filename`. Otherwise, it generates uniform random
+ * barycentric samples internally according to `method`.
+ *
+ * @param[in] target_mesh Target 2D triangular mesh on which the projected field
+ *                        is represented.
+ * @param[in] field_values_at_points Source-field values evaluated at the
+ *                                   sampled physical points in the target mesh,
+ *                                   stored element-by-element.
+ * @param[in] npoints_each_tri Number of Monte Carlo sample points used in each
+ *                             target triangle.
+ * @param[in] method Sampling method used to define the reference-triangle
+ *                   barycentric sample pattern.
+ * @param[in] sobol_filename Path to a text file containing precomputed Sobol
+ *                           barycentric samples when Sobol sampling is selected.
+ *
  * @return Projected nodal values on the target mesh.
+ *
+ * @note This routine does not require the source mesh directly. It only
+ *       requires source-field values evaluated at the sampled physical points.
+ *       This makes it applicable both to standard mesh-based transfer and to
+ *       black-box settings where field values can be obtained through point
+ *       queries.
+ * @note This routine assumes a 2D triangular target mesh.
+ *
+ * @see read_sobol_barycentric_samples_from_file
+ * @see generate_uniform_random_barycentric_coords
+ * @see global_coords_from_ref_barycentric_coords
+ * @see localize_points_in_mesh
+ * @see evaluate_field_from_point_localization
+ * @see computeRhsVectorMC
  */
 Omega_h::Reals solveGalerkinProjectionMC(
   Omega_h::Mesh& target_mesh, const Omega_h::Reals& field_values_at_points,

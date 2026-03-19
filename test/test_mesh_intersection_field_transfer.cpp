@@ -99,7 +99,7 @@ TEST_CASE("mesh intersection linear/constant conservation",
         source_linear[i] = x + y;
       });
 
-    auto projected = pcms::solveGalerkinProjection(
+    auto projected = pcms::solveGalerkinProjectionMI(
       target_mesh, source_mesh, intersections, source_linear);
     auto projected_h = Omega_h::HostRead<Omega_h::Real>(projected);
     const auto tgt_coords_h =

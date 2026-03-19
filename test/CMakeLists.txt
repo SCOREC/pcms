@@ -409,7 +409,8 @@ if(Catch2_FOUND)
 
   if(PCMS_ENABLE_PETSC)
     list(APPEND PCMS_UNIT_TEST_SOURCES
-      test_mesh_intersection_field_transfer.cpp)
+      test_mesh_intersection_field_transfer.cpp
+  	  test_monte_carlo_field_transfer.cpp)
   endif()
   
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})

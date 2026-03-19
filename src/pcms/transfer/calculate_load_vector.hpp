@@ -13,6 +13,7 @@
 #define PCMS_TRANSFER_CALCULATE_LOAD_VECTOR_HPP
 #include <Omega_h_mesh.hpp>
 #include <pcms/transfer/mesh_intersection.hpp>
+#include <pcms/transfer/load_vector_integrator.hpp>
 #include <petscvec.h>
 
 namespace pcms

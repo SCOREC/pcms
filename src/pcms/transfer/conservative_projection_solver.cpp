@@ -126,16 +126,8 @@ Omega_h::Reals solveGalerkinProjectionMI(
 Omega_h::Reals solveGalerkinProjectionMC(
   Omega_h::Mesh& target_mesh, const Omega_h::Reals& field_values_at_points,
   const int npoints_each_tri, SamplingMethod method,
-  const std::string sobol_filename);
+  const std::string sobol_filename)
 {
-  if ((PetscInt)source_values.size() !=
-      source_mesh.coords().size() / source_mesh.dim()) {
-    std::cerr << "ERROR: source_values size (" << source_values.size()
-              << ") doesn't match expected size ("
-              << source_mesh.coords().size() / source_mesh.dim() << ")"
-              << std::endl;
-    throw std::runtime_error("source_values length mismatch");
-  }
 
   Mat mass;
   PetscErrorCode ierr = calculateMassMatrix(target_mesh, &mass);
@@ -144,8 +136,6 @@ Omega_h::Reals solveGalerkinProjectionMC(
   Vec vec;
   ierr = calculateLoadVectorMC(target_mesh, field_values_at_points,
                                npoints_each_tri, method, &vec, sobol_filename);
-  ierr = calculateLoadVector(target_mesh, source_mesh, intersection,
-                             source_values, &vec);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
   Vec x = solveLinearSystem(mass, vec);
@@ -186,10 +176,9 @@ Omega_h::Reals computeRhsVectorMC(Omega_h::Mesh& target_mesh,
                                   const Omega_h::Reals& field_values_at_points,
                                   const int npoints_each_tri,
                                   SamplingMethod method,
-                                  const std::string& sobol_filename = "")
+                                  const std::string& sobol_filename)
 {
 
-  {
     Vec vec;
     PetscErrorCode ierr;
     ierr =
@@ -202,6 +191,6 @@ Omega_h::Reals computeRhsVectorMC(Omega_h::Mesh& target_mesh,
     CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
     return rhsvector;
-  }
+}	
 
 } // namespace pcms

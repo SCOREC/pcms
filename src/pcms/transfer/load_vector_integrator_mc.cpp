@@ -177,7 +177,7 @@ KOKKOS_INLINE_FUNCTION
 Omega_h::Vector<3> compute_elm_load_vector_mc(
   const Kokkos::View<MeshField::Real* [3]>& ref_barycentric_coords,
   const Omega_h::Reals& field_values_at_points,
-  const Omega_h::Real& elmVolume const int elm)
+  const Omega_h::Real& elmVolume, const int elm)
 {
 
   const int npoints_each_tri = ref_barycentric_coords.extent(0);
@@ -191,7 +191,7 @@ Omega_h::Vector<3> compute_elm_load_vector_mc(
     sum1 += ref_barycentric_coords(i, 1) * f;
     sum2 += ref_barycentric_coords(i, 2) * f;
   }
-  return elmVolume / npoints_each_tri * {sum0, sum1, sum2};
+  return elmVolume / npoints_each_tri * Omega_h::Vector<3>{sum0, sum1, sum2};
 }
 
 Kokkos::View<MeshField::Real*> buildLoadVectorMC(
@@ -203,7 +203,7 @@ Kokkos::View<MeshField::Real*> buildLoadVectorMC(
   Kokkos::View<MeshField::Real* [3]> ref_barycentric_coords;
   if (method == SamplingMethod::SOBOL) {
     if (sobol_filename.empty()) {
-                throw std::runtime_error("Could not open sobol sample file : ";
+                throw std::runtime_error("Could not open sobol sample file");
     }
     ref_barycentric_coords =
       read_sobol_barycentric_samples_from_file(sobol_filename);

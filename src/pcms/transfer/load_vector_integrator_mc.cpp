@@ -118,7 +118,7 @@ Kokkos::View<pcms::Real* [2]> global_coords_from_ref_barycentric_coords(
   return global_coords;
 }
 
-Kokkos::View<pcms::GridPointSearch::Result*> localize_points_in_mesh(
+Kokkos::View<pcms::GridPointSearch::Result2D*> localize_points_in_mesh(
   Omega_h::Mesh& mesh, const Kokkos::View<pcms::Real* [2]>& points)
 {
 
@@ -143,7 +143,7 @@ Kokkos::View<pcms::GridPointSearch::Result*> localize_points_in_mesh(
 
 Omega_h::Reals evaluate_field_from_point_localization(
   Omega_h::Mesh& mesh, const Omega_h::Reals& nodal_field_values,
-  const Kokkos::View<pcms::GridPointSearch::Result*>& results)
+  const Kokkos::View<pcms::GridPointSearch2D::Result*>& results)
 {
 
   const auto& npoints = results.extent(0);

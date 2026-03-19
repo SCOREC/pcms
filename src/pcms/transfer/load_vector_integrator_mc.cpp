@@ -9,7 +9,7 @@ Kokkos::View<MeshField::Real* [3]> read_sobol_barycentric_samples_from_file(
 {
   std::ifstream infile(file_path);
   if (!infile) {
-    throw std::runtime_error("Could not open sobol sample file : ";
+    throw std::runtime_error("Could not open sobol sample file");
   }
 
   std::vector<MeshField::Real> buffer;
@@ -34,13 +34,12 @@ Kokkos::View<MeshField::Real* [3]> read_sobol_barycentric_samples_from_file(
     buffer.push_back(b0);
     buffer.push_back(b1);
     buffer.push_back(b2);
-    ++col;
     ++nrows;
   }
 
   Kokkos::View<MeshField::Real* [3]> device_samples("device_data", nrows);
 
-  auto host_samples = Kokkos::create_mirror_view(device_sobol_samples);
+  auto host_samples = Kokkos::create_mirror_view(device_samples);
 
   // Fill host view from buffer
   for (size_t i = 0; i < nrows; ++i) {

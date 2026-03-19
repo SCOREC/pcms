@@ -6,7 +6,7 @@
 #include <Omega_h_shape.hpp>
 
 #include <pcms/transfer/conservative_projection_solver.hpp>
-#include <pcms/transfer/load_vector_integrator_mc.hpp>
+#include <pcms/transfer/load_vector_integrator.hpp>
 
 #include <fstream>
 

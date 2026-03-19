@@ -57,7 +57,7 @@ Omega_h::Reals evaluate_field_at_barycentric_samples(
   const auto coords_h = Omega_h::HostRead<Omega_h::Real>(mesh.coords());
   const auto ev2v_h = Omega_h::HostRead<Omega_h::LO>(mesh.ask_elem_verts());
 
-  Omega_h::Write<Omega_h::Real> vals(mesh.nelems() * npoints_each_tri);
+  Omega_h::HostWrite<Omega_h::Real> vals_h(mesh.nelems() * npoints_each_tri);
 
   for (Omega_h::LO e = 0; e < mesh.nelems(); ++e) {
     const Omega_h::LO v0 = ev2v_h[3 * e + 0];
@@ -80,11 +80,11 @@ Omega_h::Reals evaluate_field_at_barycentric_samples(
       const double x = l0 * x0 + l1 * x1 + l2 * x2;
       const double y = l0 * y0 + l1 * y1 + l2 * y2;
 
-      vals[base + i] = f(x, y);
+      vals_h[base + i] = f(x, y);
     }
   }
 
-  return Omega_h::Reals(vals);
+  return Omega_h::Reals(vals_h);
 }
 
 

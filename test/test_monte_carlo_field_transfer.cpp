@@ -130,10 +130,9 @@ TEST_CASE("monte carlo projection preserves constant and linear fields",
     auto field_values_at_points = evaluate_field_at_barycentric_samples(
       target_mesh, bary, [c](double, double) { return c; });
 
-    Vec loadVec = nullptr;
     auto projected = pcms::solveGalerkinProjectionMC(
       target_mesh, field_values_at_points, npoints_each_tri,
-      SamplingMethod::SOBOL, &loadVec, sobol_filename);
+      pcms::SamplingMethod::SOBOL,sobol_filename);
 
     auto projected_h = Omega_h::HostRead<Omega_h::Real>(projected);
 
@@ -153,10 +152,9 @@ TEST_CASE("monte carlo projection preserves constant and linear fields",
     auto field_values_at_points = evaluate_field_at_barycentric_samples(
       target_mesh, bary, [](double x, double y) { return x + y; });
 
-    Vec loadVec = nullptr;
     auto projected = pcms::solveGalerkinProjectionMC(
       target_mesh, field_values_at_points, npoints_each_tri,
-      SamplingMethod::SOBOL, &loadVec, sobol_filename);
+      pcms::SamplingMethod::SOBOL, sobol_filename);
 
     auto projected_h = Omega_h::HostRead<Omega_h::Real>(projected);
     auto tgt_coords_h = Omega_h::HostRead<Omega_h::Real>(target_mesh.coords());

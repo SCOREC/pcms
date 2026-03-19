@@ -14,7 +14,8 @@ Kokkos::View<MeshField::Real* [3]> read_sobol_barycentric_samples_from_file(
   }
 
   std::vector<MeshField::Real> buffer;
-  size_t nrows = 0, ncols = 0;
+  size_t nrows = 0;
+  const size_t ncols = 3;
   std::string line;
 
   // skip header row

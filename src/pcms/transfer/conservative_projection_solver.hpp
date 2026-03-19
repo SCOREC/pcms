@@ -21,6 +21,7 @@
 
 #include <pcms/transfer/mesh_intersection.hpp>
 #include <pcms/transfer/load_vector_integrator.hpp>
+#include <petscvec.h>
 
 namespace pcms
 {

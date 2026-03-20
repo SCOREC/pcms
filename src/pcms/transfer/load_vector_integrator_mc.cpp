@@ -4,7 +4,7 @@
 namespace pcms
 {
 // TODO:: create a function that can sample sobol sequences instead of
-// generating in python and using
+// reading from file
 Kokkos::View<MeshField::Real* [3]> read_sobol_barycentric_samples_from_file(
   std::string file_path)
 {

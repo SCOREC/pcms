@@ -62,7 +62,7 @@ PetscErrorCode calculateLoadVectorMI(Omega_h::Mesh& target_mesh,
  * @brief Assembles the global load vector using Monte Carlo integration.
  *
  * This function computes the unassembled local load vector contributions for
- * each triangular element in the target mesh using Monte Carlo integration and
+ * each element in the target mesh using Monte Carlo integration and
  * then assembles them into a global PETSc vector in COO format.
  *
  * The element-local contributions are computed from source-field values already

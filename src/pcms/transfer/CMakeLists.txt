@@ -26,7 +26,7 @@ set(PCMS_FIELD_TRANSFER_SOURCES
     mls_interpolation.cpp
     interpolation_base.cpp)
 
-if(PCMS_ENABLE_PETSC)
+if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
   list(APPEND PCMS_FIELD_TRANSFER_HEADERS
       calculate_load_vector.hpp
       calculate_mass_matrix.hpp
@@ -62,7 +62,7 @@ if(PCMS_ENABLE_MESHFIELDS)
   target_link_libraries(pcms_transfer PUBLIC meshfields::meshfields)
 endif()
 
-if(PCMS_ENABLE_PETSC)
+if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
   target_link_libraries(pcms_transfer PRIVATE PETSc::PETSc)
 endif()
 

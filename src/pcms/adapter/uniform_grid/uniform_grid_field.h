@@ -45,6 +45,8 @@ public:
   ~UniformGridField() noexcept = default;
 
 private:
+  LO CellIdToDofIndex(LO cell_id) const;
+
   std::shared_ptr<const UniformGridFieldLayout<Dim>> layout_;
   const UniformGrid<Dim>& grid_;
   Kokkos::View<Real*, HostMemorySpace> dof_holder_data_;

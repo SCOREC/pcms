@@ -73,9 +73,18 @@ View<Dim, Real, HostMemorySpace> UniformGridField<Dim>::to_mdspan()
   PCMS_FUNCTION_TIMER;
 
   if constexpr (Dim == 2) {
+    if (layout_->GetOrder() == 0) {
+      return View<Dim, Real, HostMemorySpace>(
+        dof_holder_data_.data(), grid_.divisions[0], grid_.divisions[1]);
+    }
     return View<Dim, Real, HostMemorySpace>(
       dof_holder_data_.data(), grid_.divisions[0] + 1, grid_.divisions[1] + 1);
   } else if constexpr (Dim == 3) {
+    if (layout_->GetOrder() == 0) {
+      return View<Dim, Real, HostMemorySpace>(
+        dof_holder_data_.data(), grid_.divisions[0], grid_.divisions[1],
+        grid_.divisions[2]);
+    }
     return View<Dim, Real, HostMemorySpace>(
       dof_holder_data_.data(), grid_.divisions[0] + 1, grid_.divisions[1] + 1,
       grid_.divisions[2] + 1);
@@ -91,9 +100,18 @@ View<Dim, const Real, HostMemorySpace> UniformGridField<Dim>::to_mdspan() const
   PCMS_FUNCTION_TIMER;
 
   if constexpr (Dim == 2) {
+    if (layout_->GetOrder() == 0) {
+      return View<Dim, const Real, HostMemorySpace>(
+        dof_holder_data_.data(), grid_.divisions[0], grid_.divisions[1]);
+    }
     return View<Dim, const Real, HostMemorySpace>(
       dof_holder_data_.data(), grid_.divisions[0] + 1, grid_.divisions[1] + 1);
   } else if constexpr (Dim == 3) {
+    if (layout_->GetOrder() == 0) {
+      return View<Dim, const Real, HostMemorySpace>(
+        dof_holder_data_.data(), grid_.divisions[0], grid_.divisions[1],
+        grid_.divisions[2]);
+    }
     return View<Dim, const Real, HostMemorySpace>(
       dof_holder_data_.data(), grid_.divisions[0] + 1, grid_.divisions[1] + 1,
       grid_.divisions[2] + 1);
@@ -172,6 +190,18 @@ void UniformGridField<Dim>::Evaluate(
   auto coordinates = hint.coordinates_;
   auto cell_indices = hint.cell_indices_;
   LO num_points = coordinates.extent(0);
+
+  if (layout_->GetOrder() == 0) {
+    auto evaluated_values = results.GetValues();
+    for (LO i = 0; i < evaluated_values.size(); ++i) {
+      if (hint.is_out_of_bounds_[i] && hint.mode_ == OutOfBoundsMode::FILL) {
+        evaluated_values[i] = fill_value_;
+      } else {
+        evaluated_values[i] = values[CellIdToDofIndex(cell_indices[i])];
+      }
+    }
+    return;
+  }
 
   Kokkos::View<LO**, HostMemorySpace> cell_dimensioned_indices(
     "cell_dimensioned_indices", num_points, Dim);
@@ -259,6 +289,12 @@ template <unsigned Dim>
 bool UniformGridField<Dim>::CanEvaluateGradient()
 {
   return false;
+}
+
+template <unsigned Dim>
+LO UniformGridField<Dim>::CellIdToDofIndex(LO cell_id) const
+{
+  return cell_id;
 }
 
 template <unsigned Dim>

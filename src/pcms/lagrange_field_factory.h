@@ -41,7 +41,8 @@ public:
     Rank1View<Real, HostMemorySpace> bot_left,
     Rank1View<LO, HostMemorySpace>   divisions,
     int num_components,
-    CoordinateSystem coordinate_system);
+    CoordinateSystem coordinate_system,
+    int order = 1);
 
   [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayout() const noexcept;
   [[nodiscard]] std::unique_ptr<FieldT<Real>> CreateFieldReal() const;

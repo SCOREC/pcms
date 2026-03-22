@@ -6,7 +6,6 @@ set(
   pcms/coordinate_systems.h
   pcms/coordinate_transform.h
   pcms/field.h
-  pcms/create_field.h
   pcms/field_communicator.h
   pcms/field_communicator2.h
   pcms/field_evaluation_methods.h
@@ -23,7 +22,6 @@ set(
 set(
   PCMS_SOURCES
   pcms.cpp
-  pcms/create_field.cpp
   pcms/coupler2.cpp
   pcms/field_layout_communicator.cpp
   pcms/nodal_field_factory.cpp
@@ -80,6 +78,7 @@ if(PCMS_ENABLE_OMEGA_H)
     pcms/adapter/omega_h/omega_h_lagrange_field.h
     pcms/adapter/uniform_grid/uniform_grid_field_layout.h
     pcms/adapter/uniform_grid/uniform_grid_field.h
+    pcms/adapter/uniform_grid/uniform_grid_binary_field.h
   )
 endif()
 

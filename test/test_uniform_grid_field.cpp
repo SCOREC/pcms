@@ -9,13 +9,12 @@
 #include "pcms/transfer_field2.h"
 #include "pcms/adapter/meshfields/mesh_fields_adapter_layout.h"
 #include "pcms/adapter/meshfields/mesh_fields_adapter2.h"
+#include "pcms/adapter/uniform_grid/uniform_grid_binary_field.h"
 #include "pcms/lagrange_field_factory.h"
-#include "pcms/create_field.h"
 #include "pcms/utility/arrays.h"
 #include "field_test_utils.h"
 #include <cmath>
 
-using pcms::CreateUniformGridBinaryField;
 using pcms::CreateUniformGridFromMesh;
 
 // Helper function to verify ug_field values
@@ -77,6 +76,58 @@ TEST_CASE("UniformGrid field creation")
   // Create field
   auto field = std::make_unique<pcms::UniformGridField<2>>(layout);
   REQUIRE(field != nullptr);
+}
+
+TEST_CASE("UniformGrid order-0 field creation and evaluation")
+{
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {0.0, 0.0};
+  grid.edge_length = {10.0, 10.0};
+  grid.divisions = {2, 2};
+
+  auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
+    grid, 1, pcms::CoordinateSystem::Cartesian, 0);
+  auto field = std::make_unique<pcms::UniformGridField<2>>(layout);
+
+  REQUIRE(layout->GetOrder() == 0);
+  REQUIRE(layout->GetNumOwnedDofHolder() == 4);
+  REQUIRE(layout->GetNumGlobalDofHolder() == 4);
+
+  auto coords = layout->GetDOFHolderCoordinates().GetCoordinates();
+  REQUIRE(coords(0, 0) == Catch::Approx(2.5));
+  REQUIRE(coords(0, 1) == Catch::Approx(2.5));
+  REQUIRE(coords(3, 0) == Catch::Approx(7.5));
+  REQUIRE(coords(3, 1) == Catch::Approx(7.5));
+
+  std::vector<pcms::Real> data = {1.0, 2.0, 3.0, 4.0};
+  field->SetDOFHolderData(
+    pcms::Rank1View<const pcms::Real, pcms::HostMemorySpace>(
+      data.data(), data.size()));
+
+  std::vector<pcms::Real> eval_coords = {
+    1.0, 1.0,
+    9.0, 1.0,
+    1.0, 9.0,
+    9.0, 9.0
+  };
+  auto coords_view = pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
+    eval_coords.data(), 4, 2);
+  auto coord_view = pcms::CoordinateView<pcms::HostMemorySpace>(
+    pcms::CoordinateSystem::Cartesian, coords_view);
+  auto hint = field->GetLocalizationHint(coord_view);
+
+  std::vector<pcms::Real> results(4);
+  auto results_view =
+    pcms::Rank1View<pcms::Real, pcms::HostMemorySpace>(results.data(), 4);
+  auto results_field_view =
+    pcms::FieldDataView<pcms::Real, pcms::HostMemorySpace>(
+      results_view, pcms::CoordinateSystem::Cartesian);
+  field->Evaluate(hint, results_field_view);
+
+  REQUIRE(results[0] == Catch::Approx(1.0));
+  REQUIRE(results[1] == Catch::Approx(2.0));
+  REQUIRE(results[2] == Catch::Approx(3.0));
+  REQUIRE(results[3] == Catch::Approx(4.0));
 }
 
 TEST_CASE("UniformGrid field data operations", "[uniform_grid_field]")
@@ -324,19 +375,18 @@ TEST_CASE("Create binary field from uniform grid")
 
   SECTION("Simple 2D box mesh - all vertices inside")
   {
-    // Create a mesh that fills the domain [0,1] x [0,1]
     auto mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 10,
                                    10, 0, false);
 
-    // Create a 5x5 grid (coarser than mesh)
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, {5, 5});
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{5, 5});
     auto field_data = field->GetDOFHolderData();
 
     REQUIRE(field_data.extent(0) == 36); // (5+1) * (5+1) = 36 vertices
 
-    // All grid vertices should be inside the mesh
     pcms::Real sum = 0.0;
     for (size_t i = 0; i < field_data.extent(0); ++i) {
+      REQUIRE((field_data(i) == 0.0 || field_data(i) == 1.0));
       sum += field_data(i);
     }
     REQUIRE(sum == 36.0);
@@ -347,35 +397,75 @@ TEST_CASE("Create binary field from uniform grid")
     auto mesh =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 8, 8, 0, false);
 
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, {10, 8});
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 8});
     auto field_data = field->GetDOFHolderData();
 
     REQUIRE(field_data.extent(0) == 99); // (10+1) * (8+1) = 99 vertices
 
-    // Most vertices should be inside
     pcms::Real inside_count = 0.0;
-    for (size_t i = 0; i < field_data.extent(0); ++i) {
+    for (size_t i = 0; i < field_data.extent(0); ++i)
       inside_count += field_data(i);
-    }
     REQUIRE(inside_count > 0.0);
     REQUIRE(inside_count <= 99.0);
   }
 
-  SECTION("Binary field with equal divisions convenience function")
+  SECTION("Verify field values are binary")
   {
     auto mesh =
-      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 5, 5, 0, false);
+      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 8, 8, 0, false);
 
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, 8);
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
     auto field_data = field->GetDOFHolderData();
 
-    REQUIRE(field_data.extent(0) == 81); // (8+1) * (8+1) = 81 vertices
+    for (size_t i = 0; i < field_data.extent(0); ++i) {
+      REQUIRE((field_data(i) == 0.0 || field_data(i) == 1.0));
+    }
+  }
 
+  SECTION("Grid larger than mesh - vertices outside should be marked 0")
+  {
+    auto mesh =
+      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 0.5, 0.5, 0.0, 5, 5, 0, false);
+
+    pcms::UniformGrid<2> grid;
+    grid.edge_length = {1.0, 1.0};
+    grid.bot_left = {0.0, 0.0};
+    grid.divisions = {10, 10};
+
+    auto [layout, field] = pcms::CreateUniformGridBinaryField<2>(mesh, grid);
+    auto field_data = field->GetDOFHolderData();
+
+    REQUIRE(field_data.extent(0) == 121); // (10+1) * (10+1) = 121 vertices
+
+    // Count vertices inside and outside
     pcms::Real inside_count = 0.0;
     for (size_t i = 0; i < field_data.extent(0); ++i) {
       inside_count += field_data(i);
     }
+    pcms::Real outside_count = field_data.extent(0) - inside_count;
+
+    // Should have both inside (1) and outside (0) vertices
     REQUIRE(inside_count > 0.0);
+    REQUIRE(outside_count > 0.0);
+
+    // Check specific vertices
+    // Bottom-left corner should be inside (mesh covers [0, 0.5])
+    int corner_id = 0 * 11 + 0; // vertex (0, 0)
+    REQUIRE(field_data(corner_id) == 1.0);
+
+    // Top-right corner should be outside (mesh ends at 0.5)
+    corner_id = 10 * 11 + 10; // vertex (10, 10)
+    REQUIRE(field_data(corner_id) == 0.0);
+
+    // Vertex at i=6, j=6 (coords ~0.6, ~0.6) should be outside
+    corner_id = 6 * 11 + 6;
+    REQUIRE(field_data(corner_id) == 0.0);
+
+    // Vertex at i=2, j=2 (coords ~0.2, ~0.2) should be inside
+    auto center_id = 2 * 11 + 2;
+    REQUIRE(field_data(center_id) == 1.0);
   }
 
   SECTION("Fine grid over coarse mesh")
@@ -385,8 +475,9 @@ TEST_CASE("Create binary field from uniform grid")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 2.0, 2.0, 0.0, 4, 4, 0, false);
 
     // Create a fine grid (20x20)
-    auto grid = CreateUniformGridFromMesh<2>(mesh, {20, 20});
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, {20, 20});
+    auto grid = CreateUniformGridFromMesh<2>(mesh, std::array{20, 20});
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{20, 20});
     auto field_data = field->GetDOFHolderData();
 
     REQUIRE(field_data.extent(0) == 441); // (20+1) * (20+1) = 441 vertices
@@ -401,50 +492,14 @@ TEST_CASE("Create binary field from uniform grid")
     REQUIRE(field_data(corner_idx) == 1.0);
   }
 
-  SECTION("Verify field values are binary")
-  {
-    auto mesh =
-      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 5, 5, 0, false);
-
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, 10);
-    auto field_data = field->GetDOFHolderData();
-
-    // All values should be 0 or 1
-    for (size_t i = 0; i < field_data.extent(0); ++i) {
-      pcms::Real val = field_data(i);
-      REQUIRE((val == 0.0 || val == 1.0));
-    }
-  }
-
-  SECTION("Grid extends beyond mesh - vertices outside should be marked 0")
-  {
-    // Create a small mesh in the center of a domain
-    auto mesh =
-      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 0.5, 0.5, 0.0, 5, 5, 0, false);
-
-    // The mesh occupies [0, 0.5] x [0, 0.5]
-    // Create a grid that would cover this
-    auto grid = CreateUniformGridFromMesh<2>(mesh, {10, 10});
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, {10, 10});
-    auto field_data = field->GetDOFHolderData();
-
-    REQUIRE(field_data.extent(0) == 121); // (10+1) * (10+1) = 121 vertices
-
-    // All vertices should be inside since grid is exactly on mesh bbox
-    pcms::Real inside_count = 0.0;
-    for (size_t i = 0; i < field_data.extent(0); ++i) {
-      inside_count += field_data(i);
-    }
-    REQUIRE(inside_count > 0.0);
-  }
-
   SECTION("Test with different aspect ratio")
   {
     // Create a rectangular mesh
     auto mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 3.0, 1.0, 0.0, 12, 4,
                                    0, false);
 
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, {30, 10});
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{30, 10});
     auto field_data = field->GetDOFHolderData();
 
     REQUIRE(field_data.extent(0) == 341); // (30+1) * (10+1) = 341 vertices
@@ -472,8 +527,9 @@ TEST_CASE("Binary field integration with grid methods")
 
   SECTION("Query field value at specific grid vertex")
   {
-    auto grid = CreateUniformGridFromMesh<2>(mesh, {8, 8});
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, {8, 8});
+    auto grid = CreateUniformGridFromMesh<2>(mesh, std::array{8, 8});
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{8, 8});
     auto field_data = field->GetDOFHolderData();
 
     // Get field value for a specific vertex (middle vertex at i=4, j=4)
@@ -493,8 +549,9 @@ TEST_CASE("Binary field integration with grid methods")
 
   SECTION("Count vertices by region")
   {
-    auto grid = CreateUniformGridFromMesh<2>(mesh, 10);
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, 10);
+    auto grid = CreateUniformGridFromMesh<2>(mesh, std::array{10, 10});
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
     auto field_data = field->GetDOFHolderData();
 
     // Count vertices in different quadrants
@@ -551,7 +608,8 @@ TEST_CASE("Performance and edge cases")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 5, 5, 0, false);
 
     // Create a very fine grid
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, 50);
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{50, 50});
     auto field_data = field->GetDOFHolderData();
 
     REQUIRE(field_data.extent(0) == 2601); // (50+1) * (50+1) = 2601 vertices
@@ -569,7 +627,8 @@ TEST_CASE("Performance and edge cases")
                                    10, 0, false);
 
     // Very coarse grid
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, {2, 2});
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{2, 2});
     auto field_data = field->GetDOFHolderData();
 
     REQUIRE(field_data.extent(0) == 9); // (2+1) * (2+1) = 9 vertices
@@ -587,7 +646,8 @@ TEST_CASE("Performance and edge cases")
     auto mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 5.0, 2.0, 0.0, 20, 8,
                                    0, false);
 
-    auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, {25, 10});
+    auto [layout, field] =
+      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{25, 10});
     auto field_data = field->GetDOFHolderData();
 
     REQUIRE(field_data.extent(0) == 286); // (25+1) * (10+1) = 286 vertices
@@ -597,54 +657,6 @@ TEST_CASE("Performance and edge cases")
       inside_count += field_data(i);
     }
     REQUIRE(inside_count > 0.0);
-  }
-
-  SECTION("Grid larger than mesh - vertices outside marked as 0")
-  {
-    // Create a mesh covering [0, 0.5] x [0, 0.5]
-    auto mesh =
-      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 0.5, 0.5, 0.0, 5, 5, 0, false);
-
-    // Manually create a larger grid covering [0, 1] x [0, 1]
-    pcms::UniformGrid<2> grid;
-    grid.edge_length = {1.0, 1.0};
-    grid.bot_left = {0.0, 0.0};
-    grid.divisions = {10, 10};
-
-    // Create binary field on the larger grid
-    auto [layout, field] =
-      pcms::CreateUniformGridBinaryFieldFromGrid<2>(mesh, grid);
-    auto field_data = field->GetDOFHolderData();
-
-    REQUIRE(field_data.extent(0) == 121); // (10+1) * (10+1) = 121 vertices
-
-    // Count vertices inside and outside
-    pcms::Real inside_count = 0.0;
-    for (size_t i = 0; i < field_data.extent(0); ++i) {
-      inside_count += field_data(i);
-    }
-    pcms::Real outside_count = field_data.extent(0) - inside_count;
-
-    // Should have both inside (1) and outside (0) vertices
-    REQUIRE(inside_count > 0.0);
-    REQUIRE(outside_count > 0.0);
-
-    // Check specific vertices
-    // Bottom-left corner should be inside (mesh covers [0, 0.5])
-    int corner_id = 0 * 11 + 0; // vertex (0, 0)
-    REQUIRE(field_data(corner_id) == 1.0);
-
-    // Top-right corner should be outside (mesh ends at 0.5)
-    corner_id = 10 * 11 + 10; // vertex (10, 10)
-    REQUIRE(field_data(corner_id) == 0.0);
-
-    // Vertex at i=6, j=6 (coords ~0.6, ~0.6) should be outside
-    corner_id = 6 * 11 + 6;
-    REQUIRE(field_data(corner_id) == 0.0);
-
-    // Vertex at i=2, j=2 (coords ~0.2, ~0.2) should be inside
-    auto center_id = 2 * 11 + 2;
-    REQUIRE(field_data(center_id) == 1.0);
   }
 }
 
@@ -657,8 +669,6 @@ TEST_CASE("UniformGrid workflow")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, false);
   auto grid = pcms::CreateUniformGridFromMesh<2>(mesh, {4, 4});
-  auto [mask_layout, mask_field] =
-    pcms::CreateUniformGridBinaryField<2>(mesh, {4, 4});
 
   // Create OmegaH field layout with linear elements
   auto omega_h_factory =
@@ -672,6 +682,9 @@ TEST_CASE("UniformGrid workflow")
   auto ug_layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
     grid, 1, pcms::CoordinateSystem::Cartesian);
   auto ug_field = std::make_unique<pcms::UniformGridField<2>>(ug_layout);
+
+  auto [mask_layout, mask_field] =
+    pcms::CreateUniformGridBinaryField<2>(mesh, grid);
 
   // Transfer from omega_h field to uniform grid field using interpolation
   pcms::interpolate_field2(*omega_h_field, *ug_field);

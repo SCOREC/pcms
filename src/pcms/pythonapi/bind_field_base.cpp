@@ -1,9 +1,11 @@
-#include <create_field.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include "pcms/coordinate_system.h"
 #include "pcms/coordinate.h"
+#include "pcms/adapter/uniform_grid/uniform_grid_field.h"
+#include "pcms/adapter/uniform_grid/uniform_grid_field_layout.h"
+#include "pcms/adapter/uniform_grid/uniform_grid_binary_field.h"
 #include "pcms/lagrange_field_factory.h"
 #include "pcms/utility/uniform_grid.h"
 #include "numpy_array_transform.h"
@@ -147,7 +149,8 @@ void bind_create_field_module(py::module& m)
 
     .def_static(
       "from_uniform_grid",
-      [](const UniformGrid<2>& grid, int num_components, CoordinateSystem cs) {
+      [](const UniformGrid<2>& grid, int num_components, CoordinateSystem cs,
+         int order) {
         auto el = grid.edge_length;
         auto bl = grid.bot_left;
         auto div = grid.divisions;
@@ -155,15 +158,17 @@ void bind_create_field_module(py::module& m)
         Rank1View<Real, HostMemorySpace> bl_view(bl.data(), 2);
         Rank1View<LO, HostMemorySpace> div_view(div.data(), 2);
         return LagrangeFieldFactory::FromUniformGrid(el_view, bl_view, div_view,
-                                                     num_components, cs);
+                                                     num_components, cs, order);
       },
       py::arg("grid"), py::arg("num_components") = 1,
       py::arg("coordinate_system") = CoordinateSystem::Cartesian,
+      py::arg("order") = 1,
       "Create a LagrangeFieldFactory from a 2D uniform grid")
 
     .def_static(
       "from_uniform_grid",
-      [](const UniformGrid<3>& grid, int num_components, CoordinateSystem cs) {
+      [](const UniformGrid<3>& grid, int num_components, CoordinateSystem cs,
+         int order) {
         auto el = grid.edge_length;
         auto bl = grid.bot_left;
         auto div = grid.divisions;
@@ -171,10 +176,11 @@ void bind_create_field_module(py::module& m)
         Rank1View<Real, HostMemorySpace> bl_view(bl.data(), 3);
         Rank1View<LO, HostMemorySpace> div_view(div.data(), 3);
         return LagrangeFieldFactory::FromUniformGrid(el_view, bl_view, div_view,
-                                                     num_components, cs);
+                                                     num_components, cs, order);
       },
       py::arg("grid"), py::arg("num_components") = 1,
       py::arg("coordinate_system") = CoordinateSystem::Cartesian,
+      py::arg("order") = 1,
       "Create a LagrangeFieldFactory from a 3D uniform grid")
 
     .def("get_layout", &LagrangeFieldFactory::GetLayout,
@@ -205,21 +211,17 @@ void bind_create_field_module(py::module& m)
     py::arg("mesh"), py::arg("divisions"),
     "Create a 3D uniform grid from an Omega_h mesh");
 
-  // Bind CreateUniformGridBinaryField for 2D
   m.def(
     "create_uniform_grid_binary_field",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, divisions);
-      // Wrap in shared_ptr for proper Python ownership and lifetime management
-      return py::make_tuple(
-        std::shared_ptr<UniformGridFieldLayout<2>>(std::move(layout)),
-        std::shared_ptr<UniformGridField<2>>(std::move(field)));
+      auto [layout, field] =
+        CreateUniformGridBinaryField<2>(mesh, divisions);
+      return py::make_tuple(layout,
+                            std::shared_ptr<FieldT<Real>>(std::move(field)));
     },
     py::arg("mesh"), py::arg("divisions"),
-    "Create a 2D binary field on a uniform grid indicating inside/outside "
-    "mesh. "
-    "Returns tuple of (layout, field). Layout lifetime is properly managed via "
-    "shared_ptr.");
+    "Create a 2D vertex mask field indicating inside/outside mesh");
+
 }
 
 template <typename T>

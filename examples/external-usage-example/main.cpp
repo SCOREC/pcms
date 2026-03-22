@@ -1,6 +1,5 @@
 #include <iostream>
 #include <pcms/utility/print.h>
-#include <pcms/create_field.h>
 #include <pcms/capi/interpolator.h>
 int main()
 {

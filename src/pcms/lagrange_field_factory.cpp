@@ -92,8 +92,13 @@ LagrangeFieldFactory LagrangeFieldFactory::FromUniformGrid(
   Rank1View<Real, HostMemorySpace> bot_left,
   Rank1View<LO, HostMemorySpace> divisions,
   int num_components,
-  CoordinateSystem coordinate_system)
+  CoordinateSystem coordinate_system,
+  int order)
 {
+  if (order != 0 && order != 1) {
+    throw std::invalid_argument(
+      "LagrangeFieldFactory::FromUniformGrid: only orders 0 and 1 are supported");
+  }
   if (edge_length.size() != bot_left.size() ||
       edge_length.size() != divisions.size()) {
     throw std::invalid_argument(
@@ -103,7 +108,7 @@ LagrangeFieldFactory LagrangeFieldFactory::FromUniformGrid(
   case 2: {
     auto ug_layout = std::make_shared<UniformGridFieldLayout<2>>(
       MakeUniformGrid<2>(edge_length, bot_left, divisions), num_components,
-      coordinate_system);
+      coordinate_system, order);
     return LagrangeFieldFactory(
       ug_layout,
       [ug_layout]() {
@@ -113,7 +118,7 @@ LagrangeFieldFactory LagrangeFieldFactory::FromUniformGrid(
   case 3: {
     auto ug_layout = std::make_shared<UniformGridFieldLayout<3>>(
       MakeUniformGrid<3>(edge_length, bot_left, divisions), num_components,
-      coordinate_system);
+      coordinate_system, order);
     return LagrangeFieldFactory(
       ug_layout,
       [ug_layout]() {

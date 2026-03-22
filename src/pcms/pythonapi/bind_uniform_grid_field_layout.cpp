@@ -72,8 +72,9 @@ void bind_uniform_grid_field_layout_module(py::module& m)
   py::class_<UniformGridFieldLayout<2>, FieldLayout,
              std::shared_ptr<UniformGridFieldLayout<2>>>(
     m, "UniformGridFieldLayout2D")
-    .def(py::init<UniformGrid<2>, int, CoordinateSystem>(), py::arg("grid"),
+    .def(py::init<UniformGrid<2>, int, CoordinateSystem, int>(), py::arg("grid"),
          py::arg("num_components"), py::arg("coordinate_system"),
+         py::arg("order") = 1,
          "Constructor for UniformGridFieldLayout2D")
 
     .def("get_num_components", &UniformGridFieldLayout<2>::GetNumComponents,
@@ -144,14 +145,18 @@ void bind_uniform_grid_field_layout_module(py::module& m)
          "Get the number of cells in the grid")
 
     .def("get_num_vertices", &UniformGridFieldLayout<2>::GetNumVertices,
-         "Get the number of vertices in the grid");
+         "Get the number of vertices in the grid")
+
+    .def("get_order", &UniformGridFieldLayout<2>::GetOrder,
+         "Get the Lagrange order for the layout");
 
   // Bind the UniformGridFieldLayout class for 3D
   py::class_<UniformGridFieldLayout<3>, FieldLayout,
              std::shared_ptr<UniformGridFieldLayout<3>>>(
     m, "UniformGridFieldLayout3D")
-    .def(py::init<UniformGrid<3>, int, CoordinateSystem>(), py::arg("grid"),
+    .def(py::init<UniformGrid<3>, int, CoordinateSystem, int>(), py::arg("grid"),
          py::arg("num_components"), py::arg("coordinate_system"),
+         py::arg("order") = 1,
          "Constructor for UniformGridFieldLayout3D")
 
     .def("get_num_components", &UniformGridFieldLayout<3>::GetNumComponents,
@@ -222,7 +227,10 @@ void bind_uniform_grid_field_layout_module(py::module& m)
          "Get the number of cells in the grid")
 
     .def("get_num_vertices", &UniformGridFieldLayout<3>::GetNumVertices,
-         "Get the number of vertices in the grid");
+         "Get the number of vertices in the grid")
+
+    .def("get_order", &UniformGridFieldLayout<3>::GetOrder,
+         "Get the Lagrange order for the layout");
 }
 
 } // namespace pcms

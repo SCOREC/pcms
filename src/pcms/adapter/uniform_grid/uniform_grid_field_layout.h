@@ -16,7 +16,7 @@ class UniformGridFieldLayout : public FieldLayout
 {
 public:
   UniformGridFieldLayout(UniformGrid<Dim> grid, int num_components,
-                         CoordinateSystem coordinate_system);
+                         CoordinateSystem coordinate_system, int order = 1);
 
   int GetNumComponents() const override;
   LO GetNumOwnedDofHolder() const override;
@@ -36,11 +36,15 @@ public:
   const UniformGrid<Dim>& GetGrid() const;
   LO GetNumCells() const;
   LO GetNumVertices() const;
+  int GetOrder() const;
 
 private:
+  LO GetNumDofHolders() const;
+
   UniformGrid<Dim> grid_;
   int num_components_;
   CoordinateSystem coordinate_system_;
+  int order_;
   Kokkos::View<GO*, HostMemorySpace> gids_;
   Kokkos::View<Real**, HostMemorySpace> dof_holder_coords_;
   Kokkos::View<bool*, HostMemorySpace> owned_;

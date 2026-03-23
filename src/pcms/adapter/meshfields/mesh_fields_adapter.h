@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_OMEGA_H_FIELD_H
-#define PCMS_COUPLING_OMEGA_H_FIELD_H
+#ifndef PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_ADAPTER_H
+#define PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_ADAPTER_H
 #include "pcms/utility/types.h"
 #include <Omega_h_mesh.hpp>
 #include "pcms/field.h"
@@ -90,16 +90,16 @@ Omega_h::Read<T> filter_array(Omega_h::Read<T> array,
 } // namespace detail
 
 template <typename T> // CoordinateElement<Cartesian, Real>>
-class OmegaHField
+class MeshFieldsAdapter
 {
 public:
   using memory_space = OmegaHMemorySpace::type;
   using value_type = T;
 
-  OmegaHField(std::string name, Omega_h::Mesh& mesh,
-              std::string global_id_name = "", int search_nx = 10,
-              int search_ny = 10,
-              mesh_entity_type entity_type = mesh_entity_type::VERTEX)
+  MeshFieldsAdapter(std::string name, Omega_h::Mesh& mesh,
+                    std::string global_id_name = "", int search_nx = 10,
+                    int search_ny = 10,
+                    mesh_entity_type entity_type = mesh_entity_type::VERTEX)
     : name_(std::move(name)),
       mesh_(mesh),
       size_(mesh.nents(mesh_entity_to_int(entity_type))),
@@ -108,10 +108,11 @@ public:
   {
     PCMS_FUNCTION_TIMER;
   }
-  OmegaHField(std::string name, Omega_h::Mesh& mesh,
-              Omega_h::Read<Omega_h::I8> mask, std::string global_id_name = "",
-              int search_nx = 10, int search_ny = 10,
-              mesh_entity_type entity_type = mesh_entity_type::VERTEX)
+  MeshFieldsAdapter(std::string name, Omega_h::Mesh& mesh,
+                    Omega_h::Read<Omega_h::I8> mask,
+                    std::string global_id_name = "", int search_nx = 10,
+                    int search_ny = 10,
+                    mesh_entity_type entity_type = mesh_entity_type::VERTEX)
     : name_(std::move(name)),
       mesh_(mesh),
       global_id_name_(std::move(global_id_name)),
@@ -154,13 +155,13 @@ public:
   void ConstructSearch(int nx, int ny)
   {
     PCMS_FUNCTION_TIMER;
-    search_ = GridPointSearch(mesh_, nx, ny);
+    search_ = std::make_unique<GridPointSearch2D>(mesh_, nx, ny);
   }
   // pass through to search function
   [[nodiscard]] auto Search(Kokkos::View<Real* [2]> points) const
   {
     PCMS_FUNCTION_TIMER;
-    PCMS_ALWAYS_ASSERT(search_.has_value() &&
+    PCMS_ALWAYS_ASSERT(search_ != nullptr &&
                        "search data structure must be constructed before use");
     return (*search_)(points);
   }
@@ -220,9 +221,8 @@ public:
 private:
   std::string name_;
   Omega_h::Mesh& mesh_;
-  // TODO make this a pointer and introduce base class to Search for alternative
-  // search methods
-  std::optional<GridPointSearch> search_;
+  // TODO: introduce base class to Search for alternative search methods
+  std::unique_ptr<PointLocalizationSearch2D> search_;
   // bitmask array that specifies a filter on the field
   Omega_h::Read<LO> mask_;
   LO size_;
@@ -234,11 +234,12 @@ private:
 // The coordinate element for all internal fields is the same since
 // all internal fields are on the same mesh
 using InternalField =
-  std::variant<OmegaHField<Omega_h::I8>, OmegaHField<Omega_h::I32>,
-               OmegaHField<Omega_h::I64>, OmegaHField<Omega_h::Real>>;
+  std::variant<MeshFieldsAdapter<Omega_h::I8>, MeshFieldsAdapter<Omega_h::I32>,
+               MeshFieldsAdapter<Omega_h::I64>,
+               MeshFieldsAdapter<Omega_h::Real>>;
 
 template <typename T>
-auto get_nodal_data(const OmegaHField<T>& field) -> Omega_h::Read<T>
+auto get_nodal_data(const MeshFieldsAdapter<T>& field) -> Omega_h::Read<T>
 {
   PCMS_FUNCTION_TIMER;
   auto full_field = field.GetMesh().template get_array<T>(
@@ -252,7 +253,7 @@ auto get_nodal_data(const OmegaHField<T>& field) -> Omega_h::Read<T>
 // TODO since Omega_h owns coordinate data, we could potentially
 // return a view of the data without lifetime issues.
 template <typename T>
-auto get_nodal_coordinates(const OmegaHField<T>& field)
+auto get_nodal_coordinates(const MeshFieldsAdapter<T>& field)
 {
   PCMS_FUNCTION_TIMER;
   static constexpr auto coordinate_dimension = 2;
@@ -273,7 +274,7 @@ auto get_nodal_coordinates(const OmegaHField<T>& field)
  * Sets the data on the entire mesh
  */
 template <typename T, typename U>
-auto set_nodal_data(const OmegaHField<T>& field,
+auto set_nodal_data(const MeshFieldsAdapter<T>& field,
                     Rank1View<const U, OmegaHMemorySpace::type> data) -> void
 {
   PCMS_FUNCTION_TIMER;
@@ -326,7 +327,7 @@ auto set_nodal_data(const OmegaHField<T>& field,
 
 // TODO abstract out repeat parts of lagrange/nearest neighbor evaluation
 template <typename T>
-auto evaluate(const OmegaHField<T>& field, Lagrange<1> /* method */,
+auto evaluate(const MeshFieldsAdapter<T>& field, Lagrange<1> /* method */,
               Rank1View<const double, OmegaHMemorySpace::type> coordinates)
   -> Omega_h::Read<T>
 {
@@ -364,7 +365,7 @@ auto evaluate(const OmegaHField<T>& field, Lagrange<1> /* method */,
 }
 
 template <typename T>
-auto evaluate(const OmegaHField<T>& field, NearestNeighbor /* method */,
+auto evaluate(const MeshFieldsAdapter<T>& field, NearestNeighbor /* method */,
               Rank1View<const double, OmegaHMemorySpace::type> coordinates)
   -> Omega_h::Read<T>
 {
@@ -404,7 +405,7 @@ auto evaluate(const OmegaHField<T>& field, NearestNeighbor /* method */,
 }
 
 template <typename T, typename Method>
-auto evaluate(const OmegaHField<T>& field, Method&& m,
+auto evaluate(const MeshFieldsAdapter<T>& field, Method&& m,
               Rank1View<const double, HostMemorySpace> coordinates)
   -> std::enable_if_t<
     !std::is_same_v<typename OmegaHMemorySpace::type, HostMemorySpace>,
@@ -574,9 +575,9 @@ public:
     return reverse_partition;
   }
   // NOT REQUIRED PART OF FieldAdapter interface
-  [[nodiscard]] OmegaHField<T>& GetField() noexcept { return field_; }
+  [[nodiscard]] MeshFieldsAdapter<T>& GetField() noexcept { return field_; }
   // NOT REQUIRED PART OF FieldAdapter interface
-  [[nodiscard]] const OmegaHField<T>& GetField() const noexcept
+  [[nodiscard]] const MeshFieldsAdapter<T>& GetField() const noexcept
   {
     return field_;
   }
@@ -587,9 +588,9 @@ public:
   }
 
 private:
-  OmegaHField<T> field_;
+  MeshFieldsAdapter<T> field_;
   mesh_entity_type entity_type_;
 };
 } // namespace pcms
 
-#endif // PCMS_COUPLING_OMEGA_H_FIELD_H
+#endif // PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_ADAPTER_H

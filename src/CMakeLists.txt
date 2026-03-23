@@ -1,5 +1,3 @@
-
-
 # TODO split out the field transfer library
 set(
   PCMS_HEADERS
@@ -14,25 +12,34 @@ set(
   pcms/global_communicator.h
   pcms/field_communicator2.h
   pcms/field_evaluation_methods.h
+  pcms/field_layout_communicator.h
   pcms/partition.h
   pcms/coupler.h
+  pcms/coupler2.h
   pcms/coordinate_system.h
   pcms/field_layout.h
+  pcms/field_layout_communicator.h
 )
 
 set(
   PCMS_SOURCES
   pcms.cpp
   pcms/create_field.cpp
+  pcms/coupler2.cpp
+  pcms/field_layout_communicator.cpp
   pcms/adapter/point_cloud/point_cloud_layout.cpp
   pcms/adapter/point_cloud/point_cloud.cpp
-  pcms/adapter/omega_h/omega_h_field_layout.cpp
-  pcms/adapter/omega_h/omega_h_field2.cpp
+  pcms/adapter/meshfields/mesh_fields_adapter_layout.cpp
 )
 set(
   ADAPTER_HEADERS
-  ${CMAKE_SOURCE_DIR}/src/pcms/adapter/point_cloud
+  pcms/adapter/point_cloud/point_cloud_layout.h
+  pcms/adapter/point_cloud/point_cloud.h
+  pcms/adapter/meshfields/mesh_fields_adapter_layout.h
+  pcms/adapter/meshfields/mesh_fields_adapter2.h
+  pcms/adapter/xgc/xgc_field_adapter.h
 )
+
 configure_file(pcms/version.h.in pcms/version.h)
 configure_file(pcms/configuration.h.in pcms/configuration.h)
 list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.h)
@@ -41,10 +48,14 @@ add_subdirectory(pcms/utility)
 
 if(PCMS_ENABLE_XGC)
   list(APPEND PCMS_SOURCES pcms/adapter/xgc/xgc_reverse_classification.cpp)
-  list(APPEND ADAPTER_HEADERS ${CMAKE_SOURCE_DIR}/src/pcms/adapter/xgc)
+  list(APPEND ADAPTER_HEADERS pcms/adapter/xgc/xgc_reverse_classification.h)
 endif()
 if(PCMS_ENABLE_OMEGA_H)
-  list(APPEND PCMS_SOURCES pcms/point_search.cpp)
+  list(APPEND PCMS_SOURCES
+    pcms/point_search.cpp
+    pcms/adapter/uniform_grid/uniform_grid_field_layout.cpp
+    pcms/adapter/uniform_grid/uniform_grid_field.cpp
+  )
   list(
     APPEND
     PCMS_HEADERS
@@ -52,10 +63,12 @@ if(PCMS_ENABLE_OMEGA_H)
     pcms/transfer_field2.h
     pcms/uniform_grid.h
     pcms/point_search.h
-    #install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/pcms/adapter/omega_h/omega_h_field.h
-    #DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/adapter/omega_h)
   )
-  list(APPEND ADAPTER_HEADERS ${CMAKE_SOURCE_DIR}/src/pcms/adapter/omega_h)
+  list(APPEND ADAPTER_HEADERS
+    pcms/adapter/meshfields/mesh_fields_adapter.h
+    pcms/adapter/uniform_grid/uniform_grid_field_layout.h
+    pcms/adapter/uniform_grid/uniform_grid_field.h
+  )
 endif()
 
 find_package(Kokkos REQUIRED)
@@ -91,6 +104,11 @@ target_include_directories(
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
+target_sources(pcms_core PUBLIC
+        FILE_SET adapters
+        TYPE HEADERS
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/pcms
+        FILES ${ADAPTER_HEADERS})
 install(
   TARGETS pcms_core
   EXPORT pcms_core-targets
@@ -100,6 +118,7 @@ install(
   INCLUDES
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
+  FILE_SET adapters DESTINATION  ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
 
 configure_package_config_file(
@@ -126,6 +145,12 @@ install(
 add_library(pcms_pcms INTERFACE)
 target_link_libraries(pcms_pcms INTERFACE pcms::core)
 set_target_properties(pcms_pcms PROPERTIES EXPORT_NAME pcms)
+if (PCMS_ENABLE_Python)
+  # Disable LTO/IPO before adding Python subdirectory to avoid fatbinData conflicts
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+  add_subdirectory(pcms/pythonapi)
+  target_link_libraries(pcms_pcms INTERFACE pcms::pythonapi)
+endif()
 if(PCMS_ENABLE_C)
   add_subdirectory(pcms/capi)
   target_link_libraries(pcms_pcms INTERFACE pcms::capi)
@@ -147,14 +172,9 @@ install(
   INCLUDES
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
+  FILE_SET adapters DESTINATION  ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
 
-# Mirror the src tree for adapter headers
-foreach(hdr IN LISTS ADAPTER_HEADERS)
-  install(DIRECTORY ${hdr}
-          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/adapter
-          FILES_MATCHING PATTERN "*.h")
-endforeach ()
 
 # install external headers
 install(

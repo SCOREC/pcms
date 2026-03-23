@@ -4,8 +4,8 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
 #include <pcms/transfer_field2.h>
-#include "pcms/adapter/omega_h/omega_h_field.h"
-#include "pcms/adapter/omega_h/omega_h_field2.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter2.h"
 #include "pcms/create_field.h"
 #include <Kokkos_Core.hpp>
 
@@ -27,10 +27,10 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, ndata),
     [=](int i) { ids[i] = i; });
 
-  auto original = layout->CreateField();
+  auto original = layout->CreateFieldReal();
   original->SetDOFHolderData(pcms::make_const_array_view(ids));
 
-  auto copied = layout->CreateField();
+  auto copied = layout->CreateFieldReal();
   pcms::copy_field2(*original, *copied);
   auto copied_array = copied->GetDOFHolderData();
 

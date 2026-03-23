@@ -2,7 +2,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_file.hpp>
 #include "test_support.h"
-#include "pcms/adapter/omega_h/omega_h_field.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter.h"
 #include "pcms/coupler.h"
 #include <pcms/utility/types.h>
 static constexpr bool done = true;

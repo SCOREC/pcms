@@ -1,7 +1,7 @@
-#include "omega_h_field.h"
-#include "omega_h_field2.h"
-#include "pcms/adapter/omega_h/omega_h_field_layout.h"
-#include "omega_h_field_layout.h"
+#include "mesh_fields_adapter.h"
+#include "mesh_fields_adapter2.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter_layout.h"
+#include "mesh_fields_adapter_layout.h"
 #include "pcms/utility/inclusive_scan.h"
 #include "pcms/utility/profile.h"
 #include <memory>
@@ -126,11 +126,9 @@ struct CopyClassInfoFunctor
   }
 };
 
-OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
-                                     std::array<int, 4> nodes_per_dim,
-                                     int num_components,
-                                     CoordinateSystem coordinate_system,
-                                     std::string global_id_name)
+MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
+  Omega_h::Mesh& mesh, std::array<int, 4> nodes_per_dim, int num_components,
+  CoordinateSystem coordinate_system, std::string global_id_name)
   : mesh_(mesh),
     global_id_name_(global_id_name),
     num_components_(num_components),
@@ -200,17 +198,17 @@ OmegaHFieldLayout::OmegaHFieldLayout(Omega_h::Mesh& mesh,
   gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
 }
 
-std::unique_ptr<FieldT<Real>> OmegaHFieldLayout::CreateField() const
+std::unique_ptr<FieldT<Real>> MeshFieldsAdapterLayout::CreateFieldReal() const
 {
-  return std::make_unique<OmegaHField2>(*this);
+  return std::make_unique<MeshFieldsAdapter2<Real>>(*this);
 }
 
-int OmegaHFieldLayout::GetNumComponents() const
+int MeshFieldsAdapterLayout::GetNumComponents() const
 {
   return num_components_;
 }
 
-LO OmegaHFieldLayout::GetNumOwnedDofHolder() const
+LO MeshFieldsAdapterLayout::GetNumOwnedDofHolder() const
 {
   LO count = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
@@ -219,7 +217,7 @@ LO OmegaHFieldLayout::GetNumOwnedDofHolder() const
   return count;
 }
 
-GO OmegaHFieldLayout::GetNumGlobalDofHolder() const
+GO MeshFieldsAdapterLayout::GetNumGlobalDofHolder() const
 {
   LO count = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
@@ -228,24 +226,24 @@ GO OmegaHFieldLayout::GetNumGlobalDofHolder() const
   return count;
 }
 
-std::array<int, 4> OmegaHFieldLayout::GetNodesPerDim() const
+std::array<int, 4> MeshFieldsAdapterLayout::GetNodesPerDim() const
 {
   return nodes_per_dim_;
 }
 
-Rank1View<const bool, HostMemorySpace> OmegaHFieldLayout::GetOwned() const
+Rank1View<const bool, HostMemorySpace> MeshFieldsAdapterLayout::GetOwned() const
 {
   Kokkos::deep_copy(owned_host_, owned_);
   return make_const_array_view(owned_host_);
 }
 
-GlobalIDView<HostMemorySpace> OmegaHFieldLayout::GetGids() const
+GlobalIDView<HostMemorySpace> MeshFieldsAdapterLayout::GetGids() const
 {
   return GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size());
 }
 
-CoordinateView<HostMemorySpace> OmegaHFieldLayout::GetDOFHolderCoordinates()
-  const
+CoordinateView<HostMemorySpace>
+MeshFieldsAdapterLayout::GetDOFHolderCoordinates() const
 {
   deep_copy_mismatch_layouts(dof_holder_coords_host_, dof_holder_coords_);
   Rank2View<const Real, HostMemorySpace> coords_view(
@@ -253,24 +251,24 @@ CoordinateView<HostMemorySpace> OmegaHFieldLayout::GetDOFHolderCoordinates()
   return CoordinateView<HostMemorySpace>{coordinate_system_, coords_view};
 }
 
-bool OmegaHFieldLayout::IsDistributed()
+bool MeshFieldsAdapterLayout::IsDistributed()
 {
   return true;
 }
 
-Omega_h::Read<Omega_h::ClassId> OmegaHFieldLayout::GetClassIDs() const
+Omega_h::Read<Omega_h::ClassId> MeshFieldsAdapterLayout::GetClassIDs() const
 {
   PCMS_FUNCTION_TIMER;
   return Omega_h::Read(class_ids_);
 }
 
-Omega_h::Read<Omega_h::I8> OmegaHFieldLayout::GetClassDims() const
+Omega_h::Read<Omega_h::I8> MeshFieldsAdapterLayout::GetClassDims() const
 {
   PCMS_FUNCTION_TIMER;
   return Omega_h::Read(class_dims_);
 }
 
-size_t OmegaHFieldLayout::GetNumEnts() const
+size_t MeshFieldsAdapterLayout::GetNumEnts() const
 {
   size_t n = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
@@ -280,12 +278,12 @@ size_t OmegaHFieldLayout::GetNumEnts() const
   return n;
 }
 
-Omega_h::Mesh& OmegaHFieldLayout::GetMesh() const
+Omega_h::Mesh& MeshFieldsAdapterLayout::GetMesh() const
 {
   return mesh_;
 }
 
-EntOffsetsArray OmegaHFieldLayout::GetEntOffsets() const
+EntOffsetsArray MeshFieldsAdapterLayout::GetEntOffsets() const
 {
   EntOffsetsArray offsets{};
   size_t offset = 0;
@@ -298,7 +296,7 @@ EntOffsetsArray OmegaHFieldLayout::GetEntOffsets() const
   return offsets;
 }
 
-ReversePartitionMap2 OmegaHFieldLayout::GetReversePartitionMap(
+ReversePartitionMap2 MeshFieldsAdapterLayout::GetReversePartitionMap(
   const redev::Partition& partition) const
 {
   PCMS_FUNCTION_TIMER;

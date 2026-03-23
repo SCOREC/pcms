@@ -33,9 +33,9 @@ void interpolate_field2(const FieldT<T>& source, FieldT<T>& target)
   }
 
   auto coords = target.GetLayout().GetDOFHolderCoordinates();
-  std::vector<Real> evaluation(coords.GetCoordinates().size() / 2);
-  FieldDataView<Real, HostMemorySpace> data_view{make_array_view(evaluation),
-                                                 source.GetCoordinateSystem()};
+  std::vector<T> evaluation(coords.GetCoordinates().size() / 2);
+  FieldDataView<T, HostMemorySpace> data_view{make_array_view(evaluation),
+                                              source.GetCoordinateSystem()};
   auto locale = source.GetLocalizationHint(coords);
   source.Evaluate(locale, data_view);
   target.SetDOFHolderData(make_const_array_view(evaluation));

@@ -9,6 +9,7 @@
 #include "pcms/utility/inclusive_scan.h"
 #include "pcms/utility/arrays.h"
 #include <redev.h>
+#include <memory>
 
 namespace pcms
 {
@@ -17,11 +18,14 @@ template <typename T>
 class FieldCommunicator2
 {
 public:
-  FieldCommunicator2(FieldLayoutCommunicator<T>& layout_comm, FieldT<T>& field)
+  FieldCommunicator2(FieldLayoutCommunicator& layout_comm, FieldT<T>& field)
     : comm_buffer_{}, layout_comm_(layout_comm), field_(field)
   {
     PCMS_ALWAYS_ASSERT(&layout_comm.GetLayout() == &field.GetLayout());
     comm_buffer_.resize(layout_comm.GetMsgSize());
+    comm_ = layout_comm_.GetChannel().CreateComm<T>(layout_comm.GetName(),
+                                                    layout_comm.GetMPIComm());
+    layout_comm_.SetOutMessageLayout<T>(comm_);
   }
 
   void Send(redev::Mode mode = redev::Mode::Synchronous)
@@ -31,7 +35,7 @@ public:
     auto n = field_.Serialize({}, {});
     auto buffer = make_array_view(comm_buffer_);
     field_.Serialize(buffer, layout_comm_.GetPermutationArray());
-    layout_comm_.Send(buffer.data_handle(), mode);
+    comm_.Send(buffer.data_handle(), mode);
   }
 
   void Receive()
@@ -41,16 +45,25 @@ public:
     // Current implementation requires that Receive is always called in Sync
     // mode because we make an immediate call to deserialize after a call to
     // receive.
-    auto data = layout_comm_.Recv(redev::Mode::Synchronous);
+    auto data = comm_.Recv(redev::Mode::Synchronous);
     field_.Deserialize(make_const_array_view(data),
                        layout_comm_.GetPermutationArray());
   }
 
 private:
   std::vector<T> comm_buffer_;
-  FieldLayoutCommunicator<T>& layout_comm_;
+  redev::BidirectionalComm<T> comm_;
+  FieldLayoutCommunicator& layout_comm_;
   FieldT<T>& field_;
 };
+
+template <typename T>
+using FieldCommunicator2PtrT = std::unique_ptr<FieldCommunicator2<T>>;
+
+using FieldCommunicator2Ptr =
+  std::variant<FieldCommunicator2PtrT<int8_t>, FieldCommunicator2PtrT<int32_t>,
+               FieldCommunicator2PtrT<int64_t>, FieldCommunicator2PtrT<float>,
+               FieldCommunicator2PtrT<double>>;
 } // namespace pcms
 
 #endif // FIELD_COMMUNICATOR2_H_

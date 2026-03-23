@@ -5,8 +5,8 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
 #include <pcms/transfer_field2.h>
-#include "pcms/adapter/omega_h/omega_h_field.h"
-#include "pcms/adapter/omega_h/omega_h_field2.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter2.h"
 #include "pcms/create_field.h"
 #include <Kokkos_Core.hpp>
 #include <vector>
@@ -35,8 +35,8 @@ TEST_CASE("interpolate linear 2d omega_h_field")
       test_f[i] = f(x, y);
     });
   Omega_h::HostWrite<Real> test_f_host(test_f);
-  auto field = layout->CreateField();
-  auto interpolated = layout->CreateField();
+  auto field = layout->CreateFieldReal();
+  auto interpolated = layout->CreateFieldReal();
   field->SetDOFHolderData(pcms::make_const_array_view(test_f_host));
 
   pcms::interpolate_field2(*field, *interpolated);
@@ -87,8 +87,8 @@ TEST_CASE("interpolate quadratic 2d omega_h_field")
     });
 
   Omega_h::HostWrite<Real> test_f_host(test_f);
-  auto field = layout->CreateField();
-  auto interpolated = layout->CreateField();
+  auto field = layout->CreateFieldReal();
+  auto interpolated = layout->CreateFieldReal();
   field->SetDOFHolderData(pcms::make_const_array_view(test_f_host));
 
   // interpolate the field from one mesh to another mesh with the same

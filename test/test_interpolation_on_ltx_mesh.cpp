@@ -353,7 +353,7 @@ std::vector<double> read_xgc_mesh_nodes(std::string filename)
   assert(dim == 2 && "Expected 2D coordinates in the file");
 
   std::vector<double> nodes;
-  nodes.reserve(num_nodes * dim);
+  nodes.reserve(static_cast<std::size_t>(num_nodes) * dim);
 
   while (std::getline(file, line)) {
     std::istringstream line_stream(line);

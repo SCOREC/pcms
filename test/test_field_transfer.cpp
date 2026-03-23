@@ -1,5 +1,5 @@
 #include <pcms/transfer_field.h>
-#include "pcms/adapter/omega_h/omega_h_field.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter.h"
 #include <catch2/catch_test_macros.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
@@ -10,11 +10,11 @@ TEST_CASE("field copy", "[field transfer]")
   Omega_h::Library lib;
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  pcms::OmegaHField<pcms::LO> f1("source", mesh);
+  pcms::MeshFieldsAdapter<pcms::LO> f1("source", mesh);
   Omega_h::Write<int> data(mesh.nents(0));
   Omega_h::parallel_for(data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });
   mesh.add_tag<pcms::LO>(0, "source", 1, data);
-  pcms::OmegaHField<pcms::LO> f2("target", mesh);
+  pcms::MeshFieldsAdapter<pcms::LO> f2("target", mesh);
   pcms::copy_field(f1, f2);
   auto target_array = mesh.get_array<int>(0, "target");
   REQUIRE(target_array.size() == mesh.nents(0));
@@ -39,12 +39,12 @@ TEST_CASE("field interpolation (identical fields)", "[field transfer]")
   Omega_h::Library lib;
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  pcms::OmegaHField<pcms::LO> f1("source", mesh);
+  pcms::MeshFieldsAdapter<pcms::LO> f1("source", mesh);
   f1.ConstructSearch(10, 10);
   Omega_h::Write<int> data(mesh.nents(0));
   Omega_h::parallel_for(data.size(), OMEGA_H_LAMBDA(int i) { data[i] = i; });
   mesh.add_tag<pcms::LO>(0, "source", 1, data);
-  pcms::OmegaHField<pcms::LO> f2("target", mesh);
+  pcms::MeshFieldsAdapter<pcms::LO> f2("target", mesh);
 
   SECTION("Nearest Neighbor")
   {

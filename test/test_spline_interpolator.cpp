@@ -167,7 +167,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
   using std::data;
   using std::size;
 
-  Kokkos::View<double*, TestMemorySpace> splinv_view("splinv_view", 3 * nt);
+  Kokkos::View<double*, TestMemorySpace> splinv_view(
+    "splinv_view", static_cast<std::size_t>(3) * nt);
   auto splinv = Rank2View<double, TestMemorySpace>(splinv_view.data(), nt, 3);
   reset_2dspan(splinv);
 
@@ -246,7 +247,8 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
              Kokkos::View<double*, HostMemorySpace> res_2d)
 {
 
-  Kokkos::View<double*, TestMemorySpace> values_view("values_view", nth * nx);
+  Kokkos::View<double*, TestMemorySpace> values_view(
+    "values_view", static_cast<std::size_t>(nth) * nx);
   Kokkos::parallel_for(
     Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nth, nx}),
     KOKKOS_LAMBDA(const int ith, const int ix) {

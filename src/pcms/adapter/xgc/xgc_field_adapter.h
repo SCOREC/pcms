@@ -1,6 +1,6 @@
 #ifndef PCMS_COUPLING_XGC_FIELD_ADAPTER_H
 #define PCMS_COUPLING_XGC_FIELD_ADAPTER_H
-#include "pcms/adapter/omega_h/omega_h_field.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/memory_spaces.h"
 #include "pcms/field.h"

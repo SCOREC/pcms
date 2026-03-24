@@ -10,6 +10,7 @@
 #include "pcms/utility/print.h"
 #include <chrono>
 #include <thread>
+#include <adios2/common/ADIOSConfig.h> // ADIOS2_VERSION_STR
 
 using pcms::Copy;
 using pcms::GO;
@@ -21,7 +22,8 @@ using pcms::OmegaHFieldAdapter;
 using namespace std::chrono_literals;
 
 static constexpr bool done = true;
-static constexpr int COMM_ROUNDS = 10;
+static constexpr bool WRITE_VTK = false;
+static constexpr int COMM_ROUNDS = 20;
 static std::string sstDataTransport;
 static std::string adiosEngine;
 static std::string overlapSize;
@@ -154,7 +156,9 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
     pcms::printInfo("numGlobalOverlapVerts %d numRanksWithOverlapVerts %d\n", numGlobalOverlapVerts, numRanksWithOverlapVerts);
   }
 
-  Omega_h::vtk::write_parallel("xgc_delta_f_init.vtk", &mesh, mesh.dim());
+  if(WRITE_VTK) {
+    Omega_h::vtk::write_parallel("xgc_delta_f_init.vtk", &mesh, mesh.dim());
+  }
   PCMS_FUNCTION_TIMER
   auto start{std::chrono::steady_clock::now()};
   do {
@@ -205,7 +209,9 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   const auto numRanksWithOverlapVerts = mesh.comm()->allreduce(hasOverlapVerts, OMEGA_H_SUM);
   pcms::printInfo("numGlobalOverlapVerts %d numRanksWithOverlapVerts %d numLocalOverlapVerts %d\n", numGlobalOverlapVerts, numRanksWithOverlapVerts, numOverlapVerts);
 
-  Omega_h::vtk::write_parallel("xgc_total_f_init.vtk", &mesh, mesh.dim());
+  if(WRITE_VTK) {
+    Omega_h::vtk::write_parallel("xgc_total_f_init.vtk", &mesh, mesh.dim());
+  }
   PCMS_FUNCTION_TIMER
   auto start{std::chrono::steady_clock::now()};
   do {
@@ -273,7 +279,10 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
 
   pcms::printInfo("numServerOverlapVerts %d\n", numServerOverlapVerts);
   pcms::printInfo("round, total_f, delta_f_gids, delta_f_gids2, local_total, global_total\n");
-  Omega_h::vtk::write_parallel("xgc_coupler_init.vtk", &mesh, mesh.dim());
+
+  if(WRITE_VTK) {
+    Omega_h::vtk::write_parallel("xgc_coupler_init.vtk", &mesh, mesh.dim());
+  }
   {
   PCMS_FUNCTION_TIMER
   auto start{std::chrono::steady_clock::now()};
@@ -337,7 +346,9 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   if(!rank) std::cerr << "xgc_coupler " << elapsed_seconds.count() << "\n";
   }
   fclose(fhandle);
-  Omega_h::vtk::write_parallel("coupler.vtk", &mesh, mesh.dim());
+  if(WRITE_VTK) {
+    Omega_h::vtk::write_parallel("coupler.vtk", &mesh, mesh.dim());
+  }
 }
 
 int main(int argc, char** argv)
@@ -348,6 +359,7 @@ int main(int argc, char** argv)
   auto world = lib.world();
   const int rank = world->rank();
   if(!rank) std::cerr << "mpi thread level: " << provide << "\n";
+  if(!rank) std::cerr << "adios2 version: " << ADIOS2_VERSION_STR << "\n";
 
   if (argc != 7) {
     if (!rank) {

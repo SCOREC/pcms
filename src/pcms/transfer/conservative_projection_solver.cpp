@@ -48,16 +48,22 @@ static Vec solveLinearSystem(Mat A, Vec b)
   ierr = KSPSolve(ksp, b, x);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
-  /// compute and print condition number estimate
-  PetscReal smax = 0.0, smin = 0.0;
-  ierr = KSPComputeExtremeSingularValues(ksp, &smax, &smin);
-  if (!ierr && smin > 0.0) {
-    PetscPrintf(PETSC_COMM_WORLD,
-                "Estimated condition number of matrix A: %.6e\n", smax / smin);
-  } else {
-    PetscPrintf(PETSC_COMM_WORLD,
-                "Condition number estimate unavailable (smin <= 0 or error)\n");
-  }
+  KSPConvergedReason reason;
+  PetscInt its = 0;
+  PetscReal rnorm = 0.0;
+
+  ierr = KSPGetConvergedReason(ksp, &reason);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  ierr = KSPGetIterationNumber(ksp, &its);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  ierr = KSPGetResidualNorm(ksp, &rnorm);
+  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+
+  PetscPrintf(PETSC_COMM_WORLD,
+              "KSP reason=%d iterations=%d residual=%e\n",
+              (int)reason, (int)its, (double)rnorm);
 
   ierr = KSPDestroy(&ksp);
   CHKERRABORT(PETSC_COMM_WORLD, ierr);

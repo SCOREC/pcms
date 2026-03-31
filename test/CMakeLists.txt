@@ -399,7 +399,9 @@ if(Catch2_FOUND)
       test_interpolation_class.cpp
       test_mesh_geometry.cpp
 	  test_monte_carlo_projection_functions.cpp
-      test_omega_h_field2_outofbounds.cpp)
+      test_omega_h_field2_outofbounds.cpp
+	  test_mass_matrix.cpp
+	  test_error_evaluator.cpp)
   endif()
 
   if(PCMS_ENABLE_MESHFIELDS)

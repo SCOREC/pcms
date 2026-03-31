@@ -5,8 +5,6 @@
 namespace pcms
 {
 
-constexpr static double abs_tol = 1e-14; /// abs tolerance
-constexpr static double rel_tol = 1e-12; /// rel tolerance
 /**
  * @brief Converts barycentric coordinates to global (physical) coordinates.
  *

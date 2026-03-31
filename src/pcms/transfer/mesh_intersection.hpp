@@ -13,6 +13,9 @@
 namespace pcms
 {
 
+constexpr static double abs_tol = 1e-14; /// abs tolerance
+constexpr static double rel_tol = 1e-12; /// rel tolerance
+
 [[nodiscard]] OMEGA_H_INLINE r3d::Few<r3d::Vector<2>, 3>
 get_vert_coords_of_elem(const Omega_h::Reals& coords,
                         const Omega_h::LOs& faces2nodes, const int id)

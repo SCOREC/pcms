@@ -1,12 +1,12 @@
 #include "pcms/transfer/load_vector_integrator.hpp"
 
 
-constexpr double abs_tol = 1e-14;
-constexpr double rel_tol = 1e-12;
 
 namespace pcms
 {
 
+constexpr static double abs_tol = 1e-14; /// abs tolerance
+constexpr static double rel_tol = 1e-12; /// rel tolerance
 /**
  * @brief Converts barycentric coordinates to global (physical) coordinates.
  *

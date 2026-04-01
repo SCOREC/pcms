@@ -10,6 +10,9 @@ on:
       - main
       - develop
 
+env:
+  PETSC_VERSION: v3.24.2
+
 jobs:
   clang-tidy-check:
     runs-on: ubuntu-latest
@@ -129,21 +132,17 @@ jobs:
         cache: true
         options: '-DADIOS2_USE_CUDA=OFF'
 
-    - name: clone petsc
-      id: clone-petsc
-      run: |
-        cd ${{ runner.temp }}
-        git clone -b v3.24.2 https://gitlab.com/petsc/petsc.git petsc-openmpi
-        cd petsc-openmpi
-        echo "petsc-commit-hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-
     - name: Cache PETSc
       id: cache-petsc
       uses: actions/cache@v3
       with:
         path: ${{ runner.temp }}/petsc-openmpi
-        key: build-petsc-openmpi-${{ steps.clone-petsc.outputs.petsc-commit-hash }}
-    
+        key: build-petsc-openmpi-${{ env.PETSC_VERSION }}
+
+    - name: clone petsc
+      if: steps.cache-petsc.outputs.cache-hit != 'true'
+      run: git clone -b ${{ env.PETSC_VERSION }} https://gitlab.com/petsc/petsc.git ${{ runner.temp }}/petsc-openmpi
+
     # PETSc check is removed due to a PETSc test failure using openmpi
     - name: build petsc
       if: steps.cache-petsc.outputs.cache-hit != 'true'

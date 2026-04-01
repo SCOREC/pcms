@@ -9,6 +9,9 @@ on:
       - main
       - develop
 
+env:
+  PETSC_VERSION: v3.24.2
+
 jobs:
   test-build:
     runs-on: ubuntu-latest
@@ -153,21 +156,17 @@ jobs:
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake'
 
-    - name: clone petsc
-      id: clone-petsc
-      run: |
-        cd ${{ runner.temp }}
-        git clone -b v3.24.2 https://gitlab.com/petsc/petsc.git petsc
-        cd petsc
-        echo "petsc-commit-hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-
     - name: Cache PETSc
       id: cache-petsc
       uses: actions/cache@v3
       with:
         path: ${{ runner.temp }}/petsc
-        key: build-petsc-${{ steps.clone-petsc.outputs.petsc-commit-hash }}
-    
+        key: build-petsc-${{ env.PETSC_VERSION }}
+
+    - name: clone petsc
+      if: steps.cache-petsc.outputs.cache-hit != 'true'
+      run: git clone -b ${{ env.PETSC_VERSION }} https://gitlab.com/petsc/petsc.git ${{ runner.temp }}/petsc
+
     - name: build petsc
       if: steps.cache-petsc.outputs.cache-hit != 'true'
       run: |

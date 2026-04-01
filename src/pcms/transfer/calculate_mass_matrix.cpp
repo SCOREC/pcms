@@ -36,7 +36,7 @@ PetscErrorCode calculateMassMatrix(Omega_h::Mesh& mesh, Mat* mass_out)
 {
   PetscFunctionBeginUser;
 
-  MeshField::OmegahMeshField<DefaultExecutionSpace, 2,
+  MeshField::OmegahMeshField<Kokkos::DefaultExecutionSpace, 2,
                              MeshField::KokkosController>
     omf(mesh);
 

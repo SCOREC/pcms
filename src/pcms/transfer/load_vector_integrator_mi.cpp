@@ -267,7 +267,6 @@ OMEGA_H_INLINE void for_each_intersection_subtriangle(
     r3d::Polytope<2> poly;
     r3d::intersect_simplices(poly, tgt_elm_vert_coords, src_elm_vert_coords);
     auto nverts = remove_duplicate_vertices_and_fix_links(poly, 1e-12);
-    ;
     auto poly_area = r3d::measure(poly);
 
     for (int j = 1; j < nverts - 1; ++j) {
@@ -399,16 +398,23 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
 
             // convert barycentric to real coords in triangle
             auto real_coords = global_from_barycentric(bary, tri_coords);
+
+
+            // evaluate shape function (barycentric wrt target for linear)
             auto tgt_bary =
               evaluate_barycentric(real_coords, tgt_elm_vert_coords);
 
-            // evaluate shape function (barycentric wrt target for linear)
+			// evaluate function at point where barycentric is defined wrt target for linear  
             auto tgtVal = evaluate_function_value(
               target_values, tgt_faces2nodes, tgt_bary, elm);
 
-            // evaluate function at point (barycentric wrt source for linear)
+
+            // evaluate shape function (barycentric wrt source for linear)
             auto src_bary =
               evaluate_barycentric(real_coords, src_elm_vert_coords);
+
+
+            // evaluate function at point where barycentric is defined wrt source for linear
             auto srcVal = evaluate_function_value(
               source_values, src_faces2nodes, src_bary, current_src_elm);
 
@@ -430,10 +436,14 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
 
   auto h_accum = Kokkos::create_mirror(accum);
   Kokkos::deep_copy(h_accum, accum);
-  const double proj_err =
-    Kokkos::sqrt(h_accum(0)) / Kokkos::max(Kokkos::sqrt(h_accum(1)), EPS_DEN);
-  const double cons_err =
-    Kokkos::fabs(h_accum(2)) / Kokkos::max(Kokkos::fabs(h_accum(3)), EPS_DEN);
+
+
+  const double N2 = h_accum(0);
+  const double D2 = h_accum(1);
+  const double C  = h_accum(2);
+  const double QD = h_accum(3);
+  const double proj_err = Kokkos::sqrt(N2) / Kokkos::max(Kokkos::sqrt(D2), EPS_DEN);
+  const double cons_err = Kokkos::fabs(C) / Kokkos::max(Kokkos::fabs(QD), EPS_DEN);
 
   return Errors{.proj_err = proj_err, .cons_err = cons_err};
 }

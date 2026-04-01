@@ -73,8 +73,8 @@ TEST_CASE("Local mass matrix on reference triangle for linear elements",
       for (int j = 0; j < 3; ++j) {
         const int a = 3 * i + j;
         const int b = 3 * j + i;
-        CHECK_THAT(elemMass_h(0, a),
-                   Catch::Matchers::WithinAbs(elemMass_h(0, b), tol));
+        CHECK_THAT(elemMass_h(a),
+                Catch::Matchers::WithinAbs(elemMass_h(b), tol));
       }
     }
   }
@@ -87,7 +87,7 @@ TEST_CASE("Local mass matrix on reference triangle for linear elements",
     for (int i = 0; i < 3; ++i) {
       double row_sum = 0.0;
       for (int j = 0; j < 3; ++j) {
-        row_sum += elemMass_h(0, 3 * i + j);
+        row_sum += elemMass_h(3 * i + j);
       }
       CAPTURE(i, row_sum);
       CHECK_THAT(row_sum,

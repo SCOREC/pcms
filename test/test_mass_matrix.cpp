@@ -29,7 +29,7 @@ TEST_CASE("Local mass matrix on reference triangle for linear elements",
   REQUIRE(mesh.nelems() == 1);
   REQUIRE(mesh.nverts() == 3);
 
-  MeshField::OmegahMeshField<DefaultExecutionSpace, 2,
+  MeshField::OmegahMeshField<Kokkos::DefaultExecutionSpace, 2,
                              MeshField::KokkosController>
     omf(mesh);
 
@@ -39,7 +39,7 @@ TEST_CASE("Local mass matrix on reference triangle for linear elements",
     MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);
 
-  auto elemMass = buildMassMatrix(mesh, coordFe);
+  auto elemMass = pcms::buildMassMatrix(mesh, coordFe);
 
   auto elemMass_h = Kokkos::create_mirror_view(elemMass);
   Kokkos::deep_copy(elemMass_h, elemMass);
@@ -61,8 +61,8 @@ TEST_CASE("Local mass matrix on reference triangle for linear elements",
   SECTION("Check local mass matrix entries")
   {
     for (int k = 0; k < 9; ++k) {
-      CAPTURE(k, expected[k], elemMass_h(0, k));
-      CHECK_THAT(elemMass_h(0, k),
+      CAPTURE(k, expected[k], elemMass_h(k));
+      CHECK_THAT(elemMass_h(k),
                  Catch::Matchers::WithinAbs(expected[k], tol));
     }
   }

@@ -6,6 +6,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_bbox.hpp>
 #include <Omega_h_shape.hpp>
+#include <cmath>
 
 #include "pcms/utility/types.h"
 #include "pcms/uniform_grid.h"
@@ -27,6 +28,69 @@ construct_intersection_map_2d(Omega_h::Mesh& mesh,
 
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
   const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox);
+
+/**
+ * Compute the Euclidean distance from a point to the closest edge of a triangle
+ * using only its barycentric coordinates with respect to that triangle.
+ *
+ * Given a triangle with vertex coordinates `coords` and a point represented by
+ * barycentric coordinates `xi` (with respect to those vertices), the distance
+ * from the point to the edge opposite vertex i is `xi[i] * h_i`, where `h_i`
+ * is the altitude from vertex i to its opposite edge. The altitude can be
+ * computed from the triangle geometry as `h_i = 2A / |e_i|`, where `A` is the
+ * triangle area and `|e_i|` is the length of the edge opposite vertex i.
+ *
+ * This function generalizes to N-dimensional embeddings of a 2-simplex
+ * (triangle) by computing the triangle area from two edge vectors using the
+ * parallelogram formula valid in any dimension:
+ *   area = 0.5 * sqrt(||a||^2 ||b||^2 - (a·b)^2)
+ *
+ * Template parameter N is the embedding dimension (e.g., 2 for planar, 3 for
+ * spatial), while the simplex is always a triangle (3 vertices).
+ */
+template <int N>
+[[nodiscard]] KOKKOS_FUNCTION inline Real
+distance_to_closest_edge_from_barycentric(
+  const Omega_h::Matrix<N, 3>& coords, const Omega_h::Vector<3>& xi)
+{
+  // Edge vectors originating from vertex 0
+  Omega_h::Vector<N> a = coords[1] - coords[0];
+  Omega_h::Vector<N> b = coords[2] - coords[0];
+
+  // Parallelogram area magnitude squared = ||a||^2 ||b||^2 - (a·b)^2
+  const Real aa = Omega_h::inner_product(a, a);
+  const Real bb = Omega_h::inner_product(b, b);
+  const Real ab = Omega_h::inner_product(a, b);
+  Real parallelogram_area_sq = aa * bb - ab * ab;
+
+  // Guard against degeneracy and tiny negative due to FP roundoff
+  if (parallelogram_area_sq <= static_cast<Real>(0)) return 0;
+  const Real area = static_cast<Real>(0.5) * std::sqrt(parallelogram_area_sq);
+  const Real two_area = static_cast<Real>(2) * area;
+
+  // Opposite edge lengths as a vector [|e(1,2)|, |e(0,2)|, |e(0,1)|]
+  Omega_h::Vector<3> ell;
+  for (int i = 0; i < 3; ++i) {
+    const int j = (i + 1) % 3;
+    const int k = (i + 2) % 3;
+    ell[i] = Omega_h::norm(coords[k] - coords[j]);
+  }
+
+  // Altitudes h_i = 2A / |e_i| with degeneracy guard, stored as a vector
+  const Real eps = static_cast<Real>(1e-15);
+  Omega_h::Vector<3> h;
+  Omega_h::Vector<3> d;
+  for (int i = 0; i < 3; ++i) {
+    const Real hi = (ell[i] > eps) ? (two_area / ell[i]) : static_cast<Real>(0);
+    h[i] = hi;
+    d[i] = xi[i] * hi; // Distances to opposite edges using barycentric weights
+  }
+
+  // Return the minimum component (avoid std::min for device-compatibility)
+  Real m = d[0];
+  for (int i = 1; i < 3; ++i) m = (d[i] < m) ? d[i] : m;
+  return m;
+}
 
 template <int dim>
 class PointLocalizationSearch

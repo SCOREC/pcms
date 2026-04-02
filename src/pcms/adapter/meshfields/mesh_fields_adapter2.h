@@ -246,7 +246,8 @@ struct MeshFieldsAdapter2LocalizationHint
                                                    mesh.nelems());
     Kokkos::deep_copy(elem_counts, 0);
     for (size_t i = 0; i < num_valid_; ++i) {
-      auto [dim, elem_idx, face_idx, coord] = search_results(valid_point_indices[i]);
+      auto [dim, elem_idx, face_idx, coord] =
+        search_results(valid_point_indices[i]);
       elem_counts[face_idx] += 1;
     }
 

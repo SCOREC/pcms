@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/interpolator/mls_interpolation.hpp>
-#include <pcms/interpolator/mls_interpolation_impl.hpp>
-#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
-#include <pcms/interpolator/pcms_interpolator_view_utils.hpp>
-#include <pcms/interpolator/linear_interpolant.hpp>
+#include <pcms/transfer/mls_interpolation.hpp>
+#include <pcms/transfer/mls_interpolation_impl.hpp>
+#include <pcms/transfer/pcms_interpolator_aliases.hpp>
+#include <pcms/transfer/pcms_interpolator_view_utils.hpp>
+#include <pcms/transfer/linear_interpolant.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>

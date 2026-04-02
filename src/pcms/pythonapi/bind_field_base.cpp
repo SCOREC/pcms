@@ -4,7 +4,7 @@
 #include "pcms/coordinate_system.h"
 #include "pcms/coordinate.h"
 #include "pcms/create_field.h"
-#include "pcms/uniform_grid.h"
+#include "pcms/utility/uniform_grid.h"
 #include "numpy_array_transform.h"
 
 namespace py = pybind11;

@@ -3,10 +3,11 @@
 //
 #include <pcms/capi/kokkos.h>
 #include <pcms/capi/interpolator.h>
-#include <pcms/interpolator/interpolation_base.h>
+#include <pcms/transfer/interpolation_base.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
+#include <pcms/utility/mesh_geometry.h>
 #include <pcms/utility/print.h>
 
 //[[nodiscard]]
@@ -14,7 +15,7 @@ PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,
                                                 double radius)
 {
   auto* source_mesh = reinterpret_cast<Omega_h::Mesh*>(oh_mesh.mesh_handle);
-  auto* interpolator = new MLSMeshInterpolation(*source_mesh, radius);
+  auto* interpolator = new pcms::MLSMeshInterpolation(*source_mesh, radius);
   return {reinterpret_cast<void*>(interpolator)};
 }
 
@@ -28,7 +29,7 @@ PcmsInterpolatorHandle pcms_create_point_based_interpolator(
     reinterpret_cast<double*>(source_points), source_points_size);
   auto target_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
     reinterpret_cast<double*>(target_points), target_points_size);
-  auto* interpolator = new MLSPointCloudInterpolation(
+  auto* interpolator = new pcms::MLSPointCloudInterpolation(
     source_points_view, target_points_view, 2, radius, min_req_supports, degree,
     true, lambda, decay_factor);
   return {reinterpret_cast<void*>(interpolator)};
@@ -42,7 +43,9 @@ Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
   pcms::printInfo("The interpolator got dg2 mesh file: %s\n", fname.c_str());
   auto mesh_lib = Omega_h::Library(nullptr, nullptr, MPI_COMM_SELF);
   auto mesh = Omega_h::binary::read(fname, mesh_lib.world());
-  auto elem_centroids = getCentroids(mesh);
+  OMEGA_H_CHECK_PRINTF(mesh.dim() == 2, "Mesh dimension is not 2D %d\n",
+                       mesh.dim());
+  auto elem_centroids = pcms::get_entity_centroids(mesh, Omega_h::FACE);
   num_elements = mesh.nelems();
   OMEGA_H_CHECK_PRINTF(num_elements * 2 == elem_centroids.size(),
                        "Mesh element centroids size does not match the number "
@@ -51,8 +54,6 @@ Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
 
   pcms::printInfo("Number of element centroids: %d\n",
                   elem_centroids.size() / 2);
-  OMEGA_H_CHECK_PRINTF(mesh.dim() == 2, "Mesh dimension is not 2D %d\n",
-                       mesh.dim());
 
   return {elem_centroids};
 }
@@ -106,7 +107,7 @@ PcmsInterpolatorHandle pcms_create_xgcnodedegas2_interpolator(
 void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator)
 {
   if (interpolator.pointer != nullptr) {
-    delete reinterpret_cast<InterpolationBase*>(interpolator.pointer);
+    delete reinterpret_cast<pcms::InterpolationBase*>(interpolator.pointer);
   }
 }
 
@@ -114,7 +115,7 @@ void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
                       int input_size, void* output, int output_size)
 {
   auto* mls_interpolator =
-    reinterpret_cast<InterpolationBase*>(interpolator.pointer);
+    reinterpret_cast<pcms::InterpolationBase*>(interpolator.pointer);
 
   OMEGA_H_CHECK_PRINTF(
     input_size == mls_interpolator->getSourceSize(),

@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
-#include "pcms/adapter/omega_h/omega_h_field_layout.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter_layout.h"
 #include "pcms/field.h"
 #include "pcms/field_layout.h"
 #include "numpy_array_transform.h"
@@ -13,34 +13,37 @@ namespace pcms
 
 void bind_omega_h_field_layout_module(py::module& m)
 {
-  // Bind the OmegaHFieldLayout class
-  py::class_<OmegaHFieldLayout, FieldLayout,
-             std::shared_ptr<OmegaHFieldLayout>>(m, "OmegaHFieldLayout")
+  // Bind the MeshFieldsAdapterLayout class
+  py::class_<MeshFieldsAdapterLayout, FieldLayout,
+             std::shared_ptr<MeshFieldsAdapterLayout>>(
+    m, "MeshFieldsAdapterLayout")
     .def(py::init<Omega_h::Mesh&, std::array<int, 4>, int, CoordinateSystem,
                   std::string>(),
          py::arg("mesh"), py::arg("nodes_per_dim"), py::arg("num_components"),
          py::arg("coordinate_system"), py::arg("global_id_name") = "global",
-         "Constructor for OmegaHFieldLayout")
+         "Constructor for MeshFieldsAdapterLayout")
 
     .def(
       "create_field",
-      [](OmegaHFieldLayout& self) {
-        return std::shared_ptr<FieldT<Real>>(self.CreateField());
+      [](MeshFieldsAdapterLayout& self) {
+        return std::shared_ptr<FieldT<Real>>(self.CreateFieldReal());
       },
       "Create a field with this layout")
 
-    .def("get_num_components", &OmegaHFieldLayout::GetNumComponents,
+    .def("get_num_components", &MeshFieldsAdapterLayout::GetNumComponents,
          "Get the number of components in the field")
 
-    .def("get_num_owned_dof_holder", &OmegaHFieldLayout::GetNumOwnedDofHolder,
+    .def("get_num_owned_dof_holder",
+         &MeshFieldsAdapterLayout::GetNumOwnedDofHolder,
          "Get the number of owned DOF holders")
 
-    .def("get_num_global_dof_holder", &OmegaHFieldLayout::GetNumGlobalDofHolder,
+    .def("get_num_global_dof_holder",
+         &MeshFieldsAdapterLayout::GetNumGlobalDofHolder,
          "Get the number of global DOF holders")
 
     .def(
       "get_owned",
-      [](const OmegaHFieldLayout& self) {
+      [](const MeshFieldsAdapterLayout& self) {
         auto owned = self.GetOwned();
         // Convert to numpy array
         py::array_t<bool> result(owned.extent(0));
@@ -55,7 +58,7 @@ void bind_omega_h_field_layout_module(py::module& m)
 
     .def(
       "get_gids",
-      [](const OmegaHFieldLayout& self) {
+      [](const MeshFieldsAdapterLayout& self) {
         auto gids = self.GetGids();
         // Convert to numpy array
         py::array_t<GO> result(gids.extent(0));
@@ -70,7 +73,7 @@ void bind_omega_h_field_layout_module(py::module& m)
 
     .def(
       "get_dof_holder_coordinates",
-      [](const OmegaHFieldLayout& self) {
+      [](const MeshFieldsAdapterLayout& self) {
         auto coords = self.GetDOFHolderCoordinates().GetCoordinates();
         // Convert to numpy array (2D)
         py::array_t<Real> result({coords.extent(0), coords.extent(1)});
@@ -85,12 +88,12 @@ void bind_omega_h_field_layout_module(py::module& m)
       },
       "Get the DOF holder coordinates")
 
-    .def("is_distributed", &OmegaHFieldLayout::IsDistributed,
+    .def("is_distributed", &MeshFieldsAdapterLayout::IsDistributed,
          "Check if the field layout is distributed")
 
     .def(
       "get_ent_offsets",
-      [](const OmegaHFieldLayout& self) {
+      [](const MeshFieldsAdapterLayout& self) {
         auto offsets = self.GetEntOffsets();
         // Convert std::array to list/tuple
         py::list result;
@@ -103,7 +106,7 @@ void bind_omega_h_field_layout_module(py::module& m)
 
     .def(
       "get_nodes_per_dim",
-      [](const OmegaHFieldLayout& self) {
+      [](const MeshFieldsAdapterLayout& self) {
         auto nodes = self.GetNodesPerDim();
         py::list result;
         for (size_t i = 0; i < nodes.size(); ++i) {
@@ -113,18 +116,20 @@ void bind_omega_h_field_layout_module(py::module& m)
       },
       "Get the nodes per dimension array")
 
-    .def("get_num_ents", &OmegaHFieldLayout::GetNumEnts,
+    .def("get_num_ents", &MeshFieldsAdapterLayout::GetNumEnts,
          "Get the total number of entities")
 
     .def(
       "get_mesh",
-      [](OmegaHFieldLayout& self) -> Omega_h::Mesh& { return self.GetMesh(); },
+      [](MeshFieldsAdapterLayout& self) -> Omega_h::Mesh& {
+        return self.GetMesh();
+      },
       py::return_value_policy::reference, "Get the underlying Omega_h mesh")
 
-    .def("owned_size", &OmegaHFieldLayout::OwnedSize,
+    .def("owned_size", &MeshFieldsAdapterLayout::OwnedSize,
          "Get the owned size (num_components * num_owned_dof_holder)")
 
-    .def("global_size", &OmegaHFieldLayout::GlobalSize,
+    .def("global_size", &MeshFieldsAdapterLayout::GlobalSize,
          "Get the global size (num_components * num_global_dof_holder)");
 }
 

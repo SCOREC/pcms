@@ -2,7 +2,7 @@
 #define PCMS_COUPLER_H
 #include "pcms/utility/common.h"
 #include "pcms/field_communicator.h"
-#include "pcms/adapter/omega_h/omega_h_field.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter.h"
 #include "pcms/utility/profile.h"
 
 namespace pcms
@@ -136,7 +136,7 @@ public:
                          bool participates = true)
   {
     PCMS_FUNCTION_TIMER;
-    auto [it, inserted] = fields_.template try_emplace(
+    auto [it, inserted] = fields_.try_emplace(
       name, name, std::forward<FieldAdapterT>(field_adapter), mpi_comm_, redev_,
       channel_, participates);
     if (!inserted) {
@@ -238,7 +238,7 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     auto key = path + name;
-    auto [it, inserted] = applications_.template try_emplace(
+    auto [it, inserted] = applications_.try_emplace(
       key, std::move(name), mpi_comm_, redev_, std::move(params),
       transport_type, std::move(path));
     if (!inserted) {

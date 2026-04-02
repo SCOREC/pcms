@@ -7,7 +7,7 @@
 #include <Omega_h_for.hpp>
 #include <redev.h>
 #include <vector>
-#include "pcms/adapter/omega_h/omega_h_field2.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter2.h"
 #include "pcms/field_communicator2.h"
 #include "pcms/field_communicator.h"
 #include "pcms/create_field.h"
@@ -76,11 +76,11 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     "id gid", Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
     [=](int i) { ids[i] = gids[i]; });
 
-  auto field = layout->CreateField();
+  auto field = layout->CreateFieldReal();
   field->SetDOFHolderData(pcms::make_const_array_view(ids));
 
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "1", comm,
-                                                        rdv, channel, *layout);
+  pcms::FieldLayoutCommunicator layout_comm(comm_name + "1", comm, rdv, channel,
+                                            *layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, *field);
 
   channel.BeginSendCommunicationPhase();
@@ -100,9 +100,9 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto gids = layout->GetGids();
   const auto n = layout->GetNumOwnedDofHolder();
 
-  auto field = layout->CreateField();
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm(comm_name + "2", comm,
-                                                        rdv, channel, *layout);
+  auto field = layout->CreateFieldReal();
+  pcms::FieldLayoutCommunicator layout_comm(comm_name + "2", comm, rdv, channel,
+                                            *layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm(layout_comm, *field);
 
   channel.BeginReceiveCommunicationPhase();
@@ -161,11 +161,11 @@ void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     "id 0", Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
     [=](int i) { ids[i] = 0; });
 
-  auto field = layout->CreateField();
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm1(
-    comm_name + "1", comm, rdv, channel1, *layout);
-  pcms::FieldLayoutCommunicator<pcms::Real> layout_comm2(
-    comm_name + "2", comm, rdv, channel2, *layout);
+  auto field = layout->CreateFieldReal();
+  pcms::FieldLayoutCommunicator layout_comm1(comm_name + "1", comm, rdv,
+                                             channel1, *layout);
+  pcms::FieldLayoutCommunicator layout_comm2(comm_name + "2", comm, rdv,
+                                             channel2, *layout);
   pcms::FieldCommunicator2<pcms::Real> field_comm1(layout_comm1, *field);
   pcms::FieldCommunicator2<pcms::Real> field_comm2(layout_comm2, *field);
 

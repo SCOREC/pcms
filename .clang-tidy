@@ -14,6 +14,10 @@ Checks: >
   modernize-use-using
 
 WarningsAsErrors: '*'
-HeaderFilterRegex:   'src/.*'
+# capi and fortran api headers are c headers and clang-tidy produces not useful errors
+ExcludeHeaderFilterRegex: '.*(capi|fortranapi|pythonapi).*'
+# skip c, fortran, and interface creation files
+# this is actually needed by run-clang-tidy, so it cannot be included here :(
+#ExcludeSourceFilterRegex: '\.(c|i|f90)$'
 FormatStyle:         none
 InheritParentConfig: true

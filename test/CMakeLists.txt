@@ -378,10 +378,11 @@ if(Catch2_FOUND)
   if(PCMS_ENABLE_OMEGA_H)
     add_executable(field_transfer_example field_transfer_example.cpp)
     target_link_libraries(field_transfer_example PUBLIC pcms::core
-                                                        pcms::interpolator)
+                                                        pcms::transfer)
     list(
       APPEND
       PCMS_UNIT_TEST_SOURCES
+      test_error_handling.cpp
       test_field_transfer.cpp
       test_uniform_grid.cpp
       test_omega_h_copy.cpp
@@ -396,17 +397,47 @@ if(Catch2_FOUND)
       test_svd_serial.cpp
       test_uniform_grid_field.cpp
       test_interpolation_class.cpp
+      test_mesh_geometry.cpp
       test_omega_h_field2_outofbounds.cpp)
   endif()
+
+  if(PCMS_ENABLE_MESHFIELDS)
+    list(APPEND PCMS_UNIT_TEST_SOURCES
+      test_load_vector.cpp)
+  endif()
+
+  if(PCMS_ENABLE_PETSC)
+    list(APPEND PCMS_UNIT_TEST_SOURCES
+      test_mesh_intersection_field_transfer.cpp)
+  endif()
+  
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
+  
+  if(PCMS_ENABLE_MESHFIELDS)
+    target_link_libraries(unit_tests PUBLIC meshfields::meshfields)
+  endif()
+
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core
-                                          pcms::interpolator Kokkos::kokkoskernels)
+          pcms::transfer Kokkos::kokkoskernels)
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+  if(PCMS_ENABLE_PETSC)
+    target_link_libraries(unit_tests PRIVATE PETSc::PETSc)
+  endif()
+
+  target_link_libraries(unit_tests PUBLIC 
+    Catch2::Catch2 
+    pcms::core
+    pcms_transfer
+    pcms_transfer
+  )
+ 
+ target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
   add_executable(test_interpolation_on_ltx_mesh test_interpolation_on_ltx_mesh.cpp)
   target_link_libraries(test_interpolation_on_ltx_mesh PUBLIC Catch2::Catch2WithMain
                                                         pcms::core
-                                                        pcms::interpolator)
+                                                        pcms::transfer)
   target_include_directories(test_interpolation_on_ltx_mesh PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
   add_test(NAME test_interpolation_on_ltx_mesh
           COMMAND test_interpolation_on_ltx_mesh
@@ -415,8 +446,8 @@ if(Catch2_FOUND)
                   --data_root ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/
   )
 
-  include(Catch)
-  catch_discover_tests(unit_tests)
+ include(Catch)
+   Catch_discover_tests(unit_tests)
 else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()
@@ -497,7 +528,7 @@ if(PCMS_ENABLE_Fortran)
   add_executable(test_interpolation_fortran_api
                  test_interpolation.f90)
   target_link_libraries(test_interpolation_fortran_api
-                        PUBLIC pcms::fortranapi::interpolator)
+                        PUBLIC pcms::fortranapi::transfer)
   set_target_properties(test_interpolation_fortran_api
                        PROPERTIES LINKER_LANGUAGE Fortran)
   add_test(

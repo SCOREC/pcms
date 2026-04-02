@@ -63,7 +63,8 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
 }
 
 template <unsigned Dim>
-std::unique_ptr<FieldT<Real>> UniformGridFieldLayout<Dim>::CreateField() const
+std::unique_ptr<FieldT<Real>> UniformGridFieldLayout<Dim>::CreateFieldReal()
+  const
 {
   return std::make_unique<UniformGridField<Dim>>(*this);
 }

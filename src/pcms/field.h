@@ -95,6 +95,8 @@ template <typename T>
 class FieldT
 {
 public:
+  using value_type = T;
+
   CoordinateSystem GetCoordinateSystem() const
   {
     return GetLayout().GetDOFHolderCoordinates().GetCoordinateSystem();
@@ -154,6 +156,21 @@ protected:
 using FieldPtr =
   std::variant<FieldT<int8_t>*, FieldT<int32_t>*, FieldT<int64_t>*,
                FieldT<float>*, FieldT<double>*>;
+
+template <typename T>
+using OwnedFieldPtrT = std::unique_ptr<FieldT<T>>;
+
+using OwnedFieldPtr =
+  std::variant<OwnedFieldPtrT<int8_t>, OwnedFieldPtrT<int32_t>,
+               OwnedFieldPtrT<int64_t>, OwnedFieldPtrT<float>,
+               OwnedFieldPtrT<double>>;
+
+// Helper function to extract raw pointer from OwnedFieldPtr variant
+inline FieldPtr GetRawPointer(const OwnedFieldPtr& owned_ptr)
+{
+  return std::visit([](auto& field_ptr) -> FieldPtr { return field_ptr.get(); },
+                    owned_ptr);
+}
 
 } // namespace pcms
 

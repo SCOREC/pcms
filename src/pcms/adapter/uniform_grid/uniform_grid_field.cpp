@@ -1,7 +1,7 @@
 #include "uniform_grid_field.h"
 #include "pcms/utility/profile.h"
-#include "pcms/interpolator/linear_interpolant.hpp"
-#include "pcms/interpolator/multidimarray.hpp"
+#include "pcms/transfer/linear_interpolant.hpp"
+#include "pcms/transfer/multidimarray.hpp"
 #include "pcms/utility/assert.h"
 #include <memory>
 

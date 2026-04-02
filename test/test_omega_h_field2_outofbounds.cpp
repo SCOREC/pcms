@@ -3,7 +3,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
-#include "pcms/adapter/omega_h/omega_h_field2.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter2.h"
 #include "pcms/create_field.h"
 #include <Kokkos_Core.hpp>
 #include <vector>
@@ -35,7 +35,7 @@ TEST_CASE("omega_h_field2 out of bounds FILL mode")
       test_f[i] = f(x, y);
     });
   Omega_h::HostWrite<Real> test_f_host(test_f);
-  auto field = layout->CreateField();
+  auto field = layout->CreateFieldReal();
   field->SetDOFHolderData(pcms::make_const_array_view(test_f_host));
 
   // Set FILL mode with fill value of -999.0

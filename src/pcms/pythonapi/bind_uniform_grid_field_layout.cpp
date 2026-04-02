@@ -4,7 +4,7 @@
 #include "pcms/adapter/uniform_grid/uniform_grid_field_layout.h"
 #include "pcms/field.h"
 #include "pcms/field_layout.h"
-#include "pcms/uniform_grid.h"
+#include "pcms/utility/uniform_grid.h"
 #include "numpy_array_transform.h"
 
 namespace py = pybind11;
@@ -79,7 +79,7 @@ void bind_uniform_grid_field_layout_module(py::module& m)
     .def(
       "create_field",
       [](UniformGridFieldLayout<2>& self) {
-        return std::shared_ptr<FieldT<Real>>(self.CreateField());
+        return std::shared_ptr<FieldT<Real>>(self.CreateFieldReal());
       },
       "Create a field with this layout")
 
@@ -164,7 +164,7 @@ void bind_uniform_grid_field_layout_module(py::module& m)
     .def(
       "create_field",
       [](UniformGridFieldLayout<3>& self) {
-        return std::shared_ptr<FieldT<Real>>(self.CreateField());
+        return std::shared_ptr<FieldT<Real>>(self.CreateFieldReal());
       },
       "Create a field with this layout")
 

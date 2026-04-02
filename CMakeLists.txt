@@ -17,6 +17,27 @@ set(PCMS_HAS_ASAN OFF)
 if(PCMS_ENABLE_ASAN AND CMAKE_COMPILER_IS_GNUCXX MATCHES 1)
   set(PCMS_HAS_ASAN ON)
 endif()
+option(PCMS_ENABLE_CLANG_TIDY "enable clang tidy target" OFF)
+
+# based on Professional CMake: A Practical Guide
+# this approach works around some issues with CMakes internal handling using co-compilation
+# this approach affords a separate clang-tidy run step in the CI
+if(PROJECT_IS_TOP_LEVEL)
+  if(PCMS_ENABLE_CLANG_TIDY)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+  
+    find_program(CLANG_TIDY_EXECUTABLE clang-tidy REQUIRED)
+    find_program(RUN_CLANG_TIDY_EXECUTABLE run-clang-tidy REQUIRED)
+  
+    set(CLANG_TIDY_CONFIG_FILE ${CMAKE_CURRENT_LIST_DIR}/.clang-tidy)
+    set(CLANG_TIDY_SOURCE_FILTER [=[^(?!.*(\.c|\.i|\.f90)$).*$]=])
+  
+    message(STATUS "CLANG_TIDY_EXECUTABLE=${CLANG_TIDY_EXECUTABLE}")
+    message(STATUS "RUN_CLANG_TIDY_EXECUTABLE= ${RUN_CLANG_TIDY_EXECUTABLE}")
+    message(STATUS "CLANG_TIDY_CONFIG_FILE=${CLANG_TIDY_CONFIG_FILE}")
+    message(STATUS "CLANG_TIDY_SOURCE_FILTER=${CLANG_TIDY_SOURCE_FILTER}")
+  endif()
+endif()
 
 option(PCMS_ENABLE_SERVER "enable the coupling server implementation" ON)
 option(PCMS_ENABLE_CLIENT "enable the coupling client implementation" ON)
@@ -27,11 +48,9 @@ option(PCMS_ENABLE_C "Enable pcms C api" ON)
 option(PCMS_ENABLE_Python "Enable pcms Python api" OFF)
 
 option(PCMS_ENABLE_PRINT "PCMS print statements enabled" ON)
-option(PCMS_ENABLE_SPDLOG "use spdlog for logging" ON)
 
-if(PCMS_ENABLE_SPDLOG)
-  find_package(spdlog REQUIRED)
-endif()
+option(PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"
+       ${_pcms_link_petsc_static_default})
 
 # find package before fortran enabled, so we don't require the adios2 fortran
 # interfaces this is important because adios2 build with clang/gfortran is
@@ -56,6 +75,41 @@ endif()
 
 set(MPI_CXX_SKIP_MPICXX ON)
 find_package(MPI REQUIRED)
+
+# Create the run-clang-tidy target here (after find_package(MPI)) so we can
+# forward any MPI include paths that are missing from compile_commands.json.
+# When CMAKE_CXX_COMPILER is an MPI wrapper (e.g. mpicxx), FindMPI may leave
+# MPI_CXX_INCLUDE_DIRS empty because the wrapper handles includes implicitly,
+# meaning compile_commands.json has no explicit -I flags for mpi.h.
+if(PROJECT_IS_TOP_LEVEL)
+  if(PCMS_ENABLE_CLANG_TIDY)
+    set(_clang_tidy_extra_args "")
+    get_target_property(_mpi_cxx_incs MPI::MPI_CXX INTERFACE_INCLUDE_DIRECTORIES)
+    if(NOT _mpi_cxx_incs)
+      execute_process(
+        COMMAND ${MPI_CXX_COMPILER} -show
+        OUTPUT_VARIABLE _mpi_show
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+      string(REGEX MATCHALL "-I([^ ]+)" _mpi_inc_flags "${_mpi_show}")
+      foreach(_flag IN LISTS _mpi_inc_flags)
+        list(APPEND _clang_tidy_extra_args "-extra-arg=${_flag}")
+      endforeach()
+      message(STATUS "clang-tidy MPI extra args: ${_clang_tidy_extra_args}")
+    endif()
+  
+    add_custom_target(run-clang-tidy
+      VERBATIM COMMAND ${RUN_CLANG_TIDY_EXECUTABLE}
+      -clang-tidy-binary ${CLANG_TIDY_EXECUTABLE}
+      -p ${CMAKE_BINARY_DIR}
+      -quiet
+      -config-file ${CLANG_TIDY_CONFIG_FILE}
+      -source-filter ${CLANG_TIDY_SOURCE_FILTER}
+      ${_clang_tidy_extra_args}
+    )
+  endif()
+endif()
+
 message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
 if(PCMS_ENABLE_OMEGA_H)
   find_package(Omega_h REQUIRED VERSION 10)
@@ -69,7 +123,17 @@ endif()
 find_package(ADIOS2 CONFIG 2.10.2 REQUIRED)
 find_package(Kokkos CONFIG 4.5 REQUIRED)
 
-find_package(meshfields REQUIRED)
+option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" ON)
+option(PCMS_ENABLE_PETSC "Enable PETSc support" OFF)
+
+if(PCMS_ENABLE_MESHFIELDS)
+  find_package(meshfields REQUIRED)
+  message(STATUS "Found MeshFields: ${meshfields_DIR} (found version ${meshfields_VERSION})")
+endif()
+
+if(PCMS_ENABLE_PETSC)
+  find_package(PETSc REQUIRED)
+endif()
 
 add_subdirectory(src)
 

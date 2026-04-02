@@ -3,7 +3,7 @@
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
 #include "test_support.h"
-#include "pcms/adapter/omega_h/omega_h_field.h"
+#include "pcms/adapter/meshfields/mesh_fields_adapter.h"
 #include "pcms/adapter/xgc/xgc_field_adapter.h"
 #include <chrono>
 

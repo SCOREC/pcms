@@ -15,19 +15,19 @@ target_link_libraries(
   PRIVATE pcms::capi::core
   PUBLIC Kokkos::kokkos)
 
-add_library(pcms_fortranapi_interpolator pcms_interpolator.f90 interpolator_wrap.c pcms_mesh.f90 mesh_wrap.c)
-add_library(pcms::fortranapi::interpolator ALIAS pcms_fortranapi_interpolator)
-set_target_properties(pcms_fortranapi_interpolator PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/fortran
-        OUTPUT_NAME pcmsfortranapiinterpolator
-        EXPORT_NAME fortranapi::interpolator)
-target_include_directories(pcms_fortranapi_interpolator PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:pcms::fortranapi::interpolator,Fortran_MODULE_DIRECTORY>>
+add_library(pcms_fortranapi_transfer pcms_interpolator.f90 interpolator_wrap.c pcms_mesh.f90 mesh_wrap.c)
+add_library(pcms::fortranapi::transfer ALIAS pcms_fortranapi_transfer)
+set_target_properties(pcms_fortranapi_transfer PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/fortran
+        OUTPUT_NAME pcmsfortranapi_transfer
+        EXPORT_NAME fortranapi::transfer)
+target_include_directories(pcms_fortranapi_transfer PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:pcms::fortranapi::transfer,Fortran_MODULE_DIRECTORY>>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_LIBDIR}/fortran>)
-target_link_libraries(pcms_fortranapi_interpolator PRIVATE pcms::capi::interpolator PUBLIC Kokkos::kokkos)
+target_link_libraries(pcms_fortranapi_transfer PRIVATE pcms::capi::transfer PUBLIC Kokkos::kokkos)
 
 INSTALL(DIRECTORY $<TARGET_PROPERTY:pcms::fortranapi::core,Fortran_MODULE_DIRECTORY>
         DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-INSTALL(DIRECTORY $<TARGET_PROPERTY:pcms::fortranapi::interpolator,Fortran_MODULE_DIRECTORY>
+INSTALL(DIRECTORY $<TARGET_PROPERTY:pcms::fortranapi::transfer,Fortran_MODULE_DIRECTORY>
         DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # high level interface target
@@ -36,7 +36,7 @@ add_library(pcms::fortranapi ALIAS pcms_fortranapi)
 set_target_properties(pcms_fortranapi PROPERTIES EXPORT_NAME fortranapi)
 # link capi libraries to a high level interface library
 target_link_libraries(pcms_fortranapi INTERFACE pcms::fortranapi::core)
-target_link_libraries(pcms_fortranapi INTERFACE pcms::fortranapi::interpolator)
+target_link_libraries(pcms_fortranapi INTERFACE pcms::fortranapi::transfer)
 
 
 install(
@@ -70,8 +70,8 @@ install(
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
 
 install(
-  TARGETS pcms_fortranapi_interpolator
-  EXPORT pcms_fortranapi_interpolator-targets
+  TARGETS pcms_fortranapi_transfer
+  EXPORT pcms_fortranapi_transfer-targets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -80,6 +80,6 @@ install(
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/fortranapi/)
 
 install(
-  EXPORT pcms_fortranapi_interpolator-targets
+  EXPORT pcms_fortranapi_transfer-targets
   NAMESPACE pcms::
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)

@@ -13,7 +13,7 @@ void bind_field_layout_module(py::module& m)
 {
   // Bind the base FieldLayout class as an abstract base
   py::class_<FieldLayout, std::shared_ptr<FieldLayout>>(m, "FieldLayout")
-    .def("create_field", &FieldLayout::CreateField,
+    .def("create_field", &FieldLayout::CreateFieldReal,
          "Create a field with this layout")
 
     .def("get_num_components", &FieldLayout::GetNumComponents,

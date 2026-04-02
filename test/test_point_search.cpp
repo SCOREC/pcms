@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/point_search.h>
+#include <pcms/localization/point_search.h>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 

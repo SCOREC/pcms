@@ -190,24 +190,44 @@ ctest --test-dir build-pcms --output-on-failure
 ## Spack based build
 1. Install spack
    ```console
-   $ mkdir /lore/$USER/spack
-   $ cd /lore/$USER/spack
+   $ mkdir $HOME/$USER/spack
+   $ cd $HOME/$USER/spack
    $ git clone -c feature.manyFiles=true -b v1.0.4 https://github.com/spack/spack.git
    $ . spack/share/spack/setup-env.sh
+   $ spack repo add https://github.com/spack/spack-packages
    ```
-   We can also add the spack setup line into the `~/.bashrc` with `echo ". spack/share/spack/setup-env.sh" >> ~/.bashrc"`. This will load the spack setup script every time we start our terminal session. To make sure latest version of spack packages are available, we can run `spack repo add https://github.com/spack/spack-packages` after loading spack.
+   We can also add the spack setup line into the `~/.bashrc` with `echo ". spack/share/spack/setup-env.sh" >> ~/.bashrc"`. This will load the spack setup script every time we start our terminal session.
 2. Get PCMS spack repo
    The following commands will add the pcms recipe files to spack. They are not currently installed inthe upstream spack repository.
    ```console
    $ git clone https://github.com/jacobmerson/pcms-spack.git
    $ spack repo add pcms-spack/spack_repo/pcms
    ```
+3. Install compilers / add compilers to spack
+   ```console
+   $ sudo apt install gcc g++ gfortran
+   $ spack compiler find
+   ```
+   You should see a message stating that a compiler was added to your `packages.yaml` file. You can confirm this by looking in your spack packages with `spack config edit packages`. It should contain something similar to the following:
+   ```yaml
+   packages:
+     gcc:
+       externals:
+       - spec: gcc@13.3.0 languages:='c,c++,fortran'
+         prefix: /usr
+         extra_attributes:
+           compilers:
+             c: /usr/bin/gcc
+             cxx: /usr/bin/g++
+             fortran: /usr/bin/gfortran
+   ```
+
    
-3. Install PCMS repo
+4. Install PCMS repo
     ```console
-    $ mkdir /lore/$USER/pcms-coupler
-    $ cd /lore/$USER/pcms-coupler
-    $ git clone -b pcms-spack https://github.com/SCOREC/pcms.git
+    $ mkdir $HOME/$USER/pcms-coupler
+    $ cd $HOME/$USER/pcms-coupler
+    $ git clone https://github.com/SCOREC/pcms.git
     $ cd pcms/spack
     $ spack env create -d env spack.yaml
     $ cd env
@@ -215,7 +235,7 @@ ctest --test-dir build-pcms --output-on-failure
     $ spack install
     ```
     
-At this point hopefully, spack will now install all of the relavant dependencies and a baseline build of PCMS. The default environment has PCMS in develop mode. To modify and recompile PCMS you can modify the code and rerun `spack install`.
+If work in SCOREC system, you can directly use the spack-scorec.yaml which contains compilers information. At this point hopefully, spack will now install all of the relavant dependencies and a baseline build of PCMS. The default environment has PCMS in develop mode. To modify and recompile PCMS you can modify the code and rerun `spack install`.
 
 4. Python API (optional)
    If you want to use the python API, you can install the `pcms+python` package with spack instaed of `pcms`. This will install the python bindings for PCMS and all of the dependencies needed to use them.
@@ -234,13 +254,6 @@ At this point hopefully, spack will now install all of the relavant dependencies
    
    PS: If you need certain config options for the python API, you can specify them in the spack spec. For example, to build the python API with Exodus support, one compatible config is `pcms+python ^omega-h+trilinos ^trilinos@15.0.0:+exodus ^netcdf-c@4.8.1+mpi`. At this moment, omega-h spack package does not have the exodus support, so you need to manually add `args.append("-Omega_h_USE_SEACASExodus:BOOL=ON")` to the `package.py` file of omega-h in spack before installing pcms with spack.
 
-### BUILD TODO
-- create a spack environment that's part of this project that can build the whole stack.
-  most of the pieces are in place for this, but it will require createing a package for redev
-  and of the SCOREC version of Omega\_h
-  - scorec version 10.1.0 of Omega\_h is in spack@develop
-    https://github.com/spack/spack/blob/8ddaa08ed2aacb4b5e587a33c625492cbdd4886e/var/spack/repos/builtin/packages/omega-h/package.py#L21
-
 Details instructions for a few systems are available on the wiki.
 
 Another Executing Approach: One would also comment out the BUILDING_TESTING in CMakeFiles.txt included in test folder; 
@@ -249,3 +262,12 @@ Assign the full path of testdatas to test_dir in the test_init.cc file; Use "mpi
 
 ## Creating Archive for Release
 `git archive --format=tar.gz -o /tmp/pcms.tar.gz --prefix=pcms/ develop`
+
+## Running clang format on SCOREC
+```console
+module use /opt/scorec/spack/rhel9/v0222_2/lmod/linux-rhel9-x86_64/Core/
+module load clang-format
+module load llvm
+find . -regex '.*\.\(cpp\|cxx\|cc\|c\|hpp\|h\)' -exec clang-format -style=file -i {} \;
+```
+

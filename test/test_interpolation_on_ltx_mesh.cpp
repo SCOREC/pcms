@@ -13,7 +13,8 @@
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_vtk.hpp>
-#include <pcms/interpolator/interpolation_base.h>
+#include <pcms/transfer/interpolation_base.h>
+#include <pcms/utility/mesh_geometry.h>
 #include <pcms/utility/print.h>
 
 #include <vector>
@@ -78,7 +79,7 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
   // --------------------- Initialize Interpolators -------------- //
   const int degas2_num_elems = degas2_mesh.nelems();
   const auto degas2_mesh_centroids_host =
-    Omega_h::HostRead(getCentroids(degas2_mesh));
+    Omega_h::HostRead(pcms::get_entity_centroids(degas2_mesh, Omega_h::FACE));
   printf("[INFO] Degas2 Mesh loaded from %s with %d elements\n",
          degas2_mesh_filename.c_str(), degas2_num_elems);
   const auto degas2_mesh_centroids_view =
@@ -93,12 +94,12 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
     pcms::Rank1View<const double, pcms::HostMemorySpace>(
       xgc_mesh_points.data(), xgc_mesh_points.size());
 
-  auto xgc_to_degas2_interpolator =
-    MLSPointCloudInterpolation(xgc_mesh_points_view, degas2_mesh_centroids_view,
-                               2, 0.000001, 10, 1, true, 0.0, 50.0);
-  auto degas2_to_xgc_interpolator =
-    MLSPointCloudInterpolation(degas2_mesh_centroids_view, xgc_mesh_points_view,
-                               2, 0.01, 10, 1, true, 1e-3, 50.0);
+  auto xgc_to_degas2_interpolator = pcms::MLSPointCloudInterpolation(
+    xgc_mesh_points_view, degas2_mesh_centroids_view, 2, 0.000001, 10, 1, true,
+    0.0, 50.0);
+  auto degas2_to_xgc_interpolator = pcms::MLSPointCloudInterpolation(
+    degas2_mesh_centroids_view, xgc_mesh_points_view, 2, 0.01, 10, 1, true,
+    1e-3, 50.0);
   printf("[INFO] Interpolators initialized.\n");
 
   // ---------------------- Load Data ---------------------- //
@@ -353,7 +354,7 @@ std::vector<double> read_xgc_mesh_nodes(std::string filename)
   assert(dim == 2 && "Expected 2D coordinates in the file");
 
   std::vector<double> nodes;
-  nodes.reserve(num_nodes * dim);
+  nodes.reserve(static_cast<std::size_t>(num_nodes) * dim);
 
   while (std::getline(file, line)) {
     std::istringstream line_stream(line);

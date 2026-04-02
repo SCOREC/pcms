@@ -1,15 +1,28 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
+
+# this will let us find any installed FindXXX.cmake e.g., petsc / gmsh
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+
 find_dependency(redev CONFIG HINTS @redev_DIR@)
 find_dependency(Kokkos CONFIG HINTS @Kokkos_DIR@)
 find_dependency(KokkosKernels CONFIG HINTS @KokkosKernels_DIR@)
-find_dependency(meshfields CONFIG HINTS @meshfields_DIR@)
 find_dependency(ADIOS2 CONFIG HINTS @ADIOS2_DIR@)
 find_dependency(MPI)
 
-if(@spdlog_FOUND)
-    find_dependency(spdlog CONFIG HINTS @spdlog_DIR@)
+if(@PCMS_ENABLE_MESHFIELDS@)
+    find_dependency(meshfields CONFIG HINTS @meshfields_DIR@)
+endif()
+
+if(@PCMS_ENABLE_PETSC@)
+    if(NOT DEFINED PETSC_DIR)                                                                                                     
+        set(PETSC_DIR "@PETSC_DIR@")
+    endif()
+    if(NOT DEFINED PETSC_ARCH)
+        set(PETSC_ARCH "@PETSC_ARCH@")
+    endif()
+    find_dependency(PETSc)
 endif()
 
 if(@PCMS_ENABLE_OMEGA_H@)
@@ -17,18 +30,19 @@ if(@PCMS_ENABLE_OMEGA_H@)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_utility-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/pcms_localization-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_core-targets.cmake")
-include("${CMAKE_CURRENT_LIST_DIR}/pcms_interpolator-targets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/pcms_transfer-targets.cmake")
 
 if(@PCMS_ENABLE_C@)
     include("${CMAKE_CURRENT_LIST_DIR}/pcms_capi_core-targets.cmake")
-    include("${CMAKE_CURRENT_LIST_DIR}/pcms_capi_interpolator-targets.cmake")
+    include("${CMAKE_CURRENT_LIST_DIR}/pcms_capi_transfer-targets.cmake")
     include("${CMAKE_CURRENT_LIST_DIR}/pcms_capi-targets.cmake")
 endif()
 
 if(@PCMS_ENABLE_Fortran@)
     include("${CMAKE_CURRENT_LIST_DIR}/pcms_fortranapi_core-targets.cmake")
-    include("${CMAKE_CURRENT_LIST_DIR}/pcms_fortranapi_interpolator-targets.cmake")
+    include("${CMAKE_CURRENT_LIST_DIR}/pcms_fortranapi_transfer-targets.cmake")
     include("${CMAKE_CURRENT_LIST_DIR}/pcms_fortranapi-targets.cmake")
 endif()
 

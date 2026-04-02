@@ -16,19 +16,24 @@ pybind11_add_module(pcms
         bind_mesh_utilities.cpp
 )
 set_target_properties(pcms PROPERTIES CXX_STANDARD 17)
-target_link_libraries(pcms PRIVATE Kokkos::kokkos pybind11::module MPI::MPI_C pcms::core pcms::interpolator)
+target_link_libraries(pcms PRIVATE Kokkos::kokkos pybind11::module MPI::MPI_C pcms::core pcms::transfer)
 
+# if we are building as a python package from the pyproject.toml
+# scikit-build-core will set this variable
+if(SKBUILD)
+  set(PCMS_PYTHON_INSTALL_LOCATION "${SKBUILD_PLATLIB_DIR}")
+else()
+  # this is useful for direct CMake installation into python.
+  # This enables spack environment installation to directly load the PyOmega_h module
+  set(PCMS_PYTHON_INSTALL_LOCATION "${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages")
+  # Ensure the extension can resolve pcms shared libraries from a standard
+  # prefix install layout (e.g. Spack), where the module lives under
+  # <prefix>/<libdir>/pythonX.Y/site-packages and core libs live in <libdir>.
+  set_target_properties(pcms PROPERTIES INSTALL_RPATH "\$ORIGIN;\$ORIGIN/../../../")
+endif()
 
 
 install(
         TARGETS pcms
-        EXPORT pcms_python-targets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/pythonapi/)
-install(
-        EXPORT pcms_python-targets
-        NAMESPACE pcms::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+	RUNTIME DESTINATION ${PCMS_PYTHON_INSTALL_LOCATION}
+	LIBRARY DESTINATION ${PCMS_PYTHON_INSTALL_LOCATION})

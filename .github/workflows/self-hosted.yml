@@ -180,15 +180,37 @@ jobs:
 
           git clone https://github.com/jacobmerson/pcms_testcases.git ${workDir}/pcms_testcases
 
+          # pcms - petsc off
+          bdir=${workDir}/build-pcms-petsc-off
+          cmake -S ${{github.workspace}}/pcms_${{ github.event.id }} -B $bdir \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=mpicc \
+            -DCMAKE_CXX_COMPILER=mpicxx \
+            -DPCMS_TIMEOUT=20 \
+            -DPCMS_ENABLE_PETSC=OFF \
+            -Dredev_DIR=$rdbdir/install/lib64/cmake/redev/ \
+            -DOmega_h_DIR=$ohbdir/install/lib64/cmake/Omega_h/ \
+            -Dperfstubs_DIR=$psbdir/install/lib/cmake/ \
+            -DADIOS2_DIR=$adiosbdir/install/lib64/cmake/adios2/ \
+            -DCatch2_DIR=$c2bdir/install/lib64/cmake/Catch2/ \
+            -DKokkos_DIR=$kkbdir/install/lib64/cmake/Kokkos/ \
+            -DKokkosKernels_DIR=$kkkbdir/install/lib64/cmake/KokkosKernels/ \
+            -Dmeshfields_DIR=$mfbdir/install/lib64/cmake/meshfields/ \
+            -DPCMS_TEST_DATA_DIR=${workDir}/pcms_testcases/ \
+            -DCMAKE_CXX_EXTENSIONS=Off
+          cmake --build $bdir
+          ctest --test-dir $bdir --output-on-failure
+
           # pcms
+          export PETSC_OPTIONS="-use_gpu_aware_mpi 0"
           bdir=${workDir}/build-pcms
           cmake -S ${{github.workspace}}/pcms_${{ github.event.id }} -B $bdir \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_C_COMPILER=mpicc \
             -DCMAKE_CXX_COMPILER=mpicxx \
             -DPCMS_TIMEOUT=20 \
-            -DPCMS_ENABLE_SPDLOG=OFF \
             -DPCMS_ENABLE_PETSC=ON \
+            -DPETSC_LINK_STATIC=ON \
             -DPETSC_DIR=${workDir}/petsc \
             -DPETSC_ARCH=cuda-kokkos \
             -Dredev_DIR=$rdbdir/install/lib64/cmake/redev/ \

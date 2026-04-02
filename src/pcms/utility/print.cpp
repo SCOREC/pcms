@@ -20,13 +20,13 @@ FILE* getStderr()
 
 void setStdout(FILE* out)
 {
-  assert(out != NULL);
+  assert(out != nullptr);
   pcms_stdout = out;
 }
 
 void setStderr(FILE* err)
 {
-  assert(err != NULL);
+  assert(err != nullptr);
   pcms_stderr = err;
 }
 } // namespace pcms

@@ -129,22 +129,6 @@ jobs:
         cache: true
         options: '-DCMAKE_CXX_COMPILER=mpicxx'
 
-    - name: build kokkos-fortran-interop
-      uses: ./.github/actions/install-repo
-      with:
-        repo-name: 'kokkos-fortran-interop'
-        repo-path: 'kokkos/kokkos-fortran-interop'
-        repo-ref: 'abae737ce1159c4d7a9165c5629e6f5e6ae91d87'
-        cache: true
-        options: '-DCMAKE_BUILD_TYPE=Release
-                  -DCMAKE_CXX_COMPILER=`which mpicxx`
-                  -DCMAKE_C_COMPILER=`which mpicc`
-                  -DCMAKE_Fortran_COMPILER=`which mpifort`
-                  -DBUILD_TESTING=OFF
-                  -DFLCL_BUILD_TESTS=OFF
-                  -DFLCL_BUILD_EXAMPLE=OFF
-                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
-
     - name: build ADIOS2
       uses: ./.github/actions/install-repo
       with:
@@ -224,16 +208,15 @@ jobs:
                   -DCMAKE_Fortran_COMPILER=`which mpifort`
                   -DMPIEXEC_PREFLAGS="--oversubscribe"
                   -DPCMS_ENABLE_PETSC=ON
+                  -DPETSC_LINK_STATIC=ON
                   -DPETSC_DIR=${{ runner.temp }}/petsc
                   -DPETSC_ARCH=ubuntu-kokkos
                   -DPCMS_TIMEOUT=10
-                  -DPCMS_ENABLE_SPDLOG=OFF
                   -DPCMS_ENABLE_Python=${{ matrix.python_api }}
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
                   -Dmeshfields_DIR=${{ runner.temp }}/build-meshFields/install/lib/cmake/meshfields
                   -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev
-                  -Dflcl_DIR=${{ runner.temp }}/build-kokkos-fortran-interop/install/lib/cmake/flcl
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake
@@ -254,8 +237,7 @@ jobs:
     - name: Run Python API tests
       if: matrix.python_api == 'ON'
       run: |
-        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib:$PYTHONPATH
-        export LD_LIBRARY_PATH=${{ runner.temp }}/build-pcms/install/lib:$LD_LIBRARY_PATH
+        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib/python3.12/site-packages:$PYTHONPATH
         cd ${{ github.workspace }}/src/pcms/pythonapi
         python3 test_file_io.py
         python3 test_omega_h_field.py
@@ -274,12 +256,15 @@ jobs:
         cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms-config.cmake
         echo "-------- PCMS TARGETS -------------"
         cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms-targets.cmake
-        echo "-------- PCMS INTERPOLATOR TARGETS -------------"
-        cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms_interpolator-targets.cmake
+        echo "-------- PCMS TRANSFER TARGETS -------------"
+        cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms_transfer-targets.cmake
         export VERBOSE=1
         cmake \
           -B ${{github.workspace}}/examples/external-usage-example/build \
           -S ${{github.workspace}}/examples/external-usage-example/ \
           -Dpcms_DIR=${{ runner.temp }}/build-pcms/install/lib/cmake/pcms \
+          -DPETSC_LINK_STATIC=ON \
+          -DPETSC_DIR=${{ runner.temp }}/petsc \
+          -DPETSC_ARCH=ubuntu-kokkos \
           --debug-output
         cmake --build ${{github.workspace}}/examples/external-usage-example/build

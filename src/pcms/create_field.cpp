@@ -1,10 +1,10 @@
 #include "create_field.h"
-#include "adapter/omega_h/omega_h_field2.h"
-#include "adapter/omega_h/omega_h_field_layout.h"
+#include "adapter/meshfields/mesh_fields_adapter2.h"
+#include "adapter/meshfields/mesh_fields_adapter_layout.h"
 #include "adapter/uniform_grid/uniform_grid_field.h"
 #include "adapter/uniform_grid/uniform_grid_field_layout.h"
-#include "uniform_grid.h"
-#include "point_search.h"
+#include "utility/uniform_grid.h"
+#include "localization/point_search.h"
 
 #include <Kokkos_Core.hpp>
 #include <utility>
@@ -14,7 +14,7 @@ namespace pcms
 
 std::unique_ptr<FieldLayout> CreateLagrangeLayout(
   Omega_h::Mesh& mesh, int order, int num_components,
-  CoordinateSystem coordinate_system)
+  CoordinateSystem coordinate_system, std::string global_id_name)
 {
 
   std::array<int, 4> nodes_per_dim;
@@ -25,8 +25,8 @@ std::unique_ptr<FieldLayout> CreateLagrangeLayout(
     default: throw std::runtime_error("Unimplemented order");
   }
 
-  return std::make_unique<OmegaHFieldLayout>(mesh, nodes_per_dim,
-                                             num_components, coordinate_system);
+  return std::make_unique<MeshFieldsAdapterLayout>(
+    mesh, nodes_per_dim, num_components, coordinate_system, global_id_name);
 }
 
 template <>

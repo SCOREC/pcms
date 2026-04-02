@@ -5,7 +5,7 @@
 #include "pcms/field_layout.h"
 #include "pcms/coordinate_system.h"
 #include "pcms/field.h"
-#include "pcms/uniform_grid.h"
+#include "pcms/utility/uniform_grid.h"
 
 #include <array>
 
@@ -18,7 +18,7 @@ public:
   UniformGridFieldLayout(UniformGrid<Dim>& grid, int num_components,
                          CoordinateSystem coordinate_system);
 
-  std::unique_ptr<FieldT<Real>> CreateField() const override;
+  std::unique_ptr<FieldT<Real>> CreateFieldReal() const override;
 
   int GetNumComponents() const override;
   LO GetNumOwnedDofHolder() const override;

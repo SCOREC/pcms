@@ -1,14 +1,14 @@
 #ifndef CREATE_FIELD_H_
 #define CREATE_FIELD_H_
 
-#include "adapter/omega_h/omega_h_field_layout.h"
+#include "adapter/meshfields/mesh_fields_adapter_layout.h"
 #include "adapter/uniform_grid/uniform_grid_field.h"
 #include "adapter/uniform_grid/uniform_grid_field_layout.h"
 #include "field_layout.h"
 #include "field.h"
 #include "coordinate_system.h"
 #include "utility/types.h"
-#include "uniform_grid.h"
+#include "utility/uniform_grid.h"
 
 #include <Omega_h_mesh.hpp>
 #include <array>
@@ -19,7 +19,7 @@ namespace pcms
 {
 std::unique_ptr<FieldLayout> CreateLagrangeLayout(
   Omega_h::Mesh& mesh, int order, int num_components,
-  CoordinateSystem coordinate_system);
+  CoordinateSystem coordinate_system, std::string global_id_name = "global");
 
 /**
  * \brief Create a binary field on a uniform grid indicating inside/outside mesh

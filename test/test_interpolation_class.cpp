@@ -7,7 +7,8 @@
 
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/interpolator/interpolation_base.h>
+#include <pcms/transfer/interpolation_base.h>
+#include <pcms/utility/mesh_geometry.h>
 #include <pcms/utility/print.h>
 
 #include <vector>
@@ -132,9 +133,10 @@ TEST_CASE("Test MLSMeshInterpolation")
                     "Started --------------------\n");
     pcms::printInfo("Mesh based search...\n");
     auto mls_single =
-      MLSMeshInterpolation(source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
+      pcms::MLSMeshInterpolation(source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
 
-    auto source_points_reals = getCentroids(source_mesh);
+    auto source_points_reals =
+      pcms::get_entity_centroids(source_mesh, Omega_h::FACE);
     auto source_points_host =
       Omega_h::HostRead<Omega_h::Real>(source_points_reals);
     auto source_points_host_write =
@@ -157,7 +159,7 @@ TEST_CASE("Test MLSMeshInterpolation")
       target_points_host_write.data(), target_points_host_write.size());
     REQUIRE(source_mesh.dim() == 2);
     pcms::printInfo("Point cloud based search...\n");
-    auto point_mls = MLSPointCloudInterpolation(
+    auto point_mls = pcms::MLSPointCloudInterpolation(
       source_points_view, target_points_view, 2, 0.12, 15, 3, true, 0.0, 5.0);
 
     Omega_h::Write<Omega_h::Real> sinxcosy_centroid(source_mesh.nfaces(),
@@ -280,8 +282,8 @@ TEST_CASE("Test MLSMeshInterpolation")
     // translate_mesh(&target_mesh, Omega_h::Vector<2>{(1.0 - 0.999) / 2.0,
     //                                                (1.0 - 0.999) / 2.0});
 
-    auto mls_double = MLSMeshInterpolation(source_mesh, target_mesh, 0.12, 15,
-                                           3, true, 0.0, 5.0);
+    auto mls_double = pcms::MLSMeshInterpolation(source_mesh, target_mesh, 0.12,
+                                                 15, 3, true, 0.0, 5.0);
 
     Omega_h::HostWrite<double> source_data_host_write(source_sinxcosy_node);
     Omega_h::HostWrite<double> interpolated_data_hwrite(
@@ -306,6 +308,51 @@ TEST_CASE("Test MLSMeshInterpolation")
     pcms::printInfo(
       "[INFO] Double Mesh Interpolation Test Passed with %.2f%% tolerance!\n",
       10.0);
+  }
+}
+
+TEST_CASE("MLSPointCloudInterpolation honors provided dimension in eval")
+{
+  auto source_points = Omega_h::HostWrite<Omega_h::Real>(27 * 3);
+  int idx = 0;
+  for (int z = 0; z < 3; ++z) {
+    for (int y = 0; y < 3; ++y) {
+      for (int x = 0; x < 3; ++x) {
+        source_points[idx++] = x;
+        source_points[idx++] = y;
+        source_points[idx++] = z;
+      }
+    }
+  }
+  auto target_points = source_points;
+
+  auto source_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+    source_points.data(), source_points.size());
+  auto target_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+    target_points.data(), target_points.size());
+
+  // Degree-1 polynomial that depends on z to catch accidental 2D behavior.
+  auto source_values = Omega_h::HostWrite<Omega_h::Real>(27);
+  for (int i = 0; i < 27; ++i) {
+    const auto x = source_points[3 * i + 0];
+    const auto y = source_points[3 * i + 1];
+    const auto z = source_points[3 * i + 2];
+    source_values[i] = 1.0 + 2.0 * x - 3.0 * y + 5.0 * z;
+  }
+
+  auto output_values = Omega_h::HostWrite<Omega_h::Real>(27, "output_values");
+  auto source_values_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+    source_values.data(), source_values.size());
+  auto output_values_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
+    output_values.data(), output_values.size());
+
+  auto mls = pcms::MLSPointCloudInterpolation(
+    source_points_view, target_points_view, 3, 2.5, 10, 1, true, 0.0, 5.0);
+
+  REQUIRE_NOTHROW(mls.eval(source_values_view, output_values_view));
+  for (int i = 0; i < output_values.size(); ++i) {
+    CHECK_THAT(output_values[i],
+               Catch::Matchers::WithinAbs(source_values[i], 1e-6));
   }
 }
 

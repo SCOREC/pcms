@@ -344,11 +344,11 @@ auto evaluate(const OmegaHField<T>& field, Lagrange<1> /* method */,
 
   Kokkos::parallel_for(
     results.size(), KOKKOS_LAMBDA(LO i) {
-      auto [dim, elem_idx, coord] = results(i);
-      // TODO deal with case for elem_idx < 0 (point outside of mesh)
-      KOKKOS_ASSERT(elem_idx >= 0);
+      auto [dim, elem_idx, face_idx, coord] = results(i);
+      // TODO deal with case for face_idx < 0 (point outside of mesh)
+      KOKKOS_ASSERT(face_idx >= 0);
       const auto elem_tri2verts =
-        Omega_h::gather_verts<3>(tris2verts, elem_idx);
+        Omega_h::gather_verts<3>(tris2verts, face_idx);
       Real val = 0;
       for (int j = 0; j < 3; ++j) {
         val += field_values[elem_tri2verts[j]] * coord[j];
@@ -382,11 +382,11 @@ auto evaluate(const OmegaHField<T>& field, NearestNeighbor /* method */,
 
   Kokkos::parallel_for(
     results.size(), KOKKOS_LAMBDA(LO i) {
-      auto [dim, elem_idx, coord] = results(i);
-      // TODO deal with case for elem_idx < 0 (point outside of mesh)
-      KOKKOS_ASSERT(elem_idx >= 0);
+      auto [dim, elem_idx, face_idx, coord] = results(i);
+      // TODO deal with case for face_idx < 0 (point outside of mesh)
+      KOKKOS_ASSERT(face_idx >= 0);
       const auto elem_tri2verts =
-        Omega_h::gather_verts<3>(tris2verts, elem_idx);
+        Omega_h::gather_verts<3>(tris2verts, face_idx);
       // value is closest to point has the largest coordinate
       int vert = 0;
       auto max_val = coord[0];

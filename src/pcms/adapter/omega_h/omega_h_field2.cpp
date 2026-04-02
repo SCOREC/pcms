@@ -109,8 +109,8 @@ struct CountPointsPerElementFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(LO i) const
   {
-    auto [dim, elem_idx, coord] = search_results_(i);
-    Kokkos::atomic_add(&elem_counts_(elem_idx), 1);
+    auto [dim, elem_idx, face_idx, coord] = search_results_(i);
+    Kokkos::atomic_add(&elem_counts_(face_idx), 1);
   }
 };
 
@@ -142,14 +142,14 @@ struct FillCoordinatesAndIndicesFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(LO i) const
   {
-    auto [dim, elem_idx, coord] = search_results_(i);
+    auto [dim, elem_idx, face_idx, coord] = search_results_(i);
     // disable the host assertion macro for device code
     // currently don't handle case where point is on a boundary
     // PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh_.dim());
-    // element should be inside the domain (positive)
-    // PCMS_ALWAYS_ASSERT(elem_idx >= 0 && elem_idx < mesh_.nelems());
-    LO count = Kokkos::atomic_sub_fetch(&elem_counts_(elem_idx), 1);
-    LO index = offsets_(elem_idx) + count - 1;
+    // face should be inside the domain (positive)
+    // PCMS_ALWAYS_ASSERT(face_idx >= 0 && face_idx < mesh_.nelems());
+    LO count = Kokkos::atomic_sub_fetch(&elem_counts_(face_idx), 1);
+    LO index = offsets_(face_idx) + count - 1;
     for (int j = 0; j < (dim_ + 1); ++j) {
       coordinates_(index, j) = coord[j];
     }
@@ -172,18 +172,20 @@ struct OmegaHField2LocalizationHint
     if (mode_ == OutOfBoundsMode::ERROR) {
       // Error mode - throw error immediately if any point is out of bounds
       for (size_t i = 0; i < search_results.size(); ++i) {
-        auto [dim, elem_idx, coord] = search_results(i);
-        bool is_missing =
-          (static_cast<int>(dim) != mesh.dim()) || (elem_idx < 0);
+        auto [dim, elem_idx, face_idx, coord] = search_results(i);
+        (void)dim;
+        (void)coord;
+        bool is_missing = (elem_idx < 0) || (face_idx < 0);
         PCMS_ALWAYS_ASSERT(!is_missing && "Points found outside mesh domain");
         valid_point_indices.push_back(i);
       }
     } else {
       // Other modes - collect valid and missing points separately
       for (size_t i = 0; i < search_results.size(); ++i) {
-        auto [dim, elem_idx, coord] = search_results(i);
-        bool is_missing =
-          (static_cast<int>(dim) != mesh.dim()) || (elem_idx < 0);
+        auto [dim, elem_idx, face_idx, coord] = search_results(i);
+        (void)dim;
+        (void)coord;
+        bool is_missing = (elem_idx < 0) || (face_idx < 0);
         if (is_missing) {
           missing_point_indices.push_back(i);
         } else {
@@ -218,9 +220,10 @@ struct OmegaHField2LocalizationHint
     // Count points per element (valid points only)
     Kokkos::View<LO*, HostMemorySpace> elem_counts("elem_counts",
                                                    mesh.nelems());
+    Kokkos::deep_copy(elem_counts, 0);
     for (size_t i = 0; i < num_valid_; ++i) {
-      auto [dim, elem_idx, coord] = search_results(valid_point_indices[i]);
-      elem_counts[elem_idx] += 1;
+      auto [dim, elem_idx, face_idx, coord] = search_results(valid_point_indices[i]);
+      elem_counts[face_idx] += 1;
     }
 
     // Compute offsets
@@ -235,9 +238,9 @@ struct OmegaHField2LocalizationHint
     // Fill coordinates and indices for valid points
     for (size_t i = 0; i < num_valid_; ++i) {
       size_t orig_idx = valid_point_indices[i];
-      auto [dim, elem_idx, coord] = search_results(orig_idx);
-      elem_counts(elem_idx) -= 1;
-      LO index = offsets_(elem_idx) + elem_counts(elem_idx);
+      auto [dim, elem_idx, face_idx, coord] = search_results(orig_idx);
+      elem_counts(face_idx) -= 1;
+      LO index = offsets_(face_idx) + elem_counts(face_idx);
       for (int j = 0; j < (mesh.dim() + 1); ++j) {
         coordinates_(index, j) = coord[j];
       }

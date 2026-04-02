@@ -265,28 +265,31 @@ TEST_CASE("uniform grid search")
   SECTION("global coordinate within mesh")
   {
     {
-      auto [dim, idx, coords] = results_h(0);
+      auto [dim, idx, face_idx, coords] = results_h(0);
 
       CAPTURE(idx);
 
       REQUIRE(dim == GridPointSearch2D::Result::Dimensionality::VERTEX);
       REQUIRE(idx == 0);
+      REQUIRE(face_idx >= 0);
       REQUIRE(coords[0] == Catch::Approx(1));
       REQUIRE(coords[1] == Catch::Approx(0));
       REQUIRE(coords[2] == Catch::Approx(0));
     }
     {
-      auto [dim, idx, coords] = results_h(1);
+      auto [dim, idx, face_idx, coords] = results_h(1);
       REQUIRE(dim == GridPointSearch2D::Result::Dimensionality::EDGE);
       REQUIRE(idx == 156);
+      REQUIRE(face_idx >= 0);
       REQUIRE(coords[0] == Catch::Approx(0.5));
       REQUIRE(coords[1] == Catch::Approx(0.1));
       REQUIRE(coords[2] == Catch::Approx(0.4));
     }
     {
-      auto [dim, idx, coords] = results_h(7);
+      auto [dim, idx, face_idx, coords] = results_h(7);
       REQUIRE(dim == GridPointSearch2D::Result::Dimensionality::FACE);
       REQUIRE(idx == 0);
+      REQUIRE(face_idx >= 0);
     }
   }
   // feature needs to be added
@@ -297,21 +300,25 @@ TEST_CASE("uniform grid search")
     REQUIRE(out_of_bounds.dimensionality ==
             GridPointSearch2D::Result::Dimensionality::VERTEX);
     REQUIRE(-1 * out_of_bounds.element_id == top_right.element_id);
+    REQUIRE(out_of_bounds.face_id >= 0);
 
     out_of_bounds = results_h(4);
     auto bot_left = results_h(0);
     REQUIRE(out_of_bounds.dimensionality ==
             GridPointSearch2D::Result::Dimensionality::VERTEX);
     REQUIRE(-1 * out_of_bounds.element_id == bot_left.element_id);
+    REQUIRE(out_of_bounds.face_id >= 0);
 
     out_of_bounds = results_h(5);
     REQUIRE(out_of_bounds.dimensionality ==
             GridPointSearch2D::Result::Dimensionality::EDGE);
     REQUIRE(out_of_bounds.element_id == -219);
+    REQUIRE(out_of_bounds.face_id >= 0);
 
     out_of_bounds = results_h(6);
     REQUIRE(out_of_bounds.dimensionality ==
             GridPointSearch2D::Result::Dimensionality::EDGE);
     REQUIRE(-1 * out_of_bounds.element_id == bot_left.element_id);
+    REQUIRE(out_of_bounds.face_id >= 0);
   }
 }

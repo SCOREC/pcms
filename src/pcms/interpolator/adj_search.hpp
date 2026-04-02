@@ -32,9 +32,9 @@ inline void checkTargetPoints(
   pcms::printInfo("INFO: Checking target points...\n");
   auto check_target_points = OMEGA_H_LAMBDA(Omega_h::LO i)
   {
-    if (results(i).element_id < 0) {
-      OMEGA_H_CHECK_PRINTF(results(i).element_id >= 0,
-                           "ERROR: Source cell id not found for target %d\n",
+    if (results(i).face_id < 0) {
+      OMEGA_H_CHECK_PRINTF(results(i).face_id >= 0,
+                           "ERROR: Source face id not found for target %d\n",
                            i);
       printf("%d, ", i);
     }
@@ -130,10 +130,10 @@ inline void FindSupports::adjBasedSearch(
       Track visited;
       Omega_h::Real cutoffDistance = radii2[id];
 
-      Omega_h::LO source_cell_id = results(id).element_id;
+      Omega_h::LO source_cell_id = results(id).face_id;
       OMEGA_H_CHECK_PRINTF(
         source_cell_id >= 0,
-        "ERROR: Source cell id not found for target %d (%f,%f)\n", id,
+        "ERROR: Source face id not found for target %d (%f,%f)\n", id,
         target_points(id, 0), target_points(id, 1));
 
       const Omega_h::LO num_verts_in_dim = dim + 1;

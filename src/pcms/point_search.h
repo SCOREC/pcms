@@ -24,7 +24,7 @@ Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_2d(Omega_h::Mesh& mesh,
                               Kokkos::View<Uniform2DGrid[1]> grid,
                               int num_grid_cells);
-}
+} // namespace detail
 
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
   const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox);
@@ -50,8 +50,8 @@ construct_intersection_map_2d(Omega_h::Mesh& mesh,
  */
 template <int N>
 [[nodiscard]] KOKKOS_FUNCTION inline Real
-distance_to_closest_edge_from_barycentric(
-  const Omega_h::Matrix<N, 3>& coords, const Omega_h::Vector<3>& xi)
+distance_to_closest_edge_from_barycentric(const Omega_h::Matrix<N, 3>& coords,
+                                          const Omega_h::Vector<3>& xi)
 {
   // Edge vectors originating from vertex 0
   Omega_h::Vector<N> a = coords[1] - coords[0];
@@ -64,7 +64,8 @@ distance_to_closest_edge_from_barycentric(
   Real parallelogram_area_sq = aa * bb - ab * ab;
 
   // Guard against degeneracy and tiny negative due to FP roundoff
-  if (parallelogram_area_sq <= static_cast<Real>(0)) return 0;
+  if (parallelogram_area_sq <= static_cast<Real>(0))
+    return 0;
   const Real area = static_cast<Real>(0.5) * std::sqrt(parallelogram_area_sq);
   const Real two_area = static_cast<Real>(2) * area;
 
@@ -88,7 +89,8 @@ distance_to_closest_edge_from_barycentric(
 
   // Return the minimum component (avoid std::min for device-compatibility)
   Real m = d[0];
-  for (int i = 1; i < 3; ++i) m = (d[i] < m) ? d[i] : m;
+  for (int i = 1; i < 3; ++i)
+    m = (d[i] < m) ? d[i] : m;
   return m;
 }
 
@@ -107,7 +109,8 @@ public:
     };
 
     Dimensionality dimensionality;
-    LO element_id;
+    LO element_id; // ID of the actual entity (vertex/edge/face/region)
+    LO face_id;    // ID of the containing face, or -1 only if no cell matched
     Omega_h::Vector<dim + 1> parametric_coords;
   };
 
@@ -159,6 +162,7 @@ private:
   Omega_h::Adj tris2edges_adj_;
   Omega_h::Adj tris2verts_adj_;
   Omega_h::Adj edges2verts_adj_;
+  Omega_h::Adj edges2faces_up_;
   Kokkos::View<Uniform2DGrid[1]> grid_{"uniform grid"};
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;

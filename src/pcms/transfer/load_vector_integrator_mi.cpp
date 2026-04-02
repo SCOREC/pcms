@@ -420,7 +420,7 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
 
             // integration
             auto diff = srcVal - tgtVal;
-            auto w = 2 * weight * area;
+            auto w = 2.0 * weight * area;
             N2 += diff * diff * w;
             D2 += srcVal * srcVal * w;
             C += diff * w;
@@ -434,7 +434,7 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
       Kokkos::atomic_add(&accum(3), QD);
     });
 
-  auto h_accum = Kokkos::create_mirror(accum);
+  auto h_accum = Kokkos::create_mirror_view(accum);
   Kokkos::deep_copy(h_accum, accum);
 
 

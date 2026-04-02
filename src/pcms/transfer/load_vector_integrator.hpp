@@ -157,6 +157,10 @@ Kokkos::View<MeshField::Real*> buildLoadVectorMI(
 /// evaluate_pro_and_cons_errors().
 struct Errors
 {
+  double N2;
+  double D2;
+  double C;
+  double QD;
   double proj_err; ///< L2 projection error computed on the supermesh.
   double cons_err; ///< Relative conservation error over the supermesh.
 };

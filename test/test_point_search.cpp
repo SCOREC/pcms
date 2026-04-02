@@ -121,10 +121,13 @@ TEST_CASE("barycentric distance to closest edge")
     auto ab = b - a;
     auto ap = p - a;
     auto ab2 = Omega_h::inner_product(ab, ab);
-    if (ab2 == 0.0) return Omega_h::norm(ap);
+    if (ab2 == 0.0)
+      return Omega_h::norm(ap);
     double t = Omega_h::inner_product(ap, ab) / ab2;
-    if (t < 0.0) t = 0.0;
-    if (t > 1.0) t = 1.0;
+    if (t < 0.0)
+      t = 0.0;
+    if (t > 1.0)
+      t = 1.0;
     auto proj = a + t * ab;
     return Omega_h::norm(p - proj);
   };

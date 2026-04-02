@@ -85,7 +85,7 @@ void FindIntersections::adjBasedIntersectSearch(
             auto scale =
               Kokkos::fmax(current_tgt_elm_area, current_src_elm_area);
             auto eps = Kokkos::fmax(abs_tol, rel_tol * scale);
-            if (intersection.nverts > 0 && intersected_area > 1e-12) {
+            if (intersection.nverts >= 3 && intersected_area > eps) {
               count++;
 
               OMEGA_H_CHECK_PRINTF(

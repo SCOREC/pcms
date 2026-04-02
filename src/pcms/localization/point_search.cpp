@@ -145,36 +145,9 @@ template <unsigned dim>
   return true;
 }
 
-[[nodiscard]] KOKKOS_INLINE_FUNCTION bool bbox_verts_within_triangle(
-  const AABBox<2>& bbox, const Omega_h::Matrix<2, 3>& coords)
-{
-  auto left = bbox.center[0] - bbox.half_width[0];
-  auto right = bbox.center[0] + bbox.half_width[0];
-  auto bot = bbox.center[1] - bbox.half_width[1];
-  auto top = bbox.center[1] + bbox.half_width[1];
-  auto xi = Omega_h::barycentric_from_global<2, 2>({left, bot}, coords);
-  if (Omega_h::is_barycentric_inside(xi)) {
-    return true;
-  }
-  xi = Omega_h::barycentric_from_global<2, 2>({left, top}, coords);
-  if (Omega_h::is_barycentric_inside(xi)) {
-    return true;
-  }
-  xi = Omega_h::barycentric_from_global<2, 2>({right, top}, coords);
-  if (Omega_h::is_barycentric_inside(xi)) {
-    return true;
-  }
-  xi = Omega_h::barycentric_from_global<2, 2>({right, bot}, coords);
-  if (Omega_h::is_barycentric_inside(xi)) {
-    return true;
-  }
-  return false;
-}
-
 template <int dim>
 [[nodiscard]] KOKKOS_INLINE_FUNCTION bool bbox_verts_within_simplex(
-  const AABBox<dim>& bbox, const Omega_h::Matrix<dim, dim + 1>& coords,
-  Real fuzz)
+  const AABBox<dim>& bbox, const Omega_h::Matrix<dim, dim + 1>& coords)
 {
   // each dimension has a pair of opposing "walls"
   // 2D: { [left, right], [top, bottom] } -> { left, right, top, bottom }
@@ -211,7 +184,7 @@ template <int dim>
  * intersects with a bounding box
  */
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
-  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox, Real fuzz)
+  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox)
 {
   // triangle and grid cell bounding box intersect
   if (intersects(triangle_bbox(coords), bbox)) {
@@ -221,7 +194,7 @@ template <int dim>
       return true;
     }
     // if any of the bbox verts are within the triangle
-    if (bbox_verts_within_triangle(bbox, coords)) {
+    if (bbox_verts_within_simplex(bbox, coords)) {
       return true;
     }
     // if any of the triangle's edges intersect with the bounding box

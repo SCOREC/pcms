@@ -445,6 +445,6 @@ Errors evaluate_proj_and_cons_errors(Omega_h::Mesh& target_mesh,
   const double proj_err = Kokkos::sqrt(N2) / Kokkos::max(Kokkos::sqrt(D2), EPS_DEN);
   const double cons_err = Kokkos::fabs(C) / Kokkos::max(Kokkos::fabs(QD), EPS_DEN);
 
-  return Errors{.proj_err = proj_err, .cons_err = cons_err};
+  return Errors{.N2 = N2, .D2 = D2, .C = C, .QD = QD, .proj_err = proj_err, .cons_err = cons_err};
 }
 } // namespace pcms

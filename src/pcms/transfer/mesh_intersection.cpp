@@ -24,8 +24,13 @@ void FindIntersections::adjBasedIntersectSearch(
 
   const auto flat_centroids =
     pcms::get_entity_centroids(target_mesh_, Omega_h::FACE);
-  auto centroids = Kokkos::View<const Omega_h::Real* [2]>(
-    flat_centroids.data(), target_mesh_.nfaces());
+
+  Kokkos::View<Omega_h::Real* [2]> centroids("centroids", target_mesh_.nfaces());
+
+  Omega_h::parallel_for(target_mesh_.nfaces(), OMEGA_H_LAMBDA(const Omega_h::LO i) {
+		  centroids(i,0) = flat_centroids[2*i+0];
+		  centroids(i,1) = flat_centroids[2*i+1];
+  });
 
   pcms::GridPointSearch2D search_cell(source_mesh_, 20, 20);
   auto results = search_cell(centroids);

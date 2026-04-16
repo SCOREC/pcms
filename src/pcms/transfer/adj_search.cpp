@@ -7,14 +7,16 @@ namespace pcms
 // Debug helper retained intentionally: useful for diagnosing point-localization
 // failures while developing support-search logic.
 [[maybe_unused]] static void checkTargetPoints(
-  const Kokkos::View<pcms::GridPointSearch2D::Result*>& results)
+  const Kokkos::View<pcms::GridPointSearch2D::Result*>& results,
+  const Kokkos::View<pcms::LO*>& owning_cell_ids)
 {
   Kokkos::fence();
   pcms::printInfo("INFO: Checking target points...\n");
   auto check_target_points = OMEGA_H_LAMBDA(Omega_h::LO i)
   {
-    if (results(i).face_id < 0) {
-      OMEGA_H_CHECK_PRINTF(results(i).face_id >= 0,
+    (void)results;
+    if (owning_cell_ids(i) < 0) {
+      OMEGA_H_CHECK_PRINTF(owning_cell_ids(i) >= 0,
                            "ERROR: Source face id not found for target %d\n",
                            i);
       printf("%d, ", i);
@@ -147,7 +149,8 @@ void FindSupports::adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
 
   pcms::GridPointSearch2D search_cell(source_mesh, 10, 10);
   auto results = search_cell(target_points);
-  // checkTargetPoints(results);
+  auto owning_cell_ids = search_cell.GetOwningElementIds(results);
+  // checkTargetPoints(results, owning_cell_ids);
 
   Omega_h::parallel_for(
     nvertices_target,
@@ -155,11 +158,7 @@ void FindSupports::adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
       Queue queue;
       Track visited;
       Omega_h::Real cutoffDistance = radii2[id];
-      Omega_h::LO source_cell_id = results(id).face_id;
-      //  if the point lies outside the mesh, it returns the negative cell id
-      //  making the negative cell id to positive
-      if (source_cell_id < 0)
-        source_cell_id = Kokkos::abs(source_cell_id);
+      Omega_h::LO source_cell_id = owning_cell_ids(id);
 
       OMEGA_H_CHECK_PRINTF(
         source_cell_id >= 0,

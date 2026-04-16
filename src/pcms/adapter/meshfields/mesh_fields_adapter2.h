@@ -122,19 +122,27 @@ struct CountPointsPerElementFunctor
 {
   Kokkos::View<LO*> elem_counts_;
   Kokkos::View<GridPointSearch2D::Result*> search_results_;
+  Kokkos::View<LO*> owning_elem_ids_;
 
   CountPointsPerElementFunctor(
     Kokkos::View<LO*> elem_counts,
-    Kokkos::View<GridPointSearch2D::Result*> search_results)
-    : elem_counts_(elem_counts), search_results_(search_results)
+    Kokkos::View<GridPointSearch2D::Result*> search_results,
+    Kokkos::View<LO*> owning_elem_ids)
+    : elem_counts_(elem_counts),
+      search_results_(search_results),
+      owning_elem_ids_(owning_elem_ids)
   {
   }
 
   KOKKOS_INLINE_FUNCTION
   void operator()(LO i) const
   {
-    auto [dim, elem_idx, face_idx, coord] = search_results_(i);
-    Kokkos::atomic_add(&elem_counts_(face_idx), 1);
+    auto [dim, elem_idx, coord] = search_results_(i);
+    (void)dim;
+    (void)elem_idx;
+    (void)coord;
+    const auto owner_idx = owning_elem_ids_(i);
+    Kokkos::atomic_add(&elem_counts_(owner_idx), 1);
   }
 };
 
@@ -146,19 +154,22 @@ struct FillCoordinatesAndIndicesFunctor
   Kokkos::View<Real**> coordinates_;
   Kokkos::View<LO*> indices_;
   Kokkos::View<GridPointSearch2D::Result*> search_results_;
+  Kokkos::View<LO*> owning_elem_ids_;
   Omega_h::Int dim_;
 
   FillCoordinatesAndIndicesFunctor(
     Omega_h::Mesh& mesh, Kokkos::View<LO*> elem_counts,
     Kokkos::View<LO*> offsets, Kokkos::View<Real**> coordinates,
     Kokkos::View<LO*> indices,
-    Kokkos::View<GridPointSearch2D::Result*> search_results)
+    Kokkos::View<GridPointSearch2D::Result*> search_results,
+    Kokkos::View<LO*> owning_elem_ids)
     : mesh_(mesh),
       elem_counts_(elem_counts),
       offsets_(offsets),
       coordinates_(coordinates),
       indices_(indices),
       search_results_(search_results),
+      owning_elem_ids_(owning_elem_ids),
       dim_(mesh.dim())
   {
   }
@@ -166,14 +177,15 @@ struct FillCoordinatesAndIndicesFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(LO i) const
   {
-    auto [dim, elem_idx, face_idx, coord] = search_results_(i);
+    auto [dim, elem_idx, coord] = search_results_(i);
+    const auto owner_idx = owning_elem_ids_(i);
     // disable the host assertion macro for device code
     // currently don't handle case where point is on a boundary
     // PCMS_ALWAYS_ASSERT(static_cast<int>(dim) == mesh_.dim());
     // face should be inside the domain (positive)
     // PCMS_ALWAYS_ASSERT(face_idx >= 0 && face_idx < mesh_.nelems());
-    LO count = Kokkos::atomic_sub_fetch(&elem_counts_(face_idx), 1);
-    LO index = offsets_(face_idx) + count - 1;
+    LO count = Kokkos::atomic_sub_fetch(&elem_counts_(owner_idx), 1);
+    LO index = offsets_(owner_idx) + count - 1;
     for (int j = 0; j < (dim_ + 1); ++j) {
       coordinates_(index, j) = coord[j];
     }
@@ -186,7 +198,8 @@ struct MeshFieldsAdapter2LocalizationHint
   MeshFieldsAdapter2LocalizationHint(
     Omega_h::Mesh& mesh,
     Kokkos::View<GridPointSearch2D::Result*, HostMemorySpace> search_results,
-    OutOfBoundsMode mode)
+    Kokkos::View<const Real**, HostMemorySpace> global_coords,
+    Kokkos::View<LO*, HostMemorySpace> owning_elem_ids, OutOfBoundsMode mode)
     : mode_(mode), num_valid_(0), num_missing_(0)
   {
     // First pass: count valid and invalid points
@@ -196,20 +209,22 @@ struct MeshFieldsAdapter2LocalizationHint
     if (mode_ == OutOfBoundsMode::ERROR) {
       // Error mode - throw error immediately if any point is out of bounds
       for (size_t i = 0; i < search_results.size(); ++i) {
-        auto [dim, elem_idx, face_idx, coord] = search_results(i);
+        auto [dim, elem_idx, coord] = search_results(i);
+        const auto owner_idx = owning_elem_ids(i);
         (void)dim;
         (void)coord;
-        bool is_missing = (elem_idx < 0) || (face_idx < 0);
+        bool is_missing = (elem_idx < 0) || (owner_idx < 0);
         PCMS_ALWAYS_ASSERT(!is_missing && "Points found outside mesh domain");
         valid_point_indices.push_back(i);
       }
     } else {
       // Other modes - collect valid and missing points separately
       for (size_t i = 0; i < search_results.size(); ++i) {
-        auto [dim, elem_idx, face_idx, coord] = search_results(i);
+        auto [dim, elem_idx, coord] = search_results(i);
+        const auto owner_idx = owning_elem_ids(i);
         (void)dim;
         (void)coord;
-        bool is_missing = (elem_idx < 0) || (face_idx < 0);
+        bool is_missing = (elem_idx < 0) || (owner_idx < 0);
         if (is_missing) {
           missing_point_indices.push_back(i);
         } else {
@@ -246,9 +261,12 @@ struct MeshFieldsAdapter2LocalizationHint
                                                    mesh.nelems());
     Kokkos::deep_copy(elem_counts, 0);
     for (size_t i = 0; i < num_valid_; ++i) {
-      auto [dim, elem_idx, face_idx, coord] =
-        search_results(valid_point_indices[i]);
-      elem_counts[face_idx] += 1;
+      auto [dim, elem_idx, coord] = search_results(valid_point_indices[i]);
+      (void)dim;
+      (void)elem_idx;
+      (void)coord;
+      const auto owner_idx = owning_elem_ids(valid_point_indices[i]);
+      elem_counts[owner_idx] += 1;
     }
 
     // Compute offsets
@@ -261,14 +279,27 @@ struct MeshFieldsAdapter2LocalizationHint
     offsets_(mesh.nelems()) = total;
 
     // Fill coordinates and indices for valid points
+    const auto tris2verts = mesh.ask_elem_verts();
+    const auto mesh_coords = mesh.coords();
     for (size_t i = 0; i < num_valid_; ++i) {
       size_t orig_idx = valid_point_indices[i];
-      auto [dim, elem_idx, face_idx, coord] = search_results(orig_idx);
-      elem_counts(face_idx) -= 1;
-      LO index = offsets_(face_idx) + elem_counts(face_idx);
-      for (int j = 0; j < (mesh.dim() + 1); ++j) {
-        coordinates_(index, j) = coord[j];
-      }
+      auto [dim, elem_idx, coord] = search_results(orig_idx);
+      (void)dim;
+      (void)elem_idx;
+      (void)coord;
+      const auto owner_idx = owning_elem_ids(orig_idx);
+      elem_counts(owner_idx) -= 1;
+      LO index = offsets_(owner_idx) + elem_counts(owner_idx);
+      const auto elem_tri2verts =
+        Omega_h::gather_verts<3>(tris2verts, owner_idx);
+      const auto vertex_coords =
+        Omega_h::gather_vectors<3, 2>(mesh_coords, elem_tri2verts);
+      const Omega_h::Vector<2> point{global_coords(orig_idx, 0),
+                                     global_coords(orig_idx, 1)};
+      const auto local =
+        Omega_h::barycentric_from_global<2, 2>(point, vertex_coords);
+      for (int j = 0; j < (mesh.dim() + 1); ++j)
+        coordinates_(index, j) = local[j];
       indices_(index) = static_cast<LO>(orig_idx);
     }
   }
@@ -432,11 +463,16 @@ inline LocalizationHint MeshFieldsAdapter2<T>::GetLocalizationHint(
     coordinates.data_handle(), coordinates.extent(0), coordinates.extent(1));
   deep_copy_mismatch_layouts(coords, coordinates_host);
   auto results = search_(coords);
+  auto owning_ids = search_.GetOwningElementIds(results);
   Kokkos::View<GridPointSearch2D::Result*, HostMemorySpace> results_h(
     "results_h", results.size());
+  Kokkos::View<LO*, HostMemorySpace> owning_ids_h("owning_ids_h",
+                                                  owning_ids.size());
   Kokkos::deep_copy(results_h, results);
+  Kokkos::deep_copy(owning_ids_h, owning_ids);
   auto hint = std::make_shared<MeshFieldsAdapter2LocalizationHint>(
-    mesh_, results_h, this->out_of_bounds_mode_);
+    mesh_, results_h, coordinates_host, owning_ids_h,
+    this->out_of_bounds_mode_);
 
   return LocalizationHint{hint};
 }

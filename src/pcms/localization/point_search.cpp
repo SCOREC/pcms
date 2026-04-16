@@ -513,7 +513,6 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
       GridPointSearch2D::Result::Dimensionality dim_out =
         GridPointSearch2D::Result::Dimensionality::REGION;
       LO element_id_out = -1;
-      LO face_id_out = -1;
       Omega_h::Vector<3> bary_out{0.0, 0.0, 0.0};
 
       // Apply hierarchy with tolerances
@@ -523,7 +522,6 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
         // Point within vertex tolerance - still inside the mesh
         dim_out = GridPointSearch2D::Result::Dimensionality::VERTEX;
         element_id_out = best_vertex_id;
-        face_id_out = (best_vertex_tid >= 0) ? best_vertex_tid : -1;
         bary_out = best_vertex_bary;
       } else if ((best_edge_id >= 0 && best_edge_dist <= etol) ||
                  (found_inside && inside_edge_dist <= etol)) {
@@ -532,18 +530,15 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
         if (found_inside && inside_edge_dist <= etol &&
             inside_edge_argmin >= 0) {
           element_id_out = inside_edge_id;
-          face_id_out = inside_face_id;
           bary_out = inside_face_bary;
         } else {
           element_id_out = best_edge_id;
-          face_id_out = (best_edge_tid_min >= 0) ? best_edge_tid_min : -1;
           bary_out = best_edge_bary_min;
         }
       } else if (found_inside) {
         // Point inside face
         dim_out = GridPointSearch2D::Result::Dimensionality::FACE;
         element_id_out = inside_face_id;
-        face_id_out = inside_face_id;
         bary_out = inside_face_bary;
       } else {
         // Outside mesh - beyond tolerance of any entity
@@ -552,13 +547,11 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
             (best_vertex_dist <= best_edge_dist || best_edge_id < 0)) {
           dim_out = GridPointSearch2D::Result::Dimensionality::VERTEX;
           element_id_out = best_vertex_id;
-          face_id_out = (best_vertex_tid >= 0) ? best_vertex_tid : -1;
           bary_out = best_vertex_bary;
           element_id_out = -element_id_out;
         } else if (best_edge_id >= 0) {
           dim_out = GridPointSearch2D::Result::Dimensionality::EDGE;
           element_id_out = best_edge_id;
-          face_id_out = (best_edge_tid_min >= 0) ? best_edge_tid_min : -1;
           bary_out = best_edge_bary_min;
           element_id_out = -element_id_out;
         } else {
@@ -566,8 +559,7 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
         }
       }
 
-      results(p) = GridPointSearch2D::Result{dim_out, element_id_out,
-                                             face_id_out, bary_out};
+      results(p) = GridPointSearch2D::Result{dim_out, element_id_out, bary_out};
     });
 
   return results;
@@ -603,6 +595,88 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
   tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
   edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
   edges2faces_up_ = mesh.ask_up(Omega_h::EDGE, Omega_h::FACE);
+  verts2faces_up_ = mesh.ask_up(Omega_h::VERT, Omega_h::FACE);
+}
+
+LO GridPointSearch2D::get_smallest_owner_face_id(
+  Result::Dimensionality dimensionality, LO element_id) const
+{
+  if (element_id < 0)
+    return -1;
+  if (dimensionality == Result::Dimensionality::FACE)
+    return element_id;
+
+  const Omega_h::Adj* up_adj = nullptr;
+  if (dimensionality == Result::Dimensionality::EDGE) {
+    up_adj = &edges2faces_up_;
+  } else if (dimensionality == Result::Dimensionality::VERTEX) {
+    up_adj = &verts2faces_up_;
+  } else {
+    return -1;
+  }
+
+  const auto begin = up_adj->a2ab[element_id];
+  const auto end = up_adj->a2ab[element_id + 1];
+  if (begin >= end)
+    return -1;
+  LO owner = up_adj->ab2b[begin];
+  for (auto i = begin + 1; i < end; ++i) {
+    const LO candidate = up_adj->ab2b[i];
+    if (candidate < owner)
+      owner = candidate;
+  }
+  return owner;
+}
+
+LO GridPointSearch2D::GetOwningElementId(const Result& result) const
+{
+  const LO query_id =
+    (result.element_id < 0) ? -result.element_id : result.element_id;
+  return get_smallest_owner_face_id(result.dimensionality, query_id);
+}
+
+Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
+  Kokkos::View<const Result*> results) const
+{
+  Kokkos::View<LO*> owners("point search owning face ids", results.extent(0));
+  auto edges2faces_up = edges2faces_up_;
+  auto verts2faces_up = verts2faces_up_;
+  Kokkos::parallel_for(
+    results.extent(0), KOKKOS_LAMBDA(const LO i) {
+      const auto result = results(i);
+      LO element_id = result.element_id;
+      if (element_id < 0)
+        element_id = -element_id;
+
+      LO owner = -1;
+      if (element_id >= 0) {
+        if (result.dimensionality == Result::Dimensionality::FACE) {
+          owner = element_id;
+        } else if (result.dimensionality == Result::Dimensionality::EDGE) {
+          const LO begin = edges2faces_up.a2ab[element_id];
+          const LO end = edges2faces_up.a2ab[element_id + 1];
+          if (begin < end) {
+            owner = edges2faces_up.ab2b[begin];
+            for (LO j = begin + 1; j < end; ++j) {
+              const LO candidate = edges2faces_up.ab2b[j];
+              owner = (candidate < owner) ? candidate : owner;
+            }
+          }
+        } else if (result.dimensionality == Result::Dimensionality::VERTEX) {
+          const LO begin = verts2faces_up.a2ab[element_id];
+          const LO end = verts2faces_up.a2ab[element_id + 1];
+          if (begin < end) {
+            owner = verts2faces_up.ab2b[begin];
+            for (LO j = begin + 1; j < end; ++j) {
+              const LO candidate = verts2faces_up.ab2b[j];
+              owner = (candidate < owner) ? candidate : owner;
+            }
+          }
+        }
+      }
+      owners(i) = owner;
+    });
+  return owners;
 }
 
 Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
@@ -649,7 +723,7 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
         if (Omega_h::is_barycentric_inside(parametric_coords)) {
           results(p) = GridPointSearch3D::Result{
             GridPointSearch3D::Result::Dimensionality::REGION, triangleID,
-            triangleID, parametric_coords};
+            parametric_coords};
           found = true;
           break;
         }
@@ -658,9 +732,8 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
       }
       if (!found) {
         LO nearest_elem = candidate_map.entries(nearest_triangle);
-        results(p) =
-          GridPointSearch3D::Result{dimensionality, -nearest_elem, nearest_elem,
-                                    parametric_coords_to_nearest};
+        results(p) = GridPointSearch3D::Result{dimensionality, -nearest_elem,
+                                               parametric_coords_to_nearest};
       }
     });
 
@@ -701,5 +774,102 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
   tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
   tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
   edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
+  verts2regions_up_ = mesh.ask_up(Omega_h::VERT, Omega_h::REGION);
+  edges2regions_up_ = mesh.ask_up(Omega_h::EDGE, Omega_h::REGION);
+  faces2regions_up_ = mesh.ask_up(Omega_h::FACE, Omega_h::REGION);
+}
+
+LO GridPointSearch3D::get_smallest_owner_region_id(
+  Result::Dimensionality dimensionality, LO element_id) const
+{
+  if (element_id < 0)
+    return -1;
+  if (dimensionality == Result::Dimensionality::REGION)
+    return element_id;
+
+  const Omega_h::Adj* up_adj = nullptr;
+  if (dimensionality == Result::Dimensionality::FACE) {
+    up_adj = &faces2regions_up_;
+  } else if (dimensionality == Result::Dimensionality::EDGE) {
+    up_adj = &edges2regions_up_;
+  } else if (dimensionality == Result::Dimensionality::VERTEX) {
+    up_adj = &verts2regions_up_;
+  } else {
+    return -1;
+  }
+
+  const auto begin = up_adj->a2ab[element_id];
+  const auto end = up_adj->a2ab[element_id + 1];
+  if (begin >= end)
+    return -1;
+  LO owner = up_adj->ab2b[begin];
+  for (auto i = begin + 1; i < end; ++i) {
+    const LO candidate = up_adj->ab2b[i];
+    if (candidate < owner)
+      owner = candidate;
+  }
+  return owner;
+}
+
+LO GridPointSearch3D::GetOwningElementId(const Result& result) const
+{
+  const LO query_id =
+    (result.element_id < 0) ? -result.element_id : result.element_id;
+  return get_smallest_owner_region_id(result.dimensionality, query_id);
+}
+
+Kokkos::View<LO*> GridPointSearch3D::GetOwningElementIds(
+  Kokkos::View<const Result*> results) const
+{
+  Kokkos::View<LO*> owners("point search owning region ids", results.extent(0));
+  auto verts2regions_up = verts2regions_up_;
+  auto edges2regions_up = edges2regions_up_;
+  auto faces2regions_up = faces2regions_up_;
+  Kokkos::parallel_for(
+    results.extent(0), KOKKOS_LAMBDA(const LO i) {
+      const auto result = results(i);
+      LO element_id = result.element_id;
+      if (element_id < 0)
+        element_id = -element_id;
+
+      LO owner = -1;
+      if (element_id >= 0) {
+        if (result.dimensionality == Result::Dimensionality::REGION) {
+          owner = element_id;
+        } else if (result.dimensionality == Result::Dimensionality::FACE) {
+          const LO begin = faces2regions_up.a2ab[element_id];
+          const LO end = faces2regions_up.a2ab[element_id + 1];
+          if (begin < end) {
+            owner = faces2regions_up.ab2b[begin];
+            for (LO j = begin + 1; j < end; ++j) {
+              const LO candidate = faces2regions_up.ab2b[j];
+              owner = (candidate < owner) ? candidate : owner;
+            }
+          }
+        } else if (result.dimensionality == Result::Dimensionality::EDGE) {
+          const LO begin = edges2regions_up.a2ab[element_id];
+          const LO end = edges2regions_up.a2ab[element_id + 1];
+          if (begin < end) {
+            owner = edges2regions_up.ab2b[begin];
+            for (LO j = begin + 1; j < end; ++j) {
+              const LO candidate = edges2regions_up.ab2b[j];
+              owner = (candidate < owner) ? candidate : owner;
+            }
+          }
+        } else if (result.dimensionality == Result::Dimensionality::VERTEX) {
+          const LO begin = verts2regions_up.a2ab[element_id];
+          const LO end = verts2regions_up.a2ab[element_id + 1];
+          if (begin < end) {
+            owner = verts2regions_up.ab2b[begin];
+            for (LO j = begin + 1; j < end; ++j) {
+              const LO candidate = verts2regions_up.ab2b[j];
+              owner = (candidate < owner) ? candidate : owner;
+            }
+          }
+        }
+      }
+      owners(i) = owner;
+    });
+  return owners;
 }
 } // namespace pcms

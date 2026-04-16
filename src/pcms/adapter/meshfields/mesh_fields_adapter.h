@@ -166,6 +166,15 @@ public:
                        "search data structure must be constructed before use");
     return (*search_)(points);
   }
+  [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
+    Kokkos::View<const typename PointLocalizationSearch2D::Result*> results)
+    const
+  {
+    PCMS_FUNCTION_TIMER;
+    PCMS_ALWAYS_ASSERT(search_ != nullptr &&
+                       "search data structure must be constructed before use");
+    return search_->GetOwningElementIds(results);
+  }
 
   [[nodiscard]] Omega_h::Read<Omega_h::ClassId> GetClassIDs() const
   {
@@ -335,6 +344,7 @@ auto evaluate(const MeshFieldsAdapter<T>& field, Lagrange<1> /* method */,
   PCMS_FUNCTION_TIMER;
   Omega_h::Write<T> values(coordinates.size() / 2);
   auto tris2verts = field.GetMesh().ask_elem_verts();
+  auto mesh_coords = field.GetMesh().coords();
   auto field_values = field.GetMesh().template get_array<T>(0, field.GetName());
 
   Kokkos::View<Real* [2]> coords("coords", coordinates.size() / 2);
@@ -344,17 +354,27 @@ auto evaluate(const MeshFieldsAdapter<T>& field, Lagrange<1> /* method */,
       coords(i, 1) = coordinates(2 * i + 1);
     });
   auto results = field.Search(coords);
+  auto owning_ids = field.GetOwningElementIds(results);
 
   Kokkos::parallel_for(
     results.size(), KOKKOS_LAMBDA(LO i) {
-      auto [dim, elem_idx, face_idx, coord] = results(i);
-      // TODO deal with case for face_idx < 0 (point outside of mesh)
+      auto [dim, elem_idx, coord] = results(i);
+      (void)dim;
+      (void)elem_idx;
+      (void)coord;
+      auto face_idx = owning_ids(i);
+      // TODO deal with case for elem_idx < 0 (point outside of mesh)
       KOKKOS_ASSERT(face_idx >= 0);
       const auto elem_tri2verts =
         Omega_h::gather_verts<3>(tris2verts, face_idx);
+      const auto vertex_coords =
+        Omega_h::gather_vectors<3, 2>(mesh_coords, elem_tri2verts);
+      const Omega_h::Vector<2> point{coords(i, 0), coords(i, 1)};
+      const auto local =
+        Omega_h::barycentric_from_global<2, 2>(point, vertex_coords);
       Real val = 0;
       for (int j = 0; j < 3; ++j) {
-        val += field_values[elem_tri2verts[j]] * coord[j];
+        val += field_values[elem_tri2verts[j]] * local[j];
       }
       if constexpr (std::is_integral_v<T>) {
         val = std::round(val);
@@ -373,6 +393,7 @@ auto evaluate(const MeshFieldsAdapter<T>& field, NearestNeighbor /* method */,
   PCMS_FUNCTION_TIMER;
   Omega_h::Write<T> values(coordinates.size() / 2);
   auto tris2verts = field.GetMesh().ask_elem_verts();
+  auto mesh_coords = field.GetMesh().coords();
   auto field_values = field.GetMesh().template get_array<T>(0, field.GetName());
   // TODO reuse coordinates_data if possible
   Kokkos::View<Real* [2]> coords("coords", coordinates.size() / 2);
@@ -382,19 +403,29 @@ auto evaluate(const MeshFieldsAdapter<T>& field, NearestNeighbor /* method */,
       coords(i, 1) = coordinates(2 * i + 1);
     });
   auto results = field.Search(coords);
+  auto owning_ids = field.GetOwningElementIds(results);
 
   Kokkos::parallel_for(
     results.size(), KOKKOS_LAMBDA(LO i) {
-      auto [dim, elem_idx, face_idx, coord] = results(i);
-      // TODO deal with case for face_idx < 0 (point outside of mesh)
+      auto [dim, elem_idx, coord] = results(i);
+      (void)dim;
+      (void)elem_idx;
+      (void)coord;
+      auto face_idx = owning_ids(i);
+      // TODO deal with case for elem_idx < 0 (point outside of mesh)
       KOKKOS_ASSERT(face_idx >= 0);
       const auto elem_tri2verts =
         Omega_h::gather_verts<3>(tris2verts, face_idx);
+      const auto vertex_coords =
+        Omega_h::gather_vectors<3, 2>(mesh_coords, elem_tri2verts);
+      const Omega_h::Vector<2> point{coords(i, 0), coords(i, 1)};
+      const auto local =
+        Omega_h::barycentric_from_global<2, 2>(point, vertex_coords);
       // value is closest to point has the largest coordinate
       int vert = 0;
-      auto max_val = coord[0];
+      auto max_val = local[0];
       for (int j = 1; j <= 2; ++j) {
-        auto next_val = coord[j];
+        auto next_val = local[j];
         if (next_val > max_val) {
           max_val = next_val;
           vert = j;

@@ -110,7 +110,6 @@ public:
 
     Dimensionality dimensionality;
     LO element_id; // ID of the actual entity (vertex/edge/face/region)
-    LO face_id;    // ID of the containing face, or -1 only if no cell matched
     Omega_h::Vector<dim + 1> parametric_coords;
   };
 
@@ -126,6 +125,9 @@ public:
 
   virtual Kokkos::View<Result*> operator()(
     Kokkos::View<const Real* [dim]> point) const = 0;
+  [[nodiscard]] virtual LO GetOwningElementId(const Result& result) const = 0;
+  [[nodiscard]] virtual Kokkos::View<LO*> GetOwningElementIds(
+    Kokkos::View<const Result*> results) const = 0;
   virtual ~PointLocalizationSearch() = default;
 
 protected:
@@ -156,13 +158,20 @@ public:
    */
   Kokkos::View<Result*> operator()(
     Kokkos::View<const Real* [DIM]> point) const override;
+  [[nodiscard]] LO GetOwningElementId(const Result& result) const override;
+  [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
+    Kokkos::View<const Result*> results) const override;
 
 private:
+  [[nodiscard]] LO get_smallest_owner_face_id(
+    Result::Dimensionality dimensionality, LO element_id) const;
+
   Omega_h::Mesh mesh_;
   Omega_h::Adj tris2edges_adj_;
   Omega_h::Adj tris2verts_adj_;
   Omega_h::Adj edges2verts_adj_;
   Omega_h::Adj edges2faces_up_;
+  Omega_h::Adj verts2faces_up_;
   Kokkos::View<Uniform2DGrid[1]> grid_{"uniform grid"};
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;
@@ -190,12 +199,21 @@ public:
    */
   Kokkos::View<Result*> operator()(
     Kokkos::View<const Real* [DIM]> point) const override;
+  [[nodiscard]] LO GetOwningElementId(const Result& result) const override;
+  [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
+    Kokkos::View<const Result*> results) const override;
 
 private:
+  [[nodiscard]] LO get_smallest_owner_region_id(
+    Result::Dimensionality dimensionality, LO element_id) const;
+
   Omega_h::Mesh mesh_;
   Omega_h::Adj tris2edges_adj_;
   Omega_h::Adj tris2verts_adj_;
   Omega_h::Adj edges2verts_adj_;
+  Omega_h::Adj verts2regions_up_;
+  Omega_h::Adj edges2regions_up_;
+  Omega_h::Adj faces2regions_up_;
   Kokkos::View<UniformGrid<DIM>[1]> grid_{"uniform grid"};
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;

@@ -163,4 +163,27 @@ MFEMLayout::GetDOFHolderClassificationIdsHost() const
   return make_const_array_view(classification_ids_host_);
 }
 
+Kokkos::View<bool*, HostMemorySpace> MFEMLayout::OverlapMaskFromAttribute(
+  mfem::ParMesh& pmesh, int attribute)
+{
+  PCMS_FUNCTION_TIMER;
+
+  const int nv = pmesh.GetNV();
+  Kokkos::View<bool*, HostMemorySpace> overlap("mfem_overlap_mask", nv);
+  Kokkos::deep_copy(overlap, false);
+
+  mfem::Array<int> verts;
+  for (int e = 0; e < pmesh.GetNE(); ++e) {
+    if (pmesh.GetAttribute(e) != attribute) {
+      continue;
+    }
+    pmesh.GetElementVertices(e, verts);
+    for (int j = 0; j < verts.Size(); ++j) {
+      overlap(verts[j]) = true;
+    }
+  }
+
+  return overlap;
+}
+
 } // namespace pcms

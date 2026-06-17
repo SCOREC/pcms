@@ -275,7 +275,8 @@ ExchangePlan GenericFieldExchangePlanner::BuildReceivePlan(
 
 void GenericFieldExchangePlanner::FillGidMessage(
   const FieldLayout& layout, const ExchangePlan& plan,
-  Rank1View<GO, HostMemorySpace> gid_message) const
+  Rank1View<GO, HostMemorySpace> gid_message,
+  const OverlapMask* overlap_mask) const
 {
   PCMS_FUNCTION_TIMER;
   PCMS_ALWAYS_ASSERT(static_cast<size_t>(gid_message.size()) == plan.msg_size);
@@ -286,11 +287,19 @@ void GenericFieldExchangePlanner::FillGidMessage(
   auto offsets = Rank1View<const redev::LO, HostMemorySpace>(
     plan.offsets.data(), plan.offsets.size());
 
+  // Participation must match BuildReversePartitionMap (owned AND in overlap);
+  // otherwise owned-but-non-overlap DOFs inflate the per-rank counts written
+  // here and corrupt the message. A default all-true mask is used when none is
+  // provided so behavior is unchanged for callers without an overlap mask.
+  OverlapMask default_mask(static_cast<size_t>(gids.size()));
+  auto overlap =
+    (overlap_mask ? *overlap_mask : default_mask).GetMask(layout);
+
   std::vector<EntOffsetsArray> per_rank_offsets(plan.dest_ranks.size());
 
   for (LO local_index = 0; local_index < static_cast<LO>(gids.size());
        ++local_index) {
-    if (!owned[local_index])
+    if (!owned[local_index] || !overlap[local_index])
       continue;
 
     LO perm_index = plan.permutation[local_index];

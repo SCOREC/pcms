@@ -51,6 +51,14 @@ public:
   mfem::ParMesh& GetMesh() const noexcept { return pmesh_; }
   mfem::ParFiniteElementSpace& GetFESpace() const noexcept { return pfes_; }
 
+  // Build a per-vertex overlap mask from MFEM element attributes: a vertex is
+  // in the overlap if it is incident to at least one element with the given
+  // attribute. Mirrors the create_mask strategy used in the mfem-pcms-example.
+  // The returned host array is indexed by local vertex (DOF holder) and can be
+  // passed to pcms::OverlapMask.
+  static Kokkos::View<bool*, HostMemorySpace> OverlapMaskFromAttribute(
+    mfem::ParMesh& pmesh, int attribute);
+
 private:
   void AssertVertexScalarSpace() const;
 

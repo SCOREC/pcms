@@ -460,6 +460,34 @@ else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()
 
+if(PCMS_ENABLE_MFEM)
+  add_executable(test_mfem_coupling test_mfem_coupling.cpp)
+  target_link_libraries(test_mfem_coupling PUBLIC pcms::core mfem)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    dual_mpi_test(
+      TESTNAME
+      test_mfem_coupling
+      TIMEOUT
+      60
+      NAME1
+      server
+      EXE1
+      $<TARGET_FILE:test_mfem_coupling>
+      PROCS1
+      1
+      ARGS1
+      -1
+      NAME2
+      client
+      EXE2
+      $<TARGET_FILE:test_mfem_coupling>
+      PROCS2
+      1
+      ARGS2
+      0)
+  endif()
+endif()
+
 if(PCMS_ENABLE_C)
   find_package(Kokkos REQUIRED)
   if(PCMS_ENABLE_XGC)

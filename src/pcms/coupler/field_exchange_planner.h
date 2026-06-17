@@ -32,7 +32,8 @@ public:
 
   virtual void FillGidMessage(
     const FieldLayout& layout, const ExchangePlan& plan,
-    Rank1View<GO, HostMemorySpace> gid_message) const = 0;
+    Rank1View<GO, HostMemorySpace> gid_message,
+    const OverlapMask* overlap_mask = nullptr) const = 0;
 
   virtual ~FieldExchangePlanner() noexcept = default;
 };
@@ -51,7 +52,8 @@ public:
 
   void FillGidMessage(
     const FieldLayout& layout, const ExchangePlan& plan,
-    Rank1View<GO, HostMemorySpace> gid_message) const override;
+    Rank1View<GO, HostMemorySpace> gid_message,
+    const OverlapMask* overlap_mask = nullptr) const override;
 };
 
 } // namespace pcms

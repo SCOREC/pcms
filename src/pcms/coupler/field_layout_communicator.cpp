@@ -78,7 +78,8 @@ void FieldLayoutCommunicator::UpdateLayout()
     std::vector<GO> gid_message(plan_.msg_size);
     planner_->FillGidMessage(
       layout_, plan_,
-      Rank1View<GO, HostMemorySpace>(gid_message.data(), gid_message.size()));
+      Rank1View<GO, HostMemorySpace>(gid_message.data(), gid_message.size()),
+      overlap_mask_.get());
 
     channel_.BeginSendCommunicationPhase();
     gid_comm_.Send(gid_message.data());

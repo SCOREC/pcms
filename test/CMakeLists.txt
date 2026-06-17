@@ -401,6 +401,10 @@ if(Catch2_FOUND)
       test_point_evaluator.cpp)
   endif()
 
+  if(PCMS_ENABLE_MFEM)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_mfem_adapter.cpp)
+  endif()
+
   if(PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES
       test_load_vector.cpp)
@@ -415,6 +419,10 @@ if(Catch2_FOUND)
   
   if(PCMS_ENABLE_MESHFIELDS)
     target_link_libraries(unit_tests PUBLIC meshfields::meshfields)
+  endif()
+
+  if(PCMS_ENABLE_MFEM)
+    target_link_libraries(unit_tests PUBLIC mfem)
   endif()
 
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core

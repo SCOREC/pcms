@@ -44,6 +44,7 @@ option(PCMS_ENABLE_CLIENT "enable the coupling client implementation" ON)
 
 option(PCMS_ENABLE_XGC "enable xgc field adapter" ON)
 option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
+option(PCMS_ENABLE_MFEM "enable MFEM field adapter" OFF)
 option(PCMS_ENABLE_C "Enable pcms C api" ON)
 option(PCMS_ENABLE_Python "Enable pcms Python api" OFF)
 
@@ -117,6 +118,14 @@ if(PCMS_ENABLE_OMEGA_H)
     STATUS "Found Omega_h: ${Omega_h_DIR} (found version ${Omega_h_VERSION})")
   if(NOT Omega_h_USE_MPI)
     message(FATAL_ERROR "Omega_h must be built with MPI enabled.")
+  endif()
+endif()
+
+if(PCMS_ENABLE_MFEM)
+  find_package(MFEM REQUIRED)
+  message(STATUS "Found MFEM: ${MFEM_DIR} (found version ${MFEM_VERSION})")
+  if(NOT MFEM_USE_MPI)
+    message(FATAL_ERROR "MFEM must be built with MPI enabled.")
   endif()
 endif()
 # adios2 adds C and Fortran depending on how it was built

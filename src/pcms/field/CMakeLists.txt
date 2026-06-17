@@ -54,6 +54,19 @@ if (PCMS_ENABLE_OMEGA_H)
     )
 endif ()
 
+if (PCMS_ENABLE_MFEM)
+    list(APPEND PCMS_FIELD_SOURCES
+            layout/mfem.cpp
+            data/mfem.cpp
+            function_space/mfem.cpp
+    )
+    list(APPEND PCMS_FIELD_HEADERS
+            layout/mfem.h
+            data/mfem.h
+            function_space/mfem.h
+    )
+endif ()
+
 if (PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_FIELD_SOURCES
             layout/mesh_fields.cpp
@@ -95,6 +108,10 @@ target_link_libraries(pcms_field PUBLIC
 if(PCMS_ENABLE_OMEGA_H)
     target_link_libraries(pcms_field PUBLIC Omega_h::omega_h)
     target_link_libraries(pcms_field PRIVATE Kokkos::kokkoskernels)
+endif()
+
+if(PCMS_ENABLE_MFEM)
+    target_link_libraries(pcms_field PUBLIC mfem)
 endif()
 
 if (PCMS_ENABLE_MESHFIELDS)

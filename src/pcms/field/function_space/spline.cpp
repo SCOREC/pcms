@@ -47,8 +47,7 @@ FieldVariant SplineFunctionSpace::CreateFieldImpl(Type value_type,
       throw pcms_error("SplineFunctionSpace: only double (Real) is supported");
     } else {
       return WrapField<double>(
-        layout_, std::make_unique<SimpleFieldData<double>>(layout_, metadata),
-        evaluator_factory_);
+        layout_, std::make_unique<SimpleFieldData<double>>(layout_, metadata));
     }
   });
 }
@@ -70,7 +69,7 @@ FieldVariant SplineFunctionSpace::CreateFieldImpl(FieldDataVariant data) const
       "SplineFunctionSpace::CreateField: field data size does not match "
       "layout");
   }
-  return WrapField<double>(layout_, std::move(fd), evaluator_factory_);
+  return WrapField<double>(layout_, std::move(fd));
 }
 
 PointEvaluatorVariant SplineFunctionSpace::CreatePointEvaluatorImpl(

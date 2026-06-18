@@ -104,7 +104,7 @@ TEST_CASE("MFEM vertex-scalar field adapter")
     mfem::FunctionCoefficient coeff(LinearField);
     gf.ProjectCoefficient(coeff);
 
-    auto fs = pcms::MFEMFunctionSpace::FromMesh(
+    auto fs = pcms::MFEMFieldFactory(
       pmesh, pfes, gf, pcms::CoordinateSystem::Cartesian);
     auto field = fs.CreateField<pcms::Real>();
     const auto& layout = field.GetLayout();

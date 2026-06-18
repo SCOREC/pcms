@@ -25,7 +25,7 @@ public:
                        layout_->GetFullDataSize());
   }
 
-  // Self-allocating constructor: XGCFunctionSpace::CreateFieldImpl uses this
+  // Self-allocating constructor: XGCFieldFactory::CreateFieldImpl uses this
   // to produce a field with internally-managed storage.
   XGCFieldData(std::shared_ptr<const XGCFieldLayout> layout,
                FieldMetadata metadata)

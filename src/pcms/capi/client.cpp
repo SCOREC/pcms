@@ -1,5 +1,6 @@
 #include "client.h"
 #include "pcms.h"
+#include "pcms/field/function_space.h"
 #include "pcms/field/function_space/xgc.h"
 #include "pcms/field/data/xgc.h"
 #include "pcms/field/layout/xgc.h"
@@ -23,11 +24,11 @@ namespace detail
 template <typename T>
 struct XGCFieldRegistration
 {
-  XGCFunctionSpace function_space;
+  XGCFieldFactory function_space;
   MPI_Comm plane_comm;
   Rank1View<T, HostMemorySpace> data;
 
-  XGCFieldRegistration(XGCFunctionSpace fs, MPI_Comm comm,
+  XGCFieldRegistration(XGCFieldFactory fs, MPI_Comm comm,
                        Rank1View<T, HostMemorySpace> d)
     : function_space(std::move(fs)), plane_comm(comm), data(d)
   {
@@ -251,7 +252,7 @@ void pcms_create_xgc_field_adapter_t(
 {
   PCMS_ALWAYS_ASSERT((size > 0) ? (data != nullptr) : true);
   auto function_space =
-    pcms::XGCFunctionSpace(reverse_classification, in_overlap, size);
+    pcms::XGCFieldFactory(reverse_classification, in_overlap, size);
   pcms::Rank1View<T, pcms::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<pcms::detail::XGCFieldRegistration<T>>(

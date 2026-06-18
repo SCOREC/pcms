@@ -9,6 +9,7 @@ set(PCMS_FIELD_HEADERS
         layout/empty.h
         out_of_bounds_policy.h
         field_data.h
+        field_factory.h
         function_space.h
         point_evaluator.h
         data/simple.h
@@ -58,7 +59,6 @@ if (PCMS_ENABLE_MFEM)
     list(APPEND PCMS_FIELD_SOURCES
             layout/mfem.cpp
             data/mfem.cpp
-            function_space/mfem.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
             layout/mfem.h

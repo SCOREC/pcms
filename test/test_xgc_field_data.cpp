@@ -104,11 +104,11 @@ TEST_CASE("XGC FieldData serializer preserves inactive entries")
   }
 }
 
-TEST_CASE("XGCFunctionSpace creates fields and rejects evaluator access")
+TEST_CASE("XGCFieldFactory creates fields")
 {
   static constexpr int data_size = 16;
   auto rc = create_dummy_rc(data_size);
-  pcms::XGCFunctionSpace function_space(rc, in_overlap, data_size);
+  pcms::XGCFieldFactory function_space(rc, in_overlap, data_size);
 
   std::vector<pcms::Real> data(data_size);
   std::iota(data.begin(), data.end(), 0.0);
@@ -119,14 +119,4 @@ TEST_CASE("XGCFunctionSpace creates fields and rejects evaluator access")
 
   REQUIRE(&field.GetLayout() == function_space.GetLayout().get());
   REQUIRE(function_space.GetCoordinateSystem() == pcms::CoordinateSystem::XGC);
-  // XGC does not support point evaluation; CreatePointEvaluator throws.
-  using LayoutPolicy =
-    pcms::detail::default_layout_for_memory_space_t<pcms::DeviceMemorySpace>;
-  pcms::Rank2View<const pcms::Real, pcms::DeviceMemorySpace, LayoutPolicy>
-    empty_coords{nullptr, 0, 2};
-  REQUIRE_THROWS_AS(function_space.CreatePointEvaluator<pcms::Real>(
-                      pcms::EvaluationRequest::FromCoordinates(
-                        pcms::CoordinateView<pcms::DeviceMemorySpace>{
-                          pcms::CoordinateSystem::XGC, empty_coords})),
-                    pcms::pcms_error);
 }

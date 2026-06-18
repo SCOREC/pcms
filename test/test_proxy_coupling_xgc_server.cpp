@@ -51,7 +51,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     // FIXME: The current C/Fortran proxy API couples layout registration to
     // field registration, so each XGC plane is registered as a separate layout
     // communicator even though the layouts are geometrically identical.
-    auto function_space = pcms::XGCFunctionSpace(
+    auto function_space = pcms::XGCFieldFactory(
       rc, ts::IsModelEntInOverlap{}, static_cast<pcms::LO>(mesh.nverts()));
     auto field = function_space.CreateField<pcms::GO>(
       std::make_unique<pcms::XGCFieldData<pcms::GO>>(

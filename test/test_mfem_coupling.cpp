@@ -71,8 +71,8 @@ int RunClient(MPI_Comm comm)
   pcms::Coupler cpl("mfem_overlap_coupler", comm, false, redev::Partition{});
   auto* app = cpl.AddApplication("mfem_app");
 
-  auto fs = pcms::MFEMFunctionSpace::FromMesh(pmesh, pfes, gf,
-                                              pcms::CoordinateSystem::Cartesian);
+  auto fs = pcms::MFEMFieldFactory(pmesh, pfes, gf,
+                                       pcms::CoordinateSystem::Cartesian);
   auto layout = fs.GetLayout();
 
   auto overlap_view =
@@ -111,8 +111,8 @@ int RunServer(MPI_Comm comm)
                     MakeRCBPartition(pmesh.SpaceDimension()));
   auto* app = cpl.AddApplication("mfem_app");
 
-  auto fs = pcms::MFEMFunctionSpace::FromMesh(pmesh, pfes, gf,
-                                              pcms::CoordinateSystem::Cartesian);
+  auto fs = pcms::MFEMFieldFactory(pmesh, pfes, gf,
+                                       pcms::CoordinateSystem::Cartesian);
   auto layout = fs.GetLayout();
   app->AddLayout("field", layout);
   auto handle = app->AddField("field", fs.CreateField<Real>());

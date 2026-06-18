@@ -54,7 +54,7 @@ void xgc_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
 
     application->SetLayoutOverlapMask(ss.str(), std::move(overlap_mask));
 
-    auto function_space = pcms::XGCFunctionSpace(
+    auto function_space = pcms::XGCFieldFactory(
       rc, ts::IsModelEntInOverlap{}, static_cast<pcms::LO>(mesh.nverts()));
 
     application->AddLayout(ss.str(), function_space.GetLayout());

@@ -29,6 +29,11 @@ namespace
 
 constexpr int TargetAttribute = 2;
 
+// Seeded into receiver DOFs outside the overlap before receiving. Distinct from
+// any sent value (gid + 1 >= 1), so a correct masked receive must leave it
+// untouched.
+constexpr Real OutsideOverlapSentinel = -7.0;
+
 // Build a 4x4 quad mesh and tag the left half (centroid x < 0.5) with the
 // target attribute; the rest keep attribute 1. The same construction runs on
 // both apps so vertex global ids and coordinates match.
@@ -117,6 +122,18 @@ int RunServer(MPI_Comm comm)
   app->AddLayout("field", layout);
   auto handle = app->AddField("field", fs.CreateField<Real>());
 
+  // Seed the whole receiver field with a sentinel. The masked send only carries
+  // the overlap DOFs, so a correct receive must overwrite only those and leave
+  // every DOF outside the overlap holding the sentinel.
+  {
+    const auto n = static_cast<size_t>(layout->GetNumOwnedDofHolder());
+    Kokkos::View<Real*, pcms::HostMemorySpace> seed("server_seed", n);
+    for (size_t v = 0; v < n; ++v) {
+      seed(v) = OutsideOverlapSentinel;
+    }
+    handle.GetField().SetDOFHolderDataHost(pcms::make_const_array_view(seed));
+  }
+
   app->ReceivePhase([&]() { handle.Receive(); });
 
   // Verify: every overlap vertex received the expected value. The overlap set
@@ -128,22 +145,26 @@ int RunServer(MPI_Comm comm)
 
   int overlap_count = 0;
   int mismatches = 0;
+  int corrupted_outside = 0;
   for (size_t v = 0; v < received.size(); ++v) {
-    if (!overlap(v)) {
-      continue;
-    }
-    ++overlap_count;
-    const Real expected = ExpectedValue(gids[v]);
-    if (received[v] != expected) {
-      ++mismatches;
-      std::cerr << "Mismatch at vertex " << v << ": expected " << expected
-                << " got " << received[v] << "\n";
+    if (overlap(v)) {
+      ++overlap_count;
+      const Real expected = ExpectedValue(gids[v]);
+      if (received[v] != expected) {
+        ++mismatches;
+        std::cerr << "Mismatch at vertex " << v << ": expected " << expected
+                  << " got " << received[v] << "\n";
+      }
+    } else if (received[v] != OutsideOverlapSentinel) {
+      // A DOF outside the overlap was overwritten on receive.
+      ++corrupted_outside;
     }
   }
 
   const int nv = pmesh.GetNV();
   std::cout << "MFEM overlap coupling: " << overlap_count << " / " << nv
-            << " overlap vertices received\n";
+            << " overlap vertices received; " << corrupted_outside
+            << " DOFs outside the overlap corrupted\n";
 
   if (overlap_count == 0 || overlap_count == nv) {
     std::cerr << "Overlap mask is trivial (count=" << overlap_count
@@ -153,6 +174,12 @@ int RunServer(MPI_Comm comm)
   if (mismatches != 0) {
     std::cerr << "MFEM overlap coupling FAILED with " << mismatches
               << " mismatches\n";
+    return 1;
+  }
+  if (corrupted_outside != 0) {
+    std::cerr << "MFEM overlap coupling FAILED: " << corrupted_outside
+              << " DOFs outside the overlap were overwritten on receive "
+                 "(expected to be preserved)\n";
     return 1;
   }
   std::cout << "MFEM overlap coupling PASSED\n";

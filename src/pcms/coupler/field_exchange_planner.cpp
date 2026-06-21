@@ -12,6 +12,10 @@ namespace pcms
 namespace
 {
 
+// Sentinel in a receive permutation: this local DOF's GID was not present in
+// the received message. The deserializer skips it (negative => not received).
+constexpr redev::LO kUnreceivedDof = -1;
+
 struct PartitionMapping
 {
   std::vector<LO> indices;
@@ -134,8 +138,16 @@ static redev::LOs ConstructPermutation(
     const auto start = ent_offsets[e];
     const auto end = ent_offsets[e + 1];
 
-    for (size_t i = start; i < end; ++i)
-      permutation.push_back(gid_to_buffer_index[e][local_gids[i]]);
+    for (size_t i = start; i < end; ++i) {
+      // A local DOF whose GID was not in the received message (e.g. it lies
+      // outside the sender's overlap mask) gets the sentinel kUnreceivedDof.
+      // The deserializer must skip these and preserve the field's existing
+      // value, rather than reading buffer[0]. Use find() rather than
+      // operator[] so missing keys are not silently inserted as 0.
+      const auto it = gid_to_buffer_index[e].find(local_gids[i]);
+      permutation.push_back(
+        it != gid_to_buffer_index[e].end() ? it->second : kUnreceivedDof);
+    }
   }
 
   REDEV_ALWAYS_ASSERT(permutation.size() == local_gids.size());

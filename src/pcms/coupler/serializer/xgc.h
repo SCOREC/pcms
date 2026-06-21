@@ -64,7 +64,9 @@ public:
     }
     if (rank_participates_) {
       for (LO i = 0; i < static_cast<LO>(current.size()); ++i) {
-        if (owned[i]) {
+        // permutation[i] < 0 (kUnreceivedDof) => this DOF's GID was not in the
+        // received message; preserve its current value (and avoid buffer[-1]).
+        if (owned[i] && permutation[i] >= 0) {
           full_data[i] = buffer[permutation[i]];
         }
       }

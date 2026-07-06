@@ -7,6 +7,7 @@ set(
         localization_factory.h
         point_cloud_localization.h
         mesh_localization.h
+        point_localization.h
 )
 
 set(
@@ -15,7 +16,9 @@ set(
         adj_search.cpp
         mls_support_helpers.cpp
         mesh_localization.cpp
+        point_localization.cpp
 )
+find_package(ArborX REQUIRED)
 add_library(pcms_localization ${PCMS_LOCALIZATION_SOURCES})
 add_library(pcms::localization ALIAS pcms_localization)
 target_include_directories(
@@ -32,6 +35,7 @@ target_link_libraries(
         pcms::utility
         pcms::discretization
         Omega_h::omega_h
+        ArborX::ArborX
 )
 target_compile_features(pcms_localization PUBLIC cxx_std_20)
 

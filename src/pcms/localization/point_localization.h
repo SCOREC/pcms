@@ -140,5 +140,24 @@ private:
 				ArborX::PairValueIndex<ArborX::Box<2, double>, unsigned>> tree;
 };
 
+class TreePointSearch3D : public PointSearch3D
+{
+public:
+	using Result_t = PointSearch3D::Result;
+	using Dim_t = Result_t::Dimensionality;
+	TreePointSearch3D(const Omega_h::Mesh& mesh);
+	Kokkos::View<Result_t*> apply(
+		const CoordinateView<Omega_h::ExecSpace::memory_space>& coords) const override;
+private:
+	// Reference to the input mesh
+	Omega_h::Mesh const &mesh_;
+	// Mapping for each triangle in the mesh
+	// (TODO find way to make these the leaf nodes of the tree)
+	Kokkos::View<Mapping3D*> mappings;
+	// Bounding Volume Hierarchy of input mesh
+	ArborX::BVH<Omega_h::ExecSpace::memory_space,
+				ArborX::PairValueIndex<ArborX::Box<3, double>, unsigned>> tree;
+};
+
 } // namespace pcms
 #endif // POINT_LOCALIZATION_H

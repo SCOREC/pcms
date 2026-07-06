@@ -40,6 +40,7 @@ target_link_libraries(
         pcms::utility
         pcms::discretization
         Omega_h::omega_h
+        ArborX::ArborX
 )
 
 if (PCMS_ENABLE_ARBORX)

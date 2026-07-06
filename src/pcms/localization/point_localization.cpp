@@ -164,11 +164,11 @@ int Mapping2D::which_edge(Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords
 * @brief Computes whether a point with the given barycentric coordinates
 * 		  is within a triangle
 * @param bary_coords the input barycentric coordinates
-* @returns 0 if the point is within the highet order element and -1 otherwise
+* @returns 0 if the point is within the highest order element and -1 otherwise
 */
 int Mapping2D::within_elem(Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords) const
 {
-	return -1 * (int)(bary_coords[0] > 0 && bary_coords[1] > 0 && bary_coords[2] > 0);
+	return -1 * (int)!(bary_coords[0] > 0 && bary_coords[1] > 0 && bary_coords[2] > 0);
 }
 
 /**
@@ -428,11 +428,12 @@ Kokkos::View<PointSearch2D::Result*> TreePointSearch2D::apply(
 				return;
 			}
 		}
-		if (tm.which(DIM, coeffs) >= 0 && intersection_results(point_ind).dimensionality > (Dim_t)DIM)
+		if (tm.which(DIM, coeffs) >= 0 
+			&& intersection_results(point_ind).dimensionality > Dim_t::FACE)
 		{
 			intersection_results(point_ind) = PointSearch2D::Result{
-				.dimensionality = Dim_t::FACE, 
-				.element_id = (LO)val.index, 
+				.dimensionality = Dim_t::FACE,
+				.element_id = (LO)val.index,
 				.parametric_coords = coeffs
 			};
 		}

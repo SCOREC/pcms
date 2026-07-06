@@ -48,6 +48,15 @@ TEST_CASE ("Test 1x1 2D grid point classification") {
 		}
 	};
 
+	auto check_outside = KOKKOS_LAMBDA (auto const& results)
+	{
+		for (int i = 0; i < results.size(); i++)
+		{
+			CHECK(results(i).dimensionality == pcms::TreePointSearch2D::Dim_t::REGION);
+			CHECK(results(i).element_id == -1);
+		}
+	};
+
 	SECTION ("Vertex intersection") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space> vert_cv(
 			pcms::CoordinateSystem::Cartesian,
@@ -107,5 +116,32 @@ TEST_CASE ("Test 1x1 2D grid point classification") {
 		Kokkos::View<pcms::TreePointSearch2D::Result_t*> results 
 			= tree_search.apply(face_cv);
 		check_faces(results);
+	}
+	SECTION("Outside Mesh") {
+		Omega_h::Write<pcms::Real> coords
+		{
+			-0.5, -0.5,
+			-0.5, 0.0,
+			-0.5, 0.5,
+			-0.5, 1.0,
+			-0.5, 1.5,
+			0.0, -0.5,
+			0.0, 1.5,
+			0.5, -0.5,
+			0.5, 1.5,
+			1.0, -0.5,
+			1.0, 1.5,
+			1.5, -0.5,
+			1.5, 0.0,
+			1.5, 0.5,
+			1.5, 1.0,
+			1.5, 1.5
+		};
+		pcms::CoordinateView<Omega_h::ExecSpace::memory_space> outside_cv(
+			pcms::CoordinateSystem::Cartesian,
+			pcms::MakeConstRank2View(Omega_h::Read<pcms::Real>(coords), 2));
+		Kokkos::View<pcms::TreePointSearch2D::Result_t*> results 
+			= tree_search.apply(outside_cv);
+		check_outside(results);
 	}
 }

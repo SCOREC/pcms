@@ -20,13 +20,18 @@ public:
   {
     auto data = field.GetDOFHolderDataHost();
     auto owned = layout.GetOwnedHost();
-    if (buffer.size() > 0) {
-      for (LO i = 0; i < static_cast<LO>(data.size()); ++i) {
-        if (owned[i])
-          buffer[permutation[i]] = data[i];
+    LO counter = 0;
+    for (LO i = 0; i < static_cast<LO>(data.size()); ++i) {
+      if (!owned[i] || permutation[i] < 0) {
+        continue;
+      }
+      ++counter;
+      if (!buffer.empty()) {
+        PCMS_ALWAYS_ASSERT(static_cast<size_t>(permutation[i]) < buffer.size());
+        buffer[permutation[i]] = data[i];
       }
     }
-    return static_cast<int>(data.size());
+    return counter;
   }
 
   virtual void Deserialize(

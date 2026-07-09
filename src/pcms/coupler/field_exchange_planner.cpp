@@ -132,8 +132,7 @@ static redev::LOs ConstructPermutation(
       break;
   }
 
-  redev::LOs permutation;
-  permutation.reserve(local_gids.size());
+  redev::LOs permutation(local_gids.size());
   for (size_t e = 0; e < ent_offsets.size() - 1; ++e) {
     const auto start = ent_offsets[e];
     const auto end = ent_offsets[e + 1];
@@ -145,8 +144,9 @@ static redev::LOs ConstructPermutation(
       // value, rather than reading buffer[0]. Use find() rather than
       // operator[] so missing keys are not silently inserted as 0.
       const auto it = gid_to_buffer_index[e].find(local_gids[i]);
-      permutation.push_back(
-        it != gid_to_buffer_index[e].end() ? it->second : kUnreceivedDof);
+      if (it!=gid_to_buffer_index[e].end()) {
+        permutation[i] = it->second;
+      }
     }
   }
 

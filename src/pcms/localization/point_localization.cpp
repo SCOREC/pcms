@@ -89,11 +89,11 @@ Mapping2D::Mapping2D(int elem_index, Omega_h::Mesh const& mesh)
 }
 
 /**
-	* @brief Computes the barycentric coordinates of a point in global space
-	* @param p the point to compute the barycentric coordinates of
-	* @returns an Omega_h::Vector<dim + 1> containing the barycentric coordinates
-	* 			of p
-	*/
+* @brief Computes the barycentric coordinates of a point in global space
+* @param p the point to compute the barycentric coordinates of
+* @returns an Omega_h::Vector<dim + 1> containing the barycentric coordinates
+* 			of p
+*/
 KOKKOS_FUNCTION
 Omega_h::Vector<Mapping2D::DIM + 1> Mapping2D::get_bary(Omega_h::Vector<Mapping2D::DIM> const& p) const
 {
@@ -101,6 +101,7 @@ Omega_h::Vector<Mapping2D::DIM + 1> Mapping2D::get_bary(Omega_h::Vector<Mapping2
 	return {coeffs[0], coeffs[1], 1 - coeffs[0] - coeffs[1]};
 }
 
+KOKKOS_FUNCTION
 int Mapping2D::which(int dim, 
 					 Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords) const
 {
@@ -117,13 +118,13 @@ int Mapping2D::which(int dim,
 }
 
 /**
-	* @brief Computes the vertex offset of the point corresponding 
-	* 		  to the input barycentric coordinates
-	* @param bary_coords the input barycentric coordinates
-	* @returns the vertex offset if the point corresponding to the given bary. coordinates
-	* 			is within a certain (global) tolerance of a vertex
-	* 			-1 if the point does not lie within the tolerance of any vertex
-	*/
+* @brief Computes the vertex offset of the point corresponding 
+* 		  to the input barycentric coordinates
+* @param bary_coords the input barycentric coordinates
+* @returns the vertex offset if the point corresponding to the given bary. coordinates
+* 			is within a certain (global) tolerance of a vertex
+* 			-1 if the point does not lie within the tolerance of any vertex
+*/
 int Mapping2D::which_vert(Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords) const
 {
 	for (int i = 0; i < 3; i++)
@@ -216,12 +217,14 @@ Mapping3D::Mapping3D(int elem_index, Omega_h::Mesh const& mesh)
 * @returns an Omega_h::Vector<dim + 1> containing the barycentric coordinates
 * 			of p
 */
+KOKKOS_FUNCTION
 Omega_h::Vector<Mapping3D::DIM + 1> Mapping3D::get_bary(Omega_h::Vector<Mapping3D::DIM> const& p) const
 {
 	Omega_h::Vector<3> coeffs = bary_transform*(p - tetrahedron[3]);
 	return {coeffs[0], coeffs[1], coeffs[2], 1 - coeffs[0] - coeffs[1] - coeffs[2]};
 }
 
+KOKKOS_FUNCTION
 int Mapping3D::which(int dim, 
 					 Omega_h::Vector<Mapping3D::DIM + 1> const& bary_coords) const
 {
@@ -357,183 +360,182 @@ void Mapping3D::set_triangle_areas()
 	}
 }
 
-TreePointSearch2D::TreePointSearch2D(const Omega_h::Mesh& mesh) : mesh_(mesh)
+TreePointSearch::TreePointSearch(const Omega_h::Mesh& mesh) : 
+	mesh_(mesh), 
+	tree(make_tree(mesh))
 {
-	if (mesh.dim() != 2) 
-	{
-		throw pcms_error("Could not construct TreePointSearch2D, invalid mesh dimension");
-	}
-
-	Omega_h::ExecSpace execution_space;
-	using DeviceType = Kokkos::Device<Omega_h::ExecSpace, 
-									  Omega_h::ExecSpace::memory_space>;
-	Omega_h_Mesh_Tagged<DeviceType, 2, double> tagged_mesh{mesh};
-	tree = ArborX::BVH(execution_space, 
-						ArborX::Experimental::attach_indices(tagged_mesh));
-
-	mappings = Kokkos::View<Mapping2D*, Omega_h::ExecSpace::memory_space>("mappings", mesh.nelems());
-	auto mappings_h = Kokkos::create_mirror_view(mappings);
-	for (int i = 0; i < mesh.nelems(); i++)
-	{
-		mappings_h[i] = Mapping2D(i, mesh);
-	}
-	Kokkos::deep_copy(execution_space, mappings, mappings_h);
+	
 }
 
-Kokkos::View<PointSearch2D::Result*> TreePointSearch2D::apply(
+Kokkos::View<PointSearch::Result*> TreePointSearch::apply(
 	const CoordinateView<Omega_h::ExecSpace::memory_space>& coords) const
 {
 	if (coords.GetCoordinateSystem() != pcms::CoordinateSystem::Cartesian)
 	{
-		throw pcms_error("TreePointSearch2D::apply only implemented for"
+		throw pcms_error("TreePointSearch::apply only implemented for"
 						 " Cartesian coordinates");
 	}
-	
-	Omega_h::ExecSpace execution_space;
-	Kokkos::View<PointSearch2D::Result*> intersection_results("2D intersection results",
-																coords.GetCoordinates().extent(0));
-	auto results_h = Kokkos::create_mirror_view(intersection_results);
-	for (int i = 0; i < intersection_results.size(); i++) 
-		results_h[i] = Result_t{
-			.dimensionality = Dim_t::REGION,
-			.element_id = -1,
-			.parametric_coords = {-1, -1, -1}
-		};
-	Kokkos::deep_copy(execution_space, intersection_results, results_h);
-
-	auto CallOnIntersect = KOKKOS_LAMBDA <typename Predicate, typename Value>
-	(Predicate const &predicate, Value const & val)
+	if (coords.GetCoordinates().extent(1) != mesh_.dim())
 	{
-		ArborX::Point<2, Omega_h::Real> const& ax = ArborX::getGeometry(predicate);
-		Omega_h::Vector<2> point{ax[0], ax[1]};
-		int point_ind = ArborX::getData(predicate);
-		
-		Mapping2D const& tm = mappings(val.index);
-		
-		// calculate the barycentric coefficients of the point
-		auto coeffs = tm.get_bary(point);
-
-		for (int i = 0; i < DIM; i++)
+		throw pcms_error("Input coordinate space dimension " 
+			+ std::to_string(coords.GetCoordinates().extent(1))
+			+ " does not match query space dimension " 
+			+ std::to_string(mesh_.dim()));
+	}
+	
+	if (mesh_.dim() == 2)
+	{
+		static constexpr int DIM = 2;
+		Omega_h::ExecSpace execution_space;
+		Kokkos::View<PointSearch::Result*, MemorySpace> 
+			intersection_results("2D intersection results",
+				coords.GetCoordinates().extent(0));
+		auto results_h = Kokkos::create_mirror_view(intersection_results);
+		for (int i = 0; i < intersection_results.size(); i++) 
 		{
-			int elem = tm.which(i, coeffs);
-			if (elem >= 0 && intersection_results(point_ind).dimensionality > (Dim_t)i)
+			results_h[i].dimensionality = Dimensionality::REGION,
+			results_h[i].element_id = -1,
+			results_h[i].parametric_coords = {-1, -1, -1, -1};
+		}
+		Kokkos::deep_copy(execution_space, intersection_results, results_h);
+	
+		auto CallOnIntersect = KOKKOS_LAMBDA <typename Predicate, typename Value>
+		(Predicate const &predicate, Value const & val)
+		{
+			ArborX::Point<DIM, Omega_h::Real> const& ax = ArborX::getGeometry(predicate);
+			Omega_h::Vector<DIM> point{ax[0], ax[1]};
+			int point_ind = ArborX::getData(predicate);
+			
+			Mapping2D const& tm = get_mapping2D(val.index);
+			
+			// calculate the barycentric coefficients of the point
+			auto coeffs = tm.get_bary(point);
+	
+			for (int i = 0; i < DIM; i++)
 			{
-				auto face2elem = mesh_.get_adj(Omega_h::FACE, i).ab2b;
-				auto elem_ind = face2elem[3*val.index + elem];
-				intersection_results(point_ind) = PointSearch2D::Result{
-					.dimensionality = (Dim_t)i, 
-					.element_id = elem_ind, 
-					.parametric_coords = coeffs
-				};
-				return;
+				int elem = tm.which(i, coeffs);
+				if (elem >= 0 && intersection_results(point_ind).dimensionality > (Dimensionality)i)
+				{
+					auto face2elem = mesh_.get_adj(Omega_h::FACE, i).ab2b;
+					auto elem_ind = face2elem[3*val.index + elem];
+					intersection_results(point_ind).dimensionality = (Dimensionality)i;
+					intersection_results(point_ind).element_id = elem_ind;
+					for (int j = 0; j < DIM + 1; j++)
+						intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+					return;
+				}
 			}
-		}
-		if (tm.which(DIM, coeffs) >= 0 
-			&& intersection_results(point_ind).dimensionality > Dim_t::FACE)
+			if (tm.which(DIM, coeffs) >= 0 
+				&& intersection_results(point_ind).dimensionality > Dimensionality::FACE)
+			{
+				intersection_results(point_ind).dimensionality = Dimensionality::FACE;
+				intersection_results(point_ind).element_id = (LO)val.index;
+				for (int j = 0; j < DIM + 1; j++)
+						intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+			}
+		};
+	
+		((TreeWrapper2D::Tree_t*)tree->get_tree())->query(execution_space, 
+				   pcms_Coordinate_View_Tagged<Omega_h::ExecSpace::memory_space, DIM>{coords},
+				   CallOnIntersect);
+		return intersection_results;
+	}
+	else
+	{
+		static constexpr int DIM = 3;
+		Omega_h::ExecSpace execution_space;
+		Kokkos::View<PointSearch::Result*, MemorySpace> 
+			intersection_results("3D intersection results",
+				coords.GetCoordinates().extent(0));
+		auto results_h = Kokkos::create_mirror_view(intersection_results);
+		for (int i = 0; i < intersection_results.size(); i++) 
 		{
-			intersection_results(point_ind) = PointSearch2D::Result{
-				.dimensionality = Dim_t::FACE,
-				.element_id = (LO)val.index,
-				.parametric_coords = coeffs
-			};
+			results_h[i].dimensionality = Dimensionality::REGION,
+			results_h[i].element_id = -1,
+			results_h[i].parametric_coords = {-1, -1, -1, -1};
 		}
-	};
+		Kokkos::deep_copy(execution_space, intersection_results, results_h);
+		
+		auto CallOnIntersect = KOKKOS_LAMBDA <typename Predicate, typename Value>
+		(Predicate const &predicate, Value const & val)
+		{
+			ArborX::Point<DIM, Omega_h::Real> const& ax = ArborX::getGeometry(predicate);
+			Omega_h::Vector<DIM> point{ax[0], ax[1], ax[2]};
+			int point_ind = ArborX::getData(predicate);
+			
+			Mapping3D const& tm = get_mapping3D(val.index);
+			
+			// calculate the barycentric coefficients of the point
+			auto coeffs = tm.get_bary(point);
+			int offsets[DIM] = {4, 6, 4};
+			for (int i = 0; i < DIM; i++)
+			{
+				int elem = tm.which(i, coeffs);
+				if (elem >= 0 && intersection_results(point_ind).dimensionality > (Dimensionality)i)
+				{
+					auto face2elem = mesh_.get_adj(Omega_h::REGION, i).ab2b;
+					auto elem_ind = face2elem[offsets[i]*val.index + elem];
+					intersection_results(point_ind).dimensionality = (Dimensionality)i;
+					intersection_results(point_ind).element_id = elem_ind;
+					for (int j = 0; j < DIM + 1; j++)
+						intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+					return;
+				}
+			}
 
-	tree.query(execution_space, 
-			   pcms_Coordinate_View_Tagged<Omega_h::ExecSpace::memory_space, 2>{coords},
-			   CallOnIntersect);
-	return intersection_results;
+			if (tm.which(DIM, coeffs) >= 0 
+					&& intersection_results(point_ind).dimensionality >= Dimensionality::REGION)
+			{
+				intersection_results(point_ind).dimensionality = Dimensionality::REGION;
+				intersection_results(point_ind).element_id = (LO)val.index;
+				for (int j = 0; j < DIM + 1; j++)
+						intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+			}
+		};
+
+		((TreeWrapper3D::Tree_t*)tree->get_tree())->query(execution_space, 
+				   pcms_Coordinate_View_Tagged<Omega_h::ExecSpace::memory_space, DIM>{coords},
+				   CallOnIntersect);
+		return intersection_results;
+	}
 }
 
-TreePointSearch3D::TreePointSearch3D(const Omega_h::Mesh& mesh) : mesh_(mesh)
+std::unique_ptr<TreeWrapper> TreePointSearch::make_tree(const Omega_h::Mesh& mesh) const
 {
-	if (mesh.dim() != 3) 
-	{
-		throw pcms_error("Could not construct TreePointSearch3D, invalid mesh dimension");
-	}
-
-	Omega_h::ExecSpace execution_space;
+	ExecSpace execution_space;
 	using DeviceType = Kokkos::Device<Omega_h::ExecSpace, 
 									  Omega_h::ExecSpace::memory_space>;
-	Omega_h_Mesh_Tagged<DeviceType, 3, double> tagged_mesh{mesh};
-	tree = ArborX::BVH(execution_space, 
-						ArborX::Experimental::attach_indices(tagged_mesh));
-
-	mappings = Kokkos::View<Mapping3D*, Omega_h::ExecSpace::memory_space>("mappings", mesh.nelems());
-	auto mappings_h = Kokkos::create_mirror_view(mappings);
-	for (int i = 0; i < mesh.nelems(); i++)
+	if (mesh.dim() == 2)
 	{
-		mappings_h[i] = Mapping3D(i, mesh);
-	}
-	Kokkos::deep_copy(execution_space, mappings, mappings_h);
-}
-
-Kokkos::View<PointSearch3D::Result*> TreePointSearch3D::apply(
-	const CoordinateView<Omega_h::ExecSpace::memory_space>& coords) const
-{
-	if (coords.GetCoordinateSystem() != pcms::CoordinateSystem::Cartesian)
-	{
-		throw pcms_error("TreePointSearch3D::apply only implemented for"
-						 " Cartesian coordinates");
-	}
+		Omega_h_Mesh_Tagged<DeviceType, 2, double> tagged_mesh{mesh};
+		TreeWrapper2D::Tree_t tree = ArborX::BVH(execution_space, 
+							ArborX::Experimental::attach_indices(tagged_mesh));
 	
-	Omega_h::ExecSpace execution_space;
-	Kokkos::View<PointSearch3D::Result*> intersection_results("3D intersection results",
-																coords.GetCoordinates().extent(0));
-	auto results_h = Kokkos::create_mirror_view(intersection_results);
-	for (int i = 0; i < intersection_results.size(); i++) 
-		results_h[i] = Result_t{
-			.dimensionality = Dim_t::REGION,
-			.element_id = -1,
-			.parametric_coords = {-1, -1, -1}
-		};
-	Kokkos::deep_copy(execution_space, intersection_results, results_h);
-	Kokkos::Array<int, 3> n_adj = {4, 6, 4};
-
-	auto CallOnIntersect = KOKKOS_LAMBDA <typename Predicate, typename Value>
-	(Predicate const &predicate, Value const & val)
+		TreeWrapper2D::Mappings_t mappings = Kokkos::View<Mapping2D*, Omega_h::ExecSpace::memory_space>("mappings", mesh.nelems());
+		auto mappings_h = Kokkos::create_mirror_view(mappings);
+		for (int i = 0; i < mesh.nelems(); i++)
+		{
+			mappings_h[i] = Mapping2D(i, mesh);
+		}
+		Kokkos::deep_copy(execution_space, mappings, mappings_h);
+		return std::make_unique<TreeWrapper2D>(mappings, tree);
+	}
+	if (mesh.dim() == 3)
 	{
-		ArborX::Point<3, Omega_h::Real> const& ax = ArborX::getGeometry(predicate);
-		Omega_h::Vector<3> point{ax[0], ax[1], ax[2]};
-		int point_ind = ArborX::getData(predicate);
-		
-		Mapping3D const& tm = mappings(val.index);
-		
-		// calculate the barycentric coefficients of the point
-		auto coeffs = tm.get_bary(point);
-
-		for (int i = 0; i < DIM; i++)
+		Omega_h_Mesh_Tagged<DeviceType, 3, double> tagged_mesh{mesh};
+		TreeWrapper3D::Tree_t tree = ArborX::BVH(execution_space, 
+							ArborX::Experimental::attach_indices(tagged_mesh));
+	
+		TreeWrapper3D::Mappings_t mappings = Kokkos::View<Mapping3D*, Omega_h::ExecSpace::memory_space>("mappings", mesh.nelems());
+		auto mappings_h = Kokkos::create_mirror_view(mappings);
+		for (int i = 0; i < mesh.nelems(); i++)
 		{
-			int elem = tm.which(i, coeffs);
-			if (elem >= 0 && intersection_results(point_ind).dimensionality > (Dim_t)i)
-			{
-				auto region2elem = mesh_.get_adj(Omega_h::REGION, i).ab2b;
-				auto elem_ind = region2elem[n_adj[i]*val.index + elem];
-				intersection_results(point_ind) = Result_t{
-					.dimensionality = (Dim_t)i, 
-					.element_id = elem_ind, 
-					.parametric_coords = coeffs
-				};
-				return;
-			}
+			mappings_h[i] = Mapping3D(i, mesh);
 		}
-		if (tm.which(DIM, coeffs) >= 0 
-			&& intersection_results(point_ind).element_id < 0)
-		{
-			intersection_results(point_ind) = Result_t{
-				.dimensionality = Dim_t::REGION,
-				.element_id = (LO)val.index,
-				.parametric_coords = coeffs
-			};
-		}
-	};
-
-	tree.query(execution_space, 
-			   pcms_Coordinate_View_Tagged<Omega_h::ExecSpace::memory_space, 3>{coords},
-			   CallOnIntersect);
-	return intersection_results;
+		Kokkos::deep_copy(execution_space, mappings, mappings_h);
+		return std::make_unique<TreeWrapper3D>(mappings, tree);
+	}
+	throw pcms_error("Invalid mesh dimension " + std::to_string(mesh.dim()) + ", TreePointSearch only implemented for 2D and 3D");
 }
 
 } // namespace pcms
-
-

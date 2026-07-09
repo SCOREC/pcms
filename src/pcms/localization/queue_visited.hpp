@@ -56,7 +56,7 @@ public:
   ~Track() {}
 
   OMEGA_H_INLINE
-  void push_back(const int& item);
+  bool push_back(const int& item);
 
   OMEGA_H_INLINE
   int size();
@@ -107,15 +107,18 @@ bool Queue::isFull() const
 }
 
 OMEGA_H_INLINE
-void Track::push_back(const int& item)
+bool Track::push_back(const int& item)
 {
   if (count == MAX_SIZE_TRACK) {
-    printf("track is full %d\n", count);
-    return;
+    // Visited buffer is full. Report failure so callers can stop expanding the
+    // search; otherwise new vertices can never be marked visited and the BFS
+    // re-queues them forever (infinite loop).
+    return false;
   }
   last = (last + 1) % MAX_SIZE_TRACK;
   tracking_array[last] = item;
   count++;
+  return true;
 }
 
 OMEGA_H_INLINE

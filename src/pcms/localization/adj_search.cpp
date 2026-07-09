@@ -160,7 +160,10 @@ OMEGA_H_INLINE void add_support_if_unvisited_and_within_cutoff(
   if (!visited.notVisited(candidate_id))
     return;
 
-  visited.push_back(candidate_id);
+  // If the visited buffer is full, stop here so the BFS terminates. Without
+  // this, unrecorded vertices are treated as unvisited and re-queued forever.
+  if (!visited.push_back(candidate_id))
+    return;
 
   Omega_h::Real candidate_coords[max_dim];
   for (Omega_h::LO k = 0; k < dim; ++k) {

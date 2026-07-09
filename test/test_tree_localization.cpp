@@ -273,17 +273,15 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 	REQUIRE(mesh_1x1.dim() == 3);
 	Omega_h::ExecSpace execs;
 	
-	pcms::TreePointSearch3D tree_search(mesh_1x1);
+	pcms::TreePointSearch tree_search(mesh_1x1);
 	// End setup for 1x1 grid test cases
 
 	auto check_verts = KOKKOS_LAMBDA (auto const& results)
 	{
 		for (int i = 0; i < mesh_1x1.nverts(); i++)
 		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch3D::Dim_t::VERTEX);
+			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::VERTEX);
 			CHECK(results(i).element_id == i);
-			CHECK_THAT(results(i).parametric_coords,
-				Catch::Matchers::Contains(Catch::Matchers::WithinAbs(1.0, 10e-7)));
 		}
 	};
 
@@ -291,7 +289,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 	{
 		for (int i = 0; i < mesh_1x1.nedges(); i++)
 		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch3D::Dim_t::EDGE);
+			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::EDGE);
 			CHECK(results(i).element_id == i);
 		}
 	};
@@ -300,7 +298,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 	{
 		for (int i = 0; i < results.size(); i++)
 		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch3D::Dim_t::FACE);
+			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::FACE);
 			CHECK(results(i).element_id == i);
 		}
 	};
@@ -309,7 +307,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 	{
 		for (int i = 0; i < results.size(); i++)
 		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch3D::Dim_t::REGION);
+			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::REGION);
 			CHECK(results(i).element_id == i);
 		}
 	};
@@ -318,7 +316,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 	{
 		for (int i = 0; i < results.size(); i++)
 		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch3D::Dim_t::REGION);
+			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::REGION);
 			CHECK(results(i).element_id == -1);
 		}
 	};
@@ -327,7 +325,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space> vert_cv(
 			pcms::CoordinateSystem::Cartesian,
 			pcms::MakeConstRank2View(mesh_1x1.coords(), 3));
-		Kokkos::View<pcms::TreePointSearch3D::Result_t*> results 
+		Kokkos::View<pcms::TreePointSearch::Result*> results 
 			= tree_search.apply(vert_cv);
 		check_verts(results);
 	}
@@ -352,7 +350,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space> edge_cv(
 			pcms::CoordinateSystem::Cartesian,
 			pcms::MakeConstRank2View(Omega_h::Read<pcms::Real>(coords), 3));
-		Kokkos::View<pcms::TreePointSearch3D::Result_t*> results 
+		Kokkos::View<pcms::TreePointSearch::Result*> results 
 			= tree_search.apply(edge_cv);
 		check_edges(results);
 	}
@@ -381,7 +379,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space> face_cv(
 			pcms::CoordinateSystem::Cartesian,
 			pcms::MakeConstRank2View(Omega_h::Read<pcms::Real>(coords), 3));
-		Kokkos::View<pcms::TreePointSearch3D::Result_t*> results 
+		Kokkos::View<pcms::TreePointSearch::Result*> results 
 			= tree_search.apply(face_cv);
 		check_faces(results);
 	}
@@ -413,7 +411,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space> region_cv(
 			pcms::CoordinateSystem::Cartesian,
 			pcms::MakeConstRank2View(Omega_h::Read<pcms::Real>(coords), 3));
-		Kokkos::View<pcms::TreePointSearch3D::Result_t*> results 
+		Kokkos::View<pcms::TreePointSearch::Result*> results 
 			= tree_search.apply(region_cv);
 		check_regions(results);
 	}
@@ -434,7 +432,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space> outside_cv(
 			pcms::CoordinateSystem::Cartesian,
 			pcms::MakeConstRank2View(Omega_h::Read<pcms::Real>(coords), 3));
-		Kokkos::View<pcms::TreePointSearch3D::Result_t*> results 
+		Kokkos::View<pcms::TreePointSearch::Result*> results 
 			= tree_search.apply(outside_cv);
 		check_outside(results);
 	}

@@ -15,33 +15,25 @@
 
 #include "pcms/utility/assert.h"
 #include "pcms/utility/types.h"
+#include "pcms/utility/arrays.h"
 #include "pcms/field/coordinate_system.h"
 
 namespace pcms
 {
 
-template <int dim>
-class Mapping
+class Mapping2D
 {
 public:
-	static constexpr int DIM = dim;
-	virtual Omega_h::Vector<DIM + 1> get_bary(Omega_h::Vector<DIM> const& p) const = 0;
-	virtual int which(int ent_dim, 
-					  Omega_h::Vector<DIM + 1> const& bary_coords) const = 0;
-};
-
-// Two dimensional mapping class
-// Constructs a mapping of any point in global space to
-// the barycentric coordinate system of a given triangle
-class Mapping2D : public Mapping<2>
-{
-public:
+	static constexpr int DIM = 2;
+	using MemorySpace = Omega_h::ExecSpace::memory_space;
 	Mapping2D() = default;
 	Mapping2D(int elem_index, Omega_h::Mesh const& mesh);
 	~Mapping2D() = default;
-	Omega_h::Vector<DIM + 1> get_bary(Omega_h::Vector<DIM> const& p) const override;
+	KOKKOS_FUNCTION
+	Omega_h::Vector<DIM + 1> get_bary(Omega_h::Vector<DIM> const& p) const;
+	KOKKOS_FUNCTION
 	int which(int ent_dim, 
-					  Omega_h::Vector<DIM + 1> const& bary_coords) const override;
+					  Omega_h::Vector<DIM + 1> const& bary_coords) const;
 private:
 	// helpers
 	int which_vert(Omega_h::Vector<DIM + 1> const& bary_coords) const;
@@ -55,15 +47,19 @@ private:
 	double triangle_area;
 };
 
-class Mapping3D : public Mapping<3>
+class Mapping3D
 {
 public:
+	static constexpr int DIM = 3;
+	using MemorySpace = Omega_h::ExecSpace::memory_space;
 	Mapping3D() = default;
 	Mapping3D(int elem_index, Omega_h::Mesh const& mesh);
 	~Mapping3D() = default;
-	Omega_h::Vector<DIM + 1> get_bary(Omega_h::Vector<DIM> const& p) const override;
+	KOKKOS_FUNCTION
+	Omega_h::Vector<DIM + 1> get_bary(Omega_h::Vector<DIM> const& p) const;
+	KOKKOS_FUNCTION
 	int which(int ent_dim, 
-					  Omega_h::Vector<DIM+1> const& bary_coords) const override;
+					  Omega_h::Vector<DIM+1> const& bary_coords) const;
 private:
 	// helpers
 	int which_vert(Omega_h::Vector<DIM+1> const& bary_coords) const;
@@ -87,10 +83,43 @@ private:
 	static const char OFFSETS = 1 << 4 | 3 << 2 | 2;
 };
 
+struct TreeWrapper
+{
+	virtual void* get_tree() = 0;
+	virtual void* get_mappings() = 0;
+};
+struct TreeWrapper2D : TreeWrapper
+{
+	using Mappings_t = Kokkos::View<Mapping2D*, Omega_h::ExecSpace::memory_space>;
+	using Tree_t = ArborX::BVH<Omega_h::ExecSpace::memory_space,
+			ArborX::PairValueIndex<ArborX::Box<2, double>, unsigned>>;
+	
+	TreeWrapper2D(const Mappings_t& mappings, const Tree_t& tree) : mappings_(mappings), tree_(tree) {}
+	~TreeWrapper2D() = default;
+	void* get_tree() override { return &tree_; };
+	void* get_mappings() override {return &mappings_; };
+private:
+	Tree_t tree_;
+	Mappings_t mappings_;
+};
+struct TreeWrapper3D : TreeWrapper
+{
+	using Mappings_t = Kokkos::View<Mapping3D*, Omega_h::ExecSpace::memory_space>;
+	using Tree_t = ArborX::BVH<Omega_h::ExecSpace::memory_space,
+			ArborX::PairValueIndex<ArborX::Box<3, double>, unsigned>>;
+
+	TreeWrapper3D(const Mappings_t& mappings, const Tree_t& tree) : mappings_(mappings), tree_(tree) {}
+	~TreeWrapper3D() = default;
+	void* get_tree() override { return &tree_; };
+	void* get_mappings() override {return &mappings_; };
+private:
+	Tree_t tree_;
+	Mappings_t mappings_;
+};
+
 /**
  * Point search base class
  */
-template <int dim>
 class PointSearch
 {
 public:
@@ -103,60 +132,40 @@ public:
 			VERTEX = 0,
 			EDGE = 1,
 			FACE = 2,
-			REGION = 3
+			REGION = 3,
+			NO_INTERSECT = 4
 		};
 
 		Dimensionality dimensionality;
 		LO element_id;
-		Omega_h::Vector<dim + 1> parametric_coords;
+		Omega_h::Vector<4> parametric_coords;
 	};
 
-	static constexpr auto DIM = dim;
-	
 	PointSearch() = default;
 	~PointSearch() = default;
 	virtual Kokkos::View<Result*> apply(const CoordinateView<MemorySpace>& coords) const = 0;
 };
 
-using PointSearch2D = PointSearch<2>;
-using PointSearch3D = PointSearch<3>;
-
-class TreePointSearch2D : public PointSearch2D
+class TreePointSearch : public PointSearch
 {
 public:
-	using Result_t = PointSearch2D::Result;
-	using Dim_t = Result_t::Dimensionality;
-	TreePointSearch2D(const Omega_h::Mesh& mesh);
-	Kokkos::View<Result_t*> apply(
+	using Result = PointSearch::Result;
+	using Dimensionality = Result::Dimensionality;
+	using ExecSpace = PointSearch::ExecSpace;
+	using MemorySpace = PointSearch::MemorySpace;
+	TreePointSearch(const Omega_h::Mesh& mesh);
+	~TreePointSearch() = default;
+	Kokkos::View<Result*> apply(
 		const CoordinateView<Omega_h::ExecSpace::memory_space>& coords) const override;
 private:
+	std::unique_ptr<TreeWrapper> make_tree(const Omega_h::Mesh& mesh) const;
+	KOKKOS_INLINE_FUNCTION Mapping2D get_mapping2D(LO i) const 
+	{ return ((TreeWrapper2D::Mappings_t*)tree->get_mappings())->operator()(i); };
+	KOKKOS_INLINE_FUNCTION Mapping3D get_mapping3D(LO i) const 
+	{ return ((TreeWrapper3D::Mappings_t*)tree->get_mappings())->operator()(i); };
 	// Reference to the input mesh
 	Omega_h::Mesh const &mesh_;
-	// Mapping for each triangle in the mesh
-	// (TODO find way to make these the leaf nodes of the tree)
-	Kokkos::View<Mapping2D*> mappings;
-	// Bounding Volume Hierarchy of input mesh
-	ArborX::BVH<Omega_h::ExecSpace::memory_space,
-				ArborX::PairValueIndex<ArborX::Box<2, double>, unsigned>> tree;
-};
-
-class TreePointSearch3D : public PointSearch3D
-{
-public:
-	using Result_t = PointSearch3D::Result;
-	using Dim_t = Result_t::Dimensionality;
-	TreePointSearch3D(const Omega_h::Mesh& mesh);
-	Kokkos::View<Result_t*> apply(
-		const CoordinateView<Omega_h::ExecSpace::memory_space>& coords) const override;
-private:
-	// Reference to the input mesh
-	Omega_h::Mesh const &mesh_;
-	// Mapping for each triangle in the mesh
-	// (TODO find way to make these the leaf nodes of the tree)
-	Kokkos::View<Mapping3D*> mappings;
-	// Bounding Volume Hierarchy of input mesh
-	ArborX::BVH<Omega_h::ExecSpace::memory_space,
-				ArborX::PairValueIndex<ArborX::Box<3, double>, unsigned>> tree;
+	std::unique_ptr<TreeWrapper> tree;
 };
 
 } // namespace pcms

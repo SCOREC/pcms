@@ -28,6 +28,9 @@ public:
   Rank1View<const ClassificationId, DeviceMemorySpace>
   GetEntityClassificationIds(int entity_dim) const override;
 
+  // The Omega_h mesh this discretization is defined on.
+  Omega_h::Mesh& GetMesh() const noexcept { return mesh_; }
+
 private:
   static constexpr int max_entity_dim_ = Region;
 

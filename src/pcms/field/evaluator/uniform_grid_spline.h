@@ -171,7 +171,7 @@ public:
 
 private:
   std::shared_ptr<const UniformGridFieldLayout<2>> layout_;
-  const UniformGrid<2>& grid_;
+  UniformGrid<2> grid_;
   UniformGridFieldLocalizationHint<2> hint_;
   Real fill_value_;
   Kokkos::View<Real*, DeviceMemorySpace> x_coords_;
@@ -287,7 +287,7 @@ public:
 
 private:
   std::shared_ptr<const UniformGridFieldLayout<2>> layout_;
-  const UniformGrid<2>& grid_;
+  UniformGrid<2> grid_;
 };
 
 } // namespace pcms

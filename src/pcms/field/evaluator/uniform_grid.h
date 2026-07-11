@@ -186,7 +186,7 @@ public:
 
 private:
   std::shared_ptr<const UniformGridFieldLayout<Dim>> layout_;
-  const UniformGrid<Dim>& grid_;
+  UniformGrid<Dim> grid_;
   UniformGridFieldLocalizationHint<Dim> hint_;
   Real fill_value_;
 };
@@ -304,7 +304,7 @@ public:
 
 private:
   std::shared_ptr<const UniformGridFieldLayout<Dim>> layout_;
-  const UniformGrid<Dim>& grid_;
+  UniformGrid<Dim> grid_;
 };
 
 using UniformGridEvaluatorFactory2D = UniformGridEvaluatorFactory<2>;

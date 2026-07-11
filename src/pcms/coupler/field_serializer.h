@@ -20,21 +20,22 @@ public:
   {
     auto data = field.GetDOFHolderDataHost();
     auto owned = layout.GetOwnedHost();
-    // owned/permutation/buffer index the flat node-major wire order
-    // (dof * num_components + component); read the field values through the
-    // 2D [dof][comp] view.
+    // The exchange plan is per DOF holder: owned[i] and permutation[i] are
+    // indexed by holder. All num_components components of a holder share its
+    // location, so they occupy one contiguous block permutation[i]*num_comp in
+    // the wire buffer.
     if (buffer.size() > 0) {
       const LO num_dof = static_cast<LO>(data.extent(0));
       const LO num_comp = static_cast<LO>(data.extent(1));
       for (LO i = 0; i < num_dof; ++i) {
-        for (LO c = 0; c < num_comp; ++c) {
-          const LO flat = i * num_comp + c;
-          if (owned[flat])
-            buffer[permutation[flat]] = data(i, c);
+        if (owned[i]) {
+          for (LO c = 0; c < num_comp; ++c) {
+            buffer[permutation[i] * num_comp + c] = data(i, c);
+          }
         }
       }
     }
-    return static_cast<int>(data.size());
+    return static_cast<int>(buffer.size());
   }
 
   virtual void Deserialize(
@@ -42,14 +43,19 @@ public:
     Rank1View<const T, HostMemorySpace> buffer,
     Rank1View<const LO, HostMemorySpace> permutation) const
   {
-    Kokkos::View<T*, HostMemorySpace> sorted("sorted", permutation.size());
+    const LO num_dof = layout.GetNumOwnedDofHolder();
+    const LO num_comp = layout.GetNumComponents();
+    Kokkos::View<T*, HostMemorySpace> sorted("sorted", layout.OwnedSize());
     auto owned = layout.GetOwnedHost();
-    for (LO i = 0; i < static_cast<LO>(sorted.size()); ++i) {
-      if (owned[i])
-        sorted[i] = buffer[permutation[i]];
+    for (LO i = 0; i < num_dof; ++i) {
+      if (owned[i]) {
+        for (LO c = 0; c < num_comp; ++c) {
+          sorted[i * num_comp + c] = buffer[permutation[i] * num_comp + c];
+        }
+      }
     }
-    field.SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace>(
-      sorted.data(), layout.GetNumOwnedDofHolder(), layout.GetNumComponents()));
+    field.SetDOFHolderDataHost(
+      Rank2View<const T, HostMemorySpace>(sorted.data(), num_dof, num_comp));
   }
 
   virtual ~FieldSerializer() noexcept = default;

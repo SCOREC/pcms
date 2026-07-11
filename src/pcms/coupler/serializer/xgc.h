@@ -35,14 +35,15 @@ public:
 
     auto data = xgc_field->GetDOFHolderDataHost();
     auto owned = layout.GetOwnedHost();
+    // Per-holder plan: owned[i]/permutation[i] index holders; a holder's
+    // num_components values form one contiguous block in the wire buffer.
     if (buffer.size() > 0) {
       const LO num_dof = static_cast<LO>(data.extent(0));
       const LO num_comp = static_cast<LO>(data.extent(1));
       for (LO i = 0; i < num_dof; ++i) {
-        for (LO c = 0; c < num_comp; ++c) {
-          const LO flat = i * num_comp + c;
-          if (owned[flat]) {
-            buffer[permutation[flat]] = data(i, c);
+        if (owned[i]) {
+          for (LO c = 0; c < num_comp; ++c) {
+            buffer[permutation[i] * num_comp + c] = data(i, c);
           }
         }
       }
@@ -72,9 +73,11 @@ public:
       }
     }
     if (rank_participates_) {
-      for (LO i = 0; i < static_cast<LO>(current.size()); ++i) {
+      for (LO i = 0; i < num_dof; ++i) {
         if (owned[i]) {
-          full_data[i] = buffer[permutation[i]];
+          for (LO c = 0; c < num_comp; ++c) {
+            full_data[i * num_comp + c] = buffer[permutation[i] * num_comp + c];
+          }
         }
       }
     }

@@ -41,7 +41,19 @@ public:
   template <typename T>
   void SetOutMessageLayout(redev::BidirectionalComm<T>& comm)
   {
-    comm.SetOutMessageLayout(plan_.dest_ranks, plan_.offsets);
+    // plan_.offsets is a per-holder CSR layout. Each holder carries
+    // num_components field values, so the field message's offsets are scaled
+    // by num_components while the destination ranks are unchanged.
+    const int num_comp = layout_.GetNumComponents();
+    if (num_comp == 1) {
+      comm.SetOutMessageLayout(plan_.dest_ranks, plan_.offsets);
+      return;
+    }
+    redev::LOs scaled_offsets(plan_.offsets.size());
+    for (size_t i = 0; i < plan_.offsets.size(); ++i) {
+      scaled_offsets[i] = plan_.offsets[i] * num_comp;
+    }
+    comm.SetOutMessageLayout(plan_.dest_ranks, scaled_offsets);
   }
 
   void UpdateLayout();

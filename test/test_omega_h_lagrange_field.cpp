@@ -210,6 +210,30 @@ TEST_CASE("OmegaHLagrangeField order-1: serialize / deserialize round-trip")
   pcms::test::CheckSerializeDeserialize(*factory.GetLayout(), field.GetData());
 }
 
+TEST_CASE(
+  "OmegaHLagrangeField order-1: multi-component serialize / deserialize "
+  "round-trip")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = MakeBox2D(lib.world());
+  const int nc = 3;
+  // The MeshFields backend is scalar-only; multi-component needs OmegaH.
+  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, 1, nc, pcms::CoordinateSystem::Cartesian, "global",
+    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  auto field = factory.CreateField<Real>(pcms::FieldMetadata{});
+
+  const int n = factory.GetLayout()->GetNumOwnedDofHolder();
+  std::vector<Real> data(static_cast<size_t>(n) * nc);
+  for (int i = 0; i < n; ++i)
+    for (int c = 0; c < nc; ++c)
+      data[static_cast<size_t>(i) * nc + c] = i + 0.25 * c;
+  field.GetData().SetDOFHolderDataHost(
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(data.data(), n, nc));
+
+  pcms::test::CheckSerializeDeserialize(*factory.GetLayout(), field.GetData());
+}
+
 // ---- Order-0 field tests ----------------------------------------------------
 
 TEST_CASE("OmegaHLagrangeField order-0: set/get DOF data round-trip")

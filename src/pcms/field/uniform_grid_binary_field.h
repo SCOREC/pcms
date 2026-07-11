@@ -44,7 +44,7 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
   auto field = function_space.template CreateField<Real>(FieldMetadata{});
 
   auto coord_view = layout->GetDOFHolderCoordinates();
-  auto coords = coord_view.GetCoordinates();
+  auto coords = coord_view.GetValues();
   LO n = layout->GetNumOwnedDofHolder();
 
   Kokkos::View<Real* [Dim]> coords_d("coords_d", n);
@@ -73,7 +73,7 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
     data(i) = (results_h(i).element_id >= 0) ? 1.0 : 0.0;
 
   field.SetDOFHolderDataHost(
-    Rank1View<const Real, HostMemorySpace>(data.data(), n));
+    Rank2View<const Real, HostMemorySpace>(data.data(), n, 1));
 
   return {std::move(layout), std::move(field)};
 }

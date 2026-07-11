@@ -30,12 +30,14 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
     [=](int i) { ids[i] = i; });
 
   auto original = factory.CreateField<Real>(pcms::FieldMetadata{});
-  original.SetDOFHolderDataHost(pcms::make_const_array_view(ids));
+  original.SetDOFHolderDataHost(
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(
+      ids.data(), layout->GetNumOwnedDofHolder(), num_components));
 
   auto copied = factory.CreateField<Real>(pcms::FieldMetadata{});
   pcms::Copy<Real> copy(factory, factory);
   copy.Apply(original, copied);
-  auto copied_array = copied.GetDOFHolderDataHost();
+  auto copied_array = pcms::FlattenToRank1View(copied.GetDOFHolderDataHost());
 
   REQUIRE(copied_array.size() == ndata);
   int sum = 0;

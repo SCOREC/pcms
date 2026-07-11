@@ -37,29 +37,33 @@ public:
 
   const FieldMetadata& GetMetadata() const override { return metadata_; }
 
-  Rank1View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
+  Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
   {
     Kokkos::deep_copy(host_data_, device_data_);
-    return make_const_array_view(host_data_);
+    return Rank2View<const T, HostMemorySpace>(host_data_.data(),
+                                               layout_->GetNumOwnedDofHolder(),
+                                               layout_->GetNumComponents());
   }
 
-  void SetDOFHolderDataHost(Rank1View<const T, HostMemorySpace> values) override
+  void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
   {
     PCMS_ALWAYS_ASSERT(values.size() ==
                        static_cast<size_t>(layout_->OwnedSize()));
-    CopyHostRank1ViewToDeviceView(device_data_, values);
+    CopyHostRank2ViewToDeviceView(device_data_, values);
   }
 
-  Rank1View<const T, DeviceMemorySpace> GetDOFHolderData() const override
+  Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const override
   {
-    return make_const_array_view(device_data_);
+    return Rank2View<const T, DeviceMemorySpace>(
+      device_data_.data(), layout_->GetNumOwnedDofHolder(),
+      layout_->GetNumComponents());
   }
 
-  void SetDOFHolderData(Rank1View<const T, DeviceMemorySpace> values) override
+  void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
   {
     PCMS_ALWAYS_ASSERT(values.size() ==
                        static_cast<size_t>(layout_->OwnedSize()));
-    CopyDeviceRank1ViewToDeviceView(device_data_, values);
+    CopyDeviceRank2ViewToDeviceView(device_data_, values);
   }
 
 private:

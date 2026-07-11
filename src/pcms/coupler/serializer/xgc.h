@@ -36,9 +36,14 @@ public:
     auto data = xgc_field->GetDOFHolderDataHost();
     auto owned = layout.GetOwnedHost();
     if (buffer.size() > 0) {
-      for (LO i = 0; i < static_cast<LO>(data.size()); ++i) {
-        if (owned[i]) {
-          buffer[permutation[i]] = data[i];
+      const LO num_dof = static_cast<LO>(data.extent(0));
+      const LO num_comp = static_cast<LO>(data.extent(1));
+      for (LO i = 0; i < num_dof; ++i) {
+        for (LO c = 0; c < num_comp; ++c) {
+          const LO flat = i * num_comp + c;
+          if (owned[flat]) {
+            buffer[permutation[flat]] = data(i, c);
+          }
         }
       }
     }
@@ -58,9 +63,13 @@ public:
 
     auto current = xgc_field->GetDOFHolderDataHost();
     auto owned = layout.GetOwnedHost();
+    const LO num_dof = static_cast<LO>(current.extent(0));
+    const LO num_comp = static_cast<LO>(current.extent(1));
     std::vector<T> full_data(current.size());
-    for (size_t i = 0; i < current.size(); ++i) {
-      full_data[i] = current[i];
+    for (LO i = 0; i < num_dof; ++i) {
+      for (LO c = 0; c < num_comp; ++c) {
+        full_data[i * num_comp + c] = current(i, c);
+      }
     }
     if (rank_participates_) {
       for (LO i = 0; i < static_cast<LO>(current.size()); ++i) {
@@ -73,8 +82,9 @@ public:
     MPI_Bcast(full_data.data(), static_cast<int>(full_data.size()),
               pcms::GetMPIType(T{}), 0, plane_comm_);
 
-    xgc_field->SetDOFHolderDataHost(
-      Rank1View<const T, HostMemorySpace>(full_data.data(), full_data.size()));
+    xgc_field->SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace>(
+      full_data.data(), layout.GetNumOwnedDofHolder(),
+      layout.GetNumComponents()));
   }
 
 private:

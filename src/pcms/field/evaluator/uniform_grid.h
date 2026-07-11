@@ -99,7 +99,7 @@ public:
             values(i, c) = fv;
           } else {
             LO dof_idx = cell_indices(i);
-            values(i, c) = dof_data[dof_idx * n_comp + c];
+            values(i, c) = dof_data(dof_idx, c);
           }
         });
       return;
@@ -164,7 +164,7 @@ public:
       "copy_dof_data_to_values_interp",
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
         0, static_cast<LO>(dof_data.size())),
-      KOKKOS_LAMBDA(const LO i) { values_interp(i) = dof_data[i]; });
+      KOKKOS_LAMBDA(const LO i) { values_interp(i) = dof_data(i, 0); });
 
     auto interpolator = RegularGridInterpolator(
       parametric_coords, values_interp, cell_indices_interp, dimensions_view);
@@ -241,7 +241,7 @@ public:
         "not implemented");
     }
 
-    auto coordinates = coords.GetCoordinates();
+    auto coordinates = coords.GetValues();
     LO num_points = static_cast<LO>(coordinates.extent(0));
 
     Kokkos::View<LO*, DeviceMemorySpace> cell_indices_device("cell_indices",

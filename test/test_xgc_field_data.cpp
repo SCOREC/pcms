@@ -94,7 +94,7 @@ TEST_CASE("XGC FieldData serializer preserves inactive entries")
   serializer.Deserialize(field, *layout, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
 
-  auto after = field.GetDOFHolderDataHost();
+  auto after = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
   for (int i = 0; i < data_size; ++i) {
     if (owned[i]) {
       REQUIRE(after[i] == Catch::Approx(original[i] + 100.0));

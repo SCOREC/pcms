@@ -213,8 +213,8 @@ TEST_CASE("FieldLayout: metadata queries")
 
   auto coords = layout->GetDOFHolderCoordinates();
   REQUIRE(coords.GetCoordinateSystem() == CoordinateSystem::Cartesian);
-  REQUIRE(coords.GetCoordinates().extent(0) > 0);
-  REQUIRE(coords.GetCoordinates().extent(1) == 2);
+  REQUIRE(coords.GetValues().extent(0) > 0);
+  REQUIRE(coords.GetValues().extent(1) == 2);
 }
 
 // ============================================================================
@@ -234,8 +234,8 @@ TEST_CASE("FieldData: layout metadata queries")
 
   auto coords = factory.GetLayout()->GetDOFHolderCoordinates();
   REQUIRE(coords.GetCoordinateSystem() == CoordinateSystem::Cartesian);
-  REQUIRE(coords.GetCoordinates().extent(0) > 0);
-  REQUIRE(coords.GetCoordinates().extent(1) == 2);
+  REQUIRE(coords.GetValues().extent(0) > 0);
+  REQUIRE(coords.GetValues().extent(1) == 2);
 }
 
 // ============================================================================
@@ -263,9 +263,10 @@ TEST_CASE("SimpleFieldData: set and get DOF holder data round-trip")
     data_in[i] = static_cast<Real>(i) * 0.5;
 
   field_data.GetData().SetDOFHolderDataHost(
-    pcms::Rank1View<const Real, pcms::HostMemorySpace>(data_in.data(), n));
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(data_in.data(), n, 1));
 
-  auto data_out = field_data.GetData().GetDOFHolderDataHost();
+  auto data_out =
+    pcms::FlattenToRank1View(field_data.GetData().GetDOFHolderDataHost());
   REQUIRE(static_cast<int>(data_out.size()) == n);
   for (int i = 0; i < n; ++i) {
     REQUIRE(data_out[i] == Catch::Approx(data_in[i]));
@@ -290,8 +291,8 @@ TEST_CASE("FieldLayout: MeshFields metadata queries")
   auto layout = factory.GetLayout();
   auto coords = layout->GetDOFHolderCoordinates();
   REQUIRE(coords.GetCoordinateSystem() == CoordinateSystem::Cartesian);
-  REQUIRE(coords.GetCoordinates().extent(0) > 0);
-  REQUIRE(coords.GetCoordinates().extent(1) == 2);
+  REQUIRE(coords.GetValues().extent(0) > 0);
+  REQUIRE(coords.GetValues().extent(1) == 2);
 }
 
 TEST_CASE("PointEvaluator: MeshFields order-1 linear evaluation")

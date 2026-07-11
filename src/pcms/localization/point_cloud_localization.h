@@ -41,7 +41,7 @@ public:
     Omega_h::Reals source_coords =
       flatten_to_omega_h_reals(src_view, "src_coords");
 
-    const auto tgt_view = target_coords.GetCoordinates();
+    const auto tgt_view = target_coords.GetValues();
     PCMS_ALWAYS_ASSERT(static_cast<int>(tgt_view.extent(1)) == dim);
     Omega_h::Reals target_coords_oh =
       flatten_to_omega_h_reals(tgt_view, "tgt_coords");

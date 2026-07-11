@@ -36,31 +36,35 @@ public:
 
   const FieldMetadata& GetMetadata() const override { return metadata_; }
 
-  Rank1View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
+  Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
   {
     Kokkos::deep_copy(host_data_, device_data_);
-    return make_const_array_view(host_data_);
+    return Rank2View<const T, HostMemorySpace>(host_data_.data(),
+                                               layout_->GetNumOwnedDofHolder(),
+                                               layout_->GetNumComponents());
   }
 
-  void SetDOFHolderDataHost(Rank1View<const T, HostMemorySpace> values) override
+  void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
   {
     PCMS_ALWAYS_ASSERT(values.size() ==
                        static_cast<size_t>(layout_->OwnedSize()));
-    CopyHostRank1ViewToDeviceView(device_data_, values);
-    SyncBackend(make_const_array_view(device_data_));
+    CopyHostRank2ViewToDeviceView(device_data_, values);
+    SyncBackend(GetDOFHolderData());
   }
 
-  Rank1View<const T, DeviceMemorySpace> GetDOFHolderData() const override
+  Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const override
   {
-    return make_const_array_view(device_data_);
+    return Rank2View<const T, DeviceMemorySpace>(
+      device_data_.data(), layout_->GetNumOwnedDofHolder(),
+      layout_->GetNumComponents());
   }
 
-  void SetDOFHolderData(Rank1View<const T, DeviceMemorySpace> values) override
+  void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
   {
     PCMS_ALWAYS_ASSERT(values.size() ==
                        static_cast<size_t>(layout_->OwnedSize()));
-    CopyDeviceRank1ViewToDeviceView(device_data_, values);
-    SyncBackend(make_const_array_view(device_data_));
+    CopyDeviceRank2ViewToDeviceView(device_data_, values);
+    SyncBackend(GetDOFHolderData());
   }
 
   std::shared_ptr<MeshFieldBackend<T>> GetMeshFieldBackend() const
@@ -69,21 +73,25 @@ public:
   }
 
 private:
-  void SyncBackend(Rank1View<const T, DeviceMemorySpace> flat)
+  void SyncBackend(Rank2View<const T, DeviceMemorySpace> data)
   {
     auto nodes_per_dim = layout_->GetNodesPerDim();
     auto num_components = layout_->GetNumComponents();
     auto& mesh = layout_->GetMesh();
-    size_t offset = 0;
+    // data is [dof_holder][component], contiguous node-major, so each mesh
+    // dimension owns a contiguous block of rows; SetData consumes a flat
+    // node-major span over that block.
+    size_t row_offset = 0;
     for (int i = 0; i <= mesh.dim(); ++i) {
       if (nodes_per_dim[i]) {
-        size_t len = static_cast<size_t>(mesh.nents(i)) *
-                     static_cast<size_t>(nodes_per_dim[i]) *
-                     static_cast<size_t>(num_components);
+        size_t num_rows = static_cast<size_t>(mesh.nents(i)) *
+                          static_cast<size_t>(nodes_per_dim[i]);
+        size_t len = num_rows * static_cast<size_t>(num_components);
         Rank1View<const T, DeviceMemorySpace> subspan{
-          flat.data_handle() + offset, len};
+          data.data_handle() + row_offset * static_cast<size_t>(num_components),
+          len};
         mesh_field_->SetData(subspan, nodes_per_dim[i], num_components, i);
-        offset += len;
+        row_offset += num_rows;
       }
     }
   }

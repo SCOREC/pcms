@@ -36,10 +36,9 @@ public:
   // Expensive: localizes target DOF coords into source mesh. Called once.
   Interpolator(const FunctionSpace& source_space,
                const FunctionSpace& target_space, OutOfBoundsPolicy policy = {})
-    : num_points_(static_cast<LO>(target_space.GetLayout()
-                                    ->GetDOFHolderCoordinates()
-                                    .GetCoordinates()
-                                    .extent(0))),
+    : num_points_(static_cast<LO>(
+        target_space.GetLayout()->GetDOFHolderCoordinates().GetValues().extent(
+          0))),
       n_comp_(target_space.GetLayout()->GetNumComponents()),
       evaluator_(source_space.CreatePointEvaluator<T>(
         EvaluationRequest::FromFunctionSpace(target_space, policy)))
@@ -66,7 +65,8 @@ public:
           flat(i * n_comp + c) = output(i, c);
         }
       });
-    target.GetData().SetDOFHolderData(make_const_array_view(flat));
+    target.GetData().SetDOFHolderData(
+      Rank2View<const T, DeviceMemorySpace>(flat.data(), num_points, n_comp));
   }
 
 private:

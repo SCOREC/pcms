@@ -72,13 +72,13 @@ public:
     }
 
     // Extract source coordinates for the MLS solve.
-    const auto src_view = layout_->GetDOFHolderCoordinates().GetCoordinates();
+    const auto src_view = layout_->GetDOFHolderCoordinates().GetValues();
     const int dim = layout_->GetDimension();
     Omega_h::Reals source_coords =
       flatten_to_omega_h_reals(src_view, "src_coords");
 
     // Extract target coordinates for the MLS solve.
-    const auto tgt_view = coords.GetCoordinates();
+    const auto tgt_view = coords.GetValues();
     PCMS_ALWAYS_ASSERT(static_cast<int>(tgt_view.extent(1)) == dim);
     Omega_h::Reals target_coords_oh =
       flatten_to_omega_h_reals(tgt_view, "tgt_coords");

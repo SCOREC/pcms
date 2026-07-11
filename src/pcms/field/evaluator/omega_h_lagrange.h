@@ -194,7 +194,7 @@ public:
           LO orig = hint_.orig_indices(k);
           LO elem = hint_.elem_ids(k);
           for (int c = 0; c < n_comp; ++c) {
-            values(orig, c) = dof_data[elem * n_comp + c];
+            values(orig, c) = dof_data(elem, c);
           }
         });
 
@@ -215,8 +215,7 @@ public:
             T val = T{};
             for (int v = 0; v < nvpe; ++v) {
               LO vert = elem_verts[elem * nvpe + v];
-              val +=
-                static_cast<T>(hint_.bary(k, v)) * dof_data[vert * n_comp + c];
+              val += static_cast<T>(hint_.bary(k, v)) * dof_data(vert, c);
             }
             values(orig, c) = val;
           }
@@ -288,7 +287,7 @@ public:
         "OmegaHLagrangeEvaluatorFactory: NearestBoundary is not supported");
     }
 
-    auto raw_coords = coords.GetCoordinates();
+    auto raw_coords = coords.GetValues();
     LO n_pts = static_cast<LO>(raw_coords.extent(0));
     int mesh_dim = layout_->GetMesh().dim();
 

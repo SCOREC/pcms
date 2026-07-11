@@ -40,23 +40,28 @@ public:
 
   const FieldMetadata& GetMetadata() const override { return metadata_; }
 
-  Rank1View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
+  Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
   {
-    return Rank1View<const T, HostMemorySpace>(data_.data_handle(),
-                                               data_.size());
+    const auto nc = layout_->GetNumComponents();
+    return Rank2View<const T, HostMemorySpace>(
+      data_.data_handle(), static_cast<LO>(data_.size()) / nc, nc);
   }
 
-  void SetDOFHolderDataHost(Rank1View<const T, HostMemorySpace> values) override
+  void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
   {
     if (values.size() != data_.size()) {
       throw pcms_error("XGCFieldData::SetDOFHolderDataHost: size mismatch");
     }
-    for (size_t i = 0; i < values.size(); ++i) {
-      data_(i) = values[i];
+    const auto num_dof = values.extent(0);
+    const auto num_comp = values.extent(1);
+    for (size_t i = 0; i < num_dof; ++i) {
+      for (size_t c = 0; c < num_comp; ++c) {
+        data_(i * num_comp + c) = values(i, c);
+      }
     }
   }
 
-  Rank1View<const T, DeviceMemorySpace> GetDOFHolderData() const override
+  Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const override
   {
     Kokkos::View<T*, HostMemorySpace> host_view("GetDOFHolderData_host_view",
                                                 data_.size());
@@ -64,13 +69,17 @@ public:
       host_view(i) = data_(i);
     }
     Kokkos::deep_copy(device_data_, host_view);
-    return make_const_array_view(device_data_);
+    const auto nc = layout_->GetNumComponents();
+    return Rank2View<const T, DeviceMemorySpace>(
+      device_data_.data(), static_cast<LO>(device_data_.extent(0)) / nc, nc);
   }
 
-  void SetDOFHolderData(Rank1View<const T, DeviceMemorySpace> values) override
+  void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    CopyDeviceRank1ViewToDeviceView(device_data_, values);
-    CopyRank1ViewToHost(data_, values);
+    // Fill the node-major device scratch from the (possibly non-node-major)
+    // 2D view, then mirror it back into the canonical host storage.
+    CopyDeviceRank2ViewToDeviceView(device_data_, values);
+    CopyRank1ViewToHost(data_, make_const_array_view(device_data_));
   }
 
 private:

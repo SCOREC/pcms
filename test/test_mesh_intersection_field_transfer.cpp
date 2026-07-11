@@ -208,15 +208,17 @@ TEST_CASE("OmegaHConservativeProjection matches conservative projection solver",
     });
 
   const auto intersections = pcms::intersectTargets(source_mesh, target_mesh);
-  const auto expected = pcms::solveGalerkinProjection(
-    target_mesh, source_mesh, intersections,
-    make_omega_h_reals(source.GetDOFHolderDataHost()));
+  const auto expected =
+    pcms::solveGalerkinProjection(target_mesh, source_mesh, intersections,
+                                  make_omega_h_reals(pcms::FlattenToRank1View(
+                                    source.GetDOFHolderDataHost())));
   const auto expected_h = Omega_h::HostRead<Omega_h::Real>(expected);
 
   pcms::OmegaHConservativeProjection projection(source_space, target_space);
   projection.Apply(source, target);
 
-  const auto target_values = target.GetDOFHolderDataHost();
+  const auto target_values =
+    pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
   REQUIRE(static_cast<Omega_h::LO>(target_values.size()) ==
           target_mesh.nverts());
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {

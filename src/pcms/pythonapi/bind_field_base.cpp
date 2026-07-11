@@ -76,7 +76,7 @@ void bind_coordinate_system_module(py::module& m)
     .def(
       "get_coordinates",
       [](const CoordinateView<HostMemorySpace>& self) {
-        auto coords = self.GetCoordinates();
+        auto coords = self.GetValues();
         // Convert to numpy array
         py::array_t<Real> result({static_cast<py::ssize_t>(coords.extent(0)),
                                   static_cast<py::ssize_t>(coords.extent(1))});
@@ -207,11 +207,16 @@ void bind_create_field_module(py::module& m)
       "get_dof_holder_data",
       [](const Field<Real>& self) {
         auto data = self.GetDOFHolderDataHost();
+        // Flatten the [dof][comp] data into node-major order for the 1D numpy
+        // array (Python-facing DOF data stays 1D).
+        const auto num_dof = data.extent(0);
+        const auto num_comp = data.extent(1);
         py::array_t<Real> result(static_cast<py::ssize_t>(data.size()));
         auto buf = result.request();
         Real* ptr = static_cast<Real*>(buf.ptr);
-        for (size_t i = 0; i < data.size(); ++i)
-          ptr[i] = data[i];
+        for (size_t i = 0; i < num_dof; ++i)
+          for (size_t c = 0; c < num_comp; ++c)
+            ptr[i * num_comp + c] = data(i, c);
         return result;
       },
       "Get the DOF holder data as a 1D numpy array")
@@ -223,9 +228,11 @@ void bind_create_field_module(py::module& m)
         if (buf.ndim != 1) {
           throw std::runtime_error("DOF holder data must be a 1D array");
         }
-        Rank1View<const Real, HostMemorySpace> view(
-          static_cast<const Real*>(buf.ptr), static_cast<size_t>(buf.shape[0]));
-        self.SetDOFHolderDataHost(view);
+        // Reshape the flat 1D input into the field's [dof][comp] layout.
+        const int nc = self.GetLayout().GetNumComponents();
+        const auto total = static_cast<size_t>(buf.shape[0]);
+        self.SetDOFHolderDataHost(Rank2View<const Real, HostMemorySpace>(
+          static_cast<const Real*>(buf.ptr), static_cast<LO>(total / nc), nc));
       },
       py::arg("data"), "Set the DOF holder data from a 1D numpy array")
 
@@ -247,7 +254,7 @@ void bind_create_field_module(py::module& m)
       "get_dof_holder_coordinates",
       [](const Field<Real>& self) {
         auto cv = self.GetLayout().GetDOFHolderCoordinates();
-        auto coords = cv.GetCoordinates();
+        auto coords = cv.GetValues();
         Kokkos::View<Real**, DeviceMemorySpace> coords_device(
           "coords_device", coords.extent(0), coords.extent(1));
         Kokkos::parallel_for(

@@ -30,7 +30,11 @@ namespace pcms
 //
 // Contract:
 //   - GetMetadata() describes the stored coefficient data.
-//   - The flattened DOF-holder data ordering must match the layout ordering.
+//   - DOF-holder data is exposed as a 2D [num_dof_holder][num_components] view
+//     (the canonical shape); the DOF-holder ordering must match the layout.
+//     The default layout_right means it is contiguous node-major (component
+//     fastest, i.e. flat index i*num_components + c) on every backend, so a
+//     flat/wire representation is just the contiguous data_handle().
 //   - Views returned by GetDOFHolderDataHost()/GetDOFHolderData() remain
 //     valid until this FieldData object is mutated or destroyed.
 //   - SetDOFHolderDataHost()/SetDOFHolderData() replace the entire stored
@@ -50,18 +54,18 @@ public:
 
   virtual const FieldMetadata& GetMetadata() const = 0;
 
-  // Direct access to flattened DOFHolder-ordered coefficient data.
-  // The returned view remains valid until the FieldData is mutated or
-  // destroyed.
-  virtual Rank1View<const T, HostMemorySpace> GetDOFHolderDataHost() const = 0;
+  // Direct access to DOF-holder coefficient data as a 2D
+  // [num_dof_holder][num_components] view. The returned view remains valid
+  // until the FieldData is mutated or destroyed.
+  virtual Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const = 0;
   virtual void SetDOFHolderDataHost(
-    Rank1View<const T, HostMemorySpace> values) = 0;
+    Rank2View<const T, HostMemorySpace> values) = 0;
 
   // The returned view remains valid until the FieldData is mutated or
   // destroyed.
-  virtual Rank1View<const T, DeviceMemorySpace> GetDOFHolderData() const = 0;
+  virtual Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const = 0;
   virtual void SetDOFHolderData(
-    Rank1View<const T, DeviceMemorySpace> values) = 0;
+    Rank2View<const T, DeviceMemorySpace> values) = 0;
 
   virtual ~FieldData() noexcept = default;
 };

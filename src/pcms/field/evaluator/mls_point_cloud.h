@@ -54,7 +54,7 @@ public:
     Kokkos::parallel_for(
       "CopyDeviceDataToOmegaHWrite",
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_sources),
-      KOKKOS_LAMBDA(int i) { src_w[i] = device_data(i); });
+      KOKKOS_LAMBDA(int i) { src_w[i] = device_data(i, 0); });
     Omega_h::Reals source_values(src_w);
 
     auto result = mls_interpolation(

@@ -128,7 +128,7 @@ public:
         "MeshFieldsEvaluatorFactory: NearestBoundary is not supported");
     }
 
-    auto coordinates = coords.GetCoordinates();
+    auto coordinates = coords.GetValues();
     Kokkos::View<Real* [2], DeviceMemorySpace> coords_search(
       "coords_search", coordinates.extent(0));
     Kokkos::parallel_for(

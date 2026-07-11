@@ -44,7 +44,7 @@ TEST_CASE(
   REQUIRE(layout->GetNumGlobalDofHolder() == 4);
   REQUIRE_FALSE(layout->IsDistributed());
 
-  auto dof_coords = layout->GetDOFHolderCoordinates().GetCoordinates();
+  auto dof_coords = layout->GetDOFHolderCoordinates().GetValues();
   auto dof_coords_host = pcms::test::CopyCoordinatesToHost(dof_coords, 4, 2);
 
   REQUIRE(static_cast<int>(dof_coords_host.extent(0)) == 4);
@@ -81,10 +81,11 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field set/get DOF "
                  .CreateField<Real>(pcms::FieldMetadata{});
 
   std::vector<Real> data{1.0, 2.0, 3.0, 4.0};
-  Rank1View<const Real, HostMemorySpace> data_view(data.data(), data.size());
+  Rank2View<const Real, HostMemorySpace> data_view(
+    data.data(), static_cast<LO>(data.size()), 1);
   field.GetData().SetDOFHolderDataHost(data_view);
 
-  auto got = field.GetData().GetDOFHolderDataHost();
+  auto got = pcms::FlattenToRank1View(field.GetData().GetDOFHolderDataHost());
   REQUIRE(got.size() == data.size());
   for (LO i = 0; i < static_cast<LO>(data.size()); ++i) {
     REQUIRE(got[i] == Catch::Approx(data[i]));
@@ -102,7 +103,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field serialize / "
   auto field = factory.CreateField<Real>(pcms::FieldMetadata{});
 
   std::vector<Real> data{5.0, 6.0, 7.0, 8.0};
-  Rank1View<const Real, HostMemorySpace> data_view(data.data(), data.size());
+  Rank2View<const Real, HostMemorySpace> data_view(
+    data.data(), static_cast<LO>(data.size()), 1);
   field.GetData().SetDOFHolderDataHost(data_view);
 
   pcms::test::CheckSerializeDeserialize(*factory.GetLayout(), field.GetData());
@@ -126,10 +128,11 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
   REQUIRE(point_cloud_layout->GetNumOwnedDofHolder() == 4);
 
   std::vector<Real> data{9.0, 10.0, 11.0, 12.0};
-  Rank1View<const Real, HostMemorySpace> data_view(data.data(), data.size());
+  Rank2View<const Real, HostMemorySpace> data_view(
+    data.data(), static_cast<LO>(data.size()), 1);
   field.SetDOFHolderDataHost(data_view);
 
-  auto got = field.GetDOFHolderDataHost();
+  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
   REQUIRE(got[0] == Catch::Approx(9.0));
   REQUIRE(got[3] == Catch::Approx(12.0));
 }

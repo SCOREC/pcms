@@ -77,7 +77,8 @@ TEST_CASE("evaluate quadratic 2d meshfields_field")
   Omega_h::HostWrite<Real> test_f_host(test_f);
   auto field = factory.CreateField<Real>(pcms::FieldMetadata{});
   field.GetData().SetDOFHolderDataHost(
-    pcms::make_const_array_view(test_f_host));
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(test_f_host.data(),
+                                                       test_f_host.size(), 1));
 
   pcms::test::CheckEvaluation(
     factory, field, kEvalCoords,

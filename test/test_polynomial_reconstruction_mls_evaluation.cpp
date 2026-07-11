@@ -334,8 +334,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: radius option is "
     coords_view, CoordinateSystem::Cartesian, opts);
   auto field = fs.CreateField<Real>(pcms::FieldMetadata{});
   std::vector<Real> dof_values{1.0, 5.0};
-  field.GetData().SetDOFHolderDataHost(Rank1View<const Real, HostMemorySpace>(
-    dof_values.data(), dof_values.size()));
+  field.GetData().SetDOFHolderDataHost(Rank2View<const Real, HostMemorySpace>(
+    dof_values.data(), static_cast<pcms::LO>(dof_values.size()), 1));
 
   std::vector<Real> pts{0.0, 0.0};
   auto device_coords =
@@ -364,7 +364,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: 3D point clouds preserve "
   auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
     coords_view, CoordinateSystem::Cartesian, DefaultTestOptions3D());
   auto layout_coords_device =
-    fs.GetLayout()->GetDOFHolderCoordinates().GetCoordinates();
+    fs.GetLayout()->GetDOFHolderCoordinates().GetValues();
   auto layout_coords =
     pcms::test::CopyCoordinatesToHost(layout_coords_device, 27, 3);
   REQUIRE(static_cast<int>(layout_coords.extent(1)) == 3);
@@ -382,8 +382,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: 3D point clouds preserve "
     const Real z = src[3 * i + 2];
     dof_values[i] = x + 2.0 * y + 3.0 * z;
   }
-  field.GetData().SetDOFHolderDataHost(Rank1View<const Real, HostMemorySpace>(
-    dof_values.data(), dof_values.size()));
+  field.GetData().SetDOFHolderDataHost(Rank2View<const Real, HostMemorySpace>(
+    dof_values.data(), static_cast<pcms::LO>(dof_values.size()), 1));
 
   std::vector<Real> pts{0.5, 0.5, 0.25, 0.5, 0.5, 0.75};
   auto device_coords =

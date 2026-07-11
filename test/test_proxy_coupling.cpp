@@ -35,7 +35,8 @@ void initializeFieldWithGids(const pcms::FieldLayout& layout,
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
     [=](int i) { ids[i] = gids[i] * multiplier; });
 
-  field->SetDOFHolderDataHost(pcms::make_const_array_view(ids));
+  field->SetDOFHolderDataHost(
+    pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(ids.data(), n, 1));
 }
 
 bool validateField(const pcms::FieldLayout& layout,
@@ -44,7 +45,7 @@ bool validateField(const pcms::FieldLayout& layout,
                    pcms::Real multiplier = 1.0)
 {
   auto gids = layout.GetGidsHost();
-  auto copied_array = field->GetDOFHolderDataHost();
+  auto copied_array = pcms::FlattenToRank1View(field->GetDOFHolderDataHost());
   auto owned = layout.GetOwnedHost();
   const auto n = layout.GetNumOwnedDofHolder();
 

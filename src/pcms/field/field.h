@@ -35,22 +35,22 @@ public:
 
   const FieldLayout& GetLayout() const { return *layout_; }
 
-  Rank1View<const T, HostMemorySpace> GetDOFHolderDataHost() const
+  Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const
   {
     return data_->GetDOFHolderDataHost();
   }
 
-  void SetDOFHolderDataHost(Rank1View<const T, HostMemorySpace> v)
+  void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> v)
   {
     data_->SetDOFHolderDataHost(v);
   }
 
-  Rank1View<const T, DeviceMemorySpace> GetDOFHolderData() const
+  Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const
   {
     return data_->GetDOFHolderData();
   }
 
-  void SetDOFHolderData(Rank1View<const T, DeviceMemorySpace> v)
+  void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> v)
   {
     data_->SetDOFHolderData(v);
   }

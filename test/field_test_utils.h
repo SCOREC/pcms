@@ -146,7 +146,7 @@ inline void SetField(const FieldLayout& layout, FieldData<Real>& field,
 {
   using MemorySpace = typename ExecutionSpace::memory_space;
 
-  auto dof_coords = layout.GetDOFHolderCoordinates().GetCoordinates();
+  auto dof_coords = layout.GetDOFHolderCoordinates().GetValues();
   int n = static_cast<int>(dof_coords.extent(0));
   Kokkos::View<Real* [2], MemorySpace> coords_device("coords_device", n);
   Kokkos::parallel_for(
@@ -164,7 +164,7 @@ inline void SetField(const FieldLayout& layout, FieldData<Real>& field,
   auto data_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), data_device);
   field.SetDOFHolderDataHost(
-    Rank1View<const Real, HostMemorySpace>(data_host.data(), n));
+    Rank2View<const Real, HostMemorySpace>(data_host.data(), n, 1));
 }
 
 template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
@@ -185,7 +185,7 @@ inline void SetField(FieldData<Real>& field, const FieldLayout& layout,
 inline void CheckSerializeDeserialize(const FieldLayout& layout,
                                       FieldData<Real>& field)
 {
-  auto data_before = field.GetDOFHolderDataHost();
+  auto data_before = FlattenToRank1View(field.GetDOFHolderDataHost());
   int n = static_cast<int>(data_before.size());
 
   std::vector<Real> buffer(n);
@@ -201,7 +201,7 @@ inline void CheckSerializeDeserialize(const FieldLayout& layout,
   serializer.Deserialize(
     field, layout, Rank1View<const Real, HostMemorySpace>(buf_view), perm_view);
 
-  auto data_after = field.GetDOFHolderDataHost();
+  auto data_after = FlattenToRank1View(field.GetDOFHolderDataHost());
   REQUIRE(data_after.size() == data_before.size());
   for (int i = 0; i < n; ++i) {
     REQUIRE(data_after[i] == Catch::Approx(data_before[i]));

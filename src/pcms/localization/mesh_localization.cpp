@@ -20,7 +20,7 @@ SupportResults AdjacencyLocalizationFactory::Build(
       "AdjacencyLocalizationFactory: only Cartesian coordinates are supported");
   }
 
-  const auto tgt_view = target_coords.GetCoordinates();
+  const auto tgt_view = target_coords.GetValues();
   const int dim = source_mesh_.dim();
   PCMS_ALWAYS_ASSERT(static_cast<int>(tgt_view.extent(1)) == dim);
   const int n_tgt = static_cast<int>(tgt_view.extent(0));

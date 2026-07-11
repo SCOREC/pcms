@@ -88,12 +88,15 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
 {
   CheckApplyCompatible(source, target, *source_layout_, *target_layout_);
 
-  const auto source_values = MakeOmegaHReals(source.GetDOFHolderDataHost());
+  const auto source_values =
+    MakeOmegaHReals(FlattenToRank1View(source.GetDOFHolderDataHost()));
   const auto target_values = solveGalerkinProjection(
     target_layout_->GetMesh(), source_layout_->GetMesh(), intersections_,
     source_values);
   auto target_values_h = Omega_h::HostRead<Omega_h::Real>(target_values);
-  target.SetDOFHolderDataHost(make_const_array_view(target_values_h));
+  target.SetDOFHolderDataHost(Rank2View<const Real, HostMemorySpace>(
+    target_values_h.data(), target_layout_->GetNumOwnedDofHolder(),
+    target_layout_->GetNumComponents()));
 }
 
 } // namespace pcms

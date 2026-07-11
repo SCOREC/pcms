@@ -16,12 +16,12 @@ public:
 
   const FieldMetadata& GetMetadata() const override;
 
-  Rank1View<const Real, HostMemorySpace> GetDOFHolderDataHost() const override;
+  Rank2View<const Real, HostMemorySpace> GetDOFHolderDataHost() const override;
   void SetDOFHolderDataHost(
-    Rank1View<const Real, HostMemorySpace> data) override;
+    Rank2View<const Real, HostMemorySpace> data) override;
 
-  Rank1View<const Real, DeviceMemorySpace> GetDOFHolderData() const override;
-  void SetDOFHolderData(Rank1View<const Real, DeviceMemorySpace> data) override;
+  Rank2View<const Real, DeviceMemorySpace> GetDOFHolderData() const override;
+  void SetDOFHolderData(Rank2View<const Real, DeviceMemorySpace> data) override;
 
 private:
   std::shared_ptr<const PointCloudLayout> layout_;

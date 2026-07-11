@@ -135,7 +135,8 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     [=](int i) { ids[i] = gids[i]; });
 
   auto field = factory.CreateField<Real>(pcms::FieldMetadata{});
-  field.SetDOFHolderDataHost(pcms::make_const_array_view(ids));
+  field.SetDOFHolderDataHost(
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(ids.data(), n, 1));
 
   pcms::FieldLayoutCommunicator layout_comm(comm_name + "1", comm, rdv, channel,
                                             *layout);
@@ -170,7 +171,7 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   field_comm.Receive();
   channel.EndReceiveCommunicationPhase();
 
-  auto copied_array = field.GetDOFHolderDataHost();
+  auto copied_array = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
   auto owned = layout->GetOwnedHost();
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());

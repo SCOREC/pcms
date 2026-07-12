@@ -6,6 +6,7 @@
 #include <Omega_h_shape.hpp>
 
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
+#include <pcms/transfer/transfer_method.hpp>
 #include <pcms/field/function_space/lagrange.h>
 #include "field_test_utils.h"
 
@@ -421,6 +422,66 @@ TEST_CASE("OmegaHConservativeProjection P1 source to P0 target",
       REQUIRE(target_values[e] == Catch::Approx(expected).margin(1e-9));
     }
     REQUIRE(IntegrateP0Field(target_mesh, target) ==
+            Catch::Approx(IntegrateP1Field(source_mesh, source)).margin(1e-9));
+  }
+}
+
+// Exercises the pcms::method::* recipe factory: each recipe's Build() must
+// produce a working transfer operator equivalent to constructing it directly,
+// and parameter-carrying recipes must forward their parameters.
+TEST_CASE("TransferMethod recipes build working operators",
+          "[transfer][method]")
+{
+  Omega_h::Library lib;
+  Omega_h::Mesh source_mesh =
+    BuildUnitSquare(lib, Omega_h::LOs({0, 1, 2, 0, 2, 3}));
+  Omega_h::Mesh target_mesh =
+    BuildUnitSquare(lib, Omega_h::LOs({0, 1, 3, 1, 2, 3}));
+
+  auto source_space = MakeP1Space(source_mesh);
+  auto target_space = MakeP1Space(target_mesh);
+
+  auto source = source_space->CreateFunction<pcms::Real>();
+  auto target = target_space->CreateFunction<pcms::Real>();
+  pcms::test::SetField(
+    source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + y; });
+
+  const auto tgt_coords_h =
+    Omega_h::HostRead<Omega_h::Real>(target_mesh.coords());
+  auto check_reproduces_linear = [&]() {
+    const auto values = pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
+    for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
+      const double expected = tgt_coords_h[2 * i + 0] + tgt_coords_h[2 * i + 1];
+      REQUIRE(values[i] == Catch::Approx(expected).margin(1e-9));
+    }
+  };
+
+  SECTION("ConservativeIntersection reproduces a linear field")
+  {
+    auto op = pcms::method::ConservativeIntersection{}.Build(*source_space,
+                                                             *target_space);
+    op->Apply(source, target);
+    check_reproduces_linear();
+  }
+
+  SECTION("Interpolation reproduces a linear field")
+  {
+    auto op = pcms::method::Interpolation<pcms::Real>{}.Build(*source_space,
+                                                              *target_space);
+    op->Apply(source, target);
+    check_reproduces_linear();
+  }
+
+  SECTION("ConservativeMonteCarlo forwards params and conserves the integral")
+  {
+    // A linear field lives in the target P1 space, so the control-variate
+    // residual is zero and the projection is exact for any sample count.
+    auto op =
+      pcms::method::ConservativeMonteCarlo{.samples_per_element = 16}.Build(
+        *source_space, *target_space);
+    op->Apply(source, target);
+    check_reproduces_linear();
+    REQUIRE(IntegrateP1Field(target_mesh, target) ==
             Catch::Approx(IntegrateP1Field(source_mesh, source)).margin(1e-9));
   }
 }

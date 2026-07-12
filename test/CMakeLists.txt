@@ -214,6 +214,45 @@ if(PCMS_ENABLE_OMEGA_H)
       ${d3d1p}
       ignored)
   endif()
+  add_executable(coupler_transfer test_coupler_transfer.cpp)
+  target_link_libraries(coupler_transfer PUBLIC pcms::core test_support)
+  if(HOST_NPROC GREATER_EQUAL 4)
+    tri_mpi_test(
+      TESTNAME
+      test_coupler_transfer_4p
+      TIMEOUT
+      60
+      NAME1
+      rdv
+      EXE1
+      ./coupler_transfer
+      PROCS1
+      2
+      ARGS1
+      -1
+      ${d3d1p}
+      ${d3d2p_cpn}
+      NAME2
+      source
+      EXE2
+      ./coupler_transfer
+      PROCS2
+      1
+      ARGS2
+      0
+      ${d3d1p}
+      ignored
+      NAME3
+      target
+      EXE3
+      ./coupler_transfer
+      PROCS3
+      1
+      ARGS3
+      1
+      ${d3d1p}
+      ignored)
+  endif()
   if(HOST_NPROC GREATER_EQUAL 26)
     tri_mpi_test(
       TESTNAME

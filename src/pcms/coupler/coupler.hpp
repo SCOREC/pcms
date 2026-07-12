@@ -11,12 +11,16 @@
 #include "pcms/utility/assert.h"
 #include "pcms/utility/common.h"
 #include "pcms/utility/profile.h"
+#include "pcms/transfer/transfer_operator.hpp"
+#include <cstddef>
 #include <memory>
+#include <vector>
 
 namespace pcms
 {
 
 class Application;
+class Coupler;
 
 template <typename T>
 class FieldHandle
@@ -40,7 +44,7 @@ private:
 
 // FunctionHandle is a FieldHandle that additionally carries the function space,
 // so it can be evaluated / used to build transfer operators. Only AddFunction
-// produces one; CreateTransfer accepts FunctionHandle (not FieldHandle), which
+// produces one; AddTransfer accepts FunctionHandle (not FieldHandle), which
 // makes passing a comm-only field to a transfer a compile error.
 template <typename T>
 class FunctionHandle : public FieldHandle<T>
@@ -64,6 +68,62 @@ public:
 
 private:
   std::shared_ptr<const FunctionSpace> space_;
+};
+
+// Transfer is the non-templated base for a runnable transfer, owned by the
+// Coupler. Run() takes no typed arguments (the operator's source/target fields
+// are bound in the concrete BoundTransfer), so it erases the value type T and
+// lets the coupler hold a heterogeneous set of transfers uniformly.
+class Transfer
+{
+public:
+  virtual void Run() const = 0;
+  virtual ~Transfer() noexcept = default;
+};
+
+// BoundTransfer binds a built transfer operator to the source/target functions
+// it connects. Owned by the Coupler (as a Transfer) and referenced through a
+// TransferHandle; the expensive build happened in AddTransfer, Run() is the
+// cheap per-step Apply.
+template <typename T>
+class BoundTransfer : public Transfer
+{
+public:
+  BoundTransfer(FunctionHandle<T> source, FunctionHandle<T> target,
+                std::unique_ptr<TransferOperator<T>> op)
+    : source_(std::move(source)),
+      target_(std::move(target)),
+      operator_(std::move(op))
+  {
+  }
+
+  void Run() const override
+  {
+    PCMS_FUNCTION_TIMER;
+    operator_->Apply(source_.GetField(), target_.GetField());
+  }
+
+private:
+  FunctionHandle<T> source_;
+  FunctionHandle<T> target_;
+  std::unique_ptr<TransferOperator<T>> operator_;
+};
+
+// Lightweight, copyable reference to a coupler-owned transfer (mirrors
+// FieldHandle). Run() dispatches to the owning Coupler.
+class TransferHandle
+{
+public:
+  void Run() const;
+
+private:
+  TransferHandle(Coupler* coupler, std::size_t id) : coupler_(coupler), id_(id)
+  {
+  }
+  friend class Coupler;
+
+  Coupler* coupler_;
+  std::size_t id_;
 };
 
 class Application
@@ -249,12 +309,22 @@ public:
     return redev_.GetPartition();
   }
 
+  // Build and register a transfer from source to target using the given method
+  // recipe (see pcms/transfer/transfer_method.hpp). The coupler owns the built
+  // operator; the returned handle's Run() applies it in the coupling loop.
+  template <typename T, typename Method>
+  TransferHandle AddTransfer(FunctionHandle<T> source, FunctionHandle<T> target,
+                             const Method& method);
+
+  void RunTransfer(std::size_t id) { transfers_.at(id)->Run(); }
+
 private:
   std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
   // gather and scatter operations have reference to internal fields
   std::map<std::string, Application> applications_;
+  std::vector<std::unique_ptr<Transfer>> transfers_;
 };
 
 } // namespace pcms
@@ -383,6 +453,26 @@ pcms::FunctionHandle<T> pcms::Application::AddFunction(
     throw;
   }
   return FunctionHandle<T>{this, std::move(name), std::move(space)};
+}
+
+inline void pcms::TransferHandle::Run() const
+{
+  PCMS_ALWAYS_ASSERT(coupler_ != nullptr);
+  coupler_->RunTransfer(id_);
+}
+
+template <typename T, typename Method>
+pcms::TransferHandle pcms::Coupler::AddTransfer(FunctionHandle<T> source,
+                                                FunctionHandle<T> target,
+                                                const Method& method)
+{
+  PCMS_FUNCTION_TIMER;
+  std::unique_ptr<TransferOperator<T>> op =
+    method.Build(source.GetSpace(), target.GetSpace());
+  const std::size_t id = transfers_.size();
+  transfers_.push_back(std::make_unique<BoundTransfer<T>>(
+    std::move(source), std::move(target), std::move(op)));
+  return TransferHandle{this, id};
 }
 
 #endif // COUPLER2_H_

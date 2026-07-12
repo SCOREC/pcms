@@ -175,6 +175,7 @@ int main(int argc, char** argv)
       case -1: transfer_server(mpi_comm, mesh, argv[3]); break;
       case 0: transfer_source_client(mpi_comm, mesh); break;
       case 1: transfer_target_client(mpi_comm, mesh); break;
+      default: break; // unreachable: clientId asserted to [-1, 1] above
     }
     return 0;
   } catch (const std::exception& e) {

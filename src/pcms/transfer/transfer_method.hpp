@@ -6,7 +6,7 @@
 #include "pcms/transfer/interpolator.h"
 #include "pcms/transfer/omega_h_conservative_projection.hpp"
 #include "pcms/transfer/omega_h_control_variate_projection.hpp"
-#include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
+#include "pcms/transfer/monte_carlo_sampling.hpp"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/utility/types.h"
 #include <cstdint>

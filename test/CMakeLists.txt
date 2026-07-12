@@ -214,6 +214,7 @@ if(PCMS_ENABLE_OMEGA_H)
       ${d3d1p}
       ignored)
   endif()
+  if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
   add_executable(coupler_transfer test_coupler_transfer.cpp)
   target_link_libraries(coupler_transfer PUBLIC pcms::core test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
@@ -252,6 +253,7 @@ if(PCMS_ENABLE_OMEGA_H)
       1
       ${d3d1p}
       ignored)
+  endif()
   endif()
   if(HOST_NPROC GREATER_EQUAL 26)
     tri_mpi_test(

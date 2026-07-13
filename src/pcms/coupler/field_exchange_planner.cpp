@@ -12,6 +12,10 @@ namespace pcms
 namespace
 {
 
+// Sentinel in a receive permutation: this local DOF's GID was not present in
+// the received message. The deserializer skips it (negative => not received).
+constexpr redev::LO kUnreceivedDof = -1;
+
 struct PartitionMapping
 {
   std::vector<LO> indices;
@@ -128,14 +132,22 @@ static redev::LOs ConstructPermutation(
       break;
   }
 
-  redev::LOs permutation;
-  permutation.reserve(local_gids.size());
+  redev::LOs permutation(local_gids.size());
   for (size_t e = 0; e < ent_offsets.size() - 1; ++e) {
     const auto start = ent_offsets[e];
     const auto end = ent_offsets[e + 1];
 
-    for (size_t i = start; i < end; ++i)
-      permutation.push_back(gid_to_buffer_index[e][local_gids[i]]);
+    for (size_t i = start; i < end; ++i) {
+      // A local DOF whose GID was not in the received message (e.g. it lies
+      // outside the sender's overlap mask) gets the sentinel kUnreceivedDof.
+      // The deserializer must skip these and preserve the field's existing
+      // value, rather than reading buffer[0]. Use find() rather than
+      // operator[] so missing keys are not silently inserted as 0.
+      const auto it = gid_to_buffer_index[e].find(local_gids[i]);
+      if (it!=gid_to_buffer_index[e].end()) {
+        permutation[i] = it->second;
+      }
+    }
   }
 
   REDEV_ALWAYS_ASSERT(permutation.size() == local_gids.size());
@@ -275,7 +287,8 @@ ExchangePlan GenericFieldExchangePlanner::BuildReceivePlan(
 
 void GenericFieldExchangePlanner::FillGidMessage(
   const FieldLayout& layout, const ExchangePlan& plan,
-  Rank1View<GO, HostMemorySpace> gid_message) const
+  Rank1View<GO, HostMemorySpace> gid_message,
+  const OverlapMask* overlap_mask) const
 {
   PCMS_FUNCTION_TIMER;
   PCMS_ALWAYS_ASSERT(static_cast<size_t>(gid_message.size()) == plan.msg_size);
@@ -286,11 +299,19 @@ void GenericFieldExchangePlanner::FillGidMessage(
   auto offsets = Rank1View<const redev::LO, HostMemorySpace>(
     plan.offsets.data(), plan.offsets.size());
 
+  // Participation must match BuildReversePartitionMap (owned AND in overlap);
+  // otherwise owned-but-non-overlap DOFs inflate the per-rank counts written
+  // here and corrupt the message. A default all-true mask is used when none is
+  // provided so behavior is unchanged for callers without an overlap mask.
+  OverlapMask default_mask(static_cast<size_t>(gids.size()));
+  auto overlap =
+    (overlap_mask ? *overlap_mask : default_mask).GetMask(layout);
+
   std::vector<EntOffsetsArray> per_rank_offsets(plan.dest_ranks.size());
 
   for (LO local_index = 0; local_index < static_cast<LO>(gids.size());
        ++local_index) {
-    if (!owned[local_index])
+    if (!owned[local_index] || !overlap[local_index])
       continue;
 
     LO perm_index = plan.permutation[local_index];

@@ -6,6 +6,7 @@
 #include "pcms/field/function_space.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
+#include "pcms/transfer/field_compatibility.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
 #include "pcms/utility/profile.h"
@@ -41,6 +42,8 @@ public:
                                     .GetCoordinates()
                                     .extent(0))),
       n_comp_(target_space.GetLayout()->GetNumComponents()),
+      source_layout_(source_space.GetLayout()),
+      target_layout_(target_space.GetLayout()),
       evaluator_(source_space.CreatePointEvaluator<T>(
         EvaluationRequest::FromFunctionSpace(target_space, policy)))
   {
@@ -51,6 +54,8 @@ public:
   void Apply(const Field<T>& source, Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
+    detail::CheckTransferFieldLayout(source, *source_layout_, "source");
+    detail::CheckTransferFieldLayout(target, *target_layout_, "target");
     const LO num_points = num_points_;
     const int n_comp = n_comp_;
     Kokkos::View<T**, DeviceMemorySpace> output("interp_output", num_points,
@@ -72,6 +77,8 @@ public:
 private:
   LO num_points_;
   int n_comp_;
+  std::shared_ptr<const FieldLayout> source_layout_;
+  std::shared_ptr<const FieldLayout> target_layout_;
   std::unique_ptr<PointEvaluator<T>> evaluator_;
 };
 

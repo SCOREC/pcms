@@ -2,7 +2,6 @@
 #define PCMS_COUPLING_FIELD_H
 
 #include "field_data.h"
-#include "field_evaluator_factory.h"
 #include "field_layout.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
@@ -13,14 +12,9 @@
 namespace pcms
 {
 
-class FunctionSpace;
+class FieldFactory;
 
-// Field<T> is a composed per-field object: it owns coefficient data and holds
-// a shared reference to the evaluator factory so the function space stays alive
-// as long as the field does.
-//
-// Fields are typically created via LagrangeFunctionSpace::CreateField().
-// They are move-only (unique_ptr member).
+// Field<T> is FieldLayout (topology / coupling identity) plus owned FieldData<T>
 template <typename T>
 class Field
 {
@@ -59,22 +53,18 @@ private:
   class CtorKey
   {
     CtorKey() = default;
-    friend class FunctionSpace;
+    friend class FieldFactory;
   };
 
   Field(CtorKey, std::shared_ptr<const FieldLayout> layout,
-        std::shared_ptr<const FieldEvaluatorFactory<Real>> evaluator_factory,
         std::unique_ptr<FieldData<T>> data)
-    : layout_(std::move(layout)),
-      evaluator_factory_(std::move(evaluator_factory)),
-      data_(std::move(data))
+    : layout_(std::move(layout)), data_(std::move(data))
   {
   }
 
-  friend class FunctionSpace;
+  friend class FieldFactory;
 
   std::shared_ptr<const FieldLayout> layout_;
-  std::shared_ptr<const FieldEvaluatorFactory<Real>> evaluator_factory_;
   std::unique_ptr<FieldData<T>> data_;
 };
 

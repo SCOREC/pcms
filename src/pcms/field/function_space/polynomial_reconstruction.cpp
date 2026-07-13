@@ -93,8 +93,7 @@ FieldVariant PolynomialReconstructionFunctionSpace::CreateFieldImpl(
         "supported");
     } else {
       return WrapField<double>(
-        layout_, std::make_unique<SimpleFieldData<double>>(layout_, metadata),
-        evaluator_factory_);
+        layout_, std::make_unique<SimpleFieldData<double>>(layout_, metadata));
     }
   });
 }
@@ -120,7 +119,7 @@ FieldVariant PolynomialReconstructionFunctionSpace::CreateFieldImpl(
       "PolynomialReconstructionFunctionSpace::CreateField: field data size "
       "does not match layout");
   }
-  return WrapField<double>(layout_, std::move(fd), evaluator_factory_);
+  return WrapField<double>(layout_, std::move(fd));
 }
 
 PointEvaluatorVariant

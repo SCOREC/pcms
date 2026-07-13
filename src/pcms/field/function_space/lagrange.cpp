@@ -251,8 +251,7 @@ FieldVariant LagrangeFunctionSpace::CreateFieldImpl(
     [this](auto&& fd) -> FieldVariant {
       using FD = std::decay_t<decltype(fd)>;
       using T = typename FD::element_type::value_type;
-      return WrapField<T>(layout_, std::forward<decltype(fd)>(fd),
-                          evaluator_factory_);
+      return WrapField<T>(layout_, std::forward<decltype(fd)>(fd));
     },
     std::move(field_data));
 }
@@ -269,8 +268,7 @@ FieldVariant LagrangeFunctionSpace::CreateFieldImpl(FieldDataVariant data) const
           "LagrangeFunctionSpace: int8_t is not a supported field type");
       } else {
         ValidateLagrangeWrappedFieldData(*layout_, *fd);
-        return WrapField<T>(layout_, std::forward<decltype(fd)>(fd),
-                            evaluator_factory_);
+        return WrapField<T>(layout_, std::forward<decltype(fd)>(fd));
       }
     },
     std::move(data));

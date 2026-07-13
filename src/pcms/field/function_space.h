@@ -5,7 +5,7 @@
 #include "evaluation_request.h"
 #include "field.h"
 #include "field_data.h"
-#include "field_evaluator_factory.h"
+#include "field_factory.h"
 #include "field_layout.h"
 #include "field_metadata.h"
 #include "out_of_bounds_policy.h"
@@ -20,33 +20,8 @@
 namespace pcms
 {
 
-namespace detail
-{
-
-inline size_t ExpectedFlatFieldDataSize(const FieldLayout& layout)
-{
-  return static_cast<size_t>(layout.GetNumOwnedDofHolder()) *
-         static_cast<size_t>(layout.GetNumComponents());
-}
-
-} // namespace detail
-
-// Compile-time gate: true only for the five supported field value types.
-template <typename T>
-inline constexpr bool is_supported_field_type_v =
-  std::is_same_v<T, int8_t> || std::is_same_v<T, int32_t> ||
-  std::is_same_v<T, int64_t> || std::is_same_v<T, float> ||
-  std::is_same_v<T, double>;
-
-// FunctionSpace is an abstract interface representing an evaluatable field
-// space: layout, evaluation rules, and coordinate interpretation.
-//
-// Concrete implementations (e.g. LagrangeFunctionSpace) provide backends for
-// specific discretizations or mesh types.
-//
-// FunctionSpace is used as the parameter type for operation objects such as
-// Interpolator<T>, so that operations are not coupled to a specific backend.
-class FunctionSpace
+// A FunctionSpace allows you to construct fields and evaluators for those fields
+class FunctionSpace : public FieldFactory
 {
 public:
   virtual std::shared_ptr<const Discretization> GetDiscretization()
@@ -55,23 +30,7 @@ public:
     return GetLayout()->GetDiscretization();
   }
 
-  virtual std::shared_ptr<const FieldLayout> GetLayout() const noexcept = 0;
-
   virtual CoordinateSystem GetCoordinateSystem() const noexcept = 0;
-
-  virtual ~FunctionSpace() noexcept = default;
-
-  // Create a new field with freshly allocated data for this function space.
-  // Compile-time error for unsupported T; runtime error for T unsupported by
-  // the concrete backend.
-  template <typename T>
-  [[nodiscard]] Field<T> CreateField(FieldMetadata metadata = {}) const;
-
-  // Expert API: wrap externally constructed field data into a Field for this
-  // function space. The concrete function space validates backend-specific
-  // field-data type and storage size compatibility.
-  template <typename T>
-  [[nodiscard]] Field<T> CreateField(std::unique_ptr<FieldData<T>> data) const;
 
   // Create a point evaluator for the given evaluation request.
   // Compile-time error for unsupported T; runtime error for T or capability
@@ -87,43 +46,9 @@ public:
     const EvaluationRequest& request) const;
 
 protected:
-  template <typename T>
-  static Field<T> WrapField(std::shared_ptr<const FieldLayout> layout,
-                            std::unique_ptr<FieldData<T>> data,
-                            std::shared_ptr<const FieldEvaluatorFactory<Real>>
-                              evaluator_factory = nullptr)
-  {
-    return Field<T>(typename Field<T>::CtorKey{}, std::move(layout),
-                    std::move(evaluator_factory), std::move(data));
-  }
-
-  virtual FieldVariant CreateFieldImpl(Type value_type,
-                                       FieldMetadata metadata) const = 0;
-
-  virtual FieldVariant CreateFieldImpl(FieldDataVariant data) const = 0;
-
   virtual PointEvaluatorVariant CreatePointEvaluatorImpl(
     Type value_type, const EvaluationRequest& request) const = 0;
 };
-
-template <typename T>
-Field<T> FunctionSpace::CreateField(FieldMetadata metadata) const
-{
-  static_assert(is_supported_field_type_v<T>,
-                "T is not a supported field type");
-  return std::get<Field<T>>(CreateFieldImpl(TypeEnumFromType<T>(), metadata));
-}
-
-template <typename T>
-Field<T> FunctionSpace::CreateField(std::unique_ptr<FieldData<T>> data) const
-{
-  static_assert(is_supported_field_type_v<T>,
-                "T is not a supported field type");
-  if (!data) {
-    throw pcms_error("FunctionSpace::CreateField: data must not be null");
-  }
-  return std::get<Field<T>>(CreateFieldImpl(FieldDataVariant{std::move(data)}));
-}
 
 template <typename T>
 std::unique_ptr<PointEvaluator<T>> FunctionSpace::CreatePointEvaluator(

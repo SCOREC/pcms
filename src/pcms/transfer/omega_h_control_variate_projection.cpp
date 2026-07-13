@@ -12,7 +12,8 @@ namespace pcms
 OmegaHControlVariateProjection::OmegaHControlVariateProjection(
   const FunctionSpace& source_space, const FunctionSpace& target_space,
   int samples_per_element, MonteCarloSampling sampling, uint64_t seed)
-  : target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
+  : TransferOperator<Real>(source_space, target_space),
+    target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
       target_space.GetLayout())),
     rhs_integrator_(std::make_unique<OmegaHMonteCarloRHSIntegrator>(
       target_layout_, target_space.GetCoordinateSystem(), samples_per_element,

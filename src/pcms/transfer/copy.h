@@ -39,6 +39,7 @@ class Copy : public TransferOperator<T>
 {
 public:
   Copy(const FunctionSpace& source_space, const FunctionSpace& target_space)
+    : TransferOperator<T>(source_space, target_space)
   {
     auto source_layout = source_space.GetLayout();
     auto target_layout = target_space.GetLayout();

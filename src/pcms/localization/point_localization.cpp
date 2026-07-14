@@ -254,6 +254,77 @@ void Mapping3D::set_triangle_areas()
 	}
 }
 
+template <typename Predicate, typename Value>
+KOKKOS_FUNCTION void CallOnIntersect2D::operator()(Predicate const &predicate, Value const & val) const
+{
+	ArborX::Point<DIM, Omega_h::Real> const& ax = ArborX::getGeometry(predicate);
+	Omega_h::Vector<DIM> point{ax[0], ax[1]};
+	int point_ind = ArborX::getData(predicate);
+	
+	detail::Mapping2D const& tm = mappings(val.index);
+	
+	// calculate the barycentric coefficients of the point
+	auto coeffs = tm.get_bary(point);
+
+	for (int i = 0; i < DIM; i++)
+	{
+		int elem = tm.which(i, coeffs);
+		if (elem >= 0 && intersection_results(point_ind).dimensionality > (TreePointSearch::Dimensionality)i)
+		{
+			auto elem_ind = adjacencies[i][3*val.index + elem];
+			intersection_results(point_ind).dimensionality = (TreePointSearch::Dimensionality)i;
+			intersection_results(point_ind).element_id = elem_ind;
+			for (int j = 0; j < DIM + 1; j++)
+				intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+			return;
+		}
+	}
+	if (tm.which(DIM, coeffs) >= 0 
+		&& intersection_results(point_ind).dimensionality > TreePointSearch::Dimensionality::FACE)
+	{
+		intersection_results(point_ind).dimensionality = TreePointSearch::Dimensionality::FACE;
+		intersection_results(point_ind).element_id = (LO)val.index;
+		for (int j = 0; j < DIM + 1; j++)
+				intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+	}
+}
+
+template <typename Predicate, typename Value>
+void CallOnIntersect3D::operator()(Predicate const &predicate, Value const & val) const
+{
+	ArborX::Point<DIM, Omega_h::Real> const& ax = ArborX::getGeometry(predicate);
+	Omega_h::Vector<DIM> point{ax[0], ax[1], ax[2]};
+	int point_ind = ArborX::getData(predicate);
+	
+	detail::Mapping3D const& tm = mappings(val.index);
+	
+	// calculate the barycentric coefficients of the point
+	auto coeffs = tm.get_bary(point);
+	int offsets[DIM] = {4, 6, 4};
+	for (int i = 0; i < DIM; i++)
+	{
+		int elem = tm.which(i, coeffs);
+		if (elem >= 0 && intersection_results(point_ind).dimensionality > (TreePointSearch::Dimensionality)i)
+		{
+			auto elem_ind = adjacencies[i][offsets[i]*val.index + elem];
+			intersection_results(point_ind).dimensionality = (TreePointSearch::Dimensionality)i;
+			intersection_results(point_ind).element_id = elem_ind;
+			for (int j = 0; j < DIM + 1; j++)
+				intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+			return;
+		}
+	}
+
+	if (tm.which(DIM, coeffs) >= 0 
+			&& intersection_results(point_ind).dimensionality >= TreePointSearch::Dimensionality::REGION)
+	{
+		intersection_results(point_ind).dimensionality = TreePointSearch::Dimensionality::REGION;
+		intersection_results(point_ind).element_id = (LO)val.index;
+		for (int j = 0; j < DIM + 1; j++)
+				intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+	}
+}
+
 } //namespace detail
 
 Kokkos::View<TreePointSearch::Result*> TreePointSearch::apply(

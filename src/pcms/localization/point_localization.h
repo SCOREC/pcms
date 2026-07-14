@@ -102,10 +102,22 @@ public:
 	KOKKOS_FUNCTION
 	Omega_h::Vector<DIM + 1> get_bary(Omega_h::Vector<DIM> const& p) const;
 	/**
-	* @brief Determines which entity of a particular dimension a point intersects
+	* @brief Determines which entity of a dimension `ent_dim` a point intersects
 	*		 from the barycentric coordinates
 	* 
-	* This function determines the offset in the Omega_h::Adj structure
+	* If the point corresponding to the input barycentric coordinates intersects 
+	* any entities with dimension `ent_dim` bordering the element this mapping is 
+	* constructed from, this function determines the offset in the 
+	* Omega_h::Adj::ab2b structure coresponding to FACE -> `ent_dim` adjacency.
+	* If the point does not intersect a border entity, this function returns -1
+	* 
+	* @param ent_dim the dimension of the entities we want to check intersection
+	* 				 with
+	* @param bary_coords the barycentric coordinates computed by this mapping of
+	*					 a point in global space
+	* @returns -1 if the point does not intersect any entities, or the offset of
+	*		   the intersected entity in the Omega_h::Adj::ab2b structure 
+	*		   coresponding to FACE -> `ent_dim` adjacency
 	*/
 	KOKKOS_FUNCTION
 	int which(
@@ -195,6 +207,24 @@ public:
 	KOKKOS_FUNCTION
 	Omega_h::Vector<DIM + 1> get_bary(Omega_h::Vector<DIM> const& p) const;
 
+	/**
+	* @brief Determines which entity of dimension `ent_dim` a point intersects
+	*		 from the barycentric coordinates
+	* 
+	* If the point corresponding to the input barycentric coordinates intersects 
+	* any entities with dimension `ent_dim` bordering the element this mapping is 
+	* constructed from, this function determines the offset in the 
+	* Omega_h::Adj::ab2b structure coresponding to REGION -> `ent_dim` adjacency.
+	* If the point does not intersect a border entity, this function returns -1
+	* 
+	* @param ent_dim the dimension of the entities we want to check intersection
+	* 				 with
+	* @param bary_coords the barycentric coordinates computed by this mapping of
+	*					 a point in global space
+	* @returns -1 if the point does not intersect any entities, or the offset of
+	*		   the intersected entity in the Omega_h::Adj::ab2b structure 
+	*		   coresponding to REGION -> `ent_dim` adjacency
+	*/
 	KOKKOS_FUNCTION
 	int which(int ent_dim, 
 					  Omega_h::Vector<DIM+1> const& bary_coords) const;
@@ -244,8 +274,20 @@ private:
 	*/
 	KOKKOS_FUNCTION
 	int within_elem(Omega_h::Vector<DIM+1> const& bary_coords) const;
-	
+	/**
+	* @brief Constructs the tetrahedron the mapping corresponds to
+	* @param index the element ID of the tetrahedron
+	* @param mesh the Omega_h::Mesh with the spatial information for the 
+	* 			  tetrahedron corresponding to `index`
+	*/
 	void set_mesh_tet(int index, Omega_h::Mesh const& mesh);
+	/**
+	* @brief Calculates the areas of each face in the tetrahedron the mapping 
+	* 		 corresponds to
+	* @param index the element ID of the tetrahedron
+	* @param mesh the Omega_h::Mesh with the spatial information for the 
+	* 			  tetrahedron corresponding to `index`
+	*/
 	void set_triangle_areas();
 	// returns the actual face/edge offset from the barycentric offset
 	KOKKOS_INLINE_FUNCTION int face(int i) const 
@@ -262,36 +304,86 @@ private:
 	static const char OFFSETS = 1 << 4 | 3 << 2 | 2;
 };
 
+/**
+* Wrapper base class for the ArborX::BVH and Mappings classes, this is a *rough*
+* workaround for ArborX::BVH being templated on dimension
+*/
 struct TreeWrapper
 {
+	/**
+	* @brief returns a pointer to an ArborX tree
+	*/
 	virtual void* get_tree() = 0;
+	/**
+	* @brief returns a pointer to a Kokkos::View of Mappings
+	*/
 	virtual void* get_mappings() = 0;
 };
 
+/**
+* Wraper class for 2D ArborX::BVH and Mapping2D
+*/
 struct TreeWrapper2D : TreeWrapper
 {
+	/**
+	* typedefs for clarity in later code
+	*/
 	using Mappings_t = Kokkos::View<Mapping2D*, Omega_h::ExecSpace::memory_space>;
 	using Tree_t = ArborX::BVH<Omega_h::ExecSpace::memory_space,
 			ArborX::PairValueIndex<ArborX::Box<2, double>, unsigned>>;
 	
+	/**
+	* @brief Constructor, sets the View of Mappings and the tree
+	* @param mappings the mappings for every triangle in an Omega_h::Mesh
+	* @param tree an ArborX::BVH constructed fom an Omega_h::Mesh
+	*/
 	TreeWrapper2D(const Mappings_t& mappings, const Tree_t& tree) : mappings_(mappings), tree_(tree) {}
+	/**
+	* @brief default destructor
+	*/
 	~TreeWrapper2D() = default;
+	/**
+	* @brief Returns a pointer to the ArborX::BVH
+	*/
 	void* get_tree() override { return &tree_; };
+	/**
+	* @brief Returns a pointer to the Kokkos::View of Mapping2Ds
+	*/
 	void* get_mappings() override {return &mappings_; };
 private:
 	Tree_t tree_;
 	Mappings_t mappings_;
 };
 
+/**
+* Wraper class for 3D ArborX::BVH and Mapping3D
+*/
 struct TreeWrapper3D : TreeWrapper
 {
+	/**
+	* typedefs for clarity in later code
+	*/
 	using Mappings_t = Kokkos::View<Mapping3D*, Omega_h::ExecSpace::memory_space>;
 	using Tree_t = ArborX::BVH<Omega_h::ExecSpace::memory_space,
 			ArborX::PairValueIndex<ArborX::Box<3, double>, unsigned>>;
 
+	/**
+	* @brief Constructor, sets the View of Mappings and the tree
+	* @param mappings the mappings for every triangle in an Omega_h::Mesh
+	* @param tree an ArborX::BVH constructed fom an Omega_h::Mesh
+	*/
 	TreeWrapper3D(const Mappings_t& mappings, const Tree_t& tree) : mappings_(mappings), tree_(tree) {}
+	/**
+	* @brief default destructor
+	*/
 	~TreeWrapper3D() = default;
+	/**
+	* @brief Returns a pointer to the ArborX::BVH
+	*/
 	void* get_tree() override { return &tree_; };
+	/**
+	* @brief Returns a pointer to the Kokkos::View of Mapping3Ds
+	*/
 	void* get_mappings() override {return &mappings_; };
 private:
 	Tree_t tree_;
@@ -299,6 +391,7 @@ private:
 };
 
 } //namespace detail
+
 /**
  * Point search base class
  */
@@ -307,6 +400,13 @@ class PointSearch
 public:
 	using ExecSpace = Omega_h::ExecSpace;
 	using MemorySpace = ExecSpace::memory_space;
+	/**
+	* Result type gives dimensionality of point intersection, the intersected
+	* element ID, and the barycentric coordinate mapping of that point.
+	* @warning `parametric_coords` is hardcoded at length 4 because Kokkos::Views
+	*		   can only contain fixed width elements as explained in Kokkos
+	*		   Programming Guide sections 5.2.2 and 5.2.3
+	*/
 	struct Result
 	{
 		enum class Dimensionality
@@ -325,8 +425,10 @@ public:
 
 	PointSearch() = default;
 	~PointSearch() = default;
+
 	virtual Kokkos::View<Result*> apply(const CoordinateView<MemorySpace>& coords) const = 0;
 };
+
 
 class TreePointSearch : public PointSearch
 {
@@ -337,6 +439,13 @@ public:
 	using MemorySpace = PointSearch::MemorySpace;
 	TreePointSearch(const Omega_h::Mesh& mesh) : mesh_(mesh), tree(make_tree(mesh)) {}
 	~TreePointSearch() = default;
+	/**
+	* Given a set of points in global coordinates give the ids of the entities
+	* that the points lie within and the parametric coordinates of each point 
+	* within a triangles or tetrahedra adjacent to the intersected entity. 
+	* If the point does not lie within any triangle element. Then the id will 
+	* be a negative number
+	*/
 	Kokkos::View<Result*> apply(
 		const CoordinateView<MemorySpace>& coords) const override;
 private:
@@ -349,6 +458,9 @@ private:
 namespace detail
 {
 
+/**
+* Functor to be called when a point intersects a triangle or tetrahedron
+*/
 class CallOnIntersect3D
 {
 public:
@@ -369,6 +481,9 @@ public:
 		adjacencies[2] = adjacencies2;
 	};
 	
+	/**
+	* Intersection callback, 
+	*/
 	template <typename Predicate, typename Value>
 	KOKKOS_FUNCTION void operator()(Predicate const &predicate, Value const & val) const
 	{
@@ -409,6 +524,7 @@ private:
 	Omega_h::LOs adjacencies[3];
 	Kokkos::View<TreePointSearch::Result*, MemorySpace> intersection_results;
 };
+
 
 class CallOnIntersect2D
 {
@@ -467,6 +583,7 @@ private:
 	Omega_h::LOs adjacencies[2];
 	Kokkos::View<TreePointSearch::Result*, MemorySpace> intersection_results;
 };
+
 } // namespace detail
 
 } // namespace pcms

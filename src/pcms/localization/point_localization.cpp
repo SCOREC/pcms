@@ -62,7 +62,7 @@ namespace pcms
 namespace detail
 {
 
-Mapping2D::Mapping2D(int elem_index, Omega_h::Mesh const& mesh)
+Mapping<2>::Mapping(int elem_index, Omega_h::Mesh const& mesh)
 {
 	set_mesh_triangle(elem_index, mesh);
 	bary_transform = { triangle[0] - triangle[2], triangle[1] - triangle[2] };
@@ -71,15 +71,15 @@ Mapping2D::Mapping2D(int elem_index, Omega_h::Mesh const& mesh)
 }
 
 KOKKOS_FUNCTION
-Omega_h::Vector<Mapping2D::DIM + 1> Mapping2D::get_bary(Omega_h::Vector<Mapping2D::DIM> const& p) const
+Omega_h::Vector<Mapping<2>::DIM + 1> Mapping<2>::get_bary(Omega_h::Vector<Mapping<2>::DIM> const& p) const
 {
 	Omega_h::Vector<2> coeffs = bary_transform*(p - triangle[2]);
 	return {coeffs[0], coeffs[1], 1 - coeffs[0] - coeffs[1]};
 }
 
 KOKKOS_FUNCTION
-int Mapping2D::which(int dim, 
-					 Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords) const
+int Mapping<2>::which(int dim, 
+					 Omega_h::Vector<Mapping<2>::DIM + 1> const& bary_coords) const
 {
 	if (dim == Omega_h::VERT) {
 		return which_vert(bary_coords);
@@ -93,7 +93,7 @@ int Mapping2D::which(int dim,
 	return -1;
 }
 
-int Mapping2D::which_vert(Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords) const
+int Mapping<2>::which_vert(Omega_h::Vector<Mapping<2>::DIM + 1> const& bary_coords) const
 {
 	for (int i = 0; i < 3; i++)
 	{
@@ -106,7 +106,7 @@ int Mapping2D::which_vert(Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords
 	return -1;
 }
 
-int Mapping2D::which_edge(Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords) const
+int Mapping<2>::which_edge(Omega_h::Vector<Mapping<2>::DIM + 1> const& bary_coords) const
 {
 	for (int i = 0; i <= 2; i++)
 	{
@@ -120,12 +120,12 @@ int Mapping2D::which_edge(Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords
 	return -1;
 }
 
-int Mapping2D::within_elem(Omega_h::Vector<Mapping2D::DIM + 1> const& bary_coords) const
+int Mapping<2>::within_elem(Omega_h::Vector<Mapping<2>::DIM + 1> const& bary_coords) const
 {
 	return -1 * (int)!(bary_coords[0] > 0 && bary_coords[1] > 0 && bary_coords[2] > 0);
 }
 
-void Mapping2D::set_mesh_triangle(int index, Omega_h::Mesh const& mesh)
+void Mapping<2>::set_mesh_triangle(int index, Omega_h::Mesh const& mesh)
 {
 	auto face2vert = Omega_h::HostRead(mesh.get_adj(Omega_h::FACE, Omega_h::VERT).ab2b);
 	auto vert_coords = Omega_h::HostRead(mesh.coords());
@@ -134,12 +134,12 @@ void Mapping2D::set_mesh_triangle(int index, Omega_h::Mesh const& mesh)
 			{vert_coords[face2vert[index*3 + 2]*2], vert_coords[face2vert[index*3 + 2]*2 + 1]}};
 }
 
-double Mapping2D::opposite_edge_len_sq(int i) const
+double Mapping<2>::opposite_edge_len_sq(int i) const
 {
 	return Omega_h::norm_squared(triangle[(i+2)%3] - triangle[(i+1)%3]);
 }
 
-Mapping3D::Mapping3D(int elem_index, Omega_h::Mesh const& mesh)
+Mapping<3>::Mapping(int elem_index, Omega_h::Mesh const& mesh)
 {
 	set_mesh_tet(elem_index, mesh);
 	set_triangle_areas();
@@ -149,15 +149,15 @@ Mapping3D::Mapping3D(int elem_index, Omega_h::Mesh const& mesh)
 }
 
 KOKKOS_FUNCTION
-Omega_h::Vector<Mapping3D::DIM + 1> Mapping3D::get_bary(Omega_h::Vector<Mapping3D::DIM> const& p) const
+Omega_h::Vector<Mapping<3>::DIM + 1> Mapping<3>::get_bary(Omega_h::Vector<Mapping<3>::DIM> const& p) const
 {
 	Omega_h::Vector<3> coeffs = bary_transform*(p - tetrahedron[3]);
 	return {coeffs[0], coeffs[1], coeffs[2], 1 - coeffs[0] - coeffs[1] - coeffs[2]};
 }
 
 KOKKOS_FUNCTION
-int Mapping3D::which(int dim, 
-					 Omega_h::Vector<Mapping3D::DIM + 1> const& bary_coords) const
+int Mapping<3>::which(int dim, 
+					 Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coords) const
 {
 	if (dim == Omega_h::VERT) {
 		return which_vert(bary_coords);
@@ -174,7 +174,7 @@ int Mapping3D::which(int dim,
 	return -1;
 }
 
-int Mapping3D::which_vert(Omega_h::Vector<Mapping3D::DIM + 1> const& bary_coords) const
+int Mapping<3>::which_vert(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coords) const
 {
 	for (int i = 0; i < 4; i++)
 	{
@@ -187,7 +187,7 @@ int Mapping3D::which_vert(Omega_h::Vector<Mapping3D::DIM + 1> const& bary_coords
 }
 
 
-int Mapping3D::which_edge(Omega_h::Vector<Mapping3D::DIM + 1> const& bary_coords) const
+int Mapping<3>::which_edge(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coords) const
 {
 	int edge_ = 0;
 	for (int i = 0; i < 4; i++)
@@ -213,7 +213,7 @@ int Mapping3D::which_edge(Omega_h::Vector<Mapping3D::DIM + 1> const& bary_coords
 	return -1;
 }
 
-int Mapping3D::which_face(Omega_h::Vector<Mapping3D::DIM + 1> const& bary_coords) const
+int Mapping<3>::which_face(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coords) const
 {
 	for (int i = 0; i < 4; i++)
 	{
@@ -226,12 +226,12 @@ int Mapping3D::which_face(Omega_h::Vector<Mapping3D::DIM + 1> const& bary_coords
 	return -1;
 }
 
-int Mapping3D::within_elem(Omega_h::Vector<Mapping3D::DIM + 1> const& bary_coords) const
+int Mapping<3>::within_elem(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coords) const
 {
 	return -1 * (int)!(bary_coords[0] >= 0 && bary_coords[1] >= 0 && bary_coords[2] >= 0 && bary_coords[3] >= 0);
 }
 
-void Mapping3D::set_mesh_tet(int index, Omega_h::Mesh const& mesh)
+void Mapping<3>::set_mesh_tet(int index, Omega_h::Mesh const& mesh)
 {
 	auto region2vert = Omega_h::HostRead(mesh.get_adj(Omega_h::REGION, Omega_h::VERT).ab2b);
 	auto vert_coords = Omega_h::HostRead(mesh.coords());
@@ -244,7 +244,7 @@ void Mapping3D::set_mesh_tet(int index, Omega_h::Mesh const& mesh)
 // calculates the areas of each of the faces of the triangle
 // the faces are "named" according to the vertex opposite
 // (i.e., face 0 is defined by points 1, 2, 3)
-void Mapping3D::set_triangle_areas()
+void Mapping<3>::set_triangle_areas()
 {
 	for (int i = 0; i < 4; i++)
 	{
@@ -261,7 +261,7 @@ KOKKOS_FUNCTION void CallOnIntersect2D::operator()(Predicate const &predicate, V
 	Omega_h::Vector<DIM> point{ax[0], ax[1]};
 	int point_ind = ArborX::getData(predicate);
 	
-	detail::Mapping2D const& tm = mappings(val.index);
+	detail::Mapping<2> const& tm = mappings(val.index);
 	
 	// calculate the barycentric coefficients of the point
 	auto coeffs = tm.get_bary(point);
@@ -296,7 +296,7 @@ void CallOnIntersect3D::operator()(Predicate const &predicate, Value const & val
 	Omega_h::Vector<DIM> point{ax[0], ax[1], ax[2]};
 	int point_ind = ArborX::getData(predicate);
 	
-	detail::Mapping3D const& tm = mappings(val.index);
+	detail::Mapping<3> const& tm = mappings(val.index);
 	
 	// calculate the barycentric coefficients of the point
 	auto coeffs = tm.get_bary(point);
@@ -359,11 +359,11 @@ Kokkos::View<TreePointSearch::Result*> TreePointSearch::apply(
 		}
 		Kokkos::deep_copy(execution_space, intersection_results, results_h);
 
-		((detail::TreeWrapper2D::Tree_t*)tree->get_tree())->query(execution_space, 
+		tree->get_tree<2>()->query(execution_space, 
 					detail::Coordinate_View_Adapt<MemorySpace, DIM>{
 					coords.GetCoordinates()},
 					detail::CallOnIntersect2D(
-						*(detail::TreeWrapper2D::Mappings_t*)tree->get_mappings(),
+						*tree->get_mappings<2>(),
 						mesh_.get_adj(Omega_h::FACE, 0).ab2b,
 						mesh_.get_adj(Omega_h::FACE, 1).ab2b,
 						intersection_results
@@ -385,20 +385,13 @@ Kokkos::View<TreePointSearch::Result*> TreePointSearch::apply(
 			results_h[i].parametric_coords = {-1, -1, -1, -1};
 		}
 		Kokkos::deep_copy(execution_space, intersection_results, results_h);
-		
-		detail::TreeWrapper3D::Mappings_t mappings = *(detail::TreeWrapper3D::Mappings_t*)tree->get_mappings();
-		Omega_h::LOs adjacencies[3] = {
-			mesh_.get_adj(Omega_h::REGION, 0).ab2b,
-			mesh_.get_adj(Omega_h::REGION, 1).ab2b,
-			mesh_.get_adj(Omega_h::REGION, 2).ab2b
-		};
 
-		((detail::TreeWrapper3D::Tree_t*)tree->get_tree())->query(execution_space, 
+		tree->get_tree<3>()->query(execution_space, 
 			detail::Coordinate_View_Adapt<MemorySpace, 
 			DIM>{
 			coords.GetCoordinates()},
 			detail::CallOnIntersect3D(
-				*(detail::TreeWrapper3D::Mappings_t*)tree->get_mappings(),
+				*tree->get_mappings<3>(),
 				mesh_.get_adj(Omega_h::REGION, 0).ab2b,
 				mesh_.get_adj(Omega_h::REGION, 1).ab2b,
 				mesh_.get_adj(Omega_h::REGION, 2).ab2b,
@@ -422,21 +415,21 @@ std::unique_ptr<detail::TreeWrapper> TreePointSearch::make_tree(const Omega_h::M
 			mesh.coords()
 		};
 		
-		detail::TreeWrapper2D::Tree_t tree = detail::TreeWrapper2D::Tree_t(
+		detail::TreeWrapper::Tree_t<2> tree = detail::TreeWrapper::Tree_t<2>(
 			execution_space,
 			ArborX::Experimental::attach_indices(tagged_mesh));
 			
-		detail::TreeWrapper2D::Mappings_t mappings = detail::TreeWrapper2D::Mappings_t(
+		detail::TreeWrapper::Mappings_t<2> mappings = detail::TreeWrapper::Mappings_t<2>(
 			"mappings", 
 			mesh.nelems());
 		
 		auto mappings_h = Kokkos::create_mirror_view(mappings);
 		for (int i = 0; i < mesh.nelems(); i++)
 		{
-			mappings_h[i] = detail::Mapping2D(i, mesh);
+			mappings_h[i] = detail::Mapping<2>(i, mesh);
 		}
 		Kokkos::deep_copy(execution_space, mappings, mappings_h);
-		return std::make_unique<detail::TreeWrapper2D>(mappings, tree);
+		return std::make_unique<detail::TreeWrapper>(mappings, tree);
 	}
 	if (mesh.dim() == 3)
 	{
@@ -445,21 +438,21 @@ std::unique_ptr<detail::TreeWrapper> TreePointSearch::make_tree(const Omega_h::M
 			mesh.get_adj(Omega_h::REGION, Omega_h::VERT).ab2b,
 			mesh.coords()
 		};
-		detail::TreeWrapper3D::Tree_t tree = detail::TreeWrapper3D::Tree_t(
+		detail::TreeWrapper::Tree_t<3> tree = detail::TreeWrapper::Tree_t<3>(
 			execution_space, 
 			ArborX::Experimental::attach_indices(tagged_mesh));
 	
-		detail::TreeWrapper3D::Mappings_t mappings = detail::TreeWrapper3D::Mappings_t(
+		detail::TreeWrapper::Mappings_t<3> mappings = detail::TreeWrapper::Mappings_t<3>(
 			"mappings", 
 			mesh.nelems());
 		
 		auto mappings_h = Kokkos::create_mirror_view(mappings);
 		for (int i = 0; i < mesh.nelems(); i++)
 		{
-			mappings_h[i] = detail::Mapping3D(i, mesh);
+			mappings_h[i] = detail::Mapping<3>(i, mesh);
 		}
 		Kokkos::deep_copy(execution_space, mappings, mappings_h);
-		return std::make_unique<detail::TreeWrapper3D>(mappings, tree);
+		return std::make_unique<detail::TreeWrapper>(mappings, tree);
 	}
 	throw pcms_error("Invalid mesh dimension " + std::to_string(mesh.dim()) + ", TreePointSearch only implemented for 2D and 3D");
 }

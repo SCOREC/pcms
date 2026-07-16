@@ -1,6 +1,8 @@
 #ifndef POINT_LOCALIZATION_H
 #define POINT_LOCALIZATION_H
 
+#include <any>
+
 #include <ArborX.hpp>
 #include <ArborX_Triangle.hpp>
 #include <detail/ArborX_PairValueIndex.hpp>
@@ -56,18 +58,22 @@ struct Coordinate_View_Adapt
 	const Rank2View<const Real, MemorySpace, default_layout_for_memory_space_t<MemorySpace>> points;
 };
 
+template <int dim>
+class Mapping {};
+
 /**
-* @brief Mapping2D represents a mapping from the global coordinate system
+* @brief Mapping<2> represents a mapping from the global coordinate system
 *		 to the barycentric coordinate system of an element in a 2D Omega_h::Mesh
-* The class Mapping2D calculates the mapping of any point in global coordinate
+* The class Mapping<2> calculates the mapping of any point in global coordinate
 * space to the barycentric coordinate space belonging to a triangle (face) in
 * an Omega_h::Mesh.
-* An instance of Mapping2D can, from the barycentric coordinates constructed by it,
+* An instance of Mapping<2> can, from the barycentric coordinates constructed by it,
 * determine whether that point intersects the face, an edge, a vertex, or lies 
 * outside the face. It also determines which edge or vertex the point intersects
 * by calculating the offset in the Omega_h::Adj::ab2b
 */
-class Mapping2D
+template <>
+class Mapping<2>
 {
 public:
 	// the dimension of the space
@@ -77,18 +83,18 @@ public:
 	* @brief Default constructor
 	*/
 	KOKKOS_FUNCTION
-	Mapping2D() = default;
+	Mapping() = default;
 	/**
 	* @brief Constructs a barycentric mapping of a triangle in an Omega_h::Mesh
 	* @param elem_index the index of the desired triangle or tetrahedron in the Omega_h::Mesh
 	* @param mesh the Omega_h::Mesh with the spatial information of the triangle
 	*/
-	Mapping2D(int elem_index, Omega_h::Mesh const& mesh);
+	Mapping(int elem_index, Omega_h::Mesh const& mesh);
 	/**
 	* @brief Default destructor
 	*/
 	KOKKOS_FUNCTION
-	~Mapping2D() = default;
+	~Mapping() = default;
 	/**
 	* @brief Computes the barycentric coordinates of a point in global space
 	*
@@ -178,7 +184,8 @@ private:
 	double triangle_area;
 };
 
-class Mapping3D
+template <>
+class Mapping<3>
 {
 public:
 	static constexpr int DIM = 3;
@@ -186,18 +193,18 @@ public:
 	* @brief Default constructor
 	*/
 	KOKKOS_FUNCTION
-	Mapping3D() = default;
+	Mapping() = default;
 	/**
 	* @brief Constructs a barycentric mapping of a triangle in an Omega_h::Mesh
 	* @param elem_index the index of the desired triangle or tetrahedron in the Omega_h::Mesh
 	* @param mesh the Omega_h::Mesh with the spatial information of the triangle
 	*/
-	Mapping3D(int elem_index, Omega_h::Mesh const& mesh);
+	Mapping(int elem_index, Omega_h::Mesh const& mesh);
 	/**
 	* @brief Default destructor
 	*/
 	KOKKOS_FUNCTION
-	~Mapping3D() = default;
+	~Mapping() = default;
 	/**
 	* @brief Computes the barycentric coordinates of a point in global space
 	* @param p the point to compute the barycentric coordinates of
@@ -227,7 +234,7 @@ public:
 	*/
 	KOKKOS_FUNCTION
 	int which(int ent_dim, 
-					  Omega_h::Vector<DIM+1> const& bary_coords) const;
+			  Omega_h::Vector<DIM+1> const& bary_coords) const;
 private:	
 	/**
 	* @brief Computes the vertex offset of the point corresponding 
@@ -310,86 +317,51 @@ private:
 */
 struct TreeWrapper
 {
+	template <int dim>
+	using Mappings_t = Kokkos::View<Mapping<dim>*, Omega_h::ExecSpace::memory_space>;
+	template <int dim>
+	using Tree_t = ArborX::BVH<Omega_h::ExecSpace::memory_space,
+			ArborX::PairValueIndex<ArborX::Box<dim, double>, unsigned>>;
+	
+	template <int dim>
+	TreeWrapper(const Mappings_t<dim>& mappings, const Tree_t<dim>& tree)
+	{
+		dim_ = dim;
+		mappings_ = std::make_shared<std::any>(mappings);
+		tree_ = std::make_shared<std::any>(tree);
+	}
 	/**
 	* @brief returns a pointer to an ArborX tree
 	*/
-	virtual void* get_tree() = 0;
+	template <int dim>
+	inline std::shared_ptr<Tree_t<dim>> get_tree()
+	{
+		if (dim != dim_)
+		{
+			throw pcms_error("Requested get_tree return "
+				"type does not match internal Tree_t");
+		}
+		return std::make_shared<Tree_t<dim>>(std::any_cast<Tree_t<dim>>(*tree_));
+	}
+
 	/**
 	* @brief returns a pointer to a Kokkos::View of Mappings
 	*/
-	virtual void* get_mappings() = 0;
-};
-
-/**
-* Wraper class for 2D ArborX::BVH and Mapping2D
-*/
-struct TreeWrapper2D : TreeWrapper
-{
-	/**
-	* typedefs for clarity in later code
-	*/
-	using Mappings_t = Kokkos::View<Mapping2D*, Omega_h::ExecSpace::memory_space>;
-	using Tree_t = ArborX::BVH<Omega_h::ExecSpace::memory_space,
-			ArborX::PairValueIndex<ArborX::Box<2, double>, unsigned>>;
-	
-	/**
-	* @brief Constructor, sets the View of Mappings and the tree
-	* @param mappings the mappings for every triangle in an Omega_h::Mesh
-	* @param tree an ArborX::BVH constructed fom an Omega_h::Mesh
-	*/
-	TreeWrapper2D(const Mappings_t& mappings, const Tree_t& tree) : mappings_(mappings), tree_(tree) {}
-	/**
-	* @brief default destructor
-	*/
-	~TreeWrapper2D() = default;
-	/**
-	* @brief Returns a pointer to the ArborX::BVH
-	*/
-	void* get_tree() override { return &tree_; };
-	/**
-	* @brief Returns a pointer to the Kokkos::View of Mapping2Ds
-	*/
-	void* get_mappings() override {return &mappings_; };
+	template <int dim>
+	inline std::shared_ptr<Mappings_t<dim>> get_mappings()
+	{
+		if (dim != dim_)
+		{
+			throw pcms_error("Requested get_mappings return "
+				"type does not match internal Mappings_t");
+		}
+		return std::make_shared<Mappings_t<dim>>(std::any_cast<Mappings_t<dim>>(*mappings_));
+	};
 private:
-	Tree_t tree_;
-	Mappings_t mappings_;
+	int dim_;
+	std::shared_ptr<std::any> tree_;
+	std::shared_ptr<std::any> mappings_;
 };
-
-/**
-* Wraper class for 3D ArborX::BVH and Mapping3D
-*/
-struct TreeWrapper3D : TreeWrapper
-{
-	/**
-	* typedefs for clarity in later code
-	*/
-	using Mappings_t = Kokkos::View<Mapping3D*, Omega_h::ExecSpace::memory_space>;
-	using Tree_t = ArborX::BVH<Omega_h::ExecSpace::memory_space,
-			ArborX::PairValueIndex<ArborX::Box<3, double>, unsigned>>;
-
-	/**
-	* @brief Constructor, sets the View of Mappings and the tree
-	* @param mappings the mappings for every triangle in an Omega_h::Mesh
-	* @param tree an ArborX::BVH constructed fom an Omega_h::Mesh
-	*/
-	TreeWrapper3D(const Mappings_t& mappings, const Tree_t& tree) : mappings_(mappings), tree_(tree) {}
-	/**
-	* @brief default destructor
-	*/
-	~TreeWrapper3D() = default;
-	/**
-	* @brief Returns a pointer to the ArborX::BVH
-	*/
-	void* get_tree() override { return &tree_; };
-	/**
-	* @brief Returns a pointer to the Kokkos::View of Mapping3Ds
-	*/
-	void* get_mappings() override {return &mappings_; };
-private:
-	Tree_t tree_;
-	Mappings_t mappings_;
-};
-
 } //namespace detail
 
 /**
@@ -437,6 +409,7 @@ public:
 	using Dimensionality = Result::Dimensionality;
 	using ExecSpace = PointSearch::ExecSpace;
 	using MemorySpace = PointSearch::MemorySpace;
+	
 	TreePointSearch(const Omega_h::Mesh& mesh) : mesh_(mesh), tree(make_tree(mesh)) {}
 	~TreePointSearch() = default;
 	/**
@@ -468,7 +441,7 @@ public:
 	static constexpr int DIM = 3;
 
 	CallOnIntersect3D(
-		const Kokkos::View<Mapping3D*, MemorySpace>& mappings_,
+		const Kokkos::View<Mapping<3>*, MemorySpace>& mappings_,
 		const Omega_h::LOs& adjacencies0,
 		const Omega_h::LOs& adjacencies1,
 		const Omega_h::LOs& adjacencies2,
@@ -487,7 +460,7 @@ public:
 	template <typename Predicate, typename Value>
 	KOKKOS_FUNCTION void operator()(Predicate const &predicate, Value const & val) const;
 private:
-	Kokkos::View<Mapping3D*, MemorySpace> mappings;
+	Kokkos::View<Mapping<3>*, MemorySpace> mappings;
 	Omega_h::LOs adjacencies[3];
 	Kokkos::View<TreePointSearch::Result*, MemorySpace> intersection_results;
 };
@@ -500,7 +473,7 @@ public:
 	static constexpr int DIM = 2;
 
 	CallOnIntersect2D(
-		const Kokkos::View<Mapping2D*, MemorySpace>& mappings_,
+		const Kokkos::View<Mapping<2>*, MemorySpace>& mappings_,
 		const Omega_h::LOs& adjacencies0,
 		const Omega_h::LOs& adjacencies1,
 		const Kokkos::View<TreePointSearch::Result*, MemorySpace>& intersection_results_
@@ -514,7 +487,7 @@ public:
 	template <typename Predicate, typename Value>
 	KOKKOS_FUNCTION void operator()(Predicate const &predicate, Value const & val) const;
 private:
-	Kokkos::View<Mapping2D*, MemorySpace> mappings;
+	Kokkos::View<Mapping<2>*, MemorySpace> mappings;
 	Omega_h::LOs adjacencies[2];
 	Kokkos::View<TreePointSearch::Result*, MemorySpace> intersection_results;
 };

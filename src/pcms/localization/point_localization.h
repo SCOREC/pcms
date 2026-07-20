@@ -90,6 +90,8 @@ public:
 	* @param mesh the Omega_h::Mesh with the spatial information of the triangle
 	*/
 	Mapping(int elem_index, Omega_h::Mesh const& mesh);
+
+	Mapping(Omega_h::Matrix<DIM,DIM+1> const& triangle_);
 	/**
 	* @brief Default destructor
 	*/
@@ -194,12 +196,8 @@ public:
 	*/
 	KOKKOS_FUNCTION
 	Mapping() = default;
-	/**
-	* @brief Constructs a barycentric mapping of a triangle in an Omega_h::Mesh
-	* @param elem_index the index of the desired triangle or tetrahedron in the Omega_h::Mesh
-	* @param mesh the Omega_h::Mesh with the spatial information of the triangle
-	*/
-	Mapping(int elem_index, Omega_h::Mesh const& mesh);
+
+	Mapping(Omega_h::Matrix<DIM,DIM+1> const& tetrahedron_);
 	/**
 	* @brief Default destructor
 	*/

@@ -62,9 +62,8 @@ namespace pcms
 namespace detail
 {
 
-Mapping<2>::Mapping(int elem_index, Omega_h::Mesh const& mesh)
+Mapping<2>::Mapping(Omega_h::Matrix<Mapping<2>::DIM,Mapping<2>::DIM+1> const& triangle_) : triangle(triangle_)
 {
-	set_mesh_triangle(elem_index, mesh);
 	bary_transform = { triangle[0] - triangle[2], triangle[1] - triangle[2] };
 	triangle_area = 0.5*fabs(Omega_h::determinant(bary_transform));
 	bary_transform = Omega_h::invert(bary_transform);
@@ -125,23 +124,14 @@ int Mapping<2>::within_elem(Omega_h::Vector<Mapping<2>::DIM + 1> const& bary_coo
 	return -1 * (int)!(bary_coords[0] > 0 && bary_coords[1] > 0 && bary_coords[2] > 0);
 }
 
-void Mapping<2>::set_mesh_triangle(int index, Omega_h::Mesh const& mesh)
-{
-	auto face2vert = Omega_h::HostRead(mesh.get_adj(Omega_h::FACE, Omega_h::VERT).ab2b);
-	auto vert_coords = Omega_h::HostRead(mesh.coords());
-	triangle = Omega_h::Matrix<2,3>{{vert_coords[face2vert[index*3]*2], vert_coords[face2vert[index*3]*2 + 1]},
-			{vert_coords[face2vert[index*3 + 1]*2], vert_coords[face2vert[index*3 + 1]*2 + 1]},
-			{vert_coords[face2vert[index*3 + 2]*2], vert_coords[face2vert[index*3 + 2]*2 + 1]}};
-}
-
 double Mapping<2>::opposite_edge_len_sq(int i) const
 {
 	return Omega_h::norm_squared(triangle[(i+2)%3] - triangle[(i+1)%3]);
 }
 
-Mapping<3>::Mapping(int elem_index, Omega_h::Mesh const& mesh)
+Mapping<3>::Mapping(Omega_h::Matrix<Mapping<3>::DIM,Mapping<3>::DIM+1> const& tetrahedron_)
+	: tetrahedron(tetrahedron_)
 {
-	set_mesh_tet(elem_index, mesh);
 	set_triangle_areas();
 	bary_transform = { tetrahedron[0] - tetrahedron[3], tetrahedron[1] - tetrahedron[3], tetrahedron[2] - tetrahedron[3] };
 	tetrahedron_volume = fabs(Omega_h::determinant(bary_transform))/6.;
@@ -229,16 +219,6 @@ int Mapping<3>::which_face(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coor
 int Mapping<3>::within_elem(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coords) const
 {
 	return -1 * (int)!(bary_coords[0] >= 0 && bary_coords[1] >= 0 && bary_coords[2] >= 0 && bary_coords[3] >= 0);
-}
-
-void Mapping<3>::set_mesh_tet(int index, Omega_h::Mesh const& mesh)
-{
-	auto region2vert = Omega_h::HostRead(mesh.get_adj(Omega_h::REGION, Omega_h::VERT).ab2b);
-	auto vert_coords = Omega_h::HostRead(mesh.coords());
-	tetrahedron = {{vert_coords[region2vert[index*4]*3], vert_coords[region2vert[index*4]*3 + 1], vert_coords[region2vert[index*4]*3 + 2]},
-	{vert_coords[region2vert[index*4 + 1]*3], vert_coords[region2vert[index*4 + 1]*3 + 1], vert_coords[region2vert[index*4 + 1]*3 + 2]},
-	{vert_coords[region2vert[index*4 + 2]*3], vert_coords[region2vert[index*4 + 2]*3 + 1], vert_coords[region2vert[index*4 + 2]*3 + 2]},
-	{vert_coords[region2vert[index*4 + 3]*3], vert_coords[region2vert[index*4 + 3]*3 + 1], vert_coords[region2vert[index*4 + 3]*3 + 2]}};
 }
 
 // calculates the areas of each of the faces of the triangle
@@ -423,10 +403,17 @@ std::unique_ptr<detail::TreeWrapper> TreePointSearch::make_tree(const Omega_h::M
 			"mappings", 
 			mesh.nelems());
 		
+		auto face2vert = Omega_h::HostRead(mesh.get_adj(Omega_h::FACE, Omega_h::VERT).ab2b);
+		auto vert_coords = Omega_h::HostRead(mesh.coords());
+		
 		auto mappings_h = Kokkos::create_mirror_view(mappings);
 		for (int i = 0; i < mesh.nelems(); i++)
 		{
-			mappings_h[i] = detail::Mapping<2>(i, mesh);
+			Omega_h::Matrix<2,3> triangle = {
+				{vert_coords[face2vert[i*3]*2], vert_coords[face2vert[i*3]*2 + 1]},
+				{vert_coords[face2vert[i*3 + 1]*2], vert_coords[face2vert[i*3 + 1]*2 + 1]},
+				{vert_coords[face2vert[i*3 + 2]*2], vert_coords[face2vert[i*3 + 2]*2 + 1]}};
+			mappings_h[i] = detail::Mapping<2>(triangle);
 		}
 		Kokkos::deep_copy(execution_space, mappings, mappings_h);
 		return std::make_unique<detail::TreeWrapper>(mappings, tree);
@@ -446,10 +433,18 @@ std::unique_ptr<detail::TreeWrapper> TreePointSearch::make_tree(const Omega_h::M
 			"mappings", 
 			mesh.nelems());
 		
+		auto region2vert = Omega_h::HostRead(mesh.get_adj(Omega_h::REGION, Omega_h::VERT).ab2b);
+		auto vert_coords = Omega_h::HostRead(mesh.coords());
+
 		auto mappings_h = Kokkos::create_mirror_view(mappings);
 		for (int i = 0; i < mesh.nelems(); i++)
 		{
-			mappings_h[i] = detail::Mapping<3>(i, mesh);
+			Omega_h::Matrix<3,4> tetrahedron = {
+				{vert_coords[region2vert[i*4]*3], vert_coords[region2vert[i*4]*3 + 1], vert_coords[region2vert[i*4]*3 + 2]},
+				{vert_coords[region2vert[i*4 + 1]*3], vert_coords[region2vert[i*4 + 1]*3 + 1], vert_coords[region2vert[i*4 + 1]*3 + 2]},
+				{vert_coords[region2vert[i*4 + 2]*3], vert_coords[region2vert[i*4 + 2]*3 + 1], vert_coords[region2vert[i*4 + 2]*3 + 2]},
+				{vert_coords[region2vert[i*4 + 3]*3], vert_coords[region2vert[i*4 + 3]*3 + 1], vert_coords[region2vert[i*4 + 3]*3 + 2]}};
+			mappings_h[i] = detail::Mapping<3>(tetrahedron);
 		}
 		Kokkos::deep_copy(execution_space, mappings, mappings_h);
 		return std::make_unique<detail::TreeWrapper>(mappings, tree);

@@ -128,8 +128,8 @@ void transfer_server(MPI_Comm comm, Omega_h::Mesh& mesh,
         source.Receive();
         source2.Receive();
       });
-      transfer.Run();               // via handle: field  source -> target
-      cpl.RunTransfer("field2");    // via name:   field2 source -> target
+      transfer.Run();            // via handle: field  source -> target
+      cpl.RunTransfer("field2"); // via name:   field2 source -> target
       target_app->SendPhase([&] {
         target.Send();
         target2.Send();

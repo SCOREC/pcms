@@ -314,21 +314,23 @@ public:
   }
 
   // Register a named transfer that applies an already-built operator to a field
-  // pair. The name identifies the transfer for the returned handle, GetTransfer,
-  // and RunTransfer, and must be unique among this coupler's transfers.
+  // pair. The name identifies the transfer for the returned handle,
+  // GetTransfer, and RunTransfer, and must be unique among this coupler's
+  // transfers.
   //
   // The operator is the currency: build it once -- via a method recipe
   // (method::X{}.Build(src_space, tgt_space), see
   // pcms/transfer/transfer_method.hpp) or by constructing a TransferOperator
-  // directly -- and bind it here. Because operators are shared, one operator can
-  // back several transfers whose fields share the same (source, target)
+  // directly -- and bind it here. Because operators are shared, one operator
+  // can back several transfers whose fields share the same (source, target)
   // function-space pair (e.g. displacement and velocity on one space), reusing
   // its cached localization/assembly. The caller must pass fields whose spaces
   // match the ones the operator was built for.
   template <typename T>
   TransferHandle AddTransfer(std::string name,
                              std::shared_ptr<const TransferOperator<T>> op,
-                             FunctionHandle<T> source, FunctionHandle<T> target);
+                             FunctionHandle<T> source,
+                             FunctionHandle<T> target);
 
   // One-shot convenience: build an operator from a method recipe and bind it to
   // this single named field pair. NOTE: each call builds a fresh operator; to

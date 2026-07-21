@@ -83,14 +83,16 @@ public:
 
 // BoundTransfer binds a built transfer operator to the source/target functions
 // it connects. Owned by the Coupler (as a Transfer) and referenced through a
-// TransferHandle; the expensive build happened in AddTransfer, Run() is the
-// cheap per-step Apply.
+// TransferHandle. The operator is held by shared_ptr so a single built operator
+// can back several BoundTransfers -- one per field pair that lives on the same
+// (source, target) function-space pair -- amortizing the expensive build.
+// Run() is the cheap per-step Apply.
 template <typename T>
 class BoundTransfer : public Transfer
 {
 public:
   BoundTransfer(FunctionHandle<T> source, FunctionHandle<T> target,
-                std::unique_ptr<TransferOperator<T>> op)
+                std::shared_ptr<const TransferOperator<T>> op)
     : source_(std::move(source)),
       target_(std::move(target)),
       operator_(std::move(op))
@@ -106,24 +108,26 @@ public:
 private:
   FunctionHandle<T> source_;
   FunctionHandle<T> target_;
-  std::unique_ptr<TransferOperator<T>> operator_;
+  std::shared_ptr<const TransferOperator<T>> operator_;
 };
 
 // Lightweight, copyable reference to a coupler-owned transfer (mirrors
-// FieldHandle). Run() dispatches to the owning Coupler.
+// FieldHandle). Identified by name; Run() dispatches to the owning Coupler.
 class TransferHandle
 {
 public:
   void Run() const;
+  [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
 
 private:
-  TransferHandle(Coupler* coupler, std::size_t id) : coupler_(coupler), id_(id)
+  TransferHandle(Coupler* coupler, std::string name)
+    : coupler_(coupler), name_(std::move(name))
   {
   }
   friend class Coupler;
 
   Coupler* coupler_;
-  std::size_t id_;
+  std::string name_;
 };
 
 class Application
@@ -309,22 +313,53 @@ public:
     return redev_.GetPartition();
   }
 
-  // Build and register a transfer from source to target using the given method
-  // recipe (see pcms/transfer/transfer_method.hpp). The coupler owns the built
-  // operator; the returned handle's Run() applies it in the coupling loop.
-  template <typename T, typename Method>
-  TransferHandle AddTransfer(FunctionHandle<T> source, FunctionHandle<T> target,
-                             const Method& method);
+  // Register a named transfer that applies an already-built operator to a field
+  // pair. The name identifies the transfer for the returned handle, GetTransfer,
+  // and RunTransfer, and must be unique among this coupler's transfers.
+  //
+  // The operator is the currency: build it once -- via a method recipe
+  // (method::X{}.Build(src_space, tgt_space), see
+  // pcms/transfer/transfer_method.hpp) or by constructing a TransferOperator
+  // directly -- and bind it here. Because operators are shared, one operator can
+  // back several transfers whose fields share the same (source, target)
+  // function-space pair (e.g. displacement and velocity on one space), reusing
+  // its cached localization/assembly. The caller must pass fields whose spaces
+  // match the ones the operator was built for.
+  template <typename T>
+  TransferHandle AddTransfer(std::string name,
+                             std::shared_ptr<const TransferOperator<T>> op,
+                             FunctionHandle<T> source, FunctionHandle<T> target);
 
-  void RunTransfer(std::size_t id) { transfers_.at(id)->Run(); }
+  // One-shot convenience: build an operator from a method recipe and bind it to
+  // this single named field pair. NOTE: each call builds a fresh operator; to
+  // reuse one operator across several field pairs on the same space pair, build
+  // it once and use the overload above.
+  template <typename T, typename Method>
+  TransferHandle AddTransfer(std::string name, FunctionHandle<T> source,
+                             FunctionHandle<T> target, const Method& method);
+
+  // Retrieve a handle to a previously added transfer by name.
+  [[nodiscard]] TransferHandle GetTransfer(const std::string& name);
+
+  // Run a previously added transfer by name.
+  void RunTransfer(const std::string& name) { FindTransfer(name).Run(); }
 
 private:
+  Transfer& FindTransfer(const std::string& name)
+  {
+    auto it = transfers_.find(name);
+    if (it == transfers_.end()) {
+      throw pcms_error("Coupler: no transfer named '" + name + "'");
+    }
+    return *it->second;
+  }
+
   std::string name_;
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
   // gather and scatter operations have reference to internal fields
   std::map<std::string, Application> applications_;
-  std::vector<std::unique_ptr<Transfer>> transfers_;
+  std::map<std::string, std::unique_ptr<Transfer>> transfers_;
 };
 
 } // namespace pcms
@@ -458,21 +493,52 @@ pcms::FunctionHandle<T> pcms::Application::AddFunction(
 inline void pcms::TransferHandle::Run() const
 {
   PCMS_ALWAYS_ASSERT(coupler_ != nullptr);
-  coupler_->RunTransfer(id_);
+  coupler_->RunTransfer(name_);
+}
+
+inline pcms::TransferHandle pcms::Coupler::GetTransfer(const std::string& name)
+{
+  FindTransfer(name); // throws if absent
+  return TransferHandle{this, name};
+}
+
+template <typename T>
+pcms::TransferHandle pcms::Coupler::AddTransfer(
+  std::string name, std::shared_ptr<const TransferOperator<T>> op,
+  FunctionHandle<T> source, FunctionHandle<T> target)
+{
+  PCMS_FUNCTION_TIMER;
+  PCMS_ALWAYS_ASSERT(op != nullptr);
+  if (name.empty()) {
+    throw pcms_error("Coupler::AddTransfer: transfer name must not be empty");
+  }
+  if (&source.GetSpace() != &op->SourceSpace() ||
+      &target.GetSpace() != &op->TargetSpace()) {
+    throw pcms_error("Coupler::AddTransfer: transfer '" + name +
+                     "' binds a field whose function space differs from the "
+                     "one its operator was built for");
+  }
+  auto [it, inserted] = transfers_.emplace(
+    name, std::make_unique<BoundTransfer<T>>(std::move(source),
+                                             std::move(target), std::move(op)));
+  if (!inserted) {
+    throw pcms_error("Coupler::AddTransfer: a transfer named '" + name +
+                     "' already exists");
+  }
+  return TransferHandle{this, std::move(name)};
 }
 
 template <typename T, typename Method>
-pcms::TransferHandle pcms::Coupler::AddTransfer(FunctionHandle<T> source,
+pcms::TransferHandle pcms::Coupler::AddTransfer(std::string name,
+                                                FunctionHandle<T> source,
                                                 FunctionHandle<T> target,
                                                 const Method& method)
 {
   PCMS_FUNCTION_TIMER;
-  std::unique_ptr<TransferOperator<T>> op =
+  std::shared_ptr<const TransferOperator<T>> op =
     method.Build(source.GetSpace(), target.GetSpace());
-  const std::size_t id = transfers_.size();
-  transfers_.push_back(std::make_unique<BoundTransfer<T>>(
-    std::move(source), std::move(target), std::move(op)));
-  return TransferHandle{this, id};
+  return AddTransfer<T>(std::move(name), std::move(op), std::move(source),
+                        std::move(target));
 }
 
 #endif // COUPLER2_H_

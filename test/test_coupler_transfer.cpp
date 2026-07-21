@@ -27,8 +27,10 @@ std::shared_ptr<pcms::LagrangeFunctionSpace> MakeSpace(Omega_h::Mesh& mesh)
     pcms::LagrangeFunctionSpace::DefaultBackend, "field");
 }
 
+// Fill a field with scale*gid at each dof holder. The scale lets two fields on
+// the same space carry distinct data through one shared transfer operator.
 void SetFieldToGids(const pcms::FieldLayout& layout,
-                    pcms::FieldData<Real>* field)
+                    pcms::FieldData<Real>* field, Real scale = 1.0)
 {
   auto gids = layout.GetGidsHost();
   const auto n = layout.GetNumOwnedDofHolder();
@@ -36,13 +38,14 @@ void SetFieldToGids(const pcms::FieldLayout& layout,
   Kokkos::parallel_for(
     "set_gids",
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
-    [=](int i) { values[i] = gids[i]; });
+    [=](int i) { values[i] = scale * gids[i]; });
   field->SetDOFHolderDataHost(
     pcms::Rank2View<const Real, pcms::HostMemorySpace>(values.data(), n, 1));
 }
 
 bool FieldEqualsGids(const pcms::FieldLayout& layout,
-                     pcms::FieldData<Real>* field, int rank)
+                     pcms::FieldData<Real>* field, int rank, Real scale,
+                     const char* label)
 {
   auto gids = layout.GetGidsHost();
   auto owned = layout.GetOwnedHost();
@@ -65,14 +68,14 @@ bool FieldEqualsGids(const pcms::FieldLayout& layout,
       // that, scaled by the large unordered GID differences, can nudge a value
       // just below its integer. Round rather than truncate to compare.
       if (owned[i])
-        s += std::llround(got[i]) == (long long)gids[i];
+        s += std::llround(got[i]) == std::llround(scale * gids[i]);
     },
     matched);
 
   const bool ok = matched == expected;
-  std::cerr << "Rank " << rank << " - target field validation "
-            << (ok ? "PASSED" : "FAILED") << " (" << matched << "/" << expected
-            << ")\n";
+  std::cerr << "Rank " << rank << " - target field '" << label
+            << "' validation " << (ok ? "PASSED" : "FAILED") << " (" << matched
+            << "/" << expected << ")\n";
   return ok;
 }
 
@@ -94,19 +97,43 @@ void transfer_server(MPI_Comm comm, Omega_h::Mesh& mesh,
   auto source_space = MakeSpace(mesh);
   auto target_space = MakeSpace(mesh);
 
+  // Two fields (think displacement and velocity) that live on the same source
+  // and target spaces. Each pair is registered from the same space objects, so
+  // both share a function space -- and therefore one transfer operator can
+  // serve both.
   auto source =
     source_app->AddFunction(source_space->CreateFunction<Real>("field"));
   auto target =
     target_app->AddFunction(target_space->CreateFunction<Real>("field"));
+  auto source2 =
+    source_app->AddFunction(source_space->CreateFunction<Real>("field2"));
+  auto target2 =
+    target_app->AddFunction(target_space->CreateFunction<Real>("field2"));
 
-  auto transfer =
-    cpl.AddTransfer(source, target, pcms::method::Interpolation<Real>{});
+  // Build the interpolation operator ONCE from the shared (source, target)
+  // space pair -- this is the expensive localization step -- then bind that one
+  // operator to each field pair. transfer and transfer2 reuse the same cached
+  // localization; there is no second Build().
+  std::shared_ptr<const pcms::TransferOperator<Real>> interp =
+    pcms::method::Interpolation<Real>{}.Build(source.GetSpace(),
+                                              target.GetSpace());
+  // Named transfers: the returned handle and the name are interchangeable ways
+  // to drive them (see the two Run styles below).
+  auto transfer = cpl.AddTransfer("field", interp, source, target);
+  cpl.AddTransfer("field2", interp, source2, target2);
 
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      source_app->ReceivePhase([&] { source.Receive(); });
-      transfer.Run(); // source field -> target field
-      target_app->SendPhase([&] { target.Send(); });
+      source_app->ReceivePhase([&] {
+        source.Receive();
+        source2.Receive();
+      });
+      transfer.Run();               // via handle: field  source -> target
+      cpl.RunTransfer("field2");    // via name:   field2 source -> target
+      target_app->SendPhase([&] {
+        target.Send();
+        target2.Send();
+      });
     }
   } while (!done);
 }
@@ -118,13 +145,21 @@ void transfer_source_client(MPI_Comm comm, Omega_h::Mesh& mesh)
   auto factory = MakeSpace(mesh);
 
   auto field = factory->CreateFunction<Real>("field");
-  auto* field_ptr = &field.GetData();
-  SetFieldToGids(*factory->GetLayout(), field_ptr);
+  SetFieldToGids(*factory->GetLayout(), &field.GetData());
   app->AddField(std::move(field));
+
+  // A second field on the same space, with a distinct scale so it cannot be
+  // confused with the first as it flows through the shared operator.
+  auto field2 = factory->CreateFunction<Real>("field2");
+  SetFieldToGids(*factory->GetLayout(), &field2.GetData(), 3.0);
+  app->AddField(std::move(field2));
 
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      app->SendPhase([&] { app->SendField("field"); });
+      app->SendPhase([&] {
+        app->SendField("field");
+        app->SendField("field2");
+      });
     }
   } while (!done);
 }
@@ -141,12 +176,23 @@ void transfer_target_client(MPI_Comm comm, Omega_h::Mesh& mesh)
   auto* field_ptr = &field.GetData();
   app->AddField(std::move(field));
 
+  auto field2 = factory->CreateFunction<Real>("field2");
+  auto* field2_ptr = &field2.GetData();
+  app->AddField(std::move(field2));
+
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
-      app->ReceivePhase([&] { app->ReceiveField("field"); });
-      // Identity interpolation on the same mesh: the target must receive the
-      // exact field the source sent.
-      if (!FieldEqualsGids(*factory->GetLayout(), field_ptr, rank)) {
+      app->ReceivePhase([&] {
+        app->ReceiveField("field");
+        app->ReceiveField("field2");
+      });
+      // Identity interpolation on the same mesh: each target must receive the
+      // exact field the source sent. The two fields carry different scales, so
+      // if the shared operator crossed their data the mismatch would show here.
+      if (!FieldEqualsGids(*factory->GetLayout(), field_ptr, rank, 1.0,
+                           "field") ||
+          !FieldEqualsGids(*factory->GetLayout(), field2_ptr, rank, 3.0,
+                           "field2")) {
         exit(EXIT_FAILURE);
       }
     }

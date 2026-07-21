@@ -7,15 +7,17 @@ namespace pcms
 // Debug helper retained intentionally: useful for diagnosing point-localization
 // failures while developing support-search logic.
 [[maybe_unused]] static void checkTargetPoints(
-  const Kokkos::View<pcms::GridPointSearch2D::Result*>& results)
+  const Kokkos::View<pcms::GridPointSearch2D::Result*>& results,
+  const Kokkos::View<pcms::LO*>& owning_cell_ids)
 {
   Kokkos::fence();
   pcms::printInfo("INFO: Checking target points...\n");
   auto check_target_points = OMEGA_H_LAMBDA(Omega_h::LO i)
   {
-    if (results(i).element_id < 0) {
-      OMEGA_H_CHECK_PRINTF(results(i).element_id >= 0,
-                           "ERROR: Source cell id not found for target %d\n",
+    (void)results;
+    if (owning_cell_ids(i) < 0) {
+      OMEGA_H_CHECK_PRINTF(owning_cell_ids(i) >= 0,
+                           "ERROR: Source face id not found for target %d\n",
                            i);
       printf("%d, ", i);
     }
@@ -90,14 +92,15 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
 
     pcms::GridPointSearch2D search_cell(source_mesh, 10, 10);
     auto results = search_cell(target_points);
+    auto owning_cell_ids = search_cell.GetOwningElementIds(results);
     Omega_h::parallel_for(
       nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
-        auto source_cell_id = results(i).element_id;
-        // A negative id means the point is outside the source mesh. Until the
-        // localization returns the negated *closest* element for exterior
-        // points (PR #319), abs() is not a valid face index, so flag it as
-        // invalid (-1) and let the neighbor search skip the target.
-        source_cell_ids[i] = source_cell_id >= 0 ? source_cell_id : -1;
+        auto source_cell_id = owning_cell_ids(i);
+        OMEGA_H_CHECK_PRINTF(
+          source_cell_id >= 0,
+          "ERROR: Source face id not found for target %d (%f,%f)\n", i,
+          target_points(i, 0), target_points(i, 1));
+        source_cell_ids[i] = source_cell_id;
       });
   } else if (dim == 3) {
     Kokkos::View<Omega_h::Real* [3]> target_points("target_points",
@@ -112,12 +115,14 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
 
     pcms::GridPointSearch3D search_cell(source_mesh, 10, 10, 10);
     auto results = search_cell(target_points);
+    auto owning_cell_ids = search_cell.GetOwningElementIds(results);
     Omega_h::parallel_for(
       nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
-        auto source_cell_id = results(i).element_id;
-        // See the 2D branch: exterior points (negative id) are flagged invalid
-        // until PR #319 makes the negated-closest-element id usable.
-        source_cell_ids[i] = source_cell_id >= 0 ? source_cell_id : -1;
+        auto source_cell_id = owning_cell_ids(i);
+        OMEGA_H_CHECK_PRINTF(source_cell_id >= 0,
+                             "ERROR: Source face id not found for target %d\n",
+                             i);
+        source_cell_ids[i] = source_cell_id;
       });
   } else {
     throw pcms_error("Unsupported dimension in locate_target_cells");

@@ -1,6 +1,7 @@
 #include "point_search.h"
 #include <Omega_h_mesh.hpp>
 #include <bitset>
+#include <cmath>
 
 // From
 // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Vector_formulation
@@ -28,6 +29,39 @@ KOKKOS_INLINE_FUNCTION bool normal_intersects_segment(
 
 namespace pcms
 {
+
+LO GetOwningElementId(Omega_h::Mesh& mesh, int mesh_dim, int entity_dim,
+                      LO element_id)
+{
+  if (element_id < 0)
+    return -1;
+
+  const int target_dim = mesh_dim; // faces for 2D, regions for 3D
+
+  // If entity is already at target dimension, return it directly
+  if (entity_dim == target_dim)
+    return element_id;
+
+  // Get the upward adjacency from entity_dim to target_dim
+  auto upward_adj = mesh.ask_up(entity_dim, target_dim);
+  auto a2ab_h = Omega_h::HostRead<LO>(upward_adj.a2ab);
+  auto ab2b_h = Omega_h::HostRead<LO>(upward_adj.ab2b);
+
+  const auto begin = a2ab_h[element_id];
+  const auto end = a2ab_h[element_id + 1];
+  if (begin >= end)
+    return -1;
+
+  // Find the smallest owning element ID
+  LO owner = ab2b_h[begin];
+  for (auto i = begin + 1; i < end; ++i) {
+    const LO candidate = ab2b_h[i];
+    if (candidate < owner)
+      owner = candidate;
+  }
+  return owner;
+}
+
 KOKKOS_INLINE_FUNCTION
 AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
 {
@@ -144,36 +178,9 @@ template <unsigned dim>
   return true;
 }
 
-[[nodiscard]] KOKKOS_INLINE_FUNCTION bool bbox_verts_within_triangle(
-  const AABBox<2>& bbox, const Omega_h::Matrix<2, 3>& coords, Real fuzz)
-{
-  auto left = bbox.center[0] - bbox.half_width[0];
-  auto right = bbox.center[0] + bbox.half_width[0];
-  auto bot = bbox.center[1] - bbox.half_width[1];
-  auto top = bbox.center[1] + bbox.half_width[1];
-  auto xi = Omega_h::barycentric_from_global<2, 2>({left, bot}, coords);
-  if (Omega_h::is_barycentric_inside(xi, fuzz)) {
-    return true;
-  }
-  xi = Omega_h::barycentric_from_global<2, 2>({left, top}, coords);
-  if (Omega_h::is_barycentric_inside(xi, fuzz)) {
-    return true;
-  }
-  xi = Omega_h::barycentric_from_global<2, 2>({right, top}, coords);
-  if (Omega_h::is_barycentric_inside(xi, fuzz)) {
-    return true;
-  }
-  xi = Omega_h::barycentric_from_global<2, 2>({right, bot}, coords);
-  if (Omega_h::is_barycentric_inside(xi, fuzz)) {
-    return true;
-  }
-  return false;
-}
-
 template <int dim>
 [[nodiscard]] KOKKOS_INLINE_FUNCTION bool bbox_verts_within_simplex(
-  const AABBox<dim>& bbox, const Omega_h::Matrix<dim, dim + 1>& coords,
-  Real fuzz)
+  const AABBox<dim>& bbox, const Omega_h::Matrix<dim, dim + 1>& coords)
 {
   // each dimension has a pair of opposing "walls"
   // 2D: { [left, right], [top, bottom] } -> { left, right, top, bottom }
@@ -198,7 +205,7 @@ template <int dim>
       vert[j] = (i >> j) & 1 ? bbox_walls[j * 2] : bbox_walls[j * 2 + 1];
     }
     auto xi = Omega_h::barycentric_from_global<dim, dim>(vert, coords);
-    if (Omega_h::is_barycentric_inside(xi, fuzz)) {
+    if (Omega_h::is_barycentric_inside(xi)) {
       return true;
     }
   }
@@ -210,7 +217,7 @@ template <int dim>
  * intersects with a bounding box
  */
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
-  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox, Real fuzz)
+  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox)
 {
   // triangle and grid cell bounding box intersect
   if (intersects(triangle_bbox(coords), bbox)) {
@@ -220,7 +227,7 @@ template <int dim>
       return true;
     }
     // if any of the bbox verts are within the triangle
-    if (bbox_verts_within_triangle(bbox, coords, fuzz)) {
+    if (bbox_verts_within_simplex(bbox, coords)) {
       return true;
     }
     // if any of the triangle's edges intersect with the bounding box
@@ -256,12 +263,11 @@ namespace detail
 struct GridTriIntersectionFunctor2D
 {
   GridTriIntersectionFunctor2D(Omega_h::Mesh& mesh,
-                               Kokkos::View<Uniform2DGrid[1]> grid, Real fuzz)
+                               Kokkos::View<Uniform2DGrid[1]> grid)
     : mesh_(mesh),
       tris2verts_(mesh_.ask_elem_verts()),
       coords_(mesh_.coords()),
       grid_(grid),
-      fuzz_(fuzz),
       nelems_(mesh_.nelems())
   {
     if (mesh_.dim() != 2) {
@@ -276,7 +282,7 @@ struct GridTriIntersectionFunctor2D
   KOKKOS_INLINE_FUNCTION
   LO operator()(LO row, LO* fill) const
   {
-    const auto grid_cell_bbox = grid_(0).GetCellBBOX(row);
+    auto grid_cell_bbox = grid_(0).GetCellBBOX(row);
     LO num_intersections = 0;
     // hierarchical parallel may make be very beneficial here...
     for (LO elem_idx = 0; elem_idx < nelems_; ++elem_idx) {
@@ -285,7 +291,7 @@ struct GridTriIntersectionFunctor2D
       // 2d mesh with 2d coords, but 3 triangles
       const auto vertex_coords =
         Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
-      if (triangle_intersects_bbox(vertex_coords, grid_cell_bbox, fuzz_)) {
+      if (triangle_intersects_bbox(vertex_coords, grid_cell_bbox)) {
         if (fill) {
           fill[num_intersections] = elem_idx;
         }
@@ -300,7 +306,6 @@ private:
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
   Kokkos::View<Uniform2DGrid[1]> grid_;
-  Real fuzz_;
 
 public:
   LO nelems_;
@@ -328,7 +333,7 @@ struct GridTriIntersectionFunctor3D
   KOKKOS_INLINE_FUNCTION
   LO operator()(LO row, LO* fill) const
   {
-    const auto grid_cell_bbox = grid_(0).GetCellBBOX(row);
+    auto grid_cell_bbox = grid_(0).GetCellBBOX(row);
     LO num_intersections = 0;
     // hierarchical parallel may make be very beneficial here...
     for (LO elem_idx = 0; elem_idx < nelems_; ++elem_idx) {
@@ -361,10 +366,10 @@ public:
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_2d(Omega_h::Mesh& mesh,
                               Kokkos::View<Uniform2DGrid[1]> grid,
-                              int num_grid_cells, Real fuzz)
+                              int num_grid_cells)
 {
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  auto f = detail::GridTriIntersectionFunctor2D{mesh, grid, fuzz};
+  auto f = detail::GridTriIntersectionFunctor2D{mesh, grid};
   Kokkos::count_and_fill_crs(intersection_map, num_grid_cells, f);
   return intersection_map;
 }
@@ -406,7 +411,6 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
   auto edges2verts_adj = edges2verts_adj_;
   auto coords = coords_;
   auto tolerances = tolerances_;
-  auto fuzz = fuzz_;
   Kokkos::parallel_for(
     points.extent(0), KOKKOS_LAMBDA(int p) {
       Omega_h::Vector<2> point(
@@ -416,112 +420,196 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
       auto candidates_begin = candidate_map.row_map(cell_id);
       auto candidates_end = candidate_map.row_map(cell_id + 1);
 
-      bool vertex_found = false;
-      bool edge_found = false;
-      bool inside_cell = false;
+      // Track best entities across all candidates to ensure order invariance
+      Omega_h::Real best_vertex_dist = INFINITY;
+      LO best_vertex_id = -1;
+      int best_vertex_tid = -1; // triangle providing barycentric coords
+      Omega_h::Vector<3> best_vertex_bary{0.0, 0.0, 0.0};
 
-      auto nearest_element_id = candidates_begin;
-      auto dimensionality = GridPointSearch2D::Result::Dimensionality::REGION;
-      Omega_h::Real distance_to_nearest{INFINITY};
-      Omega_h::Vector<3> parametric_coords_to_nearest;
-      // create array that's size of number of candidates x num coords to store
-      // parametric inversion
-      for (auto i = candidates_begin; i < candidates_end; ++i) {
-        const int triangleID = candidate_map.entries(i);
+      Omega_h::Real best_edge_dist = INFINITY;
+      LO best_edge_id = -1;
+      int best_edge_tid_min = -1;
+      int best_edge_tid_max = -1;
+      Omega_h::Vector<3> best_edge_bary_min{0.0, 0.0, 0.0};
+      Omega_h::Vector<3> best_edge_bary_max{0.0, 0.0, 0.0};
+
+      bool found_inside = false;
+      LO inside_face_id = -1;
+      Omega_h::Vector<3> inside_face_bary{0.0, 0.0, 0.0};
+
+      auto begin = candidate_map.row_map(cell_id);
+      auto end = candidate_map.row_map(cell_id + 1);
+      for (auto ii = begin; ii < end; ++ii) {
+        const int triangleID = candidate_map.entries(ii);
         const auto elem_tri2verts =
           Omega_h::gather_verts<3>(tris2verts, triangleID);
-        // 2d mesh with 2d coords, but 3 triangles
         auto vertex_coords =
           Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts);
         auto parametric_coords =
           Omega_h::barycentric_from_global<2, 2>(point, vertex_coords);
 
-        // Every triangle (face) is connected to 3 vertices
+        // Check vertices (hierarchy level 1): compute Euclidean distance
         for (int j = 0; j < 3; ++j) {
-          // Get the vertex ID from the connectivity array
           const int vertexID = tris2verts_adj.ab2b[triangleID * 3 + j];
-          // Get the vertex coordinates from the mesh using vertexID
-          const Omega_h::Few<double, 2> vertex =
-            Omega_h::get_vector<2>(coords, vertexID);
-
-          const auto distance = Omega_h::norm(point - vertex);
-
-          if (distance < distance_to_nearest) {
-            dimensionality = GridPointSearch2D::Result::Dimensionality::VERTEX;
-            nearest_element_id = vertexID;
-            distance_to_nearest = distance;
-            parametric_coords_to_nearest = parametric_coords;
-
-            if (distance < tolerances(0)) {
-              vertex_found = true;
-            };
+          const auto v = Omega_h::get_vector<2>(coords, vertexID);
+          const auto dv = Omega_h::norm(point - v);
+          if ((dv < best_vertex_dist) ||
+              ((dv == best_vertex_dist) && (vertexID < best_vertex_id))) {
+            best_vertex_dist = dv;
+            best_vertex_id = vertexID;
+            best_vertex_tid = triangleID;
+            best_vertex_bary = parametric_coords;
           }
         }
 
-        if (vertex_found)
-          break;
+        // Check edges (hierarchy level 2): only if projection falls within
 
         for (int j = 0; j < 3; ++j) {
-          // Every triangle (face) is connected to 3 edges
           const int edgeID = tris2edges_adj.ab2b[triangleID * 3 + j];
 
-          auto vertex_a_id = edges2verts_adj.ab2b[edgeID * 2];
-          auto vertex_b_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
+          const int va_id = edges2verts_adj.ab2b[edgeID * 2 + 0];
+          const int vb_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
+          const auto va = Omega_h::get_vector<2>(coords, va_id);
+          const auto vb = Omega_h::get_vector<2>(coords, vb_id);
 
-          auto vertex_a = Omega_h::get_vector<2>(coords, vertex_a_id);
-          auto vertex_b = Omega_h::get_vector<2>(coords, vertex_b_id);
-
-          if (!normal_intersects_segment(vertex_a, vertex_b, point))
+          if (!normal_intersects_segment(va, vb, point))
             continue;
 
-          const auto distance_to_ab =
-            distance_from_line(vertex_a, vertex_b, point);
-
-          if (distance_to_ab < distance_to_nearest) {
-            dimensionality = GridPointSearch2D::Result::Dimensionality::EDGE;
-            nearest_element_id = edgeID;
-            distance_to_nearest = distance_to_ab;
-            parametric_coords_to_nearest = parametric_coords;
-
-            if (distance_to_ab < tolerances(1)) {
-              edge_found = true;
-            };
+          const auto de = distance_from_line(va, vb, point);
+          if ((de < best_edge_dist) ||
+              ((de == best_edge_dist) && (edgeID < best_edge_id)) ||
+              ((de == best_edge_dist) && (edgeID == best_edge_id) &&
+               (triangleID < best_edge_tid_min))) {
+            best_edge_dist = de;
+            best_edge_id = edgeID;
+            best_edge_tid_min = triangleID;
+            best_edge_tid_max = triangleID;
+            best_edge_bary_min = parametric_coords;
+            best_edge_bary_max = parametric_coords;
+          } else if ((de == best_edge_dist) && (edgeID == best_edge_id)) {
+            // Track the extents of face IDs sharing this nearest edge
+            if (triangleID < best_edge_tid_min) {
+              best_edge_tid_min = triangleID;
+              best_edge_bary_min = parametric_coords;
+            }
+            if (triangleID > best_edge_tid_max) {
+              best_edge_tid_max = triangleID;
+              best_edge_bary_max = parametric_coords;
+            }
           }
         }
 
-        if (edge_found)
-          break;
-
-        if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
-          dimensionality = GridPointSearch2D::Result::Dimensionality::FACE;
-          nearest_element_id = triangleID;
-          parametric_coords_to_nearest = parametric_coords;
-          inside_cell = true;
+        // Check face interior (hierarchy level 3)
+        if (Omega_h::is_barycentric_inside(parametric_coords)) {
+          if (!found_inside || (triangleID < inside_face_id)) {
+            found_inside = true;
+            inside_face_id = triangleID;
+            inside_face_bary = parametric_coords;
+          }
         }
       }
 
-      const int inside_mesh =
-        vertex_found || edge_found || inside_cell ? 1 : -1;
-      results(p) = GridPointSearch2D::Result{dimensionality,
-                                             inside_mesh * nearest_element_id,
-                                             parametric_coords_to_nearest};
+      const auto vtol = tolerances(0);
+      const auto etol = tolerances(1);
+
+      // If we found an inside face, compute its edge distance using
+      // barycentric-only helper to check for edge classification while
+      // preserving the containing face ID.
+      Real inside_edge_dist = INFINITY;
+      int inside_edge_argmin = -1;
+      Omega_h::Matrix<2, 3> vcoords_in;
+      // Track Euclidean-nearest edge of the containing face (if any)
+      LO inside_edge_id = -1;
+      if (found_inside) {
+        const auto elem_tri2verts_in =
+          Omega_h::gather_verts<3>(tris2verts, inside_face_id);
+        vcoords_in = Omega_h::gather_vectors<3, 2>(coords, elem_tri2verts_in);
+        // Euclidean distance to the 3 edges of the containing triangle
+        inside_edge_argmin = -1;
+        inside_edge_dist = INFINITY;
+        inside_edge_id = -1;
+        for (int j = 0; j < 3; ++j) {
+          const int edgeID = tris2edges_adj.ab2b[inside_face_id * 3 + j];
+          const int va_id = edges2verts_adj.ab2b[edgeID * 2 + 0];
+          const int vb_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
+          const auto va = Omega_h::get_vector<2>(coords, va_id);
+          const auto vb = Omega_h::get_vector<2>(coords, vb_id);
+          if (!normal_intersects_segment(va, vb, point))
+            continue;
+          const auto de = distance_from_line(va, vb, point);
+          if (de < inside_edge_dist) {
+            inside_edge_dist = de;
+            inside_edge_argmin = j;
+            inside_edge_id = edgeID;
+          }
+        }
+      }
+
+      GridPointSearch2D::Result::Dimensionality dim_out =
+        GridPointSearch2D::Result::Dimensionality::REGION;
+      LO element_id_out = -1;
+      Omega_h::Vector<3> bary_out{0.0, 0.0, 0.0};
+
+      // Apply hierarchy with tolerances
+      // Points within tolerance are considered "inside" with positive IDs
+      // Only points with no candidates at all get negative IDs
+      if (best_vertex_id >= 0 && best_vertex_dist <= vtol) {
+        // Point within vertex tolerance - still inside the mesh
+        dim_out = GridPointSearch2D::Result::Dimensionality::VERTEX;
+        element_id_out = best_vertex_id;
+        bary_out = best_vertex_bary;
+      } else if ((best_edge_id >= 0 && best_edge_dist <= etol) ||
+                 (found_inside && inside_edge_dist <= etol)) {
+        // Point within edge tolerance - still inside the mesh
+        dim_out = GridPointSearch2D::Result::Dimensionality::EDGE;
+        if (found_inside && inside_edge_dist <= etol &&
+            inside_edge_argmin >= 0) {
+          element_id_out = inside_edge_id;
+          bary_out = inside_face_bary;
+        } else {
+          element_id_out = best_edge_id;
+          bary_out = best_edge_bary_min;
+        }
+      } else if (found_inside) {
+        // Point inside face
+        dim_out = GridPointSearch2D::Result::Dimensionality::FACE;
+        element_id_out = inside_face_id;
+        bary_out = inside_face_bary;
+      } else {
+        // Outside mesh - beyond tolerance of any entity
+        // Only negate if we truly have no candidates at all.
+        if (best_vertex_id >= 0 &&
+            (best_vertex_dist <= best_edge_dist || best_edge_id < 0)) {
+          dim_out = GridPointSearch2D::Result::Dimensionality::VERTEX;
+          element_id_out = best_vertex_id;
+          bary_out = best_vertex_bary;
+          element_id_out = -element_id_out;
+        } else if (best_edge_id >= 0) {
+          dim_out = GridPointSearch2D::Result::Dimensionality::EDGE;
+          element_id_out = best_edge_id;
+          bary_out = best_edge_bary_min;
+          element_id_out = -element_id_out;
+        } else {
+          // No candidates at all: both IDs stay -1
+        }
+      }
+
+      results(p) = GridPointSearch2D::Result{dim_out, element_id_out, bary_out};
     });
 
   return results;
 }
 
-GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
-                                     Real fuzz)
+GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny)
   : GridPointSearch2D(mesh, Nx, Ny,
-                      PointSearchTolerances{"point search 2d tolerances"}, fuzz)
+                      PointSearchTolerances{"point search 2d tolerances"})
 {
-  Kokkos::deep_copy(tolerances_, 0);
+  Kokkos::deep_copy(tolerances_, 1E-12);
 }
 
 GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
-                                     const PointSearchTolerances& tolerances,
-                                     Real fuzz)
-  : PointLocalizationSearch(tolerances)
+                                     const PointSearchTolerances& tolerances)
+  : PointLocalizationSearch(tolerances), mesh_(mesh)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);
@@ -531,14 +619,61 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
                   .bot_left = {mesh_bbox.min[0], mesh_bbox.min[1]},
                   .divisions = {Nx, Ny}};
   Kokkos::deep_copy(grid_, grid_h);
-  candidate_map_ = detail::construct_intersection_map_2d(
-    mesh, grid_, grid_h(0).GetNumCells(), fuzz_);
+  // Determine inflation radius from tolerances (max of vertex/edge tol)
+  auto tol_h = Kokkos::create_mirror_view(tolerances_);
+  Kokkos::deep_copy(tol_h, tolerances_);
+  candidate_map_ =
+    detail::construct_intersection_map_2d(mesh, grid_, grid_h(0).GetNumCells());
   coords_ = mesh.coords();
   tris2verts_ = mesh.ask_elem_verts();
   tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
   tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
   edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
-  fuzz_ = fuzz;
+  edges2faces_up_ = mesh.ask_up(Omega_h::EDGE, Omega_h::FACE);
+  verts2faces_up_ = mesh.ask_up(Omega_h::VERT, Omega_h::FACE);
+}
+
+LO GridPointSearch2D::GetOwningElementId(const Result& result)
+{
+  const LO query_id =
+    (result.element_id < 0) ? -result.element_id : result.element_id;
+  return pcms::GetOwningElementId(
+    mesh_, 2, static_cast<int>(result.dimensionality), query_id);
+}
+
+Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
+  Kokkos::View<const Result*> results)
+{
+  Kokkos::View<LO*> owners("point search owning face ids", results.extent(0));
+  auto edges2faces_up = edges2faces_up_;
+  auto verts2faces_up = verts2faces_up_;
+  constexpr int mesh_dim = 2;
+  Kokkos::parallel_for(
+    results.extent(0), KOKKOS_LAMBDA(const LO i) {
+      const auto result = results(i);
+      LO element_id = result.element_id;
+      if (element_id < 0)
+        element_id = -element_id;
+
+      LO owner = -1;
+      if (element_id >= 0) {
+        if (result.dimensionality == Result::Dimensionality::FACE) {
+          owner = GetOwningElementIdFromAdj(
+            edges2faces_up, Result::Dimensionality::FACE,
+            Result::Dimensionality::FACE, element_id);
+        } else if (result.dimensionality == Result::Dimensionality::EDGE) {
+          owner = GetOwningElementIdFromAdj(
+            edges2faces_up, Result::Dimensionality::EDGE,
+            Result::Dimensionality::FACE, element_id);
+        } else if (result.dimensionality == Result::Dimensionality::VERTEX) {
+          owner = GetOwningElementIdFromAdj(
+            verts2faces_up, Result::Dimensionality::VERTEX,
+            Result::Dimensionality::FACE, element_id);
+        }
+      }
+      owners(i) = owner;
+    });
+  return owners;
 }
 
 Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
@@ -555,7 +690,6 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
   auto tris2edges_adj = tris2edges_adj_;
   auto edges2verts_adj = edges2verts_adj_;
   auto coords = coords_;
-  auto fuzz = fuzz_;
   Kokkos::parallel_for(
     points.extent(0), KOKKOS_LAMBDA(int p) {
       Omega_h::Vector<DIM> point;
@@ -583,7 +717,7 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
         auto parametric_coords =
           Omega_h::barycentric_from_global<DIM, DIM>(point, vertex_coords);
 
-        if (Omega_h::is_barycentric_inside(parametric_coords, fuzz)) {
+        if (Omega_h::is_barycentric_inside(parametric_coords)) {
           results(p) = GridPointSearch3D::Result{
             GridPointSearch3D::Result::Dimensionality::REGION, triangleID,
             parametric_coords};
@@ -594,27 +728,25 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
         // TODO: Get nearest element if no tetrahedron found
       }
       if (!found) {
-        results(p) = GridPointSearch3D::Result{
-          dimensionality, -1 * candidate_map.entries(nearest_triangle),
-          parametric_coords_to_nearest};
+        LO nearest_elem = candidate_map.entries(nearest_triangle);
+        results(p) = GridPointSearch3D::Result{dimensionality, -nearest_elem,
+                                               parametric_coords_to_nearest};
       }
     });
 
   return results;
 }
 
-GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
-                                     Real fuzz)
+GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz)
   : GridPointSearch3D(mesh, Nx, Ny, Nz,
-                      PointSearchTolerances{"point search 3d tolerances"}, fuzz)
+                      PointSearchTolerances{"point search 3d tolerances"})
 {
   Kokkos::deep_copy(tolerances_, 0);
 }
 
 GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
-                                     const PointSearchTolerances& tolerances,
-                                     Real fuzz)
-  : PointLocalizationSearch(tolerances)
+                                     const PointSearchTolerances& tolerances)
+  : PointLocalizationSearch(tolerances), mesh_(mesh)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<3>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);
@@ -639,6 +771,56 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
   tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
   tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
   edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
-  fuzz_ = fuzz;
+  verts2regions_up_ = mesh.ask_up(Omega_h::VERT, Omega_h::REGION);
+  edges2regions_up_ = mesh.ask_up(Omega_h::EDGE, Omega_h::REGION);
+  faces2regions_up_ = mesh.ask_up(Omega_h::FACE, Omega_h::REGION);
+}
+
+LO GridPointSearch3D::GetOwningElementId(const Result& result)
+{
+  const LO query_id =
+    (result.element_id < 0) ? -result.element_id : result.element_id;
+  return pcms::GetOwningElementId(
+    mesh_, 3, static_cast<int>(result.dimensionality), query_id);
+}
+
+Kokkos::View<LO*> GridPointSearch3D::GetOwningElementIds(
+  Kokkos::View<const Result*> results)
+{
+  Kokkos::View<LO*> owners("point search owning region ids", results.extent(0));
+  auto verts2regions_up = verts2regions_up_;
+  auto edges2regions_up = edges2regions_up_;
+  auto faces2regions_up = faces2regions_up_;
+  constexpr int mesh_dim = 3;
+  Kokkos::parallel_for(
+    results.extent(0), KOKKOS_LAMBDA(const LO i) {
+      const auto result = results(i);
+      LO element_id = result.element_id;
+      if (element_id < 0)
+        element_id = -element_id;
+
+      LO owner = -1;
+      if (element_id >= 0) {
+        if (result.dimensionality == Result::Dimensionality::REGION) {
+          owner = GetOwningElementIdFromAdj(
+            faces2regions_up, Result::Dimensionality::REGION,
+            Result::Dimensionality::REGION, element_id);
+        } else if (result.dimensionality == Result::Dimensionality::FACE) {
+          owner = GetOwningElementIdFromAdj(
+            faces2regions_up, Result::Dimensionality::FACE,
+            Result::Dimensionality::REGION, element_id);
+        } else if (result.dimensionality == Result::Dimensionality::EDGE) {
+          owner = GetOwningElementIdFromAdj(
+            edges2regions_up, Result::Dimensionality::EDGE,
+            Result::Dimensionality::REGION, element_id);
+        } else if (result.dimensionality == Result::Dimensionality::VERTEX) {
+          owner = GetOwningElementIdFromAdj(
+            verts2regions_up, Result::Dimensionality::VERTEX,
+            Result::Dimensionality::REGION, element_id);
+        }
+      }
+      owners(i) = owner;
+    });
+  return owners;
 }
 } // namespace pcms

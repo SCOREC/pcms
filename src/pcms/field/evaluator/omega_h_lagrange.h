@@ -64,11 +64,12 @@ struct CopyCoordsFunctor
 
 template <int Dim>
 OmegaHLagrangeLocHint BuildLagrangeLocHint(
-  int mesh_dim,
+  Omega_h::Mesh& mesh, int mesh_dim,
   Kokkos::View<typename PointLocalizationSearch<Dim>::Result*,
                DeviceMemorySpace>
     results,
-  OutOfBoundsMode mode)
+  Kokkos::View<Real**, DeviceMemorySpace> coords_d,
+  Kokkos::View<LO*, DeviceMemorySpace> owning_ids, OutOfBoundsMode mode)
 {
   LO n = static_cast<LO>(results.size());
 
@@ -78,8 +79,7 @@ OmegaHLagrangeLocHint BuildLagrangeLocHint(
     "CheckValidity",
     Kokkos::RangePolicy<typename DeviceMemorySpace::execution_space>(0, n),
     KOKKOS_LAMBDA(LO i) {
-      bool out = (static_cast<int>(results(i).dimensionality) != mesh_dim) ||
-                 (results(i).element_id < 0);
+      bool out = (owning_ids(i) < 0) || (results(i).element_id < 0);
       is_valid(i) = out ? 0 : 1;
     });
 
@@ -117,16 +117,58 @@ OmegaHLagrangeLocHint BuildLagrangeLocHint(
       update += val;
     });
 
+  auto elem_verts = mesh.ask_elem_verts();
+  auto mesh_coords = mesh.coords();
+
   Kokkos::parallel_for(
     "CompactData",
     Kokkos::RangePolicy<typename DeviceMemorySpace::execution_space>(0, n),
     KOKKOS_LAMBDA(LO i) {
       if (is_valid(i)) {
         LO k = valid_offsets(i);
-        elem_ids(k) = results(i).element_id;
+        LO owner_elem = owning_ids(i);
+        elem_ids(k) = owner_elem;
         orig_indices(k) = i;
-        for (int d = 0; d <= mesh_dim; ++d)
-          bary(k, d) = results(i).parametric_coords[d];
+
+        // Recompute barycentric coordinates in the owning element
+        // using global coordinates
+        int nvpe = mesh_dim + 1;
+        // Get vertices of the owning element
+        Omega_h::Few<Omega_h::LO, 4> verts;
+        for (int v = 0; v < nvpe; ++v) {
+          verts[v] = elem_verts[owner_elem * nvpe + v];
+        }
+
+        // Get vertex coordinates
+        if (mesh_dim == 2) {
+          Omega_h::Few<Omega_h::Vector<2>, 3> vertex_coords;
+          for (int v = 0; v < 3; ++v) {
+            vertex_coords[v] = Omega_h::get_vector<2>(mesh_coords, verts[v]);
+          }
+          Omega_h::Vector<2> point;
+          for (int d = 0; d < 2; ++d) {
+            point[d] = coords_d(i, d);
+          }
+          auto local =
+            Omega_h::barycentric_from_global<2, 2>(point, vertex_coords);
+          for (int d = 0; d < 3; ++d) {
+            bary(k, d) = local[d];
+          }
+        } else if (mesh_dim == 3) {
+          Omega_h::Few<Omega_h::Vector<3>, 4> vertex_coords;
+          for (int v = 0; v < 4; ++v) {
+            vertex_coords[v] = Omega_h::get_vector<3>(mesh_coords, verts[v]);
+          }
+          Omega_h::Vector<3> point;
+          for (int d = 0; d < 3; ++d) {
+            point[d] = coords_d(i, d);
+          }
+          auto local =
+            Omega_h::barycentric_from_global<3, 3>(point, vertex_coords);
+          for (int d = 0; d < 4; ++d) {
+            bary(k, d) = local[d];
+          }
+        }
       } else {
         LO k = missing_offsets(i);
         missing_indices(k) = i;
@@ -290,6 +332,7 @@ public:
     auto raw_coords = coords.GetValues();
     LO n_pts = static_cast<LO>(raw_coords.extent(0));
     int mesh_dim = layout_->GetMesh().dim();
+    Omega_h::Mesh& mesh = const_cast<Omega_h::Mesh&>(layout_->GetMesh());
 
     OmegaHLagrangeLocHint hint = std::visit(
       [&](auto& search) {
@@ -302,8 +345,10 @@ public:
         Kokkos::parallel_for("copy_coords", n_pts, copy_functor);
 
         auto results_d = search(coords_d);
-        return detail::BuildLagrangeLocHint<Dim>(mesh_dim, results_d,
-                                                 policy.mode);
+        auto owning_ids = search.GetOwningElementIds(results_d);
+
+        return detail::BuildLagrangeLocHint<Dim>(
+          mesh, mesh_dim, results_d, coords_d, owning_ids, policy.mode);
       },
       search_);
 

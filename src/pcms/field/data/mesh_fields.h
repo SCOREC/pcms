@@ -54,6 +54,9 @@ public:
 
   Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const override
   {
+    // The Rank2View will wrap the dof-major data with layout left when device
+    // memory is enabled. This may cause issues in multi component cases. See
+    // issue #342
     return Rank2View<const T, DeviceMemorySpace>(
       device_data_.data(), layout_->GetNumOwnedDofHolder(),
       layout_->GetNumComponents());

@@ -30,6 +30,7 @@ void FindIntersections::adjBasedIntersectSearch(
 
   pcms::GridPointSearch2D search_cell(source_mesh_, 20, 20);
   auto results = search_cell(centroids);
+  auto owning_cell_ids = search_cell.GetOwningElementIds(results);
 
   auto nfaces_target = target_mesh_.nfaces();
   Omega_h::parallel_for(
@@ -38,7 +39,7 @@ void FindIntersections::adjBasedIntersectSearch(
       Queue queue;
       Track visited;
 
-      auto current_cell_id = results(id).element_id;
+      auto current_cell_id = owning_cell_ids(id);
       auto current_tgt_elm_area = tgt_elem_areas[id];
 
       OMEGA_H_CHECK_PRINTF(current_cell_id >= 0,

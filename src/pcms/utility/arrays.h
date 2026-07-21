@@ -127,26 +127,32 @@ auto make_mdspan(const ContainerType& /* unused */)
 // TODO make_mdspan
 
 template <int Rank, typename ElementType, typename MemorySpace,
-          typename LayoutPolicy = detail::default_layout_for_memory_space_t<MemorySpace> , typename IndexType = LO>
+          typename LayoutPolicy =
+            detail::default_layout_for_memory_space_t<MemorySpace>,
+          typename IndexType = LO>
 using View =
   Kokkos::mdspan<ElementType, Kokkos::dextents<IndexType, Rank>, LayoutPolicy,
                  detail::memory_space_accessor<
                    std::remove_reference_t<ElementType>, MemorySpace>>;
 
 template <typename ElementType, typename MemorySpace,
-          typename LayoutPolicy = detail::default_layout_for_memory_space_t<MemorySpace>>
+          typename LayoutPolicy =
+            detail::default_layout_for_memory_space_t<MemorySpace>>
 using Rank1View = View<1, ElementType, MemorySpace, LayoutPolicy>;
 
 template <typename ElementType, typename MemorySpace,
-          typename LayoutPolicy = detail::default_layout_for_memory_space_t<MemorySpace>>
+          typename LayoutPolicy =
+            detail::default_layout_for_memory_space_t<MemorySpace>>
 using Rank2View = View<2, ElementType, MemorySpace, LayoutPolicy>;
 
 template <typename ElementType, typename MemorySpace,
-          typename LayoutPolicy = detail::default_layout_for_memory_space_t<MemorySpace>>
+          typename LayoutPolicy =
+            detail::default_layout_for_memory_space_t<MemorySpace>>
 using Rank3View = View<3, ElementType, MemorySpace, LayoutPolicy>;
 
 template <typename ElementType, typename MemorySpace,
-          typename LayoutPolicy = detail::default_layout_for_memory_space_t<MemorySpace>>
+          typename LayoutPolicy =
+            detail::default_layout_for_memory_space_t<MemorySpace>>
 using Rank4View = View<4, ElementType, MemorySpace, LayoutPolicy>;
 
 template <typename MemorySpace>

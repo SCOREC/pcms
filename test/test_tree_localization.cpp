@@ -269,58 +269,28 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 	// Setup for 1x1x1 grid test cases
 	auto lib = Omega_h::Library{};
 	auto world = lib.world();
-	Omega_h::Mesh mesh_1x1 = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 1, 1, 1, false);
+	Omega_h::Mesh mesh_1x1 = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 20, 20, 20, false);
 	REQUIRE(mesh_1x1.dim() == 3);
 	Omega_h::ExecSpace execs;
 	
 	pcms::TreePointSearch tree_search(mesh_1x1);
 	// End setup for 1x1 grid test cases
 
-	auto check_verts = [] (auto const& results)
+	auto check_res = [] (auto const& results, int dim)
 	{
-		for (int i = 0; i < results.size(); i++)
+		auto dims = Kokkos::create_mirror_view(results.dimensionalities);
+		auto ids = Kokkos::create_mirror_view(results.element_ids);
+		Kokkos::deep_copy(dims, results.dimensionalities);
+		Kokkos::deep_copy(ids, results.element_ids);
+		for (int i = 0; i < dims.size(); i++)
 		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::VERTEX);
-			CHECK(results(i).element_id == i);
+			CHECK(dims(i) == (pcms::TreePointSearch::Dimensionality)dim);
+			CHECK(ids(i) == i);
+			// CHECK_THAT(results(i).parametric_coords,
+			// 	Catch::Matchers::Contains(Catch::Matchers::WithinAbs(1.0, 10e-7)));
 		}
 	};
-
-	auto check_edges = [] (auto const& results)
-	{
-		for (int i = 0; i < results.size(); i++)
-		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::EDGE);
-			CHECK(results(i).element_id == i);
-		}
-	};
-
-	auto check_faces = [] (auto const& results)
-	{
-		for (int i = 0; i < results.size(); i++)
-		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::FACE);
-			CHECK(results(i).element_id == i);
-		}
-	};
-
-	auto check_regions = [] (auto const& results)
-	{
-		for (int i = 0; i < results.size(); i++)
-		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::REGION);
-			CHECK(results(i).element_id == i);
-		}
-	};
-
-	auto check_outside = [] (auto const& results)
-	{
-		for (int i = 0; i < results.size(); i++)
-		{
-			CHECK(results(i).dimensionality == pcms::TreePointSearch::Dimensionality::REGION);
-			CHECK(results(i).element_id == -1);
-		}
-	};
-
+	
 	SECTION ("Vertex intersection") {
 		Kokkos::View<pcms::Real**, pcms::TreePointSearch::MemorySpace> coords("vertex coordinates", mesh_1x1.nverts(), 3);
 		auto coords_h = Kokkos::create_mirror_view(coords);
@@ -335,12 +305,9 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space, pcms::detail::default_layout_for_memory_space_t<Omega_h::ExecSpace::memory_space>> vert_cv(
 			pcms::CoordinateSystem::Cartesian,
 			pcms::MakeConstRank2View(coords));
-		Kokkos::View<pcms::TreePointSearch::Result*> results 
-			= tree_search.apply(vert_cv);
-		auto results_h = Kokkos::create_mirror_view(results);
-		Kokkos::deep_copy(execs, results_h, results);
+		pcms::TreePointSearch::Results results = tree_search.apply(vert_cv);
 		
-		check_verts(results_h);
+		check_res(results, 0);
 	}
 	SECTION ("Edge intersection") {
 		Kokkos::View<pcms::Real**, pcms::TreePointSearch::MemorySpace> coords("intersection coords", mesh_1x1.nedges(), 3);
@@ -367,11 +334,8 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space, pcms::detail::default_layout_for_memory_space_t<Omega_h::ExecSpace::memory_space>> edge_cv(
 			pcms::CoordinateSystem::Cartesian,
 			pcms::MakeConstRank2View(coords));
-		Kokkos::View<pcms::TreePointSearch::Result*> results 
-			= tree_search.apply(edge_cv);
-		auto results_h = Kokkos::create_mirror_view(results);
-		Kokkos::deep_copy(execs, results_h, results);
-		check_edges(results_h);
+		pcms::TreePointSearch::Results results = tree_search.apply(edge_cv);
+		check_res(results, 1);
 	}
 	SECTION ("Face intersection") {
 		Kokkos::View<pcms::Real**, pcms::TreePointSearch::MemorySpace> coords("intersection coords", mesh_1x1.nfaces(), 3);
@@ -400,11 +364,8 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space, pcms::detail::default_layout_for_memory_space_t<Omega_h::ExecSpace::memory_space>> face_cv(
 			pcms::CoordinateSystem::Cartesian,
 			pcms::MakeConstRank2View(coords));
-		Kokkos::View<pcms::TreePointSearch::Result*> results 
-			= tree_search.apply(face_cv);
-		auto results_h = Kokkos::create_mirror_view(results);
-		Kokkos::deep_copy(execs, results_h, results);
-		check_faces(results_h);
+		pcms::TreePointSearch::Results results = tree_search.apply(face_cv);
+		check_res(results, 2);
 	}
 	SECTION ("Region intersection") {
 		Kokkos::View<pcms::Real**, pcms::TreePointSearch::MemorySpace> coords("intersection coords", mesh_1x1.nelems(), 3);
@@ -436,11 +397,8 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 		pcms::CoordinateView<Omega_h::ExecSpace::memory_space, pcms::detail::default_layout_for_memory_space_t<Omega_h::ExecSpace::memory_space>> region_cv(
 			pcms::CoordinateSystem::Cartesian,
 			pcms::MakeConstRank2View(coords));
-		Kokkos::View<pcms::TreePointSearch::Result*> results 
-			= tree_search.apply(region_cv);
-		auto results_h = Kokkos::create_mirror_view(results);
-		Kokkos::deep_copy(execs, results_h, results);
-		check_regions(results_h);
+		pcms::TreePointSearch::Results results = tree_search.apply(region_cv);
+		check_res(results, 3);
 	}
 
 	// SECTION ("Region intersection") {

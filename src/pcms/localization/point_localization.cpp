@@ -1,9 +1,5 @@
 #include "point_localization.h"
 
-#define FACE_TOL 10e-8
-#define EDGE_TOL 10e-6
-#define VERT_TOL 10e-5
-
 // Access traits for Omega_h
 // constructs bounding boxes for elements
 template <int dim>
@@ -62,8 +58,12 @@ namespace pcms
 namespace detail
 {
 
-Mapping<2>::Mapping(Omega_h::Matrix<Mapping<2>::DIM,Mapping<2>::DIM+1> const& triangle_) : triangle(triangle_)
+Mapping<2>::Mapping(
+	Omega_h::Matrix<Mapping<2>::DIM,Mapping<2>::DIM+1> const& triangle_,
+	const Kokkos::View<Real*>& tolerances)
+	: triangle(triangle_)
 {
+	tolerances_ = tolerances;
 	bary_transform = { triangle[0] - triangle[2], triangle[1] - triangle[2] };
 	triangle_area = 0.5*fabs(Omega_h::determinant(bary_transform));
 	bary_transform = Omega_h::invert(bary_transform);
@@ -100,7 +100,7 @@ int Mapping<2>::which_vert(Omega_h::Vector<Mapping<2>::DIM + 1> const& bary_coor
 		Omega_h::Vector<2> error = (bary_coords[0] - kronecker(i,0)) * triangle[0] 
 									+ (bary_coords[1] - kronecker(i,1)) * triangle[1] 
 									+ (bary_coords[2] - kronecker(i,2)) * triangle[2];
-		if (Omega_h::norm_squared(error) <= VERT_TOL*VERT_TOL) return i;
+		if (Omega_h::norm_squared(error) <= tolerances_(0)*tolerances_(0)) return i;
 	}
 	return -1;
 }
@@ -113,7 +113,7 @@ int Mapping<2>::which_edge(Omega_h::Vector<Mapping<2>::DIM + 1> const& bary_coor
 		// see docs for derivation.
 		double dist = (2*bary_coords[i]*triangle_area)*(2*bary_coords[i]*triangle_area);
 		dist /= opposite_edge_len_sq(i);
-		if (dist <= EDGE_TOL*EDGE_TOL &&
+		if (dist <= tolerances_(1)*tolerances_(1) &&
 			bary_coords[(i+1)%3] >= 0 && bary_coords[(i+2)%3] >= 0) return (i+1)%3;
 	}
 	return -1;
@@ -129,9 +129,12 @@ double Mapping<2>::opposite_edge_len_sq(int i) const
 	return Omega_h::norm_squared(triangle[(i+2)%3] - triangle[(i+1)%3]);
 }
 
-Mapping<3>::Mapping(Omega_h::Matrix<Mapping<3>::DIM,Mapping<3>::DIM+1> const& tetrahedron_)
+Mapping<3>::Mapping(
+	Omega_h::Matrix<Mapping<3>::DIM,Mapping<3>::DIM+1> const& tetrahedron_, 
+	const Kokkos::View<Real*>& tolerances)
 	: tetrahedron(tetrahedron_)
 {
+	tolerances_ = tolerances;
 	set_triangle_areas();
 	bary_transform = { tetrahedron[0] - tetrahedron[3], tetrahedron[1] - tetrahedron[3], tetrahedron[2] - tetrahedron[3] };
 	tetrahedron_volume = fabs(Omega_h::determinant(bary_transform))/6.;
@@ -171,7 +174,7 @@ int Mapping<3>::which_vert(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coor
 		// distance to the ith vertex
 		Omega_h::Vector<3> error = (bary_coords[0] - kronecker(i,0)) * tetrahedron[0] + (bary_coords[1] - kronecker(i,1)) * tetrahedron[1]
 									+ (bary_coords[2] - kronecker(i,2)) * tetrahedron[2] + (bary_coords[3] - kronecker(i,3)) * tetrahedron[3];
-		if (Omega_h::norm_squared(error) <= VERT_TOL*VERT_TOL) return i;
+		if (Omega_h::norm_squared(error) <= tolerances_(0)*tolerances_(0)) return i;
 	}
 	return -1;
 }
@@ -196,7 +199,7 @@ int Mapping<3>::which_edge(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coor
 			double distnce_sq = Omega_h::norm_squared(Omega_h::cross(side1, side2));
 			distnce_sq /= Omega_h::norm_squared(side3);
 			
-			if (distnce_sq <= EDGE_TOL*EDGE_TOL && bary_coords[i] > 0 && bary_coords[j] > 0) return edge(edge_);
+			if (distnce_sq <= tolerances_(1)*tolerances_(1) && bary_coords[i] > 0 && bary_coords[j] > 0) return edge(edge_);
 			edge_++;
 		}
 	}
@@ -207,7 +210,7 @@ int Mapping<3>::which_face(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coor
 {
 	for (int i = 0; i < 4; i++)
 	{
-		if (fabs(3*tetrahedron_volume*bary_coords[i]/face_areas[i]) <= FACE_TOL
+		if (fabs(3*tetrahedron_volume*bary_coords[i]/face_areas[i]) <= tolerances_(2)
 			&& bary_coords[(i+1)%4] >= 0 && bary_coords[(i+2)%4] >= 0 && bary_coords[(i+3)%4] >= 0)
 		{
 			return face(i);
@@ -347,11 +350,11 @@ TreePointSearch::Results TreePointSearch::apply(
 		Kokkos::deep_copy(parametric_coords, -1.0);
 
 
-		tree->get_tree<2>()->query(
+		tree->get_tree<2>().query(
 			execution_space, 
 			detail::Coordinate_View_Adapt<MemorySpace, DIM>{coords.GetValues()},
 			detail::CallOnIntersect2D(
-				*tree->get_mappings<2>(),
+				tree->get_mappings<2>(),
 				mesh_.get_adj(Omega_h::FACE, 0).ab2b,
 				mesh_.get_adj(Omega_h::FACE, 1).ab2b,
 				dims,
@@ -375,11 +378,11 @@ TreePointSearch::Results TreePointSearch::apply(
 		Kokkos::View<Real**, MemorySpace> parametric_coords("parametric coordinates", coords.GetValues().extent(0), coords.GetValues().extent(1) + 1);
 		Kokkos::deep_copy(parametric_coords, -1.0);
 
-		tree->get_tree<3>()->query(
+		tree->get_tree<3>().query(
 			execution_space, 
 			detail::Coordinate_View_Adapt<MemorySpace, DIM>{coords.GetValues()},
 			detail::CallOnIntersect3D(
-				*tree->get_mappings<3>(),
+				tree->get_mappings<3>(),
 				mesh_.get_adj(Omega_h::REGION, 0).ab2b,
 				mesh_.get_adj(Omega_h::REGION, 1).ab2b,
 				mesh_.get_adj(Omega_h::REGION, 2).ab2b,
@@ -389,6 +392,28 @@ TreePointSearch::Results TreePointSearch::apply(
 			));
 		return Results{dims, elem_ids, parametric_coords};
 	}
+}
+
+[[nodiscard]] LO TreePointSearch::GetOwningElementId(
+	const TreePointSearch::Results& results, int i)
+{
+	return pcms::GetOwningElementId(mesh_, mesh_.dim(), (int)results.dimensionalities(i),
+		results.element_ids(i));
+}
+
+[[nodiscard]] Kokkos::View<LO*> TreePointSearch::GetOwningElementIds(
+	const TreePointSearch::Results& results)
+{
+	ExecSpace execution_space;
+	Kokkos::View<LO*> owning_ids("Owning element IDs", 
+		results.dimensionalities.size());
+	auto owning_ids_h = Kokkos::create_mirror_view(owning_ids);
+	for (int i = 0; i < owning_ids_h.size(); i++)
+	{
+		owning_ids_h[i] = GetOwningElementId(results, i);
+	}
+	Kokkos::deep_copy(execution_space, owning_ids, owning_ids_h);
+	return owning_ids;
 }
 
 std::unique_ptr<detail::TreeWrapper> TreePointSearch::make_tree(const Omega_h::Mesh& mesh) const
@@ -423,7 +448,7 @@ std::unique_ptr<detail::TreeWrapper> TreePointSearch::make_tree(const Omega_h::M
 				{vert_coords[face2vert[i*3]*2], vert_coords[face2vert[i*3]*2 + 1]},
 				{vert_coords[face2vert[i*3 + 1]*2], vert_coords[face2vert[i*3 + 1]*2 + 1]},
 				{vert_coords[face2vert[i*3 + 2]*2], vert_coords[face2vert[i*3 + 2]*2 + 1]}};
-			mappings_h[i] = detail::Mapping<2>(triangle);
+			mappings_h[i] = detail::Mapping<2>(triangle, tolerances_);
 		}
 		Kokkos::deep_copy(execution_space, mappings, mappings_h);
 		return std::make_unique<detail::TreeWrapper>(mappings, tree);
@@ -454,7 +479,7 @@ std::unique_ptr<detail::TreeWrapper> TreePointSearch::make_tree(const Omega_h::M
 				{vert_coords[region2vert[i*4 + 1]*3], vert_coords[region2vert[i*4 + 1]*3 + 1], vert_coords[region2vert[i*4 + 1]*3 + 2]},
 				{vert_coords[region2vert[i*4 + 2]*3], vert_coords[region2vert[i*4 + 2]*3 + 1], vert_coords[region2vert[i*4 + 2]*3 + 2]},
 				{vert_coords[region2vert[i*4 + 3]*3], vert_coords[region2vert[i*4 + 3]*3 + 1], vert_coords[region2vert[i*4 + 3]*3 + 2]}};
-			mappings_h[i] = detail::Mapping<3>(tetrahedron);
+			mappings_h[i] = detail::Mapping<3>(tetrahedron, tolerances_);
 		}
 		Kokkos::deep_copy(execution_space, mappings, mappings_h);
 		return std::make_unique<detail::TreeWrapper>(mappings, tree);

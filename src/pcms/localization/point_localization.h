@@ -371,13 +371,14 @@ public:
 	using ExecSpace = Omega_h::ExecSpace;
 	using MemorySpace = ExecSpace::memory_space;
 	/**
-	* Result type gives dimensionality of point intersection, the intersected
-	* element ID, and the barycentric coordinate mapping of that point.
-	* @warning `parametric_coords` is hardcoded at length 4 because Kokkos::Views
-	*		   can only contain fixed width elements as explained in Kokkos
-	*		   Programming Guide sections 5.2.2 and 5.2.3
+	* Results type gives dimensionalities of point intersection, the intersected
+	* element IDs, and the barycentric coordinate mappings of each point as follows:
+	* the `i`th input point has intersection dimensionality of 
+	* `dimensionalities(i)`, intersected element ID of `element_ids(i)`, and 
+	* likewise parametric coordinate mapping of `parametric_coords(i,0..d)`
+	* where `d` is the dimension of the space
 	*/
-	struct Result
+	struct Results
 	{
 		enum class Dimensionality
 		{
@@ -388,23 +389,23 @@ public:
 			NO_INTERSECT = 4
 		};
 
-		Dimensionality dimensionality;
-		LO element_id;
-		Omega_h::Vector<4> parametric_coords;
+		Kokkos::View<Dimensionality*, MemorySpace> dimensionalities;
+		Kokkos::View<LO*, MemorySpace> element_ids;
+		Kokkos::View<Real**, MemorySpace> parametric_coords;
 	};
 
 	PointSearch() = default;
 	~PointSearch() = default;
 
-	virtual Kokkos::View<Result*> apply(const CoordinateView<MemorySpace>& coords) const = 0;
+	virtual Results apply(const CoordinateView<MemorySpace>& coords) const = 0;
 };
 
 
 class TreePointSearch : public PointSearch
 {
 public:
-	using Result = PointSearch::Result;
-	using Dimensionality = Result::Dimensionality;
+	using Results = PointSearch::Results;
+	using Dimensionality = Results::Dimensionality;
 	using ExecSpace = PointSearch::ExecSpace;
 	using MemorySpace = PointSearch::MemorySpace;
 	
@@ -414,11 +415,10 @@ public:
 	* Given a set of points in global coordinates give the ids of the entities
 	* that the points lie within and the parametric coordinates of each point 
 	* within a triangles or tetrahedra adjacent to the intersected entity. 
-	* If the point does not lie within any triangle element. Then the id will 
-	* be a negative number
+	* If the point does not lie within any triangle element, the id will 
+	* be a negative number.
 	*/
-	Kokkos::View<Result*> apply(
-		const CoordinateView<MemorySpace>& coords) const override;
+	Results apply(const CoordinateView<MemorySpace>& coords) const override;
 private:
 	std::unique_ptr<detail::TreeWrapper> make_tree(const Omega_h::Mesh& mesh) const;
 	// Reference to the input mesh
@@ -443,13 +443,15 @@ public:
 		const Omega_h::LOs& adjacencies0,
 		const Omega_h::LOs& adjacencies1,
 		const Omega_h::LOs& adjacencies2,
-		const Kokkos::View<TreePointSearch::Result*, MemorySpace>& intersection_results_
-	) : mappings(mappings_),  
-		intersection_results(intersection_results_)
+		Kokkos::View<TreePointSearch::Dimensionality*, MemorySpace>& dimensionalities_,
+		Kokkos::View<LO*, MemorySpace>& element_ids_,
+		Kokkos::View<Real**, MemorySpace>& parametric_coords_
+	) : mappings(MakeRank1View(mappings_)),  
+		adjacencies{adjacencies0, adjacencies1, adjacencies2},
+		dimensionalities(MakeRank1View(dimensionalities_)),
+		element_ids(MakeRank1View(element_ids_)),
+		parametric_coords(MakeRank2View(parametric_coords_))
 	{
-		adjacencies[0] = adjacencies0;
-		adjacencies[1] = adjacencies1;
-		adjacencies[2] = adjacencies2;
 	};
 	
 	/**
@@ -458,9 +460,11 @@ public:
 	template <typename Predicate, typename Value>
 	KOKKOS_FUNCTION void operator()(Predicate const &predicate, Value const & val) const;
 private:
-	Kokkos::View<Mapping<3>*, MemorySpace> mappings;
+	Rank1View<const Mapping<3>, MemorySpace> mappings;
 	Omega_h::LOs adjacencies[3];
-	Kokkos::View<TreePointSearch::Result*, MemorySpace> intersection_results;
+	Rank1View<TreePointSearch::Dimensionality, MemorySpace> dimensionalities;
+	Rank1View<LO, MemorySpace> element_ids;
+	Rank2View<Real, MemorySpace> parametric_coords;
 };
 
 
@@ -474,20 +478,25 @@ public:
 		const Kokkos::View<Mapping<2>*, MemorySpace>& mappings_,
 		const Omega_h::LOs& adjacencies0,
 		const Omega_h::LOs& adjacencies1,
-		const Kokkos::View<TreePointSearch::Result*, MemorySpace>& intersection_results_
-	) : mappings(mappings_),  
-		intersection_results(intersection_results_)
+		Kokkos::View<TreePointSearch::Dimensionality*, MemorySpace>& dimensionalities_,
+		Kokkos::View<LO*, MemorySpace>& element_ids_,
+		Kokkos::View<Real**, MemorySpace>& parametric_coords_
+	) : mappings(MakeRank1View(mappings_)),  
+		adjacencies{adjacencies0, adjacencies1},
+		dimensionalities(MakeRank1View(dimensionalities_)),
+		element_ids(MakeRank1View(element_ids_)),
+		parametric_coords(MakeRank2View(parametric_coords_))
 	{
-		adjacencies[0] = adjacencies0;
-		adjacencies[1] = adjacencies1;
 	};
 	
 	template <typename Predicate, typename Value>
 	KOKKOS_FUNCTION void operator()(Predicate const &predicate, Value const & val) const;
 private:
-	Kokkos::View<Mapping<2>*, MemorySpace> mappings;
+	Rank1View<const Mapping<2>, MemorySpace> mappings;
 	Omega_h::LOs adjacencies[2];
-	Kokkos::View<TreePointSearch::Result*, MemorySpace> intersection_results;
+	Rank1View<TreePointSearch::Dimensionality, MemorySpace> dimensionalities;
+	Rank1View<LO, MemorySpace> element_ids;
+	Rank2View<Real, MemorySpace> parametric_coords;
 };
 
 } // namespace detail

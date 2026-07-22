@@ -249,23 +249,27 @@ KOKKOS_FUNCTION void CallOnIntersect2D::operator()(Predicate const &predicate, V
 	for (int i = 0; i < DIM; i++)
 	{
 		int elem = tm.which(i, coeffs);
-		if (elem >= 0 && intersection_results(point_ind).dimensionality > (TreePointSearch::Dimensionality)i)
+		if (elem >= 0 && dimensionalities(point_ind) > (TreePointSearch::Dimensionality)i)
 		{
 			auto elem_ind = adjacencies[i][3*val.index + elem];
-			intersection_results(point_ind).dimensionality = (TreePointSearch::Dimensionality)i;
-			intersection_results(point_ind).element_id = elem_ind;
+			dimensionalities(point_ind) = (TreePointSearch::Dimensionality)i;
+			element_ids(point_ind) = elem_ind;
 			for (int j = 0; j < DIM + 1; j++)
-				intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+			{
+				parametric_coords(point_ind, j) = coeffs(j);
+			}
 			return;
 		}
 	}
 	if (tm.which(DIM, coeffs) >= 0 
-		&& intersection_results(point_ind).dimensionality > TreePointSearch::Dimensionality::FACE)
+		&& dimensionalities(point_ind) > TreePointSearch::Dimensionality::FACE)
 	{
-		intersection_results(point_ind).dimensionality = TreePointSearch::Dimensionality::FACE;
-		intersection_results(point_ind).element_id = (LO)val.index;
+		dimensionalities(point_ind) = TreePointSearch::Dimensionality::FACE;
+		element_ids(point_ind) = (LO)val.index;
 		for (int j = 0; j < DIM + 1; j++)
-				intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+		{
+			parametric_coords(point_ind, j) = coeffs(j);
+		}
 	}
 }
 
@@ -284,30 +288,34 @@ void CallOnIntersect3D::operator()(Predicate const &predicate, Value const & val
 	for (int i = 0; i < DIM; i++)
 	{
 		int elem = tm.which(i, coeffs);
-		if (elem >= 0 && intersection_results(point_ind).dimensionality > (TreePointSearch::Dimensionality)i)
+		if (elem >= 0 && dimensionalities(point_ind) > (TreePointSearch::Dimensionality)i)
 		{
 			auto elem_ind = adjacencies[i][offsets[i]*val.index + elem];
-			intersection_results(point_ind).dimensionality = (TreePointSearch::Dimensionality)i;
-			intersection_results(point_ind).element_id = elem_ind;
+			dimensionalities(point_ind) = (TreePointSearch::Dimensionality)i;
+			element_ids(point_ind) = elem_ind;
 			for (int j = 0; j < DIM + 1; j++)
-				intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+			{
+				parametric_coords(point_ind, j) = coeffs(j);
+			}
 			return;
 		}
 	}
 
 	if (tm.which(DIM, coeffs) >= 0 
-			&& intersection_results(point_ind).dimensionality >= TreePointSearch::Dimensionality::REGION)
+			&& dimensionalities(point_ind) > TreePointSearch::Dimensionality::REGION)
 	{
-		intersection_results(point_ind).dimensionality = TreePointSearch::Dimensionality::REGION;
-		intersection_results(point_ind).element_id = (LO)val.index;
+		dimensionalities(point_ind) = TreePointSearch::Dimensionality::REGION;
+		element_ids(point_ind) = (LO)val.index;
 		for (int j = 0; j < DIM + 1; j++)
-				intersection_results(point_ind).parametric_coords(j) = coeffs[j];
+		{
+			parametric_coords(point_ind, j) = coeffs(j);
+		}
 	}
 }
 
 } //namespace detail
 
-Kokkos::View<TreePointSearch::Result*> TreePointSearch::apply(
+TreePointSearch::Results TreePointSearch::apply(
 	const CoordinateView<TreePointSearch::MemorySpace>& coords) const
 {
 	if (coords.GetCoordinateSystem() != pcms::CoordinateSystem::Cartesian)
@@ -315,10 +323,10 @@ Kokkos::View<TreePointSearch::Result*> TreePointSearch::apply(
 		throw pcms_error("TreePointSearch::apply only implemented for"
 						 " Cartesian coordinates");
 	}
-	if (coords.GetCoordinates().extent(1) != mesh_.dim())
+	if (coords.GetValues().extent(1) != mesh_.dim())
 	{
 		throw pcms_error("Input coordinate space dimension " 
-			+ std::to_string(coords.GetCoordinates().extent(1))
+			+ std::to_string(coords.GetValues().extent(1))
 			+ " does not match query space dimension " 
 			+ std::to_string(mesh_.dim()));
 	}
@@ -327,57 +335,59 @@ Kokkos::View<TreePointSearch::Result*> TreePointSearch::apply(
 	{
 		static constexpr int DIM = 2;
 		Omega_h::ExecSpace execution_space;
-		Kokkos::View<PointSearch::Result*, MemorySpace> 
-			intersection_results("2D intersection results",
-				coords.GetCoordinates().extent(0));
-		auto results_h = Kokkos::create_mirror_view(intersection_results);
-		for (int i = 0; i < intersection_results.size(); i++) 
-		{
-			results_h[i].dimensionality = Dimensionality::REGION,
-			results_h[i].element_id = -1,
-			results_h[i].parametric_coords = {-1, -1, -1, -1};
-		}
-		Kokkos::deep_copy(execution_space, intersection_results, results_h);
 
-		tree->get_tree<2>()->query(execution_space, 
-					detail::Coordinate_View_Adapt<MemorySpace, DIM>{
-					coords.GetCoordinates()},
-					detail::CallOnIntersect2D(
-						*tree->get_mappings<2>(),
-						mesh_.get_adj(Omega_h::FACE, 0).ab2b,
-						mesh_.get_adj(Omega_h::FACE, 1).ab2b,
-						intersection_results
-					));
-		return intersection_results;
+		Kokkos::View<TreePointSearch::Dimensionality*, MemorySpace> dims("dimensionalities", coords.GetValues().extent(0));
+		Kokkos::deep_copy(dims, TreePointSearch::Dimensionality::NO_INTERSECT);
+
+		
+		Kokkos::View<LO*, MemorySpace> elem_ids("element IDs", coords.GetValues().extent(0));
+		Kokkos::deep_copy(elem_ids, -1);
+
+		Kokkos::View<Real**, MemorySpace> parametric_coords("parametric coordinates", coords.GetValues().extent(0), coords.GetValues().extent(1) + 1);
+		Kokkos::deep_copy(parametric_coords, -1.0);
+
+
+		tree->get_tree<2>()->query(
+			execution_space, 
+			detail::Coordinate_View_Adapt<MemorySpace, DIM>{coords.GetValues()},
+			detail::CallOnIntersect2D(
+				*tree->get_mappings<2>(),
+				mesh_.get_adj(Omega_h::FACE, 0).ab2b,
+				mesh_.get_adj(Omega_h::FACE, 1).ab2b,
+				dims,
+				elem_ids,
+				parametric_coords
+			));
+		return Results{dims, elem_ids, parametric_coords};
 	}
 	else
 	{
 		static constexpr int DIM = 3;
 		Omega_h::ExecSpace execution_space;
-		Kokkos::View<PointSearch::Result*, MemorySpace> 
-			intersection_results("3D intersection results",
-				coords.GetCoordinates().extent(0));
-		auto results_h = Kokkos::create_mirror_view(intersection_results);
-		for (int i = 0; i < intersection_results.size(); i++) 
-		{
-			results_h[i].dimensionality = Dimensionality::REGION,
-			results_h[i].element_id = -1,
-			results_h[i].parametric_coords = {-1, -1, -1, -1};
-		}
-		Kokkos::deep_copy(execution_space, intersection_results, results_h);
 
-		tree->get_tree<3>()->query(execution_space, 
-			detail::Coordinate_View_Adapt<MemorySpace, 
-			DIM>{
-			coords.GetCoordinates()},
+		Kokkos::View<TreePointSearch::Dimensionality*, MemorySpace> dims("dimensionalities", coords.GetValues().extent(0));
+		Kokkos::deep_copy(dims, TreePointSearch::Dimensionality::NO_INTERSECT);
+
+
+		Kokkos::View<LO*, MemorySpace> elem_ids("element IDs", coords.GetValues().extent(0));
+		Kokkos::deep_copy(elem_ids, -1);
+
+		Kokkos::View<Real**, MemorySpace> parametric_coords("parametric coordinates", coords.GetValues().extent(0), coords.GetValues().extent(1) + 1);
+		Kokkos::deep_copy(parametric_coords, -1.0);
+
+		tree->get_tree<3>()->query(
+			execution_space, 
+			detail::Coordinate_View_Adapt<MemorySpace, DIM>{coords.GetValues()},
 			detail::CallOnIntersect3D(
 				*tree->get_mappings<3>(),
 				mesh_.get_adj(Omega_h::REGION, 0).ab2b,
 				mesh_.get_adj(Omega_h::REGION, 1).ab2b,
 				mesh_.get_adj(Omega_h::REGION, 2).ab2b,
-				intersection_results	
+				dims,
+				elem_ids,
+				parametric_coords
 			));
-		return intersection_results;
+		return Results{dims, elem_ids, parametric_coords};
 	}
 }
 

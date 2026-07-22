@@ -19,6 +19,7 @@
 #include "pcms/utility/types.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/field/coordinate_system.h"
+#include "pcms/localization/point_search.h"
 
 namespace pcms
 {
@@ -89,9 +90,9 @@ public:
 	* @param elem_index the index of the desired triangle or tetrahedron in the Omega_h::Mesh
 	* @param mesh the Omega_h::Mesh with the spatial information of the triangle
 	*/
-	Mapping(int elem_index, Omega_h::Mesh const& mesh);
 
-	Mapping(Omega_h::Matrix<DIM,DIM+1> const& triangle_);
+	Mapping(Omega_h::Matrix<DIM,DIM+1> const& triangle_, 
+		Kokkos::View<Real*> const& tolerances);
 	/**
 	* @brief Default destructor
 	*/
@@ -177,6 +178,7 @@ private:
 	double opposite_edge_len_sq(int i) const;
 	
 	// REPRESENTATION
+	Kokkos::View<Real*> tolerances_;
 	// representation of the barycentric coordinate mapping, source:
 	// https://en.wikipedia.org/wiki/Barycentric_coordinate_system#Edge_approach
 	Omega_h::Matrix<DIM,DIM> bary_transform; // Column-major order
@@ -197,7 +199,8 @@ public:
 	KOKKOS_FUNCTION
 	Mapping() = default;
 
-	Mapping(Omega_h::Matrix<DIM,DIM+1> const& tetrahedron_);
+	Mapping(Omega_h::Matrix<DIM,DIM+1> const& tetrahedron_, 
+			const Kokkos::View<Real*>& tolerances);
 	/**
 	* @brief Default destructor
 	*/
@@ -232,7 +235,7 @@ public:
 	*/
 	KOKKOS_FUNCTION
 	int which(int ent_dim, 
-			  Omega_h::Vector<DIM+1> const& bary_coords) const;
+			Omega_h::Vector<DIM+1> const& bary_coords) const;
 private:	
 	/**
 	* @brief Computes the vertex offset of the point corresponding 
@@ -300,6 +303,7 @@ private:
 	KOKKOS_INLINE_FUNCTION int edge(int i) const 
 	{ return (i < 4 && i > 0) ? (OFFSETS & 3 << ((i-1)*2))>>((i-1)*2) : i; }
 	// representation
+	Kokkos::View<Real*> tolerances_;
 	Omega_h::Matrix<DIM,DIM> bary_transform; // Column-major order
 	Omega_h::Matrix<DIM,DIM+1> tetrahedron;
 	Omega_h::Vector<DIM+1> face_areas;
@@ -332,28 +336,28 @@ struct TreeWrapper
 	* @brief returns a pointer to an ArborX tree
 	*/
 	template <int dim>
-	inline std::shared_ptr<Tree_t<dim>> get_tree()
+	inline Tree_t<dim> get_tree()
 	{
 		if (dim != dim_)
 		{
 			throw pcms_error("Requested get_tree return "
 				"type does not match internal Tree_t");
 		}
-		return std::make_shared<Tree_t<dim>>(std::any_cast<Tree_t<dim>>(*tree_));
+		return std::any_cast<Tree_t<dim>>(*tree_);
 	}
 
 	/**
 	* @brief returns a pointer to a Kokkos::View of Mappings
 	*/
 	template <int dim>
-	inline std::shared_ptr<Mappings_t<dim>> get_mappings()
+	inline Mappings_t<dim> get_mappings()
 	{
 		if (dim != dim_)
 		{
 			throw pcms_error("Requested get_mappings return "
 				"type does not match internal Mappings_t");
 		}
-		return std::make_shared<Mappings_t<dim>>(std::any_cast<Mappings_t<dim>>(*mappings_));
+		return std::any_cast<Mappings_t<dim>>(*mappings_);
 	};
 private:
 	int dim_;
@@ -394,10 +398,31 @@ public:
 		Kokkos::View<Real**, MemorySpace> parametric_coords;
 	};
 
-	PointSearch() = default;
+	using PointSearchTolerances = Kokkos::View<Real*>;
+
+	explicit PointSearch(const PointSearchTolerances& tolerances)
+		: tolerances_(tolerances)
+	{
+		assert(tolerances_.is_allocated());
+	}
+
 	~PointSearch() = default;
 
 	virtual Results apply(const CoordinateView<MemorySpace>& coords) const = 0;
+	/**
+	* This function provides a temporary solution to retrieve the original
+	* behavior of the point search, which previously returned the face ID
+	* regardless of which entity the search result belonged to. Many parts of
+	* the codebase still rely on this legacy behavior. After updating the point
+	* search to return the exact entity, this function can be called to retrieve
+	* the old behavior and ensure correctness. Long term, the implementation
+	* should be updated to properly handle the new result.
+	*/
+	[[nodiscard]] virtual LO GetOwningElementId(const Results& results, int i) = 0;
+	[[nodiscard]] virtual Kokkos::View<LO*> GetOwningElementIds(
+		const Results& results) = 0;
+protected:
+	PointSearchTolerances tolerances_;
 };
 
 
@@ -409,7 +434,14 @@ public:
 	using ExecSpace = PointSearch::ExecSpace;
 	using MemorySpace = PointSearch::MemorySpace;
 	
-	TreePointSearch(const Omega_h::Mesh& mesh) : mesh_(mesh), tree(make_tree(mesh)) {}
+	TreePointSearch(Omega_h::Mesh& mesh) : 
+		PointSearch(PointSearchTolerances("tree point search tolerances", mesh.dim())), 
+		mesh_(mesh), 
+		tree(make_tree(mesh))
+	{
+		Kokkos::deep_copy(tolerances_, 1e-12);
+	}
+	TreePointSearch(Omega_h::Mesh& mesh, const PointSearchTolerances& tolerances) : PointSearch(tolerances), mesh_(mesh), tree(make_tree(mesh)) {}
 	~TreePointSearch() = default;
 	/**
 	* Given a set of points in global coordinates give the ids of the entities
@@ -419,85 +451,88 @@ public:
 	* be a negative number.
 	*/
 	Results apply(const CoordinateView<MemorySpace>& coords) const override;
+	[[nodiscard]] LO GetOwningElementId(const Results& results, int i) override;
+	[[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
+		const Results& results) override;
 private:
 	std::unique_ptr<detail::TreeWrapper> make_tree(const Omega_h::Mesh& mesh) const;
 	// Reference to the input mesh
-	Omega_h::Mesh const &mesh_;
+	Omega_h::Mesh &mesh_;
 	std::unique_ptr<detail::TreeWrapper> tree;
 };
 
 namespace detail
 {
 
-/**
-* Functor to be called when a point intersects a triangle or tetrahedron
-*/
-class CallOnIntersect3D
-{
-public:
-	using MemorySpace = TreePointSearch::MemorySpace;
-	static constexpr int DIM = 3;
-
-	CallOnIntersect3D(
-		const Kokkos::View<Mapping<3>*, MemorySpace>& mappings_,
-		const Omega_h::LOs& adjacencies0,
-		const Omega_h::LOs& adjacencies1,
-		const Omega_h::LOs& adjacencies2,
-		Kokkos::View<TreePointSearch::Dimensionality*, MemorySpace>& dimensionalities_,
-		Kokkos::View<LO*, MemorySpace>& element_ids_,
-		Kokkos::View<Real**, MemorySpace>& parametric_coords_
-	) : mappings(MakeRank1View(mappings_)),  
-		adjacencies{adjacencies0, adjacencies1, adjacencies2},
-		dimensionalities(MakeRank1View(dimensionalities_)),
-		element_ids(MakeRank1View(element_ids_)),
-		parametric_coords(MakeRank2View(parametric_coords_))
-	{
-	};
-	
 	/**
-	* Intersection callback, 
+	* Functor to be called when a point intersects a triangle or tetrahedron
 	*/
-	template <typename Predicate, typename Value>
-	KOKKOS_FUNCTION void operator()(Predicate const &predicate, Value const & val) const;
-private:
-	Rank1View<const Mapping<3>, MemorySpace> mappings;
-	Omega_h::LOs adjacencies[3];
-	Rank1View<TreePointSearch::Dimensionality, MemorySpace> dimensionalities;
-	Rank1View<LO, MemorySpace> element_ids;
-	Rank2View<Real, MemorySpace> parametric_coords;
-};
-
-
-class CallOnIntersect2D
-{
-public:
-	using MemorySpace = TreePointSearch::MemorySpace;
-	static constexpr int DIM = 2;
-
-	CallOnIntersect2D(
-		const Kokkos::View<Mapping<2>*, MemorySpace>& mappings_,
-		const Omega_h::LOs& adjacencies0,
-		const Omega_h::LOs& adjacencies1,
-		Kokkos::View<TreePointSearch::Dimensionality*, MemorySpace>& dimensionalities_,
-		Kokkos::View<LO*, MemorySpace>& element_ids_,
-		Kokkos::View<Real**, MemorySpace>& parametric_coords_
-	) : mappings(MakeRank1View(mappings_)),  
-		adjacencies{adjacencies0, adjacencies1},
-		dimensionalities(MakeRank1View(dimensionalities_)),
-		element_ids(MakeRank1View(element_ids_)),
-		parametric_coords(MakeRank2View(parametric_coords_))
+	class CallOnIntersect3D
 	{
+	public:
+		using MemorySpace = TreePointSearch::MemorySpace;
+		static constexpr int DIM = 3;
+
+		CallOnIntersect3D(
+			const Kokkos::View<Mapping<3>*, MemorySpace>& mappings_,
+			const Omega_h::LOs& adjacencies0,
+			const Omega_h::LOs& adjacencies1,
+			const Omega_h::LOs& adjacencies2,
+			Kokkos::View<TreePointSearch::Dimensionality*, MemorySpace>& dimensionalities_,
+			Kokkos::View<LO*, MemorySpace>& element_ids_,
+			Kokkos::View<Real**, MemorySpace>& parametric_coords_
+		) : mappings(MakeRank1View(mappings_)),  
+			adjacencies{adjacencies0, adjacencies1, adjacencies2},
+			dimensionalities(MakeRank1View(dimensionalities_)),
+			element_ids(MakeRank1View(element_ids_)),
+			parametric_coords(MakeRank2View(parametric_coords_))
+		{
+		};
+		
+		/**
+		* Intersection callback, 
+		*/
+		template <typename Predicate, typename Value>
+		KOKKOS_FUNCTION void operator()(Predicate const &predicate, Value const & val) const;
+	private:
+		Rank1View<const Mapping<3>, MemorySpace> mappings;
+		Omega_h::LOs adjacencies[3];
+		Rank1View<TreePointSearch::Dimensionality, MemorySpace> dimensionalities;
+		Rank1View<LO, MemorySpace> element_ids;
+		Rank2View<Real, MemorySpace> parametric_coords;
 	};
-	
-	template <typename Predicate, typename Value>
-	KOKKOS_FUNCTION void operator()(Predicate const &predicate, Value const & val) const;
-private:
-	Rank1View<const Mapping<2>, MemorySpace> mappings;
-	Omega_h::LOs adjacencies[2];
-	Rank1View<TreePointSearch::Dimensionality, MemorySpace> dimensionalities;
-	Rank1View<LO, MemorySpace> element_ids;
-	Rank2View<Real, MemorySpace> parametric_coords;
-};
+
+
+	class CallOnIntersect2D
+	{
+	public:
+		using MemorySpace = TreePointSearch::MemorySpace;
+		static constexpr int DIM = 2;
+
+		CallOnIntersect2D(
+			const Kokkos::View<Mapping<2>*, MemorySpace>& mappings_,
+			const Omega_h::LOs& adjacencies0,
+			const Omega_h::LOs& adjacencies1,
+			Kokkos::View<TreePointSearch::Dimensionality*, MemorySpace>& dimensionalities_,
+			Kokkos::View<LO*, MemorySpace>& element_ids_,
+			Kokkos::View<Real**, MemorySpace>& parametric_coords_
+		) : mappings(MakeRank1View(mappings_)),  
+			adjacencies{adjacencies0, adjacencies1},
+			dimensionalities(MakeRank1View(dimensionalities_)),
+			element_ids(MakeRank1View(element_ids_)),
+			parametric_coords(MakeRank2View(parametric_coords_))
+		{
+		};
+		
+		template <typename Predicate, typename Value>
+		KOKKOS_FUNCTION void operator()(Predicate const &predicate, Value const & val) const;
+	private:
+		Rank1View<const Mapping<2>, MemorySpace> mappings;
+		Omega_h::LOs adjacencies[2];
+		Rank1View<TreePointSearch::Dimensionality, MemorySpace> dimensionalities;
+		Rank1View<LO, MemorySpace> element_ids;
+		Rank2View<Real, MemorySpace> parametric_coords;
+	};
 
 } // namespace detail
 

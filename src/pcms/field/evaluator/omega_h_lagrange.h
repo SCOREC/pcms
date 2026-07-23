@@ -65,13 +65,11 @@ struct CopyCoordsFunctor
 template <int Dim>
 OmegaHLagrangeLocHint BuildLagrangeLocHint(
   Omega_h::Mesh& mesh, int mesh_dim,
-  Kokkos::View<typename PointLocalizationSearch<Dim>::Result*,
-               DeviceMemorySpace>
-    results,
+  PointSearch::Results& results,
   Kokkos::View<Real**, DeviceMemorySpace> coords_d,
   Kokkos::View<LO*, DeviceMemorySpace> owning_ids, OutOfBoundsMode mode)
 {
-  LO n = static_cast<LO>(results.size());
+  LO n = static_cast<LO>(results.dimensionalities.size());
 
   // First pass: count valid and missing
   Kokkos::View<int*, DeviceMemorySpace> is_valid("is_valid", n);
@@ -79,7 +77,7 @@ OmegaHLagrangeLocHint BuildLagrangeLocHint(
     "CheckValidity",
     Kokkos::RangePolicy<typename DeviceMemorySpace::execution_space>(0, n),
     KOKKOS_LAMBDA(LO i) {
-      bool out = (owning_ids(i) < 0) || (results(i).element_id < 0);
+      bool out = (owning_ids(i) < 0) || (results.element_ids(i) < 0);
       is_valid(i) = out ? 0 : 1;
     });
 
@@ -344,7 +342,7 @@ public:
         detail::CopyCoordsFunctor<Dim> copy_functor(coords_d, raw_coords);
         Kokkos::parallel_for("copy_coords", n_pts, copy_functor);
 
-        auto results_d = search(coords_d);
+        auto results_d = search.apply(coords);
         auto owning_ids = search.GetOwningElementIds(results_d);
 
         return detail::BuildLagrangeLocHint<Dim>(

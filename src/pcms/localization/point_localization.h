@@ -18,7 +18,6 @@
 #include "pcms/utility/assert.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/arrays.h"
-#include "pcms/field/coordinate_system.h"
 #include "pcms/localization/point_search.h"
 
 namespace pcms
@@ -365,66 +364,6 @@ private:
 	std::shared_ptr<std::any> mappings_;
 };
 } //namespace detail
-
-/**
- * Point search base class
- */
-class PointSearch
-{
-public:
-	using ExecSpace = Omega_h::ExecSpace;
-	using MemorySpace = ExecSpace::memory_space;
-	/**
-	* Results type gives dimensionalities of point intersection, the intersected
-	* element IDs, and the barycentric coordinate mappings of each point as follows:
-	* the `i`th input point has intersection dimensionality of 
-	* `dimensionalities(i)`, intersected element ID of `element_ids(i)`, and 
-	* likewise parametric coordinate mapping of `parametric_coords(i,0..d)`
-	* where `d` is the dimension of the space
-	*/
-	struct Results
-	{
-		enum class Dimensionality
-		{
-			VERTEX = 0,
-			EDGE = 1,
-			FACE = 2,
-			REGION = 3,
-			NO_INTERSECT = 4
-		};
-
-		Kokkos::View<Dimensionality*, MemorySpace> dimensionalities;
-		Kokkos::View<LO*, MemorySpace> element_ids;
-		Kokkos::View<Real**, MemorySpace> parametric_coords;
-	};
-
-	using PointSearchTolerances = Kokkos::View<Real*>;
-
-	explicit PointSearch(const PointSearchTolerances& tolerances)
-		: tolerances_(tolerances)
-	{
-		assert(tolerances_.is_allocated());
-	}
-
-	~PointSearch() = default;
-
-	virtual Results apply(const CoordinateView<MemorySpace>& coords) const = 0;
-	/**
-	* This function provides a temporary solution to retrieve the original
-	* behavior of the point search, which previously returned the face ID
-	* regardless of which entity the search result belonged to. Many parts of
-	* the codebase still rely on this legacy behavior. After updating the point
-	* search to return the exact entity, this function can be called to retrieve
-	* the old behavior and ensure correctness. Long term, the implementation
-	* should be updated to properly handle the new result.
-	*/
-	[[nodiscard]] virtual LO GetOwningElementId(const Results& results, int i) = 0;
-	[[nodiscard]] virtual Kokkos::View<LO*> GetOwningElementIds(
-		const Results& results) = 0;
-protected:
-	PointSearchTolerances tolerances_;
-};
-
 
 class TreePointSearch : public PointSearch
 {

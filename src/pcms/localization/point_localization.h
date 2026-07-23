@@ -177,7 +177,7 @@ private:
 	double opposite_edge_len_sq(int i) const;
 	
 	// REPRESENTATION
-	Kokkos::View<Real*> tolerances_;
+	Omega_h::Vector<DIM> tolerances_;
 	// representation of the barycentric coordinate mapping, source:
 	// https://en.wikipedia.org/wiki/Barycentric_coordinate_system#Edge_approach
 	Omega_h::Matrix<DIM,DIM> bary_transform; // Column-major order
@@ -302,7 +302,7 @@ private:
 	KOKKOS_INLINE_FUNCTION int edge(int i) const 
 	{ return (i < 4 && i > 0) ? (OFFSETS & 3 << ((i-1)*2))>>((i-1)*2) : i; }
 	// representation
-	Kokkos::View<Real*> tolerances_;
+	Omega_h::Vector<DIM> tolerances_;
 	Omega_h::Matrix<DIM,DIM> bary_transform; // Column-major order
 	Omega_h::Matrix<DIM,DIM+1> tetrahedron;
 	Omega_h::Vector<DIM+1> face_areas;
@@ -375,10 +375,10 @@ public:
 	
 	TreePointSearch(Omega_h::Mesh& mesh) : 
 		PointSearch(PointSearchTolerances("tree point search tolerances", mesh.dim())), 
-		mesh_(mesh), 
-		tree(make_tree(mesh))
+		mesh_(mesh)
 	{
 		Kokkos::deep_copy(tolerances_, 1e-12);
+		tree = make_tree(mesh);
 	}
 	TreePointSearch(Omega_h::Mesh& mesh, const PointSearchTolerances& tolerances) : PointSearch(tolerances), mesh_(mesh), tree(make_tree(mesh)) {}
 	~TreePointSearch() = default;

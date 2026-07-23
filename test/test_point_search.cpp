@@ -324,7 +324,7 @@ TEST_CASE("uniform grid search 2D")
       const auto face_idx = search->GetOwningElementId(results, 7);
       REQUIRE(dim == PointSearch::Results::Dimensionality::FACE);
       REQUIRE(idx == 0);
-    //   REQUIRE(face_idx >= 0);
+      REQUIRE(face_idx >= 0);
     }
   }
   // feature needs to be added

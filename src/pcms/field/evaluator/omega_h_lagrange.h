@@ -62,7 +62,8 @@ struct CopyCoordsFunctor
 };
 
 OmegaHLagrangeLocHint BuildLagrangeLocHint(
-  Omega_h::Mesh& mesh, int mesh_dim, PointSearch::Results& results,
+  Omega_h::Mesh& mesh, int mesh_dim,
+  PointSearch::Results& results,
   Kokkos::View<Real**, DeviceMemorySpace> coords_d,
   Kokkos::View<LO*, DeviceMemorySpace> owning_ids, OutOfBoundsMode mode)
 {

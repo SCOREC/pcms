@@ -7,7 +7,7 @@ namespace pcms
 // Debug helper retained intentionally: useful for diagnosing point-localization
 // failures while developing support-search logic.
 [[maybe_unused]] static void checkTargetPoints(
-  const Kokkos::View<pcms::GridPointSearch2D::Result*>& results,
+  const GridPointSearch2D::Results& results,
   const Kokkos::View<pcms::LO*>& owning_cell_ids)
 {
   Kokkos::fence();
@@ -22,7 +22,7 @@ namespace pcms
       printf("%d, ", i);
     }
   };
-  Omega_h::parallel_for(results.size(), check_target_points,
+  Omega_h::parallel_for(results.dimensionalities.size(), check_target_points,
                         "check_target_points");
   Kokkos::fence();
   pcms::printInfo("\n");
@@ -81,8 +81,8 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
     Omega_h::Write<Omega_h::LO>(nvertices_target, -1, "source cell ids");
 
   if (dim == 2) {
-    Kokkos::View<Omega_h::Real* [2]> target_points("target_points",
-                                                   nvertices_target);
+    Kokkos::View<pcms::Real**> target_points("target_points",
+                                                   nvertices_target, 2);
     Omega_h::parallel_for(
       nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
         target_points(i, 0) = target_coords[i * dim];
@@ -90,8 +90,10 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
       });
     Kokkos::fence();
 
-    pcms::GridPointSearch2D search_cell(source_mesh, 10, 10);
-    auto results = search_cell(target_points);
+    pcms::GridPointSearch2D search_cell(source_mesh, 10, 10); //
+    auto results = search_cell.apply(pcms::CoordinateView(
+		pcms::CoordinateSystem::Cartesian,
+		pcms::MakeConstRank2View(target_points)));
     auto owning_cell_ids = search_cell.GetOwningElementIds(results);
     Omega_h::parallel_for(
       nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
@@ -103,8 +105,8 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
         source_cell_ids[i] = source_cell_id;
       });
   } else if (dim == 3) {
-    Kokkos::View<Omega_h::Real* [3]> target_points("target_points",
-                                                   nvertices_target);
+    Kokkos::View<pcms::Real**> target_points("target_points",
+                                                   nvertices_target, 3);
     Omega_h::parallel_for(
       nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
         target_points(i, 0) = target_coords[i * dim];
@@ -114,7 +116,9 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
     Kokkos::fence();
 
     pcms::GridPointSearch3D search_cell(source_mesh, 10, 10, 10);
-    auto results = search_cell(target_points);
+    auto results = search_cell.apply(pcms::CoordinateView(
+		pcms::CoordinateSystem::Cartesian,
+		pcms::MakeConstRank2View(target_points)));
     auto owning_cell_ids = search_cell.GetOwningElementIds(results);
     Omega_h::parallel_for(
       nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {

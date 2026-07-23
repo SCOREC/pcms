@@ -63,7 +63,11 @@ Mapping<2>::Mapping(
 	const Kokkos::View<Real*>& tolerances)
 	: triangle(triangle_)
 {
-	tolerances_ = tolerances;
+	auto tol_h = Kokkos::create_mirror_view(tolerances);
+	Kokkos::deep_copy(tol_h, tolerances);
+	tolerances_[0] = tol_h(0);
+	tolerances_[1] = tol_h(1);
+	// printf("%d (%lf, %lf)\n", tol_h.size(), tolerances_[0], tolerances_[1]);
 	bary_transform = { triangle[0] - triangle[2], triangle[1] - triangle[2] };
 	triangle_area = 0.5*fabs(Omega_h::determinant(bary_transform));
 	bary_transform = Omega_h::invert(bary_transform);
@@ -100,7 +104,7 @@ int Mapping<2>::which_vert(Omega_h::Vector<Mapping<2>::DIM + 1> const& bary_coor
 		Omega_h::Vector<2> error = (bary_coords[0] - kronecker(i,0)) * triangle[0] 
 									+ (bary_coords[1] - kronecker(i,1)) * triangle[1] 
 									+ (bary_coords[2] - kronecker(i,2)) * triangle[2];
-		if (Omega_h::norm_squared(error) <= tolerances_(0)*tolerances_(0)) return i;
+		if (Omega_h::norm_squared(error) <= tolerances_[0]*tolerances_[0]) return i;
 	}
 	return -1;
 }
@@ -113,7 +117,7 @@ int Mapping<2>::which_edge(Omega_h::Vector<Mapping<2>::DIM + 1> const& bary_coor
 		// see docs for derivation.
 		double dist = (2*bary_coords[i]*triangle_area)*(2*bary_coords[i]*triangle_area);
 		dist /= opposite_edge_len_sq(i);
-		if (dist <= tolerances_(1)*tolerances_(1) &&
+		if (dist <= tolerances_[1]*tolerances_[1] &&
 			bary_coords[(i+1)%3] >= 0 && bary_coords[(i+2)%3] >= 0) return (i+1)%3;
 	}
 	return -1;
@@ -134,7 +138,11 @@ Mapping<3>::Mapping(
 	const Kokkos::View<Real*>& tolerances)
 	: tetrahedron(tetrahedron_)
 {
-	tolerances_ = tolerances;
+	auto tol_h = Kokkos::create_mirror_view(tolerances);
+	Kokkos::deep_copy(tol_h, tolerances);
+	tolerances_[0] = tol_h(0);
+	tolerances_[1] = tol_h(1);
+	tolerances_[2] = tol_h(2);
 	set_triangle_areas();
 	bary_transform = { tetrahedron[0] - tetrahedron[3], tetrahedron[1] - tetrahedron[3], tetrahedron[2] - tetrahedron[3] };
 	tetrahedron_volume = fabs(Omega_h::determinant(bary_transform))/6.;
@@ -174,7 +182,7 @@ int Mapping<3>::which_vert(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coor
 		// distance to the ith vertex
 		Omega_h::Vector<3> error = (bary_coords[0] - kronecker(i,0)) * tetrahedron[0] + (bary_coords[1] - kronecker(i,1)) * tetrahedron[1]
 									+ (bary_coords[2] - kronecker(i,2)) * tetrahedron[2] + (bary_coords[3] - kronecker(i,3)) * tetrahedron[3];
-		if (Omega_h::norm_squared(error) <= tolerances_(0)*tolerances_(0)) return i;
+		if (Omega_h::norm_squared(error) <= tolerances_[0]*tolerances_[0]) return i;
 	}
 	return -1;
 }
@@ -199,7 +207,7 @@ int Mapping<3>::which_edge(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coor
 			double distnce_sq = Omega_h::norm_squared(Omega_h::cross(side1, side2));
 			distnce_sq /= Omega_h::norm_squared(side3);
 			
-			if (distnce_sq <= tolerances_(1)*tolerances_(1) && bary_coords[i] > 0 && bary_coords[j] > 0) return edge(edge_);
+			if (distnce_sq <= tolerances_[1]*tolerances_[1] && bary_coords[i] > 0 && bary_coords[j] > 0) return edge(edge_);
 			edge_++;
 		}
 	}
@@ -210,7 +218,7 @@ int Mapping<3>::which_face(Omega_h::Vector<Mapping<3>::DIM + 1> const& bary_coor
 {
 	for (int i = 0; i < 4; i++)
 	{
-		if (fabs(3*tetrahedron_volume*bary_coords[i]/face_areas[i]) <= tolerances_(2)
+		if (fabs(3*tetrahedron_volume*bary_coords[i]/face_areas[i]) <= tolerances_[2]
 			&& bary_coords[(i+1)%4] >= 0 && bary_coords[(i+2)%4] >= 0 && bary_coords[(i+3)%4] >= 0)
 		{
 			return face(i);
@@ -479,6 +487,9 @@ std::unique_ptr<detail::TreeWrapper> TreePointSearch::make_tree(const Omega_h::M
 				{vert_coords[region2vert[i*4 + 1]*3], vert_coords[region2vert[i*4 + 1]*3 + 1], vert_coords[region2vert[i*4 + 1]*3 + 2]},
 				{vert_coords[region2vert[i*4 + 2]*3], vert_coords[region2vert[i*4 + 2]*3 + 1], vert_coords[region2vert[i*4 + 2]*3 + 2]},
 				{vert_coords[region2vert[i*4 + 3]*3], vert_coords[region2vert[i*4 + 3]*3 + 1], vert_coords[region2vert[i*4 + 3]*3 + 2]}};
+
+			auto tol_h = Kokkos::create_mirror_view(tolerances_);
+			Kokkos::deep_copy(tol_h, tolerances_);
 			mappings_h[i] = detail::Mapping<3>(tetrahedron, tolerances_);
 		}
 		Kokkos::deep_copy(execution_space, mappings, mappings_h);

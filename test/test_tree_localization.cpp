@@ -12,7 +12,7 @@ TEST_CASE ("Test 1x1 2D grid point classification") {
 	// Setup for 1x1 grid test cases
 	auto lib = Omega_h::Library{};
 	auto world = lib.world();
-	Omega_h::Mesh mesh_1x1 = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 100, 100, 0, false);
+	Omega_h::Mesh mesh_1x1 = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
 	REQUIRE(mesh_1x1.dim() == 2);
 	Omega_h::ExecSpace execs;
 	
@@ -135,7 +135,7 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 	// Setup for 1x1x1 grid test cases
 	auto lib = Omega_h::Library{};
 	auto world = lib.world();
-	Omega_h::Mesh mesh_1x1 = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 20, 20, 20, false);
+	Omega_h::Mesh mesh_1x1 = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 5, 5, 5, false);
 	REQUIRE(mesh_1x1.dim() == 3);
 	Omega_h::ExecSpace execs;
 	

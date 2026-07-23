@@ -213,13 +213,13 @@ TEST_CASE("uniform grid search")
 	  auto dim = result_dims_h(0);
 	  auto idx = result_ids_h(0);
 	  auto coords = Omega_h::Vector<3>{result_coords_h(0,0), result_coords_h(0,1), result_coords_h(0,2)};
-    //   const auto face_idx = search.GetOwningElementId(results_h(0));
+      const auto face_idx = pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(result_dims_h(0)), result_ids_h(0));
 
       CAPTURE(idx);
 
       REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::VERTEX);
       REQUIRE(idx == 0);
-    //   REQUIRE(face_idx >= 0);
+      REQUIRE(face_idx >= 0);
       REQUIRE(coords[0] == Catch::Approx(1));
       REQUIRE(coords[1] == Catch::Approx(0));
       REQUIRE(coords[2] == Catch::Approx(0));
@@ -228,10 +228,10 @@ TEST_CASE("uniform grid search")
 	  auto dim = result_dims_h(1);
 	  auto idx = result_ids_h(1);
 	  auto coords = Omega_h::Vector<3>{result_coords_h(1,0), result_coords_h(1,1), result_coords_h(1,2)};
-    //   const auto face_idx = search.GetOwningElementId(results_h(1));
+      const auto face_idx = pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(result_dims_h(1)), result_ids_h(1));
       REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::EDGE);
       REQUIRE(idx == 156);
-    //   REQUIRE(face_idx >= 0);
+      REQUIRE(face_idx >= 0);
       REQUIRE(coords[0] == Catch::Approx(0.5));
       REQUIRE(coords[1] == Catch::Approx(0.1));
       REQUIRE(coords[2] == Catch::Approx(0.4));
@@ -239,60 +239,66 @@ TEST_CASE("uniform grid search")
     {
 	  auto dim = result_dims_h(7);
 	  auto idx = result_ids_h(7);
-    //   const auto face_idx = search.GetOwningElementId(results_h(7));
-      REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::FACE); // failed
+      const auto face_idx = pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(result_dims_h(7)), result_ids_h(7));
+      REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::FACE);
       REQUIRE(idx == 0);
-    //   REQUIRE(face_idx >= 0);
+      REQUIRE(face_idx >= 0);
     }
   }
   // feature needs to be added
-//   SECTION("Global coordinate outside mesh", "[!mayfail]")
-//   {
-//     auto out_of_bounds = results_h(2);
-//     auto top_right = results_h(3);
-//     REQUIRE(out_of_bounds.dimensionality ==
-//             GridPointSearch2D::Results::Dimensionality::VERTEX);
-//     REQUIRE(-1 * out_of_bounds.element_id == top_right.element_id);
-//     REQUIRE(search.GetOwningElementId(out_of_bounds) >= 0);
+  SECTION("Global coordinate outside mesh", "[!mayfail]")
+  {
+	auto out_of_bounds_dim = result_dims_h(2);
+    auto out_of_bounds_id = result_ids_h(2);
+    auto top_right_id = result_ids_h(3);
+    REQUIRE(out_of_bounds_dim ==
+            GridPointSearch2D::Results::Dimensionality::VERTEX);
+    REQUIRE(-1 * out_of_bounds_id == top_right_id);
+    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
 
-//     out_of_bounds = results_h(4);
-//     auto bot_left = results_h(0);
-//     REQUIRE(out_of_bounds.dimensionality ==
-//             GridPointSearch2D::Results::Dimensionality::VERTEX);
-//     REQUIRE(-1 * out_of_bounds.element_id == bot_left.element_id);
-//     REQUIRE(search.GetOwningElementId(out_of_bounds) >= 0);
+    out_of_bounds_dim = result_dims_h(4);
+    out_of_bounds_id = result_ids_h(4);
+    auto bot_left_id = result_ids_h(0);
+    REQUIRE(out_of_bounds_dim ==
+            GridPointSearch2D::Results::Dimensionality::VERTEX);
+    REQUIRE(-1 * out_of_bounds_id == bot_left_id);
+    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
 
-//     out_of_bounds = results_h(5);
-//     REQUIRE(out_of_bounds.dimensionality ==
-//             GridPointSearch2D::Results::Dimensionality::EDGE);
-//     REQUIRE(out_of_bounds.element_id == -219);
-//     REQUIRE(search.GetOwningElementId(out_of_bounds) >= 0);
+	out_of_bounds_dim = result_dims_h(5);
+    out_of_bounds_id = result_ids_h(5);
+    REQUIRE(out_of_bounds_dim ==
+            GridPointSearch2D::Results::Dimensionality::EDGE);
+    REQUIRE(out_of_bounds_id == -219);
+    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
 
-//     out_of_bounds = results_h(6);
-//     REQUIRE(out_of_bounds.dimensionality ==
-//             GridPointSearch2D::Results::Dimensionality::EDGE);
-//     REQUIRE(-1 * out_of_bounds.element_id == bot_left.element_id);
-//     REQUIRE(search.GetOwningElementId(out_of_bounds) >= 0);
-//   }
-//   SECTION("point on extension of an edge")
-//   {
-//     Kokkos::View<pcms::Real* [2]> ext_points("ext_test_points", 1);
-//     auto ext_h = Kokkos::create_mirror_view(ext_points);
-//     ext_h(0, 0) = 1.5;
-//     ext_h(0, 1) = 0.0;
-//     Kokkos::deep_copy(ext_points, ext_h);
-//     auto ext_results = search(ext_points);
-//     auto ext_results_h = Kokkos::create_mirror_view(ext_results);
-//     Kokkos::deep_copy(ext_results_h, ext_results);
+    out_of_bounds_dim = result_dims_h(6);
+    out_of_bounds_id = result_ids_h(6);
+    REQUIRE(out_of_bounds_dim ==
+            GridPointSearch2D::Results::Dimensionality::EDGE);
+    REQUIRE(-1 * out_of_bounds_id == bot_left_id);
+    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
+  }
+  SECTION("point on extension of an edge")
+  {
+    Kokkos::View<pcms::Real**> ext_points("ext_test_points", 1, 2);
+    auto ext_h = Kokkos::create_mirror_view(ext_points);
+    ext_h(0, 0) = 1.5;
+    ext_h(0, 1) = 0.0;
+    Kokkos::deep_copy(ext_points, ext_h);
+    auto ext_results = search.apply(pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, 
+		pcms::MakeConstRank2View(ext_points)));
 
-//     auto res = ext_results_h(0);
-//     // Must be out-of-bounds (negative element id)
-//     REQUIRE(res.element_id < 0);
-//     // Dimensionality must be VERTEX — the nearest entity is the
-//     // rightmost bottom vertex (1.0, 0).
-//     REQUIRE(res.dimensionality ==
-//             GridPointSearch2D::Results::Dimensionality::VERTEX);
-//     // Owning element should still resolve to a valid face
-//     REQUIRE(search.GetOwningElementId(res) >= 0);
-//   }
+	auto result_dims_h = Kokkos::create_mirror_view(ext_results.dimensionalities);
+	Kokkos::deep_copy(result_dims_h, ext_results.dimensionalities);
+	auto result_ids_h = Kokkos::create_mirror_view(ext_results.element_ids);
+	Kokkos::deep_copy(result_ids_h, ext_results.element_ids);
+    // Must be out-of-bounds (negative element id)
+    REQUIRE(result_ids_h(0) < 0);
+    // Dimensionality must be VERTEX — the nearest entity is the
+    // rightmost bottom vertex (1.0, 0).
+    REQUIRE(result_dims_h(0) ==
+            GridPointSearch2D::Results::Dimensionality::VERTEX);
+    // Owning element should still resolve to a valid face
+    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), 0, -result_ids_h(0)) >= 0);
+  }
 }

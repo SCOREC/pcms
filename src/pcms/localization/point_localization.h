@@ -298,7 +298,7 @@ private:
 	void set_triangle_areas();
 	// returns the actual face/edge offset from the barycentric offset
 	KOKKOS_INLINE_FUNCTION int face(int i) const 
-	{ return (OFFSETS & 3 << (i*2))>>(i*2);}
+	{ return (OFFSETS & 3 << (i*2))>>(i*2); }
 	KOKKOS_INLINE_FUNCTION int edge(int i) const 
 	{ return (i < 4 && i > 0) ? (OFFSETS & 3 << ((i-1)*2))>>((i-1)*2) : i; }
 	// representation

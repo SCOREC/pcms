@@ -418,7 +418,7 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
   auto tolerances = tolerances_;
   auto point_coords = points.GetValues();
   Kokkos::parallel_for(
-	  point_coords.extent(0), KOKKOS_LAMBDA(int p) {
+    point_coords.extent(0), KOKKOS_LAMBDA(int p) {
       const auto vtol = tolerances(0);
       const auto etol = tolerances(1);
 
@@ -480,7 +480,7 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
           const int vb_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
           const auto va = Omega_h::get_vector<2>(coords, va_id);
           const auto vb = Omega_h::get_vector<2>(coords, vb_id);
-		  
+      
           if (!normal_intersects_segment(va, vb, point))
             continue;
 
@@ -709,6 +709,13 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
   auto tolerances = tolerances_;
   auto coords = coords_;
   auto point_coords = points.GetValues();
+  auto get_face = KOKKOS_LAMBDA(int i)
+  {
+    // inverse face offsets as determined by the cannonical ordering: 
+    // https://user-images.githubusercontent.com/56453280/74203616-39d27a80-4c3e-11ea-885d-b0260490e184.png
+    static const char OFFSETS = 1 << 6 | 2 << 2 | 3;
+    return (OFFSETS & 3 << (i*2))>>(i*2); 
+  };
   Kokkos::parallel_for(
     point_coords.extent(0), KOKKOS_LAMBDA(int p) {
       const auto vtol = tolerances(0);
@@ -734,16 +741,15 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
         const int tetrahedronID = candidate_map.entries(i);
         const auto elem_tri2verts =
           Omega_h::gather_verts<DIM + 1>(tets2verts, tetrahedronID);
-        auto vertex_coords =
+        const auto vertex_coords =
           Omega_h::gather_vectors<DIM + 1, DIM>(coords, elem_tri2verts);
-        auto parametric_coords =
+        const Omega_h::Vector<DIM + 1> parametric_coords =
           Omega_h::barycentric_from_global<DIM, DIM>(point, vertex_coords);
 
-		    LO vertexID = -1;
+        LO vertexID = -1;
         Real best_vdist_sq = INFINITY;
         for (int k = 0; k < 4; k++) {
           Real vdist_sq = Omega_h::norm_squared(vertex_coords[k] - point);
-          // printf("%lf\n", vdist_sq);
           if (vdist_sq < vtol*vtol && vdist_sq < best_vdist_sq)
           {
             vertexID = elem_tri2verts[k];
@@ -757,8 +763,8 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
           for (int j = 0; j < 4; j++)
             results.parametric_coords(p, j) = parametric_coords[j];
           found = true;
-          break;
         }
+
         if (results.dimensionalities(p) == Dimensionality::VERTEX) continue;
         
         LO edgeID = -1;
@@ -784,10 +790,56 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
           for (int j = 0; j < 4; j++)
             results.parametric_coords(p, j) = parametric_coords[j];
           found = true;
-          break;
         }
 
         if (results.dimensionalities(p) == Dimensionality::EDGE) continue;
+
+        LO faceID = -1;
+        Real best_fdist_sq = INFINITY;
+        Omega_h::Matrix<DIM, DIM> tet;
+        tet[0] = vertex_coords[0] - vertex_coords[3];
+        tet[1] = vertex_coords[1] - vertex_coords[3];
+        tet[2] = vertex_coords[2] - vertex_coords[3];
+        Real tetrahedron_volume = fabs(Omega_h::determinant(tet))/6.;
+        
+        for (int k = 0; k < 4; k++)
+        {
+          LO bary_offset = get_face(k);
+          Real face_area_sq = Omega_h::norm_squared(Omega_h::cross(
+            vertex_coords[(bary_offset+1)%4] - vertex_coords[(bary_offset+3)%4], 
+            vertex_coords[(bary_offset+2)%4] - vertex_coords[(bary_offset+3)%4]))/4.;
+          
+          Real fdist_sq = parametric_coords[bary_offset]*3*tetrahedron_volume;
+          fdist_sq *= fdist_sq;
+          fdist_sq /= face_area_sq;
+
+          bool inside = true;
+          for (int j = 0; j < 4; j++)
+          {
+            if (j == bary_offset) continue;
+            if (parametric_coords[j] < 0)
+            {
+              inside = false;
+              break;
+            }
+          }
+
+          if (fdist_sq < ftol*ftol && fdist_sq < best_fdist_sq && inside)
+          {
+            faceID = tets2faces_adj.ab2b[tetrahedronID * 4 + k];
+            best_fdist_sq = fdist_sq;
+          }
+        }
+        if (faceID > -1)
+        {
+          results.dimensionalities(p) = Dimensionality::FACE;
+          results.element_ids(p) = faceID;
+          for (int j = 0; j < 4; j++)
+            results.parametric_coords(p, j) = parametric_coords[j];
+          found = true;
+        }
+
+        if (results.dimensionalities(p) == Dimensionality::FACE) continue;
 
         if (Omega_h::is_barycentric_inside(parametric_coords)) {
           results.dimensionalities(p) = Dimensionality::REGION;
@@ -795,7 +847,6 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
           for (int j = 0; j < 4; j++)
             results.parametric_coords(p, j) = parametric_coords[j];
           found = true;
-          break;
         }
 
         // TODO: Get nearest element if no tetrahedron found

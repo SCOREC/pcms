@@ -602,6 +602,7 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
   auto point_coords = points.GetValues();
   Kokkos::parallel_for(
     point_coords.extent(0), KOKKOS_LAMBDA(int p) {
+    point_coords.extent(0), KOKKOS_LAMBDA(int p) {
       const auto vtol = tolerances(0);
       const auto etol = tolerances(1);
 
@@ -663,7 +664,7 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
           const int vb_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
           const auto va = Omega_h::get_vector<2>(coords, va_id);
           const auto vb = Omega_h::get_vector<2>(coords, vb_id);
-
+      
           if (!normal_intersects_segment(va, vb, point))
             continue;
 
@@ -902,6 +903,13 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
   auto tolerances = tolerances_;
   auto coords = coords_;
   auto point_coords = points.GetValues();
+  auto get_face = KOKKOS_LAMBDA(int i)
+  {
+    // inverse face offsets as determined by the cannonical ordering: 
+    // https://user-images.githubusercontent.com/56453280/74203616-39d27a80-4c3e-11ea-885d-b0260490e184.png
+    static const char OFFSETS = 1 << 6 | 2 << 2 | 3;
+    return (OFFSETS & 3 << (i*2))>>(i*2); 
+  };
   Kokkos::parallel_for(
     point_coords.extent(0), KOKKOS_LAMBDA(int p) {
       using Dimensionality = GridPointSearch3D::Results::Dimensionality;

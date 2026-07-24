@@ -201,6 +201,6 @@ IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
  */
 IntersectionResults intersectTargets(
   Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
-  const GridPointSearchVariant& source_search, bool use_prefilter = true);
+  const PointSearch& source_search, bool use_prefilter = true);
 } // namespace pcms
 #endif // PCMS_TRANSFER_MESH_INTERSECTION_HPP

@@ -694,18 +694,26 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
     Kokkos::View<Real**>("parametric coordinates", points.GetValues().extent(0), 
                          points.GetValues().extent(1) + 1)
   };
+  Kokkos::deep_copy(results.dimensionalities, Dimensionality::NO_INTERSECT);
+  Kokkos::deep_copy(results.element_ids, -1);
+  Kokkos::deep_copy(results.parametric_coords, 0.);
   auto num_rows = candidate_map_.numRows();
   // needed so that we don't capture this ptr which will be memory error on cuda
   auto grid = grid_;
   auto candidate_map = candidate_map_;
-  auto tris2verts = tris2verts_;
-  auto tris2verts_adj = tris2verts_adj_;
-  auto tris2edges_adj = tris2edges_adj_;
+  auto tets2verts = tets2verts_;
+  auto tets2verts_adj = tets2verts_adj_;
+  auto tets2edges_adj = tets2edges_adj_;
+  auto tets2faces_adj = tets2faces_adj_;
   auto edges2verts_adj = edges2verts_adj_;
+  auto tolerances = tolerances_;
   auto coords = coords_;
   auto point_coords = points.GetValues();
   Kokkos::parallel_for(
     point_coords.extent(0), KOKKOS_LAMBDA(int p) {
+      const auto vtol = tolerances(0);
+      const auto etol = tolerances(1);
+      const auto ftol = tolerances(2);
       Omega_h::Vector<DIM> point;
       for (int i = 0; i < DIM; ++i) {
         point[i] = point_coords(p, i);
@@ -717,23 +725,73 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
       auto candidates_end = candidate_map.row_map(cell_id + 1);
       bool found = false;
 
-      auto nearest_triangle = candidates_begin;
-      auto dimensionality = GridPointSearch3D::Results::Dimensionality::EDGE;
+      auto nearest_tetrahedron = candidates_begin;
+      auto dimensionality = Dimensionality::EDGE;
       Omega_h::Vector<DIM + 1> parametric_coords_to_nearest;
       // create array that's size of number of candidates x num coords to store
       // parametric inversion
       for (auto i = candidates_begin; i < candidates_end; ++i) {
-        const int triangleID = candidate_map.entries(i);
+        const int tetrahedronID = candidate_map.entries(i);
         const auto elem_tri2verts =
-          Omega_h::gather_verts<DIM + 1>(tris2verts, triangleID);
+          Omega_h::gather_verts<DIM + 1>(tets2verts, tetrahedronID);
         auto vertex_coords =
           Omega_h::gather_vectors<DIM + 1, DIM>(coords, elem_tri2verts);
         auto parametric_coords =
           Omega_h::barycentric_from_global<DIM, DIM>(point, vertex_coords);
 
+		    LO vertexID = -1;
+        Real best_vdist_sq = INFINITY;
+        for (int k = 0; k < 4; k++) {
+          Real vdist_sq = Omega_h::norm_squared(vertex_coords[k] - point);
+          // printf("%lf\n", vdist_sq);
+          if (vdist_sq < vtol*vtol && vdist_sq < best_vdist_sq)
+          {
+            vertexID = elem_tri2verts[k];
+            best_vdist_sq = vdist_sq;
+          }
+        }
+        if (vertexID > -1)
+        {
+          results.dimensionalities(p) = Dimensionality::VERTEX;
+          results.element_ids(p) = vertexID;
+          for (int j = 0; j < 4; j++)
+            results.parametric_coords(p, j) = parametric_coords[j];
+          found = true;
+          break;
+        }
+        if (results.dimensionalities(p) == Dimensionality::VERTEX) continue;
+        
+        LO edgeID = -1;
+        Real best_edist = INFINITY;
+        for (int j = 0; j < 6; ++j) {
+          const int curr_edgeID = tets2edges_adj.ab2b[tetrahedronID * 6 + j];
+          const int va_id = edges2verts_adj.ab2b[curr_edgeID * 2 + 0];
+          const int vb_id = edges2verts_adj.ab2b[curr_edgeID * 2 + 1];
+          const auto va = Omega_h::get_vector<3>(coords, va_id);
+          const auto vb = Omega_h::get_vector<3>(coords, vb_id);
+          if (!normal_intersects_segment(va, vb, point))
+            continue;
+          const auto de = distance_from_line(va, vb, point);
+          if (de < etol && de < best_edist) {
+            best_edist = de;
+            edgeID = curr_edgeID;
+          }
+        }
+        if (edgeID > -1)
+        {
+          results.dimensionalities(p) = Dimensionality::EDGE;
+          results.element_ids(p) = edgeID;
+          for (int j = 0; j < 4; j++)
+            results.parametric_coords(p, j) = parametric_coords[j];
+          found = true;
+          break;
+        }
+
+        if (results.dimensionalities(p) == Dimensionality::EDGE) continue;
+
         if (Omega_h::is_barycentric_inside(parametric_coords)) {
-          results.dimensionalities(p) = GridPointSearch3D::Results::Dimensionality::REGION;
-          results.element_ids(p) = triangleID;
+          results.dimensionalities(p) = Dimensionality::REGION;
+          results.element_ids(p) = tetrahedronID;
           for (int j = 0; j < 4; j++)
             results.parametric_coords(p, j) = parametric_coords[j];
           found = true;
@@ -743,7 +801,7 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
         // TODO: Get nearest element if no tetrahedron found
       }
       if (!found) {
-        LO nearest_elem = candidate_map.entries(nearest_triangle);
+        LO nearest_elem = candidate_map.entries(nearest_tetrahedron);
         results.dimensionalities(p) = dimensionality;
         results.element_ids(p) = -nearest_elem;
         for (int j = 0; j < 4; j++)
@@ -784,9 +842,10 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
   candidate_map_ =
     detail::construct_intersection_map_3d(mesh, grid_, grid_h(0).GetNumCells());
   coords_ = mesh.coords();
-  tris2verts_ = mesh.ask_elem_verts();
-  tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
-  tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
+  tets2verts_ = mesh.ask_elem_verts();
+  tets2faces_adj_ = mesh.ask_down(Omega_h::REGION, Omega_h::FACE);
+  tets2edges_adj_ = mesh.ask_down(Omega_h::REGION, Omega_h::EDGE);
+  tets2verts_adj_ = mesh.ask_down(Omega_h::REGION, Omega_h::VERT);
   edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
   verts2regions_up_ = mesh.ask_up(Omega_h::VERT, Omega_h::REGION);
   edges2regions_up_ = mesh.ask_up(Omega_h::EDGE, Omega_h::REGION);

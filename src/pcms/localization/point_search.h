@@ -195,15 +195,16 @@ public:
 
 private:
 	Omega_h::Mesh mesh_;
-	Omega_h::Adj tris2edges_adj_;
-	Omega_h::Adj tris2verts_adj_;
+	Omega_h::Adj tets2faces_adj_;
+	Omega_h::Adj tets2edges_adj_;
+	Omega_h::Adj tets2verts_adj_;
 	Omega_h::Adj edges2verts_adj_;
 	Omega_h::Adj verts2regions_up_;
 	Omega_h::Adj edges2regions_up_;
 	Omega_h::Adj faces2regions_up_;
 	Kokkos::View<UniformGrid<DIM>[1]> grid_{"uniform grid"};
 	CandidateMapT candidate_map_;
-	Omega_h::LOs tris2verts_;
+	Omega_h::LOs tets2verts_;
 	Omega_h::Reals coords_;
 	Real fuzz_;
 };

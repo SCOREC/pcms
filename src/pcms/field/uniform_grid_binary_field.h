@@ -60,14 +60,16 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
   PointSearch::Results results_d;
   if constexpr (Dim == 2) {
     GridPointSearch2D search(mesh, grid.divisions[0], grid.divisions[1]);
-    results_d = search.apply(pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(coords_d)));
+    results_d = search.apply(pcms::CoordinateView(
+      pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(coords_d)));
   } else {
     GridPointSearch3D search(mesh, grid.divisions[0], grid.divisions[1],
                              grid.divisions[2]);
-    results_d = search.apply(pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(coords_d)));
+    results_d = search.apply(pcms::CoordinateView(
+      pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(coords_d)));
   }
-  auto result_ids_h =
-    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results_d.element_ids);
+  auto result_ids_h = Kokkos::create_mirror_view_and_copy(
+    Kokkos::HostSpace{}, results_d.element_ids);
 
   Kokkos::View<Real*, HostMemorySpace> data("binary_mask", n);
   for (LO i = 0; i < n; ++i)

@@ -583,11 +583,11 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
   const CoordinateView<PointSearch::MemorySpace>& points) const
 {
   Results results{
-    Kokkos::View<Dimensionality*>("dimensionalities", points.GetValues().extent(0)),
+    Kokkos::View<Dimensionality*>("dimensionalities",
+                                  points.GetValues().extent(0)),
     Kokkos::View<LO*>("element IDs", points.GetValues().extent(0)),
-    Kokkos::View<Real**>("parametric coordinates", points.GetValues().extent(0), 
-                         points.GetValues().extent(1) + 1)
-  };
+    Kokkos::View<Real**>("parametric coordinates", points.GetValues().extent(0),
+                         points.GetValues().extent(1) + 1)};
 
   auto num_rows = candidate_map_.numRows();
   // needed so that we don't capture this ptr which will be memory error on cuda
@@ -601,7 +601,7 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
   auto tolerances = tolerances_;
   auto point_coords = points.GetValues();
   Kokkos::parallel_for(
-	  point_coords.extent(0), KOKKOS_LAMBDA(int p) {
+    point_coords.extent(0), KOKKOS_LAMBDA(int p) {
       const auto vtol = tolerances(0);
       const auto etol = tolerances(1);
 
@@ -663,7 +663,7 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
           const int vb_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
           const auto va = Omega_h::get_vector<2>(coords, va_id);
           const auto vb = Omega_h::get_vector<2>(coords, vb_id);
-		  
+
           if (!normal_intersects_segment(va, vb, point))
             continue;
 
@@ -678,7 +678,8 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
             best_edge_tid_max = triangleID;
             best_edge_bary_min = parametric_coords;
             best_edge_bary_max = parametric_coords;
-          } else if ((fabs(de - best_edge_dist) < etol) && (edgeID == best_edge_id)) {
+          } else if ((fabs(de - best_edge_dist) < etol) &&
+                     (edgeID == best_edge_id)) {
             // Track the extents of face IDs sharing this nearest edge
             if (triangleID < best_edge_tid_min) {
               best_edge_tid_min = triangleID;
@@ -770,7 +771,8 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
         if (best_vertex_id >= 0 &&
             (best_vertex_dist <= best_edge_dist || best_edge_id < 0)) {
           dim_out = GridPointSearch2D::Results::Dimensionality::VERTEX;
-          element_id_out = GridPointSearch2D::Results::OutsideId(best_vertex_id);
+          element_id_out =
+            GridPointSearch2D::Results::OutsideId(best_vertex_id);
           bary_out = best_vertex_bary;
         } else if (best_edge_id >= 0) {
           dim_out = GridPointSearch2D::Results::Dimensionality::EDGE;
@@ -791,8 +793,9 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
 }
 
 GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny)
-  : GridPointSearch2D(mesh, Nx, Ny,
-                      PointSearchTolerances("point search 2d tolerances", mesh.dim()))
+  : GridPointSearch2D(
+      mesh, Nx, Ny,
+      PointSearchTolerances("point search 2d tolerances", mesh.dim()))
 {
   Kokkos::deep_copy(tolerances_, 1E-12);
 }
@@ -825,14 +828,25 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
 
 LO GridPointSearch2D::GetOwningElementId(const Results& results, int i)
 {
-  return pcms::GetOwningElementId(
-    mesh_, 2, static_cast<int>(results.dimensionalities(i)), results.EntityId(i));
+  Kokkos::View<Results::Dimensionality*> dim("",1);
+  Kokkos::View<LO*> id("",1);
+  auto dims = results.dimensionalities;
+  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const LO){
+    dim(0) = dims(i);
+    id(0) = results.EntityId(i);
+  });
+  auto dim_h = Kokkos::create_mirror_view_and_copy(dim);
+  auto id_h = Kokkos::create_mirror_view_and_copy(id);
+
+  return pcms::GetOwningElementId(mesh_, 2,
+                                  static_cast<int>(dim_h[0]),
+                                  id_h[0]);
 }
 
 Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
   Results const& results) const
 {
-  Kokkos::View<LO*> owners("point search owning face ids", 
+  Kokkos::View<LO*> owners("point search owning face ids",
                            results.dimensionalities.extent(0));
   auto edges2faces_up = edges2faces_up_;
   auto verts2faces_up = verts2faces_up_;
@@ -840,8 +854,6 @@ Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
   Kokkos::parallel_for(
     results.dimensionalities.extent(0), KOKKOS_LAMBDA(const LO i) {
       const LO element_id = results.EntityId(i);
-      if (element_id < 0)
-        element_id = -element_id;
 
       LO owner = -1;
       if (element_id >= 0) {
@@ -849,11 +861,13 @@ Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
           owner = GetOwningElementIdFromAdj(
             edges2faces_up, Results::Dimensionality::FACE,
             Results::Dimensionality::FACE, element_id);
-        } else if (results.dimensionalities(i) == Results::Dimensionality::EDGE) {
+        } else if (results.dimensionalities(i) ==
+                   Results::Dimensionality::EDGE) {
           owner = GetOwningElementIdFromAdj(
             edges2faces_up, Results::Dimensionality::EDGE,
             Results::Dimensionality::FACE, element_id);
-        } else if (results.dimensionalities(i) == Results::Dimensionality::VERTEX) {
+        } else if (results.dimensionalities(i) ==
+                   Results::Dimensionality::VERTEX) {
           owner = GetOwningElementIdFromAdj(
             verts2faces_up, Results::Dimensionality::VERTEX,
             Results::Dimensionality::FACE, element_id);
@@ -868,22 +882,32 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
   const CoordinateView<PointSearch::MemorySpace>& points) const
 {
   Results results{
-    Kokkos::View<Dimensionality*>("dimensionalities", points.GetValues().extent(0)),
+    Kokkos::View<Dimensionality*>("dimensionalities",
+                                  points.GetValues().extent(0)),
     Kokkos::View<LO*>("element IDs", points.GetValues().extent(0)),
-    Kokkos::View<Real**>("parametric coordinates", points.GetValues().extent(0), 
-                         points.GetValues().extent(1) + 1)
-  };
+    Kokkos::View<Real**>("parametric coordinates", points.GetValues().extent(0),
+                         points.GetValues().extent(1) + 1)};
+  Kokkos::deep_copy(results.dimensionalities, Dimensionality::NO_INTERSECT);
+  Kokkos::deep_copy(results.element_ids, -1);
+  Kokkos::deep_copy(results.parametric_coords, 0.);
   auto num_rows = candidate_map_.numRows();
   // needed so that we don't capture this ptr which will be memory error on cuda
   auto grid = grid_;
   auto candidate_map = candidate_map_;
-  auto tris2verts = tris2verts_;
+  auto tets2verts = tets2verts_;
+  auto tets2verts_adj = tets2verts_adj_;
+  auto tets2edges_adj = tets2edges_adj_;
+  auto tets2faces_adj = tets2faces_adj_;
+  auto edges2verts_adj = edges2verts_adj_;
+  auto tolerances = tolerances_;
   auto coords = coords_;
   auto point_coords = points.GetValues();
-  auto tolerances = tolerances_;
   Kokkos::parallel_for(
     point_coords.extent(0), KOKKOS_LAMBDA(int p) {
-      using Dimensionality = GridPointSearch3D::Result::Dimensionality;
+      using Dimensionality = GridPointSearch3D::Results::Dimensionality;
+      const auto vtol = tolerances(0);
+      const auto etol = tolerances(1);
+      const auto ftol = tolerances(2);
       Omega_h::Vector<DIM> point;
       for (int i = 0; i < DIM; ++i) {
         point[i] = point_coords(p, i);
@@ -903,7 +927,7 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
       for (auto i = candidates_begin; i < candidates_end; ++i) {
         const LO elem = candidate_map.entries(i);
         const auto elem_verts =
-          Omega_h::gather_verts<DIM + 1>(tris2verts, elem);
+          Omega_h::gather_verts<DIM + 1>(tets2verts, elem);
         const auto vertex_coords =
           Omega_h::gather_vectors<DIM + 1, DIM>(coords, elem_verts);
         const auto bary = barycentric_with_scales<DIM>(vertex_coords, point);
@@ -924,19 +948,20 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
 
       if (inside_elem >= 0) {
         results.dimensionalities(p) = Dimensionality::REGION;
-		results.element_ids(p) = inside_elem;
-		for (int j = 0; j < 4; j++)
-            results.parametric_coords(p, j) = inside_lambda[j];
+        results.element_ids(p) = inside_elem;
+        for (int j = 0; j < 4; j++)
+          results.parametric_coords(p, j) = inside_lambda[j];
       } else if (nearest_elem >= 0) {
-		results.dimensionalities(p) = Dimensionality::REGION;
-		results.element_ids(p) = GridPointSearch3D::Result::OutsideId(nearest_elem);
-		for (int j = 0; j < 4; j++)
-            results.parametric_coords(p, j) = nearest_lambda[j];
+        results.dimensionalities(p) = Dimensionality::REGION;
+        results.element_ids(p) =
+          GridPointSearch3D::Results::OutsideId(nearest_elem);
+        for (int j = 0; j < 4; j++)
+          results.parametric_coords(p, j) = nearest_lambda[j];
       } else {
-		results.dimensionalities(p) = Dimensionality::NO_INTERSECT;
-		results.element_ids(p) = -1;
-		for (int j = 0; j < 4; j++)
-            results.parametric_coords(p, j) = Omega_h::zero_vector<DIM + 1>()[j];
+        results.dimensionalities(p) = Dimensionality::NO_INTERSECT;
+        results.element_ids(p) = -1;
+        for (int j = 0; j < 4; j++)
+          results.parametric_coords(p, j) = Omega_h::zero_vector<DIM + 1>()[j];
       }
     });
 
@@ -973,9 +998,10 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
   candidate_map_ =
     detail::construct_intersection_map_3d(mesh, grid_, grid_h(0).GetNumCells());
   coords_ = mesh.coords();
-  tris2verts_ = mesh.ask_elem_verts();
-  tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
-  tris2verts_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
+  tets2verts_ = mesh.ask_elem_verts();
+  tets2faces_adj_ = mesh.ask_down(Omega_h::REGION, Omega_h::FACE);
+  tets2edges_adj_ = mesh.ask_down(Omega_h::REGION, Omega_h::EDGE);
+  tets2verts_adj_ = mesh.ask_down(Omega_h::REGION, Omega_h::VERT);
   edges2verts_adj_ = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
   verts2regions_up_ = mesh.ask_up(Omega_h::VERT, Omega_h::REGION);
   edges2regions_up_ = mesh.ask_up(Omega_h::EDGE, Omega_h::REGION);
@@ -984,24 +1010,32 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
 
 LO GridPointSearch3D::GetOwningElementId(const Results& results, int i)
 {
-  return pcms::GetOwningElementId(
-    mesh_, 3, static_cast<int>(results.dimensionalities(i)), result.EntityId(i));
+  Kokkos::View<Results::Dimensionality*> dim("",1);
+  Kokkos::View<LO*> id("",1);
+  auto dims = results.dimensionalities;
+  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const LO){
+    dim(0) = dims(i);
+    id(0) = results.EntityId(i);
+  });
+  auto dim_h = Kokkos::create_mirror_view_and_copy(dim);
+  auto id_h = Kokkos::create_mirror_view_and_copy(id);
+
+  return pcms::GetOwningElementId(mesh_, 3,
+                                  static_cast<int>(dim_h[0]),
+                                  id_h[0]);
 }
 
 Kokkos::View<LO*> GridPointSearch3D::GetOwningElementIds(
   const Results& results) const
 {
-  Kokkos::View<LO*> owners("point search owning region ids", 
+  Kokkos::View<LO*> owners("point search owning region ids",
                            results.dimensionalities.extent(0));
   auto verts2regions_up = verts2regions_up_;
   auto edges2regions_up = edges2regions_up_;
   auto faces2regions_up = faces2regions_up_;
-  constexpr int mesh_dim = 3;
   Kokkos::parallel_for(
     owners.extent(0), KOKKOS_LAMBDA(const LO i) {
       const LO element_id = results.EntityId(i);
-      if (element_id < 0)
-        element_id = -element_id;
 
       LO owner = -1;
       if (element_id >= 0) {
@@ -1009,15 +1043,18 @@ Kokkos::View<LO*> GridPointSearch3D::GetOwningElementIds(
           owner = GetOwningElementIdFromAdj(
             faces2regions_up, Results::Dimensionality::REGION,
             Results::Dimensionality::REGION, element_id);
-        } else if (results.dimensionalities(i) == Results::Dimensionality::FACE) {
+        } else if (results.dimensionalities(i) ==
+                   Results::Dimensionality::FACE) {
           owner = GetOwningElementIdFromAdj(
             faces2regions_up, Results::Dimensionality::FACE,
             Results::Dimensionality::REGION, element_id);
-        } else if (results.dimensionalities(i) == Results::Dimensionality::EDGE) {
+        } else if (results.dimensionalities(i) ==
+                   Results::Dimensionality::EDGE) {
           owner = GetOwningElementIdFromAdj(
             edges2regions_up, Results::Dimensionality::EDGE,
             Results::Dimensionality::REGION, element_id);
-        } else if (results.dimensionalities(i) == Results::Dimensionality::VERTEX) {
+        } else if (results.dimensionalities(i) ==
+                   Results::Dimensionality::VERTEX) {
           owner = GetOwningElementIdFromAdj(
             verts2regions_up, Results::Dimensionality::VERTEX,
             Results::Dimensionality::REGION, element_id);

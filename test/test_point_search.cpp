@@ -16,23 +16,23 @@ TEST_CASE("global to local")
   Omega_h::Matrix<2, 3> coords{{0.0, 0.0}, {1, 0}, {0.5, 1}};
   SECTION("check verts")
   {
-    for (int i = 0; i < coords.size(); ++i) {
-      auto xi = Omega_h::barycentric_from_global<2, 2>(coords[i], coords);
-      Omega_h::Vector<3> hand_xi{0, 0, 0};
-      hand_xi[i] = 1;
-      printf("[%f,%f,%f] == [%f,%f,%f]\n", xi[0], xi[1], xi[2], hand_xi[0],
-             hand_xi[1], hand_xi[2]);
-      REQUIRE(Omega_h::are_close(xi, hand_xi));
-    }
+  for (int i = 0; i < coords.size(); ++i) {
+    auto xi = Omega_h::barycentric_from_global<2, 2>(coords[i], coords);
+    Omega_h::Vector<3> hand_xi{0, 0, 0};
+    hand_xi[i] = 1;
+    printf("[%f,%f,%f] == [%f,%f,%f]\n", xi[0], xi[1], xi[2], hand_xi[0],
+       hand_xi[1], hand_xi[2]);
+    REQUIRE(Omega_h::are_close(xi, hand_xi));
+  }
   }
   SECTION("check point")
   {
-    Omega_h::Vector<2> point{0.5, 0.5};
-    auto xi = Omega_h::barycentric_from_global<2, 2>(point, coords);
-    Omega_h::Vector<3> hand_xi{0.25, 0.25, 0.5};
-    printf("[%f,%f,%f] == [%f,%f,%f]\n", xi[0], xi[1], xi[2], hand_xi[0],
-           hand_xi[1], hand_xi[2]);
-    REQUIRE(are_close(xi, hand_xi));
+  Omega_h::Vector<2> point{0.5, 0.5};
+  auto xi = Omega_h::barycentric_from_global<2, 2>(point, coords);
+  Omega_h::Vector<3> hand_xi{0.25, 0.25, 0.5};
+  printf("[%f,%f,%f] == [%f,%f,%f]\n", xi[0], xi[1], xi[2], hand_xi[0],
+       hand_xi[1], hand_xi[2]);
+  REQUIRE(are_close(xi, hand_xi));
   }
 }
 TEST_CASE("Triangle AABB intersection")
@@ -41,91 +41,91 @@ TEST_CASE("Triangle AABB intersection")
   AABBox<2> unit_square{.center = {0, 0}, .half_width = {0.5, 0.5}};
   SECTION("Triangle outside bbox")
   {
-    REQUIRE(triangle_intersects_bbox({{1, 1}, {2, 1}, {2, 2}}, unit_square) ==
-            false);
+  REQUIRE(triangle_intersects_bbox({{1, 1}, {2, 1}, {2, 2}}, unit_square) ==
+      false);
   }
   SECTION("BBOX inside Triangle")
   {
-    REQUIRE(triangle_intersects_bbox({{-10, -10}, {10, -10}, {10, 10}},
-                                     unit_square) == true);
+  REQUIRE(triangle_intersects_bbox({{-10, -10}, {10, -10}, {10, 10}},
+                   unit_square) == true);
   }
   SECTION("All verts inside BBOX")
   {
-    REQUIRE(triangle_intersects_bbox({{-10, -10}, {10, -10}, {10, 10}},
-                                     unit_square) == true);
+  REQUIRE(triangle_intersects_bbox({{-10, -10}, {10, -10}, {10, 10}},
+                   unit_square) == true);
   }
   SECTION("Single vert inside bbox")
   {
-    REQUIRE(triangle_intersects_bbox({{0, 0}, {1, 0}, {1, 1}}, unit_square) ==
-            true);
-    REQUIRE(triangle_intersects_bbox({{1, 1}, {0, 0}, {1, 0}}, unit_square) ==
-            true);
-    REQUIRE(triangle_intersects_bbox({{1, 0}, {1, 1}, {0, 0}}, unit_square) ==
-            true);
+  REQUIRE(triangle_intersects_bbox({{0, 0}, {1, 0}, {1, 1}}, unit_square) ==
+      true);
+  REQUIRE(triangle_intersects_bbox({{1, 1}, {0, 0}, {1, 0}}, unit_square) ==
+      true);
+  REQUIRE(triangle_intersects_bbox({{1, 0}, {1, 1}, {0, 0}}, unit_square) ==
+      true);
   }
   SECTION("edge crossed bbox")
   {
-    // Triangle 1 with all vert permutations
-    REQUIRE(triangle_intersects_bbox({{-0.6, 0}, {0, 0.6}, {-1, 1}},
-                                     unit_square) == true);
-    REQUIRE(triangle_intersects_bbox({{-1, 1}, {-0.6, 0}, {0, 0.6}},
-                                     unit_square) == true);
-    REQUIRE(triangle_intersects_bbox({{0, 0.6}, {-1, 1}, {-0.6, 0}},
-                                     unit_square) == true);
-    // triangle 2 with all vert permutations
-    REQUIRE(triangle_intersects_bbox({{-0.6, 0}, {0.6, 0}, {0, -1}},
-                                     unit_square) == true);
-    REQUIRE(triangle_intersects_bbox({{0, -1}, {-0.6, 0}, {0.6, 0}},
-                                     unit_square) == true);
-    REQUIRE(triangle_intersects_bbox({{0.6, 0}, {0, -1}, {-0.6, 0}},
-                                     unit_square) == true);
+  // Triangle 1 with all vert permutations
+  REQUIRE(triangle_intersects_bbox({{-0.6, 0}, {0, 0.6}, {-1, 1}},
+                   unit_square) == true);
+  REQUIRE(triangle_intersects_bbox({{-1, 1}, {-0.6, 0}, {0, 0.6}},
+                   unit_square) == true);
+  REQUIRE(triangle_intersects_bbox({{0, 0.6}, {-1, 1}, {-0.6, 0}},
+                   unit_square) == true);
+  // triangle 2 with all vert permutations
+  REQUIRE(triangle_intersects_bbox({{-0.6, 0}, {0.6, 0}, {0, -1}},
+                   unit_square) == true);
+  REQUIRE(triangle_intersects_bbox({{0, -1}, {-0.6, 0}, {0.6, 0}},
+                   unit_square) == true);
+  REQUIRE(triangle_intersects_bbox({{0.6, 0}, {0, -1}, {-0.6, 0}},
+                   unit_square) == true);
   }
 }
 TEST_CASE("Triangle BBox Intersection Regression")
 {
   using pcms::triangle_intersects_bbox;
   AABBox<2> bbox{.center = {0.10833333, 0.10833333},
-                 .half_width = {0.00833333, 0.00833333}};
+         .half_width = {0.00833333, 0.00833333}};
   REQUIRE(triangle_intersects_bbox({{0, 0}, {0.1, 0}, {0.1, 0.1}}, bbox) ==
-          true);
+      true);
   REQUIRE(triangle_intersects_bbox({{0.1, 0}, {0.2, 0}, {0.2, 0.1}}, bbox) ==
-          false);
+      false);
   REQUIRE(triangle_intersects_bbox({{0.1, 0.1}, {0, 0.1}, {0, 0}}, bbox) ==
-          true);
+      true);
   REQUIRE(triangle_intersects_bbox({{0.1, 0.1}, {0.2, 0.1}, {0.2, 0.2}},
-                                   bbox) == true);
+                   bbox) == true);
   REQUIRE(triangle_intersects_bbox({{0, 0.1}, {0.1, 0.1}, {0.1, 0.2}}, bbox) ==
-          true);
+      true);
   REQUIRE(triangle_intersects_bbox({{0.1, 0.2}, {0, 0.2}, {0, 0.1}}, bbox) ==
-          false);
+      false);
   REQUIRE(triangle_intersects_bbox({{0.2, 0.2}, {0.1, 0.2}, {0.1, 0.1}},
-                                   bbox) == true);
+                   bbox) == true);
   REQUIRE(triangle_intersects_bbox({{0.2, 0.1}, {0.1, 0.1}, {0.1, 0}}, bbox) ==
-          true);
+      true);
 }
 
 template <typename T>
 bool num_candidates_within_range(const T& intersection_map, pcms::LO min,
-                                 pcms::LO max)
+                 pcms::LO max)
 {
   using size_type = typename T::size_type;
   using MinMax = Kokkos::MinMax<size_type, Kokkos::HostSpace>;
   using result_type = typename MinMax::value_type;
   result_type result;
   Kokkos::parallel_reduce(
-    intersection_map.numRows(),
-    KOKKOS_LAMBDA(const int i, result_type& update) {
-      auto num_candidates =
-        intersection_map.row_map(i + 1) - intersection_map.row_map(i);
-      if (num_candidates > update.max_val)
-        update.max_val = num_candidates;
-      if (num_candidates < update.min_val)
-        update.min_val = num_candidates;
-    },
-    MinMax{result});
+  intersection_map.numRows(),
+  KOKKOS_LAMBDA(const int i, result_type& update) {
+    auto num_candidates =
+    intersection_map.row_map(i + 1) - intersection_map.row_map(i);
+    if (num_candidates > update.max_val)
+    update.max_val = num_candidates;
+    if (num_candidates < update.min_val)
+    update.min_val = num_candidates;
+  },
+  MinMax{result});
   bool within_range = (result.min_val >= min) && (result.max_val <= max);
   if (!within_range)
-    std::cerr << result.min_val << ' ' << result.max_val << '\n';
+  std::cerr << result.min_val << ' ' << result.max_val << '\n';
   return within_range;
 }
 // extern Omega_h::Library omega_h_library;
@@ -136,34 +136,34 @@ TEST_CASE("construct intersection map")
   auto lib = Omega_h::Library{};
   auto world = lib.world();
   auto mesh =
-    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
+  Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
   REQUIRE(mesh.dim() == 2);
   SECTION("grid bbox overlap")
   {
-    Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
-    auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = Uniform2DGrid{
-      .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
-    Kokkos::deep_copy(grid_d, grid_h);
-    auto intersection_map = pcms::detail::construct_intersection_map_2d(
-      mesh, grid_d, grid_h(0).GetNumCells());
-    // assert(cudaSuccess == cudaDeviceSynchronize());
-    REQUIRE(intersection_map.numRows() == 100);
-    REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
+  Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
+  auto grid_h = Kokkos::create_mirror_view(grid_d);
+  grid_h(0) = Uniform2DGrid{
+    .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
+  Kokkos::deep_copy(grid_d, grid_h);
+  auto intersection_map = pcms::detail::construct_intersection_map_2d(
+    mesh, grid_d, grid_h(0).GetNumCells());
+  // assert(cudaSuccess == cudaDeviceSynchronize());
+  REQUIRE(intersection_map.numRows() == 100);
+  REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
   }
   SECTION("fine grid")
   {
-    Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
-    auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = Uniform2DGrid{
-      .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
-    Kokkos::deep_copy(grid_d, grid_h);
-    // require number of candidates is >=1 and <=6
-    auto intersection_map = pcms::detail::construct_intersection_map_2d(
-      mesh, grid_d, grid_h(0).GetNumCells());
+  Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
+  auto grid_h = Kokkos::create_mirror_view(grid_d);
+  grid_h(0) = Uniform2DGrid{
+    .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
+  Kokkos::deep_copy(grid_d, grid_h);
+  // require number of candidates is >=1 and <=6
+  auto intersection_map = pcms::detail::construct_intersection_map_2d(
+    mesh, grid_d, grid_h(0).GetNumCells());
 
-    REQUIRE(intersection_map.numRows() == 3600);
-    REQUIRE(num_candidates_within_range(intersection_map, 1, 6));
+  REQUIRE(intersection_map.numRows() == 3600);
+  REQUIRE(num_candidates_within_range(intersection_map, 1, 6));
   }
 }
 namespace
@@ -177,19 +177,19 @@ void require_maps_identical(const T& fast, const T& reference)
   REQUIRE(fast.entries.size() == reference.entries.size());
 
   auto fast_row_map =
-    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, fast.row_map);
+  Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, fast.row_map);
   auto ref_row_map =
-    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, reference.row_map);
+  Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, reference.row_map);
   auto fast_entries =
-    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, fast.entries);
+  Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, fast.entries);
   auto ref_entries =
-    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, reference.entries);
+  Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, reference.entries);
 
   for (std::size_t i = 0; i < fast_row_map.extent(0); ++i) {
-    REQUIRE(fast_row_map(i) == ref_row_map(i));
+  REQUIRE(fast_row_map(i) == ref_row_map(i));
   }
   for (std::size_t i = 0; i < fast_entries.extent(0); ++i) {
-    REQUIRE(fast_entries(i) == ref_entries(i));
+  REQUIRE(fast_entries(i) == ref_entries(i));
   }
 }
 } // namespace
@@ -206,54 +206,54 @@ TEST_CASE("candidate map matches brute-force reference")
 
   SECTION("2D")
   {
-    auto mesh =
-      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
-    REQUIRE(mesh.dim() == 2);
-    for (pcms::LO divisions : {3, 10, 37}) {
-      Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
-      auto grid_h = Kokkos::create_mirror_view(grid_d);
-      grid_h(0) = Uniform2DGrid{.edge_length{1, 1},
-                                .bot_left = {0, 0},
-                                .divisions = {divisions, divisions}};
-      Kokkos::deep_copy(grid_d, grid_h);
-      const auto ncells = grid_h(0).GetNumCells();
-      require_maps_identical(
-        pcms::detail::construct_intersection_map_2d(mesh, grid_d, ncells),
-        pcms::detail::construct_intersection_map_reference_2d(mesh, grid_d,
-                                                              ncells));
-    }
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
+  REQUIRE(mesh.dim() == 2);
+  for (pcms::LO divisions : {3, 10, 37}) {
+    Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
+    auto grid_h = Kokkos::create_mirror_view(grid_d);
+    grid_h(0) = Uniform2DGrid{.edge_length{1, 1},
+                .bot_left = {0, 0},
+                .divisions = {divisions, divisions}};
+    Kokkos::deep_copy(grid_d, grid_h);
+    const auto ncells = grid_h(0).GetNumCells();
+    require_maps_identical(
+    pcms::detail::construct_intersection_map_2d(mesh, grid_d, ncells),
+    pcms::detail::construct_intersection_map_reference_2d(mesh, grid_d,
+                                ncells));
+  }
   }
   SECTION("3D")
   {
-    auto mesh =
-      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 5, 5, 5, false);
-    REQUIRE(mesh.dim() == 3);
-    for (pcms::LO divisions : {2, 5, 11}) {
-      Kokkos::View<pcms::Uniform3DGrid[1]> grid_d("uniform grid");
-      auto grid_h = Kokkos::create_mirror_view(grid_d);
-      grid_h(0) =
-        pcms::Uniform3DGrid{.edge_length{1, 1, 1},
-                            .bot_left = {0, 0, 0},
-                            .divisions = {divisions, divisions, divisions}};
-      Kokkos::deep_copy(grid_d, grid_h);
-      const auto ncells = grid_h(0).GetNumCells();
-      require_maps_identical(
-        pcms::detail::construct_intersection_map_3d(mesh, grid_d, ncells),
-        pcms::detail::construct_intersection_map_reference_3d(mesh, grid_d,
-                                                              ncells));
-    }
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 5, 5, 5, false);
+  REQUIRE(mesh.dim() == 3);
+  for (pcms::LO divisions : {2, 5, 11}) {
+    Kokkos::View<pcms::Uniform3DGrid[1]> grid_d("uniform grid");
+    auto grid_h = Kokkos::create_mirror_view(grid_d);
+    grid_h(0) =
+    pcms::Uniform3DGrid{.edge_length{1, 1, 1},
+              .bot_left = {0, 0, 0},
+              .divisions = {divisions, divisions, divisions}};
+    Kokkos::deep_copy(grid_d, grid_h);
+    const auto ncells = grid_h(0).GetNumCells();
+    require_maps_identical(
+    pcms::detail::construct_intersection_map_3d(mesh, grid_d, ncells),
+    pcms::detail::construct_intersection_map_reference_3d(mesh, grid_d,
+                                ncells));
+  }
   }
 }
 
-TEST_CASE("uniform grid search")
+TEST_CASE("uniform grid search 2D")
 {
   using pcms::GridPointSearch2D;
   auto lib = Omega_h::Library{};
   auto world = lib.world();
   auto mesh =
-    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
+  Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
   auto tolerances =
-    GridPointSearch2D::PointSearchTolerances("point search 2d tolerances", 2);
+  GridPointSearch2D::PointSearchTolerances("point search 2d tolerances", 2);
   auto tolerances_h = Kokkos::create_mirror_view(tolerances);
   tolerances_h(0) = 0.01;
   tolerances_h(1) = 0.01;
@@ -282,8 +282,8 @@ TEST_CASE("uniform grid search")
   points_h(7, 1) = 0.02;
   Kokkos::deep_copy(points, points_h);
   auto results = search.apply(
-	pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, 
-		pcms::MakeConstRank2View(points)));
+  pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, 
+  pcms::MakeConstRank2View(points)));
   auto result_dims_h = Kokkos::create_mirror_view(results.dimensionalities);
   Kokkos::deep_copy(result_dims_h, results.dimensionalities);
   auto result_ids_h = Kokkos::create_mirror_view(results.element_ids);
@@ -292,427 +292,281 @@ TEST_CASE("uniform grid search")
   Kokkos::deep_copy(result_coords_h, results.parametric_coords);
   SECTION("global coordinate within mesh")
   {
-    {
-	  auto dim = result_dims_h(0);
-	  auto idx = result_ids_h(0);
-	  auto coords = Omega_h::Vector<3>{result_coords_h(0,0), result_coords_h(0,1), result_coords_h(0,2)};
-      const auto face_idx = pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(result_dims_h(0)), result_ids_h(0));
+  {
+  auto dim = result_dims_h(0);
+  auto idx = result_ids_h(0);
+  auto coords = Omega_h::Vector<3>{result_coords_h(0,0), result_coords_h(0,1), result_coords_h(0,2)};
+    const auto face_idx = pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(result_dims_h(0)), result_ids_h(0));
 
-      CAPTURE(idx);
+    CAPTURE(idx);
 
-      REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::VERTEX);
-      REQUIRE(idx == 0);
-      REQUIRE(face_idx >= 0);
-      REQUIRE(coords[0] == Catch::Approx(1));
-      REQUIRE(coords[1] == Catch::Approx(0));
-      REQUIRE(coords[2] == Catch::Approx(0));
-    }
-    {
-	  auto dim = result_dims_h(1);
-	  auto idx = result_ids_h(1);
-	  auto coords = Omega_h::Vector<3>{result_coords_h(1,0), result_coords_h(1,1), result_coords_h(1,2)};
-      const auto face_idx = pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(result_dims_h(1)), result_ids_h(1));
-      REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::EDGE);
-      REQUIRE(idx == 156);
-      REQUIRE(face_idx >= 0);
-      REQUIRE(coords[0] == Catch::Approx(0.5));
-      REQUIRE(coords[1] == Catch::Approx(0.1));
-      REQUIRE(coords[2] == Catch::Approx(0.4));
-    }
-    {
-	  auto dim = result_dims_h(7);
-	  auto idx = result_ids_h(7);
-      const auto face_idx = pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(result_dims_h(7)), result_ids_h(7));
-      REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::FACE);
-      REQUIRE(idx == 0);
-      REQUIRE(face_idx >= 0);
-    }
+    REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::VERTEX);
+    REQUIRE(idx == 0);
+    REQUIRE(face_idx >= 0);
+    REQUIRE(coords[0] == Catch::Approx(1));
+    REQUIRE(coords[1] == Catch::Approx(0));
+    REQUIRE(coords[2] == Catch::Approx(0));
+  }
+  {
+  auto dim = result_dims_h(1);
+  auto idx = result_ids_h(1);
+  auto coords = Omega_h::Vector<3>{result_coords_h(1,0), result_coords_h(1,1), result_coords_h(1,2)};
+    const auto face_idx = pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(result_dims_h(1)), result_ids_h(1));
+    REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::EDGE);
+    REQUIRE(idx == 156);
+    REQUIRE(face_idx >= 0);
+    REQUIRE(coords[0] == Catch::Approx(0.5));
+    REQUIRE(coords[1] == Catch::Approx(0.1));
+    REQUIRE(coords[2] == Catch::Approx(0.4));
+  }
+  {
+  auto dim = result_dims_h(7);
+  auto idx = result_ids_h(7);
+    const auto face_idx = pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(result_dims_h(7)), result_ids_h(7));
+    REQUIRE(dim == GridPointSearch2D::Results::Dimensionality::FACE);
+    REQUIRE(idx == 0);
+    REQUIRE(face_idx >= 0);
+  }
   }
   // feature needs to be added
   SECTION("Global coordinate outside mesh")
   {
-	auto out_of_bounds_dim = result_dims_h(2);
-    auto out_of_bounds_id = result_ids_h(2);
-    auto top_right_id = result_ids_h(3);
-    REQUIRE(out_of_bounds_dim ==
-            GridPointSearch2D::Results::Dimensionality::VERTEX);
-    REQUIRE(-1 * out_of_bounds_id == top_right_id);
-    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
+  auto out_of_bounds_dim = result_dims_h(2);
+  auto out_of_bounds_id = result_ids_h(2);
+  auto top_right_id = result_ids_h(3);
+  REQUIRE(out_of_bounds_dim ==
+      GridPointSearch2D::Results::Dimensionality::VERTEX);
+  REQUIRE(pcms::PointSearch::Results::EntityId(out_of_bounds_id, out_of_bounds_dim)
+  	== top_right_id);
+  REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
 
 
-    out_of_bounds_dim = result_dims_h(4);
-    out_of_bounds_id = result_ids_h(4);
-    auto bot_left_id = result_ids_h(0);
-    REQUIRE(out_of_bounds_dim ==
-            GridPointSearch2D::Results::Dimensionality::VERTEX);
-    REQUIRE(-1 * out_of_bounds_id == bot_left_id);
-    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
+  out_of_bounds_dim = result_dims_h(4);
+  out_of_bounds_id = result_ids_h(4);
+  auto bot_left_id = result_ids_h(0);
+  REQUIRE(out_of_bounds_dim ==
+      GridPointSearch2D::Results::Dimensionality::VERTEX);
+  REQUIRE(pcms::PointSearch::Results::EntityId(out_of_bounds_id, out_of_bounds_dim)
+  	== bot_left_id);
+  REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
 
-	out_of_bounds_dim = result_dims_h(5);
-    out_of_bounds_id = result_ids_h(5);
-    REQUIRE(out_of_bounds_dim ==
-            GridPointSearch2D::Results::Dimensionality::EDGE);
-    REQUIRE(out_of_bounds_id == -219);
-    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
+  out_of_bounds_dim = result_dims_h(5);
+  out_of_bounds_id = result_ids_h(5);
+  REQUIRE(out_of_bounds_dim ==
+      GridPointSearch2D::Results::Dimensionality::EDGE);
+  REQUIRE(-pcms::PointSearch::Results::EntityId(out_of_bounds_id, out_of_bounds_dim)
+  	== -219);
+  REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
 
-    // (0.05, -0.01) is within the edge tolerance of the bottom edge, so it is
-    // located on that edge rather than reported outside.
-	out_of_bounds_dim = result_dims_h(6);
-    out_of_bounds_id = result_ids_h(6);
-    REQUIRE(out_of_bounds_dim ==
-            GridPointSearch2D::Results::Dimensionality::EDGE);
-    REQUIRE(-1 * out_of_bounds_id == bot_left_id);
-    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
+  // (0.05, -0.01) is within the edge tolerance of the bottom edge, so it is
+  // located on that edge rather than reported outside.
+  out_of_bounds_dim = result_dims_h(6);
+  out_of_bounds_id = result_ids_h(6);
+  REQUIRE(out_of_bounds_dim ==
+      GridPointSearch2D::Results::Dimensionality::EDGE);
+  REQUIRE(pcms::PointSearch::Results::EntityId(out_of_bounds_id, out_of_bounds_dim) == bot_left_id);
+  REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), static_cast<int>(out_of_bounds_dim), -out_of_bounds_id) >= 0);
   }
   SECTION("point on extension of an edge")
   {
-    Kokkos::View<pcms::Real**> ext_points("ext_test_points", 1, 2);
-    auto ext_h = Kokkos::create_mirror_view(ext_points);
-    ext_h(0, 0) = 1.5;
-    ext_h(0, 1) = 0.0;
-    Kokkos::deep_copy(ext_points, ext_h);
-    auto ext_results = search.apply(pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, 
-		pcms::MakeConstRank2View(ext_points)));
+  Kokkos::View<pcms::Real**> ext_points("ext_test_points", 1, 2);
+  auto ext_h = Kokkos::create_mirror_view(ext_points);
+  ext_h(0, 0) = 1.5;
+  ext_h(0, 1) = 0.0;
+  Kokkos::deep_copy(ext_points, ext_h);
+  auto ext_results = search.apply(pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, 
+  pcms::MakeConstRank2View(ext_points)));
 
-	auto result_dims_h = Kokkos::create_mirror_view(ext_results.dimensionalities);
-	Kokkos::deep_copy(result_dims_h, ext_results.dimensionalities);
-	auto result_ids_h = Kokkos::create_mirror_view(ext_results.element_ids);
-	Kokkos::deep_copy(result_ids_h, ext_results.element_ids);
-    // Must be out-of-bounds (negative element id)
-    REQUIRE(result_ids_h(0) < 0);
-    // Dimensionality must be VERTEX — the nearest entity is the
-    // rightmost bottom vertex (1.0, 0).
-    REQUIRE(result_dims_h(0) ==
-            GridPointSearch2D::Results::Dimensionality::VERTEX);
-    // Owning element should still resolve to a valid face
-    REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), 0, -result_ids_h(0)) >= 0);
-//   SECTION("point on extension of an edge")
-//   {
-//     Kokkos::View<pcms::Real* [2]> ext_points("ext_test_points", 1);
-//     auto ext_h = Kokkos::create_mirror_view(ext_points);
-//     ext_h(0, 0) = 1.5;
-//     ext_h(0, 1) = 0.0;
-//     Kokkos::deep_copy(ext_points, ext_h);
-//     auto ext_results = search(ext_points);
-//     auto ext_results_h = Kokkos::create_mirror_view(ext_results);
-//     Kokkos::deep_copy(ext_results_h, ext_results);
-
-// //     auto res = ext_results_h(0);
-// //     // Must be out-of-bounds (negative element id)
-// //     REQUIRE(res.element_id < 0);
-// //     // Dimensionality must be VERTEX — the nearest entity is the
-// //     // rightmost bottom vertex (1.0, 0).
-// //     REQUIRE(res.dimensionality ==
-// //             GridPointSearch2D::Results::Dimensionality::VERTEX);
-// //     // Owning element should still resolve to a valid face
-// //     REQUIRE(search.GetOwningElementId(res) >= 0);
+  auto result_dims_h = Kokkos::create_mirror_view(ext_results.dimensionalities);
+  Kokkos::deep_copy(result_dims_h, ext_results.dimensionalities);
+  auto result_ids_h = Kokkos::create_mirror_view(ext_results.element_ids);
+  Kokkos::deep_copy(result_ids_h, ext_results.element_ids);
+  // Must be out-of-bounds (negative element id)
+  REQUIRE(result_ids_h(0) < 0);
+  // Dimensionality must be VERTEX — the nearest entity is the
+  // rightmost bottom vertex (1.0, 0).
+  REQUIRE(result_dims_h(0) ==
+      GridPointSearch2D::Results::Dimensionality::VERTEX);
+  // Owning element should still resolve to a valid face
+  REQUIRE(pcms::GetOwningElementId(mesh, mesh.dim(), 0, 
+  	pcms::PointSearch::Results::EntityId(result_ids_h(0), result_dims_h(0))) >= 0);
   }
 }
 
-// TEST_CASE("point search locates points on shared faces",
-//           "[point_search][3d][regression]")
-// {
-//   using pcms::GridPointSearch3D;
-//   auto lib = Omega_h::Library{};
-//   auto world = lib.world();
+TEST_CASE("point search locates points on shared faces",
+      "[point_search][3d][regression]")
+{
+  using pcms::GridPointSearch3D;
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
 
-//   const int source_divisions = 10;
-//   const int query_divisions = 5;
-//   auto mesh =
-//     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, source_divisions,
-//                        source_divisions, source_divisions, false);
-//   auto query_mesh =
-//     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, query_divisions,
-//                        query_divisions, query_divisions, false);
+  const int source_divisions = 10;
+  const int query_divisions = 5;
+  auto mesh =
+  Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, source_divisions,
+             source_divisions, source_divisions, false);
+  auto query_mesh =
+  Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, query_divisions,
+             query_divisions, query_divisions, false);
 
-//   // Same grid resolution the intersection search uses for this mesh.
-//   const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
-//   GridPointSearch3D search{mesh, n, n, n};
+  // Same grid resolution the intersection search uses for this mesh.
+  const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
+  GridPointSearch3D search{mesh, n, n, n};
 
-//   const auto centroids_h =
-//     Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(query_mesh, 3));
-//   const auto npoints = query_mesh.nelems();
+  const auto centroids_h =
+  Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(query_mesh, 3));
+  const auto npoints = query_mesh.nelems();
 
-//   Kokkos::View<pcms::Real* [3]> points("query points", npoints);
-//   auto points_h = Kokkos::create_mirror_view(points);
-//   for (Omega_h::LO i = 0; i < npoints; ++i) {
-//     for (int d = 0; d < 3; ++d) {
-//       points_h(i, d) = centroids_h[i * 3 + d];
-//     }
-//   }
-//   Kokkos::deep_copy(points, points_h);
+  Kokkos::View<pcms::Real**> points("query points", npoints, 3);
+  auto points_h = Kokkos::create_mirror_view(points);
+  for (Omega_h::LO i = 0; i < npoints; ++i) {
+  for (int d = 0; d < 3; ++d) {
+    points_h(i, d) = centroids_h[i * 3 + d];
+  }
+  }
+  Kokkos::deep_copy(points, points_h);
+  
+  pcms::CoordinateView<Omega_h::ExecSpace::memory_space, pcms::detail::default_layout_for_memory_space_t<Omega_h::ExecSpace::memory_space>> 
+  points_cv(
+    pcms::CoordinateSystem::Cartesian,
+    pcms::MakeConstRank2View(points));
+  auto results = search.apply(points_cv);
+  auto result_ids_h = Kokkos::create_mirror_view(results.element_ids);
+  Kokkos::deep_copy(result_ids_h, results.element_ids);
 
-//   auto results = search(points);
-//   auto results_h = Kokkos::create_mirror_view(results);
-//   Kokkos::deep_copy(results_h, results);
-
-//   std::vector<Omega_h::LO> not_located;
-//   for (Omega_h::LO i = 0; i < npoints; ++i) {
-//     if (results_h(i).element_id < 0) {
-//       not_located.push_back(i);
-//     }
-//   }
-//   CAPTURE(not_located.size(), npoints);
-//   REQUIRE(not_located.empty());
-// }
-
-// TEST_CASE("point search encodes outside points unambiguously",
-//           "[point_search][regression]")
-// {
-//   auto lib = Omega_h::Library{};
-
-//   SECTION("3D: nearest tetrahedron 0")
-//   {
-//     using pcms::GridPointSearch3D;
-//     using Dimensionality = GridPointSearch3D::Result::Dimensionality;
-//     auto mesh = pcms::test::BuildReferenceTet(lib);
-//     const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
-//     GridPointSearch3D search{mesh, n, n, n};
-
-//     Kokkos::View<pcms::Real* [3]> points("points", 2);
-//     auto points_h = Kokkos::create_mirror_view(points);
-//     // inside the tet
-//     points_h(0, 0) = 0.1;
-//     points_h(0, 1) = 0.1;
-//     points_h(0, 2) = 0.1;
-//     // in the tet's bounding box but outside it: the nearest candidate is tet 0
-//     points_h(1, 0) = 0.5;
-//     points_h(1, 1) = 0.5;
-//     points_h(1, 2) = 0.5;
-//     Kokkos::deep_copy(points, points_h);
-
-//     auto results = search(points);
-//     auto results_h =
-//       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results);
-//     auto owners_h = Kokkos::create_mirror_view_and_copy(
-//       Kokkos::HostSpace{}, search.GetOwningElementIds(results));
-
-//     REQUIRE(results_h(0).dimensionality == Dimensionality::REGION);
-//     REQUIRE_FALSE(results_h(0).IsOutside());
-//     REQUIRE(results_h(0).element_id == 0);
-//     REQUIRE(results_h(0).EntityId() == 0);
-//     REQUIRE(owners_h(0) == 0);
-
-//     REQUIRE(results_h(1).dimensionality == Dimensionality::REGION);
-//     REQUIRE(results_h(1).IsOutside());
-//     REQUIRE(results_h(1).EntityId() == 0);
-//     REQUIRE(search.GetOwningElementId(results_h(1)) == 0);
-//     REQUIRE(owners_h(1) == 0);
-
-//     // The grid over a single tet has no empty cell, so decode the
-//     // no-candidate result directly.
-//     Kokkos::View<GridPointSearch3D::Result*> none("none", 1);
-//     Kokkos::deep_copy(none,
-//                       GridPointSearch3D::Result{Dimensionality::NO_INTERSECT,
-//                                                 -1, Omega_h::zero_vector<4>()});
-//     auto none_h =
-//       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, none);
-//     auto none_owners_h = Kokkos::create_mirror_view_and_copy(
-//       Kokkos::HostSpace{}, search.GetOwningElementIds(none));
-//     REQUIRE(none_h(0).IsOutside());
-//     REQUIRE(none_h(0).EntityId() == -1);
-//     REQUIRE(search.GetOwningElementId(none_h(0)) == -1);
-//     REQUIRE(none_owners_h(0) == -1);
-//   }
-
-//   SECTION("2D: nearest vertex 0 and an empty query cell")
-//   {
-//     using pcms::GridPointSearch2D;
-//     using Dimensionality = GridPointSearch2D::Result::Dimensionality;
-//     // Only the triangle below the diagonal, so the cells above it hold no
-//     // candidates.
-//     auto mesh = pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 3}));
-//     const auto n = pcms::DivisionsPerAxisForMesh<2>(mesh.nelems());
-//     GridPointSearch2D search{mesh, n, n};
-
-//     Kokkos::View<pcms::Real* [2]> points("points", 3);
-//     auto points_h = Kokkos::create_mirror_view(points);
-//     // beyond vertex 0: the nearest entity is vertex 0
-//     points_h(0, 0) = -0.05;
-//     points_h(0, 1) = -0.05;
-//     // in a grid cell the triangle does not reach
-//     points_h(1, 0) = 0.6;
-//     points_h(1, 1) = 0.6;
-//     // inside the triangle
-//     points_h(2, 0) = 0.2;
-//     points_h(2, 1) = 0.2;
-//     Kokkos::deep_copy(points, points_h);
-
-//     auto results = search(points);
-//     auto results_h =
-//       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results);
-//     auto owners_h = Kokkos::create_mirror_view_and_copy(
-//       Kokkos::HostSpace{}, search.GetOwningElementIds(results));
-
-//     REQUIRE(results_h(0).dimensionality == Dimensionality::VERTEX);
-//     REQUIRE(results_h(0).IsOutside());
-//     REQUIRE(results_h(0).EntityId() == 0);
-//     REQUIRE(search.GetOwningElementId(results_h(0)) == 0);
-//     REQUIRE(owners_h(0) == 0);
-
-//     REQUIRE(results_h(1).dimensionality == Dimensionality::NO_INTERSECT);
-//     REQUIRE(results_h(1).IsOutside());
-//     REQUIRE(results_h(1).EntityId() == -1);
-//     REQUIRE(search.GetOwningElementId(results_h(1)) == -1);
-//     REQUIRE(owners_h(1) == -1);
-
-//     REQUIRE(results_h(2).dimensionality == Dimensionality::FACE);
-//     REQUIRE_FALSE(results_h(2).IsOutside());
-//     REQUIRE(results_h(2).element_id == 0);
-//     REQUIRE(owners_h(2) == 0);
-//   }
+  std::vector<Omega_h::LO> not_located;
+  for (Omega_h::LO i = 0; i < npoints; ++i) {
+  if (result_ids_h(i) < 0) {
+    not_located.push_back(i);
+  }
+  }
+  CAPTURE(not_located.size(), npoints);
+  REQUIRE(not_located.empty());
 }
 
-// TEST_CASE("point search locates points on shared faces",
-//           "[point_search][3d][regression]")
-// {
-//   using pcms::GridPointSearch3D;
-//   auto lib = Omega_h::Library{};
-//   auto world = lib.world();
+TEST_CASE("point search encodes outside points unambiguously",
+      "[point_search][regression]")
+{
+  auto lib = Omega_h::Library{};
 
-//   const int source_divisions = 10;
-//   const int query_divisions = 5;
-//   auto mesh =
-//     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, source_divisions,
-//                        source_divisions, source_divisions, false);
-//   auto query_mesh =
-//     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, query_divisions,
-//                        query_divisions, query_divisions, false);
+  SECTION("3D: nearest tetrahedron 0")
+  {
+  using pcms::GridPointSearch3D;
+  using Results = GridPointSearch3D::Results;
+  using Dimensionality = Results::Dimensionality;
+  auto mesh = pcms::test::BuildReferenceTet(lib);
+  const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
+  GridPointSearch3D search{mesh, n, n, n};
 
-//   // Same grid resolution the intersection search uses for this mesh.
-//   const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
-//   GridPointSearch3D search{mesh, n, n, n};
+  Kokkos::View<pcms::Real**> points("points", 2, 3);
+  auto points_h = Kokkos::create_mirror_view(points);
+  // inside the tet
+  points_h(0, 0) = 0.1;
+  points_h(0, 1) = 0.1;
+  points_h(0, 2) = 0.1;
+  // in the tet's bounding box but outside it: the nearest candidate is tet 0
+  points_h(1, 0) = 0.5;
+  points_h(1, 1) = 0.5;
+  points_h(1, 2) = 0.5;
+  Kokkos::deep_copy(points, points_h);
 
-//   const auto centroids_h =
-//     Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(query_mesh, 3));
-//   const auto npoints = query_mesh.nelems();
+  pcms::CoordinateView<Omega_h::ExecSpace::memory_space> 
+    points_cv(
+      pcms::CoordinateSystem::Cartesian,
+      pcms::MakeConstRank2View(points));
+  auto results = search.apply(points_cv);
+  auto result_dims_h =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results.dimensionalities);
+  auto result_ids_h =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results.element_ids);
+  auto owners_h = Kokkos::create_mirror_view_and_copy(
+    Kokkos::HostSpace{}, search.GetOwningElementIds(results));
 
-//   Kokkos::View<pcms::Real* [3]> points("query points", npoints);
-//   auto points_h = Kokkos::create_mirror_view(points);
-//   for (Omega_h::LO i = 0; i < npoints; ++i) {
-//     for (int d = 0; d < 3; ++d) {
-//       points_h(i, d) = centroids_h[i * 3 + d];
-//     }
-//   }
-//   Kokkos::deep_copy(points, points_h);
+  REQUIRE(result_dims_h(0) == Dimensionality::REGION);
+  REQUIRE_FALSE(results.IsOutside(result_ids_h(0)));
+  REQUIRE(result_ids_h(0) == 0);
+  REQUIRE(Results::EntityId(result_ids_h(0), result_dims_h(0)) == 0);
+  REQUIRE(owners_h(0) == 0);
 
-//   auto results = search(points);
-//   auto results_h = Kokkos::create_mirror_view(results);
-//   Kokkos::deep_copy(results_h, results);
+  REQUIRE(result_dims_h(1) == Dimensionality::REGION);
+  REQUIRE(results.IsOutside(result_ids_h(1)));
+  REQUIRE(Results::EntityId(result_ids_h(1), result_dims_h(1)) == 0);
+  REQUIRE(search.GetOwningElementId(results, 1) == 0);
+  REQUIRE(owners_h(1) == 0);
 
-//   std::vector<Omega_h::LO> not_located;
-//   for (Omega_h::LO i = 0; i < npoints; ++i) {
-//     if (results_h(i).element_id < 0) {
-//       not_located.push_back(i);
-//     }
-//   }
-//   CAPTURE(not_located.size(), npoints);
-//   REQUIRE(not_located.empty());
-// }
+  // The grid over a single tet has no empty cell, so decode the
+  // no-candidate result directly.
+  Kokkos::View<Dimensionality*> dims("dims", 1);
+  Kokkos::View<pcms::LO*> ids("ids", 1);
+  Kokkos::View<pcms::Real**> coords("coords", 1, 3);
 
-// TEST_CASE("point search encodes outside points unambiguously",
-//           "[point_search][regression]")
-// {
-//   auto lib = Omega_h::Library{};
+  Kokkos::deep_copy(dims, Dimensionality::NO_INTERSECT);
+  Kokkos::deep_copy(ids, -1);
+  Kokkos::deep_copy(coords, 0);
 
-//   SECTION("3D: nearest tetrahedron 0")
-//   {
-//     using pcms::GridPointSearch3D;
-//     using Dimensionality = GridPointSearch3D::Result::Dimensionality;
-//     auto mesh = pcms::test::BuildReferenceTet(lib);
-//     const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
-//     GridPointSearch3D search{mesh, n, n, n};
+  Results none{dims, ids, coords};
+  
+  auto none_owners_h = Kokkos::create_mirror_view_and_copy(
+    Kokkos::HostSpace{}, search.GetOwningElementIds(none));
+  auto dims_h = Kokkos::create_mirror_view_and_copy(dims);
+  REQUIRE(none.IsOutside(none_owners_h(0)));
+  REQUIRE(Results::EntityId(none_owners_h(0), dims_h(0)) == -1);
+  REQUIRE(search.GetOwningElementId(none, 0) == -1);
+  REQUIRE(none_owners_h(0) == -1);
+  }
 
-//     Kokkos::View<pcms::Real* [3]> points("points", 2);
-//     auto points_h = Kokkos::create_mirror_view(points);
-//     // inside the tet
-//     points_h(0, 0) = 0.1;
-//     points_h(0, 1) = 0.1;
-//     points_h(0, 2) = 0.1;
-//     // in the tet's bounding box but outside it: the nearest candidate is tet 0
-//     points_h(1, 0) = 0.5;
-//     points_h(1, 1) = 0.5;
-//     points_h(1, 2) = 0.5;
-//     Kokkos::deep_copy(points, points_h);
+  SECTION("2D: nearest vertex 0 and an empty query cell")
+  {
+  using pcms::GridPointSearch2D;
+  using Results = GridPointSearch2D::Results;
+  using Dimensionality = Results::Dimensionality;
+  // Only the triangle below the diagonal, so the cells above it hold no
+  // candidates.
+  auto mesh = pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 3}));
+  const auto n = pcms::DivisionsPerAxisForMesh<2>(mesh.nelems());
+  GridPointSearch2D search{mesh, n, n};
 
-//     auto results = search(points);
-//     auto results_h =
-//       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results);
-//     auto owners_h = Kokkos::create_mirror_view_and_copy(
-//       Kokkos::HostSpace{}, search.GetOwningElementIds(results));
+  Kokkos::View<pcms::Real**> points("points", 3, 2);
+  auto points_h = Kokkos::create_mirror_view(points);
+  // beyond vertex 0: the nearest entity is vertex 0
+  points_h(0, 0) = -0.05;
+  points_h(0, 1) = -0.05;
+  // in a grid cell the triangle does not reach
+  points_h(1, 0) = 0.6;
+  points_h(1, 1) = 0.6;
+  // inside the triangle
+  points_h(2, 0) = 0.2;
+  points_h(2, 1) = 0.2;
+  Kokkos::deep_copy(points, points_h);
 
-//     REQUIRE(results_h(0).dimensionality == Dimensionality::REGION);
-//     REQUIRE_FALSE(results_h(0).IsOutside());
-//     REQUIRE(results_h(0).element_id == 0);
-//     REQUIRE(results_h(0).EntityId() == 0);
-//     REQUIRE(owners_h(0) == 0);
+  pcms::CoordinateView<Omega_h::ExecSpace::memory_space> 
+    points_cv(
+      pcms::CoordinateSystem::Cartesian,
+      pcms::MakeConstRank2View(points));
 
-//     REQUIRE(results_h(1).dimensionality == Dimensionality::REGION);
-//     REQUIRE(results_h(1).IsOutside());
-//     REQUIRE(results_h(1).EntityId() == 0);
-//     REQUIRE(search.GetOwningElementId(results_h(1)) == 0);
-//     REQUIRE(owners_h(1) == 0);
+  auto results = search.apply(points_cv);
+  auto result_dims_h =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results.dimensionalities);
+  auto result_ids_h =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results.element_ids);
+  auto owners_h = Kokkos::create_mirror_view_and_copy(
+    Kokkos::HostSpace{}, search.GetOwningElementIds(results));
 
-//     // The grid over a single tet has no empty cell, so decode the
-//     // no-candidate result directly.
-//     Kokkos::View<GridPointSearch3D::Result*> none("none", 1);
-//     Kokkos::deep_copy(none,
-//                       GridPointSearch3D::Result{Dimensionality::NO_INTERSECT,
-//                                                 -1, Omega_h::zero_vector<4>()});
-//     auto none_h =
-//       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, none);
-//     auto none_owners_h = Kokkos::create_mirror_view_and_copy(
-//       Kokkos::HostSpace{}, search.GetOwningElementIds(none));
-//     REQUIRE(none_h(0).IsOutside());
-//     REQUIRE(none_h(0).EntityId() == -1);
-//     REQUIRE(search.GetOwningElementId(none_h(0)) == -1);
-//     REQUIRE(none_owners_h(0) == -1);
-//   }
+  REQUIRE(result_dims_h(0) == Dimensionality::VERTEX);
+  REQUIRE(results.IsOutside(result_ids_h(0)));
+  REQUIRE(Results::EntityId(result_ids_h(0), result_dims_h(0)) == 0);
+  REQUIRE(search.GetOwningElementId(results, 0) == 0);
+  REQUIRE(owners_h(0) == 0);
 
-//   SECTION("2D: nearest vertex 0 and an empty query cell")
-//   {
-//     using pcms::GridPointSearch2D;
-//     using Dimensionality = GridPointSearch2D::Result::Dimensionality;
-//     // Only the triangle below the diagonal, so the cells above it hold no
-//     // candidates.
-//     auto mesh = pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 3}));
-//     const auto n = pcms::DivisionsPerAxisForMesh<2>(mesh.nelems());
-//     GridPointSearch2D search{mesh, n, n};
-
-//     Kokkos::View<pcms::Real* [2]> points("points", 3);
-//     auto points_h = Kokkos::create_mirror_view(points);
-//     // beyond vertex 0: the nearest entity is vertex 0
-//     points_h(0, 0) = -0.05;
-//     points_h(0, 1) = -0.05;
-//     // in a grid cell the triangle does not reach
-//     points_h(1, 0) = 0.6;
-//     points_h(1, 1) = 0.6;
-//     // inside the triangle
-//     points_h(2, 0) = 0.2;
-//     points_h(2, 1) = 0.2;
-//     Kokkos::deep_copy(points, points_h);
-
-//     auto results = search(points);
-//     auto results_h =
-//       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results);
-//     auto owners_h = Kokkos::create_mirror_view_and_copy(
-//       Kokkos::HostSpace{}, search.GetOwningElementIds(results));
-
-//     REQUIRE(results_h(0).dimensionality == Dimensionality::VERTEX);
-//     REQUIRE(results_h(0).IsOutside());
-//     REQUIRE(results_h(0).EntityId() == 0);
-//     REQUIRE(search.GetOwningElementId(results_h(0)) == 0);
-//     REQUIRE(owners_h(0) == 0);
-
-//     REQUIRE(results_h(1).dimensionality == Dimensionality::NO_INTERSECT);
-//     REQUIRE(results_h(1).IsOutside());
-//     REQUIRE(results_h(1).EntityId() == -1);
-//     REQUIRE(search.GetOwningElementId(results_h(1)) == -1);
-//     REQUIRE(owners_h(1) == -1);
-
-//     REQUIRE(results_h(2).dimensionality == Dimensionality::FACE);
-//     REQUIRE_FALSE(results_h(2).IsOutside());
-//     REQUIRE(results_h(2).element_id == 0);
-//     REQUIRE(owners_h(2) == 0);
-//   }
-// }
+  REQUIRE(result_dims_h(1) == Dimensionality::NO_INTERSECT);
+  REQUIRE(results.IsOutside(result_ids_h(1)));
+  REQUIRE(Results::EntityId(result_ids_h(1), result_dims_h(1)) == -1);
+  REQUIRE(search.GetOwningElementId(results, 1) == -1);
+  REQUIRE(owners_h(1) == -1);
+  
+  REQUIRE(result_dims_h(2) == Dimensionality::FACE);
+  REQUIRE_FALSE(results.IsOutside(result_ids_h(2)));
+  REQUIRE(result_ids_h(2) == 0);
+  REQUIRE(owners_h(2) == 0);
+  }
+}

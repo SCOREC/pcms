@@ -410,18 +410,71 @@ TreePointSearch::Results TreePointSearch::apply(
 }
 
 [[nodiscard]] Kokkos::View<LO*> TreePointSearch::GetOwningElementIds(
-	const TreePointSearch::Results& results)
+	const TreePointSearch::Results& results) const
 {
 	ExecSpace execution_space;
-	Kokkos::View<LO*> owning_ids("Owning element IDs", 
+	Kokkos::View<LO*> owners("Owning element IDs", 
 		results.dimensionalities.size());
-	auto owning_ids_h = Kokkos::create_mirror_view(owning_ids);
-	for (int i = 0; i < owning_ids_h.size(); i++)
+	if (mesh_.dim() == 3)
 	{
-		owning_ids_h[i] = GetOwningElementId(results, i);
+		auto verts2regions_up = mesh_.get_adj(Omega_h::VERT, Omega_h::REGION);
+		auto edges2regions_up = mesh_.get_adj(Omega_h::EDGE, Omega_h::REGION);
+		auto faces2regions_up = mesh_.get_adj(Omega_h::FACE, Omega_h::REGION);
+		Kokkos::parallel_for(owners.size(), KOKKOS_LAMBDA(const int i){
+			const LO element_id = results.EntityId(i);
+			LO owner = -1;
+			if (element_id >= 0) {
+				if (results.dimensionalities(i) == Results::Dimensionality::REGION) {
+					owner = GetOwningElementIdFromAdj(
+					faces2regions_up, Results::Dimensionality::REGION,
+					Results::Dimensionality::REGION, element_id);
+				} else if (results.dimensionalities(i) == Results::Dimensionality::FACE) {
+					owner = GetOwningElementIdFromAdj(
+					faces2regions_up, Results::Dimensionality::FACE,
+					Results::Dimensionality::REGION, element_id);
+				} else if (results.dimensionalities(i) == Results::Dimensionality::EDGE) {
+					owner = GetOwningElementIdFromAdj(
+					edges2regions_up, Results::Dimensionality::EDGE,
+					Results::Dimensionality::REGION, element_id);
+				} else if (results.dimensionalities(i) == Results::Dimensionality::VERTEX) {
+					owner = GetOwningElementIdFromAdj(
+					verts2regions_up, Results::Dimensionality::VERTEX,
+					Results::Dimensionality::REGION, element_id);
+				}
+			}
+			owners(i) = owner;
+  		});
 	}
-	Kokkos::deep_copy(execution_space, owning_ids, owning_ids_h);
-	return owning_ids;
+	else if (mesh_.dim() == 2)
+	{
+		auto verts2faces_up = mesh_.get_adj(Omega_h::VERT, Omega_h::FACE);
+		auto edges2faces_up = mesh_.get_adj(Omega_h::EDGE, Omega_h::FACE);
+		Kokkos::parallel_for(owners.size(), KOKKOS_LAMBDA(const int i){
+			const LO element_id = results.EntityId(i);
+			LO owner = -1;
+			if (element_id >= 0) {
+				if (results.dimensionalities(i) == Results::Dimensionality::FACE) {
+					owner = GetOwningElementIdFromAdj(
+					edges2faces_up, Results::Dimensionality::FACE,
+					Results::Dimensionality::FACE, element_id);
+				} else if (results.dimensionalities(i) == Results::Dimensionality::EDGE) {
+					owner = GetOwningElementIdFromAdj(
+					edges2faces_up, Results::Dimensionality::EDGE,
+					Results::Dimensionality::FACE, element_id);
+				} else if (results.dimensionalities(i) == Results::Dimensionality::VERTEX) {
+					owner = GetOwningElementIdFromAdj(
+					verts2faces_up, Results::Dimensionality::VERTEX,
+					Results::Dimensionality::FACE, element_id);
+				}
+			}
+			owners(i) = owner;
+  		});
+	}
+	else
+	{
+		throw pcms_error("Invalid mesh dimension " + std::to_string(mesh_.dim()) + ", TreePointSearch only implemented for 2D and 3D");
+	}
+	return owners;
 }
 
 std::unique_ptr<detail::TreeWrapper> TreePointSearch::make_tree(const Omega_h::Mesh& mesh) const

@@ -221,108 +221,102 @@ public:
   KOKKOS_FUNCTION
   Omega_h::Vector<DIM + 1> get_bary(Omega_h::Vector<DIM> const& p) const;
 
-  /**
-   * @brief Determines which entity of dimension `ent_dim` a point intersects
-   *		 from the barycentric coordinates
-   *
-   * If the point corresponding to the input barycentric coordinates intersects
-   * any entities with dimension `ent_dim` bordering the element this mapping is
-   * constructed from, this function determines the offset in the
-   * Omega_h::Adj::ab2b structure coresponding to REGION -> `ent_dim` adjacency.
-   * If the point does not intersect a border entity, this function returns -1
-   *
-   * @param ent_dim the dimension of the entities we want to check intersection
-   * 				 with
-   * @param bary_coords the barycentric coordinates computed by this mapping of
-   *					 a point in global space
-   * @returns -1 if the point does not intersect any entities, or the offset of
-   *		   the intersected entity in the Omega_h::Adj::ab2b structure
-   *		   coresponding to REGION -> `ent_dim` adjacency
-   */
-  KOKKOS_FUNCTION
-  int which(int ent_dim, Omega_h::Vector<DIM + 1> const& bary_coords) const;
-
-private:
-  /**
-   * @brief Computes the vertex offset of the point corresponding
-   *		 to the input barycentric coordinates
-   * @param bary_coords the input barycentric coordinates
-   * @returns the vertex offset if the point corresponding to the given bary.
-   *coordinates is within a certain (global) tolerance of a vertex -1 if the
-   *point does not lie within the tolerance of any vertex
-   */
-  KOKKOS_FUNCTION
-  int which_vert(Omega_h::Vector<DIM + 1> const& bary_coords) const;
-  /**
-   * @brief Computes the edge offset of the point corresponding
-   * 		 to the input barycentric coordinates
-   * @param bary_coords the input barycentric coordinates
-   * @returns the edge offset if the distnce from the point corresponding to the
-   * 		   given bary. coordinates to the edge with the respective
-   * offset is within a certain (global) tolerance -1 if the point does not lie
-   * within the tolerance of any vertex
-   */
-  KOKKOS_FUNCTION
-  int which_edge(Omega_h::Vector<DIM + 1> const& bary_coords) const;
-  /**
-   * @brief Computes the face offset of the point corresponding
-   * 		 to the input barycentric coordinates
-   * @param bary_coords the input barycentric coordinates
-   * @returns if the point corresponding to the bary. coords is within a
-   * 		   global tolerance of a face, returns the offset of that face
-   * 		   -1 if the point does not lie within the tolerance of any face
-   * Algorithm source:
-   * C.E. Passerello,
-   * Interference detection using barycentric coordinates,
-   * Mechanics Research Communications,
-   * Volume 9, Issue 6, 1982, Pages 373-378,
-   * https://doi.org/10.1016/0093-6413(82)90034-9.
-   */
-  KOKKOS_FUNCTION
-  int which_face(Omega_h::Vector<DIM + 1> const& bary_coords) const;
-  /**
-   * @brief Computes whether a point with the given barycentric coordinates
-   * 		  is within a triangle
-   * @param bary_coords the input barycentric coordinates
-   * @returns 0 if the point is within the highet order element and -1 otherwise
-   */
-  KOKKOS_FUNCTION
-  int within_elem(Omega_h::Vector<DIM + 1> const& bary_coords) const;
-  /**
-   * @brief Constructs the tetrahedron the mapping corresponds to
-   * @param index the element ID of the tetrahedron
-   * @param mesh the Omega_h::Mesh with the spatial information for the
-   * 			  tetrahedron corresponding to `index`
-   */
-  void set_mesh_tet(int index, Omega_h::Mesh const& mesh);
-  /**
-   * @brief Calculates the areas of each face in the tetrahedron the mapping
-   * 		 corresponds to
-   * @param index the element ID of the tetrahedron
-   * @param mesh the Omega_h::Mesh with the spatial information for the
-   * 			  tetrahedron corresponding to `index`
-   */
-  void set_triangle_areas();
-  // returns the actual face/edge offset from the barycentric offset
-  KOKKOS_INLINE_FUNCTION int face(int i) const
-  {
-    return (OFFSETS & 3 << (i * 2)) >> (i * 2);
-  }
-  KOKKOS_INLINE_FUNCTION int edge(int i) const
-  {
-    return (i < 4 && i > 0) ? (OFFSETS & 3 << ((i - 1) * 2)) >> ((i - 1) * 2)
-                            : i;
-  }
-  // representation
-  Omega_h::Vector<DIM> tolerances_;
-  Omega_h::Matrix<DIM, DIM> bary_transform; // Column-major order
-  Omega_h::Matrix<DIM, DIM + 1> tetrahedron;
-  Omega_h::Vector<DIM + 1> face_areas;
-  double tetrahedron_volume;
-  // This is used to calculate the face and edge offsets in the cannonical
-  // ordering:
-  // https://user-images.githubusercontent.com/56453280/74203616-39d27a80-4c3e-11ea-885d-b0260490e184.png
-  static const char OFFSETS = 1 << 4 | 3 << 2 | 2;
+	/**
+	* @brief Determines which entity of dimension `ent_dim` a point intersects
+	*		 from the barycentric coordinates
+	* 
+	* If the point corresponding to the input barycentric coordinates intersects 
+	* any entities with dimension `ent_dim` bordering the element this mapping is 
+	* constructed from, this function determines the offset in the 
+	* Omega_h::Adj::ab2b structure coresponding to REGION -> `ent_dim` adjacency.
+	* If the point does not intersect a border entity, this function returns -1
+	* 
+	* @param ent_dim the dimension of the entities we want to check intersection
+	* 				 with
+	* @param bary_coords the barycentric coordinates computed by this mapping of
+	*					 a point in global space
+	* @returns -1 if the point does not intersect any entities, or the offset of
+	*		   the intersected entity in the Omega_h::Adj::ab2b structure 
+	*		   coresponding to REGION -> `ent_dim` adjacency
+	*/
+	KOKKOS_FUNCTION
+	int which(int ent_dim, 
+			Omega_h::Vector<DIM+1> const& bary_coords) const;
+private:	
+	/**
+	* @brief Computes the vertex offset of the point corresponding 
+	*		 to the input barycentric coordinates
+	* @param bary_coords the input barycentric coordinates
+	* @returns the vertex offset if the point corresponding to the given bary. coordinates
+	* 		   is within a certain (global) tolerance of a vertex
+	* 		   -1 if the point does not lie within the tolerance of any vertex
+	*/
+	KOKKOS_FUNCTION
+	int which_vert(Omega_h::Vector<DIM+1> const& bary_coords) const;
+	/**
+	* @brief Computes the edge offset of the point corresponding 
+	* 		 to the input barycentric coordinates
+	* @param bary_coords the input barycentric coordinates
+	* @returns the edge offset if the distnce from the point corresponding to the
+	* 		   given bary. coordinates to the edge with the respective offset
+	* 		   is within a certain (global) tolerance
+	* 		   -1 if the point does not lie within the tolerance of any vertex
+	*/
+	KOKKOS_FUNCTION
+	int which_edge(Omega_h::Vector<DIM+1> const& bary_coords) const;
+	/**
+	* @brief Computes the face offset of the point corresponding 
+	* 		 to the input barycentric coordinates
+	* @param bary_coords the input barycentric coordinates
+	* @returns if the point corresponding to the bary. coords is within a 
+	* 		   global tolerance of a face, returns the offset of that face
+	* 		   -1 if the point does not lie within the tolerance of any face
+	* Algorithm source:
+	* C.E. Passerello,
+	* Interference detection using barycentric coordinates,
+	* Mechanics Research Communications,
+	* Volume 9, Issue 6, 1982, Pages 373-378,
+	* https://doi.org/10.1016/0093-6413(82)90034-9.
+	*/
+	KOKKOS_FUNCTION
+	int which_face(Omega_h::Vector<DIM+1> const& bary_coords) const;
+	/**
+	* @brief Computes whether a point with the given barycentric coordinates
+	* 		  is within a triangle
+	* @param bary_coords the input barycentric coordinates
+	* @returns 0 if the point is within the highet order element and -1 otherwise
+	*/
+	KOKKOS_FUNCTION
+	int within_elem(Omega_h::Vector<DIM+1> const& bary_coords) const;
+	/**
+	* @brief Constructs the tetrahedron the mapping corresponds to
+	* @param index the element ID of the tetrahedron
+	* @param mesh the Omega_h::Mesh with the spatial information for the 
+	* 			  tetrahedron corresponding to `index`
+	*/
+	void set_mesh_tet(int index, Omega_h::Mesh const& mesh);
+	/**
+	* @brief Calculates the areas of each face in the tetrahedron the mapping 
+	* 		 corresponds to
+	* @param index the element ID of the tetrahedron
+	* @param mesh the Omega_h::Mesh with the spatial information for the 
+	* 			  tetrahedron corresponding to `index`
+	*/
+	void set_triangle_areas();
+	// returns the actual face/edge offset from the barycentric offset
+	KOKKOS_INLINE_FUNCTION int face(int i) const 
+	{ return (OFFSETS & 3 << (i*2))>>(i*2); }
+	KOKKOS_INLINE_FUNCTION int edge(int i) const 
+	{ return (i < 4 && i > 0) ? (OFFSETS & 3 << ((i-1)*2))>>((i-1)*2) : i; }
+	// representation
+	Omega_h::Vector<DIM> tolerances_;
+	Omega_h::Matrix<DIM,DIM> bary_transform; // Column-major order
+	Omega_h::Matrix<DIM,DIM+1> tetrahedron;
+	Omega_h::Vector<DIM+1> face_areas;
+	double tetrahedron_volume;
+	// This is used to calculate the face and edge offsets in the cannonical ordering: 
+	// https://user-images.githubusercontent.com/56453280/74203616-39d27a80-4c3e-11ea-885d-b0260490e184.png
+	static const char OFFSETS = 1 << 4 | 3 << 2 | 2;
 };
 
 /**

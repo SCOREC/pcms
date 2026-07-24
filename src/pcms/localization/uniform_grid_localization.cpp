@@ -681,7 +681,6 @@ GridPointSearch2D::Results GridPointSearch2D::Apply(
           const int vb_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
           const auto va = Omega_h::get_vector<2>(coords, va_id);
           const auto vb = Omega_h::get_vector<2>(coords, vb_id);
-
           if (!normal_intersects_segment(va, vb, point))
             continue;
 
@@ -1052,6 +1051,53 @@ GridPointSearch3D::Results GridPointSearch3D::Apply(
 
         if (results.dimensionalities(p) == Dimensionality::FACE)
           continue;
+
+        LO faceID = -1;
+        Real best_fdist_sq = INFINITY;
+        Omega_h::Matrix<DIM, DIM> tet;
+        tet[0] = vertex_coords[0] - vertex_coords[3];
+        tet[1] = vertex_coords[1] - vertex_coords[3];
+        tet[2] = vertex_coords[2] - vertex_coords[3];
+        Real tetrahedron_volume = fabs(Omega_h::determinant(tet))/6.;
+        
+        for (int k = 0; k < 4; k++)
+        {
+          LO bary_offset = get_face(k);
+          Real face_area_sq = Omega_h::norm_squared(Omega_h::cross(
+            vertex_coords[(bary_offset+1)%4] - vertex_coords[(bary_offset+3)%4], 
+            vertex_coords[(bary_offset+2)%4] - vertex_coords[(bary_offset+3)%4]))/4.;
+          
+          Real fdist_sq = parametric_coords[bary_offset]*3*tetrahedron_volume;
+          fdist_sq *= fdist_sq;
+          fdist_sq /= face_area_sq;
+
+          bool inside = true;
+          for (int j = 0; j < 4; j++)
+          {
+            if (j == bary_offset) continue;
+            if (parametric_coords[j] < 0)
+            {
+              inside = false;
+              break;
+            }
+          }
+
+          if (fdist_sq < ftol*ftol && fdist_sq < best_fdist_sq && inside)
+          {
+            faceID = tets2faces_adj.ab2b[tetrahedronID * 4 + k];
+            best_fdist_sq = fdist_sq;
+          }
+        }
+        if (faceID > -1)
+        {
+          results.dimensionalities(p) = Dimensionality::FACE;
+          results.element_ids(p) = faceID;
+          for (int j = 0; j < 4; j++)
+            results.parametric_coords(p, j) = parametric_coords[j];
+          found = true;
+        }
+
+        if (results.dimensionalities(p) == Dimensionality::FACE) continue;
 
         if (Omega_h::is_barycentric_inside(parametric_coords)) {
           results.dimensionalities(p) = Dimensionality::REGION;

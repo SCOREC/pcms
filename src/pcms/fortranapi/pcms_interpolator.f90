@@ -39,6 +39,24 @@ module pcms_interpolator
  public :: pcms_kokkos_initialize_without_args
  public :: pcms_kokkos_finalize
  public :: pcms_interpolate
+ ! struct struct PcmsConservativeProjectionHandle
+ type, public :: PcmsConservativeProjectionHandle
+  type(SwigClassWrapper), public :: swigdata
+ contains
+  procedure :: set_pointer => swigf_PcmsConservativeProjectionHandle_pointer_set
+  procedure :: get_pointer => swigf_PcmsConservativeProjectionHandle_pointer_get
+  procedure :: release => swigf_PcmsConservativeProjectionHandle_release
+  procedure, private :: swigf_PcmsConservativeProjectionHandle_op_assign__
+  generic :: assignment(=) => swigf_PcmsConservativeProjectionHandle_op_assign__
+ end type PcmsConservativeProjectionHandle
+ public :: pcms_create_conservative_projection
+ public :: pcms_conservative_projection_get_source_size
+ public :: pcms_conservative_projection_get_target_size
+ public :: pcms_conservative_projection_apply
+ public :: pcms_destroy_conservative_projection
+ interface PcmsConservativeProjectionHandle
+  module procedure swigf_new_PcmsConservativeProjectionHandle
+ end interface
  interface PcmsInterpolatorHandle
   module procedure swigf_new_PcmsInterpolatorHandle
  end interface
@@ -174,6 +192,95 @@ type(C_PTR), intent(in) :: farg2
 integer(C_INT), intent(in) :: farg3
 type(C_PTR), intent(in) :: farg4
 integer(C_INT), intent(in) :: farg5
+end subroutine
+
+subroutine swigc_PcmsConservativeProjectionHandle_pointer_set(farg1, farg2) &
+bind(C, name="_wrap_PcmsConservativeProjectionHandle_pointer_set")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR), intent(in) :: farg2
+end subroutine
+
+function swigc_PcmsConservativeProjectionHandle_pointer_get(farg1) &
+bind(C, name="_wrap_PcmsConservativeProjectionHandle_pointer_get") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR) :: fresult
+end function
+
+function swigc_new_PcmsConservativeProjectionHandle() &
+bind(C, name="_wrap_new_PcmsConservativeProjectionHandle") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper) :: fresult
+end function
+
+subroutine swigc_delete_PcmsConservativeProjectionHandle(farg1) &
+bind(C, name="_wrap_delete_PcmsConservativeProjectionHandle")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+end subroutine
+
+subroutine swigc_PcmsConservativeProjectionHandle_op_assign__(farg1, farg2) &
+bind(C, name="_wrap_PcmsConservativeProjectionHandle_op_assign__")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+type(SwigClassWrapper), intent(in) :: farg2
+end subroutine
+
+function swigc_pcms_create_conservative_projection(farg1, farg2, farg3, farg4) &
+bind(C, name="_wrap_pcms_create_conservative_projection") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigarraywrapper
+import :: swigclasswrapper
+type(SwigArrayWrapper) :: farg1
+integer(C_INT), intent(in) :: farg2
+type(SwigArrayWrapper) :: farg3
+integer(C_INT), intent(in) :: farg4
+type(SwigClassWrapper) :: fresult
+end function
+
+function swigc_pcms_conservative_projection_get_source_size(farg1) &
+bind(C, name="_wrap_pcms_conservative_projection_get_source_size") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+integer(C_INT) :: fresult
+end function
+
+function swigc_pcms_conservative_projection_get_target_size(farg1) &
+bind(C, name="_wrap_pcms_conservative_projection_get_target_size") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+integer(C_INT) :: fresult
+end function
+
+subroutine swigc_pcms_conservative_projection_apply(farg1, farg2, farg3, farg4, farg5) &
+bind(C, name="_wrap_pcms_conservative_projection_apply")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR), intent(in) :: farg2
+integer(C_INT), intent(in) :: farg3
+type(C_PTR), intent(in) :: farg4
+integer(C_INT), intent(in) :: farg5
+end subroutine
+
+subroutine swigc_pcms_destroy_conservative_projection(farg1) &
+bind(C, name="_wrap_pcms_destroy_conservative_projection")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
 end subroutine
 
 end interface
@@ -433,6 +540,148 @@ farg3 = input_size
 farg4 = output
 farg5 = output_size
 call swigc_pcms_interpolate(farg1, farg2, farg3, farg4, farg5)
+end subroutine
+
+subroutine swigf_PcmsConservativeProjectionHandle_pointer_set(self, pointer)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsConservativeProjectionHandle), intent(in) :: self
+type(C_PTR), intent(in) :: pointer
+type(SwigClassWrapper) :: farg1 
+type(C_PTR) :: farg2 
+
+farg1 = self%swigdata
+farg2 = pointer
+call swigc_PcmsConservativeProjectionHandle_pointer_set(farg1, farg2)
+end subroutine
+
+function swigf_PcmsConservativeProjectionHandle_pointer_get(self) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR) :: swig_result
+class(PcmsConservativeProjectionHandle), intent(in) :: self
+type(C_PTR) :: fresult 
+type(SwigClassWrapper) :: farg1 
+
+farg1 = self%swigdata
+fresult = swigc_PcmsConservativeProjectionHandle_pointer_get(farg1)
+swig_result = fresult
+end function
+
+function swigf_new_PcmsConservativeProjectionHandle() &
+result(self)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsConservativeProjectionHandle) :: self
+type(SwigClassWrapper) :: fresult 
+
+fresult = swigc_new_PcmsConservativeProjectionHandle()
+self%swigdata = fresult
+end function
+
+subroutine swigf_PcmsConservativeProjectionHandle_release(self)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsConservativeProjectionHandle), intent(inout) :: self
+type(SwigClassWrapper) :: farg1 
+
+farg1 = self%swigdata
+if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
+call swigc_delete_PcmsConservativeProjectionHandle(farg1)
+endif
+farg1%cptr = C_NULL_PTR
+farg1%cmemflags = 0
+self%swigdata = farg1
+end subroutine
+
+subroutine swigf_PcmsConservativeProjectionHandle_op_assign__(self, other)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsConservativeProjectionHandle), intent(inout) :: self
+type(PcmsConservativeProjectionHandle), intent(in) :: other
+type(SwigClassWrapper) :: farg1 
+type(SwigClassWrapper) :: farg2 
+
+farg1 = self%swigdata
+farg2 = other%swigdata
+call swigc_PcmsConservativeProjectionHandle_op_assign__(farg1, farg2)
+self%swigdata = farg1
+end subroutine
+
+function pcms_create_conservative_projection(source_mesh_name, source_order, target_mesh_name, target_order) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsConservativeProjectionHandle) :: swig_result
+character(len=*), intent(in) :: source_mesh_name
+integer(C_INT), intent(in) :: source_order
+character(len=*), intent(in) :: target_mesh_name
+integer(C_INT), intent(in) :: target_order
+type(SwigClassWrapper) :: fresult 
+character(kind=C_CHAR), dimension(:), allocatable, target :: farg1_temp 
+type(SwigArrayWrapper) :: farg1 
+integer(C_INT) :: farg2 
+character(kind=C_CHAR), dimension(:), allocatable, target :: farg3_temp 
+type(SwigArrayWrapper) :: farg3 
+integer(C_INT) :: farg4 
+
+call SWIGTM_fin_char_Sm_(source_mesh_name, farg1, farg1_temp)
+farg2 = source_order
+call SWIGTM_fin_char_Sm_(target_mesh_name, farg3, farg3_temp)
+farg4 = target_order
+fresult = swigc_pcms_create_conservative_projection(farg1, farg2, farg3, farg4)
+swig_result%swigdata = fresult
+end function
+
+function pcms_conservative_projection_get_source_size(projection) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+integer(C_INT) :: swig_result
+type(PcmsConservativeProjectionHandle), intent(in) :: projection
+integer(C_INT) :: fresult 
+type(SwigClassWrapper) :: farg1 
+
+farg1 = projection%swigdata
+fresult = swigc_pcms_conservative_projection_get_source_size(farg1)
+swig_result = fresult
+end function
+
+function pcms_conservative_projection_get_target_size(projection) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+integer(C_INT) :: swig_result
+type(PcmsConservativeProjectionHandle), intent(in) :: projection
+integer(C_INT) :: fresult 
+type(SwigClassWrapper) :: farg1 
+
+farg1 = projection%swigdata
+fresult = swigc_pcms_conservative_projection_get_target_size(farg1)
+swig_result = fresult
+end function
+
+subroutine pcms_conservative_projection_apply(projection, source_data, source_size, target_data, target_size)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsConservativeProjectionHandle), intent(in) :: projection
+type(C_PTR), intent(in) :: source_data
+integer(C_INT), intent(in) :: source_size
+type(C_PTR), intent(in) :: target_data
+integer(C_INT), intent(in) :: target_size
+type(SwigClassWrapper) :: farg1 
+type(C_PTR) :: farg2 
+integer(C_INT) :: farg3 
+type(C_PTR) :: farg4 
+integer(C_INT) :: farg5 
+
+farg1 = projection%swigdata
+farg2 = source_data
+farg3 = source_size
+farg4 = target_data
+farg5 = target_size
+call swigc_pcms_conservative_projection_apply(farg1, farg2, farg3, farg4, farg5)
+end subroutine
+
+subroutine pcms_destroy_conservative_projection(projection)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsConservativeProjectionHandle), intent(in) :: projection
+type(SwigClassWrapper) :: farg1 
+
+farg1 = projection%swigdata
+call swigc_pcms_destroy_conservative_projection(farg1)
 end subroutine
 
 

@@ -175,6 +175,83 @@ void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator);
 void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
                       int input_size, void* output, int output_size);
 
+/**
+ * @brief Holds a void pointer to ConservativeProjectionContext
+ */
+struct PcmsConservativeProjectionHandle
+{
+  void* pointer;
+};
+
+/**
+ * @brief Typedef for PcmsConservativeProjectionHandle struct
+ * @copydetails PcmsConservativeProjectionHandle
+ */
+typedef struct PcmsConservativeProjectionHandle PcmsConservativeProjectionHandle;
+
+/**
+ * @brief Create a mesh-intersection-based conservative projection
+ * @param source_mesh_name C-string path to source Omega_h mesh file (.osh)
+ * @param source_order Order of source Lagrange space (0 or 1)
+ * @param target_mesh_name C-string path to target Omega_h mesh file (.osh)
+ * @param target_order Order of target Lagrange space (0 or 1)
+ * @return Handle to the created conservative projection
+ *
+ * @details Loads both meshes internally, creates LagrangeFunctionSpace objects
+ * (Backend::OmegaH), performs mesh intersection via intersectTargets(), builds
+ * quadrature data, assembles and factors the target mass matrix (PETSc KSP),
+ * and caches everything for repeated Apply calls. The meshes are owned by
+ * the returned handle and live until pcms_destroy_conservative_projection.
+ *
+ * @note Requires PCMS_ENABLE_PETSC and PCMS_ENABLE_MESHFIELDS. Returns a
+ * handle with null pointer if either is unavailable.
+ * @note Only scalar fields (1 component) are supported.
+ * @note Source and target orders can differ (e.g., P0<->P1).
+ */
+PcmsConservativeProjectionHandle pcms_create_conservative_projection(
+  const char* source_mesh_name, int source_order,
+  const char* target_mesh_name, int target_order);
+
+/**
+ * @brief Get the number of source DOF holders
+ * @param projection Handle to the conservative projection
+ * @return Number of source DOF holders
+ */
+int pcms_conservative_projection_get_source_size(
+  PcmsConservativeProjectionHandle projection);
+
+/**
+ * @brief Get the number of target DOF holders
+ * @param projection Handle to the conservative projection
+ * @return Number of target DOF holders
+ */
+int pcms_conservative_projection_get_target_size(
+  PcmsConservativeProjectionHandle projection);
+
+/**
+ * @brief Apply conservative projection
+ * @param projection Handle to the projection
+ * @param source_data Flat array of source field values (size = source_size)
+ * @param source_size Number of source DOF holders
+ * @param target_data Flat array to receive target field values (size = target_size)
+ * @param target_size Number of target DOF holders
+ *
+ * @details Copies source data into the internal field, calls
+ * OmegaHConservativeProjection::Apply(), and copies the result back.
+ * This is the cheap per-time-step call: no mesh intersection,
+ * no matrix assembly, no refactorization.
+ */
+void pcms_conservative_projection_apply(
+  PcmsConservativeProjectionHandle projection, void* source_data,
+  int source_size, void* target_data, int target_size);
+
+/**
+ * @brief Destroy conservative projection and free all internal resources
+ * @param projection Handle to the conservative projection to destroy
+ */
+void pcms_destroy_conservative_projection(
+  PcmsConservativeProjectionHandle projection);
+
 #ifdef __cplusplus
 }
 #endif

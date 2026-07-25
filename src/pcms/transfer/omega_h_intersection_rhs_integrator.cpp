@@ -194,15 +194,15 @@ OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
 
   const PetscInt nnz = static_cast<PetscInt>(node_gids_.extent(0));
   PetscErrorCode ierr =
-    createSeqVec(PETSC_COMM_WORLD, data.num_target_dofs, &vec_);
-  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+    createSeqVec(PETSC_COMM_SELF, data.num_target_dofs, &vec_);
+  CHKERRABORT(PETSC_COMM_SELF, ierr);
   // VecSetPreallocationCOO takes the COO indices on the host
   // TODO: ask Todd/PETSc folks if there is a better way to do this for GPU
   // support
   auto node_gids_host =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, node_gids_);
   ierr = VecSetPreallocationCOO(vec_, nnz, node_gids_host.data());
-  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+  CHKERRABORT(PETSC_COMM_SELF, ierr);
 }
 
 OmegaHIntersectionRHSIntegrator::~OmegaHIntersectionRHSIntegrator()
@@ -239,7 +239,7 @@ void OmegaHIntersectionRHSIntegrator::Assemble(
   PCMS_ALWAYS_ASSERT(sampled_values.extent(1) >= 1);
 
   PetscErrorCode ierr = VecZeroEntries(vec_);
-  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+  CHKERRABORT(PETSC_COMM_SELF, ierr);
 
   auto sv = Kokkos::View<const Real**, Kokkos::LayoutRight, DeviceMemorySpace,
                          Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
@@ -258,7 +258,7 @@ void OmegaHIntersectionRHSIntegrator::Assemble(
     });
 
   ierr = VecSetValuesCOO(vec_, coo_vals.data(), ADD_VALUES);
-  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+  CHKERRABORT(PETSC_COMM_SELF, ierr);
 }
 
 // ---------------------------------------------------------------------------

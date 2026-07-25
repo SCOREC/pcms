@@ -101,17 +101,17 @@ OmegaHMassIntegrator::OmegaHMassIntegrator(
                   coo_cols, vals);
 
     PetscErrorCode ierr =
-      createSeqAIJMat(PETSC_COMM_WORLD, num_dofs, num_dofs, 0, nullptr, &mat_);
-    CHKERRABORT(PETSC_COMM_WORLD, ierr);
+      createSeqAIJMat(PETSC_COMM_SELF, num_dofs, num_dofs, 0, nullptr, &mat_);
+    CHKERRABORT(PETSC_COMM_SELF, ierr);
     auto coo_rows_host =
       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, coo_rows);
     auto coo_cols_host =
       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, coo_cols);
     ierr = MatSetPreallocationCOO(mat_, nnz, coo_rows_host.data(),
                                   coo_cols_host.data());
-    CHKERRABORT(PETSC_COMM_WORLD, ierr);
+    CHKERRABORT(PETSC_COMM_SELF, ierr);
     ierr = MatSetValuesCOO(mat_, vals.data(), INSERT_VALUES);
-    CHKERRABORT(PETSC_COMM_WORLD, ierr);
+    CHKERRABORT(PETSC_COMM_SELF, ierr);
     return;
   }
 
@@ -139,17 +139,17 @@ OmegaHMassIntegrator::OmegaHMassIntegrator(
   // elm_mass_dev is in the same element-major order as coo_rows/coo_cols, so
   // it can be passed directly to MatSetValuesCOO — no host copy needed.
   PetscErrorCode ierr =
-    createSeqAIJMat(PETSC_COMM_WORLD, num_dofs, num_dofs, 0, nullptr, &mat_);
-  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+    createSeqAIJMat(PETSC_COMM_SELF, num_dofs, num_dofs, 0, nullptr, &mat_);
+  CHKERRABORT(PETSC_COMM_SELF, ierr);
   auto coo_rows_host =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, coo_rows);
   auto coo_cols_host =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, coo_cols);
   ierr = MatSetPreallocationCOO(mat_, nnz, coo_rows_host.data(),
                                 coo_cols_host.data());
-  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+  CHKERRABORT(PETSC_COMM_SELF, ierr);
   ierr = MatSetValuesCOO(mat_, elm_mass_dev.data(), INSERT_VALUES);
-  CHKERRABORT(PETSC_COMM_WORLD, ierr);
+  CHKERRABORT(PETSC_COMM_SELF, ierr);
 }
 
 OmegaHMassIntegrator::~OmegaHMassIntegrator()

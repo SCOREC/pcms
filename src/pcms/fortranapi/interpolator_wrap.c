@@ -531,3 +531,168 @@ SWIGEXPORT void _wrap_pcms_interpolate(SwigClassWrapper* farg1,
   arg5 = (int)(*farg5);
   pcms_interpolate(arg1, arg2, arg3, arg4, arg5);
 }
+
+SWIGEXPORT void _wrap_PcmsConservativeProjectionHandle_pointer_set(
+  SwigClassWrapper* farg1, void const** farg2)
+{
+  struct PcmsConservativeProjectionHandle* arg1 =
+    (struct PcmsConservativeProjectionHandle*)0;
+  void* arg2 = (void*)0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsConservativeProjectionHandle *",
+                     "PcmsConservativeProjectionHandle",
+                     "PcmsConservativeProjectionHandle::pointer", return);
+  arg1 = (struct PcmsConservativeProjectionHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+    (arg1)->pointer = arg2;
+}
+
+SWIGEXPORT void* _wrap_PcmsConservativeProjectionHandle_pointer_get(
+  SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsConservativeProjectionHandle* arg1 =
+    (struct PcmsConservativeProjectionHandle*)0;
+  void* result = 0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsConservativeProjectionHandle *",
+                     "PcmsConservativeProjectionHandle",
+                     "PcmsConservativeProjectionHandle::pointer", return 0);
+  arg1 = (struct PcmsConservativeProjectionHandle*)farg1->cptr;
+  result = (void*)((arg1)->pointer);
+  fresult = (void*)(result);
+  return fresult;
+}
+
+SWIGEXPORT SwigClassWrapper _wrap_new_PcmsConservativeProjectionHandle()
+{
+  SwigClassWrapper fresult;
+  struct PcmsConservativeProjectionHandle* result = 0;
+
+  result = (struct PcmsConservativeProjectionHandle*)calloc(
+    1, sizeof(struct PcmsConservativeProjectionHandle));
+  fresult.cptr = (void*)result;
+  fresult.cmemflags = SWIG_MEM_RVALUE | (1 ? SWIG_MEM_OWN : 0);
+  return fresult;
+}
+
+SWIGEXPORT void _wrap_delete_PcmsConservativeProjectionHandle(
+  SwigClassWrapper* farg1)
+{
+  struct PcmsConservativeProjectionHandle* arg1 =
+    (struct PcmsConservativeProjectionHandle*)0;
+
+  arg1 = (struct PcmsConservativeProjectionHandle*)farg1->cptr;
+  free((char*)arg1);
+}
+
+SWIGEXPORT void _wrap_PcmsConservativeProjectionHandle_op_assign__(
+  SwigClassWrapper* farg1, SwigClassWrapper* farg2)
+{
+  struct PcmsConservativeProjectionHandle* arg1 =
+    (struct PcmsConservativeProjectionHandle*)0;
+  struct PcmsConservativeProjectionHandle* arg2 = 0;
+
+  (void)sizeof(arg1);
+  (void)sizeof(arg2);
+  SWIG_assign(farg1, *farg2);
+}
+
+SWIGEXPORT SwigClassWrapper _wrap_pcms_create_conservative_projection(
+  SwigArrayWrapper* farg1, int const* farg2, SwigArrayWrapper* farg3,
+  int const* farg4)
+{
+  SwigClassWrapper fresult;
+  char* arg1 = (char*)0;
+  int arg2;
+  char* arg3 = (char*)0;
+  int arg4;
+  PcmsConservativeProjectionHandle result;
+
+  arg1 = (char*)(farg1->data);
+  arg2 = (int)(*farg2);
+  arg3 = (char*)(farg3->data);
+  arg4 = (int)(*farg4);
+  result = pcms_create_conservative_projection((char const*)arg1, arg2,
+                                               (char const*)arg3, arg4);
+  fresult.cptr = (PcmsConservativeProjectionHandle*)memcpy(
+    (PcmsConservativeProjectionHandle*)calloc(
+      1, sizeof(PcmsConservativeProjectionHandle)),
+    &result, sizeof(PcmsConservativeProjectionHandle));
+  fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
+  return fresult;
+}
+
+SWIGEXPORT int _wrap_pcms_conservative_projection_get_source_size(
+  SwigClassWrapper* farg1)
+{
+  int fresult;
+  PcmsConservativeProjectionHandle arg1;
+  int result;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsConservativeProjectionHandle",
+                     "PcmsConservativeProjectionHandle",
+                     "pcms_conservative_projection_get_source_size("
+                     "PcmsConservativeProjectionHandle)",
+                     return 0);
+  arg1 = *((PcmsConservativeProjectionHandle*)(farg1->cptr));
+  result = (int)pcms_conservative_projection_get_source_size(arg1);
+  fresult = (int)(result);
+  return fresult;
+}
+
+SWIGEXPORT int _wrap_pcms_conservative_projection_get_target_size(
+  SwigClassWrapper* farg1)
+{
+  int fresult;
+  PcmsConservativeProjectionHandle arg1;
+  int result;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsConservativeProjectionHandle",
+                     "PcmsConservativeProjectionHandle",
+                     "pcms_conservative_projection_get_target_size("
+                     "PcmsConservativeProjectionHandle)",
+                     return 0);
+  arg1 = *((PcmsConservativeProjectionHandle*)(farg1->cptr));
+  result = (int)pcms_conservative_projection_get_target_size(arg1);
+  fresult = (int)(result);
+  return fresult;
+}
+
+SWIGEXPORT void _wrap_pcms_conservative_projection_apply(
+  SwigClassWrapper* farg1, void const** farg2, int const* farg3,
+  void const** farg4, int const* farg5)
+{
+  PcmsConservativeProjectionHandle arg1;
+  void* arg2 = (void*)0;
+  int arg3;
+  void* arg4 = (void*)0;
+  int arg5;
+
+  SWIG_check_nonnull(farg1->cptr, "PcmsConservativeProjectionHandle",
+                     "PcmsConservativeProjectionHandle",
+                     "pcms_conservative_projection_apply("
+                     "PcmsConservativeProjectionHandle,void *,int,void *,int)",
+                     return);
+  arg1 = *((PcmsConservativeProjectionHandle*)(farg1->cptr));
+  arg2 = (void*)(*farg2);
+  arg3 = (int)(*farg3);
+  arg4 = (void*)(*farg4);
+  arg5 = (int)(*farg5);
+  pcms_conservative_projection_apply(arg1, arg2, arg3, arg4, arg5);
+}
+
+SWIGEXPORT void _wrap_pcms_destroy_conservative_projection(
+  SwigClassWrapper* farg1)
+{
+  PcmsConservativeProjectionHandle arg1;
+
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsConservativeProjectionHandle",
+    "PcmsConservativeProjectionHandle",
+    "pcms_destroy_conservative_projection(PcmsConservativeProjectionHandle)",
+    return);
+  arg1 = *((PcmsConservativeProjectionHandle*)(farg1->cptr));
+  pcms_destroy_conservative_projection(arg1);
+}

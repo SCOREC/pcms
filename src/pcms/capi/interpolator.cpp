@@ -133,3 +133,157 @@ void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
 
   mls_interpolator->eval(input_array, output_array);
 }
+
+// ---------------------------------------------------------------------------
+// Conservative Projection (mesh-intersection-based)
+// ---------------------------------------------------------------------------
+
+#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+#include <Omega_h_file.hpp>
+#include <Omega_h_library.hpp>
+#include <pcms/field/field.h>
+#include <pcms/field/function_space/lagrange.h>
+#include <pcms/transfer/omega_h_conservative_projection.hpp>
+#include <pcms/utility/arrays.h>
+#include <cstring>
+#include <memory>
+#include <string>
+
+namespace
+{
+
+// Trims trailing whitespace from a C string (Fortran strings may be padded).
+std::string trim_filename(const char* filename)
+{
+  auto fname = std::string(filename);
+  fname.erase(fname.find_last_not_of(" \n\r\t") + 1);
+  return fname;
+}
+
+struct ConservativeProjectionContext
+{
+  // Library must be declared before meshes (Omega_h::Mesh holds a pointer to it).
+  Omega_h::Library library;
+  Omega_h::Mesh source_mesh;
+  Omega_h::Mesh target_mesh;
+  pcms::LagrangeFunctionSpace source_space;
+  pcms::LagrangeFunctionSpace target_space;
+  std::unique_ptr<pcms::OmegaHConservativeProjection> projection;
+  pcms::Field<pcms::Real> source_field;
+  pcms::Field<pcms::Real> target_field;
+
+  ConservativeProjectionContext(const char* source_mesh_name,
+                                const char* target_mesh_name, int src_order,
+                                int tgt_order)
+    : library(nullptr, nullptr, MPI_COMM_SELF),
+      source_mesh(Omega_h::binary::read(trim_filename(source_mesh_name),
+                                        library.world())),
+      target_mesh(Omega_h::binary::read(trim_filename(target_mesh_name),
+                                        library.world())),
+      source_space(pcms::LagrangeFunctionSpace::FromMesh(
+        source_mesh, src_order, 1, pcms::CoordinateSystem::Cartesian, "global",
+        pcms::LagrangeFunctionSpace::Backend::OmegaH)),
+      target_space(pcms::LagrangeFunctionSpace::FromMesh(
+        target_mesh, tgt_order, 1, pcms::CoordinateSystem::Cartesian, "global",
+        pcms::LagrangeFunctionSpace::Backend::OmegaH)),
+      projection(std::make_unique<pcms::OmegaHConservativeProjection>(
+        source_space, target_space)),
+      source_field(source_space.CreateField<pcms::Real>()),
+      target_field(target_space.CreateField<pcms::Real>())
+  {
+  }
+};
+
+} // namespace
+
+PcmsConservativeProjectionHandle pcms_create_conservative_projection(
+  const char* source_mesh_name, int source_order,
+  const char* target_mesh_name, int target_order)
+{
+  auto* ctx = new ConservativeProjectionContext(source_mesh_name,
+                                                target_mesh_name, source_order,
+                                                target_order);
+  return {reinterpret_cast<void*>(ctx)};
+}
+
+int pcms_conservative_projection_get_source_size(
+  PcmsConservativeProjectionHandle projection)
+{
+  auto* ctx =
+    reinterpret_cast<ConservativeProjectionContext*>(projection.pointer);
+  return ctx->source_space.GetLayout()->GetNumOwnedDofHolder();
+}
+
+int pcms_conservative_projection_get_target_size(
+  PcmsConservativeProjectionHandle projection)
+{
+  auto* ctx =
+    reinterpret_cast<ConservativeProjectionContext*>(projection.pointer);
+  return ctx->target_space.GetLayout()->GetNumOwnedDofHolder();
+}
+
+void pcms_conservative_projection_apply(
+  PcmsConservativeProjectionHandle projection, void* source_data,
+  int source_size, void* target_data, int target_size)
+{
+  auto* ctx =
+    reinterpret_cast<ConservativeProjectionContext*>(projection.pointer);
+
+  // Copy source data into internal field
+  auto source_view = pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
+    reinterpret_cast<pcms::Real*>(source_data), source_size, 1);
+  ctx->source_field.SetDOFHolderDataHost(source_view);
+
+  // Apply conservative projection
+  ctx->projection->Apply(ctx->source_field, ctx->target_field);
+
+  // Copy result back to user buffer
+  auto target_view = ctx->target_field.GetDOFHolderDataHost();
+  auto flat = pcms::FlattenToRank1View(target_view);
+  std::memcpy(target_data, flat.data_handle(),
+              static_cast<std::size_t>(target_size) * sizeof(double));
+}
+
+void pcms_destroy_conservative_projection(
+  PcmsConservativeProjectionHandle projection)
+{
+  if (projection.pointer != nullptr) {
+    delete reinterpret_cast<ConservativeProjectionContext*>(
+      projection.pointer);
+  }
+}
+
+#else // !(PCMS_ENABLE_PETSC && PCMS_ENABLE_MESHFIELDS)
+
+// Stub implementations when PETSc or MeshFields are unavailable
+
+PcmsConservativeProjectionHandle pcms_create_conservative_projection(
+  const char*, int, const char*, int)
+{
+  pcms::printError("Conservative projection requires PCMS_ENABLE_PETSC and "
+                   "PCMS_ENABLE_MESHFIELDS\n");
+  return {nullptr};
+}
+
+int pcms_conservative_projection_get_source_size(
+  PcmsConservativeProjectionHandle)
+{
+  return 0;
+}
+
+int pcms_conservative_projection_get_target_size(
+  PcmsConservativeProjectionHandle)
+{
+  return 0;
+}
+
+void pcms_conservative_projection_apply(PcmsConservativeProjectionHandle,
+                                        void*, int, void*, int)
+{
+  pcms::printError("Conservative projection requires PCMS_ENABLE_PETSC and "
+                   "PCMS_ENABLE_MESHFIELDS\n");
+}
+
+void pcms_destroy_conservative_projection(PcmsConservativeProjectionHandle) {}
+
+#endif

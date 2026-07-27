@@ -8,8 +8,8 @@
 
 #include <pcms/localization/point_localization.h>
 
-TEST_CASE ("Test 1x1 2D grid point classification") {
-	// Setup for 1x1 grid test cases
+TEST_CASE ("Test 10x10 2D tree point classification") {
+	// Setup for 10x10 tree test cases
 	auto lib = Omega_h::Library{};
 	auto world = lib.world();
 	Omega_h::Mesh mesh_1x1 = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
@@ -17,7 +17,7 @@ TEST_CASE ("Test 1x1 2D grid point classification") {
 	Omega_h::ExecSpace execs;
 	
 	pcms::TreePointSearch tree_search(mesh_1x1);
-	// End setup for 1x1 grid test cases
+	// End setup for 10x10 tree test cases
 
 	auto check_res = [] (auto const& results, int dim)
 	{
@@ -131,8 +131,8 @@ TEST_CASE ("Test 1x1 2D grid point classification") {
 	// }
 }
 
-TEST_CASE ("Test 1x1x1 3D grid point classification") {
-	// Setup for 1x1x1 grid test cases
+TEST_CASE ("Test 5x5x5 3D tree point classification") {
+	// Setup for 5x5x5 tree test cases
 	auto lib = Omega_h::Library{};
 	auto world = lib.world();
 	Omega_h::Mesh mesh_1x1 = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 5, 5, 5, false);
@@ -140,7 +140,6 @@ TEST_CASE ("Test 1x1x1 3D grid point classification") {
 	Omega_h::ExecSpace execs;
 	
 	pcms::TreePointSearch tree_search(mesh_1x1);
-	// End setup for 1x1 grid test cases
 
 	auto check_res = [] (auto const& results, int dim)
 	{

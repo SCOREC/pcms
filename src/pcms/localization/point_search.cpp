@@ -602,7 +602,6 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
   auto point_coords = points.GetValues();
   Kokkos::parallel_for(
     point_coords.extent(0), KOKKOS_LAMBDA(int p) {
-    point_coords.extent(0), KOKKOS_LAMBDA(int p) {
       const auto vtol = tolerances(0);
       const auto etol = tolerances(1);
 

@@ -91,6 +91,14 @@ cmake -S redev -B build-redev \
   -DADIOS2_DIR=$PWD/build-ADIOS2/install/lib64/cmake/adios2 \
   -Dperfstubs_DIR=$PWD/build-perfstubs/install/lib/cmake
 cmake --build build-redev --target install
+
+git clone git@github.com:arborx/ArborX.git
+cmake -S ArborX -B build-ArborX -D CMAKE_INSTALL_PREFIX="$PWD/build-ArborX/install" \
+-D ARBORX_ENABLE_MPI=ON \
+-D Kokkos_ROOT="$PWD/build-kokkos/install" \
+-D CMAKE_CXX_COMPILER=mpicxx \
+-D CMAKE_CXX_EXTENSIONS=OFF 
+cmake --build build-ArborX --target install
 ```
 ### Build dependencies with CUDA
 ```
@@ -164,6 +172,14 @@ git clone git@github.com:catchorg/Catch2
 cmake -S Catch2 -B build-Catch2 \
   -DCMAKE_INSTALL_PREFIX=$PWD/build-Catch2/install
 cmake --build build-Catch2 --target install
+
+git clone git@github.com:arborx/ArborX.git
+cmake -S ArborX -B build-ArborX -D CMAKE_INSTALL_PREFIX="$PWD/build-ArborX/install" \
+-D ARBORX_ENABLE_MPI=ON \
+-D Kokkos_ROOT="$PWD/build-kokkos/install" \
+-D CMAKE_CXX_COMPILER="$PWD/build-kokkos/install/bin/nvcc_wrapper" \
+-D CMAKE_CXX_EXTENSIONS=OFF
+cmake --build build-ArborX --target install
 ```
 ### Build, install, and test pcms
 ```
@@ -181,6 +197,7 @@ cmake -S pcms -B build-pcms \
   -Dperfstubs_DIR=$PWD/build-perfstubs/install/lib/cmake \
   -DCatch2_DIR=$PWD/build-Catch2/install/lib64/cmake/Catch2/ \
   -DKokkosKernels_DIR=$PWD/build-kokkos-kernels/install/lib64/cmake/KokkosKernels/ \
+  -DArborX_DIR=$PWD/build-ArborX/install/share/cmake/ArborX \
   -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
 cmake --build build-pcms -j 8
 

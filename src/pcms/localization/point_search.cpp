@@ -644,10 +644,18 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
 
 LO GridPointSearch2D::GetOwningElementId(const Results& results, int i)
 {
-  const LO query_id =
-    (results.element_ids(i) < 0) ? -results.element_ids(i) : results.element_ids(i);
+  const Kokkos::View<LO[1]> query_id{""};
+  const Kokkos::View<Dimensionality[1]> dim{""};
+  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const int){
+    query_id(0) = (results.element_ids(i) < 0) ? -results.element_ids(i) : results.element_ids(i);
+    dim(0) = results.dimensionalities(i);
+  });
+  auto query_id_h = Kokkos::create_mirror_view(query_id);  
+  auto dim_h = Kokkos::create_mirror_view(dim);
+  Kokkos::deep_copy(query_id_h, query_id);
+  Kokkos::deep_copy(dim_h, dim);
   return pcms::GetOwningElementId(
-    mesh_, 2, static_cast<int>(results.dimensionalities(i)), query_id);
+    mesh_, 2, static_cast<int>(dim_h(0)), query_id_h(0));
 }
 
 Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(

@@ -405,22 +405,42 @@ TreePointSearch::Results TreePointSearch::apply(
 [[nodiscard]] LO TreePointSearch::GetOwningElementId(
 	const TreePointSearch::Results& results, int i)
 {
-	return pcms::GetOwningElementId(mesh_, mesh_.dim(), (int)results.dimensionalities(i),
-		results.element_ids(i));
+  const Kokkos::View<LO[1]> query_id{""};
+  const Kokkos::View<Dimensionality[1]> dim{""};
+  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const int){
+    query_id(0) = (results.element_ids(i) < 0) ? -results.element_ids(i) : results.element_ids(i);
+    dim(0) = results.dimensionalities(i);
+  });
+  auto query_id_h = Kokkos::create_mirror_view(query_id);  
+  auto dim_h = Kokkos::create_mirror_view(dim);
+  Kokkos::deep_copy(query_id_h, query_id);
+  Kokkos::deep_copy(dim_h, dim);
+	return pcms::GetOwningElementId(mesh_, mesh_.dim(), static_cast<int>(dim_h(0)),
+		query_id_h(0));
 }
 
 [[nodiscard]] Kokkos::View<LO*> TreePointSearch::GetOwningElementIds(
 	const TreePointSearch::Results& results)
 {
-	ExecSpace execution_space;
 	Kokkos::View<LO*> owning_ids("Owning element IDs", 
 		results.dimensionalities.size());
-	auto owning_ids_h = Kokkos::create_mirror_view(owning_ids);
-	for (int i = 0; i < owning_ids_h.size(); i++)
-	{
-		owning_ids_h[i] = GetOwningElementId(results, i);
-	}
-	Kokkos::deep_copy(execution_space, owning_ids, owning_ids_h);
+	auto vert2elem = mesh_.ask_up(Omega_h::VERT, mesh_.dim());
+	auto edge2elem = mesh_.ask_up(Omega_h::EDGE, mesh_.dim());
+	auto face2elem = (mesh_.dim() == 3) ? mesh_.ask_up(Omega_h::FACE, mesh_.dim()) : Omega_h::Adj{};
+	auto mesh_dim = mesh_.dim();
+	Kokkos::parallel_for(owning_ids.size(), KOKKOS_LAMBDA(const int i){
+		if (static_cast<int>(results.dimensionalities(i)) == mesh_dim) {
+			owning_ids(i) = abs(results.element_ids(i));
+		} else if (static_cast<int>(results.dimensionalities(i)) == 2) {
+			owning_ids(i) = GetOwningElementIdFromAdj(face2elem, 2, mesh_dim, results.element_ids(i));
+		} else if (static_cast<int>(results.dimensionalities(i)) == 1) {
+			owning_ids(i) = GetOwningElementIdFromAdj(edge2elem, 1, mesh_dim, results.element_ids(i));
+		} else if (static_cast<int>(results.dimensionalities(i)) == 0) {
+			owning_ids(i) = GetOwningElementIdFromAdj(vert2elem, 0, mesh_dim, results.element_ids(i));
+		} else {
+			owning_ids(i) = -1;
+		}
+	});
 	return owning_ids;
 }
 

@@ -36,7 +36,8 @@ public:
   // Expensive: localizes target DOF coords into source mesh. Called once.
   Interpolator(const FunctionSpace& source_space,
                const FunctionSpace& target_space, OutOfBoundsPolicy policy = {})
-    : num_points_(static_cast<LO>(
+    : TransferOperator<T>(source_space, target_space),
+      num_points_(static_cast<LO>(
         target_space.GetLayout()->GetDOFHolderCoordinates().GetValues().extent(
           0))),
       n_comp_(target_space.GetLayout()->GetNumComponents()),

@@ -42,7 +42,8 @@ void CheckApplyCompatible(const Field<Real>& source, const Field<Real>& target,
 
 OmegaHConservativeProjection::OmegaHConservativeProjection(
   const FunctionSpace& source_space, const FunctionSpace& target_space)
-  : source_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
+  : TransferOperator<Real>(source_space, target_space),
+    source_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
       source_space.GetLayout())),
     target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
       target_space.GetLayout()))

@@ -166,11 +166,11 @@ struct ConservativeProjectionContext
   Omega_h::Library library;
   Omega_h::Mesh source_mesh;
   Omega_h::Mesh target_mesh;
-  pcms::LagrangeFunctionSpace source_space;
-  pcms::LagrangeFunctionSpace target_space;
+  std::shared_ptr<pcms::LagrangeFunctionSpace> source_space;
+  std::shared_ptr<pcms::LagrangeFunctionSpace> target_space;
   std::unique_ptr<pcms::OmegaHConservativeProjection> projection;
-  pcms::Field<pcms::Real> source_field;
-  pcms::Field<pcms::Real> target_field;
+  pcms::Function<pcms::Real> source_field;
+  pcms::Function<pcms::Real> target_field;
 
   ConservativeProjectionContext(const char* source_mesh_name,
                                 const char* target_mesh_name, int src_order,
@@ -187,9 +187,9 @@ struct ConservativeProjectionContext
         target_mesh, tgt_order, 1, pcms::CoordinateSystem::Cartesian, "global",
         pcms::LagrangeFunctionSpace::Backend::OmegaH)),
       projection(std::make_unique<pcms::OmegaHConservativeProjection>(
-        source_space, target_space)),
-      source_field(source_space.CreateField<pcms::Real>()),
-      target_field(target_space.CreateField<pcms::Real>())
+        *source_space, *target_space)),
+      source_field(source_space->CreateFunction<pcms::Real>()),
+      target_field(target_space->CreateFunction<pcms::Real>())
   {
   }
 };
@@ -211,7 +211,7 @@ int pcms_conservative_projection_get_source_size(
 {
   auto* ctx =
     reinterpret_cast<ConservativeProjectionContext*>(projection.pointer);
-  return ctx->source_space.GetLayout()->GetNumOwnedDofHolder();
+  return ctx->source_space->GetLayout()->GetNumOwnedDofHolder();
 }
 
 int pcms_conservative_projection_get_target_size(
@@ -219,7 +219,7 @@ int pcms_conservative_projection_get_target_size(
 {
   auto* ctx =
     reinterpret_cast<ConservativeProjectionContext*>(projection.pointer);
-  return ctx->target_space.GetLayout()->GetNumOwnedDofHolder();
+  return ctx->target_space->GetLayout()->GetNumOwnedDofHolder();
 }
 
 void pcms_conservative_projection_apply(

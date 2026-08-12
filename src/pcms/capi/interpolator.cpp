@@ -162,7 +162,8 @@ std::string trim_filename(const char* filename)
 
 struct ConservativeProjectionContext
 {
-  // Library must be declared before meshes (Omega_h::Mesh holds a pointer to it).
+  // Library must be declared before meshes (Omega_h::Mesh holds a pointer to
+  // it).
   Omega_h::Library library;
   Omega_h::Mesh source_mesh;
   Omega_h::Mesh target_mesh;
@@ -197,12 +198,11 @@ struct ConservativeProjectionContext
 } // namespace
 
 PcmsConservativeProjectionHandle pcms_create_conservative_projection(
-  const char* source_mesh_name, int source_order,
-  const char* target_mesh_name, int target_order)
+  const char* source_mesh_name, int source_order, const char* target_mesh_name,
+  int target_order)
 {
-  auto* ctx = new ConservativeProjectionContext(source_mesh_name,
-                                                target_mesh_name, source_order,
-                                                target_order);
+  auto* ctx = new ConservativeProjectionContext(
+    source_mesh_name, target_mesh_name, source_order, target_order);
   return {reinterpret_cast<void*>(ctx)};
 }
 
@@ -248,8 +248,7 @@ void pcms_destroy_conservative_projection(
   PcmsConservativeProjectionHandle projection)
 {
   if (projection.pointer != nullptr) {
-    delete reinterpret_cast<ConservativeProjectionContext*>(
-      projection.pointer);
+    delete reinterpret_cast<ConservativeProjectionContext*>(projection.pointer);
   }
 }
 
@@ -277,8 +276,8 @@ int pcms_conservative_projection_get_target_size(
   return 0;
 }
 
-void pcms_conservative_projection_apply(PcmsConservativeProjectionHandle,
-                                        void*, int, void*, int)
+void pcms_conservative_projection_apply(PcmsConservativeProjectionHandle, void*,
+                                        int, void*, int)
 {
   pcms::printError("Conservative projection requires PCMS_ENABLE_PETSC and "
                    "PCMS_ENABLE_MESHFIELDS\n");

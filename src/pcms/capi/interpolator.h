@@ -187,7 +187,8 @@ struct PcmsConservativeProjectionHandle
  * @brief Typedef for PcmsConservativeProjectionHandle struct
  * @copydetails PcmsConservativeProjectionHandle
  */
-typedef struct PcmsConservativeProjectionHandle PcmsConservativeProjectionHandle;
+typedef struct PcmsConservativeProjectionHandle
+  PcmsConservativeProjectionHandle;
 
 /**
  * @brief Create a mesh-intersection-based conservative projection
@@ -209,8 +210,8 @@ typedef struct PcmsConservativeProjectionHandle PcmsConservativeProjectionHandle
  * @note Source and target orders can differ (e.g., P0<->P1).
  */
 PcmsConservativeProjectionHandle pcms_create_conservative_projection(
-  const char* source_mesh_name, int source_order,
-  const char* target_mesh_name, int target_order);
+  const char* source_mesh_name, int source_order, const char* target_mesh_name,
+  int target_order);
 
 /**
  * @brief Get the number of source DOF holders
@@ -233,7 +234,8 @@ int pcms_conservative_projection_get_target_size(
  * @param projection Handle to the projection
  * @param source_data Flat array of source field values (size = source_size)
  * @param source_size Number of source DOF holders
- * @param target_data Flat array to receive target field values (size = target_size)
+ * @param target_data Flat array to receive target field values (size =
+ * target_size)
  * @param target_size Number of target DOF holders
  *
  * @details Copies source data into the internal field, calls

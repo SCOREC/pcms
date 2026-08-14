@@ -35,25 +35,70 @@ public:
 };
 
 // ---------------------------------------------------------------------------
-// Concrete backend implementation
+// Evaluation policies — each defines how to create the shape field and
+// evaluate at local coordinates.  This lets a single backend template serve
+// both standard Lagrange and reduced‑quintic elements.
 // ---------------------------------------------------------------------------
-template <typename T, int Dim, int Order>
+
+// Policy for standard Lagrange elements
+template <typename T, int Order>
+struct LagrangeEvalPolicy
+{
+  static constexpr int ShapeOrder = Order;
+  static constexpr int ShapeDOFs  = 1;
+
+  template <typename MeshFieldType, typename ShapeFieldType,
+            typename CoordsView, typename OffsetsView>
+  static auto Evaluate(MeshFieldType& mf, ShapeFieldType& sf,
+                       CoordsView coords, OffsetsView offsets)
+    -> decltype(mf.triangleLocalPointEval(coords, offsets, sf))
+  {
+    return mf.triangleLocalPointEval(coords, offsets, sf);
+  }
+};
+
+// Policy for reduced quintic elements (6 DOFs per vertex, C1 continuity)
+template <typename T>
+struct ReducedQuinticEvalPolicy
+{
+  static constexpr int ShapeOrder = 1;
+  static constexpr int ShapeDOFs  = 6;
+
+  template <typename MeshFieldType, typename ShapeFieldType,
+            typename CoordsView, typename OffsetsView>
+  static auto Evaluate(MeshFieldType& mf, ShapeFieldType& sf,
+                       CoordsView coords, OffsetsView offsets)
+    -> decltype(mf.template triangleReducedQuinticEval<CoordsView,
+                                                       ShapeFieldType>(
+      coords, offsets, sf))
+  {
+    return mf.template triangleReducedQuinticEval<CoordsView, ShapeFieldType>(
+      coords, offsets, sf);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Single backend implementation (policy‑based)
+// ---------------------------------------------------------------------------
+template <typename T, int Dim, typename EvalPolicy>
 class MeshFieldBackendImpl : public MeshFieldBackend<T>
 {
 public:
   MeshFieldBackendImpl(Omega_h::Mesh& mesh)
     : mesh_(mesh),
       mesh_field_(mesh),
-      shape_field_(mesh_field_.template CreateLagrangeField<T, Order, 1>())
+      shape_field_(
+        mesh_field_.template CreateLagrangeField<T, EvalPolicy::ShapeOrder,
+                                                  EvalPolicy::ShapeDOFs>())
   {
   }
 
   Kokkos::View<T* [1]> evaluate(Kokkos::View<T**> localCoords,
                                 Kokkos::View<LO*> offsets) const override
   {
-    auto self = const_cast<MeshFieldBackendImpl<T, Dim, Order>*>(this);
-    return self->mesh_field_.triangleLocalPointEval(localCoords, offsets,
-                                                    shape_field_);
+    auto self = const_cast<MeshFieldBackendImpl<T, Dim, EvalPolicy>*>(this);
+    return EvalPolicy::Evaluate(self->mesh_field_, self->shape_field_,
+                                localCoords, offsets);
   }
 
   void SetData(Rank1View<const T, DeviceMemorySpace> data, size_t num_nodes,
@@ -92,12 +137,13 @@ private:
   Omega_h::Mesh& mesh_;
   MeshField::OmegahMeshField<DefaultExecutionSpace, Dim> mesh_field_;
   using ShapeField =
-    decltype(mesh_field_.template CreateLagrangeField<T, Order, 1>());
+    decltype(mesh_field_.template CreateLagrangeField<T, EvalPolicy::ShapeOrder,
+                                                       EvalPolicy::ShapeDOFs>());
   ShapeField shape_field_;
 };
 
 // ---------------------------------------------------------------------------
-// Factory function: create a MeshFieldBackend from a layout
+// Factory function: create a backend from a layout
 // ---------------------------------------------------------------------------
 template <typename T>
 std::shared_ptr<MeshFieldBackend<T>> MakeMeshFieldBackend(
@@ -118,17 +164,60 @@ std::shared_ptr<MeshFieldBackend<T>> MakeMeshFieldBackend(
   if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 0 && nodes_per_dim[2] == 0 &&
       nodes_per_dim[3] == 0) {
     switch (mesh.dim()) {
-      case 1: return std::make_shared<MeshFieldBackendImpl<T, 1, 1>>(mesh);
-      case 2: return std::make_shared<MeshFieldBackendImpl<T, 2, 1>>(mesh);
+      case 1:
+        return std::make_shared<MeshFieldBackendImpl<T, 1,
+                                                     LagrangeEvalPolicy<T, 1>>>(
+          mesh);
+      case 2:
+        return std::make_shared<MeshFieldBackendImpl<T, 2,
+                                                     LagrangeEvalPolicy<T, 1>>>(
+          mesh);
       default: break;
     }
   } else if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 1 &&
              nodes_per_dim[2] == 0 && nodes_per_dim[3] == 0) {
     switch (mesh.dim()) {
-      case 2: return std::make_shared<MeshFieldBackendImpl<T, 2, 2>>(mesh);
-      case 3: return std::make_shared<MeshFieldBackendImpl<T, 3, 2>>(mesh);
+      case 2:
+        return std::make_shared<MeshFieldBackendImpl<T, 2,
+                                                     LagrangeEvalPolicy<T, 2>>>(
+          mesh);
+      case 3:
+        return std::make_shared<MeshFieldBackendImpl<T, 3,
+                                                     LagrangeEvalPolicy<T, 2>>>(
+          mesh);
       default: break;
     }
+  }
+  return nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// Factory function: create a reduced quintic backend from a layout
+// ---------------------------------------------------------------------------
+template <typename T>
+std::shared_ptr<MeshFieldBackend<T>> MakeMeshFieldReducedQuinticBackend(
+  const MeshFieldsAdapterLayout& layout)
+{
+  if constexpr (!std::is_same_v<T, MeshField::Real4> &&
+                !std::is_same_v<T, MeshField::Real8>) {
+    throw pcms_error(
+      "MeshFieldReducedQuinticBackend only supports the MeshFields scalar "
+      "types enabled in this build");
+  }
+
+  Omega_h::Mesh& mesh = layout.GetMesh();
+  if (mesh.dim() != 2) {
+    throw pcms_error(
+      "MeshFieldReducedQuinticBackend only supports 2D meshes");
+  }
+
+  // The reduced quintic backend is only valid for vertex-based layouts
+  // (nodes_per_dim[0] == 1, all others 0).
+  auto nodes_per_dim = layout.GetNodesPerDim();
+  if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 0 &&
+      nodes_per_dim[2] == 0 && nodes_per_dim[3] == 0) {
+    return std::make_shared<
+      MeshFieldBackendImpl<T, 2, ReducedQuinticEvalPolicy<T>>>(mesh);
   }
   return nullptr;
 }

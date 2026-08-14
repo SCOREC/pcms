@@ -67,7 +67,9 @@ if (PCMS_ENABLE_MESHFIELDS)
             layout/mesh_fields.h
             evaluator/mesh_fields_backend.h
             evaluator/mesh_fields.h
+            evaluator/mesh_fields_reduced_quintic.h
             data/mesh_fields.h
+            data/mesh_fields_reduced_quintic.h
     )
 endif ()
 

@@ -399,11 +399,14 @@ find_package(Catch2 3)
 if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
-  add_executable(test_transient_skeleton test_transient_skeleton.cpp)
-  target_link_libraries(test_transient_skeleton PRIVATE Catch2::Catch2WithMain
-                                                        pcms::transient)
   include(Catch)
-  catch_discover_tests(test_transient_skeleton)
+  foreach(component participant accelerator timestepper)
+    set(test_name test_transient_${component})
+    add_executable(${test_name} ${test_name}.cpp)
+    target_link_libraries(${test_name} PRIVATE Catch2::Catch2WithMain
+                                                   pcms::transient)
+    catch_discover_tests(${test_name})
+  endforeach()
 
   set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp test_coordinate_transform.cpp
                              test_coordinate.cpp test_bounding_box.cpp)

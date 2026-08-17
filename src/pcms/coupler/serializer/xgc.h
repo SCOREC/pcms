@@ -20,20 +20,21 @@ public:
   {
   }
 
-  int Serialize(const FieldData<T>& field, const FieldLayout& layout,
-                Rank1View<T, HostMemorySpace> buffer,
+  int Serialize(const Field<T>& field, Rank1View<T, HostMemorySpace> buffer,
                 Rank1View<const LO, HostMemorySpace> permutation) const override
   {
     if (!rank_participates_) {
       return 0;
     }
 
-    auto const* xgc_field = dynamic_cast<const XGCFieldData<T>*>(&field);
+    auto const* xgc_field =
+      dynamic_cast<const XGCFieldData<T>*>(&field.GetData());
     if (!xgc_field) {
       throw pcms_error("XGCFieldSerializer::Serialize: incompatible FieldData");
     }
 
     auto data = xgc_field->GetDOFHolderDataHost();
+    const auto& layout = field.GetLayout();
     auto owned = layout.GetOwnedHost();
     // Per-holder plan: owned[i]/permutation[i] index holders; a holder's
     // num_components values form one contiguous block in the wire buffer.
@@ -54,17 +55,17 @@ public:
   }
 
   void Deserialize(
-    FieldData<T>& field, const FieldLayout& layout,
-    Rank1View<const T, HostMemorySpace> buffer,
+    Field<T>& field, Rank1View<const T, HostMemorySpace> buffer,
     Rank1View<const LO, HostMemorySpace> permutation) const override
   {
-    auto* xgc_field = dynamic_cast<XGCFieldData<T>*>(&field);
+    auto* xgc_field = dynamic_cast<XGCFieldData<T>*>(&field.GetData());
     if (!xgc_field) {
       throw pcms_error(
         "XGCFieldSerializer::Deserialize: incompatible FieldData");
     }
 
     auto current = xgc_field->GetDOFHolderDataHost();
+    const auto& layout = field.GetLayout();
     const LO num_dof = static_cast<LO>(current.extent(0));
     const LO num_comp = static_cast<LO>(current.extent(1));
     std::vector<T> full_data(current.size());

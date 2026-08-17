@@ -9,8 +9,7 @@ InterfaceState::InterfaceState() = default;
 
 InterfaceState::InterfaceState(std::size_t n, Real value) : dofs_(n, value) {}
 
-InterfaceState::InterfaceState(std::vector<Real> dofs)
-  : dofs_(std::move(dofs))
+InterfaceState::InterfaceState(std::vector<Real> dofs) : dofs_(std::move(dofs))
 {
 }
 

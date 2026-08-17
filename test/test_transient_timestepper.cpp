@@ -5,8 +5,7 @@
 
 namespace tr = pcms::transient;
 
-TEST_CASE("FixedTimestepper always accepts its configured step",
-          "[transient]")
+TEST_CASE("FixedTimestepper always accepts its configured step", "[transient]")
 {
   // 0.25 represents the positive fixed window size selected by the user.
   tr::FixedTimestepper timestepper(0.25);

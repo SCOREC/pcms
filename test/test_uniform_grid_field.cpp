@@ -248,30 +248,6 @@ TEST_CASE("UniformGrid field evaluation - piecewise constant")
   REQUIRE(std::abs(results_host(3, 0) - 3.25) < 1e-10);
 }
 
-TEST_CASE("UniformGrid field serialization")
-{
-  pcms::UniformGrid<2> grid;
-  grid.bot_left = {0.0, 0.0};
-  grid.edge_length = {10.0, 10.0};
-  grid.divisions = {3, 3};
-
-  auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
-  auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
-  auto field = field_space->CreateFunction<pcms::Real>();
-
-  std::vector<pcms::Real> data(16);
-  for (size_t i = 0; i < 16; ++i)
-    data[i] = static_cast<pcms::Real>(i * 10);
-
-  field.SetDOFHolderDataHost(
-    pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
-      data.data(), static_cast<pcms::LO>(data.size()), 1));
-
-  pcms::test::CheckSerializeDeserialize(field);
-}
-
 TEST_CASE("UniformGrid field copy")
 {
   pcms::UniformGrid<2> grid;

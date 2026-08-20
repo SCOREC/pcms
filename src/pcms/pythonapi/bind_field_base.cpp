@@ -2,7 +2,6 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include "pcms/field/coordinate_system.h"
-#include "pcms/field/coordinate.h"
 #include "pcms/field/field.h"
 #include "pcms/field/field_evaluator_factory.h"
 #include "pcms/field/field_layout.h"
@@ -98,62 +97,6 @@ void bind_coordinate_system_module(py::module& m)
     m, "CoordinateTransformation")
     .def("evaluate", &CoordinateTransformation::Evaluate, py::arg("from"),
          py::arg("to"), "Evaluate the coordinate transformation");
-}
-
-void bind_coordinate_module(py::module& m)
-{
-  // Bind Coordinate template for common cases
-  // 3D Cartesian coordinates with Real type
-  py::class_<Coordinate<CoordinateSystem, Real, 3>>(m, "Coordinate3D")
-    .def(py::init<Real, Real, Real>(), py::arg("x"), py::arg("y"), py::arg("z"),
-         "Constructor for 3D coordinate")
-
-    .def(
-      "values",
-      [](const Coordinate<CoordinateSystem, Real, 3>& self) {
-        auto vals = self.Values();
-        py::array_t<Real> result(3);
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        ptr[0] = vals[0];
-        ptr[1] = vals[1];
-        ptr[2] = vals[2];
-        return result;
-      },
-      "Get coordinate values as numpy array")
-
-    .def("__getitem__", &Coordinate<CoordinateSystem, Real, 3>::operator[],
-         py::arg("index"), "Get coordinate value by index");
-
-  // 2D coordinates
-  py::class_<Coordinate<CoordinateSystem, Real, 2>>(m, "Coordinate2D")
-    .def(py::init<Real, Real>(), py::arg("x"), py::arg("y"),
-         "Constructor for 2D coordinate")
-
-    .def(
-      "values",
-      [](const Coordinate<CoordinateSystem, Real, 2>& self) {
-        auto vals = self.Values();
-        py::array_t<Real> result(2);
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        ptr[0] = vals[0];
-        ptr[1] = vals[1];
-        return result;
-      },
-      "Get coordinate values as numpy array")
-
-    .def("__getitem__", &Coordinate<CoordinateSystem, Real, 2>::operator[],
-         py::arg("index"), "Get coordinate value by index");
-
-  // Bind CoordinateElement for common types
-  py::class_<CoordinateElement<CoordinateSystem, Real>>(m, "CoordinateElement")
-    .def(py::init<Real>(), py::arg("data"), "Constructor for CoordinateElement")
-
-    .def("underlying",
-         py::overload_cast<>(
-           &CoordinateElement<CoordinateSystem, Real>::underlying, py::const_),
-         "Get the underlying value");
 }
 
 void bind_create_field_module(py::module& m)

@@ -4,6 +4,7 @@
 #include <Kokkos_Core.hpp>
 #include <pcms/field/basis_transformation.hpp>
 #include <pcms/field/coordinate_system.hpp>
+#include <pcms/field/coordinate_map.hpp>
 #include <pcms/field/coordinate_view.hpp>
 #include <pcms/field/value_view.hpp>
 #include <cmath>
@@ -96,50 +97,140 @@ TEST_CASE("CoordinateView validates the dimension; family form derives it")
     ContainsSubstring("coordinate columns"));
 }
 
-TEST_CASE("ValueView validates component counts and basis")
+TEST_CASE("CartesianToCylindrical: Map produces known values")
 {
-  auto data = pcms::test::CreateDeviceRank2View({1.0, 2.0}, 2);
-  // A rank-1 value on a 3-dimensional system needs 3 components.
-  REQUIRE_THROWS_WITH(
-    (ValueView<const Real, DeviceMemorySpace>(
-      ValueBasis{pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
-                 pcms::values::Vector},
-      pcms::MakeConstRank2View(data))),
-    ContainsSubstring("require 3 components"));
-  // Component count comes from the system's dimension: a 2-dimensional system
-  // takes 2.
-  REQUIRE_NOTHROW(ValueView<const Real, DeviceMemorySpace>(
-    ValueBasis{pcms::csys::CylindricalRZ::Create(), ComponentScaling::Physical,
-               pcms::values::Vector},
-    pcms::MakeConstRank2View(data)));
-  // Non-scalar values require a basis coordinate system.
-  auto data3 = pcms::test::CreateDeviceRank2View({1.0, 2.0, 3.0}, 3);
-  REQUIRE_THROWS_WITH((ValueView<const Real, DeviceMemorySpace>(
-                        ValueBasis{nullptr, ComponentScaling::Physical,
-                                   pcms::values::Vector},
-                        pcms::MakeConstRank2View(data3))),
-                      ContainsSubstring("basis coordinate system"));
-  // Physical components are undefined without a canonical orthonormal triad,
-  // and rank 0 (an empty signature) ignores the basis at any component count.
-  REQUIRE_NOTHROW(ValueView<const Real, DeviceMemorySpace>(
-    ValueBasis{}, pcms::MakeConstRank2View(data)));
+  const std::vector<Real> xyz = {1.0,  0.0, 0.5,  //
+                                 0.0,  2.0, -1.0, //
+                                 -3.0, 0.0, 2.0,  //
+                                 1.0,  1.0, 0.0};
+  auto data = pcms::test::CreateDeviceRank2View(xyz, 3);
+  const pcms::CartesianToCylindrical map;
+  REQUIRE(SameCoordinateSystem(map.GetSourceCoordinateSystem(),
+                               pcms::csys::Cartesian::Create(3)));
+  REQUIRE(SameCoordinateSystem(map.GetTargetCoordinateSystem(),
+                               pcms::csys::CylindricalRThetaZ::Create()));
+
+  const auto mapped =
+    map.Map(pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+  REQUIRE(SameCoordinateSystem(mapped.system,
+                               pcms::csys::CylindricalRThetaZ::Create()));
+  REQUIRE(mapped.NumPoints() == 4);
+  REQUIRE(mapped.status.size() == 0); // whole-space domain: all Valid
+
+  auto out = pcms::test::CopyCoordinatesToHost(mapped.View().GetValues());
+  const int n = 4;
+  for (int i = 0; i < n; ++i) {
+    const Real x = xyz[3 * i], y = xyz[3 * i + 1], z = xyz[3 * i + 2];
+    CAPTURE(i);
+    REQUIRE_THAT(out(i, 0), WithinAbs(std::sqrt(x * x + y * y), pcms::test::ExactTol));
+    REQUIRE_THAT(out(i, 1), WithinAbs(std::atan2(y, x), pcms::test::ExactTol));
+    REQUIRE_THAT(out(i, 2), WithinAbs(z, pcms::test::ExactTol));
+  }
+
+  const auto transformation = map.MakeBasisTransformation(
+    pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)), mapped);
+  REQUIRE(transformation != nullptr);
+  REQUIRE(SameCoordinateSystem(transformation->GetSourceBasis().system,
+                               pcms::csys::CylindricalRThetaZ::Create()));
+  REQUIRE(SameCoordinateSystem(transformation->GetTargetBasis().system,
+                               pcms::csys::Cartesian::Create(3)));
 }
 
-TEST_CASE("value declarations reject rank > 2")
+TEST_CASE("round trip via sequential Map calls")
 {
-  // A rank-3 signature is expressible, but nothing downstream supports it
-  // yet; the declaration must fail even with the matching dim^rank component
-  // count (27), not on the first use deep inside an evaluator.
-  std::vector<Real> flat(27, 0.0);
-  auto data = pcms::test::CreateDeviceRank2View(flat, 27);
-  REQUIRE_THROWS_WITH(
-    (ValueView<const Real, DeviceMemorySpace>(
-      ValueBasis{
-        pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
-        pcms::values::Of({Variance::Contravariant, Variance::Contravariant,
-                          Variance::Contravariant})},
-      pcms::MakeConstRank2View(data))),
-    ContainsSubstring("rank-3"));
+  const std::vector<Real> xyz = {0.3, -0.4, 1.0, 2.0, 1.0, -0.5, 0.0, 0.0, 3.0};
+  auto data = pcms::test::CreateDeviceRank2View(xyz, 3);
+  const auto stage1 = pcms::CartesianToCylindrical{}.Map(
+    pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+  const auto stage2 = pcms::CylindricalToCartesian{}.Map(stage1.View());
+  auto out = pcms::test::CopyCoordinatesToHost(stage2.View().GetValues());
+  for (size_t i = 0; i < xyz.size() / 3; ++i) {
+    for (int d = 0; d < 3; ++d) {
+      REQUIRE_THAT(out(i, d), WithinAbs(xyz[3 * i + d], pcms::test::ExactTol));
+    }
+  }
+}
+
+TEST_CASE("Map returns owned output and completes before returning")
+{
+  const std::vector<Real> xyz = {1.0, 0.0, 3.0};
+  auto data = pcms::test::CreateDeviceRank2View(xyz, 3);
+  const auto mapped = pcms::CartesianToCylindrical{}.Map(
+    pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+  // Clobber the caller's buffer after Map; the owned output stands.
+  Kokkos::deep_copy(data, -99.0);
+  auto out = pcms::test::CopyCoordinatesToHost(mapped.View().GetValues());
+  REQUIRE_THAT(out(0, 0), WithinAbs(1.0, pcms::test::ExactTol));
+  REQUIRE_THAT(out(0, 1), WithinAbs(0.0, pcms::test::ExactTol));
+  REQUIRE_THAT(out(0, 2), WithinAbs(3.0, pcms::test::ExactTol));
+}
+
+TEST_CASE("one map instance serves multiple point sets")
+{
+  const pcms::CartesianToCylindrical map;
+  auto a = pcms::test::CreateDeviceRank2View({1.0, 0.0, 0.0}, 3);
+  auto b = pcms::test::CreateDeviceRank2View({0.0, 2.0, 1.0, -3.0, 0.0, 2.0}, 3);
+  const auto mapped_a =
+    map.Map(pcms::test::MakeCoords(a, pcms::csys::Cartesian::Create(3)));
+  const auto mapped_b =
+    map.Map(pcms::test::MakeCoords(b, pcms::csys::Cartesian::Create(3)));
+  REQUIRE(mapped_a.NumPoints() == 1);
+  REQUIRE(mapped_b.NumPoints() == 2);
+  auto out_a = pcms::test::CopyCoordinatesToHost(mapped_a.View().GetValues());
+  auto out_b = pcms::test::CopyCoordinatesToHost(mapped_b.View().GetValues());
+  REQUIRE_THAT(out_a(0, 1), WithinAbs(0.0, pcms::test::ExactTol));
+  REQUIRE_THAT(out_b(0, 1), WithinAbs(M_PI / 2.0, pcms::test::ExactTol));
+  REQUIRE_THAT(out_b(1, 1), WithinAbs(M_PI, pcms::test::ExactTol));
+}
+
+TEST_CASE("Map rejects a source system that is not the map's own")
+{
+  const std::vector<Real> pts = {1.0, 0.0, 0.0};
+  auto data = pcms::test::CreateDeviceRank2View(pts, 3);
+  REQUIRE_THROWS_WITH(pcms::CartesianToCylindrical{}.Map(pcms::test::MakeCoords(
+                        data, pcms::csys::CylindricalRThetaZ::Create())),
+                      ContainsSubstring("source coordinate system"));
+}
+
+TEST_CASE(
+  "basis transformation: manufactured pushforward rotates vector components")
+{
+  // Points on distinct angles; radial unit vectors in cylindrical components
+  // must become (cos theta, sin theta, 0) in Cartesian components.
+  const std::vector<Real> rtz = {1.0, 0.0,        0.0, //
+                                 2.0, M_PI / 2.0, 1.0, //
+                                 0.5, M_PI / 4.0, -1.0};
+  auto data = pcms::test::CreateDeviceRank2View(rtz, 3);
+  const auto view = pcms::test::MakeCoords(data, pcms::csys::CylindricalRThetaZ::Create());
+  const auto transformation = pcms::CylindricalToCartesianBasis{}.Bind(view);
+  REQUIRE(SameCoordinateSystem(transformation->GetSourceBasis().system,
+                               pcms::csys::CylindricalRThetaZ::Create()));
+  REQUIRE(SameCoordinateSystem(transformation->GetTargetBasis().system,
+                               pcms::csys::Cartesian::Create(3)));
+  REQUIRE(transformation->NumPoints() == 3);
+
+  const std::vector<Real> radial = {1.0, 0.0, 0.0, 1.0, 0.0,
+                                    0.0, 1.0, 0.0, 0.0};
+  auto in_data = pcms::test::CreateDeviceRank2View(radial, 3);
+  Kokkos::View<Real**, DeviceMemorySpace> out_data("out", 3, 3);
+  transformation->Apply(
+    ValueView<const Real, DeviceMemorySpace>(
+      ValueBasis{pcms::csys::CylindricalRThetaZ::Create(),
+                 ComponentScaling::Physical,
+                 pcms::values::Vector},
+      pcms::MakeConstRank2View(in_data)),
+    ValueView<Real, DeviceMemorySpace>(
+      ValueBasis{pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
+                 pcms::values::Vector},
+      pcms::MakeRank2View(out_data)));
+  auto out = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(out_data));
+  for (int i = 0; i < 3; ++i) {
+    const Real theta = rtz[3 * i + 1];
+    CAPTURE(i);
+    REQUIRE_THAT(out(i, 0), WithinAbs(std::cos(theta), pcms::test::ExactTol));
+    REQUIRE_THAT(out(i, 1), WithinAbs(std::sin(theta), pcms::test::ExactTol));
+    REQUIRE_THAT(out(i, 2), WithinAbs(0.0, pcms::test::ExactTol));
+  }
 }
 
 TEST_CASE("basis transformation: binds at either endpoint system's points")
@@ -235,4 +326,47 @@ TEST_CASE("basis transformation Apply validates the view tags")
     REQUIRE_THAT(s(0, 0), WithinAbs(4.0, pcms::test::ExactTol));
     REQUIRE_THAT(s(0, 2), WithinAbs(6.0, pcms::test::ExactTol));
   }
+}
+
+TEST_CASE("ValueView validates component counts and basis")
+{
+  auto data = pcms::test::CreateDeviceRank2View({1.0, 2.0}, 2);
+  // A rank-1 value on a 3-dimensional system needs 3 components.
+  REQUIRE_THROWS_WITH(
+    (ValueView<const Real, DeviceMemorySpace>(
+      ValueBasis{pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
+                 pcms::values::Vector},
+      pcms::MakeConstRank2View(data))),
+    ContainsSubstring("require 3 components"));
+  // Component count comes from the system's dimension: a 2-dimensional system
+  // takes 2.
+  REQUIRE_NOTHROW(ValueView<const Real, DeviceMemorySpace>(
+    ValueBasis{pcms::csys::CylindricalRZ::Create(), ComponentScaling::Physical,
+               pcms::values::Vector},
+    pcms::MakeConstRank2View(data)));
+  // Non-scalar values require a basis coordinate system.
+  auto data3 = pcms::test::CreateDeviceRank2View({1.0, 2.0, 3.0}, 3);
+  REQUIRE_THROWS_WITH((ValueView<const Real, DeviceMemorySpace>(
+                        ValueBasis{nullptr, ComponentScaling::Physical,
+                                   pcms::values::Vector},
+                        pcms::MakeConstRank2View(data3))),
+                      ContainsSubstring("basis coordinate system"));
+  // Physical components are undefined on a non-orthogonal basis, and rank 0
+  // (an empty signature) ignores the basis at any component count.
+  REQUIRE_NOTHROW(ValueView<const Real, DeviceMemorySpace>(
+    ValueBasis{}, pcms::MakeConstRank2View(data)));
+}
+
+TEST_CASE("value declarations reject rank > 2")
+{
+  std::vector<Real> flat(27, 0.0);
+  auto data = pcms::test::CreateDeviceRank2View(flat, 27);
+  REQUIRE_THROWS_WITH(
+    (ValueView<const Real, DeviceMemorySpace>(
+      ValueBasis{
+        pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
+        pcms::values::Of({Variance::Contravariant, Variance::Contravariant,
+                          Variance::Contravariant})},
+      pcms::MakeConstRank2View(data))),
+    ContainsSubstring("rank-3"));
 }

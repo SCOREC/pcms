@@ -166,7 +166,9 @@ std::unique_ptr<PointEvaluator<T>> FunctionSpace::CreatePointEvaluator(
       "' is not the space's coordinate system '" +
       std::string(GetCoordinateSystem()->Kind()) +
       "' (the coordinate system its mesh coordinates were declared in; "
-      "coordinate systems compare by object identity)");
+      "coordinate systems compare by "
+      "object identity); map the points with a CoordinateMap and "
+      "evaluate at the View() of its result");
   }
   return std::get<std::unique_ptr<PointEvaluator<T>>>(
     CreatePointEvaluatorImpl(TypeEnumFromType<T>(), request));

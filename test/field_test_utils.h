@@ -370,6 +370,37 @@ inline void SetField(Field<Real>& field, Func func)
   SetField<ExecutionSpace>(field.GetLayout(), field.GetData(), func);
 }
 
+// Set multi-component DOF data by sampling func at each DOF-holder
+// coordinate, writing the components through the out pointer. The arity of
+// func selects the spatial dimension: func(x, y, out) for 2D layouts,
+// func(x, y, z, out) for 3D. Host-side; the component count comes from the
+// field's layout.
+template <typename Func>
+inline void SetFieldComponents(Field<Real>& field, Func func)
+{
+  const auto coords = field.GetLayout().GetDOFHolderCoordinates().GetValues();
+  const int n = static_cast<int>(coords.extent(0));
+  const int num_components = field.GetLayout().GetNumComponents();
+
+  static_assert(std::is_invocable_v<Func, Real, Real, Real*> ||
+                  std::is_invocable_v<Func, Real, Real, Real, Real*>,
+                "SetFieldComponents requires func(x, y, out) or "
+                "func(x, y, z, out)");
+
+  const auto coords_host = CopyCoordinatesToHost(coords);
+  std::vector<Real> data(static_cast<size_t>(n) * num_components);
+  for (int i = 0; i < n; ++i) {
+    Real* out = &data[static_cast<size_t>(i) * num_components];
+    if constexpr (std::is_invocable_v<Func, Real, Real, Real, Real*>) {
+      func(coords_host(i, 0), coords_host(i, 1), coords_host(i, 2), out);
+    } else {
+      func(coords_host(i, 0), coords_host(i, 1), out);
+    }
+  }
+  field.SetDOFHolderDataUncheckedHost(
+    Rank2View<const Real, HostMemorySpace>(data.data(), n, num_components));
+}
+
 template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
 inline void SetField(FieldData<Real>& field, const FieldLayout& layout,
                      Func func)

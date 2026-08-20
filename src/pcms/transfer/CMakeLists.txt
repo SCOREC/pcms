@@ -5,6 +5,7 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     interpolation_helpers.h
     mesh_intersection.hpp
     interpolator.h
+    transformed_transfer_operator.hpp
     copy.h
     transfer_operator.hpp
     mass_matrix_type.hpp

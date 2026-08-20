@@ -6,6 +6,7 @@ set(PCMS_FIELD_HEADERS
         coordinate_view.hpp
         coordinate_systems/cartesian.hpp
         coordinate_systems/cylindrical.hpp
+        coordinate_map.hpp
         basis_transformation.hpp
         point_status.hpp
         value_view.hpp
@@ -28,6 +29,7 @@ set(PCMS_FIELD_SOURCES
         field_layout.cpp
         coordinate_system.cpp
         basis_transformation.cpp
+        coordinate_map.cpp
         gid_permutation.cpp
         function_space/polynomial_reconstruction.cpp
         layout/empty.cpp

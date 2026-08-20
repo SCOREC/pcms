@@ -26,7 +26,7 @@ class TestOmegaHField:
         """Create an Omega_h-backed Field and exercise the public Field API."""
         mesh = self._build_mesh(world, dim)
         factory = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian
+            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
         )
         field = factory.create_field()
 
@@ -54,10 +54,10 @@ class TestOmegaHField:
 
         mesh = self._build_mesh(world, dim)
         source_space = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian
+            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
         )
         target_space = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian
+            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
         )
         source = source_space.create_field()
         target = target_space.create_field()
@@ -81,7 +81,7 @@ class TestOmegaHField:
         """Evaluate an Omega_h-backed field at explicit query points."""
         mesh = self._build_mesh(world, dim)
         factory = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian
+            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
         )
         field = factory.create_field()
 

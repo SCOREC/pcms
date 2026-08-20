@@ -10,6 +10,7 @@
 
 #include <Omega_h_array.hpp>
 #include <memory>
+#include <string>
 
 namespace pcms
 {
@@ -30,10 +31,14 @@ public:
   SupportResults Build(
     CoordinateView<DeviceMemorySpace> target_coords) const override
   {
-    if (target_coords.GetCoordinateSystem() != CoordinateSystem::Cartesian) {
+    // Euclidean search structures are valid wherever
+    // the metric is the identity.
+    if (!HasIdentityMetric(*target_coords.GetCoordinateSystem())) {
       throw pcms_error(
-        "PointCloudLocalizationFactory: only Cartesian coordinates are "
-        "supported");
+        "PointCloudLocalizationFactory: requires a coordinate system whose "
+        "metric is the identity; "
+        "got '" +
+        std::string(target_coords.GetCoordinateSystem()->Kind()) + "'");
     }
 
     const auto src_view = layout_->GetCoordinates();

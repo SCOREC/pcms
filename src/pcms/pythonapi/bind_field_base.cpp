@@ -1,7 +1,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_system.hpp"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/field/field.h"
 #include "pcms/field/field_evaluator_factory.h"
 #include "pcms/field/field_layout.h"
@@ -17,6 +18,8 @@
 #include "pcms/utility/uniform_grid.h"
 #include "pcms/utility/arrays.h"
 #include "numpy_array_transform.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/coordinate_systems/cylindrical.hpp"
 
 namespace py = pybind11;
 
@@ -34,22 +37,73 @@ struct PythonEvaluationRequest
   Kokkos::View<Real**, DeviceMemorySpace> device_coords;
 };
 
+// pybind11 holders cannot be shared_ptr<const T>, so the python-facing handle
+// is a small value wrapper around the shared identity object.
+struct PyCoordinateSystem
+{
+  std::shared_ptr<const CoordinateSystem> system;
+};
+
 } // namespace
 
 void bind_coordinate_system_module(py::module& m)
 {
-  // Bind CoordinateSystem enum
-  py::enum_<CoordinateSystem>(m, "CoordinateSystem")
-    .value("Cartesian", CoordinateSystem::Cartesian)
-    .value("Cylindrical", CoordinateSystem::Cylindrical)
-    .value("XGC", CoordinateSystem::XGC)
-    .value("GNET", CoordinateSystem::GNET)
-    .value("BEAMS3D", CoordinateSystem::BEAMS3D)
-    .export_values();
-
+  auto system_cls =
+    py::class_<PyCoordinateSystem>(m, "CoordinateSystem")
+      .def_static(
+        "Cartesian",
+        []() { return PyCoordinateSystem{csys::Cartesian::Deferred()}; },
+        "The dimension-deferred Cartesian placeholder, resolved against the "
+        "coordinate data by the constructor that receives it")
+      .def_static(
+        "Cartesian",
+        [](int dim) {
+          return PyCoordinateSystem{csys::Cartesian::Create(dim)};
+        },
+        py::arg("dim"),
+        "The canonical Cartesian coordinate system of the given dimension "
+        "(1..3)")
+      .def_property_readonly(
+        "kind",
+        [](const PyCoordinateSystem& self) {
+          return std::string(self.system->Kind());
+        },
+        "Family label")
+      .def_property_readonly(
+        "dimension",
+        [](const PyCoordinateSystem& self) { return self.system->Dimension(); },
+        "Number of stored coordinate columns")
+      .def_property_readonly(
+        "has_orthogonal_basis",
+        [](const PyCoordinateSystem& self) {
+          return self.system->HasOrthogonalBasis();
+        })
+      .def_property_readonly("has_unit_scale_factors",
+                             [](const PyCoordinateSystem& self) {
+                               return self.system->HasUnitScaleFactors();
+                             })
+      .def_static(
+        "cylindrical_rthetaz",
+        []() { return PyCoordinateSystem{csys::CylindricalRThetaZ::Create()}; },
+        "Cylindrical (r, theta, z), theta = atan2(y, x); dimension 3")
+      .def_static(
+        "cylindrical_rz",
+        []() { return PyCoordinateSystem{csys::CylindricalRZ::Create()}; },
+        "(R, Z) poloidal section; dimension 2")
+      .def(
+        "__eq__",
+        [](const PyCoordinateSystem& a, const PyCoordinateSystem& b) {
+          return SameCoordinateSystem(a.system, b.system);
+        },
+        py::is_operator())
+      .def("__repr__", [](const PyCoordinateSystem& self) {
+        return "<pcms.CoordinateSystem '" + std::string(self.system->Kind()) +
+               "' dim " + std::to_string(self.system->Dimension()) + ">";
+      });
   // Bind CoordinateView for HostMemorySpace
   py::class_<CoordinateView<HostMemorySpace>>(m, "CoordinateView")
-    .def(py::init([](CoordinateSystem cs, py::array_t<Real> coords) {
+    .def(py::init([](const PyCoordinateSystem& coordinate_system,
+                     py::array_t<Real> coords) {
            // Convert 2D numpy array to Rank2View
            auto buf = coords.request();
            if (buf.ndim != 2) {
@@ -60,18 +114,20 @@ void bind_coordinate_system_module(py::module& m)
              detail::default_layout_for_memory_space_t<HostMemorySpace>;
            Rank2View<const Real, HostMemorySpace, LayoutPolicy> coords_view(
              static_cast<Real*>(buf.ptr), buf.shape[0], buf.shape[1]);
-           return CoordinateView<HostMemorySpace>(cs, coords_view);
+           return CoordinateView<HostMemorySpace>(
+             ResolveCoordinateSystem(coordinate_system.system,
+                                     static_cast<int>(buf.shape[1])),
+             coords_view);
          }),
          py::arg("coordinate_system"), py::arg("coordinates"),
          "Constructor for CoordinateView")
 
-    .def("get_coordinate_system",
-         &CoordinateView<HostMemorySpace>::GetCoordinateSystem,
-         "Get the coordinate system")
-
-    .def("set_coordinate_system",
-         &CoordinateView<HostMemorySpace>::SetCoordinateSystem, py::arg("cs"),
-         "Set the coordinate system")
+    .def(
+      "get_coordinate_system",
+      [](const CoordinateView<HostMemorySpace>& self) {
+        return PyCoordinateSystem{self.GetCoordinateSystem()};
+      },
+      "The coordinate system declaring what the coordinate numbers mean")
 
     .def(
       "get_coordinates",
@@ -90,13 +146,6 @@ void bind_coordinate_system_module(py::module& m)
         return result;
       },
       "Get the coordinates as numpy array");
-
-  // Bind CoordinateTransformation abstract base class
-  py::class_<CoordinateTransformation,
-             std::shared_ptr<CoordinateTransformation>>(
-    m, "CoordinateTransformation")
-    .def("evaluate", &CoordinateTransformation::Evaluate, py::arg("from"),
-         py::arg("to"), "Evaluate the coordinate transformation");
 }
 
 void bind_create_field_module(py::module& m)
@@ -104,7 +153,7 @@ void bind_create_field_module(py::module& m)
   py::class_<PythonEvaluationRequest>(m, "EvaluationRequest")
     .def_static(
       "from_coordinates",
-      [](py::array_t<Real> coords, CoordinateSystem coordinate_system,
+      [](py::array_t<Real> coords, const PyCoordinateSystem& coordinate_system,
          OutOfBoundsPolicy policy) {
         auto coords_view = numpy_to_view_2d<const Real>(coords);
         // Create a Kokkos::View from the host data and deep copy to device
@@ -121,14 +170,17 @@ void bind_create_field_module(py::module& m)
         auto coords_device_view = MakeRank2View(coords_device);
         return PythonEvaluationRequest{
           EvaluationRequest::FromCoordinates(
-            CoordinateView<DeviceMemorySpace>(coordinate_system,
-                                              coords_device_view),
+            CoordinateView<DeviceMemorySpace>(
+              ResolveCoordinateSystem(coordinate_system.system,
+                                      static_cast<int>(coords_view.extent(1))),
+              coords_device_view),
             policy),
           py::reinterpret_borrow<py::object>(coords),
           coords_device}; // Keep the View alive!
       },
       py::arg("coordinates"),
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
+      py::arg("coordinate_system") =
+        PyCoordinateSystem{csys::Cartesian::Deferred()},
       py::arg("policy") = OutOfBoundsPolicy{},
       "Create an EvaluationRequest from an explicit coordinate array.")
     .def_static(
@@ -243,8 +295,12 @@ void bind_create_field_module(py::module& m)
       },
       py::arg("request"),
       "Create a reusable point evaluator from an EvaluationRequest.")
-    .def("get_coordinate_system", &FunctionSpace::GetCoordinateSystem,
-         "Get the coordinate system for this function space")
+    .def(
+      "get_coordinate_system",
+      [](const FunctionSpace& self) {
+        return PyCoordinateSystem{self.GetCoordinateSystem()};
+      },
+      "The domain coordinate system: what this space's mesh coordinates mean")
     .def(
       "mesh",
       [](const FunctionSpace& self) -> Omega_h::Mesh& {
@@ -280,39 +336,42 @@ void bind_create_field_module(py::module& m)
     .def_static(
       "from_mesh",
       [](Omega_h::Mesh& mesh, int order, int num_components,
-         CoordinateSystem coordinate_system, std::string global_id_name,
-         LagrangeFunctionSpace::Backend backend) {
+         const PyCoordinateSystem& coordinate_system,
+         std::string global_id_name, LagrangeFunctionSpace::Backend backend) {
         return LagrangeFunctionSpace::FromMesh(
-          mesh, order, num_components, coordinate_system,
+          mesh, order, num_components, coordinate_system.system,
           std::move(global_id_name), backend);
       },
       py::arg("mesh"), py::arg("order"), py::arg("num_components") = 1,
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
+      py::arg("mesh_coordinate_system") =
+        PyCoordinateSystem{csys::Cartesian::Deferred()},
       py::arg("global_id_name") = "global",
       py::arg("backend") = LagrangeFunctionSpace::DefaultBackend,
       "Create a LagrangeFunctionSpace from an Omega_h mesh")
 
     .def_static(
       "from_uniform_grid",
-      [](const UniformGrid<2>& grid, int num_components, CoordinateSystem cs,
-         int order) {
-        return LagrangeFunctionSpace::FromUniformGrid(grid, num_components, cs,
-                                                      order);
+      [](const UniformGrid<2>& grid, int num_components,
+         const PyCoordinateSystem& coordinate_system, int order) {
+        return LagrangeFunctionSpace::FromUniformGrid(
+          grid, num_components, coordinate_system.system, order);
       },
       py::arg("grid"), py::arg("num_components") = 1,
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
+      py::arg("mesh_coordinate_system") =
+        PyCoordinateSystem{csys::Cartesian::Deferred()},
       py::arg("order") = 1,
       "Create a LagrangeFunctionSpace from a 2D uniform grid")
 
     .def_static(
       "from_uniform_grid",
-      [](const UniformGrid<3>& grid, int num_components, CoordinateSystem cs,
-         int order) {
-        return LagrangeFunctionSpace::FromUniformGrid(grid, num_components, cs,
-                                                      order);
+      [](const UniformGrid<3>& grid, int num_components,
+         const PyCoordinateSystem& coordinate_system, int order) {
+        return LagrangeFunctionSpace::FromUniformGrid(
+          grid, num_components, coordinate_system.system, order);
       },
       py::arg("grid"), py::arg("num_components") = 1,
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
+      py::arg("mesh_coordinate_system") =
+        PyCoordinateSystem{csys::Cartesian::Deferred()},
       py::arg("order") = 1,
       "Create a LagrangeFunctionSpace from a 3D uniform grid");
 
@@ -337,24 +396,32 @@ void bind_create_field_module(py::module& m)
     m, "PolynomialReconstructionFunctionSpace")
     .def_static(
       "from_coords",
-      [](py::array_t<Real> coords, CoordinateSystem cs, MLSOptions opts) {
+      [](py::array_t<Real> coords, const PyCoordinateSystem& coordinate_system,
+         MLSOptions opts) {
         auto view = numpy_to_view_2d<Real>(coords);
-        return PolynomialReconstructionFunctionSpace::Create(view, cs, opts);
+        return PolynomialReconstructionFunctionSpace::Create(
+          CoordinateView<HostMemorySpace>(
+            ResolveCoordinateSystem(coordinate_system.system,
+                                    static_cast<int>(view.extent(1))),
+            view),
+          opts);
       },
       py::arg("coords"),
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
+      py::arg("coordinate_system") =
+        PyCoordinateSystem{csys::Cartesian::Deferred()},
       py::arg("options") = MLSOptions{},
       "Create a PolynomialReconstructionFunctionSpace from a 2D array of "
       "source coordinates (shape: num_points × dim).")
     .def_static(
       "from_mesh",
-      [](Omega_h::Mesh& mesh, int source_entity_dim, CoordinateSystem cs,
-         MLSOptions opts) {
+      [](Omega_h::Mesh& mesh, int source_entity_dim,
+         const PyCoordinateSystem& coordinate_system, MLSOptions opts) {
         return PolynomialReconstructionFunctionSpace::FromMesh(
-          mesh, source_entity_dim, cs, opts);
+          mesh, source_entity_dim, coordinate_system.system, opts);
       },
       py::arg("mesh"), py::arg("source_entity_dim"),
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
+      py::arg("coordinate_system") =
+        PyCoordinateSystem{csys::Cartesian::Deferred()},
       py::arg("options") = MLSOptions{},
       "Create a PolynomialReconstructionFunctionSpace from mesh entity "
       "coordinates.");

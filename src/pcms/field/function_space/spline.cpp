@@ -18,10 +18,11 @@ SplineFunctionSpace::SplineFunctionSpace(
 }
 
 std::shared_ptr<SplineFunctionSpace> SplineFunctionSpace::FromUniformGrid(
-  const UniformGrid<2>& grid, CoordinateSystem coordinate_system)
+  const UniformGrid<2>& grid,
+  std::shared_ptr<const CoordinateSystem> mesh_coordinate_system)
 {
-  auto layout =
-    std::make_shared<UniformGridFieldLayout<2>>(grid, 1, coordinate_system, 1);
+  auto layout = std::make_shared<UniformGridFieldLayout<2>>(
+    grid, 1, std::move(mesh_coordinate_system), 1);
   auto evaluator_factory =
     std::make_shared<UniformGridSplineEvaluatorFactory2D>(layout);
   return std::make_shared<SplineFunctionSpace>(Key{}, layout,
@@ -34,11 +35,6 @@ std::shared_ptr<const FieldLayout> SplineFunctionSpace::GetLayout()
   return layout_;
 }
 
-CoordinateSystem SplineFunctionSpace::GetCoordinateSystem() const noexcept
-{
-  return evaluator_factory_->GetCoordinateSystem();
-}
-
 FieldVariant SplineFunctionSpace::CreateFieldImpl(Type value_type,
                                                   FieldMetadata metadata) const
 {
@@ -48,7 +44,8 @@ FieldVariant SplineFunctionSpace::CreateFieldImpl(Type value_type,
       throw pcms_error("SplineFunctionSpace: only double (Real) is supported");
     } else {
       return WrapField<double>(
-        layout_, std::make_unique<SimpleFieldData<double>>(layout_, metadata));
+        layout_,
+        std::make_unique<SimpleFieldData<double>>(layout_, metadata));
     }
   });
 }

@@ -120,11 +120,10 @@ struct InitilizeGidsAndOwnedFunctor
 
 template <unsigned Dim>
 UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
-  UniformGrid<Dim> grid, int num_components, CoordinateSystem coordinate_system,
-  int order)
+  UniformGrid<Dim> grid, int num_components,
+  std::shared_ptr<const CoordinateSystem> coordinate_system, int order)
   : grid_(std::move(grid)),
     num_components_(num_components),
-    coordinate_system_(coordinate_system),
     order_(order),
     gids_("gids", GetNumDofHolders()),
     gids_host_("gids_host", GetNumDofHolders()),
@@ -133,6 +132,8 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
     owned_host_("owned_host", GetNumDofHolders())
 {
   PCMS_FUNCTION_TIMER;
+  SetCoordinateSystem(ResolveCoordinateSystem(std::move(coordinate_system),
+                                              static_cast<int>(Dim)));
   PCMS_ALWAYS_ASSERT(order_ == 0 || order_ == 1);
 
   LO num_dofs = GetNumDofHolders();
@@ -234,7 +235,7 @@ CoordinateView<DeviceMemorySpace>
 UniformGridFieldLayout<Dim>::GetDOFHolderCoordinates() const
 {
   auto coords_view = MakeConstRank2View(dof_holder_coords_);
-  return CoordinateView<DeviceMemorySpace>{coordinate_system_, coords_view};
+  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(), coords_view};
 }
 
 template <unsigned Dim>

@@ -59,7 +59,7 @@ class TestMLSInterpolation:
             opts.basis = pcms.RadialBasisFunction.NO_OP
 
             factory = pcms.PolynomialReconstructionFunctionSpace.from_coords(
-                source_xy, pcms.CoordinateSystem.Cartesian, opts
+                source_xy, pcms.CoordinateSystem.Cartesian(), opts
             )
             field = factory.create_field()
             request = pcms.EvaluationRequest.from_coordinates(target_xy)

@@ -1,9 +1,32 @@
 #include "pcms/field/layout/empty.h"
+#include "pcms/utility/assert.h"
 
 namespace pcms
 {
 
-EmptyFieldLayout::EmptyFieldLayout()
+namespace
+{
+
+// helper/indirection to ensure that we don't end up with a Cartesian system
+// with dimension 0
+int RequireDimension(const std::shared_ptr<const CoordinateSystem>& system)
+{
+  if (system == nullptr) {
+    throw pcms_error("EmptyFieldLayout: coordinate system must not be null");
+  }
+  if (system->Dimension() == 0) {
+    throw pcms_error(
+      "EmptyFieldLayout: requires a concrete coordinate system; the "
+      "dimension-deferred Cartesian placeholder has no coordinate data "
+      "here to resolve against");
+  }
+  return system->Dimension();
+}
+
+} // namespace
+
+EmptyFieldLayout::EmptyFieldLayout(
+  std::shared_ptr<const CoordinateSystem> system)
   : owned_("null_owned", 0),
     gids_("null_gids", 0),
     class_dims_("null_class_dims", 0),
@@ -12,8 +35,9 @@ EmptyFieldLayout::EmptyFieldLayout()
     gids_host_("null_gids_host", 0),
     classification_dims_host_("null_classification_dims_host", 0),
     classification_ids_host_("null_classification_ids_host", 0),
-    coords_("null_coords", 0, 2)
+    coords_("null_coords", 0, RequireDimension(system))
 {
+  SetCoordinateSystem(std::move(system));
   discretization_ = std::make_shared<EmptyDiscretization>();
 }
 
@@ -62,12 +86,12 @@ CoordinateView<DeviceMemorySpace> EmptyFieldLayout::GetDOFHolderCoordinates()
   const
 {
   auto coords_view = MakeConstRank2View(coords_);
-  return CoordinateView<DeviceMemorySpace>{CoordinateSystem::XGC, coords_view};
+  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(), coords_view};
 }
 
 int EmptyFieldLayout::GetDimension() const
 {
-  return 2;
+  return GetCoordinateSystem()->Dimension();
 }
 
 Rank1View<const LO, HostMemorySpace>

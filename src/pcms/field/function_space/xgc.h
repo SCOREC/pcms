@@ -43,8 +43,7 @@ public:
   }
 
 protected:
-  [[nodiscard]] FieldVariant CreateFieldImpl(
-    Type value_type, FieldMetadata metadata) const override
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type value_type, FieldMetadata metadata) const override
   {
     return apply_to_type(value_type, [&](auto tag) -> FieldVariant {
       using T = typename decltype(tag)::type;

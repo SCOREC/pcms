@@ -40,6 +40,7 @@ if (PCMS_ENABLE_OMEGA_H)
             function_space/lagrange.h
             function_space/spline.h
             field_evaluator_factory.h
+            field_factory.h
             layout/omega_h_entity.h
             layout/omega_h_lagrange.h
             evaluator/omega_h_lagrange.h

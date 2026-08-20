@@ -34,10 +34,8 @@ public:
     }
 
     auto data = xgc_field->GetDOFHolderDataHost();
-    const auto& layout = field.GetLayout();
-    auto owned = layout.GetOwnedHost();
-    // Per-holder plan: owned[i]/permutation[i] index holders; a holder's
-    // num_components values form one contiguous block in the wire buffer.
+    // Per-holder plan: permutation[i] indexes holders; a holder's num_components
+    // values form one contiguous block in the wire buffer.
     if (buffer.size() > 0) {
       const LO num_dof = static_cast<LO>(data.extent(0));
       const LO num_comp = static_cast<LO>(data.extent(1));

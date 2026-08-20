@@ -72,8 +72,6 @@ public:
 
   void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
   {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
     CopyHostRank2ViewToDeviceView(device_data_, values);
     SyncBackend(GetDOFHolderData());
   }
@@ -85,8 +83,6 @@ public:
 
   void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
     CopyDeviceRank2ViewToDeviceView(device_data_, values);
     SyncBackend(GetDOFHolderData());
   }
@@ -97,6 +93,9 @@ public:
   }
 
 private:
+  // Serialization boundary: meshfields' SetData consumes flat node-major
+  // spans, so the shaped data is explicitly repacked into a flat node-major
+  // staging buffer here — the one place this backend handles flat memory.
   void SyncBackend(Rank2View<const T, DeviceMemorySpace> data)
   {
     auto nodes_per_dim = layout_->GetNodesPerDim();

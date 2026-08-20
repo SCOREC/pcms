@@ -26,8 +26,8 @@ public:
 private:
   std::shared_ptr<const PointCloudLayout> layout_;
   FieldMetadata metadata_;
-  Kokkos::View<Real*, DeviceMemorySpace> device_data_;
-  mutable Kokkos::View<Real*, HostMemorySpace> data_host_;
+  Kokkos::View<Real**, DeviceMemorySpace> device_data_;
+  mutable Kokkos::View<Real**, HostMemorySpace> data_host_;
 };
 } // namespace pcms
 

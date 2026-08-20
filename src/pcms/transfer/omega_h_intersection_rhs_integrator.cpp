@@ -261,10 +261,7 @@ void OmegaHIntersectionRHSIntegrator::Assemble(
   PetscErrorCode ierr = VecZeroEntries(vec_);
   CHKERRABORT(PETSC_COMM_SELF, ierr);
 
-  auto sv = Kokkos::View<const Real**, Kokkos::LayoutRight, DeviceMemorySpace,
-                         Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
-    sampled_values.data_handle(), sampled_values.extent(0),
-    sampled_values.extent(1));
+  auto sv = sampled_values;
   Kokkos::View<PetscScalar*, DeviceMemorySpace> coo_vals("rhs_coo_vals",
                                                          num_pts * ndof);
   auto coeffs = coeffs_;

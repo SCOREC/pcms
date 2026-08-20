@@ -50,23 +50,10 @@ public:
   void Apply(const Field<T>& source, Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
-    const LO num_points = num_points_;
-    const int n_comp = n_comp_;
-    Kokkos::View<T**, DeviceMemorySpace> output("interp_output", num_points,
-                                                n_comp);
-    auto output_view = MakeRank2View(output);
-    evaluator_->Evaluate(source, output_view);
-    Kokkos::View<T*, DeviceMemorySpace> flat(
-      "interp_flat", static_cast<size_t>(num_points) * n_comp);
-    Kokkos::parallel_for(
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_LAMBDA(LO i) {
-        for (int c = 0; c < n_comp; ++c) {
-          flat(i * n_comp + c) = output(i, c);
-        }
-      });
-    target.GetData().SetDOFHolderData(
-      Rank2View<const T, DeviceMemorySpace>(flat.data(), num_points, n_comp));
+    Kokkos::View<T**, DeviceMemorySpace> output("interp_output", num_points_,
+                                                n_comp_);
+    evaluator_->Evaluate(source, MakeRank2View(output));
+    target.GetData().SetDOFHolderData(MakeConstRank2View(output));
   }
 
 private:

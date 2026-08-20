@@ -19,9 +19,8 @@ public:
                         Rank1View<const LO, HostMemorySpace> permutation) const
   {
     auto data = field.GetDOFHolderDataHost();
-    auto owned = layout.GetOwnedHost();
-    // The exchange plan is per DOF holder: owned[i] and permutation[i] are
-    // indexed by holder. All num_components components of a holder share its
+    // The exchange plan is per DOF holder: permutation[i] is indexed by holder.
+    // All num_components components of a holder share its
     // location, so they occupy one contiguous block permutation[i]*num_comp in
     // the wire buffer.
     if (buffer.size() > 0) {

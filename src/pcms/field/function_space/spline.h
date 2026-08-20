@@ -34,16 +34,14 @@ public:
     std::shared_ptr<FieldEvaluatorFactory<Real>> evaluator_factory) noexcept;
 
   [[nodiscard]] static std::shared_ptr<SplineFunctionSpace> FromUniformGrid(
-    const UniformGrid<2>& grid, CoordinateSystem coordinate_system);
+    const UniformGrid<2>& grid,
+    std::shared_ptr<const CoordinateSystem> mesh_coordinate_system);
 
   [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayout()
     const noexcept override;
 
-  [[nodiscard]] CoordinateSystem GetCoordinateSystem() const noexcept override;
-
 protected:
-  [[nodiscard]] FieldVariant CreateFieldImpl(
-    Type value_type, FieldMetadata metadata) const override;
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type value_type, FieldMetadata metadata) const override;
 
   [[nodiscard]] FieldVariant CreateFieldImpl(
     FieldDataVariant data) const override;

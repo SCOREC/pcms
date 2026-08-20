@@ -15,6 +15,7 @@
 #include "pcms/utility/arrays.h"
 #include "field_test_utils.h"
 #include <cmath>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::CreateUniformGridFromMesh;
 
@@ -26,9 +27,9 @@ TEST_CASE("UniformGridDiscretization SameEntities: identical grids")
   grid.divisions = {4, 4};
 
   pcms::UniformGridFieldLayout<2> layout_a(grid, 1,
-                                           pcms::CoordinateSystem::Cartesian);
+                                           pcms::csys::Cartesian::Deferred());
   pcms::UniformGridFieldLayout<2> layout_b(grid, 1,
-                                           pcms::CoordinateSystem::Cartesian);
+                                           pcms::csys::Cartesian::Deferred());
 
   auto disc_a = layout_a.GetDiscretization();
   auto disc_b = layout_b.GetDiscretization();
@@ -51,9 +52,9 @@ TEST_CASE("UniformGridDiscretization SameEntities: different grids")
   grid_b.divisions = {8, 8};
 
   pcms::UniformGridFieldLayout<2> layout_a(grid_a, 1,
-                                           pcms::CoordinateSystem::Cartesian);
+                                           pcms::csys::Cartesian::Deferred());
   pcms::UniformGridFieldLayout<2> layout_b(grid_b, 1,
-                                           pcms::CoordinateSystem::Cartesian);
+                                           pcms::csys::Cartesian::Deferred());
 
   auto disc_a = layout_a.GetDiscretization();
   auto disc_b = layout_b.GetDiscretization();
@@ -83,7 +84,8 @@ void VerifyUniformGridFieldValues(
 void VerifyMaskFieldValues(const pcms::UniformGrid<2>& grid,
                            const pcms::Field<pcms::Real>& mask_field)
 {
-  auto mask_data = pcms::FlattenToRank1View(mask_field.GetDOFHolderDataHost());
+  auto mask_data =
+    pcms::FlattenToRank1View(mask_field.GetDOFHolderDataHost());
   for (int j = 0; j <= grid.divisions[1]; ++j) {
     for (int i = 0; i <= grid.divisions[0]; ++i) {
       int vertex_id = j * (grid.divisions[0] + 1) + i;
@@ -100,7 +102,7 @@ TEST_CASE("UniformGrid field creation")
   grid.divisions = {5, 5};
 
   auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(layout->GetNumComponents() == 1);
   REQUIRE(layout->GetNumOwnedDofHolder() == 36); // (5+1)x(5+1) = 36 vertices
@@ -108,7 +110,7 @@ TEST_CASE("UniformGrid field creation")
   REQUIRE_FALSE(layout->IsDistributed());
 
   auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto field = field_space->CreateFunction<pcms::Real>();
   REQUIRE(field.GetDOFHolderDataHost().size() ==
           static_cast<size_t>(layout->OwnedSize()));
@@ -122,9 +124,9 @@ TEST_CASE("UniformGrid order-0 field creation and evaluation")
   grid.divisions = {2, 2};
 
   auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
-    grid, 1, pcms::CoordinateSystem::Cartesian, 0);
+    grid, 1, pcms::csys::Cartesian::Deferred(), 0);
   auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian, 0);
+    grid, 1, pcms::csys::Cartesian::Deferred(), 0);
   auto field = field_space->CreateFunction<pcms::Real>();
   pcms::UniformGridEvaluatorFactory<2> eval_factory(layout);
 
@@ -147,7 +149,7 @@ TEST_CASE("UniformGrid order-0 field creation and evaluation")
   std::vector<pcms::Real> eval_coords = {1.0, 1.0, 9.0, 1.0,
                                          1.0, 9.0, 9.0, 9.0};
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
-    eval_coords, pcms::CoordinateSystem::Cartesian);
+    eval_coords, pcms::csys::Cartesian::Deferred());
   auto evaluator = eval_factory.CreatePointEvaluator(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
 
@@ -171,9 +173,9 @@ TEST_CASE("UniformGrid field data operations", "[uniform_grid_field]")
   grid.divisions = {4, 4};
 
   auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto field = field_space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data(25);
@@ -184,7 +186,8 @@ TEST_CASE("UniformGrid field data operations", "[uniform_grid_field]")
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
       data.data(), static_cast<pcms::LO>(data.size()), 1));
 
-  auto retrieved = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+  auto retrieved =
+    pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
   REQUIRE(retrieved.size() == 25);
   for (size_t i = 0; i < 25; ++i)
     REQUIRE(retrieved[i] == static_cast<pcms::Real>(i));
@@ -198,9 +201,9 @@ TEST_CASE("UniformGrid field evaluation - piecewise constant")
   grid.divisions = {2, 2};
 
   auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto field = field_space->CreateFunction<pcms::Real>();
   pcms::UniformGridEvaluatorFactory<2> eval_factory(layout);
 
@@ -227,7 +230,7 @@ TEST_CASE("UniformGrid field evaluation - piecewise constant")
     7.5, 7.5  // Cell 3 center
   };
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
-    eval_coords, pcms::CoordinateSystem::Cartesian);
+    eval_coords, pcms::csys::Cartesian::Deferred());
   auto evaluator = eval_factory.CreatePointEvaluator(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
 
@@ -256,9 +259,9 @@ TEST_CASE("UniformGrid field serialization")
   grid.divisions = {3, 3};
 
   auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto field = field_space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data(16);
@@ -280,7 +283,7 @@ TEST_CASE("UniformGrid field copy")
   grid.divisions = {2, 2};
 
   auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
 
   // Set vertex values with f(x,y) = x + y at 3x3 vertex positions
   // Vertices at: (0,0), (5,0), (10,0), (0,5), (5,5), (10,5), (0,10), (5,10),
@@ -292,7 +295,7 @@ TEST_CASE("UniformGrid field copy")
   };
 
   auto factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto field = factory->CreateFunction<pcms::Real>();
   field.SetDOFHolderDataHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
@@ -302,7 +305,8 @@ TEST_CASE("UniformGrid field copy")
   pcms::Copy<pcms::Real> copy(*factory, *factory);
   copy.Apply(field, field2);
 
-  auto copied_data = pcms::FlattenToRank1View(field2.GetDOFHolderDataHost());
+  auto copied_data =
+    pcms::FlattenToRank1View(field2.GetDOFHolderDataHost());
   REQUIRE(copied_data.size() == data.size());
   for (size_t i = 0; i < data.size(); ++i)
     REQUIRE(copied_data[i] == data[i]);
@@ -315,7 +319,7 @@ TEST_CASE("Transfer from OmegaH field to UniformGrid field")
                                  2, 0, false);
 
   auto omega_h_factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
   auto omega_h_field = omega_h_factory->CreateFunction<pcms::Real>();
   pcms::test::SetField(
     omega_h_field, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) {
@@ -327,7 +331,7 @@ TEST_CASE("Transfer from OmegaH field to UniformGrid field")
   grid.bot_left = {0.0, 0.0};
   grid.divisions = {2, 2};
   auto ug_factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto ug_field = ug_factory->CreateFunction<pcms::Real>();
 
   pcms::Interpolator<pcms::Real> interp(*omega_h_factory, *ug_factory);
@@ -362,7 +366,8 @@ TEST_CASE("Create binary field from uniform grid")
 
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{5, 5});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     REQUIRE(field_data.size() == 36); // (5+1) * (5+1) = 36 vertices
 
@@ -381,7 +386,8 @@ TEST_CASE("Create binary field from uniform grid")
 
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 8});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     REQUIRE(field_data.size() == 99); // (10+1) * (8+1) = 99 vertices
 
@@ -399,7 +405,8 @@ TEST_CASE("Create binary field from uniform grid")
 
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     for (size_t i = 0; i < field_data.size(); ++i) {
       REQUIRE((field_data[i] == 0.0 || field_data[i] == 1.0));
@@ -417,7 +424,8 @@ TEST_CASE("Create binary field from uniform grid")
     grid.divisions = {10, 10};
 
     auto [layout, field] = pcms::CreateUniformGridBinaryField<2>(mesh, grid);
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     REQUIRE(field_data.size() == 121); // (10+1) * (10+1) = 121 vertices
 
@@ -451,7 +459,8 @@ TEST_CASE("Create binary field from uniform grid")
 
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{20, 20});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     REQUIRE(field_data.size() == 441); // (20+1) * (20+1) = 441 vertices
 
@@ -472,7 +481,8 @@ TEST_CASE("Create binary field from uniform grid")
 
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{30, 10});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     REQUIRE(field_data.size() == 341); // (30+1) * (10+1) = 341 vertices
 
@@ -499,7 +509,8 @@ TEST_CASE("Binary field integration with grid methods")
     auto grid = CreateUniformGridFromMesh<2>(mesh, std::array{8, 8});
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{8, 8});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     // Get field value for a specific vertex (middle vertex at i=4, j=4)
     pcms::LO vertex_id = 4 * 9 + 4;
@@ -519,7 +530,8 @@ TEST_CASE("Binary field integration with grid methods")
     auto grid = CreateUniformGridFromMesh<2>(mesh, std::array{10, 10});
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     int q1 = 0, q2 = 0, q3 = 0, q4 = 0;
 
@@ -574,7 +586,8 @@ TEST_CASE("Performance and edge cases")
 
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{50, 50});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     REQUIRE(field_data.size() == 2601); // (50+1) * (50+1) = 2601 vertices
 
@@ -591,7 +604,8 @@ TEST_CASE("Performance and edge cases")
 
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{2, 2});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     REQUIRE(field_data.size() == 9); // (2+1) * (2+1) = 9 vertices
 
@@ -608,7 +622,8 @@ TEST_CASE("Performance and edge cases")
 
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{25, 10});
-    auto field_data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    auto field_data =
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
 
     REQUIRE(field_data.size() == 286); // (25+1) * (10+1) = 286 vertices
 
@@ -629,7 +644,7 @@ TEST_CASE("UniformGrid workflow")
   auto grid = pcms::CreateUniformGridFromMesh<2>(mesh, {4, 4});
 
   auto omega_h_factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
   auto omega_h_field = omega_h_factory->CreateFunction<pcms::Real>();
   pcms::test::SetField(
     omega_h_field, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) {
@@ -637,7 +652,7 @@ TEST_CASE("UniformGrid workflow")
     });
 
   auto ug_factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto ug_field = ug_factory->CreateFunction<pcms::Real>();
 
   auto [mask_layout, mask_field] =
@@ -651,7 +666,7 @@ TEST_CASE("UniformGrid workflow")
     pcms::test::CopyCoordinatesToHost(ug_coords_device_view, 25, 2);
 
   pcms::CoordinateView<pcms::HostMemorySpace> ug_coords_view(
-    pcms::CoordinateSystem::Cartesian,
+    pcms::csys::Cartesian::Deferred(),
     pcms::MakeConstRank2View(ug_coords_host_view));
   const auto ug_field_data =
     pcms::FlattenToRank1View(ug_field.GetDOFHolderDataHost());
@@ -674,9 +689,9 @@ TEST_CASE("UniformGrid Order-1 multi-component field evaluation")
   const int num_components = 4;
 
   auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
-    grid, num_components, pcms::CoordinateSystem::Cartesian);
+    grid, num_components, pcms::csys::Cartesian::Deferred());
   auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, num_components, pcms::CoordinateSystem::Cartesian);
+    grid, num_components, pcms::csys::Cartesian::Deferred());
   auto field = field_space->CreateFunction<pcms::Real>();
   pcms::UniformGridEvaluatorFactory<2> eval_factory(layout);
 
@@ -715,7 +730,7 @@ TEST_CASE("UniformGrid Order-1 multi-component field evaluation")
     7.5, 7.5  // cell 3 center
   };
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
-    eval_coords, pcms::CoordinateSystem::Cartesian);
+    eval_coords, pcms::csys::Cartesian::Deferred());
   auto evaluator = eval_factory.CreatePointEvaluator(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
 
@@ -752,9 +767,9 @@ TEST_CASE("UniformGrid Order-0 multi-component field (regression)")
   const int num_components = 2;
 
   auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
-    grid, num_components, pcms::CoordinateSystem::Cartesian, 0); // Order 0
+    grid, num_components, pcms::csys::Cartesian::Deferred(), 0); // Order 0
   auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, num_components, pcms::CoordinateSystem::Cartesian, 0);
+    grid, num_components, pcms::csys::Cartesian::Deferred(), 0);
   auto field = field_space->CreateFunction<pcms::Real>();
   pcms::UniformGridEvaluatorFactory<2> eval_factory(layout);
 
@@ -778,7 +793,7 @@ TEST_CASE("UniformGrid Order-0 multi-component field (regression)")
     7.5, 7.5  // Cell 3 center
   };
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
-    eval_coords, pcms::CoordinateSystem::Cartesian);
+    eval_coords, pcms::csys::Cartesian::Deferred());
   auto evaluator = eval_factory.CreatePointEvaluator(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
 

@@ -32,7 +32,8 @@ void CheckApplyCompatible(const Field<Real>& source, const Field<Real>& target,
     throw pcms_error(
       "OmegaHConservativeProjection::Apply: only scalar fields are supported");
   }
-  if (source_md.value_coordinate_system != target_md.value_coordinate_system) {
+  if (!SameCoordinateSystem(source_md.value_coordinate_system,
+                            target_md.value_coordinate_system)) {
     throw pcms_error("OmegaHConservativeProjection::Apply: source and target "
                      "value coordinate systems differ");
   }

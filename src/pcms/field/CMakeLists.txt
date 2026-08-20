@@ -2,7 +2,10 @@ find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_HEADERS
         field.h
-        coordinate_system.h
+        coordinate_system.hpp
+        coordinate_view.hpp
+        coordinate_systems/cartesian.hpp
+        coordinate_systems/cylindrical.hpp
         element_dispatch.h
         evaluation_request.h
         gid_permutation.hpp
@@ -21,6 +24,7 @@ set(PCMS_FIELD_HEADERS
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
+        coordinate_system.cpp
         gid_permutation.cpp
         function_space/polynomial_reconstruction.cpp
         layout/empty.cpp

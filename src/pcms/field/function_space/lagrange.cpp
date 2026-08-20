@@ -65,8 +65,8 @@ LagrangeFunctionSpace::LagrangeFunctionSpace(
 
 std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
   Omega_h::Mesh& mesh, int order, int num_components,
-  CoordinateSystem coordinate_system, std::string global_id_name,
-  Backend backend, std::string layout_name)
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
+  std::string global_id_name, Backend backend, std::string layout_name)
 {
   // https://github.com/SCOREC/meshFields/issues/88
   if (backend == Backend::MeshFields && order == 0) {
@@ -93,16 +93,16 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
         if (t == Type::Float) {
           if constexpr (std::is_same_v<MeshField::Real4, float> ||
                         std::is_same_v<MeshField::Real8, float>) {
-            return std::make_unique<MeshFieldsFieldData<float>>(mesh_layout,
-                                                                metadata);
+            return std::make_unique<MeshFieldsFieldData<float>>(
+              mesh_layout, metadata);
           }
           throw pcms_error(
             "LagrangeFunctionSpace: MeshFields backend does not support "
             "float in this build");
         }
         if (t == Type::Real) {
-          return std::make_unique<MeshFieldsFieldData<double>>(mesh_layout,
-                                                               metadata);
+          return std::make_unique<MeshFieldsFieldData<double>>(
+            mesh_layout, metadata);
         }
         throw pcms_error(
           "LagrangeFunctionSpace: MeshFields backend only supports the "
@@ -142,8 +142,9 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
 
 std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
   Omega_h::Mesh& mesh, int order, int num_components,
-  CoordinateSystem coordinate_system, Omega_h::Read<Omega_h::I8> owned_mask,
-  std::string global_id_name, Backend backend, std::string layout_name)
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
+  Omega_h::Read<Omega_h::I8> owned_mask, std::string global_id_name,
+  Backend backend, std::string layout_name)
 {
   if (backend == Backend::MeshFields) {
     throw pcms_error(
@@ -178,7 +179,8 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
 
 std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromUniformGrid(
   const UniformGrid<2>& grid, int num_components,
-  CoordinateSystem coordinate_system, int order, std::string layout_name)
+  std::shared_ptr<const CoordinateSystem> coordinate_system, int order,
+  std::string layout_name)
 {
   if (order != 0 && order != 1) {
     throw std::invalid_argument("LagrangeFunctionSpace::FromUniformGrid: only "
@@ -206,7 +208,8 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromUniformGrid(
 
 std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromUniformGrid(
   const UniformGrid<3>& grid, int num_components,
-  CoordinateSystem coordinate_system, int order, std::string layout_name)
+  std::shared_ptr<const CoordinateSystem> coordinate_system, int order,
+  std::string layout_name)
 {
   if (order != 0 && order != 1) {
     throw std::invalid_argument("LagrangeFunctionSpace::FromUniformGrid: only "
@@ -236,11 +239,6 @@ std::shared_ptr<const FieldLayout> LagrangeFunctionSpace::GetLayout()
   const noexcept
 {
   return layout_;
-}
-
-CoordinateSystem LagrangeFunctionSpace::GetCoordinateSystem() const noexcept
-{
-  return evaluator_factory_->GetCoordinateSystem();
 }
 
 FieldVariant LagrangeFunctionSpace::CreateFieldImpl(

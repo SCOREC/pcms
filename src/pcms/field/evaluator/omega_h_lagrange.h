@@ -305,11 +305,6 @@ public:
 
   const FieldLayout& GetLayout() const override { return *layout_; }
 
-  CoordinateSystem GetCoordinateSystem() const override
-  {
-    return layout_->GetDOFHolderCoordinates().GetCoordinateSystem();
-  }
-
   bool HasDOFHolderCoordinates() const override { return true; }
 
   bool SupportsNearestBoundary() const override { return false; }
@@ -320,10 +315,6 @@ public:
     PCMS_FUNCTION_TIMER;
     const auto coords = request.coords;
     const auto policy = request.policy;
-    if (coords.GetCoordinateSystem() != GetCoordinateSystem()) {
-      throw pcms_error(
-        "OmegaHLagrangeEvaluatorFactory: coordinate system mismatch");
-    }
     if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY) {
       throw pcms_error(
         "OmegaHLagrangeEvaluatorFactory: NearestBoundary is not supported");

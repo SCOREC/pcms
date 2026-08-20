@@ -14,6 +14,7 @@
 #include "pcms/field/field_metadata.h"
 #include "pcms/field/data/simple.h"
 #include "test_support.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 namespace ts = test_support;
 using pcms::Real;
@@ -78,7 +79,7 @@ static void test_shared_layout(Omega_h::Library& lib,
                       redev::Partition{partition});
     auto* app = cpl.AddApplication("shared_layout");
     auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 1, pcms::CoordinateSystem::Cartesian, "global",
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
       pcms::LagrangeFunctionSpace::DefaultBackend, "shared");
     auto f1 = app->AddField(factory->CreateFunction<Real>("field_a"));
     PCMS_ALWAYS_ASSERT(app->GetLayoutCommunicatorCount() == 1);
@@ -97,7 +98,7 @@ static void test_shared_layout(Omega_h::Library& lib,
                       redev::Partition{});
     auto* app = cpl.AddApplication("shared_layout");
     auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 1, pcms::CoordinateSystem::Cartesian, "global",
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
       pcms::LagrangeFunctionSpace::DefaultBackend, "shared");
     auto f1 = app->AddField(factory->CreateFunction<Real>("field_a"));
     auto f2 = app->AddField(factory->CreateFunction<Real>("field_b"));
@@ -120,7 +121,7 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     rdv.CreateAdiosChannel("field2_chan1", params, redev::TransportType::BP4);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, order, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, order, 1, pcms::csys::Cartesian::Deferred());
   auto layout = factory->GetLayout();
   auto gids = layout->GetGidsHost();
   const auto n = layout->GetNumOwnedDofHolder();
@@ -152,7 +153,7 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, order, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, order, 1, pcms::csys::Cartesian::Deferred());
   auto layout = factory->GetLayout();
   auto gids = layout->GetGidsHost();
   const auto n = layout->GetNumOwnedDofHolder();
@@ -167,7 +168,8 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   field_comm.Receive();
   channel.EndReceiveCommunicationPhase();
 
-  auto copied_array = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+  auto copied_array =
+    pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
   auto owned = layout->GetOwnedHost();
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());
@@ -212,7 +214,7 @@ void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, order, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, order, 1, pcms::csys::Cartesian::Deferred());
   auto layout = factory->GetLayout();
   const auto n = layout->GetNumOwnedDofHolder();
   Omega_h::HostWrite<Real> ids(n);

@@ -13,6 +13,8 @@
 #include <cmath>
 #include <unordered_map>
 #include <vector>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/coordinate_systems/cylindrical.hpp"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -221,7 +223,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
   SECTION("multi-component source space throws")
   {
     auto source_space = pcms::LagrangeFunctionSpace::FromMesh(
-      source_mesh, 1, 2, pcms::CoordinateSystem::Cartesian, "global",
+      source_mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     auto target_space = pcms::test::MakeP1Space(target_mesh);
     REQUIRE_THROWS(
@@ -232,7 +234,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
   {
     auto source_space = pcms::test::MakeP1Space(source_mesh);
     auto target_space = pcms::LagrangeFunctionSpace::FromMesh(
-      target_mesh, 1, 2, pcms::CoordinateSystem::Cartesian, "global",
+      target_mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     REQUIRE_THROWS(
       pcms::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space));
@@ -241,7 +243,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
   SECTION("non-Cartesian source coordinate system throws")
   {
     auto source_space = pcms::LagrangeFunctionSpace::FromMesh(
-      source_mesh, 1, 1, pcms::CoordinateSystem::Cylindrical, "global",
+      source_mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     auto target_space = pcms::test::MakeP1Space(target_mesh);
     REQUIRE_THROWS(
@@ -252,7 +254,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
   {
     auto source_space = pcms::test::MakeP1Space(source_mesh);
     auto target_space = pcms::LagrangeFunctionSpace::FromMesh(
-      target_mesh, 1, 1, pcms::CoordinateSystem::Cylindrical, "global",
+      target_mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     REQUIRE_THROWS(
       pcms::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space));

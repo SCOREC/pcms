@@ -11,7 +11,7 @@
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/coupler/field_serializer.h"
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
 #ifdef PCMS_ENABLE_OMEGA_H
@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 // Shared utilities for field tests that apply equally to MeshFields-backed
 // and native OmegaH-backed field implementations.
@@ -146,14 +147,14 @@ inline std::shared_ptr<LagrangeFunctionSpace> MakeP1Space(
   Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
 {
   return LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, global_id_name,
+    mesh, 1, 1, csys::Cartesian::Deferred(), global_id_name,
     LagrangeFunctionSpace::Backend::OmegaH);
 }
 
 inline std::shared_ptr<LagrangeFunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
 {
   return LagrangeFunctionSpace::FromMesh(
-    mesh, 0, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 0, 1, csys::Cartesian::Deferred(), "global",
     LagrangeFunctionSpace::Backend::OmegaH);
 }
 
@@ -199,7 +200,8 @@ inline std::vector<Real> CopyOmegaHRealsToVector(const Omega_h::Reals& coords)
 
 inline double IntegrateP0Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 {
-  const auto values = FlattenToRank1View(field.GetDOFHolderDataHost());
+  const auto values =
+    FlattenToRank1View(field.GetDOFHolderDataHost());
   const auto measures = Omega_h::measure_elements_real(&mesh);
   const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
 
@@ -212,7 +214,8 @@ inline double IntegrateP0Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 
 inline double IntegrateP1Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 {
-  const auto values = FlattenToRank1View(field.GetDOFHolderDataHost());
+  const auto values =
+    FlattenToRank1View(field.GetDOFHolderDataHost());
   const auto measures = Omega_h::measure_elements_real(&mesh);
   const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
   const auto elem_verts_h =
@@ -411,7 +414,8 @@ struct DeviceCoordinates
 // CoordinateView pts contains interleaved coordinates: [x0, y0, x1, y1, ...]
 // for 2D or [x0, y0, z0, x1, y1, z1, ...] for 3D
 inline DeviceCoordinates CreateDeviceCoordinateView(
-  const std::vector<Real>& pts, CoordinateSystem coord_system, int dim = 2)
+  const std::vector<Real>& pts,
+  std::shared_ptr<const CoordinateSystem> coordinate_system, int dim = 2)
 {
   int n = static_cast<int>(pts.size()) / dim;
   // Create host view from input data
@@ -426,8 +430,11 @@ inline DeviceCoordinates CreateDeviceCoordinateView(
     Kokkos::View<Real**, DeviceMemorySpace>("coords_device", n, dim);
   DeepCopyMismatchLayouts(coords_device, coords_host);
   auto coords_view = pcms::MakeRank2View(coords_device);
-  return DeviceCoordinates{coords_device, CoordinateView<DeviceMemorySpace>{
-                                            coord_system, coords_view}};
+  return DeviceCoordinates{
+    coords_device,
+    CoordinateView<DeviceMemorySpace>{
+      pcms::ResolveCoordinateSystem(std::move(coordinate_system), dim),
+      coords_view}};
 }
 
 // Evaluate field at explicit test points using a PointEvaluator and check

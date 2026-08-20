@@ -11,6 +11,7 @@
 #include "field_test_utils.h"
 #include <Kokkos_Core.hpp>
 #include <vector>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::Real;
 
@@ -26,7 +27,7 @@ TEST_CASE("interpolate linear 2d omega_h_field")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
   auto field = factory->CreateFunction<Real>();
   auto interpolated = factory->CreateFunction<Real>();
   pcms::test::SetField(
@@ -36,7 +37,8 @@ TEST_CASE("interpolate linear 2d omega_h_field")
   interp.Apply(field, interpolated);
   auto interpolated_dof =
     pcms::FlattenToRank1View(interpolated.GetDOFHolderDataHost());
-  auto original_dof = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+  auto original_dof =
+    pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
   REQUIRE(interpolated_dof.size() == original_dof.size());
   for (int i = 0; i < static_cast<int>(interpolated_dof.size()); ++i) {
     REQUIRE_THAT(interpolated_dof[i],
@@ -53,7 +55,7 @@ TEST_CASE("interpolate quadratic 2d meshfields_field")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto factory2 = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 2, 1, pcms::CoordinateSystem::Cartesian, "global",
+    mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::MeshFields);
   auto field = factory2->CreateFunction<Real>();
   auto interpolated = factory2->CreateFunction<Real>();
@@ -66,7 +68,8 @@ TEST_CASE("interpolate quadratic 2d meshfields_field")
 
   auto interpolated_dof =
     pcms::FlattenToRank1View(interpolated.GetDOFHolderDataHost());
-  auto original_dof = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+  auto original_dof =
+    pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
   REQUIRE(interpolated_dof.size() == original_dof.size());
   for (int i = 0; i < static_cast<int>(interpolated_dof.size()); ++i) {
     REQUIRE_THAT(interpolated_dof[i],
@@ -84,7 +87,7 @@ TEST_CASE("interpolate quadratic 2d omega_h_field throws")
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
 
   REQUIRE_THROWS_AS(pcms::LagrangeFunctionSpace::FromMesh(
-                      mesh, 2, 1, pcms::CoordinateSystem::Cartesian, "global",
+                      mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
                       pcms::LagrangeFunctionSpace::Backend::OmegaH),
                     pcms::pcms_error);
 }
@@ -100,7 +103,7 @@ TEST_CASE("Interpolator: construct once, apply twice with different data")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   auto source = factory->CreateFunction<Real>();
   auto target = factory->CreateFunction<Real>();
@@ -116,8 +119,10 @@ TEST_CASE("Interpolator: construct once, apply twice with different data")
   interp.Apply(source, target);
 
   {
-    auto src_dof = pcms::FlattenToRank1View(source.GetDOFHolderDataHost());
-    auto tgt_dof = pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
+    auto src_dof =
+      pcms::FlattenToRank1View(source.GetDOFHolderDataHost());
+    auto tgt_dof =
+      pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
     REQUIRE(tgt_dof.size() == src_dof.size());
     for (int i = 0; i < static_cast<int>(tgt_dof.size()); ++i) {
       REQUIRE_THAT(tgt_dof[i], Catch::Matchers::WithinRel(src_dof[i], 0.001) ||
@@ -132,7 +137,8 @@ TEST_CASE("Interpolator: construct once, apply twice with different data")
   interp.Apply(source, target);
 
   {
-    auto tgt_dof = pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
+    auto tgt_dof =
+      pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
     for (int i = 0; i < static_cast<int>(tgt_dof.size()); ++i) {
       REQUIRE_THAT(tgt_dof[i], Catch::Matchers::WithinAbs(7.0, 1E-10));
     }

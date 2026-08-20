@@ -1,7 +1,8 @@
 #ifndef PCMS_FIELD_METADATA_H
 #define PCMS_FIELD_METADATA_H
 
-#include "coordinate_system.h"
+#include "pcms/field/coordinate_system.hpp"
+#include <memory>
 
 namespace pcms
 {
@@ -18,11 +19,7 @@ enum class FieldValueType
 struct FieldMetadata
 {
   FieldValueType value_type = FieldValueType::Scalar;
-  // The coordinate system that field values are expressed in. Evaluate always
-  // returns values in this system and does not transform them. Callers are
-  // responsible for any value transformation after Evaluate (coordinate
-  // transform wiring is deferred).
-  CoordinateSystem value_coordinate_system = CoordinateSystem::Cartesian;
+  std::shared_ptr<const CoordinateSystem> value_coordinate_system;
 };
 
 } // namespace pcms

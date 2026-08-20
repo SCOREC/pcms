@@ -13,6 +13,7 @@
 #include "pcms/coupler/overlap_mask.h"
 #include "pcms/field/field_metadata.h"
 #include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::ConstructRCFromOmegaHMesh;
 using pcms::GO;
@@ -173,7 +174,7 @@ void omegah_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
     application->SetLayoutOverlapMask(ss.str(), std::move(overlap_mask));
 
     auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 1, pcms::CoordinateSystem::Cartesian, numbering,
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), numbering,
       pcms::LagrangeFunctionSpace::Backend::OmegaH, ss.str());
 
     auto field = factory->CreateFunction<GO>(

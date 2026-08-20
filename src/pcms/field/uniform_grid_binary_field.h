@@ -15,6 +15,7 @@
 #include <array>
 #include <memory>
 #include <utility>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 namespace pcms
 {
@@ -37,7 +38,7 @@ std::pair<std::shared_ptr<const UniformGridFieldLayout<Dim>>, Field<Real>>
 CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
 {
   auto function_space = LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, CoordinateSystem::Cartesian);
+    grid, 1, csys::Cartesian::Deferred());
   auto layout = std::dynamic_pointer_cast<const UniformGridFieldLayout<Dim>>(
     function_space->GetLayout());
   PCMS_ALWAYS_ASSERT(layout != nullptr);

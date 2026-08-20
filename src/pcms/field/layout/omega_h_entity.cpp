@@ -50,17 +50,16 @@ Kokkos::View<bool*, DeviceMemorySpace> BuildOwned(Omega_h::Mesh& mesh,
 
 } // namespace
 
-OmegaHEntityLayout::OmegaHEntityLayout(Omega_h::Mesh& mesh, int entity_dim,
-                                       int num_components,
-                                       CoordinateSystem coordinate_system,
-                                       std::string global_id_name)
+OmegaHEntityLayout::OmegaHEntityLayout(
+  Omega_h::Mesh& mesh, int entity_dim, int num_components,
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
+  std::string global_id_name)
   // dimension_ is the first member, so this runs before the class_ids_/
   // class_dims_ initializers below read the mesh's classification tags.
   : dimension_((EnsureClassification(mesh), mesh.dim())),
     entity_dim_(entity_dim),
     num_components_(num_components),
     num_global_dof_holder_(mesh.nglobal_ents(entity_dim)),
-    coordinate_system_(coordinate_system),
     gids_(BuildGids(mesh, entity_dim, global_id_name)),
     coords_(get_entity_centroids(mesh, entity_dim)),
     coords_2d_(ConvertCoordsTo2D(coords_, mesh.nents(entity_dim), mesh.dim())),
@@ -72,6 +71,8 @@ OmegaHEntityLayout::OmegaHEntityLayout(Omega_h::Mesh& mesh, int entity_dim,
     classification_ids_host_("classification_ids", mesh.nents(entity_dim)),
     discretization_(std::make_shared<OmegaHDiscretization>(mesh))
 {
+  SetCoordinateSystem(
+    ResolveCoordinateSystem(std::move(coordinate_system), dimension_));
   PCMS_ALWAYS_ASSERT(entity_dim_ >= 0 && entity_dim_ <= dimension_);
 
   gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
@@ -122,12 +123,8 @@ GlobalIDView<HostMemorySpace> OmegaHEntityLayout::GetGidsHost() const
 CoordinateView<DeviceMemorySpace> OmegaHEntityLayout::GetDOFHolderCoordinates()
   const
 {
-  using LayoutPolicy =
-    detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
-  Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> coords_view(
-    coords_2d_.data(), GetNumOwnedDofHolder(), dimension_);
-  return CoordinateView<DeviceMemorySpace, LayoutPolicy>{coordinate_system_,
-                                                         coords_view};
+  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(),
+                                           MakeConstRank2View(coords_2d_)};
 }
 
 bool OmegaHEntityLayout::IsDistributed() const

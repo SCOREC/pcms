@@ -12,6 +12,7 @@
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/field_metadata.h"
 #include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::ConstructRCFromOmegaHMesh;
 using pcms::GO;
@@ -171,7 +172,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     // field registration, so each XGC plane is registered as a separate layout
     // communicator even though the layouts are geometrically identical.
     auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 1, pcms::CoordinateSystem::Cartesian, numbering,
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), numbering,
       pcms::LagrangeFunctionSpace::Backend::OmegaH, ss.str());
     auto field = factory->CreateFunction<GO>(
       ss.str(), std::make_unique<pcms::SimpleFieldData<GO>>(

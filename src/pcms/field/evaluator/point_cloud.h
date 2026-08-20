@@ -16,19 +16,11 @@
 
 #include <Omega_h_array.hpp>
 #include <memory>
+#include <string>
 
 namespace pcms
 {
 
-// PointCloudEvaluatorFactory implements FieldEvaluatorFactory<Real> for
-// reconstructed fields that provide source coordinates through FieldLayout.
-//
-// Support localization is delegated to a LocalizationFactory, allowing
-// different search backends (N² point-cloud or mesh-adjacency BFS) to be
-// plugged in without changing this class. CreatePointEvaluator calls
-// LocalizationFactory::Build once for the supplied target coordinates and
-// returns an MLSPointEvaluator that can be reused at zero additional
-// localization cost.
 class PointCloudEvaluatorFactory : public FieldEvaluatorFactory<Real>
 {
 public:
@@ -43,11 +35,6 @@ public:
 
   const FieldLayout& GetLayout() const override { return *layout_; }
 
-  CoordinateSystem GetCoordinateSystem() const override
-  {
-    return layout_->GetDOFHolderCoordinates().GetCoordinateSystem();
-  }
-
   bool HasDOFHolderCoordinates() const override { return true; }
 
   CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const override
@@ -61,14 +48,15 @@ public:
     const EvaluationRequest& request) const override
   {
     const auto coords = request.coords;
-    if (coords.GetCoordinateSystem() != GetCoordinateSystem()) {
+    // MLS distances are based on the the unweighted Euclidean measure
+    // this is only valid with identiy metric
+    // this almost certainly should be generalized to take metric for distances
+    // for now, we just check and fail so at least the user gets a warning
+    if (!HasIdentityMetric(*layout_->GetCoordinateSystem())) {
       throw pcms_error(
-        "PointCloudEvaluatorFactory: coordinate system mismatch");
-    }
-    if (GetCoordinateSystem() != CoordinateSystem::Cartesian) {
-      throw pcms_error(
-        "PointCloudEvaluatorFactory: only Cartesian coordinates are "
-        "supported for MLS point-cloud evaluation");
+        "PointCloudEvaluatorFactory: MLS point-cloud evaluation requires a "
+        "coordinate system whose metric is the identity; got '" +
+        std::string(layout_->GetCoordinateSystem()->Kind()) + "'");
     }
 
     // Extract source coordinates for the MLS solve.

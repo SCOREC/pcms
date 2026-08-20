@@ -2,7 +2,7 @@
 #include <pcms/utility/arrays.h>
 #include <pcms/field/eqdsk_field.h>
 #include <pcms/field/function_space/spline.h>
-#include <pcms/field/coordinate_system.h>
+#include <pcms/field/coordinate_view.hpp>
 #include <pcms/field/evaluation_request.h>
 #include <Kokkos_Core.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -10,6 +10,7 @@
 #include "field_test_utils.h"
 #include <iostream>
 #include <cmath>
+#include "pcms/field/coordinate_systems/cylindrical.hpp"
 
 using Catch::Approx;
 using pcms::CoordinateSystem;
@@ -214,7 +215,7 @@ TEST_CASE("EQDSKData with SplineFunctionSpace")
     const int num_eval_points = 3;
 
     auto device_coords = pcms::test::CreateDeviceCoordinateView(
-      eval_coords, CoordinateSystem::Cartesian);
+      eval_coords, pcms::csys::CylindricalRZ::Create());
     auto eval_request =
       pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view);
 

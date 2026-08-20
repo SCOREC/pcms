@@ -7,6 +7,7 @@
 #include <Omega_h_for.hpp>
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 namespace pcms
 {
@@ -30,9 +31,9 @@ Data BuildDataImpl(const OmegaHLagrangeLayout& source_layout,
                    const OmegaHLagrangeLayout& target_layout, int quad_order);
 
 Data BuildData(const std::shared_ptr<const OmegaHLagrangeLayout>& source_layout,
-               CoordinateSystem source_coordinate_system,
+               std::shared_ptr<const CoordinateSystem> source_coordinate_system,
                const std::shared_ptr<const OmegaHLagrangeLayout>& target_layout,
-               CoordinateSystem target_coordinate_system)
+               std::shared_ptr<const CoordinateSystem> target_coordinate_system)
 {
   detail::CheckOmegaHScalarLagrangeLayout(
     source_coordinate_system, source_layout, "OmegaHIntersectionRHSIntegrator",
@@ -200,9 +201,9 @@ OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
 
 OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
   std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
-  CoordinateSystem source_coordinate_system,
+  std::shared_ptr<const CoordinateSystem> source_coordinate_system,
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-  CoordinateSystem target_coordinate_system)
+  std::shared_ptr<const CoordinateSystem> target_coordinate_system)
 {
   Data data = BuildData(source_layout, source_coordinate_system, target_layout,
                         target_coordinate_system);
@@ -238,7 +239,7 @@ OmegaHIntersectionRHSIntegrator::~OmegaHIntersectionRHSIntegrator()
 CoordinateView<DeviceMemorySpace>
 OmegaHIntersectionRHSIntegrator::GetIntegrationPoints() const noexcept
 {
-  return CoordinateView<DeviceMemorySpace>(CoordinateSystem::Cartesian,
+  return CoordinateView<DeviceMemorySpace>(csys::Cartesian::Create(2),
                                            MakeConstRank2View(coords_));
 }
 

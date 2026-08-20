@@ -5,6 +5,7 @@
 #include <Kokkos_Random.hpp>
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 namespace pcms
 {
@@ -148,8 +149,8 @@ OmegaHMonteCarloRHSIntegrator::OmegaHMonteCarloRHSIntegrator(
 
 OmegaHMonteCarloRHSIntegrator::OmegaHMonteCarloRHSIntegrator(
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-  CoordinateSystem target_coordinate_system, int samples_per_element,
-  MonteCarloSampling /*sampling*/, uint64_t seed)
+  std::shared_ptr<const CoordinateSystem> target_coordinate_system,
+  int samples_per_element, MonteCarloSampling /*sampling*/, uint64_t seed)
 {
   detail::CheckOmegaHScalarP1Layout(target_coordinate_system, target_layout,
                                     "OmegaHMonteCarloRHSIntegrator", "target");
@@ -214,7 +215,7 @@ OmegaHMonteCarloRHSIntegrator::~OmegaHMonteCarloRHSIntegrator()
 CoordinateView<DeviceMemorySpace>
 OmegaHMonteCarloRHSIntegrator::GetIntegrationPoints() const noexcept
 {
-  return CoordinateView<DeviceMemorySpace>(CoordinateSystem::Cartesian,
+  return CoordinateView<DeviceMemorySpace>(csys::Cartesian::Create(2),
                                            MakeConstRank2View(coords_));
 }
 

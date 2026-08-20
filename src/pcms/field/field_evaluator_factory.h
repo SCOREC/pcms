@@ -2,7 +2,7 @@
 #define PCMS_FIELD_EVALUATOR_FACTORY_H
 
 #include "field_layout.h"
-#include "coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "evaluation_request.h"
 #include "out_of_bounds_policy.h"
 #include "point_evaluator.h"
@@ -46,7 +46,6 @@ namespace pcms
 //   public:
 //     std::unique_ptr<FieldData<Real>>   CreateFieldReal() const;
 //     std::shared_ptr<const FieldLayout> GetLayout() const;
-//     CoordinateSystem                   GetCoordinateSystem() const;
 //
 //     // convenience — delegates to the internal FieldEvaluatorFactory:
 //     std::unique_ptr<PointEvaluator<Real>> CreatePointEvaluator(
@@ -63,17 +62,6 @@ public:
   // verify FieldData compatibility before calling Evaluate.
   virtual const FieldLayout& GetLayout() const = 0;
 
-  // The coordinate system that query coordinates must be expressed in when
-  // calling CreatePointEvaluator. A CoordinateView with a mismatched system
-  // will produce a descriptive error at CreatePointEvaluator time.
-  // (Automatic coordinate transform insertion is deferred.)
-  virtual CoordinateSystem GetCoordinateSystem() const = 0;
-
-  // Whether this factory can supply DOF holder coordinates. True for all
-  // mesh-backed evaluators (unstructured, structured). False for evaluators
-  // whose DOF holders have no meaningful physical-space coordinates (e.g.
-  // Fourier mode indices). BuildInterpolationOperator requires this to be true
-  // on the target factory.
   virtual bool HasDOFHolderCoordinates() const = 0;
 
   virtual CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const = 0;

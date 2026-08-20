@@ -1,7 +1,8 @@
 #ifndef PCMS_FUNCTION_SPACE_H
 #define PCMS_FUNCTION_SPACE_H
 
-#include "coordinate_system.h"
+#include "pcms/field/coordinate_system.hpp"
+#include "pcms/field/coordinate_view.hpp"
 #include "evaluation_request.h"
 #include "field.h"
 #include "field_data.h"
@@ -42,7 +43,11 @@ public:
 
   virtual std::shared_ptr<const FieldLayout> GetLayout() const noexcept = 0;
 
-  virtual CoordinateSystem GetCoordinateSystem() const noexcept = 0;
+  [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
+  GetCoordinateSystem() const
+  {
+    return GetLayout()->GetCoordinateSystem();
+  }
 
   virtual ~FunctionSpace() noexcept = default;
 
@@ -130,6 +135,16 @@ std::unique_ptr<PointEvaluator<T>> FunctionSpace::CreatePointEvaluator(
 {
   static_assert(is_supported_field_type_v<T>,
                 "T is not a supported field type");
+  if (!SameCoordinateSystem(request.coords.GetCoordinateSystem(),
+                            GetCoordinateSystem())) {
+    throw pcms_error(
+      "CreatePointEvaluator: query coordinate system '" +
+      std::string(request.coords.GetCoordinateSystem()->Kind()) +
+      "' is not the space's coordinate system '" +
+      std::string(GetCoordinateSystem()->Kind()) +
+      "' (the coordinate system its mesh coordinates were declared in; "
+      "coordinate systems compare by object identity)");
+  }
   return std::get<std::unique_ptr<PointEvaluator<T>>>(
     CreatePointEvaluatorImpl(TypeEnumFromType<T>(), request));
 }

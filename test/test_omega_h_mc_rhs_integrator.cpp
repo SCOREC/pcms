@@ -145,8 +145,8 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
   pcms::OmegaHConservativeProjection reference_projection(*source_space,
                                                           *target_space);
   reference_projection.Apply(source_field, reference_field);
-  const auto reference =
-    pcms::FlattenToRank1View(reference_field.GetDOFHolderDataHost());
+  const auto reference = pcms::FlattenToRank1View(
+    reference_field.GetDOFHolderDataHost());
 
   const int samples_per_element = 64;
   const uint64_t seed = 20240611;

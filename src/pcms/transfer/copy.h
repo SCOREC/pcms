@@ -17,7 +17,8 @@ inline bool CompatibleMetadata(const FieldMetadata& source,
                                const FieldMetadata& target) noexcept
 {
   return source.value_type == target.value_type &&
-         source.value_coordinate_system == target.value_coordinate_system;
+         SameCoordinateSystem(source.value_coordinate_system,
+                              target.value_coordinate_system);
 }
 
 template <typename T>

@@ -11,7 +11,7 @@
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/field_evaluator_factory.h"
-#include "../coordinate_system.h"
+#include "pcms/field/coordinate_system.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/memory_spaces.h"
@@ -55,12 +55,14 @@ public:
   // Unstructured mesh — dispatches to MeshFields or native Omega_h backend
   [[nodiscard]] static std::shared_ptr<LagrangeFunctionSpace> FromMesh(
     Omega_h::Mesh& mesh, int order, int num_components,
-    CoordinateSystem coordinate_system, std::string global_id_name = "global",
-    Backend backend = DefaultBackend, std::string layout_name = "");
+    std::shared_ptr<const CoordinateSystem> mesh_coordinate_system,
+    std::string global_id_name = "global", Backend backend = DefaultBackend,
+    std::string layout_name = "");
 
   [[nodiscard]] static std::shared_ptr<LagrangeFunctionSpace> FromMesh(
     Omega_h::Mesh& mesh, int order, int num_components,
-    CoordinateSystem coordinate_system, Omega_h::Read<Omega_h::I8> owned_mask,
+    std::shared_ptr<const CoordinateSystem> mesh_coordinate_system,
+    Omega_h::Read<Omega_h::I8> owned_mask,
     std::string global_id_name = "global", Backend backend = DefaultBackend,
     std::string layout_name = "");
 
@@ -68,22 +70,19 @@ public:
   // grid
   [[nodiscard]] static std::shared_ptr<LagrangeFunctionSpace> FromUniformGrid(
     const UniformGrid<2>& grid, int num_components,
-    CoordinateSystem coordinate_system, int order = 1,
-    std::string layout_name = "");
+    std::shared_ptr<const CoordinateSystem> mesh_coordinate_system,
+    int order = 1, std::string layout_name = "");
 
   [[nodiscard]] static std::shared_ptr<LagrangeFunctionSpace> FromUniformGrid(
     const UniformGrid<3>& grid, int num_components,
-    CoordinateSystem coordinate_system, int order = 1,
-    std::string layout_name = "");
+    std::shared_ptr<const CoordinateSystem> mesh_coordinate_system,
+    int order = 1, std::string layout_name = "");
 
   [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayout()
     const noexcept override;
 
-  [[nodiscard]] CoordinateSystem GetCoordinateSystem() const noexcept override;
-
 protected:
-  [[nodiscard]] FieldVariant CreateFieldImpl(
-    Type value_type, FieldMetadata metadata) const override;
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type value_type, FieldMetadata metadata) const override;
 
   [[nodiscard]] FieldVariant CreateFieldImpl(
     FieldDataVariant data) const override;

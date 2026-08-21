@@ -8,3 +8,10 @@ version = "0.4.0"
 
 [tool.scikit-build.cmake.define]
 PCMS_ENABLE_Python = true
+
+[tool.pytest.ini_options]
+testpaths = ["test/python"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "--strict-markers"

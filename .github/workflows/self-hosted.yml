@@ -48,6 +48,7 @@ jobs:
           #module load openblas/0.3.23-wqm7iud
           module load netlib-lapack/3.11.0-b22mgwg #netlib-lapack includes blas
           module load netlib-scalapack/2.2.0-fzd4jvl
+          module load python py-pytest py-numpy
           set -e
           EOF
 
@@ -98,13 +99,13 @@ jobs:
           cmake --build $bdir -j 4
           ctest --test-dir $bdir --output-on-failure
 
-          # Build pcms with PETSc
+          # Build pcms with PETSc and python enabled
           cmake -S ${{github.workspace}}/pcms_${{ github.event.id }} -B $bdir \
             -DCMAKE_CXX_COMPILER=`which mpicxx` \
             -DCMAKE_C_COMPILER=`which mpicc` \
             -DCMAKE_Fortran_COMPILER=`which mpifort`\
             -DPCMS_TIMEOUT=20 \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=DEBUG \
             -DCatch2_DIR=$DEPENDENCY_DIR/Catch2/install/lib64/cmake/Catch2/ \
             -Dmeshfields_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/meshFields/install/lib64/cmake/meshfields \
             -DOmega_h_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/omega_h/install/lib64/cmake/Omega_h/ \
@@ -116,13 +117,19 @@ jobs:
             -DKokkos_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos/install/lib64/cmake/Kokkos/ \
             -DKokkosKernels_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos-kernels/install/lib64/cmake/KokkosKernels/ \
             -DBUILD_TESTING=ON \
+            -DPCMS_ENABLE_Python=ON \
             -DPCMS_ENABLE_PETSC=ON \
             -DPETSC_ARCH="" \
             -DPETSC_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/petsc/install \
+            -Dpybind11_ROOT=$DEPENDENCY_DIR/pybind11/install \
             -DPCMS_ENABLE_SPDLOG=OFF
 
           cmake --build $bdir -j 4
           ctest --test-dir $bdir --output-on-failure
+
+          export PYTHONPATH=$DEPENDENCY_DIR/${DEVICE_ARCH}/omega_h/install/lib64/python./site-packages:$bdir/src/pcms/pythonapi:$PYTHONPATH
+          export LD_LIBRARY_PATH=$DEPENDENCY_DIR/${DEVICE_ARCH}/omega_h/install/lib64:$LD_LIBRARY_PATH
+          pytest -v -p no:cacheprovider ${{github.workspace}}/pcms_${{ github.event.id }}/test/python
 
 
       - name: Save Result Link

@@ -399,6 +399,10 @@ find_package(Catch2 3)
 if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
+  add_executable(test_transient_timestepper test_transient_timestepper.cpp)
+  target_link_libraries(test_transient_timestepper
+                        PRIVATE Catch2::Catch2WithMain pcms::transient)
+
   set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp test_coordinate_transform.cpp
                              test_coordinate.cpp test_bounding_box.cpp)
   if(PCMS_ENABLE_XGC)
@@ -474,6 +478,7 @@ if(Catch2_FOUND)
 
  include(Catch)
    Catch_discover_tests(unit_tests)
+   Catch_discover_tests(test_transient_timestepper)
 else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()

@@ -14,7 +14,7 @@ public:
   // Return the positive step size used for the first coupling window.
   [[nodiscard]] virtual Real InitialStep() const = 0;
 
-  // Given the step that was actually completed and its normalized error,
+  // Given the current time step that was actually completed and its normalized error,
   // return whether to accept it and the positive step size to try next.
   virtual std::pair<bool, Real> Update(Real dt, Real err) = 0;
 
@@ -31,7 +31,7 @@ public:
   // Return the configured fixed step.
   Real InitialStep() const override;
 
-  // Ignore the completed step and error, accept, and keep the configured step.
+  // Keep the configured fixed time step.
   std::pair<bool, Real> Update(Real dt, Real err) override;
 
 private:

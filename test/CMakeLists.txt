@@ -401,7 +401,7 @@ if(Catch2_FOUND)
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
   add_executable(test_transient_timestepper test_transient_timestepper.cpp)
   target_link_libraries(test_transient_timestepper
-                        PRIVATE Catch2::Catch2WithMain pcms::transient)
+          PRIVATE Catch2::Catch2WithMain pcms::transient)
 
   set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp test_coordinate_transform.cpp
                              test_coordinate.cpp test_bounding_box.cpp)

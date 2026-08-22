@@ -14,8 +14,8 @@ public:
   // Return the positive step size used for the first coupling window.
   [[nodiscard]] virtual Real InitialStep() const = 0;
 
-  // Given the current time step that was actually completed and its normalized error,
-  // return whether to accept it and the positive step size to try next.
+  // Given the current time step that was actually completed and its normalized
+  // error, return whether to accept it and the positive step size to try next.
   virtual std::pair<bool, Real> Update(Real dt, Real err) = 0;
 
   virtual ~Timestepper() = default;

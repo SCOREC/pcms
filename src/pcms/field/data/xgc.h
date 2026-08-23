@@ -16,9 +16,9 @@ class XGCFieldData : public FieldData<T>
 public:
   // Externally-managed storage: the caller owns the underlying data buffer.
   // The view must remain valid for the lifetime of this object.
-  XGCFieldData(std::shared_ptr<const XGCFieldLayout> layout, FieldMetadata metadata,
+  XGCFieldData(std::shared_ptr<const XGCFieldLayout> layout, ValueBasis basis,
                Rank1View<T, HostMemorySpace> data)
-    : layout_(std::move(layout)), metadata_(metadata), data_(data)
+    : layout_(std::move(layout)), basis_(std::move(basis)), data_(data)
   {
     PCMS_ALWAYS_ASSERT(layout_ != nullptr);
     PCMS_ALWAYS_ASSERT(static_cast<LO>(data_.size()) ==
@@ -27,9 +27,9 @@ public:
 
   // Self-allocating constructor: XGCFunctionSpace::CreateFieldImpl uses this
   // to produce a field with internally-managed storage.
-  XGCFieldData(std::shared_ptr<const XGCFieldLayout> layout, FieldMetadata metadata)
+  XGCFieldData(std::shared_ptr<const XGCFieldLayout> layout, ValueBasis basis)
     : layout_(std::move(layout)),
-      metadata_(metadata),
+      basis_(std::move(basis)),
       owned_data_("xgc_field_data",
                   static_cast<size_t>(layout_->GetFullDataSize())),
       data_(owned_data_.data(), owned_data_.extent(0))
@@ -37,7 +37,11 @@ public:
     PCMS_ALWAYS_ASSERT(layout_ != nullptr);
   }
 
-  const FieldMetadata& GetMetadata() const override { return metadata_; }
+  FieldValueType GetValueType() const override
+  {
+    return ValueTypeOfRank(basis_.Rank());
+  }
+  const ValueBasis& GetValueBasis() const override { return basis_; }
 
   Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
   {
@@ -98,7 +102,7 @@ private:
   }
 
   std::shared_ptr<const XGCFieldLayout> layout_;
-  FieldMetadata metadata_;
+  ValueBasis basis_;
   // owned_data_ is non-empty only when the self-allocating constructor is used.
   Kokkos::View<T*, HostMemorySpace> owned_data_;
   Rank1View<T, HostMemorySpace> data_;

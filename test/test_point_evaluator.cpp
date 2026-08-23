@@ -9,7 +9,7 @@
 #include "pcms/field/field_data.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/out_of_bounds_policy.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/coordinate_view.hpp"
 #include "pcms/utility/arrays.h"
 #include "field_test_utils.h"

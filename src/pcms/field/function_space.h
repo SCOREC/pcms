@@ -8,7 +8,7 @@
 #include "field_data.h"
 #include "field_factory.h"
 #include "field_layout.h"
-#include "field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "out_of_bounds_policy.h"
 #include "point_evaluator.h"
 #include "pcms/discretization/discretization.h"
@@ -16,6 +16,7 @@
 #include "pcms/utility/memory_spaces.h"
 #include "pcms/utility/types.h"
 #include <memory>
+#include <optional>
 #include <variant>
 
 namespace pcms
@@ -52,8 +53,15 @@ public:
   virtual ~FunctionSpace() noexcept = default;
 
   template <typename T>
-  [[nodiscard]] Function<T> CreateFunction(std::string name = "",
-                                           FieldMetadata metadata = {}) const;
+  [[nodiscard]] Function<T> CreateFunction(
+    std::string name = "", VarianceSignature variance = values::Scalar,
+    std::optional<ComponentScaling> scaling = std::nullopt) const;
+
+  template <typename T>
+  [[nodiscard]] Function<T> CreateFunction(
+    std::string name, VarianceSignature variance,
+    std::shared_ptr<const CoordinateSystem> system,
+    std::optional<ComponentScaling> scaling = std::nullopt) const;
 
   // Expert API: wrap externally constructed field data into a Function for this
   // space. The concrete space validates backend-specific field-data type and
@@ -93,8 +101,8 @@ protected:
                        std::move(space));
   }
 
-  virtual FieldVariant CreateFieldImpl(Type value_type,
-                                       FieldMetadata metadata) const = 0;
+  virtual FieldVariant CreateFieldImpl(Type storage_type,
+                                       ValueBasis basis) const = 0;
 
   virtual FieldVariant CreateFieldImpl(FieldDataVariant data) const = 0;
 
@@ -103,13 +111,26 @@ protected:
 };
 
 template <typename T>
-Function<T> FunctionSpace::CreateFunction(std::string name,
-                                          FieldMetadata metadata) const
+Function<T> FunctionSpace::CreateFunction(
+  std::string name, VarianceSignature variance,
+  std::optional<ComponentScaling> scaling) const
+{
+  return CreateFunction<T>(std::move(name), variance, nullptr, scaling);
+}
+
+template <typename T>
+Function<T> FunctionSpace::CreateFunction(
+  std::string name, VarianceSignature variance,
+  std::shared_ptr<const CoordinateSystem> system,
+  std::optional<ComponentScaling> scaling) const
 {
   static_assert(is_supported_field_type_v<T>,
                 "T is not a supported field type");
-  Field<T> field =
-    std::get<Field<T>>(CreateFieldImpl(TypeEnumFromType<T>(), metadata));
+  ValueBasis basis = detail::MakeValueBasis(GetCoordinateSystem(), variance,
+                                            std::move(system), scaling);
+  detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
+  Field<T> field = std::get<Field<T>>(
+    CreateFieldImpl(TypeEnumFromType<T>(), std::move(basis)));
   return WrapFunction<T>(std::move(name), std::move(field.layout_),
                          std::move(field.data_), shared_from_this());
 }
@@ -123,6 +144,8 @@ Function<T> FunctionSpace::CreateFunction(
   if (!data) {
     throw pcms_error("FunctionSpace::CreateFunction: data must not be null");
   }
+  detail::ValidateValueSemantics(data->GetValueBasis(),
+                                 GetLayout()->GetNumComponents());
   Field<T> field =
     std::get<Field<T>>(CreateFieldImpl(FieldDataVariant{std::move(data)}));
   return WrapFunction<T>(std::move(name), std::move(field.layout_),

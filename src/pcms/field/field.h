@@ -38,25 +38,44 @@ public:
 
   const FieldLayout& GetLayout() const { return *layout_; }
 
-  // Optional identifier for this field. Empty by default; set at creation.
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
 
-  Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const
+  [[nodiscard]] ValueView<const T, HostMemorySpace> GetDOFHolderDataHost() const
   {
-    return data_->GetDOFHolderDataHost();
+    return ValueView<const T, HostMemorySpace>(data_->GetValueBasis(),
+                                               data_->GetDOFHolderDataHost());
   }
 
-  void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> v)
+  [[nodiscard]] ValueView<const T, DeviceMemorySpace> GetDOFHolderData() const
+  {
+    return ValueView<const T, DeviceMemorySpace>(data_->GetValueBasis(),
+                                                 data_->GetDOFHolderData());
+  }
+
+  void SetDOFHolderDataHost(ValueView<const T, HostMemorySpace> v)
+  {
+    CheckWriteTag(v.GetBasis());
+    CheckWriteExtents(v.GetValues().extent(0), v.GetValues().extent(1));
+    data_->SetDOFHolderDataHost(v.GetValues());
+  }
+
+  void SetDOFHolderData(ValueView<const T, DeviceMemorySpace> v)
+  {
+    CheckWriteTag(v.GetBasis());
+    CheckWriteExtents(v.GetValues().extent(0), v.GetValues().extent(1));
+    data_->SetDOFHolderData(v.GetValues());
+  }
+
+  // unchecked is needed for optimization in some places, but should generally
+  // not be used unless you know what you are doing
+  void SetDOFHolderDataUncheckedHost(Rank2View<const T, HostMemorySpace> v)
   {
     data_->SetDOFHolderDataHost(v);
   }
 
-  Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const
-  {
-    return data_->GetDOFHolderData();
-  }
-
-  void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> v)
+  // unchecked is needed for optimization in some places, but should generally
+  // not be used unless you know what you are doing
+  void SetDOFHolderDataUnchecked(Rank2View<const T, DeviceMemorySpace> v)
   {
     data_->SetDOFHolderData(v);
   }
@@ -66,6 +85,31 @@ protected:
         std::unique_ptr<FieldData<T>> data)
     : name_(std::move(name)), layout_(std::move(layout)), data_(std::move(data))
   {
+  }
+
+  void CheckWriteTag(const ValueBasis& basis) const
+  {
+    if (!SameValueBasis(basis, data_->GetValueBasis())) {
+      throw pcms_error(
+        "Field::SetDOFHolderData: the written view's declared value "
+        "type/basis does not match this field's declaration (use the "
+        "Unchecked overload only for untagged wire/raw data)");
+    }
+  }
+
+  // The basis tag cannot distinguish shapes (all scalar bases compare equal),
+  // so the checked setters also verify the view's extents against the layout
+  void CheckWriteExtents(size_t num_holders, size_t num_components) const
+  {
+    if (num_holders != static_cast<size_t>(layout_->GetNumOwnedDofHolder()) ||
+        num_components != static_cast<size_t>(layout_->GetNumComponents())) {
+      throw pcms_error("Field::SetDOFHolderData: the written view is shaped [" +
+                       std::to_string(num_holders) + "][" +
+                       std::to_string(num_components) +
+                       "] but this field's layout is [" +
+                       std::to_string(layout_->GetNumOwnedDofHolder()) + "][" +
+                       std::to_string(layout_->GetNumComponents()) + "]");
+    }
   }
 
   // FieldFactory constructs Fields (via WrapField); FunctionSpace constructs

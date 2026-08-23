@@ -4,7 +4,7 @@
 #include "pcms/field/layout/uniform_grid.h"
 #include "pcms/field/data/simple.h"
 #include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/localization/point_search.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
@@ -73,7 +73,7 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
   for (LO i = 0; i < n; ++i)
     data(i) = (results_h(i).element_id >= 0) ? 1.0 : 0.0;
 
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     Rank2View<const Real, HostMemorySpace>(data.data(), n, 1));
 
   return {std::move(layout), std::move(field)};

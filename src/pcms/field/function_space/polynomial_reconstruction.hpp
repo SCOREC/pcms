@@ -4,7 +4,7 @@
 #include "pcms/field/field.h"
 #include "pcms/field/field_layout.h"
 #include "pcms/field/field_data.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/function_space.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/coordinate_view.hpp"
@@ -47,7 +47,8 @@ public:
     const noexcept override;
 
 protected:
-  [[nodiscard]] FieldVariant CreateFieldImpl(Type value_type, FieldMetadata metadata) const override;
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
+                                             ValueBasis basis) const override;
 
   [[nodiscard]] FieldVariant CreateFieldImpl(
     FieldDataVariant data) const override;

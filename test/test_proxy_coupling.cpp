@@ -8,7 +8,7 @@
 #include "test_support.h"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include <chrono>
 #include <thread>
 #include "pcms/field/coordinate_systems/cartesian.hpp"

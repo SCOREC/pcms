@@ -35,17 +35,17 @@ std::shared_ptr<const FieldLayout> SplineFunctionSpace::GetLayout()
   return layout_;
 }
 
-FieldVariant SplineFunctionSpace::CreateFieldImpl(Type value_type,
-                                                  FieldMetadata metadata) const
+FieldVariant SplineFunctionSpace::CreateFieldImpl(Type storage_type,
+                                                  ValueBasis basis) const
 {
-  return apply_to_type(value_type, [&](auto tag) -> FieldVariant {
+  return apply_to_type(storage_type, [&](auto tag) -> FieldVariant {
     using T = typename decltype(tag)::type;
     if constexpr (!std::is_same_v<T, double>) {
       throw pcms_error("SplineFunctionSpace: only double (Real) is supported");
     } else {
       return WrapField<double>(
         layout_,
-        std::make_unique<SimpleFieldData<double>>(layout_, metadata));
+        std::make_unique<SimpleFieldData<double>>(layout_, std::move(basis)));
     }
   });
 }

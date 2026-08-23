@@ -110,7 +110,7 @@ TEST_CASE("OmegaHControlVariateProjection: exact for fields in the target "
   projection.Apply(source_field, target_field);
 
   const auto values =
-    pcms::FlattenToRank1View(target_field.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(target_field.GetDOFHolderDataHost().GetValues());
   const auto coords_h = pcms::test::CopyCoordinatesToHost(
     pcms::MakeConstRank2View(target_mesh.coords(), 2), target_mesh.nverts(), 2);
   REQUIRE(static_cast<Omega_h::LO>(values.size()) == target_mesh.nverts());
@@ -146,7 +146,7 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
                                                           *target_space);
   reference_projection.Apply(source_field, reference_field);
   const auto reference = pcms::FlattenToRank1View(
-    reference_field.GetDOFHolderDataHost());
+    reference_field.GetDOFHolderDataHost().GetValues());
 
   const int samples_per_element = 64;
   const uint64_t seed = 20240611;
@@ -170,7 +170,7 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
     pcms::MonteCarloSampling::UniformRandom, seed);
   cv_projection.Apply(source_field, cv_field);
   const auto cv_values =
-    pcms::FlattenToRank1View(cv_field.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(cv_field.GetDOFHolderDataHost().GetValues());
 
   double mc_error = 0.0;
   double cv_error = 0.0;

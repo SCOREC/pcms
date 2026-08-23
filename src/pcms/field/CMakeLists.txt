@@ -6,11 +6,11 @@ set(PCMS_FIELD_HEADERS
         coordinate_view.hpp
         coordinate_systems/cartesian.hpp
         coordinate_systems/cylindrical.hpp
+        value_view.hpp
         element_dispatch.h
         evaluation_request.h
         gid_permutation.hpp
         field_layout.h
-        field_metadata.h
         layout/empty.h
         out_of_bounds_policy.h
         field_data.h

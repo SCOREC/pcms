@@ -13,23 +13,17 @@ namespace pcms
 namespace detail
 {
 
-inline bool CompatibleMetadata(const FieldMetadata& source,
-                               const FieldMetadata& target) noexcept
-{
-  return source.value_type == target.value_type &&
-         SameCoordinateSystem(source.value_coordinate_system,
-                              target.value_coordinate_system);
-}
-
 template <typename T>
 void CheckCopyCompatible(const Field<T>& source, const Field<T>& target)
 {
   if (&source.GetLayout() != &target.GetLayout()) {
     throw pcms_error("Copy: source and target layouts differ");
   }
-  if (!CompatibleMetadata(source.GetData().GetMetadata(),
-                          target.GetData().GetMetadata())) {
-    throw pcms_error("Copy: source and target metadata differ");
+  const auto& sd = source.GetData();
+  const auto& td = target.GetData();
+  if (sd.GetValueType() != td.GetValueType() ||
+      !SameValueBasis(sd.GetValueBasis(), td.GetValueBasis())) {
+    throw pcms_error("Copy: source and target value type/basis differ");
   }
 }
 

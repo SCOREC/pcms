@@ -61,7 +61,7 @@ TEST_CASE("XGCFieldFactory creates fields and rejects evaluator access")
   std::iota(data.begin(), data.end(), 0.0);
   auto field = function_space.CreateField<pcms::Real>(
     "", std::make_unique<pcms::XGCFieldData<pcms::Real>>(
-          function_space.GetXGCLayout(), pcms::FieldMetadata{},
+          function_space.GetXGCLayout(), pcms::ValueBasis{},
           pcms::make_array_view(data)));
 
   REQUIRE(&field.GetLayout() == function_space.GetLayout().get());

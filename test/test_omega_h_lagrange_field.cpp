@@ -6,7 +6,7 @@
 
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/mesh_geometry.h"
 #include "field_test_utils.h"
@@ -144,6 +144,32 @@ TEST_CASE("OmegaHLagrangeField order-1: set/get DOF data round-trip")
   REQUIRE(static_cast<int>(got.size()) == n);
   for (int i = 0; i < n; ++i)
     REQUIRE(got[i] == Catch::Approx(data[i]));
+}
+
+TEST_CASE("Field checked writes validate the view shape, not just total size")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = MakeBox2D(lib.world());
+  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
+  auto field = factory->CreateFunction<Real>();
+
+  const int n = factory->GetLayout()->GetNumOwnedDofHolder();
+  std::vector<Real> data(static_cast<size_t>(n), 1.0);
+  const auto& basis = field.GetData().GetValueBasis();
+
+  // Same total size but the wrong shape: every scalar basis compares equal,
+  // so only the extent check can catch a [1][n] view aimed at an [n][1]
+  // field.
+  pcms::Rank2View<const Real, pcms::HostMemorySpace> reshaped(data.data(), 1,
+                                                              n);
+  REQUIRE_THROWS(field.SetDOFHolderDataHost(
+    pcms::ValueView<const Real, pcms::HostMemorySpace>(basis, reshaped)));
+
+  // The matching shape passes.
+  pcms::Rank2View<const Real, pcms::HostMemorySpace> ok(data.data(), n, 1);
+  REQUIRE_NOTHROW(field.SetDOFHolderDataHost(
+    pcms::ValueView<const Real, pcms::HostMemorySpace>(basis, ok)));
 }
 
 TEST_CASE("OmegaHLagrangeField order-1: linear function evaluation")

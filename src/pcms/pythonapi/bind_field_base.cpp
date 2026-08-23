@@ -6,7 +6,7 @@
 #include "pcms/field/field.h"
 #include "pcms/field/field_evaluator_factory.h"
 #include "pcms/field/field_layout.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/function_space.h"
 #include "pcms/discretization/discretization/omega_h.hpp"
 #include "pcms/field/data/simple.h"
@@ -232,8 +232,10 @@ void bind_create_field_module(py::module& m)
         // Reshape the flat 1D input into the field's [dof][comp] layout.
         const int nc = self.GetLayout().GetNumComponents();
         const auto total = static_cast<size_t>(buf.shape[0]);
-        self.SetDOFHolderDataHost(Rank2View<const Real, HostMemorySpace>(
-          static_cast<const Real*>(buf.ptr), static_cast<LO>(total / nc), nc));
+        self.SetDOFHolderDataUncheckedHost(
+          Rank2View<const Real, HostMemorySpace>(
+            static_cast<const Real*>(buf.ptr), static_cast<LO>(total / nc),
+            nc));
       },
       py::arg("data"), "Set the DOF holder data from a 1D numpy array")
 

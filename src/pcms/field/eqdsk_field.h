@@ -46,7 +46,7 @@ inline EQDSKField MakeEQDSKField(const EQDSKData& eqdsk_data)
   auto space = SplineFunctionSpace::FromUniformGrid(
     eqdsk_data.grid, csys::CylindricalRZ::Create());
   Field<Real> field = space->CreateFunction<Real>();
-  field.GetData().SetDOFHolderData(Rank2View<const Real, DeviceMemorySpace>(
+  field.SetDOFHolderDataUnchecked(Rank2View<const Real, DeviceMemorySpace>(
     eqdsk_data.PSIZR.data(), eqdsk_data.PSIZR.extent(0), 1));
   return {std::move(space), std::move(field)};
 }

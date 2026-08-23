@@ -25,17 +25,10 @@ void CheckApplyCompatible(const Field<Real>& source, const Field<Real>& target,
       "OmegaHConservativeProjection::Apply: target field layout mismatch");
   }
 
-  const auto& source_md = source.GetData().GetMetadata();
-  const auto& target_md = target.GetData().GetMetadata();
-  if (source_md.value_type != FieldValueType::Scalar ||
-      target_md.value_type != FieldValueType::Scalar) {
+  if (source.GetData().GetValueType() != FieldValueType::Scalar ||
+      target.GetData().GetValueType() != FieldValueType::Scalar) {
     throw pcms_error(
       "OmegaHConservativeProjection::Apply: only scalar fields are supported");
-  }
-  if (!SameCoordinateSystem(source_md.value_coordinate_system,
-                            target_md.value_coordinate_system)) {
-    throw pcms_error("OmegaHConservativeProjection::Apply: source and target "
-                     "value coordinate systems differ");
   }
 }
 
@@ -92,7 +85,7 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
     });
   Kokkos::fence();
 
-  target.SetDOFHolderData(MakeConstRank2View(target_values_));
+  target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
 } // namespace pcms

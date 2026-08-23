@@ -4,7 +4,7 @@
 #include "pcms/field/data/xgc.h"
 #include "pcms/field/field.h"
 #include "pcms/field/field_factory.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/common.h"
 #include <functional>
 #include <memory>
@@ -43,12 +43,13 @@ public:
   }
 
 protected:
-  [[nodiscard]] FieldVariant CreateFieldImpl(Type value_type, FieldMetadata metadata) const override
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
+                                             ValueBasis basis) const override
   {
-    return apply_to_type(value_type, [&](auto tag) -> FieldVariant {
+    return apply_to_type(storage_type, [&](auto tag) -> FieldVariant {
       using T = typename decltype(tag)::type;
       return WrapField<T>(layout_,
-                          std::make_unique<XGCFieldData<T>>(layout_, metadata));
+                          std::make_unique<XGCFieldData<T>>(layout_, basis));
     });
   }
 

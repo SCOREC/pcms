@@ -201,7 +201,7 @@ inline std::vector<Real> CopyOmegaHRealsToVector(const Omega_h::Reals& coords)
 inline double IntegrateP0Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 {
   const auto values =
-    FlattenToRank1View(field.GetDOFHolderDataHost());
+    FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   const auto measures = Omega_h::measure_elements_real(&mesh);
   const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
 
@@ -215,7 +215,7 @@ inline double IntegrateP0Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 inline double IntegrateP1Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 {
   const auto values =
-    FlattenToRank1View(field.GetDOFHolderDataHost());
+    FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   const auto measures = Omega_h::measure_elements_real(&mesh);
   const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
   const auto elem_verts_h =
@@ -237,7 +237,7 @@ inline double IntegrateP1Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 // Min/max of an order-1 nodal field. For P1, nodal values are min/max
 inline std::pair<double, double> P1FieldRange(const Field<Real>& field)
 {
-  const auto values = FlattenToRank1View(field.GetDOFHolderData());
+  const auto values = FlattenToRank1View(field.GetDOFHolderData().GetValues());
   using MinMaxReducer = Kokkos::MinMax<double>;
   using MinMaxValue = MinMaxReducer::value_type;
 
@@ -409,6 +409,21 @@ struct DeviceCoordinates
   CoordinateView<DeviceMemorySpace> coordinate_view;
 };
 
+inline Kokkos::View<Real**, DeviceMemorySpace> CreateDeviceRank2View(
+  const std::vector<Real>& values, int num_columns)
+{
+  const int n = static_cast<int>(values.size()) / num_columns;
+  Kokkos::View<Real**, HostMemorySpace> host("host", n, num_columns);
+  for (int i = 0; i < n; ++i) {
+    for (int c = 0; c < num_columns; ++c) {
+      host(i, c) = values[static_cast<size_t>(i) * num_columns + c];
+    }
+  }
+  Kokkos::View<Real**, DeviceMemorySpace> device("device", n, num_columns);
+  DeepCopyMismatchLayouts(device, host);
+  return device;
+}
+
 // Helper function to create device CoordinateView from a vector of interleaved
 // points Returns both the underlying View (to keep memory alive) and the
 // CoordinateView pts contains interleaved coordinates: [x0, y0, x1, y1, ...]
@@ -417,24 +432,12 @@ inline DeviceCoordinates CreateDeviceCoordinateView(
   const std::vector<Real>& pts,
   std::shared_ptr<const CoordinateSystem> coordinate_system, int dim = 2)
 {
-  int n = static_cast<int>(pts.size()) / dim;
-  // Create host view from input data
-  Kokkos::View<Real**, HostMemorySpace> coords_host("coords_host", n, dim);
-  for (int i = 0; i < n; ++i) {
-    for (int d = 0; d < dim; ++d) {
-      coords_host(i, d) = pts[dim * i + d];
-    }
-  }
-  // Copy to device - using default layout for device
-  auto coords_device =
-    Kokkos::View<Real**, DeviceMemorySpace>("coords_device", n, dim);
-  DeepCopyMismatchLayouts(coords_device, coords_host);
-  auto coords_view = pcms::MakeRank2View(coords_device);
+  auto coords_device = CreateDeviceRank2View(pts, dim);
   return DeviceCoordinates{
     coords_device,
     CoordinateView<DeviceMemorySpace>{
       pcms::ResolveCoordinateSystem(std::move(coordinate_system), dim),
-      coords_view}};
+      pcms::MakeRank2View(coords_device)}};
 }
 
 // Evaluate field at explicit test points using a PointEvaluator and check

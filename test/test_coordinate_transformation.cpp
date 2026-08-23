@@ -4,17 +4,23 @@
 #include <Kokkos_Core.hpp>
 #include <pcms/field/coordinate_system.hpp>
 #include <pcms/field/coordinate_view.hpp>
+#include <pcms/field/value_view.hpp>
 #include <vector>
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/coordinate_systems/cylindrical.hpp"
 #include "field_test_utils.h"
 
 using Catch::Matchers::ContainsSubstring;
+using pcms::ComponentScaling;
 using pcms::CoordinateView;
 using pcms::DeviceMemorySpace;
 using pcms::HostMemorySpace;
 using pcms::Real;
 using pcms::SameCoordinateSystem;
+using pcms::ValueBasis;
+using pcms::ValueView;
+using pcms::Variance;
+using pcms::VarianceSignature;
 
 TEST_CASE("coordinate systems: structural equality")
 {
@@ -84,4 +90,50 @@ TEST_CASE("CoordinateView validates the dimension; family form derives it")
     CoordinateView<DeviceMemorySpace>(pcms::csys::CylindricalRThetaZ::Create(),
                                       pcms::MakeConstRank2View(pts2.view)),
     ContainsSubstring("coordinate columns"));
+}
+
+TEST_CASE("ValueView validates component counts and basis")
+{
+  auto data = pcms::test::CreateDeviceRank2View({1.0, 2.0}, 2);
+  // A rank-1 value on a 3-dimensional system needs 3 components.
+  REQUIRE_THROWS_WITH(
+    (ValueView<const Real, DeviceMemorySpace>(
+      ValueBasis{pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
+                 VarianceSignature{Variance::Contravariant}},
+      pcms::MakeConstRank2View(data))),
+    ContainsSubstring("require 3 components"));
+  // Component count comes from the system's dimension: a 2-dimensional system
+  // takes 2.
+  REQUIRE_NOTHROW(ValueView<const Real, DeviceMemorySpace>(
+    ValueBasis{pcms::csys::CylindricalRZ::Create(), ComponentScaling::Physical,
+               VarianceSignature{Variance::Contravariant}},
+    pcms::MakeConstRank2View(data)));
+  // Non-scalar values require a basis coordinate system.
+  auto data3 = pcms::test::CreateDeviceRank2View({1.0, 2.0, 3.0}, 3);
+  REQUIRE_THROWS_WITH((ValueView<const Real, DeviceMemorySpace>(
+                        ValueBasis{nullptr, ComponentScaling::Physical,
+                                   VarianceSignature{Variance::Contravariant}},
+                        pcms::MakeConstRank2View(data3))),
+                      ContainsSubstring("basis coordinate system"));
+  // Physical components are undefined without a canonical orthonormal triad,
+  // and rank 0 (an empty signature) ignores the basis at any component count.
+  REQUIRE_NOTHROW(ValueView<const Real, DeviceMemorySpace>(
+    ValueBasis{}, pcms::MakeConstRank2View(data)));
+}
+
+TEST_CASE("value declarations reject rank > 2")
+{
+  // A rank-3 signature is expressible, but nothing downstream supports it
+  // yet; the declaration must fail even with the matching dim^rank component
+  // count (27), not on the first use deep inside an evaluator.
+  std::vector<Real> flat(27, 0.0);
+  auto data = pcms::test::CreateDeviceRank2View(flat, 27);
+  REQUIRE_THROWS_WITH(
+    (ValueView<const Real, DeviceMemorySpace>(
+      ValueBasis{
+        pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
+        pcms::values::Of({Variance::Contravariant, Variance::Contravariant,
+                          Variance::Contravariant})},
+      pcms::MakeConstRank2View(data))),
+    ContainsSubstring("rank-3"));
 }

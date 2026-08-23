@@ -8,7 +8,7 @@
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/field/field.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/data/simple.h"
 #include "pcms/transfer/copy.h"
 #include <chrono>

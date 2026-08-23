@@ -10,7 +10,7 @@
 #include "pcms/field/layout/xgc.h"
 #include "pcms/coupler/serializer/xgc.h"
 #include "pcms/coupler/coupler.hpp"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 
@@ -57,7 +57,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
                             static_cast<pcms::LO>(mesh.nverts()), ss.str());
     auto field = function_space.CreateField<pcms::GO>(
       ss.str(), std::make_unique<pcms::XGCFieldData<pcms::GO>>(
-                  function_space.GetXGCLayout(), pcms::FieldMetadata{},
+                  function_space.GetXGCLayout(), pcms::ValueBasis{},
                   make_array_view(data[i])));
     std::unique_ptr<pcms::FieldSerializer<GO>> serializer =
       std::make_unique<pcms::XGCFieldSerializer<GO>>(comm);
@@ -176,7 +176,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       pcms::LagrangeFunctionSpace::Backend::OmegaH, ss.str());
     auto field = factory->CreateFunction<GO>(
       ss.str(), std::make_unique<pcms::SimpleFieldData<GO>>(
-                  factory->GetLayout(), pcms::FieldMetadata{}));
+                  factory->GetLayout(), pcms::ValueBasis{}));
     std::unique_ptr<pcms::FieldSerializer<GO>> serializer =
       std::make_unique<pcms::FieldSerializer<GO>>();
     fields.push_back(

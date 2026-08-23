@@ -9,7 +9,7 @@ namespace pcms
 
 PointCloud::PointCloud(std::shared_ptr<const PointCloudLayout> layout)
   : layout_(std::move(layout)),
-    metadata_{},
+    basis_{},
     device_data_("", layout_->GetDOFHolderCoordinates().GetValues().extent(0),
                  static_cast<size_t>(layout_->GetNumComponents())),
     data_host_("", layout_->GetDOFHolderCoordinates().GetValues().extent(0),
@@ -17,9 +17,14 @@ PointCloud::PointCloud(std::shared_ptr<const PointCloudLayout> layout)
 {
 }
 
-const FieldMetadata& PointCloud::GetMetadata() const
+FieldValueType PointCloud::GetValueType() const
 {
-  return metadata_;
+  return ValueTypeOfRank(basis_.Rank());
+}
+
+const ValueBasis& PointCloud::GetValueBasis() const
+{
+  return basis_;
 }
 
 Rank2View<const Real, HostMemorySpace> PointCloud::GetDOFHolderDataHost() const

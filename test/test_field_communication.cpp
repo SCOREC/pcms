@@ -11,7 +11,7 @@
 #include "pcms/coupler/field_communicator.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/data/simple.h"
 #include "test_support.h"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
@@ -132,7 +132,7 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     [=](int i) { ids[i] = gids[i]; });
 
   auto field = factory->CreateFunction<Real>();
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const Real, pcms::HostMemorySpace>(ids.data(), n, 1));
 
   pcms::FieldLayoutCommunicator layout_comm(comm_name + "1", comm, rdv, channel,
@@ -169,7 +169,7 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   channel.EndReceiveCommunicationPhase();
 
   auto copied_array =
-    pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   auto owned = layout->GetOwnedHost();
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());

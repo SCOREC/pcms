@@ -67,7 +67,7 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
 
   // 4. x = g + delta. delta is indexed by active PETSc row, while the field is
   //    indexed by local DOF holder.
-  const auto g_nodal = control_variate_.GetDOFHolderData();
+  const auto g_nodal = control_variate_.GetDOFHolderData().GetValues();
   const auto global_to_local = target_layout_->GetGlobalToLocalPermutation();
   const int nverts = static_cast<int>(g_nodal.extent(0));
 
@@ -79,7 +79,7 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
     });
   Kokkos::fence();
 
-  target.SetDOFHolderData(MakeConstRank2View(result));
+  target.SetDOFHolderDataUnchecked(MakeConstRank2View(result));
 }
 
 } // namespace pcms

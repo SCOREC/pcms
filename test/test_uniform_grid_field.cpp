@@ -5,7 +5,7 @@
 #include "pcms/field/evaluator/uniform_grid.h"
 #include "pcms/field/uniform_grid_binary_field.h"
 #include "pcms/field/data/simple.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/uniform_grid.h"
 #include "Omega_h_library.hpp"
 #include "Omega_h_build.hpp"
@@ -85,7 +85,7 @@ void VerifyMaskFieldValues(const pcms::UniformGrid<2>& grid,
                            const pcms::Field<pcms::Real>& mask_field)
 {
   auto mask_data =
-    pcms::FlattenToRank1View(mask_field.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(mask_field.GetDOFHolderDataHost().GetValues());
   for (int j = 0; j <= grid.divisions[1]; ++j) {
     for (int i = 0; i <= grid.divisions[0]; ++i) {
       int vertex_id = j * (grid.divisions[0] + 1) + i;
@@ -142,7 +142,7 @@ TEST_CASE("UniformGrid order-0 field creation and evaluation")
   REQUIRE(coords(3, 1) == Catch::Approx(7.5));
 
   std::vector<pcms::Real> data = {1.0, 2.0, 3.0, 4.0};
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
       data.data(), static_cast<pcms::LO>(data.size()), 1));
 
@@ -182,12 +182,12 @@ TEST_CASE("UniformGrid field data operations", "[uniform_grid_field]")
   for (size_t i = 0; i < 25; ++i)
     data[i] = static_cast<pcms::Real>(i);
 
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
       data.data(), static_cast<pcms::LO>(data.size()), 1));
 
   auto retrieved =
-    pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(retrieved.size() == 25);
   for (size_t i = 0; i < 25; ++i)
     REQUIRE(retrieved[i] == static_cast<pcms::Real>(i));
@@ -219,7 +219,7 @@ TEST_CASE("UniformGrid field evaluation - piecewise constant")
     2.0, 2.5, 3.0, // v3, v4, v5 (middle row, y=5)
     3.0, 3.5, 4.0  // v6, v7, v8 (top row, y=10)
   };
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
       data.data(), static_cast<pcms::LO>(data.size()), 1));
 
@@ -268,7 +268,7 @@ TEST_CASE("UniformGrid field serialization")
   for (size_t i = 0; i < 16; ++i)
     data[i] = static_cast<pcms::Real>(i * 10);
 
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
       data.data(), static_cast<pcms::LO>(data.size()), 1));
 
@@ -297,7 +297,7 @@ TEST_CASE("UniformGrid field copy")
   auto factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
     grid, 1, pcms::csys::Cartesian::Deferred());
   auto field = factory->CreateFunction<pcms::Real>();
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
       data.data(), static_cast<pcms::LO>(data.size()), 1));
 
@@ -306,7 +306,7 @@ TEST_CASE("UniformGrid field copy")
   copy.Apply(field, field2);
 
   auto copied_data =
-    pcms::FlattenToRank1View(field2.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(field2.GetDOFHolderDataHost().GetValues());
   REQUIRE(copied_data.size() == data.size());
   for (size_t i = 0; i < data.size(); ++i)
     REQUIRE(copied_data[i] == data[i]);
@@ -338,7 +338,7 @@ TEST_CASE("Transfer from OmegaH field to UniformGrid field")
   interp.Apply(omega_h_field, ug_field);
 
   auto transferred_data =
-    pcms::FlattenToRank1View(ug_field.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(ug_field.GetDOFHolderDataHost().GetValues());
   auto ug_coords = ug_factory->GetLayout()->GetDOFHolderCoordinates();
   int num_ug_nodes = ug_factory->GetLayout()->GetNumOwnedDofHolder();
 
@@ -367,7 +367,7 @@ TEST_CASE("Create binary field from uniform grid")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{5, 5});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     REQUIRE(field_data.size() == 36); // (5+1) * (5+1) = 36 vertices
 
@@ -387,7 +387,7 @@ TEST_CASE("Create binary field from uniform grid")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 8});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     REQUIRE(field_data.size() == 99); // (10+1) * (8+1) = 99 vertices
 
@@ -406,7 +406,7 @@ TEST_CASE("Create binary field from uniform grid")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     for (size_t i = 0; i < field_data.size(); ++i) {
       REQUIRE((field_data[i] == 0.0 || field_data[i] == 1.0));
@@ -425,7 +425,7 @@ TEST_CASE("Create binary field from uniform grid")
 
     auto [layout, field] = pcms::CreateUniformGridBinaryField<2>(mesh, grid);
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     REQUIRE(field_data.size() == 121); // (10+1) * (10+1) = 121 vertices
 
@@ -460,7 +460,7 @@ TEST_CASE("Create binary field from uniform grid")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{20, 20});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     REQUIRE(field_data.size() == 441); // (20+1) * (20+1) = 441 vertices
 
@@ -482,7 +482,7 @@ TEST_CASE("Create binary field from uniform grid")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{30, 10});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     REQUIRE(field_data.size() == 341); // (30+1) * (10+1) = 341 vertices
 
@@ -510,7 +510,7 @@ TEST_CASE("Binary field integration with grid methods")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{8, 8});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     // Get field value for a specific vertex (middle vertex at i=4, j=4)
     pcms::LO vertex_id = 4 * 9 + 4;
@@ -531,7 +531,7 @@ TEST_CASE("Binary field integration with grid methods")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     int q1 = 0, q2 = 0, q3 = 0, q4 = 0;
 
@@ -587,7 +587,7 @@ TEST_CASE("Performance and edge cases")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{50, 50});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     REQUIRE(field_data.size() == 2601); // (50+1) * (50+1) = 2601 vertices
 
@@ -605,7 +605,7 @@ TEST_CASE("Performance and edge cases")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{2, 2});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     REQUIRE(field_data.size() == 9); // (2+1) * (2+1) = 9 vertices
 
@@ -623,7 +623,7 @@ TEST_CASE("Performance and edge cases")
     auto [layout, field] =
       pcms::CreateUniformGridBinaryField<2>(mesh, std::array{25, 10});
     auto field_data =
-      pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+      pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
     REQUIRE(field_data.size() == 286); // (25+1) * (10+1) = 286 vertices
 
@@ -669,7 +669,7 @@ TEST_CASE("UniformGrid workflow")
     pcms::csys::Cartesian::Deferred(),
     pcms::MakeConstRank2View(ug_coords_host_view));
   const auto ug_field_data =
-    pcms::FlattenToRank1View(ug_field.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(ug_field.GetDOFHolderDataHost().GetValues());
   VerifyUniformGridFieldValues(grid, ug_coords_view, ug_field_data);
 
   VerifyMaskFieldValues(grid, mask_field);

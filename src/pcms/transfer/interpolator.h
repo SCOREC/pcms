@@ -50,10 +50,20 @@ public:
   void Apply(const Field<T>& source, Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
+    const auto& sd = source.GetData();
+    const auto& td = target.GetData();
+    if (sd.GetValueType() != td.GetValueType()) {
+      throw pcms_error("Interpolator: source and target value types differ");
+    }
+    if (!SameValueBasis(sd.GetValueBasis(), td.GetValueBasis())) {
+      throw pcms_error(
+        "Interpolator: the source's stored basis differs from the target's "
+        "declared basis");
+    }
     Kokkos::View<T**, DeviceMemorySpace> output("interp_output", num_points_,
                                                 n_comp_);
     evaluator_->Evaluate(source, MakeRank2View(output));
-    target.GetData().SetDOFHolderData(MakeConstRank2View(output));
+    target.SetDOFHolderDataUnchecked(MakeConstRank2View(output));
   }
 
 private:

@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/discretization/discretization.h"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/layout/point_cloud.h"
@@ -136,9 +136,9 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
   std::vector<Real> data{9.0, 10.0, 11.0, 12.0};
   Rank2View<const Real, HostMemorySpace> data_view(
     data.data(), static_cast<LO>(data.size()), 1);
-  field.SetDOFHolderDataHost(data_view);
+  field.SetDOFHolderDataUncheckedHost(data_view);
 
-  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(got[0] == Catch::Approx(9.0));
   REQUIRE(got[3] == Catch::Approx(12.0));
 }

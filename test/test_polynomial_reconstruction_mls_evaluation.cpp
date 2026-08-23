@@ -3,7 +3,7 @@
 
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
 #include "pcms/field/evaluator/mls_options.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/coordinate_view.hpp"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/utility/arrays.h"

@@ -389,7 +389,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: 3D point clouds preserve "
   auto layout_coords_device =
     fs->GetLayout()->GetDOFHolderCoordinates().GetValues();
   auto layout_coords =
-    pcms::test::CopyCoordinatesToHost(layout_coords_device, 27, 3);
+    pcms::test::CopyCoordinatesToHost(layout_coords_device);
   REQUIRE(static_cast<int>(layout_coords.extent(1)) == 3);
   for (int i = 0; i < 27; ++i) {
     REQUIRE(layout_coords(i, 0) == Catch::Approx(src[3 * i + 0]));

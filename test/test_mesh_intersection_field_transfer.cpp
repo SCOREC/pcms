@@ -84,9 +84,7 @@ TEST_CASE("OmegaHConservativeProjection reproduces constant and linear fields",
 
     const auto target_values =
       pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
-    const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-      pcms::MakeConstRank2View(target_mesh.coords(), 2), target_mesh.nverts(),
-      2);
+    const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(target_mesh.coords(), 2));
     for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
       const double expected = tgt_coords_h(i, 0) + tgt_coords_h(i, 1);
       REQUIRE(target_values[i] == Catch::Approx(expected).margin(1e-9));
@@ -257,8 +255,7 @@ TEST_CASE("OmegaHConservativeProjection writes reordered target GIDs in local "
   const auto target_values = target.GetDOFHolderDataHost();
   const auto target_coords =
     target_space->GetLayout()->GetDOFHolderCoordinates().GetValues();
-  const auto target_coords_h = pcms::test::CopyCoordinatesToHost(
-    target_coords, target_mesh.nverts(), target_mesh.dim());
+  const auto target_coords_h = pcms::test::CopyCoordinatesToHost(target_coords);
   REQUIRE(static_cast<Omega_h::LO>(target_values.extent(0)) ==
           target_mesh.nverts());
   REQUIRE(target_values.extent(1) == 1);
@@ -296,8 +293,7 @@ TEST_CASE("OmegaHConservativeProjection maps sparse target GIDs to active "
   const auto target_values = target.GetDOFHolderDataHost();
   const auto target_coords =
     target_space->GetLayout()->GetDOFHolderCoordinates().GetValues();
-  const auto target_coords_h = pcms::test::CopyCoordinatesToHost(
-    target_coords, target_mesh.nverts(), target_mesh.dim());
+  const auto target_coords_h = pcms::test::CopyCoordinatesToHost(target_coords);
   REQUIRE(static_cast<Omega_h::LO>(target_values.extent(0)) ==
           target_mesh.nverts());
   REQUIRE(target_values.extent(1) == 1);

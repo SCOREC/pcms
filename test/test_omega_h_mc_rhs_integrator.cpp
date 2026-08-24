@@ -32,9 +32,7 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator: sample points lie inside the domain",
     pcms::OmegaHMonteCarloRHSIntegrator integrator(
       *target_space, samples_per_element, sampling);
     const auto raw_coords = integrator.GetIntegrationPoints().GetValues();
-    auto coords_h = pcms::test::CopyCoordinatesToHost(
-      raw_coords, static_cast<int>(raw_coords.extent(0)),
-      static_cast<int>(raw_coords.extent(1)));
+    auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
 
     REQUIRE(
       coords_h.extent(0) ==
@@ -111,8 +109,7 @@ TEST_CASE("OmegaHControlVariateProjection: exact for fields in the target "
 
   const auto values =
     pcms::FlattenToRank1View(target_field.GetDOFHolderDataHost().GetValues());
-  const auto coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 2), target_mesh.nverts(), 2);
+  const auto coords_h = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(target_mesh.coords(), 2));
   REQUIRE(static_cast<Omega_h::LO>(values.size()) == target_mesh.nverts());
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
     const double expected = 3.0 * coords_h(i, 0) - coords_h(i, 1) + 0.25;

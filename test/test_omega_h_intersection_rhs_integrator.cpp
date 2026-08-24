@@ -106,9 +106,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: integration points lie inside "
     pcms::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
 
   const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
-  auto raw_coords_host = pcms::test::CopyCoordinatesToHost(
-    raw_coords, static_cast<int>(raw_coords.extent(0)),
-    static_cast<int>(raw_coords.extent(1)));
+  auto raw_coords_host = pcms::test::CopyCoordinatesToHost(raw_coords);
   const std::size_t n = raw_coords_host.extent(0);
 
   REQUIRE(n > 0);
@@ -200,8 +198,7 @@ TEST_CASE(
   const auto target_layout =
     std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
       target_space->GetLayout());
-  const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 2), target_mesh.nverts(), 2);
+  const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(target_mesh.coords(), 2));
   std::vector<pcms::Real> g(target_mesh.nverts());
   for (int i = 0; i < target_mesh.nverts(); ++i) {
     g[i] = tgt_coords_h(i, 0) + tgt_coords_h(i, 1);

@@ -39,6 +39,14 @@
 namespace pcms::test
 {
 
+// tolerances used for testing.
+// Currently we just added for the tests we were working on.
+// We need to update all tests to use consistent tolerances
+// Those tolerances should either come from these constexpr variables
+// or toleranes in the config file
+inline constexpr double ExactTol = 1e-12;
+inline constexpr double EvalTol = 1e-10;
+
 // Affine test function — exactly representable on linear elements.
 KOKKOS_INLINE_FUNCTION Real linear_f(Real x, Real y)
 {
@@ -257,7 +265,7 @@ inline std::pair<double, double> P1FieldRange(const Field<Real>& field)
 
 // Require that the target field stays within the range of the source field.
 inline void RequireBoundedBy(const Field<Real>& target,
-                             const Field<Real>& source, double tol = 1e-12)
+                             const Field<Real>& source, double tol = ExactTol)
 {
   const auto src_range = P1FieldRange(source);
   const auto tgt_range = P1FieldRange(target);
@@ -271,10 +279,10 @@ inline void RequireBoundedBy(const Field<Real>& target,
 // spaces.
 template <typename CoordView>
 inline Kokkos::View<const Real**, HostMemorySpace> CopyCoordinatesToHost(
-  const CoordView& coords_device, int nents, int dim)
+  const CoordView& coords_device)
 {
-  auto coords_view =
-    Kokkos::View<Real**, HostMemorySpace>("coords_view", nents, dim);
+  auto coords_view = Kokkos::View<Real**, HostMemorySpace>(
+    "coords_view", coords_device.extent(0), coords_device.extent(1));
   auto coords_view_device =
     Kokkos::create_mirror_view(DeviceMemorySpace(), coords_view);
   ConvertMismatchLayoutView2D(coords_view_device, coords_device);
@@ -409,6 +417,16 @@ struct DeviceCoordinates
   CoordinateView<DeviceMemorySpace> coordinate_view;
 };
 
+// Binds an already-built device buffer to a coordinate system, without the
+// allocation and placeholder resolution CreateDeviceCoordinateView performs.
+inline CoordinateView<DeviceMemorySpace> MakeCoords(
+  const Kokkos::View<Real**, DeviceMemorySpace>& data,
+  std::shared_ptr<const CoordinateSystem> coordinate_system)
+{
+  return CoordinateView<DeviceMemorySpace>(std::move(coordinate_system),
+                                           MakeConstRank2View(data));
+}
+
 inline Kokkos::View<Real**, DeviceMemorySpace> CreateDeviceRank2View(
   const std::vector<Real>& values, int num_columns)
 {
@@ -445,7 +463,7 @@ inline DeviceCoordinates CreateDeviceCoordinateView(
 template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
 void CheckEvaluation(const PointEvaluator<Real>& evaluator,
                      const Field<Real>& field, const std::vector<Real>& pts,
-                     Func func, double abs_tol = 1e-10)
+                     Func func, double abs_tol = EvalTol)
 {
   int n = static_cast<int>(pts.size()) / 2;
 
@@ -471,7 +489,7 @@ template <typename Factory, typename ExecutionSpace = DefaultExecutionSpace,
           typename Func>
 void CheckEvaluation(const Factory& factory, const Field<Real>& field,
                      const std::vector<Real>& pts, Func func,
-                     double abs_tol = 1e-10)
+                     double abs_tol = EvalTol)
 {
   auto device_coords =
     CreateDeviceCoordinateView(pts, factory->GetCoordinateSystem());
@@ -517,7 +535,7 @@ template <typename Factory, typename ExecutionSpace = DefaultExecutionSpace,
 void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
                              const std::vector<Real>& pts,
                              const std::vector<bool>& is_inside, Func func,
-                             Real fill_value, double abs_tol = 1e-10)
+                             Real fill_value, double abs_tol = EvalTol)
 {
   int n = static_cast<int>(pts.size()) / 2;
   REQUIRE(static_cast<int>(is_inside.size()) == n);

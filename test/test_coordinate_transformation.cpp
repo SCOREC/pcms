@@ -2,25 +2,29 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <Kokkos_Core.hpp>
+#include <pcms/field/basis_transformation.hpp>
 #include <pcms/field/coordinate_system.hpp>
 #include <pcms/field/coordinate_view.hpp>
 #include <pcms/field/value_view.hpp>
+#include <cmath>
 #include <vector>
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/coordinate_systems/cylindrical.hpp"
 #include "field_test_utils.h"
 
 using Catch::Matchers::ContainsSubstring;
+using Catch::Matchers::WithinAbs;
+using pcms::BoundBasisTransformation;
 using pcms::ComponentScaling;
 using pcms::CoordinateView;
 using pcms::DeviceMemorySpace;
+using pcms::FieldValueType;
 using pcms::HostMemorySpace;
 using pcms::Real;
 using pcms::SameCoordinateSystem;
 using pcms::ValueBasis;
 using pcms::ValueView;
 using pcms::Variance;
-using pcms::VarianceSignature;
 
 TEST_CASE("coordinate systems: structural equality")
 {
@@ -99,20 +103,20 @@ TEST_CASE("ValueView validates component counts and basis")
   REQUIRE_THROWS_WITH(
     (ValueView<const Real, DeviceMemorySpace>(
       ValueBasis{pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
-                 VarianceSignature{Variance::Contravariant}},
+                 pcms::values::Vector},
       pcms::MakeConstRank2View(data))),
     ContainsSubstring("require 3 components"));
   // Component count comes from the system's dimension: a 2-dimensional system
   // takes 2.
   REQUIRE_NOTHROW(ValueView<const Real, DeviceMemorySpace>(
     ValueBasis{pcms::csys::CylindricalRZ::Create(), ComponentScaling::Physical,
-               VarianceSignature{Variance::Contravariant}},
+               pcms::values::Vector},
     pcms::MakeConstRank2View(data)));
   // Non-scalar values require a basis coordinate system.
   auto data3 = pcms::test::CreateDeviceRank2View({1.0, 2.0, 3.0}, 3);
   REQUIRE_THROWS_WITH((ValueView<const Real, DeviceMemorySpace>(
                         ValueBasis{nullptr, ComponentScaling::Physical,
-                                   VarianceSignature{Variance::Contravariant}},
+                                   pcms::values::Vector},
                         pcms::MakeConstRank2View(data3))),
                       ContainsSubstring("basis coordinate system"));
   // Physical components are undefined without a canonical orthonormal triad,
@@ -136,4 +140,99 @@ TEST_CASE("value declarations reject rank > 2")
                           Variance::Contravariant})},
       pcms::MakeConstRank2View(data))),
     ContainsSubstring("rank-3"));
+}
+
+TEST_CASE("basis transformation: binds at either endpoint system's points")
+{
+  // The same physical point expressed both ways gives the same rotation.
+  const Real theta = 0.7;
+  const std::vector<Real> cart = {2.0 * std::cos(theta), 2.0 * std::sin(theta),
+                                  0.3};
+  const std::vector<Real> cyl = {2.0, theta, 0.3};
+  auto cart_data = pcms::test::CreateDeviceRank2View(cart, 3);
+  auto cyl_data = pcms::test::CreateDeviceRank2View(cyl, 3);
+  const pcms::CylindricalToCartesianBasis rule;
+  const auto from_cart =
+    rule.Bind(pcms::test::MakeCoords(cart_data, pcms::csys::Cartesian::Create(3)));
+  const auto from_cyl =
+    rule.Bind(pcms::test::MakeCoords(cyl_data, pcms::csys::CylindricalRThetaZ::Create()));
+
+  const std::vector<Real> v = {0.0, 1.0, 0.0}; // theta-direction unit vector
+  auto in_data = pcms::test::CreateDeviceRank2View(v, 3);
+  const ValueView<const Real, DeviceMemorySpace> in(
+    ValueBasis{pcms::csys::CylindricalRThetaZ::Create(),
+               ComponentScaling::Physical,
+               pcms::values::Vector},
+    pcms::MakeConstRank2View(in_data));
+  Kokkos::View<Real**, DeviceMemorySpace> out_a("out_a", 1, 3);
+  Kokkos::View<Real**, DeviceMemorySpace> out_b("out_b", 1, 3);
+  const ValueBasis cart_basis{pcms::csys::Cartesian::Create(3),
+                              ComponentScaling::Physical,
+                              pcms::values::Vector};
+  from_cart->Apply(in, ValueView<Real, DeviceMemorySpace>(
+                         cart_basis, pcms::MakeRank2View(out_a)));
+  from_cyl->Apply(in, ValueView<Real, DeviceMemorySpace>(
+                        cart_basis, pcms::MakeRank2View(out_b)));
+  auto a = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(out_a));
+  auto b = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(out_b));
+  for (int d = 0; d < 3; ++d) {
+    REQUIRE_THAT(a(0, d), WithinAbs(b(0, d), pcms::test::ExactTol));
+  }
+  REQUIRE_THAT(a(0, 0), WithinAbs(-std::sin(theta), pcms::test::ExactTol));
+  REQUIRE_THAT(a(0, 1), WithinAbs(std::cos(theta), pcms::test::ExactTol));
+
+  // But points in a coordinate system that is neither endpoint are rejected.
+  const std::vector<Real> rz = {1.0, 2.0};
+  auto rz_data = pcms::test::CreateDeviceRank2View(rz, 2);
+  REQUIRE_THROWS_WITH(
+    rule.Bind(pcms::test::MakeCoords(rz_data, pcms::csys::CylindricalRZ::Create())),
+    ContainsSubstring("bound points"));
+}
+
+TEST_CASE("basis transformation Apply validates the view tags")
+{
+  const std::vector<Real> rtz = {1.0, 0.5, 0.0};
+  auto data = pcms::test::CreateDeviceRank2View(rtz, 3);
+  const auto law = pcms::CylindricalToCartesianBasis{}.Bind(
+    pcms::test::MakeCoords(data, pcms::csys::CylindricalRThetaZ::Create()));
+
+  auto in_data = pcms::test::CreateDeviceRank2View({1.0, 0.0, 0.0}, 3);
+  Kokkos::View<Real**, DeviceMemorySpace> out_data("out", 1, 3);
+  const ValueBasis cyl_basis{pcms::csys::CylindricalRThetaZ::Create(),
+                             ComponentScaling::Physical,
+                             pcms::values::Vector};
+  const ValueBasis cart_basis{pcms::csys::Cartesian::Create(3),
+                              ComponentScaling::Physical,
+                              pcms::values::Vector};
+
+  SECTION("wrong source basis")
+  {
+    REQUIRE_THROWS_WITH(
+      law->Apply(ValueView<const Real, DeviceMemorySpace>(
+                   cart_basis, pcms::MakeConstRank2View(in_data)),
+                 ValueView<Real, DeviceMemorySpace>(
+                   cart_basis, pcms::MakeRank2View(out_data))),
+      ContainsSubstring("source basis"));
+  }
+  SECTION("wrong target basis")
+  {
+    REQUIRE_THROWS_WITH(
+      law->Apply(ValueView<const Real, DeviceMemorySpace>(
+                   cyl_basis, pcms::MakeConstRank2View(in_data)),
+                 ValueView<Real, DeviceMemorySpace>(
+                   cyl_basis, pcms::MakeRank2View(out_data))),
+      ContainsSubstring("target basis"));
+  }
+  SECTION("scalars pass through any bases as a copy")
+  {
+    auto s_in = pcms::test::CreateDeviceRank2View({4.0, 5.0, 6.0}, 3);
+    Kokkos::View<Real**, DeviceMemorySpace> s_out("s_out", 1, 3);
+    law->Apply(ValueView<const Real, DeviceMemorySpace>(
+                 ValueBasis{}, pcms::MakeConstRank2View(s_in)),
+               ValueView<Real, DeviceMemorySpace>(ValueBasis{},
+                                                  pcms::MakeRank2View(s_out)));
+    auto s = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(s_out));
+    REQUIRE_THAT(s(0, 0), WithinAbs(4.0, pcms::test::ExactTol));
+    REQUIRE_THAT(s(0, 2), WithinAbs(6.0, pcms::test::ExactTol));
+  }
 }

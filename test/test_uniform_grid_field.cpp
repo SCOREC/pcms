@@ -134,7 +134,7 @@ TEST_CASE("UniformGrid order-0 field creation and evaluation")
   REQUIRE(layout->GetNumOwnedDofHolder() == 4);
 
   auto coords_device = layout->GetDOFHolderCoordinates().GetValues();
-  auto coords = pcms::test::CopyCoordinatesToHost(coords_device, 4, 2);
+  auto coords = pcms::test::CopyCoordinatesToHost(coords_device);
 
   REQUIRE(coords(0, 0) == Catch::Approx(2.5));
   REQUIRE(coords(0, 1) == Catch::Approx(2.5));
@@ -344,7 +344,7 @@ TEST_CASE("Transfer from OmegaH field to UniformGrid field")
 
   // set up_coords to host
   auto ug_coords_host =
-    pcms::test::CopyCoordinatesToHost(ug_coords.GetValues(), num_ug_nodes, 2);
+    pcms::test::CopyCoordinatesToHost(ug_coords.GetValues());
 
   for (int i = 0; i < num_ug_nodes; ++i) {
     pcms::Real x = ug_coords_host(i, 0);
@@ -663,7 +663,7 @@ TEST_CASE("UniformGrid workflow")
   auto ug_coords_device_view =
     ug_factory->GetLayout()->GetDOFHolderCoordinates().GetValues();
   auto ug_coords_host_view =
-    pcms::test::CopyCoordinatesToHost(ug_coords_device_view, 25, 2);
+    pcms::test::CopyCoordinatesToHost(ug_coords_device_view);
 
   pcms::CoordinateView<pcms::HostMemorySpace> ug_coords_view(
     pcms::csys::Cartesian::Deferred(),

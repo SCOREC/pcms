@@ -44,7 +44,7 @@ TEST_CASE("OmegaHLagrangeLayout order-1 properties")
   auto coords_device = layout.GetDOFHolderCoordinates().GetValues();
   int nverts = mesh.nents(0);
   auto coords_view =
-    pcms::test::CopyCoordinatesToHost(coords_device, nverts, mesh.dim());
+    pcms::test::CopyCoordinatesToHost(coords_device);
   auto mesh_coords = Omega_h::HostRead<Real>(mesh.coords());
   REQUIRE(static_cast<int>(coords_view.extent(0)) == nverts);
   REQUIRE(static_cast<int>(coords_view.extent(1)) == mesh.dim());
@@ -78,7 +78,7 @@ TEST_CASE("OmegaHLagrangeLayout order-0 properties")
   auto coords_device = layout.GetDOFHolderCoordinates().GetValues();
   int nelems = mesh.nelems();
   auto coords_view =
-    pcms::test::CopyCoordinatesToHost(coords_device, nelems, mesh.dim());
+    pcms::test::CopyCoordinatesToHost(coords_device);
   auto centroids =
     Omega_h::HostRead<Real>(pcms::get_entity_centroids(mesh, mesh.dim()));
   REQUIRE(static_cast<int>(coords_view.extent(0)) == nelems);

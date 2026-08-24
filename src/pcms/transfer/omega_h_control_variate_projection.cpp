@@ -33,6 +33,15 @@ OmegaHControlVariateProjection::OmegaHControlVariateProjection(
     target_layout_, target_space.GetCoordinateSystem(), mass_matrix_type);
   solver_ = std::make_unique<GalerkinProjectionSolver>(mass_integrator,
                                                        *rhs_integrator_);
+
+  target_values_ = Kokkos::View<Real**, DeviceMemorySpace>(
+    "cv_target_values", target_layout_->GetNumOwnedDofHolder(),
+    target_layout_->GetNumComponents());
+  const auto num_samples = sample_coords.GetValues().extent(0);
+  f_samples_ =
+    Kokkos::View<Real**, DeviceMemorySpace>("cv_f_samples", num_samples, 1);
+  residual_ =
+    Kokkos::View<Real**, DeviceMemorySpace>("cv_residual", num_samples, 1);
 }
 
 // Defined here so that GalerkinProjectionSolver (forward-declared in the
@@ -42,17 +51,31 @@ OmegaHControlVariateProjection::~OmegaHControlVariateProjection() = default;
 void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
                                            Field<Real>& target) const
 {
+  Apply(MakeTransferKey(), source, MakeRank2View(target_values_));
+  target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
+}
+
+void OmegaHControlVariateProjection::Apply(
+  TransferKey, const Field<Real>& source,
+  Rank2View<Real, DeviceMemorySpace> out) const
+{
+  const int num_dof_holders = target_layout_->GetNumOwnedDofHolder();
+  const int num_components = target_layout_->GetNumComponents();
+  if (static_cast<int>(out.extent(0)) != num_dof_holders ||
+      static_cast<int>(out.extent(1)) != num_components) {
+    throw pcms_error("OmegaHControlVariateProjection::Apply: output buffer "
+                     "extents do not match the target layout");
+  }
+
   // 1. Control variate: interpolate the source field onto the target space.
   interpolator_.Apply(source, control_variate_);
 
   // 2. Sample the source field and the control variate at the fixed Monte
   //    Carlo sample points; the stochastic RHS integrates the residual.
-  const std::size_t num_samples =
-    rhs_integrator_->GetIntegrationPoints().GetValues().extent(0);
-  Kokkos::View<Real**, DeviceMemorySpace> f_samples("cv_f_samples", num_samples,
-                                                    1);
-  Kokkos::View<Real**, DeviceMemorySpace> residual("cv_residual", num_samples,
-                                                   1);
+  const std::size_t num_samples = f_samples_.extent(0);
+  // Shallow copies so the device lambda captures the views, not `this`.
+  auto f_samples = f_samples_;
+  auto residual = residual_;
   source_at_samples_->Evaluate(source, MakeRank2View(f_samples));
   control_variate_at_samples_->Evaluate(control_variate_,
                                         MakeRank2View(residual));
@@ -69,17 +92,23 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
   //    indexed by local DOF holder.
   const auto g_nodal = control_variate_.GetDOFHolderData().GetValues();
   const auto global_to_local = target_layout_->GetGlobalToLocalPermutation();
-  const int nverts = static_cast<int>(g_nodal.extent(0));
 
-  Kokkos::View<Real**, DeviceMemorySpace> result("cv_result", nverts, 1);
+  if (static_cast<int>(g_nodal.extent(0)) != num_dof_holders ||
+      static_cast<int>(g_nodal.extent(1)) != num_components) {
+    throw pcms_error("OmegaHControlVariateProjection::Apply: control variate "
+                     "extents do not match the target layout");
+  }
+
   Kokkos::parallel_for(
-    "cv_add_correction", Kokkos::RangePolicy<DefaultExecutionSpace>(0, nverts),
+    "cv_add_correction",
+    Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_dof_holders),
     KOKKOS_LAMBDA(int i) {
-      result(i, 0) = g_nodal(i, 0) + delta[global_to_local(i)];
+      for (int c = 0; c < num_components; ++c) {
+        out(i, c) =
+          g_nodal(i, c) + delta[global_to_local(i) * num_components + c];
+      }
     });
   Kokkos::fence();
-
-  target.SetDOFHolderDataUnchecked(MakeConstRank2View(result));
 }
 
 } // namespace pcms

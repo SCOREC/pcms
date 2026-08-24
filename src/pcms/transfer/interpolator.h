@@ -41,12 +41,11 @@ public:
           0))),
       n_comp_(target_space.GetLayout()->GetNumComponents()),
       evaluator_(source_space.CreatePointEvaluator<T>(
-        EvaluationRequest::FromFunctionSpace(target_space, policy)))
+        EvaluationRequest::FromFunctionSpace(target_space, policy))),
+      target_values_("interp_output", num_points_, n_comp_)
   {
   }
 
-  // Cheap: apply to any Field whose layout matches the target space.
-  // Localization is not repeated.
   void Apply(const Field<T>& source, Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
@@ -60,16 +59,27 @@ public:
         "Interpolator: the source's stored basis differs from the target's "
         "declared basis");
     }
-    Kokkos::View<T**, DeviceMemorySpace> output("interp_output", num_points_,
-                                                n_comp_);
-    evaluator_->Evaluate(source, MakeRank2View(output));
-    target.SetDOFHolderDataUnchecked(MakeConstRank2View(output));
+    Apply(this->MakeTransferKey(), source, MakeRank2View(target_values_));
+    target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
+  }
+
+  void Apply(TransferKey, const Field<T>& source,
+             Rank2View<T, DeviceMemorySpace> out) const override
+  {
+    PCMS_FUNCTION_TIMER;
+    if (static_cast<LO>(out.extent(0)) != num_points_ ||
+        static_cast<int>(out.extent(1)) != n_comp_) {
+      throw pcms_error(
+        "Interpolator: output buffer extents do not match the target layout");
+    }
+    evaluator_->Evaluate(source, out);
   }
 
 private:
   LO num_points_;
   int n_comp_;
   std::unique_ptr<PointEvaluator<T>> evaluator_;
+  mutable Kokkos::View<T**, DeviceMemorySpace> target_values_;
 };
 
 } // namespace pcms

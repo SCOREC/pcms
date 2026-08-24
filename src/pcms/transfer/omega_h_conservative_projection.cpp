@@ -69,23 +69,41 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
                                          Field<Real>& target) const
 {
   CheckApplyCompatible(source, target, *source_layout_, *target_layout_);
+  Apply(MakeTransferKey(), source, MakeRank2View(target_values_));
+  target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
+}
+
+void OmegaHConservativeProjection::Apply(
+  TransferKey, const Field<Real>& source,
+  Rank2View<Real, DeviceMemorySpace> out) const
+{
+  if (&source.GetLayout() != source_layout_.get()) {
+    throw pcms_error(
+      "OmegaHConservativeProjection::Apply: source field layout mismatch");
+  }
+  if (source.GetData().GetValueType() != FieldValueType::Scalar) {
+    throw pcms_error(
+      "OmegaHConservativeProjection::Apply: only scalar fields are supported");
+  }
+  const int num_dof_holders = target_layout_->GetNumOwnedDofHolder();
+  const int num_components = target_layout_->GetNumComponents();
+  if (static_cast<int>(out.extent(0)) != num_dof_holders ||
+      static_cast<int>(out.extent(1)) != num_components) {
+    throw pcms_error("OmegaHConservativeProjection::Apply: output buffer "
+                     "extents do not match the target layout");
+  }
 
   const auto solution = solver_->Solve(*evaluator_, source);
   const auto global_to_local = target_layout_->GetGlobalToLocalPermutation();
-  const int num_dof_holders = target_layout_->GetNumOwnedDofHolder();
-  const int num_components = target_layout_->GetNumComponents();
-  auto target_values = target_values_;
   Kokkos::parallel_for(
     "conservative_projection_scatter_solution",
     Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_dof_holders),
     KOKKOS_LAMBDA(int i) {
       for (int c = 0; c < num_components; ++c) {
-        target_values(i, c) = solution[global_to_local(i) * num_components + c];
+        out(i, c) = solution[global_to_local(i) * num_components + c];
       }
     });
   Kokkos::fence();
-
-  target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
 } // namespace pcms

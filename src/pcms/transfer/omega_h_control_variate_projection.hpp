@@ -9,6 +9,7 @@
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include "pcms/transfer/monte_carlo_sampling.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
+#include <Kokkos_Core.hpp>
 #include <cstdint>
 #include <memory>
 
@@ -49,6 +50,9 @@ public:
 
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
+  void Apply(TransferKey, const Field<Real>& source,
+             Rank2View<Real, DeviceMemorySpace> out) const override;
+
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout_;
   std::unique_ptr<OmegaHMonteCarloRHSIntegrator> rhs_integrator_;
@@ -59,6 +63,10 @@ private:
   std::unique_ptr<PointEvaluator<Real>> source_at_samples_;
   std::unique_ptr<PointEvaluator<Real>> control_variate_at_samples_;
   std::unique_ptr<GalerkinProjectionSolver> solver_;
+
+  mutable Kokkos::View<Real**, DeviceMemorySpace> target_values_;
+  mutable Kokkos::View<Real**, DeviceMemorySpace> f_samples_;
+  mutable Kokkos::View<Real**, DeviceMemorySpace> residual_;
 };
 
 } // namespace pcms

@@ -39,8 +39,10 @@ public:
 
   void Evaluate(
     const Field<Real>& field,
-    Rank2View<Real, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
+    this->CheckEvaluateWriteTag("MLSPointEvaluator::Evaluate", field, out);
+    const auto values = out.GetValues();
     if (values.extent(1) != 1) {
       throw pcms_error(
         "MLSPointEvaluator: only scalar (num_components==1) evaluation is "

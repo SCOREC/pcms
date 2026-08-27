@@ -135,6 +135,22 @@ struct ValueBasis
 namespace detail
 {
 
+/// Gate for a tagged write: throws pcms_error unless the basis the caller
+/// claimed on the output view is the basis the callee is about to write.
+/// @param context callee name used to prefix the error message
+/// @param claimed basis tagged onto the caller-supplied output view
+/// @param written basis the callee actually writes
+inline void CheckWrittenValueBasis(const char* context,
+                                   const ValueBasis& claimed,
+                                   const ValueBasis& written)
+{
+  if (!SameValueBasis(claimed, written)) {
+    throw pcms_error(std::string(context) +
+                     ": the output view's declared value type/basis does not "
+                     "match the basis this call writes");
+  }
+}
+
 inline void ValidateValueBasis(const ValueBasis& basis)
 {
   if (basis.Rank() == 0) {

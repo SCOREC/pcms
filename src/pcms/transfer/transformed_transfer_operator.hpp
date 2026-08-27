@@ -157,23 +157,28 @@ public:
         rotated_scratch_ = Kokkos::View<Real**, DeviceMemorySpace>(
           "transformed_transfer_rotated", n, width);
       }
-      Apply(this->MakeTransferKey(), source, MakeRank2View(rotated_scratch_));
+      Apply(this->MakeTransferKey(), source,
+            ValueView<T, DeviceMemorySpace>(td.GetValueBasis(),
+                                            MakeRank2View(rotated_scratch_)));
       target.SetDOFHolderDataUnchecked(MakeConstRank2View(rotated_scratch_));
     }
   }
 
   // Uncommitted apply (keyed): with no target declaration to consult, the
-  // output basis is the value transformation's target basis when the source's
-  // stored basis differs from it, else the source's stored basis. See
+  // basis written is the value transformation's target basis when the
+  // source's stored basis differs from it, else the source's stored basis.
+  // The output view must claim whichever of the two applies. See
   // TransferOperator for the contract.
   void Apply(TransferKey key, const Field<T>& source,
-             Rank2View<T, DeviceMemorySpace> out) const override
+             ValueView<T, DeviceMemorySpace> out) const override
   {
     PCMS_FUNCTION_TIMER;
     const auto& sd = source.GetData();
     const bool needs_transformation = !SameValueBasis(
       sd.GetValueBasis(), value_transformation_->GetTargetBasis());
     if (!needs_transformation) {
+      this->CheckApplyWriteTag("TransformedTransferOperator::Apply", out,
+                               sd.GetValueBasis());
       inner_->Apply(key, source, out);
       return;
     }
@@ -181,6 +186,8 @@ public:
       throw pcms_error(
         "TransformedTransferOperator: basis changes require T == Real");
     } else {
+      this->CheckApplyWriteTag("TransformedTransferOperator::Apply", out,
+                               value_transformation_->GetTargetBasis());
       if (!SameValueBasis(sd.GetValueBasis(),
                           value_transformation_->GetSourceBasis())) {
         throw pcms_error(
@@ -194,14 +201,16 @@ public:
       }
       // The inner operator validates the buffer extents against the target
       // layout.
-      inner_->Apply(key, source, MakeRank2View(transfer_scratch_));
+      inner_->Apply(key, source,
+                    ValueView<T, DeviceMemorySpace>(
+                      sd.GetValueBasis(), MakeRank2View(transfer_scratch_)));
       value_transformation_->Apply(
         ValueView<const Real, DeviceMemorySpace>(
           sd.GetValueBasis(), MakeConstRank2View(transfer_scratch_)),
-        ValueView<Real, DeviceMemorySpace>(
-          value_transformation_->GetTargetBasis(), out));
+        out);
       if (policy_.mode == OutOfBoundsMode::FILL) {
-        detail::RestoreFillRows(transfer_scratch_, out, policy_.fill_value);
+        detail::RestoreFillRows(transfer_scratch_, out.GetValues(),
+                                policy_.fill_value);
       }
     }
   }

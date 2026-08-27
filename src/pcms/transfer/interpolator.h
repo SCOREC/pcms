@@ -59,14 +59,18 @@ public:
         "Interpolator: the source's stored basis differs from the target's "
         "declared basis");
     }
-    Apply(this->MakeTransferKey(), source, MakeRank2View(target_values_));
+    Apply(this->MakeTransferKey(), source,
+          ValueView<T, DeviceMemorySpace>(td.GetValueBasis(),
+                                          MakeRank2View(target_values_)));
     target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
   }
 
   void Apply(TransferKey, const Field<T>& source,
-             Rank2View<T, DeviceMemorySpace> out) const override
+             ValueView<T, DeviceMemorySpace> out) const override
   {
     PCMS_FUNCTION_TIMER;
+    this->CheckApplyWriteTag("Interpolator::Apply", out,
+                             source.GetData().GetValueBasis());
     if (static_cast<LO>(out.extent(0)) != num_points_ ||
         static_cast<int>(out.extent(1)) != n_comp_) {
       throw pcms_error(

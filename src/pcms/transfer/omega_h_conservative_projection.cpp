@@ -69,14 +69,18 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
                                          Field<Real>& target) const
 {
   CheckApplyCompatible(source, target, *source_layout_, *target_layout_);
-  Apply(MakeTransferKey(), source, MakeRank2View(target_values_));
+  Apply(MakeTransferKey(), source,
+        ValueView<Real, DeviceMemorySpace>(target.GetData().GetValueBasis(),
+                                           MakeRank2View(target_values_)));
   target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
 void OmegaHConservativeProjection::Apply(
   TransferKey, const Field<Real>& source,
-  Rank2View<Real, DeviceMemorySpace> out) const
+  ValueView<Real, DeviceMemorySpace> out) const
 {
+  CheckApplyWriteTag("OmegaHConservativeProjection::Apply", out,
+                     source.GetData().GetValueBasis());
   if (&source.GetLayout() != source_layout_.get()) {
     throw pcms_error(
       "OmegaHConservativeProjection::Apply: source field layout mismatch");
@@ -93,6 +97,7 @@ void OmegaHConservativeProjection::Apply(
                      "extents do not match the target layout");
   }
 
+  const auto values = out.GetValues();
   const auto solution = solver_->Solve(*evaluator_, source);
   const auto global_to_local = target_layout_->GetGlobalToLocalPermutation();
   Kokkos::parallel_for(
@@ -100,7 +105,7 @@ void OmegaHConservativeProjection::Apply(
     Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_dof_holders),
     KOKKOS_LAMBDA(int i) {
       for (int c = 0; c < num_components; ++c) {
-        out(i, c) = solution[global_to_local(i) * num_components + c];
+        values(i, c) = solution[global_to_local(i) * num_components + c];
       }
     });
   Kokkos::fence();

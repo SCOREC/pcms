@@ -35,9 +35,12 @@ public:
 
   void Evaluate(
     const Field<T>& field,
-    Rank2View<T, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<T, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
+    this->CheckEvaluateWriteTag("MeshFieldsPointEvaluator::Evaluate", field,
+                                out);
+    const auto values = out.GetValues();
     PCMS_ALWAYS_ASSERT(values.extent(0) ==
                        hint_.coordinates_.extent(0) + hint_.num_missing_);
     PCMS_ALWAYS_ASSERT(values.extent(1) ==

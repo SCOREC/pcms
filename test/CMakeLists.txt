@@ -433,7 +433,8 @@ if(Catch2_FOUND)
       test_omega_h_field2_outofbounds.cpp
       test_omega_h_lagrange_field.cpp
       test_point_evaluator.cpp
-      test_transformed_transfer_operator.cpp)
+      test_transformed_transfer_operator.cpp
+      test_tagged_outputs.cpp)
   endif()
   if(PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES

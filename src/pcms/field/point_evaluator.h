@@ -1,6 +1,7 @@
 #ifndef PCMS_POINT_EVALUATOR_H
 #define PCMS_POINT_EVALUATOR_H
 
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
 
@@ -26,10 +27,16 @@ class Field;
 // check rather than deep structural comparison and should throw pcms_error on
 // mismatch.
 //
-// Evaluate writes results into a rank-2 output view with shape:
+// Evaluate writes results into a tagged rank-2 output view with shape:
 //   [num_query_points][num_components]
 // The caller must provide the full output buffer. Successful Evaluate calls
 // fill the entire buffer.
+//
+// The write is tagged: an evaluator produces the source field's stored value
+// basis, so the ValueView the caller supplies must claim that basis (all
+// rank-0 bases compare equal, so scalar callers may tag with ValueBasis{}).
+// Implementations gate on it with CheckEvaluateWriteTag and throw pcms_error
+// on mismatch.
 template <typename T,
           typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
@@ -38,9 +45,20 @@ class PointEvaluator
 public:
   virtual void Evaluate(
     const Field<T>& field,
-    Rank2View<T, DeviceMemorySpace, LayoutPolicy> values) const = 0;
+    ValueView<T, DeviceMemorySpace, LayoutPolicy> values) const = 0;
 
   virtual ~PointEvaluator() noexcept = default;
+
+protected:
+  /// Throws pcms_error unless the output view claims the source field's
+  /// stored value basis, which is what every evaluator writes.
+  static void CheckEvaluateWriteTag(
+    const char* context, const Field<T>& field,
+    const ValueView<T, DeviceMemorySpace, LayoutPolicy>& values)
+  {
+    detail::CheckWrittenValueBasis(context, values.GetBasis(),
+                                   field.GetData().GetValueBasis());
+  }
 };
 
 // Variant types using default layout for device memory space

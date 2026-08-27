@@ -458,6 +458,16 @@ inline CoordinateView<DeviceMemorySpace> MakeCoords(
                                            MakeConstRank2View(data));
 }
 
+/// Tags a device output buffer with a field's stored value basis, which is
+/// what evaluators and the component-moving transfer operators write.
+template <typename T>
+inline ValueView<T, DeviceMemorySpace> TagLike(
+  const Field<T>& field, Kokkos::View<T**, DeviceMemorySpace> values)
+{
+  return ValueView<T, DeviceMemorySpace>(field.GetData().GetValueBasis(),
+                                         MakeRank2View(values));
+}
+
 inline Kokkos::View<Real**, DeviceMemorySpace> CreateDeviceRank2View(
   const std::vector<Real>& values, int num_columns)
 {
@@ -499,7 +509,7 @@ void CheckEvaluation(const PointEvaluator<Real>& evaluator,
   int n = static_cast<int>(pts.size()) / 2;
 
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out_device", n, 1);
-  evaluator.Evaluate(field, MakeRank2View(out_device));
+  evaluator.Evaluate(field, TagLike(field, out_device));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
 
@@ -537,7 +547,7 @@ inline void CheckFillMode(const PointEvaluator<Real>& evaluator,
   int n = static_cast<int>(outside_pts.size()) / 2;
 
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out_device", n, 1);
-  evaluator.Evaluate(field, MakeRank2View(out_device));
+  evaluator.Evaluate(field, TagLike(field, out_device));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
 
@@ -578,7 +588,7 @@ void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
     EvaluationRequest::FromCoordinates(device_coords.coordinate_view, policy));
 
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out_device", n, 1);
-  evaluator->Evaluate(field, MakeRank2View(out_device));
+  evaluator->Evaluate(field, TagLike(field, out_device));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
 
@@ -610,7 +620,7 @@ inline void EvaluateAndAssemble(
   auto evaluator = source_space->CreatePointEvaluator<Real>(
     EvaluationRequest::FromCoordinates(pts));
   Kokkos::View<Real**, DeviceMemorySpace> sampled("sampled", npts, 1);
-  evaluator->Evaluate(source_field, MakeRank2View(sampled));
+  evaluator->Evaluate(source_field, TagLike(source_field, sampled));
   integrator.Assemble(MakeConstRank2View(sampled));
 }
 #endif // PCMS_ENABLE_PETSC && PCMS_ENABLE_MESHFIELDS

@@ -219,9 +219,12 @@ public:
 
   void Evaluate(
     const Field<T>& field,
-    Rank2View<T, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<T, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
+    this->CheckEvaluateWriteTag("OmegaHLagrangePointEvaluator::Evaluate", field,
+                                out);
+    const auto values = out.GetValues();
     auto dof_data = field.GetDOFHolderData();
     LO n_valid = static_cast<LO>(hint_.elem_ids.size());
     int n_comp = layout_->GetNumComponents();

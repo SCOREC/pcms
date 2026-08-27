@@ -201,7 +201,7 @@ TEST_CASE("manual composition: map + native evaluator + basis transformation")
   const auto law = pcms::CylindricalToCartesianBasis{}.Bind(mapped.View());
 
   Kokkos::View<Real**, DeviceMemorySpace> native("native", n, 3);
-  evaluator->Evaluate(b, pcms::MakeRank2View(native));
+  evaluator->Evaluate(b, pcms::test::TagLike(b, native));
   Kokkos::View<Real**, DeviceMemorySpace> rotated("rotated", n, 3);
   law->Apply(
     ValueView<const Real, DeviceMemorySpace>(

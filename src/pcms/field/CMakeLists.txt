@@ -20,6 +20,7 @@ set(PCMS_FIELD_HEADERS
         field_factory.h
         function_space.h
         point_evaluator.h
+        point_evaluator_factory.hpp
         data/simple.h
         function_space/polynomial_reconstruction.hpp
         layout/point_cloud.h

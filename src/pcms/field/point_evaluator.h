@@ -47,6 +47,12 @@ public:
     const Field<T>& field,
     ValueView<T, DeviceMemorySpace, LayoutPolicy> values) const = 0;
 
+  /// Value basis this evaluator writes for a field stored in `stored`.
+  [[nodiscard]] virtual ValueBasis OutputBasis(const ValueBasis& stored) const
+  {
+    return stored;
+  }
+
   virtual ~PointEvaluator() noexcept = default;
 
 protected:

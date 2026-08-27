@@ -9,6 +9,7 @@
 #include <pcms/field/coordinate_systems/cylindrical.hpp>
 #include <pcms/field/function_space/lagrange.h>
 #include <pcms/field/transformed_source.hpp>
+#include <pcms/transfer/interpolator.h>
 #include "field_test_utils.h"
 #include <cmath>
 #include <vector>
@@ -312,5 +313,53 @@ TEST_CASE("TransformedSource: nesting composes maps and rotations")
     REQUIRE_THAT(result(i, 0), WithinAbs(cyl_pts[3 * i], kTol));
     REQUIRE_THAT(result(i, 1), WithinAbs(0.0, kTol));
     REQUIRE_THAT(result(i, 2), WithinAbs(cyl_pts[3 * i + 2], kTol));
+  }
+}
+
+TEST_CASE("Interpolator over a TransformedSource transfers across systems")
+{
+  auto lib = Omega_h::Library{};
+  Omega_h::Mesh src_mesh(&lib), tgt_mesh(&lib);
+  auto src = BuildCylindricalSource(lib, src_mesh, 3);
+  auto tgt = BuildCartesianTarget(lib, tgt_mesh, 3);
+  auto b_src =
+    src->CreateFunction<Real>("b", values::Vector, ComponentScaling::Physical);
+  auto b_tgt = tgt->CreateFunction<Real>("b", values::Vector);
+  pcms::test::SetFieldComponents(b_src, [](Real r, Real, Real z, Real* out) {
+    out[0] = r;
+    out[1] = 0.0;
+    out[2] = z;
+  });
+
+  TransformedSource view(*src, std::make_shared<pcms::CartesianToCylindrical>(),
+                         b_src.GetData().GetValueBasis(),
+                         b_tgt.GetData().GetValueBasis());
+  pcms::Interpolator<Real> op(view, *tgt);
+  op.Apply(b_src, b_tgt);
+
+  const auto coords = pcms::test::CopyCoordinatesToHost(
+    tgt->GetLayout()->GetDOFHolderCoordinates().GetValues());
+  const auto result = b_tgt.GetDOFHolderDataHost();
+  const int n = static_cast<int>(coords.extent(0));
+  for (int i = 0; i < n; ++i) {
+    CAPTURE(i);
+    REQUIRE_THAT(result(i, 0), WithinAbs(coords(i, 0), kTol));
+    REQUIRE_THAT(result(i, 1), WithinAbs(coords(i, 1), kTol));
+    REQUIRE_THAT(result(i, 2), WithinAbs(coords(i, 2), kTol));
+  }
+
+  SECTION("the target must declare the basis the evaluator writes")
+  {
+    auto wrong = tgt->CreateFunction<Real>(
+      "w", values::Vector, pcms::csys::CylindricalRThetaZ::Create(),
+      ComponentScaling::Physical);
+    REQUIRE_THROWS_WITH(op.Apply(b_src, wrong),
+                        ContainsSubstring("target's declared basis"));
+  }
+
+  SECTION("a plain Interpolator refuses to bridge coordinate systems")
+  {
+    REQUIRE_THROWS_WITH(pcms::Interpolator<Real>(*src, *tgt),
+                        ContainsSubstring("coordinate system"));
   }
 }

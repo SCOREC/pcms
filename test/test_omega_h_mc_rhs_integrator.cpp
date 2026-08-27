@@ -6,7 +6,10 @@
 #include <Omega_h_mesh.hpp>
 #include <pcms/field/evaluation_request.h>
 #include <pcms/field/function_space/lagrange.h>
+#include <pcms/field/coordinate_map.hpp>
+#include <pcms/field/coordinate_systems/cartesian.hpp>
 #include <pcms/field/layout/omega_h_lagrange.h>
+#include <pcms/field/transformed_source.hpp>
 #include <pcms/transfer/conservative_projection_solver.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_control_variate_projection.hpp>
@@ -109,7 +112,8 @@ TEST_CASE("OmegaHControlVariateProjection: exact for fields in the target "
 
   const auto values =
     pcms::FlattenToRank1View(target_field.GetDOFHolderDataHost().GetValues());
-  const auto coords_h = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(target_mesh.coords(), 2));
+  const auto coords_h = pcms::test::CopyCoordinatesToHost(
+    pcms::MakeConstRank2View(target_mesh.coords(), 2));
   REQUIRE(static_cast<Omega_h::LO>(values.size()) == target_mesh.nverts());
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
     const double expected = 3.0 * coords_h(i, 0) - coords_h(i, 1) + 0.25;
@@ -294,4 +298,76 @@ TEST_CASE(
   }
   CAPTURE(mc_err, cv_err);
   CHECK(cv_err < mc_err);
+}
+
+namespace
+{
+
+class SwapXY final : public pcms::CoordinateMap
+{
+public:
+  [[nodiscard]] std::shared_ptr<const pcms::CoordinateSystem>
+  GetSourceCoordinateSystem() const noexcept override
+  {
+    return pcms::csys::Cartesian::Create(2);
+  }
+  [[nodiscard]] std::shared_ptr<const pcms::CoordinateSystem>
+  GetTargetCoordinateSystem() const noexcept override
+  {
+    return pcms::csys::Cartesian::Create(2);
+  }
+  [[nodiscard]] pcms::MappedPoints Map(
+    const pcms::CoordinateView<pcms::DeviceMemorySpace>& points) const override
+  {
+    const auto in = points.GetValues();
+    Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> out("swapped",
+                                                            in.extent(0), 2);
+    Kokkos::parallel_for(
+      "swap_xy",
+      Kokkos::RangePolicy<pcms::DeviceMemorySpace::execution_space>(
+        0, static_cast<pcms::LO>(in.extent(0))),
+      KOKKOS_LAMBDA(const pcms::LO i) {
+        out(i, 0) = in(i, 1);
+        out(i, 1) = in(i, 0);
+      });
+    Kokkos::fence();
+    return pcms::MappedPoints{GetTargetCoordinateSystem(), out,
+                              pcms::PointStatusView{}};
+  }
+};
+
+} // namespace
+
+TEST_CASE("OmegaHControlVariateProjection over a TransformedSource maps the "
+          "sample points",
+          "[mc_rhs_integrator][control_variate]")
+{
+  Omega_h::Library lib;
+  auto source_mesh = pcms::test::BuildUnitSquare(lib, 1);
+  auto target_mesh = pcms::test::BuildUnitSquare(lib, 0);
+  auto source_space = pcms::test::MakeP1Space(source_mesh);
+  auto target_space = pcms::test::MakeP1Space(target_mesh);
+
+  auto source_field = source_space->CreateFunction<pcms::Real>();
+  auto target_field = target_space->CreateFunction<pcms::Real>();
+  pcms::test::SetField(
+    source_field,
+    OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return 3.0 * x - y + 0.25; });
+
+  pcms::TransformedSource view(*source_space, std::make_shared<SwapXY>(),
+                               pcms::ValueBasis{}, pcms::ValueBasis{});
+  pcms::OmegaHControlVariateProjection projection(
+    view, *target_space, /*samples_per_element=*/4,
+    pcms::MonteCarloSampling::UniformRandom);
+  projection.Apply(source_field, target_field);
+
+  const auto values =
+    pcms::FlattenToRank1View(target_field.GetDOFHolderDataHost().GetValues());
+  const auto coords_h = pcms::test::CopyCoordinatesToHost(
+    pcms::MakeConstRank2View(target_mesh.coords(), 2));
+  for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
+    const double expected = 3.0 * coords_h(i, 1) - coords_h(i, 0) + 0.25;
+    CAPTURE(i, expected, values[i]);
+    CHECK(values[i] == Catch::Approx(expected).margin(1e-9));
+  }
 }

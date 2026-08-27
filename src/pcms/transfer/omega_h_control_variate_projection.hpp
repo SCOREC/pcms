@@ -5,6 +5,7 @@
 #include "pcms/field/function_space.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/field/point_evaluator.h"
+#include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/transfer/interpolator.h"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include "pcms/transfer/monte_carlo_sampling.hpp"
@@ -40,7 +41,7 @@ class OmegaHControlVariateProjection : public TransferOperator<Real>
 {
 public:
   OmegaHControlVariateProjection(
-    const FunctionSpace& source_space, const FunctionSpace& target_space,
+    const PointEvaluatorFactory& source, const FunctionSpace& target_space,
     int samples_per_element, MonteCarloSampling sampling,
     uint64_t seed = 8675309,
     MassMatrixType mass_matrix_type = MassMatrixType::Consistent);

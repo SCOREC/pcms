@@ -224,7 +224,8 @@ TEST_CASE("EQDSKData with SplineFunctionSpace")
 
     Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> eval_results(
       "eval_results", num_eval_points, 1);
-    evaluator->Evaluate(psi_field, pcms::MakeRank2View(eval_results));
+    evaluator->Evaluate(psi_field,
+                        pcms::test::TagLike(psi_field, eval_results));
 
     auto results_host = Kokkos::create_mirror_view_and_copy(
       pcms::HostMemorySpace(), eval_results);

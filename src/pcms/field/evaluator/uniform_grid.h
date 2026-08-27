@@ -71,9 +71,12 @@ public:
 
   void Evaluate(
     const Field<Real>& field,
-    Rank2View<Real, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
+    this->CheckEvaluateWriteTag("UniformGridPointEvaluator::Evaluate", field,
+                                out);
+    const auto values = out.GetValues();
     auto dof_data = field.GetDOFHolderData();
     LO num_points = static_cast<LO>(hint_.coordinates_.extent(0));
     int n_comp = layout_->GetNumComponents();

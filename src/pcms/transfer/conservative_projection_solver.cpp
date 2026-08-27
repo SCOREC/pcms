@@ -87,7 +87,9 @@ GalerkinProjectionSolver::~GalerkinProjectionSolver()
 Omega_h::Reals GalerkinProjectionSolver::Solve(
   const PointEvaluator<Real>& evaluator, const Field<Real>& source_field) const
 {
-  evaluator.Evaluate(source_field, MakeRank2View(sampled_values_));
+  evaluator.Evaluate(source_field, ValueView<Real, DeviceMemorySpace>(
+                                     source_field.GetData().GetValueBasis(),
+                                     MakeRank2View(sampled_values_)));
   return Solve(MakeConstRank2View(sampled_values_));
 }
 

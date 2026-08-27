@@ -155,7 +155,7 @@ TEST_CASE("UniformGrid order-0 field creation and evaluation")
 
   Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> results_device(
     "results_device", 4, 1);
-  evaluator->Evaluate(field, pcms::MakeRank2View(results_device));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, results_device));
   auto results_host = Kokkos::create_mirror_view_and_copy(
     pcms::HostMemorySpace(), results_device);
 
@@ -236,7 +236,7 @@ TEST_CASE("UniformGrid field evaluation - piecewise constant")
 
   Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> results_device(
     "results_device", 4, 1);
-  evaluator->Evaluate(field, pcms::MakeRank2View(results_device));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, results_device));
   auto results_host = Kokkos::create_mirror_view_and_copy(
     pcms::HostMemorySpace(), results_device);
 

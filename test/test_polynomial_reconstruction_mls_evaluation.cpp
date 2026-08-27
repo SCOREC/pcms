@@ -223,7 +223,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: Evaluate throws for "
 
   // Two-component output — must throw
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out", n, 2);
-  REQUIRE_THROWS(evaluator->Evaluate(field, pcms::MakeRank2View(out_device)));
+  REQUIRE_THROWS(
+    evaluator->Evaluate(field, pcms::test::TagLike(field, out_device)));
 }
 
 // ============================================================================
@@ -254,7 +255,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: default MLSOptions — "
 
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out", n, 1);
   // Just verify it runs without error and returns finite values
-  REQUIRE_NOTHROW(evaluator->Evaluate(field, pcms::MakeRank2View(out_device)));
+  REQUIRE_NOTHROW(
+    evaluator->Evaluate(field, pcms::test::TagLike(field, out_device)));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
   for (int i = 0; i < n; ++i)
@@ -312,7 +314,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: accepts the (R, Z) "
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
 
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out", 2, 1);
-  evaluator->Evaluate(field, pcms::MakeRank2View(out_device));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, out_device));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
 
@@ -368,7 +370,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: radius option is "
   auto evaluator = fs->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out", 1, 1);
-  evaluator->Evaluate(field, pcms::MakeRank2View(out_device));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, out_device));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
 
@@ -408,7 +410,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: 3D point clouds preserve "
   auto evaluator = fs->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out", 2, 1);
-  evaluator->Evaluate(field, pcms::MakeRank2View(out_device));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, out_device));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
 

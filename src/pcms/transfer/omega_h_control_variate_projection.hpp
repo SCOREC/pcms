@@ -51,7 +51,7 @@ public:
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
   void Apply(TransferKey, const Field<Real>& source,
-             Rank2View<Real, DeviceMemorySpace> out) const override;
+             ValueView<Real, DeviceMemorySpace> out) const override;
 
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout_;

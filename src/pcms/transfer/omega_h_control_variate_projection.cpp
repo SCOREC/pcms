@@ -51,14 +51,18 @@ OmegaHControlVariateProjection::~OmegaHControlVariateProjection() = default;
 void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
                                            Field<Real>& target) const
 {
-  Apply(MakeTransferKey(), source, MakeRank2View(target_values_));
+  Apply(MakeTransferKey(), source,
+        ValueView<Real, DeviceMemorySpace>(target.GetData().GetValueBasis(),
+                                           MakeRank2View(target_values_)));
   target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
 void OmegaHControlVariateProjection::Apply(
   TransferKey, const Field<Real>& source,
-  Rank2View<Real, DeviceMemorySpace> out) const
+  ValueView<Real, DeviceMemorySpace> out) const
 {
+  CheckApplyWriteTag("OmegaHControlVariateProjection::Apply", out,
+                     source.GetData().GetValueBasis());
   const int num_dof_holders = target_layout_->GetNumOwnedDofHolder();
   const int num_components = target_layout_->GetNumComponents();
   if (static_cast<int>(out.extent(0)) != num_dof_holders ||
@@ -76,9 +80,13 @@ void OmegaHControlVariateProjection::Apply(
   // Shallow copies so the device lambda captures the views, not `this`.
   auto f_samples = f_samples_;
   auto residual = residual_;
-  source_at_samples_->Evaluate(source, MakeRank2View(f_samples));
-  control_variate_at_samples_->Evaluate(control_variate_,
-                                        MakeRank2View(residual));
+  source_at_samples_->Evaluate(
+    source, ValueView<Real, DeviceMemorySpace>(source.GetData().GetValueBasis(),
+                                               MakeRank2View(f_samples)));
+  control_variate_at_samples_->Evaluate(
+    control_variate_,
+    ValueView<Real, DeviceMemorySpace>(
+      control_variate_.GetData().GetValueBasis(), MakeRank2View(residual)));
   Kokkos::parallel_for(
     "cv_residual", Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_samples),
     KOKKOS_LAMBDA(int i) {
@@ -99,12 +107,13 @@ void OmegaHControlVariateProjection::Apply(
                      "extents do not match the target layout");
   }
 
+  const auto values = out.GetValues();
   Kokkos::parallel_for(
     "cv_add_correction",
     Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_dof_holders),
     KOKKOS_LAMBDA(int i) {
       for (int c = 0; c < num_components; ++c) {
-        out(i, c) =
+        values(i, c) =
           g_nodal(i, c) + delta[global_to_local(i) * num_components + c];
       }
     });

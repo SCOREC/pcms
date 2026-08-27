@@ -69,8 +69,11 @@ public:
 
   void Evaluate(
     const Field<Real>& field,
-    Rank2View<Real, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
+    this->CheckEvaluateWriteTag("UniformGridSplinePointEvaluator2D::Evaluate",
+                                field, out);
+    const auto values = out.GetValues();
     LO num_points = static_cast<LO>(hint_.coordinates_.extent(0));
     PCMS_ALWAYS_ASSERT(values.extent(0) == static_cast<size_t>(num_points));
     PCMS_ALWAYS_ASSERT(values.extent(1) == 1);

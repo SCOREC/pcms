@@ -51,25 +51,8 @@ OmegaHControlVariateProjection::~OmegaHControlVariateProjection() = default;
 void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
                                            Field<Real>& target) const
 {
-  Apply(MakeTransferKey(), source,
-        ValueView<Real, DeviceMemorySpace>(target.GetData().GetValueBasis(),
-                                           MakeRank2View(target_values_)));
-  target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
-}
-
-void OmegaHControlVariateProjection::Apply(
-  TransferKey, const Field<Real>& source,
-  ValueView<Real, DeviceMemorySpace> out) const
-{
-  CheckApplyWriteTag("OmegaHControlVariateProjection::Apply", out,
-                     source.GetData().GetValueBasis());
   const int num_dof_holders = target_layout_->GetNumOwnedDofHolder();
   const int num_components = target_layout_->GetNumComponents();
-  if (static_cast<int>(out.extent(0)) != num_dof_holders ||
-      static_cast<int>(out.extent(1)) != num_components) {
-    throw pcms_error("OmegaHControlVariateProjection::Apply: output buffer "
-                     "extents do not match the target layout");
-  }
 
   // 1. Control variate: interpolate the source field onto the target space.
   interpolator_.Apply(source, control_variate_);
@@ -107,7 +90,7 @@ void OmegaHControlVariateProjection::Apply(
                      "extents do not match the target layout");
   }
 
-  const auto values = out.GetValues();
+  const auto values = MakeRank2View(target_values_);
   Kokkos::parallel_for(
     "cv_add_correction",
     Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_dof_holders),
@@ -118,6 +101,7 @@ void OmegaHControlVariateProjection::Apply(
       }
     });
   Kokkos::fence();
+  target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
 } // namespace pcms

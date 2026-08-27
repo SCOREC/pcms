@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <Kokkos_Core.hpp>
 #include <Omega_h_build.hpp>
@@ -6,7 +7,6 @@
 #include <pcms/field/basis_transformation.hpp>
 #include <pcms/field/function_space/lagrange.h>
 #include <pcms/transfer/interpolator.h>
-#include <pcms/transfer/transformed_transfer_operator.hpp>
 #include "field_test_utils.h"
 #include <memory>
 #include <vector>
@@ -18,28 +18,17 @@ using pcms::DeviceMemorySpace;
 using pcms::Field;
 using pcms::LagrangeFunctionSpace;
 using pcms::Real;
-using pcms::TransferKey;
-using pcms::TransformedTransferOperator;
 using pcms::ValueView;
 namespace values = pcms::values;
+using Catch::Matchers::WithinAbs;
 using pcms::ComponentScaling;
+using pcms::HostMemorySpace;
+using pcms::ValueBasis;
+using pcms::Variance;
+using pcms::VarianceSignature;
 
 namespace
 {
-
-// The keyed Apply is passkey-protected; only a TransferOperator can mint the
-// key, so the tests borrow one through a derived type.
-class KeyMaker : public pcms::TransferOperator<Real>
-{
-public:
-  static TransferKey Key() { return MakeTransferKey(); }
-
-  void Apply(const Field<Real>&, Field<Real>&) const override {}
-  void Apply(TransferKey, const Field<Real>&,
-             ValueView<Real, DeviceMemorySpace>) const override
-  {
-  }
-};
 
 // A 3D simplex mesh whose coordinates are interpreted as (r, theta, z).
 Omega_h::Mesh BuildCylindricalMesh(Omega_h::Library& lib, int divisions)
@@ -106,90 +95,49 @@ TEST_CASE("PointEvaluator::Evaluate gates on the source field's stored basis")
   }
 }
 
-TEST_CASE("Interpolator's keyed Apply gates on the source's stored basis")
+TEST_CASE("tagged writes gate on the field's declaration")
 {
   auto lib = Omega_h::Library{};
-  auto src_mesh = BuildCylindricalMesh(lib, 6);
-  auto src_space = BuildCylindricalSpace(src_mesh, 3);
-  auto tgt_mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.9, 1.5,
-                                     1.0, 4, 4, 4, false);
-  auto tgt_space = BuildCylindricalSpace(tgt_mesh, 3);
-
-  auto src = src_space->CreateFunction<Real>("b", values::Vector,
-                                             ComponentScaling::Physical);
-  auto foreign = src_space->CreateFunction<Real>(
-    "b_cart", values::Vector, pcms::csys::Cartesian::Create(3));
-  pcms::test::SetFieldComponents(src, [](Real, Real, Real, Real* out) {
-    out[0] = 1.0;
-    out[1] = 0.0;
-    out[2] = 0.0;
-  });
-
-  pcms::Interpolator<Real> interp(*src_space, *tgt_space);
-  Kokkos::View<Real**, DeviceMemorySpace> out("out", NumDOFHolders(*tgt_space),
-                                              3);
+  auto mesh = BuildCylindricalMesh(lib, 6);
+  auto space = BuildCylindricalSpace(mesh, 3);
+  auto b = space->CreateFunction<Real>("b", values::Vector,
+                                       ComponentScaling::Physical);
+  const int n = static_cast<int>(
+    space->GetLayout()->GetDOFHolderCoordinates().GetValues().extent(0));
+  std::vector<Real> data(static_cast<size_t>(n) * 3, 1.0);
+  const pcms::Rank2View<const Real, HostMemorySpace> raw(data.data(), n, 3);
 
   SECTION("a matching tag is accepted")
   {
-    REQUIRE_NOTHROW(
-      interp.Apply(KeyMaker::Key(), src,
-                   ValueView<Real, DeviceMemorySpace>(
-                     src.GetData().GetValueBasis(), pcms::MakeRank2View(out))));
+    b.SetDOFHolderDataHost(ValueView<const Real, HostMemorySpace>(
+      ValueBasis{pcms::csys::CylindricalRThetaZ::Create(),
+                 ComponentScaling::Physical,
+                 VarianceSignature{Variance::Contravariant}},
+      raw));
+    REQUIRE_THAT(b.GetDOFHolderDataHost()(0, 0),
+                 WithinAbs(1.0, 1e-14)); // tagged getter forwards indexing
   }
 
   SECTION("a mismatched basis claim is rejected")
   {
     REQUIRE_THROWS_WITH(
-      interp.Apply(
-        KeyMaker::Key(), src,
-        ValueView<Real, DeviceMemorySpace>(foreign.GetData().GetValueBasis(),
-                                           pcms::MakeRank2View(out))),
-      ContainsSubstring("does not match the basis this call writes"));
-  }
-}
-
-TEST_CASE("TransformedTransferOperator's keyed Apply writes the "
-          "transformation's target basis")
-{
-  auto lib = Omega_h::Library{};
-  auto src_mesh = BuildCylindricalMesh(lib, 6);
-  auto src_space = BuildCylindricalSpace(src_mesh, 3);
-  auto tgt_mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.9, 1.5,
-                                     1.0, 4, 4, 4, false);
-  auto tgt_space = BuildCylindricalSpace(tgt_mesh, 3);
-
-  // Source stores borrowed Cartesian components; the transformation carries
-  // them to the native cylindrical components the target declares.
-  auto src = src_space->CreateFunction<Real>("b", values::Vector,
-                                             pcms::csys::Cartesian::Create(3));
-  auto tgt = tgt_space->CreateFunction<Real>("b", values::Vector,
-                                             ComponentScaling::Physical);
-  pcms::test::SetFieldComponents(src, [](Real, Real, Real, Real* out) {
-    out[0] = 1.0;
-    out[1] = 0.0;
-    out[2] = 0.0;
-  });
-
-  TransformedTransferOperator<Real> op(
-    std::in_place_type<pcms::Interpolator<Real>>, *src_space, *tgt_space,
-    std::make_shared<pcms::CartesianToCylindricalBasis>());
-  Kokkos::View<Real**, DeviceMemorySpace> out("out", NumDOFHolders(*tgt_space),
-                                              3);
-
-  SECTION("the transformation's target basis is accepted")
-  {
-    REQUIRE_NOTHROW(
-      op.Apply(KeyMaker::Key(), src,
-               ValueView<Real, DeviceMemorySpace>(tgt.GetData().GetValueBasis(),
-                                                  pcms::MakeRank2View(out))));
+      b.SetDOFHolderDataHost(ValueView<const Real, HostMemorySpace>(
+        ValueBasis{pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
+                   VarianceSignature{Variance::Contravariant}},
+        raw)),
+      ContainsSubstring("does not match this field's declaration"));
   }
 
-  SECTION("the source's stored basis is rejected")
+  SECTION("a mismatched value type is rejected")
   {
     REQUIRE_THROWS_WITH(
-      op.Apply(KeyMaker::Key(), src,
-               ValueView<Real, DeviceMemorySpace>(src.GetData().GetValueBasis(),
-                                                  pcms::MakeRank2View(out))),
-      ContainsSubstring("does not match the basis this call writes"));
+      b.SetDOFHolderDataHost(
+        ValueView<const Real, HostMemorySpace>(ValueBasis{}, raw)),
+      ContainsSubstring("does not match this field's declaration"));
+  }
+
+  SECTION("the unchecked path inherits the declaration unverified")
+  {
+    REQUIRE_NOTHROW(b.SetDOFHolderDataUncheckedHost(raw));
   }
 }

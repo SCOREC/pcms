@@ -51,9 +51,6 @@ public:
 
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
-  void Apply(TransferKey, const Field<Real>& source,
-             ValueView<Real, DeviceMemorySpace> out) const override;
-
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout_;
   std::unique_ptr<OmegaHMonteCarloRHSIntegrator> rhs_integrator_;

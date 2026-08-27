@@ -52,24 +52,6 @@ public:
     detail::CheckCopyCompatible(source, target);
     target.SetDOFHolderData(source.GetDOFHolderData());
   }
-
-  // this Apply is intended as an optimization path for internal use only
-  // we use a "passkey" here to ensure that it is not used in unintended
-  // circumstances by downstream users.
-  void Apply(TransferKey, const Field<T>& source,
-             ValueView<T, DeviceMemorySpace> out) const override
-  {
-    PCMS_FUNCTION_TIMER;
-    this->CheckApplyWriteTag("Copy::Apply", out,
-                             source.GetData().GetValueBasis());
-    const auto values = source.GetDOFHolderData().GetValues();
-    if (out.extent(0) != values.extent(0) ||
-        out.extent(1) != values.extent(1)) {
-      throw pcms_error(
-        "Copy: output buffer extents do not match the source DOF data");
-    }
-    CopyDeviceRank2ViewToRank2View(out.GetValues(), values);
-  }
 };
 
 } // namespace pcms

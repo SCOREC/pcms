@@ -64,25 +64,9 @@ public:
         "Interpolator: the basis written for the source's stored basis "
         "differs from the target's declared basis");
     }
-    Apply(
-      this->MakeTransferKey(), source,
-      ValueView<T, DeviceMemorySpace>(written, MakeRank2View(target_values_)));
+    evaluator_->Evaluate(source, ValueView<T, DeviceMemorySpace>(
+                                   written, MakeRank2View(target_values_)));
     target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
-  }
-
-  void Apply(TransferKey, const Field<T>& source,
-             ValueView<T, DeviceMemorySpace> out) const override
-  {
-    PCMS_FUNCTION_TIMER;
-    this->CheckApplyWriteTag(
-      "Interpolator::Apply", out,
-      evaluator_->OutputBasis(source.GetData().GetValueBasis()));
-    if (static_cast<LO>(out.extent(0)) != num_points_ ||
-        static_cast<int>(out.extent(1)) != n_comp_) {
-      throw pcms_error(
-        "Interpolator: output buffer extents do not match the target layout");
-    }
-    evaluator_->Evaluate(source, out);
   }
 
 private:

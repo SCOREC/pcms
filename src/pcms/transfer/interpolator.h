@@ -4,6 +4,7 @@
 #include "pcms/field/field.h"
 #include "pcms/field/field_data.h"
 #include "pcms/field/function_space.h"
+#include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/utility/arrays.h"
@@ -34,13 +35,16 @@ class Interpolator : public TransferOperator<T>
 {
 public:
   // Expensive: localizes target DOF coords into source mesh. Called once.
-  Interpolator(const FunctionSpace& source_space,
+  /// @param source factory evaluated at the target's DOF-holder coordinates
+  /// @param target_space space whose DOF holders receive the values
+  /// @param policy out-of-bounds policy for the evaluation
+  Interpolator(const PointEvaluatorFactory& source,
                const FunctionSpace& target_space, OutOfBoundsPolicy policy = {})
     : num_points_(static_cast<LO>(
         target_space.GetLayout()->GetDOFHolderCoordinates().GetValues().extent(
           0))),
       n_comp_(target_space.GetLayout()->GetNumComponents()),
-      evaluator_(source_space.CreatePointEvaluator<T>(
+      evaluator_(source.CreatePointEvaluator<T>(
         EvaluationRequest::FromFunctionSpace(target_space, policy))),
       target_values_("interp_output", num_points_, n_comp_)
   {
@@ -54,14 +58,15 @@ public:
     if (sd.GetValueType() != td.GetValueType()) {
       throw pcms_error("Interpolator: source and target value types differ");
     }
-    if (!SameValueBasis(sd.GetValueBasis(), td.GetValueBasis())) {
+    const ValueBasis written = evaluator_->OutputBasis(sd.GetValueBasis());
+    if (!SameValueBasis(written, td.GetValueBasis())) {
       throw pcms_error(
-        "Interpolator: the source's stored basis differs from the target's "
-        "declared basis");
+        "Interpolator: the basis written for the source's stored basis "
+        "differs from the target's declared basis");
     }
-    Apply(this->MakeTransferKey(), source,
-          ValueView<T, DeviceMemorySpace>(td.GetValueBasis(),
-                                          MakeRank2View(target_values_)));
+    Apply(
+      this->MakeTransferKey(), source,
+      ValueView<T, DeviceMemorySpace>(written, MakeRank2View(target_values_)));
     target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
   }
 
@@ -69,8 +74,9 @@ public:
              ValueView<T, DeviceMemorySpace> out) const override
   {
     PCMS_FUNCTION_TIMER;
-    this->CheckApplyWriteTag("Interpolator::Apply", out,
-                             source.GetData().GetValueBasis());
+    this->CheckApplyWriteTag(
+      "Interpolator::Apply", out,
+      evaluator_->OutputBasis(source.GetData().GetValueBasis()));
     if (static_cast<LO>(out.extent(0)) != num_points_ ||
         static_cast<int>(out.extent(1)) != n_comp_) {
       throw pcms_error(

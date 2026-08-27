@@ -10,7 +10,7 @@ namespace pcms
 {
 
 OmegaHControlVariateProjection::OmegaHControlVariateProjection(
-  const FunctionSpace& source_space, const FunctionSpace& target_space,
+  const PointEvaluatorFactory& source, const FunctionSpace& target_space,
   int samples_per_element, MonteCarloSampling sampling, uint64_t seed,
   MassMatrixType mass_matrix_type)
   : target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
@@ -18,11 +18,11 @@ OmegaHControlVariateProjection::OmegaHControlVariateProjection(
     rhs_integrator_(std::make_unique<OmegaHMonteCarloRHSIntegrator>(
       target_layout_, target_space.GetCoordinateSystem(), samples_per_element,
       sampling, seed)),
-    interpolator_(source_space, target_space),
+    interpolator_(source, target_space),
     control_variate_(target_space.CreateFunction<Real>())
 {
   const auto sample_coords = rhs_integrator_->GetIntegrationPoints();
-  source_at_samples_ = source_space.CreatePointEvaluator<Real>(
+  source_at_samples_ = source.CreatePointEvaluator<Real>(
     EvaluationRequest::FromCoordinates(sample_coords));
   control_variate_at_samples_ = target_space.CreatePointEvaluator<Real>(
     EvaluationRequest::FromCoordinates(sample_coords));

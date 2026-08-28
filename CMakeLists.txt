@@ -17,6 +17,17 @@ set(PCMS_HAS_ASAN OFF)
 if(PCMS_ENABLE_ASAN AND CMAKE_COMPILER_IS_GNUCXX MATCHES 1)
   set(PCMS_HAS_ASAN ON)
 endif()
+# Code coverage support
+if(PROJECT_IS_TOP_LEVEL AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  set(CMAKE_CXX_FLAGS_COVERAGE "-g -O0 --coverage")
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    string(APPEND CMAKE_CXX_FLAGS_COVERAGE " -fprofile-abs-path")
+  endif()
+  set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "--coverage")
+  set(CMAKE_SHARED_LINKER_FLAGS_COVERAGE "--coverage")
+  set(CMAKE_MODULE_LINKER_FLAGS_COVERAGE "--coverage")
+endif()
+
 option(PCMS_ENABLE_CLANG_TIDY "enable clang tidy target" OFF)
 
 # based on Professional CMake: A Practical Guide

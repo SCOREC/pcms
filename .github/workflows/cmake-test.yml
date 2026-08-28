@@ -15,6 +15,9 @@ jobs:
   test-build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      code-quality: write
 
     defaults:
       run:
@@ -29,6 +32,7 @@ jobs:
         python_api: [OFF, ON]
         meshfields: [ON]
         petsc: [ON]
+        coverage: [OFF]
         include:
           - build_type: Release
             memory_test: OFF
@@ -44,6 +48,14 @@ jobs:
             python_api: OFF
             meshfields: ON
             petsc: OFF
+          - build_type: Coverage
+            memory_test: OFF
+            compiler: g++
+            language: 'cpp'
+            python_api: ON
+            meshfields: ON
+            petsc: ON
+            coverage: ON
         exclude:
           - build_type: Release
             memory_test: ON
@@ -67,7 +79,7 @@ jobs:
       if: matrix.python_api == 'ON'
       run: |
         sudo apt-get install -yq python3 python3-pip python3-dev python3-pybind11 pybind11-dev
-        pip3 install numpy pytest
+        pip3 install numpy pytest pytest-cov
 
     - uses: actions/checkout@v4
 
@@ -289,7 +301,33 @@ jobs:
         export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib/python3.12/site-packages:$PYTHONPATH
         export PYTHONPATH=${{ runner.temp }}/build-omega_h/install/lib/python/dist-packages:$PYTHONPATH
         cd ${{ github.workspace }}
-        pytest -v --tb=short -p no:cacheprovider
+        pytest -v --tb=short -p no:cacheprovider --cov=. --cov-report=term-missing --cov-report=xml
+
+    - name: Install gcovr and generate C++ coverage
+      if: matrix.coverage == 'ON'
+      run: |
+        pip3 install gcovr
+        gcovr -r ${{ github.workspace }}/pcms \
+              --object-directory=${{ runner.temp }}/build-pcms \
+              --gcov-ignore-parse-errors=suspicious_hits.warn \
+              --xml coverage-cpp.xml \
+              --print-summary
+
+    - name: Upload coverage report
+      if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.python_api == 'ON'
+      uses: actions/upload-code-coverage@v1
+      with:
+        file: coverage.xml
+        language: Python
+        label: code-coverage/pytest
+
+    - name: Upload C++ coverage report
+      if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.coverage == 'ON'
+      uses: actions/upload-code-coverage@v1
+      with:
+        file: coverage-cpp.xml
+        language: cpp
+        label: code-coverage/cpp
 
     - name: Test PCMS Installation
       if: matrix.python_api == 'OFF'

@@ -14,12 +14,12 @@ template <typename T>
 class FieldSerializer
 {
 public:
-  virtual int Serialize(const FieldData<T>& field, const FieldLayout& layout,
+  virtual int Serialize(const Field<T>& field,
                         Rank1View<T, HostMemorySpace> buffer,
                         Rank1View<const LO, HostMemorySpace> permutation) const
   {
     auto data = field.GetDOFHolderDataHost();
-    auto owned = layout.GetOwnedHost();
+    auto owned = field.GetLayout().GetOwnedHost();
     // The exchange plan is per DOF holder: owned[i] and permutation[i] are
     // indexed by holder. All num_components components of a holder share its
     // location, so they occupy one contiguous block permutation[i]*num_comp in
@@ -41,10 +41,10 @@ public:
   }
 
   virtual void Deserialize(
-    FieldData<T>& field, const FieldLayout& layout,
-    Rank1View<const T, HostMemorySpace> buffer,
+    Field<T>& field, Rank1View<const T, HostMemorySpace> buffer,
     Rank1View<const LO, HostMemorySpace> permutation) const
   {
+    const auto& layout = field.GetLayout();
     const LO num_dof = layout.GetNumOwnedDofHolder();
     const LO num_comp = layout.GetNumComponents();
     Kokkos::View<T*, HostMemorySpace> sorted("sorted", layout.OwnedSize());

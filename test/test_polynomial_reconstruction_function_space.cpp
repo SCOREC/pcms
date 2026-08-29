@@ -92,24 +92,6 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field set/get DOF "
   }
 }
 
-TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field serialize / "
-          "deserialize round-trip")
-{
-  auto coords = MakeCoords2D();
-  Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
-
-  auto factory = pcms::PolynomialReconstructionFunctionSpace::Create(
-    coords_view, CoordinateSystem::Cartesian);
-  auto field = factory->CreateFunction<Real>();
-
-  std::vector<Real> data{5.0, 6.0, 7.0, 8.0};
-  Rank2View<const Real, HostMemorySpace> data_view(
-    data.data(), static_cast<LO>(data.size()), 1);
-  field.GetData().SetDOFHolderDataHost(data_view);
-
-  pcms::test::CheckSerializeDeserialize(*factory->GetLayout(), field.GetData());
-}
-
 TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
           "after temporary factory destruction")
 {

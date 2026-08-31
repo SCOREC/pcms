@@ -11,6 +11,7 @@ set(PCMS_FIELD_HEADERS
         layout/empty.h
         out_of_bounds_policy.h
         field_data.h
+        field_factory.h
         function_space.h
         point_evaluator.h
         data/simple.h

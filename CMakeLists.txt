@@ -63,7 +63,7 @@ set(PCMS_INTERSECTION_REL_TOL 1e-12 CACHE STRING
     "Relative measure tolerance for accepting a clipped intersection")
 set(PCMS_PROJECTION_KSP_RTOL 1e-14 CACHE STRING
     "Default relative tolerance for the projection mass-matrix solve")
-set(PCMS_PROJECTION_KSP_ATOL 1e-14 CACHE STRING
+set(PCMS_PROJECTION_KSP_ATOL 1e-50 CACHE STRING
     "Default absolute tolerance for the projection mass-matrix solve")
 
 option(PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"

@@ -42,8 +42,6 @@ public:
                        hint_.coordinates_.extent(0) + hint_.num_missing_);
     PCMS_ALWAYS_ASSERT(values.extent(1) ==
                        static_cast<size_t>(layout_->GetNumComponents()));
-    // ensure that only scalar fields are supported
-    PCMS_ALWAYS_ASSERT(layout_->GetNumComponents() == 1);
     auto const* mesh_field_data =
       dynamic_cast<const MeshFieldsFieldData<T>*>(&field.GetData());
     if (!mesh_field_data) {
@@ -51,27 +49,26 @@ public:
         "MeshFieldsPointEvaluator::Evaluate: incompatible FieldData type");
     }
 
-    // Use device views directly from hint (no copy needed)
     auto eval_results = mesh_field_data->GetMeshFieldBackend()->evaluate(
       hint_.coordinates_d_, hint_.offsets_d_);
 
-    // Scatter results directly on device (no host copy)
+    int ncomp = layout_->GetNumComponents();
+    int num_eval = static_cast<int>(eval_results.extent(0));
     Kokkos::parallel_for(
       "CopyEvalResultsToValues",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-        0, eval_results.extent(0)),
-      KOKKOS_CLASS_LAMBDA(LO i) {
-        values(hint_.indices_d_(i), 0) = eval_results(i, 0);
+      Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {num_eval, ncomp}),
+      KOKKOS_CLASS_LAMBDA(LO i, int c) {
+        values(hint_.indices_d_(i), c) = eval_results(i, c);
       });
 
     if (hint_.num_missing_ > 0 && hint_.mode_ == OutOfBoundsMode::FILL) {
       T fill_val = static_cast<T>(fill_value_);
+      int num_missing = static_cast<int>(hint_.num_missing_);
       Kokkos::parallel_for(
         "FillMissingValues",
-        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-          0, hint_.num_missing_),
-        KOKKOS_CLASS_LAMBDA(LO i) {
-          values(hint_.missing_indices_d_(i), 0) = fill_val;
+        Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {num_missing, ncomp}),
+        KOKKOS_CLASS_LAMBDA(LO i, int c) {
+          values(hint_.missing_indices_d_(i), c) = fill_val;
         });
     }
   }
@@ -97,10 +94,6 @@ public:
   {
     if (mesh_.dim() == 3) {
       throw pcms_error("MeshFieldsEvaluatorFactory does not support 3D meshes");
-    }
-    if (layout_->GetNumComponents() != 1) {
-      throw pcms_error(
-        "MeshFieldsEvaluatorFactory only supports single-component fields");
     }
   }
 

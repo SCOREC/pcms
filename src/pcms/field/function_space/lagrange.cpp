@@ -75,11 +75,6 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
   }
   if (backend == Backend::MeshFields) {
 #ifdef PCMS_ENABLE_MESHFIELDS
-    if (num_components != 1) {
-      throw pcms_error(
-        "LagrangeFunctionSpace::FromMesh: MeshFields backend only supports "
-        "single-component fields");
-    }
     std::array<int, 4> nodes_per_dim{};
     switch (order) {
       case 1: nodes_per_dim = {1, 0, 0, 0}; break;

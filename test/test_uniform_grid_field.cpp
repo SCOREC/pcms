@@ -659,3 +659,142 @@ TEST_CASE("UniformGrid workflow")
 
   VerifyMaskFieldValues(grid, mask_field);
 }
+
+TEST_CASE("UniformGrid Order-1 multi-component field evaluation")
+{
+  // Create a 2x2 cell uniform grid
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {0.0, 0.0};
+  grid.edge_length = {10.0, 10.0};
+  grid.divisions = {2, 2};
+
+  // Components: x, y, x+y (separable) and x*y (non-separable). Off-center
+  // query points plus the non-separable component catch axis-mixing bugs that
+  // symmetric cell-center samples would hide.
+  const int num_components = 4;
+
+  auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
+    grid, num_components, pcms::CoordinateSystem::Cartesian);
+  auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
+    grid, num_components, pcms::CoordinateSystem::Cartesian);
+  auto field = field_space->CreateFunction<pcms::Real>();
+  pcms::UniformGridEvaluatorFactory<2> eval_factory(layout);
+
+  // Vertex layout:
+  //   v6---v7---v8
+  //   |  2 |  3 |
+  //   v3---v4---v5
+  //   |  0 |  1 |
+  //   v0---v1---v2
+  std::vector<pcms::Real> data;
+  for (int j = 0; j <= grid.divisions[1]; ++j) {
+    for (int i = 0; i <= grid.divisions[0]; ++i) {
+      pcms::Real x =
+        grid.bot_left[0] + i * (grid.edge_length[0] / grid.divisions[0]);
+      pcms::Real y =
+        grid.bot_left[1] + j * (grid.edge_length[1] / grid.divisions[1]);
+      data.push_back(x);     // Component 0: x
+      data.push_back(y);     // Component 1: y
+      data.push_back(x + y); // Component 2: x + y
+      data.push_back(x * y); // Component 3: x * y (non-separable)
+    }
+  }
+
+  // Reshape data to [num_vertices][num_components]
+  pcms::LO num_vertices = (grid.divisions[0] + 1) * (grid.divisions[1] + 1);
+  field.SetDOFHolderDataHost(
+    pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
+      data.data(), num_vertices, num_components));
+
+  // Mix of cell centers and off-center points.
+  const int num_points = 4;
+  std::vector<pcms::Real> eval_coords = {
+    2.5, 2.5, // cell 0 center
+    1.0, 3.0, // cell 0 off-center
+    6.0, 1.5, // cell 1 off-center
+    7.5, 7.5  // cell 3 center
+  };
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    eval_coords, pcms::CoordinateSystem::Cartesian);
+  auto evaluator = eval_factory.CreatePointEvaluator(
+    pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
+
+  Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> results_device(
+    "results_device", num_points, num_components);
+  evaluator->Evaluate(field, pcms::MakeRank2View(results_device));
+  auto results_host = Kokkos::create_mirror_view_and_copy(
+    pcms::HostMemorySpace(), results_device);
+
+  // Expected [x, y, x+y, x*y] at each query point.
+  const pcms::Real expected[num_points][num_components] = {
+    {2.5, 2.5, 5.0, 6.25},   // (2.5, 2.5)
+    {1.0, 3.0, 4.0, 3.0},    // (1.0, 3.0)
+    {6.0, 1.5, 7.5, 9.0},    // (6.0, 1.5)
+    {7.5, 7.5, 15.0, 56.25}, // (7.5, 7.5)
+  };
+
+  for (int p = 0; p < num_points; ++p) {
+    for (int c = 0; c < num_components; ++c) {
+      INFO("point " << p << " component " << c);
+      REQUIRE(std::abs(results_host(p, c) - expected[p][c]) < 1e-10);
+    }
+  }
+}
+
+TEST_CASE("UniformGrid Order-0 multi-component field (regression)")
+{
+  // Verify Order-0 (piecewise constant) still works with multiple components
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {0.0, 0.0};
+  grid.edge_length = {10.0, 10.0};
+  grid.divisions = {2, 2};
+
+  const int num_components = 2;
+
+  auto layout = std::make_shared<pcms::UniformGridFieldLayout<2>>(
+    grid, num_components, pcms::CoordinateSystem::Cartesian, 0); // Order 0
+  auto field_space = pcms::LagrangeFunctionSpace::FromUniformGrid(
+    grid, num_components, pcms::CoordinateSystem::Cartesian, 0);
+  auto field = field_space->CreateFunction<pcms::Real>();
+  pcms::UniformGridEvaluatorFactory<2> eval_factory(layout);
+
+  // Set cell values (4 cells, 2 components each)
+  std::vector<pcms::Real> data = {
+    1.0, 10.0, // Cell 0
+    2.0, 20.0, // Cell 1
+    3.0, 30.0, // Cell 2
+    4.0, 40.0  // Cell 3
+  };
+
+  field.SetDOFHolderDataHost(
+    pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(data.data(), 4,
+                                                             num_components));
+
+  // Evaluate at cell centers
+  std::vector<pcms::Real> eval_coords = {
+    2.5, 2.5, // Cell 0 center
+    7.5, 2.5, // Cell 1 center
+    2.5, 7.5, // Cell 2 center
+    7.5, 7.5  // Cell 3 center
+  };
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    eval_coords, pcms::CoordinateSystem::Cartesian);
+  auto evaluator = eval_factory.CreatePointEvaluator(
+    pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
+
+  Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> results_device(
+    "results_device", 4, num_components);
+  evaluator->Evaluate(field, pcms::MakeRank2View(results_device));
+  auto results_host = Kokkos::create_mirror_view_and_copy(
+    pcms::HostMemorySpace(), results_device);
+
+  // For Order-0, values should match cell values exactly
+  REQUIRE(results_host(0, 0) == 1.0);
+  REQUIRE(results_host(0, 1) == 10.0);
+  REQUIRE(results_host(1, 0) == 2.0);
+  REQUIRE(results_host(1, 1) == 20.0);
+  REQUIRE(results_host(2, 0) == 3.0);
+  REQUIRE(results_host(2, 1) == 30.0);
+  REQUIRE(results_host(3, 0) == 4.0);
+  REQUIRE(results_host(3, 1) == 40.0);
+}

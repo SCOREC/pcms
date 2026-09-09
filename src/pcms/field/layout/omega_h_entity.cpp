@@ -54,7 +54,9 @@ OmegaHEntityLayout::OmegaHEntityLayout(Omega_h::Mesh& mesh, int entity_dim,
                                        int num_components,
                                        CoordinateSystem coordinate_system,
                                        std::string global_id_name)
-  : dimension_(mesh.dim()),
+  // dimension_ is the first member, so this runs before the class_ids_/
+  // class_dims_ initializers below read the mesh's classification tags.
+  : dimension_((EnsureClassification(mesh), mesh.dim())),
     entity_dim_(entity_dim),
     num_components_(num_components),
     num_global_dof_holder_(mesh.nglobal_ents(entity_dim)),

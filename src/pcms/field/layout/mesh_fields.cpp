@@ -133,7 +133,7 @@ MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
     num_components_(num_components),
     coordinate_system_(coordinate_system),
     nodes_per_dim_(nodes_per_dim),
-    dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim()),
+    dof_holder_coords_("", GetNumLocalDofHolder(), mesh_.dim()),
     class_ids_(GetNumEnts()),
     class_dims_(class_ids_.size()),
     owned_("", class_dims_.size()),
@@ -193,6 +193,7 @@ MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
     }
   }
   gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
+  BuildOwnedViews();
 
   int n = class_ids_.size();
   classification_dims_host_ =
@@ -220,13 +221,18 @@ int MeshFieldsAdapterLayout::GetNumComponents() const
   return num_components_;
 }
 
-LO MeshFieldsAdapterLayout::GetNumOwnedDofHolder() const
+LO MeshFieldsAdapterLayout::GetNumLocalDofHolder() const
 {
   LO count = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     count += mesh_.nents(i) * nodes_per_dim_[i];
   }
   return count;
+}
+
+LO MeshFieldsAdapterLayout::GetNumOwnedDofHolder() const
+{
+  return num_owned_;
 }
 
 GO MeshFieldsAdapterLayout::GetNumGlobalDofHolder() const
@@ -255,11 +261,63 @@ GlobalIDView<HostMemorySpace> MeshFieldsAdapterLayout::GetGidsHost() const
   return GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size());
 }
 
+GlobalIDView<DeviceMemorySpace> MeshFieldsAdapterLayout::GetGids() const
+{
+  return GlobalIDView<DeviceMemorySpace>(gids_.data(), gids_.size());
+}
+
 CoordinateView<DeviceMemorySpace>
 MeshFieldsAdapterLayout::GetDOFHolderCoordinates() const
 {
   auto coords_view = MakeConstRank2View(dof_holder_coords_);
   return CoordinateView<DeviceMemorySpace>{coordinate_system_, coords_view};
+}
+
+GlobalIDView<HostMemorySpace> MeshFieldsAdapterLayout::GetOwnedGidsHost() const
+{
+  return GlobalIDView<HostMemorySpace>(owned_gids_host_.data(),
+                                       owned_gids_host_.size());
+}
+
+GlobalIDView<DeviceMemorySpace> MeshFieldsAdapterLayout::GetOwnedGids() const
+{
+  return GlobalIDView<DeviceMemorySpace>(owned_gids_.data(),
+                                         owned_gids_.size());
+}
+
+CoordinateView<DeviceMemorySpace>
+MeshFieldsAdapterLayout::GetOwnedDOFHolderCoordinates() const
+{
+  auto coords_view = MakeConstRank2View(owned_coords_2d_);
+  return CoordinateView<DeviceMemorySpace>{coordinate_system_, coords_view};
+}
+
+Kokkos::View<const LO*, HostMemorySpace>
+MeshFieldsAdapterLayout::GetOwnedToLocalHost() const
+{
+  return owned_to_local_host_;
+}
+
+Kokkos::View<const LO*, DeviceMemorySpace>
+MeshFieldsAdapterLayout::GetOwnedToLocal() const
+{
+  return owned_to_local_;
+}
+
+void MeshFieldsAdapterLayout::BuildOwnedViews()
+{
+  Kokkos::deep_copy(owned_host_, owned_);
+
+  auto owned = BuildOwnedLayoutData(
+    owned_host_,
+    GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size()),
+    dof_holder_coords_, mesh_.dim());
+  num_owned_ = owned.num_owned;
+  owned_to_local_host_ = owned.owned_to_local_host;
+  owned_gids_host_ = owned.owned_gids_host;
+  owned_coords_2d_ = owned.owned_coords_2d;
+  owned_to_local_ = owned.owned_to_local;
+  owned_gids_ = owned.owned_gids;
 }
 
 bool MeshFieldsAdapterLayout::IsDistributed() const

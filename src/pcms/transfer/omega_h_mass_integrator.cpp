@@ -94,7 +94,7 @@ Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
 {
   const auto global_to_local = target_layout.GetGlobalToLocalPermutation();
   const PetscInt num_dofs =
-    static_cast<PetscInt>(target_layout.GetNumOwnedDofHolder());
+    static_cast<PetscInt>(target_layout.GetNumLocalDofHolder());
   const int nelems = mesh.nelems();
   Mat mat = nullptr;
 

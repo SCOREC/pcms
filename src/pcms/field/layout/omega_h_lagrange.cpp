@@ -126,6 +126,7 @@ OmegaHLagrangeLayout::OmegaHLagrangeLayout(Omega_h::Mesh& mesh, int order,
   owned_host_ =
     Kokkos::View<bool*, HostMemorySpace>("owned_host", owned_.size());
   Kokkos::deep_copy(owned_host_, owned_);
+  BuildOwnedViews();
 
   class_ids_ = Omega_h::Read<Omega_h::ClassId>(
     mesh_.get_array<Omega_h::ClassId>(entity_dim, "class_id"));
@@ -172,6 +173,7 @@ OmegaHLagrangeLayout::OmegaHLagrangeLayout(
   owned_host_ =
     Kokkos::View<bool*, HostMemorySpace>("owned_host", owned_.size());
   Kokkos::deep_copy(owned_host_, owned_);
+  BuildOwnedViews();
 
   class_ids_ = Omega_h::Read<Omega_h::ClassId>(
     mesh_.get_array<Omega_h::ClassId>(entity_dim, "class_id"));
@@ -207,9 +209,14 @@ int OmegaHLagrangeLayout::GetNumComponents() const
   return num_components_;
 }
 
-LO OmegaHLagrangeLayout::GetNumOwnedDofHolder() const
+LO OmegaHLagrangeLayout::GetNumLocalDofHolder() const
 {
   return mesh_.nents(EntityDimForOrder(order_, mesh_.dim()));
+}
+
+LO OmegaHLagrangeLayout::GetNumOwnedDofHolder() const
+{
+  return num_owned_;
 }
 
 GO OmegaHLagrangeLayout::GetNumGlobalDofHolder() const
@@ -246,6 +253,55 @@ OmegaHLagrangeLayout::GetDOFHolderCoordinates() const
                                                          coords_view};
 }
 
+GlobalIDView<HostMemorySpace> OmegaHLagrangeLayout::GetOwnedGidsHost() const
+{
+  return GlobalIDView<HostMemorySpace>(owned_gids_host_.data(),
+                                       owned_gids_host_.size());
+}
+
+GlobalIDView<DeviceMemorySpace> OmegaHLagrangeLayout::GetOwnedGids() const
+{
+  return GlobalIDView<DeviceMemorySpace>(owned_gids_.data(),
+                                         owned_gids_.size());
+}
+
+CoordinateView<DeviceMemorySpace>
+OmegaHLagrangeLayout::GetOwnedDOFHolderCoordinates() const
+{
+  using LayoutPolicy =
+    detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
+  Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> coords_view(
+    owned_coords_2d_.data(), num_owned_, mesh_.dim());
+  return CoordinateView<DeviceMemorySpace, LayoutPolicy>{coordinate_system_,
+                                                         coords_view};
+}
+
+Kokkos::View<const LO*, HostMemorySpace>
+OmegaHLagrangeLayout::GetOwnedToLocalHost() const
+{
+  return owned_to_local_host_;
+}
+
+Kokkos::View<const LO*, DeviceMemorySpace>
+OmegaHLagrangeLayout::GetOwnedToLocal() const
+{
+  return owned_to_local_;
+}
+
+void OmegaHLagrangeLayout::BuildOwnedViews()
+{
+  auto owned = BuildOwnedLayoutData(
+    owned_host_,
+    GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size()),
+    coords_2d_, mesh_.dim());
+  num_owned_ = owned.num_owned;
+  owned_to_local_host_ = owned.owned_to_local_host;
+  owned_gids_host_ = owned.owned_gids_host;
+  owned_coords_2d_ = owned.owned_coords_2d;
+  owned_to_local_ = owned.owned_to_local;
+  owned_gids_ = owned.owned_gids;
+}
+
 bool OmegaHLagrangeLayout::IsDistributed() const
 {
   return true;
@@ -269,6 +325,11 @@ EntOffsetsArray OmegaHLagrangeLayout::GetEntOffsets() const
 int OmegaHLagrangeLayout::GetDimension() const
 {
   return mesh_.dim();
+}
+
+int OmegaHLagrangeLayout::GetDOFHolderEntityDim() const
+{
+  return EntityDimForOrder(order_, mesh_.dim());
 }
 
 Rank1View<const LO, HostMemorySpace>

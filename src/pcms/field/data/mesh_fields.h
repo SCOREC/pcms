@@ -7,9 +7,11 @@
 #include "pcms/field/field_metadata.h"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
+#include "pcms/utility/omega_h_array_utils.h"
 
 #include <Kokkos_Core.hpp>
 #include <memory>
+#include <type_traits>
 
 namespace pcms
 {
@@ -24,9 +26,9 @@ public:
       metadata_(metadata),
       mesh_field_(MakeMeshFieldBackend<T>(*layout_)),
       host_data_("meshfields_field_data",
-                 static_cast<size_t>(layout_->OwnedSize())),
+                 static_cast<size_t>(layout_->LocalSize())),
       device_data_("meshfields_field_data_device",
-                   static_cast<size_t>(layout_->OwnedSize()))
+                   static_cast<size_t>(layout_->LocalSize()))
   {
     if (!mesh_field_) {
       throw pcms_error(
@@ -40,14 +42,25 @@ public:
   {
     Kokkos::deep_copy(host_data_, device_data_);
     return Rank2View<const T, HostMemorySpace>(host_data_.data(),
-                                               layout_->GetNumOwnedDofHolder(),
+                                               layout_->GetNumLocalDofHolder(),
                                                layout_->GetNumComponents());
+  }
+
+  Rank2View<const T, HostMemorySpace> GetOwnedDOFHolderDataHost() const override
+  {
+    return GatherOwnedHostData(*layout_, device_data_, host_data_,
+                               owned_host_data_);
+  }
+
+  Rank2View<const T, DeviceMemorySpace> GetOwnedDOFHolderData() const override
+  {
+    return GatherOwnedDeviceData(*layout_, device_data_, owned_device_data_);
   }
 
   void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
   {
     PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
+                       static_cast<size_t>(layout_->LocalSize()));
     CopyHostRank2ViewToDeviceView(device_data_, values);
     SyncBackend(GetDOFHolderData());
   }
@@ -58,15 +71,40 @@ public:
     // memory is enabled. This may cause issues in multi component cases. See
     // issue #342
     return Rank2View<const T, DeviceMemorySpace>(
-      device_data_.data(), layout_->GetNumOwnedDofHolder(),
+      device_data_.data(), layout_->GetNumLocalDofHolder(),
       layout_->GetNumComponents());
   }
 
   void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
   {
     PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
+                       static_cast<size_t>(layout_->LocalSize()));
     CopyDeviceRank2ViewToDeviceView(device_data_, values);
+    SyncBackend(GetDOFHolderData());
+  }
+
+  void SynchronizeGhosts() override
+  {
+    const int nc = layout_->GetNumComponents();
+    auto& mesh = layout_->GetMesh();
+    const auto nodes_per_dim = layout_->GetNodesPerDim();
+
+    size_t row_offset = 0;
+    for (int dim = 0; dim <= mesh.dim(); ++dim) {
+      if (!nodes_per_dim[dim]) {
+        continue;
+      }
+      const LO num_rows = static_cast<LO>(mesh.nents(dim)) * nodes_per_dim[dim];
+      const LO flat_len = num_rows * nc;
+      const LO flat_off = static_cast<LO>(row_offset * static_cast<size_t>(nc));
+
+      auto block = Kokkos::subview(
+        device_data_, Kokkos::make_pair(flat_off, flat_off + flat_len));
+      SynchronizeOmegaHBlock<T>(mesh, dim, nc, block);
+
+      row_offset += static_cast<size_t>(num_rows);
+    }
+
     SyncBackend(GetDOFHolderData());
   }
 
@@ -103,6 +141,8 @@ private:
   FieldMetadata metadata_;
   std::shared_ptr<MeshFieldBackend<T>> mesh_field_;
   mutable Kokkos::View<T*, HostMemorySpace> host_data_;
+  mutable Kokkos::View<T*, HostMemorySpace> owned_host_data_;
+  mutable Kokkos::View<T*, DeviceMemorySpace> owned_device_data_;
   Kokkos::View<T*, DeviceMemorySpace> device_data_;
 };
 

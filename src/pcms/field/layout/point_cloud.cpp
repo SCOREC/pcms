@@ -92,7 +92,7 @@ int PointCloudLayout::GetNumComponents() const
   return components_;
 }
 
-LO PointCloudLayout::GetNumOwnedDofHolder() const
+LO PointCloudLayout::GetNumLocalDofHolder() const
 {
   return coords_.extent(0);
 }
@@ -110,6 +110,11 @@ Rank1View<const bool, HostMemorySpace> PointCloudLayout::GetOwnedHost() const
 GlobalIDView<HostMemorySpace> PointCloudLayout::GetGidsHost() const
 {
   return GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size());
+}
+
+GlobalIDView<DeviceMemorySpace> PointCloudLayout::GetGids() const
+{
+  return GlobalIDView<DeviceMemorySpace>(gids_.data(), gids_.size());
 }
 
 CoordinateView<DeviceMemorySpace> PointCloudLayout::GetDOFHolderCoordinates()

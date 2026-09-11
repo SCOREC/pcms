@@ -74,6 +74,7 @@ OmegaHEntityLayout::OmegaHEntityLayout(Omega_h::Mesh& mesh, int entity_dim,
 
   gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
   Kokkos::deep_copy(owned_host_, owned_);
+  BuildOwnedViews();
 
   class_dims_ = Omega_h::Read<Omega_h::I8>(class_dims_);
   class_ids_ = Omega_h::Read<Omega_h::ClassId>(class_ids_);
@@ -97,9 +98,14 @@ int OmegaHEntityLayout::GetNumComponents() const
   return num_components_;
 }
 
-LO OmegaHEntityLayout::GetNumOwnedDofHolder() const
+LO OmegaHEntityLayout::GetNumLocalDofHolder() const
 {
   return static_cast<LO>(coords_.size() / dimension_);
+}
+
+LO OmegaHEntityLayout::GetNumOwnedDofHolder() const
+{
+  return num_owned_;
 }
 
 GO OmegaHEntityLayout::GetNumGlobalDofHolder() const
@@ -117,15 +123,69 @@ GlobalIDView<HostMemorySpace> OmegaHEntityLayout::GetGidsHost() const
   return GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size());
 }
 
+GlobalIDView<DeviceMemorySpace> OmegaHEntityLayout::GetGids() const
+{
+  return GlobalIDView<DeviceMemorySpace>(gids_.data(), gids_.size());
+}
+
 CoordinateView<DeviceMemorySpace> OmegaHEntityLayout::GetDOFHolderCoordinates()
   const
 {
   using LayoutPolicy =
     detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
   Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> coords_view(
-    coords_2d_.data(), GetNumOwnedDofHolder(), dimension_);
+    coords_2d_.data(), GetNumLocalDofHolder(), dimension_);
   return CoordinateView<DeviceMemorySpace, LayoutPolicy>{coordinate_system_,
                                                          coords_view};
+}
+
+GlobalIDView<HostMemorySpace> OmegaHEntityLayout::GetOwnedGidsHost() const
+{
+  return GlobalIDView<HostMemorySpace>(owned_gids_host_.data(),
+                                       owned_gids_host_.size());
+}
+
+GlobalIDView<DeviceMemorySpace> OmegaHEntityLayout::GetOwnedGids() const
+{
+  return GlobalIDView<DeviceMemorySpace>(owned_gids_.data(),
+                                         owned_gids_.size());
+}
+
+CoordinateView<DeviceMemorySpace>
+OmegaHEntityLayout::GetOwnedDOFHolderCoordinates() const
+{
+  using LayoutPolicy =
+    detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
+  Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> coords_view(
+    owned_coords_2d_.data(), num_owned_, dimension_);
+  return CoordinateView<DeviceMemorySpace, LayoutPolicy>{coordinate_system_,
+                                                         coords_view};
+}
+
+Kokkos::View<const LO*, HostMemorySpace>
+OmegaHEntityLayout::GetOwnedToLocalHost() const
+{
+  return owned_to_local_host_;
+}
+
+Kokkos::View<const LO*, DeviceMemorySpace> OmegaHEntityLayout::GetOwnedToLocal()
+  const
+{
+  return owned_to_local_;
+}
+
+void OmegaHEntityLayout::BuildOwnedViews()
+{
+  auto owned = BuildOwnedLayoutData(
+    owned_host_,
+    GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size()),
+    coords_2d_, dimension_);
+  num_owned_ = owned.num_owned;
+  owned_to_local_host_ = owned.owned_to_local_host;
+  owned_gids_host_ = owned.owned_gids_host;
+  owned_coords_2d_ = owned.owned_coords_2d;
+  owned_to_local_ = owned.owned_to_local;
+  owned_gids_ = owned.owned_gids;
 }
 
 bool OmegaHEntityLayout::IsDistributed() const
@@ -137,7 +197,7 @@ EntOffsetsArray OmegaHEntityLayout::GetEntOffsets() const
 {
   EntOffsetsArray offsets{};
   offsets.fill(0);
-  const auto n = static_cast<size_t>(GetNumOwnedDofHolder());
+  const auto n = static_cast<size_t>(GetNumLocalDofHolder());
   for (int i = entity_dim_ + 1; i < ent_offsets_len; ++i)
     offsets[i] = n;
   return offsets;
@@ -146,6 +206,11 @@ EntOffsetsArray OmegaHEntityLayout::GetEntOffsets() const
 int OmegaHEntityLayout::GetDimension() const
 {
   return dimension_;
+}
+
+int OmegaHEntityLayout::GetDOFHolderEntityDim() const
+{
+  return entity_dim_;
 }
 
 Rank1View<const LO, HostMemorySpace>

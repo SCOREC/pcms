@@ -176,7 +176,7 @@ Data BuildDataImpl(const OmegaHLagrangeLayout& source_layout,
   d.coeffs = std::move(coeffs);
   d.ndof_per_elem = ndof;
   d.num_target_dofs =
-    static_cast<PetscInt>(target_layout.GetNumOwnedDofHolder());
+    static_cast<PetscInt>(target_layout.GetNumLocalDofHolder());
   return d;
 }
 

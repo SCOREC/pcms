@@ -64,7 +64,7 @@ OmegaHConservativeProjection::OmegaHConservativeProjection(
                                                        *rhs_integrator_);
   target_values_ = Kokkos::View<Real**, DeviceMemorySpace>(
     "conservative_projection_target_values",
-    target_layout_->GetNumOwnedDofHolder(), target_layout_->GetNumComponents());
+    target_layout_->GetNumLocalDofHolder(), target_layout_->GetNumComponents());
 }
 
 // Defined here so that GalerkinProjectionSolver (forward-declared in the
@@ -78,7 +78,7 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
 
   const auto solution = solver_->Solve(*evaluator_, source);
   const auto global_to_local = target_layout_->GetGlobalToLocalPermutation();
-  const int num_dof_holders = target_layout_->GetNumOwnedDofHolder();
+  const int num_dof_holders = target_layout_->GetNumLocalDofHolder();
   const int num_components = target_layout_->GetNumComponents();
   auto target_values = target_values_;
   Kokkos::parallel_for(

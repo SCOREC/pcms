@@ -29,20 +29,6 @@ struct OutMsg
   redev::LOs offset;
 };
 
-// Returns the mesh entity dimension for DOF local_index based on the
-// entity offsets array.  ent_offsets[d]..ent_offsets[d+1] is the range of
-// DOF indices belonging to mesh entity dimension d.
-static int GetMeshEntityDim(LO local_index, const EntOffsetsArray& ent_offsets)
-{
-  for (int d = 0; d < ent_offsets_len - 1; ++d) {
-    if (local_index >= static_cast<LO>(ent_offsets[d]) &&
-        local_index < static_cast<LO>(ent_offsets[d + 1])) {
-      return d;
-    }
-  }
-  return ent_offsets_len - 1;
-}
-
 static size_t GetMessageBlockIndex(
   LO permutation_entry, Rank1View<const redev::LO, HostMemorySpace> offsets)
 {
@@ -189,9 +175,10 @@ static ReversePartitionMap2 BuildReversePartitionMap(
 {
   PCMS_FUNCTION_TIMER;
   auto owned = layout.GetOwnedHost();
+  auto owned_to_local = layout.GetOwnedToLocalHost();
   auto class_dims = layout.GetDOFHolderClassificationDimensionsHost();
   auto class_ids = layout.GetDOFHolderClassificationIdsHost();
-  auto coords = layout.GetDOFHolderCoordinates().GetValues();
+  auto coords = layout.GetOwnedDOFHolderCoordinates().GetValues();
   auto ent_offsets = layout.GetEntOffsets();
   int mesh_dim = static_cast<int>(coords.extent(1));
 
@@ -209,19 +196,25 @@ static ReversePartitionMap2 BuildReversePartitionMap(
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), coords_device);
 
   ReversePartitionMap2 reverse_partition;
-  LO n = static_cast<LO>(owned.extent(0));
+  const LO n_owned = static_cast<LO>(coords.extent(0));
   std::array<Real, 3> coord{};
   auto overlap_mask_view = overlap_mask.GetMask(layout);
 
-  for (LO local_index = 0; local_index < n; ++local_index) {
+  for (LO owned_index = 0; owned_index < n_owned; ++owned_index) {
+    // Classification dims/ids, entity offsets, and the ownership mask are still
+    // local-indexed, so map the owned index back to its local index.
+    const LO local_index =
+      owned_to_local.size() == 0 ? owned_index : owned_to_local(owned_index);
+
+    // Skip holders not owned by this rank. This is required for xgc
     if (!owned(local_index))
       continue;
 
-    if (!overlap_mask_view[local_index])
+    if (!overlap_mask_view[owned_index])
       continue;
 
     for (int d = 0; d < mesh_dim; ++d)
-      coord[d] = coords_host(local_index, d);
+      coord[d] = coords_host(owned_index, d);
     for (int d = mesh_dim; d < 3; ++d)
       coord[d] = 0.0;
 
@@ -230,7 +223,7 @@ static ReversePartitionMap2 BuildReversePartitionMap(
     LO class_id = class_ids[local_index];
 
     auto dr = std::visit(GetRank{class_id, class_dim, coord}, partition);
-    reverse_partition[dr].indices.emplace_back(local_index);
+    reverse_partition[dr].indices.emplace_back(owned_index);
 
     for (size_t e = static_cast<size_t>(mesh_ent_dim) + 1; e < ent_offsets_len;
          ++e) {
@@ -248,7 +241,7 @@ ExchangePlan GenericFieldExchangePlanner::BuildExchangePlan(
 {
   PCMS_FUNCTION_TIMER;
   PCMS_ALWAYS_ASSERT(overlap_mask != nullptr);
-  auto gids = layout.GetGidsHost();
+  auto gids = layout.GetOwnedGidsHost();
 
   const ReversePartitionMap2 reverse_partition =
     BuildReversePartitionMap(layout, partition, *overlap_mask);
@@ -272,8 +265,8 @@ ExchangePlan GenericFieldExchangePlanner::BuildReceivePlan(
   int rank, int nproc, const redev::InMessageLayout& in_message_layout) const
 {
   PCMS_FUNCTION_TIMER;
-  auto gids = layout.GetGidsHost();
-  auto ent_offsets = layout.GetEntOffsets();
+  auto gids = layout.GetOwnedGidsHost();
+  auto ent_offsets = layout.GetOwnedEntOffsets();
 
   ExchangePlan plan;
   auto out_msg = ConstructOutMessage(rank, nproc, in_message_layout);
@@ -295,28 +288,28 @@ void GenericFieldExchangePlanner::FillGidMessage(
   PCMS_ALWAYS_ASSERT(static_cast<size_t>(gid_message.size()) ==
                      plan.msg_size + header_size);
 
-  auto gids = layout.GetGidsHost();
-  auto owned = layout.GetOwnedHost();
+  auto gids = layout.GetOwnedGidsHost();
+  auto owned_to_local = layout.GetOwnedToLocalHost();
   auto ent_offsets = layout.GetEntOffsets();
   auto offsets = Rank1View<const redev::LO, HostMemorySpace>(
     plan.offsets.data(), plan.offsets.size());
 
   std::vector<EntOffsetsArray> per_rank_offsets(plan.dest_ranks.size());
 
-  for (LO local_index = 0; local_index < static_cast<LO>(gids.size());
-       ++local_index) {
-    LO perm_index = plan.permutation[local_index];
+  for (LO owned_index = 0; owned_index < static_cast<LO>(gids.size());
+       ++owned_index) {
+    LO perm_index = plan.permutation[owned_index];
     // Owned holders outside the overlap region carry the sentinel and have no
     // slot in the message.
     if (perm_index < 0)
       continue;
-    // A holder with a valid permutation slot must be owned.
-    PCMS_ALWAYS_ASSERT(owned[local_index]);
     auto block_index = GetMessageBlockIndex(perm_index, offsets);
     const auto gid_index =
       perm_index + static_cast<LO>((block_index + 1) * ent_offsets_len);
-    gid_message(gid_index) = gids(local_index);
+    gid_message(gid_index) = gids(owned_index);
 
+    const LO local_index =
+      owned_to_local.size() == 0 ? owned_index : owned_to_local(owned_index);
     int mesh_ent_dim = GetMeshEntityDim(local_index, ent_offsets);
     for (size_t e = static_cast<size_t>(mesh_ent_dim) + 1; e < ent_offsets_len;
          ++e) {

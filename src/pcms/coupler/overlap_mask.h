@@ -46,16 +46,28 @@ struct OverlapMask
     }
   }
 
-  // Get the mask, evaluating the function if needed
+  // Get the mask, evaluating the function if needed. The mask is owned-indexed
+  // (one entry per owned DOF holder), matching the owned-indexed exchange plan.
   Rank1View<const bool, HostMemorySpace> GetMask(
     const FieldLayout& layout) const
   {
     if (in_overlap_func_) {
       auto class_dims = layout.GetDOFHolderClassificationDimensionsHost();
       auto class_ids = layout.GetDOFHolderClassificationIdsHost();
-      for (size_t i = 0; i < is_overlap_.extent(0); ++i) {
-        is_overlap_[i] =
-          static_cast<bool>(in_overlap_func_(class_dims[i], class_ids[i]));
+      auto owned_to_local = layout.GetOwnedToLocalHost();
+      const size_t n = is_overlap_.extent(0);
+      if (owned_to_local.size() == 0) {
+        // Non-distributed layout: owned == local.
+        for (size_t i = 0; i < n; ++i) {
+          is_overlap_[i] =
+            static_cast<bool>(in_overlap_func_(class_dims[i], class_ids[i]));
+        }
+      } else {
+        for (size_t o = 0; o < n; ++o) {
+          const LO local = owned_to_local(o);
+          is_overlap_[o] = static_cast<bool>(
+            in_overlap_func_(class_dims[local], class_ids[local]));
+        }
       }
     }
     return make_const_array_view(is_overlap_);

@@ -245,9 +245,16 @@ void bind_create_field_module(py::module& m)
     .def(
       "get_num_dof_holders",
       [](const Field<Real>& self) {
+        return self.GetLayout().GetNumLocalDofHolder();
+      },
+      "Number of local DOF holders (owned + ghost) on this rank")
+
+    .def(
+      "get_num_owned_dof_holders",
+      [](const Field<Real>& self) {
         return self.GetLayout().GetNumOwnedDofHolder();
       },
-      "Number of owned DOF holders (nodes/elements)")
+      "Number of owned (rank-exclusive) DOF holders")
 
     .def(
       "get_num_components",
@@ -284,7 +291,11 @@ void bind_create_field_module(py::module& m)
             ptr[i * coords_host.extent(1) + j] = coords_host(i, j);
         return result;
       },
-      "DOF holder coordinates as a 2D numpy array (num_dof_holders × dim)");
+      "DOF holder coordinates as a 2D numpy array (num_dof_holders × dim)")
+
+    .def(
+      "synchronize_ghosts", [](Field<Real>& self) { self.SynchronizeGhosts(); },
+      "Synchronize ghost DOF-holder values from their owning ranks");
 
   py::class_<FunctionSpace, std::shared_ptr<FunctionSpace>>(m, "FunctionSpace")
     .def(

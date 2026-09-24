@@ -61,11 +61,29 @@ public:
   virtual void SetDOFHolderDataHost(
     Rank2View<const T, HostMemorySpace> values) = 0;
 
+  // Owned (rank-exclusive) DOF-holder data, compact and owned-indexed. Defaults
+  // to the local data (owned == local for non-distributed backends).
+  virtual Rank2View<const T, HostMemorySpace> GetOwnedDOFHolderDataHost() const
+  {
+    return GetDOFHolderDataHost();
+  }
+
+  // Owned (rank-exclusive) DOF-holder data, compact and owned-indexed, on
+  // device. Defaults to the local device data (owned == local for
+  // non-distributed backends).
+  virtual Rank2View<const T, DeviceMemorySpace> GetOwnedDOFHolderData() const
+  {
+    return GetDOFHolderData();
+  }
+
   // The returned view remains valid until the FieldData is mutated or
   // destroyed.
   virtual Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const = 0;
   virtual void SetDOFHolderData(
     Rank2View<const T, DeviceMemorySpace> values) = 0;
+
+  // Synchronize ghost DOF-holder values from their owning ranks.
+  virtual void SynchronizeGhosts() {}
 
   virtual ~FieldData() noexcept = default;
 };

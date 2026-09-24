@@ -30,19 +30,27 @@ public:
     const noexcept override;
 
   int GetNumComponents() const override;
+  LO GetNumLocalDofHolder() const override;
   LO GetNumOwnedDofHolder() const override;
   GO GetNumGlobalDofHolder() const override;
 
   Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override;
   GlobalIDView<HostMemorySpace> GetGidsHost() const override;
-  GlobalIDView<DeviceMemorySpace> GetGids() const;
+  GlobalIDView<DeviceMemorySpace> GetGids() const override;
+  GlobalIDView<HostMemorySpace> GetOwnedGidsHost() const override;
+  GlobalIDView<DeviceMemorySpace> GetOwnedGids() const override;
   CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const override;
+  CoordinateView<DeviceMemorySpace> GetOwnedDOFHolderCoordinates()
+    const override;
+  Kokkos::View<const LO*, HostMemorySpace> GetOwnedToLocalHost() const override;
+  Kokkos::View<const LO*, DeviceMemorySpace> GetOwnedToLocal() const override;
 
   [[nodiscard]] bool IsDistributed() const override;
 
   EntOffsetsArray GetEntOffsets() const override;
 
   int GetDimension() const override;
+  int GetDOFHolderEntityDim() const override;
 
   Rank1View<const LO, HostMemorySpace>
   GetDOFHolderClassificationDimensionsHost() const override;
@@ -70,6 +78,15 @@ private:
   Omega_h::Read<Omega_h::I8> class_dims_;
   Kokkos::View<LO*, HostMemorySpace> classification_dims_host_;
   Kokkos::View<LO*, HostMemorySpace> classification_ids_host_;
+  LO num_owned_ = 0;
+  Kokkos::View<GO*, HostMemorySpace> owned_gids_host_;
+  Kokkos::View<Real**, DeviceMemorySpace> owned_coords_2d_;
+  Kokkos::View<LO*, HostMemorySpace> owned_to_local_host_;
+  Kokkos::View<GO*, DeviceMemorySpace> owned_gids_;
+  Kokkos::View<LO*, DeviceMemorySpace> owned_to_local_;
+
+  void BuildOwnedViews();
+
   std::shared_ptr<const Discretization> discretization_;
 };
 

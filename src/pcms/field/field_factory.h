@@ -17,7 +17,7 @@ namespace detail
 
 inline size_t ExpectedFlatFieldDataSize(const FieldLayout& layout)
 {
-  return static_cast<size_t>(layout.GetNumOwnedDofHolder()) *
+  return static_cast<size_t>(layout.GetNumLocalDofHolder()) *
          static_cast<size_t>(layout.GetNumComponents());
 }
 

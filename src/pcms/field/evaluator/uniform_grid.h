@@ -81,7 +81,7 @@ public:
     PCMS_ALWAYS_ASSERT(values.extent(0) == static_cast<size_t>(num_points));
     PCMS_ALWAYS_ASSERT(values.extent(1) == static_cast<size_t>(n_comp));
     PCMS_ALWAYS_ASSERT(dof_data.size() ==
-                       static_cast<size_t>(layout_->GetNumOwnedDofHolder() *
+                       static_cast<size_t>(layout_->GetNumLocalDofHolder() *
                                            layout_->GetNumComponents()));
 
     auto cell_indices = hint_.cell_indices_;

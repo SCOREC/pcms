@@ -26,7 +26,7 @@ void initializeFieldWithGids(const pcms::FieldLayout& layout,
                              pcms::Real multiplier = 1.0)
 {
   auto gids = layout.GetGidsHost();
-  const auto n = layout.GetNumOwnedDofHolder();
+  const auto n = layout.GetNumLocalDofHolder();
 
   Omega_h::HostWrite<pcms::Real> ids(n);
   PCMS_ALWAYS_ASSERT(n == gids.size());
@@ -47,7 +47,7 @@ bool validateField(const pcms::FieldLayout& layout,
   auto gids = layout.GetGidsHost();
   auto copied_array = pcms::FlattenToRank1View(field->GetDOFHolderDataHost());
   auto owned = layout.GetOwnedHost();
-  const auto n = layout.GetNumOwnedDofHolder();
+  const auto n = layout.GetNumLocalDofHolder();
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());
   PCMS_ALWAYS_ASSERT(owned.size() == gids.size());

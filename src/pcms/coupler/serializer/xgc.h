@@ -90,7 +90,7 @@ public:
               pcms::GetMPIType(T{}), 0, plane_comm_);
 
     xgc_field->SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace>(
-      full_data.data(), layout.GetNumOwnedDofHolder(),
+      full_data.data(), layout.GetNumLocalDofHolder(),
       layout.GetNumComponents()));
   }
 

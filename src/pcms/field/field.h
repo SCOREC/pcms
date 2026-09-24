@@ -46,6 +46,11 @@ public:
     return data_->GetDOFHolderDataHost();
   }
 
+  Rank2View<const T, HostMemorySpace> GetOwnedDOFHolderDataHost() const
+  {
+    return data_->GetOwnedDOFHolderDataHost();
+  }
+
   void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> v)
   {
     data_->SetDOFHolderDataHost(v);
@@ -56,10 +61,18 @@ public:
     return data_->GetDOFHolderData();
   }
 
+  Rank2View<const T, DeviceMemorySpace> GetOwnedDOFHolderData() const
+  {
+    return data_->GetOwnedDOFHolderData();
+  }
+
   void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> v)
   {
     data_->SetDOFHolderData(v);
   }
+
+  // Synchronize ghost DOF-holder values from their owning ranks.
+  void SynchronizeGhosts() { data_->SynchronizeGhosts(); }
 
 protected:
   Field(std::string name, std::shared_ptr<const FieldLayout> layout,

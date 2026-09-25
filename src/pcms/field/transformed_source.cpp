@@ -58,54 +58,27 @@ void RestoreFillRows(
 } // namespace detail
 
 TransformedSource::TransformedSource(
-  const PointEvaluatorFactory& source,
-  std::shared_ptr<const CoordinateMap> to_source, ValueBasis source_basis,
-  ValueBasis target_basis)
-  : source_(&source),
-    to_source_(std::move(to_source)),
-    source_basis_(std::move(source_basis)),
-    target_basis_(std::move(target_basis))
+  std::shared_ptr<const PointEvaluatorFactory> source,
+  std::shared_ptr<const CoordinateMap> to_source)
+  : source_(std::move(source)), to_source_(std::move(to_source))
 {
+  if (source_ == nullptr) {
+    throw pcms_error("TransformedSource: source must not be null");
+  }
   if (to_source_ == nullptr) {
     throw pcms_error("TransformedSource: to_source must not be null");
   }
   if (!SameCoordinateSystem(to_source_->GetTargetCoordinateSystem(),
-                            source.GetCoordinateSystem())) {
+                            source_->GetCoordinateSystem())) {
     throw pcms_error(
       "TransformedSource: to_source maps into '" +
       std::string(to_source_->GetTargetCoordinateSystem()->Kind()) +
       "' but the source's coordinate system is '" +
-      std::string(source.GetCoordinateSystem()->Kind()) + "'");
+      std::string(source_->GetCoordinateSystem()->Kind()) +
+      "'; expected a map ending in '" +
+      std::string(source_->GetCoordinateSystem()->Kind()) + "'");
   }
   system_ = to_source_->GetSourceCoordinateSystem();
-  detail::ValidateValueBasis(source_basis_);
-  detail::ValidateValueBasis(target_basis_);
-  if (source_basis_.Rank() != target_basis_.Rank()) {
-    throw pcms_error("TransformedSource: source and target bases have "
-                     "different ranks");
-  }
-  if (source_basis_.Rank() == 0) {
-    return;
-  }
-  if (!(source_basis_.variance == target_basis_.variance)) {
-    throw pcms_error("TransformedSource: source and target bases have "
-                     "different variances; index raising and lowering is "
-                     "not supported");
-  }
-  if (source_basis_.Rank() > 1) {
-    throw pcms_error("TransformedSource: rank-" +
-                     std::to_string(source_basis_.Rank()) +
-                     " transformations are not implemented");
-  }
-  if (!SameCoordinateSystem(source_basis_.system,
-                            to_source_->GetTargetCoordinateSystem())) {
-    throw pcms_error("TransformedSource: source_basis must be in the "
-                     "source's coordinate system");
-  }
-  if (!SameCoordinateSystem(target_basis_.system, system_)) {
-    throw pcms_error("TransformedSource: target_basis must be in the "
-                     "to_source map's source coordinate system");
-  }
 }
 
 template <typename T>
@@ -113,36 +86,13 @@ std::unique_ptr<PointEvaluator<T>> TransformedSource::Create(
   const EvaluationRequest& request) const
 {
   PCMS_FUNCTION_TIMER;
-  MappedPoints mapped = to_source_->Map(request.coords);
-  detail::ThrowIfAnyPointInvalid(mapped.status,
+  auto bound = to_source_->Bind(request.coords);
+  detail::ThrowIfAnyPointInvalid(bound->Status(),
                                  "TransformedSource::CreatePointEvaluator");
-  if constexpr (!std::is_same_v<T, Real>) {
-    if (source_basis_.Rank() > 0) {
-      throw pcms_error("TransformedSource::CreatePointEvaluator: basis "
-                       "transformations require T == Real");
-    }
-  }
   auto inner = source_->CreatePointEvaluator<T>(
-    EvaluationRequest::FromCoordinates(mapped.View(), request.policy));
-  std::unique_ptr<BoundBasisTransformation> law;
-  if (source_basis_.Rank() > 0) {
-    if constexpr (std::is_same_v<T, Real>) {
-      law = to_source_->MakeBasisTransformation(request.coords, mapped);
-      if (law == nullptr) {
-        throw pcms_error("TransformedSource::CreatePointEvaluator: the "
-                         "coordinate map provides no basis transformation");
-      }
-      if (!SameValueBasis(law->GetSourceBasis(), source_basis_) ||
-          !SameValueBasis(law->GetTargetBasis(), target_basis_)) {
-        throw pcms_error("TransformedSource::CreatePointEvaluator: the "
-                         "coordinate map's basis transformation does not "
-                         "bridge source_basis to target_basis");
-      }
-    }
-  }
+    EvaluationRequest::FromCoordinates(bound->MappedPoints(), request.policy));
   return std::make_unique<TransformedPointEvaluator<T>>(
-    std::move(inner), std::move(mapped), std::move(law), source_basis_,
-    target_basis_, request.policy);
+    std::move(bound), std::move(inner), request.policy);
 }
 
 PointEvaluatorVariant TransformedSource::CreatePointEvaluatorImpl(

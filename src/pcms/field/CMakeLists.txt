@@ -7,7 +7,6 @@ set(PCMS_FIELD_HEADERS
         coordinate_systems/cartesian.hpp
         coordinate_systems/cylindrical.hpp
         coordinate_map.hpp
-        basis_transformation.hpp
         point_status.hpp
         value_view.hpp
         element_dispatch.h
@@ -30,7 +29,6 @@ set(PCMS_FIELD_HEADERS
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
         coordinate_system.cpp
-        basis_transformation.cpp
         coordinate_map.cpp
         transformed_source.cpp
         gid_permutation.cpp

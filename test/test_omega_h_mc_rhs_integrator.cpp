@@ -316,10 +316,11 @@ public:
   {
     return pcms::csys::Cartesian::Create(2);
   }
-  [[nodiscard]] pcms::MappedPoints Map(
-    const pcms::CoordinateView<pcms::DeviceMemorySpace>& points) const override
+  [[nodiscard]] std::unique_ptr<pcms::BoundCoordinateMap> Bind(
+    const pcms::CoordinateView<pcms::DeviceMemorySpace>& query_points)
+    const override
   {
-    const auto in = points.GetValues();
+    const auto in = query_points.GetValues();
     Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> out("swapped",
                                                             in.extent(0), 2);
     Kokkos::parallel_for(
@@ -331,8 +332,8 @@ public:
         out(i, 1) = in(i, 0);
       });
     Kokkos::fence();
-    return pcms::MappedPoints{GetTargetCoordinateSystem(), out,
-                              pcms::PointStatusView{}};
+    return std::make_unique<pcms::BoundCoordinateMap>(
+      GetTargetCoordinateSystem(), out);
   }
 };
 
@@ -354,10 +355,10 @@ TEST_CASE("OmegaHControlVariateProjection over a TransformedSource maps the "
     source_field,
     OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return 3.0 * x - y + 0.25; });
 
-  pcms::TransformedSource view(*source_space, std::make_shared<SwapXY>(),
-                               pcms::ValueBasis{}, pcms::ValueBasis{});
+  pcms::TransformedSource src_as_swapped(source_space,
+                                         std::make_shared<SwapXY>());
   pcms::OmegaHControlVariateProjection projection(
-    view, *target_space, /*samples_per_element=*/4,
+    src_as_swapped, *target_space, /*samples_per_element=*/4,
     pcms::MonteCarloSampling::UniformRandom);
   projection.Apply(source_field, target_field);
 

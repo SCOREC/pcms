@@ -127,7 +127,9 @@ public:
       "set_dimensions_view",
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, Dim),
       KOKKOS_LAMBDA(const unsigned d) {
-        dimensions_view(d) = cell_divisions[d] + 1;
+        // cell_dim_indices uses GetDimensionedIndex(), which returns indices in
+        // the opposite order of the coordinates, so we reverse the order here.
+        dimensions_view(d) = cell_divisions[Dim - 1 - d] + 1;
       });
 
     RealMatView parametric_coords("parametric_coords", num_points, Dim);
@@ -140,7 +142,10 @@ public:
           Real coord = coordinates(i, d);
           Real cell_min = cell_bbox.center[d] - cell_bbox.half_width[d];
           Real cell_max = cell_bbox.center[d] + cell_bbox.half_width[d];
-          parametric_coords(i, d) = (coord - cell_min) / (cell_max - cell_min);
+          // cell_dim_indices is filled from GetDimensionedIndex(), which
+          // returns indices in the opposite order of the coordinates
+          parametric_coords(i, Dim - 1 - d) =
+            (coord - cell_min) / (cell_max - cell_min);
         }
       });
 
@@ -153,18 +158,16 @@ public:
           cell_indices_interp(i, d) = cell_dim_indices(i, d);
       });
 
-    // n_comp == 1 for now (multi-component path would need per-component calls)
-    PCMS_ALWAYS_ASSERT(
-      n_comp == 1 &&
-      "UniformGridPointEvaluator: multi-component order-1 not yet supported");
-
-    RealVecView values_interp("values_interp",
-                              static_cast<size_t>(dof_data.size()));
+    RealMatView values_interp(
+      "values_interp", static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
+      static_cast<size_t>(n_comp));
     Kokkos::parallel_for(
       "copy_dof_data_to_values_interp",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-        0, static_cast<LO>(dof_data.size())),
-      KOKKOS_LAMBDA(const LO i) { values_interp(i) = dof_data(i, 0); });
+      Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+        {0, 0}, {static_cast<LO>(layout_->GetNumOwnedDofHolder()), n_comp}),
+      KOKKOS_LAMBDA(const LO i, const int c) {
+        values_interp(i, c) = dof_data(i, c);
+      });
 
     auto interpolator = RegularGridInterpolator(
       parametric_coords, values_interp, cell_indices_interp, dimensions_view);
@@ -174,12 +177,12 @@ public:
     Real fv = fill_value_;
     Kokkos::parallel_for(
       "evaluate_order1_device",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_LAMBDA(const LO i) {
+      Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {num_points, n_comp}),
+      KOKKOS_LAMBDA(const LO i, const int c) {
         if (is_out_of_bounds(i) && mode == OutOfBoundsMode::FILL) {
-          values(i, 0) = fv;
+          values(i, c) = fv;
         } else {
-          values(i, 0) = interpolated(i);
+          values(i, c) = interpolated(i, c);
         }
       });
   }
@@ -234,11 +237,6 @@ public:
       throw pcms_error(
         "UniformGridEvaluatorFactory: nearest-boundary evaluation is not "
         "supported");
-    }
-    if (layout_->GetOrder() == 1 && layout_->GetNumComponents() != 1) {
-      throw pcms_error(
-        "UniformGridEvaluatorFactory: order-1 multi-component evaluation is "
-        "not implemented");
     }
 
     auto coordinates = coords.GetValues();

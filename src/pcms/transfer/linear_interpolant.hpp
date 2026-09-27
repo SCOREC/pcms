@@ -68,7 +68,8 @@ void basis_function(const RealVecView& parametric_coord,
 KOKKOS_INLINE_FUNCTION
 double linear_interpolant(const IntVecView& dimensions,
                           const double* linear_basis_each_dir,
-                          const IntVecView& indices, const RealVecView& values)
+                          const IntVecView& indices, const RealMatView& values,
+                          const int component)
 {
   int dim = dimensions.extent(0);
   double sum = 0;
@@ -91,50 +92,60 @@ double linear_interpolant(const IntVecView& dimensions,
     }
 
     int idx = calculateIndex(dimensions, ids);
-    double corner_values = values(idx);
+    double corner_values = values(idx, component);
 
     sum += temp * corner_values;
   }
   return sum;
 }
 
+// Multilinear interpolation over a regular grid. Supports one or more
+// components per grid point; the scalar case is num_components == 1.
+// `values` is [num_grid_points][num_components] and the result is
+// [num_query_points][num_components].
 class RegularGridInterpolator
 {
 private:
   const RealMatView parametric_coords;
-  const RealVecView values;
+  const RealMatView values; // 2D: [num_grid_points][num_components]
   const IntMatView indices;
   const IntVecView dimensions;
+  const int num_components;
 
 public:
   RegularGridInterpolator(const RealMatView& parametric_coords_,
-                          const RealVecView& values_,
+                          const RealMatView& values_,
                           const IntMatView& indices_,
                           const IntVecView& dimensions_)
     : parametric_coords(parametric_coords_),
       values(values_),
       indices(indices_),
-      dimensions(dimensions_){};
-
-  RealVecView linear_interpolation()
+      dimensions(dimensions_),
+      num_components(values_.extent(1))
   {
-    int dim = dimensions.extent(0);
+  }
+
+  RealMatView linear_interpolation()
+  {
     int N = parametric_coords.extent(0);
-    RealVecView interpolated_values("approximated values", N);
+    RealMatView interpolated_values("approximated values", N, num_components);
     auto parametric_coords_ = parametric_coords;
     auto dimensions_ = dimensions;
     auto values_ = values;
     auto indices_ = indices;
+    int n_comp = num_components;
+
     Kokkos::parallel_for(
-      "linear interpolation function", N, KOKKOS_LAMBDA(int j) {
+      "linear interpolation", N, KOKKOS_LAMBDA(int j) {
         double linear_basis_each_dir[MAX_DIM] = {0.0};
         auto parametric_coord_each_point =
           Kokkos::subview(parametric_coords_, j, Kokkos::ALL());
         auto index_each_point = Kokkos::subview(indices_, j, Kokkos::ALL());
         basis_function(parametric_coord_each_point, linear_basis_each_dir);
-        auto approx_value = linear_interpolant(
-          dimensions_, linear_basis_each_dir, index_each_point, values_);
-        interpolated_values(j) = approx_value;
+        for (int c = 0; c < n_comp; ++c) {
+          interpolated_values(j, c) = linear_interpolant(
+            dimensions_, linear_basis_each_dir, index_each_point, values_, c);
+        }
       });
 
     return interpolated_values;

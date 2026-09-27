@@ -4,6 +4,7 @@ message(STATUS "Python_EXECUTABLE ${Python_EXECUTABLE}")
 
 pybind11_add_module(pcms 
   pythonapi.cpp
+  bind_runtime.cpp
   bind_field_base.cpp
   bind_field_layout.cpp
         bind_omega_h_field.cpp

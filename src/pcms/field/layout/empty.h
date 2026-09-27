@@ -11,7 +11,7 @@ namespace pcms
 class EmptyFieldLayout : public FieldLayout
 {
 public:
-  EmptyFieldLayout();
+  explicit EmptyFieldLayout(std::shared_ptr<const CoordinateSystem> system);
 
   std::shared_ptr<const Discretization> GetDiscretization()
     const noexcept override;

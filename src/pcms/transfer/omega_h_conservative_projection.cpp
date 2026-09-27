@@ -25,16 +25,10 @@ void CheckApplyCompatible(const Field<Real>& source, const Field<Real>& target,
       "OmegaHConservativeProjection::Apply: target field layout mismatch");
   }
 
-  const auto& source_md = source.GetData().GetMetadata();
-  const auto& target_md = target.GetData().GetMetadata();
-  if (source_md.value_type != FieldValueType::Scalar ||
-      target_md.value_type != FieldValueType::Scalar) {
+  if (source.GetData().GetValueType() != FieldValueType::Scalar ||
+      target.GetData().GetValueType() != FieldValueType::Scalar) {
     throw pcms_error(
       "OmegaHConservativeProjection::Apply: only scalar fields are supported");
-  }
-  if (source_md.value_coordinate_system != target_md.value_coordinate_system) {
-    throw pcms_error("OmegaHConservativeProjection::Apply: source and target "
-                     "value coordinate systems differ");
   }
 }
 
@@ -75,23 +69,29 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
                                          Field<Real>& target) const
 {
   CheckApplyCompatible(source, target, *source_layout_, *target_layout_);
-
-  const auto solution = solver_->Solve(*evaluator_, source);
-  const auto global_to_local = target_layout_->GetGlobalToLocalPermutation();
+  if (&source.GetLayout() != source_layout_.get()) {
+    throw pcms_error(
+      "OmegaHConservativeProjection::Apply: source field layout mismatch");
+  }
+  if (source.GetData().GetValueType() != FieldValueType::Scalar) {
+    throw pcms_error(
+      "OmegaHConservativeProjection::Apply: only scalar fields are supported");
+  }
   const int num_dof_holders = target_layout_->GetNumOwnedDofHolder();
   const int num_components = target_layout_->GetNumComponents();
-  auto target_values = target_values_;
+  const auto values = MakeRank2View(target_values_);
+  const auto solution = solver_->Solve(*evaluator_, source);
+  const auto global_to_local = target_layout_->GetGlobalToLocalPermutation();
   Kokkos::parallel_for(
     "conservative_projection_scatter_solution",
     Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_dof_holders),
     KOKKOS_LAMBDA(int i) {
       for (int c = 0; c < num_components; ++c) {
-        target_values(i, c) = solution[global_to_local(i) * num_components + c];
+        values(i, c) = solution[global_to_local(i) * num_components + c];
       }
     });
   Kokkos::fence();
-
-  target.SetDOFHolderData(MakeConstRank2View(target_values_));
+  target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
 } // namespace pcms

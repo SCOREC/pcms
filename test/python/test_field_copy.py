@@ -30,7 +30,7 @@ class TestFieldCopy:
 
         # Create factory and layout
         factory = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian
+            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
         )
 
         # Create original field and set data

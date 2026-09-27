@@ -44,6 +44,42 @@ struct UniformGridFieldLocalizationHint
   size_t num_out_of_bounds_;
 };
 
+namespace detail
+{
+
+/// Indices of the points `hint` fills, in increasing order; empty unless its
+/// mode is FILL.
+template <unsigned Dim>
+Kokkos::View<const LO*, DeviceMemorySpace> FilledPointIndices(
+  const UniformGridFieldLocalizationHint<Dim>& hint)
+{
+  if (hint.mode_ != OutOfBoundsMode::FILL || hint.num_out_of_bounds_ == 0) {
+    return {};
+  }
+  const auto is_out_of_bounds = hint.is_out_of_bounds_;
+  Kokkos::View<LO*, DeviceMemorySpace> indices(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "filled_points"),
+    hint.num_out_of_bounds_);
+  LO count = 0;
+  Kokkos::parallel_scan(
+    "uniform_grid_filled_points",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
+      0, static_cast<LO>(is_out_of_bounds.extent(0))),
+    KOKKOS_LAMBDA(const LO i, LO& update, const bool final) {
+      if (is_out_of_bounds(i)) {
+        if (final) {
+          indices(update) = i;
+        }
+        ++update;
+      }
+    },
+    count);
+  PCMS_ALWAYS_ASSERT(static_cast<size_t>(count) == hint.num_out_of_bounds_);
+  return indices;
+}
+
+} // namespace detail
+
 // UniformGridPointEvaluator<Dim> implements PointEvaluator<Real> for structured
 // uniform grids. Localization results (cell indices, parametric coordinates)
 // are computed once at construction and cached for repeated Evaluate calls.
@@ -65,15 +101,25 @@ public:
     : layout_(std::move(layout)),
       grid_(layout_->GetGrid()),
       hint_(std::move(hint)),
-      fill_value_(fill_value)
+      fill_value_(fill_value),
+      filled_points_(detail::FilledPointIndices(hint_))
   {
+  }
+
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    return filled_points_;
   }
 
   void Evaluate(
     const Field<Real>& field,
-    Rank2View<Real, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
+    this->CheckEvaluateWriteTag("UniformGridPointEvaluator::Evaluate", field,
+                                out);
+    const auto values = out.GetValues();
     auto dof_data = field.GetDOFHolderData();
     LO num_points = static_cast<LO>(hint_.coordinates_.extent(0));
     int n_comp = layout_->GetNumComponents();
@@ -192,6 +238,7 @@ private:
   UniformGrid<Dim> grid_;
   UniformGridFieldLocalizationHint<Dim> hint_;
   Real fill_value_;
+  Kokkos::View<const LO*, DeviceMemorySpace> filled_points_;
 };
 
 // UniformGridEvaluatorFactory<Dim> implements FieldEvaluatorFactory<Real> for
@@ -212,11 +259,6 @@ public:
 
   const FieldLayout& GetLayout() const override { return *layout_; }
 
-  CoordinateSystem GetCoordinateSystem() const override
-  {
-    return layout_->GetDOFHolderCoordinates().GetCoordinateSystem();
-  }
-
   bool HasDOFHolderCoordinates() const override { return true; }
 
   bool SupportsNearestBoundary() const override { return true; }
@@ -228,10 +270,6 @@ public:
     const auto coords = request.coords;
     const auto policy = request.policy;
     PCMS_FUNCTION_TIMER;
-    if (coords.GetCoordinateSystem() != GetCoordinateSystem()) {
-      throw pcms_error(
-        "UniformGridEvaluatorFactory: coordinate system mismatch");
-    }
     if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY &&
         !SupportsNearestBoundary()) {
       throw pcms_error(

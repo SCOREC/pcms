@@ -8,11 +8,12 @@
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/field/field.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/data/simple.h"
 #include "pcms/transfer/copy.h"
 #include <chrono>
 #include <optional>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::GO;
 using pcms::LO;
@@ -218,7 +219,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       return 1;
     });
   auto function_space = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::CoordinateSystem::Cartesian, is_overlap, numbering,
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), is_overlap, numbering,
     pcms::LagrangeFunctionSpace::Backend::OmegaH, "n0_layout");
   auto time2 = std::chrono::steady_clock::now();
   elapsed_seconds = time2 - time1;

@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/discretization/discretization.h"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/layout/point_cloud.h"
@@ -11,6 +11,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <vector>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::CoordinateSystem;
 using pcms::HostMemorySpace;
@@ -36,7 +37,8 @@ TEST_CASE(
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
 
   auto factory = pcms::PolynomialReconstructionFunctionSpace::Create(
-    coords_view, CoordinateSystem::Cartesian);
+    pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
+                                          coords_view));
   auto layout = factory->GetLayout();
 
   REQUIRE(layout->GetNumComponents() == 1);
@@ -45,7 +47,7 @@ TEST_CASE(
   REQUIRE_FALSE(layout->IsDistributed());
 
   auto dof_coords = layout->GetDOFHolderCoordinates().GetValues();
-  auto dof_coords_host = pcms::test::CopyCoordinatesToHost(dof_coords, 4, 2);
+  auto dof_coords_host = pcms::test::CopyCoordinatesToHost(dof_coords);
 
   REQUIRE(static_cast<int>(dof_coords_host.extent(0)) == 4);
   REQUIRE(static_cast<int>(dof_coords_host.extent(1)) == 2);
@@ -63,7 +65,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace fields share layout")
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
 
   auto factory = pcms::PolynomialReconstructionFunctionSpace::Create(
-    coords_view, CoordinateSystem::Cartesian);
+    pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
+                                          coords_view));
   auto source = factory->CreateFunction<Real>();
   auto target = factory->CreateFunction<Real>();
 
@@ -77,7 +80,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field set/get DOF "
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
 
   auto field = pcms::PolynomialReconstructionFunctionSpace::Create(
-                 coords_view, CoordinateSystem::Cartesian)
+                 pcms::CoordinateView<HostMemorySpace>(
+                   pcms::csys::Cartesian::Deferred(), coords_view))
                  ->CreateFunction<Real>();
 
   std::vector<Real> data{1.0, 2.0, 3.0, 4.0};
@@ -99,7 +103,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field serialize / "
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
 
   auto factory = pcms::PolynomialReconstructionFunctionSpace::Create(
-    coords_view, CoordinateSystem::Cartesian);
+    pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
+                                          coords_view));
   auto field = factory->CreateFunction<Real>();
 
   std::vector<Real> data{5.0, 6.0, 7.0, 8.0};
@@ -118,7 +123,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
 
   auto field = [&]() {
     auto factory = pcms::PolynomialReconstructionFunctionSpace::Create(
-      coords_view, CoordinateSystem::Cartesian);
+      pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
+                                            coords_view));
     return factory->CreateFunction<Real>();
   }();
 
@@ -130,9 +136,9 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
   std::vector<Real> data{9.0, 10.0, 11.0, 12.0};
   Rank2View<const Real, HostMemorySpace> data_view(
     data.data(), static_cast<LO>(data.size()), 1);
-  field.SetDOFHolderDataHost(data_view);
+  field.SetDOFHolderDataUncheckedHost(data_view);
 
-  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(got[0] == Catch::Approx(9.0));
   REQUIRE(got[3] == Catch::Approx(12.0));
 }
@@ -144,9 +150,9 @@ TEST_CASE("Different layouts on the same mesh report SameEntities")
                                  2, 0, false);
 
   auto nodal = pcms::PolynomialReconstructionFunctionSpace::FromMesh(
-    mesh, pcms::Face, CoordinateSystem::Cartesian);
+    mesh, pcms::Face, pcms::csys::Cartesian::Deferred());
   auto lagrange = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian);
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   auto nodal_disc = nodal->GetLayout()->GetDiscretization();
   auto lagrange_disc = lagrange->GetLayout()->GetDiscretization();
@@ -171,9 +177,9 @@ TEST_CASE("Layouts on different meshes do not report SameEntities")
                                    3, 3, 0, false);
 
   auto nodal_a = pcms::PolynomialReconstructionFunctionSpace::FromMesh(
-    mesh_a, pcms::Vertex, CoordinateSystem::Cartesian);
+    mesh_a, pcms::Vertex, pcms::csys::Cartesian::Deferred());
   auto nodal_b = pcms::PolynomialReconstructionFunctionSpace::FromMesh(
-    mesh_b, pcms::Vertex, CoordinateSystem::Cartesian);
+    mesh_b, pcms::Vertex, pcms::csys::Cartesian::Deferred());
 
   auto disc_a = nodal_a->GetLayout()->GetDiscretization();
   auto disc_b = nodal_b->GetLayout()->GetDiscretization();
@@ -189,12 +195,13 @@ TEST_CASE(
                                  2, 0, false);
 
   auto lagrange = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian);
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   auto coords = MakeCoords2D();
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
   auto standalone = pcms::PolynomialReconstructionFunctionSpace::Create(
-    coords_view, CoordinateSystem::Cartesian);
+    pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
+                                          coords_view));
 
   auto mesh_disc = lagrange->GetLayout()->GetDiscretization();
   auto point_cloud_disc = standalone->GetLayout()->GetDiscretization();

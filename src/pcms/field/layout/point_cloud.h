@@ -11,9 +11,9 @@ class PointCloudLayout : public FieldLayout
 {
 public:
   PointCloudLayout(int dim, Kokkos::View<Real**> coords,
-                   CoordinateSystem coordinate_system);
+                   std::shared_ptr<const CoordinateSystem> coordinate_system);
   PointCloudLayout(int dim, Kokkos::View<Real**> coords,
-                   CoordinateSystem coordinate_system,
+                   std::shared_ptr<const CoordinateSystem> coordinate_system,
                    std::shared_ptr<const Discretization> discretization,
                    int classification_entity_dim);
 
@@ -48,7 +48,6 @@ public:
 private:
   int dim_;
   int components_;
-  CoordinateSystem coordinate_system_;
   Kokkos::View<Real**> coords_;
   Kokkos::View<bool*> owned_;
   Kokkos::View<GO*> gids_;

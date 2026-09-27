@@ -4,6 +4,7 @@
 #include "pcms/field/field.h"
 #include "pcms/field/field_data.h"
 #include "pcms/field/function_space.h"
+#include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/utility/arrays.h"
@@ -34,45 +35,45 @@ class Interpolator : public TransferOperator<T>
 {
 public:
   // Expensive: localizes target DOF coords into source mesh. Called once.
-  Interpolator(const FunctionSpace& source_space,
+  /// @param source factory evaluated at the target's DOF-holder coordinates
+  /// @param target_space space whose DOF holders receive the values
+  /// @param policy out-of-bounds policy for the evaluation
+  Interpolator(const PointEvaluatorFactory& source,
                const FunctionSpace& target_space, OutOfBoundsPolicy policy = {})
     : num_points_(static_cast<LO>(
         target_space.GetLayout()->GetDOFHolderCoordinates().GetValues().extent(
           0))),
       n_comp_(target_space.GetLayout()->GetNumComponents()),
-      evaluator_(source_space.CreatePointEvaluator<T>(
-        EvaluationRequest::FromFunctionSpace(target_space, policy)))
+      evaluator_(source.CreatePointEvaluator<T>(
+        EvaluationRequest::FromFunctionSpace(target_space, policy))),
+      target_values_("interp_output", num_points_, n_comp_)
   {
   }
 
-  // Cheap: apply to any Field whose layout matches the target space.
-  // Localization is not repeated.
   void Apply(const Field<T>& source, Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
-    const LO num_points = num_points_;
-    const int n_comp = n_comp_;
-    Kokkos::View<T**, DeviceMemorySpace> output("interp_output", num_points,
-                                                n_comp);
-    auto output_view = MakeRank2View(output);
-    evaluator_->Evaluate(source, output_view);
-    Kokkos::View<T*, DeviceMemorySpace> flat(
-      "interp_flat", static_cast<size_t>(num_points) * n_comp);
-    Kokkos::parallel_for(
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_LAMBDA(LO i) {
-        for (int c = 0; c < n_comp; ++c) {
-          flat(i * n_comp + c) = output(i, c);
-        }
-      });
-    target.GetData().SetDOFHolderData(
-      Rank2View<const T, DeviceMemorySpace>(flat.data(), num_points, n_comp));
+    const auto& sd = source.GetData();
+    const auto& td = target.GetData();
+    if (sd.GetValueType() != td.GetValueType()) {
+      throw pcms_error("Interpolator: source and target value types differ");
+    }
+    const ValueBasis written = evaluator_->OutputBasis(sd.GetValueBasis());
+    if (!SameValueBasis(written, td.GetValueBasis())) {
+      throw pcms_error(
+        "Interpolator: the basis written for the source's stored basis "
+        "differs from the target's declared basis");
+    }
+    evaluator_->Evaluate(source, ValueView<T, DeviceMemorySpace>(
+                                   written, MakeRank2View(target_values_)));
+    target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
   }
 
 private:
   LO num_points_;
   int n_comp_;
   std::unique_ptr<PointEvaluator<T>> evaluator_;
+  mutable Kokkos::View<T**, DeviceMemorySpace> target_values_;
 };
 
 } // namespace pcms

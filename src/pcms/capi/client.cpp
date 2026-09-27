@@ -14,6 +14,7 @@
 #include <memory>
 #include <numeric>
 #include <variant>
+#include "pcms/field/coordinate_systems/cylindrical.hpp"
 
 namespace pcms
 {
@@ -41,9 +42,10 @@ struct DummyFieldRegistration
 class EmptyFieldFactory : public FieldFactory
 {
 public:
-  explicit EmptyFieldFactory(std::string layout_name = "")
+  EmptyFieldFactory(std::string layout_name,
+                    std::shared_ptr<const CoordinateSystem> system)
   {
-    auto layout = std::make_shared<EmptyFieldLayout>();
+    auto layout = std::make_shared<EmptyFieldLayout>(std::move(system));
     layout->SetName(std::move(layout_name));
     layout_ = layout;
   }
@@ -55,15 +57,14 @@ public:
   }
 
 protected:
-  [[nodiscard]] FieldVariant CreateFieldImpl(
-    Type value_type, FieldMetadata metadata) const override
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
+                                             ValueBasis basis) const override
   {
-    return apply_to_type(
-      value_type, [this, metadata](auto tag) -> FieldVariant {
-        using T = typename decltype(tag)::type;
-        return WrapField<T>(
-          layout_, std::make_unique<SimpleFieldData<T>>(layout_, metadata));
-      });
+    return apply_to_type(storage_type, [this, basis](auto tag) -> FieldVariant {
+      using T = typename decltype(tag)::type;
+      return WrapField<T>(layout_,
+                          std::make_unique<SimpleFieldData<T>>(layout_, basis));
+    });
   }
 
   [[nodiscard]] FieldVariant CreateFieldImpl(
@@ -130,8 +131,8 @@ ClientState::HandleVariant RegisterField(
   registration.function_space.SetLayoutName(name);
   auto field = registration.function_space.template CreateField<T>(
     std::move(name), std::make_unique<XGCFieldData<T>>(
-                       registration.function_space.GetXGCLayout(),
-                       FieldMetadata{}, registration.data));
+                       registration.function_space.GetXGCLayout(), ValueBasis{},
+                       registration.data));
   std::unique_ptr<FieldSerializer<T>> serializer =
     std::make_unique<XGCFieldSerializer<T>>(registration.plane_comm,
                                             participates);
@@ -143,9 +144,14 @@ inline ClientState::HandleVariant RegisterField(
   Application& app, std::string name, const detail::DummyFieldRegistration&,
   bool participates)
 {
-  auto function_space = detail::EmptyFieldFactory{name};
-  auto field =
-    function_space.CreateField<int>(std::move(name), FieldMetadata{});
+  // FIXME this is essentially a hack for now since the only CAPI client
+  // is XGC so we need to match the XGCLayout.
+  // The CAPI needs to be completely reworked for PCMS2, but that
+  // should happen after we finalize new coordinate tranformations
+  // and higher level field control
+  auto function_space =
+    detail::EmptyFieldFactory{name, csys::CylindricalRZ::Create()};
+  auto field = function_space.CreateField<int>(std::move(name));
   std::unique_ptr<FieldSerializer<int>> serializer =
     std::make_unique<FieldSerializer<int>>();
   return ClientState::HandleVariant{

@@ -16,8 +16,6 @@ void bind_transfer_field_module(py::module& m);
 
 void bind_coordinate_system_module(py::module& m);
 
-void bind_coordinate_module(py::module& m);
-
 void bind_create_field_module(py::module& m);
 
 void bind_field_layout_module(py::module& m);
@@ -59,7 +57,6 @@ PYBIND11_MODULE(pcms, m)
 
   // Bind fundamental types first (coordinate systems, etc.)
   pcms::bind_coordinate_system_module(m);
-  pcms::bind_coordinate_module(m);
 
   // bind_field_module is a no-op stub —
   // FieldT<T>/LocalizationHint/FieldDataView have been removed from the C++

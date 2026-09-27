@@ -438,6 +438,29 @@ void CopyHostRank2ViewToDeviceView(Kokkos::View<T**, DeviceMemorySpace> dest,
   Kokkos::deep_copy(dest, src_mirror);
 }
 
+// Element-wise copy between device Rank2Views. Indexing through (i, c) makes
+// the copy correct whatever layouts the two views carry, unlike a flat copy
+// through data_handle(), which assumes both element sequences agree.
+template <typename T>
+void CopyDeviceRank2ViewToRank2View(Rank2View<T, DeviceMemorySpace> dest,
+                                    Rank2View<const T, DeviceMemorySpace> src)
+{
+  const size_t num_dof = src.extent(0);
+  const size_t num_comp = src.extent(1);
+  if (dest.extent(0) != num_dof || dest.extent(1) != num_comp) {
+    throw pcms_error("CopyDeviceRank2ViewToRank2View: extent mismatch");
+  }
+  Kokkos::parallel_for(
+    "CopyDeviceRank2ViewToRank2View",
+    Kokkos::RangePolicy<typename DeviceMemorySpace::execution_space>(
+      0, static_cast<LO>(num_dof)),
+    KOKKOS_LAMBDA(LO i) {
+      for (size_t c = 0; c < num_comp; ++c) {
+        dest(i, c) = src(i, c);
+      }
+    });
+}
+
 // utility function to copy from Rank1View to Rank1View
 template <typename T>
 void CopyRank1ViewToHost(Rank1View<T, HostMemorySpace> dest,

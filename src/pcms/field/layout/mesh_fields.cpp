@@ -3,6 +3,7 @@
 #include "pcms/utility/inclusive_scan.h"
 #include "pcms/utility/profile.h"
 #include <Omega_h_for.hpp>
+#include <MeshField.hpp>
 #include <memory>
 
 namespace pcms
@@ -36,59 +37,133 @@ Omega_h::Write<Omega_h::GO> GetGidsHelper(LO total_ents,
   return owned_gids;
 }
 
-// this is a workaround to specify the parametric coordinates for MeshFields to
-// be replaced when https://github.com/SCOREC/meshFields/issues/70 is resolved
-struct ComputeVertexCoordsFunctor
+namespace
 {
-  Kokkos::View<Real**> dof_holder_coords_;
-  Omega_h::Reals coords_;
-  size_t offset_;
-
-  ComputeVertexCoordsFunctor(Kokkos::View<Real**> dof_holder_coords,
-                             Omega_h::Reals coords, size_t offset)
-    : dof_holder_coords_(dof_holder_coords), coords_(coords), offset_(offset)
-  {
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(LO i) const
-  {
-    dof_holder_coords_(offset_ + i, 0) = coords_[2 * i + 0];
-    dof_holder_coords_(offset_ + i, 1) = coords_[2 * i + 1];
-  }
-};
-
-// this is a workaround to specify the parametric coordinates for MeshFields to
-// be replaced when https://github.com/SCOREC/meshFields/issues/70 is resolved
-struct ComputeEdgeCoordsFunctor
+// Maps a meshFields topology to the dimension.
+KOKKOS_INLINE_FUNCTION int TopologyToDim(MeshField::Mesh_Topology topo)
 {
-  Kokkos::View<Real**> dof_holder_coords_;
-  Omega_h::Reals coords_;
-  Omega_h::LOs edge_verts_;
-  size_t offset_;
+  switch (topo) {
+    case MeshField::Vertex: return 0;
+    case MeshField::Edge: return 1;
+    case MeshField::Triangle: return 2;
+    case MeshField::Tetrahedron: return 3;
+    default: return -1;
+  }
+}
 
-  ComputeEdgeCoordsFunctor(Kokkos::View<Real**> dof_holder_coords,
-                           Omega_h::Reals coords, Omega_h::LOs edge_verts,
-                           size_t offset)
-    : dof_holder_coords_(dof_holder_coords),
-      coords_(coords),
-      edge_verts_(edge_verts),
-      offset_(offset)
+// Gets the appropriate MeshField element
+template <int Dim, int Order>
+auto GetMeshFieldElement(Omega_h::Mesh& mesh)
+{
+  if constexpr (Dim == 2) {
+    return MeshField::Omegah::getTriangleElement<Order>(mesh);
+  } else {
+    return MeshField::Omegah::getTetrahedronElement<Order>(mesh);
+  }
+}
+
+template <int Dim, int Order>
+void BuildDofHolderCoordsFromMeshFieldImpl(
+  Omega_h::Mesh& mesh, Kokkos::View<Real**> holder_coords,
+  const std::array<int, 4>& nodes_per_dim)
+{
+  const auto elem = GetMeshFieldElement<Dim, Order>(mesh);
+
+  using ShapeT = std::decay_t<decltype(elem.shp)>;
+  constexpr size_t numNodes = ShapeT::numNodes;
+  constexpr size_t meshDim = ShapeT::meshEntDim;
+  constexpr MeshField::Mesh_Topology elemTopo =
+    (Dim == 2) ? MeshField::Triangle : MeshField::Tetrahedron;
+  const auto map = elem.map;
+
+  // Compute the starting offset of DOF holders for each entity dimension.
+  Kokkos::Array<LO, 4> dof_holder_offset;
   {
+    LO cur_offset = 0;
+    for (int d = 0; d < 4; ++d) {
+      dof_holder_offset[d] = cur_offset;
+      if (d <= mesh.dim() && nodes_per_dim[d] != 0)
+        cur_offset += mesh.nents(d);
+    }
   }
 
-  KOKKOS_INLINE_FUNCTION
-  void operator()(LO i) const
-  {
-    auto verts = Omega_h::gather_verts<2>(edge_verts_, i);
-    Real x0 = coords_[2 * verts[0] + 0];
-    Real y0 = coords_[2 * verts[0] + 1];
-    Real x1 = coords_[2 * verts[1] + 0];
-    Real y1 = coords_[2 * verts[1] + 1];
-    dof_holder_coords_(offset_ + i, 0) = (x0 + x1) / 2;
-    dof_holder_coords_(offset_ + i, 1) = (y0 + y1) / 2;
+  const LO nelems = mesh.nelems();
+  const auto vtx_coords = mesh.coords();
+  const auto param_coords = elem.shp.getNodeParametricCoords();
+
+  Kokkos::parallel_for(
+    "MeshFieldsDofHolderCoords",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, nelems),
+    KOKKOS_LAMBDA(const LO e) {
+      constexpr size_t NVerts = Dim + 1;
+
+      Real Xv[NVerts * Dim];
+      for (size_t b = 0; b < NVerts; ++b) {
+        const auto hv = map(static_cast<MeshField::LO>(b), 0, e, elemTopo);
+        const LO v = hv.entity;
+        for (size_t d = 0; d < Dim; ++d)
+          Xv[b * Dim + d] = vtx_coords[static_cast<size_t>(v) * Dim + d];
+      }
+
+      for (size_t n = 0; n < numNodes; ++n) {
+        const auto h = map(static_cast<MeshField::LO>(n), 0, e, elemTopo);
+
+        // Compute the barycentric coordinates L[b] at the node's parametric
+        // coordinates.
+        Real L[NVerts];
+        L[0] = 1;
+        for (size_t d = 0; d < Dim; ++d) {
+          const Real xi_d = param_coords[n * Dim + d];
+          L[d + 1] = xi_d;
+          L[0] -= xi_d;
+        }
+
+        Real X[Dim] = {0};
+        for (size_t b = 0; b < NVerts; ++b)
+          for (size_t d = 0; d < Dim; ++d)
+            X[d] += L[b] * Xv[b * Dim + d];
+
+        const int dim_of_holder = TopologyToDim(h.topo);
+        const LO row = dof_holder_offset[dim_of_holder] + h.entity;
+        for (size_t d = 0; d < Dim; ++d)
+          holder_coords(row, d) = X[d];
+      }
+    });
+}
+
+void BuildDofHolderCoordsFromMeshField(Omega_h::Mesh& mesh,
+                                       Kokkos::View<Real**> holder_coords,
+                                       const std::array<int, 4>& nodes_per_dim)
+{
+  int dim = mesh.dim();
+  int order = 0;
+  for (int i = 0; i <= dim; ++i) {
+    if (nodes_per_dim[i] == 1)
+      ++order;
+    else if (nodes_per_dim[i] != 0) {
+      std::cerr << "Unsupported" << std::endl;
+      std::abort();
+    }
   }
-};
+
+  if (dim == 2 && order == 1)
+    BuildDofHolderCoordsFromMeshFieldImpl<2, 1>(mesh, holder_coords,
+                                                nodes_per_dim);
+  else if (dim == 2 && order == 2)
+    BuildDofHolderCoordsFromMeshFieldImpl<2, 2>(mesh, holder_coords,
+                                                nodes_per_dim);
+  else if (dim == 3 && order == 1)
+    BuildDofHolderCoordsFromMeshFieldImpl<3, 1>(mesh, holder_coords,
+                                                nodes_per_dim);
+  else if (dim == 3 && order == 2)
+    BuildDofHolderCoordsFromMeshFieldImpl<3, 2>(mesh, holder_coords,
+                                                nodes_per_dim);
+  else {
+    std::cerr << "Unsupported element/order combination" << std::endl;
+    std::abort();
+  }
+}
+} // namespace
 
 struct CopyClassInfoFunctor
 {
@@ -152,32 +227,9 @@ MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
     std::abort();
   }
 
-  auto coords = mesh_.coords();
+  BuildDofHolderCoordsFromMeshField(mesh_, dof_holder_coords_, nodes_per_dim);
 
   size_t offset = 0;
-  for (int i = 0; i <= mesh_.dim(); ++i) {
-    if (nodes_per_dim[i] == 1) {
-      if (i == 0) {
-        ComputeVertexCoordsFunctor functor(dof_holder_coords_, coords, offset);
-        Kokkos::parallel_for(mesh_.nents(0), functor);
-      } else if (i == 1) {
-        auto edge_verts = mesh_.ask_verts_of(1);
-        ComputeEdgeCoordsFunctor functor(dof_holder_coords_, coords, edge_verts,
-                                         offset);
-        Kokkos::parallel_for(mesh_.nents(1), functor);
-      } else {
-        std::cerr << "Unsupported" << std::endl;
-        std::abort();
-      }
-    } else if (nodes_per_dim[i] != 0) {
-      std::cerr << "Unsupported" << std::endl;
-      std::abort();
-    }
-
-    offset += mesh.nents(i);
-  }
-
-  offset = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     if (nodes_per_dim_[i]) {
       auto ids = mesh_.get_array<Omega_h::ClassId>(i, "class_id");

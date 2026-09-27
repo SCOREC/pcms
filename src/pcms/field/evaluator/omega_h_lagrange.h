@@ -179,13 +179,78 @@ OmegaHLagrangeLocHint BuildLagrangeLocHint(
                                mode};
 }
 
+template <int Dim>
+KOKKOS_INLINE_FUNCTION Omega_h::Vector<Dim + 1> BarycentricInElement(
+  const Omega_h::LOs& elem_verts, const Omega_h::Reals& mesh_coords, LO elem,
+  const Omega_h::Vector<Dim>& point)
+{
+  Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1> vertex_coords;
+  for (int v = 0; v < Dim + 1; ++v) {
+    vertex_coords[v] =
+      Omega_h::get_vector<Dim>(mesh_coords, elem_verts[elem * (Dim + 1) + v]);
+  }
+  return Omega_h::barycentric_from_global<Dim, Dim>(point, vertex_coords);
+}
+
+/// Localization hint for query points whose containing elements are given, so
+/// no search is run. Throws pcms_error if an id is outside the mesh.
+template <int Dim>
+OmegaHLagrangeLocHint BuildLagrangeLocHintFromElements(
+  Omega_h::Mesh& mesh, Kokkos::View<Real**, DeviceMemorySpace> coords_d,
+  Kokkos::View<const LO*, DeviceMemorySpace> element_ids, OutOfBoundsMode mode)
+{
+  using Policy =
+    Kokkos::RangePolicy<typename DeviceMemorySpace::execution_space>;
+  const LO n = static_cast<LO>(element_ids.extent(0));
+  const LO nelems = mesh.nelems();
+  LO invalid = 0;
+  Kokkos::parallel_reduce(
+    "CountInvalidElementIds", Policy(0, n),
+    KOKKOS_LAMBDA(LO i, LO & sum) {
+      const LO e = element_ids(i);
+      sum += (e < 0 || e >= nelems) ? 1 : 0;
+    },
+    invalid);
+  if (invalid > 0) {
+    throw pcms_error("OmegaHLagrangeEvaluatorFactory: the evaluation request "
+                     "names elements outside the mesh");
+  }
+
+  Kokkos::View<LO*, DeviceMemorySpace> elem_ids("elem_ids", n);
+  Kokkos::View<Real**, DeviceMemorySpace> bary("bary", n, Dim + 1);
+  Kokkos::View<LO*, DeviceMemorySpace> orig_indices("orig_indices", n);
+  Kokkos::View<LO*, DeviceMemorySpace> missing_indices("missing_indices", 0);
+  auto elem_verts = mesh.ask_elem_verts();
+  auto mesh_coords = mesh.coords();
+  Kokkos::parallel_for(
+    "BarycentricFromElements", Policy(0, n), KOKKOS_LAMBDA(LO i) {
+      const LO elem = element_ids(i);
+      elem_ids(i) = elem;
+      orig_indices(i) = i;
+      Omega_h::Vector<Dim> point;
+      for (int d = 0; d < Dim; ++d) {
+        point[d] = coords_d(i, d);
+      }
+      const auto local =
+        BarycentricInElement<Dim>(elem_verts, mesh_coords, elem, point);
+      for (int d = 0; d < Dim + 1; ++d) {
+        bary(i, d) = local[d];
+      }
+    });
+  return OmegaHLagrangeLocHint{elem_ids, bary, orig_indices, missing_indices,
+                               mode};
+}
+
 inline std::variant<GridPointSearch2D, GridPointSearch3D> MakeSearch(
   Omega_h::Mesh& mesh)
 {
-  if (mesh.dim() == 2)
-    return GridPointSearch2D(mesh, 10, 10);
-  else if (mesh.dim() == 3)
-    return GridPointSearch3D(mesh, 10, 10, 10);
+  if (mesh.dim() == 2) {
+    const auto n = DivisionsPerAxisForMesh<2>(mesh.nelems());
+    return GridPointSearch2D(mesh, n, n);
+  } else if (mesh.dim() == 3) {
+    const auto n = DivisionsPerAxisForMesh<3>(mesh.nelems());
+    return GridPointSearch3D(mesh, n, n, n);
+  }
   throw std::invalid_argument(
     "OmegaHLagrangeEvaluatorFactory: only 2D and 3D meshes are supported");
 }
@@ -314,6 +379,15 @@ public:
 
   bool SupportsNearestBoundary() const override { return false; }
 
+  /// The containing-element search over this layout's mesh. Exposed so that
+  /// operators which must locate points on the same mesh, such as the
+  /// conservative transfer's intersection search, reuse it rather than build
+  /// and hold a second copy of the candidate map.
+  [[nodiscard]] const GridPointSearchVariant& GetSearch() const noexcept
+  {
+    return search_;
+  }
+
   std::unique_ptr<PointEvaluator<T>> CreatePointEvaluator(
     const EvaluationRequest& request) const override
   {
@@ -333,6 +407,27 @@ public:
     LO n_pts = static_cast<LO>(raw_coords.extent(0));
     int mesh_dim = layout_->GetMesh().dim();
     Omega_h::Mesh& mesh = const_cast<Omega_h::Mesh&>(layout_->GetMesh());
+
+    if (request.element_ids.extent(0) > 0) {
+      if (static_cast<LO>(request.element_ids.extent(0)) != n_pts) {
+        throw pcms_error("OmegaHLagrangeEvaluatorFactory: the evaluation "
+                         "request has one element id per point or none");
+      }
+      Kokkos::View<Real**, DeviceMemorySpace> coords_d(
+        "coords_d", raw_coords.extent(0), raw_coords.extent(1));
+      auto from_elements = [&](auto dim_c) {
+        constexpr int Dim = decltype(dim_c)::value;
+        detail::CopyCoordsFunctor<Dim> copy_functor(coords_d, raw_coords);
+        Kokkos::parallel_for("copy_coords", n_pts, copy_functor);
+        return detail::BuildLagrangeLocHintFromElements<Dim>(
+          mesh, coords_d, request.element_ids, policy.mode);
+      };
+      OmegaHLagrangeLocHint hint =
+        (mesh_dim == 2) ? from_elements(std::integral_constant<int, 2>{})
+                        : from_elements(std::integral_constant<int, 3>{});
+      return std::make_unique<OmegaHLagrangePointEvaluator<T>>(
+        layout_, std::move(hint), policy.fill_value);
+    }
 
     OmegaHLagrangeLocHint hint = std::visit(
       [&](auto& search) {
@@ -363,7 +458,7 @@ public:
 
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
-  mutable std::variant<GridPointSearch2D, GridPointSearch3D> search_;
+  GridPointSearchVariant search_;
 };
 
 } // namespace pcms

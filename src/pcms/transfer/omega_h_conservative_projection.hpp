@@ -13,6 +13,8 @@ namespace pcms
 {
 
 class GalerkinProjectionSolver;
+class MeshIntersection;
+class OmegaHIntersectionQuadrature;
 class OmegaHIntersectionRHSIntegrator;
 
 // Conservative Galerkin projection between Omega_h order-1 Lagrange spaces.
@@ -35,9 +37,15 @@ class OmegaHIntersectionRHSIntegrator;
 class OmegaHConservativeProjection : public TransferOperator<Real>
 {
 public:
+  /// @param intersection mesh intersection of the two spaces' meshes to reuse
+  ///        (see IntersectMeshes); computed here when null
+  /// @param quadrature intersection quadrature of the two spaces to reuse;
+  ///        computed here (from `intersection`) when null
   OmegaHConservativeProjection(
     const FunctionSpace& source_space, const FunctionSpace& target_space,
-    MassMatrixType mass_matrix_type = MassMatrixType::Consistent);
+    MassMatrixType mass_matrix_type = MassMatrixType::Consistent,
+    std::shared_ptr<const MeshIntersection> intersection = nullptr,
+    std::shared_ptr<const OmegaHIntersectionQuadrature> quadrature = nullptr);
 
   // Defined in the .cpp where GalerkinProjectionSolver is a complete type.
   ~OmegaHConservativeProjection() override;
@@ -48,7 +56,8 @@ private:
   std::shared_ptr<const OmegaHLagrangeLayout> source_layout_;
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout_;
   std::unique_ptr<OmegaHIntersectionRHSIntegrator> rhs_integrator_;
-  std::unique_ptr<PointEvaluator<Real>> evaluator_;
+  std::unique_ptr<PointEvaluator<Real>> owned_evaluator_;
+  const PointEvaluator<Real>* evaluator_ = nullptr;
   std::unique_ptr<GalerkinProjectionSolver> solver_;
   mutable Kokkos::View<Real**, DeviceMemorySpace> target_values_;
 };

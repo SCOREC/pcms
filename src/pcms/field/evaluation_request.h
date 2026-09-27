@@ -6,6 +6,8 @@
 #include "out_of_bounds_policy.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/types.h"
+#include <Kokkos_Core.hpp>
 
 #include <memory>
 
@@ -27,6 +29,11 @@ struct EvaluationRequest
   // Construction-time policy that is baked into the created PointEvaluator.
   OutOfBoundsPolicy policy = {};
 
+  // Optional: for each query point, the element of the evaluated space's mesh
+  // that contains it. Evaluators that can use it skip point localization;
+  // others ignore it. Empty when unknown.
+  Kokkos::View<const LO*, DeviceMemorySpace> element_ids;
+
   static EvaluationRequest FromCoordinates(
     CoordinateView<DeviceMemorySpace> coords, OutOfBoundsPolicy policy = {});
 
@@ -35,6 +42,18 @@ struct EvaluationRequest
 
   static EvaluationRequest FromFunctionSpace(
     const FunctionSpace& function_space, OutOfBoundsPolicy policy = {});
+
+  /// Query points whose containing elements in the evaluated space's mesh are
+  /// already known (one id per point).
+  static EvaluationRequest FromElements(
+    CoordinateView<DeviceMemorySpace> coords,
+    Kokkos::View<const LO*, DeviceMemorySpace> element_ids,
+    OutOfBoundsPolicy policy = {})
+  {
+    EvaluationRequest request(coords, nullptr, policy);
+    request.element_ids = element_ids;
+    return request;
+  }
 
   [[nodiscard]] const FieldLayout* GetQueryLayout() const noexcept
   {

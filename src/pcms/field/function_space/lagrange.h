@@ -81,6 +81,12 @@ public:
 
   [[nodiscard]] CoordinateSystem GetCoordinateSystem() const noexcept override;
 
+  // Expert API: the backend's evaluator factory, for operators that can reuse
+  // the localization structures it owns instead of rebuilding them. Null for
+  // backends without one.
+  [[nodiscard]] std::shared_ptr<const FieldEvaluatorFactory<Real>>
+  GetEvaluatorFactory() const noexcept;
+
 protected:
   [[nodiscard]] FieldVariant CreateFieldImpl(
     Type value_type, FieldMetadata metadata) const override;

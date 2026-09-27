@@ -439,18 +439,19 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
     host_data[static_cast<size_t>(i) * 2 + 0] = x + y;
     host_data[static_cast<size_t>(i) * 2 + 1] = 2.0 * x - y;
   }
-  field.SetDOFHolderDataHost(pcms::Rank2View<const Real, pcms::HostMemorySpace>(
-    host_data.data(), num_dof, 2));
+  field.GetData().SetDOFHolderDataHost(
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(host_data.data(),
+                                                       num_dof, 2));
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, pcms::csys::Cartesian::Deferred());
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
 
   Kokkos::View<Real**, pcms::DeviceMemorySpace> out("out", n, 2);
-  evaluator->Evaluate(field, pcms::MakeRank2View(out));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, out));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), out);
 
@@ -493,18 +494,19 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
     host_data[static_cast<size_t>(i) * 3 + 1] = y;
     host_data[static_cast<size_t>(i) * 3 + 2] = x * y;
   }
-  field.SetDOFHolderDataHost(pcms::Rank2View<const Real, pcms::HostMemorySpace>(
-    host_data.data(), num_dof, 3));
+  field.GetData().SetDOFHolderDataHost(
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(host_data.data(),
+                                                       num_dof, 3));
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, pcms::csys::Cartesian::Deferred());
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
 
   Kokkos::View<Real**, pcms::DeviceMemorySpace> out("out", n, 3);
-  evaluator->Evaluate(field, pcms::MakeRank2View(out));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, out));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), out);
 

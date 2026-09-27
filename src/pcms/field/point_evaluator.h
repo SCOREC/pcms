@@ -4,6 +4,8 @@
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/types.h"
+#include <Kokkos_Core.hpp>
 
 namespace pcms
 {
@@ -52,6 +54,12 @@ public:
   {
     return stored;
   }
+
+  /// Query points whose output rows Evaluate sets to the out-of-bounds fill
+  /// value rather than to field values; empty unless the evaluator was created
+  /// with OutOfBoundsMode::FILL. Fixed at construction.
+  [[nodiscard]] virtual Kokkos::View<const LO*, DeviceMemorySpace>
+  FilledPoints() const = 0;
 
   virtual ~PointEvaluator() noexcept = default;
 

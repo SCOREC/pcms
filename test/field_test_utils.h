@@ -540,6 +540,23 @@ void CheckEvaluation(const Factory& factory, const Field<Real>& field,
 }
 
 // Evaluate field at points known to be outside the mesh and verify fill value.
+// Checks that the evaluator reports exactly the rows marked in `is_filled`.
+inline void CheckFilledPoints(const PointEvaluator<Real>& evaluator,
+                              const std::vector<bool>& is_filled)
+{
+  auto filled = Kokkos::create_mirror_view_and_copy(HostMemorySpace(),
+                                                    evaluator.FilledPoints());
+  std::vector<bool> reported(is_filled.size(), false);
+  for (size_t k = 0; k < filled.extent(0); ++k) {
+    const LO i = filled(k);
+    REQUIRE(i >= 0);
+    REQUIRE(static_cast<size_t>(i) < is_filled.size());
+    REQUIRE_FALSE(reported[i]);
+    reported[i] = true;
+  }
+  REQUIRE(reported == is_filled);
+}
+
 inline void CheckFillMode(const PointEvaluator<Real>& evaluator,
                           const Field<Real>& field, Real fill_value,
                           const std::vector<Real>& outside_pts)
@@ -554,6 +571,7 @@ inline void CheckFillMode(const PointEvaluator<Real>& evaluator,
   for (int i = 0; i < n; ++i) {
     REQUIRE(out_host(i, 0) == fill_value);
   }
+  CheckFilledPoints(evaluator, std::vector<bool>(n, true));
 }
 
 // Overload that creates the evaluator from any factory with FILL policy.
@@ -605,6 +623,11 @@ void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
       REQUIRE(out_host(i, 0) == fill_value);
     }
   }
+  std::vector<bool> is_filled(is_inside.size());
+  for (size_t i = 0; i < is_inside.size(); ++i) {
+    is_filled[i] = !is_inside[i];
+  }
+  CheckFilledPoints(*evaluator, is_filled);
 }
 
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)

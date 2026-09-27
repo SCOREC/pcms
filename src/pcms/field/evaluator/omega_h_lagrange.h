@@ -282,6 +282,15 @@ public:
     }
   }
 
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    if (hint_.mode != OutOfBoundsMode::FILL) {
+      return {};
+    }
+    return hint_.missing_indices;
+  }
+
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
   OmegaHLagrangeLocHint hint_;

@@ -177,6 +177,51 @@ TEST_CASE("PointEvaluator: SplineFunctionSpace uniform-grid evaluation")
     1e-8);
 }
 
+TEST_CASE("PointEvaluator: uniform grids report the points they fill")
+{
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {0.0, 0.0};
+  grid.edge_length = {1.0, 1.0};
+  grid.divisions = {10, 10};
+  const std::vector<Real> pts = {0.25, 0.25, -0.5, 0.5, 0.7, 0.3, 1.5, 0.5};
+  const std::vector<bool> is_inside = {true, false, true, false};
+  auto linear = OMEGA_H_LAMBDA(Real x, Real y)
+  {
+    return pcms::test::linear_f(x, y);
+  };
+
+  SECTION("Lagrange")
+  {
+    auto factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
+      grid, 1, pcms::csys::Cartesian::Deferred(), 1);
+    auto field = factory->CreateFunction<Real>();
+    pcms::test::SetField(field.GetData(), *factory->GetLayout(), linear);
+    pcms::test::CheckEvaluationWithFill(factory, field, pts, is_inside, linear,
+                                        -999.0, 1e-8);
+  }
+  SECTION("spline")
+  {
+    auto factory = pcms::SplineFunctionSpace::FromUniformGrid(
+      grid, pcms::csys::Cartesian::Deferred());
+    auto field = factory->CreateFunction<Real>();
+    pcms::test::SetField(field.GetData(), *factory->GetLayout(), linear);
+    pcms::test::CheckEvaluationWithFill(factory, field, pts, is_inside, linear,
+                                        -999.0, 1e-8);
+  }
+  SECTION("no fill without the FILL policy")
+  {
+    auto factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
+      grid, 1, pcms::csys::Cartesian::Deferred(), 1);
+    auto coords = pcms::test::CreateDeviceCoordinateView(
+      pts, pcms::csys::Cartesian::Deferred());
+    auto evaluator = factory->CreatePointEvaluator<Real>(
+      pcms::EvaluationRequest::FromCoordinates(
+        coords.coordinate_view,
+        pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::NEAREST_BOUNDARY}));
+    REQUIRE(evaluator->FilledPoints().extent(0) == 0);
+  }
+}
+
 // ============================================================================
 // FieldLayout — metadata interface
 // ============================================================================

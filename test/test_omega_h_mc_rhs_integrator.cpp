@@ -204,9 +204,7 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator (3D): sample points lie inside the "
   const auto raw_coords = integrator.GetIntegrationPoints().GetValues();
   REQUIRE(raw_coords.extent(1) == 3);
 
-  auto coords_h = pcms::test::CopyCoordinatesToHost(
-    raw_coords, static_cast<int>(raw_coords.extent(0)),
-    static_cast<int>(raw_coords.extent(1)));
+  auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
 
   REQUIRE(coords_h.extent(0) ==
           static_cast<std::size_t>(target_mesh.nelems() * samples_per_element));
@@ -269,7 +267,7 @@ TEST_CASE(
   pcms::OmegaHConservativeProjection ref_proj(*source_space, *target_space);
   ref_proj.Apply(source, reference);
   const auto ref_vals =
-    pcms::FlattenToRank1View(reference.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(reference.GetDOFHolderDataHost().GetValues());
 
   const int nsample = 64;
   const uint64_t seed = 20240611;
@@ -289,7 +287,7 @@ TEST_CASE(
     pcms::MonteCarloSampling::UniformRandom, seed);
   cv.Apply(source, cv_field);
   const auto cv_vals =
-    pcms::FlattenToRank1View(cv_field.GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(cv_field.GetDOFHolderDataHost().GetValues());
 
   double mc_err = 0.0, cv_err = 0.0;
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {

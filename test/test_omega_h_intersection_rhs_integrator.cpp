@@ -198,7 +198,8 @@ TEST_CASE(
   const auto target_layout =
     std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
       target_space->GetLayout());
-  const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(target_mesh.coords(), 2));
+  const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
+    pcms::MakeConstRank2View(target_mesh.coords(), 2));
   std::vector<pcms::Real> g(target_mesh.nverts());
   for (int i = 0; i < target_mesh.nverts(); ++i) {
     g[i] = tgt_coords_h(i, 0) + tgt_coords_h(i, 1);
@@ -304,9 +305,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator (3D): constant load sums to c times "
   const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
   REQUIRE(raw_coords.extent(0) > 0);
   REQUIRE(raw_coords.extent(1) == 3);
-  auto coords_h = pcms::test::CopyCoordinatesToHost(
-    raw_coords, static_cast<int>(raw_coords.extent(0)),
-    static_cast<int>(raw_coords.extent(1)));
+  auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
   for (std::size_t i = 0; i < coords_h.extent(0); ++i) {
     const double x = coords_h(i, 0);
     const double y = coords_h(i, 1);
@@ -368,9 +367,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator (3D): dual tets overlap is an "
 
   const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
   REQUIRE(raw_coords.extent(0) > 0);
-  auto coords_h = pcms::test::CopyCoordinatesToHost(
-    raw_coords, static_cast<int>(raw_coords.extent(0)),
-    static_cast<int>(raw_coords.extent(1)));
+  auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
   for (std::size_t i = 0; i < coords_h.extent(0); ++i) {
     const double s = std::abs(coords_h(i, 0)) + std::abs(coords_h(i, 1)) +
                      std::abs(coords_h(i, 2));

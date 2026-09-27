@@ -239,8 +239,9 @@ OmegaHIntersectionRHSIntegrator::~OmegaHIntersectionRHSIntegrator()
 CoordinateView<DeviceMemorySpace>
 OmegaHIntersectionRHSIntegrator::GetIntegrationPoints() const noexcept
 {
-  return CoordinateView<DeviceMemorySpace>(csys::Cartesian::Create(2),
-                                           MakeConstRank2View(coords_));
+  return CoordinateView<DeviceMemorySpace>(
+    csys::Cartesian::Create(static_cast<int>(coords_.extent(1))),
+    MakeConstRank2View(coords_));
 }
 
 Vec OmegaHIntersectionRHSIntegrator::GetVector() const noexcept

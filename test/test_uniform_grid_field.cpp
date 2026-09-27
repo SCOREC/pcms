@@ -717,7 +717,7 @@ TEST_CASE("UniformGrid Order-1 multi-component field evaluation")
 
   // Reshape data to [num_vertices][num_components]
   pcms::LO num_vertices = (grid.divisions[0] + 1) * (grid.divisions[1] + 1);
-  field.SetDOFHolderDataHost(
+  field.GetData().SetDOFHolderDataHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
       data.data(), num_vertices, num_components));
 
@@ -736,7 +736,7 @@ TEST_CASE("UniformGrid Order-1 multi-component field evaluation")
 
   Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> results_device(
     "results_device", num_points, num_components);
-  evaluator->Evaluate(field, pcms::MakeRank2View(results_device));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, results_device));
   auto results_host = Kokkos::create_mirror_view_and_copy(
     pcms::HostMemorySpace(), results_device);
 
@@ -781,7 +781,7 @@ TEST_CASE("UniformGrid Order-0 multi-component field (regression)")
     4.0, 40.0  // Cell 3
   };
 
-  field.SetDOFHolderDataHost(
+  field.GetData().SetDOFHolderDataHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(data.data(), 4,
                                                              num_components));
 
@@ -799,7 +799,7 @@ TEST_CASE("UniformGrid Order-0 multi-component field (regression)")
 
   Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> results_device(
     "results_device", 4, num_components);
-  evaluator->Evaluate(field, pcms::MakeRank2View(results_device));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, results_device));
   auto results_host = Kokkos::create_mirror_view_and_copy(
     pcms::HostMemorySpace(), results_device);
 

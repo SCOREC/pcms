@@ -136,8 +136,7 @@ static void CheckMeshFieldsDofHolderCoordsAgainstManual(Omega_h::Library& lib,
   REQUIRE(coords.extent(1) == static_cast<size_t>(dim));
   REQUIRE(coords.extent(0) == expected.size() / static_cast<size_t>(dim));
 
-  auto coords_h = pcms::test::CopyCoordinatesToHost(
-    coords, static_cast<int>(coords.extent(0)), dim);
+  auto coords_h = pcms::test::CopyCoordinatesToHost(coords);
 
   size_t idx = 0;
   for (size_t r = 0; r < coords_h.extent(0); ++r) {

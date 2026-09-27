@@ -215,8 +215,9 @@ OmegaHMonteCarloRHSIntegrator::~OmegaHMonteCarloRHSIntegrator()
 CoordinateView<DeviceMemorySpace>
 OmegaHMonteCarloRHSIntegrator::GetIntegrationPoints() const noexcept
 {
-  return CoordinateView<DeviceMemorySpace>(csys::Cartesian::Create(2),
-                                           MakeConstRank2View(coords_));
+  return CoordinateView<DeviceMemorySpace>(
+    csys::Cartesian::Create(static_cast<int>(coords_.extent(1))),
+    MakeConstRank2View(coords_));
 }
 
 Vec OmegaHMonteCarloRHSIntegrator::GetVector() const noexcept

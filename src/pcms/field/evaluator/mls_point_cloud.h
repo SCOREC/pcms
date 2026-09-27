@@ -37,6 +37,13 @@ public:
   {
   }
 
+  /// MLS evaluates every query point; it never fills.
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    return {};
+  }
+
   void Evaluate(
     const Field<Real>& field,
     ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override

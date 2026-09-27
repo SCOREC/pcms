@@ -49,6 +49,7 @@ option(PCMS_ENABLE_C "Enable pcms C api" ON)
 option(PCMS_ENABLE_Python "Enable pcms Python api" OFF)
 
 option(PCMS_ENABLE_PRINT "PCMS print statements enabled" ON)
+option(PCMS_ENABLE_EXAMPLES "Build the in-tree C++ examples" ON)
 
 # Per-thread on-stack ring-buffer capacities for the adjacency-based
 # intersection/adjacency BFS (queue_visited.hpp). Defaults are sized for 3D
@@ -204,3 +205,6 @@ if(BUILD_TESTING)
   add_subdirectory(test)
 endif()
 add_subdirectory(tools)
+if(PCMS_ENABLE_EXAMPLES)
+  add_subdirectory(examples)
+endif()

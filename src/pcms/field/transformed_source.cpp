@@ -1,4 +1,5 @@
 #include "pcms/field/transformed_source.hpp"
+#include "pcms/field/function_space.h"
 #include <string>
 
 namespace pcms
@@ -7,50 +8,18 @@ namespace pcms
 namespace detail
 {
 
-void ThrowIfAnyPointInvalid(const PointStatusView& status, const char* context)
+void FillRows(Rank2View<Real, DeviceMemorySpace> values,
+              const Kokkos::View<const LO*, DeviceMemorySpace>& rows,
+              Real fill_value)
 {
-  if (status.size() == 0) {
-    return;
-  }
-  LO invalid = 0;
-  Kokkos::parallel_reduce(
-    "transformed_source_count_invalid",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-      0, static_cast<LO>(status.size())),
-    KOKKOS_LAMBDA(const LO i, LO& count) {
-      if (status(i) != PointStatus::Valid) {
-        ++count;
-      }
-    },
-    invalid);
-  if (invalid > 0) {
-    throw pcms_error(std::string(context) + ": " + std::to_string(invalid) +
-                     " query points could not be mapped into the source "
-                     "coordinate system");
-  }
-}
-
-void RestoreFillRows(
-  const Kokkos::View<Real**, DeviceMemorySpace>& pre_transform,
-  Rank2View<Real, DeviceMemorySpace> values, Real fill_value)
-{
-  const auto num_cols = static_cast<int>(pre_transform.extent(1));
+  const auto num_cols = static_cast<int>(values.extent(1));
   Kokkos::parallel_for(
-    "transformed_source_restore_fill_rows",
+    "transformed_source_fill_rows",
     Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-      0, static_cast<LO>(pre_transform.extent(0))),
-    KOKKOS_LAMBDA(const LO i) {
-      bool filled = true;
+      0, static_cast<LO>(rows.extent(0))),
+    KOKKOS_LAMBDA(const LO k) {
       for (int c = 0; c < num_cols; ++c) {
-        const Real value = pre_transform(i, c);
-        filled =
-          filled && ((value == fill_value) ||
-                     (Kokkos::isnan(value) && Kokkos::isnan(fill_value)));
-      }
-      if (filled) {
-        for (int c = 0; c < num_cols; ++c) {
-          values(i, c) = fill_value;
-        }
+        values(rows(k), c) = fill_value;
       }
     });
 }
@@ -87,8 +56,6 @@ std::unique_ptr<PointEvaluator<T>> TransformedSource::Create(
 {
   PCMS_FUNCTION_TIMER;
   auto bound = to_source_->Bind(request.coords);
-  detail::ThrowIfAnyPointInvalid(bound->Status(),
-                                 "TransformedSource::CreatePointEvaluator");
   auto inner = source_->CreatePointEvaluator<T>(
     EvaluationRequest::FromCoordinates(bound->MappedPoints(), request.policy));
   return std::make_unique<TransformedPointEvaluator<T>>(

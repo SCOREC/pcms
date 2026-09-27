@@ -9,7 +9,6 @@
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/point_evaluator_factory.hpp"
-#include "pcms/field/point_status.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/assert.h"
@@ -27,14 +26,10 @@ namespace pcms
 namespace detail
 {
 
-/// Throws pcms_error naming `context` if any status is not Valid.
-void ThrowIfAnyPointInvalid(const PointStatusView& status, const char* context);
-
-/// Sets every component of `values` row i to `fill_value` where all
-/// components of `pre_transform` row i equal `fill_value`.
-void RestoreFillRows(
-  const Kokkos::View<Real**, DeviceMemorySpace>& pre_transform,
-  Rank2View<Real, DeviceMemorySpace> values, Real fill_value);
+/// Sets every component of the listed rows of `values` to `fill_value`.
+void FillRows(Rank2View<Real, DeviceMemorySpace> values,
+              const Kokkos::View<const LO*, DeviceMemorySpace>& rows,
+              Real fill_value);
 
 } // namespace detail
 
@@ -66,25 +61,27 @@ public:
       return;
     }
     if constexpr (std::is_same_v<T, Real>) {
-      if (scratch_.extent(0) != values.extent(0) ||
-          scratch_.extent(1) != values.extent(1)) {
-        scratch_ = Kokkos::View<Real**, DeviceMemorySpace>(
-          "transformed_point_evaluator_scratch", values.extent(0),
-          values.extent(1));
-      }
-      inner_->Evaluate(field, ValueView<Real, DeviceMemorySpace>(
-                                inner_out, MakeRank2View(scratch_)));
-      bound_->TransformValues(ValueView<const Real, DeviceMemorySpace>(
-                                inner_out, MakeConstRank2View(scratch_)),
-                              values);
-      if (policy_.mode == OutOfBoundsMode::FILL) {
-        detail::RestoreFillRows(scratch_, values.GetValues(),
-                                policy_.fill_value);
-      }
+      detail::CheckWrittenValueBasis("TransformedPointEvaluator::Evaluate",
+                                     values.GetBasis(),
+                                     bound_->OutputBasis(inner_out));
+      const ValueView<Real, DeviceMemorySpace> source_values(
+        inner_out, values.GetValues());
+      inner_->Evaluate(field, source_values);
+      bound_->TransformValues(source_values);
+      // Fill rows hold no field value to re-express, so the rotation must
+      // not change them.
+      detail::FillRows(values.GetValues(), inner_->FilledPoints(),
+                       policy_.fill_value);
     } else {
       throw pcms_error("TransformedPointEvaluator::Evaluate: basis "
                        "transformations require T == Real");
     }
+  }
+
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    return inner_->FilledPoints();
   }
 
   [[nodiscard]] ValueBasis OutputBasis(const ValueBasis& stored) const override
@@ -100,7 +97,6 @@ private:
   std::unique_ptr<BoundCoordinateMap> bound_;
   std::unique_ptr<PointEvaluator<T>> inner_;
   OutOfBoundsPolicy policy_;
-  mutable Kokkos::View<Real**, DeviceMemorySpace> scratch_;
 };
 
 /// Presents a point-evaluator factory as one in another coordinate system:

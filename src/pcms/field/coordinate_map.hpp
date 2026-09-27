@@ -3,7 +3,6 @@
 
 #include "pcms/field/coordinate_system.hpp"
 #include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/point_status.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
@@ -14,11 +13,11 @@ namespace pcms
 {
 
 // A CoordinateMap bound to one query point set. Bind performs every per-point
-// computation the map needs: the mapped coordinates, their status, and the
-// state that re-expressing component values at those points requires. That
-// state is the map's differential, which does not depend on the value basis --
-// the basis only selects which arithmetic is applied to it -- so one bound map
-// serves every field evaluated at that point set.
+// computation the map needs: the mapped coordinates and the state that
+// re-expressing component values at those points requires. That state is the
+// map's differential, which does not depend on the value basis -- the basis
+// only selects which arithmetic is applied to it -- so one bound map serves
+// every field evaluated at that point set.
 //
 // Rank-0 values never reach OutputBasis or TransformValues: scalars are basis
 // invariant, so callers forward them without consulting the map.
@@ -26,17 +25,10 @@ class BoundCoordinateMap
 {
 public:
   BoundCoordinateMap(std::shared_ptr<const CoordinateSystem> system,
-                     Kokkos::View<Real**, DeviceMemorySpace> mapped,
-                     PointStatusView status = {});
+                     Kokkos::View<Real**, DeviceMemorySpace> mapped);
 
   /// Query points expressed in the map's target coordinate system.
   [[nodiscard]] CoordinateView<DeviceMemorySpace> MappedPoints() const;
-
-  /// Per-point outcome of the mapping; empty when every point mapped cleanly.
-  [[nodiscard]] const PointStatusView& Status() const noexcept
-  {
-    return status_;
-  }
 
   [[nodiscard]] LO NumPoints() const noexcept
   {
@@ -47,10 +39,10 @@ public:
   /// this map cannot re-express that basis.
   [[nodiscard]] virtual ValueBasis OutputBasis(const ValueBasis& stored) const;
 
-  /// Re-expresses `in` into `out`, which must be tagged with
-  /// `OutputBasis(in.GetBasis())`.
-  virtual void TransformValues(ValueView<const Real, DeviceMemorySpace> in,
-                               ValueView<Real, DeviceMemorySpace> out) const;
+  /// Re-expresses `values` in place and returns the same buffer tagged
+  /// `OutputBasis(values.GetBasis())`.
+  virtual ValueView<Real, DeviceMemorySpace> TransformValues(
+    ValueView<Real, DeviceMemorySpace> values) const;
 
   virtual ~BoundCoordinateMap() = default;
 
@@ -58,37 +50,50 @@ public:
   BoundCoordinateMap& operator=(const BoundCoordinateMap&) = delete;
 
 protected:
-  /// Throws unless both views hold NumPoints() rows of equal width and `out`
-  /// is tagged OutputBasis(in.GetBasis()).
-  void ValidateTransformViews(
-    const char* who, const ValueView<const Real, DeviceMemorySpace>& in,
-    const ValueView<Real, DeviceMemorySpace>& out) const;
+  /// Throws unless `values` holds NumPoints() rows in a basis this map
+  /// re-expresses; returns the basis the transformed values are in.
+  ValueBasis ValidateTransformValues(
+    const char* who, const ValueView<Real, DeviceMemorySpace>& values) const;
 
 private:
   std::shared_ptr<const CoordinateSystem> system_;
   Kokkos::View<Real**, DeviceMemorySpace> mapped_;
-  PointStatusView status_;
 };
 
 class CoordinateMap
 {
 public:
-  [[nodiscard]] virtual std::shared_ptr<const CoordinateSystem>
-  GetSourceCoordinateSystem() const noexcept = 0;
-  [[nodiscard]] virtual std::shared_ptr<const CoordinateSystem>
-  GetTargetCoordinateSystem() const noexcept = 0;
+  [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
+  GetSourceCoordinateSystem() const noexcept
+  {
+    return source_;
+  }
+  [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
+  GetTargetCoordinateSystem() const noexcept
+  {
+    return target_;
+  }
 
   /// Performs every per-point computation for `query_points`, which must be in
   /// this map's source coordinate system. The returned object owns its
-  /// results; `query_points` may be released once Bind returns.
-  [[nodiscard]] virtual std::unique_ptr<BoundCoordinateMap> Bind(
-    const CoordinateView<DeviceMemorySpace>& query_points) const = 0;
+  /// results and is complete on return, so `query_points` may be released.
+  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> Bind(
+    const CoordinateView<DeviceMemorySpace>& query_points) const;
 
   virtual ~CoordinateMap() = default;
 
 protected:
-  void ValidateSourcePoints(const CoordinateView<DeviceMemorySpace>& points,
-                            const char* who) const;
+  CoordinateMap(std::shared_ptr<const CoordinateSystem> source,
+                std::shared_ptr<const CoordinateSystem> target);
+
+  /// Binds `query_points`, already checked to be in the source coordinate
+  /// system. May leave kernels in flight; Bind fences after it returns.
+  [[nodiscard]] virtual std::unique_ptr<BoundCoordinateMap> BindImpl(
+    const CoordinateView<DeviceMemorySpace>& query_points) const = 0;
+
+private:
+  std::shared_ptr<const CoordinateSystem> source_;
+  std::shared_ptr<const CoordinateSystem> target_;
 };
 
 // Maps points Cartesian -> cylindrical, so values run the other way: a field
@@ -96,22 +101,20 @@ protected:
 class CartesianToCylindrical final : public CoordinateMap
 {
 public:
-  [[nodiscard]] std::shared_ptr<const CoordinateSystem>
-  GetSourceCoordinateSystem() const noexcept override;
-  [[nodiscard]] std::shared_ptr<const CoordinateSystem>
-  GetTargetCoordinateSystem() const noexcept override;
-  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> Bind(
+  CartesianToCylindrical();
+
+protected:
+  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> BindImpl(
     const CoordinateView<DeviceMemorySpace>& query_points) const override;
 };
 
 class CylindricalToCartesian final : public CoordinateMap
 {
 public:
-  [[nodiscard]] std::shared_ptr<const CoordinateSystem>
-  GetSourceCoordinateSystem() const noexcept override;
-  [[nodiscard]] std::shared_ptr<const CoordinateSystem>
-  GetTargetCoordinateSystem() const noexcept override;
-  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> Bind(
+  CylindricalToCartesian();
+
+protected:
+  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> BindImpl(
     const CoordinateView<DeviceMemorySpace>& query_points) const override;
 };
 

@@ -139,7 +139,12 @@ TEST_CASE("TransformedSource: vector evaluation rotates into the target basis")
     EvaluationRequest::FromCoordinates(pts));
   REQUIRE(SameValueBasis(evaluator->OutputBasis(CylindricalVector()),
                          CartesianVector()));
-  REQUIRE_THROWS_WITH(evaluator->OutputBasis(CartesianVector()),
+  REQUIRE(SameValueBasis(evaluator->OutputBasis(CartesianVector()),
+                         CartesianVector()));
+  const ValueBasis natural_cylindrical{pcms::csys::CylindricalRThetaZ::Create(),
+                                       ComponentScaling::Natural,
+                                       values::Vector};
+  REQUIRE_THROWS_WITH(evaluator->OutputBasis(natural_cylindrical),
                       ContainsSubstring("cannot re-express"));
 
   const auto coords = pcms::test::CopyCoordinatesToHost(pts.GetValues());
@@ -153,13 +158,13 @@ TEST_CASE("TransformedSource: vector evaluation rotates into the target basis")
 
   SECTION("evaluate gates the field's stored basis and the output tag")
   {
-    auto borrowed = src->CreateFunction<Real>("c", values::Vector,
-                                              pcms::csys::Cartesian::Create(3));
+    auto natural =
+      src->CreateFunction<Real>("c", values::Vector, ComponentScaling::Natural);
     Kokkos::View<Real**, DeviceMemorySpace> out("out", n, 3);
     REQUIRE_THROWS_WITH(
       evaluator->Evaluate(
-        borrowed, ValueView<Real, DeviceMemorySpace>(CartesianVector(),
-                                                     pcms::MakeRank2View(out))),
+        natural, ValueView<Real, DeviceMemorySpace>(CartesianVector(),
+                                                    pcms::MakeRank2View(out))),
       ContainsSubstring("cannot re-express"));
     REQUIRE_THROWS_WITH(
       evaluator->Evaluate(b, ValueView<Real, DeviceMemorySpace>(
@@ -209,6 +214,52 @@ TEST_CASE("TransformedSource: FILL rows survive the rotation untouched")
     }
   }
   REQUIRE(num_filled > 0);
+  REQUIRE(static_cast<int>(evaluator->FilledPoints().extent(0)) == num_filled);
+}
+
+TEST_CASE("TransformedSource: in-bounds values equal to the fill value are "
+          "still rotated")
+{
+  auto lib = Omega_h::Library{};
+  Omega_h::Mesh src_mesh(&lib), tgt_mesh(&lib);
+  auto src = BuildCylindricalSource(lib, src_mesh, 3);
+  auto tgt = BuildCartesianTarget(lib, tgt_mesh, 3, 3.0);
+  const Real fill = 1.0;
+  auto b =
+    src->CreateFunction<Real>("b", values::Vector, ComponentScaling::Physical);
+  pcms::test::SetFieldComponents(b, [fill](Real, Real, Real, Real* out) {
+    out[0] = fill;
+    out[1] = fill;
+    out[2] = fill;
+  });
+
+  TransformedSource src_as_cartesian(
+    src, std::make_shared<pcms::CartesianToCylindrical>());
+  const auto pts = tgt->GetLayout()->GetDOFHolderCoordinates();
+  const int n = static_cast<int>(pts.GetValues().extent(0));
+  auto evaluator = src_as_cartesian.CreatePointEvaluator<Real>(
+    EvaluationRequest::FromCoordinates(
+      pts, OutOfBoundsPolicy{OutOfBoundsMode::FILL, fill}));
+
+  const auto coords = pcms::test::CopyCoordinatesToHost(pts.GetValues());
+  const auto result = EvaluateToHost(*evaluator, b, CartesianVector(), n, 3);
+  int num_rotated = 0;
+  for (int i = 0; i < n; ++i) {
+    const Real x = coords(i, 0), y = coords(i, 1);
+    const Real r = std::sqrt(x * x + y * y);
+    CAPTURE(i);
+    if (r > 2.0) {
+      REQUIRE(result(i, 0) == fill);
+      REQUIRE(result(i, 1) == fill);
+    } else if (r > 0.0) {
+      const Real c = x / r, s = y / r;
+      REQUIRE_THAT(result(i, 0), WithinAbs(fill * (c - s), kTol));
+      REQUIRE_THAT(result(i, 1), WithinAbs(fill * (s + c), kTol));
+      ++num_rotated;
+    }
+    REQUIRE_THAT(result(i, 2), WithinAbs(fill, kTol));
+  }
+  REQUIRE(num_rotated > 0);
 }
 
 TEST_CASE("TransformedSource: construction errors")
@@ -383,5 +434,41 @@ TEST_CASE("Interpolator over a TransformedSource transfers across systems")
   {
     REQUIRE_THROWS_WITH(pcms::Interpolator<Real>(*src, *tgt),
                         ContainsSubstring("coordinate system"));
+  }
+}
+
+TEST_CASE("Interpolator over a TransformedSource passes through values already "
+          "in the target basis")
+{
+  auto lib = Omega_h::Library{};
+  Omega_h::Mesh src_mesh(&lib), tgt_mesh(&lib);
+  auto src = BuildCylindricalSource(lib, src_mesh, 3);
+  auto tgt = BuildCartesianTarget(lib, tgt_mesh, 3);
+  // Cartesian components on a cylindrical space; linear in (r, theta, z) so
+  // the interpolation is exact and any stray rotation would show.
+  auto b_src = src->CreateFunction<Real>("b", values::Vector,
+                                         pcms::csys::Cartesian::Create(3));
+  auto b_tgt = tgt->CreateFunction<Real>("b", values::Vector);
+  pcms::test::SetFieldComponents(b_src,
+                                 [](Real r, Real theta, Real z, Real* out) {
+                                   out[0] = r;
+                                   out[1] = theta;
+                                   out[2] = z;
+                                 });
+
+  TransformedSource src_as_cartesian(
+    src, std::make_shared<pcms::CartesianToCylindrical>());
+  pcms::Interpolator<Real> op(src_as_cartesian, *tgt);
+  op.Apply(b_src, b_tgt);
+
+  const auto coords = pcms::test::CopyCoordinatesToHost(
+    tgt->GetLayout()->GetDOFHolderCoordinates().GetValues());
+  const auto result = b_tgt.GetDOFHolderDataHost();
+  for (int i = 0; i < static_cast<int>(coords.extent(0)); ++i) {
+    const Real x = coords(i, 0), y = coords(i, 1);
+    CAPTURE(i);
+    REQUIRE_THAT(result(i, 0), WithinAbs(std::sqrt(x * x + y * y), kTol));
+    REQUIRE_THAT(result(i, 1), WithinAbs(std::atan2(y, x), kTol));
+    REQUIRE_THAT(result(i, 2), WithinAbs(coords(i, 2), kTol));
   }
 }

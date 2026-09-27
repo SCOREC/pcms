@@ -46,6 +46,7 @@ public:
       grid_(layout_->GetGrid()),
       hint_(std::move(hint)),
       fill_value_(fill_value),
+      filled_points_(detail::FilledPointIndices(hint_)),
       x_coords_("uniform_grid_spline_x", grid_.divisions[0] + 1),
       y_coords_("uniform_grid_spline_y", grid_.divisions[1] + 1)
   {
@@ -65,6 +66,12 @@ public:
       "init_y_coords",
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, ny + 1),
       detail::InitCoordsFunctor{y_coords_, bot_left_y, dy});
+  }
+
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    return filled_points_;
   }
 
   void Evaluate(
@@ -177,6 +184,7 @@ private:
   UniformGrid<2> grid_;
   UniformGridFieldLocalizationHint<2> hint_;
   Real fill_value_;
+  Kokkos::View<const LO*, DeviceMemorySpace> filled_points_;
   Kokkos::View<Real*, DeviceMemorySpace> x_coords_;
   Kokkos::View<Real*, DeviceMemorySpace> y_coords_;
 };

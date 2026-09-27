@@ -7,7 +7,6 @@ set(PCMS_FIELD_HEADERS
         coordinate_systems/cartesian.hpp
         coordinate_systems/cylindrical.hpp
         coordinate_map.hpp
-        point_status.hpp
         value_view.hpp
         element_dispatch.h
         evaluation_request.h

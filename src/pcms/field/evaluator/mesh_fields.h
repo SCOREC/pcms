@@ -76,6 +76,15 @@ public:
     }
   }
 
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    if (hint_.mode_ != OutOfBoundsMode::FILL) {
+      return {};
+    }
+    return hint_.missing_indices_d_;
+  }
+
 private:
   std::shared_ptr<const MeshFieldsAdapterLayout> layout_;
   MeshFieldsAdapter2LocalizationHint hint_;

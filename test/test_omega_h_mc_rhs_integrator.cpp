@@ -306,17 +306,14 @@ namespace
 class SwapXY final : public pcms::CoordinateMap
 {
 public:
-  [[nodiscard]] std::shared_ptr<const pcms::CoordinateSystem>
-  GetSourceCoordinateSystem() const noexcept override
+  SwapXY()
+    : CoordinateMap(pcms::csys::Cartesian::Create(2),
+                    pcms::csys::Cartesian::Create(2))
   {
-    return pcms::csys::Cartesian::Create(2);
   }
-  [[nodiscard]] std::shared_ptr<const pcms::CoordinateSystem>
-  GetTargetCoordinateSystem() const noexcept override
-  {
-    return pcms::csys::Cartesian::Create(2);
-  }
-  [[nodiscard]] std::unique_ptr<pcms::BoundCoordinateMap> Bind(
+
+protected:
+  [[nodiscard]] std::unique_ptr<pcms::BoundCoordinateMap> BindImpl(
     const pcms::CoordinateView<pcms::DeviceMemorySpace>& query_points)
     const override
   {
@@ -331,7 +328,6 @@ public:
         out(i, 0) = in(i, 1);
         out(i, 1) = in(i, 0);
       });
-    Kokkos::fence();
     return std::make_unique<pcms::BoundCoordinateMap>(
       GetTargetCoordinateSystem(), out);
   }

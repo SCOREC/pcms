@@ -2,6 +2,9 @@ set(PCMS_COUPLER_HEADERS
         coupler_types.h
         field_communicator.hpp
         coupler.hpp
+        distributed_evaluation_channel.h
+        distributed_evaluation_partition.h
+        distributed_point_evaluator.h
         field_serializer.h
         field_layout_communicator.h
         field_exchange_planner.h

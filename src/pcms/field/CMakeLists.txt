@@ -3,6 +3,7 @@ find_package(KokkosKernels REQUIRED)
 set(PCMS_FIELD_HEADERS
         field.h
         coordinate_system.h
+        distributed_partition.h
         element_dispatch.h
         evaluation_request.h
         gid_permutation.hpp
@@ -20,6 +21,7 @@ set(PCMS_FIELD_HEADERS
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
+        distributed_partition.cpp
         gid_permutation.cpp
         function_space/polynomial_reconstruction.cpp
         layout/empty.cpp

@@ -81,6 +81,14 @@ public:
 
   [[nodiscard]] CoordinateSystem GetCoordinateSystem() const noexcept override;
 
+  // Exposes the underlying FieldEvaluatorFactory, e.g. for building a
+  // DistributedPointEvaluator on top of it (see pcms/src/pcms/coupler).
+  [[nodiscard]] const FieldEvaluatorFactory<Real>& GetEvaluatorFactory()
+    const noexcept
+  {
+    return *evaluator_factory_;
+  }
+
 protected:
   [[nodiscard]] FieldVariant CreateFieldImpl(
     Type value_type, FieldMetadata metadata) const override;

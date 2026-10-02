@@ -66,6 +66,39 @@ if(PCMS_ENABLE_OMEGA_H)
     mpi_test(test_distributed_field_2p 2
              $<TARGET_FILE:test_distributed_field>)
   endif()
+  # Distributed field evaluation with cross-rank fallback: two separate MPI
+  # jobs, a single-rank routing server and the field job. No partition input is
+  # needed: the field job publishes each rank's owned bounding box over the
+  # channel and the server builds its routing partition from those, so the two
+  # sides cannot disagree.
+  add_exe(test_distributed_field_eval_client)
+  if(HOST_NPROC GREATER_EQUAL 3)
+    set(dist_eval_channel distributed_field_eval_test)
+    dual_mpi_test(
+      TESTNAME
+      test_distributed_field_eval
+      TIMEOUT
+      40
+      NAME1
+      eval_server
+      EXE1
+      $<TARGET_FILE:distributed_field_eval_server>
+      PROCS1
+      1
+      ARGS1
+      ${dist_eval_channel}
+      2
+      1
+      1
+      NAME2
+      eval_client
+      EXE2
+      $<TARGET_FILE:test_distributed_field_eval_client>
+      PROCS2
+      2
+      ARGS2
+      ${dist_eval_channel})
+  endif()
   add_exe(test_distributed_coupling)
   if(HOST_NPROC GREATER_EQUAL 2)
     mpi_test(test_distributed_coupling_2p 2

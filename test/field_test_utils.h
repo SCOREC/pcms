@@ -10,7 +10,6 @@
 #include "pcms/field/evaluation_request.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/out_of_bounds_policy.h"
-#include "pcms/coupler/field_serializer.h"
 #include "pcms/field/coordinate_system.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
@@ -364,39 +363,6 @@ inline void SetField(FieldData<Real>& field, const FieldLayout& layout,
                      Func func)
 {
   SetField<ExecutionSpace>(layout, field, func);
-}
-
-// Check that serialize followed by deserialize round-trips the data.
-// Uses an identity permutation so permutation[i] = i.
-inline void CheckSerializeDeserialize(const FieldLayout& layout,
-                                      FieldData<Real>& field)
-{
-  auto data_before = FlattenToRank1View(field.GetDOFHolderDataHost());
-  int n = static_cast<int>(data_before.size());
-
-  std::vector<Real> buffer(n);
-  std::vector<LO> perm(n);
-  for (int i = 0; i < n; ++i)
-    perm[i] = i;
-
-  Rank1View<Real, HostMemorySpace> buf_view(buffer.data(), n);
-  Rank1View<const LO, HostMemorySpace> perm_view(perm.data(), n);
-
-  FieldSerializer<Real> serializer;
-  serializer.Serialize(field, layout, buf_view, perm_view);
-  serializer.Deserialize(
-    field, layout, Rank1View<const Real, HostMemorySpace>(buf_view), perm_view);
-
-  auto data_after = FlattenToRank1View(field.GetDOFHolderDataHost());
-  REQUIRE(data_after.size() == data_before.size());
-  for (int i = 0; i < n; ++i) {
-    REQUIRE(data_after[i] == Catch::Approx(data_before[i]));
-  }
-}
-
-inline void CheckSerializeDeserialize(Field<Real>& field)
-{
-  CheckSerializeDeserialize(field.GetLayout(), field.GetData());
 }
 
 // Helper structure to hold device coordinates with proper lifetime management

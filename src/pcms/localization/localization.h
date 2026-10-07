@@ -2,8 +2,6 @@
 #define PCMS_COUPLING_POINT_SEARCH_H
 #include <cassert>
 
-#include <variant>
-
 #include <Kokkos_Core.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_bbox.hpp>
@@ -182,99 +180,6 @@ public:
 
 protected:
   PointSearchTolerances tolerances_;
-};
-
-class GridPointSearch2D : public PointSearch
-{
-  using CandidateMapT =
-    Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
-
-public:
-  static constexpr int DIM = 2;
-
-  using Results = PointSearch::Results;
-  using Dimensionality = Results::Dimensionality;
-
-  GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny);
-  GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
-                    const PointSearchTolerances& tolerances);
-
-  /**
-   *  given a point in global coordinates give the id of the triangle that the
-   * point lies within and the parametric coordinate of the point within the
-   * triangle. If the point does not lie within any triangle element. Then the
-   * id will be a negative number and (TODO) will return a negative id of the
-   * closest element
-   */
-  Results apply(const CoordinateView<MemorySpace>& coords) const override;
-  [[nodiscard]] LO GetOwningElementId(const Results& result, int i) override;
-  [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
-    const Results& results) const override;
-  LO Dim() const override { return mesh_.dim(); }
-
-private:
-  Omega_h::Mesh mesh_;
-  Omega_h::Adj tris2edges_adj_;
-  Omega_h::Adj tris2verts_adj_;
-  Omega_h::Adj edges2verts_adj_;
-  Omega_h::Adj edges2faces_up_;
-  Omega_h::Adj verts2faces_up_;
-  Kokkos::View<Uniform2DGrid[1]> grid_{"uniform grid"};
-  CandidateMapT candidate_map_;
-  Omega_h::LOs tris2verts_;
-  Omega_h::Reals coords_;
-};
-
-class GridPointSearch3D : public PointSearch
-{
-  using CandidateMapT =
-    Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
-
-public:
-  static constexpr int DIM = 3;
-
-  using Results = PointSearch::Results;
-  using Dimensionality = Results::Dimensionality;
-
-  GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz);
-  GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
-                    const PointSearchTolerances& tolerances);
-
-  /**
-   *  Given a point in global coordinates, returns for each the id of a
-   * tetrahedron containing it and the point's barycentric coordinates in that
-   * tetrahedron. Containment is tested with a Cartesian tolerance band: the
-   * point may lie up to `tolerances(2)` outside any face plane (the band is
-   * applied per barycentric coordinate, scaled by the gradient norm of that
-   * coordinate, so it is the same distance from both sides of a shared face).
-   * When several tetrahedra contain the  point (it lies on a shared face,
-   * edge or vertex) the smallest id is returned; this is an interim tie-break
-   * that hides a genuine ambiguity, see docs/point_search_shared_face_plan.md.
-   *
-   * If no candidate contains the point, the result is the candidate whose
-   * face is closest, encoded with Result::OutsideId or NO_INTERSECT with
-   * id -1 when the grid cell has no candidates at all.
-   */
-  Results apply(const CoordinateView<MemorySpace>& coords) const override;
-  [[nodiscard]] LO GetOwningElementId(const Results& result, int i) override;
-  [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
-    const Results& results) const override;
-  LO Dim() const override { return mesh_.dim(); }
-
-private:
-  Omega_h::Mesh mesh_;
-  Omega_h::Adj tets2faces_adj_;
-  Omega_h::Adj tets2edges_adj_;
-  Omega_h::Adj tets2verts_adj_;
-  Omega_h::Adj edges2verts_adj_;
-  Omega_h::Adj verts2regions_up_;
-  Omega_h::Adj edges2regions_up_;
-  Omega_h::Adj faces2regions_up_;
-  Kokkos::View<UniformGrid<DIM>[1]> grid_{"uniform grid"};
-  CandidateMapT candidate_map_;
-  Omega_h::LOs tets2verts_;
-  Omega_h::Reals coords_;
-  Real fuzz_;
 };
 
 } // namespace pcms

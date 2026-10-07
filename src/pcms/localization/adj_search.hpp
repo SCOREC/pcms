@@ -1,7 +1,7 @@
 #ifndef PCMS_LOCALIZATION_ADJ_SEARCH_HPP
 #define PCMS_LOCALIZATION_ADJ_SEARCH_HPP
 
-#include <pcms/localization/point_search.h>
+#include <pcms/localization/uniform_grid_localization.hpp>
 #include <pcms/localization/mls_support_helpers.h>
 #include <pcms/localization/queue_visited.hpp>
 #include <pcms/utility/mesh_geometry.h>

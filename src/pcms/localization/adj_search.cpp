@@ -91,7 +91,7 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
     Kokkos::fence();
 
     pcms::GridPointSearch2D search_cell(source_mesh, 10, 10); //
-    auto results = search_cell.apply(
+    auto results = search_cell.Apply(
       pcms::CoordinateView(pcms::CoordinateSystem::Cartesian,
                            pcms::MakeConstRank2View(target_points)));
     auto owning_cell_ids = search_cell.GetOwningElementIds(results);
@@ -116,7 +116,7 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
     Kokkos::fence();
 
     pcms::GridPointSearch3D search_cell(source_mesh, 10, 10, 10);
-    auto results = search_cell.apply(
+    auto results = search_cell.Apply(
       pcms::CoordinateView(pcms::CoordinateSystem::Cartesian,
                            pcms::MakeConstRank2View(target_points)));
     auto owning_cell_ids = search_cell.GetOwningElementIds(results);

@@ -1,4 +1,4 @@
-#include "point_search.h"
+#include "uniform_grid_localization.hpp"
 #include <Omega_h_mesh.hpp>
 #include <bitset>
 #include <cmath>
@@ -77,40 +77,58 @@ KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> barycentric_with_scales(
   return result;
 }
 
+/**
+ * Barycentric coordinates of a point in a simplex together with the factors
+ * that convert a Cartesian distance from facet i into a band on coordinate i:
+ * |lambda[i]| <= tau * grad_norm[i] iff the point is within distance tau of
+ * the plane of the facet opposite vertex i.
+ */
+template <int Dim>
+struct BarycentricWithScales
+{
+  Omega_h::Vector<Dim + 1> lambda;
+  Omega_h::Vector<Dim + 1> grad_norm;
+
+  /**
+   * Signed Cartesian distance to the most violated facet plane: non-negative
+   * inside the simplex, -tau on the boundary of the tolerance band.
+   */
+  KOKKOS_INLINE_FUNCTION Omega_h::Real SignedPlaneDistance() const
+  {
+    auto d = lambda[0] / grad_norm[0];
+    for (int i = 1; i <= Dim; ++i) {
+      d = Kokkos::fmin(d, lambda[i] / grad_norm[i]);
+    }
+    return d;
+  }
+};
+
+template <int Dim>
+KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> barycentric_with_scales(
+  const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>& vertex_coords,
+  const Omega_h::Vector<Dim>& point)
+{
+  // rows of the inverse basis are the gradients of lambda_1..lambda_Dim;
+  // Omega_h matrices are stored by column, so row j is inv[k][j] over k
+  const auto inv =
+    Omega_h::pseudo_invert(Omega_h::simplex_basis<Dim, Dim>(vertex_coords));
+  BarycentricWithScales<Dim> result;
+  result.lambda = Omega_h::form_barycentric(inv * (point - vertex_coords[0]));
+  auto grad0 = Omega_h::zero_vector<Dim>();
+  for (int j = 0; j < Dim; ++j) {
+    Omega_h::Vector<Dim> row;
+    for (int k = 0; k < Dim; ++k) {
+      row[k] = inv[k][j];
+    }
+    result.grad_norm[j + 1] = Omega_h::norm(row);
+    grad0 = grad0 - row;
+  }
+  result.grad_norm[0] = Omega_h::norm(grad0);
+  return result;
+}
+
 namespace pcms
 {
-
-LO GetOwningElementId(Omega_h::Mesh& mesh, int mesh_dim, int entity_dim,
-                      LO element_id)
-{
-  if (element_id < 0)
-    return -1;
-
-  const int target_dim = mesh_dim; // faces for 2D, regions for 3D
-
-  // If entity is already at target dimension, return it directly
-  if (entity_dim == target_dim)
-    return element_id;
-
-  // Get the upward adjacency from entity_dim to target_dim
-  auto upward_adj = mesh.ask_up(entity_dim, target_dim);
-  auto a2ab_h = Omega_h::HostRead<LO>(upward_adj.a2ab);
-  auto ab2b_h = Omega_h::HostRead<LO>(upward_adj.ab2b);
-
-  const auto begin = a2ab_h[element_id];
-  const auto end = a2ab_h[element_id + 1];
-  if (begin >= end)
-    return -1;
-
-  // Find the smallest owning element ID
-  LO owner = ab2b_h[begin];
-  for (auto i = begin + 1; i < end; ++i) {
-    const LO candidate = ab2b_h[i];
-    if (candidate < owner)
-      owner = candidate;
-  }
-  return owner;
-}
 
 KOKKOS_INLINE_FUNCTION
 AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
@@ -579,7 +597,7 @@ OMEGA_H_INLINE double myreduce(const Omega_h::Vector<n>& x,
   return out;
 }
 
-GridPointSearch2D::Results GridPointSearch2D::apply(
+GridPointSearch2D::Results GridPointSearch2D::Apply(
   const CoordinateView<PointSearch::MemorySpace>& points) const
 {
   Results results{
@@ -663,7 +681,7 @@ GridPointSearch2D::Results GridPointSearch2D::apply(
           const int vb_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
           const auto va = Omega_h::get_vector<2>(coords, va_id);
           const auto vb = Omega_h::get_vector<2>(coords, vb_id);
-      
+
           if (!normal_intersects_segment(va, vb, point))
             continue;
 
@@ -828,19 +846,20 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
 
 LO GridPointSearch2D::GetOwningElementId(const Results& results, int i)
 {
-  Kokkos::View<Results::Dimensionality*> dim("",1);
-  Kokkos::View<LO*> id("",1);
-  auto dims = results.dimensionalities;
-  Kokkos::parallel_for(1, KOKKOS_LAMBDA(const LO){
-    dim(0) = dims(i);
-    id(0) = results.EntityId(i);
-  });
-  auto dim_h = Kokkos::create_mirror_view_and_copy(dim);
-  auto id_h = Kokkos::create_mirror_view_and_copy(id);
-
-  return pcms::GetOwningElementId(mesh_, 2,
-                                  static_cast<int>(dim_h[0]),
-                                  id_h[0]);
+  const Kokkos::View<LO[1]> query_id{""};
+  const Kokkos::View<Dimensionality[1]> dim{""};
+  Kokkos::parallel_for(
+    1, KOKKOS_LAMBDA(const int) {
+      query_id(0) = (results.element_ids(i) < 0) ? -results.element_ids(i)
+                                                 : results.element_ids(i);
+      dim(0) = results.dimensionalities(i);
+    });
+  auto query_id_h = Kokkos::create_mirror_view(query_id);
+  auto dim_h = Kokkos::create_mirror_view(dim);
+  Kokkos::deep_copy(query_id_h, query_id);
+  Kokkos::deep_copy(dim_h, dim);
+  return pcms::GetOwningElementId(mesh_, 2, static_cast<int>(dim_h(0)),
+                                  query_id_h(0));
 }
 
 Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
@@ -878,7 +897,7 @@ Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
   return owners;
 }
 
-GridPointSearch3D::Results GridPointSearch3D::apply(
+GridPointSearch3D::Results GridPointSearch3D::Apply(
   const CoordinateView<PointSearch::MemorySpace>& points) const
 {
   Results results{
@@ -904,10 +923,10 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
   auto point_coords = points.GetValues();
   auto get_face = KOKKOS_LAMBDA(int i)
   {
-    // inverse face offsets as determined by the cannonical ordering: 
+    // inverse face offsets as determined by the cannonical ordering:
     // https://user-images.githubusercontent.com/56453280/74203616-39d27a80-4c3e-11ea-885d-b0260490e184.png
     static const char OFFSETS = 1 << 6 | 2 << 2 | 3;
-    return (OFFSETS & 3 << (i*2))>>(i*2); 
+    return (OFFSETS & 3 << (i * 2)) >> (i * 2);
   };
   Kokkos::parallel_for(
     point_coords.extent(0), KOKKOS_LAMBDA(int p) {
@@ -936,39 +955,119 @@ GridPointSearch3D::Results GridPointSearch3D::apply(
         const auto elem_verts =
           Omega_h::gather_verts<DIM + 1>(tets2verts, elem);
         const auto vertex_coords =
-          Omega_h::gather_vectors<DIM + 1, DIM>(coords, elem_verts);
-        const auto bary = barycentric_with_scales<DIM>(vertex_coords, point);
-        const auto dist = bary.SignedPlaneDistance();
+          Omega_h::gather_vectors<DIM + 1, DIM>(coords, elem_tri2verts);
+        const Omega_h::Vector<DIM + 1> parametric_coords =
+          Omega_h::barycentric_from_global<DIM, DIM>(point, vertex_coords);
 
-        if (dist >= -tau) {
-          if (inside_elem < 0 || elem < inside_elem) {
-            inside_elem = elem;
-            inside_lambda = bary.lambda;
+        LO vertexID = -1;
+        Real best_vdist_sq = INFINITY;
+        for (int k = 0; k < 4; k++) {
+          Real vdist_sq = Omega_h::norm_squared(vertex_coords[k] - point);
+          if (vdist_sq < vtol * vtol && vdist_sq < best_vdist_sq) {
+            vertexID = elem_tri2verts[k];
+            best_vdist_sq = vdist_sq;
           }
-        } else if (nearest_elem < 0 || dist > nearest_dist ||
-                   (dist == nearest_dist && elem < nearest_elem)) {
-          nearest_elem = elem;
-          nearest_dist = dist;
-          nearest_lambda = bary.lambda;
+        }
+        if (vertexID > -1) {
+          results.dimensionalities(p) = Dimensionality::VERTEX;
+          results.element_ids(p) = vertexID;
+          for (int j = 0; j < 4; j++)
+            results.parametric_coords(p, j) = parametric_coords[j];
+          found = true;
+        }
+
+        if (results.dimensionalities(p) == Dimensionality::VERTEX)
+          continue;
+
+        LO edgeID = -1;
+        Real best_edist = INFINITY;
+        for (int j = 0; j < 6; ++j) {
+          const int curr_edgeID = tets2edges_adj.ab2b[tetrahedronID * 6 + j];
+          const int va_id = edges2verts_adj.ab2b[curr_edgeID * 2 + 0];
+          const int vb_id = edges2verts_adj.ab2b[curr_edgeID * 2 + 1];
+          const auto va = Omega_h::get_vector<3>(coords, va_id);
+          const auto vb = Omega_h::get_vector<3>(coords, vb_id);
+          if (!normal_intersects_segment(va, vb, point))
+            continue;
+          const auto de = distance_from_line(va, vb, point);
+          if (de < etol && de < best_edist) {
+            best_edist = de;
+            edgeID = curr_edgeID;
+          }
+        }
+        if (edgeID > -1) {
+          results.dimensionalities(p) = Dimensionality::EDGE;
+          results.element_ids(p) = edgeID;
+          for (int j = 0; j < 4; j++)
+            results.parametric_coords(p, j) = parametric_coords[j];
+          found = true;
+        }
+
+        if (results.dimensionalities(p) == Dimensionality::EDGE)
+          continue;
+
+        LO faceID = -1;
+        Real best_fdist_sq = INFINITY;
+        Omega_h::Matrix<DIM, DIM> tet;
+        tet[0] = vertex_coords[0] - vertex_coords[3];
+        tet[1] = vertex_coords[1] - vertex_coords[3];
+        tet[2] = vertex_coords[2] - vertex_coords[3];
+        Real tetrahedron_volume = fabs(Omega_h::determinant(tet)) / 6.;
+
+        for (int k = 0; k < 4; k++) {
+          LO bary_offset = get_face(k);
+          Real face_area_sq = Omega_h::norm_squared(Omega_h::cross(
+                                vertex_coords[(bary_offset + 1) % 4] -
+                                  vertex_coords[(bary_offset + 3) % 4],
+                                vertex_coords[(bary_offset + 2) % 4] -
+                                  vertex_coords[(bary_offset + 3) % 4])) /
+                              4.;
+
+          Real fdist_sq =
+            parametric_coords[bary_offset] * 3 * tetrahedron_volume;
+          fdist_sq *= fdist_sq;
+          fdist_sq /= face_area_sq;
+
+          bool inside = true;
+          for (int j = 0; j < 4; j++) {
+            if (j == bary_offset)
+              continue;
+            if (parametric_coords[j] < 0) {
+              inside = false;
+              break;
+            }
+          }
+
+          if (fdist_sq < ftol * ftol && fdist_sq < best_fdist_sq && inside) {
+            faceID = tets2faces_adj.ab2b[tetrahedronID * 4 + k];
+            best_fdist_sq = fdist_sq;
+          }
+        }
+        if (faceID > -1) {
+          results.dimensionalities(p) = Dimensionality::FACE;
+          results.element_ids(p) = faceID;
+          for (int j = 0; j < 4; j++)
+            results.parametric_coords(p, j) = parametric_coords[j];
+          found = true;
+        }
+
+        if (results.dimensionalities(p) == Dimensionality::FACE)
+          continue;
+
+        if (Omega_h::is_barycentric_inside(parametric_coords)) {
+          results.dimensionalities(p) = Dimensionality::REGION;
+          results.element_ids(p) = tetrahedronID;
+          for (int j = 0; j < 4; j++)
+            results.parametric_coords(p, j) = parametric_coords[j];
+          found = true;
         }
       }
-
-      if (inside_elem >= 0) {
-        results.dimensionalities(p) = Dimensionality::REGION;
-        results.element_ids(p) = inside_elem;
+      if (!found) {
+        LO nearest_elem = candidate_map.entries(nearest_tetrahedron);
+        results.dimensionalities(p) = dimensionality;
+        results.element_ids(p) = -nearest_elem;
         for (int j = 0; j < 4; j++)
-          results.parametric_coords(p, j) = inside_lambda[j];
-      } else if (nearest_elem >= 0) {
-        results.dimensionalities(p) = Dimensionality::REGION;
-        results.element_ids(p) =
-          GridPointSearch3D::Results::OutsideId(nearest_elem);
-        for (int j = 0; j < 4; j++)
-          results.parametric_coords(p, j) = nearest_lambda[j];
-      } else {
-        results.dimensionalities(p) = Dimensionality::NO_INTERSECT;
-        results.element_ids(p) = -1;
-        for (int j = 0; j < 4; j++)
-          results.parametric_coords(p, j) = Omega_h::zero_vector<DIM + 1>()[j];
+          results.parametric_coords(p, j) = parametric_coords_to_nearest[j];
       }
     });
 

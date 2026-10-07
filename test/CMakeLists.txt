@@ -438,6 +438,13 @@ if(Catch2_FOUND)
       test_evaluation_only_space.cpp
 	  test_tree_localization.cpp
 	)
+	if (PCMS_ENABLE_ArborX)
+		list(
+			APPEND
+			PCMS_UNIT_TEST_SOURCES
+			test_tree_localization.cpp
+		)
+	endif()
   endif()
 
   if(PCMS_ENABLE_MFEM)

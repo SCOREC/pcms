@@ -12,7 +12,7 @@
 #include "pcms/utility/types.h"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
-#include "pcms/localization/point_search.h"
+#include "pcms/localization/uniform_grid_localization.hpp"
 #include "pcms/field/field.h" // OutOfBoundsMode
 
 namespace pcms

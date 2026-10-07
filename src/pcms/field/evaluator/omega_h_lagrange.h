@@ -6,7 +6,7 @@
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/field_data.h"
-#include "pcms/localization/point_search.h"
+#include "pcms/localization/uniform_grid_localization.hpp"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/profile.h"
@@ -64,8 +64,7 @@ struct CopyCoordsFunctor
 
 template <int Dim>
 OmegaHLagrangeLocHint BuildLagrangeLocHint(
-  Omega_h::Mesh& mesh, int mesh_dim,
-  PointSearch::Results& results,
+  Omega_h::Mesh& mesh, int mesh_dim, PointSearch::Results& results,
   Kokkos::View<Real**, DeviceMemorySpace> coords_d,
   Kokkos::View<LO*, DeviceMemorySpace> owning_ids, OutOfBoundsMode mode)
 {
@@ -342,7 +341,7 @@ public:
         detail::CopyCoordsFunctor<Dim> copy_functor(coords_d, raw_coords);
         Kokkos::parallel_for("copy_coords", n_pts, copy_functor);
 
-        auto results_d = search.apply(coords);
+        auto results_d = search.Apply(coords);
         auto owning_ids = search.GetOwningElementIds(results_d);
 
         return detail::BuildLagrangeLocHint<Dim>(

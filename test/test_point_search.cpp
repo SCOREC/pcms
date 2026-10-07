@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/localization/point_search.h>
-#include <pcms/localization/point_localization.h>
+#include <pcms/localization/uniform_grid_localization.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 
@@ -177,7 +176,8 @@ TEST_CASE("uniform grid search 2D")
   tolerances_h(1) = 0.01;
   Kokkos::deep_copy(tolerances, tolerances_h);
 
-  std::unique_ptr<pcms::PointSearch> search = std::make_unique<pcms::GridPointSearch2D>(mesh, 10, 10, tolerances);
+  std::unique_ptr<pcms::PointSearch> search =
+    std::make_unique<pcms::GridPointSearch2D>(mesh, 10, 10, tolerances);
 
   Kokkos::View<pcms::Real**> points("test_points", 8, 2);
   // Kokkos::View<pcms::Real*[2]> points("test_points", 1);
@@ -199,9 +199,8 @@ TEST_CASE("uniform grid search 2D")
   points_h(7, 0) = 0.05;
   points_h(7, 1) = 0.02;
   Kokkos::deep_copy(points, points_h);
-  auto results = search->apply(
-  pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, 
-    pcms::MakeConstRank2View(points)));
+  auto results = search->Apply(pcms::CoordinateView(
+    pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(points)));
   auto result_dims_h = Kokkos::create_mirror_view(results.dimensionalities);
   Kokkos::deep_copy(result_dims_h, results.dimensionalities);
   auto result_ids_h = Kokkos::create_mirror_view(results.element_ids);
@@ -211,9 +210,10 @@ TEST_CASE("uniform grid search 2D")
   SECTION("global coordinate within mesh")
   {
     {
-    auto dim = result_dims_h(0);
-    auto idx = result_ids_h(0);
-    auto coords = Omega_h::Vector<3>{result_coords_h(0,0), result_coords_h(0,1), result_coords_h(0,2)};
+      auto dim = result_dims_h(0);
+      auto idx = result_ids_h(0);
+      auto coords = Omega_h::Vector<3>{
+        result_coords_h(0, 0), result_coords_h(0, 1), result_coords_h(0, 2)};
       const auto face_idx = search->GetOwningElementId(results, 0);
 
       CAPTURE(idx);
@@ -226,9 +226,10 @@ TEST_CASE("uniform grid search 2D")
       REQUIRE(coords[2] == Catch::Approx(0).margin(0.00001));
     }
     {
-    auto dim = result_dims_h(1);
-    auto idx = result_ids_h(1);
-    auto coords = Omega_h::Vector<3>{result_coords_h(1,0), result_coords_h(1,1), result_coords_h(1,2)};
+      auto dim = result_dims_h(1);
+      auto idx = result_ids_h(1);
+      auto coords = Omega_h::Vector<3>{
+        result_coords_h(1, 0), result_coords_h(1, 1), result_coords_h(1, 2)};
       const auto face_idx = search->GetOwningElementId(results, 1);
       REQUIRE(dim == PointSearch::Results::Dimensionality::EDGE);
       REQUIRE(idx == 156);
@@ -238,8 +239,8 @@ TEST_CASE("uniform grid search 2D")
       REQUIRE(coords[2] == Catch::Approx(0.4).margin(0.00001));
     }
     {
-    auto dim = result_dims_h(7);
-    auto idx = result_ids_h(7);
+      auto dim = result_dims_h(7);
+      auto idx = result_ids_h(7);
       const auto face_idx = search->GetOwningElementId(results, 7);
       REQUIRE(dim == PointSearch::Results::Dimensionality::FACE);
       REQUIRE(idx == 0);
@@ -252,30 +253,26 @@ TEST_CASE("uniform grid search 2D")
     auto out_of_bounds_dim = result_dims_h(2);
     auto out_of_bounds_id = result_ids_h(2);
     auto top_right_id = result_ids_h(3);
-    REQUIRE(out_of_bounds_dim ==
-            PointSearch::Results::Dimensionality::VERTEX);
+    REQUIRE(out_of_bounds_dim == PointSearch::Results::Dimensionality::VERTEX);
     REQUIRE(-1 * out_of_bounds_id == top_right_id);
     REQUIRE(search->GetOwningElementId(results, 2) >= 0);
 
     out_of_bounds_dim = result_dims_h(4);
     out_of_bounds_id = result_ids_h(4);
     auto bot_left_id = result_ids_h(0);
-    REQUIRE(out_of_bounds_dim ==
-            PointSearch::Results::Dimensionality::VERTEX);
+    REQUIRE(out_of_bounds_dim == PointSearch::Results::Dimensionality::VERTEX);
     REQUIRE(-1 * out_of_bounds_id == bot_left_id);
     REQUIRE(search->GetOwningElementId(results, 4) >= 0);
 
-  out_of_bounds_dim = result_dims_h(5);
+    out_of_bounds_dim = result_dims_h(5);
     out_of_bounds_id = result_ids_h(5);
-    REQUIRE(out_of_bounds_dim ==
-            PointSearch::Results::Dimensionality::EDGE);
+    REQUIRE(out_of_bounds_dim == PointSearch::Results::Dimensionality::EDGE);
     REQUIRE(out_of_bounds_id == -219);
     REQUIRE(search->GetOwningElementId(results, 5) >= 0);
 
     out_of_bounds_dim = result_dims_h(6);
     out_of_bounds_id = result_ids_h(6);
-    REQUIRE(out_of_bounds_dim ==
-            PointSearch::Results::Dimensionality::EDGE);
+    REQUIRE(out_of_bounds_dim == PointSearch::Results::Dimensionality::EDGE);
     REQUIRE(-1 * out_of_bounds_id == bot_left_id);
     REQUIRE(search->GetOwningElementId(results, 6) >= 0);
   }
@@ -286,10 +283,11 @@ TEST_CASE("uniform grid search 2D")
     ext_h(0, 0) = 1.5;
     ext_h(0, 1) = 0.0;
     Kokkos::deep_copy(ext_points, ext_h);
-    auto ext_results = search->apply(pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, 
-    pcms::MakeConstRank2View(ext_points)));
+    auto ext_results = search->Apply(pcms::CoordinateView(
+      pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(ext_points)));
 
-    auto result_dims_h = Kokkos::create_mirror_view(ext_results.dimensionalities);
+    auto result_dims_h =
+      Kokkos::create_mirror_view(ext_results.dimensionalities);
     Kokkos::deep_copy(result_dims_h, ext_results.dimensionalities);
     auto result_ids_h = Kokkos::create_mirror_view(ext_results.element_ids);
     Kokkos::deep_copy(result_ids_h, ext_results.element_ids);
@@ -297,8 +295,7 @@ TEST_CASE("uniform grid search 2D")
     REQUIRE(result_ids_h(0) < 0);
     // Dimensionality must be VERTEX — the nearest entity is the
     // rightmost bottom vertex (1.0, 0).
-    REQUIRE(result_dims_h(0) ==
-            PointSearch::Results::Dimensionality::VERTEX);
+    REQUIRE(result_dims_h(0) == PointSearch::Results::Dimensionality::VERTEX);
     // Owning element should still resolve to a valid face
     REQUIRE(search->GetOwningElementId(results, 0) >= 0);
   }
@@ -320,51 +317,52 @@ TEST_CASE("uniform grid search 3D")
 
   GridPointSearch3D search{mesh, 5, 5, 5, tolerances};
 
-  auto check_res = [] (auto const& results, int dim)
-  {
+  auto check_res = [](auto const& results, int dim) {
     auto dims = Kokkos::create_mirror_view(results.dimensionalities);
     auto ids = Kokkos::create_mirror_view(results.element_ids);
     Kokkos::deep_copy(dims, results.dimensionalities);
     Kokkos::deep_copy(ids, results.element_ids);
-    for (int i = 0; i < dims.size(); i++)
-    {
+    for (int i = 0; i < dims.size(); i++) {
       CHECK(dims(i) == (pcms::PointSearch::Results::Dimensionality)dim);
       CHECK(ids(i) == i);
     }
   };
-  SECTION ("Vertex intersection") {
+  SECTION("Vertex intersection")
+  {
     Kokkos::View<pcms::Real**> coords("vertex coordinates", mesh.nverts(), 3);
     auto coords_h = Kokkos::create_mirror_view(coords);
     auto meshcoords = Omega_h::HostRead(mesh.coords());
-    for (int i = 0; i < mesh.nverts(); i++)
-    {
-      coords_h(i, 0) = meshcoords[i*3];
-      coords_h(i, 1) = meshcoords[i*3 + 1];
-      coords_h(i, 2) = meshcoords[i*3 + 2];
+    for (int i = 0; i < mesh.nverts(); i++) {
+      coords_h(i, 0) = meshcoords[i * 3];
+      coords_h(i, 1) = meshcoords[i * 3 + 1];
+      coords_h(i, 2) = meshcoords[i * 3 + 2];
     }
     Kokkos::deep_copy(coords, coords_h);
-    pcms::CoordinateView<Omega_h::ExecSpace::memory_space, pcms::detail::default_layout_for_memory_space_t<Omega_h::ExecSpace::memory_space>> vert_cv(
-      pcms::CoordinateSystem::Cartesian,
-      pcms::MakeConstRank2View(coords));
-    pcms::PointSearch::Results results = search.apply(vert_cv);
-    
+    pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
+                         pcms::detail::default_layout_for_memory_space_t<
+                           Omega_h::ExecSpace::memory_space>>
+      vert_cv(pcms::CoordinateSystem::Cartesian,
+              pcms::MakeConstRank2View(coords));
+    pcms::PointSearch::Results results = search.Apply(vert_cv);
+
     check_res(results, 0);
   }
-  SECTION ("Edge intersection") {
+  SECTION("Edge intersection")
+  {
     Kokkos::View<pcms::Real**> coords("intersection coords", mesh.nedges(), 3);
-    auto edge2vert = Omega_h::HostRead(mesh.get_adj(Omega_h::EDGE, Omega_h::VERT).ab2b);
+    auto edge2vert =
+      Omega_h::HostRead(mesh.get_adj(Omega_h::EDGE, Omega_h::VERT).ab2b);
     auto meshcoords = Omega_h::HostRead(mesh.coords());
     auto coords_h = Kokkos::create_mirror_view(coords);
 
-    for (int i = 0; i < mesh.nedges(); i++)
-    {
-      Omega_h::Vector<3> v0{
-        meshcoords[edge2vert[2*i]*3], meshcoords[edge2vert[2*i]*3 + 1], meshcoords[edge2vert[2*i]*3 + 2]
-      };
-      Omega_h::Vector<3> v1{
-        meshcoords[edge2vert[2*i + 1]*3], meshcoords[edge2vert[2*i + 1]*3 + 1], meshcoords[edge2vert[2*i + 1]*3 + 2]
-      };
-      Omega_h::Vector<3> midpoint = (v0 + v1)/2.;
+    for (int i = 0; i < mesh.nedges(); i++) {
+      Omega_h::Vector<3> v0{meshcoords[edge2vert[2 * i] * 3],
+                            meshcoords[edge2vert[2 * i] * 3 + 1],
+                            meshcoords[edge2vert[2 * i] * 3 + 2]};
+      Omega_h::Vector<3> v1{meshcoords[edge2vert[2 * i + 1] * 3],
+                            meshcoords[edge2vert[2 * i + 1] * 3 + 1],
+                            meshcoords[edge2vert[2 * i + 1] * 3 + 2]};
+      Omega_h::Vector<3> midpoint = (v0 + v1) / 2.;
       coords_h(i, 0) = midpoint[0];
       coords_h(i, 1) = midpoint[1];
       coords_h(i, 2) = midpoint[2];
@@ -372,73 +370,81 @@ TEST_CASE("uniform grid search 3D")
 
     Kokkos::deep_copy(coords, coords_h);
 
-    pcms::CoordinateView<Omega_h::ExecSpace::memory_space, pcms::detail::default_layout_for_memory_space_t<Omega_h::ExecSpace::memory_space>> edge_cv(
-      pcms::CoordinateSystem::Cartesian,
-      pcms::MakeConstRank2View(coords));
-    pcms::PointSearch::Results results = search.apply(edge_cv);
+    pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
+                         pcms::detail::default_layout_for_memory_space_t<
+                           Omega_h::ExecSpace::memory_space>>
+      edge_cv(pcms::CoordinateSystem::Cartesian,
+              pcms::MakeConstRank2View(coords));
+    pcms::PointSearch::Results results = search.Apply(edge_cv);
     check_res(results, 1);
   }
-  SECTION ("Face intersection") {
+  SECTION("Face intersection")
+  {
     Kokkos::View<pcms::Real**> coords("intersection coords", mesh.nfaces(), 3);
-    auto face2vert = Omega_h::HostRead(mesh.get_adj(Omega_h::FACE, Omega_h::VERT).ab2b);
+    auto face2vert =
+      Omega_h::HostRead(mesh.get_adj(Omega_h::FACE, Omega_h::VERT).ab2b);
     auto meshcoords = Omega_h::HostRead(mesh.coords());
     auto coords_h = Kokkos::create_mirror_view(coords);
 
-    for (int i = 0; i < mesh.nfaces(); i++)
-    {
-      Omega_h::Vector<3> v0{
-        meshcoords[face2vert[3*i]*3], meshcoords[face2vert[3*i]*3 + 1], meshcoords[face2vert[3*i]*3 + 2]
-      };
-      Omega_h::Vector<3> v1{
-        meshcoords[face2vert[3*i + 1]*3], meshcoords[face2vert[3*i + 1]*3 + 1], meshcoords[face2vert[3*i + 1]*3 + 2]
-      };
-      Omega_h::Vector<3> v2{
-        meshcoords[face2vert[3*i + 2]*3], meshcoords[face2vert[3*i + 2]*3 + 1], meshcoords[face2vert[3*i + 2]*3 + 2]
-      };
-      Omega_h::Vector<3> midpoint = (v0 + v1 + v2)/3.;
+    for (int i = 0; i < mesh.nfaces(); i++) {
+      Omega_h::Vector<3> v0{meshcoords[face2vert[3 * i] * 3],
+                            meshcoords[face2vert[3 * i] * 3 + 1],
+                            meshcoords[face2vert[3 * i] * 3 + 2]};
+      Omega_h::Vector<3> v1{meshcoords[face2vert[3 * i + 1] * 3],
+                            meshcoords[face2vert[3 * i + 1] * 3 + 1],
+                            meshcoords[face2vert[3 * i + 1] * 3 + 2]};
+      Omega_h::Vector<3> v2{meshcoords[face2vert[3 * i + 2] * 3],
+                            meshcoords[face2vert[3 * i + 2] * 3 + 1],
+                            meshcoords[face2vert[3 * i + 2] * 3 + 2]};
+      Omega_h::Vector<3> midpoint = (v0 + v1 + v2) / 3.;
       coords_h(i, 0) = midpoint[0];
       coords_h(i, 1) = midpoint[1];
       coords_h(i, 2) = midpoint[2];
     }
     Kokkos::deep_copy(coords, coords_h);
 
-    pcms::CoordinateView<Omega_h::ExecSpace::memory_space, pcms::detail::default_layout_for_memory_space_t<Omega_h::ExecSpace::memory_space>> face_cv(
-      pcms::CoordinateSystem::Cartesian,
-      pcms::MakeConstRank2View(coords));
-    pcms::GridPointSearch3D::Results results = search.apply(face_cv);
+    pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
+                         pcms::detail::default_layout_for_memory_space_t<
+                           Omega_h::ExecSpace::memory_space>>
+      face_cv(pcms::CoordinateSystem::Cartesian,
+              pcms::MakeConstRank2View(coords));
+    pcms::GridPointSearch3D::Results results = search.Apply(face_cv);
     check_res(results, 2);
   }
-  SECTION ("Region intersection") {
+  SECTION("Region intersection")
+  {
     Kokkos::View<pcms::Real**> coords("intersection coords", mesh.nelems(), 3);
-    auto region2vert = Omega_h::HostRead(mesh.get_adj(Omega_h::REGION, Omega_h::VERT).ab2b);
+    auto region2vert =
+      Omega_h::HostRead(mesh.get_adj(Omega_h::REGION, Omega_h::VERT).ab2b);
     auto meshcoords = Omega_h::HostRead(mesh.coords());
     auto coords_h = Kokkos::create_mirror_view(coords);
 
-    for (unsigned i = 0; i < mesh.nelems(); i++)
-    {
-      Omega_h::Vector<3> v0{
-        meshcoords[region2vert[4*i]*3], meshcoords[region2vert[4*i]*3 + 1], meshcoords[region2vert[4*i]*3 + 2]
-      };
-      Omega_h::Vector<3> v1{
-        meshcoords[region2vert[4*i + 1]*3], meshcoords[region2vert[4*i + 1]*3 + 1], meshcoords[region2vert[4*i + 1]*3 + 2]
-      };
-      Omega_h::Vector<3> v2{
-        meshcoords[region2vert[4*i + 2]*3], meshcoords[region2vert[4*i + 2]*3 + 1], meshcoords[region2vert[4*i + 2]*3 + 2]
-      };
-      Omega_h::Vector<3> v3{
-        meshcoords[region2vert[4*i + 3]*3], meshcoords[region2vert[4*i + 3]*3 + 1], meshcoords[region2vert[4*i + 3]*3 + 2]
-      };
-      Omega_h::Vector<3> midpoint = (v0 + v1 + v2 + v3)/4.;
+    for (unsigned i = 0; i < mesh.nelems(); i++) {
+      Omega_h::Vector<3> v0{meshcoords[region2vert[4 * i] * 3],
+                            meshcoords[region2vert[4 * i] * 3 + 1],
+                            meshcoords[region2vert[4 * i] * 3 + 2]};
+      Omega_h::Vector<3> v1{meshcoords[region2vert[4 * i + 1] * 3],
+                            meshcoords[region2vert[4 * i + 1] * 3 + 1],
+                            meshcoords[region2vert[4 * i + 1] * 3 + 2]};
+      Omega_h::Vector<3> v2{meshcoords[region2vert[4 * i + 2] * 3],
+                            meshcoords[region2vert[4 * i + 2] * 3 + 1],
+                            meshcoords[region2vert[4 * i + 2] * 3 + 2]};
+      Omega_h::Vector<3> v3{meshcoords[region2vert[4 * i + 3] * 3],
+                            meshcoords[region2vert[4 * i + 3] * 3 + 1],
+                            meshcoords[region2vert[4 * i + 3] * 3 + 2]};
+      Omega_h::Vector<3> midpoint = (v0 + v1 + v2 + v3) / 4.;
       coords_h(i, 0) = midpoint[0];
       coords_h(i, 1) = midpoint[1];
       coords_h(i, 2) = midpoint[2];
     }
     Kokkos::deep_copy(coords, coords_h);
 
-    pcms::CoordinateView<Omega_h::ExecSpace::memory_space, pcms::detail::default_layout_for_memory_space_t<Omega_h::ExecSpace::memory_space>> region_cv(
-      pcms::CoordinateSystem::Cartesian,
-      pcms::MakeConstRank2View(coords));
-    pcms::PointSearch::Results results = search.apply(region_cv);
+    pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
+                         pcms::detail::default_layout_for_memory_space_t<
+                           Omega_h::ExecSpace::memory_space>>
+      region_cv(pcms::CoordinateSystem::Cartesian,
+                pcms::MakeConstRank2View(coords));
+    pcms::PointSearch::Results results = search.Apply(region_cv);
     check_res(results, 3);
   }
 }

@@ -7,3 +7,4 @@
 #cmakedefine PCMS_ENABLE_Fortran
 #cmakedefine PCMS_ENABLE_MESHFIELDS
 #cmakedefine PCMS_ENABLE_PETSC
+#cmakedefine PCMS_ENABLE_ARBORX

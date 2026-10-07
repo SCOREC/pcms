@@ -123,8 +123,13 @@ endif()
 find_package(ADIOS2 CONFIG 2.10.2 REQUIRED)
 find_package(Kokkos CONFIG 4.5 REQUIRED)
 
-option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" ON)
+option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" OFF)
+option(PCMS_ENABLE_ARBORX "Enable ArborX support" OFF)
 option(PCMS_ENABLE_PETSC "Enable PETSc support" OFF)
+
+if (PCMS_ENABLE_ARBORX)
+  find_package(ArborX REQUIRED)
+endif()
 
 if(PCMS_ENABLE_MESHFIELDS)
   find_package(meshfields REQUIRED)

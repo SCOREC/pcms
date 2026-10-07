@@ -49,6 +49,10 @@ if(@PCMS_ENABLE_Fortran@)
     include("${CMAKE_CURRENT_LIST_DIR}/pcms_fortranapi-targets.cmake")
 endif()
 
+if(@PCMS_ENABLE_ArborX@)
+	find_dependency(ArborX CONFIG HINTS @ArborX_DIR@)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/pcms-targets.cmake")
 # must be called at the end of the config file
 check_required_components(pcms)

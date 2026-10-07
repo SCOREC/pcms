@@ -29,9 +29,8 @@ void FindIntersections::adjBasedIntersectSearch(
   auto centroids = ConvertCoordsTo2D(flat_centroids, target_mesh_.nfaces(), 2);
 
   pcms::GridPointSearch2D search_cell(source_mesh_, 20, 20);
-  auto results = search_cell.apply(CoordinateView(
-	CoordinateSystem::Cartesian,
-	MakeConstRank2View(centroids)));
+  auto results = search_cell.Apply(
+    CoordinateView(CoordinateSystem::Cartesian, MakeConstRank2View(centroids)));
   auto owning_cell_ids = search_cell.GetOwningElementIds(results);
 
   auto nfaces_target = target_mesh_.nfaces();

@@ -400,8 +400,14 @@ if(Catch2_FOUND)
       test_omega_h_field2_outofbounds.cpp
       test_omega_h_lagrange_field.cpp
       test_point_evaluator.cpp
-	  test_tree_localization.cpp
 	)
+	if (PCMS_ENABLE_ArborX)
+		list(
+			APPEND
+			PCMS_UNIT_TEST_SOURCES
+			test_tree_localization.cpp
+		)
+	endif()
   endif()
 
   if(PCMS_ENABLE_MESHFIELDS)

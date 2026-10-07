@@ -162,7 +162,7 @@ public:
 
   ~PointSearch() = default;
 
-  virtual Results apply(const CoordinateView<MemorySpace>& coords) const = 0;
+  virtual Results Apply(const CoordinateView<MemorySpace>& coords) const = 0;
   /**
    * This function provides a temporary solution to retrieve the original
    * behavior of the point search, which previously returned the face ID

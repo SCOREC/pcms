@@ -160,6 +160,10 @@ if (PCMS_ENABLE_ARBORX)
   message(STATUS "Found ArborX: ${ArborX_DIR}")
 endif()
 
+if (PCMS_ENABLE_ARBORX)
+  find_package(ArborX REQUIRED)
+endif()
+
 if(PCMS_ENABLE_MESHFIELDS)
   find_package(meshfields REQUIRED)
   message(STATUS "Found MeshFields: ${meshfields_DIR} (found version ${meshfields_VERSION})")

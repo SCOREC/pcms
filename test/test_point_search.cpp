@@ -1,10 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/localization/point_search.h>
-#include <pcms/localization/point_localization.h>
-#include <pcms/utility/mesh_geometry.h>
-#include <pcms/utility/uniform_grid.h>
-#include "field_test_utils.h"
+#include <pcms/localization/uniform_grid_localization.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <vector>
@@ -260,7 +256,8 @@ TEST_CASE("uniform grid search 2D")
   tolerances_h(1) = 0.01;
   Kokkos::deep_copy(tolerances, tolerances_h);
 
-  std::unique_ptr<pcms::PointSearch> search = std::make_unique<pcms::GridPointSearch2D>(mesh, 10, 10, tolerances);
+  std::unique_ptr<pcms::PointSearch> search =
+    std::make_unique<pcms::GridPointSearch2D>(mesh, 10, 10, tolerances);
 
   Kokkos::View<pcms::Real**> points("test_points", 8, 2);
   // Kokkos::View<pcms::Real*[2]> points("test_points", 1);
@@ -282,9 +279,8 @@ TEST_CASE("uniform grid search 2D")
   points_h(7, 0) = 0.05;
   points_h(7, 1) = 0.02;
   Kokkos::deep_copy(points, points_h);
-  auto results = search->apply(
-  pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, 
-    pcms::MakeConstRank2View(points)));
+  auto results = search->Apply(pcms::CoordinateView(
+    pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(points)));
   auto result_dims_h = Kokkos::create_mirror_view(results.dimensionalities);
   Kokkos::deep_copy(result_dims_h, results.dimensionalities);
   auto result_ids_h = Kokkos::create_mirror_view(results.element_ids);
@@ -294,9 +290,10 @@ TEST_CASE("uniform grid search 2D")
   SECTION("global coordinate within mesh")
   {
     {
-    auto dim = result_dims_h(0);
-    auto idx = result_ids_h(0);
-    auto coords = Omega_h::Vector<3>{result_coords_h(0,0), result_coords_h(0,1), result_coords_h(0,2)};
+      auto dim = result_dims_h(0);
+      auto idx = result_ids_h(0);
+      auto coords = Omega_h::Vector<3>{
+        result_coords_h(0, 0), result_coords_h(0, 1), result_coords_h(0, 2)};
       const auto face_idx = search->GetOwningElementId(results, 0);
 
     CAPTURE(idx);
@@ -309,9 +306,10 @@ TEST_CASE("uniform grid search 2D")
       REQUIRE(coords[2] == Catch::Approx(0).margin(0.00001));
     }
     {
-    auto dim = result_dims_h(1);
-    auto idx = result_ids_h(1);
-    auto coords = Omega_h::Vector<3>{result_coords_h(1,0), result_coords_h(1,1), result_coords_h(1,2)};
+      auto dim = result_dims_h(1);
+      auto idx = result_ids_h(1);
+      auto coords = Omega_h::Vector<3>{
+        result_coords_h(1, 0), result_coords_h(1, 1), result_coords_h(1, 2)};
       const auto face_idx = search->GetOwningElementId(results, 1);
       REQUIRE(dim == PointSearch::Results::Dimensionality::EDGE);
       REQUIRE(idx == 156);
@@ -321,8 +319,8 @@ TEST_CASE("uniform grid search 2D")
       REQUIRE(coords[2] == Catch::Approx(0.4).margin(0.00001));
     }
     {
-    auto dim = result_dims_h(7);
-    auto idx = result_ids_h(7);
+      auto dim = result_dims_h(7);
+      auto idx = result_ids_h(7);
       const auto face_idx = search->GetOwningElementId(results, 7);
       REQUIRE(dim == PointSearch::Results::Dimensionality::FACE);
       REQUIRE(idx == 0);
@@ -375,8 +373,8 @@ TEST_CASE("uniform grid search 2D")
   ext_h(0, 0) = 1.5;
   ext_h(0, 1) = 0.0;
   Kokkos::deep_copy(ext_points, ext_h);
-  auto ext_results = search->apply(pcms::CoordinateView(pcms::CoordinateSystem::Cartesian, 
-  pcms::MakeConstRank2View(ext_points)));
+  auto ext_results = search->Apply(pcms::CoordinateView(
+    pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(ext_points)));
 
   auto result_dims_h = Kokkos::create_mirror_view(ext_results.dimensionalities);
   Kokkos::deep_copy(result_dims_h, ext_results.dimensionalities);
@@ -431,7 +429,7 @@ TEST_CASE("point search locates points on shared faces",
   points_cv(
     pcms::CoordinateSystem::Cartesian,
     pcms::MakeConstRank2View(points));
-  auto results = search.apply(points_cv);
+  auto results = search.Apply(points_cv);
   auto result_ids_h = Kokkos::create_mirror_view(results.element_ids);
   Kokkos::deep_copy(result_ids_h, results.element_ids);
 
@@ -475,7 +473,7 @@ TEST_CASE("point search encodes outside points unambiguously",
     points_cv(
       pcms::CoordinateSystem::Cartesian,
       pcms::MakeConstRank2View(points));
-  auto results = search.apply(points_cv);
+  auto results = search.Apply(points_cv);
   auto result_dims_h =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results.dimensionalities);
   auto result_ids_h =
@@ -545,7 +543,7 @@ TEST_CASE("point search encodes outside points unambiguously",
       pcms::CoordinateSystem::Cartesian,
       pcms::MakeConstRank2View(points));
 
-  auto results = search.apply(points_cv);
+  auto results = search.Apply(points_cv);
   auto result_dims_h =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results.dimensionalities);
   auto result_ids_h =

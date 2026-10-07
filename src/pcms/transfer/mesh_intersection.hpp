@@ -2,7 +2,7 @@
 #define PCMS_TRANSFER_MESH_INTERSECTION_HPP
 
 #include <pcms/configuration.h>
-#include <pcms/localization/point_search.h>
+#include <pcms/localization/uniform_grid_localization.hpp>
 #include <pcms/localization/queue_visited.hpp>
 #include <Omega_h_fail.hpp>
 #include <Omega_h_int_scan.hpp>

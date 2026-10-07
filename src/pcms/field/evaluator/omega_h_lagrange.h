@@ -6,7 +6,7 @@
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/field_data.h"
-#include "pcms/localization/point_search.h"
+#include "pcms/localization/uniform_grid_localization.hpp"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/profile.h"
@@ -346,7 +346,7 @@ public:
 
     int mesh_dim = layout_->GetMesh().dim();
     Omega_h::Mesh& mesh = const_cast<Omega_h::Mesh&>(layout_->GetMesh());
-    auto results_d = search_->apply(coords);
+    auto results_d = search_->Apply(coords);
     auto owning_ids = search_->GetOwningElementIds(results_d);
     
     auto raw_coords = coords.GetValues();

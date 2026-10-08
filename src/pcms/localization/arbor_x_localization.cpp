@@ -2,55 +2,6 @@
 
 // Access traits for Omega_h
 // constructs bounding boxes for elements
-template <int dim>
-struct ArborX::AccessTraits<pcms::detail::Omega_h_Mesh_Adapt<dim>>
-{
-  using memory_space = typename Omega_h::ExecSpace::memory_space;
-
-  static KOKKOS_FUNCTION int size(
-    const pcms::detail::Omega_h_Mesh_Adapt<dim>& mesh)
-  {
-    return mesh.size_;
-  }
-
-  static KOKKOS_FUNCTION auto get(
-    const pcms::detail::Omega_h_Mesh_Adapt<dim>& mesh, int i)
-  {
-    ArborX::Point<dim, Omega_h::Real> min = {INFINITY};
-    ArborX::Point<dim, Omega_h::Real> max = {-INFINITY};
-    for (int j = 0; j < dim + 1; ++j) {
-      auto cell_vert_id = mesh.adjacency[(dim + 1) * i + j];
-      for (int k = 0; k < dim; ++k) {
-        Omega_h::Real curr_coord = mesh.coordinates[cell_vert_id * dim + k];
-        if (min[k] > curr_coord)
-          min[k] = curr_coord;
-        if (max[k] < curr_coord)
-          max[k] = curr_coord;
-      }
-    }
-    return ArborX::Box(min, max);
-  }
-};
-
-template <typename MemorySpace, int dim>
-struct ArborX::AccessTraits<
-  pcms::detail::Coordinate_View_Adapt<MemorySpace, dim>>
-{
-  using memory_space = MemorySpace;
-  static KOKKOS_FUNCTION int size(
-    pcms::detail::Coordinate_View_Adapt<MemorySpace, dim> const& coords)
-  {
-    return coords.points.extent(0);
-  }
-  static KOKKOS_FUNCTION auto get(
-    pcms::detail::Coordinate_View_Adapt<MemorySpace, dim> const& coords, int i)
-  {
-    ArborX::Point<dim, double> ax_point;
-    for (int j = 0; j < dim; j++)
-      ax_point[j] = coords.points(i, j);
-    return PredicateWithAttachment(intersects(ax_point), i);
-  }
-};
 
 namespace pcms
 {
@@ -130,7 +81,6 @@ public:
     Kokkos::deep_copy(tol_h, tolerances);
     tolerances_[0] = tol_h(0);
     tolerances_[1] = tol_h(1);
-    // printf("%d (%lf, %lf)\n", tol_h.size(), tolerances_[0], tolerances_[1]);
     bary_transform = {triangle[0] - triangle[2], triangle[1] - triangle[2]};
     triangle_area = 0.5 * fabs(Omega_h::determinant(bary_transform));
     bary_transform = Omega_h::invert(bary_transform);
@@ -177,13 +127,13 @@ public:
   KOKKOS_FUNCTION
   int which(int ent_dim, Omega_h::Vector<DIM + 1> const& bary_coords) const
   {
-    if (dim == Omega_h::VERT) {
+    if (ent_dim == Omega_h::VERT) {
       return which_vert(bary_coords);
     }
-    if (dim == Omega_h::EDGE) {
+    if (ent_dim == Omega_h::EDGE) {
       return which_edge(bary_coords);
     }
-    if (dim == Omega_h::FACE) {
+    if (ent_dim == Omega_h::FACE) {
       return within_elem(bary_coords);
     }
     return -1;
@@ -306,7 +256,7 @@ public:
   /**
    * @brief Computes the barycentric coordinates of a point in global space
    * @param p the point to compute the barycentric coordinates of
-   * @returns an Omega_h::Vector<dim + 1> containing the barycentric coordinates
+   * @returns an Omega_h::Vector<DIM + 1> containing the barycentric coordinates
    * 			of p
    */
   KOKKOS_FUNCTION
@@ -337,16 +287,16 @@ public:
   KOKKOS_FUNCTION
   int which(int ent_dim, Omega_h::Vector<DIM + 1> const& bary_coords) const
   {
-    if (dim == Omega_h::VERT) {
+    if (ent_dim == Omega_h::VERT) {
       return which_vert(bary_coords);
     }
-    if (dim == Omega_h::EDGE) {
+    if (ent_dim == Omega_h::EDGE) {
       return which_edge(bary_coords);
     }
-    if (dim == Omega_h::FACE) {
+    if (ent_dim == Omega_h::FACE) {
       return which_face(bary_coords);
     }
-    if (dim == Omega_h::REGION) {
+    if (ent_dim == Omega_h::REGION) {
       return within_elem(bary_coords);
     }
     return -1;
@@ -513,28 +463,25 @@ public:
       element_ids(MakeRank1View(element_ids_)),
       parametric_coords(MakeRank2View(parametric_coords_)) {};
 
-  /**
-   * Intersection callback,
-   */
   template <typename Predicate, typename Value>
   KOKKOS_FUNCTION void operator()(Predicate const& predicate,
                                   Value const& val) const
   {
     ArborX::Point<DIM, Omega_h::Real> const& ax =
       ArborX::getGeometry(predicate);
-    Omega_h::Vector<DIM> point{ax[0], ax[1]};
+    Omega_h::Vector<DIM> point{ax[0], ax[1], ax[2]};
     int point_ind = ArborX::getData(predicate);
 
-    detail::Mapping<2> const& tm = mappings(val.index);
+    detail::Mapping<3> const& tm = mappings(val.index);
 
     // calculate the barycentric coefficients of the point
     auto coeffs = tm.get_bary(point);
-
+    int offsets[DIM] = {4, 6, 4};
     for (int i = 0; i < DIM; i++) {
       int elem = tm.which(i, coeffs);
       if (elem >= 0 &&
           dimensionalities(point_ind) > (TreePointSearch::Dimensionality)i) {
-        auto elem_ind = adjacencies[i][3 * val.index + elem];
+        auto elem_ind = adjacencies[i][offsets[i] * val.index + elem];
         dimensionalities(point_ind) = (TreePointSearch::Dimensionality)i;
         element_ids(point_ind) = elem_ind;
         for (int j = 0; j < DIM + 1; j++) {
@@ -543,9 +490,10 @@ public:
         return;
       }
     }
+
     if (tm.which(DIM, coeffs) >= 0 &&
-        dimensionalities(point_ind) > TreePointSearch::Dimensionality::FACE) {
-      dimensionalities(point_ind) = TreePointSearch::Dimensionality::FACE;
+        dimensionalities(point_ind) > TreePointSearch::Dimensionality::REGION) {
+      dimensionalities(point_ind) = TreePointSearch::Dimensionality::REGION;
       element_ids(point_ind) = (LO)val.index;
       for (int j = 0; j < DIM + 1; j++) {
         parametric_coords(point_ind, j) = coeffs(j);
@@ -586,19 +534,19 @@ public:
   {
     ArborX::Point<DIM, Omega_h::Real> const& ax =
       ArborX::getGeometry(predicate);
-    Omega_h::Vector<DIM> point{ax[0], ax[1], ax[2]};
+    Omega_h::Vector<DIM> point{ax[0], ax[1]};
     int point_ind = ArborX::getData(predicate);
 
-    detail::Mapping<3> const& tm = mappings(val.index);
+    detail::Mapping<2> const& tm = mappings(val.index);
 
     // calculate the barycentric coefficients of the point
     auto coeffs = tm.get_bary(point);
-    int offsets[DIM] = {4, 6, 4};
+
     for (int i = 0; i < DIM; i++) {
       int elem = tm.which(i, coeffs);
       if (elem >= 0 &&
           dimensionalities(point_ind) > (TreePointSearch::Dimensionality)i) {
-        auto elem_ind = adjacencies[i][offsets[i] * val.index + elem];
+        auto elem_ind = adjacencies[i][3 * val.index + elem];
         dimensionalities(point_ind) = (TreePointSearch::Dimensionality)i;
         element_ids(point_ind) = elem_ind;
         for (int j = 0; j < DIM + 1; j++) {
@@ -607,17 +555,15 @@ public:
         return;
       }
     }
-
     if (tm.which(DIM, coeffs) >= 0 &&
-        dimensionalities(point_ind) > TreePointSearch::Dimensionality::REGION) {
-      dimensionalities(point_ind) = TreePointSearch::Dimensionality::REGION;
+        dimensionalities(point_ind) > TreePointSearch::Dimensionality::FACE) {
+      dimensionalities(point_ind) = TreePointSearch::Dimensionality::FACE;
       element_ids(point_ind) = (LO)val.index;
       for (int j = 0; j < DIM + 1; j++) {
         parametric_coords(point_ind, j) = coeffs(j);
       }
     }
   }
-
 private:
   Rank1View<const Mapping<2>, MemorySpace> mappings;
   Omega_h::LOs adjacencies[2];
@@ -626,7 +572,60 @@ private:
   Rank2View<Real, MemorySpace> parametric_coords;
 };
 } // namespace detail
+}// namespace pcms
 
+template <int dim>
+struct ArborX::AccessTraits<pcms::detail::Omega_h_Mesh_Adapt<dim>>
+{
+  using memory_space = typename Omega_h::ExecSpace::memory_space;
+
+  static KOKKOS_FUNCTION int size(
+    const pcms::detail::Omega_h_Mesh_Adapt<dim>& mesh)
+  {
+    return mesh.size_;
+  }
+
+  static KOKKOS_FUNCTION auto get(
+    const pcms::detail::Omega_h_Mesh_Adapt<dim>& mesh, int i)
+  {
+    ArborX::Point<dim, Omega_h::Real> min = {INFINITY};
+    ArborX::Point<dim, Omega_h::Real> max = {-INFINITY};
+    for (int j = 0; j < dim + 1; ++j) {
+      auto cell_vert_id = mesh.adjacency[(dim + 1) * i + j];
+      for (int k = 0; k < dim; ++k) {
+        Omega_h::Real curr_coord = mesh.coordinates[cell_vert_id * dim + k];
+        if (min[k] > curr_coord)
+          min[k] = curr_coord;
+        if (max[k] < curr_coord)
+          max[k] = curr_coord;
+      }
+    }
+    return ArborX::Box(min, max);
+  }
+};
+
+template <typename MemorySpace, int dim>
+struct ArborX::AccessTraits<
+  pcms::detail::Coordinate_View_Adapt<MemorySpace, dim>>
+{
+  using memory_space = MemorySpace;
+  static KOKKOS_FUNCTION int size(
+    pcms::detail::Coordinate_View_Adapt<MemorySpace, dim> const& coords)
+  {
+    return coords.points.extent(0);
+  }
+  static KOKKOS_FUNCTION auto get(
+    pcms::detail::Coordinate_View_Adapt<MemorySpace, dim> const& coords, int i)
+  {
+    ArborX::Point<dim, double> ax_point;
+    for (int j = 0; j < dim; j++)
+      ax_point[j] = coords.points(i, j);
+    return PredicateWithAttachment(intersects(ax_point), i);
+  }
+};
+
+namespace pcms
+{
 TreePointSearch::Results TreePointSearch::Apply(
   const CoordinateView<TreePointSearch::MemorySpace>& coords) const
 {

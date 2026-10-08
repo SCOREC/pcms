@@ -401,7 +401,7 @@ if(Catch2_FOUND)
       test_omega_h_lagrange_field.cpp
       test_point_evaluator.cpp
 	)
-	if (PCMS_ENABLE_ArborX)
+	if (PCMS_ENABLE_ARBORX)
 		list(
 			APPEND
 			PCMS_UNIT_TEST_SOURCES

@@ -564,6 +564,7 @@ public:
       }
     }
   }
+
 private:
   Rank1View<const Mapping<2>, MemorySpace> mappings;
   Omega_h::LOs adjacencies[2];
@@ -572,7 +573,7 @@ private:
   Rank2View<Real, MemorySpace> parametric_coords;
 };
 } // namespace detail
-}// namespace pcms
+} // namespace pcms
 
 template <int dim>
 struct ArborX::AccessTraits<pcms::detail::Omega_h_Mesh_Adapt<dim>>

@@ -564,7 +564,6 @@ public:
       }
     }
   }
-
 private:
   Rank1View<const Mapping<2>, MemorySpace> mappings;
   Omega_h::LOs adjacencies[2];

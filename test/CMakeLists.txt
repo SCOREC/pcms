@@ -438,7 +438,7 @@ if(Catch2_FOUND)
       test_evaluation_only_space.cpp
 	  test_tree_localization.cpp
 	)
-	if (PCMS_ENABLE_ArborX)
+	if (PCMS_ENABLE_ARBORX)
 		list(
 			APPEND
 			PCMS_UNIT_TEST_SOURCES

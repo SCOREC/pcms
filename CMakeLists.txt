@@ -162,6 +162,7 @@ endif()
 
 if (PCMS_ENABLE_ARBORX)
   find_package(ArborX REQUIRED)
+  message(STATUS "Found ArborX: ${ArborX_DIR}")
 endif()
 
 if(PCMS_ENABLE_MESHFIELDS)

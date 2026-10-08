@@ -463,9 +463,6 @@ public:
       element_ids(MakeRank1View(element_ids_)),
       parametric_coords(MakeRank2View(parametric_coords_)) {};
 
-  /**
-   * Intersection callback,
-   */
   template <typename Predicate, typename Value>
   KOKKOS_FUNCTION void operator()(Predicate const& predicate,
                                   Value const& val) const
@@ -567,7 +564,6 @@ public:
       }
     }
   }
-
 private:
   Rank1View<const Mapping<2>, MemorySpace> mappings;
   Omega_h::LOs adjacencies[2];

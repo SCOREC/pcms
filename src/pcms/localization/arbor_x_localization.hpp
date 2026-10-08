@@ -5,6 +5,8 @@
 
 #include <ArborX.hpp>
 #include <ArborX_Triangle.hpp>
+// headers from detail are included to reproduce earlier (index based) version
+// of ArborX querying: https://github.com/arborx/ArborX/wiki/MigrationGuide
 #include <detail/ArborX_PairValueIndex.hpp>
 #include <detail/ArborX_AttachIndices.hpp>
 

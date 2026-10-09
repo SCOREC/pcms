@@ -3,7 +3,7 @@
 namespace pcms
 {
 
-FieldLayoutCommunicator& Application::GetOrCreateLayoutCommunicator(
+FieldLayoutCommunicator& ApplicationComm::GetOrCreateLayoutCommunicator(
   const FieldLayout& layout, bool participates)
 {
   PCMS_FUNCTION_TIMER;
@@ -45,7 +45,7 @@ FieldLayoutCommunicator& Application::GetOrCreateLayoutCommunicator(
   return *it2->second;
 }
 
-void Application::SetLayoutOverlapMask(
+void ApplicationComm::SetLayoutOverlapMask(
   const std::string& layout_name, std::unique_ptr<OverlapMask> overlap_mask)
 {
   layout_overlap_masks_[layout_name] = std::move(overlap_mask);

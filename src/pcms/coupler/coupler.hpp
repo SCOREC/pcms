@@ -54,13 +54,13 @@ using GlobalDataVariant =
                GlobalDataInterface<int64_t>, GlobalDataInterface<float>,
                GlobalDataInterface<double>>;
 
-class Application;
+class ApplicationComm;
 
 template <typename T>
 class FieldHandle
 {
 public:
-  FieldHandle(Application* app, std::string name)
+  FieldHandle(ApplicationComm* app, std::string name)
     : app_(app), name_(std::move(name))
   {
   }
@@ -70,14 +70,14 @@ public:
   [[nodiscard]] Field<T>& GetField() const;
 
 private:
-  Application* app_;
+  ApplicationComm* app_;
   std::string name_;
 };
 template <typename T>
 class DataHandle
 {
 public:
-  DataHandle(Application* app, std::string name)
+  DataHandle(ApplicationComm* app, std::string name)
     : app_(app), name_(std::move(name))
   {
   }
@@ -87,7 +87,7 @@ public:
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
 
 private:
-  Application* app_;
+  ApplicationComm* app_;
   std::string name_;
 };
 
@@ -99,7 +99,7 @@ template <typename T>
 class FunctionHandle : public FieldHandle<T>
 {
 public:
-  FunctionHandle(Application* app, std::string name,
+  FunctionHandle(ApplicationComm* app, std::string name,
                  std::shared_ptr<const FunctionSpace> space)
     : FieldHandle<T>(app, std::move(name)), space_(std::move(space))
   {
@@ -119,12 +119,12 @@ private:
   std::shared_ptr<const FunctionSpace> space_;
 };
 
-class Application
+class ApplicationComm
 {
 public:
-  Application(std::string name, MPI_Comm comm, redev::Redev& redev,
-              adios2::Params params, redev::TransportType transport_type,
-              std::string path)
+  ApplicationComm(std::string name, MPI_Comm comm, redev::Redev& redev,
+                  adios2::Params params, redev::TransportType transport_type,
+                  std::string path)
     : mpi_comm_(comm),
       redev_(redev),
       channel_{redev_.CreateAdiosChannel(std::move(name), std::move(params),
@@ -291,9 +291,9 @@ private:
 };
 
 template <typename T>
-DataHandle<T> Application::AddData(std::string name,
-                                   Rank1View<T, HostMemorySpace> data,
-                                   MPI_Comm mpi_comm)
+DataHandle<T> ApplicationComm::AddData(std::string name,
+                                       Rank1View<T, HostMemorySpace> data,
+                                       MPI_Comm mpi_comm)
 {
   PCMS_FUNCTION_TIMER;
   auto [it, inserted] = global_data_interfaces_.try_emplace(
@@ -320,7 +320,7 @@ void DataHandle<T>::Receive(redev::Mode mode) const
   app_->ReceiveData(name_, mode);
 }
 
-class Coupler
+class CouplerComm
 {
 private:
   redev::Redev SetUpRedev(bool isServer, redev::Partition partition)
@@ -332,15 +332,15 @@ private:
   }
 
 public:
-  Coupler(std::string name, MPI_Comm comm, bool isServer,
-          redev::Partition partition)
+  CouplerComm(std::string name, MPI_Comm comm, bool isServer,
+              redev::Partition partition)
     : name_(std::move(name)),
       mpi_comm_(comm),
       redev_(SetUpRedev(isServer, std::move(partition)))
   {
     PCMS_FUNCTION_TIMER;
   }
-  Application* AddApplication(
+  ApplicationComm* AddApplication(
     std::string name, std::string path = "",
     redev::TransportType transport_type = redev::TransportType::BP4,
     adios2::Params params = {{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}})
@@ -367,7 +367,7 @@ private:
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
   // gather and scatter operations have reference to internal fields
-  std::map<std::string, Application> applications_;
+  std::map<std::string, ApplicationComm> applications_;
 };
 
 } // namespace pcms
@@ -394,7 +394,7 @@ pcms::Field<T>& pcms::FieldHandle<T>::GetField() const
 }
 
 template <typename T>
-pcms::Field<T>& pcms::Application::GetField(const std::string& name)
+pcms::Field<T>& pcms::ApplicationComm::GetField(const std::string& name)
 {
   auto field_it = fields_.find(name);
   if (field_it != fields_.end()) {
@@ -416,7 +416,7 @@ pcms::Field<T>& pcms::Application::GetField(const std::string& name)
 }
 
 template <typename T>
-void pcms::Application::RegisterFieldCommunicator(
+void pcms::ApplicationComm::RegisterFieldCommunicator(
   Field<T>& field_obj, std::unique_ptr<FieldSerializer<T>> serializer,
   bool participates)
 {
@@ -434,15 +434,15 @@ void pcms::Application::RegisterFieldCommunicator(
 }
 
 template <typename T>
-pcms::FieldHandle<T> pcms::Application::AddField(Field<T>&& field,
-                                                 bool participates)
+pcms::FieldHandle<T> pcms::ApplicationComm::AddField(Field<T>&& field,
+                                                     bool participates)
 {
   return AddField(std::move(field), std::make_unique<FieldSerializer<T>>(),
                   participates);
 }
 
 template <typename T>
-pcms::FieldHandle<T> pcms::Application::AddField(
+pcms::FieldHandle<T> pcms::ApplicationComm::AddField(
   Field<T>&& field, std::unique_ptr<FieldSerializer<T>> serializer,
   bool participates)
 {
@@ -466,15 +466,15 @@ pcms::FieldHandle<T> pcms::Application::AddField(
 }
 
 template <typename T>
-pcms::FunctionHandle<T> pcms::Application::AddFunction(Function<T>&& function,
-                                                       bool participates)
+pcms::FunctionHandle<T> pcms::ApplicationComm::AddFunction(
+  Function<T>&& function, bool participates)
 {
   return AddFunction(std::move(function),
                      std::make_unique<FieldSerializer<T>>(), participates);
 }
 
 template <typename T>
-pcms::FunctionHandle<T> pcms::Application::AddFunction(
+pcms::FunctionHandle<T> pcms::ApplicationComm::AddFunction(
   Function<T>&& function, std::unique_ptr<FieldSerializer<T>> serializer,
   bool participates)
 {

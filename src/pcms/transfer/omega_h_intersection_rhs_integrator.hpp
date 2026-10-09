@@ -6,6 +6,7 @@
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include "pcms/transfer/mesh_intersection.hpp"
+#include "pcms/transfer/omega_h_intersection_quadrature.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
 
@@ -20,7 +21,10 @@ namespace pcms
 //
 // Construction validates both spaces, computes mesh intersections, and runs a
 // two-pass device kernel (count then fill) to build the quadrature data and
-// allocate the owned RHS vector sized to the target DOF count.
+// allocate the owned RHS vector sized to the target DOF count. When built from
+// function spaces and the source is an Omega_h Lagrange space, the intersection
+// reuses the point search that space already owns; the layout constructor has
+// no space to borrow from and builds its own.
 //
 // Assemble(sampled_values):
 //   Zeros the owned vector, then for each integration point i and local target
@@ -33,12 +37,23 @@ class OmegaHIntersectionRHSIntegrator : public LinearFormIntegrator
 public:
   OmegaHIntersectionRHSIntegrator(const FunctionSpace& source_space,
                                   const FunctionSpace& target_space);
+  /// Reuses a mesh intersection built for the two spaces' discretizations.
+  /// Throws pcms_error if it is not between the source and target meshes.
+  OmegaHIntersectionRHSIntegrator(
+    const FunctionSpace& source_space, const FunctionSpace& target_space,
+    std::shared_ptr<const MeshIntersection> intersection);
   OmegaHIntersectionRHSIntegrator(
     std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
     CoordinateSystem source_coordinate_system,
     std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
     CoordinateSystem target_coordinate_system);
+  /// Assembles against a quadrature shared with other operators on the same
+  /// pair of spaces.
+  explicit OmegaHIntersectionRHSIntegrator(
+    std::shared_ptr<const OmegaHIntersectionQuadrature> quadrature);
   ~OmegaHIntersectionRHSIntegrator();
+
+  const OmegaHIntersectionQuadrature& GetQuadrature() const noexcept;
 
   Vec GetVector() const noexcept override;
 
@@ -49,13 +64,8 @@ public:
     Rank2View<const Real, DeviceMemorySpace> sampled_values) override;
 
 private:
+  std::shared_ptr<const OmegaHIntersectionQuadrature> quadrature_;
   Vec vec_ = nullptr;
-  Kokkos::View<Real**, DeviceMemorySpace>
-    coords_; // [num_pts][dim] integration point coordinates
-  Kokkos::View<PetscInt*, DeviceMemorySpace>
-    node_gids_;                                   // COO idx, num_pts*ndof
-  Kokkos::View<Real*, DeviceMemorySpace> coeffs_; // weights, num_pts*ndof
-  int ndof_per_elem_ = 0;                         // target DOFs/element
 };
 
 // Builds an OmegaHIntersectionRHSIntegrator for conservative L2 projection.

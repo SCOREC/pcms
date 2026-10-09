@@ -27,6 +27,56 @@ KOKKOS_INLINE_FUNCTION bool normal_intersects_segment(
   return (ap * ab) * (bp * ba) >= 0;
 }
 
+/**
+ * Barycentric coordinates of a point in a simplex together with the factors
+ * that convert a Cartesian distance from facet i into a band on coordinate i:
+ * |lambda[i]| <= tau * grad_norm[i] iff the point is within distance tau of
+ * the plane of the facet opposite vertex i.
+ */
+template <int Dim>
+struct BarycentricWithScales
+{
+  Omega_h::Vector<Dim + 1> lambda;
+  Omega_h::Vector<Dim + 1> grad_norm;
+
+  /**
+   * Signed Cartesian distance to the most violated facet plane: non-negative
+   * inside the simplex, -tau on the boundary of the tolerance band.
+   */
+  KOKKOS_INLINE_FUNCTION Omega_h::Real SignedPlaneDistance() const
+  {
+    auto d = lambda[0] / grad_norm[0];
+    for (int i = 1; i <= Dim; ++i) {
+      d = Kokkos::fmin(d, lambda[i] / grad_norm[i]);
+    }
+    return d;
+  }
+};
+
+template <int Dim>
+KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> barycentric_with_scales(
+  const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>& vertex_coords,
+  const Omega_h::Vector<Dim>& point)
+{
+  // rows of the inverse basis are the gradients of lambda_1..lambda_Dim;
+  // Omega_h matrices are stored by column, so row j is inv[k][j] over k
+  const auto inv =
+    Omega_h::pseudo_invert(Omega_h::simplex_basis<Dim, Dim>(vertex_coords));
+  BarycentricWithScales<Dim> result;
+  result.lambda = Omega_h::form_barycentric(inv * (point - vertex_coords[0]));
+  auto grad0 = Omega_h::zero_vector<Dim>();
+  for (int j = 0; j < Dim; ++j) {
+    Omega_h::Vector<Dim> row;
+    for (int k = 0; k < Dim; ++k) {
+      row[k] = inv[k][j];
+    }
+    result.grad_norm[j + 1] = Omega_h::norm(row);
+    grad0 = grad0 - row;
+  }
+  result.grad_norm[0] = Omega_h::norm(grad0);
+  return result;
+}
+
 namespace pcms
 {
 
@@ -260,40 +310,204 @@ namespace detail
  * \Warning since this uses Omega_h data which is only available in the
  * "Default" Execution space, the should not be used in an alternative EXE space
  */
-struct GridTriIntersectionFunctor2D
+/// The bbox-overlap predicate for a simplex against one grid cell. 2D applies
+/// the refined edge tests, 3D is a plain bbox overlap; both match what the
+/// previous cell-major functors used, so candidate lists are unchanged.
+template <int Dim>
+[[nodiscard]] KOKKOS_INLINE_FUNCTION bool simplex_overlaps_cell(
+  const Omega_h::Matrix<Dim, Dim + 1>& coords, const AABBox<Dim>& bbox)
 {
-  GridTriIntersectionFunctor2D(Omega_h::Mesh& mesh,
-                               Kokkos::View<Uniform2DGrid[1]> grid)
-    : mesh_(mesh),
-      tris2verts_(mesh_.ask_elem_verts()),
-      coords_(mesh_.coords()),
-      grid_(grid),
-      nelems_(mesh_.nelems())
+  if constexpr (Dim == 2) {
+    return triangle_intersects_bbox(coords, bbox);
+  } else {
+    return simplex_intersects_bbox<Dim>(coords, bbox);
+  }
+}
+
+/**
+ * Functor for the element -> grid cell map, the transpose of what the search
+ * needs. Row `elem` lists the cells that element overlaps.
+ *
+ * This is the element-major inverse of the old cell-major functor: rather than
+ * testing every element against a cell, each element only visits the cells its
+ * own bounding box spans. That makes construction O(nelems * cells_per_elem)
+ * instead of O(num_cells * nelems).
+ */
+template <int Dim>
+struct ElemCellOverlapFunctor
+{
+  ElemCellOverlapFunctor(Omega_h::Mesh& mesh,
+                         Kokkos::View<UniformGrid<Dim>[1]> grid)
+    : elems2verts_(mesh.ask_elem_verts()), coords_(mesh.coords()), grid_(grid)
   {
-    if (mesh_.dim() != 2) {
-      std::cerr << "GridTriIntersection2D currently only developed for 2D "
-                   "triangular meshes\n";
+    if (mesh.dim() != Dim) {
+      std::cerr << "ElemCellOverlapFunctor: mesh dimension does not match the "
+                   "functor dimension\n";
       std::terminate();
     }
   }
-  /// Two-pass functor. On the first pass we set the number of grid/triangle
-  /// intersections. On the second pass we fill the CSR array with the indexes
-  /// to the triangles intersecting with the current grid cell (row)
+
+  /// Two-pass functor. On the first pass we count the cells this element
+  /// overlaps; on the second we fill the CSR row with their IDs.
+  KOKKOS_INLINE_FUNCTION
+  LO operator()(LO elem, LO* fill) const
+  {
+    const auto elem_verts = Omega_h::gather_verts<Dim + 1>(elems2verts_, elem);
+    const auto vertex_coords =
+      Omega_h::gather_vectors<Dim + 1, Dim>(coords_, elem_verts);
+    const auto& grid = grid_(0);
+
+    // Per-axis inclusive range of cells the element's bbox spans, widened by
+    // one cell on each side. The overlap predicate treats a shared boundary
+    // plane as an intersection, so a cell that only touches the bbox counts as
+    // a candidate and would be missed by the unwidened range -- which happens
+    // constantly on a structured mesh whose vertices land on grid lines. One
+    // cell is enough: a cell two or more away cannot touch the bbox at all.
+    // The predicate below rejects whatever the widening over-includes.
+    Kokkos::Array<LO, Dim> lo, hi, idx;
+    for (int d = 0; d < Dim; ++d) {
+      Real min = vertex_coords[0][d];
+      Real max = vertex_coords[0][d];
+      for (int v = 1; v < Dim + 1; ++v) {
+        min = Kokkos::min(min, vertex_coords[v][d]);
+        max = Kokkos::max(max, vertex_coords[v][d]);
+      }
+      lo[d] = Kokkos::max(grid.AxisCellIndex(d, min) - 1, 0);
+      hi[d] =
+        Kokkos::min(grid.AxisCellIndex(d, max) + 1, grid.divisions[d] - 1);
+      idx[d] = lo[d];
+    }
+
+    LO num_overlaps = 0;
+    while (true) {
+      const LO cell = grid.CellIndexFromAxisIndices(idx);
+      if (simplex_overlaps_cell<Dim>(vertex_coords, grid.GetCellBBOX(cell))) {
+        if (fill) {
+          fill[num_overlaps] = cell;
+        }
+        ++num_overlaps;
+      }
+      // odometer over the inclusive range [lo, hi]
+      int d = 0;
+      for (; d < Dim; ++d) {
+        if (++idx[d] <= hi[d]) {
+          break;
+        }
+        idx[d] = lo[d];
+      }
+      if (d == Dim) {
+        break;
+      }
+    }
+    return num_overlaps;
+  }
+
+private:
+  Omega_h::LOs elems2verts_;
+  Omega_h::Reals coords_;
+  Kokkos::View<UniformGrid<Dim>[1]> grid_;
+};
+
+/**
+ * Build the grid cell -> element candidate map.
+ *
+ * Constructed as the transpose of the cheap element -> cell map. Kokkos'
+ * transpose_crs cannot be used here: it sizes the output row count from
+ * in.numRows() (the element count), which both over-allocates the row map and
+ * writes out of bounds once num_grid_cells exceeds the element count.
+ */
+template <int Dim>
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map(Omega_h::Mesh& mesh,
+                           Kokkos::View<UniformGrid<Dim>[1]> grid,
+                           int num_grid_cells)
+{
+  using CrsT = Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
+  const auto nelems = mesh.nelems();
+
+  CrsT elem2cells{};
+  Kokkos::count_and_fill_crs(elem2cells, nelems,
+                             ElemCellOverlapFunctor<Dim>{mesh, grid});
+
+  Kokkos::View<LO*> counts("candidate_counts", num_grid_cells);
+  Kokkos::parallel_for(
+    "count_cell_candidates", elem2cells.entries.size(), KOKKOS_LAMBDA(int i) {
+      Kokkos::atomic_inc(&counts(elem2cells.entries(i)));
+    });
+
+  CrsT cell2elems{};
+  Kokkos::get_crs_row_map_from_counts(cell2elems.row_map, counts,
+                                      "candidate_row_map");
+  cell2elems.entries =
+    CrsT::entries_type("candidate_entries", elem2cells.entries.size());
+
+  Kokkos::View<LO*> filled("candidate_fill_offsets", num_grid_cells);
+  Kokkos::parallel_for(
+    "fill_cell_candidates", nelems, KOKKOS_LAMBDA(LO elem) {
+      for (auto j = elem2cells.row_map(elem); j < elem2cells.row_map(elem + 1);
+           ++j) {
+        const LO cell = elem2cells.entries(j);
+        const auto slot = Kokkos::atomic_fetch_add(&filled(cell), 1);
+        cell2elems.entries(cell2elems.row_map(cell) + slot) = elem;
+      }
+    });
+
+  // The atomic scatter leaves each row in arbitrary order, where the old
+  // cell-major loop emitted ascending element IDs. Restore that ordering: the
+  // query takes the first candidate that contains the point, so ordering
+  // decides which element wins when a point sits on a shared face, and the
+  // out-of-bounds path reports the row's first candidate. Without this the
+  // search results would vary run to run. Rows are short, so insertion sort.
+  Kokkos::parallel_for(
+    "sort_cell_candidates", num_grid_cells, KOKKOS_LAMBDA(LO cell) {
+      const auto begin = cell2elems.row_map(cell);
+      const auto end = cell2elems.row_map(cell + 1);
+      for (auto i = begin + 1; i < end; ++i) {
+        const LO value = cell2elems.entries(i);
+        auto j = i;
+        for (; j > begin && cell2elems.entries(j - 1) > value; --j) {
+          cell2elems.entries(j) = cell2elems.entries(j - 1);
+        }
+        cell2elems.entries(j) = value;
+      }
+    });
+  Kokkos::fence();
+  return cell2elems;
+}
+
+/**
+ * Cell-major brute-force build: for every grid cell, test every element.
+ *
+ * This is the implementation `construct_intersection_map` replaced. It is
+ * O(num_cells * nelems) and must not be used in production, but it is the
+ * ground truth for what the candidate map should contain, so it is kept and
+ * exposed as an oracle for the equivalence test.
+ */
+template <int Dim>
+struct ReferenceCellMajorFunctor
+{
+  ReferenceCellMajorFunctor(Omega_h::Mesh& mesh,
+                            Kokkos::View<UniformGrid<Dim>[1]> grid)
+    : elems2verts_(mesh.ask_elem_verts()),
+      coords_(mesh.coords()),
+      grid_(grid),
+      nelems_(mesh.nelems())
+  {
+  }
+
   KOKKOS_INLINE_FUNCTION
   LO operator()(LO row, LO* fill) const
   {
-    auto grid_cell_bbox = grid_(0).GetCellBBOX(row);
+    const auto cell_bbox = grid_(0).GetCellBBOX(row);
     LO num_intersections = 0;
-    // hierarchical parallel may make be very beneficial here...
-    for (LO elem_idx = 0; elem_idx < nelems_; ++elem_idx) {
-      const auto elem_tri2verts =
-        Omega_h::gather_verts<3>(tris2verts_, elem_idx);
-      // 2d mesh with 2d coords, but 3 triangles
+    for (LO elem = 0; elem < nelems_; ++elem) {
+      const auto elem_verts =
+        Omega_h::gather_verts<Dim + 1>(elems2verts_, elem);
       const auto vertex_coords =
-        Omega_h::gather_vectors<3, 2>(coords_, elem_tri2verts);
-      if (triangle_intersects_bbox(vertex_coords, grid_cell_bbox)) {
+        Omega_h::gather_vectors<Dim + 1, Dim>(coords_, elem_verts);
+      if (simplex_overlaps_cell<Dim>(vertex_coords, cell_bbox)) {
         if (fill) {
-          fill[num_intersections] = elem_idx;
+          fill[num_intersections] = elem;
         }
         ++num_intersections;
       }
@@ -302,64 +516,39 @@ struct GridTriIntersectionFunctor2D
   }
 
 private:
-  Omega_h::Mesh& mesh_;
-  Omega_h::LOs tris2verts_;
+  Omega_h::LOs elems2verts_;
   Omega_h::Reals coords_;
-  Kokkos::View<Uniform2DGrid[1]> grid_;
-
-public:
+  Kokkos::View<UniformGrid<Dim>[1]> grid_;
   LO nelems_;
 };
 
-struct GridTriIntersectionFunctor3D
+template <int Dim>
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_reference(Omega_h::Mesh& mesh,
+                                     Kokkos::View<UniformGrid<Dim>[1]> grid,
+                                     int num_grid_cells)
 {
-  GridTriIntersectionFunctor3D(Omega_h::Mesh& mesh,
-                               Kokkos::View<Uniform3DGrid[1]> grid)
-    : mesh_(mesh),
-      tets2verts_(mesh_.ask_elem_verts()),
-      coords_(mesh_.coords()),
-      grid_(grid),
-      nelems_(mesh_.nelems())
-  {
-    if (mesh_.dim() != 3) {
-      std::cerr << "GridTriIntersection3D currently only developed for 3D "
-                   "tetrahedral meshes\n";
-      std::terminate();
-    }
-  }
-  /// Two-pass functor. On the first pass we set the number of grid/triangle
-  /// intersections. On the second pass we fill the CSR array with the indexes
-  /// to the triangles intersecting with the current grid cell (row)
-  KOKKOS_INLINE_FUNCTION
-  LO operator()(LO row, LO* fill) const
-  {
-    auto grid_cell_bbox = grid_(0).GetCellBBOX(row);
-    LO num_intersections = 0;
-    // hierarchical parallel may make be very beneficial here...
-    for (LO elem_idx = 0; elem_idx < nelems_; ++elem_idx) {
-      const auto elem_tet2verts =
-        Omega_h::gather_verts<4>(tets2verts_, elem_idx);
-      const auto vertex_coords =
-        Omega_h::gather_vectors<4, 3>(coords_, elem_tet2verts);
-      if (simplex_intersects_bbox<3>(vertex_coords, grid_cell_bbox)) {
-        if (fill) {
-          fill[num_intersections] = elem_idx;
-        }
-        ++num_intersections;
-      }
-    }
-    return num_intersections;
-  }
+  Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
+  Kokkos::count_and_fill_crs(intersection_map, num_grid_cells,
+                             ReferenceCellMajorFunctor<Dim>{mesh, grid});
+  return intersection_map;
+}
 
-private:
-  Omega_h::Mesh& mesh_;
-  Omega_h::LOs tets2verts_;
-  Omega_h::Reals coords_;
-  Kokkos::View<Uniform3DGrid[1]> grid_;
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_reference_2d(Omega_h::Mesh& mesh,
+                                        Kokkos::View<Uniform2DGrid[1]> grid,
+                                        int num_grid_cells)
+{
+  return construct_intersection_map_reference<2>(mesh, grid, num_grid_cells);
+}
 
-public:
-  LO nelems_;
-};
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
+                                        Kokkos::View<Uniform3DGrid[1]> grid,
+                                        int num_grid_cells)
+{
+  return construct_intersection_map_reference<3>(mesh, grid, num_grid_cells);
+}
 
 // num_grid_cells should be result of grid.GetNumCells(), take as argument to
 // avoid extra copy of grid from gpu to cpu
@@ -368,10 +557,7 @@ construct_intersection_map_2d(Omega_h::Mesh& mesh,
                               Kokkos::View<Uniform2DGrid[1]> grid,
                               int num_grid_cells)
 {
-  Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  auto f = detail::GridTriIntersectionFunctor2D{mesh, grid};
-  Kokkos::count_and_fill_crs(intersection_map, num_grid_cells, f);
-  return intersection_map;
+  return construct_intersection_map<2>(mesh, grid, num_grid_cells);
 }
 
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
@@ -379,10 +565,7 @@ construct_intersection_map_3d(Omega_h::Mesh& mesh,
                               Kokkos::View<Uniform3DGrid[1]> grid,
                               int num_grid_cells)
 {
-  Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  auto f = detail::GridTriIntersectionFunctor3D{mesh, grid};
-  Kokkos::count_and_fill_crs(intersection_map, num_grid_cells, f);
-  return intersection_map;
+  return construct_intersection_map<3>(mesh, grid, num_grid_cells);
 }
 } // namespace detail
 
@@ -642,7 +825,7 @@ LO GridPointSearch2D::GetOwningElementId(const Result& result)
 }
 
 Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
-  Kokkos::View<const Result*> results)
+  Kokkos::View<const Result*> results) const
 {
   Kokkos::View<LO*> owners("point search owning face ids", results.extent(0));
   auto edges2faces_up = edges2faces_up_;
@@ -686,12 +869,11 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
   auto grid = grid_;
   auto candidate_map = candidate_map_;
   auto tris2verts = tris2verts_;
-  auto tris2verts_adj = tris2verts_adj_;
-  auto tris2edges_adj = tris2edges_adj_;
-  auto edges2verts_adj = edges2verts_adj_;
   auto coords = coords_;
+  auto tolerances = tolerances_;
   Kokkos::parallel_for(
     points.extent(0), KOKKOS_LAMBDA(int p) {
+      using Dimensionality = GridPointSearch3D::Result::Dimensionality;
       Omega_h::Vector<DIM> point;
       for (int i = 0; i < DIM; ++i) {
         point[i] = points(p, i);
@@ -699,38 +881,46 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
 
       auto cell_id = grid(0).ClosestCellID(point);
       assert(cell_id < num_rows && cell_id >= 0);
-      auto candidates_begin = candidate_map.row_map(cell_id);
-      auto candidates_end = candidate_map.row_map(cell_id + 1);
-      bool found = false;
+      const auto candidates_begin = candidate_map.row_map(cell_id);
+      const auto candidates_end = candidate_map.row_map(cell_id + 1);
+      const auto tau = tolerances(DIM - 1);
 
-      auto nearest_triangle = candidates_begin;
-      auto dimensionality = GridPointSearch3D::Result::Dimensionality::EDGE;
-      Omega_h::Vector<DIM + 1> parametric_coords_to_nearest;
-      // create array that's size of number of candidates x num coords to store
-      // parametric inversion
+      LO inside_elem = -1;
+      auto inside_lambda = Omega_h::zero_vector<DIM + 1>();
+      LO nearest_elem = -1;
+      Real nearest_dist = -INFINITY;
+      auto nearest_lambda = Omega_h::zero_vector<DIM + 1>();
       for (auto i = candidates_begin; i < candidates_end; ++i) {
-        const int triangleID = candidate_map.entries(i);
-        const auto elem_tri2verts =
-          Omega_h::gather_verts<DIM + 1>(tris2verts, triangleID);
-        auto vertex_coords =
-          Omega_h::gather_vectors<DIM + 1, DIM>(coords, elem_tri2verts);
-        auto parametric_coords =
-          Omega_h::barycentric_from_global<DIM, DIM>(point, vertex_coords);
+        const LO elem = candidate_map.entries(i);
+        const auto elem_verts =
+          Omega_h::gather_verts<DIM + 1>(tris2verts, elem);
+        const auto vertex_coords =
+          Omega_h::gather_vectors<DIM + 1, DIM>(coords, elem_verts);
+        const auto bary = barycentric_with_scales<DIM>(vertex_coords, point);
+        const auto dist = bary.SignedPlaneDistance();
 
-        if (Omega_h::is_barycentric_inside(parametric_coords)) {
-          results(p) = GridPointSearch3D::Result{
-            GridPointSearch3D::Result::Dimensionality::REGION, triangleID,
-            parametric_coords};
-          found = true;
-          break;
+        if (dist >= -tau) {
+          if (inside_elem < 0 || elem < inside_elem) {
+            inside_elem = elem;
+            inside_lambda = bary.lambda;
+          }
+        } else if (nearest_elem < 0 || dist > nearest_dist ||
+                   (dist == nearest_dist && elem < nearest_elem)) {
+          nearest_elem = elem;
+          nearest_dist = dist;
+          nearest_lambda = bary.lambda;
         }
-
-        // TODO: Get nearest element if no tetrahedron found
       }
-      if (!found) {
-        LO nearest_elem = candidate_map.entries(nearest_triangle);
-        results(p) = GridPointSearch3D::Result{dimensionality, -nearest_elem,
-                                               parametric_coords_to_nearest};
+
+      if (inside_elem >= 0) {
+        results(p) = GridPointSearch3D::Result{Dimensionality::REGION,
+                                               inside_elem, inside_lambda};
+      } else if (nearest_elem >= 0) {
+        results(p) = GridPointSearch3D::Result{Dimensionality::REGION,
+                                               -nearest_elem, nearest_lambda};
+      } else {
+        results(p) = GridPointSearch3D::Result{Dimensionality::REGION, -1,
+                                               Omega_h::zero_vector<DIM + 1>()};
       }
     });
 
@@ -741,7 +931,7 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz)
   : GridPointSearch3D(mesh, Nx, Ny, Nz,
                       PointSearchTolerances{"point search 3d tolerances"})
 {
-  Kokkos::deep_copy(tolerances_, 0);
+  Kokkos::deep_copy(tolerances_, 1E-12);
 }
 
 GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
@@ -785,7 +975,7 @@ LO GridPointSearch3D::GetOwningElementId(const Result& result)
 }
 
 Kokkos::View<LO*> GridPointSearch3D::GetOwningElementIds(
-  Kokkos::View<const Result*> results)
+  Kokkos::View<const Result*> results) const
 {
   Kokkos::View<LO*> owners("point search owning region ids", results.extent(0));
   auto verts2regions_up = verts2regions_up_;

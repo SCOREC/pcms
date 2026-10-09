@@ -11,7 +11,9 @@ class BilinearFormIntegrator
 public:
   // Returns the internally-assembled matrix. The integrator owns the matrix
   // and its lifetime must exceed any KSP that references it (PETSc's reference
-  // counting keeps the matrix alive until the KSP is destroyed).
+  // counting keeps the matrix alive until the KSP is destroyed). Rows and
+  // columns are indexed by the layout's permuted index
+  // (FieldLayout::GetGlobalToLocalPermutation), not by DOF holder.
   virtual Mat GetMatrix() const noexcept = 0;
 
   // True when the assembled matrix is diagonal; lets solvers pick an exact

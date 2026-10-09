@@ -5,7 +5,9 @@
 #include "Omega_h_bbox.hpp"
 #include "Omega_h_mesh.hpp"
 #include <Kokkos_Array.hpp>
+#include <algorithm>
 #include <array>
+#include <cmath>
 namespace pcms
 {
 
@@ -33,23 +35,30 @@ public:
   [[nodiscard]] KOKKOS_INLINE_FUNCTION LO
   ClosestCellID(const Omega_h::Vector<dim>& point) const
   {
-    Kokkos::Array<Real, dim> distance_within_grid;
-
-    for (size_t i = 0; i < dim; ++i) {
-      distance_within_grid[i] = point[i] - bot_left[i];
-    }
-
     Kokkos::Array<LO, dim> indexes;
 
-    for (auto& index : indexes) {
-      index = -1;
+    for (size_t i = 0; i < dim; ++i) {
+      indexes[i] = AxisCellIndex(i, point[i]);
     }
+    return CellIndexFromAxisIndices(indexes);
+  }
 
-    for (int i = 0; i < dim; ++i) {
-      auto index = static_cast<LO>(
-        std::floor(distance_within_grid[i] * divisions[i] / edge_length[i]));
-      indexes[i] = Kokkos::clamp(index, 0, divisions[i] - 1);
-    }
+  /// Index of the cell containing `coord` along `axis`, clamped to the grid.
+  /// The single definition of the grid's binning rule: keeping the point query
+  /// and the cell-range query on this one formula is what guarantees a point
+  /// always lands in a cell that its own element was binned into.
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO AxisCellIndex(size_t axis,
+                                                        Real coord) const
+  {
+    const auto index = static_cast<LO>(std::floor(
+      (coord - bot_left[axis]) * divisions[axis] / edge_length[axis]));
+    return Kokkos::clamp(index, 0, divisions[axis] - 1);
+  }
+
+  /// Linear cell ID from per-axis indices given in coordinate order (x,y,z).
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO
+  CellIndexFromAxisIndices(Kokkos::Array<LO, dim> indexes) const
+  {
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
     reverse(indexes);
@@ -139,6 +148,25 @@ private:
 
 using Uniform2DGrid = UniformGrid<2>;
 using Uniform3DGrid = UniformGrid<3>;
+
+/**
+ * \brief Divisions per axis giving roughly one element per grid cell.
+ *
+ * The candidate list of a cell is scanned linearly per point query, so cell
+ * occupancy sets the query cost; a resolution fixed independently of the mesh
+ * makes that cost grow with the element count. Scaling as nelems^(1/dim) keeps
+ * occupancy roughly constant. `min_divisions` keeps tiny meshes on a sane grid.
+ *
+ * \warning Only worth raising once the candidate map is built element-major:
+ * a cell-major O(num_cells * nelems) build gets worse as this grows.
+ */
+template <unsigned dim>
+LO DivisionsPerAxisForMesh(LO nelems, LO min_divisions = 10)
+{
+  const auto per_axis = static_cast<LO>(std::ceil(
+    std::pow(static_cast<double>(nelems), 1.0 / static_cast<double>(dim))));
+  return std::max(per_axis, min_divisions);
+}
 
 /**
  * \brief Create a uniform grid layout from an Omega_h mesh as a bounding box

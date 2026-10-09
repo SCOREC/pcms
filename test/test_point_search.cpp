@@ -1,8 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <pcms/localization/point_search.h>
+#include <pcms/utility/mesh_geometry.h>
+#include <pcms/utility/uniform_grid.h>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
+#include <vector>
 
 using pcms::AABBox;
 using pcms::Uniform2DGrid;
@@ -162,6 +165,85 @@ TEST_CASE("construct intersection map")
     REQUIRE(num_candidates_within_range(intersection_map, 1, 6));
   }
 }
+namespace
+{
+/// Assert two candidate maps are identical: same row offsets and the same
+/// entries in the same order within every row.
+template <typename T>
+void require_maps_identical(const T& fast, const T& reference)
+{
+  REQUIRE(fast.numRows() == reference.numRows());
+  REQUIRE(fast.entries.size() == reference.entries.size());
+
+  auto fast_row_map =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, fast.row_map);
+  auto ref_row_map =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, reference.row_map);
+  auto fast_entries =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, fast.entries);
+  auto ref_entries =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, reference.entries);
+
+  for (std::size_t i = 0; i < fast_row_map.extent(0); ++i) {
+    REQUIRE(fast_row_map(i) == ref_row_map(i));
+  }
+  for (std::size_t i = 0; i < fast_entries.extent(0); ++i) {
+    REQUIRE(fast_entries(i) == ref_entries(i));
+  }
+}
+} // namespace
+
+// The element-major candidate map must produce exactly what the brute-force
+// cell-major build does. Entry order matters as well as membership: the search
+// returns the first candidate containing the point, so ordering decides which
+// element wins a shared-face tie and which is reported for an out-of-bounds
+// query.
+TEST_CASE("candidate map matches brute-force reference")
+{
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
+
+  SECTION("2D")
+  {
+    auto mesh =
+      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
+    REQUIRE(mesh.dim() == 2);
+    for (pcms::LO divisions : {3, 10, 37}) {
+      Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
+      auto grid_h = Kokkos::create_mirror_view(grid_d);
+      grid_h(0) = Uniform2DGrid{.edge_length{1, 1},
+                                .bot_left = {0, 0},
+                                .divisions = {divisions, divisions}};
+      Kokkos::deep_copy(grid_d, grid_h);
+      const auto ncells = grid_h(0).GetNumCells();
+      require_maps_identical(
+        pcms::detail::construct_intersection_map_2d(mesh, grid_d, ncells),
+        pcms::detail::construct_intersection_map_reference_2d(mesh, grid_d,
+                                                              ncells));
+    }
+  }
+  SECTION("3D")
+  {
+    auto mesh =
+      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 5, 5, 5, false);
+    REQUIRE(mesh.dim() == 3);
+    for (pcms::LO divisions : {2, 5, 11}) {
+      Kokkos::View<pcms::Uniform3DGrid[1]> grid_d("uniform grid");
+      auto grid_h = Kokkos::create_mirror_view(grid_d);
+      grid_h(0) =
+        pcms::Uniform3DGrid{.edge_length{1, 1, 1},
+                            .bot_left = {0, 0, 0},
+                            .divisions = {divisions, divisions, divisions}};
+      Kokkos::deep_copy(grid_d, grid_h);
+      const auto ncells = grid_h(0).GetNumCells();
+      require_maps_identical(
+        pcms::detail::construct_intersection_map_3d(mesh, grid_d, ncells),
+        pcms::detail::construct_intersection_map_reference_3d(mesh, grid_d,
+                                                              ncells));
+    }
+  }
+}
+
 TEST_CASE("uniform grid search")
 {
   using pcms::GridPointSearch2D;
@@ -284,4 +366,66 @@ TEST_CASE("uniform grid search")
     // Owning element should still resolve to a valid face
     REQUIRE(search.GetOwningElementId(res) >= 0);
   }
+}
+
+// A query point that lies exactly on a face shared by two tetrahedra must
+// still be located. It is a legitimate interior point of the mesh, and the
+// search's own contract is that a negative element id means "not inside any
+// element" -- so returning one here makes callers that rely on that signal
+// silently wrong.
+//
+// The nested boxes below put the query points exactly on source grid planes:
+// the 5^3 mesh's element centroids have coordinates that are multiples of
+// 1/10 in at least one axis, which is where the 10^3 mesh's faces are.
+//
+// This is the root cause of the empty target elements in
+// test_omega_h_intersection_coverage.cpp: the intersection search seeds from
+// the source element containing the target element's centroid, so a centroid
+// reported as outside the mesh leaves that target element with no source
+// elements at all.
+TEST_CASE("point search locates points on shared faces",
+          "[point_search][3d][regression]")
+{
+  using pcms::GridPointSearch3D;
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
+
+  const int source_divisions = 10;
+  const int query_divisions = 5;
+  auto mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1,
+                                 source_divisions, source_divisions,
+                                 source_divisions, false);
+  auto query_mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1,
+                                       query_divisions, query_divisions,
+                                       query_divisions, false);
+
+  // Same grid resolution the intersection search uses for this mesh.
+  const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
+  GridPointSearch3D search{mesh, n, n, n};
+
+  const auto centroids_h = Omega_h::HostRead<Omega_h::Real>(
+    pcms::get_entity_centroids(query_mesh, 3));
+  const auto npoints = query_mesh.nelems();
+
+  Kokkos::View<pcms::Real* [3]> points("query points", npoints);
+  auto points_h = Kokkos::create_mirror_view(points);
+  for (Omega_h::LO i = 0; i < npoints; ++i) {
+    for (int d = 0; d < 3; ++d) {
+      points_h(i, d) = centroids_h[i * 3 + d];
+    }
+  }
+  Kokkos::deep_copy(points, points_h);
+
+  auto results = search(points);
+  auto results_h = Kokkos::create_mirror_view(results);
+  Kokkos::deep_copy(results_h, results);
+
+  std::vector<Omega_h::LO> not_located;
+  for (Omega_h::LO i = 0; i < npoints; ++i) {
+    if (results_h(i).element_id < 0) {
+      not_located.push_back(i);
+    }
+  }
+  CAPTURE(not_located.size(), npoints);
+  REQUIRE(not_located.empty());
 }

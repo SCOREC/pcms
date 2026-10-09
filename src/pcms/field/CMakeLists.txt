@@ -7,6 +7,7 @@ set(PCMS_FIELD_HEADERS
         evaluation_request.h
         gid_permutation.hpp
         field_layout.h
+        field_operator.hpp
         field_metadata.h
         layout/empty.h
         out_of_bounds_policy.h

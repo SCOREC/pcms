@@ -7,6 +7,8 @@
 #include <Omega_h_shape.hpp>
 
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
+#include <pcms/transfer/mesh_intersection.hpp>
+#include <pcms/transfer/omega_h_intersection_quadrature.hpp>
 #include <pcms/field/function_space/lagrange.h>
 #include <pcms/utility/mesh_geometry.h>
 #include "field_test_utils.h"
@@ -427,5 +429,170 @@ TEST_CASE("OmegaHConservativeProjection P1 source to P0 target",
     REQUIRE(pcms::test::IntegrateP0Field(target_mesh, target) ==
             Catch::Approx(pcms::test::IntegrateP1Field(source_mesh, source))
               .margin(1e-9));
+  }
+}
+
+TEST_CASE("OmegaHConservativeProjection reuses a shared mesh intersection",
+          "[transfer][mesh_intersection]")
+{
+  Omega_h::Library lib;
+
+  Omega_h::Mesh source_mesh =
+    pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 2, 0, 2, 3}));
+  Omega_h::Mesh target_mesh =
+    pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 3, 1, 2, 3}));
+
+  auto source_space = pcms::test::MakeP1Space(source_mesh);
+  auto target_p1 = pcms::test::MakeP1Space(target_mesh);
+  auto target_p0 = pcms::test::MakeP0Space(target_mesh);
+
+  auto intersection = pcms::IntersectMeshes(*source_space, *target_p1);
+  REQUIRE(intersection->GetTargetToSource().tgt2src_offsets.size() ==
+          target_mesh.nelems() + 1);
+  REQUIRE(intersection->GetSourceDiscretization()->SameEntities(
+    *source_space->GetDiscretization()));
+
+  auto source = source_space->CreateFunction<pcms::Real>();
+  pcms::test::SetField(
+    source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) {
+      return x * x + x * y + 0.5 * y * y;
+    });
+
+  SECTION("shared and self-built intersections give identical results")
+  {
+    const auto mass_type =
+      GENERATE(pcms::MassMatrixType::Consistent, pcms::MassMatrixType::Lumped);
+    CAPTURE(static_cast<int>(mass_type));
+    pcms::OmegaHConservativeProjection own(*source_space, *target_p1,
+                                           mass_type);
+    pcms::OmegaHConservativeProjection shared(*source_space, *target_p1,
+                                              mass_type, intersection);
+    auto expected = target_p1->CreateFunction<pcms::Real>();
+    auto got = target_p1->CreateFunction<pcms::Real>();
+    own.Apply(source, expected);
+    shared.Apply(source, got);
+    const auto e = pcms::FlattenToRank1View(expected.GetDOFHolderDataHost());
+    const auto g = pcms::FlattenToRank1View(got.GetDOFHolderDataHost());
+    REQUIRE(e.size() == g.size());
+    for (pcms::LO i = 0; i < static_cast<pcms::LO>(e.size()); ++i) {
+      CAPTURE(i);
+      CHECK(g[i] == e[i]);
+    }
+  }
+
+  SECTION("the same intersection serves a target space of another order")
+  {
+    pcms::OmegaHConservativeProjection projection(
+      *source_space, *target_p0, pcms::MassMatrixType::Consistent,
+      intersection);
+    auto target = target_p0->CreateFunction<pcms::Real>();
+    projection.Apply(source, target);
+    REQUIRE(pcms::test::IntegrateP0Field(target_mesh, target) ==
+            Catch::Approx(pcms::test::IntegrateP1Field(source_mesh, source))
+              .margin(1e-12));
+  }
+
+  SECTION("an intersection of other meshes is rejected")
+  {
+    auto reversed = pcms::IntersectMeshes(*target_p1, *source_space);
+    CHECK_THROWS_AS(
+      pcms::OmegaHConservativeProjection(
+        *source_space, *target_p1, pcms::MassMatrixType::Consistent, reversed),
+      pcms::pcms_error);
+  }
+}
+
+TEST_CASE(
+  "OmegaHConservativeProjection reuses a shared intersection quadrature",
+  "[transfer][mesh_intersection]")
+{
+  Omega_h::Library lib;
+
+  Omega_h::Mesh source_mesh =
+    pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 2, 0, 2, 3}));
+  Omega_h::Mesh target_mesh =
+    pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 3, 1, 2, 3}));
+
+  auto source_space = pcms::test::MakeP1Space(source_mesh);
+  auto target_p1 = pcms::test::MakeP1Space(target_mesh);
+  auto target_p0 = pcms::test::MakeP0Space(target_mesh);
+
+  auto intersection = pcms::IntersectMeshes(*source_space, *target_p1);
+  auto quadrature = std::make_shared<pcms::OmegaHIntersectionQuadrature>(
+    *source_space, *target_p1, intersection);
+  REQUIRE(quadrature->GetNumPoints() > 0);
+  REQUIRE(quadrature->GetSourceEvaluator() != nullptr);
+  REQUIRE(static_cast<pcms::LO>(quadrature->GetSourceElementIds().extent(0)) ==
+          quadrature->GetNumPoints());
+
+  auto source = source_space->CreateFunction<pcms::Real>();
+  pcms::test::SetField(
+    source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) {
+      return x * x + x * y + 0.5 * y * y;
+    });
+
+  SECTION("shared quadrature gives the self-built result for both mass types")
+  {
+    const auto mass_type =
+      GENERATE(pcms::MassMatrixType::Consistent, pcms::MassMatrixType::Lumped);
+    CAPTURE(static_cast<int>(mass_type));
+    pcms::OmegaHConservativeProjection own(*source_space, *target_p1,
+                                           mass_type);
+    pcms::OmegaHConservativeProjection shared(*source_space, *target_p1,
+                                              mass_type, nullptr, quadrature);
+    auto expected = target_p1->CreateFunction<pcms::Real>();
+    auto got = target_p1->CreateFunction<pcms::Real>();
+    own.Apply(source, expected);
+    shared.Apply(source, got);
+    const auto e = pcms::FlattenToRank1View(expected.GetDOFHolderDataHost());
+    const auto g = pcms::FlattenToRank1View(got.GetDOFHolderDataHost());
+    REQUIRE(e.size() == g.size());
+    for (pcms::LO i = 0; i < static_cast<pcms::LO>(e.size()); ++i) {
+      CAPTURE(i);
+      CHECK(g[i] == Catch::Approx(e[i]).margin(1e-14));
+    }
+  }
+
+  SECTION("the search-free evaluator matches the searched one")
+  {
+    auto searched = source_space->CreatePointEvaluator<pcms::Real>(
+      pcms::EvaluationRequest::FromCoordinates(
+        quadrature->GetIntegrationPoints()));
+    const auto n = quadrature->GetNumPoints();
+    Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> direct("direct", n, 1);
+    Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> reference("reference",
+                                                                  n, 1);
+    quadrature->GetSourceEvaluator()->Evaluate(source,
+                                               pcms::MakeRank2View(direct));
+    searched->Evaluate(source, pcms::MakeRank2View(reference));
+    auto direct_h =
+      Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, direct);
+    auto reference_h =
+      Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, reference);
+    for (pcms::LO i = 0; i < n; ++i) {
+      CAPTURE(i);
+      CHECK(direct_h(i, 0) == Catch::Approx(reference_h(i, 0)).margin(1e-13));
+    }
+  }
+
+  SECTION("a quadrature for other spaces is rejected")
+  {
+    auto other = std::make_shared<pcms::OmegaHIntersectionQuadrature>(
+      *source_space, *target_p0, intersection);
+    CHECK_THROWS_AS(pcms::OmegaHConservativeProjection(
+                      *source_space, *target_p1,
+                      pcms::MassMatrixType::Consistent, nullptr, other),
+                    pcms::pcms_error);
+  }
+
+  SECTION("element ids outside the mesh are rejected")
+  {
+    const auto n = quadrature->GetNumPoints();
+    Kokkos::View<pcms::LO*, pcms::DeviceMemorySpace> bad("bad", n);
+    Kokkos::deep_copy(bad, source_mesh.nelems());
+    CHECK_THROWS_AS(source_space->CreatePointEvaluator<pcms::Real>(
+                      pcms::EvaluationRequest::FromElements(
+                        quadrature->GetIntegrationPoints(), bad)),
+                    pcms::pcms_error);
   }
 }

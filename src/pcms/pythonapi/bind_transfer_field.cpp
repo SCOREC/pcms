@@ -12,6 +12,9 @@
 #include "pcms/utility/types.h"
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
 #include "pcms/transfer/mass_matrix_type.hpp"
+#include "pcms/transfer/mass_smoother.hpp"
+#include "pcms/transfer/mesh_intersection.hpp"
+#include "pcms/transfer/omega_h_intersection_quadrature.hpp"
 #include "pcms/transfer/omega_h_conservative_projection.hpp"
 #include "pcms/transfer/omega_h_control_variate_projection.hpp"
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
@@ -90,21 +93,73 @@ void bind_transfer_field_module(py::module& m)
            "conserves the integral but adds lumping error)")
     .export_values();
 
+  // Source-target overlap map, built once per mesh pair and shared by every
+  // projection on that pair.
+  py::class_<MeshIntersection, std::shared_ptr<MeshIntersection>>(
+    m, "MeshIntersection",
+    "Overlap map between a source and a target mesh (for each target element, "
+    "the source elements it intersects). Build once per mesh pair and pass to "
+    "every projection between spaces on those meshes.");
+  py::class_<OmegaHMeshIntersection, MeshIntersection,
+             std::shared_ptr<OmegaHMeshIntersection>>(m,
+                                                      "OmegaHMeshIntersection")
+    .def(py::init([](const FunctionSpace& source_space,
+                     const FunctionSpace& target_space) {
+           return std::make_shared<OmegaHMeshIntersection>(source_space,
+                                                           target_space);
+         }),
+         py::arg("source_space"), py::arg("target_space"),
+         "Intersect the two spaces' Omega_h meshes, reusing the source "
+         "space's point search. Any spaces on the same two meshes may share "
+         "the result, whatever their order.");
+  m.def(
+    "intersect_meshes",
+    [](const FunctionSpace& source_space, const FunctionSpace& target_space) {
+      return IntersectMeshes(source_space, target_space);
+    },
+    py::arg("source_space"), py::arg("target_space"),
+    "MeshIntersection for the two spaces' meshes, dispatched on their type.");
+
+  // Quadrature of the intersection for one pair of spaces: points, target
+  // weights, source elements and a search-free source evaluator. Shared by
+  // every projection between the same two spaces.
+  py::class_<OmegaHIntersectionQuadrature,
+             std::shared_ptr<OmegaHIntersectionQuadrature>>(
+    m, "OmegaHIntersectionQuadrature")
+    .def(py::init([](const FunctionSpace& source_space,
+                     const FunctionSpace& target_space,
+                     std::shared_ptr<MeshIntersection> intersection) {
+           return std::make_shared<OmegaHIntersectionQuadrature>(
+             source_space, target_space, std::move(intersection));
+         }),
+         py::arg("source_space"), py::arg("target_space"),
+         py::arg("intersection") = nullptr,
+         "Integration points of the source-target intersection on the target "
+         "mesh, with the target basis weights, the source element of each "
+         "point and a source evaluator that needs no point search. Depends on "
+         "both spaces (orders included) but not on the mass matrix; pass to "
+         "every OmegaHConservativeProjection between the same two spaces.")
+    .def("num_points", &OmegaHIntersectionQuadrature::GetNumPoints);
+
   // Conservative L2 (Galerkin) projection between order-1 Lagrange spaces on
   // Omega_h 2D simplex meshes. The RHS is integrated exactly over the
   // intersection of the source and target meshes.
   py::class_<OmegaHConservativeProjection>(m, "OmegaHConservativeProjection")
     .def(py::init([](const FunctionSpace& source_space,
                      const FunctionSpace& target_space,
-                     MassMatrixType mass_matrix_type) {
+                     MassMatrixType mass_matrix_type,
+                     std::shared_ptr<MeshIntersection> intersection,
+                     std::shared_ptr<OmegaHIntersectionQuadrature> quadrature) {
            return std::make_unique<OmegaHConservativeProjection>(
-             source_space, target_space, mass_matrix_type);
+             source_space, target_space, mass_matrix_type,
+             std::move(intersection), std::move(quadrature));
          }),
          py::arg("source_space"), py::arg("target_space"),
          py::arg("mass_matrix_type") = MassMatrixType::Consistent,
+         py::arg("intersection") = nullptr, py::arg("quadrature") = nullptr,
          "Construct a mesh-intersection conservative projection. Mesh "
-         "intersection, quadrature setup, and mass-matrix factorization happen "
-         "here and are cached; call apply() repeatedly.")
+         "intersection and quadrature (unless passed in) and the mass-matrix "
+         "factorization happen here and are cached; call apply() repeatedly.")
     .def(
       "apply",
       [](const OmegaHConservativeProjection& self, const Field<Real>& source,
@@ -112,6 +167,20 @@ void bind_transfer_field_module(py::module& m)
       py::arg("source"), py::arg("target"),
       "Conservatively project the source field onto the target space using "
       "exact mesh-intersection quadrature.");
+
+  // Same-space conservative smoother; one apply() is one sweep of inv(M_L) M.
+  py::class_<MassSmoother>(m, "MassSmoother")
+    .def(py::init(
+           [](const FunctionSpace& space) { return BuildMassSmoother(space); }),
+         py::arg("space"),
+         "Conservative, bounds-preserving smoother on one function space: "
+         "apply() performs one sweep u <- inv(M_L) M u (Farrell et al. 2009, "
+         "Eqs. 37-38, applied to the whole field). The mass matrix is "
+         "assembled once here; call apply() in a loop for more sweeps.")
+    .def(
+      "apply",
+      [](const MassSmoother& self, Field<Real>& field) { self.Apply(field); },
+      py::arg("field"), "Smooth the field in place (one sweep).");
 
   // Sampling strategy for the Monte Carlo RHS integrator.
   py::enum_<MonteCarloSampling>(m, "MonteCarloSampling")

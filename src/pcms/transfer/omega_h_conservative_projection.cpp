@@ -1,5 +1,7 @@
 #include "pcms/transfer/omega_h_conservative_projection.hpp"
 #include "pcms/transfer/conservative_projection_solver.hpp"
+#include "pcms/transfer/mesh_intersection.hpp"
+#include "pcms/transfer/omega_h_intersection_quadrature.hpp"
 #include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
 #include "pcms/transfer/omega_h_mass_integrator.hpp"
 #include "pcms/utility/arrays.h"
@@ -42,19 +44,41 @@ void CheckApplyCompatible(const Field<Real>& source, const Field<Real>& target,
 
 OmegaHConservativeProjection::OmegaHConservativeProjection(
   const FunctionSpace& source_space, const FunctionSpace& target_space,
-  MassMatrixType mass_matrix_type)
+  MassMatrixType mass_matrix_type,
+  std::shared_ptr<const MeshIntersection> intersection,
+  std::shared_ptr<const OmegaHIntersectionQuadrature> quadrature)
   : source_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
       source_space.GetLayout())),
     target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
       target_space.GetLayout()))
 {
-  rhs_integrator_ = std::make_unique<OmegaHIntersectionRHSIntegrator>(
-    source_layout_, source_space.GetCoordinateSystem(), target_layout_,
-    target_space.GetCoordinateSystem());
+  if (quadrature) {
+    if (quadrature->GetSourceLayout() != source_layout_ ||
+        quadrature->GetTargetLayout() != target_layout_) {
+      throw pcms_error("OmegaHConservativeProjection: the supplied quadrature "
+                       "was built for other spaces");
+    }
+    rhs_integrator_ =
+      std::make_unique<OmegaHIntersectionRHSIntegrator>(std::move(quadrature));
+  } else if (intersection) {
+    rhs_integrator_ = std::make_unique<OmegaHIntersectionRHSIntegrator>(
+      source_space, target_space, std::move(intersection));
+  } else {
+    rhs_integrator_ = std::make_unique<OmegaHIntersectionRHSIntegrator>(
+      source_space, target_space);
+  }
 
-  evaluator_ =
-    source_space.CreatePointEvaluator<Real>(EvaluationRequest::FromCoordinates(
-      rhs_integrator_->GetIntegrationPoints()));
+  // The quadrature knows the source element of every integration point, so
+  // its evaluator needs no point search; a layout-built quadrature has none
+  // and one is created here the same way.
+  const auto& quad = rhs_integrator_->GetQuadrature();
+  evaluator_ = quad.GetSourceEvaluator();
+  if (evaluator_ == nullptr) {
+    owned_evaluator_ =
+      source_space.CreatePointEvaluator<Real>(EvaluationRequest::FromElements(
+        quad.GetIntegrationPoints(), quad.GetSourceElementIds()));
+    evaluator_ = owned_evaluator_.get();
+  }
 
   // Mass integrator is only needed to build the solver; PETSc reference-counts
   // the matrix so it remains alive inside the KSP after this scope ends.

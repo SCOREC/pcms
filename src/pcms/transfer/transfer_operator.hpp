@@ -11,7 +11,10 @@ template <typename T>
 class TransferOperator
 {
 public:
+  using value_type = T;
+
   virtual void Apply(const Field<T>& source, Field<T>& target) const = 0;
+
   virtual ~TransferOperator() noexcept = default;
 };
 

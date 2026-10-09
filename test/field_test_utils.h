@@ -11,7 +11,7 @@
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/coupler/field_serializer.h"
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
 #ifdef PCMS_ENABLE_OMEGA_H
@@ -31,12 +31,21 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 // Shared utilities for field tests that apply equally to MeshFields-backed
 // and native OmegaH-backed field implementations.
 
 namespace pcms::test
 {
+
+// tolerances used for testing.
+// Currently we just added for the tests we were working on.
+// We need to update all tests to use consistent tolerances
+// Those tolerances should either come from these constexpr variables
+// or toleranes in the config file
+inline constexpr double ExactTol = 1e-12;
+inline constexpr double EvalTol = 1e-10;
 
 // Affine test function — exactly representable on linear elements.
 KOKKOS_INLINE_FUNCTION Real linear_f(Real x, Real y)
@@ -146,14 +155,14 @@ inline std::shared_ptr<LagrangeFunctionSpace> MakeP1Space(
   Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
 {
   return LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, global_id_name,
+    mesh, 1, 1, csys::Cartesian::Deferred(), global_id_name,
     LagrangeFunctionSpace::Backend::OmegaH);
 }
 
 inline std::shared_ptr<LagrangeFunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
 {
   return LagrangeFunctionSpace::FromMesh(
-    mesh, 0, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 0, 1, csys::Cartesian::Deferred(), "global",
     LagrangeFunctionSpace::Backend::OmegaH);
 }
 
@@ -199,7 +208,8 @@ inline std::vector<Real> CopyOmegaHRealsToVector(const Omega_h::Reals& coords)
 
 inline double IntegrateP0Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 {
-  const auto values = FlattenToRank1View(field.GetDOFHolderDataHost());
+  const auto values =
+    FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   const auto measures = Omega_h::measure_elements_real(&mesh);
   const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
 
@@ -212,7 +222,8 @@ inline double IntegrateP0Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 
 inline double IntegrateP1Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 {
-  const auto values = FlattenToRank1View(field.GetDOFHolderDataHost());
+  const auto values =
+    FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   const auto measures = Omega_h::measure_elements_real(&mesh);
   const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
   const auto elem_verts_h =
@@ -234,7 +245,7 @@ inline double IntegrateP1Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 // Min/max of an order-1 nodal field. For P1, nodal values are min/max
 inline std::pair<double, double> P1FieldRange(const Field<Real>& field)
 {
-  const auto values = FlattenToRank1View(field.GetDOFHolderData());
+  const auto values = FlattenToRank1View(field.GetDOFHolderData().GetValues());
   using MinMaxReducer = Kokkos::MinMax<double>;
   using MinMaxValue = MinMaxReducer::value_type;
 
@@ -254,7 +265,7 @@ inline std::pair<double, double> P1FieldRange(const Field<Real>& field)
 
 // Require that the target field stays within the range of the source field.
 inline void RequireBoundedBy(const Field<Real>& target,
-                             const Field<Real>& source, double tol = 1e-12)
+                             const Field<Real>& source, double tol = ExactTol)
 {
   const auto src_range = P1FieldRange(source);
   const auto tgt_range = P1FieldRange(target);
@@ -268,10 +279,10 @@ inline void RequireBoundedBy(const Field<Real>& target,
 // spaces.
 template <typename CoordView>
 inline Kokkos::View<const Real**, HostMemorySpace> CopyCoordinatesToHost(
-  const CoordView& coords_device, int nents, int dim)
+  const CoordView& coords_device)
 {
-  auto coords_view =
-    Kokkos::View<Real**, HostMemorySpace>("coords_view", nents, dim);
+  auto coords_view = Kokkos::View<Real**, HostMemorySpace>(
+    "coords_view", coords_device.extent(0), coords_device.extent(1));
   auto coords_view_device =
     Kokkos::create_mirror_view(DeviceMemorySpace(), coords_view);
   ConvertMismatchLayoutView2D(coords_view_device, coords_device);
@@ -359,6 +370,37 @@ inline void SetField(Field<Real>& field, Func func)
   SetField<ExecutionSpace>(field.GetLayout(), field.GetData(), func);
 }
 
+// Set multi-component DOF data by sampling func at each DOF-holder
+// coordinate, writing the components through the out pointer. The arity of
+// func selects the spatial dimension: func(x, y, out) for 2D layouts,
+// func(x, y, z, out) for 3D. Host-side; the component count comes from the
+// field's layout.
+template <typename Func>
+inline void SetFieldComponents(Field<Real>& field, Func func)
+{
+  const auto coords = field.GetLayout().GetDOFHolderCoordinates().GetValues();
+  const int n = static_cast<int>(coords.extent(0));
+  const int num_components = field.GetLayout().GetNumComponents();
+
+  static_assert(std::is_invocable_v<Func, Real, Real, Real*> ||
+                  std::is_invocable_v<Func, Real, Real, Real, Real*>,
+                "SetFieldComponents requires func(x, y, out) or "
+                "func(x, y, z, out)");
+
+  const auto coords_host = CopyCoordinatesToHost(coords);
+  std::vector<Real> data(static_cast<size_t>(n) * num_components);
+  for (int i = 0; i < n; ++i) {
+    Real* out = &data[static_cast<size_t>(i) * num_components];
+    if constexpr (std::is_invocable_v<Func, Real, Real, Real, Real*>) {
+      func(coords_host(i, 0), coords_host(i, 1), coords_host(i, 2), out);
+    } else {
+      func(coords_host(i, 0), coords_host(i, 1), out);
+    }
+  }
+  field.SetDOFHolderDataUncheckedHost(
+    Rank2View<const Real, HostMemorySpace>(data.data(), n, num_components));
+}
+
 template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
 inline void SetField(FieldData<Real>& field, const FieldLayout& layout,
                      Func func)
@@ -406,28 +448,55 @@ struct DeviceCoordinates
   CoordinateView<DeviceMemorySpace> coordinate_view;
 };
 
+// Binds an already-built device buffer to a coordinate system, without the
+// allocation and placeholder resolution CreateDeviceCoordinateView performs.
+inline CoordinateView<DeviceMemorySpace> MakeCoords(
+  const Kokkos::View<Real**, DeviceMemorySpace>& data,
+  std::shared_ptr<const CoordinateSystem> coordinate_system)
+{
+  return CoordinateView<DeviceMemorySpace>(std::move(coordinate_system),
+                                           MakeConstRank2View(data));
+}
+
+/// Tags a device output buffer with a field's stored value basis, which is
+/// what evaluators and the component-moving transfer operators write.
+template <typename T>
+inline ValueView<T, DeviceMemorySpace> TagLike(
+  const Field<T>& field, Kokkos::View<T**, DeviceMemorySpace> values)
+{
+  return ValueView<T, DeviceMemorySpace>(field.GetData().GetValueBasis(),
+                                         MakeRank2View(values));
+}
+
+inline Kokkos::View<Real**, DeviceMemorySpace> CreateDeviceRank2View(
+  const std::vector<Real>& values, int num_columns)
+{
+  const int n = static_cast<int>(values.size()) / num_columns;
+  Kokkos::View<Real**, HostMemorySpace> host("host", n, num_columns);
+  for (int i = 0; i < n; ++i) {
+    for (int c = 0; c < num_columns; ++c) {
+      host(i, c) = values[static_cast<size_t>(i) * num_columns + c];
+    }
+  }
+  Kokkos::View<Real**, DeviceMemorySpace> device("device", n, num_columns);
+  DeepCopyMismatchLayouts(device, host);
+  return device;
+}
+
 // Helper function to create device CoordinateView from a vector of interleaved
 // points Returns both the underlying View (to keep memory alive) and the
 // CoordinateView pts contains interleaved coordinates: [x0, y0, x1, y1, ...]
 // for 2D or [x0, y0, z0, x1, y1, z1, ...] for 3D
 inline DeviceCoordinates CreateDeviceCoordinateView(
-  const std::vector<Real>& pts, CoordinateSystem coord_system, int dim = 2)
+  const std::vector<Real>& pts,
+  std::shared_ptr<const CoordinateSystem> coordinate_system, int dim = 2)
 {
-  int n = static_cast<int>(pts.size()) / dim;
-  // Create host view from input data
-  Kokkos::View<Real**, HostMemorySpace> coords_host("coords_host", n, dim);
-  for (int i = 0; i < n; ++i) {
-    for (int d = 0; d < dim; ++d) {
-      coords_host(i, d) = pts[dim * i + d];
-    }
-  }
-  // Copy to device - using default layout for device
-  auto coords_device =
-    Kokkos::View<Real**, DeviceMemorySpace>("coords_device", n, dim);
-  DeepCopyMismatchLayouts(coords_device, coords_host);
-  auto coords_view = pcms::MakeRank2View(coords_device);
-  return DeviceCoordinates{coords_device, CoordinateView<DeviceMemorySpace>{
-                                            coord_system, coords_view}};
+  auto coords_device = CreateDeviceRank2View(pts, dim);
+  return DeviceCoordinates{
+    coords_device,
+    CoordinateView<DeviceMemorySpace>{
+      pcms::ResolveCoordinateSystem(std::move(coordinate_system), dim),
+      pcms::MakeRank2View(coords_device)}};
 }
 
 // Evaluate field at explicit test points using a PointEvaluator and check
@@ -435,12 +504,12 @@ inline DeviceCoordinates CreateDeviceCoordinateView(
 template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
 void CheckEvaluation(const PointEvaluator<Real>& evaluator,
                      const Field<Real>& field, const std::vector<Real>& pts,
-                     Func func, double abs_tol = 1e-10)
+                     Func func, double abs_tol = EvalTol)
 {
   int n = static_cast<int>(pts.size()) / 2;
 
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out_device", n, 1);
-  evaluator.Evaluate(field, MakeRank2View(out_device));
+  evaluator.Evaluate(field, TagLike(field, out_device));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
 
@@ -461,7 +530,7 @@ template <typename Factory, typename ExecutionSpace = DefaultExecutionSpace,
           typename Func>
 void CheckEvaluation(const Factory& factory, const Field<Real>& field,
                      const std::vector<Real>& pts, Func func,
-                     double abs_tol = 1e-10)
+                     double abs_tol = EvalTol)
 {
   auto device_coords =
     CreateDeviceCoordinateView(pts, factory->GetCoordinateSystem());
@@ -471,6 +540,23 @@ void CheckEvaluation(const Factory& factory, const Field<Real>& field,
 }
 
 // Evaluate field at points known to be outside the mesh and verify fill value.
+// Checks that the evaluator reports exactly the rows marked in `is_filled`.
+inline void CheckFilledPoints(const PointEvaluator<Real>& evaluator,
+                              const std::vector<bool>& is_filled)
+{
+  auto filled = Kokkos::create_mirror_view_and_copy(HostMemorySpace(),
+                                                    evaluator.FilledPoints());
+  std::vector<bool> reported(is_filled.size(), false);
+  for (size_t k = 0; k < filled.extent(0); ++k) {
+    const LO i = filled(k);
+    REQUIRE(i >= 0);
+    REQUIRE(static_cast<size_t>(i) < is_filled.size());
+    REQUIRE_FALSE(reported[i]);
+    reported[i] = true;
+  }
+  REQUIRE(reported == is_filled);
+}
+
 inline void CheckFillMode(const PointEvaluator<Real>& evaluator,
                           const Field<Real>& field, Real fill_value,
                           const std::vector<Real>& outside_pts)
@@ -478,13 +564,14 @@ inline void CheckFillMode(const PointEvaluator<Real>& evaluator,
   int n = static_cast<int>(outside_pts.size()) / 2;
 
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out_device", n, 1);
-  evaluator.Evaluate(field, MakeRank2View(out_device));
+  evaluator.Evaluate(field, TagLike(field, out_device));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
 
   for (int i = 0; i < n; ++i) {
     REQUIRE(out_host(i, 0) == fill_value);
   }
+  CheckFilledPoints(evaluator, std::vector<bool>(n, true));
 }
 
 // Overload that creates the evaluator from any factory with FILL policy.
@@ -507,7 +594,7 @@ template <typename Factory, typename ExecutionSpace = DefaultExecutionSpace,
 void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
                              const std::vector<Real>& pts,
                              const std::vector<bool>& is_inside, Func func,
-                             Real fill_value, double abs_tol = 1e-10)
+                             Real fill_value, double abs_tol = EvalTol)
 {
   int n = static_cast<int>(pts.size()) / 2;
   REQUIRE(static_cast<int>(is_inside.size()) == n);
@@ -519,7 +606,7 @@ void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
     EvaluationRequest::FromCoordinates(device_coords.coordinate_view, policy));
 
   Kokkos::View<Real**, DeviceMemorySpace> out_device("out_device", n, 1);
-  evaluator->Evaluate(field, MakeRank2View(out_device));
+  evaluator->Evaluate(field, TagLike(field, out_device));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
 
@@ -536,6 +623,11 @@ void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
       REQUIRE(out_host(i, 0) == fill_value);
     }
   }
+  std::vector<bool> is_filled(is_inside.size());
+  for (size_t i = 0; i < is_inside.size(); ++i) {
+    is_filled[i] = !is_inside[i];
+  }
+  CheckFilledPoints(*evaluator, is_filled);
 }
 
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
@@ -551,7 +643,7 @@ inline void EvaluateAndAssemble(
   auto evaluator = source_space->CreatePointEvaluator<Real>(
     EvaluationRequest::FromCoordinates(pts));
   Kokkos::View<Real**, DeviceMemorySpace> sampled("sampled", npts, 1);
-  evaluator->Evaluate(source_field, MakeRank2View(sampled));
+  evaluator->Evaluate(source_field, TagLike(source_field, sampled));
   integrator.Assemble(MakeConstRank2View(sampled));
 }
 #endif // PCMS_ENABLE_PETSC && PCMS_ENABLE_MESHFIELDS

@@ -399,8 +399,9 @@ find_package(Catch2 3)
 if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
-  set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp test_coordinate_transform.cpp
-                             test_coordinate.cpp test_bounding_box.cpp)
+  set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp
+                             test_coordinate_transformation.cpp
+                             test_bounding_box.cpp)
   if(PCMS_ENABLE_XGC)
     list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_reverse_classification.cpp
          test_xgc_field_data.cpp)
@@ -431,7 +432,9 @@ if(Catch2_FOUND)
       test_localization_factory.cpp
       test_omega_h_field2_outofbounds.cpp
       test_omega_h_lagrange_field.cpp
-      test_point_evaluator.cpp)
+      test_point_evaluator.cpp
+      test_tagged_outputs.cpp
+      test_transformed_source.cpp)
   endif()
   if(PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES

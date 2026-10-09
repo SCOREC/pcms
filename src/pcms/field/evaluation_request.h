@@ -1,7 +1,7 @@
 #ifndef PCMS_EVALUATION_REQUEST_H
 #define PCMS_EVALUATION_REQUEST_H
 
-#include "coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "field_layout.h"
 #include "out_of_bounds_policy.h"
 #include "pcms/utility/arrays.h"

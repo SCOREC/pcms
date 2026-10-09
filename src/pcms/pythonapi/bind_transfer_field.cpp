@@ -35,8 +35,12 @@ void bind_transfer_field_module(py::module& m)
         auto output_device = Kokkos::View<Real**, DeviceMemorySpace>(
           "output_device", output_view.extent(0), output_view.extent(1));
         DeepCopyMismatchLayouts(output_device, output_view);
-        auto output_rank2 = MakeRank2View(output_device);
-        self.Evaluate(field, output_rank2);
+        // The evaluator writes the source field's stored basis; numpy buffers
+        // carry no tag of their own, so claim that basis on the caller's
+        // behalf.
+        self.Evaluate(field, ValueView<Real, DeviceMemorySpace>(
+                               field.GetData().GetValueBasis(),
+                               MakeRank2View(output_device)));
         DeepCopyMismatchLayouts(output_view, output_device);
       },
       py::arg("field"), py::arg("output"),

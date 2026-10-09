@@ -7,7 +7,8 @@
 #include "pcms/discretization/discretization.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/arrays.h"
-#include "coordinate_system.h"
+#include "pcms/field/coordinate_system.hpp"
+#include "pcms/field/coordinate_view.hpp"
 
 namespace pcms
 {
@@ -63,6 +64,16 @@ public:
 
   virtual EntOffsetsArray GetEntOffsets() const = 0;
 
+  [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
+  GetCoordinateSystem() const
+  {
+    if (system_ == nullptr) {
+      throw pcms_error("FieldLayout::GetCoordinateSystem: layout has no "
+                       "coordinate system set");
+    }
+    return system_;
+  }
+
   virtual CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const = 0;
 
   virtual int GetDimension() const = 0;
@@ -83,7 +94,18 @@ protected:
   // construction of the mutable cache would introduce.
   void BuildGlobalToLocalPermutation();
 
+  void SetCoordinateSystem(
+    std::shared_ptr<const CoordinateSystem> coordinate_system)
+  {
+    if (coordinate_system == nullptr) {
+      throw pcms_error(
+        "FieldLayout::SetCoordinateSystem: coordinate system must not be null");
+    }
+    system_ = std::move(coordinate_system);
+  }
+
 private:
+  std::shared_ptr<const CoordinateSystem> system_;
   std::string name_;
   Kokkos::View<LO*, HostMemorySpace> global_to_local_host_;
   Kokkos::View<LO*, DeviceMemorySpace> global_to_local_;

@@ -1,5 +1,6 @@
 #include "pcms/field/layout/xgc.h"
 #include "pcms/utility/assert.h"
+#include "pcms/field/coordinate_systems/cylindrical.hpp"
 
 namespace pcms
 {
@@ -75,6 +76,8 @@ XGCFieldLayout::XGCFieldLayout(
     coords_("xgc_coords", num_plane_nodes, 2),
     num_plane_nodes_(num_plane_nodes)
 {
+  // XGC poloidal planes are in the RZ plane of a cylindrical coordinate system
+  SetCoordinateSystem(csys::CylindricalRZ::Create());
   PCMS_ALWAYS_ASSERT(static_cast<bool>(in_overlap));
   Kokkos::parallel_for(
     "InitXGCMembers",
@@ -160,12 +163,8 @@ EntOffsetsArray XGCFieldLayout::GetEntOffsets() const
 CoordinateView<DeviceMemorySpace> XGCFieldLayout::GetDOFHolderCoordinates()
   const
 {
-  using LayoutPolicy =
-    detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
-  return CoordinateView<DeviceMemorySpace>{
-    CoordinateSystem::XGC,
-    Rank2View<const Real, DeviceMemorySpace, LayoutPolicy>(
-      coords_.data(), num_plane_nodes_, 2)};
+  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(),
+                                           MakeConstRank2View(coords_)};
 }
 
 int XGCFieldLayout::GetDimension() const

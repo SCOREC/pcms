@@ -4,21 +4,16 @@
 #include <Omega_h_mesh.hpp>
 
 #include "pcms/discretization/discretization/omega_h.hpp"
-#include "pcms/field/coordinate_system.h"
 #include "pcms/field/field_layout.h"
 
 namespace pcms
 {
 
-// Layout for fields with one DOF holder on each entity of a single Omega_h
-// mesh dimension. Unlike OmegaHLagrangeLayout, this is not limited to
-// Lagrange orders and directly represents "one value per chosen entity"
-// layouts such as face-centroid reconstruction sites.
 class OmegaHEntityLayout : public FieldLayout
 {
 public:
   OmegaHEntityLayout(Omega_h::Mesh& mesh, int entity_dim, int num_components,
-                     CoordinateSystem coordinate_system,
+                     std::shared_ptr<const CoordinateSystem> coordinate_system,
                      std::string global_id_name = "global");
 
   std::shared_ptr<const Discretization> GetDiscretization()
@@ -47,7 +42,6 @@ private:
   int entity_dim_;
   int num_components_;
   GO num_global_dof_holder_;
-  CoordinateSystem coordinate_system_;
 
   Omega_h::Write<Omega_h::GO> gids_;
   Omega_h::HostWrite<Omega_h::GO> gids_host_;

@@ -16,6 +16,7 @@
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/omega_h_array_utils.h"
 #include "field_test_utils.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 namespace
 {
@@ -24,7 +25,7 @@ std::shared_ptr<pcms::OmegaHEntityLayout> MakeMeshEntityLayout(
   Omega_h::Mesh& mesh, int entity_dim)
 {
   return std::make_shared<pcms::OmegaHEntityLayout>(
-    mesh, entity_dim, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, entity_dim, 1, pcms::csys::Cartesian::Deferred());
 }
 
 } // namespace
@@ -45,12 +46,12 @@ TEST_CASE(
   auto source_coords = mesh.coords();
   auto target_coords = pcms::test::CopyOmegaHRealsToVector(source_coords);
   auto target_device = pcms::test::CreateDeviceCoordinateView(
-    target_coords, pcms::CoordinateSystem::Cartesian, dim);
+    target_coords, pcms::csys::Cartesian::Deferred(), dim);
 
   auto coords_dev = pcms::ConvertCoordsTo2D(source_coords, mesh.nverts(), dim);
 
   auto layout = std::make_shared<pcms::PointCloudLayout>(
-    dim, coords_dev, pcms::CoordinateSystem::Cartesian);
+    dim, coords_dev, pcms::csys::Cartesian::Deferred());
   pcms::PointCloudLocalizationFactory factory(layout, options);
 
   auto actual = factory.Build(target_device.coordinate_view);
@@ -81,7 +82,7 @@ TEST_CASE("LocalizationFactory: vertex adjacency Build matches two-mesh "
   auto target_coords =
     pcms::test::CopyOmegaHRealsToVector(target_mesh.coords());
   auto target_device = pcms::test::CreateDeviceCoordinateView(
-    target_coords, pcms::CoordinateSystem::Cartesian, target_mesh.dim());
+    target_coords, pcms::csys::Cartesian::Deferred(), target_mesh.dim());
 
   auto actual = factory.Build(target_device.coordinate_view);
 
@@ -103,7 +104,7 @@ TEST_CASE("Localization path selection: vertex source uses adjacency for "
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 8, 8, 0, false);
 
   auto source_layout = std::make_shared<pcms::OmegaHLagrangeLayout>(
-    mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(pcms::detail::SelectLocalizationPath(*source_layout) ==
           pcms::detail::LocalizationPath::VertexAdjacencySearch);
@@ -118,7 +119,7 @@ TEST_CASE(
 
   auto source_layout = MakeMeshEntityLayout(mesh, pcms::Face);
   auto target_layout = std::make_shared<pcms::OmegaHLagrangeLayout>(
-    mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(
     pcms::detail::SelectLocalizationPath(*source_layout, target_layout.get()) ==
@@ -183,7 +184,7 @@ TEST_CASE("LocalizationFactory: correct with different meshes")
   auto target_coords =
     pcms::test::CopyOmegaHRealsToVector(target_mesh.coords());
   auto target_device = pcms::test::CreateDeviceCoordinateView(
-    target_coords, pcms::CoordinateSystem::Cartesian, target_mesh.dim());
+    target_coords, pcms::csys::Cartesian::Deferred(), target_mesh.dim());
 
   // Should not throw — falls back to point-cloud N^2 path.
   auto result = factory.Build(target_device.coordinate_view);

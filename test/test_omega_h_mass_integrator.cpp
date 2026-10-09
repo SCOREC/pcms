@@ -18,6 +18,8 @@
 #include <map>
 #include <utility>
 #include <vector>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/coordinate_systems/cylindrical.hpp"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,6 +27,31 @@
 
 namespace
 {
+
+// dummy coordinate system that's public interfaces gives
+// same result as Cartesian should fail equality
+class OtherCartesian2 final : public pcms::CoordinateSystem
+{
+public:
+  [[nodiscard]] std::string_view Kind() const noexcept override
+  {
+    return "cartesian";
+  }
+  [[nodiscard]] int Dimension() const noexcept override { return 2; }
+  [[nodiscard]] bool HasOrthogonalBasis() const noexcept override
+  {
+    return true;
+  }
+  [[nodiscard]] bool HasUnitScaleFactors() const noexcept override
+  {
+    return true;
+  }
+  [[nodiscard]] bool operator==(
+    const pcms::CoordinateSystem& other) const noexcept override
+  {
+    return dynamic_cast<const OtherCartesian2*>(&other) != nullptr;
+  }
+};
 
 std::map<std::pair<pcms::GO, pcms::GO>, pcms::Real> BuildReferenceMassMap(
   Omega_h::Mesh& mesh, const pcms::FunctionSpace& space)
@@ -151,7 +178,7 @@ TEST_CASE("OmegaHMassIntegrator: lumped diagonal equals consistent row sums",
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
 
   auto space = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
 
   const auto layout =
@@ -211,7 +238,7 @@ TEST_CASE("OmegaHMassIntegrator: P0 lumped equals consistent",
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
 
   auto space = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 0, 1, pcms::CoordinateSystem::Cartesian, "global",
+    mesh, 0, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
 
   auto consistent = pcms::BuildOmegaHMassIntegrator(*space);
@@ -252,7 +279,7 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
   SECTION("multi-component space throws")
   {
     auto space = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 2, pcms::CoordinateSystem::Cartesian, "global",
+      mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
   }
@@ -260,7 +287,17 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
   SECTION("non-Cartesian coordinate system throws")
   {
     auto space = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 1, pcms::CoordinateSystem::Cylindrical, "global",
+      mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
+      pcms::LagrangeFunctionSpace::Backend::OmegaH);
+    REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
+  }
+
+  SECTION("distinct cartesian-kind system throws")
+  {
+    const std::shared_ptr<const pcms::CoordinateSystem> other =
+      std::make_shared<OtherCartesian2>();
+    auto space = pcms::LagrangeFunctionSpace::FromMesh(
+      mesh, 1, 1, other, "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
   }

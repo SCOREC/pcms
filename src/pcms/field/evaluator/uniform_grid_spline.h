@@ -46,6 +46,7 @@ public:
       grid_(layout_->GetGrid()),
       hint_(std::move(hint)),
       fill_value_(fill_value),
+      filled_points_(detail::FilledPointIndices(hint_)),
       x_coords_("uniform_grid_spline_x", grid_.divisions[0] + 1),
       y_coords_("uniform_grid_spline_y", grid_.divisions[1] + 1)
   {
@@ -67,10 +68,19 @@ public:
       detail::InitCoordsFunctor{y_coords_, bot_left_y, dy});
   }
 
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    return filled_points_;
+  }
+
   void Evaluate(
     const Field<Real>& field,
-    Rank2View<Real, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
+    this->CheckEvaluateWriteTag("UniformGridSplinePointEvaluator2D::Evaluate",
+                                field, out);
+    const auto values = out.GetValues();
     LO num_points = static_cast<LO>(hint_.coordinates_.extent(0));
     PCMS_ALWAYS_ASSERT(values.extent(0) == static_cast<size_t>(num_points));
     PCMS_ALWAYS_ASSERT(values.extent(1) == 1);
@@ -174,6 +184,7 @@ private:
   UniformGrid<2> grid_;
   UniformGridFieldLocalizationHint<2> hint_;
   Real fill_value_;
+  Kokkos::View<const LO*, DeviceMemorySpace> filled_points_;
   Kokkos::View<Real*, DeviceMemorySpace> x_coords_;
   Kokkos::View<Real*, DeviceMemorySpace> y_coords_;
 };
@@ -189,11 +200,6 @@ public:
 
   const FieldLayout& GetLayout() const override { return *layout_; }
 
-  CoordinateSystem GetCoordinateSystem() const override
-  {
-    return layout_->GetDOFHolderCoordinates().GetCoordinateSystem();
-  }
-
   bool HasDOFHolderCoordinates() const override { return true; }
 
   bool SupportsNearestBoundary() const override { return false; }
@@ -203,10 +209,6 @@ public:
   {
     const auto coords = request.coords;
     const auto policy = request.policy;
-    if (coords.GetCoordinateSystem() != GetCoordinateSystem()) {
-      throw pcms_error(
-        "UniformGridSplineEvaluatorFactory2D: coordinate system mismatch");
-    }
     if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY) {
       throw pcms_error(
         "UniformGridSplineEvaluatorFactory2D: nearest-boundary evaluation is "

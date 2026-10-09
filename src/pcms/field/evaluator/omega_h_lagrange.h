@@ -219,9 +219,12 @@ public:
 
   void Evaluate(
     const Field<T>& field,
-    Rank2View<T, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<T, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
+    this->CheckEvaluateWriteTag("OmegaHLagrangePointEvaluator::Evaluate", field,
+                                out);
+    const auto values = out.GetValues();
     auto dof_data = field.GetDOFHolderData();
     LO n_valid = static_cast<LO>(hint_.elem_ids.size());
     int n_comp = layout_->GetNumComponents();
@@ -279,6 +282,15 @@ public:
     }
   }
 
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    if (hint_.mode != OutOfBoundsMode::FILL) {
+      return {};
+    }
+    return hint_.missing_indices;
+  }
+
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
   OmegaHLagrangeLocHint hint_;
@@ -305,11 +317,6 @@ public:
 
   const FieldLayout& GetLayout() const override { return *layout_; }
 
-  CoordinateSystem GetCoordinateSystem() const override
-  {
-    return layout_->GetDOFHolderCoordinates().GetCoordinateSystem();
-  }
-
   bool HasDOFHolderCoordinates() const override { return true; }
 
   bool SupportsNearestBoundary() const override { return false; }
@@ -320,10 +327,6 @@ public:
     PCMS_FUNCTION_TIMER;
     const auto coords = request.coords;
     const auto policy = request.policy;
-    if (coords.GetCoordinateSystem() != GetCoordinateSystem()) {
-      throw pcms_error(
-        "OmegaHLagrangeEvaluatorFactory: coordinate system mismatch");
-    }
     if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY) {
       throw pcms_error(
         "OmegaHLagrangeEvaluatorFactory: NearestBoundary is not supported");

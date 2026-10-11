@@ -93,150 +93,6 @@ template <int Dim>
   return real_coords;
 }
 
-[[nodiscard]] OMEGA_H_INLINE int RemoveDuplicateVerticesAndFixLinks(
-  r3d::Polytope<2>& poly, const double tol = 1e-12)
-{
-  const int old_n = poly.nverts;
-  int new_n = 0;
-
-  for (int i = 0; i < old_n; ++i) {
-    const auto& pi = poly.verts[i].pos;
-    bool dup = false;
-    for (int j = 0; j < new_n; ++j) {
-      const auto& pj = poly.verts[j].pos;
-      if (Kokkos::fabs(pi[0] - pj[0]) < tol &&
-          Kokkos::fabs(pi[1] - pj[1]) < tol) {
-        dup = true;
-        break;
-      }
-    }
-    if (!dup) {
-      poly.verts[new_n] = poly.verts[i];
-      ++new_n;
-    }
-  }
-  poly.nverts = new_n;
-
-  if (new_n >= 3) {
-    double cx = 0.0;
-    double cy = 0.0;
-    for (int i = 0; i < new_n; ++i) {
-      cx += poly.verts[i].pos[0];
-      cy += poly.verts[i].pos[1];
-    }
-    cx /= new_n;
-    cy /= new_n;
-
-    int order[r3d::MaxVerts<2>::value];
-    for (int i = 0; i < new_n; ++i) {
-      order[i] = i;
-    }
-
-    for (int i = 0; i < new_n - 1; ++i) {
-      for (int j = i + 1; j < new_n; ++j) {
-        const double a1 = Kokkos::atan2(poly.verts[order[i]].pos[1] - cy,
-                                        poly.verts[order[i]].pos[0] - cx);
-        const double a2 = Kokkos::atan2(poly.verts[order[j]].pos[1] - cy,
-                                        poly.verts[order[j]].pos[0] - cx);
-        if (a1 > a2) {
-          int t = order[i];
-          order[i] = order[j];
-          order[j] = t;
-        }
-      }
-    }
-
-    r3d::Vertex<2> tmp[r3d::MaxVerts<2>::value];
-    for (int i = 0; i < new_n; ++i) {
-      tmp[i] = poly.verts[order[i]];
-    }
-
-    for (int i = 0; i < new_n; ++i) {
-      poly.verts[i] = tmp[i];
-    }
-
-    for (int i = 0; i < new_n; ++i) {
-      const int prev = (i - 1 + new_n) % new_n;
-      const int next = (i + 1) % new_n;
-      poly.verts[i].pnbrs[0] = prev;
-      poly.verts[i].pnbrs[1] = next;
-    }
-
-    double area = r3d::measure(poly);
-    if (area < 0.0) {
-      for (int i = 0; i < new_n / 2; ++i) {
-        r3d::Vertex<2> t = poly.verts[i];
-        poly.verts[i] = poly.verts[new_n - 1 - i];
-        poly.verts[new_n - 1 - i] = t;
-      }
-      for (int i = 0; i < new_n; ++i) {
-        const int prev = (i - 1 + new_n) % new_n;
-        const int next = (i + 1) % new_n;
-        poly.verts[i].pnbrs[0] = prev;
-        poly.verts[i].pnbrs[1] = next;
-      }
-    }
-  } else {
-    for (int i = 0; i < new_n; ++i) {
-      poly.verts[i].pnbrs[0] = -1;
-      poly.verts[i].pnbrs[1] = -1;
-    }
-  }
-
-  return new_n;
-}
-
-// 2D: fan the clipped intersection polygon into triangles anchored at vertex 0,
-// invoking op(sub_triangle, src_elm, area) for each non-degenerate piece.
-template <typename SimplexOp>
-OMEGA_H_INLINE void ForEachIntersectionSubtriangleImpl(
-  const int elm, const IntersectionResults& intersection,
-  const Omega_h::Reals& tgt_coords, const Omega_h::Reals& src_coords,
-  const Omega_h::LOs& tgt_elems2nodes, const Omega_h::LOs& src_elems2nodes,
-  SimplexOp&& op)
-{
-  auto tgt_elm_vert_coords =
-    get_vert_coords_of_elem<2>(tgt_coords, tgt_elems2nodes, elm);
-  const int start = intersection.tgt2src_offsets[elm];
-  const int end = intersection.tgt2src_offsets[elm + 1];
-
-  for (int i = start; i < end; ++i) {
-    const int current_src_elm = intersection.tgt2src_indices[i];
-    auto src_elm_vert_coords =
-      get_vert_coords_of_elem<2>(src_coords, src_elems2nodes, current_src_elm);
-    r3d::Polytope<2> poly;
-    r3d::intersect_simplices(poly, tgt_elm_vert_coords, src_elm_vert_coords);
-    auto nverts = RemoveDuplicateVerticesAndFixLinks(poly, 1e-12);
-    auto poly_area = r3d::measure(poly);
-
-    for (int j = 1; j < nverts - 1; ++j) {
-      auto& p0 = poly.verts[0].pos;
-      auto& p1 = poly.verts[j].pos;
-      auto& p2 = poly.verts[j + 1].pos;
-
-      Omega_h::Few<Omega_h::Vector<2>, 3> tri_coords;
-      tri_coords[0] = {p0[0], p0[1]};
-      tri_coords[1] = {p1[0], p1[1]};
-      tri_coords[2] = {p2[0], p2[1]};
-
-      Omega_h::Few<Omega_h::Vector<2>, 2> basis;
-      basis[0] = tri_coords[1] - tri_coords[0];
-      basis[1] = tri_coords[2] - tri_coords[0];
-
-      Omega_h::Real area =
-        Kokkos::fabs(Omega_h::triangle_area_from_basis(basis));
-
-      const double eps_area =
-        PCMS_INTERSECTION_ABS_TOL + PCMS_INTERSECTION_REL_TOL * poly_area;
-      if (area <= eps_area) {
-        continue;
-      }
-
-      op(tri_coords, current_src_elm, area);
-    }
-  }
-}
-
 // Walk each face of a clipped r3d polyhedron exactly once and fan it into
 // triangles, invoking op(v0, v1, v2) for each triangle (v0 is the face's anchor
 // vertex, so a face with k vertices yields k-2 triangles). Every vertex of an
@@ -293,74 +149,98 @@ OMEGA_H_INLINE void ForEachPolytopeFaceTriangle(const r3d::Polytope<3>& poly,
   }
 }
 
-// 3D: star-decompose the clipped intersection polyhedron into tetrahedra from
-// its centroid. The centroid lies strictly inside the convex intersection, so
-// lifting each boundary-face triangle (enumerated by
-// ForEachPolytopeFaceTriangle) to the centroid tiles the polyhedron without
-// overlap; op(sub_tet, src_elm, volume) fires for each non-degenerate piece.
-template <typename SimplexOp>
-OMEGA_H_INLINE void ForEachIntersectionSubtetImpl(
-  const int elm, const IntersectionResults& intersection,
-  const Omega_h::Reals& tgt_coords, const Omega_h::Reals& src_coords,
-  const Omega_h::LOs& tgt_elems2nodes, const Omega_h::LOs& src_elems2nodes,
-  SimplexOp&& op)
+// ---------------------------------------------------------------------------
+// Star decomposition of a clipped r3d polytope into quadrature simplices.
+// ---------------------------------------------------------------------------
+
+// Boundary (Dim-1)-simplices of a clipped r3d polytope as its vertex graph
+// encodes them; op(facet) receives the facet's Dim vertices in walk order.
+//
+// This is the one dimension-specific step of the decomposition, because r3d's
+// graph has no dimension-generic boundary iterator (r3d::reduce is itself
+// written once per dimension). In 2D, pnbrs[0] is the next vertex around the
+// single cycle and every edge is a facet. In 3D, the three pnbrs are the
+// cyclically ordered neighbors and faces are recovered by the edge-marking walk
+template <typename FacetOp>
+OMEGA_H_INLINE void ForEachPolytopeBoundarySimplex(const r3d::Polytope<2>& poly,
+                                                   FacetOp&& op)
 {
-  auto tgt_elm_vert_coords =
-    get_vert_coords_of_elem<3>(tgt_coords, tgt_elems2nodes, elm);
-  const int start = intersection.tgt2src_offsets[elm];
-  const int end = intersection.tgt2src_offsets[elm + 1];
-
-  for (int i = start; i < end; ++i) {
-    const int current_src_elm = intersection.tgt2src_indices[i];
-    auto src_elm_vert_coords =
-      get_vert_coords_of_elem<3>(src_coords, src_elems2nodes, current_src_elm);
-    r3d::Polytope<3> poly;
-    r3d::intersect_simplices(poly, tgt_elm_vert_coords, src_elm_vert_coords);
-    if (poly.nverts < 4) {
-      continue;
-    }
-    const double poly_vol = Kokkos::fabs(r3d::measure(poly));
-    const double eps_vol =
-      PCMS_INTERSECTION_ABS_TOL + PCMS_INTERSECTION_REL_TOL * poly_vol;
-
-    // Centroid of the (convex) intersection polyhedron: interior apex.
-    Omega_h::Vector<3> apex = {0.0, 0.0, 0.0};
-    for (int v = 0; v < poly.nverts; ++v) {
-      apex[0] += poly.verts[v].pos[0];
-      apex[1] += poly.verts[v].pos[1];
-      apex[2] += poly.verts[v].pos[2];
-    }
-    apex[0] /= poly.nverts;
-    apex[1] /= poly.nverts;
-    apex[2] /= poly.nverts;
-
-    // Lift each boundary-face triangle to the interior centroid to form a tet.
-    ForEachPolytopeFaceTriangle(poly, [&](const r3d::Vector<3>& a,
-                                          const r3d::Vector<3>& b,
-                                          const r3d::Vector<3>& c) {
-      Omega_h::Few<Omega_h::Vector<3>, 4> tet_coords;
-      tet_coords[0] = apex;
-      tet_coords[1] = {a[0], a[1], a[2]};
-      tet_coords[2] = {b[0], b[1], b[2]};
-      tet_coords[3] = {c[0], c[1], c[2]};
-
-      Omega_h::Few<Omega_h::Vector<3>, 3> basis;
-      basis[0] = tet_coords[1] - tet_coords[0];
-      basis[1] = tet_coords[2] - tet_coords[0];
-      basis[2] = tet_coords[3] - tet_coords[0];
-
-      const Omega_h::Real vol =
-        Kokkos::fabs(Omega_h::tet_volume_from_basis(basis));
-      if (vol > eps_vol) {
-        op(tet_coords, current_src_elm, vol);
-      }
-    });
+  for (int v = 0; v < poly.nverts; ++v) {
+    r3d::Few<r3d::Vector<2>, 2> facet;
+    facet[0] = poly.verts[v].pos;
+    facet[1] = poly.verts[poly.verts[v].pnbrs[0]].pos;
+    op(facet);
   }
 }
 
-// Dimension-generic driver over the sub-simplices (triangles in 2D, tets in 3D)
-// that tile each target element's intersection with the source mesh. Invokes
-// op(sub_simplex_coords, src_elm, measure) for every non-degenerate piece.
+template <typename FacetOp>
+OMEGA_H_INLINE void ForEachPolytopeBoundarySimplex(const r3d::Polytope<3>& poly,
+                                                   FacetOp&& op)
+{
+  ForEachPolytopeFaceTriangle(poly, [&](const r3d::Vector<3>& a,
+                                        const r3d::Vector<3>& b,
+                                        const r3d::Vector<3>& c) {
+    r3d::Few<r3d::Vector<3>, 3> facet;
+    facet[0] = a;
+    facet[1] = b;
+    facet[2] = c;
+    op(facet);
+  });
+}
+
+// Signed measure of the simplex (apex, facet[0], ..., facet[Dim-1]) in the
+// order the boundary walk emits it.
+template <int Dim>
+[[nodiscard]] OMEGA_H_INLINE Omega_h::Real StarSimplexSignedMeasure(
+  const Omega_h::Vector<Dim>& apex,
+  const r3d::Few<r3d::Vector<Dim>, Dim>& facet)
+{
+  Omega_h::Few<Omega_h::Vector<Dim>, Dim> basis;
+  for (int i = 0; i < Dim; ++i) {
+    for (int d = 0; d < Dim; ++d) {
+      basis[i][d] = facet[i][d] - apex[d];
+    }
+  }
+  return Omega_h::simplex_size_from_basis(basis);
+}
+
+// Star-decompose a clipped r3d polytope into simplices, invoking
+// op(simplex, measure) for every piece with |measure| > eps.
+template <int Dim, typename SimplexOp>
+OMEGA_H_INLINE void ForEachPolytopeStarSimplex(const r3d::Polytope<Dim>& poly,
+                                               const double eps, SimplexOp&& op)
+{
+  Omega_h::Vector<Dim> apex;
+  for (int d = 0; d < Dim; ++d) {
+    apex[d] = poly.verts[0].pos[d];
+  }
+
+  Omega_h::Real signed_total = 0.0;
+  ForEachPolytopeBoundarySimplex(
+    poly, [&](const r3d::Few<r3d::Vector<Dim>, Dim>& facet) {
+      signed_total += StarSimplexSignedMeasure<Dim>(apex, facet);
+    });
+  const Omega_h::Real orientation = (signed_total < 0.0) ? -1.0 : 1.0;
+
+  ForEachPolytopeBoundarySimplex(
+    poly, [&](const r3d::Few<r3d::Vector<Dim>, Dim>& facet) {
+      const Omega_h::Real measure =
+        orientation * StarSimplexSignedMeasure<Dim>(apex, facet);
+      if (Kokkos::fabs(measure) > eps) {
+        Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1> simplex;
+        simplex[0] = apex;
+        for (int i = 0; i < Dim; ++i) {
+          for (int d = 0; d < Dim; ++d) {
+            simplex[i + 1][d] = facet[i][d];
+          }
+        }
+        op(simplex, measure);
+      }
+    });
+}
+
+// loop over the sub-simplices (triangles in 2D, tets in 3D) that partition each
+// target element's intersection with the source mesh
 template <int Dim, typename SimplexOp>
 OMEGA_H_INLINE void ForEachIntersectionSubsimplex(
   const int elm, const IntersectionResults& intersection,
@@ -368,13 +248,28 @@ OMEGA_H_INLINE void ForEachIntersectionSubsimplex(
   const Omega_h::LOs& tgt_elems2nodes, const Omega_h::LOs& src_elems2nodes,
   SimplexOp&& op)
 {
-  if constexpr (Dim == 3) {
-    ForEachIntersectionSubtetImpl(elm, intersection, tgt_coords, src_coords,
-                                  tgt_elems2nodes, src_elems2nodes, op);
-  } else {
-    ForEachIntersectionSubtriangleImpl(elm, intersection, tgt_coords,
-                                       src_coords, tgt_elems2nodes,
-                                       src_elems2nodes, op);
+  auto tgt_elm_vert_coords =
+    get_vert_coords_of_elem<Dim>(tgt_coords, tgt_elems2nodes, elm);
+  const int start = intersection.tgt2src_offsets[elm];
+  const int end = intersection.tgt2src_offsets[elm + 1];
+
+  for (int i = start; i < end; ++i) {
+    const int current_src_elm = intersection.tgt2src_indices[i];
+    auto src_elm_vert_coords = get_vert_coords_of_elem<Dim>(
+      src_coords, src_elems2nodes, current_src_elm);
+    r3d::Polytope<Dim> poly;
+    r3d::intersect_simplices(poly, tgt_elm_vert_coords, src_elm_vert_coords);
+    if (poly.nverts < Dim + 1) {
+      continue;
+    }
+    const double poly_measure = Kokkos::fabs(r3d::measure(poly));
+    const double eps =
+      PCMS_INTERSECTION_ABS_TOL + PCMS_INTERSECTION_REL_TOL * poly_measure;
+
+    ForEachPolytopeStarSimplex<Dim>(
+      poly, eps,
+      [&](const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>& simplex,
+          Omega_h::Real measure) { op(simplex, current_src_elm, measure); });
   }
 }
 

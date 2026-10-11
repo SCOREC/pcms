@@ -1,0 +1,81 @@
+# Updates a single "code coverage" comment on PRs whenever the Test-Build
+# workflow completes successfully.
+#
+# This is triggered via workflow_run (rather than pull_request) so that it runs
+# in the base repository context and can write to pull requests from forks.
+# Keep the `workflows:` name below in sync with the `name:` in cmake-test.yml.
+name: Coverage Comment
+
+on:
+  workflow_run:
+    workflows: ["Test-Build"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  coverage-comment:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download PR number
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: pr-number
+          path: artifacts/pr-number
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Python coverage
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: coverage-python
+          path: artifacts/coverage-python
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download C++ coverage
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: coverage-cpp
+          path: artifacts/coverage-cpp
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate coverage report
+        run: |
+          python3 .github/scripts/coverage_report.py \
+            artifacts/coverage-python/coverage.xml \
+            artifacts/coverage-cpp/coverage-cpp.xml \
+            > coverage-summary.md
+          cat coverage-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post or update PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          PR_NUMBER="$(cat artifacts/pr-number/pr_number 2>/dev/null || true)"
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No PR number artifact found; skipping PR comment."
+            exit 0
+          fi
+
+          COMMENT_ID="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
+            --jq '[.[] | select(.body | contains("<!-- pcms-coverage-report -->"))][0].id // empty')"
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X PATCH "repos/$GH_REPO/issues/comments/$COMMENT_ID" \
+              -f body="$(cat coverage-summary.md)"
+          else
+            gh pr comment "$PR_NUMBER" --body-file coverage-summary.md
+          fi

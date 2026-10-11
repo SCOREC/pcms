@@ -39,22 +39,12 @@ get_vert_coords_of_elem(const Omega_h::Reals& coords,
 /**
  * @brief Conservative test for a zero-volume overlap between two simplices.
  *
- * Uses the face planes of both simplices as candidate separating axes: if
- * every vertex of one simplex lies in the closed outer half-space of some face
+ * If verticies of one simplex lies in the closed outer half-space of some face
  * plane of the other, their intersection is contained in that plane and so has
- * no volume. Rejecting such a pair here avoids an r3d clip, which is an order
- * of magnitude more expensive. Face-adjacent elements -- the common case when
- * walking a source mesh's dual graph -- are separated exactly by their shared
- * face's plane, so they are caught after one or two tests.
- *
- * The face planes alone are an incomplete set of separating axes (a complete
- * test also needs the edge-edge cross products), so a genuinely disjoint pair
- * may not be detected. That is safe: an undetected pair falls through to the
- * exact clip. The test never reports separation for a pair with positive
- * overlap volume, which is what makes it usable as a pre-filter.
+ * no volume.
  *
  * @return true when the overlap is provably degenerate and the clip can be
- * skipped; false when the exact clip is still required.
+ * skipped
  */
 template <int Dim>
 [[nodiscard]] OMEGA_H_INLINE bool simplices_have_degenerate_overlap(
@@ -161,17 +151,14 @@ public:
    * area tolerance), it is included.
    *
    * @param start_elements For each target element, the source element
-   * containing its centroid (from a point search over the source mesh); the
-   * BFS starts there. Located once by the caller and shared by both passes.
+   * containing its centroid (from a point search over the source mesh)
    * @param tgt2src_offsets Offsets array (only used when writing indices).
    * @param[out] nIntersections Number of intersecting source elements per
    * target element.
    * @param[out] tgt2src_indices Indices of intersecting source elements.
    * @param is_count_only If true, only counts intersections; if false, also
    * fills tgt2src_indices.
-   * @param use_prefilter If true, skip the exact clip for pairs that
-   * simplices_have_degenerate_overlap rejects. Only exposed so tests can
-   * compare against the unfiltered path; production callers want it on.
+   * @param use_prefilter if true, skip degenerate clips
    *
    * @note Templated on spatial dimension `Dim`: linear triangles (Dim==2) or
    * linear tetrahedra (Dim==3), using `r3d::intersect_simplices` for geometric
@@ -211,17 +198,6 @@ IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
                                      bool use_prefilter = true);
 
 /**
- * @brief As above, locating target centroids with a caller-owned search over
- * the source mesh instead of building one.
- *
- * The source function space already owns such a search for point evaluation,
- * and constructing another costs a full candidate-map build and holds a second
- * copy of it for the operator's lifetime. The resulting map does not depend on
- * which search located the centroids.
- *
- * @param source_search Must have been built over `source_mesh`; that is the
- * caller's responsibility. Its dimension must match the meshes (pcms_error
- * otherwise).
  */
 IntersectionResults intersectTargets(
   Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,

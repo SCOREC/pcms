@@ -118,14 +118,8 @@ void FindIntersections::adjBasedIntersectSearch(
             auto elm_vert_coords = get_vert_coords_of_elem<Dim>(
               src_coords, src_elems2nodes, neighborElmId);
 
-            // Most neighbors reached through the dual graph share a face with
-            // an element that already overlaps and so contribute no volume.
-            // The plane test settles those far more cheaply than a clip and
-            // only ever rejects provably degenerate overlaps. It is not a pure
-            // speed-up, though: on meshes with non-dyadic coordinates the clip
-            // itself accepts many of these shared-face pairs as roundoff
-            // slivers (volume ~1e-12 of the element, right at eps), so the
-            // filtered map is strictly smaller and the more correct one.
+            // use plane to check if element is already outside clipped region
+            // this avoids construction of unnecessary clip
             if (use_prefilter && simplices_have_degenerate_overlap<Dim>(
                                    tgt_elm_vert_coords, elm_vert_coords)) {
               continue;

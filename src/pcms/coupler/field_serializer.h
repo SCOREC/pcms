@@ -40,11 +40,19 @@ public:
     const auto& layout = field.GetLayout();
     const LO num_dof = layout.GetNumOwnedDofHolder();
     const LO num_comp = layout.GetNumComponents();
+    // We initialize with local data so that
+    // data that doesn't get received from deserialized
+    // doesn't get zeroed out. Long term FIXME
+    // is to make Get/SetData operate over only part of the
+    // arrays
+    auto current = field.GetDOFHolderDataHost();
     Kokkos::View<T*, HostMemorySpace> sorted("sorted", layout.OwnedSize());
     for (LO i = 0; i < num_dof; ++i) {
-      // A negative permutation entry marks a holder outside the exchange (owned
-      // but outside the overlap region); no data was received for it, so its
-      // zero-initialized `sorted` slot is left as-is.
+      for (LO c = 0; c < num_comp; ++c) {
+        sorted[i * num_comp + c] = current(i, c);
+      }
+    }
+    for (LO i = 0; i < num_dof; ++i) {
       if (permutation[i] >= 0) {
         for (LO c = 0; c < num_comp; ++c) {
           sorted[i * num_comp + c] = buffer[permutation[i] * num_comp + c];

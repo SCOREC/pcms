@@ -152,13 +152,6 @@ using Uniform3DGrid = UniformGrid<3>;
 /**
  * \brief Divisions per axis giving roughly one element per grid cell.
  *
- * The candidate list of a cell is scanned linearly per point query, so cell
- * occupancy sets the query cost; a resolution fixed independently of the mesh
- * makes that cost grow with the element count. Scaling as nelems^(1/dim) keeps
- * occupancy roughly constant. `min_divisions` keeps tiny meshes on a sane grid.
- *
- * \warning Only worth raising once the candidate map is built element-major:
- * a cell-major O(num_cells * nelems) build gets worse as this grows.
  */
 template <unsigned dim>
 LO DivisionsPerAxisForMesh(LO nelems, LO min_divisions = 10)

@@ -1,31 +1,3 @@
-// Regression tests for target elements that the mesh intersection misses
-// entirely.
-//
-// Conservatively projecting u == 1 from a source mesh onto a target mesh that
-// covers the same domain must give u == 1 on every target element: the value
-// on target element e is (1/|e|) * integral over e of the source field, so it
-// is exactly the fraction of e that the intersection quadrature found.  A
-// target element that comes back 0 was never matched to any source element.
-//
-// Found on a 5.7M-element tetrahedral mesh coarsened 3x with Omega_h's
-// adapter: 2528 of 227381 target elements came back exactly 0, losing 0.66% of
-// the volume and 1.77% of the transferred field.  The distribution was
-// all-or-nothing -- 224853 elements at coverage 1, 2528 at exactly 0, nothing
-// between -- and every failing element's centroid lay on a face of the source
-// mesh to within 1e-15 in barycentric coordinates.
-//
-// Nested uniform boxes reproduce it with no mesh files: the 5^3 target's
-// element centroids land on source grid planes when the source is 10^3,
-// because 10 is a multiple of 5.
-//
-// The seed of the intersection search is the source element containing the
-// target element's centroid, and it is added to the map unconditionally.  A
-// correct seed therefore always yields positive coverage -- it contains an
-// interior point of the target -- so zero coverage means the point search
-// returned an element that does not contain the centroid, after which the
-// breadth-first search over the source dual graph has nowhere to expand.
-// See the companion "point search locates points on shared faces" case in
-// test_point_search.cpp.
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>

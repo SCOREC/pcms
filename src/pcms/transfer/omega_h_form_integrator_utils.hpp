@@ -161,7 +161,6 @@ OMEGA_H_INLINE void ForEachPolytopeFaceTriangle(const r3d::Polytope<3>& poly,
 // written once per dimension). In 2D, pnbrs[0] is the next vertex around the
 // single cycle and every edge is a facet. In 3D, the three pnbrs are the
 // cyclically ordered neighbors and faces are recovered by the edge-marking walk
-// in ForEachPolytopeFaceTriangle, which also fans them into triangles.
 template <typename FacetOp>
 OMEGA_H_INLINE void ForEachPolytopeBoundarySimplex(const r3d::Polytope<2>& poly,
                                                    FacetOp&& op)
@@ -206,32 +205,7 @@ template <int Dim>
 }
 
 // Star-decompose a clipped r3d polytope into simplices, invoking
-// op(simplex, measure) for every piece with |measure| > eps. The pieces'
-// measures sum to the polytope's measure.
-//
-// The apex is the polytope's first vertex: every boundary facet (from
-// ForEachPolytopeBoundarySimplex) is lifted to it, and the facets incident to
-// that vertex give zero-measure pieces that the epsilon filter drops. Any apex
-// works, because by the divergence theorem the signed sum over a closed
-// boundary is the enclosed measure regardless of where the pieces meet; a
-// vertex apex just yields the fewest pieces (one for a clean simplex, against
-// Dim+1 from the centroid), and each piece is one quadrature rule downstream.
-//
-// The measures are *signed*, and that matters: when the clipping planes pass
-// through the polytope's own vertices (a source element sharing a face plane
-// with the target, always the case on the same mesh), r3d sees signed distances
-// of order 1e-13 with mixed signs and splices new vertices at O(1) fractions
-// along the edges between them. The measure it reports is still exact because
-// r3d integrates with signed pieces, but the boundary graph is folded: some
-// facets come back with reversed orientation and cancel against their mirror.
-// Taking |measure| per piece breaks that cancellation and over-counts by up to
-// tens of percent of the element, so the sign is kept and the overall
-// orientation is fixed from the total.
-//
-// The walk's handedness is not fixed by r3d (it follows the order the clip left
-// the neighbor lists in), so the sign that makes the pieces add up to a
-// positive measure is read off the total. Folded pairs cancel in that sum, so
-// it is the true measure to roundoff and its sign is well defined.
+// op(simplex, measure) for every piece with |measure| > eps.
 template <int Dim, typename SimplexOp>
 OMEGA_H_INLINE void ForEachPolytopeStarSimplex(const r3d::Polytope<Dim>& poly,
                                                const double eps, SimplexOp&& op)
@@ -265,13 +239,8 @@ OMEGA_H_INLINE void ForEachPolytopeStarSimplex(const r3d::Polytope<Dim>& poly,
     });
 }
 
-// Driver over the sub-simplices (triangles in 2D, tets in 3D) that tile each
-// target element's intersection with the source mesh: clip the target against
-// every intersecting source element and star-decompose the result. Invokes
-// op(sub_simplex_coords, src_elm, measure) for every non-degenerate piece. The
-// measure is signed (see ForEachPolytopeStarSimplex); the pieces of one
-// intersection always sum to its measure, so callers must use the measure as a
-// weight rather than a size.
+// loop over the sub-simplices (triangles in 2D, tets in 3D) that partition each
+// target element's intersection with the source mesh
 template <int Dim, typename SimplexOp>
 OMEGA_H_INLINE void ForEachIntersectionSubsimplex(
   const int elm, const IntersectionResults& intersection,

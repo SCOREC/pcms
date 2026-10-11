@@ -729,7 +729,7 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
       }
 
       GridPointSearch2D::Result::Dimensionality dim_out =
-        GridPointSearch2D::Result::Dimensionality::REGION;
+        GridPointSearch2D::Result::Dimensionality::NO_INTERSECT;
       LO element_id_out = -1;
       Omega_h::Vector<3> bary_out{0.0, 0.0, 0.0};
 
@@ -759,21 +759,19 @@ Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
         element_id_out = inside_face_id;
         bary_out = inside_face_bary;
       } else {
-        // Outside mesh - beyond tolerance of any entity
-        // Only negate if we truly have no candidates at all.
+        // Outside mesh - beyond tolerance of any entity: name the nearest
+        // entity, encoded so the id stays negative even for entity 0.
         if (best_vertex_id >= 0 &&
             (best_vertex_dist <= best_edge_dist || best_edge_id < 0)) {
           dim_out = GridPointSearch2D::Result::Dimensionality::VERTEX;
-          element_id_out = best_vertex_id;
+          element_id_out = GridPointSearch2D::Result::OutsideId(best_vertex_id);
           bary_out = best_vertex_bary;
-          element_id_out = -element_id_out;
         } else if (best_edge_id >= 0) {
           dim_out = GridPointSearch2D::Result::Dimensionality::EDGE;
-          element_id_out = best_edge_id;
+          element_id_out = GridPointSearch2D::Result::OutsideId(best_edge_id);
           bary_out = best_edge_bary_min;
-          element_id_out = -element_id_out;
         } else {
-          // No candidates at all: both IDs stay -1
+          // No candidates at all: NO_INTERSECT with id -1
         }
       }
 
@@ -818,10 +816,8 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
 
 LO GridPointSearch2D::GetOwningElementId(const Result& result)
 {
-  const LO query_id =
-    (result.element_id < 0) ? -result.element_id : result.element_id;
   return pcms::GetOwningElementId(
-    mesh_, 2, static_cast<int>(result.dimensionality), query_id);
+    mesh_, 2, static_cast<int>(result.dimensionality), result.EntityId());
 }
 
 Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
@@ -834,9 +830,7 @@ Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
   Kokkos::parallel_for(
     results.extent(0), KOKKOS_LAMBDA(const LO i) {
       const auto result = results(i);
-      LO element_id = result.element_id;
-      if (element_id < 0)
-        element_id = -element_id;
+      const LO element_id = result.EntityId();
 
       LO owner = -1;
       if (element_id >= 0) {
@@ -916,10 +910,11 @@ Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
         results(p) = GridPointSearch3D::Result{Dimensionality::REGION,
                                                inside_elem, inside_lambda};
       } else if (nearest_elem >= 0) {
-        results(p) = GridPointSearch3D::Result{Dimensionality::REGION,
-                                               -nearest_elem, nearest_lambda};
+        results(p) = GridPointSearch3D::Result{
+          Dimensionality::REGION,
+          GridPointSearch3D::Result::OutsideId(nearest_elem), nearest_lambda};
       } else {
-        results(p) = GridPointSearch3D::Result{Dimensionality::REGION, -1,
+        results(p) = GridPointSearch3D::Result{Dimensionality::NO_INTERSECT, -1,
                                                Omega_h::zero_vector<DIM + 1>()};
       }
     });
@@ -968,10 +963,8 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
 
 LO GridPointSearch3D::GetOwningElementId(const Result& result)
 {
-  const LO query_id =
-    (result.element_id < 0) ? -result.element_id : result.element_id;
   return pcms::GetOwningElementId(
-    mesh_, 3, static_cast<int>(result.dimensionality), query_id);
+    mesh_, 3, static_cast<int>(result.dimensionality), result.EntityId());
 }
 
 Kokkos::View<LO*> GridPointSearch3D::GetOwningElementIds(
@@ -985,9 +978,7 @@ Kokkos::View<LO*> GridPointSearch3D::GetOwningElementIds(
   Kokkos::parallel_for(
     results.extent(0), KOKKOS_LAMBDA(const LO i) {
       const auto result = results(i);
-      LO element_id = result.element_id;
-      if (element_id < 0)
-        element_id = -element_id;
+      const LO element_id = result.EntityId();
 
       LO owner = -1;
       if (element_id >= 0) {

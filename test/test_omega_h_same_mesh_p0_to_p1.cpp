@@ -111,7 +111,7 @@ std::vector<double> RandomSimplexCoords(int n, unsigned seed)
   std::uniform_real_distribution<double> base(-1900.0, 1900.0);
   std::uniform_real_distribution<double> offset(-50.0, 50.0);
   std::vector<double> coords;
-  coords.reserve(Dim * nv * n);
+  coords.reserve(static_cast<std::size_t>(Dim) * nv * n);
   while (static_cast<int>(coords.size()) < Dim * nv * n) {
     double c[Dim * nv];
     for (int d = 0; d < Dim; ++d) {

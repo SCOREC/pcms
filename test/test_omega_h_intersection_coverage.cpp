@@ -63,12 +63,11 @@ std::vector<pcms::Real> CoveragePerTargetElement(Omega_h::Mesh& source_mesh,
 
   // Lumped: for a P0 target the mass matrix is diagonal either way, so this
   // is an exact division by the element volume and adds no error of its own.
-  pcms::OmegaHConservativeProjection projection(
-    *source_space, *target_space, pcms::MassMatrixType::Lumped);
+  pcms::OmegaHConservativeProjection projection(*source_space, *target_space,
+                                                pcms::MassMatrixType::Lumped);
   projection.Apply(source, target);
 
-  const auto values =
-    pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
+  const auto values = pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
   std::vector<pcms::Real> coverage(values.size());
   for (std::size_t i = 0; i < coverage.size(); ++i) {
     coverage[i] = values[i];
@@ -88,10 +87,8 @@ TEST_CASE("mesh intersection covers every target element",
   const int source_divisions = 10;
   const int target_divisions = 5;
 
-  Omega_h::Mesh source_mesh =
-    pcms::test::BuildUnitCube(lib, source_divisions);
-  Omega_h::Mesh target_mesh =
-    pcms::test::BuildUnitCube(lib, target_divisions);
+  Omega_h::Mesh source_mesh = pcms::test::BuildUnitCube(lib, source_divisions);
+  Omega_h::Mesh target_mesh = pcms::test::BuildUnitCube(lib, target_divisions);
 
   const auto coverage = CoveragePerTargetElement(source_mesh, target_mesh);
   REQUIRE(static_cast<Omega_h::LO>(coverage.size()) == target_mesh.nelems());

@@ -67,10 +67,12 @@ void FindIntersections::adjBasedIntersectSearch(
       auto current_cell_id = start_elements(id);
       auto current_tgt_elm_measure = tgt_elem_measures[id];
 
-      OMEGA_H_CHECK_PRINTF(current_cell_id >= 0,
-                           "ERROR: source cell id not found for given target "
-                           "centroid %d\n",
-                           id);
+      // No source element is a candidate for the centroid's grid cell, so the
+      // target lies outside the source mesh and overlaps nothing.
+      if (current_cell_id < 0) {
+        nIntersections[id] = 0;
+        return;
+      }
 
       auto tgt_elm_vert_coords =
         get_vert_coords_of_elem<Dim>(tgt_coords, tgt_elems2nodes, id);

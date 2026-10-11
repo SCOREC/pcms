@@ -19,13 +19,10 @@ public:
                         Rank1View<const LO, HostMemorySpace> permutation) const
   {
     auto data = field.GetDOFHolderDataHost();
-    auto owned = field.GetLayout().GetOwnedHost();
     if (buffer.size() > 0) {
       const LO num_dof = static_cast<LO>(data.extent(0));
       const LO num_comp = static_cast<LO>(data.extent(1));
       for (LO i = 0; i < num_dof; ++i) {
-        // A negative permutation entry marks a holder outside the exchange
-        // (non-owned, or owned but outside the overlap region); it has no slot.
         if (permutation[i] >= 0) {
           for (LO c = 0; c < num_comp; ++c) {
             buffer[permutation[i] * num_comp + c] = data(i, c);

@@ -384,9 +384,10 @@ TEST_CASE("TransformedSource: nesting composes maps and rotations")
   const auto result = EvaluateToHost(*evaluator, b, CylindricalVector(), n, 3);
   for (int i = 0; i < n; ++i) {
     CAPTURE(i);
-    REQUIRE_THAT(result(i, 0), WithinAbs(cyl_pts[3 * i], kTol));
+    const auto k = 3 * static_cast<size_t>(i);
+    REQUIRE_THAT(result(i, 0), WithinAbs(cyl_pts[k], kTol));
     REQUIRE_THAT(result(i, 1), WithinAbs(0.0, kTol));
-    REQUIRE_THAT(result(i, 2), WithinAbs(cyl_pts[3 * i + 2], kTol));
+    REQUIRE_THAT(result(i, 2), WithinAbs(cyl_pts[k + 2], kTol));
   }
 }
 

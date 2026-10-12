@@ -18,6 +18,7 @@
 #include <pcms/transfer/interpolator.h>
 #include <cmath>
 #include <cstdio>
+#include <exception>
 #include <memory>
 #include <vector>
 
@@ -188,9 +189,14 @@ void CaseC(Omega_h::Library& lib)
 
 int main(int argc, char** argv)
 {
-  Omega_h::Library lib(&argc, &argv);
-  CaseA();
-  CaseB(lib);
-  CaseC(lib);
+  try {
+    Omega_h::Library lib(&argc, &argv);
+    CaseA();
+    CaseB(lib);
+    CaseC(lib);
+  } catch (const std::exception& e) {
+    std::fprintf(stderr, "error: %s\n", e.what());
+    return 1;
+  }
   return 0;
 }

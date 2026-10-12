@@ -301,6 +301,23 @@ TEST_CASE(
 namespace
 {
 
+Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> SwapXYPoints(
+  const pcms::CoordinateView<pcms::DeviceMemorySpace>& query_points)
+{
+  const auto in = query_points.GetValues();
+  Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> out("swapped",
+                                                          in.extent(0), 2);
+  Kokkos::parallel_for(
+    "swap_xy",
+    Kokkos::RangePolicy<pcms::DeviceMemorySpace::execution_space>(
+      0, static_cast<pcms::LO>(in.extent(0))),
+    KOKKOS_LAMBDA(const pcms::LO i) {
+      out(i, 0) = in(i, 1);
+      out(i, 1) = in(i, 0);
+    });
+  return out;
+}
+
 class SwapXY final : public pcms::CoordinateMap
 {
 public:
@@ -315,19 +332,8 @@ protected:
     const pcms::CoordinateView<pcms::DeviceMemorySpace>& query_points)
     const override
   {
-    const auto in = query_points.GetValues();
-    Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> out("swapped",
-                                                            in.extent(0), 2);
-    Kokkos::parallel_for(
-      "swap_xy",
-      Kokkos::RangePolicy<pcms::DeviceMemorySpace::execution_space>(
-        0, static_cast<pcms::LO>(in.extent(0))),
-      KOKKOS_LAMBDA(const pcms::LO i) {
-        out(i, 0) = in(i, 1);
-        out(i, 1) = in(i, 0);
-      });
     return std::make_unique<pcms::BoundCoordinateMap>(
-      GetTargetCoordinateSystem(), out);
+      GetTargetCoordinateSystem(), SwapXYPoints(query_points));
   }
 };
 

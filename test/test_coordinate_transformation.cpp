@@ -139,7 +139,7 @@ TEST_CASE("CartesianToCylindrical: Bind produces known values")
 
   auto out =
     pcms::test::CopyCoordinatesToHost(bound->MappedPoints().GetValues());
-  for (int i = 0; i < 4; ++i) {
+  for (size_t i = 0; i < 4; ++i) {
     const Real x = xyz[3 * i], y = xyz[3 * i + 1], z = xyz[3 * i + 2];
     CAPTURE(i);
     REQUIRE_THAT(out(i, 0),
@@ -224,7 +224,7 @@ TEST_CASE("bound map: manufactured pushforward rotates vector components")
                                  2.0, M_PI / 2.0, 1.0, //
                                  0.5, M_PI / 4.0, -1.0};
   std::vector<Real> xyz(rtz.size());
-  for (int i = 0; i < 3; ++i) {
+  for (size_t i = 0; i < 3; ++i) {
     xyz[3 * i] = rtz[3 * i] * std::cos(rtz[3 * i + 1]);
     xyz[3 * i + 1] = rtz[3 * i] * std::sin(rtz[3 * i + 1]);
     xyz[3 * i + 2] = rtz[3 * i + 2];
@@ -242,12 +242,37 @@ TEST_CASE("bound map: manufactured pushforward rotates vector components")
   REQUIRE(result.GetValues().data_handle() == values.data());
   auto out =
     pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(values));
-  for (int i = 0; i < 3; ++i) {
+  for (size_t i = 0; i < 3; ++i) {
     const Real theta = rtz[3 * i + 1];
     CAPTURE(i);
     REQUIRE_THAT(out(i, 0), WithinAbs(std::cos(theta), pcms::test::ExactTol));
     REQUIRE_THAT(out(i, 1), WithinAbs(std::sin(theta), pcms::test::ExactTol));
     REQUIRE_THAT(out(i, 2), WithinAbs(0.0, pcms::test::ExactTol));
+  }
+}
+
+TEST_CASE("bound map: points on the axis rotate by the angle they map to")
+{
+  auto data = pcms::test::CreateDeviceRank2View({0.0, 0.0, 2.0}, 3);
+  const auto bound = pcms::CartesianToCylindrical{}.Bind(
+    pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+  auto mapped =
+    pcms::test::CopyCoordinatesToHost(bound->MappedPoints().GetValues());
+  REQUIRE_THAT(mapped(0, 0), WithinAbs(0.0, pcms::test::ExactTol));
+  const Real theta = mapped(0, 1);
+
+  const std::vector<Real> c = {0.3, -1.2, 0.7};
+  auto values = pcms::test::CreateDeviceRank2View(
+    {c[0] * std::cos(theta) + c[1] * std::sin(theta),
+     -c[0] * std::sin(theta) + c[1] * std::cos(theta), c[2]},
+    3);
+  const auto result = bound->TransformValues(ValueView<Real, DeviceMemorySpace>(
+    CylindricalVector(), pcms::MakeRank2View(values)));
+  REQUIRE(pcms::SameValueBasis(result.GetBasis(), CartesianVector()));
+  auto out =
+    pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(values));
+  for (size_t d = 0; d < 3; ++d) {
+    REQUIRE_THAT(out(0, d), WithinAbs(c[d], pcms::test::ExactTol));
   }
 }
 

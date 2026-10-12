@@ -346,8 +346,8 @@ TEST_CASE("TransformedSource: one source view serves many fields and targets")
 
   const auto coords = pcms::test::CopyCoordinatesToHost(
     tgt_a->GetLayout()->GetDOFHolderCoordinates().GetValues());
-  const auto rb = b_a.GetDOFHolderDataHost();
-  const auto re = e_a.GetDOFHolderDataHost();
+  const auto rb = b_a.GetDOFHolderDataHost().GetValues();
+  const auto re = e_a.GetDOFHolderDataHost().GetValues();
   for (int i = 0; i < static_cast<int>(coords.extent(0)); ++i) {
     CAPTURE(i);
     REQUIRE_THAT(rb(i, 0), WithinAbs(coords(i, 0), kTol));
@@ -412,7 +412,7 @@ TEST_CASE("Interpolator over a TransformedSource transfers across systems")
 
   const auto coords = pcms::test::CopyCoordinatesToHost(
     tgt->GetLayout()->GetDOFHolderCoordinates().GetValues());
-  const auto result = b_tgt.GetDOFHolderDataHost();
+  const auto result = b_tgt.GetDOFHolderDataHost().GetValues();
   const int n = static_cast<int>(coords.extent(0));
   for (int i = 0; i < n; ++i) {
     CAPTURE(i);
@@ -463,7 +463,7 @@ TEST_CASE("Interpolator over a TransformedSource passes through values already "
 
   const auto coords = pcms::test::CopyCoordinatesToHost(
     tgt->GetLayout()->GetDOFHolderCoordinates().GetValues());
-  const auto result = b_tgt.GetDOFHolderDataHost();
+  const auto result = b_tgt.GetDOFHolderDataHost().GetValues();
   for (int i = 0; i < static_cast<int>(coords.extent(0)); ++i) {
     const Real x = coords(i, 0), y = coords(i, 1);
     CAPTURE(i);

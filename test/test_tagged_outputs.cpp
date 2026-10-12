@@ -113,7 +113,7 @@ TEST_CASE("tagged writes gate on the field's declaration")
                  ComponentScaling::Physical,
                  VarianceSignature{Variance::Contravariant}},
       raw));
-    REQUIRE_THAT(b.GetDOFHolderDataHost()(0, 0),
+    REQUIRE_THAT(b.GetDOFHolderDataHost().GetValues()(0, 0),
                  WithinAbs(1.0, 1e-14)); // tagged getter forwards indexing
   }
 

@@ -288,7 +288,9 @@ public:
     return values_.extent(r);
   }
   [[nodiscard]] size_t size() const noexcept { return values_.size(); }
-  decltype(auto) operator()(size_t i, size_t c) const { return values_(i, c); }
+  // Index through GetValues(): a ValueView carries a shared_ptr and must not
+  // be captured by a device kernel.
+  decltype(auto) operator()(size_t i, size_t c) const = delete;
 
 private:
   ValueBasis basis_;

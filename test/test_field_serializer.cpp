@@ -30,7 +30,7 @@ namespace
 #ifdef PCMS_ENABLE_OMEGA_H
 void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
 {
-  auto data_before = field.GetDOFHolderDataHost();
+  auto data_before = field.GetDOFHolderDataHost().GetValues();
   const auto num_dof = static_cast<pcms::LO>(data_before.extent(0));
   const auto num_components = static_cast<pcms::LO>(data_before.extent(1));
   const auto num_values = static_cast<size_t>(data_before.size());
@@ -58,7 +58,7 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
   serializer.Deserialize(field, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
 
-  auto data_after = field.GetDOFHolderDataHost();
+  auto data_after = field.GetDOFHolderDataHost().GetValues();
   REQUIRE(data_after.size() == expected.size());
   for (pcms::LO i = 0; i < num_dof; ++i) {
     for (pcms::LO c = 0; c < num_components; ++c) {
@@ -262,7 +262,7 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   serializer.Deserialize(field, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
 
-  auto after = field.GetDOFHolderDataHost();
+  auto after = field.GetDOFHolderDataHost().GetValues();
   REQUIRE(after(0, 0) == 50.0);
   REQUIRE(after(1, 0) == 6.0);
   REQUIRE(after(2, 0) == 70.0);

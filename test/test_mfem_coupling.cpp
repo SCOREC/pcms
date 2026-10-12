@@ -129,7 +129,7 @@ int RunServer(MPI_Comm comm)
   auto overlap =
     pcms::MFEMLayout::OverlapMaskFromAttribute(pmesh, TargetAttribute);
   auto gids = layout->GetGidsHost();
-  auto received = handle.GetField().GetDOFHolderDataHost();
+  auto received = handle.GetField().GetDOFHolderDataHost().GetValues();
 
   int overlap_count = 0;
   int mismatches = 0;

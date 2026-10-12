@@ -202,7 +202,7 @@ void bind_create_field_module(py::module& m)
     .def(
       "get_dof_holder_data",
       [](const Field<Real>& self) {
-        auto data = self.GetDOFHolderDataHost();
+        auto data = self.GetDOFHolderDataHost().GetValues();
         // Flatten the [dof][comp] data into node-major order for the 1D numpy
         // array (Python-facing DOF data stays 1D).
         const auto num_dof = data.extent(0);

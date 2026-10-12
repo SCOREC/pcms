@@ -252,7 +252,7 @@ TEST_CASE("OmegaHConservativeProjection writes reordered target GIDs in local "
   pcms::OmegaHConservativeProjection projection(*source_space, *target_space);
   projection.Apply(source, target);
 
-  const auto target_values = target.GetDOFHolderDataHost();
+  const auto target_values = target.GetDOFHolderDataHost().GetValues();
   const auto target_coords =
     target_space->GetLayout()->GetDOFHolderCoordinates().GetValues();
   const auto target_coords_h = pcms::test::CopyCoordinatesToHost(target_coords);
@@ -290,7 +290,7 @@ TEST_CASE("OmegaHConservativeProjection maps sparse target GIDs to active "
   pcms::OmegaHConservativeProjection projection(*source_space, *target_space);
   projection.Apply(source, target);
 
-  const auto target_values = target.GetDOFHolderDataHost();
+  const auto target_values = target.GetDOFHolderDataHost().GetValues();
   const auto target_coords =
     target_space->GetLayout()->GetDOFHolderCoordinates().GetValues();
   const auto target_coords_h = pcms::test::CopyCoordinatesToHost(target_coords);

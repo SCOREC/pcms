@@ -179,7 +179,7 @@ py::array_t<T> kokkos_view_to_numpy(Kokkos::View<T***, HostMemorySpace> view)
   );
 }
 
-// Helper to convert 1D numpy array to Omega_h::Read
+// Helper to convert 1D numpy array to Omega_h::Read (creates a copy)
 template <typename T>
 Omega_h::Read<T> numpy_to_omega_h_read(py::array_t<T> arr)
 {
@@ -187,12 +187,15 @@ Omega_h::Read<T> numpy_to_omega_h_read(py::array_t<T> arr)
   if (buf.ndim != 1) {
     throw std::runtime_error("Number of dimensions must be 1");
   }
-  Kokkos::View<T*, Kokkos::DefaultExecutionSpace::memory_space,
-               Kokkos::MemoryTraits<Kokkos::Unmanaged>>
-    view(reinterpret_cast<T*>(buf.ptr), buf.shape[0]);
-  Omega_h::Write<T> write_view(view);
-  Omega_h::Read<T> read_view(write_view);
-  return read_view;
+  // The numpy buffer is host memory, requires copy from device
+  auto write_view_host = Omega_h::HostWrite<T>(buf.shape[0]);
+  const T* ptr = static_cast<const T*>(buf.ptr);
+  const py::ssize_t stride =
+    buf.strides[0] / static_cast<py::ssize_t>(sizeof(T));
+  for (Omega_h::LO i = 0; i < buf.shape[0]; ++i) {
+    write_view_host[i] = ptr[i * stride];
+  }
+  return Omega_h::Read<T>(Omega_h::Write<T>(write_view_host));
 }
 
 // Helper to convert Omega_h::Read to numpy array (creates a copy)

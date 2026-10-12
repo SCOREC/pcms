@@ -59,7 +59,7 @@ public:
         }
       }
     }
-    field.SetDOFHolderDataHost(
+    field.SetDOFHolderDataUncheckedHost(
       Rank2View<const T, HostMemorySpace>(sorted.data(), num_dof, num_comp));
   }
 

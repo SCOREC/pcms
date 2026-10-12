@@ -1,7 +1,7 @@
 #ifndef PCMS_MFEM_FIELD_FACTORY_HPP
 #define PCMS_MFEM_FIELD_FACTORY_HPP
 
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_system.hpp"
 #include "pcms/field/data/mfem.hpp"
 #include "pcms/field/field_factory.h"
 #include "pcms/field/layout/mfem.hpp"
@@ -28,9 +28,10 @@ class MFEMFieldFactory : public FieldFactory
 public:
   MFEMFieldFactory(mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
                    mfem::ParGridFunction& gf,
-                   CoordinateSystem coordinate_system,
+                   std::shared_ptr<const CoordinateSystem> coordinate_system,
                    std::string layout_name = "")
-    : layout_(std::make_shared<MFEMLayout>(pmesh, pfes, coordinate_system)),
+    : layout_(std::make_shared<MFEMLayout>(pmesh, pfes,
+                                           std::move(coordinate_system))),
       pfes_(pfes),
       gf_(gf)
   {
@@ -54,14 +55,14 @@ public:
   }
 
 protected:
-  [[nodiscard]] FieldVariant CreateFieldImpl(
-    Type value_type, FieldMetadata metadata) const override
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
+                                             ValueBasis basis) const override
   {
-    if (value_type != Type::Real) {
+    if (storage_type != Type::Real) {
       throw pcms_error("MFEM adapter only supports Real (double) fields");
     }
-    return WrapField<Real>(
-      layout_, std::make_unique<MFEMVertexFieldData>(pfes_, gf_, metadata));
+    return WrapField<Real>(layout_, std::make_unique<MFEMVertexFieldData>(
+                                      pfes_, gf_, std::move(basis)));
   }
 
   [[nodiscard]] FieldVariant CreateFieldImpl(

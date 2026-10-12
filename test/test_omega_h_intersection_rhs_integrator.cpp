@@ -148,10 +148,8 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: space and layout constructors "
   REQUIRE(a.extent(0) == b.extent(0));
   REQUIRE(a.extent(1) == b.extent(1));
   REQUIRE(a.extent(0) > 0);
-  auto a_host = pcms::test::CopyCoordinatesToHost(
-    a, static_cast<int>(a.extent(0)), static_cast<int>(a.extent(1)));
-  auto b_host = pcms::test::CopyCoordinatesToHost(
-    b, static_cast<int>(b.extent(0)), static_cast<int>(b.extent(1)));
+  auto a_host = pcms::test::CopyCoordinatesToHost(a);
+  auto b_host = pcms::test::CopyCoordinatesToHost(b);
   for (std::size_t i = 0; i < a_host.extent(0); ++i) {
     for (std::size_t d = 0; d < a_host.extent(1); ++d) {
       REQUIRE(a_host(i, d) == b_host(i, d));

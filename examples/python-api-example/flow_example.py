@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import pcms
+import PyOmega_h as omega_h
 import numpy as np
 # import matplotlib.pyplot as plt
 
@@ -87,21 +88,26 @@ def demonstrate_face_field_transfer(mesh):
     # print(f"Saved visualization to transferred_field.png")
     # plt.close()
 
-def main():
-    lib = pcms.OmegaHLibrary()
+def main(exo_path):
+    if not hasattr(omega_h, "exodus_open"):
+        print("PyOmega_h was built without Exodus support "
+              "(rebuild Omega_h with Omega_h_USE_SEACASExodus=ON)")
+        return 1
+
+    lib = omega_h.OmegaHLibrary()
     world = lib.world()
-    
-    exo_handle = pcms.exodus_open("flow.exo", verbose=False)
-    num_steps = pcms.exodus_get_num_time_steps(exo_handle)
+
+    exo_handle = omega_h.exodus_open(exo_path, verbose=False)
+    num_steps = omega_h.exodus_get_num_time_steps(exo_handle)
     print(f"Time steps: {num_steps}")
     
-    mesh = pcms.OmegaHMesh(lib)
+    mesh = omega_h.OmegaHMesh(lib)
     mesh.set_comm(world)
     
-    pcms.read_mesh_exodus(exo_handle, mesh, verbose=True)
-    pcms.read_exodus_nodal_fields(exo_handle, mesh, 50, verbose=True) # timestep 50
-    pcms.read_exodus_element_fields(exo_handle, mesh, 50, verbose=True)
-    pcms.exodus_close(exo_handle)
+    omega_h.read_mesh_exodus(exo_handle, mesh, verbose=True)
+    omega_h.read_exodus_nodal_fields(exo_handle, mesh, 50, verbose=True) # timestep 50
+    omega_h.read_exodus_element_fields(exo_handle, mesh, 50, verbose=True)
+    omega_h.exodus_close(exo_handle)
     
     print_mesh_info(mesh)
     demonstrate_face_field_transfer(mesh)
@@ -114,4 +120,11 @@ def main():
 
 
 if __name__ == "__main__":
-    exit(main())
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "exo_path", nargs="?", default="flow.exo",
+        help="Exodus file to read (e.g. pcms_testcases/exodus/flow/flow.exo)",
+    )
+    args = parser.parse_args()
+    exit(main(args.exo_path))

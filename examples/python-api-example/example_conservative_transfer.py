@@ -30,6 +30,7 @@ import tempfile
 
 import numpy as np
 import pcms
+import PyOmega_h as omega_h
 
 
 # Smooth analytic field sampled onto the source mesh.
@@ -39,17 +40,17 @@ def source_function(x, y):
 
 def build_and_roundtrip_mesh(world, lib, nx, ny, path):
     """Build a 2D box mesh, write it to disk, and read it back."""
-    mesh = pcms.build_box(
+    mesh = omega_h.build_box(
         world,
-        pcms.Family.SIMPLEX,
+        omega_h.Family.SIMPLEX,
         1.0, 1.0, 0.0,   # unit square (z = 0 -> 2D)
         nx, ny, 0,
         False,
     )
-    pcms.write_mesh_binary(path, mesh)
+    omega_h.write_mesh_binary(path, mesh)
     del mesh
     gc.collect()
-    return pcms.read_mesh_binary(path, lib)
+    return omega_h.read_mesh_binary(path, lib)
 
 
 def integral_of_field(mesh, field):
@@ -161,7 +162,7 @@ def make_plots(out_path, source_mesh, target_mesh, source_vertex_coords,
 
 
 def main(plot_path=None):
-    lib = pcms.OmegaHLibrary()
+    lib = omega_h.OmegaHLibrary()
     world = lib.world()
 
     work_dir = tempfile.mkdtemp(prefix="pcms_conservative_transfer_")

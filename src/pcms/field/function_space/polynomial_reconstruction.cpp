@@ -58,7 +58,7 @@ PolynomialReconstructionFunctionSpace::FromMesh(
 
   auto mesh_layout = std::make_shared<OmegaHEntityLayout>(
     mesh, source_entity_dim, 1, std::move(coordinate_system));
-  // MLS assumes unweigthed Euclidean in distance calculation
+  // MLS assumes unweighted Euclidean in distance calculation
   if (!HasIdentityMetric(*mesh_layout->GetCoordinateSystem())) {
     throw pcms_error(
       "PolynomialReconstructionFunctionSpace::FromMesh: MLS requires a "

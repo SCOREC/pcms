@@ -14,7 +14,7 @@ std::shared_ptr<const CoordinateSystem> ResolveCoordinateSystem(
   }
   // To avoid requiring the user specifying the dimension twice in
   // FunctionSpace constructors, we have a default
-  // Cartesian constuctor that constructs with dimension 0. 
+  // Cartesian constructor that constructs with dimension 0.
   if (dynamic_cast<const csys::Cartesian*>(system.get()) != nullptr &&
       system->Dimension() == 0) {
     return csys::Cartesian::Create(dim);

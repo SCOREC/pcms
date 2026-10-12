@@ -48,8 +48,8 @@ public:
     const EvaluationRequest& request) const override
   {
     const auto coords = request.coords;
-    // MLS distances are based on the the unweighted Euclidean measure
-    // this is only valid with identiy metric
+    // MLS distances are based on the unweighted Euclidean measure
+    // this is only valid with identity metric
     // this almost certainly should be generalized to take metric for distances
     // for now, we just check and fail so at least the user gets a warning
     if (!HasIdentityMetric(*layout_->GetCoordinateSystem())) {

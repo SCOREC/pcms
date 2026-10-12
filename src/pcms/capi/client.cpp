@@ -147,7 +147,7 @@ inline ClientState::HandleVariant RegisterField(
   // FIXME this is essentially a hack for now since the only CAPI client
   // is XGC so we need to match the XGCLayout.
   // The CAPI needs to be completely reworked for PCMS2, but that
-  // should happen after we finalize new coordinate tranformations
+  // should happen after we finalize new coordinate transformations
   // and higher level field control
   auto function_space =
     detail::EmptyFieldFactory{name, csys::CylindricalRZ::Create()};

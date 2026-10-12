@@ -236,4 +236,32 @@ TEST_CASE("FieldSerializer round-trips an order-0 Omega_h field")
 
   CheckSerializeDeserialize(field);
 }
+TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
+{
+  std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
+  pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
+                                                                 4, 2);
+  auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
+    coords_view, pcms::CoordinateSystem::Cartesian);
+  auto field = space->CreateFunction<pcms::Real>();
+
+  std::vector<pcms::Real> data{5.0, 6.0, 7.0, 8.0};
+  field.SetDOFHolderDataHost(
+    pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(data.data(), 4,
+                                                             1));
+
+  // Holders 1 and 3 have no slot in the received buffer (e.g. they lie outside
+  // the sender's overlap mask); they must keep their current values.
+  std::vector<pcms::LO> permutation{0, -1, 1, -1};
+  std::vector<pcms::Real> buffer{50.0, 70.0};
+  pcms::FieldSerializer<pcms::Real> serializer;
+  serializer.Deserialize(field, pcms::make_const_array_view(buffer),
+                         pcms::make_const_array_view(permutation));
+
+  auto after = field.GetDOFHolderDataHost();
+  REQUIRE(after(0, 0) == 50.0);
+  REQUIRE(after(1, 0) == 6.0);
+  REQUIRE(after(2, 0) == 70.0);
+  REQUIRE(after(3, 0) == 8.0);
+}
 #endif

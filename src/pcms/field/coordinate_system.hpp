@@ -24,7 +24,6 @@ public:
   virtual ~CoordinateSystem() = default;
 };
 
-
 [[nodiscard]] inline bool SameCoordinateSystem(
   const std::shared_ptr<const CoordinateSystem>& a,
   const std::shared_ptr<const CoordinateSystem>& b) noexcept

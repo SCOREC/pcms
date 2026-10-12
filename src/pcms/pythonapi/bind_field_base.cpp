@@ -73,11 +73,10 @@ void bind_coordinate_system_module(py::module& m)
         "dimension",
         [](const PyCoordinateSystem& self) { return self.system->Dimension(); },
         "Number of stored coordinate columns")
-      .def_property_readonly(
-        "has_orthogonal_basis",
-        [](const PyCoordinateSystem& self) {
-          return self.system->HasOrthogonalBasis();
-        })
+      .def_property_readonly("has_orthogonal_basis",
+                             [](const PyCoordinateSystem& self) {
+                               return self.system->HasOrthogonalBasis();
+                             })
       .def_property_readonly("has_unit_scale_factors",
                              [](const PyCoordinateSystem& self) {
                                return self.system->HasUnitScaleFactors();

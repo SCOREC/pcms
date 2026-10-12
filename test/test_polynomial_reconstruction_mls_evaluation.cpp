@@ -283,7 +283,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: CreatePointEvaluator "
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view)));
 }
 
-// ensure that MLS reconstruction works with CylindricalRZ which has identity metric
+// ensure that MLS reconstruction works with CylindricalRZ which has identity
+// metric
 TEST_CASE("PolynomialReconstructionFunctionSpace MLS: accepts the (R, Z) "
           "poloidal section, whose metric is the identity")
 {
@@ -390,8 +391,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: 3D point clouds preserve "
     DefaultTestOptions3D());
   auto layout_coords_device =
     fs->GetLayout()->GetDOFHolderCoordinates().GetValues();
-  auto layout_coords =
-    pcms::test::CopyCoordinatesToHost(layout_coords_device);
+  auto layout_coords = pcms::test::CopyCoordinatesToHost(layout_coords_device);
   REQUIRE(static_cast<int>(layout_coords.extent(1)) == 3);
   for (int i = 0; i < 27; ++i) {
     REQUIRE(layout_coords(i, 0) == Catch::Approx(src[3 * i + 0]));

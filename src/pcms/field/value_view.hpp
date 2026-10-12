@@ -23,7 +23,7 @@ enum class FieldValueType
 };
 
 // Index variance: Contravariant == components on the basis dx/dq^i,
-// Covariant == components on the dual grad q^i. 
+// Covariant == components on the dual grad q^i.
 enum class Variance : std::uint8_t
 {
   Contravariant,

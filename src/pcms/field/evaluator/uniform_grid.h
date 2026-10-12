@@ -120,7 +120,7 @@ public:
     this->CheckEvaluateWriteTag("UniformGridPointEvaluator::Evaluate", field,
                                 out);
     const auto values = out.GetValues();
-    auto dof_data = field.GetDOFHolderData();
+    const auto dof_data = field.GetDOFHolderData().GetValues();
     LO num_points = static_cast<LO>(hint_.coordinates_.extent(0));
     int n_comp = layout_->GetNumComponents();
 

@@ -56,7 +56,7 @@ public:
         "supported in this phase");
     }
 
-    auto device_data = field.GetDOFHolderData();
+    const auto device_data = field.GetDOFHolderData().GetValues();
     const int n_sources = static_cast<int>(device_data.size());
 
     Omega_h::Write<Omega_h::Real> src_w(n_sources, "mls_source_values");

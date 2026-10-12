@@ -228,7 +228,7 @@ public:
     this->CheckEvaluateWriteTag("OmegaHLagrangePointEvaluator::Evaluate", field,
                                 out);
     const auto values = out.GetValues();
-    auto dof_data = field.GetDOFHolderData();
+    const auto dof_data = field.GetDOFHolderData().GetValues();
     LO n_valid = static_cast<LO>(hint_.elem_ids.size());
     int n_comp = layout_->GetNumComponents();
 

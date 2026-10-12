@@ -85,7 +85,7 @@ public:
     PCMS_ALWAYS_ASSERT(values.extent(0) == static_cast<size_t>(num_points));
     PCMS_ALWAYS_ASSERT(values.extent(1) == 1);
 
-    auto dof_data = field.GetDOFHolderData();
+    const auto dof_data = field.GetDOFHolderData().GetValues();
     LO nx = grid_.divisions[0] + 1;
     LO ny = grid_.divisions[1] + 1;
     PCMS_ALWAYS_ASSERT(static_cast<LO>(dof_data.size()) == nx * ny);

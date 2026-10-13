@@ -9,6 +9,8 @@ import pytest
 import pcms
 import PyOmega_h as omega_h
 
+ZERO_COPY = pcms.device_memory_is_host_accessible
+
 
 def _linear(x, y):
     return 1.0 + 2.0 * x + 3.0 * y
@@ -31,38 +33,88 @@ def p1_space(mesh):
 def _linear_field(space):
     field = space.create_field()
     coords = field.get_dof_holder_coordinates()
-    field.set_dof_holder_data(_linear(coords[:, 0], coords[:, 1]))
+    field.set_dof_holder_data(_linear(coords[:, 0], coords[:, 1])[:, None])
     return field
 
 
 class TestFieldData:
+    def test_shape_matches_layout(self, mesh, world):
+        space = pcms.LagrangeFunctionSpace.from_mesh(
+            mesh, 1, 2, pcms.CoordinateSystem.Cartesian
+        )
+        field = space.create_field()
+        n = field.get_num_dof_holders()
+        data = np.arange(2 * n, dtype=np.float64).reshape(n, 2)
+        field.set_dof_holder_data(data)
+        result = field.get_dof_holder_data()
+        assert result.shape == (n, 2)
+        np.testing.assert_array_equal(result, data)
+
     def test_dof_holder_coordinates_match_mesh(self, mesh, p1_space):
         field = p1_space.create_field()
         coords = field.get_dof_holder_coordinates()
         assert coords.shape == (mesh.nverts(), 2)
-        assert coords.flags.c_contiguous
         np.testing.assert_array_equal(coords, mesh.coords().reshape(-1, 2))
 
     def test_set_from_strided_array(self, p1_space):
         field = p1_space.create_field()
         n = field.get_num_dof_holders()
         wide = np.arange(2 * n, dtype=np.float64).reshape(n, 2)
-        field.set_dof_holder_data(wide[:, 1])  # stride of two doubles
-        np.testing.assert_array_equal(field.get_dof_holder_data(), wide[:, 1])
+        field.set_dof_holder_data(wide[:, 1:])  # stride of two doubles
+        np.testing.assert_array_equal(field.get_dof_holder_data(), wide[:, 1:])
 
     def test_set_from_float32_array(self, p1_space):
         field = p1_space.create_field()
         n = field.get_num_dof_holders()
-        data = np.arange(n, dtype=np.float32)
+        data = np.arange(n, dtype=np.float32).reshape(n, 1)
         field.set_dof_holder_data(data)
         np.testing.assert_array_equal(field.get_dof_holder_data(),
                                       data.astype(np.float64))
 
-    def test_set_rejects_2d_array(self, p1_space):
+    @pytest.mark.parametrize("shape", [
+        lambda n: (n,), lambda n: (n, 2), lambda n: (n + 1, 1),
+    ], ids=["1d", "wrong-components", "wrong-dof-holders"])
+    def test_set_rejects_wrong_shape(self, p1_space, shape):
         field = p1_space.create_field()
-        n = field.get_num_dof_holders()
         with pytest.raises(ValueError):
-            field.set_dof_holder_data(np.zeros((n, 1)))
+            field.set_dof_holder_data(
+                np.zeros(shape(field.get_num_dof_holders())))
+
+    def test_returned_arrays_are_read_only(self, p1_space):
+        field = _linear_field(p1_space)
+        for arr in (field.get_dof_holder_data(),
+                    field.get_dof_holder_coordinates()):
+            assert not arr.flags.writeable
+            with pytest.raises(ValueError):
+                arr[0, 0] = 0.0
+
+    def test_data_is_zero_copy_on_host_builds(self, p1_space):
+        field = _linear_field(p1_space)
+        assert np.shares_memory(field.get_dof_holder_data(),
+                                field.get_dof_holder_data()) == ZERO_COPY
+
+    def test_data_reflects_set(self, p1_space):
+        # Only arrays obtained after the modification are guaranteed current.
+        field = _linear_field(p1_space)
+        new = field.get_dof_holder_data() + 1.0
+        field.set_dof_holder_data(new)
+        np.testing.assert_array_equal(field.get_dof_holder_data(), new)
+
+    def test_coordinates_are_zero_copy_on_host_builds(self, p1_space):
+        field = p1_space.create_field()
+        assert np.shares_memory(field.get_dof_holder_coordinates(),
+                                field.get_dof_holder_coordinates()) == \
+            ZERO_COPY
+
+    def test_shared_arrays_keep_field_alive(self, p1_space):
+        field = _linear_field(p1_space)
+        data = field.get_dof_holder_data()
+        coords = field.get_dof_holder_coordinates()
+        expected_data, expected_coords = data.copy(), coords.copy()
+        del field
+        gc.collect()
+        np.testing.assert_array_equal(data, expected_data)
+        np.testing.assert_array_equal(coords, expected_coords)
 
 
 class TestPointEvaluation:
@@ -90,6 +142,19 @@ class TestPointEvaluation:
             out[:, 0], _linear(self.QUERY[:, 0], self.QUERY[:, 1]),
             atol=1e-12)
 
+    def test_request_copies_coordinates(self, p1_space):
+        field = _linear_field(p1_space)
+        coords = self.QUERY.copy()
+        evaluator = self._evaluator(p1_space, coords)
+        coords[:] = -1.0  # must not affect the request
+        del coords
+        gc.collect()
+        out = np.zeros((len(self.QUERY), 1))
+        evaluator.evaluate(field, out)
+        np.testing.assert_allclose(
+            out[:, 0], _linear(self.QUERY[:, 0], self.QUERY[:, 1]),
+            atol=1e-12)
+
     @pytest.mark.parametrize("make_output", [
         lambda n: np.zeros((n, 1), dtype=np.float32),
         lambda n: np.zeros((n, 2))[:, :1],
@@ -110,18 +175,30 @@ class TestPointEvaluation:
 
 
 class TestCoordinateView:
-    def test_owns_a_copy_of_the_coordinates(self):
+    def test_copies_input(self):
         coords = np.arange(12, dtype=np.float64).reshape(6, 2)
         expected = coords.copy()
-        # A strided input forces a temporary copy.
-        # the view must not refer to it, or to the 
-        #caller's array, after construction.
-        view = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian,
-                                   np.asfortranarray(coords))
+        view = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian, coords)
+        assert not np.shares_memory(view.get_coordinates(), coords)
         coords[:] = -1.0
         del coords
         gc.collect()
         np.testing.assert_array_equal(view.get_coordinates(), expected)
+
+    def test_strided_input(self):
+        coords = np.arange(12, dtype=np.float64).reshape(6, 2)
+        view = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian,
+                                   np.asfortranarray(coords))
+        gc.collect()
+        np.testing.assert_array_equal(view.get_coordinates(), coords)
+        assert not view.get_coordinates().flags.writeable
+
+    def test_coordinates_keep_view_alive(self):
+        coords = np.arange(12, dtype=np.float64).reshape(6, 2)
+        values = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian,
+                                     coords.copy()).get_coordinates()
+        gc.collect()
+        np.testing.assert_array_equal(values, coords)
 
 
 class TestMeshUtilities:
@@ -138,7 +215,15 @@ class TestMeshUtilities:
         values = np.full(mesh.nfaces(), 3.5)
         result = pcms.map_entity_field_to_vertices_average(mesh, values, 2)
         assert result.shape == (mesh.nverts(),)
+        assert not result.flags.writeable
         np.testing.assert_allclose(result, 3.5)
+
+    def test_centroids_survive_garbage_collection(self, mesh):
+        centroids = pcms.compute_entity_centroids(mesh, 2)
+        expected = centroids.copy()
+        gc.collect()
+        np.testing.assert_array_equal(centroids, expected)
+        assert centroids.shape == (2 * mesh.nfaces(),)
 
 
 class TestUniformGrid:

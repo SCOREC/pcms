@@ -56,20 +56,33 @@ namespace pcms
 // Omega_h arrays (Read/Write) have storage in the default (device) memory
 // space.
 
-// Copy a 1D numpy array into a new Omega_h::Read.
 template <typename T>
 Omega_h::Read<T> NumpyToOmegaHRead(const NumpyInput<T>& arr)
 {
-  return Omega_h::Read<T>(Omega_h::Write<T>(
-    NumpyToKokkosView<1, T, DeviceMemorySpace>(arr, "numpy_to_omega_h")));
+  if constexpr (is_host_accessible_v<DeviceMemorySpace>) {
+    auto host = NumpyToHostView<1, T>(arr);
+    return Omega_h::Read<T>(Omega_h::Write<T>(
+      Kokkos::View<T*>(const_cast<T*>(host.data_handle()), host.extent(0))));
+  } else {
+    return Omega_h::Read<T>(Omega_h::Write<T>(
+      CopyNumpyToKokkosView<1, T, DeviceMemorySpace>(arr, "numpy_to_omega_h")));
+  }
 }
 
-// Copy an Omega_h::Read into a new 1D numpy array.
 template <typename T>
 py::array_t<T> ToNumpy(Omega_h::Read<T> arr)
 {
-  return ToNumpy(Rank1View<const T, DeviceMemorySpace, Kokkos::layout_right>(
-    arr.data(), arr.size()));
+  Rank1View<const T, DeviceMemorySpace, Kokkos::layout_right> view(arr.data(),
+                                                                   arr.size());
+  // Only the host branch dereferences owner; on device builds ViewToNumpy
+  // copies before the Read goes out of scope.
+  py::object owner = py::none();
+  if constexpr (is_host_accessible_v<DeviceMemorySpace>) {
+    owner = py::capsule(new Omega_h::Read<T>(std::move(arr)), [](void* p) {
+      delete static_cast<Omega_h::Read<T>*>(p);
+    });
+  }
+  return ViewToNumpy(view, owner);
 }
 
 } // namespace pcms

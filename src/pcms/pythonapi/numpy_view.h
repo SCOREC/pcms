@@ -3,10 +3,22 @@
 
 // Conversions between numpy arrays and pcms mdspan views / Kokkos views.
 //
-// numpy array storage is host memory. Inputs are views on the host 
-// and copied when they are needed in another memory space.
-// outputs are always returned as owning numpy arrays so that
-// numpy controls the lifetime
+// Array semantics for python conversions
+//
+// Arrays returned for pcms-owned data (ViewToNumpy, ToNumpy of Omega_h data):
+//   - are host numpy arrays shaped like the C++ view, and read-only
+//   - are valid until the object they came from is modified
+//   - never dangle: they keep their owner alive or are copies. On host builds
+//     they share memory with pcms (zero-copy); otherwise they are copies
+// Array inputs (NumpyInput):
+//   - accept any array-like convertible to the element type
+//   - may be read in place when only used during the call (NumpyToHostView)
+//   - are copied when pcms keeps the data (CopyNumpyToKokkosView), so later
+//     changes to the caller's array have no effect
+// Output buffers (NumpyOutputToHostView):
+//   - must already be writeable, C-contiguous arrays of the element type
+//
+// TODO: zero-copy for device memory via DLPack, with the same semantics.
 
 #include <array>
 #include <cstddef>
@@ -31,9 +43,16 @@ namespace py = pybind11;
 
 // Parameter type for numpy inputs. pybind11 converts the caller's array to a
 // C-contiguous array of T, copying only when the array is strided (e.g. a
-// column slice or a transpose) or has a different dtype.
+// column slice or a transpose) or has a different dtype. Inside the binding the
+// parameter refers to the converted array, so it keeps the memory seen by
+// NumpyToHostView alive for the duration of the call.
 template <typename T>
 using NumpyInput = py::array_t<T, py::array::c_style | py::array::forcecast>;
+
+// True when memory in MemorySpace can be read directly by host code.
+template <typename MemorySpace>
+inline constexpr bool is_host_accessible_v =
+  Kokkos::SpaceAccessibility<Kokkos::HostSpace, MemorySpace>::accessible;
 
 namespace detail
 {
@@ -97,6 +116,24 @@ ViewType AllocateKokkosViewImpl(const std::string& label,
                   extents[Is]...);
 }
 
+template <typename ElementType, typename Extents, typename LayoutPolicy,
+          typename AccessorPolicy>
+std::vector<py::ssize_t> NumpyShape(
+  const Kokkos::mdspan<ElementType, Extents, LayoutPolicy, AccessorPolicy>&
+    view)
+{
+  std::vector<py::ssize_t> shape(Extents::rank());
+  for (std::size_t i = 0; i < Extents::rank(); ++i) {
+    shape[i] = static_cast<py::ssize_t>(view.extent(i));
+  }
+  return shape;
+}
+
+inline void SetReadOnly(py::array& arr)
+{
+  py::setattr(arr.attr("flags"), "writeable", py::bool_(false));
+}
+
 } // namespace detail
 
 // Unmanaged Kokkos::View over the same memory as an mdspan, so Kokkos
@@ -150,13 +187,13 @@ View<Rank, T, HostMemorySpace, Kokkos::layout_right> NumpyOutputToHostView(
     static_cast<T*>(arr.mutable_data()), detail::NumpyExtents<Rank>(arr));
 }
 
-// Copy a numpy input into a new Kokkos::View in MemorySpace (with that
+// Copy a numpy input into a new, owning Kokkos::View in MemorySpace (with that
 // space's default layout).
 template <std::size_t Rank, typename T,
           typename MemorySpace = DeviceMemorySpace>
 Kokkos::View<detail::kokkos_data_type_t<T, Rank>, MemorySpace>
-NumpyToKokkosView(const NumpyInput<T>& arr,
-                  const std::string& label = "numpy_copy")
+CopyNumpyToKokkosView(const NumpyInput<T>& arr,
+                      const std::string& label = "numpy_copy")
 {
   using KokkosViewType =
     Kokkos::View<detail::kokkos_data_type_t<T, Rank>, MemorySpace>;
@@ -178,11 +215,7 @@ py::array_t<std::remove_const_t<ElementType>> ToNumpy(
   using T = std::remove_const_t<ElementType>;
   constexpr std::size_t rank = Extents::rank();
   static_assert(rank > 0, "ToNumpy requires a view of rank >= 1");
-  std::vector<py::ssize_t> shape(rank);
-  for (std::size_t i = 0; i < rank; ++i) {
-    shape[i] = static_cast<py::ssize_t>(view.extent(i));
-  }
-  py::array_t<T> result(shape);
+  py::array_t<T> result(detail::NumpyShape(view));
   if (result.size() == 0) {
     return result;
   }
@@ -191,6 +224,41 @@ py::array_t<std::remove_const_t<ElementType>> ToNumpy(
       result.mutable_data(), detail::NumpyExtents<rank>(result)));
   DeepCopyMismatchLayouts(dest, MakeUnmanagedKokkosView(view));
   return result;
+}
+
+// numpy array for an mdspan. When the view's memory is host-accessible the
+// array aliases it (zero-copy, with the view's strides) and holds a reference
+// to `owner`, which must keep the memory alive. Otherwise the data is copied.
+// Either way the array is read-only when ElementType is const, so callers see
+// the same behavior on host and device builds.
+template <typename ElementType, typename Extents, typename LayoutPolicy,
+          typename AccessorPolicy>
+py::array_t<std::remove_const_t<ElementType>> ViewToNumpy(
+  const Kokkos::mdspan<ElementType, Extents, LayoutPolicy, AccessorPolicy>&
+    view,
+  py::handle owner)
+{
+  using T = std::remove_const_t<ElementType>;
+  using MemorySpace = detail::memory_space_selector_t<AccessorPolicy>;
+  if constexpr (is_host_accessible_v<MemorySpace>) {
+    constexpr std::size_t rank = Extents::rank();
+    std::vector<py::ssize_t> strides(rank);
+    for (std::size_t i = 0; i < rank; ++i) {
+      strides[i] = static_cast<py::ssize_t>(view.stride(i) * sizeof(T));
+    }
+    py::array_t<T> result(detail::NumpyShape(view), strides, view.data_handle(),
+                          owner);
+    if constexpr (std::is_const_v<ElementType>) {
+      detail::SetReadOnly(result);
+    }
+    return result;
+  } else {
+    auto result = ToNumpy(view);
+    if constexpr (std::is_const_v<ElementType>) {
+      detail::SetReadOnly(result);
+    }
+    return result;
+  }
 }
 
 } // namespace pcms

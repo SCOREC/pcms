@@ -53,9 +53,18 @@ def build_and_roundtrip_mesh(world, lib, nx, ny, path):
     return omega_h.read_mesh_binary(path, lib)
 
 
+def scalar_values(field):
+    """DOF values of a scalar field as a 1D array.
+
+    DOF holder data is (num_dof_holders, num_components); these fields have a
+    single component.
+    """
+    return field.get_dof_holder_data()[:, 0]
+
+
 def integral_of_field(mesh, field):
     """Integral of an order-1 nodal field via element-averaged quadrature."""
-    values = field.get_dof_holder_data()
+    values = scalar_values(field)
     elem_verts = mesh.ask_elem_verts().reshape(-1, 3)
     areas = mesh.ask_sizes()  # element areas for a 2D simplex mesh
     elem_avg = values[elem_verts].mean(axis=1)
@@ -64,7 +73,7 @@ def integral_of_field(mesh, field):
 
 def integral_of_p0_field(mesh, field):
     """Integral of an order-0 field: sum of per-element value * element area."""
-    values = field.get_dof_holder_data()  # one value per element
+    values = scalar_values(field)  # one value per element
     areas = mesh.ask_sizes()
     return float(np.sum(areas * values))
 
@@ -73,13 +82,13 @@ def evaluate_function_onto_field(space, func):
     """Create a field on `space` and fill it from `func` at the DOF holders."""
     field = space.create_field()
     coords = field.get_dof_holder_coordinates()
-    field.set_dof_holder_data(func(coords[:, 0], coords[:, 1]))
+    field.set_dof_holder_data(func(coords[:, 0], coords[:, 1])[:, np.newaxis])
     return field
 
 
 def report(name, target_field, target_mesh, reference_coords,
            reference_values, source_integral, integrate=integral_of_field):
-    values = target_field.get_dof_holder_data()
+    values = scalar_values(target_field)
     err = values - reference_values
     l2 = np.sqrt(np.mean(err ** 2))
     linf = np.max(np.abs(err))
@@ -100,7 +109,7 @@ def _triangulation(mesh, vertex_coords):
 
 
 def _draw_field(ax, triang, field, order, title, vmin, vmax):
-    values = field.get_dof_holder_data()
+    values = scalar_values(field)
     if order == 1:
         # Nodal (per-vertex) values -> smooth (Gouraud) shading.
         art = ax.tripcolor(triang, values, shading="gouraud",
@@ -139,7 +148,7 @@ def make_plots(out_path, source_mesh, target_mesh, source_vertex_coords,
     }
 
     # Shared color scale across panels so fields are directly comparable.
-    all_vals = np.concatenate([f.get_dof_holder_data() for _, f, _, _ in panels])
+    all_vals = np.concatenate([scalar_values(f) for _, f, _, _ in panels])
     vmin, vmax = float(all_vals.min()), float(all_vals.max())
 
     ncols = 3

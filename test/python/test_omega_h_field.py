@@ -140,3 +140,17 @@ class TestOmegaHField:
                 val = eval_values[i, c]
                 assert not np.isnan(val)
                 assert not np.isinf(val)
+
+    @pytest.mark.parametrize("shape", [(4, 1), (6, 1), (5, 2)])
+    def test_evaluate_rejects_wrong_output_shape(self, world, shape):
+        """A wrongly shaped output buffer raises instead of aborting."""
+        mesh = self._build_mesh(world, 2)
+        factory = pcms.LagrangeFunctionSpace.from_mesh(
+            mesh, 1, 1, pcms.CoordinateSystem.Cartesian()
+        )
+        field = factory.create_field()
+        eval_coords = np.full((5, 2), 0.5)
+        evaluator = factory.create_point_evaluator(
+            pcms.EvaluationRequest.from_coordinates(eval_coords))
+        with pytest.raises(ValueError, match="must be \\[5\\]\\[1\\]"):
+            evaluator.evaluate(field, np.zeros(shape))

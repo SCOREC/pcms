@@ -12,6 +12,7 @@
 #include <pcms/transfer/interpolator.h>
 #include "field_test_utils.h"
 #include <cmath>
+#include <stdexcept>
 #include <vector>
 
 using Catch::Matchers::ContainsSubstring;
@@ -170,6 +171,16 @@ TEST_CASE("TransformedSource: vector evaluation rotates into the target basis")
       evaluator->Evaluate(b, ValueView<Real, DeviceMemorySpace>(
                                CylindricalVector(), pcms::MakeRank2View(out))),
       ContainsSubstring("does not match"));
+  }
+
+  SECTION("evaluate rejects an output with the wrong number of points")
+  {
+    REQUIRE(evaluator->NumPoints() == n);
+    Kokkos::View<Real**, DeviceMemorySpace> short_out("short_out", n - 1, 3);
+    REQUIRE_THROWS_AS(evaluator->Evaluate(b, ValueView<Real, DeviceMemorySpace>(
+                                               CartesianVector(),
+                                               pcms::MakeRank2View(short_out))),
+                      std::invalid_argument);
   }
 }
 

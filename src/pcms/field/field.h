@@ -7,6 +7,7 @@
 #include "pcms/utility/memory_spaces.h"
 #include "pcms/utility/types.h"
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <variant>
@@ -97,18 +98,16 @@ protected:
     }
   }
 
-  // The basis tag cannot distinguish shapes (all scalar bases compare equal),
-  // so the checked setters also verify the view's extents against the layout
   void CheckWriteExtents(size_t num_holders, size_t num_components) const
   {
     if (num_holders != static_cast<size_t>(layout_->GetNumOwnedDofHolder()) ||
         num_components != static_cast<size_t>(layout_->GetNumComponents())) {
-      throw pcms_error("Field::SetDOFHolderData: the written view is shaped [" +
-                       std::to_string(num_holders) + "][" +
-                       std::to_string(num_components) +
-                       "] but this field's layout is [" +
-                       std::to_string(layout_->GetNumOwnedDofHolder()) + "][" +
-                       std::to_string(layout_->GetNumComponents()) + "]");
+      throw std::invalid_argument(
+        "Field::SetDOFHolderData: the written view is shaped [" +
+        std::to_string(num_holders) + "][" + std::to_string(num_components) +
+        "] but this field's layout is [" +
+        std::to_string(layout_->GetNumOwnedDofHolder()) + "][" +
+        std::to_string(layout_->GetNumComponents()) + "]");
     }
   }
 

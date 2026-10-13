@@ -220,19 +220,24 @@ public:
   {
   }
 
-  void Evaluate(
+  [[nodiscard]] LO NumPoints() const override
+  {
+    return static_cast<LO>(hint_.elem_ids.extent(0) +
+                           hint_.missing_indices.extent(0));
+  }
+
+  // Public because CUDA forbids extended lambdas in non-public member
+  // functions. User call Evaluate.
+  // TODO: add passkey or other mechanism to protect this
+  void EvaluateImpl(
     const Field<T>& field,
     ValueView<T, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
-    this->CheckEvaluateWriteTag("OmegaHLagrangePointEvaluator::Evaluate", field,
-                                out);
     const auto values = out.GetValues();
     const auto dof_data = field.GetDOFHolderData().GetValues();
     LO n_valid = static_cast<LO>(hint_.elem_ids.size());
     int n_comp = layout_->GetNumComponents();
-
-    PCMS_ALWAYS_ASSERT(values.extent(1) == static_cast<size_t>(n_comp));
 
     if (layout_->GetOrder() == 0) {
       Kokkos::parallel_for(

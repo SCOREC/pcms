@@ -16,7 +16,7 @@ namespace pcms
 py::array_t<double> compute_entity_centroids(Omega_h::Mesh& mesh,
                                              Omega_h::Int entity_dim)
 {
-  return omega_h_read_to_numpy(pcms::get_entity_centroids(mesh, entity_dim));
+  return ToNumpy(pcms::get_entity_centroids(mesh, entity_dim));
 }
 
 // Helper function to determine patch size based on interpolation degree
@@ -33,7 +33,7 @@ Omega_h::LO patch_size_for_degree(Omega_h::LO interp_degree)
 
 // Map entity field to vertices using simple averaging
 py::array_t<double> map_entity_field_to_vertices_average(
-  Omega_h::Mesh& mesh, py::array_t<double> entity_field_values,
+  Omega_h::Mesh& mesh, const NumpyInput<double>& entity_field_values,
   Omega_h::Int entity_dim)
 {
 
@@ -46,8 +46,7 @@ py::array_t<double> map_entity_field_to_vertices_average(
     entity_to_verts_omega_h.size() / nentities;
 
   // Convert numpy array to Omega_h array
-  auto entity_field_omega_h =
-    numpy_to_omega_h_read<Omega_h::Real>(entity_field_values);
+  auto entity_field_omega_h = NumpyToOmegaHRead(entity_field_values);
 
   // Initialize vertex field and count arrays
   Omega_h::Write<Omega_h::Real> vertex_field_values(nverts, 0.0);
@@ -74,22 +73,20 @@ py::array_t<double> map_entity_field_to_vertices_average(
       }
     });
 
-  return omega_h_read_to_numpy(Omega_h::read(vertex_field_values));
+  return ToNumpy(Omega_h::read(vertex_field_values));
 }
 
 // Map entity field to vertices using MLS interpolation
 py::array_t<double> map_entity_field_to_vertices_mls(
-  Omega_h::Mesh& mesh, py::array_t<double> entity_field_values,
+  Omega_h::Mesh& mesh, const NumpyInput<double>& entity_field_values,
   Omega_h::Int entity_dim, Omega_h::LO interp_degree, Omega_h::LO min_support,
   double lambda_reg)
 {
 
   const Omega_h::Int dim = mesh.dim();
 
-  // Compute source coordinates (entity centroids) and flatten
-  auto centroids_flat = compute_entity_centroids(mesh, entity_dim);
-  auto source_coordinates =
-    numpy_to_omega_h_read<Omega_h::Real>(centroids_flat);
+  // Source coordinates are the entity centroids
+  auto source_coordinates = pcms::get_entity_centroids(mesh, entity_dim);
 
   // Get target coordinates (vertex coordinates)
   auto target_coordinates = mesh.coords();
@@ -112,8 +109,7 @@ py::array_t<double> map_entity_field_to_vertices_mls(
   SupportResults support{supports_ptr, supports_idx, radii2_write};
 
   // Convert entity field values to Omega_h array
-  auto entity_field_omega_h =
-    numpy_to_omega_h_read<Omega_h::Real>(entity_field_values);
+  auto entity_field_omega_h = NumpyToOmegaHRead(entity_field_values);
 
   // Call MLS interpolation
   auto interpolated_values = pcms::mls_interpolation(
@@ -123,7 +119,7 @@ py::array_t<double> map_entity_field_to_vertices_mls(
     5.0   // decay_factor
   );
 
-  return omega_h_read_to_numpy(Omega_h::Reals(interpolated_values));
+  return ToNumpy(Omega_h::Reals(interpolated_values));
 }
 
 void bind_mesh_utilities_module(py::module& m)

@@ -131,7 +131,7 @@ jobs:
           export LD_LIBRARY_PATH=$DEPENDENCY_DIR/${DEVICE_ARCH}/omega_h/install/lib64:$LD_LIBRARY_PATH
           # The examples need Exodus data, which is stored with Git LFS
           # and is not fetched by the clone above, so use the copy shared with
-          # the dependencies. We can resolve this when git-lfs installed on SCOREC acis
+          # the dependencies. We can resolve this when git-lfs installed on SCOREC asics
           export PCMS_TEST_DATA_DIR=/users/mersoj2/laces-software/sources/pcms_testcases
           export PCMS_REQUIRE_EXAMPLES=1
           pytest -v -p no:cacheprovider ${{github.workspace}}/pcms_${{ github.event.id }}/test/python

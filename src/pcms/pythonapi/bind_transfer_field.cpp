@@ -30,8 +30,9 @@ void bind_transfer_field_module(py::module& m)
     .def(
       "evaluate",
       [](const PointEvaluator<Real>& self, const Field<Real>& field,
-         py::array_t<Real> output) {
-        auto output_view = numpy_to_kokkos_view_2d<Real>(output);
+         py::array output) {
+        auto output_view =
+          MakeUnmanagedKokkosView(NumpyOutputToHostView<2, Real>(output));
         auto output_device = Kokkos::View<Real**, DeviceMemorySpace>(
           "output_device", output_view.extent(0), output_view.extent(1));
         DeepCopyMismatchLayouts(output_device, output_view);

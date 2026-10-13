@@ -115,14 +115,14 @@ Create a mask where each uniform grid vertex is marked as 1 (inside mesh) or 0 (
 ```python
 # Create binary mask indicating which vertices are inside the mesh
 mask_field = pcms.create_uniform_grid_binary_field(mesh, [4, 4])
-print(f"Created mask field with {mask_field.get_num_dof_holders()} vertices")
+print(f"Created mask field with {mask_field.get_layout().get_num_owned_dof_holder()} vertices")
 ```
 
 **Accessing Values**:
 ```python
 # Access mask value for vertex (i, j)
 vertex_id = j * (grid.divisions[0] + 1) + i
-mask_data = mask_field.get_dof_holder_data()  # shape (num_vertices, 1)
+mask_data = mask_field.get_dof_holder_data().get_values()  # shape (num_vertices, 1)
 mask_value = mask_data[vertex_id, 0]  # Returns 0.0 or 1.0
 ```
 
@@ -136,16 +136,15 @@ mask_value = mask_data[vertex_id, 0]  # Returns 0.0 or 1.0
 # Create a concrete FunctionSpace with linear (order=1) elements and
 # 1 component (scalar)
 omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
-    mesh, 
+    mesh,
     1,
     1,
-    pcms.CoordinateSystem.Cartesian()
 )
-omega_h_field = omega_h_factory.create_field()
+omega_h_field = omega_h_factory.create_function()
 
 # Initialize field with f(x,y) = x + 2*y
-coords = omega_h_field.get_dof_holder_coordinates()
-num_nodes = omega_h_field.get_num_dof_holders()
+coords = omega_h_field.get_layout().get_dof_holder_coordinates().get_values()
+num_nodes = omega_h_field.get_layout().get_num_owned_dof_holder()
 omega_h_data = np.zeros(num_nodes)
 
 for i in range(num_nodes):
@@ -173,9 +172,8 @@ vertex_field = pcms.map_entity_field_to_vertices_average(mesh, face_field, face_
 
 # Create vertex-based field and set data
 omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
-    mesh, 1, 1, pcms.CoordinateSystem.Cartesian()
-)
-omega_h_field = omega_h_factory.create_field()
+    mesh, 1, 1)
+omega_h_field = omega_h_factory.create_function()
 omega_h_field.set_dof_holder_data(vertex_field)
 
 ```
@@ -189,11 +187,10 @@ Set up the data structure for storing field values on the uniform grid vertices.
 ```python
 # Create a uniform-grid FunctionSpace
 ug_factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-    grid, 
+    grid,
     1,                                      # Number of components
-    pcms.CoordinateSystem.Cartesian()
 )
-ug_field = ug_factory.create_field()
+ug_field = ug_factory.create_function()
 ```
 
 ---
@@ -216,8 +213,8 @@ Retrieve interpolated values and verify correctness.
 
 ```python
 # Get field data and coordinates
-ug_field_data = ug_field.get_dof_holder_data()
-ug_coords = ug_field.get_dof_holder_coordinates()
+ug_field_data = ug_field.get_dof_holder_data().get_values()
+ug_coords = ug_field.get_layout().get_dof_holder_coordinates().get_values()
 
 # Access data at vertex (i, j)
 vertex_id = j * (grid.divisions[0] + 1) + i
@@ -233,8 +230,8 @@ Retrieve the DOF arrays for downstream analyses.
 
 ```python
 # Get DOF arrays, shape (num_dof_holders, num_components)
-grid_values = ug_field.get_dof_holder_data()
-mask_values = mask_field.get_dof_holder_data()
+grid_values = ug_field.get_dof_holder_data().get_values()
+mask_values = mask_field.get_dof_holder_data().get_values()
 
 # Save to file (example)
 np.save('field_data.npy', grid_values)
@@ -248,23 +245,43 @@ np.save('field_data.npy', grid_values)
 - `create_uniform_grid_from_mesh(mesh, divisions)` - Create grid from mesh
 - `create_uniform_grid_binary_field(mesh, divisions)` - Create inside/outside mask
 
+The Python names mirror the C++ API: classes keep their C++ names, C++
+namespaces are submodules (`pcms.csys`, `pcms.values`), and methods are the
+snake_case form of the C++ method (`GetDOFHolderData` is
+`get_dof_holder_data`).
+
+### Coordinate Systems and Value Bases
+- `csys.Cartesian.create(dim)` - Cartesian system. Coordinate system arguments default to `None`, meaning Cartesian in the dimension of the mesh, grid or coordinates they are used with
+- `csys.CylindricalRThetaZ.create()`, `csys.CylindricalRZ.create()` - cylindrical systems
+- `CoordinateView(system, coords)`, `CoordinateView(coords)` - coordinates `(num_points, dim)` tagged with their system (Cartesian when omitted); the array is copied
+- `view.get_coordinate_system()`, `view.get_values()` - the system and a read-only coordinate array
+- `ValueBasis(system, scaling, variance)` - the basis a value's components are in; `ValueBasis()` is the scalar basis
+- `values.Scalar`, `values.Vector`, `values.Covector`, `values.Tensor`, `values.Of([...])` - variance signatures
+- `ComponentScaling.Physical`, `ComponentScaling.Natural`, `Variance.Contravariant`, `Variance.Covariant`
+- `ValueView(basis, values)` - values `(num_points, num_components)` tagged with their basis; the array is not copied
+
 ### Field Factories
-- `FunctionSpace` - abstract base class for field spaces in the Python API
-- `LagrangeFunctionSpace.from_mesh(mesh, order, num_components, coord_system)` - create an Omega_h-backed FunctionSpace
-- `LagrangeFunctionSpace.from_uniform_grid(grid, num_components, coord_system, order=1)` - create a uniform-grid-backed FunctionSpace
+- `FunctionSpace` - abstract base class for field spaces; a `PointEvaluatorFactory`
+- `LagrangeFunctionSpace.from_mesh(mesh, order, num_components, mesh_coordinate_system)` - create an Omega_h-backed FunctionSpace
+- `LagrangeFunctionSpace.from_uniform_grid(grid, num_components, mesh_coordinate_system, order=1)` - create a uniform-grid-backed FunctionSpace
+- `PolynomialReconstructionFunctionSpace.create(coordinate_view, options)` - MLS reconstruction over a point cloud
 
 ### Field Operations
-- `space.create_field()` - Create a real-valued field from a concrete FunctionSpace
-- `EvaluationRequest.from_coordinates(coords, coord_system=Cartesian, policy=...)` - Build an explicit coordinate-based evaluation request
+- `space.create_function(name="", variance=values.Scalar, system=None, scaling=None)` - Create a real-valued `Function`; vector and tensor values are in `system`'s basis (default: the space's)
+- `field.get_layout()` - the field's `FieldLayout`
+- `field.get_data().get_value_basis()` - the basis the field's values are stored in
+- `field.get_layout().get_num_owned_dof_holder()` - Number of owned DOF holders (nodes/elements)
+- `field.get_layout().get_num_components()` - Number of field components per DOF holder
+- `field.get_layout().get_dof_holder_coordinates()` - DOF holder coordinates as a `CoordinateView`
+- `field.get_dof_holder_data()` - Field values as a `ValueView` whose array (`.get_values()`, shape `(num_dof_holders, num_components)`) is read-only and valid until the field is next modified (use `.copy()` to keep values)
+- `field.set_dof_holder_data(value_view)` - Set field values; the basis must match the field's. Scalar fields also accept a plain array, of shape `(num_dof_holders,)` when the field has one component
+- `field.set_dof_holder_data_unchecked(data)` - Set field values without checking their basis
+- `EvaluationRequest.from_coordinates(coordinate_view, policy=...)` - Build an explicit coordinate-based evaluation request
 - `EvaluationRequest.from_function_space(space, policy=...)` - Build an evaluation request from another FunctionSpace's DOF-holder sites
-- `space.create_point_evaluator(request)` - Create a reusable point evaluator from an `EvaluationRequest`
-- `field.get_num_dof_holders()` - Number of owned DOF holders (nodes/elements)
-- `field.get_num_components()` - Number of field components per DOF holder
-- `field.get_dof_holder_coordinates()` - DOF holder coordinates as a 2D numpy array
-- `field.set_dof_holder_data(data)` - Set field values from an array of shape `(num_dof_holders, num_components)`, or `(num_dof_holders,)` for a single-component field
-- `field.get_dof_holder_data()` - Field values as a read-only array of shape `(num_dof_holders, num_components)`, valid until the field is next modified (use `.copy()` to keep values)
-- `Interpolator(source_space, target_space)` - Create an interpolator between FunctionSpaces (cached localization)
-- `interpolator.apply(source_field, target_field)` - Interpolate between fields
+- `factory.create_point_evaluator(request)` - Create a reusable point evaluator; the request's points must be in `factory.get_coordinate_system()`
+- `evaluator.evaluate(field, output)` - Evaluate into a `ValueView` tagged `evaluator.output_basis(field.get_data().get_value_basis())` (a plain array for scalar fields, of shape `(num_points,)` when the output has one component); the output array must be writeable, C-contiguous float64
+- `Interpolator(source, target_space)` - Create an interpolator from a `PointEvaluatorFactory` (cached localization)
+- `operator.apply(source_field, target_field)` - Apply any `TransferOperator` (`Interpolator`, `Copy`, projections)
 - `Copy(source_space, target_space)` - Create a copy operator for compatible FunctionSpaces
 - `map_entity_field_to_vertices_average(mesh, field_data, entity_dim)` - Convert element/face field to vertex field by averaging
 
@@ -309,8 +326,8 @@ np.save('field_data.npy', grid_values)
 ### Grid Properties
 - `grid.get_num_cells()` - Total number of cells
 - `grid.divisions` - Cell divisions in each dimension
-- `field.get_num_dof_holders()` - Total number of field DOF holders
-- `field.get_dof_holder_coordinates()` - DOF holder coordinates
+- `field.get_layout().get_num_owned_dof_holder()` - Total number of field DOF holders
+- `field.get_layout().get_dof_holder_coordinates().get_values()` - DOF holder coordinates
 
 ---
 

@@ -252,10 +252,12 @@ If work in SCOREC system, you can directly use the spack-scorec.yaml which conta
 
    Test the python API with `python -c "import pcms; print(pcms.__version__)"`. You should see the version of PCMS printed out without any errors. 
 
-   Point-evaluator construction in Python uses `EvaluationRequest`, for
-   example:
+   Point-evaluator construction in Python uses `EvaluationRequest`. Query
+   coordinates are passed as a `CoordinateView` that names their coordinate
+   system (Cartesian in the coordinates' dimension when omitted), for example:
    ```python
-   request = pcms.EvaluationRequest.from_coordinates(eval_coords)
+   coords = pcms.CoordinateView(eval_coords)
+   request = pcms.EvaluationRequest.from_coordinates(coords)
    evaluator = source_space.create_point_evaluator(request)
 
    optimized_request = pcms.EvaluationRequest.from_function_space(target_space)

@@ -285,6 +285,12 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 - `Copy(source_space, target_space)` - Create a copy operator for compatible FunctionSpaces
 - `map_entity_field_to_vertices_average(mesh, field_data, entity_dim)` - Convert element/face field to vertex field by averaging
 
+### Coordinate Transformations
+- `CartesianToCylindrical()`, `CylindricalToCartesian()` - `CoordinateMap`s; points map source to target, values are re-expressed the other way
+- `bound = coordinate_map.bind(coordinate_view)` - per-point work for points in the map's source system
+- `bound.mapped_points()`, `bound.output_basis(basis)`, `bound.transform_values(value_view)` - mapped points, and in-place re-expression of values
+- `TransformedSource(source, to_source)` - presents a `PointEvaluatorFactory` in another coordinate system; use it as an `Interpolator` source
+
 ### Out-of-Bounds Modes
 - `OutOfBoundsMode.ERROR` - Raise error when points are outside mesh
 - `OutOfBoundsMode.FILL` - Fill with specified value when points are outside mesh

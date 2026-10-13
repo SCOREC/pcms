@@ -11,6 +11,7 @@ pybind11_add_module(pcms
   bind_uniform_grid_field_layout.cpp
   bind_field_base.cpp
   bind_transfer_field.cpp
+  bind_coordinate_map.cpp
   bind_mls_interpolation.cpp
   bind_mesh_utilities.cpp
 )

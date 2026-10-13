@@ -16,6 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    env:
+      # Builds that depend on Kokkos must not share a cache entry across
+      # shared/static or Serial/OpenMP configurations.
+      DEP_CACHE_SUFFIX: ${{ matrix.python_api == 'ON' && '-shared' || '' }}${{ matrix.openmp == 'ON' && '-openmp' || '' }}
+      # Use more than one thread so threading bugs can show up.
+      OMP_NUM_THREADS: ${{ matrix.openmp == 'ON' && '2' || '1' }}
+      OMP_PROC_BIND: 'false'
+      KOKKOS_ENABLE_OPENMP: ${{ matrix.openmp == 'ON' && 'ON' || 'OFF' }}
+
     defaults:
       run:
         shell: bash
@@ -44,6 +53,15 @@ jobs:
             python_api: OFF
             meshfields: ON
             petsc: OFF
+          # Kokkos OpenMP backend (all other entries use Serial)
+          - build_type: Release
+            memory_test: OFF
+            compiler: g++
+            language: 'cpp'
+            python_api: ON
+            meshfields: ON
+            petsc: ON
+            openmp: ON
         exclude:
           - build_type: Release
             memory_test: ON
@@ -86,11 +104,11 @@ jobs:
         repo-path: 'kokkos/kokkos'
         repo-ref: '4.6.01'
         cache: true
-        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
+        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
         options: '-DCMAKE_CXX_STANDARD=20
                   -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DKokkos_ENABLE_SERIAL=ON
-                  -DKokkos_ENABLE_OPENMP=OFF
+                  -DKokkos_ENABLE_OPENMP=${{ env.KOKKOS_ENABLE_OPENMP }}
                   -DKokkos_ENABLE_CUDA=OFF
                   -DKokkos_ENABLE_CUDA_LAMBDA=OFF
                   -DKokkos_ENABLE_CUDA_CONSTEXPR=OFF'
@@ -102,7 +120,7 @@ jobs:
         repo-path: 'kokkos/kokkos-kernels'
         repo-ref: '4.6.01'
         cache: true
-        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
+        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
         options: '-DCMAKE_CXX_STANDARD=20
                   -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
@@ -114,7 +132,7 @@ jobs:
         repo-path: 'SCOREC/omega_h'
         repo-ref: '2b2e778472f48a85a5ff5e70083e3a415e58be72'
         cache: true
-        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
+        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
                   -DCMAKE_BUILD_TYPE="RelWithDebInfo"
@@ -134,7 +152,7 @@ jobs:
         repo-path: 'SCOREC/meshFields'
         repo-ref: 'b9984520c20f73955a3b4e25e4907780b91d430f'
         cache: true
-        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
+        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
                   -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
@@ -203,7 +221,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ runner.temp }}/petsc
-        key: build-petsc-${{ steps.clone-petsc.outputs.petsc-commit-hash }}-${{ matrix.python_api }}
+        key: build-petsc-${{ steps.clone-petsc.outputs.petsc-commit-hash }}-${{ matrix.python_api }}${{ matrix.openmp == 'ON' && '-openmp' || '' }}
     
     - name: build petsc
       if: matrix.petsc == 'ON' && steps.cache-petsc.outputs.cache-hit != 'true'
@@ -214,6 +232,7 @@ jobs:
           --with-kokkos-dir="${{ runner.temp }}/build-kokkos/install/" \
           --with-kokkos-kernels-dir="${{ runner.temp }}/build-kokkos-kernels/install/" \
           --with-cuda=0 \
+          --with-openmp=${{ matrix.openmp == 'ON' && '1' || '0' }} \
           --with-shared-libraries=${{ matrix.python_api == 'ON' && '1' || '0' }} \
           --download-fblaslapack
         make all check

@@ -45,6 +45,7 @@ option(PCMS_ENABLE_CLIENT "enable the coupling client implementation" ON)
 option(PCMS_ENABLE_XGC "enable xgc field adapter" ON)
 option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
 option(PCMS_ENABLE_MFEM "enable MFEM field adapter" OFF)
+option(PCMS_ENABLE_TRANSIENT "Enable pcms transient module" ON)
 option(PCMS_ENABLE_C "Enable pcms C api" ON)
 option(PCMS_ENABLE_Python "Enable pcms Python api" OFF)
 

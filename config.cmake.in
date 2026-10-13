@@ -29,6 +29,10 @@ if(@PCMS_ENABLE_OMEGA_H@)
     find_dependency(Omega_h CONFIG HINTS @Omega_h_DIR@)
 endif()
 
+if(@PCMS_ENABLE_MFEM@)
+    find_dependency(MFEM CONFIG HINTS @MFEM_DIR@)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_utility-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_transient-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_discretization-targets.cmake")

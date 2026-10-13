@@ -404,7 +404,8 @@ if(Catch2_FOUND)
           PRIVATE Catch2::Catch2WithMain pcms::transient)
 
   set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp test_coordinate_transform.cpp
-                             test_coordinate.cpp test_bounding_box.cpp)
+                             test_coordinate.cpp test_bounding_box.cpp
+                             test_field_serializer.cpp)
   if(PCMS_ENABLE_XGC)
     list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_reverse_classification.cpp
          test_xgc_field_data.cpp)
@@ -437,6 +438,11 @@ if(Catch2_FOUND)
       test_omega_h_lagrange_field.cpp
       test_point_evaluator.cpp)
   endif()
+
+  if(PCMS_ENABLE_MFEM)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_mfem_adapter.cpp)
+  endif()
+
   if(PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES
       test_omega_h_form_integrator_utils.cpp)
@@ -448,14 +454,21 @@ if(Catch2_FOUND)
       test_omega_h_mass_integrator.cpp
       test_omega_h_mc_rhs_integrator.cpp
       test_mesh_intersection_field_transfer.cpp
+      test_mesh_intersection_prefilter.cpp
       test_omega_h_3d_conservative_projection.cpp
-      test_omega_h_3d_analytic_mass.cpp)
+      test_omega_h_3d_analytic_mass.cpp
+      test_omega_h_intersection_coverage.cpp
+      test_omega_h_same_mesh_p0_to_p1.cpp)
   endif()
   
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
   
   if(PCMS_ENABLE_MESHFIELDS)
     target_link_libraries(unit_tests PUBLIC meshfields::meshfields)
+  endif()
+
+  if(PCMS_ENABLE_MFEM)
+    target_link_libraries(unit_tests PUBLIC mfem)
   endif()
 
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core
@@ -483,6 +496,34 @@ if(Catch2_FOUND)
    Catch_discover_tests(test_transient_timestepper)
 else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
+endif()
+
+if(PCMS_ENABLE_MFEM)
+  add_executable(test_mfem_coupling test_mfem_coupling.cpp)
+  target_link_libraries(test_mfem_coupling PUBLIC pcms::core mfem)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    dual_mpi_test(
+      TESTNAME
+      test_mfem_coupling
+      TIMEOUT
+      60
+      NAME1
+      server
+      EXE1
+      $<TARGET_FILE:test_mfem_coupling>
+      PROCS1
+      1
+      ARGS1
+      -1
+      NAME2
+      client
+      EXE2
+      $<TARGET_FILE:test_mfem_coupling>
+      PROCS2
+      1
+      ARGS2
+      0)
+  endif()
 endif()
 
 if(PCMS_ENABLE_C)

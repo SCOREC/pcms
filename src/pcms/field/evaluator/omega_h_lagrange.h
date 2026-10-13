@@ -182,10 +182,13 @@ OmegaHLagrangeLocHint BuildLagrangeLocHint(
 inline std::variant<GridPointSearch2D, GridPointSearch3D> MakeSearch(
   Omega_h::Mesh& mesh)
 {
-  if (mesh.dim() == 2)
-    return GridPointSearch2D(mesh, 10, 10);
-  else if (mesh.dim() == 3)
-    return GridPointSearch3D(mesh, 10, 10, 10);
+  if (mesh.dim() == 2) {
+    const auto n = DivisionsPerAxisForMesh<2>(mesh.nelems());
+    return GridPointSearch2D(mesh, n, n);
+  } else if (mesh.dim() == 3) {
+    const auto n = DivisionsPerAxisForMesh<3>(mesh.nelems());
+    return GridPointSearch3D(mesh, n, n, n);
+  }
   throw std::invalid_argument(
     "OmegaHLagrangeEvaluatorFactory: only 2D and 3D meshes are supported");
 }
@@ -314,6 +317,15 @@ public:
 
   bool SupportsNearestBoundary() const override { return false; }
 
+  /// The containing-element search over this layout's mesh. Exposed so that
+  /// operators which must locate points on the same mesh, such as the
+  /// conservative transfer's intersection search, reuse it rather than build
+  /// and hold a second copy of the candidate map.
+  [[nodiscard]] const GridPointSearchVariant& GetSearch() const noexcept
+  {
+    return search_;
+  }
+
   std::unique_ptr<PointEvaluator<T>> CreatePointEvaluator(
     const EvaluationRequest& request) const override
   {
@@ -363,7 +375,7 @@ public:
 
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
-  mutable std::variant<GridPointSearch2D, GridPointSearch3D> search_;
+  GridPointSearchVariant search_;
 };
 
 } // namespace pcms

@@ -243,6 +243,12 @@ CoordinateSystem LagrangeFunctionSpace::GetCoordinateSystem() const noexcept
   return evaluator_factory_->GetCoordinateSystem();
 }
 
+std::shared_ptr<const FieldEvaluatorFactory<Real>>
+LagrangeFunctionSpace::GetEvaluatorFactory() const noexcept
+{
+  return evaluator_factory_;
+}
+
 FieldVariant LagrangeFunctionSpace::CreateFieldImpl(
   Type value_type, FieldMetadata metadata) const
 {

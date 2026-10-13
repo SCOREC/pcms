@@ -48,9 +48,10 @@ OmegaHConservativeProjection::OmegaHConservativeProjection(
     target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
       target_space.GetLayout()))
 {
+  // The space-based constructor lets the integrator reuse the source space's
+  // point search for the intersection instead of building another.
   rhs_integrator_ = std::make_unique<OmegaHIntersectionRHSIntegrator>(
-    source_layout_, source_space.GetCoordinateSystem(), target_layout_,
-    target_space.GetCoordinateSystem());
+    source_space, target_space);
 
   evaluator_ =
     source_space.CreatePointEvaluator<Real>(EvaluationRequest::FromCoordinates(

@@ -25,7 +25,8 @@ public:
   /// Decide whether to accept a completed time window and pick the next step.
   /// \param dt  The time step that was actually completed.
   /// \param err Normalized error of the completed step.
-  /// \return Whether the step is accepted and the positive step size to try next.
+  /// \return Whether the step is accepted and the positive step size to try
+  /// next.
   [[nodiscard]] virtual Step UpdateStep(Real dt, Real err) = 0;
 
   virtual ~Timestepper() = default;

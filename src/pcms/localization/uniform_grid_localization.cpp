@@ -316,18 +316,6 @@ template <unsigned dim>
   // TODO: Add refined cases from triangle_intersects_bbox
 }
 
-// template <unsigned simplex_dim, unsigned space_dim>
-// KOKKOS_FUNCTION Kokkos::pair<unsigned, LO> barycentric_element_intersection(
-//   const Omega_h::Matrix<space_dim, simplex_dim + 1>& coords,
-//   const Omega_h::Vector<space_dim>& point, const Kokkos::View<Real>&
-//   tolerances)
-// {
-//   if (simplex_dim == 0)
-//   {
-//     return
-//   }
-// }
-
 namespace detail
 {
 /**

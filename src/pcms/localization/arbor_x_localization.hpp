@@ -33,8 +33,8 @@ class Mapping
 {};
 
 /**
- * Wrapper base class for the ArborX::BVH and Mappings classes, this is a
- * *rough* workaround for ArborX::BVH being templated on dimension
+ * This is type erasure for dimension templated classes (ArborX structures,
+ * barycentric Mapping)
  */
 struct TreeWrapper
 {
@@ -50,8 +50,8 @@ struct TreeWrapper
   TreeWrapper(const Mappings_t<dim>& mappings, const Tree_t<dim>& tree)
   {
     dim_ = dim;
-    mappings_ = std::make_shared<std::any>(mappings);
-    tree_ = std::make_shared<std::any>(tree);
+    mappings_ = mappings;
+    tree_ = tree;
   }
   /**
    * @brief returns a pointer to an ArborX tree
@@ -81,8 +81,8 @@ struct TreeWrapper
 
 private:
   int dim_;
-  std::shared_ptr<std::any> tree_;
-  std::shared_ptr<std::any> mappings_;
+  std::any tree_;
+  std::any mappings_;
 };
 } // namespace detail
 

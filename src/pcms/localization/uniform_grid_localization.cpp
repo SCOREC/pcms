@@ -752,7 +752,6 @@ GridPointSearch2D::Results GridPointSearch2D::Apply(
         }
       }
 
-      // found_inside && inside_edge_dist <= etol)
       GridPointSearch2D::Results::Dimensionality dim_out =
         GridPointSearch2D::Results::Dimensionality::NO_INTERSECT;
       LO element_id_out = -1;

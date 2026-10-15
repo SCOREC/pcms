@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <pcms/coupler/field_serializer.h>
+#include <pcms/field/coordinate_systems/cartesian.hpp>
 #include <pcms/field/data/mfem.hpp>
 #include <pcms/field/function_space/mfem.hpp>
 #include <pcms/field/layout/mfem.hpp>
@@ -30,7 +31,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
 
   SECTION("layout reports vertex-scalar properties")
   {
-    pcms::MFEMLayout layout(pmesh, pfes, pcms::CoordinateSystem::Cartesian);
+    pcms::MFEMLayout layout(pmesh, pfes, pcms::csys::Cartesian::Deferred());
 
     REQUIRE(layout.GetNumComponents() == 1);
     REQUIRE(layout.GetDimension() == 2);
@@ -62,7 +63,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     mfem::FunctionCoefficient coeff(LinearField);
     gf.ProjectCoefficient(coeff);
 
-    pcms::MFEMLayout layout(pmesh, pfes, pcms::CoordinateSystem::Cartesian);
+    pcms::MFEMLayout layout(pmesh, pfes, pcms::csys::Cartesian::Deferred());
     pcms::MFEMVertexFieldData data(pfes, gf);
 
     auto host = data.GetDOFHolderDataHost();
@@ -105,7 +106,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     gf.ProjectCoefficient(coeff);
 
     pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                   pcms::CoordinateSystem::Cartesian, "mfem");
+                                   pcms::csys::Cartesian::Deferred(), "mfem");
     auto field = factory.CreateField<pcms::Real>("source");
     const auto& layout = field.GetLayout();
 
@@ -130,8 +131,8 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     serializer.Deserialize(field2, pcms::make_const_array_view(buffer),
                            pcms::make_const_array_view(perm));
 
-    auto restored = field2.GetDOFHolderDataHost();
-    auto original = field.GetDOFHolderDataHost();
+    auto restored = field2.GetDOFHolderDataHost().GetValues();
+    auto original = field.GetDOFHolderDataHost().GetValues();
     for (size_t v = 0; v < restored.extent(0); ++v) {
       REQUIRE(restored(v, 0) == original(v, 0));
     }

@@ -4,7 +4,6 @@
 #include "pcms/utility/arrays.h"
 #include "pcms/discretization/discretization/uniform_grid.hpp"
 #include "pcms/field/field_layout.h"
-#include "pcms/field/coordinate_system.h"
 #include "pcms/field/field.h"
 #include "pcms/utility/uniform_grid.h"
 
@@ -16,8 +15,9 @@ template <unsigned Dim = 2>
 class UniformGridFieldLayout : public FieldLayout
 {
 public:
-  UniformGridFieldLayout(UniformGrid<Dim> grid, int num_components,
-                         CoordinateSystem coordinate_system, int order = 1);
+  UniformGridFieldLayout(
+    UniformGrid<Dim> grid, int num_components,
+    std::shared_ptr<const CoordinateSystem> coordinate_system, int order = 1);
 
   std::shared_ptr<const Discretization> GetDiscretization()
     const noexcept override;
@@ -52,7 +52,6 @@ private:
 
   UniformGrid<Dim> grid_;
   int num_components_;
-  CoordinateSystem coordinate_system_;
   int order_;
   Kokkos::View<GO*, DeviceMemorySpace> gids_;
   Kokkos::View<bool*, DeviceMemorySpace> owned_;

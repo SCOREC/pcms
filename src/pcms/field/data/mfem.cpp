@@ -9,19 +9,27 @@ namespace pcms
 
 MFEMVertexFieldData::MFEMVertexFieldData(mfem::ParFiniteElementSpace& pfes,
                                          mfem::ParGridFunction& gf,
-                                         FieldMetadata metadata)
+                                         ValueBasis basis)
   : pfes_(pfes),
     gf_(gf),
-    metadata_(metadata),
+    basis_(std::move(basis)),
     host_data_("mfem_field_data_host", pfes.GetNDofs(), 1),
     device_data_("mfem_field_data_device", pfes.GetNDofs(), 1)
 {
   PCMS_ALWAYS_ASSERT(pfes_.GetVDim() == 1);
+  if (basis_.Rank() != 0) {
+    throw pcms_error("MFEMVertexFieldData: only scalar fields are supported");
+  }
 }
 
-const FieldMetadata& MFEMVertexFieldData::GetMetadata() const
+FieldValueType MFEMVertexFieldData::GetValueType() const
 {
-  return metadata_;
+  return ValueTypeOfRank(basis_.Rank());
+}
+
+const ValueBasis& MFEMVertexFieldData::GetValueBasis() const
+{
+  return basis_;
 }
 
 Rank2View<const Real, HostMemorySpace>

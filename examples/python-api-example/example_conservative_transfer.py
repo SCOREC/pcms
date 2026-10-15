@@ -179,7 +179,7 @@ def main(plot_path=None):
         # The conservative-projection operators require the native Omega_h
         # Lagrange backend (not the default MeshFields layout).
         source_space = pcms.LagrangeFunctionSpace.from_mesh(
-            source_mesh, 1, 1, pcms.CoordinateSystem.Cartesian,
+            source_mesh, 1, 1, pcms.CoordinateSystem.Cartesian(),
             backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
         )
         source_field = evaluate_function_onto_field(source_space,
@@ -195,7 +195,7 @@ def main(plot_path=None):
               f"{target_mesh.nelems()} elems (read from {target_path})")
 
         target_space = pcms.LagrangeFunctionSpace.from_mesh(
-            target_mesh, 1, 1, pcms.CoordinateSystem.Cartesian,
+            target_mesh, 1, 1, pcms.CoordinateSystem.Cartesian(),
             backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
         )
 
@@ -250,7 +250,7 @@ def main(plot_path=None):
 
         # 4a. P1 source -> P0 target (project the linear field to cell averages).
         target_p0_space = pcms.LagrangeFunctionSpace.from_mesh(
-            target_mesh, 0, 1, pcms.CoordinateSystem.Cartesian,
+            target_mesh, 0, 1, pcms.CoordinateSystem.Cartesian(),
             backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
         )
         p1_to_p0 = target_p0_space.create_field()
@@ -268,7 +268,7 @@ def main(plot_path=None):
         # 4b. P0 source -> P1 target. Build a P0 source field by sampling the
         #     analytic function at the source element centroids.
         source_p0_space = pcms.LagrangeFunctionSpace.from_mesh(
-            source_mesh, 0, 1, pcms.CoordinateSystem.Cartesian,
+            source_mesh, 0, 1, pcms.CoordinateSystem.Cartesian(),
             backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
         )
         source_p0_field = evaluate_function_onto_field(source_p0_space,

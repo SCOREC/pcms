@@ -9,44 +9,45 @@ namespace pcms
 
 PointCloud::PointCloud(std::shared_ptr<const PointCloudLayout> layout)
   : layout_(std::move(layout)),
-    metadata_{},
-    device_data_("", layout_->GetDOFHolderCoordinates().GetValues().extent(0)),
-    data_host_("", layout_->GetDOFHolderCoordinates().GetValues().extent(0))
+    basis_{},
+    device_data_("", layout_->GetDOFHolderCoordinates().GetValues().extent(0),
+                 static_cast<size_t>(layout_->GetNumComponents())),
+    data_host_("", layout_->GetDOFHolderCoordinates().GetValues().extent(0),
+               static_cast<size_t>(layout_->GetNumComponents()))
 {
 }
 
-const FieldMetadata& PointCloud::GetMetadata() const
+FieldValueType PointCloud::GetValueType() const
 {
-  return metadata_;
+  return ValueTypeOfRank(basis_.Rank());
+}
+
+const ValueBasis& PointCloud::GetValueBasis() const
+{
+  return basis_;
 }
 
 Rank2View<const Real, HostMemorySpace> PointCloud::GetDOFHolderDataHost() const
 {
-  Kokkos::deep_copy(data_host_, device_data_);
-  const auto nc = layout_->GetNumComponents();
-  return Rank2View<const Real, HostMemorySpace>(
-    data_host_.data(), static_cast<LO>(data_host_.size()) / nc, nc);
+  DeepCopyMismatchLayouts(data_host_, device_data_);
+  return MakeConstRank2View(data_host_);
 }
 
 void PointCloud::SetDOFHolderDataHost(
   Rank2View<const Real, HostMemorySpace> data)
 {
   PCMS_FUNCTION_TIMER;
-  PCMS_ALWAYS_ASSERT(data.size() == device_data_.size());
   CopyHostRank2ViewToDeviceView(device_data_, data);
 }
 
 Rank2View<const Real, DeviceMemorySpace> PointCloud::GetDOFHolderData() const
 {
-  const auto nc = layout_->GetNumComponents();
-  return Rank2View<const Real, DeviceMemorySpace>(
-    device_data_.data(), static_cast<LO>(device_data_.size()) / nc, nc);
+  return MakeConstRank2View(device_data_);
 }
 
 void PointCloud::SetDOFHolderData(Rank2View<const Real, DeviceMemorySpace> data)
 {
   PCMS_FUNCTION_TIMER;
-  PCMS_ALWAYS_ASSERT(data.size() == device_data_.size());
   CopyDeviceRank2ViewToDeviceView(device_data_, data);
 }
 

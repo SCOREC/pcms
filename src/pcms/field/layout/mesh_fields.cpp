@@ -202,11 +202,11 @@ struct CopyClassInfoFunctor
 
 MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
   Omega_h::Mesh& mesh, std::array<int, 4> nodes_per_dim, int num_components,
-  CoordinateSystem coordinate_system, std::string global_id_name)
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
+  std::string global_id_name)
   : mesh_(mesh),
     global_id_name_(global_id_name),
     num_components_(num_components),
-    coordinate_system_(coordinate_system),
     nodes_per_dim_(nodes_per_dim),
     dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim()),
     class_ids_(GetNumEnts()),
@@ -215,6 +215,8 @@ MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
     owned_host_("", class_dims_.size())
 {
   PCMS_FUNCTION_TIMER;
+  SetCoordinateSystem(
+    ResolveCoordinateSystem(std::move(coordinate_system), mesh_.dim()));
   LO total_ents = GetNumEnts();
 
   auto tag = mesh_.get_tagbase(0, global_id_name_);
@@ -311,7 +313,7 @@ CoordinateView<DeviceMemorySpace>
 MeshFieldsAdapterLayout::GetDOFHolderCoordinates() const
 {
   auto coords_view = MakeConstRank2View(dof_holder_coords_);
-  return CoordinateView<DeviceMemorySpace>{coordinate_system_, coords_view};
+  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(), coords_view};
 }
 
 bool MeshFieldsAdapterLayout::IsDistributed() const

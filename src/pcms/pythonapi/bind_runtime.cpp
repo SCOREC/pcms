@@ -1,6 +1,10 @@
+#include "pcms/configuration.h"
 #include <mpi.h>
-#include <Kokkos_Core.hpp>
 #include "pcms/utility/assert.h"
+#include <Kokkos_Core.hpp>
+#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+#include <petscsys.h>
+#endif
 
 namespace pcms
 {
@@ -9,10 +13,11 @@ namespace
 {
 bool g_py_owns_mpi = false;
 bool g_py_owns_kokkos = false;
+bool g_py_owns_petsc = false;
 } // namespace
 
-// Initializes MPI/Kokkos only if they are not already running (e.g. started
-// by an embedding application or another module such as PyOmega_h), and
+// Initializes MPI/Kokkos/PETSc only if they are not already running (e.g.
+// started by an embedding application or another module such as PyOmega_h), and
 // records ownership so finalize() only tears down what this module started.
 void initialize()
 {
@@ -28,10 +33,30 @@ void initialize()
     Kokkos::initialize();
     g_py_owns_kokkos = true;
   }
+#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+  PetscBool petsc_initialized = PETSC_FALSE;
+  PetscInitialized(&petsc_initialized);
+  if (!petsc_initialized) {
+    if (PetscInitializeNoArguments() != 0) {
+      throw pcms_error("pcms: PetscInitialize failed");
+    }
+    g_py_owns_petsc = true;
+  }
+#endif
 }
 
 void finalize()
 {
+#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+  if (g_py_owns_petsc) {
+    PetscBool petsc_finalized = PETSC_FALSE;
+    PetscFinalized(&petsc_finalized);
+    if (!petsc_finalized) {
+      PetscFinalize();
+    }
+    g_py_owns_petsc = false;
+  }
+#endif
   if (g_py_owns_kokkos && !Kokkos::is_finalized()) {
     Kokkos::finalize();
     g_py_owns_kokkos = false;

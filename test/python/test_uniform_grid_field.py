@@ -36,7 +36,8 @@ class TestUniformGridField:
             grid, 1, pcms.CoordinateSystem.Cartesian
         )
         field = factory.create_field()
-        data = np.arange(field.get_num_dof_holders(), dtype=np.float64)
+        data = np.arange(field.get_num_dof_holders(),
+                         dtype=np.float64).reshape(-1, 1)
         expected_data = data.copy()
         field.set_dof_holder_data(data)
         data.fill(-999.0)
@@ -92,7 +93,7 @@ class TestUniformGridField:
         )
         assert coords.shape == (expected, 3)
 
-        data = np.arange(expected, dtype=np.float64)
+        data = np.arange(expected, dtype=np.float64).reshape(-1, 1)
         expected_data = data.copy()
         field.set_dof_holder_data(data)
         data.fill(-999.0)
@@ -111,9 +112,9 @@ class TestUniformGridField:
         field = factory.create_field()
         coords = field.get_dof_holder_coordinates()
         num_dofs = field.get_num_dof_holders()
-        data = np.zeros(num_dofs, dtype=np.float64)
+        data = np.zeros((num_dofs, 1), dtype=np.float64)
         for i in range(num_dofs):
-            data[i] = coords[i, 0] + 2.0 * coords[i, 1]
+            data[i, 0] = coords[i, 0] + 2.0 * coords[i, 1]
         field.set_dof_holder_data(data)
 
         query_pts = np.array(
@@ -150,10 +151,10 @@ class TestUniformGridOmegaHWorkflow:
         omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(mesh, 1)
         omega_h_field = omega_h_factory.create_field()
         coords = omega_h_field.get_dof_holder_coordinates()
-        omega_h_data = np.zeros(omega_h_field.get_num_dof_holders(),
+        omega_h_data = np.zeros((omega_h_field.get_num_dof_holders(), 1),
                                 dtype=np.float64)
         for i in range(omega_h_field.get_num_dof_holders()):
-            omega_h_data[i] = coords[i, 0] + 2.0 * coords[i, 1]
+            omega_h_data[i, 0] = coords[i, 0] + 2.0 * coords[i, 1]
         omega_h_field.set_dof_holder_data(omega_h_data)
 
         ug_factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
@@ -168,13 +169,13 @@ class TestUniformGridOmegaHWorkflow:
         ug_field_data = ug_field.get_dof_holder_data()
         ug_coords = ug_field.get_dof_holder_coordinates()
 
-        assert len(mask_data) == 25
-        assert len(ug_field_data) == 25
+        assert mask_data.shape == (25, 1)
+        assert ug_field_data.shape == (25, 1)
 
         for vertex_id in range(len(ug_field_data)):
             x, y = ug_coords[vertex_id, 0], ug_coords[vertex_id, 1]
             expected = x + 2.0 * y
-            actual = ug_field_data[vertex_id]
+            actual = ug_field_data[vertex_id, 0]
             assert abs(actual - expected) < 1e-10
 
     def test_omega_h_to_omega_h_transfer(self, world):
@@ -192,9 +193,9 @@ class TestUniformGridOmegaHWorkflow:
         tgt_field = tgt_factory.create_field()
 
         src_coords = src_field.get_dof_holder_coordinates()
-        src_data = np.zeros(src_field.get_num_dof_holders())
+        src_data = np.zeros((src_field.get_num_dof_holders(), 1))
         for i in range(len(src_data)):
-            src_data[i] = src_coords[i, 0] + 2.0 * src_coords[i, 1]
+            src_data[i, 0] = src_coords[i, 0] + 2.0 * src_coords[i, 1]
         src_field.set_dof_holder_data(src_data)
 
         interp = pcms.Interpolator(src_factory, tgt_factory)
@@ -204,5 +205,5 @@ class TestUniformGridOmegaHWorkflow:
         tgt_data = tgt_field.get_dof_holder_data()
         for i in range(tgt_field.get_num_dof_holders()):
             expected = tgt_coords[i, 0] + 2.0 * tgt_coords[i, 1]
-            assert abs(expected - tgt_data[i]) < 1e-10
+            assert abs(expected - tgt_data[i, 0]) < 1e-10
 

@@ -30,19 +30,24 @@ void bind_transfer_field_module(py::module& m)
     .def(
       "evaluate",
       [](const PointEvaluator<Real>& self, const Field<Real>& field,
-         py::array_t<Real> output) {
-        auto output_view = numpy_to_kokkos_view_2d<Real>(output);
+         py::array output) {
+        auto output_host = NumpyOutputToHostView<2, Real>(output);
+#ifdef PCMS_HAS_DISTINCT_DEVICE_MEMORY_SPACE
+        // TODO: evaluate in place on the device via DLPack.
+        auto output_view = MakeUnmanagedKokkosView(output_host);
         auto output_device = Kokkos::View<Real**, DeviceMemorySpace>(
           "output_device", output_view.extent(0), output_view.extent(1));
         DeepCopyMismatchLayouts(output_device, output_view);
         auto output_rank2 = MakeRank2View(output_device);
         self.Evaluate(field, output_rank2);
         DeepCopyMismatchLayouts(output_view, output_device);
+#else
+        // The device memory space is host memory.
+        self.Evaluate(field, output_host);
+#endif
       },
       py::arg("field"), py::arg("output"),
-      "Evaluate the given field at the cached query coordinates into a "
-      "preallocated 2D numpy array of shape "
-      "(num_query_points, num_components).");
+      "Evaluate the given field at the cached query coordinates");
 
   // Bind Interpolator<Real>: construct once per source×target function-space
   // pair (localization happens at construction), then call apply() repeatedly

@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include "pcms/configuration.h"
+#include "numpy_view.h"
 #include <stdexcept>
 
 namespace py = pybind11;
@@ -56,6 +57,10 @@ PYBIND11_MODULE(pcms, m)
   if (Py_AtExit(&py_atexit_finalize) != 0) {
     throw std::runtime_error("pcms: failed to register Py_AtExit finalizer");
   }
+
+  // Whether arrays shared with numpy can alias pcms memory.
+  m.attr("device_memory_is_host_accessible") =
+    pcms::is_host_accessible_v<pcms::DeviceMemorySpace>;
 
   // Bind fundamental types first (coordinate systems, etc.)
   pcms::bind_coordinate_system_module(m);

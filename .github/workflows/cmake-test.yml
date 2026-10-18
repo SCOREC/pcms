@@ -310,6 +310,23 @@ jobs:
         cd ${{ github.workspace }}
         pytest -v --tb=short -p no:cacheprovider
 
+    # The docs need the compiled pcms module for the Python API, so they are
+    # built in one Python-enabled configuration.
+    - name: Build documentation
+      if: matrix.python_api == 'ON' && matrix.openmp != 'ON'
+      run: |
+        sudo apt-get install -yq doxygen
+        pip3 install -r docs/requirements.txt
+        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib/python3.12/site-packages:$PYTHONPATH
+        export PYTHONPATH=${{ runner.temp }}/build-omega_h/install/lib/python/dist-packages:$PYTHONPATH
+        sphinx-build -b html docs docs/_build/html
+
+    - name: Upload documentation
+      if: matrix.python_api == 'ON' && matrix.openmp != 'ON'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/_build/html
+
     - name: Test PCMS Installation
       if: matrix.python_api == 'OFF'
       shell: bash
@@ -331,3 +348,14 @@ jobs:
           ${{ matrix.petsc == 'ON' && format('-DPETSC_LINK_STATIC=ON -DPETSC_DIR={0}/petsc -DPETSC_ARCH=ubuntu-kokkos', runner.temp) || '' }} \
           --debug-output
         cmake --build ${{github.workspace}}/examples/external-usage-example/build
+
+  deploy-docs:
+    needs: test-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+    - name: Deploy to GitHub Pages
+      uses: actions/deploy-pages@v4

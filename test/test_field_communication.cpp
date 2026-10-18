@@ -257,7 +257,9 @@ int main(int argc, char** argv)
     const auto classPartitionFile = argv[3];
 
     Omega_h::Mesh mesh = Omega_h::binary::read(meshFile, world);
-    adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
+    adios2::Params params{{"Streaming", "On"},
+                          {"OpenTimeoutSecs", "60"},
+                          {"BeginStepPollingFrequencySecs", "0.05"}};
     MPI_Comm mpi_comm = lib.world()->get_impl();
 
     switch (clientId) {

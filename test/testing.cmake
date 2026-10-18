@@ -26,6 +26,17 @@ if(MPIEXEC_PREFLAGS STREQUAL "")
   set(MPIEXEC_PREFLAGS "none")
 endif()
 
+set(PCMS_TEST_OMP_NUM_THREADS
+    "1"
+    CACHE STRING "OMP_NUM_THREADS for each rank of the MPI tests")
+
+function(set_mpi_test_environment TESTNAME)
+  set_property(
+    TEST ${TESTNAME}
+    APPEND
+    PROPERTY ENVIRONMENT "OMP_NUM_THREADS=${PCMS_TEST_OMP_NUM_THREADS}")
+endfunction()
+
 message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
 message(STATUS "MPIEXEC_PREFLAGS: ${MPIEXEC_PREFLAGS}")
 message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
@@ -80,6 +91,7 @@ function(mpi_test TESTNAME PROCS EXE)
   endif()
   list(APPEND TEST_COMMAND ${EXE} ${ARGN})
   add_test(NAME ${TESTNAME} COMMAND ${TEST_COMMAND })
+  set_mpi_test_environment(${TESTNAME})
 endfunction(mpi_test)
 
 function(dual_mpi_test)
@@ -107,6 +119,7 @@ function(dual_mpi_test)
       "${DUALTEST_ARGS2}")
   set_tests_properties(${DUALTEST_TESTNAME} PROPERTIES TIMEOUT
                                                        ${DUALTEST_TIMEOUT})
+  set_mpi_test_environment(${DUALTEST_TESTNAME})
 endfunction(dual_mpi_test)
 
 function(tri_mpi_test)
@@ -138,4 +151,5 @@ function(tri_mpi_test)
       "${TRITEST_ARGS3}")
   set_tests_properties(${TRITEST_TESTNAME} PROPERTIES TIMEOUT
                                                       ${TRITEST_TIMEOUT})
+  set_mpi_test_environment(${TRITEST_TESTNAME})
 endfunction(tri_mpi_test)

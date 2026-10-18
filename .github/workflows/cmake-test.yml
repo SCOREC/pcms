@@ -38,6 +38,7 @@ jobs:
         python_api: [OFF, ON]
         meshfields: [ON]
         petsc: [ON]
+        openmp: [OFF]
         include:
           - build_type: Release
             memory_test: OFF

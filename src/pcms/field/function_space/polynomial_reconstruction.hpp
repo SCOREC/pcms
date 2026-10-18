@@ -36,7 +36,7 @@ public:
     std::shared_ptr<FieldEvaluatorFactory<Real>> evaluator_factory) noexcept;
 
   [[nodiscard]] static std::shared_ptr<PolynomialReconstructionFunctionSpace>
-  Create(Rank2View<Real, HostMemorySpace> coords,
+  Create(Rank2View<const Real, HostMemorySpace> coords,
          CoordinateSystem coordinate_system, MLSOptions options = {});
 
   [[nodiscard]] static std::shared_ptr<PolynomialReconstructionFunctionSpace>

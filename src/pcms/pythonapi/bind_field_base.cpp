@@ -30,8 +30,6 @@ namespace
 struct PythonEvaluationRequest
 {
   EvaluationRequest request;
-  py::object owner;
-  // Keep the device view alive to prevent dangling pointer in mdspan
   Kokkos::View<Real**, DeviceMemorySpace> device_coords;
 };
 
@@ -49,22 +47,21 @@ void bind_coordinate_system_module(py::module& m)
     .export_values();
 
   // Bind CoordinateView for HostMemorySpace
-  py::class_<CoordinateView<HostMemorySpace>>(m, "CoordinateView")
-    .def(py::init([](CoordinateSystem cs, py::array_t<Real> coords) {
-           // Convert 2D numpy array to Rank2View
-           auto buf = coords.request();
-           if (buf.ndim != 2) {
-             throw std::runtime_error("Coordinates must be a 2D array");
-           }
-           // Create a view from the numpy array
-           using LayoutPolicy =
-             detail::default_layout_for_memory_space_t<HostMemorySpace>;
-           Rank2View<const Real, HostMemorySpace, LayoutPolicy> coords_view(
-             static_cast<Real*>(buf.ptr), buf.shape[0], buf.shape[1]);
-           return CoordinateView<HostMemorySpace>(cs, coords_view);
+  py::class_<CoordinateView<HostMemorySpace>,
+             std::shared_ptr<CoordinateView<HostMemorySpace>>>(m,
+                                                               "CoordinateView")
+    .def(py::init([](CoordinateSystem cs, const NumpyInput<Real>& coords) {
+           // CoordinateView does not own its coordinates, so keep a copy
+           // alive in the holder's deleter.
+           auto storage = CopyNumpyToKokkosView<2, Real, HostMemorySpace>(
+             coords, "CoordinateView");
+           return std::shared_ptr<CoordinateView<HostMemorySpace>>(
+             new CoordinateView<HostMemorySpace>(cs, MakeRank2View(storage)),
+             [storage](CoordinateView<HostMemorySpace>* view) { delete view; });
          }),
          py::arg("coordinate_system"), py::arg("coordinates"),
-         "Constructor for CoordinateView")
+         "Create a CoordinateView from a 2D array (num_points × dim). The "
+         "coordinates are copied.")
 
     .def("get_coordinate_system",
          &CoordinateView<HostMemorySpace>::GetCoordinateSystem,
@@ -76,21 +73,13 @@ void bind_coordinate_system_module(py::module& m)
 
     .def(
       "get_coordinates",
-      [](const CoordinateView<HostMemorySpace>& self) {
-        auto coords = self.GetValues();
-        // Convert to numpy array
-        py::array_t<Real> result({static_cast<py::ssize_t>(coords.extent(0)),
-                                  static_cast<py::ssize_t>(coords.extent(1))});
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        for (size_t i = 0; i < coords.extent(0); ++i) {
-          for (size_t j = 0; j < coords.extent(1); ++j) {
-            ptr[i * coords.extent(1) + j] = coords(i, j);
-          }
-        }
-        return result;
+      [](py::object self) {
+        return ViewToNumpy(
+          self.cast<const CoordinateView<HostMemorySpace>&>().GetValues(),
+          self);
       },
-      "Get the coordinates as numpy array");
+      "The coordinates as a read-only 2D numpy array (num_points × dim) that "
+      "shares memory with this CoordinateView.");
 
   // Bind CoordinateTransformation abstract base class
   py::class_<CoordinateTransformation,
@@ -161,39 +150,27 @@ void bind_create_field_module(py::module& m)
   py::class_<PythonEvaluationRequest>(m, "EvaluationRequest")
     .def_static(
       "from_coordinates",
-      [](py::array_t<Real> coords, CoordinateSystem coordinate_system,
+      [](const NumpyInput<Real>& coords, CoordinateSystem coordinate_system,
          OutOfBoundsPolicy policy) {
-        auto coords_view = numpy_to_view_2d<const Real>(coords);
-        // Create a Kokkos::View from the host data and deep copy to device
-        auto coords_host = Kokkos::View<Real**, HostMemorySpace>(
-          "coords_host", coords_view.extent(0), coords_view.extent(1));
-        for (size_t i = 0; i < coords_view.extent(0); ++i) {
-          for (size_t j = 0; j < coords_view.extent(1); ++j) {
-            coords_host(i, j) = coords_view(i, j);
-          }
-        }
-        auto coords_device = Kokkos::View<Real**, DeviceMemorySpace>(
-          "coords_device", coords_view.extent(0), coords_view.extent(1));
-        DeepCopyMismatchLayouts(coords_device, coords_host);
-        auto coords_device_view = MakeRank2View(coords_device);
+        auto coords_device =
+          CopyNumpyToKokkosView<2, Real, DeviceMemorySpace>(coords, "coords");
         return PythonEvaluationRequest{
           EvaluationRequest::FromCoordinates(
             CoordinateView<DeviceMemorySpace>(coordinate_system,
-                                              coords_device_view),
+                                              MakeRank2View(coords_device)),
             policy),
-          py::reinterpret_borrow<py::object>(coords),
-          coords_device}; // Keep the View alive!
+          coords_device};
       },
       py::arg("coordinates"),
       py::arg("coordinate_system") = CoordinateSystem::Cartesian,
       py::arg("policy") = OutOfBoundsPolicy{},
-      "Create an EvaluationRequest from an explicit coordinate array.")
+      "Create an EvaluationRequest from a 2D coordinate array (num_points × "
+      "dim). The coordinates are copied.")
     .def_static(
       "from_function_space",
       [](const FunctionSpace& function_space, OutOfBoundsPolicy policy) {
         return PythonEvaluationRequest{
           EvaluationRequest::FromFunctionSpace(function_space, policy),
-          py::none(),
           Kokkos::View<Real**, DeviceMemorySpace>()}; // Empty view for
                                                       // function_space case
       },
@@ -206,41 +183,32 @@ void bind_create_field_module(py::module& m)
   py::class_<Field<Real>>(m, "Field")
     .def(
       "get_dof_holder_data",
-      [](const Field<Real>& self) {
-        auto data = self.GetDOFHolderDataHost();
-        // Flatten the [dof][comp] data into node-major order for the 1D numpy
-        // array (Python-facing DOF data stays 1D).
-        const auto num_dof = data.extent(0);
-        const auto num_comp = data.extent(1);
-        py::array_t<Real> result(static_cast<py::ssize_t>(data.size()));
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        for (size_t i = 0; i < num_dof; ++i)
-          for (size_t c = 0; c < num_comp; ++c)
-            ptr[i * num_comp + c] = data(i, c);
-        return result;
+      [](py::object self) {
+        return ViewToNumpy(self.cast<const Field<Real>&>().GetDOFHolderData(),
+                           self);
       },
-      "Get the DOF holder data as a 1D numpy array")
+      "The DOF holder data as a read-only 2D numpy array (num_dof_holders × "
+      "num_components). When the field's data is in host memory the array "
+      "shares that memory, so it reflects later set_dof_holder_data calls; "
+      "otherwise it is a copy.")
 
     .def(
       "set_dof_holder_data",
-      // c_style|forcecast makes pybind materialize a contiguous copy of the
-      // input, so non-contiguous arrays (e.g. a column slice like data[:, i])
-      // are read correctly rather than by walking flat memory with the wrong
-      // stride.
-      [](Field<Real>& self,
-         py::array_t<Real, py::array::c_style | py::array::forcecast> arr) {
-        auto buf = arr.request();
-        if (buf.ndim != 1) {
-          throw std::runtime_error("DOF holder data must be a 1D array");
+      [](Field<Real>& self, const NumpyInput<Real>& arr) {
+        const LO num_dof_holders = self.GetLayout().GetNumOwnedDofHolder();
+        auto data = NumpyToHostComponentView<Real>(
+          arr, self.GetLayout().GetNumComponents());
+        if (data.extent(0) != num_dof_holders) {
+          throw std::invalid_argument(
+            "DOF holder data must have " + std::to_string(num_dof_holders) +
+            " rows, got " + std::to_string(data.extent(0)));
         }
-        // Reshape the flat 1D input into the field's [dof][comp] layout.
-        const int nc = self.GetLayout().GetNumComponents();
-        const auto total = static_cast<size_t>(buf.shape[0]);
-        self.SetDOFHolderDataHost(Rank2View<const Real, HostMemorySpace>(
-          static_cast<const Real*>(buf.ptr), static_cast<LO>(total / nc), nc));
+        self.SetDOFHolderDataHost(data);
       },
-      py::arg("data"), "Set the DOF holder data from a 1D numpy array")
+      py::arg("data"),
+      "Set the DOF holder data from a 2D numpy array (num_dof_holders × "
+      "num_components). A 1D array (num_dof_holders,) is accepted when the "
+      "field has one component.")
 
     .def(
       "get_num_dof_holders",
@@ -258,33 +226,14 @@ void bind_create_field_module(py::module& m)
 
     .def(
       "get_dof_holder_coordinates",
-      [](const Field<Real>& self) {
-        auto cv = self.GetLayout().GetDOFHolderCoordinates();
-        auto coords = cv.GetValues();
-        Kokkos::View<Real**, DeviceMemorySpace> coords_device(
-          "coords_device", coords.extent(0), coords.extent(1));
-        Kokkos::parallel_for(
-          Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-            0, coords.extent(0)),
-          KOKKOS_LAMBDA(size_t i) {
-            for (size_t j = 0; j < coords.extent(1); ++j) {
-              coords_device(i, j) = coords(i, j);
-            }
-          });
-        Kokkos::View<Real**, HostMemorySpace> coords_host(
-          "coords_host", coords.extent(0), coords.extent(1));
-        DeepCopyMismatchLayouts(coords_host, coords_device);
-        py::array_t<Real> result(
-          {static_cast<py::ssize_t>(coords_host.extent(0)),
-           static_cast<py::ssize_t>(coords_host.extent(1))});
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        for (size_t i = 0; i < coords_host.extent(0); ++i)
-          for (size_t j = 0; j < coords_host.extent(1); ++j)
-            ptr[i * coords_host.extent(1) + j] = coords_host(i, j);
-        return result;
+      [](py::object self) {
+        return ViewToNumpy(self.cast<const Field<Real>&>()
+                             .GetLayout()
+                             .GetDOFHolderCoordinates()
+                             .GetValues(),
+                           self);
       },
-      "DOF holder coordinates as a 2D numpy array (num_dof_holders × dim)");
+      "Read-only DOFHolder coords (num_dof_holders × dim).");
 
   py::class_<FunctionSpace, std::shared_ptr<FunctionSpace>>(m, "FunctionSpace")
     .def(
@@ -394,9 +343,9 @@ void bind_create_field_module(py::module& m)
     m, "PolynomialReconstructionFunctionSpace")
     .def_static(
       "from_coords",
-      [](py::array_t<Real> coords, CoordinateSystem cs, MLSOptions opts) {
-        auto view = numpy_to_view_2d<Real>(coords);
-        return PolynomialReconstructionFunctionSpace::Create(view, cs, opts);
+      [](const NumpyInput<Real>& coords, CoordinateSystem cs, MLSOptions opts) {
+        return PolynomialReconstructionFunctionSpace::Create(
+          NumpyToHostView<2, Real>(coords), cs, opts);
       },
       py::arg("coords"),
       py::arg("coordinate_system") = CoordinateSystem::Cartesian,

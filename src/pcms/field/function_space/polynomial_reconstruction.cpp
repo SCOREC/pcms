@@ -25,11 +25,11 @@ PolynomialReconstructionFunctionSpace::PolynomialReconstructionFunctionSpace(
 
 std::shared_ptr<PolynomialReconstructionFunctionSpace>
 PolynomialReconstructionFunctionSpace::Create(
-  Rank2View<Real, HostMemorySpace> coords, CoordinateSystem coordinate_system,
-  MLSOptions options)
+  Rank2View<const Real, HostMemorySpace> coords,
+  CoordinateSystem coordinate_system, MLSOptions options)
 {
   int dim = static_cast<int>(coords.extent(1));
-  Kokkos::View<Real**, Kokkos::HostSpace> host_view(
+  Kokkos::View<const Real**, Kokkos::HostSpace> host_view(
     coords.data_handle(), coords.extent(0), coords.extent(1));
   auto device_view = Kokkos::View<Real**>("device_view", host_view.extent(0),
                                           host_view.extent(1));

@@ -54,8 +54,7 @@ def demonstrate_face_field_transfer(mesh):
         mesh, 1, 1, pcms.CoordinateSystem.Cartesian
     )
     omega_h_field = omega_h_factory.create_field()
-    # DOF holder data is (num_dof_holders, num_components)
-    omega_h_field.set_dof_holder_data(vertex_field_values[:, np.newaxis])
+    omega_h_field.set_dof_holder_data(vertex_field_values)
     
     divisions = [1000, 500]
     grid = pcms.create_uniform_grid_from_mesh(mesh, divisions)

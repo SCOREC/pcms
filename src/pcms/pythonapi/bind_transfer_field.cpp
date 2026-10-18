@@ -31,7 +31,8 @@ void bind_transfer_field_module(py::module& m)
       "evaluate",
       [](const PointEvaluator<Real>& self, const Field<Real>& field,
          py::array output) {
-        auto output_host = NumpyOutputToHostView<2, Real>(output);
+        auto output_host = NumpyOutputToHostComponentView<Real>(
+          output, field.GetLayout().GetNumComponents());
 #ifdef PCMS_HAS_DISTINCT_DEVICE_MEMORY_SPACE
         // TODO: evaluate in place on the device via DLPack.
         auto output_view = MakeUnmanagedKokkosView(output_host);
@@ -47,7 +48,10 @@ void bind_transfer_field_module(py::module& m)
 #endif
       },
       py::arg("field"), py::arg("output"),
-      "Evaluate the given field at the cached query coordinates");
+      "Evaluate the given field at the cached query coordinates into a "
+      "preallocated numpy array of shape (num_query_points, num_components). "
+      "A 1D array (num_query_points,) is accepted when the field has one "
+      "component.");
 
   // Bind Interpolator<Real>: construct once per source×target function-space
   // pair (localization happens at construction), then call apply() repeatedly

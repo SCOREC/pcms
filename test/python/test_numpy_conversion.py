@@ -33,7 +33,7 @@ def p1_space(mesh):
 def _linear_field(space):
     field = space.create_field()
     coords = field.get_dof_holder_coordinates()
-    field.set_dof_holder_data(_linear(coords[:, 0], coords[:, 1])[:, None])
+    field.set_dof_holder_data(_linear(coords[:, 0], coords[:, 1]))
     return field
 
 
@@ -71,14 +71,35 @@ class TestFieldData:
         np.testing.assert_array_equal(field.get_dof_holder_data(),
                                       data.astype(np.float64))
 
+    def test_scalar_field_accepts_1d(self, p1_space):
+        field = p1_space.create_field()
+        n = field.get_num_dof_holders()
+        data = np.arange(n, dtype=np.float64)
+        field.set_dof_holder_data(data)
+        result = field.get_dof_holder_data()
+        assert result.shape == (n, 1)
+        np.testing.assert_array_equal(result[:, 0], data)
+
     @pytest.mark.parametrize("shape", [
-        lambda n: (n,), lambda n: (n, 2), lambda n: (n + 1, 1),
-    ], ids=["1d", "wrong-components", "wrong-dof-holders"])
+        lambda n: (n, 2), lambda n: (n + 1, 1), lambda n: (n + 1,),
+        lambda n: (n, 1, 1),
+    ], ids=["wrong-components", "wrong-dof-holders", "1d-wrong-dof-holders",
+            "3d"])
     def test_set_rejects_wrong_shape(self, p1_space, shape):
         field = p1_space.create_field()
         with pytest.raises(ValueError):
             field.set_dof_holder_data(
                 np.zeros(shape(field.get_num_dof_holders())))
+
+    def test_vector_field_rejects_1d(self, mesh):
+        space = pcms.LagrangeFunctionSpace.from_mesh(
+            mesh, 1, 2, pcms.CoordinateSystem.Cartesian
+        )
+        field = space.create_field()
+        n = field.get_num_dof_holders()
+        for shape in [(n,), (2 * n,)]:
+            with pytest.raises(ValueError):
+                field.set_dof_holder_data(np.zeros(shape))
 
     def test_returned_arrays_are_read_only(self, p1_space):
         field = _linear_field(p1_space)
@@ -131,6 +152,19 @@ class TestPointEvaluation:
         np.testing.assert_allclose(
             out[:, 0], _linear(self.QUERY[:, 0], self.QUERY[:, 1]),
             atol=1e-12)
+
+    def test_evaluate_into_1d_output(self, p1_space):
+        field = _linear_field(p1_space)
+        out = np.zeros(len(self.QUERY))
+        self._evaluator(p1_space, self.QUERY).evaluate(field, out)
+        np.testing.assert_allclose(
+            out, _linear(self.QUERY[:, 0], self.QUERY[:, 1]), atol=1e-12)
+
+    def test_evaluate_rejects_wrong_components(self, p1_space):
+        field = _linear_field(p1_space)
+        out = np.zeros((len(self.QUERY), 2))
+        with pytest.raises(ValueError):
+            self._evaluator(p1_space, self.QUERY).evaluate(field, out)
 
     def test_request_from_transposed_coordinates(self, p1_space):
         field = _linear_field(p1_space)
@@ -218,12 +252,41 @@ class TestMeshUtilities:
         assert not result.flags.writeable
         np.testing.assert_allclose(result, 3.5)
 
+    @pytest.mark.parametrize("mapping", [
+        lambda mesh, v: pcms.map_entity_field_to_vertices_average(mesh, v, 2),
+        lambda mesh, v: pcms.map_entity_field_to_vertices_mls(mesh, v, 2),
+    ], ids=["average", "mls"])
+    def test_multicomponent_matches_per_component(self, mesh, mapping):
+        centroids = pcms.compute_entity_centroids(mesh, 2)
+        values = np.stack([_linear(centroids[:, 0], centroids[:, 1]),
+                           centroids[:, 0] - centroids[:, 1]], axis=1)
+        result = mapping(mesh, values)
+        assert result.shape == (mesh.nverts(), 2)
+        for c in range(2):
+            np.testing.assert_allclose(
+                result[:, c], mapping(mesh, values[:, c]), atol=1e-12)
+
+    def test_single_component_2d_keeps_rank(self, mesh):
+        values = np.full((mesh.nfaces(), 1), 3.5)
+        result = pcms.map_entity_field_to_vertices_average(mesh, values, 2)
+        assert result.shape == (mesh.nverts(), 1)
+        np.testing.assert_allclose(result, 3.5)
+
+    @pytest.mark.parametrize("shape", [
+        lambda n: (n + 1,), lambda n: (n + 1, 2), lambda n: (n, 0),
+        lambda n: (n, 1, 1),
+    ], ids=["1d-wrong-entities", "2d-wrong-entities", "no-components", "3d"])
+    def test_rejects_wrong_shape(self, mesh, shape):
+        with pytest.raises(ValueError):
+            pcms.map_entity_field_to_vertices_average(
+                mesh, np.zeros(shape(mesh.nfaces())), 2)
+
     def test_centroids_survive_garbage_collection(self, mesh):
         centroids = pcms.compute_entity_centroids(mesh, 2)
         expected = centroids.copy()
         gc.collect()
         np.testing.assert_array_equal(centroids, expected)
-        assert centroids.shape == (2 * mesh.nfaces(),)
+        assert centroids.shape == (mesh.nfaces(), 2)
 
 
 class TestUniformGrid:

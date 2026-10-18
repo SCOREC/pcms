@@ -146,13 +146,12 @@ omega_h_field = omega_h_factory.create_field()
 # Initialize field with f(x,y) = x + 2*y
 coords = omega_h_field.get_dof_holder_coordinates()
 num_nodes = omega_h_field.get_num_dof_holders()
-# DOF holder data has shape (num_dof_holders, num_components)
-omega_h_data = np.zeros((num_nodes, 1))
+omega_h_data = np.zeros(num_nodes)
 
 for i in range(num_nodes):
     x = coords[i, 0]
     y = coords[i, 1]
-    omega_h_data[i, 0] = x + 2.0 * y
+    omega_h_data[i] = x + 2.0 * y
 
 omega_h_field.set_dof_holder_data(omega_h_data)
 
@@ -177,7 +176,7 @@ omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
     mesh, 1, 1, pcms.CoordinateSystem.Cartesian
 )
 omega_h_field = omega_h_factory.create_field()
-omega_h_field.set_dof_holder_data(vertex_field[:, np.newaxis])
+omega_h_field.set_dof_holder_data(vertex_field)
 
 ```
 
@@ -262,7 +261,7 @@ np.save('field_data.npy', grid_values)
 - `field.get_num_dof_holders()` - Number of owned DOF holders (nodes/elements)
 - `field.get_num_components()` - Number of field components per DOF holder
 - `field.get_dof_holder_coordinates()` - DOF holder coordinates as a 2D numpy array
-- `field.set_dof_holder_data(data)` - Set field values from an array of shape `(num_dof_holders, num_components)`
+- `field.set_dof_holder_data(data)` - Set field values from an array of shape `(num_dof_holders, num_components)`, or `(num_dof_holders,)` for a single-component field
 - `field.get_dof_holder_data()` - Field values as a read-only array of shape `(num_dof_holders, num_components)`, valid until the field is next modified (use `.copy()` to keep values)
 - `Interpolator(source_space, target_space)` - Create an interpolator between FunctionSpaces (cached localization)
 - `interpolator.apply(source_field, target_field)` - Interpolate between fields

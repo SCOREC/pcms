@@ -59,13 +59,17 @@ namespace pcms
 template <typename T>
 Omega_h::Read<T> NumpyToOmegaHRead(const NumpyInput<T>& arr)
 {
+  Rank1View<const T, HostMemorySpace, Kokkos::layout_right> host(
+    arr.data(), static_cast<LO>(arr.size()));
   if constexpr (is_host_accessible_v<DeviceMemorySpace>) {
-    auto host = NumpyToHostView<1, T>(arr);
     return Omega_h::Read<T>(Omega_h::Write<T>(
       Kokkos::View<T*>(const_cast<T*>(host.data_handle()), host.extent(0))));
   } else {
-    return Omega_h::Read<T>(Omega_h::Write<T>(
-      CopyNumpyToKokkosView<1, T, DeviceMemorySpace>(arr, "numpy_to_omega_h")));
+    Kokkos::View<T*, DeviceMemorySpace> device(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "numpy_to_omega_h"),
+      host.extent(0));
+    DeepCopyMismatchLayouts(device, MakeUnmanagedKokkosView(host));
+    return Omega_h::Read<T>(Omega_h::Write<T>(device));
   }
 }
 

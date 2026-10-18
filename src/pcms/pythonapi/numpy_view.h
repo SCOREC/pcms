@@ -17,6 +17,12 @@
 //     changes to the caller's array have no effect
 // Output buffers (NumpyOutputToHostView):
 //   - must already be writeable, C-contiguous arrays of the element type
+// Per-entity data (field DOF values, evaluation results):
+//   - is shaped (n, num_components)
+//   - returned arrays always have the component axis, so their rank does not
+//     depend on the number of components
+//   - inputs and output buffers may omit the component axis when
+//     num_components is 1
 //
 // TODO: zero-copy for device memory via DLPack, with the same semantics.
 
@@ -134,6 +140,31 @@ inline void SetReadOnly(py::array& arr)
   py::setattr(arr.attr("flags"), "writeable", py::bool_(false));
 }
 
+inline std::string ShapeString(const py::array& arr)
+{
+  std::string result = "(";
+  for (py::ssize_t i = 0; i < arr.ndim(); ++i) {
+    result += (i > 0 ? ", " : "") + std::to_string(arr.shape(i));
+  }
+  return result + (arr.ndim() == 1 ? ",)" : ")");
+}
+
+// Extents of per-entity data shaped (n, num_components). A 1D array of length
+// n is read as (n, 1) when num_components is 1.
+inline std::array<LO, 2> ComponentExtents(const py::array& arr,
+                                          LO num_components)
+{
+  if (arr.ndim() == 1 && num_components == 1) {
+    return {static_cast<LO>(arr.shape(0)), 1};
+  }
+  if (arr.ndim() == 2 && arr.shape(1) == num_components) {
+    return {static_cast<LO>(arr.shape(0)), num_components};
+  }
+  throw std::invalid_argument(
+    "expected an array of shape (n, " + std::to_string(num_components) + ")" +
+    (num_components == 1 ? " or (n,)" : "") + ", got " + ShapeString(arr));
+}
+
 } // namespace detail
 
 // Unmanaged Kokkos::View over the same memory as an mdspan, so Kokkos
@@ -171,9 +202,10 @@ View<Rank, const T, HostMemorySpace, Kokkos::layout_right> NumpyToHostView(
 // Writable host view of a caller-provided numpy output buffer. Results written
 // to a converted copy would be lost, so instead of converting, require the
 // buffer to already be a writeable, C-contiguous array of T.
-template <std::size_t Rank, typename T>
-View<Rank, T, HostMemorySpace, Kokkos::layout_right> NumpyOutputToHostView(
-  py::array& arr)
+namespace detail
+{
+template <typename T>
+T* OutputBufferData(py::array& arr)
 {
   if (!py::isinstance<py::array_t<T, py::array::c_style>>(arr)) {
     throw std::invalid_argument(
@@ -183,8 +215,37 @@ View<Rank, T, HostMemorySpace, Kokkos::layout_right> NumpyOutputToHostView(
   if (!arr.writeable()) {
     throw std::invalid_argument("output array must be writeable");
   }
+  return static_cast<T*>(arr.mutable_data());
+}
+} // namespace detail
+
+template <std::size_t Rank, typename T>
+View<Rank, T, HostMemorySpace, Kokkos::layout_right> NumpyOutputToHostView(
+  py::array& arr)
+{
   return View<Rank, T, HostMemorySpace, Kokkos::layout_right>(
-    static_cast<T*>(arr.mutable_data()), detail::NumpyExtents<Rank>(arr));
+    detail::OutputBufferData<T>(arr), detail::NumpyExtents<Rank>(arr));
+}
+
+// NumpyToHostView for per-entity data of shape (n, num_components), where the
+// component axis may be omitted when num_components is 1.
+template <typename T>
+Rank2View<const T, HostMemorySpace, Kokkos::layout_right>
+NumpyToHostComponentView(const NumpyInput<T>& arr, LO num_components)
+{
+  return Rank2View<const T, HostMemorySpace, Kokkos::layout_right>(
+    arr.data(), detail::ComponentExtents(arr, num_components));
+}
+
+// NumpyOutputToHostView for per-entity data of shape (n, num_components),
+// where the component axis may be omitted when num_components is 1.
+template <typename T>
+Rank2View<T, HostMemorySpace, Kokkos::layout_right>
+NumpyOutputToHostComponentView(py::array& arr, LO num_components)
+{
+  return Rank2View<T, HostMemorySpace, Kokkos::layout_right>(
+    detail::OutputBufferData<T>(arr),
+    detail::ComponentExtents(arr, num_components));
 }
 
 // Copy a numpy input into a new, owning Kokkos::View in MemorySpace (with that

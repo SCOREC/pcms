@@ -76,7 +76,7 @@ class TestMLSInterpolation:
                     dtype=np.float64,
                 )
 
-                field.set_dof_holder_data(source_values[:, np.newaxis])
+                field.set_dof_holder_data(source_values)
                 evaluator.evaluate(field, results)
                 approx_target_values = results[:, 0]
 

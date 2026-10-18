@@ -195,23 +195,20 @@ void bind_create_field_module(py::module& m)
     .def(
       "set_dof_holder_data",
       [](Field<Real>& self, const NumpyInput<Real>& arr) {
-        auto data = NumpyToHostView<2, Real>(arr);
         const LO num_dof_holders = self.GetLayout().GetNumOwnedDofHolder();
-        const LO num_components = self.GetLayout().GetNumComponents();
-        if (data.extent(0) != num_dof_holders ||
-            data.extent(1) != num_components) {
-          throw std::invalid_argument("DOF holder data must have shape (" +
-                                      std::to_string(num_dof_holders) + ", " +
-                                      std::to_string(num_components) +
-                                      "), got (" +
-                                      std::to_string(data.extent(0)) + ", " +
-                                      std::to_string(data.extent(1)) + ")");
+        auto data = NumpyToHostComponentView<Real>(
+          arr, self.GetLayout().GetNumComponents());
+        if (data.extent(0) != num_dof_holders) {
+          throw std::invalid_argument(
+            "DOF holder data must have " + std::to_string(num_dof_holders) +
+            " rows, got " + std::to_string(data.extent(0)));
         }
         self.SetDOFHolderDataHost(data);
       },
       py::arg("data"),
       "Set the DOF holder data from a 2D numpy array (num_dof_holders × "
-      "num_components)")
+      "num_components). A 1D array (num_dof_holders,) is accepted when the "
+      "field has one component.")
 
     .def(
       "get_num_dof_holders",

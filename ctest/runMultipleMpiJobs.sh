@@ -42,6 +42,9 @@ run() {
   LOGS+=(${name}.log)
 }
 
+# remove ADIOS2 files left in this test's directory by a previous run
+rm -rf ./*.bp* ./*.sst*
+
 run $@
 shift 4
 run $@

@@ -26,6 +26,18 @@ struct GetRank
     PCMS_FUNCTION_TIMER;
     return ptn.GetRank(coord_);
   }
+  // PointSearchPtn maps a point to a *list* of candidate ranks (a point may
+  // fall in the overlap region of several ranks' grid cells), unlike
+  // ClassPtn/RCBPtn which map to a single owning rank. GetDr() is a
+  // single-rank query, so this returns the first candidate as a
+  // representative owner; callers that need every candidate should use
+  // ptn.GetCandidateRanks() directly instead of GetDr().
+  auto operator()(const redev::PointSearchPtn& ptn)
+  {
+    PCMS_FUNCTION_TIMER;
+    const auto& candidates = ptn.GetCandidateRanks(coord_);
+    return candidates.empty() ? static_cast<LO>(-1) : candidates.front();
+  }
   LO id_;
   LO dim_;
   std::array<Real, 3> coord_;

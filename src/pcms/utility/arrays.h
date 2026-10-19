@@ -399,6 +399,29 @@ void CopyDeviceRank2ViewToDeviceView(Kokkos::View<T**, DeviceMemorySpace> dest,
     });
 }
 
+// Inverse of CopyDeviceRank2ViewToDeviceView(Kokkos::View<T*,...>, Rank2View):
+// scatter a flat node-major device View back into a [dof][comp] device
+// Kokkos::View<T**,...>. T is deduced from the (non-alias) Kokkos::View
+// destination parameter, since alias-template argument deduction through
+// Rank2View's multi-level alias chain is not reliable. Uses 2D indexing on
+// the destination so the result is correct regardless of its layout.
+template <typename T>
+void CopyDeviceViewToRank2View(Kokkos::View<T**, DeviceMemorySpace> dest,
+                               Kokkos::View<const T*, DeviceMemorySpace> src)
+{
+  const size_t num_dof = dest.extent(0);
+  const size_t num_comp = dest.extent(1);
+  if (src.extent(0) != num_dof * num_comp) {
+    throw pcms_error("CopyDeviceViewToRank2View: size mismatch");
+  }
+  Kokkos::parallel_for(
+    "CopyDeviceViewToRank2View", num_dof, KOKKOS_LAMBDA(LO i) {
+      for (size_t c = 0; c < num_comp; ++c) {
+        dest(i, c) = src(i * num_comp + c);
+      }
+    });
+}
+
 // Host analogue: copy a [dof][comp] host Rank2View into a flat node-major
 // device View. The host Rank2View is layout_right (contiguous node-major), so
 // we alias its storage with an unmanaged view and deep_copy straight to device.

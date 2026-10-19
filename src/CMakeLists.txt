@@ -14,6 +14,9 @@ configure_file(pcms/configuration.h.in pcms/configuration.h)
 list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.h)
 
 add_subdirectory(pcms/utility)
+if(PCMS_ENABLE_TRANSIENT)
+  add_subdirectory(pcms/transient)
+endif()
 add_subdirectory(pcms/discretization)
 add_subdirectory(pcms/localization)
 add_subdirectory(pcms/field)
@@ -88,6 +91,9 @@ install(
 
 add_library(pcms_pcms INTERFACE)
 target_link_libraries(pcms_pcms INTERFACE pcms::core)
+if(PCMS_ENABLE_TRANSIENT)
+  target_link_libraries(pcms_pcms INTERFACE pcms::transient)
+endif()
 set_target_properties(pcms_pcms PROPERTIES EXPORT_NAME pcms)
 if (PCMS_ENABLE_Python)
   # Disable LTO/IPO before adding Python subdirectory to avoid fatbinData conflicts

@@ -122,8 +122,8 @@ print(f"Created mask field with {mask_field.get_num_dof_holders()} vertices")
 ```python
 # Access mask value for vertex (i, j)
 vertex_id = j * (grid.divisions[0] + 1) + i
-mask_data = mask_field.get_dof_holder_data()
-mask_value = mask_data[vertex_id]  # Returns 0.0 or 1.0
+mask_data = mask_field.get_dof_holder_data()  # shape (num_vertices, 1)
+mask_value = mask_data[vertex_id, 0]  # Returns 0.0 or 1.0
 ```
 
 ---
@@ -221,18 +221,18 @@ ug_coords = ug_field.get_dof_holder_coordinates()
 
 # Access data at vertex (i, j)
 vertex_id = j * (grid.divisions[0] + 1) + i
-value = ug_field_data[vertex_id]
+value = ug_field_data[vertex_id, 0]
 x, y = ug_coords[vertex_id, 0], ug_coords[vertex_id, 1]
 ```
 
 ---
 
-### Step 9: Export Flat Field Data
+### Step 9: Export Field Data
 
-Retrieve the flat DOF arrays for downstream analyses.
+Retrieve the DOF arrays for downstream analyses.
 
 ```python
-# Get flat DOF arrays
+# Get DOF arrays, shape (num_dof_holders, num_components)
 grid_values = ug_field.get_dof_holder_data()
 mask_values = mask_field.get_dof_holder_data()
 
@@ -261,8 +261,8 @@ np.save('field_data.npy', grid_values)
 - `field.get_num_dof_holders()` - Number of owned DOF holders (nodes/elements)
 - `field.get_num_components()` - Number of field components per DOF holder
 - `field.get_dof_holder_coordinates()` - DOF holder coordinates as a 2D numpy array
-- `field.set_dof_holder_data(data)` - Set field values
-- `field.get_dof_holder_data()` - Get field values
+- `field.set_dof_holder_data(data)` - Set field values from an array of shape `(num_dof_holders, num_components)`, or `(num_dof_holders,)` for a single-component field
+- `field.get_dof_holder_data()` - Field values as a read-only array of shape `(num_dof_holders, num_components)`, valid until the field is next modified (use `.copy()` to keep values)
 - `Interpolator(source_space, target_space)` - Create an interpolator between FunctionSpaces (cached localization)
 - `interpolator.apply(source_field, target_field)` - Interpolate between fields
 - `Copy(source_space, target_space)` - Create a copy operator for compatible FunctionSpaces

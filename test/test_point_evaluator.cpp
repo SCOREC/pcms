@@ -361,15 +361,111 @@ TEST_CASE(
     *evaluator, field_b, pts, OMEGA_H_LAMBDA(Real, Real) { return Real(42); });
 }
 
-TEST_CASE("LagrangeFunctionSpace: MeshFields rejects multi-component fields")
+TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
 {
   auto lib = Omega_h::Library{};
   auto mesh =
-    Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
+    Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
 
-  REQUIRE_THROWS_AS(pcms::LagrangeFunctionSpace::FromMesh(
-                      mesh, 1, 2, CoordinateSystem::Cartesian, "global",
-                      pcms::LagrangeFunctionSpace::Backend::MeshFields),
-                    pcms::pcms_error);
+  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, 1, 2, CoordinateSystem::Cartesian, "global",
+    pcms::LagrangeFunctionSpace::Backend::MeshFields);
+
+  auto field = factory->CreateFunction<Real>();
+  auto layout = factory->GetLayout();
+  REQUIRE(layout->GetNumComponents() == 2);
+  int num_dof = layout->GetNumOwnedDofHolder();
+
+  // Component 0: f(x,y)=x+y, Component 1: f(x,y)=2x-y
+  auto dof_coords_mdspan = layout->GetDOFHolderCoordinates().GetValues();
+  Kokkos::View<Real**, pcms::DeviceMemorySpace> dof_dev("dof_dev", num_dof, 2);
+  pcms::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
+  auto coords_host =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), dof_dev);
+
+  std::vector<Real> host_data(static_cast<size_t>(num_dof * 2));
+  for (int i = 0; i < num_dof; ++i) {
+    Real x = coords_host(i, 0);
+    Real y = coords_host(i, 1);
+    host_data[static_cast<size_t>(i) * 2 + 0] = x + y;
+    host_data[static_cast<size_t>(i) * 2 + 1] = 2.0 * x - y;
+  }
+  field.SetDOFHolderDataHost(pcms::Rank2View<const Real, pcms::HostMemorySpace>(
+    host_data.data(), num_dof, 2));
+
+  auto pts = pcms::test::StandardEvalCoords2D();
+  int n = static_cast<int>(pts.size()) / 2;
+  auto device_coords =
+    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto evaluator = factory->CreatePointEvaluator<Real>(
+    pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
+
+  Kokkos::View<Real**, pcms::DeviceMemorySpace> out("out", n, 2);
+  evaluator->Evaluate(field, pcms::MakeRank2View(out));
+  auto out_host =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), out);
+
+  for (int i = 0; i < n; ++i) {
+    Real x = pts[2 * static_cast<size_t>(i)];
+    Real y = pts[2 * static_cast<size_t>(i) + 1];
+    INFO("Point " << i << " (" << x << ", " << y << ")");
+    REQUIRE(out_host(i, 0) == Catch::Approx(x + y).margin(1e-8));
+    REQUIRE(out_host(i, 1) == Catch::Approx(2.0 * x - y).margin(1e-8));
+  }
+}
+
+TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh =
+    Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
+
+  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, 1, 3, CoordinateSystem::Cartesian, "global",
+    pcms::LagrangeFunctionSpace::Backend::MeshFields);
+
+  auto field = factory->CreateFunction<Real>();
+  auto layout = factory->GetLayout();
+  REQUIRE(layout->GetNumComponents() == 3);
+  int num_dof = layout->GetNumOwnedDofHolder();
+
+  // Component 0: x, Component 1: y, Component 2: x*y
+  auto dof_coords_mdspan = layout->GetDOFHolderCoordinates().GetValues();
+  Kokkos::View<Real**, pcms::DeviceMemorySpace> dof_dev("dof_dev", num_dof, 2);
+  pcms::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
+  auto coords_host =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), dof_dev);
+
+  std::vector<Real> host_data(static_cast<size_t>(num_dof * 3));
+  for (int i = 0; i < num_dof; ++i) {
+    Real x = coords_host(i, 0);
+    Real y = coords_host(i, 1);
+    host_data[static_cast<size_t>(i) * 3 + 0] = x;
+    host_data[static_cast<size_t>(i) * 3 + 1] = y;
+    host_data[static_cast<size_t>(i) * 3 + 2] = x * y;
+  }
+  field.SetDOFHolderDataHost(pcms::Rank2View<const Real, pcms::HostMemorySpace>(
+    host_data.data(), num_dof, 3));
+
+  auto pts = pcms::test::StandardEvalCoords2D();
+  int n = static_cast<int>(pts.size()) / 2;
+  auto device_coords =
+    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto evaluator = factory->CreatePointEvaluator<Real>(
+    pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
+
+  Kokkos::View<Real**, pcms::DeviceMemorySpace> out("out", n, 3);
+  evaluator->Evaluate(field, pcms::MakeRank2View(out));
+  auto out_host =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), out);
+
+  for (int i = 0; i < n; ++i) {
+    Real x = pts[2 * static_cast<size_t>(i)];
+    Real y = pts[2 * static_cast<size_t>(i) + 1];
+    INFO("Point " << i << " (" << x << ", " << y << ")");
+    REQUIRE(out_host(i, 0) == Catch::Approx(x).margin(1e-8));
+    REQUIRE(out_host(i, 1) == Catch::Approx(y).margin(1e-8));
+    REQUIRE(out_host(i, 2) == Catch::Approx(x * y).margin(1e-8));
+  }
 }
 #endif // PCMS_ENABLE_MESHFIELDS

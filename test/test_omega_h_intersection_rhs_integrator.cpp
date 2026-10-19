@@ -119,6 +119,46 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: integration points lie inside "
   }
 }
 
+// The space constructor borrows the source space's point search for the
+// intersection; the layout constructor builds its own. Both must produce the
+// same quadrature data, point for point.
+TEST_CASE("OmegaHIntersectionRHSIntegrator: space and layout constructors "
+          "build identical integration points",
+          "[rhs_integrator]")
+{
+  Omega_h::Library lib;
+  auto source_mesh = pcms::test::BuildUnitSquare(lib, 1);
+  auto target_mesh = pcms::test::BuildUnitSquare(lib, 0);
+
+  auto source_space = pcms::test::MakeP1Space(source_mesh);
+  auto target_space = pcms::test::MakeP1Space(target_mesh);
+
+  pcms::OmegaHIntersectionRHSIntegrator from_spaces(*source_space,
+                                                    *target_space);
+  pcms::OmegaHIntersectionRHSIntegrator from_layouts(
+    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+      source_space->GetLayout()),
+    source_space->GetCoordinateSystem(),
+    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+      target_space->GetLayout()),
+    target_space->GetCoordinateSystem());
+
+  const auto a = from_spaces.GetIntegrationPoints().GetValues();
+  const auto b = from_layouts.GetIntegrationPoints().GetValues();
+  REQUIRE(a.extent(0) == b.extent(0));
+  REQUIRE(a.extent(1) == b.extent(1));
+  REQUIRE(a.extent(0) > 0);
+  auto a_host = pcms::test::CopyCoordinatesToHost(
+    a, static_cast<int>(a.extent(0)), static_cast<int>(a.extent(1)));
+  auto b_host = pcms::test::CopyCoordinatesToHost(
+    b, static_cast<int>(b.extent(0)), static_cast<int>(b.extent(1)));
+  for (std::size_t i = 0; i < a_host.extent(0); ++i) {
+    for (std::size_t d = 0; d < a_host.extent(1); ++d) {
+      REQUIRE(a_host(i, d) == b_host(i, d));
+    }
+  }
+}
+
 TEST_CASE("OmegaHIntersectionRHSIntegrator: zero source field gives zero "
           "assembled vector",
           "[rhs_integrator]")

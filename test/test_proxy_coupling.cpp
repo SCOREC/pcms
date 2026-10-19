@@ -86,8 +86,9 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   int rank;
   MPI_Comm_rank(comm, &rank);
 
-  pcms::Coupler coupler("proxy_couple", comm, false, {});
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f");
+  pcms::CouplerComm coupler("proxy_couple", comm, false, {});
+  pcms::ApplicationComm* app =
+    coupler.AddApplication("proxy_couple_xgc_delta_f");
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::CoordinateSystem::Cartesian, "global",
@@ -127,8 +128,9 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   int rank;
   MPI_Comm_rank(comm, &rank);
 
-  pcms::Coupler coupler("proxy_couple", comm, false, {});
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f");
+  pcms::CouplerComm coupler("proxy_couple", comm, false, {});
+  pcms::ApplicationComm* app =
+    coupler.AddApplication("proxy_couple_xgc_total_f");
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::CoordinateSystem::Cartesian, "global",
@@ -167,8 +169,9 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   // coupling server using same mesh as application
   // note the xgc_coupler stores a reference to the internal mesh and it is the
   // user responsibility to keep it alive!
-  pcms::Coupler cpl("proxy_couple", comm, true,
-                    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
+  pcms::CouplerComm cpl(
+    "proxy_couple", comm, true,
+    redev::Partition{ts::setupServerPartition(mesh, cpn_file)});
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f");
   auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");

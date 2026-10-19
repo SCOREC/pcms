@@ -3,6 +3,7 @@
 
 #include "pcms/field/field_layout.h"
 #include "pcms/utility/arrays.h"
+#include "pcms/utility/assert.h"
 #include <Omega_h_array.hpp>
 #include <functional>
 
@@ -25,6 +26,15 @@ struct OverlapMask
     : is_overlap_("overlap_info", size), in_overlap_func_(std::move(in_overlap))
   {
     Kokkos::deep_copy(is_overlap_, true);
+  }
+
+  // Construct from a precomputed per-DOF-holder host mask (e.g. an MFEM
+  // subdomain selected by element attribute). Indexed by local DOF holder.
+  OverlapMask(size_t size, Kokkos::View<bool*, HostMemorySpace> is_overlap_host)
+    : is_overlap_("overlap_info", size)
+  {
+    PCMS_ALWAYS_ASSERT(is_overlap_host.extent(0) == size);
+    Kokkos::deep_copy(is_overlap_, is_overlap_host);
   }
 
   // Construct from Omega_h host array

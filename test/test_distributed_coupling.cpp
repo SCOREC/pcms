@@ -121,7 +121,7 @@ void check_serializer_round_trip(const DistributedCouplingContext& ctx)
   pcms::FieldSerializer<Real> serializer;
   std::vector<Real> buffer(static_cast<size_t>(n_participating) * n_comp);
   const int sent =
-    serializer.Serialize(field.GetData(), layout, pcms::make_array_view(buffer),
+    serializer.Serialize(field, pcms::make_array_view(buffer),
                          pcms::make_const_array_view(permutation));
   require(sent == static_cast<int>(n_participating) * n_comp,
           "serialized size matches participating holders");
@@ -139,8 +139,7 @@ void check_serializer_round_trip(const DistributedCouplingContext& ctx)
   // Deserialize into a fresh field: participating owned values land at their
   // local positions; ghost and non-participating owned slots stay zero.
   auto target = ctx.space->CreateFunction<Real>();
-  serializer.Deserialize(target.GetData(), layout,
-                         pcms::make_const_array_view(buffer),
+  serializer.Deserialize(target, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
   auto target_data = pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
   require(target_data.size() == static_cast<size_t>(n_local),
@@ -363,7 +362,7 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
   pcms::FieldSerializer<Real> exchange_serializer;
   std::vector<Real> payload(recv_plan.msg_size, Real(0));
   const int packed = exchange_serializer.Serialize(
-    exchange_field.GetData(), layout, pcms::make_array_view(payload),
+    exchange_field, pcms::make_array_view(payload),
     pcms::make_const_array_view(recv_plan.permutation));
   require(packed == static_cast<int>(recv_plan.msg_size),
           "packed payload size != receive plan message size");
@@ -372,7 +371,7 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
   // plan slot, and holders the plan did not match stay untouched.
   auto echo_field = ctx.space->CreateFunction<Real>();
   exchange_serializer.Deserialize(
-    echo_field.GetData(), layout, pcms::make_const_array_view(payload),
+    echo_field, pcms::make_const_array_view(payload),
     pcms::make_const_array_view(recv_plan.permutation));
   auto echo_data = pcms::FlattenToRank1View(echo_field.GetDOFHolderDataHost());
   for (LO o = 0; o < n_owned; ++o) {

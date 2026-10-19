@@ -14,7 +14,7 @@ template <typename T>
 class FieldSerializer
 {
 public:
-  virtual int Serialize(const FieldData<T>& field, const FieldLayout& layout,
+  virtual int Serialize(const Field<T>& field,
                         Rank1View<T, HostMemorySpace> buffer,
                         Rank1View<const LO, HostMemorySpace> permutation) const
   {
@@ -35,15 +35,24 @@ public:
   }
 
   virtual void Deserialize(
-    FieldData<T>& field, const FieldLayout& layout,
-    Rank1View<const T, HostMemorySpace> buffer,
+    Field<T>& field, Rank1View<const T, HostMemorySpace> buffer,
     Rank1View<const LO, HostMemorySpace> permutation) const
   {
+    const auto& layout = field.GetLayout();
     const LO num_owned = layout.GetNumOwnedDofHolder();
     const LO num_local = layout.GetNumLocalDofHolder();
     const LO num_comp = layout.GetNumComponents();
     const auto owned_to_local = layout.GetOwnedToLocalHost();
+    // We initialize with local data so that data that doesn't get received
+    // from deserialize doesn't get zeroed out. Long term FIXME is to make
+    // Get/SetData operate over only part of the arrays.
+    auto current = field.GetDOFHolderDataHost();
     Kokkos::View<T*, HostMemorySpace> sorted("sorted", layout.LocalSize());
+    for (LO i = 0; i < num_local; ++i) {
+      for (LO c = 0; c < num_comp; ++c) {
+        sorted[i * num_comp + c] = current(i, c);
+      }
+    }
     for (LO o = 0; o < num_owned; ++o) {
       if (permutation[o] >= 0) {
         const LO local = owned_to_local.size() == 0 ? o : owned_to_local(o);

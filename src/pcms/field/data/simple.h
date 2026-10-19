@@ -18,9 +18,8 @@
 namespace pcms
 {
 
-// SimpleFieldData<T> is a generic concrete FieldData<T> backed by a flat
-// Kokkos::View<T*, HostMemorySpace>. It works for any backend whose DOF data
-// is a flat coefficient array (OmegaH, UniformGrid, PointCloud, etc.).
+// SimpleFieldData<T> is a generic concrete FieldData<T> for backends whose DOF
+// can be stored in a simple 2D array format.
 //
 // Ownership of the layout is shared — the layout is typically held by the
 // factory that created this field data object.
@@ -33,9 +32,11 @@ public:
     : layout_(std::move(layout)),
       metadata_(metadata),
       host_data_("simple_field_data",
-                 static_cast<size_t>(layout_->LocalSize())),
+                 static_cast<size_t>(layout_->GetNumLocalDofHolder()),
+                 static_cast<size_t>(layout_->GetNumComponents())),
       device_data_("simple_field_data_device",
-                   static_cast<size_t>(layout_->LocalSize()))
+                   static_cast<size_t>(layout_->GetNumLocalDofHolder()),
+                   static_cast<size_t>(layout_->GetNumComponents()))
   {
   }
 
@@ -43,10 +44,8 @@ public:
 
   Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
   {
-    Kokkos::deep_copy(host_data_, device_data_);
-    return Rank2View<const T, HostMemorySpace>(host_data_.data(),
-                                               layout_->GetNumLocalDofHolder(),
-                                               layout_->GetNumComponents());
+    DeepCopyMismatchLayouts(host_data_, device_data_);
+    return MakeConstRank2View(host_data_);
   }
 
   Rank2View<const T, HostMemorySpace> GetOwnedDOFHolderDataHost() const override
@@ -69,9 +68,7 @@ public:
 
   Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const override
   {
-    return Rank2View<const T, DeviceMemorySpace>(
-      device_data_.data(), layout_->GetNumLocalDofHolder(),
-      layout_->GetNumComponents());
+    return MakeConstRank2View(device_data_);
   }
 
   void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
@@ -92,17 +89,29 @@ public:
     if (dim < 0) {
       return;
     }
-    SynchronizeOmegaHBlock<T>(oh->GetMesh(), dim, layout_->GetNumComponents(),
-                              device_data_);
+    const int nc = layout_->GetNumComponents();
+    const LO num_rows = static_cast<LO>(device_data_.extent(0));
+
+    // device_data_ may be component-major on device; flatten to dof-major
+    // order for Omega_h's sync_array, then scatter the synchronized values
+    // back.
+    Kokkos::View<T*, DeviceMemorySpace> flat(
+      "ghost_sync_flat",
+      static_cast<size_t>(num_rows) * static_cast<size_t>(nc));
+    CopyDeviceRank2ViewToDeviceView(flat, MakeConstRank2View(device_data_));
+
+    SynchronizeOmegaHBlock<T>(oh->GetMesh(), dim, nc, flat);
+
+    CopyDeviceViewToRank2View<T>(device_data_, flat);
   }
 
 private:
   std::shared_ptr<const FieldLayout> layout_;
   FieldMetadata metadata_;
-  mutable Kokkos::View<T*, HostMemorySpace> host_data_;
-  mutable Kokkos::View<T*, HostMemorySpace> owned_host_data_;
-  mutable Kokkos::View<T*, DeviceMemorySpace> owned_device_data_;
-  Kokkos::View<T*, DeviceMemorySpace> device_data_;
+  mutable Kokkos::View<T**, HostMemorySpace> host_data_;
+  mutable Kokkos::View<T**, HostMemorySpace> owned_host_data_;
+  mutable Kokkos::View<T**, DeviceMemorySpace> owned_device_data_;
+  Kokkos::View<T**, DeviceMemorySpace> device_data_;
 };
 
 } // namespace pcms

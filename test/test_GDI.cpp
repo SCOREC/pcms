@@ -10,8 +10,9 @@ static constexpr int COMM_ROUNDS = 1;
 
 void xgc_delta_f(MPI_Comm comm)
 {
-  pcms::Coupler coupler("proxy_couple", comm, false, {});
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_delta_f");
+  pcms::CouplerComm coupler("proxy_couple", comm, false, {});
+  pcms::ApplicationComm* app =
+    coupler.AddApplication("proxy_couple_xgc_delta_f");
 
   std::vector<pcms::GO> mean_storage(1);
   auto mean = pcms::make_array_view(mean_storage);
@@ -38,8 +39,9 @@ void xgc_delta_f(MPI_Comm comm)
 }
 void xgc_total_f(MPI_Comm comm)
 {
-  pcms::Coupler coupler("proxy_couple", comm, false, {});
-  pcms::Application* app = coupler.AddApplication("proxy_couple_xgc_total_f");
+  pcms::CouplerComm coupler("proxy_couple", comm, false, {});
+  pcms::ApplicationComm* app =
+    coupler.AddApplication("proxy_couple_xgc_total_f");
 
   std::vector<pcms::GO> mean_storage(1);
   auto mean = pcms::make_array_view(mean_storage);
@@ -68,7 +70,7 @@ void xgc_coupler(MPI_Comm comm)
   redev::Reals cuts = {0};
   auto partition = redev::Partition{redev::RCBPtn{dim, ranks, cuts}};
 
-  pcms::Coupler cpl("proxy_couple", comm, true, partition);
+  pcms::CouplerComm cpl("proxy_couple", comm, true, partition);
   auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f");
   auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");
 

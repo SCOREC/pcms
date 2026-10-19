@@ -241,53 +241,46 @@ OwnedLayoutData BuildOwnedLayoutData(
 template <typename T>
 Rank2View<const T, HostMemorySpace> GatherOwnedHostData(
   const FieldLayout& layout,
-  const Kokkos::View<T*, DeviceMemorySpace>& device_data,
-  Kokkos::View<T*, HostMemorySpace>& host_data,
-  Kokkos::View<T*, HostMemorySpace>& owned_host_data)
+  const Kokkos::View<T**, DeviceMemorySpace>& device_data,
+  Kokkos::View<T**, HostMemorySpace>& host_data,
+  Kokkos::View<T**, HostMemorySpace>& owned_host_data)
 {
   const auto owned_to_local = layout.GetOwnedToLocalHost();
   const LO num_comp = layout.GetNumComponents();
+  DeepCopyMismatchLayouts(host_data, device_data);
   if (owned_to_local.size() == 0) {
     // Non-distributed layout: owned == local.
-    Kokkos::deep_copy(host_data, device_data);
-    return Rank2View<const T, HostMemorySpace>(
-      host_data.data(), layout.GetNumLocalDofHolder(), num_comp);
+    return MakeConstRank2View(host_data);
   }
   const LO num_owned = layout.GetNumOwnedDofHolder();
-  Kokkos::deep_copy(host_data, device_data);
-  owned_host_data = Kokkos::View<T*, HostMemorySpace>(
-    "owned_host_data",
-    static_cast<size_t>(num_owned) * static_cast<size_t>(num_comp));
+  owned_host_data = Kokkos::View<T**, HostMemorySpace>(
+    "owned_host_data", static_cast<size_t>(num_owned),
+    static_cast<size_t>(num_comp));
   for (LO o = 0; o < num_owned; ++o) {
     const LO local = owned_to_local(o);
     for (LO c = 0; c < num_comp; ++c) {
-      owned_host_data(static_cast<size_t>(o) * static_cast<size_t>(num_comp) +
-                      static_cast<size_t>(c)) =
-        host_data(static_cast<size_t>(local) * static_cast<size_t>(num_comp) +
-                  static_cast<size_t>(c));
+      owned_host_data(o, c) = host_data(local, c);
     }
   }
-  return Rank2View<const T, HostMemorySpace>(owned_host_data.data(), num_owned,
-                                             num_comp);
+  return MakeConstRank2View(owned_host_data);
 }
 
 template <typename T>
 Rank2View<const T, DeviceMemorySpace> GatherOwnedDeviceData(
   const FieldLayout& layout,
-  const Kokkos::View<T*, DeviceMemorySpace>& device_data,
-  Kokkos::View<T*, DeviceMemorySpace>& owned_device_data)
+  const Kokkos::View<T**, DeviceMemorySpace>& device_data,
+  Kokkos::View<T**, DeviceMemorySpace>& owned_device_data)
 {
   const auto owned_to_local = layout.GetOwnedToLocal();
   const LO num_comp = layout.GetNumComponents();
   if (owned_to_local.size() == 0) {
     // Non-distributed layout: owned == local.
-    return Rank2View<const T, DeviceMemorySpace>(
-      device_data.data(), layout.GetNumLocalDofHolder(), num_comp);
+    return MakeConstRank2View(device_data);
   }
   const LO num_owned = layout.GetNumOwnedDofHolder();
-  owned_device_data = Kokkos::View<T*, DeviceMemorySpace>(
-    "owned_device_data",
-    static_cast<size_t>(num_owned) * static_cast<size_t>(num_comp));
+  owned_device_data = Kokkos::View<T**, DeviceMemorySpace>(
+    "owned_device_data", static_cast<size_t>(num_owned),
+    static_cast<size_t>(num_comp));
   Kokkos::parallel_for(
     "gather_owned_device_data",
     static_cast<size_t>(num_owned) * static_cast<size_t>(num_comp),
@@ -295,10 +288,9 @@ Rank2View<const T, DeviceMemorySpace> GatherOwnedDeviceData(
       const LO o = i / num_comp;
       const LO c = i % num_comp;
       const LO local = owned_to_local(o);
-      owned_device_data(i) = device_data(local * num_comp + c);
+      owned_device_data(o, c) = device_data(local, c);
     });
-  return Rank2View<const T, DeviceMemorySpace>(owned_device_data.data(),
-                                               num_owned, num_comp);
+  return MakeConstRank2View(owned_device_data);
 }
 
 } // namespace pcms

@@ -38,7 +38,8 @@ class TestOmegaHField:
         assert coords.shape[1] == dim
 
         ndata = field.get_num_dof_holders() * num_components
-        test_data = np.arange(ndata, dtype=np.float64)
+        test_data = np.arange(ndata, dtype=np.float64).reshape(
+            -1, num_components)
         expected_data = test_data.copy()
         field.set_dof_holder_data(test_data)
         test_data.fill(-999.0)
@@ -63,9 +64,10 @@ class TestOmegaHField:
         target = target_space.create_field()
 
         coords = source.get_dof_holder_coordinates()
-        source_data = np.zeros(source.get_num_dof_holders(), dtype=np.float64)
+        source_data = np.zeros((source.get_num_dof_holders(), 1),
+                               dtype=np.float64)
         for i in range(source.get_num_dof_holders()):
-            source_data[i] = np.sum(coords[i, :dim])
+            source_data[i, 0] = np.sum(coords[i, :dim])
         source.set_dof_holder_data(source_data)
 
         interp = pcms.Interpolator(source_space, target_space)
@@ -108,7 +110,7 @@ class TestOmegaHField:
                     idx = i * num_components + c
                     test_data[idx] = float(c) + 0.5
 
-        field.set_dof_holder_data(test_data)
+        field.set_dof_holder_data(test_data.reshape(num_owned, num_components))
 
         if dim == 2:
             eval_coords = np.array([

@@ -491,6 +491,12 @@ if(Catch2_FOUND)
 
  include(Catch)
    Catch_discover_tests(unit_tests)
+   if(PCMS_ENABLE_TRANSIENT)
+     add_executable(test_transient_timestepper test_transient_timestepper.cpp)
+     target_link_libraries(test_transient_timestepper
+             PRIVATE Catch2::Catch2WithMain pcms::transient)
+     Catch_discover_tests(test_transient_timestepper)
+   endif()
 else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()

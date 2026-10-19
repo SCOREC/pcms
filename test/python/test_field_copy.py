@@ -38,7 +38,8 @@ class TestFieldCopy:
         ndata = original.get_num_dof_holders() * original.get_num_components()
 
         # Create sequential array of IDs
-        ids = np.arange(ndata, dtype=np.float64)
+        ids = np.arange(ndata, dtype=np.float64).reshape(
+            -1, original.get_num_components())
         original.set_dof_holder_data(ids)
 
         # Create copied field and copy data
@@ -50,8 +51,8 @@ class TestFieldCopy:
         copied_array = copied.get_dof_holder_data()
 
         # Verify the copy
-        assert len(copied_array) == ndata, \
-            f"Expected {ndata} elements, got {len(copied_array)}"
+        assert copied_array.shape == ids.shape, \
+            f"Expected shape {ids.shape}, got {copied_array.shape}"
 
         # Check that all values match
         differences = np.abs(ids - copied_array)

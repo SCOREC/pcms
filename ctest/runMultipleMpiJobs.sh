@@ -1,8 +1,13 @@
 #!/bin/bash -x
-usage="Usage: <run command> <process flag> <valgrindCmd> <valgrindOptions> <name0> <procs0> <exe0> <args0> ... <name2> <procs2> <exe2> <args2>"
+usage="Usage: [--clean-adios2] <run command> <process flag> <valgrindCmd> <valgrindOptions> <name0> <procs0> <exe0> <args0> ... <name2> <procs2> <exe2> <args2>"
 if [[ ($# == 0) || ("${1}" == "-h" || ${1} == "--help") ]]; then
   echo $usage
   exit 1
+fi
+clean=0
+if [[ "${1}" == "--clean-adios2" ]]; then
+  clean=1
+  shift
 fi
 runCmd=${1}
 preFlags=${2}
@@ -42,8 +47,9 @@ run() {
   LOGS+=(${name}.log)
 }
 
-# remove ADIOS2 files left in this test's directory by a previous run
-rm -rf ./*.bp* ./*.sst*
+if [[ ${clean} == 1 ]]; then
+  rm -rf ./*.bp* ./*.sst*
+fi
 
 run $@
 shift 4

@@ -169,6 +169,9 @@ include(test/testing.cmake)
 # define 'smoke tests' to test the install
 add_custom_target(test_install DEPENDS check) # maintain test_install target
 if(NOT BUILD_TESTING)
+  # include(CTest) only enables testing when BUILD_TESTING is on. Enable it so
+  # smoke_test is still registered and 'check' can run it.
+  enable_testing()
   add_custom_target(
     check
     COMMAND ${CMAKE_CTEST_COMMAND} -R smoke_test
@@ -177,6 +180,8 @@ endif()
 
 add_executable(smoke_test test/test_ohClassPtn.cpp)
 target_link_libraries(smoke_test pcms::core test_support)
+# Uses a mesh vendored in test/data so the install check works without
+# PCMS_TEST_DATA_DIR (e.g. with BUILD_TESTING=OFF).
 dual_mpi_test(
   TESTNAME
   smoke_test
@@ -190,7 +195,7 @@ dual_mpi_test(
   2
   ARGS1
   1
-  ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/
+  ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/
   NAME2
   app
   EXE2
@@ -199,7 +204,7 @@ dual_mpi_test(
   1
   ARGS2
   0
-  ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/)
+  ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/)
 
 if(BUILD_TESTING)
   add_subdirectory(test)

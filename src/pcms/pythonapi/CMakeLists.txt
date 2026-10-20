@@ -32,12 +32,18 @@ if(SKBUILD)
   set(PCMS_PYTHON_INSTALL_LOCATION "${SKBUILD_PLATLIB_DIR}")
 else()
   # this is useful for direct CMake installation into python.
-  # This enables spack environment installation to directly load the PyOmega_h module
-  set(PCMS_PYTHON_INSTALL_LOCATION "${CMAKE_INSTALL_LIBDIR}/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages")
-  # Ensure the extension can resolve pcms shared libraries from a standard
-  # prefix install layout (e.g. Spack), where the module lives under
-  # <prefix>/<libdir>/pythonX.Y/site-packages and core libs live in <libdir>.
-  set_target_properties(pcms PROPERTIES INSTALL_RPATH "\$ORIGIN;\$ORIGIN/../../../")
+  # This enables spack environment installation to directly load the pcms module
+  # Defaults to the standard CPython prefix layout (lib/)
+  set(PCMS_PYTHON_INSTALL_LOCATION
+      "lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages"
+      CACHE STRING "Install dir for the pcms python module")
+  # Ensure the extension can resolve pcms shared libraries in <prefix>/<libdir>
+  # from wherever the module is installed (PCMS_PYTHON_INSTALL_LOCATION).
+  get_filename_component(_pcms_py_dir "${PCMS_PYTHON_INSTALL_LOCATION}" ABSOLUTE
+                         BASE_DIR "${CMAKE_INSTALL_PREFIX}")
+  file(RELATIVE_PATH _pcms_py_to_lib "${_pcms_py_dir}"
+       "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+  set_target_properties(pcms PROPERTIES INSTALL_RPATH "\$ORIGIN;\$ORIGIN/${_pcms_py_to_lib}")
 endif()
 
 

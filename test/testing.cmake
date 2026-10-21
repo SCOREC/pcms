@@ -7,7 +7,9 @@ endif()
 set(PCMS_TEST_DATA_DIR
     ""
     CACHE PATH "Path to a local copy of the pcms_coupling_data repo.")
-if(NOT EXISTS ${PCMS_TEST_DATA_DIR})
+# The data is only needed to run tests. Configuring with BUILD_TESTING=OFF
+# (e.g. a package build without tests) shouldn't require it.
+if(BUILD_TESTING AND NOT EXISTS "${PCMS_TEST_DATA_DIR}")
   message(
     FATAL_ERROR "PCMS_TEST_DATA_DIR \"${PCMS_TEST_DATA_DIR}\" is not accessible"
   )

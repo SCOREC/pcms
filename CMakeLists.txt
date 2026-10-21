@@ -185,7 +185,7 @@ dual_mpi_test(
   NAME1
   rdv
   EXE1
-  ./smoke_test
+  smoke_test
   PROCS1
   2
   ARGS1
@@ -194,7 +194,7 @@ dual_mpi_test(
   NAME2
   app
   EXE2
-  ./smoke_test
+  smoke_test
   PROCS2
   1
   ARGS2

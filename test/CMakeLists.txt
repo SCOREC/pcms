@@ -18,7 +18,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./test_ohClassPtn
+      test_ohClassPtn
       PROCS1
       2
       ARGS1
@@ -27,7 +27,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       app
       EXE2
-      ./test_ohClassPtn
+      test_ohClassPtn
       PROCS2
       1
       ARGS2
@@ -45,7 +45,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./test_ohClassPtn_appRibPtn
+      test_ohClassPtn_appRibPtn
       PROCS1
       2
       ARGS1
@@ -54,7 +54,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       app
       EXE2
-      ./test_ohClassPtn_appRibPtn
+      test_ohClassPtn_appRibPtn
       PROCS2
       2
       ARGS2
@@ -78,7 +78,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./test_ohOverlap
+      test_ohOverlap
       PROCS1
       4
       ARGS1
@@ -88,7 +88,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       app
       EXE2
-      ./test_ohOverlap
+      test_ohOverlap
       PROCS2
       16
       ARGS2
@@ -105,7 +105,7 @@ if(PCMS_ENABLE_OMEGA_H)
           NAME1
           app
           EXE1
-          ./test_GDI
+          test_GDI
           PROCS1
           1
           ARGS1
@@ -113,7 +113,7 @@ if(PCMS_ENABLE_OMEGA_H)
           NAME2
           rdv
           EXE2
-          ./test_GDI
+          test_GDI
           PROCS2
           1
           ARGS2
@@ -121,7 +121,7 @@ if(PCMS_ENABLE_OMEGA_H)
           NAME3
           app
           EXE3
-          ./test_GDI
+          test_GDI
           PROCS3
           1
           ARGS3
@@ -139,7 +139,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./test_twoClientOverlap
+      test_twoClientOverlap
       PROCS1
       4
       ARGS1
@@ -149,7 +149,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./test_twoClientOverlap
+      test_twoClientOverlap
       PROCS2
       16
       ARGS2
@@ -159,7 +159,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./test_twoClientOverlap
+      test_twoClientOverlap
       PROCS3
       8
       ARGS3
@@ -178,7 +178,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       server
       EXE1
-      ./field_communication
+      field_communication
       PROCS1
       2
       ARGS1
@@ -188,7 +188,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client1
       EXE2
-      ./field_communication
+      field_communication
       PROCS2
       4
       ARGS2
@@ -198,7 +198,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client2
       EXE3
-      ./field_communication
+      field_communication
       PROCS3
       4
       ARGS3
@@ -217,7 +217,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       2
       ARGS1
@@ -227,7 +227,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       1
       ARGS2
@@ -237,7 +237,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       1
       ARGS3
@@ -254,7 +254,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       2
       ARGS1
@@ -264,7 +264,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       16
       ARGS2
@@ -274,7 +274,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       8
       ARGS3
@@ -291,7 +291,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       4
       ARGS1
@@ -301,7 +301,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       16
       ARGS2
@@ -311,7 +311,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       8
       ARGS3
@@ -328,7 +328,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       8
       ARGS1
@@ -338,7 +338,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       16
       ARGS2
@@ -348,7 +348,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       8
       ARGS3
@@ -365,7 +365,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       16
       ARGS1
@@ -375,7 +375,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       16
       ARGS2
@@ -385,7 +385,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       8
       ARGS3
@@ -553,7 +553,7 @@ if(PCMS_ENABLE_C)
           NAME1
           cinterface
           EXE1
-          $<TARGET_FILE:test_proxy_couple_xgc_c_interface>
+          test_proxy_couple_xgc_c_interface
           PROCS1
           2
           ARGS1
@@ -561,7 +561,7 @@ if(PCMS_ENABLE_C)
           NAME2
           cppinterface
           EXE2
-          $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface>
+          test_proxy_couple_xgc_cpp_interface
           PROCS2
           1
           ARGS2
@@ -577,7 +577,7 @@ if(PCMS_ENABLE_C)
           NAME1
           cinterface
           EXE1
-          $<TARGET_FILE:test_proxy_couple_xgc_c_interface>
+          test_proxy_couple_xgc_c_interface
           PROCS1
           2
           ARGS1
@@ -585,7 +585,7 @@ if(PCMS_ENABLE_C)
           NAME2
           cppinterface_overlap
           EXE2
-          $<TARGET_FILE:test_proxy_couple_xgc_overlap_interface>
+          test_proxy_couple_xgc_overlap_interface
           PROCS2
           1
           ARGS2
@@ -602,7 +602,7 @@ if(PCMS_ENABLE_C)
           NAME1
           cinterface
           EXE1
-          $<TARGET_FILE:test_proxy_couple_xgc_c_interface>
+          test_proxy_couple_xgc_c_interface
           PROCS1
           4
           ARGS1
@@ -610,7 +610,7 @@ if(PCMS_ENABLE_C)
           NAME2
           cppinterface
           EXE2
-          $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface>
+          test_proxy_couple_xgc_cpp_interface
           PROCS2
           2
           ARGS2
@@ -626,7 +626,7 @@ if(PCMS_ENABLE_C)
           NAME1
           cinterface
           EXE1
-          $<TARGET_FILE:test_proxy_couple_xgc_c_interface>
+          test_proxy_couple_xgc_c_interface
           PROCS1
           4
           ARGS1
@@ -634,7 +634,7 @@ if(PCMS_ENABLE_C)
           NAME2
           cppinterface_overlap
           EXE2
-          $<TARGET_FILE:test_proxy_couple_xgc_overlap_interface>
+          test_proxy_couple_xgc_overlap_interface
           PROCS2
           2
           ARGS2
@@ -674,7 +674,7 @@ if(PCMS_ENABLE_Fortran)
       NAME1
       finterface
       EXE1
-      $<TARGET_FILE:test_proxy_coupling_xgc_client_fortran>
+      test_proxy_coupling_xgc_client_fortran
       PROCS1
       2
       ARGS1
@@ -682,7 +682,7 @@ if(PCMS_ENABLE_Fortran)
       NAME2
       cppinterface
       EXE2
-      $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface>
+      test_proxy_couple_xgc_cpp_interface
       PROCS2
       2
       ARGS2

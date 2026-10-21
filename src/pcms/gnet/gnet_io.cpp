@@ -68,8 +68,8 @@ GnetHDF5Reader::GnetHDF5Reader(const std::string& filename)
   // Read 5D Distribution Data
   auto f5d_dims = getDatasetDims(file_id, "/distribution5D/data/f5d");
   if (f5d_dims.size() != 3) {
-    throw std::runtime_error("Expected 3D dataset /distribution5D/data/f5d in " +
-                             filename);
+    throw std::runtime_error(
+      "Expected 3D dataset /distribution5D/data/f5d in " + filename);
   }
   host_f5d = Kokkos::View<double***, Kokkos::HostSpace>(
     "f5d data", f5d_dims[0], f5d_dims[1], f5d_dims[2]);
@@ -148,7 +148,8 @@ Omega_h::Reals calculate_number_density(
   for (size_t mrho = 0; mrho < mrho_max; ++mrho) {
     for (size_t mtheta = 0; mtheta < host_mpol_max[mrho]; ++mtheta) {
       for (size_t mzeta = 0; mzeta < mtor_max; ++mzeta) {
-        size_t m3d = (host_pol_max_scan_array[mrho] + mtheta) * mtor_max + mzeta;
+        size_t m3d =
+          (host_pol_max_scan_array[mrho] + mtheta) * mtor_max + mzeta;
         for (size_t meng = 0; meng < meng_max; ++meng) {
           for (size_t mlmd = 0; mlmd < mlmd_max; ++mlmd) {
             count += 1;
@@ -160,8 +161,8 @@ Omega_h::Reals calculate_number_density(
   }
 
   using DeviceSpace = Kokkos::DefaultExecutionSpace::memory_space;
-  Kokkos::View<double*, DeviceSpace> device_number_density(
-    "particle density", total_num_particles);
+  Kokkos::View<double*, DeviceSpace> device_number_density("particle density",
+                                                           total_num_particles);
 
   // copy from host to actual device view
   Kokkos::deep_copy(device_number_density, host_number_density);

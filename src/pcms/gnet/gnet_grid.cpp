@@ -75,13 +75,10 @@ size_t compute_min_num_supports(const size_t degree, const size_t dim)
   return pcms::detail::calculate_basis_vector_size(slice_lengths_array);
 }
 
-pcms::SupportResults searchNeighbors(const Omega_h::Reals& target_points,
-                                     const size_t mrho_max,
-                                     const size_t mtor_max,
-                                     const size_t mlmd_max,
-                                     const size_t meng_max,
-                                     const double zeta_max, const double emax,
-                                     size_t min_num_supports)
+pcms::SupportResults searchNeighbors(
+  const Omega_h::Reals& target_points, const size_t mrho_max,
+  const size_t mtor_max, const size_t mlmd_max, const size_t meng_max,
+  const double zeta_max, const double emax, size_t min_num_supports)
 {
 
   size_t num_target_points = target_points.size() / MAX_GNET_DIM;

@@ -54,7 +54,8 @@ struct BinNeighbors
 /**
  * @brief Calculates the radial bin index for a given radial coordinate
  * @param mrho_max Maximum number of radial bins
- * @param query_radial_coord The radial coordinate to find the bin for (normalized, [0,1])
+ * @param query_radial_coord The radial coordinate to find the bin for
+ * (normalized, [0,1])
  * @return The index of the radial bin containing the query point
  */
 OMEGA_H_INLINE
@@ -65,7 +66,8 @@ size_t search_radial_bin(const size_t mrho_max, const double query_radial_coord)
 }
 
 OMEGA_H_INLINE
-double compute_radial_coordinate(const size_t mrho_max, const size_t radial_bin_id)
+double compute_radial_coordinate(const size_t mrho_max,
+                                 const size_t radial_bin_id)
 {
   return double(0.5 + radial_bin_id) / mrho_max;
 }
@@ -162,7 +164,8 @@ size_t search_pitch_bin(const size_t mlmd_max, const double query_pitch_coord)
 }
 
 OMEGA_H_INLINE
-double compute_pitch_coordinate(const size_t mlmd_max, const size_t pitch_bin_id)
+double compute_pitch_coordinate(const size_t mlmd_max,
+                                const size_t pitch_bin_id)
 {
   return 2 * (pitch_bin_id + 0.5) / mlmd_max - 1.0;
 }
@@ -394,15 +397,12 @@ void get_energy_bin_neighbors(size_t num_energy_neighbor_bins, size_t meng_max,
 }
 
 OMEGA_H_INLINE
-void get_grid_neighbors(size_t num_rho_neighbor_bins,
-                        Omega_h::LO* radial_bin_neighbors,
-                        size_t num_theta_neighbor_bins,
-                        double query_point_theta,
-                        Omega_h::LO* poloidal_bin_neighbors,
-                        size_t num_zeta_neighbor_bins,
-                        Omega_h::LO* toroidal_bin_neighbors,
-                        Omega_h::LOs pol_max_scan_array, size_t mtor_max,
-                        Omega_h::LO* grid_neighbors_ids)
+void get_grid_neighbors(
+  size_t num_rho_neighbor_bins, Omega_h::LO* radial_bin_neighbors,
+  size_t num_theta_neighbor_bins, double query_point_theta,
+  Omega_h::LO* poloidal_bin_neighbors, size_t num_zeta_neighbor_bins,
+  Omega_h::LO* toroidal_bin_neighbors, Omega_h::LOs pol_max_scan_array,
+  size_t mtor_max, Omega_h::LO* grid_neighbors_ids)
 {
 
   int count = -1;
@@ -553,12 +553,11 @@ public:
     get_energy_bin_neighbors(binNeighbors.num_energy_neighbor_bins, meng_max,
                              emax, query_point_energy, energy_bin_neighbors);
 
-    get_grid_neighbors(binNeighbors.num_rho_neighbor_bins, radial_bin_neighbors,
-                       binNeighbors.num_theta_neighbor_bins, query_point_theta,
-                       poloidal_bin_neighbors,
-                       binNeighbors.num_zeta_neighbor_bins,
-                       toroidal_bin_neighbors, pol_max_scan_array, mtor_max,
-                       grid_neighbors_ids);
+    get_grid_neighbors(
+      binNeighbors.num_rho_neighbor_bins, radial_bin_neighbors,
+      binNeighbors.num_theta_neighbor_bins, query_point_theta,
+      poloidal_bin_neighbors, binNeighbors.num_zeta_neighbor_bins,
+      toroidal_bin_neighbors, pol_max_scan_array, mtor_max, grid_neighbors_ids);
 
     get_marker_neighbors(grid_neighbors_ids_size, grid_neighbors_ids,
                          binNeighbors.num_pitch_neighbor_bins, mlmd_max,
@@ -592,13 +591,10 @@ size_t compute_min_num_supports(const size_t degree, const size_t dim);
  * @param target_points Flattened 5D target coordinates
  * @return Supports in CSR format, as expected by pcms::mls_interpolation
  */
-pcms::SupportResults searchNeighbors(const Omega_h::Reals& target_points,
-                                     const size_t mrho_max,
-                                     const size_t mtor_max,
-                                     const size_t mlmd_max,
-                                     const size_t meng_max,
-                                     const double zeta_max, const double emax,
-                                     size_t min_num_supports);
+pcms::SupportResults searchNeighbors(
+  const Omega_h::Reals& target_points, const size_t mrho_max,
+  const size_t mtor_max, const size_t mlmd_max, const size_t meng_max,
+  const double zeta_max, const double emax, size_t min_num_supports);
 
 } // namespace pcms::gnet
 

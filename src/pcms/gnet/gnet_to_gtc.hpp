@@ -14,13 +14,13 @@ namespace pcms::gnet
 /// Settings for a GNET -> GTC run (defaults match the reference setup)
 struct GnetToGtcOptions
 {
-  std::string input;          // GNET HDF5 file (required)
-  std::string output;         // GTC HDF5 output file (required)
-  int samples = 30000000;     // GTC markers to produce
-  int batch_size = 1000000;   // candidates per sampling round
+  std::string input;        // GNET HDF5 file (required)
+  std::string output;       // GTC HDF5 output file (required)
+  int samples = 30000000;   // GTC markers to produce
+  int batch_size = 1000000; // candidates per sampling round
   std::uint64_t seed = 14000;
-  int degree = 1;               // MLS polynomial degree
-  double lambda = 1e-4;         // MLS regularization
+  int degree = 1;                // MLS polynomial degree
+  double lambda = 1e-4;          // MLS regularization
   double threshold_scale = 1e10; // threshold = threshold_scale / max(volume3d)
   bool verbose = false;
 };

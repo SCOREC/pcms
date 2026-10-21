@@ -89,17 +89,15 @@ GnetData load_gnet(const std::string& path, bool verbose)
                              path);
   }
 
-  std::cout << "GNET grid: rho " << dims.mrho_max << ", zeta "
-            << dims.mtor_max << " (max " << dims.zeta_max << " rad), energy "
-            << dims.meng_max << " (max " << dims.emax << " eV), pitch "
-            << dims.mlmd_max << "\n"
+  std::cout << "GNET grid: rho " << dims.mrho_max << ", zeta " << dims.mtor_max
+            << " (max " << dims.zeta_max << " rad), energy " << dims.meng_max
+            << " (max " << dims.emax << " eV), pitch " << dims.mlmd_max << "\n"
             << "  grid points (rho, theta, zeta): " << grid_total
             << ", markers: " << marker_total << "\n";
 
-  auto source_coordinates =
-    get_gnet_coordinates(dims.mrho_max, dims.mtor_max, dims.mlmd_max,
-                         dims.meng_max, dims.zeta_max, dims.emax,
-                         pol_max_scan_array, marker_total, dim);
+  auto source_coordinates = get_gnet_coordinates(
+    dims.mrho_max, dims.mtor_max, dims.mlmd_max, dims.meng_max, dims.zeta_max,
+    dims.emax, pol_max_scan_array, marker_total, dim);
 
   auto source_values = calculate_number_density(
     dims.mrho_max, mpol_max, dims.mtor_max, pol_max_scan_array, dims.meng_max,
@@ -144,9 +142,8 @@ void run_gnet_to_gtc(const GnetToGtcOptions& options)
   timer.reset();
   SamplingParams params{options.samples, options.batch_size, threshold,
                         options.degree,  options.lambda,     options.seed};
-  auto markers = sample_gtc_markers(gnet.source_values,
-                                    gnet.source_coordinates, default_gtc_grid(),
-                                    gnet.dims, params);
+  auto markers = sample_gtc_markers(gnet.source_values, gnet.source_coordinates,
+                                    default_gtc_grid(), gnet.dims, params);
   Kokkos::fence();
   std::cout << "  [sampling]   " << timer.seconds() << " s\n";
 

@@ -50,7 +50,8 @@ Omega_h::Reals generate_random_points_in_grid(
         Omega_h::Real t = rand_gen.drand(); // [0, 1)
         if (d == 0)
           t = Kokkos::sqrt(t);
-        sampled_points[i * dim + d] = grid.bot_left[d] + t * grid.edge_length[d];
+        sampled_points[i * dim + d] =
+          grid.bot_left[d] + t * grid.edge_length[d];
       }
 
       rand_pool.free_state(rand_gen);
@@ -153,8 +154,7 @@ GtcMarkers sample_gtc_markers(const Omega_h::Reals& source_values,
     total_accepted += num_copy_to_buffer;
 
     std::cout << "  round " << round << ": accepted " << num_copy_to_buffer
-              << ", total " << total_accepted << " / " << total_samples
-              << "\n";
+              << ", total " << total_accepted << " / " << total_samples << "\n";
   }
 
   return GtcMarkers{gtc_marker_coordinates, gtc_f5d};

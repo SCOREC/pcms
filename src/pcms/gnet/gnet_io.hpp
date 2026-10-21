@@ -73,7 +73,8 @@ private:
   std::int64_t file_id; // hid_t
 };
 
-using HostMatrix = Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::HostSpace>;
+using HostMatrix =
+  Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::HostSpace>;
 
 /// Writes the GTC marker file: /gtc_n6d, N x 6 (rho, theta, zeta, energy,
 /// pitch, value)

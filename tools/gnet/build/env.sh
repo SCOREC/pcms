@@ -18,7 +18,7 @@
 # -----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
-# 2. GPU architecture (Kokkos name), see README.md for the full table:
+# 2. GPU architecture (Kokkos name), see ../README.md for the full table:
 #    VOLTA70 (V100), AMPERE80 (A100), AMPERE86 (RTX 30xx, A40),
 #    ADA89 (RTX 40xx, L4, L40), HOPPER90 (H100)
 # -----------------------------------------------------------------------------

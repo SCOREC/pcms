@@ -12,14 +12,10 @@ git -C "$SRC_DIR/pcms" fetch origin
 git -C "$SRC_DIR/pcms" checkout "$PCMS_BRANCH"
 git -C "$SRC_DIR/pcms" pull --ff-only origin "$PCMS_BRANCH"
 
-# the pcms test suite needs its data repo at configure time
-TEST_FLAGS=(-DBUILD_TESTING="$BUILD_TESTS")
-if [ "$BUILD_TESTS" = "ON" ]; then
-  if [ ! -d "$SRC_DIR/pcms_testcases/.git" ]; then
-    git clone --depth 1 https://github.com/jacobmerson/pcms_testcases.git \
-      "$SRC_DIR/pcms_testcases"
-  fi
-  TEST_FLAGS+=(-DPCMS_TEST_DATA_DIR="$SRC_DIR/pcms_testcases")
+# pcms needs its test data repo at configure time, even with tests off
+if [ ! -d "$SRC_DIR/pcms_testcases/.git" ]; then
+  git clone --depth 1 https://github.com/jacobmerson/pcms_testcases.git \
+    "$SRC_DIR/pcms_testcases"
 fi
 
 echo "=== building pcms"
@@ -39,7 +35,8 @@ cmake -S "$SRC_DIR/pcms" -B "$BUILD_DIR/pcms" \
   -DPCMS_ENABLE_Fortran=OFF \
   -DPCMS_ENABLE_Python=OFF \
   -DPCMS_ENABLE_SPDLOG=OFF \
-  "${TEST_FLAGS[@]}"
+  -DPCMS_TEST_DATA_DIR="$SRC_DIR/pcms_testcases" \
+  -DBUILD_TESTING="$BUILD_TESTS"
 cmake --build "$BUILD_DIR/pcms" -j "$JOBS" --target install
 
 echo "=== gnet2gtc installed: $INSTALL_DIR/bin/gnet2gtc"

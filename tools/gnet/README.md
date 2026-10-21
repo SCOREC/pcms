@@ -3,11 +3,10 @@
 `gnet2gtc` computes GTC markers from a GNET 5D distribution. It reads the
 GNET HDF5 file, interpolates the distribution onto random points in the
 GTC phase space, keeps points by rejection sampling, and writes the markers to
-an HDF5 file. It runs on NVIDIA GPUs.
+an HDF5 file. 
 
 ## Requirements
 
-- An NVIDIA GPU
 - GCC with C++20 support (tested 12.3)
 - MPI with `mpicc`/`mpicxx` (tested MPICH 4.1.1)
 - CUDA with `nvcc` (tested 12.1.1)
@@ -83,7 +82,7 @@ Or run it by its full path (default `GNET_ROOT` shown):
 ~/gnet2gtc/install/bin/gnet2gtc --input gnet.h5 --output gtc.h5
 ```
 
-With the defaults it writes 30 million markers (about 5 minutes on an A100).
+With the defaults it writes 30 million markers.
 Use `--samples` for fewer or more.
 
 | Option                  | Default    | Description                                  |
@@ -99,7 +98,6 @@ Use `--samples` for fewer or more.
 | `--verbose`             | off        | print some source points                     |
 | `--help`                |            | show the options                             |
 
-Kokkos options are also accepted, e.g. `--kokkos-device-id=1` to pick a GPU.
 
 ## Input
 

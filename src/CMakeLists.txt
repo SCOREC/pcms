@@ -106,6 +106,11 @@ endif()
 add_subdirectory(pcms/transfer)
 target_link_libraries(pcms_pcms INTERFACE pcms::transfer)
 
+if(PCMS_ENABLE_GNET)
+  add_subdirectory(pcms/gnet)
+  target_link_libraries(pcms_pcms INTERFACE pcms::gnet)
+endif()
+
 install(
   TARGETS pcms_pcms
   EXPORT pcms-targets

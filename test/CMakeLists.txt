@@ -417,8 +417,16 @@ if(Catch2_FOUND)
       test_omega_h_3d_conservative_projection.cpp
       test_omega_h_3d_analytic_mass.cpp)
   endif()
-  
+
+  if(PCMS_ENABLE_GNET)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_gnet_search.cpp)
+  endif()
+
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
+
+  if(PCMS_ENABLE_GNET)
+    target_link_libraries(unit_tests PUBLIC pcms::gnet)
+  endif()
   
   if(PCMS_ENABLE_MESHFIELDS)
     target_link_libraries(unit_tests PUBLIC meshfields::meshfields)

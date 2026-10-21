@@ -134,6 +134,7 @@ find_package(Kokkos CONFIG 4.5 REQUIRED)
 
 option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" ON)
 option(PCMS_ENABLE_PETSC "Enable PETSc support" OFF)
+option(PCMS_ENABLE_GNET "Build the GNET to GTC mapping (gnet2gtc)" OFF)
 
 if(PCMS_ENABLE_MESHFIELDS)
   find_package(meshfields REQUIRED)
@@ -142,6 +143,14 @@ endif()
 
 if(PCMS_ENABLE_PETSC)
   find_package(PETSc REQUIRED)
+endif()
+
+if(PCMS_ENABLE_GNET)
+  if(NOT PCMS_ENABLE_OMEGA_H)
+    message(FATAL_ERROR "PCMS_ENABLE_GNET requires PCMS_ENABLE_OMEGA_H")
+  endif()
+  find_package(HDF5 REQUIRED COMPONENTS C)
+  message(STATUS "Found HDF5: ${HDF5_VERSION}")
 endif()
 
 add_subdirectory(src)

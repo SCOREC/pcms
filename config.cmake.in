@@ -29,6 +29,10 @@ if(@PCMS_ENABLE_OMEGA_H@)
     find_dependency(Omega_h CONFIG HINTS @Omega_h_DIR@)
 endif()
 
+if(@PCMS_ENABLE_GNET@)
+    find_dependency(HDF5 COMPONENTS C)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_utility-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_discretization-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_localization-targets.cmake")
@@ -36,6 +40,10 @@ include("${CMAKE_CURRENT_LIST_DIR}/pcms_field-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_coupler-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_core-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_transfer-targets.cmake")
+
+if(@PCMS_ENABLE_GNET@)
+    include("${CMAKE_CURRENT_LIST_DIR}/pcms_gnet-targets.cmake")
+endif()
 
 if(@PCMS_ENABLE_C@)
     include("${CMAKE_CURRENT_LIST_DIR}/pcms_capi_core-targets.cmake")

@@ -126,19 +126,10 @@ void HDF5Writer::writef2D(const std::string& dataset_name,
   H5Dclose(dataset);
 }
 
-void write_gnet_histogram(const std::string& path, const HostMatrix& epitch)
-{
-  HDF5Writer writer(path);
-  writer.writef2D("/gnet_epitch", epitch);
-}
-
-void write_gtc_output(const std::string& path, const HostMatrix& markers,
-                      const HostMatrix& epitch, const HostMatrix& rtheta)
+void write_gtc_output(const std::string& path, const HostMatrix& markers)
 {
   HDF5Writer writer(path);
   writer.writef2D("/gtc_n6d", markers);
-  writer.writef2D("/gtc_epitch", epitch);
-  writer.writef2D("/gtc_rtheta", rtheta);
 }
 
 Omega_h::Reals calculate_number_density(

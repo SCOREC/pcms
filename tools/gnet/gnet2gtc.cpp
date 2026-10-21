@@ -2,7 +2,7 @@
 //
 // Reads a GNET HDF5 file, interpolates it with MLS onto random candidate
 // points, keeps candidates above a threshold (rejection sampling) and writes
-// the GTC markers and their histograms to an HDF5 file.
+// the GTC markers to an HDF5 file.
 
 #include <pcms/gnet/gnet_to_gtc.hpp>
 #include <Kokkos_Core.hpp>
@@ -26,7 +26,6 @@ void print_usage(const char* prog)
     << "  --output <file>           GTC output HDF5 file (overwritten)\n"
     << "\n"
     << "Options:\n"
-    << "  --gnet-histogram <file>   also write the GNET energy-pitch histogram\n"
     << "  --samples <n>             GTC markers to produce (default " << d.samples << ")\n"
     << "  --batch <n>               candidates per sampling round (default " << d.batch_size << ")\n"
     << "  --seed <n>                random seed (default " << d.seed << ")\n"
@@ -58,8 +57,6 @@ bool parse_args(int argc, char* argv[], pcms::gnet::GnetToGtcOptions& o)
         o.input = value();
       } else if (arg == "--output") {
         o.output = value();
-      } else if (arg == "--gnet-histogram") {
-        o.gnet_histogram = value();
       } else if (arg == "--samples") {
         o.samples = std::stoi(value());
       } else if (arg == "--batch") {

@@ -4,7 +4,6 @@ set(
         PCMS_GNET_HEADERS
         gnet_grid.hpp
         gnet_io.hpp
-        gnet_diagnostics.hpp
         gnet_sampling.hpp
         gnet_to_gtc.hpp
 )
@@ -13,7 +12,6 @@ set(
         PCMS_GNET_SOURCES
         gnet_grid.cpp
         gnet_io.cpp
-        gnet_diagnostics.cpp
         gnet_sampling.cpp
         gnet_to_gtc.cpp
 )

@@ -1,8 +1,8 @@
 #include <pcms/gnet/gnet_to_gtc.hpp>
-#include <pcms/gnet/gnet_diagnostics.hpp>
 #include <pcms/gnet/gnet_io.hpp>
 #include <pcms/gnet/gnet_sampling.hpp>
 #include <Kokkos_Timer.hpp>
+#include <Omega_h_for.hpp>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -16,10 +16,25 @@ namespace
 
 constexpr int dim = MAX_GNET_DIM;
 
-HostMatrix to_host(const Kokkos::View<double**, Kokkos::LayoutRight>& view)
+// N x 6 host table: rho, theta, zeta, energy, pitch, value
+HostMatrix pack_markers(const GtcMarkers& markers)
 {
-  HostMatrix host("host copy", view.extent(0), view.extent(1));
-  Kokkos::deep_copy(host, view);
+  const int num_points = markers.values.size();
+  const auto coordinates = markers.coordinates;
+  const auto values = markers.values;
+  Kokkos::View<double**, Kokkos::LayoutRight> table("gtc markers", num_points,
+                                                    dim + 1);
+
+  Omega_h::parallel_for(
+    num_points, OMEGA_H_LAMBDA(const int i) {
+      for (int d = 0; d < dim; ++d) {
+        table(i, d) = coordinates[i * dim + d];
+      }
+      table(i, dim) = values[i];
+    });
+
+  HostMatrix host("host gtc markers", num_points, dim + 1);
+  Kokkos::deep_copy(host, table);
   return host;
 }
 
@@ -28,9 +43,6 @@ void print_options(const GnetToGtcOptions& o)
   std::cout << "GNET -> GTC\n"
             << "  input           : " << o.input << "\n"
             << "  output          : " << o.output << "\n"
-            << "  gnet histogram  : "
-            << (o.gnet_histogram.empty() ? "(not written)" : o.gnet_histogram)
-            << "\n"
             << "  samples         : " << o.samples << "\n"
             << "  batch size      : " << o.batch_size << "\n"
             << "  seed            : " << o.seed << "\n"
@@ -122,43 +134,25 @@ void run_gnet_to_gtc(const GnetToGtcOptions& options)
   Kokkos::fence();
   std::cout << "  [load]       " << timer.seconds() << " s\n";
 
-  auto grid5d = default_gtc_grid();
-
   const double min_v3d = get_min_volume(gnet.volume3d);
   const double max_v3d = get_max_volume(gnet.volume3d);
   const double threshold = options.threshold_scale / max_v3d;
-  std::cout << " Volume3D min: " << min_v3d << ", max: " << max_v3d
-            << ", rejection threshold: " << threshold << "\n";
+  std::cout << "  volume3d min " << min_v3d << ", max " << max_v3d
+            << " -> rejection threshold " << threshold << "\n";
 
-  // 2. optional GNET energy-pitch histogram
-  if (!options.gnet_histogram.empty()) {
-    timer.reset();
-    auto gnet_epitch = calculate_velocity_distribution(
-      gnet.source_values, gnet.source_coordinates, grid5d);
-    write_gnet_histogram(options.gnet_histogram, to_host(gnet_epitch));
-    std::cout << "  [gnet hist]  " << timer.seconds() << " s -> "
-              << options.gnet_histogram << "\n";
-  }
-
-  // 3. rejection sampling of GTC markers
+  // 2. rejection sampling of GTC markers
   timer.reset();
   SamplingParams params{options.samples, options.batch_size, threshold,
                         options.degree,  options.lambda,     options.seed};
   auto markers = sample_gtc_markers(gnet.source_values,
-                                    gnet.source_coordinates, grid5d, gnet.dims,
-                                    params);
+                                    gnet.source_coordinates, default_gtc_grid(),
+                                    gnet.dims, params);
   Kokkos::fence();
   std::cout << "  [sampling]   " << timer.seconds() << " s\n";
 
-  // 4. GTC histograms and output table
+  // 3. write markers
   timer.reset();
-  Omega_h::Reals values(markers.values);
-  Omega_h::Reals coordinates(markers.coordinates);
-  auto table = get2DArray(values, coordinates);
-  auto epitch = calculate_velocity_distribution(values, coordinates, grid5d);
-  auto rtheta = calculate_2d_distribution(values, coordinates, grid5d);
-  write_gtc_output(options.output, to_host(table), to_host(epitch),
-                   to_host(rtheta));
+  write_gtc_output(options.output, pack_markers(markers));
   std::cout << "  [write]      " << timer.seconds() << " s -> "
             << options.output << "\n";
 

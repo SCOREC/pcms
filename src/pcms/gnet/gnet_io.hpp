@@ -75,17 +75,9 @@ private:
 
 using HostMatrix = Kokkos::View<double**, Kokkos::LayoutRight, Kokkos::HostSpace>;
 
-/// Writes the GNET energy-pitch histogram as /gnet_epitch
-void write_gnet_histogram(const std::string& path, const HostMatrix& epitch);
-
-/**
- * @brief Writes the GTC output file:
- *   /gtc_n6d    N x 6 markers: rho, theta, zeta, energy, pitch, value
- *   /gtc_epitch energy-pitch histogram of the markers
- *   /gtc_rtheta rho-theta histogram of the markers
- */
-void write_gtc_output(const std::string& path, const HostMatrix& markers,
-                      const HostMatrix& epitch, const HostMatrix& rtheta);
+/// Writes the GTC marker file: /gtc_n6d, N x 6 (rho, theta, zeta, energy,
+/// pitch, value)
+void write_gtc_output(const std::string& path, const HostMatrix& markers);
 
 /**
  * @brief Number density f5d / volume3d for every GNET marker, in marker-id

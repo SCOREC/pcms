@@ -4,7 +4,6 @@
 #include <Omega_h_array_ops.hpp>
 #include <Omega_h_for.hpp>
 #include <algorithm>
-#include <cstdio>
 #include <iostream>
 
 namespace pcms::gnet
@@ -109,9 +108,9 @@ GtcMarkers sample_gtc_markers(const Omega_h::Reals& source_values,
     auto support = searchNeighbors(sampled_tgt_pts, dims.mrho_max,
                                    dims.mtor_max, dims.mlmd_max, dims.meng_max,
                                    dims.zeta_max, dims.emax, min_num_supports);
-    auto host_support_ptr = Omega_h::HostRead(support.supports_ptr);
-    if (total_accepted == 0) {
-      printf("Total supports : %d\n", host_support_ptr[1]);
+    if (round == 1) {
+      auto host_support_ptr = Omega_h::HostRead(support.supports_ptr);
+      std::cout << "  supports per target: " << host_support_ptr[1] << "\n";
     }
     // mapping from gnet to gtc on candidate points
     auto tgt_values = pcms::mls_interpolation(
@@ -153,9 +152,9 @@ GtcMarkers sample_gtc_markers(const Omega_h::Reals& source_values,
 
     total_accepted += num_copy_to_buffer;
 
-    std::cerr << "Round #" << round
-              << ": Accepted this batch = " << num_copy_to_buffer
-              << ", Total = " << total_accepted << "\n";
+    std::cout << "  round " << round << ": accepted " << num_copy_to_buffer
+              << ", total " << total_accepted << " / " << total_samples
+              << "\n";
   }
 
   return GtcMarkers{gtc_marker_coordinates, gtc_f5d};

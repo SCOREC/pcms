@@ -5,10 +5,12 @@
 #include "pcms/field/function_space.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/field/point_evaluator.h"
+#include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/transfer/interpolator.h"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include "pcms/transfer/monte_carlo_sampling.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
+#include <Kokkos_Core.hpp>
 #include <cstdint>
 #include <memory>
 
@@ -39,7 +41,7 @@ class OmegaHControlVariateProjection : public TransferOperator<Real>
 {
 public:
   OmegaHControlVariateProjection(
-    const FunctionSpace& source_space, const FunctionSpace& target_space,
+    const PointEvaluatorFactory& source, const FunctionSpace& target_space,
     int samples_per_element, MonteCarloSampling sampling,
     uint64_t seed = 8675309,
     MassMatrixType mass_matrix_type = MassMatrixType::Consistent);
@@ -59,6 +61,10 @@ private:
   std::unique_ptr<PointEvaluator<Real>> source_at_samples_;
   std::unique_ptr<PointEvaluator<Real>> control_variate_at_samples_;
   std::unique_ptr<GalerkinProjectionSolver> solver_;
+
+  mutable Kokkos::View<Real**, DeviceMemorySpace> target_values_;
+  mutable Kokkos::View<Real**, DeviceMemorySpace> f_samples_;
+  mutable Kokkos::View<Real**, DeviceMemorySpace> residual_;
 };
 
 } // namespace pcms

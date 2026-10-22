@@ -4,7 +4,7 @@
 #include "pcms/field/layout/mesh_fields.h"
 #include "pcms/field/evaluator/mesh_fields_backend.h"
 #include "pcms/field/field_data.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
 
@@ -45,9 +45,9 @@ class MeshFieldsFieldData : public FieldData<T>
 {
 public:
   MeshFieldsFieldData(std::shared_ptr<const MeshFieldsAdapterLayout> layout,
-                      FieldMetadata metadata)
+                      ValueBasis basis)
     : layout_(std::move(layout)),
-      metadata_(metadata),
+      basis_(std::move(basis)),
       mesh_field_(MakeMeshFieldBackend<T>(*layout_)),
       host_data_("meshfields_field_data",
                  static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
@@ -62,7 +62,11 @@ public:
     }
   }
 
-  const FieldMetadata& GetMetadata() const override { return metadata_; }
+  FieldValueType GetValueType() const override
+  {
+    return ValueTypeOfRank(basis_.Rank());
+  }
+  const ValueBasis& GetValueBasis() const override { return basis_; }
 
   Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
   {
@@ -72,8 +76,6 @@ public:
 
   void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
   {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
     CopyHostRank2ViewToDeviceView(device_data_, values);
     SyncBackend(GetDOFHolderData());
   }
@@ -85,8 +87,6 @@ public:
 
   void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
     CopyDeviceRank2ViewToDeviceView(device_data_, values);
     SyncBackend(GetDOFHolderData());
   }
@@ -97,6 +97,9 @@ public:
   }
 
 private:
+  // Serialization boundary: meshfields' SetData consumes flat node-major
+  // spans, so the shaped data is explicitly repacked into a flat node-major
+  // staging buffer here — the one place this backend handles flat memory.
   void SyncBackend(Rank2View<const T, DeviceMemorySpace> data)
   {
     auto nodes_per_dim = layout_->GetNodesPerDim();
@@ -125,7 +128,7 @@ private:
   }
 
   std::shared_ptr<const MeshFieldsAdapterLayout> layout_;
-  FieldMetadata metadata_;
+  ValueBasis basis_;
   std::shared_ptr<MeshFieldBackend<T>> mesh_field_;
   mutable Kokkos::View<T**, HostMemorySpace> host_data_;
   Kokkos::View<T**, DeviceMemorySpace> device_data_;

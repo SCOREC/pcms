@@ -18,7 +18,7 @@ public:
                         Rank1View<T, HostMemorySpace> buffer,
                         Rank1View<const LO, HostMemorySpace> permutation) const
   {
-    auto data = field.GetDOFHolderDataHost();
+    const auto data = field.GetDOFHolderDataHost().GetValues();
     if (buffer.size() > 0) {
       const LO num_dof = static_cast<LO>(data.extent(0));
       const LO num_comp = static_cast<LO>(data.extent(1));
@@ -45,7 +45,7 @@ public:
     // doesn't get zeroed out. Long term FIXME
     // is to make Get/SetData operate over only part of the
     // arrays
-    auto current = field.GetDOFHolderDataHost();
+    const auto current = field.GetDOFHolderDataHost().GetValues();
     Kokkos::View<T*, HostMemorySpace> sorted("sorted", layout.OwnedSize());
     for (LO i = 0; i < num_dof; ++i) {
       for (LO c = 0; c < num_comp; ++c) {
@@ -59,7 +59,7 @@ public:
         }
       }
     }
-    field.SetDOFHolderDataHost(
+    field.SetDOFHolderDataUncheckedHost(
       Rank2View<const T, HostMemorySpace>(sorted.data(), num_dof, num_comp));
   }
 

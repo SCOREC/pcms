@@ -18,7 +18,7 @@ class TestUniformGridField:
         grid.divisions = [4, 4]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian
+            grid, 1, pcms.CoordinateSystem.Cartesian()
         )
         field = factory.create_field()
         expected = (grid.divisions[0] + 1) * (grid.divisions[1] + 1)
@@ -33,7 +33,7 @@ class TestUniformGridField:
         grid.divisions = [2, 2]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian
+            grid, 1, pcms.CoordinateSystem.Cartesian()
         )
         field = factory.create_field()
         data = np.arange(field.get_num_dof_holders(),
@@ -51,7 +51,7 @@ class TestUniformGridField:
         grid.divisions = [2, 3]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian
+            grid, 1, pcms.CoordinateSystem.Cartesian()
         )
         field = factory.create_field()
         coords = field.get_dof_holder_coordinates()
@@ -82,7 +82,7 @@ class TestUniformGridField:
         grid.divisions = [2, 2, 2]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian
+            grid, 1, pcms.CoordinateSystem.Cartesian()
         )
         field = factory.create_field()
         coords = field.get_dof_holder_coordinates()
@@ -107,7 +107,7 @@ class TestUniformGridField:
         grid.divisions = [10, 10]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian
+            grid, 1, pcms.CoordinateSystem.Cartesian()
         )
         field = factory.create_field()
         coords = field.get_dof_holder_coordinates()
@@ -158,7 +158,7 @@ class TestUniformGridOmegaHWorkflow:
         omega_h_field.set_dof_holder_data(omega_h_data)
 
         ug_factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian
+            grid, 1, pcms.CoordinateSystem.Cartesian()
         )
         ug_field = ug_factory.create_field()
 

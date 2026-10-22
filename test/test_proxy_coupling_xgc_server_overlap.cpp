@@ -11,8 +11,9 @@
 #include "pcms/coupler/serializer/xgc.h"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/coupler/overlap_mask.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::ConstructRCFromOmegaHMesh;
 using pcms::GO;
@@ -61,7 +62,7 @@ void xgc_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
 
     auto field = function_space.CreateField<pcms::GO>(
       ss.str(), std::make_unique<pcms::XGCFieldData<pcms::GO>>(
-                  function_space.GetXGCLayout(), pcms::FieldMetadata{},
+                  function_space.GetXGCLayout(), pcms::ValueBasis{},
                   make_array_view(data[i])));
 
     std::unique_ptr<pcms::FieldSerializer<GO>> serializer =
@@ -175,12 +176,12 @@ void omegah_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
     application->SetLayoutOverlapMask(ss.str(), std::move(overlap_mask));
 
     auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 1, pcms::CoordinateSystem::Cartesian, numbering,
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), numbering,
       pcms::LagrangeFunctionSpace::Backend::OmegaH, ss.str());
 
     auto field = factory->CreateFunction<GO>(
       ss.str(), std::make_unique<pcms::SimpleFieldData<GO>>(
-                  factory->GetLayout(), pcms::FieldMetadata{}));
+                  factory->GetLayout(), pcms::ValueBasis{}));
 
     std::unique_ptr<pcms::FieldSerializer<GO>> serializer =
       std::make_unique<pcms::FieldSerializer<GO>>();

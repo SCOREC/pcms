@@ -5,10 +5,14 @@
 #include <variant>
 
 #include <Kokkos_Core.hpp>
+#include <Omega_h_array.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_bbox.hpp>
 #include <Omega_h_shape.hpp>
 
+#include <iostream>
+
+#include "pcms/localization/overlap.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/uniform_grid.h"
 #include "pcms/utility/bounding_box.h"
@@ -81,6 +85,199 @@ Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
                                         Kokkos::View<Uniform3DGrid[1]> grid,
                                         int num_grid_cells);
+
+/**
+ * Functor for the element -> grid cell map, the transpose of what the search
+ * needs. Row `elem` lists the cells that element overlaps.
+ *
+ * This is the element-major inverse of the old cell-major functor: rather than
+ * testing every element against a cell, each element only visits the cells its
+ * own bounding box spans. That makes construction O(nelems * cells_per_elem)
+ * instead of O(num_cells * nelems).
+ */
+template <int Dim, typename Pred>
+struct ElemCellOverlapFunctor
+{
+  ElemCellOverlapFunctor(Omega_h::Mesh& mesh,
+                         Kokkos::View<UniformGrid<Dim>[1]> grid)
+    : elems2verts_(mesh.ask_elem_verts()), coords_(mesh.coords()), grid_(grid)
+  {
+    if (mesh.dim() != Dim) {
+      std::cerr << "ElemCellOverlapFunctor: mesh dimension does not match the "
+                   "functor dimension\n";
+      std::terminate();
+    }
+  }
+
+  /// Two-pass functor. On the first pass we count the cells this element
+  /// overlaps; on the second we fill the CSR row with their IDs.
+  KOKKOS_INLINE_FUNCTION
+  LO operator()(LO elem, LO* fill) const
+  {
+    const auto elem_verts = Omega_h::gather_verts<Dim + 1>(elems2verts_, elem);
+    const auto vertex_coords =
+      Omega_h::gather_vectors<Dim + 1, Dim>(coords_, elem_verts);
+    const auto& grid = grid_(0);
+
+    const auto range = candidate_cells<Dim, Pred>(vertex_coords, grid);
+
+    Kokkos::Array<LO, Dim> idx = range.lo;
+    LO num_overlaps = 0;
+    while (true) {
+      const LO cell = grid.CellIndexFromAxisIndices(idx);
+      if (Overlap<Dim, Pred>::apply(vertex_coords, grid.GetCellBBOX(cell))) {
+        if (fill) {
+          fill[num_overlaps] = cell;
+        }
+        ++num_overlaps;
+      }
+      // odometer over the inclusive range [lo, hi]
+      int d = 0;
+      for (; d < Dim; ++d) {
+        if (++idx[d] <= range.hi[d]) {
+          break;
+        }
+        idx[d] = range.lo[d];
+      }
+      if (d == Dim) {
+        break;
+      }
+    }
+    return num_overlaps;
+  }
+
+private:
+  Omega_h::LOs elems2verts_;
+  Omega_h::Reals coords_;
+  Kokkos::View<UniformGrid<Dim>[1]> grid_;
+};
+
+/**
+ * Build the grid cell -> element candidate map.
+ *
+ * Constructed as the transpose of the cheap element -> cell map. Kokkos'
+ * transpose_crs cannot be used here: it sizes the output row count from
+ * in.numRows() (the element count), which both over-allocates the row map and
+ * writes out of bounds once num_grid_cells exceeds the element count.
+ */
+template <int Dim, typename Pred>
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map(Omega_h::Mesh& mesh,
+                           Kokkos::View<UniformGrid<Dim>[1]> grid,
+                           int num_grid_cells)
+{
+  using CrsT = Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
+  const auto nelems = mesh.nelems();
+
+  CrsT elem2cells{};
+  Kokkos::count_and_fill_crs(elem2cells, nelems,
+                             ElemCellOverlapFunctor<Dim, Pred>{mesh, grid});
+
+  Kokkos::View<LO*> counts("candidate_counts", num_grid_cells);
+  Kokkos::parallel_for(
+    "count_cell_candidates", elem2cells.entries.size(), KOKKOS_LAMBDA(int i) {
+      Kokkos::atomic_inc(&counts(elem2cells.entries(i)));
+    });
+
+  CrsT cell2elems{};
+  Kokkos::get_crs_row_map_from_counts(cell2elems.row_map, counts,
+                                      "candidate_row_map");
+  cell2elems.entries =
+    CrsT::entries_type("candidate_entries", elem2cells.entries.size());
+
+  Kokkos::View<LO*> filled("candidate_fill_offsets", num_grid_cells);
+  Kokkos::parallel_for(
+    "fill_cell_candidates", nelems, KOKKOS_LAMBDA(LO elem) {
+      for (auto j = elem2cells.row_map(elem); j < elem2cells.row_map(elem + 1);
+           ++j) {
+        const LO cell = elem2cells.entries(j);
+        const auto slot = Kokkos::atomic_fetch_add(&filled(cell), 1);
+        cell2elems.entries(cell2elems.row_map(cell) + slot) = elem;
+      }
+    });
+
+  // The atomic scatter leaves each row in arbitrary order, where the old
+  // cell-major loop emitted ascending element IDs. Restore that ordering: the
+  // query takes the first candidate that contains the point, so ordering
+  // decides which element wins when a point sits on a shared face, and the
+  // out-of-bounds path reports the row's first candidate. Without this the
+  // search results would vary run to run. Rows are short, so insertion sort.
+  Kokkos::parallel_for(
+    "sort_cell_candidates", num_grid_cells, KOKKOS_LAMBDA(LO cell) {
+      const auto begin = cell2elems.row_map(cell);
+      const auto end = cell2elems.row_map(cell + 1);
+      for (auto i = begin + 1; i < end; ++i) {
+        const LO value = cell2elems.entries(i);
+        auto j = i;
+        for (; j > begin && cell2elems.entries(j - 1) > value; --j) {
+          cell2elems.entries(j) = cell2elems.entries(j - 1);
+        }
+        cell2elems.entries(j) = value;
+      }
+    });
+  Kokkos::fence();
+  return cell2elems;
+}
+
+/**
+ * Cell-major brute-force build: for every grid cell, test every element.
+ *
+ * This is the implementation `construct_intersection_map` replaced. It is
+ * O(num_cells * nelems) and must not be used in production, but it is the
+ * ground truth for what the candidate map should contain, so it is kept and
+ * exposed as an oracle for the equivalence test.
+ */
+template <int Dim, typename Pred>
+struct ReferenceCellMajorFunctor
+{
+  ReferenceCellMajorFunctor(Omega_h::Mesh& mesh,
+                            Kokkos::View<UniformGrid<Dim>[1]> grid)
+    : elems2verts_(mesh.ask_elem_verts()),
+      coords_(mesh.coords()),
+      grid_(grid),
+      nelems_(mesh.nelems())
+  {
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  LO operator()(LO row, LO* fill) const
+  {
+    const auto cell_bbox = grid_(0).GetCellBBOX(row);
+    LO num_intersections = 0;
+    for (LO elem = 0; elem < nelems_; ++elem) {
+      const auto elem_verts =
+        Omega_h::gather_verts<Dim + 1>(elems2verts_, elem);
+      const auto vertex_coords =
+        Omega_h::gather_vectors<Dim + 1, Dim>(coords_, elem_verts);
+      if (Overlap<Dim, Pred>::apply(vertex_coords, cell_bbox)) {
+        if (fill) {
+          fill[num_intersections] = elem;
+        }
+        ++num_intersections;
+      }
+    }
+    return num_intersections;
+  }
+
+private:
+  Omega_h::LOs elems2verts_;
+  Omega_h::Reals coords_;
+  Kokkos::View<UniformGrid<Dim>[1]> grid_;
+  LO nelems_;
+};
+
+template <int Dim, typename Pred>
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_reference(Omega_h::Mesh& mesh,
+                                     Kokkos::View<UniformGrid<Dim>[1]> grid,
+                                     int num_grid_cells)
+{
+  Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
+  Kokkos::count_and_fill_crs(intersection_map, num_grid_cells,
+                             ReferenceCellMajorFunctor<Dim, Pred>{mesh, grid});
+  return intersection_map;
+}
+
 } // namespace detail
 
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
@@ -176,6 +373,20 @@ public:
                     const PointSearchTolerances& tolerances);
 
   /**
+   * Build the candidate map with a predicate of the caller's choosing:
+   *
+   *     GridPointSearch2D search{mesh, nx, ny, tolerances, MyPredicate{}};
+   *
+   * The predicate decides which elements are offered as candidates for a grid
+   * cell. The query itself is predicate-independent -- it tests containment of
+   * the point in each candidate -- so a narrower predicate costs a pass over
+   * more candidates but cannot change which answer is reported.
+   */
+  template <typename Pred>
+  GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
+                    const PointSearchTolerances& tolerances, Pred);
+
+  /**
    * Given points in global coordinates, returns for each the entity (vertex,
    * edge or face, chosen with the vertex and edge tolerances) containing it
    * and the point's barycentric coordinates in a face adjacent to that entity.
@@ -187,6 +398,13 @@ public:
     Kokkos::View<const Result*> results) const override;
 
 private:
+  /// Grid and adjacency: everything the map needs except the predicate.
+  void InitializeGeometry(Omega_h::Mesh& mesh, LO Nx, LO Ny);
+
+  /// The candidate map, which is the only predicate-dependent part.
+  template <typename Pred>
+  void InitializeMap();
+
   Omega_h::Mesh mesh_;
   Omega_h::Adj tris2edges_adj_;
   Omega_h::Adj tris2verts_adj_;
@@ -194,6 +412,7 @@ private:
   Omega_h::Adj edges2faces_up_;
   Omega_h::Adj verts2faces_up_;
   Kokkos::View<Uniform2DGrid[1]> grid_{"uniform grid"};
+  LO num_grid_cells_ = 0;
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
@@ -210,6 +429,11 @@ public:
   GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz);
   GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
                     const PointSearchTolerances& tolerances);
+
+  /// \see GridPointSearch2D's predicate-taking constructor.
+  template <typename Pred>
+  GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
+                    const PointSearchTolerances& tolerances, Pred);
 
   /**
    * Given points in global coordinates, returns for each the id of a
@@ -234,6 +458,13 @@ public:
     Kokkos::View<const Result*> results) const override;
 
 private:
+  /// \see GridPointSearch2D::InitializeGeometry
+  void InitializeGeometry(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz);
+
+  /// \see GridPointSearch2D::InitializeMap
+  template <typename Pred>
+  void InitializeMap();
+
   Omega_h::Mesh mesh_;
   Omega_h::Adj tris2edges_adj_;
   Omega_h::Adj tris2verts_adj_;
@@ -242,10 +473,45 @@ private:
   Omega_h::Adj edges2regions_up_;
   Omega_h::Adj faces2regions_up_;
   Kokkos::View<UniformGrid<DIM>[1]> grid_{"uniform grid"};
+  LO num_grid_cells_ = 0;
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
 };
+
+template <typename Pred>
+GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
+                                     const PointSearchTolerances& tolerances,
+                                     Pred)
+  : PointLocalizationSearch2D(tolerances), mesh_(mesh)
+{
+  InitializeGeometry(mesh, Nx, Ny);
+  InitializeMap<Pred>();
+}
+
+template <typename Pred>
+void GridPointSearch2D::InitializeMap()
+{
+  candidate_map_ =
+    detail::construct_intersection_map<2, Pred>(mesh_, grid_, num_grid_cells_);
+}
+
+template <typename Pred>
+GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
+                                     const PointSearchTolerances& tolerances,
+                                     Pred)
+  : PointLocalizationSearch3D(tolerances), mesh_(mesh)
+{
+  InitializeGeometry(mesh, Nx, Ny, Nz);
+  InitializeMap<Pred>();
+}
+
+template <typename Pred>
+void GridPointSearch3D::InitializeMap()
+{
+  candidate_map_ =
+    detail::construct_intersection_map<3, Pred>(mesh_, grid_, num_grid_cells_);
+}
 
 /// A grid search of either spatial dimension, as owned by components that are
 /// dimension-agnostic at compile time (e.g. an evaluator factory over an

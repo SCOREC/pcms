@@ -1,4 +1,5 @@
 #include "point_search.h"
+#include "pcms/localization/overlap.h"
 #include <Omega_h_mesh.hpp>
 #include <bitset>
 #include <cmath>
@@ -112,434 +113,28 @@ LO GetOwningElementId(Omega_h::Mesh& mesh, int mesh_dim, int entity_dim,
   return owner;
 }
 
-KOKKOS_INLINE_FUNCTION
-AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
-{
-  Kokkos::Array<Real, 2> max{coords(0, 0), coords(1, 0)};
-  Kokkos::Array<Real, 2> min{coords(0, 0), coords(1, 0)};
-  for (int i = 1; i < 3; ++i) {
-    max[0] = std::fmax(max[0], coords(0, i));
-    max[1] = std::fmax(max[1], coords(1, i));
-    min[0] = std::fmin(min[0], coords(0, i));
-    min[1] = std::fmin(min[1], coords(1, i));
-  }
-  return {.center = {(max[0] + min[0]) / 2.0, (max[1] + min[1]) / 2.0},
-          .half_width = {(max[0] - min[0]) / 2.0, (max[1] - min[1]) / 2.0}};
-}
-
-template <unsigned dim>
-KOKKOS_INLINE_FUNCTION AABBox<dim> simplex_bbox(
-  const Omega_h::Matrix<dim, dim + 1>& coords)
-{
-  Kokkos::Array<Real, dim> max;
-  Kokkos::Array<Real, dim> min;
-  for (int j = 0; j < dim; ++j) {
-    max[j] = coords(j, 0);
-    min[j] = coords(j, 0);
-  }
-  for (int i = 1; i < dim + 1; ++i) {
-    for (int j = 0; j < dim; ++j) {
-      max[j] = std::fmax(max[j], coords(j, i));
-      min[j] = std::fmin(min[j], coords(j, i));
-    }
-  }
-
-  Kokkos::Array<Real, dim> center;
-  Kokkos::Array<Real, dim> half_width;
-
-  for (int j = 0; j < dim; ++j) {
-    center[j] = (max[j] + min[j]) / 2.0;
-    half_width[j] = (max[j] - min[j]) / 2.0;
-  }
-
-  return {.center = center, .half_width = half_width};
-}
-
-// Liang, You-Dong, and B. A. Barsky. “A New Concept and Method for Line
-// Clipping.” ACM Transactions on Graphics 3, no. 1 (January 1984): 1–22.
-// https://doi.org/10.1145/357332.357333.
-KOKKOS_INLINE_FUNCTION
-bool clipt(Real p, Real q, Real& t0, Real& t1)
-{
-  if (p < 0) {
-    auto r = q / p;
-    if (r > t1) {
-      return false;
-    }
-    if (r > t0) {
-      t0 = r;
-    }
-  } else if (p > 0) {
-    auto r = q / p;
-    if (r < t0) {
-      return false;
-    }
-    if (r < t1) {
-      t1 = r;
-    }
-  }
-  // p==0
-  else {
-    if (q < 0) {
-      return false;
-    }
-  }
-  return true;
-}
-// Liang, You-Dong, and B. A. Barsky. “A New Concept and Method for Line
-// Clipping.” ACM Transactions on Graphics 3, no. 1 (January 1984): 1–22.
-// https://doi.org/10.1145/357332.357333.
-KOKKOS_INLINE_FUNCTION
-bool line_intersects_bbox(const Omega_h::Vector<2>& p0,
-                          const Omega_h::Vector<2>& p1, const AABBox<2>& bbox)
-{
-  Real t0 = 0;
-  Real t1 = 1;
-  auto xleft = bbox.center[0] - bbox.half_width[0];
-  auto deltax = p1[0] - p0[0];
-  if (clipt(-deltax, p0[0] - xleft, t0, t1)) {
-    auto xright = bbox.center[0] + bbox.half_width[0];
-    if (clipt(deltax, xright - p0[0], t0, t1)) {
-      auto deltay = p1[1] - p0[1];
-      auto ybottom = bbox.center[1] - bbox.half_width[1];
-      if (clipt(-deltay, p0[1] - ybottom, t0, t1)) {
-        auto ytop = bbox.center[1] + bbox.half_width[1];
-        if (clipt(deltay, ytop - p0[1], t0, t1)) {
-          // full liang-barksy algorithm computes new x-y coordinates here, but
-          // we just need to check intersections
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-template <unsigned dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION bool within_bbox(
-  const Omega_h::Vector<dim> coord, const AABBox<dim>& bbox) noexcept
-{
-  for (int i = 0; i < dim; ++i) {
-    if (coord[i] < bbox.center[i] - bbox.half_width[i])
-      return false;
-    if (coord[i] > bbox.center[i] + bbox.half_width[i])
-      return false;
-  }
-  return true;
-}
-
-template <int dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION bool bbox_verts_within_simplex(
-  const AABBox<dim>& bbox, const Omega_h::Matrix<dim, dim + 1>& coords)
-{
-  // each dimension has a pair of opposing "walls"
-  // 2D: { [left, right], [top, bottom] } -> { left, right, top, bottom }
-  // 3D: { [left, right], [top, bottom], [front, back] } -> { left, ..., back }
-  Kokkos::Array<Real, dim * 2ul> bbox_walls{};
-  for (int i = 0; i < dim; i++) {
-    bbox_walls[i * 2] = bbox.center[i] - bbox.half_width[i];
-    bbox_walls[i * 2 + 1] = bbox.center[i] + bbox.half_width[i];
-  }
-
-  // 1 << dim == 2 ** dim == num vertices in ndim bounding box / hypercube
-  constexpr unsigned num_verts = 1 << dim;
-
-  // Each vertex is a just a unique combination of walls
-  // eg [left, bottom] (2D) or [right, top, front] (3)
-  for (unsigned i = 0; i < num_verts; ++i) {
-    // conveniently, i acts a bit field representing the current combination
-    Omega_h::Vector<dim> vert;
-    for (unsigned j = 0; j < dim; ++j) {
-      // eg 110 = 6 = [left, top, back]
-      // eg 01 = 1 = [right, top]
-      vert[j] = (i >> j) & 1 ? bbox_walls[j * 2] : bbox_walls[j * 2 + 1];
-    }
-    auto xi = Omega_h::barycentric_from_global<dim, dim>(vert, coords);
-    if (Omega_h::is_barycentric_inside(xi)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /**
  * Check if a triangle element represented by 3 coordinates in two dimensions
- * intersects with a bounding box
+ * intersects with a bounding box.
+ *
+ * Convenience wrapper preserving the original free-function API: the
+ * implementation lives in `Overlap<2, TriangleVsBbox>`.
  */
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
   const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox)
 {
-  // triangle and grid cell bounding box intersect
-  if (intersects(triangle_bbox(coords), bbox)) {
-    // if any of the triangle verts inside of bbox
-    if (within_bbox<2>(coords[0], bbox) || within_bbox<2>(coords[1], bbox) ||
-        within_bbox<2>(coords[2], bbox)) {
-      return true;
-    }
-    // if any of the bbox verts are within the triangle
-    if (bbox_verts_within_simplex(bbox, coords)) {
-      return true;
-    }
-    // if any of the triangle's edges intersect with the bounding box
-    if (line_intersects_bbox(coords[0], coords[1], bbox) ||
-        line_intersects_bbox(coords[1], coords[2], bbox) ||
-        line_intersects_bbox(coords[2], coords[0], bbox)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-template <unsigned dim>
-[[nodiscard]] KOKKOS_FUNCTION bool simplex_intersects_bbox(
-  const Omega_h::Matrix<dim, dim + 1>& coords, const AABBox<dim>& bbox)
-{
-  return intersects(simplex_bbox<dim>(coords), bbox);
-  // TODO: Add refined cases from triangle_intersects_bbox
+  return Overlap<2, TriangleVsBbox>::apply(coords, bbox);
 }
 
 namespace detail
 {
-/**
- *  Functor for constructing the mapping from grid cells to intersecting
- * triangles. Each row of the resulting CSR structure represents a grid cell and
- * each row entry corresponds to an ID of an element that intersects that grid
- * cell.
- * \Warning since this works on Omega_h meshes, we currently assume each element
- * is a 2D simplex (triangle)
- * \Warning since this uses Omega_h data which is only available in the
- * "Default" Execution space, the should not be used in an alternative EXE space
- */
-/// The bbox-overlap predicate for a simplex against one grid cell. 2D applies
-/// the refined edge tests, 3D is a plain bbox overlap; both match what the
-/// previous cell-major functors used, so candidate lists are unchanged.
-template <int Dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION bool simplex_overlaps_cell(
-  const Omega_h::Matrix<Dim, Dim + 1>& coords, const AABBox<Dim>& bbox)
-{
-  if constexpr (Dim == 2) {
-    return triangle_intersects_bbox(coords, bbox);
-  } else {
-    return simplex_intersects_bbox<Dim>(coords, bbox);
-  }
-}
-
-/**
- * Functor for the element -> grid cell map, the transpose of what the search
- * needs. Row `elem` lists the cells that element overlaps.
- *
- * This is the element-major inverse of the old cell-major functor: rather than
- * testing every element against a cell, each element only visits the cells its
- * own bounding box spans. That makes construction O(nelems * cells_per_elem)
- * instead of O(num_cells * nelems).
- */
-template <int Dim>
-struct ElemCellOverlapFunctor
-{
-  ElemCellOverlapFunctor(Omega_h::Mesh& mesh,
-                         Kokkos::View<UniformGrid<Dim>[1]> grid)
-    : elems2verts_(mesh.ask_elem_verts()), coords_(mesh.coords()), grid_(grid)
-  {
-    if (mesh.dim() != Dim) {
-      std::cerr << "ElemCellOverlapFunctor: mesh dimension does not match the "
-                   "functor dimension\n";
-      std::terminate();
-    }
-  }
-
-  /// Two-pass functor. On the first pass we count the cells this element
-  /// overlaps; on the second we fill the CSR row with their IDs.
-  KOKKOS_INLINE_FUNCTION
-  LO operator()(LO elem, LO* fill) const
-  {
-    const auto elem_verts = Omega_h::gather_verts<Dim + 1>(elems2verts_, elem);
-    const auto vertex_coords =
-      Omega_h::gather_vectors<Dim + 1, Dim>(coords_, elem_verts);
-    const auto& grid = grid_(0);
-
-    // Per-axis inclusive range of cells the element's bbox spans, widened by
-    // one cell on each side. The overlap predicate treats a shared boundary
-    // plane as an intersection, so a cell that only touches the bbox counts as
-    // a candidate and would be missed by the unwidened range -- which happens
-    // constantly on a structured mesh whose vertices land on grid lines. One
-    // cell is enough: a cell two or more away cannot touch the bbox at all.
-    // The predicate below rejects whatever the widening over-includes.
-    Kokkos::Array<LO, Dim> lo, hi, idx;
-    for (int d = 0; d < Dim; ++d) {
-      Real min = vertex_coords[0][d];
-      Real max = vertex_coords[0][d];
-      for (int v = 1; v < Dim + 1; ++v) {
-        min = Kokkos::min(min, vertex_coords[v][d]);
-        max = Kokkos::max(max, vertex_coords[v][d]);
-      }
-      lo[d] = Kokkos::max(grid.AxisCellIndex(d, min) - 1, 0);
-      hi[d] =
-        Kokkos::min(grid.AxisCellIndex(d, max) + 1, grid.divisions[d] - 1);
-      idx[d] = lo[d];
-    }
-
-    LO num_overlaps = 0;
-    while (true) {
-      const LO cell = grid.CellIndexFromAxisIndices(idx);
-      if (simplex_overlaps_cell<Dim>(vertex_coords, grid.GetCellBBOX(cell))) {
-        if (fill) {
-          fill[num_overlaps] = cell;
-        }
-        ++num_overlaps;
-      }
-      // odometer over the inclusive range [lo, hi]
-      int d = 0;
-      for (; d < Dim; ++d) {
-        if (++idx[d] <= hi[d]) {
-          break;
-        }
-        idx[d] = lo[d];
-      }
-      if (d == Dim) {
-        break;
-      }
-    }
-    return num_overlaps;
-  }
-
-private:
-  Omega_h::LOs elems2verts_;
-  Omega_h::Reals coords_;
-  Kokkos::View<UniformGrid<Dim>[1]> grid_;
-};
-
-/**
- * Build the grid cell -> element candidate map.
- *
- * Constructed as the transpose of the cheap element -> cell map. Kokkos'
- * transpose_crs cannot be used here: it sizes the output row count from
- * in.numRows() (the element count), which both over-allocates the row map and
- * writes out of bounds once num_grid_cells exceeds the element count.
- */
-template <int Dim>
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map(Omega_h::Mesh& mesh,
-                           Kokkos::View<UniformGrid<Dim>[1]> grid,
-                           int num_grid_cells)
-{
-  using CrsT = Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
-  const auto nelems = mesh.nelems();
-
-  CrsT elem2cells{};
-  Kokkos::count_and_fill_crs(elem2cells, nelems,
-                             ElemCellOverlapFunctor<Dim>{mesh, grid});
-
-  Kokkos::View<LO*> counts("candidate_counts", num_grid_cells);
-  Kokkos::parallel_for(
-    "count_cell_candidates", elem2cells.entries.size(), KOKKOS_LAMBDA(int i) {
-      Kokkos::atomic_inc(&counts(elem2cells.entries(i)));
-    });
-
-  CrsT cell2elems{};
-  Kokkos::get_crs_row_map_from_counts(cell2elems.row_map, counts,
-                                      "candidate_row_map");
-  cell2elems.entries =
-    CrsT::entries_type("candidate_entries", elem2cells.entries.size());
-
-  Kokkos::View<LO*> filled("candidate_fill_offsets", num_grid_cells);
-  Kokkos::parallel_for(
-    "fill_cell_candidates", nelems, KOKKOS_LAMBDA(LO elem) {
-      for (auto j = elem2cells.row_map(elem); j < elem2cells.row_map(elem + 1);
-           ++j) {
-        const LO cell = elem2cells.entries(j);
-        const auto slot = Kokkos::atomic_fetch_add(&filled(cell), 1);
-        cell2elems.entries(cell2elems.row_map(cell) + slot) = elem;
-      }
-    });
-
-  // The atomic scatter leaves each row in arbitrary order, where the old
-  // cell-major loop emitted ascending element IDs. Restore that ordering: the
-  // query takes the first candidate that contains the point, so ordering
-  // decides which element wins when a point sits on a shared face, and the
-  // out-of-bounds path reports the row's first candidate. Without this the
-  // search results would vary run to run. Rows are short, so insertion sort.
-  Kokkos::parallel_for(
-    "sort_cell_candidates", num_grid_cells, KOKKOS_LAMBDA(LO cell) {
-      const auto begin = cell2elems.row_map(cell);
-      const auto end = cell2elems.row_map(cell + 1);
-      for (auto i = begin + 1; i < end; ++i) {
-        const LO value = cell2elems.entries(i);
-        auto j = i;
-        for (; j > begin && cell2elems.entries(j - 1) > value; --j) {
-          cell2elems.entries(j) = cell2elems.entries(j - 1);
-        }
-        cell2elems.entries(j) = value;
-      }
-    });
-  Kokkos::fence();
-  return cell2elems;
-}
-
-/**
- * Cell-major brute-force build: for every grid cell, test every element.
- *
- * This is the implementation `construct_intersection_map` replaced. It is
- * O(num_cells * nelems) and must not be used in production, but it is the
- * ground truth for what the candidate map should contain, so it is kept and
- * exposed as an oracle for the equivalence test.
- */
-template <int Dim>
-struct ReferenceCellMajorFunctor
-{
-  ReferenceCellMajorFunctor(Omega_h::Mesh& mesh,
-                            Kokkos::View<UniformGrid<Dim>[1]> grid)
-    : elems2verts_(mesh.ask_elem_verts()),
-      coords_(mesh.coords()),
-      grid_(grid),
-      nelems_(mesh.nelems())
-  {
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  LO operator()(LO row, LO* fill) const
-  {
-    const auto cell_bbox = grid_(0).GetCellBBOX(row);
-    LO num_intersections = 0;
-    for (LO elem = 0; elem < nelems_; ++elem) {
-      const auto elem_verts =
-        Omega_h::gather_verts<Dim + 1>(elems2verts_, elem);
-      const auto vertex_coords =
-        Omega_h::gather_vectors<Dim + 1, Dim>(coords_, elem_verts);
-      if (simplex_overlaps_cell<Dim>(vertex_coords, cell_bbox)) {
-        if (fill) {
-          fill[num_intersections] = elem;
-        }
-        ++num_intersections;
-      }
-    }
-    return num_intersections;
-  }
-
-private:
-  Omega_h::LOs elems2verts_;
-  Omega_h::Reals coords_;
-  Kokkos::View<UniformGrid<Dim>[1]> grid_;
-  LO nelems_;
-};
-
-template <int Dim>
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_reference(Omega_h::Mesh& mesh,
-                                     Kokkos::View<UniformGrid<Dim>[1]> grid,
-                                     int num_grid_cells)
-{
-  Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  Kokkos::count_and_fill_crs(intersection_map, num_grid_cells,
-                             ReferenceCellMajorFunctor<Dim>{mesh, grid});
-  return intersection_map;
-}
-
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_reference_2d(Omega_h::Mesh& mesh,
                                         Kokkos::View<Uniform2DGrid[1]> grid,
                                         int num_grid_cells)
 {
-  return construct_intersection_map_reference<2>(mesh, grid, num_grid_cells);
+  return construct_intersection_map_reference<2, TriangleVsBbox>(
+    mesh, grid, num_grid_cells);
 }
 
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
@@ -547,17 +142,24 @@ construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
                                         Kokkos::View<Uniform3DGrid[1]> grid,
                                         int num_grid_cells)
 {
-  return construct_intersection_map_reference<3>(mesh, grid, num_grid_cells);
+  return construct_intersection_map_reference<3, SimplexVsBbox>(
+    mesh, grid, num_grid_cells);
 }
 
 // num_grid_cells should be result of grid.GetNumCells(), take as argument to
 // avoid extra copy of grid from gpu to cpu
+//
+// The 2D and 3D overloads name their predicate here rather than reading it from
+// a shared mapping: a "2D refined candidate map" is what this function *is*, so
+// the choice belongs to its definition and cannot leak into another call site.
+// Callers needing a different predicate use the template directly.
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_2d(Omega_h::Mesh& mesh,
                               Kokkos::View<Uniform2DGrid[1]> grid,
                               int num_grid_cells)
 {
-  return construct_intersection_map<2>(mesh, grid, num_grid_cells);
+  return construct_intersection_map<2, TriangleVsBbox>(mesh, grid,
+                                                       num_grid_cells);
 }
 
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
@@ -565,7 +167,8 @@ construct_intersection_map_3d(Omega_h::Mesh& mesh,
                               Kokkos::View<Uniform3DGrid[1]> grid,
                               int num_grid_cells)
 {
-  return construct_intersection_map<3>(mesh, grid, num_grid_cells);
+  return construct_intersection_map<3, SimplexVsBbox>(mesh, grid,
+                                                      num_grid_cells);
 }
 } // namespace detail
 
@@ -792,6 +395,13 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
                                      const PointSearchTolerances& tolerances)
   : PointLocalizationSearch(tolerances), mesh_(mesh)
 {
+  InitializeGeometry(mesh, Nx, Ny);
+  // This search's default predicate: the refined triangle-vs-box test.
+  InitializeMap<TriangleVsBbox>();
+}
+
+void GridPointSearch2D::InitializeGeometry(Omega_h::Mesh& mesh, LO Nx, LO Ny)
+{
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);
   grid_h(0) =
@@ -800,11 +410,7 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
                   .bot_left = {mesh_bbox.min[0], mesh_bbox.min[1]},
                   .divisions = {Nx, Ny}};
   Kokkos::deep_copy(grid_, grid_h);
-  // Determine inflation radius from tolerances (max of vertex/edge tol)
-  auto tol_h = Kokkos::create_mirror_view(tolerances_);
-  Kokkos::deep_copy(tol_h, tolerances_);
-  candidate_map_ =
-    detail::construct_intersection_map_2d(mesh, grid_, grid_h(0).GetNumCells());
+  num_grid_cells_ = grid_h(0).GetNumCells();
   coords_ = mesh.coords();
   tris2verts_ = mesh.ask_elem_verts();
   tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
@@ -933,6 +539,14 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
                                      const PointSearchTolerances& tolerances)
   : PointLocalizationSearch(tolerances), mesh_(mesh)
 {
+  InitializeGeometry(mesh, Nx, Ny, Nz);
+  // This search's default predicate: the conservative bounding-box test.
+  InitializeMap<SimplexVsBbox>();
+}
+
+void GridPointSearch3D::InitializeGeometry(Omega_h::Mesh& mesh, LO Nx, LO Ny,
+                                           LO Nz)
+{
   auto mesh_bbox = Omega_h::get_bounding_box<3>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);
 
@@ -949,8 +563,7 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
                             .divisions = {Nx, Ny, Nz}};
 
   Kokkos::deep_copy(grid_, grid_h);
-  candidate_map_ =
-    detail::construct_intersection_map_3d(mesh, grid_, grid_h(0).GetNumCells());
+  num_grid_cells_ = grid_h(0).GetNumCells();
   coords_ = mesh.coords();
   tris2verts_ = mesh.ask_elem_verts();
   tris2edges_adj_ = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);

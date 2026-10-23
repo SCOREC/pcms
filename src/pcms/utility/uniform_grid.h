@@ -1,6 +1,7 @@
 #ifndef PCMS_COUPLING_UNIFORM_GRID_H
 #define PCMS_COUPLING_UNIFORM_GRID_H
 #include "pcms/utility/bounding_box.h"
+#include "Omega_h_comm.hpp"
 #include "Omega_h_vector.hpp"
 #include "Omega_h_bbox.hpp"
 #include "Omega_h_mesh.hpp"
@@ -159,6 +160,76 @@ LO DivisionsPerAxisForMesh(LO nelems, LO min_divisions = 10)
   const auto per_axis = static_cast<LO>(std::ceil(
     std::pow(static_cast<double>(nelems), 1.0 / static_cast<double>(dim))));
   return std::max(per_axis, min_divisions);
+}
+
+/**
+ * \brief Number of elements this rank owns, counted on the device.
+ *
+ * Used instead of `Omega_h::Mesh::nents_owned`, which is unusable in a
+ * Kokkos+CUDA build without OpenMP: its reduction functor reads a device view
+ * from a host loop (`Omega_h_reduce.hpp`, the non-OpenMP `transform_reduce`),
+ * which trips Kokkos' memory-space access check.
+ *
+ * \param mesh A mesh that carries ownership information, i.e. one that has been
+ * partitioned. Callers must establish that before calling, typically from
+ * `nghost_layers() > 0`.
+ * \return The number of elements this rank owns
+ */
+inline LO OwnedElementCount(Omega_h::Mesh& mesh)
+{
+  const auto ent_dim = mesh.dim();
+  auto owned = mesh.owned(ent_dim);
+  LO count = 0;
+  Kokkos::parallel_reduce(
+    "pcms::OwnedElementCount", owned.size(),
+    KOKKOS_LAMBDA(LO i, LO& update) { update += owned[i] ? 1 : 0; }, count);
+  return count;
+}
+
+/**
+ * \brief Number of elements in the whole decomposition.
+ *
+ * This is the quantity a grid resolution must be derived from so that every
+ * rank constructs the *same* grid. `mesh.nelems()` cannot be used for that
+ * purpose on its own: it counts the ghost copies a rank holds as well as its
+ * owned elements, so it varies with the partition. Summing it does not vary,
+ * because every rank reduces the same total, which is the property that
+ * matters.
+ *
+ * The count is exact. On a mesh with no ghost layers each element lives on
+ * exactly one rank, so the reduced local count is already the global count. On
+ * a ghosted mesh the ghost copies make that local count an overestimate, so the
+ * owned elements are counted instead -- ghosting implies the mesh was
+ * partitioned and therefore carries the ownership information that needs.
+ *
+ * \param mesh The mesh to count elements for
+ * \return The global number of elements, identical on every rank
+ */
+inline LO GlobalElementCount(Omega_h::Mesh& mesh)
+{
+  const auto local_count =
+    mesh.nghost_layers() > 0 ? OwnedElementCount(mesh) : mesh.nelems();
+  return mesh.comm()->allreduce(local_count, Omega_h_Op::OMEGA_H_SUM);
+}
+
+/**
+ * \brief Divisions per axis giving roughly one element per grid cell, derived
+ * from the *global* element count.
+ *
+ * The distributed counterpart of `DivisionsPerAxisForMesh(mesh.nelems())`,
+ * which silently produces a different grid on every rank because `nelems()`
+ * includes ghosts. Reach for this function whenever the resulting grid has to
+ * describe the whole decomposition rather than one partition.
+ *
+ * \tparam dim Spatial dimension of the grid
+ * \param mesh The mesh the grid is built over
+ * \param min_divisions Lower bound on the number of cells per axis
+ * \return The same value on every rank
+ */
+template <unsigned dim>
+LO DivisionsPerAxisForGlobalMesh(Omega_h::Mesh& mesh, LO min_divisions = 10)
+{
+  return DivisionsPerAxisForMesh<dim>(GlobalElementCount(mesh), min_divisions);
 }
 
 /**

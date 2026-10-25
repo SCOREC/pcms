@@ -397,9 +397,7 @@ void bind_create_field_module(py::module& m)
   m.def(
     "create_uniform_grid_binary_field",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, divisions);
-      static_cast<void>(layout);
-      return field;
+      return CreateUniformGridBinaryField<2>(mesh, divisions).second;
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D vertex mask field indicating inside/outside mesh");

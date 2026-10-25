@@ -5,9 +5,11 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include "pcms/field/evaluator/spline_interpolator.hpp"
@@ -632,7 +634,98 @@ double py(double y, int k)
   return cubic(c, y, k);
 }
 
+struct SelectorCase
+{
+  std::vector<LO> selector;
+  std::vector<std::array<int, 2>> orders;
+};
+
 } // namespace
+
+TEMPLATE_TEST_CASE("1D selectors pick derivatives in PSPLINE order", "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  auto xh = linspace(-1, 2, 6);
+  std::vector<double> fh;
+  for (double x : xh)
+    fh.push_back(px(x, 0));
+  auto x = CreateDeviceRank1View(xh);
+  auto f = CreateDeviceRank1View(fh);
+  TestType interp(MakeRank1View(x), MakeRank1View(f),
+                  BoundaryCondition::NOT_A_KNOT, 0,
+                  BoundaryCondition::NOT_A_KNOT, 0);
+  const std::vector<SelectorCase> cases = {{{1, 1, 1}, {{0}, {1}, {2}}},
+                                           {{0, 1, 0}, {{1}}},
+                                           {{0, 0, 1}, {{2}}},
+                                           {{3, 0, 0}, {{3}}}};
+  const std::vector<double> xq = {-1.0, 0.3, 1.7, 2.0};
+  const int ncol = 4;
+  for (const auto& c : cases) {
+    auto out = eval_1d(interp, c.selector, xq, ncol, -999.0);
+    for (size_t i = 0; i < xq.size(); ++i) {
+      for (int j = 0; j < ncol; ++j) {
+        INFO("selector " << c.selector[0] << c.selector[1] << c.selector[2]
+                         << " point " << i << " column " << j);
+        const double v = out[i * ncol + j];
+        if (j < static_cast<int>(c.orders.size()))
+          CHECK(v == Catch::Approx(px(xq[i], c.orders[j][0])));
+        else
+          CHECK(v == -999.0);
+      }
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("2D selectors pick derivatives in PSPLINE order", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  constexpr bool is_explicit =
+    std::is_same_v<TestType,
+                   ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>>;
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(-1, 1, 5);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none));
+
+  std::vector<SelectorCase> cases = {
+    {{1, 1, 1, 1, 1, 1}, {{0, 0}, {1, 0}, {0, 1}, {2, 0}, {0, 2}, {1, 1}}},
+    {{0, 1, 0, 0, 1, 0}, {{1, 0}, {0, 2}}},
+    {{3, 1, 1, 1, 1}, {{3, 0}, {2, 1}, {1, 2}, {0, 3}}},
+    {{3, 0, 1, 0, 1}, {{2, 1}, {0, 3}}},
+    {{4, 1, 1, 1}, {{3, 1}, {2, 2}, {1, 3}}},
+    {{5, 1, 1}, {{3, 2}, {2, 3}}},
+    {{6}, {{3, 3}}}};
+  if (is_explicit)
+    cases.push_back({{-1, 0, 0, 0, 0, 0}, {{0, 0}, {2, 0}, {0, 2}, {2, 2}}});
+  const std::vector<double> xq = {0.0, 0.7, 1.3, 2.0};
+  const std::vector<double> yq = {-1.0, 0.1, -0.45, 1.0};
+  const int ncol = 7;
+  for (const auto& c : cases) {
+    auto out = eval_2d(interp, c.selector, xq, yq, ncol, -999.0);
+    for (size_t i = 0; i < xq.size(); ++i) {
+      for (int j = 0; j < ncol; ++j) {
+        INFO("selector " << c.selector[0] << " point " << i << " column " << j);
+        const double val = out[i * ncol + j];
+        if (j < static_cast<int>(c.orders.size())) {
+          const double expected =
+            px(xq[i], c.orders[j][0]) * py(yq[i], c.orders[j][1]);
+          CHECK(val == Catch::Approx(expected).margin(1e-9));
+        } else {
+          CHECK(val == -999.0);
+        }
+      }
+    }
+  }
+}
 
 TEMPLATE_TEST_CASE("1D evaluate without a selector writes every value",
                    "[spline]",
@@ -741,6 +834,67 @@ TEMPLATE_TEST_CASE(
     INFO("point " << i);
     CHECK(out(i, 0) == Catch::Approx(px(xq[i], 0) * py(yq[i], 0)).margin(1e-9));
   }
+}
+
+TEST_CASE("explicit and compact splines agree for every boundary condition",
+          "[spline]")
+{
+  using BC = BoundaryCondition;
+  const double pi2 = 2 * M_PI;
+  auto [lo, hi] = GENERATE(
+    std::make_pair(BC::NOT_A_KNOT, BC::NOT_A_KNOT),
+    std::make_pair(BC::PERIODIC, BC::PERIODIC),
+    std::make_pair(BC::FIRST_DERIVATIVE_MATCH, BC::SECOND_DERIVATIVE_MATCH),
+    std::make_pair(BC::FIRST_DERIVATIVE_ZERO, BC::SECOND_DERIVATIVE_ZERO),
+    std::make_pair(BC::FIRST_DIV_DIFF_MATCH, BC::SECOND_DIV_DIFF_MATCH),
+    std::make_pair(BC::THIRD_DIV_DIFF_MATCH, BC::NOT_A_KNOT));
+  INFO("boundary conditions " << static_cast<int>(lo) << " "
+                              << static_cast<int>(hi));
+  auto xh = linspace(0, pi2, 9);
+  auto yh = linspace(0, pi2, 7);
+  auto f = [](double a, double b) { return std::sin(a) * std::cos(b) + 1; };
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  std::vector<double> fx;
+  for (double a : xh)
+    fx.push_back(f(a, 0.4));
+  auto f1 = CreateDeviceRank1View(fx);
+  auto f2 = CreateDeviceRank1View(sample_2d(xh, yh, f));
+  std::vector<double> bcx(yh.size()), bcy(xh.size());
+  for (size_t j = 0; j < yh.size(); ++j)
+    bcx[j] = 0.3 + j;
+  for (size_t i = 0; i < xh.size(); ++i)
+    bcy[i] = -0.2 * i;
+  auto bx = CreateDeviceRank1View(bcx);
+  auto by = CreateDeviceRank1View(bcy);
+
+  std::vector<double> xq, yq;
+  for (int i = 0; i < 25; ++i) {
+    xq.push_back(pi2 * std::fmod(0.137 * i + 0.01, 1.0));
+    yq.push_back(pi2 * std::fmod(0.291 * i + 0.02, 1.0));
+  }
+
+  ExplicitCubicSplineInterpolator<double, TestMemorySpace> e1(
+    MakeRank1View(x), MakeRank1View(f1), lo, 0.7, hi, -0.4);
+  CompactCubicSplineInterpolator<double, TestMemorySpace> c1(
+    MakeRank1View(x), MakeRank1View(f1), lo, 0.7, hi, -0.4);
+  auto oe1 = eval_1d(e1, {1, 1, 1}, xq, 3);
+  auto oc1 = eval_1d(c1, {1, 1, 1}, xq, 3);
+  for (size_t i = 0; i < oe1.size(); ++i)
+    CHECK(oc1[i] == Catch::Approx(oe1[i]).margin(1e-10));
+
+  ExplicitBiCubicSplineInterpolator<double, TestMemorySpace> e2(
+    MakeRank1View(x), MakeRank1View(y), MakeRank1View(f2), lo,
+    MakeRank1View(bx), hi, MakeRank1View(bx), lo, MakeRank1View(by), hi,
+    MakeRank1View(by));
+  CompactBiCubicSplineInterpolator<double, TestMemorySpace> c2(
+    MakeRank1View(x), MakeRank1View(y), MakeRank1View(f2), lo,
+    MakeRank1View(bx), hi, MakeRank1View(bx), lo, MakeRank1View(by), hi,
+    MakeRank1View(by));
+  auto oe2 = eval_2d(e2, {1, 1, 1, 1, 1, 1}, xq, yq, 6);
+  auto oc2 = eval_2d(c2, {1, 1, 1, 1, 1, 1}, xq, yq, 6);
+  for (size_t i = 0; i < oe2.size(); ++i)
+    CHECK(oc2[i] == Catch::Approx(oe2[i]).margin(1e-10));
 }
 
 namespace
@@ -897,6 +1051,58 @@ TEMPLATE_TEST_CASE("1D splines reproduce cubics for every exact end condition",
   }
 }
 
+TEMPLATE_TEST_CASE(
+  "2D splines reproduce bicubics for every exact end condition", "[spline]",
+  (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+  (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  using BC = BoundaryCondition;
+  const std::vector<BC> conditions = {
+    BC::NOT_A_KNOT, BC::FIRST_DERIVATIVE_MATCH, BC::SECOND_DERIVATIVE_MATCH,
+    BC::THIRD_DIV_DIFF_MATCH};
+  auto xh = linspace(0, 2, 5);
+  auto yh = linspace(-1, 1, 6);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
+  const std::vector<double> xq = {0.0, 0.7, 1.3, 2.0, 0.0, 2.0};
+  const std::vector<double> yq = {-1.0, 0.1, -0.45, 1.0, 1.0, -1.0};
+  const std::vector<std::array<int, 2>> orders = {{0, 0}, {1, 0}, {0, 1},
+                                                  {2, 0}, {0, 2}, {1, 1}};
+  for (BC lo : conditions) {
+    for (BC hi : conditions) {
+      INFO("lo " << static_cast<int>(lo) << " hi " << static_cast<int>(hi));
+      // x faces carry d^k f / dx^k as a function of y, y faces as one of x
+      std::vector<double> bx_lo, bx_hi, by_lo, by_hi;
+      for (double b : yh) {
+        bx_lo.push_back(end_data(lo, px, xh.front()) * py(b, 0));
+        bx_hi.push_back(end_data(hi, px, xh.back()) * py(b, 0));
+      }
+      for (double a : xh) {
+        by_lo.push_back(px(a, 0) * end_data(lo, py, yh.front()));
+        by_hi.push_back(px(a, 0) * end_data(hi, py, yh.back()));
+      }
+      auto bxl = CreateDeviceRank1View(bx_lo);
+      auto bxh = CreateDeviceRank1View(bx_hi);
+      auto byl = CreateDeviceRank1View(by_lo);
+      auto byh = CreateDeviceRank1View(by_hi);
+      TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), lo,
+                 MakeRank1View(bxl), hi, MakeRank1View(bxh), lo,
+                 MakeRank1View(byl), hi, MakeRank1View(byh));
+      auto out = eval_2d(s, {1, 1, 1, 1, 1, 1}, xq, yq, 6);
+      for (size_t q = 0; q < xq.size(); ++q) {
+        for (size_t j = 0; j < orders.size(); ++j) {
+          INFO("point " << q << " column " << j);
+          const double expected =
+            px(xq[q], orders[j][0]) * py(yq[q], orders[j][1]);
+          CHECK(out[6 * q + j] == Catch::Approx(expected).margin(1e-9));
+        }
+      }
+    }
+  }
+}
+
 TEMPLATE_TEST_CASE("periodic 1D splines wrap queries outside the period",
                    "[spline]",
                    (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
@@ -948,4 +1154,342 @@ TEMPLATE_TEST_CASE("periodic 2D splines wrap queries outside the period",
   auto i = eval_2d(s, {1, 1, 1, 1, 1, 1}, xi, yi, 6);
   for (size_t k = 0; k < o.size(); ++k)
     CHECK(o[k] == Catch::Approx(i[k]).margin(1e-10));
+}
+
+TEMPLATE_TEST_CASE("short-grid splines agree with the two-point spline",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // a two-point spline with derivative ends is a cubic; splines on finer
+  // grids sampled from it, with the same ends, must be that cubic (PSPLINE
+  // smalltest)
+  using BC = BoundaryCondition;
+  const auto d1 = BC::FIRST_DERIVATIVE_MATCH;
+  const auto d2 = BC::SECOND_DERIVATIVE_MATCH;
+  auto [lo, lo_data, hi, hi_data] = GENERATE_COPY(
+    std::make_tuple(d1, 1.0, d1, 2.0), std::make_tuple(d1, 1.0, d2, -3.0),
+    std::make_tuple(d2, 0.5, d1, 2.0), std::make_tuple(d2, 0.5, d2, -3.0));
+  INFO("lo " << static_cast<int>(lo) << " hi " << static_cast<int>(hi));
+  auto x2 = CreateDeviceRank1View<double>({0.0, 1.0});
+  auto f2 = CreateDeviceRank1View<double>({0.25, 0.75});
+  TestType s2(MakeRank1View(x2), MakeRank1View(f2), lo, lo_data, hi, hi_data);
+  const std::vector<double> xq = {0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0};
+  auto expected = eval_1d(s2, {1, 1, 1}, xq, 3);
+  for (int n : {3, 4, 5}) {
+    INFO("n " << n);
+    auto xh = linspace(0, 1, n);
+    auto samples = eval_1d(s2, {1, 0, 0}, xh, 1);
+    auto x = CreateDeviceRank1View(xh);
+    auto f = CreateDeviceRank1View(samples);
+    TestType s(MakeRank1View(x), MakeRank1View(f), lo, lo_data, hi, hi_data);
+    auto out = eval_1d(s, {1, 1, 1}, xq, 3);
+    for (size_t k = 0; k < out.size(); ++k)
+      CHECK(out[k] == Catch::Approx(expected[k]).margin(1e-10));
+  }
+}
+
+namespace
+{
+
+/// 2 + sin(y) sampled on y, with the last sample set to the first so the
+/// data is exactly periodic
+std::vector<double> periodic_samples(const std::vector<double>& y)
+{
+  std::vector<double> g;
+  for (double b : y)
+    g.push_back(2 + std::sin(b));
+  g.back() = g.front();
+  return g;
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("2D splines take periodic ends on one axis only", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // f = px(x) (2 + sin y): non-periodic in x, periodic in y (PSPLINE
+  // bpspline and bpsplinb)
+  using BC = BoundaryCondition;
+  const double pi2 = 2 * M_PI;
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(0, pi2, 12);
+  const auto g = periodic_samples(yh);
+  std::vector<double> vh;
+  for (double a : xh)
+    for (double gj : g)
+      vh.push_back(px(a, 0) * gj);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(vh);
+  auto none = CreateDeviceRank1View<double>({});
+  const auto per = BC::PERIODIC;
+  const BC xbc = GENERATE(BC::NOT_A_KNOT, BC::FIRST_DERIVATIVE_MATCH);
+  INFO("x condition " << static_cast<int>(xbc));
+  std::vector<double> bx_lo, bx_hi;
+  for (double gj : g) {
+    bx_lo.push_back(px(xh.front(), 1) * gj);
+    bx_hi.push_back(px(xh.back(), 1) * gj);
+  }
+  auto bxl = CreateDeviceRank1View(bx_lo);
+  auto bxh = CreateDeviceRank1View(bx_hi);
+  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), xbc,
+             MakeRank1View(bxl), xbc, MakeRank1View(bxh), per,
+             MakeRank1View(none), per, MakeRank1View(none));
+
+  // along a y node the spline is the x spline of a cubic, so it is exact
+  std::vector<double> xq, yq;
+  for (double a : {0.0, 0.3, 1.1, 2.0})
+    for (int j : {0, 3, 7, 11}) {
+      xq.push_back(a);
+      yq.push_back(yh[j]);
+    }
+  auto out = eval_2d(s, {1, 1, 0, 0, 0, 0}, xq, yq, 2);
+  for (size_t q = 0; q < xq.size(); ++q) {
+    const double gj = g[std::lround(yq[q] / (yh[1] - yh[0])) % 11];
+    CHECK(out[2 * q] == Catch::Approx(px(xq[q], 0) * gj).margin(1e-9));
+    CHECK(out[2 * q + 1] == Catch::Approx(px(xq[q], 1) * gj).margin(1e-9));
+  }
+
+  // y wraps; x does not
+  const std::vector<double> xi = {0.4, 1.7, 0.9};
+  const std::vector<double> yi = {0.2, 5.9, 3.0};
+  const std::vector<double> yo = {0.2 + pi2, 5.9 - pi2, 3.0 - 2 * pi2};
+  auto inside = eval_2d(s, {1, 1, 1, 1, 1, 1}, xi, yi, 6);
+  auto wrapped = eval_2d(s, {1, 1, 1, 1, 1, 1}, xi, yo, 6, -999.0);
+  for (size_t k = 0; k < inside.size(); ++k)
+    CHECK(wrapped[k] == Catch::Approx(inside[k]).margin(1e-10));
+  auto outside =
+    eval_2d(s, {1, 0, 0, 0, 0, 0}, {-0.1, 2.1}, {1.0, 1.0}, 1, -999.0);
+  for (double val : outside)
+    CHECK(val == -999.0);
+}
+
+namespace
+{
+
+/// log2 of the ratio of successive errors
+std::vector<double> observed_orders(const std::vector<double>& err)
+{
+  std::vector<double> order;
+  for (size_t i = 1; i < err.size(); ++i)
+    order.push_back(std::log2(err[i - 1] / err[i]));
+  return order;
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("1D spline errors converge at fourth order", "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // f = exp(x) on [0, 1]; the value, f' and f'' errors fall as h^4, h^3 and
+  // h^2 for exact first derivative and not-a-knot ends
+  using BC = BoundaryCondition;
+  const BC bc = GENERATE(BC::FIRST_DERIVATIVE_MATCH, BC::NOT_A_KNOT);
+  INFO("ends " << static_cast<int>(bc));
+  const auto xq = linspace(0, 1, 101);
+  std::vector<double> err[3];
+  for (int n : {10, 20, 40}) {
+    auto xh = linspace(0, 1, n);
+    std::vector<double> fh;
+    for (double a : xh)
+      fh.push_back(std::exp(a));
+    auto x = CreateDeviceRank1View(xh);
+    auto f = CreateDeviceRank1View(fh);
+    TestType s(MakeRank1View(x), MakeRank1View(f), bc, 1.0, bc, std::exp(1.0));
+    auto out = eval_1d(s, {1, 1, 1}, xq, 3);
+    double e[3] = {0, 0, 0};
+    for (size_t q = 0; q < xq.size(); ++q)
+      for (int k = 0; k < 3; ++k)
+        e[k] = std::max(e[k], std::abs(out[3 * q + k] - std::exp(xq[q])));
+    for (int k = 0; k < 3; ++k)
+      err[k].push_back(e[k]);
+  }
+  const double expected[3] = {4, 3, 2};
+  for (int k = 0; k < 3; ++k)
+    for (double order : observed_orders(err[k])) {
+      INFO("derivative " << k);
+      CHECK(order > expected[k] - 0.5);
+    }
+}
+
+TEMPLATE_TEST_CASE("2D spline errors converge at fourth order", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // f = exp(2x - 1) (2 + sin y) with exact x derivative faces and periodic
+  // y, at 10, 20 and 40 points per axis (PSPLINE pspltest2)
+  const double pi2 = 2 * M_PI;
+  auto f = [](double a, double b) {
+    return std::exp(2 * a - 1) * (2 + std::sin(b));
+  };
+  std::vector<double> xq, yq;
+  for (double a : linspace(0, 1, 31))
+    for (double b : linspace(0, pi2, 31)) {
+      xq.push_back(a);
+      yq.push_back(b);
+    }
+  std::vector<double> err;
+  for (int n : {10, 20, 40}) {
+    auto xh = linspace(0, 1, n);
+    auto yh = linspace(0, pi2, n);
+    const auto g = periodic_samples(yh);
+    std::vector<double> vh, bx_lo, bx_hi;
+    for (double a : xh)
+      for (double gj : g)
+        vh.push_back(std::exp(2 * a - 1) * gj);
+    for (double gj : g) {
+      bx_lo.push_back(2 * std::exp(-1.0) * gj);
+      bx_hi.push_back(2 * std::exp(1.0) * gj);
+    }
+    auto x = CreateDeviceRank1View(xh);
+    auto y = CreateDeviceRank1View(yh);
+    auto v = CreateDeviceRank1View(vh);
+    auto bxl = CreateDeviceRank1View(bx_lo);
+    auto bxh = CreateDeviceRank1View(bx_hi);
+    auto none = CreateDeviceRank1View<double>({});
+    const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+    const auto per = BoundaryCondition::PERIODIC;
+    TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), d1,
+               MakeRank1View(bxl), d1, MakeRank1View(bxh), per,
+               MakeRank1View(none), per, MakeRank1View(none));
+    auto out = eval_2d(s, {1, 0, 0, 0, 0, 0}, xq, yq, 1);
+    double e = 0;
+    for (size_t q = 0; q < xq.size(); ++q)
+      e = std::max(e, std::abs(out[q] - f(xq[q], yq[q])));
+    err.push_back(e);
+  }
+  for (double order : observed_orders(err))
+    CHECK(order > 3.5);
+}
+
+TEMPLATE_TEST_CASE("1D splines of zero data follow the end conditions",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // zero samples with non-zero end data, and periodic splines of constant
+  // data (PSPLINE smalltest)
+  using BC = BoundaryCondition;
+  for (int n : {2, 3, 5}) {
+    auto xh = linspace(0, 1, n);
+    auto x = CreateDeviceRank1View(xh);
+    for (auto [bc, deriv] : {std::pair{BC::FIRST_DERIVATIVE_MATCH, 1},
+                             std::pair{BC::SECOND_DERIVATIVE_MATCH, 2}}) {
+      INFO("n " << n << " ends " << static_cast<int>(bc));
+      auto f = CreateDeviceRank1View(std::vector<double>(n, 0.0));
+      TestType s(MakeRank1View(x), MakeRank1View(f), bc, 1.0, bc, 2.0);
+      auto nodes = eval_1d(s, {1, 0, 0}, xh, 1);
+      for (double val : nodes)
+        CHECK(val == Catch::Approx(0.0).margin(1e-12));
+      std::vector<LO> sel = {0, 0, 0};
+      sel[deriv] = 1;
+      auto ends = eval_1d(s, sel, {0.0, 1.0}, 1);
+      CHECK(ends[0] == Catch::Approx(1.0));
+      CHECK(ends[1] == Catch::Approx(2.0));
+    }
+    INFO("n " << n << " periodic");
+    auto c = CreateDeviceRank1View(std::vector<double>(n, 0.7));
+    const auto per = BC::PERIODIC;
+    TestType s(MakeRank1View(x), MakeRank1View(c), per, 0, per, 0);
+    auto out = eval_1d(s, {1, 1, 1}, {0.0, 0.3, 0.8, 1.0}, 3);
+    for (size_t q = 0; q < 4; ++q) {
+      CHECK(out[3 * q] == Catch::Approx(0.7));
+      CHECK(out[3 * q + 1] == Catch::Approx(0.0).margin(1e-12));
+      CHECK(out[3 * q + 2] == Catch::Approx(0.0).margin(1e-12));
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("2D splines of zero data follow the face data", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // all-zero values: only the x face derivative data drives the spline
+  auto xh = linspace(0, 1, 5);
+  auto yh = linspace(-1, 1, 6);
+  std::vector<double> lo_h, hi_h;
+  for (double b : yh) {
+    lo_h.push_back(1 + b);
+    hi_h.push_back(b * b);
+  }
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v =
+    CreateDeviceRank1View(std::vector<double>(xh.size() * yh.size(), 0.0));
+  auto lo = CreateDeviceRank1View(lo_h);
+  auto hi = CreateDeviceRank1View(hi_h);
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), d1,
+             MakeRank1View(lo), d1, MakeRank1View(hi), nak, MakeRank1View(none),
+             nak, MakeRank1View(none));
+  std::vector<double> xn, yn, xf, yf, expected;
+  for (double a : xh)
+    for (double b : yh) {
+      xn.push_back(a);
+      yn.push_back(b);
+    }
+  for (size_t j = 0; j < yh.size(); ++j) {
+    xf.insert(xf.end(), {0.0, 1.0});
+    yf.insert(yf.end(), {yh[j], yh[j]});
+    expected.insert(expected.end(), {lo_h[j], hi_h[j]});
+  }
+  auto nodes = eval_2d(s, {1, 0, 0, 0, 0, 0}, xn, yn, 1);
+  for (double val : nodes)
+    CHECK(val == Catch::Approx(0.0).margin(1e-12));
+  auto faces = eval_2d(s, {0, 1, 0, 0, 0, 0}, xf, yf, 1);
+  for (size_t k = 0; k < faces.size(); ++k)
+    CHECK(faces[k] == Catch::Approx(expected[k]).margin(1e-10));
+}
+
+TEMPLATE_TEST_CASE("1D queries just outside the grid are clamped", "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // the default lookup tolerance is 4e-7 relative to max(|x0|, |xn|) = 2
+  auto xh = linspace(0, 2, 6);
+  std::vector<double> fh;
+  for (double a : xh)
+    fh.push_back(px(a, 0));
+  auto x = CreateDeviceRank1View(xh);
+  auto f = CreateDeviceRank1View(fh);
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType s(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0);
+  auto clamped = eval_1d(s, {1, 1, 1}, {-4e-7, 2 + 4e-7}, 3, -999.0);
+  auto ends = eval_1d(s, {1, 1, 1}, {0.0, 2.0}, 3);
+  for (size_t k = 0; k < ends.size(); ++k)
+    CHECK(clamped[k] == ends[k]);
+  auto outside = eval_1d(s, {1, 1, 1}, {-2e-6, 2 + 2e-6}, 3, -999.0);
+  for (double val : outside)
+    CHECK(val == -999.0);
+}
+
+TEMPLATE_TEST_CASE("2D queries just outside the grid are clamped", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(-1, 1, 5);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
+             MakeRank1View(none), nak, MakeRank1View(none), nak,
+             MakeRank1View(none), nak, MakeRank1View(none));
+  const std::vector<LO> all = {1, 1, 1, 1, 1, 1};
+  auto clamped = eval_2d(s, all, {2 + 4e-7, 0.5, -4e-7},
+                         {0.3, 1 + 4e-7, -1 - 4e-7}, 6, -999.0);
+  auto ends = eval_2d(s, all, {2.0, 0.5, 0.0}, {0.3, 1.0, -1.0}, 6);
+  for (size_t k = 0; k < ends.size(); ++k)
+    CHECK(clamped[k] == ends[k]);
+  auto outside = eval_2d(s, all, {2 + 2e-6, 0.5}, {0.3, -1 - 2e-6}, 6, -999.0);
+  for (double val : outside)
+    CHECK(val == -999.0);
 }

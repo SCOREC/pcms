@@ -58,6 +58,7 @@ PYBIND11_MODULE(pcms, m)
   }
 
   m.attr("__version__") = pcms::pcms_version();
+  m.attr("__git_revision__") = pcms::pcms_git_revision();
 
   // Whether arrays shared with numpy can alias pcms memory.
   m.attr("device_memory_is_host_accessible") =

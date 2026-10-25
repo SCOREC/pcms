@@ -250,7 +250,7 @@ If work in SCOREC system, you can directly use the spack-scorec.yaml which conta
     $ export PYTHONPATH=$<your-path-to-module>:$PYTHONPATH
    ```
 
-   Test the python API with `python -c "import pcms; print(pcms.__version__)"`. You should see the version of PCMS printed out without any errors. 
+   Test the python API with `python -c "import pcms; print(pcms.__version__)"`. You should see the version of PCMS printed out without any errors. Release builds report the release (e.g. `0.3.0`); builds from other commits report a development version such as `0.3.1.dev515+g2b4d1666`. The full commit hash is available as `pcms.__git_revision__` (`"unknown"` when built without git history).
 
    Point-evaluator construction in Python uses `EvaluationRequest`, for
    example:

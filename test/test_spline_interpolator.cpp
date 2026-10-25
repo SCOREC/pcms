@@ -2,13 +2,19 @@
 #include "pcms.h"
 #include <Kokkos_Core.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
+#include <limits>
+#include <vector>
 #include "pcms/field/evaluator/spline_interpolator.hpp"
+#include "field_test_utils.h"
 
 using namespace pcms;
+using pcms::test::CreateDeviceRank1View;
 
-using TestMemorySpace = Kokkos::DefaultExecutionSpace;
+using TestMemorySpace = pcms::DeviceMemorySpace;
+using TestExecutionSpace = TestMemorySpace::execution_space;
 
 bool are_equal(double a, double b, double tolerance = 1e-7)
 {
@@ -38,7 +44,8 @@ void tset(int nth, Kokkos::View<double*, TestMemorySpace> th,
           double thmax)
 {
   Kokkos::parallel_for(
-    Kokkos::RangePolicy<TestMemorySpace>(0, nth), KOKKOS_LAMBDA(const int ith) {
+    Kokkos::RangePolicy<TestExecutionSpace>(0, nth),
+    KOKKOS_LAMBDA(const int ith) {
       th[ith] = thmin + static_cast<double>(ith) * (thmax - thmin) /
                           static_cast<double>(nth - 1);
       sth[ith] = 2.0 + std::sin(th[ith]);
@@ -53,7 +60,8 @@ void xset(int nx, Kokkos::View<double*, TestMemorySpace> x,
     return; // avoid division by zero
 
   Kokkos::parallel_for(
-    Kokkos::RangePolicy<TestMemorySpace>(0, nx), KOKKOS_LAMBDA(const int ix) {
+    Kokkos::RangePolicy<TestExecutionSpace>(0, nx),
+    KOKKOS_LAMBDA(const int ix) {
       x[ix] = xmin + static_cast<double>(ix) * (xmax - xmin) /
                        static_cast<double>(nx - 1);
       ex[ix] = std::exp(2.0 * x[ix] - 1.0);
@@ -62,13 +70,11 @@ void xset(int nx, Kokkos::View<double*, TestMemorySpace> x,
 
 void ffset(int num, Kokkos::View<double*, TestMemorySpace> xf,
            Kokkos::View<double*, TestMemorySpace> tf,
-           Kokkos::View<double*, TestMemorySpace> f)
+           Kokkos::View<double**, TestMemorySpace> f)
 {
   Kokkos::parallel_for(
     Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {num, num}),
-    KOKKOS_LAMBDA(const int i, const int j) {
-      f(i * num + j) = xf[i] * tf[j];
-    });
+    KOKKOS_LAMBDA(const int i, const int j) { f(i, j) = xf[i] * tf[j]; });
 }
 
 void bset(Rank1View<double, TestMemorySpace> fx, int nx,
@@ -79,13 +85,15 @@ void bset(Rank1View<double, TestMemorySpace> fx, int nx,
           Rank1View<double, TestMemorySpace> bcth2)
 {
   Kokkos::parallel_for(
-    Kokkos::RangePolicy<TestMemorySpace>(0, nth), KOKKOS_LAMBDA(const int ith) {
+    Kokkos::RangePolicy<TestExecutionSpace>(0, nth),
+    KOKKOS_LAMBDA(const int ith) {
       bcx1[ith] = 2.0 * fx(0) * fth(ith);      // df/dx at x(1)
       bcx2[ith] = 2.0 * fx(nx - 1) * fth(ith); // df/dx at x(nx)
     });
 
   Kokkos::parallel_for(
-    Kokkos::RangePolicy<TestMemorySpace>(0, nx), KOKKOS_LAMBDA(const int ix) {
+    Kokkos::RangePolicy<TestExecutionSpace>(0, nx),
+    KOKKOS_LAMBDA(const int ix) {
       bcth1(ix) = fx(ix); // df/dth at th = 0 (th[0])
       bcth2(ix) = fx(ix); // df/dth at th = 2π (th[nth - 1])
     });
@@ -104,7 +112,7 @@ void generate_gt_2d(Rank1View<double, TestMemorySpace> gt_splinv,
 
 void compare(Rank2View<double, TestMemorySpace> splinv,
              Rank1View<double, TestMemorySpace> gt_splinv,
-             Rank1View<double, HostMemorySpace> res, std::string label)
+             Kokkos::View<double*, HostMemorySpace> res, std::string label)
 {
   // Compare the output of splinv with gt_splinv
   double result_fdif = 0.0;
@@ -127,7 +135,7 @@ void compare(Rank2View<double, TestMemorySpace> splinv,
 
 void compare_2d(Rank2View<double, TestMemorySpace> splinv,
                 Rank1View<double, TestMemorySpace> gt_splinv,
-                Rank1View<double, HostMemorySpace> res, std::string label)
+                Kokkos::View<double*, HostMemorySpace> res, std::string label)
 {
   // Compare the output of splinv with gt_splinv
   double result_fdif = 0.0;
@@ -167,9 +175,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
   using std::data;
   using std::size;
 
-  Kokkos::View<double*, TestMemorySpace> splinv_view(
-    "splinv_view", static_cast<std::size_t>(3) * nt);
-  auto splinv = Rank2View<double, TestMemorySpace>(splinv_view.data(), nt, 3);
+  Kokkos::View<double**, TestMemorySpace> splinv_view("splinv_view", nt, 3);
+  auto splinv = MakeRank2View(splinv_view);
   reset_2dspan(splinv);
 
   // interpolator.cspline(x, ns, fspl, 1, 1, 1, 1, wk);
@@ -178,8 +185,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
                           BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
   explicit_interpolator.evaluate(xt, splinv);
 
-  auto res1 = Rank1View<double, HostMemorySpace>(res_1d.data(), 2);
-  compare(splinv, ft, res1, "cspline");
+  compare(splinv, ft, Kokkos::subview(res_1d, Kokkos::make_pair(0, 2)),
+          "cspline");
   reset_2dspan(splinv);
 
   ExplicitCubicSplineInterpolator<double, TestMemorySpace>
@@ -187,8 +194,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
                                    BoundaryCondition::PERIODIC, 0);
   explicit_interpolator_periodic.evaluate(xt, splinv);
 
-  auto res2 = Rank1View<double, HostMemorySpace>(res_1d.data() + 2, 2);
-  compare(splinv, ft, res2, "cspline_periodic");
+  compare(splinv, ft, Kokkos::subview(res_1d, Kokkos::make_pair(2, 4)),
+          "cspline_periodic");
   reset_2dspan(splinv);
 
   CompactCubicSplineInterpolator<double, TestMemorySpace> compact_interpolator(
@@ -196,8 +203,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
     BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
   compact_interpolator.evaluate(xt, splinv);
 
-  auto res3 = Rank1View<double, HostMemorySpace>(res_1d.data() + 4, 2);
-  compare(splinv, ft, res3, "compact_cubic");
+  compare(splinv, ft, Kokkos::subview(res_1d, Kokkos::make_pair(4, 6)),
+          "compact_cubic");
 }
 
 void pspltest1(Kokkos::View<double*, HostMemorySpace> res_1d)
@@ -218,13 +225,12 @@ void pspltest1(Kokkos::View<double*, HostMemorySpace> res_1d)
   tset(1000, xtest_view, ftest_view, zdum_view, zero - 0.1, pi2 + 0.1);
   tset(inum, x_view, z2sin_view, zcos_view, zero, pi2);
 
-  auto x = Rank1View<double, TestMemorySpace>(x_view.data(), x_view.size());
+  auto x = MakeRank1View(x_view);
 
-  auto z2sin =
-    Rank1View<double, TestMemorySpace>(z2sin_view.data(), z2sin_view.size());
+  auto z2sin = MakeRank1View(z2sin_view);
 
-  auto xtest = Rank1View<double, TestMemorySpace>(xtest_view.data(), 1000);
-  auto ftest = Rank1View<double, TestMemorySpace>(ftest_view.data(), 1000);
+  auto xtest = MakeRank1View(xtest_view);
+  auto ftest = MakeRank1View(ftest_view);
 
   // Call test function
   dotest1(inum, x, z2sin, 1000, xtest, ftest, res_1d);
@@ -246,11 +252,10 @@ void pspltest1_long_periodic(Kokkos::View<double*, HostMemorySpace> res_1d)
   tset(1000, xtest_view, ftest_view, zdum_view, zero - 0.1, pi2 + 0.1);
   tset(inum, x_view, z2sin_view, zcos_view, zero, pi2);
 
-  auto x = Rank1View<double, TestMemorySpace>(x_view.data(), x_view.size());
-  auto z2sin =
-    Rank1View<double, TestMemorySpace>(z2sin_view.data(), z2sin_view.size());
-  auto xtest = Rank1View<double, TestMemorySpace>(xtest_view.data(), 1000);
-  auto ftest = Rank1View<double, TestMemorySpace>(ftest_view.data(), 1000);
+  auto x = MakeRank1View(x_view);
+  auto z2sin = MakeRank1View(z2sin_view);
+  auto xtest = MakeRank1View(xtest_view);
+  auto ftest = MakeRank1View(ftest_view);
 
   dotest1(inum, x, z2sin, 1000, xtest, ftest, res_1d);
 }
@@ -260,7 +265,7 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
              Rank1View<double, TestMemorySpace> th,
              Rank1View<double, TestMemorySpace> fth,
              Rank1View<double, TestMemorySpace> dfth, int nth,
-             Rank4View<double, TestMemorySpace> f,
+             Kokkos::View<double**, TestMemorySpace> f,
              Rank1View<double, TestMemorySpace> bcx1,
              Rank1View<double, TestMemorySpace> bcx2,
              Rank1View<double, TestMemorySpace> bcth1,
@@ -277,15 +282,13 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
   Kokkos::parallel_for(
     Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nth, nx}),
     KOKKOS_LAMBDA(const int ith, const int ix) {
-      values_view(ix * nth + ith) = f(0, 0, ix, ith);
+      values_view(ix * nth + ith) = f(ix, ith);
     });
-  auto values =
-    Rank1View<double, TestMemorySpace>(values_view.data(), nth * nx);
+  auto values = MakeRank1View(values_view);
 
   bset(fx, nx, fth, nth, bcx1, bcx2, bcth1, bcth2);
-  Kokkos::View<double*, TestMemorySpace> splinv_view("splinv_view", 400000);
-  auto splinv =
-    Rank2View<double, TestMemorySpace>(splinv_view.data(), 40000, 10);
+  Kokkos::View<double**, TestMemorySpace> splinv_view("splinv_view", 40000, 10);
+  auto splinv = MakeRank2View(splinv_view);
   reset_2dspan(splinv);
 
   Kokkos::View<double*, TestMemorySpace> xtest_grid_view("xtest_grid_view",
@@ -293,13 +296,10 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
   Kokkos::View<double*, TestMemorySpace> thtest_grid_view("thtest_grid_view",
                                                           40000);
   createFlatGrid(xtest, thtest, xtest_grid_view, thtest_grid_view);
-  auto xtest_grid =
-    Rank1View<double, TestMemorySpace>(xtest_grid_view.data(), 40000);
-  auto thtest_grid =
-    Rank1View<double, TestMemorySpace>(thtest_grid_view.data(), 40000);
+  auto xtest_grid = MakeRank1View(xtest_grid_view);
+  auto thtest_grid = MakeRank1View(thtest_grid_view);
   Kokkos::View<double*, TestMemorySpace> splinv_gt_view("splinv_view", 40000);
-  auto splinv_gt =
-    Rank1View<double, TestMemorySpace>(splinv_gt_view.data(), 40000);
+  auto splinv_gt = MakeRank1View(splinv_gt_view);
   generate_gt_2d(splinv_gt, fxtest, fthtest, ntest);
 
   ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>
@@ -310,8 +310,8 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
                           BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
   explicit_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
 
-  auto res1 = Rank1View<double, HostMemorySpace>(res_2d.data(), 2);
-  compare_2d(splinv, splinv_gt, res1, "bcspline");
+  compare_2d(splinv, splinv_gt,
+             Kokkos::subview(res_2d, Kokkos::make_pair(0, 2)), "bcspline");
   reset_2dspan(splinv);
 
   CompactBiCubicSplineInterpolator<double, TestMemorySpace>
@@ -322,8 +322,8 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
                          BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
   compact_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
 
-  auto res2 = Rank1View<double, HostMemorySpace>(res_2d.data() + 2, 2);
-  compare_2d(splinv, splinv_gt, res2, "mkbicub");
+  compare_2d(splinv, splinv_gt,
+             Kokkos::subview(res_2d, Kokkos::make_pair(2, 4)), "mkbicub");
 
   // CompactBiCubicSplineInterpolator<double, TestMemorySpace>
   //     test_interpolator(x, th, values);
@@ -345,7 +345,7 @@ void pspltest2(Kokkos::View<double*, HostMemorySpace> res_2d)
   Kokkos::View<double*, TestMemorySpace> ttest_view("ttest_view", 200);
   Kokkos::View<double*, TestMemorySpace> stest_view("stest_view", 200);
   Kokkos::View<double*, TestMemorySpace> ctest_view("ctest_view", 200);
-  Kokkos::View<double*, TestMemorySpace> f1_view("f1_view", 1600);
+  Kokkos::View<double**, TestMemorySpace> f1("f1", 10, 10);
   Kokkos::View<double*, TestMemorySpace> bcx1_view("bcx1_view", 40);
   Kokkos::View<double*, TestMemorySpace> bcx2_view("bcx2_view", 40);
   Kokkos::View<double*, TestMemorySpace> bcth1_view("bcth1_view", 40);
@@ -357,34 +357,22 @@ void pspltest2(Kokkos::View<double*, HostMemorySpace> res_2d)
   tset(10, t1_view, st1_view, ct1_view, zero, pi2);
   tset(200, ttest_view, stest_view, ctest_view, zero, pi2);
 
-  ffset(10, ex1_view, st1_view, f1_view);
+  ffset(10, ex1_view, st1_view, f1);
 
-  auto x1 = Rank1View<double, TestMemorySpace>(x1_view.data(), x1_view.size());
-  auto ex1 =
-    Rank1View<double, TestMemorySpace>(ex1_view.data(), ex1_view.size());
-  auto t1 = Rank1View<double, TestMemorySpace>(t1_view.data(), t1_view.size());
-  auto st1 =
-    Rank1View<double, TestMemorySpace>(st1_view.data(), st1_view.size());
-  auto ct1 =
-    Rank1View<double, TestMemorySpace>(ct1_view.data(), ct1_view.size());
-  auto f1 = Rank4View<double, TestMemorySpace>(f1_view.data(), 4, 4, 10, 10);
-  auto bcx1 =
-    Rank1View<double, TestMemorySpace>(bcx1_view.data(), bcx1_view.size());
-  auto bcx2 =
-    Rank1View<double, TestMemorySpace>(bcx2_view.data(), bcx2_view.size());
-  auto bcth1 =
-    Rank1View<double, TestMemorySpace>(bcth1_view.data(), bcth1_view.size());
-  auto bcth2 =
-    Rank1View<double, TestMemorySpace>(bcth2_view.data(), bcth2_view.size());
+  auto x1 = MakeRank1View(x1_view);
+  auto ex1 = MakeRank1View(ex1_view);
+  auto t1 = MakeRank1View(t1_view);
+  auto st1 = MakeRank1View(st1_view);
+  auto ct1 = MakeRank1View(ct1_view);
+  auto bcx1 = MakeRank1View(bcx1_view);
+  auto bcx2 = MakeRank1View(bcx2_view);
+  auto bcth1 = MakeRank1View(bcth1_view);
+  auto bcth2 = MakeRank1View(bcth2_view);
 
-  auto xtest =
-    Rank1View<double, TestMemorySpace>(xtest_view.data(), xtest_view.size());
-  auto extest =
-    Rank1View<double, TestMemorySpace>(extest_view.data(), extest_view.size());
-  auto ttest =
-    Rank1View<double, TestMemorySpace>(ttest_view.data(), ttest_view.size());
-  auto stest =
-    Rank1View<double, TestMemorySpace>(stest_view.data(), stest_view.size());
+  auto xtest = MakeRank1View(xtest_view);
+  auto extest = MakeRank1View(extest_view);
+  auto ttest = MakeRank1View(ttest_view);
+  auto stest = MakeRank1View(stest_view);
 
   dotest2(x1, ex1, 10, t1, st1, ct1, 10, f1, bcx1, bcx2, bcth1, bcth2, xtest,
           extest, ttest, stest, 200, res_2d);
@@ -423,4 +411,167 @@ TEST_CASE("test_cubic_spline_interpolator")
   double time = timer.seconds();
   std::cout << "Total time for spline tests: " << time << " seconds"
             << std::endl;
+}
+
+namespace
+{
+
+/// Uniform grid of n points on [a, b]
+std::vector<double> linspace(double a, double b, int n)
+{
+  std::vector<double> x(n);
+  for (int i = 0; i < n; ++i)
+    x[i] = a + (b - a) * i / (n - 1);
+  return x;
+}
+
+/// Sample f on the tensor grid with x as the slow index
+template <typename F>
+std::vector<double> sample_2d(const std::vector<double>& x,
+                              const std::vector<double>& y, F f)
+{
+  std::vector<double> v;
+  for (double xi : x)
+    for (double yj : y)
+      v.push_back(f(xi, yj));
+  return v;
+}
+
+} // namespace
+
+namespace
+{
+
+/// d^k/dx^k of the cubic with coefficients c
+double cubic(const double (&c)[4], double x, int k)
+{
+  const double fall[4][4] = {
+    {1, 1, 1, 1}, {0, 1, 2, 3}, {0, 0, 2, 6}, {0, 0, 0, 6}};
+  double sum = 0;
+  for (int j = k; j < 4; ++j)
+    sum += c[j] * fall[k][j] * std::pow(x, j - k);
+  return sum;
+}
+
+double px(double x, int k)
+{
+  const double c[4] = {1, 2, -1, 0.5};
+  return cubic(c, x, k);
+}
+
+double py(double y, int k)
+{
+  const double c[4] = {2, -1, 0.3, 0.2};
+  return cubic(c, y, k);
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("1D evaluate without a selector writes every value",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // the overload builds its own value-only selector on the device; NaN marks
+  // outputs it never wrote
+  auto xh = linspace(-1, 2, 6);
+  std::vector<double> fh;
+  for (double x : xh)
+    fh.push_back(px(x, 0));
+  auto x = CreateDeviceRank1View(xh);
+  auto f = CreateDeviceRank1View(fh);
+  TestType interp(MakeRank1View(x), MakeRank1View(f),
+                  BoundaryCondition::NOT_A_KNOT, 0,
+                  BoundaryCondition::NOT_A_KNOT, 0);
+  const std::vector<double> xq = {-1.0, 0.3, 1.7, 2.0};
+  auto xd = CreateDeviceRank1View(xq);
+  Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), 1);
+  Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
+  interp.evaluate(MakeRank1View(xd), MakeRank2View(out));
+  auto h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, out);
+  for (size_t i = 0; i < xq.size(); ++i) {
+    INFO("point " << i);
+    CHECK(h(i, 0) == Catch::Approx(px(xq[i], 0)));
+  }
+}
+
+TEMPLATE_TEST_CASE("2D evaluate without a selector writes every value",
+                   "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(-1, 1, 5);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none));
+  const std::vector<double> xq = {0.0, 0.7, 1.3, 2.0};
+  const std::vector<double> yq = {-1.0, 0.1, -0.45, 1.0};
+  auto xd = CreateDeviceRank1View(xq);
+  auto yd = CreateDeviceRank1View(yq);
+  Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), 1);
+  Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
+  interp.evaluate(MakeRank1View(xd), MakeRank1View(yd), MakeRank2View(out));
+  auto h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, out);
+  for (size_t i = 0; i < xq.size(); ++i) {
+    INFO("point " << i);
+    CHECK(h(i, 0) == Catch::Approx(px(xq[i], 0) * py(yq[i], 0)).margin(1e-9));
+  }
+}
+
+TEMPLATE_TEST_CASE("1D splines build and evaluate in host memory", "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, Kokkos::HostSpace>),
+                   (CompactCubicSplineInterpolator<double, Kokkos::HostSpace>))
+{
+  // every kernel must run in the interpolator's own space, even when the
+  // default execution space is a device
+  auto xh = linspace(-1, 2, 6);
+  std::vector<double> fh;
+  for (double x : xh)
+    fh.push_back(px(x, 0));
+  std::vector<double> xq = {-1.0, 0.3, 1.7, 2.0};
+  using H = Kokkos::HostSpace;
+  Kokkos::View<double**, H> out("out", xq.size(), 1);
+  Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
+  TestType interp(make_array_view(xh), make_array_view(fh),
+                  BoundaryCondition::NOT_A_KNOT, 0,
+                  BoundaryCondition::NOT_A_KNOT, 0);
+  interp.evaluate(make_array_view(xq), MakeRank2View(out));
+  Kokkos::fence();
+  for (size_t i = 0; i < xq.size(); ++i) {
+    INFO("point " << i);
+    CHECK(out(i, 0) == Catch::Approx(px(xq[i], 0)));
+  }
+}
+
+TEMPLATE_TEST_CASE(
+  "2D splines build and evaluate in host memory", "[spline]",
+  (ExplicitBiCubicSplineInterpolator<double, Kokkos::HostSpace>),
+  (CompactBiCubicSplineInterpolator<double, Kokkos::HostSpace>))
+{
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(-1, 1, 5);
+  auto v =
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); });
+  std::vector<double> xq = {0.0, 0.7, 1.3, 2.0};
+  std::vector<double> yq = {-1.0, 0.1, -0.45, 1.0};
+  using H = Kokkos::HostSpace;
+  Kokkos::View<double**, H> out("out", xq.size(), 1);
+  Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
+  Rank1View<double, H> none(nullptr, 0);
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType interp(make_array_view(xh), make_array_view(yh), make_array_view(v),
+                  nak, none, nak, none, nak, none, nak, none);
+  interp.evaluate(make_array_view(xq), make_array_view(yq), MakeRank2View(out));
+  Kokkos::fence();
+  for (size_t i = 0; i < xq.size(); ++i) {
+    INFO("point " << i);
+    CHECK(out(i, 0) == Catch::Approx(px(xq[i], 0) * py(yq[i], 0)).margin(1e-9));
+  }
 }

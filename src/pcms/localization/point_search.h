@@ -5,10 +5,12 @@
 #include <variant>
 
 #include <Kokkos_Core.hpp>
+#include <Omega_h_array.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_bbox.hpp>
 #include <Omega_h_shape.hpp>
 
+#include "pcms/localization/overlap.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/uniform_grid.h"
 #include "pcms/utility/bounding_box.h"
@@ -81,6 +83,33 @@ Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
                                         Kokkos::View<Uniform3DGrid[1]> grid,
                                         int num_grid_cells);
+
+/// How the candidate map learns an element's geometry, and a conservative bound
+/// on it. The default policy for an Omega_h simplex mesh; defined in the source
+/// file alongside the rest of the map machinery. A different element shape means
+/// a different policy with the same three members, which is the only thing that
+/// has to change to bin that shape against the same grid.
+template <int Dim>
+struct MeshSimplexElements;
+
+/**
+ * Build the grid cell -> element candidate map with `Pred`: the element-major
+ * build, and the point search's hot path at construction time.
+ */
+template <int Dim, typename Pred, typename Elements = MeshSimplexElements<Dim>>
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map(Omega_h::Mesh& mesh,
+                           Kokkos::View<UniformGrid<Dim>[1]> grid,
+                           int num_grid_cells);
+
+/// O(num_cells * nelems) brute-force counterpart, for tests. \see
+/// construct_intersection_map
+template <int Dim, typename Pred, typename Elements = MeshSimplexElements<Dim>>
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_reference(Omega_h::Mesh& mesh,
+                                     Kokkos::View<UniformGrid<Dim>[1]> grid,
+                                     int num_grid_cells);
+
 } // namespace detail
 
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
@@ -176,6 +205,20 @@ public:
                     const PointSearchTolerances& tolerances);
 
   /**
+   * Build the candidate map with a predicate of the caller's choosing:
+   *
+   *     GridPointSearch2D search{mesh, nx, ny, tolerances, MyPredicate{}};
+   *
+   * The predicate decides which elements are offered as candidates for a grid
+   * cell. The query itself is predicate-independent -- it tests containment of
+   * the point in each candidate -- so a narrower predicate costs a pass over
+   * more candidates but cannot change which answer is reported.
+   */
+  template <typename Pred>
+  GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
+                    const PointSearchTolerances& tolerances, Pred);
+
+  /**
    * Given points in global coordinates, returns for each the entity (vertex,
    * edge or face, chosen with the vertex and edge tolerances) containing it
    * and the point's barycentric coordinates in a face adjacent to that entity.
@@ -187,6 +230,13 @@ public:
     Kokkos::View<const Result*> results) const override;
 
 private:
+  /// Grid and adjacency: everything the map needs except the predicate.
+  void InitializeGeometry(Omega_h::Mesh& mesh, LO Nx, LO Ny);
+
+  /// The candidate map, which is the only predicate-dependent part.
+  template <typename Pred>
+  void InitializeMap();
+
   Omega_h::Mesh mesh_;
   Omega_h::Adj tris2edges_adj_;
   Omega_h::Adj tris2verts_adj_;
@@ -194,6 +244,7 @@ private:
   Omega_h::Adj edges2faces_up_;
   Omega_h::Adj verts2faces_up_;
   Kokkos::View<Uniform2DGrid[1]> grid_{"uniform grid"};
+  LO num_grid_cells_ = 0;
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
@@ -210,6 +261,11 @@ public:
   GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz);
   GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
                     const PointSearchTolerances& tolerances);
+
+  /// \see GridPointSearch2D's predicate-taking constructor.
+  template <typename Pred>
+  GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
+                    const PointSearchTolerances& tolerances, Pred);
 
   /**
    * Given points in global coordinates, returns for each the id of a
@@ -234,6 +290,13 @@ public:
     Kokkos::View<const Result*> results) const override;
 
 private:
+  /// \see GridPointSearch2D::InitializeGeometry
+  void InitializeGeometry(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz);
+
+  /// \see GridPointSearch2D::InitializeMap
+  template <typename Pred>
+  void InitializeMap();
+
   Omega_h::Mesh mesh_;
   Omega_h::Adj tris2edges_adj_;
   Omega_h::Adj tris2verts_adj_;
@@ -242,10 +305,45 @@ private:
   Omega_h::Adj edges2regions_up_;
   Omega_h::Adj faces2regions_up_;
   Kokkos::View<UniformGrid<DIM>[1]> grid_{"uniform grid"};
+  LO num_grid_cells_ = 0;
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
 };
+
+template <typename Pred>
+GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
+                                     const PointSearchTolerances& tolerances,
+                                     Pred)
+  : PointLocalizationSearch2D(tolerances), mesh_(mesh)
+{
+  InitializeGeometry(mesh, Nx, Ny);
+  InitializeMap<Pred>();
+}
+
+template <typename Pred>
+void GridPointSearch2D::InitializeMap()
+{
+  candidate_map_ =
+    detail::construct_intersection_map<2, Pred>(mesh_, grid_, num_grid_cells_);
+}
+
+template <typename Pred>
+GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
+                                     const PointSearchTolerances& tolerances,
+                                     Pred)
+  : PointLocalizationSearch3D(tolerances), mesh_(mesh)
+{
+  InitializeGeometry(mesh, Nx, Ny, Nz);
+  InitializeMap<Pred>();
+}
+
+template <typename Pred>
+void GridPointSearch3D::InitializeMap()
+{
+  candidate_map_ =
+    detail::construct_intersection_map<3, Pred>(mesh_, grid_, num_grid_cells_);
+}
 
 /// A grid search of either spatial dimension, as owned by components that are
 /// dimension-agnostic at compile time (e.g. an evaluator factory over an

@@ -140,34 +140,22 @@ public:
 
   // Register a comm-only field, identified by its own name. The layout's
   // communicator is created on first use and shared by any later
-  // field/function whose layout has the same name.
+  // field/function whose layout has the same name. The field's data must
+  // provide DOFAccess: values are exchanged through it, and receiving writes
+  // them back through it on every rank, including ranks that do not
+  // participate, so backends that keep replicas can synchronize them.
   template <typename T>
   FieldHandle<T> AddField(Field<T>&& field, bool participates = true);
-
-  template <typename T>
-  FieldHandle<T> AddField(Field<T>&& field,
-                          std::unique_ptr<FieldSerializer<T>> serializer,
-                          bool participates = true);
-
-  // Register a transferable field: like AddField but retains the function space
-  // (via the stored Function) and returns a FunctionHandle usable in transfers.
-  template <typename T>
-  FieldHandle<T> AddField(std::string name, Field<T>&& field,
-                          std::unique_ptr<FieldSerializer<T>> serializer,
-                          bool participates = true);
   // Registers a reference to user-owned data. The Application does not take
   // ownership; it uses the registered reference for subsequent send and receive
   // operations.
   template <typename T>
   DataHandle<T> AddData(std::string name, Rank1View<T, HostMemorySpace> data,
                         MPI_Comm mpi_comm);
+  // Register a transferable field: like AddField but retains the function space
+  // (via the stored Function) and returns a FunctionHandle usable in transfers.
   template <typename T>
   FunctionHandle<T> AddFunction(Function<T>&& function,
-                                bool participates = true);
-
-  template <typename T>
-  FunctionHandle<T> AddFunction(Function<T>&& function,
-                                std::unique_ptr<FieldSerializer<T>> serializer,
                                 bool participates = true);
 
   void SendField(const std::string& name,
@@ -269,9 +257,7 @@ private:
     const FieldLayout& layout, bool participates);
 
   template <typename T>
-  void RegisterFieldCommunicator(Field<T>& field_obj,
-                                 std::unique_ptr<FieldSerializer<T>> serializer,
-                                 bool participates);
+  void RegisterFieldCommunicator(Field<T>& field_obj, bool participates);
 
   MPI_Comm mpi_comm_;
   redev::Redev& redev_;
@@ -416,16 +402,19 @@ pcms::Field<T>& pcms::ApplicationComm::GetField(const std::string& name)
 }
 
 template <typename T>
-void pcms::ApplicationComm::RegisterFieldCommunicator(
-  Field<T>& field_obj, std::unique_ptr<FieldSerializer<T>> serializer,
-  bool participates)
+void pcms::ApplicationComm::RegisterFieldCommunicator(Field<T>& field_obj,
+                                                     bool participates)
 {
   const std::string& name = field_obj.GetName();
+  if (field_obj.GetData().GetDOFAccess() == nullptr) {
+    throw pcms_error("Application: field '" + name +
+                     "' cannot be exchanged: its values are not accessible "
+                     "through PCMS (the field data provides no DOFAccess)");
+  }
   FieldLayoutCommunicator& layout_communicator =
     GetOrCreateLayoutCommunicator(field_obj.GetLayout(), participates);
   FieldCommunicator2Ptr field_communicator =
-    std::make_unique<FieldCommunicator<T>>(name, layout_communicator, field_obj,
-                                           std::move(serializer));
+    std::make_unique<FieldCommunicator<T>>(name, layout_communicator, field_obj);
   auto [it, inserted] =
     field_communicators_.emplace(name, std::move(field_communicator));
   if (!inserted) {
@@ -436,15 +425,6 @@ void pcms::ApplicationComm::RegisterFieldCommunicator(
 template <typename T>
 pcms::FieldHandle<T> pcms::ApplicationComm::AddField(Field<T>&& field,
                                                      bool participates)
-{
-  return AddField(std::move(field), std::make_unique<FieldSerializer<T>>(),
-                  participates);
-}
-
-template <typename T>
-pcms::FieldHandle<T> pcms::ApplicationComm::AddField(
-  Field<T>&& field, std::unique_ptr<FieldSerializer<T>> serializer,
-  bool participates)
 {
   PCMS_FUNCTION_TIMER;
   std::string name = field.GetName();
@@ -457,7 +437,7 @@ pcms::FieldHandle<T> pcms::ApplicationComm::AddField(
   }
   try {
     RegisterFieldCommunicator<T>(std::get<Field<T>>(field_it->second),
-                                 std::move(serializer), participates);
+                                 participates);
   } catch (...) {
     fields_.erase(field_it);
     throw;
@@ -468,15 +448,6 @@ pcms::FieldHandle<T> pcms::ApplicationComm::AddField(
 template <typename T>
 pcms::FunctionHandle<T> pcms::ApplicationComm::AddFunction(
   Function<T>&& function, bool participates)
-{
-  return AddFunction(std::move(function),
-                     std::make_unique<FieldSerializer<T>>(), participates);
-}
-
-template <typename T>
-pcms::FunctionHandle<T> pcms::ApplicationComm::AddFunction(
-  Function<T>&& function, std::unique_ptr<FieldSerializer<T>> serializer,
-  bool participates)
 {
   PCMS_FUNCTION_TIMER;
   std::string name = function.GetName();
@@ -490,7 +461,7 @@ pcms::FunctionHandle<T> pcms::ApplicationComm::AddFunction(
   }
   try {
     RegisterFieldCommunicator<T>(std::get<Function<T>>(fn_it->second),
-                                 std::move(serializer), participates);
+                                 participates);
   } catch (...) {
     functions_.erase(fn_it);
     throw;

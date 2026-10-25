@@ -8,7 +8,6 @@
 #include "test_support.h"
 #include "pcms/field/function_space/xgc.h"
 #include "pcms/field/layout/xgc.h"
-#include "pcms/coupler/serializer/xgc.h"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/coupler/overlap_mask.h"
 #include "pcms/field/value_view.hpp"
@@ -63,13 +62,11 @@ void xgc_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
     auto field = function_space.CreateField<pcms::GO>(
       ss.str(), std::make_unique<pcms::XGCFieldData<pcms::GO>>(
                   function_space.GetXGCLayout(), pcms::ValueBasis{},
-                  make_array_view(data[i])));
+                  make_array_view(data[i]), comm));
 
-    std::unique_ptr<pcms::FieldSerializer<GO>> serializer =
-      std::make_unique<pcms::XGCFieldSerializer<GO>>(comm);
 
     fields.push_back(
-      application->AddField(std::move(field), std::move(serializer)));
+      application->AddField(std::move(field)));
   }
 
   do {
@@ -183,11 +180,9 @@ void omegah_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
       ss.str(), std::make_unique<pcms::SimpleFieldData<GO>>(
                   factory->GetLayout(), pcms::ValueBasis{}));
 
-    std::unique_ptr<pcms::FieldSerializer<GO>> serializer =
-      std::make_unique<pcms::FieldSerializer<GO>>();
 
     fields.push_back(
-      application->AddField(std::move(field), std::move(serializer)));
+      application->AddField(std::move(field)));
   }
 
   do {

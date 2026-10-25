@@ -11,9 +11,7 @@ PointCloud::PointCloud(std::shared_ptr<const PointCloudLayout> layout)
   : layout_(std::move(layout)),
     basis_{},
     device_data_("", layout_->GetDOFHolderCoordinates().GetValues().extent(0),
-                 static_cast<size_t>(layout_->GetNumComponents())),
-    data_host_("", layout_->GetDOFHolderCoordinates().GetValues().extent(0),
-               static_cast<size_t>(layout_->GetNumComponents()))
+                 static_cast<size_t>(layout_->GetNumComponents()))
 {
 }
 
@@ -27,25 +25,12 @@ const ValueBasis& PointCloud::GetValueBasis() const
   return basis_;
 }
 
-Rank2View<const Real, HostMemorySpace> PointCloud::GetDOFHolderDataHost() const
-{
-  DeepCopyMismatchLayouts(data_host_, device_data_);
-  return MakeConstRank2View(data_host_);
-}
-
-void PointCloud::SetDOFHolderDataHost(
-  Rank2View<const Real, HostMemorySpace> data)
-{
-  PCMS_FUNCTION_TIMER;
-  CopyHostRank2ViewToDeviceView(device_data_, data);
-}
-
-Rank2View<const Real, DeviceMemorySpace> PointCloud::GetDOFHolderData() const
+Rank2View<const Real, DeviceMemorySpace> PointCloud::GetOwnedValues() const
 {
   return MakeConstRank2View(device_data_);
 }
 
-void PointCloud::SetDOFHolderData(Rank2View<const Real, DeviceMemorySpace> data)
+void PointCloud::SetOwnedValues(Rank2View<const Real, DeviceMemorySpace> data)
 {
   PCMS_FUNCTION_TIMER;
   CopyDeviceRank2ViewToDeviceView(device_data_, data);

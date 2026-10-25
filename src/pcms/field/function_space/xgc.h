@@ -65,7 +65,7 @@ protected:
           throw pcms_error(
             "XGCFieldFactory::CreateField: requires XGCFieldData");
         }
-        if (fd->GetDOFHolderDataHost().size() !=
+        if (fd->GetDOFAccess()->GetOwnedValues().size() !=
             static_cast<size_t>(layout_->GetFullDataSize())) {
           throw pcms_error(
             "XGCFieldFactory::CreateField: field data size does not match "

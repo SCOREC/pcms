@@ -19,7 +19,6 @@
 #endif
 
 #ifdef PCMS_ENABLE_XGC
-#include "pcms/coupler/serializer/xgc.h"
 #include "pcms/field/data/xgc.h"
 #include "pcms/field/function_space/xgc.h"
 #endif
@@ -89,7 +88,7 @@ bool InXGCOverlap(int, int id)
 } // namespace
 
 #ifdef PCMS_ENABLE_XGC
-TEST_CASE("XGCFieldSerializer preserves inactive field entries")
+TEST_CASE("Serializing an XGC field preserves inactive field entries")
 {
   static constexpr int data_size = 16;
   auto rc = CreateDummyReverseClassification(data_size);
@@ -101,8 +100,9 @@ TEST_CASE("XGCFieldSerializer preserves inactive field entries")
   auto field = factory.CreateField<pcms::Real>(
     "",
     std::make_unique<pcms::XGCFieldData<pcms::Real>>(
-      factory.GetXGCLayout(), pcms::ValueBasis{}, pcms::make_array_view(data)));
-  pcms::XGCFieldSerializer<pcms::Real> serializer(MPI_COMM_SELF);
+      factory.GetXGCLayout(), pcms::ValueBasis{}, pcms::make_array_view(data),
+      MPI_COMM_SELF));
+  pcms::FieldSerializer<pcms::Real> serializer;
 
   auto owned = field.GetLayout().GetOwnedHost();
   std::vector<pcms::LO> permutation(data_size, -1);

@@ -36,7 +36,7 @@ TEST_CASE("evaluate linear 2d omega_h_field")
   auto field = factory->CreateFunction<Real>();
 
   pcms::test::SetField(
-    field.GetData(), *factory->GetLayout(),
+    field,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   pcms::test::CheckEvaluation(
     factory, field, pcms::test::StandardEvalCoords2D(),

@@ -4,7 +4,6 @@
 #include "pcms/field/function_space/xgc.h"
 #include "pcms/field/data/xgc.h"
 #include "pcms/field/layout/xgc.h"
-#include "pcms/coupler/serializer/xgc.h"
 #include "pcms/discretization/discretization/xgc_reverse_classification.h"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/layout/empty.h"
@@ -79,7 +78,7 @@ protected:
           throw pcms_error(
             "EmptyFieldFactory::CreateField: requires SimpleFieldData");
         }
-        if (fd->GetDOFHolderDataHost().size() !=
+        if (fd->GetDOFAccess()->GetOwnedValues().size() !=
             detail::ExpectedFlatFieldDataSize(*layout_)) {
           throw pcms_error(
             "EmptyFieldFactory::CreateField: field data size does not match "
@@ -130,14 +129,12 @@ ClientState::HandleVariant RegisterField(
   // not the arbitrary adapter name given at creation.
   registration.function_space.SetLayoutName(name);
   auto field = registration.function_space.template CreateField<T>(
-    std::move(name), std::make_unique<XGCFieldData<T>>(
-                       registration.function_space.GetXGCLayout(), ValueBasis{},
-                       registration.data));
-  std::unique_ptr<FieldSerializer<T>> serializer =
-    std::make_unique<XGCFieldSerializer<T>>(registration.plane_comm,
-                                            participates);
+    std::move(name),
+    std::make_unique<XGCFieldData<T>>(
+      registration.function_space.GetXGCLayout(), ValueBasis{},
+      registration.data, registration.plane_comm));
   return ClientState::HandleVariant{
-    app.AddField(std::move(field), std::move(serializer), participates)};
+    app.AddField(std::move(field), participates)};
 }
 
 inline ClientState::HandleVariant RegisterField(
@@ -152,10 +149,8 @@ inline ClientState::HandleVariant RegisterField(
   auto function_space =
     detail::EmptyFieldFactory{name, csys::CylindricalRZ::Create()};
   auto field = function_space.CreateField<int>(std::move(name));
-  std::unique_ptr<FieldSerializer<int>> serializer =
-    std::make_unique<FieldSerializer<int>>();
   return ClientState::HandleVariant{
-    app.AddField(std::move(field), std::move(serializer), participates)};
+    app.AddField(std::move(field), participates)};
 }
 
 } // namespace pcms

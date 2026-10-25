@@ -10,11 +10,15 @@
 namespace pcms
 {
 
+// Packs a field's owned values into, and unpacks them from, an exchange
+// buffer, through the field's DOFAccess. Any field with DOFAccess is
+// exchanged this way. Backends that need extra work on receive (e.g.,
+// synchronizing replicas) do it in DOFAccess::SetOwnedValues.
 template <typename T>
 class FieldSerializer
 {
 public:
-  virtual int Serialize(const Field<T>& field,
+  int Serialize(const Field<T>& field,
                         Rank1View<T, HostMemorySpace> buffer,
                         Rank1View<const LO, HostMemorySpace> permutation) const
   {
@@ -33,7 +37,7 @@ public:
     return static_cast<int>(buffer.size());
   }
 
-  virtual void Deserialize(
+  void Deserialize(
     Field<T>& field, Rank1View<const T, HostMemorySpace> buffer,
     Rank1View<const LO, HostMemorySpace> permutation) const
   {
@@ -62,8 +66,6 @@ public:
     field.SetDOFHolderDataUncheckedHost(
       Rank2View<const T, HostMemorySpace>(sorted.data(), num_dof, num_comp));
   }
-
-  virtual ~FieldSerializer() noexcept = default;
 };
 
 } // namespace pcms

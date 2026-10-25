@@ -18,9 +18,8 @@ template <typename T>
 class FieldSerializer
 {
 public:
-  int Serialize(const Field<T>& field,
-                        Rank1View<T, HostMemorySpace> buffer,
-                        Rank1View<const LO, HostMemorySpace> permutation) const
+  int Serialize(const Field<T>& field, Rank1View<T, HostMemorySpace> buffer,
+                Rank1View<const LO, HostMemorySpace> permutation) const
   {
     const auto data = field.GetDOFHolderDataHost().GetValues();
     if (buffer.size() > 0) {
@@ -37,9 +36,8 @@ public:
     return static_cast<int>(buffer.size());
   }
 
-  void Deserialize(
-    Field<T>& field, Rank1View<const T, HostMemorySpace> buffer,
-    Rank1View<const LO, HostMemorySpace> permutation) const
+  void Deserialize(Field<T>& field, Rank1View<const T, HostMemorySpace> buffer,
+                   Rank1View<const LO, HostMemorySpace> permutation) const
   {
     const auto& layout = field.GetLayout();
     const LO num_dof = layout.GetNumOwnedDofHolder();

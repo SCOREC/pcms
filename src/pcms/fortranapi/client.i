@@ -30,7 +30,8 @@ enum PcmsType
 
 struct PcmsClientHandle
 {
-  void* pointer;
+  void* couplerPointer;
+  void* appPointer;
 };
 typedef struct PcmsClientHandle PcmsClientHandle;
 struct PcmsOmegaHMeshHandle
@@ -63,11 +64,13 @@ void pcms_destroy_reverse_classification(PcmsReverseClassificationHandle);
 
 int pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle);
 
-typedef int8_t (*in_overlap_function)(int, int);
 PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   const char* name, MPI_Comm plane_comm, void* data, int size,
-  PcmsType data_type, const PcmsReverseClassificationHandle rc,
-  in_overlap_function in_overlap);
+  PcmsType data_type, const PcmsReverseClassificationHandle rc);
+
+typedef int8_t (*in_overlap_function)(int, int);
+void pcms_set_overlap_mask(PcmsClientHandle client_handle, const char* name,
+                           in_overlap_function in_overlap);
 
 PcmsFieldAdapterHandle pcms_create_dummy_field_adapter();
 

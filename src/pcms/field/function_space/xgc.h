@@ -6,7 +6,6 @@
 #include "pcms/field/field_factory.h"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/common.h"
-#include <functional>
 #include <memory>
 
 namespace pcms
@@ -17,10 +16,9 @@ class XGCFieldFactory : public FieldFactory
 {
 public:
   XGCFieldFactory(const ReverseClassificationVertex& reverse_classification,
-                  std::function<int8_t(int, int)> in_overlap,
                   LO num_plane_nodes, std::string layout_name = "")
-    : layout_(std::make_shared<XGCFieldLayout>(
-        reverse_classification, std::move(in_overlap), num_plane_nodes))
+    : layout_(std::make_shared<XGCFieldLayout>(reverse_classification,
+                                               num_plane_nodes))
   {
     layout_->SetName(std::move(layout_name));
   }

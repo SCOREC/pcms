@@ -19,6 +19,7 @@
 #endif
 
 #ifdef PCMS_ENABLE_XGC
+#include "pcms/coupler/overlap_mask.h"
 #include "pcms/field/data/xgc.h"
 #include "pcms/field/function_space/xgc.h"
 #endif
@@ -92,36 +93,37 @@ TEST_CASE("Serializing an XGC field preserves inactive field entries")
 {
   static constexpr int data_size = 16;
   auto rc = CreateDummyReverseClassification(data_size);
-  pcms::XGCFieldFactory factory(rc, InXGCOverlap, data_size);
+  pcms::XGCFieldFactory factory(rc, data_size);
 
   std::vector<pcms::Real> data(data_size);
   std::iota(data.begin(), data.end(), 0.0);
   const auto original = data;
   auto field = factory.CreateField<pcms::Real>(
-    "",
-    std::make_unique<pcms::XGCFieldData<pcms::Real>>(
-      factory.GetXGCLayout(), pcms::ValueBasis{}, pcms::make_array_view(data),
-      MPI_COMM_SELF));
+    "", std::make_unique<pcms::XGCFieldData<pcms::Real>>(
+          factory.GetXGCLayout(), pcms::ValueBasis{},
+          pcms::make_array_view(data), MPI_COMM_SELF));
   pcms::FieldSerializer<pcms::Real> serializer;
 
-  auto owned = field.GetLayout().GetOwnedHost();
+  // Entries outside the overlap region are not exchanged.
+  const pcms::OverlapMask overlap_mask(InXGCOverlap);
+  auto active = overlap_mask.GetMask(field.GetLayout());
   std::vector<pcms::LO> permutation(data_size, -1);
   int entry = 0;
   for (int i = 0; i < data_size; ++i) {
-    if (owned[i]) {
+    if (active[i]) {
       permutation[i] = entry++;
     }
   }
-  const int num_owned = entry;
-  REQUIRE(num_owned == 4);
+  const int num_active = entry;
+  REQUIRE(num_active == 4);
 
-  std::vector<pcms::Real> buffer(num_owned, -1.0);
+  std::vector<pcms::Real> buffer(num_active, -1.0);
   REQUIRE(serializer.Serialize(field, pcms::make_array_view(buffer),
                                pcms::make_const_array_view(permutation)) ==
-          num_owned);
+          num_active);
 
   for (int i = 0; i < data_size; ++i) {
-    if (owned[i]) {
+    if (active[i]) {
       REQUIRE(buffer[permutation[i]] == data[i]);
       buffer[permutation[i]] += 100.0;
     } else {
@@ -135,7 +137,7 @@ TEST_CASE("Serializing an XGC field preserves inactive field entries")
   auto after =
     pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   for (int i = 0; i < data_size; ++i) {
-    if (owned[i]) {
+    if (active[i]) {
       REQUIRE(after[i] == Catch::Approx(original[i] + 100.0));
     } else {
       REQUIRE(after[i] == Catch::Approx(original[i]));

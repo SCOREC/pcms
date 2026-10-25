@@ -53,7 +53,7 @@ public:
     // receive.
     auto data = comm_.Recv(redev::Mode::Synchronous);
     serializer_.Deserialize(field_, make_const_array_view(data),
-                             layout_comm_.GetPermutationArray());
+                            layout_comm_.GetPermutationArray());
   }
 
 private:

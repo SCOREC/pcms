@@ -30,7 +30,7 @@ public:
 };
 
 // FieldData<T> holds whatever a backend needs to represent a field. It is
-// opaque. It should only be direcly used by the type that created it.
+// opaque. It should only be directly used by the type that created it.
 template <typename T>
 class FieldData
 {

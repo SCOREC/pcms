@@ -49,18 +49,18 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     data[i].resize(mesh.nverts());
     std::stringstream ss;
     ss << "xgc_gids_plane_" << i;
+    application->SetLayoutOverlapMask(
+      ss.str(), std::make_unique<pcms::OverlapMask>(ts::IsModelEntInOverlap{}));
     // FIXME: The current C/Fortran proxy API couples layout registration to
     // field registration, so each XGC plane is registered as a separate layout
     // communicator even though the layouts are geometrically identical.
     auto function_space =
-      pcms::XGCFieldFactory(rc, ts::IsModelEntInOverlap{},
-                            static_cast<pcms::LO>(mesh.nverts()), ss.str());
+      pcms::XGCFieldFactory(rc, static_cast<pcms::LO>(mesh.nverts()), ss.str());
     auto field = function_space.CreateField<pcms::GO>(
       ss.str(), std::make_unique<pcms::XGCFieldData<pcms::GO>>(
                   function_space.GetXGCLayout(), pcms::ValueBasis{},
                   make_array_view(data[i]), comm));
-    fields.push_back(
-      application->AddField(std::move(field)));
+    fields.push_back(application->AddField(std::move(field)));
   }
 
   do {
@@ -176,8 +176,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     auto field = factory->CreateFunction<GO>(
       ss.str(), std::make_unique<pcms::SimpleFieldData<GO>>(
                   factory->GetLayout(), pcms::ValueBasis{}));
-    fields.push_back(
-      application->AddField(std::move(field)));
+    fields.push_back(application->AddField(std::move(field)));
   }
   do {
     application->ReceivePhase([&]() {

@@ -129,10 +129,9 @@ ClientState::HandleVariant RegisterField(
   // not the arbitrary adapter name given at creation.
   registration.function_space.SetLayoutName(name);
   auto field = registration.function_space.template CreateField<T>(
-    std::move(name),
-    std::make_unique<XGCFieldData<T>>(
-      registration.function_space.GetXGCLayout(), ValueBasis{},
-      registration.data, registration.plane_comm));
+    std::move(name), std::make_unique<XGCFieldData<T>>(
+                       registration.function_space.GetXGCLayout(), ValueBasis{},
+                       registration.data, registration.plane_comm));
   return ClientState::HandleVariant{
     app.AddField(std::move(field), participates)};
 }
@@ -182,6 +181,18 @@ PcmsReverseClassificationHandle pcms_load_reverse_classification(
 void pcms_destroy_reverse_classification(PcmsReverseClassificationHandle rc)
 {
   delete reinterpret_cast<pcms::ReverseClassificationVertex*>(rc.pointer);
+}
+
+void pcms_set_overlap_mask(PcmsClientHandle client_handle, const char* name,
+                           in_overlap_function in_overlap)
+{
+  auto* app =
+    reinterpret_cast<pcms::ApplicationComm*>(client_handle.appPointer);
+  PCMS_ALWAYS_ASSERT(app != nullptr);
+  PCMS_ALWAYS_ASSERT(in_overlap != nullptr);
+  // Fields registered through the C API use their name as the layout name.
+  app->SetLayoutOverlapMask(name,
+                            std::make_unique<pcms::OverlapMask>(in_overlap));
 }
 
 PcmsFieldHandle pcms_add_field(PcmsClientHandle client_handle, const char* name,
@@ -248,11 +259,10 @@ template <typename T>
 void pcms_create_xgc_field_adapter_t(
   const char* /* name */, MPI_Comm comm, void* data, int size,
   const pcms::ReverseClassificationVertex& reverse_classification,
-  in_overlap_function in_overlap, pcms::FieldAdapterVariant& field_adapter)
+  pcms::FieldAdapterVariant& field_adapter)
 {
   PCMS_ALWAYS_ASSERT((size > 0) ? (data != nullptr) : true);
-  auto function_space =
-    pcms::XGCFieldFactory(reverse_classification, in_overlap, size);
+  auto function_space = pcms::XGCFieldFactory(reverse_classification, size);
   pcms::Rank1View<T, pcms::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<pcms::detail::XGCFieldRegistration<T>>(
@@ -261,7 +271,7 @@ void pcms_create_xgc_field_adapter_t(
 
 PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   const char* name, MPI_Comm comm, void* data, int size, PcmsType data_type,
-  const PcmsReverseClassificationHandle rc, in_overlap_function in_overlap)
+  const PcmsReverseClassificationHandle rc)
 {
   auto* field_adapter = new pcms::FieldAdapterVariant{};
   PCMS_ALWAYS_ASSERT(rc.pointer != nullptr);
@@ -270,24 +280,20 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
   switch (data_type) {
     case PCMS_DOUBLE:
-      pcms_create_xgc_field_adapter_t<double>(name, comm, data, size,
-                                              *reverse_classification,
-                                              in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<double>(
+        name, comm, data, size, *reverse_classification, *field_adapter);
       break;
     case PCMS_FLOAT:
-      pcms_create_xgc_field_adapter_t<float>(name, comm, data, size,
-                                             *reverse_classification,
-                                             in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<float>(
+        name, comm, data, size, *reverse_classification, *field_adapter);
       break;
     case PCMS_INT:
-      pcms_create_xgc_field_adapter_t<int>(name, comm, data, size,
-                                           *reverse_classification, in_overlap,
-                                           *field_adapter);
+      pcms_create_xgc_field_adapter_t<int>(
+        name, comm, data, size, *reverse_classification, *field_adapter);
       break;
     case PCMS_LONG_INT:
-      pcms_create_xgc_field_adapter_t<pcms::GO>(name, comm, data, size,
-                                                *reverse_classification,
-                                                in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<pcms::GO>(
+        name, comm, data, size, *reverse_classification, *field_adapter);
       break;
     default:
       PCMS_ALWAYS_ASSERT(false, MPI_COMM_WORLD,

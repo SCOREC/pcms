@@ -48,25 +48,22 @@ void xgc_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
     std::stringstream ss;
     ss << "xgc_gids_plane_" << i;
 
-    auto overlap_mask = std::make_unique<pcms::OverlapMask>(
-      mesh.nverts(), [](int dim, int id) -> int8_t {
+    auto overlap_mask =
+      std::make_unique<pcms::OverlapMask>([](int dim, int id) -> int8_t {
         return ts::IsModelEntInOverlap{}(dim, id);
       });
 
     application->SetLayoutOverlapMask(ss.str(), std::move(overlap_mask));
 
     auto function_space =
-      pcms::XGCFieldFactory(rc, ts::IsModelEntInOverlap{},
-                            static_cast<pcms::LO>(mesh.nverts()), ss.str());
+      pcms::XGCFieldFactory(rc, static_cast<pcms::LO>(mesh.nverts()), ss.str());
 
     auto field = function_space.CreateField<pcms::GO>(
       ss.str(), std::make_unique<pcms::XGCFieldData<pcms::GO>>(
                   function_space.GetXGCLayout(), pcms::ValueBasis{},
                   make_array_view(data[i]), comm));
 
-
-    fields.push_back(
-      application->AddField(std::move(field)));
+    fields.push_back(application->AddField(std::move(field)));
   }
 
   do {
@@ -165,8 +162,8 @@ void omegah_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
     std::stringstream ss;
     ss << "xgc_gids_plane_" << i;
 
-    auto overlap_mask = std::make_unique<pcms::OverlapMask>(
-      mesh.nverts(), [](int dim, int id) -> int8_t {
+    auto overlap_mask =
+      std::make_unique<pcms::OverlapMask>([](int dim, int id) -> int8_t {
         return ts::IsModelEntInOverlap{}(dim, id);
       });
 
@@ -180,9 +177,7 @@ void omegah_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
       ss.str(), std::make_unique<pcms::SimpleFieldData<GO>>(
                   factory->GetLayout(), pcms::ValueBasis{}));
 
-
-    fields.push_back(
-      application->AddField(std::move(field)));
+    fields.push_back(application->AddField(std::move(field)));
   }
 
   do {

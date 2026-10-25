@@ -403,7 +403,7 @@ pcms::Field<T>& pcms::ApplicationComm::GetField(const std::string& name)
 
 template <typename T>
 void pcms::ApplicationComm::RegisterFieldCommunicator(Field<T>& field_obj,
-                                                     bool participates)
+                                                      bool participates)
 {
   const std::string& name = field_obj.GetName();
   if (field_obj.GetData().GetDOFAccess() == nullptr) {
@@ -414,7 +414,8 @@ void pcms::ApplicationComm::RegisterFieldCommunicator(Field<T>& field_obj,
   FieldLayoutCommunicator& layout_communicator =
     GetOrCreateLayoutCommunicator(field_obj.GetLayout(), participates);
   FieldCommunicator2Ptr field_communicator =
-    std::make_unique<FieldCommunicator<T>>(name, layout_communicator, field_obj);
+    std::make_unique<FieldCommunicator<T>>(name, layout_communicator,
+                                           field_obj);
   auto [it, inserted] =
     field_communicators_.emplace(name, std::move(field_communicator));
   if (!inserted) {

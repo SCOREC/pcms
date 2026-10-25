@@ -39,8 +39,10 @@ module pcms
  type, public :: PcmsClientHandle
   type(SwigClassWrapper), public :: swigdata
  contains
-  procedure :: set_pointer => swigf_PcmsClientHandle_pointer_set
-  procedure :: get_pointer => swigf_PcmsClientHandle_pointer_get
+  procedure :: set_couplerPointer => swigf_PcmsClientHandle_couplerPointer_set
+  procedure :: get_couplerPointer => swigf_PcmsClientHandle_couplerPointer_get
+  procedure :: set_appPointer => swigf_PcmsClientHandle_appPointer_set
+  procedure :: get_appPointer => swigf_PcmsClientHandle_appPointer_get
   procedure :: release => swigf_PcmsClientHandle_release
   procedure, private :: swigf_PcmsClientHandle_op_assign__
   generic :: assignment(=) => swigf_PcmsClientHandle_op_assign__
@@ -95,6 +97,7 @@ module pcms
  public :: pcms_destroy_reverse_classification
  public :: pcms_reverse_classification_count_verts
  public :: pcms_create_xgc_field_adapter
+ public :: pcms_set_overlap_mask
  public :: pcms_create_dummy_field_adapter
  public :: pcms_destroy_field_adapter
  public :: pcms_add_field
@@ -140,205 +143,222 @@ end interface
 
 ! WRAPPER DECLARATIONS
 interface
- subroutine swigc_PcmsClientHandle_pointer_set(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsClientHandle_pointer_set")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR), intent(in) :: farg2
- end subroutine
+subroutine swigc_PcmsClientHandle_couplerPointer_set(farg1, farg2) &
+bind(C, name="_wrap_PcmsClientHandle_couplerPointer_set")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR), intent(in) :: farg2
+end subroutine
 
- function swigc_PcmsClientHandle_pointer_get(farg1) &
-         bind(C, name = "_wrap_PcmsClientHandle_pointer_get") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR) :: fresult
- end function
+function swigc_PcmsClientHandle_couplerPointer_get(farg1) &
+bind(C, name="_wrap_PcmsClientHandle_couplerPointer_get") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR) :: fresult
+end function
 
- function swigc_new_PcmsClientHandle() &
-         bind(C, name = "_wrap_new_PcmsClientHandle") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper) :: fresult
- end function
+subroutine swigc_PcmsClientHandle_appPointer_set(farg1, farg2) &
+bind(C, name="_wrap_PcmsClientHandle_appPointer_set")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR), intent(in) :: farg2
+end subroutine
 
- subroutine swigc_delete_PcmsClientHandle(farg1) &
-         bind(C, name = "_wrap_delete_PcmsClientHandle")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
- end subroutine
+function swigc_PcmsClientHandle_appPointer_get(farg1) &
+bind(C, name="_wrap_PcmsClientHandle_appPointer_get") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR) :: fresult
+end function
 
- subroutine swigc_PcmsClientHandle_op_assign__(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsClientHandle_op_assign__")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
-  type(SwigClassWrapper), intent(in) :: farg2
- end subroutine
+function swigc_new_PcmsClientHandle() &
+bind(C, name="_wrap_new_PcmsClientHandle") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper) :: fresult
+end function
 
- subroutine swigc_PcmsOmegaHMeshHandle_pointer_set(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsOmegaHMeshHandle_pointer_set")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR), intent(in) :: farg2
- end subroutine
+subroutine swigc_delete_PcmsClientHandle(farg1) &
+bind(C, name="_wrap_delete_PcmsClientHandle")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+end subroutine
 
- function swigc_PcmsOmegaHMeshHandle_pointer_get(farg1) &
-         bind(C, name = "_wrap_PcmsOmegaHMeshHandle_pointer_get") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR) :: fresult
- end function
+subroutine swigc_PcmsClientHandle_op_assign__(farg1, farg2) &
+bind(C, name="_wrap_PcmsClientHandle_op_assign__")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+type(SwigClassWrapper), intent(in) :: farg2
+end subroutine
 
- function swigc_new_PcmsOmegaHMeshHandle() &
-         bind(C, name = "_wrap_new_PcmsOmegaHMeshHandle") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper) :: fresult
- end function
+subroutine swigc_PcmsOmegaHMeshHandle_pointer_set(farg1, farg2) &
+bind(C, name="_wrap_PcmsOmegaHMeshHandle_pointer_set")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR), intent(in) :: farg2
+end subroutine
 
- subroutine swigc_delete_PcmsOmegaHMeshHandle(farg1) &
-         bind(C, name = "_wrap_delete_PcmsOmegaHMeshHandle")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
- end subroutine
+function swigc_PcmsOmegaHMeshHandle_pointer_get(farg1) &
+bind(C, name="_wrap_PcmsOmegaHMeshHandle_pointer_get") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR) :: fresult
+end function
 
- subroutine swigc_PcmsOmegaHMeshHandle_op_assign__(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsOmegaHMeshHandle_op_assign__")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
-  type(SwigClassWrapper), intent(in) :: farg2
- end subroutine
+function swigc_new_PcmsOmegaHMeshHandle() &
+bind(C, name="_wrap_new_PcmsOmegaHMeshHandle") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper) :: fresult
+end function
 
- subroutine swigc_PcmsReverseClassificationHandle_pointer_set(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsReverseClassificationHandle_pointer_set")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR), intent(in) :: farg2
- end subroutine
+subroutine swigc_delete_PcmsOmegaHMeshHandle(farg1) &
+bind(C, name="_wrap_delete_PcmsOmegaHMeshHandle")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+end subroutine
 
- function swigc_PcmsReverseClassificationHandle_pointer_get(farg1) &
-         bind(C, name = "_wrap_PcmsReverseClassificationHandle_pointer_get") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR) :: fresult
- end function
+subroutine swigc_PcmsOmegaHMeshHandle_op_assign__(farg1, farg2) &
+bind(C, name="_wrap_PcmsOmegaHMeshHandle_op_assign__")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+type(SwigClassWrapper), intent(in) :: farg2
+end subroutine
 
- function swigc_new_PcmsReverseClassificationHandle() &
-         bind(C, name = "_wrap_new_PcmsReverseClassificationHandle") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper) :: fresult
- end function
+subroutine swigc_PcmsReverseClassificationHandle_pointer_set(farg1, farg2) &
+bind(C, name="_wrap_PcmsReverseClassificationHandle_pointer_set")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR), intent(in) :: farg2
+end subroutine
 
- subroutine swigc_delete_PcmsReverseClassificationHandle(farg1) &
-         bind(C, name = "_wrap_delete_PcmsReverseClassificationHandle")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
- end subroutine
+function swigc_PcmsReverseClassificationHandle_pointer_get(farg1) &
+bind(C, name="_wrap_PcmsReverseClassificationHandle_pointer_get") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR) :: fresult
+end function
 
- subroutine swigc_PcmsReverseClassificationHandle_op_assign__(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsReverseClassificationHandle_op_assign__")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
-  type(SwigClassWrapper), intent(in) :: farg2
- end subroutine
+function swigc_new_PcmsReverseClassificationHandle() &
+bind(C, name="_wrap_new_PcmsReverseClassificationHandle") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper) :: fresult
+end function
 
- subroutine swigc_PcmsFieldAdapterHandle_pointer_set(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsFieldAdapterHandle_pointer_set")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR), intent(in) :: farg2
- end subroutine
+subroutine swigc_delete_PcmsReverseClassificationHandle(farg1) &
+bind(C, name="_wrap_delete_PcmsReverseClassificationHandle")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+end subroutine
 
- function swigc_PcmsFieldAdapterHandle_pointer_get(farg1) &
-         bind(C, name = "_wrap_PcmsFieldAdapterHandle_pointer_get") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR) :: fresult
- end function
+subroutine swigc_PcmsReverseClassificationHandle_op_assign__(farg1, farg2) &
+bind(C, name="_wrap_PcmsReverseClassificationHandle_op_assign__")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+type(SwigClassWrapper), intent(in) :: farg2
+end subroutine
 
- function swigc_new_PcmsFieldAdapterHandle() &
-         bind(C, name = "_wrap_new_PcmsFieldAdapterHandle") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper) :: fresult
- end function
+subroutine swigc_PcmsFieldAdapterHandle_pointer_set(farg1, farg2) &
+bind(C, name="_wrap_PcmsFieldAdapterHandle_pointer_set")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR), intent(in) :: farg2
+end subroutine
 
- subroutine swigc_delete_PcmsFieldAdapterHandle(farg1) &
-         bind(C, name = "_wrap_delete_PcmsFieldAdapterHandle")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
- end subroutine
+function swigc_PcmsFieldAdapterHandle_pointer_get(farg1) &
+bind(C, name="_wrap_PcmsFieldAdapterHandle_pointer_get") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR) :: fresult
+end function
 
- subroutine swigc_PcmsFieldAdapterHandle_op_assign__(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsFieldAdapterHandle_op_assign__")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
-  type(SwigClassWrapper), intent(in) :: farg2
- end subroutine
+function swigc_new_PcmsFieldAdapterHandle() &
+bind(C, name="_wrap_new_PcmsFieldAdapterHandle") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper) :: fresult
+end function
 
- subroutine swigc_PcmsFieldHandle_pointer_set(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsFieldHandle_pointer_set")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR), intent(in) :: farg2
- end subroutine
+subroutine swigc_delete_PcmsFieldAdapterHandle(farg1) &
+bind(C, name="_wrap_delete_PcmsFieldAdapterHandle")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+end subroutine
 
- function swigc_PcmsFieldHandle_pointer_get(farg1) &
-         bind(C, name = "_wrap_PcmsFieldHandle_pointer_get") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(in) :: farg1
-  type(C_PTR) :: fresult
- end function
+subroutine swigc_PcmsFieldAdapterHandle_op_assign__(farg1, farg2) &
+bind(C, name="_wrap_PcmsFieldAdapterHandle_op_assign__")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+type(SwigClassWrapper), intent(in) :: farg2
+end subroutine
 
- function swigc_new_PcmsFieldHandle() &
-         bind(C, name = "_wrap_new_PcmsFieldHandle") &
-                 result(fresult)
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper) :: fresult
- end function
+subroutine swigc_PcmsFieldHandle_pointer_set(farg1, farg2) &
+bind(C, name="_wrap_PcmsFieldHandle_pointer_set")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR), intent(in) :: farg2
+end subroutine
 
- subroutine swigc_delete_PcmsFieldHandle(farg1) &
-         bind(C, name = "_wrap_delete_PcmsFieldHandle")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
- end subroutine
+function swigc_PcmsFieldHandle_pointer_get(farg1) &
+bind(C, name="_wrap_PcmsFieldHandle_pointer_get") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(C_PTR) :: fresult
+end function
 
- subroutine swigc_PcmsFieldHandle_op_assign__(farg1, farg2) &
-         bind(C, name = "_wrap_PcmsFieldHandle_op_assign__")
-  use, intrinsic :: ISO_C_BINDING
-  import :: swigclasswrapper
-  type(SwigClassWrapper), intent(inout) :: farg1
-  type(SwigClassWrapper), intent(in) :: farg2
- end subroutine
+function swigc_new_PcmsFieldHandle() &
+bind(C, name="_wrap_new_PcmsFieldHandle") &
+result(fresult)
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper) :: fresult
+end function
+
+subroutine swigc_delete_PcmsFieldHandle(farg1) &
+bind(C, name="_wrap_delete_PcmsFieldHandle")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+end subroutine
+
+subroutine swigc_PcmsFieldHandle_op_assign__(farg1, farg2) &
+bind(C, name="_wrap_PcmsFieldHandle_op_assign__")
+use, intrinsic :: ISO_C_BINDING
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(inout) :: farg1
+type(SwigClassWrapper), intent(in) :: farg2
+end subroutine
 
 function swigc_pcms_create_client(farg1, farg2) &
 bind(C, name="_wrap_pcms_create_client") &
@@ -385,7 +405,7 @@ type(SwigClassWrapper), intent(in) :: farg1
 integer(C_INT) :: fresult
 end function
 
-function swigc_pcms_create_xgc_field_adapter(farg1, farg2, farg3, farg4, farg5, farg6, farg7) &
+function swigc_pcms_create_xgc_field_adapter(farg1, farg2, farg3, farg4, farg5, farg6) &
 bind(C, name="_wrap_pcms_create_xgc_field_adapter") &
 result(fresult)
 use, intrinsic :: ISO_C_BINDING
@@ -397,9 +417,18 @@ type(C_PTR), intent(in) :: farg3
 integer(C_INT), intent(in) :: farg4
 integer(C_INT), intent(in) :: farg5
 type(SwigClassWrapper), intent(in) :: farg6
-type(C_FUNPTR), value :: farg7
 type(SwigClassWrapper) :: fresult
 end function
+
+subroutine swigc_pcms_set_overlap_mask(farg1, farg2, farg3) &
+bind(C, name="_wrap_pcms_set_overlap_mask")
+use, intrinsic :: ISO_C_BINDING
+import :: swigarraywrapper
+import :: swigclasswrapper
+type(SwigClassWrapper), intent(in) :: farg1
+type(SwigArrayWrapper) :: farg2
+type(C_FUNPTR), value :: farg3
+end subroutine
 
 function swigc_pcms_create_dummy_field_adapter() &
 bind(C, name="_wrap_pcms_create_dummy_field_adapter") &
@@ -504,315 +533,340 @@ end interface
 
 contains
  ! MODULE SUBPROGRAMS
- subroutine swigf_PcmsClientHandle_pointer_set(self, pointer)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsClientHandle), intent(in) :: self
-  type(C_PTR), intent(in) :: pointer
-  type(SwigClassWrapper) :: farg1
-  type(C_PTR) :: farg2
+subroutine swigf_PcmsClientHandle_couplerPointer_set(self, couplerpointer)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsClientHandle), intent(in) :: self
+type(C_PTR), intent(in) :: couplerpointer
+type(SwigClassWrapper) :: farg1 
+type(C_PTR) :: farg2 
 
-  farg1 = self%swigdata
-  farg2 = pointer
-  call swigc_PcmsClientHandle_pointer_set(farg1, farg2)
- end subroutine
+farg1 = self%swigdata
+farg2 = couplerpointer
+call swigc_PcmsClientHandle_couplerPointer_set(farg1, farg2)
+end subroutine
 
- function swigf_PcmsClientHandle_pointer_get(self) &
-         result(swig_result)
-  use, intrinsic :: ISO_C_BINDING
-  type(C_PTR) :: swig_result
-  class(PcmsClientHandle), intent(in) :: self
-  type(C_PTR) :: fresult
-  type(SwigClassWrapper) :: farg1
+function swigf_PcmsClientHandle_couplerPointer_get(self) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR) :: swig_result
+class(PcmsClientHandle), intent(in) :: self
+type(C_PTR) :: fresult 
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  fresult = swigc_PcmsClientHandle_pointer_get(farg1)
-  swig_result = fresult
- end function
+farg1 = self%swigdata
+fresult = swigc_PcmsClientHandle_couplerPointer_get(farg1)
+swig_result = fresult
+end function
 
- function swigf_new_PcmsClientHandle() &
-         result(self)
-  use, intrinsic :: ISO_C_BINDING
-  type(PcmsClientHandle) :: self
-  type(SwigClassWrapper) :: fresult
+subroutine swigf_PcmsClientHandle_appPointer_set(self, apppointer)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsClientHandle), intent(in) :: self
+type(C_PTR), intent(in) :: apppointer
+type(SwigClassWrapper) :: farg1 
+type(C_PTR) :: farg2 
 
-  fresult = swigc_new_PcmsClientHandle()
-  self%swigdata = fresult
- end function
+farg1 = self%swigdata
+farg2 = apppointer
+call swigc_PcmsClientHandle_appPointer_set(farg1, farg2)
+end subroutine
 
- subroutine swigf_PcmsClientHandle_release(self)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsClientHandle), intent(inout) :: self
-  type(SwigClassWrapper) :: farg1
+function swigf_PcmsClientHandle_appPointer_get(self) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR) :: swig_result
+class(PcmsClientHandle), intent(in) :: self
+type(C_PTR) :: fresult 
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
-   call swigc_delete_PcmsClientHandle(farg1)
-  endif
-  farg1%cptr = C_NULL_PTR
-  farg1%cmemflags = 0
-  self%swigdata = farg1
- end subroutine
+farg1 = self%swigdata
+fresult = swigc_PcmsClientHandle_appPointer_get(farg1)
+swig_result = fresult
+end function
 
- subroutine swigf_PcmsClientHandle_op_assign__(self, other)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsClientHandle), intent(inout) :: self
-  type(PcmsClientHandle), intent(in) :: other
-  type(SwigClassWrapper) :: farg1
-  type(SwigClassWrapper) :: farg2
+function swigf_new_PcmsClientHandle() &
+result(self)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsClientHandle) :: self
+type(SwigClassWrapper) :: fresult 
 
-  farg1 = self%swigdata
-  farg2 = other%swigdata
-  call swigc_PcmsClientHandle_op_assign__(farg1, farg2)
-  self%swigdata = farg1
- end subroutine
+fresult = swigc_new_PcmsClientHandle()
+self%swigdata = fresult
+end function
 
- subroutine swigf_PcmsOmegaHMeshHandle_pointer_set(self, pointer)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsOmegaHMeshHandle), intent(in) :: self
-  type(C_PTR), intent(in) :: pointer
-  type(SwigClassWrapper) :: farg1
-  type(C_PTR) :: farg2
+subroutine swigf_PcmsClientHandle_release(self)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsClientHandle), intent(inout) :: self
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  farg2 = pointer
-  call swigc_PcmsOmegaHMeshHandle_pointer_set(farg1, farg2)
- end subroutine
+farg1 = self%swigdata
+if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
+call swigc_delete_PcmsClientHandle(farg1)
+endif
+farg1%cptr = C_NULL_PTR
+farg1%cmemflags = 0
+self%swigdata = farg1
+end subroutine
 
- function swigf_PcmsOmegaHMeshHandle_pointer_get(self) &
-         result(swig_result)
-  use, intrinsic :: ISO_C_BINDING
-  type(C_PTR) :: swig_result
-  class(PcmsOmegaHMeshHandle), intent(in) :: self
-  type(C_PTR) :: fresult
-  type(SwigClassWrapper) :: farg1
+subroutine swigf_PcmsClientHandle_op_assign__(self, other)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsClientHandle), intent(inout) :: self
+type(PcmsClientHandle), intent(in) :: other
+type(SwigClassWrapper) :: farg1 
+type(SwigClassWrapper) :: farg2 
 
-  farg1 = self%swigdata
-  fresult = swigc_PcmsOmegaHMeshHandle_pointer_get(farg1)
-  swig_result = fresult
- end function
+farg1 = self%swigdata
+farg2 = other%swigdata
+call swigc_PcmsClientHandle_op_assign__(farg1, farg2)
+self%swigdata = farg1
+end subroutine
 
- function swigf_new_PcmsOmegaHMeshHandle() &
-         result(self)
-  use, intrinsic :: ISO_C_BINDING
-  type(PcmsOmegaHMeshHandle) :: self
-  type(SwigClassWrapper) :: fresult
+subroutine swigf_PcmsOmegaHMeshHandle_pointer_set(self, pointer)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsOmegaHMeshHandle), intent(in) :: self
+type(C_PTR), intent(in) :: pointer
+type(SwigClassWrapper) :: farg1 
+type(C_PTR) :: farg2 
 
-  fresult = swigc_new_PcmsOmegaHMeshHandle()
-  self%swigdata = fresult
- end function
+farg1 = self%swigdata
+farg2 = pointer
+call swigc_PcmsOmegaHMeshHandle_pointer_set(farg1, farg2)
+end subroutine
 
- subroutine swigf_PcmsOmegaHMeshHandle_release(self)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsOmegaHMeshHandle), intent(inout) :: self
-  type(SwigClassWrapper) :: farg1
+function swigf_PcmsOmegaHMeshHandle_pointer_get(self) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR) :: swig_result
+class(PcmsOmegaHMeshHandle), intent(in) :: self
+type(C_PTR) :: fresult 
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
-   call swigc_delete_PcmsOmegaHMeshHandle(farg1)
-  endif
-  farg1%cptr = C_NULL_PTR
-  farg1%cmemflags = 0
-  self%swigdata = farg1
- end subroutine
+farg1 = self%swigdata
+fresult = swigc_PcmsOmegaHMeshHandle_pointer_get(farg1)
+swig_result = fresult
+end function
 
- subroutine swigf_PcmsOmegaHMeshHandle_op_assign__(self, other)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsOmegaHMeshHandle), intent(inout) :: self
-  type(PcmsOmegaHMeshHandle), intent(in) :: other
-  type(SwigClassWrapper) :: farg1
-  type(SwigClassWrapper) :: farg2
+function swigf_new_PcmsOmegaHMeshHandle() &
+result(self)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsOmegaHMeshHandle) :: self
+type(SwigClassWrapper) :: fresult 
 
-  farg1 = self%swigdata
-  farg2 = other%swigdata
-  call swigc_PcmsOmegaHMeshHandle_op_assign__(farg1, farg2)
-  self%swigdata = farg1
- end subroutine
+fresult = swigc_new_PcmsOmegaHMeshHandle()
+self%swigdata = fresult
+end function
 
- subroutine swigf_PcmsReverseClassificationHandle_pointer_set(self, pointer)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsReverseClassificationHandle), intent(in) :: self
-  type(C_PTR), intent(in) :: pointer
-  type(SwigClassWrapper) :: farg1
-  type(C_PTR) :: farg2
+subroutine swigf_PcmsOmegaHMeshHandle_release(self)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsOmegaHMeshHandle), intent(inout) :: self
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  farg2 = pointer
-  call swigc_PcmsReverseClassificationHandle_pointer_set(farg1, farg2)
- end subroutine
+farg1 = self%swigdata
+if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
+call swigc_delete_PcmsOmegaHMeshHandle(farg1)
+endif
+farg1%cptr = C_NULL_PTR
+farg1%cmemflags = 0
+self%swigdata = farg1
+end subroutine
 
- function swigf_PcmsReverseClassificationHandle_pointer_get(self) &
-         result(swig_result)
-  use, intrinsic :: ISO_C_BINDING
-  type(C_PTR) :: swig_result
-  class(PcmsReverseClassificationHandle), intent(in) :: self
-  type(C_PTR) :: fresult
-  type(SwigClassWrapper) :: farg1
+subroutine swigf_PcmsOmegaHMeshHandle_op_assign__(self, other)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsOmegaHMeshHandle), intent(inout) :: self
+type(PcmsOmegaHMeshHandle), intent(in) :: other
+type(SwigClassWrapper) :: farg1 
+type(SwigClassWrapper) :: farg2 
 
-  farg1 = self%swigdata
-  fresult = swigc_PcmsReverseClassificationHandle_pointer_get(farg1)
-  swig_result = fresult
- end function
+farg1 = self%swigdata
+farg2 = other%swigdata
+call swigc_PcmsOmegaHMeshHandle_op_assign__(farg1, farg2)
+self%swigdata = farg1
+end subroutine
 
- function swigf_new_PcmsReverseClassificationHandle() &
-         result(self)
-  use, intrinsic :: ISO_C_BINDING
-  type(PcmsReverseClassificationHandle) :: self
-  type(SwigClassWrapper) :: fresult
+subroutine swigf_PcmsReverseClassificationHandle_pointer_set(self, pointer)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsReverseClassificationHandle), intent(in) :: self
+type(C_PTR), intent(in) :: pointer
+type(SwigClassWrapper) :: farg1 
+type(C_PTR) :: farg2 
 
-  fresult = swigc_new_PcmsReverseClassificationHandle()
-  self%swigdata = fresult
- end function
+farg1 = self%swigdata
+farg2 = pointer
+call swigc_PcmsReverseClassificationHandle_pointer_set(farg1, farg2)
+end subroutine
 
- subroutine swigf_PcmsReverseClassificationHandle_release(self)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsReverseClassificationHandle), intent(inout) :: self
-  type(SwigClassWrapper) :: farg1
+function swigf_PcmsReverseClassificationHandle_pointer_get(self) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR) :: swig_result
+class(PcmsReverseClassificationHandle), intent(in) :: self
+type(C_PTR) :: fresult 
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
-   call swigc_delete_PcmsReverseClassificationHandle(farg1)
-  endif
-  farg1%cptr = C_NULL_PTR
-  farg1%cmemflags = 0
-  self%swigdata = farg1
- end subroutine
+farg1 = self%swigdata
+fresult = swigc_PcmsReverseClassificationHandle_pointer_get(farg1)
+swig_result = fresult
+end function
 
- subroutine swigf_PcmsReverseClassificationHandle_op_assign__(self, other)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsReverseClassificationHandle), intent(inout) :: self
-  type(PcmsReverseClassificationHandle), intent(in) :: other
-  type(SwigClassWrapper) :: farg1
-  type(SwigClassWrapper) :: farg2
+function swigf_new_PcmsReverseClassificationHandle() &
+result(self)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsReverseClassificationHandle) :: self
+type(SwigClassWrapper) :: fresult 
 
-  farg1 = self%swigdata
-  farg2 = other%swigdata
-  call swigc_PcmsReverseClassificationHandle_op_assign__(farg1, farg2)
-  self%swigdata = farg1
- end subroutine
+fresult = swigc_new_PcmsReverseClassificationHandle()
+self%swigdata = fresult
+end function
 
- subroutine swigf_PcmsFieldAdapterHandle_pointer_set(self, pointer)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsFieldAdapterHandle), intent(in) :: self
-  type(C_PTR), intent(in) :: pointer
-  type(SwigClassWrapper) :: farg1
-  type(C_PTR) :: farg2
+subroutine swigf_PcmsReverseClassificationHandle_release(self)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsReverseClassificationHandle), intent(inout) :: self
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  farg2 = pointer
-  call swigc_PcmsFieldAdapterHandle_pointer_set(farg1, farg2)
- end subroutine
+farg1 = self%swigdata
+if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
+call swigc_delete_PcmsReverseClassificationHandle(farg1)
+endif
+farg1%cptr = C_NULL_PTR
+farg1%cmemflags = 0
+self%swigdata = farg1
+end subroutine
 
- function swigf_PcmsFieldAdapterHandle_pointer_get(self) &
-         result(swig_result)
-  use, intrinsic :: ISO_C_BINDING
-  type(C_PTR) :: swig_result
-  class(PcmsFieldAdapterHandle), intent(in) :: self
-  type(C_PTR) :: fresult
-  type(SwigClassWrapper) :: farg1
+subroutine swigf_PcmsReverseClassificationHandle_op_assign__(self, other)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsReverseClassificationHandle), intent(inout) :: self
+type(PcmsReverseClassificationHandle), intent(in) :: other
+type(SwigClassWrapper) :: farg1 
+type(SwigClassWrapper) :: farg2 
 
-  farg1 = self%swigdata
-  fresult = swigc_PcmsFieldAdapterHandle_pointer_get(farg1)
-  swig_result = fresult
- end function
+farg1 = self%swigdata
+farg2 = other%swigdata
+call swigc_PcmsReverseClassificationHandle_op_assign__(farg1, farg2)
+self%swigdata = farg1
+end subroutine
 
- function swigf_new_PcmsFieldAdapterHandle() &
-         result(self)
-  use, intrinsic :: ISO_C_BINDING
-  type(PcmsFieldAdapterHandle) :: self
-  type(SwigClassWrapper) :: fresult
+subroutine swigf_PcmsFieldAdapterHandle_pointer_set(self, pointer)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsFieldAdapterHandle), intent(in) :: self
+type(C_PTR), intent(in) :: pointer
+type(SwigClassWrapper) :: farg1 
+type(C_PTR) :: farg2 
 
-  fresult = swigc_new_PcmsFieldAdapterHandle()
-  self%swigdata = fresult
- end function
+farg1 = self%swigdata
+farg2 = pointer
+call swigc_PcmsFieldAdapterHandle_pointer_set(farg1, farg2)
+end subroutine
 
- subroutine swigf_PcmsFieldAdapterHandle_release(self)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsFieldAdapterHandle), intent(inout) :: self
-  type(SwigClassWrapper) :: farg1
+function swigf_PcmsFieldAdapterHandle_pointer_get(self) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR) :: swig_result
+class(PcmsFieldAdapterHandle), intent(in) :: self
+type(C_PTR) :: fresult 
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
-   call swigc_delete_PcmsFieldAdapterHandle(farg1)
-  endif
-  farg1%cptr = C_NULL_PTR
-  farg1%cmemflags = 0
-  self%swigdata = farg1
- end subroutine
+farg1 = self%swigdata
+fresult = swigc_PcmsFieldAdapterHandle_pointer_get(farg1)
+swig_result = fresult
+end function
 
- subroutine swigf_PcmsFieldAdapterHandle_op_assign__(self, other)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsFieldAdapterHandle), intent(inout) :: self
-  type(PcmsFieldAdapterHandle), intent(in) :: other
-  type(SwigClassWrapper) :: farg1
-  type(SwigClassWrapper) :: farg2
+function swigf_new_PcmsFieldAdapterHandle() &
+result(self)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsFieldAdapterHandle) :: self
+type(SwigClassWrapper) :: fresult 
 
-  farg1 = self%swigdata
-  farg2 = other%swigdata
-  call swigc_PcmsFieldAdapterHandle_op_assign__(farg1, farg2)
-  self%swigdata = farg1
- end subroutine
+fresult = swigc_new_PcmsFieldAdapterHandle()
+self%swigdata = fresult
+end function
 
- subroutine swigf_PcmsFieldHandle_pointer_set(self, pointer)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsFieldHandle), intent(in) :: self
-  type(C_PTR), intent(in) :: pointer
-  type(SwigClassWrapper) :: farg1
-  type(C_PTR) :: farg2
+subroutine swigf_PcmsFieldAdapterHandle_release(self)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsFieldAdapterHandle), intent(inout) :: self
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  farg2 = pointer
-  call swigc_PcmsFieldHandle_pointer_set(farg1, farg2)
- end subroutine
+farg1 = self%swigdata
+if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
+call swigc_delete_PcmsFieldAdapterHandle(farg1)
+endif
+farg1%cptr = C_NULL_PTR
+farg1%cmemflags = 0
+self%swigdata = farg1
+end subroutine
 
- function swigf_PcmsFieldHandle_pointer_get(self) &
-         result(swig_result)
-  use, intrinsic :: ISO_C_BINDING
-  type(C_PTR) :: swig_result
-  class(PcmsFieldHandle), intent(in) :: self
-  type(C_PTR) :: fresult
-  type(SwigClassWrapper) :: farg1
+subroutine swigf_PcmsFieldAdapterHandle_op_assign__(self, other)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsFieldAdapterHandle), intent(inout) :: self
+type(PcmsFieldAdapterHandle), intent(in) :: other
+type(SwigClassWrapper) :: farg1 
+type(SwigClassWrapper) :: farg2 
 
-  farg1 = self%swigdata
-  fresult = swigc_PcmsFieldHandle_pointer_get(farg1)
-  swig_result = fresult
- end function
+farg1 = self%swigdata
+farg2 = other%swigdata
+call swigc_PcmsFieldAdapterHandle_op_assign__(farg1, farg2)
+self%swigdata = farg1
+end subroutine
 
- function swigf_new_PcmsFieldHandle() &
-         result(self)
-  use, intrinsic :: ISO_C_BINDING
-  type(PcmsFieldHandle) :: self
-  type(SwigClassWrapper) :: fresult
+subroutine swigf_PcmsFieldHandle_pointer_set(self, pointer)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsFieldHandle), intent(in) :: self
+type(C_PTR), intent(in) :: pointer
+type(SwigClassWrapper) :: farg1 
+type(C_PTR) :: farg2 
 
-  fresult = swigc_new_PcmsFieldHandle()
-  self%swigdata = fresult
- end function
+farg1 = self%swigdata
+farg2 = pointer
+call swigc_PcmsFieldHandle_pointer_set(farg1, farg2)
+end subroutine
 
- subroutine swigf_PcmsFieldHandle_release(self)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsFieldHandle), intent(inout) :: self
-  type(SwigClassWrapper) :: farg1
+function swigf_PcmsFieldHandle_pointer_get(self) &
+result(swig_result)
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR) :: swig_result
+class(PcmsFieldHandle), intent(in) :: self
+type(C_PTR) :: fresult 
+type(SwigClassWrapper) :: farg1 
 
-  farg1 = self%swigdata
-  if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
-   call swigc_delete_PcmsFieldHandle(farg1)
-  endif
-  farg1%cptr = C_NULL_PTR
-  farg1%cmemflags = 0
-  self%swigdata = farg1
- end subroutine
+farg1 = self%swigdata
+fresult = swigc_PcmsFieldHandle_pointer_get(farg1)
+swig_result = fresult
+end function
 
- subroutine swigf_PcmsFieldHandle_op_assign__(self, other)
-  use, intrinsic :: ISO_C_BINDING
-  class(PcmsFieldHandle), intent(inout) :: self
-  type(PcmsFieldHandle), intent(in) :: other
-  type(SwigClassWrapper) :: farg1
-  type(SwigClassWrapper) :: farg2
+function swigf_new_PcmsFieldHandle() &
+result(self)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsFieldHandle) :: self
+type(SwigClassWrapper) :: fresult 
 
-  farg1 = self%swigdata
-  farg2 = other%swigdata
-  call swigc_PcmsFieldHandle_op_assign__(farg1, farg2)
-  self%swigdata = farg1
- end subroutine
+fresult = swigc_new_PcmsFieldHandle()
+self%swigdata = fresult
+end function
+
+subroutine swigf_PcmsFieldHandle_release(self)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsFieldHandle), intent(inout) :: self
+type(SwigClassWrapper) :: farg1 
+
+farg1 = self%swigdata
+if (btest(farg1%cmemflags, swig_cmem_own_bit)) then
+call swigc_delete_PcmsFieldHandle(farg1)
+endif
+farg1%cptr = C_NULL_PTR
+farg1%cmemflags = 0
+self%swigdata = farg1
+end subroutine
+
+subroutine swigf_PcmsFieldHandle_op_assign__(self, other)
+use, intrinsic :: ISO_C_BINDING
+class(PcmsFieldHandle), intent(inout) :: self
+type(PcmsFieldHandle), intent(in) :: other
+type(SwigClassWrapper) :: farg1 
+type(SwigClassWrapper) :: farg2 
+
+farg1 = self%swigdata
+farg2 = other%swigdata
+call swigc_PcmsFieldHandle_op_assign__(farg1, farg2)
+self%swigdata = farg1
+end subroutine
 
 
 subroutine SWIGTM_fin_char_Sm_(finp, iminp, temp)
@@ -897,7 +951,7 @@ fresult = swigc_pcms_reverse_classification_count_verts(farg1)
 swig_result = fresult
 end function
 
-function pcms_create_xgc_field_adapter(name, plane_comm, data, size, data_type, rc, in_overlap) &
+function pcms_create_xgc_field_adapter(name, plane_comm, data, size, data_type, rc) &
 result(swig_result)
 use, intrinsic :: ISO_C_BINDING
 type(PcmsFieldAdapterHandle) :: swig_result
@@ -907,7 +961,6 @@ type(C_PTR), intent(in) :: data
 integer(C_INT), intent(in) :: size
 integer(PcmsType), intent(in) :: data_type
 type(PcmsReverseClassificationHandle), intent(in) :: rc
-procedure(in_overlap_func) :: in_overlap
 type(SwigClassWrapper) :: fresult 
 character(kind=C_CHAR), dimension(:), allocatable, target :: farg1_temp 
 type(SwigArrayWrapper) :: farg1 
@@ -916,7 +969,6 @@ type(C_PTR) :: farg3
 integer(C_INT) :: farg4 
 integer(C_INT) :: farg5 
 type(SwigClassWrapper) :: farg6 
-type(C_FUNPTR) :: farg7 
 
 call SWIGTM_fin_char_Sm_(name, farg1, farg1_temp)
 farg2 = int(plane_comm, C_INT)
@@ -924,10 +976,25 @@ farg3 = data
 farg4 = size
 farg5 = data_type
 farg6 = rc%swigdata
-farg7 = c_funloc(in_overlap)
-fresult = swigc_pcms_create_xgc_field_adapter(farg1, farg2, farg3, farg4, farg5, farg6, farg7)
+fresult = swigc_pcms_create_xgc_field_adapter(farg1, farg2, farg3, farg4, farg5, farg6)
 swig_result%swigdata = fresult
 end function
+
+subroutine pcms_set_overlap_mask(client_handle, name, in_overlap)
+use, intrinsic :: ISO_C_BINDING
+type(PcmsClientHandle), intent(in) :: client_handle
+character(len=*), target :: name
+procedure(in_overlap_func) :: in_overlap
+type(SwigClassWrapper) :: farg1 
+character(kind=C_CHAR), dimension(:), allocatable, target :: farg2_temp 
+type(SwigArrayWrapper) :: farg2 
+type(C_FUNPTR) :: farg3 
+
+farg1 = client_handle%swigdata
+call SWIGTM_fin_char_Sm_(name, farg2, farg2_temp)
+farg3 = c_funloc(in_overlap)
+call swigc_pcms_set_overlap_mask(farg1, farg2, farg3)
+end subroutine
 
 function pcms_create_dummy_field_adapter() &
 result(swig_result)

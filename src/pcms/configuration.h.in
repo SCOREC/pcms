@@ -3,6 +3,7 @@
 #cmakedefine PCMS_ENABLE_XGC
 #cmakedefine PCMS_ENABLE_OMEGA_H
 #cmakedefine PCMS_ENABLE_MFEM
+#cmakedefine PCMS_ENABLE_FUSIONIO
 #cmakedefine PCMS_ENABLE_C
 #cmakedefine PCMS_ENABLE_TRANSIENT
 #cmakedefine PCMS_ENABLE_PRINT

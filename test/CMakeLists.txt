@@ -442,6 +442,14 @@ if(Catch2_FOUND)
     list(APPEND PCMS_UNIT_TEST_SOURCES test_mfem_adapter.cpp)
   endif()
 
+  if(PCMS_ENABLE_FUSIONIO)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_fusion_io.cpp)
+    set_source_files_properties(
+      test_fusion_io.cpp
+      PROPERTIES COMPILE_DEFINITIONS
+                 "PCMS_TEST_FUSIONIO_DIR=\"${PCMS_TEST_DATA_DIR}/fusion-io\"")
+  endif()
+
   if(PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES
       test_omega_h_form_integrator_utils.cpp)
@@ -468,6 +476,10 @@ if(Catch2_FOUND)
 
   if(PCMS_ENABLE_MFEM)
     target_link_libraries(unit_tests PUBLIC mfem)
+  endif()
+
+  if(PCMS_ENABLE_FUSIONIO)
+    target_link_libraries(unit_tests PUBLIC fusionio::fusionio_fusionio)
   endif()
 
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core

@@ -81,6 +81,11 @@ if (PCMS_ENABLE_MFEM)
     )
 endif ()
 
+if (PCMS_ENABLE_FUSIONIO)
+    list(APPEND PCMS_FIELD_SOURCES function_space/fusion_io.cpp)
+    list(APPEND PCMS_FIELD_HEADERS function_space/fusion_io.hpp)
+endif ()
+
 if (PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_FIELD_SOURCES
             layout/mesh_fields.cpp
@@ -126,6 +131,10 @@ endif()
 
 if(PCMS_ENABLE_MFEM)
     target_link_libraries(pcms_field PUBLIC mfem)
+endif()
+
+if(PCMS_ENABLE_FUSIONIO)
+    target_link_libraries(pcms_field PRIVATE fusionio::fusionio_fusionio)
 endif()
 
 if (PCMS_ENABLE_MESHFIELDS)

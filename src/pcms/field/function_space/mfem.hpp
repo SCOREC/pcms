@@ -74,7 +74,7 @@ protected:
       throw pcms_error(
         "MFEMFieldFactory::CreateField: requires MFEMVertexFieldData");
     }
-    if ((*real)->GetDOFHolderDataHost().size() !=
+    if ((*real)->GetDOFAccess()->GetOwnedValues().size() !=
         detail::ExpectedFlatFieldDataSize(*layout_)) {
       throw pcms_error("MFEMFieldFactory::CreateField: field data size does "
                        "not match layout");

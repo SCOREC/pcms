@@ -10,6 +10,27 @@
 namespace pcms
 {
 
+// DOFAccess<T> is the optional capability of field data whose values PCMS can
+// read and write directly: the values of the DOF holders this rank owns, shaped
+// [owned DOF holder][component] in the layout's order. Coupler exchanges and
+// transfer targets use it; evaluation never needs it.
+template <typename T>
+class DOFAccess
+{
+public:
+  // Valid until the field data is next written or destroyed.
+  virtual Rank2View<const T, DeviceMemorySpace> GetOwnedValues() const = 0;
+
+  // Writes the owned values, then brings any other copies the backend keeps
+  // (ghosts, replicas on other ranks) up to date. Collective over the ranks
+  // that share those copies.
+  virtual void SetOwnedValues(Rank2View<const T, DeviceMemorySpace> values) = 0;
+
+  virtual ~DOFAccess() noexcept = default;
+};
+
+// FieldData<T> holds whatever a backend needs to represent a field. It is
+// opaque. It should only be directly used by the type that created it.
 template <typename T>
 class FieldData
 {
@@ -19,13 +40,8 @@ public:
   virtual FieldValueType GetValueType() const = 0;
   virtual const ValueBasis& GetValueBasis() const = 0;
 
-  virtual Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const = 0;
-  virtual void SetDOFHolderDataHost(
-    Rank2View<const T, HostMemorySpace> values) = 0;
-
-  virtual Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const = 0;
-  virtual void SetDOFHolderData(
-    Rank2View<const T, DeviceMemorySpace> values) = 0;
+  virtual const DOFAccess<T>* GetDOFAccess() const noexcept { return nullptr; }
+  virtual DOFAccess<T>* GetDOFAccess() noexcept { return nullptr; }
 
   virtual ~FieldData() noexcept = default;
 };

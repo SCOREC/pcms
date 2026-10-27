@@ -71,6 +71,28 @@ if(PCMS_ENABLE_OMEGA_H)
     mpi_test(test_distributed_coupling_2p 2
              $<TARGET_FILE:test_distributed_coupling>)
   endif()
+  add_exe(test_distributed_evaluate)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    mpi_test(test_distributed_evaluate_2p 2
+             $<TARGET_FILE:test_distributed_evaluate>)
+  endif()
+  if(HOST_NPROC GREATER_EQUAL 3)
+    mpi_test(test_distributed_evaluate_3p 3
+             $<TARGET_FILE:test_distributed_evaluate>)
+  endif()
+  if(HOST_NPROC GREATER_EQUAL 4)
+    mpi_test(test_distributed_evaluate_4p 4
+             $<TARGET_FILE:test_distributed_evaluate>)
+  endif()
+  add_exe(test_distributed_search)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    mpi_test(test_distributed_search_2p 2
+             $<TARGET_FILE:test_distributed_search>)
+  endif()
+  if(HOST_NPROC GREATER_EQUAL 3)
+    mpi_test(test_distributed_search_3p 3
+             $<TARGET_FILE:test_distributed_search>)
+  endif()
   set(d3d1p ${PCMS_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc.osh/)
   set(d3d1p_cpn ${PCMS_TEST_DATA_DIR}/d3d/1p.cpn)
   set(d3d2p_cpn ${PCMS_TEST_DATA_DIR}/d3d/2p.cpn)
@@ -424,6 +446,7 @@ if(Catch2_FOUND)
       test_error_handling.cpp
             test_eqdsk.cpp
       test_uniform_grid.cpp
+      test_cell_range.cpp
       test_field_evaluation.cpp
       test_field_interpolation.cpp
       test_field_copy.cpp

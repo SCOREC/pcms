@@ -6,6 +6,8 @@
 
 #include <Omega_h_array.hpp>
 
+#include <vector>
+
 namespace pcms
 {
 
@@ -500,6 +502,77 @@ void CopyRank1ViewToDevice(Rank1View<T, DeviceMemorySpace> dest,
   Kokkos::parallel_for(
     "CopyRank1ViewToDevice", src.size(),
     KOKKOS_LAMBDA(LO i) { dest(i) = src_tmp_d(i); });
+}
+
+
+// ---- std::vector <-> device copies ----
+//
+// Each performs at most one host/device transfer. A row-major `std::vector`
+// is the layout MPI buffers use; the device side uses the default layout for
+// the device memory space, which may be column-major.
+
+/// `host` copied to a new device view.
+template <typename T>
+Kokkos::View<T*, DeviceMemorySpace> CopyToDevice(const std::vector<T>& host)
+{
+  Kokkos::View<T*, DeviceMemorySpace> device("CopyToDevice", host.size());
+  const Kokkos::View<const T*, HostMemorySpace, Kokkos::MemoryUnmanaged>
+    host_view(host.data(), host.size());
+  Kokkos::deep_copy(device, host_view);
+  return device;
+}
+
+/// A device matrix as a row-major host vector, `extent(0) * extent(1)` long.
+template <typename T, typename... Properties>
+std::vector<std::remove_const_t<T>> CopyToHostRowMajor(
+  const Kokkos::View<T**, Properties...>& device)
+{
+  using U = std::remove_const_t<T>;
+  std::vector<U> host(device.extent(0) * device.extent(1));
+  Kokkos::View<U**, Kokkos::LayoutRight, HostMemorySpace,
+               Kokkos::MemoryUnmanaged>
+    host_view(host.data(), device.extent(0), device.extent(1));
+  DeepCopyMismatchLayouts(host_view, device);
+  return host;
+}
+
+/// A row-major host vector of `n_cols` columns as a new device matrix.
+template <typename T>
+Kokkos::View<T**, DeviceMemorySpace> CopyRowMajorToDevice(
+  const std::vector<T>& host, int n_cols)
+{
+  const size_t n_rows =
+    n_cols > 0 ? host.size() / static_cast<size_t>(n_cols) : 0;
+  const Kokkos::View<const T**, Kokkos::LayoutRight, HostMemorySpace,
+                     Kokkos::MemoryUnmanaged>
+    host_view(host.data(), n_rows, n_cols);
+  Kokkos::View<T**, DeviceMemorySpace> device("CopyRowMajorToDevice", n_rows,
+                                              n_cols);
+  DeepCopyMismatchLayouts(device, host_view);
+  return device;
+}
+
+/// The rows `rows(k)` of a rank-2 device view, gathered into a new device
+/// matrix on the device (no transfer).
+template <typename SrcView>
+Kokkos::View<typename SrcView::non_const_value_type**, DeviceMemorySpace>
+GatherRows(const SrcView& src, Kokkos::View<const LO*, DeviceMemorySpace> rows)
+{
+  static_assert(Kokkos::is_view<SrcView>::value && SrcView::rank() == 2,
+                "GatherRows takes a rank-2 Kokkos::View");
+  using T = typename SrcView::non_const_value_type;
+  const int n_cols = static_cast<int>(src.extent(1));
+  Kokkos::View<T**, DeviceMemorySpace> out("GatherRows", rows.extent(0),
+                                           n_cols);
+  Kokkos::parallel_for(
+    "GatherRows",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, rows.extent(0)),
+    KOKKOS_LAMBDA(LO k) {
+      for (int c = 0; c < n_cols; ++c) {
+        out(k, c) = src(rows(k), c);
+      }
+    });
+  return out;
 }
 
 } // namespace pcms

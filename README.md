@@ -1,16 +1,39 @@
 # PCMS: Parallel Coupler For Multimodel Simulations
+ PCMS provides infrastructure to couple multiple simulation codes at scale on exascale systems. It uses scalable methodologies for transferring data between distributed applications. PCMS takes a hierarchical approach to field transfer using as much information as possible, such as mesh topology, to accommodate conservation and other physical constraints. In the context of limited information, alternative strategies, such as radial basis functions, are used to support field transfer. PCMS has been demonstrated on coupled fusion simulations that make use of volume coupling of high-dimensional data and complex coordinate systems.
 
-Adios2-based xgc_coupler for XGC and GENE
+## Run PCMS in a container
 
-## Dependencies
+PCMS provides pre-built containers for x86\_64 and arm64. To use these containers, with docker you cand do the following:
 
-- CMake 3.19+
-- MPI
-- Kokkos
-- KokkosKernels
-- redev 3.0.0+ (https://github.com/SCOREC/redev)
-- Omega\_h 10.2.0+ with MPI enabled (https://github.com/SCOREC/omega_h)
-- Catch2 2.\* (for unit tests) (https://github.com/catchorg/Catch2/tree/v2.13.8)
+```console
+$ docker pull ghcr.io/scorec/pcms:develop
+$ docker run --rm -it ghcr.io/scorec/pcms:develop bash
+```
+
+| Tag | Contents |
+|---|---|
+| `develop` | Latest build of `develop`, rebuilt at least weekly |
+| `develop-YYYY-MM-DD` | build from specific date |
+
+To run the Python examples, mount a checkout of this repository:
+
+```console
+$ git clone https://github.com/SCOREC/pcms.git
+$ docker run --rm -v $PWD/pcms:/pcms -w /pcms ghcr.io/scorec/pcms:develop \
+    python3 examples/python-api-example/example_conservative_transfer.py
+```
+
+If you run into issues due to containers running as root, you may need to use the following environment variables for OpenMPI to work.
+As with any container running as root, exercise caution.
+`mpirun`:
+
+```console
+$ docker run --rm -e OMPI_ALLOW_RUN_AS_ROOT=1 -e OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 \
+    ghcr.io/scorec/pcms:develop mpirun -n 2 python3 -c "import pcms"
+```
+
+More details about the container build process can be found here
+[scorec-spack-packages](https://github.com/SCOREC/scorec-spack-packages#pcms-container-image).
 
 ## Build Instructions
 

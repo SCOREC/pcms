@@ -37,261 +37,69 @@ More details about the container build process can be found here
 
 ## Build Instructions
 
-## Build with modules
-SCOREC Rhel7 environment
+There are two supported ways to build PCMS from source:
 
-```
-module use /opt/scorec/spack/rhel9/v0201_4/lmod/linux-rhel9-x86_64/Core/
-module load gcc/12.3.0-iil3lno
-module load mpich/4.1.1-xpoyz4t
-module load cmake/3.26.3-2duxfcd
-// no need to load CUDA if not using GPUs
-module load cuda/12.1.1-zxa4msk
-```
+- [Spack](#build-with-spack) works on any Linux or macOS system.
+- On [SCOREC systems](#build-on-scorec-systems), use the module-based scripts.
 
-### Build dependencies with CPU
+## Build with Spack
 
-```
-git clone --branch 4.6.01 --depth 1 git@github.com:kokkos/kokkos.git
-cmake -S kokkos -B build-kokkos \
-  -DCMAKE_INSTALL_PREFIX=build-kokkos/install \
-  -DCMAKE_CXX_STANDARD=20 \
-  -DKokkos_ENABLE_SERIAL=ON \
-  -DKokkos_ENABLE_OPENMP=OFF \
-  -DKokkos_ENABLE_CUDA=OFF \
-  -DKokkos_ENABLE_CUDA_LAMBDA=OFF \
-  -DKokkos_ENABLE_CUDA_CONSTEXPR=OFF \
-  -DBUILD_SHARED_LIBS=OFF
-cmake --build build-kokkos --target install
+The environment in [`spack/spack.yaml`](spack/spack.yaml) builds PCMS from
+your checkout. It fetches the PCMS
+recipes from [scorec-spack-packages](https://github.com/SCOREC/scorec-spack-packages),
+pins the version of the Spack package repository, and installs prebuilt
+dependencies from the SCOREC build cache when they match your system
+(Ubuntu 24.04 on x86\_64 or arm64). Elsewhere, Spack builds the dependencies
+from source the first time.
 
-git clone --branch 4.6.01 --depth 1 git@github.com:kokkos/kokkos-kernels.git
-cmake -S kokkos-kernels -B build-kokkos-kernels \
-  -DCMAKE_INSTALL_PREFIX=build-kokkos-kernels/install \
-  -DCMAKE_CXX_STANDARD=20 \
-  -DKokkos_ROOT=$PWD/build-kokkos/install/lib64/cmake \
-  -DBUILD_SHARED_LIBS=OFF
-cmake --build build-kokkos-kernels --target install
-
-git clone git@github.com:SCOREC/omega_h.git
-cmake -S omega_h -B build-omega_h \
-  -DCMAKE_INSTALL_PREFIX=$PWD/build-omega_h/install \
-  -DCMAKE_C_COMPILER=mpicc \
-  -DCMAKE_CXX_COMPILER=mpicxx \
-  -DBUILD_SHARED_LIBS=OFF \
-  -DOmega_h_USE_Kokkos=ON \
-  -DOmega_h_USE_CUDA=OFF \
-  -DOmega_h_USE_MPI=ON  \
-  -DMPIEXEC_EXECUTABLE=mpirun \
-  -DBUILD_TESTING=OFF  \
-  -DKokkos_PREFIX=$PWD/build-kokkos/install/lib64/cmake
-cmake --build build-omega_h --target install
-
-git clone git@github.com:ornladios/ADIOS2.git
-cmake -S ADIOS2 -B build-ADIOS2 \
-  -DCMAKE_INSTALL_PREFIX=build-ADIOS2/install \
-  -DADIOS2_USE_CUDA=OFF \
-  -DADIOS2_USE_ZFP=off
-cmake --build build-ADIOS2 --target install
-
-git clone git@github.com:UO-OACISS/perfstubs.git
-cmake -S perfstubs -B build-perfstubs \
-  -DCMAKE_CXX_COMPILER=mpicxx \
-  -DCMAKE_INSTALL_PREFIX=build-perfstubs/install
-cmake --build build-perfstubs --target install
-
-git clone git@github.com:catchorg/Catch2
-cmake -S Catch2 -B build-Catch2 \
-  -DCMAKE_INSTALL_PREFIX=$PWD/build-Catch2/install
-cmake --build build-Catch2 --target install
-
-git clone git@github.com:SCOREC/redev.git
-cmake -S redev -B build-redev \
-  -DCMAKE_CXX_COMPILER=mpicxx \
-  -DMPIEXEC_EXECUTABLE=mpirun \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_SHARED_LIBS=OFF \
-  -DCMAKE_INSTALL_PREFIX=build-redev/install \
-  -DADIOS2_DIR=$PWD/build-ADIOS2/install/lib64/cmake/adios2 \
-  -Dperfstubs_DIR=$PWD/build-perfstubs/install/lib/cmake
-cmake --build build-redev --target install
-```
-### Build dependencies with CUDA
-```
-git clone --branch 4.6.01 --depth 1 git@github.com:kokkos/kokkos.git
-cmake -S kokkos -B build-kokkos \
-  -DCMAKE_INSTALL_PREFIX=build-kokkos/install \
-  -DCMAKE_CXX_STANDARD=20 \
-  -DCMAKE_BUILD_TYPE="Release" \
-  -DCMAKE_CXX_COMPILER=$PWD/kokkos/bin/nvcc_wrapper \
-  -DKokkos_ARCH_AMPERE80=ON \
-  -DKokkos_ENABLE_SERIAL=ON \
-  -DKokkos_ENABLE_OPENMP=off \
-  -DKokkos_ENABLE_CUDA=on \
-  -DKokkos_ENABLE_CUDA_LAMBDA=on \
-  -DKokkos_ENABLE_CUDA_CONSTEXPR=on \
-  -DKokkos_ENABLE_DEBUG=off
-cmake --build build-kokkos --target install
-
-git clone --branch 4.6.01 --depth 1 git@github.com:kokkos/kokkos-kernels.git
-cmake -S kokkos-kernels -B build-kokkos-kernels \
-  -DCMAKE_INSTALL_PREFIX=build-kokkos-kernels/install \
-  -DCMAKE_CXX_STANDARD=20 \
-  -DKokkos_ROOT=$PWD/build-kokkos/install/lib64/cmake \
-  -DBUILD_SHARED_LIBS=off
-cmake --build build-kokkos-kernels --target install
-
-git clone git@github.com:SCOREC/omega_h.git
-cmake -S omega_h -B build-omega_h \
-  -DCMAKE_INSTALL_PREFIX=build-omega_h/install \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_SHARED_LIBS=off \
-  -DOmega_h_USE_Kokkos=ON \
-  -DOmega_h_USE_CUDA=on \
-  -DOmega_h_CUDA_ARCH=80 \
-  -DOmega_h_USE_MPI=on  \
-  -DMPIEXEC_EXECUTABLE=mpirun \
-  -DBUILD_TESTING=off  \
-  -DCMAKE_C_COMPILER=mpicc \
-  -DCMAKE_CXX_COMPILER=mpicxx \
-  -DKokkos_PREFIX=$PWD/build-kokkos/install/lib64/cmake
-cmake --build build-omega_h --target install
-
-git clone git@github.com:ornladios/ADIOS2.git
-cmake -S ADIOS2 -B build-ADIOS2 \
-  -DCMAKE_INSTALL_PREFIX=build-ADIOS2/install \
-  -DADIOS2_USE_CUDA=on \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_COMPILER=mpicxx \
-  -DCMAKE_C_COMPILER=mpicc \
-  -DADIOS2_USE_ZFP=off
-cmake --build build-ADIOS2 --target install
-
-git clone git@github.com:UO-OACISS/perfstubs.git
-cmake -S perfstubs -B build-perfstubs \
-  -DCMAKE_CXX_COMPILER=mpicxx \
-  -DCMAKE_INSTALL_PREFIX=build-perfstubs/install
-cmake --build build-perfstubs --target install
-
-git clone git@github.com:SCOREC/redev.git
-cmake -S redev -B build-redev \
-  -DCMAKE_CXX_COMPILER=mpicxx \
-  -DMPIEXEC_EXECUTABLE=mpirun \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_SHARED_LIBS=OFF \
-  -DCMAKE_INSTALL_PREFIX=build-redev/install \
-  -DADIOS2_DIR=$PWD/build-ADIOS2/install/lib64/cmake/adios2 \
-  -Dperfstubs_DIR=$PWD/build-perfstubs/install/lib/cmake
-cmake --build build-redev --target install
-
-git clone git@github.com:catchorg/Catch2
-cmake -S Catch2 -B build-Catch2 \
-  -DCMAKE_INSTALL_PREFIX=$PWD/build-Catch2/install
-cmake --build build-Catch2 --target install
-```
-### Build, install, and test pcms
-```
-git clone git@github.com:jacobmerson/pcms_testcases.git // test data
-git clone git@github.com:SCOREC/pcms.git
-
-cmake -S pcms -B build-pcms \
-  -DCMAKE_C_COMPILER=mpicc \
-  -DCMAKE_CXX_COMPILER=mpicxx \
-  -DCMAKE_Fortran_COMPILER=mpifort \
-  -DCMAKE_BUILD_TYPE="Debug" \
-  -DPCMS_TIMEOUT=100 \
-  -Dredev_DIR=$PWD/build-redev/install/lib64/cmake/redev \
-  -DOmega_h_DIR=$PWD/build-omega_h/install/lib64/cmake/Omega_h/ \
-  -Dperfstubs_DIR=$PWD/build-perfstubs/install/lib/cmake \
-  -DCatch2_DIR=$PWD/build-Catch2/install/lib64/cmake/Catch2/ \
-  -DKokkosKernels_DIR=$PWD/build-kokkos-kernels/install/lib64/cmake/KokkosKernels/ \
-  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases
-cmake --build build-pcms -j 8
-
-ctest --test-dir build-pcms --output-on-failure
-```
-
-## Spack based build
-1. Install spack
+1. Install Spack 1.2 or newer:
    ```console
-   $ mkdir $HOME/$USER/spack
-   $ cd $HOME/$USER/spack
-   $ git clone -c feature.manyFiles=true -b v1.0.4 https://github.com/spack/spack.git
+   $ git clone --depth=2 -b releases/v1.2 https://github.com/spack/spack.git
    $ . spack/share/spack/setup-env.sh
-   $ spack repo add https://github.com/spack/spack-packages
    ```
-   We can also add the spack setup line into the `~/.bashrc` with `echo ". spack/share/spack/setup-env.sh" >> ~/.bashrc"`. This will load the spack setup script every time we start our terminal session.
-2. Get PCMS spack repo
-   The following commands will add the pcms recipe files to spack. They are not currently installed inthe upstream spack repository.
+2. Spack needs C, C++, and Fortran compilers. On Ubuntu, install them with
+   `sudo apt install gcc g++ gfortran`. Spack finds them on the first build;
+   `spack compiler list` shows what it found.
+3. Build and install PCMS:
    ```console
-   $ git clone https://github.com/jacobmerson/pcms-spack.git
-   $ spack repo add pcms-spack/spack_repo/pcms
-   ```
-3. Install compilers / add compilers to spack
-   ```console
-   $ sudo apt install gcc g++ gfortran
-   $ spack compiler find
-   ```
-   You should see a message stating that a compiler was added to your `packages.yaml` file. You can confirm this by looking in your spack packages with `spack config edit packages`. It should contain something similar to the following:
-   ```yaml
-   packages:
-     gcc:
-       externals:
-       - spec: gcc@13.3.0 languages:='c,c++,fortran'
-         prefix: /usr
-         extra_attributes:
-           compilers:
-             c: /usr/bin/gcc
-             cxx: /usr/bin/g++
-             fortran: /usr/bin/gfortran
-   ```
-
-   
-4. Install PCMS repo
-    ```console
-    $ mkdir $HOME/$USER/pcms-coupler
-    $ cd $HOME/$USER/pcms-coupler
-    $ git clone https://github.com/SCOREC/pcms.git
-    $ cd pcms/spack
-    $ spack env create -d env spack.yaml
-    $ cd env
-    $ spack env activate .
-    $ spack install
-    ```
-    
-If work in SCOREC system, you can directly use the spack-scorec.yaml which contains compilers information. At this point hopefully, spack will now install all of the relavant dependencies and a baseline build of PCMS. The default environment has PCMS in develop mode. To modify and recompile PCMS you can modify the code and rerun `spack install`.
-
-4. Python API (optional)
-   If you want to use the python API, you can install the `pcms+python` package with spack instaed of `pcms`. This will install the python bindings for PCMS and all of the dependencies needed to use them.
-   ```console
-   $ spack remove pcms
-   $ spack add pcms+python
+   $ git clone https://github.com/SCOREC/pcms.git
+   $ cd pcms
+   $ spack env activate ./spack
    $ spack install
    ```
 
-   Then add the binded python module to your `PYTHONPATH` environment variable. You can find the install prefix with `find $(spack location -i pcms) -name "*.so" | grep -i pcms`.
-   ```console
-    $ export PYTHONPATH=$<your-path-to-module>:$PYTHONPATH
-   ```
+This environment has PCMS in *develop* mode after changing the source, you can run
+`spack install` again to rebuild it. With the environment active, its view is on your `PATH`, so
+`python3 -c "import pcms"` uses the Python bindings.
 
-   Test the python API with `python -c "import pcms; print(pcms.__version__)"`. You should see the version of PCMS printed out without any errors. 
+To build a different configuration, edit the spec in `spack/spack.yaml` and
+run `spack concretize -f` before `spack install`. For example:
 
-   Point-evaluator construction in Python uses `EvaluationRequest`, for
-   example:
-   ```python
-   request = pcms.EvaluationRequest.from_coordinates(eval_coords)
-   evaluator = source_space.create_point_evaluator(request)
+- `pcms@develop` builds without the optional features (Python, PETSc, NetCDF).
+- `+cuda cuda_arch=80` (or `+rocm amdgpu_target=gfx90a`) builds for GPUs.
+  Also add `~tests` if the build machine has no GPU, because the tests are
+  run during the build.
 
-   optimized_request = pcms.EvaluationRequest.from_function_space(target_space)
-   evaluator = source_space.create_point_evaluator(optimized_request)
-   ```
-   
-   PS: If you need certain config options for the python API, you can specify them in the spack spec. For example, to build the python API with Exodus support, one compatible config is `pcms+python ^omega-h+trilinos ^trilinos@15.0.0:+exodus ^netcdf-c@4.8.1+mpi`. At this moment, omega-h spack package does not have the exodus support, so you need to manually add `args.append("-Omega_h_USE_SEACASExodus:BOOL=ON")` to the `package.py` file of omega-h in spack before installing pcms with spack.
+`spack info pcms` lists available variants.
 
-Details instructions for a few systems are available on the wiki.
+## Build on SCOREC systems
 
-Another Executing Approach: One would also comment out the BUILDING_TESTING in CMakeFiles.txt included in test folder; 
+On the SCOREC RHEL9 machines, PCMS and its dependencies are built with the
+system modules and the scripts in
+[laces-lab/software-dependencies](https://github.com/laces-lab/software-dependencies).
+Follow the instructions there.
 
-Assign the full path of testdatas to test_dir in the test_init.cc file; Use "mpirun -np 4 bin/test_init" for the execution.   
+## Python API
+
+Point-evaluator construction in Python uses `EvaluationRequest`, for example:
+
+```python
+request = pcms.EvaluationRequest.from_coordinates(eval_coords)
+evaluator = source_space.create_point_evaluator(request)
+
+optimized_request = pcms.EvaluationRequest.from_function_space(target_space)
+evaluator = source_space.create_point_evaluator(optimized_request)
+```
 
 ## Creating Archive for Release
 `git archive --format=tar.gz -o /tmp/pcms.tar.gz --prefix=pcms/ develop`

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <pcms/localization/distributed_point_search.h>
 #include <pcms/localization/point_search.h>
 #include <pcms/utility/mesh_geometry.h>
 #include <pcms/utility/uniform_grid.h>
@@ -525,5 +526,352 @@ TEST_CASE("point search encodes outside points unambiguously",
     REQUIRE_FALSE(results_h(2).IsOutside());
     REQUIRE(results_h(2).element_id == 0);
     REQUIRE(owners_h(2) == 0);
+  }
+}
+
+// Baseline for the reused local search: on a mesh with no ghost layer every
+// element is owned and every element centroid must localize to its own element.
+// The distributed search treats a local answer as authoritative only when this
+// holds, so it is the contract the distributed layer builds on.
+TEST_CASE("ghost-free search localizes every element centroid")
+{
+  using pcms::GridPointSearch2D;
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 4, 4, 0, false);
+  REQUIRE(mesh.nghost_layers() == 0);
+
+  const auto n_elems = mesh.nelems();
+  const auto owned = Omega_h::HostRead<Omega_h::I8>(mesh.owned(2));
+  REQUIRE(static_cast<Omega_h::LO>(owned.size()) == n_elems);
+  for (Omega_h::LO i = 0; i < n_elems; ++i) {
+    REQUIRE(owned[i] != 0);
+  }
+
+  const auto n = pcms::DivisionsPerAxisForGlobalMesh<2>(mesh);
+  GridPointSearch2D search{mesh, n, n};
+  const auto centroids =
+    Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(mesh, 2));
+  Kokkos::View<pcms::Real* [2]> points("query points", n_elems);
+  auto points_h = Kokkos::create_mirror_view(points);
+  for (Omega_h::LO i = 0; i < n_elems; ++i) {
+    points_h(i, 0) = centroids[i * 2 + 0];
+    points_h(i, 1) = centroids[i * 2 + 1];
+  }
+  Kokkos::deep_copy(points, points_h);
+
+  const auto owners_h = Kokkos::create_mirror_view_and_copy(
+    Kokkos::HostSpace{}, search.GetOwningElementIds(search(points)));
+  for (Omega_h::LO i = 0; i < n_elems; ++i) {
+    REQUIRE(owners_h(i) == i);
+  }
+}
+
+// The distributed search decides what this rank may answer for by asking
+// whether the element the local search reported is one it owns. On a mesh with
+// no ghost layer every local element is owned, so every located point must be
+// answerable here -- which is the baseline the multi-rank classification test
+// builds on.
+TEST_CASE("distributed search classifies local answers by ownership")
+{
+  using pcms::DistributedPointSearch;
+  using Status = DistributedPointSearch<2>::LocalStatus;
+
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 4, 4, 0, false);
+  REQUIRE(mesh.nghost_layers() == 0);
+
+  const auto n = pcms::DivisionsPerAxisForGlobalMesh<2>(mesh);
+  pcms::GridPointSearch2D local_search{mesh, n, n};
+  const DistributedPointSearch<2> search{mesh, local_search};
+
+  REQUIRE_FALSE(search.HasGhostLayer());
+  REQUIRE(search.GetMesh().nelems() == mesh.nelems());
+
+  // Query the centroid of every element plus one point outside the domain.
+  const auto n_elems = mesh.nelems();
+  const auto centroids =
+    Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(mesh, 2));
+  Kokkos::View<pcms::Real* [2]> points("query points", n_elems + 1);
+  auto points_h = Kokkos::create_mirror_view(points);
+  for (Omega_h::LO i = 0; i < n_elems; ++i) {
+    points_h(i, 0) = centroids[i * 2 + 0];
+    points_h(i, 1) = centroids[i * 2 + 1];
+  }
+  // Outside the mesh and outside every grid cell that holds an element.
+  points_h(n_elems, 0) = 2.0;
+  points_h(n_elems, 1) = 2.0;
+  Kokkos::deep_copy(points, points_h);
+
+  const auto classified = search.ClassifyLocally(points);
+  REQUIRE(classified.size() == static_cast<size_t>(n_elems + 1));
+
+  for (Omega_h::LO i = 0; i < n_elems; ++i) {
+    const auto& c = classified[static_cast<size_t>(i)];
+    REQUIRE(c.status == Status::LOCATED_HERE);
+    // An element centroid lies strictly inside its element, so the reported
+    // element is that element and the barycentric coordinates are positive.
+    REQUIRE(c.element_id == i);
+    for (int d = 0; d < 3; ++d) {
+      REQUIRE(c.barycentric[d] > 0);
+    }
+  }
+
+  // With no ghosts nothing can be "located elsewhere": either this rank answers
+  // or the point is outside what it holds.
+  for (const auto& c : classified) {
+    REQUIRE(c.status != Status::LOCATED_ELSEWHERE);
+  }
+  REQUIRE(classified[static_cast<size_t>(n_elems)].status ==
+          Status::NOT_FOUND_HERE);
+  REQUIRE(classified[static_cast<size_t>(n_elems)].element_id == -1);
+}
+// A predicate chosen at the map-building call must govern *both* halves: the
+// range of cells visited and the test applied to each. Checking the map against
+// a brute-force build made with that same predicate is what catches the case
+// where one half ignores the argument -- the fast map would then disagree.
+//
+// Only predicates instantiated in point_search.cpp can be named from here; the
+// set is small and internal, which is why the map machinery no longer lives in
+// the header. See the instantiations at the end of that file.
+TEST_CASE("candidate map accepts a predicate other than the default")
+{
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
+
+  Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
+  auto grid_h = Kokkos::create_mirror_view(grid_d);
+  grid_h(0) = Uniform2DGrid{
+    .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
+  Kokkos::deep_copy(grid_d, grid_h);
+  const auto ncells = grid_h(0).GetNumCells();
+
+  // SimplexVsBbox is the 3D default; in 2D it is the conservative bounding-box
+  // test, which is a legitimate thing to want. No other caller asks for it in
+  // 2D.
+  auto conservative =
+    pcms::detail::construct_intersection_map<2, pcms::SimplexVsBbox>(
+      mesh, grid_d, ncells);
+  require_maps_identical(
+    conservative,
+    pcms::detail::construct_intersection_map_reference<2, pcms::SimplexVsBbox>(
+      mesh, grid_d, ncells));
+
+  // The conservative test accepts everything the refined default accepts and
+  // more, wherever an element's box reaches a cell its triangle does not. If
+  // the predicate were ignored, the two maps would be identical.
+  auto refined =
+    pcms::detail::construct_intersection_map_2d(mesh, grid_d, ncells);
+  REQUIRE(conservative.entries.size() > refined.entries.size());
+}
+
+// The search itself must accept a predicate the same way, chosen once when it
+// is built. The predicate must be one instantiated in point_search.cpp.
+TEST_CASE("point search accepts a predicate other than its default")
+{
+  using pcms::GridPointSearch2D;
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
+
+  auto tolerances =
+    GridPointSearch2D::PointSearchTolerances{"point search 2d tolerances"};
+  auto tolerances_h = Kokkos::create_mirror_view(tolerances);
+  tolerances_h(0) = 0.01;
+  tolerances_h(1) = 0.01;
+  Kokkos::deep_copy(tolerances, tolerances_h);
+
+  GridPointSearch2D default_search{mesh, 10, 10, tolerances};
+  // The conservative 2D predicate instead of this search's default.
+  GridPointSearch2D custom_search{mesh, 10, 10, tolerances,
+                                  pcms::SimplexVsBbox{}};
+
+  Kokkos::View<pcms::Real* [2]> points("test_points", 4);
+  auto points_h = Kokkos::create_mirror_view(points);
+  points_h(0, 0) = 0.05;
+  points_h(0, 1) = 0.02;
+  points_h(1, 0) = 0.55;
+  points_h(1, 1) = 0.54;
+  points_h(2, 0) = 0.9;
+  points_h(2, 1) = 0.9;
+  points_h(3, 0) = 1.0;
+  points_h(3, 1) = 1.0;
+  Kokkos::deep_copy(points, points_h);
+
+  auto default_results = default_search(points);
+  auto custom_results = custom_search(points);
+  auto default_h = Kokkos::create_mirror_view(default_results);
+  auto custom_h = Kokkos::create_mirror_view(custom_results);
+  Kokkos::deep_copy(default_h, default_results);
+  Kokkos::deep_copy(custom_h, custom_results);
+
+  // The query tests point containment in each candidate, so the predicate only
+  // decides which elements are offered. For points inside the mesh both
+  // searches must therefore answer identically: the value-constructor path is a
+  // candidate-set choice, not a change of semantics.
+  for (size_t i = 0; i < 4; ++i) {
+    CAPTURE(i);
+    REQUIRE(custom_h(i).dimensionality == default_h(i).dimensionality);
+    REQUIRE(custom_h(i).element_id == default_h(i).element_id);
+  }
+}
+
+// The 3D search takes a division count per axis. Unequal counts must locate
+// points exactly as equal counts do: elements are binned by each cell's box, so
+// a cell box computed for the wrong axis would drop candidates silently.
+TEST_CASE("3D point search with unequal divisions per axis",
+          "[point_search][3d]")
+{
+  using pcms::GridPointSearch3D;
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 4, 4, 4, false);
+  GridPointSearch3D search{mesh, 3, 5, 7};
+
+  const auto n_elems = mesh.nelems();
+  const auto centroids =
+    Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(mesh, 3));
+  Kokkos::View<pcms::Real* [3]> points("query points", n_elems);
+  auto points_h = Kokkos::create_mirror_view(points);
+  for (Omega_h::LO i = 0; i < n_elems; ++i) {
+    for (int d = 0; d < 3; ++d) {
+      points_h(i, d) = centroids[i * 3 + d];
+    }
+  }
+  Kokkos::deep_copy(points, points_h);
+
+  const auto owners_h = Kokkos::create_mirror_view_and_copy(
+    Kokkos::HostSpace{}, search.GetOwningElementIds(search(points)));
+  Omega_h::LO n_wrong = 0;
+  for (Omega_h::LO i = 0; i < n_elems; ++i) {
+    n_wrong += owners_h(i) != i;
+  }
+  CAPTURE(n_wrong, n_elems);
+  REQUIRE(n_wrong == 0);
+}
+
+// The grid and overlap layer under the point search is written for any
+// dimension, though the search classes themselves are 2D and 3D only. These
+// checks pin that down above 3D. Every grid has a different division count on
+// each axis, and every probe uses different indices per axis, so an axis mix-up
+// cannot hide behind a symmetric case.
+namespace
+{
+
+/// Cells of `grid` whose id, per-axis indices and box disagree, counted on the
+/// device: the same functions the search runs in its kernels.
+template <unsigned Dim>
+pcms::LO CountCellRoundTripFailuresOnDevice(const pcms::UniformGrid<Dim>& grid)
+{
+  pcms::LO failures = 0;
+  Kokkos::parallel_reduce(
+    "cell round trip", grid.GetNumCells(),
+    KOKKOS_LAMBDA(pcms::LO cell, pcms::LO & n) {
+      const auto axis = grid.AxisIndicesFromCellIndex(cell);
+      bool ok = grid.CellIndexFromAxisIndices(axis) == cell;
+      Omega_h::Vector<Dim> center;
+      const auto box = grid.GetCellBBOX(cell);
+      for (unsigned d = 0; d < Dim; ++d) {
+        ok = ok && axis[d] >= 0 && axis[d] < grid.divisions[d];
+        center[d] = box.center[d];
+      }
+      ok = ok && grid.ClosestCellID(center) == cell;
+      n += ok ? 0 : 1;
+    },
+    failures);
+  return failures;
+}
+
+} // namespace
+
+TEST_CASE("grid and overlap layer above 3D", "[point_search][nd]")
+{
+  using pcms::LO;
+
+  SECTION("4D grid: cell ids, per-axis indices and cell boxes agree")
+  {
+    // Cell size 1 on every axis, so a cell's box is easy to state.
+    const pcms::UniformGrid<4> grid{.edge_length = {2.0, 3.0, 4.0, 5.0},
+                                    .bot_left = {0.0, 0.0, 0.0, 0.0},
+                                    .divisions = {2, 3, 4, 5}};
+    REQUIRE(grid.GetNumCells() == 120);
+
+    // Ids number cells x-fastest: x + Nx * (y + Ny * (z + Nz * w)).
+    const Kokkos::Array<LO, 4> last{1, 2, 3, 4};
+    REQUIRE(grid.CellIndexFromAxisIndices(last) == 119);
+    const Kokkos::Array<LO, 4> probe{1, 0, 2, 3};
+    const LO probe_id = 1 + 2 * (0 + 3 * (2 + 4 * 3));
+    REQUIRE(grid.CellIndexFromAxisIndices(probe) == probe_id);
+    const auto back = grid.AxisIndicesFromCellIndex(probe_id);
+    for (int d = 0; d < 4; ++d) {
+      REQUIRE(back[d] == probe[d]);
+    }
+    const auto box = grid.GetCellBBOX(probe_id);
+    for (int d = 0; d < 4; ++d) {
+      REQUIRE(box.center[d] == Catch::Approx(probe[d] + 0.5));
+      REQUIRE(box.half_width[d] == Catch::Approx(0.5));
+    }
+
+    REQUIRE(CountCellRoundTripFailuresOnDevice(grid) == 0);
+  }
+
+  SECTION("5D grid: every cell round-trips on the device")
+  {
+    const pcms::UniformGrid<5> grid{.edge_length = {1.0, 2.0, 3.0, 2.0, 1.0},
+                                    .bot_left = {0.0, -1.0, 2.0, 0.5, 0.0},
+                                    .divisions = {2, 3, 4, 3, 2}};
+    REQUIRE(grid.GetNumCells() == 144);
+    REQUIRE(CountCellRoundTripFailuresOnDevice(grid) == 0);
+  }
+
+  SECTION("4D candidate cells keep each axis separate")
+  {
+    const pcms::UniformGrid<4> grid{.edge_length = {2.0, 3.0, 4.0, 5.0},
+                                    .bot_left = {0.0, 0.0, 0.0, 0.0},
+                                    .divisions = {2, 3, 4, 5}};
+    // Inside cell (0, 1, 2, 3); padded by one cell, clamped to the grid.
+    const AABBox<4> box{.center = {0.5, 1.5, 2.5, 3.5},
+                        .half_width = {0.25, 0.25, 0.25, 0.25}};
+    const auto range =
+      pcms::candidate_cells<4, pcms::SimplexVsBbox>(box, grid);
+    const Kokkos::Array<LO, 4> lo{0, 0, 1, 2};
+    const Kokkos::Array<LO, 4> hi{1, 2, 3, 4};
+    for (int d = 0; d < 4; ++d) {
+      CAPTURE(d);
+      REQUIRE(range.lo[d] == lo[d]);
+      REQUIRE(range.hi[d] == hi[d]);
+    }
+    REQUIRE(range.Contains(Kokkos::Array<LO, 4>{0, 1, 2, 3}));
+    REQUIRE_FALSE(range.Contains(Kokkos::Array<LO, 4>{0, 1, 2, 1}));
+  }
+
+  SECTION("4D simplex-vs-box overlap needs every axis to overlap")
+  {
+    const AABBox<4> box{.center = {1.0, 1.0, 1.0, 1.0},
+                        .half_width = {0.5, 0.5, 0.5, 0.5}};
+    // A simplex spanning [0.8, 1.2] on axes 0-2. On axis 3 it either reaches
+    // into the box or stops short of it.
+    const auto simplex = [](pcms::Real axis3_lo, pcms::Real axis3_hi) {
+      Omega_h::Matrix<4, 5> coords{};
+      for (int v = 0; v < 5; ++v) {
+        for (int d = 0; d < 3; ++d) {
+          coords(d, v) = (v % 2 == 0) ? 0.8 : 1.2;
+        }
+        coords(3, v) = (v == 0) ? axis3_lo : axis3_hi;
+      }
+      return coords;
+    };
+    REQUIRE(pcms::Overlap<4, pcms::SimplexVsBbox>::apply(simplex(1.4, 2.0),
+                                                         box));
+    // Overlapping on axes 0-2 but entirely past the box on axis 3.
+    REQUIRE_FALSE(pcms::Overlap<4, pcms::SimplexVsBbox>::apply(
+      simplex(1.6, 2.0), box));
   }
 }

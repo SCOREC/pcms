@@ -7,7 +7,9 @@ endif()
 set(PCMS_TEST_DATA_DIR
     ""
     CACHE PATH "Path to a local copy of the pcms_coupling_data repo.")
-if(NOT EXISTS ${PCMS_TEST_DATA_DIR})
+# The data is only needed to run tests. Configuring with BUILD_TESTING=OFF
+# (e.g. a package build without tests) shouldn't require it.
+if(BUILD_TESTING AND NOT EXISTS "${PCMS_TEST_DATA_DIR}")
   message(
     FATAL_ERROR "PCMS_TEST_DATA_DIR \"${PCMS_TEST_DATA_DIR}\" is not accessible"
   )
@@ -37,6 +39,16 @@ function(set_mpi_test_environment TESTNAME)
     PROPERTY ENVIRONMENT "OMP_NUM_THREADS=${PCMS_TEST_OMP_NUM_THREADS}")
 endfunction()
 
+# Run an MPI test in a directory of its own so that the ADIOS2 files (*.bp,
+# *.sst) and logs of concurrently running tests don't collide, and tell ctest
+# how many ranks the test uses so that `ctest -j N` treats N as a core budget.
+function(isolate_mpi_test TESTNAME NPROCS)
+  set(dir ${CMAKE_CURRENT_BINARY_DIR}/mpi_test_runs/${TESTNAME})
+  file(MAKE_DIRECTORY ${dir})
+  set_tests_properties(${TESTNAME} PROPERTIES WORKING_DIRECTORY ${dir}
+                                              PROCESSORS ${NPROCS})
+endfunction()
+
 message(STATUS "MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
 message(STATUS "MPIEXEC_PREFLAGS: ${MPIEXEC_PREFLAGS}")
 message(STATUS "MPIEXEC_NUMPROC_FLAG: ${MPIEXEC_NUMPROC_FLAG}")
@@ -57,12 +69,6 @@ function(add_exe NAME)
   endif()
 endfunction(add_exe)
 
-function(removeBpFiles TESTNAME)
-  add_test(NAME ${TESTNAME}
-           COMMAND ${CMAKE_COMMAND} -P
-                   ${CMAKE_SOURCE_DIR}/ctest/removeBpFiles.cmake)
-endfunction()
-
 function(increaseTimeoutForValgrind TIME TIME_VAR_OUT)
   set(factor 10)
   if(NOT ${VALGRIND_EXECUTABLE} MATCHES "none")
@@ -78,8 +84,19 @@ function(increaseTimeoutForValgrind TIME TIME_VAR_OUT)
   endif()
 endfunction()
 
+# MPI tests don't run in the build directory, so an executable given as a
+# target name is replaced with the full path to the target's file. Anything
+# else (a path or generator expression) is used as is.
+function(resolve_test_exe EXE_VAR)
+  if(TARGET ${${EXE_VAR}})
+    set(${EXE_VAR}
+        $<TARGET_FILE:${${EXE_VAR}}>
+        PARENT_SCOPE)
+  endif()
+endfunction()
+
 function(mpi_test TESTNAME PROCS EXE)
-  removebpfiles(${TESTNAME}_cleanup)
+  resolve_test_exe(EXE)
   set(TEST_COMMAND "")
   list(APPEND TEST_COMMAND ${MPIEXEC_EXECUTABLE})
   if(NOT ${MPIEXEC_PREFLAGS} MATCHES "none")
@@ -92,6 +109,7 @@ function(mpi_test TESTNAME PROCS EXE)
   list(APPEND TEST_COMMAND ${EXE} ${ARGN})
   add_test(NAME ${TESTNAME} COMMAND ${TEST_COMMAND})
   set_mpi_test_environment(${TESTNAME})
+  isolate_mpi_test(${TESTNAME} ${PROCS})
 endfunction(mpi_test)
 
 function(dual_mpi_test)
@@ -107,19 +125,22 @@ function(dual_mpi_test)
   set(multiValueArgs ARGS1 ARGS2)
   cmake_parse_arguments(DUALTEST "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
-  removebpfiles(${DUALTEST_TESTNAME}_cleanup)
+  resolve_test_exe(DUALTEST_EXE1)
+  resolve_test_exe(DUALTEST_EXE2)
   increasetimeoutforvalgrind(${DUALTEST_TIMEOUT} DUALTEST_TIMEOUT)
   add_test(
     NAME ${DUALTEST_TESTNAME}
     COMMAND
-      ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh ${MPIEXEC_EXECUTABLE}
-      ${MPIEXEC_PREFLAGS} ${MPIEXEC_NUMPROC_FLAG} ${VALGRIND_EXECUTABLE}
+      ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh --clean-adios2
+      ${MPIEXEC_EXECUTABLE} ${MPIEXEC_PREFLAGS} ${MPIEXEC_NUMPROC_FLAG} ${VALGRIND_EXECUTABLE}
       ${VALGRIND_ARGS} ${DUALTEST_NAME1} ${DUALTEST_PROCS1} ${DUALTEST_EXE1}
       "${DUALTEST_ARGS1}" ${DUALTEST_NAME2} ${DUALTEST_PROCS2} ${DUALTEST_EXE2}
       "${DUALTEST_ARGS2}")
   set_tests_properties(${DUALTEST_TESTNAME} PROPERTIES TIMEOUT
                                                        ${DUALTEST_TIMEOUT})
   set_mpi_test_environment(${DUALTEST_TESTNAME})
+  math(EXPR nprocs "${DUALTEST_PROCS1} + ${DUALTEST_PROCS2}")
+  isolate_mpi_test(${DUALTEST_TESTNAME} ${nprocs})
 endfunction(dual_mpi_test)
 
 function(tri_mpi_test)
@@ -138,13 +159,15 @@ function(tri_mpi_test)
   set(multiValueArgs ARGS1 ARGS2 ARGS3)
   cmake_parse_arguments(TRITEST "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
-  removebpfiles(${TRITEST_TESTNAME}_cleanup)
+  resolve_test_exe(TRITEST_EXE1)
+  resolve_test_exe(TRITEST_EXE2)
+  resolve_test_exe(TRITEST_EXE3)
   increasetimeoutforvalgrind(${TRITEST_TIMEOUT} TRITEST_TIMEOUT)
   add_test(
     NAME ${TRITEST_TESTNAME}
     COMMAND
-      ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh ${MPIEXEC_EXECUTABLE}
-      ${MPIEXEC_PREFLAGS} ${MPIEXEC_NUMPROC_FLAG} ${VALGRIND_EXECUTABLE}
+      ${CMAKE_SOURCE_DIR}/ctest/runMultipleMpiJobs.sh --clean-adios2
+      ${MPIEXEC_EXECUTABLE} ${MPIEXEC_PREFLAGS} ${MPIEXEC_NUMPROC_FLAG} ${VALGRIND_EXECUTABLE}
       ${VALGRIND_ARGS} ${TRITEST_NAME1} ${TRITEST_PROCS1} ${TRITEST_EXE1}
       "${TRITEST_ARGS1}" ${TRITEST_NAME2} ${TRITEST_PROCS2} ${TRITEST_EXE2}
       "${TRITEST_ARGS2}" ${TRITEST_NAME3} ${TRITEST_PROCS3} ${TRITEST_EXE3}
@@ -152,4 +175,7 @@ function(tri_mpi_test)
   set_tests_properties(${TRITEST_TESTNAME} PROPERTIES TIMEOUT
                                                       ${TRITEST_TIMEOUT})
   set_mpi_test_environment(${TRITEST_TESTNAME})
+  math(EXPR nprocs
+       "${TRITEST_PROCS1} + ${TRITEST_PROCS2} + ${TRITEST_PROCS3}")
+  isolate_mpi_test(${TRITEST_TESTNAME} ${nprocs})
 endfunction(tri_mpi_test)

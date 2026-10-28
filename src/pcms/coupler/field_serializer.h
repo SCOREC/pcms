@@ -19,7 +19,7 @@ public:
                         Rank1View<const LO, HostMemorySpace> permutation) const
   {
     // Only owned (rank-exclusive) DOF holders are serialized.
-    auto data = field.GetOwnedDOFHolderDataHost();
+    const auto data = field.GetOwnedDOFHolderDataHost().GetValues();
     if (buffer.size() > 0) {
       const LO num_dof = static_cast<LO>(data.extent(0));
       const LO num_comp = static_cast<LO>(data.extent(1));
@@ -46,7 +46,7 @@ public:
     // We initialize with local data so that data that doesn't get received
     // from deserialize doesn't get zeroed out. Long term FIXME is to make
     // Get/SetData operate over only part of the arrays.
-    auto current = field.GetDOFHolderDataHost();
+    const auto current = field.GetDOFHolderDataHost().GetValues();
     Kokkos::View<T*, HostMemorySpace> sorted("sorted", layout.LocalSize());
     for (LO i = 0; i < num_local; ++i) {
       for (LO c = 0; c < num_comp; ++c) {
@@ -61,7 +61,7 @@ public:
         }
       }
     }
-    field.SetDOFHolderDataHost(
+    field.SetDOFHolderDataUncheckedHost(
       Rank2View<const T, HostMemorySpace>(sorted.data(), num_local, num_comp));
   }
 

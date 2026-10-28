@@ -3,6 +3,8 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_build.hpp>
 
+#include "distributed_test_utils.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/utility/arrays.h"
@@ -69,7 +71,7 @@ DeviceCoordinates make_device_coordinates(const std::vector<Real>& points)
   }
   pcms::DeepCopyMismatchLayouts(storage, host);
   return {storage,
-          {pcms::CoordinateSystem::Cartesian, pcms::MakeRank2View(storage)}};
+          {pcms::csys::Cartesian::Deferred(), pcms::MakeRank2View(storage)}};
 }
 
 void require(bool condition, const char* message)
@@ -104,11 +106,12 @@ void check_distributed_evaluation(Omega_h::Mesh& mesh,
   }
 
   auto field = space.CreateFunction<Real>();
-  field.SetDOFHolderDataHost(pcms::Rank2View<const Real, pcms::HostMemorySpace>(
-    values.data(), n_local, 1));
+  field.SetDOFHolderDataHost(distributed_test::TagLike(
+    field, pcms::Rank2View<const Real, pcms::HostMemorySpace>(values.data(),
+                                                              n_local, 1)));
   field.SynchronizeGhosts();
 
-  auto data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+  auto data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   for (LO i = 0; i < n_local; ++i) {
     require(std::fabs(data[static_cast<size_t>(i)] -
                       linear_f(coords(i, 0), coords(i, 1))) < 1.0e-12,
@@ -141,7 +144,7 @@ void check_distributed_evaluation(Omega_h::Mesh& mesh,
   const LO n_points = n_elements;
   Kokkos::View<Real**, pcms::DeviceMemorySpace> result("result", n_points, 1);
   Kokkos::deep_copy(result, kUnresolved);
-  evaluator->Evaluate(field, pcms::MakeRank2View(result));
+  evaluator->Evaluate(field, distributed_test::TagLike(field, result));
   auto result_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), result);
 
@@ -223,7 +226,7 @@ int main(int argc, char** argv)
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n, n, 0, false);
     mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
     auto space = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 1, pcms::CoordinateSystem::Cartesian, "global",
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
 
     check_distributed_evaluation(mesh, *space);

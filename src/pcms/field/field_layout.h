@@ -7,7 +7,8 @@
 #include "pcms/discretization/discretization.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/arrays.h"
-#include "coordinate_system.h"
+#include "pcms/field/coordinate_system.hpp"
+#include "pcms/field/coordinate_view.hpp"
 
 namespace pcms
 {
@@ -90,14 +91,21 @@ public:
 
   virtual EntOffsetsArray GetEntOffsets() const = 0;
 
+  // True when every local DOF holder is owned, so owned and local indexing
+  // coincide (always, for a non-distributed layout).
+  [[nodiscard]] bool OwnedIsLocal() const
+  {
+    return GetNumOwnedDofHolder() == GetNumLocalDofHolder();
+  }
+
   // Entity offsets over the OWNED holders (owned-index order), derived from the
   // local entity offsets and the owned->local permutation.
   EntOffsetsArray GetOwnedEntOffsets() const
   {
-    const auto owned_to_local = GetOwnedToLocalHost();
-    if (owned_to_local.size() == 0) {
-      return GetEntOffsets(); // non-distributed: owned == local
+    if (OwnedIsLocal()) {
+      return GetEntOffsets();
     }
+    const auto owned_to_local = GetOwnedToLocalHost();
     EntOffsetsArray offsets{};
     offsets.fill(0);
     for (size_t o = 0; o < owned_to_local.size(); ++o) {
@@ -107,6 +115,16 @@ public:
       }
     }
     return offsets;
+  }
+
+  [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
+  GetCoordinateSystem() const
+  {
+    if (system_ == nullptr) {
+      throw pcms_error("FieldLayout::GetCoordinateSystem: layout has no "
+                       "coordinate system set");
+    }
+    return system_;
   }
 
   virtual CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const = 0;
@@ -134,7 +152,9 @@ public:
   }
 
   // Maps owned index (0..GetNumOwnedDofHolder()-1) to its local index. An empty
-  // view means the identity map (owned == local).
+  // view means the identity map (owned == local). A distributed layout on a
+  // rank that owns nothing also returns an empty view, so callers that need to
+  // know whether owned == local must ask `OwnedIsLocal()`, not test for empty.
   virtual Kokkos::View<const LO*, HostMemorySpace> GetOwnedToLocalHost() const
   {
     return {};
@@ -167,7 +187,18 @@ protected:
   // Builds the global-to-local permutation from GetGidsHost()/GetEntOffsets().
   void BuildGlobalToLocalPermutation();
 
+  void SetCoordinateSystem(
+    std::shared_ptr<const CoordinateSystem> coordinate_system)
+  {
+    if (coordinate_system == nullptr) {
+      throw pcms_error(
+        "FieldLayout::SetCoordinateSystem: coordinate system must not be null");
+    }
+    system_ = std::move(coordinate_system);
+  }
+
 private:
+  std::shared_ptr<const CoordinateSystem> system_;
   std::string name_;
   Kokkos::View<LO*, HostMemorySpace> global_to_local_host_;
   Kokkos::View<LO*, DeviceMemorySpace> global_to_local_;
@@ -248,8 +279,7 @@ Rank2View<const T, HostMemorySpace> GatherOwnedHostData(
   const auto owned_to_local = layout.GetOwnedToLocalHost();
   const LO num_comp = layout.GetNumComponents();
   DeepCopyMismatchLayouts(host_data, device_data);
-  if (owned_to_local.size() == 0) {
-    // Non-distributed layout: owned == local.
+  if (layout.OwnedIsLocal()) {
     return MakeConstRank2View(host_data);
   }
   const LO num_owned = layout.GetNumOwnedDofHolder();
@@ -273,8 +303,7 @@ Rank2View<const T, DeviceMemorySpace> GatherOwnedDeviceData(
 {
   const auto owned_to_local = layout.GetOwnedToLocal();
   const LO num_comp = layout.GetNumComponents();
-  if (owned_to_local.size() == 0) {
-    // Non-distributed layout: owned == local.
+  if (layout.OwnedIsLocal()) {
     return MakeConstRank2View(device_data);
   }
   const LO num_owned = layout.GetNumOwnedDofHolder();

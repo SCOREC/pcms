@@ -2,7 +2,7 @@
 #define PCMS_FIELD_DATA_MFEM_HPP
 
 #include "pcms/field/field_data.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.h"
 
 #include <mfem.hpp>
@@ -15,9 +15,10 @@ class MFEMVertexFieldData : public FieldData<Real>
 {
 public:
   MFEMVertexFieldData(mfem::ParFiniteElementSpace& pfes,
-                      mfem::ParGridFunction& gf, FieldMetadata metadata = {});
+                      mfem::ParGridFunction& gf, ValueBasis basis = {});
 
-  const FieldMetadata& GetMetadata() const override;
+  FieldValueType GetValueType() const override;
+  const ValueBasis& GetValueBasis() const override;
 
   Rank2View<const Real, HostMemorySpace> GetDOFHolderDataHost() const override;
   void SetDOFHolderDataHost(
@@ -29,7 +30,7 @@ public:
 private:
   mfem::ParFiniteElementSpace& pfes_;
   mfem::ParGridFunction& gf_;
-  FieldMetadata metadata_;
+  ValueBasis basis_;
   mutable Kokkos::View<Real**, HostMemorySpace> host_data_;
   mutable Kokkos::View<Real**, DeviceMemorySpace> device_data_;
 };

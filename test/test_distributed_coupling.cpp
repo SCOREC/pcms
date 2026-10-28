@@ -8,6 +8,8 @@
 #include "pcms/coupler/field_serializer.h"
 #include "pcms/coupler/overlap_mask.h"
 #include "pcms/field/data/simple.h"
+#include "distributed_test_utils.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
@@ -106,8 +108,9 @@ void check_serializer_round_trip(const DistributedCouplingContext& ctx)
   for (LO i = 0; i < n_local; ++i) {
     local_data[static_cast<size_t>(i)] = static_cast<Real>(i);
   }
-  field.SetDOFHolderDataHost(pcms::Rank2View<const Real, pcms::HostMemorySpace>(
-    local_data.data(), n_local, n_comp));
+  field.SetDOFHolderDataHost(distributed_test::TagLike(
+    field, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
+             local_data.data(), n_local, n_comp)));
 
   // Owned-indexed permutation: the last owned holder is "outside the overlap
   // region" (perm = -1); the rest get compact buffer slots 0..n_participating.
@@ -127,7 +130,7 @@ void check_serializer_round_trip(const DistributedCouplingContext& ctx)
           "serialized size matches participating holders");
 
   auto owned_field =
-    pcms::FlattenToRank1View(field.GetOwnedDOFHolderDataHost());
+    pcms::FlattenToRank1View(field.GetOwnedDOFHolderDataHost().GetValues());
   require(owned_field.size() == static_cast<size_t>(n_owned),
           "owned field size");
   for (LO o = 0; o < n_participating; ++o) {
@@ -141,7 +144,8 @@ void check_serializer_round_trip(const DistributedCouplingContext& ctx)
   auto target = ctx.space->CreateFunction<Real>();
   serializer.Deserialize(target, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
-  auto target_data = pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
+  auto target_data = pcms::FlattenToRank1View(
+    target.GetDOFHolderDataHost().GetValues());
   require(target_data.size() == static_cast<size_t>(n_local),
           "target local size");
 
@@ -355,9 +359,9 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
     exchange_vals[static_cast<size_t>(owned_to_local(o))] =
       static_cast<Real>(owned_gids(o));
   }
-  exchange_field.SetDOFHolderDataHost(
-    pcms::Rank2View<const Real, pcms::HostMemorySpace>(exchange_vals.data(),
-                                                       n_local, n_comp));
+  exchange_field.SetDOFHolderDataHost(distributed_test::TagLike(
+    exchange_field, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
+                      exchange_vals.data(), n_local, n_comp)));
 
   pcms::FieldSerializer<Real> exchange_serializer;
   std::vector<Real> payload(recv_plan.msg_size, Real(0));
@@ -373,7 +377,8 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
   exchange_serializer.Deserialize(
     echo_field, pcms::make_const_array_view(payload),
     pcms::make_const_array_view(recv_plan.permutation));
-  auto echo_data = pcms::FlattenToRank1View(echo_field.GetDOFHolderDataHost());
+  auto echo_data = pcms::FlattenToRank1View(
+    echo_field.GetDOFHolderDataHost().GetValues());
   for (LO o = 0; o < n_owned; ++o) {
     const LO local = owned_to_local(o);
     if (recv_plan.permutation[static_cast<size_t>(o)] >= 0) {
@@ -435,7 +440,7 @@ int main(int argc, char** argv)
 
     auto space = pcms::LagrangeFunctionSpace::FromMesh(
       mesh, /*order=*/1, /*num_components=*/1,
-      pcms::CoordinateSystem::Cartesian, "global",
+      pcms::csys::Cartesian::Deferred(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     const DistributedCouplingContext ctx{mesh, space, rank, nproc};
 

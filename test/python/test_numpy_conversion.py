@@ -26,7 +26,7 @@ def mesh(world):
 @pytest.fixture
 def p1_space(mesh):
     return pcms.LagrangeFunctionSpace.from_mesh(
-        mesh, 1, 1, pcms.CoordinateSystem.Cartesian
+        mesh, 1, 1, pcms.CoordinateSystem.Cartesian()
     )
 
 
@@ -40,7 +40,7 @@ def _linear_field(space):
 class TestFieldData:
     def test_shape_matches_layout(self, mesh, world):
         space = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, 1, 2, pcms.CoordinateSystem.Cartesian
+            mesh, 1, 2, pcms.CoordinateSystem.Cartesian()
         )
         field = space.create_field()
         n = field.get_num_dof_holders()
@@ -93,7 +93,7 @@ class TestFieldData:
 
     def test_vector_field_rejects_1d(self, mesh):
         space = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, 1, 2, pcms.CoordinateSystem.Cartesian
+            mesh, 1, 2, pcms.CoordinateSystem.Cartesian()
         )
         field = space.create_field()
         n = field.get_num_dof_holders()
@@ -212,7 +212,7 @@ class TestCoordinateView:
     def test_copies_input(self):
         coords = np.arange(12, dtype=np.float64).reshape(6, 2)
         expected = coords.copy()
-        view = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian, coords)
+        view = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian(), coords)
         assert not np.shares_memory(view.get_coordinates(), coords)
         coords[:] = -1.0
         del coords
@@ -221,7 +221,7 @@ class TestCoordinateView:
 
     def test_strided_input(self):
         coords = np.arange(12, dtype=np.float64).reshape(6, 2)
-        view = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian,
+        view = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian(),
                                    np.asfortranarray(coords))
         gc.collect()
         np.testing.assert_array_equal(view.get_coordinates(), coords)
@@ -229,7 +229,7 @@ class TestCoordinateView:
 
     def test_coordinates_keep_view_alive(self):
         coords = np.arange(12, dtype=np.float64).reshape(6, 2)
-        values = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian,
+        values = pcms.CoordinateView(pcms.CoordinateSystem.Cartesian(),
                                      coords.copy()).get_coordinates()
         gc.collect()
         np.testing.assert_array_equal(values, coords)

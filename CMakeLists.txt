@@ -50,6 +50,7 @@ option(PCMS_ENABLE_C "Enable pcms C api" ON)
 option(PCMS_ENABLE_Python "Enable pcms Python api" OFF)
 
 option(PCMS_ENABLE_PRINT "PCMS print statements enabled" ON)
+option(PCMS_ENABLE_EXAMPLES "Build the in-tree C++ examples" ON)
 
 # Per-thread on-stack ring-buffer capacities for the adjacency-based
 # intersection/adjacency BFS (queue_visited.hpp). Defaults are sized for 3D
@@ -169,6 +170,9 @@ include(test/testing.cmake)
 # define 'smoke tests' to test the install
 add_custom_target(test_install DEPENDS check) # maintain test_install target
 if(NOT BUILD_TESTING)
+  # include(CTest) only enables testing when BUILD_TESTING is on. Enable it so
+  # smoke_test is still registered and 'check' can run it.
+  enable_testing()
   add_custom_target(
     check
     COMMAND ${CMAKE_CTEST_COMMAND} -R smoke_test
@@ -177,6 +181,8 @@ endif()
 
 add_executable(smoke_test test/test_ohClassPtn.cpp)
 target_link_libraries(smoke_test pcms::core test_support)
+# Uses a mesh vendored in test/data so the install check works without
+# PCMS_TEST_DATA_DIR (e.g. with BUILD_TESTING=OFF).
 dual_mpi_test(
   TESTNAME
   smoke_test
@@ -185,23 +191,26 @@ dual_mpi_test(
   NAME1
   rdv
   EXE1
-  ./smoke_test
+  smoke_test
   PROCS1
   2
   ARGS1
   1
-  ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/
+  ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/
   NAME2
   app
   EXE2
-  ./smoke_test
+  smoke_test
   PROCS2
   1
   ARGS2
   0
-  ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/)
+  ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/)
 
 if(BUILD_TESTING)
   add_subdirectory(test)
 endif()
 add_subdirectory(tools)
+if(PCMS_ENABLE_EXAMPLES)
+  add_subdirectory(examples)
+endif()

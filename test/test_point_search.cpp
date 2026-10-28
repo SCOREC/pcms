@@ -14,7 +14,7 @@ using pcms::Uniform2DGrid;
 
 TEST_CASE("global to local")
 {
-  Omega_h::Matrix<2, 3> coords{{0.0}, {1, 0}, {0.5, 1}};
+  Omega_h::Matrix<2, 3> coords{{0.0, 0.0}, {1, 0}, {0.5, 1}};
   SECTION("check verts")
   {
     for (int i = 0; i < coords.size(); ++i) {

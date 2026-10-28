@@ -21,14 +21,14 @@ std::shared_ptr<const Discretization> MakeVertexDiscretization(
 
 } // namespace
 
-MFEMLayout::MFEMLayout(mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
-                       CoordinateSystem coordinate_system)
-  : pmesh_(pmesh),
-    pfes_(pfes),
-    dim_(pmesh.SpaceDimension()),
-    coordinate_system_(coordinate_system)
+MFEMLayout::MFEMLayout(
+  mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
+  std::shared_ptr<const CoordinateSystem> coordinate_system)
+  : pmesh_(pmesh), pfes_(pfes), dim_(pmesh.SpaceDimension())
 {
   PCMS_FUNCTION_TIMER;
+  SetCoordinateSystem(
+    ResolveCoordinateSystem(std::move(coordinate_system), dim_));
 
   AssertVertexScalarSpace();
 
@@ -86,7 +86,7 @@ int MFEMLayout::GetNumComponents() const
   return 1;
 }
 
-LO MFEMLayout::GetNumOwnedDofHolder() const
+LO MFEMLayout::GetNumLocalDofHolder() const
 {
   return static_cast<LO>(pmesh_.GetNV());
 }
@@ -108,7 +108,7 @@ GlobalIDView<HostMemorySpace> MFEMLayout::GetGidsHost() const
 
 CoordinateView<DeviceMemorySpace> MFEMLayout::GetDOFHolderCoordinates() const
 {
-  return CoordinateView<DeviceMemorySpace>{coordinate_system_,
+  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(),
                                            MakeConstRank2View(coords_)};
 }
 
@@ -121,7 +121,7 @@ EntOffsetsArray MFEMLayout::GetEntOffsets() const
 {
   EntOffsetsArray offsets{};
   offsets.fill(0);
-  const auto n = static_cast<size_t>(GetNumOwnedDofHolder());
+  const auto n = static_cast<size_t>(GetNumLocalDofHolder());
   for (int i = 1; i < ent_offsets_len; ++i) {
     offsets[i] = n;
   }

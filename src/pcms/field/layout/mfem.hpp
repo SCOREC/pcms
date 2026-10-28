@@ -1,7 +1,7 @@
 #ifndef PCMS_FIELD_LAYOUT_MFEM_HPP
 #define PCMS_FIELD_LAYOUT_MFEM_HPP
 
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_system.hpp"
 #include "pcms/field/field_layout.h"
 
 #include <mfem.hpp>
@@ -16,13 +16,13 @@ class MFEMLayout : public FieldLayout
 {
 public:
   MFEMLayout(mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
-             CoordinateSystem coordinate_system);
+             std::shared_ptr<const CoordinateSystem> coordinate_system);
 
   std::shared_ptr<const Discretization> GetDiscretization()
     const noexcept override;
 
   int GetNumComponents() const override;
-  LO GetNumOwnedDofHolder() const override;
+  LO GetNumLocalDofHolder() const override;
   GO GetNumGlobalDofHolder() const override;
 
   Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override;
@@ -52,7 +52,6 @@ private:
   mfem::ParMesh& pmesh_;
   mfem::ParFiniteElementSpace& pfes_;
   int dim_;
-  CoordinateSystem coordinate_system_;
 
   Kokkos::View<Real**, DeviceMemorySpace> coords_;
   Kokkos::View<bool*, HostMemorySpace> owned_host_;

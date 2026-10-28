@@ -3,7 +3,6 @@
 
 #include "pcms/discretization/discretization/xgc.hpp"
 #include "pcms/discretization/discretization/xgc_reverse_classification.h"
-#include "pcms/field/coordinate_system.h"
 #include "pcms/field/field_layout.h"
 #include <functional>
 

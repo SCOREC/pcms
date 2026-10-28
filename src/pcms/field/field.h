@@ -38,35 +38,60 @@ public:
 
   const FieldLayout& GetLayout() const { return *layout_; }
 
-  // Optional identifier for this field. Empty by default; set at creation.
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
 
-  Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const
+  [[nodiscard]] ValueView<const T, HostMemorySpace> GetDOFHolderDataHost() const
   {
-    return data_->GetDOFHolderDataHost();
+    return ValueView<const T, HostMemorySpace>(data_->GetValueBasis(),
+                                               data_->GetDOFHolderDataHost());
   }
 
-  Rank2View<const T, HostMemorySpace> GetOwnedDOFHolderDataHost() const
+  [[nodiscard]] ValueView<const T, DeviceMemorySpace> GetDOFHolderData() const
   {
-    return data_->GetOwnedDOFHolderDataHost();
+    return ValueView<const T, DeviceMemorySpace>(data_->GetValueBasis(),
+                                                 data_->GetDOFHolderData());
   }
 
-  void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> v)
+  // Owned (rank-exclusive) DOF-holder data, compact and owned-indexed. Equal
+  // to the local data for a non-distributed field.
+  [[nodiscard]] ValueView<const T, HostMemorySpace> GetOwnedDOFHolderDataHost()
+    const
+  {
+    return ValueView<const T, HostMemorySpace>(
+      data_->GetValueBasis(), data_->GetOwnedDOFHolderDataHost());
+  }
+
+  [[nodiscard]] ValueView<const T, DeviceMemorySpace> GetOwnedDOFHolderData()
+    const
+  {
+    return ValueView<const T, DeviceMemorySpace>(
+      data_->GetValueBasis(), data_->GetOwnedDOFHolderData());
+  }
+
+  void SetDOFHolderDataHost(ValueView<const T, HostMemorySpace> v)
+  {
+    CheckWriteTag(v.GetBasis());
+    CheckWriteExtents(v.GetValues().extent(0), v.GetValues().extent(1));
+    data_->SetDOFHolderDataHost(v.GetValues());
+  }
+
+  void SetDOFHolderData(ValueView<const T, DeviceMemorySpace> v)
+  {
+    CheckWriteTag(v.GetBasis());
+    CheckWriteExtents(v.GetValues().extent(0), v.GetValues().extent(1));
+    data_->SetDOFHolderData(v.GetValues());
+  }
+
+  // unchecked is needed for optimization in some places, but should generally
+  // not be used unless you know what you are doing
+  void SetDOFHolderDataUncheckedHost(Rank2View<const T, HostMemorySpace> v)
   {
     data_->SetDOFHolderDataHost(v);
   }
 
-  Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const
-  {
-    return data_->GetDOFHolderData();
-  }
-
-  Rank2View<const T, DeviceMemorySpace> GetOwnedDOFHolderData() const
-  {
-    return data_->GetOwnedDOFHolderData();
-  }
-
-  void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> v)
+  // unchecked is needed for optimization in some places, but should generally
+  // not be used unless you know what you are doing
+  void SetDOFHolderDataUnchecked(Rank2View<const T, DeviceMemorySpace> v)
   {
     data_->SetDOFHolderData(v);
   }
@@ -79,6 +104,33 @@ protected:
         std::unique_ptr<FieldData<T>> data)
     : name_(std::move(name)), layout_(std::move(layout)), data_(std::move(data))
   {
+  }
+
+  void CheckWriteTag(const ValueBasis& basis) const
+  {
+    if (!SameValueBasis(basis, data_->GetValueBasis())) {
+      throw pcms_error(
+        "Field::SetDOFHolderData: the written view's declared value "
+        "type/basis does not match this field's declaration (use the "
+        "Unchecked overload only for untagged wire/raw data)");
+    }
+  }
+
+  // The basis tag cannot distinguish shapes (all scalar bases compare equal),
+  // so the checked setters also verify the view's extents against the layout.
+  // The data covers every local DOF holder, owned and ghost, so the expected
+  // row count is the local one (equal to the owned one when not distributed).
+  void CheckWriteExtents(size_t num_holders, size_t num_components) const
+  {
+    if (num_holders != static_cast<size_t>(layout_->GetNumLocalDofHolder()) ||
+        num_components != static_cast<size_t>(layout_->GetNumComponents())) {
+      throw pcms_error("Field::SetDOFHolderData: the written view is shaped [" +
+                       std::to_string(num_holders) + "][" +
+                       std::to_string(num_components) +
+                       "] but this field's layout is [" +
+                       std::to_string(layout_->GetNumLocalDofHolder()) + "][" +
+                       std::to_string(layout_->GetNumComponents()) + "]");
+    }
   }
 
   // FieldFactory constructs Fields (via WrapField); FunctionSpace constructs

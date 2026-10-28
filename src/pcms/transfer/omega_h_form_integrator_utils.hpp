@@ -3,6 +3,7 @@
 
 #include "pcms/field/function_space.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/transfer/mesh_intersection.hpp"
 #include "pcms/utility/assert.h"
 #include <MeshField_Integrate.hpp>
@@ -18,7 +19,7 @@ namespace pcms::detail
 // (triangles in 2D, tetrahedra in 3D), independent of order. Order is validated
 // separately by the callers below.
 inline void CheckOmegaHScalarSimplexLayout(
-  CoordinateSystem coordinate_system,
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
   const std::shared_ptr<const OmegaHLagrangeLayout>& layout,
   const char* context, const char* role)
 {
@@ -30,14 +31,16 @@ inline void CheckOmegaHScalarSimplexLayout(
     throw pcms_error(std::string(context) + ": " + role +
                      " space must have exactly one component");
   }
-  if (coordinate_system != CoordinateSystem::Cartesian) {
-    throw pcms_error(std::string(context) + ": " + role +
-                     " space must use Cartesian coordinates");
-  }
   const Omega_h::Mesh& mesh = layout->GetMesh();
   if (mesh.dim() != 2 && mesh.dim() != 3) {
     throw pcms_error(std::string(context) + ": " + role +
                      " mesh must be 2D or 3D");
+  }
+  if (!SameCoordinateSystem(coordinate_system,
+                            csys::Cartesian::Create(mesh.dim()))) {
+    throw pcms_error(std::string(context) + ": " + role +
+                     " space must use the Cartesian coordinate system of its "
+                     "mesh dimension; map other systems explicitly");
   }
   if (mesh.family() != OMEGA_H_SIMPLEX) {
     throw pcms_error(std::string(context) + ": " + role +
@@ -47,7 +50,7 @@ inline void CheckOmegaHScalarSimplexLayout(
 
 // Strict order-1 check (used where only P1 is supported, e.g. Monte-Carlo RHS).
 inline void CheckOmegaHScalarP1Layout(
-  CoordinateSystem coordinate_system,
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
   const std::shared_ptr<const OmegaHLagrangeLayout>& layout,
   const char* context, const char* role)
 {
@@ -62,7 +65,7 @@ inline void CheckOmegaHScalarP1Layout(
 // intersection integrator handles source and target orders independently, so
 // this replaces the strict P1 requirement on those paths.
 inline void CheckOmegaHScalarLagrangeLayout(
-  CoordinateSystem coordinate_system,
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
   const std::shared_ptr<const OmegaHLagrangeLayout>& layout,
   const char* context, const char* role)
 {

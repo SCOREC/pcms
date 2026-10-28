@@ -139,7 +139,7 @@ omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
     mesh, 
     1,
     1,
-    pcms.CoordinateSystem.Cartesian
+    pcms.CoordinateSystem.Cartesian()
 )
 omega_h_field = omega_h_factory.create_field()
 
@@ -173,7 +173,7 @@ vertex_field = pcms.map_entity_field_to_vertices_average(mesh, face_field, face_
 
 # Create vertex-based field and set data
 omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
-    mesh, 1, 1, pcms.CoordinateSystem.Cartesian
+    mesh, 1, 1, pcms.CoordinateSystem.Cartesian()
 )
 omega_h_field = omega_h_factory.create_field()
 omega_h_field.set_dof_holder_data(vertex_field)
@@ -191,7 +191,7 @@ Set up the data structure for storing field values on the uniform grid vertices.
 ug_factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
     grid, 
     1,                                      # Number of components
-    pcms.CoordinateSystem.Cartesian
+    pcms.CoordinateSystem.Cartesian()
 )
 ug_field = ug_factory.create_field()
 ```

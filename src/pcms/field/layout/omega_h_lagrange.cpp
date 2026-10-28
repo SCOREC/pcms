@@ -74,17 +74,18 @@ Kokkos::View<bool*, DeviceMemorySpace> BuildOwned(
 
 } // namespace
 
-OmegaHLagrangeLayout::OmegaHLagrangeLayout(Omega_h::Mesh& mesh, int order,
-                                           int num_components,
-                                           CoordinateSystem coordinate_system,
-                                           std::string global_id_name)
+OmegaHLagrangeLayout::OmegaHLagrangeLayout(
+  Omega_h::Mesh& mesh, int order, int num_components,
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
+  std::string global_id_name)
   : mesh_(mesh),
     order_(order),
     num_components_(num_components),
-    coordinate_system_(coordinate_system),
     global_id_name_(std::move(global_id_name))
 {
   PCMS_FUNCTION_TIMER;
+  SetCoordinateSystem(
+    ResolveCoordinateSystem(std::move(coordinate_system), mesh_.dim()));
   int entity_dim = EntityDimForOrder(order_, mesh_.dim());
 
   EnsureClassification(mesh_);
@@ -123,15 +124,16 @@ OmegaHLagrangeLayout::OmegaHLagrangeLayout(Omega_h::Mesh& mesh, int order,
 
 OmegaHLagrangeLayout::OmegaHLagrangeLayout(
   Omega_h::Mesh& mesh, int order, int num_components,
-  CoordinateSystem coordinate_system, Omega_h::Read<Omega_h::I8> owned_mask,
-  std::string global_id_name)
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
+  Omega_h::Read<Omega_h::I8> owned_mask, std::string global_id_name)
   : mesh_(mesh),
     order_(order),
     num_components_(num_components),
-    coordinate_system_(coordinate_system),
     global_id_name_(std::move(global_id_name))
 {
   PCMS_FUNCTION_TIMER;
+  SetCoordinateSystem(
+    ResolveCoordinateSystem(std::move(coordinate_system), mesh_.dim()));
   int entity_dim = EntityDimForOrder(order_, mesh_.dim());
 
   EnsureClassification(mesh_);
@@ -213,14 +215,8 @@ GlobalIDView<DeviceMemorySpace> OmegaHLagrangeLayout::GetGids() const
 CoordinateView<DeviceMemorySpace>
 OmegaHLagrangeLayout::GetDOFHolderCoordinates() const
 {
-  int n = mesh_.nents(EntityDimForOrder(order_, mesh_.dim()));
-  int dim = mesh_.dim();
-  using LayoutPolicy =
-    detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
-  Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> coords_view(
-    coords_2d_.data(), n, dim);
-  return CoordinateView<DeviceMemorySpace, LayoutPolicy>{coordinate_system_,
-                                                         coords_view};
+  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(),
+                                           MakeConstRank2View(coords_2d_)};
 }
 
 GlobalIDView<HostMemorySpace> OmegaHLagrangeLayout::GetOwnedGidsHost() const
@@ -242,7 +238,7 @@ OmegaHLagrangeLayout::GetOwnedDOFHolderCoordinates() const
     detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
   Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> coords_view(
     owned_coords_2d_.data(), num_owned_, mesh_.dim());
-  return CoordinateView<DeviceMemorySpace, LayoutPolicy>{coordinate_system_,
+  return CoordinateView<DeviceMemorySpace, LayoutPolicy>{GetCoordinateSystem(),
                                                          coords_view};
 }
 

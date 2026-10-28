@@ -9,10 +9,11 @@
 #include "pcms/field/field_data.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/out_of_bounds_policy.h"
-#include "pcms/field/field_metadata.h"
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/value_view.hpp"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/utility/arrays.h"
 #include "field_test_utils.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::CoordinateSystem;
 using pcms::Real;
@@ -28,7 +29,7 @@ TEST_CASE("PointEvaluator: OmegaH order-1 linear evaluation")
                                  100, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
 
   auto field_data = factory->CreateFunction<Real>();
@@ -38,8 +39,8 @@ TEST_CASE("PointEvaluator: OmegaH order-1 linear evaluation")
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
   pcms::test::CheckEvaluation(
@@ -58,7 +59,7 @@ TEST_CASE("PointEvaluator: same evaluator reused for two FieldData objects")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
 
   auto field_a = factory->CreateFunction<Real>();
@@ -73,8 +74,8 @@ TEST_CASE("PointEvaluator: same evaluator reused for two FieldData objects")
     OMEGA_H_LAMBDA(Real, Real) { return Real(42); });
 
   auto pts = pcms::test::StandardEvalCoords2D();
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
 
   // Create the PointEvaluator once and reuse it for both fields.
   auto evaluator = factory->CreatePointEvaluator<Real>(
@@ -98,7 +99,7 @@ TEST_CASE("PointEvaluator: OmegaH order-1 out-of-bounds fill")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 20, 20, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
 
   auto field_data = factory->CreateFunction<Real>();
@@ -109,7 +110,7 @@ TEST_CASE("PointEvaluator: OmegaH order-1 out-of-bounds fill")
   // Points clearly outside [0,1]^2
   const auto outside_pts = pcms::test::StandardOutsideCoords2D();
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
-    outside_pts, CoordinateSystem::Cartesian);
+    outside_pts, pcms::csys::Cartesian::Deferred());
   pcms::OutOfBoundsPolicy policy{pcms::OutOfBoundsMode::FILL, -999.0};
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view,
@@ -131,7 +132,7 @@ TEST_CASE("PointEvaluator: UniformGrid order-1 linear evaluation")
   grid.divisions = {N, N};
 
   auto factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, CoordinateSystem::Cartesian, 1);
+    grid, 1, pcms::csys::Cartesian::Deferred(), 1);
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
@@ -139,8 +140,8 @@ TEST_CASE("PointEvaluator: UniformGrid order-1 linear evaluation")
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
   pcms::test::CheckEvaluation(
@@ -158,7 +159,7 @@ TEST_CASE("PointEvaluator: SplineFunctionSpace uniform-grid evaluation")
   grid.divisions = {N, N};
 
   auto factory = pcms::SplineFunctionSpace::FromUniformGrid(
-    grid, CoordinateSystem::Cartesian);
+    grid, pcms::csys::Cartesian::Deferred());
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
@@ -166,14 +167,59 @@ TEST_CASE("PointEvaluator: SplineFunctionSpace uniform-grid evaluation")
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
   pcms::test::CheckEvaluation(
     *evaluator, field_data, pts,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); },
     1e-8);
+}
+
+TEST_CASE("PointEvaluator: uniform grids report the points they fill")
+{
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {0.0, 0.0};
+  grid.edge_length = {1.0, 1.0};
+  grid.divisions = {10, 10};
+  const std::vector<Real> pts = {0.25, 0.25, -0.5, 0.5, 0.7, 0.3, 1.5, 0.5};
+  const std::vector<bool> is_inside = {true, false, true, false};
+  auto linear = OMEGA_H_LAMBDA(Real x, Real y)
+  {
+    return pcms::test::linear_f(x, y);
+  };
+
+  SECTION("Lagrange")
+  {
+    auto factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
+      grid, 1, pcms::csys::Cartesian::Deferred(), 1);
+    auto field = factory->CreateFunction<Real>();
+    pcms::test::SetField(field.GetData(), *factory->GetLayout(), linear);
+    pcms::test::CheckEvaluationWithFill(factory, field, pts, is_inside, linear,
+                                        -999.0, 1e-8);
+  }
+  SECTION("spline")
+  {
+    auto factory = pcms::SplineFunctionSpace::FromUniformGrid(
+      grid, pcms::csys::Cartesian::Deferred());
+    auto field = factory->CreateFunction<Real>();
+    pcms::test::SetField(field.GetData(), *factory->GetLayout(), linear);
+    pcms::test::CheckEvaluationWithFill(factory, field, pts, is_inside, linear,
+                                        -999.0, 1e-8);
+  }
+  SECTION("no fill without the FILL policy")
+  {
+    auto factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
+      grid, 1, pcms::csys::Cartesian::Deferred(), 1);
+    auto coords = pcms::test::CreateDeviceCoordinateView(
+      pts, pcms::csys::Cartesian::Deferred());
+    auto evaluator = factory->CreatePointEvaluator<Real>(
+      pcms::EvaluationRequest::FromCoordinates(
+        coords.coordinate_view,
+        pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::NEAREST_BOUNDARY}));
+    REQUIRE(evaluator->FilledPoints().extent(0) == 0);
+  }
 }
 
 // ============================================================================
@@ -187,12 +233,13 @@ TEST_CASE("FieldLayout: metadata queries")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
   auto layout = factory->GetLayout();
 
   auto coords = layout->GetDOFHolderCoordinates();
-  REQUIRE(coords.GetCoordinateSystem() == CoordinateSystem::Cartesian);
+  REQUIRE(pcms::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                     pcms::csys::Cartesian::Create(2)));
   REQUIRE(coords.GetValues().extent(0) > 0);
   REQUIRE(coords.GetValues().extent(1) == 2);
 }
@@ -208,12 +255,13 @@ TEST_CASE("FieldData: layout metadata queries")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
   auto field_data = factory->CreateFunction<Real>();
 
   auto coords = factory->GetLayout()->GetDOFHolderCoordinates();
-  REQUIRE(coords.GetCoordinateSystem() == CoordinateSystem::Cartesian);
+  REQUIRE(pcms::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                     pcms::csys::Cartesian::Create(2)));
   REQUIRE(coords.GetValues().extent(0) > 0);
   REQUIRE(coords.GetValues().extent(1) == 2);
 }
@@ -229,7 +277,7 @@ TEST_CASE("SimpleFieldData: set and get DOF holder data round-trip")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
   auto field_data = factory->CreateFunction<Real>();
 
@@ -265,12 +313,13 @@ TEST_CASE("FieldLayout: MeshFields metadata queries")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::MeshFields);
 
   auto layout = factory->GetLayout();
   auto coords = layout->GetDOFHolderCoordinates();
-  REQUIRE(coords.GetCoordinateSystem() == CoordinateSystem::Cartesian);
+  REQUIRE(pcms::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                     pcms::csys::Cartesian::Create(2)));
   REQUIRE(coords.GetValues().extent(0) > 0);
   REQUIRE(coords.GetValues().extent(1) == 2);
 }
@@ -282,7 +331,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 linear evaluation")
                                  100, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::MeshFields);
 
   auto field_data = factory->CreateFunction<Real>();
@@ -292,8 +341,8 @@ TEST_CASE("PointEvaluator: MeshFields order-1 linear evaluation")
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
   pcms::test::CheckEvaluation(
@@ -308,7 +357,7 @@ TEST_CASE("PointEvaluator: MeshFields out-of-bounds fill")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 20, 20, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::MeshFields);
 
   auto field_data = factory->CreateFunction<Real>();
@@ -318,7 +367,7 @@ TEST_CASE("PointEvaluator: MeshFields out-of-bounds fill")
 
   const auto outside_pts = pcms::test::StandardOutsideCoords2D();
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
-    outside_pts, CoordinateSystem::Cartesian);
+    outside_pts, pcms::csys::Cartesian::Deferred());
   pcms::OutOfBoundsPolicy policy{pcms::OutOfBoundsMode::FILL, -999.0};
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view,
@@ -334,7 +383,7 @@ TEST_CASE(
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::MeshFields);
 
   auto field_a = factory->CreateFunction<Real>();
@@ -347,8 +396,8 @@ TEST_CASE(
     OMEGA_H_LAMBDA(Real, Real) { return Real(42); });
 
   auto pts = pcms::test::StandardEvalCoords2D();
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
 
   // Create the PointEvaluator once and reuse it for both fields.
   auto evaluator = factory->CreatePointEvaluator<Real>(
@@ -368,7 +417,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 2, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::MeshFields);
 
   auto field = factory->CreateFunction<Real>();
@@ -390,18 +439,19 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
     host_data[static_cast<size_t>(i) * 2 + 0] = x + y;
     host_data[static_cast<size_t>(i) * 2 + 1] = 2.0 * x - y;
   }
-  field.SetDOFHolderDataHost(pcms::Rank2View<const Real, pcms::HostMemorySpace>(
-    host_data.data(), num_dof, 2));
+  field.GetData().SetDOFHolderDataHost(
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(host_data.data(),
+                                                       num_dof, 2));
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
 
   Kokkos::View<Real**, pcms::DeviceMemorySpace> out("out", n, 2);
-  evaluator->Evaluate(field, pcms::MakeRank2View(out));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, out));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), out);
 
@@ -421,7 +471,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
 
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 3, CoordinateSystem::Cartesian, "global",
+    mesh, 1, 3, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::MeshFields);
 
   auto field = factory->CreateFunction<Real>();
@@ -444,18 +494,19 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
     host_data[static_cast<size_t>(i) * 3 + 1] = y;
     host_data[static_cast<size_t>(i) * 3 + 2] = x * y;
   }
-  field.SetDOFHolderDataHost(pcms::Rank2View<const Real, pcms::HostMemorySpace>(
-    host_data.data(), num_dof, 3));
+  field.GetData().SetDOFHolderDataHost(
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(host_data.data(),
+                                                       num_dof, 3));
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
-  auto device_coords =
-    pcms::test::CreateDeviceCoordinateView(pts, CoordinateSystem::Cartesian);
+  auto device_coords = pcms::test::CreateDeviceCoordinateView(
+    pts, pcms::csys::Cartesian::Deferred());
   auto evaluator = factory->CreatePointEvaluator<Real>(
     pcms::EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
 
   Kokkos::View<Real**, pcms::DeviceMemorySpace> out("out", n, 3);
-  evaluator->Evaluate(field, pcms::MakeRank2View(out));
+  evaluator->Evaluate(field, pcms::test::TagLike(field, out));
   auto out_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), out);
 

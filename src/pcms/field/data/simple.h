@@ -3,7 +3,6 @@
 
 #include "../field_data.h"
 #include "../field_layout.h"
-#include "../field_metadata.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/assert.h"
 #include <Omega_h_mesh.hpp>
@@ -18,8 +17,8 @@
 namespace pcms
 {
 
-// SimpleFieldData<T> is a generic concrete FieldData<T> for backends whose DOF
-// can be stored in a simple 2D array format.
+// SimpleFieldData<T> is a generic concrete FieldData<T> backed by shaped
+// [dof_holder][component] Kokkos Views.
 //
 // Ownership of the layout is shared — the layout is typically held by the
 // factory that created this field data object.
@@ -27,10 +26,9 @@ template <typename T>
 class SimpleFieldData : public FieldData<T>
 {
 public:
-  SimpleFieldData(std::shared_ptr<const FieldLayout> layout,
-                  FieldMetadata metadata)
+  SimpleFieldData(std::shared_ptr<const FieldLayout> layout, ValueBasis basis)
     : layout_(std::move(layout)),
-      metadata_(metadata),
+      basis_(std::move(basis)),
       host_data_("simple_field_data",
                  static_cast<size_t>(layout_->GetNumLocalDofHolder()),
                  static_cast<size_t>(layout_->GetNumComponents())),
@@ -40,7 +38,11 @@ public:
   {
   }
 
-  const FieldMetadata& GetMetadata() const override { return metadata_; }
+  FieldValueType GetValueType() const override
+  {
+    return ValueTypeOfRank(basis_.Rank());
+  }
+  const ValueBasis& GetValueBasis() const override { return basis_; }
 
   Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
   {
@@ -61,8 +63,6 @@ public:
 
   void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
   {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->LocalSize()));
     CopyHostRank2ViewToDeviceView(device_data_, values);
   }
 
@@ -73,8 +73,6 @@ public:
 
   void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->LocalSize()));
     CopyDeviceRank2ViewToDeviceView(device_data_, values);
   }
 
@@ -107,7 +105,7 @@ public:
 
 private:
   std::shared_ptr<const FieldLayout> layout_;
-  FieldMetadata metadata_;
+  ValueBasis basis_;
   mutable Kokkos::View<T**, HostMemorySpace> host_data_;
   mutable Kokkos::View<T**, HostMemorySpace> owned_host_data_;
   mutable Kokkos::View<T**, DeviceMemorySpace> owned_device_data_;

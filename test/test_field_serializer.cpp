@@ -3,6 +3,7 @@
 
 #include "pcms/configuration.h"
 #include "pcms/coupler/field_serializer.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/arrays.h"
 
 #include <memory>
@@ -29,7 +30,7 @@ namespace
 #ifdef PCMS_ENABLE_OMEGA_H
 void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
 {
-  auto data_before = field.GetDOFHolderDataHost();
+  auto data_before = field.GetDOFHolderDataHost().GetValues();
   const auto num_dof = static_cast<pcms::LO>(data_before.extent(0));
   const auto num_components = static_cast<pcms::LO>(data_before.extent(1));
   const auto num_values = static_cast<size_t>(data_before.size());
@@ -51,13 +52,13 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
           static_cast<int>(num_values));
 
   std::vector<pcms::Real> cleared(num_values, -1.0);
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
       cleared.data(), num_dof, num_components));
   serializer.Deserialize(field, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
 
-  auto data_after = field.GetDOFHolderDataHost();
+  auto data_after = field.GetDOFHolderDataHost().GetValues();
   REQUIRE(data_after.size() == expected.size());
   for (pcms::LO i = 0; i < num_dof; ++i) {
     for (pcms::LO c = 0; c < num_components; ++c) {
@@ -98,9 +99,9 @@ TEST_CASE("XGCFieldSerializer preserves inactive field entries")
   std::iota(data.begin(), data.end(), 0.0);
   const auto original = data;
   auto field = factory.CreateField<pcms::Real>(
-    "", std::make_unique<pcms::XGCFieldData<pcms::Real>>(
-          factory.GetXGCLayout(), pcms::FieldMetadata{},
-          pcms::make_array_view(data)));
+    "",
+    std::make_unique<pcms::XGCFieldData<pcms::Real>>(
+      factory.GetXGCLayout(), pcms::ValueBasis{}, pcms::make_array_view(data)));
   pcms::XGCFieldSerializer<pcms::Real> serializer(MPI_COMM_SELF);
 
   auto owned = field.GetLayout().GetOwnedHost();
@@ -131,7 +132,8 @@ TEST_CASE("XGCFieldSerializer preserves inactive field entries")
   serializer.Deserialize(field, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
 
-  auto after = pcms::FlattenToRank1View(field.GetDOFHolderDataHost());
+  auto after =
+    pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   for (int i = 0; i < data_size; ++i) {
     if (owned[i]) {
       REQUIRE(after[i] == Catch::Approx(original[i] + 100.0));
@@ -149,11 +151,12 @@ TEST_CASE("FieldSerializer round-trips a polynomial-reconstruction field")
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
   auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
-    coords_view, pcms::CoordinateSystem::Cartesian);
+    pcms::CoordinateView<pcms::HostMemorySpace>(
+      pcms::csys::Cartesian::Deferred(), coords_view));
   auto field = space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data{5.0, 6.0, 7.0, 8.0};
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(data.data(), 4,
                                                              1));
 
@@ -167,14 +170,14 @@ TEST_CASE("FieldSerializer round-trips a uniform-grid field")
   grid.edge_length = {10.0, 10.0};
   grid.divisions = {3, 3};
   auto space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::CoordinateSystem::Cartesian);
+    grid, 1, pcms::csys::Cartesian::Deferred());
   auto field = space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data(16);
   for (size_t i = 0; i < data.size(); ++i) {
     data[i] = static_cast<pcms::Real>(i * 10);
   }
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(data.data(), 16,
                                                              1));
 
@@ -202,7 +205,7 @@ TEST_CASE("FieldSerializer round-trips a multi-component Omega_h field")
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
   constexpr int num_components = 3;
   auto space = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, num_components, pcms::CoordinateSystem::Cartesian, "global",
+    mesh, 1, num_components, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
   auto field = space->CreateFunction<pcms::Real>();
 
@@ -213,7 +216,7 @@ TEST_CASE("FieldSerializer round-trips a multi-component Omega_h field")
       data[static_cast<size_t>(i) * num_components + c] = i + 0.25 * c;
     }
   }
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
       data.data(), num_dof, num_components));
 
@@ -230,7 +233,7 @@ TEST_CASE("FieldSerializer round-trips an order-0 Omega_h field")
   const int num_dof = mesh.nelems();
   std::vector<pcms::Real> data(num_dof);
   std::iota(data.begin(), data.end(), pcms::Real{0});
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(data.data(),
                                                              num_dof, 1));
 
@@ -242,11 +245,12 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
   auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
-    coords_view, pcms::CoordinateSystem::Cartesian);
+    pcms::CoordinateView<pcms::HostMemorySpace>(
+      pcms::csys::Cartesian::Deferred(), coords_view));
   auto field = space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data{5.0, 6.0, 7.0, 8.0};
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(data.data(), 4,
                                                              1));
 
@@ -258,7 +262,7 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   serializer.Deserialize(field, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
 
-  auto after = field.GetDOFHolderDataHost();
+  auto after = field.GetDOFHolderDataHost().GetValues();
   REQUIRE(after(0, 0) == 50.0);
   REQUIRE(after(1, 0) == 6.0);
   REQUIRE(after(2, 0) == 70.0);

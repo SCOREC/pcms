@@ -13,6 +13,8 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_mesh.hpp>
 
+#include "pcms/field/field.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/localization/point_search.h"
 #include "pcms/utility/mesh_geometry.h"
 #include "pcms/utility/mpi_utilities.h"
@@ -20,6 +22,7 @@
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace distributed_test
@@ -207,6 +210,24 @@ Kokkos::View<Real* [Dim]> ToPointView(const std::vector<Real>& interleaved,
   }
   Kokkos::deep_copy(points, points_h);
   return points;
+}
+
+/// `values` tagged with `field`'s stored value basis: what a field's checked
+/// setters and an evaluator's output expect. A Catch2-free counterpart of
+/// `pcms::test::TagLike`.
+template <typename T, typename MemorySpace, typename Layout>
+pcms::ValueView<T, MemorySpace, Layout> TagLike(
+  const pcms::Field<std::remove_const_t<T>>& field,
+  pcms::Rank2View<T, MemorySpace, Layout> values)
+{
+  return {field.GetData().GetValueBasis(), values};
+}
+
+template <typename T>
+pcms::ValueView<T, pcms::DeviceMemorySpace> TagLike(
+  const pcms::Field<T>& field, Kokkos::View<T**, pcms::DeviceMemorySpace> values)
+{
+  return {field.GetData().GetValueBasis(), pcms::MakeRank2View(values)};
 }
 
 } // namespace distributed_test

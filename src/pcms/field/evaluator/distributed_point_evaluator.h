@@ -6,6 +6,7 @@
 #include "pcms/field/function_space.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/localization/distributed_point_search.h"
 #include "pcms/localization/point_search.h"
 #include "pcms/utility/arrays.h"
@@ -18,7 +19,6 @@
 #include <Omega_h_mesh.hpp>
 
 #include <algorithm>
-#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
@@ -60,45 +60,6 @@ typename GridSearchOf<Dim>::type MakeGlobalGridSearch(Omega_h::Mesh& mesh)
   }
 }
 
-/// The reading an owner writes for a point its own evaluator could not place.
-///
-/// Owner-side evaluation has to say "no answer" inside the payload, because the
-/// reply is sent before the requester can be told anything else, and because
-/// the local evaluator API has no way to report an unplaced point other than
-/// through the value it wrote. The out-of-bounds policy supplies the marker: an
-/// owner evaluates with FILL and a fill value nothing else can produce.
-///
-/// An exception would be the obvious alternative and is not available: an owner
-/// evaluates while its peers are blocked waiting for its reply, so throwing
-/// there would leave the other ranks in the exchange, not raise an error.
-///
-/// The cost is that a field value equal to the marker is read as "no answer".
-/// NaN cannot be a coefficient of a meaningful field, and the integral marker
-/// is the type's lowest value, so both are safe in practice; it is the reason
-/// the confidence is in the test rather than in the type system.
-template <typename T>
-[[nodiscard]] inline T UnansweredMarker()
-{
-  if constexpr (std::is_floating_point_v<T>) {
-    return std::numeric_limits<T>::quiet_NaN();
-  } else {
-    return std::numeric_limits<T>::lowest();
-  }
-}
-
-/// Whether `value` is the marker. Device-callable; `marker` is passed in
-/// because `std::numeric_limits` is host-only.
-template <typename T>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION bool IsUnanswered(T value, T marker)
-{
-  if constexpr (std::is_floating_point_v<T>) {
-    (void)marker;
-    return value != value; // NaN, without <cmath>'s overload set
-  } else {
-    return value == marker;
-  }
-}
-
 using DeviceExec = DeviceMemorySpace::execution_space;
 
 /// Set every entry of `values` to `fill`.
@@ -115,32 +76,33 @@ void FillAll(Values values, T fill)
     });
 }
 
-/// Write row `k` of `rows` to row `targets(k)` of `values`, skipping a row that
-/// holds the no-answer marker. Returns how many rows were skipped.
+/// Write row `k` of `rows` to row `targets(k)` of `values`.
 template <typename T, typename Values>
-LO ScatterAnswered(Values values, Kokkos::View<T**, DeviceMemorySpace> rows,
-                   Kokkos::View<const LO*, DeviceMemorySpace> targets)
+void ScatterRows(Values values, Kokkos::View<T**, DeviceMemorySpace> rows,
+                 Kokkos::View<const LO*, DeviceMemorySpace> targets)
 {
   const int nc = static_cast<int>(values.extent(1));
-  const T marker = UnansweredMarker<T>();
-  LO skipped = 0;
-  Kokkos::parallel_reduce(
+  Kokkos::parallel_for(
     "DistributedPointEvaluator::Scatter",
-    Kokkos::RangePolicy<DeviceExec>(0, targets.extent(0)),
-    KOKKOS_LAMBDA(LO k, LO & n_skipped) {
-      for (int c = 0; c < nc; ++c) {
-        if (IsUnanswered(rows(k, c), marker)) {
-          ++n_skipped;
-          return;
-        }
-      }
+    Kokkos::RangePolicy<DeviceExec>(0, targets.extent(0)), KOKKOS_LAMBDA(LO k) {
       const LO i = targets(k);
       for (int c = 0; c < nc; ++c) {
         values(i, c) = rows(k, c);
       }
-    },
-    skipped);
-  return skipped;
+    });
+}
+
+/// Whether each of the first `n` rows appears in `filled`, as host flags.
+inline std::vector<char> FilledFlags(
+  Kokkos::View<const LO*, DeviceMemorySpace> filled, LO n)
+{
+  std::vector<char> flags(static_cast<size_t>(n), 0);
+  const auto filled_h =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace{}, filled);
+  for (size_t k = 0; k < filled_h.extent(0); ++k) {
+    flags[static_cast<size_t>(filled_h(k))] = 1;
+  }
+  return flags;
 }
 
 /// `counts` times `factor`, for sending `factor` scalars per point.
@@ -178,11 +140,18 @@ inline std::vector<int> Scaled(const std::vector<int>& counts, int factor)
  * Nothing here is specific to a field type: a backend gets distributed
  * evaluation as soon as it can evaluate locally.
  *
- * A rank only ever evaluates points it owns, so a ghost element's (possibly
- * stale) coefficients never enter an answer. If an owner's local evaluator
- * still cannot place a point -- its own search disagreeing with the routing
- * search -- it writes `detail::UnansweredMarker<T>()` and the point is treated
- * as not found.
+ * Precondition: the field's ghost DOF values are synchronized
+ * (`Field::SynchronizeGhosts`). A rank evaluates only points in elements it
+ * owns, but an owned element can have vertices another rank owns, and their
+ * values on this rank are ghost copies. `FieldCommunicator::Receive`
+ * synchronizes after receiving; a field written some other way, with only its
+ * owned values set, must be synchronized before `Evaluate`.
+ *
+ * A point no rank can locate, or one its owner's local evaluator still cannot
+ * place (that evaluator's search disagreeing with the routing search), is an
+ * unanswered point. Which points those are is settled at construction: under
+ * FILL they get the fill value and are reported by `FilledPoints()`; under
+ * ERROR, `Evaluate` throws after its exchange, so no rank is left blocked.
  *
  * \tparam T Value type. Each backend accepts `CreatePointEvaluator<T>` for
  *         whichever types it supports.
@@ -234,7 +203,18 @@ public:
   /// \param values Output, `[num_query_points][num_components]`.
   void Evaluate(
     const Field<T>& field,
-    Rank2View<T, DeviceMemorySpace, LayoutPolicy> values) const override;
+    ValueView<T, DeviceMemorySpace, LayoutPolicy> values) const override;
+
+  /// The query points that get the fill value, ascending. Empty unless the
+  /// policy is FILL. Fixed at construction.
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    if (policy_.mode != OutOfBoundsMode::FILL) {
+      return {};
+    }
+    return unanswered_points_;
+  }
 
   /// How many query points get their value from another rank.
   [[nodiscard]] std::size_t LastRoutedPointCount() const noexcept
@@ -283,6 +263,10 @@ private:
   std::vector<int> incoming_counts_;
   Kokkos::View<Real**, DeviceMemorySpace> incoming_coords_;
   std::unique_ptr<PointEvaluator<T>> incoming_evaluator_;
+
+  // Query points nothing answers for, ascending: never located, or located
+  // but not placed by the owner's local evaluator.
+  Kokkos::View<LO*, DeviceMemorySpace> unanswered_points_;
 };
 
 template <typename T, int Dim, typename LayoutPolicy>
@@ -345,6 +329,38 @@ void DistributedPointEvaluator<T, Dim, LayoutPolicy>::Setup(
   incoming_coords_ = CopyRowMajorToDevice(incoming, Dim);
   own_evaluator_ = MakeLocalEvaluator(own_coords_);
   incoming_evaluator_ = MakeLocalEvaluator(incoming_coords_);
+
+  // ---- 4. which points nothing answers for ----
+  // Each owner tells the requester which of its points its local evaluator
+  // filled, once, so `Evaluate` never has to decode that from values.
+  const auto n_incoming = static_cast<LO>(incoming_coords_.extent(0));
+  const auto incoming_filled =
+    incoming_evaluator_ ? detail::FilledFlags(incoming_evaluator_->FilledPoints(),
+                                              n_incoming)
+                        : std::vector<char>(static_cast<size_t>(n_incoming), 0);
+  const auto remote_filled = ExchangeRecordsWithKnownCounts(
+    mesh_.comm()->get_impl(), incoming_counts_, incoming_filled,
+    remote_counts_);
+  const auto own_filled =
+    own_evaluator_
+      ? detail::FilledFlags(own_evaluator_->FilledPoints(),
+                            static_cast<LO>(own.size()))
+      : std::vector<char>{};
+
+  std::vector<char> answered(static_cast<size_t>(n_points_), 0);
+  for (size_t k = 0; k < own.size(); ++k) {
+    answered[static_cast<size_t>(own[k])] = own_filled[k] == 0;
+  }
+  for (size_t k = 0; k < remote.size(); ++k) {
+    answered[static_cast<size_t>(remote[k])] = remote_filled[k] == 0;
+  }
+  std::vector<LO> unanswered;
+  for (LO i = 0; i < n_points_; ++i) {
+    if (answered[static_cast<size_t>(i)] == 0) {
+      unanswered.push_back(i);
+    }
+  }
+  unanswered_points_ = CopyToDevice(unanswered);
 }
 
 template <typename T, int Dim, typename LayoutPolicy>
@@ -356,11 +372,11 @@ DistributedPointEvaluator<T, Dim, LayoutPolicy>::MakeLocalEvaluator(
     return nullptr;
   }
   // Only owned points reach this evaluator, so one it cannot place is a
-  // disagreement between its search and the routing search. FILL with a
-  // marker lets `Evaluate` treat such a point as not found.
+  // disagreement between its search and the routing search. It must not throw
+  // or guess: FILL marks it, and its `FilledPoints()` reports it at setup.
   OutOfBoundsPolicy fallback;
   fallback.mode = OutOfBoundsMode::FILL;
-  fallback.fill_value = static_cast<Real>(detail::UnansweredMarker<T>());
+  fallback.fill_value = policy_.fill_value;
 
   const CoordinateView<DeviceMemorySpace> view(space_->GetCoordinateSystem(),
                                                MakeConstRank2View(coords));
@@ -376,7 +392,9 @@ DistributedPointEvaluator<T, Dim, LayoutPolicy>::EvaluateLocally(
   Kokkos::View<T**, DeviceMemorySpace> values("local values", n,
                                               n_components_);
   if (evaluator != nullptr) {
-    evaluator->Evaluate(field, MakeRank2View(values));
+    evaluator->Evaluate(field, ValueView<T, DeviceMemorySpace>(
+                                 field.GetData().GetValueBasis(),
+                                 MakeRank2View(values)));
   }
   return values;
 }
@@ -384,13 +402,15 @@ DistributedPointEvaluator<T, Dim, LayoutPolicy>::EvaluateLocally(
 template <typename T, int Dim, typename LayoutPolicy>
 void DistributedPointEvaluator<T, Dim, LayoutPolicy>::Evaluate(
   const Field<T>& field,
-  Rank2View<T, DeviceMemorySpace, LayoutPolicy> values) const
+  ValueView<T, DeviceMemorySpace, LayoutPolicy> out) const
 {
+  this->CheckEvaluateWriteTag("DistributedPointEvaluator::Evaluate", field,
+                              out);
+  const auto values = out.GetValues();
   PCMS_ALWAYS_ASSERT(values.extent(0) == static_cast<size_t>(n_points_));
   PCMS_ALWAYS_ASSERT(values.extent(1) == static_cast<size_t>(n_components_));
   const int nc = n_components_;
   const auto n_own = static_cast<LO>(own_points_.extent(0));
-  const auto n_remote = static_cast<LO>(remote_points_.extent(0));
 
   // Owner side: evaluate this rank's own points and the points sent to it.
   const auto own_values = EvaluateLocally(own_evaluator_.get(), n_own, field);
@@ -399,21 +419,21 @@ void DistributedPointEvaluator<T, Dim, LayoutPolicy>::Evaluate(
     field);
 
   // Route the incoming values back to the ranks that asked: the only values
-  // that cross to the host and back, because MPI takes host buffers. One scalar per component per point.
+  // that cross to the host and back, because MPI takes host buffers.
   const auto remote_host = ExchangeRecordsWithKnownCounts(
     mesh_.comm()->get_impl(), detail::Scaled(incoming_counts_, nc),
     CopyToHostRowMajor(incoming_values), detail::Scaled(remote_counts_, nc));
   const auto remote_values = CopyRowMajorToDevice(remote_host, nc);
 
-  // Assemble on the device. Every point starts at the policy's fill value, and
-  // a point is overwritten only when its owner answered for it.
+  // Assemble on the device. A point no rank located keeps the fill value; a
+  // point an owner could not place already holds it, from the owner's FILL.
   detail::FillAll(values, static_cast<T>(policy_.fill_value));
-  LO missing = n_points_ - n_own - n_remote; // located by no rank
-  missing += detail::ScatterAnswered(values, own_values, own_points_);
-  missing += detail::ScatterAnswered(values, remote_values, remote_points_);
+  detail::ScatterRows(values, own_values, own_points_);
+  detail::ScatterRows(values, remote_values, remote_points_);
 
   // Thrown after the exchange, so every rank has completed it.
-  if (policy_.mode == OutOfBoundsMode::ERROR && missing > 0) {
+  if (policy_.mode == OutOfBoundsMode::ERROR &&
+      unanswered_points_.extent(0) > 0) {
     throw pcms_error(
       "DistributedPointEvaluator: a query point lies outside the mesh and the "
       "out-of-bounds policy is ERROR");

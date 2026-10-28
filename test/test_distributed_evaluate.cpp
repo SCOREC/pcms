@@ -31,6 +31,7 @@
 #include "pcms/field/evaluator/distributed_point_evaluator.h"
 #include "pcms/field/field.h"
 #include "pcms/field/field_data.h"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/mesh_geometry.h"
@@ -107,7 +108,7 @@ QueryCoords MakeQueryCoords(const std::vector<Real>& interleaved, int dim)
   pcms::DeepCopyMismatchLayouts(device, host);
   return QueryCoords{
     device, pcms::CoordinateView<pcms::DeviceMemorySpace>(
-              pcms::CoordinateSystem::Cartesian, pcms::MakeRank2View(device))};
+              pcms::csys::Cartesian::Deferred(), pcms::MakeRank2View(device))};
 }
 
 /// Distributed evaluation must equal the serial evaluator wherever the serial
@@ -119,7 +120,7 @@ void check_agrees_with_serial(Omega_h::Mesh& mesh, int order)
   const auto rank = mesh.comm()->rank();
 
   auto space = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, order, 1, pcms::CoordinateSystem::Cartesian, "global",
+    mesh, order, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
   auto field = space->CreateFunction<Real>();
   SetLinearField(field.GetData(), *space->GetLayout());
@@ -140,7 +141,7 @@ void check_agrees_with_serial(Omega_h::Mesh& mesh, int order)
       device_coords.view, serial_policy));
   Kokkos::View<Real**, pcms::DeviceMemorySpace> reference("reference", n_points,
                                                           1);
-  serial->Evaluate(field, pcms::MakeRank2View(reference));
+  serial->Evaluate(field, distributed_test::TagLike(field, reference));
   const auto reference_h =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), reference);
 
@@ -151,7 +152,7 @@ void check_agrees_with_serial(Omega_h::Mesh& mesh, int order)
     mesh, space, device_coords.storage, pcms::OutOfBoundsPolicy{});
 
   Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
-  distributed->Evaluate(field, pcms::MakeRank2View(got));
+  distributed->Evaluate(field, distributed_test::TagLike(field, got));
   const std::size_t routed = pcms::LastRoutedPointCount(*distributed);
   const auto got_h =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), got);
@@ -252,7 +253,7 @@ void check_agrees_with_serial(Omega_h::Mesh& mesh, int order)
   const Real scale = 3.0;
   SetLinearField(field.GetData(), *space->GetLayout(), scale);
   Kokkos::View<Real**, pcms::DeviceMemorySpace> second("second", n_points, 1);
-  distributed->Evaluate(field, pcms::MakeRank2View(second));
+  distributed->Evaluate(field, distributed_test::TagLike(field, second));
   const LO routed_again =
     static_cast<LO>(pcms::LastRoutedPointCount(*distributed));
   const auto second_h =
@@ -306,7 +307,7 @@ void check_boundary_arbitration(Omega_h::Mesh& mesh)
   // Order 0: one coefficient per element, set from the element's own centroid,
   // so neighbouring elements hold different values.
   auto space = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, /*order=*/0, 1, pcms::CoordinateSystem::Cartesian, "global",
+    mesh, /*order=*/0, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
   auto field = space->CreateFunction<Real>();
   SetLinearField(field.GetData(), *space->GetLayout());
@@ -326,14 +327,14 @@ void check_boundary_arbitration(Omega_h::Mesh& mesh)
       device_coords.view, serial_policy));
   Kokkos::View<Real**, pcms::DeviceMemorySpace> reference("reference", n_points,
                                                           1);
-  serial->Evaluate(field, pcms::MakeRank2View(reference));
+  serial->Evaluate(field, distributed_test::TagLike(field, reference));
   const auto reference_h =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), reference);
 
   auto distributed = pcms::MakeDistributedPointEvaluator<Real>(
     mesh, space, device_coords.storage, pcms::OutOfBoundsPolicy{});
   Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
-  distributed->Evaluate(field, pcms::MakeRank2View(got));
+  distributed->Evaluate(field, distributed_test::TagLike(field, got));
   const auto got_h =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), got);
 
@@ -459,7 +460,7 @@ void check_backend_without_distributed_code(Omega_h::Mesh& mesh)
     pcms::CreateUniformGridFromMesh<static_cast<unsigned>(Dim)>(mesh, 8);
   const std::shared_ptr<pcms::LagrangeFunctionSpace> space =
     pcms::LagrangeFunctionSpace::FromUniformGrid(
-      grid, 1, pcms::CoordinateSystem::Cartesian, /*order=*/1);
+      grid, 1, pcms::csys::Cartesian::Deferred(), /*order=*/1);
   auto field = space->CreateFunction<Real>();
   SetLinearField(field.GetData(), *space->GetLayout());
 
@@ -478,7 +479,7 @@ void check_backend_without_distributed_code(Omega_h::Mesh& mesh)
       device_coords.view, serial_policy));
   Kokkos::View<Real**, pcms::DeviceMemorySpace> reference("reference", n_points,
                                                           1);
-  serial->Evaluate(field, pcms::MakeRank2View(reference));
+  serial->Evaluate(field, distributed_test::TagLike(field, reference));
   const auto reference_h =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), reference);
 
@@ -486,7 +487,7 @@ void check_backend_without_distributed_code(Omega_h::Mesh& mesh)
   auto distributed = pcms::MakeDistributedPointEvaluator<Real>(
     mesh, space, device_coords.storage, pcms::OutOfBoundsPolicy{});
   Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
-  distributed->Evaluate(field, pcms::MakeRank2View(got));
+  distributed->Evaluate(field, distributed_test::TagLike(field, got));
   const std::size_t routed = pcms::LastRoutedPointCount(*distributed);
   const auto got_h =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), got);
@@ -576,7 +577,7 @@ void check_out_of_bounds_policy(Omega_h::Mesh& mesh)
   const auto dim = mesh.dim();
 
   auto space = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, /*order=*/1, 1, pcms::CoordinateSystem::Cartesian, "global",
+    mesh, /*order=*/1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
   auto field = space->CreateFunction<Real>();
   SetLinearField(field.GetData(), *space->GetLayout());
@@ -601,7 +602,7 @@ void check_out_of_bounds_policy(Omega_h::Mesh& mesh)
   auto filled = pcms::MakeDistributedPointEvaluator<Real>(
     mesh, space, device_coords.storage, fill_policy);
   Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
-  filled->Evaluate(field, pcms::MakeRank2View(got));
+  filled->Evaluate(field, distributed_test::TagLike(field, got));
   const auto got_h =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), got);
 
@@ -654,13 +655,98 @@ void check_out_of_bounds_policy(Omega_h::Mesh& mesh)
       mesh, space, device_coords.storage, error_policy);
     Kokkos::View<Real**, pcms::DeviceMemorySpace> strict_values("strict",
                                                                 n_points, 1);
-    strict->Evaluate(field, pcms::MakeRank2View(strict_values));
+    strict->Evaluate(field, distributed_test::TagLike(field, strict_values));
   } catch (const pcms::pcms_error&) {
     threw = true;
   }
   require(threw, "the ERROR policy did not report a point outside the mesh");
 }
 
+
+/// The distributed evaluator reads ghost DOF values.
+///
+/// A rank evaluates only points in elements it owns, but an owned element can
+/// still have vertices another rank owns: their values on this rank are ghost
+/// copies. A coupled field only receives its owned values, so its ghosts are
+/// stale until `SynchronizeGhosts` runs. This pins down that the evaluator is
+/// correct once ghosts are synchronized, and reports what an unsynchronized
+/// field would give.
+template <int Dim>
+void check_ghosts_must_be_synchronized(Omega_h::Mesh& mesh)
+{
+  constexpr Real kStaleGhost = 1.0e6;
+  auto space = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, /*order=*/1, 1, pcms::csys::Cartesian::Deferred(), "global",
+    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  const auto& layout = *space->GetLayout();
+  const LO n_local = layout.GetNumLocalDofHolder();
+  // A rank whose partition is isolated has no ghosts; the decomposition as a
+  // whole must have some, or the check is vacuous.
+  require(mesh.comm()->allreduce(n_local - layout.GetNumOwnedDofHolder(),
+                                 Omega_h_Op::OMEGA_H_SUM) > 0,
+          "mesh has no ghost DOFs");
+
+  // Owned DOFs hold the affine field; ghost DOFs hold a stale value.
+  const auto dof_coords = layout.GetDOFHolderCoordinates().GetValues();
+  Kokkos::View<Real**, pcms::DeviceMemorySpace> coords_d("dof coords",
+                                                         n_local, Dim);
+  Kokkos::parallel_for(
+    "copy_dof_coords",
+    Kokkos::RangePolicy<pcms::DeviceMemorySpace::execution_space>(0, n_local),
+    KOKKOS_LAMBDA(LO i) {
+      for (int d = 0; d < Dim; ++d) {
+        coords_d(i, d) = dof_coords(i, d);
+      }
+    });
+  const auto coords =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, coords_d);
+  const auto owned = layout.GetOwnedHost();
+  std::vector<Real> values(static_cast<size_t>(n_local));
+  for (LO i = 0; i < n_local; ++i) {
+    values[static_cast<size_t>(i)] =
+      owned[static_cast<size_t>(i)] ? linear_f(coords(i, 0), coords(i, 1))
+                                    : kStaleGhost;
+  }
+  auto field = space->CreateFunction<Real>();
+  field.SetDOFHolderDataHost(distributed_test::TagLike(
+    field, pcms::Rank2View<const Real, pcms::HostMemorySpace>(values.data(),
+                                                              n_local, 1)));
+
+  const auto gathered = distributed_test::GatherOwnedCentroids(mesh);
+  auto device_coords = MakeQueryCoords(gathered.coords, Dim);
+  const LO n_points = static_cast<LO>(gathered.total);
+  auto distributed = pcms::MakeDistributedPointEvaluator<Real>(
+    mesh, space, device_coords.storage, pcms::OutOfBoundsPolicy{});
+
+  const auto count_wrong = [&]() {
+    Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
+    distributed->Evaluate(field, distributed_test::TagLike(field, got));
+    const auto got_h =
+      Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, got);
+    LO n_wrong = 0;
+    for (LO i = 0; i < n_points; ++i) {
+      const size_t base = static_cast<size_t>(i) * Dim;
+      const Real truth =
+        linear_f(gathered.coords[base], gathered.coords[base + 1]);
+      n_wrong += std::fabs(got_h(i, 0) - truth) > 1e-10 ? 1 : 0;
+    }
+    return mesh.comm()->allreduce(n_wrong, Omega_h_Op::OMEGA_H_SUM);
+  };
+
+  const LO wrong_before_sync = count_wrong();
+  field.SynchronizeGhosts();
+  const LO wrong_after_sync = count_wrong();
+
+  if (mesh.comm()->rank() == 0) {
+    std::printf("%dD ghost sync: %lld of %lld points wrong with stale ghosts, "
+                "%lld after SynchronizeGhosts\n",
+                Dim, static_cast<long long>(wrong_before_sync),
+                static_cast<long long>(n_points * mesh.comm()->size()),
+                static_cast<long long>(wrong_after_sync));
+  }
+  require(wrong_after_sync == 0,
+          "distributed evaluation is wrong after ghosts are synchronized");
+}
 } // namespace
 
 int main(int argc, char** argv)
@@ -678,11 +764,13 @@ int main(int argc, char** argv)
       check_boundary_arbitration<2>(mesh);
       check_backend_without_distributed_code<2>(mesh);
       check_out_of_bounds_policy<2>(mesh);
+      check_ghosts_must_be_synchronized<2>(mesh);
     }
 
     {
       auto mesh = distributed_test::BuildGhostedBox<3>(world);
       check_agrees_with_serial<3>(mesh, /*order=*/1);
+      check_ghosts_must_be_synchronized<3>(mesh);
       check_out_of_bounds_policy<3>(mesh);
     }
 

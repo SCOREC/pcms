@@ -141,8 +141,8 @@ namespace detail
  *
  *     struct MyElements {
  *       static MyElements FromMesh(Omega_h::Mesh&);
- *       Operands operands(LO elem) const;              // what Pred::apply takes
- *       AABBox<Dim> bound(const Operands&) const;      // a box containing it
+ *       Operands operands(LO elem) const;              // what Pred::apply
+ * takes AABBox<Dim> bound(const Operands&) const;      // a box containing it
  *     };
  *
  * `bound` is allowed to be conservative: the predicate rejects what it
@@ -159,8 +159,8 @@ struct MeshSimplexElements
     return {mesh.ask_elem_verts(), mesh.coords()};
   }
 
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION Omega_h::Matrix<Dim, Dim + 1>
-  operands(LO elem) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION Omega_h::Matrix<Dim, Dim + 1> operands(
+    LO elem) const
   {
     const auto verts = Omega_h::gather_verts<Dim + 1>(elems2verts, elem);
     return Omega_h::gather_vectors<Dim + 1, Dim>(coords, verts);
@@ -182,9 +182,9 @@ struct MeshSimplexElements
  * own bounding box spans. That makes construction O(nelems * cells_per_elem)
  * instead of O(num_cells * nelems).
  *
- * Operand-agnostic: `Elements` decides what an element *is* and how to bound it,
- * `Pred` decides when it overlaps a cell. Neither is fixed here, so the same
- * functor bins any shape a caller can supply a policy for.
+ * Operand-agnostic: `Elements` decides what an element *is* and how to bound
+ * it, `Pred` decides when it overlaps a cell. Neither is fixed here, so the
+ * same functor bins any shape a caller can supply a policy for.
  */
 template <int Dim, typename Pred, typename Elements = MeshSimplexElements<Dim>>
 struct ElemCellOverlapFunctor
@@ -250,8 +250,9 @@ construct_intersection_map(Omega_h::Mesh& mesh,
                            int num_grid_cells)
 {
   if (mesh.dim() != Dim) {
-    std::cerr << "construct_intersection_map: mesh dimension does not match the "
-                 "map dimension\n";
+    std::cerr
+      << "construct_intersection_map: mesh dimension does not match the "
+         "map dimension\n";
     std::terminate();
   }
 
@@ -259,9 +260,9 @@ construct_intersection_map(Omega_h::Mesh& mesh,
   const auto nelems = mesh.nelems();
 
   CrsT elem2cells{};
-  Kokkos::count_and_fill_crs(
-    elem2cells, nelems,
-    ElemCellOverlapFunctor<Dim, Pred, Elements>{Elements::FromMesh(mesh), grid});
+  Kokkos::count_and_fill_crs(elem2cells, nelems,
+                             ElemCellOverlapFunctor<Dim, Pred, Elements>{
+                               Elements::FromMesh(mesh), grid});
 
   Kokkos::View<LO*> counts("candidate_counts", num_grid_cells);
   Kokkos::parallel_for(
@@ -356,10 +357,9 @@ construct_intersection_map_reference(Omega_h::Mesh& mesh,
                                      int num_grid_cells)
 {
   Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  Kokkos::count_and_fill_crs(
-    intersection_map, num_grid_cells,
-    ReferenceCellMajorFunctor<Dim, Pred, Elements>{Elements::FromMesh(mesh), grid,
-                                                   mesh.nelems()});
+  Kokkos::count_and_fill_crs(intersection_map, num_grid_cells,
+                             ReferenceCellMajorFunctor<Dim, Pred, Elements>{
+                               Elements::FromMesh(mesh), grid, mesh.nelems()});
   return intersection_map;
 }
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
@@ -376,8 +376,8 @@ construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
                                         Kokkos::View<Uniform3DGrid[1]> grid,
                                         int num_grid_cells)
 {
-  return construct_intersection_map_reference<3, SimplexVsBbox>(
-    mesh, grid, num_grid_cells);
+  return construct_intersection_map_reference<3, SimplexVsBbox>(mesh, grid,
+                                                                num_grid_cells);
 }
 
 // num_grid_cells should be result of grid.GetNumCells(), take as argument to
@@ -412,13 +412,16 @@ construct_intersection_map_3d(Omega_h::Mesh& mesh,
 // callers outside this file need.
 template Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map<2, TriangleVsBbox>(Omega_h::Mesh&,
-                                              Kokkos::View<UniformGrid<2>[1]>, int);
+                                              Kokkos::View<UniformGrid<2>[1]>,
+                                              int);
 template Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map<2, SimplexVsBbox>(Omega_h::Mesh&,
-                                             Kokkos::View<UniformGrid<2>[1]>, int);
+                                             Kokkos::View<UniformGrid<2>[1]>,
+                                             int);
 template Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map<3, SimplexVsBbox>(Omega_h::Mesh&,
-                                             Kokkos::View<UniformGrid<3>[1]>, int);
+                                             Kokkos::View<UniformGrid<3>[1]>,
+                                             int);
 
 template Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_reference<2, TriangleVsBbox>(

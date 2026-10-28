@@ -553,8 +553,8 @@ void check_local_classification(Omega_h::Mesh& mesh)
   require(mesh.nghost_layers() > 0, "mesh is not ghosted");
 
   const auto divisions = pcms::DivisionsPerAxisForGlobalMesh<Dim>(mesh);
-  const auto local_search = distributed_test::MakeLocalSearch<Dim>(mesh,
-                                                                    divisions);
+  const auto local_search =
+    distributed_test::MakeLocalSearch<Dim>(mesh, divisions);
   const pcms::DistributedPointSearch<Dim> search{mesh, local_search};
   require(search.HasGhostLayer(), "distributed search missed the ghost layer");
 
@@ -625,8 +625,7 @@ void check_local_classification(Omega_h::Mesh& mesh)
       static_cast<long long>(total_elsewhere),
       static_cast<long long>(total_missing),
       static_cast<long long>(total_owned_wrong) + total_ghost_wrong,
-      static_cast<long long>(total_here) + total_elsewhere +
-        total_missing);
+      static_cast<long long>(total_here) + total_elsewhere + total_missing);
   }
 
   require(
@@ -675,8 +674,8 @@ void check_distributed_locate(Omega_h::Mesh& mesh)
     gathered.coords, "global element centroids");
 
   const auto divisions = pcms::DivisionsPerAxisForGlobalMesh<Dim>(mesh);
-  const auto local_search = distributed_test::MakeLocalSearch<Dim>(mesh,
-                                                                    divisions);
+  const auto local_search =
+    distributed_test::MakeLocalSearch<Dim>(mesh, divisions);
   pcms::DistributedPointSearch<Dim> search{mesh, local_search};
 
   const auto results = search.Locate(points);
@@ -716,10 +715,9 @@ void check_distributed_locate(Omega_h::Mesh& mesh)
   // A point no rank placed must not name an owner or an element, so a caller
   // cannot mistake it for a location.
   const auto& outside = results[static_cast<size_t>(total)];
-  const bool outside_not_found = outside.status == ResultStatus::NOT_FOUND &&
-                                 outside.owner_rank == -1 &&
-                                 outside.element_id == -1 &&
-                                 outside.global_element_id == -1;
+  const bool outside_not_found =
+    outside.status == ResultStatus::NOT_FOUND && outside.owner_rank == -1 &&
+    outside.element_id == -1 && outside.global_element_id == -1;
 
   const LO t_not_found =
     mesh.comm()->allreduce(n_not_found, Omega_h_Op::OMEGA_H_SUM);
@@ -731,8 +729,7 @@ void check_distributed_locate(Omega_h::Mesh& mesh)
     mesh.comm()->allreduce(n_bad_bary, Omega_h_Op::OMEGA_H_SUM);
   const LO t_points = mesh.comm()->allreduce(n_points, Omega_h_Op::OMEGA_H_SUM);
   const LO t_routed_away = mesh.comm()->allreduce(
-    static_cast<LO>(total) - n_local,
-    Omega_h_Op::OMEGA_H_SUM);
+    static_cast<LO>(total) - n_local, Omega_h_Op::OMEGA_H_SUM);
 
   if (rank == 0) {
     std::printf(

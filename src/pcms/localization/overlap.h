@@ -324,13 +324,14 @@ struct Overlap<Dim, SimplexVsSimplex>
     const r3d::Few<r3d::Vector<Dim>, Dim + 1>& b)
   {
     // The face normal below is a 2D perpendicular or a 3D cross product, so
-    // this predicate is 2D/3D only even though everything else about it reads as
-    // dimension-generic. Without this the higher-dimension case is silent: at
-    // Dim >= 4 `normal[Dim - 1]` is never written and is read as garbage in the
-    // loop below, and at Dim == 1 writing normal[1] and normal[2] runs off the
-    // end of the vector.
-    static_assert(Dim == 2 || Dim == 3,
-                  "simplex-vs-simplex overlap is implemented for 2D and 3D only");
+    // this predicate is 2D/3D only even though everything else about it reads
+    // as dimension-generic. Without this the higher-dimension case is silent:
+    // at Dim >= 4 `normal[Dim - 1]` is never written and is read as garbage in
+    // the loop below, and at Dim == 1 writing normal[1] and normal[2] runs off
+    // the end of the vector.
+    static_assert(
+      Dim == 2 || Dim == 3,
+      "simplex-vs-simplex overlap is implemented for 2D and 3D only");
 
     // Each iteration treats one simplex as the half-space owner. Both are
     // needed: a face of `a` may separate the pair while no face of `b` does.

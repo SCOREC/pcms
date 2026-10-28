@@ -527,7 +527,6 @@ void CopyRank1ViewToDevice(Rank1View<T, DeviceMemorySpace> dest,
     KOKKOS_LAMBDA(LO i) { dest(i) = src_tmp_d(i); });
 }
 
-
 // ---- std::vector <-> device copies ----
 //
 // Each performs at most one host/device transfer. A row-major `std::vector`

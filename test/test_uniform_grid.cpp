@@ -262,7 +262,7 @@ TEST_CASE("cell index round trip on a grid with unequal divisions")
     REQUIRE(grid.CellIndexFromAxisIndices(axis_indices) == cell);
     // The cell's own box must bin back to the same cell.
     const auto box = grid.GetCellBBOX(cell);
-    REQUIRE(grid.ClosestCellID(Omega_h::Vector<3>{
-              box.center[0], box.center[1], box.center[2]}) == cell);
+    REQUIRE(grid.ClosestCellID(Omega_h::Vector<3>{box.center[0], box.center[1],
+                                                  box.center[2]}) == cell);
   }
 }

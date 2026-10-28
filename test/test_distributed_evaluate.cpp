@@ -312,8 +312,7 @@ void check_boundary_arbitration(Omega_h::Mesh& mesh)
   auto field = space->CreateFunction<Real>();
   SetLinearField(field.GetData(), *space->GetLayout());
 
-  const auto gathered =
-    distributed_test::GatherOwnedElementVertices(mesh);
+  const auto gathered = distributed_test::GatherOwnedElementVertices(mesh);
   require(gathered.total > 0, "no owned element vertices were gathered");
   auto device_coords = MakeQueryCoords(gathered.coords, dim);
   const LO n_points = static_cast<LO>(gathered.total);
@@ -662,7 +661,6 @@ void check_out_of_bounds_policy(Omega_h::Mesh& mesh)
   require(threw, "the ERROR policy did not report a point outside the mesh");
 }
 
-
 /// The distributed evaluator reads ghost DOF values.
 ///
 /// A rank evaluates only points in elements it owns, but an owned element can
@@ -688,8 +686,8 @@ void check_ghosts_must_be_synchronized(Omega_h::Mesh& mesh)
 
   // Owned DOFs hold the affine field; ghost DOFs hold a stale value.
   const auto dof_coords = layout.GetDOFHolderCoordinates().GetValues();
-  Kokkos::View<Real**, pcms::DeviceMemorySpace> coords_d("dof coords",
-                                                         n_local, Dim);
+  Kokkos::View<Real**, pcms::DeviceMemorySpace> coords_d("dof coords", n_local,
+                                                         Dim);
   Kokkos::parallel_for(
     "copy_dof_coords",
     Kokkos::RangePolicy<pcms::DeviceMemorySpace::execution_space>(0, n_local),
@@ -703,9 +701,9 @@ void check_ghosts_must_be_synchronized(Omega_h::Mesh& mesh)
   const auto owned = layout.GetOwnedHost();
   std::vector<Real> values(static_cast<size_t>(n_local));
   for (LO i = 0; i < n_local; ++i) {
-    values[static_cast<size_t>(i)] =
-      owned[static_cast<size_t>(i)] ? linear_f(coords(i, 0), coords(i, 1))
-                                    : kStaleGhost;
+    values[static_cast<size_t>(i)] = owned[static_cast<size_t>(i)]
+                                       ? linear_f(coords(i, 0), coords(i, 1))
+                                       : kStaleGhost;
   }
   auto field = space->CreateFunction<Real>();
   field.SetDOFHolderDataHost(distributed_test::TagLike(

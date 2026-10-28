@@ -839,8 +839,7 @@ TEST_CASE("grid and overlap layer above 3D", "[point_search][nd]")
     // Inside cell (0, 1, 2, 3); padded by one cell, clamped to the grid.
     const AABBox<4> box{.center = {0.5, 1.5, 2.5, 3.5},
                         .half_width = {0.25, 0.25, 0.25, 0.25}};
-    const auto range =
-      pcms::candidate_cells<4, pcms::SimplexVsBbox>(box, grid);
+    const auto range = pcms::candidate_cells<4, pcms::SimplexVsBbox>(box, grid);
     const Kokkos::Array<LO, 4> lo{0, 0, 1, 2};
     const Kokkos::Array<LO, 4> hi{1, 2, 3, 4};
     for (int d = 0; d < 4; ++d) {
@@ -868,10 +867,10 @@ TEST_CASE("grid and overlap layer above 3D", "[point_search][nd]")
       }
       return coords;
     };
-    REQUIRE(pcms::Overlap<4, pcms::SimplexVsBbox>::apply(simplex(1.4, 2.0),
-                                                         box));
+    REQUIRE(
+      pcms::Overlap<4, pcms::SimplexVsBbox>::apply(simplex(1.4, 2.0), box));
     // Overlapping on axes 0-2 but entirely past the box on axis 3.
-    REQUIRE_FALSE(pcms::Overlap<4, pcms::SimplexVsBbox>::apply(
-      simplex(1.6, 2.0), box));
+    REQUIRE_FALSE(
+      pcms::Overlap<4, pcms::SimplexVsBbox>::apply(simplex(1.6, 2.0), box));
   }
 }

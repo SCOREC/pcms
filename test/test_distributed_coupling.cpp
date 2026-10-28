@@ -144,8 +144,8 @@ void check_serializer_round_trip(const DistributedCouplingContext& ctx)
   auto target = ctx.space->CreateFunction<Real>();
   serializer.Deserialize(target, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
-  auto target_data = pcms::FlattenToRank1View(
-    target.GetDOFHolderDataHost().GetValues());
+  auto target_data =
+    pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   require(target_data.size() == static_cast<size_t>(n_local),
           "target local size");
 
@@ -377,8 +377,8 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
   exchange_serializer.Deserialize(
     echo_field, pcms::make_const_array_view(payload),
     pcms::make_const_array_view(recv_plan.permutation));
-  auto echo_data = pcms::FlattenToRank1View(
-    echo_field.GetDOFHolderDataHost().GetValues());
+  auto echo_data =
+    pcms::FlattenToRank1View(echo_field.GetDOFHolderDataHost().GetValues());
   for (LO o = 0; o < n_owned; ++o) {
     const LO local = owned_to_local(o);
     if (recv_plan.permutation[static_cast<size_t>(o)] >= 0) {

@@ -151,8 +151,9 @@ public:
       // subview of a LayoutLeft view is not representable as
       // LayoutLeft/LayoutRight (Kokkos falls back to LayoutStride), which
       // MakeConstRank2View/MakeRank2View do not detect.
-      Kokkos::View<T*, DeviceMemorySpace> flat(
-        "ghost_sync_flat", static_cast<size_t>(num_rows) * static_cast<size_t>(nc));
+      Kokkos::View<T*, DeviceMemorySpace> flat("ghost_sync_flat",
+                                               static_cast<size_t>(num_rows) *
+                                                 static_cast<size_t>(nc));
       Kokkos::parallel_for(
         "SynchronizeGhostsFlatten",
         Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_rows),
@@ -165,7 +166,7 @@ public:
         "SynchronizeGhostsUnflatten",
         Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_rows),
         UnflattenFunctor<T>(flat, MakeRank2View(device_data_), row_off,
-                           static_cast<size_t>(nc)));
+                            static_cast<size_t>(nc)));
 
       row_offset += static_cast<size_t>(num_rows);
     }

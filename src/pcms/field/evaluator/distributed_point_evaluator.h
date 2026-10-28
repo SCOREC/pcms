@@ -313,12 +313,11 @@ void DistributedPointEvaluator<T, Dim, LayoutPolicy>::Setup(
   // ---- 2. send each remote point to its owner, once ----
   // Only the remote points' coordinates leave the device, because MPI needs
   // them on the host.
-  const auto send =
-    CopyToHostRowMajor(GatherRows(points, remote_points_));
+  const auto send = CopyToHostRowMajor(GatherRows(points, remote_points_));
   std::vector<int> incoming_scalar_counts;
-  const auto incoming =
-    ExchangeRecords(mesh_.comm()->get_impl(), detail::Scaled(remote_counts_, Dim),
-                    send, incoming_scalar_counts);
+  const auto incoming = ExchangeRecords(mesh_.comm()->get_impl(),
+                                        detail::Scaled(remote_counts_, Dim),
+                                        send, incoming_scalar_counts);
   incoming_counts_.resize(incoming_scalar_counts.size());
   for (size_t r = 0; r < incoming_counts_.size(); ++r) {
     incoming_counts_[r] = incoming_scalar_counts[r] / Dim;
@@ -335,17 +334,16 @@ void DistributedPointEvaluator<T, Dim, LayoutPolicy>::Setup(
   // filled, once, so `Evaluate` never has to decode that from values.
   const auto n_incoming = static_cast<LO>(incoming_coords_.extent(0));
   const auto incoming_filled =
-    incoming_evaluator_ ? detail::FilledFlags(incoming_evaluator_->FilledPoints(),
-                                              n_incoming)
-                        : std::vector<char>(static_cast<size_t>(n_incoming), 0);
-  const auto remote_filled = ExchangeRecordsWithKnownCounts(
-    mesh_.comm()->get_impl(), incoming_counts_, incoming_filled,
-    remote_counts_);
+    incoming_evaluator_
+      ? detail::FilledFlags(incoming_evaluator_->FilledPoints(), n_incoming)
+      : std::vector<char>(static_cast<size_t>(n_incoming), 0);
+  const auto remote_filled =
+    ExchangeRecordsWithKnownCounts(mesh_.comm()->get_impl(), incoming_counts_,
+                                   incoming_filled, remote_counts_);
   const auto own_filled =
-    own_evaluator_
-      ? detail::FilledFlags(own_evaluator_->FilledPoints(),
-                            static_cast<LO>(own.size()))
-      : std::vector<char>{};
+    own_evaluator_ ? detail::FilledFlags(own_evaluator_->FilledPoints(),
+                                         static_cast<LO>(own.size()))
+                   : std::vector<char>{};
 
   std::vector<char> answered(static_cast<size_t>(n_points_), 0);
   for (size_t k = 0; k < own.size(); ++k) {
@@ -389,12 +387,11 @@ Kokkos::View<T**, DeviceMemorySpace>
 DistributedPointEvaluator<T, Dim, LayoutPolicy>::EvaluateLocally(
   const PointEvaluator<T>* evaluator, LO n, const Field<T>& field) const
 {
-  Kokkos::View<T**, DeviceMemorySpace> values("local values", n,
-                                              n_components_);
+  Kokkos::View<T**, DeviceMemorySpace> values("local values", n, n_components_);
   if (evaluator != nullptr) {
-    evaluator->Evaluate(field, ValueView<T, DeviceMemorySpace>(
-                                 field.GetData().GetValueBasis(),
-                                 MakeRank2View(values)));
+    evaluator->Evaluate(
+      field, ValueView<T, DeviceMemorySpace>(field.GetData().GetValueBasis(),
+                                             MakeRank2View(values)));
   }
   return values;
 }
@@ -414,9 +411,9 @@ void DistributedPointEvaluator<T, Dim, LayoutPolicy>::Evaluate(
 
   // Owner side: evaluate this rank's own points and the points sent to it.
   const auto own_values = EvaluateLocally(own_evaluator_.get(), n_own, field);
-  const auto incoming_values = EvaluateLocally(
-    incoming_evaluator_.get(), static_cast<LO>(incoming_coords_.extent(0)),
-    field);
+  const auto incoming_values =
+    EvaluateLocally(incoming_evaluator_.get(),
+                    static_cast<LO>(incoming_coords_.extent(0)), field);
 
   // Route the incoming values back to the ranks that asked: the only values
   // that cross to the host and back, because MPI takes host buffers.

@@ -106,8 +106,8 @@ template <typename T>
   const auto per_rank =
     AllGatherAllRanks(comm, static_cast<int>(values.size()));
   const auto displs = DisplacementsOf(per_rank);
-  std::vector<T> gathered(static_cast<size_t>(
-    std::accumulate(per_rank.begin(), per_rank.end(), 0)));
+  std::vector<T> gathered(
+    static_cast<size_t>(std::accumulate(per_rank.begin(), per_rank.end(), 0)));
   MPI_Allgatherv(values.data(), static_cast<int>(values.size()),
                  GetMPIType(T{}), gathered.data(), per_rank.data(),
                  displs.data(), GetMPIType(T{}), comm);

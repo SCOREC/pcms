@@ -103,8 +103,8 @@ Omega_h::Mesh BuildGhostedBox(Omega_h::CommPtr world)
   const LO n = (Dim == 2 ? 4 : 2) * world->size();
   const Real z = Dim == 2 ? 0.0 : 1.0;
   const LO nz = Dim == 2 ? 0 : n;
-  auto mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, z, n, n, nz,
-                                 false);
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, z, n, n, nz, false);
   mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
   return mesh;
 }
@@ -219,8 +219,7 @@ inline GatheredPoints GatherOwnedElementVertices(Omega_h::Mesh& mesh)
 /// Interleaved coordinates as a device point view, `[n][Dim]`.
 template <int Dim>
 Kokkos::View<Real* [Dim]> ToPointView(const std::vector<Real>& interleaved,
-                                      const char* label = "points")
-{
+                                      const char* label = "points") {
   const auto n = static_cast<LO>(interleaved.size() / Dim);
   Kokkos::View<Real* [Dim]> points(std::string(label), n);
   auto points_h = Kokkos::create_mirror_view(points);
@@ -246,7 +245,8 @@ pcms::ValueView<T, MemorySpace, Layout> TagLike(
 
 template <typename T>
 pcms::ValueView<T, pcms::DeviceMemorySpace> TagLike(
-  const pcms::Field<T>& field, Kokkos::View<T**, pcms::DeviceMemorySpace> values)
+  const pcms::Field<T>& field,
+  Kokkos::View<T**, pcms::DeviceMemorySpace> values)
 {
   return {field.GetData().GetValueBasis(), pcms::MakeRank2View(values)};
 }

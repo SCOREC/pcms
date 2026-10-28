@@ -86,9 +86,9 @@ construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
 
 /// How the candidate map learns an element's geometry, and a conservative bound
 /// on it. The default policy for an Omega_h simplex mesh; defined in the source
-/// file alongside the rest of the map machinery. A different element shape means
-/// a different policy with the same three members, which is the only thing that
-/// has to change to bin that shape against the same grid.
+/// file alongside the rest of the map machinery. A different element shape
+/// means a different policy with the same three members, which is the only
+/// thing that has to change to bin that shape against the same grid.
 template <int Dim>
 struct MeshSimplexElements;
 

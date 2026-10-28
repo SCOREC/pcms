@@ -111,7 +111,8 @@ void check_distributed_evaluation(Omega_h::Mesh& mesh,
                                                               n_local, 1)));
   field.SynchronizeGhosts();
 
-  auto data = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  auto data =
+    pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   for (LO i = 0; i < n_local; ++i) {
     require(std::fabs(data[static_cast<size_t>(i)] -
                       linear_f(coords(i, 0), coords(i, 1))) < 1.0e-12,
@@ -223,8 +224,8 @@ int main(int argc, char** argv)
       require(world->size() >= 2, "test requires at least 2 MPI ranks");
 
       const int n = 4 * world->size();
-      auto mesh =
-        Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n, n, 0, false);
+      auto mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n,
+                                     n, 0, false);
       mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
       auto space = pcms::LagrangeFunctionSpace::FromMesh(
         mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",

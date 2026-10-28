@@ -93,9 +93,9 @@ public:
     // device_data_ may be component-major on device; flatten to dof-major
     // order for Omega_h's sync_array, then scatter the synchronized values
     // back.
-    Kokkos::View<T*, DeviceMemorySpace> flat(
-      "ghost_sync_flat",
-      static_cast<size_t>(num_rows) * static_cast<size_t>(nc));
+    Kokkos::View<T*, DeviceMemorySpace> flat("ghost_sync_flat",
+                                             static_cast<size_t>(num_rows) *
+                                               static_cast<size_t>(nc));
     CopyDeviceRank2ViewToDeviceView(flat, MakeConstRank2View(device_data_));
 
     SynchronizeOmegaHBlock<T>(oh->GetMesh(), dim, nc, flat);

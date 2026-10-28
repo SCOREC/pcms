@@ -23,7 +23,7 @@ static constexpr int COMM_ROUNDS = 4;
 namespace ts = test_support;
 
 void initializeFieldWithGids(const pcms::FieldLayout& layout,
-                             pcms::FieldData<pcms::Real>* field,
+                             pcms::Field<pcms::Real>& field,
                              pcms::Real multiplier = 1.0)
 {
   auto gids = layout.GetGidsHost();
@@ -36,17 +36,21 @@ void initializeFieldWithGids(const pcms::FieldLayout& layout,
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
     [=](int i) { ids[i] = gids[i] * multiplier; });
 
-  field->SetDOFHolderDataHost(
-    pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(ids.data(), n, 1));
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{},
+      pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(ids.data(), n,
+                                                               1)));
 }
 
 bool validateField(const pcms::FieldLayout& layout,
-                   pcms::FieldData<pcms::Real>* field,
+                   const pcms::Field<pcms::Real>* field,
                    const std::string& field_name, int rank,
                    pcms::Real multiplier = 1.0)
 {
   auto gids = layout.GetGidsHost();
-  auto copied_array = pcms::FlattenToRank1View(field->GetDOFHolderDataHost());
+  auto copied_array =
+    pcms::FlattenToRank1View(field->GetDOFHolderDataHost().GetValues());
   auto owned = layout.GetOwnedHost();
   const auto n = layout.GetNumOwnedDofHolder();
 
@@ -98,13 +102,10 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   auto gids_field = factory->CreateFunction<pcms::Real>("gids");
   auto gids2_field = factory->CreateFunction<pcms::Real>("gids2");
 
-  auto* gids_ptr = &gids_field.GetData();
-  auto* gids2_ptr = &gids2_field.GetData();
+  initializeFieldWithGids(*factory->GetLayout(), gids_field, 1.0);
+  initializeFieldWithGids(*factory->GetLayout(), gids2_field, 2.0);
 
-  initializeFieldWithGids(*factory->GetLayout(), gids_ptr, 1.0);
-  initializeFieldWithGids(*factory->GetLayout(), gids2_ptr, 2.0);
-
-  app->AddField(std::move(gids_field));
+  const auto* gids_ptr = &app->AddField(std::move(gids_field)).GetField();
   app->AddField(std::move(gids2_field));
 
   do {
@@ -139,11 +140,9 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
 
   auto gids_field = factory->CreateFunction<pcms::Real>("gids");
 
-  auto* gids_ptr = &gids_field.GetData();
+  initializeFieldWithGids(*factory->GetLayout(), gids_field, 10.0);
 
-  initializeFieldWithGids(*factory->GetLayout(), gids_ptr, 10.0);
-
-  app->AddField(std::move(gids_field));
+  const auto* gids_ptr = &app->AddField(std::move(gids_field)).GetField();
 
   do {
     for (int i = 0; i < COMM_ROUNDS; ++i) {
@@ -188,12 +187,10 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   auto delta_gids_field = factory_delta->CreateFunction<pcms::Real>("gids");
   auto delta_gids2_field = factory_delta->CreateFunction<pcms::Real>("gids2");
 
-  auto* total_gids_ptr = &total_gids_field.GetData();
-  auto* delta_gids_ptr = &delta_gids_field.GetData();
-  auto* delta_gids2_ptr = &delta_gids2_field.GetData();
-
-  total_f->AddField(std::move(total_gids_field));
-  delta_f->AddField(std::move(delta_gids_field));
+  const auto* total_gids_ptr =
+    &total_f->AddField(std::move(total_gids_field)).GetField();
+  const auto* delta_gids_ptr =
+    &delta_f->AddField(std::move(delta_gids_field)).GetField();
   delta_f->AddField(std::move(delta_gids2_field));
 
   do {

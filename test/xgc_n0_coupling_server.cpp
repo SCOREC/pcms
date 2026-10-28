@@ -49,9 +49,7 @@ struct RegisteredField
   PCMS_ALWAYS_ASSERT(application != nullptr);
   auto field_name = MakeFieldName(name, plane);
   auto field = function_space->CreateFunction<pcms::Real>(path + field_name);
-  std::unique_ptr<pcms::FieldSerializer<pcms::Real>> serializer =
-    std::make_unique<pcms::FieldSerializer<pcms::Real>>();
-  auto handle = application->AddField(std::move(field), std::move(serializer));
+  auto handle = application->AddField(std::move(field));
   return {std::move(handle)};
 }
 

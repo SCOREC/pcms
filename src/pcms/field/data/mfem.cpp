@@ -32,8 +32,7 @@ const ValueBasis& MFEMVertexFieldData::GetValueBasis() const
   return basis_;
 }
 
-Rank2View<const Real, HostMemorySpace>
-MFEMVertexFieldData::GetDOFHolderDataHost() const
+Rank2View<const Real, HostMemorySpace> MFEMVertexFieldData::GatherHost() const
 {
   PCMS_FUNCTION_TIMER;
 
@@ -54,7 +53,7 @@ MFEMVertexFieldData::GetDOFHolderDataHost() const
   return MakeConstRank2View(host_data_);
 }
 
-void MFEMVertexFieldData::SetDOFHolderDataHost(
+void MFEMVertexFieldData::ScatterHost(
   Rank2View<const Real, HostMemorySpace> data)
 {
   PCMS_FUNCTION_TIMER;
@@ -79,20 +78,20 @@ void MFEMVertexFieldData::SetDOFHolderDataHost(
   gf_.SetFromTrueDofs(true_values);
 }
 
-Rank2View<const Real, DeviceMemorySpace> MFEMVertexFieldData::GetDOFHolderData()
+Rank2View<const Real, DeviceMemorySpace> MFEMVertexFieldData::GetOwnedValues()
   const
 {
-  GetDOFHolderDataHost();
+  GatherHost();
   DeepCopyMismatchLayouts(device_data_, host_data_);
   return MakeConstRank2View(device_data_);
 }
 
-void MFEMVertexFieldData::SetDOFHolderData(
+void MFEMVertexFieldData::SetOwnedValues(
   Rank2View<const Real, DeviceMemorySpace> data)
 {
   CopyDeviceRank2ViewToDeviceView(device_data_, data);
   DeepCopyMismatchLayouts(host_data_, device_data_);
-  SetDOFHolderDataHost(MakeConstRank2View(host_data_));
+  ScatterHost(MakeConstRank2View(host_data_));
 }
 
 } // namespace pcms

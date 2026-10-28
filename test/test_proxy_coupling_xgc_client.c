@@ -67,10 +67,11 @@ int main(int argc, char** argv)
     int communicating_rank = (i == plane) && (plane_rank == 0);
     if (plane == i) {
       field_adapters[i] = pcms_create_xgc_field_adapter(
-        "adapter1", plane_comm, data, nverts, PCMS_LONG_INT, rc, &in_overlap);
+        "adapter1", plane_comm, data, nverts, PCMS_LONG_INT, rc);
     } else {
       field_adapters[i] = pcms_create_dummy_field_adapter();
     }
+    pcms_set_overlap_mask(client, field_name, &in_overlap);
     field[i] =
       pcms_add_field(client, field_name, field_adapters[i], communicating_rank);
   }

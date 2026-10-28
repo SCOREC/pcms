@@ -87,9 +87,11 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field set/get DOF "
   std::vector<Real> data{1.0, 2.0, 3.0, 4.0};
   Rank2View<const Real, HostMemorySpace> data_view(
     data.data(), static_cast<LO>(data.size()), 1);
-  field.GetData().SetDOFHolderDataHost(data_view);
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(pcms::ValueBasis{},
+                                                             data_view));
 
-  auto got = pcms::FlattenToRank1View(field.GetData().GetDOFHolderDataHost());
+  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(got.size() == data.size());
   for (LO i = 0; i < static_cast<LO>(data.size()); ++i) {
     REQUIRE(got[i] == Catch::Approx(data[i]));

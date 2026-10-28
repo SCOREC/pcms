@@ -340,8 +340,7 @@ struct SetFieldFunctor
 // arity of func selects the spatial dimension: func(x, y) for 2D layouts,
 // func(x, y, z) for 3D.
 template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
-inline void SetField(const FieldLayout& layout, FieldData<Real>& field,
-                     Func func)
+inline void SetField(Field<Real>& field, Func func)
 {
   using MemorySpace = typename ExecutionSpace::memory_space;
 
@@ -349,7 +348,7 @@ inline void SetField(const FieldLayout& layout, FieldData<Real>& field,
                   std::is_invocable_v<Func, Real, Real, Real>,
                 "SetField requires func(x, y) or func(x, y, z)");
 
-  auto dof_coords = layout.GetDOFHolderCoordinates().GetValues();
+  auto dof_coords = field.GetLayout().GetDOFHolderCoordinates().GetValues();
   int n = static_cast<int>(dof_coords.extent(0));
 
   Kokkos::View<Real*, MemorySpace> data_device("data_device", n);
@@ -360,13 +359,9 @@ inline void SetField(const FieldLayout& layout, FieldData<Real>& field,
   auto data_host =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), data_device);
   field.SetDOFHolderDataHost(
-    Rank2View<const Real, HostMemorySpace>(data_host.data(), n, 1));
-}
-
-template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
-inline void SetField(Field<Real>& field, Func func)
-{
-  SetField<ExecutionSpace>(field.GetLayout(), field.GetData(), func);
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{},
+      Rank2View<const Real, HostMemorySpace>(data_host.data(), n, 1)));
 }
 
 // Set multi-component DOF data by sampling func at each DOF-holder
@@ -396,15 +391,10 @@ inline void SetFieldComponents(Field<Real>& field, Func func)
       func(coords_host(i, 0), coords_host(i, 1), out);
     }
   }
-  field.SetDOFHolderDataUncheckedHost(
-    Rank2View<const Real, HostMemorySpace>(data.data(), n, num_components));
-}
-
-template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
-inline void SetField(FieldData<Real>& field, const FieldLayout& layout,
-                     Func func)
-{
-  SetField<ExecutionSpace>(layout, field, func);
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      field.GetData().GetValueBasis(),
+      Rank2View<const Real, HostMemorySpace>(data.data(), n, num_components)));
 }
 
 // Helper structure to hold device coordinates with proper lifetime management

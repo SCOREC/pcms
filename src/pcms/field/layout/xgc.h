@@ -4,7 +4,6 @@
 #include "pcms/discretization/discretization/xgc.hpp"
 #include "pcms/discretization/discretization/xgc_reverse_classification.h"
 #include "pcms/field/field_layout.h"
-#include <functional>
 
 namespace pcms
 {
@@ -13,7 +12,6 @@ class XGCFieldLayout : public FieldLayout
 {
 public:
   XGCFieldLayout(const ReverseClassificationVertex& reverse_classification,
-                 std::function<int8_t(int, int)> in_overlap,
                  LO num_plane_nodes);
 
   std::shared_ptr<const Discretization> GetDiscretization()

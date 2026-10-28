@@ -423,35 +423,41 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
 // (check_distributed_exchange).
 int main(int argc, char** argv)
 {
-  MPI_Init(&argc, &argv);
-  int result = 0;
-  {
-    Omega_h::Library lib(&argc, &argv);
-    auto world = lib.world();
-    const int rank = world->rank();
-    const int nproc = world->size();
-    require(nproc >= 2, "test requires at least 2 MPI ranks");
+  try {
+    MPI_Init(&argc, &argv);
+    int result = 0;
+    {
+      Omega_h::Library lib(&argc, &argv);
+      auto world = lib.world();
+      const int rank = world->rank();
+      const int nproc = world->size();
+      require(nproc >= 2, "test requires at least 2 MPI ranks");
 
-    const int n = 4 * nproc;
-    Omega_h::Mesh mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0,
-                                            0.0, /*nx=*/n, /*ny=*/n, /*nz=*/0,
-                                            /*symmetric=*/false);
-    mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
+      const int n = 4 * nproc;
+      Omega_h::Mesh mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0,
+                                              0.0, /*nx=*/n, /*ny=*/n, /*nz=*/0,
+                                              /*symmetric=*/false);
+      mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
 
-    auto space = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, /*order=*/1, /*num_components=*/1,
-      pcms::csys::Cartesian::Deferred(), "global",
-      pcms::LagrangeFunctionSpace::Backend::OmegaH);
-    const DistributedCouplingContext ctx{mesh, space, rank, nproc};
+      auto space = pcms::LagrangeFunctionSpace::FromMesh(
+        mesh, /*order=*/1, /*num_components=*/1,
+        pcms::csys::Cartesian::Deferred(), "global",
+        pcms::LagrangeFunctionSpace::Backend::OmegaH);
+      const DistributedCouplingContext ctx{mesh, space, rank, nproc};
 
-    check_serializer_round_trip(ctx);
+      check_serializer_round_trip(ctx);
 
-    check_distributed_exchange(ctx);
+      check_distributed_exchange(ctx);
 
-    if (rank == 0) {
-      std::printf("distributed coupling test passed (nproc=%d)\n", nproc);
+      if (rank == 0) {
+        std::printf("distributed coupling test passed (nproc=%d)\n", nproc);
+      }
     }
+    MPI_Finalize();
+    return result;
+  } catch (const std::exception& e) {
+    distributed_test::AbortAllRanks(e.what());
+  } catch (...) {
+    distributed_test::AbortAllRanks("unknown exception");
   }
-  MPI_Finalize();
-  return result;
 }

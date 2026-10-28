@@ -215,22 +215,28 @@ void check_distributed_evaluation(Omega_h::Mesh& mesh,
 
 int main(int argc, char** argv)
 {
-  MPI_Init(&argc, &argv);
-  {
-    Omega_h::Library library(&argc, &argv);
-    auto world = library.world();
-    require(world->size() >= 2, "test requires at least 2 MPI ranks");
+  try {
+    MPI_Init(&argc, &argv);
+    {
+      Omega_h::Library library(&argc, &argv);
+      auto world = library.world();
+      require(world->size() >= 2, "test requires at least 2 MPI ranks");
 
-    const int n = 4 * world->size();
-    auto mesh =
-      Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n, n, 0, false);
-    mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
-    auto space = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-      pcms::LagrangeFunctionSpace::Backend::OmegaH);
+      const int n = 4 * world->size();
+      auto mesh =
+        Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n, n, 0, false);
+      mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
+      auto space = pcms::LagrangeFunctionSpace::FromMesh(
+        mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
+        pcms::LagrangeFunctionSpace::Backend::OmegaH);
 
-    check_distributed_evaluation(mesh, *space);
+      check_distributed_evaluation(mesh, *space);
+    }
+    MPI_Finalize();
+    return 0;
+  } catch (const std::exception& e) {
+    distributed_test::AbortAllRanks(e.what());
+  } catch (...) {
+    distributed_test::AbortAllRanks("unknown exception");
   }
-  MPI_Finalize();
-  return 0;
 }

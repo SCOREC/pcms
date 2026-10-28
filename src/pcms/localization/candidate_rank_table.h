@@ -127,10 +127,10 @@ public:
     // of a fixed 2*Dim values per rank. `Omega_h::Comm::allgather` cannot be
     // used: it only exchanges with the ranks of the mesh's communication graph.
     // \see pcms/utility/mpi_utilities.h
-    Kokkos::Array<LO, 2 * Dim> local{};
+    Kokkos::Array<LO, 2 * static_cast<size_t>(Dim)> local{};
     for (int d = 0; d < Dim; ++d) {
       local[static_cast<size_t>(d)] = local_range_.lo[d];
-      local[static_cast<size_t>(Dim + d)] = local_range_.hi[d];
+      local[static_cast<size_t>(Dim) + d] = local_range_.hi[d];
     }
     const auto gathered =
       AllGatherAllRanks(comm->get_impl(), local.data(), 2 * Dim);

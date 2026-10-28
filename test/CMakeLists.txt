@@ -76,10 +76,6 @@ if(PCMS_ENABLE_OMEGA_H)
     mpi_test(test_distributed_evaluate_2p 2
              $<TARGET_FILE:test_distributed_evaluate>)
   endif()
-  if(HOST_NPROC GREATER_EQUAL 3)
-    mpi_test(test_distributed_evaluate_3p 3
-             $<TARGET_FILE:test_distributed_evaluate>)
-  endif()
   if(HOST_NPROC GREATER_EQUAL 4)
     mpi_test(test_distributed_evaluate_4p 4
              $<TARGET_FILE:test_distributed_evaluate>)
@@ -89,8 +85,10 @@ if(PCMS_ENABLE_OMEGA_H)
     mpi_test(test_distributed_search_2p 2
              $<TARGET_FILE:test_distributed_search>)
   endif()
-  if(HOST_NPROC GREATER_EQUAL 3)
-    mpi_test(test_distributed_search_3p 3
+  # Omega_h::build_box partitions by recursive bisection, which needs a
+  # power-of-two rank count, so the distributed tests skip 3 ranks.
+  if(HOST_NPROC GREATER_EQUAL 4)
+    mpi_test(test_distributed_search_4p 4
              $<TARGET_FILE:test_distributed_search>)
   endif()
   set(d3d1p ${PCMS_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc.osh/)

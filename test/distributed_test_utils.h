@@ -21,6 +21,8 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <exception>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -40,6 +42,17 @@ inline void require(bool condition, const char* message)
     std::fprintf(stderr, "[rank %d] check failed: %s\n", rank, message);
     MPI_Abort(MPI_COMM_WORLD, 1);
   }
+}
+
+/// Report `what` and abort every rank. For exceptions escaping `main`: a rank
+/// that just returned would leave the others blocked in their next collective.
+[[noreturn]] inline void AbortAllRanks(const char* what) noexcept
+{
+  int rank = -1;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  std::fprintf(stderr, "[rank %d] uncaught exception: %s\n", rank, what);
+  MPI_Abort(MPI_COMM_WORLD, 1);
+  std::abort(); // MPI_Abort does not return, but is not declared noreturn
 }
 
 /// Abort unless every rank holds the same integer value.
@@ -76,9 +89,17 @@ inline void require_same_real_on_all_ranks(Omega_h::CommPtr comm, Real value,
 /// The unit square (2D) or cube (3D) as a simplex mesh, partitioned over
 /// `world` with one ghost layer. The resolution grows with the rank count so
 /// every rank holds some elements.
+///
+/// `world` must have a power-of-two size: `Omega_h::build_box` partitions by
+/// recursive bisection. A debug Omega_h asserts on any other size; a release
+/// one silently produces a broken partition.
 template <int Dim>
 Omega_h::Mesh BuildGhostedBox(Omega_h::CommPtr world)
 {
+  const int size = world->size();
+  require(size > 0 && (size & (size - 1)) == 0,
+          "BuildGhostedBox needs a power-of-two rank count (Omega_h::build_box "
+          "partitions by recursive bisection)");
   const LO n = (Dim == 2 ? 4 : 2) * world->size();
   const Real z = Dim == 2 ? 0.0 : 1.0;
   const LO nz = Dim == 2 ? 0 : n;

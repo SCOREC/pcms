@@ -321,10 +321,10 @@ void check_published_ranges(Omega_h::Mesh& mesh,
   // Independent expectations, gathered and compared against the table: this is
   // the check that a rank-indexed gather went to all ranks rather than only to
   // the mesh's communication-graph neighbours.
-  Kokkos::Array<LO, 2 * Dim> local{};
+  Kokkos::Array<LO, 2 * static_cast<size_t>(Dim)> local{};
   for (int d = 0; d < Dim; ++d) {
     local[static_cast<size_t>(d)] = expected.lo[d];
-    local[static_cast<size_t>(Dim + d)] = expected.hi[d];
+    local[static_cast<size_t>(Dim) + d] = expected.hi[d];
   }
   const auto all =
     pcms::AllGatherAllRanks(comm->get_impl(), local.data(), 2 * Dim);
@@ -624,8 +624,9 @@ void check_local_classification(Omega_h::Mesh& mesh)
       static_cast<long long>(total_owned), static_cast<long long>(total_here),
       static_cast<long long>(total_elsewhere),
       static_cast<long long>(total_missing),
-      static_cast<long long>(total_owned_wrong + total_ghost_wrong),
-      static_cast<long long>(total_here + total_elsewhere + total_missing));
+      static_cast<long long>(total_owned_wrong) + total_ghost_wrong,
+      static_cast<long long>(total_here) + total_elsewhere +
+        total_missing);
   }
 
   require(
@@ -897,19 +898,25 @@ void run_all(Omega_h::CommPtr world)
 
 int main(int argc, char** argv)
 {
-  MPI_Init(&argc, &argv);
-  {
-    Omega_h::Library library(&argc, &argv);
-    auto world = library.world();
-    require(world->size() >= 2, "test requires at least 2 MPI ranks");
+  try {
+    MPI_Init(&argc, &argv);
+    {
+      Omega_h::Library library(&argc, &argv);
+      auto world = library.world();
+      require(world->size() >= 2, "test requires at least 2 MPI ranks");
 
-    run_all<2>(world);
-    run_all<3>(world);
+      run_all<2>(world);
+      run_all<3>(world);
 
-    if (world->rank() == 0) {
-      std::printf("distributed search test passed\n");
+      if (world->rank() == 0) {
+        std::printf("distributed search test passed\n");
+      }
     }
+    MPI_Finalize();
+    return 0;
+  } catch (const std::exception& e) {
+    distributed_test::AbortAllRanks(e.what());
+  } catch (...) {
+    distributed_test::AbortAllRanks("unknown exception");
   }
-  MPI_Finalize();
-  return 0;
 }

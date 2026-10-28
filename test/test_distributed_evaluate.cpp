@@ -741,7 +741,7 @@ void check_ghosts_must_be_synchronized(Omega_h::Mesh& mesh)
     std::printf("%dD ghost sync: %lld of %lld points wrong with stale ghosts, "
                 "%lld after SynchronizeGhosts\n",
                 Dim, static_cast<long long>(wrong_before_sync),
-                static_cast<long long>(n_points * mesh.comm()->size()),
+                static_cast<long long>(n_points) * mesh.comm()->size(),
                 static_cast<long long>(wrong_after_sync));
   }
   require(wrong_after_sync == 0,
@@ -751,33 +751,39 @@ void check_ghosts_must_be_synchronized(Omega_h::Mesh& mesh)
 
 int main(int argc, char** argv)
 {
-  MPI_Init(&argc, &argv);
-  {
-    Omega_h::Library library(&argc, &argv);
-    auto world = library.world();
-    require(world->size() >= 2, "test requires at least 2 MPI ranks");
-
+  try {
+    MPI_Init(&argc, &argv);
     {
-      auto mesh = distributed_test::BuildGhostedBox<2>(world);
-      check_agrees_with_serial<2>(mesh, /*order=*/1);
-      check_agrees_with_serial<2>(mesh, /*order=*/0);
-      check_boundary_arbitration<2>(mesh);
-      check_backend_without_distributed_code<2>(mesh);
-      check_out_of_bounds_policy<2>(mesh);
-      check_ghosts_must_be_synchronized<2>(mesh);
-    }
+      Omega_h::Library library(&argc, &argv);
+      auto world = library.world();
+      require(world->size() >= 2, "test requires at least 2 MPI ranks");
 
-    {
-      auto mesh = distributed_test::BuildGhostedBox<3>(world);
-      check_agrees_with_serial<3>(mesh, /*order=*/1);
-      check_ghosts_must_be_synchronized<3>(mesh);
-      check_out_of_bounds_policy<3>(mesh);
-    }
+      {
+        auto mesh = distributed_test::BuildGhostedBox<2>(world);
+        check_agrees_with_serial<2>(mesh, /*order=*/1);
+        check_agrees_with_serial<2>(mesh, /*order=*/0);
+        check_boundary_arbitration<2>(mesh);
+        check_backend_without_distributed_code<2>(mesh);
+        check_out_of_bounds_policy<2>(mesh);
+        check_ghosts_must_be_synchronized<2>(mesh);
+      }
 
-    if (world->rank() == 0) {
-      std::printf("distributed evaluation test passed\n");
+      {
+        auto mesh = distributed_test::BuildGhostedBox<3>(world);
+        check_agrees_with_serial<3>(mesh, /*order=*/1);
+        check_ghosts_must_be_synchronized<3>(mesh);
+        check_out_of_bounds_policy<3>(mesh);
+      }
+
+      if (world->rank() == 0) {
+        std::printf("distributed evaluation test passed\n");
+      }
     }
+    MPI_Finalize();
+    return 0;
+  } catch (const std::exception& e) {
+    distributed_test::AbortAllRanks(e.what());
+  } catch (...) {
+    distributed_test::AbortAllRanks("unknown exception");
   }
-  MPI_Finalize();
-  return 0;
 }

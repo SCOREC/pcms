@@ -47,6 +47,30 @@ struct FieldSamples
   Flags inside;
 };
 
+/// Stage slopes, stage points and stage flags of one RK4 step, allocated once
+/// per trace and reused by every substep.
+struct RK4Workspace
+{
+  explicit RK4Workspace(size_t n)
+    : k1R(Allocate("tracer_k1R", n)),
+      k1Z(Allocate("tracer_k1Z", n)),
+      k2R(Allocate("tracer_k2R", n)),
+      k2Z(Allocate("tracer_k2Z", n)),
+      k3R(Allocate("tracer_k3R", n)),
+      k3Z(Allocate("tracer_k3Z", n)),
+      k4R(Allocate("tracer_k4R", n)),
+      k4Z(Allocate("tracer_k4Z", n)),
+      Rs(Allocate("tracer_Rs", n)),
+      Zs(Allocate("tracer_Zs", n)),
+      ok(Kokkos::view_alloc(Kokkos::WithoutInitializing, "tracer_ok"), n)
+  {
+  }
+
+  Reals k1R, k1Z, k2R, k2Z, k3R, k3Z, k4R, k4Z;
+  Reals Rs, Zs;
+  Flags ok;
+};
+
 /// Axis-aligned R-Z box of the equilibrium grid, in m.
 struct Box
 {
@@ -199,16 +223,14 @@ void RecordStation(const Positions& positions, size_t k, const Reals& R,
 }
 
 void RK4Step(const AxisymmetricMagneticField& field, Real h, FieldSamples& f,
-             const Reals& R, const Reals& Z, const Flags& valid)
+             const RK4Workspace& w, const Reals& R, const Reals& Z,
+             const Flags& valid)
 {
-  const size_t n = R.extent(0);
   const Real s = field.GetPoloidalSign();
-  const Reals k1R = Allocate("tracer_k1R", n), k1Z = Allocate("tracer_k1Z", n);
-  const Reals k2R = Allocate("tracer_k2R", n), k2Z = Allocate("tracer_k2Z", n);
-  const Reals k3R = Allocate("tracer_k3R", n), k3Z = Allocate("tracer_k3Z", n);
-  const Reals k4R = Allocate("tracer_k4R", n), k4Z = Allocate("tracer_k4Z", n);
-  const Reals Rs = Allocate("tracer_Rs", n), Zs = Allocate("tracer_Zs", n);
-  Flags ok(Kokkos::view_alloc(Kokkos::WithoutInitializing, "tracer_ok"), n);
+  const Reals &k1R = w.k1R, &k1Z = w.k1Z, &k2R = w.k2R, &k2Z = w.k2Z;
+  const Reals &k3R = w.k3R, &k3Z = w.k3Z, &k4R = w.k4R, &k4Z = w.k4Z;
+  const Reals &Rs = w.Rs, &Zs = w.Zs;
+  const Flags& ok = w.ok;
   Kokkos::deep_copy(ok, valid);
 
   f.Evaluate(field, R, Z);
@@ -290,6 +312,7 @@ TracedPoints TraceFieldLines(const AxisymmetricMagneticField& field,
   Kokkos::deep_copy(R, R0);
   Kokkos::deep_copy(Z, Z0);
   FieldSamples f(n);
+  RK4Workspace w(n);
   f.Evaluate(field, R, Z);
   const Reals psi0 = Allocate("tracer_psi0", n);
   Kokkos::deep_copy(psi0, f.psi);
@@ -304,7 +327,7 @@ TracedPoints TraceFieldLines(const AxisymmetricMagneticField& field,
     // substeps land exactly on the next station.
     const Real h = delta / static_cast<Real>(num_steps);
     for (long step = 0; step < num_steps; ++step) {
-      RK4Step(field, h, f, R, Z, traced.valid);
+      RK4Step(field, h, f, w, R, Z, traced.valid);
     }
     if (project_to_psi) {
       ProjectToPsi(field, f, psi0, R, Z, traced.valid);

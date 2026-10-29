@@ -33,8 +33,9 @@ Real CircularPsi(Real R, Real Z)
   return kC * ((R - kAxisR) * (R - kAxisR) + Z * Z);
 }
 
-// Field line through (R0 + r, 0) at phi = 0 for psi = c*((R - R0)^2 + Z^2) and
-// constant I: d(theta)/d(phi) = -s * (2c / I) * (R0 + r*cos(theta)) integrates
+// Field line through (R0 + r, 0) at phi = 0 for psi = c*((R - R0)^2 + Z^2),
+// with I the value of I(psi) on that line (psi, hence I, is constant along it):
+// d(theta)/d(phi) = -s * (2c / I) * (R0 + r*cos(theta)) integrates
 // to tan(theta / 2) = sqrt((R0 + r) / (R0 - r)) * tan(x).
 struct RZPoint
 {
@@ -42,10 +43,10 @@ struct RZPoint
   Real Z;
 };
 
-RZPoint AnalyticFieldLine(Real r, Real phi, int s)
+RZPoint AnalyticFieldLine(Real r, Real phi, int s, Real I = kI)
 {
   const Real k = std::sqrt(kAxisR * kAxisR - r * r);
-  const Real x = 0.5 * k * (-s * (2.0 * kC / kI) * phi);
+  const Real x = 0.5 * k * (-s * (2.0 * kC / I) * phi);
   // atan2 instead of tan: theta passes through pi, where tan(theta / 2) is
   // singular. theta is only known modulo 2*pi, which is enough for R and Z.
   const Real theta =
@@ -355,6 +356,84 @@ TEST_CASE("TraceFieldLines: fourth-order convergence in phi",
   CAPTURE(coarse, fine);
   REQUIRE(fine > 1e-13); // above rounding, so the ratio is meaningful
   CHECK(coarse / fine > 12.0);
+}
+
+TEST_CASE(
+  "TraceFieldLines: matches the analytic solution with I varying in psi",
+  "[field_line_tracer]")
+{
+  // psi is constant along a field line, so with I(psi) = I0 + a * psi each line
+  // sees the constant I0 + a * c * r^2 and the analytic solution still holds.
+  const Real slope = 2.0;
+  const auto psi_grid = UniformValues(0.0, 0.13, 27);
+  std::vector<Real> I_psi(psi_grid.size());
+  for (size_t i = 0; i < psi_grid.size(); ++i) {
+    I_psi[i] = kI + slope * psi_grid[i];
+  }
+  const pcms::AxisymmetricMagneticField field(
+    MakeCircularEquilibrium(1.0, psi_grid, I_psi), 1);
+  const auto stations = pcms::WedgeStations(0.0, 2.0 * kPi / 8, 8);
+  for (const Real r : {0.3, 0.6, 0.9}) {
+    const Real I = kI + slope * kC * r * r;
+    const auto trace = Trace(field, {kAxisR + r}, {0.0}, stations, 0.01);
+    REQUIRE(trace.valid(0));
+    for (size_t k = 0; k < stations.size(); ++k) {
+      const auto exact = AnalyticFieldLine(r, stations[k], 1, I);
+      CAPTURE(r, I, k, stations[k]);
+      CHECK(trace.positions(k, 0, 0) == Approx(exact.R).margin(1e-9));
+      CHECK(trace.positions(k, 0, 1) == Approx(exact.Z).margin(1e-9));
+    }
+  }
+}
+
+TEST_CASE("TraceFieldLines: traces toward negative phi", "[field_line_tracer]")
+{
+  // Strictly decreasing stations integrate backwards along the field line.
+  const auto eqdsk = MakeCircularEquilibrium();
+  const auto stations = pcms::WedgeStations(0.0, -2.0 * kPi / 8, 8);
+  REQUIRE(stations.back() == Approx(-2.0 * kPi));
+  for (const int s : {1, -1}) {
+    const pcms::AxisymmetricMagneticField field(eqdsk, s);
+    for (const Real r : {0.3, 0.9}) {
+      const auto trace = Trace(field, {kAxisR + r}, {0.0}, stations, 0.01);
+      REQUIRE(trace.valid(0));
+      for (size_t k = 0; k < stations.size(); ++k) {
+        const auto exact = AnalyticFieldLine(r, stations[k], s);
+        CAPTURE(s, r, k, stations[k]);
+        CHECK(trace.positions(k, 0, 0) == Approx(exact.R).margin(1e-9));
+        CHECK(trace.positions(k, 0, 1) == Approx(exact.Z).margin(1e-9));
+      }
+    }
+  }
+}
+
+TEST_CASE("TraceFieldLines: stations in a device view give the same result",
+          "[field_line_tracer]")
+{
+  // Both overloads run the same steps, so the results are identical.
+  const pcms::AxisymmetricMagneticField field(MakeCircularEquilibrium(), 1);
+  const auto stations = pcms::WedgeStations(0.0, 2.0 * kPi / 16, 4);
+  const std::vector<Real> R0 = {2.3, 2.6};
+  const std::vector<Real> Z0 = {0.0, 0.1};
+  const auto from_vector = Trace(field, R0, Z0, stations, 0.05);
+  const auto traced = pcms::TraceFieldLines(field, ToDevice(R0), ToDevice(Z0),
+                                            ToDevice(stations), 0.05);
+  const auto positions =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, traced.positions);
+  const auto valid =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, traced.valid);
+  const auto stations_out =
+    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, traced.stations);
+  REQUIRE(positions.extent(0) == stations.size());
+  for (size_t k = 0; k < stations.size(); ++k) {
+    CHECK(stations_out(k) == stations[k]);
+    for (size_t i = 0; i < R0.size(); ++i) {
+      CAPTURE(k, i);
+      CHECK(valid(i) == from_vector.valid(i));
+      CHECK(positions(k, i, 0) == from_vector.positions(k, i, 0));
+      CHECK(positions(k, i, 1) == from_vector.positions(k, i, 1));
+    }
+  }
 }
 
 TEST_CASE("TraceFieldLines: the poloidal sign sets the direction of rotation",

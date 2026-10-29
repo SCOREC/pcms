@@ -94,6 +94,35 @@ pcms::EQDSKData MakeCircularEquilibrium()
                                  std::vector<Real>(27, kI));
 }
 
+// Same psi on a box that is not square, not centred on the axis and has
+// different R and Z spacings, so a PSIZR read with R and Z swapped shows up.
+constexpr int kOffsetCellsR = 35; // R in [1.25, 3.0], dR = 0.05
+constexpr int kOffsetCellsZ = 50; // Z in [-0.9, 1.1], dZ = 0.04
+
+pcms::EQDSKData MakeOffsetEquilibrium()
+{
+  pcms::Uniform2DGrid grid;
+  grid.divisions[0] = kOffsetCellsR;
+  grid.divisions[1] = kOffsetCellsZ;
+  grid.bot_left[0] = 1.25;
+  grid.bot_left[1] = -0.9;
+  grid.edge_length[0] = 1.75;
+  grid.edge_length[1] = 2.0;
+  const int nR = kOffsetCellsR + 1;
+  const int nZ = kOffsetCellsZ + 1;
+  std::vector<Real> psirz(static_cast<size_t>(nR) * nZ);
+  for (int j = 0; j < nZ; ++j) {
+    for (int i = 0; i < nR; ++i) {
+      const Real R = 1.25 + 1.75 * i / kOffsetCellsR;
+      const Real Z = -0.9 + 2.0 * j / kOffsetCellsZ;
+      psirz[i + j * nR] = CircularPsi(R, Z);
+    }
+  }
+  // psi reaches 0.138 at (3.0, 1.1).
+  return pcms::EQDSKData(grid, psirz, UniformValues(0.0, 0.14, 29),
+                         std::vector<Real>(29, kI));
+}
+
 Kokkos::View<Real*, pcms::DeviceMemorySpace> ToDevice(
   const std::vector<Real>& values)
 {
@@ -221,6 +250,43 @@ TEST_CASE("AxisymmetricMagneticField: psi and its gradient match the analytic "
   CHECK_FALSE(values.inside(outside));
   CHECK(values.psi(outside) == 0.0);
   CHECK(values.I(outside) == 0.0);
+}
+
+TEST_CASE("AxisymmetricMagneticField: a non-square box off the axis reads "
+          "PSIZR with R fastest",
+          "[field_line_tracer]")
+{
+  const pcms::AxisymmetricMagneticField field(MakeOffsetEquilibrium(), 1);
+  CHECK(field.GetRMin() == Approx(1.25));
+  CHECK(field.GetRMax() == Approx(3.0));
+  CHECK(field.GetZMin() == Approx(-0.9));
+  CHECK(field.GetZMax() == Approx(1.1));
+
+  // The last two points lie inside the square test box but outside this one.
+  const std::vector<Real> R = {2.3, 1.5, 2.8, 1.4, 2.9, 1.1, 2.0};
+  const std::vector<Real> Z = {0.1, -0.4, 0.7, 0.95, -0.85, 0.0, -0.95};
+  const auto values = EvaluateField(field, R, Z);
+  for (size_t i = 0; i + 2 < R.size(); ++i) {
+    CAPTURE(i, R[i], Z[i]);
+    REQUIRE(values.inside(i));
+    CHECK(values.psi(i) == Approx(CircularPsi(R[i], Z[i])).margin(1e-12));
+    CHECK(values.psi_R(i) == Approx(2.0 * kC * (R[i] - kAxisR)).margin(1e-12));
+    CHECK(values.psi_Z(i) == Approx(2.0 * kC * Z[i]).margin(1e-12));
+  }
+  CHECK_FALSE(values.inside(R.size() - 2));
+  CHECK_FALSE(values.inside(R.size() - 1));
+
+  const auto stations = pcms::WedgeStations(0.0, 2.0 * kPi / 8, 8);
+  for (const Real r : {0.3, 0.7}) {
+    const auto trace = Trace(field, {kAxisR + r}, {0.0}, stations, 0.01);
+    REQUIRE(trace.valid(0));
+    for (size_t k = 0; k < stations.size(); ++k) {
+      const auto exact = AnalyticFieldLine(r, stations[k], 1);
+      CAPTURE(r, k, stations[k]);
+      CHECK(trace.positions(k, 0, 0) == Approx(exact.R).margin(1e-9));
+      CHECK(trace.positions(k, 0, 1) == Approx(exact.Z).margin(1e-9));
+    }
+  }
 }
 
 TEST_CASE("AxisymmetricMagneticField: rejects invalid input",

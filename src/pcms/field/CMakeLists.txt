@@ -45,6 +45,7 @@ if (PCMS_ENABLE_OMEGA_H)
             layout/omega_h_lagrange.cpp
             layout/uniform_grid.cpp
             evaluator/mls_interpolation.cpp
+            field_aligned/magnetic_field.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
             function_space/lagrange.h
@@ -66,6 +67,7 @@ if (PCMS_ENABLE_OMEGA_H)
             evaluator/pcms_interpolator_logger.hpp
             evaluator/mls_point_cloud.h
             evaluator/point_cloud.h
+            field_aligned/magnetic_field.hpp
     )
 endif ()
 

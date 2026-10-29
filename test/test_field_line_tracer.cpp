@@ -187,7 +187,7 @@ std::string CaptureStdout(const std::function<void()>& run)
   std::fflush(stdout);
   dup2(saved, fileno(stdout));
   close(saved);
-  std::rewind(capture);
+  REQUIRE(std::fseek(capture, 0, SEEK_SET) == 0);
   std::string text;
   char buffer[256];
   size_t count;

@@ -14,6 +14,9 @@ inputs:
   cache-suffix:
     required: false
     default: ''
+  fetch-depth:
+    required: false
+    default: '1'
 
 runs:
   using: "composite"
@@ -25,6 +28,7 @@ runs:
       repository: ${{inputs.repo-path }}
       ref: ${{ inputs.repo-ref }}
       path: ${{ inputs.repo-name }}
+      fetch-depth: ${{ inputs.fetch-depth }}
 
   - name: Get commit hash
     id: get-hash

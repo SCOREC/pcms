@@ -52,6 +52,22 @@ public:
                                                  data_->GetDOFHolderData());
   }
 
+  // Owned (rank-exclusive) DOF-holder data, compact and owned-indexed. Equal
+  // to the local data for a non-distributed field.
+  [[nodiscard]] ValueView<const T, HostMemorySpace> GetOwnedDOFHolderDataHost()
+    const
+  {
+    return ValueView<const T, HostMemorySpace>(
+      data_->GetValueBasis(), data_->GetOwnedDOFHolderDataHost());
+  }
+
+  [[nodiscard]] ValueView<const T, DeviceMemorySpace> GetOwnedDOFHolderData()
+    const
+  {
+    return ValueView<const T, DeviceMemorySpace>(
+      data_->GetValueBasis(), data_->GetOwnedDOFHolderData());
+  }
+
   void SetDOFHolderDataHost(ValueView<const T, HostMemorySpace> v)
   {
     CheckWriteTag(v.GetBasis());
@@ -80,6 +96,9 @@ public:
     data_->SetDOFHolderData(v);
   }
 
+  // Synchronize ghost DOF-holder values from their owning ranks.
+  void SynchronizeGhosts() { data_->SynchronizeGhosts(); }
+
 protected:
   Field(std::string name, std::shared_ptr<const FieldLayout> layout,
         std::unique_ptr<FieldData<T>> data)
@@ -98,16 +117,18 @@ protected:
   }
 
   // The basis tag cannot distinguish shapes (all scalar bases compare equal),
-  // so the checked setters also verify the view's extents against the layout
+  // so the checked setters also verify the view's extents against the layout.
+  // The data covers every local DOF holder, owned and ghost, so the expected
+  // row count is the local one (equal to the owned one when not distributed).
   void CheckWriteExtents(size_t num_holders, size_t num_components) const
   {
-    if (num_holders != static_cast<size_t>(layout_->GetNumOwnedDofHolder()) ||
+    if (num_holders != static_cast<size_t>(layout_->GetNumLocalDofHolder()) ||
         num_components != static_cast<size_t>(layout_->GetNumComponents())) {
       throw pcms_error("Field::SetDOFHolderData: the written view is shaped [" +
                        std::to_string(num_holders) + "][" +
                        std::to_string(num_components) +
                        "] but this field's layout is [" +
-                       std::to_string(layout_->GetNumOwnedDofHolder()) + "][" +
+                       std::to_string(layout_->GetNumLocalDofHolder()) + "][" +
                        std::to_string(layout_->GetNumComponents()) + "]");
     }
   }

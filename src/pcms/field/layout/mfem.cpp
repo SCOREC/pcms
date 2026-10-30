@@ -86,7 +86,7 @@ int MFEMLayout::GetNumComponents() const
   return 1;
 }
 
-LO MFEMLayout::GetNumOwnedDofHolder() const
+LO MFEMLayout::GetNumLocalDofHolder() const
 {
   return static_cast<LO>(pmesh_.GetNV());
 }
@@ -121,7 +121,7 @@ EntOffsetsArray MFEMLayout::GetEntOffsets() const
 {
   EntOffsetsArray offsets{};
   offsets.fill(0);
-  const auto n = static_cast<size_t>(GetNumOwnedDofHolder());
+  const auto n = static_cast<size_t>(GetNumLocalDofHolder());
   for (int i = 1; i < ent_offsets_len; ++i) {
     offsets[i] = n;
   }

@@ -191,7 +191,7 @@ void bind_create_field_module(py::module& m)
     .def(
       "set_dof_holder_data",
       [](Field<Real>& self, const NumpyInput<Real>& arr) {
-        const LO num_dof_holders = self.GetLayout().GetNumOwnedDofHolder();
+        const LO num_dof_holders = self.GetLayout().GetNumLocalDofHolder();
         auto data = NumpyToHostComponentView<Real>(
           arr, self.GetLayout().GetNumComponents());
         if (data.extent(0) != num_dof_holders) {
@@ -209,9 +209,16 @@ void bind_create_field_module(py::module& m)
     .def(
       "get_num_dof_holders",
       [](const Field<Real>& self) {
+        return self.GetLayout().GetNumLocalDofHolder();
+      },
+      "Number of local DOF holders (owned + ghost) on this rank")
+
+    .def(
+      "get_num_owned_dof_holders",
+      [](const Field<Real>& self) {
         return self.GetLayout().GetNumOwnedDofHolder();
       },
-      "Number of owned DOF holders (nodes/elements)")
+      "Number of owned (rank-exclusive) DOF holders")
 
     .def(
       "get_num_components",
@@ -229,7 +236,11 @@ void bind_create_field_module(py::module& m)
                              .GetValues(),
                            self);
       },
-      "Read-only DOFHolder coords (num_dof_holders × dim).");
+      "DOF holder coordinates as a 2D numpy array (num_dof_holders × dim)")
+
+    .def(
+      "synchronize_ghosts", [](Field<Real>& self) { self.SynchronizeGhosts(); },
+      "Synchronize ghost DOF-holder values from their owning ranks");
 
   py::class_<FunctionSpace, std::shared_ptr<FunctionSpace>>(m, "FunctionSpace")
     .def(

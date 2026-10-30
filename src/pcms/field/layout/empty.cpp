@@ -52,7 +52,7 @@ int EmptyFieldLayout::GetNumComponents() const
   return 1;
 }
 
-LO EmptyFieldLayout::GetNumOwnedDofHolder() const
+LO EmptyFieldLayout::GetNumLocalDofHolder() const
 {
   return 0;
 }
@@ -70,6 +70,11 @@ Rank1View<const bool, HostMemorySpace> EmptyFieldLayout::GetOwnedHost() const
 GlobalIDView<HostMemorySpace> EmptyFieldLayout::GetGidsHost() const
 {
   return make_const_array_view(gids_host_);
+}
+
+GlobalIDView<DeviceMemorySpace> EmptyFieldLayout::GetGids() const
+{
+  return GlobalIDView<DeviceMemorySpace>(gids_.data(), gids_.size());
 }
 
 bool EmptyFieldLayout::IsDistributed() const

@@ -7,9 +7,11 @@
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
+#include "pcms/utility/omega_h_array_utils.h"
 
 #include <Kokkos_Core.hpp>
 #include <memory>
+#include <type_traits>
 
 namespace pcms
 {
@@ -38,6 +40,32 @@ struct FlattenFunctor
     }
   }
 };
+
+// Functor that scatters a flat dof-major buffer back into component-major 2D
+// data (LayoutLeft). Inverse of FlattenFunctor; indexes the full destination
+// view directly (rather than via Kokkos::subview) because a partial row-range
+// subview of a LayoutLeft view is not representable as LayoutLeft/LayoutRight
+// (Kokkos falls back to LayoutStride), which Rank2View does not detect.
+template <typename T>
+struct UnflattenFunctor
+{
+  Kokkos::View<const T*, DeviceMemorySpace> flat_;
+  Rank2View<T, DeviceMemorySpace> data_;
+  LO row_off_;
+  size_t nc_;
+  UnflattenFunctor(Kokkos::View<const T*, DeviceMemorySpace> f,
+                   Rank2View<T, DeviceMemorySpace> d, LO ro, size_t nc)
+    : flat_(f), data_(d), row_off_(ro), nc_(nc)
+  {
+  }
+  KOKKOS_INLINE_FUNCTION void operator()(LO local) const
+  {
+    LO global_dof = row_off_ + local;
+    for (size_t c = 0; c < nc_; ++c) {
+      data_(global_dof, c) = flat_(local * nc_ + c);
+    }
+  }
+};
 } // namespace
 
 template <typename T>
@@ -50,10 +78,10 @@ public:
       basis_(std::move(basis)),
       mesh_field_(MakeMeshFieldBackend<T>(*layout_)),
       host_data_("meshfields_field_data",
-                 static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
+                 static_cast<size_t>(layout_->GetNumLocalDofHolder()),
                  static_cast<size_t>(layout_->GetNumComponents())),
       device_data_("meshfields_field_data_device",
-                   static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
+                   static_cast<size_t>(layout_->GetNumLocalDofHolder()),
                    static_cast<size_t>(layout_->GetNumComponents()))
   {
     if (!mesh_field_) {
@@ -74,6 +102,17 @@ public:
     return MakeConstRank2View(host_data_);
   }
 
+  Rank2View<const T, HostMemorySpace> GetOwnedDOFHolderDataHost() const override
+  {
+    return GatherOwnedHostData(*layout_, device_data_, host_data_,
+                               owned_host_data_);
+  }
+
+  Rank2View<const T, DeviceMemorySpace> GetOwnedDOFHolderData() const override
+  {
+    return GatherOwnedDeviceData(*layout_, device_data_, owned_device_data_);
+  }
+
   void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
   {
     CopyHostRank2ViewToDeviceView(device_data_, values);
@@ -88,6 +127,50 @@ public:
   void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
   {
     CopyDeviceRank2ViewToDeviceView(device_data_, values);
+    SyncBackend(GetDOFHolderData());
+  }
+
+  void SynchronizeGhosts() override
+  {
+    const int nc = layout_->GetNumComponents();
+    auto& mesh = layout_->GetMesh();
+    const auto nodes_per_dim = layout_->GetNodesPerDim();
+
+    size_t row_offset = 0;
+    for (int dim = 0; dim <= mesh.dim(); ++dim) {
+      if (!nodes_per_dim[dim]) {
+        continue;
+      }
+      const LO num_rows = static_cast<LO>(mesh.nents(dim)) * nodes_per_dim[dim];
+      const LO row_off = static_cast<LO>(row_offset);
+
+      // device_data_ may be component-major on device; flatten this block to
+      // dof-major order for Omega_h's sync_array, then scatter the
+      // synchronized values back. We index the full device_data_ view
+      // directly (not a Kokkos::subview of it) because a partial row-range
+      // subview of a LayoutLeft view is not representable as
+      // LayoutLeft/LayoutRight (Kokkos falls back to LayoutStride), which
+      // MakeConstRank2View/MakeRank2View do not detect.
+      Kokkos::View<T*, DeviceMemorySpace> flat("ghost_sync_flat",
+                                               static_cast<size_t>(num_rows) *
+                                                 static_cast<size_t>(nc));
+      Kokkos::parallel_for(
+        "SynchronizeGhostsFlatten",
+        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_rows),
+        FlattenFunctor<T>(MakeConstRank2View(device_data_), flat, row_off,
+                          static_cast<size_t>(nc)));
+
+      SynchronizeOmegaHBlock<T>(mesh, dim, nc, flat);
+
+      Kokkos::parallel_for(
+        "SynchronizeGhostsUnflatten",
+        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_rows),
+        UnflattenFunctor<T>(flat, MakeRank2View(device_data_), row_off,
+                            static_cast<size_t>(nc)));
+
+      row_offset += static_cast<size_t>(num_rows);
+    }
+
     SyncBackend(GetDOFHolderData());
   }
 
@@ -131,6 +214,8 @@ private:
   ValueBasis basis_;
   std::shared_ptr<MeshFieldBackend<T>> mesh_field_;
   mutable Kokkos::View<T**, HostMemorySpace> host_data_;
+  mutable Kokkos::View<T**, HostMemorySpace> owned_host_data_;
+  mutable Kokkos::View<T**, DeviceMemorySpace> owned_device_data_;
   Kokkos::View<T**, DeviceMemorySpace> device_data_;
 };
 

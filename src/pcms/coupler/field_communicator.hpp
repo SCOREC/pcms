@@ -65,6 +65,11 @@ public:
     auto data = comm_.Recv(redev::Mode::Synchronous);
     serializer_->Deserialize(field_, make_const_array_view(data),
                              layout_comm_.GetPermutationArray());
+    // Deserialize writes owned DOF holders only, so ghost copies still hold
+    // their previous values. Anything that evaluates the field reads ghosts
+    // (an owned element can have vertices another rank owns), so bring them up
+    // to date. A no-op for non-distributed fields.
+    field_.SynchronizeGhosts();
   }
 
 private:

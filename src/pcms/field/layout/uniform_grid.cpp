@@ -206,7 +206,7 @@ int UniformGridFieldLayout<Dim>::GetNumComponents() const
 }
 
 template <unsigned Dim>
-LO UniformGridFieldLayout<Dim>::GetNumOwnedDofHolder() const
+LO UniformGridFieldLayout<Dim>::GetNumLocalDofHolder() const
 {
   return GetNumDofHolders();
 }
@@ -228,6 +228,12 @@ template <unsigned Dim>
 GlobalIDView<HostMemorySpace> UniformGridFieldLayout<Dim>::GetGidsHost() const
 {
   return GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size());
+}
+
+template <unsigned Dim>
+GlobalIDView<DeviceMemorySpace> UniformGridFieldLayout<Dim>::GetGids() const
+{
+  return GlobalIDView<DeviceMemorySpace>(gids_.data(), gids_.size());
 }
 
 template <unsigned Dim>

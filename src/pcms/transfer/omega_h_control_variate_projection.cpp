@@ -35,7 +35,7 @@ OmegaHControlVariateProjection::OmegaHControlVariateProjection(
                                                        *rhs_integrator_);
 
   target_values_ = Kokkos::View<Real**, DeviceMemorySpace>(
-    "cv_target_values", target_layout_->GetNumOwnedDofHolder(),
+    "cv_target_values", target_layout_->GetNumLocalDofHolder(),
     target_layout_->GetNumComponents());
   const auto num_samples = sample_coords.GetValues().extent(0);
   f_samples_ =
@@ -51,7 +51,7 @@ OmegaHControlVariateProjection::~OmegaHControlVariateProjection() = default;
 void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
                                            Field<Real>& target) const
 {
-  const int num_dof_holders = target_layout_->GetNumOwnedDofHolder();
+  const int num_dof_holders = target_layout_->GetNumLocalDofHolder();
   const int num_components = target_layout_->GetNumComponents();
 
   // 1. Control variate: interpolate the source field onto the target space.

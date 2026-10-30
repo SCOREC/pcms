@@ -22,7 +22,7 @@ public:
     const noexcept override;
 
   int GetNumComponents() const override;
-  LO GetNumOwnedDofHolder() const override;
+  LO GetNumLocalDofHolder() const override;
   GO GetNumGlobalDofHolder() const override;
 
   Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override;

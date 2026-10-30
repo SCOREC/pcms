@@ -1892,6 +1892,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nx),
                            [=](LO ix) { fwk_x_view(0, ix) = f(0, ix, iy); });
 
+      team.team_barrier();
       if (team.team_rank() == 0) {
         if (ibcxmin == 1 || ibcxmin == 2)
           zbcmin = bcxmin[iy];
@@ -1901,6 +1902,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
         solve_cubic_spline_compact(x, nx, fwk_x_view, fwk4_x_view, ibcxmin,
                                    zbcmin, ibcxmax, zbcmax, wk_x_view);
       }
+      team.team_barrier();
 
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nx),
                            [=](LO ix) { f(1, ix, iy) = fwk_x_view(1, ix); });
@@ -1922,6 +1924,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny),
                            [=](LO iy) { fwk_y_view(0, iy) = f(0, ix, iy); });
 
+      team.team_barrier();
       if (team.team_rank() == 0) {
         if (iflg2 == 1) {
           if (ibcymin == 1 || ibcymin == 2)
@@ -1933,6 +1936,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
         solve_cubic_spline_compact(y, ny, fwk_y_view, fwk4_y_view, ibcmin, 0.0,
                                    ibcmax, 0.0, wk_y_view);
       }
+      team.team_barrier();
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny),
                            [=](LO iy) { f(2, ix, iy) = fwk_y_view(1, iy); });
     });
@@ -1953,6 +1957,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny),
                            [=](LO iy) { fwk_y_view(0, iy) = f(1, ix, iy); });
 
+      team.team_barrier();
       if (team.team_rank() == 0) {
         if (iflg2 == 1) {
           if (ibcymin == 1 || ibcymin == 2)
@@ -1964,6 +1969,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
         solve_cubic_spline_compact(y, ny, fwk_y_view, fwk4_y_view, ibcmin, 0.0,
                                    ibcmax, 0.0, wk_y_view);
       }
+      team.team_barrier();
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny),
                            [=](LO iy) { f(3, ix, iy) = fwk_y_view(1, iy); });
     });

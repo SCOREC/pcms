@@ -615,9 +615,8 @@ TEST_CASE("TraceFieldLines: a field line leaving the grid is flagged, not "
 TEST_CASE("TraceFieldLines: returns to its start after one poloidal turn",
           "[field_line_tracer]")
 {
-  // d(theta)/d(phi) = -s * (2c / I) * (R0 + r * cos(theta)), so one poloidal
-  // turn takes 2*pi / ((2c / I) * sqrt(R0^2 - r^2)) = 8*pi / sqrt(4 - r^2)
-  // here, whatever the starting poloidal angle.
+  // Trace each start for one poloidal period, 8*pi / sqrt(4 - r^2), and check
+  // that it ends where it began.
   const std::vector<Real> R0 = {2.3, 2.0, 1.6};
   const std::vector<Real> Z0 = {0.0, 0.5, -0.3}; // r = 0.3, 0.5, 0.5
   for (const int s : {1, -1}) {
@@ -638,10 +637,8 @@ TEST_CASE("TraceFieldLines: matches an independent reference trace of a mesh "
           "triangle",
           "[field_line_tracer]")
 {
-  // Triangle 310 of an XGC-style mesh of this equilibrium, traced from phi = 0
-  // to pi/4 by an independent Python tracer (SciPy DOP853, rtol 1e-10; it
-  // agrees with the analytic field line to 3e-12). expected[k][a] is the
-  // (R, Z) of vertex a at phi = k * pi/12.
+  // Trace triangle 310 from phi = 0 to pi/4 and compare with positions from a
+  // Python reference tracer (SciPy DOP853) at phi = k * pi/12.
   const Real expected[4][3][2] = {
     {{2.736144, -0.050356}, {2.736144, 0.050356}, {2.630506, 0.04962}},
     {{2.7155011378747225, -0.1802826590994909},

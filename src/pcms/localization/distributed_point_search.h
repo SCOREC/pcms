@@ -126,24 +126,19 @@ public:
    * from the **lowest rank id** wins. Any of them is geometrically right; the
    * rule just makes the outcome deterministic and identical on every rank.
    *
+   * To evaluate at the same points repeatedly, keep the result rather than
+   * locating again: `DistributedRoutingPlan` is built from it once and reused.
+   *
    * \param points Query coordinates, one per row.
-   * \param cache Optional, indexed by point. Entries that are already `LOCATED`
-   *        are reused and not searched again, which is what makes repeated
-   *        localization of the same point set cheap. The caller owns the cache
-   *        and must clear it whenever the point coordinates or the mesh change:
-   *        an entry is only valid for the point and mesh it was computed from.
-   *        Points that could not be placed are not cached, so they are retried.
    * \return One result per row, in the same order.
    */
   [[nodiscard]] std::vector<Result> Locate(
-    Kokkos::View<const Real* [Dim]> points,
-    std::vector<Result>* cache = nullptr);
+    Kokkos::View<const Real* [Dim]> points);
 
   /// How many points the most recent `Locate` sent to another rank.
   ///
   /// Diagnostics. Zero means every point was answered here, either because this
-  /// rank owns it, because it lies outside the mesh, or because the cache
-  /// already held its location.
+  /// rank owns it or because it lies outside the mesh.
   [[nodiscard]] std::size_t LastRoutedPointCount() const noexcept
   {
     return last_routed_;

@@ -111,6 +111,18 @@ QueryCoords MakeQueryCoords(const std::vector<Real>& interleaved, int dim)
               pcms::csys::Cartesian::Deferred(), pcms::MakeRank2View(device))};
 }
 
+/// A distributed evaluator through the public factory API, as a caller with
+/// one point set would build it.
+std::unique_ptr<pcms::PointEvaluator<Real>> MakeDistributed(
+  Omega_h::Mesh& mesh, std::shared_ptr<const pcms::FunctionSpace> space,
+  const pcms::CoordinateView<pcms::DeviceMemorySpace>& coords,
+  pcms::OutOfBoundsPolicy policy)
+{
+  pcms::DistributedPointEvaluatorFactory factory(mesh, std::move(space));
+  return factory.CreatePointEvaluator<Real>(
+    pcms::EvaluationRequest::FromCoordinates(coords, policy));
+}
+
 /// Distributed evaluation must equal the serial evaluator wherever the serial
 /// evaluator is defined, and must equal the closed form everywhere.
 template <int Dim>
@@ -148,8 +160,8 @@ void check_agrees_with_serial(Omega_h::Mesh& mesh, int order)
   // Distributed, from the same space and points. The space, not a layout, is
   // what is handed over: the distributed evaluator reaches a backend only
   // through the local evaluator the space creates.
-  auto distributed = pcms::MakeDistributedPointEvaluator<Real>(
-    mesh, space, device_coords.storage, pcms::OutOfBoundsPolicy{});
+  auto distributed =
+    MakeDistributed(mesh, space, device_coords.view, pcms::OutOfBoundsPolicy{});
 
   Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
   distributed->Evaluate(field, distributed_test::TagLike(field, got));
@@ -330,8 +342,8 @@ void check_boundary_arbitration(Omega_h::Mesh& mesh)
   const auto reference_h =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), reference);
 
-  auto distributed = pcms::MakeDistributedPointEvaluator<Real>(
-    mesh, space, device_coords.storage, pcms::OutOfBoundsPolicy{});
+  auto distributed =
+    MakeDistributed(mesh, space, device_coords.view, pcms::OutOfBoundsPolicy{});
   Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
   distributed->Evaluate(field, distributed_test::TagLike(field, got));
   const auto got_h =
@@ -483,8 +495,8 @@ void check_backend_without_distributed_code(Omega_h::Mesh& mesh)
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), reference);
 
   // The same backend, distributed.
-  auto distributed = pcms::MakeDistributedPointEvaluator<Real>(
-    mesh, space, device_coords.storage, pcms::OutOfBoundsPolicy{});
+  auto distributed =
+    MakeDistributed(mesh, space, device_coords.view, pcms::OutOfBoundsPolicy{});
   Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
   distributed->Evaluate(field, distributed_test::TagLike(field, got));
   const std::size_t routed = pcms::LastRoutedPointCount(*distributed);
@@ -598,8 +610,7 @@ void check_out_of_bounds_policy(Omega_h::Mesh& mesh)
   pcms::OutOfBoundsPolicy fill_policy;
   fill_policy.mode = pcms::OutOfBoundsMode::FILL;
   fill_policy.fill_value = fill_value;
-  auto filled = pcms::MakeDistributedPointEvaluator<Real>(
-    mesh, space, device_coords.storage, fill_policy);
+  auto filled = MakeDistributed(mesh, space, device_coords.view, fill_policy);
   Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
   filled->Evaluate(field, distributed_test::TagLike(field, got));
   const auto got_h =
@@ -650,8 +661,8 @@ void check_out_of_bounds_policy(Omega_h::Mesh& mesh)
   error_policy.mode = pcms::OutOfBoundsMode::ERROR;
   bool threw = false;
   try {
-    auto strict = pcms::MakeDistributedPointEvaluator<Real>(
-      mesh, space, device_coords.storage, error_policy);
+    auto strict =
+      MakeDistributed(mesh, space, device_coords.view, error_policy);
     Kokkos::View<Real**, pcms::DeviceMemorySpace> strict_values("strict",
                                                                 n_points, 1);
     strict->Evaluate(field, distributed_test::TagLike(field, strict_values));
@@ -713,8 +724,8 @@ void check_ghosts_must_be_synchronized(Omega_h::Mesh& mesh)
   const auto gathered = distributed_test::GatherOwnedCentroids(mesh);
   auto device_coords = MakeQueryCoords(gathered.coords, Dim);
   const LO n_points = static_cast<LO>(gathered.total);
-  auto distributed = pcms::MakeDistributedPointEvaluator<Real>(
-    mesh, space, device_coords.storage, pcms::OutOfBoundsPolicy{});
+  auto distributed =
+    MakeDistributed(mesh, space, device_coords.view, pcms::OutOfBoundsPolicy{});
 
   const auto count_wrong = [&]() {
     Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n_points, 1);
@@ -745,6 +756,131 @@ void check_ghosts_must_be_synchronized(Omega_h::Mesh& mesh)
   require(wrong_after_sync == 0,
           "distributed evaluation is wrong after ghosts are synchronized");
 }
+/// Values of `evaluator` at its `n` points, on the host.
+auto EvaluateToHost(const pcms::PointEvaluator<Real>& evaluator,
+                    const pcms::Field<Real>& field, LO n)
+{
+  Kokkos::View<Real**, pcms::DeviceMemorySpace> got("got", n, 1);
+  evaluator.Evaluate(field, distributed_test::TagLike(field, got));
+  return Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, got);
+}
+
+/// One routing plan serves evaluators for two function spaces on the same
+/// mesh, and gives exactly what a one-shot request gives.
+template <int Dim>
+void check_shared_routing_plan(Omega_h::Mesh& mesh)
+{
+  auto linear_space = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, /*order=*/1, 1, pcms::csys::Cartesian::Deferred(), "global",
+    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  auto constant_space = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, /*order=*/0, 1, pcms::csys::Cartesian::Deferred(), "global",
+    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  auto linear_field = linear_space->CreateFunction<Real>();
+  auto constant_field = constant_space->CreateFunction<Real>();
+  SetLinearField(linear_field.GetData(), *linear_space->GetLayout());
+  SetLinearField(constant_field.GetData(), *constant_space->GetLayout());
+
+  const auto gathered = distributed_test::GatherOwnedCentroids(mesh);
+  auto device_coords = MakeQueryCoords(gathered.coords, Dim);
+  const LO n_points = static_cast<LO>(gathered.total);
+  const auto request =
+    pcms::EvaluationRequest::FromCoordinates(device_coords.view);
+
+  pcms::DistributedPointEvaluatorFactory linear_factory(mesh, linear_space);
+  pcms::DistributedPointEvaluatorFactory constant_factory(mesh, constant_space);
+
+  // One plan, two spaces.
+  const auto plan = linear_factory.BuildRoutingPlan(device_coords.view);
+  auto linear_shared = linear_factory.CreatePointEvaluator<Real>(plan, request);
+  auto constant_shared =
+    constant_factory.CreatePointEvaluator<Real>(plan, request);
+
+  // The same requests, each building its own plan.
+  auto linear_own = linear_factory.CreatePointEvaluator<Real>(request);
+  auto constant_own = constant_factory.CreatePointEvaluator<Real>(request);
+
+  require(pcms::LastRoutedPointCount(*linear_shared) ==
+            plan->RoutedPointCount(),
+          "the evaluator does not report its plan's routed point count");
+
+  const auto a = EvaluateToHost(*linear_shared, linear_field, n_points);
+  const auto b = EvaluateToHost(*linear_own, linear_field, n_points);
+  const auto c = EvaluateToHost(*constant_shared, constant_field, n_points);
+  const auto d = EvaluateToHost(*constant_own, constant_field, n_points);
+
+  LO n_bad = 0;
+  for (LO i = 0; i < n_points; ++i) {
+    const size_t base = static_cast<size_t>(i) * Dim;
+    const Real truth =
+      linear_f(gathered.coords[base], gathered.coords[base + 1]);
+    n_bad += a(i, 0) != b(i, 0) ? 1 : 0;
+    n_bad += c(i, 0) != d(i, 0) ? 1 : 0;
+    n_bad += std::fabs(a(i, 0) - truth) > 1e-10 ? 1 : 0;
+  }
+  const LO t_bad = mesh.comm()->allreduce(n_bad, Omega_h_Op::OMEGA_H_SUM);
+  const auto t_routed = mesh.comm()->allreduce(
+    static_cast<LO>(plan->RoutedPointCount()), Omega_h_Op::OMEGA_H_SUM);
+  if (mesh.comm()->rank() == 0) {
+    std::printf("%dD shared plan: %lld points routed, %lld disagreements\n",
+                Dim, static_cast<long long>(t_routed),
+                static_cast<long long>(t_bad));
+  }
+  require(t_routed > 0, "no point was routed, so the plan was not exercised");
+  require(
+    t_bad == 0,
+    "an evaluator built from a shared plan disagrees with a one-shot one");
+}
+
+/// A request built from a layout: the query points are this rank's local
+/// element centroids, ghosts included, so some are owned by another rank.
+template <int Dim>
+void check_layout_request(Omega_h::Mesh& mesh)
+{
+  auto space = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, /*order=*/1, 1, pcms::csys::Cartesian::Deferred(), "global",
+    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  auto centroids = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, /*order=*/0, 1, pcms::csys::Cartesian::Deferred(), "global",
+    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  auto field = space->CreateFunction<Real>();
+  SetLinearField(field.GetData(), *space->GetLayout());
+
+  pcms::DistributedPointEvaluatorFactory factory(mesh, space);
+  const auto request = pcms::EvaluationRequest::FromFunctionSpace(*centroids);
+  auto evaluator = factory.CreatePointEvaluator<Real>(request);
+
+  const auto query = request.coords.GetValues();
+  const LO n_points = static_cast<LO>(query.extent(0));
+  Kokkos::View<Real**, pcms::DeviceMemorySpace> query_d("query", n_points, Dim);
+  Kokkos::parallel_for(
+    "copy_query",
+    Kokkos::RangePolicy<pcms::DeviceMemorySpace::execution_space>(0, n_points),
+    KOKKOS_LAMBDA(LO i) {
+      for (int d = 0; d < Dim; ++d) {
+        query_d(i, d) = query(i, d);
+      }
+    });
+  const auto query_h =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, query_d);
+  const auto got = EvaluateToHost(*evaluator, field, n_points);
+
+  LO n_bad = 0;
+  for (LO i = 0; i < n_points; ++i) {
+    const Real truth = linear_f(query_h(i, 0), query_h(i, 1));
+    n_bad += std::fabs(got(i, 0) - truth) > 1e-10 ? 1 : 0;
+  }
+  const LO t_bad = mesh.comm()->allreduce(n_bad, Omega_h_Op::OMEGA_H_SUM);
+  const auto t_routed = mesh.comm()->allreduce(
+    static_cast<LO>(pcms::LastRoutedPointCount(*evaluator)),
+    Omega_h_Op::OMEGA_H_SUM);
+  if (mesh.comm()->rank() == 0) {
+    std::printf("%dD layout request: %lld ghost centroids routed, %lld wrong\n",
+                Dim, static_cast<long long>(t_routed),
+                static_cast<long long>(t_bad));
+  }
+  require(t_bad == 0, "a layout request gave a wrong value");
+}
 } // namespace
 
 int main(int argc, char** argv)
@@ -764,6 +900,8 @@ int main(int argc, char** argv)
         check_backend_without_distributed_code<2>(mesh);
         check_out_of_bounds_policy<2>(mesh);
         check_ghosts_must_be_synchronized<2>(mesh);
+        check_shared_routing_plan<2>(mesh);
+        check_layout_request<2>(mesh);
       }
 
       {
@@ -771,6 +909,8 @@ int main(int argc, char** argv)
         check_agrees_with_serial<3>(mesh, /*order=*/1);
         check_ghosts_must_be_synchronized<3>(mesh);
         check_out_of_bounds_policy<3>(mesh);
+        check_shared_routing_plan<3>(mesh);
+        check_layout_request<3>(mesh);
       }
 
       if (world->rank() == 0) {

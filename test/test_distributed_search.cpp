@@ -6,8 +6,8 @@
 // 2. The local pass (`ClassifyLocally`): a rank answers only for elements it
 //    owns, never for ghosts.
 // 3. The full search (`Locate`): every point is attributed to its owning rank
-//    and element, including points that had to be routed, and a warm cache
-//    routes nothing.
+//    and element, including points that had to be routed, and repeating a
+//    batch gives the same answer.
 #include "distributed_test_utils.h"
 
 #include "pcms/localization/candidate_rank_table.h"
@@ -755,13 +755,11 @@ void check_distributed_locate(Omega_h::Mesh& mesh)
   require(t_routed_away > 0,
           "no query left its rank, so routing was not exercised");
 
-  // Determinism and caching: the same batch twice must give the same answer,
-  // and a second pass over a warm cache must not re-search anything it
-  // resolved.
-  std::vector<typename pcms::DistributedPointSearch<Dim>::Result> cache;
-  const auto pass_one = search.Locate(points, &cache);
+  // Determinism: the same batch twice must give the same answer and the same
+  // routing work.
+  const auto pass_one = search.Locate(points);
   const auto routed_one = search.LastRoutedPointCount();
-  const auto pass_two = search.Locate(points, &cache);
+  const auto pass_two = search.Locate(points);
   const auto routed_two = search.LastRoutedPointCount();
 
   LO n_unresolved_results = 0;
@@ -781,19 +779,15 @@ void check_distributed_locate(Omega_h::Mesh& mesh)
   }
 
   if (rank == 0) {
-    std::printf("routed %zu points on the first pass, %zu on the second "
-                "(only unresolved points are retried, and points outside the "
-                "mesh bounding box are never routed)\n",
+    std::printf("routed %zu points on the first pass, %zu on the second\n",
                 routed_one, routed_two);
   }
   require(routed_one > 0, "the first pass routed nothing");
-  // The only point still unresolved on a warm cache is the one outside the
-  // grid, and that one needs no message, so a warm pass routes nothing at all.
+  require(routed_two == routed_one,
+          "repeating a batch changed the routing work");
   require(n_unresolved_results > 0, "the out-of-domain probe was located");
-  require(routed_two == 0, "a cached pass still routed points");
-  require(routed_two < routed_one, "caching did not reduce the routing work");
   require(mesh.comm()->allreduce(n_unstable, Omega_h_Op::OMEGA_H_SUM) == 0,
-          "a cached pass gave a different answer");
+          "repeating a batch gave a different answer");
 
   // A batch of points outside the global bounding box needs no communication at
   // all: no element can contain them, so not a single query is routed.

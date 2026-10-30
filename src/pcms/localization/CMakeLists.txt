@@ -4,6 +4,7 @@ set(
         overlap.h
         candidate_rank_table.h
         distributed_point_search.h
+        distributed_routing_plan.h
         queue_visited.hpp
         adj_search.hpp
         mls_support_helpers.h

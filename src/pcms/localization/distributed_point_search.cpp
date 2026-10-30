@@ -81,7 +81,7 @@ DistributedPointSearch<Dim>::DistributedPointSearch(
   }
 
   // Global ids identify an element across ranks. They are what lets the answer
-  // to "which element" be checked, and what a caller caches; a mesh without
+  // to "which element" be checked across ranks; a mesh without
   // them still works, the id is just unavailable.
   if (mesh.has_tag(mesh.dim(), "global")) {
     const auto globals = Omega_h::HostRead<GO>(mesh.globals(mesh.dim()));
@@ -131,15 +131,10 @@ DistributedPointSearch<Dim>::ClassifyLocally(
 
 template <int Dim>
 std::vector<typename DistributedPointSearch<Dim>::Result>
-DistributedPointSearch<Dim>::Locate(Kokkos::View<const Real* [Dim]> points,
-                                    std::vector<Result>* cache)
+DistributedPointSearch<Dim>::Locate(Kokkos::View<const Real* [Dim]> points)
 {
   const auto n_points = static_cast<LO>(points.extent(0));
-  std::vector<Result> storage;
-  std::vector<Result>& results = cache != nullptr ? *cache : storage;
-  // Resizing keeps entries already resolved, so a caller that passes the same
-  // cache for the same point set only pays for the points still missing.
-  results.resize(static_cast<size_t>(n_points));
+  std::vector<Result> results(static_cast<size_t>(n_points));
 
   const auto classified = ClassifyLocally(points);
   const auto points_h =
@@ -153,9 +148,6 @@ DistributedPointSearch<Dim>::Locate(Kokkos::View<const Real* [Dim]> points,
   last_routed_ = 0;
   for (LO i = 0; i < n_points; ++i) {
     auto& r = results[static_cast<size_t>(i)];
-    if (r.status == ResultStatus::LOCATED) {
-      continue; // cached
-    }
     const auto& c = classified[static_cast<size_t>(i)];
     if (c.status == LocalStatus::LOCATED_HERE) {
       r.status = ResultStatus::LOCATED;

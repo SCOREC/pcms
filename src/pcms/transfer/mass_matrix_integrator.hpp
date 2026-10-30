@@ -38,11 +38,12 @@ public:
                 Kokkos::View<MeshField::Real*> dV) override
   {
     // std::cerr << "MassMatrixIntegrator::atPoints(...)\n";
-    const size_t numPtsPerElem = p.extent(0) / mesh.nelems();
+    const size_t numPtsPerElem = p.extent(0);
     // std::cerr << " Number points per Elem : " << numPtsPerElem << "\n";
     assert(numPtsPerElem >= 1);
     const size_t ptDim = p.extent(1);
     assert(ptDim == fe.MeshEntDim);
+    assert(dV.extent(0) == mesh.nelems() * numPtsPerElem);
     // Copy values needed in the kernel to avoid capturing host references
     // (mesh and fe are host objects and cannot be dereferenced on the device)
     const auto numElems = mesh.nelems();
@@ -51,9 +52,7 @@ public:
     auto massMatrix = elmMassMatrix;
     Kokkos::parallel_for(
       "eval", numElems, KOKKOS_LAMBDA(const int& elm) {
-        const auto first = elm * numPtsPerElem;
-        const auto last = first + numPtsPerElem;
-        for (auto pt = first; pt < last; pt++) {
+        for (size_t pt = 0; pt < numPtsPerElem; pt++) {
           // FIXME better way to fill? pass kokkos::subview to getValues?
           Kokkos::Array<MeshField::Real, FieldElement::MeshEntDim> localCoord;
           for (auto i = 0; i < localCoord.size(); i++) {
@@ -66,7 +65,7 @@ public:
           // ordering has negative orientation. A mass matrix integrates against
           // the positive volume measure, so take the magnitude (a no-op in 2D
           // where the differential area is already positive).
-          const auto dVPt = Kokkos::fabs(dV(pt));
+          const auto dVPt = Kokkos::fabs(dV(elm * numPtsPerElem + pt));
           //       printf("Shape Functions: %f, %f, %f \n", N[0], N[1], N[2]);
           //       printf("wPt, dVPt: %f, %f \n", wPt, dVPt);
           for (auto i = 0; i < N.size(); i++) {

@@ -278,7 +278,7 @@ struct FillCoordinatesAndIndicesFunctor
     LO count = Kokkos::atomic_sub_fetch(&elem_counts_(owner_idx), 1);
     LO index = offsets_(owner_idx) + count - 1;
     for (int j = 0; j < dim_; ++j) {
-      coordinates_(index, j) = coord[j];
+      coordinates_(index, j) = coord[j + 1];
     }
     indices_(index) = i;
   }
@@ -442,7 +442,7 @@ struct FillCoordinatesDeviceFunctor
     const auto local =
       Omega_h::barycentric_from_global<2, 2>(point, vertex_coords);
     for (int j = 0; j < dim_; ++j) {
-      coordinates_(index, j) = local[j];
+      coordinates_(index, j) = local[j + 1];
     }
     indices_(index) = orig_idx;
   }
@@ -576,7 +576,7 @@ struct MeshFieldsAdapter2LocalizationHint
       const auto local =
         Omega_h::barycentric_from_global<2, 2>(point, vertex_coords);
       for (int j = 0; j < mesh.dim(); ++j) {
-        coordinates_(index, j) = local[j];
+        coordinates_(index, j) = local[j + 1];
       }
       indices_(index) = static_cast<LO>(orig_idx);
     }

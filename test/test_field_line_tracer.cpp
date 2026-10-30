@@ -611,3 +611,62 @@ TEST_CASE("TraceFieldLines: a field line leaving the grid is flagged, not "
     CHECK(trace.positions(k, 1, 1) == 0.0);
   }
 }
+
+TEST_CASE("TraceFieldLines: returns to its start after one poloidal turn",
+          "[field_line_tracer]")
+{
+  // d(theta)/d(phi) = -s * (2c / I) * (R0 + r * cos(theta)), so one poloidal
+  // turn takes 2*pi / ((2c / I) * sqrt(R0^2 - r^2)) = 8*pi / sqrt(4 - r^2)
+  // here, whatever the starting poloidal angle.
+  const std::vector<Real> R0 = {2.3, 2.0, 1.6};
+  const std::vector<Real> Z0 = {0.0, 0.5, -0.3}; // r = 0.3, 0.5, 0.5
+  for (const int s : {1, -1}) {
+    const pcms::AxisymmetricMagneticField field(MakeCircularEquilibrium(), s);
+    for (size_t i = 0; i < R0.size(); ++i) {
+      const Real r = std::hypot(R0[i] - kAxisR, Z0[i]);
+      const Real period = 8.0 * kPi / std::sqrt(4.0 - r * r);
+      const auto trace = Trace(field, {R0[i]}, {Z0[i]}, {0.0, period}, 0.01);
+      CAPTURE(s, i, r, period);
+      REQUIRE(trace.valid(0));
+      CHECK(trace.positions(1, 0, 0) == Approx(R0[i]).margin(1e-8));
+      CHECK(trace.positions(1, 0, 1) == Approx(Z0[i]).margin(1e-8));
+    }
+  }
+}
+
+TEST_CASE("TraceFieldLines: matches an independent reference trace of a mesh "
+          "triangle",
+          "[field_line_tracer]")
+{
+  // Triangle 310 of an XGC-style mesh of this equilibrium, traced from phi = 0
+  // to pi/4 by an independent Python tracer (SciPy DOP853, rtol 1e-10; it
+  // agrees with the analytic field line to 3e-12). expected[k][a] is the
+  // (R, Z) of vertex a at phi = k * pi/12.
+  const Real expected[4][3][2] = {
+    {{2.736144, -0.050356}, {2.736144, 0.050356}, {2.630506, 0.04962}},
+    {{2.7155011378747225, -0.1802826590994909},
+     {2.7333381574447446, -0.08160185235359393},
+     {2.6296808756613186, -0.05917732050701803}},
+    {{2.6727471824721314, -0.30307580561280045},
+     {2.707267573646819, -0.2102767099317841},
+     {2.610331211495885, -0.1658184932688772}},
+    {{2.610537244517441, -0.4143524930897984},
+     {2.6596092412438246, -0.3306952741392141},
+     {2.573550883124193, -0.2665320710600273}}};
+  const pcms::AxisymmetricMagneticField field(MakeCircularEquilibrium(), 1);
+  std::vector<Real> R0, Z0;
+  for (int a = 0; a < 3; ++a) {
+    R0.push_back(expected[0][a][0]);
+    Z0.push_back(expected[0][a][1]);
+  }
+  const auto stations = pcms::WedgeStations(0.0, kPi / 4, 1);
+  const auto trace = Trace(field, R0, Z0, stations, 0.01);
+  for (int a = 0; a < 3; ++a) {
+    REQUIRE(trace.valid(a));
+    for (int k = 0; k < 4; ++k) {
+      CAPTURE(a, k);
+      CHECK(trace.positions(k, a, 0) == Approx(expected[k][a][0]).margin(1e-9));
+      CHECK(trace.positions(k, a, 1) == Approx(expected[k][a][1]).margin(1e-9));
+    }
+  }
+}

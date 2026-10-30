@@ -434,6 +434,15 @@ inline ValueView<T, DeviceMemorySpace> TagLike(
                                          MakeRank2View(values));
 }
 
+template <typename T>
+inline Kokkos::View<T*, DeviceMemorySpace> CreateDeviceRank1View(
+  const std::vector<T>& values)
+{
+  Kokkos::View<T*, DeviceMemorySpace> device("device", values.size());
+  CopyHostRank1ViewToDeviceView(device, make_const_array_view(values));
+  return device;
+}
+
 inline Kokkos::View<Real**, DeviceMemorySpace> CreateDeviceRank2View(
   const std::vector<Real>& values, int num_columns)
 {

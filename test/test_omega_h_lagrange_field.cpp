@@ -161,8 +161,10 @@ TEST_CASE("Field checked writes validate the view shape, not just total size")
   // field.
   pcms::Rank2View<const Real, pcms::HostMemorySpace> reshaped(data.data(), 1,
                                                               n);
-  REQUIRE_THROWS(field.SetDOFHolderDataHost(
-    pcms::ValueView<const Real, pcms::HostMemorySpace>(basis, reshaped)));
+  REQUIRE_THROWS_AS(
+    field.SetDOFHolderDataHost(
+      pcms::ValueView<const Real, pcms::HostMemorySpace>(basis, reshaped)),
+    std::invalid_argument);
 
   // The matching shape passes.
   pcms::Rank2View<const Real, pcms::HostMemorySpace> ok(data.data(), n, 1);

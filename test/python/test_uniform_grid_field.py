@@ -7,6 +7,15 @@ import pytest
 import pcms
 import PyOmega_h as omega_h
 
+
+def _coordinates(field):
+    return field.get_layout().get_dof_holder_coordinates().get_values()
+
+
+def _num_dof_holders(field):
+    return field.get_layout().get_num_owned_dof_holder()
+
+
 class TestUniformGridField:
     """Tests for UniformGrid-backed Field operations (no Omega_h needed)."""
 
@@ -18,12 +27,11 @@ class TestUniformGridField:
         grid.divisions = [4, 4]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian()
-        )
-        field = factory.create_field()
+            grid, 1)
+        field = factory.create_function()
         expected = (grid.divisions[0] + 1) * (grid.divisions[1] + 1)
-        assert field.get_num_components() == 1
-        assert field.get_num_dof_holders() == expected
+        assert field.get_layout().get_num_components() == 1
+        assert _num_dof_holders(field) == expected
 
     def test_data_operations(self):
         """Set and get flat DOF data through Field."""
@@ -33,15 +41,15 @@ class TestUniformGridField:
         grid.divisions = [2, 2]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian()
-        )
-        field = factory.create_field()
-        data = np.arange(field.get_num_dof_holders(),
+            grid, 1)
+        field = factory.create_function()
+        data = np.arange(_num_dof_holders(field),
                          dtype=np.float64).reshape(-1, 1)
         expected_data = data.copy()
         field.set_dof_holder_data(data)
         data.fill(-999.0)
-        np.testing.assert_allclose(field.get_dof_holder_data(), expected_data)
+        np.testing.assert_allclose(field.get_dof_holder_data().get_values(),
+                                   expected_data)
 
     def test_coordinates_2d(self):
         """Expose 2D DOF-holder coordinates through Field."""
@@ -51,10 +59,9 @@ class TestUniformGridField:
         grid.divisions = [2, 3]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian()
-        )
-        field = factory.create_field()
-        coords = field.get_dof_holder_coordinates()
+            grid, 1)
+        field = factory.create_function()
+        coords = _coordinates(field)
         expected = (grid.divisions[0] + 1) * (grid.divisions[1] + 1)
 
         assert isinstance(coords, np.ndarray)
@@ -82,10 +89,9 @@ class TestUniformGridField:
         grid.divisions = [2, 2, 2]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian()
-        )
-        field = factory.create_field()
-        coords = field.get_dof_holder_coordinates()
+            grid, 1)
+        field = factory.create_function()
+        coords = _coordinates(field)
         expected = (
             (grid.divisions[0] + 1)
             * (grid.divisions[1] + 1)
@@ -97,7 +103,8 @@ class TestUniformGridField:
         expected_data = data.copy()
         field.set_dof_holder_data(data)
         data.fill(-999.0)
-        np.testing.assert_allclose(field.get_dof_holder_data(), expected_data)
+        np.testing.assert_allclose(field.get_dof_holder_data().get_values(),
+                                   expected_data)
 
     def test_field_evaluation(self):
         """Evaluate a uniform-grid field at explicit query points."""
@@ -107,11 +114,10 @@ class TestUniformGridField:
         grid.divisions = [10, 10]
 
         factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian()
-        )
-        field = factory.create_field()
-        coords = field.get_dof_holder_coordinates()
-        num_dofs = field.get_num_dof_holders()
+            grid, 1)
+        field = factory.create_function()
+        coords = _coordinates(field)
+        num_dofs = _num_dof_holders(field)
         data = np.zeros(num_dofs, dtype=np.float64)
         for i in range(num_dofs):
             data[i] = coords[i, 0] + 2.0 * coords[i, 1]
@@ -120,7 +126,8 @@ class TestUniformGridField:
         query_pts = np.array(
             [[0.1, 0.2], [0.5, 0.5], [0.9, 0.8]], dtype=np.float64
         )
-        request = pcms.EvaluationRequest.from_coordinates(query_pts)
+        request = pcms.EvaluationRequest.from_coordinates(
+            pcms.CoordinateView(query_pts))
         evaluator = factory.create_point_evaluator(request)
         results = np.zeros((len(query_pts), 1), dtype=np.float64)
         evaluator.evaluate(field, results)
@@ -145,29 +152,29 @@ class TestUniformGridOmegaHWorkflow:
 
         grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
         mask_field = pcms.create_uniform_grid_binary_field(mesh, [4, 4])
-        mask_data = mask_field.get_dof_holder_data()
+        mask_data = mask_field.get_dof_holder_data().get_values()
 
         # Build a mesh-backed source field: f(x,y) = x + 2y.
-        omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(mesh, 1)
-        omega_h_field = omega_h_factory.create_field()
-        coords = omega_h_field.get_dof_holder_coordinates()
-        omega_h_data = np.zeros(omega_h_field.get_num_dof_holders(),
+        omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
+            mesh, 1, 1)
+        omega_h_field = omega_h_factory.create_function()
+        coords = _coordinates(omega_h_field)
+        omega_h_data = np.zeros(_num_dof_holders(omega_h_field),
                                 dtype=np.float64)
-        for i in range(omega_h_field.get_num_dof_holders()):
+        for i in range(_num_dof_holders(omega_h_field)):
             omega_h_data[i] = coords[i, 0] + 2.0 * coords[i, 1]
         omega_h_field.set_dof_holder_data(omega_h_data)
 
         ug_factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1, pcms.CoordinateSystem.Cartesian()
-        )
-        ug_field = ug_factory.create_field()
+            grid, 1)
+        ug_field = ug_factory.create_function()
 
         # Transfer from unstructured mesh to uniform grid.
         interp = pcms.Interpolator(omega_h_factory, ug_factory)
         interp.apply(omega_h_field, ug_field)
 
-        ug_field_data = ug_field.get_dof_holder_data()
-        ug_coords = ug_field.get_dof_holder_coordinates()
+        ug_field_data = ug_field.get_dof_holder_data().get_values()
+        ug_coords = _coordinates(ug_field)
 
         assert mask_data.shape == (25, 1)
         assert ug_field_data.shape == (25, 1)
@@ -187,13 +194,15 @@ class TestUniformGridOmegaHWorkflow:
             world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 8, 8, 0, False,
         )
 
-        src_factory = pcms.LagrangeFunctionSpace.from_mesh(src_mesh, 1)
-        tgt_factory = pcms.LagrangeFunctionSpace.from_mesh(tgt_mesh, 1)
-        src_field = src_factory.create_field()
-        tgt_field = tgt_factory.create_field()
+        src_factory = pcms.LagrangeFunctionSpace.from_mesh(
+            src_mesh, 1, 1)
+        tgt_factory = pcms.LagrangeFunctionSpace.from_mesh(
+            tgt_mesh, 1, 1)
+        src_field = src_factory.create_function()
+        tgt_field = tgt_factory.create_function()
 
-        src_coords = src_field.get_dof_holder_coordinates()
-        src_data = np.zeros(src_field.get_num_dof_holders())
+        src_coords = _coordinates(src_field)
+        src_data = np.zeros(_num_dof_holders(src_field))
         for i in range(len(src_data)):
             src_data[i] = src_coords[i, 0] + 2.0 * src_coords[i, 1]
         src_field.set_dof_holder_data(src_data)
@@ -201,9 +210,9 @@ class TestUniformGridOmegaHWorkflow:
         interp = pcms.Interpolator(src_factory, tgt_factory)
         interp.apply(src_field, tgt_field)
 
-        tgt_coords = tgt_field.get_dof_holder_coordinates()
-        tgt_data = tgt_field.get_dof_holder_data()
-        for i in range(tgt_field.get_num_dof_holders()):
+        tgt_coords = _coordinates(tgt_field)
+        tgt_data = tgt_field.get_dof_holder_data().get_values()
+        for i in range(_num_dof_holders(tgt_field)):
             expected = tgt_coords[i, 0] + 2.0 * tgt_coords[i, 1]
             assert abs(expected - tgt_data[i, 0]) < 1e-10
 

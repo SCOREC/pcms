@@ -33,18 +33,29 @@ public:
   {
   }
 
-  void Evaluate(
+  [[nodiscard]] LO NumPoints() const override
+  {
+    return static_cast<LO>(hint_.coordinates_.extent(0) + hint_.num_missing_);
+  }
+
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    if (hint_.mode_ != OutOfBoundsMode::FILL) {
+      return {};
+    }
+    return hint_.missing_indices_d_;
+  }
+
+  // Public because CUDA forbids extended lambdas in non-public member
+  // functions. User should call Evaluate
+  // TODO: add passkey or other mechanism to avoid user calling this
+  void EvaluateImpl(
     const Field<T>& field,
     ValueView<T, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
-    this->CheckEvaluateWriteTag("MeshFieldsPointEvaluator::Evaluate", field,
-                                out);
     const auto values = out.GetValues();
-    PCMS_ALWAYS_ASSERT(values.extent(0) ==
-                       hint_.coordinates_.extent(0) + hint_.num_missing_);
-    PCMS_ALWAYS_ASSERT(values.extent(1) ==
-                       static_cast<size_t>(layout_->GetNumComponents()));
     auto const* mesh_field_data =
       dynamic_cast<const MeshFieldsFieldData<T>*>(&field.GetData());
     if (!mesh_field_data) {
@@ -74,15 +85,6 @@ public:
           values(hint_.missing_indices_d_(i), c) = fill_val;
         });
     }
-  }
-
-  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
-    const override
-  {
-    if (hint_.mode_ != OutOfBoundsMode::FILL) {
-      return {};
-    }
-    return hint_.missing_indices_d_;
   }
 
 private:

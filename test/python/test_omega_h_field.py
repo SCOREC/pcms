@@ -26,24 +26,24 @@ class TestOmegaHField:
         """Create an Omega_h-backed Field and exercise the public Field API."""
         mesh = self._build_mesh(world, dim)
         factory = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
-        )
-        field = factory.create_field()
+            mesh, order, num_components)
+        field = factory.create_function()
 
-        assert field.get_num_components() == num_components
-        assert field.get_num_dof_holders() > 0
+        assert field.get_layout().get_num_components() == num_components
+        assert field.get_layout().get_num_owned_dof_holder() > 0
 
-        coords = field.get_dof_holder_coordinates()
-        assert coords.shape[0] == field.get_num_dof_holders()
+        coords = field.get_layout().get_dof_holder_coordinates().get_values()
+        assert coords.shape[0] == field.get_layout().get_num_owned_dof_holder()
         assert coords.shape[1] == dim
 
-        ndata = field.get_num_dof_holders() * num_components
+        ndata = field.get_layout().get_num_owned_dof_holder() * num_components
         test_data = np.arange(ndata, dtype=np.float64).reshape(
             -1, num_components)
         expected_data = test_data.copy()
         field.set_dof_holder_data(test_data)
         test_data.fill(-999.0)
-        np.testing.assert_allclose(field.get_dof_holder_data(), expected_data)
+        np.testing.assert_allclose(field.get_dof_holder_data().get_values(),
+                                   expected_data)
 
     @pytest.mark.parametrize("dim, order, num_components", [
         (2, 1, 1), (2, 2, 1),
@@ -55,25 +55,23 @@ class TestOmegaHField:
 
         mesh = self._build_mesh(world, dim)
         source_space = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
-        )
+            mesh, order, num_components)
         target_space = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
-        )
-        source = source_space.create_field()
-        target = target_space.create_field()
+            mesh, order, num_components)
+        source = source_space.create_function()
+        target = target_space.create_function()
 
-        coords = source.get_dof_holder_coordinates()
-        source_data = np.zeros((source.get_num_dof_holders(), 1),
-                               dtype=np.float64)
-        for i in range(source.get_num_dof_holders()):
+        coords = source.get_layout().get_dof_holder_coordinates().get_values()
+        num_owned = source.get_layout().get_num_owned_dof_holder()
+        source_data = np.zeros((num_owned, 1), dtype=np.float64)
+        for i in range(num_owned):
             source_data[i, 0] = np.sum(coords[i, :dim])
         source.set_dof_holder_data(source_data)
 
         interp = pcms.Interpolator(source_space, target_space)
         interp.apply(source, target)
         np.testing.assert_allclose(
-            target.get_dof_holder_data(), source_data, atol=1e-14
+            target.get_dof_holder_data().get_values(), source_data, atol=1e-14
         )
 
     @pytest.mark.parametrize("dim, order, num_components", [
@@ -83,13 +81,12 @@ class TestOmegaHField:
         """Evaluate an Omega_h-backed field at explicit query points."""
         mesh = self._build_mesh(world, dim)
         factory = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
-        )
-        field = factory.create_field()
+            mesh, order, num_components)
+        field = factory.create_function()
 
         mesh_coords = mesh.coords()
         num_verts = mesh.nverts()
-        num_owned = field.get_num_dof_holders()
+        num_owned = field.get_layout().get_num_owned_dof_holder()
         ndata = num_owned * num_components
 
         def test_func(x, y, z, component):
@@ -129,7 +126,8 @@ class TestOmegaHField:
                 [0.9, 0.1, 0.9],
             ], dtype=np.float64)
 
-        request = pcms.EvaluationRequest.from_coordinates(eval_coords)
+        request = pcms.EvaluationRequest.from_coordinates(
+            pcms.CoordinateView(eval_coords))
         evaluator = factory.create_point_evaluator(request)
         eval_values = np.zeros((eval_coords.shape[0], num_components),
                                dtype=np.float64)
@@ -140,3 +138,17 @@ class TestOmegaHField:
                 val = eval_values[i, c]
                 assert not np.isnan(val)
                 assert not np.isinf(val)
+
+    @pytest.mark.parametrize("shape", [(4, 1), (6, 1), (5, 2)])
+    def test_evaluate_rejects_wrong_output_shape(self, world, shape):
+        """A wrongly shaped output buffer raises instead of aborting."""
+        mesh = self._build_mesh(world, 2)
+        factory = pcms.LagrangeFunctionSpace.from_mesh(
+            mesh, 1, 1)
+        field = factory.create_function()
+        eval_coords = np.full((5, 2), 0.5)
+        evaluator = factory.create_point_evaluator(
+            pcms.EvaluationRequest.from_coordinates(
+            pcms.CoordinateView(eval_coords)))
+        with pytest.raises(ValueError, match="must be \\[5\\]\\[1\\]"):
+            evaluator.evaluate(field, np.zeros(shape))

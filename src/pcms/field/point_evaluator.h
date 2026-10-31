@@ -6,6 +6,8 @@
 #include "pcms/utility/memory_spaces.h"
 #include "pcms/utility/types.h"
 #include <Kokkos_Core.hpp>
+#include <stdexcept>
+#include <string>
 
 namespace pcms
 {
@@ -30,24 +32,39 @@ class Field;
 // mismatch.
 //
 // Evaluate writes results into a tagged rank-2 output view with shape:
-//   [num_query_points][num_components]
+//   [NumPoints()][num_components of the field]
 // The caller must provide the full output buffer. Successful Evaluate calls
 // fill the entire buffer.
 //
-// The write is tagged: an evaluator produces the source field's stored value
-// basis, so the ValueView the caller supplies must claim that basis (all
-// rank-0 bases compare equal, so scalar callers may tag with ValueBasis{}).
-// Implementations gate on it with CheckEvaluateWriteTag and throw pcms_error
-// on mismatch.
+// The write is tagged: the ValueView the caller supplies must claim
+// OutputBasis(stored basis of the field) (all rank-0 bases compare equal, so
+// scalar callers may tag with ValueBasis{}).
+//
+// Evaluate checks the output's shape and tag before calling EvaluateImpl, so
+// implementations may assume both.
 template <typename T,
           typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class PointEvaluator
 {
 public:
-  virtual void Evaluate(
-    const Field<T>& field,
-    ValueView<T, DeviceMemorySpace, LayoutPolicy> values) const = 0;
+  /// Writes the field's values at the query points into `values`.
+  /// @throws std::invalid_argument if `values` is not shaped
+  ///         [NumPoints()][number of components of the field]
+  /// @throws pcms_error if `values` does not claim the basis this evaluator
+  ///         writes for the field
+  void Evaluate(const Field<T>& field,
+                ValueView<T, DeviceMemorySpace, LayoutPolicy> values) const
+  {
+    CheckOutputShape(field, values);
+    detail::CheckWrittenValueBasis(
+      "PointEvaluator::Evaluate", values.GetBasis(),
+      OutputBasis(field.GetData().GetValueBasis()));
+    EvaluateImpl(field, values);
+  }
+
+  /// Number of query points, fixed at construction.
+  [[nodiscard]] virtual LO NumPoints() const = 0;
 
   /// Value basis this evaluator writes for a field stored in `stored`.
   [[nodiscard]] virtual ValueBasis OutputBasis(const ValueBasis& stored) const
@@ -64,14 +81,27 @@ public:
   virtual ~PointEvaluator() noexcept = default;
 
 protected:
-  /// Throws pcms_error unless the output view claims the source field's
-  /// stored value basis, which is what every evaluator writes.
-  static void CheckEvaluateWriteTag(
-    const char* context, const Field<T>& field,
-    const ValueView<T, DeviceMemorySpace, LayoutPolicy>& values)
+  /// Evaluate after its checks: `values` is shaped and tagged correctly.
+  virtual void EvaluateImpl(
+    const Field<T>& field,
+    ValueView<T, DeviceMemorySpace, LayoutPolicy> values) const = 0;
+
+private:
+  void CheckOutputShape(
+    const Field<T>& field,
+    const ValueView<T, DeviceMemorySpace, LayoutPolicy>& values) const
   {
-    detail::CheckWrittenValueBasis(context, values.GetBasis(),
-                                   field.GetData().GetValueBasis());
+    const auto num_points = static_cast<size_t>(NumPoints());
+    const auto num_components =
+      static_cast<size_t>(field.GetLayout().GetNumComponents());
+    if (values.extent(0) != num_points || values.extent(1) != num_components) {
+      throw std::invalid_argument(
+        "PointEvaluator::Evaluate: the output view is shaped [" +
+        std::to_string(values.extent(0)) + "][" +
+        std::to_string(values.extent(1)) + "] but must be [" +
+        std::to_string(num_points) + "][" + std::to_string(num_components) +
+        "] (query points x field components)");
+    }
   }
 };
 

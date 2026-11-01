@@ -43,6 +43,8 @@ def test_dev_version_names_the_git_revision():
     match = VERSION.fullmatch(pcms.__version__)
     if match["hash"] is None:
         pytest.skip("release build")
+    if pcms.__git_revision__ == "unknown":
+        pytest.skip("git revision is unavailable in this build")
     assert pcms.__git_revision__.startswith(match["hash"])
 
 

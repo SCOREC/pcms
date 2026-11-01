@@ -67,7 +67,7 @@ if(GIT_EXECUTABLE)
       # project() version with an unknown distance (0), so the build still
       # reports a development version rather than the release.
       execute_process(
-        COMMAND "${GIT_EXECUTABLE}" describe --always --dirty
+        COMMAND "${GIT_EXECUTABLE}" describe --always --dirty --exclude "*"
         WORKING_DIRECTORY "${SOURCE_DIR}"
         OUTPUT_VARIABLE describe
         RESULT_VARIABLE result

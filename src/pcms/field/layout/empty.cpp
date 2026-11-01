@@ -26,7 +26,7 @@ int RequireDimension(const std::shared_ptr<const CoordinateSystem>& system)
 } // namespace
 
 EmptyFieldLayout::EmptyFieldLayout(
-  std::shared_ptr<const CoordinateSystem> system)
+  std::shared_ptr<const CoordinateSystem> system, int num_components)
   : owned_("null_owned", 0),
     gids_("null_gids", 0),
     class_dims_("null_class_dims", 0),
@@ -35,8 +35,12 @@ EmptyFieldLayout::EmptyFieldLayout(
     gids_host_("null_gids_host", 0),
     classification_dims_host_("null_classification_dims_host", 0),
     classification_ids_host_("null_classification_ids_host", 0),
-    coords_("null_coords", 0, RequireDimension(system))
+    coords_("null_coords", 0, RequireDimension(system)),
+    num_components_(num_components)
 {
+  if (num_components_ < 1) {
+    throw pcms_error("EmptyFieldLayout: num_components must be positive");
+  }
   SetCoordinateSystem(std::move(system));
   discretization_ = std::make_shared<EmptyDiscretization>();
 }
@@ -49,7 +53,7 @@ std::shared_ptr<const Discretization> EmptyFieldLayout::GetDiscretization()
 
 int EmptyFieldLayout::GetNumComponents() const
 {
-  return 1;
+  return num_components_;
 }
 
 LO EmptyFieldLayout::GetNumOwnedDofHolder() const

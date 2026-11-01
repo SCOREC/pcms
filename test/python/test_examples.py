@@ -65,3 +65,8 @@ def test_flow_example():
                           "git lfs pull")
     stdout = _run_example("flow_example.py", exo_path)
     assert "SUCCESS" in stdout
+
+
+def test_coordinate_transformations_example():
+    stdout = _run_example("coordinate_transformations.py")
+    assert "SUCCESS" in stdout

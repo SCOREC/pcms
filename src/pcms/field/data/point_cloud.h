@@ -9,7 +9,9 @@
 
 namespace pcms
 {
-class PointCloud : public FieldData<Real>
+class PointCloud
+  : public FieldData<Real>
+  , public DOFAccess<Real>
 {
 public:
   PointCloud(std::shared_ptr<const PointCloudLayout> layout);
@@ -17,18 +19,16 @@ public:
   FieldValueType GetValueType() const override;
   const ValueBasis& GetValueBasis() const override;
 
-  Rank2View<const Real, HostMemorySpace> GetDOFHolderDataHost() const override;
-  void SetDOFHolderDataHost(
-    Rank2View<const Real, HostMemorySpace> data) override;
+  const DOFAccess<Real>* GetDOFAccess() const noexcept override { return this; }
+  DOFAccess<Real>* GetDOFAccess() noexcept override { return this; }
 
-  Rank2View<const Real, DeviceMemorySpace> GetDOFHolderData() const override;
-  void SetDOFHolderData(Rank2View<const Real, DeviceMemorySpace> data) override;
+  Rank2View<const Real, DeviceMemorySpace> GetOwnedValues() const override;
+  void SetOwnedValues(Rank2View<const Real, DeviceMemorySpace> data) override;
 
 private:
   std::shared_ptr<const PointCloudLayout> layout_;
   ValueBasis basis_;
   Kokkos::View<Real**, DeviceMemorySpace> device_data_;
-  mutable Kokkos::View<Real**, HostMemorySpace> data_host_;
 };
 } // namespace pcms
 

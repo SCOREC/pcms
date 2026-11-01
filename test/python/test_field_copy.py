@@ -30,25 +30,25 @@ class TestFieldCopy:
 
         # Create factory and layout
         factory = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, order, num_components, pcms.CoordinateSystem.Cartesian()
-        )
+            mesh, order, num_components)
 
         # Create original field and set data
-        original = factory.create_field()
-        ndata = original.get_num_dof_holders() * original.get_num_components()
+        original = factory.create_function()
+        layout = original.get_layout()
+        ndata = layout.get_num_owned_dof_holder() * layout.get_num_components()
 
         # Create sequential array of IDs
         ids = np.arange(ndata, dtype=np.float64).reshape(
-            -1, original.get_num_components())
+            -1, original.get_layout().get_num_components())
         original.set_dof_holder_data(ids)
 
         # Create copied field and copy data
-        copied = factory.create_field()
+        copied = factory.create_function()
         copier = pcms.Copy(factory, factory)
         copier.apply(original, copied)
 
         # Get copied data
-        copied_array = copied.get_dof_holder_data()
+        copied_array = copied.get_dof_holder_data().get_values()
 
         # Verify the copy
         assert copied_array.shape == ids.shape, \

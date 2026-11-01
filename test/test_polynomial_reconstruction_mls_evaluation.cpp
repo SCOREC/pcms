@@ -118,7 +118,7 @@ void CheckPolynomialReproduction(unsigned degree,
                                           coords_view),
     SweepTestOptions(degree, basis));
   auto field = fs->CreateFunction<Real>();
-  pcms::test::SetField(field.GetData(), *fs->GetLayout(), func);
+  pcms::test::SetField(field, func);
 
   auto pts = pcms::test::StandardEvalCoords2D();
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
@@ -176,12 +176,10 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: same PointEvaluator "
   auto field_b = fs->CreateFunction<Real>();
 
   pcms::test::SetField(
-    field_a.GetData(), *fs->GetLayout(),
+    field_a,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   const Real cval = 7.0;
-  pcms::test::SetField(
-    field_b.GetData(), *fs->GetLayout(),
-    OMEGA_H_LAMBDA(Real, Real) { return cval; });
+  pcms::test::SetField(field_b, OMEGA_H_LAMBDA(Real, Real) { return cval; });
 
   auto pts = pcms::test::StandardEvalCoords2D();
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
@@ -242,9 +240,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: default MLSOptions — "
     pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                           coords_view));
   auto field = fs->CreateFunction<Real>();
-  pcms::test::SetField(
-    field.GetData(), *fs->GetLayout(),
-    OMEGA_H_LAMBDA(Real, Real) { return Real(1.0); });
+  pcms::test::SetField(field, OMEGA_H_LAMBDA(Real, Real) { return Real(1.0); });
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
@@ -305,8 +301,11 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: accepts the (R, Z) "
   for (size_t i = 0; i < src.size() / 2; ++i) {
     dof_values.push_back(linear_rz(src[2 * i], src[2 * i + 1]));
   }
-  field.GetData().SetDOFHolderDataHost(Rank2View<const Real, HostMemorySpace>(
-    dof_values.data(), static_cast<pcms::LO>(dof_values.size()), 1));
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{},
+      Rank2View<const Real, HostMemorySpace>(
+        dof_values.data(), static_cast<pcms::LO>(dof_values.size()), 1)));
 
   std::vector<Real> pts{0.3, 0.4, 0.6, 0.7};
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
@@ -362,8 +361,11 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: radius option is "
     opts);
   auto field = fs->CreateFunction<Real>();
   std::vector<Real> dof_values{1.0, 5.0};
-  field.GetData().SetDOFHolderDataHost(Rank2View<const Real, HostMemorySpace>(
-    dof_values.data(), static_cast<pcms::LO>(dof_values.size()), 1));
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{},
+      Rank2View<const Real, HostMemorySpace>(
+        dof_values.data(), static_cast<pcms::LO>(dof_values.size()), 1)));
 
   std::vector<Real> pts{0.0, 0.0};
   auto device_coords = pcms::test::CreateDeviceCoordinateView(

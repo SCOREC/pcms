@@ -44,11 +44,18 @@ public:
     return {};
   }
 
-  void Evaluate(
+  [[nodiscard]] LO NumPoints() const override
+  {
+    return static_cast<LO>(target_coords_.size() / dim_);
+  }
+
+  // Public because CUDA forbids extended lambdas in non-public member
+  // functions. User call Evaluate.
+  // TODO: add passkey or other mechanism to protect this
+  void EvaluateImpl(
     const Field<Real>& field,
     ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
-    this->CheckEvaluateWriteTag("MLSPointEvaluator::Evaluate", field, out);
     const auto values = out.GetValues();
     if (values.extent(1) != 1) {
       throw pcms_error(
@@ -72,7 +79,6 @@ public:
       options_.lambda, options_.tol, options_.decay_factor);
 
     const int n_targets = result.size();
-    PCMS_ALWAYS_ASSERT(static_cast<size_t>(n_targets) == values.extent(0));
     Kokkos::parallel_for(
       "CopyMLSResultToValues",
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_targets),

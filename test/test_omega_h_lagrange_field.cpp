@@ -136,9 +136,11 @@ TEST_CASE("OmegaHLagrangeField order-1: set/get DOF data round-trip")
     data[i] = static_cast<Real>(i);
 
   pcms::Rank2View<const Real, pcms::HostMemorySpace> view(data.data(), n, 1);
-  field.GetData().SetDOFHolderDataHost(view);
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(pcms::ValueBasis{},
+                                                             view));
 
-  auto got = pcms::FlattenToRank1View(field.GetData().GetDOFHolderDataHost());
+  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(static_cast<int>(got.size()) == n);
   for (int i = 0; i < n; ++i)
     REQUIRE(got[i] == Catch::Approx(data[i]));
@@ -161,8 +163,10 @@ TEST_CASE("Field checked writes validate the view shape, not just total size")
   // field.
   pcms::Rank2View<const Real, pcms::HostMemorySpace> reshaped(data.data(), 1,
                                                               n);
-  REQUIRE_THROWS(field.SetDOFHolderDataHost(
-    pcms::ValueView<const Real, pcms::HostMemorySpace>(basis, reshaped)));
+  REQUIRE_THROWS_AS(
+    field.SetDOFHolderDataHost(
+      pcms::ValueView<const Real, pcms::HostMemorySpace>(basis, reshaped)),
+    std::invalid_argument);
 
   // The matching shape passes.
   pcms::Rank2View<const Real, pcms::HostMemorySpace> ok(data.data(), n, 1);
@@ -179,7 +183,7 @@ TEST_CASE("OmegaHLagrangeField order-1: linear function evaluation")
   auto field = factory->CreateFunction<Real>();
 
   pcms::test::SetField(
-    field.GetData(), *factory->GetLayout(),
+    field,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   pcms::test::CheckEvaluation(
     factory, field, pcms::test::StandardEvalCoords2D(),
@@ -197,7 +201,7 @@ TEST_CASE("MeshFieldsAdapter order-1: linear function evaluation (shared util)")
   auto field = factory->CreateFunction<Real>();
 
   pcms::test::SetField(
-    field.GetData(), *factory->GetLayout(),
+    field,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   pcms::test::CheckEvaluation(
     factory, field, pcms::test::StandardEvalCoords2D(),
@@ -213,7 +217,7 @@ TEST_CASE("OmegaHLagrangeField order-1: out-of-bounds FILL mode")
   auto field = factory->CreateFunction<Real>();
 
   pcms::test::SetField(
-    field.GetData(), *factory->GetLayout(),
+    field,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
 
   Real fill_value = -999.0;
@@ -234,9 +238,11 @@ TEST_CASE("OmegaHLagrangeField order-0: set/get DOF data round-trip")
   int n = factory->GetLayout()->GetNumOwnedDofHolder();
   std::vector<Real> data(n, 3.14);
   pcms::Rank2View<const Real, pcms::HostMemorySpace> view(data.data(), n, 1);
-  field.GetData().SetDOFHolderDataHost(view);
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(pcms::ValueBasis{},
+                                                             view));
 
-  auto got = pcms::FlattenToRank1View(field.GetData().GetDOFHolderDataHost());
+  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(static_cast<int>(got.size()) == n);
   for (int i = 0; i < n; ++i)
     REQUIRE(got[i] == Catch::Approx(3.14));
@@ -255,7 +261,9 @@ TEST_CASE("OmegaHLagrangeField order-0: constant field evaluation")
   std::vector<Real> data(nelems, kValue);
   pcms::Rank2View<const Real, pcms::HostMemorySpace> view(data.data(), nelems,
                                                           1);
-  field.GetData().SetDOFHolderDataHost(view);
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(pcms::ValueBasis{},
+                                                             view));
 
   pcms::test::CheckEvaluation(
     factory, field, pcms::test::StandardEvalCoords2D(),
@@ -274,7 +282,9 @@ TEST_CASE("OmegaHLagrangeField order-0: out-of-bounds FILL mode")
   std::vector<Real> data(nelems, 1.0);
   pcms::Rank2View<const Real, pcms::HostMemorySpace> view(data.data(), nelems,
                                                           1);
-  field.GetData().SetDOFHolderDataHost(view);
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(pcms::ValueBasis{},
+                                                             view));
 
   Real fill_value = -1.0;
   std::vector<Real> outside{-0.5, 0.5, 1.5, 0.5};

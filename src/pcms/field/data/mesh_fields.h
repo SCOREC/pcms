@@ -41,7 +41,9 @@ struct FlattenFunctor
 } // namespace
 
 template <typename T>
-class MeshFieldsFieldData : public FieldData<T>
+class MeshFieldsFieldData
+  : public FieldData<T>
+  , public DOFAccess<T>
 {
 public:
   MeshFieldsFieldData(std::shared_ptr<const MeshFieldsAdapterLayout> layout,
@@ -49,9 +51,6 @@ public:
     : layout_(std::move(layout)),
       basis_(std::move(basis)),
       mesh_field_(MakeMeshFieldBackend<T>(*layout_)),
-      host_data_("meshfields_field_data",
-                 static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
-                 static_cast<size_t>(layout_->GetNumComponents())),
       device_data_("meshfields_field_data_device",
                    static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
                    static_cast<size_t>(layout_->GetNumComponents()))
@@ -68,27 +67,18 @@ public:
   }
   const ValueBasis& GetValueBasis() const override { return basis_; }
 
-  Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
-  {
-    DeepCopyMismatchLayouts(host_data_, device_data_);
-    return MakeConstRank2View(host_data_);
-  }
+  const DOFAccess<T>* GetDOFAccess() const noexcept override { return this; }
+  DOFAccess<T>* GetDOFAccess() noexcept override { return this; }
 
-  void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
-  {
-    CopyHostRank2ViewToDeviceView(device_data_, values);
-    SyncBackend(GetDOFHolderData());
-  }
-
-  Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const override
+  Rank2View<const T, DeviceMemorySpace> GetOwnedValues() const override
   {
     return MakeConstRank2View(device_data_);
   }
 
-  void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
+  void SetOwnedValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
     CopyDeviceRank2ViewToDeviceView(device_data_, values);
-    SyncBackend(GetDOFHolderData());
+    SyncBackend(GetOwnedValues());
   }
 
   std::shared_ptr<MeshFieldBackend<T>> GetMeshFieldBackend() const
@@ -130,7 +120,6 @@ private:
   std::shared_ptr<const MeshFieldsAdapterLayout> layout_;
   ValueBasis basis_;
   std::shared_ptr<MeshFieldBackend<T>> mesh_field_;
-  mutable Kokkos::View<T**, HostMemorySpace> host_data_;
   Kokkos::View<T**, DeviceMemorySpace> device_data_;
 };
 

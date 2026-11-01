@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "pcms/field/data/xgc.h"
+#include "pcms/coupler/overlap_mask.h"
 #include "pcms/field/function_space/xgc.h"
 #include <numeric>
 
@@ -26,28 +27,25 @@ bool in_overlap(int, int id)
 
 } // namespace
 
-TEST_CASE("XGC FieldLayout marks overlap entries and gids")
+TEST_CASE("XGC FieldLayout owns and classifies every entry")
 {
   static constexpr int data_size = 16;
   auto rc = create_dummy_rc(data_size);
-  pcms::XGCFieldLayout layout(rc, in_overlap, data_size);
+  pcms::XGCFieldLayout layout(rc, data_size);
 
   auto owned = layout.GetOwnedHost();
   auto gids = layout.GetGidsHost();
   auto class_dims = layout.GetDOFHolderClassificationDimensionsHost();
   auto class_ids = layout.GetDOFHolderClassificationIdsHost();
+  const pcms::OverlapMask overlap_mask(in_overlap);
+  auto overlap = overlap_mask.GetMask(layout);
 
   for (int i = 0; i < data_size; ++i) {
     REQUIRE(gids[i] == i + 1);
-    if (i % 4 == 0) {
-      REQUIRE(owned[i]);
-      REQUIRE(class_dims[i] == 0);
-      REQUIRE(class_ids[i] == 0);
-    } else {
-      REQUIRE(!owned[i]);
-      REQUIRE(class_dims[i] == -1);
-      REQUIRE(class_ids[i] == -1);
-    }
+    REQUIRE(owned[i]);
+    REQUIRE(class_dims[i] == 0);
+    REQUIRE(class_ids[i] == (i % 4 == 0 ? 0 : 1));
+    REQUIRE(overlap[i] == (i % 4 == 0));
   }
 }
 
@@ -55,7 +53,7 @@ TEST_CASE("XGCFieldFactory creates fields and rejects evaluator access")
 {
   static constexpr int data_size = 16;
   auto rc = create_dummy_rc(data_size);
-  pcms::XGCFieldFactory function_space(rc, in_overlap, data_size);
+  pcms::XGCFieldFactory function_space(rc, data_size);
 
   std::vector<pcms::Real> data(data_size);
   std::iota(data.begin(), data.end(), 0.0);

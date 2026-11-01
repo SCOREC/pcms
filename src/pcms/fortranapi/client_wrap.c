@@ -277,28 +277,61 @@ SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized()
   return result;
 }
 
-SWIGEXPORT void _wrap_PcmsClientHandle_pointer_set(SwigClassWrapper* farg1,
-                                                   void const** farg2)
+SWIGEXPORT void _wrap_PcmsClientHandle_couplerPointer_set(
+  SwigClassWrapper* farg1, void const** farg2)
 {
   struct PcmsClientHandle* arg1 = (struct PcmsClientHandle*)0;
   void* arg2 = (void*)0;
 
   SWIG_check_nonnull(farg1->cptr, "struct PcmsClientHandle *",
-                     "PcmsClientHandle", "PcmsClientHandle::pointer", return);
+                     "PcmsClientHandle", "PcmsClientHandle::couplerPointer",
+                     return);
   arg1 = (struct PcmsClientHandle*)farg1->cptr;
   arg2 = (void*)(*farg2);
   if (arg1)
-    (arg1)->appPointer = arg2;
+    (arg1)->couplerPointer = arg2;
 }
 
-SWIGEXPORT void* _wrap_PcmsClientHandle_pointer_get(SwigClassWrapper* farg1)
+SWIGEXPORT void* _wrap_PcmsClientHandle_couplerPointer_get(
+  SwigClassWrapper* farg1)
 {
   void* fresult;
   struct PcmsClientHandle* arg1 = (struct PcmsClientHandle*)0;
   void* result = 0;
 
   SWIG_check_nonnull(farg1->cptr, "struct PcmsClientHandle *",
-                     "PcmsClientHandle", "PcmsClientHandle::pointer", return 0);
+                     "PcmsClientHandle", "PcmsClientHandle::couplerPointer",
+                     return 0);
+  arg1 = (struct PcmsClientHandle*)farg1->cptr;
+  result = (void*)((arg1)->couplerPointer);
+  fresult = (void*)(result);
+  return fresult;
+}
+
+SWIGEXPORT void _wrap_PcmsClientHandle_appPointer_set(SwigClassWrapper* farg1,
+                                                      void const** farg2)
+{
+  struct PcmsClientHandle* arg1 = (struct PcmsClientHandle*)0;
+  void* arg2 = (void*)0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsClientHandle *",
+                     "PcmsClientHandle", "PcmsClientHandle::appPointer",
+                     return);
+  arg1 = (struct PcmsClientHandle*)farg1->cptr;
+  arg2 = (void*)(*farg2);
+  if (arg1)
+    (arg1)->appPointer = arg2;
+}
+
+SWIGEXPORT void* _wrap_PcmsClientHandle_appPointer_get(SwigClassWrapper* farg1)
+{
+  void* fresult;
+  struct PcmsClientHandle* arg1 = (struct PcmsClientHandle*)0;
+  void* result = 0;
+
+  SWIG_check_nonnull(farg1->cptr, "struct PcmsClientHandle *",
+                     "PcmsClientHandle", "PcmsClientHandle::appPointer",
+                     return 0);
   arg1 = (struct PcmsClientHandle*)farg1->cptr;
   result = (void*)((arg1)->appPointer);
   fresult = (void*)(result);
@@ -672,8 +705,7 @@ SWIGEXPORT int _wrap_pcms_reverse_classification_count_verts(
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(
   SwigArrayWrapper* farg1, int const* farg2, void const** farg3,
-  int const* farg4, int const* farg5, SwigClassWrapper* farg6,
-  in_overlap_function farg7)
+  int const* farg4, int const* farg5, SwigClassWrapper* farg6)
 {
   SwigClassWrapper fresult;
   char* arg1 = (char*)0;
@@ -682,7 +714,6 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(
   int arg4;
   PcmsType arg5;
   PcmsReverseClassificationHandle arg6;
-  in_overlap_function arg7 = (in_overlap_function)0;
   PcmsFieldAdapterHandle result;
 
   arg1 = (char*)(farg1->data);
@@ -694,21 +725,37 @@ SWIGEXPORT SwigClassWrapper _wrap_pcms_create_xgc_field_adapter(
   arg3 = (void*)(*farg3);
   arg4 = (int)(*farg4);
   arg5 = (PcmsType)(*farg5);
-  SWIG_check_nonnull(
-    farg6->cptr, "PcmsReverseClassificationHandle",
-    "PcmsReverseClassificationHandle",
-    "pcms_create_xgc_field_adapter(char const *,MPI_Comm,void "
-    "*,int,PcmsType,PcmsReverseClassificationHandle const,in_overlap_function)",
-    return SwigClassWrapper_uninitialized());
+  SWIG_check_nonnull(farg6->cptr, "PcmsReverseClassificationHandle",
+                     "PcmsReverseClassificationHandle",
+                     "pcms_create_xgc_field_adapter(char const *,MPI_Comm,void "
+                     "*,int,PcmsType,PcmsReverseClassificationHandle const)",
+                     return SwigClassWrapper_uninitialized());
   arg6 = *((PcmsReverseClassificationHandle*)(farg6->cptr));
-  arg7 = (in_overlap_function)(*farg7);
   result = pcms_create_xgc_field_adapter((char const*)arg1, arg2, arg3, arg4,
-                                         arg5, arg6, arg7);
+                                         arg5, arg6);
   fresult.cptr = (PcmsFieldAdapterHandle*)memcpy(
     (PcmsFieldAdapterHandle*)calloc(1, sizeof(PcmsFieldAdapterHandle)), &result,
     sizeof(PcmsFieldAdapterHandle));
   fresult.cmemflags = SWIG_MEM_RVALUE | SWIG_MEM_OWN;
   return fresult;
+}
+
+SWIGEXPORT void _wrap_pcms_set_overlap_mask(SwigClassWrapper* farg1,
+                                            SwigArrayWrapper* farg2,
+                                            in_overlap_function farg3)
+{
+  PcmsClientHandle arg1;
+  char* arg2 = (char*)0;
+  in_overlap_function arg3 = (in_overlap_function)0;
+
+  SWIG_check_nonnull(
+    farg1->cptr, "PcmsClientHandle", "PcmsClientHandle",
+    "pcms_set_overlap_mask(PcmsClientHandle,char const *,in_overlap_function)",
+    return);
+  arg1 = *((PcmsClientHandle*)(farg1->cptr));
+  arg2 = (char*)(farg2->data);
+  arg3 = (in_overlap_function)(*farg3);
+  pcms_set_overlap_mask(arg1, (char const*)arg2, arg3);
 }
 
 SWIGEXPORT SwigClassWrapper _wrap_pcms_create_dummy_field_adapter()

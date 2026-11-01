@@ -1,0 +1,3 @@
+# SWIG output regenerated from client.i; collapsed in GitHub diffs
+src/pcms/fortranapi/client_wrap.c linguist-generated
+src/pcms/fortranapi/pcms.f90 linguist-generated

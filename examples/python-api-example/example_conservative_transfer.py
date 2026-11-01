@@ -59,7 +59,7 @@ def scalar_values(field):
     DOF holder data is (num_dof_holders, num_components); these fields have a
     single component.
     """
-    return field.get_dof_holder_data()[:, 0]
+    return field.get_dof_holder_data().get_values()[:, 0]
 
 
 def integral_of_field(mesh, field):
@@ -80,8 +80,8 @@ def integral_of_p0_field(mesh, field):
 
 def evaluate_function_onto_field(space, func):
     """Create a field on `space` and fill it from `func` at the DOF holders."""
-    field = space.create_field()
-    coords = field.get_dof_holder_coordinates()
+    field = space.create_function()
+    coords = field.get_layout().get_dof_holder_coordinates().get_values()
     field.set_dof_holder_data(func(coords[:, 0], coords[:, 1]))
     return field
 
@@ -189,7 +189,7 @@ def main(plot_path=None):
         # The conservative-projection operators require the native Omega_h
         # Lagrange backend (not the default MeshFields layout).
         source_space = pcms.LagrangeFunctionSpace.from_mesh(
-            source_mesh, 1, 1, pcms.CoordinateSystem.Cartesian(),
+            source_mesh, 1, 1,
             backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
         )
         source_field = evaluate_function_onto_field(source_space,
@@ -205,20 +205,21 @@ def main(plot_path=None):
               f"{target_mesh.nelems()} elems (read from {target_path})")
 
         target_space = pcms.LagrangeFunctionSpace.from_mesh(
-            target_mesh, 1, 1, pcms.CoordinateSystem.Cartesian(),
+            target_mesh, 1, 1,
             backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
         )
 
         # Analytic reference values at the target DOF holders.
-        target_template = target_space.create_field()
-        target_coords = target_template.get_dof_holder_coordinates()
+        target_template = target_space.create_function()
+        target_coords = (target_template.get_layout()
+                         .get_dof_holder_coordinates().get_values())
         reference_values = source_function(target_coords[:, 0],
                                            target_coords[:, 1])
 
         print("\nTransferring source field to target field:")
 
         # 3a. Mesh-intersection conservative projection.
-        mi_target = target_space.create_field()
+        mi_target = target_space.create_function()
         mesh_intersection = pcms.OmegaHConservativeProjection(
             source_space, target_space
         )
@@ -230,7 +231,7 @@ def main(plot_path=None):
         #     The linear solve degenerates to an exact diagonal scaling; the
         #     integral is still conserved exactly, but the max nodal error
         #     grows relative to the consistent mass matrix.
-        lumped_target = target_space.create_field()
+        lumped_target = target_space.create_function()
         lumped_projection = pcms.OmegaHConservativeProjection(
             source_space, target_space,
             mass_matrix_type=pcms.MassMatrixType.Lumped,
@@ -240,7 +241,7 @@ def main(plot_path=None):
                target_coords, reference_values, source_integral)
 
         # 3c. Monte Carlo (control-variate) conservative projection.
-        mc_target = target_space.create_field()
+        mc_target = target_space.create_function()
         monte_carlo = pcms.OmegaHControlVariateProjection(
             source_space,
             target_space,
@@ -260,12 +261,13 @@ def main(plot_path=None):
 
         # 4a. P1 source -> P0 target (project the linear field to cell averages).
         target_p0_space = pcms.LagrangeFunctionSpace.from_mesh(
-            target_mesh, 0, 1, pcms.CoordinateSystem.Cartesian(),
+            target_mesh, 0, 1,
             backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
         )
-        p1_to_p0 = target_p0_space.create_field()
+        p1_to_p0 = target_p0_space.create_function()
         # Analytic reference at the P0 DOF holders (element centroids).
-        p0_coords = p1_to_p0.get_dof_holder_coordinates()
+        p0_coords = (p1_to_p0.get_layout()
+                     .get_dof_holder_coordinates().get_values())
         p0_reference = source_function(p0_coords[:, 0], p0_coords[:, 1])
         proj_p1_p0 = pcms.OmegaHConservativeProjection(
             source_space, target_p0_space
@@ -278,13 +280,13 @@ def main(plot_path=None):
         # 4b. P0 source -> P1 target. Build a P0 source field by sampling the
         #     analytic function at the source element centroids.
         source_p0_space = pcms.LagrangeFunctionSpace.from_mesh(
-            source_mesh, 0, 1, pcms.CoordinateSystem.Cartesian(),
+            source_mesh, 0, 1,
             backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
         )
         source_p0_field = evaluate_function_onto_field(source_p0_space,
                                                        source_function)
         source_p0_integral = integral_of_p0_field(source_mesh, source_p0_field)
-        p0_to_p1 = target_space.create_field()
+        p0_to_p1 = target_space.create_function()
         proj_p0_p1 = pcms.OmegaHConservativeProjection(
             source_p0_space, target_space
         )
@@ -296,7 +298,8 @@ def main(plot_path=None):
 
         # 5. Optional before/after visualization.
         if plot_path is not None:
-            source_vertex_coords = source_field.get_dof_holder_coordinates()
+            source_vertex_coords = (source_field.get_layout()
+                                    .get_dof_holder_coordinates().get_values())
             make_plots(
                 plot_path, source_mesh, target_mesh,
                 source_vertex_coords, target_coords,

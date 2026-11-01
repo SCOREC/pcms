@@ -82,8 +82,6 @@ run `spack concretize -f` before `spack install`. For example:
 
 `spack info pcms` lists available variants.
 
-## Build on SCOREC systems
-
 On the SCOREC RHEL9 machines, PCMS and its dependencies are built with the
 system modules and the scripts in
 [laces-lab/software-dependencies](https://github.com/laces-lab/software-dependencies).

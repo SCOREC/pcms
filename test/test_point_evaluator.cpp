@@ -18,6 +18,130 @@
 using pcms::CoordinateSystem;
 using pcms::Real;
 
+namespace
+{
+
+// Evaluate checks the output's shape and tag before evaluating, the same way
+// for every evaluator. `field` must be scalar.
+void CheckOutputValidation(const pcms::PointEvaluator<Real>& evaluator,
+                           const pcms::Field<Real>& field, int num_points)
+{
+  using OutView = Kokkos::View<Real**, pcms::DeviceMemorySpace>;
+  REQUIRE(evaluator.NumPoints() == num_points);
+  REQUIRE(field.GetLayout().GetNumComponents() == 1);
+  auto scalar = [](OutView v) {
+    return pcms::ValueView<Real, pcms::DeviceMemorySpace>(
+      pcms::ValueBasis{}, pcms::MakeRank2View(v));
+  };
+  const auto n = static_cast<size_t>(num_points);
+
+  REQUIRE_NOTHROW(evaluator.Evaluate(field, scalar(OutView("ok", n, 1))));
+  REQUIRE_THROWS_AS(
+    evaluator.Evaluate(field, scalar(OutView("short", n - 1, 1))),
+    std::invalid_argument);
+  REQUIRE_THROWS_AS(
+    evaluator.Evaluate(field, scalar(OutView("long", n + 1, 1))),
+    std::invalid_argument);
+  REQUIRE_THROWS_AS(evaluator.Evaluate(field, scalar(OutView("wide", n, 2))),
+                    std::invalid_argument);
+  // One component is also a valid 1D vector, so only the tag is wrong.
+  OutView out("tagged", n, 1);
+  REQUIRE_THROWS_AS(
+    evaluator.Evaluate(field,
+                       pcms::ValueView<Real, pcms::DeviceMemorySpace>(
+                         pcms::ValueBasis{pcms::csys::Cartesian::Create(1),
+                                          pcms::ComponentScaling::Physical,
+                                          pcms::values::Vector},
+                         pcms::MakeRank2View(out))),
+    pcms::pcms_error);
+}
+
+// Two points inside [0,1]^2 and two outside.
+const std::vector<Real> kMixedPoints = {0.25, 0.25, -0.5, 0.5,
+                                        0.7,  0.3,  1.5,  0.5};
+
+std::unique_ptr<pcms::PointEvaluator<Real>> CreateFillEvaluator(
+  const pcms::FunctionSpace& space)
+{
+  auto coords = pcms::test::CreateDeviceCoordinateView(
+    kMixedPoints, pcms::csys::Cartesian::Deferred());
+  return space.CreatePointEvaluator<Real>(
+    pcms::EvaluationRequest::FromCoordinates(
+      coords.coordinate_view,
+      pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::FILL, -1.0}));
+}
+
+} // namespace
+
+TEST_CASE("PointEvaluator::Evaluate checks the output for every evaluator")
+{
+  auto lib = Omega_h::Library{};
+  const int n = static_cast<int>(kMixedPoints.size()) / 2;
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {0.0, 0.0};
+  grid.edge_length = {1.0, 1.0};
+  grid.divisions = {10, 10};
+
+  SECTION("Omega_h Lagrange")
+  {
+    auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10,
+                                   10, 0, false);
+    auto space = pcms::LagrangeFunctionSpace::FromMesh(
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
+      pcms::LagrangeFunctionSpace::Backend::OmegaH);
+    CheckOutputValidation(*CreateFillEvaluator(*space),
+                          space->CreateFunction<Real>(), n);
+  }
+#ifdef PCMS_ENABLE_MESHFIELDS
+  SECTION("MeshFields Lagrange")
+  {
+    auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10,
+                                   10, 0, false);
+    auto space = pcms::LagrangeFunctionSpace::FromMesh(
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
+      pcms::LagrangeFunctionSpace::Backend::MeshFields);
+    CheckOutputValidation(*CreateFillEvaluator(*space),
+                          space->CreateFunction<Real>(), n);
+  }
+#endif
+  SECTION("uniform grid Lagrange")
+  {
+    auto space = pcms::LagrangeFunctionSpace::FromUniformGrid(
+      grid, 1, pcms::csys::Cartesian::Deferred(), 1);
+    CheckOutputValidation(*CreateFillEvaluator(*space),
+                          space->CreateFunction<Real>(), n);
+  }
+  SECTION("uniform grid spline")
+  {
+    auto space = pcms::SplineFunctionSpace::FromUniformGrid(
+      grid, pcms::csys::Cartesian::Deferred());
+    CheckOutputValidation(*CreateFillEvaluator(*space),
+                          space->CreateFunction<Real>(), n);
+  }
+  SECTION("MLS point cloud")
+  {
+    std::vector<Real> sources;
+    for (int j = 0; j < 5; ++j) {
+      for (int i = 0; i < 5; ++i) {
+        sources.push_back(0.25 * i);
+        sources.push_back(0.25 * j);
+      }
+    }
+    auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
+      pcms::CoordinateView<pcms::HostMemorySpace>(
+        pcms::csys::Cartesian::Deferred(),
+        pcms::Rank2View<const Real, pcms::HostMemorySpace>(sources.data(), 25,
+                                                           2)));
+    const auto pts = pcms::test::StandardEvalCoords2D();
+    auto coords = pcms::test::CreateDeviceCoordinateView(
+      pts, pcms::csys::Cartesian::Deferred());
+    auto evaluator = space->CreatePointEvaluator<Real>(
+      pcms::EvaluationRequest::FromCoordinates(coords.coordinate_view));
+    CheckOutputValidation(*evaluator, space->CreateFunction<Real>(),
+                          static_cast<int>(pts.size()) / 2);
+  }
+}
+
 // ============================================================================
 // OmegaH order-1 — basic evaluation via new API
 // ============================================================================

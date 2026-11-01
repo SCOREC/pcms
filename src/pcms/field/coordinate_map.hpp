@@ -118,6 +118,26 @@ protected:
     const CoordinateView<DeviceMemorySpace>& query_points) const override;
 };
 
+// Places points of a poloidal (R, Z) plane at a fixed toroidal angle:
+// (R, Z) -> (R, theta0, Z). This lets a 2D CylindricalRZ target query a 3D
+// CylindricalRThetaZ source through a TransformedSource.
+//
+// Only scalar values (including multi-component scalars) are currently
+// supported.
+class PoloidalPlaneEmbedding final : public CoordinateMap
+{
+public:
+  /// @param theta0 toroidal angle of the plane, in radians
+  explicit PoloidalPlaneEmbedding(Real theta0);
+
+protected:
+  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> BindImpl(
+    const CoordinateView<DeviceMemorySpace>& query_points) const override;
+
+private:
+  Real theta0_;
+};
+
 } // namespace pcms
 
 #endif // PCMS_FIELD_COORDINATE_MAP_HPP

@@ -185,6 +185,22 @@ private:
   Real sign_;
 };
 
+// (R, Z) -> (R, theta0, Z). A free function: CUDA does not allow device
+// lambdas in protected members such as BindImpl.
+void EmbedPoloidalPoints(Rank2View<const Real, DeviceMemorySpace> in,
+                         Kokkos::View<Real**, DeviceMemorySpace> out,
+                         Real theta0)
+{
+  Kokkos::parallel_for(
+    "embed_poloidal_points",
+    Kokkos::RangePolicy<ExecutionSpace>(0, static_cast<LO>(in.extent(0))),
+    KOKKOS_LAMBDA(const LO i) {
+      out(i, 0) = in(i, 0);
+      out(i, 1) = theta0;
+      out(i, 2) = in(i, 1);
+    });
+}
+
 /// Values run opposite to points: a map into cylindrical coordinates rotates
 /// cylindrical components into Cartesian ones, and vice versa.
 std::unique_ptr<BoundCoordinateMap> BindCylindrical(
@@ -305,6 +321,24 @@ std::unique_ptr<BoundCoordinateMap> CylindricalToCartesian::BindImpl(
 {
   return BindCylindrical(query_points, GetTargetCoordinateSystem(),
                          PointDirection::ToCartesian);
+}
+
+PoloidalPlaneEmbedding::PoloidalPlaneEmbedding(Real theta0)
+  : CoordinateMap(csys::CylindricalRZ::Create(),
+                  csys::CylindricalRThetaZ::Create()),
+    theta0_(theta0)
+{
+}
+
+std::unique_ptr<BoundCoordinateMap> PoloidalPlaneEmbedding::BindImpl(
+  const CoordinateView<DeviceMemorySpace>& query_points) const
+{
+  const auto in = query_points.GetValues();
+  auto mapped = AllocateCoordinates(in.extent(0), 3);
+  EmbedPoloidalPoints(in, mapped, theta0_);
+  // The base bound map re-expresses no vector values; scalars never reach it.
+  return std::make_unique<BoundCoordinateMap>(GetTargetCoordinateSystem(),
+                                              std::move(mapped));
 }
 
 } // namespace pcms

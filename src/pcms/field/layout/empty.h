@@ -11,7 +11,11 @@ namespace pcms
 class EmptyFieldLayout : public FieldLayout
 {
 public:
-  explicit EmptyFieldLayout(std::shared_ptr<const CoordinateSystem> system);
+  /// @param system coordinate system of the (absent) DOF holders
+  /// @param num_components components per value of fields on this layout;
+  ///        fields whose values live outside PCMS still declare their width
+  explicit EmptyFieldLayout(std::shared_ptr<const CoordinateSystem> system,
+                            int num_components = 1);
 
   std::shared_ptr<const Discretization> GetDiscretization()
     const noexcept override;
@@ -41,6 +45,7 @@ private:
   Kokkos::View<LO*, HostMemorySpace> classification_ids_host_;
   Kokkos::View<Real**, DeviceMemorySpace> coords_;
   std::shared_ptr<const Discretization> discretization_;
+  int num_components_;
 };
 
 } // namespace pcms

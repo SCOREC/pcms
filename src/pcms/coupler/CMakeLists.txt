@@ -17,11 +17,6 @@ set(PCMS_COUPLER_SOURCES
         field_exchange_planner.cpp
 )
 
-if(PCMS_ENABLE_XGC)
-    list(APPEND PCMS_COUPLER_HEADERS
-            serializer/xgc.h)
-endif()
-
 add_library(pcms_coupler ${PCMS_COUPLER_SOURCES})
 set_target_properties(pcms_coupler PROPERTIES
         OUTPUT_NAME pcmscoupler

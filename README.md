@@ -80,6 +80,7 @@ run `spack concretize -f` before `spack install`. For example:
   Also add `~tests` if the build machine has no GPU, because the tests are
   run during the build.
 
+   Test the python API with `python -c "import pcms; print(pcms.__version__)"`. You should see the version of PCMS printed out without any errors. Release builds report the release (e.g. `0.3.0`); builds from other commits report a development version such as `0.3.1.dev515+g2b4d1666`. The full commit hash is available as `pcms.__git_revision__` (`"unknown"` when built without git history).
 `spack info pcms` lists available variants.
 
 On the SCOREC RHEL9 machines, PCMS and its dependencies are built with the

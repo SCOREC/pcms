@@ -89,6 +89,9 @@ jobs:
         pip3 install numpy pytest
 
     - uses: actions/checkout@v4
+      with:
+        # full history and tags, so the version is derived from git describe
+        fetch-depth: 0
 
     - name: build Catch2
       uses: ./.github/actions/install-repo
@@ -272,6 +275,8 @@ jobs:
         repo-path: 'SCOREC/pcms'
         repo-ref: ''
         cache: false
+        # full history and tags, so the version is derived from git describe
+        fetch-depth: 0
         options: '-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
                   -DCMAKE_C_COMPILER=`which mpicc`
                   -DCMAKE_CXX_COMPILER=`which mpicxx`

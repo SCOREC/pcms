@@ -63,10 +63,12 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     mfem::FunctionCoefficient coeff(LinearField);
     gf.ProjectCoefficient(coeff);
 
-    pcms::MFEMLayout layout(pmesh, pfes, pcms::csys::Cartesian::Deferred());
-    pcms::MFEMVertexFieldData data(pfes, gf);
+    pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
+                                   pcms::csys::Cartesian::Deferred(), "mfem");
+    auto field = factory.CreateField<pcms::Real>("data");
+    const auto& layout = field.GetLayout();
 
-    auto host = data.GetDOFHolderDataHost();
+    auto host = field.GetDOFHolderDataHost().GetValues();
     REQUIRE(static_cast<int>(host.extent(0)) == pmesh.GetNV());
     REQUIRE(host.extent(1) == 1);
 
@@ -82,9 +84,11 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     for (size_t v = 0; v < captured.size(); ++v) {
       in(v, 0) = captured[v];
     }
-    data.SetDOFHolderDataHost(pcms::MakeConstRank2View(in));
+    field.SetDOFHolderDataHost(
+      pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+        pcms::ValueBasis{}, pcms::MakeConstRank2View(in)));
 
-    auto host2 = data.GetDOFHolderDataHost();
+    auto host2 = field.GetDOFHolderDataHost().GetValues();
     auto owned = layout.GetOwnedHost();
     for (size_t v = 0; v < host2.extent(0); ++v) {
       if (owned[v]) {

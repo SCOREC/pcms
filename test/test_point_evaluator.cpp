@@ -34,7 +34,7 @@ TEST_CASE("PointEvaluator: OmegaH order-1 linear evaluation")
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
-    field_data.GetData(), *factory->GetLayout(),
+    field_data,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
 
   auto pts = pcms::test::StandardEvalCoords2D();
@@ -67,11 +67,10 @@ TEST_CASE("PointEvaluator: same evaluator reused for two FieldData objects")
 
   // field_a: linear_f;  field_b: constant 42
   pcms::test::SetField(
-    field_a.GetData(), *factory->GetLayout(),
+    field_a,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   pcms::test::SetField(
-    field_b.GetData(), *factory->GetLayout(),
-    OMEGA_H_LAMBDA(Real, Real) { return Real(42); });
+    field_b, OMEGA_H_LAMBDA(Real, Real) { return Real(42); });
 
   auto pts = pcms::test::StandardEvalCoords2D();
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
@@ -104,7 +103,7 @@ TEST_CASE("PointEvaluator: OmegaH order-1 out-of-bounds fill")
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
-    field_data.GetData(), *factory->GetLayout(),
+    field_data,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
 
   // Points clearly outside [0,1]^2
@@ -136,7 +135,7 @@ TEST_CASE("PointEvaluator: UniformGrid order-1 linear evaluation")
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
-    field_data.GetData(), *factory->GetLayout(),
+    field_data,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
@@ -163,7 +162,7 @@ TEST_CASE("PointEvaluator: SplineFunctionSpace uniform-grid evaluation")
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
-    field_data.GetData(), *factory->GetLayout(),
+    field_data,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
@@ -195,7 +194,7 @@ TEST_CASE("PointEvaluator: uniform grids report the points they fill")
     auto factory = pcms::LagrangeFunctionSpace::FromUniformGrid(
       grid, 1, pcms::csys::Cartesian::Deferred(), 1);
     auto field = factory->CreateFunction<Real>();
-    pcms::test::SetField(field.GetData(), *factory->GetLayout(), linear);
+    pcms::test::SetField(field, linear);
     pcms::test::CheckEvaluationWithFill(factory, field, pts, is_inside, linear,
                                         -999.0, 1e-8);
   }
@@ -204,7 +203,7 @@ TEST_CASE("PointEvaluator: uniform grids report the points they fill")
     auto factory = pcms::SplineFunctionSpace::FromUniformGrid(
       grid, pcms::csys::Cartesian::Deferred());
     auto field = factory->CreateFunction<Real>();
-    pcms::test::SetField(field.GetData(), *factory->GetLayout(), linear);
+    pcms::test::SetField(field, linear);
     pcms::test::CheckEvaluationWithFill(factory, field, pts, is_inside, linear,
                                         -999.0, 1e-8);
   }
@@ -290,11 +289,13 @@ TEST_CASE("SimpleFieldData: set and get DOF holder data round-trip")
   for (int i = 0; i < n; ++i)
     data_in[i] = static_cast<Real>(i) * 0.5;
 
-  field_data.GetData().SetDOFHolderDataHost(
-    pcms::Rank2View<const Real, pcms::HostMemorySpace>(data_in.data(), n, 1));
+  field_data.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{}, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
+                            data_in.data(), n, 1)));
 
   auto data_out =
-    pcms::FlattenToRank1View(field_data.GetData().GetDOFHolderDataHost());
+    pcms::FlattenToRank1View(field_data.GetDOFHolderDataHost().GetValues());
   REQUIRE(static_cast<int>(data_out.size()) == n);
   for (int i = 0; i < n; ++i) {
     REQUIRE(data_out[i] == Catch::Approx(data_in[i]));
@@ -336,7 +337,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 linear evaluation")
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
-    field_data.GetData(), *factory->GetLayout(),
+    field_data,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
 
   auto pts = pcms::test::StandardEvalCoords2D();
@@ -362,7 +363,7 @@ TEST_CASE("PointEvaluator: MeshFields out-of-bounds fill")
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
-    field_data.GetData(), *factory->GetLayout(),
+    field_data,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
 
   const auto outside_pts = pcms::test::StandardOutsideCoords2D();
@@ -389,11 +390,10 @@ TEST_CASE(
   auto field_a = factory->CreateFunction<Real>();
   auto field_b = factory->CreateFunction<Real>();
   pcms::test::SetField(
-    field_a.GetData(), *factory->GetLayout(),
+    field_a,
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
   pcms::test::SetField(
-    field_b.GetData(), *factory->GetLayout(),
-    OMEGA_H_LAMBDA(Real, Real) { return Real(42); });
+    field_b, OMEGA_H_LAMBDA(Real, Real) { return Real(42); });
 
   auto pts = pcms::test::StandardEvalCoords2D();
   auto device_coords = pcms::test::CreateDeviceCoordinateView(
@@ -439,9 +439,10 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
     host_data[static_cast<size_t>(i) * 2 + 0] = x + y;
     host_data[static_cast<size_t>(i) * 2 + 1] = 2.0 * x - y;
   }
-  field.GetData().SetDOFHolderDataHost(
-    pcms::Rank2View<const Real, pcms::HostMemorySpace>(host_data.data(),
-                                                       num_dof, 2));
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{}, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
+                            host_data.data(), num_dof, 2)));
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
@@ -494,9 +495,10 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
     host_data[static_cast<size_t>(i) * 3 + 1] = y;
     host_data[static_cast<size_t>(i) * 3 + 2] = x * y;
   }
-  field.GetData().SetDOFHolderDataHost(
-    pcms::Rank2View<const Real, pcms::HostMemorySpace>(host_data.data(),
-                                                       num_dof, 3));
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{}, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
+                            host_data.data(), num_dof, 3)));
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;

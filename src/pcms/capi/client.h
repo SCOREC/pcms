@@ -65,13 +65,18 @@ void pcms_destroy_reverse_classification(PcmsReverseClassificationHandle);
 // likely to be needed for production cases
 int pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle);
 
+PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
+  const char* name, MPI_Comm plane_comm, void* data, int size,
+  PcmsType data_type, const PcmsReverseClassificationHandle rc);
+
 // takes in overlap function takes a geometric dimension and a geometric id
 // C doesn't have a builtin bool type, so we use int for compatability with C++
 typedef int8_t (*in_overlap_function)(int, int);
-PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
-  const char* name, MPI_Comm plane_comm, void* data, int size,
-  PcmsType data_type, const PcmsReverseClassificationHandle rc,
-  in_overlap_function in_overlap);
+// Restricts the field registered under `name` to the DOF holders whose
+// classification satisfies in_overlap (unclassified holders are passed as
+// (-1, -1)).
+void pcms_set_overlap_mask(PcmsClientHandle client_handle, const char* name,
+                           in_overlap_function in_overlap);
 
 PcmsFieldAdapterHandle pcms_create_dummy_field_adapter();
 

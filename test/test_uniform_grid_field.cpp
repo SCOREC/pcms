@@ -693,9 +693,11 @@ TEST_CASE("UniformGrid Order-1 multi-component field evaluation")
 
   // Reshape data to [num_vertices][num_components]
   pcms::LO num_vertices = (grid.divisions[0] + 1) * (grid.divisions[1] + 1);
-  field.GetData().SetDOFHolderDataHost(
-    pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
-      data.data(), num_vertices, num_components));
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{},
+      pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
+        data.data(), num_vertices, num_components)));
 
   // Mix of cell centers and off-center points.
   const int num_points = 4;
@@ -757,9 +759,11 @@ TEST_CASE("UniformGrid Order-0 multi-component field (regression)")
     4.0, 40.0  // Cell 3
   };
 
-  field.GetData().SetDOFHolderDataHost(
-    pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(data.data(), 4,
-                                                             num_components));
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{},
+      pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
+        data.data(), 4, num_components)));
 
   // Evaluate at cell centers
   std::vector<pcms::Real> eval_coords = {

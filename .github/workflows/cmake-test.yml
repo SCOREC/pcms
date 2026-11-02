@@ -151,7 +151,7 @@ jobs:
       with:
         repo-name: 'meshFields'
         repo-path: 'SCOREC/meshFields'
-        repo-ref: 'b9984520c20f73955a3b4e25e4907780b91d430f'
+        repo-ref: 'f7c97cf3bee466ecb6ae5afa33e662953e96cc43'
         cache: true
         cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`

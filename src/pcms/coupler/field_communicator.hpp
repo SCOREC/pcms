@@ -51,8 +51,7 @@ public:
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(layout_comm_.GetChannel().InSendCommunicationPhase());
     auto buffer = make_array_view(comm_buffer_);
-    serializer_->Serialize(field_.GetData(), field_.GetLayout(), buffer,
-                           layout_comm_.GetPermutationArray());
+    serializer_->Serialize(field_, buffer, layout_comm_.GetPermutationArray());
     comm_.Send(buffer.data_handle(), mode);
   }
 
@@ -64,8 +63,7 @@ public:
     // mode because we make an immediate call to deserialize after a call to
     // receive.
     auto data = comm_.Recv(redev::Mode::Synchronous);
-    serializer_->Deserialize(field_.GetData(), field_.GetLayout(),
-                             make_const_array_view(data),
+    serializer_->Deserialize(field_, make_const_array_view(data),
                              layout_comm_.GetPermutationArray());
   }
 

@@ -14,9 +14,8 @@
 namespace pcms
 {
 
-// SimpleFieldData<T> is a generic concrete FieldData<T> backed by a flat
-// Kokkos::View<T*, HostMemorySpace>. It works for any backend whose DOF data
-// is a flat coefficient array (OmegaH, UniformGrid, PointCloud, etc.).
+// SimpleFieldData<T> is a generic concrete FieldData<T> for backends whose DOF
+// can be stored in a simple 2D array format.
 //
 // Ownership of the layout is shared — the layout is typically held by the
 // factory that created this field data object.
@@ -29,9 +28,11 @@ public:
     : layout_(std::move(layout)),
       metadata_(metadata),
       host_data_("simple_field_data",
-                 static_cast<size_t>(layout_->OwnedSize())),
+                 static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
+                 static_cast<size_t>(layout_->GetNumComponents())),
       device_data_("simple_field_data_device",
-                   static_cast<size_t>(layout_->OwnedSize()))
+                   static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
+                   static_cast<size_t>(layout_->GetNumComponents()))
   {
   }
 
@@ -39,10 +40,8 @@ public:
 
   Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
   {
-    Kokkos::deep_copy(host_data_, device_data_);
-    return Rank2View<const T, HostMemorySpace>(host_data_.data(),
-                                               layout_->GetNumOwnedDofHolder(),
-                                               layout_->GetNumComponents());
+    DeepCopyMismatchLayouts(host_data_, device_data_);
+    return MakeConstRank2View(host_data_);
   }
 
   void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
@@ -54,9 +53,7 @@ public:
 
   Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const override
   {
-    return Rank2View<const T, DeviceMemorySpace>(
-      device_data_.data(), layout_->GetNumOwnedDofHolder(),
-      layout_->GetNumComponents());
+    return MakeConstRank2View(device_data_);
   }
 
   void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
@@ -69,8 +66,8 @@ public:
 private:
   std::shared_ptr<const FieldLayout> layout_;
   FieldMetadata metadata_;
-  mutable Kokkos::View<T*, HostMemorySpace> host_data_;
-  Kokkos::View<T*, DeviceMemorySpace> device_data_;
+  mutable Kokkos::View<T**, HostMemorySpace> host_data_;
+  Kokkos::View<T**, DeviceMemorySpace> device_data_;
 };
 
 } // namespace pcms

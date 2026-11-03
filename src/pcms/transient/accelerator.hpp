@@ -13,11 +13,29 @@ namespace pcms
  *
  * Coupling interface values are updated by an accelerator during a fixed-point
  * iteration. Each coupling window is started with BeginWindow() and then
- * advanced one iteration at a time with Update().
+ * advanced one iteration at a time with Update(). How the last Update()
+ * produced the next state is reported by LastStatus().
  */
 class InterfaceAccelerator
 {
 public:
+  /**
+   * @brief Describes how the last Update() produced the next interface state.
+   *
+   * Exactly one value is reported.
+   */
+  enum class UpdateStatus
+  {
+    /// The accelerator used its initial parameters.
+    Initial,
+    /// The accelerator applied its normal update.
+    Updated,
+    /// The accelerator kept or restored its fallback parameters.
+    Fallback,
+    /// The normal update was applied but limited to a permitted range.
+    Limited
+  };
+
   /**
    * @brief Reset the iteration history before solving a new coupling window.
    */
@@ -38,6 +56,14 @@ public:
   [[nodiscard]] virtual Real Update(const std::vector<Real>& x_in,
                                     const std::vector<Real>& x_out,
                                     std::vector<Real>& x_next) = 0;
+
+  /**
+   * @brief Report how the last Update() produced the next interface state.
+   *
+   * @return The status of the last Update(), or UpdateStatus::Initial if there
+   * has been no Update() since construction or BeginWindow().
+   */
+  [[nodiscard]] virtual UpdateStatus LastStatus() const noexcept = 0;
 
   virtual ~InterfaceAccelerator() = default;
 
@@ -64,9 +90,8 @@ protected:
  * omega_{k+1} = -omega_k * dot(r_{k-1}, d) / dot(d, d)
  * @endcode
  *
- * The update is skipped when the denominator is zero. If the new factor is not
- * finite or is exactly zero, it is reset to the initial factor. The factor is
- * then clamped to the range [-omega_max, omega_max].
+ * If the new factor is not finite or is exactly zero, it is reset to the initial
+ * factor. The factor is then clamped to the range [-omega_max, omega_max].
  */
 class AitkenRelaxation : public InterfaceAccelerator
 {
@@ -95,12 +120,25 @@ public:
                             const std::vector<Real>& x_out,
                             std::vector<Real>& x_next) override;
 
+  /**
+   * @brief Report how the last Update() produced the next interface state.
+   *
+   * @copydetails InterfaceAccelerator::LastStatus
+   */
+  [[nodiscard]] UpdateStatus LastStatus() const noexcept override
+  {
+    return last_status_;
+  }
+
 private:
   Real omega0_;                         ///< Initial relaxation factor.
   Real omega_;                          ///< Current relaxation factor.
   Real omega_max_;                      ///< Limit on the magnitude of omega_.
   std::vector<Real> previous_residual_; ///< Residual of the previous iteration.
   bool have_previous_residual_ = false; ///< Whether previous_residual_ is set.
+
+  /// Outcome of the last Update().
+  UpdateStatus last_status_ = UpdateStatus::Initial;
 };
 
 } // namespace pcms

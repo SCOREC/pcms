@@ -25,6 +25,7 @@ void AitkenRelaxation::BeginWindow()
 {
   omega_ = omega0_;
   have_previous_residual_ = false;
+  last_status_ = UpdateStatus::Initial;
 }
 
 Real AitkenRelaxation::Update(const std::vector<Real>& x_in,
@@ -38,6 +39,7 @@ Real AitkenRelaxation::Update(const std::vector<Real>& x_in,
 
   const Real residual_norm = Norm(residual);
 
+  last_status_ = UpdateStatus::Initial;
   if (have_previous_residual_) {
     Real numerator = 0.0;
     Real denominator = 0.0;
@@ -47,11 +49,18 @@ Real AitkenRelaxation::Update(const std::vector<Real>& x_in,
       denominator += residual_delta * residual_delta;
     }
 
+    last_status_ = UpdateStatus::Fallback;
     if (denominator > 0.0) {
       omega_ = -omega_ * numerator / denominator;
-      if (!std::isfinite(omega_) || omega_ == 0.0)
+      last_status_ = UpdateStatus::Updated;
+      if (!std::isfinite(omega_) || omega_ == 0.0) {
         omega_ = omega0_;
-      omega_ = std::clamp(omega_, -omega_max_, omega_max_);
+        last_status_ = UpdateStatus::Fallback;
+      }
+      const Real clamped = std::clamp(omega_, -omega_max_, omega_max_);
+      if (clamped != omega_ && last_status_ == UpdateStatus::Updated)
+        last_status_ = UpdateStatus::Limited;
+      omega_ = clamped;
     }
   }
 

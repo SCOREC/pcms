@@ -3,16 +3,16 @@
 
 #include "pcms/transient/timestepper.hpp"
 
-namespace tr = pcms::transient;
+using namespace pcms;
 
 TEST_CASE("FixedTimestepper always accepts its configured step", "[transient]")
 {
   // 0.25 represents a positive fixed window size.
-  tr::FixedTimestepper timestepper(0.25);
+  FixedTimestepper timestepper(0.25);
 
   // The completed step (0.1) and large normalized error (100).
   // A fixed controller ignores both.
-  const auto [accepted, next_step] = timestepper.Update(0.1, 100.0);
+  const auto [accepted, next_step] = timestepper.UpdateStep(0.1, 100.0);
 
   // The first window must use the user-configured size.
   REQUIRE(timestepper.InitialStep() == Catch::Approx(0.25));

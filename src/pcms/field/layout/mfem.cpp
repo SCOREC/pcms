@@ -21,14 +21,14 @@ std::shared_ptr<const Discretization> MakeVertexDiscretization(
 
 } // namespace
 
-MFEMLayout::MFEMLayout(mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
-                       CoordinateSystem coordinate_system)
-  : pmesh_(pmesh),
-    pfes_(pfes),
-    dim_(pmesh.SpaceDimension()),
-    coordinate_system_(coordinate_system)
+MFEMLayout::MFEMLayout(
+  mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
+  std::shared_ptr<const CoordinateSystem> coordinate_system)
+  : pmesh_(pmesh), pfes_(pfes), dim_(pmesh.SpaceDimension())
 {
   PCMS_FUNCTION_TIMER;
+  SetCoordinateSystem(
+    ResolveCoordinateSystem(std::move(coordinate_system), dim_));
 
   AssertVertexScalarSpace();
 
@@ -43,7 +43,7 @@ MFEMLayout::MFEMLayout(mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
     }
   }
   coords_ = Kokkos::View<Real**, DeviceMemorySpace>("mfem_coords", nv, dim_);
-  Kokkos::deep_copy(coords_, coords_host);
+  CopyHostRank2ViewToDeviceView(coords_, MakeConstRank2View(coords_host));
 
   mfem::Array<HYPRE_BigInt> vertex_gids;
   pmesh_.GetGlobalVertexIndices(vertex_gids);
@@ -108,7 +108,7 @@ GlobalIDView<HostMemorySpace> MFEMLayout::GetGidsHost() const
 
 CoordinateView<DeviceMemorySpace> MFEMLayout::GetDOFHolderCoordinates() const
 {
-  return CoordinateView<DeviceMemorySpace>{coordinate_system_,
+  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(),
                                            MakeConstRank2View(coords_)};
 }
 

@@ -33,15 +33,29 @@ public:
   {
   }
 
-  void Evaluate(
+  [[nodiscard]] LO NumPoints() const override
+  {
+    return static_cast<LO>(hint_.coordinates_.extent(0) + hint_.num_missing_);
+  }
+
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    if (hint_.mode_ != OutOfBoundsMode::FILL) {
+      return {};
+    }
+    return hint_.missing_indices_d_;
+  }
+
+  // Public because CUDA forbids extended lambdas in non-public member
+  // functions. User should call Evaluate
+  // TODO: add passkey or other mechanism to avoid user calling this
+  void EvaluateImpl(
     const Field<T>& field,
-    Rank2View<T, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<T, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
-    PCMS_ALWAYS_ASSERT(values.extent(0) ==
-                       hint_.coordinates_.extent(0) + hint_.num_missing_);
-    PCMS_ALWAYS_ASSERT(values.extent(1) ==
-                       static_cast<size_t>(layout_->GetNumComponents()));
+    const auto values = out.GetValues();
     auto const* mesh_field_data =
       dynamic_cast<const MeshFieldsFieldData<T>*>(&field.GetData());
     if (!mesh_field_data) {
@@ -99,11 +113,6 @@ public:
 
   const FieldLayout& GetLayout() const override { return *layout_; }
 
-  CoordinateSystem GetCoordinateSystem() const override
-  {
-    return layout_->GetDOFHolderCoordinates().GetCoordinateSystem();
-  }
-
   bool HasDOFHolderCoordinates() const override { return true; }
 
   bool SupportsNearestBoundary() const override { return false; }
@@ -114,10 +123,6 @@ public:
     PCMS_FUNCTION_TIMER;
     const auto coords = request.coords;
     const auto policy = request.policy;
-    if (coords.GetCoordinateSystem() != GetCoordinateSystem()) {
-      throw pcms_error(
-        "MeshFieldsEvaluatorFactory: coordinate system mismatch");
-    }
     if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY) {
       throw pcms_error(
         "MeshFieldsEvaluatorFactory: NearestBoundary is not supported");

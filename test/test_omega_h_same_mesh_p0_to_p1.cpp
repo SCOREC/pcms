@@ -363,9 +363,10 @@ std::vector<double> ProjectSameMesh(Omega_h::Mesh& mesh,
                                                 mass_type);
   projection.Apply(source, target);
 
-  source_values =
-    ToVector(pcms::FlattenToRank1View(source.GetDOFHolderDataHost()));
-  return ToVector(pcms::FlattenToRank1View(target.GetDOFHolderDataHost()));
+  source_values = ToVector(
+    pcms::FlattenToRank1View(source.GetDOFHolderDataHost().GetValues()));
+  return ToVector(
+    pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues()));
 }
 
 template <int Dim>

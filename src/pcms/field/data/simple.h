@@ -3,7 +3,6 @@
 
 #include "../field_data.h"
 #include "../field_layout.h"
-#include "../field_metadata.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/memory_spaces.h"
@@ -14,59 +13,48 @@
 namespace pcms
 {
 
-// SimpleFieldData<T> is a generic concrete FieldData<T> for backends whose DOF
-// can be stored in a simple 2D array format.
+// SimpleFieldData<T> is a generic concrete FieldData<T> backed by shaped
+// [dof_holder][component] Kokkos Views.
 //
 // Ownership of the layout is shared — the layout is typically held by the
 // factory that created this field data object.
 template <typename T>
-class SimpleFieldData : public FieldData<T>
+class SimpleFieldData
+  : public FieldData<T>
+  , public DOFAccess<T>
 {
 public:
-  SimpleFieldData(std::shared_ptr<const FieldLayout> layout,
-                  FieldMetadata metadata)
+  SimpleFieldData(std::shared_ptr<const FieldLayout> layout, ValueBasis basis)
     : layout_(std::move(layout)),
-      metadata_(metadata),
-      host_data_("simple_field_data",
-                 static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
-                 static_cast<size_t>(layout_->GetNumComponents())),
+      basis_(std::move(basis)),
       device_data_("simple_field_data_device",
                    static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
                    static_cast<size_t>(layout_->GetNumComponents()))
   {
   }
 
-  const FieldMetadata& GetMetadata() const override { return metadata_; }
-
-  Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
+  FieldValueType GetValueType() const override
   {
-    DeepCopyMismatchLayouts(host_data_, device_data_);
-    return MakeConstRank2View(host_data_);
+    return ValueTypeOfRank(basis_.Rank());
   }
+  const ValueBasis& GetValueBasis() const override { return basis_; }
 
-  void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
-  {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
-    CopyHostRank2ViewToDeviceView(device_data_, values);
-  }
+  const DOFAccess<T>* GetDOFAccess() const noexcept override { return this; }
+  DOFAccess<T>* GetDOFAccess() noexcept override { return this; }
 
-  Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const override
+  Rank2View<const T, DeviceMemorySpace> GetOwnedValues() const override
   {
     return MakeConstRank2View(device_data_);
   }
 
-  void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
+  void SetOwnedValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
     CopyDeviceRank2ViewToDeviceView(device_data_, values);
   }
 
 private:
   std::shared_ptr<const FieldLayout> layout_;
-  FieldMetadata metadata_;
-  mutable Kokkos::View<T**, HostMemorySpace> host_data_;
+  ValueBasis basis_;
   Kokkos::View<T**, DeviceMemorySpace> device_data_;
 };
 

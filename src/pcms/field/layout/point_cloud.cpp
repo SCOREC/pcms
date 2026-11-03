@@ -37,25 +37,28 @@ void InitializePointCloudClassification(
 
 } // namespace
 
-PointCloudLayout::PointCloudLayout(int dim, Kokkos::View<Real**> coords,
-                                   CoordinateSystem coordinate_system)
-  : PointCloudLayout(dim, coords, coordinate_system,
+PointCloudLayout::PointCloudLayout(
+  int dim, Kokkos::View<Real**> coords,
+  std::shared_ptr<const CoordinateSystem> coordinate_system)
+  : PointCloudLayout(dim, coords, std::move(coordinate_system),
                      MakePointCloudDiscretization(dim, coords), Vertex)
 {
 }
 
 PointCloudLayout::PointCloudLayout(
-  int dim, Kokkos::View<Real**> coords, CoordinateSystem coordinate_system,
+  int dim, Kokkos::View<Real**> coords,
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
   std::shared_ptr<const Discretization> discretization,
   int classification_entity_dim)
   : dim_(dim),
-    coordinate_system_(coordinate_system),
     coords_(coords),
     owned_("", coords.extent(0)),
     gids_("", coords.extent(0)),
     owned_host_("", coords.extent(0)),
     gids_host_("", coords.extent(0))
 {
+  SetCoordinateSystem(ResolveCoordinateSystem(
+    std::move(coordinate_system), static_cast<int>(coords_.extent(1))));
   components_ = 1;
 
   namespace KE = Kokkos::Experimental;
@@ -116,7 +119,7 @@ CoordinateView<DeviceMemorySpace> PointCloudLayout::GetDOFHolderCoordinates()
   const
 {
   auto coords_view = MakeConstRank2View(coords_);
-  return CoordinateView<DeviceMemorySpace>{coordinate_system_, coords_view};
+  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(), coords_view};
 }
 
 bool PointCloudLayout::IsDistributed() const

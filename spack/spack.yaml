@@ -1,20 +1,38 @@
-# This is a Spack Environment file.
+# Spack environment for developing PCMS. It builds the PCMS source in this
+# checkout (see "develop" below) with every feature the container image has.
 #
-# It describes a set of packages to be installed, along with
-# configuration settings.
+#   spack env activate ./spack
+#   spack install
+#
 spack:
   specs:
-  - pcms
-  view: true
+  - pcms@develop +python +petsc +netcdf ^omega-h+exodus ^kokkos+serial+openmp
+
+  develop:
+    pcms:
+      spec: pcms@=develop
+      path: ..
+
+  # Same package versions the build cache was built with.
+  repos:
+    scorec:
+      git: https://github.com/SCOREC/scorec-spack-packages.git
+      branch: main
+    builtin:
+      git: https://github.com/spack/spack-packages.git
+      branch: releases/v2026.10
+
+  mirrors:
+    scorec:
+      url: oci://ghcr.io/scorec/scorec-spack-buildcache
+      signed: false
+
+  packages:
+    petsc:
+      # See environments/pcms in scorec-spack-packages.
+      require: '+openmp'
+
   concretizer:
     unify: true
 
-  packages:
-    all:
-      providers:
-        mpi: [mpich]
-  develop:
-    pcms:
-      spec: pcms@develop
-      path: ../
-
+  view: true

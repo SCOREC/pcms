@@ -1,6 +1,6 @@
 find_package(PkgConfig REQUIRED QUIET)
-if(DEFINED PETSC_DIR)
-  if(DEFINED PETSC_ARCH)
+if(PETSC_DIR)
+  if(PETSC_ARCH)
     set(ENV{PKG_CONFIG_PATH} "${PETSC_DIR}/${PETSC_ARCH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
   else()
     set(ENV{PKG_CONFIG_PATH} "${PETSC_DIR}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
@@ -14,6 +14,11 @@ pkg_check_modules(_petsc PETSc QUIET)
 
 if(_petsc_FOUND AND _petsc_VERSION)
   set(PETSC_VERSION ${_petsc_VERSION})
+endif()
+
+# set PETSc paths when found through pkg-config
+if(_petsc_FOUND AND NOT PETSC_DIR)
+  set(PETSC_DIR "${_petsc_PREFIX}")
 endif()
 
 # note, there are a number of additional properties that

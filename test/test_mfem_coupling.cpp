@@ -2,6 +2,7 @@
 
 #include <pcms/coupler/coupler.hpp>
 #include <pcms/coupler/overlap_mask.h>
+#include <pcms/field/coordinate_systems/cartesian.hpp>
 #include <pcms/field/function_space/mfem.hpp>
 #include <pcms/field/layout/mfem.hpp>
 
@@ -59,7 +60,7 @@ void FillField(pcms::Field<Real>& field, const std::vector<Real>& values)
   for (size_t v = 0; v < values.size(); ++v) {
     view(v, 0) = values[v];
   }
-  field.SetDOFHolderDataHost(pcms::MakeConstRank2View(view));
+  field.SetDOFHolderDataUncheckedHost(pcms::MakeConstRank2View(view));
 }
 
 int RunClient(MPI_Comm comm)
@@ -76,7 +77,7 @@ int RunClient(MPI_Comm comm)
   auto* app = cpl.AddApplication("mfem_app");
 
   pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                 pcms::CoordinateSystem::Cartesian, LayoutName);
+                                 pcms::csys::Cartesian::Deferred(), LayoutName);
   auto layout = factory.GetLayout();
 
   auto overlap_view =
@@ -114,7 +115,7 @@ int RunServer(MPI_Comm comm)
   auto* app = cpl.AddApplication("mfem_app");
 
   pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                 pcms::CoordinateSystem::Cartesian, LayoutName);
+                                 pcms::csys::Cartesian::Deferred(), LayoutName);
   auto layout = factory.GetLayout();
   auto handle = app->AddField(factory.CreateField<Real>(FieldName));
 
@@ -128,7 +129,7 @@ int RunServer(MPI_Comm comm)
   auto overlap =
     pcms::MFEMLayout::OverlapMaskFromAttribute(pmesh, TargetAttribute);
   auto gids = layout->GetGidsHost();
-  auto received = handle.GetField().GetDOFHolderDataHost();
+  auto received = handle.GetField().GetDOFHolderDataHost().GetValues();
 
   int overlap_count = 0;
   int mismatches = 0;

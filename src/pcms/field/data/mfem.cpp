@@ -9,23 +9,30 @@ namespace pcms
 
 MFEMVertexFieldData::MFEMVertexFieldData(mfem::ParFiniteElementSpace& pfes,
                                          mfem::ParGridFunction& gf,
-                                         FieldMetadata metadata)
+                                         ValueBasis basis)
   : pfes_(pfes),
     gf_(gf),
-    metadata_(metadata),
+    basis_(std::move(basis)),
     host_data_("mfem_field_data_host", pfes.GetNDofs(), 1),
     device_data_("mfem_field_data_device", pfes.GetNDofs(), 1)
 {
   PCMS_ALWAYS_ASSERT(pfes_.GetVDim() == 1);
+  if (basis_.Rank() != 0) {
+    throw pcms_error("MFEMVertexFieldData: only scalar fields are supported");
+  }
 }
 
-const FieldMetadata& MFEMVertexFieldData::GetMetadata() const
+FieldValueType MFEMVertexFieldData::GetValueType() const
 {
-  return metadata_;
+  return ValueTypeOfRank(basis_.Rank());
 }
 
-Rank2View<const Real, HostMemorySpace>
-MFEMVertexFieldData::GetDOFHolderDataHost() const
+const ValueBasis& MFEMVertexFieldData::GetValueBasis() const
+{
+  return basis_;
+}
+
+Rank2View<const Real, HostMemorySpace> MFEMVertexFieldData::GatherHost() const
 {
   PCMS_FUNCTION_TIMER;
 
@@ -46,7 +53,7 @@ MFEMVertexFieldData::GetDOFHolderDataHost() const
   return MakeConstRank2View(host_data_);
 }
 
-void MFEMVertexFieldData::SetDOFHolderDataHost(
+void MFEMVertexFieldData::ScatterHost(
   Rank2View<const Real, HostMemorySpace> data)
 {
   PCMS_FUNCTION_TIMER;
@@ -71,20 +78,20 @@ void MFEMVertexFieldData::SetDOFHolderDataHost(
   gf_.SetFromTrueDofs(true_values);
 }
 
-Rank2View<const Real, DeviceMemorySpace> MFEMVertexFieldData::GetDOFHolderData()
+Rank2View<const Real, DeviceMemorySpace> MFEMVertexFieldData::GetOwnedValues()
   const
 {
-  GetDOFHolderDataHost();
+  GatherHost();
   DeepCopyMismatchLayouts(device_data_, host_data_);
   return MakeConstRank2View(device_data_);
 }
 
-void MFEMVertexFieldData::SetDOFHolderData(
+void MFEMVertexFieldData::SetOwnedValues(
   Rank2View<const Real, DeviceMemorySpace> data)
 {
   CopyDeviceRank2ViewToDeviceView(device_data_, data);
   DeepCopyMismatchLayouts(host_data_, device_data_);
-  SetDOFHolderDataHost(MakeConstRank2View(host_data_));
+  ScatterHost(MakeConstRank2View(host_data_));
 }
 
 } // namespace pcms

@@ -5,7 +5,6 @@
 #include "pcms/utility/arrays.h"
 #include "pcms/discretization/discretization/omega_h.hpp"
 #include "pcms/field/field_layout.h"
-#include "pcms/field/coordinate_system.h"
 #include "pcms/field/field.h"
 
 namespace pcms
@@ -18,13 +17,15 @@ namespace pcms
 class OmegaHLagrangeLayout : public FieldLayout
 {
 public:
-  OmegaHLagrangeLayout(Omega_h::Mesh& mesh, int order, int num_components,
-                       CoordinateSystem coordinate_system,
-                       std::string global_id_name = "global");
-  OmegaHLagrangeLayout(Omega_h::Mesh& mesh, int order, int num_components,
-                       CoordinateSystem coordinate_system,
-                       Omega_h::Read<Omega_h::I8> owned_mask,
-                       std::string global_id_name = "global");
+  OmegaHLagrangeLayout(
+    Omega_h::Mesh& mesh, int order, int num_components,
+    std::shared_ptr<const CoordinateSystem> coordinate_system,
+    std::string global_id_name = "global");
+  OmegaHLagrangeLayout(
+    Omega_h::Mesh& mesh, int order, int num_components,
+    std::shared_ptr<const CoordinateSystem> coordinate_system,
+    Omega_h::Read<Omega_h::I8> owned_mask,
+    std::string global_id_name = "global");
 
   std::shared_ptr<const Discretization> GetDiscretization()
     const noexcept override;
@@ -57,7 +58,6 @@ private:
   Omega_h::Mesh& mesh_;
   int order_;
   int num_components_;
-  CoordinateSystem coordinate_system_;
   std::string global_id_name_;
 
   Omega_h::Write<Omega_h::GO> gids_;

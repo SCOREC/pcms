@@ -186,7 +186,8 @@ OmegaHMassIntegrator::OmegaHMassIntegrator(const FunctionSpace& target_space,
 
 OmegaHMassIntegrator::OmegaHMassIntegrator(
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-  CoordinateSystem coordinate_system, MassMatrixType mass_type)
+  std::shared_ptr<const CoordinateSystem> coordinate_system,
+  MassMatrixType mass_type)
 {
   detail::CheckOmegaHScalarLagrangeLayout(coordinate_system, target_layout,
                                           "OmegaHMassIntegrator", "target");

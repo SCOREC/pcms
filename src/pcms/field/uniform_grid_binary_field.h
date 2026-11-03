@@ -4,7 +4,7 @@
 #include "pcms/field/layout/uniform_grid.h"
 #include "pcms/field/data/simple.h"
 #include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/localization/point_search.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
@@ -15,6 +15,7 @@
 #include <array>
 #include <memory>
 #include <utility>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 namespace pcms
 {
@@ -37,7 +38,7 @@ std::pair<std::shared_ptr<const UniformGridFieldLayout<Dim>>, Field<Real>>
 CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
 {
   auto function_space = LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, CoordinateSystem::Cartesian);
+    grid, 1, csys::Cartesian::Deferred());
   auto layout = std::dynamic_pointer_cast<const UniformGridFieldLayout<Dim>>(
     function_space->GetLayout());
   PCMS_ALWAYS_ASSERT(layout != nullptr);
@@ -72,7 +73,7 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
   for (LO i = 0; i < n; ++i)
     data(i) = (results_h(i).element_id >= 0) ? 1.0 : 0.0;
 
-  field.SetDOFHolderDataHost(
+  field.SetDOFHolderDataUncheckedHost(
     Rank2View<const Real, HostMemorySpace>(data.data(), n, 1));
 
   return {std::move(layout), std::move(field)};

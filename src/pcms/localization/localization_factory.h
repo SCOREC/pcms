@@ -2,7 +2,7 @@
 #define PCMS_LOCALIZATION_LOCALIZATION_FACTORY_H
 
 #include "pcms/localization/adj_search.hpp"
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/utility/memory_spaces.h"
 
 namespace pcms

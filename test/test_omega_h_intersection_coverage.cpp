@@ -39,7 +39,8 @@ std::vector<pcms::Real> CoveragePerTargetElement(Omega_h::Mesh& source_mesh,
                                                 pcms::MassMatrixType::Lumped);
   projection.Apply(source, target);
 
-  const auto values = pcms::FlattenToRank1View(target.GetDOFHolderDataHost());
+  const auto values =
+    pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   std::vector<pcms::Real> coverage(values.size());
   for (std::size_t i = 0; i < coverage.size(); ++i) {
     coverage[i] = values[i];

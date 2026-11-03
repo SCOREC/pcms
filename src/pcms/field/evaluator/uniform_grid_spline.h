@@ -46,6 +46,7 @@ public:
       grid_(layout_->GetGrid()),
       hint_(std::move(hint)),
       fill_value_(fill_value),
+      filled_points_(detail::FilledPointIndices(hint_)),
       x_coords_("uniform_grid_spline_x", grid_.divisions[0] + 1),
       y_coords_("uniform_grid_spline_y", grid_.divisions[1] + 1)
   {
@@ -67,15 +68,32 @@ public:
       detail::InitCoordsFunctor{y_coords_, bot_left_y, dy});
   }
 
-  void Evaluate(
-    const Field<Real>& field,
-    Rank2View<Real, DeviceMemorySpace, LayoutPolicy> values) const override
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
   {
-    LO num_points = static_cast<LO>(hint_.coordinates_.extent(0));
-    PCMS_ALWAYS_ASSERT(values.extent(0) == static_cast<size_t>(num_points));
-    PCMS_ALWAYS_ASSERT(values.extent(1) == 1);
+    return filled_points_;
+  }
 
-    auto dof_data = field.GetDOFHolderData();
+  [[nodiscard]] LO NumPoints() const override
+  {
+    return static_cast<LO>(hint_.coordinates_.extent(0));
+  }
+
+  // Public because CUDA forbids extended lambdas in non-public member
+  // functions. User call Evaluate.
+  // TODO: add passkey or other mechanism to protect this
+  void EvaluateImpl(
+    const Field<Real>& field,
+    ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
+  {
+    const auto values = out.GetValues();
+    LO num_points = NumPoints();
+    if (values.extent(1) != 1) {
+      throw pcms_error("UniformGridSplinePointEvaluator2D: only scalar "
+                       "(num_components==1) fields are supported");
+    }
+
+    const auto dof_data = field.GetDOFHolderData().GetValues();
     LO nx = grid_.divisions[0] + 1;
     LO ny = grid_.divisions[1] + 1;
     PCMS_ALWAYS_ASSERT(static_cast<LO>(dof_data.size()) == nx * ny);
@@ -174,6 +192,7 @@ private:
   UniformGrid<2> grid_;
   UniformGridFieldLocalizationHint<2> hint_;
   Real fill_value_;
+  Kokkos::View<const LO*, DeviceMemorySpace> filled_points_;
   Kokkos::View<Real*, DeviceMemorySpace> x_coords_;
   Kokkos::View<Real*, DeviceMemorySpace> y_coords_;
 };
@@ -189,11 +208,6 @@ public:
 
   const FieldLayout& GetLayout() const override { return *layout_; }
 
-  CoordinateSystem GetCoordinateSystem() const override
-  {
-    return layout_->GetDOFHolderCoordinates().GetCoordinateSystem();
-  }
-
   bool HasDOFHolderCoordinates() const override { return true; }
 
   bool SupportsNearestBoundary() const override { return false; }
@@ -203,10 +217,6 @@ public:
   {
     const auto coords = request.coords;
     const auto policy = request.policy;
-    if (coords.GetCoordinateSystem() != GetCoordinateSystem()) {
-      throw pcms_error(
-        "UniformGridSplineEvaluatorFactory2D: coordinate system mismatch");
-    }
     if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY) {
       throw pcms_error(
         "UniformGridSplineEvaluatorFactory2D: nearest-boundary evaluation is "

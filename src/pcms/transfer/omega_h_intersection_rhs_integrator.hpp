@@ -1,7 +1,7 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 #define PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/field/function_space.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/transfer/linear_form_integrator.hpp"
@@ -38,9 +38,9 @@ public:
                                   const FunctionSpace& target_space);
   OmegaHIntersectionRHSIntegrator(
     std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
-    CoordinateSystem source_coordinate_system,
+    std::shared_ptr<const CoordinateSystem> source_coordinate_system,
     std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-    CoordinateSystem target_coordinate_system);
+    std::shared_ptr<const CoordinateSystem> target_coordinate_system);
   ~OmegaHIntersectionRHSIntegrator();
 
   Vec GetVector() const noexcept override;
@@ -56,9 +56,9 @@ private:
   // which case the intersection builds its own search over the source mesh.
   OmegaHIntersectionRHSIntegrator(
     std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
-    CoordinateSystem source_coordinate_system,
+    std::shared_ptr<const CoordinateSystem> source_coordinate_system,
     std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-    CoordinateSystem target_coordinate_system,
+    std::shared_ptr<const CoordinateSystem> target_coordinate_system,
     const GridPointSearchVariant* source_search);
 
   Vec vec_ = nullptr;

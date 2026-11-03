@@ -40,6 +40,9 @@ authors:
 identifiers:
   - type: doi
     value: 10.48550/arXiv.2510.18838
+  - type: doi
+    value: 10.1016/j.cpc.2026.110283
+    description: Computer Physics Communications article
 repository-code: 'https://github.com/SCOREC/pcms'
 abstract: >-
   PCMS provides infrastructure to couple multiple simulation
@@ -60,3 +63,30 @@ keywords:
   - supercomputing
   - unstructured-meshes
 license: BSD-3-Clause
+preferred-citation:
+  type: article
+  title: 'PCMS: Parallel coupler for multimodel simulations'
+  journal: Computer Physics Communications
+  volume: 327
+  start: 110283
+  year: 2026
+  month: 10
+  doi: 10.1016/j.cpc.2026.110283
+  authors:
+    - given-names: Jacob S.
+      family-names: Merson
+      orcid: 'https://orcid.org/0000-0002-6813-6532'
+    - given-names: Cameron W.
+      family-names: Smith
+    - given-names: Mark S.
+      family-names: Shephard
+    - given-names: Fuad
+      family-names: Hasan
+    - given-names: Abhiyan
+      family-names: Paudel
+    - given-names: Angel
+      family-names: Castillo-Crooke
+    - given-names: Joyal
+      family-names: Mathew
+    - given-names: Mohammad
+      family-names: Elahi

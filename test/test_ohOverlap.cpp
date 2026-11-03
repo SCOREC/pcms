@@ -120,7 +120,9 @@ int main(int argc, char** argv)
     auto partition = setupServerPartition(mesh, cpnFileName);
     auto rdv = redev::Redev(MPI_COMM_WORLD, redev::Partition{partition},
                             static_cast<redev::ProcessType>(isRdv));
-    adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
+    adios2::Params params{{"Streaming", "On"},
+                          {"OpenTimeoutSecs", "60"},
+                          {"BeginStepPollingFrequencySecs", "0.05"}};
     auto channel = rdv.CreateAdiosChannel(std::string(name), params,
                                           redev::TransportType::BP4);
     auto comm =
@@ -210,7 +212,9 @@ int main(int argc, char** argv)
     auto rdv =
       redev::Redev(MPI_COMM_WORLD, redev::Partition{std::move(partition)},
                    static_cast<redev::ProcessType>(isRdv));
-    adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
+    adios2::Params params{{"Streaming", "On"},
+                          {"OpenTimeoutSecs", "60"},
+                          {"BeginStepPollingFrequencySecs", "0.05"}};
     auto channel = rdv.CreateAdiosChannel(std::string(name), params,
                                           redev::TransportType::BP4);
     auto comm =

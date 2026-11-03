@@ -30,7 +30,7 @@ public:
     MassMatrixType mass_type = MassMatrixType::Consistent);
   OmegaHMassIntegrator(
     std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-    CoordinateSystem coordinate_system,
+    std::shared_ptr<const CoordinateSystem> coordinate_system,
     MassMatrixType mass_type = MassMatrixType::Consistent);
   ~OmegaHMassIntegrator();
 

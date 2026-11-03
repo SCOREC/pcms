@@ -1,5 +1,5 @@
-set(PCMS_TRANSIENT_HEADERS timestepper.hpp)
-set(PCMS_TRANSIENT_SOURCES timestepper.cpp)
+set(PCMS_TRANSIENT_HEADERS accelerator.hpp timestepper.hpp)
+set(PCMS_TRANSIENT_SOURCES accelerator.cpp timestepper.cpp)
 
 add_library(pcms_transient ${PCMS_TRANSIENT_SOURCES})
 set_target_properties(pcms_transient PROPERTIES EXPORT_NAME transient)

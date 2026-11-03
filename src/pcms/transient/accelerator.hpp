@@ -90,8 +90,9 @@ protected:
  * omega_{k+1} = -omega_k * dot(r_{k-1}, d) / dot(d, d)
  * @endcode
  *
- * If the new factor is not finite or is exactly zero, it is reset to the initial
- * factor. The factor is then clamped to the range [-omega_max, omega_max].
+ * If the new factor is not finite or is exactly zero, it is reset to the
+ * initial factor. The factor is then clamped to the range [-omega_max,
+ * omega_max].
  */
 class AitkenRelaxation : public InterfaceAccelerator
 {

@@ -4,48 +4,105 @@
 #include "pcms/utility/types.h"
 #include <vector>
 
-namespace pcms::transient
+namespace pcms
 {
 
-// Coupling interface values are updated here during a fixed-point iteration.
+/**
+ * @brief Interface for accelerating the fixed-point iteration that couples
+ * two applications across an interface.
+ *
+ * Coupling interface values are updated by an accelerator during a fixed-point
+ * iteration. Each coupling window is started with BeginWindow() and then
+ * advanced one iteration at a time with Update().
+ */
 class InterfaceAccelerator
 {
 public:
-  // Reset iteration history before solving a new coupling window.
+  /**
+   * @brief Reset the iteration history before solving a new coupling window.
+   */
   virtual void BeginWindow() = 0;
 
-  // Compute the next interface state and return the residual norm.
-  virtual Real Update(const std::vector<Real>& x_in,
-                      const std::vector<Real>& x_out,
-                      std::vector<Real>& x_next) = 0;
+  /**
+   * @brief Compute the next interface state and return the residual norm.
+   *
+   * The residual of the iteration is @c x_out - @c x_in.
+   *
+   * @param x_in Interface state that was passed to the application.
+   * @param x_out Interface state produced by the application. Must hold at
+   * least @c x_in.size() entries.
+   * @param x_next Receives the next interface state. It is resized to
+   * @c x_in.size().
+   * @return The L2 norm of the residual.
+   */
+  [[nodiscard]] virtual Real Update(const std::vector<Real>& x_in,
+                                    const std::vector<Real>& x_out,
+                                    std::vector<Real>& x_next) = 0;
 
   virtual ~InterfaceAccelerator() = default;
 
 protected:
-  // Compute the L2 norm of the residual vector.
-  static Real Norm(const std::vector<Real>& residual);
+  /**
+   * @brief Compute the L2 norm of the residual vector.
+   *
+   * @param residual The residual vector.
+   * @return The Euclidean norm of @p residual.
+   */
+  [[nodiscard]] static Real Norm(const std::vector<Real>& residual);
 };
 
-// Applies Aitken relaxation using residuals from consecutive iterations.
+/**
+ * @brief Aitken relaxation of the interface state.
+ *
+ * Computes the next state as @c x_in + omega * (x_out - x_in). The relaxation
+ * factor omega is the initial factor on the first iteration of a window. On
+ * later iterations it is updated from the residuals of two consecutive
+ * iterations, r_k and r_{k-1}:
+ *
+ * @code
+ * d = r_k - r_{k-1}
+ * omega_{k+1} = -omega_k * dot(r_{k-1}, d) / dot(d, d)
+ * @endcode
+ *
+ * The update is skipped when the denominator is zero. If the new factor is not
+ * finite or is exactly zero, it is reset to the initial factor. The factor is
+ * then clamped to the range [-omega_max, omega_max].
+ */
 class AitkenRelaxation : public InterfaceAccelerator
 {
 public:
-  // omega0 is the initial factor, omega_max is the maximum limit for omega.
+  /**
+   * @brief Construct an Aitken relaxation accelerator.
+   *
+   * @param omega0 The initial relaxation factor, also used when the factor is
+   * reset.
+   * @param omega_max The limit on the magnitude of the relaxation factor.
+   */
   explicit AitkenRelaxation(Real omega0 = 0.5, Real omega_max = 1e6);
 
+  /**
+   * @brief Reset the relaxation factor to the initial factor and discard the
+   * stored residual.
+   */
   void BeginWindow() override;
 
-  Real Update(const std::vector<Real>& x_in, const std::vector<Real>& x_out,
-              std::vector<Real>& x_next) override;
+  /**
+   * @brief Compute the next interface state with Aitken relaxation.
+   *
+   * @copydetails InterfaceAccelerator::Update
+   */
+  [[nodiscard]] Real Update(const std::vector<Real>& x_in,
+                            const std::vector<Real>& x_out,
+                            std::vector<Real>& x_next) override;
 
 private:
-  Real omega0_;
-  Real omega_;
-  Real omega_max_;
-  std::vector<Real> previous_residual_;
-  bool have_previous_residual_ = false;
+  Real omega0_;                         ///< Initial relaxation factor.
+  Real omega_;                          ///< Current relaxation factor.
+  Real omega_max_;                      ///< Limit on the magnitude of omega_.
+  std::vector<Real> previous_residual_; ///< Residual of the previous iteration.
+  bool have_previous_residual_ = false; ///< Whether previous_residual_ is set.
 };
 
-} // namespace pcms::transient
+} // namespace pcms
 
 #endif // PCMS_TRANSIENT_ACCELERATOR_HPP

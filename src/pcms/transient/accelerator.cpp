@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace pcms::transient
+namespace pcms
 {
 
 Real InterfaceAccelerator::Norm(const std::vector<Real>& residual)
@@ -64,4 +64,4 @@ Real AitkenRelaxation::Update(const std::vector<Real>& x_in,
   return residual_norm;
 }
 
-} // namespace pcms::transient
+} // namespace pcms

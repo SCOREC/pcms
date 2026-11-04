@@ -1,3 +1,6 @@
+#ifndef PCMS_PYTHONAPI_NUMPY_ARRAY_TRANSFORM_HPP
+#define PCMS_PYTHONAPI_NUMPY_ARRAY_TRANSFORM_HPP
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
@@ -90,3 +93,5 @@ py::array_t<T> ToNumpy(Omega_h::Read<T> arr)
 }
 
 } // namespace pcms
+
+#endif // PCMS_PYTHONAPI_NUMPY_ARRAY_TRANSFORM_HPP

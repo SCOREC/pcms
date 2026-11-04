@@ -5,7 +5,7 @@
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_factory.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/utility/common.hpp"
+#include "pcms/utility/detail/common.hpp"
 #include <memory>
 
 namespace pcms::backend::xgc

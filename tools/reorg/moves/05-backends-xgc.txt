@@ -1,0 +1,3 @@
+# Phase 5: public / installed-detail headers of backends-xgc move to include/
+src/pcms/backends/xgc/xgc.hpp                            include/pcms/backends/xgc/xgc.hpp
+src/pcms/backends/xgc/reverse_classification.hpp         include/pcms/backends/xgc/reverse_classification.hpp

@@ -2,7 +2,7 @@
 #define PCMS_UNIFORM_GRID_BINARY_FIELD_H
 
 #include "pcms/backends/uniform_grid/layout.hpp"
-#include "pcms/field/data/simple.hpp"
+#include "pcms/field/simple_field_data.hpp"
 #include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/localization/point_search.hpp"

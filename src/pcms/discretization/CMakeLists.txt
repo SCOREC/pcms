@@ -1,6 +1,6 @@
 set(
         PCMS_DISCRETIZATION_HEADERS
-        discretization.hpp
+        ../../../include/pcms/discretization/discretization.hpp
         empty.hpp
 )
 

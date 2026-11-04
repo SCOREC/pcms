@@ -2,7 +2,7 @@
 
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 
 namespace pcms::backend::mfem
 {

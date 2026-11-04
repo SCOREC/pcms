@@ -9,7 +9,7 @@
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>

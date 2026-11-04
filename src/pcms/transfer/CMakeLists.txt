@@ -2,12 +2,12 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     interpolation_base.hpp
     interpolation_helpers.hpp
     mesh_intersection.hpp
-    interpolator.hpp
-    copy.hpp
-    transfer_operator.hpp
-    mass_matrix_type.hpp
-    monte_carlo_sampling.hpp
-    projection.hpp
+    ../../../include/pcms/transfer/interpolator.hpp
+    ../../../include/pcms/transfer/copy.hpp
+    ../../../include/pcms/transfer/transfer_operator.hpp
+    ../../../include/pcms/transfer/mass_matrix_type.hpp
+    ../../../include/pcms/transfer/monte_carlo_sampling.hpp
+    ../../../include/pcms/transfer/projection.hpp
 )
 
 

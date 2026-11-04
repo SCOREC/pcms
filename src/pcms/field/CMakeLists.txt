@@ -1,24 +1,24 @@
 find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_HEADERS
-        field.hpp
-        coordinate_map.hpp
-        value_view.hpp
+        ../../../include/pcms/field/field.hpp
+        ../../../include/pcms/field/coordinate_map.hpp
+        ../../../include/pcms/field/value_view.hpp
         element_dispatch.hpp
-        evaluation_request.hpp
+        ../../../include/pcms/field/evaluation_request.hpp
         gid_permutation.hpp
-        field_layout.hpp
+        ../../../include/pcms/field/field_layout.hpp
         layout/empty.hpp
-        out_of_bounds_policy.hpp
-        field_data.hpp
-        field_factory.hpp
-        function_space.hpp
-        point_evaluator.hpp
-        point_evaluator_factory.hpp
-        transformed_source.hpp
-        data/simple.hpp
+        ../../../include/pcms/field/out_of_bounds_policy.hpp
+        ../../../include/pcms/field/field_data.hpp
+        ../../../include/pcms/field/field_factory.hpp
+        ../../../include/pcms/field/function_space.hpp
+        ../../../include/pcms/field/point_evaluator.hpp
+        ../../../include/pcms/field/point_evaluator_factory.hpp
+        ../../../include/pcms/field/transformed_source.hpp
+        ../../../include/pcms/field/simple_field_data.hpp
         function_space/polynomial_reconstruction.hpp
-        function_spaces.hpp
+        ../../../include/pcms/field/function_spaces.hpp
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
@@ -40,7 +40,7 @@ if (PCMS_ENABLE_OMEGA_H)
             function_space/lagrange.hpp
             function_space/spline.hpp
             field_evaluator_factory.hpp
-            eqdsk_field.hpp
+            ../../../include/pcms/field/eqdsk_field.hpp
             evaluator/mls_interpolation.hpp
             evaluator/mls_interpolation_impl.hpp
             evaluator/interpolator_aliases.hpp

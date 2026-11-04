@@ -7,7 +7,7 @@
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/field_data.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/arrays.hpp"
 #include <memory>
 

@@ -2,13 +2,13 @@
 #define FIELD_COMMUNICATOR2_H_
 
 #include "pcms/coupler/coupler_types.hpp"
-#include "pcms/coupler/field_layout_communicator.hpp"
+#include "pcms/coupler/detail/field_layout_communicator.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_layout.hpp"
-#include "pcms/coupler/field_serializer.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/coupler/detail/field_serializer.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/inclusive_scan.hpp"
+#include "pcms/utility/detail/inclusive_scan.hpp"
 #include "pcms/utility/arrays.hpp"
 #include <redev.h>
 #include <memory>

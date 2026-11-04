@@ -2,7 +2,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/mesh_geometry.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include <stdexcept>
 
 namespace pcms::backend::omega_h

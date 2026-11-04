@@ -4,7 +4,7 @@ set(
         support_results.hpp
         mls_support_helpers.hpp
         localization_factory.hpp
-        mls_options.hpp
+        ../../../include/pcms/localization/mls_options.hpp
         mesh_localization.hpp
 )
 

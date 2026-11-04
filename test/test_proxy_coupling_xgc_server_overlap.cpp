@@ -3,7 +3,7 @@
 #include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
-#include <pcms/field/data/simple.hpp>
+#include <pcms/field/simple_field_data.hpp>
 
 #include "test_support.hpp"
 #include "pcms/backends/xgc/field_factory.hpp"

@@ -9,7 +9,7 @@
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/backends/uniform_grid/linear_interpolant.hpp"
 #include "pcms/backends/uniform_grid/multidimarray.hpp"
 

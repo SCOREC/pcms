@@ -1,4 +1,4 @@
-#include "pcms/coupler/field_layout_communicator.hpp"
+#include "pcms/coupler/detail/field_layout_communicator.hpp"
 #include "pcms/field/gid_permutation.hpp"
 
 namespace pcms

@@ -1,7 +1,7 @@
 #include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/configuration.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/common.hpp"
+#include "pcms/utility/detail/common.hpp"
 #ifdef PCMS_ENABLE_MESHFIELDS
 #include "pcms/backends/omega_h_meshfields/layout.hpp"
 #include "pcms/backends/omega_h_meshfields/evaluator.hpp"
@@ -11,7 +11,7 @@
 #include "pcms/backends/omega_h/lagrange_evaluator.hpp"
 #include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/backends/uniform_grid/evaluator.hpp"
-#include "pcms/field/data/simple.hpp"
+#include "pcms/field/simple_field_data.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 
 #include <stdexcept>

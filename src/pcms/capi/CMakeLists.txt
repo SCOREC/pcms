@@ -16,8 +16,8 @@ if(TARGET pcms::coupler)
                                                                   # pcms/capi
            "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/pcms/capi>")
 
-  set(CAPI_CORE_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/client.h
-                   ${CMAKE_CURRENT_SOURCE_DIR}/kokkos.h)
+  set(CAPI_CORE_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/client.h
+                   ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/kokkos.h)
   set_target_properties(
     pcms_capi_core PROPERTIES OUTPUT_NAME pcmscapicore
                EXPORT_NAME capi::core)
@@ -37,8 +37,8 @@ target_include_directories(pcms_capi_transfer
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>" # this makes the module path pcms/capi
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/pcms/capi>")
 
-set(CAPI_TRANSFER_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/interpolator.h
-                     ${CMAKE_CURRENT_SOURCE_DIR}/mesh.h)
+set(CAPI_TRANSFER_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/interpolator.h
+                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/mesh.h)
 
 set_target_properties(pcms_capi_transfer
   PROPERTIES OUTPUT_NAME pcmscapitransfer

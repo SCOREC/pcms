@@ -1,0 +1,7 @@
+# Phase 5: public / installed-detail headers of transfer move to include/
+src/pcms/transfer/copy.hpp                               include/pcms/transfer/copy.hpp
+src/pcms/transfer/interpolator.hpp                       include/pcms/transfer/interpolator.hpp
+src/pcms/transfer/mass_matrix_type.hpp                   include/pcms/transfer/mass_matrix_type.hpp
+src/pcms/transfer/monte_carlo_sampling.hpp               include/pcms/transfer/monte_carlo_sampling.hpp
+src/pcms/transfer/projection.hpp                         include/pcms/transfer/projection.hpp
+src/pcms/transfer/transfer_operator.hpp                  include/pcms/transfer/transfer_operator.hpp

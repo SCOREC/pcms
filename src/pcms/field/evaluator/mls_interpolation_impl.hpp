@@ -16,7 +16,7 @@
 #include <pcms/field/evaluator/interpolator_aliases.hpp>
 #include <pcms/backends/omega_h/adj_search.hpp>
 #include <pcms/utility/assert.hpp>
-#include <pcms/utility/profile.hpp>
+#include <pcms/utility/detail/profile.hpp>
 #include <pcms/field/evaluator/interpolator_view_utils.hpp>
 #include <pcms/field/evaluator/interpolator_logger.hpp>
 

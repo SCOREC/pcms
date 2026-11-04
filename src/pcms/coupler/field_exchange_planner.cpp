@@ -1,9 +1,9 @@
-#include "pcms/coupler/field_exchange_planner.hpp"
+#include "pcms/coupler/detail/field_exchange_planner.hpp"
 #include "pcms/coupler/partition.hpp"
 #include "pcms/field/gid_permutation.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/inclusive_scan.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/inclusive_scan.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include <algorithm>
 #include <map>
 

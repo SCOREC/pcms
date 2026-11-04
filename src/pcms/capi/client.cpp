@@ -1,5 +1,5 @@
 #include "pcms/capi/client.h"
-#include "pcms.h"
+#include "pcms/pcms.hpp"
 #include "pcms/field/field_factory.hpp"
 #include "pcms/backends/xgc/field_factory.hpp"
 #include "pcms/backends/xgc/field_data.hpp"

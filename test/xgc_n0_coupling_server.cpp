@@ -1,4 +1,4 @@
-#include <pcms.h>
+#include <pcms/pcms.hpp>
 #include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>

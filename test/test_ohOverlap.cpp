@@ -6,7 +6,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>
 #include <Omega_h_scalar.hpp> // divide_no_remainder
-#include "pcms.h"
+#include "pcms/pcms.hpp"
 #include "test_support.hpp"
 #include <pcms/version.hpp>
 #include "pcms/utility/types.hpp"

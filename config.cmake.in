@@ -41,7 +41,6 @@ include("${CMAKE_CURRENT_LIST_DIR}/pcms_discretization-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_localization-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_field-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_coupler-targets.cmake")
-include("${CMAKE_CURRENT_LIST_DIR}/pcms_core-targets.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_transfer-targets.cmake")
 
 if(@PCMS_ENABLE_C@)
@@ -57,5 +56,7 @@ if(@PCMS_ENABLE_FORTRAN@)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/pcms-targets.cmake")
+# deprecated pcms::core links pcms::pcms, so it is loaded after it
+include("${CMAKE_CURRENT_LIST_DIR}/pcms_core-targets.cmake")
 # must be called at the end of the config file
 check_required_components(pcms)

@@ -182,7 +182,7 @@ if(NOT BUILD_TESTING)
 endif()
 
 add_executable(smoke_test test/test_ohClassPtn.cpp)
-target_link_libraries(smoke_test pcms::core test_support)
+target_link_libraries(smoke_test pcms::pcms test_support)
 # Uses a mesh vendored in test/data so the install check works without
 # PCMS_TEST_DATA_DIR (e.g. with BUILD_TESTING=OFF).
 dual_mpi_test(

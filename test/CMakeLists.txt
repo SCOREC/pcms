@@ -168,7 +168,7 @@ if(PCMS_ENABLE_OMEGA_H)
       ignored)
   endif()
   add_executable(field_communication test_field_communication.cpp)
-  target_link_libraries(field_communication PUBLIC pcms::core test_support)
+  target_link_libraries(field_communication PUBLIC pcms::pcms test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
     tri_mpi_test(
       TESTNAME
@@ -207,7 +207,7 @@ if(PCMS_ENABLE_OMEGA_H)
       ignored)
   endif()
   add_executable(proxy_coupling test_proxy_coupling.cpp)
-  target_link_libraries(proxy_coupling PUBLIC pcms::core test_support)
+  target_link_libraries(proxy_coupling PUBLIC pcms::pcms test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
     tri_mpi_test(
       TESTNAME
@@ -470,7 +470,7 @@ if(Catch2_FOUND)
     target_link_libraries(unit_tests PUBLIC mfem)
   endif()
 
-  target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core
+  target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::pcms
           pcms::transfer Kokkos::kokkoskernels)
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -480,7 +480,7 @@ if(Catch2_FOUND)
 
   add_executable(test_interpolation_on_ltx_mesh test_interpolation_on_ltx_mesh.cpp)
   target_link_libraries(test_interpolation_on_ltx_mesh PUBLIC Catch2::Catch2WithMain
-                                                        pcms::core
+                                                        pcms::pcms
                                                         pcms::transfer)
   target_include_directories(test_interpolation_on_ltx_mesh PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
   add_test(NAME test_interpolation_on_ltx_mesh
@@ -504,7 +504,7 @@ endif()
 
 if(PCMS_ENABLE_MFEM)
   add_executable(test_mfem_coupling test_mfem_coupling.cpp)
-  target_link_libraries(test_mfem_coupling PUBLIC pcms::core mfem)
+  target_link_libraries(test_mfem_coupling PUBLIC pcms::pcms mfem)
   if(HOST_NPROC GREATER_EQUAL 2)
     dual_mpi_test(
       TESTNAME
@@ -541,12 +541,12 @@ if(PCMS_ENABLE_C)
       add_executable(test_proxy_couple_xgc_cpp_interface
                      test_proxy_coupling_xgc_server.cpp)
       target_link_libraries(test_proxy_couple_xgc_cpp_interface
-                            PUBLIC pcms::core MPI::MPI_C test_support)
+                            PUBLIC pcms::pcms MPI::MPI_C test_support)
       # New test with proper overlap mask feature (no hacky ownership modification)
       add_executable(test_proxy_couple_xgc_overlap_interface
                      test_proxy_coupling_xgc_server_overlap.cpp)
       target_link_libraries(test_proxy_couple_xgc_overlap_interface
-                            PUBLIC pcms::core MPI::MPI_C test_support)
+                            PUBLIC pcms::pcms MPI::MPI_C test_support)
       if(HOST_NPROC GREATER_EQUAL 3)
         dual_mpi_test(
           TESTNAME
@@ -698,4 +698,4 @@ endif()
 find_package(KokkosKernels REQUIRED)
 
 add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)
-target_link_libraries(xgc_n0_server PUBLIC pcms::core test_support)
+target_link_libraries(xgc_n0_server PUBLIC pcms::pcms test_support)

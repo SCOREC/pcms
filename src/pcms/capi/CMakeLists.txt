@@ -4,7 +4,7 @@ add_library(pcms::capi::core ALIAS pcms_capi_core)
 target_link_libraries(
   pcms_capi_core
   PUBLIC MPI::MPI_C
-  PRIVATE pcms::core)
+  PRIVATE pcms::coupler)
 
 target_include_directories(
   pcms_capi_core

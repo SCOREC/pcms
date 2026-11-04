@@ -38,6 +38,8 @@ install(
   DESTINATION ${PCMS_INSTALL_CMAKEDIR}
 )
 
+# FindPETSc.cmake stays installed: the package config calls
+# find_dependency(PETSc) when PETSc is enabled, which needs it.
 install(FILES "${CMAKE_SOURCE_DIR}/cmake/FindPETSc.cmake"
           DESTINATION ${PCMS_INSTALL_CMAKEDIR})
 
@@ -112,11 +114,6 @@ install(
 )
 
 
-# install external headers
-install(
-  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/pcms/external/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/external
-)
 install(
   EXPORT pcms-targets
   NAMESPACE pcms::

@@ -5,3 +5,7 @@ add_subdirectory(xgc)
 if(PCMS_ENABLE_MFEM)
   add_subdirectory(mfem)
 endif()
+# bridges: built only when both backends are enabled
+if(PCMS_ENABLE_OMEGA_H AND PCMS_ENABLE_MESHFIELDS)
+  add_subdirectory(omega_h_meshfields)
+endif()

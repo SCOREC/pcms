@@ -65,18 +65,6 @@ if (PCMS_ENABLE_OMEGA_H)
     )
 endif ()
 
-if (PCMS_ENABLE_MESHFIELDS)
-    list(APPEND PCMS_FIELD_SOURCES
-            ../backends/omega_h_meshfields/layout.cpp
-    )
-    list(APPEND PCMS_FIELD_HEADERS
-            ../backends/omega_h_meshfields/layout.hpp
-            ../backends/omega_h_meshfields/evaluator_backend.hpp
-            ../backends/omega_h_meshfields/evaluator.hpp
-            ../backends/omega_h_meshfields/field_data.hpp
-    )
-endif ()
-
 add_library(pcms_field ${PCMS_FIELD_SOURCES})
 set_target_properties(pcms_field PROPERTIES
         OUTPUT_NAME pcmsfield
@@ -99,10 +87,6 @@ if(PCMS_ENABLE_OMEGA_H)
     target_link_libraries(pcms_field PRIVATE Kokkos::kokkoskernels)
 endif()
 
-
-if (PCMS_ENABLE_MESHFIELDS)
-    target_link_libraries(pcms_field PUBLIC meshfields::meshfields)
-endif ()
 
 target_include_directories(pcms_field INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

@@ -43,6 +43,7 @@ endif()
 
 option(PCMS_ENABLE_SERVER "enable the coupling server implementation" ON)
 option(PCMS_ENABLE_CLIENT "enable the coupling client implementation" ON)
+option(PCMS_ENABLE_COUPLER "Build the coupler (requires redev and ADIOS2)" ON)
 
 option(PCMS_ENABLE_XGC "enable xgc field adapter" ON)
 option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
@@ -77,7 +78,11 @@ option(PCMS_PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"
 # find package before fortran enabled, so we don't require the adios2 fortran
 # interfaces this is important because adios2 build with clang/gfortran is
 # broken
-find_package(redev 4.3.0 REQUIRED)
+if(PCMS_ENABLE_COUPLER)
+  find_package(redev 4.3.0 REQUIRED)
+elseif(PCMS_ENABLE_PYTHON)
+  message(FATAL_ERROR "PCMS_ENABLE_PYTHON requires PCMS_ENABLE_COUPLER")
+endif()
 
 if (PCMS_ENABLE_PYTHON)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -132,7 +137,9 @@ if(PROJECT_IS_TOP_LEVEL)
   endif()
 endif()
 
-message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
+if(PCMS_ENABLE_COUPLER)
+  message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
+endif()
 if(PCMS_ENABLE_OMEGA_H)
   find_package(Omega_h REQUIRED VERSION 10)
   message(
@@ -150,7 +157,9 @@ if(PCMS_ENABLE_MFEM)
   endif()
 endif()
 # adios2 adds C and Fortran depending on how it was built
-find_package(ADIOS2 CONFIG 2.10.2 REQUIRED)
+if(PCMS_ENABLE_COUPLER)
+  find_package(ADIOS2 CONFIG 2.10.2 REQUIRED)
+endif()
 find_package(Kokkos CONFIG 4.5 REQUIRED)
 
 option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" ON)

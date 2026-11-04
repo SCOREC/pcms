@@ -7,7 +7,7 @@
 #include <redev.h>
 #include <vector>
 
-namespace pcms
+namespace pcms::coupler
 {
 
 struct ExchangePlan
@@ -56,5 +56,5 @@ public:
     Rank1View<GO, HostMemorySpace> gid_message) const override;
 };
 
-} // namespace pcms
+} // namespace pcms::coupler
 #endif // PCMS_FIELD_EXCHANGE_PLANNER_H

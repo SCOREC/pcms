@@ -24,7 +24,7 @@ TEST_CASE("Field exchange plans exclude GID message headers",
   in.srcRanks = {0, 7};
   in.offset = {0, 14};
 
-  pcms::GenericFieldExchangePlanner planner;
+  pcms::coupler::GenericFieldExchangePlanner planner;
   const auto plan = planner.BuildReceivePlan(
     layout,
     pcms::GlobalIDView<pcms::HostMemorySpace>(received.data(), received.size()),
@@ -42,7 +42,7 @@ TEST_CASE("GID messages insert headers around compact field payloads",
   Kokkos::View<pcms::Real**> coords("coords", 4, 2);
   pcms::backend::point_cloud::PointCloudLayout layout(2, coords, pcms::csys::Cartesian::Deferred());
 
-  pcms::ExchangePlan plan;
+  pcms::coupler::ExchangePlan plan;
   plan.dest_ranks = {0, 1};
   plan.offsets = {0, 2, 4};
   plan.permutation = {0, 2, 1, 3};
@@ -51,7 +51,7 @@ TEST_CASE("GID messages insert headers around compact field payloads",
   Kokkos::View<pcms::GO*, pcms::HostMemorySpace> message(
     "gid_message",
     plan.msg_size + 2 * static_cast<std::size_t>(pcms::ent_offsets_len));
-  pcms::GenericFieldExchangePlanner planner;
+  pcms::coupler::GenericFieldExchangePlanner planner;
   planner.FillGidMessage(layout, plan, pcms::MakeRank1View(message));
 
   const pcms::GO expected[] = {
@@ -89,7 +89,7 @@ TEST_CASE("ExchangePlan permutation is negative for non-participating holders",
   in.srcRanks = {0};
   in.offset = {0, static_cast<redev::LO>(msg_total)};
 
-  pcms::GenericFieldExchangePlanner planner;
+  pcms::coupler::GenericFieldExchangePlanner planner;
   const auto plan = planner.BuildReceivePlan(
     layout,
     pcms::GlobalIDView<pcms::HostMemorySpace>(received.data(), received.size()),

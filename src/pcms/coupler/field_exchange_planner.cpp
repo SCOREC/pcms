@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <map>
 
-namespace pcms
+namespace pcms::coupler
 {
 
 namespace
@@ -335,4 +335,4 @@ void GenericFieldExchangePlanner::FillGidMessage(
   }
 }
 
-} // namespace pcms
+} // namespace pcms::coupler

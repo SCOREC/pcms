@@ -1,7 +1,7 @@
 #include "pcms/coupler/detail/field_layout_communicator.hpp"
 #include "pcms/field/gid_permutation.hpp"
 
-namespace pcms
+namespace pcms::coupler
 {
 
 FieldLayoutCommunicator::FieldLayoutCommunicator(
@@ -134,4 +134,4 @@ FieldLayoutCommunicator::~FieldLayoutCommunicator()
   }
 }
 
-} // namespace pcms
+} // namespace pcms::coupler

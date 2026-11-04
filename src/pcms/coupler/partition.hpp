@@ -6,7 +6,7 @@
 #include <redev.h>
 #include <redev_partition.h>
 
-namespace pcms
+namespace pcms::coupler
 {
 struct GetRank
 {
@@ -46,6 +46,6 @@ struct Partition
 
   redev::Partition partition_;
 };
-} // namespace pcms
+} // namespace pcms::coupler
 
 #endif // PCMS_PARTITION_H

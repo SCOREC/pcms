@@ -7,7 +7,7 @@
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::coupler
 {
 
 // Packs a field's owned values into, and unpacks them from, an exchange
@@ -66,6 +66,6 @@ public:
   }
 };
 
-} // namespace pcms
+} // namespace pcms::coupler
 
 #endif // PCMS_FIELD_SERIALIZER_H

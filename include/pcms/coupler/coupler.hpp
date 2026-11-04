@@ -47,7 +47,7 @@ private:
   Rank1View<T, pcms::HostMemorySpace> data_;
   std::string variable_name_;
   MPI_Comm mpi_comm_;
-  GlobalCommunicator<T> comm_;
+  pcms::coupler::GlobalCommunicator<T> comm_;
 };
 using GlobalDataVariant =
   std::variant<GlobalDataInterface<int8_t>, GlobalDataInterface<int32_t>,
@@ -163,7 +163,7 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InSendPhase());
-    FieldCommunicator2Ptr& communicator =
+    pcms::coupler::FieldCommunicator2Ptr& communicator =
       detail::find_or_error(name, field_communicators_);
     std::visit(
       [mode](auto& field_communicator) { field_communicator->Send(mode); },
@@ -253,7 +253,7 @@ private:
   // Returns the communicator for `layout`, creating it (MPI split + overlap
   // mask lookup + planner) on first use and reusing it for any later
   // field/function whose layout has the same name.
-  FieldLayoutCommunicator& GetOrCreateLayoutCommunicator(
+  pcms::coupler::FieldLayoutCommunicator& GetOrCreateLayoutCommunicator(
     const FieldLayout& layout, bool participates);
 
   template <typename T>
@@ -264,13 +264,13 @@ private:
   redev::Channel channel_;
   std::map<std::string, FieldVariant> fields_;
   std::map<std::string, FunctionVariant> functions_;
-  std::vector<std::unique_ptr<FieldLayoutCommunicator>>
+  std::vector<std::unique_ptr<pcms::coupler::FieldLayoutCommunicator>>
     owned_field_layout_communicators_;
   // map is used rather than unordered_map because we give pointers to the
   // internal data and rehash of unordered_map can cause pointer invalidation.
   // map is less cache friendly, but pointers are not invalidated.
-  std::map<std::string, FieldCommunicator2Ptr> field_communicators_;
-  std::map<std::string, std::unique_ptr<FieldLayoutCommunicator>>
+  std::map<std::string, pcms::coupler::FieldCommunicator2Ptr> field_communicators_;
+  std::map<std::string, std::unique_ptr<pcms::coupler::FieldLayoutCommunicator>>
     field_layout_communicators_;
   std::map<std::string, std::unique_ptr<OverlapMask>> layout_overlap_masks_;
   std::map<std::string, GlobalDataVariant> global_data_interfaces_;
@@ -411,10 +411,10 @@ void pcms::ApplicationComm::RegisterFieldCommunicator(Field<T>& field_obj,
                      "' cannot be exchanged: its values are not accessible "
                      "through PCMS (the field data provides no DOFAccess)");
   }
-  FieldLayoutCommunicator& layout_communicator =
+  pcms::coupler::FieldLayoutCommunicator& layout_communicator =
     GetOrCreateLayoutCommunicator(field_obj.GetLayout(), participates);
-  FieldCommunicator2Ptr field_communicator =
-    std::make_unique<FieldCommunicator<T>>(name, layout_communicator,
+  pcms::coupler::FieldCommunicator2Ptr field_communicator =
+    std::make_unique<pcms::coupler::FieldCommunicator<T>>(name, layout_communicator,
                                            field_obj);
   auto [it, inserted] =
     field_communicators_.emplace(name, std::move(field_communicator));

@@ -123,7 +123,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     }
     Kokkos::View<pcms::Real*, pcms::HostMemorySpace> buffer("buffer", n);
 
-    pcms::FieldSerializer<pcms::Real> serializer;
+    pcms::coupler::FieldSerializer<pcms::Real> serializer;
     serializer.Serialize(field, pcms::make_array_view(buffer),
                          pcms::make_const_array_view(perm));
 

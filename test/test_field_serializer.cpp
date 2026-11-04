@@ -46,7 +46,7 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
   std::vector<pcms::LO> permutation(num_dof);
   std::iota(permutation.begin(), permutation.end(), pcms::LO{0});
 
-  pcms::FieldSerializer<pcms::Real> serializer;
+  pcms::coupler::FieldSerializer<pcms::Real> serializer;
   REQUIRE(serializer.Serialize(field, pcms::make_array_view(buffer),
                                pcms::make_const_array_view(permutation)) ==
           static_cast<int>(num_values));
@@ -102,7 +102,7 @@ TEST_CASE("Serializing an XGC field preserves inactive field entries")
     "", std::make_unique<pcms::backend::xgc::XGCFieldData<pcms::Real>>(
           factory.GetXGCLayout(), pcms::ValueBasis{},
           pcms::make_array_view(data), MPI_COMM_SELF));
-  pcms::FieldSerializer<pcms::Real> serializer;
+  pcms::coupler::FieldSerializer<pcms::Real> serializer;
 
   // Entries outside the overlap region are not exchanged.
   const pcms::OverlapMask overlap_mask(InXGCOverlap);
@@ -260,7 +260,7 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   // the sender's overlap mask); they must keep their current values.
   std::vector<pcms::LO> permutation{0, -1, 1, -1};
   std::vector<pcms::Real> buffer{50.0, 70.0};
-  pcms::FieldSerializer<pcms::Real> serializer;
+  pcms::coupler::FieldSerializer<pcms::Real> serializer;
   serializer.Deserialize(field, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
 

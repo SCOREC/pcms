@@ -1,4 +1,5 @@
-if(PCMS_ENABLE_OMEGA_H)
+# test_support uses redev, so it needs the coupler
+if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
   add_library(test_support test/test_support.cpp)
   target_link_libraries(test_support pcms::pcms) # for omegah and redev
 endif()
@@ -58,7 +59,7 @@ message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
 function(add_exe NAME)
   add_executable(${NAME} ${NAME}.cpp)
   target_link_libraries(${NAME} pcms::pcms)
-  if(PCMS_ENABLE_OMEGA_H)
+  if(TARGET test_support)
     target_link_libraries(${NAME} test_support)
   endif()
   target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

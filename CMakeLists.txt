@@ -181,33 +181,36 @@ if(NOT BUILD_TESTING)
     COMMENT "Test installed PUMIPic utilities")
 endif()
 
-add_executable(smoke_test test/test_ohClassPtn.cpp)
-target_link_libraries(smoke_test pcms::pcms test_support)
-# Uses a mesh vendored in test/data so the install check works without
-# PCMS_TEST_DATA_DIR (e.g. with BUILD_TESTING=OFF).
-dual_mpi_test(
-  TESTNAME
-  smoke_test
-  TIMEOUT
-  4
-  NAME1
-  rdv
-  EXE1
-  smoke_test
-  PROCS1
-  2
-  ARGS1
-  1
-  ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/
-  NAME2
-  app
-  EXE2
-  smoke_test
-  PROCS2
-  1
-  ARGS2
-  0
-  ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/)
+# the smoke test exercises the coupler
+if(TARGET pcms::coupler)
+  add_executable(smoke_test test/test_ohClassPtn.cpp)
+  target_link_libraries(smoke_test pcms::pcms test_support)
+  # Uses a mesh vendored in test/data so the install check works without
+  # PCMS_TEST_DATA_DIR (e.g. with BUILD_TESTING=OFF).
+  dual_mpi_test(
+    TESTNAME
+    smoke_test
+    TIMEOUT
+    4
+    NAME1
+    rdv
+    EXE1
+    smoke_test
+    PROCS1
+    2
+    ARGS1
+    1
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/
+    NAME2
+    app
+    EXE2
+    smoke_test
+    PROCS2
+    1
+    ARGS2
+    0
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/)
+endif()
 
 if(BUILD_TESTING)
   add_subdirectory(test)

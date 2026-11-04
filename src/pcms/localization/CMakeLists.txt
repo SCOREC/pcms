@@ -3,6 +3,7 @@ set(
         point_search.hpp
         queue_visited.hpp
         adj_search.hpp
+        support_results.hpp
         mls_support_helpers.hpp
         localization_factory.hpp
         mls_options.hpp

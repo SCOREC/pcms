@@ -1,7 +1,7 @@
 #ifndef PCMS_LOCALIZATION_LOCALIZATION_FACTORY_H
 #define PCMS_LOCALIZATION_LOCALIZATION_FACTORY_H
 
-#include "pcms/localization/adj_search.hpp"
+#include "pcms/localization/support_results.hpp"
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 

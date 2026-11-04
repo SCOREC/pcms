@@ -4,6 +4,7 @@
 #include <pcms/localization/point_search.hpp>
 #include <pcms/localization/mls_support_helpers.hpp>
 #include <pcms/localization/queue_visited.hpp>
+#include <pcms/localization/support_results.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
 #include <pcms/utility/print.hpp>
 
@@ -37,13 +38,6 @@ public:
                                    Omega_h::Write<Omega_h::LO>& support_idx,
                                    Omega_h::Write<Omega_h::Real>& radii2,
                                    bool is_build_csr_call);
-};
-
-struct SupportResults
-{
-  Omega_h::LOs supports_ptr;
-  Omega_h::LOs supports_idx;
-  Omega_h::Write<Omega_h::Real> radii2;
 };
 
 SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,

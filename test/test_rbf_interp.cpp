@@ -3,7 +3,7 @@
 #include <pcms/localization/adj_search.hpp>
 #include <pcms/field/evaluator/mls_interpolation.hpp>
 #include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
-#include <pcms/utility/arrays.h>
+#include <pcms/utility/arrays.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>

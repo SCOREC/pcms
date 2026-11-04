@@ -9,7 +9,7 @@ set(
   pcms.cpp
 )
 
-# The version comes from git describe, so version.h is regenerated on every
+# The version comes from git describe, so version.hpp is regenerated on every
 # build, and once now so it exists after configure. See PcmsVersion.cmake.
 find_package(Git QUIET)
 set(
@@ -18,18 +18,18 @@ set(
   -DGIT_EXECUTABLE=${GIT_EXECUTABLE}
   -DPROJECT_VERSION=${PROJECT_VERSION}
   -DVERSION_OVERRIDE=${SKBUILD_PROJECT_VERSION_FULL}
-  -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/pcms/version.h.in
-  -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h
+  -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/pcms/version.hpp.in
+  -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/pcms/version.hpp
   -P ${PROJECT_SOURCE_DIR}/cmake/PcmsVersion.cmake
 )
 execute_process(COMMAND ${CMAKE_COMMAND} ${PCMS_VERSION_ARGS})
 add_custom_target(
   pcms_version_header
   COMMAND ${CMAKE_COMMAND} ${PCMS_VERSION_ARGS}
-  BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h
+  BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.hpp
 )
-configure_file(pcms/configuration.h.in pcms/configuration.h)
-list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.h)
+configure_file(pcms/configuration.hpp.in pcms/configuration.hpp)
+list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.hpp ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.hpp)
 
 add_subdirectory(pcms/utility)
 if(PCMS_ENABLE_TRANSIENT)

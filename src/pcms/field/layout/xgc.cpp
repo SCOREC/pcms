@@ -1,6 +1,6 @@
-#include "pcms/field/layout/xgc.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/entity_types.h"
+#include "pcms/field/layout/xgc.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/entity_types.hpp"
 #include "pcms/field/coordinate_systems/cylindrical.hpp"
 
 namespace pcms

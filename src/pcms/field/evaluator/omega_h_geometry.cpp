@@ -1,10 +1,10 @@
 #include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/coordinate_system.hpp"
 #include "pcms/localization/adj_search.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/omega_h_array_utils.h"
-#include "pcms/utility/profile.h"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/omega_h_array_utils.hpp"
+#include "pcms/utility/profile.hpp"
+#include "pcms/utility/uniform_grid.hpp"
 #include <stdexcept>
 #include <string>
 #include <variant>

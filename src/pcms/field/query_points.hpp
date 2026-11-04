@@ -3,16 +3,16 @@
 
 #include "pcms/field/coordinate_view.hpp"
 #include "pcms/field/differential_operator.hpp"
-#include "pcms/field/field.h"
-#include "pcms/field/function_space.h"
-#include "pcms/field/out_of_bounds_policy.h"
-#include "pcms/field/point_evaluator.h"
+#include "pcms/field/field.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
+#include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/geometry/bound_source.hpp"
 #include "pcms/geometry/geometry.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/memory_spaces.h"
-#include "pcms/utility/types.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/types.hpp"
 #include <map>
 #include <memory>
 #include <tuple>

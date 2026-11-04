@@ -1,8 +1,8 @@
 #include "pcms/geometry/bound_source.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/field/coordinate_map.hpp"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/assert.hpp"
 #include <algorithm>
 #include <numeric>
 #include <ranges>

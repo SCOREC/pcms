@@ -1,8 +1,8 @@
 #include "pcms/field/layout/mfem.hpp"
 
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/profile.h"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/profile.hpp"
 
 #include <memory>
 

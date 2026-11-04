@@ -2,13 +2,13 @@
 #define PCMS_FIELD_EVALUATOR_UNIFORM_GRID_GEOMETRY_HPP
 
 #include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/out_of_bounds_policy.h"
+#include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/localization/uniform_grid_search.hpp"
-#include "pcms/utility/memory_spaces.h"
-#include "pcms/utility/profile.h"
-#include "pcms/utility/types.h"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/profile.hpp"
+#include "pcms/utility/types.hpp"
+#include "pcms/utility/uniform_grid.hpp"
 #include <Kokkos_Core.hpp>
 #include <Omega_h_vector.hpp>
 #include <memory>

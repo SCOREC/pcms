@@ -4,8 +4,8 @@
 #include "pcms/field/coordinate_system.hpp"
 #include "pcms/field/coordinate_view.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/memory_spaces.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
 

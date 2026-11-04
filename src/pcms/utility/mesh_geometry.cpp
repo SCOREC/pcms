@@ -1,4 +1,4 @@
-#include "pcms/utility/mesh_geometry.h"
+#include "pcms/utility/mesh_geometry.hpp"
 
 namespace pcms
 {

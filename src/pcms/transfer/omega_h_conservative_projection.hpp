@@ -1,9 +1,9 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H
 #define PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H
 
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/point_evaluator.h"
+#include "pcms/field/function_space.hpp"
+#include "pcms/field/layout/omega_h_lagrange.hpp"
+#include "pcms/field/point_evaluator.hpp"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
 #include <Kokkos_Core.hpp>

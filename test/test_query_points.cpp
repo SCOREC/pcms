@@ -6,10 +6,10 @@
 #include <Omega_h_library.hpp>
 #include <pcms/field/coordinate_systems/cartesian.hpp>
 #include <pcms/field/evaluator/uniform_grid_geometry.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/field/function_space/spline.h>
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/field/function_space/spline.hpp>
 #include <pcms/field/query_points.hpp>
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 #include <vector>
 
 using Catch::Matchers::ContainsSubstring;

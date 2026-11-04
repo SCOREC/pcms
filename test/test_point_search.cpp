@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/localization/point_search.h>
+#include <pcms/localization/point_search.hpp>
 #include <pcms/localization/uniform_grid_search.hpp>
-#include <pcms/utility/mesh_geometry.h>
-#include <pcms/utility/uniform_grid.h>
-#include "field_test_utils.h"
+#include <pcms/utility/mesh_geometry.hpp>
+#include <pcms/utility/uniform_grid.hpp>
+#include "field_test_utils.hpp"
 #include <pcms/field/evaluator/omega_h_geometry.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>

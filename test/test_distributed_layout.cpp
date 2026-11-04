@@ -10,13 +10,13 @@
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
 
-#include "distributed_test_utils.h"
-#include "pcms/configuration.h"
+#include "distributed_test_utils.hpp"
+#include "pcms/configuration.hpp"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/types.h"
+#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/types.hpp"
 
 #include <cstdio>
 #include <cstdlib>

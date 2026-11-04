@@ -1,5 +1,5 @@
 #include "pcms/field/gradient_source.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <string>
 
 namespace pcms

@@ -1,31 +1,31 @@
 find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_HEADERS
-        field.h
+        field.hpp
         coordinate_system.hpp
         coordinate_view.hpp
         coordinate_systems/cartesian.hpp
         coordinate_systems/cylindrical.hpp
         coordinate_map.hpp
         value_view.hpp
-        element_dispatch.h
+        element_dispatch.hpp
         gid_permutation.hpp
-        field_layout.h
-        layout/empty.h
-        out_of_bounds_policy.h
-        field_data.h
-        field_factory.h
-        function_space.h
-        point_evaluator.h
+        field_layout.hpp
+        layout/empty.hpp
+        out_of_bounds_policy.hpp
+        field_data.hpp
+        field_factory.hpp
+        function_space.hpp
+        point_evaluator.hpp
         point_evaluator_factory.hpp
         query_points.hpp
         differential_operator.hpp
         gradient_source.hpp
         transformed_point_evaluator.hpp
-        data/simple.h
+        data/simple.hpp
         function_space/polynomial_reconstruction.hpp
-        layout/point_cloud.h
-        data/point_cloud.h
+        layout/point_cloud.hpp
+        data/point_cloud.hpp
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
@@ -51,29 +51,29 @@ if (PCMS_ENABLE_OMEGA_H)
             evaluator/omega_h_geometry.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
-            function_space/lagrange.h
-            function_space/spline.h
-            layout/omega_h_entity.h
-            layout/omega_h_lagrange.h
+            function_space/lagrange.hpp
+            function_space/spline.hpp
+            layout/omega_h_entity.hpp
+            layout/omega_h_lagrange.hpp
             evaluator/omega_h_geometry.hpp
-            evaluator/omega_h_lagrange.h
+            evaluator/omega_h_lagrange.hpp
             evaluator/uniform_grid_geometry.hpp
             evaluator/point_cloud_geometry.hpp
-            data/omega_h.h
-            layout/uniform_grid.h
-            uniform_grid_binary_field.h
-            evaluator/uniform_grid.h
+            data/omega_h.hpp
+            layout/uniform_grid.hpp
+            uniform_grid_binary_field.hpp
+            evaluator/uniform_grid.hpp
             evaluator/spline_interpolator.hpp
-            evaluator/uniform_grid_spline.h
-            eqdsk_field.h
-            evaluator/mls_options.h
+            evaluator/uniform_grid_spline.hpp
+            eqdsk_field.hpp
+            evaluator/mls_options.hpp
             evaluator/mls_interpolation.hpp
             evaluator/mls_interpolation_impl.hpp
             evaluator/pcms_interpolator_aliases.hpp
             evaluator/pcms_interpolator_view_utils.hpp
             evaluator/pcms_interpolator_logger.hpp
-            evaluator/mls_point_cloud.h
-            evaluator/point_cloud.h
+            evaluator/mls_point_cloud.hpp
+            evaluator/point_cloud.hpp
     )
 endif ()
 
@@ -94,19 +94,19 @@ if (PCMS_ENABLE_MESHFIELDS)
             layout/mesh_fields.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
-            layout/mesh_fields.h
-            evaluator/mesh_fields_backend.h
-            evaluator/mesh_fields.h
-            data/mesh_fields.h
+            layout/mesh_fields.hpp
+            evaluator/mesh_fields_backend.hpp
+            evaluator/mesh_fields.hpp
+            data/mesh_fields.hpp
     )
 endif ()
 
 if(PCMS_ENABLE_XGC)
     list(APPEND PCMS_FIELD_HEADERS
-            data/xgc.h
-            function_space/xgc.h
-            layout/xgc.h
-            layout/xgc_reverse_classification.h)
+            data/xgc.hpp
+            function_space/xgc.hpp
+            layout/xgc.hpp
+            layout/xgc_reverse_classification.hpp)
     list(APPEND PCMS_FIELD_SOURCES
             layout/xgc.cpp
             layout/xgc_reverse_classification.cpp)

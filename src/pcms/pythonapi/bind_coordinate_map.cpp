@@ -5,7 +5,7 @@
 
 #include "pcms/field/coordinate_map.hpp"
 #include "pcms/field/value_view.hpp"
-#include "py_value_types.h"
+#include "py_value_types.hpp"
 
 namespace py = pybind11;
 

@@ -1,7 +1,7 @@
 #ifndef PCMS_TRANSFER_MESH_INTERSECTION_HPP
 #define PCMS_TRANSFER_MESH_INTERSECTION_HPP
 
-#include <pcms/configuration.h>
+#include <pcms/configuration.hpp>
 #include <pcms/field/evaluator/omega_h_geometry.hpp>
 #include <pcms/localization/queue_visited.hpp>
 #include <Omega_h_fail.hpp>

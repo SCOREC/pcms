@@ -1,9 +1,9 @@
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/field/evaluator/point_cloud.h"
+#include "pcms/field/evaluator/point_cloud.hpp"
 #include "pcms/field/evaluator/point_cloud_geometry.hpp"
-#include "pcms/field/data/simple.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/common.h"
+#include "pcms/field/data/simple.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/common.hpp"
 
 namespace pcms
 {

@@ -1,7 +1,7 @@
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <Kokkos_Random.hpp>
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>

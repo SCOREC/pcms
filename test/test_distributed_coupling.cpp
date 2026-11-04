@@ -4,16 +4,16 @@
 #include <Omega_h_for.hpp>
 #include <Omega_h_mesh.hpp>
 
-#include "pcms/coupler/field_exchange_planner.h"
-#include "pcms/coupler/field_serializer.h"
-#include "pcms/coupler/overlap_mask.h"
-#include "pcms/field/data/simple.h"
-#include "distributed_test_utils.h"
+#include "pcms/coupler/field_exchange_planner.hpp"
+#include "pcms/coupler/field_serializer.hpp"
+#include "pcms/coupler/overlap_mask.hpp"
+#include "pcms/field/data/simple.hpp"
+#include "distributed_test_utils.hpp"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/types.h"
+#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/types.hpp"
 
 #include <cstdio>
 #include <cstdlib>

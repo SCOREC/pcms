@@ -4,8 +4,8 @@
 #include <Omega_h_array_ops.hpp>
 #include <pcms/field/evaluator/mls_interpolation.hpp>
 #include <pcms/localization/adj_search.hpp>
-#include <pcms/utility/mesh_geometry.h>
-#include "numpy_array_transform.h"
+#include <pcms/utility/mesh_geometry.hpp>
+#include "numpy_array_transform.hpp"
 
 namespace py = pybind11;
 

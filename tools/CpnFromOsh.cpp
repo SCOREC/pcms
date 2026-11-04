@@ -4,7 +4,7 @@
 #include <array>
 #include <map>
 #include <numeric>
-#include "pcms/utility/print.h"
+#include "pcms/utility/print.hpp"
 
 int main(int argc, char** argv)
 {

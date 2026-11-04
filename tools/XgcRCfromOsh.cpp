@@ -1,6 +1,6 @@
 #include <Omega_h_file.hpp>
-#include "pcms/field/layout/xgc_reverse_classification.h"
-#include "pcms/utility/print.h"
+#include "pcms/field/layout/xgc_reverse_classification.hpp"
+#include "pcms/utility/print.hpp"
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_tag.hpp>
 

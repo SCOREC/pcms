@@ -2,10 +2,10 @@
 #define PCMS_TRANSFER_SPLINE_INTERPOLATOR_HPP
 
 #include "mdspan/mdspan.hpp"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/memory_spaces.h"
-#include "pcms/utility/types.h"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 #include <cmath>
 #include <iostream>

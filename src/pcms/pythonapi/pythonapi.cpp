@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
-#include "pcms/configuration.h"
-#include "pcms/version.h"
-#include "numpy_view.h"
+#include "pcms/configuration.hpp"
+#include "pcms/version.hpp"
+#include "numpy_view.hpp"
 #include <stdexcept>
 
 namespace py = pybind11;

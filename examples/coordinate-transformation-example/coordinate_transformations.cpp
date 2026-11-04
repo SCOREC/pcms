@@ -14,8 +14,8 @@
 #include <pcms/field/coordinate_systems/cartesian.hpp>
 #include <pcms/field/coordinate_systems/cylindrical.hpp>
 #include <pcms/field/evaluator/omega_h_geometry.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/transfer/interpolator.h>
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/transfer/interpolator.hpp>
 #include <cmath>
 #include <cstdio>
 #include <exception>

@@ -1,6 +1,6 @@
 #include "pcms/field/coordinate_system.hpp"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <string>
 
 namespace pcms

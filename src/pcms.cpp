@@ -1,5 +1,5 @@
 #include "pcms.h"
-#include "pcms/utility/types.h"
+#include "pcms/utility/types.hpp"
 #include "redev.h"
 #include "Omega_h_mesh.hpp"
 

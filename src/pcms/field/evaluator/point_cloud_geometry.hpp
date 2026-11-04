@@ -2,16 +2,16 @@
 #define PCMS_FIELD_EVALUATOR_POINT_CLOUD_GEOMETRY_HPP
 
 #include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/evaluator/mls_point_cloud.h"
-#include "pcms/field/field_layout.h"
-#include "pcms/field/layout/point_cloud.h"
+#include "pcms/field/evaluator/mls_point_cloud.hpp"
+#include "pcms/field/field_layout.hpp"
+#include "pcms/field/layout/point_cloud.hpp"
 #include "pcms/geometry/geometry.hpp"
-#include "pcms/localization/mls_support_helpers.h"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/entity_types.h"
-#include "pcms/utility/omega_h_array_utils.h"
-#include "pcms/utility/profile.h"
+#include "pcms/localization/mls_support_helpers.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/entity_types.hpp"
+#include "pcms/utility/omega_h_array_utils.hpp"
+#include "pcms/utility/profile.hpp"
 
 #include <Omega_h_array.hpp>
 #include <memory>

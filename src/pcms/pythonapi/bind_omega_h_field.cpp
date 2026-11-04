@@ -1,6 +1,6 @@
 #include <pybind11/pybind11.h>
-#include "pcms/utility/arrays.h"
-#include "pcms/field/out_of_bounds_policy.h"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
 
 namespace py = pybind11;
 

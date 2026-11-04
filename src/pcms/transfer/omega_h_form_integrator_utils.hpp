@@ -3,11 +3,11 @@
 
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
+#include "pcms/field/function_space.hpp"
+#include "pcms/field/layout/omega_h_lagrange.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/transfer/mesh_intersection.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <MeshField_Integrate.hpp>
 #include <MeshField_Shape.hpp>
 #include <MeshField_Config.hpp>

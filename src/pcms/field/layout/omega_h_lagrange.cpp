@@ -1,8 +1,8 @@
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/mesh_geometry.h"
-#include "pcms/utility/omega_h_array_utils.h"
-#include "pcms/utility/profile.h"
+#include "pcms/field/layout/omega_h_lagrange.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
+#include "pcms/utility/omega_h_array_utils.hpp"
+#include "pcms/utility/profile.hpp"
 #include <stdexcept>
 
 namespace pcms

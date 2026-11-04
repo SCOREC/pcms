@@ -3,13 +3,13 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_build.hpp>
 
-#include "distributed_test_utils.h"
+#include "distributed_test_utils.hpp"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/out_of_bounds_policy.h"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/types.h"
+#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/types.hpp"
 
 #include <cmath>
 #include <cstdio>

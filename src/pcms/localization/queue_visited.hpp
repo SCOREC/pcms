@@ -7,7 +7,7 @@
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_reduce.hpp>
-#include "pcms/configuration.h"
+#include "pcms/configuration.hpp"
 
 namespace pcms
 {

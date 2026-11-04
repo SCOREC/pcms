@@ -3,11 +3,11 @@
 
 #include "pcms/field/coordinate_system.hpp"
 #include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/out_of_bounds_policy.h"
+#include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/geometry/bound_source.hpp"
 #include "pcms/geometry/supports.hpp"
-#include "pcms/utility/memory_spaces.h"
-#include "pcms/utility/types.h"
+#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
 #include <string>

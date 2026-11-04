@@ -1,7 +1,7 @@
-#include "pcms/field/layout/xgc_reverse_classification.h"
+#include "pcms/field/layout/xgc_reverse_classification.hpp"
 
 #include "mpi.h"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 
 #include <fstream>
 #include <sstream>

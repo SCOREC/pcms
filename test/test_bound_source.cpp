@@ -11,11 +11,11 @@
 #include <pcms/field/evaluator/omega_h_geometry.hpp>
 #include <pcms/field/evaluator/point_cloud_geometry.hpp>
 #include <pcms/field/evaluator/uniform_grid_geometry.hpp>
-#include <pcms/field/function_space/lagrange.h>
+#include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/field/function_space/polynomial_reconstruction.hpp>
-#include <pcms/field/layout/omega_h_entity.h>
+#include <pcms/field/layout/omega_h_entity.hpp>
 #include <pcms/field/query_points.hpp>
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 #include <memory>
 #include <random>
 #include <type_traits>

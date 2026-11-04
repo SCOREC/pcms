@@ -2,7 +2,7 @@
 #define PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_ALIASES_HPP
 
 #include <Kokkos_Core.hpp>
-#include "pcms/utility/arrays.h"
+#include "pcms/utility/arrays.hpp"
 
 namespace pcms
 {

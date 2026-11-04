@@ -1,4 +1,4 @@
-#include "pcms/field/layout/xgc_reverse_classification.h"
+#include "pcms/field/layout/xgc_reverse_classification.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <sstream>
 

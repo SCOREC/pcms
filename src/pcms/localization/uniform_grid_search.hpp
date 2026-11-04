@@ -1,9 +1,9 @@
 #ifndef PCMS_LOCALIZATION_UNIFORM_GRID_SEARCH_HPP
 #define PCMS_LOCALIZATION_UNIFORM_GRID_SEARCH_HPP
 
-#include "pcms/utility/memory_spaces.h"
-#include "pcms/utility/types.h"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/types.hpp"
+#include "pcms/utility/uniform_grid.hpp"
 
 #include <Kokkos_Core.hpp>
 #include <Omega_h_vector.hpp>

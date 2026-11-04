@@ -2,11 +2,11 @@
 #define PCMS_LOCALIZATION_ADJ_SEARCH_HPP
 
 #include <pcms/geometry/supports.hpp>
-#include <pcms/localization/mls_support_helpers.h>
-#include <pcms/utility/memory_spaces.h>
-#include <pcms/utility/mesh_geometry.h>
-#include <pcms/utility/print.h>
-#include <pcms/utility/types.h>
+#include <pcms/localization/mls_support_helpers.hpp>
+#include <pcms/utility/memory_spaces.hpp>
+#include <pcms/utility/mesh_geometry.hpp>
+#include <pcms/utility/print.hpp>
+#include <pcms/utility/types.hpp>
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>

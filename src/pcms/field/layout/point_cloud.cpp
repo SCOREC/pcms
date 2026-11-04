@@ -1,6 +1,6 @@
-#include "pcms/field/layout/point_cloud.h"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/entity_types.h"
+#include "pcms/field/layout/point_cloud.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/entity_types.hpp"
 #include <memory>
 #include <Kokkos_StdAlgorithms.hpp>
 

@@ -1,5 +1,5 @@
-#include "point_search.h"
-#include "pcms/utility/memory_spaces.h"
+#include "point_search.hpp"
+#include "pcms/utility/memory_spaces.hpp"
 #include <Omega_h_mesh.hpp>
 #include <bitset>
 #include <cmath>

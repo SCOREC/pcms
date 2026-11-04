@@ -4,10 +4,10 @@
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
 #include <pcms/field/evaluator/point_cloud_geometry.hpp>
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/layout/omega_h_entity.h"
-#include "pcms/field/layout/point_cloud.h"
-#include "field_test_utils.h"
+#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/layout/omega_h_entity.hpp"
+#include "pcms/field/layout/point_cloud.hpp"
+#include "field_test_utils.hpp"
 
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>

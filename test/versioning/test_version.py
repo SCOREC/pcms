@@ -39,13 +39,13 @@ def init_git(source):
 
 
 def header(source, tmp_path, override=""):
-    output = tmp_path / "version.h"
+    output = tmp_path / "version.hpp"
     subprocess.run([
         CMAKE, f"-DSOURCE_DIR={source}",
         f"-DGIT_EXECUTABLE={shutil.which('git')}",
         f"-DPROJECT_VERSION={PROJECT_VERSION}",
         f"-DVERSION_OVERRIDE={override}",
-        f"-DINPUT={ROOT / 'src/pcms/version.h.in'}",
+        f"-DINPUT={ROOT / 'src/pcms/version.hpp.in'}",
         f"-DOUTPUT={output}", "-P", str(ROOT / "cmake/PcmsVersion.cmake"),
     ], check=True)
     values = re.findall(r'return "([^"]+)";', output.read_text())

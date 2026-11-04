@@ -50,9 +50,9 @@ TEST_CASE(
 
   auto coords_dev = pcms::ConvertCoordsTo2D(source_coords, mesh.nverts(), dim);
 
-  auto layout = std::make_shared<pcms::PointCloudLayout>(
+  auto layout = std::make_shared<pcms::backend::point_cloud::PointCloudLayout>(
     dim, coords_dev, pcms::csys::Cartesian::Deferred());
-  pcms::PointCloudLocalizationFactory factory(layout, options);
+  pcms::backend::point_cloud::PointCloudLocalizationFactory factory(layout, options);
 
   auto actual = factory.Build(target_device.coordinate_view);
   auto expected = pcms::BuildPointCloudSupports(

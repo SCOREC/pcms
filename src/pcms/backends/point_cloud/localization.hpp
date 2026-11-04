@@ -12,7 +12,7 @@
 #include <memory>
 #include <string>
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 
 // LocalizationFactory implementation using N^2 point-cloud search.
@@ -61,6 +61,6 @@ private:
   MLSOptions options_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::point_cloud
 
 #endif // PCMS_LOCALIZATION_POINT_CLOUD_LOCALIZATION_H

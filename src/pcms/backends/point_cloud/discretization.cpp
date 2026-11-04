@@ -1,6 +1,6 @@
 #include "pcms/backends/point_cloud/discretization.hpp"
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 
 PointCloudDiscretization::PointCloudDiscretization(
@@ -52,4 +52,4 @@ PointCloudDiscretization::GetEntityClassificationIds(int entity_dim) const
            : Rank1View<const ClassificationId, DeviceMemorySpace>(nullptr, 0);
 }
 
-} // namespace pcms
+} // namespace pcms::backend::point_cloud

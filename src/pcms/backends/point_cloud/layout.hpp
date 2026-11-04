@@ -4,7 +4,7 @@
 #include "pcms/field/field.hpp"
 #include "pcms/backends/point_cloud/discretization.hpp"
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 
 class PointCloudLayout : public FieldLayout
@@ -59,6 +59,6 @@ private:
   Kokkos::View<LO*, HostMemorySpace> classification_ids_host_;
   std::shared_ptr<const Discretization> discretization_;
 };
-} // namespace pcms
+} // namespace pcms::backend::point_cloud
 
 #endif // POINT_CLOUD_LAYOUT_H_

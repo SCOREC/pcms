@@ -16,7 +16,7 @@ namespace
 std::shared_ptr<const Discretization> MakeVertexDiscretization(
   int dim, Kokkos::View<const Real**, HostMemorySpace> coords_host)
 {
-  return std::make_shared<PointCloudDiscretization>(dim, coords_host);
+  return std::make_shared<pcms::backend::point_cloud::PointCloudDiscretization>(dim, coords_host);
 }
 
 } // namespace

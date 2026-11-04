@@ -18,7 +18,7 @@
 #include <memory>
 #include <string>
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 
 class PointCloudEvaluatorFactory : public FieldEvaluatorFactory<Real>
@@ -94,6 +94,6 @@ private:
   MLSOptions options_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::point_cloud
 
 #endif // PCMS_POINT_CLOUD_EVALUATOR_FACTORY_H

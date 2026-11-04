@@ -112,7 +112,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
   }();
 
   auto point_cloud_layout =
-    dynamic_cast<const pcms::PointCloudLayout*>(&field.GetLayout());
+    dynamic_cast<const pcms::backend::point_cloud::PointCloudLayout*>(&field.GetLayout());
   REQUIRE(point_cloud_layout != nullptr);
   REQUIRE(point_cloud_layout->GetNumOwnedDofHolder() == 4);
 

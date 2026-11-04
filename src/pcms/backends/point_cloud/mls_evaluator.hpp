@@ -11,7 +11,7 @@
 #include <Omega_h_array.hpp>
 #include <Omega_h_array_ops.hpp>
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 
 // MLSPointEvaluator is a concrete PointEvaluator<Real> that evaluates a
@@ -93,6 +93,6 @@ private:
   MLSOptions options_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::point_cloud
 
 #endif // PCMS_FIELD_EVALUATOR_MLS_POINT_CLOUD_H

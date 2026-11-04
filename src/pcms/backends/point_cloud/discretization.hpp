@@ -5,7 +5,7 @@
 
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 
 class PointCloudDiscretization : public Discretization
@@ -34,6 +34,6 @@ private:
   Kokkos::View<ClassificationId*, DeviceMemorySpace> class_ids_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::point_cloud
 
 #endif // PCMS_DISCRETIZATION_DISCRETIZATION_POINT_CLOUD_H

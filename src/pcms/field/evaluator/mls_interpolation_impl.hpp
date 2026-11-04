@@ -14,7 +14,7 @@
 #include <Kokkos_StdAlgorithms.hpp>
 #include <pcms/field/evaluator/mls_interpolation.hpp>
 #include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
-#include <pcms/localization/adj_search.hpp>
+#include <pcms/backends/omega_h/adj_search.hpp>
 #include <pcms/utility/assert.hpp>
 #include <pcms/utility/profile.hpp>
 #include <pcms/field/evaluator/pcms_interpolator_view_utils.hpp>

@@ -6,8 +6,8 @@
 #include <Omega_h_mesh.hpp>
 #include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/field/coordinate_map.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/layout/omega_h_lagrange.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/backends/omega_h/lagrange_layout.hpp>
 #include <pcms/transfer/conservative_projection_solver.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_control_variate_projection.hpp>

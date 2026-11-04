@@ -4,8 +4,8 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/evaluator/uniform_grid_geometry.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/field/function_space/spline.hpp>
 #include <pcms/field/query_points.hpp>

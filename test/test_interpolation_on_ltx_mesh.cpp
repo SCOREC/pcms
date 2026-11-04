@@ -13,9 +13,9 @@
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_vtk.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/field/function_space/polynomial_reconstruction.hpp>
-#include <pcms/field/evaluator/point_cloud_geometry.hpp>
+#include <pcms/backends/point_cloud/geometry.hpp>
 #include <pcms/field/point_evaluator.hpp>
 #include <pcms/utility/arrays.hpp>
 #include <pcms/utility/mesh_geometry.hpp>

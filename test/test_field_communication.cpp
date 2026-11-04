@@ -10,12 +10,12 @@
 #include <vector>
 #include "pcms/coupler/field_communicator.hpp"
 #include "pcms/coupler/coupler.hpp"
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
+#include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/field/data/simple.hpp"
 #include "test_support.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 namespace ts = test_support;
 using pcms::Real;

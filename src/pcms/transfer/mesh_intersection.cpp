@@ -1,5 +1,5 @@
 #include "pcms/transfer/mesh_intersection.hpp"
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
+#include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/mesh_geometry.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"

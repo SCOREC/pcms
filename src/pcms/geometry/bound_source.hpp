@@ -1,7 +1,7 @@
 #ifndef PCMS_GEOMETRY_BOUND_SOURCE_HPP
 #define PCMS_GEOMETRY_BOUND_SOURCE_HPP
 
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"

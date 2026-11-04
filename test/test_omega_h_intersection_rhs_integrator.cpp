@@ -5,15 +5,15 @@
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
 #include <pcms/field/function_space/lagrange.hpp>
-#include <pcms/field/layout/omega_h_lagrange.hpp>
+#include <pcms/backends/omega_h/lagrange_layout.hpp>
 #include <pcms/transfer/omega_h_intersection_rhs_integrator.hpp>
 #include "field_test_utils.hpp"
 #include <petscksp.h>
 #include <cmath>
 #include <unordered_map>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 // ---------------------------------------------------------------------------
 // Helpers

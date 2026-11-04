@@ -1,7 +1,7 @@
 #ifndef PCMS_FIELD_QUERY_POINTS_HPP
 #define PCMS_FIELD_QUERY_POINTS_HPP
 
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/differential_operator.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/function_space.hpp"

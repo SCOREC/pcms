@@ -6,8 +6,8 @@
 #include <vector>
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/arrays.hpp"
-#include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_system.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/geometry/bound_source.hpp"
 
 namespace pcms

@@ -2,15 +2,13 @@ set(
         PCMS_LOCALIZATION_HEADERS
         point_search.hpp
         uniform_grid_search.hpp
-        queue_visited.hpp
-        adj_search.hpp
         mls_support_helpers.hpp
+        mls_options.hpp
 )
 
 set(
         PCMS_LOCALIZATION_SOURCES
         point_search.cpp
-        adj_search.cpp
         mls_support_helpers.cpp
 )
 add_library(pcms_localization ${PCMS_LOCALIZATION_SOURCES})

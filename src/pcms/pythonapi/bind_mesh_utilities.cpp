@@ -3,7 +3,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array_ops.hpp>
 #include <pcms/field/evaluator/mls_interpolation.hpp>
-#include <pcms/localization/adj_search.hpp>
+#include <pcms/backends/omega_h/adj_search.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
 #include "pcms/pythonapi/numpy_array_transform.hpp"
 

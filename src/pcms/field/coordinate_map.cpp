@@ -1,6 +1,6 @@
 #include "pcms/field/coordinate_map.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/profile.hpp"
 #include <Kokkos_Core.hpp>

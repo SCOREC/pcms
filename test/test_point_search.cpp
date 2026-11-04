@@ -5,7 +5,7 @@
 #include <pcms/utility/mesh_geometry.hpp>
 #include <pcms/utility/uniform_grid.hpp>
 #include "field_test_utils.hpp"
-#include <pcms/field/evaluator/omega_h_geometry.hpp>
+#include <pcms/backends/omega_h/geometry.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <algorithm>

@@ -11,9 +11,9 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/field/coordinate_map.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/coordinate_systems/cylindrical.hpp>
-#include <pcms/field/evaluator/omega_h_geometry.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cylindrical.hpp>
+#include <pcms/backends/omega_h/geometry.hpp>
 #include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/transfer/interpolator.hpp>
 #include <cmath>

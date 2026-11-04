@@ -1,6 +1,10 @@
 set(
         PCMS_UTILITY_HEADERS
         arrays.hpp
+        coordinate_system.hpp
+        coordinate_view.hpp
+        coordinate_systems/cartesian.hpp
+        coordinate_systems/cylindrical.hpp
         assert.hpp
         bounding_box.hpp
         common.hpp
@@ -21,6 +25,7 @@ set(
 set(
         PCMS_UTILITY_SOURCES
         assert.cpp
+        coordinate_system.cpp
         eqdsk.cpp
         print.cpp
 )

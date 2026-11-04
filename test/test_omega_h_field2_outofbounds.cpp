@@ -4,14 +4,14 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
 #include "pcms/field/function_space/lagrange.hpp"
-#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
+#include "pcms/backends/uniform_grid/geometry.hpp"
 #include "pcms/field/function_space/spline.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 #include "field_test_utils.hpp"
 #include <Kokkos_Core.hpp>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::Real;
 

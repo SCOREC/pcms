@@ -1,10 +1,10 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 #define PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/function_space.hpp"
-#include "pcms/field/layout/omega_h_lagrange.hpp"
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/geometry/bound_source.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include "pcms/transfer/mesh_intersection.hpp"

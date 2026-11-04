@@ -4,7 +4,7 @@
 #include <pcms/field/evaluator/mls_interpolation_impl.hpp>
 #include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
 #include <pcms/field/evaluator/pcms_interpolator_view_utils.hpp>
-#include <pcms/transfer/linear_interpolant.hpp>
+#include <pcms/backends/uniform_grid/linear_interpolant.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>

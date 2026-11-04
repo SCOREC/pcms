@@ -12,10 +12,10 @@
 #include <Kokkos_Core.hpp>
 
 #include "pcms/configuration.hpp"
-#include "pcms/field/data/omega_h.hpp"
+#include "pcms/backends/omega_h/field_data.hpp"
 #include "pcms/field/data/simple.hpp"
 #ifdef PCMS_ENABLE_MESHFIELDS
-#include "pcms/field/data/mesh_fields.hpp"
+#include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
 #include "pcms/field/field.hpp"
 #include "pcms/field/value_view.hpp"

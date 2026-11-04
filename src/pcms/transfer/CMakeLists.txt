@@ -1,6 +1,4 @@
 set(PCMS_FIELD_TRANSFER_HEADERS
-    linear_interpolant.hpp
-    multidimarray.hpp
     mesh_intersection.hpp
     interpolator.hpp
     copy.hpp
@@ -55,7 +53,6 @@ add_library(pcms::transfer ALIAS pcms_transfer)
 target_compile_features(pcms_transfer PUBLIC cxx_std_20)
 
 target_link_libraries(pcms_transfer PUBLIC
-    pcms::core
     pcms::field
     pcms::localization
     Omega_h::omega_h)

@@ -1,7 +1,17 @@
 #include "pcms/coupler/coupler.hpp"
+#include "pcms/utility/types.hpp"
+#include "redev.h"
+#include <type_traits>
 
 namespace pcms
 {
+// pcms and redev exchange data without conversion
+static_assert(std::is_same_v<Real, redev::Real>,
+              "pcms and redev real types must match");
+static_assert(std::is_same_v<LO, redev::LO>,
+              "pcms and redev LO types must match");
+static_assert(std::is_same_v<GO, redev::GO>,
+              "pcms and redev GO types must match");
 
 FieldLayoutCommunicator& ApplicationComm::GetOrCreateLayoutCommunicator(
   const FieldLayout& layout, bool participates)

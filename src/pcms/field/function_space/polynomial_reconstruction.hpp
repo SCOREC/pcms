@@ -1,7 +1,7 @@
 #ifndef PCMS_POLYNOMIAL_RECONSTRUCTION_FUNCTION_SPACE_H
 #define PCMS_POLYNOMIAL_RECONSTRUCTION_FUNCTION_SPACE_H
 
-#include "pcms/field/evaluator/mls_options.hpp"
+#include "pcms/localization/mls_options.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/geometry/geometry.hpp"
 

@@ -1,6 +1,6 @@
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/field/evaluator/point_cloud.hpp"
-#include "pcms/field/evaluator/point_cloud_geometry.hpp"
+#include "pcms/backends/point_cloud/evaluator.hpp"
+#include "pcms/backends/point_cloud/geometry.hpp"
 #include "pcms/field/data/simple.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/common.hpp"

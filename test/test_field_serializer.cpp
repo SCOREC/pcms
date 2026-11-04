@@ -3,7 +3,7 @@
 
 #include "pcms/configuration.hpp"
 #include "pcms/coupler/field_serializer.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/arrays.hpp"
 
 #include <memory>
@@ -13,17 +13,17 @@
 #ifdef PCMS_ENABLE_OMEGA_H
 #include "field_test_utils.hpp"
 #include "pcms/field/function_space/lagrange.hpp"
-#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
+#include "pcms/backends/uniform_grid/geometry.hpp"
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include <pcms/field/evaluator/point_cloud_geometry.hpp>
+#include <pcms/backends/point_cloud/geometry.hpp>
 #include "pcms/utility/uniform_grid.hpp"
 #include <Omega_h_library.hpp>
 #endif
 
 #ifdef PCMS_ENABLE_XGC
 #include "pcms/coupler/overlap_mask.hpp"
-#include "pcms/field/data/xgc.hpp"
-#include "pcms/field/function_space/xgc.hpp"
+#include "pcms/backends/xgc/field_data.hpp"
+#include "pcms/backends/xgc/field_factory.hpp"
 #endif
 
 namespace

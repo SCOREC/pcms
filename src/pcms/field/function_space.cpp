@@ -3,12 +3,12 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/common.hpp"
 #ifdef PCMS_ENABLE_MESHFIELDS
-#include "pcms/field/layout/mesh_fields.hpp"
-#include "pcms/field/data/mesh_fields.hpp"
+#include "pcms/backends/omega_h_meshfields/layout.hpp"
+#include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
 #ifdef PCMS_ENABLE_OMEGA_H
-#include "pcms/field/layout/omega_h_lagrange.hpp"
-#include "pcms/field/data/omega_h.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/backends/omega_h/field_data.hpp"
 #endif
 
 namespace pcms

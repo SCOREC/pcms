@@ -1,10 +1,10 @@
 #include "pcms/capi/client.h"
 #include "pcms.h"
 #include "pcms/field/field_factory.hpp"
-#include "pcms/field/function_space/xgc.hpp"
-#include "pcms/field/data/xgc.hpp"
-#include "pcms/field/layout/xgc.hpp"
-#include "pcms/field/layout/xgc_reverse_classification.hpp"
+#include "pcms/backends/xgc/field_factory.hpp"
+#include "pcms/backends/xgc/field_data.hpp"
+#include "pcms/backends/xgc/layout.hpp"
+#include "pcms/backends/xgc/reverse_classification.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/layout/empty.hpp"
 #include "pcms/field/data/simple.hpp"
@@ -13,7 +13,7 @@
 #include <memory>
 #include <numeric>
 #include <variant>
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 namespace pcms
 {

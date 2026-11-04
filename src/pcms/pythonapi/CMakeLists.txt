@@ -16,7 +16,7 @@ pybind11_add_module(pcms
   bind_mesh_utilities.cpp
 )
 target_compile_features(pcms PUBLIC cxx_std_20)
-target_link_libraries(pcms PRIVATE Kokkos::kokkos pybind11::module MPI::MPI_C pcms::core pcms::transfer)
+target_link_libraries(pcms PRIVATE Kokkos::kokkos pybind11::module MPI::MPI_C pcms::coupler pcms::transfer)
 
 # The conservative/Monte Carlo projection bindings include transfer headers
 # that transitively pull in PETSc (petscvec.h). PETSc is linked PRIVATE into

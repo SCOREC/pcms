@@ -2,12 +2,12 @@
 #define PCMS_EQDSK_FIELD_H
 
 #include "pcms/utility/eqdsk.hpp"
-#include "pcms/field/layout/uniform_grid.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/field/function_space/spline.hpp"
-#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
+#include "pcms/backends/uniform_grid/geometry.hpp"
 
 #include <string>
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 namespace pcms
 {

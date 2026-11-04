@@ -5,16 +5,16 @@
 #include "test_support.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/coupler/field_serializer.hpp"
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
+#include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/field/function_space/lagrange.hpp"
-#include "pcms/field/layout/omega_h_lagrange.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/field/data/simple.hpp"
 #include "pcms/transfer/copy.hpp"
 #include <chrono>
 #include <optional>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::GO;
 using pcms::LO;

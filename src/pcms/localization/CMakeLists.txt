@@ -39,7 +39,16 @@ set_target_properties(
 )
 
 ## export the library
-set_target_properties(pcms_localization PROPERTIES PUBLIC_HEADER "${PCMS_LOCALIZATION_HEADERS}")
+# Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(PCMS_LOCALIZATION_HEADERS_PUBLIC ${PCMS_LOCALIZATION_HEADERS})
+list(FILTER PCMS_LOCALIZATION_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(PCMS_LOCALIZATION_HEADERS_PRIVATE ${PCMS_LOCALIZATION_HEADERS})
+list(FILTER PCMS_LOCALIZATION_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_localization
+  PUBLIC FILE_SET localization TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${PCMS_LOCALIZATION_HEADERS_PUBLIC}
+  PRIVATE ${PCMS_LOCALIZATION_HEADERS_PRIVATE})
 
 install(
         TARGETS pcms_localization
@@ -49,7 +58,7 @@ install(
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         INCLUDES
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/localization
+        FILE_SET localization DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
 
 install(

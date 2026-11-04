@@ -53,11 +53,16 @@ set_target_properties(
 )
 
 ## export the library
-target_sources(pcms_utility PUBLIC
-        FILE_SET utilities
-        TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/../ ${PROJECT_SOURCE_DIR}/include/pcms
-        FILES ${PCMS_UTILITY_HEADERS})
+# Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(PCMS_UTILITY_HEADERS_PUBLIC ${PCMS_UTILITY_HEADERS})
+list(FILTER PCMS_UTILITY_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(PCMS_UTILITY_HEADERS_PRIVATE ${PCMS_UTILITY_HEADERS})
+list(FILTER PCMS_UTILITY_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_utility
+  PUBLIC FILE_SET utilities TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${PCMS_UTILITY_HEADERS_PUBLIC}
+  PRIVATE ${PCMS_UTILITY_HEADERS_PRIVATE})
 install(
         TARGETS pcms_utility
         EXPORT pcms_utility-targets

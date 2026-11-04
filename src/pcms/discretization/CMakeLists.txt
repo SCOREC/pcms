@@ -12,11 +12,16 @@ set(
 
 add_library(pcms_discretization ${PCMS_DISCRETIZATION_SOURCES})
 add_library(pcms::discretization ALIAS pcms_discretization)
-target_sources(pcms_discretization PUBLIC
-        FILE_SET field_discretization
-        TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
-        FILES ${PCMS_DISCRETIZATION_HEADERS})
+# Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(PCMS_DISCRETIZATION_HEADERS_PUBLIC ${PCMS_DISCRETIZATION_HEADERS})
+list(FILTER PCMS_DISCRETIZATION_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(PCMS_DISCRETIZATION_HEADERS_PRIVATE ${PCMS_DISCRETIZATION_HEADERS})
+list(FILTER PCMS_DISCRETIZATION_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_discretization
+  PUBLIC FILE_SET field_discretization TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${PCMS_DISCRETIZATION_HEADERS_PUBLIC}
+  PRIVATE ${PCMS_DISCRETIZATION_HEADERS_PRIVATE})
 target_include_directories(
         pcms_discretization
         PUBLIC

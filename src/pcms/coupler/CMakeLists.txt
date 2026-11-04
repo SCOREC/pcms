@@ -21,11 +21,16 @@ add_library(pcms_coupler ${PCMS_COUPLER_SOURCES})
 set_target_properties(pcms_coupler PROPERTIES
         OUTPUT_NAME pcmscoupler
         EXPORT_NAME coupler)
-target_sources(pcms_coupler PUBLIC
-        FILE_SET coupler
-        TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
-        FILES ${PCMS_COUPLER_HEADERS})
+# Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(PCMS_COUPLER_HEADERS_PUBLIC ${PCMS_COUPLER_HEADERS})
+list(FILTER PCMS_COUPLER_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(PCMS_COUPLER_HEADERS_PRIVATE ${PCMS_COUPLER_HEADERS})
+list(FILTER PCMS_COUPLER_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_coupler
+  PUBLIC FILE_SET coupler TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${PCMS_COUPLER_HEADERS_PUBLIC}
+  PRIVATE ${PCMS_COUPLER_HEADERS_PRIVATE})
 add_library(pcms::coupler ALIAS pcms_coupler)
 target_compile_features(pcms_coupler PUBLIC cxx_std_20)
 

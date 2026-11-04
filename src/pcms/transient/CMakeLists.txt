@@ -9,7 +9,7 @@ target_sources(
   pcms_transient
   PUBLIC FILE_SET transient
          TYPE HEADERS
-         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
+         BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
          FILES ${PCMS_TRANSIENT_HEADERS})
 target_compile_features(pcms_transient PUBLIC cxx_std_20)
 target_link_libraries(pcms_transient PUBLIC pcms::utility)

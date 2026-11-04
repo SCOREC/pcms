@@ -1,6 +1,6 @@
 #include <Omega_h_mesh.hpp>
 #include <iostream>
-#include <pcms.h>
+#include <pcms/pcms.hpp>
 #include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
@@ -8,7 +8,7 @@
 #include "test_support.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/field/value_view.hpp"
 #include <chrono>
 #include <thread>

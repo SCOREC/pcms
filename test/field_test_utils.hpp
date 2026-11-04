@@ -18,7 +18,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
 #include "pcms/backends/omega_h/geometry.hpp"
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/omega_h/adj_search.hpp"
 #endif
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
@@ -184,7 +184,7 @@ inline std::shared_ptr<const FunctionSpace> MakeP1Space(
 {
   return MakeP1Space(CreateOmegaHGeometry(
     mesh, csys::Cartesian::Deferred(),
-    OmegaHGeometryOptions{.global_id_name = global_id_name}));
+    backend::omega_h::OmegaHGeometryOptions{.global_id_name = global_id_name}));
 }
 
 inline std::shared_ptr<const FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
@@ -693,7 +693,7 @@ std::vector<HostRecord> FoundRecordsOfDim(const OmegaHMeshBinding& binding)
 inline std::vector<HostRecord> FoundRecords(const BoundSource& bound)
 {
   const auto& binding = dynamic_cast<const OmegaHMeshBinding&>(bound);
-  return GetMesh(*bound.GetGeometry()).dim() == 2
+  return backend::omega_h::GetMesh(*bound.GetGeometry()).dim() == 2
            ? FoundRecordsOfDim<2>(binding)
            : FoundRecordsOfDim<3>(binding);
 }

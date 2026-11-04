@@ -11,7 +11,7 @@
 #include "Omega_h_build.hpp"
 #include "pcms/transfer/copy.hpp"
 #include "pcms/transfer/interpolator.hpp"
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/uniform_grid/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "field_test_utils.hpp"

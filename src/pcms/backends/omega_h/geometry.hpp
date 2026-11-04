@@ -1,6 +1,7 @@
 #ifndef PCMS_FIELD_EVALUATOR_OMEGA_H_GEOMETRY_HPP
 #define PCMS_FIELD_EVALUATOR_OMEGA_H_GEOMETRY_HPP
 
+#include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/localization/point_search.hpp"
 #include "pcms/utility/memory_spaces.hpp"
@@ -266,20 +267,6 @@ private:
   LO num_records_ = 0;
 };
 
-/// @brief Options of an Omega_h geometry.
-struct OmegaHGeometryOptions
-{
-  /// divisions and tolerance of the containing-element search
-  SearchOptions search;
-  /// the tag holding global entity ids
-  std::string global_id_name = "global";
-  /// per-vertex ownership override: a vertex the mask is 0 for is not owned,
-  /// whatever the mesh says; empty means the mesh's own ownership. Layouts
-  /// whose DOF holders are the mesh vertices apply it; layouts of other
-  /// entities do not.
-  Omega_h::Read<Omega_h::I8> owned_mask;
-};
-
 /// Geometry of a 2D or 3D Omega_h simplex mesh with
 /// straight-sided elements. The containing-element search over the mesh is
 /// built by the first Bind or Neighbourhood, which costs about as much as a
@@ -295,12 +282,12 @@ public:
   ///         have one entry per mesh vertex
   OmegaHGeometry(Omega_h::Mesh& mesh,
                  std::shared_ptr<const CoordinateSystem> system,
-                 OmegaHGeometryOptions options = {});
+                 backend::omega_h::OmegaHGeometryOptions options = {});
 
   OmegaHGeometry(std::shared_ptr<Omega_h::Mesh> mesh,
                  std::shared_ptr<Omega_h::Library> library,
                  std::shared_ptr<const CoordinateSystem> system,
-                 OmegaHGeometryOptions options = {});
+                 backend::omega_h::OmegaHGeometryOptions options = {});
 
   [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
   GetCoordinateSystem() const noexcept override
@@ -387,18 +374,14 @@ private:
 /// @param options search, global id tag and ownership
 [[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
   Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
-  OmegaHGeometryOptions options = {});
+  backend::omega_h::OmegaHGeometryOptions options = {});
 
 /// Create a geometry that shares ownership of the mesh and its library.
 [[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
   std::shared_ptr<Omega_h::Mesh> mesh,
   std::shared_ptr<Omega_h::Library> library,
   std::shared_ptr<const CoordinateSystem> system,
-  OmegaHGeometryOptions options = {});
-
-/// The mesh of an Omega_h geometry.
-/// @throws pcms_error if `geometry` is not an Omega_h geometry
-[[nodiscard]] Omega_h::Mesh& GetMesh(const Geometry& geometry);
+  backend::omega_h::OmegaHGeometryOptions options = {});
 
 /// The grid search over a mesh, with options.divisions divisions per axis when
 /// nonzero and DivisionsPerAxisForMesh otherwise.

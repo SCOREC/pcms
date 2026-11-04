@@ -2,7 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-#include "pcms/field/function_space/polynomial_reconstruction.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/point_cloud/geometry.hpp"
 #include "pcms/localization/mls_options.hpp"
 #include "pcms/field/value_view.hpp"

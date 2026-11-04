@@ -31,13 +31,13 @@ public:
     PCMS_FUNCTION_TIMER;
   }
 
-  void Send(redev::Mode mode = redev::Mode::Synchronous)
+  void Send(Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     comm_.Send(data_, variable_name_, mode);
   }
 
-  void Receive(redev::Mode mode = redev::Mode::Synchronous)
+  void Receive(Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     comm_.Receive(data_, variable_name_, mode);
@@ -65,8 +65,8 @@ public:
   {
   }
 
-  void Send(redev::Mode mode = redev::Mode::Synchronous) const;
-  void Receive(redev::Mode mode = redev::Mode::Synchronous) const;
+  void Send(Mode mode = Mode::Synchronous) const;
+  void Receive(Mode mode = Mode::Synchronous) const;
   [[nodiscard]] Field<T>& GetField() const;
 
 private:
@@ -81,8 +81,8 @@ public:
     : app_(app), name_(std::move(name))
   {
   }
-  void Send(redev::Mode mode = redev::Mode::Synchronous) const;
-  void Receive(redev::Mode mode = redev::Mode::Synchronous) const;
+  void Send(Mode mode = Mode::Synchronous) const;
+  void Receive(Mode mode = Mode::Synchronous) const;
 
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
 
@@ -158,8 +158,7 @@ public:
   FunctionHandle<T> AddFunction(Function<T>&& function,
                                 bool participates = true);
 
-  void SendField(const std::string& name,
-                 redev::Mode mode = redev::Mode::Synchronous)
+  void SendField(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InSendPhase());
@@ -169,8 +168,7 @@ public:
       [mode](auto& field_communicator) { field_communicator->Send(mode); },
       communicator);
   };
-  void ReceiveField(const std::string& name,
-                    redev::Mode mode = redev::Mode::Synchronous)
+  void ReceiveField(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InReceivePhase());
@@ -178,8 +176,7 @@ public:
       [mode](auto& field_communicator) { field_communicator->Receive(); },
       detail::find_or_error(name, field_communicators_));
   };
-  void SendData(const std::string& name,
-                redev::Mode mode = redev::Mode::Synchronous)
+  void SendData(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InSendPhase());
@@ -188,8 +185,7 @@ public:
                detail::find_or_error(name, global_data_interfaces_));
   }
 
-  void ReceiveData(const std::string& name,
-                   redev::Mode mode = redev::Mode::Synchronous)
+  void ReceiveData(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InReceivePhase());
@@ -292,14 +288,14 @@ DataHandle<T> ApplicationComm::AddData(std::string name,
 }
 
 template <typename T>
-void DataHandle<T>::Send(redev::Mode mode) const
+void DataHandle<T>::Send(Mode mode) const
 {
   PCMS_ALWAYS_ASSERT(app_ != nullptr);
 
   app_->SendData(name_, mode);
 }
 template <typename T>
-void DataHandle<T>::Receive(redev::Mode mode) const
+void DataHandle<T>::Receive(Mode mode) const
 {
   PCMS_ALWAYS_ASSERT(app_ != nullptr);
 
@@ -359,14 +355,14 @@ private:
 } // namespace pcms
 
 template <typename T>
-void pcms::FieldHandle<T>::Send(redev::Mode mode) const
+void pcms::FieldHandle<T>::Send(pcms::Mode mode) const
 {
   PCMS_ALWAYS_ASSERT(app_ != nullptr);
   app_->SendField(name_, mode);
 }
 
 template <typename T>
-void pcms::FieldHandle<T>::Receive(redev::Mode mode) const
+void pcms::FieldHandle<T>::Receive(pcms::Mode mode) const
 {
   PCMS_ALWAYS_ASSERT(app_ != nullptr);
   app_->ReceiveField(name_, mode);

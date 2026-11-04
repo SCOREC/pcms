@@ -4,7 +4,7 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/field/function_spaces.hpp>
 #include <pcms/transfer/interpolator.hpp>
 #include "field_test_utils.hpp"
 #include <memory>

@@ -6,7 +6,7 @@
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/backends/point_cloud/mls_evaluator.hpp>
 #include <pcms/backends/point_cloud/geometry.hpp>
-#include <pcms/field/function_space/polynomial_reconstruction.hpp>
+#include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/entity_layout.hpp>
 #include <pcms/utility/entity_types.hpp>
 #include <pcms/utility/mesh_geometry.hpp>

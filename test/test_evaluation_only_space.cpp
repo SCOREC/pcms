@@ -7,7 +7,7 @@
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/field/function_space.hpp>
-#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/field/function_spaces.hpp>
 #include <pcms/field/layout/empty.hpp>
 #include <pcms/geometry/geometry.hpp>
 #include <pcms/transfer/interpolator.hpp>

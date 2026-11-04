@@ -35,7 +35,7 @@ def cylindrical_space(world):
     mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 2.0, 1.6, 1.1,
                              6, 6, 4, False)
     return pcms.create_lagrange_space(
-        pcms.create_omega_h_geometry(
+        pcms.backend.omega_h.create_geometry(
             mesh, pcms.csys.CylindricalRThetaZ.create()),
         1, 3, backend=pcms.LagrangeBackend.OmegaH)
 
@@ -46,7 +46,7 @@ def cartesian_space(world):
     mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 1.0,
                              3, 3, 3, False)
     return pcms.create_lagrange_space(
-        pcms.create_omega_h_geometry(mesh, pcms.csys.Cartesian.create(3)),
+        pcms.backend.omega_h.create_geometry(mesh, pcms.csys.Cartesian.create(3)),
         1, 3, backend=pcms.LagrangeBackend.OmegaH)
 
 
@@ -100,7 +100,7 @@ class TestCoordinateSystem:
         mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0,
                                  4, 4, 0, False)
         space = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), 1, 1)
+            pcms.backend.omega_h.create_geometry(mesh), 1, 1)
         assert (space.get_layout().get_coordinate_system()
                 == pcms.csys.Cartesian.create(2))
 
@@ -407,7 +407,7 @@ class TestLifetimes:
         mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0,
                                  4, 4, 0, False)
         space = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), 1, 1,
+            pcms.backend.omega_h.create_geometry(mesh), 1, 1,
             backend=pcms.LagrangeBackend.OmegaH)
         del mesh
         gc.collect()

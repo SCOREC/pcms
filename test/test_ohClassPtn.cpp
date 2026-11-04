@@ -4,7 +4,7 @@
 #include <Omega_h_comm.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>
-#include "pcms.h"
+#include "pcms/pcms.hpp"
 #include "test_support.hpp"
 
 namespace ts = test_support;

@@ -7,7 +7,7 @@ if(PCMS_ENABLE_OMEGA_H)
   target_sources(
     pcms_field
     PUBLIC FILE_SET field TYPE HEADERS BASE_DIRS
-           ${CMAKE_CURRENT_SOURCE_DIR}/../.. FILES layout.hpp evaluator.hpp
+           ${CMAKE_CURRENT_SOURCE_DIR}/../.. ${PROJECT_SOURCE_DIR}/include/pcms FILES layout.hpp evaluator.hpp
            spline_interpolator.hpp spline_evaluator.hpp geometry.hpp
            linear_interpolant.hpp multidimarray.hpp)
 endif()

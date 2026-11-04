@@ -6,8 +6,7 @@
 #include <Omega_h_library.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
-#include <pcms/field/function_space/lagrange.hpp>
-#include <pcms/field/function_space/spline.hpp>
+#include <pcms/field/function_spaces.hpp>
 #include <pcms/field/query_points.hpp>
 #include "field_test_utils.hpp"
 #include <vector>

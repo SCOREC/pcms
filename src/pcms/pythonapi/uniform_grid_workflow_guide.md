@@ -114,7 +114,7 @@ Create a mask where each uniform grid vertex is marked as 1 (inside mesh) or 0 (
 
 ```python
 # Create binary mask indicating which vertices are inside the mesh
-mask_field = pcms.create_uniform_grid_binary_field(mesh, [4, 4])
+mask_field = pcms.backend.omega_h.create_uniform_grid_binary_field(mesh, [4, 4])
 print(f"Created mask field with {mask_field.get_layout().get_num_dof_holder()} vertices")
 ```
 
@@ -136,7 +136,7 @@ mask_value = mask_data[vertex_id, 0]  # Returns 0.0 or 1.0
 # Create the mesh's geometry (its coordinate system and point search) once,
 # then a FunctionSpace on it with linear (order=1) elements and
 # 1 component (scalar)
-geometry = pcms.create_omega_h_geometry(mesh)
+geometry = pcms.backend.omega_h.create_geometry(mesh)
 omega_h_factory = pcms.create_lagrange_space(
     geometry,
     1,
@@ -173,7 +173,7 @@ face_field = mesh.get_tag(face_dim, face_tag.name())
 vertex_field = pcms.map_entity_field_to_vertices_average(mesh, face_field, face_dim)
 
 # Create vertex-based field and set data
-geometry = pcms.create_omega_h_geometry(mesh)
+geometry = pcms.backend.omega_h.create_geometry(mesh)
 omega_h_factory = pcms.create_lagrange_space(
     geometry, 1, 1)
 omega_h_field = omega_h_factory.create_function()
@@ -249,7 +249,7 @@ np.save('field_data.npy', grid_values)
 
 ### Grid Creation
 - `create_uniform_grid_from_mesh(mesh, divisions)` - Create grid from mesh
-- `create_uniform_grid_binary_field(mesh, divisions)` - Create inside/outside mask
+- `backend.omega_h.create_uniform_grid_binary_field(mesh, divisions)` - Create inside/outside mask
 
 The Python names mirror the C++ API: classes keep their C++ names, C++
 namespaces are submodules (`pcms.csys`, `pcms.values`), and methods are the
@@ -268,9 +268,10 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 
 ### Field Factories
 - `FunctionSpace` - a field space: its layout and evaluator source; a `PointEvaluatorFactory`
-- `create_omega_h_geometry(mesh, system=None, divisions=0, global_id_name="global", owned_mask=None)` - the geometry of an Omega_h mesh (coordinate system, point search, global id tag and a per-vertex ownership override), shared by the spaces on it
+- `backend.omega_h.create_geometry(mesh, system=None, divisions=0, global_id_name="global", owned_mask=None)` - the geometry of an Omega_h mesh (coordinate system, point search, global id tag and a per-vertex ownership override), shared by the spaces on it
 - `create_uniform_grid_geometry(grid, system=None)` - the geometry of a 2D or 3D uniform grid
 - `create_point_cloud_geometry(coordinate_view, neighbourhood)` - the geometry of a point cloud, whose supports are found with `NeighbourhoodOptions`
+- `backend.omega_h.create_point_cloud_geometry(geometry, entity_dim, neighbourhood)` - the point-cloud geometry of the vertices (entity_dim 0) or element centroids (the mesh dimension) of the mesh of an Omega_h geometry, whose supports use the mesh adjacency
 - `create_lagrange_space(geometry, order, num_components, backend=default, layout_name="")` - a Lagrange `FunctionSpace` on an Omega_h or uniform-grid geometry; `LagrangeBackend.MeshFields` or `LagrangeBackend.OmegaH`
 - `create_spline_space(geometry)` - a bicubic spline `FunctionSpace` on a 2D uniform-grid geometry
 - `create_polynomial_reconstruction_space(geometry, options)` - MLS reconstruction (`MLSOptions`) on a point-cloud geometry
@@ -288,7 +289,7 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 - `geometry = factory.get_geometry()` - The `Geometry` (coordinates and point search) whose bound sources a `PointEvaluatorFactory` accepts; every space on one geometry accepts the same bound sources
 - `bound = geometry.bind(coordinate_view, policy=...)` - Localize query points (in `geometry.get_coordinate_system()`); the search is done once here
 - `bound = geometry.bind(space, policy=...)` - Localize another FunctionSpace's DOF-holder coordinates
-- `create_omega_h_geometry(mesh, system=None, divisions=0)`, `create_lagrange_space(geometry, order, num_components)` - Several spaces on one mesh geometry, sharing one search and one bind
+- `backend.omega_h.create_geometry(mesh, system=None, divisions=0)`, `create_lagrange_space(geometry, order, num_components)` - Several spaces on one mesh geometry, sharing one search and one bind
 - `bound.found_points()`, `bound.missing_points()` - indices of the query points the source evaluates / does not evaluate
 - `factory.create_point_evaluator(bound, op=DifferentialOperator.Value)` - Create an evaluator at the bound points that applies `op`; `DifferentialOperator.Gradient` evaluates the gradient
 - `factory.supports(op)` - Whether `create_point_evaluator` accepts the `DifferentialOperator` `op`

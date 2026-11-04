@@ -1,10 +1,9 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "pcms/field/function_space/polynomial_reconstruction.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include <pcms/backends/point_cloud/geometry.hpp>
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/backends/omega_h/entity_layout.hpp"
 #include "pcms/backends/point_cloud/layout.hpp"
 #include "field_test_utils.hpp"

@@ -1,4 +1,4 @@
-#include <pcms.h>
+#include <pcms/pcms.hpp>
 #include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
@@ -6,7 +6,7 @@
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/coupler/field_serializer.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/value_view.hpp"
@@ -219,8 +219,8 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     });
   auto geometry = pcms::CreateOmegaHGeometry(
     mesh, pcms::csys::Cartesian::Deferred(),
-    pcms::OmegaHGeometryOptions{.global_id_name = numbering,
-                                .owned_mask = is_overlap});
+    pcms::backend::omega_h::OmegaHGeometryOptions{.global_id_name = numbering,
+                                                  .owned_mask = is_overlap});
   auto function_space = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH,

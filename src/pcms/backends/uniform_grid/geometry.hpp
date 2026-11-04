@@ -109,7 +109,8 @@ private:
 };
 
 /// Geometry of a uniform grid: an affine map of the unit cells, located in
-/// closed form (no search to build). Create it with CreateUniformGridGeometry.
+/// closed form (no search to build). Create it with CreateUniformGridGeometry
+/// (pcms/geometry/geometry.hpp).
 template <unsigned Dim>
 class UniformGridGeometry final : public Geometry
 {
@@ -151,26 +152,6 @@ private:
   UniformGrid<Dim> grid_;
   std::shared_ptr<const CoordinateSystem> system_;
 };
-
-/// The geometry of a 2D uniform grid.
-/// @param grid the grid
-/// @param system the grid's coordinate system, or null for Cartesian
-[[nodiscard]] inline std::shared_ptr<const UniformGridGeometry<2>>
-CreateUniformGridGeometry(UniformGrid<2> grid,
-                          std::shared_ptr<const CoordinateSystem> system)
-{
-  return std::make_shared<UniformGridGeometry<2>>(grid, std::move(system));
-}
-
-/// The geometry of a 3D uniform grid.
-/// @param grid the grid
-/// @param system the grid's coordinate system, or null for Cartesian
-[[nodiscard]] inline std::shared_ptr<const UniformGridGeometry<3>>
-CreateUniformGridGeometry(UniformGrid<3> grid,
-                          std::shared_ptr<const CoordinateSystem> system)
-{
-  return std::make_shared<UniformGridGeometry<3>>(grid, std::move(system));
-}
 
 } // namespace pcms
 

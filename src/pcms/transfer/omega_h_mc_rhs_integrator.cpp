@@ -163,7 +163,7 @@ OmegaHMonteCarloRHSIntegrator::OmegaHMonteCarloRHSIntegrator(
       "OmegaHMonteCarloRHSIntegrator: samples_per_element must be positive");
   }
 
-  Omega_h::Mesh& mesh = GetMesh(*geometry_);
+  Omega_h::Mesh& mesh = backend::omega_h::GetMesh(*geometry_);
   const int dim = mesh.dim();
   nbary_ = dim + 1;
 
@@ -235,7 +235,8 @@ OmegaHMonteCarloRHSIntegrator::GetIntegrationPoints() const noexcept
 
 OwnerHints OmegaHMonteCarloRHSIntegrator::IntegrationPointOwners() const
 {
-  return OwnerHints{geometry_, GetMesh(*geometry_).dim(), elements_};
+  return OwnerHints{geometry_, backend::omega_h::GetMesh(*geometry_).dim(),
+                    elements_};
 }
 
 Vec OmegaHMonteCarloRHSIntegrator::GetVector() const noexcept

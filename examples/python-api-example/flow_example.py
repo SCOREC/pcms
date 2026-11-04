@@ -51,7 +51,7 @@ def demonstrate_face_field_transfer(mesh):
     )
     
     omega_h_factory = pcms.create_lagrange_space(
-        pcms.create_omega_h_geometry(mesh), 1, 1)
+        pcms.backend.omega_h.create_geometry(mesh), 1, 1)
     omega_h_field = omega_h_factory.create_function()
     omega_h_field.set_dof_holder_data(vertex_field_values)
     

@@ -3,9 +3,8 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/uniform_grid/geometry.hpp"
-#include "pcms/field/function_space/spline.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 #include "field_test_utils.hpp"

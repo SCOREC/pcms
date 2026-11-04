@@ -1,5 +1,5 @@
 #include "mdspan/mdspan.hpp"
-#include "pcms.h"
+#include "pcms/pcms.hpp"
 #include <Kokkos_Core.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_template_test_macros.hpp>

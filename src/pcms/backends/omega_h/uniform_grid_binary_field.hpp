@@ -3,7 +3,7 @@
 
 #include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/field/data/simple.hpp"
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/uniform_grid/geometry.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/localization/point_search.hpp"

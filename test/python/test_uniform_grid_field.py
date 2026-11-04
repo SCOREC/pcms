@@ -150,12 +150,12 @@ class TestUniformGridOmegaHWorkflow:
         )
 
         grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
-        mask_field = pcms.create_uniform_grid_binary_field(mesh, [4, 4])
+        mask_field = pcms.backend.omega_h.create_uniform_grid_binary_field(mesh, [4, 4])
         mask_data = mask_field.get_dof_holder_data().get_values()
 
         # Build a mesh-backed source field: f(x,y) = x + 2y.
         omega_h_factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), 1, 1)
+            pcms.backend.omega_h.create_geometry(mesh), 1, 1)
         omega_h_field = omega_h_factory.create_function()
         coords = _coordinates(omega_h_field)
         omega_h_data = np.zeros(_num_dof_holders(omega_h_field),
@@ -194,9 +194,9 @@ class TestUniformGridOmegaHWorkflow:
         )
 
         src_factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(src_mesh), 1, 1)
+            pcms.backend.omega_h.create_geometry(src_mesh), 1, 1)
         tgt_factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(tgt_mesh), 1, 1)
+            pcms.backend.omega_h.create_geometry(tgt_mesh), 1, 1)
         src_field = src_factory.create_function()
         tgt_field = tgt_factory.create_function()
 

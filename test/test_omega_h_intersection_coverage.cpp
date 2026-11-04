@@ -7,7 +7,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
 
-#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/field/function_spaces.hpp>
 #include <pcms/transfer/mass_matrix_type.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/utility/arrays.hpp>

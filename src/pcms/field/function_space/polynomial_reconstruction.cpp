@@ -1,4 +1,4 @@
-#include "pcms/field/function_space/polynomial_reconstruction.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/point_cloud/evaluator.hpp"
 #include "pcms/backends/point_cloud/geometry.hpp"
 #include "pcms/field/data/simple.hpp"

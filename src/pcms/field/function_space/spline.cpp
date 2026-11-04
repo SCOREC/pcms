@@ -1,4 +1,4 @@
-#include "pcms/field/function_space/spline.hpp"
+#include "pcms/field/function_spaces.hpp"
 
 #include "pcms/field/data/simple.hpp"
 #include "pcms/backends/uniform_grid/geometry.hpp"

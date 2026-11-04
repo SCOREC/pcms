@@ -19,11 +19,12 @@ set(PCMS_FIELD_HEADERS
         gradient_source.hpp
         transformed_point_evaluator.hpp
         data/simple.hpp
-        function_space/polynomial_reconstruction.hpp
+        function_spaces.hpp
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
         function_space.cpp
+        function_spaces.cpp
         gradient_source.cpp
         query_points.cpp
         gid_permutation.cpp
@@ -36,16 +37,15 @@ if (PCMS_ENABLE_OMEGA_H)
             function_space/lagrange.cpp
             function_space/spline.cpp
             evaluator/mls_interpolation.cpp
+            geometry_factories.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
-            function_space/lagrange.hpp
-            function_space/spline.hpp
             eqdsk_field.hpp
             evaluator/mls_interpolation.hpp
             evaluator/mls_interpolation_impl.hpp
-            evaluator/pcms_interpolator_aliases.hpp
-            evaluator/pcms_interpolator_view_utils.hpp
-            evaluator/pcms_interpolator_logger.hpp
+            evaluator/interpolator_aliases.hpp
+            evaluator/interpolator_view_utils.hpp
+            evaluator/interpolator_logger.hpp
     )
 endif ()
 
@@ -56,7 +56,7 @@ set_target_properties(pcms_field PROPERTIES
 target_sources(pcms_field PUBLIC
         FILE_SET field
         TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
         FILES ${PCMS_FIELD_HEADERS})
 add_library(pcms::field ALIAS pcms_field)
 target_compile_features(pcms_field PUBLIC cxx_std_20)

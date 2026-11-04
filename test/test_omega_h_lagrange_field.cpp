@@ -5,7 +5,7 @@
 #include <Omega_h_mesh.hpp>
 
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/mesh_geometry.hpp"

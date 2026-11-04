@@ -30,7 +30,7 @@ class TestFieldCopy:
 
         # Create factory and layout
         factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), order, num_components)
+            pcms.backend.omega_h.create_geometry(mesh), order, num_components)
 
         # Create original field and set data
         original = factory.create_function()

@@ -170,7 +170,7 @@ Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
 Mat BuildOmegaHMassMatrix(const OmegaHLagrangeLayout& target_layout,
                           const Geometry& geometry, MassMatrixType mass_type)
 {
-  Omega_h::Mesh& mesh = GetMesh(geometry);
+  Omega_h::Mesh& mesh = backend::omega_h::GetMesh(geometry);
   if (mesh.dim() == 3) {
     return BuildOmegaHMassMatrixImpl<3>(mesh, target_layout, geometry,
                                         mass_type);

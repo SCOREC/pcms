@@ -26,7 +26,7 @@ def mesh(world):
 @pytest.fixture
 def p1_space(mesh):
     return pcms.create_lagrange_space(
-        pcms.create_omega_h_geometry(mesh), 1, 1)
+        pcms.backend.omega_h.create_geometry(mesh), 1, 1)
 
 
 def _coordinates(field):
@@ -47,7 +47,7 @@ def _linear_field(space):
 class TestFieldData:
     def test_shape_matches_layout(self, mesh, world):
         space = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), 1, 2)
+            pcms.backend.omega_h.create_geometry(mesh), 1, 2)
         field = space.create_function()
         n = _num_dof_holders(field)
         data = np.arange(2 * n, dtype=np.float64).reshape(n, 2)
@@ -98,7 +98,7 @@ class TestFieldData:
 
     def test_vector_field_rejects_1d(self, mesh):
         space = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), 1, 2)
+            pcms.backend.omega_h.create_geometry(mesh), 1, 2)
         field = space.create_function()
         n = _num_dof_holders(field)
         for shape in [(n,), (2 * n,)]:

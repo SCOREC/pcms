@@ -2,7 +2,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
 #include <Omega_h_mesh.hpp>
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.hpp"
 #include "field_test_utils.hpp"

@@ -21,7 +21,6 @@ static_assert(std::is_same_v<LO, Omega_h::LO>,
 static_assert(std::is_same_v<GO, Omega_h::GO>,
               "pcms and Omega_h GO types must match");
 
-
 OmegaHMeshBinding::OmegaHMeshBinding(std::shared_ptr<const Geometry> geometry,
                                      const BindRequest& request,
                                      const GridPointSearchVariant& search,
@@ -122,7 +121,7 @@ GridPointSearchVariant MakeGridSearch(Omega_h::Mesh& mesh,
 
 OmegaHGeometry::OmegaHGeometry(Omega_h::Mesh& mesh,
                                std::shared_ptr<const CoordinateSystem> system,
-                               OmegaHGeometryOptions options)
+                               backend::omega_h::OmegaHGeometryOptions options)
   : mesh_(mesh),
     global_id_name_(std::move(options.global_id_name)),
     owned_mask_(std::move(options.owned_mask)),
@@ -151,7 +150,7 @@ Omega_h::Mesh& RequireOwnedMesh(
 OmegaHGeometry::OmegaHGeometry(std::shared_ptr<Omega_h::Mesh> mesh,
                                std::shared_ptr<Omega_h::Library> library,
                                std::shared_ptr<const CoordinateSystem> system,
-                               OmegaHGeometryOptions options)
+                               backend::omega_h::OmegaHGeometryOptions options)
   : OmegaHGeometry(RequireOwnedMesh(mesh, library), std::move(system),
                    std::move(options))
 {
@@ -170,7 +169,7 @@ const GridPointSearchVariant& OmegaHGeometry::Search() const
 
 std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
   Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
-  OmegaHGeometryOptions options)
+  backend::omega_h::OmegaHGeometryOptions options)
 {
   return std::make_shared<OmegaHGeometry>(mesh, std::move(system),
                                           std::move(options));
@@ -179,19 +178,11 @@ std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
 std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
   std::shared_ptr<Omega_h::Mesh> mesh,
   std::shared_ptr<Omega_h::Library> library,
-  std::shared_ptr<const CoordinateSystem> system, OmegaHGeometryOptions options)
+  std::shared_ptr<const CoordinateSystem> system,
+  backend::omega_h::OmegaHGeometryOptions options)
 {
   return std::make_shared<OmegaHGeometry>(
     std::move(mesh), std::move(library), std::move(system), std::move(options));
-}
-
-Omega_h::Mesh& GetMesh(const Geometry& geometry)
-{
-  const auto* omega_h = dynamic_cast<const OmegaHGeometry*>(&geometry);
-  if (omega_h == nullptr) {
-    throw pcms_error("GetMesh: the geometry is not an Omega_h geometry");
-  }
-  return omega_h->GetMesh();
 }
 
 std::shared_ptr<BoundSource> OmegaHGeometry::BindImpl(

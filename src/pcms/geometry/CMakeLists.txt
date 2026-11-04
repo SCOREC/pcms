@@ -18,7 +18,7 @@ add_library(pcms::geometry ALIAS pcms_geometry)
 target_sources(pcms_geometry PUBLIC
         FILE_SET geometry
         TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
         FILES ${PCMS_GEOMETRY_HEADERS})
 target_include_directories(
         pcms_geometry

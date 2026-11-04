@@ -4,7 +4,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/field/function_spaces.hpp>
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/backends/omega_h/lagrange_layout.hpp>

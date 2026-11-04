@@ -8,6 +8,7 @@
 #include "pcms/geometry/supports.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
+#include "pcms/utility/uniform_grid.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
 #include <string>
@@ -16,6 +17,7 @@ namespace pcms
 {
 
 class CoordinateMap; // pcms/field/coordinate_map.hpp
+class FieldLayout;   // pcms/field/field_layout.hpp
 
 /// @brief Options of the containing-cell search a geometry builds.
 struct SearchOptions
@@ -65,14 +67,15 @@ struct DifferentialView
 /// mesh) must outlive the geometry. A bound source is immutable and
 /// stays valid after later binds on the same geometry; evaluators hold their
 /// bound source. Bind uses shared_from_this(), so a geometry must be owned by
-/// a std::shared_ptr (create it with the kind's Create or std::make_shared).
-/// Spaces and layouts are on the same entities when they are on the same
-/// Geometry object: OwnerHints name entities by the geometry's identity. A
-/// kind's factory (CreateOmegaHGeometry, ...) returns the most specific type it
-/// knows, as a pointer to const since a geometry is immutable once built; more
-/// generally, a factory returns a pointer to const for a type with no
-/// non-const public member (geometries and function spaces), the object being
-/// constructed non-const.
+/// a std::shared_ptr (create it with the kind's factory:
+/// CreateUniformGridGeometry, CreatePointCloudGeometry or
+/// backend::omega_h::CreateGeometry). Spaces and layouts are on the same
+/// entities when they are on the same Geometry object: OwnerHints name entities
+/// by the geometry's identity. A kind's factory (CreateOmegaHGeometry, ...)
+/// returns the most specific type it knows, as a pointer to const since a
+/// geometry is immutable once built; more generally, a factory returns a
+/// pointer to const for a type with no non-const public member (geometries and
+/// function spaces), the object being constructed non-const.
 class Geometry : public std::enable_shared_from_this<Geometry>
 {
 public:
@@ -205,6 +208,37 @@ private:
     RebindKey() = default;
   };
 };
+
+/// The geometry of a 2D uniform grid: an affine map of the unit cells, located
+/// in closed form.
+/// @param grid the grid
+/// @param system the grid's coordinate system, or null for Cartesian
+[[nodiscard]] std::shared_ptr<const Geometry> CreateUniformGridGeometry(
+  UniformGrid<2> grid, std::shared_ptr<const CoordinateSystem> system);
+
+/// The geometry of a 3D uniform grid.
+/// @param grid the grid
+/// @param system the grid's coordinate system, or null for Cartesian
+[[nodiscard]] std::shared_ptr<const Geometry> CreateUniformGridGeometry(
+  UniformGrid<3> grid, std::shared_ptr<const CoordinateSystem> system);
+
+/// A point-cloud geometry whose sites are `coords` (copied to the device).
+/// @param coords the sites
+/// @param options the support search of the geometry
+/// @throws pcms_error if the coordinate system does not have the identity
+///         metric (MLS distances are Euclidean)
+[[nodiscard]] std::shared_ptr<const Geometry> CreatePointCloudGeometry(
+  CoordinateView<HostMemorySpace> coords, NeighbourhoodOptions options = {});
+
+/// A point-cloud geometry whose sites are the DOF holders of `sites` (e.g. the
+/// entities of one dimension of a mesh, through an Omega_h backend layout,
+/// which the adjacency search then serves).
+/// @param sites the layout of the sites
+/// @param options the support search of the geometry
+/// @throws pcms_error if `sites` is null or its coordinate system does not
+///         have the identity metric
+[[nodiscard]] std::shared_ptr<const Geometry> CreatePointCloudGeometry(
+  std::shared_ptr<const FieldLayout> sites, NeighbourhoodOptions options = {});
 
 namespace detail
 {

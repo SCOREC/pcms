@@ -11,8 +11,7 @@
 #include <pcms/backends/omega_h/geometry.hpp>
 #include <pcms/backends/point_cloud/geometry.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
-#include <pcms/field/function_space/lagrange.hpp>
-#include <pcms/field/function_space/polynomial_reconstruction.hpp>
+#include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/entity_layout.hpp>
 #include <pcms/backends/omega_h/lagrange_layout.hpp>
 #include <pcms/field/layout/empty.hpp>
@@ -48,7 +47,7 @@ std::shared_ptr<const pcms::Geometry> MakeGeometry(
 {
   return pcms::CreateOmegaHGeometry(
     mesh, pcms::csys::Cartesian::Create(2),
-    pcms::OmegaHGeometryOptions{.search = options});
+    pcms::backend::omega_h::OmegaHGeometryOptions{.search = options});
 }
 
 /// The element the grid search of `mesh` finds for each point, lifted from the
@@ -735,9 +734,9 @@ TEST_CASE("DOFHolderOwners gives the entity of each DOF holder")
   Omega_h::Write<Omega_h::I8> mask(mesh.nverts(), 1);
   Kokkos::deep_copy(Kokkos::View<Omega_h::I8*>(mask.data(), 1), 0);
   const auto ghosted = CreateLagrangeSpace(
-    pcms::CreateOmegaHGeometry(
-      mesh, pcms::csys::Cartesian::Create(2),
-      pcms::OmegaHGeometryOptions{.owned_mask = Omega_h::Read(mask)}),
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Create(2),
+                               pcms::backend::omega_h::OmegaHGeometryOptions{
+                                 .owned_mask = Omega_h::Read(mask)}),
     1, 1, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
   REQUIRE(ghosted->GetLayout()->HasGhosts());
   REQUIRE(pcms::DOFHolderOwners(*ghosted->GetLayout()).entities.extent(0) == 0);

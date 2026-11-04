@@ -11,8 +11,7 @@
 #include <pcms/backends/omega_h/geometry.hpp>
 #include <pcms/backends/point_cloud/geometry.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
-#include <pcms/field/function_space/lagrange.hpp>
-#include <pcms/field/function_space/polynomial_reconstruction.hpp>
+#include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/entity_layout.hpp>
 #include <pcms/field/query_points.hpp>
 #include "field_test_utils.hpp"

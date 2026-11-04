@@ -5,7 +5,7 @@
 #include <Omega_h_for.hpp>
 #include "pcms/transfer/copy.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>

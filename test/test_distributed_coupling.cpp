@@ -11,7 +11,7 @@
 #include "distributed_test_utils.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
-#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/types.hpp"
 

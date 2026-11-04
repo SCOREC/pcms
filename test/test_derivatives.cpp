@@ -4,9 +4,8 @@
 #include <Kokkos_Core.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
-#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
-#include <pcms/field/function_space/spline.hpp>
 #include <pcms/field/gradient_source.hpp>
 #include <pcms/transfer/interpolator.hpp>
 #include "field_test_utils.hpp"

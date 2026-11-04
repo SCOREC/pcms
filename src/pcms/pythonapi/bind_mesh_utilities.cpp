@@ -181,11 +181,6 @@ py::array map_entity_field_to_vertices_mls(
 
 void bind_mesh_utilities_module(py::module& m)
 {
-  m.def("compute_entity_centroids", &compute_entity_centroids, py::arg("mesh"),
-        py::arg("entity_dim"),
-        "Compute centroids of mesh entities (faces or elements). "
-        "Returns an array of shape (nentities, dim).");
-
   // Backward compatibility alias
   m.def("compute_entity_centroids_few", &compute_entity_centroids,
         py::arg("mesh"), py::arg("entity_dim"),
@@ -198,7 +193,17 @@ void bind_mesh_utilities_module(py::module& m)
     "Get recommended minimum patch size for given MLS interpolation degree. "
     "Returns 4 for degree 1, 10 for degree 2, and 12 for degree 3.");
 
-  m.def(
+  // Omega_h backend entry points (the submodule is created in
+  // bind_create_field_module, which runs first)
+  auto omega_h_module = m.attr("backend").attr("omega_h").cast<py::module>();
+
+  omega_h_module.def(
+    "compute_entity_centroids", &compute_entity_centroids, py::arg("mesh"),
+    py::arg("entity_dim"),
+    "Compute centroids of mesh entities (faces or elements). "
+    "Returns an array of shape (nentities, dim).");
+
+  omega_h_module.def(
     "map_entity_field_to_vertices_average",
     &map_entity_field_to_vertices_average, py::arg("mesh"),
     py::arg("entity_field_values"), py::arg("entity_dim"),
@@ -214,7 +219,7 @@ void bind_mesh_utilities_module(py::module& m)
     "  numpy array of field values at vertices (shape: (nverts,) or "
     "(nverts, ncomps), matching entity_field_values)");
 
-  m.def(
+  omega_h_module.def(
     "map_entity_field_to_vertices_mls", &map_entity_field_to_vertices_mls,
     py::arg("mesh"), py::arg("entity_field_values"), py::arg("entity_dim"),
     py::arg("interp_degree") = 1, py::arg("min_support") = -1,
@@ -233,6 +238,13 @@ void bind_mesh_utilities_module(py::module& m)
     "Returns:\n"
     "  numpy array of field values at vertices (shape: (nverts,) or "
     "(nverts, ncomps), matching entity_field_values)");
+
+  // Old top-level names, kept until callers are updated
+  for (const char* name : {"compute_entity_centroids",
+                           "map_entity_field_to_vertices_average",
+                           "map_entity_field_to_vertices_mls"}) {
+    m.attr(name) = omega_h_module.attr(name);
+  }
 }
 
 } // namespace pcms

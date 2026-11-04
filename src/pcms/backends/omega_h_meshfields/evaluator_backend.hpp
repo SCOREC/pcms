@@ -16,7 +16,7 @@
 #include "pcms/localization/point_search.hpp"
 #include "pcms/field/field.hpp" // OutOfBoundsMode
 
-namespace pcms
+namespace pcms::backend::omega_h_meshfields
 {
 
 // ---------------------------------------------------------------------------
@@ -718,6 +718,6 @@ struct MeshFieldsAdapter2LocalizationHint
   Kokkos::View<LO*> missing_indices_d_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h_meshfields
 
 #endif // PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_BACKEND_H

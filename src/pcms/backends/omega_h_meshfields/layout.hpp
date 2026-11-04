@@ -10,7 +10,7 @@
 
 #include <array>
 
-namespace pcms
+namespace pcms::backend::omega_h_meshfields
 {
 class MeshFieldsAdapterLayout : public FieldLayout
 {
@@ -72,5 +72,5 @@ private:
   std::shared_ptr<const Discretization> discretization_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h_meshfields
 #endif // PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_ADAPTER_LAYOUT_H

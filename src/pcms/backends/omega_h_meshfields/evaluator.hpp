@@ -11,7 +11,7 @@
 #include "pcms/utility/arrays.hpp"
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::omega_h_meshfields
 {
 
 // MeshFieldsPointEvaluator<T> implements PointEvaluator<T> for
@@ -160,6 +160,6 @@ private:
   mutable GridPointSearch2D search_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h_meshfields
 
 #endif // PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_EVALUATOR_FACTORY_H

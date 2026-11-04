@@ -11,7 +11,7 @@
 #include <Kokkos_Core.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::omega_h_meshfields
 {
 
 namespace
@@ -123,6 +123,6 @@ private:
   Kokkos::View<T**, DeviceMemorySpace> device_data_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h_meshfields
 
 #endif // PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_FIELD_DATA_H

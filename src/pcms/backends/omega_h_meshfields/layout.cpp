@@ -6,7 +6,7 @@
 #include <MeshField.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::omega_h_meshfields
 {
 /*
  * Field Layout
@@ -378,4 +378,4 @@ MeshFieldsAdapterLayout::GetDOFHolderClassificationIdsHost() const
   return make_const_array_view(classification_ids_host_);
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h_meshfields

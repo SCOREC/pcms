@@ -3,9 +3,9 @@
 #include <redev.h>
 #include <pcms/utility/profile.hpp>
 #include <pcms/utility/assert.hpp>
+#include <pcms/coupler/coupler_types.hpp>
 namespace pcms
 {
-using redev::Mode;
 template <typename T>
 struct GlobalCommunicator
 {
@@ -31,7 +31,7 @@ public:
     PCMS_ALWAYS_ASSERT(channel_.InSendCommunicationPhase());
     auto msg_size = static_cast<std::size_t>(msg.extent(0));
     comm_.SetCommParams(VarName, msg_size);
-    comm_.Send(msg.data_handle(), mode);
+    comm_.Send(msg.data_handle(), detail::ToRedev(mode));
   }
   void Receive(Rank1View<T, HostMemorySpace> destination, std::string VarName,
                Mode mode = Mode::Synchronous)
@@ -40,7 +40,7 @@ public:
     PCMS_ALWAYS_ASSERT(channel_.InReceiveCommunicationPhase());
     auto msg_size = static_cast<std::size_t>(destination.extent(0));
     comm_.SetCommParams(VarName, msg_size);
-    comm_.Recv(destination.data_handle(), msg_size, mode);
+    comm_.Recv(destination.data_handle(), msg_size, detail::ToRedev(mode));
   }
 
 private:

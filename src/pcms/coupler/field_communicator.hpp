@@ -1,6 +1,7 @@
 #ifndef FIELD_COMMUNICATOR2_H_
 #define FIELD_COMMUNICATOR2_H_
 
+#include "pcms/coupler/coupler_types.hpp"
 #include "pcms/coupler/field_layout_communicator.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_layout.hpp"
@@ -35,13 +36,13 @@ public:
     layout_comm_.SetOutMessageLayout<T>(comm_);
   }
 
-  void Send(redev::Mode mode = redev::Mode::Synchronous)
+  void Send(Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(layout_comm_.GetChannel().InSendCommunicationPhase());
     auto buffer = make_array_view(comm_buffer_);
     serializer_.Serialize(field_, buffer, layout_comm_.GetPermutationArray());
-    comm_.Send(buffer.data_handle(), mode);
+    comm_.Send(buffer.data_handle(), detail::ToRedev(mode));
   }
 
   void Receive()

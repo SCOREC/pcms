@@ -4,7 +4,7 @@
 #include "pcms/utility/mesh_geometry.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 namespace
@@ -159,4 +159,4 @@ OmegaHEntityLayout::GetDOFHolderClassificationIdsHost() const
   return make_const_array_view(classification_ids_host_);
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h

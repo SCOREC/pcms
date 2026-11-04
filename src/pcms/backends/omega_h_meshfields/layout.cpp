@@ -260,7 +260,7 @@ MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
       static_cast<LO>(static_cast<unsigned char>(class_dims_h[i]));
     classification_ids_host_(i) = static_cast<LO>(class_ids_h[i]);
   }
-  discretization_ = std::make_shared<OmegaHDiscretization>(mesh_);
+  discretization_ = std::make_shared<pcms::backend::omega_h::OmegaHDiscretization>(mesh_);
 }
 
 std::shared_ptr<const Discretization>

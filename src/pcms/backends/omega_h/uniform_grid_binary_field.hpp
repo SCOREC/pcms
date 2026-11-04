@@ -17,7 +17,7 @@
 #include <utility>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 /**
@@ -91,6 +91,6 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
     mesh, CreateUniformGridFromMesh<Dim>(mesh, divisions));
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 
 #endif // PCMS_UNIFORM_GRID_BINARY_FIELD_H

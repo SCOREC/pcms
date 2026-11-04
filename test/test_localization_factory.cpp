@@ -21,10 +21,10 @@
 namespace
 {
 
-std::shared_ptr<pcms::OmegaHEntityLayout> MakeMeshEntityLayout(
+std::shared_ptr<pcms::backend::omega_h::OmegaHEntityLayout> MakeMeshEntityLayout(
   Omega_h::Mesh& mesh, int entity_dim)
 {
-  return std::make_shared<pcms::OmegaHEntityLayout>(
+  return std::make_shared<pcms::backend::omega_h::OmegaHEntityLayout>(
     mesh, entity_dim, 1, pcms::csys::Cartesian::Deferred());
 }
 
@@ -87,7 +87,7 @@ TEST_CASE("LocalizationFactory: vertex adjacency Build matches two-mesh "
   auto actual = factory.Build(target_device.coordinate_view);
 
   Omega_h::Real radius_sq = options.radius * options.radius;
-  auto expected = pcms::searchNeighbors(
+  auto expected = pcms::backend::omega_h::searchNeighbors(
     source_mesh, target_mesh, radius_sq,
     static_cast<Omega_h::LO>(options.min_req_supports),
     static_cast<Omega_h::LO>(3 * options.min_req_supports),
@@ -103,7 +103,7 @@ TEST_CASE("Localization path selection: vertex source uses adjacency for "
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 8, 8, 0, false);
 
-  auto source_layout = std::make_shared<pcms::OmegaHLagrangeLayout>(
+  auto source_layout = std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(pcms::detail::SelectLocalizationPath(*source_layout) ==
@@ -118,7 +118,7 @@ TEST_CASE(
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 8, 8, 0, false);
 
   auto source_layout = MakeMeshEntityLayout(mesh, pcms::Face);
-  auto target_layout = std::make_shared<pcms::OmegaHLagrangeLayout>(
+  auto target_layout = std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(
@@ -157,7 +157,7 @@ TEST_CASE("LocalizationFactory: centroid-to-vertex Build correct on same-mesh "
 
   // Reference: direct call to the single-mesh centroid-to-vertex overload.
   Omega_h::Real radius_sq = options.radius * options.radius;
-  auto expected = pcms::searchNeighbors(
+  auto expected = pcms::backend::omega_h::searchNeighbors(
     mesh, radius_sq, static_cast<Omega_h::LO>(options.min_req_supports),
     options.adapt_radius);
 

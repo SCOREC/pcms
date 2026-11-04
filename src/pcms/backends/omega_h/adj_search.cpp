@@ -1,7 +1,7 @@
 #include "pcms/backends/omega_h/adj_search.hpp"
 #include <Omega_h_array_ops.hpp>
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 // Debug helper retained intentionally: useful for diagnosing point-localization
@@ -550,4 +550,4 @@ SupportResults searchNeighbors(Omega_h::Mesh& mesh,
   return SupportResults{read(supports_ptr), read(supports_idx), radii2};
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h

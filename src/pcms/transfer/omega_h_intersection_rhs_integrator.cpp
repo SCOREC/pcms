@@ -29,8 +29,8 @@ struct Data
 };
 
 template <int Dim, int TgtOrder>
-Data BuildDataImpl(const OmegaHLagrangeLayout& source_layout,
-                   const OmegaHLagrangeLayout& target_layout, int quad_order,
+Data BuildDataImpl(const pcms::backend::omega_h::OmegaHLagrangeLayout& source_layout,
+                   const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout, int quad_order,
                    const GridPointSearchVariant* source_search);
 
 // The source space's point search, if the space is an Omega_h Lagrange space
@@ -42,14 +42,14 @@ const GridPointSearchVariant* SourceSearchFromSpace(const FunctionSpace& space)
     return nullptr;
   }
   const auto* factory =
-    dynamic_cast<const OmegaHLagrangeEvaluatorFactory<Real>*>(
+    dynamic_cast<const pcms::backend::omega_h::OmegaHLagrangeEvaluatorFactory<Real>*>(
       lagrange->GetEvaluatorFactory().get());
   return factory ? &factory->GetSearch() : nullptr;
 }
 
-Data BuildData(const std::shared_ptr<const OmegaHLagrangeLayout>& source_layout,
+Data BuildData(const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>& source_layout,
                std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-               const std::shared_ptr<const OmegaHLagrangeLayout>& target_layout,
+               const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>& target_layout,
                std::shared_ptr<const CoordinateSystem> target_coordinate_system,
                const GridPointSearchVariant* source_search)
 {
@@ -84,8 +84,8 @@ Data BuildData(const std::shared_ptr<const OmegaHLagrangeLayout>& source_layout,
 }
 
 template <int Dim, int TgtOrder>
-Data BuildDataImpl(const OmegaHLagrangeLayout& source_layout,
-                   const OmegaHLagrangeLayout& target_layout, int quad_order,
+Data BuildDataImpl(const pcms::backend::omega_h::OmegaHLagrangeLayout& source_layout,
+                   const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout, int quad_order,
                    const GridPointSearchVariant* source_search)
 {
   using Basis = detail::TargetSimplexBasis<Dim, TgtOrder>;
@@ -211,19 +211,19 @@ Data BuildDataImpl(const OmegaHLagrangeLayout& source_layout,
 OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
   const FunctionSpace& source_space, const FunctionSpace& target_space)
   : OmegaHIntersectionRHSIntegrator(
-      std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
+      std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
         source_space.GetLayout()),
       source_space.GetCoordinateSystem(),
-      std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
+      std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
         target_space.GetLayout()),
       target_space.GetCoordinateSystem(), SourceSearchFromSpace(source_space))
 {
 }
 
 OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
-  std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> source_layout,
   std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout,
   std::shared_ptr<const CoordinateSystem> target_coordinate_system)
   : OmegaHIntersectionRHSIntegrator(
       std::move(source_layout), std::move(source_coordinate_system),
@@ -232,9 +232,9 @@ OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
 }
 
 OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
-  std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> source_layout,
   std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout,
   std::shared_ptr<const CoordinateSystem> target_coordinate_system,
   const GridPointSearchVariant* source_search)
 {

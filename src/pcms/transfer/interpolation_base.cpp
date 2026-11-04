@@ -432,10 +432,10 @@ void MLSMeshInterpolation::find_supports(const unsigned min_req_supports,
 {
   if (single_mesh_) {
     supports_ =
-      searchNeighbors(source_mesh_, radius_, min_req_supports, adapt_radius_);
+      pcms::backend::omega_h::searchNeighbors(source_mesh_, radius_, min_req_supports, adapt_radius_);
   } else { // two mesh : vert to vert
     supports_ =
-      searchNeighbors(source_mesh_, target_mesh_, radius_, min_req_supports,
+      pcms::backend::omega_h::searchNeighbors(source_mesh_, target_mesh_, radius_, min_req_supports,
                       max_allowed_supports, adapt_radius_);
   }
 

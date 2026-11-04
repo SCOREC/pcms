@@ -56,7 +56,7 @@ PolynomialReconstructionFunctionSpace::FromMesh(
       "out of range");
   }
 
-  auto mesh_layout = std::make_shared<OmegaHEntityLayout>(
+  auto mesh_layout = std::make_shared<pcms::backend::omega_h::OmegaHEntityLayout>(
     mesh, source_entity_dim, 1, std::move(coordinate_system));
   // MLS assumes unweighted Euclidean in distance calculation
   if (!HasIdentityMetric(*mesh_layout->GetCoordinateSystem())) {

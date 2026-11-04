@@ -73,7 +73,7 @@ std::map<std::pair<pcms::GO, pcms::GO>, pcms::Real> BuildReferenceMassMap(
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, elm_mass_dev);
 
   const auto layout =
-    std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(space.GetLayout());
+    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(space.GetLayout());
   REQUIRE(layout != nullptr);
   const auto faces2nodes_dev = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
   const auto faces2nodes = Omega_h::HostRead(faces2nodes_dev);
@@ -138,7 +138,7 @@ TEST_CASE("OmegaHMassIntegrator: row sums match lumped mass",
   auto space = pcms::test::MakeP1Space(mesh);
 
   const auto layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       space->GetLayout());
   const auto& gids = layout->GetGidsHost();
   const int nverts = mesh.nverts();
@@ -182,7 +182,7 @@ TEST_CASE("OmegaHMassIntegrator: lumped diagonal equals consistent row sums",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
 
   const auto layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       space->GetLayout());
   const auto& gids = layout->GetGidsHost();
   const int nverts = mesh.nverts();
@@ -252,7 +252,7 @@ TEST_CASE("OmegaHMassIntegrator: P0 lumped equals consistent",
   const auto elem_areas = Omega_h::measure_elements_real(&mesh);
   const auto elem_areas_h = Omega_h::HostRead<Omega_h::Real>(elem_areas);
   const auto layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       space->GetLayout());
   const auto& gids = layout->GetGidsHost();
 

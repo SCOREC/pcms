@@ -20,7 +20,7 @@ namespace pcms::detail
 // separately by the callers below.
 inline void CheckOmegaHScalarSimplexLayout(
   std::shared_ptr<const CoordinateSystem> coordinate_system,
-  const std::shared_ptr<const OmegaHLagrangeLayout>& layout,
+  const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>& layout,
   const char* context, const char* role)
 {
   if (layout == nullptr) {
@@ -51,7 +51,7 @@ inline void CheckOmegaHScalarSimplexLayout(
 // Strict order-1 check (used where only P1 is supported, e.g. Monte-Carlo RHS).
 inline void CheckOmegaHScalarP1Layout(
   std::shared_ptr<const CoordinateSystem> coordinate_system,
-  const std::shared_ptr<const OmegaHLagrangeLayout>& layout,
+  const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>& layout,
   const char* context, const char* role)
 {
   CheckOmegaHScalarSimplexLayout(coordinate_system, layout, context, role);
@@ -66,7 +66,7 @@ inline void CheckOmegaHScalarP1Layout(
 // this replaces the strict P1 requirement on those paths.
 inline void CheckOmegaHScalarLagrangeLayout(
   std::shared_ptr<const CoordinateSystem> coordinate_system,
-  const std::shared_ptr<const OmegaHLagrangeLayout>& layout,
+  const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>& layout,
   const char* context, const char* role)
 {
   CheckOmegaHScalarSimplexLayout(coordinate_system, layout, context, role);

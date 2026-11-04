@@ -61,8 +61,8 @@ void FindIntersections::adjBasedIntersectSearch(
   Omega_h::parallel_for(
     nelems_target,
     OMEGA_H_LAMBDA(const Omega_h::LO id) {
-      Queue queue;
-      Track visited;
+      pcms::backend::omega_h::Queue queue;
+      pcms::backend::omega_h::Track visited;
 
       auto current_cell_id = start_elements(id);
       auto current_tgt_elm_measure = tgt_elem_measures[id];

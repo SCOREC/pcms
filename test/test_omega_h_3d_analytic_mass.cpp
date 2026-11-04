@@ -37,7 +37,7 @@ TEST_CASE("OmegaHMassIntegrator (3D): P1 mass on reference tet matches "
   Mat mat = integrator->GetMatrix();
 
   const auto layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       space->GetLayout());
   REQUIRE(layout != nullptr);
 

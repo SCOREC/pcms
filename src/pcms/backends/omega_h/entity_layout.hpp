@@ -6,7 +6,7 @@
 #include "pcms/backends/omega_h/discretization.hpp"
 #include "pcms/field/field_layout.hpp"
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 class OmegaHEntityLayout : public FieldLayout
@@ -56,6 +56,6 @@ private:
   std::shared_ptr<const Discretization> discretization_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 
 #endif // PCMS_FIELD_LAYOUT_OMEGA_H_ENTITY_H

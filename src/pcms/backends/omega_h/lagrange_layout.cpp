@@ -5,7 +5,7 @@
 #include "pcms/utility/profile.hpp"
 #include <stdexcept>
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 namespace
@@ -259,4 +259,4 @@ Omega_h::Mesh& OmegaHLagrangeLayout::GetMesh() const
   return mesh_;
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h

@@ -18,7 +18,7 @@
 #include <stdexcept>
 #include <variant>
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 // ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ template <int Dim>
 struct CopyCoordsFunctor
 {
   using DefaultLayout =
-    detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
+    pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
 
   Kokkos::View<Real**, DeviceMemorySpace> coords_d;
   Rank2View<const Real, DeviceMemorySpace, DefaultLayout> raw_coords;
@@ -207,7 +207,7 @@ inline std::variant<GridPointSearch2D, GridPointSearch3D> MakeSearch(
 // Output shape: [num_query_points][num_components].
 template <typename T,
           typename LayoutPolicy =
-            detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
+            pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class OmegaHLagrangePointEvaluator : public PointEvaluator<T, LayoutPolicy>
 {
 public:
@@ -386,6 +386,6 @@ private:
   GridPointSearchVariant search_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 
 #endif // PCMS_OMEGA_H_LAGRANGE_EVALUATOR_FACTORY_H

@@ -209,7 +209,7 @@ void bind_create_field_module(py::module& m)
     .def(
       "mesh",
       [](const FunctionSpace& self) -> Omega_h::Mesh& {
-        auto disc = std::dynamic_pointer_cast<const OmegaHDiscretization>(
+        auto disc = std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHDiscretization>(
           self.GetDiscretization());
         if (!disc) {
           throw std::runtime_error(
@@ -336,7 +336,7 @@ void bind_create_field_module(py::module& m)
   m.def(
     "create_uniform_grid_binary_field",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return CreateUniformGridBinaryField<2>(mesh, divisions).second;
+      return pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, divisions).second;
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D vertex mask field indicating inside/outside mesh");

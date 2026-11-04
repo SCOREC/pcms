@@ -341,7 +341,7 @@ TEST_CASE("Create binary field from uniform grid")
                                    10, 0, false);
 
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{5, 5});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{5, 5});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -361,7 +361,7 @@ TEST_CASE("Create binary field from uniform grid")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 8, 8, 0, false);
 
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 8});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{10, 8});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -380,7 +380,7 @@ TEST_CASE("Create binary field from uniform grid")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 8, 8, 0, false);
 
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -399,7 +399,7 @@ TEST_CASE("Create binary field from uniform grid")
     grid.bot_left = {0.0, 0.0};
     grid.divisions = {10, 10};
 
-    auto [layout, field] = pcms::CreateUniformGridBinaryField<2>(mesh, grid);
+    auto [layout, field] = pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, grid);
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -434,7 +434,7 @@ TEST_CASE("Create binary field from uniform grid")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 2.0, 2.0, 0.0, 4, 4, 0, false);
 
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{20, 20});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{20, 20});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -456,7 +456,7 @@ TEST_CASE("Create binary field from uniform grid")
                                    0, false);
 
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{30, 10});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{30, 10});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -484,7 +484,7 @@ TEST_CASE("Binary field integration with grid methods")
   {
     auto grid = CreateUniformGridFromMesh<2>(mesh, std::array{8, 8});
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{8, 8});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{8, 8});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -505,7 +505,7 @@ TEST_CASE("Binary field integration with grid methods")
   {
     auto grid = CreateUniformGridFromMesh<2>(mesh, std::array{10, 10});
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{10, 10});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -561,7 +561,7 @@ TEST_CASE("Performance and edge cases")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 5, 5, 0, false);
 
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{50, 50});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{50, 50});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -579,7 +579,7 @@ TEST_CASE("Performance and edge cases")
                                    10, 0, false);
 
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{2, 2});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{2, 2});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -597,7 +597,7 @@ TEST_CASE("Performance and edge cases")
                                    0, false);
 
     auto [layout, field] =
-      pcms::CreateUniformGridBinaryField<2>(mesh, std::array{25, 10});
+      pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, std::array{25, 10});
     auto field_data =
       pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
@@ -632,7 +632,7 @@ TEST_CASE("UniformGrid workflow")
   auto ug_field = ug_factory->CreateFunction<pcms::Real>();
 
   auto [mask_layout, mask_field] =
-    pcms::CreateUniformGridBinaryField<2>(mesh, grid);
+    pcms::backend::omega_h::CreateUniformGridBinaryField<2>(mesh, grid);
 
   pcms::Interpolator<pcms::Real> interp(*omega_h_factory, *ug_factory);
   interp.Apply(omega_h_field, ug_field);

@@ -31,7 +31,7 @@ TEST_CASE("OmegaHLagrangeLayout order-1 properties")
 {
   auto lib = Omega_h::Library{};
   auto mesh = MakeBox2D(lib.world());
-  pcms::OmegaHLagrangeLayout layout(mesh, 1, 2,
+  pcms::backend::omega_h::OmegaHLagrangeLayout layout(mesh, 1, 2,
                                     pcms::csys::Cartesian::Deferred());
 
   REQUIRE(layout.GetOrder() == 1);
@@ -65,7 +65,7 @@ TEST_CASE("OmegaHLagrangeLayout order-0 properties")
 {
   auto lib = Omega_h::Library{};
   auto mesh = MakeBox2D(lib.world());
-  pcms::OmegaHLagrangeLayout layout(mesh, 0, 1,
+  pcms::backend::omega_h::OmegaHLagrangeLayout layout(mesh, 0, 1,
                                     pcms::csys::Cartesian::Deferred());
 
   REQUIRE(layout.GetOrder() == 0);
@@ -100,10 +100,10 @@ TEST_CASE("OmegaHLagrangeLayout invalid order throws")
   auto lib = Omega_h::Library{};
   auto mesh = MakeBox2D(lib.world());
   REQUIRE_THROWS_AS(
-    pcms::OmegaHLagrangeLayout(mesh, 2, 1, pcms::csys::Cartesian::Deferred()),
+    pcms::backend::omega_h::OmegaHLagrangeLayout(mesh, 2, 1, pcms::csys::Cartesian::Deferred()),
     std::invalid_argument);
   REQUIRE_THROWS_AS(
-    pcms::OmegaHLagrangeLayout(mesh, -1, 1, pcms::csys::Cartesian::Deferred()),
+    pcms::backend::omega_h::OmegaHLagrangeLayout(mesh, -1, 1, pcms::csys::Cartesian::Deferred()),
     std::invalid_argument);
 }
 

@@ -120,11 +120,11 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
       "LagrangeFunctionSpace::FromMesh: OmegaH backend only supports "
       "Lagrange orders 0 and 1");
   }
-  auto layout = std::make_shared<OmegaHLagrangeLayout>(
+  auto layout = std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
     mesh, order, num_components, coordinate_system, std::move(global_id_name));
   layout->SetName(std::move(layout_name));
   auto eval_factory =
-    std::make_shared<OmegaHLagrangeEvaluatorFactory<Real>>(layout);
+    std::make_shared<pcms::backend::omega_h::OmegaHLagrangeEvaluatorFactory<Real>>(layout);
   return std::make_shared<LagrangeFunctionSpace>(
     Key{}, layout,
     [layout](Type t, ValueBasis basis) -> FieldDataVariant {
@@ -156,12 +156,12 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
       "LagrangeFunctionSpace::FromMesh: OmegaH backend only supports "
       "Lagrange orders 0 and 1");
   }
-  auto layout = std::make_shared<OmegaHLagrangeLayout>(
+  auto layout = std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
     mesh, order, num_components, coordinate_system, std::move(owned_mask),
     std::move(global_id_name));
   layout->SetName(std::move(layout_name));
   auto eval_factory =
-    std::make_shared<OmegaHLagrangeEvaluatorFactory<Real>>(layout);
+    std::make_shared<pcms::backend::omega_h::OmegaHLagrangeEvaluatorFactory<Real>>(layout);
   return std::make_shared<LagrangeFunctionSpace>(
     Key{}, layout,
     [layout](Type t, ValueBasis basis) -> FieldDataVariant {

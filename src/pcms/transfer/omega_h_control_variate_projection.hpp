@@ -52,7 +52,7 @@ public:
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
 private:
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout_;
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout_;
   std::unique_ptr<OmegaHMonteCarloRHSIntegrator> rhs_integrator_;
   Interpolator<Real> interpolator_;
   // Scratch field on the target space holding the interpolated control

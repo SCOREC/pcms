@@ -10,7 +10,7 @@
 
 #include <Kokkos_MathematicalFunctions.hpp>
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 static constexpr int max_dim = 3;
@@ -59,6 +59,6 @@ SupportResults searchNeighbors(Omega_h::Mesh& mesh,
                                Omega_h::Real cutoffDistance,
                                Omega_h::LO min_support = 12,
                                bool adapt_radius = true);
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 
 #endif // PCMS_LOCALIZATION_ADJ_SEARCH_HPP

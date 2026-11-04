@@ -34,7 +34,7 @@ namespace
 // The result is keyed by global DOF id to match the PETSc row indexing of the
 // integrator's assembled vector.
 std::unordered_map<pcms::GO, pcms::Real> ExpectedLoadByGid(
-  Omega_h::Mesh& target_mesh, const pcms::OmegaHLagrangeLayout& target_layout,
+  Omega_h::Mesh& target_mesh, const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout,
   const std::vector<pcms::Real>& g_by_vert)
 {
   const auto coords_h = Omega_h::HostRead<Omega_h::Real>(target_mesh.coords());
@@ -136,10 +136,10 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: space and layout constructors "
   pcms::OmegaHIntersectionRHSIntegrator from_spaces(*source_space,
                                                     *target_space);
   pcms::OmegaHIntersectionRHSIntegrator from_layouts(
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       source_space->GetLayout()),
     source_space->GetCoordinateSystem(),
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       target_space->GetLayout()),
     target_space->GetCoordinateSystem());
 
@@ -202,7 +202,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: constant field matches "
     source_field, OMEGA_H_LAMBDA(pcms::Real, pcms::Real) { return c; });
 
   const auto target_layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       target_space->GetLayout());
   const std::vector<pcms::Real> g(target_mesh.nverts(), c);
   const auto expected = ExpectedLoadByGid(target_mesh, *target_layout, g);
@@ -234,7 +234,7 @@ TEST_CASE(
     source_field, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + y; });
 
   const auto target_layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       target_space->GetLayout());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
     pcms::MakeConstRank2View(target_mesh.coords(), 2));

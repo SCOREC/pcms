@@ -8,7 +8,7 @@
 
 #include <array>
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 class OmegaHDiscretization : public Discretization
@@ -41,6 +41,6 @@ private:
     class_ids_by_dim_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 
 #endif // PCMS_DISCRETIZATION_DISCRETIZATION_OMEGA_H_H

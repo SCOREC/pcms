@@ -4,7 +4,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/mesh_geometry.hpp"
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 // pcms and Omega_h exchange data without conversion
 static_assert(std::is_same_v<Real, Omega_h::Real>,
@@ -75,4 +75,4 @@ OmegaHDiscretization::GetEntityClassificationIds(int entity_dim) const
                                                               ids.size());
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h

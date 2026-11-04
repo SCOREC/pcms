@@ -59,7 +59,8 @@ void bind_create_field_module(py::module& m)
   py::class_<FieldLayout, std::shared_ptr<FieldLayout>>(
     m, "FieldLayout", "How a field's DOF holders are laid out")
     .def("get_num_components", &FieldLayout::GetNumComponents)
-    .def("get_num_owned_dof_holder", &FieldLayout::GetNumOwnedDofHolder)
+    .def("get_num_dof_holder", &FieldLayout::GetNumDofHolder,
+         "Number of DOF holders this rank owns")
     .def("get_num_global_dof_holder", &FieldLayout::GetNumGlobalDofHolder)
     .def("get_dimension", &FieldLayout::GetDimension)
     .def("is_distributed", &FieldLayout::IsDistributed)
@@ -75,7 +76,7 @@ void bind_create_field_module(py::module& m)
         return ToPyCoordinateView(
           self.cast<const FieldLayout&>().GetDOFHolderCoordinates(), self);
       },
-      "The DOF-holder coordinates (num_dof_holders × dim), read-only");
+      "The owned DOF-holder coordinates (num_dof_holders × dim), read-only");
 
   py::class_<FieldData<Real>>(m, "FieldData", "A field's stored values")
     .def("get_value_type", &FieldData<Real>::GetValueType)
@@ -121,7 +122,7 @@ void bind_create_field_module(py::module& m)
       "set_dof_holder_data_unchecked",
       [](Field<Real>& self, const NumpyInput<Real>& data) {
         const auto& layout = self.GetLayout();
-        const LO num_dof_holders = layout.GetNumOwnedDofHolder();
+        const LO num_dof_holders = layout.GetNumDofHolder();
         auto view =
           NumpyToHostComponentView<Real>(data, layout.GetNumComponents());
         if (view.extent(0) != static_cast<size_t>(num_dof_holders)) {
@@ -135,7 +136,10 @@ void bind_create_field_module(py::module& m)
       py::arg("data"),
       "Set the DOF-holder values without checking their basis (the shape is "
       "still checked). A 1D array (num_dof_holders,) is accepted when the "
-      "field has one component.");
+      "field has one component.")
+    .def(
+      "synchronize_ghosts", [](Field<Real>& self) { self.SynchronizeGhosts(); },
+      "Synchronize ghost DOF-holder values from their owning ranks");
 
   py::class_<Function<Real>, Field<Real>>(
     m, "Function", "A Field that knows its FunctionSpace")

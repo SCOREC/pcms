@@ -43,7 +43,7 @@ void ValidateLagrangeWrappedFieldData(const FieldLayout& layout,
     }
   }
 
-  if (data.GetDOFAccess()->GetOwnedValues().size() !=
+  if (data.GetDOFAccess()->GetValues().size() !=
       detail::ExpectedFlatFieldDataSize(layout)) {
     throw pcms_error(
       "LagrangeFunctionSpace::CreateField: field data size does not match "

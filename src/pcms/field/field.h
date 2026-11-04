@@ -43,51 +43,57 @@ public:
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
 
   // The DOF-holder accessors below read and write the values of the DOF
-  // holders this rank owns through the data's DOFAccess, and throw if the data
-  // has none (e.g. a field of an evaluation-only source). Writes synchronize
-  // the backend's other copies and are collective; see DOFAccess.
+  // holders this rank owns, shaped [GetNumDofHolder()][component] in owned
+  // order, through the data's DOFAccess, and throw if the data has none (e.g.
+  // a field of an evaluation-only source). Writes synchronize the backend's
+  // other copies and are collective; see DOFAccess. Ghost copies are brought
+  // up to date by SynchronizeGhosts.
 
   // Copies to the host unless device memory is host memory. The returned view
   // is valid until the next call or until the field is written or destroyed.
   [[nodiscard]] ValueView<const T, HostMemorySpace> GetDOFHolderDataHost() const
   {
     return ValueView<const T, HostMemorySpace>(data_->GetValueBasis(),
-                                               OwnedValuesHost());
+                                               ValuesHost());
   }
 
   [[nodiscard]] ValueView<const T, DeviceMemorySpace> GetDOFHolderData() const
   {
     return ValueView<const T, DeviceMemorySpace>(
-      data_->GetValueBasis(), RequireDOFAccess().GetOwnedValues());
+      data_->GetValueBasis(), RequireDOFAccess().GetValues());
   }
 
   void SetDOFHolderDataHost(ValueView<const T, HostMemorySpace> v)
   {
     CheckWriteTag(v.GetBasis());
     CheckWriteExtents(v.GetValues().extent(0), v.GetValues().extent(1));
-    SetOwnedValuesFromHost(v.GetValues());
+    SetValuesFromHost(v.GetValues());
   }
 
   void SetDOFHolderData(ValueView<const T, DeviceMemorySpace> v)
   {
     CheckWriteTag(v.GetBasis());
     CheckWriteExtents(v.GetValues().extent(0), v.GetValues().extent(1));
-    RequireDOFAccess().SetOwnedValues(v.GetValues());
+    RequireDOFAccess().SetValues(v.GetValues());
   }
 
   // unchecked is needed for optimization in some places, but should generally
   // not be used unless you know what you are doing
   void SetDOFHolderDataUncheckedHost(Rank2View<const T, HostMemorySpace> v)
   {
-    SetOwnedValuesFromHost(v);
+    SetValuesFromHost(v);
   }
 
   // unchecked is needed for optimization in some places, but should generally
   // not be used unless you know what you are doing
   void SetDOFHolderDataUnchecked(Rank2View<const T, DeviceMemorySpace> v)
   {
-    RequireDOFAccess().SetOwnedValues(v);
+    RequireDOFAccess().SetValues(v);
   }
+
+  // Synchronize ghost DOF-holder values from their owning ranks. Collective;
+  // a no-op for non-distributed fields.
+  void SynchronizeGhosts() { data_->SynchronizeGhosts(); }
 
 protected:
   Field(std::string name, std::shared_ptr<const FieldLayout> layout,
@@ -108,13 +114,13 @@ protected:
 
   void CheckWriteExtents(size_t num_holders, size_t num_components) const
   {
-    if (num_holders != static_cast<size_t>(layout_->GetNumOwnedDofHolder()) ||
+    if (num_holders != static_cast<size_t>(layout_->GetNumDofHolder()) ||
         num_components != static_cast<size_t>(layout_->GetNumComponents())) {
       throw std::invalid_argument(
         "Field::SetDOFHolderData: the written view is shaped [" +
         std::to_string(num_holders) + "][" + std::to_string(num_components) +
         "] but this field's layout is [" +
-        std::to_string(layout_->GetNumOwnedDofHolder()) + "][" +
+        std::to_string(layout_->GetNumDofHolder()) + "][" +
         std::to_string(layout_->GetNumComponents()) + "]");
     }
   }
@@ -135,9 +141,9 @@ protected:
     return const_cast<DOFAccess<T>&>(std::as_const(*this).RequireDOFAccess());
   }
 
-  Rank2View<const T, HostMemorySpace> OwnedValuesHost() const
+  Rank2View<const T, HostMemorySpace> ValuesHost() const
   {
-    const auto values = RequireDOFAccess().GetOwnedValues();
+    const auto values = RequireDOFAccess().GetValues();
     if constexpr (std::is_same_v<HostMemorySpace, DeviceMemorySpace>) {
       return values;
     } else {
@@ -155,16 +161,16 @@ protected:
     }
   }
 
-  void SetOwnedValuesFromHost(Rank2View<const T, HostMemorySpace> values)
+  void SetValuesFromHost(Rank2View<const T, HostMemorySpace> values)
   {
     if constexpr (std::is_same_v<HostMemorySpace, DeviceMemorySpace>) {
-      RequireDOFAccess().SetOwnedValues(values);
+      RequireDOFAccess().SetValues(values);
     } else {
       Kokkos::View<T**, DeviceMemorySpace> staged(
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "owned_values_staged"),
         values.extent(0), values.extent(1));
       CopyHostRank2ViewToDeviceView(staged, values);
-      RequireDOFAccess().SetOwnedValues(MakeConstRank2View(staged));
+      RequireDOFAccess().SetValues(MakeConstRank2View(staged));
     }
   }
 

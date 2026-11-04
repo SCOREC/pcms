@@ -25,8 +25,8 @@ public:
   const DOFAccess<Real>* GetDOFAccess() const noexcept override { return this; }
   DOFAccess<Real>* GetDOFAccess() noexcept override { return this; }
 
-  Rank2View<const Real, DeviceMemorySpace> GetOwnedValues() const override;
-  void SetOwnedValues(Rank2View<const Real, DeviceMemorySpace> data) override;
+  Rank2View<const Real, DeviceMemorySpace> GetValues() const override;
+  void SetValues(Rank2View<const Real, DeviceMemorySpace> data) override;
 
 private:
   Rank2View<const Real, HostMemorySpace> GatherHost() const;

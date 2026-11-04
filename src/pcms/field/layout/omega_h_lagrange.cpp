@@ -90,35 +90,25 @@ OmegaHLagrangeLayout::OmegaHLagrangeLayout(
 
   EnsureClassification(mesh_);
   gids_ = BuildGids(mesh_, entity_dim, global_id_name_);
-  gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
   coords_ = get_entity_centroids(mesh_, entity_dim);
   coords_2d_ = ConvertCoordsTo2D(coords_, mesh_.nents(entity_dim), mesh_.dim());
   owned_ = BuildOwned(mesh_, entity_dim);
   owned_host_ =
     Kokkos::View<bool*, HostMemorySpace>("owned_host", owned_.size());
   Kokkos::deep_copy(owned_host_, owned_);
+  BuildOwnedViews();
 
   class_ids_ = Omega_h::Read<Omega_h::ClassId>(
     mesh_.get_array<Omega_h::ClassId>(entity_dim, "class_id"));
   class_dims_ = Omega_h::Read<Omega_h::I8>(
     mesh_.get_array<Omega_h::I8>(entity_dim, "class_dim"));
 
-  auto class_ids_host = Omega_h::HostRead<Omega_h::ClassId>(class_ids_);
-  auto class_dims_host = Omega_h::HostRead<Omega_h::I8>(class_dims_);
-
-  int n = mesh_.nents(entity_dim);
-  classification_dims_host_ =
-    Kokkos::View<LO*, HostMemorySpace>("classification_dims", n);
-  classification_ids_host_ =
-    Kokkos::View<LO*, HostMemorySpace>("classification_ids", n);
-  for (int i = 0; i < n; ++i) {
-    classification_dims_host_(i) =
-      static_cast<LO>(static_cast<unsigned char>(class_dims_host[i]));
-    classification_ids_host_(i) = static_cast<LO>(class_ids_host[i]);
-  }
   discretization_ = std::make_shared<OmegaHDiscretization>(mesh_);
+  BuildOwnedClassification();
 
-  BuildGlobalToLocalPermutation();
+  BuildGlobalToLocalPermutation(
+    Kokkos::View<const GO*, DeviceMemorySpace>(gids_.data(), gids_.size()),
+    EntOffsetsWithGhosts());
 }
 
 OmegaHLagrangeLayout::OmegaHLagrangeLayout(
@@ -137,35 +127,25 @@ OmegaHLagrangeLayout::OmegaHLagrangeLayout(
 
   EnsureClassification(mesh_);
   gids_ = BuildGids(mesh_, entity_dim, global_id_name_);
-  gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
   coords_ = get_entity_centroids(mesh_, entity_dim);
   coords_2d_ = ConvertCoordsTo2D(coords_, mesh_.nents(entity_dim), mesh_.dim());
   owned_ = BuildOwned(mesh_, entity_dim, owned_mask);
   owned_host_ =
     Kokkos::View<bool*, HostMemorySpace>("owned_host", owned_.size());
   Kokkos::deep_copy(owned_host_, owned_);
+  BuildOwnedViews();
 
   class_ids_ = Omega_h::Read<Omega_h::ClassId>(
     mesh_.get_array<Omega_h::ClassId>(entity_dim, "class_id"));
   class_dims_ = Omega_h::Read<Omega_h::I8>(
     mesh_.get_array<Omega_h::I8>(entity_dim, "class_dim"));
 
-  auto class_ids_host = Omega_h::HostRead<Omega_h::ClassId>(class_ids_);
-  auto class_dims_host = Omega_h::HostRead<Omega_h::I8>(class_dims_);
-
-  int n = mesh_.nents(entity_dim);
-  classification_dims_host_ =
-    Kokkos::View<LO*, HostMemorySpace>("classification_dims", n);
-  classification_ids_host_ =
-    Kokkos::View<LO*, HostMemorySpace>("classification_ids", n);
-  for (int i = 0; i < n; ++i) {
-    classification_dims_host_(i) =
-      static_cast<LO>(static_cast<unsigned char>(class_dims_host[i]));
-    classification_ids_host_(i) = static_cast<LO>(class_ids_host[i]);
-  }
   discretization_ = std::make_shared<OmegaHDiscretization>(mesh_);
+  BuildOwnedClassification();
 
-  BuildGlobalToLocalPermutation();
+  BuildGlobalToLocalPermutation(
+    Kokkos::View<const GO*, DeviceMemorySpace>(gids_.data(), gids_.size()),
+    EntOffsetsWithGhosts());
 }
 
 std::shared_ptr<const Discretization> OmegaHLagrangeLayout::GetDiscretization()
@@ -179,9 +159,19 @@ int OmegaHLagrangeLayout::GetNumComponents() const
   return num_components_;
 }
 
-LO OmegaHLagrangeLayout::GetNumOwnedDofHolder() const
+LO OmegaHLagrangeLayout::GetNumDofHolderWithGhosts() const
 {
   return mesh_.nents(EntityDimForOrder(order_, mesh_.dim()));
+}
+
+LO OmegaHLagrangeLayout::GetNumDofHolder() const
+{
+  return num_owned_;
+}
+
+bool OmegaHLagrangeLayout::HasGhosts() const
+{
+  return num_owned_ != GetNumDofHolderWithGhosts();
 }
 
 GO OmegaHLagrangeLayout::GetNumGlobalDofHolder() const
@@ -197,7 +187,8 @@ Rank1View<const bool, HostMemorySpace> OmegaHLagrangeLayout::GetOwnedHost()
 
 GlobalIDView<HostMemorySpace> OmegaHLagrangeLayout::GetGidsHost() const
 {
-  return GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size());
+  return GlobalIDView<HostMemorySpace>(owned_gids_host_.data(),
+                                       owned_gids_host_.size());
 }
 
 GlobalIDView<DeviceMemorySpace> OmegaHLagrangeLayout::GetGids() const
@@ -208,8 +199,37 @@ GlobalIDView<DeviceMemorySpace> OmegaHLagrangeLayout::GetGids() const
 CoordinateView<DeviceMemorySpace>
 OmegaHLagrangeLayout::GetDOFHolderCoordinates() const
 {
-  return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(),
-                                           MakeConstRank2View(coords_2d_)};
+  using LayoutPolicy =
+    detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
+  Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> coords_view(
+    owned_coords_2d_.data(), num_owned_, mesh_.dim());
+  return CoordinateView<DeviceMemorySpace, LayoutPolicy>{GetCoordinateSystem(),
+                                                         coords_view};
+}
+
+Kokkos::View<const LO*, HostMemorySpace>
+OmegaHLagrangeLayout::GetOwnedIndicesHost() const
+{
+  return owned_indices_host_;
+}
+
+Kokkos::View<const LO*, DeviceMemorySpace>
+OmegaHLagrangeLayout::GetOwnedIndices() const
+{
+  return owned_indices_;
+}
+
+void OmegaHLagrangeLayout::BuildOwnedViews()
+{
+  auto owned = BuildOwnedLayoutData(
+    owned_,
+    Kokkos::View<const GO*, DeviceMemorySpace>(gids_.data(), gids_.size()),
+    coords_2d_, mesh_.dim());
+  num_owned_ = owned.num_owned;
+  owned_indices_host_ = owned.owned_indices_host;
+  owned_gids_host_ = owned.owned_gids_host;
+  owned_coords_2d_ = owned.owned_coords_2d;
+  owned_indices_ = owned.owned_indices;
 }
 
 bool OmegaHLagrangeLayout::IsDistributed() const
@@ -218,6 +238,13 @@ bool OmegaHLagrangeLayout::IsDistributed() const
 }
 
 EntOffsetsArray OmegaHLagrangeLayout::GetEntOffsets() const
+{
+  return !HasGhosts()
+           ? EntOffsetsWithGhosts()
+           : OwnedEntOffsets(EntOffsetsWithGhosts(), owned_indices_host_);
+}
+
+EntOffsetsArray OmegaHLagrangeLayout::EntOffsetsWithGhosts() const
 {
   // Slot i holds the starting DOF index for entity dimension i.
   // Slot 4 holds the total DOF count.
@@ -237,16 +264,28 @@ int OmegaHLagrangeLayout::GetDimension() const
   return mesh_.dim();
 }
 
+int OmegaHLagrangeLayout::GetDOFHolderEntityDim() const
+{
+  return EntityDimForOrder(order_, mesh_.dim());
+}
+
 Rank1View<const LO, HostMemorySpace>
 OmegaHLagrangeLayout::GetDOFHolderClassificationDimensionsHost() const
 {
-  return make_const_array_view(classification_dims_host_);
+  return make_const_array_view(owned_classification_dims_host_);
 }
 
 Rank1View<const LO, HostMemorySpace>
 OmegaHLagrangeLayout::GetDOFHolderClassificationIdsHost() const
 {
-  return make_const_array_view(classification_ids_host_);
+  return make_const_array_view(owned_classification_ids_host_);
+}
+
+void OmegaHLagrangeLayout::BuildOwnedClassification()
+{
+  BuildOwnedClassificationHost(class_dims_, class_ids_, owned_indices_,
+                               owned_classification_dims_host_,
+                               owned_classification_ids_host_);
 }
 
 int OmegaHLagrangeLayout::GetOrder() const

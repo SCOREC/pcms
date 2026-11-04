@@ -2,7 +2,10 @@
 #define PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_H
 
 #include <Omega_h_array.hpp>
+#include <Omega_h_mesh.hpp>
 #include "pcms/utility/memory_spaces.h"
+
+#include <type_traits>
 
 namespace pcms
 {
@@ -63,6 +66,24 @@ inline Kokkos::View<T**, pcms::DeviceMemorySpace> ConvertCoordsTo2D(
     });
 
   return coords_2d;
+}
+
+// Synchronize a block of mesh entity data with Omega_h's internal arrays.
+template <typename T, typename BlockView>
+void SynchronizeOmegaHBlock(Omega_h::Mesh& mesh, int dim, int nc,
+                            BlockView block)
+{
+  if constexpr (std::is_same_v<T, float>) {
+    Omega_h::Write<Omega_h::Real> arr(static_cast<Omega_h::LO>(block.size()),
+                                      "field_data_block");
+    Kokkos::deep_copy(arr.view(), block);
+    auto synced = mesh.sync_array(dim, Omega_h::Read<Omega_h::Real>(arr), nc);
+    Kokkos::deep_copy(block, synced.view());
+  } else {
+    auto synced =
+      mesh.sync_array(dim, Omega_h::Read<T>(Omega_h::Write<T>(block)), nc);
+    Kokkos::deep_copy(block, synced.view());
+  }
 }
 
 } // namespace pcms

@@ -6,6 +6,7 @@
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/field_data.h"
+#include "pcms/field/data/simple.h"
 #include "pcms/localization/point_search.h"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
@@ -235,7 +236,16 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     const auto values = out.GetValues();
-    const auto dof_data = field.GetDOFHolderData().GetValues();
+    // Elements read the values of all their DOF holders, ghosts included, so
+    // read the backend's values with ghosts (ghosts included) rather than the
+    // owned ones.
+    const auto* backend =
+      dynamic_cast<const SimpleFieldData<T>*>(&field.GetData());
+    if (backend == nullptr) {
+      throw pcms_error("OmegaHLagrangePointEvaluator: field data must be "
+                       "SimpleFieldData");
+    }
+    const auto dof_data = backend->GetValuesWithGhosts();
     LO n_valid = static_cast<LO>(hint_.elem_ids.size());
     int n_comp = layout_->GetNumComponents();
 

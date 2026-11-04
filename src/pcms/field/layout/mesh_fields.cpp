@@ -208,7 +208,7 @@ MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
     global_id_name_(global_id_name),
     num_components_(num_components),
     nodes_per_dim_(nodes_per_dim),
-    dof_holder_coords_("", GetNumOwnedDofHolder(), mesh_.dim()),
+    dof_holder_coords_("", GetNumDofHolderWithGhosts(), mesh_.dim()),
     class_ids_(GetNumEnts()),
     class_dims_(class_ids_.size()),
     owned_("", class_dims_.size()),
@@ -246,21 +246,10 @@ MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
       offset += mesh.nents(i);
     }
   }
-  gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
+  BuildOwnedViews();
 
-  int n = class_ids_.size();
-  classification_dims_host_ =
-    Kokkos::View<LO*, HostMemorySpace>("classification_dims", n);
-  classification_ids_host_ =
-    Kokkos::View<LO*, HostMemorySpace>("classification_ids", n);
-  auto class_dims_h = Omega_h::HostRead<Omega_h::I8>(class_dims_);
-  auto class_ids_h = Omega_h::HostRead<Omega_h::ClassId>(class_ids_);
-  for (int i = 0; i < n; ++i) {
-    classification_dims_host_(i) =
-      static_cast<LO>(static_cast<unsigned char>(class_dims_h[i]));
-    classification_ids_host_(i) = static_cast<LO>(class_ids_h[i]);
-  }
   discretization_ = std::make_shared<OmegaHDiscretization>(mesh_);
+  BuildOwnedClassification();
 }
 
 std::shared_ptr<const Discretization>
@@ -274,13 +263,23 @@ int MeshFieldsAdapterLayout::GetNumComponents() const
   return num_components_;
 }
 
-LO MeshFieldsAdapterLayout::GetNumOwnedDofHolder() const
+LO MeshFieldsAdapterLayout::GetNumDofHolderWithGhosts() const
 {
   LO count = 0;
   for (int i = 0; i <= mesh_.dim(); ++i) {
     count += mesh_.nents(i) * nodes_per_dim_[i];
   }
   return count;
+}
+
+LO MeshFieldsAdapterLayout::GetNumDofHolder() const
+{
+  return num_owned_;
+}
+
+bool MeshFieldsAdapterLayout::HasGhosts() const
+{
+  return num_owned_ != GetNumDofHolderWithGhosts();
 }
 
 GO MeshFieldsAdapterLayout::GetNumGlobalDofHolder() const
@@ -306,14 +305,42 @@ Rank1View<const bool, HostMemorySpace> MeshFieldsAdapterLayout::GetOwnedHost()
 
 GlobalIDView<HostMemorySpace> MeshFieldsAdapterLayout::GetGidsHost() const
 {
-  return GlobalIDView<HostMemorySpace>(gids_host_.data(), gids_host_.size());
+  return GlobalIDView<HostMemorySpace>(owned_gids_host_.data(),
+                                       owned_gids_host_.size());
 }
 
 CoordinateView<DeviceMemorySpace>
 MeshFieldsAdapterLayout::GetDOFHolderCoordinates() const
 {
-  auto coords_view = MakeConstRank2View(dof_holder_coords_);
+  auto coords_view = MakeConstRank2View(owned_coords_2d_);
   return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(), coords_view};
+}
+
+Kokkos::View<const LO*, HostMemorySpace>
+MeshFieldsAdapterLayout::GetOwnedIndicesHost() const
+{
+  return owned_indices_host_;
+}
+
+Kokkos::View<const LO*, DeviceMemorySpace>
+MeshFieldsAdapterLayout::GetOwnedIndices() const
+{
+  return owned_indices_;
+}
+
+void MeshFieldsAdapterLayout::BuildOwnedViews()
+{
+  Kokkos::deep_copy(owned_host_, owned_);
+
+  auto owned = BuildOwnedLayoutData(
+    owned_,
+    Kokkos::View<const GO*, DeviceMemorySpace>(gids_.data(), gids_.size()),
+    dof_holder_coords_, mesh_.dim());
+  num_owned_ = owned.num_owned;
+  owned_indices_host_ = owned.owned_indices_host;
+  owned_gids_host_ = owned.owned_gids_host;
+  owned_coords_2d_ = owned.owned_coords_2d;
+  owned_indices_ = owned.owned_indices;
 }
 
 bool MeshFieldsAdapterLayout::IsDistributed() const
@@ -350,6 +377,13 @@ Omega_h::Mesh& MeshFieldsAdapterLayout::GetMesh() const
 
 EntOffsetsArray MeshFieldsAdapterLayout::GetEntOffsets() const
 {
+  return !HasGhosts()
+           ? EntOffsetsWithGhosts()
+           : OwnedEntOffsets(EntOffsetsWithGhosts(), owned_indices_host_);
+}
+
+EntOffsetsArray MeshFieldsAdapterLayout::EntOffsetsWithGhosts() const
+{
   EntOffsetsArray offsets{};
   size_t offset = 0;
   for (size_t i = 0; i < offsets.size(); ++i) {
@@ -366,16 +400,39 @@ int MeshFieldsAdapterLayout::GetDimension() const
   return mesh_.dim();
 }
 
+int MeshFieldsAdapterLayout::GetDOFHolderEntityDim() const
+{
+  // One DOF holder per entity of a single dimension, or none.
+  int entity_dim = -1;
+  for (int i = 0; i <= mesh_.dim(); ++i) {
+    if (nodes_per_dim_[i] == 0) {
+      continue;
+    }
+    if (entity_dim >= 0 || nodes_per_dim_[i] != 1) {
+      return -1;
+    }
+    entity_dim = i;
+  }
+  return entity_dim;
+}
+
 Rank1View<const LO, HostMemorySpace>
 MeshFieldsAdapterLayout::GetDOFHolderClassificationDimensionsHost() const
 {
-  return make_const_array_view(classification_dims_host_);
+  return make_const_array_view(owned_classification_dims_host_);
 }
 
 Rank1View<const LO, HostMemorySpace>
 MeshFieldsAdapterLayout::GetDOFHolderClassificationIdsHost() const
 {
-  return make_const_array_view(classification_ids_host_);
+  return make_const_array_view(owned_classification_ids_host_);
+}
+
+void MeshFieldsAdapterLayout::BuildOwnedClassification()
+{
+  BuildOwnedClassificationHost(class_dims_, class_ids_, owned_indices_,
+                               owned_classification_dims_host_,
+                               owned_classification_ids_host_);
 }
 
 } // namespace pcms

@@ -1,0 +1,10 @@
+# Phase 3.4: point-cloud backend
+src/pcms/discretization/discretization/point_cloud.hpp  src/pcms/backends/point_cloud/discretization.hpp
+src/pcms/discretization/discretization/point_cloud.cpp  src/pcms/backends/point_cloud/discretization.cpp
+src/pcms/field/layout/point_cloud.hpp                   src/pcms/backends/point_cloud/layout.hpp
+src/pcms/field/layout/point_cloud.cpp                   src/pcms/backends/point_cloud/layout.cpp
+src/pcms/field/data/point_cloud.hpp                     src/pcms/backends/point_cloud/field_data.hpp
+src/pcms/field/data/point_cloud.cpp                     src/pcms/backends/point_cloud/field_data.cpp
+src/pcms/field/evaluator/point_cloud.hpp                src/pcms/backends/point_cloud/evaluator.hpp
+src/pcms/field/evaluator/mls_point_cloud.hpp            src/pcms/backends/point_cloud/mls_evaluator.hpp
+src/pcms/field/point_cloud_localization.hpp             src/pcms/backends/point_cloud/localization.hpp

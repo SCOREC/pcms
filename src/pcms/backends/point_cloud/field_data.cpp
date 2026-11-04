@@ -1,5 +1,5 @@
-#include "pcms/field/data/point_cloud.hpp"
-#include "pcms/field/layout/point_cloud.hpp"
+#include "pcms/backends/point_cloud/field_data.hpp"
+#include "pcms/backends/point_cloud/layout.hpp"
 #include "pcms/utility/profile.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/arrays.hpp"

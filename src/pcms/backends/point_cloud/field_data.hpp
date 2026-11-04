@@ -4,7 +4,7 @@
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.hpp"
-#include "pcms/field/layout/point_cloud.hpp"
+#include "pcms/backends/point_cloud/layout.hpp"
 #include <memory>
 
 namespace pcms

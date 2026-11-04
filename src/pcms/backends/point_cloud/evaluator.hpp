@@ -7,7 +7,7 @@
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/evaluation_request.hpp"
 #include "pcms/localization/mls_options.hpp"
-#include "pcms/field/evaluator/mls_point_cloud.hpp"
+#include "pcms/backends/point_cloud/mls_evaluator.hpp"
 #include "pcms/field/localization_path_selection.hpp"
 #include "pcms/localization/mesh_localization.hpp"
 #include "pcms/localization/localization_factory.hpp"

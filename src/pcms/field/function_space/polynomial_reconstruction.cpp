@@ -1,13 +1,13 @@
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
 #include "pcms/field/layout/omega_h_entity.hpp"
-#include "pcms/field/layout/point_cloud.hpp"
-#include "pcms/field/evaluator/point_cloud.hpp"
+#include "pcms/backends/point_cloud/layout.hpp"
+#include "pcms/backends/point_cloud/evaluator.hpp"
 #include "pcms/field/data/simple.hpp"
 #include "pcms/discretization/discretization/omega_h.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/common.hpp"
 #include "pcms/utility/mesh_geometry.hpp"
-#include "pcms/field/point_cloud_localization.hpp"
+#include "pcms/backends/point_cloud/localization.hpp"
 #include "pcms/localization/mesh_localization.hpp"
 
 #include <Kokkos_Core.hpp>

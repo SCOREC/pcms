@@ -1,4 +1,4 @@
-#include "pcms/discretization/discretization/point_cloud.hpp"
+#include "pcms/backends/point_cloud/discretization.hpp"
 
 namespace pcms
 {

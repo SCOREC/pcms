@@ -1,6 +1,6 @@
 #include "pcms/backends/mfem/layout.hpp"
 
-#include "pcms/discretization/discretization/point_cloud.hpp"
+#include "pcms/backends/point_cloud/discretization.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/profile.hpp"

@@ -2,7 +2,7 @@
 #define POINT_CLOUD_LAYOUT_H_
 
 #include "pcms/field/field.hpp"
-#include "pcms/discretization/discretization/point_cloud.hpp"
+#include "pcms/backends/point_cloud/discretization.hpp"
 
 namespace pcms
 {

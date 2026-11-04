@@ -18,8 +18,8 @@ set(PCMS_FIELD_HEADERS
         transformed_source.hpp
         data/simple.hpp
         function_space/polynomial_reconstruction.hpp
-        layout/point_cloud.hpp
-        data/point_cloud.hpp
+        ../backends/point_cloud/layout.hpp
+        ../backends/point_cloud/field_data.hpp
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
@@ -28,8 +28,8 @@ set(PCMS_FIELD_SOURCES
         gid_permutation.cpp
         function_space/polynomial_reconstruction.cpp
         layout/empty.cpp
-        layout/point_cloud.cpp
-        data/point_cloud.cpp
+        ../backends/point_cloud/layout.cpp
+        ../backends/point_cloud/field_data.cpp
 )
 
 if (PCMS_ENABLE_OMEGA_H)
@@ -54,14 +54,14 @@ if (PCMS_ENABLE_OMEGA_H)
             evaluator/spline_interpolator.hpp
             evaluator/uniform_grid_spline.hpp
             eqdsk_field.hpp
-            point_cloud_localization.hpp
+            ../backends/point_cloud/localization.hpp
             evaluator/mls_interpolation.hpp
             evaluator/mls_interpolation_impl.hpp
             evaluator/pcms_interpolator_aliases.hpp
             evaluator/pcms_interpolator_view_utils.hpp
             evaluator/pcms_interpolator_logger.hpp
-            evaluator/mls_point_cloud.hpp
-            evaluator/point_cloud.hpp
+            ../backends/point_cloud/mls_evaluator.hpp
+            ../backends/point_cloud/evaluator.hpp
     )
 endif ()
 

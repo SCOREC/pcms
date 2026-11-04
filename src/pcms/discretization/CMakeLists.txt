@@ -2,7 +2,7 @@ set(
         PCMS_DISCRETIZATION_HEADERS
         discretization.hpp
         discretization/empty.hpp
-        discretization/point_cloud.hpp
+        ../backends/point_cloud/discretization.hpp
         discretization/uniform_grid.hpp
 )
 if (PCMS_ENABLE_OMEGA_H)
@@ -12,7 +12,7 @@ endif()
 set(
         PCMS_DISCRETIZATION_SOURCES
         discretization/empty.cpp
-        discretization/point_cloud.cpp
+        ../backends/point_cloud/discretization.cpp
 )
 if (PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_DISCRETIZATION_SOURCES discretization/omega_h.cpp)

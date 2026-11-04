@@ -1,7 +1,7 @@
 #ifndef PCMS_EMPTY_FIELD_LAYOUT_H
 #define PCMS_EMPTY_FIELD_LAYOUT_H
 
-#include "pcms/discretization/discretization/empty.hpp"
+#include "pcms/discretization/empty.hpp"
 #include "pcms/field/field_layout.hpp"
 #include <Kokkos_Core.hpp>
 

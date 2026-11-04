@@ -1,12 +1,12 @@
 set(
         PCMS_DISCRETIZATION_HEADERS
         discretization.hpp
-        discretization/empty.hpp
+        empty.hpp
 )
 
 set(
         PCMS_DISCRETIZATION_SOURCES
-        discretization/empty.cpp
+        empty.cpp
 )
 
 add_library(pcms_discretization ${PCMS_DISCRETIZATION_SOURCES})

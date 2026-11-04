@@ -1,4 +1,4 @@
-#include "pcms/discretization/discretization/empty.hpp"
+#include "pcms/discretization/empty.hpp"
 
 namespace pcms
 {

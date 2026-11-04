@@ -41,9 +41,9 @@ if (PCMS_ENABLE_OMEGA_H)
             eqdsk_field.hpp
             evaluator/mls_interpolation.hpp
             evaluator/mls_interpolation_impl.hpp
-            evaluator/pcms_interpolator_aliases.hpp
-            evaluator/pcms_interpolator_view_utils.hpp
-            evaluator/pcms_interpolator_logger.hpp
+            evaluator/interpolator_aliases.hpp
+            evaluator/interpolator_view_utils.hpp
+            evaluator/interpolator_logger.hpp
     )
 endif ()
 

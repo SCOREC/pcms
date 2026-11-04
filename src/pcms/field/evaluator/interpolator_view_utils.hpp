@@ -1,7 +1,7 @@
 #ifndef PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_VIEW_UTILS_HPP
 #define PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_VIEW_UTILS_HPP
 
-#include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
+#include <pcms/field/evaluator/interpolator_aliases.hpp>
 #include <Omega_h_array_ops.hpp>
 #include <cmath>
 #include <Omega_h_fail.hpp>

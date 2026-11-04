@@ -1,5 +1,5 @@
-#ifndef PCMS_LOCALIZATION_ADJ_SEARCH_HPP
-#define PCMS_LOCALIZATION_ADJ_SEARCH_HPP
+#ifndef PCMS_BACKENDS_OMEGA_H_ADJ_SEARCH_HPP
+#define PCMS_BACKENDS_OMEGA_H_ADJ_SEARCH_HPP
 
 #include <pcms/geometry/supports.hpp>
 #include <pcms/localization/mls_support_helpers.hpp>
@@ -32,4 +32,4 @@ SupportResults searchNeighbors(
   Omega_h::LO max_allowed_support = 36, bool adapt_radius = true);
 } // namespace pcms::backend::omega_h
 
-#endif // PCMS_LOCALIZATION_ADJ_SEARCH_HPP
+#endif // PCMS_BACKENDS_OMEGA_H_ADJ_SEARCH_HPP

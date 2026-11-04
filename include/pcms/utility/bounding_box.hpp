@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_BOUNDING_BOX_H
-#define PCMS_COUPLING_BOUNDING_BOX_H
+#ifndef PCMS_UTILITY_BOUNDING_BOX_HPP
+#define PCMS_UTILITY_BOUNDING_BOX_HPP
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 #include <array>
@@ -28,4 +28,4 @@ KOKKOS_INLINE_FUNCTION bool intersects(const AABBox<dim>& a,
 }
 } // namespace pcms
 
-#endif // PCMS_COUPLING_BOUNDING_BOX_H
+#endif // PCMS_UTILITY_BOUNDING_BOX_HPP

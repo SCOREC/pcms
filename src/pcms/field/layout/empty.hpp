@@ -1,5 +1,5 @@
-#ifndef PCMS_EMPTY_FIELD_LAYOUT_H
-#define PCMS_EMPTY_FIELD_LAYOUT_H
+#ifndef PCMS_FIELD_LAYOUT_EMPTY_HPP
+#define PCMS_FIELD_LAYOUT_EMPTY_HPP
 
 #include "pcms/field/field_layout.hpp"
 #include <Kokkos_Core.hpp>
@@ -46,4 +46,4 @@ private:
 
 } // namespace pcms::field
 
-#endif // PCMS_EMPTY_FIELD_LAYOUT_H
+#endif // PCMS_FIELD_LAYOUT_EMPTY_HPP

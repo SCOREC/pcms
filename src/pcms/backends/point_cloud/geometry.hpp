@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_EVALUATOR_POINT_CLOUD_GEOMETRY_HPP
-#define PCMS_FIELD_EVALUATOR_POINT_CLOUD_GEOMETRY_HPP
+#ifndef PCMS_BACKENDS_POINT_CLOUD_GEOMETRY_HPP
+#define PCMS_BACKENDS_POINT_CLOUD_GEOMETRY_HPP
 
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/backends/point_cloud/mls_evaluator.hpp"
@@ -138,4 +138,4 @@ private:
 
 } // namespace pcms::backend::point_cloud
 
-#endif // PCMS_FIELD_EVALUATOR_POINT_CLOUD_GEOMETRY_HPP
+#endif // PCMS_BACKENDS_POINT_CLOUD_GEOMETRY_HPP

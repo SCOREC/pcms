@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_TYPES_H
-#define PCMS_COUPLING_TYPES_H
+#ifndef PCMS_UTILITY_TYPES_HPP
+#define PCMS_UTILITY_TYPES_HPP
 #include "pcms/utility/assert.hpp"
 #include <cstdint>
 #include <type_traits>
@@ -70,4 +70,4 @@ auto apply_to_type(Type t, F&& f)
 
 } // namespace pcms
 
-#endif // PCMS_COUPLING_TYPES_H
+#endif // PCMS_UTILITY_TYPES_HPP

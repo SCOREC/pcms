@@ -1,5 +1,5 @@
-#ifndef PCMS_INCLUSIVE_SCAN_H
-#define PCMS_INCLUSIVE_SCAN_H
+#ifndef PCMS_UTILITY_DETAIL_INCLUSIVE_SCAN_HPP
+#define PCMS_UTILITY_DETAIL_INCLUSIVE_SCAN_HPP
 namespace pcms
 {
 template <typename InputIt, typename OutputIt>
@@ -14,4 +14,4 @@ OutputIt inclusive_scan(InputIt first, InputIt last, OutputIt d_first)
   return d_first;
 }
 } // namespace pcms
-#endif
+#endif // PCMS_UTILITY_DETAIL_INCLUSIVE_SCAN_HPP

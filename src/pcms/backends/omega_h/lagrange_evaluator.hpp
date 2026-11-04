@@ -1,5 +1,5 @@
-#ifndef PCMS_OMEGA_H_LAGRANGE_EVALUATOR_FACTORY_H
-#define PCMS_OMEGA_H_LAGRANGE_EVALUATOR_FACTORY_H
+#ifndef PCMS_BACKENDS_OMEGA_H_LAGRANGE_EVALUATOR_HPP
+#define PCMS_BACKENDS_OMEGA_H_LAGRANGE_EVALUATOR_HPP
 
 #include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
@@ -183,4 +183,4 @@ private:
 
 } // namespace pcms::backend::omega_h
 
-#endif // PCMS_OMEGA_H_LAGRANGE_EVALUATOR_FACTORY_H
+#endif // PCMS_BACKENDS_OMEGA_H_LAGRANGE_EVALUATOR_HPP

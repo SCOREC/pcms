@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_ASSERT_H
-#define PCMS_COUPLING_ASSERT_H
+#ifndef PCMS_UTILITY_ASSERT_HPP
+#define PCMS_UTILITY_ASSERT_HPP
 #include <stdexcept>
 
 // https://stackoverflow.com/questions/16683146/can-macros-be-overloaded-by-number-of-arguments
@@ -63,4 +63,4 @@ void Pcms_Assert_Fail(const char* msg) __attribute__((noreturn));
 } // namespace detail
 } // namespace pcms
 
-#endif // PCMS_COUPLING_ASSERT_H
+#endif // PCMS_UTILITY_ASSERT_HPP

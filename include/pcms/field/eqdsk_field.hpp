@@ -1,5 +1,5 @@
-#ifndef PCMS_EQDSK_FIELD_H
-#define PCMS_EQDSK_FIELD_H
+#ifndef PCMS_FIELD_EQDSK_FIELD_HPP
+#define PCMS_FIELD_EQDSK_FIELD_HPP
 
 #include "pcms/utility/eqdsk.hpp"
 #include "pcms/field/field.hpp"
@@ -75,4 +75,4 @@ inline EQDSKFieldWithData MakeEQDSKField(const std::string& filename)
 
 } // namespace pcms
 
-#endif // PCMS_EQDSK_FIELD_H
+#endif // PCMS_FIELD_EQDSK_FIELD_HPP

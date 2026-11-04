@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_LAYOUT_XGC_REVERSE_CLASSIFICATION_H
-#define PCMS_FIELD_LAYOUT_XGC_REVERSE_CLASSIFICATION_H
+#ifndef PCMS_BACKENDS_XGC_REVERSE_CLASSIFICATION_HPP
+#define PCMS_BACKENDS_XGC_REVERSE_CLASSIFICATION_HPP
 
 #include "pcms/configuration.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -143,4 +143,4 @@ template <typename T = Omega_h::LO>
 
 } // namespace pcms::backend::xgc
 
-#endif // PCMS_FIELD_LAYOUT_XGC_REVERSE_CLASSIFICATION_H
+#endif // PCMS_BACKENDS_XGC_REVERSE_CLASSIFICATION_HPP

@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_MEMORY_SPACES_H
-#define PCMS_COUPLING_MEMORY_SPACES_H
+#ifndef PCMS_UTILITY_MEMORY_SPACES_HPP
+#define PCMS_UTILITY_MEMORY_SPACES_HPP
 #include <Kokkos_Core.hpp>
 #include <cstddef>
 
@@ -65,4 +65,4 @@ void ForEach(const char* label, Index n, const Functor& functor)
 
 } // namespace pcms
 
-#endif // PCMS_COUPLING_MEMORY_SPACES_H
+#endif // PCMS_UTILITY_MEMORY_SPACES_HPP

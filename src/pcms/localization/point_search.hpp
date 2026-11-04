@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_POINT_SEARCH_H
-#define PCMS_COUPLING_POINT_SEARCH_H
+#ifndef PCMS_LOCALIZATION_POINT_SEARCH_HPP
+#define PCMS_LOCALIZATION_POINT_SEARCH_HPP
 #include <cassert>
 
 #include <utility>
@@ -285,4 +285,4 @@ using GridPointSearchVariant =
   std::variant<GridPointSearch2D, GridPointSearch3D>;
 
 } // namespace pcms::localization
-#endif // PCMS_COUPLING_POINT_SEARCH_H
+#endif // PCMS_LOCALIZATION_POINT_SEARCH_HPP

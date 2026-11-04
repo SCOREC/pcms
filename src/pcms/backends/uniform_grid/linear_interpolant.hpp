@@ -1,6 +1,6 @@
 
-#ifndef PCMS_TRANSFER_LINEAR_INTERPOLANT_HPP
-#define PCMS_TRANSFER_LINEAR_INTERPOLANT_HPP
+#ifndef PCMS_BACKENDS_UNIFORM_GRID_LINEAR_INTERPOLANT_HPP
+#define PCMS_BACKENDS_UNIFORM_GRID_LINEAR_INTERPOLANT_HPP
 
 #include <iostream>
 #include "pcms/backends/uniform_grid/multidimarray.hpp"
@@ -199,4 +199,4 @@ double test_function(double* coord)
 }
 } // namespace pcms::backend::uniform_grid
 
-#endif // PCMS_TRANSFER_LINEAR_INTERPOLANT_HPP
+#endif // PCMS_BACKENDS_UNIFORM_GRID_LINEAR_INTERPOLANT_HPP

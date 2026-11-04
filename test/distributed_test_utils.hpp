@@ -1,5 +1,5 @@
-#ifndef PCMS_TEST_DISTRIBUTED_TEST_UTILS_H
-#define PCMS_TEST_DISTRIBUTED_TEST_UTILS_H
+#ifndef PCMS_TEST_DISTRIBUTED_TEST_UTILS_HPP
+#define PCMS_TEST_DISTRIBUTED_TEST_UTILS_HPP
 
 // Shared helpers for the MPI tests of distributed fields.
 //
@@ -148,4 +148,4 @@ Kokkos::View<T**, pcms::HostMemorySpace> ValuesWithGhostsHost(
 
 } // namespace distributed_test
 
-#endif // PCMS_TEST_DISTRIBUTED_TEST_UTILS_H
+#endif // PCMS_TEST_DISTRIBUTED_TEST_UTILS_HPP

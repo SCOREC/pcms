@@ -1,5 +1,5 @@
-#ifndef PCMS_OMEGA_H_FIELD_DATA_H
-#define PCMS_OMEGA_H_FIELD_DATA_H
+#ifndef PCMS_BACKENDS_OMEGA_H_FIELD_DATA_HPP
+#define PCMS_BACKENDS_OMEGA_H_FIELD_DATA_HPP
 
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/field_layout.hpp"
@@ -154,4 +154,4 @@ private:
 
 } // namespace pcms::backend::omega_h
 
-#endif // PCMS_OMEGA_H_FIELD_DATA_H
+#endif // PCMS_BACKENDS_OMEGA_H_FIELD_DATA_HPP

@@ -1,5 +1,5 @@
-#ifndef PCMS_SRC_PCMS_PROFILE_H
-#define PCMS_SRC_PCMS_PROFILE_H
+#ifndef PCMS_UTILITY_DETAIL_PROFILE_HPP
+#define PCMS_UTILITY_DETAIL_PROFILE_HPP
 #include <perfstubs_api/timer.h>
 
 // perfstubs currently has a buffer overflow
@@ -9,4 +9,4 @@
 // #define PCMS_FUNCTION_TIMER PERFSTUBS_SCOPED_TIMER_FUNC()
 #define PCMS_FUNCTION_TIMER
 
-#endif // PCMS_SRC_PCMS_PROFILE_H
+#endif // PCMS_UTILITY_DETAIL_PROFILE_HPP

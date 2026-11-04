@@ -1,5 +1,5 @@
-#ifndef PCMS_XGC_FIELD_DATA_H
-#define PCMS_XGC_FIELD_DATA_H
+#ifndef PCMS_BACKENDS_XGC_FIELD_DATA_HPP
+#define PCMS_BACKENDS_XGC_FIELD_DATA_HPP
 
 #include "pcms/backends/xgc/layout.hpp"
 #include "pcms/field/field_data.hpp"
@@ -115,4 +115,4 @@ private:
 
 } // namespace pcms::backend::xgc
 
-#endif // PCMS_XGC_FIELD_DATA_H
+#endif // PCMS_BACKENDS_XGC_FIELD_DATA_HPP

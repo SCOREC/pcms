@@ -1,5 +1,5 @@
-#ifndef POINT_CLOUD_H_
-#define POINT_CLOUD_H_
+#ifndef PCMS_BACKENDS_POINT_CLOUD_FIELD_DATA_HPP
+#define PCMS_BACKENDS_POINT_CLOUD_FIELD_DATA_HPP
 
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/value_view.hpp"
@@ -32,4 +32,4 @@ private:
 };
 } // namespace pcms::backend::point_cloud
 
-#endif // POINT_CLOUD_H_
+#endif // PCMS_BACKENDS_POINT_CLOUD_FIELD_DATA_HPP

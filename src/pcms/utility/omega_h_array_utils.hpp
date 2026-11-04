@@ -1,5 +1,5 @@
-#ifndef PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_H
-#define PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_H
+#ifndef PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_HPP
+#define PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_HPP
 
 #include <Omega_h_array.hpp>
 #include <Omega_h_mesh.hpp>
@@ -110,4 +110,4 @@ void SynchronizeOmegaHBlock(Omega_h::Mesh& mesh, int dim, int nc,
 
 } // namespace pcms::utility
 
-#endif // PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_H
+#endif // PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_HPP

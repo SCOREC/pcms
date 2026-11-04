@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_UNIFORM_GRID_H
-#define PCMS_COUPLING_UNIFORM_GRID_H
+#ifndef PCMS_UTILITY_UNIFORM_GRID_HPP
+#define PCMS_UTILITY_UNIFORM_GRID_HPP
 #include "pcms/utility/bounding_box.hpp"
 #include <Kokkos_Core.hpp>
 #include <algorithm>
@@ -163,4 +163,4 @@ template <unsigned dim>
 
 } // namespace pcms
 
-#endif // PCMS_COUPLING_UNIFORM_GRID_H
+#endif // PCMS_UTILITY_UNIFORM_GRID_HPP

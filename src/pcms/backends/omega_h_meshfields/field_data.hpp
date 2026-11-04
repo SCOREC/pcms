@@ -1,5 +1,5 @@
-#ifndef PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_FIELD_DATA_H
-#define PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_FIELD_DATA_H
+#ifndef PCMS_BACKENDS_OMEGA_H_MESHFIELDS_FIELD_DATA_HPP
+#define PCMS_BACKENDS_OMEGA_H_MESHFIELDS_FIELD_DATA_HPP
 
 #include "pcms/backends/omega_h_meshfields/layout.hpp"
 #include "pcms/backends/omega_h_meshfields/evaluator_backend.hpp"
@@ -220,4 +220,4 @@ private:
 
 } // namespace pcms::backend::omega_h_meshfields
 
-#endif // PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_FIELD_DATA_H
+#endif // PCMS_BACKENDS_OMEGA_H_MESHFIELDS_FIELD_DATA_HPP

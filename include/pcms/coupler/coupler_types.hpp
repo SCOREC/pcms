@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLER_TYPES_H_
-#define PCMS_COUPLER_TYPES_H_
+#ifndef PCMS_COUPLER_COUPLER_TYPES_HPP
+#define PCMS_COUPLER_COUPLER_TYPES_HPP
 
 #include <redev.h>
 
@@ -26,4 +26,4 @@ inline redev::Mode ToRedev(Mode mode) noexcept
 
 } // namespace pcms
 
-#endif // PCMS_COUPLER_TYPES_H_
+#endif // PCMS_COUPLER_COUPLER_TYPES_HPP

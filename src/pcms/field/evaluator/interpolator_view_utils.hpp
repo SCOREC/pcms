@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_VIEW_UTILS_HPP
-#define PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_VIEW_UTILS_HPP
+#ifndef PCMS_FIELD_EVALUATOR_INTERPOLATOR_VIEW_UTILS_HPP
+#define PCMS_FIELD_EVALUATOR_INTERPOLATOR_VIEW_UTILS_HPP
 
 #include <pcms/field/evaluator/interpolator_aliases.hpp>
 #include <Omega_h_array_ops.hpp>
@@ -265,4 +265,4 @@ void scale_and_adjust(member_type team, ScratchVecView& diagonal_entries,
 } // namespace detail
 } // namespace pcms::field
 
-#endif // PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_VIEW_UTILS_HPP
+#endif // PCMS_FIELD_EVALUATOR_INTERPOLATOR_VIEW_UTILS_HPP

@@ -1,5 +1,5 @@
-#ifndef PCMS_MPI_TYPE_H
-#define PCMS_MPI_TYPE_H
+#ifndef PCMS_UTILITY_MPI_TYPE_HPP
+#define PCMS_UTILITY_MPI_TYPE_HPP
 
 #include "pcms/utility/types.hpp"
 #include <complex>
@@ -74,4 +74,4 @@ template <class T>
 
 } // namespace pcms::utility
 
-#endif // PCMS_MPI_TYPE_H
+#endif // PCMS_UTILITY_MPI_TYPE_HPP

@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_FACTORY_H
-#define PCMS_FIELD_FACTORY_H
+#ifndef PCMS_FIELD_FIELD_FACTORY_HPP
+#define PCMS_FIELD_FIELD_FACTORY_HPP
 
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_data.hpp"
@@ -122,4 +122,4 @@ Field<T> FieldFactory::CreateField(std::string name,
 
 } // namespace pcms
 
-#endif // PCMS_FIELD_FACTORY_H
+#endif // PCMS_FIELD_FIELD_FACTORY_HPP

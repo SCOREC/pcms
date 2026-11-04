@@ -16,7 +16,8 @@ if(PCMS_ENABLE_OMEGA_H)
 
   # layouts, Lagrange evaluator and the uniform-grid binary field: part of
   # pcms::field
-  target_sources(pcms_field PRIVATE entity_layout.cpp lagrange_layout.cpp)
+  target_sources(pcms_field PRIVATE entity_layout.cpp lagrange_layout.cpp
+                                    uniform_grid_binary_field.cpp)
   target_sources(
     pcms_field
     PUBLIC FILE_SET field TYPE HEADERS BASE_DIRS

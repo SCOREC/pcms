@@ -5,10 +5,14 @@
 // Omega_h mesh. This header (and only backend headers) may use Omega_h types.
 
 #include "pcms/discretization/discretization.hpp"
+#include "pcms/field/field.hpp"
+#include "pcms/utility/types.hpp"
+#include "pcms/utility/uniform_grid.hpp"
 
 #include <Omega_h_array.hpp>
 #include <Omega_h_mesh.hpp>
 
+#include <array>
 #include <memory>
 #include <string>
 
@@ -30,6 +34,14 @@ std::shared_ptr<const Discretization> CreateDiscretization(
 /// The Omega_h mesh of a discretization created by CreateDiscretization.
 /// Throws pcms_error if the discretization is not Omega_h-based.
 Omega_h::Mesh& GetMesh(const Discretization& discretization);
+
+/// 0/1 field on the vertices of a 2D uniform grid marking the vertices that
+/// lie inside mesh. The grid is given, or covers the mesh's bounding box with
+/// the given number of cells per axis.
+Field<Real> CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
+                                         const UniformGrid<2>& grid);
+Field<Real> CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
+                                         std::array<LO, 2> divisions);
 
 } // namespace pcms::backend::omega_h
 

@@ -11,6 +11,8 @@ include(CMakePackageConfigHelpers)
 cmake_policy(SET CMP0074 NEW)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+# map options renamed in 0.4 (e.g. PCMS_ENABLE_Python) to their new names
+include(PcmsRenamedOptions)
 
 option(PCMS_ENABLE_ASAN "enable address sanitizer" OFF)
 set(PCMS_HAS_ASAN OFF)

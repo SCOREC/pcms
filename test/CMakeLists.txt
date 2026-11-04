@@ -711,3 +711,12 @@ if(TARGET pcms::coupler)
   add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)
   target_link_libraries(xgc_n0_server PUBLIC pcms::pcms test_support)
 endif()
+
+# installed core headers must not include backend libraries
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME public_header_includes
+           COMMAND ${Python3_EXECUTABLE}
+                   ${PROJECT_SOURCE_DIR}/tools/check-public-includes.py
+                   ${PROJECT_SOURCE_DIR})
+endif()

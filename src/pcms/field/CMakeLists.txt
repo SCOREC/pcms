@@ -67,13 +67,13 @@ endif ()
 
 if (PCMS_ENABLE_MFEM)
     list(APPEND PCMS_FIELD_SOURCES
-            layout/mfem.cpp
-            data/mfem.cpp
+            ../backends/mfem/layout.cpp
+            ../backends/mfem/field_data.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
-            layout/mfem.hpp
-            data/mfem.hpp
-            function_space/mfem.hpp
+            ../backends/mfem/layout.hpp
+            ../backends/mfem/field_data.hpp
+            ../backends/mfem/field_factory.hpp
     )
 endif ()
 

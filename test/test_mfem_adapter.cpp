@@ -2,9 +2,9 @@
 
 #include <pcms/coupler/field_serializer.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
-#include <pcms/field/data/mfem.hpp>
-#include <pcms/field/function_space/mfem.hpp>
-#include <pcms/field/layout/mfem.hpp>
+#include <pcms/backends/mfem/field_data.hpp>
+#include <pcms/backends/mfem/field_factory.hpp>
+#include <pcms/backends/mfem/layout.hpp>
 
 #include <mfem.hpp>
 

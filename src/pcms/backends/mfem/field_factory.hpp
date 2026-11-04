@@ -2,9 +2,9 @@
 #define PCMS_MFEM_FIELD_FACTORY_HPP
 
 #include "pcms/utility/coordinate_system.hpp"
-#include "pcms/field/data/mfem.hpp"
+#include "pcms/backends/mfem/field_data.hpp"
 #include "pcms/field/field_factory.hpp"
-#include "pcms/field/layout/mfem.hpp"
+#include "pcms/backends/mfem/layout.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/common.hpp"
 

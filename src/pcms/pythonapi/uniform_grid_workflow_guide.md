@@ -114,7 +114,7 @@ Create a mask where each uniform grid vertex is marked as 1 (inside mesh) or 0 (
 
 ```python
 # Create binary mask indicating which vertices are inside the mesh
-mask_field = pcms.create_uniform_grid_binary_field(mesh, [4, 4])
+mask_field = pcms.backend.omega_h.create_uniform_grid_binary_field(mesh, [4, 4])
 print(f"Created mask field with {mask_field.get_layout().get_num_owned_dof_holder()} vertices")
 ```
 
@@ -135,11 +135,10 @@ mask_value = mask_data[vertex_id, 0]  # Returns 0.0 or 1.0
 ```python
 # Create a concrete FunctionSpace with linear (order=1) elements and
 # 1 component (scalar)
-omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
-    mesh,
+omega_h_factory = pcms.create_lagrange_space(
+    pcms.backend.omega_h.create_discretization(mesh),
     1,
-    1,
-)
+    1)
 omega_h_field = omega_h_factory.create_function()
 
 # Initialize field with f(x,y) = x + 2*y
@@ -171,8 +170,10 @@ face_field = mesh.get_tag(face_dim, face_tag.name())
 vertex_field = pcms.map_entity_field_to_vertices_average(mesh, face_field, face_dim)
 
 # Create vertex-based field and set data
-omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
-    mesh, 1, 1)
+omega_h_factory = pcms.create_lagrange_space(
+    pcms.backend.omega_h.create_discretization(mesh),
+    1,
+    1)
 omega_h_field = omega_h_factory.create_function()
 omega_h_field.set_dof_holder_data(vertex_field)
 
@@ -186,8 +187,9 @@ Set up the data structure for storing field values on the uniform grid vertices.
 
 ```python
 # Create a uniform-grid FunctionSpace
-ug_factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-    grid,
+ug_factory = pcms.create_lagrange_space(
+    pcms.create_uniform_grid_discretization(grid),
+    1,                                      # order
     1,                                      # Number of components
 )
 ug_field = ug_factory.create_function()
@@ -243,7 +245,7 @@ np.save('field_data.npy', grid_values)
 
 ### Grid Creation
 - `create_uniform_grid_from_mesh(mesh, divisions)` - Create grid from mesh
-- `create_uniform_grid_binary_field(mesh, divisions)` - Create inside/outside mask
+- `backend.omega_h.create_uniform_grid_binary_field(mesh, divisions)` - Create inside/outside mask
 
 The Python names mirror the C++ API: classes keep their C++ names, C++
 namespaces are submodules (`pcms.csys`, `pcms.values`), and methods are the
@@ -262,9 +264,10 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 
 ### Field Factories
 - `FunctionSpace` - abstract base class for field spaces; a `PointEvaluatorFactory`
-- `LagrangeFunctionSpace.from_mesh(mesh, order, num_components, mesh_coordinate_system)` - create an Omega_h-backed FunctionSpace
-- `LagrangeFunctionSpace.from_uniform_grid(grid, num_components, mesh_coordinate_system, order=1)` - create a uniform-grid-backed FunctionSpace
-- `PolynomialReconstructionFunctionSpace.create(coordinate_view, options)` - MLS reconstruction over a point cloud
+- `backend.omega_h.create_discretization(mesh)` - discretization on an Omega_h mesh
+- `create_uniform_grid_discretization(grid)` - discretization of a uniform grid
+- `create_lagrange_space(discretization, order, num_components, coordinate_system)` - Lagrange FunctionSpace on either
+- `create_polynomial_reconstruction_space(coordinate_view, options)` - MLS reconstruction over a point cloud
 
 ### Field Operations
 - `space.create_function(name="", variance=values.Scalar, system=None, scaling=None)` - Create a real-valued `Function`; vector and tensor values are in `system`'s basis (default: the space's)

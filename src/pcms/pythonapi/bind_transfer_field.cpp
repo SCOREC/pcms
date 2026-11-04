@@ -15,9 +15,7 @@
 #include "pcms/utility/types.hpp"
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
 #include "pcms/transfer/mass_matrix_type.hpp"
-#include "pcms/transfer/omega_h_conservative_projection.hpp"
 #include "pcms/transfer/projection.hpp"
-#include "pcms/transfer/omega_h_control_variate_projection.hpp"
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
 #include <cstdint>
 #endif
@@ -121,50 +119,6 @@ void bind_transfer_field_module(py::module& m)
   // Conservative L2 (Galerkin) projection between order-1 Lagrange spaces on
   // Omega_h 2D simplex meshes. The RHS is integrated exactly over the
   // intersection of the source and target meshes.
-  py::class_<OmegaHConservativeProjection, TransferOperator<Real>>(
-    m, "OmegaHConservativeProjection")
-    .def(py::init([](const FunctionSpace& source_space,
-                     const FunctionSpace& target_space,
-                     MassMatrixType mass_matrix_type) {
-           return std::make_unique<OmegaHConservativeProjection>(
-             source_space, target_space, mass_matrix_type);
-         }),
-         py::arg("source_space"), py::arg("target_space"),
-         py::arg("mass_matrix_type") = MassMatrixType::Consistent,
-         py::keep_alive<1, 2>(), py::keep_alive<1, 3>(),
-         "Construct a mesh-intersection conservative projection. Mesh "
-         "intersection, quadrature setup, and mass-matrix factorization happen "
-         "here and are cached; call apply() repeatedly.");
-
-  // Sampling strategy for the Monte Carlo RHS integrator.
-  py::enum_<MonteCarloSampling>(m, "MonteCarloSampling")
-    .value("UniformRandom", MonteCarloSampling::UniformRandom,
-           "Independent pseudo-random uniform draws per element")
-    .export_values();
-
-  // Variance-reduced Monte Carlo Galerkin projection. The source field is
-  // first interpolated onto the target space as a control variate; only the
-  // residual is integrated stochastically, so sampling noise is small (and
-  // exactly zero when the source already lives in the target space).
-  py::class_<OmegaHControlVariateProjection, TransferOperator<Real>>(
-    m, "OmegaHControlVariateProjection")
-    .def(py::init([](const FunctionSpace& source_space,
-                     const FunctionSpace& target_space, int samples_per_element,
-                     MonteCarloSampling sampling, std::uint64_t seed,
-                     MassMatrixType mass_matrix_type) {
-           return std::make_unique<OmegaHControlVariateProjection>(
-             source_space, target_space, samples_per_element, sampling, seed,
-             mass_matrix_type);
-         }),
-         py::arg("source_space"), py::arg("target_space"),
-         py::arg("samples_per_element"),
-         py::arg("sampling") = MonteCarloSampling::UniformRandom,
-         py::arg("seed") = std::uint64_t(8675309),
-         py::arg("mass_matrix_type") = MassMatrixType::Consistent,
-         py::keep_alive<1, 2>(), py::keep_alive<1, 3>(),
-         "Construct a Monte Carlo (control-variate) conservative projection. "
-         "Sample-point generation, the control-variate interpolator, and the "
-         "mass-matrix factorization are cached; call apply() repeatedly.");
   m.def(
     "create_conservative_projection",
     [](const FunctionSpace& source_space, const FunctionSpace& target_space,
@@ -180,6 +134,16 @@ void bind_transfer_field_module(py::module& m)
     "quadrature setup, and mass-matrix factorization happen here and are "
     "cached; call apply() repeatedly.");
 
+  // Sampling strategy for the Monte Carlo RHS integrator.
+  py::enum_<MonteCarloSampling>(m, "MonteCarloSampling")
+    .value("UniformRandom", MonteCarloSampling::UniformRandom,
+           "Independent pseudo-random uniform draws per element")
+    .export_values();
+
+  // Variance-reduced Monte Carlo Galerkin projection. The source field is
+  // first interpolated onto the target space as a control variate; only the
+  // residual is integrated stochastically, so sampling noise is small (and
+  // exactly zero when the source already lives in the target space).
   m.def(
     "create_control_variate_projection",
     [](const FunctionSpace& source_space, const FunctionSpace& target_space,

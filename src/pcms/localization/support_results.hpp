@@ -3,7 +3,7 @@
 
 #include <Omega_h_array.hpp>
 
-namespace pcms
+namespace pcms::localization
 {
 
 struct SupportResults
@@ -13,6 +13,6 @@ struct SupportResults
   Omega_h::Write<Omega_h::Real> radii2;
 };
 
-} // namespace pcms
+} // namespace pcms::localization
 
 #endif // PCMS_LOCALIZATION_SUPPORT_RESULTS_HPP

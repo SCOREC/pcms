@@ -28,7 +28,7 @@ class MLSPointEvaluator : public PointEvaluator<Real, LayoutPolicy>
 {
 public:
   MLSPointEvaluator(Omega_h::Reals source_coords, Omega_h::Reals target_coords,
-                    SupportResults supports, int dim, MLSOptions options)
+                    pcms::localization::SupportResults supports, int dim, MLSOptions options)
     : source_coords_(std::move(source_coords)),
       target_coords_(std::move(target_coords)),
       supports_(std::move(supports)),
@@ -88,7 +88,7 @@ public:
 private:
   Omega_h::Reals source_coords_;
   Omega_h::Reals target_coords_;
-  SupportResults supports_;
+  pcms::localization::SupportResults supports_;
   int dim_;
   MLSOptions options_;
 };

@@ -10,7 +10,7 @@
 #include <Omega_h_array.hpp>
 #include <string>
 
-namespace pcms
+namespace pcms::localization
 {
 
 SupportResults AdjacencyLocalizationFactory::Build(
@@ -66,4 +66,4 @@ SupportResults AdjacencyLocalizationFactory::BuildSameMeshCentroidToVertex()
                          options_.adapt_radius);
 }
 
-} // namespace pcms
+} // namespace pcms::localization

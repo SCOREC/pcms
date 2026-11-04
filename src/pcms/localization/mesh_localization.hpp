@@ -6,7 +6,7 @@
 
 #include <Omega_h_mesh.hpp>
 
-namespace pcms
+namespace pcms::localization
 {
 
 // LocalizationFactory implementation using mesh-adjacency BFS search.
@@ -39,6 +39,6 @@ private:
   MLSOptions options_;
 };
 
-} // namespace pcms
+} // namespace pcms::localization
 
 #endif // PCMS_LOCALIZATION_ADJACENCY_LOCALIZATION_H

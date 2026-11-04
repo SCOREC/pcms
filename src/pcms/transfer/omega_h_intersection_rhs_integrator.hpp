@@ -59,7 +59,7 @@ private:
     std::shared_ptr<const CoordinateSystem> source_coordinate_system,
     std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout,
     std::shared_ptr<const CoordinateSystem> target_coordinate_system,
-    const GridPointSearchVariant* source_search);
+    const pcms::localization::GridPointSearchVariant* source_search);
 
   Vec vec_ = nullptr;
   Kokkos::View<Real**, DeviceMemorySpace>

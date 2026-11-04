@@ -65,7 +65,7 @@ PolynomialReconstructionFunctionSpace::FromMesh(
       "coordinate system whose metric is the identity; got '" +
       std::string(mesh_layout->GetCoordinateSystem()->Kind()) + "'");
   }
-  auto localization = std::make_shared<AdjacencyLocalizationFactory>(
+  auto localization = std::make_shared<pcms::localization::AdjacencyLocalizationFactory>(
     mesh, source_entity_dim, options);
   auto eval_factory = std::make_shared<pcms::backend::point_cloud::PointCloudEvaluatorFactory>(
     mesh_layout, localization, options);

@@ -1,0 +1,16 @@
+# namespace-scope names declared by the files that move to pcms::localization
+AdjacencyLocalizationFactory
+BuildPointCloudSupports
+GetOwningElementId
+GridPointSearch2D
+GridPointSearch3D
+GridPointSearchVariant
+LocalizationFactory
+PointLocalizationSearch
+PointLocalizationSearch2D
+PointLocalizationSearch3D
+SupportResults
+adapt_radii
+minmax
+triangle_intersects_bbox
+within_number_of_support_range

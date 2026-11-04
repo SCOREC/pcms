@@ -144,7 +144,7 @@ public:
     pcms::Rank1View<double, pcms::HostMemorySpace> source_field,
     pcms::Rank1View<double, pcms::HostMemorySpace> target_field) override;
 
-  SupportResults getSupports() { return supports_; }
+  pcms::localization::SupportResults getSupports() { return supports_; }
   size_t getSourceSize() const override { return source_coords_.size() / dim_; }
   size_t getTargetSize() const override { return target_coords_.size() / dim_; }
 
@@ -166,7 +166,7 @@ private:
   Omega_h::Reals source_coords_; /*!< Source point coordinates */
   Omega_h::Reals target_coords_; /*!< Target point coordinates */
 
-  SupportResults supports_; /*!< Support structure for MLS interpolation */
+  pcms::localization::SupportResults supports_; /*!< Support structure for MLS interpolation */
 
   Omega_h::HostWrite<Omega_h::Real> target_field_; /*!< Target field storage */
   Omega_h::HostWrite<Omega_h::Real> source_field_; /*!< Provided source field */
@@ -258,7 +258,7 @@ public:
   size_t getSourceSize() const override;
   size_t getTargetSize() const override;
 
-  SupportResults getSupports() { return supports_; }
+  pcms::localization::SupportResults getSupports() { return supports_; }
 
 private:
   double radius_; /*!< Cutoff radius for the MLS interpolation */
@@ -280,7 +280,7 @@ private:
   Omega_h::Reals source_coords_; /*!< Source point coordinates */
   Omega_h::Reals target_coords_; /*!< Target point coordinates */
 
-  SupportResults supports_; /*!< Support structure for MLS interpolation */
+  pcms::localization::SupportResults supports_; /*!< Support structure for MLS interpolation */
 
   Omega_h::HostWrite<Omega_h::Real> target_field_; /*!< Target field storage */
   Omega_h::HostWrite<Omega_h::Real> source_field_; /*!< Provided source field */

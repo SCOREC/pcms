@@ -7,7 +7,7 @@ namespace pcms::backend::omega_h
 // Debug helper retained intentionally: useful for diagnosing point-localization
 // failures while developing support-search logic.
 [[maybe_unused]] static void checkTargetPoints(
-  const Kokkos::View<pcms::GridPointSearch2D::Result*>& results,
+  const Kokkos::View<pcms::localization::GridPointSearch2D::Result*>& results,
   const Kokkos::View<pcms::LO*>& owning_cell_ids)
 {
   Kokkos::fence();
@@ -90,7 +90,7 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
       });
     Kokkos::fence();
 
-    pcms::GridPointSearch2D search_cell(source_mesh, 10, 10);
+    pcms::localization::GridPointSearch2D search_cell(source_mesh, 10, 10);
     auto results = search_cell(target_points);
     auto owning_cell_ids = search_cell.GetOwningElementIds(results);
     Omega_h::parallel_for(
@@ -113,7 +113,7 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
       });
     Kokkos::fence();
 
-    pcms::GridPointSearch3D search_cell(source_mesh, 10, 10, 10);
+    pcms::localization::GridPointSearch3D search_cell(source_mesh, 10, 10, 10);
     auto results = search_cell(target_points);
     auto owning_cell_ids = search_cell.GetOwningElementIds(results);
     Omega_h::parallel_for(
@@ -358,7 +358,7 @@ void FindSupports::adjBasedSearchCentroidNodes(
     "count the number of supports in each target point");
 }
 
-SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
+pcms::localization::SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
                                const Omega_h::Reals& target_coords,
                                Omega_h::LO nvertices_target,
                                Omega_h::Real& cutoffDistance,
@@ -405,13 +405,13 @@ SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
 
       unsigned min_supports_found = 0;
       unsigned max_supports_found = 0;
-      minmax(nSupports, min_supports_found, max_supports_found);
+      pcms::localization::minmax(nSupports, min_supports_found, max_supports_found);
       r_adjust_loop++;
       pcms::printInfo(
         "Iter: %d min_nSupports: %d max_nSupports: %d, max_radius %f\n",
         r_adjust_loop, min_supports_found, max_supports_found, max_radius);
 
-      if (within_number_of_support_range(min_supports_found, max_supports_found,
+      if (pcms::localization::within_number_of_support_range(min_supports_found, max_supports_found,
                                          min_req_support,
                                          3 * min_req_support)) {
         break;
@@ -425,7 +425,7 @@ SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
         break;
       }
 
-      adapt_radii(min_req_support, max_allowed_support, nvertices_target,
+      pcms::localization::adapt_radii(min_req_support, max_allowed_support, nvertices_target,
                   radii2, nSupports);
     }
 
@@ -446,10 +446,10 @@ SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
                            supports_ptr, nSupports, supports_idx, radii2,
                            false);
 
-  return SupportResults{read(supports_ptr), read(supports_idx), radii2};
+  return pcms::localization::SupportResults{read(supports_ptr), read(supports_idx), radii2};
 }
 
-SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
+pcms::localization::SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
                                Omega_h::Mesh& target_mesh,
                                Omega_h::Real& cutoffDistance,
                                Omega_h::LO min_req_support,
@@ -464,7 +464,7 @@ SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
   return result;
 }
 
-SupportResults searchNeighbors(Omega_h::Mesh& mesh,
+pcms::localization::SupportResults searchNeighbors(Omega_h::Mesh& mesh,
                                Omega_h::Real cutoffDistance,
                                Omega_h::LO min_support, bool adapt_radius)
 {
@@ -503,7 +503,7 @@ SupportResults searchNeighbors(Omega_h::Mesh& mesh,
       Kokkos::fence();
       unsigned min_nSupports = 0;
       unsigned max_nSupports = 0;
-      minmax(nSupports, min_nSupports, max_nSupports);
+      pcms::localization::minmax(nSupports, min_nSupports, max_nSupports);
 
       r_adjust_loop++;
       pcms::printInfo(
@@ -511,7 +511,7 @@ SupportResults searchNeighbors(Omega_h::Mesh& mesh,
         "max_radius %f\n",
         r_adjust_loop, min_nSupports, max_nSupports, r_adjust_loop, max_radius);
 
-      if (within_number_of_support_range(min_nSupports, max_nSupports,
+      if (pcms::localization::within_number_of_support_range(min_nSupports, max_nSupports,
                                          min_support, 3 * min_support)) {
         break;
       }
@@ -524,7 +524,7 @@ SupportResults searchNeighbors(Omega_h::Mesh& mesh,
         break;
       }
 
-      adapt_radii(min_support, 3 * min_support, radii2.size(), radii2,
+      pcms::localization::adapt_radii(min_support, 3 * min_support, radii2.size(), radii2,
                   nSupports);
     }
     pcms::printInfo("INFO: Took %d loops to adjust the radius\n",
@@ -547,7 +547,7 @@ SupportResults searchNeighbors(Omega_h::Mesh& mesh,
                                      radii2, false);
 
   mesh.add_tag<Omega_h::Real>(Omega_h::VERT, "support_radius", 1, radii2);
-  return SupportResults{read(supports_ptr), read(supports_idx), radii2};
+  return pcms::localization::SupportResults{read(supports_ptr), read(supports_idx), radii2};
 }
 
 } // namespace pcms::backend::omega_h

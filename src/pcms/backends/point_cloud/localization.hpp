@@ -19,7 +19,7 @@ namespace pcms::backend::point_cloud
 //
 // Holds a reference to the PointCloudLayout so source coordinates are not
 // copied at construction time; they are extracted from the layout in Build().
-class PointCloudLocalizationFactory : public LocalizationFactory
+class PointCloudLocalizationFactory : public pcms::localization::LocalizationFactory
 {
 public:
   PointCloudLocalizationFactory(std::shared_ptr<const PointCloudLayout> layout,
@@ -28,7 +28,7 @@ public:
   {
   }
 
-  SupportResults Build(
+  pcms::localization::SupportResults Build(
     CoordinateView<DeviceMemorySpace> target_coords) const override
   {
     // Euclidean search structures are valid wherever
@@ -51,7 +51,7 @@ public:
     Omega_h::Reals target_coords_oh =
       pcms::utility::flatten_to_omega_h_reals(tgt_view, "tgt_coords");
 
-    return BuildPointCloudSupports(source_coords, target_coords_oh, dim,
+    return pcms::localization::BuildPointCloudSupports(source_coords, target_coords_oh, dim,
                                    options_.radius, options_.min_req_supports,
                                    options_.adapt_radius);
   }

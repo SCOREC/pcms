@@ -3,7 +3,7 @@
 
 #include <Omega_h_array.hpp>
 
-namespace pcms
+namespace pcms::localization
 {
 
 struct SupportResults;
@@ -39,5 +39,5 @@ SupportResults BuildPointCloudSupports(const Omega_h::Reals& source_coords,
                                        bool adapt_radius,
                                        unsigned max_iterations = 100);
 
-} // namespace pcms
+} // namespace pcms::localization
 #endif // PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_H

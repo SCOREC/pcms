@@ -55,7 +55,7 @@ TEST_CASE(
   pcms::backend::point_cloud::PointCloudLocalizationFactory factory(layout, options);
 
   auto actual = factory.Build(target_device.coordinate_view);
-  auto expected = pcms::BuildPointCloudSupports(
+  auto expected = pcms::localization::BuildPointCloudSupports(
     source_coords, source_coords, dim, options.radius, options.min_req_supports,
     options.adapt_radius);
 
@@ -77,7 +77,7 @@ TEST_CASE("LocalizationFactory: vertex adjacency Build matches two-mesh "
   options.min_req_supports = 15;
   options.adapt_radius = true;
 
-  pcms::AdjacencyLocalizationFactory factory(source_mesh, Omega_h::VERT,
+  pcms::localization::AdjacencyLocalizationFactory factory(source_mesh, Omega_h::VERT,
                                              options);
   auto target_coords =
     pcms::test::CopyOmegaHRealsToVector(target_mesh.coords());
@@ -152,7 +152,7 @@ TEST_CASE("LocalizationFactory: centroid-to-vertex Build correct on same-mesh "
   options.adapt_radius = true;
 
   // Source: face centroids on the mesh; target: mesh vertices.
-  pcms::AdjacencyLocalizationFactory factory(mesh, Omega_h::FACE, options);
+  pcms::localization::AdjacencyLocalizationFactory factory(mesh, Omega_h::FACE, options);
   auto actual = factory.BuildSameMeshCentroidToVertex();
 
   // Reference: direct call to the single-mesh centroid-to-vertex overload.
@@ -178,7 +178,7 @@ TEST_CASE("LocalizationFactory: correct with different meshes")
   options.min_req_supports = 8;
   options.adapt_radius = true;
 
-  pcms::AdjacencyLocalizationFactory factory(source_mesh, Omega_h::FACE,
+  pcms::localization::AdjacencyLocalizationFactory factory(source_mesh, Omega_h::FACE,
                                              options);
 
   auto target_coords =

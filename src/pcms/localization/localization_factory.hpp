@@ -5,7 +5,7 @@
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 
-namespace pcms
+namespace pcms::localization
 {
 
 // Abstract interface for building MLS support structures.
@@ -23,6 +23,6 @@ public:
     CoordinateView<DeviceMemorySpace> target_coords) const = 0;
 };
 
-} // namespace pcms
+} // namespace pcms::localization
 
 #endif // PCMS_LOCALIZATION_LOCALIZATION_FACTORY_H

@@ -177,8 +177,8 @@ inline bool AreArraysEqualUnordered(
   return freq1 == freq2;
 }
 
-inline void CheckSupportResultsEquivalent(const SupportResults& actual,
-                                          const SupportResults& expected)
+inline void CheckSupportResultsEquivalent(const pcms::localization::SupportResults& actual,
+                                          const pcms::localization::SupportResults& expected)
 {
   auto actual_ptr = Omega_h::HostRead<Omega_h::LO>(actual.supports_ptr);
   auto actual_idx = Omega_h::HostRead<Omega_h::LO>(actual.supports_idx);

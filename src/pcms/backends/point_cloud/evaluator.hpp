@@ -25,7 +25,7 @@ class PointCloudEvaluatorFactory : public FieldEvaluatorFactory<Real>
 {
 public:
   PointCloudEvaluatorFactory(std::shared_ptr<const FieldLayout> layout,
-                             std::shared_ptr<LocalizationFactory> localization,
+                             std::shared_ptr<pcms::localization::LocalizationFactory> localization,
                              MLSOptions options = {})
     : layout_(std::move(layout)),
       localization_(std::move(localization)),
@@ -71,12 +71,12 @@ public:
     Omega_h::Reals target_coords_oh =
       pcms::utility::flatten_to_omega_h_reals(tgt_view, "tgt_coords");
 
-    SupportResults supports;
+    pcms::localization::SupportResults supports;
     auto path =
       detail::SelectLocalizationPath(*layout_, request.GetQueryLayout());
     if (path == detail::LocalizationPath::CentroidToVertexAdjacencySearch) {
       auto* adjacency =
-        dynamic_cast<const AdjacencyLocalizationFactory*>(localization_.get());
+        dynamic_cast<const pcms::localization::AdjacencyLocalizationFactory*>(localization_.get());
       PCMS_ALWAYS_ASSERT(adjacency != nullptr);
       supports = adjacency->BuildSameMeshCentroidToVertex();
     } else {
@@ -90,7 +90,7 @@ public:
 
 private:
   std::shared_ptr<const FieldLayout> layout_;
-  std::shared_ptr<LocalizationFactory> localization_;
+  std::shared_ptr<pcms::localization::LocalizationFactory> localization_;
   MLSOptions options_;
 };
 

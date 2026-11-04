@@ -167,7 +167,7 @@ struct RBF_CUBIC
 
 Omega_h::Write<Omega_h::Real> mls_interpolation(
   const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
-  const Omega_h::Reals target_coordinates, const SupportResults& support,
+  const Omega_h::Reals target_coordinates, const pcms::localization::SupportResults& support,
   const Omega_h::LO& dim, const Omega_h::LO& degree, RadialBasisFunction bf,
   double lambda, double tol, double decay_factor)
 {
@@ -259,7 +259,7 @@ int calculate_basis_vector_size(const IntHostMatView& array)
   return sum;
 }
 
-int calculate_scratch_shared_size(const SupportResults& support,
+int calculate_scratch_shared_size(const pcms::localization::SupportResults& support,
                                   const int nvertices_target, int basis_size,
                                   int dim)
 {

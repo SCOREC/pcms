@@ -219,12 +219,12 @@ struct ComputeOffsetsDeviceFunctor
 struct CountPointsPerElementFunctor
 {
   Kokkos::View<LO*> elem_counts_;
-  Kokkos::View<GridPointSearch2D::Result*> search_results_;
+  Kokkos::View<pcms::localization::GridPointSearch2D::Result*> search_results_;
   Kokkos::View<LO*> owning_elem_ids_;
 
   CountPointsPerElementFunctor(
     Kokkos::View<LO*> elem_counts,
-    Kokkos::View<GridPointSearch2D::Result*> search_results,
+    Kokkos::View<pcms::localization::GridPointSearch2D::Result*> search_results,
     Kokkos::View<LO*> owning_elem_ids)
     : elem_counts_(elem_counts),
       search_results_(search_results),
@@ -247,7 +247,7 @@ struct FillCoordinatesAndIndicesFunctor
   Kokkos::View<LO*> offsets_;
   Kokkos::View<Real**> coordinates_;
   Kokkos::View<LO*> indices_;
-  Kokkos::View<GridPointSearch2D::Result*> search_results_;
+  Kokkos::View<pcms::localization::GridPointSearch2D::Result*> search_results_;
   Kokkos::View<LO*> owning_elem_ids_;
   Omega_h::Int dim_;
 
@@ -255,7 +255,7 @@ struct FillCoordinatesAndIndicesFunctor
     Omega_h::Mesh& mesh, Kokkos::View<LO*> elem_counts,
     Kokkos::View<LO*> offsets, Kokkos::View<Real**> coordinates,
     Kokkos::View<LO*> indices,
-    Kokkos::View<GridPointSearch2D::Result*> search_results,
+    Kokkos::View<pcms::localization::GridPointSearch2D::Result*> search_results,
     Kokkos::View<LO*> owning_elem_ids)
     : mesh_(mesh),
       elem_counts_(elem_counts),
@@ -287,13 +287,13 @@ struct FillCoordinatesAndIndicesFunctor
 // Device-side functors for processing search results
 struct FilterValidPointsFunctor
 {
-  Kokkos::View<GridPointSearch2D::Result*> search_results_;
+  Kokkos::View<pcms::localization::GridPointSearch2D::Result*> search_results_;
   Kokkos::View<LO*> valid_flags_;
   Kokkos::View<LO*> owning_elem_ids_;
   Omega_h::Int mesh_dim_;
   OutOfBoundsMode mode_;
 
-  FilterValidPointsFunctor(Kokkos::View<GridPointSearch2D::Result*> results,
+  FilterValidPointsFunctor(Kokkos::View<pcms::localization::GridPointSearch2D::Result*> results,
                            Kokkos::View<LO*> flags,
                            Kokkos::View<LO*> owning_elem_ids,
                            Omega_h::Int mesh_dim, OutOfBoundsMode mode)
@@ -362,12 +362,12 @@ struct CompactIndicesFunctor
 
 struct CountPerElementFunctor
 {
-  Kokkos::View<GridPointSearch2D::Result*> search_results_;
+  Kokkos::View<pcms::localization::GridPointSearch2D::Result*> search_results_;
   Kokkos::View<LO*> valid_indices_;
   Kokkos::View<LO*> owning_elem_ids_;
   Kokkos::View<LO*> elem_counts_;
 
-  CountPerElementFunctor(Kokkos::View<GridPointSearch2D::Result*> results,
+  CountPerElementFunctor(Kokkos::View<pcms::localization::GridPointSearch2D::Result*> results,
                          Kokkos::View<LO*> valid_indices,
                          Kokkos::View<LO*> owning_elem_ids,
                          Kokkos::View<LO*> elem_counts)
@@ -389,7 +389,7 @@ struct CountPerElementFunctor
 
 struct FillCoordinatesDeviceFunctor
 {
-  Kokkos::View<GridPointSearch2D::Result*> search_results_;
+  Kokkos::View<pcms::localization::GridPointSearch2D::Result*> search_results_;
   Kokkos::View<LO*> valid_indices_;
   Kokkos::View<LO*> owning_elem_ids_;
   Kokkos::View<LO*> elem_counts_;
@@ -403,7 +403,7 @@ struct FillCoordinatesDeviceFunctor
   Omega_h::Int dim_;
 
   FillCoordinatesDeviceFunctor(
-    Kokkos::View<GridPointSearch2D::Result*> results,
+    Kokkos::View<pcms::localization::GridPointSearch2D::Result*> results,
     Kokkos::View<LO*> valid_indices, Kokkos::View<LO*> owning_elem_ids,
     Kokkos::View<LO*> elem_counts, Kokkos::View<LO*> offsets,
     Kokkos::View<Real**> coordinates, Kokkos::View<LO*> indices,
@@ -491,7 +491,7 @@ struct MeshFieldsAdapter2LocalizationHint
   // Host-side constructor (legacy, for compatibility)
   MeshFieldsAdapter2LocalizationHint(
     Omega_h::Mesh& mesh,
-    Kokkos::View<GridPointSearch2D::Result*, HostMemorySpace> search_results,
+    Kokkos::View<pcms::localization::GridPointSearch2D::Result*, HostMemorySpace> search_results,
     Kokkos::View<const Real**, HostMemorySpace> global_coords,
     Kokkos::View<LO*, HostMemorySpace> owning_elem_ids, OutOfBoundsMode mode)
     : mode_(mode), num_valid_(0), num_missing_(0)
@@ -602,7 +602,7 @@ struct MeshFieldsAdapter2LocalizationHint
   // Device-side constructor
   MeshFieldsAdapter2LocalizationHint(
     Omega_h::Mesh& mesh,
-    Kokkos::View<GridPointSearch2D::Result*> search_results_d,
+    Kokkos::View<pcms::localization::GridPointSearch2D::Result*> search_results_d,
     Kokkos::View<const Real**, DeviceMemorySpace> global_coords,
     Kokkos::View<LO*, DeviceMemorySpace> owning_elem_ids, OutOfBoundsMode mode)
     : mode_(mode), num_valid_(0), num_missing_(0)

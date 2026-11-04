@@ -182,8 +182,8 @@ TEST_CASE("intersection map is independent of the supplied source search",
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 7, 11, 0, false);
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 5, 3, 0, false);
-    const pcms::GridPointSearchVariant search{
-      std::in_place_type<pcms::GridPointSearch2D>, source, 3, 3};
+    const pcms::localization::GridPointSearchVariant search{
+      std::in_place_type<pcms::localization::GridPointSearch2D>, source, 3, 3};
     require_intersections_equivalent(
       pcms::intersectTargets(source, target, search),
       pcms::intersectTargets(source, target));
@@ -194,8 +194,8 @@ TEST_CASE("intersection map is independent of the supplied source search",
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 5, 3, 4, false);
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 2, 4, 3, false);
-    const pcms::GridPointSearchVariant search{
-      std::in_place_type<pcms::GridPointSearch3D>, source, 2, 2, 2};
+    const pcms::localization::GridPointSearchVariant search{
+      std::in_place_type<pcms::localization::GridPointSearch3D>, source, 2, 2, 2};
     require_intersections_equivalent(
       pcms::intersectTargets(source, target, search),
       pcms::intersectTargets(source, target));
@@ -208,8 +208,8 @@ TEST_CASE("intersection map is independent of the supplied source search",
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 2, 2, 2, false);
     auto flat =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 2, 2, 0, false);
-    const pcms::GridPointSearchVariant search{
-      std::in_place_type<pcms::GridPointSearch2D>, flat, 2, 2};
+    const pcms::localization::GridPointSearchVariant search{
+      std::in_place_type<pcms::localization::GridPointSearch2D>, flat, 2, 2};
     REQUIRE_THROWS_AS(pcms::intersectTargets(source, target, search),
                       pcms::pcms_error);
   }

@@ -298,7 +298,7 @@ void MLSPointCloudInterpolation::find_supports(unsigned min_req_supports,
   unsigned max_supports_found = 0;
   // radius adjustment loop
   int loop_count = 0;
-  while (!within_number_of_support_range(min_supports_found, max_supports_found,
+  while (!pcms::localization::within_number_of_support_range(min_supports_found, max_supports_found,
                                          min_req_supports,
                                          max_allowed_supports)) {
     distance_based_pointcloud_search(radii2_l, num_supports);
@@ -319,10 +319,10 @@ void MLSPointCloudInterpolation::find_supports(unsigned min_req_supports,
     }
 
     // find minimum and maximum number of supports found
-    minmax(num_supports, min_supports_found, max_supports_found);
+    pcms::localization::minmax(num_supports, min_supports_found, max_supports_found);
 
     // increase radius if not enough supports or too many supports
-    if (!within_number_of_support_range(min_supports_found, max_supports_found,
+    if (!pcms::localization::within_number_of_support_range(min_supports_found, max_supports_found,
                                         min_req_supports,
                                         max_allowed_supports)) {
       pcms::printInfo(
@@ -330,7 +330,7 @@ void MLSPointCloudInterpolation::find_supports(unsigned min_req_supports,
         "Allowed %d\n",
         loop_count, min_supports_found, max_supports_found, min_req_supports,
         max_allowed_supports);
-      adapt_radii(min_req_supports, max_allowed_supports, n_targets_, radii2_l,
+      pcms::localization::adapt_radii(min_req_supports, max_allowed_supports, n_targets_, radii2_l,
                   num_supports);
     }
   }

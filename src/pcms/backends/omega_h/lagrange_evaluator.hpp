@@ -65,7 +65,7 @@ struct CopyCoordsFunctor
 template <int Dim>
 OmegaHLagrangeLocHint BuildLagrangeLocHint(
   Omega_h::Mesh& mesh, int mesh_dim,
-  Kokkos::View<typename PointLocalizationSearch<Dim>::Result*,
+  Kokkos::View<typename pcms::localization::PointLocalizationSearch<Dim>::Result*,
                DeviceMemorySpace>
     results,
   Kokkos::View<Real**, DeviceMemorySpace> coords_d,
@@ -179,15 +179,15 @@ OmegaHLagrangeLocHint BuildLagrangeLocHint(
                                mode};
 }
 
-inline std::variant<GridPointSearch2D, GridPointSearch3D> MakeSearch(
+inline std::variant<pcms::localization::GridPointSearch2D, pcms::localization::GridPointSearch3D> MakeSearch(
   Omega_h::Mesh& mesh)
 {
   if (mesh.dim() == 2) {
     const auto n = DivisionsPerAxisForMesh<2>(mesh.nelems());
-    return GridPointSearch2D(mesh, n, n);
+    return pcms::localization::GridPointSearch2D(mesh, n, n);
   } else if (mesh.dim() == 3) {
     const auto n = DivisionsPerAxisForMesh<3>(mesh.nelems());
-    return GridPointSearch3D(mesh, n, n, n);
+    return pcms::localization::GridPointSearch3D(mesh, n, n, n);
   }
   throw std::invalid_argument(
     "OmegaHLagrangeEvaluatorFactory: only 2D and 3D meshes are supported");
@@ -333,7 +333,7 @@ public:
   /// operators which must locate points on the same mesh, such as the
   /// conservative transfer's intersection search, reuse it rather than build
   /// and hold a second copy of the candidate map.
-  [[nodiscard]] const GridPointSearchVariant& GetSearch() const noexcept
+  [[nodiscard]] const pcms::localization::GridPointSearchVariant& GetSearch() const noexcept
   {
     return search_;
   }
@@ -383,7 +383,7 @@ public:
 
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
-  GridPointSearchVariant search_;
+  pcms::localization::GridPointSearchVariant search_;
 };
 
 } // namespace pcms::backend::omega_h

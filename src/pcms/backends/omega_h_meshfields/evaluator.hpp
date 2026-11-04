@@ -157,7 +157,7 @@ public:
 private:
   std::shared_ptr<const MeshFieldsAdapterLayout> layout_;
   Omega_h::Mesh& mesh_;
-  mutable GridPointSearch2D search_;
+  mutable pcms::localization::GridPointSearch2D search_;
 };
 
 } // namespace pcms::backend::omega_h_meshfields

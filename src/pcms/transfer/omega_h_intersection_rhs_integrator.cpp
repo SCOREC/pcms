@@ -31,11 +31,11 @@ struct Data
 template <int Dim, int TgtOrder>
 Data BuildDataImpl(const pcms::backend::omega_h::OmegaHLagrangeLayout& source_layout,
                    const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout, int quad_order,
-                   const GridPointSearchVariant* source_search);
+                   const pcms::localization::GridPointSearchVariant* source_search);
 
 // The source space's point search, if the space is an Omega_h Lagrange space
 // and so owns one the intersection can reuse; null otherwise.
-const GridPointSearchVariant* SourceSearchFromSpace(const FunctionSpace& space)
+const pcms::localization::GridPointSearchVariant* SourceSearchFromSpace(const FunctionSpace& space)
 {
   const auto* lagrange = dynamic_cast<const LagrangeFunctionSpace*>(&space);
   if (lagrange == nullptr) {
@@ -51,7 +51,7 @@ Data BuildData(const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrang
                std::shared_ptr<const CoordinateSystem> source_coordinate_system,
                const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>& target_layout,
                std::shared_ptr<const CoordinateSystem> target_coordinate_system,
-               const GridPointSearchVariant* source_search)
+               const pcms::localization::GridPointSearchVariant* source_search)
 {
   detail::CheckOmegaHScalarLagrangeLayout(
     source_coordinate_system, source_layout, "OmegaHIntersectionRHSIntegrator",
@@ -86,7 +86,7 @@ Data BuildData(const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrang
 template <int Dim, int TgtOrder>
 Data BuildDataImpl(const pcms::backend::omega_h::OmegaHLagrangeLayout& source_layout,
                    const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout, int quad_order,
-                   const GridPointSearchVariant* source_search)
+                   const pcms::localization::GridPointSearchVariant* source_search)
 {
   using Basis = detail::TargetSimplexBasis<Dim, TgtOrder>;
   constexpr int ndof = Basis::ndof;
@@ -236,7 +236,7 @@ OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
   std::shared_ptr<const CoordinateSystem> source_coordinate_system,
   std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout,
   std::shared_ptr<const CoordinateSystem> target_coordinate_system,
-  const GridPointSearchVariant* source_search)
+  const pcms::localization::GridPointSearchVariant* source_search)
 {
   Data data = BuildData(source_layout, source_coordinate_system, target_layout,
                         target_coordinate_system, source_search);

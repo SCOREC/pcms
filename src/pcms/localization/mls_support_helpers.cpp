@@ -5,7 +5,7 @@
 
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::localization
 {
 
 // replace with Kokkos::minmax_element when out of experimental
@@ -226,4 +226,4 @@ SupportResults BuildPointCloudSupports(const Omega_h::Reals& source_coords,
                         radii2};
 }
 
-} // namespace pcms
+} // namespace pcms::localization

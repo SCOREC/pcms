@@ -1,0 +1,9 @@
+# files whose code moves to pcms::localization
+src/pcms/localization/localization_factory.hpp
+src/pcms/localization/mesh_localization.hpp
+src/pcms/localization/mls_support_helpers.hpp
+src/pcms/localization/point_search.hpp
+src/pcms/localization/support_results.hpp
+src/pcms/localization/mesh_localization.cpp
+src/pcms/localization/mls_support_helpers.cpp
+src/pcms/localization/point_search.cpp

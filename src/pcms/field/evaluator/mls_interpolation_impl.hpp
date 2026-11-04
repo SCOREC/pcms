@@ -93,7 +93,7 @@ int calculate_basis_vector_size(const IntHostMatView& array);
  *
  * @return The scratch size
  */
-int calculate_scratch_shared_size(const SupportResults& support,
+int calculate_scratch_shared_size(const pcms::localization::SupportResults& support,
                                   const int ntargets, int basis_size, int dim);
 /**
  *
@@ -399,7 +399,7 @@ template <typename Func>
 void mls_interpolation(RealConstDefaultRank1View source_values,
                        RealConstDefaultRank1View source_coordinates,
                        RealConstDefaultRank1View target_coordinates,
-                       const SupportResults& support, const Omega_h::LO& dim,
+                       const pcms::localization::SupportResults& support, const Omega_h::LO& dim,
                        const Omega_h::LO& degree, Func rbf_func,
                        RealDefaultRank1View approx_target_values, double lambda,
                        double tol)
@@ -609,7 +609,7 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
 template <typename Func>
 Omega_h::Write<Omega_h::Real> mls_interpolation(
   const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
-  const Omega_h::Reals target_coordinates, const SupportResults& support,
+  const Omega_h::Reals target_coordinates, const pcms::localization::SupportResults& support,
   const Omega_h::LO& dim, const Omega_h::LO& degree, Func rbf_func,
   double lambda, double tol)
 {

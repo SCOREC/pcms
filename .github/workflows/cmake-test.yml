@@ -332,8 +332,9 @@ jobs:
       if: matrix.python_api == 'OFF'
       shell: bash
       run: |
-        # Configure and build the test
-        # it should only ask for pcms_DIR/ROOT to find all dependencies
+        # Build examples/external-usage-example against the install tree only
+        # (installed headers, exported targets). The package config no longer
+        # bakes in dependency paths, so they come from CMAKE_PREFIX_PATH.
         ls ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms
         echo "-------- PCMS CONFIG -------------"
         cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms-config.cmake
@@ -346,9 +347,15 @@ jobs:
           -B ${{github.workspace}}/examples/external-usage-example/build \
           -S ${{github.workspace}}/examples/external-usage-example/ \
           -Dpcms_DIR=${{ runner.temp }}/build-pcms/install/lib/cmake/pcms \
+          -DCMAKE_PREFIX_PATH="${{ runner.temp }}/build-kokkos/install;${{ runner.temp }}/build-kokkos-kernels/install;${{ runner.temp }}/build-omega_h/install;${{ runner.temp }}/build-redev/install;${{ runner.temp }}/build-ADIOS2/install;${{ runner.temp }}/build-perfstubs/install;${{ runner.temp }}/build-meshFields/install" \
+          -DCMAKE_CXX_COMPILER=`which mpicxx` \
           ${{ matrix.petsc == 'ON' && format('-DPCMS_PETSC_LINK_STATIC=ON -DPETSC_DIR={0}/petsc -DPETSC_ARCH=ubuntu-kokkos', runner.temp) || '' }} \
           --debug-output
         cmake --build ${{github.workspace}}/examples/external-usage-example/build
+        mpirun --oversubscribe -np 1 ${{github.workspace}}/examples/external-usage-example/build/pcms_test
+
+    - name: Check public header includes
+      run: python3 tools/check-public-includes.py
 
   deploy-docs:
     needs: test-build

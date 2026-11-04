@@ -152,7 +152,7 @@ TEST_CASE("FieldSerializer round-trips a polynomial-reconstruction field")
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
-  auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto space = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<pcms::HostMemorySpace>(
       pcms::csys::Cartesian::Deferred(), coords_view));
   auto field = space->CreateFunction<pcms::Real>();
@@ -171,7 +171,7 @@ TEST_CASE("FieldSerializer round-trips a uniform-grid field")
   grid.bot_left = {0.0, 0.0};
   grid.edge_length = {10.0, 10.0};
   grid.divisions = {3, 3};
-  auto space = pcms::LagrangeFunctionSpace::FromUniformGrid(
+  auto space = pcms::field::LagrangeFunctionSpace::FromUniformGrid(
     grid, 1, pcms::csys::Cartesian::Deferred());
   auto field = space->CreateFunction<pcms::Real>();
 
@@ -206,9 +206,9 @@ TEST_CASE("FieldSerializer round-trips a multi-component Omega_h field")
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
   constexpr int num_components = 3;
-  auto space = pcms::LagrangeFunctionSpace::FromMesh(
+  auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, num_components, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
   auto field = space->CreateFunction<pcms::Real>();
 
   const int num_dof = field.GetLayout().GetNumOwnedDofHolder();
@@ -246,7 +246,7 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
-  auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto space = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<pcms::HostMemorySpace>(
       pcms::csys::Cartesian::Deferred(), coords_view));
   auto field = space->CreateFunction<pcms::Real>();

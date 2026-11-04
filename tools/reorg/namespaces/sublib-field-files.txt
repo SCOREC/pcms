@@ -1,0 +1,22 @@
+# files whose code moves to pcms::field
+# interpolator_aliases.hpp keeps its generic type aliases (member_type,
+# ScratchMatView, ...) in pcms:: (still private), since other files define
+# unrelated aliases with the same names.
+src/pcms/field/element_dispatch.hpp
+src/pcms/field/evaluator/interpolator_logger.hpp
+src/pcms/field/evaluator/interpolator_view_utils.hpp
+src/pcms/field/evaluator/mls_interpolation.hpp
+src/pcms/field/evaluator/mls_interpolation_impl.hpp
+src/pcms/field/field_evaluator_factory.hpp
+src/pcms/field/function_space/lagrange.hpp
+src/pcms/field/function_space/polynomial_reconstruction.hpp
+src/pcms/field/function_space/spline.hpp
+src/pcms/field/gid_permutation.hpp
+src/pcms/field/layout/empty.hpp
+src/pcms/field/localization_path_selection.hpp
+src/pcms/field/evaluator/mls_interpolation.cpp
+src/pcms/field/function_space/lagrange.cpp
+src/pcms/field/function_space/polynomial_reconstruction.cpp
+src/pcms/field/function_space/spline.cpp
+src/pcms/field/gid_permutation.cpp
+src/pcms/field/layout/empty.cpp

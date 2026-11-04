@@ -15,7 +15,7 @@
 #include <Omega_h_mesh.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::field
 {
 
 template <typename T>
@@ -61,6 +61,6 @@ private:
   std::shared_ptr<FieldEvaluatorFactory<Real>> evaluator_factory_;
 };
 
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_POLYNOMIAL_RECONSTRUCTION_FUNCTION_SPACE_H

@@ -97,7 +97,7 @@ private:
 // MeshFields-backed simplex meshes. It owns the spatial search structure and
 // the MeshFieldBackend (which holds the internal shape field).
 template <typename T>
-class MeshFieldsEvaluatorFactory : public FieldEvaluatorFactory<T>
+class MeshFieldsEvaluatorFactory : public pcms::field::FieldEvaluatorFactory<T>
 {
 public:
   explicit MeshFieldsEvaluatorFactory(

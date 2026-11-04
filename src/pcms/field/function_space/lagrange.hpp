@@ -22,7 +22,7 @@
 #include <string>
 #include <utility>
 
-namespace pcms
+namespace pcms::field
 {
 
 class LagrangeFunctionSpace : public FunctionSpace
@@ -103,6 +103,6 @@ private:
   std::shared_ptr<FieldEvaluatorFactory<Real>> evaluator_factory_;
 };
 
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_LAGRANGE_FIELD_FACTORY_H

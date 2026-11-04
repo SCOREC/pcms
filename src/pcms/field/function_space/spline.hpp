@@ -16,7 +16,7 @@
 
 #include <memory>
 
-namespace pcms
+namespace pcms::field
 {
 
 class SplineFunctionSpace : public FunctionSpace
@@ -55,6 +55,6 @@ private:
   std::shared_ptr<FieldEvaluatorFactory<Real>> evaluator_factory_;
 };
 
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_SPLINE_FUNCTION_SPACE_H

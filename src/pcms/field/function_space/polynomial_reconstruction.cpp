@@ -14,7 +14,7 @@
 #include <Omega_h_array.hpp>
 #include <string>
 
-namespace pcms
+namespace pcms::field
 {
 
 PolynomialReconstructionFunctionSpace::PolynomialReconstructionFunctionSpace(
@@ -112,7 +112,7 @@ FieldVariant PolynomialReconstructionFunctionSpace::CreateFieldImpl(
       "SimpleFieldData<double>");
   }
   if (fd->GetDOFAccess()->GetOwnedValues().size() !=
-      detail::ExpectedFlatFieldDataSize(*layout_)) {
+      pcms::detail::ExpectedFlatFieldDataSize(*layout_)) {
     throw pcms_error(
       "PolynomialReconstructionFunctionSpace::CreateField: field data size "
       "does not match layout");
@@ -133,4 +133,4 @@ PolynomialReconstructionFunctionSpace::CreatePointEvaluatorImpl(
   return evaluator_factory_->CreatePointEvaluator(request);
 }
 
-} // namespace pcms
+} // namespace pcms::field

@@ -5,7 +5,7 @@
 #include <string>
 #include <type_traits>
 
-namespace pcms::detail
+namespace pcms::field::detail
 {
 
 // Runtime -> compile-time bridge for finite-element order.
@@ -32,6 +32,6 @@ auto DispatchByOrder(int order, F&& f)
   }
 }
 
-} // namespace pcms::detail
+} // namespace pcms::field::detail
 
 #endif // PCMS_FIELD_ELEMENT_DISPATCH_H

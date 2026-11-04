@@ -3,7 +3,7 @@
 #include <Kokkos_MathematicalFunctions.hpp>
 #include <cmath>
 
-namespace pcms
+namespace pcms::field
 {
 
 // 'a' is a shape parameter
@@ -305,4 +305,4 @@ int calculate_scratch_shared_size(const pcms::localization::SupportResults& supp
 }
 
 } // namespace detail
-} // namespace pcms
+} // namespace pcms::field

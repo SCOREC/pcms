@@ -16,7 +16,7 @@
 
 #include <stdexcept>
 
-namespace pcms
+namespace pcms::field
 {
 
 namespace
@@ -44,7 +44,7 @@ void ValidateLagrangeWrappedFieldData(const FieldLayout& layout,
   }
 
   if (data.GetDOFAccess()->GetOwnedValues().size() !=
-      detail::ExpectedFlatFieldDataSize(layout)) {
+      pcms::detail::ExpectedFlatFieldDataSize(layout)) {
     throw pcms_error(
       "LagrangeFunctionSpace::CreateField: field data size does not match "
       "layout");
@@ -293,4 +293,4 @@ PointEvaluatorVariant LagrangeFunctionSpace::CreatePointEvaluatorImpl(
   return evaluator_factory_->CreatePointEvaluator(request);
 }
 
-} // namespace pcms
+} // namespace pcms::field

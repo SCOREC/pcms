@@ -53,7 +53,7 @@ static constexpr int MAX_DIM = 6;
  *        3     | 1 | 3 |
  */
 
-namespace pcms
+namespace pcms::field
 {
 
 namespace detail
@@ -637,6 +637,6 @@ Omega_h::Write<Omega_h::Real> mls_interpolation(
 }
 
 } // namespace detail
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_IMPL_HPP

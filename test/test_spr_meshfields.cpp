@@ -68,7 +68,7 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
   Omega_h::Write<Omega_h::Real> ignored(patches.a2ab.size() - 1, 1);
   pcms::localization::SupportResults support{patches.a2ab, patches.ab2b, ignored};
 
-  auto approx_target_values = pcms::mls_interpolation(
+  auto approx_target_values = pcms::field::mls_interpolation(
     source_values, source_coordinates, target_coordinates, support, dim, degree,
     pcms::RadialBasisFunction::NO_OP, 1e-5);
 

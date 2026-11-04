@@ -73,7 +73,7 @@ public:
       KOKKOS_LAMBDA(int i) { src_w[i] = device_data(i, 0); });
     Omega_h::Reals source_values(src_w);
 
-    auto result = mls_interpolation(
+    auto result = pcms::field::mls_interpolation(
       source_values, source_coords_, target_coords_, supports_, dim_,
       static_cast<Omega_h::LO>(options_.degree), options_.basis,
       options_.lambda, options_.tol, options_.decay_factor);

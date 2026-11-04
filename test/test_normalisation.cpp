@@ -63,7 +63,7 @@ TEST_CASE("test_normalization_routine")
       int num_supports = nsupports[league_rank];
       pcms::ScratchMatView local_supports(team.team_scratch(1), num_supports,
                                           dim);
-      pcms::detail::fill(0, team, local_supports);
+      pcms::field::detail::fill(0, team, local_supports);
 
       double target_point[PCMS_MAX_DIM] = {};
 
@@ -91,7 +91,7 @@ TEST_CASE("test_normalization_routine")
         });
 
       team.team_barrier();
-      pcms::detail::normalize_supports(team, target_point, local_supports);
+      pcms::field::detail::normalize_supports(team, target_point, local_supports);
       team.team_barrier();
 
       Kokkos::parallel_for(

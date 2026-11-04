@@ -5,7 +5,7 @@
 #include "pcms/field/field_layout.hpp"
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::field
 {
 
 class EmptyFieldLayout : public FieldLayout
@@ -48,6 +48,6 @@ private:
   int num_components_;
 };
 
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_EMPTY_FIELD_LAYOUT_H

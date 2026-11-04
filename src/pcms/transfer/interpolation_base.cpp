@@ -392,7 +392,7 @@ void MLSPointCloudInterpolation::eval(
   copyHostScalarArrayView2HostWrite(source_field, source_field_);
 
   // TODO: make the basis function a template or pass it as a parameter
-  auto target_field_write = mls_interpolation(
+  auto target_field_write = pcms::field::mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_,
     dim_, degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN, lambda_, 1e-6,
     decay_factor_);
@@ -418,7 +418,7 @@ void MLSMeshInterpolation::eval(
   copyHostScalarArrayView2HostWrite(source_field, source_field_);
 
   // TODO: make the basis function a template or pass it as a parameter
-  auto target_field_write = mls_interpolation(
+  auto target_field_write = pcms::field::mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_,
     source_mesh_.dim(), degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN,
     lambda_, 1e-6, decay_factor_);

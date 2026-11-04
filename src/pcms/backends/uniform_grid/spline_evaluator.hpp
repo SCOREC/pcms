@@ -198,7 +198,7 @@ private:
   Kokkos::View<Real*, DeviceMemorySpace> y_coords_;
 };
 
-class UniformGridSplineEvaluatorFactory2D : public FieldEvaluatorFactory<Real>
+class UniformGridSplineEvaluatorFactory2D : public pcms::field::FieldEvaluatorFactory<Real>
 {
 public:
   explicit UniformGridSplineEvaluatorFactory2D(

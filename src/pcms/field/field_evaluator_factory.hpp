@@ -11,7 +11,7 @@
 #include "pcms/discretization/discretization.hpp"
 #include <memory>
 
-namespace pcms
+namespace pcms::field
 {
 
 // FieldEvaluatorFactory<T> owns backend-specific knowledge needed to evaluate a
@@ -84,6 +84,6 @@ public:
   virtual ~FieldEvaluatorFactory() noexcept = default;
 };
 
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_FIELD_EVALUATOR_FACTORY_H

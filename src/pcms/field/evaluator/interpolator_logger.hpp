@@ -4,7 +4,7 @@
 #include <pcms/field/evaluator/interpolator_aliases.hpp>
 #include <Kokkos_Printf.hpp>
 
-namespace pcms
+namespace pcms::field
 {
 enum class LogLevel
 {
@@ -132,5 +132,5 @@ private:
     }
   }
 };
-} // namespace pcms
+} // namespace pcms::field
 #endif // PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_LOGGER_HPP

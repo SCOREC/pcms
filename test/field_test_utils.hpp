@@ -150,19 +150,19 @@ inline Omega_h::Mesh BuildReferenceTet(Omega_h::Library& lib)
                        }));
 }
 
-inline std::shared_ptr<LagrangeFunctionSpace> MakeP1Space(
+inline std::shared_ptr<pcms::field::LagrangeFunctionSpace> MakeP1Space(
   Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
 {
-  return LagrangeFunctionSpace::FromMesh(
+  return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, csys::Cartesian::Deferred(), global_id_name,
-    LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
-inline std::shared_ptr<LagrangeFunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
+inline std::shared_ptr<pcms::field::LagrangeFunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
 {
-  return LagrangeFunctionSpace::FromMesh(
+  return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 0, 1, csys::Cartesian::Deferred(), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
 inline bool AreArraysEqualUnordered(

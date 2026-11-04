@@ -127,20 +127,20 @@ protected:
 
 private:
   explicit MockSpace(int num_components)
-    : layout_(std::make_shared<pcms::EmptyFieldLayout>(
+    : layout_(std::make_shared<pcms::field::EmptyFieldLayout>(
         pcms::csys::CylindricalRThetaZ::Create(), num_components))
   {
   }
 
-  std::shared_ptr<const pcms::EmptyFieldLayout> layout_;
+  std::shared_ptr<const pcms::field::EmptyFieldLayout> layout_;
 };
 
-std::shared_ptr<pcms::LagrangeFunctionSpace> MakePoloidalTarget(
+std::shared_ptr<pcms::field::LagrangeFunctionSpace> MakePoloidalTarget(
   Omega_h::Mesh& mesh, int num_components)
 {
-  return pcms::LagrangeFunctionSpace::FromMesh(
+  return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, num_components, pcms::csys::CylindricalRZ::Create(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
 } // namespace

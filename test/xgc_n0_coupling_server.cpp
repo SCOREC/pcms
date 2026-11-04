@@ -43,7 +43,7 @@ struct RegisteredField
 
 [[nodiscard]] static RegisteredField AddField(
   pcms::ApplicationComm* application,
-  const std::shared_ptr<pcms::LagrangeFunctionSpace>& function_space,
+  const std::shared_ptr<pcms::field::LagrangeFunctionSpace>& function_space,
   const std::string& name, const std::string& path, int plane)
 {
   PCMS_ALWAYS_ASSERT(application != nullptr);
@@ -216,9 +216,9 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       // return 0;
       return 1;
     });
-  auto function_space = pcms::LagrangeFunctionSpace::FromMesh(
+  auto function_space = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred(), is_overlap, numbering,
-    pcms::LagrangeFunctionSpace::Backend::OmegaH, "n0_layout");
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH, "n0_layout");
   auto time2 = std::chrono::steady_clock::now();
   elapsed_seconds = time2 - time1;
   ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);

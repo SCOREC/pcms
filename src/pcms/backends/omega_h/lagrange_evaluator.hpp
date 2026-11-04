@@ -313,7 +313,7 @@ private:
 // simplex meshes backed by Omega_h. It owns the spatial search structure and
 // creates OmegaHLagrangePointEvaluator instances on demand.
 template <typename T>
-class OmegaHLagrangeEvaluatorFactory : public FieldEvaluatorFactory<T>
+class OmegaHLagrangeEvaluatorFactory : public pcms::field::FieldEvaluatorFactory<T>
 {
 public:
   explicit OmegaHLagrangeEvaluatorFactory(

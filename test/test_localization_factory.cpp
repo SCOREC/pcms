@@ -106,8 +106,8 @@ TEST_CASE("Localization path selection: vertex source uses adjacency for "
   auto source_layout = std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
-  REQUIRE(pcms::detail::SelectLocalizationPath(*source_layout) ==
-          pcms::detail::LocalizationPath::VertexAdjacencySearch);
+  REQUIRE(pcms::field::detail::SelectLocalizationPath(*source_layout) ==
+          pcms::field::detail::LocalizationPath::VertexAdjacencySearch);
 }
 
 TEST_CASE(
@@ -122,8 +122,8 @@ TEST_CASE(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(
-    pcms::detail::SelectLocalizationPath(*source_layout, target_layout.get()) ==
-    pcms::detail::LocalizationPath::CentroidToVertexAdjacencySearch);
+    pcms::field::detail::SelectLocalizationPath(*source_layout, target_layout.get()) ==
+    pcms::field::detail::LocalizationPath::CentroidToVertexAdjacencySearch);
 }
 
 TEST_CASE("Localization path selection: centroid source uses point-cloud "
@@ -135,8 +135,8 @@ TEST_CASE("Localization path selection: centroid source uses point-cloud "
 
   auto source_layout = MakeMeshEntityLayout(mesh, pcms::Face);
 
-  REQUIRE(pcms::detail::SelectLocalizationPath(*source_layout) ==
-          pcms::detail::LocalizationPath::PointCloudSupports);
+  REQUIRE(pcms::field::detail::SelectLocalizationPath(*source_layout) ==
+          pcms::field::detail::LocalizationPath::PointCloudSupports);
 }
 
 TEST_CASE("LocalizationFactory: centroid-to-vertex Build correct on same-mesh "

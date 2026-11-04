@@ -15,7 +15,7 @@
 using Catch::Matchers::ContainsSubstring;
 using pcms::DeviceMemorySpace;
 using pcms::Field;
-using pcms::LagrangeFunctionSpace;
+using pcms::field::LagrangeFunctionSpace;
 using pcms::Real;
 using pcms::ValueView;
 namespace values = pcms::values;
@@ -36,15 +36,15 @@ Omega_h::Mesh BuildCylindricalMesh(Omega_h::Library& lib, int divisions)
                             divisions, divisions, divisions, false);
 }
 
-std::shared_ptr<LagrangeFunctionSpace> BuildCylindricalSpace(
+std::shared_ptr<pcms::field::LagrangeFunctionSpace> BuildCylindricalSpace(
   Omega_h::Mesh& mesh, int num_components)
 {
-  return LagrangeFunctionSpace::FromMesh(
+  return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, num_components, pcms::csys::CylindricalRThetaZ::Create(), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
-int NumDOFHolders(const LagrangeFunctionSpace& space)
+int NumDOFHolders(const pcms::field::LagrangeFunctionSpace& space)
 {
   return static_cast<int>(
     space.GetLayout()->GetDOFHolderCoordinates().GetValues().extent(0));

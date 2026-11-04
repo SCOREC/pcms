@@ -21,7 +21,7 @@
 namespace pcms::backend::point_cloud
 {
 
-class PointCloudEvaluatorFactory : public FieldEvaluatorFactory<Real>
+class PointCloudEvaluatorFactory : public pcms::field::FieldEvaluatorFactory<Real>
 {
 public:
   PointCloudEvaluatorFactory(std::shared_ptr<const FieldLayout> layout,
@@ -73,8 +73,8 @@ public:
 
     pcms::localization::SupportResults supports;
     auto path =
-      detail::SelectLocalizationPath(*layout_, request.GetQueryLayout());
-    if (path == detail::LocalizationPath::CentroidToVertexAdjacencySearch) {
+      pcms::field::detail::SelectLocalizationPath(*layout_, request.GetQueryLayout());
+    if (path == pcms::field::detail::LocalizationPath::CentroidToVertexAdjacencySearch) {
       auto* adjacency =
         dynamic_cast<const pcms::localization::AdjacencyLocalizationFactory*>(localization_.get());
       PCMS_ALWAYS_ASSERT(adjacency != nullptr);

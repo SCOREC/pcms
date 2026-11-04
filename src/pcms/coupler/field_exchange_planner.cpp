@@ -80,7 +80,7 @@ static redev::LOs ConstructPermutation(
   PCMS_FUNCTION_TIMER;
   // Holders that do not participate in this exchange (non-owned, or owned but
   // outside the overlap region) stay unmapped; serialization skips them.
-  redev::LOs permutation = MakeUnmappedPermutation(num_entries);
+  redev::LOs permutation = pcms::field::MakeUnmappedPermutation(num_entries);
   LO entry = 0;
   for (const auto& rank : reverse_partition) {
     for (unsigned e = 0; e < rank.second.ent_offsets.size() - 1; ++e) {
@@ -111,7 +111,7 @@ static redev::LOs ConstructPermutation(
   const EntOffsetsArray& ent_offsets, int& payload_length)
 {
   PCMS_FUNCTION_TIMER;
-  GidToIndexMaps gid_to_buffer_index;
+  pcms::field::GidToIndexMaps gid_to_buffer_index;
   size_t offset = 0;
   LO payload_offset = 0;
   while (true) {
@@ -141,7 +141,7 @@ static redev::LOs ConstructPermutation(
 
   redev::LOs permutation;
   permutation.reserve(local_gids.size());
-  AppendGidPermutation(local_gids, ent_offsets, gid_to_buffer_index,
+  pcms::field::AppendGidPermutation(local_gids, ent_offsets, gid_to_buffer_index,
                        permutation,
                        /*allow_missing=*/true);
 

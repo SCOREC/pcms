@@ -43,19 +43,19 @@ std::shared_ptr<FunctionSpace> CreateLagrangeSpace(
   using backend::uniform_grid::UniformGridDiscretization;
   if (const auto* oh =
         dynamic_cast<const OmegaHDiscretization*>(discretization.get())) {
-    auto impl = LagrangeFunctionSpace::DefaultBackend;
+    auto impl = pcms::field::LagrangeFunctionSpace::DefaultBackend;
     if (options.implementation == LagrangeImplementation::MeshFields) {
-      impl = LagrangeFunctionSpace::Backend::MeshFields;
+      impl = pcms::field::LagrangeFunctionSpace::Backend::MeshFields;
     } else if (options.implementation == LagrangeImplementation::OmegaH) {
-      impl = LagrangeFunctionSpace::Backend::OmegaH;
+      impl = pcms::field::LagrangeFunctionSpace::Backend::OmegaH;
     }
     if (oh->GetOwnedMask().has_value()) {
-      return LagrangeFunctionSpace::FromMesh(
+      return pcms::field::LagrangeFunctionSpace::FromMesh(
         oh->GetMesh(), order, num_components, std::move(coordinate_system),
         *oh->GetOwnedMask(), oh->GetGlobalIdName(), impl,
         std::move(options.layout_name));
     }
-    return LagrangeFunctionSpace::FromMesh(
+    return pcms::field::LagrangeFunctionSpace::FromMesh(
       oh->GetMesh(), order, num_components, std::move(coordinate_system),
       oh->GetGlobalIdName(), impl, std::move(options.layout_name));
   }
@@ -65,13 +65,13 @@ std::shared_ptr<FunctionSpace> CreateLagrangeSpace(
   }
   if (const auto* ug = dynamic_cast<const UniformGridDiscretization<2>*>(
         discretization.get())) {
-    return LagrangeFunctionSpace::FromUniformGrid(
+    return pcms::field::LagrangeFunctionSpace::FromUniformGrid(
       ug->GetGrid(), num_components, std::move(coordinate_system), order,
       std::move(options.layout_name));
   }
   if (const auto* ug = dynamic_cast<const UniformGridDiscretization<3>*>(
         discretization.get())) {
-    return LagrangeFunctionSpace::FromUniformGrid(
+    return pcms::field::LagrangeFunctionSpace::FromUniformGrid(
       ug->GetGrid(), num_components, std::move(coordinate_system), order,
       std::move(options.layout_name));
   }
@@ -93,7 +93,7 @@ std::shared_ptr<FunctionSpace> CreateSplineSpace(
   if (const auto* ug =
         dynamic_cast<const backend::uniform_grid::UniformGridDiscretization<2>*>(
           discretization.get())) {
-    return SplineFunctionSpace::FromUniformGrid(ug->GetGrid(),
+    return pcms::field::SplineFunctionSpace::FromUniformGrid(ug->GetGrid(),
                                                 std::move(coordinate_system));
   }
 #else
@@ -105,7 +105,7 @@ std::shared_ptr<FunctionSpace> CreateSplineSpace(
 std::shared_ptr<FunctionSpace> CreatePolynomialReconstructionSpace(
   CoordinateView<HostMemorySpace> points, MLSOptions options)
 {
-  return PolynomialReconstructionFunctionSpace::Create(std::move(points),
+  return pcms::field::PolynomialReconstructionFunctionSpace::Create(std::move(points),
                                                        options);
 }
 
@@ -119,7 +119,7 @@ std::shared_ptr<FunctionSpace> CreatePolynomialReconstructionSpace(
   if (const auto* oh =
         dynamic_cast<const backend::omega_h::OmegaHDiscretization*>(
           discretization.get())) {
-    return PolynomialReconstructionFunctionSpace::FromMesh(
+    return pcms::field::PolynomialReconstructionFunctionSpace::FromMesh(
       oh->GetMesh(), source_entity_dim, std::move(coordinate_system), options);
   }
 #else
@@ -133,7 +133,7 @@ std::shared_ptr<FunctionSpace> CreatePolynomialReconstructionSpace(
 std::shared_ptr<const FieldLayout> CreateEmptyLayout(
   std::shared_ptr<const CoordinateSystem> coordinate_system, int num_components)
 {
-  return std::make_shared<EmptyFieldLayout>(std::move(coordinate_system),
+  return std::make_shared<pcms::field::EmptyFieldLayout>(std::move(coordinate_system),
                                             num_components);
 }
 

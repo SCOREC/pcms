@@ -37,7 +37,7 @@ Data BuildDataImpl(const pcms::backend::omega_h::OmegaHLagrangeLayout& source_la
 // and so owns one the intersection can reuse; null otherwise.
 const pcms::localization::GridPointSearchVariant* SourceSearchFromSpace(const FunctionSpace& space)
 {
-  const auto* lagrange = dynamic_cast<const LagrangeFunctionSpace*>(&space);
+  const auto* lagrange = dynamic_cast<const pcms::field::LagrangeFunctionSpace*>(&space);
   if (lagrange == nullptr) {
     return nullptr;
   }
@@ -72,7 +72,7 @@ Data BuildData(const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrang
   const int quad_order =
     std::max(1, source_layout->GetOrder() + target_layout->GetOrder());
 
-  return detail::DispatchByOrder(target_layout->GetOrder(), [&](auto order_c) {
+  return pcms::field::detail::DispatchByOrder(target_layout->GetOrder(), [&](auto order_c) {
     constexpr int TgtOrder = decltype(order_c)::value;
     if (dim == 3) {
       return BuildDataImpl<3, TgtOrder>(*source_layout, *target_layout,

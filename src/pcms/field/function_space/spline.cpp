@@ -7,7 +7,7 @@
 
 #include <stdexcept>
 
-namespace pcms
+namespace pcms::field
 {
 
 SplineFunctionSpace::SplineFunctionSpace(
@@ -62,7 +62,7 @@ FieldVariant SplineFunctionSpace::CreateFieldImpl(FieldDataVariant data) const
       "SplineFunctionSpace::CreateField: requires SimpleFieldData<double>");
   }
   if (fd->GetDOFAccess()->GetOwnedValues().size() !=
-      detail::ExpectedFlatFieldDataSize(*layout_)) {
+      pcms::detail::ExpectedFlatFieldDataSize(*layout_)) {
     throw pcms_error(
       "SplineFunctionSpace::CreateField: field data size does not match "
       "layout");
@@ -85,4 +85,4 @@ PointEvaluatorVariant SplineFunctionSpace::CreatePointEvaluatorImpl(
   return evaluator_factory_->CreatePointEvaluator(request);
 }
 
-} // namespace pcms
+} // namespace pcms::field

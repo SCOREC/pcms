@@ -44,7 +44,7 @@ public:
   EmptyFieldFactory(std::string layout_name,
                     std::shared_ptr<const CoordinateSystem> system)
   {
-    auto layout = std::make_shared<EmptyFieldLayout>(std::move(system));
+    auto layout = std::make_shared<pcms::field::EmptyFieldLayout>(std::move(system));
     layout->SetName(std::move(layout_name));
     layout_ = layout;
   }
@@ -90,7 +90,7 @@ protected:
   }
 
 private:
-  std::shared_ptr<const EmptyFieldLayout> layout_;
+  std::shared_ptr<const pcms::field::EmptyFieldLayout> layout_;
 };
 
 } // namespace detail

@@ -177,9 +177,9 @@ TEST_CASE("OmegaHMassIntegrator: lumped diagonal equals consistent row sums",
   Omega_h::Library lib;
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
 
-  auto space = pcms::LagrangeFunctionSpace::FromMesh(
+  auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 
   const auto layout =
     std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
@@ -237,9 +237,9 @@ TEST_CASE("OmegaHMassIntegrator: P0 lumped equals consistent",
   Omega_h::Library lib;
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
 
-  auto space = pcms::LagrangeFunctionSpace::FromMesh(
+  auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 0, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 
   auto consistent = pcms::BuildOmegaHMassIntegrator(*space);
   auto lumped =
@@ -278,17 +278,17 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
 
   SECTION("multi-component space throws")
   {
-    auto space = pcms::LagrangeFunctionSpace::FromMesh(
+    auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
-      pcms::LagrangeFunctionSpace::Backend::OmegaH);
+      pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
     REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
   }
 
   SECTION("non-Cartesian coordinate system throws")
   {
-    auto space = pcms::LagrangeFunctionSpace::FromMesh(
+    auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
-      pcms::LagrangeFunctionSpace::Backend::OmegaH);
+      pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
     REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
   }
 
@@ -296,9 +296,9 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
   {
     const std::shared_ptr<const pcms::CoordinateSystem> other =
       std::make_shared<OtherCartesian2>();
-    auto space = pcms::LagrangeFunctionSpace::FromMesh(
+    auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 1, other, "global",
-      pcms::LagrangeFunctionSpace::Backend::OmegaH);
+      pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
     REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
   }
 }

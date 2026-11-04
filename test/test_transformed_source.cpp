@@ -22,7 +22,7 @@ using pcms::DeviceMemorySpace;
 using pcms::EvaluationRequest;
 using pcms::GO;
 using pcms::HostMemorySpace;
-using pcms::LagrangeFunctionSpace;
+using pcms::field::LagrangeFunctionSpace;
 using pcms::OutOfBoundsMode;
 using pcms::OutOfBoundsPolicy;
 using pcms::Real;
@@ -37,25 +37,25 @@ namespace
 
 constexpr double kTol = 1e-10;
 
-std::shared_ptr<LagrangeFunctionSpace> BuildCylindricalSource(
+std::shared_ptr<pcms::field::LagrangeFunctionSpace> BuildCylindricalSource(
   Omega_h::Library& lib, Omega_h::Mesh& mesh, int num_components)
 {
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 2.0, 1.6, 1.1, 8, 8,
                             6, false);
-  return LagrangeFunctionSpace::FromMesh(
+  return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, num_components, pcms::csys::CylindricalRThetaZ::Create(), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
-std::shared_ptr<LagrangeFunctionSpace> BuildCartesianTarget(
+std::shared_ptr<pcms::field::LagrangeFunctionSpace> BuildCartesianTarget(
   Omega_h::Library& lib, Omega_h::Mesh& mesh, int num_components,
   double x_extent = 1.0)
 {
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, x_extent, 1.0, 1.0, 4,
                             4, 4, false);
-  return LagrangeFunctionSpace::FromMesh(
+  return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, num_components, pcms::csys::Cartesian::Create(3), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
 ValueBasis CylindricalVector()

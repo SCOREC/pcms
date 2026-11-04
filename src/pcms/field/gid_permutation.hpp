@@ -7,7 +7,7 @@
 #include <map>
 #include <vector>
 
-namespace pcms
+namespace pcms::field
 {
 
 // Maps a GID to its position in an exchange buffer, grouped by entity-dimension
@@ -40,6 +40,6 @@ void AppendGidPermutation(GlobalIDView<HostMemorySpace> local_gids,
 std::vector<LO> BuildSortedGidPermutation(GlobalIDView<HostMemorySpace> gids,
                                           const EntOffsetsArray& ent_offsets);
 
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_FIELD_GID_PERMUTATION_HPP

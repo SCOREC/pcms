@@ -19,7 +19,7 @@ add_subdirectory(pcms/backends)
 # Top-level and generated headers. They are found through pcms::utility's
 # include directories (source and binary src/ directories).
 install(
-  FILES pcms.h ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.hpp
+  FILES pcms.h pcms/pcms.hpp ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.hpp
         ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms)
 

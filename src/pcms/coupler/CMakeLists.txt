@@ -24,7 +24,7 @@ set_target_properties(pcms_coupler PROPERTIES
 target_sources(pcms_coupler PUBLIC
         FILE_SET coupler
         TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
         FILES ${PCMS_COUPLER_HEADERS})
 add_library(pcms::coupler ALIAS pcms_coupler)
 target_compile_features(pcms_coupler PUBLIC cxx_std_20)

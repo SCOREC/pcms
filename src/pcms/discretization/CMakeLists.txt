@@ -14,7 +14,7 @@ add_library(pcms::discretization ALIAS pcms_discretization)
 target_sources(pcms_discretization PUBLIC
         FILE_SET field_discretization
         TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
         FILES ${PCMS_DISCRETIZATION_HEADERS})
 target_include_directories(
         pcms_discretization

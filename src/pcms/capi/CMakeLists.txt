@@ -10,7 +10,8 @@ if(TARGET pcms::coupler)
 
   target_include_directories(
     pcms_capi_core
-    PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>" # this makes our
+    PUBLIC "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+           "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>" # this makes our
                                                                   # include path
                                                                   # pcms/capi
            "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/pcms/capi>")
@@ -23,7 +24,7 @@ if(TARGET pcms::coupler)
   target_sources(pcms_capi_core PUBLIC
           FILE_SET core
           TYPE HEADERS
-          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
           FILES ${CAPI_CORE_HEADERS})
 endif()
 
@@ -32,6 +33,7 @@ add_library(pcms::capi::transfer ALIAS pcms_capi_transfer)
 target_link_libraries(pcms_capi_transfer PUBLIC MPI::MPI_C PRIVATE pcms::transfer)
 target_include_directories(pcms_capi_transfer
         PUBLIC
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>" # this makes the module path pcms/capi
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/pcms/capi>")
 
@@ -44,7 +46,7 @@ set_target_properties(pcms_capi_transfer
 target_sources(pcms_capi_transfer PUBLIC
         FILE_SET transfer
         TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
 	FILES ${CAPI_TRANSFER_HEADERS})
 # high level interface target
 add_library(pcms_capi INTERFACE)

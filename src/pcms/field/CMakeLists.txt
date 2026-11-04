@@ -54,7 +54,7 @@ set_target_properties(pcms_field PROPERTIES
 target_sources(pcms_field PUBLIC
         FILE_SET field
         TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
         FILES ${PCMS_FIELD_HEADERS})
 add_library(pcms::field ALIAS pcms_field)
 target_compile_features(pcms_field PUBLIC cxx_std_20)

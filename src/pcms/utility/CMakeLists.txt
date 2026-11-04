@@ -35,6 +35,8 @@ target_include_directories(
         pcms_utility
         PUBLIC
         # include path should be pcms/utility/
+        # public headers (include/pcms/...)
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>"
         # include path to search for pcms/config.h
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/../..>"
@@ -54,7 +56,7 @@ set_target_properties(
 target_sources(pcms_utility PUBLIC
         FILE_SET utilities
         TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/../
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/../ ${PROJECT_SOURCE_DIR}/include/pcms
         FILES ${PCMS_UTILITY_HEADERS})
 install(
         TARGETS pcms_utility

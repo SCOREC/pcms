@@ -51,7 +51,7 @@ set_target_properties(pcms_transfer PROPERTIES
 target_sources(pcms_transfer PUBLIC
         FILE_SET transfer
         TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
         FILES ${PCMS_FIELD_TRANSFER_HEADERS})
 
 add_library(pcms::transfer ALIAS pcms_transfer)

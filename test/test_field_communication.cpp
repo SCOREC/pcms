@@ -14,7 +14,7 @@
 #include "pcms/field/value_view.hpp"
 #include "pcms/field/data/simple.hpp"
 #include "test_support.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 namespace ts = test_support;
 using pcms::Real;

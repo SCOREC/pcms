@@ -2,7 +2,7 @@
 
 #include <pcms/coupler/field_exchange_planner.hpp>
 #include <pcms/field/layout/point_cloud.hpp>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 TEST_CASE("Field exchange plans exclude GID message headers",
           "[field_exchange]")

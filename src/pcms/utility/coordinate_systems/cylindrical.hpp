@@ -1,7 +1,7 @@
 #ifndef PCMS_FIELD_COORDINATE_SYSTEMS_CYLINDRICAL_HPP
 #define PCMS_FIELD_COORDINATE_SYSTEMS_CYLINDRICAL_HPP
 
-#include "pcms/field/coordinate_system.hpp"
+#include "pcms/utility/coordinate_system.hpp"
 
 namespace pcms
 {

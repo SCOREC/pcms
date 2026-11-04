@@ -7,7 +7,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/common.hpp"
 #include "pcms/utility/mesh_geometry.hpp"
-#include "pcms/localization/point_cloud_localization.hpp"
+#include "pcms/field/point_cloud_localization.hpp"
 #include "pcms/localization/mesh_localization.hpp"
 
 #include <Kokkos_Core.hpp>

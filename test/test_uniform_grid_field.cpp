@@ -15,7 +15,7 @@
 #include "pcms/utility/arrays.hpp"
 #include "field_test_utils.hpp"
 #include <cmath>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::CreateUniformGridFromMesh;
 

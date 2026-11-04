@@ -5,7 +5,7 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/field/coordinate_map.hpp>
-#include <pcms/field/coordinate_systems/cylindrical.hpp>
+#include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/field/function_space.hpp>
 #include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/field/layout/empty.hpp>

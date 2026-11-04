@@ -2,10 +2,10 @@ find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_HEADERS
         field.hpp
-        coordinate_system.hpp
-        coordinate_view.hpp
-        coordinate_systems/cartesian.hpp
-        coordinate_systems/cylindrical.hpp
+        ../utility/coordinate_system.hpp
+        ../utility/coordinate_view.hpp
+        ../utility/coordinate_systems/cartesian.hpp
+        ../utility/coordinate_systems/cylindrical.hpp
         coordinate_map.hpp
         value_view.hpp
         element_dispatch.hpp
@@ -27,7 +27,7 @@ set(PCMS_FIELD_HEADERS
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
-        coordinate_system.cpp
+        ../utility/coordinate_system.cpp
         coordinate_map.cpp
         transformed_source.cpp
         gid_permutation.cpp
@@ -59,7 +59,7 @@ if (PCMS_ENABLE_OMEGA_H)
             evaluator/spline_interpolator.hpp
             evaluator/uniform_grid_spline.hpp
             eqdsk_field.hpp
-            evaluator/mls_options.hpp
+            ../localization/mls_options.hpp
             evaluator/mls_interpolation.hpp
             evaluator/mls_interpolation_impl.hpp
             evaluator/pcms_interpolator_aliases.hpp

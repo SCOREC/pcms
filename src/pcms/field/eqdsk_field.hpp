@@ -6,7 +6,7 @@
 #include "pcms/field/function_space/spline.hpp"
 
 #include <string>
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 namespace pcms
 {

@@ -4,7 +4,7 @@
 #include "pcms/localization/localization_factory.hpp"
 #include "pcms/localization/mls_support_helpers.hpp"
 #include "pcms/field/layout/point_cloud.hpp"
-#include "pcms/field/evaluator/mls_options.hpp"
+#include "pcms/localization/mls_options.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
 

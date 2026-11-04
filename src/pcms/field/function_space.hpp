@@ -1,8 +1,8 @@
 #ifndef PCMS_FUNCTION_SPACE_H
 #define PCMS_FUNCTION_SPACE_H
 
-#include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_system.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/evaluation_request.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_data.hpp"

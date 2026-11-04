@@ -14,7 +14,7 @@
 #include <memory>
 #include <optional>
 #include <stdexcept>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::LO;
 using pcms::Real;

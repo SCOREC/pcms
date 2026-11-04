@@ -7,8 +7,8 @@
 #include "pcms/field/value_view.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/evaluator/mls_options.hpp"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/localization/mls_options.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 

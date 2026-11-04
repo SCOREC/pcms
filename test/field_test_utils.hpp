@@ -10,7 +10,7 @@
 #include "pcms/field/evaluation_request.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #ifdef PCMS_ENABLE_OMEGA_H
@@ -30,7 +30,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 // Shared utilities for field tests that apply equally to MeshFields-backed
 // and native OmegaH-backed field implementations.

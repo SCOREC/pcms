@@ -6,17 +6,17 @@
 #include "pcms/field/layout/omega_h_entity.hpp"
 #include "pcms/field/layout/omega_h_lagrange.hpp"
 #include "pcms/field/layout/point_cloud.hpp"
-#include "pcms/field/evaluator/mls_options.hpp"
+#include "pcms/localization/mls_options.hpp"
 #include "pcms/localization/adj_search.hpp"
-#include "pcms/localization/localization_path_selection.hpp"
+#include "pcms/field/localization_path_selection.hpp"
 #include "pcms/localization/mesh_localization.hpp"
 #include "pcms/localization/mls_support_helpers.hpp"
-#include "pcms/localization/point_cloud_localization.hpp"
+#include "pcms/field/point_cloud_localization.hpp"
 #include "pcms/discretization/discretization/omega_h.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
 #include "field_test_utils.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 namespace
 {

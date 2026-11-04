@@ -16,9 +16,9 @@
 
 #include "pcms/pythonapi/numpy_view.hpp"
 #include "pcms/configuration.hpp"
-#include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_system.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"

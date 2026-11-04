@@ -10,7 +10,7 @@
 #include "field_test_utils.hpp"
 #include <Kokkos_Core.hpp>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::Real;
 

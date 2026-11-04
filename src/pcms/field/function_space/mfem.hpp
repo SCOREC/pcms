@@ -1,7 +1,7 @@
 #ifndef PCMS_MFEM_FIELD_FACTORY_HPP
 #define PCMS_MFEM_FIELD_FACTORY_HPP
 
-#include "pcms/field/coordinate_system.hpp"
+#include "pcms/utility/coordinate_system.hpp"
 #include "pcms/field/data/mfem.hpp"
 #include "pcms/field/field_factory.hpp"
 #include "pcms/field/layout/mfem.hpp"

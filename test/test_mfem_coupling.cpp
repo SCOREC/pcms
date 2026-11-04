@@ -2,7 +2,7 @@
 
 #include <pcms/coupler/coupler.hpp>
 #include <pcms/coupler/overlap_mask.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/field/function_space/mfem.hpp>
 #include <pcms/field/layout/mfem.hpp>
 

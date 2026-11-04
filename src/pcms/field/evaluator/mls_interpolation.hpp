@@ -2,7 +2,7 @@
 #define PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP
 
 #include <Omega_h_array.hpp>
-#include "pcms/field/evaluator/mls_options.hpp"
+#include "pcms/localization/mls_options.hpp"
 
 namespace pcms
 {

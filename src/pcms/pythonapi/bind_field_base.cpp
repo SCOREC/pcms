@@ -7,11 +7,11 @@
 #include <pybind11/stl.h>
 
 #include "pcms/discretization/discretization/omega_h.hpp"
-#include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_system.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/evaluation_request.hpp"
-#include "pcms/field/evaluator/mls_options.hpp"
+#include "pcms/localization/mls_options.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/field_layout.hpp"

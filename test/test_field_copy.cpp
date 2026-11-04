@@ -8,7 +8,7 @@
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::Real;
 

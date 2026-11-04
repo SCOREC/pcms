@@ -7,7 +7,7 @@
 #include <pcms/field/evaluation_request.hpp>
 #include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/field/coordinate_map.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/field/layout/omega_h_lagrange.hpp>
 #include <pcms/field/transformed_source.hpp>
 #include <pcms/transfer/conservative_projection_solver.hpp>

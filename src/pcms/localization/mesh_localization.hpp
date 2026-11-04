@@ -2,7 +2,7 @@
 #define PCMS_LOCALIZATION_ADJACENCY_LOCALIZATION_H
 
 #include "pcms/localization/localization_factory.hpp"
-#include "pcms/field/evaluator/mls_options.hpp"
+#include "pcms/localization/mls_options.hpp"
 
 #include <Omega_h_mesh.hpp>
 

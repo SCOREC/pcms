@@ -5,10 +5,10 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
-#include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_system.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/pythonapi/numpy_view.hpp"
 #include "pcms/pythonapi/py_value_types.hpp"
 

@@ -11,7 +11,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::CoordinateSystem;
 using pcms::HostMemorySpace;

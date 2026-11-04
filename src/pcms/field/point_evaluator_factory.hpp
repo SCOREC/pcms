@@ -1,7 +1,7 @@
 #ifndef PCMS_FIELD_POINT_EVALUATOR_FACTORY_HPP
 #define PCMS_FIELD_POINT_EVALUATOR_FACTORY_HPP
 
-#include "pcms/field/coordinate_system.hpp"
+#include "pcms/utility/coordinate_system.hpp"
 #include "pcms/field/evaluation_request.hpp"
 #include "pcms/field/field_factory.hpp"
 #include "pcms/field/point_evaluator.hpp"

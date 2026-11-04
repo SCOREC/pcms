@@ -3,7 +3,7 @@
 
 #include "pcms/configuration.hpp"
 #include "pcms/coupler/field_serializer.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/arrays.hpp"
 
 #include <memory>

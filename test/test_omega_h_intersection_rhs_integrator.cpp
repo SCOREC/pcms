@@ -13,8 +13,8 @@
 #include <cmath>
 #include <unordered_map>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 // ---------------------------------------------------------------------------
 // Helpers

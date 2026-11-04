@@ -2,7 +2,7 @@
 #define PCMS_FIELD_EVALUATOR_FACTORY_H
 
 #include "pcms/field/field_layout.hpp"
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/evaluation_request.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/field/point_evaluator.hpp"

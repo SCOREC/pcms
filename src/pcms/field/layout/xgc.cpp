@@ -1,7 +1,7 @@
 #include "pcms/field/layout/xgc.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/entity_types.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 namespace pcms
 {

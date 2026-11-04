@@ -2,7 +2,7 @@
 #define PCMS_FIELD_TRANSFORMED_SOURCE_HPP
 
 #include "pcms/field/coordinate_map.hpp"
-#include "pcms/field/coordinate_system.hpp"
+#include "pcms/utility/coordinate_system.hpp"
 #include "pcms/field/evaluation_request.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_data.hpp"

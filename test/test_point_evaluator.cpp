@@ -10,10 +10,10 @@
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/coordinate_view.hpp"
+#include "pcms/utility/coordinate_view.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "field_test_utils.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::CoordinateSystem;
 using pcms::Real;

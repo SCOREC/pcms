@@ -4,7 +4,7 @@
 
 #include <iostream>
 #include "multidimarray.hpp"
-#define MAX_DIM 10
+#define PCMS_MAX_DIM 10
 
 namespace pcms
 {
@@ -73,7 +73,7 @@ double linear_interpolant(const IntVecView& dimensions,
 {
   int dim = dimensions.extent(0);
   double sum = 0;
-  int ids[MAX_DIM];
+  int ids[PCMS_MAX_DIM];
 
   int array_size = 1 << dim;
   for (int i = 0; i < array_size; ++i) {
@@ -137,7 +137,7 @@ public:
 
     Kokkos::parallel_for(
       "linear interpolation", N, KOKKOS_LAMBDA(int j) {
-        double linear_basis_each_dir[MAX_DIM] = {0.0};
+        double linear_basis_each_dir[PCMS_MAX_DIM] = {0.0};
         auto parametric_coord_each_point =
           Kokkos::subview(parametric_coords_, j, Kokkos::ALL());
         auto index_each_point = Kokkos::subview(indices_, j, Kokkos::ALL());
@@ -171,9 +171,9 @@ inline Result parametric_indices(const RealMatView& points,
 
   Kokkos::parallel_for(
     N, KOKKOS_LAMBDA(int j) {
-      int indcs[MAX_DIM] = {0};
-      double limits[MAX_DIM] = {0.0};
-      double parametric_coord_each[MAX_DIM] = {0.0};
+      int indcs[PCMS_MAX_DIM] = {0};
+      double limits[PCMS_MAX_DIM] = {0.0};
+      double parametric_coord_each[PCMS_MAX_DIM] = {0.0};
       auto point_coord = Kokkos::subview(points, j, Kokkos::ALL());
       find_indices(num_bins, range, point_coord, indcs);
       find_limits(num_bins, range, indcs, limits);

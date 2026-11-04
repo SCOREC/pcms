@@ -6,7 +6,7 @@
 
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::backend::xgc
 {
 
 class XGCDiscretization : public Discretization
@@ -34,6 +34,6 @@ private:
   Kokkos::View<ClassificationId*, DeviceMemorySpace> class_ids_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::xgc
 
 #endif // PCMS_DISCRETIZATION_DISCRETIZATION_XGC_H

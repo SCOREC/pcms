@@ -9,7 +9,7 @@
 #include <mpi.h>
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::xgc
 {
 
 template <typename T>
@@ -113,6 +113,6 @@ private:
   MPI_Comm plane_comm_ = MPI_COMM_NULL;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::xgc
 
 #endif // PCMS_XGC_FIELD_DATA_H

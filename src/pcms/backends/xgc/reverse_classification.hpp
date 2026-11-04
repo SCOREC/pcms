@@ -16,7 +16,7 @@
 #include "pcms/utility/assert.hpp"
 #endif
 
-namespace pcms
+namespace pcms::backend::xgc
 {
 
 struct DimID
@@ -29,15 +29,15 @@ struct DimID
   }
 };
 
-} // namespace pcms
+} // namespace pcms::backend::xgc
 
 namespace std
 {
 
 template <>
-struct hash<pcms::DimID>
+struct hash<pcms::backend::xgc::DimID>
 {
-  std::size_t operator()(const pcms::DimID& key) const noexcept
+  std::size_t operator()(const pcms::backend::xgc::DimID& key) const noexcept
   {
     auto h1 = hash<pcms::LO>{}(key.dim);
     auto h2 = hash<pcms::LO>{}(key.id);
@@ -48,7 +48,7 @@ struct hash<pcms::DimID>
 
 } // namespace std
 
-namespace pcms
+namespace pcms::backend::xgc
 {
 ///
 /// This datastructure represents the reverse classification
@@ -134,6 +134,6 @@ template <typename T = Omega_h::LO>
 
 #endif
 
-} // namespace pcms
+} // namespace pcms::backend::xgc
 
 #endif // PCMS_DISCRETIZATION_XGC_REVERSE_CLASSIFICATION_H

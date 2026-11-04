@@ -5,7 +5,7 @@
 #include "pcms/backends/xgc/reverse_classification.hpp"
 #include "pcms/field/field_layout.hpp"
 
-namespace pcms
+namespace pcms::backend::xgc
 {
 
 class XGCFieldLayout : public FieldLayout
@@ -47,6 +47,6 @@ private:
   std::shared_ptr<const Discretization> discretization_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::xgc
 
 #endif // PCMS_XGC_FIELD_LAYOUT_H

@@ -71,11 +71,11 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
 #endif
 
 #ifdef PCMS_ENABLE_XGC
-pcms::ReverseClassificationVertex CreateDummyReverseClassification(int size)
+pcms::backend::xgc::ReverseClassificationVertex CreateDummyReverseClassification(int size)
 {
-  pcms::ReverseClassificationVertex rc;
+  pcms::backend::xgc::ReverseClassificationVertex rc;
   for (int i = 0; i < size; ++i) {
-    rc.Insert(i % 4 == 0 ? pcms::DimID{0, 0} : pcms::DimID{0, 1}, i);
+    rc.Insert(i % 4 == 0 ? pcms::backend::xgc::DimID{0, 0} : pcms::backend::xgc::DimID{0, 1}, i);
   }
   return rc;
 }
@@ -93,13 +93,13 @@ TEST_CASE("Serializing an XGC field preserves inactive field entries")
 {
   static constexpr int data_size = 16;
   auto rc = CreateDummyReverseClassification(data_size);
-  pcms::XGCFieldFactory factory(rc, data_size);
+  pcms::backend::xgc::XGCFieldFactory factory(rc, data_size);
 
   std::vector<pcms::Real> data(data_size);
   std::iota(data.begin(), data.end(), 0.0);
   const auto original = data;
   auto field = factory.CreateField<pcms::Real>(
-    "", std::make_unique<pcms::XGCFieldData<pcms::Real>>(
+    "", std::make_unique<pcms::backend::xgc::XGCFieldData<pcms::Real>>(
           factory.GetXGCLayout(), pcms::ValueBasis{},
           pcms::make_array_view(data), MPI_COMM_SELF));
   pcms::FieldSerializer<pcms::Real> serializer;

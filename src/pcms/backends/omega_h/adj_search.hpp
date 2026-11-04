@@ -3,7 +3,7 @@
 
 #include <pcms/localization/point_search.hpp>
 #include <pcms/localization/mls_support_helpers.hpp>
-#include <pcms/localization/queue_visited.hpp>
+#include <pcms/backends/omega_h/queue_visited.hpp>
 #include <pcms/localization/support_results.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
 #include <pcms/utility/print.hpp>

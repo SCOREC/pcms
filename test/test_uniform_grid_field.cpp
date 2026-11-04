@@ -3,7 +3,7 @@
 #include <Kokkos_Core.hpp>
 #include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/backends/uniform_grid/evaluator.hpp"
-#include "pcms/field/uniform_grid_binary_field.hpp"
+#include "pcms/backends/omega_h/uniform_grid_binary_field.hpp"
 #include "pcms/field/data/simple.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/uniform_grid.hpp"

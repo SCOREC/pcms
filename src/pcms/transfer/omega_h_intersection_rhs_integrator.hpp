@@ -3,7 +3,7 @@
 
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/function_space.hpp"
-#include "pcms/field/layout/omega_h_lagrange.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include "pcms/transfer/mesh_intersection.hpp"
 #include <Kokkos_Core.hpp>

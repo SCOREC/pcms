@@ -2,7 +2,7 @@
 #define PCMS_TRANSFER_OMEGA_H_MASS_INTEGRATOR_HPP
 
 #include "pcms/field/function_space.hpp"
-#include "pcms/field/layout/omega_h_lagrange.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/transfer/bilinear_form_integrator.hpp"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include <memory>

@@ -6,7 +6,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "pcms/discretization/discretization/omega_h.hpp"
+#include "pcms/backends/omega_h/discretization.hpp"
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_view.hpp"
@@ -19,7 +19,7 @@
 #include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
-#include "pcms/field/uniform_grid_binary_field.hpp"
+#include "pcms/backends/omega_h/uniform_grid_binary_field.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/uniform_grid.hpp"

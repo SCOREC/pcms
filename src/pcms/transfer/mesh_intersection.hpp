@@ -3,7 +3,7 @@
 
 #include <pcms/configuration.hpp>
 #include <pcms/localization/point_search.hpp>
-#include <pcms/localization/queue_visited.hpp>
+#include <pcms/backends/omega_h/queue_visited.hpp>
 #include <Omega_h_fail.hpp>
 #include <Omega_h_int_scan.hpp>
 // r3d's kernels are called from Kokkos kernels: R3D_USE_KOKKOS makes them

@@ -1,0 +1,13 @@
+# namespace-scope names declared in src/pcms/backends/omega_h that are used
+# elsewhere (file-local helpers move with the namespace)
+OmegaHDiscretization
+OmegaHEntityLayout
+OmegaHLagrangeLayout
+OmegaHLagrangeEvaluatorFactory
+OmegaHLagrangePointEvaluator
+OmegaHLagrangeLocHint
+FindSupports
+searchNeighbors
+Queue
+Track
+CreateUniformGridBinaryField

@@ -3,7 +3,7 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "pcms/discretization/discretization/omega_h.hpp"
+#include "pcms/backends/omega_h/discretization.hpp"
 #include "pcms/field/field_layout.hpp"
 
 namespace pcms

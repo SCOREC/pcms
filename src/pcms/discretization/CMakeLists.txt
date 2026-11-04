@@ -4,7 +4,7 @@ set(
         discretization/empty.hpp
 )
 if (PCMS_ENABLE_OMEGA_H)
-  list(APPEND PCMS_DISCRETIZATION_HEADERS discretization/omega_h.hpp)
+  list(APPEND PCMS_DISCRETIZATION_HEADERS ../backends/omega_h/discretization.hpp)
 endif()
 
 set(
@@ -12,7 +12,7 @@ set(
         discretization/empty.cpp
 )
 if (PCMS_ENABLE_OMEGA_H)
-  list(APPEND PCMS_DISCRETIZATION_SOURCES discretization/omega_h.cpp)
+  list(APPEND PCMS_DISCRETIZATION_SOURCES ../backends/omega_h/discretization.cpp)
 endif()
 
 add_library(pcms_discretization ${PCMS_DISCRETIZATION_SOURCES})

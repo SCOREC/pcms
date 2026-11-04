@@ -6,7 +6,7 @@
 #include <Omega_h_mesh.hpp>
 #include <pcms/field/evaluation_request.hpp>
 #include <pcms/field/function_space/lagrange.hpp>
-#include <pcms/field/layout/omega_h_lagrange.hpp>
+#include <pcms/backends/omega_h/lagrange_layout.hpp>
 #include <pcms/transfer/omega_h_intersection_rhs_integrator.hpp>
 #include "field_test_utils.hpp"
 #include <petscksp.h>

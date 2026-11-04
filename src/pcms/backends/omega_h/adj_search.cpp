@@ -1,4 +1,4 @@
-#include "pcms/localization/adj_search.hpp"
+#include "pcms/backends/omega_h/adj_search.hpp"
 #include <Omega_h_array_ops.hpp>
 
 namespace pcms

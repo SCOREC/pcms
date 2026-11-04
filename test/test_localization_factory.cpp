@@ -3,16 +3,16 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 
-#include "pcms/field/layout/omega_h_entity.hpp"
-#include "pcms/field/layout/omega_h_lagrange.hpp"
+#include "pcms/backends/omega_h/entity_layout.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/backends/point_cloud/layout.hpp"
 #include "pcms/localization/mls_options.hpp"
-#include "pcms/localization/adj_search.hpp"
+#include "pcms/backends/omega_h/adj_search.hpp"
 #include "pcms/field/localization_path_selection.hpp"
 #include "pcms/localization/mesh_localization.hpp"
 #include "pcms/localization/mls_support_helpers.hpp"
 #include "pcms/backends/point_cloud/localization.hpp"
-#include "pcms/discretization/discretization/omega_h.hpp"
+#include "pcms/backends/omega_h/discretization.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
 #include "field_test_utils.hpp"

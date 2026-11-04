@@ -1,5 +1,5 @@
 #include "pcms/localization/mesh_localization.hpp"
-#include "pcms/localization/adj_search.hpp"
+#include "pcms/backends/omega_h/adj_search.hpp"
 #include "pcms/localization/mls_support_helpers.hpp"
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/utility/assert.hpp"

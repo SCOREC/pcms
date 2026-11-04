@@ -1,4 +1,4 @@
-#include "pcms/field/layout/omega_h_entity.hpp"
+#include "pcms/backends/omega_h/entity_layout.hpp"
 
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/mesh_geometry.hpp"

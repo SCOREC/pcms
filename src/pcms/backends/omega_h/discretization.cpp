@@ -1,4 +1,4 @@
-#include "pcms/discretization/discretization/omega_h.hpp"
+#include "pcms/backends/omega_h/discretization.hpp"
 #include "pcms/utility/types.hpp"
 #include <type_traits>
 #include "pcms/utility/assert.hpp"

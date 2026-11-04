@@ -3,7 +3,7 @@
 
 #include "pcms/field/field.hpp"
 #include "pcms/field/function_space.hpp"
-#include "pcms/field/layout/omega_h_lagrange.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/transfer/interpolator.hpp"

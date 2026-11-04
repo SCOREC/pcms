@@ -395,7 +395,7 @@ TEST_CASE("point search locates points on shared faces",
   GridPointSearch3D search{mesh, n, n, n};
 
   const auto centroids_h =
-    Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(query_mesh, 3));
+    Omega_h::HostRead<Omega_h::Real>(pcms::utility::get_entity_centroids(query_mesh, 3));
   const auto npoints = query_mesh.nelems();
 
   Kokkos::View<pcms::Real* [3]> points("query points", npoints);

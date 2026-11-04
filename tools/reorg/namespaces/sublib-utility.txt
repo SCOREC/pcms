@@ -1,0 +1,9 @@
+# namespace-scope names declared by the files that move to pcms::utility
+ArrayMask
+ConvertCoordsTo2D
+EnsureClassification
+GetMPIType
+distance_squared
+flatten_to_omega_h_reals
+flatten_to_omega_h_reals_host
+get_entity_centroids

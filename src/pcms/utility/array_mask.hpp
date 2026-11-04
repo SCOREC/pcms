@@ -3,7 +3,7 @@
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
-namespace pcms
+namespace pcms::utility
 {
 
 namespace detail
@@ -162,6 +162,6 @@ private:
   Kokkos::View<LO*, MemorySpace> mask_;
   LO num_active_entries_;
 };
-} // namespace pcms
+} // namespace pcms::utility
 
 #endif // PCMS_COUPLING_ARRAY_MASK_H

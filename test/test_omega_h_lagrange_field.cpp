@@ -78,7 +78,7 @@ TEST_CASE("OmegaHLagrangeLayout order-0 properties")
   int nelems = mesh.nelems();
   auto coords_view = pcms::test::CopyCoordinatesToHost(coords_device);
   auto centroids =
-    Omega_h::HostRead<Real>(pcms::get_entity_centroids(mesh, mesh.dim()));
+    Omega_h::HostRead<Real>(pcms::utility::get_entity_centroids(mesh, mesh.dim()));
   REQUIRE(static_cast<int>(coords_view.extent(0)) == nelems);
   for (int e = 0; e < nelems; ++e) {
     for (int d = 0; d < mesh.dim(); ++d) {

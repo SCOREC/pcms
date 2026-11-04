@@ -415,7 +415,7 @@ TEST_CASE("OmegaHConservativeProjection P1 source to P0 target",
     const auto target_values =
       pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
     const auto centroids_h = Omega_h::HostRead<Omega_h::Real>(
-      pcms::get_entity_centroids(target_mesh, target_mesh.dim()));
+      pcms::utility::get_entity_centroids(target_mesh, target_mesh.dim()));
     REQUIRE(static_cast<Omega_h::LO>(target_values.size()) ==
             target_mesh.nelems());
     for (Omega_h::LO e = 0; e < target_mesh.nelems(); ++e) {

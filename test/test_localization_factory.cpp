@@ -48,7 +48,7 @@ TEST_CASE(
   auto target_device = pcms::test::CreateDeviceCoordinateView(
     target_coords, pcms::csys::Cartesian::Deferred(), dim);
 
-  auto coords_dev = pcms::ConvertCoordsTo2D(source_coords, mesh.nverts(), dim);
+  auto coords_dev = pcms::utility::ConvertCoordsTo2D(source_coords, mesh.nverts(), dim);
 
   auto layout = std::make_shared<pcms::backend::point_cloud::PointCloudLayout>(
     dim, coords_dev, pcms::csys::Cartesian::Deferred());

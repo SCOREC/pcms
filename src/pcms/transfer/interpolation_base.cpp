@@ -29,7 +29,7 @@ MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
   OMEGA_H_CHECK_PRINTF(source_mesh_.dim() == 2,
                        "Only 2D meshes are supported but found %d\n",
                        source_mesh_.dim());
-  source_coords_ = pcms::get_entity_centroids(source_mesh_, Omega_h::FACE);
+  source_coords_ = pcms::utility::get_entity_centroids(source_mesh_, Omega_h::FACE);
 
   source_field_ =
     Omega_h::HostWrite<Omega_h::Real>(source_mesh_.nfaces(), "source field");
@@ -136,7 +136,7 @@ struct FillSupportIdxFunctor
     for (int source_id = 0; source_id < n_sources; source_id++) {
       auto source_coord = load_point(source_coords_l, source_id, dim);
       auto dist2 =
-        pcms::distance_squared(&source_coord[0], &target_coord[0], dim);
+        pcms::utility::distance_squared(&source_coord[0], &target_coord[0], dim);
       if (dist2 <= target_radius2) {
         supports_idx_l[start_ptr] = source_id;
         start_ptr++;
@@ -217,7 +217,7 @@ struct NSquareSearchFunctor
     for (int i = 0; i < n_sources; i++) {
       auto source_coord = load_point(source_coords_l, i, dim);
       auto dist2 =
-        pcms::distance_squared(&source_coord[0], &target_coord[0], dim);
+        pcms::utility::distance_squared(&source_coord[0], &target_coord[0], dim);
       if (dist2 <= target_radius2) {
         num_supports_l[target_id]++; // only one thread is updating
       }

@@ -79,7 +79,7 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
   // --------------------- Initialize Interpolators -------------- //
   const int degas2_num_elems = degas2_mesh.nelems();
   const auto degas2_mesh_centroids_host =
-    Omega_h::HostRead(pcms::get_entity_centroids(degas2_mesh, Omega_h::FACE));
+    Omega_h::HostRead(pcms::utility::get_entity_centroids(degas2_mesh, Omega_h::FACE));
   printf("[INFO] Degas2 Mesh loaded from %s with %d elements\n",
          degas2_mesh_filename.c_str(), degas2_num_elems);
   const auto degas2_mesh_centroids_view =

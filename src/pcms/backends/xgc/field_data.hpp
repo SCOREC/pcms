@@ -86,7 +86,7 @@ public:
     }
     if (plane_comm_ != MPI_COMM_NULL) {
       MPI_Bcast(data_.data_handle(), static_cast<int>(data_.size()),
-                GetMPIType(T{}), 0, plane_comm_);
+                pcms::utility::GetMPIType(T{}), 0, plane_comm_);
     }
   }
 

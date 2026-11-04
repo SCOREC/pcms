@@ -128,7 +128,7 @@ TEST_CASE("meshfields_spr_test")
 
   const auto& ntargets = mesh.nverts();
 
-  const auto source_coordinates = pcms::get_entity_centroids(mesh, FACE);
+  const auto source_coordinates = pcms::utility::get_entity_centroids(mesh, FACE);
 
   pcms::Points source_points;
 

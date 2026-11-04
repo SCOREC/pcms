@@ -110,7 +110,7 @@ TEST_CASE("Test MLSMeshInterpolation")
       pcms::MLSMeshInterpolation(source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
 
     auto source_points_vec = pcms::test::CopyOmegaHRealsToVector(
-      pcms::get_entity_centroids(source_mesh, Omega_h::FACE));
+      pcms::utility::get_entity_centroids(source_mesh, Omega_h::FACE));
     auto source_points_view = pcms::make_array_view(source_points_vec);
 
     auto target_points_vec =

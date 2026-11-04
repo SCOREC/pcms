@@ -95,7 +95,7 @@ TEST_CASE("test_mls_interpolation")
   const auto& ntargets = mesh.nverts();
 
   const auto& faces2nodes = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
-  const auto source_coordinates = pcms::get_entity_centroids(mesh, 2);
+  const auto source_coordinates = pcms::utility::get_entity_centroids(mesh, 2);
 
   pcms::Points source_points;
   source_points.coordinates =

@@ -171,7 +171,7 @@ OMEGA_H_INLINE void add_support_if_unvisited_and_within_cutoff(
   }
 
   const Omega_h::Real dist =
-    pcms::distance_squared(target_coords, candidate_coords, dim);
+    pcms::utility::distance_squared(target_coords, candidate_coords, dim);
   if (dist <= cutoff_distance) {
     count++;
     queue.push_back(candidate_id);
@@ -300,7 +300,7 @@ void FindSupports::adjBasedSearchCentroidNodes(
   OMEGA_H_CHECK_PRINTF(source_mesh.dim() == 2,
                        "Only 2D meshes are supported but found %d\n",
                        source_mesh.dim());
-  auto cell_centroids = pcms::get_entity_centroids(source_mesh, Omega_h::FACE);
+  auto cell_centroids = pcms::utility::get_entity_centroids(source_mesh, Omega_h::FACE);
 
   Omega_h::parallel_for(
     nvertices,

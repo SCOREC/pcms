@@ -4,7 +4,7 @@
 #include <Omega_h_array.hpp>
 #include "pcms/utility/memory_spaces.hpp"
 
-namespace pcms
+namespace pcms::utility
 {
 
 template <typename View2D>
@@ -65,6 +65,6 @@ inline Kokkos::View<T**, pcms::DeviceMemorySpace> ConvertCoordsTo2D(
   return coords_2d;
 }
 
-} // namespace pcms
+} // namespace pcms::utility
 
 #endif // PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_H

@@ -88,11 +88,11 @@ OmegaHLagrangeLayout::OmegaHLagrangeLayout(
     ResolveCoordinateSystem(std::move(coordinate_system), mesh_.dim()));
   int entity_dim = EntityDimForOrder(order_, mesh_.dim());
 
-  EnsureClassification(mesh_);
+  pcms::utility::EnsureClassification(mesh_);
   gids_ = BuildGids(mesh_, entity_dim, global_id_name_);
   gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
-  coords_ = get_entity_centroids(mesh_, entity_dim);
-  coords_2d_ = ConvertCoordsTo2D(coords_, mesh_.nents(entity_dim), mesh_.dim());
+  coords_ = pcms::utility::get_entity_centroids(mesh_, entity_dim);
+  coords_2d_ = pcms::utility::ConvertCoordsTo2D(coords_, mesh_.nents(entity_dim), mesh_.dim());
   owned_ = BuildOwned(mesh_, entity_dim);
   owned_host_ =
     Kokkos::View<bool*, HostMemorySpace>("owned_host", owned_.size());
@@ -135,11 +135,11 @@ OmegaHLagrangeLayout::OmegaHLagrangeLayout(
     ResolveCoordinateSystem(std::move(coordinate_system), mesh_.dim()));
   int entity_dim = EntityDimForOrder(order_, mesh_.dim());
 
-  EnsureClassification(mesh_);
+  pcms::utility::EnsureClassification(mesh_);
   gids_ = BuildGids(mesh_, entity_dim, global_id_name_);
   gids_host_ = Omega_h::HostWrite<Omega_h::GO>(gids_);
-  coords_ = get_entity_centroids(mesh_, entity_dim);
-  coords_2d_ = ConvertCoordsTo2D(coords_, mesh_.nents(entity_dim), mesh_.dim());
+  coords_ = pcms::utility::get_entity_centroids(mesh_, entity_dim);
+  coords_2d_ = pcms::utility::ConvertCoordsTo2D(coords_, mesh_.nents(entity_dim), mesh_.dim());
   owned_ = BuildOwned(mesh_, entity_dim, owned_mask);
   owned_host_ =
     Kokkos::View<bool*, HostMemorySpace>("owned_host", owned_.size());

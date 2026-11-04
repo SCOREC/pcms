@@ -6,7 +6,7 @@
 #include <Omega_h_for.hpp>
 #include <Omega_h_mesh.hpp>
 
-namespace pcms
+namespace pcms::utility
 {
 
 KOKKOS_INLINE_FUNCTION
@@ -123,6 +123,6 @@ inline void EnsureClassification(Omega_h::Mesh& mesh)
   }
 }
 
-} // namespace pcms
+} // namespace pcms::utility
 
 #endif // PCMS_UTILITY_MESH_GEOMETRY_H

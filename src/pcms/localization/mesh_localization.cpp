@@ -36,7 +36,7 @@ SupportResults AdjacencyLocalizationFactory::Build(
 
   if (source_entity_dim_ == Vertex) {
     Omega_h::Reals target_coords_oh =
-      flatten_to_omega_h_reals(tgt_view, "tgt_coords");
+      pcms::utility::flatten_to_omega_h_reals(tgt_view, "tgt_coords");
 
     return pcms::backend::omega_h::searchNeighbors(
       source_mesh_, target_coords_oh, n_tgt, radius_sq,
@@ -45,10 +45,10 @@ SupportResults AdjacencyLocalizationFactory::Build(
       options_.adapt_radius);
   }
   const Omega_h::Reals src_oh =
-    get_entity_centroids(source_mesh_, source_entity_dim_);
+    pcms::utility::get_entity_centroids(source_mesh_, source_entity_dim_);
 
   Omega_h::Reals target_coords_oh =
-    flatten_to_omega_h_reals(tgt_view, "tgt_coords");
+    pcms::utility::flatten_to_omega_h_reals(tgt_view, "tgt_coords");
 
   return BuildPointCloudSupports(src_oh, target_coords_oh, dim, options_.radius,
                                  options_.min_req_supports,

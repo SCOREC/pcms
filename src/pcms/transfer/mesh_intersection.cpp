@@ -26,9 +26,9 @@ template <int Dim>
 Kokkos::View<const LO*> LocateTargetCentroids(
   Omega_h::Mesh& target_mesh, const PointLocalizationSearch<Dim>& source_search)
 {
-  const auto flat_centroids = pcms::get_entity_centroids(target_mesh, Dim);
+  const auto flat_centroids = pcms::utility::get_entity_centroids(target_mesh, Dim);
   // Convert layout_right 1D Omega_h array to 2D Kokkos view with correct layout
-  auto centroids = ConvertCoordsTo2D(flat_centroids, target_mesh.nelems(), Dim);
+  auto centroids = pcms::utility::ConvertCoordsTo2D(flat_centroids, target_mesh.nelems(), Dim);
   auto results = source_search(centroids);
   return source_search.GetOwningElementIds(results);
 }

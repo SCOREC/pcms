@@ -44,12 +44,12 @@ public:
     const auto src_view = layout_->GetCoordinates();
     const int dim = layout_->GetDimension();
     Omega_h::Reals source_coords =
-      flatten_to_omega_h_reals(src_view, "src_coords");
+      pcms::utility::flatten_to_omega_h_reals(src_view, "src_coords");
 
     const auto tgt_view = target_coords.GetValues();
     PCMS_ALWAYS_ASSERT(static_cast<int>(tgt_view.extent(1)) == dim);
     Omega_h::Reals target_coords_oh =
-      flatten_to_omega_h_reals(tgt_view, "tgt_coords");
+      pcms::utility::flatten_to_omega_h_reals(tgt_view, "tgt_coords");
 
     return BuildPointCloudSupports(source_coords, target_coords_oh, dim,
                                    options_.radius, options_.min_req_supports,

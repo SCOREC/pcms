@@ -49,7 +49,7 @@ py::array ShapeLike(py::array_t<double> vertex_values,
 py::array compute_entity_centroids(Omega_h::Mesh& mesh, Omega_h::Int entity_dim)
 {
   const py::ssize_t dim = mesh.dim();
-  return ToNumpy(pcms::get_entity_centroids(mesh, entity_dim))
+  return ToNumpy(pcms::utility::get_entity_centroids(mesh, entity_dim))
     .reshape(std::vector<py::ssize_t>{mesh.nents(entity_dim), dim});
 }
 
@@ -128,7 +128,7 @@ py::array map_entity_field_to_vertices_mls(
   const Omega_h::LO ncomps = EntityComponents(entity_field_values, nentities);
 
   // Source coordinates are the entity centroids
-  auto source_coordinates = pcms::get_entity_centroids(mesh, entity_dim);
+  auto source_coordinates = pcms::utility::get_entity_centroids(mesh, entity_dim);
 
   // Get target coordinates (vertex coordinates)
   auto target_coordinates = mesh.coords();

@@ -56,13 +56,13 @@ OmegaHEntityLayout::OmegaHEntityLayout(
   std::string global_id_name)
   // dimension_ is the first member, so this runs before the class_ids_/
   // class_dims_ initializers below read the mesh's classification tags.
-  : dimension_((EnsureClassification(mesh), mesh.dim())),
+  : dimension_((pcms::utility::EnsureClassification(mesh), mesh.dim())),
     entity_dim_(entity_dim),
     num_components_(num_components),
     num_global_dof_holder_(mesh.nglobal_ents(entity_dim)),
     gids_(BuildGids(mesh, entity_dim, global_id_name)),
-    coords_(get_entity_centroids(mesh, entity_dim)),
-    coords_2d_(ConvertCoordsTo2D(coords_, mesh.nents(entity_dim), mesh.dim())),
+    coords_(pcms::utility::get_entity_centroids(mesh, entity_dim)),
+    coords_2d_(pcms::utility::ConvertCoordsTo2D(coords_, mesh.nents(entity_dim), mesh.dim())),
     class_ids_(mesh.get_array<Omega_h::ClassId>(entity_dim, "class_id")),
     class_dims_(mesh.get_array<Omega_h::I8>(entity_dim, "class_dim")),
     owned_(BuildOwned(mesh, entity_dim)),

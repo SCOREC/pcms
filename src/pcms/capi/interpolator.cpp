@@ -45,7 +45,7 @@ Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
   auto mesh = Omega_h::binary::read(fname, mesh_lib.world());
   OMEGA_H_CHECK_PRINTF(mesh.dim() == 2, "Mesh dimension is not 2D %d\n",
                        mesh.dim());
-  auto elem_centroids = pcms::get_entity_centroids(mesh, Omega_h::FACE);
+  auto elem_centroids = pcms::utility::get_entity_centroids(mesh, Omega_h::FACE);
   num_elements = mesh.nelems();
   OMEGA_H_CHECK_PRINTF(num_elements * 2 == elem_centroids.size(),
                        "Mesh element centroids size does not match the number "

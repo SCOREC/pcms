@@ -15,6 +15,7 @@
 #include <vector>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -237,7 +238,7 @@ TEST_CASE(
     std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       target_space->GetLayout());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 2));
+    pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
   std::vector<pcms::Real> g(target_mesh.nverts());
   for (int i = 0; i < target_mesh.nverts(); ++i) {
     g[i] = tgt_coords_h(i, 0) + tgt_coords_h(i, 1);

@@ -16,6 +16,7 @@
 #include <memory>
 #include <utility>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
 
 namespace pcms::backend::omega_h
 {

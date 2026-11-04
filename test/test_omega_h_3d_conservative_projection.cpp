@@ -15,6 +15,7 @@
 #include "field_test_utils.hpp"
 
 #include <vector>
+#include "pcms/backends/omega_h/omega_h.hpp"
 
 TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
           "linear fields",
@@ -66,7 +67,7 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
     const auto target_values =
       pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
     const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-      pcms::MakeConstRank2View(target_mesh.coords(), 3));
+      pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 3));
     for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
       const double expected = 1.0 + tgt_coords_h(i, 0) +
                               2.0 * tgt_coords_h(i, 1) +
@@ -162,7 +163,7 @@ TEST_CASE("Interpolation transfer (3D tets) reproduces a linear field",
   const auto target_values =
     pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 3));
+    pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 3));
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
     const double expected = 1.0 + tgt_coords_h(i, 0) +
                             2.0 * tgt_coords_h(i, 1) + 3.0 * tgt_coords_h(i, 2);
@@ -202,7 +203,7 @@ TEST_CASE("OmegaHControlVariateProjection (3D tets) is exact for target-space "
   const auto target_values =
     pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 3));
+    pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 3));
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
     const double expected = 1.0 + tgt_coords_h(i, 0) +
                             2.0 * tgt_coords_h(i, 1) + 3.0 * tgt_coords_h(i, 2);

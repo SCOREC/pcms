@@ -3,11 +3,10 @@
 
 #include <Omega_h_array.hpp>
 #include "pcms/localization/mls_options.hpp"
+#include "pcms/localization/support_results.hpp"
 
 namespace pcms
 {
-// Forward declaration — full definition is in pcms/localization/adj_search.hpp
-struct SupportResults;
 
 /**
  * @brief Performs Moving Least Squares (MLS) interpolation at target points.

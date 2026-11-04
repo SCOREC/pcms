@@ -13,6 +13,8 @@ add_subdirectory(pcms/field)
 if(PCMS_ENABLE_COUPLER)
   add_subdirectory(pcms/coupler)
 endif()
+# backend adapters; each adds its files to the core targets above
+add_subdirectory(pcms/backends)
 
 # Top-level and generated headers. They are found through pcms::utility's
 # include directories (source and binary src/ directories).

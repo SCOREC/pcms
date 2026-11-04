@@ -89,15 +89,6 @@ if (PCMS_ENABLE_MESHFIELDS)
     )
 endif ()
 
-if(PCMS_ENABLE_XGC)
-    list(APPEND PCMS_FIELD_HEADERS
-            ../backends/xgc/field_data.hpp
-            ../backends/xgc/field_factory.hpp
-            ../backends/xgc/layout.hpp)
-    list(APPEND PCMS_FIELD_SOURCES
-            ../backends/xgc/layout.cpp)
-endif()
-
 add_library(pcms_field ${PCMS_FIELD_SOURCES})
 set_target_properties(pcms_field PROPERTIES
         OUTPUT_NAME pcmsfield

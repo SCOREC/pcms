@@ -1,11 +1,9 @@
 set(
         PCMS_DISCRETIZATION_HEADERS
         discretization.hpp
-        ../backends/xgc/reverse_classification.hpp
         discretization/empty.hpp
         discretization/point_cloud.hpp
         discretization/uniform_grid.hpp
-        ../backends/xgc/discretization.hpp
 )
 if (PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_DISCRETIZATION_HEADERS discretization/omega_h.hpp)
@@ -15,8 +13,6 @@ set(
         PCMS_DISCRETIZATION_SOURCES
         discretization/empty.cpp
         discretization/point_cloud.cpp
-        ../backends/xgc/reverse_classification.cpp
-        ../backends/xgc/discretization.cpp
 )
 if (PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_DISCRETIZATION_SOURCES discretization/omega_h.cpp)

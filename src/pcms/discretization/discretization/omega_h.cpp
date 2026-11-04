@@ -1,9 +1,18 @@
 #include "pcms/discretization/discretization/omega_h.hpp"
+#include "pcms/utility/types.hpp"
+#include <type_traits>
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/mesh_geometry.hpp"
 
 namespace pcms
 {
+// pcms and Omega_h exchange data without conversion
+static_assert(std::is_same_v<Real, Omega_h::Real>,
+              "pcms and Omega_h real types must match");
+static_assert(std::is_same_v<LO, Omega_h::LO>,
+              "pcms and Omega_h LO types must match");
+static_assert(std::is_same_v<GO, Omega_h::GO>,
+              "pcms and Omega_h GO types must match");
 
 static_assert(std::is_same_v<ClassificationId, Omega_h::ClassId>,
               "ClassificationId must match Omega_h::ClassId for direct views");

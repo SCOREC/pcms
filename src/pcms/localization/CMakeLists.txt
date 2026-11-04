@@ -5,7 +5,7 @@ set(
         adj_search.hpp
         mls_support_helpers.hpp
         localization_factory.hpp
-        ../field/point_cloud_localization.hpp
+        mls_options.hpp
         mesh_localization.hpp
 )
 

@@ -648,7 +648,7 @@ if(PCMS_ENABLE_C)
     endif()
   endif()
 endif()
-if(PCMS_ENABLE_Fortran)
+if(PCMS_ENABLE_FORTRAN)
   add_executable(test_proxy_coupling_xgc_client_fortran
                  test_proxy_coupling_xgc_client_fortran.f90)
   target_link_libraries(test_proxy_coupling_xgc_client_fortran

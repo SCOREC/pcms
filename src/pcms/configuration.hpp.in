@@ -9,7 +9,7 @@
 #cmakedefine PCMS_ENABLE_C
 #cmakedefine PCMS_ENABLE_TRANSIENT
 #cmakedefine PCMS_ENABLE_PRINT
-#cmakedefine PCMS_ENABLE_Fortran
+#cmakedefine PCMS_ENABLE_FORTRAN
 #cmakedefine PCMS_ENABLE_MESHFIELDS
 #cmakedefine PCMS_ENABLE_PETSC
 

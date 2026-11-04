@@ -242,7 +242,7 @@ jobs:
       run: |
         echo "PCMS_ENABLE_PETSC=-DPCMS_ENABLE_PETSC=${{ matrix.petsc }}" >> $GITHUB_ENV
         if [ "${{ matrix.petsc }}" = "ON" ]; then
-          echo "PCMS_PETSC_OPTIONS=-DPETSC_LINK_STATIC=ON -DPETSC_DIR=${{ runner.temp }}/petsc -DPETSC_ARCH=ubuntu-kokkos" >> $GITHUB_ENV
+          echo "PCMS_PETSC_OPTIONS=-DPCMS_PETSC_LINK_STATIC=ON -DPETSC_DIR=${{ runner.temp }}/petsc -DPETSC_ARCH=ubuntu-kokkos" >> $GITHUB_ENV
         else
           echo "PCMS_PETSC_OPTIONS=" >> $GITHUB_ENV
         fi
@@ -281,7 +281,7 @@ jobs:
                   ${{ env.PCMS_ENABLE_PETSC }}
                   ${{ env.PCMS_PETSC_OPTIONS }}
                   -DPCMS_TIMEOUT=10
-                  -DPCMS_ENABLE_Python=${{ matrix.python_api }}
+                  -DPCMS_ENABLE_PYTHON=${{ matrix.python_api }}
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
                   ${{ env.PCMS_MESHFIELDS_DIR }}
@@ -346,7 +346,7 @@ jobs:
           -B ${{github.workspace}}/examples/external-usage-example/build \
           -S ${{github.workspace}}/examples/external-usage-example/ \
           -Dpcms_DIR=${{ runner.temp }}/build-pcms/install/lib/cmake/pcms \
-          ${{ matrix.petsc == 'ON' && format('-DPETSC_LINK_STATIC=ON -DPETSC_DIR={0}/petsc -DPETSC_ARCH=ubuntu-kokkos', runner.temp) || '' }} \
+          ${{ matrix.petsc == 'ON' && format('-DPCMS_PETSC_LINK_STATIC=ON -DPETSC_DIR={0}/petsc -DPETSC_ARCH=ubuntu-kokkos', runner.temp) || '' }} \
           --debug-output
         cmake --build ${{github.workspace}}/examples/external-usage-example/build
 

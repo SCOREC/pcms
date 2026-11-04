@@ -47,7 +47,7 @@ option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
 option(PCMS_ENABLE_MFEM "enable MFEM field adapter" OFF)
 option(PCMS_ENABLE_TRANSIENT "Enable pcms transient module" ON)
 option(PCMS_ENABLE_C "Enable pcms C api" ON)
-option(PCMS_ENABLE_Python "Enable pcms Python api" OFF)
+option(PCMS_ENABLE_PYTHON "Enable pcms Python api" OFF)
 
 option(PCMS_ENABLE_PRINT "PCMS print statements enabled" ON)
 option(PCMS_ENABLE_EXAMPLES "Build the in-tree C++ examples" ON)
@@ -69,7 +69,7 @@ set(PCMS_PROJECTION_KSP_RTOL 1e-14 CACHE STRING
 set(PCMS_PROJECTION_KSP_ATOL 1e-50 CACHE STRING
     "Default absolute tolerance for the projection mass-matrix solve")
 
-option(PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"
+option(PCMS_PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"
        ${_pcms_link_petsc_static_default})
 
 # find package before fortran enabled, so we don't require the adios2 fortran
@@ -77,13 +77,13 @@ option(PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"
 # broken
 find_package(redev 4.3.0 REQUIRED)
 
-if (PCMS_ENABLE_Python)
+if (PCMS_ENABLE_PYTHON)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif ()
 if(PCMS_ENABLE_C)
   enable_language(C)
-  option(PCMS_ENABLE_Fortran "Enable pcms fortran api" ON)
-  if(PCMS_ENABLE_Fortran)
+  option(PCMS_ENABLE_FORTRAN "Enable pcms fortran api" ON)
+  if(PCMS_ENABLE_FORTRAN)
     enable_language(Fortran)
   endif()
 endif()

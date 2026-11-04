@@ -117,7 +117,7 @@ jobs:
             -DKokkos_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos/install/lib64/cmake/Kokkos/ \
             -DKokkosKernels_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos-kernels/install/lib64/cmake/KokkosKernels/ \
             -DBUILD_TESTING=ON \
-            -DPCMS_ENABLE_Python=ON \
+            -DPCMS_ENABLE_PYTHON=ON \
             -DPCMS_ENABLE_PETSC=ON \
             -DPETSC_ARCH="" \
             -DPETSC_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/petsc/install \
@@ -168,7 +168,7 @@ jobs:
             -DKokkos_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos/install/lib64/cmake/Kokkos/ \
             -DKokkosKernels_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos-kernels/install/lib64/cmake/KokkosKernels/ \
             -DBUILD_TESTING=ON \
-            -DPCMS_ENABLE_Python=ON \
+            -DPCMS_ENABLE_PYTHON=ON \
             -DPCMS_ENABLE_PETSC=ON \
             -DPETSC_ARCH="" \
             -DPETSC_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/petsc/install \

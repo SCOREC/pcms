@@ -8,11 +8,11 @@ install(FILES adj_search.hpp queue_visited.hpp
 
 if(PCMS_ENABLE_OMEGA_H)
   # discretization: part of pcms::discretization
-  target_sources(pcms_discretization PRIVATE discretization.cpp)
+  target_sources(pcms_discretization PRIVATE discretization.cpp omega_h.cpp)
   target_sources(
     pcms_discretization
     PUBLIC FILE_SET field_discretization TYPE HEADERS BASE_DIRS
-           ${CMAKE_CURRENT_SOURCE_DIR}/../.. ${PROJECT_SOURCE_DIR}/include/pcms FILES discretization.hpp)
+           ${CMAKE_CURRENT_SOURCE_DIR}/../.. ${PROJECT_SOURCE_DIR}/include/pcms FILES discretization.hpp omega_h.hpp)
 
   # layouts, Lagrange evaluator and the uniform-grid binary field: part of
   # pcms::field

@@ -20,6 +20,15 @@ static_assert(
   std::is_same_v<ClassificationDimension, Omega_h::I8>,
   "ClassificationDimension must match Omega_h::I8 for direct views");
 
+OmegaHDiscretization::OmegaHDiscretization(
+  Omega_h::Mesh& mesh, std::string global_id_name,
+  std::optional<Omega_h::Read<Omega_h::I8>> owned_mask)
+  : OmegaHDiscretization(mesh)
+{
+  global_id_name_ = std::move(global_id_name);
+  owned_mask_ = std::move(owned_mask);
+}
+
 OmegaHDiscretization::OmegaHDiscretization(Omega_h::Mesh& mesh) : mesh_(mesh)
 {
   for (int entity_dim = 0; entity_dim <= max_entity_dim_; ++entity_dim) {

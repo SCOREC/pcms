@@ -102,7 +102,7 @@ Generate a structured uniform grid that covers the bounding box of the mesh.
 
 ```python
 # Create uniform grid with 4x4 cell divisions
-grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
+grid = pcms.backend.omega_h.create_uniform_grid_from_mesh(mesh, [4, 4])
 print(f"Created uniform grid with {grid.get_num_cells()} cells")
 ```
 
@@ -167,7 +167,7 @@ face_tag = mesh.get_tag(face_dim, tag_index)  # Get tag by index
 face_field = mesh.get_tag(face_dim, face_tag.name())
 
 # Convert element field to vertex field using averaging
-vertex_field = pcms.map_entity_field_to_vertices_average(mesh, face_field, face_dim)
+vertex_field = pcms.backend.omega_h.map_entity_field_to_vertices_average(mesh, face_field, face_dim)
 
 # Create vertex-based field and set data
 omega_h_factory = pcms.create_lagrange_space(
@@ -244,7 +244,7 @@ np.save('field_data.npy', grid_values)
 ## API Reference Summary
 
 ### Grid Creation
-- `create_uniform_grid_from_mesh(mesh, divisions)` - Create grid from mesh
+- `backend.omega_h.create_uniform_grid_from_mesh(mesh, divisions)` - Create grid from mesh
 - `backend.omega_h.create_uniform_grid_binary_field(mesh, divisions)` - Create inside/outside mask
 
 The Python names mirror the C++ API: classes keep their C++ names, C++
@@ -286,7 +286,9 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 - `Interpolator(source, target_space)` - Create an interpolator from a `PointEvaluatorFactory` (cached localization)
 - `operator.apply(source_field, target_field)` - Apply any `TransferOperator` (`Interpolator`, `Copy`, projections)
 - `Copy(source_space, target_space)` - Create a copy operator for compatible FunctionSpaces
-- `map_entity_field_to_vertices_average(mesh, field_data, entity_dim)` - Convert element/face field to vertex field by averaging
+- `backend.omega_h.map_entity_field_to_vertices_average(mesh, field_data, entity_dim)` - Convert element/face field to vertex field by averaging
+- `backend.omega_h.map_entity_field_to_vertices_mls(mesh, field_data, entity_dim, interp_degree=1)` - The same with moving least squares
+- `backend.omega_h.compute_entity_centroids(mesh, entity_dim)` - Centroids of the faces/elements, shape `(n_entities, dim)`
 
 ### Coordinate Transformations
 - `CartesianToCylindrical()`, `CylindricalToCartesian()` - `CoordinateMap`s; points map source to target, values are re-expressed the other way

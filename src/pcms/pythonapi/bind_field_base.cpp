@@ -359,10 +359,6 @@ void bind_create_field_module(py::module& m)
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 3D uniform grid from an Omega_h mesh");
-
-  // Old top-level name, kept until callers are updated
-  m.attr("create_uniform_grid_from_mesh") =
-    omega_h_module.attr("create_uniform_grid_from_mesh");
 }
 
 } // namespace pcms

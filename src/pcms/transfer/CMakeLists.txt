@@ -7,12 +7,14 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     transfer_operator.hpp
     mass_matrix_type.hpp
     monte_carlo_sampling.hpp
+    projection.hpp
 )
 
 
 set(PCMS_FIELD_TRANSFER_SOURCES
     mesh_intersection.cpp
-    interpolation_base.cpp)
+    interpolation_base.cpp
+    projection.cpp)
 
 
 if(PCMS_ENABLE_MESHFIELDS)

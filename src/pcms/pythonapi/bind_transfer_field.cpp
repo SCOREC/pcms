@@ -16,6 +16,7 @@
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include "pcms/transfer/omega_h_conservative_projection.hpp"
+#include "pcms/transfer/projection.hpp"
 #include "pcms/transfer/omega_h_control_variate_projection.hpp"
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
 #include <cstdint>
@@ -164,6 +165,40 @@ void bind_transfer_field_module(py::module& m)
          "Construct a Monte Carlo (control-variate) conservative projection. "
          "Sample-point generation, the control-variate interpolator, and the "
          "mass-matrix factorization are cached; call apply() repeatedly.");
+  m.def(
+    "create_conservative_projection",
+    [](const FunctionSpace& source_space, const FunctionSpace& target_space,
+       MassMatrixType mass_matrix_type) {
+      return CreateConservativeProjection(
+        source_space, target_space,
+        ConservativeProjectionOptions{mass_matrix_type});
+    },
+    py::arg("source_space"), py::arg("target_space"),
+    py::arg("mass_matrix_type") = MassMatrixType::Consistent,
+    py::keep_alive<0, 1>(), py::keep_alive<0, 2>(),
+    "Mesh-intersection conservative projection. Mesh intersection, "
+    "quadrature setup, and mass-matrix factorization happen here and are "
+    "cached; call apply() repeatedly.");
+
+  m.def(
+    "create_control_variate_projection",
+    [](const FunctionSpace& source_space, const FunctionSpace& target_space,
+       int samples_per_element, MonteCarloSampling sampling,
+       std::uint64_t seed, MassMatrixType mass_matrix_type) {
+      return CreateControlVariateProjection(
+        source_space, target_space,
+        ControlVariateProjectionOptions{samples_per_element, sampling, seed,
+                                        mass_matrix_type});
+    },
+    py::arg("source_space"), py::arg("target_space"),
+    py::arg("samples_per_element"),
+    py::arg("sampling") = MonteCarloSampling::UniformRandom,
+    py::arg("seed") = std::uint64_t(8675309),
+    py::arg("mass_matrix_type") = MassMatrixType::Consistent,
+    py::keep_alive<0, 1>(), py::keep_alive<0, 2>(),
+    "Monte Carlo (control-variate) conservative projection. Sample-point "
+    "generation, the control-variate interpolator, and the mass-matrix "
+    "factorization are cached; call apply() repeatedly.");
 #endif
 }
 

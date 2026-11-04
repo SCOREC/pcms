@@ -1,0 +1,24 @@
+# namespace-scope names declared in src/pcms/backends/uniform_grid that are
+# used elsewhere (UniformGrid / UniformGrid2D / UniformGrid3D stay in utility)
+UniformGridDiscretization
+UniformGridFieldLayout
+UniformGridFieldLayout2D
+UniformGridEvaluatorFactory
+UniformGridEvaluatorFactory2D
+UniformGridFieldLocalizationHint
+UniformGridPointEvaluator
+UniformGridSplineEvaluatorFactory2D
+UniformGridSplinePointEvaluator2D
+BoundaryCondition
+CubicSplineInterpolator
+ExplicitCubicSplineInterpolator
+CompactCubicSplineInterpolator
+BiCubicSplineInterpolator
+ExplicitBiCubicSplineInterpolator
+CompactBiCubicSplineInterpolator
+RegularGridInterpolator
+RealMatView
+RealVecView
+IntMatView
+IntVecView
+HostIntVecView

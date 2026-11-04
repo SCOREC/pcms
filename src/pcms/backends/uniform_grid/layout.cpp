@@ -1,4 +1,4 @@
-#include "pcms/field/layout/uniform_grid.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/utility/profile.hpp"
 #include "pcms/utility/assert.hpp"
 #include <memory>

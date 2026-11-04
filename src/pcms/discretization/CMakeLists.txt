@@ -2,7 +2,7 @@ set(
         PCMS_DISCRETIZATION_HEADERS
         discretization.hpp
         discretization/empty.hpp
-        discretization/uniform_grid.hpp
+        ../backends/uniform_grid/discretization.hpp
 )
 if (PCMS_ENABLE_OMEGA_H)
   list(APPEND PCMS_DISCRETIZATION_HEADERS discretization/omega_h.hpp)

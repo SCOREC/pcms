@@ -1,7 +1,7 @@
 #ifndef PCMS_UNIFORM_GRID_BINARY_FIELD_H
 #define PCMS_UNIFORM_GRID_BINARY_FIELD_H
 
-#include "pcms/field/layout/uniform_grid.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/field/data/simple.hpp"
 #include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/value_view.hpp"

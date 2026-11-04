@@ -1,11 +1,11 @@
 #ifndef PCMS_UNIFORM_GRID_SPLINE_EVALUATOR_FACTORY_H
 #define PCMS_UNIFORM_GRID_SPLINE_EVALUATOR_FACTORY_H
 
-#include "pcms/field/evaluator/spline_interpolator.hpp"
-#include "pcms/field/evaluator/uniform_grid.hpp"
+#include "pcms/backends/uniform_grid/spline_interpolator.hpp"
+#include "pcms/backends/uniform_grid/evaluator.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/field_evaluator_factory.hpp"
-#include "pcms/field/layout/uniform_grid.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/utility/assert.hpp"

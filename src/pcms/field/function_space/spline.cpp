@@ -1,8 +1,8 @@
 #include "pcms/field/function_space/spline.hpp"
 
 #include "pcms/field/data/simple.hpp"
-#include "pcms/field/evaluator/uniform_grid_spline.hpp"
-#include "pcms/field/layout/uniform_grid.hpp"
+#include "pcms/backends/uniform_grid/spline_evaluator.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/utility/common.hpp"
 
 #include <stdexcept>

@@ -34,7 +34,7 @@ if (PCMS_ENABLE_OMEGA_H)
             function_space/spline.cpp
             layout/omega_h_entity.cpp
             layout/omega_h_lagrange.cpp
-            layout/uniform_grid.cpp
+            ../backends/uniform_grid/layout.cpp
             evaluator/mls_interpolation.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
@@ -44,11 +44,11 @@ if (PCMS_ENABLE_OMEGA_H)
             layout/omega_h_entity.hpp
             layout/omega_h_lagrange.hpp
             evaluator/omega_h_lagrange.hpp
-            layout/uniform_grid.hpp
+            ../backends/uniform_grid/layout.hpp
             uniform_grid_binary_field.hpp
-            evaluator/uniform_grid.hpp
-            evaluator/spline_interpolator.hpp
-            evaluator/uniform_grid_spline.hpp
+            ../backends/uniform_grid/evaluator.hpp
+            ../backends/uniform_grid/spline_interpolator.hpp
+            ../backends/uniform_grid/spline_evaluator.hpp
             eqdsk_field.hpp
             evaluator/mls_interpolation.hpp
             evaluator/mls_interpolation_impl.hpp

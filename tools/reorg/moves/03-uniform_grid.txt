@@ -1,0 +1,11 @@
+# Phase 3.5: uniform-grid backend. linear_interpolant.hpp and
+# multidimarray.hpp were in transfer/ but are used only by the uniform-grid
+# evaluator; moving them here removes field's include of a transfer header.
+src/pcms/discretization/discretization/uniform_grid.hpp  src/pcms/backends/uniform_grid/discretization.hpp
+src/pcms/field/layout/uniform_grid.hpp                   src/pcms/backends/uniform_grid/layout.hpp
+src/pcms/field/layout/uniform_grid.cpp                   src/pcms/backends/uniform_grid/layout.cpp
+src/pcms/field/evaluator/uniform_grid.hpp                src/pcms/backends/uniform_grid/evaluator.hpp
+src/pcms/field/evaluator/uniform_grid_spline.hpp         src/pcms/backends/uniform_grid/spline_evaluator.hpp
+src/pcms/field/evaluator/spline_interpolator.hpp         src/pcms/backends/uniform_grid/spline_interpolator.hpp
+src/pcms/transfer/linear_interpolant.hpp                 src/pcms/backends/uniform_grid/linear_interpolant.hpp
+src/pcms/transfer/multidimarray.hpp                      src/pcms/backends/uniform_grid/multidimarray.hpp

@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include "pcms/field/evaluator/spline_interpolator.hpp"
+#include "pcms/backends/uniform_grid/spline_interpolator.hpp"
 #include "field_test_utils.hpp"
 
 using namespace pcms;

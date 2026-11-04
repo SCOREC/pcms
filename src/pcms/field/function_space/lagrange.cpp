@@ -9,8 +9,8 @@
 #endif
 #include "pcms/field/layout/omega_h_lagrange.hpp"
 #include "pcms/field/evaluator/omega_h_lagrange.hpp"
-#include "pcms/field/layout/uniform_grid.hpp"
-#include "pcms/field/evaluator/uniform_grid.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
+#include "pcms/backends/uniform_grid/evaluator.hpp"
 #include "pcms/field/data/simple.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 

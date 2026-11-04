@@ -2,7 +2,7 @@
 #define PCMS_UNIFORM_GRID_FIELD_LAYOUT_H
 
 #include "pcms/utility/arrays.hpp"
-#include "pcms/discretization/discretization/uniform_grid.hpp"
+#include "pcms/backends/uniform_grid/discretization.hpp"
 #include "pcms/field/field_layout.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/utility/uniform_grid.hpp"

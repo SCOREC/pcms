@@ -2,7 +2,7 @@
 #define PCMS_EQDSK_FIELD_H
 
 #include "pcms/utility/eqdsk.hpp"
-#include "pcms/field/layout/uniform_grid.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/field/function_space/spline.hpp"
 
 #include <string>

@@ -42,7 +42,7 @@ EmptyFieldLayout::EmptyFieldLayout(
     throw pcms_error("EmptyFieldLayout: num_components must be positive");
   }
   SetCoordinateSystem(std::move(system));
-  discretization_ = std::make_shared<EmptyDiscretization>();
+  discretization_ = std::make_shared<pcms::discretization::EmptyDiscretization>();
 }
 
 std::shared_ptr<const Discretization> EmptyFieldLayout::GetDiscretization()

@@ -5,7 +5,7 @@
 
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::discretization
 {
 
 class EmptyDiscretization : public Discretization
@@ -26,6 +26,6 @@ public:
   GetEntityClassificationIds(int entity_dim) const override;
 };
 
-} // namespace pcms
+} // namespace pcms::discretization
 
 #endif // PCMS_DISCRETIZATION_DISCRETIZATION_EMPTY_H

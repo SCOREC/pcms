@@ -1,6 +1,6 @@
 #include "pcms/discretization/empty.hpp"
 
-namespace pcms
+namespace pcms::discretization
 {
 
 EmptyDiscretization::EmptyDiscretization() {}
@@ -33,4 +33,4 @@ EmptyDiscretization::GetEntityClassificationIds(int) const
   return {};
 }
 
-} // namespace pcms
+} // namespace pcms::discretization

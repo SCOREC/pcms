@@ -21,7 +21,7 @@ std::shared_ptr<const Discretization> CreateUniformGridDiscretization(
 
 std::shared_ptr<const Discretization> CreateEmptyDiscretization()
 {
-  return std::make_shared<EmptyDiscretization>();
+  return std::make_shared<pcms::discretization::EmptyDiscretization>();
 }
 
 } // namespace pcms

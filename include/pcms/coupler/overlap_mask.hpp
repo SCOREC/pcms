@@ -4,7 +4,6 @@
 #include "pcms/field/field_layout.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
-#include <Omega_h_array.hpp>
 #include <functional>
 
 namespace pcms
@@ -36,25 +35,6 @@ struct OverlapMask
   {
     PCMS_ALWAYS_ASSERT(is_overlap_host.extent(0) == size);
     Kokkos::deep_copy(is_overlap_, is_overlap_host);
-  }
-
-  // Construct from Omega_h host array
-  OverlapMask(size_t size, Omega_h::HostRead<Omega_h::I8> is_overlap_host)
-    : is_overlap_("overlap_info", size)
-  {
-    for (size_t i = 0; i < size; ++i) {
-      is_overlap_[i] = static_cast<bool>(is_overlap_host[i]);
-    }
-  }
-
-  // Construct from Omega_h device array
-  OverlapMask(size_t size, Omega_h::Read<Omega_h::I8> is_overlap_device)
-    : is_overlap_("overlap_info", size)
-  {
-    auto is_overlap_host = Omega_h::HostRead(is_overlap_device);
-    for (size_t i = 0; i < size; ++i) {
-      is_overlap_[i] = static_cast<bool>(is_overlap_host[i]);
-    }
   }
 
   // Get the mask, evaluating the function against the layout if one was given

@@ -4,7 +4,6 @@
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 
-#include <Omega_h_array.hpp>
 
 namespace pcms
 {
@@ -242,14 +241,6 @@ auto MakeConstRank2View(const Kokkos::View<T**, Properties...>& view)
   using LayoutPolicy = detail::layout_selector_t<KokkosView>;
   return Rank2View<const T, MemorySpace, LayoutPolicy>(
     view.data(), view.extent(0), view.extent(1));
-}
-
-template <typename T>
-auto MakeConstRank2View(Omega_h::Read<T> array, int dim)
-{
-  // Cannonical usage of Omega_h arrays is a layout_right 1D array
-  return Rank2View<const T, DeviceMemorySpace, Kokkos::layout_right>(
-    array.data(), array.size() / dim, dim);
 }
 
 // Flatten a contiguous (exhaustive) 2D [dof][comp] view into a 1D view over the

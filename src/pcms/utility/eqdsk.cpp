@@ -1,5 +1,6 @@
 #include "pcms/utility/eqdsk.hpp"
 #include "pcms/utility/assert.hpp"
+#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <iomanip>

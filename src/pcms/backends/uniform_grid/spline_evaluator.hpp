@@ -12,6 +12,7 @@
 #include "pcms/utility/types.hpp"
 
 #include <memory>
+#include <Omega_h_vector.hpp>
 
 namespace pcms::backend::uniform_grid
 {

@@ -3,6 +3,7 @@
 # sources and headers to the core target that uses it.
 add_subdirectory(xgc)
 add_subdirectory(point_cloud)
+add_subdirectory(uniform_grid)
 if(PCMS_ENABLE_MFEM)
   add_subdirectory(mfem)
 endif()

@@ -1,6 +1,4 @@
 set(PCMS_FIELD_TRANSFER_HEADERS
-    ../backends/uniform_grid/linear_interpolant.hpp
-    ../backends/uniform_grid/multidimarray.hpp
     interpolation_base.hpp
     interpolation_helpers.hpp
     mesh_intersection.hpp

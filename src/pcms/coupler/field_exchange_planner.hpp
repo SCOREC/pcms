@@ -3,7 +3,7 @@
 
 #include "pcms/field/field_layout.hpp"
 #include "pcms/utility/arrays.hpp"
-#include "overlap_mask.hpp"
+#include "pcms/coupler/overlap_mask.hpp"
 #include <redev.h>
 #include <vector>
 

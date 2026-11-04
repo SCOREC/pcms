@@ -20,7 +20,7 @@ fallback_version = "0.3.0"
 describe_command = "git describe --dirty --tags --long --match v[0-9]*"
 
 [tool.scikit-build.cmake.define]
-PCMS_ENABLE_Python = true
+PCMS_ENABLE_PYTHON = true
 
 [tool.pytest.ini_options]
 testpaths = ["test/python"]

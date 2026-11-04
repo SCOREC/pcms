@@ -65,7 +65,7 @@ TEST_CASE("test_normalization_routine")
                                           dim);
       pcms::detail::fill(0, team, local_supports);
 
-      double target_point[MAX_DIM] = {};
+      double target_point[PCMS_MAX_DIM] = {};
 
       for (int i = 0; i < dim; ++i) {
         target_point[i] = target_coordinates[league_rank][i];

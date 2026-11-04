@@ -1,10 +1,13 @@
+#ifndef PCMS_PYTHONAPI_NUMPY_ARRAY_TRANSFORM_HPP
+#define PCMS_PYTHONAPI_NUMPY_ARRAY_TRANSFORM_HPP
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <Omega_h_array.hpp>
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/types.hpp"
-#include "numpy_view.hpp"
+#include "pcms/pythonapi/numpy_view.hpp"
 
 namespace py = pybind11;
 
@@ -90,3 +93,5 @@ py::array_t<T> ToNumpy(Omega_h::Read<T> arr)
 }
 
 } // namespace pcms
+
+#endif // PCMS_PYTHONAPI_NUMPY_ARRAY_TRANSFORM_HPP

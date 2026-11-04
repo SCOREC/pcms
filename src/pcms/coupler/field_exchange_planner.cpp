@@ -1,5 +1,5 @@
 #include "pcms/coupler/field_exchange_planner.hpp"
-#include "partition.hpp"
+#include "pcms/coupler/partition.hpp"
 #include "pcms/field/gid_permutation.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/inclusive_scan.hpp"

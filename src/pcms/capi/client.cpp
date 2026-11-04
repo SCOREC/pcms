@@ -1,4 +1,4 @@
-#include "client.h"
+#include "pcms/capi/client.h"
 #include "pcms.h"
 #include "pcms/field/field_factory.hpp"
 #include "pcms/field/function_space/xgc.hpp"

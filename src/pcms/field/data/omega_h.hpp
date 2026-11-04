@@ -1,8 +1,8 @@
 #ifndef PCMS_OMEGA_H_FIELD_DATA_H
 #define PCMS_OMEGA_H_FIELD_DATA_H
 
-#include "../field_data.hpp"
-#include "../field_layout.hpp"
+#include "pcms/field/field_data.hpp"
+#include "pcms/field/field_layout.hpp"
 #include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"

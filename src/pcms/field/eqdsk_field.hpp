@@ -2,8 +2,9 @@
 #define PCMS_EQDSK_FIELD_H
 
 #include "pcms/utility/eqdsk.hpp"
-#include "pcms/backends/uniform_grid/layout.hpp"
-#include "pcms/field/function_space/spline.hpp"
+#include "pcms/discretization/discretization.hpp"
+#include "pcms/field/field.hpp"
+#include "pcms/field/function_spaces.hpp"
 
 #include <string>
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
@@ -13,7 +14,7 @@ namespace pcms
 
 struct EQDSKField
 {
-  std::shared_ptr<SplineFunctionSpace> space;
+  std::shared_ptr<FunctionSpace> space;
   Field<Real> field;
 };
 
@@ -21,7 +22,7 @@ struct EQDSKField
 struct EQDSKFieldWithData
 {
   EQDSKData data;
-  std::shared_ptr<SplineFunctionSpace> space;
+  std::shared_ptr<FunctionSpace> space;
   Field<Real> field;
 };
 
@@ -43,8 +44,9 @@ struct EQDSKFieldWithData
 inline EQDSKField MakeEQDSKField(const EQDSKData& eqdsk_data)
 {
   // EQDSK is a poloidal plane in cylindrical RZ coordinates
-  auto space = SplineFunctionSpace::FromUniformGrid(
-    eqdsk_data.grid, csys::CylindricalRZ::Create());
+  auto space =
+    CreateSplineSpace(CreateUniformGridDiscretization(eqdsk_data.grid),
+                      csys::CylindricalRZ::Create());
   Field<Real> field = space->CreateFunction<Real>();
   field.SetDOFHolderDataUnchecked(Rank2View<const Real, DeviceMemorySpace>(
     eqdsk_data.PSIZR.data(), eqdsk_data.PSIZR.extent(0), 1));

@@ -19,6 +19,9 @@ Rewrites, preserving the arguments:
   pcms.OmegaHConservativeProjection(...)      -> pcms.create_conservative_projection(...)
   pcms.OmegaHControlVariateProjection(...)    -> pcms.create_control_variate_projection(...)
   pcms.create_uniform_grid_binary_field(...)  -> pcms.backend.omega_h.create_uniform_grid_binary_field(...)
+  pcms.create_uniform_grid_from_mesh(...)     -> pcms.backend.omega_h.create_uniform_grid_from_mesh(...)
+  pcms.map_entity_field_to_vertices_X(...)    -> pcms.backend.omega_h.map_entity_field_to_vertices_X(...)
+  pcms.compute_entity_centroids[_few](...)    -> pcms.backend.omega_h.compute_entity_centroids(...)
   <space>.mesh()                              -> pcms.backend.omega_h.get_mesh(<space>.get_discretization())
 
 The keyword mesh_coordinate_system= becomes coordinate_system=. Running the
@@ -155,8 +158,15 @@ def convert(text):
                          simple("pcms.create_conservative_projection"))
     text = rewrite_calls(text, "pcms.OmegaHControlVariateProjection(",
                          simple("pcms.create_control_variate_projection"))
-    text = re.sub(r"(?<!omega_h\.)pcms\.create_uniform_grid_binary_field\(",
-                  "pcms.backend.omega_h.create_uniform_grid_binary_field(", text)
+    text = re.sub(r"\bpcms\.compute_entity_centroids_few\b",
+                  "pcms.compute_entity_centroids", text)
+    for name in ("create_uniform_grid_binary_field",
+                 "create_uniform_grid_from_mesh",
+                 "map_entity_field_to_vertices_average",
+                 "map_entity_field_to_vertices_mls",
+                 "compute_entity_centroids"):
+        text = re.sub(rf"(?<!omega_h\.)pcms\.{name}\b",
+                      f"pcms.backend.omega_h.{name}", text)
     text = re.sub(r"\b(\w+)\.mesh\(\)",
                   r"pcms.backend.omega_h.get_mesh(\1.get_discretization())", text)
     return text

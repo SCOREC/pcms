@@ -6,7 +6,7 @@
 
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::backend::uniform_grid
 {
 
 template <unsigned Dim>
@@ -117,6 +117,6 @@ UniformGridDiscretization<Dim>::GetEntityClassificationIds(int entity_dim) const
   return Rank1View<const ClassificationId, DeviceMemorySpace>(nullptr, 0);
 }
 
-} // namespace pcms
+} // namespace pcms::backend::uniform_grid
 
 #endif // PCMS_DISCRETIZATION_DISCRETIZATION_UNIFORM_GRID_H

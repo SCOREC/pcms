@@ -6,7 +6,7 @@
 #include "pcms/backends/uniform_grid/multidimarray.hpp"
 #define PCMS_MAX_DIM 10
 
-namespace pcms
+namespace pcms::backend::uniform_grid
 {
 
 KOKKOS_INLINE_FUNCTION
@@ -197,6 +197,6 @@ double test_function(double* coord)
   }
   return fun_value;
 }
-} // namespace pcms
+} // namespace pcms::backend::uniform_grid
 
 #endif // PCMS_TRANSFER_LINEAR_INTERPOLANT_HPP

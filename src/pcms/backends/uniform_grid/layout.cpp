@@ -3,7 +3,7 @@
 #include "pcms/utility/assert.hpp"
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::uniform_grid
 {
 
 namespace
@@ -315,4 +315,4 @@ int UniformGridFieldLayout<Dim>::GetOrder() const
 template class UniformGridFieldLayout<2>;
 template class UniformGridFieldLayout<3>;
 
-} // namespace pcms
+} // namespace pcms::backend::uniform_grid

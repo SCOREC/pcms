@@ -13,7 +13,7 @@
 
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::uniform_grid
 {
 
 namespace detail
@@ -34,7 +34,7 @@ struct InitCoordsFunctor
 } // namespace detail
 
 template <typename LayoutPolicy =
-            detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
+            pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class UniformGridSplinePointEvaluator2D
   : public PointEvaluator<Real, LayoutPolicy>
 {
@@ -300,6 +300,6 @@ private:
   UniformGrid<2> grid_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::uniform_grid
 
 #endif // PCMS_UNIFORM_GRID_SPLINE_EVALUATOR_FACTORY_H

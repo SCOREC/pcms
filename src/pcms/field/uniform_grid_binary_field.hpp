@@ -34,12 +34,12 @@ namespace pcms
  * \return Pair of (layout, field) with binary mask values.
  */
 template <unsigned Dim>
-std::pair<std::shared_ptr<const UniformGridFieldLayout<Dim>>, Field<Real>>
+std::pair<std::shared_ptr<const pcms::backend::uniform_grid::UniformGridFieldLayout<Dim>>, Field<Real>>
 CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
 {
   auto function_space = LagrangeFunctionSpace::FromUniformGrid(
     grid, 1, csys::Cartesian::Deferred());
-  auto layout = std::dynamic_pointer_cast<const UniformGridFieldLayout<Dim>>(
+  auto layout = std::dynamic_pointer_cast<const pcms::backend::uniform_grid::UniformGridFieldLayout<Dim>>(
     function_space->GetLayout());
   PCMS_ALWAYS_ASSERT(layout != nullptr);
   Field<Real> field = function_space->template CreateFunction<Real>("");
@@ -83,7 +83,7 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
  * \brief Convenience overload: derives the grid from the mesh bounding box.
  */
 template <unsigned Dim>
-std::pair<std::shared_ptr<const UniformGridFieldLayout<Dim>>, Field<Real>>
+std::pair<std::shared_ptr<const pcms::backend::uniform_grid::UniformGridFieldLayout<Dim>>, Field<Real>>
 CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
                              const std::array<LO, Dim>& divisions)
 {

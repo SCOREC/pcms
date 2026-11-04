@@ -21,10 +21,10 @@ std::shared_ptr<SplineFunctionSpace> SplineFunctionSpace::FromUniformGrid(
   const UniformGrid<2>& grid,
   std::shared_ptr<const CoordinateSystem> mesh_coordinate_system)
 {
-  auto layout = std::make_shared<UniformGridFieldLayout<2>>(
+  auto layout = std::make_shared<pcms::backend::uniform_grid::UniformGridFieldLayout<2>>(
     grid, 1, std::move(mesh_coordinate_system), 1);
   auto evaluator_factory =
-    std::make_shared<UniformGridSplineEvaluatorFactory2D>(layout);
+    std::make_shared<pcms::backend::uniform_grid::UniformGridSplineEvaluatorFactory2D>(layout);
   return std::make_shared<SplineFunctionSpace>(Key{}, layout,
                                                std::move(evaluator_factory));
 }

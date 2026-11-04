@@ -185,27 +185,27 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
   reset_2dspan(splinv);
 
   // interpolator.cspline(x, ns, fspl, 1, 1, 1, 1, wk);
-  ExplicitCubicSplineInterpolator<double, TestMemorySpace>
-    explicit_interpolator(x, f, BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1,
-                          BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
+  pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>
+    explicit_interpolator(x, f, pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1,
+                          pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
   explicit_interpolator.evaluate(xt, splinv);
 
   compare(splinv, ft, Kokkos::subview(res_1d, Kokkos::make_pair(0, 2)),
           "cspline");
   reset_2dspan(splinv);
 
-  ExplicitCubicSplineInterpolator<double, TestMemorySpace>
-    explicit_interpolator_periodic(x, f, BoundaryCondition::PERIODIC, 0,
-                                   BoundaryCondition::PERIODIC, 0);
+  pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>
+    explicit_interpolator_periodic(x, f, pcms::backend::uniform_grid::BoundaryCondition::PERIODIC, 0,
+                                   pcms::backend::uniform_grid::BoundaryCondition::PERIODIC, 0);
   explicit_interpolator_periodic.evaluate(xt, splinv);
 
   compare(splinv, ft, Kokkos::subview(res_1d, Kokkos::make_pair(2, 4)),
           "cspline_periodic");
   reset_2dspan(splinv);
 
-  CompactCubicSplineInterpolator<double, TestMemorySpace> compact_interpolator(
-    x, f, BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1,
-    BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
+  pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace> compact_interpolator(
+    x, f, pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1,
+    pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
   compact_interpolator.evaluate(xt, splinv);
 
   compare(splinv, ft, Kokkos::subview(res_1d, Kokkos::make_pair(4, 6)),
@@ -307,24 +307,24 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
   auto splinv_gt = MakeRank1View(splinv_gt_view);
   generate_gt_2d(splinv_gt, fxtest, fthtest, ntest);
 
-  ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>
+  pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>
     explicit_interpolator(x, th, values,
-                          BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx1,
-                          BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx2,
-                          BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth1,
-                          BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
+                          pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx1,
+                          pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx2,
+                          pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth1,
+                          pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
   explicit_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
 
   compare_2d(splinv, splinv_gt,
              Kokkos::subview(res_2d, Kokkos::make_pair(0, 2)), "bcspline");
   reset_2dspan(splinv);
 
-  CompactBiCubicSplineInterpolator<double, TestMemorySpace>
+  pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>
     compact_interpolator(x, th, values,
-                         BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx1,
-                         BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx2,
-                         BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth1,
-                         BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
+                         pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx1,
+                         pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcx2,
+                         pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth1,
+                         pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
   compact_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
 
   compare_2d(splinv, splinv_gt,
@@ -487,15 +487,15 @@ std::vector<double> sample_2d(const std::vector<double>& x,
 
 TEMPLATE_TEST_CASE("two-point splines keep both endpoint derivatives",
                    "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // f = x^3 on [1, 3]: any pair of first/second derivative end conditions
   // determines the cubic exactly
   auto x = CreateDeviceRank1View<double>({1.0, 3.0});
   auto f = CreateDeviceRank1View<double>({1.0, 27.0});
-  const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
-  const auto d2 = BoundaryCondition::SECOND_DERIVATIVE_MATCH;
+  const auto d1 = pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+  const auto d2 = pcms::backend::uniform_grid::BoundaryCondition::SECOND_DERIVATIVE_MATCH;
   auto [lo, lo_data, hi, hi_data] = GENERATE_COPY(
     std::make_tuple(d1, 3.0, d1, 27.0), std::make_tuple(d1, 3.0, d2, 18.0),
     std::make_tuple(d2, 6.0, d1, 27.0), std::make_tuple(d2, 6.0, d2, 18.0));
@@ -511,8 +511,8 @@ TEMPLATE_TEST_CASE("two-point splines keep both endpoint derivatives",
 
 TEMPLATE_TEST_CASE("non-zero boundary data on the lower side only is applied",
                    "[spline]",
-                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // f = g(x) (y - y^2/2) has df/dy = g(x) at y = 0 and 0 at y = 1
   auto g = [](double x) { return 1 + x + x * x + x * x * x; };
@@ -528,8 +528,8 @@ TEMPLATE_TEST_CASE("non-zero boundary data on the lower side only is applied",
   auto lo = CreateDeviceRank1View(lo_h);
   auto hi = CreateDeviceRank1View(std::vector<double>(xh.size(), 0.0));
   auto none = CreateDeviceRank1View<double>({});
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
-  const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
+  const auto d1 = pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH;
   TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
                   MakeRank1View(none), nak, MakeRank1View(none), d1,
                   MakeRank1View(lo), d1, MakeRank1View(hi));
@@ -552,8 +552,8 @@ TEST_CASE("spline grids must be finite, ascending and non-degenerate",
                             std::vector<double>{0.0, 1.0, 2.0, inf});
   auto x = CreateDeviceRank1View(grid);
   auto f = CreateDeviceRank1View(std::vector<double>(grid.size(), 1.0));
-  using Interp = CompactCubicSplineInterpolator<double, TestMemorySpace>;
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  using Interp = pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
   REQUIRE_THROWS_AS(Interp(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0),
                     pcms_error);
 }
@@ -564,23 +564,23 @@ TEST_CASE("nearly uniform spline grids are rejected", "[spline]")
   // silently interpolated as if uniform
   auto x = CreateDeviceRank1View<double>({0.0, 1.0, 2.0005, 3.0});
   auto f = CreateDeviceRank1View<double>({0.0, 1.0, 8.0, 27.0});
-  using Interp = ExplicitCubicSplineInterpolator<double, TestMemorySpace>;
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  using Interp = pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
   REQUIRE_THROWS_AS(Interp(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0),
                     pcms_error);
 }
 
 TEMPLATE_TEST_CASE("1D queries outside the grid leave the output untouched",
                    "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   auto xh = linspace(0, 1, 6);
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(xh);
   TestType interp(MakeRank1View(x), MakeRank1View(f),
-                  BoundaryCondition::NOT_A_KNOT, 0,
-                  BoundaryCondition::NOT_A_KNOT, 0);
+                  pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT, 0,
+                  pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT, 0);
   const double nan = std::numeric_limits<double>::quiet_NaN();
   auto out = eval_1d(interp, {1, 1, 0}, {nan, -1.0e6, 1.0e6}, 2);
   for (double v : out)
@@ -589,15 +589,15 @@ TEMPLATE_TEST_CASE("1D queries outside the grid leave the output untouched",
 
 TEMPLATE_TEST_CASE("2D queries outside the grid leave the output untouched",
                    "[spline]",
-                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
   auto xh = linspace(0, 1, 6);
   auto x = CreateDeviceRank1View(xh);
   auto v = CreateDeviceRank1View(
     sample_2d(xh, xh, [](double a, double b) { return a + b; }));
   auto none = CreateDeviceRank1View<double>({});
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
   TestType interp(MakeRank1View(x), MakeRank1View(x), MakeRank1View(v), nak,
                   MakeRank1View(none), nak, MakeRank1View(none), nak,
                   MakeRank1View(none), nak, MakeRank1View(none));
@@ -643,8 +643,8 @@ struct SelectorCase
 } // namespace
 
 TEMPLATE_TEST_CASE("1D selectors pick derivatives in PSPLINE order", "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   auto xh = linspace(-1, 2, 6);
   std::vector<double> fh;
@@ -653,8 +653,8 @@ TEMPLATE_TEST_CASE("1D selectors pick derivatives in PSPLINE order", "[spline]",
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(fh);
   TestType interp(MakeRank1View(x), MakeRank1View(f),
-                  BoundaryCondition::NOT_A_KNOT, 0,
-                  BoundaryCondition::NOT_A_KNOT, 0);
+                  pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT, 0,
+                  pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT, 0);
   const std::vector<SelectorCase> cases = {{{1, 1, 1}, {{0}, {1}, {2}}},
                                            {{0, 1, 0}, {{1}}},
                                            {{0, 0, 1}, {{2}}},
@@ -678,12 +678,12 @@ TEMPLATE_TEST_CASE("1D selectors pick derivatives in PSPLINE order", "[spline]",
 }
 
 TEMPLATE_TEST_CASE("2D selectors pick derivatives in PSPLINE order", "[spline]",
-                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
   constexpr bool is_explicit =
     std::is_same_v<TestType,
-                   ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>>;
+                   pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>>;
   auto xh = linspace(0, 2, 6);
   auto yh = linspace(-1, 1, 5);
   auto x = CreateDeviceRank1View(xh);
@@ -691,7 +691,7 @@ TEMPLATE_TEST_CASE("2D selectors pick derivatives in PSPLINE order", "[spline]",
   auto v = CreateDeviceRank1View(
     sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
   auto none = CreateDeviceRank1View<double>({});
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
   TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
                   MakeRank1View(none), nak, MakeRank1View(none), nak,
                   MakeRank1View(none), nak, MakeRank1View(none));
@@ -729,8 +729,8 @@ TEMPLATE_TEST_CASE("2D selectors pick derivatives in PSPLINE order", "[spline]",
 
 TEMPLATE_TEST_CASE("1D evaluate without a selector writes every value",
                    "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // the overload builds its own value-only selector on the device; NaN marks
   // outputs it never wrote
@@ -741,8 +741,8 @@ TEMPLATE_TEST_CASE("1D evaluate without a selector writes every value",
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(fh);
   TestType interp(MakeRank1View(x), MakeRank1View(f),
-                  BoundaryCondition::NOT_A_KNOT, 0,
-                  BoundaryCondition::NOT_A_KNOT, 0);
+                  pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT, 0,
+                  pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT, 0);
   const std::vector<double> xq = {-1.0, 0.3, 1.7, 2.0};
   auto xd = CreateDeviceRank1View(xq);
   Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), 1);
@@ -757,8 +757,8 @@ TEMPLATE_TEST_CASE("1D evaluate without a selector writes every value",
 
 TEMPLATE_TEST_CASE("2D evaluate without a selector writes every value",
                    "[spline]",
-                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
   auto xh = linspace(0, 2, 6);
   auto yh = linspace(-1, 1, 5);
@@ -767,7 +767,7 @@ TEMPLATE_TEST_CASE("2D evaluate without a selector writes every value",
   auto v = CreateDeviceRank1View(
     sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
   auto none = CreateDeviceRank1View<double>({});
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
   TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
                   MakeRank1View(none), nak, MakeRank1View(none), nak,
                   MakeRank1View(none), nak, MakeRank1View(none));
@@ -786,8 +786,8 @@ TEMPLATE_TEST_CASE("2D evaluate without a selector writes every value",
 }
 
 TEMPLATE_TEST_CASE("1D splines build and evaluate in host memory", "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, Kokkos::HostSpace>),
-                   (CompactCubicSplineInterpolator<double, Kokkos::HostSpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, Kokkos::HostSpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, Kokkos::HostSpace>))
 {
   // every kernel must run in the interpolator's own space, even when the
   // default execution space is a device
@@ -800,8 +800,8 @@ TEMPLATE_TEST_CASE("1D splines build and evaluate in host memory", "[spline]",
   Kokkos::View<double**, H> out("out", xq.size(), 1);
   Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
   TestType interp(make_array_view(xh), make_array_view(fh),
-                  BoundaryCondition::NOT_A_KNOT, 0,
-                  BoundaryCondition::NOT_A_KNOT, 0);
+                  pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT, 0,
+                  pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT, 0);
   interp.evaluate(make_array_view(xq), MakeRank2View(out));
   Kokkos::fence();
   for (size_t i = 0; i < xq.size(); ++i) {
@@ -812,8 +812,8 @@ TEMPLATE_TEST_CASE("1D splines build and evaluate in host memory", "[spline]",
 
 TEMPLATE_TEST_CASE(
   "2D splines build and evaluate in host memory", "[spline]",
-  (ExplicitBiCubicSplineInterpolator<double, Kokkos::HostSpace>),
-  (CompactBiCubicSplineInterpolator<double, Kokkos::HostSpace>))
+  (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, Kokkos::HostSpace>),
+  (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, Kokkos::HostSpace>))
 {
   auto xh = linspace(0, 2, 6);
   auto yh = linspace(-1, 1, 5);
@@ -825,7 +825,7 @@ TEMPLATE_TEST_CASE(
   Kokkos::View<double**, H> out("out", xq.size(), 1);
   Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
   Rank1View<double, H> none(nullptr, 0);
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
   TestType interp(make_array_view(xh), make_array_view(yh), make_array_view(v),
                   nak, none, nak, none, nak, none, nak, none);
   interp.evaluate(make_array_view(xq), make_array_view(yq), MakeRank2View(out));
@@ -839,7 +839,7 @@ TEMPLATE_TEST_CASE(
 TEST_CASE("explicit and compact splines agree for every boundary condition",
           "[spline]")
 {
-  using BC = BoundaryCondition;
+  using BC = pcms::backend::uniform_grid::BoundaryCondition;
   const double pi2 = 2 * M_PI;
   auto [lo, hi] = GENERATE(
     std::make_pair(BC::NOT_A_KNOT, BC::NOT_A_KNOT),
@@ -874,20 +874,20 @@ TEST_CASE("explicit and compact splines agree for every boundary condition",
     yq.push_back(pi2 * std::fmod(0.291 * i + 0.02, 1.0));
   }
 
-  ExplicitCubicSplineInterpolator<double, TestMemorySpace> e1(
+  pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace> e1(
     MakeRank1View(x), MakeRank1View(f1), lo, 0.7, hi, -0.4);
-  CompactCubicSplineInterpolator<double, TestMemorySpace> c1(
+  pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace> c1(
     MakeRank1View(x), MakeRank1View(f1), lo, 0.7, hi, -0.4);
   auto oe1 = eval_1d(e1, {1, 1, 1}, xq, 3);
   auto oc1 = eval_1d(c1, {1, 1, 1}, xq, 3);
   for (size_t i = 0; i < oe1.size(); ++i)
     CHECK(oc1[i] == Catch::Approx(oe1[i]).margin(1e-10));
 
-  ExplicitBiCubicSplineInterpolator<double, TestMemorySpace> e2(
+  pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace> e2(
     MakeRank1View(x), MakeRank1View(y), MakeRank1View(f2), lo,
     MakeRank1View(bx), hi, MakeRank1View(bx), lo, MakeRank1View(by), hi,
     MakeRank1View(by));
-  CompactBiCubicSplineInterpolator<double, TestMemorySpace> c2(
+  pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace> c2(
     MakeRank1View(x), MakeRank1View(y), MakeRank1View(f2), lo,
     MakeRank1View(bx), hi, MakeRank1View(bx), lo, MakeRank1View(by), hi,
     MakeRank1View(by));
@@ -930,11 +930,11 @@ std::pair<int, int> effective_conditions(int n, int lo, int hi)
 }
 
 /// End data that a product of the test cubics satisfies for condition bc
-double end_data(BoundaryCondition bc, double (*p)(double, int), double x)
+double end_data(pcms::backend::uniform_grid::BoundaryCondition bc, double (*p)(double, int), double x)
 {
   switch (bc) {
-    case BoundaryCondition::FIRST_DERIVATIVE_MATCH: return p(x, 1);
-    case BoundaryCondition::SECOND_DERIVATIVE_MATCH: return p(x, 2);
+    case pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH: return p(x, 1);
+    case pcms::backend::uniform_grid::BoundaryCondition::SECOND_DERIVATIVE_MATCH: return p(x, 2);
     default: return 0;
   }
 }
@@ -943,8 +943,8 @@ double end_data(BoundaryCondition bc, double (*p)(double, int), double x)
 
 TEMPLATE_TEST_CASE("every end condition holds on grids of 2 to 8 points",
                    "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   const double lo_data = 0.7, hi_data = -0.4;
   for (int n = 2; n <= 8; ++n) {
@@ -961,8 +961,8 @@ TEMPLATE_TEST_CASE("every end condition holds on grids of 2 to 8 points",
         auto x = CreateDeviceRank1View(xh);
         auto f = CreateDeviceRank1View(fh);
         TestType s(MakeRank1View(x), MakeRank1View(f),
-                   static_cast<BoundaryCondition>(lo), lo_data,
-                   static_cast<BoundaryCondition>(hi), hi_data);
+                   static_cast<pcms::backend::uniform_grid::BoundaryCondition>(lo), lo_data,
+                   static_cast<pcms::backend::uniform_grid::BoundaryCondition>(hi), hi_data);
 
         // s', s'', s''' at both ends and in the two cells next to each end
         auto mid = [&](int cell) { return xh[cell] + h / 2; };
@@ -1017,10 +1017,10 @@ TEMPLATE_TEST_CASE("every end condition holds on grids of 2 to 8 points",
 
 TEMPLATE_TEST_CASE("1D splines reproduce cubics for every exact end condition",
                    "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
-  using BC = BoundaryCondition;
+  using BC = pcms::backend::uniform_grid::BoundaryCondition;
   const std::vector<BC> conditions = {
     BC::NOT_A_KNOT, BC::FIRST_DERIVATIVE_MATCH, BC::SECOND_DERIVATIVE_MATCH,
     BC::THIRD_DIV_DIFF_MATCH};
@@ -1053,10 +1053,10 @@ TEMPLATE_TEST_CASE("1D splines reproduce cubics for every exact end condition",
 
 TEMPLATE_TEST_CASE(
   "2D splines reproduce bicubics for every exact end condition", "[spline]",
-  (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-  (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+  (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+  (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
-  using BC = BoundaryCondition;
+  using BC = pcms::backend::uniform_grid::BoundaryCondition;
   const std::vector<BC> conditions = {
     BC::NOT_A_KNOT, BC::FIRST_DERIVATIVE_MATCH, BC::SECOND_DERIVATIVE_MATCH,
     BC::THIRD_DIV_DIFF_MATCH};
@@ -1105,8 +1105,8 @@ TEMPLATE_TEST_CASE(
 
 TEMPLATE_TEST_CASE("periodic 1D splines wrap queries outside the period",
                    "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   const double pi2 = 2 * M_PI;
   auto xh = linspace(0, pi2, 16);
@@ -1116,7 +1116,7 @@ TEMPLATE_TEST_CASE("periodic 1D splines wrap queries outside the period",
   fh.back() = fh.front();
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(fh);
-  const auto per = BoundaryCondition::PERIODIC;
+  const auto per = pcms::backend::uniform_grid::BoundaryCondition::PERIODIC;
   TestType s(MakeRank1View(x), MakeRank1View(f), per, 0, per, 0);
   const std::vector<double> outside = {-0.1, pi2 + 0.1, -pi2 + 0.3,
                                        2 * pi2 + 1.0};
@@ -1129,8 +1129,8 @@ TEMPLATE_TEST_CASE("periodic 1D splines wrap queries outside the period",
 
 TEMPLATE_TEST_CASE("periodic 2D splines wrap queries outside the period",
                    "[spline]",
-                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
   const double pi2 = 2 * M_PI;
   auto xh = linspace(0, pi2, 12);
@@ -1142,7 +1142,7 @@ TEMPLATE_TEST_CASE("periodic 2D splines wrap queries outside the period",
   auto v = CreateDeviceRank1View(sample_2d(
     xh, yh, [](double a, double b) { return std::sin(a) * std::cos(b) + 1; }));
   auto none = CreateDeviceRank1View<double>({});
-  const auto per = BoundaryCondition::PERIODIC;
+  const auto per = pcms::backend::uniform_grid::BoundaryCondition::PERIODIC;
   TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), per,
              MakeRank1View(none), per, MakeRank1View(none), per,
              MakeRank1View(none), per, MakeRank1View(none));
@@ -1158,13 +1158,13 @@ TEMPLATE_TEST_CASE("periodic 2D splines wrap queries outside the period",
 
 TEMPLATE_TEST_CASE("short-grid splines agree with the two-point spline",
                    "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // a two-point spline with derivative ends is a cubic; splines on finer
   // grids sampled from it, with the same ends, must be that cubic (PSPLINE
   // smalltest)
-  using BC = BoundaryCondition;
+  using BC = pcms::backend::uniform_grid::BoundaryCondition;
   const auto d1 = BC::FIRST_DERIVATIVE_MATCH;
   const auto d2 = BC::SECOND_DERIVATIVE_MATCH;
   auto [lo, lo_data, hi, hi_data] = GENERATE_COPY(
@@ -1206,12 +1206,12 @@ std::vector<double> periodic_samples(const std::vector<double>& y)
 } // namespace
 
 TEMPLATE_TEST_CASE("2D splines take periodic ends on one axis only", "[spline]",
-                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // f = px(x) (2 + sin y): non-periodic in x, periodic in y (PSPLINE
   // bpspline and bpsplinb)
-  using BC = BoundaryCondition;
+  using BC = pcms::backend::uniform_grid::BoundaryCondition;
   const double pi2 = 2 * M_PI;
   auto xh = linspace(0, 2, 6);
   auto yh = linspace(0, pi2, 12);
@@ -1281,12 +1281,12 @@ std::vector<double> observed_orders(const std::vector<double>& err)
 } // namespace
 
 TEMPLATE_TEST_CASE("1D spline errors converge at fourth order", "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // f = exp(x) on [0, 1]; the value, f' and f'' errors fall as h^4, h^3 and
   // h^2 for exact first derivative and not-a-knot ends
-  using BC = BoundaryCondition;
+  using BC = pcms::backend::uniform_grid::BoundaryCondition;
   const BC bc = GENERATE(BC::FIRST_DERIVATIVE_MATCH, BC::NOT_A_KNOT);
   INFO("ends " << static_cast<int>(bc));
   const auto xq = linspace(0, 1, 101);
@@ -1316,8 +1316,8 @@ TEMPLATE_TEST_CASE("1D spline errors converge at fourth order", "[spline]",
 }
 
 TEMPLATE_TEST_CASE("2D spline errors converge at fourth order", "[spline]",
-                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // f = exp(2x - 1) (2 + sin y) with exact x derivative faces and periodic
   // y, at 10, 20 and 40 points per axis (PSPLINE pspltest2)
@@ -1350,8 +1350,8 @@ TEMPLATE_TEST_CASE("2D spline errors converge at fourth order", "[spline]",
     auto bxl = CreateDeviceRank1View(bx_lo);
     auto bxh = CreateDeviceRank1View(bx_hi);
     auto none = CreateDeviceRank1View<double>({});
-    const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
-    const auto per = BoundaryCondition::PERIODIC;
+    const auto d1 = pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+    const auto per = pcms::backend::uniform_grid::BoundaryCondition::PERIODIC;
     TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), d1,
                MakeRank1View(bxl), d1, MakeRank1View(bxh), per,
                MakeRank1View(none), per, MakeRank1View(none));
@@ -1367,12 +1367,12 @@ TEMPLATE_TEST_CASE("2D spline errors converge at fourth order", "[spline]",
 
 TEMPLATE_TEST_CASE("1D splines of zero data follow the end conditions",
                    "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // zero samples with non-zero end data, and periodic splines of constant
   // data (PSPLINE smalltest)
-  using BC = BoundaryCondition;
+  using BC = pcms::backend::uniform_grid::BoundaryCondition;
   for (int n : {2, 3, 5}) {
     auto xh = linspace(0, 1, n);
     auto x = CreateDeviceRank1View(xh);
@@ -1404,8 +1404,8 @@ TEMPLATE_TEST_CASE("1D splines of zero data follow the end conditions",
 }
 
 TEMPLATE_TEST_CASE("2D splines of zero data follow the face data", "[spline]",
-                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // all-zero values: only the x face derivative data drives the spline
   auto xh = linspace(0, 1, 5);
@@ -1422,8 +1422,8 @@ TEMPLATE_TEST_CASE("2D splines of zero data follow the face data", "[spline]",
   auto lo = CreateDeviceRank1View(lo_h);
   auto hi = CreateDeviceRank1View(hi_h);
   auto none = CreateDeviceRank1View<double>({});
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
-  const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
+  const auto d1 = pcms::backend::uniform_grid::BoundaryCondition::FIRST_DERIVATIVE_MATCH;
   TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), d1,
              MakeRank1View(lo), d1, MakeRank1View(hi), nak, MakeRank1View(none),
              nak, MakeRank1View(none));
@@ -1447,8 +1447,8 @@ TEMPLATE_TEST_CASE("2D splines of zero data follow the face data", "[spline]",
 }
 
 TEMPLATE_TEST_CASE("1D queries just outside the grid are clamped", "[spline]",
-                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactCubicSplineInterpolator<double, TestMemorySpace>))
 {
   // the default lookup tolerance is 4e-7 relative to max(|x0|, |xn|) = 2
   auto xh = linspace(0, 2, 6);
@@ -1457,7 +1457,7 @@ TEMPLATE_TEST_CASE("1D queries just outside the grid are clamped", "[spline]",
     fh.push_back(px(a, 0));
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(fh);
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
   TestType s(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0);
   auto clamped = eval_1d(s, {1, 1, 1}, {-4e-7, 2 + 4e-7}, 3, -999.0);
   auto ends = eval_1d(s, {1, 1, 1}, {0.0, 2.0}, 3);
@@ -1469,8 +1469,8 @@ TEMPLATE_TEST_CASE("1D queries just outside the grid are clamped", "[spline]",
 }
 
 TEMPLATE_TEST_CASE("2D queries just outside the grid are clamped", "[spline]",
-                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
-                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+                   (pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
 {
   auto xh = linspace(0, 2, 6);
   auto yh = linspace(-1, 1, 5);
@@ -1479,7 +1479,7 @@ TEMPLATE_TEST_CASE("2D queries just outside the grid are clamped", "[spline]",
   auto v = CreateDeviceRank1View(
     sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
   auto none = CreateDeviceRank1View<double>({});
-  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  const auto nak = pcms::backend::uniform_grid::BoundaryCondition::NOT_A_KNOT;
   TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
              MakeRank1View(none), nak, MakeRank1View(none), nak,
              MakeRank1View(none), nak, MakeRank1View(none));

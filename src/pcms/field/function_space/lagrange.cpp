@@ -186,11 +186,11 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromUniformGrid(
     throw std::invalid_argument("LagrangeFunctionSpace::FromUniformGrid: only "
                                 "orders 0 and 1 are supported");
   }
-  auto ug_layout = std::make_shared<UniformGridFieldLayout<2>>(
+  auto ug_layout = std::make_shared<pcms::backend::uniform_grid::UniformGridFieldLayout<2>>(
     grid, num_components, coordinate_system, order);
   ug_layout->SetName(std::move(layout_name));
   auto eval_factory =
-    std::make_shared<UniformGridEvaluatorFactory<2>>(ug_layout);
+    std::make_shared<pcms::backend::uniform_grid::UniformGridEvaluatorFactory<2>>(ug_layout);
   return std::make_shared<LagrangeFunctionSpace>(
     Key{}, ug_layout,
     [ug_layout](Type t, ValueBasis basis) -> FieldDataVariant {
@@ -215,11 +215,11 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromUniformGrid(
     throw std::invalid_argument("LagrangeFunctionSpace::FromUniformGrid: only "
                                 "orders 0 and 1 are supported");
   }
-  auto ug_layout = std::make_shared<UniformGridFieldLayout<3>>(
+  auto ug_layout = std::make_shared<pcms::backend::uniform_grid::UniformGridFieldLayout<3>>(
     grid, num_components, coordinate_system, order);
   ug_layout->SetName(std::move(layout_name));
   auto eval_factory =
-    std::make_shared<UniformGridEvaluatorFactory<3>>(ug_layout);
+    std::make_shared<pcms::backend::uniform_grid::UniformGridEvaluatorFactory<3>>(ug_layout);
   return std::make_shared<LagrangeFunctionSpace>(
     Key{}, ug_layout,
     [ug_layout](Type t, ValueBasis basis) -> FieldDataVariant {

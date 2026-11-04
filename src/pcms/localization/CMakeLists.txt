@@ -1,12 +1,12 @@
 set(
         PCMS_LOCALIZATION_HEADERS
-        point_search.h
+        point_search.hpp
         queue_visited.hpp
         adj_search.hpp
-        mls_support_helpers.h
-        localization_factory.h
-        point_cloud_localization.h
-        mesh_localization.h
+        mls_support_helpers.hpp
+        localization_factory.hpp
+        point_cloud_localization.hpp
+        mesh_localization.hpp
 )
 
 set(

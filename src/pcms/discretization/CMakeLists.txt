@@ -1,7 +1,7 @@
 set(
         PCMS_DISCRETIZATION_HEADERS
-        discretization.h
-        discretization/xgc_reverse_classification.h
+        discretization.hpp
+        discretization/xgc_reverse_classification.hpp
         discretization/empty.hpp
         discretization/point_cloud.hpp
         discretization/uniform_grid.hpp

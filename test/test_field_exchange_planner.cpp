@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <pcms/coupler/field_exchange_planner.h>
-#include <pcms/field/layout/point_cloud.h>
+#include <pcms/coupler/field_exchange_planner.hpp>
+#include <pcms/field/layout/point_cloud.hpp>
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 
 TEST_CASE("Field exchange plans exclude GID message headers",

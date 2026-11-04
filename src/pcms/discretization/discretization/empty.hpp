@@ -1,7 +1,7 @@
 #ifndef PCMS_DISCRETIZATION_DISCRETIZATION_EMPTY_H
 #define PCMS_DISCRETIZATION_DISCRETIZATION_EMPTY_H
 
-#include "pcms/discretization/discretization.h"
+#include "pcms/discretization/discretization.hpp"
 
 #include <Kokkos_Core.hpp>
 

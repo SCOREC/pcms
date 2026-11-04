@@ -3,11 +3,11 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/field/layout/omega_h_lagrange.h>
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/field/layout/omega_h_lagrange.hpp>
 #include <pcms/transfer/omega_h_mass_integrator.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 #include <petscksp.h>
 
 // Reference corner tet:

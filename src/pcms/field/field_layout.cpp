@@ -1,6 +1,6 @@
-#include "pcms/field/field_layout.h"
+#include "pcms/field/field_layout.hpp"
 #include "pcms/field/gid_permutation.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 
 namespace pcms
 {

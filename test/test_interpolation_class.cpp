@@ -7,10 +7,10 @@
 
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/transfer/interpolation_base.h>
-#include <pcms/utility/mesh_geometry.h>
-#include <pcms/utility/print.h>
-#include "field_test_utils.h"
+#include <pcms/transfer/interpolation_base.hpp>
+#include <pcms/utility/mesh_geometry.hpp>
+#include <pcms/utility/print.hpp>
+#include "field_test_utils.hpp"
 
 #include <vector>
 #include <iostream>

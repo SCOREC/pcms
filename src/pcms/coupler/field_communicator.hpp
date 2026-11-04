@@ -1,14 +1,14 @@
 #ifndef FIELD_COMMUNICATOR2_H_
 #define FIELD_COMMUNICATOR2_H_
 
-#include "pcms/coupler/field_layout_communicator.h"
-#include "pcms/field/field.h"
-#include "pcms/field/field_layout.h"
-#include "pcms/coupler/field_serializer.h"
-#include "pcms/utility/profile.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/inclusive_scan.h"
-#include "pcms/utility/arrays.h"
+#include "pcms/coupler/field_layout_communicator.hpp"
+#include "pcms/field/field.hpp"
+#include "pcms/field/field_layout.hpp"
+#include "pcms/coupler/field_serializer.hpp"
+#include "pcms/utility/profile.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/inclusive_scan.hpp"
+#include "pcms/utility/arrays.hpp"
 #include <redev.h>
 #include <memory>
 

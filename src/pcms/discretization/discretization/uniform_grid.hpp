@@ -1,8 +1,8 @@
 #ifndef PCMS_DISCRETIZATION_DISCRETIZATION_UNIFORM_GRID_H
 #define PCMS_DISCRETIZATION_DISCRETIZATION_UNIFORM_GRID_H
 
-#include "pcms/discretization/discretization.h"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/discretization/discretization.hpp"
+#include "pcms/utility/uniform_grid.hpp"
 
 #include <Kokkos_Core.hpp>
 

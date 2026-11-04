@@ -3,16 +3,16 @@
 #include <Omega_h_mesh.hpp>
 #include <stdexcept>
 
-#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/field/function_space/spline.h"
-#include "pcms/field/field_data.h"
-#include "pcms/field/point_evaluator.h"
-#include "pcms/field/out_of_bounds_policy.h"
+#include "pcms/field/function_space/spline.hpp"
+#include "pcms/field/field_data.hpp"
+#include "pcms/field/point_evaluator.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/field/coordinate_view.hpp"
-#include "pcms/utility/arrays.h"
-#include "field_test_utils.h"
+#include "pcms/utility/arrays.hpp"
+#include "field_test_utils.hpp"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::CoordinateSystem;

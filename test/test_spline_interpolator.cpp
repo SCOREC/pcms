@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 #include "pcms/field/evaluator/spline_interpolator.hpp"
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 
 using namespace pcms;
 using pcms::test::CreateDeviceRank1View;

@@ -4,18 +4,18 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/field/evaluation_request.h>
-#include <pcms/field/function_space/lagrange.h>
+#include <pcms/field/evaluation_request.hpp>
+#include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/layout/omega_h_lagrange.h>
+#include <pcms/field/layout/omega_h_lagrange.hpp>
 #include <pcms/field/transformed_source.hpp>
 #include <pcms/transfer/conservative_projection_solver.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_control_variate_projection.hpp>
 #include <pcms/transfer/omega_h_mass_integrator.hpp>
 #include <pcms/transfer/omega_h_mc_rhs_integrator.hpp>
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 #include <petscksp.h>
 #include <vector>
 

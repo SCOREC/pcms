@@ -2,8 +2,8 @@
 #include "pcms/transfer/mass_matrix_integrator.hpp"
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/memory_spaces.hpp"
 #include <KokkosController.hpp>
 #include <MeshField.hpp>
 #include <MeshField_Element.hpp>

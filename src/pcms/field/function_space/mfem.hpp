@@ -3,10 +3,10 @@
 
 #include "pcms/field/coordinate_system.hpp"
 #include "pcms/field/data/mfem.hpp"
-#include "pcms/field/field_factory.h"
+#include "pcms/field/field_factory.hpp"
 #include "pcms/field/layout/mfem.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/common.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/common.hpp"
 
 #include <mfem.hpp>
 

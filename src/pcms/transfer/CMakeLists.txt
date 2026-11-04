@@ -1,11 +1,11 @@
 set(PCMS_FIELD_TRANSFER_HEADERS
     linear_interpolant.hpp
     multidimarray.hpp
-    interpolation_base.h
-    interpolation_helpers.h
+    interpolation_base.hpp
+    interpolation_helpers.hpp
     mesh_intersection.hpp
-    interpolator.h
-    copy.h
+    interpolator.hpp
+    copy.hpp
     transfer_operator.hpp
     mass_matrix_type.hpp
     monte_carlo_sampling.hpp

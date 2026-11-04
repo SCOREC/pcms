@@ -1,5 +1,5 @@
 #include "pcms/field/gid_permutation.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <algorithm>
 
 namespace pcms

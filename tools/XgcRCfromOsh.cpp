@@ -1,6 +1,6 @@
 #include <Omega_h_file.hpp>
-#include "pcms/discretization/discretization/xgc_reverse_classification.h"
-#include "pcms/utility/print.h"
+#include "pcms/discretization/discretization/xgc_reverse_classification.hpp"
+#include "pcms/utility/print.hpp"
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_tag.hpp>
 

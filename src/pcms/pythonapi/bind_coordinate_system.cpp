@@ -9,8 +9,8 @@
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/coordinate_systems/cylindrical.hpp"
 #include "pcms/field/coordinate_view.hpp"
-#include "numpy_view.h"
-#include "py_value_types.h"
+#include "numpy_view.hpp"
+#include "py_value_types.hpp"
 
 namespace py = pybind11;
 

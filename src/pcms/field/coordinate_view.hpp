@@ -2,8 +2,8 @@
 #define PCMS_FIELD_COORDINATE_VIEW_HPP
 
 #include "pcms/field/coordinate_system.hpp"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/assert.hpp"
 #include <memory>
 #include <string>
 

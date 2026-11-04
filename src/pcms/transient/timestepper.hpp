@@ -1,7 +1,7 @@
 #ifndef PCMS_TRANSIENT_TIMESTEPPER_HPP
 #define PCMS_TRANSIENT_TIMESTEPPER_HPP
 
-#include "pcms/utility/types.h"
+#include "pcms/utility/types.hpp"
 
 namespace pcms
 {

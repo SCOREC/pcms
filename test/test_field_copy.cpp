@@ -3,10 +3,10 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
-#include "pcms/transfer/copy.h"
-#include "pcms/field/function_space/lagrange.h"
+#include "pcms/transfer/copy.hpp"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 

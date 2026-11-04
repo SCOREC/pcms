@@ -4,7 +4,7 @@
 #include <Omega_h_mesh.hpp>
 
 #include <pcms/transfer/mesh_intersection.hpp>
-#include <pcms/utility/assert.h>
+#include <pcms/utility/assert.hpp>
 
 #include <algorithm>
 #include <vector>

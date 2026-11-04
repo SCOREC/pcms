@@ -3,12 +3,12 @@
 //
 #include <pcms/capi/kokkos.h>
 #include <pcms/capi/interpolator.h>
-#include <pcms/transfer/interpolation_base.h>
+#include <pcms/transfer/interpolation_base.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/utility/mesh_geometry.h>
-#include <pcms/utility/print.h>
+#include <pcms/utility/mesh_geometry.hpp>
+#include <pcms/utility/print.hpp>
 
 //[[nodiscard]]
 PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,

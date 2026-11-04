@@ -1,17 +1,17 @@
 #include <iostream>
 #include <pcms.h>
-#include <pcms/utility/types.h>
+#include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
-#include <data/simple.h>
+#include <data/simple.hpp>
 
-#include "test_support.h"
-#include "pcms/field/function_space/xgc.h"
-#include "pcms/field/layout/xgc.h"
+#include "test_support.hpp"
+#include "pcms/field/function_space/xgc.hpp"
+#include "pcms/field/layout/xgc.hpp"
 #include "pcms/coupler/coupler.hpp"
-#include "pcms/coupler/overlap_mask.h"
+#include "pcms/coupler/overlap_mask.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::ConstructRCFromOmegaHMesh;

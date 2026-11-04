@@ -8,11 +8,11 @@
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_control_variate_projection.hpp>
 #include <pcms/transfer/monte_carlo_sampling.hpp>
-#include <pcms/transfer/copy.h>
-#include <pcms/transfer/interpolator.h>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/utility/arrays.h>
-#include "field_test_utils.h"
+#include <pcms/transfer/copy.hpp>
+#include <pcms/transfer/interpolator.hpp>
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/utility/arrays.hpp>
+#include "field_test_utils.hpp"
 
 #include <vector>
 

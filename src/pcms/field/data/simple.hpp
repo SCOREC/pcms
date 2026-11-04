@@ -1,0 +1,63 @@
+#ifndef PCMS_SIMPLE_FIELD_DATA_H
+#define PCMS_SIMPLE_FIELD_DATA_H
+
+#include "../field_data.hpp"
+#include "../field_layout.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/memory_spaces.hpp"
+#include <Kokkos_Core.hpp>
+#include <memory>
+#include <string>
+
+namespace pcms
+{
+
+// SimpleFieldData<T> is a generic concrete FieldData<T> backed by shaped
+// [dof_holder][component] Kokkos Views.
+//
+// Ownership of the layout is shared — the layout is typically held by the
+// factory that created this field data object.
+template <typename T>
+class SimpleFieldData
+  : public FieldData<T>
+  , public DOFAccess<T>
+{
+public:
+  SimpleFieldData(std::shared_ptr<const FieldLayout> layout, ValueBasis basis)
+    : layout_(std::move(layout)),
+      basis_(std::move(basis)),
+      device_data_("simple_field_data_device",
+                   static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
+                   static_cast<size_t>(layout_->GetNumComponents()))
+  {
+  }
+
+  FieldValueType GetValueType() const override
+  {
+    return ValueTypeOfRank(basis_.Rank());
+  }
+  const ValueBasis& GetValueBasis() const override { return basis_; }
+
+  const DOFAccess<T>* GetDOFAccess() const noexcept override { return this; }
+  DOFAccess<T>* GetDOFAccess() noexcept override { return this; }
+
+  Rank2View<const T, DeviceMemorySpace> GetOwnedValues() const override
+  {
+    return MakeConstRank2View(device_data_);
+  }
+
+  void SetOwnedValues(Rank2View<const T, DeviceMemorySpace> values) override
+  {
+    CopyDeviceRank2ViewToDeviceView(device_data_, values);
+  }
+
+private:
+  std::shared_ptr<const FieldLayout> layout_;
+  ValueBasis basis_;
+  Kokkos::View<T**, DeviceMemorySpace> device_data_;
+};
+
+} // namespace pcms
+
+#endif // PCMS_SIMPLE_FIELD_DATA_H

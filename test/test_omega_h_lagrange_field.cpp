@@ -4,12 +4,12 @@
 #include <Omega_h_for.hpp>
 #include <Omega_h_mesh.hpp>
 
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/layout/omega_h_lagrange.hpp"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/mesh_geometry.h"
-#include "field_test_utils.h"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
+#include "field_test_utils.hpp"
 
 #include <memory>
 #include <optional>

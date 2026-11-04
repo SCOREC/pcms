@@ -2,8 +2,8 @@
 #define PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP
 
 #include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
+#include "pcms/field/function_space.hpp"
+#include "pcms/field/layout/omega_h_lagrange.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include "pcms/transfer/monte_carlo_sampling.hpp"
 #include <Kokkos_Core.hpp>

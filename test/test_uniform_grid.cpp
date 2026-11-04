@@ -2,7 +2,7 @@
 #include <catch2/catch_approx.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/utility/uniform_grid.h>
+#include <pcms/utility/uniform_grid.hpp>
 
 using pcms::CreateUniformGridFromMesh;
 using pcms::Uniform2DGrid;

@@ -1,6 +1,6 @@
-#include "pcms/configuration.h"
+#include "pcms/configuration.hpp"
 #include <mpi.h>
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
 #include <petscsys.h>

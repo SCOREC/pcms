@@ -2,9 +2,9 @@
 // Created by hasanm4 on 1/17/25.
 //
 
-#include "interpolation_base.h"
-#include "interpolation_helpers.h"
-#include "pcms/utility/mesh_geometry.h"
+#include "interpolation_base.hpp"
+#include "interpolation_helpers.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
 
 namespace pcms
 {

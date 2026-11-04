@@ -1,11 +1,11 @@
 #ifndef PCMS_LOCALIZATION_ADJ_SEARCH_HPP
 #define PCMS_LOCALIZATION_ADJ_SEARCH_HPP
 
-#include <pcms/localization/point_search.h>
-#include <pcms/localization/mls_support_helpers.h>
+#include <pcms/localization/point_search.hpp>
+#include <pcms/localization/mls_support_helpers.hpp>
 #include <pcms/localization/queue_visited.hpp>
-#include <pcms/utility/mesh_geometry.h>
-#include <pcms/utility/print.h>
+#include <pcms/utility/mesh_geometry.hpp>
+#include <pcms/utility/print.hpp>
 
 #include <Kokkos_MathematicalFunctions.hpp>
 

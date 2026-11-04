@@ -1,7 +1,7 @@
 #include "pcms/transfer/mesh_intersection.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/mesh_geometry.h"
-#include "pcms/utility/omega_h_array_utils.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
+#include "pcms/utility/omega_h_array_utils.hpp"
 
 namespace pcms
 {

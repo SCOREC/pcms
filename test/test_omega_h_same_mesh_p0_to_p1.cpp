@@ -9,8 +9,8 @@
 #include <pcms/transfer/mass_matrix_type.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_form_integrator_utils.hpp>
-#include <pcms/utility/arrays.h>
-#include "field_test_utils.h"
+#include <pcms/utility/arrays.hpp>
+#include "field_test_utils.hpp"
 
 #include <array>
 #include <cmath>

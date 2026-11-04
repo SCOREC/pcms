@@ -1,8 +1,8 @@
 #include <petscksp.h>
 
-#include "pcms/configuration.h"
+#include "pcms/configuration.hpp"
 #include "pcms/transfer/conservative_projection_solver.hpp"
-#include "pcms/utility/arrays.h"
+#include "pcms/utility/arrays.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
 #include <Kokkos_Core.hpp>
 

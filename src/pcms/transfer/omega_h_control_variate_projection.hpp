@@ -1,12 +1,12 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP
 #define PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP
 
-#include "pcms/field/field.h"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/point_evaluator.h"
+#include "pcms/field/field.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/field/layout/omega_h_lagrange.hpp"
+#include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
-#include "pcms/transfer/interpolator.h"
+#include "pcms/transfer/interpolator.hpp"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include "pcms/transfer/monte_carlo_sampling.hpp"
 #include "pcms/transfer/transfer_operator.hpp"

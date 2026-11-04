@@ -1,9 +1,9 @@
-#include "pcms/field/function_space/spline.h"
+#include "pcms/field/function_space/spline.hpp"
 
-#include "pcms/field/data/simple.h"
-#include "pcms/field/evaluator/uniform_grid_spline.h"
-#include "pcms/field/layout/uniform_grid.h"
-#include "pcms/utility/common.h"
+#include "pcms/field/data/simple.hpp"
+#include "pcms/field/evaluator/uniform_grid_spline.hpp"
+#include "pcms/field/layout/uniform_grid.hpp"
+#include "pcms/utility/common.hpp"
 
 #include <stdexcept>
 

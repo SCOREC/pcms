@@ -1,7 +1,7 @@
 #ifndef PCMS_FIELD_GID_PERMUTATION_HPP
 #define PCMS_FIELD_GID_PERMUTATION_HPP
 
-#include "pcms/field/field_layout.h"
+#include "pcms/field/field_layout.hpp"
 #include <array>
 #include <cstddef>
 #include <map>

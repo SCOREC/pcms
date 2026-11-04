@@ -5,11 +5,11 @@
 #include <Omega_h_array.hpp>
 #include <petscksp.h>
 
-#include <pcms/field/field.h>
-#include <pcms/field/point_evaluator.h>
+#include <pcms/field/field.hpp>
+#include <pcms/field/point_evaluator.hpp>
 #include <pcms/transfer/bilinear_form_integrator.hpp>
 #include <pcms/transfer/linear_form_integrator.hpp>
-#include <pcms/utility/arrays.h>
+#include <pcms/utility/arrays.hpp>
 
 namespace pcms
 {

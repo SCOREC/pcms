@@ -7,9 +7,9 @@
 #include <Omega_h_shape.hpp>
 
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/utility/mesh_geometry.h>
-#include "field_test_utils.h"
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/utility/mesh_geometry.hpp>
+#include "field_test_utils.hpp"
 
 #include <algorithm>
 #include <cmath>

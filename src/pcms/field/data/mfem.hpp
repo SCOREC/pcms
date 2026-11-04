@@ -1,9 +1,9 @@
 #ifndef PCMS_FIELD_DATA_MFEM_HPP
 #define PCMS_FIELD_DATA_MFEM_HPP
 
-#include "pcms/field/field_data.h"
+#include "pcms/field/field_data.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/utility/arrays.h"
+#include "pcms/utility/arrays.hpp"
 
 #include <mfem.hpp>
 

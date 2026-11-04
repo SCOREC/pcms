@@ -13,9 +13,9 @@
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_vtk.hpp>
-#include <pcms/transfer/interpolation_base.h>
-#include <pcms/utility/mesh_geometry.h>
-#include <pcms/utility/print.h>
+#include <pcms/transfer/interpolation_base.hpp>
+#include <pcms/utility/mesh_geometry.hpp>
+#include <pcms/utility/print.hpp>
 
 #include <vector>
 #include <fstream>

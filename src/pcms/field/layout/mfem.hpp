@@ -2,7 +2,7 @@
 #define PCMS_FIELD_LAYOUT_MFEM_HPP
 
 #include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/field_layout.h"
+#include "pcms/field/field_layout.hpp"
 
 #include <mfem.hpp>
 

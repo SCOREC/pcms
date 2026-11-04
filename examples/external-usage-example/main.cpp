@@ -1,5 +1,5 @@
 #include <iostream>
-#include <pcms/utility/print.h>
+#include <pcms/utility/print.hpp>
 #include <pcms/capi/interpolator.h>
 int main()
 {

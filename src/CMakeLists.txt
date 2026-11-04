@@ -9,9 +9,9 @@ set(
   pcms.cpp
 )
 
-configure_file(pcms/version.h.in pcms/version.h)
-configure_file(pcms/configuration.h.in pcms/configuration.h)
-list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.h)
+configure_file(pcms/version.hpp.in pcms/version.hpp)
+configure_file(pcms/configuration.hpp.in pcms/configuration.hpp)
+list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.hpp ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.hpp)
 
 add_subdirectory(pcms/utility)
 if(PCMS_ENABLE_TRANSIENT)

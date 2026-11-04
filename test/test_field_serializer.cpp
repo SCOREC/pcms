@@ -1,27 +1,27 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "pcms/configuration.h"
-#include "pcms/coupler/field_serializer.h"
+#include "pcms/configuration.hpp"
+#include "pcms/coupler/field_serializer.hpp"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/utility/arrays.h"
+#include "pcms/utility/arrays.hpp"
 
 #include <memory>
 #include <numeric>
 #include <vector>
 
 #ifdef PCMS_ENABLE_OMEGA_H
-#include "field_test_utils.h"
-#include "pcms/field/function_space/lagrange.h"
+#include "field_test_utils.hpp"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/utility/uniform_grid.hpp"
 #include <Omega_h_library.hpp>
 #endif
 
 #ifdef PCMS_ENABLE_XGC
-#include "pcms/coupler/overlap_mask.h"
-#include "pcms/field/data/xgc.h"
-#include "pcms/field/function_space/xgc.h"
+#include "pcms/coupler/overlap_mask.hpp"
+#include "pcms/field/data/xgc.hpp"
+#include "pcms/field/function_space/xgc.hpp"
 #endif
 
 namespace

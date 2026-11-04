@@ -1,10 +1,10 @@
 #include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
-#include "pcms/field/element_dispatch.h"
-#include "pcms/field/evaluator/omega_h_lagrange.h"
-#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/element_dispatch.hpp"
+#include "pcms/field/evaluator/omega_h_lagrange.hpp"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <algorithm>
 #include <Omega_h_for.hpp>
 #include <Omega_h_shape.hpp>

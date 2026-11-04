@@ -1,21 +1,21 @@
 set(
         PCMS_UTILITY_HEADERS
-        arrays.h
-        assert.h
-        bounding_box.h
-        common.h
-        entity_types.h
-        eqdsk.h
-        mesh_geometry.h
-        memory_spaces.h
-        mpi_type.h
-        omega_h_array_utils.h
-        types.h
-        array_mask.h
-        inclusive_scan.h
-        profile.h
-        print.h
-        uniform_grid.h
+        arrays.hpp
+        assert.hpp
+        bounding_box.hpp
+        common.hpp
+        entity_types.hpp
+        eqdsk.hpp
+        mesh_geometry.hpp
+        memory_spaces.hpp
+        mpi_type.hpp
+        omega_h_array_utils.hpp
+        types.hpp
+        array_mask.hpp
+        inclusive_scan.hpp
+        profile.hpp
+        print.hpp
+        uniform_grid.hpp
 )
 
 set(

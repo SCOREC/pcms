@@ -1,8 +1,8 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_file.hpp>
-#include "test_support.h"
+#include "test_support.hpp"
 #include "pcms/coupler/coupler.hpp"
-#include <pcms/utility/types.h>
+#include <pcms/utility/types.hpp>
 #include <vector>
 
 static constexpr bool done = true;

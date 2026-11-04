@@ -1,4 +1,4 @@
-#include "point_search.h"
+#include "point_search.hpp"
 #include <Omega_h_mesh.hpp>
 #include <bitset>
 #include <cmath>

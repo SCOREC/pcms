@@ -2,11 +2,11 @@
 #define PCMS_FIELD_POINT_EVALUATOR_FACTORY_HPP
 
 #include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/evaluation_request.h"
-#include "pcms/field/field_factory.h"
-#include "pcms/field/point_evaluator.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/types.h"
+#include "pcms/field/evaluation_request.hpp"
+#include "pcms/field/field_factory.hpp"
+#include "pcms/field/point_evaluator.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/types.hpp"
 #include <memory>
 #include <string>
 #include <variant>

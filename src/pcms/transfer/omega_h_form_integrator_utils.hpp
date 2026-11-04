@@ -1,11 +1,11 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP
 #define PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP
 
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
+#include "pcms/field/function_space.hpp"
+#include "pcms/field/layout/omega_h_lagrange.hpp"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/transfer/mesh_intersection.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <MeshField_Integrate.hpp>
 #include <MeshField_Shape.hpp>
 #include <MeshField_Config.hpp>

@@ -4,11 +4,11 @@
 #include <Omega_h_for.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/field/evaluation_request.h>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/field/layout/omega_h_lagrange.h>
+#include <pcms/field/evaluation_request.hpp>
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/field/layout/omega_h_lagrange.hpp>
 #include <pcms/transfer/omega_h_intersection_rhs_integrator.hpp>
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 #include <petscksp.h>
 #include <cmath>
 #include <unordered_map>

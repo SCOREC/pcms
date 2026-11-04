@@ -1,11 +1,11 @@
-#include "pcms/localization/mesh_localization.h"
+#include "pcms/localization/mesh_localization.hpp"
 #include "pcms/localization/adj_search.hpp"
-#include "pcms/localization/mls_support_helpers.h"
+#include "pcms/localization/mls_support_helpers.hpp"
 #include "pcms/field/coordinate_view.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/entity_types.h"
-#include "pcms/utility/mesh_geometry.h"
-#include "pcms/utility/omega_h_array_utils.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/entity_types.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
+#include "pcms/utility/omega_h_array_utils.hpp"
 
 #include <Omega_h_array.hpp>
 #include <string>

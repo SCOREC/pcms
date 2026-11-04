@@ -10,7 +10,7 @@
 #include <vector>
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/field/coordinate_systems/cylindrical.hpp"
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 
 using Catch::Matchers::ContainsSubstring;
 using Catch::Matchers::WithinAbs;

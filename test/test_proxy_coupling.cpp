@@ -1,13 +1,13 @@
 #include <Omega_h_mesh.hpp>
 #include <iostream>
 #include <pcms.h>
-#include <pcms/utility/types.h>
+#include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
 #include <redev_variant_tools.h>
-#include "test_support.h"
+#include "test_support.hpp"
 #include "pcms/coupler/coupler.hpp"
-#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/value_view.hpp"
 #include <chrono>
 #include <thread>

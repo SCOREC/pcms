@@ -1,7 +1,7 @@
-#include "pcms/localization/mls_support_helpers.h"
+#include "pcms/localization/mls_support_helpers.hpp"
 #include "pcms/localization/adj_search.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/print.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/print.hpp"
 
 #include <Kokkos_Core.hpp>
 

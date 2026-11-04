@@ -1,13 +1,13 @@
 set(PCMS_COUPLER_HEADERS
-        coupler_types.h
+        coupler_types.hpp
         field_communicator.hpp
         coupler.hpp
-        field_serializer.h
-        field_layout_communicator.h
-        field_exchange_planner.h
-        partition.h
-        overlap_mask.h
-        global_communicator.h
+        field_serializer.hpp
+        field_layout_communicator.hpp
+        field_exchange_planner.hpp
+        partition.hpp
+        overlap_mask.hpp
+        global_communicator.hpp
 )
 
 

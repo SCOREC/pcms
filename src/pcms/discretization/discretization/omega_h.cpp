@@ -1,6 +1,6 @@
 #include "pcms/discretization/discretization/omega_h.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/mesh_geometry.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
 
 namespace pcms
 {

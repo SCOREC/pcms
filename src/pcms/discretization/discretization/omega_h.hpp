@@ -1,7 +1,7 @@
 #ifndef PCMS_DISCRETIZATION_DISCRETIZATION_OMEGA_H_H
 #define PCMS_DISCRETIZATION_DISCRETIZATION_OMEGA_H_H
 
-#include "pcms/discretization/discretization.h"
+#include "pcms/discretization/discretization.hpp"
 
 #include <Omega_h_array.hpp>
 #include <Omega_h_mesh.hpp>

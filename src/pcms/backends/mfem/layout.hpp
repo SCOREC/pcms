@@ -8,14 +8,14 @@
 
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::mfem
 {
 
 // Field layout for an MFEM order-1 H1 (vertex) scalar field.
 class MFEMLayout : public FieldLayout
 {
 public:
-  MFEMLayout(mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
+  MFEMLayout(::mfem::ParMesh& pmesh, ::mfem::ParFiniteElementSpace& pfes,
              std::shared_ptr<const CoordinateSystem> coordinate_system);
 
   std::shared_ptr<const Discretization> GetDiscretization()
@@ -39,18 +39,18 @@ public:
   Rank1View<const LO, HostMemorySpace> GetDOFHolderClassificationIdsHost()
     const override;
 
-  mfem::ParMesh& GetMesh() const noexcept { return pmesh_; }
-  mfem::ParFiniteElementSpace& GetFESpace() const noexcept { return pfes_; }
+  ::mfem::ParMesh& GetMesh() const noexcept { return pmesh_; }
+  ::mfem::ParFiniteElementSpace& GetFESpace() const noexcept { return pfes_; }
 
   // Build a per-vertex overlap mask from MFEM element attributes
   static Kokkos::View<bool*, HostMemorySpace> OverlapMaskFromAttribute(
-    mfem::ParMesh& pmesh, int attribute);
+    ::mfem::ParMesh& pmesh, int attribute);
 
 private:
   void AssertVertexScalarSpace() const;
 
-  mfem::ParMesh& pmesh_;
-  mfem::ParFiniteElementSpace& pfes_;
+  ::mfem::ParMesh& pmesh_;
+  ::mfem::ParFiniteElementSpace& pfes_;
   int dim_;
 
   Kokkos::View<Real**, DeviceMemorySpace> coords_;
@@ -61,6 +61,6 @@ private:
   std::shared_ptr<const Discretization> discretization_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::mfem
 
 #endif // PCMS_FIELD_LAYOUT_MFEM_HPP

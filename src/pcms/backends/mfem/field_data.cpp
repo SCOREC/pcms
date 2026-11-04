@@ -4,11 +4,11 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/profile.hpp"
 
-namespace pcms
+namespace pcms::backend::mfem
 {
 
-MFEMVertexFieldData::MFEMVertexFieldData(mfem::ParFiniteElementSpace& pfes,
-                                         mfem::ParGridFunction& gf,
+MFEMVertexFieldData::MFEMVertexFieldData(::mfem::ParFiniteElementSpace& pfes,
+                                         ::mfem::ParGridFunction& gf,
                                          ValueBasis basis)
   : pfes_(pfes),
     gf_(gf),
@@ -38,10 +38,10 @@ Rank2View<const Real, HostMemorySpace> MFEMVertexFieldData::GatherHost() const
 
   // Pull owner values into a true-DOF vector via the parallel restriction so
   // every shared vertex reports its owner's value.
-  mfem::Vector true_values(pfes_.GetTrueVSize());
+  ::mfem::Vector true_values(pfes_.GetTrueVSize());
   gf_.GetTrueDofs(true_values);
 
-  mfem::Array<int> vdofs;
+  ::mfem::Array<int> vdofs;
   const int nv = pfes_.GetNDofs();
   for (int v = 0; v < nv; ++v) {
     pfes_.GetVertexDofs(v, vdofs);
@@ -64,8 +64,8 @@ void MFEMVertexFieldData::ScatterHost(
   // Scatter received owner values into a true-DOF vector, then distribute to
   // all local DOFs (including shared, non-owned vertices) via the parallel
   // prolongation.
-  mfem::Vector true_values(pfes_.GetTrueVSize());
-  mfem::Array<int> vdofs;
+  ::mfem::Vector true_values(pfes_.GetTrueVSize());
+  ::mfem::Array<int> vdofs;
   for (int v = 0; v < nv; ++v) {
     pfes_.GetVertexDofs(v, vdofs);
     PCMS_ALWAYS_ASSERT(vdofs.Size() == 1);
@@ -94,4 +94,4 @@ void MFEMVertexFieldData::SetOwnedValues(
   ScatterHost(MakeConstRank2View(host_data_));
 }
 
-} // namespace pcms
+} // namespace pcms::backend::mfem

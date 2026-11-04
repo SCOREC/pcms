@@ -14,7 +14,7 @@
 #include <string>
 #include <variant>
 
-namespace pcms
+namespace pcms::backend::mfem
 {
 
 // Communication-only field factory for an MFEM order-1 H1 (vertex) scalar
@@ -26,8 +26,8 @@ namespace pcms
 class MFEMFieldFactory : public FieldFactory
 {
 public:
-  MFEMFieldFactory(mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
-                   mfem::ParGridFunction& gf,
+  MFEMFieldFactory(::mfem::ParMesh& pmesh, ::mfem::ParFiniteElementSpace& pfes,
+                   ::mfem::ParGridFunction& gf,
                    std::shared_ptr<const CoordinateSystem> coordinate_system,
                    std::string layout_name = "")
     : layout_(std::make_shared<MFEMLayout>(pmesh, pfes,
@@ -84,10 +84,10 @@ protected:
 
 private:
   std::shared_ptr<MFEMLayout> layout_;
-  mfem::ParFiniteElementSpace& pfes_;
-  mfem::ParGridFunction& gf_;
+  ::mfem::ParFiniteElementSpace& pfes_;
+  ::mfem::ParGridFunction& gf_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::mfem
 
 #endif // PCMS_MFEM_FIELD_FACTORY_HPP

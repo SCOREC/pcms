@@ -7,7 +7,7 @@
 
 #include <mfem.hpp>
 
-namespace pcms
+namespace pcms::backend::mfem
 {
 
 // FieldData backend for an MFEM order-1 H1 (vertex) scalar field.
@@ -16,8 +16,8 @@ class MFEMVertexFieldData
   , public DOFAccess<Real>
 {
 public:
-  MFEMVertexFieldData(mfem::ParFiniteElementSpace& pfes,
-                      mfem::ParGridFunction& gf, ValueBasis basis = {});
+  MFEMVertexFieldData(::mfem::ParFiniteElementSpace& pfes,
+                      ::mfem::ParGridFunction& gf, ValueBasis basis = {});
 
   FieldValueType GetValueType() const override;
   const ValueBasis& GetValueBasis() const override;
@@ -32,13 +32,13 @@ private:
   Rank2View<const Real, HostMemorySpace> GatherHost() const;
   void ScatterHost(Rank2View<const Real, HostMemorySpace> data);
 
-  mfem::ParFiniteElementSpace& pfes_;
-  mfem::ParGridFunction& gf_;
+  ::mfem::ParFiniteElementSpace& pfes_;
+  ::mfem::ParGridFunction& gf_;
   ValueBasis basis_;
   mutable Kokkos::View<Real**, HostMemorySpace> host_data_;
   mutable Kokkos::View<Real**, DeviceMemorySpace> device_data_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::mfem
 
 #endif // PCMS_FIELD_DATA_MFEM_HPP

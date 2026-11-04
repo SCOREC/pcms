@@ -1,4 +1,4 @@
-#include "pcms/field/layout/xgc.hpp"
+#include "pcms/backends/xgc/layout.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/entity_types.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"

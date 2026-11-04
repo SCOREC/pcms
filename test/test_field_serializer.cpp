@@ -20,8 +20,8 @@
 
 #ifdef PCMS_ENABLE_XGC
 #include "pcms/coupler/overlap_mask.hpp"
-#include "pcms/field/data/xgc.hpp"
-#include "pcms/field/function_space/xgc.hpp"
+#include "pcms/backends/xgc/field_data.hpp"
+#include "pcms/backends/xgc/field_factory.hpp"
 #endif
 
 namespace

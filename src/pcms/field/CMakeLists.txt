@@ -91,11 +91,11 @@ endif ()
 
 if(PCMS_ENABLE_XGC)
     list(APPEND PCMS_FIELD_HEADERS
-            data/xgc.hpp
-            function_space/xgc.hpp
-            layout/xgc.hpp)
+            ../backends/xgc/field_data.hpp
+            ../backends/xgc/field_factory.hpp
+            ../backends/xgc/layout.hpp)
     list(APPEND PCMS_FIELD_SOURCES
-            layout/xgc.cpp)
+            ../backends/xgc/layout.cpp)
 endif()
 
 add_library(pcms_field ${PCMS_FIELD_SOURCES})

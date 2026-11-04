@@ -1,7 +1,7 @@
 #ifndef PCMS_XGC_FIELD_DATA_H
 #define PCMS_XGC_FIELD_DATA_H
 
-#include "pcms/field/layout/xgc.hpp"
+#include "pcms/backends/xgc/layout.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/mpi_type.hpp"

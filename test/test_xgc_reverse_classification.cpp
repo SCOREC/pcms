@@ -1,4 +1,4 @@
-#include "pcms/discretization/discretization/xgc_reverse_classification.hpp"
+#include "pcms/backends/xgc/reverse_classification.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <sstream>
 

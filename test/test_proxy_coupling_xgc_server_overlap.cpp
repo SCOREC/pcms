@@ -6,8 +6,8 @@
 #include <pcms/field/data/simple.hpp>
 
 #include "test_support.hpp"
-#include "pcms/field/function_space/xgc.hpp"
-#include "pcms/field/layout/xgc.hpp"
+#include "pcms/backends/xgc/field_factory.hpp"
+#include "pcms/backends/xgc/layout.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/coupler/overlap_mask.hpp"
 #include "pcms/field/value_view.hpp"

@@ -1,4 +1,4 @@
-#include "pcms/discretization/discretization/xgc.hpp"
+#include "pcms/backends/xgc/discretization.hpp"
 
 namespace pcms
 {

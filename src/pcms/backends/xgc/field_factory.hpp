@@ -1,7 +1,7 @@
 #ifndef PCMS_XGC_FIELD_FACTORY_H
 #define PCMS_XGC_FIELD_FACTORY_H
 
-#include "pcms/field/data/xgc.hpp"
+#include "pcms/backends/xgc/field_data.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_factory.hpp"
 #include "pcms/field/value_view.hpp"

@@ -2,7 +2,7 @@
 #define PCMS_DISCRETIZATION_DISCRETIZATION_XGC_H
 
 #include "pcms/discretization/discretization.hpp"
-#include "pcms/discretization/discretization/xgc_reverse_classification.hpp"
+#include "pcms/backends/xgc/reverse_classification.hpp"
 
 #include <Kokkos_Core.hpp>
 

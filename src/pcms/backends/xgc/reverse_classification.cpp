@@ -1,4 +1,4 @@
-#include "pcms/discretization/discretization/xgc_reverse_classification.hpp"
+#include "pcms/backends/xgc/reverse_classification.hpp"
 
 #include "mpi.h"
 #include "pcms/utility/assert.hpp"

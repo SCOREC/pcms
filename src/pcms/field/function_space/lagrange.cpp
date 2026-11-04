@@ -3,9 +3,9 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/common.hpp"
 #ifdef PCMS_ENABLE_MESHFIELDS
-#include "pcms/field/layout/mesh_fields.hpp"
-#include "pcms/field/evaluator/mesh_fields.hpp"
-#include "pcms/field/data/mesh_fields.hpp"
+#include "pcms/backends/omega_h_meshfields/layout.hpp"
+#include "pcms/backends/omega_h_meshfields/evaluator.hpp"
+#include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
 #include "pcms/field/layout/omega_h_lagrange.hpp"
 #include "pcms/field/evaluator/omega_h_lagrange.hpp"

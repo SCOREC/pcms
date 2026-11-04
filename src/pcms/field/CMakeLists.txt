@@ -67,13 +67,13 @@ endif ()
 
 if (PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_FIELD_SOURCES
-            layout/mesh_fields.cpp
+            ../backends/omega_h_meshfields/layout.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
-            layout/mesh_fields.hpp
-            evaluator/mesh_fields_backend.hpp
-            evaluator/mesh_fields.hpp
-            data/mesh_fields.hpp
+            ../backends/omega_h_meshfields/layout.hpp
+            ../backends/omega_h_meshfields/evaluator_backend.hpp
+            ../backends/omega_h_meshfields/evaluator.hpp
+            ../backends/omega_h_meshfields/field_data.hpp
     )
 endif ()
 

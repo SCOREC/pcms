@@ -141,9 +141,9 @@ static redev::LOs ConstructPermutation(
 
   redev::LOs permutation;
   permutation.reserve(local_gids.size());
-  pcms::field::AppendGidPermutation(local_gids, ent_offsets, gid_to_buffer_index,
-                       permutation,
-                       /*allow_missing=*/true);
+  pcms::field::AppendGidPermutation(local_gids, ent_offsets,
+                                    gid_to_buffer_index, permutation,
+                                    /*allow_missing=*/true);
 
   REDEV_ALWAYS_ASSERT(permutation.size() == local_gids.size());
   payload_length = payload_offset;

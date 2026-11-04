@@ -42,12 +42,12 @@ std::pair<double, int> DecomposeFromCentroid(const r3d::Polytope<3>& poly)
 
   double total_vol = 0.0;
   int ntri = 0;
-  pcms::transfer::detail::ForEachPolytopeFaceTriangle(poly, [&](const r3d::Vector<3>& a,
-                                                      const r3d::Vector<3>& b,
-                                                      const r3d::Vector<3>& c) {
-    total_vol += TetVolume(apex, a, b, c);
-    ++ntri;
-  });
+  pcms::transfer::detail::ForEachPolytopeFaceTriangle(
+    poly, [&](const r3d::Vector<3>& a, const r3d::Vector<3>& b,
+              const r3d::Vector<3>& c) {
+      total_vol += TetVolume(apex, a, b, c);
+      ++ntri;
+    });
   return {total_vol, ntri};
 }
 

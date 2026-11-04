@@ -334,12 +334,12 @@ void bind_create_field_module(py::module& m)
       return pcms::backend::omega_h::GetMesh(discretization);
     },
     py::arg("discretization"), py::return_value_policy::reference,
-    py::keep_alive<0, 1>(),
-    "The Omega_h mesh of an Omega_h discretization");
+    py::keep_alive<0, 1>(), "The Omega_h mesh of an Omega_h discretization");
   omega_h_module.def(
     "create_uniform_grid_binary_field",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return pcms::backend::omega_h::CreateUniformGridBinaryField(mesh, divisions);
+      return pcms::backend::omega_h::CreateUniformGridBinaryField(mesh,
+                                                                  divisions);
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D vertex mask field indicating inside/outside mesh");
@@ -347,7 +347,8 @@ void bind_create_field_module(py::module& m)
   omega_h_module.def(
     "create_uniform_grid_from_mesh",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return pcms::backend::omega_h::CreateUniformGridFromMesh<2>(mesh, divisions);
+      return pcms::backend::omega_h::CreateUniformGridFromMesh<2>(mesh,
+                                                                  divisions);
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D uniform grid from an Omega_h mesh");
@@ -355,7 +356,8 @@ void bind_create_field_module(py::module& m)
   omega_h_module.def(
     "create_uniform_grid_from_mesh",
     [](Omega_h::Mesh& mesh, const std::array<LO, 3>& divisions) {
-      return pcms::backend::omega_h::CreateUniformGridFromMesh<3>(mesh, divisions);
+      return pcms::backend::omega_h::CreateUniformGridFromMesh<3>(mesh,
+                                                                  divisions);
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 3D uniform grid from an Omega_h mesh");

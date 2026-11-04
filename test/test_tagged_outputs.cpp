@@ -15,9 +15,9 @@
 using Catch::Matchers::ContainsSubstring;
 using pcms::DeviceMemorySpace;
 using pcms::Field;
-using pcms::field::LagrangeFunctionSpace;
 using pcms::Real;
 using pcms::ValueView;
+using pcms::field::LagrangeFunctionSpace;
 namespace values = pcms::values;
 using Catch::Matchers::WithinAbs;
 using pcms::ComponentScaling;

@@ -166,7 +166,8 @@ private:
   Omega_h::Reals source_coords_; /*!< Source point coordinates */
   Omega_h::Reals target_coords_; /*!< Target point coordinates */
 
-  pcms::localization::SupportResults supports_; /*!< Support structure for MLS interpolation */
+  pcms::localization::SupportResults
+    supports_; /*!< Support structure for MLS interpolation */
 
   Omega_h::HostWrite<Omega_h::Real> target_field_; /*!< Target field storage */
   Omega_h::HostWrite<Omega_h::Real> source_field_; /*!< Provided source field */
@@ -280,7 +281,8 @@ private:
   Omega_h::Reals source_coords_; /*!< Source point coordinates */
   Omega_h::Reals target_coords_; /*!< Target point coordinates */
 
-  pcms::localization::SupportResults supports_; /*!< Support structure for MLS interpolation */
+  pcms::localization::SupportResults
+    supports_; /*!< Support structure for MLS interpolation */
 
   Omega_h::HostWrite<Omega_h::Real> target_field_; /*!< Target field storage */
   Omega_h::HostWrite<Omega_h::Real> source_field_; /*!< Provided source field */

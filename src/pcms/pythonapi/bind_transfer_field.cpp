@@ -147,8 +147,8 @@ void bind_transfer_field_module(py::module& m)
   m.def(
     "create_control_variate_projection",
     [](const FunctionSpace& source_space, const FunctionSpace& target_space,
-       int samples_per_element, MonteCarloSampling sampling,
-       std::uint64_t seed, MassMatrixType mass_matrix_type) {
+       int samples_per_element, MonteCarloSampling sampling, std::uint64_t seed,
+       MassMatrixType mass_matrix_type) {
       return CreateControlVariateProjection(
         source_space, target_space,
         ControlVariateProjectionOptions{samples_per_element, sampling, seed,

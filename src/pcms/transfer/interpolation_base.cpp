@@ -29,7 +29,8 @@ MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
   OMEGA_H_CHECK_PRINTF(source_mesh_.dim() == 2,
                        "Only 2D meshes are supported but found %d\n",
                        source_mesh_.dim());
-  source_coords_ = pcms::utility::get_entity_centroids(source_mesh_, Omega_h::FACE);
+  source_coords_ =
+    pcms::utility::get_entity_centroids(source_mesh_, Omega_h::FACE);
 
   source_field_ =
     Omega_h::HostWrite<Omega_h::Real>(source_mesh_.nfaces(), "source field");
@@ -135,8 +136,8 @@ struct FillSupportIdxFunctor
 
     for (int source_id = 0; source_id < n_sources; source_id++) {
       auto source_coord = load_point(source_coords_l, source_id, dim);
-      auto dist2 =
-        pcms::utility::distance_squared(&source_coord[0], &target_coord[0], dim);
+      auto dist2 = pcms::utility::distance_squared(&source_coord[0],
+                                                   &target_coord[0], dim);
       if (dist2 <= target_radius2) {
         supports_idx_l[start_ptr] = source_id;
         start_ptr++;
@@ -216,8 +217,8 @@ struct NSquareSearchFunctor
     // TODO: parallel with kokkos parallel_for
     for (int i = 0; i < n_sources; i++) {
       auto source_coord = load_point(source_coords_l, i, dim);
-      auto dist2 =
-        pcms::utility::distance_squared(&source_coord[0], &target_coord[0], dim);
+      auto dist2 = pcms::utility::distance_squared(&source_coord[0],
+                                                   &target_coord[0], dim);
       if (dist2 <= target_radius2) {
         num_supports_l[target_id]++; // only one thread is updating
       }
@@ -298,9 +299,9 @@ void MLSPointCloudInterpolation::find_supports(unsigned min_req_supports,
   unsigned max_supports_found = 0;
   // radius adjustment loop
   int loop_count = 0;
-  while (!pcms::localization::within_number_of_support_range(min_supports_found, max_supports_found,
-                                         min_req_supports,
-                                         max_allowed_supports)) {
+  while (!pcms::localization::within_number_of_support_range(
+    min_supports_found, max_supports_found, min_req_supports,
+    max_allowed_supports)) {
     distance_based_pointcloud_search(radii2_l, num_supports);
 
     loop_count++;
@@ -319,19 +320,20 @@ void MLSPointCloudInterpolation::find_supports(unsigned min_req_supports,
     }
 
     // find minimum and maximum number of supports found
-    pcms::localization::minmax(num_supports, min_supports_found, max_supports_found);
+    pcms::localization::minmax(num_supports, min_supports_found,
+                               max_supports_found);
 
     // increase radius if not enough supports or too many supports
-    if (!pcms::localization::within_number_of_support_range(min_supports_found, max_supports_found,
-                                        min_req_supports,
-                                        max_allowed_supports)) {
+    if (!pcms::localization::within_number_of_support_range(
+          min_supports_found, max_supports_found, min_req_supports,
+          max_allowed_supports)) {
       pcms::printInfo(
         "Adjusting radius: Iter %d:(min: %d max: %d) Min Req: %d Max "
         "Allowed %d\n",
         loop_count, min_supports_found, max_supports_found, min_req_supports,
         max_allowed_supports);
-      pcms::localization::adapt_radii(min_req_supports, max_allowed_supports, n_targets_, radii2_l,
-                  num_supports);
+      pcms::localization::adapt_radii(min_req_supports, max_allowed_supports,
+                                      n_targets_, radii2_l, num_supports);
     }
   }
   pcms::printInfo("Searched %d times and supports found: min: %d max: %d\n",
@@ -431,12 +433,12 @@ void MLSMeshInterpolation::find_supports(const unsigned min_req_supports,
                                          const unsigned max_allowed_supports)
 {
   if (single_mesh_) {
-    supports_ =
-      pcms::backend::omega_h::searchNeighbors(source_mesh_, radius_, min_req_supports, adapt_radius_);
+    supports_ = pcms::backend::omega_h::searchNeighbors(
+      source_mesh_, radius_, min_req_supports, adapt_radius_);
   } else { // two mesh : vert to vert
-    supports_ =
-      pcms::backend::omega_h::searchNeighbors(source_mesh_, target_mesh_, radius_, min_req_supports,
-                      max_allowed_supports, adapt_radius_);
+    supports_ = pcms::backend::omega_h::searchNeighbors(
+      source_mesh_, target_mesh_, radius_, min_req_supports,
+      max_allowed_supports, adapt_radius_);
   }
 
 #ifndef NDEBUG

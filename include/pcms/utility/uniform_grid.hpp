@@ -29,7 +29,8 @@ public:
   /// `point` is any type indexable with point[i] for i < dim (e.g.
   /// Kokkos::Array<Real, dim>, a subview, Omega_h::Vector<dim>).
   template <typename Point>
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO ClosestCellID(const Point& point) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO
+  ClosestCellID(const Point& point) const
   {
     Kokkos::Array<LO, dim> indexes;
 

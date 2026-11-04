@@ -15,7 +15,8 @@ PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,
                                                 double radius)
 {
   auto* source_mesh = reinterpret_cast<Omega_h::Mesh*>(oh_mesh.mesh_handle);
-  auto* interpolator = new pcms::transfer::MLSMeshInterpolation(*source_mesh, radius);
+  auto* interpolator =
+    new pcms::transfer::MLSMeshInterpolation(*source_mesh, radius);
   return {reinterpret_cast<void*>(interpolator)};
 }
 
@@ -45,7 +46,8 @@ Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
   auto mesh = Omega_h::binary::read(fname, mesh_lib.world());
   OMEGA_H_CHECK_PRINTF(mesh.dim() == 2, "Mesh dimension is not 2D %d\n",
                        mesh.dim());
-  auto elem_centroids = pcms::utility::get_entity_centroids(mesh, Omega_h::FACE);
+  auto elem_centroids =
+    pcms::utility::get_entity_centroids(mesh, Omega_h::FACE);
   num_elements = mesh.nelems();
   OMEGA_H_CHECK_PRINTF(num_elements * 2 == elem_centroids.size(),
                        "Mesh element centroids size does not match the number "
@@ -107,7 +109,8 @@ PcmsInterpolatorHandle pcms_create_xgcnodedegas2_interpolator(
 void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator)
 {
   if (interpolator.pointer != nullptr) {
-    delete reinterpret_cast<pcms::transfer::InterpolationBase*>(interpolator.pointer);
+    delete reinterpret_cast<pcms::transfer::InterpolationBase*>(
+      interpolator.pointer);
   }
 }
 

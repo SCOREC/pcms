@@ -128,7 +128,8 @@ py::array map_entity_field_to_vertices_mls(
   const Omega_h::LO ncomps = EntityComponents(entity_field_values, nentities);
 
   // Source coordinates are the entity centroids
-  auto source_coordinates = pcms::utility::get_entity_centroids(mesh, entity_dim);
+  auto source_coordinates =
+    pcms::utility::get_entity_centroids(mesh, entity_dim);
 
   // Get target coordinates (vertex coordinates)
   auto target_coordinates = mesh.coords();
@@ -148,7 +149,8 @@ py::array map_entity_field_to_vertices_mls(
   Omega_h::Write<Omega_h::Real> radii2_write(num_vertices, 1.0);
 
   // Create SupportResults
-  pcms::localization::SupportResults support{supports_ptr, supports_idx, radii2_write};
+  pcms::localization::SupportResults support{supports_ptr, supports_idx,
+                                             radii2_write};
 
   // Convert entity field values to Omega_h array
   auto entity_field_omega_h = NumpyToOmegaHRead(entity_field_values);
@@ -190,11 +192,10 @@ void bind_mesh_utilities_module(py::module& m)
   // bind_create_field_module, which runs first)
   auto omega_h_module = m.attr("backend").attr("omega_h").cast<py::module>();
 
-  omega_h_module.def(
-    "compute_entity_centroids", &compute_entity_centroids, py::arg("mesh"),
-    py::arg("entity_dim"),
-    "Compute centroids of mesh entities (faces or elements). "
-    "Returns an array of shape (nentities, dim).");
+  omega_h_module.def("compute_entity_centroids", &compute_entity_centroids,
+                     py::arg("mesh"), py::arg("entity_dim"),
+                     "Compute centroids of mesh entities (faces or elements). "
+                     "Returns an array of shape (nentities, dim).");
 
   omega_h_module.def(
     "map_entity_field_to_vertices_average",

@@ -79,7 +79,6 @@ enum class RadialBasisFunction
   RBF_CUBIC
 };
 
-
 /// Configuration for Moving Least Squares evaluation.
 /// Passed to PolynomialReconstructionFunctionSpace::Create and
 /// PointCloudEvaluatorFactory.

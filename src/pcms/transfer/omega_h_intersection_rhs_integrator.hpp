@@ -37,9 +37,11 @@ public:
   OmegaHIntersectionRHSIntegrator(const FunctionSpace& source_space,
                                   const FunctionSpace& target_space);
   OmegaHIntersectionRHSIntegrator(
-    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> source_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      source_layout,
     std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      target_layout,
     std::shared_ptr<const CoordinateSystem> target_coordinate_system);
   ~OmegaHIntersectionRHSIntegrator();
 
@@ -55,9 +57,11 @@ private:
   // Both public constructors delegate here; `source_search` may be null, in
   // which case the intersection builds its own search over the source mesh.
   OmegaHIntersectionRHSIntegrator(
-    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> source_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      source_layout,
     std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      target_layout,
     std::shared_ptr<const CoordinateSystem> target_coordinate_system,
     const pcms::localization::GridPointSearchVariant* source_search);
 

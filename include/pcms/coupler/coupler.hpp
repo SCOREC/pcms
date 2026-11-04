@@ -158,8 +158,7 @@ public:
   FunctionHandle<T> AddFunction(Function<T>&& function,
                                 bool participates = true);
 
-  void SendField(const std::string& name,
-                 Mode mode = Mode::Synchronous)
+  void SendField(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InSendPhase());
@@ -169,8 +168,7 @@ public:
       [mode](auto& field_communicator) { field_communicator->Send(mode); },
       communicator);
   };
-  void ReceiveField(const std::string& name,
-                    Mode mode = Mode::Synchronous)
+  void ReceiveField(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InReceivePhase());
@@ -178,8 +176,7 @@ public:
       [mode](auto& field_communicator) { field_communicator->Receive(); },
       detail::find_or_error(name, field_communicators_));
   };
-  void SendData(const std::string& name,
-                Mode mode = Mode::Synchronous)
+  void SendData(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InSendPhase());
@@ -188,8 +185,7 @@ public:
                detail::find_or_error(name, global_data_interfaces_));
   }
 
-  void ReceiveData(const std::string& name,
-                   Mode mode = Mode::Synchronous)
+  void ReceiveData(const std::string& name, Mode mode = Mode::Synchronous)
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(InReceivePhase());
@@ -269,7 +265,8 @@ private:
   // map is used rather than unordered_map because we give pointers to the
   // internal data and rehash of unordered_map can cause pointer invalidation.
   // map is less cache friendly, but pointers are not invalidated.
-  std::map<std::string, pcms::coupler::FieldCommunicator2Ptr> field_communicators_;
+  std::map<std::string, pcms::coupler::FieldCommunicator2Ptr>
+    field_communicators_;
   std::map<std::string, std::unique_ptr<pcms::coupler::FieldLayoutCommunicator>>
     field_layout_communicators_;
   std::map<std::string, std::unique_ptr<OverlapMask>> layout_overlap_masks_;
@@ -414,8 +411,8 @@ void pcms::ApplicationComm::RegisterFieldCommunicator(Field<T>& field_obj,
   pcms::coupler::FieldLayoutCommunicator& layout_communicator =
     GetOrCreateLayoutCommunicator(field_obj.GetLayout(), participates);
   pcms::coupler::FieldCommunicator2Ptr field_communicator =
-    std::make_unique<pcms::coupler::FieldCommunicator<T>>(name, layout_communicator,
-                                           field_obj);
+    std::make_unique<pcms::coupler::FieldCommunicator<T>>(
+      name, layout_communicator, field_obj);
   auto [it, inserted] =
     field_communicators_.emplace(name, std::move(field_communicator));
   if (!inserted) {

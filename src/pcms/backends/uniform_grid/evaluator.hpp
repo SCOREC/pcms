@@ -253,7 +253,8 @@ private:
 // Localization logic is taken directly from
 // UniformGridField::GetLocalizationHint.
 template <unsigned Dim = 2>
-class UniformGridEvaluatorFactory : public pcms::field::FieldEvaluatorFactory<Real>
+class UniformGridEvaluatorFactory
+  : public pcms::field::FieldEvaluatorFactory<Real>
 {
 public:
   explicit UniformGridEvaluatorFactory(

@@ -23,9 +23,10 @@ private:
 
 public:
   FindSupports(Omega_h::Mesh& source_mesh_, Omega_h::Mesh& target_mesh_)
-    : source_mesh(source_mesh_), target_mesh(target_mesh_){};
+    : source_mesh(source_mesh_), target_mesh(target_mesh_) {};
 
-  FindSupports(Omega_h::Mesh& mesh_) : source_mesh(mesh_), target_mesh(mesh_){};
+  FindSupports(Omega_h::Mesh& mesh_)
+    : source_mesh(mesh_), target_mesh(mesh_) {};
 
   void adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
                       Omega_h::Write<Omega_h::LO>& nSupports,
@@ -40,25 +41,21 @@ public:
                                    bool is_build_csr_call);
 };
 
-pcms::localization::SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
-                               const Omega_h::Reals& target_coords,
-                               Omega_h::LO n_targets,
-                               Omega_h::Real& cutoffDistance,
-                               Omega_h::LO min_req_support = 12,
-                               Omega_h::LO max_allowed_support = 36,
-                               bool adapt_radius = true);
+pcms::localization::SupportResults searchNeighbors(
+  Omega_h::Mesh& source_mesh, const Omega_h::Reals& target_coords,
+  Omega_h::LO n_targets, Omega_h::Real& cutoffDistance,
+  Omega_h::LO min_req_support = 12, Omega_h::LO max_allowed_support = 36,
+  bool adapt_radius = true);
 
-pcms::localization::SupportResults searchNeighbors(Omega_h::Mesh& source_mesh,
-                               Omega_h::Mesh& target_mesh,
-                               Omega_h::Real& cutoffDistance,
-                               Omega_h::LO min_req_support = 12,
-                               Omega_h::LO max_allowed_support = 36,
-                               bool adapt_radius = true);
+pcms::localization::SupportResults searchNeighbors(
+  Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
+  Omega_h::Real& cutoffDistance, Omega_h::LO min_req_support = 12,
+  Omega_h::LO max_allowed_support = 36, bool adapt_radius = true);
 
 pcms::localization::SupportResults searchNeighbors(Omega_h::Mesh& mesh,
-                               Omega_h::Real cutoffDistance,
-                               Omega_h::LO min_support = 12,
-                               bool adapt_radius = true);
+                                                   Omega_h::Real cutoffDistance,
+                                                   Omega_h::LO min_support = 12,
+                                                   bool adapt_radius = true);
 } // namespace pcms::backend::omega_h
 
 #endif // PCMS_BACKENDS_OMEGA_H_ADJ_SEARCH_HPP

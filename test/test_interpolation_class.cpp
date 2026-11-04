@@ -106,8 +106,8 @@ TEST_CASE("Test MLSMeshInterpolation")
     pcms::printInfo("\n-------------------- Single Mesh Interpolation Test "
                     "Started --------------------\n");
     pcms::printInfo("Mesh based search...\n");
-    auto mls_single =
-      pcms::transfer::MLSMeshInterpolation(source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
+    auto mls_single = pcms::transfer::MLSMeshInterpolation(
+      source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
 
     auto source_points_vec = pcms::test::CopyOmegaHRealsToVector(
       pcms::utility::get_entity_centroids(source_mesh, Omega_h::FACE));
@@ -213,8 +213,8 @@ TEST_CASE("Test MLSMeshInterpolation")
     // translate_mesh(&target_mesh, Omega_h::Vector<2>{(1.0 - 0.999) / 2.0,
     //                                                (1.0 - 0.999) / 2.0});
 
-    auto mls_double = pcms::transfer::MLSMeshInterpolation(source_mesh, target_mesh, 0.12,
-                                                 15, 3, true, 0.0, 5.0);
+    auto mls_double = pcms::transfer::MLSMeshInterpolation(
+      source_mesh, target_mesh, 0.12, 15, 3, true, 0.0, 5.0);
 
     Omega_h::HostWrite<double> source_data_host_write(source_sinxcosy_node);
     Omega_h::HostWrite<double> interpolated_data_hwrite(

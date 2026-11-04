@@ -21,8 +21,8 @@
 namespace
 {
 
-std::shared_ptr<pcms::backend::omega_h::OmegaHEntityLayout> MakeMeshEntityLayout(
-  Omega_h::Mesh& mesh, int entity_dim)
+std::shared_ptr<pcms::backend::omega_h::OmegaHEntityLayout>
+MakeMeshEntityLayout(Omega_h::Mesh& mesh, int entity_dim)
 {
   return std::make_shared<pcms::backend::omega_h::OmegaHEntityLayout>(
     mesh, entity_dim, 1, pcms::csys::Cartesian::Deferred());
@@ -48,11 +48,13 @@ TEST_CASE(
   auto target_device = pcms::test::CreateDeviceCoordinateView(
     target_coords, pcms::csys::Cartesian::Deferred(), dim);
 
-  auto coords_dev = pcms::utility::ConvertCoordsTo2D(source_coords, mesh.nverts(), dim);
+  auto coords_dev =
+    pcms::utility::ConvertCoordsTo2D(source_coords, mesh.nverts(), dim);
 
   auto layout = std::make_shared<pcms::backend::point_cloud::PointCloudLayout>(
     dim, coords_dev, pcms::csys::Cartesian::Deferred());
-  pcms::backend::point_cloud::PointCloudLocalizationFactory factory(layout, options);
+  pcms::backend::point_cloud::PointCloudLocalizationFactory factory(layout,
+                                                                    options);
 
   auto actual = factory.Build(target_device.coordinate_view);
   auto expected = pcms::localization::BuildPointCloudSupports(
@@ -77,8 +79,8 @@ TEST_CASE("LocalizationFactory: vertex adjacency Build matches two-mesh "
   options.min_req_supports = 15;
   options.adapt_radius = true;
 
-  pcms::localization::AdjacencyLocalizationFactory factory(source_mesh, Omega_h::VERT,
-                                             options);
+  pcms::localization::AdjacencyLocalizationFactory factory(
+    source_mesh, Omega_h::VERT, options);
   auto target_coords =
     pcms::test::CopyOmegaHRealsToVector(target_mesh.coords());
   auto target_device = pcms::test::CreateDeviceCoordinateView(
@@ -103,8 +105,9 @@ TEST_CASE("Localization path selection: vertex source uses adjacency for "
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 8, 8, 0, false);
 
-  auto source_layout = std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
-    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
+  auto source_layout =
+    std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(pcms::field::detail::SelectLocalizationPath(*source_layout) ==
           pcms::field::detail::LocalizationPath::VertexAdjacencySearch);
@@ -118,11 +121,13 @@ TEST_CASE(
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 8, 8, 0, false);
 
   auto source_layout = MakeMeshEntityLayout(mesh, pcms::Face);
-  auto target_layout = std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
-    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
+  auto target_layout =
+    std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
+      mesh, 1, 1, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(
-    pcms::field::detail::SelectLocalizationPath(*source_layout, target_layout.get()) ==
+    pcms::field::detail::SelectLocalizationPath(*source_layout,
+                                                target_layout.get()) ==
     pcms::field::detail::LocalizationPath::CentroidToVertexAdjacencySearch);
 }
 
@@ -152,7 +157,8 @@ TEST_CASE("LocalizationFactory: centroid-to-vertex Build correct on same-mesh "
   options.adapt_radius = true;
 
   // Source: face centroids on the mesh; target: mesh vertices.
-  pcms::localization::AdjacencyLocalizationFactory factory(mesh, Omega_h::FACE, options);
+  pcms::localization::AdjacencyLocalizationFactory factory(mesh, Omega_h::FACE,
+                                                           options);
   auto actual = factory.BuildSameMeshCentroidToVertex();
 
   // Reference: direct call to the single-mesh centroid-to-vertex overload.
@@ -178,8 +184,8 @@ TEST_CASE("LocalizationFactory: correct with different meshes")
   options.min_req_supports = 8;
   options.adapt_radius = true;
 
-  pcms::localization::AdjacencyLocalizationFactory factory(source_mesh, Omega_h::FACE,
-                                             options);
+  pcms::localization::AdjacencyLocalizationFactory factory(
+    source_mesh, Omega_h::FACE, options);
 
   auto target_coords =
     pcms::test::CopyOmegaHRealsToVector(target_mesh.coords());

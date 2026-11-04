@@ -35,7 +35,8 @@ public:
                                 MonteCarloSampling sampling,
                                 uint64_t seed = 8675309);
   OmegaHMonteCarloRHSIntegrator(
-    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      target_layout,
     std::shared_ptr<const CoordinateSystem> target_coordinate_system,
     int samples_per_element, MonteCarloSampling sampling,
     uint64_t seed = 8675309);

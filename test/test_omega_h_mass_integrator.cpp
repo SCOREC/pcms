@@ -72,8 +72,8 @@ std::map<std::pair<pcms::GO, pcms::GO>, pcms::Real> BuildReferenceMassMap(
   auto elm_mass_host =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, elm_mass_dev);
 
-  const auto layout =
-    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(space.GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space.GetLayout());
   REQUIRE(layout != nullptr);
   const auto faces2nodes_dev = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
   const auto faces2nodes = Omega_h::HostRead(faces2nodes_dev);
@@ -137,9 +137,8 @@ TEST_CASE("OmegaHMassIntegrator: row sums match lumped mass",
 
   auto space = pcms::test::MakeP1Space(mesh);
 
-  const auto layout =
-    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
-      space->GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space->GetLayout());
   const auto& gids = layout->GetGidsHost();
   const int nverts = mesh.nverts();
 
@@ -181,15 +180,14 @@ TEST_CASE("OmegaHMassIntegrator: lumped diagonal equals consistent row sums",
     mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 
-  const auto layout =
-    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
-      space->GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space->GetLayout());
   const auto& gids = layout->GetGidsHost();
   const int nverts = mesh.nverts();
 
   auto consistent = pcms::transfer::BuildOmegaHMassIntegrator(*space);
-  auto lumped =
-    pcms::transfer::BuildOmegaHMassIntegrator(*space, pcms::MassMatrixType::Lumped);
+  auto lumped = pcms::transfer::BuildOmegaHMassIntegrator(
+    *space, pcms::MassMatrixType::Lumped);
   CHECK_FALSE(consistent->IsDiagonal());
   CHECK(lumped->IsDiagonal());
   Mat consistent_mat = consistent->GetMatrix();
@@ -242,8 +240,8 @@ TEST_CASE("OmegaHMassIntegrator: P0 lumped equals consistent",
     pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 
   auto consistent = pcms::transfer::BuildOmegaHMassIntegrator(*space);
-  auto lumped =
-    pcms::transfer::BuildOmegaHMassIntegrator(*space, pcms::MassMatrixType::Lumped);
+  auto lumped = pcms::transfer::BuildOmegaHMassIntegrator(
+    *space, pcms::MassMatrixType::Lumped);
   CHECK(consistent->IsDiagonal());
   CHECK(lumped->IsDiagonal());
   Mat consistent_mat = consistent->GetMatrix();
@@ -251,9 +249,8 @@ TEST_CASE("OmegaHMassIntegrator: P0 lumped equals consistent",
 
   const auto elem_areas = Omega_h::measure_elements_real(&mesh);
   const auto elem_areas_h = Omega_h::HostRead<Omega_h::Real>(elem_areas);
-  const auto layout =
-    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
-      space->GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space->GetLayout());
   const auto& gids = layout->GetGidsHost();
 
   for (int e = 0; e < mesh.nelems(); ++e) {

@@ -158,7 +158,8 @@ inline std::shared_ptr<pcms::field::LagrangeFunctionSpace> MakeP1Space(
     pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
-inline std::shared_ptr<pcms::field::LagrangeFunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
+inline std::shared_ptr<pcms::field::LagrangeFunctionSpace> MakeP0Space(
+  Omega_h::Mesh& mesh)
 {
   return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 0, 1, csys::Cartesian::Deferred(), "global",
@@ -177,8 +178,9 @@ inline bool AreArraysEqualUnordered(
   return freq1 == freq2;
 }
 
-inline void CheckSupportResultsEquivalent(const pcms::localization::SupportResults& actual,
-                                          const pcms::localization::SupportResults& expected)
+inline void CheckSupportResultsEquivalent(
+  const pcms::localization::SupportResults& actual,
+  const pcms::localization::SupportResults& expected)
 {
   auto actual_ptr = Omega_h::HostRead<Omega_h::LO>(actual.supports_ptr);
   auto actual_idx = Omega_h::HostRead<Omega_h::LO>(actual.supports_idx);

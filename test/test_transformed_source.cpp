@@ -22,7 +22,6 @@ using pcms::DeviceMemorySpace;
 using pcms::EvaluationRequest;
 using pcms::GO;
 using pcms::HostMemorySpace;
-using pcms::field::LagrangeFunctionSpace;
 using pcms::OutOfBoundsMode;
 using pcms::OutOfBoundsPolicy;
 using pcms::Real;
@@ -30,6 +29,7 @@ using pcms::SameValueBasis;
 using pcms::TransformedSource;
 using pcms::ValueBasis;
 using pcms::ValueView;
+using pcms::field::LagrangeFunctionSpace;
 namespace values = pcms::values;
 
 namespace

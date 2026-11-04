@@ -61,9 +61,9 @@ SupportResults AdjacencyLocalizationFactory::BuildSameMeshCentroidToVertex()
   PCMS_ALWAYS_ASSERT(source_entity_dim_ == Face);
   PCMS_ALWAYS_ASSERT(source_mesh_.dim() == 2);
   Omega_h::Real radius_sq = options_.radius * options_.radius;
-  return pcms::backend::omega_h::searchNeighbors(source_mesh_, radius_sq,
-                         static_cast<Omega_h::LO>(options_.min_req_supports),
-                         options_.adapt_radius);
+  return pcms::backend::omega_h::searchNeighbors(
+    source_mesh_, radius_sq,
+    static_cast<Omega_h::LO>(options_.min_req_supports), options_.adapt_radius);
 }
 
 } // namespace pcms::localization

@@ -31,8 +31,8 @@ TEST_CASE("OmegaHLagrangeLayout order-1 properties")
 {
   auto lib = Omega_h::Library{};
   auto mesh = MakeBox2D(lib.world());
-  pcms::backend::omega_h::OmegaHLagrangeLayout layout(mesh, 1, 2,
-                                    pcms::csys::Cartesian::Deferred());
+  pcms::backend::omega_h::OmegaHLagrangeLayout layout(
+    mesh, 1, 2, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(layout.GetOrder() == 1);
   REQUIRE(layout.GetNumComponents() == 2);
@@ -65,8 +65,8 @@ TEST_CASE("OmegaHLagrangeLayout order-0 properties")
 {
   auto lib = Omega_h::Library{};
   auto mesh = MakeBox2D(lib.world());
-  pcms::backend::omega_h::OmegaHLagrangeLayout layout(mesh, 0, 1,
-                                    pcms::csys::Cartesian::Deferred());
+  pcms::backend::omega_h::OmegaHLagrangeLayout layout(
+    mesh, 0, 1, pcms::csys::Cartesian::Deferred());
 
   REQUIRE(layout.GetOrder() == 0);
   REQUIRE(layout.GetNumComponents() == 1);
@@ -77,8 +77,8 @@ TEST_CASE("OmegaHLagrangeLayout order-0 properties")
   auto coords_device = layout.GetDOFHolderCoordinates().GetValues();
   int nelems = mesh.nelems();
   auto coords_view = pcms::test::CopyCoordinatesToHost(coords_device);
-  auto centroids =
-    Omega_h::HostRead<Real>(pcms::utility::get_entity_centroids(mesh, mesh.dim()));
+  auto centroids = Omega_h::HostRead<Real>(
+    pcms::utility::get_entity_centroids(mesh, mesh.dim()));
   REQUIRE(static_cast<int>(coords_view.extent(0)) == nelems);
   for (int e = 0; e < nelems; ++e) {
     for (int d = 0; d < mesh.dim(); ++d) {
@@ -99,12 +99,12 @@ TEST_CASE("OmegaHLagrangeLayout invalid order throws")
 {
   auto lib = Omega_h::Library{};
   auto mesh = MakeBox2D(lib.world());
-  REQUIRE_THROWS_AS(
-    pcms::backend::omega_h::OmegaHLagrangeLayout(mesh, 2, 1, pcms::csys::Cartesian::Deferred()),
-    std::invalid_argument);
-  REQUIRE_THROWS_AS(
-    pcms::backend::omega_h::OmegaHLagrangeLayout(mesh, -1, 1, pcms::csys::Cartesian::Deferred()),
-    std::invalid_argument);
+  REQUIRE_THROWS_AS(pcms::backend::omega_h::OmegaHLagrangeLayout(
+                      mesh, 2, 1, pcms::csys::Cartesian::Deferred()),
+                    std::invalid_argument);
+  REQUIRE_THROWS_AS(pcms::backend::omega_h::OmegaHLagrangeLayout(
+                      mesh, -1, 1, pcms::csys::Cartesian::Deferred()),
+                    std::invalid_argument);
 }
 
 TEST_CASE("OmegaHLagrangeLayout layout sharing")

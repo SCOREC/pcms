@@ -47,12 +47,13 @@ void test(Omega_h::Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
   };
 
   pcms::localization::SupportResults support =
-    pcms::backend::omega_h::searchNeighbors(mesh, cutoffDistance, min_num_supports);
+    pcms::backend::omega_h::searchNeighbors(mesh, cutoffDistance,
+                                            min_num_supports);
 
   for (const auto& rbf : rbf_types) {
-    auto approx_target_values =
-      pcms::field::mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, rbf);
+    auto approx_target_values = pcms::field::mls_interpolation(
+      source_values, source_coordinates, target_coordinates, support, dim,
+      degree, rbf);
 
     auto host_approx_target_values =
       Omega_h::HostRead<Omega_h::Real>(approx_target_values);

@@ -53,7 +53,8 @@ TEST_CASE("basis test")
           target_point[j] = coords[i][j];
         }
 
-        pcms::field::detail::eval_basis_vector(d_array, target_point, basis_vector);
+        pcms::field::detail::eval_basis_vector(d_array, target_point,
+                                               basis_vector);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { results(i, j) = basis_vector(j); });
@@ -149,7 +150,8 @@ TEST_CASE("basis test")
           target_point[j] = coords[i][j];
         }
 
-        pcms::field::detail::eval_basis_vector(d_array, target_point, basis_vector);
+        pcms::field::detail::eval_basis_vector(d_array, target_point,
+                                               basis_vector);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { results(i, j) = basis_vector(j); });
@@ -191,7 +193,8 @@ TEST_CASE("basis test")
     auto slice_length_hd = Kokkos::create_mirror_view(slice_length);
     Kokkos::deep_copy(slice_length_hd, host_slice_length);
     Kokkos::deep_copy(slice_length, slice_length_hd);
-    auto size = pcms::field::detail::calculate_basis_vector_size(host_slice_length);
+    auto size =
+      pcms::field::detail::calculate_basis_vector_size(host_slice_length);
     int nvertices_target = 2;
     int nsupports = 5;
     Kokkos::View<double**> points("vandermonde matrix", nvertices_target,

@@ -29,29 +29,36 @@ struct Data
 };
 
 template <int Dim, int TgtOrder>
-Data BuildDataImpl(const pcms::backend::omega_h::OmegaHLagrangeLayout& source_layout,
-                   const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout, int quad_order,
-                   const pcms::localization::GridPointSearchVariant* source_search);
+Data BuildDataImpl(
+  const pcms::backend::omega_h::OmegaHLagrangeLayout& source_layout,
+  const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout,
+  int quad_order,
+  const pcms::localization::GridPointSearchVariant* source_search);
 
 // The source space's point search, if the space is an Omega_h Lagrange space
 // and so owns one the intersection can reuse; null otherwise.
-const pcms::localization::GridPointSearchVariant* SourceSearchFromSpace(const FunctionSpace& space)
+const pcms::localization::GridPointSearchVariant* SourceSearchFromSpace(
+  const FunctionSpace& space)
 {
-  const auto* lagrange = dynamic_cast<const pcms::field::LagrangeFunctionSpace*>(&space);
+  const auto* lagrange =
+    dynamic_cast<const pcms::field::LagrangeFunctionSpace*>(&space);
   if (lagrange == nullptr) {
     return nullptr;
   }
-  const auto* factory =
-    dynamic_cast<const pcms::backend::omega_h::OmegaHLagrangeEvaluatorFactory<Real>*>(
-      lagrange->GetEvaluatorFactory().get());
+  const auto* factory = dynamic_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeEvaluatorFactory<Real>*>(
+    lagrange->GetEvaluatorFactory().get());
   return factory ? &factory->GetSearch() : nullptr;
 }
 
-Data BuildData(const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>& source_layout,
-               std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-               const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>& target_layout,
-               std::shared_ptr<const CoordinateSystem> target_coordinate_system,
-               const pcms::localization::GridPointSearchVariant* source_search)
+Data BuildData(
+  const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>&
+    source_layout,
+  std::shared_ptr<const CoordinateSystem> source_coordinate_system,
+  const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>&
+    target_layout,
+  std::shared_ptr<const CoordinateSystem> target_coordinate_system,
+  const pcms::localization::GridPointSearchVariant* source_search)
 {
   detail::CheckOmegaHScalarLagrangeLayout(
     source_coordinate_system, source_layout, "OmegaHIntersectionRHSIntegrator",
@@ -72,21 +79,24 @@ Data BuildData(const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrang
   const int quad_order =
     std::max(1, source_layout->GetOrder() + target_layout->GetOrder());
 
-  return pcms::field::detail::DispatchByOrder(target_layout->GetOrder(), [&](auto order_c) {
-    constexpr int TgtOrder = decltype(order_c)::value;
-    if (dim == 3) {
-      return BuildDataImpl<3, TgtOrder>(*source_layout, *target_layout,
+  return pcms::field::detail::DispatchByOrder(
+    target_layout->GetOrder(), [&](auto order_c) {
+      constexpr int TgtOrder = decltype(order_c)::value;
+      if (dim == 3) {
+        return BuildDataImpl<3, TgtOrder>(*source_layout, *target_layout,
+                                          quad_order, source_search);
+      }
+      return BuildDataImpl<2, TgtOrder>(*source_layout, *target_layout,
                                         quad_order, source_search);
-    }
-    return BuildDataImpl<2, TgtOrder>(*source_layout, *target_layout,
-                                      quad_order, source_search);
-  });
+    });
 }
 
 template <int Dim, int TgtOrder>
-Data BuildDataImpl(const pcms::backend::omega_h::OmegaHLagrangeLayout& source_layout,
-                   const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout, int quad_order,
-                   const pcms::localization::GridPointSearchVariant* source_search)
+Data BuildDataImpl(
+  const pcms::backend::omega_h::OmegaHLagrangeLayout& source_layout,
+  const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout,
+  int quad_order,
+  const pcms::localization::GridPointSearchVariant* source_search)
 {
   using Basis = detail::TargetSimplexBasis<Dim, TgtOrder>;
   constexpr int ndof = Basis::ndof;
@@ -211,19 +221,23 @@ Data BuildDataImpl(const pcms::backend::omega_h::OmegaHLagrangeLayout& source_la
 OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
   const FunctionSpace& source_space, const FunctionSpace& target_space)
   : OmegaHIntersectionRHSIntegrator(
-      std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
+      std::dynamic_pointer_cast<
+        const pcms::backend::omega_h::OmegaHLagrangeLayout>(
         source_space.GetLayout()),
       source_space.GetCoordinateSystem(),
-      std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
+      std::dynamic_pointer_cast<
+        const pcms::backend::omega_h::OmegaHLagrangeLayout>(
         target_space.GetLayout()),
       target_space.GetCoordinateSystem(), SourceSearchFromSpace(source_space))
 {
 }
 
 OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
-  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> source_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    source_layout,
   std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    target_layout,
   std::shared_ptr<const CoordinateSystem> target_coordinate_system)
   : OmegaHIntersectionRHSIntegrator(
       std::move(source_layout), std::move(source_coordinate_system),
@@ -232,9 +246,11 @@ OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
 }
 
 OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
-  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> source_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    source_layout,
   std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    target_layout,
   std::shared_ptr<const CoordinateSystem> target_coordinate_system,
   const pcms::localization::GridPointSearchVariant* source_search)
 {

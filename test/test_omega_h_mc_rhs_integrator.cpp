@@ -67,7 +67,8 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator: constant field integrates exactly",
     source_field, OMEGA_H_LAMBDA(pcms::Real, pcms::Real) { return 2.0; });
 
   for (const auto sampling : {pcms::MonteCarloSampling::UniformRandom}) {
-    pcms::transfer::OmegaHMonteCarloRHSIntegrator integrator(*target_space, 8, sampling);
+    pcms::transfer::OmegaHMonteCarloRHSIntegrator integrator(*target_space, 8,
+                                                             sampling);
     pcms::test::EvaluateAndAssemble(integrator, source_space, source_field);
 
     PetscScalar sum = 0.0;
@@ -144,8 +145,8 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
 
   // Reference: exact mesh-intersection quadrature projection.
   auto reference_field = target_space->CreateFunction<pcms::Real>();
-  pcms::transfer::OmegaHConservativeProjection reference_projection(*source_space,
-                                                          *target_space);
+  pcms::transfer::OmegaHConservativeProjection reference_projection(
+    *source_space, *target_space);
   reference_projection.Apply(source_field, reference_field);
   const auto reference = pcms::FlattenToRank1View(
     reference_field.GetDOFHolderDataHost().GetValues());
@@ -161,7 +162,8 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
     pcms::EvaluationRequest::FromCoordinates(
       mc_integrator.GetIntegrationPoints()));
   pcms::transfer::OmegaHMassIntegrator mass_integrator(*target_space);
-  pcms::transfer::GalerkinProjectionSolver solver(mass_integrator, mc_integrator);
+  pcms::transfer::GalerkinProjectionSolver solver(mass_integrator,
+                                                  mc_integrator);
   const auto mc_projected = solver.Solve(*evaluator, source_field);
   const auto mc_projected_h = Omega_h::HostRead<Omega_h::Real>(mc_projected);
 
@@ -265,7 +267,8 @@ TEST_CASE(
     });
 
   auto reference = target_space->CreateFunction<pcms::Real>();
-  pcms::transfer::OmegaHConservativeProjection ref_proj(*source_space, *target_space);
+  pcms::transfer::OmegaHConservativeProjection ref_proj(*source_space,
+                                                        *target_space);
   ref_proj.Apply(source, reference);
   const auto ref_vals =
     pcms::FlattenToRank1View(reference.GetDOFHolderDataHost().GetValues());

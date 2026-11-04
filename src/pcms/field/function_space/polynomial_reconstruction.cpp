@@ -35,12 +35,15 @@ PolynomialReconstructionFunctionSpace::Create(
   auto device_view = Kokkos::View<Real**>("device_view", host_view.extent(0),
                                           host_view.extent(1));
   DeepCopyMismatchLayouts(device_view, host_view);
-  auto pc_layout = std::make_shared<pcms::backend::point_cloud::PointCloudLayout>(
-    dim, device_view, coords.GetCoordinateSystem());
+  auto pc_layout =
+    std::make_shared<pcms::backend::point_cloud::PointCloudLayout>(
+      dim, device_view, coords.GetCoordinateSystem());
   auto localization =
-    std::make_shared<pcms::backend::point_cloud::PointCloudLocalizationFactory>(pc_layout, options);
-  auto eval_factory = std::make_shared<pcms::backend::point_cloud::PointCloudEvaluatorFactory>(
-    pc_layout, localization, options);
+    std::make_shared<pcms::backend::point_cloud::PointCloudLocalizationFactory>(
+      pc_layout, options);
+  auto eval_factory =
+    std::make_shared<pcms::backend::point_cloud::PointCloudEvaluatorFactory>(
+      pc_layout, localization, options);
   return std::make_shared<PolynomialReconstructionFunctionSpace>(
     Key{}, pc_layout, std::move(eval_factory));
 }
@@ -56,8 +59,9 @@ PolynomialReconstructionFunctionSpace::FromMesh(
       "out of range");
   }
 
-  auto mesh_layout = std::make_shared<pcms::backend::omega_h::OmegaHEntityLayout>(
-    mesh, source_entity_dim, 1, std::move(coordinate_system));
+  auto mesh_layout =
+    std::make_shared<pcms::backend::omega_h::OmegaHEntityLayout>(
+      mesh, source_entity_dim, 1, std::move(coordinate_system));
   // MLS assumes unweighted Euclidean in distance calculation
   if (!HasIdentityMetric(*mesh_layout->GetCoordinateSystem())) {
     throw pcms_error(
@@ -65,10 +69,12 @@ PolynomialReconstructionFunctionSpace::FromMesh(
       "coordinate system whose metric is the identity; got '" +
       std::string(mesh_layout->GetCoordinateSystem()->Kind()) + "'");
   }
-  auto localization = std::make_shared<pcms::localization::AdjacencyLocalizationFactory>(
-    mesh, source_entity_dim, options);
-  auto eval_factory = std::make_shared<pcms::backend::point_cloud::PointCloudEvaluatorFactory>(
-    mesh_layout, localization, options);
+  auto localization =
+    std::make_shared<pcms::localization::AdjacencyLocalizationFactory>(
+      mesh, source_entity_dim, options);
+  auto eval_factory =
+    std::make_shared<pcms::backend::point_cloud::PointCloudEvaluatorFactory>(
+      mesh_layout, localization, options);
   return std::make_shared<PolynomialReconstructionFunctionSpace>(
     Key{}, mesh_layout, std::move(eval_factory));
 }

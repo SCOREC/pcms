@@ -37,9 +37,8 @@ TEST_CASE("OmegaHMassIntegrator (3D): P1 mass on reference tet matches "
   auto integrator = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   Mat mat = integrator->GetMatrix();
 
-  const auto layout =
-    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
-      space->GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space->GetLayout());
   REQUIRE(layout != nullptr);
 
   // PETSc rows are active indices = global_to_local(local_vertex).

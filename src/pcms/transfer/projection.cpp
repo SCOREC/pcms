@@ -20,8 +20,9 @@ std::unique_ptr<TransferOperator<Real>> CreateConservativeProjection(
   (void)source_space;
   (void)target_space;
   (void)options;
-  throw pcms_error("CreateConservativeProjection: not available in this "
-                   "build (needs PCMS_ENABLE_PETSC and PCMS_ENABLE_MESHFIELDS)");
+  throw pcms_error(
+    "CreateConservativeProjection: not available in this "
+    "build (needs PCMS_ENABLE_PETSC and PCMS_ENABLE_MESHFIELDS)");
 #endif
 }
 
@@ -37,8 +38,9 @@ std::unique_ptr<TransferOperator<Real>> CreateControlVariateProjection(
   (void)source;
   (void)target_space;
   (void)options;
-  throw pcms_error("CreateControlVariateProjection: not available in this "
-                   "build (needs PCMS_ENABLE_PETSC and PCMS_ENABLE_MESHFIELDS)");
+  throw pcms_error(
+    "CreateControlVariateProjection: not available in this "
+    "build (needs PCMS_ENABLE_PETSC and PCMS_ENABLE_MESHFIELDS)");
 #endif
 }
 

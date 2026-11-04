@@ -96,9 +96,9 @@ void BuildSpaces(Omega_h::Library& lib, Omega_h::Mesh& src_mesh,
     pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
   tgt_mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, 4,
                                 4, 4, false);
-  tgt = pcms::field::LagrangeFunctionSpace::FromMesh(tgt_mesh, 1, 3,
-                                        csys::Cartesian::Create(3), "global",
-                                        pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
+  tgt = pcms::field::LagrangeFunctionSpace::FromMesh(
+    tgt_mesh, 1, 3, csys::Cartesian::Create(3), "global",
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
 void CaseA()

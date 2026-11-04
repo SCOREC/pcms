@@ -21,12 +21,14 @@
 namespace pcms::backend::point_cloud
 {
 
-class PointCloudEvaluatorFactory : public pcms::field::FieldEvaluatorFactory<Real>
+class PointCloudEvaluatorFactory
+  : public pcms::field::FieldEvaluatorFactory<Real>
 {
 public:
-  PointCloudEvaluatorFactory(std::shared_ptr<const FieldLayout> layout,
-                             std::shared_ptr<pcms::localization::LocalizationFactory> localization,
-                             MLSOptions options = {})
+  PointCloudEvaluatorFactory(
+    std::shared_ptr<const FieldLayout> layout,
+    std::shared_ptr<pcms::localization::LocalizationFactory> localization,
+    MLSOptions options = {})
     : layout_(std::move(layout)),
       localization_(std::move(localization)),
       options_(options)
@@ -72,11 +74,13 @@ public:
       pcms::utility::flatten_to_omega_h_reals(tgt_view, "tgt_coords");
 
     pcms::localization::SupportResults supports;
-    auto path =
-      pcms::field::detail::SelectLocalizationPath(*layout_, request.GetQueryLayout());
-    if (path == pcms::field::detail::LocalizationPath::CentroidToVertexAdjacencySearch) {
+    auto path = pcms::field::detail::SelectLocalizationPath(
+      *layout_, request.GetQueryLayout());
+    if (path == pcms::field::detail::LocalizationPath::
+                  CentroidToVertexAdjacencySearch) {
       auto* adjacency =
-        dynamic_cast<const pcms::localization::AdjacencyLocalizationFactory*>(localization_.get());
+        dynamic_cast<const pcms::localization::AdjacencyLocalizationFactory*>(
+          localization_.get());
       PCMS_ALWAYS_ASSERT(adjacency != nullptr);
       supports = adjacency->BuildSameMeshCentroidToVertex();
     } else {

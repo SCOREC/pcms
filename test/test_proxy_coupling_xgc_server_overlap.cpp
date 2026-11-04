@@ -14,9 +14,9 @@
 #include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
-using pcms::backend::xgc::ConstructRCFromOmegaHMesh;
 using pcms::GO;
 using pcms::make_array_view;
+using pcms::backend::xgc::ConstructRCFromOmegaHMesh;
 using pcms::backend::xgc::ReverseClassificationVertex;
 
 static constexpr bool done = true;
@@ -34,7 +34,8 @@ void xgc_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
   if (mesh.has_tag(0, "simNumbering")) {
     rc = pcms::backend::xgc::ConstructRCFromOmegaHMesh(mesh, "simNumbering");
   } else {
-    rc = pcms::backend::xgc::ConstructRCFromOmegaHMesh<GO>(mesh, "global", pcms::backend::xgc::IndexBase::Zero);
+    rc = pcms::backend::xgc::ConstructRCFromOmegaHMesh<GO>(
+      mesh, "global", pcms::backend::xgc::IndexBase::Zero);
   }
 
   auto* application = cpl.AddApplication("proxy_couple");
@@ -55,8 +56,8 @@ void xgc_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
 
     application->SetLayoutOverlapMask(ss.str(), std::move(overlap_mask));
 
-    auto function_space =
-      pcms::backend::xgc::XGCFieldFactory(rc, static_cast<pcms::LO>(mesh.nverts()), ss.str());
+    auto function_space = pcms::backend::xgc::XGCFieldFactory(
+      rc, static_cast<pcms::LO>(mesh.nverts()), ss.str());
 
     auto field = function_space.CreateField<pcms::GO>(
       ss.str(), std::make_unique<pcms::backend::xgc::XGCFieldData<pcms::GO>>(

@@ -8,7 +8,8 @@ TEST_CASE("Field exchange plans exclude GID message headers",
           "[field_exchange]")
 {
   Kokkos::View<pcms::Real**> coords("coords", 4, 2);
-  pcms::backend::point_cloud::PointCloudLayout layout(2, coords, pcms::csys::Cartesian::Deferred());
+  pcms::backend::point_cloud::PointCloudLayout layout(
+    2, coords, pcms::csys::Cartesian::Deferred());
 
   // Two incoming messages. Each contains a five-entry entity-offset header
   // followed by two vertex GIDs.
@@ -40,7 +41,8 @@ TEST_CASE("GID messages insert headers around compact field payloads",
           "[field_exchange]")
 {
   Kokkos::View<pcms::Real**> coords("coords", 4, 2);
-  pcms::backend::point_cloud::PointCloudLayout layout(2, coords, pcms::csys::Cartesian::Deferred());
+  pcms::backend::point_cloud::PointCloudLayout layout(
+    2, coords, pcms::csys::Cartesian::Deferred());
 
   pcms::coupler::ExchangePlan plan;
   plan.dest_ranks = {0, 1};
@@ -74,7 +76,8 @@ TEST_CASE("ExchangePlan permutation is negative for non-participating holders",
   // the received message, so holders 4 and 5 should have negative
   // permutation entries.
   Kokkos::View<pcms::Real**> coords("coords", 6, 2);
-  pcms::backend::point_cloud::PointCloudLayout layout(2, coords, pcms::csys::Cartesian::Deferred());
+  pcms::backend::point_cloud::PointCloudLayout layout(
+    2, coords, pcms::csys::Cartesian::Deferred());
 
   const std::size_t header_len =
     static_cast<std::size_t>(pcms::ent_offsets_len);

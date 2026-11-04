@@ -13,9 +13,9 @@
 #include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
-using pcms::backend::xgc::ConstructRCFromOmegaHMesh;
 using pcms::GO;
 using pcms::make_array_view;
+using pcms::backend::xgc::ConstructRCFromOmegaHMesh;
 using pcms::backend::xgc::ReverseClassificationVertex;
 
 static constexpr bool done = true;
@@ -34,7 +34,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   if (mesh.has_tag(0, "simNumbering")) {
     rc = pcms::backend::xgc::ConstructRCFromOmegaHMesh(mesh, "simNumbering");
   } else {
-    rc = pcms::backend::xgc::ConstructRCFromOmegaHMesh<GO>(mesh, "global", pcms::backend::xgc::IndexBase::Zero);
+    rc = pcms::backend::xgc::ConstructRCFromOmegaHMesh<GO>(
+      mesh, "global", pcms::backend::xgc::IndexBase::Zero);
   }
 
   auto is_overlap =
@@ -54,8 +55,8 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     // FIXME: The current C/Fortran proxy API couples layout registration to
     // field registration, so each XGC plane is registered as a separate layout
     // communicator even though the layouts are geometrically identical.
-    auto function_space =
-      pcms::backend::xgc::XGCFieldFactory(rc, static_cast<pcms::LO>(mesh.nverts()), ss.str());
+    auto function_space = pcms::backend::xgc::XGCFieldFactory(
+      rc, static_cast<pcms::LO>(mesh.nverts()), ss.str());
     auto field = function_space.CreateField<pcms::GO>(
       ss.str(), std::make_unique<pcms::backend::xgc::XGCFieldData<pcms::GO>>(
                   function_space.GetXGCLayout(), pcms::ValueBasis{},

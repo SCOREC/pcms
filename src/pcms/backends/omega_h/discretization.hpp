@@ -20,9 +20,9 @@ public:
 
   // global_id_name: tag holding global vertex/element ids; owned_mask:
   // optional per-vertex ownership used instead of the mesh's partition.
-  OmegaHDiscretization(Omega_h::Mesh& mesh, std::string global_id_name,
-                       std::optional<Omega_h::Read<Omega_h::I8>> owned_mask =
-                         std::nullopt);
+  OmegaHDiscretization(
+    Omega_h::Mesh& mesh, std::string global_id_name,
+    std::optional<Omega_h::Read<Omega_h::I8>> owned_mask = std::nullopt);
 
   bool SameEntities(const Discretization& other) const noexcept override;
 
@@ -39,10 +39,12 @@ public:
   // The Omega_h mesh this discretization is defined on.
   Omega_h::Mesh& GetMesh() const noexcept { return mesh_; }
 
-  const std::string& GetGlobalIdName() const noexcept { return global_id_name_; }
+  const std::string& GetGlobalIdName() const noexcept
+  {
+    return global_id_name_;
+  }
 
-  const std::optional<Omega_h::Read<Omega_h::I8>>& GetOwnedMask()
-    const noexcept
+  const std::optional<Omega_h::Read<Omega_h::I8>>& GetOwnedMask() const noexcept
   {
     return owned_mask_;
   }

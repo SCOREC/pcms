@@ -23,8 +23,8 @@ namespace pcms::backend::xgc
 /// reverse_classification with num_plane_nodes nodes. layout_name identifies
 /// the layout in the coupler.
 std::shared_ptr<FieldFactory> CreateFieldFactory(
-  const ReverseClassificationVertex& reverse_classification,
-  LO num_plane_nodes, std::string layout_name = "");
+  const ReverseClassificationVertex& reverse_classification, LO num_plane_nodes,
+  std::string layout_name = "");
 
 /// Field named name whose values live in XGC's array data (not copied).
 /// factory must come from CreateFieldFactory. plane_comm, if given, is the

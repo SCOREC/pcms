@@ -19,8 +19,8 @@ namespace
 {
 [[noreturn]] void Unsupported(const char* factory, const Discretization& d)
 {
-  throw pcms_error(std::string(factory) +
-                   ": unsupported discretization type " + typeid(d).name());
+  throw pcms_error(std::string(factory) + ": unsupported discretization type " +
+                   typeid(d).name());
 }
 
 void RequireDiscretization(const char* factory,
@@ -90,11 +90,11 @@ std::shared_ptr<FunctionSpace> CreateSplineSpace(
 {
   RequireDiscretization("CreateSplineSpace", discretization);
 #ifdef PCMS_ENABLE_OMEGA_H
-  if (const auto* ug =
-        dynamic_cast<const backend::uniform_grid::UniformGridDiscretization<2>*>(
-          discretization.get())) {
-    return pcms::field::SplineFunctionSpace::FromUniformGrid(ug->GetGrid(),
-                                                std::move(coordinate_system));
+  if (const auto* ug = dynamic_cast<
+        const backend::uniform_grid::UniformGridDiscretization<2>*>(
+        discretization.get())) {
+    return pcms::field::SplineFunctionSpace::FromUniformGrid(
+      ug->GetGrid(), std::move(coordinate_system));
   }
 #else
   (void)coordinate_system;
@@ -105,14 +105,13 @@ std::shared_ptr<FunctionSpace> CreateSplineSpace(
 std::shared_ptr<FunctionSpace> CreatePolynomialReconstructionSpace(
   CoordinateView<HostMemorySpace> points, MLSOptions options)
 {
-  return pcms::field::PolynomialReconstructionFunctionSpace::Create(std::move(points),
-                                                       options);
+  return pcms::field::PolynomialReconstructionFunctionSpace::Create(
+    std::move(points), options);
 }
 
 std::shared_ptr<FunctionSpace> CreatePolynomialReconstructionSpace(
   std::shared_ptr<const Discretization> discretization, int source_entity_dim,
-  std::shared_ptr<const CoordinateSystem> coordinate_system,
-  MLSOptions options)
+  std::shared_ptr<const CoordinateSystem> coordinate_system, MLSOptions options)
 {
   RequireDiscretization("CreatePolynomialReconstructionSpace", discretization);
 #ifdef PCMS_ENABLE_OMEGA_H
@@ -133,8 +132,8 @@ std::shared_ptr<FunctionSpace> CreatePolynomialReconstructionSpace(
 std::shared_ptr<const FieldLayout> CreateEmptyLayout(
   std::shared_ptr<const CoordinateSystem> coordinate_system, int num_components)
 {
-  return std::make_shared<pcms::field::EmptyFieldLayout>(std::move(coordinate_system),
-                                            num_components);
+  return std::make_shared<pcms::field::EmptyFieldLayout>(
+    std::move(coordinate_system), num_components);
 }
 
 } // namespace pcms

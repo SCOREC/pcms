@@ -45,8 +45,10 @@ public:
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
 private:
-  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> source_layout_;
-  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout> target_layout_;
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    source_layout_;
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    target_layout_;
   std::unique_ptr<OmegaHIntersectionRHSIntegrator> rhs_integrator_;
   std::unique_ptr<PointEvaluator<Real>> evaluator_;
   std::unique_ptr<GalerkinProjectionSolver> solver_;

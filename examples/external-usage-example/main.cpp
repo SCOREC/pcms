@@ -41,8 +41,8 @@ int main(int argc, char** argv)
       source.GetLayout().GetDOFHolderCoordinates().GetValues().extent(0);
     std::vector<pcms::Real> values(num_source, value);
     source.SetDOFHolderDataUncheckedHost(
-      pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
-        values.data(), num_source, 1));
+      pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(values.data(),
+                                                               num_source, 1));
 
     pcms::Interpolator<pcms::Real> interpolate(*source_space, *target_space);
     interpolate.Apply(source, target);

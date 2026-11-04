@@ -24,11 +24,14 @@ auto MakeGridPointSearch(Omega_h::Mesh& source_mesh)
 // the BFS over the source dual graph starts.
 template <int Dim>
 Kokkos::View<const LO*> LocateTargetCentroids(
-  Omega_h::Mesh& target_mesh, const pcms::localization::PointLocalizationSearch<Dim>& source_search)
+  Omega_h::Mesh& target_mesh,
+  const pcms::localization::PointLocalizationSearch<Dim>& source_search)
 {
-  const auto flat_centroids = pcms::utility::get_entity_centroids(target_mesh, Dim);
+  const auto flat_centroids =
+    pcms::utility::get_entity_centroids(target_mesh, Dim);
   // Convert layout_right 1D Omega_h array to 2D Kokkos view with correct layout
-  auto centroids = pcms::utility::ConvertCoordsTo2D(flat_centroids, target_mesh.nelems(), Dim);
+  auto centroids =
+    pcms::utility::ConvertCoordsTo2D(flat_centroids, target_mesh.nelems(), Dim);
   auto results = source_search(centroids);
   return source_search.GetOwningElementIds(results);
 }
@@ -185,7 +188,8 @@ namespace
 template <int Dim>
 IntersectionResults intersectTargetsImpl(
   Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
-  const pcms::localization::PointLocalizationSearch<Dim>& source_search, bool use_prefilter)
+  const pcms::localization::PointLocalizationSearch<Dim>& source_search,
+  bool use_prefilter)
 {
   FindIntersections intersect(source_mesh, target_mesh);
 
@@ -226,7 +230,8 @@ const pcms::localization::PointLocalizationSearch<Dim>& RequireSearchDimension(
   const pcms::localization::GridPointSearchVariant& source_search)
 {
   using SearchT =
-    std::conditional_t<Dim == 3, pcms::localization::GridPointSearch3D, pcms::localization::GridPointSearch2D>;
+    std::conditional_t<Dim == 3, pcms::localization::GridPointSearch3D,
+                       pcms::localization::GridPointSearch2D>;
   const auto* search = std::get_if<SearchT>(&source_search);
   if (search == nullptr) {
     throw pcms_error("intersectTargets: the supplied source search has a "
@@ -253,7 +258,8 @@ IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
 
 IntersectionResults intersectTargets(
   Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
-  const pcms::localization::GridPointSearchVariant& source_search, bool use_prefilter)
+  const pcms::localization::GridPointSearchVariant& source_search,
+  bool use_prefilter)
 {
   OMEGA_H_CHECK(source_mesh.dim() == target_mesh.dim());
   if (source_mesh.dim() == 3) {

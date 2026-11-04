@@ -13,8 +13,9 @@ namespace
 {
 /// Assert the two intersection maps are identical: same per-target counts and
 /// the same source elements in the same order.
-void require_intersections_identical(const pcms::transfer::IntersectionResults& filtered,
-                                     const pcms::transfer::IntersectionResults& exact)
+void require_intersections_identical(
+  const pcms::transfer::IntersectionResults& filtered,
+  const pcms::transfer::IntersectionResults& exact)
 {
   const auto filtered_offsets = Omega_h::HostRead(filtered.tgt2src_offsets);
   const auto exact_offsets = Omega_h::HostRead(exact.tgt2src_offsets);
@@ -35,8 +36,9 @@ void require_intersections_identical(const pcms::transfer::IntersectionResults& 
 /// ignoring order. The order of a row is seed-then-BFS, and the seed is
 /// whichever containing element the point search reports first; a centroid
 /// lying on a shared face can legitimately be located in either neighbor.
-void require_intersections_equivalent(const pcms::transfer::IntersectionResults& a,
-                                      const pcms::transfer::IntersectionResults& b)
+void require_intersections_equivalent(
+  const pcms::transfer::IntersectionResults& a,
+  const pcms::transfer::IntersectionResults& b)
 {
   const auto a_offsets = Omega_h::HostRead(a.tgt2src_offsets);
   const auto b_offsets = Omega_h::HostRead(b.tgt2src_offsets);
@@ -195,7 +197,8 @@ TEST_CASE("intersection map is independent of the supplied source search",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 2, 4, 3, false);
     const pcms::localization::GridPointSearchVariant search{
-      std::in_place_type<pcms::localization::GridPointSearch3D>, source, 2, 2, 2};
+      std::in_place_type<pcms::localization::GridPointSearch3D>, source, 2, 2,
+      2};
     require_intersections_equivalent(
       pcms::transfer::intersectTargets(source, target, search),
       pcms::transfer::intersectTargets(source, target));

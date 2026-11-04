@@ -71,11 +71,14 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
 #endif
 
 #ifdef PCMS_ENABLE_XGC
-pcms::backend::xgc::ReverseClassificationVertex CreateDummyReverseClassification(int size)
+pcms::backend::xgc::ReverseClassificationVertex
+CreateDummyReverseClassification(int size)
 {
   pcms::backend::xgc::ReverseClassificationVertex rc;
   for (int i = 0; i < size; ++i) {
-    rc.Insert(i % 4 == 0 ? pcms::backend::xgc::DimID{0, 0} : pcms::backend::xgc::DimID{0, 1}, i);
+    rc.Insert(i % 4 == 0 ? pcms::backend::xgc::DimID{0, 0}
+                         : pcms::backend::xgc::DimID{0, 1},
+              i);
   }
   return rc;
 }

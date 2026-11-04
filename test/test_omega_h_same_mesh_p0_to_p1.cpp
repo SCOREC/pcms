@@ -196,7 +196,7 @@ Omega_h::HostRead<Omega_h::Real> SelfDecompositionMeasures(Omega_h::Mesh& mesh)
   Omega_h::parallel_for(nelems + 1, OMEGA_H_LAMBDA(int i) { offsets[i] = i; });
   Omega_h::parallel_for(nelems, OMEGA_H_LAMBDA(int i) { indices[i] = i; });
   const pcms::transfer::IntersectionResults self{Omega_h::LOs(offsets),
-                                       Omega_h::LOs(indices)};
+                                                 Omega_h::LOs(indices)};
 
   Omega_h::Write<Omega_h::Real> sums(nelems, 0.0);
   Omega_h::parallel_for(
@@ -359,8 +359,8 @@ std::vector<double> ProjectSameMesh(Omega_h::Mesh& mesh,
   auto target = target_space->CreateFunction<pcms::Real>();
   pcms::test::SetField(source, SourceFunction<Dim>{});
 
-  pcms::transfer::OmegaHConservativeProjection projection(*source_space, *target_space,
-                                                mass_type);
+  pcms::transfer::OmegaHConservativeProjection projection(
+    *source_space, *target_space, mass_type);
   projection.Apply(source, target);
 
   source_values = ToVector(

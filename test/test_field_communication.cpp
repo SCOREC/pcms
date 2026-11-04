@@ -135,10 +135,10 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const Real, pcms::HostMemorySpace>(ids.data(), n, 1));
 
-  pcms::coupler::FieldLayoutCommunicator layout_comm(comm_name + "1", comm, rdv, channel,
-                                            *layout);
+  pcms::coupler::FieldLayoutCommunicator layout_comm(comm_name + "1", comm, rdv,
+                                                     channel, *layout);
   pcms::coupler::FieldCommunicator<pcms::Real> field_comm(layout_comm.GetName(),
-                                                 layout_comm, field);
+                                                          layout_comm, field);
 
   channel.BeginSendCommunicationPhase();
   field_comm.Send();
@@ -159,10 +159,10 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   const auto n = layout->GetNumOwnedDofHolder();
 
   auto field = factory->CreateFunction<Real>();
-  pcms::coupler::FieldLayoutCommunicator layout_comm(comm_name + "2", comm, rdv, channel,
-                                            *layout);
+  pcms::coupler::FieldLayoutCommunicator layout_comm(comm_name + "2", comm, rdv,
+                                                     channel, *layout);
   pcms::coupler::FieldCommunicator<pcms::Real> field_comm(layout_comm.GetName(),
-                                                 layout_comm, field);
+                                                          layout_comm, field);
 
   channel.BeginReceiveCommunicationPhase();
   field_comm.Receive();
@@ -223,14 +223,14 @@ void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     [=](int i) { ids[i] = 0; });
 
   auto field = factory->CreateFunction<Real>();
-  pcms::coupler::FieldLayoutCommunicator layout_comm1(comm_name + "1", comm, rdv,
-                                             channel1, *layout);
-  pcms::coupler::FieldLayoutCommunicator layout_comm2(comm_name + "2", comm, rdv,
-                                             channel2, *layout);
-  pcms::coupler::FieldCommunicator<pcms::Real> field_comm1(layout_comm1.GetName(),
-                                                  layout_comm1, field);
-  pcms::coupler::FieldCommunicator<pcms::Real> field_comm2(layout_comm2.GetName(),
-                                                  layout_comm2, field);
+  pcms::coupler::FieldLayoutCommunicator layout_comm1(comm_name + "1", comm,
+                                                      rdv, channel1, *layout);
+  pcms::coupler::FieldLayoutCommunicator layout_comm2(comm_name + "2", comm,
+                                                      rdv, channel2, *layout);
+  pcms::coupler::FieldCommunicator<pcms::Real> field_comm1(
+    layout_comm1.GetName(), layout_comm1, field);
+  pcms::coupler::FieldCommunicator<pcms::Real> field_comm2(
+    layout_comm2.GetName(), layout_comm2, field);
 
   channel1.BeginReceiveCommunicationPhase();
   field_comm1.Receive();

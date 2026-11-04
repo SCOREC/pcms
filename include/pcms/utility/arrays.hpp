@@ -4,7 +4,6 @@
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 
-
 namespace pcms
 {
 

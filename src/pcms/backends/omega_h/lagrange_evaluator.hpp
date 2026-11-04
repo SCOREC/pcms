@@ -65,8 +65,9 @@ struct CopyCoordsFunctor
 template <int Dim>
 OmegaHLagrangeLocHint BuildLagrangeLocHint(
   Omega_h::Mesh& mesh, int mesh_dim,
-  Kokkos::View<typename pcms::localization::PointLocalizationSearch<Dim>::Result*,
-               DeviceMemorySpace>
+  Kokkos::View<
+    typename pcms::localization::PointLocalizationSearch<Dim>::Result*,
+    DeviceMemorySpace>
     results,
   Kokkos::View<Real**, DeviceMemorySpace> coords_d,
   Kokkos::View<LO*, DeviceMemorySpace> owning_ids, OutOfBoundsMode mode)
@@ -179,8 +180,9 @@ OmegaHLagrangeLocHint BuildLagrangeLocHint(
                                mode};
 }
 
-inline std::variant<pcms::localization::GridPointSearch2D, pcms::localization::GridPointSearch3D> MakeSearch(
-  Omega_h::Mesh& mesh)
+inline std::variant<pcms::localization::GridPointSearch2D,
+                    pcms::localization::GridPointSearch3D>
+MakeSearch(Omega_h::Mesh& mesh)
 {
   if (mesh.dim() == 2) {
     const auto n = DivisionsPerAxisForMesh<2>(mesh.nelems());
@@ -313,7 +315,8 @@ private:
 // simplex meshes backed by Omega_h. It owns the spatial search structure and
 // creates OmegaHLagrangePointEvaluator instances on demand.
 template <typename T>
-class OmegaHLagrangeEvaluatorFactory : public pcms::field::FieldEvaluatorFactory<T>
+class OmegaHLagrangeEvaluatorFactory
+  : public pcms::field::FieldEvaluatorFactory<T>
 {
 public:
   explicit OmegaHLagrangeEvaluatorFactory(
@@ -333,7 +336,8 @@ public:
   /// operators which must locate points on the same mesh, such as the
   /// conservative transfer's intersection search, reuse it rather than build
   /// and hold a second copy of the candidate map.
-  [[nodiscard]] const pcms::localization::GridPointSearchVariant& GetSearch() const noexcept
+  [[nodiscard]] const pcms::localization::GridPointSearchVariant& GetSearch()
+    const noexcept
   {
     return search_;
   }

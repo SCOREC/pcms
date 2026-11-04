@@ -35,7 +35,8 @@ namespace
 // The result is keyed by global DOF id to match the PETSc row indexing of the
 // integrator's assembled vector.
 std::unordered_map<pcms::GO, pcms::Real> ExpectedLoadByGid(
-  Omega_h::Mesh& target_mesh, const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout,
+  Omega_h::Mesh& target_mesh,
+  const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout,
   const std::vector<pcms::Real>& g_by_vert)
 {
   const auto coords_h = Omega_h::HostRead<Omega_h::Real>(target_mesh.coords());
@@ -103,8 +104,8 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: integration points lie inside "
   auto source_space = pcms::test::MakeP1Space(source_mesh);
   auto target_space = pcms::test::MakeP1Space(target_mesh);
 
-  auto integrator =
-    pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
+  auto integrator = pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+    *source_space, *target_space);
 
   const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
   auto raw_coords_host = pcms::test::CopyCoordinatesToHost(raw_coords);
@@ -135,12 +136,14 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: space and layout constructors "
   auto target_space = pcms::test::MakeP1Space(target_mesh);
 
   pcms::transfer::OmegaHIntersectionRHSIntegrator from_spaces(*source_space,
-                                                    *target_space);
+                                                              *target_space);
   pcms::transfer::OmegaHIntersectionRHSIntegrator from_layouts(
-    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<
+      const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       source_space->GetLayout()),
     source_space->GetCoordinateSystem(),
-    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
+    std::dynamic_pointer_cast<
+      const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       target_space->GetLayout()),
     target_space->GetCoordinateSystem());
 
@@ -172,8 +175,8 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: zero source field gives zero "
   auto source_field = source_space->CreateFunction<pcms::Real>();
   // Default-constructed field has zero data.
 
-  auto integrator =
-    pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
+  auto integrator = pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+    *source_space, *target_space);
   pcms::test::EvaluateAndAssemble(*integrator, source_space, source_field);
   Vec vec = integrator->GetVector();
 
@@ -202,14 +205,14 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: constant field matches "
   pcms::test::SetField(
     source_field, OMEGA_H_LAMBDA(pcms::Real, pcms::Real) { return c; });
 
-  const auto target_layout =
-    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
-      target_space->GetLayout());
+  const auto target_layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(
+    target_space->GetLayout());
   const std::vector<pcms::Real> g(target_mesh.nverts(), c);
   const auto expected = ExpectedLoadByGid(target_mesh, *target_layout, g);
 
-  auto integrator =
-    pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
+  auto integrator = pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+    *source_space, *target_space);
   CheckAssembledLoadMatches(source_space, *integrator, source_field, expected);
 }
 
@@ -234,9 +237,9 @@ TEST_CASE(
   pcms::test::SetField(
     source_field, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + y; });
 
-  const auto target_layout =
-    std::dynamic_pointer_cast<const pcms::backend::omega_h::OmegaHLagrangeLayout>(
-      target_space->GetLayout());
+  const auto target_layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(
+    target_space->GetLayout());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
     pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
   std::vector<pcms::Real> g(target_mesh.nverts());
@@ -245,8 +248,8 @@ TEST_CASE(
   }
   const auto expected = ExpectedLoadByGid(target_mesh, *target_layout, g);
 
-  auto integrator =
-    pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
+  auto integrator = pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+    *source_space, *target_space);
   CheckAssembledLoadMatches(source_space, *integrator, source_field, expected);
 }
 
@@ -263,8 +266,8 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
       source_mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
       pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
     auto target_space = pcms::test::MakeP1Space(target_mesh);
-    REQUIRE_THROWS(
-      pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space));
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+      *source_space, *target_space));
   }
 
   SECTION("multi-component target space throws")
@@ -273,8 +276,8 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
     auto target_space = pcms::field::LagrangeFunctionSpace::FromMesh(
       target_mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
       pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
-    REQUIRE_THROWS(
-      pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space));
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+      *source_space, *target_space));
   }
 
   SECTION("non-Cartesian source coordinate system throws")
@@ -283,8 +286,8 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
       source_mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
       pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
     auto target_space = pcms::test::MakeP1Space(target_mesh);
-    REQUIRE_THROWS(
-      pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space));
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+      *source_space, *target_space));
   }
 
   SECTION("non-Cartesian target coordinate system throws")
@@ -293,8 +296,8 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
     auto target_space = pcms::field::LagrangeFunctionSpace::FromMesh(
       target_mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
       pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
-    REQUIRE_THROWS(
-      pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space));
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+      *source_space, *target_space));
   }
 }
 
@@ -338,8 +341,8 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator (3D): constant load sums to c times "
     source_field,
     KOKKOS_LAMBDA(pcms::Real, pcms::Real, pcms::Real) { return c; });
 
-  auto integrator =
-    pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
+  auto integrator = pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+    *source_space, *target_space);
 
   const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
   REQUIRE(raw_coords.extent(0) > 0);
@@ -401,8 +404,8 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator (3D): dual tets overlap is an "
 
   auto source_space = pcms::test::MakeP1Space(source_mesh);
   auto target_space = pcms::test::MakeP1Space(target_mesh);
-  auto integrator =
-    pcms::transfer::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
+  auto integrator = pcms::transfer::BuildOmegaHConservativeRHSIntegrator(
+    *source_space, *target_space);
 
   const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
   REQUIRE(raw_coords.extent(0) > 0);

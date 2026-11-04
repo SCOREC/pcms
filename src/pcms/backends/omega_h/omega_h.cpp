@@ -16,8 +16,8 @@ std::shared_ptr<const Discretization> CreateDiscretization(
   Omega_h::Mesh& mesh, Omega_h::Read<Omega_h::I8> owned_mask,
   std::string global_id_name)
 {
-  return std::make_shared<OmegaHDiscretization>(
-    mesh, std::move(global_id_name), std::move(owned_mask));
+  return std::make_shared<OmegaHDiscretization>(mesh, std::move(global_id_name),
+                                                std::move(owned_mask));
 }
 
 Omega_h::Mesh& GetMesh(const Discretization& discretization)

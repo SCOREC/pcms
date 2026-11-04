@@ -76,12 +76,12 @@ int RunClient(MPI_Comm comm)
                         redev::Partition{});
   auto* app = cpl.AddApplication("mfem_app");
 
-  pcms::backend::mfem::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                 pcms::csys::Cartesian::Deferred(), LayoutName);
+  pcms::backend::mfem::MFEMFieldFactory factory(
+    pmesh, pfes, gf, pcms::csys::Cartesian::Deferred(), LayoutName);
   auto layout = factory.GetLayout();
 
-  auto overlap_view =
-    pcms::backend::mfem::MFEMLayout::OverlapMaskFromAttribute(pmesh, TargetAttribute);
+  auto overlap_view = pcms::backend::mfem::MFEMLayout::OverlapMaskFromAttribute(
+    pmesh, TargetAttribute);
   app->SetLayoutOverlapMask(
     LayoutName,
     std::make_unique<pcms::OverlapMask>(
@@ -114,8 +114,8 @@ int RunServer(MPI_Comm comm)
                         MakeRCBPartition(pmesh.SpaceDimension()));
   auto* app = cpl.AddApplication("mfem_app");
 
-  pcms::backend::mfem::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                 pcms::csys::Cartesian::Deferred(), LayoutName);
+  pcms::backend::mfem::MFEMFieldFactory factory(
+    pmesh, pfes, gf, pcms::csys::Cartesian::Deferred(), LayoutName);
   auto layout = factory.GetLayout();
   auto handle = app->AddField(factory.CreateField<Real>(FieldName));
 
@@ -126,8 +126,8 @@ int RunServer(MPI_Comm comm)
 
   app->ReceivePhase([&]() { handle.Receive(); });
 
-  auto overlap =
-    pcms::backend::mfem::MFEMLayout::OverlapMaskFromAttribute(pmesh, TargetAttribute);
+  auto overlap = pcms::backend::mfem::MFEMLayout::OverlapMaskFromAttribute(
+    pmesh, TargetAttribute);
   auto gids = layout->GetGidsHost();
   auto received = handle.GetField().GetDOFHolderDataHost().GetValues();
 

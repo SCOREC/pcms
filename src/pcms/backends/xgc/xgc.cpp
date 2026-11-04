@@ -9,8 +9,8 @@ namespace pcms::backend::xgc
 {
 
 std::shared_ptr<FieldFactory> CreateFieldFactory(
-  const ReverseClassificationVertex& reverse_classification,
-  LO num_plane_nodes, std::string layout_name)
+  const ReverseClassificationVertex& reverse_classification, LO num_plane_nodes,
+  std::string layout_name)
 {
   return std::make_shared<XGCFieldFactory>(
     reverse_classification, num_plane_nodes, std::move(layout_name));

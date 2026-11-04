@@ -91,7 +91,8 @@ TEST_CASE("test_normalization_routine")
         });
 
       team.team_barrier();
-      pcms::field::detail::normalize_supports(team, target_point, local_supports);
+      pcms::field::detail::normalize_supports(team, target_point,
+                                              local_supports);
       team.team_barrier();
 
       Kokkos::parallel_for(

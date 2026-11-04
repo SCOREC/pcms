@@ -58,9 +58,10 @@ namespace pcms::field
  */
 Omega_h::Write<Omega_h::Real> mls_interpolation(
   const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
-  const Omega_h::Reals target_coordinates, const pcms::localization::SupportResults& support,
-  const Omega_h::LO& dim, const Omega_h::LO& degree, RadialBasisFunction bf,
-  double lambda = 0, double tol = 1e-6, double decay_factor = 5.0);
+  const Omega_h::Reals target_coordinates,
+  const pcms::localization::SupportResults& support, const Omega_h::LO& dim,
+  const Omega_h::LO& degree, RadialBasisFunction bf, double lambda = 0,
+  double tol = 1e-6, double decay_factor = 5.0);
 
 } // namespace pcms::field
 #endif // PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP

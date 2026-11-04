@@ -1,5 +1,5 @@
-#ifndef PCMS_PARTITION_H
-#define PCMS_PARTITION_H
+#ifndef PCMS_COUPLER_PARTITION_HPP
+#define PCMS_COUPLER_PARTITION_HPP
 #include "pcms/utility/detail/common.hpp"
 #include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/types.hpp"
@@ -48,4 +48,4 @@ struct Partition
 };
 } // namespace pcms::coupler
 
-#endif // PCMS_PARTITION_H
+#endif // PCMS_COUPLER_PARTITION_HPP

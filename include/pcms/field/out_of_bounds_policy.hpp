@@ -1,5 +1,5 @@
-#ifndef PCMS_OUT_OF_BOUNDS_POLICY_H
-#define PCMS_OUT_OF_BOUNDS_POLICY_H
+#ifndef PCMS_FIELD_OUT_OF_BOUNDS_POLICY_HPP
+#define PCMS_FIELD_OUT_OF_BOUNDS_POLICY_HPP
 
 #include "pcms/utility/types.hpp"
 
@@ -31,4 +31,4 @@ struct OutOfBoundsPolicy
 
 } // namespace pcms
 
-#endif // PCMS_OUT_OF_BOUNDS_POLICY_H
+#endif // PCMS_FIELD_OUT_OF_BOUNDS_POLICY_HPP

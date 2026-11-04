@@ -1,5 +1,5 @@
-#ifndef PCMS_DISCRETIZATION_DISCRETIZATION_H
-#define PCMS_DISCRETIZATION_DISCRETIZATION_H
+#ifndef PCMS_DISCRETIZATION_DISCRETIZATION_HPP
+#define PCMS_DISCRETIZATION_DISCRETIZATION_HPP
 
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/entity_types.hpp"
@@ -43,4 +43,4 @@ std::shared_ptr<const Discretization> CreateEmptyDiscretization();
 
 } // namespace pcms
 
-#endif // PCMS_DISCRETIZATION_DISCRETIZATION_H
+#endif // PCMS_DISCRETIZATION_DISCRETIZATION_HPP

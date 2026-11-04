@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_ALIASES_HPP
-#define PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_ALIASES_HPP
+#ifndef PCMS_FIELD_EVALUATOR_INTERPOLATOR_ALIASES_HPP
+#define PCMS_FIELD_EVALUATOR_INTERPOLATOR_ALIASES_HPP
 
 #include <Kokkos_Core.hpp>
 #include "pcms/utility/arrays.hpp"
@@ -42,4 +42,4 @@ using RealConstDefaultRank1View =
   Rank1View<const double, DefaultExecutionSpace>;
 
 } // namespace pcms
-#endif // PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_ALIASES_HPP
+#endif // PCMS_FIELD_EVALUATOR_INTERPOLATOR_ALIASES_HPP

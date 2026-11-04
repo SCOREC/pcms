@@ -1,5 +1,5 @@
-#ifndef PCMS_UNIFORM_GRID_EVALUATOR_FACTORY_H
-#define PCMS_UNIFORM_GRID_EVALUATOR_FACTORY_H
+#ifndef PCMS_BACKENDS_UNIFORM_GRID_EVALUATOR_HPP
+#define PCMS_BACKENDS_UNIFORM_GRID_EVALUATOR_HPP
 
 #include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/utility/types.hpp"
@@ -352,4 +352,4 @@ using UniformGridEvaluatorFactory2D = UniformGridEvaluatorFactory<2>;
 
 } // namespace pcms::backend::uniform_grid
 
-#endif // PCMS_UNIFORM_GRID_EVALUATOR_FACTORY_H
+#endif // PCMS_BACKENDS_UNIFORM_GRID_EVALUATOR_HPP

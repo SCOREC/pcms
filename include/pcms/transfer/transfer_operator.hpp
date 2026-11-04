@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_TRANSFER_H
-#define PCMS_TRANSFER_TRANSFER_H
+#ifndef PCMS_TRANSFER_TRANSFER_OPERATOR_HPP
+#define PCMS_TRANSFER_TRANSFER_OPERATOR_HPP
 
 namespace pcms
 {
@@ -20,4 +20,4 @@ public:
 
 } // namespace pcms
 
-#endif
+#endif // PCMS_TRANSFER_TRANSFER_OPERATOR_HPP

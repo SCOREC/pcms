@@ -1,5 +1,5 @@
-#ifndef PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_H
-#define PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_H
+#ifndef PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP
+#define PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP
 
 #include <Omega_h_array.hpp>
 
@@ -40,4 +40,4 @@ SupportResults BuildPointCloudSupports(const Omega_h::Reals& source_coords,
                                        unsigned max_iterations = 100);
 
 } // namespace pcms::localization
-#endif // PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_H
+#endif // PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP

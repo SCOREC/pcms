@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_INTERPOLATION_HELPERS_H
-#define PCMS_TRANSFER_INTERPOLATION_HELPERS_H
+#ifndef PCMS_TRANSFER_INTERPOLATION_HELPERS_HPP
+#define PCMS_TRANSFER_INTERPOLATION_HELPERS_HPP
 
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
@@ -19,4 +19,4 @@ void copyHostWrite2ScalarArrayView(
   pcms::Rank1View<double, pcms::HostMemorySpace> target);
 
 } // namespace pcms::transfer
-#endif // PCMS_TRANSFER_INTERPOLATION_HELPERS_H
+#endif // PCMS_TRANSFER_INTERPOLATION_HELPERS_HPP

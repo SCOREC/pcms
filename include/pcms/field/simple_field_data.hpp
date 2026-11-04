@@ -1,5 +1,5 @@
-#ifndef PCMS_SIMPLE_FIELD_DATA_H
-#define PCMS_SIMPLE_FIELD_DATA_H
+#ifndef PCMS_FIELD_SIMPLE_FIELD_DATA_HPP
+#define PCMS_FIELD_SIMPLE_FIELD_DATA_HPP
 
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/field_layout.hpp"
@@ -60,4 +60,4 @@ private:
 
 } // namespace pcms
 
-#endif // PCMS_SIMPLE_FIELD_DATA_H
+#endif // PCMS_FIELD_SIMPLE_FIELD_DATA_HPP

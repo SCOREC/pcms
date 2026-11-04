@@ -1,5 +1,5 @@
-#ifndef PCMS_XGC_FIELD_LAYOUT_H
-#define PCMS_XGC_FIELD_LAYOUT_H
+#ifndef PCMS_BACKENDS_XGC_LAYOUT_HPP
+#define PCMS_BACKENDS_XGC_LAYOUT_HPP
 
 #include "pcms/backends/xgc/discretization.hpp"
 #include "pcms/backends/xgc/reverse_classification.hpp"
@@ -49,4 +49,4 @@ private:
 
 } // namespace pcms::backend::xgc
 
-#endif // PCMS_XGC_FIELD_LAYOUT_H
+#endif // PCMS_BACKENDS_XGC_LAYOUT_HPP

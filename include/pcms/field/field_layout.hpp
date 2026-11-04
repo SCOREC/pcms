@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_LAYOUT_H
-#define PCMS_FIELD_LAYOUT_H
+#ifndef PCMS_FIELD_FIELD_LAYOUT_HPP
+#define PCMS_FIELD_FIELD_LAYOUT_HPP
 #include <map>
 #include <memory>
 #include <string>
@@ -112,4 +112,4 @@ private:
 };
 
 } // namespace pcms
-#endif // PCMS_FIELD_LAYOUT_H
+#endif // PCMS_FIELD_FIELD_LAYOUT_HPP

@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef PCMS_TRANSFER_INTERPOLATION_BASE_H
-#define PCMS_TRANSFER_INTERPOLATION_BASE_H
+#ifndef PCMS_TRANSFER_INTERPOLATION_BASE_HPP
+#define PCMS_TRANSFER_INTERPOLATION_BASE_HPP
 
 #include "pcms/field/evaluator/mls_interpolation.hpp"
 #include "pcms/backends/omega_h/adj_search.hpp"
@@ -297,4 +297,4 @@ private:
 };
 } // namespace pcms::transfer
 
-#endif // PCMS_TRANSFER_INTERPOLATION_BASE_H
+#endif // PCMS_TRANSFER_INTERPOLATION_BASE_HPP

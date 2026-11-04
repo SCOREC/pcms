@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_ELEMENT_DISPATCH_H
-#define PCMS_FIELD_ELEMENT_DISPATCH_H
+#ifndef PCMS_FIELD_ELEMENT_DISPATCH_HPP
+#define PCMS_FIELD_ELEMENT_DISPATCH_HPP
 
 #include "pcms/utility/assert.hpp"
 #include <string>
@@ -34,4 +34,4 @@ auto DispatchByOrder(int order, F&& f)
 
 } // namespace pcms::field::detail
 
-#endif // PCMS_FIELD_ELEMENT_DISPATCH_H
+#endif // PCMS_FIELD_ELEMENT_DISPATCH_HPP

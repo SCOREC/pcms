@@ -1,5 +1,5 @@
-#ifndef PCMS_DISCRETIZATION_DISCRETIZATION_EMPTY_H
-#define PCMS_DISCRETIZATION_DISCRETIZATION_EMPTY_H
+#ifndef PCMS_DISCRETIZATION_EMPTY_HPP
+#define PCMS_DISCRETIZATION_EMPTY_HPP
 
 #include "pcms/discretization/discretization.hpp"
 
@@ -28,4 +28,4 @@ public:
 
 } // namespace pcms::discretization
 
-#endif // PCMS_DISCRETIZATION_DISCRETIZATION_EMPTY_H
+#endif // PCMS_DISCRETIZATION_EMPTY_HPP

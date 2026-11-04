@@ -1,5 +1,5 @@
-#ifndef PCMS_OMEGA_H_MESH_CAPI_H
-#define PCMS_OMEGA_H_MESH_CAPI_H
+#ifndef PCMS_CAPI_MESH_H
+#define PCMS_CAPI_MESH_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,4 +75,4 @@ void pcms_destroy_omega_h_library(PcmsOmegaHLibraryHandle oh_lib_handle);
 }
 #endif
 
-#endif // PCMS_OMEGA_H_MESH_CAPI_H
+#endif // PCMS_CAPI_MESH_H

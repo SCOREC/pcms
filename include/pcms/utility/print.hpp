@@ -1,5 +1,5 @@
-#ifndef PCMS_PRINT_H
-#define PCMS_PRINT_H
+#ifndef PCMS_UTILITY_PRINT_HPP
+#define PCMS_UTILITY_PRINT_HPP
 #include "pcms/configuration.hpp"
 #include <cstdio>
 
@@ -52,4 +52,4 @@ KOKKOS_INLINE_FUNCTION void printDebugInfo(const char* fmt, const Args&... args)
 
 } // namespace pcms
 
-#endif // PCMS_PRINT_H
+#endif // PCMS_UTILITY_PRINT_HPP

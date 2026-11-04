@@ -1,5 +1,5 @@
-#ifndef FIELD_COMMUNICATOR2_H_
-#define FIELD_COMMUNICATOR2_H_
+#ifndef PCMS_COUPLER_DETAIL_FIELD_COMMUNICATOR_HPP
+#define PCMS_COUPLER_DETAIL_FIELD_COMMUNICATOR_HPP
 
 #include "pcms/coupler/coupler_types.hpp"
 #include "pcms/coupler/detail/field_layout_communicator.hpp"
@@ -74,4 +74,4 @@ using FieldCommunicator2Ptr =
                FieldCommunicator2PtrT<double>>;
 } // namespace pcms::coupler
 
-#endif // FIELD_COMMUNICATOR2_H_
+#endif // PCMS_COUPLER_DETAIL_FIELD_COMMUNICATOR_HPP

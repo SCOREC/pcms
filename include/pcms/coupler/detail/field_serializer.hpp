@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_SERIALIZER_H
-#define PCMS_FIELD_SERIALIZER_H
+#ifndef PCMS_COUPLER_DETAIL_FIELD_SERIALIZER_HPP
+#define PCMS_COUPLER_DETAIL_FIELD_SERIALIZER_HPP
 
 #include "pcms/field/field.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -68,4 +68,4 @@ public:
 
 } // namespace pcms::coupler
 
-#endif // PCMS_FIELD_SERIALIZER_H
+#endif // PCMS_COUPLER_DETAIL_FIELD_SERIALIZER_HPP

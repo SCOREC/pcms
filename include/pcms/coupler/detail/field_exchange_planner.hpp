@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_EXCHANGE_PLANNER_H
-#define PCMS_FIELD_EXCHANGE_PLANNER_H
+#ifndef PCMS_COUPLER_DETAIL_FIELD_EXCHANGE_PLANNER_HPP
+#define PCMS_COUPLER_DETAIL_FIELD_EXCHANGE_PLANNER_HPP
 
 #include "pcms/field/field_layout.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -57,4 +57,4 @@ public:
 };
 
 } // namespace pcms::coupler
-#endif // PCMS_FIELD_EXCHANGE_PLANNER_H
+#endif // PCMS_COUPLER_DETAIL_FIELD_EXCHANGE_PLANNER_HPP

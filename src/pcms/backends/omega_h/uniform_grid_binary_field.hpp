@@ -1,5 +1,5 @@
-#ifndef PCMS_UNIFORM_GRID_BINARY_FIELD_H
-#define PCMS_UNIFORM_GRID_BINARY_FIELD_H
+#ifndef PCMS_BACKENDS_OMEGA_H_UNIFORM_GRID_BINARY_FIELD_HPP
+#define PCMS_BACKENDS_OMEGA_H_UNIFORM_GRID_BINARY_FIELD_HPP
 
 #include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/field/simple_field_data.hpp"
@@ -94,4 +94,4 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
 
 } // namespace pcms::backend::omega_h
 
-#endif // PCMS_UNIFORM_GRID_BINARY_FIELD_H
+#endif // PCMS_BACKENDS_OMEGA_H_UNIFORM_GRID_BINARY_FIELD_HPP

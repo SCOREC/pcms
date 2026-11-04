@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_EVALUATOR_FACTORY_H
-#define PCMS_FIELD_EVALUATOR_FACTORY_H
+#ifndef PCMS_FIELD_FIELD_EVALUATOR_FACTORY_HPP
+#define PCMS_FIELD_FIELD_EVALUATOR_FACTORY_HPP
 
 #include "pcms/field/field_layout.hpp"
 #include "pcms/utility/coordinate_view.hpp"
@@ -86,4 +86,4 @@ public:
 
 } // namespace pcms::field
 
-#endif // PCMS_FIELD_EVALUATOR_FACTORY_H
+#endif // PCMS_FIELD_FIELD_EVALUATOR_FACTORY_HPP

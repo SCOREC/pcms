@@ -1,5 +1,5 @@
-#ifndef FIELD_LAYOUT_COMMUNICATOR_H_
-#define FIELD_LAYOUT_COMMUNICATOR_H_
+#ifndef PCMS_COUPLER_DETAIL_FIELD_LAYOUT_COMMUNICATOR_HPP
+#define PCMS_COUPLER_DETAIL_FIELD_LAYOUT_COMMUNICATOR_HPP
 
 #include "pcms/field/field_layout.hpp"
 #include "pcms/coupler/detail/field_exchange_planner.hpp"
@@ -78,4 +78,4 @@ private:
 };
 } // namespace pcms::coupler
 
-#endif // FIELD_LAYOUT_COMMUNICATOR_H_
+#endif // PCMS_COUPLER_DETAIL_FIELD_LAYOUT_COMMUNICATOR_HPP

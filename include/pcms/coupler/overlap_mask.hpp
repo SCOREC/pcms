@@ -1,5 +1,5 @@
-#ifndef PCMS_OVERLAP_MASK_H
-#define PCMS_OVERLAP_MASK_H
+#ifndef PCMS_COUPLER_OVERLAP_MASK_HPP
+#define PCMS_COUPLER_OVERLAP_MASK_HPP
 
 #include "pcms/field/field_layout.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -58,4 +58,4 @@ struct OverlapMask
 
 } // namespace pcms
 
-#endif // PCMS_OVERLAP_MASK_H
+#endif // PCMS_COUPLER_OVERLAP_MASK_HPP

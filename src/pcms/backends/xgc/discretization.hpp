@@ -1,5 +1,5 @@
-#ifndef PCMS_DISCRETIZATION_DISCRETIZATION_XGC_H
-#define PCMS_DISCRETIZATION_DISCRETIZATION_XGC_H
+#ifndef PCMS_BACKENDS_XGC_DISCRETIZATION_HPP
+#define PCMS_BACKENDS_XGC_DISCRETIZATION_HPP
 
 #include "pcms/discretization/discretization.hpp"
 #include "pcms/backends/xgc/reverse_classification.hpp"
@@ -36,4 +36,4 @@ private:
 
 } // namespace pcms::backend::xgc
 
-#endif // PCMS_DISCRETIZATION_DISCRETIZATION_XGC_H
+#endif // PCMS_BACKENDS_XGC_DISCRETIZATION_HPP

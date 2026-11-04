@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_INTERPOLATOR_H
-#define PCMS_FIELD_INTERPOLATOR_H
+#ifndef PCMS_TRANSFER_INTERPOLATOR_HPP
+#define PCMS_TRANSFER_INTERPOLATOR_HPP
 
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_data.hpp"
@@ -78,4 +78,4 @@ private:
 
 } // namespace pcms
 
-#endif // PCMS_FIELD_INTERPOLATOR_H
+#endif // PCMS_TRANSFER_INTERPOLATOR_HPP

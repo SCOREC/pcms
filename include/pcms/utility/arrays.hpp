@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_ARRAYS_H
-#define PCMS_COUPLING_ARRAYS_H
+#ifndef PCMS_UTILITY_ARRAYS_HPP
+#define PCMS_UTILITY_ARRAYS_HPP
 #include "mdspan/mdspan.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/memory_spaces.hpp"
@@ -494,4 +494,4 @@ void CopyRank1ViewToDevice(Rank1View<T, DeviceMemorySpace> dest,
 }
 
 } // namespace pcms
-#endif // PCMS_COUPLING_ARRAYS_H
+#endif // PCMS_UTILITY_ARRAYS_HPP

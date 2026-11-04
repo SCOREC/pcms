@@ -1,5 +1,5 @@
-#ifndef PCMS_PYTHONAPI_PY_VALUE_TYPES_H
-#define PCMS_PYTHONAPI_PY_VALUE_TYPES_H
+#ifndef PCMS_PYTHONAPI_PY_VALUE_TYPES_HPP
+#define PCMS_PYTHONAPI_PY_VALUE_TYPES_HPP
 
 // Python-side counterparts of the non-owning C++ view types. A C++
 // CoordinateView or ValueView borrows its memory, so the Python objects pair
@@ -153,4 +153,4 @@ inline void RequireScalarForPlainArray(const char* context,
 
 } // namespace pcms
 
-#endif // PCMS_PYTHONAPI_PY_VALUE_TYPES_H
+#endif // PCMS_PYTHONAPI_PY_VALUE_TYPES_HPP

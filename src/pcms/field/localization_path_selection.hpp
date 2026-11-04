@@ -1,5 +1,5 @@
-#ifndef PCMS_LOCALIZATION_PATH_SELECTION_H
-#define PCMS_LOCALIZATION_PATH_SELECTION_H
+#ifndef PCMS_FIELD_LOCALIZATION_PATH_SELECTION_HPP
+#define PCMS_FIELD_LOCALIZATION_PATH_SELECTION_HPP
 
 #include "pcms/field/field_layout.hpp"
 #include "pcms/utility/entity_types.hpp"
@@ -83,4 +83,4 @@ inline LocalizationPath SelectLocalizationPath(
 
 } // namespace pcms::field::detail
 
-#endif // PCMS_LOCALIZATION_PATH_SELECTION_H
+#endif // PCMS_FIELD_LOCALIZATION_PATH_SELECTION_HPP

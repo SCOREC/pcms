@@ -1,5 +1,5 @@
-#ifndef PCMS_DISCRETIZATION_DISCRETIZATION_UNIFORM_GRID_H
-#define PCMS_DISCRETIZATION_DISCRETIZATION_UNIFORM_GRID_H
+#ifndef PCMS_BACKENDS_UNIFORM_GRID_DISCRETIZATION_HPP
+#define PCMS_BACKENDS_UNIFORM_GRID_DISCRETIZATION_HPP
 
 #include "pcms/discretization/discretization.hpp"
 #include "pcms/utility/uniform_grid.hpp"
@@ -121,4 +121,4 @@ UniformGridDiscretization<Dim>::GetEntityClassificationIds(int entity_dim) const
 
 } // namespace pcms::backend::uniform_grid
 
-#endif // PCMS_DISCRETIZATION_DISCRETIZATION_UNIFORM_GRID_H
+#endif // PCMS_BACKENDS_UNIFORM_GRID_DISCRETIZATION_HPP

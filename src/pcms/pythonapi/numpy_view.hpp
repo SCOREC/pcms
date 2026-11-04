@@ -1,5 +1,5 @@
-#ifndef PCMS_PYTHONAPI_NUMPY_VIEW_H
-#define PCMS_PYTHONAPI_NUMPY_VIEW_H
+#ifndef PCMS_PYTHONAPI_NUMPY_VIEW_HPP
+#define PCMS_PYTHONAPI_NUMPY_VIEW_HPP
 
 // Conversions between numpy arrays and pcms mdspan views / Kokkos views.
 //
@@ -324,4 +324,4 @@ py::array_t<std::remove_const_t<ElementType>> ViewToNumpy(
 
 } // namespace pcms
 
-#endif // PCMS_PYTHONAPI_NUMPY_VIEW_H
+#endif // PCMS_PYTHONAPI_NUMPY_VIEW_HPP

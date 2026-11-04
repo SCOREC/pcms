@@ -1,5 +1,5 @@
-#ifndef PCMS_LOCALIZATION_POINT_CLOUD_LOCALIZATION_H
-#define PCMS_LOCALIZATION_POINT_CLOUD_LOCALIZATION_H
+#ifndef PCMS_BACKENDS_POINT_CLOUD_LOCALIZATION_HPP
+#define PCMS_BACKENDS_POINT_CLOUD_LOCALIZATION_HPP
 
 #include "pcms/localization/localization_factory.hpp"
 #include "pcms/localization/mls_support_helpers.hpp"
@@ -63,4 +63,4 @@ private:
 
 } // namespace pcms::backend::point_cloud
 
-#endif // PCMS_LOCALIZATION_POINT_CLOUD_LOCALIZATION_H
+#endif // PCMS_BACKENDS_POINT_CLOUD_LOCALIZATION_HPP

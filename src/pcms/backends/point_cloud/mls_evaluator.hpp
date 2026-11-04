@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_EVALUATOR_MLS_POINT_CLOUD_H
-#define PCMS_FIELD_EVALUATOR_MLS_POINT_CLOUD_H
+#ifndef PCMS_BACKENDS_POINT_CLOUD_MLS_EVALUATOR_HPP
+#define PCMS_BACKENDS_POINT_CLOUD_MLS_EVALUATOR_HPP
 
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/field_data.hpp"
@@ -95,4 +95,4 @@ private:
 
 } // namespace pcms::backend::point_cloud
 
-#endif // PCMS_FIELD_EVALUATOR_MLS_POINT_CLOUD_H
+#endif // PCMS_BACKENDS_POINT_CLOUD_MLS_EVALUATOR_HPP

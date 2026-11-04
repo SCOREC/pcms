@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_SPLINE_INTERPOLATOR_HPP
-#define PCMS_TRANSFER_SPLINE_INTERPOLATOR_HPP
+#ifndef PCMS_BACKENDS_UNIFORM_GRID_SPLINE_INTERPOLATOR_HPP
+#define PCMS_BACKENDS_UNIFORM_GRID_SPLINE_INTERPOLATOR_HPP
 
 #include "mdspan/mdspan.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -3024,4 +3024,4 @@ CompactBiCubicSplineInterpolator<T, MemorySpace>::
 }
 
 } // namespace pcms::backend::uniform_grid
-#endif // PCMS_TRANSFER_SPLINE_INTERPOLATOR_HPP
+#endif // PCMS_BACKENDS_UNIFORM_GRID_SPLINE_INTERPOLATOR_HPP

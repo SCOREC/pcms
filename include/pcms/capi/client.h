@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_CAPI_CLIENT_H
-#define PCMS_COUPLING_CAPI_CLIENT_H
+#ifndef PCMS_CAPI_CLIENT_H
+#define PCMS_CAPI_CLIENT_H
 #include <mpi.h>
 #include <stdint.h>
 
@@ -99,4 +99,4 @@ void pcms_end_receive_phase(PcmsClientHandle);
 }
 #endif
 
-#endif // PCMS_COUPLING_CLIENT_H
+#endif // PCMS_CAPI_CLIENT_H

@@ -1,5 +1,5 @@
-#ifndef POINT_CLOUD_LAYOUT_H_
-#define POINT_CLOUD_LAYOUT_H_
+#ifndef PCMS_BACKENDS_POINT_CLOUD_LAYOUT_HPP
+#define PCMS_BACKENDS_POINT_CLOUD_LAYOUT_HPP
 
 #include "pcms/field/field.hpp"
 #include "pcms/backends/point_cloud/discretization.hpp"
@@ -61,4 +61,4 @@ private:
 };
 } // namespace pcms::backend::point_cloud
 
-#endif // POINT_CLOUD_LAYOUT_H_
+#endif // PCMS_BACKENDS_POINT_CLOUD_LAYOUT_HPP

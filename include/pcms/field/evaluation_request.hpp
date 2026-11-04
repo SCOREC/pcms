@@ -1,5 +1,5 @@
-#ifndef PCMS_EVALUATION_REQUEST_H
-#define PCMS_EVALUATION_REQUEST_H
+#ifndef PCMS_FIELD_EVALUATION_REQUEST_HPP
+#define PCMS_FIELD_EVALUATION_REQUEST_HPP
 
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/field_layout.hpp"
@@ -64,4 +64,4 @@ private:
 
 } // namespace pcms
 
-#endif // PCMS_EVALUATION_REQUEST_H
+#endif // PCMS_FIELD_EVALUATION_REQUEST_HPP

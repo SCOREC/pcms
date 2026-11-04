@@ -8,8 +8,8 @@
  * hard-coded for RBF, Gaussian weight function.
  */
 
-#ifndef PCMS_INTERPOLATOR_CAPI_H
-#define PCMS_INTERPOLATOR_CAPI_H
+#ifndef PCMS_CAPI_INTERPOLATOR_H
+#define PCMS_CAPI_INTERPOLATOR_H
 
 #include <stdint.h>
 #include "pcms/capi/mesh.h"
@@ -179,4 +179,4 @@ void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
 }
 #endif
 
-#endif // PCMS_INTERPOLATOR_CAPI_H
+#endif // PCMS_CAPI_INTERPOLATOR_H

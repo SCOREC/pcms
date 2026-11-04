@@ -1,5 +1,5 @@
-#ifndef PCMS_UTILITY_MESH_GEOMETRY_H
-#define PCMS_UTILITY_MESH_GEOMETRY_H
+#ifndef PCMS_UTILITY_MESH_GEOMETRY_HPP
+#define PCMS_UTILITY_MESH_GEOMETRY_HPP
 
 #include <Omega_h_array.hpp>
 #include <Omega_h_class.hpp>
@@ -125,4 +125,4 @@ inline void EnsureClassification(Omega_h::Mesh& mesh)
 
 } // namespace pcms::utility
 
-#endif // PCMS_UTILITY_MESH_GEOMETRY_H
+#endif // PCMS_UTILITY_MESH_GEOMETRY_HPP

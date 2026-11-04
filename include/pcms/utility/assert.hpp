@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_ASSERT_H
-#define PCMS_COUPLING_ASSERT_H
+#ifndef PCMS_UTILITY_ASSERT_HPP
+#define PCMS_UTILITY_ASSERT_HPP
 #include <stdexcept>
 #include <mpi.h>
 
@@ -56,4 +56,4 @@ struct pcms_error : std::runtime_error
 void Pcms_Assert_Fail(const char* msg) __attribute__((noreturn));
 } // namespace pcms
 
-#endif // PCMS_COUPLING_ASSERT_H
+#endif // PCMS_UTILITY_ASSERT_HPP

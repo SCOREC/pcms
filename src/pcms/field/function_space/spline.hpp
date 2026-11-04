@@ -1,5 +1,5 @@
-#ifndef PCMS_SPLINE_FUNCTION_SPACE_H
-#define PCMS_SPLINE_FUNCTION_SPACE_H
+#ifndef PCMS_FIELD_FUNCTION_SPACE_SPLINE_HPP
+#define PCMS_FIELD_FUNCTION_SPACE_SPLINE_HPP
 
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_data.hpp"
@@ -57,4 +57,4 @@ private:
 
 } // namespace pcms::field
 
-#endif // PCMS_SPLINE_FUNCTION_SPACE_H
+#endif // PCMS_FIELD_FUNCTION_SPACE_SPLINE_HPP

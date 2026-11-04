@@ -1,5 +1,5 @@
-#ifndef PCMS_FUNCTION_SPACE_H
-#define PCMS_FUNCTION_SPACE_H
+#ifndef PCMS_FIELD_FUNCTION_SPACE_HPP
+#define PCMS_FIELD_FUNCTION_SPACE_HPP
 
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_view.hpp"
@@ -164,4 +164,4 @@ inline EvaluationRequest EvaluationRequest::FromFunctionSpace(
 
 } // namespace pcms
 
-#endif // PCMS_FUNCTION_SPACE_H
+#endif // PCMS_FIELD_FUNCTION_SPACE_HPP

@@ -1,5 +1,5 @@
-#ifndef PCMS_MFEM_FIELD_FACTORY_HPP
-#define PCMS_MFEM_FIELD_FACTORY_HPP
+#ifndef PCMS_BACKENDS_MFEM_FIELD_FACTORY_HPP
+#define PCMS_BACKENDS_MFEM_FIELD_FACTORY_HPP
 
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/backends/mfem/field_data.hpp"
@@ -90,4 +90,4 @@ private:
 
 } // namespace pcms::backend::mfem
 
-#endif // PCMS_MFEM_FIELD_FACTORY_HPP
+#endif // PCMS_BACKENDS_MFEM_FIELD_FACTORY_HPP

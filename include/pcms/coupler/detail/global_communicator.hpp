@@ -1,5 +1,5 @@
-#ifndef PCMS_GLOBAL_COMMUNICATOR_H
-#define PCMS_GLOBAL_COMMUNICATOR_H
+#ifndef PCMS_COUPLER_DETAIL_GLOBAL_COMMUNICATOR_HPP
+#define PCMS_COUPLER_DETAIL_GLOBAL_COMMUNICATOR_HPP
 #include <redev.h>
 #include <pcms/utility/detail/profile.hpp>
 #include <pcms/utility/arrays.hpp>
@@ -52,4 +52,4 @@ private:
   redev::BidirectionalComm<T> comm_;
 };
 } // namespace pcms::coupler
-#endif // PCMS_GLOBAL_COMMUNICATOR_H
+#endif // PCMS_COUPLER_DETAIL_GLOBAL_COMMUNICATOR_HPP

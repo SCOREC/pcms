@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_COORDINATE_SYSTEM_HPP
-#define PCMS_FIELD_COORDINATE_SYSTEM_HPP
+#ifndef PCMS_UTILITY_COORDINATE_SYSTEM_HPP
+#define PCMS_UTILITY_COORDINATE_SYSTEM_HPP
 
 #include <memory>
 #include <string_view>
@@ -45,4 +45,4 @@ public:
 
 } // namespace pcms
 
-#endif // PCMS_FIELD_COORDINATE_SYSTEM_HPP
+#endif // PCMS_UTILITY_COORDINATE_SYSTEM_HPP

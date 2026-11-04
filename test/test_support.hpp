@@ -1,5 +1,5 @@
-#ifndef TEST_HELPERS_H
-#define TEST_HELPERS_H
+#ifndef PCMS_TEST_TEST_SUPPORT_HPP
+#define PCMS_TEST_TEST_SUPPORT_HPP
 #include <iostream>
 #include <string_view>
 #include <chrono>  // steady_clock, duration
@@ -241,4 +241,4 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
                                      std::string_view cpnFileName);
 
 } // namespace test_support
-#endif
+#endif // PCMS_TEST_TEST_SUPPORT_HPP

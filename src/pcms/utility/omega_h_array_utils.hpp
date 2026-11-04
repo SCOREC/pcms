@@ -1,5 +1,5 @@
-#ifndef PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_H
-#define PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_H
+#ifndef PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_HPP
+#define PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_HPP
 
 #include <Omega_h_array.hpp>
 #include "pcms/utility/memory_spaces.hpp"
@@ -67,4 +67,4 @@ inline Kokkos::View<T**, pcms::DeviceMemorySpace> ConvertCoordsTo2D(
 
 } // namespace pcms::utility
 
-#endif // PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_H
+#endif // PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_HPP

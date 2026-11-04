@@ -1,5 +1,5 @@
-#ifndef PCMS_UNIFORM_GRID_SPLINE_EVALUATOR_FACTORY_H
-#define PCMS_UNIFORM_GRID_SPLINE_EVALUATOR_FACTORY_H
+#ifndef PCMS_BACKENDS_UNIFORM_GRID_SPLINE_EVALUATOR_HPP
+#define PCMS_BACKENDS_UNIFORM_GRID_SPLINE_EVALUATOR_HPP
 
 #include "pcms/backends/uniform_grid/spline_interpolator.hpp"
 #include "pcms/backends/uniform_grid/evaluator.hpp"
@@ -303,4 +303,4 @@ private:
 
 } // namespace pcms::backend::uniform_grid
 
-#endif // PCMS_UNIFORM_GRID_SPLINE_EVALUATOR_FACTORY_H
+#endif // PCMS_BACKENDS_UNIFORM_GRID_SPLINE_EVALUATOR_HPP

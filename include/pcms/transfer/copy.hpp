@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_FIELD2_H_
-#define PCMS_TRANSFER_FIELD2_H_
+#ifndef PCMS_TRANSFER_COPY_HPP
+#define PCMS_TRANSFER_COPY_HPP
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/function_space.hpp"
@@ -56,4 +56,4 @@ public:
 
 } // namespace pcms
 
-#endif // PCMS_TRANSFER_FIELD2_H_
+#endif // PCMS_TRANSFER_COPY_HPP

@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_DATA_H
-#define PCMS_FIELD_DATA_H
+#ifndef PCMS_FIELD_FIELD_DATA_HPP
+#define PCMS_FIELD_FIELD_DATA_HPP
 
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -53,4 +53,4 @@ using FieldDataVariant = std::variant<
 
 } // namespace pcms
 
-#endif // PCMS_FIELD_DATA_H
+#endif // PCMS_FIELD_FIELD_DATA_HPP

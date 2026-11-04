@@ -1,5 +1,5 @@
-#ifndef PCMS_LOCALIZATION_QUEUE_VISITED_HPP
-#define PCMS_LOCALIZATION_QUEUE_VISITED_HPP
+#ifndef PCMS_BACKENDS_OMEGA_H_QUEUE_VISITED_HPP
+#define PCMS_BACKENDS_OMEGA_H_QUEUE_VISITED_HPP
 
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
@@ -140,4 +140,4 @@ int Track::size()
 }
 
 } // namespace pcms::backend::omega_h
-#endif // PCMS_LOCALIZATION_QUEUE_VISITED_HPP
+#endif // PCMS_BACKENDS_OMEGA_H_QUEUE_VISITED_HPP

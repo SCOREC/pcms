@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_MULTIDIMARRAY_HPP
-#define PCMS_TRANSFER_MULTIDIMARRAY_HPP
+#ifndef PCMS_BACKENDS_UNIFORM_GRID_MULTIDIMARRAY_HPP
+#define PCMS_BACKENDS_UNIFORM_GRID_MULTIDIMARRAY_HPP
 
 #include <Kokkos_Core.hpp>
 
@@ -37,4 +37,4 @@ inline int calculateTotalSize(const HostIntVecView& dimensions)
   return size;
 }
 } // namespace pcms::backend::uniform_grid
-#endif // PCMS_TRANSFER_MULTIDIMARRAY_HPP
+#endif // PCMS_BACKENDS_UNIFORM_GRID_MULTIDIMARRAY_HPP

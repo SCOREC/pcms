@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_FIELD_H
-#define PCMS_COUPLING_FIELD_H
+#ifndef PCMS_FIELD_FIELD_HPP
+#define PCMS_FIELD_FIELD_HPP
 
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/field_layout.hpp"
@@ -229,4 +229,4 @@ using FunctionVariant =
 
 } // namespace pcms
 
-#endif // PCMS_COUPLING_FIELD_H
+#endif // PCMS_FIELD_FIELD_HPP

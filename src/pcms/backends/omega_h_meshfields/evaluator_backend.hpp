@@ -1,5 +1,5 @@
-#ifndef PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_BACKEND_H
-#define PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_BACKEND_H
+#ifndef PCMS_BACKENDS_OMEGA_H_MESHFIELDS_EVALUATOR_BACKEND_HPP
+#define PCMS_BACKENDS_OMEGA_H_MESHFIELDS_EVALUATOR_BACKEND_HPP
 
 // Backend types shared between MeshFieldsAdapter2 and
 // MeshFieldsEvaluatorFactory. Extracted here to avoid a circular include.
@@ -720,4 +720,4 @@ struct MeshFieldsAdapter2LocalizationHint
 
 } // namespace pcms::backend::omega_h_meshfields
 
-#endif // PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_BACKEND_H
+#endif // PCMS_BACKENDS_OMEGA_H_MESHFIELDS_EVALUATOR_BACKEND_HPP

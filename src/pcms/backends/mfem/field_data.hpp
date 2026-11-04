@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_DATA_MFEM_HPP
-#define PCMS_FIELD_DATA_MFEM_HPP
+#ifndef PCMS_BACKENDS_MFEM_FIELD_DATA_HPP
+#define PCMS_BACKENDS_MFEM_FIELD_DATA_HPP
 
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/value_view.hpp"
@@ -41,4 +41,4 @@ private:
 
 } // namespace pcms::backend::mfem
 
-#endif // PCMS_FIELD_DATA_MFEM_HPP
+#endif // PCMS_BACKENDS_MFEM_FIELD_DATA_HPP

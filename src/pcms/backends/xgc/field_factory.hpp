@@ -1,5 +1,5 @@
-#ifndef PCMS_XGC_FIELD_FACTORY_H
-#define PCMS_XGC_FIELD_FACTORY_H
+#ifndef PCMS_BACKENDS_XGC_FIELD_FACTORY_HPP
+#define PCMS_BACKENDS_XGC_FIELD_FACTORY_HPP
 
 #include "pcms/backends/xgc/field_data.hpp"
 #include "pcms/field/field.hpp"
@@ -80,4 +80,4 @@ private:
 
 } // namespace pcms::backend::xgc
 
-#endif // PCMS_XGC_FIELD_FACTORY_H
+#endif // PCMS_BACKENDS_XGC_FIELD_FACTORY_HPP

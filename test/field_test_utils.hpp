@@ -1,5 +1,5 @@
-#ifndef PCMS_TEST_FIELD_TEST_UTILS_H
-#define PCMS_TEST_FIELD_TEST_UTILS_H
+#ifndef PCMS_TEST_FIELD_TEST_UTILS_HPP
+#define PCMS_TEST_FIELD_TEST_UTILS_HPP
 
 #include <catch2/catch_approx.hpp>
 #include <Kokkos_Core.hpp>
@@ -615,4 +615,4 @@ inline void EvaluateAndAssemble(
 
 } // namespace pcms::test
 
-#endif // PCMS_TEST_FIELD_TEST_UTILS_H
+#endif // PCMS_TEST_FIELD_TEST_UTILS_HPP

@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H
-#define PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H
+#ifndef PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_HPP
+#define PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_HPP
 
 #include "pcms/field/function_space.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
@@ -55,4 +55,4 @@ private:
 
 } // namespace pcms::transfer
 
-#endif // PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H
+#endif // PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_HPP

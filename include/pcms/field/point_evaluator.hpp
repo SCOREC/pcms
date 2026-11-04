@@ -1,5 +1,5 @@
-#ifndef PCMS_POINT_EVALUATOR_H
-#define PCMS_POINT_EVALUATOR_H
+#ifndef PCMS_FIELD_POINT_EVALUATOR_HPP
+#define PCMS_FIELD_POINT_EVALUATOR_HPP
 
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -115,4 +115,4 @@ using PointEvaluatorVariant =
 
 } // namespace pcms
 
-#endif // PCMS_POINT_EVALUATOR_H
+#endif // PCMS_FIELD_POINT_EVALUATOR_HPP

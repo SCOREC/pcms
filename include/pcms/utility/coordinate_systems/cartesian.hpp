@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_COORDINATE_SYSTEMS_CARTESIAN_HPP
-#define PCMS_FIELD_COORDINATE_SYSTEMS_CARTESIAN_HPP
+#ifndef PCMS_UTILITY_COORDINATE_SYSTEMS_CARTESIAN_HPP
+#define PCMS_UTILITY_COORDINATE_SYSTEMS_CARTESIAN_HPP
 
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/assert.hpp"
@@ -56,4 +56,4 @@ private:
 } // namespace csys
 } // namespace pcms
 
-#endif // PCMS_FIELD_COORDINATE_SYSTEMS_CARTESIAN_HPP
+#endif // PCMS_UTILITY_COORDINATE_SYSTEMS_CARTESIAN_HPP

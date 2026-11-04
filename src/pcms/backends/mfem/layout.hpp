@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_LAYOUT_MFEM_HPP
-#define PCMS_FIELD_LAYOUT_MFEM_HPP
+#ifndef PCMS_BACKENDS_MFEM_LAYOUT_HPP
+#define PCMS_BACKENDS_MFEM_LAYOUT_HPP
 
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/field/field_layout.hpp"
@@ -63,4 +63,4 @@ private:
 
 } // namespace pcms::backend::mfem
 
-#endif // PCMS_FIELD_LAYOUT_MFEM_HPP
+#endif // PCMS_BACKENDS_MFEM_LAYOUT_HPP

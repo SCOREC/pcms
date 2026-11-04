@@ -1,5 +1,5 @@
-#ifndef PCMS_UTILITY_ENTITY_TYPES_H
-#define PCMS_UTILITY_ENTITY_TYPES_H
+#ifndef PCMS_UTILITY_ENTITY_TYPES_HPP
+#define PCMS_UTILITY_ENTITY_TYPES_HPP
 
 namespace pcms
 {
@@ -11,4 +11,4 @@ inline constexpr int Region = 3;
 
 } // namespace pcms
 
-#endif // PCMS_UTILITY_ENTITY_TYPES_H
+#endif // PCMS_UTILITY_ENTITY_TYPES_HPP

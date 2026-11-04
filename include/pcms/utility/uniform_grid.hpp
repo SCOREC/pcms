@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_UNIFORM_GRID_H
-#define PCMS_COUPLING_UNIFORM_GRID_H
+#ifndef PCMS_UTILITY_UNIFORM_GRID_HPP
+#define PCMS_UTILITY_UNIFORM_GRID_HPP
 #include "pcms/utility/bounding_box.hpp"
 #include <Kokkos_Core.hpp>
 #include <algorithm>
@@ -161,4 +161,4 @@ LO DivisionsPerAxisForMesh(LO nelems, LO min_divisions = 10)
 
 } // namespace pcms
 
-#endif // PCMS_COUPLING_UNIFORM_GRID_H
+#endif // PCMS_UTILITY_UNIFORM_GRID_HPP

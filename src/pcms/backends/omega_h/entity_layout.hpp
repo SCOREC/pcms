@@ -1,5 +1,5 @@
-#ifndef PCMS_FIELD_LAYOUT_OMEGA_H_ENTITY_H
-#define PCMS_FIELD_LAYOUT_OMEGA_H_ENTITY_H
+#ifndef PCMS_BACKENDS_OMEGA_H_ENTITY_LAYOUT_HPP
+#define PCMS_BACKENDS_OMEGA_H_ENTITY_LAYOUT_HPP
 
 #include <Omega_h_mesh.hpp>
 
@@ -58,4 +58,4 @@ private:
 
 } // namespace pcms::backend::omega_h
 
-#endif // PCMS_FIELD_LAYOUT_OMEGA_H_ENTITY_H
+#endif // PCMS_BACKENDS_OMEGA_H_ENTITY_LAYOUT_HPP

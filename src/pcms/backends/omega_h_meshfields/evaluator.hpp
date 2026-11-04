@@ -1,5 +1,5 @@
-#ifndef PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_EVALUATOR_FACTORY_H
-#define PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_EVALUATOR_FACTORY_H
+#ifndef PCMS_BACKENDS_OMEGA_H_MESHFIELDS_EVALUATOR_HPP
+#define PCMS_BACKENDS_OMEGA_H_MESHFIELDS_EVALUATOR_HPP
 
 #include "pcms/backends/omega_h_meshfields/evaluator_backend.hpp"
 #include "pcms/backends/omega_h_meshfields/field_data.hpp"
@@ -162,4 +162,4 @@ private:
 
 } // namespace pcms::backend::omega_h_meshfields
 
-#endif // PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_EVALUATOR_FACTORY_H
+#endif // PCMS_BACKENDS_OMEGA_H_MESHFIELDS_EVALUATOR_HPP

@@ -1,5 +1,5 @@
-#ifndef PCMS_POINT_CLOUD_EVALUATOR_FACTORY_H
-#define PCMS_POINT_CLOUD_EVALUATOR_FACTORY_H
+#ifndef PCMS_BACKENDS_POINT_CLOUD_EVALUATOR_HPP
+#define PCMS_BACKENDS_POINT_CLOUD_EVALUATOR_HPP
 
 #include "pcms/field/field_evaluator_factory.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
@@ -96,4 +96,4 @@ private:
 
 } // namespace pcms::backend::point_cloud
 
-#endif // PCMS_POINT_CLOUD_EVALUATOR_FACTORY_H
+#endif // PCMS_BACKENDS_POINT_CLOUD_EVALUATOR_HPP

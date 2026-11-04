@@ -1,5 +1,5 @@
-#ifndef PCMS_LOCALIZATION_ADJACENCY_LOCALIZATION_H
-#define PCMS_LOCALIZATION_ADJACENCY_LOCALIZATION_H
+#ifndef PCMS_LOCALIZATION_MESH_LOCALIZATION_HPP
+#define PCMS_LOCALIZATION_MESH_LOCALIZATION_HPP
 
 #include "pcms/localization/localization_factory.hpp"
 #include "pcms/localization/mls_options.hpp"
@@ -41,4 +41,4 @@ private:
 
 } // namespace pcms::localization
 
-#endif // PCMS_LOCALIZATION_ADJACENCY_LOCALIZATION_H
+#endif // PCMS_LOCALIZATION_MESH_LOCALIZATION_HPP

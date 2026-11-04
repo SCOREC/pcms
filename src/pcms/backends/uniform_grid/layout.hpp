@@ -1,5 +1,5 @@
-#ifndef PCMS_UNIFORM_GRID_FIELD_LAYOUT_H
-#define PCMS_UNIFORM_GRID_FIELD_LAYOUT_H
+#ifndef PCMS_BACKENDS_UNIFORM_GRID_LAYOUT_HPP
+#define PCMS_BACKENDS_UNIFORM_GRID_LAYOUT_HPP
 
 #include "pcms/utility/arrays.hpp"
 #include "pcms/backends/uniform_grid/discretization.hpp"
@@ -68,4 +68,4 @@ private:
 using UniformGridFieldLayout2D = UniformGridFieldLayout<2>;
 
 } // namespace pcms::backend::uniform_grid
-#endif // PCMS_UNIFORM_GRID_FIELD_LAYOUT_H
+#endif // PCMS_BACKENDS_UNIFORM_GRID_LAYOUT_HPP

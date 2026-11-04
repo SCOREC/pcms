@@ -1,5 +1,5 @@
-#ifndef COUPLER2_H_
-#define COUPLER2_H_
+#ifndef PCMS_COUPLER_COUPLER_HPP
+#define PCMS_COUPLER_COUPLER_HPP
 
 #include "pcms/coupler/coupler_types.hpp"
 #include "pcms/field/field.hpp"
@@ -470,4 +470,4 @@ pcms::FunctionHandle<T> pcms::ApplicationComm::AddFunction(
   return FunctionHandle<T>{this, std::move(name), std::move(space)};
 }
 
-#endif // COUPLER2_H_
+#endif // PCMS_COUPLER_COUPLER_HPP

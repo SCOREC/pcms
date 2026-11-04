@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_COMMON_H
-#define PCMS_COUPLING_COMMON_H
+#ifndef PCMS_UTILITY_DETAIL_COMMON_HPP
+#define PCMS_UTILITY_DETAIL_COMMON_HPP
 #include "pcms/utility/assert.hpp"
 #include <map>
 #include <string>
@@ -54,4 +54,4 @@ auto find_many_or_error(const std::vector<T>& keys, std::map<T, U>& map)
 } // namespace detail
 } // namespace pcms
 
-#endif // PCMS_COUPLING_COMMON_H
+#endif // PCMS_UTILITY_DETAIL_COMMON_HPP

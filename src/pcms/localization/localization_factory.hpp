@@ -1,5 +1,5 @@
-#ifndef PCMS_LOCALIZATION_LOCALIZATION_FACTORY_H
-#define PCMS_LOCALIZATION_LOCALIZATION_FACTORY_H
+#ifndef PCMS_LOCALIZATION_LOCALIZATION_FACTORY_HPP
+#define PCMS_LOCALIZATION_LOCALIZATION_FACTORY_HPP
 
 #include "pcms/localization/support_results.hpp"
 #include "pcms/utility/coordinate_view.hpp"
@@ -25,4 +25,4 @@ public:
 
 } // namespace pcms::localization
 
-#endif // PCMS_LOCALIZATION_LOCALIZATION_FACTORY_H
+#endif // PCMS_LOCALIZATION_LOCALIZATION_FACTORY_HPP

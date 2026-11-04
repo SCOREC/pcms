@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_ARRAY_MASK_H
-#define PCMS_COUPLING_ARRAY_MASK_H
+#ifndef PCMS_UTILITY_ARRAY_MASK_HPP
+#define PCMS_UTILITY_ARRAY_MASK_HPP
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
@@ -164,4 +164,4 @@ private:
 };
 } // namespace pcms::utility
 
-#endif // PCMS_COUPLING_ARRAY_MASK_H
+#endif // PCMS_UTILITY_ARRAY_MASK_HPP

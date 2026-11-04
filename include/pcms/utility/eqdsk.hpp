@@ -1,5 +1,5 @@
-#ifndef PCMS_UTILITY_EQDSK_H
-#define PCMS_UTILITY_EQDSK_H
+#ifndef PCMS_UTILITY_EQDSK_HPP
+#define PCMS_UTILITY_EQDSK_HPP
 
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
@@ -136,4 +136,4 @@ struct EQDSKData
 
 } // namespace pcms
 
-#endif // PCMS_UTILITY_EQDSK_H
+#endif // PCMS_UTILITY_EQDSK_HPP

@@ -1,5 +1,5 @@
-#ifndef PCMS_LAGRANGE_FIELD_FACTORY_H
-#define PCMS_LAGRANGE_FIELD_FACTORY_H
+#ifndef PCMS_FIELD_FUNCTION_SPACE_LAGRANGE_HPP
+#define PCMS_FIELD_FUNCTION_SPACE_LAGRANGE_HPP
 
 #include <Omega_h_mesh.hpp>
 #include "pcms/configuration.hpp"
@@ -105,4 +105,4 @@ private:
 
 } // namespace pcms::field
 
-#endif // PCMS_LAGRANGE_FIELD_FACTORY_H
+#endif // PCMS_FIELD_FUNCTION_SPACE_LAGRANGE_HPP

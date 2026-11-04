@@ -1,5 +1,5 @@
-#ifndef PCMS_ADAPTER_OMEGA_H_LAGRANGE_LAYOUT_H
-#define PCMS_ADAPTER_OMEGA_H_LAGRANGE_LAYOUT_H
+#ifndef PCMS_BACKENDS_OMEGA_H_LAGRANGE_LAYOUT_HPP
+#define PCMS_BACKENDS_OMEGA_H_LAGRANGE_LAYOUT_HPP
 
 #include <Omega_h_mesh.hpp>
 #include "pcms/utility/arrays.hpp"
@@ -74,4 +74,4 @@ private:
 };
 
 } // namespace pcms::backend::omega_h
-#endif // PCMS_ADAPTER_OMEGA_H_LAGRANGE_LAYOUT_H
+#endif // PCMS_BACKENDS_OMEGA_H_LAGRANGE_LAYOUT_HPP

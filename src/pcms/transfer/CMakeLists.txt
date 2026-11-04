@@ -73,7 +73,7 @@ if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
   target_link_libraries(pcms_transfer PRIVATE PETSc::PETSc)
 endif()
 
-target_compile_definitions(pcms_transfer PUBLIC R3D_USE_KOKKOS)
+target_compile_definitions(pcms_transfer PRIVATE R3D_USE_KOKKOS)
 
 target_include_directories(pcms_transfer INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

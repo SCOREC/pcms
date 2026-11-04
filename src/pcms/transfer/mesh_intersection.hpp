@@ -6,6 +6,12 @@
 #include <pcms/localization/queue_visited.hpp>
 #include <Omega_h_fail.hpp>
 #include <Omega_h_int_scan.hpp>
+// r3d's kernels are called from Kokkos kernels: R3D_USE_KOKKOS makes them
+// KOKKOS_INLINE_FUNCTION. Defined here instead of as a public compile
+// definition of pcms::transfer; this is the only header that includes r3d.
+#ifndef R3D_USE_KOKKOS
+#define R3D_USE_KOKKOS
+#endif
 #include <r3d.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>

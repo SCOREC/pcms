@@ -43,7 +43,7 @@ MFEMLayout::MFEMLayout(
     }
   }
   coords_ = Kokkos::View<Real**, DeviceMemorySpace>("mfem_coords", nv, dim_);
-  Kokkos::deep_copy(coords_, coords_host);
+  CopyHostRank2ViewToDeviceView(coords_, MakeConstRank2View(coords_host));
 
   mfem::Array<HYPRE_BigInt> vertex_gids;
   pmesh_.GetGlobalVertexIndices(vertex_gids);

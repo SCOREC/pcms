@@ -6,7 +6,7 @@
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/localization/uniform_grid_search.hpp"
 #include "pcms/utility/memory_spaces.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 #include <Kokkos_Core.hpp>

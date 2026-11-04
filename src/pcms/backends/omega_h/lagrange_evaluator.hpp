@@ -9,7 +9,7 @@
 #include "pcms/backends/omega_h/field_data.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/arrays.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/types.hpp"
 
 #include <Omega_h_mesh.hpp>

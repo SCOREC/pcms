@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <pcms/coupler/field_serializer.hpp>
+#include <pcms/coupler/detail/field_serializer.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/backends/mfem/field_data.hpp>
 #include <pcms/backends/mfem/field_factory.hpp>

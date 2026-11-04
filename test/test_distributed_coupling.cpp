@@ -4,10 +4,10 @@
 #include <Omega_h_for.hpp>
 #include <Omega_h_mesh.hpp>
 
-#include "pcms/coupler/field_exchange_planner.hpp"
-#include "pcms/coupler/field_serializer.hpp"
+#include "pcms/coupler/detail/field_exchange_planner.hpp"
+#include "pcms/coupler/detail/field_serializer.hpp"
 #include "pcms/coupler/overlap_mask.hpp"
-#include "pcms/field/data/simple.hpp"
+#include "pcms/field/simple_field_data.hpp"
 #include "distributed_test_utils.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"

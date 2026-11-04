@@ -1,9 +1,9 @@
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/point_cloud/evaluator.hpp"
 #include "pcms/backends/point_cloud/geometry.hpp"
-#include "pcms/field/data/simple.hpp"
+#include "pcms/field/simple_field_data.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/common.hpp"
+#include "pcms/utility/detail/common.hpp"
 
 namespace pcms
 {

@@ -4,7 +4,7 @@
 #include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/backends/uniform_grid/evaluator.hpp"
 #include "pcms/backends/omega_h/uniform_grid_binary_field.hpp"
-#include "pcms/field/data/simple.hpp"
+#include "pcms/field/simple_field_data.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 #include "Omega_h_library.hpp"

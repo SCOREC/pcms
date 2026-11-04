@@ -1,7 +1,7 @@
 #ifndef PCMS_PARTITION_H
 #define PCMS_PARTITION_H
-#include "pcms/utility/common.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/common.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/types.hpp"
 #include <redev.h>
 #include <redev_partition.h>

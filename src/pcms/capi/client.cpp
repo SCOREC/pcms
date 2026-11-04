@@ -7,7 +7,7 @@
 #include "pcms/backends/xgc/reverse_classification.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/layout/empty.hpp"
-#include "pcms/field/data/simple.hpp"
+#include "pcms/field/simple_field_data.hpp"
 #include "pcms/utility/assert.hpp"
 #include <map>
 #include <memory>

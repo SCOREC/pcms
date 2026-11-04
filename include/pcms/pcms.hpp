@@ -11,7 +11,7 @@
 // utility
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/common.hpp"
+#include "pcms/utility/detail/common.hpp"
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
@@ -20,7 +20,7 @@
 #include "pcms/utility/eqdsk.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/print.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 

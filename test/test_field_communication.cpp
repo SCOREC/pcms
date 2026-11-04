@@ -8,12 +8,12 @@
 #include <Omega_h_for.hpp>
 #include <redev.h>
 #include <vector>
-#include "pcms/coupler/field_communicator.hpp"
+#include "pcms/coupler/detail/field_communicator.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/data/simple.hpp"
+#include "pcms/field/simple_field_data.hpp"
 #include "test_support.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 

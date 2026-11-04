@@ -9,7 +9,7 @@
 #include "pcms/geometry/bound_source.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/memory_spaces.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include <memory>
 #include <type_traits>
 #include <utility>

@@ -1,7 +1,7 @@
 #include "pcms/field/function_space.hpp"
 #include "pcms/configuration.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/common.hpp"
+#include "pcms/utility/detail/common.hpp"
 #ifdef PCMS_ENABLE_MESHFIELDS
 #include "pcms/backends/omega_h_meshfields/layout.hpp"
 #include "pcms/backends/omega_h_meshfields/field_data.hpp"

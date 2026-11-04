@@ -1,7 +1,7 @@
 #include "pcms/backends/omega_h_meshfields/layout.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/inclusive_scan.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/inclusive_scan.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include <Omega_h_for.hpp>
 #include <MeshField.hpp>
 #include <memory>

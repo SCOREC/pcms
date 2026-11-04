@@ -4,7 +4,7 @@
 #include "pcms/field/differential_operator.hpp"
 #include "pcms/field/field_factory.hpp"
 #include "pcms/field/point_evaluator.hpp"
-#include "pcms/field/transformed_point_evaluator.hpp"
+#include "pcms/field/detail/transformed_point_evaluator.hpp"
 #include "pcms/geometry/bound_source.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/utility/assert.hpp"

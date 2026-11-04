@@ -2,9 +2,9 @@
 #define FIELD_LAYOUT_COMMUNICATOR_H_
 
 #include "pcms/field/field_layout.hpp"
-#include "pcms/coupler/field_exchange_planner.hpp"
+#include "pcms/coupler/detail/field_exchange_planner.hpp"
 #include "pcms/coupler/overlap_mask.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/arrays.hpp"
 #include <redev.h>
 #include <memory>

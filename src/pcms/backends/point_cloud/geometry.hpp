@@ -11,7 +11,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/entity_types.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 
 #include <Omega_h_array.hpp>
 #include <memory>

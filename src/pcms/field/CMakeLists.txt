@@ -1,25 +1,25 @@
 find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_HEADERS
-        field.hpp
-        coordinate_map.hpp
-        value_view.hpp
+        ../../../include/pcms/field/field.hpp
+        ../../../include/pcms/field/coordinate_map.hpp
+        ../../../include/pcms/field/value_view.hpp
         element_dispatch.hpp
         gid_permutation.hpp
-        field_layout.hpp
+        ../../../include/pcms/field/field_layout.hpp
         layout/empty.hpp
-        out_of_bounds_policy.hpp
-        field_data.hpp
-        field_factory.hpp
-        function_space.hpp
-        point_evaluator.hpp
-        point_evaluator_factory.hpp
-        query_points.hpp
-        differential_operator.hpp
-        gradient_source.hpp
-        transformed_point_evaluator.hpp
-        data/simple.hpp
-        function_spaces.hpp
+        ../../../include/pcms/field/out_of_bounds_policy.hpp
+        ../../../include/pcms/field/field_data.hpp
+        ../../../include/pcms/field/field_factory.hpp
+        ../../../include/pcms/field/function_space.hpp
+        ../../../include/pcms/field/point_evaluator.hpp
+        ../../../include/pcms/field/point_evaluator_factory.hpp
+        ../../../include/pcms/field/query_points.hpp
+        ../../../include/pcms/field/differential_operator.hpp
+        ../../../include/pcms/field/gradient_source.hpp
+        ../../../include/pcms/field/detail/transformed_point_evaluator.hpp
+        ../../../include/pcms/field/simple_field_data.hpp
+        ../../../include/pcms/field/function_spaces.hpp
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
@@ -40,7 +40,7 @@ if (PCMS_ENABLE_OMEGA_H)
             geometry_factories.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
-            eqdsk_field.hpp
+            ../../../include/pcms/field/eqdsk_field.hpp
             evaluator/mls_interpolation.hpp
             evaluator/mls_interpolation_impl.hpp
             evaluator/interpolator_aliases.hpp

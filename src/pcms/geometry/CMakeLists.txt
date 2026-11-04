@@ -1,8 +1,8 @@
 set(
         PCMS_GEOMETRY_HEADERS
-        geometry.hpp
-        bound_source.hpp
-        supports.hpp
+        ../../../include/pcms/geometry/geometry.hpp
+        ../../../include/pcms/geometry/bound_source.hpp
+        ../../../include/pcms/geometry/supports.hpp
 )
 
 set(

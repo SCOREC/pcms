@@ -1,4 +1,4 @@
-set(PCMS_TRANSIENT_HEADERS timestepper.hpp)
+set(PCMS_TRANSIENT_HEADERS ../../../include/pcms/transient/timestepper.hpp)
 set(PCMS_TRANSIENT_SOURCES timestepper.cpp)
 
 add_library(pcms_transient ${PCMS_TRANSIENT_SOURCES})

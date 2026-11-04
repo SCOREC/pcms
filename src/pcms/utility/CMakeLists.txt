@@ -1,25 +1,25 @@
 set(
         PCMS_UTILITY_HEADERS
-        arrays.hpp
-        coordinate_system.hpp
-        coordinate_view.hpp
-        coordinate_systems/cartesian.hpp
-        coordinate_systems/cylindrical.hpp
-        assert.hpp
-        bounding_box.hpp
-        common.hpp
-        entity_types.hpp
-        eqdsk.hpp
+        ../../../include/pcms/utility/arrays.hpp
+        ../../../include/pcms/utility/coordinate_system.hpp
+        ../../../include/pcms/utility/coordinate_view.hpp
+        ../../../include/pcms/utility/coordinate_systems/cartesian.hpp
+        ../../../include/pcms/utility/coordinate_systems/cylindrical.hpp
+        ../../../include/pcms/utility/assert.hpp
+        ../../../include/pcms/utility/bounding_box.hpp
+        ../../../include/pcms/utility/detail/common.hpp
+        ../../../include/pcms/utility/entity_types.hpp
+        ../../../include/pcms/utility/eqdsk.hpp
         mesh_geometry.hpp
-        memory_spaces.hpp
+        ../../../include/pcms/utility/memory_spaces.hpp
         mpi_type.hpp
         omega_h_array_utils.hpp
-        types.hpp
+        ../../../include/pcms/utility/types.hpp
         array_mask.hpp
-        inclusive_scan.hpp
-        profile.hpp
-        print.hpp
-        uniform_grid.hpp
+        ../../../include/pcms/utility/detail/inclusive_scan.hpp
+        ../../../include/pcms/utility/detail/profile.hpp
+        ../../../include/pcms/utility/print.hpp
+        ../../../include/pcms/utility/uniform_grid.hpp
 )
 
 set(

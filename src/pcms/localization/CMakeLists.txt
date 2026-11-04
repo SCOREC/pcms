@@ -3,7 +3,7 @@ set(
         point_search.hpp
         uniform_grid_search.hpp
         mls_support_helpers.hpp
-        mls_options.hpp
+        ../../../include/pcms/localization/mls_options.hpp
 )
 
 set(

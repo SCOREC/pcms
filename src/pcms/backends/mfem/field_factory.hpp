@@ -6,7 +6,7 @@
 #include "pcms/field/field_factory.hpp"
 #include "pcms/backends/mfem/layout.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/common.hpp"
+#include "pcms/utility/detail/common.hpp"
 
 #include <mfem.hpp>
 

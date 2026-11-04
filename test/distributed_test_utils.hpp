@@ -13,7 +13,7 @@
 
 #include "pcms/configuration.hpp"
 #include "pcms/backends/omega_h/field_data.hpp"
-#include "pcms/field/data/simple.hpp"
+#include "pcms/field/simple_field_data.hpp"
 #ifdef PCMS_ENABLE_MESHFIELDS
 #include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif

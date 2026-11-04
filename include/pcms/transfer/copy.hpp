@@ -4,7 +4,7 @@
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/profile.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
 #include <Kokkos_Core.hpp>

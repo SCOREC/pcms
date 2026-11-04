@@ -4,14 +4,14 @@
 #include "pcms/coupler/coupler_types.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_layout.hpp"
-#include "pcms/coupler/field_layout_communicator.hpp"
-#include "pcms/coupler/field_communicator.hpp"
-#include "pcms/coupler/field_exchange_planner.hpp"
+#include "pcms/coupler/detail/field_layout_communicator.hpp"
+#include "pcms/coupler/detail/field_communicator.hpp"
+#include "pcms/coupler/detail/field_exchange_planner.hpp"
 #include "pcms/coupler/overlap_mask.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/common.hpp"
-#include "pcms/utility/profile.hpp"
-#include "pcms/coupler/global_communicator.hpp"
+#include "pcms/utility/detail/common.hpp"
+#include "pcms/utility/detail/profile.hpp"
+#include "pcms/coupler/detail/global_communicator.hpp"
 #include <memory>
 
 namespace pcms

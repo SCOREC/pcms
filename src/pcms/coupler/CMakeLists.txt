@@ -43,7 +43,7 @@ target_link_libraries(pcms_coupler PUBLIC
         pcms::field)
 
 if(PCMS_ENABLE_OMEGA_H)
-    target_link_libraries(pcms_coupler PUBLIC Omega_h::omega_h)
+    target_link_libraries(pcms_coupler PRIVATE Omega_h::omega_h)
 endif()
 
 if (PCMS_ENABLE_MESHFIELDS)
@@ -67,4 +67,4 @@ install(
 install(
         EXPORT pcms_coupler-targets
         NAMESPACE pcms::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+        DESTINATION ${PCMS_INSTALL_CMAKEDIR})

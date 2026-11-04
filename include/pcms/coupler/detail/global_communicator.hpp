@@ -2,7 +2,9 @@
 #define PCMS_GLOBAL_COMMUNICATOR_H
 #include <redev.h>
 #include <pcms/utility/detail/profile.hpp>
+#include <pcms/utility/arrays.hpp>
 #include <pcms/utility/assert.hpp>
+#include <pcms/utility/memory_spaces.hpp>
 #include <pcms/coupler/coupler_types.hpp>
 namespace pcms::coupler
 {

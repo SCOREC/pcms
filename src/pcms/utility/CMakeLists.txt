@@ -46,7 +46,7 @@ target_link_libraries(pcms_utility PUBLIC Kokkos::kokkos perfstubs)
 target_link_libraries(pcms_utility PRIVATE MPI::MPI_CXX)
 if(PCMS_ENABLE_OMEGA_H)
     target_sources(pcms_utility PRIVATE mesh_geometry.cpp)
-    target_link_libraries(pcms_utility PUBLIC Omega_h::omega_h)
+    target_link_libraries(pcms_utility PRIVATE Omega_h::omega_h)
 endif()
 target_compile_features(pcms_utility PUBLIC cxx_std_20)
 
@@ -80,5 +80,5 @@ install(
 install(
         EXPORT pcms_utility-targets
         NAMESPACE pcms::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms
+        DESTINATION ${PCMS_INSTALL_CMAKEDIR}
 )

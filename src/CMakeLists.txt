@@ -43,23 +43,31 @@ install(
         ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms)
 
+# the package config finds the private dependencies only for a static build
+if(BUILD_SHARED_LIBS)
+  set(PCMS_BUILD_SHARED TRUE)
+else()
+  set(PCMS_BUILD_SHARED FALSE)
+endif()
 configure_package_config_file(
   "${CMAKE_SOURCE_DIR}/config.cmake.in" "${CMAKE_BINARY_DIR}/pcms-config.cmake"
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms
+  INSTALL_DESTINATION ${PCMS_INSTALL_CMAKEDIR}
 )
 write_basic_package_version_file(
   "${PROJECT_BINARY_DIR}/pcms-config-version.cmake"
-  COMPATIBILITY AnyNewerVersion
+  COMPATIBILITY SameMinorVersion
 )
 
 install(
   FILES "${PROJECT_BINARY_DIR}/pcms-config.cmake"
   "${PROJECT_BINARY_DIR}/pcms-config-version.cmake"
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms
+  DESTINATION ${PCMS_INSTALL_CMAKEDIR}
 )
 
+# FindPETSc.cmake stays installed: the package config calls
+# find_dependency(PETSc) when PETSc is enabled, which needs it.
 install(FILES "${CMAKE_SOURCE_DIR}/cmake/FindPETSc.cmake"
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+          DESTINATION ${PCMS_INSTALL_CMAKEDIR})
 
 
 # pcms::pcms links every PCMS library that was built; downstream codes
@@ -93,6 +101,21 @@ endif()
 add_subdirectory(pcms/transfer)
 target_link_libraries(pcms_pcms INTERFACE pcms::transfer)
 
+# Library versions: the SOVERSION is major.minor, since 0.x releases may
+# break the ABI in every minor release (find_package uses SameMinorVersion).
+foreach(
+  lib IN
+  ITEMS pcms_utility pcms_geometry pcms_localization
+        pcms_field
+        pcms_transfer pcms_coupler pcms_transient pcms_capi_core
+        pcms_capi_transfer pcms_fortranapi_core pcms_fortranapi_transfer)
+  if(TARGET ${lib})
+    set_target_properties(
+      ${lib} PROPERTIES VERSION ${PROJECT_VERSION}
+                        SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+  endif()
+endforeach()
+
 # Deprecated: pcms::core used to be the coupler plus everything else. Kept
 # for one release as an alias of pcms::pcms.
 add_library(pcms_core INTERFACE)
@@ -105,7 +128,7 @@ install(TARGETS pcms_core EXPORT pcms_core-targets)
 install(
   EXPORT pcms_core-targets
   NAMESPACE pcms::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+  DESTINATION ${PCMS_INSTALL_CMAKEDIR})
 
 install(
   TARGETS pcms_pcms
@@ -118,13 +141,8 @@ install(
 )
 
 
-# install external headers
-install(
-  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/pcms/external/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/external
-)
 install(
   EXPORT pcms-targets
   NAMESPACE pcms::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms
+  DESTINATION ${PCMS_INSTALL_CMAKEDIR}
 )

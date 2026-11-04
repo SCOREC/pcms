@@ -5,37 +5,45 @@ include(CMakeFindDependencyMacro)
 # this will let us find any installed FindXXX.cmake e.g., petsc / gmsh
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 
+# Public dependencies: needed by every consumer.
+find_dependency(Kokkos CONFIG)
+find_dependency(perfstubs CONFIG)
 if(@PCMS_ENABLE_COUPLER@)
-    find_dependency(redev CONFIG HINTS @redev_DIR@)
+    # the coupler's public headers use redev (and through it ADIOS2 and MPI)
+    find_dependency(redev CONFIG)
+    find_dependency(ADIOS2 CONFIG)
 endif()
-find_dependency(Kokkos CONFIG HINTS @Kokkos_DIR@)
-find_dependency(KokkosKernels CONFIG HINTS @KokkosKernels_DIR@)
-if(@PCMS_ENABLE_COUPLER@)
-    find_dependency(ADIOS2 CONFIG HINTS @ADIOS2_DIR@)
+# MPI is public for the coupler and the C/Fortran APIs, private otherwise
+if(@PCMS_ENABLE_COUPLER@ OR @PCMS_ENABLE_C@ OR @PCMS_ENABLE_FORTRAN@
+   OR NOT @PCMS_BUILD_SHARED@)
+    find_dependency(MPI)
 endif()
-find_dependency(perfstubs CONFIG HINTS @perfstubs_DIR@)
-find_dependency(MPI)
-
-if(@PCMS_ENABLE_MESHFIELDS@)
-    find_dependency(meshfields CONFIG HINTS @meshfields_DIR@)
-endif()
-
-if(@PCMS_ENABLE_PETSC@)
-    if(NOT DEFINED PETSC_DIR)                                                                                                     
-        set(PETSC_DIR "@PETSC_DIR@")
-    endif()
-    if(NOT DEFINED PETSC_ARCH)
-        set(PETSC_ARCH "@PETSC_ARCH@")
-    endif()
-    find_dependency(PETSc)
-endif()
-
 if(@PCMS_ENABLE_OMEGA_H@)
-    find_dependency(Omega_h CONFIG HINTS @Omega_h_DIR@)
+    # a private dependency of the core libraries, and what users of the
+    # Omega_h backend header (pcms/backends/omega_h/omega_h.hpp) link
+    find_dependency(Omega_h CONFIG)
+endif()
+if(@PCMS_ENABLE_MFEM@)
+    # the MFEM backend is part of pcms::field and links MFEM publicly
+    find_dependency(MFEM CONFIG)
 endif()
 
-if(@PCMS_ENABLE_MFEM@)
-    find_dependency(MFEM CONFIG HINTS @MFEM_DIR@)
+# Private dependencies: a shared PCMS resolves them itself (RPATH); a static
+# PCMS needs them at the consumer's link step.
+if(NOT @PCMS_BUILD_SHARED@)
+    find_dependency(KokkosKernels CONFIG)
+    if(@PCMS_ENABLE_MESHFIELDS@)
+        find_dependency(meshfields CONFIG)
+    endif()
+    if(@PCMS_ENABLE_PETSC@)
+        if(NOT DEFINED PETSC_DIR)
+            set(PETSC_DIR "@PETSC_DIR@")
+        endif()
+        if(NOT DEFINED PETSC_ARCH)
+            set(PETSC_ARCH "@PETSC_ARCH@")
+        endif()
+        find_dependency(PETSc)
+    endif()
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/pcms_utility-targets.cmake")

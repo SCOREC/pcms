@@ -61,8 +61,8 @@ target_compile_features(pcms_transfer PUBLIC cxx_std_20)
 
 target_link_libraries(pcms_transfer PUBLIC
     pcms::field
-    pcms::localization
-    Omega_h::omega_h)
+    pcms::localization)
+target_link_libraries(pcms_transfer PRIVATE Omega_h::omega_h)
 
 if(PCMS_ENABLE_MESHFIELDS)
   target_link_libraries(pcms_transfer PRIVATE meshfields::meshfields)
@@ -89,4 +89,4 @@ install(
 install(
     EXPORT pcms_transfer-targets
     NAMESPACE pcms::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+    DESTINATION ${PCMS_INSTALL_CMAKEDIR})

@@ -1,7 +1,7 @@
 # test_support uses redev, so it needs the coupler
 if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
   add_library(test_support test/test_support.cpp)
-  target_link_libraries(test_support pcms::pcms) # for omegah and redev
+  target_link_libraries(test_support pcms::pcms Omega_h::omega_h MPI::MPI_CXX) # for omegah and redev
 endif()
 
 # TODO use submodule FetchContent/ExternalProject/ExternalData
@@ -58,7 +58,11 @@ message(STATUS "VALGRIND_ARGS: ${VALGRIND_ARGS}")
 
 function(add_exe NAME)
   add_executable(${NAME} ${NAME}.cpp)
-  target_link_libraries(${NAME} pcms::pcms)
+  # tests use Omega_h and MPI directly (private dependencies of pcms)
+  target_link_libraries(${NAME} pcms::pcms MPI::MPI_CXX)
+  if(TARGET Omega_h::omega_h)
+    target_link_libraries(${NAME} Omega_h::omega_h)
+  endif()
   if(TARGET test_support)
     target_link_libraries(${NAME} test_support)
   endif()

@@ -59,7 +59,7 @@ install(
 install(
   EXPORT pcms_fortranapi-targets
   NAMESPACE pcms::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+  DESTINATION ${PCMS_INSTALL_CMAKEDIR})
 
 if(TARGET pcms_fortranapi_core)
   install(
@@ -75,7 +75,7 @@ if(TARGET pcms_fortranapi_core)
   install(
     EXPORT pcms_fortranapi_core-targets
     NAMESPACE pcms::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+    DESTINATION ${PCMS_INSTALL_CMAKEDIR})
 endif()
 
 install(
@@ -91,4 +91,4 @@ install(
 install(
   EXPORT pcms_fortranapi_transfer-targets
   NAMESPACE pcms::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+  DESTINATION ${PCMS_INSTALL_CMAKEDIR})

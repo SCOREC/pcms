@@ -712,6 +712,9 @@ if(TARGET pcms::coupler)
   target_link_libraries(xgc_n0_server PUBLIC pcms::pcms test_support)
 endif()
 
+# every installed public header compiles on its own
+add_subdirectory(public_headers)
+
 # installed core headers must not include backend libraries
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)

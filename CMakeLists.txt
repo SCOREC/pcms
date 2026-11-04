@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.23)
 project(
   pcms
-  VERSION 0.3.0
+  VERSION 0.4.0
   LANGUAGES CXX)
 
 include(GNUInstallDirs)

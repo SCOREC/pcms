@@ -73,6 +73,20 @@ endif()
 add_subdirectory(pcms/transfer)
 target_link_libraries(pcms_pcms INTERFACE pcms::transfer)
 
+# Library versions: the SOVERSION is major.minor, since 0.x releases may
+# break the ABI in every minor release (find_package uses SameMinorVersion).
+foreach(
+  lib IN
+  ITEMS pcms_utility pcms_discretization pcms_localization pcms_field
+        pcms_transfer pcms_coupler pcms_transient pcms_capi_core
+        pcms_capi_transfer pcms_fortranapi_core pcms_fortranapi_transfer)
+  if(TARGET ${lib})
+    set_target_properties(
+      ${lib} PROPERTIES VERSION ${PROJECT_VERSION}
+                        SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+  endif()
+endforeach()
+
 # Deprecated: pcms::core used to be the coupler plus everything else. Kept
 # for one release as an alias of pcms::pcms.
 add_library(pcms_core INTERFACE)

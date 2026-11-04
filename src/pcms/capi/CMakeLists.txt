@@ -79,7 +79,7 @@ install(
 install(
   EXPORT pcms_capi-targets
   NAMESPACE pcms::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+  DESTINATION ${PCMS_INSTALL_CMAKEDIR})
 
 # library targets
 if(TARGET pcms_capi_core)
@@ -95,7 +95,7 @@ if(TARGET pcms_capi_core)
   install(
     EXPORT pcms_capi_core-targets
     NAMESPACE pcms::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+    DESTINATION ${PCMS_INSTALL_CMAKEDIR})
 endif()
 
 install(
@@ -110,4 +110,4 @@ install(
 install(
   EXPORT pcms_capi_transfer-targets
   NAMESPACE pcms::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+  DESTINATION ${PCMS_INSTALL_CMAKEDIR})

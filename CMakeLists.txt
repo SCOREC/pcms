@@ -5,6 +5,9 @@ project(
   LANGUAGES CXX)
 
 include(GNUInstallDirs)
+# The package config files go to <prefix>/lib/cmake/pcms on every platform.
+set(PCMS_INSTALL_CMAKEDIR "lib/cmake/pcms"
+    CACHE STRING "Install directory of the pcms CMake package files")
 include(CMakePackageConfigHelpers)
 
 # use _ROOT variables for configurations

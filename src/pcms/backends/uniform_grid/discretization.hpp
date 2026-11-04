@@ -15,6 +15,8 @@ class UniformGridDiscretization : public Discretization
 public:
   explicit UniformGridDiscretization(UniformGrid<Dim> grid);
 
+  const UniformGrid<Dim>& GetGrid() const noexcept { return grid_; }
+
   bool SameEntities(const Discretization& other) const noexcept override;
 
   int GetDimension() const override;

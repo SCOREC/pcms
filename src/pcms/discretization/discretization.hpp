@@ -3,6 +3,9 @@
 
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/entity_types.hpp"
+#include "pcms/utility/uniform_grid.hpp"
+
+#include <memory>
 
 namespace pcms
 {
@@ -27,6 +30,16 @@ public:
 
   virtual ~Discretization() noexcept = default;
 };
+
+/// Discretization of a uniform (structured) grid: its vertices and cells.
+std::shared_ptr<const Discretization> CreateUniformGridDiscretization(
+  const UniformGrid<2>& grid);
+std::shared_ptr<const Discretization> CreateUniformGridDiscretization(
+  const UniformGrid<3>& grid);
+
+/// Discretization with no entities, for spaces that only evaluate (e.g.
+/// fields provided by an external code).
+std::shared_ptr<const Discretization> CreateEmptyDiscretization();
 
 } // namespace pcms
 

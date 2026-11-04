@@ -7,6 +7,7 @@ set(
 set(
         PCMS_DISCRETIZATION_SOURCES
         empty.cpp
+        factories.cpp
 )
 
 add_library(pcms_discretization ${PCMS_DISCRETIZATION_SOURCES})

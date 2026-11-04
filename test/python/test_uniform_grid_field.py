@@ -26,8 +26,10 @@ class TestUniformGridField:
         grid.edge_length = [10.0, 10.0]
         grid.divisions = [4, 4]
 
-        factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1)
+        factory = pcms.create_lagrange_space(
+            pcms.create_uniform_grid_discretization(grid),
+            1,
+            1)
         field = factory.create_function()
         expected = (grid.divisions[0] + 1) * (grid.divisions[1] + 1)
         assert field.get_layout().get_num_components() == 1
@@ -40,8 +42,10 @@ class TestUniformGridField:
         grid.edge_length = [10.0, 10.0]
         grid.divisions = [2, 2]
 
-        factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1)
+        factory = pcms.create_lagrange_space(
+            pcms.create_uniform_grid_discretization(grid),
+            1,
+            1)
         field = factory.create_function()
         data = np.arange(_num_dof_holders(field),
                          dtype=np.float64).reshape(-1, 1)
@@ -58,8 +62,10 @@ class TestUniformGridField:
         grid.edge_length = [10.0, 10.0]
         grid.divisions = [2, 3]
 
-        factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1)
+        factory = pcms.create_lagrange_space(
+            pcms.create_uniform_grid_discretization(grid),
+            1,
+            1)
         field = factory.create_function()
         coords = _coordinates(field)
         expected = (grid.divisions[0] + 1) * (grid.divisions[1] + 1)
@@ -88,8 +94,10 @@ class TestUniformGridField:
         grid.edge_length = [10.0, 10.0, 10.0]
         grid.divisions = [2, 2, 2]
 
-        factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1)
+        factory = pcms.create_lagrange_space(
+            pcms.create_uniform_grid_discretization(grid),
+            1,
+            1)
         field = factory.create_function()
         coords = _coordinates(field)
         expected = (
@@ -113,8 +121,10 @@ class TestUniformGridField:
         grid.edge_length = [1.0, 1.0]
         grid.divisions = [10, 10]
 
-        factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1)
+        factory = pcms.create_lagrange_space(
+            pcms.create_uniform_grid_discretization(grid),
+            1,
+            1)
         field = factory.create_function()
         coords = _coordinates(field)
         num_dofs = _num_dof_holders(field)
@@ -151,12 +161,14 @@ class TestUniformGridOmegaHWorkflow:
         )
 
         grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
-        mask_field = pcms.create_uniform_grid_binary_field(mesh, [4, 4])
+        mask_field = pcms.backend.omega_h.create_uniform_grid_binary_field(mesh, [4, 4])
         mask_data = mask_field.get_dof_holder_data().get_values()
 
         # Build a mesh-backed source field: f(x,y) = x + 2y.
-        omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, 1, 1)
+        omega_h_factory = pcms.create_lagrange_space(
+            pcms.backend.omega_h.create_discretization(mesh),
+            1,
+            1)
         omega_h_field = omega_h_factory.create_function()
         coords = _coordinates(omega_h_field)
         omega_h_data = np.zeros(_num_dof_holders(omega_h_field),
@@ -165,8 +177,10 @@ class TestUniformGridOmegaHWorkflow:
             omega_h_data[i] = coords[i, 0] + 2.0 * coords[i, 1]
         omega_h_field.set_dof_holder_data(omega_h_data)
 
-        ug_factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-            grid, 1)
+        ug_factory = pcms.create_lagrange_space(
+            pcms.create_uniform_grid_discretization(grid),
+            1,
+            1)
         ug_field = ug_factory.create_function()
 
         # Transfer from unstructured mesh to uniform grid.
@@ -194,10 +208,14 @@ class TestUniformGridOmegaHWorkflow:
             world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 8, 8, 0, False,
         )
 
-        src_factory = pcms.LagrangeFunctionSpace.from_mesh(
-            src_mesh, 1, 1)
-        tgt_factory = pcms.LagrangeFunctionSpace.from_mesh(
-            tgt_mesh, 1, 1)
+        src_factory = pcms.create_lagrange_space(
+            pcms.backend.omega_h.create_discretization(src_mesh),
+            1,
+            1)
+        tgt_factory = pcms.create_lagrange_space(
+            pcms.backend.omega_h.create_discretization(tgt_mesh),
+            1,
+            1)
         src_field = src_factory.create_function()
         tgt_field = tgt_factory.create_function()
 

@@ -50,17 +50,19 @@ def demonstrate_face_field_transfer(mesh):
         f"mean={vertex_field_values.mean():.6f}"
     )
     
-    omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
-        mesh, 1, 1
-    )
+    omega_h_factory = pcms.create_lagrange_space(
+        pcms.backend.omega_h.create_discretization(mesh),
+        1,
+        1)
     omega_h_field = omega_h_factory.create_function()
     omega_h_field.set_dof_holder_data(vertex_field_values)
     
     divisions = [1000, 500]
     grid = pcms.create_uniform_grid_from_mesh(mesh, divisions)
-    ug_factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-        grid, 1
-    )
+    ug_factory = pcms.create_lagrange_space(
+        pcms.create_uniform_grid_discretization(grid),
+        1,
+        1)
     ug_field = ug_factory.create_function()
     
     print(f"Interpolating field from OmegaH mesh to uniform grid...")

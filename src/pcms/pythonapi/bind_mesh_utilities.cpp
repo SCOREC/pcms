@@ -5,7 +5,7 @@
 #include <pcms/field/evaluator/mls_interpolation.hpp>
 #include <pcms/localization/adj_search.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
-#include "numpy_array_transform.hpp"
+#include "pcms/pythonapi/numpy_array_transform.hpp"
 
 namespace py = pybind11;
 

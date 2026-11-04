@@ -2,8 +2,8 @@
 // Created by hasanm4 on 1/17/25.
 //
 
-#include "interpolation_base.hpp"
-#include "interpolation_helpers.hpp"
+#include "pcms/transfer/interpolation_base.hpp"
+#include "pcms/transfer/interpolation_helpers.hpp"
 #include "pcms/utility/mesh_geometry.hpp"
 
 namespace pcms

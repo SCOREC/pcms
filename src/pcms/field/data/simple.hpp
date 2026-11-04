@@ -1,8 +1,8 @@
 #ifndef PCMS_SIMPLE_FIELD_DATA_H
 #define PCMS_SIMPLE_FIELD_DATA_H
 
-#include "../field_data.hpp"
-#include "../field_layout.hpp"
+#include "pcms/field/field_data.hpp"
+#include "pcms/field/field_layout.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/memory_spaces.hpp"

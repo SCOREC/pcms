@@ -1,4 +1,4 @@
-#include "mesh.h"
+#include "pcms/capi/mesh.h"
 
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>

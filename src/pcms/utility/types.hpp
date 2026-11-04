@@ -1,6 +1,6 @@
 #ifndef PCMS_COUPLING_TYPES_H
 #define PCMS_COUPLING_TYPES_H
-#include "assert.hpp"
+#include "pcms/utility/assert.hpp"
 #include <cstdint>
 #include <type_traits>
 

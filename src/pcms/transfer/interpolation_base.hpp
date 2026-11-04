@@ -14,7 +14,7 @@
 
 #include "pcms/field/evaluator/mls_interpolation.hpp"
 #include "pcms/localization/adj_search.hpp"
-#include "interpolation_helpers.hpp"
+#include "pcms/transfer/interpolation_helpers.hpp"
 #include <Omega_h_file.hpp>
 #include "pcms/utility/arrays.hpp"
 #include <string>

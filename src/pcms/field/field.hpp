@@ -1,8 +1,8 @@
 #ifndef PCMS_COUPLING_FIELD_H
 #define PCMS_COUPLING_FIELD_H
 
-#include "field_data.hpp"
-#include "field_layout.hpp"
+#include "pcms/field/field_data.hpp"
+#include "pcms/field/field_layout.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"

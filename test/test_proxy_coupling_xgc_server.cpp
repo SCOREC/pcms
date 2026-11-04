@@ -3,7 +3,7 @@
 #include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
-#include <data/simple.hpp>
+#include <pcms/field/data/simple.hpp>
 
 #include "test_support.hpp"
 #include "pcms/field/function_space/xgc.hpp"

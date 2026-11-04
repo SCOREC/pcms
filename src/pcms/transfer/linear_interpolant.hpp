@@ -3,7 +3,7 @@
 #define PCMS_TRANSFER_LINEAR_INTERPOLANT_HPP
 
 #include <iostream>
-#include "multidimarray.hpp"
+#include "pcms/transfer/multidimarray.hpp"
 #define PCMS_MAX_DIM 10
 
 namespace pcms

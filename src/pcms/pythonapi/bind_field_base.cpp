@@ -23,8 +23,8 @@
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/uniform_grid.hpp"
-#include "numpy_array_transform.hpp"
-#include "py_value_types.hpp"
+#include "pcms/pythonapi/numpy_array_transform.hpp"
+#include "pcms/pythonapi/py_value_types.hpp"
 
 namespace py = pybind11;
 

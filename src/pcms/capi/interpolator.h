@@ -12,7 +12,7 @@
 #define PCMS_INTERPOLATOR_CAPI_H
 
 #include <stdint.h>
-#include "mesh.h"
+#include "pcms/capi/mesh.h"
 
 #ifdef __cplusplus
 extern "C" {

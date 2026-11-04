@@ -2,8 +2,8 @@
 #define PCMS_EVALUATION_REQUEST_H
 
 #include "pcms/field/coordinate_view.hpp"
-#include "field_layout.hpp"
-#include "out_of_bounds_policy.hpp"
+#include "pcms/field/field_layout.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 

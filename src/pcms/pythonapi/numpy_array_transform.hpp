@@ -7,7 +7,7 @@
 #include <Omega_h_array.hpp>
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/types.hpp"
-#include "numpy_view.hpp"
+#include "pcms/pythonapi/numpy_view.hpp"
 
 namespace py = pybind11;
 

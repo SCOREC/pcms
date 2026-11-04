@@ -1,11 +1,11 @@
 #ifndef PCMS_FIELD_EVALUATOR_FACTORY_H
 #define PCMS_FIELD_EVALUATOR_FACTORY_H
 
-#include "field_layout.hpp"
+#include "pcms/field/field_layout.hpp"
 #include "pcms/field/coordinate_view.hpp"
-#include "evaluation_request.hpp"
-#include "out_of_bounds_policy.hpp"
-#include "point_evaluator.hpp"
+#include "pcms/field/evaluation_request.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
+#include "pcms/field/point_evaluator.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/discretization/discretization.hpp"

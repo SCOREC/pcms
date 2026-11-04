@@ -14,7 +14,7 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
-#include "numpy_view.hpp"
+#include "pcms/pythonapi/numpy_view.hpp"
 #include "pcms/configuration.hpp"
 #include "pcms/field/coordinate_system.hpp"
 #include "pcms/field/coordinate_systems/cartesian.hpp"

@@ -47,7 +47,7 @@ if(PCMS_ENABLE_OMEGA_H)
 endif()
 
 if (PCMS_ENABLE_MESHFIELDS)
-    target_link_libraries(pcms_coupler PUBLIC meshfields::meshfields)
+    target_link_libraries(pcms_coupler PRIVATE meshfields::meshfields)
 endif ()
 
 target_include_directories(pcms_coupler INTERFACE

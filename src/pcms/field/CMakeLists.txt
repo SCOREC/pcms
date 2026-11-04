@@ -32,18 +32,12 @@ if (PCMS_ENABLE_OMEGA_H)
     list(APPEND PCMS_FIELD_SOURCES
             function_space/lagrange.cpp
             function_space/spline.cpp
-            ../backends/omega_h/entity_layout.cpp
-            ../backends/omega_h/lagrange_layout.cpp
             evaluator/mls_interpolation.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
             function_space/lagrange.hpp
             function_space/spline.hpp
             field_evaluator_factory.hpp
-            ../backends/omega_h/entity_layout.hpp
-            ../backends/omega_h/lagrange_layout.hpp
-            ../backends/omega_h/lagrange_evaluator.hpp
-            ../backends/omega_h/uniform_grid_binary_field.hpp
             eqdsk_field.hpp
             evaluator/mls_interpolation.hpp
             evaluator/mls_interpolation_impl.hpp

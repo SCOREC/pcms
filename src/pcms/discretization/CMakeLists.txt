@@ -3,17 +3,11 @@ set(
         discretization.hpp
         discretization/empty.hpp
 )
-if (PCMS_ENABLE_OMEGA_H)
-  list(APPEND PCMS_DISCRETIZATION_HEADERS ../backends/omega_h/discretization.hpp)
-endif()
 
 set(
         PCMS_DISCRETIZATION_SOURCES
         discretization/empty.cpp
 )
-if (PCMS_ENABLE_OMEGA_H)
-  list(APPEND PCMS_DISCRETIZATION_SOURCES ../backends/omega_h/discretization.cpp)
-endif()
 
 add_library(pcms_discretization ${PCMS_DISCRETIZATION_SOURCES})
 add_library(pcms::discretization ALIAS pcms_discretization)

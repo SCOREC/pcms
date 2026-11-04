@@ -6,7 +6,7 @@
 #include "pcms/transfer/petsc_utils.hpp"
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 static Omega_h::Reals vecToOmegaHReals(Vec vec)
@@ -114,4 +114,4 @@ Omega_h::Reals GalerkinProjectionSolver::Solve(
   return result;
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

@@ -6,7 +6,7 @@
 #include <Omega_h_array.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
@@ -95,4 +95,4 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
   target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

@@ -6,7 +6,7 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_array.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 OmegaHControlVariateProjection::OmegaHControlVariateProjection(
@@ -104,4 +104,4 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
   target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

@@ -19,7 +19,7 @@
 #include "pcms/utility/arrays.hpp"
 #include <string>
 
-namespace pcms
+namespace pcms::transfer
 {
 /**
  * @brief Pure virtual base class for interpolation methods
@@ -295,6 +295,6 @@ private:
   void find_supports(unsigned min_req_supports = 10,
                      unsigned max_allowed_supports = 30);
 };
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_INTERPOLATION_BASE_H

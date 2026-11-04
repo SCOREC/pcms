@@ -33,7 +33,7 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator: sample points lie inside the domain",
 
   const int samples_per_element = 16;
   for (const auto sampling : {pcms::MonteCarloSampling::UniformRandom}) {
-    pcms::OmegaHMonteCarloRHSIntegrator integrator(
+    pcms::transfer::OmegaHMonteCarloRHSIntegrator integrator(
       *target_space, samples_per_element, sampling);
     const auto raw_coords = integrator.GetIntegrationPoints().GetValues();
     auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
@@ -67,7 +67,7 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator: constant field integrates exactly",
     source_field, OMEGA_H_LAMBDA(pcms::Real, pcms::Real) { return 2.0; });
 
   for (const auto sampling : {pcms::MonteCarloSampling::UniformRandom}) {
-    pcms::OmegaHMonteCarloRHSIntegrator integrator(*target_space, 8, sampling);
+    pcms::transfer::OmegaHMonteCarloRHSIntegrator integrator(*target_space, 8, sampling);
     pcms::test::EvaluateAndAssemble(integrator, source_space, source_field);
 
     PetscScalar sum = 0.0;
@@ -106,7 +106,7 @@ TEST_CASE("OmegaHControlVariateProjection: exact for fields in the target "
     GENERATE(pcms::MassMatrixType::Consistent, pcms::MassMatrixType::Lumped);
   CAPTURE(static_cast<int>(mass_type));
 
-  pcms::OmegaHControlVariateProjection projection(
+  pcms::transfer::OmegaHControlVariateProjection projection(
     *source_space, *target_space, /*samples_per_element=*/4,
     pcms::MonteCarloSampling::UniformRandom, /*seed=*/8675309, mass_type);
   projection.Apply(source_field, target_field);
@@ -144,7 +144,7 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
 
   // Reference: exact mesh-intersection quadrature projection.
   auto reference_field = target_space->CreateFunction<pcms::Real>();
-  pcms::OmegaHConservativeProjection reference_projection(*source_space,
+  pcms::transfer::OmegaHConservativeProjection reference_projection(*source_space,
                                                           *target_space);
   reference_projection.Apply(source_field, reference_field);
   const auto reference = pcms::FlattenToRank1View(
@@ -154,20 +154,20 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
   const uint64_t seed = 20240611;
 
   // Plain Monte Carlo projection.
-  pcms::OmegaHMonteCarloRHSIntegrator mc_integrator(
+  pcms::transfer::OmegaHMonteCarloRHSIntegrator mc_integrator(
     *target_space, samples_per_element, pcms::MonteCarloSampling::UniformRandom,
     seed);
   auto evaluator = source_space->CreatePointEvaluator<pcms::Real>(
     pcms::EvaluationRequest::FromCoordinates(
       mc_integrator.GetIntegrationPoints()));
-  pcms::OmegaHMassIntegrator mass_integrator(*target_space);
-  pcms::GalerkinProjectionSolver solver(mass_integrator, mc_integrator);
+  pcms::transfer::OmegaHMassIntegrator mass_integrator(*target_space);
+  pcms::transfer::GalerkinProjectionSolver solver(mass_integrator, mc_integrator);
   const auto mc_projected = solver.Solve(*evaluator, source_field);
   const auto mc_projected_h = Omega_h::HostRead<Omega_h::Real>(mc_projected);
 
   // Control-variate projection with the same sampling configuration.
   auto cv_field = target_space->CreateFunction<pcms::Real>();
-  pcms::OmegaHControlVariateProjection cv_projection(
+  pcms::transfer::OmegaHControlVariateProjection cv_projection(
     *source_space, *target_space, samples_per_element,
     pcms::MonteCarloSampling::UniformRandom, seed);
   cv_projection.Apply(source_field, cv_field);
@@ -198,7 +198,7 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator (3D): sample points lie inside the "
   auto target_space = pcms::test::MakeP1Space(target_mesh);
 
   const int samples_per_element = 16;
-  pcms::OmegaHMonteCarloRHSIntegrator integrator(
+  pcms::transfer::OmegaHMonteCarloRHSIntegrator integrator(
     *target_space, samples_per_element,
     pcms::MonteCarloSampling::UniformRandom);
 
@@ -237,7 +237,7 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator (3D): constant field integrates "
     source_field,
     KOKKOS_LAMBDA(pcms::Real, pcms::Real, pcms::Real) { return 2.0; });
 
-  pcms::OmegaHMonteCarloRHSIntegrator integrator(
+  pcms::transfer::OmegaHMonteCarloRHSIntegrator integrator(
     *target_space, /*samples_per_element=*/8,
     pcms::MonteCarloSampling::UniformRandom);
 
@@ -265,7 +265,7 @@ TEST_CASE(
     });
 
   auto reference = target_space->CreateFunction<pcms::Real>();
-  pcms::OmegaHConservativeProjection ref_proj(*source_space, *target_space);
+  pcms::transfer::OmegaHConservativeProjection ref_proj(*source_space, *target_space);
   ref_proj.Apply(source, reference);
   const auto ref_vals =
     pcms::FlattenToRank1View(reference.GetDOFHolderDataHost().GetValues());
@@ -273,17 +273,17 @@ TEST_CASE(
   const int nsample = 64;
   const uint64_t seed = 20240611;
 
-  pcms::OmegaHMonteCarloRHSIntegrator mc(
+  pcms::transfer::OmegaHMonteCarloRHSIntegrator mc(
     *target_space, nsample, pcms::MonteCarloSampling::UniformRandom, seed);
   auto ev = source_space->CreatePointEvaluator<pcms::Real>(
     pcms::EvaluationRequest::FromCoordinates(mc.GetIntegrationPoints()));
-  pcms::OmegaHMassIntegrator mass(*target_space);
-  pcms::GalerkinProjectionSolver solver(mass, mc);
+  pcms::transfer::OmegaHMassIntegrator mass(*target_space);
+  pcms::transfer::GalerkinProjectionSolver solver(mass, mc);
   const auto mc_x = solver.Solve(*ev, source);
   const auto mc_h = Omega_h::HostRead<Omega_h::Real>(mc_x);
 
   auto cv_field = target_space->CreateFunction<pcms::Real>();
-  pcms::OmegaHControlVariateProjection cv(
+  pcms::transfer::OmegaHControlVariateProjection cv(
     *source_space, *target_space, nsample,
     pcms::MonteCarloSampling::UniformRandom, seed);
   cv.Apply(source, cv_field);
@@ -358,7 +358,7 @@ TEST_CASE("OmegaHControlVariateProjection over a TransformedSource maps the "
 
   pcms::TransformedSource src_as_swapped(source_space,
                                          std::make_shared<SwapXY>());
-  pcms::OmegaHControlVariateProjection projection(
+  pcms::transfer::OmegaHControlVariateProjection projection(
     src_as_swapped, *target_space, /*samples_per_element=*/4,
     pcms::MonteCarloSampling::UniformRandom);
   projection.Apply(source_field, target_field);

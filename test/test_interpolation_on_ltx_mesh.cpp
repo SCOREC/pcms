@@ -91,10 +91,10 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
          ltx_mesh_base_filename.c_str(), xgc_num_nodes);
   const auto xgc_mesh_points_view = pcms::make_array_view(xgc_mesh_points);
 
-  auto xgc_to_degas2_interpolator = pcms::MLSPointCloudInterpolation(
+  auto xgc_to_degas2_interpolator = pcms::transfer::MLSPointCloudInterpolation(
     xgc_mesh_points_view, degas2_mesh_centroids_view, 2, 0.000001, 10, 1, true,
     0.0, 50.0);
-  auto degas2_to_xgc_interpolator = pcms::MLSPointCloudInterpolation(
+  auto degas2_to_xgc_interpolator = pcms::transfer::MLSPointCloudInterpolation(
     degas2_mesh_centroids_view, xgc_mesh_points_view, 2, 0.01, 10, 1, true,
     1e-3, 50.0);
   printf("[INFO] Interpolators initialized.\n");

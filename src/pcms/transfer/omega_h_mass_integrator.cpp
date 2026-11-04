@@ -11,7 +11,7 @@
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
@@ -225,4 +225,4 @@ std::unique_ptr<BilinearFormIntegrator> BuildOmegaHMassIntegrator(
   return std::make_unique<OmegaHMassIntegrator>(target_space, mass_type);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

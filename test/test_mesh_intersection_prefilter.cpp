@@ -13,8 +13,8 @@ namespace
 {
 /// Assert the two intersection maps are identical: same per-target counts and
 /// the same source elements in the same order.
-void require_intersections_identical(const pcms::IntersectionResults& filtered,
-                                     const pcms::IntersectionResults& exact)
+void require_intersections_identical(const pcms::transfer::IntersectionResults& filtered,
+                                     const pcms::transfer::IntersectionResults& exact)
 {
   const auto filtered_offsets = Omega_h::HostRead(filtered.tgt2src_offsets);
   const auto exact_offsets = Omega_h::HostRead(exact.tgt2src_offsets);
@@ -35,8 +35,8 @@ void require_intersections_identical(const pcms::IntersectionResults& filtered,
 /// ignoring order. The order of a row is seed-then-BFS, and the seed is
 /// whichever containing element the point search reports first; a centroid
 /// lying on a shared face can legitimately be located in either neighbor.
-void require_intersections_equivalent(const pcms::IntersectionResults& a,
-                                      const pcms::IntersectionResults& b)
+void require_intersections_equivalent(const pcms::transfer::IntersectionResults& a,
+                                      const pcms::transfer::IntersectionResults& b)
 {
   const auto a_offsets = Omega_h::HostRead(a.tgt2src_offsets);
   const auto b_offsets = Omega_h::HostRead(b.tgt2src_offsets);
@@ -69,7 +69,7 @@ TEST_CASE("intersection prefilter rejects degenerate overlaps",
       {{0, 0, 0}, {0, 1, 0}, {0, 0, 1}, {-1, 0, 0}}};
     const r3d::Few<r3d::Vector<3>, 4> right{
       {{0, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 0, 0}}};
-    REQUIRE(pcms::simplices_have_degenerate_overlap<3>(left, right));
+    REQUIRE(pcms::transfer::simplices_have_degenerate_overlap<3>(left, right));
   }
   SECTION("3D, overlapping tets are not rejected")
   {
@@ -78,19 +78,19 @@ TEST_CASE("intersection prefilter rejects degenerate overlaps",
     // Same tet shifted slightly; the overlap has positive volume.
     const r3d::Few<r3d::Vector<3>, 4> b{
       {{0.1, 0.1, 0.1}, {1.1, 0.1, 0.1}, {0.1, 1.1, 0.1}, {0.1, 0.1, 1.1}}};
-    REQUIRE_FALSE(pcms::simplices_have_degenerate_overlap<3>(a, b));
+    REQUIRE_FALSE(pcms::transfer::simplices_have_degenerate_overlap<3>(a, b));
   }
   SECTION("2D, edge-adjacent triangles are rejected")
   {
     const r3d::Few<r3d::Vector<2>, 3> left{{{0, 0}, {0, 1}, {-1, 0}}};
     const r3d::Few<r3d::Vector<2>, 3> right{{{0, 0}, {0, 1}, {1, 0}}};
-    REQUIRE(pcms::simplices_have_degenerate_overlap<2>(left, right));
+    REQUIRE(pcms::transfer::simplices_have_degenerate_overlap<2>(left, right));
   }
   SECTION("2D, overlapping triangles are not rejected")
   {
     const r3d::Few<r3d::Vector<2>, 3> a{{{0, 0}, {1, 0}, {0, 1}}};
     const r3d::Few<r3d::Vector<2>, 3> b{{{0.1, 0.1}, {1.1, 0.1}, {0.1, 1.1}}};
-    REQUIRE_FALSE(pcms::simplices_have_degenerate_overlap<2>(a, b));
+    REQUIRE_FALSE(pcms::transfer::simplices_have_degenerate_overlap<2>(a, b));
   }
 }
 
@@ -110,8 +110,8 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 8, 8, 0, false);
     require_intersections_identical(
-      pcms::intersectTargets(source, target, true),
-      pcms::intersectTargets(source, target, false));
+      pcms::transfer::intersectTargets(source, target, true),
+      pcms::transfer::intersectTargets(source, target, false));
   }
   SECTION("2D, nested resolutions")
   {
@@ -120,8 +120,8 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 4, 4, 0, false);
     require_intersections_identical(
-      pcms::intersectTargets(source, target, true),
-      pcms::intersectTargets(source, target, false));
+      pcms::transfer::intersectTargets(source, target, true),
+      pcms::transfer::intersectTargets(source, target, false));
   }
   SECTION("2D, non-nested resolutions")
   {
@@ -130,8 +130,8 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 5, 3, 0, false);
     require_intersections_identical(
-      pcms::intersectTargets(source, target, true),
-      pcms::intersectTargets(source, target, false));
+      pcms::transfer::intersectTargets(source, target, true),
+      pcms::transfer::intersectTargets(source, target, false));
   }
   SECTION("3D, identical meshes")
   {
@@ -140,8 +140,8 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 4, 4, 4, false);
     require_intersections_identical(
-      pcms::intersectTargets(source, target, true),
-      pcms::intersectTargets(source, target, false));
+      pcms::transfer::intersectTargets(source, target, true),
+      pcms::transfer::intersectTargets(source, target, false));
   }
   SECTION("3D, nested resolutions")
   {
@@ -150,8 +150,8 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 3, 3, 3, false);
     require_intersections_identical(
-      pcms::intersectTargets(source, target, true),
-      pcms::intersectTargets(source, target, false));
+      pcms::transfer::intersectTargets(source, target, true),
+      pcms::transfer::intersectTargets(source, target, false));
   }
   SECTION("3D, non-nested resolutions")
   {
@@ -160,8 +160,8 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 2, 4, 3, false);
     require_intersections_identical(
-      pcms::intersectTargets(source, target, true),
-      pcms::intersectTargets(source, target, false));
+      pcms::transfer::intersectTargets(source, target, true),
+      pcms::transfer::intersectTargets(source, target, false));
   }
 }
 
@@ -185,8 +185,8 @@ TEST_CASE("intersection map is independent of the supplied source search",
     const pcms::localization::GridPointSearchVariant search{
       std::in_place_type<pcms::localization::GridPointSearch2D>, source, 3, 3};
     require_intersections_equivalent(
-      pcms::intersectTargets(source, target, search),
-      pcms::intersectTargets(source, target));
+      pcms::transfer::intersectTargets(source, target, search),
+      pcms::transfer::intersectTargets(source, target));
   }
   SECTION("3D, coarse caller-supplied grid")
   {
@@ -197,8 +197,8 @@ TEST_CASE("intersection map is independent of the supplied source search",
     const pcms::localization::GridPointSearchVariant search{
       std::in_place_type<pcms::localization::GridPointSearch3D>, source, 2, 2, 2};
     require_intersections_equivalent(
-      pcms::intersectTargets(source, target, search),
-      pcms::intersectTargets(source, target));
+      pcms::transfer::intersectTargets(source, target, search),
+      pcms::transfer::intersectTargets(source, target));
   }
   SECTION("a search of the wrong dimension is rejected")
   {
@@ -210,7 +210,7 @@ TEST_CASE("intersection map is independent of the supplied source search",
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 2, 2, 0, false);
     const pcms::localization::GridPointSearchVariant search{
       std::in_place_type<pcms::localization::GridPointSearch2D>, flat, 2, 2};
-    REQUIRE_THROWS_AS(pcms::intersectTargets(source, target, search),
+    REQUIRE_THROWS_AS(pcms::transfer::intersectTargets(source, target, search),
                       pcms::pcms_error);
   }
 }

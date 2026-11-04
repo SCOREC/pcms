@@ -3,7 +3,7 @@
 #include "pcms/utility/mesh_geometry.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
 
-namespace pcms
+namespace pcms::transfer
 {
 namespace
 {
@@ -265,4 +265,4 @@ IntersectionResults intersectTargets(
                                  RequireSearchDimension<2>(source_search),
                                  use_prefilter);
 }
-} // namespace pcms
+} // namespace pcms::transfer

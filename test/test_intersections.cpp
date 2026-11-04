@@ -78,7 +78,7 @@ TEST_CASE("Mesh intersection test with source and target", "[intersection]")
   // ============================
   // Compute intersection mapping
   // ============================
-  auto intersection = intersectTargets(src_mesh, tgt_mesh);
+  auto intersection = pcms::transfer::intersectTargets(src_mesh, tgt_mesh);
 
   auto offsets = Omega_h::HostRead(intersection.tgt2src_offsets);
   auto indices = Omega_h::HostRead(intersection.tgt2src_indices);

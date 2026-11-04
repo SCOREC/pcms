@@ -7,7 +7,7 @@
 #include <petscksp.h>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
@@ -255,4 +255,4 @@ void OmegaHMonteCarloRHSIntegrator::Assemble(
   CHKERRABORT(PETSC_COMM_SELF, ierr);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

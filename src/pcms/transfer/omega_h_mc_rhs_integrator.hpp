@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Monte Carlo RHS integrator for conservative L2 projection onto order-1
@@ -62,6 +62,6 @@ private:
   int nbary_ = 3; // barycentric DOFs per sample (Dim+1): 3 in 2D, 4 in 3D
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP

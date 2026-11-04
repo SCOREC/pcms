@@ -33,7 +33,7 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(*source_space, *target_space);
+  pcms::transfer::OmegaHConservativeProjection projection(*source_space, *target_space);
 
   SECTION("constant field is preserved and conserved")
   {
@@ -95,7 +95,7 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) conserves the integral for a "
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(*source_space, *target_space);
+  pcms::transfer::OmegaHConservativeProjection projection(*source_space, *target_space);
 
   pcms::test::SetField(
     source, KOKKOS_LAMBDA(pcms::Real x, pcms::Real y, pcms::Real z) {
@@ -195,7 +195,7 @@ TEST_CASE("OmegaHControlVariateProjection (3D tets) is exact for target-space "
       return 1.0 + x + 2.0 * y + 3.0 * z;
     });
 
-  pcms::OmegaHControlVariateProjection projection(
+  pcms::transfer::OmegaHControlVariateProjection projection(
     *source_space, *target_space, /*samples_per_element=*/8,
     pcms::MonteCarloSampling::UniformRandom, /*seed=*/12345);
   projection.Apply(source, target);

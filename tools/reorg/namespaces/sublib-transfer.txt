@@ -1,0 +1,26 @@
+# namespace-scope names declared by the files that move to pcms::transfer
+BilinearFormIntegrator
+BuildOmegaHConservativeRHSIntegrator
+BuildOmegaHMassIntegrator
+FindIntersections
+GalerkinProjectionSolver
+InterpolationBase
+IntersectionResults
+LinearFormIntegrator
+MLSMeshInterpolation
+MLSPointCloudInterpolation
+MassMatrixIntegrator
+OmegaHConservativeProjection
+OmegaHControlVariateProjection
+OmegaHIntersectionRHSIntegrator
+OmegaHMassIntegrator
+OmegaHMonteCarloRHSIntegrator
+buildElementMassMatrix
+build_linear_triangle_coo_rows
+build_linear_triangle_coo_rows_cols
+copyHostScalarArrayView2HostWrite
+copyHostWrite2ScalarArrayView
+createSeqAIJMat
+createSeqVec
+intersectTargets
+simplices_have_degenerate_overlap

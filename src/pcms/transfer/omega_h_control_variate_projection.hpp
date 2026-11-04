@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class GalerkinProjectionSolver;
@@ -67,6 +67,6 @@ private:
   mutable Kokkos::View<Real**, DeviceMemorySpace> residual_;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP

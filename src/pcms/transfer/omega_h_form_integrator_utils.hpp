@@ -12,7 +12,7 @@
 #include <Omega_h_shape.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
-namespace pcms::detail
+namespace pcms::transfer::detail
 {
 
 // Shared checks for a scalar Cartesian Lagrange space on a simplex mesh
@@ -405,6 +405,6 @@ struct TargetSimplexBasis<Dim, 1>
   }
 };
 
-} // namespace pcms::detail
+} // namespace pcms::transfer::detail
 
 #endif // PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP

@@ -9,7 +9,7 @@
 #include <Kokkos_Core.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Conservative-projection RHS integrator for Lagrange spaces on Omega_h 2D
@@ -76,6 +76,6 @@ private:
 std::unique_ptr<LinearFormIntegrator> BuildOmegaHConservativeRHSIntegrator(
   const FunctionSpace& source_space, const FunctionSpace& target_space);
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP

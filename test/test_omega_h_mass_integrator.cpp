@@ -68,7 +68,7 @@ std::map<std::pair<pcms::GO, pcms::GO>, pcms::Real> BuildReferenceMassMap(
 #else
   MeshField::FieldElement coordFe(mesh.nelems(), coordField.field, shp, map);
 #endif
-  auto elm_mass_dev = buildElementMassMatrix(mesh, coordFe);
+  auto elm_mass_dev = pcms::transfer::buildElementMassMatrix(mesh, coordFe);
   auto elm_mass_host =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, elm_mass_dev);
 
@@ -111,7 +111,7 @@ TEST_CASE(
 
   const auto ref = BuildReferenceMassMap(mesh, *space);
 
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
+  auto integrator = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   Mat mat = integrator->GetMatrix();
 
   for (const auto& [key, ref_val] : ref) {
@@ -143,7 +143,7 @@ TEST_CASE("OmegaHMassIntegrator: row sums match lumped mass",
   const auto& gids = layout->GetGidsHost();
   const int nverts = mesh.nverts();
 
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
+  auto integrator = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   Mat mat = integrator->GetMatrix();
 
   // Sum all row sums.
@@ -187,9 +187,9 @@ TEST_CASE("OmegaHMassIntegrator: lumped diagonal equals consistent row sums",
   const auto& gids = layout->GetGidsHost();
   const int nverts = mesh.nverts();
 
-  auto consistent = pcms::BuildOmegaHMassIntegrator(*space);
+  auto consistent = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   auto lumped =
-    pcms::BuildOmegaHMassIntegrator(*space, pcms::MassMatrixType::Lumped);
+    pcms::transfer::BuildOmegaHMassIntegrator(*space, pcms::MassMatrixType::Lumped);
   CHECK_FALSE(consistent->IsDiagonal());
   CHECK(lumped->IsDiagonal());
   Mat consistent_mat = consistent->GetMatrix();
@@ -241,9 +241,9 @@ TEST_CASE("OmegaHMassIntegrator: P0 lumped equals consistent",
     mesh, 0, 1, pcms::csys::Cartesian::Deferred(), "global",
     pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 
-  auto consistent = pcms::BuildOmegaHMassIntegrator(*space);
+  auto consistent = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   auto lumped =
-    pcms::BuildOmegaHMassIntegrator(*space, pcms::MassMatrixType::Lumped);
+    pcms::transfer::BuildOmegaHMassIntegrator(*space, pcms::MassMatrixType::Lumped);
   CHECK(consistent->IsDiagonal());
   CHECK(lumped->IsDiagonal());
   Mat consistent_mat = consistent->GetMatrix();
@@ -281,7 +281,7 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
     auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
       pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
-    REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHMassIntegrator(*space));
   }
 
   SECTION("non-Cartesian coordinate system throws")
@@ -289,7 +289,7 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
     auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
       pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
-    REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHMassIntegrator(*space));
   }
 
   SECTION("distinct cartesian-kind system throws")
@@ -299,6 +299,6 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
     auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 1, other, "global",
       pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
-    REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHMassIntegrator(*space));
   }
 }

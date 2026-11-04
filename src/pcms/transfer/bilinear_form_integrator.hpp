@@ -3,7 +3,7 @@
 
 #include <petscmat.h>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class BilinearFormIntegrator
@@ -21,6 +21,6 @@ public:
   virtual ~BilinearFormIntegrator() noexcept = default;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_BILINEAR_FORM_INTEGRATOR_H

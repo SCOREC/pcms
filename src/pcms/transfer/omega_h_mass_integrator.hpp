@@ -8,7 +8,7 @@
 #include <memory>
 #include <vector>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Mass-matrix bilinear form integrator for Lagrange spaces on Omega_h 2D
@@ -49,6 +49,6 @@ std::unique_ptr<BilinearFormIntegrator> BuildOmegaHMassIntegrator(
   const FunctionSpace& target_space,
   MassMatrixType mass_type = MassMatrixType::Consistent);
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_MASS_INTEGRATOR_HPP

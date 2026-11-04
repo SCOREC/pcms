@@ -6,7 +6,7 @@
 #include "pcms/transfer/interpolation_helpers.hpp"
 #include "pcms/utility/mesh_geometry.hpp"
 
-namespace pcms
+namespace pcms::transfer
 {
 
 MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
@@ -467,4 +467,4 @@ size_t MLSMeshInterpolation::getTargetSize() const
     return target_mesh_.nverts();
   }
 }
-} // namespace pcms
+} // namespace pcms::transfer

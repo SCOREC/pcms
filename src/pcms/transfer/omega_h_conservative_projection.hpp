@@ -9,7 +9,7 @@
 #include <Kokkos_Core.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class GalerkinProjectionSolver;
@@ -53,6 +53,6 @@ private:
   mutable Kokkos::View<Real**, DeviceMemorySpace> target_values_;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H

@@ -34,7 +34,7 @@ TEST_CASE("OmegaHMassIntegrator (3D): P1 mass on reference tet matches "
   constexpr pcms::Real M_off = V / 20.0;  // 1/120
 
   auto space = pcms::test::MakeP1Space(mesh);
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
+  auto integrator = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   Mat mat = integrator->GetMatrix();
 
   const auto layout =
@@ -77,7 +77,7 @@ TEST_CASE("OmegaHMassIntegrator (3D): P0 mass on reference tet equals volume",
   constexpr pcms::Real V = 1.0 / 6.0;
 
   auto space = pcms::test::MakeP0Space(mesh);
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
+  auto integrator = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   Mat mat = integrator->GetMatrix();
 
   PetscInt r = 0;
@@ -101,7 +101,7 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
   auto space = pcms::test::MakeP1Space(mesh);
   auto source = space->CreateFunction<pcms::Real>();
   auto target = space->CreateFunction<pcms::Real>();
-  pcms::OmegaHConservativeProjection projection(*space, *space);
+  pcms::transfer::OmegaHConservativeProjection projection(*space, *space);
   SECTION("constant field")
   {
     const double c = 2.5;

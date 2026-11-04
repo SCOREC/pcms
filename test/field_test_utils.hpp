@@ -599,7 +599,7 @@ void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
 // Evaluates source_field at the integrator's sample points and assembles the
 // load vector.
 inline void EvaluateAndAssemble(
-  LinearFormIntegrator& integrator,
+  pcms::transfer::LinearFormIntegrator& integrator,
   const std::shared_ptr<const FunctionSpace>& source_space,
   const Field<Real>& source_field)
 {

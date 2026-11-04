@@ -15,7 +15,7 @@ PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,
                                                 double radius)
 {
   auto* source_mesh = reinterpret_cast<Omega_h::Mesh*>(oh_mesh.mesh_handle);
-  auto* interpolator = new pcms::MLSMeshInterpolation(*source_mesh, radius);
+  auto* interpolator = new pcms::transfer::MLSMeshInterpolation(*source_mesh, radius);
   return {reinterpret_cast<void*>(interpolator)};
 }
 
@@ -29,7 +29,7 @@ PcmsInterpolatorHandle pcms_create_point_based_interpolator(
     reinterpret_cast<double*>(source_points), source_points_size);
   auto target_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
     reinterpret_cast<double*>(target_points), target_points_size);
-  auto* interpolator = new pcms::MLSPointCloudInterpolation(
+  auto* interpolator = new pcms::transfer::MLSPointCloudInterpolation(
     source_points_view, target_points_view, 2, radius, min_req_supports, degree,
     true, lambda, decay_factor);
   return {reinterpret_cast<void*>(interpolator)};
@@ -107,7 +107,7 @@ PcmsInterpolatorHandle pcms_create_xgcnodedegas2_interpolator(
 void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator)
 {
   if (interpolator.pointer != nullptr) {
-    delete reinterpret_cast<pcms::InterpolationBase*>(interpolator.pointer);
+    delete reinterpret_cast<pcms::transfer::InterpolationBase*>(interpolator.pointer);
   }
 }
 
@@ -115,7 +115,7 @@ void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
                       int input_size, void* output, int output_size)
 {
   auto* mls_interpolator =
-    reinterpret_cast<pcms::InterpolationBase*>(interpolator.pointer);
+    reinterpret_cast<pcms::transfer::InterpolationBase*>(interpolator.pointer);
 
   OMEGA_H_CHECK_PRINTF(
     input_size == mls_interpolator->getSourceSize(),

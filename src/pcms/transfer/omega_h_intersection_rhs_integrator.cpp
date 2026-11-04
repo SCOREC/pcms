@@ -11,7 +11,7 @@
 #include <petscksp.h>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
@@ -323,4 +323,4 @@ std::unique_ptr<LinearFormIntegrator> BuildOmegaHConservativeRHSIntegrator(
                                                            target_space);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

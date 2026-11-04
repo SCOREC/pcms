@@ -261,24 +261,24 @@ class TestMeshUtilities:
         nfaces = mesh.nfaces()
         values = np.arange(nfaces, dtype=np.float64)
         wide = np.stack([values, -values], axis=1)
-        contiguous = pcms.map_entity_field_to_vertices_average(mesh, values, 2)
-        strided = pcms.map_entity_field_to_vertices_average(mesh, wide[:, 0],
+        contiguous = pcms.backend.omega_h.map_entity_field_to_vertices_average(mesh, values, 2)
+        strided = pcms.backend.omega_h.map_entity_field_to_vertices_average(mesh, wide[:, 0],
                                                             2)
         np.testing.assert_array_equal(strided, contiguous)
 
     def test_average_of_constant_is_constant(self, mesh):
         values = np.full(mesh.nfaces(), 3.5)
-        result = pcms.map_entity_field_to_vertices_average(mesh, values, 2)
+        result = pcms.backend.omega_h.map_entity_field_to_vertices_average(mesh, values, 2)
         assert result.shape == (mesh.nverts(),)
         assert not result.flags.writeable
         np.testing.assert_allclose(result, 3.5)
 
     @pytest.mark.parametrize("mapping", [
-        lambda mesh, v: pcms.map_entity_field_to_vertices_average(mesh, v, 2),
-        lambda mesh, v: pcms.map_entity_field_to_vertices_mls(mesh, v, 2),
+        lambda mesh, v: pcms.backend.omega_h.map_entity_field_to_vertices_average(mesh, v, 2),
+        lambda mesh, v: pcms.backend.omega_h.map_entity_field_to_vertices_mls(mesh, v, 2),
     ], ids=["average", "mls"])
     def test_multicomponent_matches_per_component(self, mesh, mapping):
-        centroids = pcms.compute_entity_centroids(mesh, 2)
+        centroids = pcms.backend.omega_h.compute_entity_centroids(mesh, 2)
         values = np.stack([_linear(centroids[:, 0], centroids[:, 1]),
                            centroids[:, 0] - centroids[:, 1]], axis=1)
         result = mapping(mesh, values)
@@ -289,7 +289,7 @@ class TestMeshUtilities:
 
     def test_single_component_2d_keeps_rank(self, mesh):
         values = np.full((mesh.nfaces(), 1), 3.5)
-        result = pcms.map_entity_field_to_vertices_average(mesh, values, 2)
+        result = pcms.backend.omega_h.map_entity_field_to_vertices_average(mesh, values, 2)
         assert result.shape == (mesh.nverts(), 1)
         np.testing.assert_allclose(result, 3.5)
 
@@ -299,11 +299,11 @@ class TestMeshUtilities:
     ], ids=["1d-wrong-entities", "2d-wrong-entities", "no-components", "3d"])
     def test_rejects_wrong_shape(self, mesh, shape):
         with pytest.raises(ValueError):
-            pcms.map_entity_field_to_vertices_average(
+            pcms.backend.omega_h.map_entity_field_to_vertices_average(
                 mesh, np.zeros(shape(mesh.nfaces())), 2)
 
     def test_centroids_survive_garbage_collection(self, mesh):
-        centroids = pcms.compute_entity_centroids(mesh, 2)
+        centroids = pcms.backend.omega_h.compute_entity_centroids(mesh, 2)
         expected = centroids.copy()
         gc.collect()
         np.testing.assert_array_equal(centroids, expected)
@@ -312,13 +312,13 @@ class TestMeshUtilities:
 
 class TestUniformGrid:
     def test_closest_cell_id_accepts_sequences(self, mesh):
-        grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
+        grid = pcms.backend.omega_h.create_uniform_grid_from_mesh(mesh, [4, 4])
         expected = grid.closest_cell_id(np.array([0.3, 0.6]))
         assert grid.closest_cell_id([0.3, 0.6]) == expected
         assert grid.closest_cell_id(np.array([0.3, 0.6], np.float32)) == \
             expected
 
     def test_closest_cell_id_rejects_wrong_dimension(self, mesh):
-        grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
+        grid = pcms.backend.omega_h.create_uniform_grid_from_mesh(mesh, [4, 4])
         with pytest.raises(ValueError):
             grid.closest_cell_id(np.array([0.3, 0.6, 0.1]))

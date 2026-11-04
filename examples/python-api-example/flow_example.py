@@ -34,14 +34,14 @@ def demonstrate_face_field_transfer(mesh):
     print(f"Face field: min={face_field_values.min():.6f}, max={face_field_values.max():.6f}, mean={face_field_values.mean():.6f}")
     
     # Use the C++ implementation from pcms Python API
-    # vertex_field_values = pcms.map_entity_field_to_vertices_mls(
+    # vertex_field_values = pcms.backend.omega_h.map_entity_field_to_vertices_mls(
     #     mesh,
     #     face_field_values,
     #     face_dim,
     #     interp_degree=2,
     # )
     # Alternative method (simple averaging):
-    vertex_field_values = pcms.map_entity_field_to_vertices_average(
+    vertex_field_values = pcms.backend.omega_h.map_entity_field_to_vertices_average(
         mesh, face_field_values, face_dim
     )
     print(
@@ -58,7 +58,7 @@ def demonstrate_face_field_transfer(mesh):
     omega_h_field.set_dof_holder_data(vertex_field_values)
     
     divisions = [1000, 500]
-    grid = pcms.create_uniform_grid_from_mesh(mesh, divisions)
+    grid = pcms.backend.omega_h.create_uniform_grid_from_mesh(mesh, divisions)
     ug_factory = pcms.create_lagrange_space(
         pcms.create_uniform_grid_discretization(grid),
         1,

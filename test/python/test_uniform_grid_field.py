@@ -160,7 +160,7 @@ class TestUniformGridOmegaHWorkflow:
             world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False,
         )
 
-        grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
+        grid = pcms.backend.omega_h.create_uniform_grid_from_mesh(mesh, [4, 4])
         mask_field = pcms.backend.omega_h.create_uniform_grid_binary_field(mesh, [4, 4])
         mask_data = mask_field.get_dof_holder_data().get_values()
 

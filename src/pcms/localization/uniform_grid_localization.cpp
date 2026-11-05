@@ -681,10 +681,6 @@ GridPointSearch2D::Results GridPointSearch2D::Apply(
           const int vb_id = edges2verts_adj.ab2b[edgeID * 2 + 1];
           const auto va = Omega_h::get_vector<2>(coords, va_id);
           const auto vb = Omega_h::get_vector<2>(coords, vb_id);
-<<<<<<< HEAD
-=======
-
->>>>>>> 05e0a707 (clang-format, renamed files, builds without ArborX)
           if (!normal_intersects_segment(va, vb, point))
             continue;
 

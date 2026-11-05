@@ -10,12 +10,15 @@
 #     PCMS must use the public replacement (see the manual entries and
 #     MIGRATION.md); migrate-pcms.sh only reports it
 #   manual: API that changed shape; migrate-pcms.sh reports uses
+# A trailing "external" flag skips the entry under --in-tree: PCMS itself
+# still defines the old name (the deprecated pcms::core alias; MAX_DIM, the
+# MLS kernels' constant, which is unrelated to the renamed macro).
 # Python code is migrated by tools/reorg/python_api_names.py.
 cmake-option  PCMS_ENABLE_Python PCMS_ENABLE_PYTHON
 cmake-option  PCMS_ENABLE_Fortran PCMS_ENABLE_FORTRAN
 cmake-option  PETSC_LINK_STATIC PCMS_PETSC_LINK_STATIC
-cmake-target  pcms::core pcms::pcms
-macro         MAX_DIM PCMS_MAX_DIM
+cmake-target  pcms::core pcms::pcms external
+macro         MAX_DIM PCMS_MAX_DIM external
 macro         ACTIVE_GPU_EXECUTION PCMS_ACTIVE_GPU_EXECUTION
 macro         PCMS_ENABLE_Fortran PCMS_ENABLE_FORTRAN
 cpp-private   pcms::MFEMLayout pcms::backend::mfem::MFEMLayout

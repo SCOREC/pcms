@@ -68,7 +68,9 @@ for line in open(symbol_map):
         old, new = line[len("manual"):].split("->", 1)
         manual.append((old.strip(), new.strip()))
         continue
-    kind, old, new = line.split()
+    kind, old, new, *flags = line.split()
+    if in_tree and "external" in flags:
+        continue
     if kind in ("cpp", "macro"):
         renames.append((old, new))
     elif kind in ("cmake-option", "cmake-target"):
@@ -91,6 +93,22 @@ INCLUDE = re.compile(r'^(\s*#\s*include\s*)([<"])([^>"]+)([>"])', re.M)
 def word(old):
     # old may contain ::, so build the boundaries by hand
     return re.compile(r"(?<![\w:])" + re.escape(old) + r"(?![\w])")
+
+
+def resolve(path, included, table):
+    """The table key for an include: as written, or (for "x.h") relative to
+    the including file, as PCMS's own sources include their neighbors."""
+    if included in table:
+        return included
+    if path is None:
+        return None
+    parts = os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(path)), included)).split(os.sep)
+    for i in range(len(parts)):
+        key = "/".join(parts[i:])
+        if key.startswith("pcms/") and key in table:
+            return key
+    return None
 
 
 def walk(roots):
@@ -117,20 +135,31 @@ for path in walk(roots):
     new = text
     if is_code:
         def inc(m):
-            path_ = m.group(3)
-            if path_ in headers:
-                return f"{m.group(1)}{m.group(2)}{headers[path_]}{m.group(4)}"
+            key = resolve(path if m.group(2) == '"' else None, m.group(3),
+                          headers)
+            if key:
+                return f"{m.group(1)}{m.group(2)}{headers[key]}{m.group(4)}"
             return m.group(0)
         new = INCLUDE.sub(inc, new)
         for old, rep in renames:
             new = word(old).sub(rep, new)
     if is_cmake:
-        for old, rep in cmake:
-            new = word(old).sub(rep, new)
+        lines = new.split("\n")
+        for i, line in enumerate(lines):
+            # the compatibility shims (and comments about them) keep the
+            # old option names
+            if in_tree and ("pcms_renamed_option(" in line
+                            or line.lstrip().startswith("#")):
+                continue
+            for old, rep in cmake:
+                line = word(old).sub(rep, line)
+            lines[i] = line
+        new = "\n".join(lines)
     # reports
     for n, line in enumerate(new.split("\n"), 1):
         m = INCLUDE.match(line)
-        if m and m.group(3) in private_headers:
+        if m and resolve(path if m.group(2) == '"' else None, m.group(3),
+                         private_headers):
             reports.append(f"{path}:{n}: includes {m.group(3)}, which is no "
                            "longer installed (see MIGRATION.md)")
         for old, rep in private_syms:

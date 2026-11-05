@@ -1,0 +1,8 @@
+# Phase 3.3: MeshFields adapter. Every file depends on both MeshFields and the
+# Omega_h adapter (MeshFieldsAdapterLayout is built from an
+# OmegaHDiscretization), so it goes to the omega_h_meshfields bridge.
+src/pcms/field/layout/mesh_fields.hpp              src/pcms/backends/omega_h_meshfields/layout.hpp
+src/pcms/field/layout/mesh_fields.cpp              src/pcms/backends/omega_h_meshfields/layout.cpp
+src/pcms/field/data/mesh_fields.hpp                src/pcms/backends/omega_h_meshfields/field_data.hpp
+src/pcms/field/evaluator/mesh_fields.hpp           src/pcms/backends/omega_h_meshfields/evaluator.hpp
+src/pcms/field/evaluator/mesh_fields_backend.hpp   src/pcms/backends/omega_h_meshfields/evaluator_backend.hpp

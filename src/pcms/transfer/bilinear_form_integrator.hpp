@@ -1,9 +1,9 @@
-#ifndef PCMS_TRANSFER_BILINEAR_FORM_INTEGRATOR_H
-#define PCMS_TRANSFER_BILINEAR_FORM_INTEGRATOR_H
+#ifndef PCMS_TRANSFER_BILINEAR_FORM_INTEGRATOR_HPP
+#define PCMS_TRANSFER_BILINEAR_FORM_INTEGRATOR_HPP
 
 #include <petscmat.h>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class BilinearFormIntegrator
@@ -21,6 +21,6 @@ public:
   virtual ~BilinearFormIntegrator() noexcept = default;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
-#endif // PCMS_TRANSFER_BILINEAR_FORM_INTEGRATOR_H
+#endif // PCMS_TRANSFER_BILINEAR_FORM_INTEGRATOR_HPP

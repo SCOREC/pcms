@@ -7,10 +7,10 @@
 
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/transfer/interpolation_base.h>
-#include <pcms/utility/mesh_geometry.h>
-#include <pcms/utility/print.h>
-#include "field_test_utils.h"
+#include <pcms/transfer/interpolation_base.hpp>
+#include <pcms/utility/mesh_geometry.hpp>
+#include <pcms/utility/print.hpp>
+#include "field_test_utils.hpp"
 
 #include <vector>
 #include <iostream>
@@ -106,11 +106,11 @@ TEST_CASE("Test MLSMeshInterpolation")
     pcms::printInfo("\n-------------------- Single Mesh Interpolation Test "
                     "Started --------------------\n");
     pcms::printInfo("Mesh based search...\n");
-    auto mls_single =
-      pcms::MLSMeshInterpolation(source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
+    auto mls_single = pcms::transfer::MLSMeshInterpolation(
+      source_mesh, 0.12, 15, 3, true, 0.0, 5.0);
 
     auto source_points_vec = pcms::test::CopyOmegaHRealsToVector(
-      pcms::get_entity_centroids(source_mesh, Omega_h::FACE));
+      pcms::utility::get_entity_centroids(source_mesh, Omega_h::FACE));
     auto source_points_view = pcms::make_array_view(source_points_vec);
 
     auto target_points_vec =
@@ -118,7 +118,7 @@ TEST_CASE("Test MLSMeshInterpolation")
     auto target_points_view = pcms::make_array_view(target_points_vec);
     REQUIRE(source_mesh.dim() == 2);
     pcms::printInfo("Point cloud based search...\n");
-    auto point_mls = pcms::MLSPointCloudInterpolation(
+    auto point_mls = pcms::transfer::MLSPointCloudInterpolation(
       source_points_view, target_points_view, 2, 0.12, 15, 3, true, 0.0, 5.0);
 
     Omega_h::Write<Omega_h::Real> sinxcosy_centroid(source_mesh.nfaces(),
@@ -213,8 +213,8 @@ TEST_CASE("Test MLSMeshInterpolation")
     // translate_mesh(&target_mesh, Omega_h::Vector<2>{(1.0 - 0.999) / 2.0,
     //                                                (1.0 - 0.999) / 2.0});
 
-    auto mls_double = pcms::MLSMeshInterpolation(source_mesh, target_mesh, 0.12,
-                                                 15, 3, true, 0.0, 5.0);
+    auto mls_double = pcms::transfer::MLSMeshInterpolation(
+      source_mesh, target_mesh, 0.12, 15, 3, true, 0.0, 5.0);
 
     Omega_h::HostWrite<double> source_data_host_write(source_sinxcosy_node);
     Omega_h::HostWrite<double> interpolated_data_hwrite(
@@ -272,7 +272,7 @@ TEST_CASE("MLSPointCloudInterpolation honors provided dimension in eval")
   auto source_values_view = pcms::make_array_view(source_values);
   auto output_values_view = pcms::make_array_view(output_values);
 
-  auto mls = pcms::MLSPointCloudInterpolation(
+  auto mls = pcms::transfer::MLSPointCloudInterpolation(
     source_points_view, target_points_view, 3, 2.5, 10, 1, true, 0.0, 5.0);
 
   REQUIRE_NOTHROW(mls.eval(source_values_view, output_values_view));

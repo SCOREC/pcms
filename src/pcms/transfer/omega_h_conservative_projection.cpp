@@ -2,19 +2,20 @@
 #include "pcms/transfer/conservative_projection_solver.hpp"
 #include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
 #include "pcms/transfer/omega_h_mass_integrator.hpp"
-#include "pcms/utility/arrays.h"
+#include "pcms/utility/arrays.hpp"
 #include <Omega_h_array.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
 {
 
-void CheckApplyCompatible(const Field<Real>& source, const Field<Real>& target,
-                          const OmegaHLagrangeLayout& source_layout,
-                          const OmegaHLagrangeLayout& target_layout)
+void CheckApplyCompatible(
+  const Field<Real>& source, const Field<Real>& target,
+  const pcms::backend::omega_h::OmegaHLagrangeLayout& source_layout,
+  const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout)
 {
   if (&source.GetLayout() != &source_layout) {
     throw pcms_error(
@@ -37,9 +38,11 @@ void CheckApplyCompatible(const Field<Real>& source, const Field<Real>& target,
 OmegaHConservativeProjection::OmegaHConservativeProjection(
   const FunctionSpace& source_space, const FunctionSpace& target_space,
   MassMatrixType mass_matrix_type)
-  : source_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
+  : source_layout_(std::dynamic_pointer_cast<
+                   const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       source_space.GetLayout())),
-    target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
+    target_layout_(std::dynamic_pointer_cast<
+                   const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       target_space.GetLayout()))
 {
   // The space-based constructor lets the integrator reuse the source space's
@@ -95,4 +98,4 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
   target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

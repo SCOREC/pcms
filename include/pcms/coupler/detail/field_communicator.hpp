@@ -1,0 +1,77 @@
+#ifndef PCMS_COUPLER_DETAIL_FIELD_COMMUNICATOR_HPP
+#define PCMS_COUPLER_DETAIL_FIELD_COMMUNICATOR_HPP
+
+#include "pcms/coupler/coupler_types.hpp"
+#include "pcms/coupler/detail/field_layout_communicator.hpp"
+#include "pcms/field/field.hpp"
+#include "pcms/field/field_layout.hpp"
+#include "pcms/coupler/detail/field_serializer.hpp"
+#include "pcms/utility/detail/profile.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/inclusive_scan.hpp"
+#include "pcms/utility/arrays.hpp"
+#include <redev.h>
+#include <memory>
+
+namespace pcms::coupler
+{
+
+template <typename T>
+class FieldCommunicator
+{
+public:
+  FieldCommunicator(const std::string& name,
+                    FieldLayoutCommunicator& layout_comm, Field<T>& field)
+    : comm_buffer_{}, layout_comm_(layout_comm), field_(field)
+  {
+    PCMS_ALWAYS_ASSERT(layout_comm.GetLayout().GetName() ==
+                       field.GetLayout().GetName());
+    // The exchange plan is per DOF holder; the field payload carries
+    // num_components values per holder, so the buffer is scaled accordingly.
+    comm_buffer_.resize(
+      layout_comm.GetMsgSize() *
+      static_cast<size_t>(field.GetLayout().GetNumComponents()));
+    comm_ =
+      layout_comm_.GetChannel().CreateComm<T>(name, layout_comm.GetMPIComm());
+    layout_comm_.SetOutMessageLayout<T>(comm_);
+  }
+
+  void Send(Mode mode = Mode::Synchronous)
+  {
+    PCMS_FUNCTION_TIMER;
+    PCMS_ALWAYS_ASSERT(layout_comm_.GetChannel().InSendCommunicationPhase());
+    auto buffer = make_array_view(comm_buffer_);
+    serializer_.Serialize(field_, buffer, layout_comm_.GetPermutationArray());
+    comm_.Send(buffer.data_handle(), detail::ToRedev(mode));
+  }
+
+  void Receive()
+  {
+    PCMS_FUNCTION_TIMER;
+    PCMS_ALWAYS_ASSERT(layout_comm_.GetChannel().InReceiveCommunicationPhase());
+    // Current implementation requires that Receive is always called in Sync
+    // mode because we make an immediate call to deserialize after a call to
+    // receive.
+    auto data = comm_.Recv(redev::Mode::Synchronous);
+    serializer_.Deserialize(field_, make_const_array_view(data),
+                            layout_comm_.GetPermutationArray());
+  }
+
+private:
+  std::vector<T> comm_buffer_;
+  redev::BidirectionalComm<T> comm_;
+  FieldLayoutCommunicator& layout_comm_;
+  Field<T>& field_;
+  FieldSerializer<T> serializer_;
+};
+
+template <typename T>
+using FieldCommunicator2PtrT = std::unique_ptr<FieldCommunicator<T>>;
+
+using FieldCommunicator2Ptr =
+  std::variant<FieldCommunicator2PtrT<int8_t>, FieldCommunicator2PtrT<int32_t>,
+               FieldCommunicator2PtrT<int64_t>, FieldCommunicator2PtrT<float>,
+               FieldCommunicator2PtrT<double>>;
+} // namespace pcms::coupler
+
+#endif // PCMS_COUPLER_DETAIL_FIELD_COMMUNICATOR_HPP

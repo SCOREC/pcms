@@ -2,8 +2,8 @@
 #include "pcms/transfer/mass_matrix_integrator.hpp"
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/memory_spaces.hpp"
 #include <KokkosController.hpp>
 #include <MeshField.hpp>
 #include <MeshField_Element.hpp>
@@ -11,7 +11,7 @@
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
@@ -88,9 +88,10 @@ void FillP1MassCooPattern(
 // Assembles the target-space mass matrix for spatial dimension Dim (triangles
 // for Dim==2, tetrahedra for Dim==3) and returns the owned PETSc matrix.
 template <int Dim>
-Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
-                              const OmegaHLagrangeLayout& target_layout,
-                              MassMatrixType mass_type)
+Mat BuildOmegaHMassMatrixImpl(
+  Omega_h::Mesh& mesh,
+  const pcms::backend::omega_h::OmegaHLagrangeLayout& target_layout,
+  MassMatrixType mass_type)
 {
   const auto global_to_local = target_layout.GetGlobalToLocalPermutation();
   const PetscInt num_dofs =
@@ -178,14 +179,16 @@ Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
 
 OmegaHMassIntegrator::OmegaHMassIntegrator(const FunctionSpace& target_space,
                                            MassMatrixType mass_type)
-  : OmegaHMassIntegrator(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
+  : OmegaHMassIntegrator(std::dynamic_pointer_cast<
+                           const pcms::backend::omega_h::OmegaHLagrangeLayout>(
                            target_space.GetLayout()),
                          target_space.GetCoordinateSystem(), mass_type)
 {
 }
 
 OmegaHMassIntegrator::OmegaHMassIntegrator(
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    target_layout,
   std::shared_ptr<const CoordinateSystem> coordinate_system,
   MassMatrixType mass_type)
 {
@@ -225,4 +228,4 @@ std::unique_ptr<BilinearFormIntegrator> BuildOmegaHMassIntegrator(
   return std::make_unique<OmegaHMassIntegrator>(target_space, mass_type);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

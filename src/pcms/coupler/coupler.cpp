@@ -1,10 +1,21 @@
 #include "pcms/coupler/coupler.hpp"
+#include "pcms/utility/types.hpp"
+#include "redev.h"
+#include <type_traits>
 
 namespace pcms
 {
+// pcms and redev exchange data without conversion
+static_assert(std::is_same_v<Real, redev::Real>,
+              "pcms and redev real types must match");
+static_assert(std::is_same_v<LO, redev::LO>,
+              "pcms and redev LO types must match");
+static_assert(std::is_same_v<GO, redev::GO>,
+              "pcms and redev GO types must match");
 
-FieldLayoutCommunicator& ApplicationComm::GetOrCreateLayoutCommunicator(
-  const FieldLayout& layout, bool participates)
+pcms::coupler::FieldLayoutCommunicator&
+ApplicationComm::GetOrCreateLayoutCommunicator(const FieldLayout& layout,
+                                               bool participates)
 {
   PCMS_FUNCTION_TIMER;
   const std::string& name = layout.GetName();
@@ -38,10 +49,10 @@ FieldLayoutCommunicator& ApplicationComm::GetOrCreateLayoutCommunicator(
   }
 
   auto [it2, inserted] = field_layout_communicators_.emplace(
-    name, std::make_unique<FieldLayoutCommunicator>(
+    name, std::make_unique<pcms::coupler::FieldLayoutCommunicator>(
             name, mpi_comm_subset, redev_, channel_, layout,
-            std::make_unique<GenericFieldExchangePlanner>(), own_mpi_comm,
-            overlap_mask));
+            std::make_unique<pcms::coupler::GenericFieldExchangePlanner>(),
+            own_mpi_comm, overlap_mask));
   return *it2->second;
 }
 

@@ -68,7 +68,7 @@ try:
 except ImportError:
     logger.warning(
         "the pcms Python module is not importable; the Python API page will "
-        "be empty. Build PCMS with -DPCMS_ENABLE_Python=ON and add it to "
+        "be empty. Build PCMS with -DPCMS_ENABLE_PYTHON=ON and add it to "
         "PYTHONPATH."
     )
     autodoc_mock_imports = ["pcms"]

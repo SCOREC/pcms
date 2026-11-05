@@ -3,9 +3,9 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array_ops.hpp>
 #include <pcms/field/evaluator/mls_interpolation.hpp>
-#include <pcms/localization/adj_search.hpp>
-#include <pcms/utility/mesh_geometry.h>
-#include "numpy_array_transform.h"
+#include <pcms/backends/omega_h/adj_search.hpp>
+#include <pcms/utility/mesh_geometry.hpp>
+#include "pcms/pythonapi/numpy_array_transform.hpp"
 
 namespace py = pybind11;
 
@@ -49,7 +49,7 @@ py::array ShapeLike(py::array_t<double> vertex_values,
 py::array compute_entity_centroids(Omega_h::Mesh& mesh, Omega_h::Int entity_dim)
 {
   const py::ssize_t dim = mesh.dim();
-  return ToNumpy(pcms::get_entity_centroids(mesh, entity_dim))
+  return ToNumpy(pcms::utility::get_entity_centroids(mesh, entity_dim))
     .reshape(std::vector<py::ssize_t>{mesh.nents(entity_dim), dim});
 }
 
@@ -128,7 +128,8 @@ py::array map_entity_field_to_vertices_mls(
   const Omega_h::LO ncomps = EntityComponents(entity_field_values, nentities);
 
   // Source coordinates are the entity centroids
-  auto source_coordinates = pcms::get_entity_centroids(mesh, entity_dim);
+  auto source_coordinates =
+    pcms::utility::get_entity_centroids(mesh, entity_dim);
 
   // Get target coordinates (vertex coordinates)
   auto target_coordinates = mesh.coords();
@@ -148,7 +149,8 @@ py::array map_entity_field_to_vertices_mls(
   Omega_h::Write<Omega_h::Real> radii2_write(num_vertices, 1.0);
 
   // Create SupportResults
-  SupportResults support{supports_ptr, supports_idx, radii2_write};
+  pcms::localization::SupportResults support{supports_ptr, supports_idx,
+                                             radii2_write};
 
   // Convert entity field values to Omega_h array
   auto entity_field_omega_h = NumpyToOmegaHRead(entity_field_values);
@@ -162,7 +164,7 @@ py::array map_entity_field_to_vertices_mls(
         component_values[i] = entity_field_omega_h[i * ncomps + c];
       });
 
-    auto interpolated_values = pcms::mls_interpolation(
+    auto interpolated_values = pcms::field::mls_interpolation(
       Omega_h::read(component_values), source_coordinates, target_coordinates,
       support, dim, interp_degree, pcms::RadialBasisFunction::NO_OP, lambda_reg,
       1e-6, // tol
@@ -181,24 +183,21 @@ py::array map_entity_field_to_vertices_mls(
 
 void bind_mesh_utilities_module(py::module& m)
 {
-  m.def("compute_entity_centroids", &compute_entity_centroids, py::arg("mesh"),
-        py::arg("entity_dim"),
-        "Compute centroids of mesh entities (faces or elements). "
-        "Returns an array of shape (nentities, dim).");
-
-  // Backward compatibility alias
-  m.def("compute_entity_centroids_few", &compute_entity_centroids,
-        py::arg("mesh"), py::arg("entity_dim"),
-        "Compute entity centroids using gather_verts/gather_vectors/average. "
-        "Returns an array of shape (nentities, dim). "
-        "Note: This is an alias for compute_entity_centroids.");
-
   m.def(
     "patch_size_for_degree", &patch_size_for_degree, py::arg("interp_degree"),
     "Get recommended minimum patch size for given MLS interpolation degree. "
     "Returns 4 for degree 1, 10 for degree 2, and 12 for degree 3.");
 
-  m.def(
+  // Omega_h backend entry points (the submodule is created in
+  // bind_create_field_module, which runs first)
+  auto omega_h_module = m.attr("backend").attr("omega_h").cast<py::module>();
+
+  omega_h_module.def("compute_entity_centroids", &compute_entity_centroids,
+                     py::arg("mesh"), py::arg("entity_dim"),
+                     "Compute centroids of mesh entities (faces or elements). "
+                     "Returns an array of shape (nentities, dim).");
+
+  omega_h_module.def(
     "map_entity_field_to_vertices_average",
     &map_entity_field_to_vertices_average, py::arg("mesh"),
     py::arg("entity_field_values"), py::arg("entity_dim"),
@@ -214,7 +213,7 @@ void bind_mesh_utilities_module(py::module& m)
     "  numpy array of field values at vertices (shape: (nverts,) or "
     "(nverts, ncomps), matching entity_field_values)");
 
-  m.def(
+  omega_h_module.def(
     "map_entity_field_to_vertices_mls", &map_entity_field_to_vertices_mls,
     py::arg("mesh"), py::arg("entity_field_values"), py::arg("entity_dim"),
     py::arg("interp_degree") = 1, py::arg("min_support") = -1,

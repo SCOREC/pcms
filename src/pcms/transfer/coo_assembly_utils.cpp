@@ -1,6 +1,6 @@
 #include "pcms/transfer/coo_assembly_utils.hpp"
 
-namespace pcms
+namespace pcms::transfer
 {
 namespace
 {
@@ -90,4 +90,4 @@ PetscErrorCode build_linear_triangle_coo_rows_cols(Omega_h::Mesh& mesh,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

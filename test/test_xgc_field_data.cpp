@@ -1,15 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
-#include "pcms/field/data/xgc.h"
-#include "pcms/coupler/overlap_mask.h"
-#include "pcms/field/function_space/xgc.h"
+#include "pcms/backends/xgc/field_data.hpp"
+#include "pcms/coupler/overlap_mask.hpp"
+#include "pcms/backends/xgc/field_factory.hpp"
 #include <numeric>
 
 namespace
 {
 
-pcms::ReverseClassificationVertex create_dummy_rc(int size)
+pcms::backend::xgc::ReverseClassificationVertex create_dummy_rc(int size)
 {
-  pcms::ReverseClassificationVertex rc;
+  pcms::backend::xgc::ReverseClassificationVertex rc;
   for (int i = 0; i < size; ++i) {
     if (i % 4 == 0) {
       rc.Insert({0, 0}, i);
@@ -31,7 +31,7 @@ TEST_CASE("XGC FieldLayout owns and classifies every entry")
 {
   static constexpr int data_size = 16;
   auto rc = create_dummy_rc(data_size);
-  pcms::XGCFieldLayout layout(rc, data_size);
+  pcms::backend::xgc::XGCFieldLayout layout(rc, data_size);
 
   auto owned = layout.GetOwnedHost();
   auto gids = layout.GetGidsHost();
@@ -53,12 +53,12 @@ TEST_CASE("XGCFieldFactory creates fields and rejects evaluator access")
 {
   static constexpr int data_size = 16;
   auto rc = create_dummy_rc(data_size);
-  pcms::XGCFieldFactory function_space(rc, data_size);
+  pcms::backend::xgc::XGCFieldFactory function_space(rc, data_size);
 
   std::vector<pcms::Real> data(data_size);
   std::iota(data.begin(), data.end(), 0.0);
   auto field = function_space.CreateField<pcms::Real>(
-    "", std::make_unique<pcms::XGCFieldData<pcms::Real>>(
+    "", std::make_unique<pcms::backend::xgc::XGCFieldData<pcms::Real>>(
           function_space.GetXGCLayout(), pcms::ValueBasis{},
           pcms::make_array_view(data)));
 

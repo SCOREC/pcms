@@ -1,0 +1,2 @@
+# namespace-scope names declared by the files that move to pcms::discretization
+EmptyDiscretization

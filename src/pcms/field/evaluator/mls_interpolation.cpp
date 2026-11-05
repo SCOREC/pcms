@@ -3,7 +3,7 @@
 #include <Kokkos_MathematicalFunctions.hpp>
 #include <cmath>
 
-namespace pcms
+namespace pcms::field
 {
 
 // 'a' is a shape parameter
@@ -167,9 +167,10 @@ struct RBF_CUBIC
 
 Omega_h::Write<Omega_h::Real> mls_interpolation(
   const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
-  const Omega_h::Reals target_coordinates, const SupportResults& support,
-  const Omega_h::LO& dim, const Omega_h::LO& degree, RadialBasisFunction bf,
-  double lambda, double tol, double decay_factor)
+  const Omega_h::Reals target_coordinates,
+  const pcms::localization::SupportResults& support, const Omega_h::LO& dim,
+  const Omega_h::LO& degree, RadialBasisFunction bf, double lambda, double tol,
+  double decay_factor)
 {
   const auto nvertices_target = target_coordinates.size() / dim;
   Omega_h::Write<Omega_h::Real> interpolated_values(
@@ -259,9 +260,9 @@ int calculate_basis_vector_size(const IntHostMatView& array)
   return sum;
 }
 
-int calculate_scratch_shared_size(const SupportResults& support,
-                                  const int nvertices_target, int basis_size,
-                                  int dim)
+int calculate_scratch_shared_size(
+  const pcms::localization::SupportResults& support, const int nvertices_target,
+  int basis_size, int dim)
 {
   IntDeviceVecView shmem_each_team("stores the size required for each team",
                                    nvertices_target);
@@ -305,4 +306,4 @@ int calculate_scratch_shared_size(const SupportResults& support,
 }
 
 } // namespace detail
-} // namespace pcms
+} // namespace pcms::field

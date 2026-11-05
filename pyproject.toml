@@ -7,7 +7,7 @@ name = "pcms"
 version = "0.4.0"
 
 [tool.scikit-build.cmake.define]
-PCMS_ENABLE_Python = true
+PCMS_ENABLE_PYTHON = true
 
 [tool.pytest.ini_options]
 testpaths = ["test/python"]

@@ -1,0 +1,31 @@
+#ifndef PCMS_UTILITY_BOUNDING_BOX_HPP
+#define PCMS_UTILITY_BOUNDING_BOX_HPP
+#include "pcms/utility/types.hpp"
+#include <Kokkos_Core.hpp>
+#include <array>
+namespace pcms
+{
+
+template <int DIM = 2>
+struct AABBox
+{
+  static constexpr int dim = DIM;
+  Kokkos::Array<Real, dim> center;
+  // half length of bounding box
+  Kokkos::Array<Real, dim> half_width;
+};
+
+template <int dim>
+KOKKOS_INLINE_FUNCTION bool intersects(const AABBox<dim>& a,
+                                       const AABBox<dim>& b)
+{
+  for (int i = 0; i < dim; ++i) {
+    if (std::abs(a.center[i] - b.center[i]) >
+        (a.half_width[i] + b.half_width[i]))
+      return false;
+  }
+  return true;
+}
+} // namespace pcms
+
+#endif // PCMS_UTILITY_BOUNDING_BOX_HPP

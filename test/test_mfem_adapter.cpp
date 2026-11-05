@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <pcms/coupler/field_serializer.h>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/data/mfem.hpp>
-#include <pcms/field/function_space/mfem.hpp>
-#include <pcms/field/layout/mfem.hpp>
+#include <pcms/coupler/detail/field_serializer.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/backends/mfem/field_data.hpp>
+#include <pcms/backends/mfem/field_factory.hpp>
+#include <pcms/backends/mfem/layout.hpp>
 
 #include <mfem.hpp>
 
@@ -31,7 +31,8 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
 
   SECTION("layout reports vertex-scalar properties")
   {
-    pcms::MFEMLayout layout(pmesh, pfes, pcms::csys::Cartesian::Deferred());
+    pcms::backend::mfem::MFEMLayout layout(pmesh, pfes,
+                                           pcms::csys::Cartesian::Deferred());
 
     REQUIRE(layout.GetNumComponents() == 1);
     REQUIRE(layout.GetDimension() == 2);
@@ -63,8 +64,8 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     mfem::FunctionCoefficient coeff(LinearField);
     gf.ProjectCoefficient(coeff);
 
-    pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                   pcms::csys::Cartesian::Deferred(), "mfem");
+    pcms::backend::mfem::MFEMFieldFactory factory(
+      pmesh, pfes, gf, pcms::csys::Cartesian::Deferred(), "mfem");
     auto field = factory.CreateField<pcms::Real>("data");
     const auto& layout = field.GetLayout();
 
@@ -109,8 +110,8 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     mfem::FunctionCoefficient coeff(LinearField);
     gf.ProjectCoefficient(coeff);
 
-    pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                   pcms::csys::Cartesian::Deferred(), "mfem");
+    pcms::backend::mfem::MFEMFieldFactory factory(
+      pmesh, pfes, gf, pcms::csys::Cartesian::Deferred(), "mfem");
     auto field = factory.CreateField<pcms::Real>("source");
     const auto& layout = field.GetLayout();
 
@@ -123,7 +124,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     }
     Kokkos::View<pcms::Real*, pcms::HostMemorySpace> buffer("buffer", n);
 
-    pcms::FieldSerializer<pcms::Real> serializer;
+    pcms::coupler::FieldSerializer<pcms::Real> serializer;
     serializer.Serialize(field, pcms::make_array_view(buffer),
                          pcms::make_const_array_view(perm));
 
@@ -131,7 +132,8 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     mfem::ParGridFunction gf2(&pfes);
     gf2 = 0.0;
     auto field2 = factory.CreateField<pcms::Real>(
-      "target", std::make_unique<pcms::MFEMVertexFieldData>(pfes, gf2));
+      "target",
+      std::make_unique<pcms::backend::mfem::MFEMVertexFieldData>(pfes, gf2));
     serializer.Deserialize(field2, pcms::make_const_array_view(buffer),
                            pcms::make_const_array_view(perm));
 

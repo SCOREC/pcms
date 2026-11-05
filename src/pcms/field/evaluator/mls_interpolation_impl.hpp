@@ -13,12 +13,12 @@
 #include <KokkosBlas1_team_dot.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
 #include <pcms/field/evaluator/mls_interpolation.hpp>
-#include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
-#include <pcms/localization/adj_search.hpp>
-#include <pcms/utility/assert.h>
-#include <pcms/utility/profile.h>
-#include <pcms/field/evaluator/pcms_interpolator_view_utils.hpp>
-#include <pcms/field/evaluator/pcms_interpolator_logger.hpp>
+#include <pcms/field/evaluator/interpolator_aliases.hpp>
+#include <pcms/backends/omega_h/adj_search.hpp>
+#include <pcms/utility/assert.hpp>
+#include <pcms/utility/detail/profile.hpp>
+#include <pcms/field/evaluator/interpolator_view_utils.hpp>
+#include <pcms/field/evaluator/interpolator_logger.hpp>
 
 #include <KokkosBlas2_gemv.hpp>
 #include <KokkosBatched_SVD_Decl.hpp>
@@ -53,7 +53,7 @@ static constexpr int MAX_DIM = 6;
  *        3     | 1 | 3 |
  */
 
-namespace pcms
+namespace pcms::field
 {
 
 namespace detail
@@ -93,8 +93,9 @@ int calculate_basis_vector_size(const IntHostMatView& array);
  *
  * @return The scratch size
  */
-int calculate_scratch_shared_size(const SupportResults& support,
-                                  const int ntargets, int basis_size, int dim);
+int calculate_scratch_shared_size(
+  const pcms::localization::SupportResults& support, const int ntargets,
+  int basis_size, int dim);
 /**
  *
  * @brief Performs minmax normalization
@@ -399,10 +400,10 @@ template <typename Func>
 void mls_interpolation(RealConstDefaultRank1View source_values,
                        RealConstDefaultRank1View source_coordinates,
                        RealConstDefaultRank1View target_coordinates,
-                       const SupportResults& support, const Omega_h::LO& dim,
-                       const Omega_h::LO& degree, Func rbf_func,
-                       RealDefaultRank1View approx_target_values, double lambda,
-                       double tol)
+                       const pcms::localization::SupportResults& support,
+                       const Omega_h::LO& dim, const Omega_h::LO& degree,
+                       Func rbf_func, RealDefaultRank1View approx_target_values,
+                       double lambda, double tol)
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_invocable_r_v<double, Func, double, double>,
@@ -609,9 +610,9 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
 template <typename Func>
 Omega_h::Write<Omega_h::Real> mls_interpolation(
   const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
-  const Omega_h::Reals target_coordinates, const SupportResults& support,
-  const Omega_h::LO& dim, const Omega_h::LO& degree, Func rbf_func,
-  double lambda, double tol)
+  const Omega_h::Reals target_coordinates,
+  const pcms::localization::SupportResults& support, const Omega_h::LO& dim,
+  const Omega_h::LO& degree, Func rbf_func, double lambda, double tol)
 {
   const auto ntargets = target_coordinates.size() / dim;
 
@@ -637,6 +638,6 @@ Omega_h::Write<Omega_h::Real> mls_interpolation(
 }
 
 } // namespace detail
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_IMPL_HPP

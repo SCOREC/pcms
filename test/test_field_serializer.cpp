@@ -1,27 +1,27 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "pcms/configuration.h"
-#include "pcms/coupler/field_serializer.h"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/utility/arrays.h"
+#include "pcms/configuration.hpp"
+#include "pcms/coupler/detail/field_serializer.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/arrays.hpp"
 
 #include <memory>
 #include <numeric>
 #include <vector>
 
 #ifdef PCMS_ENABLE_OMEGA_H
-#include "field_test_utils.h"
-#include "pcms/field/function_space/lagrange.h"
+#include "field_test_utils.hpp"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/utility/uniform_grid.hpp"
 #include <Omega_h_library.hpp>
 #endif
 
 #ifdef PCMS_ENABLE_XGC
-#include "pcms/coupler/overlap_mask.h"
-#include "pcms/field/data/xgc.h"
-#include "pcms/field/function_space/xgc.h"
+#include "pcms/coupler/overlap_mask.hpp"
+#include "pcms/backends/xgc/field_data.hpp"
+#include "pcms/backends/xgc/field_factory.hpp"
 #endif
 
 namespace
@@ -46,7 +46,7 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
   std::vector<pcms::LO> permutation(num_dof);
   std::iota(permutation.begin(), permutation.end(), pcms::LO{0});
 
-  pcms::FieldSerializer<pcms::Real> serializer;
+  pcms::coupler::FieldSerializer<pcms::Real> serializer;
   REQUIRE(serializer.Serialize(field, pcms::make_array_view(buffer),
                                pcms::make_const_array_view(permutation)) ==
           static_cast<int>(num_values));
@@ -71,11 +71,14 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
 #endif
 
 #ifdef PCMS_ENABLE_XGC
-pcms::ReverseClassificationVertex CreateDummyReverseClassification(int size)
+pcms::backend::xgc::ReverseClassificationVertex
+CreateDummyReverseClassification(int size)
 {
-  pcms::ReverseClassificationVertex rc;
+  pcms::backend::xgc::ReverseClassificationVertex rc;
   for (int i = 0; i < size; ++i) {
-    rc.Insert(i % 4 == 0 ? pcms::DimID{0, 0} : pcms::DimID{0, 1}, i);
+    rc.Insert(i % 4 == 0 ? pcms::backend::xgc::DimID{0, 0}
+                         : pcms::backend::xgc::DimID{0, 1},
+              i);
   }
   return rc;
 }
@@ -93,16 +96,16 @@ TEST_CASE("Serializing an XGC field preserves inactive field entries")
 {
   static constexpr int data_size = 16;
   auto rc = CreateDummyReverseClassification(data_size);
-  pcms::XGCFieldFactory factory(rc, data_size);
+  pcms::backend::xgc::XGCFieldFactory factory(rc, data_size);
 
   std::vector<pcms::Real> data(data_size);
   std::iota(data.begin(), data.end(), 0.0);
   const auto original = data;
   auto field = factory.CreateField<pcms::Real>(
-    "", std::make_unique<pcms::XGCFieldData<pcms::Real>>(
+    "", std::make_unique<pcms::backend::xgc::XGCFieldData<pcms::Real>>(
           factory.GetXGCLayout(), pcms::ValueBasis{},
           pcms::make_array_view(data), MPI_COMM_SELF));
-  pcms::FieldSerializer<pcms::Real> serializer;
+  pcms::coupler::FieldSerializer<pcms::Real> serializer;
 
   // Entries outside the overlap region are not exchanged.
   const pcms::OverlapMask overlap_mask(InXGCOverlap);
@@ -152,7 +155,7 @@ TEST_CASE("FieldSerializer round-trips a polynomial-reconstruction field")
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
-  auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto space = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<pcms::HostMemorySpace>(
       pcms::csys::Cartesian::Deferred(), coords_view));
   auto field = space->CreateFunction<pcms::Real>();
@@ -171,7 +174,7 @@ TEST_CASE("FieldSerializer round-trips a uniform-grid field")
   grid.bot_left = {0.0, 0.0};
   grid.edge_length = {10.0, 10.0};
   grid.divisions = {3, 3};
-  auto space = pcms::LagrangeFunctionSpace::FromUniformGrid(
+  auto space = pcms::field::LagrangeFunctionSpace::FromUniformGrid(
     grid, 1, pcms::csys::Cartesian::Deferred());
   auto field = space->CreateFunction<pcms::Real>();
 
@@ -206,9 +209,9 @@ TEST_CASE("FieldSerializer round-trips a multi-component Omega_h field")
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
   constexpr int num_components = 3;
-  auto space = pcms::LagrangeFunctionSpace::FromMesh(
+  auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, num_components, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
   auto field = space->CreateFunction<pcms::Real>();
 
   const int num_dof = field.GetLayout().GetNumOwnedDofHolder();
@@ -246,7 +249,7 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
-  auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto space = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<pcms::HostMemorySpace>(
       pcms::csys::Cartesian::Deferred(), coords_view));
   auto field = space->CreateFunction<pcms::Real>();
@@ -260,7 +263,7 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   // the sender's overlap mask); they must keep their current values.
   std::vector<pcms::LO> permutation{0, -1, 1, -1};
   std::vector<pcms::Real> buffer{50.0, 70.0};
-  pcms::FieldSerializer<pcms::Real> serializer;
+  pcms::coupler::FieldSerializer<pcms::Real> serializer;
   serializer.Deserialize(field, pcms::make_const_array_view(buffer),
                          pcms::make_const_array_view(permutation));
 

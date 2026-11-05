@@ -1,4 +1,4 @@
-set(PCMS_TRANSIENT_HEADERS timestepper.hpp)
+set(PCMS_TRANSIENT_HEADERS ../../../include/pcms/transient/timestepper.hpp)
 set(PCMS_TRANSIENT_SOURCES timestepper.cpp)
 
 add_library(pcms_transient ${PCMS_TRANSIENT_SOURCES})
@@ -9,7 +9,7 @@ target_sources(
   pcms_transient
   PUBLIC FILE_SET transient
          TYPE HEADERS
-         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+         BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
          FILES ${PCMS_TRANSIENT_HEADERS})
 target_compile_features(pcms_transient PUBLIC cxx_std_20)
 target_link_libraries(pcms_transient PUBLIC pcms::utility)
@@ -30,4 +30,4 @@ install(
 install(
   EXPORT pcms_transient-targets
   NAMESPACE pcms::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+  DESTINATION ${PCMS_INSTALL_CMAKEDIR})

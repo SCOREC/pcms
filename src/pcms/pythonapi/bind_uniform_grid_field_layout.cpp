@@ -1,9 +1,10 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
-#include "numpy_array_transform.h"
-#include "pcms/field/layout/uniform_grid.h"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/pythonapi/numpy_array_transform.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
+#include "pcms/utility/uniform_grid.hpp"
+#include <Omega_h_vector.hpp>
 
 namespace py = pybind11;
 

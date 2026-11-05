@@ -1,13 +1,13 @@
 set(PCMS_COUPLER_HEADERS
-        coupler_types.h
-        field_communicator.hpp
-        coupler.hpp
-        field_serializer.h
-        field_layout_communicator.h
-        field_exchange_planner.h
-        partition.h
-        overlap_mask.h
-        global_communicator.h
+        ../../../include/pcms/coupler/coupler_types.hpp
+        ../../../include/pcms/coupler/detail/field_communicator.hpp
+        ../../../include/pcms/coupler/coupler.hpp
+        ../../../include/pcms/coupler/detail/field_serializer.hpp
+        ../../../include/pcms/coupler/detail/field_layout_communicator.hpp
+        ../../../include/pcms/coupler/detail/field_exchange_planner.hpp
+        partition.hpp
+        ../../../include/pcms/coupler/overlap_mask.hpp
+        ../../../include/pcms/coupler/detail/global_communicator.hpp
 )
 
 
@@ -21,11 +21,16 @@ add_library(pcms_coupler ${PCMS_COUPLER_SOURCES})
 set_target_properties(pcms_coupler PROPERTIES
         OUTPUT_NAME pcmscoupler
         EXPORT_NAME coupler)
-target_sources(pcms_coupler PUBLIC
-        FILE_SET coupler
-        TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
-        FILES ${PCMS_COUPLER_HEADERS})
+# Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(PCMS_COUPLER_HEADERS_PUBLIC ${PCMS_COUPLER_HEADERS})
+list(FILTER PCMS_COUPLER_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(PCMS_COUPLER_HEADERS_PRIVATE ${PCMS_COUPLER_HEADERS})
+list(FILTER PCMS_COUPLER_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_coupler
+  PUBLIC FILE_SET coupler TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${PCMS_COUPLER_HEADERS_PUBLIC}
+  PRIVATE ${PCMS_COUPLER_HEADERS_PRIVATE})
 add_library(pcms::coupler ALIAS pcms_coupler)
 target_compile_features(pcms_coupler PUBLIC cxx_std_20)
 
@@ -42,7 +47,7 @@ if(PCMS_ENABLE_OMEGA_H)
 endif()
 
 if (PCMS_ENABLE_MESHFIELDS)
-    target_link_libraries(pcms_coupler PUBLIC meshfields::meshfields)
+    target_link_libraries(pcms_coupler PRIVATE meshfields::meshfields)
 endif ()
 
 target_include_directories(pcms_coupler INTERFACE
@@ -62,4 +67,4 @@ install(
 install(
         EXPORT pcms_coupler-targets
         NAMESPACE pcms::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+        DESTINATION ${PCMS_INSTALL_CMAKEDIR})

@@ -1,16 +1,21 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.23)
 project(
   pcms
-  VERSION 0.3.0
+  VERSION 0.4.0
   LANGUAGES CXX)
 
 include(GNUInstallDirs)
+# The package config files go to <prefix>/lib/cmake/pcms on every platform.
+set(PCMS_INSTALL_CMAKEDIR "lib/cmake/pcms"
+    CACHE STRING "Install directory of the pcms CMake package files")
 include(CMakePackageConfigHelpers)
 
 # use _ROOT variables for configurations
 cmake_policy(SET CMP0074 NEW)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+# map options renamed in 0.4 (e.g. PCMS_ENABLE_Python) to their new names
+include(PcmsRenamedOptions)
 
 option(PCMS_ENABLE_ASAN "enable address sanitizer" OFF)
 set(PCMS_HAS_ASAN OFF)
@@ -41,13 +46,14 @@ endif()
 
 option(PCMS_ENABLE_SERVER "enable the coupling server implementation" ON)
 option(PCMS_ENABLE_CLIENT "enable the coupling client implementation" ON)
+option(PCMS_ENABLE_COUPLER "Build the coupler (requires redev and ADIOS2)" ON)
 
 option(PCMS_ENABLE_XGC "enable xgc field adapter" ON)
 option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
 option(PCMS_ENABLE_MFEM "enable MFEM field adapter" OFF)
 option(PCMS_ENABLE_TRANSIENT "Enable pcms transient module" ON)
 option(PCMS_ENABLE_C "Enable pcms C api" ON)
-option(PCMS_ENABLE_Python "Enable pcms Python api" OFF)
+option(PCMS_ENABLE_PYTHON "Enable pcms Python api" OFF)
 
 option(PCMS_ENABLE_PRINT "PCMS print statements enabled" ON)
 option(PCMS_ENABLE_EXAMPLES "Build the in-tree C++ examples" ON)
@@ -69,21 +75,25 @@ set(PCMS_PROJECTION_KSP_RTOL 1e-14 CACHE STRING
 set(PCMS_PROJECTION_KSP_ATOL 1e-50 CACHE STRING
     "Default absolute tolerance for the projection mass-matrix solve")
 
-option(PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"
+option(PCMS_PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"
        ${_pcms_link_petsc_static_default})
 
 # find package before fortran enabled, so we don't require the adios2 fortran
 # interfaces this is important because adios2 build with clang/gfortran is
 # broken
-find_package(redev 4.3.0 REQUIRED)
+if(PCMS_ENABLE_COUPLER)
+  find_package(redev 4.3.0 REQUIRED)
+elseif(PCMS_ENABLE_PYTHON)
+  message(FATAL_ERROR "PCMS_ENABLE_PYTHON requires PCMS_ENABLE_COUPLER")
+endif()
 
-if (PCMS_ENABLE_Python)
+if (PCMS_ENABLE_PYTHON)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif ()
 if(PCMS_ENABLE_C)
   enable_language(C)
-  option(PCMS_ENABLE_Fortran "Enable pcms fortran api" ON)
-  if(PCMS_ENABLE_Fortran)
+  option(PCMS_ENABLE_FORTRAN "Enable pcms fortran api" ON)
+  if(PCMS_ENABLE_FORTRAN)
     enable_language(Fortran)
   endif()
 endif()
@@ -130,7 +140,9 @@ if(PROJECT_IS_TOP_LEVEL)
   endif()
 endif()
 
-message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
+if(PCMS_ENABLE_COUPLER)
+  message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
+endif()
 if(PCMS_ENABLE_OMEGA_H)
   find_package(Omega_h REQUIRED VERSION 10)
   message(
@@ -148,7 +160,9 @@ if(PCMS_ENABLE_MFEM)
   endif()
 endif()
 # adios2 adds C and Fortran depending on how it was built
-find_package(ADIOS2 CONFIG 2.10.2 REQUIRED)
+if(PCMS_ENABLE_COUPLER)
+  find_package(ADIOS2 CONFIG 2.10.2 REQUIRED)
+endif()
 find_package(Kokkos CONFIG 4.5 REQUIRED)
 
 option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" ON)
@@ -179,33 +193,36 @@ if(NOT BUILD_TESTING)
     COMMENT "Test installed PUMIPic utilities")
 endif()
 
-add_executable(smoke_test test/test_ohClassPtn.cpp)
-target_link_libraries(smoke_test pcms::core test_support)
-# Uses a mesh vendored in test/data so the install check works without
-# PCMS_TEST_DATA_DIR (e.g. with BUILD_TESTING=OFF).
-dual_mpi_test(
-  TESTNAME
-  smoke_test
-  TIMEOUT
-  4
-  NAME1
-  rdv
-  EXE1
-  smoke_test
-  PROCS1
-  2
-  ARGS1
-  1
-  ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/
-  NAME2
-  app
-  EXE2
-  smoke_test
-  PROCS2
-  1
-  ARGS2
-  0
-  ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/)
+# the smoke test exercises the coupler
+if(TARGET pcms::coupler)
+  add_executable(smoke_test test/test_ohClassPtn.cpp)
+  target_link_libraries(smoke_test pcms::pcms test_support)
+  # Uses a mesh vendored in test/data so the install check works without
+  # PCMS_TEST_DATA_DIR (e.g. with BUILD_TESTING=OFF).
+  dual_mpi_test(
+    TESTNAME
+    smoke_test
+    TIMEOUT
+    4
+    NAME1
+    rdv
+    EXE1
+    smoke_test
+    PROCS1
+    2
+    ARGS1
+    1
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/
+    NAME2
+    app
+    EXE2
+    smoke_test
+    PROCS2
+    1
+    ARGS2
+    0
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/data/cyclone23/mesh.osh/)
+endif()
 
 if(BUILD_TESTING)
   add_subdirectory(test)

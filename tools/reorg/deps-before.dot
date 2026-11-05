@@ -1,0 +1,194 @@
+digraph "pcms" {
+node [
+  fontsize = "12"
+];
+subgraph clusterLegend {
+  label = "Legend";
+  color = black;
+  edge [ style = invis ];
+  legendNode0 [ label = "Executable", shape = egg ];
+  legendNode1 [ label = "Static Library", shape = octagon ];
+  legendNode2 [ label = "Shared Library", shape = doubleoctagon ];
+  legendNode3 [ label = "Module Library", shape = tripleoctagon ];
+  legendNode4 [ label = "Interface Library", shape = pentagon ];
+  legendNode5 [ label = "Object Library", shape = hexagon ];
+  legendNode6 [ label = "Unknown Library", shape = septagon ];
+  legendNode7 [ label = "Custom Target", shape = box ];
+  legendNode0 -> legendNode1 [ style = solid ];
+  legendNode0 -> legendNode2 [ style = solid ];
+  legendNode0 -> legendNode3;
+  legendNode1 -> legendNode4 [ label = "Interface", style = dashed ];
+  legendNode2 -> legendNode5 [ label = "Private", style = dotted ];
+  legendNode3 -> legendNode6 [ style = solid ];
+  legendNode0 -> legendNode7;
+}
+    "node0" [ label = "pcms_field\n(pcms::field)", shape = doubleoctagon ];
+    "node1" [ label = "Kokkos::kokkoskernels\n(KokkosKernels::all_libs)\n(KokkosKernels::kokkoskernels)", shape = doubleoctagon ];
+    "node2" [ label = "Kokkos::kokkos\n(Kokkos::all_libs)", shape = pentagon ];
+    "node3" [ label = "Kokkos::kokkosalgorithms", shape = doubleoctagon ];
+    "node4" [ label = "Kokkos::kokkoscore", shape = doubleoctagon ];
+    "node5" [ label = "OpenMP::OpenMP_CXX", shape = pentagon ];
+    "node6" [ label = "/usr/lib64/gcc/x86_64-suse-linux/13/libgomp.so", shape = septagon ];
+    "node5" -> "node6" [ style = dashed ] // OpenMP::OpenMP_CXX -> /usr/lib64/gcc/x86_64-suse-linux/13/libgomp.so
+    "node7" [ label = "/usr/lib64/libpthread.a", shape = septagon ];
+    "node5" -> "node7" [ style = dashed ] // OpenMP::OpenMP_CXX -> /usr/lib64/libpthread.a
+    "node4" -> "node5" [ style = dashed ] // Kokkos::kokkoscore -> OpenMP::OpenMP_CXX
+    "node8" [ label = "dl", shape = septagon ];
+    "node4" -> "node8" [ style = dashed ] // Kokkos::kokkoscore -> dl
+    "node3" -> "node4" [ style = dashed ] // Kokkos::kokkosalgorithms -> Kokkos::kokkoscore
+    "node2" -> "node3" [ style = dashed ] // Kokkos::kokkos -> Kokkos::kokkosalgorithms
+    "node9" [ label = "Kokkos::kokkoscontainers", shape = doubleoctagon ];
+    "node9" -> "node4" [ style = dashed ] // Kokkos::kokkoscontainers -> Kokkos::kokkoscore
+    "node2" -> "node9" [ style = dashed ] // Kokkos::kokkos -> Kokkos::kokkoscontainers
+    "node2" -> "node4" [ style = dashed ] // Kokkos::kokkos -> Kokkos::kokkoscore
+    "node10" [ label = "Kokkos::kokkossimd", shape = doubleoctagon ];
+    "node2" -> "node10" [ style = dashed ] // Kokkos::kokkos -> Kokkos::kokkossimd
+    "node1" -> "node2" [ style = dashed ] // Kokkos::kokkoskernels -> Kokkos::kokkos
+    "node0" -> "node1" [ style = dotted ] // pcms_field -> Kokkos::kokkoskernels
+    "node11" [ label = "Omega_h::omega_h", shape = doubleoctagon ];
+    "node12" [ label = "MPI::MPI_CXX", shape = pentagon ];
+    "node13" [ label = "/opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpi.so", shape = septagon ];
+    "node12" -> "node13" [ style = dashed ] // MPI::MPI_CXX -> /opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpi.so
+    "node14" [ label = "/opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpicxx.so", shape = septagon ];
+    "node12" -> "node14" [ style = dashed ] // MPI::MPI_CXX -> /opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpicxx.so
+    "node11" -> "node12" [ style = dashed ] // Omega_h::omega_h -> MPI::MPI_CXX
+    "node15" [ label = "Omega_h-Kokkos", shape = pentagon ];
+    "node15" -> "node2" [ style = dashed ] // Omega_h-Kokkos -> Kokkos::kokkos
+    "node11" -> "node15" [ style = dashed ] // Omega_h::omega_h -> Omega_h-Kokkos
+    "node16" [ label = "Omega_h-ZLIB", shape = pentagon ];
+    "node17" [ label = "ZLIB::ZLIB", shape = septagon ];
+    "node16" -> "node17" [ style = dashed ] // Omega_h-ZLIB -> ZLIB::ZLIB
+    "node11" -> "node16" [ style = dashed ] // Omega_h::omega_h -> Omega_h-ZLIB
+    "node0" -> "node11"  // pcms_field -> Omega_h::omega_h
+    "node18" [ label = "meshfields::meshfields", shape = doubleoctagon ];
+    "node19" [ label = "Cabana::Core", shape = pentagon ];
+    "node19" -> "node2" [ style = dashed ] // Cabana::Core -> Kokkos::kokkos
+    "node19" -> "node12" [ style = dashed ] // Cabana::Core -> MPI::MPI_CXX
+    "node18" -> "node19" [ style = dashed ] // meshfields::meshfields -> Cabana::Core
+    "node18" -> "node2" [ style = dashed ] // meshfields::meshfields -> Kokkos::kokkos
+    "node18" -> "node11" [ style = dashed ] // meshfields::meshfields -> Omega_h::omega_h
+    "node0" -> "node18"  // pcms_field -> meshfields::meshfields
+    "node20" [ label = "mfem", shape = doubleoctagon ];
+    "node21" [ label = "-Wl,-rpath -Wl,/opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib", shape = septagon ];
+    "node20" -> "node21" [ style = dashed ] // mfem -> -Wl,-rpath -Wl,/opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib
+    "node22" [ label = "/opt/software/linux-x86_64_v3/hypre-3.2.0-bqpag5omddy4brurswolc4ulqg66mikx/lib64/libHYPRE.so", shape = septagon ];
+    "node20" -> "node22" [ style = dashed ] // mfem -> /opt/software/linux-x86_64_v3/hypre-3.2.0-bqpag5omddy4brurswolc4ulqg66mikx/lib64/libHYPRE.so
+    "node23" [ label = "/opt/software/linux-x86_64_v3/metis-5.1.0-cvgy73kn3vhq4m4wgetebgwjsblfxz77/lib/libmetis.so", shape = septagon ];
+    "node20" -> "node23" [ style = dashed ] // mfem -> /opt/software/linux-x86_64_v3/metis-5.1.0-cvgy73kn3vhq4m4wgetebgwjsblfxz77/lib/libmetis.so
+    "node20" -> "node13" [ style = dashed ] // mfem -> /opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpi.so
+    "node20" -> "node14" [ style = dashed ] // mfem -> /opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpicxx.so
+    "node24" [ label = "/opt/software/linux-x86_64_v3/zlib-ng-2.3.3-ihl2h74e3fqqrg5j3f7jvxiezcnkhiq4/lib/libz.so", shape = septagon ];
+    "node20" -> "node24" [ style = dashed ] // mfem -> /opt/software/linux-x86_64_v3/zlib-ng-2.3.3-ihl2h74e3fqqrg5j3f7jvxiezcnkhiq4/lib/libz.so
+    "node0" -> "node20"  // pcms_field -> mfem
+    "node25" [ label = "pcms_discretization\n(pcms::discretization)", shape = doubleoctagon ];
+    "node25" -> "node2"  // pcms_discretization -> Kokkos::kokkos
+    "node25" -> "node11" [ style = dotted ] // pcms_discretization -> Omega_h::omega_h
+    "node26" [ label = "pcms_utility\n(pcms::utility)", shape = doubleoctagon ];
+    "node26" -> "node2"  // pcms_utility -> Kokkos::kokkos
+    "node26" -> "node11"  // pcms_utility -> Omega_h::omega_h
+    "node27" [ label = "perfstubs", shape = doubleoctagon ];
+    "node27" -> "node8" [ style = dashed ] // perfstubs -> dl
+    "node28" [ label = "m", shape = septagon ];
+    "node27" -> "node28" [ style = dashed ] // perfstubs -> m
+    "node26" -> "node27"  // pcms_utility -> perfstubs
+    "node25" -> "node26"  // pcms_discretization -> pcms_utility
+    "node0" -> "node25"  // pcms_field -> pcms_discretization
+    "node29" [ label = "pcms_localization\n(pcms::localization)", shape = doubleoctagon ];
+    "node29" -> "node2"  // pcms_localization -> Kokkos::kokkos
+    "node29" -> "node11"  // pcms_localization -> Omega_h::omega_h
+    "node29" -> "node25"  // pcms_localization -> pcms_discretization
+    "node29" -> "node26"  // pcms_localization -> pcms_utility
+    "node0" -> "node29"  // pcms_field -> pcms_localization
+    "node0" -> "node26"  // pcms_field -> pcms_utility
+    "node30" [ label = "pcms_transfer\n(pcms::transfer)", shape = doubleoctagon ];
+    "node30" -> "node11"  // pcms_transfer -> Omega_h::omega_h
+    "node31" [ label = "PETSc::PETSc", shape = pentagon ];
+    "node32" [ label = "petsc", shape = septagon ];
+    "node31" -> "node32" [ style = dashed ] // PETSc::PETSc -> petsc
+    "node30" -> "node31" [ style = dotted ] // pcms_transfer -> PETSc::PETSc
+    "node30" -> "node18" [ style = dotted ] // pcms_transfer -> meshfields::meshfields
+    "node33" [ label = "pcms_core\n(pcms::core)", shape = doubleoctagon ];
+    "node33" -> "node2"  // pcms_core -> Kokkos::kokkos
+    "node33" -> "node12"  // pcms_core -> MPI::MPI_CXX
+    "node34" [ label = "pcms_coupler\n(pcms::coupler)", shape = doubleoctagon ];
+    "node34" -> "node2"  // pcms_coupler -> Kokkos::kokkos
+    "node34" -> "node12"  // pcms_coupler -> MPI::MPI_CXX
+    "node34" -> "node11"  // pcms_coupler -> Omega_h::omega_h
+    "node34" -> "node18"  // pcms_coupler -> meshfields::meshfields
+    "node34" -> "node0"  // pcms_coupler -> pcms_field
+    "node34" -> "node26"  // pcms_coupler -> pcms_utility
+    "node34" -> "node27"  // pcms_coupler -> perfstubs
+    "node35" [ label = "redev::redev", shape = doubleoctagon ];
+    "node36" [ label = "MPI::MPI_C", shape = pentagon ];
+    "node36" -> "node13" [ style = dashed ] // MPI::MPI_C -> /opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpi.so
+    "node35" -> "node36" [ style = dashed ] // redev::redev -> MPI::MPI_C
+    "node37" [ label = "adios2::cxx11_mpi", shape = pentagon ];
+    "node38" [ label = "adios2::cxx_mpi", shape = doubleoctagon ];
+    "node38" -> "node12" [ style = dashed ] // adios2::cxx_mpi -> MPI::MPI_CXX
+    "node39" [ label = "adios2::cxx", shape = doubleoctagon ];
+    "node38" -> "node39" [ style = dashed ] // adios2::cxx_mpi -> adios2::cxx
+    "node37" -> "node38" [ style = dashed ] // adios2::cxx11_mpi -> adios2::cxx_mpi
+    "node35" -> "node37" [ style = dashed ] // redev::redev -> adios2::cxx11_mpi
+    "node35" -> "node27" [ style = dashed ] // redev::redev -> perfstubs
+    "node34" -> "node35"  // pcms_coupler -> redev::redev
+    "node33" -> "node34"  // pcms_core -> pcms_coupler
+    "node33" -> "node0"  // pcms_core -> pcms_field
+    "node33" -> "node29"  // pcms_core -> pcms_localization
+    "node33" -> "node26"  // pcms_core -> pcms_utility
+    "node33" -> "node27"  // pcms_core -> perfstubs
+    "node33" -> "node35"  // pcms_core -> redev::redev
+    "node30" -> "node33"  // pcms_transfer -> pcms_core
+    "node30" -> "node0"  // pcms_transfer -> pcms_field
+    "node30" -> "node29"  // pcms_transfer -> pcms_localization
+    "node40" [ label = "pcms", shape = tripleoctagon ];
+    "node40" -> "node2" [ style = dotted ] // pcms -> Kokkos::kokkos
+    "node40" -> "node36" [ style = dotted ] // pcms -> MPI::MPI_C
+    "node40" -> "node31" [ style = dotted ] // pcms -> PETSc::PETSc
+    "node41" [ label = "Python::Module", shape = pentagon ];
+    "node40" -> "node41" [ style = dotted ] // pcms -> Python::Module
+    "node40" -> "node18" [ style = dotted ] // pcms -> meshfields::meshfields
+    "node40" -> "node33" [ style = dotted ] // pcms -> pcms_core
+    "node40" -> "node30" [ style = dotted ] // pcms -> pcms_transfer
+    "node42" [ label = "pybind11::headers", shape = pentagon ];
+    "node43" [ label = "pybind11::pybind11_headers", shape = pentagon ];
+    "node42" -> "node43" [ style = dashed ] // pybind11::headers -> pybind11::pybind11_headers
+    "node40" -> "node42" [ style = dotted ] // pcms -> pybind11::headers
+    "node44" [ label = "pybind11::module", shape = pentagon ];
+    "node44" -> "node41" [ style = dashed ] // pybind11::module -> Python::Module
+    "node45" [ label = "pybind11::pybind11", shape = pentagon ];
+    "node45" -> "node42" [ style = dashed ] // pybind11::pybind11 -> pybind11::headers
+    "node46" [ label = "pybind11::python_headers", shape = pentagon ];
+    "node45" -> "node46" [ style = dashed ] // pybind11::pybind11 -> pybind11::python_headers
+    "node44" -> "node45" [ style = dashed ] // pybind11::module -> pybind11::pybind11
+    "node40" -> "node44" [ style = dotted ] // pcms -> pybind11::module
+    "node47" [ label = "pcms_capi\n(pcms::capi)", shape = pentagon ];
+    "node48" [ label = "pcms_capi_core\n(pcms::capi::core)", shape = doubleoctagon ];
+    "node48" -> "node36"  // pcms_capi_core -> MPI::MPI_C
+    "node48" -> "node33" [ style = dotted ] // pcms_capi_core -> pcms_core
+    "node47" -> "node48" [ style = dashed ] // pcms_capi -> pcms_capi_core
+    "node49" [ label = "pcms_capi_transfer\n(pcms::capi::transfer)", shape = doubleoctagon ];
+    "node49" -> "node36"  // pcms_capi_transfer -> MPI::MPI_C
+    "node49" -> "node30" [ style = dotted ] // pcms_capi_transfer -> pcms_transfer
+    "node47" -> "node49" [ style = dashed ] // pcms_capi -> pcms_capi_transfer
+    "node50" [ label = "pcms_fortranapi\n(pcms::fortranapi)", shape = pentagon ];
+    "node51" [ label = "pcms_fortranapi_core\n(pcms::fortranapi::core)", shape = doubleoctagon ];
+    "node51" -> "node2"  // pcms_fortranapi_core -> Kokkos::kokkos
+    "node51" -> "node48" [ style = dotted ] // pcms_fortranapi_core -> pcms_capi_core
+    "node50" -> "node51" [ style = dashed ] // pcms_fortranapi -> pcms_fortranapi_core
+    "node52" [ label = "pcms_fortranapi_transfer\n(pcms::fortranapi::transfer)", shape = doubleoctagon ];
+    "node52" -> "node2"  // pcms_fortranapi_transfer -> Kokkos::kokkos
+    "node52" -> "node49" [ style = dotted ] // pcms_fortranapi_transfer -> pcms_capi_transfer
+    "node50" -> "node52" [ style = dashed ] // pcms_fortranapi -> pcms_fortranapi_transfer
+    "node53" [ label = "pcms_pcms", shape = pentagon ];
+    "node53" -> "node47" [ style = dashed ] // pcms_pcms -> pcms_capi
+    "node53" -> "node33" [ style = dashed ] // pcms_pcms -> pcms_core
+    "node53" -> "node50" [ style = dashed ] // pcms_pcms -> pcms_fortranapi
+    "node53" -> "node30" [ style = dashed ] // pcms_pcms -> pcms_transfer
+    "node54" [ label = "pcms_transient\n(pcms::transient)", shape = doubleoctagon ];
+    "node54" -> "node26"  // pcms_transient -> pcms_utility
+    "node53" -> "node54" [ style = dashed ] // pcms_pcms -> pcms_transient
+    "node55" [ label = "MPI::MPI_Fortran", shape = pentagon ];
+    "node55" -> "node13" [ style = dashed ] // MPI::MPI_Fortran -> /opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpi.so
+    "node56" [ label = "/opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpifort.so", shape = septagon ];
+    "node55" -> "node56" [ style = dashed ] // MPI::MPI_Fortran -> /opt/software/linux-x86_64_v3/mpich-5.0.2-d2527v4agb4p5odc43zhqsyuwprgiczd/lib/libmpifort.so
+}

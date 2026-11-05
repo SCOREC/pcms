@@ -5,11 +5,11 @@
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/field/layout/omega_h_lagrange.h>
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/backends/omega_h/lagrange_layout.hpp>
 #include <pcms/transfer/mass_matrix_integrator.hpp>
 #include <pcms/transfer/omega_h_mass_integrator.hpp>
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 #include <KokkosController.hpp>
 #include <MeshField.hpp>
 #include <MeshField_Config.hpp>
@@ -18,8 +18,8 @@
 #include <map>
 #include <utility>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -68,12 +68,12 @@ std::map<std::pair<pcms::GO, pcms::GO>, pcms::Real> BuildReferenceMassMap(
 #else
   MeshField::FieldElement coordFe(mesh.nelems(), coordField.field, shp, map);
 #endif
-  auto elm_mass_dev = buildElementMassMatrix(mesh, coordFe);
+  auto elm_mass_dev = pcms::transfer::buildElementMassMatrix(mesh, coordFe);
   auto elm_mass_host =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, elm_mass_dev);
 
-  const auto layout =
-    std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(space.GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space.GetLayout());
   REQUIRE(layout != nullptr);
   const auto faces2nodes_dev = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
   const auto faces2nodes = Omega_h::HostRead(faces2nodes_dev);
@@ -111,7 +111,7 @@ TEST_CASE(
 
   const auto ref = BuildReferenceMassMap(mesh, *space);
 
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
+  auto integrator = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   Mat mat = integrator->GetMatrix();
 
   for (const auto& [key, ref_val] : ref) {
@@ -137,13 +137,12 @@ TEST_CASE("OmegaHMassIntegrator: row sums match lumped mass",
 
   auto space = pcms::test::MakeP1Space(mesh);
 
-  const auto layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
-      space->GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space->GetLayout());
   const auto& gids = layout->GetGidsHost();
   const int nverts = mesh.nverts();
 
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
+  auto integrator = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   Mat mat = integrator->GetMatrix();
 
   // Sum all row sums.
@@ -177,19 +176,18 @@ TEST_CASE("OmegaHMassIntegrator: lumped diagonal equals consistent row sums",
   Omega_h::Library lib;
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
 
-  auto space = pcms::LagrangeFunctionSpace::FromMesh(
+  auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 
-  const auto layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
-      space->GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space->GetLayout());
   const auto& gids = layout->GetGidsHost();
   const int nverts = mesh.nverts();
 
-  auto consistent = pcms::BuildOmegaHMassIntegrator(*space);
-  auto lumped =
-    pcms::BuildOmegaHMassIntegrator(*space, pcms::MassMatrixType::Lumped);
+  auto consistent = pcms::transfer::BuildOmegaHMassIntegrator(*space);
+  auto lumped = pcms::transfer::BuildOmegaHMassIntegrator(
+    *space, pcms::MassMatrixType::Lumped);
   CHECK_FALSE(consistent->IsDiagonal());
   CHECK(lumped->IsDiagonal());
   Mat consistent_mat = consistent->GetMatrix();
@@ -237,13 +235,13 @@ TEST_CASE("OmegaHMassIntegrator: P0 lumped equals consistent",
   Omega_h::Library lib;
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
 
-  auto space = pcms::LagrangeFunctionSpace::FromMesh(
+  auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 0, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 
-  auto consistent = pcms::BuildOmegaHMassIntegrator(*space);
-  auto lumped =
-    pcms::BuildOmegaHMassIntegrator(*space, pcms::MassMatrixType::Lumped);
+  auto consistent = pcms::transfer::BuildOmegaHMassIntegrator(*space);
+  auto lumped = pcms::transfer::BuildOmegaHMassIntegrator(
+    *space, pcms::MassMatrixType::Lumped);
   CHECK(consistent->IsDiagonal());
   CHECK(lumped->IsDiagonal());
   Mat consistent_mat = consistent->GetMatrix();
@@ -251,9 +249,8 @@ TEST_CASE("OmegaHMassIntegrator: P0 lumped equals consistent",
 
   const auto elem_areas = Omega_h::measure_elements_real(&mesh);
   const auto elem_areas_h = Omega_h::HostRead<Omega_h::Real>(elem_areas);
-  const auto layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
-      space->GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space->GetLayout());
   const auto& gids = layout->GetGidsHost();
 
   for (int e = 0; e < mesh.nelems(); ++e) {
@@ -278,27 +275,27 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
 
   SECTION("multi-component space throws")
   {
-    auto space = pcms::LagrangeFunctionSpace::FromMesh(
+    auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
-      pcms::LagrangeFunctionSpace::Backend::OmegaH);
-    REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
+      pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHMassIntegrator(*space));
   }
 
   SECTION("non-Cartesian coordinate system throws")
   {
-    auto space = pcms::LagrangeFunctionSpace::FromMesh(
+    auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
-      pcms::LagrangeFunctionSpace::Backend::OmegaH);
-    REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
+      pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHMassIntegrator(*space));
   }
 
   SECTION("distinct cartesian-kind system throws")
   {
     const std::shared_ptr<const pcms::CoordinateSystem> other =
       std::make_shared<OtherCartesian2>();
-    auto space = pcms::LagrangeFunctionSpace::FromMesh(
+    auto space = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 1, other, "global",
-      pcms::LagrangeFunctionSpace::Backend::OmegaH);
-    REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
+      pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
+    REQUIRE_THROWS(pcms::transfer::BuildOmegaHMassIntegrator(*space));
   }
 }

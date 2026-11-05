@@ -1,16 +1,16 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP
 #define PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP
 
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include "pcms/transfer/monte_carlo_sampling.hpp"
 #include <Kokkos_Core.hpp>
 #include <cstdint>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Monte Carlo RHS integrator for conservative L2 projection onto order-1
@@ -35,7 +35,8 @@ public:
                                 MonteCarloSampling sampling,
                                 uint64_t seed = 8675309);
   OmegaHMonteCarloRHSIntegrator(
-    std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      target_layout,
     std::shared_ptr<const CoordinateSystem> target_coordinate_system,
     int samples_per_element, MonteCarloSampling sampling,
     uint64_t seed = 8675309);
@@ -62,6 +63,6 @@ private:
   int nbary_ = 3; // barycentric DOFs per sample (Dim+1): 3 in 2D, 4 in 3D
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP

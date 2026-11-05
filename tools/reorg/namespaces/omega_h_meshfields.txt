@@ -1,0 +1,11 @@
+# namespace-scope names declared in src/pcms/backends/omega_h_meshfields that
+# are used elsewhere (file-local helpers move with the namespace)
+MeshFieldBackend
+MeshFieldBackendImpl
+MakeBackendForComponents
+MakeMeshFieldBackend
+MeshFieldsAdapter2LocalizationHint
+MeshFieldsAdapterLayout
+MeshFieldsFieldData
+MeshFieldsEvaluatorFactory
+MeshFieldsPointEvaluator

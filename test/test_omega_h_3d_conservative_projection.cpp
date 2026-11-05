@@ -8,13 +8,14 @@
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_control_variate_projection.hpp>
 #include <pcms/transfer/monte_carlo_sampling.hpp>
-#include <pcms/transfer/copy.h>
-#include <pcms/transfer/interpolator.h>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/utility/arrays.h>
-#include "field_test_utils.h"
+#include <pcms/transfer/copy.hpp>
+#include <pcms/transfer/interpolator.hpp>
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/utility/arrays.hpp>
+#include "field_test_utils.hpp"
 
 #include <vector>
+#include "pcms/backends/omega_h/omega_h.hpp"
 
 TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
           "linear fields",
@@ -32,7 +33,8 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(*source_space, *target_space);
+  pcms::transfer::OmegaHConservativeProjection projection(*source_space,
+                                                          *target_space);
 
   SECTION("constant field is preserved and conserved")
   {
@@ -66,7 +68,7 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
     const auto target_values =
       pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
     const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-      pcms::MakeConstRank2View(target_mesh.coords(), 3));
+      pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 3));
     for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
       const double expected = 1.0 + tgt_coords_h(i, 0) +
                               2.0 * tgt_coords_h(i, 1) +
@@ -94,7 +96,8 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) conserves the integral for a "
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(*source_space, *target_space);
+  pcms::transfer::OmegaHConservativeProjection projection(*source_space,
+                                                          *target_space);
 
   pcms::test::SetField(
     source, KOKKOS_LAMBDA(pcms::Real x, pcms::Real y, pcms::Real z) {
@@ -162,7 +165,7 @@ TEST_CASE("Interpolation transfer (3D tets) reproduces a linear field",
   const auto target_values =
     pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 3));
+    pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 3));
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
     const double expected = 1.0 + tgt_coords_h(i, 0) +
                             2.0 * tgt_coords_h(i, 1) + 3.0 * tgt_coords_h(i, 2);
@@ -194,7 +197,7 @@ TEST_CASE("OmegaHControlVariateProjection (3D tets) is exact for target-space "
       return 1.0 + x + 2.0 * y + 3.0 * z;
     });
 
-  pcms::OmegaHControlVariateProjection projection(
+  pcms::transfer::OmegaHControlVariateProjection projection(
     *source_space, *target_space, /*samples_per_element=*/8,
     pcms::MonteCarloSampling::UniformRandom, /*seed=*/12345);
   projection.Apply(source, target);
@@ -202,7 +205,7 @@ TEST_CASE("OmegaHControlVariateProjection (3D tets) is exact for target-space "
   const auto target_values =
     pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 3));
+    pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 3));
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
     const double expected = 1.0 + tgt_coords_h(i, 0) +
                             2.0 * tgt_coords_h(i, 1) + 3.0 * tgt_coords_h(i, 2);

@@ -2287,7 +2287,7 @@ PREDEFINED             = PCMS_ENABLE_SERVER \
                          PCMS_ENABLE_MFEM \
                          PCMS_ENABLE_C \
                          PCMS_ENABLE_TRANSIENT \
-                         PCMS_ENABLE_Fortran \
+                         PCMS_ENABLE_FORTRAN \
                          PCMS_ENABLE_MESHFIELDS \
                          PCMS_ENABLE_PETSC \
                          KOKKOS_INLINE_FUNCTION= \

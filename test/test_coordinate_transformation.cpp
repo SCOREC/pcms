@@ -2,15 +2,15 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <Kokkos_Core.hpp>
-#include <pcms/field/coordinate_system.hpp>
+#include <pcms/utility/coordinate_system.hpp>
 #include <pcms/field/coordinate_map.hpp>
-#include <pcms/field/coordinate_view.hpp>
+#include <pcms/utility/coordinate_view.hpp>
 #include <pcms/field/value_view.hpp>
 #include <cmath>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
-#include "field_test_utils.h"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
+#include "field_test_utils.hpp"
 
 using Catch::Matchers::ContainsSubstring;
 using Catch::Matchers::WithinAbs;

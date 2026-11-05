@@ -24,7 +24,7 @@ endif()
 # note, there are a number of additional properties that
 # can be extracted / set on a target. We just do the basic
 # set for now. See: https://cmake.org/cmake/help/latest/module/FindPkgConfig.html
-if(PETSC_LINK_STATIC)
+if(PCMS_PETSC_LINK_STATIC)
   set(PETSC_LIBRARIES ${_petsc_STATIC_LIBRARIES})
   set(PETSC_INCLUDE_DIRS ${_petsc_STATIC_INCLUDE_DIRS})
   set(PETSC_LIBRARY_DIRS ${_petsc_STATIC_LIBRARY_DIRS})

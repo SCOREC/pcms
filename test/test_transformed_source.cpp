@@ -5,12 +5,12 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/field/coordinate_map.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/coordinate_systems/cylindrical.hpp>
-#include <pcms/field/function_space/lagrange.h>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cylindrical.hpp>
+#include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/field/transformed_source.hpp>
-#include <pcms/transfer/interpolator.h>
-#include "field_test_utils.h"
+#include <pcms/transfer/interpolator.hpp>
+#include "field_test_utils.hpp"
 #include <cmath>
 #include <stdexcept>
 #include <vector>
@@ -22,7 +22,6 @@ using pcms::DeviceMemorySpace;
 using pcms::EvaluationRequest;
 using pcms::GO;
 using pcms::HostMemorySpace;
-using pcms::LagrangeFunctionSpace;
 using pcms::OutOfBoundsMode;
 using pcms::OutOfBoundsPolicy;
 using pcms::Real;
@@ -30,6 +29,7 @@ using pcms::SameValueBasis;
 using pcms::TransformedSource;
 using pcms::ValueBasis;
 using pcms::ValueView;
+using pcms::field::LagrangeFunctionSpace;
 namespace values = pcms::values;
 
 namespace
@@ -37,25 +37,25 @@ namespace
 
 constexpr double kTol = 1e-10;
 
-std::shared_ptr<LagrangeFunctionSpace> BuildCylindricalSource(
+std::shared_ptr<pcms::field::LagrangeFunctionSpace> BuildCylindricalSource(
   Omega_h::Library& lib, Omega_h::Mesh& mesh, int num_components)
 {
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 2.0, 1.6, 1.1, 8, 8,
                             6, false);
-  return LagrangeFunctionSpace::FromMesh(
+  return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, num_components, pcms::csys::CylindricalRThetaZ::Create(), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
-std::shared_ptr<LagrangeFunctionSpace> BuildCartesianTarget(
+std::shared_ptr<pcms::field::LagrangeFunctionSpace> BuildCartesianTarget(
   Omega_h::Library& lib, Omega_h::Mesh& mesh, int num_components,
   double x_extent = 1.0)
 {
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, x_extent, 1.0, 1.0, 4,
                             4, 4, false);
-  return LagrangeFunctionSpace::FromMesh(
+  return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, num_components, pcms::csys::Cartesian::Create(3), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
 ValueBasis CylindricalVector()

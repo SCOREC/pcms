@@ -1,0 +1,5 @@
+# Phase 5: public / installed-detail headers of capi move to include/
+src/pcms/capi/client.h                                   include/pcms/capi/client.h
+src/pcms/capi/interpolator.h                             include/pcms/capi/interpolator.h
+src/pcms/capi/kokkos.h                                   include/pcms/capi/kokkos.h
+src/pcms/capi/mesh.h                                     include/pcms/capi/mesh.h

@@ -1,0 +1,16 @@
+# Phase 5: public / installed-detail headers of field move to include/
+src/pcms/field/coordinate_map.hpp                        include/pcms/field/coordinate_map.hpp
+src/pcms/field/evaluation_request.hpp                    include/pcms/field/evaluation_request.hpp
+src/pcms/field/field.hpp                                 include/pcms/field/field.hpp
+src/pcms/field/field_data.hpp                            include/pcms/field/field_data.hpp
+src/pcms/field/field_factory.hpp                         include/pcms/field/field_factory.hpp
+src/pcms/field/field_layout.hpp                          include/pcms/field/field_layout.hpp
+src/pcms/field/function_space.hpp                        include/pcms/field/function_space.hpp
+src/pcms/field/function_spaces.hpp                       include/pcms/field/function_spaces.hpp
+src/pcms/field/out_of_bounds_policy.hpp                  include/pcms/field/out_of_bounds_policy.hpp
+src/pcms/field/point_evaluator.hpp                       include/pcms/field/point_evaluator.hpp
+src/pcms/field/point_evaluator_factory.hpp               include/pcms/field/point_evaluator_factory.hpp
+src/pcms/field/transformed_source.hpp                    include/pcms/field/transformed_source.hpp
+src/pcms/field/value_view.hpp                            include/pcms/field/value_view.hpp
+src/pcms/field/eqdsk_field.hpp                           include/pcms/field/eqdsk_field.hpp
+src/pcms/field/data/simple.hpp                           include/pcms/field/simple_field_data.hpp

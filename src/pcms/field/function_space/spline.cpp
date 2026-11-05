@@ -1,13 +1,13 @@
-#include "pcms/field/function_space/spline.h"
+#include "pcms/field/function_space/spline.hpp"
 
-#include "pcms/field/data/simple.h"
-#include "pcms/field/evaluator/uniform_grid_spline.h"
-#include "pcms/field/layout/uniform_grid.h"
-#include "pcms/utility/common.h"
+#include "pcms/field/simple_field_data.hpp"
+#include "pcms/backends/uniform_grid/spline_evaluator.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
+#include "pcms/utility/detail/common.hpp"
 
 #include <stdexcept>
 
-namespace pcms
+namespace pcms::field
 {
 
 SplineFunctionSpace::SplineFunctionSpace(
@@ -21,10 +21,11 @@ std::shared_ptr<SplineFunctionSpace> SplineFunctionSpace::FromUniformGrid(
   const UniformGrid<2>& grid,
   std::shared_ptr<const CoordinateSystem> mesh_coordinate_system)
 {
-  auto layout = std::make_shared<UniformGridFieldLayout<2>>(
-    grid, 1, std::move(mesh_coordinate_system), 1);
-  auto evaluator_factory =
-    std::make_shared<UniformGridSplineEvaluatorFactory2D>(layout);
+  auto layout =
+    std::make_shared<pcms::backend::uniform_grid::UniformGridFieldLayout<2>>(
+      grid, 1, std::move(mesh_coordinate_system), 1);
+  auto evaluator_factory = std::make_shared<
+    pcms::backend::uniform_grid::UniformGridSplineEvaluatorFactory2D>(layout);
   return std::make_shared<SplineFunctionSpace>(Key{}, layout,
                                                std::move(evaluator_factory));
 }
@@ -62,7 +63,7 @@ FieldVariant SplineFunctionSpace::CreateFieldImpl(FieldDataVariant data) const
       "SplineFunctionSpace::CreateField: requires SimpleFieldData<double>");
   }
   if (fd->GetDOFAccess()->GetOwnedValues().size() !=
-      detail::ExpectedFlatFieldDataSize(*layout_)) {
+      pcms::detail::ExpectedFlatFieldDataSize(*layout_)) {
     throw pcms_error(
       "SplineFunctionSpace::CreateField: field data size does not match "
       "layout");
@@ -85,4 +86,4 @@ PointEvaluatorVariant SplineFunctionSpace::CreatePointEvaluatorImpl(
   return evaluator_factory_->CreatePointEvaluator(request);
 }
 
-} // namespace pcms
+} // namespace pcms::field

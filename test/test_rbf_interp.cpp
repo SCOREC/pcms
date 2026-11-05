@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/localization/adj_search.hpp>
+#include <pcms/backends/omega_h/adj_search.hpp>
 #include <pcms/field/evaluator/mls_interpolation.hpp>
-#include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
+#include <pcms/field/evaluator/interpolator_aliases.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
@@ -46,13 +46,14 @@ void test(Omega_h::Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
 
   };
 
-  pcms::SupportResults support =
-    pcms::searchNeighbors(mesh, cutoffDistance, min_num_supports);
+  pcms::localization::SupportResults support =
+    pcms::backend::omega_h::searchNeighbors(mesh, cutoffDistance,
+                                            min_num_supports);
 
   for (const auto& rbf : rbf_types) {
-    auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, rbf);
+    auto approx_target_values = pcms::field::mls_interpolation(
+      source_values, source_coordinates, target_coordinates, support, dim,
+      degree, rbf);
 
     auto host_approx_target_values =
       Omega_h::HostRead<Omega_h::Real>(approx_target_values);
@@ -95,7 +96,7 @@ TEST_CASE("test_mls_interpolation")
   const auto& ntargets = mesh.nverts();
 
   const auto& faces2nodes = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
-  const auto source_coordinates = pcms::get_entity_centroids(mesh, 2);
+  const auto source_coordinates = pcms::utility::get_entity_centroids(mesh, 2);
 
   pcms::Points source_points;
   source_points.coordinates =

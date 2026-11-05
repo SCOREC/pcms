@@ -3,7 +3,7 @@
 
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/utility/mesh_geometry.h>
+#include <pcms/utility/mesh_geometry.hpp>
 
 TEST_CASE("pcms::get_entity_centroids supports simplex mesh entities")
 {
@@ -15,7 +15,7 @@ TEST_CASE("pcms::get_entity_centroids supports simplex mesh entities")
     auto mesh =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, 4, 4, 0, false);
 
-    auto centroids = pcms::get_entity_centroids(mesh, Omega_h::EDGE);
+    auto centroids = pcms::utility::get_entity_centroids(mesh, Omega_h::EDGE);
     REQUIRE(centroids.size() == mesh.nedges() * mesh.dim());
   }
 
@@ -24,7 +24,7 @@ TEST_CASE("pcms::get_entity_centroids supports simplex mesh entities")
     auto mesh =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, 4, 4, 0, false);
 
-    auto centroids = pcms::get_entity_centroids(mesh, Omega_h::FACE);
+    auto centroids = pcms::utility::get_entity_centroids(mesh, Omega_h::FACE);
     REQUIRE(centroids.size() == mesh.nfaces() * mesh.dim());
   }
 
@@ -33,7 +33,7 @@ TEST_CASE("pcms::get_entity_centroids supports simplex mesh entities")
     auto mesh =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, 3, 3, 3, false);
 
-    auto centroids = pcms::get_entity_centroids(mesh, Omega_h::EDGE);
+    auto centroids = pcms::utility::get_entity_centroids(mesh, Omega_h::EDGE);
     REQUIRE(centroids.size() == mesh.nedges() * mesh.dim());
   }
 
@@ -42,7 +42,7 @@ TEST_CASE("pcms::get_entity_centroids supports simplex mesh entities")
     auto mesh =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, 3, 3, 3, false);
 
-    auto centroids = pcms::get_entity_centroids(mesh, Omega_h::REGION);
+    auto centroids = pcms::utility::get_entity_centroids(mesh, Omega_h::REGION);
     REQUIRE(centroids.size() == mesh.nelems() * mesh.dim());
   }
 
@@ -51,7 +51,7 @@ TEST_CASE("pcms::get_entity_centroids supports simplex mesh entities")
     auto mesh =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, 2, 2, 0, false);
 
-    auto centroids = pcms::get_entity_centroids(mesh, Omega_h::VERT);
+    auto centroids = pcms::utility::get_entity_centroids(mesh, Omega_h::VERT);
     auto coords = mesh.coords();
     REQUIRE(centroids.size() == coords.size());
   }
@@ -63,13 +63,13 @@ TEST_CASE("pcms::distance_squared handles 2D and 3D")
   {
     const Omega_h::Real p1[3] = {1.0, 2.0, 99.0};
     const Omega_h::Real p2[3] = {4.0, 6.0, -5.0};
-    REQUIRE(pcms::distance_squared(p1, p2, 2) == Catch::Approx(25.0));
+    REQUIRE(pcms::utility::distance_squared(p1, p2, 2) == Catch::Approx(25.0));
   }
 
   SECTION("3D distance")
   {
     const Omega_h::Real p1[3] = {1.0, 2.0, 3.0};
     const Omega_h::Real p2[3] = {4.0, 6.0, 8.0};
-    REQUIRE(pcms::distance_squared(p1, p2, 3) == Catch::Approx(50.0));
+    REQUIRE(pcms::utility::distance_squared(p1, p2, 3) == Catch::Approx(50.0));
   }
 }

@@ -1,16 +1,16 @@
-#include "pcms/localization/mesh_localization.h"
-#include "pcms/localization/adj_search.hpp"
-#include "pcms/localization/mls_support_helpers.h"
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/entity_types.h"
-#include "pcms/utility/mesh_geometry.h"
-#include "pcms/utility/omega_h_array_utils.h"
+#include "pcms/localization/mesh_localization.hpp"
+#include "pcms/backends/omega_h/adj_search.hpp"
+#include "pcms/localization/mls_support_helpers.hpp"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/entity_types.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
+#include "pcms/utility/omega_h_array_utils.hpp"
 
 #include <Omega_h_array.hpp>
 #include <string>
 
-namespace pcms
+namespace pcms::localization
 {
 
 SupportResults AdjacencyLocalizationFactory::Build(
@@ -36,19 +36,19 @@ SupportResults AdjacencyLocalizationFactory::Build(
 
   if (source_entity_dim_ == Vertex) {
     Omega_h::Reals target_coords_oh =
-      flatten_to_omega_h_reals(tgt_view, "tgt_coords");
+      pcms::utility::flatten_to_omega_h_reals(tgt_view, "tgt_coords");
 
-    return searchNeighbors(
+    return pcms::backend::omega_h::searchNeighbors(
       source_mesh_, target_coords_oh, n_tgt, radius_sq,
       static_cast<Omega_h::LO>(options_.min_req_supports),
       static_cast<Omega_h::LO>(3 * options_.min_req_supports),
       options_.adapt_radius);
   }
   const Omega_h::Reals src_oh =
-    get_entity_centroids(source_mesh_, source_entity_dim_);
+    pcms::utility::get_entity_centroids(source_mesh_, source_entity_dim_);
 
   Omega_h::Reals target_coords_oh =
-    flatten_to_omega_h_reals(tgt_view, "tgt_coords");
+    pcms::utility::flatten_to_omega_h_reals(tgt_view, "tgt_coords");
 
   return BuildPointCloudSupports(src_oh, target_coords_oh, dim, options_.radius,
                                  options_.min_req_supports,
@@ -61,9 +61,9 @@ SupportResults AdjacencyLocalizationFactory::BuildSameMeshCentroidToVertex()
   PCMS_ALWAYS_ASSERT(source_entity_dim_ == Face);
   PCMS_ALWAYS_ASSERT(source_mesh_.dim() == 2);
   Omega_h::Real radius_sq = options_.radius * options_.radius;
-  return searchNeighbors(source_mesh_, radius_sq,
-                         static_cast<Omega_h::LO>(options_.min_req_supports),
-                         options_.adapt_radius);
+  return pcms::backend::omega_h::searchNeighbors(
+    source_mesh_, radius_sq,
+    static_cast<Omega_h::LO>(options_.min_req_supports), options_.adapt_radius);
 }
 
-} // namespace pcms
+} // namespace pcms::localization

@@ -3,7 +3,7 @@
 # with an external project.
 # ##############################################################################
 
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.23)
 project(pcms_installation_test)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -16,5 +16,5 @@ find_package(pcms REQUIRED)
 add_executable(pcms_test main.cpp)
 
 # Link the pcms library to the executable Other target names cound be found in
-# your installation's <pcms install dir>/lib64/cmake/pcms/pcms-targets.cmake
+# your installation's <pcms install dir>/lib/cmake/pcms/pcms-targets.cmake
 target_link_libraries(pcms_test PUBLIC pcms::pcms)

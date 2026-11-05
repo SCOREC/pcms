@@ -2,9 +2,9 @@
 #include <catch2/catch_approx.hpp>
 #include <pcms/field/evaluator/mls_interpolation.hpp>
 #include <pcms/field/evaluator/mls_interpolation_impl.hpp>
-#include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
-#include <pcms/field/evaluator/pcms_interpolator_view_utils.hpp>
-#include <pcms/transfer/linear_interpolant.hpp>
+#include <pcms/field/evaluator/interpolator_aliases.hpp>
+#include <pcms/field/evaluator/interpolator_view_utils.hpp>
+#include <pcms/backends/uniform_grid/linear_interpolant.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
@@ -63,9 +63,9 @@ TEST_CASE("test_normalization_routine")
       int num_supports = nsupports[league_rank];
       pcms::ScratchMatView local_supports(team.team_scratch(1), num_supports,
                                           dim);
-      pcms::detail::fill(0, team, local_supports);
+      pcms::field::detail::fill(0, team, local_supports);
 
-      double target_point[MAX_DIM] = {};
+      double target_point[PCMS_MAX_DIM] = {};
 
       for (int i = 0; i < dim; ++i) {
         target_point[i] = target_coordinates[league_rank][i];
@@ -91,7 +91,8 @@ TEST_CASE("test_normalization_routine")
         });
 
       team.team_barrier();
-      pcms::detail::normalize_supports(team, target_point, local_supports);
+      pcms::field::detail::normalize_supports(team, target_point,
+                                              local_supports);
       team.team_barrier();
 
       Kokkos::parallel_for(

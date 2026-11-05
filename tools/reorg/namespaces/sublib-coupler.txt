@@ -1,0 +1,12 @@
+# namespace-scope names declared by the files that move to pcms::coupler
+ExchangePlan
+FieldCommunicator
+FieldCommunicator2Ptr
+FieldCommunicator2PtrT
+FieldExchangePlanner
+FieldLayoutCommunicator
+FieldSerializer
+GenericFieldExchangePlanner
+GetRank
+GlobalCommunicator
+Partition

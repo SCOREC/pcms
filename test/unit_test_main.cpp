@@ -1,7 +1,7 @@
 #include <catch2/catch_session.hpp>
 #include <mpi.h>
 #include <Kokkos_Core.hpp>
-#include <pcms/configuration.h>
+#include <pcms/configuration.hpp>
 
 #ifdef PCMS_ENABLE_PETSC
 #include <petscsys.h>

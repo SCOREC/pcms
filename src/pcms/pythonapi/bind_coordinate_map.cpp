@@ -7,7 +7,7 @@
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/transformed_source.hpp"
 #include "pcms/field/value_view.hpp"
-#include "py_value_types.h"
+#include "pcms/pythonapi/py_value_types.hpp"
 
 namespace py = pybind11;
 

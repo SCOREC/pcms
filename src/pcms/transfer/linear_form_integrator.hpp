@@ -1,11 +1,11 @@
-#ifndef PCMS_TRANSFER_LINEAR_FORM_INTEGRATOR_H
-#define PCMS_TRANSFER_LINEAR_FORM_INTEGRATOR_H
+#ifndef PCMS_TRANSFER_LINEAR_FORM_INTEGRATOR_HPP
+#define PCMS_TRANSFER_LINEAR_FORM_INTEGRATOR_HPP
 
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/utility/arrays.h"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/utility/arrays.hpp"
 #include <petscvec.h>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class LinearFormIntegrator
@@ -29,6 +29,6 @@ public:
   virtual ~LinearFormIntegrator() noexcept = default;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
-#endif // PCMS_TRANSFER_LINEAR_FORM_INTEGRATOR_H
+#endif // PCMS_TRANSFER_LINEAR_FORM_INTEGRATOR_HPP

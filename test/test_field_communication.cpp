@@ -8,13 +8,13 @@
 #include <Omega_h_for.hpp>
 #include <redev.h>
 #include <vector>
-#include "pcms/coupler/field_communicator.hpp"
+#include "pcms/coupler/detail/field_communicator.hpp"
 #include "pcms/coupler/coupler.hpp"
-#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/data/simple.h"
-#include "test_support.h"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/simple_field_data.hpp"
+#include "test_support.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 namespace ts = test_support;
 using pcms::Real;
@@ -78,9 +78,9 @@ static void test_shared_layout(Omega_h::Library& lib,
     pcms::CouplerComm cpl("shared_layout_server", mpi_comm, true,
                           redev::Partition{partition});
     auto* app = cpl.AddApplication("shared_layout");
-    auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    auto factory = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-      pcms::LagrangeFunctionSpace::DefaultBackend, "shared");
+      pcms::field::LagrangeFunctionSpace::DefaultBackend, "shared");
     auto f1 = app->AddField(factory->CreateFunction<Real>("field_a"));
     PCMS_ALWAYS_ASSERT(app->GetLayoutCommunicatorCount() == 1);
     auto f2 = app->AddField(factory->CreateFunction<Real>("field_b"));
@@ -97,9 +97,9 @@ static void test_shared_layout(Omega_h::Library& lib,
     pcms::CouplerComm cpl("shared_layout_client", mpi_comm, false,
                           redev::Partition{});
     auto* app = cpl.AddApplication("shared_layout");
-    auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    auto factory = pcms::field::LagrangeFunctionSpace::FromMesh(
       mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-      pcms::LagrangeFunctionSpace::DefaultBackend, "shared");
+      pcms::field::LagrangeFunctionSpace::DefaultBackend, "shared");
     auto f1 = app->AddField(factory->CreateFunction<Real>("field_a"));
     auto f2 = app->AddField(factory->CreateFunction<Real>("field_b"));
     app->SendPhase([&]() {
@@ -120,7 +120,7 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto channel =
     rdv.CreateAdiosChannel("field2_chan1", params, redev::TransportType::BP4);
 
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+  auto factory = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, order, 1, pcms::csys::Cartesian::Deferred());
   auto layout = factory->GetLayout();
   auto gids = layout->GetGidsHost();
@@ -135,10 +135,10 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   field.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const Real, pcms::HostMemorySpace>(ids.data(), n, 1));
 
-  pcms::FieldLayoutCommunicator layout_comm(comm_name + "1", comm, rdv, channel,
-                                            *layout);
-  pcms::FieldCommunicator<pcms::Real> field_comm(layout_comm.GetName(),
-                                                 layout_comm, field);
+  pcms::coupler::FieldLayoutCommunicator layout_comm(comm_name + "1", comm, rdv,
+                                                     channel, *layout);
+  pcms::coupler::FieldCommunicator<pcms::Real> field_comm(layout_comm.GetName(),
+                                                          layout_comm, field);
 
   channel.BeginSendCommunicationPhase();
   field_comm.Send();
@@ -152,17 +152,17 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto channel =
     rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
 
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+  auto factory = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, order, 1, pcms::csys::Cartesian::Deferred());
   auto layout = factory->GetLayout();
   auto gids = layout->GetGidsHost();
   const auto n = layout->GetNumOwnedDofHolder();
 
   auto field = factory->CreateFunction<Real>();
-  pcms::FieldLayoutCommunicator layout_comm(comm_name + "2", comm, rdv, channel,
-                                            *layout);
-  pcms::FieldCommunicator<pcms::Real> field_comm(layout_comm.GetName(),
-                                                 layout_comm, field);
+  pcms::coupler::FieldLayoutCommunicator layout_comm(comm_name + "2", comm, rdv,
+                                                     channel, *layout);
+  pcms::coupler::FieldCommunicator<pcms::Real> field_comm(layout_comm.GetName(),
+                                                          layout_comm, field);
 
   channel.BeginReceiveCommunicationPhase();
   field_comm.Receive();
@@ -213,7 +213,7 @@ void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto channel2 =
     rdv.CreateAdiosChannel("field2_chan2", params, redev::TransportType::BP4);
 
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+  auto factory = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, order, 1, pcms::csys::Cartesian::Deferred());
   auto layout = factory->GetLayout();
   const auto n = layout->GetNumOwnedDofHolder();
@@ -223,14 +223,14 @@ void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     [=](int i) { ids[i] = 0; });
 
   auto field = factory->CreateFunction<Real>();
-  pcms::FieldLayoutCommunicator layout_comm1(comm_name + "1", comm, rdv,
-                                             channel1, *layout);
-  pcms::FieldLayoutCommunicator layout_comm2(comm_name + "2", comm, rdv,
-                                             channel2, *layout);
-  pcms::FieldCommunicator<pcms::Real> field_comm1(layout_comm1.GetName(),
-                                                  layout_comm1, field);
-  pcms::FieldCommunicator<pcms::Real> field_comm2(layout_comm2.GetName(),
-                                                  layout_comm2, field);
+  pcms::coupler::FieldLayoutCommunicator layout_comm1(comm_name + "1", comm,
+                                                      rdv, channel1, *layout);
+  pcms::coupler::FieldLayoutCommunicator layout_comm2(comm_name + "2", comm,
+                                                      rdv, channel2, *layout);
+  pcms::coupler::FieldCommunicator<pcms::Real> field_comm1(
+    layout_comm1.GetName(), layout_comm1, field);
+  pcms::coupler::FieldCommunicator<pcms::Real> field_comm2(
+    layout_comm2.GetName(), layout_comm2, field);
 
   channel1.BeginReceiveCommunicationPhase();
   field_comm1.Receive();

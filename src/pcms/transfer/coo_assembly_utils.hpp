@@ -4,7 +4,7 @@
 #include <Omega_h_mesh.hpp>
 #include <petscmat.h>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Builds COO row indices for linear triangles (3 vertices per element).
@@ -23,6 +23,6 @@ PetscErrorCode build_linear_triangle_coo_rows_cols(Omega_h::Mesh& mesh,
                                                    PetscInt** cols_out,
                                                    PetscInt* nnz_out);
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_COO_ASSEMBLY_UTILS_HPP

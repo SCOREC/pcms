@@ -4,20 +4,20 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/transfer/interpolator.h>
-#include "field_test_utils.h"
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/transfer/interpolator.hpp>
+#include "field_test_utils.hpp"
 #include <memory>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 using Catch::Matchers::ContainsSubstring;
 using pcms::DeviceMemorySpace;
 using pcms::Field;
-using pcms::LagrangeFunctionSpace;
 using pcms::Real;
 using pcms::ValueView;
+using pcms::field::LagrangeFunctionSpace;
 namespace values = pcms::values;
 using Catch::Matchers::WithinAbs;
 using pcms::ComponentScaling;
@@ -36,15 +36,15 @@ Omega_h::Mesh BuildCylindricalMesh(Omega_h::Library& lib, int divisions)
                             divisions, divisions, divisions, false);
 }
 
-std::shared_ptr<LagrangeFunctionSpace> BuildCylindricalSpace(
+std::shared_ptr<pcms::field::LagrangeFunctionSpace> BuildCylindricalSpace(
   Omega_h::Mesh& mesh, int num_components)
 {
-  return LagrangeFunctionSpace::FromMesh(
+  return pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, num_components, pcms::csys::CylindricalRThetaZ::Create(), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
-int NumDOFHolders(const LagrangeFunctionSpace& space)
+int NumDOFHolders(const pcms::field::LagrangeFunctionSpace& space)
 {
   return static_cast<int>(
     space.GetLayout()->GetDOFHolderCoordinates().GetValues().extent(0));

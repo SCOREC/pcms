@@ -2,18 +2,19 @@
 #include "pcms/transfer/conservative_projection_solver.hpp"
 #include "pcms/transfer/omega_h_mass_integrator.hpp"
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
-#include "pcms/utility/arrays.h"
+#include "pcms/utility/arrays.hpp"
 #include <Kokkos_Core.hpp>
 #include <Omega_h_array.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 OmegaHControlVariateProjection::OmegaHControlVariateProjection(
   const PointEvaluatorFactory& source, const FunctionSpace& target_space,
   int samples_per_element, MonteCarloSampling sampling, uint64_t seed,
   MassMatrixType mass_matrix_type)
-  : target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
+  : target_layout_(std::dynamic_pointer_cast<
+                   const pcms::backend::omega_h::OmegaHLagrangeLayout>(
       target_space.GetLayout())),
     rhs_integrator_(std::make_unique<OmegaHMonteCarloRHSIntegrator>(
       target_layout_, target_space.GetCoordinateSystem(), samples_per_element,
@@ -104,4 +105,4 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
   target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

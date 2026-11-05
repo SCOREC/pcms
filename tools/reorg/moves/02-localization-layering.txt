@@ -1,0 +1,11 @@
+# Phase 2: make localization independent of field.
+# Coordinate vocabulary moves below localization (into utility).
+src/pcms/field/coordinate_view.hpp              src/pcms/utility/coordinate_view.hpp
+src/pcms/field/coordinate_system.hpp            src/pcms/utility/coordinate_system.hpp
+src/pcms/field/coordinate_system.cpp            src/pcms/utility/coordinate_system.cpp
+src/pcms/field/coordinate_systems               src/pcms/utility/coordinate_systems
+# Support-search options are used by localization.
+src/pcms/field/evaluator/mls_options.hpp        src/pcms/localization/mls_options.hpp
+# Adapters from field layouts to localization move up into field.
+src/pcms/localization/localization_path_selection.hpp  src/pcms/field/localization_path_selection.hpp
+src/pcms/localization/point_cloud_localization.hpp     src/pcms/field/point_cloud_localization.hpp

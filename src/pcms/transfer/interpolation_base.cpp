@@ -2,11 +2,11 @@
 // Created by hasanm4 on 1/17/25.
 //
 
-#include "interpolation_base.h"
-#include "interpolation_helpers.h"
-#include "pcms/utility/mesh_geometry.h"
+#include "pcms/transfer/interpolation_base.hpp"
+#include "pcms/transfer/interpolation_helpers.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
 
-namespace pcms
+namespace pcms::transfer
 {
 
 MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
@@ -29,7 +29,8 @@ MLSMeshInterpolation::MLSMeshInterpolation(Omega_h::Mesh& source_mesh,
   OMEGA_H_CHECK_PRINTF(source_mesh_.dim() == 2,
                        "Only 2D meshes are supported but found %d\n",
                        source_mesh_.dim());
-  source_coords_ = pcms::get_entity_centroids(source_mesh_, Omega_h::FACE);
+  source_coords_ =
+    pcms::utility::get_entity_centroids(source_mesh_, Omega_h::FACE);
 
   source_field_ =
     Omega_h::HostWrite<Omega_h::Real>(source_mesh_.nfaces(), "source field");
@@ -135,8 +136,8 @@ struct FillSupportIdxFunctor
 
     for (int source_id = 0; source_id < n_sources; source_id++) {
       auto source_coord = load_point(source_coords_l, source_id, dim);
-      auto dist2 =
-        pcms::distance_squared(&source_coord[0], &target_coord[0], dim);
+      auto dist2 = pcms::utility::distance_squared(&source_coord[0],
+                                                   &target_coord[0], dim);
       if (dist2 <= target_radius2) {
         supports_idx_l[start_ptr] = source_id;
         start_ptr++;
@@ -216,8 +217,8 @@ struct NSquareSearchFunctor
     // TODO: parallel with kokkos parallel_for
     for (int i = 0; i < n_sources; i++) {
       auto source_coord = load_point(source_coords_l, i, dim);
-      auto dist2 =
-        pcms::distance_squared(&source_coord[0], &target_coord[0], dim);
+      auto dist2 = pcms::utility::distance_squared(&source_coord[0],
+                                                   &target_coord[0], dim);
       if (dist2 <= target_radius2) {
         num_supports_l[target_id]++; // only one thread is updating
       }
@@ -298,9 +299,9 @@ void MLSPointCloudInterpolation::find_supports(unsigned min_req_supports,
   unsigned max_supports_found = 0;
   // radius adjustment loop
   int loop_count = 0;
-  while (!within_number_of_support_range(min_supports_found, max_supports_found,
-                                         min_req_supports,
-                                         max_allowed_supports)) {
+  while (!pcms::localization::within_number_of_support_range(
+    min_supports_found, max_supports_found, min_req_supports,
+    max_allowed_supports)) {
     distance_based_pointcloud_search(radii2_l, num_supports);
 
     loop_count++;
@@ -319,19 +320,20 @@ void MLSPointCloudInterpolation::find_supports(unsigned min_req_supports,
     }
 
     // find minimum and maximum number of supports found
-    minmax(num_supports, min_supports_found, max_supports_found);
+    pcms::localization::minmax(num_supports, min_supports_found,
+                               max_supports_found);
 
     // increase radius if not enough supports or too many supports
-    if (!within_number_of_support_range(min_supports_found, max_supports_found,
-                                        min_req_supports,
-                                        max_allowed_supports)) {
+    if (!pcms::localization::within_number_of_support_range(
+          min_supports_found, max_supports_found, min_req_supports,
+          max_allowed_supports)) {
       pcms::printInfo(
         "Adjusting radius: Iter %d:(min: %d max: %d) Min Req: %d Max "
         "Allowed %d\n",
         loop_count, min_supports_found, max_supports_found, min_req_supports,
         max_allowed_supports);
-      adapt_radii(min_req_supports, max_allowed_supports, n_targets_, radii2_l,
-                  num_supports);
+      pcms::localization::adapt_radii(min_req_supports, max_allowed_supports,
+                                      n_targets_, radii2_l, num_supports);
     }
   }
   pcms::printInfo("Searched %d times and supports found: min: %d max: %d\n",
@@ -392,7 +394,7 @@ void MLSPointCloudInterpolation::eval(
   copyHostScalarArrayView2HostWrite(source_field, source_field_);
 
   // TODO: make the basis function a template or pass it as a parameter
-  auto target_field_write = mls_interpolation(
+  auto target_field_write = pcms::field::mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_,
     dim_, degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN, lambda_, 1e-6,
     decay_factor_);
@@ -418,7 +420,7 @@ void MLSMeshInterpolation::eval(
   copyHostScalarArrayView2HostWrite(source_field, source_field_);
 
   // TODO: make the basis function a template or pass it as a parameter
-  auto target_field_write = mls_interpolation(
+  auto target_field_write = pcms::field::mls_interpolation(
     Omega_h::Reals(source_field_), source_coords_, target_coords_, supports_,
     source_mesh_.dim(), degree_, pcms::RadialBasisFunction::RBF_GAUSSIAN,
     lambda_, 1e-6, decay_factor_);
@@ -431,12 +433,12 @@ void MLSMeshInterpolation::find_supports(const unsigned min_req_supports,
                                          const unsigned max_allowed_supports)
 {
   if (single_mesh_) {
-    supports_ =
-      searchNeighbors(source_mesh_, radius_, min_req_supports, adapt_radius_);
+    supports_ = pcms::backend::omega_h::searchNeighbors(
+      source_mesh_, radius_, min_req_supports, adapt_radius_);
   } else { // two mesh : vert to vert
-    supports_ =
-      searchNeighbors(source_mesh_, target_mesh_, radius_, min_req_supports,
-                      max_allowed_supports, adapt_radius_);
+    supports_ = pcms::backend::omega_h::searchNeighbors(
+      source_mesh_, target_mesh_, radius_, min_req_supports,
+      max_allowed_supports, adapt_radius_);
   }
 
 #ifndef NDEBUG
@@ -467,4 +469,4 @@ size_t MLSMeshInterpolation::getTargetSize() const
     return target_mesh_.nverts();
   }
 }
-} // namespace pcms
+} // namespace pcms::transfer

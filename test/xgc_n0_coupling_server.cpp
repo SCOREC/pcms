@@ -1,19 +1,19 @@
-#include <pcms.h>
-#include <pcms/utility/types.h>
+#include <pcms/pcms.hpp>
+#include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
-#include "test_support.h"
+#include "test_support.hpp"
 #include "pcms/coupler/coupler.hpp"
-#include "pcms/coupler/field_serializer.h"
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/field.h"
+#include "pcms/coupler/detail/field_serializer.hpp"
+#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/field/field.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/data/simple.h"
-#include "pcms/transfer/copy.h"
+#include "pcms/field/simple_field_data.hpp"
+#include "pcms/transfer/copy.hpp"
 #include <chrono>
 #include <optional>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::GO;
 using pcms::LO;
@@ -43,7 +43,7 @@ struct RegisteredField
 
 [[nodiscard]] static RegisteredField AddField(
   pcms::ApplicationComm* application,
-  const std::shared_ptr<pcms::LagrangeFunctionSpace>& function_space,
+  const std::shared_ptr<pcms::field::LagrangeFunctionSpace>& function_space,
   const std::string& name, const std::string& path, int plane)
 {
   PCMS_ALWAYS_ASSERT(application != nullptr);
@@ -216,9 +216,9 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       // return 0;
       return 1;
     });
-  auto function_space = pcms::LagrangeFunctionSpace::FromMesh(
+  auto function_space = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred(), is_overlap, numbering,
-    pcms::LagrangeFunctionSpace::Backend::OmegaH, "n0_layout");
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH, "n0_layout");
   auto time2 = std::chrono::steady_clock::now();
   elapsed_seconds = time2 - time1;
   ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);

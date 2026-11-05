@@ -1,4 +1,4 @@
-#include "pcms/discretization/discretization/xgc_reverse_classification.h"
+#include "pcms/backends/xgc/reverse_classification.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <sstream>
 
@@ -25,7 +25,7 @@ static constexpr auto test_data = R"(
 TEST_CASE("reverse classification")
 {
   std::stringstream ss{test_data};
-  auto rc = pcms::ReadReverseClassificationVertex(ss);
+  auto rc = pcms::backend::xgc::ReadReverseClassificationVertex(ss);
   {
     const auto* q = rc.Query({2, 20});
     REQUIRE(q == nullptr);
@@ -38,7 +38,7 @@ TEST_CASE("reverse classification")
     REQUIRE(s == *q);
   }
   auto vec = rc.Serialize();
-  pcms::ReverseClassificationVertex rc_deserialized;
+  pcms::backend::xgc::ReverseClassificationVertex rc_deserialized;
   auto av = pcms::make_array_view(vec);
   rc_deserialized.Deserialize(av);
   REQUIRE(rc_deserialized == rc);

@@ -2,20 +2,20 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/field/evaluator/mls_options.h"
+#include "pcms/localization/mls_options.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/out_of_bounds_policy.h"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/memory_spaces.h"
-#include "field_test_utils.h"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/memory_spaces.hpp"
+#include "field_test_utils.hpp"
 
 #include <array>
 #include <cmath>
 #include <stdexcept>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 using pcms::CoordinateSystem;
 using pcms::CoordinateView;
@@ -113,7 +113,7 @@ void CheckPolynomialReproduction(unsigned degree,
   auto src = MakeGrid2D(9);
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 81, 2);
 
-  auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto fs = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                           coords_view),
     SweepTestOptions(degree, basis));
@@ -168,7 +168,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: same PointEvaluator "
   auto src = MakeGrid2D(7);
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 49, 2);
 
-  auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto fs = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                           coords_view),
     DefaultTestOptions());
@@ -207,7 +207,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: Evaluate throws for "
   auto src = MakeGrid2D(5);
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 25, 2);
 
-  auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto fs = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                           coords_view));
   auto field = fs->CreateFunction<Real>();
@@ -236,7 +236,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: default MLSOptions — "
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 49, 2);
 
   // Use default options — no third argument
-  auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto fs = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                           coords_view));
   auto field = fs->CreateFunction<Real>();
@@ -265,7 +265,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: CreatePointEvaluator "
   auto src = MakeGrid2D(5);
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 25, 2);
 
-  auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto fs = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<HostMemorySpace>(pcms::csys::CylindricalRZ::Create(),
                                           coords_view),
     DefaultTestOptions());
@@ -288,7 +288,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: accepts the (R, Z) "
   Rank2View<Real, HostMemorySpace> coords_view(
     src.data(), static_cast<pcms::LO>(src.size() / 2), 2);
 
-  auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto fs = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<HostMemorySpace>(pcms::csys::CylindricalRZ::Create(),
                                           coords_view),
     DefaultTestOptions());
@@ -329,7 +329,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: CreatePointEvaluator "
   Rank2View<Real, HostMemorySpace> coords_view(
     src.data(), static_cast<pcms::LO>(src.size() / 3), 3);
 
-  auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto fs = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<HostMemorySpace>(
       pcms::csys::CylindricalRThetaZ::Create(), coords_view),
     DefaultTestOptions3D());
@@ -355,7 +355,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: radius option is "
   opts.adapt_radius = false;
   opts.basis = pcms::RadialBasisFunction::RBF_CONST;
 
-  auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto fs = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                           coords_view),
     opts);
@@ -387,7 +387,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: 3D point clouds preserve "
   auto src = MakeGrid3D(3);
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 27, 3);
 
-  auto fs = pcms::PolynomialReconstructionFunctionSpace::Create(
+  auto fs = pcms::field::PolynomialReconstructionFunctionSpace::Create(
     pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                           coords_view),
     DefaultTestOptions3D());

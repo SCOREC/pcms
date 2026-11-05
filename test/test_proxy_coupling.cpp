@@ -1,17 +1,17 @@
 #include <Omega_h_mesh.hpp>
 #include <iostream>
-#include <pcms.h>
-#include <pcms/utility/types.h>
+#include <pcms/pcms.hpp>
+#include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
 #include <redev_variant_tools.h>
-#include "test_support.h"
+#include "test_support.hpp"
 #include "pcms/coupler/coupler.hpp"
-#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/function_space/lagrange.hpp"
 #include "pcms/field/value_view.hpp"
 #include <chrono>
 #include <thread>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::GO;
 using pcms::make_array_view;
@@ -95,9 +95,9 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   pcms::ApplicationComm* app =
     coupler.AddApplication("proxy_couple_xgc_delta_f");
 
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+  auto factory = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::DefaultBackend, "gids");
+    pcms::field::LagrangeFunctionSpace::DefaultBackend, "gids");
 
   auto gids_field = factory->CreateFunction<pcms::Real>("gids");
   auto gids2_field = factory->CreateFunction<pcms::Real>("gids2");
@@ -134,9 +134,9 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   pcms::ApplicationComm* app =
     coupler.AddApplication("proxy_couple_xgc_total_f");
 
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+  auto factory = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::DefaultBackend, "gids");
+    pcms::field::LagrangeFunctionSpace::DefaultBackend, "gids");
 
   auto gids_field = factory->CreateFunction<pcms::Real>("gids");
 
@@ -175,13 +175,13 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f");
   auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");
-  auto factory_total = pcms::LagrangeFunctionSpace::FromMesh(
+  auto factory_total = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::DefaultBackend, "gids");
+    pcms::field::LagrangeFunctionSpace::DefaultBackend, "gids");
 
-  auto factory_delta = pcms::LagrangeFunctionSpace::FromMesh(
+  auto factory_delta = pcms::field::LagrangeFunctionSpace::FromMesh(
     mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::DefaultBackend, "gids");
+    pcms::field::LagrangeFunctionSpace::DefaultBackend, "gids");
   // TODO, fields should have a transfer policy rather than parameters
   auto total_gids_field = factory_total->CreateFunction<pcms::Real>("gids");
   auto delta_gids_field = factory_delta->CreateFunction<pcms::Real>("gids");

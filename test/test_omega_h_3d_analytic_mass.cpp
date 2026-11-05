@@ -3,12 +3,13 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/field/layout/omega_h_lagrange.h>
+#include <pcms/field/function_space/lagrange.hpp>
+#include <pcms/backends/omega_h/lagrange_layout.hpp>
 #include <pcms/transfer/omega_h_mass_integrator.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 #include <petscksp.h>
+#include "pcms/backends/omega_h/omega_h.hpp"
 
 // Reference corner tet:
 //   v0=(0,0,0), v1=(1,0,0), v2=(0,1,0), v3=(0,0,1)
@@ -33,12 +34,11 @@ TEST_CASE("OmegaHMassIntegrator (3D): P1 mass on reference tet matches "
   constexpr pcms::Real M_off = V / 20.0;  // 1/120
 
   auto space = pcms::test::MakeP1Space(mesh);
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
+  auto integrator = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   Mat mat = integrator->GetMatrix();
 
-  const auto layout =
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
-      space->GetLayout());
+  const auto layout = std::dynamic_pointer_cast<
+    const pcms::backend::omega_h::OmegaHLagrangeLayout>(space->GetLayout());
   REQUIRE(layout != nullptr);
 
   // PETSc rows are active indices = global_to_local(local_vertex).
@@ -76,7 +76,7 @@ TEST_CASE("OmegaHMassIntegrator (3D): P0 mass on reference tet equals volume",
   constexpr pcms::Real V = 1.0 / 6.0;
 
   auto space = pcms::test::MakeP0Space(mesh);
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
+  auto integrator = pcms::transfer::BuildOmegaHMassIntegrator(*space);
   Mat mat = integrator->GetMatrix();
 
   PetscInt r = 0;
@@ -100,7 +100,7 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
   auto space = pcms::test::MakeP1Space(mesh);
   auto source = space->CreateFunction<pcms::Real>();
   auto target = space->CreateFunction<pcms::Real>();
-  pcms::OmegaHConservativeProjection projection(*space, *space);
+  pcms::transfer::OmegaHConservativeProjection projection(*space, *space);
   SECTION("constant field")
   {
     const double c = 2.5;
@@ -125,7 +125,7 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
     const auto values =
       pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
     const auto coords_h = pcms::test::CopyCoordinatesToHost(
-      pcms::MakeConstRank2View(mesh.coords(), 3));
+      pcms::backend::omega_h::MakeConstRank2View(mesh.coords(), 3));
     for (Omega_h::LO i = 0; i < 4; ++i) {
       const double expected =
         1.0 + coords_h(i, 0) + 2.0 * coords_h(i, 1) + 3.0 * coords_h(i, 2);

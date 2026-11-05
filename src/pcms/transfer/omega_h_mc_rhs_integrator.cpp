@@ -1,13 +1,13 @@
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <Kokkos_Random.hpp>
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
@@ -141,14 +141,16 @@ OmegaHMonteCarloRHSIntegrator::OmegaHMonteCarloRHSIntegrator(
   const FunctionSpace& target_space, int samples_per_element,
   MonteCarloSampling sampling, uint64_t seed)
   : OmegaHMonteCarloRHSIntegrator(
-      std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
+      std::dynamic_pointer_cast<
+        const pcms::backend::omega_h::OmegaHLagrangeLayout>(
         target_space.GetLayout()),
       target_space.GetCoordinateSystem(), samples_per_element, sampling, seed)
 {
 }
 
 OmegaHMonteCarloRHSIntegrator::OmegaHMonteCarloRHSIntegrator(
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    target_layout,
   std::shared_ptr<const CoordinateSystem> target_coordinate_system,
   int samples_per_element, MonteCarloSampling /*sampling*/, uint64_t seed)
 {
@@ -255,4 +257,4 @@ void OmegaHMonteCarloRHSIntegrator::Assemble(
   CHKERRABORT(PETSC_COMM_SELF, ierr);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

@@ -6,25 +6,24 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "pcms/discretization/discretization/omega_h.hpp"
-#include "pcms/field/coordinate_system.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/evaluation_request.h"
-#include "pcms/field/evaluator/mls_options.h"
-#include "pcms/field/field.h"
-#include "pcms/field/field_data.h"
-#include "pcms/field/field_layout.h"
-#include "pcms/field/function_space.h"
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/function_space/polynomial_reconstruction.hpp"
+#include "pcms/utility/coordinate_system.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/field/evaluation_request.hpp"
+#include "pcms/localization/mls_options.hpp"
+#include "pcms/field/field.hpp"
+#include "pcms/field/field_data.hpp"
+#include "pcms/field/field_layout.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
+#include "pcms/discretization/discretization.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
-#include "pcms/field/uniform_grid_binary_field.h"
 #include "pcms/field/value_view.hpp"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/uniform_grid.h"
-#include "numpy_array_transform.h"
-#include "py_value_types.h"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/uniform_grid.hpp"
+#include "pcms/pythonapi/numpy_array_transform.hpp"
+#include "pcms/pythonapi/py_value_types.hpp"
 
 namespace py = pybind11;
 
@@ -207,75 +206,76 @@ void bind_create_field_module(py::module& m)
     .def("get_layout",
          [](const FunctionSpace& self) { return ToPyHolder(self.GetLayout()); })
     .def(
-      "mesh",
-      [](const FunctionSpace& self) -> Omega_h::Mesh& {
-        auto disc = std::dynamic_pointer_cast<const OmegaHDiscretization>(
-          self.GetDiscretization());
-        if (!disc) {
-          throw std::runtime_error(
-            "FunctionSpace::mesh: this function space is not backed by an "
-            "Omega_h mesh");
-        }
-        return disc->GetMesh();
+      "get_discretization",
+      [](const FunctionSpace& self) {
+        return ToPyHolder(self.GetDiscretization());
       },
-      py::return_value_policy::reference,
-      "The Omega_h mesh this function space is defined on (Omega_h backend "
-      "only).");
+      "The discretization this function space is defined on");
 
-  py::class_<LagrangeFunctionSpace, FunctionSpace,
-             std::shared_ptr<LagrangeFunctionSpace>>
-    lagrange_space(m, "LagrangeFunctionSpace");
+  py::class_<Discretization, std::shared_ptr<Discretization>>(
+    m, "Discretization", "The entities (mesh, grid, points) a space lives on")
+    .def("get_dimension", &Discretization::GetDimension)
+    .def("get_num_entities", &Discretization::GetNumEntities,
+         py::arg("entity_dim"));
 
-  // Backend selecting the underlying field layout. The conservative-projection
-  // transfer operators require the native Omega_h backend.
-  py::enum_<LagrangeFunctionSpace::Backend>(lagrange_space, "Backend")
-    .value("MeshFields", LagrangeFunctionSpace::Backend::MeshFields,
-           "MeshFields-backed layout (default when MeshFields is enabled)")
-    .value("OmegaH", LagrangeFunctionSpace::Backend::OmegaH,
+  m.def(
+    "create_uniform_grid_discretization",
+    [](const UniformGrid<2>& grid) {
+      return ToPyHolder(CreateUniformGridDiscretization(grid));
+    },
+    py::arg("grid"), "Discretization of a 2D uniform grid");
+  m.def(
+    "create_uniform_grid_discretization",
+    [](const UniformGrid<3>& grid) {
+      return ToPyHolder(CreateUniformGridDiscretization(grid));
+    },
+    py::arg("grid"), "Discretization of a 3D uniform grid");
+  m.def(
+    "create_empty_discretization",
+    []() { return ToPyHolder(CreateEmptyDiscretization()); },
+    "Discretization without entities, for evaluation-only spaces");
+
+  // Which implementation evaluates Lagrange fields on Omega_h meshes. The
+  // conservative-projection transfer operators require OmegaH.
+  py::enum_<LagrangeImplementation>(m, "LagrangeImplementation")
+    .value("Default", LagrangeImplementation::Default,
+           "MeshFields when PCMS is built with MeshFields, OmegaH otherwise")
+    .value("MeshFields", LagrangeImplementation::MeshFields,
+           "MeshFields-backed layout")
+    .value("OmegaH", LagrangeImplementation::OmegaH,
            "Native Omega_h Lagrange layout (required by the conservative and "
            "Monte Carlo projection transfer operators)")
     .export_values();
 
-  // The mesh-backed spaces refer to the mesh, so it is kept alive with them.
-  lagrange_space
-    .def_static(
-      "from_mesh",
-      [](Omega_h::Mesh& mesh, int order, int num_components,
-         const SystemHolder& mesh_coordinate_system, std::string global_id_name,
-         LagrangeFunctionSpace::Backend backend) {
-        return LagrangeFunctionSpace::FromMesh(
-          mesh, order, num_components, CartesianIfNone(mesh_coordinate_system),
-          std::move(global_id_name), backend);
-      },
-      py::arg("mesh"), py::arg("order"), py::arg("num_components"),
-      py::arg("mesh_coordinate_system") = py::none(),
-      py::arg("global_id_name") = "global",
-      py::arg("backend") = LagrangeFunctionSpace::DefaultBackend,
-      py::keep_alive<0, 1>(),
-      "Create a LagrangeFunctionSpace from an Omega_h mesh. The coordinate "
-      "system defaults to Cartesian.")
-    .def_static(
-      "from_uniform_grid",
-      [](const UniformGrid<2>& grid, int num_components,
-         const SystemHolder& mesh_coordinate_system, int order) {
-        return LagrangeFunctionSpace::FromUniformGrid(
-          grid, num_components, CartesianIfNone(mesh_coordinate_system), order);
-      },
-      py::arg("grid"), py::arg("num_components"),
-      py::arg("mesh_coordinate_system") = py::none(), py::arg("order") = 1,
-      "Create a LagrangeFunctionSpace from a 2D uniform grid. The coordinate "
-      "system defaults to Cartesian.")
-    .def_static(
-      "from_uniform_grid",
-      [](const UniformGrid<3>& grid, int num_components,
-         const SystemHolder& mesh_coordinate_system, int order) {
-        return LagrangeFunctionSpace::FromUniformGrid(
-          grid, num_components, CartesianIfNone(mesh_coordinate_system), order);
-      },
-      py::arg("grid"), py::arg("num_components"),
-      py::arg("mesh_coordinate_system") = py::none(), py::arg("order") = 1,
-      "Create a LagrangeFunctionSpace from a 3D uniform grid. The coordinate "
-      "system defaults to Cartesian.");
+  // A space refers to its discretization (and through it to the mesh), so
+  // the discretization is kept alive with the space.
+  m.def(
+    "create_lagrange_space",
+    [](std::shared_ptr<Discretization> discretization, int order,
+       int num_components, const SystemHolder& coordinate_system,
+       LagrangeImplementation implementation, std::string layout_name) {
+      return CreateLagrangeSpace(
+        std::move(discretization), order, num_components,
+        CartesianIfNone(coordinate_system),
+        LagrangeOptions{implementation, std::move(layout_name)});
+    },
+    py::arg("discretization"), py::arg("order"), py::arg("num_components"),
+    py::arg("coordinate_system") = py::none(),
+    py::arg("implementation") = LagrangeImplementation::Default,
+    py::arg("layout_name") = "", py::keep_alive<0, 1>(),
+    "Lagrange space on an Omega_h or uniform-grid discretization. The "
+    "coordinate system defaults to Cartesian.");
+
+  m.def(
+    "create_spline_space",
+    [](std::shared_ptr<Discretization> discretization,
+       const SystemHolder& coordinate_system) {
+      return CreateSplineSpace(std::move(discretization),
+                               CartesianIfNone(coordinate_system));
+    },
+    py::arg("discretization"), py::arg("coordinate_system") = py::none(),
+    py::keep_alive<0, 1>(),
+    "Bicubic spline space on a 2D uniform-grid discretization");
 
   // Configuration for PolynomialReconstructionFunctionSpace MLS evaluation.
   py::class_<MLSOptions>(m, "MLSOptions")
@@ -289,57 +289,78 @@ void bind_create_field_module(py::module& m)
     .def_readwrite("decay_factor", &MLSOptions::decay_factor)
     .def_readwrite("basis", &MLSOptions::basis);
 
-  py::class_<PolynomialReconstructionFunctionSpace, FunctionSpace,
-             std::shared_ptr<PolynomialReconstructionFunctionSpace>>(
-    m, "PolynomialReconstructionFunctionSpace")
-    .def_static(
-      "create",
-      [](const PyCoordinateView& coords, MLSOptions options) {
-        auto values = NumpyInput<Real>::ensure(coords.values);
-        return PolynomialReconstructionFunctionSpace::Create(
-          CoordinateView<HostMemorySpace>(coords.system,
-                                          NumpyToHostView<2, Real>(values)),
-          options);
-      },
-      py::arg("coords"), py::arg("options") = MLSOptions{},
-      "Create a PolynomialReconstructionFunctionSpace over the source points "
-      "of a CoordinateView")
-    .def_static(
-      "from_mesh",
-      [](Omega_h::Mesh& mesh, int source_entity_dim,
-         const SystemHolder& coordinate_system, MLSOptions options) {
-        return PolynomialReconstructionFunctionSpace::FromMesh(
-          mesh, source_entity_dim, CartesianIfNone(coordinate_system), options);
-      },
-      py::arg("mesh"), py::arg("source_entity_dim"),
-      py::arg("coordinate_system") = py::none(),
-      py::arg("options") = MLSOptions{}, py::keep_alive<0, 1>(),
-      "Create a PolynomialReconstructionFunctionSpace from mesh entity "
-      "coordinates.");
-
   m.def(
+    "create_polynomial_reconstruction_space",
+    [](const PyCoordinateView& coords, MLSOptions options) {
+      auto values = NumpyInput<Real>::ensure(coords.values);
+      return CreatePolynomialReconstructionSpace(
+        CoordinateView<HostMemorySpace>(coords.system,
+                                        NumpyToHostView<2, Real>(values)),
+        options);
+    },
+    py::arg("coords"), py::arg("options") = MLSOptions{},
+    "Polynomial-reconstruction (MLS) space over the points of a "
+    "CoordinateView");
+  m.def(
+    "create_polynomial_reconstruction_space",
+    [](std::shared_ptr<Discretization> discretization, int source_entity_dim,
+       const SystemHolder& coordinate_system, MLSOptions options) {
+      return CreatePolynomialReconstructionSpace(
+        std::move(discretization), source_entity_dim,
+        CartesianIfNone(coordinate_system), options);
+    },
+    py::arg("discretization"), py::arg("source_entity_dim"),
+    py::arg("coordinate_system") = py::none(),
+    py::arg("options") = MLSOptions{}, py::keep_alive<0, 1>(),
+    "Polynomial-reconstruction (MLS) space over the entities of dimension "
+    "source_entity_dim of an Omega_h discretization");
+
+  // Omega_h backend entry points
+  auto omega_h_module =
+    m.def_submodule("backend", "Backend-specific entry points")
+      .def_submodule("omega_h", "Omega_h backend");
+  omega_h_module.def(
+    "create_discretization",
+    [](Omega_h::Mesh& mesh, std::string global_id_name) {
+      return ToPyHolder(pcms::backend::omega_h::CreateDiscretization(
+        mesh, std::move(global_id_name)));
+    },
+    py::arg("mesh"), py::arg("global_id_name") = "global",
+    py::keep_alive<0, 1>(),
+    "Discretization on an Omega_h mesh (the mesh is kept alive with it)");
+  omega_h_module.def(
+    "get_mesh",
+    [](const Discretization& discretization) -> Omega_h::Mesh& {
+      return pcms::backend::omega_h::GetMesh(discretization);
+    },
+    py::arg("discretization"), py::return_value_policy::reference,
+    py::keep_alive<0, 1>(), "The Omega_h mesh of an Omega_h discretization");
+  omega_h_module.def(
+    "create_uniform_grid_binary_field",
+    [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
+      return pcms::backend::omega_h::CreateUniformGridBinaryField(mesh,
+                                                                  divisions);
+    },
+    py::arg("mesh"), py::arg("divisions"),
+    "Create a 2D vertex mask field indicating inside/outside mesh");
+
+  omega_h_module.def(
     "create_uniform_grid_from_mesh",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return CreateUniformGridFromMesh<2>(mesh, divisions);
+      return pcms::backend::omega_h::CreateUniformGridFromMesh<2>(mesh,
+                                                                  divisions);
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D uniform grid from an Omega_h mesh");
 
-  m.def(
+  omega_h_module.def(
     "create_uniform_grid_from_mesh",
     [](Omega_h::Mesh& mesh, const std::array<LO, 3>& divisions) {
-      return CreateUniformGridFromMesh<3>(mesh, divisions);
+      return pcms::backend::omega_h::CreateUniformGridFromMesh<3>(mesh,
+                                                                  divisions);
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 3D uniform grid from an Omega_h mesh");
-
-  m.def(
-    "create_uniform_grid_binary_field",
-    [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return CreateUniformGridBinaryField<2>(mesh, divisions).second;
-    },
-    py::arg("mesh"), py::arg("divisions"),
-    "Create a 2D vertex mask field indicating inside/outside mesh");
 }
 
 } // namespace pcms

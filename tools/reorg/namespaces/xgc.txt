@@ -1,0 +1,10 @@
+# namespace-scope names declared in src/pcms/backends/xgc
+XGCDiscretization
+DimID
+ReverseClassificationVertex
+ReadReverseClassificationVertex
+IndexBase
+ConstructRCFromOmegaHMesh
+XGCFieldLayout
+XGCFieldData
+XGCFieldFactory

@@ -1,7 +1,7 @@
-#include "pcms/coupler/field_layout_communicator.h"
+#include "pcms/coupler/detail/field_layout_communicator.hpp"
 #include "pcms/field/gid_permutation.hpp"
 
-namespace pcms
+namespace pcms::coupler
 {
 
 FieldLayoutCommunicator::FieldLayoutCommunicator(
@@ -111,7 +111,7 @@ void FieldLayoutCommunicator::UpdateLayoutNull()
   PCMS_FUNCTION_TIMER;
   // This rank exchanges nothing, but it still unpacks on receive (backends
   // that keep replicas synchronize them there), so every holder is unmapped.
-  plan_.permutation = MakeUnmappedPermutation(
+  plan_.permutation = pcms::field::MakeUnmappedPermutation(
     static_cast<size_t>(layout_.GetNumOwnedDofHolder()));
   if (redev_.GetProcessType() == redev::ProcessType::Client) {
     channel_.BeginSendCommunicationPhase();
@@ -134,4 +134,4 @@ FieldLayoutCommunicator::~FieldLayoutCommunicator()
   }
 }
 
-} // namespace pcms
+} // namespace pcms::coupler

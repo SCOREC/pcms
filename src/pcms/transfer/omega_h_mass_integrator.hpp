@@ -1,14 +1,14 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_MASS_INTEGRATOR_HPP
 #define PCMS_TRANSFER_OMEGA_H_MASS_INTEGRATOR_HPP
 
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/transfer/bilinear_form_integrator.hpp"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include <memory>
 #include <vector>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Mass-matrix bilinear form integrator for Lagrange spaces on Omega_h 2D
@@ -29,7 +29,8 @@ public:
     const FunctionSpace& target_space,
     MassMatrixType mass_type = MassMatrixType::Consistent);
   OmegaHMassIntegrator(
-    std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      target_layout,
     std::shared_ptr<const CoordinateSystem> coordinate_system,
     MassMatrixType mass_type = MassMatrixType::Consistent);
   ~OmegaHMassIntegrator();
@@ -49,6 +50,6 @@ std::unique_ptr<BilinearFormIntegrator> BuildOmegaHMassIntegrator(
   const FunctionSpace& target_space,
   MassMatrixType mass_type = MassMatrixType::Consistent);
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_MASS_INTEGRATOR_HPP

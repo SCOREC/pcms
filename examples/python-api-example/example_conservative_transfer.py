@@ -188,10 +188,11 @@ def main(plot_path=None):
 
         # The conservative-projection operators require the native Omega_h
         # Lagrange backend (not the default MeshFields layout).
-        source_space = pcms.LagrangeFunctionSpace.from_mesh(
-            source_mesh, 1, 1,
-            backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
-        )
+        source_space = pcms.create_lagrange_space(
+            pcms.backend.omega_h.create_discretization(source_mesh),
+            1,
+            1,
+            implementation=pcms.LagrangeImplementation.OmegaH)
         source_field = evaluate_function_onto_field(source_space,
                                                     source_function)
         source_integral = integral_of_field(source_mesh, source_field)
@@ -204,10 +205,11 @@ def main(plot_path=None):
         print(f"\nTarget mesh : {target_mesh.nverts()} verts, "
               f"{target_mesh.nelems()} elems (read from {target_path})")
 
-        target_space = pcms.LagrangeFunctionSpace.from_mesh(
-            target_mesh, 1, 1,
-            backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
-        )
+        target_space = pcms.create_lagrange_space(
+            pcms.backend.omega_h.create_discretization(target_mesh),
+            1,
+            1,
+            implementation=pcms.LagrangeImplementation.OmegaH)
 
         # Analytic reference values at the target DOF holders.
         target_template = target_space.create_function()
@@ -220,9 +222,9 @@ def main(plot_path=None):
 
         # 3a. Mesh-intersection conservative projection.
         mi_target = target_space.create_function()
-        mesh_intersection = pcms.OmegaHConservativeProjection(
-            source_space, target_space
-        )
+        mesh_intersection = pcms.create_conservative_projection(
+            source_space,
+            target_space)
         mesh_intersection.apply(source_field, mi_target)
         report("mesh intersection (exact quadrature)", mi_target, target_mesh,
                target_coords, reference_values, source_integral)
@@ -232,23 +234,22 @@ def main(plot_path=None):
         #     integral is still conserved exactly, but the max nodal error
         #     grows relative to the consistent mass matrix.
         lumped_target = target_space.create_function()
-        lumped_projection = pcms.OmegaHConservativeProjection(
-            source_space, target_space,
-            mass_matrix_type=pcms.MassMatrixType.Lumped,
-        )
+        lumped_projection = pcms.create_conservative_projection(
+            source_space,
+            target_space,
+            mass_matrix_type=pcms.MassMatrixType.Lumped)
         lumped_projection.apply(source_field, lumped_target)
         report("mesh intersection (lumped mass)", lumped_target, target_mesh,
                target_coords, reference_values, source_integral)
 
         # 3c. Monte Carlo (control-variate) conservative projection.
         mc_target = target_space.create_function()
-        monte_carlo = pcms.OmegaHControlVariateProjection(
+        monte_carlo = pcms.create_control_variate_projection(
             source_space,
             target_space,
             samples_per_element=64,
             sampling=pcms.MonteCarloSampling.UniformRandom,
-            seed=8675309,
-        )
+            seed=8675309)
         monte_carlo.apply(source_field, mc_target)
         report("Monte Carlo (control variate, UniformRandom)", mc_target, target_mesh,
                target_coords, reference_values, source_integral)
@@ -260,18 +261,19 @@ def main(plot_path=None):
         print("\nMixed-order mesh-intersection projections:")
 
         # 4a. P1 source -> P0 target (project the linear field to cell averages).
-        target_p0_space = pcms.LagrangeFunctionSpace.from_mesh(
-            target_mesh, 0, 1,
-            backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
-        )
+        target_p0_space = pcms.create_lagrange_space(
+            pcms.backend.omega_h.create_discretization(target_mesh),
+            0,
+            1,
+            implementation=pcms.LagrangeImplementation.OmegaH)
         p1_to_p0 = target_p0_space.create_function()
         # Analytic reference at the P0 DOF holders (element centroids).
         p0_coords = (p1_to_p0.get_layout()
                      .get_dof_holder_coordinates().get_values())
         p0_reference = source_function(p0_coords[:, 0], p0_coords[:, 1])
-        proj_p1_p0 = pcms.OmegaHConservativeProjection(
-            source_space, target_p0_space
-        )
+        proj_p1_p0 = pcms.create_conservative_projection(
+            source_space,
+            target_p0_space)
         proj_p1_p0.apply(source_field, p1_to_p0)
         report("P1 -> P0 (cell averages)", p1_to_p0, target_mesh,
                p0_coords, p0_reference, source_integral,
@@ -279,17 +281,18 @@ def main(plot_path=None):
 
         # 4b. P0 source -> P1 target. Build a P0 source field by sampling the
         #     analytic function at the source element centroids.
-        source_p0_space = pcms.LagrangeFunctionSpace.from_mesh(
-            source_mesh, 0, 1,
-            backend=pcms.LagrangeFunctionSpace.Backend.OmegaH,
-        )
+        source_p0_space = pcms.create_lagrange_space(
+            pcms.backend.omega_h.create_discretization(source_mesh),
+            0,
+            1,
+            implementation=pcms.LagrangeImplementation.OmegaH)
         source_p0_field = evaluate_function_onto_field(source_p0_space,
                                                        source_function)
         source_p0_integral = integral_of_p0_field(source_mesh, source_p0_field)
         p0_to_p1 = target_space.create_function()
-        proj_p0_p1 = pcms.OmegaHConservativeProjection(
-            source_p0_space, target_space
-        )
+        proj_p0_p1 = pcms.create_conservative_projection(
+            source_p0_space,
+            target_space)
         proj_p0_p1.apply(source_p0_field, p0_to_p1)
         report("P0 -> P1", p0_to_p1, target_mesh,
                target_coords, reference_values, source_p0_integral)

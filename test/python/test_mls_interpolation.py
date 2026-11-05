@@ -58,10 +58,9 @@ class TestMLSInterpolation:
             opts.adapt_radius = False
             opts.basis = pcms.RadialBasisFunction.NO_OP
 
-            factory = pcms.PolynomialReconstructionFunctionSpace.create(
+            factory = pcms.create_polynomial_reconstruction_space(
                 pcms.CoordinateView(source_xy),
-                opts,
-            )
+                opts)
             field = factory.create_function()
             request = pcms.EvaluationRequest.from_coordinates(
             pcms.CoordinateView(target_xy))

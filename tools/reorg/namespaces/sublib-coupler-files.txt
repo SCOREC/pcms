@@ -1,0 +1,9 @@
+# files whose code moves to pcms::coupler
+include/pcms/coupler/detail/field_communicator.hpp
+include/pcms/coupler/detail/field_exchange_planner.hpp
+include/pcms/coupler/detail/field_layout_communicator.hpp
+include/pcms/coupler/detail/field_serializer.hpp
+include/pcms/coupler/detail/global_communicator.hpp
+src/pcms/coupler/partition.hpp
+src/pcms/coupler/field_exchange_planner.cpp
+src/pcms/coupler/field_layout_communicator.cpp

@@ -1,12 +1,12 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP
 #define PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP
 
-#include "pcms/field/field.h"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/point_evaluator.h"
+#include "pcms/field/field.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
-#include "pcms/transfer/interpolator.h"
+#include "pcms/transfer/interpolator.hpp"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include "pcms/transfer/monte_carlo_sampling.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class GalerkinProjectionSolver;
@@ -52,7 +52,8 @@ public:
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
 private:
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout_;
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    target_layout_;
   std::unique_ptr<OmegaHMonteCarloRHSIntegrator> rhs_integrator_;
   Interpolator<Real> interpolator_;
   // Scratch field on the target space holding the interpolated control
@@ -67,6 +68,6 @@ private:
   mutable Kokkos::View<Real**, DeviceMemorySpace> residual_;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP

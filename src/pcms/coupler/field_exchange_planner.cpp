@@ -1,13 +1,13 @@
-#include "pcms/coupler/field_exchange_planner.h"
-#include "partition.h"
+#include "pcms/coupler/detail/field_exchange_planner.hpp"
+#include "pcms/coupler/partition.hpp"
 #include "pcms/field/gid_permutation.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/inclusive_scan.h"
-#include "pcms/utility/profile.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/inclusive_scan.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include <algorithm>
 #include <map>
 
-namespace pcms
+namespace pcms::coupler
 {
 
 namespace
@@ -80,7 +80,7 @@ static redev::LOs ConstructPermutation(
   PCMS_FUNCTION_TIMER;
   // Holders that do not participate in this exchange (non-owned, or owned but
   // outside the overlap region) stay unmapped; serialization skips them.
-  redev::LOs permutation = MakeUnmappedPermutation(num_entries);
+  redev::LOs permutation = pcms::field::MakeUnmappedPermutation(num_entries);
   LO entry = 0;
   for (const auto& rank : reverse_partition) {
     for (unsigned e = 0; e < rank.second.ent_offsets.size() - 1; ++e) {
@@ -111,7 +111,7 @@ static redev::LOs ConstructPermutation(
   const EntOffsetsArray& ent_offsets, int& payload_length)
 {
   PCMS_FUNCTION_TIMER;
-  GidToIndexMaps gid_to_buffer_index;
+  pcms::field::GidToIndexMaps gid_to_buffer_index;
   size_t offset = 0;
   LO payload_offset = 0;
   while (true) {
@@ -141,9 +141,9 @@ static redev::LOs ConstructPermutation(
 
   redev::LOs permutation;
   permutation.reserve(local_gids.size());
-  AppendGidPermutation(local_gids, ent_offsets, gid_to_buffer_index,
-                       permutation,
-                       /*allow_missing=*/true);
+  pcms::field::AppendGidPermutation(local_gids, ent_offsets,
+                                    gid_to_buffer_index, permutation,
+                                    /*allow_missing=*/true);
 
   REDEV_ALWAYS_ASSERT(permutation.size() == local_gids.size());
   payload_length = payload_offset;
@@ -335,4 +335,4 @@ void GenericFieldExchangePlanner::FillGidMessage(
   }
 }
 
-} // namespace pcms
+} // namespace pcms::coupler

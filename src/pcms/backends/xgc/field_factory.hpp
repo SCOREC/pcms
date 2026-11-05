@@ -1,0 +1,83 @@
+#ifndef PCMS_BACKENDS_XGC_FIELD_FACTORY_HPP
+#define PCMS_BACKENDS_XGC_FIELD_FACTORY_HPP
+
+#include "pcms/backends/xgc/field_data.hpp"
+#include "pcms/field/field.hpp"
+#include "pcms/field/field_factory.hpp"
+#include "pcms/field/value_view.hpp"
+#include "pcms/utility/detail/common.hpp"
+#include <memory>
+
+namespace pcms::backend::xgc
+{
+
+// XGC is a comm-only backend
+class XGCFieldFactory : public FieldFactory
+{
+public:
+  XGCFieldFactory(const ReverseClassificationVertex& reverse_classification,
+                  LO num_plane_nodes, std::string layout_name = "")
+    : layout_(std::make_shared<XGCFieldLayout>(reverse_classification,
+                                               num_plane_nodes))
+  {
+    layout_->SetName(std::move(layout_name));
+  }
+
+  void SetLayoutName(std::string name) const
+  {
+    layout_->SetName(std::move(name));
+  }
+
+  [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayout()
+    const noexcept override
+  {
+    return layout_;
+  }
+
+  [[nodiscard]] std::shared_ptr<const XGCFieldLayout> GetXGCLayout()
+    const noexcept
+  {
+    return layout_;
+  }
+
+protected:
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
+                                             ValueBasis basis) const override
+  {
+    return apply_to_type(storage_type, [&](auto tag) -> FieldVariant {
+      using T = typename decltype(tag)::type;
+      return WrapField<T>(layout_,
+                          std::make_unique<XGCFieldData<T>>(layout_, basis));
+    });
+  }
+
+  [[nodiscard]] FieldVariant CreateFieldImpl(
+    FieldDataVariant data) const override
+  {
+    return std::visit(
+      [this](auto&& fd) -> FieldVariant {
+        using FD = std::decay_t<decltype(fd)>;
+        using T = typename FD::element_type::value_type;
+        PCMS_ALWAYS_ASSERT(fd != nullptr);
+        if (dynamic_cast<const XGCFieldData<T>*>(fd.get()) == nullptr) {
+          throw pcms_error(
+            "XGCFieldFactory::CreateField: requires XGCFieldData");
+        }
+        if (fd->GetDOFAccess()->GetOwnedValues().size() !=
+            static_cast<size_t>(layout_->GetFullDataSize())) {
+          throw pcms_error(
+            "XGCFieldFactory::CreateField: field data size does not match "
+            "layout");
+        }
+        return WrapField<T>(layout_, std::move(fd));
+      },
+      std::move(data));
+  }
+
+private:
+  std::shared_ptr<XGCFieldLayout> layout_;
+};
+
+} // namespace pcms::backend::xgc
+
+#endif // PCMS_BACKENDS_XGC_FIELD_FACTORY_HPP

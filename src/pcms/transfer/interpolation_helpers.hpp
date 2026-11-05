@@ -1,0 +1,22 @@
+#ifndef PCMS_TRANSFER_INTERPOLATION_HELPERS_HPP
+#define PCMS_TRANSFER_INTERPOLATION_HELPERS_HPP
+
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/memory_spaces.hpp"
+#include <Omega_h_mesh.hpp>
+#include <Omega_h_array.hpp>
+
+namespace pcms::transfer
+{
+
+// FIXME, evaluate if this is needed. If so, move to utility library
+void copyHostScalarArrayView2HostWrite(
+  pcms::Rank1View<double, pcms::HostMemorySpace> source,
+  Omega_h::HostWrite<Omega_h::Real>& target);
+
+void copyHostWrite2ScalarArrayView(
+  const Omega_h::HostWrite<Omega_h::Real>& source,
+  pcms::Rank1View<double, pcms::HostMemorySpace> target);
+
+} // namespace pcms::transfer
+#endif // PCMS_TRANSFER_INTERPOLATION_HELPERS_HPP

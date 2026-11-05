@@ -42,12 +42,12 @@ std::pair<double, int> DecomposeFromCentroid(const r3d::Polytope<3>& poly)
 
   double total_vol = 0.0;
   int ntri = 0;
-  pcms::detail::ForEachPolytopeFaceTriangle(poly, [&](const r3d::Vector<3>& a,
-                                                      const r3d::Vector<3>& b,
-                                                      const r3d::Vector<3>& c) {
-    total_vol += TetVolume(apex, a, b, c);
-    ++ntri;
-  });
+  pcms::transfer::detail::ForEachPolytopeFaceTriangle(
+    poly, [&](const r3d::Vector<3>& a, const r3d::Vector<3>& b,
+              const r3d::Vector<3>& c) {
+      total_vol += TetVolume(apex, a, b, c);
+      ++ntri;
+    });
   return {total_vol, ntri};
 }
 
@@ -134,7 +134,7 @@ TEST_CASE("ForEachPolytopeBoundarySimplex: a triangle yields its 3 edges once, "
 
   int nedges = 0;
   double shoelace = 0.0;
-  pcms::detail::ForEachPolytopeBoundarySimplex(
+  pcms::transfer::detail::ForEachPolytopeBoundarySimplex(
     poly, [&](const r3d::Few<r3d::Vector<2>, 2>& e) {
       shoelace += 0.5 * (e[0][0] * e[1][1] - e[1][0] * e[0][1]);
       ++nedges;

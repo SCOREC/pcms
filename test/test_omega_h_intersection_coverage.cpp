@@ -7,15 +7,15 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
 
-#include <pcms/field/function_space/lagrange.h>
+#include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/transfer/mass_matrix_type.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
-#include <pcms/utility/arrays.h>
+#include <pcms/utility/arrays.hpp>
 
 #include <cstddef>
 #include <vector>
 
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 
 namespace
 {
@@ -35,8 +35,8 @@ std::vector<pcms::Real> CoveragePerTargetElement(Omega_h::Mesh& source_mesh,
 
   // Lumped: for a P0 target the mass matrix is diagonal either way, so this
   // is an exact division by the element volume and adds no error of its own.
-  pcms::OmegaHConservativeProjection projection(*source_space, *target_space,
-                                                pcms::MassMatrixType::Lumped);
+  pcms::transfer::OmegaHConservativeProjection projection(
+    *source_space, *target_space, pcms::MassMatrixType::Lumped);
   projection.Apply(source, target);
 
   const auto values =

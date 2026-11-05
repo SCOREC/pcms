@@ -1,6 +1,6 @@
-#include "pcms/field/field_layout.h"
+#include "pcms/field/field_layout.hpp"
 #include "pcms/field/gid_permutation.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 
 namespace pcms
 {
@@ -8,7 +8,7 @@ namespace pcms
 void FieldLayout::BuildGlobalToLocalPermutation()
 {
   const auto permutation =
-    BuildSortedGidPermutation(GetGidsHost(), GetEntOffsets());
+    pcms::field::BuildSortedGidPermutation(GetGidsHost(), GetEntOffsets());
   global_to_local_host_ = Kokkos::View<LO*, HostMemorySpace>(
     "global_to_local_host", permutation.size());
   for (size_t i = 0; i < permutation.size(); ++i)

@@ -1,20 +1,20 @@
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/field/layout/omega_h_entity.h"
-#include "pcms/field/layout/point_cloud.h"
-#include "pcms/field/evaluator/point_cloud.h"
-#include "pcms/field/data/simple.h"
-#include "pcms/discretization/discretization/omega_h.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/common.h"
-#include "pcms/utility/mesh_geometry.h"
-#include "pcms/localization/point_cloud_localization.h"
-#include "pcms/localization/mesh_localization.h"
+#include "pcms/backends/omega_h/entity_layout.hpp"
+#include "pcms/backends/point_cloud/layout.hpp"
+#include "pcms/backends/point_cloud/evaluator.hpp"
+#include "pcms/field/simple_field_data.hpp"
+#include "pcms/backends/omega_h/discretization.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/common.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
+#include "pcms/backends/point_cloud/localization.hpp"
+#include "pcms/localization/mesh_localization.hpp"
 
 #include <Kokkos_Core.hpp>
 #include <Omega_h_array.hpp>
 #include <string>
 
-namespace pcms
+namespace pcms::field
 {
 
 PolynomialReconstructionFunctionSpace::PolynomialReconstructionFunctionSpace(
@@ -35,12 +35,15 @@ PolynomialReconstructionFunctionSpace::Create(
   auto device_view = Kokkos::View<Real**>("device_view", host_view.extent(0),
                                           host_view.extent(1));
   DeepCopyMismatchLayouts(device_view, host_view);
-  auto pc_layout = std::make_shared<PointCloudLayout>(
-    dim, device_view, coords.GetCoordinateSystem());
+  auto pc_layout =
+    std::make_shared<pcms::backend::point_cloud::PointCloudLayout>(
+      dim, device_view, coords.GetCoordinateSystem());
   auto localization =
-    std::make_shared<PointCloudLocalizationFactory>(pc_layout, options);
-  auto eval_factory = std::make_shared<PointCloudEvaluatorFactory>(
-    pc_layout, localization, options);
+    std::make_shared<pcms::backend::point_cloud::PointCloudLocalizationFactory>(
+      pc_layout, options);
+  auto eval_factory =
+    std::make_shared<pcms::backend::point_cloud::PointCloudEvaluatorFactory>(
+      pc_layout, localization, options);
   return std::make_shared<PolynomialReconstructionFunctionSpace>(
     Key{}, pc_layout, std::move(eval_factory));
 }
@@ -56,8 +59,9 @@ PolynomialReconstructionFunctionSpace::FromMesh(
       "out of range");
   }
 
-  auto mesh_layout = std::make_shared<OmegaHEntityLayout>(
-    mesh, source_entity_dim, 1, std::move(coordinate_system));
+  auto mesh_layout =
+    std::make_shared<pcms::backend::omega_h::OmegaHEntityLayout>(
+      mesh, source_entity_dim, 1, std::move(coordinate_system));
   // MLS assumes unweighted Euclidean in distance calculation
   if (!HasIdentityMetric(*mesh_layout->GetCoordinateSystem())) {
     throw pcms_error(
@@ -65,10 +69,12 @@ PolynomialReconstructionFunctionSpace::FromMesh(
       "coordinate system whose metric is the identity; got '" +
       std::string(mesh_layout->GetCoordinateSystem()->Kind()) + "'");
   }
-  auto localization = std::make_shared<AdjacencyLocalizationFactory>(
-    mesh, source_entity_dim, options);
-  auto eval_factory = std::make_shared<PointCloudEvaluatorFactory>(
-    mesh_layout, localization, options);
+  auto localization =
+    std::make_shared<pcms::localization::AdjacencyLocalizationFactory>(
+      mesh, source_entity_dim, options);
+  auto eval_factory =
+    std::make_shared<pcms::backend::point_cloud::PointCloudEvaluatorFactory>(
+      mesh_layout, localization, options);
   return std::make_shared<PolynomialReconstructionFunctionSpace>(
     Key{}, mesh_layout, std::move(eval_factory));
 }
@@ -112,7 +118,7 @@ FieldVariant PolynomialReconstructionFunctionSpace::CreateFieldImpl(
       "SimpleFieldData<double>");
   }
   if (fd->GetDOFAccess()->GetOwnedValues().size() !=
-      detail::ExpectedFlatFieldDataSize(*layout_)) {
+      pcms::detail::ExpectedFlatFieldDataSize(*layout_)) {
     throw pcms_error(
       "PolynomialReconstructionFunctionSpace::CreateField: field data size "
       "does not match layout");
@@ -133,4 +139,4 @@ PolynomialReconstructionFunctionSpace::CreatePointEvaluatorImpl(
   return evaluator_factory_->CreatePointEvaluator(request);
 }
 
-} // namespace pcms
+} // namespace pcms::field

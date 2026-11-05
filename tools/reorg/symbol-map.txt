@@ -1,0 +1,168 @@
+# PCMS 0.3 -> 0.4 symbol map, used by tools/migrate-pcms.sh.
+# Format: <kind> <old> <new>
+#   cmake-option / cmake-target: renamed CMake option or imported target
+#     (the old option names still work in 0.4 with a deprecation warning;
+#     pcms::core is a deprecated alias of pcms::pcms)
+#   macro: renamed preprocessor macro
+#   cpp: C++ name that moved to another namespace and is still public;
+#     migrate-pcms.sh rewrites it
+#   cpp-private: C++ name that moved and is no longer installed; code outside
+#     PCMS must use the public replacement (see the manual entries and
+#     MIGRATION.md); migrate-pcms.sh only reports it
+#   manual: API that changed shape; migrate-pcms.sh reports uses
+# A trailing "external" flag skips the entry under --in-tree: PCMS itself
+# still defines the old name (the deprecated pcms::core alias; MAX_DIM, the
+# MLS kernels' constant, which is unrelated to the renamed macro).
+# Python code is migrated by tools/reorg/python_api_names.py.
+cmake-option  PCMS_ENABLE_Python PCMS_ENABLE_PYTHON
+cmake-option  PCMS_ENABLE_Fortran PCMS_ENABLE_FORTRAN
+cmake-option  PETSC_LINK_STATIC PCMS_PETSC_LINK_STATIC
+cmake-target  pcms::core pcms::pcms external
+macro         MAX_DIM PCMS_MAX_DIM external
+macro         ACTIVE_GPU_EXECUTION PCMS_ACTIVE_GPU_EXECUTION
+macro         PCMS_ENABLE_Fortran PCMS_ENABLE_FORTRAN
+cpp-private   pcms::MFEMLayout pcms::backend::mfem::MFEMLayout
+cpp-private   pcms::MFEMVertexFieldData pcms::backend::mfem::MFEMVertexFieldData
+cpp-private   pcms::MFEMFieldFactory pcms::backend::mfem::MFEMFieldFactory
+cpp-private   pcms::OmegaHDiscretization pcms::backend::omega_h::OmegaHDiscretization
+cpp-private   pcms::OmegaHEntityLayout pcms::backend::omega_h::OmegaHEntityLayout
+cpp-private   pcms::OmegaHLagrangeLayout pcms::backend::omega_h::OmegaHLagrangeLayout
+cpp-private   pcms::OmegaHLagrangeEvaluatorFactory pcms::backend::omega_h::OmegaHLagrangeEvaluatorFactory
+cpp-private   pcms::OmegaHLagrangePointEvaluator pcms::backend::omega_h::OmegaHLagrangePointEvaluator
+cpp-private   pcms::OmegaHLagrangeLocHint pcms::backend::omega_h::OmegaHLagrangeLocHint
+cpp-private   pcms::FindSupports pcms::backend::omega_h::FindSupports
+cpp-private   pcms::searchNeighbors pcms::backend::omega_h::searchNeighbors
+cpp-private   pcms::Queue pcms::backend::omega_h::Queue
+cpp-private   pcms::Track pcms::backend::omega_h::Track
+cpp           pcms::CreateUniformGridBinaryField pcms::backend::omega_h::CreateUniformGridBinaryField
+cpp-private   pcms::MeshFieldBackend pcms::backend::omega_h_meshfields::MeshFieldBackend
+cpp-private   pcms::MeshFieldBackendImpl pcms::backend::omega_h_meshfields::MeshFieldBackendImpl
+cpp-private   pcms::MakeBackendForComponents pcms::backend::omega_h_meshfields::MakeBackendForComponents
+cpp-private   pcms::MakeMeshFieldBackend pcms::backend::omega_h_meshfields::MakeMeshFieldBackend
+cpp-private   pcms::MeshFieldsAdapter2LocalizationHint pcms::backend::omega_h_meshfields::MeshFieldsAdapter2LocalizationHint
+cpp-private   pcms::MeshFieldsAdapterLayout pcms::backend::omega_h_meshfields::MeshFieldsAdapterLayout
+cpp-private   pcms::MeshFieldsFieldData pcms::backend::omega_h_meshfields::MeshFieldsFieldData
+cpp-private   pcms::MeshFieldsEvaluatorFactory pcms::backend::omega_h_meshfields::MeshFieldsEvaluatorFactory
+cpp-private   pcms::MeshFieldsPointEvaluator pcms::backend::omega_h_meshfields::MeshFieldsPointEvaluator
+cpp-private   pcms::PointCloudDiscretization pcms::backend::point_cloud::PointCloudDiscretization
+cpp-private   pcms::PointCloud pcms::backend::point_cloud::PointCloud
+cpp-private   pcms::PointCloudLayout pcms::backend::point_cloud::PointCloudLayout
+cpp-private   pcms::PointCloudEvaluatorFactory pcms::backend::point_cloud::PointCloudEvaluatorFactory
+cpp-private   pcms::MLSPointEvaluator pcms::backend::point_cloud::MLSPointEvaluator
+cpp-private   pcms::PointCloudLocalizationFactory pcms::backend::point_cloud::PointCloudLocalizationFactory
+cpp           pcms::ExchangePlan pcms::coupler::ExchangePlan
+cpp           pcms::FieldCommunicator pcms::coupler::FieldCommunicator
+cpp           pcms::FieldCommunicator2Ptr pcms::coupler::FieldCommunicator2Ptr
+cpp           pcms::FieldCommunicator2PtrT pcms::coupler::FieldCommunicator2PtrT
+cpp           pcms::FieldExchangePlanner pcms::coupler::FieldExchangePlanner
+cpp           pcms::FieldLayoutCommunicator pcms::coupler::FieldLayoutCommunicator
+cpp           pcms::FieldSerializer pcms::coupler::FieldSerializer
+cpp           pcms::GenericFieldExchangePlanner pcms::coupler::GenericFieldExchangePlanner
+cpp-private   pcms::GetRank pcms::coupler::GetRank
+cpp           pcms::GlobalCommunicator pcms::coupler::GlobalCommunicator
+cpp-private   pcms::Partition pcms::coupler::Partition
+cpp-private   pcms::EmptyDiscretization pcms::discretization::EmptyDiscretization
+cpp-private   pcms::AppendGidPermutation pcms::field::AppendGidPermutation
+cpp-private   pcms::BuildSortedGidPermutation pcms::field::BuildSortedGidPermutation
+cpp-private   pcms::EmptyFieldLayout pcms::field::EmptyFieldLayout
+cpp-private   pcms::FieldEvaluatorFactory pcms::field::FieldEvaluatorFactory
+cpp-private   pcms::GidToIndexMaps pcms::field::GidToIndexMaps
+cpp-private   pcms::LagrangeFunctionSpace pcms::field::LagrangeFunctionSpace
+cpp-private   pcms::MakeUnmappedPermutation pcms::field::MakeUnmappedPermutation
+cpp-private   pcms::PolynomialReconstructionFunctionSpace pcms::field::PolynomialReconstructionFunctionSpace
+cpp-private   pcms::SplineFunctionSpace pcms::field::SplineFunctionSpace
+cpp-private pcms::mls_interpolation pcms::field::mls_interpolation
+cpp-private   pcms::AdjacencyLocalizationFactory pcms::localization::AdjacencyLocalizationFactory
+cpp-private   pcms::BuildPointCloudSupports pcms::localization::BuildPointCloudSupports
+cpp-private   pcms::GetOwningElementId pcms::localization::GetOwningElementId
+cpp-private   pcms::GridPointSearch2D pcms::localization::GridPointSearch2D
+cpp-private   pcms::GridPointSearch3D pcms::localization::GridPointSearch3D
+cpp-private   pcms::GridPointSearchVariant pcms::localization::GridPointSearchVariant
+cpp-private   pcms::LocalizationFactory pcms::localization::LocalizationFactory
+cpp-private   pcms::PointLocalizationSearch pcms::localization::PointLocalizationSearch
+cpp-private   pcms::PointLocalizationSearch2D pcms::localization::PointLocalizationSearch2D
+cpp-private   pcms::PointLocalizationSearch3D pcms::localization::PointLocalizationSearch3D
+cpp-private   pcms::SupportResults pcms::localization::SupportResults
+cpp-private   pcms::adapt_radii pcms::localization::adapt_radii
+cpp-private   pcms::minmax pcms::localization::minmax
+cpp-private   pcms::triangle_intersects_bbox pcms::localization::triangle_intersects_bbox
+cpp-private   pcms::within_number_of_support_range pcms::localization::within_number_of_support_range
+cpp-private   pcms::BilinearFormIntegrator pcms::transfer::BilinearFormIntegrator
+cpp-private   pcms::BuildOmegaHConservativeRHSIntegrator pcms::transfer::BuildOmegaHConservativeRHSIntegrator
+cpp-private   pcms::BuildOmegaHMassIntegrator pcms::transfer::BuildOmegaHMassIntegrator
+cpp-private   pcms::FindIntersections pcms::transfer::FindIntersections
+cpp-private   pcms::GalerkinProjectionSolver pcms::transfer::GalerkinProjectionSolver
+cpp-private   pcms::InterpolationBase pcms::transfer::InterpolationBase
+cpp-private   pcms::IntersectionResults pcms::transfer::IntersectionResults
+cpp-private   pcms::LinearFormIntegrator pcms::transfer::LinearFormIntegrator
+cpp-private   pcms::MLSMeshInterpolation pcms::transfer::MLSMeshInterpolation
+cpp-private   pcms::MLSPointCloudInterpolation pcms::transfer::MLSPointCloudInterpolation
+cpp-private   pcms::MassMatrixIntegrator pcms::transfer::MassMatrixIntegrator
+cpp-private   pcms::OmegaHConservativeProjection pcms::transfer::OmegaHConservativeProjection
+cpp-private   pcms::OmegaHControlVariateProjection pcms::transfer::OmegaHControlVariateProjection
+cpp-private   pcms::OmegaHIntersectionRHSIntegrator pcms::transfer::OmegaHIntersectionRHSIntegrator
+cpp-private   pcms::OmegaHMassIntegrator pcms::transfer::OmegaHMassIntegrator
+cpp-private   pcms::OmegaHMonteCarloRHSIntegrator pcms::transfer::OmegaHMonteCarloRHSIntegrator
+cpp-private   pcms::build_linear_triangle_coo_rows pcms::transfer::build_linear_triangle_coo_rows
+cpp-private   pcms::build_linear_triangle_coo_rows_cols pcms::transfer::build_linear_triangle_coo_rows_cols
+cpp-private   pcms::copyHostScalarArrayView2HostWrite pcms::transfer::copyHostScalarArrayView2HostWrite
+cpp-private   pcms::copyHostWrite2ScalarArrayView pcms::transfer::copyHostWrite2ScalarArrayView
+cpp-private   pcms::createSeqAIJMat pcms::transfer::createSeqAIJMat
+cpp-private   pcms::createSeqVec pcms::transfer::createSeqVec
+cpp-private   pcms::intersectTargets pcms::transfer::intersectTargets
+cpp-private   pcms::ArrayMask pcms::utility::ArrayMask
+cpp-private   pcms::EnsureClassification pcms::utility::EnsureClassification
+cpp-private   pcms::GetMPIType pcms::utility::GetMPIType
+cpp-private   pcms::distance_squared pcms::utility::distance_squared
+cpp-private   pcms::flatten_to_omega_h_reals pcms::utility::flatten_to_omega_h_reals
+cpp-private   pcms::flatten_to_omega_h_reals_host pcms::utility::flatten_to_omega_h_reals_host
+cpp-private   pcms::get_entity_centroids pcms::utility::get_entity_centroids
+cpp-private   pcms::UniformGridDiscretization pcms::backend::uniform_grid::UniformGridDiscretization
+cpp-private   pcms::UniformGridFieldLayout pcms::backend::uniform_grid::UniformGridFieldLayout
+cpp-private   pcms::UniformGridFieldLayout2D pcms::backend::uniform_grid::UniformGridFieldLayout2D
+cpp-private   pcms::UniformGridEvaluatorFactory pcms::backend::uniform_grid::UniformGridEvaluatorFactory
+cpp-private   pcms::UniformGridEvaluatorFactory2D pcms::backend::uniform_grid::UniformGridEvaluatorFactory2D
+cpp-private   pcms::UniformGridFieldLocalizationHint pcms::backend::uniform_grid::UniformGridFieldLocalizationHint
+cpp-private   pcms::UniformGridPointEvaluator pcms::backend::uniform_grid::UniformGridPointEvaluator
+cpp-private   pcms::UniformGridSplineEvaluatorFactory2D pcms::backend::uniform_grid::UniformGridSplineEvaluatorFactory2D
+cpp-private   pcms::UniformGridSplinePointEvaluator2D pcms::backend::uniform_grid::UniformGridSplinePointEvaluator2D
+cpp-private   pcms::BoundaryCondition pcms::backend::uniform_grid::BoundaryCondition
+cpp-private   pcms::CubicSplineInterpolator pcms::backend::uniform_grid::CubicSplineInterpolator
+cpp-private   pcms::ExplicitCubicSplineInterpolator pcms::backend::uniform_grid::ExplicitCubicSplineInterpolator
+cpp-private   pcms::CompactCubicSplineInterpolator pcms::backend::uniform_grid::CompactCubicSplineInterpolator
+cpp-private   pcms::BiCubicSplineInterpolator pcms::backend::uniform_grid::BiCubicSplineInterpolator
+cpp-private   pcms::ExplicitBiCubicSplineInterpolator pcms::backend::uniform_grid::ExplicitBiCubicSplineInterpolator
+cpp-private   pcms::CompactBiCubicSplineInterpolator pcms::backend::uniform_grid::CompactBiCubicSplineInterpolator
+cpp-private   pcms::RegularGridInterpolator pcms::backend::uniform_grid::RegularGridInterpolator
+cpp-private   pcms::RealMatView pcms::backend::uniform_grid::RealMatView
+cpp-private   pcms::RealVecView pcms::backend::uniform_grid::RealVecView
+cpp-private   pcms::IntMatView pcms::backend::uniform_grid::IntMatView
+cpp-private   pcms::IntVecView pcms::backend::uniform_grid::IntVecView
+cpp-private   pcms::HostIntVecView pcms::backend::uniform_grid::HostIntVecView
+cpp-private   pcms::XGCDiscretization pcms::backend::xgc::XGCDiscretization
+cpp           pcms::DimID pcms::backend::xgc::DimID
+cpp           pcms::ReverseClassificationVertex pcms::backend::xgc::ReverseClassificationVertex
+cpp           pcms::ReadReverseClassificationVertex pcms::backend::xgc::ReadReverseClassificationVertex
+cpp           pcms::IndexBase pcms::backend::xgc::IndexBase
+cpp           pcms::ConstructRCFromOmegaHMesh pcms::backend::xgc::ConstructRCFromOmegaHMesh
+cpp-private   pcms::XGCFieldLayout pcms::backend::xgc::XGCFieldLayout
+cpp-private   pcms::XGCFieldData pcms::backend::xgc::XGCFieldData
+cpp-private   pcms::XGCFieldFactory pcms::backend::xgc::XGCFieldFactory
+cpp           pcms::CreateUniformGridFromMesh pcms::backend::omega_h::CreateUniformGridFromMesh
+manual        pcms::LagrangeFunctionSpace::FromMesh  ->  pcms::CreateLagrangeSpace(pcms::backend::omega_h::CreateDiscretization(mesh[, global_id_name]), order, ncomp, csys, {implementation})
+manual        pcms::LagrangeFunctionSpace::FromUniformGrid  ->  pcms::CreateLagrangeSpace(pcms::CreateUniformGridDiscretization(grid), order, ncomp, csys)
+manual        pcms::LagrangeFunctionSpace::Backend  ->  pcms::LagrangeImplementation (in pcms::LagrangeOptions)
+manual        pcms::SplineFunctionSpace::FromUniformGrid  ->  pcms::CreateSplineSpace(pcms::CreateUniformGridDiscretization(grid), csys)
+manual        pcms::PolynomialReconstructionFunctionSpace::Create  ->  pcms::CreatePolynomialReconstructionSpace(points, options)
+manual        pcms::PolynomialReconstructionFunctionSpace::FromMesh  ->  pcms::CreatePolynomialReconstructionSpace(pcms::backend::omega_h::CreateDiscretization(mesh), entity_dim, csys, options)
+manual        pcms::OmegaHConservativeProjection  ->  pcms::CreateConservativeProjection(source_space, target_space, {mass_matrix_type})
+manual        pcms::OmegaHControlVariateProjection  ->  pcms::CreateControlVariateProjection(source, target_space, {samples_per_element, sampling, seed, mass_matrix_type})
+manual        pcms::XGCFieldFactory  ->  pcms::backend::xgc::CreateFieldFactory(rc, num_plane_nodes, layout_name)
+manual        pcms::XGCFieldData  ->  pcms::backend::xgc::CreateField<T>(factory, name, data, plane_comm)
+manual        pcms::MFEMFieldFactory  ->  pcms::backend::mfem::CreateFieldFactory(pmesh, pfes, gf, csys, layout_name)
+manual        pcms::MFEMLayout::OverlapMaskFromAttribute  ->  pcms::backend::mfem::OverlapMaskFromAttribute(pmesh, attribute)
+manual        pcms::EmptyFieldLayout  ->  pcms::CreateEmptyLayout(csys, num_components)
+manual        pcms::OverlapMask(size, Omega_h::Read<I8>)  ->  pcms::OverlapMask(size, pcms::backend::omega_h::OverlapMaskFromArray(mask))
+manual        pcms::MakeConstRank2View(Omega_h::Read<T>, dim)  ->  pcms::backend::omega_h::MakeConstRank2View(array, dim)
+manual        redev::Mode (in ApplicationComm/FieldHandle/DataHandle Send/Receive)  ->  pcms::Mode
+manual        FunctionSpace::mesh() (Python)  ->  pcms.backend.omega_h.get_mesh(space.get_discretization())

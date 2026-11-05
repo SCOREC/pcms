@@ -1,11 +1,11 @@
-#include "pcms/localization/mls_support_helpers.h"
-#include "pcms/localization/adj_search.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/print.h"
+#include "pcms/localization/mls_support_helpers.hpp"
+#include "pcms/backends/omega_h/adj_search.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/print.hpp"
 
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::localization
 {
 
 // replace with Kokkos::minmax_element when out of experimental
@@ -226,4 +226,4 @@ SupportResults BuildPointCloudSupports(const Omega_h::Reals& source_coords,
                         radii2};
 }
 
-} // namespace pcms
+} // namespace pcms::localization

@@ -1,16 +1,16 @@
-#include <pcms/utility/eqdsk.h>
-#include <pcms/utility/arrays.h>
-#include <pcms/field/eqdsk_field.h>
-#include <pcms/field/function_space/spline.h>
-#include <pcms/field/coordinate_view.hpp>
-#include <pcms/field/evaluation_request.h>
+#include <pcms/utility/eqdsk.hpp>
+#include <pcms/utility/arrays.hpp>
+#include <pcms/field/eqdsk_field.hpp>
+#include <pcms/field/function_space/spline.hpp>
+#include <pcms/utility/coordinate_view.hpp>
+#include <pcms/field/evaluation_request.hpp>
 #include <Kokkos_Core.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 #include <iostream>
 #include <cmath>
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
 using Catch::Approx;
 using pcms::CoordinateSystem;

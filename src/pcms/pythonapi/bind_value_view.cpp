@@ -6,9 +6,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "pcms/field/coordinate_system.hpp"
+#include "pcms/utility/coordinate_system.hpp"
 #include "pcms/field/value_view.hpp"
-#include "py_value_types.h"
+#include "pcms/pythonapi/py_value_types.hpp"
 
 namespace py = pybind11;
 

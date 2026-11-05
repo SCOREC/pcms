@@ -6,7 +6,8 @@ message("TESTING ON SYSTEM WITH ${HOST_NPROC} CPU Cores")
 set(rendezvous 1)
 set(notRendezvous 0)
 
-if(PCMS_ENABLE_OMEGA_H)
+# coupling tests need the coupler (redev/ADIOS2)
+if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
   add_exe(test_ohClassPtn)
   set(cyclone1p ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/)
   if(HOST_NPROC GREATER_EQUAL 3)
@@ -168,7 +169,7 @@ if(PCMS_ENABLE_OMEGA_H)
       ignored)
   endif()
   add_executable(field_communication test_field_communication.cpp)
-  target_link_libraries(field_communication PUBLIC pcms::core test_support)
+  target_link_libraries(field_communication PUBLIC pcms::pcms test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
     tri_mpi_test(
       TESTNAME
@@ -207,7 +208,7 @@ if(PCMS_ENABLE_OMEGA_H)
       ignored)
   endif()
   add_executable(proxy_coupling test_proxy_coupling.cpp)
-  target_link_libraries(proxy_coupling PUBLIC pcms::core test_support)
+  target_link_libraries(proxy_coupling PUBLIC pcms::pcms test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
     tri_mpi_test(
       TESTNAME
@@ -401,10 +402,22 @@ if(Catch2_FOUND)
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
   set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp
                              test_coordinate_transformation.cpp
-                             test_bounding_box.cpp test_field_serializer.cpp)
+                             test_bounding_box.cpp)
   if(PCMS_ENABLE_XGC)
-    list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_reverse_classification.cpp
-         test_xgc_field_data.cpp)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_reverse_classification.cpp)
+  endif()
+  # unit tests that use the coupler
+  if(TARGET pcms::coupler)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_field_serializer.cpp)
+    if(PCMS_ENABLE_XGC)
+      list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_field_data.cpp)
+    endif()
+    if(PCMS_ENABLE_OMEGA_H)
+      list(APPEND PCMS_UNIT_TEST_SOURCES test_field_exchange_planner.cpp)
+    endif()
+    if(PCMS_ENABLE_MFEM)
+      list(APPEND PCMS_UNIT_TEST_SOURCES test_mfem_adapter.cpp)
+    endif()
   endif()
 
   if(PCMS_ENABLE_OMEGA_H)
@@ -417,7 +430,6 @@ if(Catch2_FOUND)
       test_field_evaluation.cpp
       test_field_interpolation.cpp
       test_field_copy.cpp
-      test_field_exchange_planner.cpp
       test_point_search.cpp
       test_mls_basis.cpp
       test_rbf_interp.cpp
@@ -436,10 +448,6 @@ if(Catch2_FOUND)
       test_tagged_outputs.cpp
       test_transformed_source.cpp
       test_evaluation_only_space.cpp)
-  endif()
-
-  if(PCMS_ENABLE_MFEM)
-    list(APPEND PCMS_UNIT_TEST_SOURCES test_mfem_adapter.cpp)
   endif()
 
   if(PCMS_ENABLE_MESHFIELDS)
@@ -470,7 +478,7 @@ if(Catch2_FOUND)
     target_link_libraries(unit_tests PUBLIC mfem)
   endif()
 
-  target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core
+  target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::pcms
           pcms::transfer Kokkos::kokkoskernels)
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -480,7 +488,7 @@ if(Catch2_FOUND)
 
   add_executable(test_interpolation_on_ltx_mesh test_interpolation_on_ltx_mesh.cpp)
   target_link_libraries(test_interpolation_on_ltx_mesh PUBLIC Catch2::Catch2WithMain
-                                                        pcms::core
+                                                        pcms::pcms
                                                         pcms::transfer)
   target_include_directories(test_interpolation_on_ltx_mesh PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
   add_test(NAME test_interpolation_on_ltx_mesh
@@ -502,9 +510,9 @@ else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()
 
-if(PCMS_ENABLE_MFEM)
+if(PCMS_ENABLE_MFEM AND TARGET pcms::coupler)
   add_executable(test_mfem_coupling test_mfem_coupling.cpp)
-  target_link_libraries(test_mfem_coupling PUBLIC pcms::core mfem)
+  target_link_libraries(test_mfem_coupling PUBLIC pcms::pcms mfem)
   if(HOST_NPROC GREATER_EQUAL 2)
     dual_mpi_test(
       TESTNAME
@@ -532,7 +540,7 @@ endif()
 
 if(PCMS_ENABLE_C)
   find_package(Kokkos REQUIRED)
-  if(PCMS_ENABLE_XGC)
+  if(PCMS_ENABLE_XGC AND TARGET pcms::capi::core)
     add_executable(test_proxy_couple_xgc_c_interface
                    test_proxy_coupling_xgc_client.c)
     target_link_libraries(test_proxy_couple_xgc_c_interface
@@ -541,12 +549,12 @@ if(PCMS_ENABLE_C)
       add_executable(test_proxy_couple_xgc_cpp_interface
                      test_proxy_coupling_xgc_server.cpp)
       target_link_libraries(test_proxy_couple_xgc_cpp_interface
-                            PUBLIC pcms::core MPI::MPI_C test_support)
+                            PUBLIC pcms::pcms MPI::MPI_C test_support)
       # New test with proper overlap mask feature (no hacky ownership modification)
       add_executable(test_proxy_couple_xgc_overlap_interface
                      test_proxy_coupling_xgc_server_overlap.cpp)
       target_link_libraries(test_proxy_couple_xgc_overlap_interface
-                            PUBLIC pcms::core MPI::MPI_C test_support)
+                            PUBLIC pcms::pcms MPI::MPI_C test_support)
       if(HOST_NPROC GREATER_EQUAL 3)
         dual_mpi_test(
           TESTNAME
@@ -648,13 +656,15 @@ if(PCMS_ENABLE_C)
     endif()
   endif()
 endif()
-if(PCMS_ENABLE_Fortran)
-  add_executable(test_proxy_coupling_xgc_client_fortran
-                 test_proxy_coupling_xgc_client_fortran.f90)
-  target_link_libraries(test_proxy_coupling_xgc_client_fortran
-                        PUBLIC pcms::fortranapi MPI::MPI_Fortran)
-  set_target_properties(test_proxy_coupling_xgc_client_fortran
-                        PROPERTIES LINKER_LANGUAGE Fortran)
+if(PCMS_ENABLE_FORTRAN)
+  if(TARGET pcms::fortranapi::core)
+    add_executable(test_proxy_coupling_xgc_client_fortran
+                   test_proxy_coupling_xgc_client_fortran.f90)
+    target_link_libraries(test_proxy_coupling_xgc_client_fortran
+                          PUBLIC pcms::fortranapi MPI::MPI_Fortran)
+    set_target_properties(test_proxy_coupling_xgc_client_fortran
+                          PROPERTIES LINKER_LANGUAGE Fortran)
+  endif()
 
   add_executable(test_interpolation_fortran_api
                  test_interpolation.f90)
@@ -668,7 +678,7 @@ if(PCMS_ENABLE_Fortran)
     $<TARGET_FILE:test_interpolation_fortran_api> ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh 23 19
   )
 
-  if(HOST_NPROC GREATER_EQUAL 4)
+  if(HOST_NPROC GREATER_EQUAL 4 AND TARGET pcms::fortranapi::core)
     dual_mpi_test(
       TESTNAME
       xgc_fortran_proxy_to_omega
@@ -697,5 +707,19 @@ endif()
 
 find_package(KokkosKernels REQUIRED)
 
-add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)
-target_link_libraries(xgc_n0_server PUBLIC pcms::core test_support)
+if(TARGET pcms::coupler)
+  add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)
+  target_link_libraries(xgc_n0_server PUBLIC pcms::pcms test_support)
+endif()
+
+# every installed public header compiles on its own
+add_subdirectory(public_headers)
+
+# installed core headers must not include backend libraries
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME public_header_includes
+           COMMAND ${Python3_EXECUTABLE}
+                   ${PROJECT_SOURCE_DIR}/tools/check-public-includes.py
+                   ${PROJECT_SOURCE_DIR})
+endif()

@@ -1,0 +1,2 @@
+# Phase 5: public / installed-detail headers of discretization move to include/
+src/pcms/discretization/discretization.hpp               include/pcms/discretization/discretization.hpp

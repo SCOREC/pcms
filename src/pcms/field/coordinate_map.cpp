@@ -1,8 +1,8 @@
 #include "pcms/field/coordinate_map.hpp"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/profile.h"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include <Kokkos_Core.hpp>
 #include <string>
 

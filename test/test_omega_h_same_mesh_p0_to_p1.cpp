@@ -9,8 +9,8 @@
 #include <pcms/transfer/mass_matrix_type.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_form_integrator_utils.hpp>
-#include <pcms/utility/arrays.h>
-#include "field_test_utils.h"
+#include <pcms/utility/arrays.hpp>
+#include "field_test_utils.hpp"
 
 #include <array>
 #include <cmath>
@@ -195,14 +195,14 @@ Omega_h::HostRead<Omega_h::Real> SelfDecompositionMeasures(Omega_h::Mesh& mesh)
   Omega_h::Write<Omega_h::LO> indices(nelems);
   Omega_h::parallel_for(nelems + 1, OMEGA_H_LAMBDA(int i) { offsets[i] = i; });
   Omega_h::parallel_for(nelems, OMEGA_H_LAMBDA(int i) { indices[i] = i; });
-  const pcms::IntersectionResults self{Omega_h::LOs(offsets),
-                                       Omega_h::LOs(indices)};
+  const pcms::transfer::IntersectionResults self{Omega_h::LOs(offsets),
+                                                 Omega_h::LOs(indices)};
 
   Omega_h::Write<Omega_h::Real> sums(nelems, 0.0);
   Omega_h::parallel_for(
     nelems, OMEGA_H_LAMBDA(int e) {
       Omega_h::Real acc = 0.0;
-      pcms::detail::ForEachIntersectionSubsimplex<Dim>(
+      pcms::transfer::detail::ForEachIntersectionSubsimplex<Dim>(
         e, self, coords, coords, e2n, e2n,
         [&](const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>&, int,
             Omega_h::Real measure) { acc += measure; });
@@ -359,8 +359,8 @@ std::vector<double> ProjectSameMesh(Omega_h::Mesh& mesh,
   auto target = target_space->CreateFunction<pcms::Real>();
   pcms::test::SetField(source, SourceFunction<Dim>{});
 
-  pcms::OmegaHConservativeProjection projection(*source_space, *target_space,
-                                                mass_type);
+  pcms::transfer::OmegaHConservativeProjection projection(
+    *source_space, *target_space, mass_type);
   projection.Apply(source, target);
 
   source_values = ToVector(
@@ -459,7 +459,7 @@ double StarDecompositionMeasure(const r3d::Polytope<Dim>& poly)
   const double eps = PCMS_INTERSECTION_ABS_TOL +
                      PCMS_INTERSECTION_REL_TOL * std::fabs(r3d::measure(poly));
   double sum = 0.0;
-  pcms::detail::ForEachPolytopeStarSimplex<Dim>(
+  pcms::transfer::detail::ForEachPolytopeStarSimplex<Dim>(
     poly, eps,
     [&](const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>&,
         Omega_h::Real measure) { sum += measure; });
@@ -483,7 +483,7 @@ void RequireCleanSimplexDecomposition(const double* coords)
   r3d::init(poly, verts);
   const double measure = std::fabs(r3d::measure(poly));
   int pieces = 0;
-  pcms::detail::ForEachPolytopeStarSimplex<Dim>(
+  pcms::transfer::detail::ForEachPolytopeStarSimplex<Dim>(
     poly, 0.0,
     [&](const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>&,
         Omega_h::Real piece) {

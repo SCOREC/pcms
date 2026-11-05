@@ -1,0 +1,103 @@
+# PCMS 0.3 -> 0.4 header map, used by tools/migrate-pcms.sh.
+# Format: <old include path> <new include path> [private]
+# "private" means the header is no longer installed: code outside PCMS must
+# use the public API instead (usually the factories in pcms/field/function_spaces.hpp,
+# pcms/discretization/discretization.hpp, pcms/transfer/projection.hpp or a
+# backend header pcms/backends/<name>/<name>.hpp); see MIGRATION.md.
+# A "-" as new path means the header was removed.
+pcms.h                                                         pcms/pcms.hpp
+pcms/configuration.h                                           pcms/configuration.hpp
+pcms/coupler/coupler_types.h                                   pcms/coupler/coupler_types.hpp
+pcms/coupler/field_communicator.hpp                            pcms/coupler/detail/field_communicator.hpp
+pcms/coupler/field_exchange_planner.h                          pcms/coupler/detail/field_exchange_planner.hpp
+pcms/coupler/field_layout_communicator.h                       pcms/coupler/detail/field_layout_communicator.hpp
+pcms/coupler/field_serializer.h                                pcms/coupler/detail/field_serializer.hpp
+pcms/coupler/global_communicator.h                             pcms/coupler/detail/global_communicator.hpp
+pcms/coupler/overlap_mask.h                                    pcms/coupler/overlap_mask.hpp
+pcms/coupler/partition.h                                       pcms/coupler/partition.hpp private
+pcms/discretization/discretization.h                           pcms/discretization/discretization.hpp
+pcms/discretization/discretization/empty.hpp                   pcms/discretization/empty.hpp private
+pcms/discretization/discretization/omega_h.hpp                 pcms/backends/omega_h/discretization.hpp private
+pcms/discretization/discretization/point_cloud.hpp             pcms/backends/point_cloud/discretization.hpp private
+pcms/discretization/discretization/uniform_grid.hpp            pcms/backends/uniform_grid/discretization.hpp private
+pcms/discretization/discretization/xgc.hpp                     pcms/backends/xgc/discretization.hpp private
+pcms/discretization/discretization/xgc_reverse_classification.h pcms/backends/xgc/reverse_classification.hpp
+pcms/field/coordinate_system.hpp                               pcms/utility/coordinate_system.hpp
+pcms/field/coordinate_systems/cartesian.hpp                    pcms/utility/coordinate_systems/cartesian.hpp
+pcms/field/coordinate_systems/cylindrical.hpp                  pcms/utility/coordinate_systems/cylindrical.hpp
+pcms/field/coordinate_view.hpp                                 pcms/utility/coordinate_view.hpp
+pcms/field/data/mesh_fields.h                                  pcms/backends/omega_h_meshfields/field_data.hpp private
+pcms/field/data/mfem.hpp                                       pcms/backends/mfem/field_data.hpp private
+pcms/field/data/point_cloud.h                                  pcms/backends/point_cloud/field_data.hpp private
+pcms/field/data/simple.h                                       pcms/field/simple_field_data.hpp
+pcms/field/data/xgc.h                                          pcms/backends/xgc/field_data.hpp private
+pcms/field/element_dispatch.h                                  pcms/field/element_dispatch.hpp private
+pcms/field/eqdsk_field.h                                       pcms/field/eqdsk_field.hpp
+pcms/field/evaluation_request.h                                pcms/field/evaluation_request.hpp
+pcms/field/evaluator/mesh_fields.h                             pcms/backends/omega_h_meshfields/evaluator.hpp private
+pcms/field/evaluator/mesh_fields_backend.h                     pcms/backends/omega_h_meshfields/evaluator_backend.hpp private
+pcms/field/evaluator/mls_options.h                             pcms/localization/mls_options.hpp
+pcms/field/evaluator/mls_point_cloud.h                         pcms/backends/point_cloud/mls_evaluator.hpp private
+pcms/field/evaluator/omega_h_lagrange.h                        pcms/backends/omega_h/lagrange_evaluator.hpp private
+pcms/field/evaluator/pcms_interpolator_aliases.hpp             pcms/field/evaluator/interpolator_aliases.hpp private
+pcms/field/evaluator/pcms_interpolator_logger.hpp              pcms/field/evaluator/interpolator_logger.hpp private
+pcms/field/evaluator/pcms_interpolator_view_utils.hpp          pcms/field/evaluator/interpolator_view_utils.hpp private
+pcms/field/evaluator/point_cloud.h                             pcms/backends/point_cloud/evaluator.hpp private
+pcms/field/evaluator/spline_interpolator.hpp                   pcms/backends/uniform_grid/spline_interpolator.hpp private
+pcms/field/evaluator/uniform_grid.h                            pcms/backends/uniform_grid/evaluator.hpp private
+pcms/field/evaluator/uniform_grid_spline.h                     pcms/backends/uniform_grid/spline_evaluator.hpp private
+pcms/field/field.h                                             pcms/field/field.hpp
+pcms/field/field_data.h                                        pcms/field/field_data.hpp
+pcms/field/field_evaluator_factory.h                           pcms/field/field_evaluator_factory.hpp private
+pcms/field/field_factory.h                                     pcms/field/field_factory.hpp
+pcms/field/field_layout.h                                      pcms/field/field_layout.hpp
+pcms/field/function_space.h                                    pcms/field/function_space.hpp
+pcms/field/function_space/lagrange.h                           pcms/field/function_space/lagrange.hpp private
+pcms/field/function_space/mfem.hpp                             pcms/backends/mfem/field_factory.hpp private
+pcms/field/function_space/spline.h                             pcms/field/function_space/spline.hpp private
+pcms/field/function_space/xgc.h                                pcms/backends/xgc/field_factory.hpp private
+pcms/field/layout/empty.h                                      pcms/field/layout/empty.hpp private
+pcms/field/layout/mesh_fields.h                                pcms/backends/omega_h_meshfields/layout.hpp private
+pcms/field/layout/mfem.hpp                                     pcms/backends/mfem/layout.hpp private
+pcms/field/layout/omega_h_entity.h                             pcms/backends/omega_h/entity_layout.hpp private
+pcms/field/layout/omega_h_lagrange.h                           pcms/backends/omega_h/lagrange_layout.hpp private
+pcms/field/layout/point_cloud.h                                pcms/backends/point_cloud/layout.hpp private
+pcms/field/layout/uniform_grid.h                               pcms/backends/uniform_grid/layout.hpp private
+pcms/field/layout/xgc.h                                        pcms/backends/xgc/layout.hpp private
+pcms/field/out_of_bounds_policy.h                              pcms/field/out_of_bounds_policy.hpp
+pcms/field/point_evaluator.h                                   pcms/field/point_evaluator.hpp
+pcms/field/uniform_grid_binary_field.h                         pcms/backends/omega_h/uniform_grid_binary_field.hpp private
+pcms/localization/adj_search.hpp                               pcms/backends/omega_h/adj_search.hpp private
+pcms/localization/localization_factory.h                       pcms/localization/localization_factory.hpp private
+pcms/localization/localization_path_selection.h                pcms/field/localization_path_selection.hpp private
+pcms/localization/mesh_localization.h                          pcms/localization/mesh_localization.hpp private
+pcms/localization/mls_support_helpers.h                        pcms/localization/mls_support_helpers.hpp private
+pcms/localization/point_cloud_localization.h                   pcms/backends/point_cloud/localization.hpp private
+pcms/localization/point_search.h                               pcms/localization/point_search.hpp private
+pcms/localization/queue_visited.hpp                            pcms/backends/omega_h/queue_visited.hpp private
+pcms/pythonapi/numpy_array_transform.h                         pcms/pythonapi/numpy_array_transform.hpp private
+pcms/pythonapi/numpy_view.h                                    pcms/pythonapi/numpy_view.hpp private
+pcms/pythonapi/py_value_types.h                                pcms/pythonapi/py_value_types.hpp private
+pcms/transfer/copy.h                                           pcms/transfer/copy.hpp
+pcms/transfer/interpolation_base.h                             pcms/transfer/interpolation_base.hpp private
+pcms/transfer/interpolation_helpers.h                          pcms/transfer/interpolation_helpers.hpp private
+pcms/transfer/interpolator.h                                   pcms/transfer/interpolator.hpp
+pcms/transfer/linear_interpolant.hpp                           pcms/backends/uniform_grid/linear_interpolant.hpp private
+pcms/transfer/multidimarray.hpp                                pcms/backends/uniform_grid/multidimarray.hpp private
+pcms/utility/array_mask.h                                      pcms/utility/array_mask.hpp private
+pcms/utility/arrays.h                                          pcms/utility/arrays.hpp
+pcms/utility/assert.h                                          pcms/utility/assert.hpp
+pcms/utility/bounding_box.h                                    pcms/utility/bounding_box.hpp
+pcms/utility/common.h                                          pcms/utility/detail/common.hpp
+pcms/utility/entity_types.h                                    pcms/utility/entity_types.hpp
+pcms/utility/eqdsk.h                                           pcms/utility/eqdsk.hpp
+pcms/utility/inclusive_scan.h                                  pcms/utility/detail/inclusive_scan.hpp
+pcms/utility/memory_spaces.h                                   pcms/utility/memory_spaces.hpp
+pcms/utility/mesh_geometry.h                                   pcms/utility/mesh_geometry.hpp private
+pcms/utility/mpi_type.h                                        pcms/utility/mpi_type.hpp private
+pcms/utility/omega_h_array_utils.h                             pcms/utility/omega_h_array_utils.hpp private
+pcms/utility/print.h                                           pcms/utility/print.hpp
+pcms/utility/profile.h                                         pcms/utility/detail/profile.hpp
+pcms/utility/types.h                                           pcms/utility/types.hpp
+pcms/utility/uniform_grid.h                                    pcms/utility/uniform_grid.hpp
+pcms/version.h                                                 pcms/version.hpp

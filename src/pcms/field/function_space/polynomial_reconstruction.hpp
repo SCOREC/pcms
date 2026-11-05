@@ -1,21 +1,21 @@
-#ifndef PCMS_POLYNOMIAL_RECONSTRUCTION_FUNCTION_SPACE_H
-#define PCMS_POLYNOMIAL_RECONSTRUCTION_FUNCTION_SPACE_H
+#ifndef PCMS_FIELD_FUNCTION_SPACE_POLYNOMIAL_RECONSTRUCTION_HPP
+#define PCMS_FIELD_FUNCTION_SPACE_POLYNOMIAL_RECONSTRUCTION_HPP
 
-#include "pcms/field/field.h"
-#include "pcms/field/field_layout.h"
-#include "pcms/field/field_data.h"
+#include "pcms/field/field.hpp"
+#include "pcms/field/field_layout.hpp"
+#include "pcms/field/field_data.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/function_space.h"
-#include "pcms/field/out_of_bounds_policy.h"
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/evaluator/mls_options.h"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/memory_spaces.h"
+#include "pcms/field/function_space.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/localization/mls_options.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/memory_spaces.hpp"
 
 #include <Omega_h_mesh.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::field
 {
 
 template <typename T>
@@ -61,6 +61,6 @@ private:
   std::shared_ptr<FieldEvaluatorFactory<Real>> evaluator_factory_;
 };
 
-} // namespace pcms
+} // namespace pcms::field
 
-#endif // PCMS_POLYNOMIAL_RECONSTRUCTION_FUNCTION_SPACE_H
+#endif // PCMS_FIELD_FUNCTION_SPACE_POLYNOMIAL_RECONSTRUCTION_HPP

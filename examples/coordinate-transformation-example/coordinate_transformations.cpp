@@ -11,11 +11,11 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/field/coordinate_map.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/coordinate_systems/cylindrical.hpp>
-#include <pcms/field/function_space/lagrange.h>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cylindrical.hpp>
+#include <pcms/field/function_space/lagrange.hpp>
 #include <pcms/field/transformed_source.hpp>
-#include <pcms/transfer/interpolator.h>
+#include <pcms/transfer/interpolator.hpp>
 #include <cmath>
 #include <cstdio>
 #include <exception>
@@ -86,19 +86,19 @@ Real MaxErrorFromXYZ(const Field<Real>& b)
 /// theta in [0, 1.6]. Target: the Cartesian unit cube, which lies inside it.
 void BuildSpaces(Omega_h::Library& lib, Omega_h::Mesh& src_mesh,
                  Omega_h::Mesh& tgt_mesh,
-                 std::shared_ptr<LagrangeFunctionSpace>& src,
-                 std::shared_ptr<LagrangeFunctionSpace>& tgt)
+                 std::shared_ptr<pcms::field::LagrangeFunctionSpace>& src,
+                 std::shared_ptr<pcms::field::LagrangeFunctionSpace>& tgt)
 {
   src_mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 2.0, 1.6, 1.1, 8,
                                 8, 6, false);
-  src = LagrangeFunctionSpace::FromMesh(
+  src = pcms::field::LagrangeFunctionSpace::FromMesh(
     src_mesh, 1, 3, csys::CylindricalRThetaZ::Create(), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
   tgt_mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, 4,
                                 4, 4, false);
-  tgt = LagrangeFunctionSpace::FromMesh(tgt_mesh, 1, 3,
-                                        csys::Cartesian::Create(3), "global",
-                                        LagrangeFunctionSpace::Backend::OmegaH);
+  tgt = pcms::field::LagrangeFunctionSpace::FromMesh(
+    tgt_mesh, 1, 3, csys::Cartesian::Create(3), "global",
+    pcms::field::LagrangeFunctionSpace::Backend::OmegaH);
 }
 
 void CaseA()
@@ -130,7 +130,7 @@ void CaseB(Omega_h::Library& lib)
 {
   std::puts("(b) cylindrical points, Cartesian components on both sides");
   Omega_h::Mesh src_mesh(&lib), tgt_mesh(&lib);
-  std::shared_ptr<LagrangeFunctionSpace> src, tgt;
+  std::shared_ptr<pcms::field::LagrangeFunctionSpace> src, tgt;
   BuildSpaces(lib, src_mesh, tgt_mesh, src, tgt);
 
   // A borrowed basis: the space's points are (r, theta, z), but the field's
@@ -160,7 +160,7 @@ void CaseC(Omega_h::Library& lib)
 {
   std::puts("(c) cylindrical points and components -> Cartesian");
   Omega_h::Mesh src_mesh(&lib), tgt_mesh(&lib);
-  std::shared_ptr<LagrangeFunctionSpace> src, tgt;
+  std::shared_ptr<pcms::field::LagrangeFunctionSpace> src, tgt;
   BuildSpaces(lib, src_mesh, tgt_mesh, src, tgt);
 
   // B = r e_r + z e_z in physical cylindrical components, which is (x, y, z)

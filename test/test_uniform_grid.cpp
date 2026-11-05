@@ -2,11 +2,12 @@
 #include <catch2/catch_approx.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/utility/uniform_grid.h>
+#include <pcms/utility/uniform_grid.hpp>
+#include "pcms/backends/omega_h/omega_h.hpp"
 
-using pcms::CreateUniformGridFromMesh;
 using pcms::Uniform2DGrid;
 using pcms::UniformGrid;
+using pcms::backend::omega_h::CreateUniformGridFromMesh;
 
 TEST_CASE("uniform grid")
 {
@@ -68,7 +69,8 @@ TEST_CASE("Create uniform grid from omega_h mesh")
   SECTION("Create grid with specified divisions per dimension")
   {
     // Create a 10x12 uniform grid over the mesh
-    auto grid = CreateUniformGridFromMesh<2>(mesh, {10, 12});
+    auto grid =
+      pcms::backend::omega_h::CreateUniformGridFromMesh<2>(mesh, {10, 12});
 
     // Verify the grid properties
     REQUIRE(grid.GetNumCells() == 120);
@@ -92,7 +94,7 @@ TEST_CASE("Create uniform grid from omega_h mesh")
   SECTION("Create grid with equal divisions")
   {
     // Create a 15x15 uniform grid
-    auto grid = CreateUniformGridFromMesh<2>(mesh, 15);
+    auto grid = pcms::backend::omega_h::CreateUniformGridFromMesh<2>(mesh, 15);
 
     REQUIRE(grid.GetNumCells() == 225);
     REQUIRE(grid.divisions[0] == 15);
@@ -111,7 +113,8 @@ TEST_CASE("Create uniform grid from omega_h mesh")
     auto large_mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 5.0, 3.0, 0.0,
                                          10, 6, 0, false);
 
-    auto grid = CreateUniformGridFromMesh<2>(large_mesh, {20, 30});
+    auto grid = pcms::backend::omega_h::CreateUniformGridFromMesh<2>(large_mesh,
+                                                                     {20, 30});
 
     REQUIRE(grid.GetNumCells() == 600);
     REQUIRE(grid.edge_length[0] == Catch::Approx(5.0));
@@ -127,7 +130,8 @@ TEST_CASE("Create uniform grid from omega_h mesh")
 
   SECTION("Test point location in grid cells")
   {
-    auto grid = CreateUniformGridFromMesh<2>(mesh, {10, 10});
+    auto grid =
+      pcms::backend::omega_h::CreateUniformGridFromMesh<2>(mesh, {10, 10});
 
     // Test corner points
     REQUIRE(grid.ClosestCellID(Omega_h::Vector<2>{0.0, 0.0}) == 0);
@@ -149,7 +153,8 @@ TEST_CASE("Create uniform grid from 3D mesh")
 
   SECTION("Create 3D grid with specified divisions")
   {
-    auto grid = CreateUniformGridFromMesh<3>(mesh, {10, 15, 8});
+    auto grid =
+      pcms::backend::omega_h::CreateUniformGridFromMesh<3>(mesh, {10, 15, 8});
 
     REQUIRE(grid.GetNumCells() == 1200); // 10 * 15 * 8
     REQUIRE(grid.edge_length[0] == Catch::Approx(2.0));
@@ -162,7 +167,7 @@ TEST_CASE("Create uniform grid from 3D mesh")
 
   SECTION("Create 3D grid with equal divisions")
   {
-    auto grid = CreateUniformGridFromMesh<3>(mesh, 12);
+    auto grid = pcms::backend::omega_h::CreateUniformGridFromMesh<3>(mesh, 12);
 
     REQUIRE(grid.GetNumCells() == 1728); // 12^3
     REQUIRE(grid.divisions[0] == 12);

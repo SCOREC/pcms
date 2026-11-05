@@ -242,7 +242,7 @@ jobs:
       run: |
         echo "PCMS_ENABLE_PETSC=-DPCMS_ENABLE_PETSC=${{ matrix.petsc }}" >> $GITHUB_ENV
         if [ "${{ matrix.petsc }}" = "ON" ]; then
-          echo "PCMS_PETSC_OPTIONS=-DPETSC_LINK_STATIC=ON -DPETSC_DIR=${{ runner.temp }}/petsc -DPETSC_ARCH=ubuntu-kokkos" >> $GITHUB_ENV
+          echo "PCMS_PETSC_OPTIONS=-DPCMS_PETSC_LINK_STATIC=ON -DPETSC_DIR=${{ runner.temp }}/petsc -DPETSC_ARCH=ubuntu-kokkos" >> $GITHUB_ENV
         else
           echo "PCMS_PETSC_OPTIONS=" >> $GITHUB_ENV
         fi
@@ -281,7 +281,7 @@ jobs:
                   ${{ env.PCMS_ENABLE_PETSC }}
                   ${{ env.PCMS_PETSC_OPTIONS }}
                   -DPCMS_TIMEOUT=10
-                  -DPCMS_ENABLE_Python=${{ matrix.python_api }}
+                  -DPCMS_ENABLE_PYTHON=${{ matrix.python_api }}
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
                   ${{ env.PCMS_MESHFIELDS_DIR }}
@@ -332,8 +332,9 @@ jobs:
       if: matrix.python_api == 'OFF'
       shell: bash
       run: |
-        # Configure and build the test
-        # it should only ask for pcms_DIR/ROOT to find all dependencies
+        # Build examples/external-usage-example against the install tree only
+        # (installed headers, exported targets). The package config no longer
+        # bakes in dependency paths, so they come from CMAKE_PREFIX_PATH.
         ls ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms
         echo "-------- PCMS CONFIG -------------"
         cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms-config.cmake
@@ -346,9 +347,15 @@ jobs:
           -B ${{github.workspace}}/examples/external-usage-example/build \
           -S ${{github.workspace}}/examples/external-usage-example/ \
           -Dpcms_DIR=${{ runner.temp }}/build-pcms/install/lib/cmake/pcms \
-          ${{ matrix.petsc == 'ON' && format('-DPETSC_LINK_STATIC=ON -DPETSC_DIR={0}/petsc -DPETSC_ARCH=ubuntu-kokkos', runner.temp) || '' }} \
+          -DCMAKE_PREFIX_PATH="${{ runner.temp }}/build-kokkos/install;${{ runner.temp }}/build-kokkos-kernels/install;${{ runner.temp }}/build-omega_h/install;${{ runner.temp }}/build-redev/install;${{ runner.temp }}/build-ADIOS2/install;${{ runner.temp }}/build-perfstubs/install;${{ runner.temp }}/build-meshFields/install" \
+          -DCMAKE_CXX_COMPILER=`which mpicxx` \
+          ${{ matrix.petsc == 'ON' && format('-DPCMS_PETSC_LINK_STATIC=ON -DPETSC_DIR={0}/petsc -DPETSC_ARCH=ubuntu-kokkos', runner.temp) || '' }} \
           --debug-output
         cmake --build ${{github.workspace}}/examples/external-usage-example/build
+        mpirun --oversubscribe -np 1 ${{github.workspace}}/examples/external-usage-example/build/pcms_test
+
+    - name: Check public header includes
+      run: python3 tools/check-public-includes.py
 
   deploy-docs:
     needs: test-build

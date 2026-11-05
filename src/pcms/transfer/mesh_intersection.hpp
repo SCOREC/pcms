@@ -1,17 +1,23 @@
 #ifndef PCMS_TRANSFER_MESH_INTERSECTION_HPP
 #define PCMS_TRANSFER_MESH_INTERSECTION_HPP
 
-#include <pcms/configuration.h>
-#include <pcms/localization/point_search.h>
-#include <pcms/localization/queue_visited.hpp>
+#include <pcms/configuration.hpp>
+#include <pcms/localization/point_search.hpp>
+#include <pcms/backends/omega_h/queue_visited.hpp>
 #include <Omega_h_fail.hpp>
 #include <Omega_h_int_scan.hpp>
+// r3d's kernels are called from Kokkos kernels: R3D_USE_KOKKOS makes them
+// KOKKOS_INLINE_FUNCTION. Defined here instead of as a public compile
+// definition of pcms::transfer; this is the only header that includes r3d.
+#ifndef R3D_USE_KOKKOS
+#define R3D_USE_KOKKOS
+#endif
 #include <r3d.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 // Gather the vertex coordinates of a simplex element (triangle for Dim==2,
 // tetrahedron for Dim==3) into an r3d simplex, ready for
@@ -201,6 +207,7 @@ IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
  */
 IntersectionResults intersectTargets(
   Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
-  const GridPointSearchVariant& source_search, bool use_prefilter = true);
-} // namespace pcms
+  const pcms::localization::GridPointSearchVariant& source_search,
+  bool use_prefilter = true);
+} // namespace pcms::transfer
 #endif // PCMS_TRANSFER_MESH_INTERSECTION_HPP

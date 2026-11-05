@@ -1,15 +1,15 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 #define PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include "pcms/transfer/mesh_intersection.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Conservative-projection RHS integrator for Lagrange spaces on Omega_h 2D
@@ -37,9 +37,11 @@ public:
   OmegaHIntersectionRHSIntegrator(const FunctionSpace& source_space,
                                   const FunctionSpace& target_space);
   OmegaHIntersectionRHSIntegrator(
-    std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      source_layout,
     std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-    std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      target_layout,
     std::shared_ptr<const CoordinateSystem> target_coordinate_system);
   ~OmegaHIntersectionRHSIntegrator();
 
@@ -55,11 +57,13 @@ private:
   // Both public constructors delegate here; `source_search` may be null, in
   // which case the intersection builds its own search over the source mesh.
   OmegaHIntersectionRHSIntegrator(
-    std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      source_layout,
     std::shared_ptr<const CoordinateSystem> source_coordinate_system,
-    std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+    std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+      target_layout,
     std::shared_ptr<const CoordinateSystem> target_coordinate_system,
-    const GridPointSearchVariant* source_search);
+    const pcms::localization::GridPointSearchVariant* source_search);
 
   Vec vec_ = nullptr;
   Kokkos::View<Real**, DeviceMemorySpace>
@@ -76,6 +80,6 @@ private:
 std::unique_ptr<LinearFormIntegrator> BuildOmegaHConservativeRHSIntegrator(
   const FunctionSpace& source_space, const FunctionSpace& target_space);
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP

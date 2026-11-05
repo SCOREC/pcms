@@ -1,22 +1,22 @@
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/configuration.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/common.h"
+#include "pcms/field/function_space/lagrange.hpp"
+#include "pcms/configuration.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/common.hpp"
 #ifdef PCMS_ENABLE_MESHFIELDS
-#include "pcms/field/layout/mesh_fields.h"
-#include "pcms/field/evaluator/mesh_fields.h"
-#include "pcms/field/data/mesh_fields.h"
+#include "pcms/backends/omega_h_meshfields/layout.hpp"
+#include "pcms/backends/omega_h_meshfields/evaluator.hpp"
+#include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/evaluator/omega_h_lagrange.h"
-#include "pcms/field/layout/uniform_grid.h"
-#include "pcms/field/evaluator/uniform_grid.h"
-#include "pcms/field/data/simple.h"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/backends/omega_h/lagrange_evaluator.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
+#include "pcms/backends/uniform_grid/evaluator.hpp"
+#include "pcms/field/simple_field_data.hpp"
+#include "pcms/utility/uniform_grid.hpp"
 
 #include <stdexcept>
 
-namespace pcms
+namespace pcms::field
 {
 
 namespace
@@ -27,8 +27,12 @@ void ValidateLagrangeWrappedFieldData(const FieldLayout& layout,
                                       const FieldData<T>& data)
 {
 #ifdef PCMS_ENABLE_MESHFIELDS
-  if (dynamic_cast<const MeshFieldsAdapterLayout*>(&layout) != nullptr) {
-    if (dynamic_cast<const MeshFieldsFieldData<T>*>(&data) == nullptr) {
+  if (dynamic_cast<
+        const pcms::backend::omega_h_meshfields::MeshFieldsAdapterLayout*>(
+        &layout) != nullptr) {
+    if (dynamic_cast<
+          const pcms::backend::omega_h_meshfields::MeshFieldsFieldData<T>*>(
+          &data) == nullptr) {
       throw pcms_error(
         "LagrangeFunctionSpace::CreateField: MeshFields layout requires "
         "MeshFieldsFieldData");
@@ -44,7 +48,7 @@ void ValidateLagrangeWrappedFieldData(const FieldLayout& layout,
   }
 
   if (data.GetDOFAccess()->GetOwnedValues().size() !=
-      detail::ExpectedFlatFieldDataSize(layout)) {
+      pcms::detail::ExpectedFlatFieldDataSize(layout)) {
     throw pcms_error(
       "LagrangeFunctionSpace::CreateField: field data size does not match "
       "layout");
@@ -81,19 +85,22 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
       case 2: nodes_per_dim = {1, 1, 0, 0}; break;
       default: throw pcms_error("Unimplemented Lagrange order");
     }
-    auto mesh_layout = std::make_shared<MeshFieldsAdapterLayout>(
+    auto mesh_layout = std::make_shared<
+      pcms::backend::omega_h_meshfields::MeshFieldsAdapterLayout>(
       mesh, nodes_per_dim, num_components, coordinate_system,
       std::move(global_id_name));
     mesh_layout->SetName(layout_name);
-    auto eval_factory =
-      std::make_shared<MeshFieldsEvaluatorFactory<Real>>(mesh_layout);
+    auto eval_factory = std::make_shared<
+      pcms::backend::omega_h_meshfields::MeshFieldsEvaluatorFactory<Real>>(
+      mesh_layout);
     return std::make_shared<LagrangeFunctionSpace>(
       Key{}, mesh_layout,
       [mesh_layout](Type t, ValueBasis basis) -> FieldDataVariant {
         if (t == Type::Float) {
           if constexpr (std::is_same_v<MeshField::Real4, float> ||
                         std::is_same_v<MeshField::Real8, float>) {
-            return std::make_unique<MeshFieldsFieldData<float>>(
+            return std::make_unique<
+              pcms::backend::omega_h_meshfields::MeshFieldsFieldData<float>>(
               mesh_layout, std::move(basis));
           }
           throw pcms_error(
@@ -101,7 +108,8 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
             "float in this build");
         }
         if (t == Type::Real) {
-          return std::make_unique<MeshFieldsFieldData<double>>(
+          return std::make_unique<
+            pcms::backend::omega_h_meshfields::MeshFieldsFieldData<double>>(
             mesh_layout, std::move(basis));
         }
         throw pcms_error(
@@ -120,11 +128,11 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
       "LagrangeFunctionSpace::FromMesh: OmegaH backend only supports "
       "Lagrange orders 0 and 1");
   }
-  auto layout = std::make_shared<OmegaHLagrangeLayout>(
+  auto layout = std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
     mesh, order, num_components, coordinate_system, std::move(global_id_name));
   layout->SetName(std::move(layout_name));
-  auto eval_factory =
-    std::make_shared<OmegaHLagrangeEvaluatorFactory<Real>>(layout);
+  auto eval_factory = std::make_shared<
+    pcms::backend::omega_h::OmegaHLagrangeEvaluatorFactory<Real>>(layout);
   return std::make_shared<LagrangeFunctionSpace>(
     Key{}, layout,
     [layout](Type t, ValueBasis basis) -> FieldDataVariant {
@@ -156,12 +164,12 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
       "LagrangeFunctionSpace::FromMesh: OmegaH backend only supports "
       "Lagrange orders 0 and 1");
   }
-  auto layout = std::make_shared<OmegaHLagrangeLayout>(
+  auto layout = std::make_shared<pcms::backend::omega_h::OmegaHLagrangeLayout>(
     mesh, order, num_components, coordinate_system, std::move(owned_mask),
     std::move(global_id_name));
   layout->SetName(std::move(layout_name));
-  auto eval_factory =
-    std::make_shared<OmegaHLagrangeEvaluatorFactory<Real>>(layout);
+  auto eval_factory = std::make_shared<
+    pcms::backend::omega_h::OmegaHLagrangeEvaluatorFactory<Real>>(layout);
   return std::make_shared<LagrangeFunctionSpace>(
     Key{}, layout,
     [layout](Type t, ValueBasis basis) -> FieldDataVariant {
@@ -186,11 +194,12 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromUniformGrid(
     throw std::invalid_argument("LagrangeFunctionSpace::FromUniformGrid: only "
                                 "orders 0 and 1 are supported");
   }
-  auto ug_layout = std::make_shared<UniformGridFieldLayout<2>>(
-    grid, num_components, coordinate_system, order);
+  auto ug_layout =
+    std::make_shared<pcms::backend::uniform_grid::UniformGridFieldLayout<2>>(
+      grid, num_components, coordinate_system, order);
   ug_layout->SetName(std::move(layout_name));
-  auto eval_factory =
-    std::make_shared<UniformGridEvaluatorFactory<2>>(ug_layout);
+  auto eval_factory = std::make_shared<
+    pcms::backend::uniform_grid::UniformGridEvaluatorFactory<2>>(ug_layout);
   return std::make_shared<LagrangeFunctionSpace>(
     Key{}, ug_layout,
     [ug_layout](Type t, ValueBasis basis) -> FieldDataVariant {
@@ -215,11 +224,12 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromUniformGrid(
     throw std::invalid_argument("LagrangeFunctionSpace::FromUniformGrid: only "
                                 "orders 0 and 1 are supported");
   }
-  auto ug_layout = std::make_shared<UniformGridFieldLayout<3>>(
-    grid, num_components, coordinate_system, order);
+  auto ug_layout =
+    std::make_shared<pcms::backend::uniform_grid::UniformGridFieldLayout<3>>(
+      grid, num_components, coordinate_system, order);
   ug_layout->SetName(std::move(layout_name));
-  auto eval_factory =
-    std::make_shared<UniformGridEvaluatorFactory<3>>(ug_layout);
+  auto eval_factory = std::make_shared<
+    pcms::backend::uniform_grid::UniformGridEvaluatorFactory<3>>(ug_layout);
   return std::make_shared<LagrangeFunctionSpace>(
     Key{}, ug_layout,
     [ug_layout](Type t, ValueBasis basis) -> FieldDataVariant {
@@ -293,4 +303,4 @@ PointEvaluatorVariant LagrangeFunctionSpace::CreatePointEvaluatorImpl(
   return evaluator_factory_->CreatePointEvaluator(request);
 }
 
-} // namespace pcms
+} // namespace pcms::field

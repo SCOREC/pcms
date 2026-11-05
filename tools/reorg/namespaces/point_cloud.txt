@@ -1,0 +1,8 @@
+# namespace-scope names declared in src/pcms/backends/point_cloud that are
+# used elsewhere
+PointCloudDiscretization
+PointCloud
+PointCloudLayout
+PointCloudEvaluatorFactory
+MLSPointEvaluator
+PointCloudLocalizationFactory

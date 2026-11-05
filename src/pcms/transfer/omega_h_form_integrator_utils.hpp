@@ -1,18 +1,18 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP
 #define PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP
 
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/transfer/mesh_intersection.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <MeshField_Integrate.hpp>
 #include <MeshField_Shape.hpp>
 #include <MeshField_Config.hpp>
 #include <Omega_h_shape.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
-namespace pcms::detail
+namespace pcms::transfer::detail
 {
 
 // Shared checks for a scalar Cartesian Lagrange space on a simplex mesh
@@ -20,7 +20,8 @@ namespace pcms::detail
 // separately by the callers below.
 inline void CheckOmegaHScalarSimplexLayout(
   std::shared_ptr<const CoordinateSystem> coordinate_system,
-  const std::shared_ptr<const OmegaHLagrangeLayout>& layout,
+  const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>&
+    layout,
   const char* context, const char* role)
 {
   if (layout == nullptr) {
@@ -51,7 +52,8 @@ inline void CheckOmegaHScalarSimplexLayout(
 // Strict order-1 check (used where only P1 is supported, e.g. Monte-Carlo RHS).
 inline void CheckOmegaHScalarP1Layout(
   std::shared_ptr<const CoordinateSystem> coordinate_system,
-  const std::shared_ptr<const OmegaHLagrangeLayout>& layout,
+  const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>&
+    layout,
   const char* context, const char* role)
 {
   CheckOmegaHScalarSimplexLayout(coordinate_system, layout, context, role);
@@ -66,7 +68,8 @@ inline void CheckOmegaHScalarP1Layout(
 // this replaces the strict P1 requirement on those paths.
 inline void CheckOmegaHScalarLagrangeLayout(
   std::shared_ptr<const CoordinateSystem> coordinate_system,
-  const std::shared_ptr<const OmegaHLagrangeLayout>& layout,
+  const std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>&
+    layout,
   const char* context, const char* role)
 {
   CheckOmegaHScalarSimplexLayout(coordinate_system, layout, context, role);
@@ -405,6 +408,6 @@ struct TargetSimplexBasis<Dim, 1>
   }
 };
 
-} // namespace pcms::detail
+} // namespace pcms::transfer::detail
 
 #endif // PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP

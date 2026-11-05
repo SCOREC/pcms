@@ -1,0 +1,11 @@
+# namespace-scope names declared by the files that move to pcms::field
+AppendGidPermutation
+BuildSortedGidPermutation
+EmptyFieldLayout
+FieldEvaluatorFactory
+GidToIndexMaps
+LagrangeFunctionSpace
+MakeUnmappedPermutation
+PolynomialReconstructionFunctionSpace
+SplineFunctionSpace
+mls_interpolation

@@ -1,0 +1,17 @@
+# Phase 5: public / installed-detail headers of utility move to include/
+src/pcms/utility/arrays.hpp                              include/pcms/utility/arrays.hpp
+src/pcms/utility/assert.hpp                              include/pcms/utility/assert.hpp
+src/pcms/utility/coordinate_system.hpp                   include/pcms/utility/coordinate_system.hpp
+src/pcms/utility/coordinate_systems/cartesian.hpp        include/pcms/utility/coordinate_systems/cartesian.hpp
+src/pcms/utility/coordinate_systems/cylindrical.hpp      include/pcms/utility/coordinate_systems/cylindrical.hpp
+src/pcms/utility/coordinate_view.hpp                     include/pcms/utility/coordinate_view.hpp
+src/pcms/utility/entity_types.hpp                        include/pcms/utility/entity_types.hpp
+src/pcms/utility/eqdsk.hpp                               include/pcms/utility/eqdsk.hpp
+src/pcms/utility/memory_spaces.hpp                       include/pcms/utility/memory_spaces.hpp
+src/pcms/utility/print.hpp                               include/pcms/utility/print.hpp
+src/pcms/utility/types.hpp                               include/pcms/utility/types.hpp
+src/pcms/utility/uniform_grid.hpp                        include/pcms/utility/uniform_grid.hpp
+src/pcms/utility/common.hpp                              include/pcms/utility/detail/common.hpp
+src/pcms/utility/inclusive_scan.hpp                      include/pcms/utility/detail/inclusive_scan.hpp
+src/pcms/utility/profile.hpp                             include/pcms/utility/detail/profile.hpp
+src/pcms/utility/bounding_box.hpp                        include/pcms/utility/bounding_box.hpp

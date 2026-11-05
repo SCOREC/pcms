@@ -1,4 +1,4 @@
-#include "point_search.h"
+#include "pcms/localization/point_search.hpp"
 #include <Omega_h_mesh.hpp>
 #include <bitset>
 #include <cmath>
@@ -77,7 +77,7 @@ KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> barycentric_with_scales(
   return result;
 }
 
-namespace pcms
+namespace pcms::localization
 {
 
 LO GetOwningElementId(Omega_h::Mesh& mesh, int mesh_dim, int entity_dim,
@@ -816,7 +816,7 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
 
 LO GridPointSearch2D::GetOwningElementId(const Result& result)
 {
-  return pcms::GetOwningElementId(
+  return pcms::localization::GetOwningElementId(
     mesh_, 2, static_cast<int>(result.dimensionality), result.EntityId());
 }
 
@@ -963,7 +963,7 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
 
 LO GridPointSearch3D::GetOwningElementId(const Result& result)
 {
-  return pcms::GetOwningElementId(
+  return pcms::localization::GetOwningElementId(
     mesh_, 3, static_cast<int>(result.dimensionality), result.EntityId());
 }
 
@@ -1004,4 +1004,4 @@ Kokkos::View<LO*> GridPointSearch3D::GetOwningElementIds(
     });
   return owners;
 }
-} // namespace pcms
+} // namespace pcms::localization

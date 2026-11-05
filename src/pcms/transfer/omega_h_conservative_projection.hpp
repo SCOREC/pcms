@@ -1,15 +1,15 @@
-#ifndef PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H
-#define PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H
+#ifndef PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_HPP
+#define PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_HPP
 
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/point_evaluator.h"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/field/point_evaluator.hpp"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class GalerkinProjectionSolver;
@@ -45,14 +45,16 @@ public:
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
 private:
-  std::shared_ptr<const OmegaHLagrangeLayout> source_layout_;
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout_;
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    source_layout_;
+  std::shared_ptr<const pcms::backend::omega_h::OmegaHLagrangeLayout>
+    target_layout_;
   std::unique_ptr<OmegaHIntersectionRHSIntegrator> rhs_integrator_;
   std::unique_ptr<PointEvaluator<Real>> evaluator_;
   std::unique_ptr<GalerkinProjectionSolver> solver_;
   mutable Kokkos::View<Real**, DeviceMemorySpace> target_values_;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
-#endif // PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H
+#endif // PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_HPP

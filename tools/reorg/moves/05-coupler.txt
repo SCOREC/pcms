@@ -1,0 +1,9 @@
+# Phase 5: public / installed-detail headers of coupler move to include/
+src/pcms/coupler/coupler.hpp                             include/pcms/coupler/coupler.hpp
+src/pcms/coupler/coupler_types.hpp                       include/pcms/coupler/coupler_types.hpp
+src/pcms/coupler/overlap_mask.hpp                        include/pcms/coupler/overlap_mask.hpp
+src/pcms/coupler/field_communicator.hpp                  include/pcms/coupler/detail/field_communicator.hpp
+src/pcms/coupler/field_exchange_planner.hpp              include/pcms/coupler/detail/field_exchange_planner.hpp
+src/pcms/coupler/field_layout_communicator.hpp           include/pcms/coupler/detail/field_layout_communicator.hpp
+src/pcms/coupler/field_serializer.hpp                    include/pcms/coupler/detail/field_serializer.hpp
+src/pcms/coupler/global_communicator.hpp                 include/pcms/coupler/detail/global_communicator.hpp

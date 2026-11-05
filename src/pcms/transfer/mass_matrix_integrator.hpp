@@ -11,7 +11,7 @@
 #include <MeshField_ShapeField.hpp>
 #include <Omega_h_mesh.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 // computes the mass matrix for each element
 template <typename FieldElement>
@@ -93,5 +93,5 @@ Kokkos::View<MeshField::Real*> buildElementMassMatrix(Omega_h::Mesh& mesh,
   mmi.process(coordFe);
   return mmi.elmMassMatrix;
 }
-} // namespace pcms
+} // namespace pcms::transfer
 #endif // PCMS_TRANSFER_MASS_MATRIX_INTEGRATOR_HPP

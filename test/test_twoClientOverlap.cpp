@@ -6,8 +6,8 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_for.hpp>
 #include <Omega_h_scalar.hpp> // divide_no_remainder
-#include "pcms.h"
-#include "test_support.h"
+#include "pcms/pcms.hpp"
+#include "test_support.hpp"
 
 namespace ts = test_support;
 

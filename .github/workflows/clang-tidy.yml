@@ -191,7 +191,7 @@ jobs:
                   -DCMAKE_CXX_COMPILER=mpicxx \
                   -DCMAKE_Fortran_COMPILER=mpifort \
                   -DPCMS_ENABLE_PETSC=ON \
-                  -DPETSC_LINK_STATIC=ON \
+                  -DPCMS_PETSC_LINK_STATIC=ON \
                   -DPETSC_DIR=${{ runner.temp }}/petsc-openmpi \
                   -DPETSC_ARCH=ubuntu-kokkos \
                   -DPCMS_TIMEOUT=10 \

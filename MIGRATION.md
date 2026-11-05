@@ -151,12 +151,16 @@ that made the reorganization (all are idempotent):
    ```sh
    git merge -X find-renames <develop with the reorganization>
    for f in $(git diff --name-only --diff-filter=U -- '*.cpp' '*.hpp' '*.h' '*.py' '*.md'); do
+     # only files changed on both sides; a file one side deleted or moved
+     # (modify/delete) is left for the by-hand step
+     [ "$(git ls-files -u -- "$f" | wc -l)" -eq 3 ] || continue
      git show :2:$f > $f.ours; git show :1:$f > $f.base; git show :3:$f > $f.theirs
      git merge-file --ours $f.ours $f.base $f.theirs && mv $f.ours $f && rm $f.base $f.theirs && git add $f
    done
    ```
 
-   Resolve the remaining conflicts by hand (CMake lists, see below), then
+   Resolve the remaining conflicts by hand (CMake lists and modify/delete
+   conflicts, see below), then
    commit the merge. Do not use `git merge -X ours` for the whole merge: in
    CMake files it silently drops the reorganization's changes.
 

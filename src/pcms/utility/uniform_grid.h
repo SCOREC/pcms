@@ -65,6 +65,20 @@ public:
     return GetCellIndex(indexes);
   }
 
+  /// Per-axis cell indices in coordinate order (x,y,z) for a linear cell ID.
+  ///
+  /// The exact inverse of `CellIndexFromAxisIndices`. Provided so callers that
+  /// work with linear cell IDs -- a routing table keyed by cell, for example --
+  /// do not have to reimplement the grid's internal index ordering, which is
+  /// reversed relative to coordinates and easy to get wrong silently.
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<LO, dim>
+  AxisIndicesFromCellIndex(LO idx) const
+  {
+    auto indices = GetDimensionedIndex(idx);
+    reverse(indices);
+    return indices;
+  }
+
   [[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<dim> GetCellBBOX(LO idx) const
   {
     auto index = GetDimensionedIndex(idx);
@@ -98,21 +112,20 @@ public:
     return true;
   }
 
+  /// Per-axis indices of a linear cell ID, in reversed order (z, y, x), the
+  /// order `GetCellIndex` takes. The exact inverse of `GetCellIndex`, which
+  /// numbers cells as `idx = x + Nx * (y + Ny * z)`.
+  ///
+  /// This is a numbering of cells, not a memory layout: it is the same on host
+  /// and device, whatever layout a Kokkos view uses.
   [[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<LO, dim>
   GetDimensionedIndex(LO idx) const
   {
-    LO stride = 1;
-    for (std::size_t i = 0; i < dim - 1; ++i) {
-      stride *= divisions[i];
-    }
     Kokkos::Array<LO, dim> result;
-
-    for (size_t i = 0; i < dim; ++i) {
-      result[i] = idx / stride;
-      idx -= result[i] * stride;
-      stride /= divisions[i];
+    for (size_t axis = 0; axis < dim; ++axis) {
+      result[dim - 1 - axis] = idx % divisions[axis];
+      idx /= divisions[axis];
     }
-
     return result;
   }
 

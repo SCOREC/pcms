@@ -53,6 +53,40 @@ TEST_CASE("uniform grid")
     REQUIRE(0 == uniform_grid.GetCellIndex({0, 0}));
     REQUIRE(119 == uniform_grid.GetCellIndex({11, 9}));
   }
+  SECTION("AxisIndicesFromCellIndex")
+  {
+    // The inverse of CellIndexFromAxisIndices, in coordinate order. Cell 1 is
+    // the second cell along x, which the cell-BBOX test below also pins down
+    // (its center is (1.5, 0.5)): the grid stores its indices reversed relative
+    // to coordinates, so getting this wrong is silent.
+    {
+      const auto [i, j] = uniform_grid.AxisIndicesFromCellIndex(0);
+      REQUIRE(i == 0);
+      REQUIRE(j == 0);
+    }
+    {
+      const auto [i, j] = uniform_grid.AxisIndicesFromCellIndex(1);
+      REQUIRE(i == 1);
+      REQUIRE(j == 0);
+    }
+    {
+      const auto [i, j] = uniform_grid.AxisIndicesFromCellIndex(119);
+      REQUIRE(i == 9);
+      REQUIRE(j == 11);
+    }
+
+    // Round-trip over every cell of the grid, which is the property a caller
+    // keyed by linear cell id depends on.
+    for (pcms::LO cell = 0; cell < uniform_grid.GetNumCells(); ++cell) {
+      const auto axis_indices = uniform_grid.AxisIndicesFromCellIndex(cell);
+      REQUIRE(uniform_grid.CellIndexFromAxisIndices(axis_indices) == cell);
+      // ...and it must agree with the binning rule used to find a point's cell.
+      for (int d = 0; d < 2; ++d) {
+        const auto center = uniform_grid.GetCellBBOX(cell).center[d];
+        REQUIRE(uniform_grid.AxisCellIndex(d, center) == axis_indices[d]);
+      }
+    }
+  }
 }
 
 TEST_CASE("Create uniform grid from omega_h mesh")
@@ -168,5 +202,30 @@ TEST_CASE("Create uniform grid from 3D mesh")
     REQUIRE(grid.divisions[0] == 12);
     REQUIRE(grid.divisions[1] == 12);
     REQUIRE(grid.divisions[2] == 12);
+  }
+}
+
+// Grid resolution has to be a property of the mesh as a whole, not of one
+// partition: search cells are named by a linear id, and an id identifies the
+// same region of space on two ranks only if both resolved the grid the same
+// way. A resolution derived from `mesh.nelems()` breaks that, because
+// `nelems()` counts ghost copies and therefore changes with the partition.
+TEST_CASE("cell index round trip on a grid with unequal divisions")
+{
+  const UniformGrid<3> grid{.edge_length = {3.0, 4.0, 5.0},
+                            .bot_left = {0.0, 0.0, 0.0},
+                            .divisions = {3, 4, 5}};
+  for (pcms::LO cell = 0; cell < grid.GetNumCells(); ++cell) {
+    CAPTURE(cell);
+    const auto axis_indices = grid.AxisIndicesFromCellIndex(cell);
+    for (int d = 0; d < 3; ++d) {
+      REQUIRE(axis_indices[d] >= 0);
+      REQUIRE(axis_indices[d] < grid.divisions[d]);
+    }
+    REQUIRE(grid.CellIndexFromAxisIndices(axis_indices) == cell);
+    // The cell's own box must bin back to the same cell.
+    const auto box = grid.GetCellBBOX(cell);
+    REQUIRE(grid.ClosestCellID(Omega_h::Vector<3>{box.center[0], box.center[1],
+                                                  box.center[2]}) == cell);
   }
 }

@@ -194,7 +194,13 @@ What is left by hand:
 - New headers: name them `.hpp`, decide public (`include/pcms/<lib>/`) or
   private (next to the sources), and list them accordingly.
 - Files the reorganization rewrote beyond rename detection (git reports a
-  modify/delete conflict): re-apply the branch's hunks to the new file.
+  modify/delete conflict): re-apply the branch's hunks to the new file, or
+  delete it if the branch deleted it.
+- New or renamed files in a sub-library or backend directory: before step 3,
+  add them to `tools/reorg/namespaces/sublib-<lib>-files.txt` (or the
+  backend's list), remove the names they replace, and add the namespace-scope
+  names they declare to `sublib-<lib>.txt`, so that step 3 moves them into
+  `pcms::<lib>` with the rest of the library.
 
 ## C and Fortran APIs
 

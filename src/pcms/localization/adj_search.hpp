@@ -1,7 +1,7 @@
 #ifndef PCMS_LOCALIZATION_ADJ_SEARCH_HPP
 #define PCMS_LOCALIZATION_ADJ_SEARCH_HPP
 
-#include <pcms/localization/point_search.h>
+#include <pcms/localization/uniform_grid_localization.hpp>
 #include <pcms/localization/mls_support_helpers.h>
 #include <pcms/localization/queue_visited.hpp>
 #include <pcms/utility/mesh_geometry.h>
@@ -22,9 +22,10 @@ private:
 
 public:
   FindSupports(Omega_h::Mesh& source_mesh_, Omega_h::Mesh& target_mesh_)
-    : source_mesh(source_mesh_), target_mesh(target_mesh_){};
+    : source_mesh(source_mesh_), target_mesh(target_mesh_) {};
 
-  FindSupports(Omega_h::Mesh& mesh_) : source_mesh(mesh_), target_mesh(mesh_){};
+  FindSupports(Omega_h::Mesh& mesh_)
+    : source_mesh(mesh_), target_mesh(mesh_) {};
 
   void adjBasedSearch(Omega_h::Write<Omega_h::LO>& supports_ptr,
                       Omega_h::Write<Omega_h::LO>& nSupports,

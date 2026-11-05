@@ -435,7 +435,15 @@ if(Catch2_FOUND)
       test_point_evaluator.cpp
       test_tagged_outputs.cpp
       test_transformed_source.cpp
-      test_evaluation_only_space.cpp)
+      test_evaluation_only_space.cpp
+	)
+	if (PCMS_ENABLE_ARBORX)
+		list(
+			APPEND
+			PCMS_UNIT_TEST_SOURCES
+			test_tree_localization.cpp
+		)
+	endif()
   endif()
 
   if(PCMS_ENABLE_MFEM)

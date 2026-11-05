@@ -1,21 +1,29 @@
 set(
         PCMS_LOCALIZATION_HEADERS
-        point_search.h
+		localization.h
         queue_visited.hpp
         adj_search.hpp
         mls_support_helpers.h
         localization_factory.h
         point_cloud_localization.h
         mesh_localization.h
+		uniform_grid_localization.hpp
 )
 
 set(
         PCMS_LOCALIZATION_SOURCES
-        point_search.cpp
+        localization.cpp
         adj_search.cpp
         mls_support_helpers.cpp
         mesh_localization.cpp
+		uniform_grid_localization.cpp
 )
+
+if(PCMS_ENABLE_ARBORX)
+	list(APPEND PCMS_LOCALIZATION_HEADERS arbor_x_localization.hpp)
+	list(APPEND PCMS_LOCALIZATION_SOURCES arbor_x_localization.cpp)
+endif()
+
 add_library(pcms_localization ${PCMS_LOCALIZATION_SOURCES})
 add_library(pcms::localization ALIAS pcms_localization)
 target_include_directories(
@@ -33,6 +41,11 @@ target_link_libraries(
         pcms::discretization
         Omega_h::omega_h
 )
+
+if (PCMS_ENABLE_ARBORX)
+	target_link_libraries(pcms_localization PUBLIC ArborX::ArborX)
+endif()
+
 target_compile_features(pcms_localization PUBLIC cxx_std_20)
 
 set_target_properties(

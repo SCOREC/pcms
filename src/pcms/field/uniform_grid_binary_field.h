@@ -5,7 +5,8 @@
 #include "pcms/field/data/simple.h"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/value_view.hpp"
-#include "pcms/localization/point_search.h"
+#include "pcms/field/field_metadata.h"
+#include "pcms/localization/uniform_grid_localization.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/uniform_grid.h"
@@ -48,7 +49,7 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
   auto coords = coord_view.GetValues();
   LO n = layout->GetNumOwnedDofHolder();
 
-  Kokkos::View<Real* [Dim]> coords_d("coords_d", n);
+  Kokkos::View<Real**> coords_d("coords_d", n, Dim);
   Kokkos::parallel_for(
     "CopyCoords", Kokkos::RangePolicy<>(0, n), KOKKOS_LAMBDA(int i) {
       for (int d = 0; d < Dim; ++d) {
@@ -57,21 +58,23 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
     });
 
   // Run point-in-mesh search
-  Kokkos::View<typename PointLocalizationSearch<Dim>::Result*> results_d;
+  PointSearch::Results results_d;
   if constexpr (Dim == 2) {
     GridPointSearch2D search(mesh, grid.divisions[0], grid.divisions[1]);
-    results_d = search(coords_d);
+    results_d = search.Apply(pcms::CoordinateView(
+      pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(coords_d)));
   } else {
     GridPointSearch3D search(mesh, grid.divisions[0], grid.divisions[1],
                              grid.divisions[2]);
-    results_d = search(coords_d);
+    results_d = search.Apply(pcms::CoordinateView(
+      pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(coords_d)));
   }
-  auto results_h =
-    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results_d);
+  auto result_ids_h = Kokkos::create_mirror_view_and_copy(
+    Kokkos::HostSpace{}, results_d.element_ids);
 
   Kokkos::View<Real*, HostMemorySpace> data("binary_mask", n);
   for (LO i = 0; i < n; ++i)
-    data(i) = (results_h(i).element_id >= 0) ? 1.0 : 0.0;
+    data(i) = (result_ids_h(i) >= 0) ? 1.0 : 0.0;
 
   field.SetDOFHolderDataUncheckedHost(
     Rank2View<const Real, HostMemorySpace>(data.data(), n, 1));

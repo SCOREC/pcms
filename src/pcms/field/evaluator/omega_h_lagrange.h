@@ -6,7 +6,7 @@
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/field_data.h"
-#include "pcms/localization/point_search.h"
+#include "pcms/localization/uniform_grid_localization.hpp"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/profile.h"
@@ -37,7 +37,6 @@ struct OmegaHLagrangeLocHint
 namespace detail
 {
 
-template <int Dim>
 struct CopyCoordsFunctor
 {
   using DefaultLayout =
@@ -56,22 +55,18 @@ struct CopyCoordsFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(const LO i) const
   {
-    for (int d = 0; d < Dim; ++d) {
+    for (int d = 0; d < coords_d.extent(1); ++d) {
       coords_d(i, d) = raw_coords(i, d);
     }
   }
 };
 
-template <int Dim>
 OmegaHLagrangeLocHint BuildLagrangeLocHint(
-  Omega_h::Mesh& mesh, int mesh_dim,
-  Kokkos::View<typename PointLocalizationSearch<Dim>::Result*,
-               DeviceMemorySpace>
-    results,
+  Omega_h::Mesh& mesh, int mesh_dim, PointSearch::Results& results,
   Kokkos::View<Real**, DeviceMemorySpace> coords_d,
   Kokkos::View<LO*, DeviceMemorySpace> owning_ids, OutOfBoundsMode mode)
 {
-  LO n = static_cast<LO>(results.size());
+  LO n = static_cast<LO>(results.dimensionalities.size());
 
   // First pass: count valid and missing
   Kokkos::View<int*, DeviceMemorySpace> is_valid("is_valid", n);
@@ -79,7 +74,7 @@ OmegaHLagrangeLocHint BuildLagrangeLocHint(
     "CheckValidity",
     Kokkos::RangePolicy<typename DeviceMemorySpace::execution_space>(0, n),
     KOKKOS_LAMBDA(LO i) {
-      bool out = (owning_ids(i) < 0) || (results(i).element_id < 0);
+      bool out = (owning_ids(i) < 0) || (results.element_ids(i) < 0);
       is_valid(i) = out ? 0 : 1;
     });
 
@@ -179,15 +174,15 @@ OmegaHLagrangeLocHint BuildLagrangeLocHint(
                                mode};
 }
 
-inline std::variant<GridPointSearch2D, GridPointSearch3D> MakeSearch(
+inline std::shared_ptr<PointSearch> MakeSearch(
   Omega_h::Mesh& mesh)
 {
   if (mesh.dim() == 2) {
     const auto n = DivisionsPerAxisForMesh<2>(mesh.nelems());
-    return GridPointSearch2D(mesh, n, n);
+    return std::make_shared<GridPointSearch2D>(mesh, n, n);
   } else if (mesh.dim() == 3) {
     const auto n = DivisionsPerAxisForMesh<3>(mesh.nelems());
-    return GridPointSearch3D(mesh, n, n, n);
+    return std::make_shared<GridPointSearch3D>(mesh, n, n, n);
   }
   throw std::invalid_argument(
     "OmegaHLagrangeEvaluatorFactory: only 2D and 3D meshes are supported");
@@ -333,7 +328,7 @@ public:
   /// operators which must locate points on the same mesh, such as the
   /// conservative transfer's intersection search, reuse it rather than build
   /// and hold a second copy of the candidate map.
-  [[nodiscard]] const GridPointSearchVariant& GetSearch() const noexcept
+  [[nodiscard]] const std::shared_ptr<PointSearch>& GetSearch() const noexcept
   {
     return search_;
   }
@@ -349,29 +344,20 @@ public:
         "OmegaHLagrangeEvaluatorFactory: NearestBoundary is not supported");
     }
 
-    auto raw_coords = coords.GetValues();
-    LO n_pts = static_cast<LO>(raw_coords.extent(0));
     int mesh_dim = layout_->GetMesh().dim();
     Omega_h::Mesh& mesh = const_cast<Omega_h::Mesh&>(layout_->GetMesh());
-
-    OmegaHLagrangeLocHint hint = std::visit(
-      [&](auto& search) {
-        using SearchT = std::decay_t<decltype(search)>;
-        constexpr int Dim = SearchT::DIM;
-        Kokkos::View<Real**, DeviceMemorySpace> coords_d(
-          "coords_d", raw_coords.extent(0), raw_coords.extent(1));
-
-        detail::CopyCoordsFunctor<Dim> copy_functor(coords_d, raw_coords);
-        Kokkos::parallel_for("copy_coords", n_pts, copy_functor);
-
-        auto results_d = search(coords_d);
-        auto owning_ids = search.GetOwningElementIds(results_d);
-
-        return detail::BuildLagrangeLocHint<Dim>(
+    auto results_d = search_->Apply(coords);
+    auto owning_ids = search_->GetOwningElementIds(results_d);
+    
+    auto raw_coords = coords.GetValues();
+    Kokkos::View<Real**, DeviceMemorySpace> coords_d(
+      "coords_d", raw_coords.extent(0), raw_coords.extent(1));
+    detail::CopyCoordsFunctor copy_functor(coords_d, raw_coords);
+    Kokkos::parallel_for("copy_coords", static_cast<LO>(raw_coords.extent(0)), copy_functor);
+  
+    OmegaHLagrangeLocHint hint = detail::BuildLagrangeLocHint(
           mesh, mesh_dim, results_d, coords_d, owning_ids, policy.mode);
-      },
-      search_);
-
+  
     return std::make_unique<OmegaHLagrangePointEvaluator<T>>(
       layout_, std::move(hint), policy.fill_value);
   }
@@ -383,7 +369,7 @@ public:
 
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
-  GridPointSearchVariant search_;
+  std::shared_ptr<PointSearch> search_;
 };
 
 } // namespace pcms

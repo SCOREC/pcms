@@ -35,7 +35,7 @@ class TestFieldCopy:
         # Create original field and set data
         original = factory.create_function()
         layout = original.get_layout()
-        ndata = layout.get_num_owned_dof_holder() * layout.get_num_components()
+        ndata = layout.get_num_dof_holder() * layout.get_num_components()
 
         # Create sequential array of IDs
         ids = np.arange(ndata, dtype=np.float64).reshape(

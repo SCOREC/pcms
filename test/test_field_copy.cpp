@@ -24,7 +24,7 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
     mesh, order, num_components, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
   auto layout = factory->GetLayout();
-  int ndata = layout->GetNumOwnedDofHolder() * num_components;
+  int ndata = layout->GetNumDofHolder() * num_components;
   Omega_h::HostWrite<Real> ids(ndata);
   Kokkos::parallel_for(
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, ndata),
@@ -33,7 +33,7 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
   auto original = factory->CreateFunction<Real>();
   original.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const Real, pcms::HostMemorySpace>(
-      ids.data(), layout->GetNumOwnedDofHolder(), num_components));
+      ids.data(), layout->GetNumDofHolder(), num_components));
 
   auto copied = factory->CreateFunction<Real>();
   pcms::Copy<Real> copy(*factory, *factory);

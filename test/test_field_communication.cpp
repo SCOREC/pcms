@@ -124,7 +124,7 @@ void client1(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     mesh, order, 1, pcms::csys::Cartesian::Deferred());
   auto layout = factory->GetLayout();
   auto gids = layout->GetGidsHost();
-  const auto n = layout->GetNumOwnedDofHolder();
+  const auto n = layout->GetNumDofHolder();
   Omega_h::HostWrite<Real> ids(n);
   PCMS_ALWAYS_ASSERT(n == gids.size());
   Kokkos::parallel_for(
@@ -156,7 +156,7 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
     mesh, order, 1, pcms::csys::Cartesian::Deferred());
   auto layout = factory->GetLayout();
   auto gids = layout->GetGidsHost();
-  const auto n = layout->GetNumOwnedDofHolder();
+  const auto n = layout->GetNumDofHolder();
 
   auto field = factory->CreateFunction<Real>();
   pcms::FieldLayoutCommunicator layout_comm(comm_name + "2", comm, rdv, channel,
@@ -170,25 +170,20 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
 
   auto copied_array =
     pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
-  auto owned = layout->GetOwnedHost();
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());
-  PCMS_ALWAYS_ASSERT(owned.size() == gids.size());
 
   int expected = 0;
   int sum = 0;
   Kokkos::parallel_reduce(
     "reduce1",
-    Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0,
-                                                                owned.size()),
-    KOKKOS_LAMBDA(int i, int& local_sum) { local_sum += owned[i] != 0; },
-    expected);
+    Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, gids.size()),
+    KOKKOS_LAMBDA(int /*i*/, int& local_sum) { local_sum += 1; }, expected);
   Kokkos::parallel_reduce(
     "reduce2",
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
     KOKKOS_LAMBDA(int i, int& local_sum) {
-      if (owned[i])
-        local_sum += (int)copied_array[i] == gids[i];
+      local_sum += (int)copied_array[i] == gids[i];
     },
     sum);
 
@@ -216,7 +211,7 @@ void server(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
     mesh, order, 1, pcms::csys::Cartesian::Deferred());
   auto layout = factory->GetLayout();
-  const auto n = layout->GetNumOwnedDofHolder();
+  const auto n = layout->GetNumDofHolder();
   Omega_h::HostWrite<Real> ids(n);
   Kokkos::parallel_for(
     "id 0", Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),

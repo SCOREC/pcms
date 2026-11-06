@@ -5,10 +5,16 @@
 namespace pcms
 {
 
-void FieldLayout::BuildGlobalToLocalPermutation()
+void FieldLayout::BuildGlobalToLocalPermutation(
+  Kokkos::View<const GO*, DeviceMemorySpace> local_gids,
+  const EntOffsetsArray& local_ent_offsets)
 {
-  const auto permutation =
-    BuildSortedGidPermutation(GetGidsHost(), GetEntOffsets());
+  // The sort runs on the host; the GIDs are copied there only for it.
+  const auto gids_host =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), local_gids);
+  const auto permutation = BuildSortedGidPermutation(
+    GlobalIDView<HostMemorySpace>(gids_host.data(), gids_host.size()),
+    local_ent_offsets);
   global_to_local_host_ = Kokkos::View<LO*, HostMemorySpace>(
     "global_to_local_host", permutation.size());
   for (size_t i = 0; i < permutation.size(); ++i)

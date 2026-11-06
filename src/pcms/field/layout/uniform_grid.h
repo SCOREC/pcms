@@ -23,7 +23,7 @@ public:
     const noexcept override;
 
   int GetNumComponents() const override;
-  LO GetNumOwnedDofHolder() const override;
+  LO GetNumDofHolder() const override;
   GO GetNumGlobalDofHolder() const override;
 
   Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override;
@@ -48,7 +48,7 @@ public:
   int GetOrder() const;
 
 private:
-  LO GetNumDofHolders() const;
+  LO CountDofHolders() const;
 
   UniformGrid<Dim> grid_;
   int num_components_;

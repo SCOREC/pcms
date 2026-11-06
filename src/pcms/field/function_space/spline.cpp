@@ -61,7 +61,7 @@ FieldVariant SplineFunctionSpace::CreateFieldImpl(FieldDataVariant data) const
     throw pcms_error(
       "SplineFunctionSpace::CreateField: requires SimpleFieldData<double>");
   }
-  if (fd->GetDOFAccess()->GetOwnedValues().size() !=
+  if (fd->GetDOFAccess()->GetValues().size() !=
       detail::ExpectedFlatFieldDataSize(*layout_)) {
     throw pcms_error(
       "SplineFunctionSpace::CreateField: field data size does not match "

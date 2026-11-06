@@ -9,7 +9,7 @@
 #include <Omega_h_reduce.hpp>
 #include "pcms/configuration.hpp"
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 class Queue
@@ -139,5 +139,5 @@ int Track::size()
   return count;
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 #endif // PCMS_LOCALIZATION_QUEUE_VISITED_HPP

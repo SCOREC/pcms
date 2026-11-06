@@ -18,6 +18,13 @@
 #include <vector>
 #include "pcms/backends/omega_h/omega_h.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+using transfer::OmegaHConservativeProjection;
+using transfer::OmegaHControlVariateProjection;
+} // namespace pcms
+
 TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
           "linear fields",
           "[transfer][mesh_intersection][3d]")

@@ -16,6 +16,11 @@
 #include <type_traits>
 #include <vector>
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+} // namespace pcms
+
 using pcms::LO;
 using pcms::Real;
 

@@ -16,6 +16,11 @@
 #include <stdexcept>
 #include <vector>
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+} // namespace pcms
+
 using Catch::Matchers::ContainsSubstring;
 using Catch::Matchers::WithinAbs;
 using pcms::ComponentScaling;

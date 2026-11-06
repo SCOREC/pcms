@@ -17,6 +17,13 @@
 
 namespace pcms
 {
+using backend::xgc::XGCFieldData;
+using backend::xgc::XGCFieldFactory;
+using field::EmptyFieldLayout;
+} // namespace pcms
+
+namespace pcms
+{
 
 namespace detail
 {
@@ -26,13 +33,15 @@ struct XGCFieldRegistration
 {
   // what the field's layout is built from when the field is registered, under
   // the field's name (a copy, so the caller may destroy its classification)
-  std::shared_ptr<const ReverseClassificationVertex> reverse_classification;
+  std::shared_ptr<const backend::xgc::ReverseClassificationVertex>
+    reverse_classification;
   LO num_plane_nodes;
   MPI_Comm plane_comm;
   Rank1View<T, HostMemorySpace> data;
 
   XGCFieldRegistration(
-    std::shared_ptr<const ReverseClassificationVertex> classification,
+    std::shared_ptr<const backend::xgc::ReverseClassificationVertex>
+      classification,
     LO num_nodes, MPI_Comm comm, Rank1View<T, HostMemorySpace> d)
     : reverse_classification(std::move(classification)),
       num_plane_nodes(num_nodes),
@@ -180,14 +189,15 @@ void pcms_destroy_client(PcmsClientHandle client)
 PcmsReverseClassificationHandle pcms_load_reverse_classification(
   const char* file, MPI_Comm comm)
 {
-  auto* rc = new pcms::ReverseClassificationVertex{
-    pcms::ReadReverseClassificationVertex(file, comm)};
+  auto* rc = new pcms::backend::xgc::ReverseClassificationVertex{
+    pcms::backend::xgc::ReadReverseClassificationVertex(file, comm)};
   return {reinterpret_cast<void*>(rc)};
 }
 
 void pcms_destroy_reverse_classification(PcmsReverseClassificationHandle rc)
 {
-  delete reinterpret_cast<pcms::ReverseClassificationVertex*>(rc.pointer);
+  delete reinterpret_cast<pcms::backend::xgc::ReverseClassificationVertex*>(
+    rc.pointer);
 }
 
 void pcms_set_overlap_mask(PcmsClientHandle client_handle, const char* name,
@@ -265,14 +275,14 @@ void pcms_receive_field(PcmsFieldHandle field_handle)
 template <typename T>
 void pcms_create_xgc_field_adapter_t(
   const char* /* name */, MPI_Comm comm, void* data, int size,
-  const pcms::ReverseClassificationVertex& reverse_classification,
+  const pcms::backend::xgc::ReverseClassificationVertex& reverse_classification,
   pcms::FieldAdapterVariant& field_adapter)
 {
   PCMS_ALWAYS_ASSERT((size > 0) ? (data != nullptr) : true);
   pcms::Rank1View<T, pcms::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<pcms::detail::XGCFieldRegistration<T>>(
-    std::make_shared<const pcms::ReverseClassificationVertex>(
+    std::make_shared<const pcms::backend::xgc::ReverseClassificationVertex>(
       reverse_classification),
     size, comm, data_view);
 }
@@ -284,7 +294,8 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   auto* field_adapter = new pcms::FieldAdapterVariant{};
   PCMS_ALWAYS_ASSERT(rc.pointer != nullptr);
   auto* reverse_classification =
-    reinterpret_cast<const pcms::ReverseClassificationVertex*>(rc.pointer);
+    reinterpret_cast<const pcms::backend::xgc::ReverseClassificationVertex*>(
+      rc.pointer);
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
   switch (data_type) {
     case PCMS_DOUBLE:
@@ -325,7 +336,8 @@ void pcms_destroy_field_adapter(PcmsFieldAdapterHandle adapter_handle)
 int pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle rc)
 {
   auto* reverse_classification =
-    reinterpret_cast<const pcms::ReverseClassificationVertex*>(rc.pointer);
+    reinterpret_cast<const pcms::backend::xgc::ReverseClassificationVertex*>(
+      rc.pointer);
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
   return std::accumulate(reverse_classification->begin(),
                          reverse_classification->end(), 0,

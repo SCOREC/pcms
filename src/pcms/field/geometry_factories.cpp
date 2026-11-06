@@ -4,6 +4,13 @@
 
 namespace pcms
 {
+using backend::point_cloud::PointCloudGeometry;
+using backend::point_cloud::PointCloudLayout;
+using backend::uniform_grid::UniformGridGeometry;
+} // namespace pcms
+
+namespace pcms
+{
 
 /// The geometry of a 2D uniform grid.
 /// @param grid the grid

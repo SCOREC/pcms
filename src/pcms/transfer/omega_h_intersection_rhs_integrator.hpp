@@ -11,7 +11,7 @@
 #include <Kokkos_Core.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Conservative-projection RHS integrator for Lagrange spaces on Omega_h 2D
@@ -57,7 +57,7 @@ public:
 
 private:
   Vec vec_ = nullptr;
-  std::shared_ptr<const OmegaHGeometry> source_geometry_;
+  std::shared_ptr<const backend::omega_h::OmegaHGeometry> source_geometry_;
   Kokkos::View<Real**, DeviceMemorySpace>
     coords_; // [num_pts][dim] integration point coordinates
   // source element of each integration point
@@ -75,6 +75,6 @@ std::unique_ptr<OmegaHIntersectionRHSIntegrator>
 BuildOmegaHConservativeRHSIntegrator(const FunctionSpace& source_space,
                                      const FunctionSpace& target_space);
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP

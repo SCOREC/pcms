@@ -1,6 +1,6 @@
 #include "pcms/utility/mesh_geometry.hpp"
 
-namespace pcms
+namespace pcms::utility
 {
 
 Omega_h::Reals get_entity_centroids(Omega_h::Mesh& mesh,
@@ -78,4 +78,4 @@ Omega_h::Reals get_entity_centroids(Omega_h::Mesh& mesh,
   return Omega_h::Reals(centroids);
 }
 
-} // namespace pcms
+} // namespace pcms::utility

@@ -13,7 +13,7 @@
 #include <memory>
 #include <Omega_h_vector.hpp>
 
-namespace pcms
+namespace pcms::backend::uniform_grid
 {
 
 namespace detail
@@ -56,7 +56,7 @@ inline void GatherPoints(Kokkos::View<const Real**, DeviceMemorySpace> points,
 /// @brief Evaluates the bicubic spline of a field's grid values, or its
 ///        gradient (df/dx, df/dy) for DifferentialOperator::Gradient.
 template <typename LayoutPolicy =
-            detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
+            pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class UniformGridSplinePointEvaluator2D
   : public PointEvaluator<Real, LayoutPolicy>
 {
@@ -219,6 +219,6 @@ private:
   std::shared_ptr<const UniformGridFieldLayout<2>> layout_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::uniform_grid
 
 #endif // PCMS_UNIFORM_GRID_SPLINE_EVALUATOR_FACTORY_H

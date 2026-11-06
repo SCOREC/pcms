@@ -8,6 +8,11 @@
 
 namespace pcms
 {
+using backend::omega_h::OmegaHGeometry;
+} // namespace pcms
+
+namespace pcms::backend::omega_h_meshfields
+{
 /*
  * Field Layout
  */
@@ -440,4 +445,4 @@ void MeshFieldsAdapterLayout::BuildOwnedClassification()
     owned_classification_ids_host_);
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h_meshfields

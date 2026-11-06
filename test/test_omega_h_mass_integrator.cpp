@@ -21,6 +21,14 @@
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::OmegaHLagrangeLayout;
+using transfer::buildElementMassMatrix;
+using transfer::BuildOmegaHMassIntegrator;
+} // namespace pcms
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -68,12 +76,13 @@ std::map<std::pair<pcms::GO, pcms::GO>, pcms::Real> BuildReferenceMassMap(
 #else
   MeshField::FieldElement coordFe(mesh.nelems(), coordField.field, shp, map);
 #endif
-  auto elm_mass_dev = buildElementMassMatrix(mesh, coordFe);
+  auto elm_mass_dev = pcms::buildElementMassMatrix(mesh, coordFe);
   auto elm_mass_host =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, elm_mass_dev);
 
   const auto layout =
-    std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(space.GetLayout());
+    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+      space.GetLayout());
   REQUIRE(layout != nullptr);
   const auto faces2nodes_dev = mesh.ask_down(Omega_h::FACE, Omega_h::VERT).ab2b;
   const auto faces2nodes = Omega_h::HostRead(faces2nodes_dev);

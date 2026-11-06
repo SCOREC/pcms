@@ -5,7 +5,7 @@
 
 #include <Omega_h_array.hpp>
 
-namespace pcms
+namespace pcms::localization
 {
 
 // Returns true when both the minimum and maximum support counts fall within
@@ -39,5 +39,5 @@ SupportResults BuildPointCloudSupports(const Omega_h::Reals& source_coords,
                                        bool adapt_radius,
                                        unsigned max_iterations = 100);
 
-} // namespace pcms
+} // namespace pcms::localization
 #endif // PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_H

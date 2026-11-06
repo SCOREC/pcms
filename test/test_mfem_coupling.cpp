@@ -14,6 +14,12 @@
 #include <numeric>
 #include <vector>
 
+namespace pcms
+{
+using backend::mfem::MFEMFieldFactory;
+using backend::mfem::MFEMLayout;
+} // namespace pcms
+
 using pcms::Real;
 
 namespace

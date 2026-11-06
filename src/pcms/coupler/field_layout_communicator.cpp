@@ -3,6 +3,11 @@
 
 namespace pcms
 {
+using field::MakeUnmappedPermutation;
+} // namespace pcms
+
+namespace pcms::coupler
+{
 
 FieldLayoutCommunicator::FieldLayoutCommunicator(
   const std::string& name, MPI_Comm mpi_comm, redev::Redev& redev,
@@ -134,4 +139,4 @@ FieldLayoutCommunicator::~FieldLayoutCommunicator()
   }
 }
 
-} // namespace pcms
+} // namespace pcms::coupler

@@ -6,7 +6,7 @@
 
 #include "pcms/transfer/petsc_utils.hpp"
 
-namespace pcms
+namespace pcms::transfer
 {
 PetscErrorCode createSeqAIJMat(MPI_Comm comm, PetscInt m, PetscInt n,
                                PetscInt nz, const PetscInt nnz[], Mat* mat)
@@ -30,4 +30,4 @@ PetscErrorCode createSeqVec(MPI_Comm comm, PetscInt n, Vec* vec)
 #endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-} // namespace pcms
+} // namespace pcms::transfer

@@ -4,6 +4,14 @@
 
 namespace pcms
 {
+using localization::adapt_radii;
+using localization::within_number_of_support_range;
+using utility::distance_squared;
+using utility::get_entity_centroids;
+} // namespace pcms
+
+namespace pcms::backend::omega_h
+{
 
 static constexpr int max_dim = 3;
 
@@ -256,4 +264,4 @@ SupportResults searchNeighbors(
                         radii2.view()};
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h

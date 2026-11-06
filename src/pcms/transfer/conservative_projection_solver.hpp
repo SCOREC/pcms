@@ -11,7 +11,7 @@
 #include <pcms/transfer/linear_form_integrator.hpp>
 #include <pcms/utility/arrays.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Cached Galerkin projection solver for M*x = f.
@@ -67,6 +67,6 @@ private:
   mutable Kokkos::View<Real**, DeviceMemorySpace> sampled_values_;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_CONSERVATIVE_PROJECTION_SOLVER_HPP

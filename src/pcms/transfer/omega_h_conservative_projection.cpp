@@ -9,6 +9,11 @@
 
 namespace pcms
 {
+using backend::omega_h::OmegaHLagrangeLayout;
+} // namespace pcms
+
+namespace pcms::transfer
+{
 
 namespace
 {
@@ -106,4 +111,4 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
   target.Synchronize();
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

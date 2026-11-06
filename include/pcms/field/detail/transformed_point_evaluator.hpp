@@ -14,7 +14,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace pcms
+namespace pcms::field
 {
 
 /// Point evaluator at the points of a bound source with a coordinate map: the
@@ -78,6 +78,6 @@ private:
   std::unique_ptr<PointEvaluator<T>> inner_;
 };
 
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_FIELD_TRANSFORMED_POINT_EVALUATOR_HPP

@@ -182,14 +182,15 @@ inline std::shared_ptr<const FunctionSpace> MakeP0Space(
 inline std::shared_ptr<const FunctionSpace> MakeP1Space(
   Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
 {
-  return MakeP1Space(CreateOmegaHGeometry(
+  return MakeP1Space(backend::omega_h::CreateOmegaHGeometry(
     mesh, csys::Cartesian::Deferred(),
     backend::omega_h::OmegaHGeometryOptions{.global_id_name = global_id_name}));
 }
 
 inline std::shared_ptr<const FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
 {
-  return MakeP0Space(CreateOmegaHGeometry(mesh, csys::Cartesian::Deferred()));
+  return MakeP0Space(
+    backend::omega_h::CreateOmegaHGeometry(mesh, csys::Cartesian::Deferred()));
 }
 
 inline bool AreArraysEqualUnordered(
@@ -663,9 +664,10 @@ void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
 
 // An Omega_h geometry of `mesh` in the Cartesian coordinate system of its
 // dimension, typed for the layouts built on it.
-inline std::shared_ptr<OmegaHGeometry> MakeOmegaHGeometry(Omega_h::Mesh& mesh)
+inline std::shared_ptr<backend::omega_h::OmegaHGeometry> MakeOmegaHGeometry(
+  Omega_h::Mesh& mesh)
 {
-  return std::make_shared<OmegaHGeometry>(
+  return std::make_shared<backend::omega_h::OmegaHGeometry>(
     mesh, pcms::csys::Cartesian::Create(mesh.dim()));
 }
 
@@ -679,7 +681,8 @@ struct HostRecord
 };
 
 template <int Dim>
-std::vector<HostRecord> FoundRecordsOfDim(const OmegaHMeshBinding& binding)
+std::vector<HostRecord> FoundRecordsOfDim(
+  const backend::omega_h::OmegaHMeshBinding& binding)
 {
   const auto results = Kokkos::create_mirror_view_and_copy(
     HostMemorySpace(), binding.Results<Dim>());
@@ -700,7 +703,8 @@ std::vector<HostRecord> FoundRecordsOfDim(const OmegaHMeshBinding& binding)
 // The search records of the found points, in FoundPoints() order.
 inline std::vector<HostRecord> FoundRecords(const BoundSource& bound)
 {
-  const auto& binding = dynamic_cast<const OmegaHMeshBinding&>(bound);
+  const auto& binding =
+    dynamic_cast<const backend::omega_h::OmegaHMeshBinding&>(bound);
   return backend::omega_h::GetMesh(*bound.GetGeometry()).dim() == 2
            ? FoundRecordsOfDim<2>(binding)
            : FoundRecordsOfDim<3>(binding);
@@ -736,7 +740,7 @@ inline void CheckOwnersMatchSearch(CoordinateView<DeviceMemorySpace> points,
 // Evaluates source_field at the integrator's points, searched on the source
 // space's geometry, and assembles the load vector.
 inline void EvaluateAndAssemble(
-  LinearFormIntegrator& integrator,
+  transfer::LinearFormIntegrator& integrator,
   const std::shared_ptr<const FunctionSpace>& source_space,
   const Field<Real>& source_field)
 {

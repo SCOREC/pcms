@@ -7,6 +7,12 @@
 
 namespace pcms
 {
+using backend::point_cloud::PointCloudEvaluatorFactory;
+using backend::point_cloud::PointCloudGeometry;
+} // namespace pcms
+
+namespace pcms
+{
 
 std::shared_ptr<const FunctionSpace> CreatePolynomialReconstructionSpace(
   std::shared_ptr<const Geometry> geometry, MLSOptions options)

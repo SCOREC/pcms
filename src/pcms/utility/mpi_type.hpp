@@ -5,7 +5,7 @@
 #include <complex>
 #include <mpi.h>
 
-namespace pcms
+namespace pcms::utility
 {
 
 template <class T>
@@ -72,6 +72,6 @@ template <class T>
   }
 }
 
-} // namespace pcms
+} // namespace pcms::utility
 
 #endif // PCMS_MPI_TYPE_H

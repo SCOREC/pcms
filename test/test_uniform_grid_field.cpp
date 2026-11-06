@@ -19,6 +19,14 @@
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateUniformGridBinaryField;
+using backend::uniform_grid::UniformGridFieldLayout;
+using backend::uniform_grid::UniformGridGeometry;
+} // namespace pcms
+
 using pcms::backend::omega_h::CreateUniformGridFromMesh;
 
 namespace

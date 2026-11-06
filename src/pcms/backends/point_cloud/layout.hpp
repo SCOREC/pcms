@@ -3,7 +3,7 @@
 
 #include "pcms/field/field.hpp"
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 
 class PointCloudLayout : public FieldLayout
@@ -52,6 +52,6 @@ private:
   Kokkos::View<LO*, HostMemorySpace> classification_dims_host_;
   Kokkos::View<LO*, HostMemorySpace> classification_ids_host_;
 };
-} // namespace pcms
+} // namespace pcms::backend::point_cloud
 
 #endif // POINT_CLOUD_LAYOUT_H_

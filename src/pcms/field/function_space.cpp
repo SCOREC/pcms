@@ -25,15 +25,19 @@ void ValidateWrappedFieldData(const FieldLayout& layout,
                               const FieldData<T>& data)
 {
 #ifdef PCMS_ENABLE_MESHFIELDS
-  if (dynamic_cast<const MeshFieldsAdapterLayout*>(&layout) != nullptr &&
-      dynamic_cast<const MeshFieldsFieldData<T>*>(&data) == nullptr) {
+  if (dynamic_cast<const backend::omega_h_meshfields::MeshFieldsAdapterLayout*>(
+        &layout) != nullptr &&
+      dynamic_cast<const backend::omega_h_meshfields::MeshFieldsFieldData<T>*>(
+        &data) == nullptr) {
     throw pcms_error("FunctionSpace::CreateField: MeshFields layout requires "
                      "MeshFieldsFieldData");
   }
 #endif
 #ifdef PCMS_ENABLE_OMEGA_H
-  if (dynamic_cast<const OmegaHLagrangeLayout*>(&layout) != nullptr &&
-      dynamic_cast<const OmegaHFieldData<T>*>(&data) == nullptr) {
+  if (dynamic_cast<const backend::omega_h::OmegaHLagrangeLayout*>(&layout) !=
+        nullptr &&
+      dynamic_cast<const backend::omega_h::OmegaHFieldData<T>*>(&data) ==
+        nullptr) {
     throw pcms_error("FunctionSpace::CreateField: OmegaH layout requires "
                      "OmegaHFieldData");
   }

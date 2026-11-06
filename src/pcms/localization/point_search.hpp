@@ -15,7 +15,7 @@
 #include "pcms/utility/uniform_grid.hpp"
 #include "pcms/utility/bounding_box.hpp"
 
-namespace pcms
+namespace pcms::localization
 {
 
 //
@@ -284,5 +284,5 @@ private:
 using GridPointSearchVariant =
   std::variant<GridPointSearch2D, GridPointSearch3D>;
 
-} // namespace pcms
+} // namespace pcms::localization
 #endif // PCMS_COUPLING_POINT_SEARCH_H

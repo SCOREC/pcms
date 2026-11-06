@@ -19,7 +19,7 @@
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 /**
@@ -36,13 +36,15 @@ namespace pcms
  * \return Pair of (layout, field) with binary mask values.
  */
 template <unsigned Dim>
-std::pair<std::shared_ptr<const UniformGridFieldLayout<Dim>>, Field<Real>>
+std::pair<std::shared_ptr<const uniform_grid::UniformGridFieldLayout<Dim>>,
+          Field<Real>>
 CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
 {
   auto function_space = CreateLagrangeSpace(
     CreateUniformGridGeometry(grid, csys::Cartesian::Deferred()), 1, 1);
-  auto layout = std::dynamic_pointer_cast<const UniformGridFieldLayout<Dim>>(
-    function_space->GetLayout());
+  auto layout =
+    std::dynamic_pointer_cast<const uniform_grid::UniformGridFieldLayout<Dim>>(
+      function_space->GetLayout());
   PCMS_ALWAYS_ASSERT(layout != nullptr);
   Field<Real> field = function_space->template CreateFunction<Real>("");
 
@@ -59,13 +61,15 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
     });
 
   // Run point-in-mesh search
-  Kokkos::View<typename PointLocalizationSearch<Dim>::Result*> results_d;
+  Kokkos::View<typename localization::PointLocalizationSearch<Dim>::Result*>
+    results_d;
   if constexpr (Dim == 2) {
-    GridPointSearch2D search(mesh, grid.divisions[0], grid.divisions[1]);
+    localization::GridPointSearch2D search(mesh, grid.divisions[0],
+                                           grid.divisions[1]);
     results_d = search(coords_d);
   } else {
-    GridPointSearch3D search(mesh, grid.divisions[0], grid.divisions[1],
-                             grid.divisions[2]);
+    localization::GridPointSearch3D search(
+      mesh, grid.divisions[0], grid.divisions[1], grid.divisions[2]);
     results_d = search(coords_d);
   }
   auto results_h =
@@ -85,15 +89,15 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
  * \brief Convenience overload: derives the grid from the mesh bounding box.
  */
 template <unsigned Dim>
-std::pair<std::shared_ptr<const UniformGridFieldLayout<Dim>>, Field<Real>>
+std::pair<std::shared_ptr<const uniform_grid::UniformGridFieldLayout<Dim>>,
+          Field<Real>>
 CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
                              const std::array<LO, Dim>& divisions)
 {
   return CreateUniformGridBinaryField<Dim>(
-    mesh,
-    pcms::backend::omega_h::CreateUniformGridFromMesh<Dim>(mesh, divisions));
+    mesh, CreateUniformGridFromMesh<Dim>(mesh, divisions));
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 
 #endif // PCMS_UNIFORM_GRID_BINARY_FIELD_H

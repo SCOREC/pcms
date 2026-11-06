@@ -7,13 +7,13 @@ namespace pcms::backend::omega_h
 Field<Real> CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
                                          const UniformGrid<2>& grid)
 {
-  return pcms::CreateUniformGridBinaryField<2>(mesh, grid).second;
+  return CreateUniformGridBinaryField<2>(mesh, grid).second;
 }
 
 Field<Real> CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
                                          std::array<LO, 2> divisions)
 {
-  return pcms::CreateUniformGridBinaryField<2>(mesh, divisions).second;
+  return CreateUniformGridBinaryField<2>(mesh, divisions).second;
 }
 
 } // namespace pcms::backend::omega_h

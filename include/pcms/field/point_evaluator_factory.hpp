@@ -188,8 +188,8 @@ std::unique_ptr<PointEvaluator<T>> PointEvaluatorFactory::CreatePointEvaluator(
   if (bound->GetBoundMap() == nullptr) {
     return evaluator;
   }
-  return std::make_unique<TransformedPointEvaluator<T>>(std::move(bound),
-                                                        std::move(evaluator));
+  return std::make_unique<field::TransformedPointEvaluator<T>>(
+    std::move(bound), std::move(evaluator));
 }
 
 } // namespace pcms

@@ -5,7 +5,7 @@
 #include "pcms/utility/arrays.hpp"
 #include <petscvec.h>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class LinearFormIntegrator
@@ -29,6 +29,6 @@ public:
   virtual ~LinearFormIntegrator() noexcept = default;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_LINEAR_FORM_INTEGRATOR_H

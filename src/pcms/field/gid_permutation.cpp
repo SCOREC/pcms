@@ -2,7 +2,7 @@
 #include "pcms/utility/assert.hpp"
 #include <algorithm>
 
-namespace pcms
+namespace pcms::field
 {
 
 namespace
@@ -67,4 +67,4 @@ std::vector<LO> BuildSortedGidPermutation(GlobalIDView<HostMemorySpace> gids,
   return permutation;
 }
 
-} // namespace pcms
+} // namespace pcms::field

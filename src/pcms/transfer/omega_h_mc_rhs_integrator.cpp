@@ -6,7 +6,7 @@
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
@@ -274,4 +274,4 @@ void OmegaHMonteCarloRHSIntegrator::Assemble(
   CHKERRABORT(PETSC_COMM_SELF, ierr);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

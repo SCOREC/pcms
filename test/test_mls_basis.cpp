@@ -15,8 +15,8 @@ TEST_CASE("basis test")
     const int degree = 3;
     Kokkos::View<int**, Kokkos::HostSpace> array("array", degree, dim);
     Kokkos::deep_copy(array, 0);
-    pcms::detail::calculate_basis_slice_lengths(array);
-    auto size = pcms::detail::calculate_basis_vector_size(array);
+    pcms::field::detail::calculate_basis_slice_lengths(array);
+    auto size = pcms::field::detail::calculate_basis_vector_size(array);
 
     int expected[degree][dim] = {{1, 1, 1}, {1, 2, 3}, {1, 3, 6}};
 
@@ -45,7 +45,7 @@ TEST_CASE("basis test")
       KOKKOS_LAMBDA(const pcms::member_type& team) {
         int i = team.league_rank();
         pcms::ScratchVecView basis_vector(team.team_scratch(0), size);
-        pcms::detail::fill(0, team, basis_vector);
+        pcms::field::detail::fill(0, team, basis_vector);
 
         double target_point[MAX_DIM] = {};
 
@@ -53,7 +53,8 @@ TEST_CASE("basis test")
           target_point[j] = coords[i][j];
         }
 
-        pcms::detail::eval_basis_vector(d_array, target_point, basis_vector);
+        pcms::field::detail::eval_basis_vector(d_array, target_point,
+                                               basis_vector);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { results(i, j) = basis_vector(j); });
@@ -107,9 +108,9 @@ TEST_CASE("basis test")
     const int degree = 1;
     Kokkos::View<int**, Kokkos::HostSpace> array("array", degree, dim);
     Kokkos::deep_copy(array, 0);
-    pcms::detail::calculate_basis_slice_lengths(array);
+    pcms::field::detail::calculate_basis_slice_lengths(array);
 
-    auto size = pcms::detail::calculate_basis_vector_size(array);
+    auto size = pcms::field::detail::calculate_basis_vector_size(array);
 
     int expected[degree][dim] = {
       {1, 1, 1},
@@ -149,7 +150,8 @@ TEST_CASE("basis test")
           target_point[j] = coords[i][j];
         }
 
-        pcms::detail::eval_basis_vector(d_array, target_point, basis_vector);
+        pcms::field::detail::eval_basis_vector(d_array, target_point,
+                                               basis_vector);
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                              [=](int j) { results(i, j) = basis_vector(j); });
@@ -185,13 +187,14 @@ TEST_CASE("basis test")
     Kokkos::View<int**, Kokkos::HostSpace> host_slice_length("array", degree,
                                                              dim);
     Kokkos::deep_copy(host_slice_length, 0);
-    pcms::detail::calculate_basis_slice_lengths(host_slice_length);
+    pcms::field::detail::calculate_basis_slice_lengths(host_slice_length);
 
     pcms::IntDeviceMatView slice_length("slice array in device", degree, dim);
     auto slice_length_hd = Kokkos::create_mirror_view(slice_length);
     Kokkos::deep_copy(slice_length_hd, host_slice_length);
     Kokkos::deep_copy(slice_length, slice_length_hd);
-    auto size = pcms::detail::calculate_basis_vector_size(host_slice_length);
+    auto size =
+      pcms::field::detail::calculate_basis_vector_size(host_slice_length);
     int nvertices_target = 2;
     int nsupports = 5;
     Kokkos::View<double**> points("vandermonde matrix", nvertices_target,
@@ -243,7 +246,7 @@ TEST_CASE("basis test")
 
         Kokkos::parallel_for(
           Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
-            pcms::detail::create_vandermonde_matrix(
+            pcms::field::detail::create_vandermonde_matrix(
               local_source_points, j, slice_length, vandermonde_matrix);
           });
 

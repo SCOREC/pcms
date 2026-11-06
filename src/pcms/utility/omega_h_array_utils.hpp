@@ -7,7 +7,7 @@
 
 #include <type_traits>
 
-namespace pcms
+namespace pcms::utility
 {
 
 template <typename View2D>
@@ -108,6 +108,6 @@ void SynchronizeOmegaHBlock(Omega_h::Mesh& mesh, int dim, int nc,
   }
 }
 
-} // namespace pcms
+} // namespace pcms::utility
 
 #endif // PCMS_UTILITY_OMEGA_H_ARRAY_UTILS_H

@@ -17,6 +17,11 @@
 
 #include "field_test_utils.hpp"
 
+namespace pcms
+{
+using transfer::OmegaHConservativeProjection;
+} // namespace pcms
+
 namespace
 {
 

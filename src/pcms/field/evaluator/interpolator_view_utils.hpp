@@ -7,7 +7,7 @@
 #include <Omega_h_fail.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
-namespace pcms
+namespace pcms::field
 {
 namespace detail
 {
@@ -263,6 +263,6 @@ void scale_and_adjust(member_type team, ScratchVecView& diagonal_entries,
 }
 
 } // namespace detail
-} // namespace pcms
+} // namespace pcms::field
 
 #endif // PCMS_FIELD_EVALUATOR_PCMS_INTERPOLATOR_VIEW_UTILS_HPP

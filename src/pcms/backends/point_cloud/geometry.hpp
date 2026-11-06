@@ -17,7 +17,7 @@
 #include <memory>
 #include <string>
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 
 /// Geometry of a set of sites (the DOF holders of a layout: a point cloud or
@@ -88,8 +88,8 @@ public:
     const NeighbourhoodOptions& options,
     const OwnerHints& owners = {}) const override
   {
-    detail::CheckNeighbourhoodArguments(*this, coords, options,
-                                        "PointCloudGeometry::Neighbourhood");
+    pcms::detail::CheckNeighbourhoodArguments(
+      *this, coords, options, "PointCloudGeometry::Neighbourhood");
     const auto& site_geometry = site_layout_->GetGeometry();
     const int site_dim = site_layout_->GetDOFHolderEntityDim();
     // the supports are entity ids, which are site indices only without ghosts
@@ -105,9 +105,9 @@ public:
                                           forwarded);
     }
     const auto sites = site_layout_->GetDOFHolderCoordinates().GetValues();
-    return BuildPointCloudSupports(
-      flatten_to_omega_h_reals(sites, "src_coords"),
-      flatten_to_omega_h_reals(coords.GetValues(), "tgt_coords"),
+    return localization::BuildPointCloudSupports(
+      utility::flatten_to_omega_h_reals(sites, "src_coords"),
+      utility::flatten_to_omega_h_reals(coords.GetValues(), "tgt_coords"),
       static_cast<int>(sites.extent(1)), options.radius, options.min_supports,
       options.adapt_radius);
   }
@@ -120,7 +120,7 @@ protected:
     // Extract source coordinates for the MLS solve.
     const auto src_view = site_layout_->GetDOFHolderCoordinates().GetValues();
     Omega_h::Reals source_coords =
-      flatten_to_omega_h_reals(src_view, "src_coords");
+      utility::flatten_to_omega_h_reals(src_view, "src_coords");
 
     const int site_dim = site_layout_->GetDOFHolderEntityDim();
     SupportResults supports =
@@ -136,6 +136,6 @@ private:
   NeighbourhoodOptions options_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::point_cloud
 
 #endif // PCMS_FIELD_EVALUATOR_POINT_CLOUD_GEOMETRY_HPP

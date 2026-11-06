@@ -9,7 +9,7 @@
 #include <Kokkos_Core.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class GalerkinProjectionSolver;
@@ -45,14 +45,14 @@ public:
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
 private:
-  std::shared_ptr<const OmegaHLagrangeLayout> source_layout_;
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout_;
+  std::shared_ptr<const backend::omega_h::OmegaHLagrangeLayout> source_layout_;
+  std::shared_ptr<const backend::omega_h::OmegaHLagrangeLayout> target_layout_;
   std::unique_ptr<OmegaHIntersectionRHSIntegrator> rhs_integrator_;
   std::unique_ptr<PointEvaluator<Real>> evaluator_;
   std::unique_ptr<GalerkinProjectionSolver> solver_;
   mutable Kokkos::View<Real**, DeviceMemorySpace> target_values_;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_CONSERVATIVE_PROJECTION_H

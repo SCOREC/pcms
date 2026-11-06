@@ -36,6 +36,12 @@
 #include "pcms/pythonapi/numpy_array_transform.hpp"
 #include "pcms/pythonapi/py_value_types.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::OmegaHGeometry;
+} // namespace pcms
+
 namespace py = pybind11;
 
 namespace pcms

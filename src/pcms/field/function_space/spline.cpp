@@ -8,6 +8,13 @@
 
 namespace pcms
 {
+using backend::uniform_grid::UniformGridFieldLayout;
+using backend::uniform_grid::UniformGridGeometry;
+using backend::uniform_grid::UniformGridSplineEvaluatorFactory2D;
+} // namespace pcms
+
+namespace pcms
+{
 
 std::shared_ptr<const FunctionSpace> CreateSplineSpace(
   std::shared_ptr<const Geometry> geometry)

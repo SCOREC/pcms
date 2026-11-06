@@ -16,7 +16,7 @@
 #include "pcms/utility/assert.hpp"
 #endif
 
-namespace pcms
+namespace pcms::backend::xgc
 {
 
 namespace detail
@@ -34,15 +34,16 @@ struct DimID
 
 } // namespace detail
 
-} // namespace pcms
+} // namespace pcms::backend::xgc
 
 namespace std
 {
 
 template <>
-struct hash<pcms::detail::DimID>
+struct hash<pcms::backend::xgc::detail::DimID>
 {
-  std::size_t operator()(const pcms::detail::DimID& key) const noexcept
+  std::size_t operator()(
+    const pcms::backend::xgc::detail::DimID& key) const noexcept
   {
     auto h1 = hash<pcms::LO>{}(key.dim);
     auto h2 = hash<pcms::LO>{}(key.id);
@@ -53,7 +54,7 @@ struct hash<pcms::detail::DimID>
 
 } // namespace std
 
-namespace pcms
+namespace pcms::backend::xgc
 {
 ///
 /// This datastructure represents the reverse classification
@@ -64,18 +65,17 @@ public:
   // the ordered nature of the set is relied upon to provide the entries for
   // each geometric entity in iteration order (for xgc) where the gids are in
   // ascending order
-  using DataMapType = std::unordered_map<pcms::detail::DimID, std::set<LO>>;
+  using DataMapType = std::unordered_map<detail::DimID, std::set<LO>>;
 
-  void Insert(const pcms::detail::DimID& key,
-              Rank1View<LO, HostMemorySpace> data);
-  void Insert(const pcms::detail::DimID& key, LO data);
+  void Insert(const detail::DimID& key, Rank1View<LO, HostMemorySpace> data);
+  void Insert(const detail::DimID& key, LO data);
 
   [[nodiscard]] std::vector<LO> Serialize() const;
   void Deserialize(Rank1View<LO, HostMemorySpace> serialized_data);
 
   [[nodiscard]] bool operator==(const ReverseClassificationVertex& other) const;
   [[nodiscard]] const std::set<LO>* Query(
-    const pcms::detail::DimID& geometry) const noexcept;
+    const detail::DimID& geometry) const noexcept;
 
   [[nodiscard]] DataMapType::iterator begin() noexcept { return data_.begin(); }
   [[nodiscard]] DataMapType::iterator end() noexcept { return data_.end(); }
@@ -128,7 +128,7 @@ template <typename T = Omega_h::LO>
   ReverseClassificationVertex rc;
   PCMS_ALWAYS_ASSERT(class_dims_h.size() == class_ids_h.size());
   for (int i = 0; i < class_dims_h.size(); ++i) {
-    pcms::detail::DimID geom{class_dims_h[i], class_ids_h[i]};
+    detail::DimID geom{class_dims_h[i], class_ids_h[i]};
     if (index_base == IndexBase::Zero) {
       rc.Insert(geom, vert_id[i]);
     } else {
@@ -141,6 +141,6 @@ template <typename T = Omega_h::LO>
 
 #endif
 
-} // namespace pcms
+} // namespace pcms::backend::xgc
 
 #endif // PCMS_FIELD_LAYOUT_XGC_REVERSE_CLASSIFICATION_H

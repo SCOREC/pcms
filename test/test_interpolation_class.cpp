@@ -15,6 +15,13 @@
 #include <cmath>
 #include <vector>
 
+namespace pcms
+{
+using backend::omega_h::OmegaHEntityLayout;
+using backend::point_cloud::MLSBinding;
+using utility::get_entity_centroids;
+} // namespace pcms
+
 using Catch::Matchers::WithinAbs;
 using pcms::HostMemorySpace;
 using pcms::Real;

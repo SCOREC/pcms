@@ -12,6 +12,13 @@
 
 namespace pcms
 {
+using backend::omega_h::intersectTargets;
+using backend::omega_h::OmegaHGeometry;
+using backend::omega_h::OmegaHLagrangeLayout;
+} // namespace pcms
+
+namespace pcms::transfer
+{
 
 namespace
 {
@@ -57,8 +64,8 @@ Data BuildData(const FunctionSpace& source_space,
   const int quad_order =
     std::max(1, source_layout->GetOrder() + target_layout->GetOrder());
 
-  Data data =
-    detail::DispatchByOrder(target_layout->GetOrder(), [&](auto order_c) {
+  Data data = field::detail::DispatchByOrder(
+    target_layout->GetOrder(), [&](auto order_c) {
       constexpr int TgtOrder = decltype(order_c)::value;
       if (dim == 3) {
         return BuildDataImpl<3, TgtOrder>(*target_layout, quad_order,
@@ -291,4 +298,4 @@ BuildOmegaHConservativeRHSIntegrator(const FunctionSpace& source_space,
                                                            target_space);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

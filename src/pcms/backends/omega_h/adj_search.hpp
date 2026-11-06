@@ -11,7 +11,7 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 /// @brief Supports of query points among the sites of `mesh`: a
@@ -30,6 +30,6 @@ SupportResults searchNeighbors(
   int seed_dim, Kokkos::View<const LO*, DeviceMemorySpace> seeds,
   Omega_h::Real cutoffDistance, Omega_h::LO min_req_support = 12,
   Omega_h::LO max_allowed_support = 36, bool adapt_radius = true);
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 
 #endif // PCMS_LOCALIZATION_ADJ_SEARCH_HPP

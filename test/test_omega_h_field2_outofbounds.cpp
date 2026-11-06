@@ -12,6 +12,11 @@
 #include <vector>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+} // namespace pcms
+
 using pcms::Real;
 
 TEST_CASE("omega_h_field2 out of bounds FILL mode")

@@ -20,6 +20,13 @@
 #include <type_traits>
 #include <vector>
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::OmegaHEntityLayout;
+using backend::omega_h::OmegaHMeshBinding;
+} // namespace pcms
+
 using Catch::Matchers::ContainsSubstring;
 using Catch::Matchers::WithinAbs;
 using pcms::BoundSource;

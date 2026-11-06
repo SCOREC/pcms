@@ -12,6 +12,11 @@
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+} // namespace pcms
+
 using Catch::Matchers::ContainsSubstring;
 using pcms::DeviceMemorySpace;
 using pcms::Field;

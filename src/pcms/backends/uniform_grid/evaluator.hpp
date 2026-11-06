@@ -18,7 +18,7 @@
 #include <utility>
 #include <Omega_h_vector.hpp>
 
-namespace pcms
+namespace pcms::backend::uniform_grid
 {
 
 /// @brief Evaluates order-0 (cell value) or order-1 (multilinear) fields on a
@@ -27,7 +27,7 @@ namespace pcms
 /// @tparam LayoutPolicy layout of the output view
 template <unsigned Dim = 2,
           typename LayoutPolicy =
-            detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
+            pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class UniformGridPointEvaluator : public PointEvaluator<Real, LayoutPolicy>
 {
 public:
@@ -187,6 +187,6 @@ private:
 
 using UniformGridEvaluatorFactory2D = UniformGridEvaluatorFactory<2>;
 
-} // namespace pcms
+} // namespace pcms::backend::uniform_grid
 
 #endif // PCMS_UNIFORM_GRID_EVALUATOR_FACTORY_H

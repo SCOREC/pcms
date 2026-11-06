@@ -18,6 +18,15 @@
 #include <vector>
 #include "pcms/backends/omega_h/omega_h.hpp"
 
+namespace pcms
+{
+using transfer::GalerkinProjectionSolver;
+using transfer::OmegaHConservativeProjection;
+using transfer::OmegaHControlVariateProjection;
+using transfer::OmegaHMassIntegrator;
+using transfer::OmegaHMonteCarloRHSIntegrator;
+} // namespace pcms
+
 // ---------------------------------------------------------------------------
 // Monte Carlo RHS integrator
 // ---------------------------------------------------------------------------

@@ -24,6 +24,11 @@
 #include <string>
 #include <vector>
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+} // namespace pcms
+
 using pcms::GO;
 using pcms::LO;
 using pcms::Real;

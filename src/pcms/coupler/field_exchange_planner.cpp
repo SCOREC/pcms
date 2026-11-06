@@ -9,6 +9,13 @@
 
 namespace pcms
 {
+using field::AppendGidPermutation;
+using field::GidToIndexMaps;
+using field::MakeUnmappedPermutation;
+} // namespace pcms
+
+namespace pcms::coupler
+{
 
 namespace
 {
@@ -324,4 +331,4 @@ void GenericFieldExchangePlanner::FillGidMessage(
   }
 }
 
-} // namespace pcms
+} // namespace pcms::coupler

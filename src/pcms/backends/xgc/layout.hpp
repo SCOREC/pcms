@@ -4,7 +4,7 @@
 #include "pcms/field/field_layout.hpp"
 #include "pcms/backends/xgc/reverse_classification.hpp"
 
-namespace pcms
+namespace pcms::backend::xgc
 {
 
 class XGCFieldLayout : public FieldLayout
@@ -42,6 +42,6 @@ private:
   LO num_plane_nodes_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::xgc
 
 #endif // PCMS_XGC_FIELD_LAYOUT_H

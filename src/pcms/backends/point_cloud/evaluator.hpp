@@ -10,7 +10,7 @@
 
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 
 /// @brief Point evaluation of point-cloud fields by moving least squares.
@@ -47,6 +47,6 @@ private:
   MLSOptions options_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::point_cloud
 
 #endif // PCMS_POINT_CLOUD_EVALUATOR_FACTORY_H

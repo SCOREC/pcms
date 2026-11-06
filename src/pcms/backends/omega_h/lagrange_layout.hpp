@@ -8,7 +8,7 @@
 #include "pcms/field/field_layout.hpp"
 #include "pcms/field/field.hpp"
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 // Layout for native Omega_h Lagrange fields.
@@ -85,5 +85,5 @@ private:
   void BuildOwnedClassification();
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 #endif // PCMS_ADAPTER_OMEGA_H_LAGRANGE_LAYOUT_H

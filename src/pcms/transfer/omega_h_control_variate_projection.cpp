@@ -7,7 +7,7 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_array.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
@@ -133,4 +133,4 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
   target.Synchronize();
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

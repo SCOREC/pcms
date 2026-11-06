@@ -15,7 +15,7 @@
 #include <string>
 #include <utility>
 
-namespace pcms
+namespace pcms::backend::uniform_grid
 {
 
 namespace detail
@@ -27,12 +27,14 @@ namespace detail
 /// constructors or non-public member functions.)
 template <unsigned Dim>
 void FillUniformGridBinding(
-  Kokkos::View<const typename UniformGridPointSearch<Dim>::Result*> results,
+  Kokkos::View<
+    const typename localization::UniformGridPointSearch<Dim>::Result*>
+    results,
   bool nearest, Kokkos::View<bool*, DeviceMemorySpace> found,
   Kokkos::View<LO*, DeviceMemorySpace> cell_indices,
   Kokkos::View<Real**, DeviceMemorySpace> parametric)
 {
-  using Result = typename UniformGridPointSearch<Dim>::Result;
+  using Result = typename localization::UniformGridPointSearch<Dim>::Result;
   pcms::detail::ForEach(
     "UniformGridBinding", static_cast<LO>(results.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
@@ -96,14 +98,14 @@ private:
     const bool nearest = Policy().mode == OutOfBoundsMode::NEAREST_BOUNDARY;
     Kokkos::View<bool*, DeviceMemorySpace> found(
       Kokkos::view_alloc(Kokkos::WithoutInitializing, "uniform_grid_found"), n);
-    detail::ReserveRows(cell_indices_, "uniform_grid_cell_indices", n);
-    detail::ReserveRows(parametric_, "uniform_grid_parametric", n, Dim);
+    pcms::detail::ReserveRows(cell_indices_, "uniform_grid_cell_indices", n);
+    pcms::detail::ReserveRows(parametric_, "uniform_grid_parametric", n, Dim);
     detail::FillUniformGridBinding<Dim>(results, nearest, found, cell_indices_,
                                         parametric_);
     SetFound(found);
   }
 
-  UniformGridPointSearch<Dim> search_;
+  localization::UniformGridPointSearch<Dim> search_;
   Kokkos::View<LO*, DeviceMemorySpace> cell_indices_;
   Kokkos::View<Real**, DeviceMemorySpace> parametric_;
 };
@@ -154,6 +156,6 @@ private:
   std::shared_ptr<const CoordinateSystem> system_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::uniform_grid
 
 #endif // PCMS_FIELD_EVALUATOR_UNIFORM_GRID_GEOMETRY_HPP

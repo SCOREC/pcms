@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace detail
@@ -65,7 +65,7 @@ private:
                                 int samples_per_element, uint64_t seed);
 
   Vec vec_ = nullptr;
-  std::shared_ptr<const OmegaHGeometry> geometry_;
+  std::shared_ptr<const backend::omega_h::OmegaHGeometry> geometry_;
   Kokkos::View<LO*, DeviceMemorySpace> elements_; // target element per sample
   Kokkos::View<Real**, DeviceMemorySpace>
     coords_; // [num_pts][dim] sample coordinates
@@ -74,6 +74,6 @@ private:
   int nbary_ = 3; // barycentric DOFs per sample (Dim+1): 3 in 2D, 4 in 3D
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP

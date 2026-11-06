@@ -20,6 +20,11 @@
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
+namespace pcms
+{
+using backend::point_cloud::PointCloudGeometry;
+} // namespace pcms
+
 using pcms::CoordinateSystem;
 using pcms::CoordinateView;
 using pcms::DeviceMemorySpace;

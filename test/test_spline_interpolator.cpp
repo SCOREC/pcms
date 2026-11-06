@@ -15,6 +15,15 @@
 #include "pcms/backends/uniform_grid/spline_interpolator.hpp"
 #include "field_test_utils.hpp"
 
+namespace pcms
+{
+using backend::uniform_grid::BoundaryCondition;
+using backend::uniform_grid::CompactBiCubicSplineInterpolator;
+using backend::uniform_grid::CompactCubicSplineInterpolator;
+using backend::uniform_grid::ExplicitBiCubicSplineInterpolator;
+using backend::uniform_grid::ExplicitCubicSplineInterpolator;
+} // namespace pcms
+
 using namespace pcms;
 using pcms::test::CreateDeviceRank1View;
 

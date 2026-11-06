@@ -55,7 +55,7 @@ KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> barycentric_with_scales(
   return result;
 }
 
-namespace pcms
+namespace pcms::localization
 {
 
 KOKKOS_INLINE_FUNCTION
@@ -957,4 +957,4 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
   down_verts_[1] = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
   down_verts_[2] = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
 }
-} // namespace pcms
+} // namespace pcms::localization

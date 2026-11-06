@@ -6,7 +6,7 @@
 #include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/field/field_layout.hpp"
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 class OmegaHEntityLayout : public FieldLayout
@@ -73,6 +73,6 @@ private:
   void BuildOwnedClassification();
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 
 #endif // PCMS_FIELD_LAYOUT_OMEGA_H_ENTITY_H

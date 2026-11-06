@@ -8,7 +8,7 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_vector.hpp>
 
-namespace pcms
+namespace pcms::localization
 {
 
 /// @brief The cell of a uniform grid containing each point, and the point's
@@ -89,6 +89,6 @@ private:
   UniformGrid<Dim> grid_;
 };
 
-} // namespace pcms
+} // namespace pcms::localization
 
 #endif // PCMS_LOCALIZATION_UNIFORM_GRID_SEARCH_HPP

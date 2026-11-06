@@ -13,6 +13,11 @@
 #include <vector>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+} // namespace pcms
+
 using pcms::Real;
 
 KOKKOS_INLINE_FUNCTION static Real interpolation_linear_f(Real x, Real y)
@@ -55,8 +60,8 @@ TEST_CASE("interpolate quadratic 2d meshfields_field")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::backend::omega_h::CreateOmegaHGeometry(
+    mesh, pcms::csys::Cartesian::Deferred());
   auto factory2 = pcms::CreateLagrangeSpace(
     geometry, 2, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});

@@ -14,7 +14,7 @@ std::unique_ptr<TransferOperator<Real>> CreateConservativeProjection(
   ConservativeProjectionOptions options)
 {
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
-  return std::make_unique<OmegaHConservativeProjection>(
+  return std::make_unique<transfer::OmegaHConservativeProjection>(
     source_space, target_space, options.mass_matrix_type);
 #else
   (void)source_space;
@@ -31,7 +31,7 @@ std::unique_ptr<TransferOperator<Real>> CreateControlVariateProjection(
   ControlVariateProjectionOptions options)
 {
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
-  return std::make_unique<OmegaHControlVariateProjection>(
+  return std::make_unique<transfer::OmegaHControlVariateProjection>(
     source, target_space, options.samples_per_element, options.seed,
     options.mass_matrix_type, std::move(options.to_source));
 #else

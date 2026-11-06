@@ -13,7 +13,7 @@
 #include <redev.h>
 #include <memory>
 
-namespace pcms
+namespace pcms::coupler
 {
 
 /// Implementer API: not covered by the public-API stability promise.
@@ -78,6 +78,6 @@ using FieldCommunicator2Ptr =
   std::variant<FieldCommunicator2PtrT<int8_t>, FieldCommunicator2PtrT<int32_t>,
                FieldCommunicator2PtrT<int64_t>, FieldCommunicator2PtrT<float>,
                FieldCommunicator2PtrT<double>>;
-} // namespace pcms
+} // namespace pcms::coupler
 
 #endif // FIELD_COMMUNICATOR2_H_

@@ -6,6 +6,13 @@
 
 namespace pcms
 {
+using utility::ConvertCoordsTo2D;
+using utility::EnsureClassification;
+using utility::get_entity_centroids;
+} // namespace pcms
+
+namespace pcms::backend::omega_h
+{
 
 namespace
 {
@@ -130,7 +137,7 @@ CoordinateView<DeviceMemorySpace> OmegaHEntityLayout::GetDOFHolderCoordinates()
   const
 {
   using LayoutPolicy =
-    detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
+    pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>;
   Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> coords_view(
     owned_coords_2d_.data(), num_owned_, dimension_);
   return CoordinateView<DeviceMemorySpace, LayoutPolicy>{GetCoordinateSystem(),
@@ -213,4 +220,4 @@ void OmegaHEntityLayout::BuildOwnedClassification()
     owned_classification_ids_host_);
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h

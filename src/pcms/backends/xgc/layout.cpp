@@ -3,7 +3,7 @@
 #include "pcms/utility/entity_types.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
-namespace pcms
+namespace pcms::backend::xgc
 {
 
 struct InitilizeXGCMembersFunctor
@@ -28,12 +28,12 @@ struct InitilizeXGCMembersFunctor
 // Sets the classification of the vertices of one geometric entity.
 struct ClassifyVertsFunctor
 {
-  pcms::detail::DimID geom;
+  detail::DimID geom;
   Kokkos::View<LO*, DeviceMemorySpace> verts;
   Kokkos::View<LO*, DeviceMemorySpace> class_dims_;
   Kokkos::View<LO*, DeviceMemorySpace> class_ids_;
 
-  ClassifyVertsFunctor(pcms::detail::DimID geom,
+  ClassifyVertsFunctor(detail::DimID geom,
                        Kokkos::View<LO*, DeviceMemorySpace> verts,
                        Kokkos::View<LO*, DeviceMemorySpace> class_dims,
                        Kokkos::View<LO*, DeviceMemorySpace> class_ids)
@@ -169,4 +169,4 @@ LO XGCFieldLayout::GetFullDataSize() const noexcept
   return num_plane_nodes_;
 }
 
-} // namespace pcms
+} // namespace pcms::backend::xgc

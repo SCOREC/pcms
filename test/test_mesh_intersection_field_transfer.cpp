@@ -15,6 +15,12 @@
 #include <cmath>
 #include "pcms/backends/omega_h/omega_h.hpp"
 
+namespace pcms
+{
+using transfer::OmegaHConservativeProjection;
+using utility::get_entity_centroids;
+} // namespace pcms
+
 namespace
 {
 

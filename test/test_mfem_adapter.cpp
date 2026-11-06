@@ -10,6 +10,13 @@
 
 #include <vector>
 
+namespace pcms
+{
+using backend::mfem::MFEMFieldFactory;
+using backend::mfem::MFEMLayout;
+using backend::mfem::MFEMVertexFieldData;
+} // namespace pcms
+
 namespace
 {
 
@@ -123,7 +130,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     }
     Kokkos::View<pcms::Real*, pcms::HostMemorySpace> buffer("buffer", n);
 
-    pcms::FieldSerializer<pcms::Real> serializer;
+    pcms::coupler::FieldSerializer<pcms::Real> serializer;
     serializer.Serialize(field, pcms::detail::make_array_view(buffer),
                          pcms::detail::make_const_array_view(perm));
 

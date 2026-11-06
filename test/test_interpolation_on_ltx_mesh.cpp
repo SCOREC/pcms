@@ -26,6 +26,11 @@
 #include <vector>
 #include <fstream>
 
+namespace pcms
+{
+using utility::get_entity_centroids;
+} // namespace pcms
+
 using HostArray = pcms::Rank1View<double, pcms::HostMemorySpace>;
 
 // MLS interpolation of degree 1 from the `source` to the `target` points

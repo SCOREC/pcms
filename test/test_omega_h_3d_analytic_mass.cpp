@@ -11,6 +11,13 @@
 #include <petscksp.h>
 #include "pcms/backends/omega_h/omega_h.hpp"
 
+namespace pcms
+{
+using backend::omega_h::OmegaHLagrangeLayout;
+using transfer::BuildOmegaHMassIntegrator;
+using transfer::OmegaHConservativeProjection;
+} // namespace pcms
+
 // Reference corner tet:
 //   v0=(0,0,0), v1=(1,0,0), v2=(0,1,0), v3=(0,0,1)
 // Volume V = 1/6.

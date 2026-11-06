@@ -10,8 +10,7 @@ std::shared_ptr<const Geometry> CreateGeometry(
   Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
   OmegaHGeometryOptions options)
 {
-  return pcms::CreateOmegaHGeometry(mesh, std::move(system),
-                                    std::move(options));
+  return CreateOmegaHGeometry(mesh, std::move(system), std::move(options));
 }
 
 Omega_h::Mesh& GetMesh(const Geometry& geometry)

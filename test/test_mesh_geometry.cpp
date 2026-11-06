@@ -5,6 +5,12 @@
 #include <Omega_h_library.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
 
+namespace pcms
+{
+using utility::distance_squared;
+using utility::get_entity_centroids;
+} // namespace pcms
+
 TEST_CASE("pcms::get_entity_centroids supports simplex mesh entities")
 {
   auto lib = Omega_h::Library{};

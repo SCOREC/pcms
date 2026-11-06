@@ -9,7 +9,7 @@
 #include <redev.h>
 #include <memory>
 
-namespace pcms
+namespace pcms::coupler
 {
 
 /// Implementer API: not covered by the public-API stability promise.
@@ -77,6 +77,6 @@ private:
   std::unique_ptr<OverlapMask> overlap_mask_;
   bool own_mpi_comm_ = false;
 };
-} // namespace pcms
+} // namespace pcms::coupler
 
 #endif // FIELD_LAYOUT_COMMUNICATOR_H_

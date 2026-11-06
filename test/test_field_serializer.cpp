@@ -47,7 +47,7 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
   std::vector<pcms::LO> permutation(num_dof);
   std::iota(permutation.begin(), permutation.end(), pcms::LO{0});
 
-  pcms::FieldSerializer<pcms::Real> serializer;
+  pcms::coupler::FieldSerializer<pcms::Real> serializer;
   REQUIRE(serializer.Serialize(field, pcms::detail::make_array_view(buffer),
                                pcms::detail::make_const_array_view(
                                  permutation)) == static_cast<int>(num_values));
@@ -72,12 +72,14 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
 #endif
 
 #ifdef PCMS_ENABLE_XGC
-pcms::ReverseClassificationVertex CreateDummyReverseClassification(int size)
+pcms::backend::xgc::ReverseClassificationVertex
+CreateDummyReverseClassification(int size)
 {
-  pcms::ReverseClassificationVertex rc;
+  pcms::backend::xgc::ReverseClassificationVertex rc;
   for (int i = 0; i < size; ++i) {
-    rc.Insert(
-      i % 4 == 0 ? pcms::detail::DimID{0, 0} : pcms::detail::DimID{0, 1}, i);
+    rc.Insert(i % 4 == 0 ? pcms::backend::xgc::detail::DimID{0, 0}
+                         : pcms::backend::xgc::detail::DimID{0, 1},
+              i);
   }
   return rc;
 }
@@ -95,16 +97,16 @@ TEST_CASE("Serializing an XGC field preserves inactive field entries")
 {
   static constexpr int data_size = 16;
   auto rc = CreateDummyReverseClassification(data_size);
-  pcms::XGCFieldFactory factory(rc, data_size);
+  pcms::backend::xgc::XGCFieldFactory factory(rc, data_size);
 
   std::vector<pcms::Real> data(data_size);
   std::iota(data.begin(), data.end(), 0.0);
   const auto original = data;
   auto field = factory.CreateField<pcms::Real>(
-    "", std::make_unique<pcms::XGCFieldData<pcms::Real>>(
+    "", std::make_unique<pcms::backend::xgc::XGCFieldData<pcms::Real>>(
           factory.GetXGCLayout(), pcms::ValueBasis{},
           pcms::detail::make_array_view(data), MPI_COMM_SELF));
-  pcms::FieldSerializer<pcms::Real> serializer;
+  pcms::coupler::FieldSerializer<pcms::Real> serializer;
 
   // Entries outside the overlap region are not exchanged.
   const pcms::OverlapMask overlap_mask(InXGCOverlap);
@@ -209,8 +211,8 @@ TEST_CASE("FieldSerializer round-trips a multi-component Omega_h field")
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
   constexpr int num_components = 3;
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::backend::omega_h::CreateOmegaHGeometry(
+    mesh, pcms::csys::Cartesian::Deferred());
   auto space = pcms::CreateLagrangeSpace(
     geometry, 1, num_components,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
@@ -265,7 +267,7 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   // the sender's overlap mask); they must keep their current values.
   std::vector<pcms::LO> permutation{0, -1, 1, -1};
   std::vector<pcms::Real> buffer{50.0, 70.0};
-  pcms::FieldSerializer<pcms::Real> serializer;
+  pcms::coupler::FieldSerializer<pcms::Real> serializer;
   serializer.Deserialize(field, pcms::detail::make_const_array_view(buffer),
                          pcms::detail::make_const_array_view(permutation));
 

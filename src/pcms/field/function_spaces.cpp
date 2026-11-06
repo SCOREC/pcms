@@ -3,6 +3,11 @@
 
 namespace pcms
 {
+using field::EmptyFieldLayout;
+} // namespace pcms
+
+namespace pcms
+{
 
 std::shared_ptr<const FieldLayout> CreateEmptyLayout(
   std::shared_ptr<const CoordinateSystem> coordinate_system, int num_components)

@@ -7,7 +7,7 @@
 #include "pcms/backends/point_cloud/layout.hpp"
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::point_cloud
 {
 class PointCloud
   : public FieldData<Real>
@@ -30,6 +30,6 @@ private:
   ValueBasis basis_;
   Kokkos::View<Real**, DeviceMemorySpace> device_data_;
 };
-} // namespace pcms
+} // namespace pcms::backend::point_cloud
 
 #endif // POINT_CLOUD_H_

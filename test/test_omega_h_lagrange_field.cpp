@@ -16,6 +16,13 @@
 #include <stdexcept>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::OmegaHLagrangeLayout;
+using utility::get_entity_centroids;
+} // namespace pcms
+
 using pcms::LO;
 using pcms::Real;
 

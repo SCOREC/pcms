@@ -17,7 +17,7 @@
 #include <memory>
 #include <utility>
 
-namespace pcms
+namespace pcms::backend::omega_h
 {
 
 // ---------------------------------------------------------------------------
@@ -97,7 +97,7 @@ void EvaluateOmegaHLagrange(Omega_h::Mesh& mesh, int order,
 // only after the field's last write was followed by Synchronize.
 template <typename T,
           typename LayoutPolicy =
-            detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
+            pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class OmegaHLagrangePointEvaluator : public PointEvaluator<T, LayoutPolicy>
 {
 public:
@@ -181,6 +181,6 @@ private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h
 
 #endif // PCMS_OMEGA_H_LAGRANGE_EVALUATOR_FACTORY_H

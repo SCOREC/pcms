@@ -16,6 +16,14 @@
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::OmegaHLagrangeLayout;
+using transfer::BuildOmegaHConservativeRHSIntegrator;
+using transfer::LinearFormIntegrator;
+} // namespace pcms
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

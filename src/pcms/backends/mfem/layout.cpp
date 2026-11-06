@@ -6,11 +6,11 @@
 
 #include <memory>
 
-namespace pcms
+namespace pcms::backend::mfem
 {
 
 MFEMLayout::MFEMLayout(
-  mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
+  ::mfem::ParMesh& pmesh, ::mfem::ParFiniteElementSpace& pfes,
   std::shared_ptr<const CoordinateSystem> coordinate_system, std::string name)
   : FieldLayout(std::move(name)),
     pmesh_(pmesh),
@@ -37,7 +37,7 @@ MFEMLayout::MFEMLayout(
   pcms::detail::CopyHostRank2ViewToDeviceView(coords_,
                                               MakeConstRank2View(coords_host));
 
-  mfem::Array<HYPRE_BigInt> vertex_gids;
+  ::mfem::Array<HYPRE_BigInt> vertex_gids;
   pmesh_.GetGlobalVertexIndices(vertex_gids);
   gids_host_ = Kokkos::View<GO*, HostMemorySpace>("mfem_gids", nv);
   owned_host_ = Kokkos::View<bool*, HostMemorySpace>("mfem_owned", nv);
@@ -46,7 +46,7 @@ MFEMLayout::MFEMLayout(
   classification_ids_host_ =
     Kokkos::View<LO*, HostMemorySpace>("mfem_class_ids", nv);
 
-  mfem::Array<int> vdofs;
+  ::mfem::Array<int> vdofs;
   for (int v = 0; v < nv; ++v) {
     pfes_.GetVertexDofs(v, vdofs);
     PCMS_ALWAYS_ASSERT(vdofs.Size() == 1);
@@ -130,7 +130,7 @@ MFEMLayout::GetDOFHolderClassificationIdsHost() const
 }
 
 Kokkos::View<bool*, HostMemorySpace> MFEMLayout::OverlapMaskFromAttribute(
-  mfem::ParMesh& pmesh, int attribute)
+  ::mfem::ParMesh& pmesh, int attribute)
 {
   PCMS_FUNCTION_TIMER;
 
@@ -138,7 +138,7 @@ Kokkos::View<bool*, HostMemorySpace> MFEMLayout::OverlapMaskFromAttribute(
   Kokkos::View<bool*, HostMemorySpace> overlap("mfem_overlap_mask", nv);
   Kokkos::deep_copy(overlap, false);
 
-  mfem::Array<int> verts;
+  ::mfem::Array<int> verts;
   for (int e = 0; e < pmesh.GetNE(); ++e) {
     if (pmesh.GetAttribute(e) != attribute) {
       continue;
@@ -152,4 +152,4 @@ Kokkos::View<bool*, HostMemorySpace> MFEMLayout::OverlapMaskFromAttribute(
   return overlap;
 }
 
-} // namespace pcms
+} // namespace pcms::backend::mfem

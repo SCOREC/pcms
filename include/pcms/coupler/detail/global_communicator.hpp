@@ -4,7 +4,7 @@
 #include <pcms/utility/detail/profile.hpp>
 #include <pcms/utility/assert.hpp>
 #include <pcms/coupler/coupler_types.hpp>
-namespace pcms
+namespace pcms::coupler
 {
 /// Implementer API: not covered by the public-API stability promise.
 template <typename T>
@@ -50,5 +50,5 @@ private:
   std::string name_;
   redev::BidirectionalComm<T> comm_;
 };
-} // namespace pcms
+} // namespace pcms::coupler
 #endif // PCMS_GLOBAL_COMMUNICATOR_H

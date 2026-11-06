@@ -10,7 +10,7 @@
 
 #include <array>
 
-namespace pcms
+namespace pcms::backend::omega_h_meshfields
 {
 class MeshFieldsAdapterLayout : public FieldLayout
 {
@@ -20,9 +20,10 @@ public:
   /// mask.
   /// @throws pcms_error if `geometry` is null
   /// @param name the layout's name (FieldLayout::GetName)
-  MeshFieldsAdapterLayout(std::shared_ptr<const OmegaHGeometry> geometry,
-                          std::array<int, 4> nodes_per_dim, int num_components,
-                          std::string name = "");
+  MeshFieldsAdapterLayout(
+    std::shared_ptr<const omega_h::OmegaHGeometry> geometry,
+    std::array<int, 4> nodes_per_dim, int num_components,
+    std::string name = "");
 
   int GetNumComponents() const override;
   // nodes for standard lagrange FEM
@@ -87,5 +88,5 @@ private:
   void BuildOwnedClassification();
 };
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h_meshfields
 #endif // PCMS_ADAPTER_MESHFIELDS_MESH_FIELDS_ADAPTER_LAYOUT_H

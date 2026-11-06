@@ -11,6 +11,11 @@
 #include <vector>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+} // namespace pcms
+
 using pcms::Real;
 
 // Non-linear test function used to exercise quadratic interpolation.
@@ -50,8 +55,8 @@ TEST_CASE("evaluate quadratic 2d meshfields_field")
   auto lib = Omega_h::Library{};
   auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 100,
                                  100, 0, false);
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::backend::omega_h::CreateOmegaHGeometry(
+    mesh, pcms::csys::Cartesian::Deferred());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 2, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
@@ -119,8 +124,8 @@ static void CheckMeshFieldsDofHolderCoordsAgainstManual(Omega_h::Library& lib,
   else if (order == 2)
     nodes_per_dim = {1, 1, 0, 0};
 
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::backend::omega_h::CreateOmegaHGeometry(
+    mesh, pcms::csys::Cartesian::Deferred());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, order, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});

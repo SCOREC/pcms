@@ -7,7 +7,7 @@
 #include <redev.h>
 #include <vector>
 
-namespace pcms
+namespace pcms::coupler
 {
 
 /// Implementer API: not covered by the public-API stability promise.
@@ -59,5 +59,5 @@ public:
     Rank1View<GO, HostMemorySpace> gid_message) const override;
 };
 
-} // namespace pcms
+} // namespace pcms::coupler
 #endif // PCMS_FIELD_EXCHANGE_PLANNER_H

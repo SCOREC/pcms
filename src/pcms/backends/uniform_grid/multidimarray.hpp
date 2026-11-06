@@ -3,7 +3,7 @@
 
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::backend::uniform_grid
 {
 
 using RealMatView = Kokkos::View<double**, Kokkos::LayoutRight>;
@@ -36,5 +36,5 @@ inline int calculateTotalSize(const HostIntVecView& dimensions)
   }
   return size;
 }
-} // namespace pcms
+} // namespace pcms::backend::uniform_grid
 #endif // PCMS_TRANSFER_MULTIDIMARRAY_HPP

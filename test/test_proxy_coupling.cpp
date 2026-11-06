@@ -14,6 +14,11 @@
 #include <thread>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
+namespace pcms
+{
+using backend::omega_h::CreateOmegaHGeometry;
+} // namespace pcms
+
 using pcms::GO;
 using pcms::detail::make_array_view;
 

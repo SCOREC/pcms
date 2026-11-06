@@ -13,6 +13,15 @@
 
 namespace pcms
 {
+using localization::GridPointSearch2D;
+using localization::GridPointSearch3D;
+using localization::GridPointSearchVariant;
+using utility::ConvertCoordsTo2D;
+using utility::flatten_to_omega_h_reals;
+} // namespace pcms
+
+namespace pcms::backend::omega_h
+{
 // pcms and Omega_h exchange data without conversion
 static_assert(std::is_same_v<Real, Omega_h::Real>,
               "pcms and Omega_h real types must match");
@@ -51,9 +60,9 @@ void OmegaHMeshBinding::Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints)
       if (results.extent(0) < static_cast<std::size_t>(n)) {
         num_records_ = 0; // the records do not survive a reallocation
       }
-      detail::ReserveRows(results, "omega_h_point_results", n);
-      detail::ReserveRows(point_guesses_, "omega_h_point_guesses", n);
-      detail::ReserveRows(point_found_, "omega_h_point_found", n);
+      pcms::detail::ReserveRows(results, "omega_h_point_results", n);
+      pcms::detail::ReserveRows(point_guesses_, "omega_h_point_guesses", n);
+      pcms::detail::ReserveRows(point_found_, "omega_h_point_found", n);
       const auto point_results = Kokkos::subview(results, first);
       const auto point_guesses = Kokkos::subview(point_guesses_, first);
       Kokkos::View<const LO*, DeviceMemorySpace> guesses;
@@ -127,7 +136,7 @@ GridPointSearchVariant MakeGridSearch(Omega_h::Mesh& mesh,
 
 OmegaHGeometry::OmegaHGeometry(Omega_h::Mesh& mesh,
                                std::shared_ptr<const CoordinateSystem> system,
-                               backend::omega_h::OmegaHGeometryOptions options)
+                               OmegaHGeometryOptions options)
   : mesh_(mesh),
     global_id_name_(std::move(options.global_id_name)),
     owned_mask_(std::move(options.owned_mask)),
@@ -157,7 +166,7 @@ Omega_h::Mesh& RequireOwnedMesh(
 OmegaHGeometry::OmegaHGeometry(std::shared_ptr<Omega_h::Mesh> mesh,
                                std::shared_ptr<Omega_h::Library> library,
                                std::shared_ptr<const CoordinateSystem> system,
-                               backend::omega_h::OmegaHGeometryOptions options)
+                               OmegaHGeometryOptions options)
   : OmegaHGeometry(RequireOwnedMesh(mesh, library), std::move(system),
                    std::move(options))
 {
@@ -176,7 +185,7 @@ const GridPointSearchVariant& OmegaHGeometry::Search() const
 
 std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
   Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
-  backend::omega_h::OmegaHGeometryOptions options)
+  OmegaHGeometryOptions options)
 {
   return std::make_shared<OmegaHGeometry>(mesh, std::move(system),
                                           std::move(options));
@@ -185,8 +194,7 @@ std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
 std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
   std::shared_ptr<Omega_h::Mesh> mesh,
   std::shared_ptr<Omega_h::Library> library,
-  std::shared_ptr<const CoordinateSystem> system,
-  backend::omega_h::OmegaHGeometryOptions options)
+  std::shared_ptr<const CoordinateSystem> system, OmegaHGeometryOptions options)
 {
   return std::make_shared<OmegaHGeometry>(
     std::move(mesh), std::move(library), std::move(system), std::move(options));
@@ -228,8 +236,8 @@ SupportResults OmegaHGeometry::Neighbourhood(
   CoordinateView<DeviceMemorySpace> coords, int site_dim,
   const NeighbourhoodOptions& options, const OwnerHints& owners) const
 {
-  detail::CheckNeighbourhoodArguments(*this, coords, options,
-                                      "OmegaHGeometry::Neighbourhood");
+  pcms::detail::CheckNeighbourhoodArguments(*this, coords, options,
+                                            "OmegaHGeometry::Neighbourhood");
   if (site_dim != 0 && site_dim != mesh_.dim()) {
     throw pcms_error("OmegaHGeometry::Neighbourhood: the sites must be the "
                      "mesh vertices (site_dim 0) or the element centroids "
@@ -316,4 +324,4 @@ DifferentialView OmegaHGeometry::Differential(const BoundSource& bound) const
   return differential_;
 }
 
-} // namespace pcms
+} // namespace pcms::backend::omega_h

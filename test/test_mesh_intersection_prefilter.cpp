@@ -16,6 +16,14 @@
 
 #include "field_test_utils.hpp"
 
+namespace pcms
+{
+using backend::omega_h::IntersectionResults;
+using backend::omega_h::intersectTargets;
+using backend::omega_h::OmegaHGeometry;
+using backend::omega_h::simplices_have_degenerate_overlap;
+} // namespace pcms
+
 namespace
 {
 /// Assert the two intersection maps are identical: same per-target counts and

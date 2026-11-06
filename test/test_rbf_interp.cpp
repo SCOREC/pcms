@@ -12,6 +12,13 @@
 #include <vector>
 #include <iostream>
 
+namespace pcms
+{
+using backend::omega_h::searchNeighbors;
+using field::mls_interpolation;
+using utility::get_entity_centroids;
+} // namespace pcms
+
 KOKKOS_INLINE_FUNCTION
 double func(pcms::Coord& p, int degree)
 {
@@ -57,8 +64,8 @@ void test(Omega_h::Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
 
   for (const auto& rbf : rbf_types) {
     auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, rbf);
+      pcms::mls_interpolation(source_values, source_coordinates,
+                              target_coordinates, support, dim, degree, rbf);
 
     auto host_approx_target_values =
       Omega_h::HostRead<Omega_h::Real>(approx_target_values);

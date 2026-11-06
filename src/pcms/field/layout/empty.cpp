@@ -1,7 +1,7 @@
 #include "pcms/field/layout/empty.hpp"
 #include "pcms/utility/assert.hpp"
 
-namespace pcms
+namespace pcms::field
 {
 
 namespace
@@ -105,4 +105,4 @@ EmptyFieldLayout::GetDOFHolderClassificationIdsHost() const
   return pcms::detail::make_const_array_view(classification_ids_host_);
 }
 
-} // namespace pcms
+} // namespace pcms::field

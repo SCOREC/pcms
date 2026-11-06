@@ -11,6 +11,7 @@
 #include "pcms/field/evaluator/omega_h_lagrange.h"
 #include "pcms/field/layout/uniform_grid.h"
 #include "pcms/field/evaluator/uniform_grid.h"
+#include "pcms/field/data/omega_h.h"
 #include "pcms/field/data/simple.h"
 #include "pcms/utility/uniform_grid.h"
 
@@ -35,7 +36,13 @@ void ValidateLagrangeWrappedFieldData(const FieldLayout& layout,
     }
   } else
 #endif
-  {
+    if (dynamic_cast<const OmegaHLagrangeLayout*>(&layout) != nullptr) {
+    if (dynamic_cast<const OmegaHFieldData<T>*>(&data) == nullptr) {
+      throw pcms_error(
+        "LagrangeFunctionSpace::CreateField: OmegaH layout requires "
+        "OmegaHFieldData");
+    }
+  } else {
     if (dynamic_cast<const SimpleFieldData<T>*>(&data) == nullptr) {
       throw pcms_error(
         "LagrangeFunctionSpace::CreateField: this backend requires "
@@ -133,7 +140,7 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
         if constexpr (std::is_same_v<T, int8_t>) {
           throw pcms_error("LagrangeFunctionSpace: int8_t is not supported");
         } else {
-          return std::make_unique<SimpleFieldData<T>>(layout, basis);
+          return std::make_unique<OmegaHFieldData<T>>(layout, basis);
         }
       });
     },
@@ -170,7 +177,7 @@ std::shared_ptr<LagrangeFunctionSpace> LagrangeFunctionSpace::FromMesh(
         if constexpr (std::is_same_v<T, int8_t>) {
           throw pcms_error("LagrangeFunctionSpace: int8_t is not supported");
         } else {
-          return std::make_unique<SimpleFieldData<T>>(layout, basis);
+          return std::make_unique<OmegaHFieldData<T>>(layout, basis);
         }
       });
     },

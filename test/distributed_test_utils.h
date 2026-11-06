@@ -12,6 +12,7 @@
 #include <Kokkos_Core.hpp>
 
 #include "pcms/configuration.h"
+#include "pcms/field/data/omega_h.h"
 #include "pcms/field/data/simple.h"
 #ifdef PCMS_ENABLE_MESHFIELDS
 #include "pcms/field/data/mesh_fields.h"
@@ -75,35 +76,23 @@ pcms::ValueView<T, pcms::DeviceMemorySpace> TagLike(
 /// copied to the host; ghost values are correct only after Synchronize. Field
 /// itself only
 /// exposes the owned values, so this reads the backend's storage: the Omega_h
-/// tag of a SimpleFieldData, or the MeshFields backend.
+/// tag of an OmegaHFieldData, or the MeshFields backend.
 template <typename T>
 Kokkos::View<T**, pcms::HostMemorySpace> ValuesWithGhostsHost(
   const pcms::Field<T>& field)
 {
-  if (const auto* simple =
-        dynamic_cast<const pcms::SimpleFieldData<T>*>(&field.GetData())) {
+  if (const auto* omega_h_data =
+        dynamic_cast<const pcms::OmegaHFieldData<T>*>(&field.GetData())) {
     const auto& layout = field.GetLayout();
     const auto nc = static_cast<size_t>(layout.GetNumComponents());
-    if (simple->GetTagName().empty()) {
-      // No tag: the layout has no ghosts, so the owned values are all of them.
-      const auto owned = field.GetDOFHolderDataHost().GetValues();
-      Kokkos::View<T**, pcms::HostMemorySpace> host("values_with_ghosts_host",
-                                                    owned.extent(0), nc);
-      for (size_t i = 0; i < owned.extent(0); ++i) {
-        for (size_t comp = 0; comp < nc; ++comp) {
-          host(i, comp) = owned(i, comp);
-        }
-      }
-      return host;
-    }
     // The values of every DOF holder are in the field's Omega_h tag.
-    using TagValue = typename pcms::SimpleFieldData<T>::tag_value_type;
+    using TagValue = typename pcms::OmegaHFieldData<T>::tag_value_type;
     const auto& discretization =
       dynamic_cast<const pcms::OmegaHDiscretization&>(
         *layout.GetDiscretization());
     const auto tag =
       Omega_h::HostRead<TagValue>(discretization.GetMesh().get_array<TagValue>(
-        layout.GetDOFHolderEntityDim(), simple->GetTagName()));
+        layout.GetDOFHolderEntityDim(), omega_h_data->GetTagName()));
     const size_t n = static_cast<size_t>(tag.size()) / nc;
     Kokkos::View<T**, pcms::HostMemorySpace> host("values_with_ghosts_host", n,
                                                   nc);

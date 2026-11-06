@@ -206,6 +206,9 @@ void bind_create_field_module(py::module& m)
       },
       py::arg("name") = "", py::arg("variance") = values::Scalar,
       py::arg("system") = py::none(), py::arg("scaling") = py::none(),
+      // The function refers to the space's mesh (an Omega_h function keeps a
+      // tag on it), so the space, which keeps the mesh alive, outlives it.
+      py::keep_alive<0, 1>(),
       "Create a Function in this space. Vector and tensor values are in "
       "`system`'s basis (default: this space's coordinate system), with "
       "`scaling` required when that system admits both scalings.")

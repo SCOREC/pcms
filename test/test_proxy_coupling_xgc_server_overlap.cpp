@@ -3,7 +3,7 @@
 #include <pcms/utility/types.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
-#include <data/simple.h>
+#include <data/omega_h.h>
 
 #include "test_support.h"
 #include "pcms/field/function_space/xgc.h"
@@ -174,7 +174,7 @@ void omegah_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
       pcms::LagrangeFunctionSpace::Backend::OmegaH, ss.str());
 
     auto field = factory->CreateFunction<GO>(
-      ss.str(), std::make_unique<pcms::SimpleFieldData<GO>>(
+      ss.str(), std::make_unique<pcms::OmegaHFieldData<GO>>(
                   factory->GetLayout(), pcms::ValueBasis{}));
 
     fields.push_back(application->AddField(std::move(field)));

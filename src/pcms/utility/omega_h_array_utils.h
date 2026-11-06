@@ -68,21 +68,43 @@ inline Kokkos::View<T**, pcms::DeviceMemorySpace> ConvertCoordsTo2D(
   return coords_2d;
 }
 
+// The value type Omega_h arrays and tags store for T. Omega_h supports I8,
+// I32, I64 and Real, so a float is stored as Real.
+template <typename T>
+struct OmegaHValue
+{
+  using type = T;
+};
+template <>
+struct OmegaHValue<float>
+{
+  using type = Omega_h::Real;
+};
+template <typename T>
+using OmegaHValue_t = typename OmegaHValue<T>::type;
+
 // Synchronize a block of mesh entity data with Omega_h's internal arrays.
 template <typename T, typename BlockView>
 void SynchronizeOmegaHBlock(Omega_h::Mesh& mesh, int dim, int nc,
                             BlockView block)
 {
-  if constexpr (std::is_same_v<T, float>) {
-    Omega_h::Write<Omega_h::Real> arr(static_cast<Omega_h::LO>(block.size()),
-                                      "field_data_block");
-    Kokkos::deep_copy(arr.view(), block);
-    auto synced = mesh.sync_array(dim, Omega_h::Read<Omega_h::Real>(arr), nc);
-    Kokkos::deep_copy(block, synced.view());
-  } else {
+  using Value = OmegaHValue_t<T>;
+  if constexpr (std::is_same_v<Value, T>) {
     auto synced =
       mesh.sync_array(dim, Omega_h::Read<T>(Omega_h::Write<T>(block)), nc);
     Kokkos::deep_copy(block, synced.view());
+  } else {
+    // Omega_h has no array of T: synchronize a converted copy.
+    using exec = DeviceMemorySpace::execution_space;
+    const auto n = static_cast<Omega_h::LO>(block.size());
+    Omega_h::Write<Value> arr(n, "field_data_block");
+    Kokkos::parallel_for(
+      "pcms::SynchronizeOmegaHBlockIn", Kokkos::RangePolicy<exec>(0, n),
+      KOKKOS_LAMBDA(Omega_h::LO i) { arr[i] = static_cast<Value>(block(i)); });
+    const auto synced = mesh.sync_array(dim, Omega_h::Read<Value>(arr), nc);
+    Kokkos::parallel_for(
+      "pcms::SynchronizeOmegaHBlockOut", Kokkos::RangePolicy<exec>(0, n),
+      KOKKOS_LAMBDA(Omega_h::LO i) { block(i) = static_cast<T>(synced[i]); });
   }
 }
 

@@ -58,7 +58,7 @@ public:
     // their previous values. Anything that evaluates the field reads ghosts
     // (an owned element can have vertices another rank owns), so bring them up
     // to date.
-    field_.SynchronizeGhosts();
+    field_.Synchronize();
   }
 
 private:

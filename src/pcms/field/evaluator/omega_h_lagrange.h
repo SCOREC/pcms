@@ -200,12 +200,44 @@ inline std::variant<GridPointSearch2D, GridPointSearch3D> MakeSearch(
 // PointEvaluator
 // ---------------------------------------------------------------------------
 
+namespace detail
+{
+// DOF-holder values read from a [holder][component] view.
+template <typename T>
+struct OmegaHLagrangeViewValues
+{
+  Rank2View<const T, DeviceMemorySpace> values;
+  KOKKOS_INLINE_FUNCTION T operator()(LO holder, int c) const
+  {
+    return values(holder, c);
+  }
+};
+
+// DOF-holder values read from an Omega_h tag: one value per component per
+// mesh entity, entity-major.
+template <typename T, typename TagValue>
+struct OmegaHLagrangeTagValues
+{
+  Omega_h::Read<TagValue> values;
+  int num_components;
+  KOKKOS_INLINE_FUNCTION T operator()(LO holder, int c) const
+  {
+    return static_cast<T>(values[holder * num_components + c]);
+  }
+};
+} // namespace detail
+
 // OmegaHLagrangePointEvaluator<T> implements PointEvaluator<T> for simplex
 // meshes backed by Omega_h. Localization results (element IDs, barycentric
 // coordinates) are computed once at construction and cached for repeated
 // Evaluate calls.
 //
 // Output shape: [num_query_points][num_components].
+//
+// On a distributed mesh the values are read from the field's Omega_h tag
+// (SimpleFieldData::GetTagName). Its owned entries are always current; its
+// ghost entries, which elements on the partition boundary read, are correct
+// only after the field's last write was followed by Synchronize.
 template <typename T,
           typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
@@ -236,16 +268,37 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     const auto values = out.GetValues();
-    // Elements read the values of all their DOF holders, ghosts included, so
-    // read the backend's values with ghosts (ghosts included) rather than the
-    // owned ones.
-    const auto* backend =
+    // Elements read the values of all their DOF holders, ghosts included. On a
+    // layout with ghosts those are in the field's Omega_h tag; otherwise the
+    // owned values are all of them.
+    const auto* data =
       dynamic_cast<const SimpleFieldData<T>*>(&field.GetData());
-    if (backend == nullptr) {
-      throw pcms_error("OmegaHLagrangePointEvaluator: field data must be "
-                       "SimpleFieldData");
+    if (data != nullptr && !data->GetTagName().empty()) {
+      using TagValue = typename SimpleFieldData<T>::tag_value_type;
+      const auto tag = layout_->GetMesh().get_array<TagValue>(
+        layout_->GetDOFHolderEntityDim(), data->GetTagName());
+      EvaluateValues(
+        detail::OmegaHLagrangeTagValues<T, TagValue>{
+          tag, layout_->GetNumComponents()},
+        values);
+    } else {
+      if (layout_->HasGhosts()) {
+        throw pcms_error("OmegaHLagrangePointEvaluator: field data must be "
+                         "SimpleFieldData");
+      }
+      EvaluateValues(
+        detail::OmegaHLagrangeViewValues<T>{
+          field.GetDOFHolderData().GetValues()},
+        values);
     }
-    const auto dof_data = backend->GetValuesWithGhosts();
+  }
+
+  // Interpolates the values `dof_data(holder, component)` at the localized
+  // points. Public because CUDA forbids extended lambdas in non-public member
+  // functions.
+  template <typename DofValues, typename Values>
+  void EvaluateValues(const DofValues& dof_data, const Values& values) const
+  {
     LO n_valid = static_cast<LO>(hint_.elem_ids.size());
     int n_comp = layout_->GetNumComponents();
 

@@ -135,9 +135,9 @@ void CheckLayout(Omega_h::Mesh& mesh, const pcms::LagrangeFunctionSpace& space,
   require(owned_offsets.back() == static_cast<size_t>(n_owned),
           label + ": owned entity offsets do not end at the owned count");
 
-  // Field data: write the owned values and read them back; the backend keeps
-  // them at their rows among the DOF holders with ghosts and leaves the ghosts
-  // at their initial zero.
+  // Field data: write the owned values and read them back. The backend's owned
+  // entries are current right away and its ghosts keep their initial zero;
+  // after Synchronize, every DOF holder holds the value its owner wrote.
   auto field = space.CreateFunction<Real>();
   std::vector<Real> values(static_cast<size_t>(n_owned) * nc);
   for (LO o = 0; o < n_owned; ++o) {
@@ -173,15 +173,26 @@ void CheckLayout(Omega_h::Mesh& mesh, const pcms::LagrangeFunctionSpace& space,
     }
   }
 
-  const auto local_values = distributed_test::ValuesWithGhostsHost(field);
-  require(static_cast<LO>(local_values.extent(0)) == n_local,
+  const auto before_sync = distributed_test::ValuesWithGhostsHost(field);
+  require(static_cast<LO>(before_sync.extent(0)) == n_local,
           label + ": backend does not store every local holder");
   for (LO i = 0; i < n_local; ++i) {
     for (int c = 0; c < nc; ++c) {
       const Real expected =
         owned[i] ? static_cast<Real>(gids[i]) + 0.25 * c : Real(0);
-      require(local_values(i, c) == expected,
+      require(before_sync(i, c) == expected,
               label + ": owned write missed an owned row or changed a ghost");
+    }
+  }
+
+  field.Synchronize();
+  const auto local_values = distributed_test::ValuesWithGhostsHost(field);
+  for (LO i = 0; i < n_local; ++i) {
+    for (int c = 0; c < nc; ++c) {
+      const Real expected = static_cast<Real>(gids[i]) + 0.25 * c;
+      require(local_values(i, c) == expected,
+              label + ": a holder does not hold its owner's value after "
+                      "Synchronize");
     }
   }
 

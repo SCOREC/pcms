@@ -119,7 +119,7 @@ void check_distributed_evaluation(Omega_h::Mesh& mesh,
     }
   }
 
-  field.SynchronizeGhosts();
+  field.Synchronize();
   const auto data = distributed_test::ValuesWithGhostsHost(field);
   for (LO i = 0; i < n_local; ++i) {
     const Real x = mesh_coords[i * mesh.dim()];

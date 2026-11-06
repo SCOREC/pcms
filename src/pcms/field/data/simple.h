@@ -5,16 +5,51 @@
 #include "../field_layout.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/assert.h"
+#include <Omega_h_array.hpp>
 #include <Omega_h_mesh.hpp>
 #include "pcms/discretization/discretization/omega_h.hpp"
 #include "pcms/utility/memory_spaces.h"
 #include "pcms/utility/omega_h_array_utils.h"
 #include <Kokkos_Core.hpp>
+#include <atomic>
 #include <memory>
 #include <string>
+#include <type_traits>
 
 namespace pcms
 {
+
+namespace detail
+{
+// A tag array (one value per component per entity, entity-major) holding the
+// owned values at their entities and zero at the ghosts. Local to this rank.
+template <typename T, typename TagValue>
+Omega_h::Read<TagValue> OwnedValuesAsTag(
+  Rank2View<const T, DeviceMemorySpace> owned,
+  Kokkos::View<const LO*, DeviceMemorySpace> owned_indices, LO num_entities,
+  int num_components)
+{
+  Omega_h::Write<TagValue> tag(num_entities * num_components, TagValue(0));
+  Kokkos::parallel_for(
+    "pcms::OwnedValuesAsTag",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
+      0, static_cast<LO>(owned.extent(0))),
+    KOKKOS_LAMBDA(LO o) {
+      const LO i = owned_indices(o);
+      for (int c = 0; c < num_components; ++c) {
+        tag[i * num_components + c] = static_cast<TagValue>(owned(o, c));
+      }
+    });
+  return tag;
+}
+
+// A name for a tag a SimpleFieldData creates, unique within the process.
+inline std::string NextSimpleFieldDataTagName()
+{
+  static std::atomic<long> counter{0};
+  return "pcms_field_" + std::to_string(counter++);
+}
+} // namespace detail
 
 // SimpleFieldData<T> is a generic concrete FieldData<T> backed by shaped
 // [dof_holder][component] Kokkos Views.
@@ -27,25 +62,49 @@ class SimpleFieldData
   , public DOFAccess<T>
 {
 public:
-  // Owned values are the stored data. A layout with ghosts also gets a copy
-  // with ghosts (one row per DOF holder, ghosts included: the layout's
-  // ownership mask has one entry per DOF holder, ghosts included), which shares
-  // the owned values and gets the ghost values from SynchronizeGhosts. Without
-  // ghosts it is the owned data.
+  // Value type of the Omega_h tag, if the field has one.
+  using tag_value_type = OmegaHValue_t<T>;
+
+  // On an Omega_h layout of a distributed mesh, creates a tag of its own on
+  // the mesh, named by detail::NextSimpleFieldDataTagName(), and removes it on
+  // destruction.
   SimpleFieldData(std::shared_ptr<const FieldLayout> layout, ValueBasis basis)
     : layout_(std::move(layout)),
       basis_(std::move(basis)),
-      owned_data_("simple_field_data_device",
-                  static_cast<size_t>(layout_->GetNumDofHolder()),
-                  static_cast<size_t>(layout_->GetNumComponents()))
+      device_data_("simple_field_data_device",
+                   static_cast<size_t>(layout_->GetNumDofHolder()),
+                   static_cast<size_t>(layout_->GetNumComponents()))
   {
-    data_with_ghosts_ =
-      !layout_->HasGhosts()
-        ? owned_data_
-        : Kokkos::View<T**, DeviceMemorySpace>(
-            "simple_field_data_local",
-            static_cast<size_t>(layout_->GetOwnedHost().size()),
-            static_cast<size_t>(layout_->GetNumComponents()));
+    const auto* oh = dynamic_cast<const OmegaHDiscretization*>(
+      layout_->GetDiscretization().get());
+    const int dim = layout_->GetDOFHolderEntityDim();
+    // Synchronize is collective, so every rank of a distributed mesh keeps a
+    // tag, whether or not it holds ghosts itself.
+    if (oh == nullptr || dim < 0 || oh->GetMesh().comm()->size() == 1) {
+      return;
+    }
+    mesh_ = &oh->GetMesh();
+    tag_dim_ = dim;
+    tag_name_ = detail::NextSimpleFieldDataTagName();
+    owns_tag_ = true;
+    const int nc = layout_->GetNumComponents();
+    mesh_->add_tag<tag_value_type>(
+      tag_dim_, tag_name_, nc,
+      Omega_h::Read<tag_value_type>(mesh_->nents(tag_dim_) * nc,
+                                    tag_value_type(0)));
+  }
+
+  // The tag holds the name of this object, so it is neither copied nor moved.
+  SimpleFieldData(const SimpleFieldData&) = delete;
+  SimpleFieldData& operator=(const SimpleFieldData&) = delete;
+  SimpleFieldData(SimpleFieldData&&) = delete;
+  SimpleFieldData& operator=(SimpleFieldData&&) = delete;
+
+  ~SimpleFieldData() noexcept override
+  {
+    if (owns_tag_ && mesh_->has_tag(tag_dim_, tag_name_)) {
+      mesh_->remove_tag(tag_dim_, tag_name_);
+    }
   }
 
   FieldValueType GetValueType() const override
@@ -59,60 +118,47 @@ public:
 
   Rank2View<const T, DeviceMemorySpace> GetValues() const override
   {
-    return MakeConstRank2View(owned_data_);
+    return MakeConstRank2View(device_data_);
   }
 
   void SetValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    CopyDeviceRank2ViewToDeviceView(owned_data_, values);
-    if (layout_->HasGhosts()) {
-      ScatterRows(MakeConstRank2View(owned_data_), layout_->GetOwnedIndices(),
-                  MakeRank2View(data_with_ghosts_));
+    CopyDeviceRank2ViewToDeviceView(device_data_, values);
+    if (!tag_name_.empty()) {
+      mesh_->set_tag(tag_dim_, tag_name_,
+                     detail::OwnedValuesAsTag<T, tag_value_type>(
+                       MakeConstRank2View(device_data_),
+                       layout_->GetOwnedIndices(), mesh_->nents(tag_dim_),
+                       layout_->GetNumComponents()));
     }
   }
 
-  // Values of every DOF holder, owned and ghost, in mesh order. For the
-  // evaluators of this backend, which read the DOF holders of local elements.
-  Rank2View<const T, DeviceMemorySpace> GetValuesWithGhosts() const
+  // Fills the tag's ghost entries with their owners' values. Collective; a
+  // no-op when the field has no tag.
+  void Synchronize() override
   {
-    return MakeConstRank2View(data_with_ghosts_);
+    if (!tag_name_.empty()) {
+      mesh_->sync_tag(tag_dim_, tag_name_);
+    }
   }
 
-  void SynchronizeGhosts() override
+  // Name of the Omega_h tag holding the values of every DOF holder, owned and
+  // ghost, on entity dimension layout.GetDOFHolderEntityDim() (one value per
+  // component per entity); empty when the field has no tag. Its owned entries
+  // are always current; its ghost entries are correct only after Synchronize.
+  [[nodiscard]] const std::string& GetTagName() const noexcept
   {
-    auto* oh = dynamic_cast<const OmegaHDiscretization*>(
-      layout_->GetDiscretization().get());
-    if (!oh) {
-      return;
-    }
-    const int dim = layout_->GetDOFHolderEntityDim();
-    if (dim < 0) {
-      return;
-    }
-    const int nc = layout_->GetNumComponents();
-    const LO num_rows = static_cast<LO>(data_with_ghosts_.extent(0));
-
-    // data_with_ghosts_ may be component-major on device; flatten to dof-major
-    // order for Omega_h's sync_array, then scatter the synchronized values
-    // back. Owned rows keep their values; ghost rows get their owners'.
-    Kokkos::View<T*, DeviceMemorySpace> flat("ghost_sync_flat",
-                                             static_cast<size_t>(num_rows) *
-                                               static_cast<size_t>(nc));
-    CopyDeviceRank2ViewToDeviceView(flat,
-                                    MakeConstRank2View(data_with_ghosts_));
-
-    SynchronizeOmegaHBlock<T>(oh->GetMesh(), dim, nc, flat);
-
-    CopyDeviceViewToRank2View<T>(data_with_ghosts_, flat);
+    return tag_name_;
   }
 
 private:
   std::shared_ptr<const FieldLayout> layout_;
   ValueBasis basis_;
-  Kokkos::View<T**, DeviceMemorySpace> owned_data_;
-  // Every DOF holder with ghosts, in mesh order; the same view as owned_data_
-  // when the layout has no ghosts.
-  Kokkos::View<T**, DeviceMemorySpace> data_with_ghosts_;
+  Kokkos::View<T**, DeviceMemorySpace> device_data_;
+  Omega_h::Mesh* mesh_ = nullptr;
+  int tag_dim_ = -1;
+  std::string tag_name_;
+  bool owns_tag_ = false;
 };
 
 } // namespace pcms

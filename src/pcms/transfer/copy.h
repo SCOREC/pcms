@@ -51,7 +51,7 @@ public:
     PCMS_FUNCTION_TIMER;
     detail::CheckCopyCompatible(source, target);
     target.SetDOFHolderData(source.GetDOFHolderData());
-    target.SynchronizeGhosts();
+    target.Synchronize();
   }
 };
 

@@ -105,7 +105,7 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
     });
   Kokkos::fence();
   target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
-  target.SynchronizeGhosts();
+  target.Synchronize();
 }
 
 } // namespace pcms

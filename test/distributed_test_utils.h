@@ -71,36 +71,86 @@ pcms::ValueView<T, pcms::DeviceMemorySpace> TagLike(
   return {field.GetData().GetValueBasis(), pcms::MakeRank2View(values)};
 }
 
-/// The values of every DOF holder with ghosts of `field`, owned and ghost,
-/// copied to the host. Field itself only exposes the owned values, so this
-/// reads the backend's storage.
+/// The values of every DOF holder of `field`, owned and ghost, in mesh order,
+/// copied to the host; ghost values are correct only after Synchronize. Field
+/// itself only
+/// exposes the owned values, so this reads the backend's storage: the Omega_h
+/// tag of a SimpleFieldData, or the MeshFields backend.
 template <typename T>
 Kokkos::View<T**, pcms::HostMemorySpace> ValuesWithGhostsHost(
   const pcms::Field<T>& field)
 {
-  pcms::Rank2View<const T, pcms::DeviceMemorySpace> local;
   if (const auto* simple =
         dynamic_cast<const pcms::SimpleFieldData<T>*>(&field.GetData())) {
-    local = simple->GetValuesWithGhosts();
+    const auto& layout = field.GetLayout();
+    const auto nc = static_cast<size_t>(layout.GetNumComponents());
+    if (simple->GetTagName().empty()) {
+      // No tag: the layout has no ghosts, so the owned values are all of them.
+      const auto owned = field.GetDOFHolderDataHost().GetValues();
+      Kokkos::View<T**, pcms::HostMemorySpace> host("values_with_ghosts_host",
+                                                    owned.extent(0), nc);
+      for (size_t i = 0; i < owned.extent(0); ++i) {
+        for (size_t comp = 0; comp < nc; ++comp) {
+          host(i, comp) = owned(i, comp);
+        }
+      }
+      return host;
+    }
+    // The values of every DOF holder are in the field's Omega_h tag.
+    using TagValue = typename pcms::SimpleFieldData<T>::tag_value_type;
+    const auto& discretization =
+      dynamic_cast<const pcms::OmegaHDiscretization&>(
+        *layout.GetDiscretization());
+    const auto tag =
+      Omega_h::HostRead<TagValue>(discretization.GetMesh().get_array<TagValue>(
+        layout.GetDOFHolderEntityDim(), simple->GetTagName()));
+    const size_t n = static_cast<size_t>(tag.size()) / nc;
+    Kokkos::View<T**, pcms::HostMemorySpace> host("values_with_ghosts_host", n,
+                                                  nc);
+    for (size_t i = 0; i < n; ++i) {
+      for (size_t comp = 0; comp < nc; ++comp) {
+        host(i, comp) = static_cast<T>(tag[i * nc + comp]);
+      }
+    }
+    return host;
   }
 #ifdef PCMS_ENABLE_MESHFIELDS
-  else if (const auto* mesh_fields =
-             dynamic_cast<const pcms::MeshFieldsFieldData<T>*>(
-               &field.GetData())) {
-    local = mesh_fields->GetValuesWithGhosts();
+  if (const auto* mesh_fields =
+        dynamic_cast<const pcms::MeshFieldsFieldData<T>*>(&field.GetData())) {
+    // The MeshFields backend stores every local entity; read it per entity
+    // dimension, in the layout's dimension-block order.
+    const auto& layout =
+      dynamic_cast<const pcms::MeshFieldsAdapterLayout&>(field.GetLayout());
+    auto& mesh = layout.GetMesh();
+    const auto nodes_per_dim = layout.GetNodesPerDim();
+    const auto nc = static_cast<size_t>(layout.GetNumComponents());
+    Kokkos::View<T**, pcms::HostMemorySpace> host(
+      "values_with_ghosts_host",
+      static_cast<size_t>(layout.GetNumDofHolderWithGhosts()), nc);
+    size_t row = 0;
+    for (int dim = 0; dim <= mesh.dim(); ++dim) {
+      if (!nodes_per_dim[dim]) {
+        continue;
+      }
+      const size_t rows = static_cast<size_t>(mesh.nents(dim)) *
+                          static_cast<size_t>(nodes_per_dim[dim]);
+      Kokkos::View<T*, pcms::DeviceMemorySpace> flat("backend_flat", rows * nc);
+      mesh_fields->GetMeshFieldBackend()->GetData(
+        pcms::Rank1View<T, pcms::DeviceMemorySpace>(flat.data(), rows * nc),
+        nodes_per_dim[dim], nc, dim);
+      const auto flat_h =
+        Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), flat);
+      for (size_t r = 0; r < rows; ++r) {
+        for (size_t comp = 0; comp < nc; ++comp) {
+          host(row + r, comp) = flat_h(r * nc + comp);
+        }
+      }
+      row += rows;
+    }
+    return host;
   }
 #endif
-  else {
-    throw std::runtime_error(
-      "ValuesWithGhostsHost: unsupported field data type");
-  }
-  Kokkos::View<T**, pcms::DeviceMemorySpace> staged(
-    "local_values_staged", local.extent(0), local.extent(1));
-  pcms::CopyDeviceRank2ViewToRank2View(pcms::MakeRank2View(staged), local);
-  Kokkos::View<T**, pcms::HostMemorySpace> host(
-    "local_values_host", local.extent(0), local.extent(1));
-  pcms::DeepCopyMismatchLayouts(host, staged);
-  return host;
+  throw std::runtime_error("ValuesWithGhostsHost: unsupported field data type");
 }
 
 } // namespace distributed_test

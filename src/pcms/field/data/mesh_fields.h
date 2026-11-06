@@ -75,7 +75,7 @@ class MeshFieldsFieldData
 public:
   // Owned values are the stored data. The MeshFields backend holds the values
   // of every DOF holder, owned and ghost, which its evaluator reads: it
-  // shares the owned values and gets the ghost values from SynchronizeGhosts.
+  // shares the owned values and gets the ghost values from Synchronize.
   MeshFieldsFieldData(std::shared_ptr<const MeshFieldsAdapterLayout> layout,
                       ValueBasis basis)
     : layout_(std::move(layout)),
@@ -120,15 +120,7 @@ public:
     SyncBackend(MakeConstRank2View(local));
   }
 
-  // Values of every DOF holder, owned and ghost, in mesh order, copied
-  // from the backend. Valid until the next call.
-  Rank2View<const T, DeviceMemorySpace> GetValuesWithGhosts() const
-  {
-    values_with_ghosts_ = ReadBackend();
-    return MakeConstRank2View(values_with_ghosts_);
-  }
-
-  void SynchronizeGhosts() override
+  void Synchronize() override
   {
     const int nc = layout_->GetNumComponents();
     auto& mesh = layout_->GetMesh();
@@ -223,8 +215,6 @@ private:
   ValueBasis basis_;
   std::shared_ptr<MeshFieldBackend<T>> mesh_field_;
   Kokkos::View<T**, DeviceMemorySpace> owned_data_;
-  // Backs GetValuesWithGhosts.
-  mutable Kokkos::View<T**, DeviceMemorySpace> values_with_ghosts_;
 };
 
 } // namespace pcms

@@ -138,8 +138,9 @@ void bind_create_field_module(py::module& m)
       "still checked). A 1D array (num_dof_holders,) is accepted when the "
       "field has one component.")
     .def(
-      "synchronize_ghosts", [](Field<Real>& self) { self.SynchronizeGhosts(); },
-      "Synchronize ghost DOF-holder values from their owning ranks");
+      "synchronize", [](Field<Real>& self) { self.Synchronize(); },
+      "Bring the copies of DOF holders other ranks own (e.g. Omega_h ghosts) "
+      "up to date with their owners' values");
 
   py::class_<Function<Real>, Field<Real>>(
     m, "Function", "A Field that knows its FunctionSpace")

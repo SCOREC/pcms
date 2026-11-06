@@ -47,7 +47,7 @@ public:
   // order, through the data's DOFAccess, and throw if the data has none (e.g.
   // a field of an evaluation-only source). Writes synchronize the backend's
   // other copies and are collective; see DOFAccess. Ghost copies are brought
-  // up to date by SynchronizeGhosts.
+  // up to date by Synchronize.
 
   // Copies to the host unless device memory is host memory. The returned view
   // is valid until the next call or until the field is written or destroyed.
@@ -91,9 +91,10 @@ public:
     RequireDOFAccess().SetValues(v);
   }
 
-  // Synchronize ghost DOF-holder values from their owning ranks. Collective;
-  // a no-op for non-distributed fields.
-  void SynchronizeGhosts() { data_->SynchronizeGhosts(); }
+  // Bring the backend's copies of DOF holders other ranks own (e.g. Omega_h
+  // ghosts) up to date with their owners' values. Collective; a no-op for
+  // non-distributed fields.
+  void Synchronize() { data_->Synchronize(); }
 
 protected:
   Field(std::string name, std::shared_ptr<const FieldLayout> layout,

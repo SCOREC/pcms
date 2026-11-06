@@ -23,7 +23,7 @@ public:
 
   // Writes the owned values, then brings any internal copies the backend
   // keeps (e.g. replicas on other ranks) up to date. Ghost copies keep their
-  // values until FieldData::SynchronizeGhosts. Collective over the ranks that
+  // values until FieldData::Synchronize. Collective over the ranks that
   // share those copies.
   virtual void SetValues(Rank2View<const T, DeviceMemorySpace> values) = 0;
 
@@ -44,9 +44,10 @@ public:
   virtual const DOFAccess<T>* GetDOFAccess() const noexcept { return nullptr; }
   virtual DOFAccess<T>* GetDOFAccess() noexcept { return nullptr; }
 
-  // Synchronize ghost DOF-holder values from their owning ranks. A no-op for
-  // backends without ghosts.
-  virtual void SynchronizeGhosts() {}
+  // Bring any copies this rank keeps of DOF holders other ranks own (e.g. the
+  // ghost copies of an Omega_h mesh) up to date with their owners' values.
+  // Collective; a no-op for backends that keep no such copies.
+  virtual void Synchronize() {}
 
   virtual ~FieldData() noexcept = default;
 };

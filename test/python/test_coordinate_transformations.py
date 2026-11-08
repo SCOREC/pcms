@@ -206,21 +206,21 @@ class TestFunction:
 
     def test_set_checks_the_basis(self, cylindrical_space):
         b = _radial_field(cylindrical_space)
-        n = b.get_layout().get_num_owned_dof_holder()
+        n = b.get_layout().get_num_dof_holder()
         with pytest.raises(RuntimeError, match="does not match"):
             b.set_dof_holder_data(
                 pcms.ValueView(_cartesian_vector(), np.zeros((n, 3))))
 
     def test_set_checks_the_shape(self, cylindrical_space):
         b = _radial_field(cylindrical_space)
-        n = b.get_layout().get_num_owned_dof_holder()
+        n = b.get_layout().get_num_dof_holder()
         with pytest.raises(ValueError):
             b.set_dof_holder_data(
                 pcms.ValueView(_cylindrical_vector(), np.zeros((n - 1, 3))))
 
     def test_plain_arrays_only_for_scalars(self, cylindrical_space):
         b = _radial_field(cylindrical_space)
-        n = b.get_layout().get_num_owned_dof_holder()
+        n = b.get_layout().get_num_dof_holder()
         with pytest.raises(TypeError, match="need a ValueView"):
             b.set_dof_holder_data(np.zeros((n, 3)))
         b.set_dof_holder_data_unchecked(np.ones((n, 3)))

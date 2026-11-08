@@ -28,7 +28,7 @@ public:
     : layout_(std::move(layout)),
       basis_(std::move(basis)),
       device_data_("simple_field_data_device",
-                   static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
+                   static_cast<size_t>(layout_->GetNumDofHolder()),
                    static_cast<size_t>(layout_->GetNumComponents()))
   {
   }
@@ -42,12 +42,12 @@ public:
   const DOFAccess<T>* GetDOFAccess() const noexcept override { return this; }
   DOFAccess<T>* GetDOFAccess() noexcept override { return this; }
 
-  Rank2View<const T, DeviceMemorySpace> GetOwnedValues() const override
+  Rank2View<const T, DeviceMemorySpace> GetValues() const override
   {
     return MakeConstRank2View(device_data_);
   }
 
-  void SetOwnedValues(Rank2View<const T, DeviceMemorySpace> values) override
+  void SetValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
     CopyDeviceRank2ViewToDeviceView(device_data_, values);
   }

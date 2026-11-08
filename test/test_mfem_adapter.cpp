@@ -35,7 +35,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
 
     REQUIRE(layout.GetNumComponents() == 1);
     REQUIRE(layout.GetDimension() == 2);
-    REQUIRE(layout.GetNumOwnedDofHolder() == pmesh.GetNV());
+    REQUIRE(layout.GetNumDofHolder() == pmesh.GetNV());
     REQUIRE(layout.IsDistributed());
 
     auto gids = layout.GetGidsHost();
@@ -114,7 +114,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     auto field = factory.CreateField<pcms::Real>("source");
     const auto& layout = field.GetLayout();
 
-    const auto n = static_cast<size_t>(layout.GetNumOwnedDofHolder());
+    const auto n = static_cast<size_t>(layout.GetNumDofHolder());
 
     // Identity permutation: buffer index equals DOF-holder index.
     Kokkos::View<pcms::LO*, pcms::HostMemorySpace> perm("perm", n);

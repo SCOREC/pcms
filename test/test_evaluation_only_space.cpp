@@ -187,7 +187,7 @@ TEST_CASE("Functions of an evaluation-only space hold no values")
 {
   auto source = MockSpace::Create(1);
   auto f = source->CreateFunction<Real>("f", std::make_unique<MockData>());
-  REQUIRE(f.GetLayout().GetNumOwnedDofHolder() == 0);
+  REQUIRE(f.GetLayout().GetNumDofHolder() == 0);
   REQUIRE_THROWS_WITH(f.GetDOFHolderData(), ContainsSubstring("no DOFAccess"));
   REQUIRE_THROWS_WITH(source->CreateFunction<Real>("default"),
                       ContainsSubstring("naming the quantity"));

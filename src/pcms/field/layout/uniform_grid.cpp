@@ -125,18 +125,18 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
   : grid_(std::move(grid)),
     num_components_(num_components),
     order_(order),
-    gids_("gids", GetNumDofHolders()),
-    gids_host_("gids_host", GetNumDofHolders()),
-    dof_holder_coords_("dof_holder_coords", GetNumDofHolders(), Dim),
-    owned_("owned", GetNumDofHolders()),
-    owned_host_("owned_host", GetNumDofHolders())
+    gids_("gids", CountDofHolders()),
+    gids_host_("gids_host", CountDofHolders()),
+    dof_holder_coords_("dof_holder_coords", CountDofHolders(), Dim),
+    owned_("owned", CountDofHolders()),
+    owned_host_("owned_host", CountDofHolders())
 {
   PCMS_FUNCTION_TIMER;
   SetCoordinateSystem(ResolveCoordinateSystem(std::move(coordinate_system),
                                               static_cast<int>(Dim)));
   PCMS_ALWAYS_ASSERT(order_ == 0 || order_ == 1);
 
-  LO num_dofs = GetNumDofHolders();
+  LO num_dofs = CountDofHolders();
 
   Kokkos::parallel_for(
     "InitUniformGridGidsAndOwned",
@@ -175,7 +175,7 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
   }
 
   int entity_dim = (order_ == 0) ? static_cast<int>(Dim) : 0;
-  LO n = GetNumDofHolders();
+  LO n = CountDofHolders();
   classification_dims_ =
     Kokkos::View<LO*, DeviceMemorySpace>("classification_dims", n);
   classification_ids_ =
@@ -206,15 +206,15 @@ int UniformGridFieldLayout<Dim>::GetNumComponents() const
 }
 
 template <unsigned Dim>
-LO UniformGridFieldLayout<Dim>::GetNumOwnedDofHolder() const
+LO UniformGridFieldLayout<Dim>::GetNumDofHolder() const
 {
-  return GetNumDofHolders();
+  return CountDofHolders();
 }
 
 template <unsigned Dim>
 GO UniformGridFieldLayout<Dim>::GetNumGlobalDofHolder() const
 {
-  return GetNumDofHolders();
+  return CountDofHolders();
 }
 
 template <unsigned Dim>
@@ -267,7 +267,7 @@ LO UniformGridFieldLayout<Dim>::GetNumVertices() const
 }
 
 template <unsigned Dim>
-LO UniformGridFieldLayout<Dim>::GetNumDofHolders() const
+LO UniformGridFieldLayout<Dim>::CountDofHolders() const
 {
   return order_ == 0 ? GetNumCells() : GetNumVertices();
 }
@@ -297,7 +297,7 @@ EntOffsetsArray UniformGridFieldLayout<Dim>::GetEntOffsets() const
 {
   EntOffsetsArray offsets{};
   offsets.fill(0);
-  LO n = GetNumDofHolders();
+  LO n = CountDofHolders();
   int entity_dim = (order_ == 0) ? static_cast<int>(Dim) : 0;
   for (int i = entity_dim + 1; i < ent_offsets_len; ++i) {
     offsets[i] = n;

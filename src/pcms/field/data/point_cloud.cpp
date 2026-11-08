@@ -25,12 +25,12 @@ const ValueBasis& PointCloud::GetValueBasis() const
   return basis_;
 }
 
-Rank2View<const Real, DeviceMemorySpace> PointCloud::GetOwnedValues() const
+Rank2View<const Real, DeviceMemorySpace> PointCloud::GetValues() const
 {
   return MakeConstRank2View(device_data_);
 }
 
-void PointCloud::SetOwnedValues(Rank2View<const Real, DeviceMemorySpace> data)
+void PointCloud::SetValues(Rank2View<const Real, DeviceMemorySpace> data)
 {
   PCMS_FUNCTION_TIMER;
   CopyDeviceRank2ViewToDeviceView(device_data_, data);

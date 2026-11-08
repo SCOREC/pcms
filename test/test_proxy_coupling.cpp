@@ -27,7 +27,7 @@ void initializeFieldWithGids(const pcms::FieldLayout& layout,
                              pcms::Real multiplier = 1.0)
 {
   auto gids = layout.GetGidsHost();
-  const auto n = layout.GetNumOwnedDofHolder();
+  const auto n = layout.GetNumDofHolder();
 
   Omega_h::HostWrite<pcms::Real> ids(n);
   PCMS_ALWAYS_ASSERT(n == gids.size());
@@ -51,26 +51,21 @@ bool validateField(const pcms::FieldLayout& layout,
   auto gids = layout.GetGidsHost();
   auto copied_array =
     pcms::FlattenToRank1View(field->GetDOFHolderDataHost().GetValues());
-  auto owned = layout.GetOwnedHost();
-  const auto n = layout.GetNumOwnedDofHolder();
+  const auto n = layout.GetNumDofHolder();
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());
-  PCMS_ALWAYS_ASSERT(owned.size() == gids.size());
 
   int expected = 0;
   int sum = 0;
   Kokkos::parallel_reduce(
     "count_owned",
-    Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0,
-                                                                owned.size()),
-    KOKKOS_LAMBDA(int i, int& local_sum) { local_sum += owned[i] != 0; },
-    expected);
+    Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, gids.size()),
+    KOKKOS_LAMBDA(int /*i*/, int& local_sum) { local_sum += 1; }, expected);
   Kokkos::parallel_reduce(
     "count_match",
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, n),
     KOKKOS_LAMBDA(int i, int& local_sum) {
-      if (owned[i])
-        local_sum += (int)copied_array[i] == (int)(gids[i] * multiplier);
+      local_sum += (int)copied_array[i] == (int)(gids[i] * multiplier);
     },
     sum);
 

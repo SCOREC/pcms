@@ -78,15 +78,14 @@ void MFEMVertexFieldData::ScatterHost(
   gf_.SetFromTrueDofs(true_values);
 }
 
-Rank2View<const Real, DeviceMemorySpace> MFEMVertexFieldData::GetOwnedValues()
-  const
+Rank2View<const Real, DeviceMemorySpace> MFEMVertexFieldData::GetValues() const
 {
   GatherHost();
   DeepCopyMismatchLayouts(device_data_, host_data_);
   return MakeConstRank2View(device_data_);
 }
 
-void MFEMVertexFieldData::SetOwnedValues(
+void MFEMVertexFieldData::SetValues(
   Rank2View<const Real, DeviceMemorySpace> data)
 {
   CopyDeviceRank2ViewToDeviceView(device_data_, data);

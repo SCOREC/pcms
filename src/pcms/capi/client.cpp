@@ -78,7 +78,7 @@ protected:
           throw pcms_error(
             "EmptyFieldFactory::CreateField: requires SimpleFieldData");
         }
-        if (fd->GetDOFAccess()->GetOwnedValues().size() !=
+        if (fd->GetDOFAccess()->GetValues().size() !=
             detail::ExpectedFlatFieldDataSize(*layout_)) {
           throw pcms_error(
             "EmptyFieldFactory::CreateField: field data size does not match "

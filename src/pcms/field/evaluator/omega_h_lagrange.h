@@ -6,6 +6,7 @@
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/field_data.h"
+#include "pcms/field/data/omega_h.h"
 #include "pcms/localization/point_search.h"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
@@ -199,12 +200,33 @@ inline std::variant<GridPointSearch2D, GridPointSearch3D> MakeSearch(
 // PointEvaluator
 // ---------------------------------------------------------------------------
 
+namespace detail
+{
+// DOF-holder values read from an Omega_h tag: one value per component per
+// mesh entity, entity-major.
+template <typename T, typename TagValue>
+struct OmegaHLagrangeTagValues
+{
+  Omega_h::Read<TagValue> values;
+  int num_components;
+  KOKKOS_INLINE_FUNCTION T operator()(LO holder, int c) const
+  {
+    return static_cast<T>(values[holder * num_components + c]);
+  }
+};
+} // namespace detail
+
 // OmegaHLagrangePointEvaluator<T> implements PointEvaluator<T> for simplex
 // meshes backed by Omega_h. Localization results (element IDs, barycentric
 // coordinates) are computed once at construction and cached for repeated
 // Evaluate calls.
 //
 // Output shape: [num_query_points][num_components].
+//
+// The values are read from the field's Omega_h tag
+// (OmegaHFieldData::GetTagName). Its owned entries are always current; its
+// ghost entries, which elements on the partition boundary read, are correct
+// only after the field's last write was followed by Synchronize.
 template <typename T,
           typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
@@ -235,7 +257,14 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     const auto values = out.GetValues();
-    const auto dof_data = field.GetDOFHolderData().GetValues();
+    // Elements read the values of all their DOF holders, ghosts included, so
+    // read the field's Omega_h tag rather than the owned values.
+    const auto& data = dynamic_cast<const OmegaHFieldData<T>&>(field.GetData());
+    using TagValue = typename OmegaHFieldData<T>::tag_value_type;
+    const auto dof_data = detail::OmegaHLagrangeTagValues<T, TagValue>{
+      layout_->GetMesh().get_array<TagValue>(layout_->GetDOFHolderEntityDim(),
+                                             data.GetTagName()),
+      layout_->GetNumComponents()};
     LO n_valid = static_cast<LO>(hint_.elem_ids.size());
     int n_comp = layout_->GetNumComponents();
 

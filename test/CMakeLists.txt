@@ -49,6 +49,26 @@ if(PCMS_ENABLE_OMEGA_H)
     mpi_test(test_distributed_coupling_2p 2
              $<TARGET_FILE:test_distributed_coupling>)
   endif()
+  add_exe(test_distributed_evaluate)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    mpi_test(test_distributed_evaluate_2p 2
+             $<TARGET_FILE:test_distributed_evaluate>)
+  endif()
+  if(HOST_NPROC GREATER_EQUAL 4)
+    mpi_test(test_distributed_evaluate_4p 4
+             $<TARGET_FILE:test_distributed_evaluate>)
+  endif()
+  add_exe(test_distributed_search)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    mpi_test(test_distributed_search_2p 2
+             $<TARGET_FILE:test_distributed_search>)
+  endif()
+  # Omega_h::build_box partitions by recursive bisection, which needs a
+  # power-of-two rank count, so the distributed tests skip 3 ranks.
+  if(HOST_NPROC GREATER_EQUAL 4)
+    mpi_test(test_distributed_search_4p 4
+             $<TARGET_FILE:test_distributed_search>)
+  endif()
   add_exe(test_ohClassPtn_appRibPtn)
   set(cyclone2p ${PCMS_TEST_DATA_DIR}/cyclone/23elements/2p.osh/)
   if(HOST_NPROC GREATER_EQUAL 4)

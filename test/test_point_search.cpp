@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <pcms/localization/distributed_point_search.hpp>
 #include <pcms/localization/point_search.h>
 #include <pcms/utility/mesh_geometry.h>
 #include <pcms/utility/uniform_grid.h>
@@ -567,6 +568,67 @@ TEST_CASE("ghost-free search localizes every element centroid")
   }
 }
 
+// The distributed search decides what this rank may answer for by asking
+// whether the element the local search reported is one it owns. On a mesh with
+// no ghost layer every local element is owned, so every located point must be
+// answerable here -- which is the baseline the multi-rank classification test
+// builds on.
+TEST_CASE("distributed search classifies local answers by ownership")
+{
+  using pcms::DistributedPointSearch;
+  using Status = DistributedPointSearch<2>::LocalStatus;
+
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 4, 4, 0, false);
+  REQUIRE(mesh.nghost_layers() == 0);
+
+  const auto n = pcms::DivisionsPerAxisForGlobalMesh<2>(mesh);
+  pcms::GridPointSearch2D local_search{mesh, n, n};
+  const DistributedPointSearch<2> search{mesh, local_search};
+
+  REQUIRE_FALSE(search.HasGhostLayer());
+  REQUIRE(search.GetMesh().nelems() == mesh.nelems());
+
+  // Query the centroid of every element plus one point outside the domain.
+  const auto n_elems = mesh.nelems();
+  const auto centroids =
+    Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(mesh, 2));
+  Kokkos::View<pcms::Real* [2]> points("query points", n_elems + 1);
+  auto points_h = Kokkos::create_mirror_view(points);
+  for (Omega_h::LO i = 0; i < n_elems; ++i) {
+    points_h(i, 0) = centroids[i * 2 + 0];
+    points_h(i, 1) = centroids[i * 2 + 1];
+  }
+  // Outside the mesh and outside every grid cell that holds an element.
+  points_h(n_elems, 0) = 2.0;
+  points_h(n_elems, 1) = 2.0;
+  Kokkos::deep_copy(points, points_h);
+
+  const auto classified = search.ClassifyLocally(points);
+  REQUIRE(classified.size() == static_cast<size_t>(n_elems + 1));
+
+  for (Omega_h::LO i = 0; i < n_elems; ++i) {
+    const auto& c = classified[static_cast<size_t>(i)];
+    REQUIRE(c.status == Status::LOCATED_HERE);
+    // An element centroid lies strictly inside its element, so the reported
+    // element is that element and the barycentric coordinates are positive.
+    REQUIRE(c.element_id == i);
+    for (int d = 0; d < 3; ++d) {
+      REQUIRE(c.barycentric[d] > 0);
+    }
+  }
+
+  // With no ghosts nothing can be "located elsewhere": either this rank answers
+  // or the point is outside what it holds.
+  for (const auto& c : classified) {
+    REQUIRE(c.status != Status::LOCATED_ELSEWHERE);
+  }
+  REQUIRE(classified[static_cast<size_t>(n_elems)].status ==
+          Status::NOT_FOUND_HERE);
+  REQUIRE(classified[static_cast<size_t>(n_elems)].element_id == -1);
+}
 // A predicate chosen at the map-building call must govern *both* halves: the
 // range of cells visited and the test applied to each. Checking the map against
 // a brute-force build made with that same predicate is what catches the case

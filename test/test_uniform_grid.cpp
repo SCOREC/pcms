@@ -210,6 +210,43 @@ TEST_CASE("Create uniform grid from 3D mesh")
 // same region of space on two ranks only if both resolved the grid the same
 // way. A resolution derived from `mesh.nelems()` breaks that, because
 // `nelems()` counts ghost copies and therefore changes with the partition.
+TEST_CASE("global grid resolution")
+{
+  auto lib = Omega_h::Library{};
+  auto world = lib.world();
+  auto mesh =
+    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 8, 8, 0, false);
+
+  SECTION("global element count reduces to the local count when nothing is "
+          "ghosted")
+  {
+    REQUIRE(mesh.nghost_layers() == 0);
+    REQUIRE(pcms::GlobalElementCount(mesh) == mesh.nelems());
+  }
+
+  SECTION("the global resolution reproduces the local heuristic serially")
+  {
+    // Callers used to derive the resolution from mesh.nelems(). On an
+    // undecomposed mesh that is already the global count, so switching to the
+    // global helper must not change the grid they get.
+    REQUIRE(pcms::DivisionsPerAxisForGlobalMesh<2>(mesh) ==
+            pcms::DivisionsPerAxisForMesh<2>(mesh.nelems()));
+    REQUIRE(pcms::DivisionsPerAxisForGlobalMesh<3>(mesh) ==
+            pcms::DivisionsPerAxisForMesh<3>(mesh.nelems()));
+  }
+
+  SECTION("resolution still targets roughly one element per cell")
+  {
+    const auto global_nelems = pcms::GlobalElementCount(mesh);
+    const auto n = pcms::DivisionsPerAxisForGlobalMesh<2>(mesh);
+    REQUIRE(n >= 10); // the min_divisions floor
+    REQUIRE(n * n >= global_nelems);
+  }
+}
+
+// Linear cell ids and per-axis indices must be inverses on any grid, including
+// one whose axes have different division counts. A grid with equal divisions
+// on every axis hides an axis mix-up, so this one has three different counts.
 TEST_CASE("cell index round trip on a grid with unequal divisions")
 {
   const UniformGrid<3> grid{.edge_length = {3.0, 4.0, 5.0},

@@ -54,6 +54,7 @@ if (PCMS_ENABLE_OMEGA_H)
             layout/omega_h_lagrange.h
             evaluator/omega_h_lagrange.h
             data/omega_h.h
+            evaluator/distributed_point_evaluator.hpp
             layout/uniform_grid.h
             uniform_grid_binary_field.h
             evaluator/uniform_grid.h

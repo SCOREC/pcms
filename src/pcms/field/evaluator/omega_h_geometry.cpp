@@ -7,7 +7,6 @@
 #include "pcms/utility/uniform_grid.h"
 #include <stdexcept>
 #include <string>
-#include <tuple>
 #include <variant>
 
 namespace pcms
@@ -17,22 +16,31 @@ OmegaHMeshBinding::OmegaHMeshBinding(std::shared_ptr<const Geometry> geometry,
                                      const BindRequest& request,
                                      const GridPointSearchVariant& search,
                                      Omega_h::Mesh& mesh)
-  : BoundSource(std::move(geometry), request)
+  : BoundSource(std::move(geometry), request), search_(search), mesh_(mesh)
 {
-  const auto guesses =
-    detail::ElementGuesses(mesh, request.owners, "OmegaHMeshBinding");
+  Locate(detail::ElementGuesses(mesh, request.owners, "OmegaHMeshBinding"));
+}
+
+void OmegaHMeshBinding::RebindImpl()
+{
+  Locate({});
+}
+
+void OmegaHMeshBinding::Locate(
+  Kokkos::View<const LO*, DeviceMemorySpace> guesses)
+{
   std::visit(
     [&](const auto& s) {
       constexpr int Dim = std::decay_t<decltype(s)>::DIM;
       auto [found, results] = LocatePoints(s, LocatedPointValues(), guesses);
       SetFound(found);
       const auto [lifted_elems, lifted_bary] = detail::LiftResults<Dim>(
-        mesh, Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
-                           DeviceMemorySpace>(results));
-      std::tie(elem_ids_, bary_) =
-        detail::GatherFoundLifts<Dim>(FoundPoints(), lifted_elems, lifted_bary);
+        mesh_, Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
+                            DeviceMemorySpace>(results));
+      detail::GatherFoundLifts<Dim>(FoundPoints(), lifted_elems, lifted_bary,
+                                    elem_ids_, bary_);
     },
-    search);
+    search_);
 }
 
 Kokkos::View<const LO*, DeviceMemorySpace> detail::ElementGuesses(

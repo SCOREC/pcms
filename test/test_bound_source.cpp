@@ -1,19 +1,81 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <Kokkos_Core.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/geometry/bound_source.hpp>
+#include <pcms/field/coordinate_systems/cartesian.hpp>
 #include <pcms/field/coordinate_systems/cylindrical.hpp>
+#include <pcms/field/evaluator/point_cloud_geometry.hpp>
+#include <pcms/field/evaluator/uniform_grid_geometry.hpp>
 #include <pcms/field/function_space/lagrange.h>
+#include <pcms/field/function_space/polynomial_reconstruction.hpp>
+#include <pcms/field/layout/omega_h_entity.h>
 #include "field_test_utils.h"
+#include <memory>
+#include <type_traits>
 #include <vector>
 
 using Catch::Matchers::ContainsSubstring;
+using Catch::Matchers::WithinAbs;
+using pcms::BoundSource;
+using pcms::DeviceMemorySpace;
+using pcms::FunctionSpace;
 using pcms::HostMemorySpace;
+using pcms::LO;
 using pcms::OutOfBoundsMode;
 using pcms::OutOfBoundsPolicy;
 using pcms::Real;
+
+namespace
+{
+
+template <typename T>
+auto ToHost(const Kokkos::View<T, DeviceMemorySpace>& view)
+{
+  return Kokkos::create_mirror_view_and_copy(HostMemorySpace(), view);
+}
+
+/// Checks that rebinding `previous`, which nothing else holds, to `pts` reuses
+/// it and gives what a new bind of them gives: the same found and missing
+/// points and the same values of `f`.
+std::shared_ptr<const BoundSource> CheckRebind(
+  const FunctionSpace& space, const pcms::Function<Real>& f,
+  std::shared_ptr<const BoundSource> previous, const std::vector<Real>& pts)
+{
+  const auto& geometry = *space.GetGeometry();
+  auto coords =
+    pcms::test::CreateDeviceCoordinateView(pts, geometry.GetCoordinateSystem());
+  const auto fresh = geometry.Bind(coords.coordinate_view, previous->Policy());
+  const BoundSource* address = previous.get();
+  auto rebound = geometry.Rebind(std::move(previous), coords.coordinate_view);
+  REQUIRE(rebound.get() == address);
+  REQUIRE(rebound->NumPoints() == fresh->NumPoints());
+  for (const auto& [a, b] :
+       {std::pair{rebound->FoundPoints(), fresh->FoundPoints()},
+        std::pair{rebound->MissingPoints(), fresh->MissingPoints()}}) {
+    const auto rebound_points = ToHost(a);
+    const auto fresh_points = ToHost(b);
+    REQUIRE(rebound_points.extent(0) == fresh_points.extent(0));
+    for (size_t i = 0; i < rebound_points.extent(0); ++i) {
+      REQUIRE(rebound_points(i) == fresh_points(i));
+    }
+  }
+  const auto basis = f.GetData().GetValueBasis();
+  const auto rebound_values = pcms::test::EvaluateToHost(
+    *space.CreatePointEvaluator<Real>(rebound), f, basis);
+  const auto fresh_values = pcms::test::EvaluateToHost(
+    *space.CreatePointEvaluator<Real>(fresh), f, basis);
+  for (LO i = 0; i < fresh->NumPoints(); ++i) {
+    CAPTURE(i);
+    REQUIRE_THAT(rebound_values(i, 0),
+                 WithinAbs(fresh_values(i, 0), pcms::test::ExactTol));
+  }
+  return rebound;
+}
+
+} // namespace
 
 TEST_CASE("Evaluators created from one bound source share its points")
 {
@@ -119,4 +181,131 @@ TEST_CASE("Binding splits found and missing points and applies the policy")
     *space->CreatePointEvaluator<Real>(bound), field, pts, {true, false, true},
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); },
     -1.0);
+}
+
+TEST_CASE("A rebind gives what a new bind of the points gives")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = pcms::test::BuildSquareMesh(lib, 8);
+  const auto cartesian = pcms::csys::Cartesian::Create(2);
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {0.0, 0.0};
+  grid.edge_length = {1.0, 1.0};
+  grid.divisions = {4, 4};
+  auto vertices = std::make_shared<pcms::OmegaHEntityLayout>(
+    pcms::test::MakeOmegaHGeometry(mesh), pcms::Vertex, 1);
+  const std::vector<std::shared_ptr<FunctionSpace>> spaces{
+    pcms::test::MakeP1Space(pcms::CreateOmegaHGeometry(mesh, cartesian)),
+    pcms::CreateLagrangeSpace(pcms::CreateUniformGridGeometry(grid, cartesian),
+                              1, 1),
+    pcms::CreatePolynomialReconstructionSpace(
+      pcms::CreatePointCloudGeometry(vertices), pcms::MLSOptions{.degree = 1})};
+  // points inside and outside the unit square, the second set of a different
+  // count; then fewer and more points than the first bind's
+  const std::vector<Real> first{0.25, 0.5, 1.5, 0.5, 0.75, 0.1};
+  const std::vector<Real> second{0.6, 0.6, 0.3, 0.2, -0.5, 0.5, 0.9, 0.4};
+  const std::vector<Real> fewer{0.4, 0.7};
+  const std::vector<Real> more = [] {
+    auto pts = pcms::test::StandardEvalCoords2D();
+    for (Real x : pcms::test::StandardOutsideCoords2D()) {
+      pts.push_back(x);
+    }
+    return pts;
+  }();
+  for (const auto& space : spaces) {
+    auto f = space->CreateFunction<Real>("f");
+    pcms::test::SetField(
+      f, OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
+    auto bound =
+      pcms::test::Bind(*space->GetGeometry(), first,
+                       OutOfBoundsPolicy{OutOfBoundsMode::FILL, -1.0});
+    for (const auto* pts : {&second, &fewer, &more, &first}) {
+      bound = CheckRebind(*space, f, std::move(bound), *pts);
+    }
+  }
+}
+
+TEST_CASE("A rebind reuses the bound source only when nothing else holds it")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = pcms::test::BuildSquareMesh(lib, 8);
+  auto space = pcms::test::MakeP1Space(mesh);
+  const auto geometry = space->GetGeometry();
+  auto f = space->CreateFunction<Real>("f");
+  const auto linear = OMEGA_H_LAMBDA(Real x, Real y)
+  {
+    return pcms::test::linear_f(x, y);
+  };
+  pcms::test::SetField(f, linear);
+  const std::vector<Real> a{0.25, 0.5, 0.75, 0.1};
+  const std::vector<Real> b{0.6, 0.6, 0.3, 0.2};
+  const std::vector<Real> fewer{0.4, 0.7};
+  const std::vector<Real> more = pcms::test::StandardEvalCoords2D();
+  const auto coords = [&](const std::vector<Real>& pts) {
+    return pcms::test::CreateDeviceCoordinateView(
+      pts, geometry->GetCoordinateSystem());
+  };
+  const auto rebind = [&](std::shared_ptr<const BoundSource> bound,
+                          const std::vector<Real>& pts) {
+    auto query = coords(pts);
+    return geometry->Rebind(std::move(bound), query.coordinate_view);
+  };
+
+  auto bound = pcms::test::Bind(*geometry, a);
+  const BoundSource* address = bound.get();
+  const Real* storage = bound->LocatedPointValues().data();
+  // released into the rebind: the same source, written in place
+  bound = rebind(std::move(bound), b);
+  REQUIRE(bound.get() == address);
+  REQUIRE(bound->LocatedPointValues().data() == storage);
+  pcms::test::CheckEvaluation(*space->CreatePointEvaluator<Real>(bound), f, b,
+                              linear);
+
+  // the caller keeps a view of its points: a new source, the view unchanged
+  {
+    const auto kept = bound->LocatedPointValues();
+    std::weak_ptr<const BoundSource> previous = bound;
+    bound = rebind(std::move(bound), a);
+    REQUIRE(previous.expired());
+    const auto kept_host = ToHost(kept);
+    for (size_t i = 0; i < b.size(); ++i) {
+      REQUIRE(kept_host(i / 2, i % 2) == b[i]);
+    }
+  }
+
+  // an evaluator holds it: a new source, the evaluator unchanged
+  {
+    const auto evaluator = space->CreatePointEvaluator<Real>(bound);
+    address = bound.get();
+    bound = rebind(std::move(bound), b);
+    REQUIRE(bound.get() != address);
+    pcms::test::CheckEvaluation(*evaluator, f, a, linear);
+  }
+
+  // fewer points reuse the storage (on a layout whose first rows are
+  // contiguous); more points reallocate it, in the same source
+  address = bound.get();
+  storage = bound->LocatedPointValues().data();
+  bound = rebind(std::move(bound), fewer);
+  REQUIRE(bound.get() == address);
+  if constexpr (std::is_same_v<
+                  Kokkos::View<Real**, DeviceMemorySpace>::array_layout,
+                  Kokkos::LayoutRight>) {
+    REQUIRE(bound->LocatedPointValues().data() == storage);
+  }
+  pcms::test::CheckEvaluation(*space->CreatePointEvaluator<Real>(bound), f,
+                              fewer, linear);
+  bound = rebind(std::move(bound), more);
+  REQUIRE(bound.get() == address);
+  REQUIRE(bound->LocatedPointValues().data() != storage);
+  pcms::test::CheckEvaluation(*space->CreatePointEvaluator<Real>(bound), f,
+                              more, linear);
+
+  // a bound source of another geometry, or none
+  const auto other = pcms::test::MakeP1Space(mesh)->GetGeometry();
+  auto query = coords(a);
+  REQUIRE_THROWS_WITH(other->Rebind(bound, query.coordinate_view),
+                      ContainsSubstring("belongs to another geometry"));
+  REQUIRE_THROWS_WITH(geometry->Rebind(nullptr, query.coordinate_view),
+                      ContainsSubstring("must not be null"));
 }

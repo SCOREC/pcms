@@ -47,16 +47,22 @@ public:
   /// @param request query points and out-of-bounds policy
   /// @param source_coords flattened coordinates of the source points
   /// @param supports MLS supports of the query points
+  /// @param site_dim the site dimension and
+  /// @param options the options `supports` were found with; a rebind finds
+  ///        the supports of its points with the geometry's Neighbourhood
   MLSBinding(std::shared_ptr<const Geometry> geometry,
              const BindRequest& request, Omega_h::Reals source_coords,
-             SupportResults supports)
+             SupportResults supports, int site_dim,
+             NeighbourhoodOptions options)
     : BoundSource(std::move(geometry), request),
       source_coords_(std::move(source_coords)),
       target_coords_(
         flatten_to_omega_h_reals(LocatedPointValues(), "mls_target_coords")),
-      supports_(std::move(supports))
+      supports_(std::move(supports)),
+      site_dim_(site_dim),
+      options_(options)
   {
-    SetFound(detail::HasSupports(supports_.supports_ptr, NumPoints()));
+    SetFoundFromSupports();
   }
 
   /// @return flattened coordinates of the source points
@@ -78,10 +84,33 @@ public:
     return supports_;
   }
 
+protected:
+  // the arrays are reassigned, not written, so the default UnsharedImpl holds
+  void RebindImpl() override
+  {
+    const auto& geometry = *GetGeometry();
+    supports_ =
+      geometry.Neighbourhood(CoordinateView<DeviceMemorySpace>(
+                               geometry.GetCoordinateSystem(),
+                               MakeConstRank2View(LocatedPointValues())),
+                             site_dim_, options_);
+    target_coords_ =
+      flatten_to_omega_h_reals(LocatedPointValues(), "mls_target_coords");
+    SetFoundFromSupports();
+  }
+
 private:
+  /// a point is found when it has supports
+  void SetFoundFromSupports()
+  {
+    SetFound(detail::HasSupports(supports_.supports_ptr, NumPoints()));
+  }
+
   Omega_h::Reals source_coords_;
   Omega_h::Reals target_coords_;
   SupportResults supports_;
+  int site_dim_;
+  NeighbourhoodOptions options_;
 };
 
 /// @brief Evaluates a scalar point-cloud field at the bound points by MLS.

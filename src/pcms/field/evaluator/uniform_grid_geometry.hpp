@@ -59,26 +59,16 @@ class UniformGridBinding final : public BoundSource
 public:
   UniformGridBinding(std::shared_ptr<const Geometry> geometry,
                      const BindRequest& request, const UniformGrid<Dim>& grid)
-    : BoundSource(std::move(geometry), request)
+    : BoundSource(std::move(geometry), request), search_(grid)
   {
-    const auto results =
-      UniformGridPointSearch<Dim>(grid)(LocatedPointValues());
-    const auto n = static_cast<LO>(results.extent(0));
-    const bool nearest = Policy().mode == OutOfBoundsMode::NEAREST_BOUNDARY;
-    Kokkos::View<bool*, DeviceMemorySpace> found("uniform_grid_found", n);
-    cell_indices_ =
-      Kokkos::View<LO*, DeviceMemorySpace>("uniform_grid_cell_indices", n);
-    parametric_ = Kokkos::View<Real**, DeviceMemorySpace>(
-      "uniform_grid_parametric", n, Dim);
-    detail::FillUniformGridBinding<Dim>(results, nearest, found, cell_indices_,
-                                        parametric_);
-    SetFound(found);
+    Locate();
   }
 
   [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> CellIndices()
     const noexcept
   {
-    return cell_indices_;
+    return Kokkos::subview(cell_indices_,
+                           Kokkos::make_pair(LO{0}, NumPoints()));
   }
 
   /// [point][axis]: the position of each query point in its cell, each
@@ -86,10 +76,35 @@ public:
   [[nodiscard]] Kokkos::View<const Real**, DeviceMemorySpace> Parametric()
     const noexcept
   {
-    return parametric_;
+    return Kokkos::subview(parametric_, Kokkos::make_pair(LO{0}, NumPoints()),
+                           Kokkos::ALL);
+  }
+
+protected:
+  void RebindImpl() override { Locate(); }
+
+  [[nodiscard]] bool UnsharedImpl() const noexcept override
+  {
+    return cell_indices_.use_count() <= 1 && parametric_.use_count() <= 1;
   }
 
 private:
+  /// Locates the query points with the search into cell_indices_ and
+  /// parametric_ and sets the found points.
+  void Locate()
+  {
+    const auto results = search_(LocatedPointValues());
+    const auto n = static_cast<LO>(results.extent(0));
+    const bool nearest = Policy().mode == OutOfBoundsMode::NEAREST_BOUNDARY;
+    Kokkos::View<bool*, DeviceMemorySpace> found("uniform_grid_found", n);
+    detail::ReserveRows(cell_indices_, "uniform_grid_cell_indices", n);
+    detail::ReserveRows(parametric_, "uniform_grid_parametric", n, Dim);
+    detail::FillUniformGridBinding<Dim>(results, nearest, found, cell_indices_,
+                                        parametric_);
+    SetFound(found);
+  }
+
+  UniformGridPointSearch<Dim> search_;
   Kokkos::View<LO*, DeviceMemorySpace> cell_indices_;
   Kokkos::View<Real**, DeviceMemorySpace> parametric_;
 };

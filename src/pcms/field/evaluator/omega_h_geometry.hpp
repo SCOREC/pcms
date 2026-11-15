@@ -151,29 +151,31 @@ Kokkos::View<LO*, DeviceMemorySpace> LiftElements(
 }
 
 /// The element and barycentric coordinates of the found points, gathered from
-/// per-point lifts: row k is the lift of point rows(k).
+/// per-point lifts: row k is the lift of point rows(k). The results go to
+/// `elem_ids` and `bary`, reallocated only when too small (ReserveRows).
 /// (A free function: CUDA does not allow device lambdas inside the generic
 /// lambda that dispatches on the search.)
 template <int Dim>
-std::pair<Kokkos::View<LO*, DeviceMemorySpace>,
-          Kokkos::View<Real**, DeviceMemorySpace>>
-GatherFoundLifts(Kokkos::View<const LO*, DeviceMemorySpace> rows,
-                 Kokkos::View<const LO*, DeviceMemorySpace> lifted_elems,
-                 Kokkos::View<const Real**, DeviceMemorySpace> lifted_bary)
+void GatherFoundLifts(Kokkos::View<const LO*, DeviceMemorySpace> rows,
+                      Kokkos::View<const LO*, DeviceMemorySpace> lifted_elems,
+                      Kokkos::View<const Real**, DeviceMemorySpace> lifted_bary,
+                      Kokkos::View<LO*, DeviceMemorySpace>& elem_ids,
+                      Kokkos::View<Real**, DeviceMemorySpace>& bary)
 {
   const auto n = static_cast<LO>(rows.extent(0));
-  Kokkos::View<LO*, DeviceMemorySpace> elem_ids("omega_h_elem_ids", n);
-  Kokkos::View<Real**, DeviceMemorySpace> bary("omega_h_bary", n, Dim + 1);
+  ReserveRows(elem_ids, "omega_h_elem_ids", n);
+  ReserveRows(bary, "omega_h_bary", n, Dim + 1);
+  const auto elem_out = elem_ids;
+  const auto bary_out = bary;
   Kokkos::parallel_for(
     "GatherFoundLifts",
     Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n),
     KOKKOS_LAMBDA(const LO k) {
-      elem_ids(k) = lifted_elems(rows(k));
+      elem_out(k) = lifted_elems(rows(k));
       for (int v = 0; v <= Dim; ++v) {
-        bary(k, v) = lifted_bary(rows(k), v);
+        bary_out(k, v) = lifted_bary(rows(k), v);
       }
     });
-  return {elem_ids, bary};
 }
 
 } // namespace detail
@@ -190,7 +192,8 @@ class OmegaHMeshBinding final : public BoundSource
 public:
   /// Locates `request.coords` with `search`, starting from the elements the
   /// request's owner hints give (ElementGuesses); a wrong hint costs a grid
-  /// search for that point, and a hinted point can be missing.
+  /// search for that point, and a hinted point can be missing. `search` and
+  /// `mesh` are the geometry's; a rebind searches with them again.
   OmegaHMeshBinding(std::shared_ptr<const Geometry> geometry,
                     const BindRequest& request,
                     const GridPointSearchVariant& search, Omega_h::Mesh& mesh);
@@ -198,17 +201,38 @@ public:
   [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> ElementIds()
     const noexcept
   {
-    return elem_ids_;
+    return Kokkos::subview(elem_ids_, Kokkos::make_pair(LO{0}, NumFound()));
   }
 
   /// [found point][vertex]
   [[nodiscard]] Kokkos::View<const Real**, DeviceMemorySpace> Barycentric()
     const noexcept
   {
-    return bary_;
+    return Kokkos::subview(bary_, Kokkos::make_pair(LO{0}, NumFound()),
+                           Kokkos::ALL);
+  }
+
+protected:
+  void RebindImpl() override;
+
+  [[nodiscard]] bool UnsharedImpl() const noexcept override
+  {
+    return elem_ids_.use_count() <= 1 && bary_.use_count() <= 1;
   }
 
 private:
+  [[nodiscard]] LO NumFound() const noexcept
+  {
+    return static_cast<LO>(FoundPoints().extent(0));
+  }
+
+  /// Locates the points with the search, from the guessed elements (empty
+  /// for none), sets the found points and lifts their results to elements
+  /// (detail::LiftResults) into elem_ids_ and bary_.
+  void Locate(Kokkos::View<const LO*, DeviceMemorySpace> guesses);
+
+  const GridPointSearchVariant& search_;
+  Omega_h::Mesh& mesh_;
   Kokkos::View<LO*, DeviceMemorySpace> elem_ids_;
   Kokkos::View<Real**, DeviceMemorySpace> bary_;
 };

@@ -55,6 +55,10 @@ public:
     : BoundSource(std::move(geometry), request)
   {
   }
+
+protected:
+  // Reset has marked every point found
+  void RebindImpl() override {}
 };
 
 // All of (R, theta, Z) space: every point is found, without a search.

@@ -5,6 +5,44 @@
 
 namespace pcms
 {
+namespace
+{
+
+/// The checks Bind makes of the query coordinate system and the policy.
+void CheckBindArguments(const Geometry& geometry,
+                        const CoordinateView<DeviceMemorySpace>& coords,
+                        const OutOfBoundsPolicy& policy,
+                        const CoordinateMap* map)
+{
+  const auto& query_system = coords.GetCoordinateSystem();
+  const auto& system = geometry.GetCoordinateSystem();
+  if (map != nullptr) {
+    if (!SameCoordinateSystem(query_system, map->GetSourceCoordinateSystem()) ||
+        !SameCoordinateSystem(map->GetTargetCoordinateSystem(), system)) {
+      throw pcms_error(
+        "Geometry::Bind: the query points are in '" +
+        std::string(query_system->Kind()) + "' and the map takes '" +
+        std::string(map->GetSourceCoordinateSystem()->Kind()) + "' to '" +
+        std::string(map->GetTargetCoordinateSystem()->Kind()) +
+        "'; it must take the query coordinate system to the geometry's '" +
+        std::string(system->Kind()) + "'");
+    }
+  } else if (!SameCoordinateSystem(query_system, system)) {
+    throw pcms_error("Geometry::Bind: query coordinate system '" +
+                     std::string(query_system->Kind()) +
+                     "' is not the geometry's coordinate system '" +
+                     std::string(system->Kind()) +
+                     "'; pass a CoordinateMap from one to the other as "
+                     "Bind's map argument");
+  }
+  if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY &&
+      !geometry.SupportsNearestBoundary()) {
+    throw pcms_error("Geometry::Bind: this geometry does not support "
+                     "OutOfBoundsMode::NEAREST_BOUNDARY");
+  }
+}
+
+} // namespace
 
 std::shared_ptr<const BoundSource> Geometry::Bind(
   CoordinateView<DeviceMemorySpace> coords, OutOfBoundsPolicy policy,
@@ -17,32 +55,7 @@ std::shared_ptr<const BoundSource> Geometry::Bind(
   CoordinateView<DeviceMemorySpace> coords, const OwnerHints& owners,
   OutOfBoundsPolicy policy, std::shared_ptr<const CoordinateMap> map) const
 {
-  const auto& query_system = coords.GetCoordinateSystem();
-  if (map != nullptr) {
-    if (!SameCoordinateSystem(query_system, map->GetSourceCoordinateSystem()) ||
-        !SameCoordinateSystem(map->GetTargetCoordinateSystem(),
-                              GetCoordinateSystem())) {
-      throw pcms_error(
-        "Geometry::Bind: the query points are in '" +
-        std::string(query_system->Kind()) + "' and the map takes '" +
-        std::string(map->GetSourceCoordinateSystem()->Kind()) + "' to '" +
-        std::string(map->GetTargetCoordinateSystem()->Kind()) +
-        "'; it must take the query coordinate system to the geometry's '" +
-        std::string(GetCoordinateSystem()->Kind()) + "'");
-    }
-  } else if (!SameCoordinateSystem(query_system, GetCoordinateSystem())) {
-    throw pcms_error("Geometry::Bind: query coordinate system '" +
-                     std::string(query_system->Kind()) +
-                     "' is not the geometry's coordinate system '" +
-                     std::string(GetCoordinateSystem()->Kind()) +
-                     "'; pass a CoordinateMap from one to the other as "
-                     "Bind's map argument");
-  }
-  if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY &&
-      !SupportsNearestBoundary()) {
-    throw pcms_error("Geometry::Bind: this geometry does not support "
-                     "OutOfBoundsMode::NEAREST_BOUNDARY");
-  }
+  CheckBindArguments(*this, coords, policy, map.get());
   // a hint naming another geometry, or not one entity per point, is not one;
   // nor is a hint given with a map, as it describes the unmapped points
   const OwnerHints hint =
@@ -61,6 +74,33 @@ std::shared_ptr<const BoundSource> Geometry::Bind(
   }
   PCMS_ALWAYS_ASSERT(bound != nullptr);
   return bound;
+}
+
+std::shared_ptr<const BoundSource> Geometry::Rebind(
+  std::shared_ptr<const BoundSource> previous,
+  CoordinateView<DeviceMemorySpace> coords) const
+{
+  if (previous == nullptr) {
+    throw pcms_error("Geometry::Rebind: the previous bound source must not be "
+                     "null");
+  }
+  if (previous->GetGeometry().get() != this) {
+    throw pcms_error("Geometry::Rebind: the previous bound source belongs to "
+                     "another geometry");
+  }
+  if (previous->GetCoordinateMap() != nullptr || previous.use_count() != 1 ||
+      !previous->Unshared()) {
+    const OutOfBoundsPolicy policy = previous->Policy();
+    std::shared_ptr<const CoordinateMap> map = previous->GetCoordinateMap();
+    previous.reset();
+    return Bind(std::move(coords), policy, std::move(map));
+  }
+  CheckBindArguments(*this, coords, previous->Policy(), nullptr);
+  // nothing else refers to `previous`, so writing it is not observable
+  auto reused = std::const_pointer_cast<BoundSource>(std::move(previous));
+  reused->Rebind(RebindKey{},
+                 BindRequest{coords, reused->Policy(), {}, nullptr, coords});
+  return reused;
 }
 
 SupportResults Geometry::Neighbourhood(CoordinateView<DeviceMemorySpace>, int,

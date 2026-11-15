@@ -33,10 +33,8 @@ void FillUniformGridBinding(
   Kokkos::View<Real**, DeviceMemorySpace> parametric)
 {
   using Result = typename UniformGridPointSearch<Dim>::Result;
-  Kokkos::parallel_for(
-    "UniformGridBinding",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-      0, static_cast<LO>(results.extent(0))),
+  detail::ForEach(
+    "UniformGridBinding", static_cast<LO>(results.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       const Result result = results(i);
       found(i) = nearest || !result.IsOutside();
@@ -96,7 +94,8 @@ private:
     const auto results = search_(LocatedPointValues());
     const auto n = static_cast<LO>(results.extent(0));
     const bool nearest = Policy().mode == OutOfBoundsMode::NEAREST_BOUNDARY;
-    Kokkos::View<bool*, DeviceMemorySpace> found("uniform_grid_found", n);
+    Kokkos::View<bool*, DeviceMemorySpace> found(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "uniform_grid_found"), n);
     detail::ReserveRows(cell_indices_, "uniform_grid_cell_indices", n);
     detail::ReserveRows(parametric_, "uniform_grid_parametric", n, Dim);
     detail::FillUniformGridBinding<Dim>(results, nearest, found, cell_indices_,

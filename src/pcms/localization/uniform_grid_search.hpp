@@ -58,13 +58,14 @@ public:
     Kokkos::View<const Real**, DeviceMemorySpace> points) const
   {
     const auto n = static_cast<LO>(points.extent(0));
-    Kokkos::View<Result*> results("uniform_grid_search_results", n);
+    Kokkos::View<Result*> results(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                         "uniform_grid_search_results"),
+      n);
     // the lambda must not capture this
     const auto grid = grid_;
-    Kokkos::parallel_for(
-      "UniformGridPointSearch",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n),
-      KOKKOS_LAMBDA(const LO i) {
+    detail::ForEach(
+      "UniformGridPointSearch", n, KOKKOS_LAMBDA(const LO i) {
         Omega_h::Vector<Dim> point;
         for (unsigned d = 0; d < Dim; ++d) {
           point[d] = points(i, d);

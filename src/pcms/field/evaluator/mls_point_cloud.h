@@ -8,6 +8,7 @@
 #include "pcms/field/evaluator/mls_interpolation.hpp"
 #include "pcms/localization/adj_search.hpp"
 #include "pcms/utility/assert.h"
+#include "pcms/utility/memory_spaces.h"
 #include "pcms/utility/omega_h_array_utils.h"
 
 #include <Omega_h_array.hpp>
@@ -25,11 +26,10 @@ namespace detail
 inline Kokkos::View<bool*, DeviceMemorySpace> HasSupports(
   const Omega_h::LOs& supports_ptr, LO n)
 {
-  Kokkos::View<bool*, DeviceMemorySpace> found("mls_found", n);
-  Kokkos::parallel_for(
-    "MLSBinding::found",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n),
-    KOKKOS_LAMBDA(const LO i) {
+  Kokkos::View<bool*, DeviceMemorySpace> found(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "mls_found"), n);
+  detail::ForEach(
+    "MLSBinding::found", n, KOKKOS_LAMBDA(const LO i) {
       found(i) = supports_ptr[i + 1] > supports_ptr[i];
     });
   return found;

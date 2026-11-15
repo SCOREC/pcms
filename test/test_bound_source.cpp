@@ -309,3 +309,18 @@ TEST_CASE("A rebind reuses the bound source only when nothing else holds it")
   REQUIRE_THROWS_WITH(geometry->Rebind(nullptr, query.coordinate_view),
                       ContainsSubstring("must not be null"));
 }
+
+TEST_CASE("ForEach writes every entry of small and large batches")
+{
+  for (const pcms::LO n : {1, 3, 256, 257, 10000}) {
+    Kokkos::View<pcms::LO*, pcms::DeviceMemorySpace> out(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "out"), n);
+    pcms::detail::ForEach(
+      "test", n, KOKKOS_LAMBDA(const pcms::LO i) { out(i) = 2 * i + 1; });
+    const auto host =
+      Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), out);
+    for (pcms::LO i = 0; i < n; ++i) {
+      REQUIRE(host(i) == 2 * i + 1);
+    }
+  }
+}

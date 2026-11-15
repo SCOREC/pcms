@@ -10,6 +10,7 @@
 #include <Omega_h_bbox.hpp>
 #include <Omega_h_shape.hpp>
 
+#include "pcms/utility/memory_spaces.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/uniform_grid.h"
 #include "pcms/utility/bounding_box.h"
@@ -300,8 +301,9 @@ LocatePoints(const Search& search, Kokkos::View<const Real**> points,
     points.extent(0));
   search(points, guesses, results);
   const auto n = static_cast<LO>(points.extent(0));
-  Kokkos::View<bool*> found("found_in_mesh", n);
-  Kokkos::parallel_for(
+  Kokkos::View<bool*> found(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "found_in_mesh"), n);
+  detail::ForEach(
     "LocatePoints", n, KOKKOS_LAMBDA(const LO i) {
       found(i) = !results(i).IsOutside() &&
                  results(i).dimensionality !=

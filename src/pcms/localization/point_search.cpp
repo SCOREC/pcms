@@ -1,4 +1,5 @@
 #include "point_search.h"
+#include "pcms/utility/memory_spaces.h"
 #include <Omega_h_mesh.hpp>
 #include <bitset>
 #include <cmath>
@@ -693,9 +694,9 @@ void grid_search(
   using Dimensionality = typename Search::Result::Dimensionality;
   const auto num_rows = candidate_map.numRows();
   const bool all = misses.extent(0) == 0;
-  Kokkos::parallel_for(
-    num_searched, KOKKOS_LAMBDA(int k) {
-      const int p = all ? k : misses(k);
+  detail::ForEach(
+    "GridPointSearch", num_searched, KOKKOS_LAMBDA(const LO k) {
+      const LO p = all ? k : misses(k);
       Omega_h::Vector<Dim> point;
       for (int i = 0; i < Dim; ++i) {
         point[i] = points(p, i);
@@ -791,7 +792,7 @@ void guessed_search(
   }
   const auto offsets = dual.a2ab;
   const auto neighbours = dual.ab2b;
-  Kokkos::parallel_for(
+  detail::ForEach(
     "GridPointSearch::TryGuesses", n, KOKKOS_LAMBDA(const LO i) {
       Omega_h::Vector<Dim> point;
       for (int d = 0; d < Dim; ++d) {
@@ -811,6 +812,26 @@ void guessed_search(
       }
       results(i) = result;
     });
+  if (detail::IsSmallHostBatch(static_cast<std::size_t>(n))) {
+    LO num_misses = 0;
+    for (LO i = 0; i < n; ++i) {
+      num_misses += (results(i).dimensionality == Miss) ? 1 : 0;
+    }
+    if (num_misses == 0) {
+      return;
+    }
+    Kokkos::View<LO*> misses(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "point search misses"),
+      num_misses);
+    for (LO i = 0, k = 0; i < n; ++i) {
+      if (results(i).dimensionality == Miss) {
+        misses(k++) = i;
+      }
+    }
+    grid_search<Dim>(grid, candidate_map, elem_verts, coords, down, down_verts,
+                     tau, points, misses, num_misses, results);
+    return;
+  }
   LO num_misses = 0;
   Kokkos::parallel_reduce(
     "GridPointSearch::CountMisses", n,

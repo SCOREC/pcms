@@ -110,9 +110,12 @@ LiftResults(Omega_h::Mesh& mesh,
             bool with_bary = true)
 {
   const auto n = static_cast<LO>(results.extent(0));
-  Kokkos::View<LO*, DeviceMemorySpace> elem_ids("omega_h_lift_elem_ids", n);
-  Kokkos::View<Real**, DeviceMemorySpace> bary("omega_h_lift_bary",
-                                               with_bary ? n : 0, Dim + 1);
+  Kokkos::View<LO*, DeviceMemorySpace> elem_ids(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "omega_h_lift_elem_ids"),
+    n);
+  Kokkos::View<Real**, DeviceMemorySpace> bary(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "omega_h_lift_bary"),
+    with_bary ? n : 0, Dim + 1);
   Omega_h::Few<Omega_h::Adj, Dim> entities2elems;
   Omega_h::Few<Omega_h::Adj, Dim> entities2verts;
   for (int d = 0; d < Dim; ++d) {
@@ -122,10 +125,8 @@ LiftResults(Omega_h::Mesh& mesh,
     }
   }
   const auto elem_verts = mesh.ask_elem_verts();
-  Kokkos::parallel_for(
-    "LiftResults",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n),
-    KOKKOS_LAMBDA(const LO i) {
+  detail::ForEach(
+    "LiftResults", n, KOKKOS_LAMBDA(const LO i) {
       const auto lifted = LiftToElement<Dim>(entities2elems, entities2verts,
                                              elem_verts, results(i));
       elem_ids(i) = lifted.first;
@@ -167,10 +168,8 @@ void GatherFoundLifts(Kokkos::View<const LO*, DeviceMemorySpace> rows,
   ReserveRows(bary, "omega_h_bary", n, Dim + 1);
   const auto elem_out = elem_ids;
   const auto bary_out = bary;
-  Kokkos::parallel_for(
-    "GatherFoundLifts",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n),
-    KOKKOS_LAMBDA(const LO k) {
+  detail::ForEach(
+    "GatherFoundLifts", n, KOKKOS_LAMBDA(const LO k) {
       elem_out(k) = lifted_elems(rows(k));
       for (int v = 0; v <= Dim; ++v) {
         bary_out(k, v) = lifted_bary(rows(k), v);

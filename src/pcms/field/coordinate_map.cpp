@@ -86,9 +86,8 @@ void BindCylindricalPoints(Rank2View<const Real, DeviceMemorySpace> in,
                            Kokkos::View<Real*, DeviceMemorySpace> sin_theta,
                            PointDirection direction)
 {
-  Kokkos::parallel_for(
-    "cylindrical_map_bind",
-    Kokkos::RangePolicy<ExecutionSpace>(0, static_cast<LO>(in.extent(0))),
+  detail::ForEach(
+    "cylindrical_map_bind", static_cast<LO>(in.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       Real c, s;
       if (direction == PointDirection::ToCylindrical) {
@@ -116,9 +115,8 @@ void RotateValues(const Kokkos::View<Real*, DeviceMemorySpace>& c,
                   const Kokkos::View<Real*, DeviceMemorySpace>& s, Real sign,
                   Rank2View<Real, DeviceMemorySpace> values, LO n)
 {
-  Kokkos::parallel_for(
-    "cylindrical_map_rotate_values", Kokkos::RangePolicy<ExecutionSpace>(0, n),
-    KOKKOS_LAMBDA(const LO i) {
+  detail::ForEach(
+    "cylindrical_map_rotate_values", n, KOKKOS_LAMBDA(const LO i) {
       const Real v0 = values(i, 0);
       const Real v1 = values(i, 1);
       const Real si = sign * s(i);
@@ -191,9 +189,8 @@ void EmbedPoloidalPoints(Rank2View<const Real, DeviceMemorySpace> in,
                          Kokkos::View<Real**, DeviceMemorySpace> out,
                          Real theta0)
 {
-  Kokkos::parallel_for(
-    "embed_poloidal_points",
-    Kokkos::RangePolicy<ExecutionSpace>(0, static_cast<LO>(in.extent(0))),
+  detail::ForEach(
+    "embed_poloidal_points", static_cast<LO>(in.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       out(i, 0) = in(i, 0);
       out(i, 1) = theta0;

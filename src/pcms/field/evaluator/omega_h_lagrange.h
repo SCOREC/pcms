@@ -92,9 +92,8 @@ public:
     int n_comp = layout_->GetNumComponents();
 
     if (layout_->GetOrder() == 0) {
-      Kokkos::parallel_for(
-        "OmegaHLagrangePointEvaluator::EvaluateOrder0",
-        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_valid),
+      detail::ForEach(
+        "OmegaHLagrangePointEvaluator::EvaluateOrder0", n_valid,
         KOKKOS_LAMBDA(LO k) {
           for (int c = 0; c < n_comp; ++c) {
             values(found(k), c) = dof_data(elem_ids(k), c);
@@ -108,9 +107,8 @@ public:
       int nvpe = mesh_dim + 1;
       auto elem_verts = mesh.ask_elem_verts();
 
-      Kokkos::parallel_for(
-        "OmegaHLagrangePointEvaluator::EvaluateOrder1",
-        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_valid),
+      detail::ForEach(
+        "OmegaHLagrangePointEvaluator::EvaluateOrder1", n_valid,
         KOKKOS_LAMBDA(LO k) {
           const LO elem = elem_ids(k);
           for (int c = 0; c < n_comp; ++c) {

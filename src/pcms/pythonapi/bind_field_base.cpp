@@ -28,6 +28,7 @@
 #include "pcms/field/layout/omega_h_entity.h"
 #include "pcms/field/gradient_source.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
+#include "pcms/field/query_points.hpp"
 #include "pcms/field/uniform_grid_binary_field.h"
 #include "pcms/field/value_view.hpp"
 #include "pcms/geometry/geometry.hpp"
@@ -322,6 +323,105 @@ void bind_create_field_module(py::module& m)
       "DifferentialOperator.Gradient")
     .def("supports", &PointEvaluatorFactory::Supports, py::arg("op"),
          "Whether create_point_evaluator accepts `op`");
+
+  py::class_<QueryPoints>(
+    m, "QueryPoints",
+    "Evaluation at points that move between calls: locate() binds the points "
+    "and rebinds them in place after; evaluate() creates the evaluator of a "
+    "function on first use after each locate()")
+    .def(
+      py::init([](std::shared_ptr<Geometry> geometry, OutOfBoundsPolicy policy,
+                  std::shared_ptr<CoordinateMap> map) {
+        return std::make_unique<QueryPoints>(std::move(geometry), policy,
+                                             std::move(map));
+      }),
+      py::arg("geometry"), py::arg("policy") = OutOfBoundsPolicy{},
+      py::arg("map") = py::none(), py::keep_alive<1, 2>())
+    .def(
+      "locate",
+      [](QueryPoints& self, const PyCoordinateView& coords) {
+        // the bound source copies the points
+        auto device = CopyCoordinatesToDevice(coords);
+        self.Locate(device.view);
+      },
+      py::arg("coordinates"),
+      "Locate the points of a CoordinateView (as Geometry.bind takes them), "
+      "reusing the previous points' storage when nothing else holds it")
+    .def(
+      "evaluate",
+      [](QueryPoints& self, const Function<Real>& function, PyValueView output,
+         DifferentialOperator op) {
+        WithDeviceOutput(output.values, [&](auto out) {
+          self.Evaluate(function,
+                        ValueView<Real, DeviceMemorySpace>(output.basis, out),
+                        op);
+        });
+      },
+      py::arg("function"), py::arg("output"),
+      py::arg("op") = DifferentialOperator::Value,
+      "Evaluate `op` of the function at the located points into `output`, a "
+      "ValueView as PointEvaluator.evaluate takes it")
+    .def(
+      "evaluate",
+      [](QueryPoints& self, const Function<Real>& function, py::array output,
+         DifferentialOperator op) {
+        const ValueBasis basis = function.GetData().GetValueBasis();
+        RequireScalarForPlainArray("evaluate", basis);
+        WithDeviceOutput(output, [&](auto out) {
+          self.Evaluate(function,
+                        ValueView<Real, DeviceMemorySpace>(basis, out), op);
+        });
+      },
+      py::arg("function"), py::arg("output").noconvert(),
+      py::arg("op") = DifferentialOperator::Value,
+      "Evaluate the values of a scalar function at the located points into a "
+      "writeable C-contiguous float64 array (num_points × num_components)")
+    .def_property_readonly(
+      "bound",
+      [](const QueryPoints& self) {
+        return std::const_pointer_cast<BoundSource>(self.Bound());
+      },
+      "The BoundSource of the located points, or None before locate(); while "
+      "it is held, the next locate() binds anew instead of reusing it");
+
+  m.def(
+    "evaluate",
+    [](const Function<Real>& function, const PyCoordinateView& points,
+       PyValueView output, DifferentialOperator op, OutOfBoundsPolicy policy,
+       std::shared_ptr<CoordinateMap> map) {
+      auto device = CopyCoordinatesToDevice(points);
+      WithDeviceOutput(output.values, [&](auto out) {
+        Evaluate(function, device.view,
+                 ValueView<Real, DeviceMemorySpace>(output.basis, out), op,
+                 policy, std::move(map));
+      });
+    },
+    py::arg("function"), py::arg("points"), py::arg("output"),
+    py::arg("op") = DifferentialOperator::Value,
+    py::arg("policy") = OutOfBoundsPolicy{}, py::arg("map") = py::none(),
+    "Evaluate `op` of the function at the points of a CoordinateView into "
+    "`output`, a ValueView; binds the points on every call (use QueryPoints "
+    "for repeated evaluation)");
+  m.def(
+    "evaluate",
+    [](const Function<Real>& function, const PyCoordinateView& points,
+       py::array output, DifferentialOperator op, OutOfBoundsPolicy policy,
+       std::shared_ptr<CoordinateMap> map) {
+      const ValueBasis basis = function.GetData().GetValueBasis();
+      RequireScalarForPlainArray("evaluate", basis);
+      auto device = CopyCoordinatesToDevice(points);
+      WithDeviceOutput(output, [&](auto out) {
+        Evaluate(function, device.view,
+                 ValueView<Real, DeviceMemorySpace>(basis, out), op, policy,
+                 std::move(map));
+      });
+    },
+    py::arg("function"), py::arg("points"), py::arg("output").noconvert(),
+    py::arg("op") = DifferentialOperator::Value,
+    py::arg("policy") = OutOfBoundsPolicy{}, py::arg("map") = py::none(),
+    "Evaluate the values of a scalar function at the points of a "
+    "CoordinateView into a writeable C-contiguous float64 array; binds the "
+    "points on every call (use QueryPoints for repeated evaluation)");
 
   m.def(
     "gradient",

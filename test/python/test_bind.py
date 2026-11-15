@@ -156,3 +156,23 @@ def test_get_geometry_does_not_keep_the_space_alive(world):
     del bound, geometry
     gc.collect()
     assert mesh_ref() is None
+
+
+def test_query_points_follow_moving_points(geometry, field):
+    query = pcms.QueryPoints(
+        geometry, pcms.OutOfBoundsPolicy(pcms.OutOfBoundsMode.FILL, -1.0))
+    assert query.bound is None
+    out = np.zeros(2)
+    for points in ([[0.25, 0.5], [2.0, 2.0]], [[0.6, 0.6], [0.3, 0.2]]):
+        query.locate(pcms.CoordinateView(points))
+        query.evaluate(field, out)
+        expected = [_linear(x, y) if x <= 1.0 else -1.0 for x, y in points]
+        np.testing.assert_allclose(out, expected, atol=1e-12)
+    np.testing.assert_array_equal(query.bound.found_points(), [0, 1])
+
+
+def test_evaluate_at_points_in_one_call(field):
+    out = np.zeros(2)
+    pcms.evaluate(field, pcms.CoordinateView([[0.25, 0.5], [0.75, 0.1]]), out)
+    np.testing.assert_allclose(out, [_linear(0.25, 0.5), _linear(0.75, 0.1)],
+                               atol=1e-12)

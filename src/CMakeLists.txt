@@ -9,7 +9,25 @@ set(
   pcms.cpp
 )
 
-configure_file(pcms/version.h.in pcms/version.h)
+# The version comes from git describe, so version.h is regenerated on every
+# build, and once now so it exists after configure. See PcmsVersion.cmake.
+find_package(Git QUIET)
+set(
+  PCMS_VERSION_ARGS
+  -DSOURCE_DIR=${PROJECT_SOURCE_DIR}
+  -DGIT_EXECUTABLE=${GIT_EXECUTABLE}
+  -DPROJECT_VERSION=${PROJECT_VERSION}
+  -DVERSION_OVERRIDE=${SKBUILD_PROJECT_VERSION_FULL}
+  -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/pcms/version.h.in
+  -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h
+  -P ${PROJECT_SOURCE_DIR}/cmake/PcmsVersion.cmake
+)
+execute_process(COMMAND ${CMAKE_COMMAND} ${PCMS_VERSION_ARGS})
+add_custom_target(
+  pcms_version_header
+  COMMAND ${CMAKE_COMMAND} ${PCMS_VERSION_ARGS}
+  BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h
+)
 configure_file(pcms/configuration.h.in pcms/configuration.h)
 list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.h)
 
@@ -33,6 +51,7 @@ set_target_properties(
   core
 )
 add_library(pcms::core ALIAS pcms_core)
+add_dependencies(pcms_core pcms_version_header)
 target_compile_features(pcms_core PUBLIC cxx_std_20)
 target_link_libraries(
   pcms_core PUBLIC redev::redev

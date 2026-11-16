@@ -12,6 +12,18 @@ on:
   workflow_dispatch:
 
 jobs:
+  version-tests:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install version test dependencies
+      run: python -m pip install pytest 'scikit-build-core>=0.10' 'setuptools-scm>=9'
+    - name: Test version generation and package metadata
+      run: python -m pytest -v test/versioning
+
   test-build:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -89,6 +101,9 @@ jobs:
         pip3 install numpy pytest
 
     - uses: actions/checkout@v4
+      with:
+        # full history and tags, so the version is derived from git describe
+        fetch-depth: 0
 
     - name: build Catch2
       uses: ./.github/actions/install-repo
@@ -272,6 +287,8 @@ jobs:
         repo-path: 'SCOREC/pcms'
         repo-ref: ''
         cache: false
+        # full history and tags, so the version is derived from git describe
+        fetch-depth: 0
         options: '-DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
                   -DCMAKE_C_COMPILER=`which mpicc`
                   -DCMAKE_CXX_COMPILER=`which mpicxx`

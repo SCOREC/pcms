@@ -1,11 +1,18 @@
 #pragma once
 
-#define PCMS_VERSION_MAJOR @CMAKE_PROJECT_VERSION_MAJOR@
-#define PCMS_VERSION_MINOR @CMAKE_PROJECT_VERSION_MINOR@
-#define PCMS_VERSION_PATCH @CMAKE_PROJECT_VERSION_PATCH@
+#define PCMS_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define PCMS_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define PCMS_VERSION_PATCH @PROJECT_VERSION_PATCH@
 
 namespace pcms {
-  const char* pcms_version() {
-    return "@CMAKE_PROJECT_VERSION@";
+  // PEP 440 version of this build: "0.3.0" at a release tag,
+  // "0.3.1.dev511+g8a9fa572" for a development build.
+  inline const char* pcms_version() {
+    return "@PCMS_VERSION_STRING@";
+  }
+  // Full git commit hash of this build, or "unknown" when built without git
+  // history.
+  inline const char* pcms_git_revision() {
+    return "@PCMS_GIT_REVISION@";
   }
 }

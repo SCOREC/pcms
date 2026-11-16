@@ -3,6 +3,7 @@
 import re
 import shutil
 import subprocess
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import pytest
@@ -48,10 +49,15 @@ def test_dev_version_names_the_git_revision():
     assert pcms.__git_revision__.startswith(match["hash"])
 
 
-def test_unknown_revision_uses_project_version():
+def test_unknown_revision_uses_distribution_or_project_version():
     if pcms.__git_revision__ != "unknown":
         pytest.skip("built from a git checkout")
-    assert pcms.__version__ == _project_version()
+    try:
+        expected = version("pcms")
+    except PackageNotFoundError:
+        # Direct CMake builds without Git history use project(VERSION).
+        expected = _project_version()
+    assert pcms.__version__ == expected
 
 
 @pytest.mark.skipif(shutil.which("git") is None

@@ -111,7 +111,7 @@ FieldVariant PolynomialReconstructionFunctionSpace::CreateFieldImpl(
       "PolynomialReconstructionFunctionSpace::CreateField: requires "
       "SimpleFieldData<double>");
   }
-  if (fd->GetDOFAccess()->GetOwnedValues().size() !=
+  if (fd->GetDOFAccess()->GetValues().size() !=
       detail::ExpectedFlatFieldDataSize(*layout_)) {
     throw pcms_error(
       "PolynomialReconstructionFunctionSpace::CreateField: field data size "

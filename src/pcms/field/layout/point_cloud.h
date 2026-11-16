@@ -22,7 +22,7 @@ public:
 
   int GetNumComponents() const override;
   // nodes for standard lagrange FEM
-  LO GetNumOwnedDofHolder() const override;
+  LO GetNumDofHolder() const override;
   GO GetNumGlobalDofHolder() const override;
 
   Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override;

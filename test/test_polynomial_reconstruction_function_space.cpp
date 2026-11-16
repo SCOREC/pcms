@@ -42,7 +42,7 @@ TEST_CASE(
   auto layout = factory->GetLayout();
 
   REQUIRE(layout->GetNumComponents() == 1);
-  REQUIRE(layout->GetNumOwnedDofHolder() == 4);
+  REQUIRE(layout->GetNumDofHolder() == 4);
   REQUIRE(layout->GetNumGlobalDofHolder() == 4);
   REQUIRE_FALSE(layout->IsDistributed());
 
@@ -114,7 +114,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
   auto point_cloud_layout =
     dynamic_cast<const pcms::PointCloudLayout*>(&field.GetLayout());
   REQUIRE(point_cloud_layout != nullptr);
-  REQUIRE(point_cloud_layout->GetNumOwnedDofHolder() == 4);
+  REQUIRE(point_cloud_layout->GetNumDofHolder() == 4);
 
   std::vector<Real> data{9.0, 10.0, 11.0, 12.0};
   Rank2View<const Real, HostMemorySpace> data_view(
@@ -144,8 +144,8 @@ TEST_CASE("Different layouts on the same mesh report SameEntities")
   REQUIRE(lagrange_disc != nullptr);
   REQUIRE(nodal_disc->SameEntities(*lagrange_disc));
 
-  REQUIRE(nodal->GetLayout()->GetNumOwnedDofHolder() == mesh.nfaces());
-  REQUIRE(lagrange->GetLayout()->GetNumOwnedDofHolder() == mesh.nverts());
+  REQUIRE(nodal->GetLayout()->GetNumDofHolder() == mesh.nfaces());
+  REQUIRE(lagrange->GetLayout()->GetNumDofHolder() == mesh.nverts());
 
   REQUIRE(nodal_disc->GetNumEntities(pcms::Face) == mesh.nfaces());
   REQUIRE(lagrange_disc->GetNumEntities(pcms::Vertex) == mesh.nverts());

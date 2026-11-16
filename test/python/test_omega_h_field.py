@@ -30,13 +30,13 @@ class TestOmegaHField:
         field = factory.create_function()
 
         assert field.get_layout().get_num_components() == num_components
-        assert field.get_layout().get_num_owned_dof_holder() > 0
+        assert field.get_layout().get_num_dof_holder() > 0
 
         coords = field.get_layout().get_dof_holder_coordinates().get_values()
-        assert coords.shape[0] == field.get_layout().get_num_owned_dof_holder()
+        assert coords.shape[0] == field.get_layout().get_num_dof_holder()
         assert coords.shape[1] == dim
 
-        ndata = field.get_layout().get_num_owned_dof_holder() * num_components
+        ndata = field.get_layout().get_num_dof_holder() * num_components
         test_data = np.arange(ndata, dtype=np.float64).reshape(
             -1, num_components)
         expected_data = test_data.copy()
@@ -62,9 +62,9 @@ class TestOmegaHField:
         target = target_space.create_function()
 
         coords = source.get_layout().get_dof_holder_coordinates().get_values()
-        num_owned = source.get_layout().get_num_owned_dof_holder()
-        source_data = np.zeros((num_owned, 1), dtype=np.float64)
-        for i in range(num_owned):
+        num_local = source.get_layout().get_num_dof_holder()
+        source_data = np.zeros((num_local, 1), dtype=np.float64)
+        for i in range(num_local):
             source_data[i, 0] = np.sum(coords[i, :dim])
         source.set_dof_holder_data(source_data)
 
@@ -86,14 +86,14 @@ class TestOmegaHField:
 
         mesh_coords = mesh.coords()
         num_verts = mesh.nverts()
-        num_owned = field.get_layout().get_num_owned_dof_holder()
-        ndata = num_owned * num_components
+        num_local = field.get_layout().get_num_dof_holder()
+        ndata = num_local * num_components
 
         def test_func(x, y, z, component):
             return np.sin(5.0 * x * y) + float(component)
 
         test_data = np.zeros(ndata, dtype=np.float64)
-        for i in range(min(num_verts, num_owned)):
+        for i in range(min(num_verts, num_local)):
             x = mesh_coords[i * dim + 0] if dim >= 1 else 0.0
             y = mesh_coords[i * dim + 1] if dim >= 2 else 0.0
             z = mesh_coords[i * dim + 2] if dim >= 3 else 0.0
@@ -101,13 +101,13 @@ class TestOmegaHField:
                 idx = i * num_components + c
                 test_data[idx] = test_func(x, y, z, c)
 
-        if order == 2 and num_owned > num_verts:
-            for i in range(num_verts, num_owned):
+        if order == 2 and num_local > num_verts:
+            for i in range(num_verts, num_local):
                 for c in range(num_components):
                     idx = i * num_components + c
                     test_data[idx] = float(c) + 0.5
 
-        field.set_dof_holder_data(test_data.reshape(num_owned, num_components))
+        field.set_dof_holder_data(test_data.reshape(num_local, num_components))
 
         if dim == 2:
             eval_coords = np.array([

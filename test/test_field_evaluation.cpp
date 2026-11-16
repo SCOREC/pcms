@@ -72,7 +72,8 @@ TEST_CASE("evaluate quadratic 2d meshfields_field")
 // per entity dimension in the same block order the layout stores:
 //   dim 0 (vertex) holders -> the vertex's own coordinate,
 //   dim 1 (edge)   holders -> the midpoint of the edge's two endpoint vertices.
-// Returns a flat node-major vector matching GetDOFHolderCoordinates() layout.
+// Returns a flat node-major vector matching GetDOFHolderCoordinates()
+// layout.
 static std::vector<Real> ComputeManualHolderCoords(
   Omega_h::Mesh& mesh, const std::array<int, 4>& nodes_per_dim)
 {

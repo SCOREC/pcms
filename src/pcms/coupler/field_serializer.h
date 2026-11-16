@@ -13,7 +13,7 @@ namespace pcms
 // Packs a field's owned values into, and unpacks them from, an exchange
 // buffer, through the field's DOFAccess. Any field with DOFAccess is
 // exchanged this way. Backends that need extra work on receive (e.g.,
-// synchronizing replicas) do it in DOFAccess::SetOwnedValues.
+// synchronizing replicas) do it in DOFAccess::SetValues.
 template <typename T>
 class FieldSerializer
 {
@@ -21,6 +21,7 @@ public:
   int Serialize(const Field<T>& field, Rank1View<T, HostMemorySpace> buffer,
                 Rank1View<const LO, HostMemorySpace> permutation) const
   {
+    // Only owned (rank-exclusive) DOF holders are serialized.
     const auto data = field.GetDOFHolderDataHost().GetValues();
     if (buffer.size() > 0) {
       const LO num_dof = static_cast<LO>(data.extent(0));
@@ -40,15 +41,14 @@ public:
                    Rank1View<const LO, HostMemorySpace> permutation) const
   {
     const auto& layout = field.GetLayout();
-    const LO num_dof = layout.GetNumOwnedDofHolder();
+    const LO num_dof = layout.GetNumDofHolder();
     const LO num_comp = layout.GetNumComponents();
-    // We initialize with local data so that
-    // data that doesn't get received from deserialized
-    // doesn't get zeroed out. Long term FIXME
+    // We initialize with the current data so that data that doesn't get
+    // received from deserialize doesn't get zeroed out. Long term FIXME
     // is to make Get/SetData operate over only part of the
     // arrays
     const auto current = field.GetDOFHolderDataHost().GetValues();
-    Kokkos::View<T*, HostMemorySpace> sorted("sorted", layout.OwnedSize());
+    Kokkos::View<T*, HostMemorySpace> sorted("sorted", layout.Size());
     for (LO i = 0; i < num_dof; ++i) {
       for (LO c = 0; c < num_comp; ++c) {
         sorted[i * num_comp + c] = current(i, c);

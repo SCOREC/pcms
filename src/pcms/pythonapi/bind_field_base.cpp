@@ -59,7 +59,8 @@ void bind_create_field_module(py::module& m)
   py::class_<FieldLayout, std::shared_ptr<FieldLayout>>(
     m, "FieldLayout", "How a field's DOF holders are laid out")
     .def("get_num_components", &FieldLayout::GetNumComponents)
-    .def("get_num_owned_dof_holder", &FieldLayout::GetNumOwnedDofHolder)
+    .def("get_num_dof_holder", &FieldLayout::GetNumDofHolder,
+         "Number of DOF holders this rank owns")
     .def("get_num_global_dof_holder", &FieldLayout::GetNumGlobalDofHolder)
     .def("get_dimension", &FieldLayout::GetDimension)
     .def("is_distributed", &FieldLayout::IsDistributed)
@@ -75,7 +76,7 @@ void bind_create_field_module(py::module& m)
         return ToPyCoordinateView(
           self.cast<const FieldLayout&>().GetDOFHolderCoordinates(), self);
       },
-      "The DOF-holder coordinates (num_dof_holders × dim), read-only");
+      "The owned DOF-holder coordinates (num_dof_holders × dim), read-only");
 
   py::class_<FieldData<Real>>(m, "FieldData", "A field's stored values")
     .def("get_value_type", &FieldData<Real>::GetValueType)
@@ -121,7 +122,7 @@ void bind_create_field_module(py::module& m)
       "set_dof_holder_data_unchecked",
       [](Field<Real>& self, const NumpyInput<Real>& data) {
         const auto& layout = self.GetLayout();
-        const LO num_dof_holders = layout.GetNumOwnedDofHolder();
+        const LO num_dof_holders = layout.GetNumDofHolder();
         auto view =
           NumpyToHostComponentView<Real>(data, layout.GetNumComponents());
         if (view.extent(0) != static_cast<size_t>(num_dof_holders)) {
@@ -135,7 +136,11 @@ void bind_create_field_module(py::module& m)
       py::arg("data"),
       "Set the DOF-holder values without checking their basis (the shape is "
       "still checked). A 1D array (num_dof_holders,) is accepted when the "
-      "field has one component.");
+      "field has one component.")
+    .def(
+      "synchronize", [](Field<Real>& self) { self.Synchronize(); },
+      "Bring the copies of DOF holders other ranks own (e.g. Omega_h ghosts) "
+      "up to date with their owners' values");
 
   py::class_<Function<Real>, Field<Real>>(
     m, "Function", "A Field that knows its FunctionSpace")
@@ -201,6 +206,9 @@ void bind_create_field_module(py::module& m)
       },
       py::arg("name") = "", py::arg("variance") = values::Scalar,
       py::arg("system") = py::none(), py::arg("scaling") = py::none(),
+      // The function refers to the space's mesh (an Omega_h function keeps a
+      // tag on it), so the space, which keeps the mesh alive, outlives it.
+      py::keep_alive<0, 1>(),
       "Create a Function in this space. Vector and tensor values are in "
       "`system`'s basis (default: this space's coordinate system), with "
       "`scaling` required when that system admits both scalings.")

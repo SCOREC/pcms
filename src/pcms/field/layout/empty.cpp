@@ -56,7 +56,7 @@ int EmptyFieldLayout::GetNumComponents() const
   return num_components_;
 }
 
-LO EmptyFieldLayout::GetNumOwnedDofHolder() const
+LO EmptyFieldLayout::GetNumDofHolder() const
 {
   return 0;
 }

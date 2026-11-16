@@ -36,7 +36,7 @@ TEST_CASE("OmegaHLagrangeLayout order-1 properties")
 
   REQUIRE(layout.GetOrder() == 1);
   REQUIRE(layout.GetNumComponents() == 2);
-  REQUIRE(layout.GetNumOwnedDofHolder() == mesh.nents(0));
+  REQUIRE(layout.GetNumDofHolder() == mesh.nents(0));
   REQUIRE(layout.GetNumGlobalDofHolder() == mesh.nglobal_ents(0));
   REQUIRE(layout.IsDistributed()); // always true for Omega_h mesh layouts
 
@@ -70,7 +70,7 @@ TEST_CASE("OmegaHLagrangeLayout order-0 properties")
 
   REQUIRE(layout.GetOrder() == 0);
   REQUIRE(layout.GetNumComponents() == 1);
-  REQUIRE(layout.GetNumOwnedDofHolder() == mesh.nelems());
+  REQUIRE(layout.GetNumDofHolder() == mesh.nelems());
   REQUIRE(layout.GetNumGlobalDofHolder() == mesh.nglobal_ents(mesh.dim()));
 
   // DOF holder coordinates should match element centroids
@@ -130,7 +130,7 @@ TEST_CASE("OmegaHLagrangeField order-1: set/get DOF data round-trip")
     mesh, 1, 1, pcms::csys::Cartesian::Deferred());
   auto field = factory->CreateFunction<Real>();
 
-  int n = factory->GetLayout()->GetNumOwnedDofHolder();
+  int n = factory->GetLayout()->GetNumDofHolder();
   std::vector<Real> data(n);
   for (int i = 0; i < n; ++i)
     data[i] = static_cast<Real>(i);
@@ -154,7 +154,7 @@ TEST_CASE("Field checked writes validate the view shape, not just total size")
     mesh, 1, 1, pcms::csys::Cartesian::Deferred());
   auto field = factory->CreateFunction<Real>();
 
-  const int n = factory->GetLayout()->GetNumOwnedDofHolder();
+  const int n = factory->GetLayout()->GetNumDofHolder();
   std::vector<Real> data(static_cast<size_t>(n), 1.0);
   const auto& basis = field.GetData().GetValueBasis();
 
@@ -235,7 +235,7 @@ TEST_CASE("OmegaHLagrangeField order-0: set/get DOF data round-trip")
     mesh, 0, 1, pcms::csys::Cartesian::Deferred());
   auto field = factory->CreateFunction<Real>();
 
-  int n = factory->GetLayout()->GetNumOwnedDofHolder();
+  int n = factory->GetLayout()->GetNumDofHolder();
   std::vector<Real> data(n, 3.14);
   pcms::Rank2View<const Real, pcms::HostMemorySpace> view(data.data(), n, 1);
   field.SetDOFHolderDataHost(

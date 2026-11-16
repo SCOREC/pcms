@@ -56,10 +56,15 @@ public:
                                          request.coords.GetValues());
   }
 
-  void Evaluate(const pcms::Field<Real>& field,
-                pcms::ValueView<Real, DeviceMemorySpace> values) const override
+  [[nodiscard]] LO NumPoints() const override
   {
-    CheckEvaluateWriteTag("MockEvaluator", field, values);
+    return static_cast<LO>(points_.extent(0));
+  }
+
+  void EvaluateImpl(
+    const pcms::Field<Real>& field,
+    pcms::ValueView<Real, DeviceMemorySpace> values) const override
+  {
     if (dynamic_cast<const MockData*>(&field.GetData()) == nullptr) {
       throw pcms::pcms_error("MockEvaluator: not a field of this source");
     }
@@ -182,7 +187,7 @@ TEST_CASE("Functions of an evaluation-only space hold no values")
 {
   auto source = MockSpace::Create(1);
   auto f = source->CreateFunction<Real>("f", std::make_unique<MockData>());
-  REQUIRE(f.GetLayout().GetNumOwnedDofHolder() == 0);
+  REQUIRE(f.GetLayout().GetNumDofHolder() == 0);
   REQUIRE_THROWS_WITH(f.GetDOFHolderData(), ContainsSubstring("no DOFAccess"));
   REQUIRE_THROWS_WITH(source->CreateFunction<Real>("default"),
                       ContainsSubstring("naming the quantity"));

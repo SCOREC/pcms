@@ -17,15 +17,22 @@ enum class LocalizationPath
 };
 
 // Returns the unique entity dimension represented by all DOF holders in the
-// layout when its offsets contain exactly one populated entity block and the
-// full DOF-holder coordinate set matches that discretization entity count.
-// Otherwise, returns std::nullopt.
+// layout: the layout's GetDOFHolderEntityDim() when it has one DOF holder per
+// local mesh entity of a dimension, or else, for a layout without ghosts, the
+// dimension of its only populated entity block when its DOF-holder count
+// matches that discretization entity count. Otherwise, returns std::nullopt.
 inline std::optional<int> GetUniformDofHolderEntityDim(
   const FieldLayout& layout)
 {
   auto disc = layout.GetDiscretization();
   if (disc == nullptr) {
     return std::nullopt;
+  }
+
+  // A layout with one DOF holder per local mesh entity of a dimension.
+  if (const int mesh_entity_dim = layout.GetDOFHolderEntityDim();
+      mesh_entity_dim >= 0) {
+    return mesh_entity_dim;
   }
 
   const auto offsets = layout.GetEntOffsets();
@@ -44,8 +51,9 @@ inline std::optional<int> GetUniformDofHolderEntityDim(
     return std::nullopt;
   }
 
-  if (static_cast<LO>(layout.GetDOFHolderCoordinates().GetValues().extent(0)) !=
-      disc->GetNumEntities(*entity_dim)) {
+  // Only a layout without ghosts covers exactly its discretization's entities.
+  if (layout.HasGhosts() ||
+      layout.GetNumDofHolder() != disc->GetNumEntities(*entity_dim)) {
     return std::nullopt;
   }
 
@@ -71,9 +79,12 @@ inline LocalizationPath SelectLocalizationPath(
 
   auto target_disc = target_layout->GetDiscretization();
   auto target_entity_dim = GetUniformDofHolderEntityDim(*target_layout);
-  if (source_entity_dim.has_value() && *source_entity_dim == Face &&
-      target_entity_dim.has_value() && *target_entity_dim == Vertex &&
-      target_disc != nullptr && source_disc->GetDimension() == 2 &&
+  // The same-mesh shortcut answers for every local target vertex, so it
+  // applies only when those are exactly the owned query points.
+  if (!target_layout->HasGhosts() && source_entity_dim.has_value() &&
+      *source_entity_dim == Face && target_entity_dim.has_value() &&
+      *target_entity_dim == Vertex && target_disc != nullptr &&
+      source_disc->GetDimension() == 2 &&
       source_disc->SameEntities(*target_disc)) {
     return LocalizationPath::CentroidToVertexAdjacencySearch;
   }

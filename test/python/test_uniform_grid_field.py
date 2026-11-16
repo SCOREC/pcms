@@ -13,7 +13,7 @@ def _coordinates(field):
 
 
 def _num_dof_holders(field):
-    return field.get_layout().get_num_owned_dof_holder()
+    return field.get_layout().get_num_dof_holder()
 
 
 class TestUniformGridField:

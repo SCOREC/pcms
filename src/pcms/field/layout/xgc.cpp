@@ -89,7 +89,7 @@ int XGCFieldLayout::GetNumComponents() const
   return 1;
 }
 
-LO XGCFieldLayout::GetNumOwnedDofHolder() const
+LO XGCFieldLayout::GetNumDofHolder() const
 {
   return num_plane_nodes_;
 }

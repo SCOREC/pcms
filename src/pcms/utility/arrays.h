@@ -399,6 +399,29 @@ void CopyDeviceRank2ViewToDeviceView(Kokkos::View<T**, DeviceMemorySpace> dest,
     });
 }
 
+// Inverse of CopyDeviceRank2ViewToDeviceView(Kokkos::View<T*,...>, Rank2View):
+// scatter a flat node-major device View back into a [dof][comp] device
+// Kokkos::View<T**,...>. T is deduced from the (non-alias) Kokkos::View
+// destination parameter, since alias-template argument deduction through
+// Rank2View's multi-level alias chain is not reliable. Uses 2D indexing on
+// the destination so the result is correct regardless of its layout.
+template <typename T>
+void CopyDeviceViewToRank2View(Kokkos::View<T**, DeviceMemorySpace> dest,
+                               Kokkos::View<const T*, DeviceMemorySpace> src)
+{
+  const size_t num_dof = dest.extent(0);
+  const size_t num_comp = dest.extent(1);
+  if (src.extent(0) != num_dof * num_comp) {
+    throw pcms_error("CopyDeviceViewToRank2View: size mismatch");
+  }
+  Kokkos::parallel_for(
+    "CopyDeviceViewToRank2View", num_dof, KOKKOS_LAMBDA(LO i) {
+      for (size_t c = 0; c < num_comp; ++c) {
+        dest(i, c) = src(i * num_comp + c);
+      }
+    });
+}
+
 // Host analogue: copy a [dof][comp] host Rank2View into a flat node-major
 // device View. The host Rank2View is layout_right (contiguous node-major), so
 // we alias its storage with an unmanaged view and deep_copy straight to device.
@@ -500,6 +523,21 @@ void CopyRank1ViewToDevice(Rank1View<T, DeviceMemorySpace> dest,
   Kokkos::parallel_for(
     "CopyRank1ViewToDevice", src.size(),
     KOKKOS_LAMBDA(LO i) { dest(i) = src_tmp_d(i); });
+}
+
+// dest(rows(i), c) = src(i, c) for every row i of src, on the device.
+template <typename T>
+void ScatterRows(Rank2View<const T, DeviceMemorySpace> src,
+                 Kokkos::View<const LO*, DeviceMemorySpace> rows,
+                 Rank2View<T, DeviceMemorySpace> dest)
+{
+  const size_t num_rows = src.extent(0);
+  const size_t num_comp = src.extent(1);
+  Kokkos::parallel_for(
+    "pcms::ScatterRows",
+    Kokkos::MDRangePolicy<DeviceMemorySpace::execution_space, Kokkos::Rank<2>>(
+      {0, 0}, {num_rows, num_comp}),
+    KOKKOS_LAMBDA(size_t i, size_t c) { dest(rows(i), c) = src(i, c); });
 }
 
 } // namespace pcms

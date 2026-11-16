@@ -15,6 +15,9 @@ struct OverlapMask
   Kokkos::View<bool*, HostMemorySpace> is_overlap_;
   std::function<int8_t(int, int)> in_overlap_func_;
 
+  // Masks are indexed by owned DOF holder, in owned order, matching the
+  // owned-indexed exchange plan.
+
   // Default constructor: all DOF holders are in overlap
   OverlapMask(size_t size) : is_overlap_("overlap_info", size)
   {
@@ -30,7 +33,7 @@ struct OverlapMask
   }
 
   // Construct from a precomputed per-DOF-holder host mask (e.g. an MFEM
-  // subdomain selected by element attribute). Indexed by local DOF holder.
+  // subdomain selected by element attribute), one entry per owned DOF holder.
   OverlapMask(size_t size, Kokkos::View<bool*, HostMemorySpace> is_overlap_host)
     : is_overlap_("overlap_info", size)
   {
@@ -38,7 +41,7 @@ struct OverlapMask
     Kokkos::deep_copy(is_overlap_, is_overlap_host);
   }
 
-  // Construct from Omega_h host array
+  // Construct from Omega_h host array, one entry per owned DOF holder
   OverlapMask(size_t size, Omega_h::HostRead<Omega_h::I8> is_overlap_host)
     : is_overlap_("overlap_info", size)
   {
@@ -47,7 +50,7 @@ struct OverlapMask
     }
   }
 
-  // Construct from Omega_h device array
+  // Construct from Omega_h device array, one entry per owned DOF holder
   OverlapMask(size_t size, Omega_h::Read<Omega_h::I8> is_overlap_device)
     : is_overlap_("overlap_info", size)
   {
@@ -57,11 +60,14 @@ struct OverlapMask
     }
   }
 
-  // Get the mask, evaluating the function against the layout if one was given
+  // Get the mask, one entry per owned DOF holder, evaluating the function
+  // against the layout's classification if one was given.
   Kokkos::View<const bool*, HostMemorySpace> GetMask(
     const FieldLayout& layout) const
   {
     if (!in_overlap_func_) {
+      PCMS_ALWAYS_ASSERT(is_overlap_.extent(0) ==
+                         static_cast<size_t>(layout.GetNumDofHolder()));
       return is_overlap_;
     }
     auto class_dims = layout.GetDOFHolderClassificationDimensionsHost();

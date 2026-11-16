@@ -23,7 +23,7 @@ public:
   //
   // XGC keeps a full copy of a plane's data on every rank of the plane, and
   // only the plane's root rank (rank 0 of plane_comm) exchanges it. When
-  // plane_comm is given, SetOwnedValues broadcasts the root's values to the
+  // plane_comm is given, SetValues broadcasts the root's values to the
   // other ranks of the plane, so every rank of plane_comm must call it.
   XGCFieldData(std::shared_ptr<const XGCFieldLayout> layout, ValueBasis basis,
                Rank1View<T, HostMemorySpace> data,
@@ -59,7 +59,7 @@ public:
   const DOFAccess<T>* GetDOFAccess() const noexcept override { return this; }
   DOFAccess<T>* GetDOFAccess() noexcept override { return this; }
 
-  Rank2View<const T, DeviceMemorySpace> GetOwnedValues() const override
+  Rank2View<const T, DeviceMemorySpace> GetValues() const override
   {
     EnsureDeviceStaging();
     const auto nc = layout_->GetNumComponents();
@@ -70,7 +70,7 @@ public:
     return MakeConstRank2View(device_data_);
   }
 
-  void SetOwnedValues(Rank2View<const T, DeviceMemorySpace> values) override
+  void SetValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
     EnsureDeviceStaging();
     CopyDeviceRank2ViewToDeviceView(device_data_, values);

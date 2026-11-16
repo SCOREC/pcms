@@ -95,7 +95,7 @@ int PointCloudLayout::GetNumComponents() const
   return components_;
 }
 
-LO PointCloudLayout::GetNumOwnedDofHolder() const
+LO PointCloudLayout::GetNumDofHolder() const
 {
   return coords_.extent(0);
 }

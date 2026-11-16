@@ -14,7 +14,8 @@
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/localization/point_search.h"
-#include "pcms/field/field.h" // OutOfBoundsMode
+#include "pcms/field/field.h"
+#include "pcms/field/out_of_bounds_policy.h"
 
 namespace pcms
 {

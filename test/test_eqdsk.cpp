@@ -188,7 +188,7 @@ TEST_CASE("EQDSKData with SplineFunctionSpace")
 
     auto [spline_space, psi_field] = pcms::MakeEQDSKField(eqdsk_data);
     auto layout = spline_space->GetLayout();
-    const int layout_size = layout->OwnedSize();
+    const int layout_size = layout->Size();
     const int psizr_size = static_cast<int>(eqdsk_data.PSIZR.extent(0));
 
     REQUIRE(layout_size == psizr_size);

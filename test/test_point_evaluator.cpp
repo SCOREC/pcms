@@ -405,7 +405,7 @@ TEST_CASE("SimpleFieldData: set and get DOF holder data round-trip")
   auto field_data = factory->CreateFunction<Real>();
 
   auto& layout = *factory->GetLayout();
-  int n = layout.GetNumOwnedDofHolder();
+  int n = layout.GetNumDofHolder();
   REQUIRE(n > 0);
 
   // Write sequential values
@@ -547,7 +547,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
   auto field = factory->CreateFunction<Real>();
   auto layout = factory->GetLayout();
   REQUIRE(layout->GetNumComponents() == 2);
-  int num_dof = layout->GetNumOwnedDofHolder();
+  int num_dof = layout->GetNumDofHolder();
 
   // Component 0: f(x,y)=x+y, Component 1: f(x,y)=2x-y
   auto dof_coords_mdspan = layout->GetDOFHolderCoordinates().GetValues();
@@ -602,7 +602,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
   auto field = factory->CreateFunction<Real>();
   auto layout = factory->GetLayout();
   REQUIRE(layout->GetNumComponents() == 3);
-  int num_dof = layout->GetNumOwnedDofHolder();
+  int num_dof = layout->GetNumDofHolder();
 
   // Component 0: x, Component 1: y, Component 2: x*y
   auto dof_coords_mdspan = layout->GetDOFHolderCoordinates().GetValues();

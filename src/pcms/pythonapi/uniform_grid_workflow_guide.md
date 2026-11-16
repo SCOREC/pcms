@@ -115,7 +115,7 @@ Create a mask where each uniform grid vertex is marked as 1 (inside mesh) or 0 (
 ```python
 # Create binary mask indicating which vertices are inside the mesh
 mask_field = pcms.create_uniform_grid_binary_field(mesh, [4, 4])
-print(f"Created mask field with {mask_field.get_layout().get_num_owned_dof_holder()} vertices")
+print(f"Created mask field with {mask_field.get_layout().get_num_dof_holder()} vertices")
 ```
 
 **Accessing Values**:
@@ -144,7 +144,7 @@ omega_h_field = omega_h_factory.create_function()
 
 # Initialize field with f(x,y) = x + 2*y
 coords = omega_h_field.get_layout().get_dof_holder_coordinates().get_values()
-num_nodes = omega_h_field.get_layout().get_num_owned_dof_holder()
+num_nodes = omega_h_field.get_layout().get_num_dof_holder()
 omega_h_data = np.zeros(num_nodes)
 
 for i in range(num_nodes):
@@ -270,7 +270,7 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 - `space.create_function(name="", variance=values.Scalar, system=None, scaling=None)` - Create a real-valued `Function`; vector and tensor values are in `system`'s basis (default: the space's)
 - `field.get_layout()` - the field's `FieldLayout`
 - `field.get_data().get_value_basis()` - the basis the field's values are stored in
-- `field.get_layout().get_num_owned_dof_holder()` - Number of owned DOF holders (nodes/elements)
+- `field.get_layout().get_num_dof_holder()` - Number of owned DOF holders (nodes/elements)
 - `field.get_layout().get_num_components()` - Number of field components per DOF holder
 - `field.get_layout().get_dof_holder_coordinates()` - DOF holder coordinates as a `CoordinateView`
 - `field.get_dof_holder_data()` - Field values as a `ValueView` whose array (`.get_values()`, shape `(num_dof_holders, num_components)`) is read-only and valid until the field is next modified (use `.copy()` to keep values)
@@ -332,7 +332,7 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 ### Grid Properties
 - `grid.get_num_cells()` - Total number of cells
 - `grid.divisions` - Cell divisions in each dimension
-- `field.get_layout().get_num_owned_dof_holder()` - Total number of field DOF holders
+- `field.get_layout().get_num_dof_holder()` - Total number of field DOF holders
 - `field.get_layout().get_dof_holder_coordinates().get_values()` - DOF holder coordinates
 
 ---

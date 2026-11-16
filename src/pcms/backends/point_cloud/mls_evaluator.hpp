@@ -24,7 +24,7 @@ namespace detail
 /// pointers. (A free function: CUDA does not allow device lambdas in
 /// constructors or non-public member functions.)
 inline Kokkos::View<bool*, DeviceMemorySpace> HasSupports(
-  const Omega_h::LOs& supports_ptr, LO n)
+  const Kokkos::View<const LO*, DeviceMemorySpace>& supports_ptr, LO n)
 {
   Kokkos::View<bool*, DeviceMemorySpace> found(
     Kokkos::view_alloc(Kokkos::WithoutInitializing, "mls_found"), n);

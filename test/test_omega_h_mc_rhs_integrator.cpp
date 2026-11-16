@@ -16,6 +16,7 @@
 #include "field_test_utils.hpp"
 #include <petscksp.h>
 #include <vector>
+#include "pcms/backends/omega_h/omega_h.hpp"
 
 // ---------------------------------------------------------------------------
 // Monte Carlo RHS integrator
@@ -108,7 +109,7 @@ TEST_CASE("OmegaHControlVariateProjection: exact for fields in the target "
   const auto values =
     pcms::FlattenToRank1View(target_field.GetDOFHolderDataHost().GetValues());
   const auto coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 2));
+    pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
   REQUIRE(static_cast<Omega_h::LO>(values.size()) == target_mesh.nverts());
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
     const double expected = 3.0 * coords_h(i, 0) - coords_h(i, 1) + 0.25;
@@ -351,7 +352,7 @@ TEST_CASE("OmegaHControlVariateProjection through a coordinate map maps the "
   const auto values =
     pcms::FlattenToRank1View(target_field.GetDOFHolderDataHost().GetValues());
   const auto coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 2));
+    pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
     const double expected = 3.0 * coords_h(i, 1) - coords_h(i, 0) + 0.25;
     CAPTURE(i, expected, values[i]);

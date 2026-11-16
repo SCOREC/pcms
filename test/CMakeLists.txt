@@ -46,6 +46,13 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
              $<TARGET_FILE:test_distributed_field>)
   endif()
   add_exe(test_distributed_coupling)
+  if(PCMS_ENABLE_MESHFIELDS)
+    # distributed_test_utils.hpp includes the (private) MeshFields field data
+    foreach(t test_distributed_layout test_distributed_field
+              test_distributed_coupling)
+      target_link_libraries(${t} meshfields::meshfields)
+    endforeach()
+  endif()
   if(HOST_NPROC GREATER_EQUAL 2)
     mpi_test(test_distributed_coupling_2p 2
              $<TARGET_FILE:test_distributed_coupling>)

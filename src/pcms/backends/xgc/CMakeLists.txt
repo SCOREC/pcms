@@ -1,12 +1,14 @@
-# XGC backend.
+# XGC backend. Public header: include/pcms/backends/xgc/.
 
-# The XGC layout (with the reverse classification), field data and field
-# factory are part of pcms::field.
+# Layout (with the reverse classification), field data and field factory: part
+# of pcms::field.
 if(PCMS_ENABLE_XGC)
-  target_sources(pcms_field PRIVATE layout.cpp reverse_classification.cpp xgc.cpp)
   target_sources(
     pcms_field
+    PRIVATE layout.cpp reverse_classification.cpp xgc.cpp field_data.hpp
+            field_factory.hpp layout.hpp
     PUBLIC FILE_SET field TYPE HEADERS BASE_DIRS
-           ${CMAKE_CURRENT_SOURCE_DIR}/../.. ${PROJECT_SOURCE_DIR}/include/pcms FILES field_data.hpp
-           field_factory.hpp layout.hpp ../../../../include/pcms/backends/xgc/reverse_classification.hpp ../../../../include/pcms/backends/xgc/xgc.hpp)
+           ${PROJECT_SOURCE_DIR}/include/pcms FILES
+           ${PROJECT_SOURCE_DIR}/include/pcms/backends/xgc/reverse_classification.hpp
+           ${PROJECT_SOURCE_DIR}/include/pcms/backends/xgc/xgc.hpp)
 endif()

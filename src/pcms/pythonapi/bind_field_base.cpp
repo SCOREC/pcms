@@ -622,22 +622,6 @@ void bind_create_field_module(py::module& m)
     "Create a point-cloud geometry whose sites are the DOF holders of a "
     "layout; `neighbourhood` is its support search");
 
-  m.def(
-    "create_uniform_grid_from_mesh",
-    [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return CreateUniformGridFromMesh<2>(mesh, divisions);
-    },
-    py::arg("mesh"), py::arg("divisions"),
-    "Create a 2D uniform grid from an Omega_h mesh");
-
-  m.def(
-    "create_uniform_grid_from_mesh",
-    [](Omega_h::Mesh& mesh, const std::array<LO, 3>& divisions) {
-      return CreateUniformGridFromMesh<3>(mesh, divisions);
-    },
-    py::arg("mesh"), py::arg("divisions"),
-    "Create a 3D uniform grid from an Omega_h mesh");
-
   omega_h_module.def(
     "create_point_cloud_geometry",
     [](const Immutable<Geometry>& geometry, int entity_dim,
@@ -678,6 +662,24 @@ void bind_create_field_module(py::module& m)
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D vertex mask field indicating inside/outside mesh");
+
+  omega_h_module.def(
+    "create_uniform_grid_from_mesh",
+    [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
+      return pcms::backend::omega_h::CreateUniformGridFromMesh<2>(mesh,
+                                                                  divisions);
+    },
+    py::arg("mesh"), py::arg("divisions"),
+    "Create a 2D uniform grid from an Omega_h mesh");
+
+  omega_h_module.def(
+    "create_uniform_grid_from_mesh",
+    [](Omega_h::Mesh& mesh, const std::array<LO, 3>& divisions) {
+      return pcms::backend::omega_h::CreateUniformGridFromMesh<3>(mesh,
+                                                                  divisions);
+    },
+    py::arg("mesh"), py::arg("divisions"),
+    "Create a 3D uniform grid from an Omega_h mesh");
 }
 
 } // namespace pcms

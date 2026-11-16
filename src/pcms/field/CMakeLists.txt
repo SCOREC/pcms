@@ -53,11 +53,16 @@ add_library(pcms_field ${PCMS_FIELD_SOURCES})
 set_target_properties(pcms_field PROPERTIES
         OUTPUT_NAME pcmsfield
         EXPORT_NAME field)
-target_sources(pcms_field PUBLIC
-        FILE_SET field
-        TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
-        FILES ${PCMS_FIELD_HEADERS})
+# Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(PCMS_FIELD_HEADERS_PUBLIC ${PCMS_FIELD_HEADERS})
+list(FILTER PCMS_FIELD_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(PCMS_FIELD_HEADERS_PRIVATE ${PCMS_FIELD_HEADERS})
+list(FILTER PCMS_FIELD_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_field
+  PUBLIC FILE_SET field TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${PCMS_FIELD_HEADERS_PUBLIC}
+  PRIVATE ${PCMS_FIELD_HEADERS_PRIVATE})
 add_library(pcms::field ALIAS pcms_field)
 target_compile_features(pcms_field PUBLIC cxx_std_20)
 

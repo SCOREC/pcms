@@ -1,7 +1,10 @@
 #ifndef PCMS_GEOMETRY_SUPPORTS_HPP
 #define PCMS_GEOMETRY_SUPPORTS_HPP
 
-#include <Omega_h_array.hpp>
+#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/types.hpp"
+
+#include <Kokkos_Core.hpp>
 
 namespace pcms
 {
@@ -12,9 +15,9 @@ namespace pcms
 ///        found within the squared radius radii2[i].
 struct SupportResults
 {
-  Omega_h::LOs supports_ptr;
-  Omega_h::LOs supports_idx;
-  Omega_h::Write<Omega_h::Real> radii2;
+  Kokkos::View<const LO*, DeviceMemorySpace> supports_ptr;
+  Kokkos::View<const LO*, DeviceMemorySpace> supports_idx;
+  Kokkos::View<Real*, DeviceMemorySpace> radii2;
 };
 
 } // namespace pcms

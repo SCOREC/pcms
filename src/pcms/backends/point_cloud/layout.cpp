@@ -2,6 +2,7 @@
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/entity_types.hpp"
 #include <memory>
+#include <Omega_h_for.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
 
 namespace pcms

@@ -222,8 +222,8 @@ SupportResults BuildPointCloudSupports(const Omega_h::Reals& source_coords,
                                              source_coords, radii2});
   Kokkos::fence();
 
-  return SupportResults{Omega_h::LOs(support_ptr), Omega_h::LOs(supports_idx),
-                        radii2};
+  return SupportResults{Omega_h::LOs(support_ptr).view(),
+                        Omega_h::LOs(supports_idx).view(), radii2.view()};
 }
 
 } // namespace pcms

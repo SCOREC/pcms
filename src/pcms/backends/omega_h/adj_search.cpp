@@ -252,7 +252,8 @@ SupportResults searchNeighbors(
   adjBasedSearch(mesh, site_dim, target_coords, seed_dim, seeds, supports_ptr,
                  nSupports, supports_idx, radii2, false);
 
-  return SupportResults{read(supports_ptr), read(supports_idx), radii2};
+  return SupportResults{read(supports_ptr).view(), read(supports_idx).view(),
+                        radii2.view()};
 }
 
 } // namespace pcms

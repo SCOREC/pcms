@@ -42,6 +42,8 @@ target_include_directories(
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/../..>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(pcms_utility PUBLIC Kokkos::kokkos perfstubs)
+# assert.cpp reports the MPI rank; MPI is not part of the public interface
+target_link_libraries(pcms_utility PRIVATE MPI::MPI_CXX)
 if(PCMS_ENABLE_OMEGA_H)
     target_sources(pcms_utility PRIVATE mesh_geometry.cpp)
     target_link_libraries(pcms_utility PUBLIC Omega_h::omega_h)
@@ -54,11 +56,16 @@ set_target_properties(
 )
 
 ## export the library
-target_sources(pcms_utility PUBLIC
-        FILE_SET utilities
-        TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/../ ${PROJECT_SOURCE_DIR}/include/pcms
-        FILES ${PCMS_UTILITY_HEADERS})
+# Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(PCMS_UTILITY_HEADERS_PUBLIC ${PCMS_UTILITY_HEADERS})
+list(FILTER PCMS_UTILITY_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(PCMS_UTILITY_HEADERS_PRIVATE ${PCMS_UTILITY_HEADERS})
+list(FILTER PCMS_UTILITY_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_utility
+  PUBLIC FILE_SET utilities TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${PCMS_UTILITY_HEADERS_PUBLIC}
+  PRIVATE ${PCMS_UTILITY_HEADERS_PRIVATE})
 install(
         TARGETS pcms_utility
         EXPORT pcms_utility-targets

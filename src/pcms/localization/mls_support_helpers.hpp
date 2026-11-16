@@ -1,12 +1,12 @@
 #ifndef PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_H
 #define PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_H
 
+#include "pcms/geometry/supports.hpp"
+
 #include <Omega_h_array.hpp>
 
 namespace pcms
 {
-
-struct SupportResults;
 
 // Returns true when both the minimum and maximum support counts fall within
 // the requested range.

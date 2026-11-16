@@ -14,18 +14,23 @@ if(TARGET pcms::coupler)
            "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>" # this makes our
                                                                   # include path
                                                                   # pcms/capi
-           "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/pcms/capi>")
+           "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 
   set(CAPI_CORE_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/client.h
                    ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/kokkos.h)
   set_target_properties(
     pcms_capi_core PROPERTIES OUTPUT_NAME pcmscapicore
                EXPORT_NAME capi::core)
-  target_sources(pcms_capi_core PUBLIC
-          FILE_SET core
-          TYPE HEADERS
-          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
-          FILES ${CAPI_CORE_HEADERS})
+  # Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(CAPI_CORE_HEADERS_PUBLIC ${CAPI_CORE_HEADERS})
+list(FILTER CAPI_CORE_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(CAPI_CORE_HEADERS_PRIVATE ${CAPI_CORE_HEADERS})
+list(FILTER CAPI_CORE_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_capi_core
+  PUBLIC FILE_SET core TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${CAPI_CORE_HEADERS_PUBLIC}
+  PRIVATE ${CAPI_CORE_HEADERS_PRIVATE})
 endif()
 
 add_library(pcms_capi_transfer mesh.cpp interpolator.cpp kokkos.cpp)
@@ -35,7 +40,7 @@ target_include_directories(pcms_capi_transfer
         PUBLIC
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>" # this makes the module path pcms/capi
-        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/pcms/capi>")
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 
 set(CAPI_TRANSFER_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/interpolator.h
                      ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/mesh.h)
@@ -43,11 +48,16 @@ set(CAPI_TRANSFER_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi
 set_target_properties(pcms_capi_transfer
   PROPERTIES OUTPUT_NAME pcmscapitransfer
              EXPORT_NAME capi::transfer)
-target_sources(pcms_capi_transfer PUBLIC
-        FILE_SET transfer
-        TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/.. ${PROJECT_SOURCE_DIR}/include/pcms
-	FILES ${CAPI_TRANSFER_HEADERS})
+# Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(CAPI_TRANSFER_HEADERS_PUBLIC ${CAPI_TRANSFER_HEADERS})
+list(FILTER CAPI_TRANSFER_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(CAPI_TRANSFER_HEADERS_PRIVATE ${CAPI_TRANSFER_HEADERS})
+list(FILTER CAPI_TRANSFER_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_capi_transfer
+  PUBLIC FILE_SET transfer TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${CAPI_TRANSFER_HEADERS_PUBLIC}
+  PRIVATE ${CAPI_TRANSFER_HEADERS_PRIVATE})
 # high level interface target
 add_library(pcms_capi INTERFACE)
 add_library(pcms::capi ALIAS pcms_capi)

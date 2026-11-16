@@ -207,10 +207,16 @@ inline bool AreArraysEqualUnordered(
 inline void CheckSupportResultsEquivalent(const SupportResults& actual,
                                           const SupportResults& expected)
 {
-  auto actual_ptr = Omega_h::HostRead<Omega_h::LO>(actual.supports_ptr);
-  auto actual_idx = Omega_h::HostRead<Omega_h::LO>(actual.supports_idx);
-  auto expected_ptr = Omega_h::HostRead<Omega_h::LO>(expected.supports_ptr);
-  auto expected_idx = Omega_h::HostRead<Omega_h::LO>(expected.supports_idx);
+  auto to_host = [](const Kokkos::View<const LO*, DeviceMemorySpace>& v) {
+    Kokkos::View<LO*, DeviceMemorySpace> copy("supports", v.size());
+    Kokkos::deep_copy(copy, v);
+    return Omega_h::HostRead<Omega_h::LO>(
+      Omega_h::LOs(Omega_h::Write<Omega_h::LO>(copy)));
+  };
+  auto actual_ptr = to_host(actual.supports_ptr);
+  auto actual_idx = to_host(actual.supports_idx);
+  auto expected_ptr = to_host(expected.supports_ptr);
+  auto expected_idx = to_host(expected.supports_idx);
 
   REQUIRE(actual_ptr.size() == expected_ptr.size());
   REQUIRE(actual_idx.size() == expected_idx.size());

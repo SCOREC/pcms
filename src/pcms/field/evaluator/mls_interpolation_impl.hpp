@@ -457,6 +457,16 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
       int end_ptr = support.supports_ptr[league_rank + 1];
       int nsupports = end_ptr - start_ptr;
 
+      // A missing query has no MLS system to solve. All threads in this team
+      // take the same branch, before allocating scratch or entering the SVD.
+      // The point evaluator applies its missing-point policy afterwards.
+      if (nsupports == 0) {
+        if (team.team_rank() == 0) {
+          approx_target_values[league_rank] = 0.0;
+        }
+        return;
+      }
+
       //      Logger logger(0);
       //  local_source_point stores the coordinates of source supports of a
       //  given target

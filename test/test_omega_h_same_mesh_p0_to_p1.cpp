@@ -455,16 +455,33 @@ r3d::Polytope<2> FoldedPolygon()
   return poly;
 }
 
+// The traversal is host/device code, so its callback must be callable in both
+// spaces even when these tests invoke it on the host. Keep Catch assertions
+// outside the callback.
+template <int Dim>
+struct SumStarPieces
+{
+  double& sum;
+  int& pieces;
+
+  OMEGA_H_INLINE void operator()(
+    const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>&,
+    Omega_h::Real measure) const
+  {
+    sum += measure;
+    ++pieces;
+  }
+};
+
 template <int Dim>
 double StarDecompositionMeasure(const r3d::Polytope<Dim>& poly)
 {
   const double eps = PCMS_INTERSECTION_ABS_TOL +
                      PCMS_INTERSECTION_REL_TOL * std::fabs(r3d::measure(poly));
   double sum = 0.0;
+  int pieces = 0;
   pcms::detail::ForEachPolytopeStarSimplex<Dim>(
-    poly, eps,
-    [&](const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>&,
-        Omega_h::Real measure) { sum += measure; });
+    poly, eps, SumStarPieces<Dim>{sum, pieces});
   return sum;
 }
 
@@ -485,14 +502,11 @@ void RequireCleanSimplexDecomposition(const double* coords)
   r3d::init(poly, verts);
   const double measure = std::fabs(r3d::measure(poly));
   int pieces = 0;
+  double sum = 0.0;
   pcms::detail::ForEachPolytopeStarSimplex<Dim>(
-    poly, 0.0,
-    [&](const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>&,
-        Omega_h::Real piece) {
-      REQUIRE(piece == Catch::Approx(measure).epsilon(1e-12));
-      ++pieces;
-    });
+    poly, 0.0, SumStarPieces<Dim>{sum, pieces});
   REQUIRE(pieces == 1);
+  REQUIRE(sum == Catch::Approx(measure).epsilon(1e-12));
 }
 
 } // namespace

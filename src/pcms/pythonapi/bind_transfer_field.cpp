@@ -135,12 +135,6 @@ void bind_transfer_field_module(py::module& m)
          "intersection, quadrature setup, and mass-matrix factorization happen "
          "here and are cached; call apply() repeatedly.");
 
-  // Sampling strategy for the Monte Carlo RHS integrator.
-  py::enum_<MonteCarloSampling>(m, "MonteCarloSampling")
-    .value("UniformRandom", MonteCarloSampling::UniformRandom,
-           "Independent pseudo-random uniform draws per element")
-    .export_values();
-
   // Variance-reduced Monte Carlo Galerkin projection. The source field is
   // first interpolated onto the target space as a control variate; only the
   // residual is integrated stochastically, so sampling noise is small (and
@@ -149,15 +143,13 @@ void bind_transfer_field_module(py::module& m)
     m, "OmegaHControlVariateProjection")
     .def(py::init([](const FunctionSpace& source_space,
                      const FunctionSpace& target_space, int samples_per_element,
-                     MonteCarloSampling sampling, std::uint64_t seed,
-                     MassMatrixType mass_matrix_type) {
+                     std::uint64_t seed, MassMatrixType mass_matrix_type) {
            return std::make_unique<OmegaHControlVariateProjection>(
-             source_space, target_space, samples_per_element, sampling, seed,
+             source_space, target_space, samples_per_element, seed,
              mass_matrix_type);
          }),
          py::arg("source_space"), py::arg("target_space"),
          py::arg("samples_per_element"),
-         py::arg("sampling") = MonteCarloSampling::UniformRandom,
          py::arg("seed") = std::uint64_t(8675309),
          py::arg("mass_matrix_type") = MassMatrixType::Consistent,
          py::keep_alive<1, 2>(), py::keep_alive<1, 3>(),

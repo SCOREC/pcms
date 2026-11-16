@@ -138,19 +138,18 @@ void FillElementSamples(
 } // namespace
 
 OmegaHMonteCarloRHSIntegrator::OmegaHMonteCarloRHSIntegrator(
-  const FunctionSpace& target_space, int samples_per_element,
-  MonteCarloSampling sampling, uint64_t seed)
+  const FunctionSpace& target_space, int samples_per_element, uint64_t seed)
   : OmegaHMonteCarloRHSIntegrator(
       std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
         target_space.GetLayout()),
-      target_space.GetCoordinateSystem(), samples_per_element, sampling, seed)
+      target_space.GetCoordinateSystem(), samples_per_element, seed)
 {
 }
 
 OmegaHMonteCarloRHSIntegrator::OmegaHMonteCarloRHSIntegrator(
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
   std::shared_ptr<const CoordinateSystem> target_coordinate_system,
-  int samples_per_element, MonteCarloSampling /*sampling*/, uint64_t seed)
+  int samples_per_element, uint64_t seed)
 {
   detail::CheckOmegaHScalarP1Layout(target_coordinate_system, target_layout,
                                     "OmegaHMonteCarloRHSIntegrator", "target");

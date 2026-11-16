@@ -7,7 +7,6 @@
 
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_control_variate_projection.hpp>
-#include <pcms/transfer/monte_carlo_sampling.hpp>
 #include <pcms/transfer/copy.h>
 #include <pcms/transfer/interpolator.h>
 #include <pcms/field/function_space/lagrange.h>
@@ -195,8 +194,7 @@ TEST_CASE("OmegaHControlVariateProjection (3D tets) is exact for target-space "
     });
 
   pcms::OmegaHControlVariateProjection projection(
-    *source_space, *target_space, /*samples_per_element=*/8,
-    pcms::MonteCarloSampling::UniformRandom, /*seed=*/12345);
+    *source_space, *target_space, /*samples_per_element=*/8, /*seed=*/12345);
   projection.Apply(source, target);
 
   const auto target_values =

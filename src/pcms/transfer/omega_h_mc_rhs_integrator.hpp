@@ -5,7 +5,6 @@
 #include "pcms/field/function_space.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/transfer/linear_form_integrator.hpp"
-#include "pcms/transfer/monte_carlo_sampling.hpp"
 #include <Kokkos_Core.hpp>
 #include <cstdint>
 #include <memory>
@@ -32,13 +31,11 @@ class OmegaHMonteCarloRHSIntegrator : public LinearFormIntegrator
 public:
   OmegaHMonteCarloRHSIntegrator(const FunctionSpace& target_space,
                                 int samples_per_element,
-                                MonteCarloSampling sampling,
                                 uint64_t seed = 8675309);
   OmegaHMonteCarloRHSIntegrator(
     std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
     std::shared_ptr<const CoordinateSystem> target_coordinate_system,
-    int samples_per_element, MonteCarloSampling sampling,
-    uint64_t seed = 8675309);
+    int samples_per_element, uint64_t seed = 8675309);
   ~OmegaHMonteCarloRHSIntegrator();
 
   OmegaHMonteCarloRHSIntegrator(const OmegaHMonteCarloRHSIntegrator&) = delete;

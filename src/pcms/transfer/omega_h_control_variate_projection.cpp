@@ -11,13 +11,12 @@ namespace pcms
 
 OmegaHControlVariateProjection::OmegaHControlVariateProjection(
   const PointEvaluatorFactory& source, const FunctionSpace& target_space,
-  int samples_per_element, MonteCarloSampling sampling, uint64_t seed,
-  MassMatrixType mass_matrix_type)
+  int samples_per_element, uint64_t seed, MassMatrixType mass_matrix_type)
   : target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
       target_space.GetLayout())),
     rhs_integrator_(std::make_unique<OmegaHMonteCarloRHSIntegrator>(
       target_layout_, target_space.GetCoordinateSystem(), samples_per_element,
-      sampling, seed)),
+      seed)),
     interpolator_(source, target_space),
     control_variate_(target_space.CreateFunction<Real>())
 {

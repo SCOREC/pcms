@@ -8,7 +8,6 @@
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/transfer/interpolator.h"
 #include "pcms/transfer/mass_matrix_type.hpp"
-#include "pcms/transfer/monte_carlo_sampling.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
 #include <Kokkos_Core.hpp>
 #include <cstdint>
@@ -42,8 +41,7 @@ class OmegaHControlVariateProjection : public TransferOperator<Real>
 public:
   OmegaHControlVariateProjection(
     const PointEvaluatorFactory& source, const FunctionSpace& target_space,
-    int samples_per_element, MonteCarloSampling sampling,
-    uint64_t seed = 8675309,
+    int samples_per_element, uint64_t seed = 8675309,
     MassMatrixType mass_matrix_type = MassMatrixType::Consistent);
 
   // Defined in the .cpp where GalerkinProjectionSolver is a complete type.

@@ -8,6 +8,7 @@
 #include <MeshField.hpp>
 #include <MeshField_Config.hpp>
 #include <memory>
+#include <utility>
 
 #include "pcms/field/layout/mesh_fields.h"
 #include "pcms/utility/types.h"
@@ -105,35 +106,27 @@ private:
 // Factory function: create a MeshFieldBackend from a layout
 // ---------------------------------------------------------------------------
 
-// Helper to dispatch on num_components at runtime for a fixed (Dim, Order).
+// Helper to dispatch on num_components (1 to 9) at runtime for a fixed (Dim,
+// Order).
 template <typename T, int Dim, int Order>
 std::shared_ptr<MeshFieldBackend<T>> MakeBackendForComponents(
   Omega_h::Mesh& mesh, int num_components)
 {
-  switch (num_components) {
-    case 1:
-      return std::make_shared<MeshFieldBackendImpl<T, Dim, Order, 1>>(mesh);
-    case 2:
-      return std::make_shared<MeshFieldBackendImpl<T, Dim, Order, 2>>(mesh);
-    case 3:
-      return std::make_shared<MeshFieldBackendImpl<T, Dim, Order, 3>>(mesh);
-    case 4:
-      return std::make_shared<MeshFieldBackendImpl<T, Dim, Order, 4>>(mesh);
-    case 5:
-      return std::make_shared<MeshFieldBackendImpl<T, Dim, Order, 5>>(mesh);
-    case 6:
-      return std::make_shared<MeshFieldBackendImpl<T, Dim, Order, 6>>(mesh);
-    case 7:
-      return std::make_shared<MeshFieldBackendImpl<T, Dim, Order, 7>>(mesh);
-    case 8:
-      return std::make_shared<MeshFieldBackendImpl<T, Dim, Order, 8>>(mesh);
-    case 9:
-      return std::make_shared<MeshFieldBackendImpl<T, Dim, Order, 9>>(mesh);
-    default:
-      throw pcms_error("MeshFieldBackend: num_components " +
-                       std::to_string(num_components) +
-                       " exceeds maximum supported (9).");
+  std::shared_ptr<MeshFieldBackend<T>> backend;
+  [&]<int... N>(std::integer_sequence<int, N...>) {
+    ((num_components == N + 1
+        ? (backend =
+             std::make_shared<MeshFieldBackendImpl<T, Dim, Order, N + 1>>(mesh),
+           true)
+        : false) ||
+     ...);
+  }(std::make_integer_sequence<int, 9>{});
+  if (backend == nullptr) {
+    throw pcms_error("MeshFieldBackend: num_components " +
+                     std::to_string(num_components) +
+                     " exceeds maximum supported (9).");
   }
+  return backend;
 }
 
 template <typename T>
@@ -162,10 +155,8 @@ std::shared_ptr<MeshFieldBackend<T>> MakeMeshFieldBackend(
     }
   } else if (nodes_per_dim[0] == 1 && nodes_per_dim[1] == 1 &&
              nodes_per_dim[2] == 0 && nodes_per_dim[3] == 0) {
-    switch (mesh.dim()) {
-      case 2: return MakeBackendForComponents<T, 2, 2>(mesh, num_components);
-      case 3: return MakeBackendForComponents<T, 3, 2>(mesh, num_components);
-      default: break;
+    if (mesh.dim() == 2) {
+      return MakeBackendForComponents<T, 2, 2>(mesh, num_components);
     }
   }
   return nullptr;

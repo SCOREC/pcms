@@ -246,7 +246,6 @@ def main(plot_path=None):
             source_space,
             target_space,
             samples_per_element=64,
-            sampling=pcms.MonteCarloSampling.UniformRandom,
             seed=8675309,
         )
         monte_carlo.apply(source_field, mc_target)

@@ -12,7 +12,7 @@ $ docker run --rm -it ghcr.io/scorec/pcms:develop bash
 
 | Tag | Contents |
 |---|---|
-| `develop` | Latest build of `develop`, rebuilt at least weekly |
+| `develop` | Latest build of `develop` |
 | `develop-YYYY-MM-DD` | build from specific date |
 
 To run the Python examples, mount a checkout of this repository:

@@ -11,6 +11,9 @@ on:
   # Manual trigger
   workflow_dispatch:
 
+env:
+  PETSC_VERSION: v3.25.2
+
 jobs:
   test-build:
     runs-on: ubuntu-24.04
@@ -207,22 +210,17 @@ jobs:
         fi
         echo "LD_LIBRARY_PATH=${{ runner.temp }}/build-kokkos/install/lib:${{ runner.temp }}/build-omega_h/install/lib:${meshfields_lib}${petsc_lib}${{ runner.temp }}/build-redev/install/lib:${{ runner.temp }}/build-ADIOS2/install/lib:${{ runner.temp }}/build-perfstubs/install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
-    - name: clone petsc
-      if: matrix.petsc == 'ON'
-      id: clone-petsc
-      run: |
-        cd ${{ runner.temp }}
-        git clone -b v3.25.2 https://gitlab.com/petsc/petsc.git petsc
-        cd petsc
-        echo "petsc-commit-hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-
     - name: Cache PETSc
       if: matrix.petsc == 'ON'
       id: cache-petsc
       uses: actions/cache@v3
       with:
         path: ${{ runner.temp }}/petsc
-        key: build-petsc-${{ steps.clone-petsc.outputs.petsc-commit-hash }}-${{ matrix.python_api }}${{ matrix.openmp == 'ON' && '-openmp' || '' }}
+        key: build-petsc-${{ env.PETSC_VERSION }}-${{ matrix.python_api }}${{ matrix.openmp == 'ON' && '-openmp' || '' }}
+
+    - name: clone petsc
+      if: matrix.petsc == 'ON' && steps.cache-petsc.outputs.cache-hit != 'true'
+      run: git clone --depth 1 --branch "${{ env.PETSC_VERSION }}" https://gitlab.com/petsc/petsc.git "${{ runner.temp }}/petsc"
     
     - name: build petsc
       if: matrix.petsc == 'ON' && steps.cache-petsc.outputs.cache-hit != 'true'

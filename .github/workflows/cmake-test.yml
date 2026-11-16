@@ -8,14 +8,25 @@ on:
     branches:
       - main
       - develop
+  # Manual trigger
+  workflow_dispatch:
 
 env:
-  PETSC_VERSION: v3.24.2
+  PETSC_VERSION: v3.25.2
 
 jobs:
   test-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+
+    env:
+      # Builds that depend on Kokkos must not share a cache entry across
+      # shared/static or Serial/OpenMP configurations.
+      DEP_CACHE_SUFFIX: ${{ matrix.python_api == 'ON' && '-shared' || '' }}${{ matrix.openmp == 'ON' && '-openmp' || '' }}
+      # Use more than one thread so threading bugs can show up.
+      OMP_NUM_THREADS: ${{ matrix.openmp == 'ON' && '2' || '1' }}
+      OMP_PROC_BIND: 'false'
+      KOKKOS_ENABLE_OPENMP: ${{ matrix.openmp == 'ON' && 'ON' || 'OFF' }}
 
     defaults:
       run:
@@ -28,6 +39,33 @@ jobs:
         compiler: [g++]
         language: ['cpp']
         python_api: [OFF, ON]
+        meshfields: [ON]
+        petsc: [ON]
+        openmp: [OFF]
+        include:
+          - build_type: Release
+            memory_test: OFF
+            compiler: g++
+            language: 'cpp'
+            python_api: OFF
+            meshfields: OFF
+            petsc: ON
+          - build_type: Release
+            memory_test: OFF
+            compiler: g++
+            language: 'cpp'
+            python_api: OFF
+            meshfields: ON
+            petsc: OFF
+          # Kokkos OpenMP backend (all other entries use Serial)
+          - build_type: Release
+            memory_test: OFF
+            compiler: g++
+            language: 'cpp'
+            python_api: ON
+            meshfields: ON
+            petsc: ON
+            openmp: ON
         exclude:
           - build_type: Release
             memory_test: ON
@@ -51,7 +89,7 @@ jobs:
       if: matrix.python_api == 'ON'
       run: |
         sudo apt-get install -yq python3 python3-pip python3-dev python3-pybind11 pybind11-dev
-        pip3 install numpy
+        pip3 install numpy pytest
 
     - uses: actions/checkout@v4
 
@@ -70,11 +108,11 @@ jobs:
         repo-path: 'kokkos/kokkos'
         repo-ref: '4.6.01'
         cache: true
-        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
-        options: '-DCMAKE_CXX_STANDARD=17
+        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
+        options: '-DCMAKE_CXX_STANDARD=20
                   -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DKokkos_ENABLE_SERIAL=ON
-                  -DKokkos_ENABLE_OPENMP=OFF
+                  -DKokkos_ENABLE_OPENMP=${{ env.KOKKOS_ENABLE_OPENMP }}
                   -DKokkos_ENABLE_CUDA=OFF
                   -DKokkos_ENABLE_CUDA_LAMBDA=OFF
                   -DKokkos_ENABLE_CUDA_CONSTEXPR=OFF'
@@ -86,8 +124,8 @@ jobs:
         repo-path: 'kokkos/kokkos-kernels'
         repo-ref: '4.6.01'
         cache: true
-        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
-        options: '-DCMAKE_CXX_STANDARD=17
+        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
+        options: '-DCMAKE_CXX_STANDARD=20
                   -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
 
@@ -96,12 +134,14 @@ jobs:
       with:
         repo-name: 'omega_h'
         repo-path: 'SCOREC/omega_h'
-        repo-ref: '1765836a00b9a64b8b3791f1442ac52f147e43b2'
+        repo-ref: '2b2e778472f48a85a5ff5e70083e3a415e58be72'
         cache: true
-        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
+        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
+                  -DCMAKE_BUILD_TYPE="RelWithDebInfo"
                   -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
+                  -DOmega_h_USE_pybind11=${{ matrix.python_api }}
                   -DOmega_h_USE_MPI=ON
                   -DOmega_h_USE_Kokkos=ON
                   -DBUILD_TESTING=OFF
@@ -109,13 +149,14 @@ jobs:
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
     
     - name: build meshFields
+      if: matrix.meshfields == 'ON'
       uses: ./.github/actions/install-repo
       with:
         repo-name: 'meshFields'
         repo-path: 'SCOREC/meshFields'
-        repo-ref: 'b1482bbba288df210784b2345eae08e34faabdc4'
+        repo-ref: 'b9984520c20f73955a3b4e25e4907780b91d430f'
         cache: true
-        cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
+        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
                   -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
@@ -132,22 +173,6 @@ jobs:
         cache: true
         options: '-DCMAKE_CXX_COMPILER=mpicxx'
 
-    - name: build kokkos-fortran-interop
-      uses: ./.github/actions/install-repo
-      with:
-        repo-name: 'kokkos-fortran-interop'
-        repo-path: 'kokkos/kokkos-fortran-interop'
-        repo-ref: 'abae737ce1159c4d7a9165c5629e6f5e6ae91d87'
-        cache: true
-        options: '-DCMAKE_BUILD_TYPE=Release
-                  -DCMAKE_CXX_COMPILER=`which mpicxx`
-                  -DCMAKE_C_COMPILER=`which mpicc`
-                  -DCMAKE_Fortran_COMPILER=`which mpifort`
-                  -DBUILD_TESTING=OFF
-                  -DFLCL_BUILD_TESTS=OFF
-                  -DFLCL_BUILD_EXAMPLE=OFF
-                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos'
-
     - name: build ADIOS2
       uses: ./.github/actions/install-repo
       with:
@@ -162,7 +187,7 @@ jobs:
       with:
         repo-name: 'redev'
         repo-path: 'SCOREC/redev'
-        repo-ref: 'ac09848a5f9b89493e8b679c9080b9efe5538376'
+        repo-ref: '1e4c876f786b420f060695ba2c1079447e975b69'
         cache: true
         cache-suffix: ${{ matrix.python_api == 'ON' && '-shared' || '' }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
@@ -172,19 +197,33 @@ jobs:
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake'
 
+    - name: Set LD_LIBRARY_PATH for shared libraries
+      if: matrix.python_api == 'ON'
+      run: |
+        meshfields_lib=""
+        if [ "${{ matrix.meshfields }}" = "ON" ]; then
+          meshfields_lib="${{ runner.temp }}/build-meshFields/install/lib:"
+        fi
+        petsc_lib=""
+        if [ "${{ matrix.petsc }}" = "ON" ]; then
+          petsc_lib="${{ runner.temp }}/petsc/ubuntu-kokkos/lib:"
+        fi
+        echo "LD_LIBRARY_PATH=${{ runner.temp }}/build-kokkos/install/lib:${{ runner.temp }}/build-omega_h/install/lib:${meshfields_lib}${petsc_lib}${{ runner.temp }}/build-redev/install/lib:${{ runner.temp }}/build-ADIOS2/install/lib:${{ runner.temp }}/build-perfstubs/install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
     - name: Cache PETSc
+      if: matrix.petsc == 'ON'
       id: cache-petsc
       uses: actions/cache@v3
       with:
         path: ${{ runner.temp }}/petsc
-        key: build-petsc-${{ env.PETSC_VERSION }}
+        key: build-petsc-${{ env.PETSC_VERSION }}-${{ matrix.python_api }}${{ matrix.openmp == 'ON' && '-openmp' || '' }}
 
     - name: clone petsc
-      if: steps.cache-petsc.outputs.cache-hit != 'true'
-      run: git clone -b ${{ env.PETSC_VERSION }} https://gitlab.com/petsc/petsc.git ${{ runner.temp }}/petsc
-
+      if: matrix.petsc == 'ON' && steps.cache-petsc.outputs.cache-hit != 'true'
+      run: git clone --depth 1 --branch "${{ env.PETSC_VERSION }}" https://gitlab.com/petsc/petsc.git "${{ runner.temp }}/petsc"
+    
     - name: build petsc
-      if: steps.cache-petsc.outputs.cache-hit != 'true'
+      if: matrix.petsc == 'ON' && steps.cache-petsc.outputs.cache-hit != 'true'
       run: |
         cd ${{ runner.temp }}/petsc
         ./configure \
@@ -192,9 +231,19 @@ jobs:
           --with-kokkos-dir="${{ runner.temp }}/build-kokkos/install/" \
           --with-kokkos-kernels-dir="${{ runner.temp }}/build-kokkos-kernels/install/" \
           --with-cuda=0 \
-          --with-shared-libraries=0 \
+          --with-openmp=${{ matrix.openmp == 'ON' && '1' || '0' }} \
+          --with-shared-libraries=${{ matrix.python_api == 'ON' && '1' || '0' }} \
           --download-fblaslapack
         make all check
+
+    - name: Set PCMS PETSc options
+      run: |
+        echo "PCMS_ENABLE_PETSC=-DPCMS_ENABLE_PETSC=${{ matrix.petsc }}" >> $GITHUB_ENV
+        if [ "${{ matrix.petsc }}" = "ON" ]; then
+          echo "PCMS_PETSC_OPTIONS=-DPETSC_LINK_STATIC=ON -DPETSC_DIR=${{ runner.temp }}/petsc -DPETSC_ARCH=ubuntu-kokkos" >> $GITHUB_ENV
+        else
+          echo "PCMS_PETSC_OPTIONS=" >> $GITHUB_ENV
+        fi
 
     - name: checkout pcms_testcases
       uses: actions/checkout@v3
@@ -205,10 +254,14 @@ jobs:
     - name: Install fftw3
       run: sudo apt-get install -yq libfftw3-dev pkg-config
 
-    - name: Set LD_LIBRARY_PATH for shared libraries
-      if: matrix.python_api == 'ON'
+    - name: Set PCMS MeshFields options
       run: |
-        echo "LD_LIBRARY_PATH=${{ runner.temp }}/build-kokkos/install/lib:${{ runner.temp }}/build-omega_h/install/lib:${{ runner.temp }}/build-meshFields/install/lib:${{ runner.temp }}/build-redev/install/lib:${{ runner.temp }}/build-ADIOS2/install/lib:${{ runner.temp }}/build-perfstubs/install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "PCMS_ENABLE_MESHFIELDS=-DPCMS_ENABLE_MESHFIELDS=${{ matrix.meshfields }}" >> $GITHUB_ENV
+        if [ "${{ matrix.meshfields }}" = "ON" ]; then
+          echo "PCMS_MESHFIELDS_DIR=-Dmeshfields_DIR=${{ runner.temp }}/build-meshFields/install/lib/cmake/meshfields" >> $GITHUB_ENV
+        else
+          echo "PCMS_MESHFIELDS_DIR=" >> $GITHUB_ENV
+        fi
 
     - name: build pcms
       uses: ./.github/actions/install-repo
@@ -222,17 +275,15 @@ jobs:
                   -DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_Fortran_COMPILER=`which mpifort`
                   -DMPIEXEC_PREFLAGS="--oversubscribe"
-                  -DPCMS_ENABLE_PETSC=ON
-                  -DPETSC_DIR=${{ runner.temp }}/petsc
-                  -DPETSC_ARCH=ubuntu-kokkos
+                  ${{ env.PCMS_ENABLE_MESHFIELDS }}
+                  ${{ env.PCMS_ENABLE_PETSC }}
+                  ${{ env.PCMS_PETSC_OPTIONS }}
                   -DPCMS_TIMEOUT=10
-                  -DPCMS_ENABLE_SPDLOG=OFF
                   -DPCMS_ENABLE_Python=${{ matrix.python_api }}
                   -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
                   -DOmega_h_DIR=${{ runner.temp }}/build-omega_h/install/lib/cmake/Omega_h
-                  -Dmeshfields_DIR=${{ runner.temp }}/build-meshFields/install/lib/cmake/meshfields
+                  ${{ env.PCMS_MESHFIELDS_DIR }}
                   -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev
-                  -Dflcl_DIR=${{ runner.temp }}/build-kokkos-fortran-interop/install/lib/cmake/flcl
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
                   -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake
@@ -253,14 +304,27 @@ jobs:
     - name: Run Python API tests
       if: matrix.python_api == 'ON'
       run: |
-        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib:$PYTHONPATH
-        export LD_LIBRARY_PATH=${{ runner.temp }}/build-pcms/install/lib:$LD_LIBRARY_PATH
-        cd ${{ github.workspace }}/src/pcms/pythonapi
-        python3 test_file_io.py
-        python3 test_omega_h_field.py
-        python3 test_uniform_grid_field.py
-        python3 test_field_copy.py
-        python3 test_mls_interpolation.py
+        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib/python3.12/site-packages:$PYTHONPATH
+        export PYTHONPATH=${{ runner.temp }}/build-omega_h/install/lib/python/dist-packages:$PYTHONPATH
+        cd ${{ github.workspace }}
+        pytest -v --tb=short -p no:cacheprovider
+
+    # The docs need the compiled pcms module for the Python API, so they are
+    # built in one Python-enabled configuration.
+    - name: Build documentation
+      if: matrix.python_api == 'ON' && matrix.openmp != 'ON'
+      run: |
+        sudo apt-get install -yq doxygen
+        pip3 install -r docs/requirements.txt
+        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib/python3.12/site-packages:$PYTHONPATH
+        export PYTHONPATH=${{ runner.temp }}/build-omega_h/install/lib/python/dist-packages:$PYTHONPATH
+        sphinx-build -b html docs docs/_build/html
+
+    - name: Upload documentation
+      if: matrix.python_api == 'ON' && matrix.openmp != 'ON'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/_build/html
 
     - name: Test PCMS Installation
       if: matrix.python_api == 'OFF'
@@ -273,12 +337,24 @@ jobs:
         cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms-config.cmake
         echo "-------- PCMS TARGETS -------------"
         cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms-targets.cmake
-        echo "-------- PCMS INTERPOLATOR TARGETS -------------"
-        cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms_interpolator-targets.cmake
+        echo "-------- PCMS TRANSFER TARGETS -------------"
+        cat ${{ runner.temp }}/build-pcms/install/lib/cmake/pcms/pcms_transfer-targets.cmake
         export VERBOSE=1
         cmake \
           -B ${{github.workspace}}/examples/external-usage-example/build \
           -S ${{github.workspace}}/examples/external-usage-example/ \
           -Dpcms_DIR=${{ runner.temp }}/build-pcms/install/lib/cmake/pcms \
+          ${{ matrix.petsc == 'ON' && format('-DPETSC_LINK_STATIC=ON -DPETSC_DIR={0}/petsc -DPETSC_ARCH=ubuntu-kokkos', runner.temp) || '' }} \
           --debug-output
         cmake --build ${{github.workspace}}/examples/external-usage-example/build
+
+  deploy-docs:
+    needs: test-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+    - name: Deploy to GitHub Pages
+      uses: actions/deploy-pages@v4

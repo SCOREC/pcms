@@ -1,6 +1,6 @@
 #include <iostream>
 #include <pcms/utility/print.h>
-
+#include <pcms/capi/interpolator.h>
 int main()
 {
   std::cout << "Testing PCMS dependency export..." << std::endl;

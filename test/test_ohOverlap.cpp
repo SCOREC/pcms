@@ -9,6 +9,7 @@
 #include "pcms.h"
 #include "test_support.h"
 #include <pcms/version.h>
+#include "pcms/utility/types.h"
 
 namespace ts = test_support;
 
@@ -26,14 +27,9 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
   // the TOMMS generated geometric model has
   // entity IDs that increase with the distance
   // from the magnetic axis
-  if (dim == 2 && (id >= 22 && id <= 34)) {
-    return 1;
-  } else if (dim == 1 && (id >= 21 && id <= 34)) {
-    return 1;
-  } else if (dim == 0 && (id >= 21 && id <= 34)) {
-    return 1;
-  }
-  return 0;
+  const bool inOverlap = ((dim == 2) && (id >= 22 && id <= 34)) ||
+                         ((dim == 1 || dim == 0) && (id >= 21 && id <= 34));
+  return inOverlap;
 }
 
 /**
@@ -124,7 +120,9 @@ int main(int argc, char** argv)
     auto partition = setupServerPartition(mesh, cpnFileName);
     auto rdv = redev::Redev(MPI_COMM_WORLD, redev::Partition{partition},
                             static_cast<redev::ProcessType>(isRdv));
-    adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
+    adios2::Params params{{"Streaming", "On"},
+                          {"OpenTimeoutSecs", "60"},
+                          {"BeginStepPollingFrequencySecs", "0.05"}};
     auto channel = rdv.CreateAdiosChannel(std::string(name), params,
                                           redev::TransportType::BP4);
     auto comm =
@@ -214,7 +212,9 @@ int main(int argc, char** argv)
     auto rdv =
       redev::Redev(MPI_COMM_WORLD, redev::Partition{std::move(partition)},
                    static_cast<redev::ProcessType>(isRdv));
-    adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
+    adios2::Params params{{"Streaming", "On"},
+                          {"OpenTimeoutSecs", "60"},
+                          {"BeginStepPollingFrequencySecs", "0.05"}};
     auto channel = rdv.CreateAdiosChannel(std::string(name), params,
                                           redev::TransportType::BP4);
     auto comm =

@@ -2,33 +2,52 @@ find_package(Python COMPONENTS Interpreter Development REQUIRED)
 find_package(pybind11 REQUIRED)
 message(STATUS "Python_EXECUTABLE ${Python_EXECUTABLE}")
 
-pybind11_add_module(pcms 
+pybind11_add_module(pcms
   pythonapi.cpp
-  bind_field_base.cpp
-  bind_field_layout.cpp
-  bind_omega_h_field2.cpp
-  bind_omega_h_field_layout.cpp
-  bind_uniform_grid_field.cpp
+  bind_runtime.cpp
+  bind_coordinate_system.cpp
+  bind_value_view.cpp
+  bind_omega_h_field.cpp
   bind_uniform_grid_field_layout.cpp
-  bind_omega_h.cpp
-  bind_transfer_field2.cpp
-        bind_mls_interpolation.cpp
-        bind_mesh_utilities.cpp
+  bind_field_base.cpp
+  bind_transfer_field.cpp
+  bind_coordinate_map.cpp
+  bind_mls_interpolation.cpp
+  bind_mesh_utilities.cpp
 )
-set_target_properties(pcms PROPERTIES CXX_STANDARD 17)
-target_link_libraries(pcms PRIVATE Kokkos::kokkos pybind11::module MPI::MPI_C pcms::core pcms::interpolator)
+target_compile_features(pcms PUBLIC cxx_std_20)
+target_link_libraries(pcms PRIVATE Kokkos::kokkos pybind11::module MPI::MPI_C pcms::core pcms::transfer)
 
+# The conservative/Monte Carlo projection bindings include transfer headers
+# that transitively pull in PETSc (petscvec.h). PETSc is linked PRIVATE into
+# pcms_transfer, so its include directories do not propagate; link it here so
+# the bindings compile when PETSc + MeshFields are enabled.
+if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
+  target_link_libraries(pcms PRIVATE PETSc::PETSc meshfields::meshfields)
+endif()
+
+# if we are building as a python package from the pyproject.toml
+# scikit-build-core will set this variable
+if(SKBUILD)
+  set(PCMS_PYTHON_INSTALL_LOCATION "${SKBUILD_PLATLIB_DIR}")
+else()
+  # this is useful for direct CMake installation into python.
+  # This enables spack environment installation to directly load the pcms module
+  # Defaults to the standard CPython prefix layout (lib/)
+  set(PCMS_PYTHON_INSTALL_LOCATION
+      "lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages"
+      CACHE STRING "Install dir for the pcms python module")
+  # Ensure the extension can resolve pcms shared libraries in <prefix>/<libdir>
+  # from wherever the module is installed (PCMS_PYTHON_INSTALL_LOCATION).
+  get_filename_component(_pcms_py_dir "${PCMS_PYTHON_INSTALL_LOCATION}" ABSOLUTE
+                         BASE_DIR "${CMAKE_INSTALL_PREFIX}")
+  file(RELATIVE_PATH _pcms_py_to_lib "${_pcms_py_dir}"
+       "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+  set_target_properties(pcms PROPERTIES INSTALL_RPATH "\$ORIGIN;\$ORIGIN/${_pcms_py_to_lib}")
+endif()
 
 
 install(
         TARGETS pcms
-        EXPORT pcms_python-targets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/pythonapi/)
-install(
-        EXPORT pcms_python-targets
-        NAMESPACE pcms::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+	RUNTIME DESTINATION ${PCMS_PYTHON_INSTALL_LOCATION}
+	LIBRARY DESTINATION ${PCMS_PYTHON_INSTALL_LOCATION})

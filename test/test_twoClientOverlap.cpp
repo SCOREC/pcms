@@ -25,14 +25,9 @@ OMEGA_H_DEVICE Omega_h::I8 isModelEntInOverlap(const int dim, const int id)
   // the TOMMS generated geometric model has
   // entity IDs that increase with the distance
   // from the magnetic axis
-  if (dim == 2 && (id >= 22 && id <= 34)) {
-    return 1;
-  } else if (dim == 1 && (id >= 21 && id <= 34)) {
-    return 1;
-  } else if (dim == 0 && (id >= 21 && id <= 34)) {
-    return 1;
-  }
-  return 0;
+  const bool inOverlap = ((dim == 2) && (id >= 22 && id <= 34)) ||
+                         ((dim == 1 || dim == 0) && (id >= 21 && id <= 34));
+  return inOverlap;
 }
 
 /**
@@ -78,7 +73,9 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
 auto setupComms(redev::Redev& rdv, std::string clientName, const int clientId)
 {
   const bool isSST = false;
-  adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
+  adios2::Params params{{"Streaming", "On"},
+                        {"OpenTimeoutSecs", "60"},
+                        {"BeginStepPollingFrequencySecs", "0.05"}};
   REDEV_ALWAYS_ASSERT(clientId == 0 || clientId == 1);
   return rdv.CreateAdiosChannel(clientName, params,
                                 static_cast<redev::TransportType>(isSST));
@@ -314,29 +311,37 @@ void server(Omega_h::Mesh& mesh, std::string fieldName,
 
 int main(int argc, char** argv)
 {
-  auto lib = Omega_h::Library(&argc, &argv);
-  auto world = lib.world();
-  const int rank = world->rank();
-  if (argc != 4) {
-    if (!rank) {
-      std::cerr << "Usage: " << argv[0]
-                << " <clientId=-1|0|1> /path/to/omega_h/mesh "
-                   "/path/to/partitionFile.cpn\n";
+  try {
+    auto lib = Omega_h::Library(&argc, &argv);
+    auto world = lib.world();
+    const int rank = world->rank();
+    if (argc != 4) {
+      if (!rank) {
+        std::cerr << "Usage: " << argv[0]
+                  << " <clientId=-1|0|1> /path/to/omega_h/mesh "
+                     "/path/to/partitionFile.cpn\n";
+      }
+      exit(EXIT_FAILURE);
     }
-    exit(EXIT_FAILURE);
+    OMEGA_H_CHECK(argc == 4);
+    const auto clientId = atoi(argv[1]);
+    REDEV_ALWAYS_ASSERT(clientId >= -1 && clientId <= 1);
+    const auto meshFile = argv[2];
+    const auto classPartitionFile = argv[3];
+    Omega_h::Mesh mesh(&lib);
+    Omega_h::binary::read(meshFile, lib.world(), &mesh);
+    const std::string name = "meshVtxIds";
+    if (clientId == -1) { // rendezvous
+      server(mesh, name, classPartitionFile);
+    } else {
+      client(mesh, name, clientId);
+    }
+    return 0;
+  } catch (const std::exception& e) {
+    std::cerr << "Exception caught in main: " << e.what() << std::endl;
+    return 1;
+  } catch (...) {
+    std::cerr << "Unknown exception caught in main" << std::endl;
+    return 1;
   }
-  OMEGA_H_CHECK(argc == 4);
-  const auto clientId = atoi(argv[1]);
-  REDEV_ALWAYS_ASSERT(clientId >= -1 && clientId <= 1);
-  const auto meshFile = argv[2];
-  const auto classPartitionFile = argv[3];
-  Omega_h::Mesh mesh(&lib);
-  Omega_h::binary::read(meshFile, lib.world(), &mesh);
-  const std::string name = "meshVtxIds";
-  if (clientId == -1) { // rendezvous
-    server(mesh, name, classPartitionFile);
-  } else {
-    client(mesh, name, clientId);
-  }
-  return 0;
 }

@@ -18,7 +18,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./test_ohClassPtn
+      test_ohClassPtn
       PROCS1
       2
       ARGS1
@@ -27,12 +27,27 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       app
       EXE2
-      ./test_ohClassPtn
+      test_ohClassPtn
       PROCS2
       1
       ARGS2
       ${notRendezvous}
       ${cyclone1p})
+  endif()
+  add_exe(test_distributed_layout)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    mpi_test(test_distributed_layout_2p 2
+             $<TARGET_FILE:test_distributed_layout>)
+  endif()
+  add_exe(test_distributed_field)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    mpi_test(test_distributed_field_2p 2
+             $<TARGET_FILE:test_distributed_field>)
+  endif()
+  add_exe(test_distributed_coupling)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    mpi_test(test_distributed_coupling_2p 2
+             $<TARGET_FILE:test_distributed_coupling>)
   endif()
   add_exe(test_ohClassPtn_appRibPtn)
   set(cyclone2p ${PCMS_TEST_DATA_DIR}/cyclone/23elements/2p.osh/)
@@ -45,7 +60,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./test_ohClassPtn_appRibPtn
+      test_ohClassPtn_appRibPtn
       PROCS1
       2
       ARGS1
@@ -54,7 +69,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       app
       EXE2
-      ./test_ohClassPtn_appRibPtn
+      test_ohClassPtn_appRibPtn
       PROCS2
       2
       ARGS2
@@ -78,7 +93,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./test_ohOverlap
+      test_ohOverlap
       PROCS1
       4
       ARGS1
@@ -88,7 +103,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       app
       EXE2
-      ./test_ohOverlap
+      test_ohOverlap
       PROCS2
       16
       ARGS2
@@ -96,6 +111,37 @@ if(PCMS_ENABLE_OMEGA_H)
       ${d3d16p}
       ignored)
   endif()
+  add_exe(test_GDI)
+  tri_mpi_test(
+          TESTNAME
+          test_GDI
+          TIMEOUT
+          20
+          NAME1
+          app
+          EXE1
+          test_GDI
+          PROCS1
+          1
+          ARGS1
+          1
+          NAME2
+          rdv
+          EXE2
+          test_GDI
+          PROCS2
+          1
+          ARGS2
+          -1
+          NAME3
+          app
+          EXE3
+          test_GDI
+          PROCS3
+          1
+          ARGS3
+          0
+  )
 
   set(d3d8p ${PCMS_TEST_DATA_DIR}/d3d/d3d-full_9k_sfc_p8.osh/)
   add_exe(test_twoClientOverlap)
@@ -108,7 +154,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./test_twoClientOverlap
+      test_twoClientOverlap
       PROCS1
       4
       ARGS1
@@ -118,7 +164,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./test_twoClientOverlap
+      test_twoClientOverlap
       PROCS2
       16
       ARGS2
@@ -128,7 +174,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./test_twoClientOverlap
+      test_twoClientOverlap
       PROCS3
       8
       ARGS3
@@ -147,7 +193,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       server
       EXE1
-      ./field_communication
+      field_communication
       PROCS1
       2
       ARGS1
@@ -157,7 +203,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client1
       EXE2
-      ./field_communication
+      field_communication
       PROCS2
       4
       ARGS2
@@ -167,7 +213,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client2
       EXE3
-      ./field_communication
+      field_communication
       PROCS3
       4
       ARGS3
@@ -182,11 +228,11 @@ if(PCMS_ENABLE_OMEGA_H)
       TESTNAME
       test_proxy_coupling_4p
       TIMEOUT
-      10
+      60
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       2
       ARGS1
@@ -196,7 +242,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       1
       ARGS2
@@ -206,7 +252,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       1
       ARGS3
@@ -223,7 +269,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       2
       ARGS1
@@ -233,7 +279,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       16
       ARGS2
@@ -243,7 +289,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       8
       ARGS3
@@ -260,7 +306,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       4
       ARGS1
@@ -270,7 +316,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       16
       ARGS2
@@ -280,7 +326,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       8
       ARGS3
@@ -297,7 +343,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       8
       ARGS1
@@ -307,7 +353,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       16
       ARGS2
@@ -317,7 +363,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       8
       ARGS3
@@ -334,7 +380,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME1
       rdv
       EXE1
-      ./proxy_coupling
+      proxy_coupling
       PROCS1
       16
       ARGS1
@@ -344,7 +390,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME2
       client0
       EXE2
-      ./proxy_coupling
+      proxy_coupling
       PROCS2
       16
       ARGS2
@@ -354,7 +400,7 @@ if(PCMS_ENABLE_OMEGA_H)
       NAME3
       client1
       EXE3
-      ./proxy_coupling
+      proxy_coupling
       PROCS3
       8
       ARGS3
@@ -368,26 +414,25 @@ find_package(Catch2 3)
 if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
-  set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp test_coordinate_transform.cpp
-                             test_coordinate.cpp test_bounding_box.cpp)
+  set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp
+                             test_coordinate_transformation.cpp
+                             test_bounding_box.cpp test_field_serializer.cpp)
   if(PCMS_ENABLE_XGC)
     list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_reverse_classification.cpp
-         test_xgc_field_adapter.cpp)
+         test_xgc_field_data.cpp)
   endif()
 
   if(PCMS_ENABLE_OMEGA_H)
-    add_executable(field_transfer_example field_transfer_example.cpp)
-    target_link_libraries(field_transfer_example PUBLIC pcms::core
-                                                        pcms::interpolator)
     list(
       APPEND
       PCMS_UNIT_TEST_SOURCES
-      test_field_transfer.cpp
+      test_error_handling.cpp
+            test_eqdsk.cpp
       test_uniform_grid.cpp
-      test_omega_h_copy.cpp
       test_field_evaluation.cpp
       test_field_interpolation.cpp
       test_field_copy.cpp
+      test_field_exchange_planner.cpp
       test_point_search.cpp
       test_mls_basis.cpp
       test_rbf_interp.cpp
@@ -396,17 +441,62 @@ if(Catch2_FOUND)
       test_svd_serial.cpp
       test_uniform_grid_field.cpp
       test_interpolation_class.cpp
-      test_omega_h_field2_outofbounds.cpp)
+      test_mesh_geometry.cpp
+            test_polynomial_reconstruction_function_space.cpp
+            test_polynomial_reconstruction_mls_evaluation.cpp
+      test_localization_factory.cpp
+      test_omega_h_field2_outofbounds.cpp
+      test_omega_h_lagrange_field.cpp
+      test_point_evaluator.cpp
+      test_tagged_outputs.cpp
+      test_transformed_source.cpp
+      test_evaluation_only_space.cpp)
   endif()
+
+  if(PCMS_ENABLE_MFEM)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_mfem_adapter.cpp)
+  endif()
+
+  if(PCMS_ENABLE_MESHFIELDS)
+    list(APPEND PCMS_UNIT_TEST_SOURCES
+      test_omega_h_form_integrator_utils.cpp)
+  endif()
+
+  if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
+    list(APPEND PCMS_UNIT_TEST_SOURCES
+      test_omega_h_intersection_rhs_integrator.cpp
+      test_omega_h_mass_integrator.cpp
+      test_omega_h_mc_rhs_integrator.cpp
+      test_mesh_intersection_field_transfer.cpp
+      test_mesh_intersection_prefilter.cpp
+      test_omega_h_3d_conservative_projection.cpp
+      test_omega_h_3d_analytic_mass.cpp
+      test_omega_h_intersection_coverage.cpp
+      test_omega_h_same_mesh_p0_to_p1.cpp)
+  endif()
+  
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
+  
+  if(PCMS_ENABLE_MESHFIELDS)
+    target_link_libraries(unit_tests PUBLIC meshfields::meshfields)
+  endif()
+
+  if(PCMS_ENABLE_MFEM)
+    target_link_libraries(unit_tests PUBLIC mfem)
+  endif()
+
   target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core
-                                          pcms::interpolator Kokkos::kokkoskernels)
+          pcms::transfer Kokkos::kokkoskernels)
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+  if(PCMS_ENABLE_PETSC)
+    target_link_libraries(unit_tests PRIVATE PETSc::PETSc)
+  endif()
 
   add_executable(test_interpolation_on_ltx_mesh test_interpolation_on_ltx_mesh.cpp)
   target_link_libraries(test_interpolation_on_ltx_mesh PUBLIC Catch2::Catch2WithMain
                                                         pcms::core
-                                                        pcms::interpolator)
+                                                        pcms::transfer)
   target_include_directories(test_interpolation_on_ltx_mesh PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
   add_test(NAME test_interpolation_on_ltx_mesh
           COMMAND test_interpolation_on_ltx_mesh
@@ -415,10 +505,44 @@ if(Catch2_FOUND)
                   --data_root ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/
   )
 
-  include(Catch)
-  catch_discover_tests(unit_tests)
+ include(Catch)
+   Catch_discover_tests(unit_tests)
+   if(PCMS_ENABLE_TRANSIENT)
+     add_executable(test_transient_timestepper test_transient_timestepper.cpp)
+     target_link_libraries(test_transient_timestepper
+             PRIVATE Catch2::Catch2WithMain pcms::transient)
+     Catch_discover_tests(test_transient_timestepper)
+   endif()
 else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
+endif()
+
+if(PCMS_ENABLE_MFEM)
+  add_executable(test_mfem_coupling test_mfem_coupling.cpp)
+  target_link_libraries(test_mfem_coupling PUBLIC pcms::core mfem)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    dual_mpi_test(
+      TESTNAME
+      test_mfem_coupling
+      TIMEOUT
+      60
+      NAME1
+      server
+      EXE1
+      $<TARGET_FILE:test_mfem_coupling>
+      PROCS1
+      1
+      ARGS1
+      -1
+      NAME2
+      client
+      EXE2
+      $<TARGET_FILE:test_mfem_coupling>
+      PROCS2
+      1
+      ARGS2
+      0)
+  endif()
 endif()
 
 if(PCMS_ENABLE_C)
@@ -433,16 +557,21 @@ if(PCMS_ENABLE_C)
                      test_proxy_coupling_xgc_server.cpp)
       target_link_libraries(test_proxy_couple_xgc_cpp_interface
                             PUBLIC pcms::core MPI::MPI_C test_support)
+      # New test with proper overlap mask feature (no hacky ownership modification)
+      add_executable(test_proxy_couple_xgc_overlap_interface
+                     test_proxy_coupling_xgc_server_overlap.cpp)
+      target_link_libraries(test_proxy_couple_xgc_overlap_interface
+                            PUBLIC pcms::core MPI::MPI_C test_support)
       if(HOST_NPROC GREATER_EQUAL 3)
         dual_mpi_test(
           TESTNAME
           xgc_proxy_to_xgc
           TIMEOUT
-          10
+          30
           NAME1
           cinterface
           EXE1
-          $<TARGET_FILE:test_proxy_couple_xgc_c_interface>
+          test_proxy_couple_xgc_c_interface
           PROCS1
           2
           ARGS1
@@ -450,7 +579,31 @@ if(PCMS_ENABLE_C)
           NAME2
           cppinterface
           EXE2
-          $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface>
+          test_proxy_couple_xgc_cpp_interface
+          PROCS2
+          1
+          ARGS2
+          ${d3d1p}
+          ${d3d1p_cpn}
+          0)
+        # Test with proper overlap mask feature (XGC adapter)
+        dual_mpi_test(
+          TESTNAME
+          xgc_proxy_to_xgc_overlap
+          TIMEOUT
+          30
+          NAME1
+          cinterface
+          EXE1
+          test_proxy_couple_xgc_c_interface
+          PROCS1
+          2
+          ARGS1
+          ${PCMS_TEST_DATA_DIR}/d3d/meshRclassification.txt
+          NAME2
+          cppinterface_overlap
+          EXE2
+          test_proxy_couple_xgc_overlap_interface
           PROCS2
           1
           ARGS2
@@ -463,11 +616,11 @@ if(PCMS_ENABLE_C)
           TESTNAME
           xgc_proxy_to_omega
           TIMEOUT
-          10
+          30
           NAME1
           cinterface
           EXE1
-          $<TARGET_FILE:test_proxy_couple_xgc_c_interface>
+          test_proxy_couple_xgc_c_interface
           PROCS1
           4
           ARGS1
@@ -475,7 +628,31 @@ if(PCMS_ENABLE_C)
           NAME2
           cppinterface
           EXE2
-          $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface>
+          test_proxy_couple_xgc_cpp_interface
+          PROCS2
+          2
+          ARGS2
+          ${d3d1p}
+          ${d3d2p_cpn}
+          1)
+        # Test with proper overlap mask feature (Omega-h adapter)
+        dual_mpi_test(
+          TESTNAME
+          xgc_proxy_to_omega_overlap
+          TIMEOUT
+          30
+          NAME1
+          cinterface
+          EXE1
+          test_proxy_couple_xgc_c_interface
+          PROCS1
+          4
+          ARGS1
+          ${PCMS_TEST_DATA_DIR}/d3d/meshRclassification.txt
+          NAME2
+          cppinterface_overlap
+          EXE2
+          test_proxy_couple_xgc_overlap_interface
           PROCS2
           2
           ARGS2
@@ -497,7 +674,7 @@ if(PCMS_ENABLE_Fortran)
   add_executable(test_interpolation_fortran_api
                  test_interpolation.f90)
   target_link_libraries(test_interpolation_fortran_api
-                        PUBLIC pcms::fortranapi::interpolator)
+                        PUBLIC pcms::fortranapi::transfer)
   set_target_properties(test_interpolation_fortran_api
                        PROPERTIES LINKER_LANGUAGE Fortran)
   add_test(
@@ -511,11 +688,11 @@ if(PCMS_ENABLE_Fortran)
       TESTNAME
       xgc_fortran_proxy_to_omega
       TIMEOUT
-      10
+      30
       NAME1
       finterface
       EXE1
-      $<TARGET_FILE:test_proxy_coupling_xgc_client_fortran>
+      test_proxy_coupling_xgc_client_fortran
       PROCS1
       2
       ARGS1
@@ -523,7 +700,7 @@ if(PCMS_ENABLE_Fortran)
       NAME2
       cppinterface
       EXE2
-      $<TARGET_FILE:test_proxy_couple_xgc_cpp_interface>
+      test_proxy_couple_xgc_cpp_interface
       PROCS2
       2
       ARGS2

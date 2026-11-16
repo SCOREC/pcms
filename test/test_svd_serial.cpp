@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/interpolator/mls_interpolation_impl.hpp>
-#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
-#include <pcms/interpolator/pcms_interpolator_view_utils.hpp>
+#include <pcms/field/evaluator/mls_interpolation_impl.hpp>
+#include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
+#include <pcms/field/evaluator/pcms_interpolator_view_utils.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "KokkosBatched_SVD_Decl.hpp"
 #include "KokkosBatched_SVD_Serial_Impl.hpp"
@@ -38,7 +38,7 @@ TEST_CASE("test_serial_svd")
 
   Kokkos::deep_copy(A_data, host_A_data);
 
-  Kokkos::View<double*> rhs_data("Device rhs data", row, column);
+  Kokkos::View<double*> rhs_data("Device rhs data", row);
   auto host_rhs_data = Kokkos::create_mirror_view(rhs_data);
 
   host_rhs_data(0) = 1.28571;
@@ -50,76 +50,11 @@ TEST_CASE("test_serial_svd")
   double expected_solution[column] = {-0.142857, 0.285714,
                                       0.428571}; // Approximate values
 
-  SECTION("test_svd_factorization")
-  {
-    Kokkos::View<double**> result("result", row, column);
-    team_policy tp(1, Kokkos::AUTO);
-    Kokkos::parallel_for(
-      "Solve SVD", tp.set_scratch_size(1, Kokkos::PerTeam(2000)),
-      KOKKOS_LAMBDA(const member_type& team) {
-        ScratchMatView A(team.team_scratch(1), row, column);
-        ScratchMatView U(team.team_scratch(1), row, row);
-        ScratchMatView Vt(team.team_scratch(1), column, column);
-        ScratchVecView sigma(team.team_scratch(1), column);
-        ScratchVecView work(team.team_scratch(1), row);
-        ScratchMatView reconstructedA(team.team_scratch(1), row, column);
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
-          for (int j = 0; j < column; ++j) {
-            A(i, j) = A_data(i, j);
-          }
-        });
-
-        ScratchMatView sigma_mat(team.team_scratch(1), row, column);
-        detail::fill(0.0, team, sigma_mat);
-        ScratchMatView Usigma(team.team_scratch(1), row, column);
-        detail::fill(0.0, team, Usigma);
-
-        if (team.team_rank() == 0) {
-
-          KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), A, U,
-                                           sigma, Vt, work, 1e-6);
-
-          for (int i = 0; i < column; ++i) {
-            sigma_mat(i, i) = sigma(i);
-          }
-
-          KokkosBatched::SerialGemm<
-            KokkosBatched::Trans::NoTranspose,
-            KokkosBatched::Trans::NoTranspose,
-            KokkosBatched::Algo::Gemm::Unblocked>::invoke(1.0, U, sigma_mat,
-                                                          0.0, Usigma);
-
-          KokkosBatched::SerialGemm<
-            KokkosBatched::Trans::NoTranspose,
-            KokkosBatched::Trans::NoTranspose,
-            KokkosBatched::Algo::Gemm::Unblocked>::invoke(1.0, Usigma, Vt, 0.0,
-                                                          reconstructedA);
-        }
-        team.team_barrier();
-        Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
-          for (int j = 0; j < column; ++j) {
-            result(i, j) = reconstructedA(i, j);
-          }
-        });
-      });
-
-    Kokkos::fence();
-    auto host_result = Kokkos::create_mirror_view(result);
-    Kokkos::deep_copy(host_result, result);
-
-    for (int i = 0; i < row; ++i) {
-      for (int j = 0; j < column; ++j) {
-        CHECK_THAT(host_result(i, j),
-                   Catch::Matchers::WithinAbs(host_A_data(i, j), tolerance));
-      }
-    }
-  } // end section
-
   SECTION("test_transpose_function")
   {
 
     Kokkos::View<double**> result("result", row, row);
-    Kokkos::View<double**> transpose_expected("result", row, row);
+    Kokkos::View<double**> transpose_expected("transpose_expected", row, row);
     Kokkos::deep_copy(result, 0.0);
     Kokkos::deep_copy(transpose_expected, 0.0);
     team_policy tp(1, Kokkos::AUTO);

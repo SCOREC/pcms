@@ -13,7 +13,8 @@
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_vtk.hpp>
-#include <pcms/interpolator/interpolation_base.h>
+#include <pcms/transfer/interpolation_base.h>
+#include <pcms/utility/mesh_geometry.h>
 #include <pcms/utility/print.h>
 
 #include <vector>
@@ -78,27 +79,24 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
   // --------------------- Initialize Interpolators -------------- //
   const int degas2_num_elems = degas2_mesh.nelems();
   const auto degas2_mesh_centroids_host =
-    Omega_h::HostRead(getCentroids(degas2_mesh));
+    Omega_h::HostRead(pcms::get_entity_centroids(degas2_mesh, Omega_h::FACE));
   printf("[INFO] Degas2 Mesh loaded from %s with %d elements\n",
          degas2_mesh_filename.c_str(), degas2_num_elems);
   const auto degas2_mesh_centroids_view =
-    pcms::Rank1View<const double, pcms::HostMemorySpace>(
-      degas2_mesh_centroids_host.data(), degas2_mesh_centroids_host.size());
+    pcms::make_array_view(degas2_mesh_centroids_host);
 
   auto xgc_mesh_points = read_xgc_mesh_nodes(ltx_mesh_base_filename + ".node");
   const int xgc_num_nodes = xgc_mesh_points.size() / 2;
   printf("[INFO] XGC Mesh loaded from %s with %d points\n",
          ltx_mesh_base_filename.c_str(), xgc_num_nodes);
-  const auto xgc_mesh_points_view =
-    pcms::Rank1View<const double, pcms::HostMemorySpace>(
-      xgc_mesh_points.data(), xgc_mesh_points.size());
+  const auto xgc_mesh_points_view = pcms::make_array_view(xgc_mesh_points);
 
-  auto xgc_to_degas2_interpolator =
-    MLSPointCloudInterpolation(xgc_mesh_points_view, degas2_mesh_centroids_view,
-                               2, 0.000001, 10, 1, true, 0.0, 50.0);
-  auto degas2_to_xgc_interpolator =
-    MLSPointCloudInterpolation(degas2_mesh_centroids_view, xgc_mesh_points_view,
-                               2, 0.01, 10, 1, true, 1e-3, 50.0);
+  auto xgc_to_degas2_interpolator = pcms::MLSPointCloudInterpolation(
+    xgc_mesh_points_view, degas2_mesh_centroids_view, 2, 0.000001, 10, 1, true,
+    0.0, 50.0);
+  auto degas2_to_xgc_interpolator = pcms::MLSPointCloudInterpolation(
+    degas2_mesh_centroids_view, xgc_mesh_points_view, 2, 0.01, 10, 1, true,
+    1e-3, 50.0);
   printf("[INFO] Interpolators initialized.\n");
 
   // ---------------------- Load Data ---------------------- //
@@ -119,18 +117,13 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
 
   // ------------------ First Interpolation ------------------ //
   const auto density_at_xgc_nodes_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(density_at_xgc_nodes.data(),
-                                                   density_at_xgc_nodes.size());
-  const auto temp_at_xgc_nodes_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(temp_at_xgc_nodes.data(),
-                                                   temp_at_xgc_nodes.size());
+    pcms::make_array_view(density_at_xgc_nodes);
+  const auto temp_at_xgc_nodes_view = pcms::make_array_view(temp_at_xgc_nodes);
 
   const auto density_at_degas2_centroids_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      density_at_degas2_centroids.data(), density_at_degas2_centroids.size());
+    pcms::make_array_view(density_at_degas2_centroids);
   const auto temp_at_degas2_centroids_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      temp_at_degas2_centroids.data(), temp_at_degas2_centroids.size());
+    pcms::make_array_view(temp_at_degas2_centroids);
 
   Omega_h::HostWrite<Omega_h::Real> interpolated_xgc_density(degas2_num_elems);
   Omega_h::HostWrite<Omega_h::Real> interpolated_xgc_temp(degas2_num_elems);
@@ -138,17 +131,13 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
   Omega_h::HostWrite<Omega_h::Real> interpolated_degas2_temp(xgc_num_nodes);
 
   const auto interpolated_xgc_density_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      interpolated_xgc_density.data(), interpolated_xgc_density.size());
+    pcms::make_array_view(interpolated_xgc_density);
   const auto interpolated_xgc_temp_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      interpolated_xgc_temp.data(), interpolated_xgc_temp.size());
+    pcms::make_array_view(interpolated_xgc_temp);
   const auto interpolated_degas2_density_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      interpolated_degas2_density.data(), interpolated_degas2_density.size());
+    pcms::make_array_view(interpolated_degas2_density);
   const auto interpolated_degas2_temp_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      interpolated_degas2_temp.data(), interpolated_degas2_temp.size());
+    pcms::make_array_view(interpolated_degas2_temp);
 
   xgc_to_degas2_interpolator.eval(density_at_xgc_nodes_view,
                                   interpolated_xgc_density_view);
@@ -173,21 +162,13 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
     degas2_num_elems);
 
   const auto interpolated_back_density_at_xgc_nodes_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      interpolated_back_density_at_xgc_nodes.data(),
-      interpolated_back_density_at_xgc_nodes.size());
+    pcms::make_array_view(interpolated_back_density_at_xgc_nodes);
   const auto interpolated_back_temp_at_xgc_nodes_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      interpolated_back_temp_at_xgc_nodes.data(),
-      interpolated_back_temp_at_xgc_nodes.size());
+    pcms::make_array_view(interpolated_back_temp_at_xgc_nodes);
   const auto interpolated_back_density_at_degas2_centroids_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      interpolated_back_density_at_degas2_centroids.data(),
-      interpolated_back_density_at_degas2_centroids.size());
+    pcms::make_array_view(interpolated_back_density_at_degas2_centroids);
   const auto interpolated_back_temp_at_degas2_centroids_view =
-    pcms::Rank1View<double, pcms::HostMemorySpace>(
-      interpolated_back_temp_at_degas2_centroids.data(),
-      interpolated_back_temp_at_degas2_centroids.size());
+    pcms::make_array_view(interpolated_back_temp_at_degas2_centroids);
 
   degas2_to_xgc_interpolator.eval(interpolated_xgc_density_view,
                                   interpolated_back_density_at_xgc_nodes_view);
@@ -353,7 +334,7 @@ std::vector<double> read_xgc_mesh_nodes(std::string filename)
   assert(dim == 2 && "Expected 2D coordinates in the file");
 
   std::vector<double> nodes;
-  nodes.reserve(num_nodes * dim);
+  nodes.reserve(static_cast<std::size_t>(num_nodes) * dim);
 
   while (std::getline(file, line)) {
     std::istringstream line_stream(line);
@@ -471,8 +452,8 @@ void write_xgc_mesh_as_vtu(
   file << "        <DataArray type=\"Float64\" Name=\"Points\" "
           "NumberOfComponents=\"3\" format=\"ascii\">\n";
   for (size_t i = 0; i < n_points; ++i) {
-    file << "          " << node_coords[2 * i] << " " << node_coords[2 * i + 1]
-         << " 0.0\n";
+    file << "          " << node_coords[2 * static_cast<size_t>(i)] << " "
+         << node_coords[2 * static_cast<size_t>(i) + 1] << " 0.0\n";
   }
   file << "        </DataArray>\n";
   file << "      </Points>\n";

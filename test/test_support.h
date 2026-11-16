@@ -5,11 +5,11 @@
 #include <chrono>  // steady_clock, duration
 #include <numeric> // std::iota
 #include <Omega_h_mesh.hpp>
+#include <Omega_h_for.hpp>
 #include <Omega_h_array_ops.hpp>
 #include <redev.h>
 #include <redev_comm.h>
 #include <pcms/utility/memory_spaces.h>
-#include "pcms/adapter/omega_h/omega_h_field.h"
 #include <functional>
 
 namespace test_support

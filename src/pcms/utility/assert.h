@@ -1,5 +1,6 @@
 #ifndef PCMS_COUPLING_ASSERT_H
 #define PCMS_COUPLING_ASSERT_H
+#include <stdexcept>
 #include <mpi.h>
 
 // https://stackoverflow.com/questions/16683146/can-macros-be-overloaded-by-number-of-arguments
@@ -45,6 +46,12 @@
 
 namespace pcms
 {
+
+struct pcms_error : std::runtime_error
+{
+  using std::runtime_error::runtime_error;
+};
+
 // from scorec/core/pcu_fail.h
 void Pcms_Assert_Fail(const char* msg) __attribute__((noreturn));
 } // namespace pcms

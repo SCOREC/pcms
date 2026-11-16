@@ -12,7 +12,7 @@ set(CTEST_DROP_LOCATION "/submit.php?project=SCOREC")
 set(CTEST_DROP_SITE_CDASH TRUE)
 set(CTEST_BUILD_NAME  "linux-gcc-${CTEST_BUILD_CONFIGURATION}")
 
-set(CTEST_DASHBOARD_ROOT "/users/yus9/lore.scorec.rpi.edu/nightlyBuilds/pcms_build/" )
+set(CTEST_DASHBOARD_ROOT "/users/d_zxg06726/nightlyBuilds/pcms_build/" )
 set(CTEST_CMAKE_GENERATOR "Unix Makefiles")
 set(CTEST_BUILD_FLAGS -j4)
 
@@ -184,8 +184,15 @@ SET(CONFIGURE_OPTIONS
   "-DCMAKE_CXX_COMPILER=mpicxx"
   "-DCMAKE_C_COMPILER=mpicc"
   "-DPCMS_TIMEOUT=100"
+  "-DPCMS_ENABLE_PETSC=ON"
+  "-DPETSC_LINK_STATIC=ON"
+  "-DPETSC_DIR=${CTEST_DASHBOARD_ROOT}/petsc"
+  "-DPETSC_ARCH=cuda-kokkos"
   "-Dredev_DIR=${CTEST_DASHBOARD_ROOT}/build-redev/install/lib64/cmake/redev"
   "-DOmega_h_DIR=${CTEST_DASHBOARD_ROOT}/build-omega_h/install/lib64/cmake/Omega_h/"
+  "-DADIOS2_DIR=${CTEST_DASHBOARD_ROOT}/build-ADIOS2/install/lib64/cmake/adios2"
+  "-DKokkos_DIR=${CTEST_DASHBOARD_ROOT}/build-kokkos/install/lib64/cmake/Kokkos"
+  "-Dmeshfields_DIR=${CTEST_DASHBOARD_ROOT}/build-meshFields/install/lib64/cmake/meshfields"
   "-Dperfstubs_DIR=${CTEST_DASHBOARD_ROOT}/build-perfstubs/install/lib/cmake"
   "-DCatch2_DIR=${CTEST_DASHBOARD_ROOT}/build-Catch2/install/lib64/cmake/Catch2/"
   "-DKokkosKernels_DIR=${CTEST_DASHBOARD_ROOT}/build-kokkos-kernels/install/lib64/cmake/KokkosKernels/"

@@ -1,8 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/interpolator/adj_search.hpp>
-#include <pcms/interpolator/mls_interpolation.hpp>
-#include <pcms/interpolator/pcms_interpolator_aliases.hpp>
+#include <pcms/localization/adj_search.hpp>
+#include <pcms/field/evaluator/mls_interpolation.hpp>
+#include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
+#include <pcms/utility/mesh_geometry.h>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
@@ -127,22 +128,7 @@ TEST_CASE("meshfields_spr_test")
 
   const auto& ntargets = mesh.nverts();
 
-  Write<Omega_h::Real> source_coordinates(
-    dim * nfaces, 0, "stores coordinates of cell centroid of each tri element");
-
-  const auto& faces2nodes = mesh.ask_down(FACE, VERT).ab2b;
-
-  Kokkos::parallel_for(
-    "calculate the centroid in each tri element", nfaces,
-    OMEGA_H_LAMBDA(const LO id) {
-      const auto current_el_verts = gather_verts<3>(faces2nodes, id);
-      const Omega_h::Few<Omega_h::Vector<2>, 3> current_el_vert_coords =
-        gather_vectors<3, 2>(target_coordinates, current_el_verts);
-      auto centroid = average(current_el_vert_coords);
-      int index = 2 * id;
-      source_coordinates[index] = centroid[0];
-      source_coordinates[index + 1] = centroid[1];
-    });
+  const auto source_coordinates = pcms::get_entity_centroids(mesh, FACE);
 
   pcms::Points source_points;
 

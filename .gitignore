@@ -8,3 +8,7 @@
 *.bak
 testdata
 .nfs*
+__pycache__/
+docs/_doxygen/
+docs/api/
+spack/spack.lock

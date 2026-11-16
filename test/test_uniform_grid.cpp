@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/uniform_grid.h>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
+#include <pcms/utility/uniform_grid.h>
 
 using pcms::CreateUniformGridFromMesh;
 using pcms::Uniform2DGrid;

@@ -89,10 +89,11 @@ Program main
         name = 'xgc_gids_plane_' // trim(plane_str)
         if (plane .eq. ix) then
             adapters(ix+1) = pcms_create_xgc_field_adapter(trim(name), MPI_COMM_SELF, c_loc(data_pointer), &
-                    size(data_pointer), PCMS_LONG_INT, reverse_classification, in_overlap)
+                    size(data_pointer), PCMS_LONG_INT, reverse_classification)
         else
             adapters(ix+1) = pcms_create_dummy_field_adapter()
         end if
+        call pcms_set_overlap_mask(client, trim(name), in_overlap)
         if ((plane_rank .eq. 0) .and.  (ix .eq. plane)) then
             ! field participates in the communication
             fields(ix+1) = pcms_add_field(client, trim(name), adapters(ix+1), 1)

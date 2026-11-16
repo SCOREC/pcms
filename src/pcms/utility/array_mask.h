@@ -133,8 +133,8 @@ public:
 
       PCMS_ALWAYS_ASSERT((LO)output_array.size() == mask_.size());
       PCMS_ALWAYS_ASSERT((LO)filtered_data.size() == num_active_entries_);
-      REDEV_ALWAYS_ASSERT(filtered_data.size() == permutation.size() ||
-                          permutation.empty());
+      PCMS_ALWAYS_ASSERT(filtered_data.size() == permutation.size() ||
+                         permutation.empty());
       auto mask = mask_;
       Kokkos::parallel_for(
         Kokkos::RangePolicy<execution_space>(0, mask_.size()),

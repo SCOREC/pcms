@@ -6,6 +6,10 @@
 cmake_minimum_required(VERSION 3.19)
 project(pcms_installation_test)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+message(STATUS "MODULE PATH: ${CMAKE_MODULE_PATH}")
+
 # It searches in pcms_ROOT, pcms_DIR, or other standard paths
 find_package(pcms REQUIRED)
 

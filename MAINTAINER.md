@@ -43,6 +43,13 @@ see issue #<###>
 6. create the tag `git tag -a v#.#.# -m "pcms version #.#.#"`
 7. push the tag `git push origin v#.#.#`
 
+## Branch Management
+
+The `develop` branch is the main development branch where all new features and bug fixes are merged. The `master` branch is the stable release branch that reflects the latest released version of pcms. All changes should be made in the `develop` branch and then merged into `master` when ready for release. 
+
+It is generally recommended to use forks for development to keep the main repository clean and to facilitate code review. Contributors can create a fork of the repository, make their changes in a new branch, and then submit a pull request to the `develop` branch of the main repository. Ensure that the pull request includes a clear description of the changes made and references any relevant issues.
+
+When creating a new feature or fixing a bug in main repo, create a new branch from `develop` with a descriptive name (e.g., `feature/new-feature`, `bugfix/issue-123`).
 
 ## Maintain CI/CD
 

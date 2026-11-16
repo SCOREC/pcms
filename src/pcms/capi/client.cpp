@@ -1,136 +1,277 @@
 #include "client.h"
 #include "pcms.h"
-#include "pcms/adapter/xgc/xgc_field_adapter.h"
-#include <variant>
-#include <redev_variant_tools.h>
-#include <fstream>
-#include "pcms/adapter/xgc/xgc_reverse_classification.h"
-#include "pcms/adapter/dummy_field_adapter.h"
+#include "pcms/field/field_factory.h"
+#include "pcms/field/function_space/xgc.h"
+#include "pcms/field/data/xgc.h"
+#include "pcms/field/layout/xgc.h"
+#include "pcms/discretization/discretization/xgc_reverse_classification.h"
+#include "pcms/coupler/coupler.hpp"
+#include "pcms/field/layout/empty.h"
+#include "pcms/field/data/simple.h"
 #include "pcms/utility/assert.h"
+#include <map>
+#include <memory>
+#include <numeric>
+#include <variant>
+#include "pcms/field/coordinate_systems/cylindrical.hpp"
+
 namespace pcms
 {
-// Note that we have a closed set of types that can be used in the C interface
-using FieldAdapterVariant =
-  std::variant<std::monostate, pcms::XGCFieldAdapter<double>,
-               pcms::XGCFieldAdapter<float>, pcms::XGCFieldAdapter<int>,
-               pcms::XGCFieldAdapter<long>, pcms::DummyFieldAdapter>;
+
+namespace detail
+{
+
+template <typename T>
+struct XGCFieldRegistration
+{
+  XGCFieldFactory function_space;
+  MPI_Comm plane_comm;
+  Rank1View<T, HostMemorySpace> data;
+
+  XGCFieldRegistration(XGCFieldFactory fs, MPI_Comm comm,
+                       Rank1View<T, HostMemorySpace> d)
+    : function_space(std::move(fs)), plane_comm(comm), data(d)
+  {
+  }
+};
+
+struct DummyFieldRegistration
+{};
+
+class EmptyFieldFactory : public FieldFactory
+{
+public:
+  EmptyFieldFactory(std::string layout_name,
+                    std::shared_ptr<const CoordinateSystem> system)
+  {
+    auto layout = std::make_shared<EmptyFieldLayout>(std::move(system));
+    layout->SetName(std::move(layout_name));
+    layout_ = layout;
+  }
+
+  [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayout()
+    const noexcept override
+  {
+    return layout_;
+  }
+
+protected:
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
+                                             ValueBasis basis) const override
+  {
+    return apply_to_type(storage_type, [this, basis](auto tag) -> FieldVariant {
+      using T = typename decltype(tag)::type;
+      return WrapField<T>(layout_,
+                          std::make_unique<SimpleFieldData<T>>(layout_, basis));
+    });
+  }
+
+  [[nodiscard]] FieldVariant CreateFieldImpl(
+    FieldDataVariant data) const override
+  {
+    return std::visit(
+      [this](auto&& fd) -> FieldVariant {
+        using FD = std::decay_t<decltype(fd)>;
+        using T = typename FD::element_type::value_type;
+        PCMS_ALWAYS_ASSERT(fd != nullptr);
+        if (dynamic_cast<const SimpleFieldData<T>*>(fd.get()) == nullptr) {
+          throw pcms_error(
+            "EmptyFieldFactory::CreateField: requires SimpleFieldData");
+        }
+        if (fd->GetDOFAccess()->GetValues().size() !=
+            detail::ExpectedFlatFieldDataSize(*layout_)) {
+          throw pcms_error(
+            "EmptyFieldFactory::CreateField: field data size does not match "
+            "layout");
+        }
+        return WrapField<T>(layout_, std::forward<decltype(fd)>(fd));
+      },
+      std::move(data));
+  }
+
+private:
+  std::shared_ptr<const EmptyFieldLayout> layout_;
+};
+
+} // namespace detail
+
+struct ClientState
+{
+  std::unique_ptr<CouplerComm> coupler;
+  ApplicationComm* app = nullptr;
+  using HandleVariant = std::variant<FieldHandle<double>, FieldHandle<float>,
+                                     FieldHandle<int>, FieldHandle<pcms::GO>>;
+  std::map<std::string, HandleVariant> field_handles;
+};
+
+using FieldAdapterVariant = std::variant<
+  std::monostate, detail::XGCFieldRegistration<double>,
+  detail::XGCFieldRegistration<float>, detail::XGCFieldRegistration<int>,
+  detail::XGCFieldRegistration<pcms::GO>, detail::DummyFieldRegistration>;
+
+template <typename T>
+using ClientFieldHandle = FieldHandle<T>;
+
+inline ClientState::HandleVariant RegisterField(ApplicationComm& /*app*/,
+                                                std::string name,
+                                                const std::monostate&, bool)
+{
+  throw pcms_error("pcms_add_field: field adapter for field '" + name +
+                   "' was never initialized");
+}
+
+template <typename T>
+ClientState::HandleVariant RegisterField(
+  ApplicationComm& app, std::string name,
+  const detail::XGCFieldRegistration<T>& registration, bool participates)
+{
+  // The layout's coupling identity is the field name
+  // not the arbitrary adapter name given at creation.
+  registration.function_space.SetLayoutName(name);
+  auto field = registration.function_space.template CreateField<T>(
+    std::move(name), std::make_unique<XGCFieldData<T>>(
+                       registration.function_space.GetXGCLayout(), ValueBasis{},
+                       registration.data, registration.plane_comm));
+  return ClientState::HandleVariant{
+    app.AddField(std::move(field), participates)};
+}
+
+inline ClientState::HandleVariant RegisterField(
+  ApplicationComm& app, std::string name, const detail::DummyFieldRegistration&,
+  bool participates)
+{
+  // FIXME this is essentially a hack for now since the only CAPI client
+  // is XGC so we need to match the XGCLayout.
+  // The CAPI needs to be completely reworked for PCMS2, but that
+  // should happen after we finalize new coordinate transformations
+  // and higher level field control
+  auto function_space =
+    detail::EmptyFieldFactory{name, csys::CylindricalRZ::Create()};
+  auto field = function_space.CreateField<int>(std::move(name));
+  return ClientState::HandleVariant{
+    app.AddField(std::move(field), participates)};
+}
 
 } // namespace pcms
 
 [[nodiscard]] PcmsClientHandle pcms_create_client(const char* name,
                                                   MPI_Comm comm)
 {
-  auto* coupler = new pcms::Coupler(name, comm, false, {});
-  auto* app = coupler->AddApplication(name);
-  PcmsClientHandle handle;
-  handle.couplerPointer = reinterpret_cast<void*>(coupler);
-  handle.appPointer = reinterpret_cast<void*>(app);
-  return handle;
+  auto* client = new pcms::ClientState{};
+  client->coupler =
+    std::make_unique<pcms::CouplerComm>(name, comm, false, redev::Partition{});
+  client->app = client->coupler->AddApplication(name);
+  return {reinterpret_cast<void*>(client),
+          reinterpret_cast<void*>(client->app)};
 }
+
 void pcms_destroy_client(PcmsClientHandle client)
 {
-  if (client.couplerPointer != nullptr)
-    delete reinterpret_cast<pcms::Coupler*>(client.couplerPointer);
+  delete reinterpret_cast<pcms::ClientState*>(client.couplerPointer);
 }
+
 PcmsReverseClassificationHandle pcms_load_reverse_classification(
   const char* file, MPI_Comm comm)
 {
-  // std::filesystem::path filepath{file};
   auto* rc = new pcms::ReverseClassificationVertex{
     pcms::ReadReverseClassificationVertex(file, comm)};
   return {reinterpret_cast<void*>(rc)};
 }
+
 void pcms_destroy_reverse_classification(PcmsReverseClassificationHandle rc)
 {
-  if (rc.pointer != nullptr)
-    delete reinterpret_cast<pcms::ReverseClassificationVertex*>(rc.pointer);
+  delete reinterpret_cast<pcms::ReverseClassificationVertex*>(rc.pointer);
 }
-struct AddFieldVariantOperators
+
+void pcms_set_overlap_mask(PcmsClientHandle client_handle, const char* name,
+                           in_overlap_function in_overlap)
 {
-  AddFieldVariantOperators(const char* name, pcms::Application* app,
-                           int participates)
-    : name_(name), app_(app), participates_(participates)
-  {
-  }
-
-  [[nodiscard]]
-  pcms::CoupledField* operator()(const std::monostate&) const noexcept
-  {
-    return nullptr;
-  }
-  template <typename FieldAdapter>
-  [[nodiscard]]
-  pcms::CoupledField* operator()(
-    const FieldAdapter& field_adapter) const noexcept
-  {
-    return app_->AddField(name_, field_adapter, participates_);
-  }
-
-  const char* name_;
-  pcms::Application* app_;
-  bool participates_;
-};
+  auto* app =
+    reinterpret_cast<pcms::ApplicationComm*>(client_handle.appPointer);
+  PCMS_ALWAYS_ASSERT(app != nullptr);
+  PCMS_ALWAYS_ASSERT(in_overlap != nullptr);
+  // Fields registered through the C API use their name as the layout name.
+  app->SetLayoutOverlapMask(name,
+                            std::make_unique<pcms::OverlapMask>(in_overlap));
+}
 
 PcmsFieldHandle pcms_add_field(PcmsClientHandle client_handle, const char* name,
                                PcmsFieldAdapterHandle adapter_handle,
                                int participates)
 {
-
+  auto* client =
+    reinterpret_cast<pcms::ClientState*>(client_handle.couplerPointer);
+  auto* app =
+    reinterpret_cast<pcms::ApplicationComm*>(client_handle.appPointer);
   auto* adapter =
     reinterpret_cast<pcms::FieldAdapterVariant*>(adapter_handle.pointer);
-  auto* app = reinterpret_cast<pcms::Application*>(client_handle.appPointer);
+  PCMS_ALWAYS_ASSERT(client != nullptr);
   PCMS_ALWAYS_ASSERT(app != nullptr);
   PCMS_ALWAYS_ASSERT(adapter != nullptr);
-  // pcms::CoupledField* field = std::visit(
-  //   redev::overloaded{
-  //     [](const std::monostate&) -> pcms::CoupledField* { return nullptr; },
-  //     [&name, &client, participates](const auto& field_adapter) {
-  //       return client->AddField(name, field_adapter, participates);
-  //     }},
-  //   *adapter);
-  pcms::CoupledField* field =
-    std::visit(AddFieldVariantOperators{name, app, participates}, *adapter);
-  return {reinterpret_cast<void*>(field)};
+
+  auto handle = std::visit(
+    [&](const auto& registration) {
+      return pcms::RegisterField(*app, name, registration, participates);
+    },
+    *adapter);
+
+  auto [it, inserted] =
+    client->field_handles.try_emplace(name, std::move(handle));
+  if (!inserted) {
+    throw pcms::pcms_error("Field with this name already exists");
+  }
+  return {reinterpret_cast<void*>(&it->second)};
 }
+
 void pcms_send_field_name(PcmsClientHandle client_handle, const char* name)
 {
-  auto* app = reinterpret_cast<pcms::Application*>(client_handle.appPointer);
+  auto* app =
+    reinterpret_cast<pcms::ApplicationComm*>(client_handle.appPointer);
   PCMS_ALWAYS_ASSERT(app != nullptr);
   app->SendField(name);
 }
+
 void pcms_receive_field_name(PcmsClientHandle client_handle, const char* name)
 {
-  auto* app = reinterpret_cast<pcms::Application*>(client_handle.appPointer);
+  auto* app =
+    reinterpret_cast<pcms::ApplicationComm*>(client_handle.appPointer);
   PCMS_ALWAYS_ASSERT(app != nullptr);
   app->ReceiveField(name);
 }
+
 void pcms_send_field(PcmsFieldHandle field_handle)
 {
-  auto* field = reinterpret_cast<pcms::CoupledField*>(field_handle.pointer);
+  auto* field =
+    reinterpret_cast<pcms::ClientState::HandleVariant*>(field_handle.pointer);
   PCMS_ALWAYS_ASSERT(field != nullptr);
-  field->Send();
+  std::visit([](auto& typed_handle) { typed_handle.Send(); }, *field);
 }
+
 void pcms_receive_field(PcmsFieldHandle field_handle)
 {
-  auto* field = reinterpret_cast<pcms::CoupledField*>(field_handle.pointer);
+  auto* field =
+    reinterpret_cast<pcms::ClientState::HandleVariant*>(field_handle.pointer);
   PCMS_ALWAYS_ASSERT(field != nullptr);
-  field->Receive();
+  std::visit([](auto& typed_handle) { typed_handle.Receive(); }, *field);
 }
+
 template <typename T>
 void pcms_create_xgc_field_adapter_t(
-  const char* name, MPI_Comm comm, void* data, int size,
+  const char* /* name */, MPI_Comm comm, void* data, int size,
   const pcms::ReverseClassificationVertex& reverse_classification,
-  in_overlap_function in_overlap, pcms::FieldAdapterVariant& field_adapter)
+  pcms::FieldAdapterVariant& field_adapter)
 {
   PCMS_ALWAYS_ASSERT((size > 0) ? (data != nullptr) : true);
+  auto function_space = pcms::XGCFieldFactory(reverse_classification, size);
   pcms::Rank1View<T, pcms::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
-  field_adapter.emplace<pcms::XGCFieldAdapter<T>>(
-    name, comm, data_view, reverse_classification, in_overlap);
+  field_adapter.emplace<pcms::detail::XGCFieldRegistration<T>>(
+    std::move(function_space), comm, data_view);
 }
+
 PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   const char* name, MPI_Comm comm, void* data, int size, PcmsType data_type,
-  const PcmsReverseClassificationHandle rc, in_overlap_function in_overlap)
+  const PcmsReverseClassificationHandle rc)
 {
   auto* field_adapter = new pcms::FieldAdapterVariant{};
   PCMS_ALWAYS_ASSERT(rc.pointer != nullptr);
@@ -139,24 +280,20 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
   switch (data_type) {
     case PCMS_DOUBLE:
-      pcms_create_xgc_field_adapter_t<double>(name, comm, data, size,
-                                              *reverse_classification,
-                                              in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<double>(
+        name, comm, data, size, *reverse_classification, *field_adapter);
       break;
     case PCMS_FLOAT:
-      pcms_create_xgc_field_adapter_t<float>(name, comm, data, size,
-                                             *reverse_classification,
-                                             in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<float>(
+        name, comm, data, size, *reverse_classification, *field_adapter);
       break;
     case PCMS_INT:
-      pcms_create_xgc_field_adapter_t<int>(name, comm, data, size,
-                                           *reverse_classification, in_overlap,
-                                           *field_adapter);
+      pcms_create_xgc_field_adapter_t<int>(
+        name, comm, data, size, *reverse_classification, *field_adapter);
       break;
     case PCMS_LONG_INT:
-      pcms_create_xgc_field_adapter_t<long int>(name, comm, data, size,
-                                                *reverse_classification,
-                                                in_overlap, *field_adapter);
+      pcms_create_xgc_field_adapter_t<pcms::GO>(
+        name, comm, data, size, *reverse_classification, *field_adapter);
       break;
     default:
       PCMS_ALWAYS_ASSERT(false, MPI_COMM_WORLD,
@@ -164,22 +301,19 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   }
   return {reinterpret_cast<void*>(field_adapter)};
 }
+
 PcmsFieldAdapterHandle pcms_create_dummy_field_adapter()
 {
   auto* field_adapter =
-    new pcms::FieldAdapterVariant{pcms::DummyFieldAdapter{}};
+    new pcms::FieldAdapterVariant{pcms::detail::DummyFieldRegistration{}};
   return {reinterpret_cast<void*>(field_adapter)};
 }
 
 void pcms_destroy_field_adapter(PcmsFieldAdapterHandle adapter_handle)
 {
-  auto* adapter =
-    reinterpret_cast<pcms::FieldAdapterVariant*>(adapter_handle.pointer);
-  if (adapter != nullptr) {
-    delete adapter;
-    adapter = nullptr;
-  }
+  delete reinterpret_cast<pcms::FieldAdapterVariant*>(adapter_handle.pointer);
 }
+
 int pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle rc)
 {
   auto* reverse_classification =
@@ -191,27 +325,31 @@ int pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle rc)
                            return current + verts.second.size();
                          });
 }
+
 void pcms_begin_send_phase(PcmsClientHandle h)
 {
-  auto* app = reinterpret_cast<pcms::Application*>(h.appPointer);
+  auto* app = reinterpret_cast<pcms::ApplicationComm*>(h.appPointer);
   PCMS_ALWAYS_ASSERT(app != nullptr);
   app->BeginSendPhase();
 }
+
 void pcms_end_send_phase(PcmsClientHandle h)
 {
-  auto* app = reinterpret_cast<pcms::Application*>(h.appPointer);
+  auto* app = reinterpret_cast<pcms::ApplicationComm*>(h.appPointer);
   PCMS_ALWAYS_ASSERT(app != nullptr);
   app->EndSendPhase();
 }
+
 void pcms_begin_receive_phase(PcmsClientHandle h)
 {
-  auto* app = reinterpret_cast<pcms::Application*>(h.appPointer);
+  auto* app = reinterpret_cast<pcms::ApplicationComm*>(h.appPointer);
   PCMS_ALWAYS_ASSERT(app != nullptr);
   app->BeginReceivePhase();
 }
+
 void pcms_end_receive_phase(PcmsClientHandle h)
 {
-  auto* app = reinterpret_cast<pcms::Application*>(h.appPointer);
+  auto* app = reinterpret_cast<pcms::ApplicationComm*>(h.appPointer);
   PCMS_ALWAYS_ASSERT(app != nullptr);
   app->EndReceivePhase();
 }

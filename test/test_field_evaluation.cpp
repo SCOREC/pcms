@@ -1,140 +1,175 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/generators/catch_generators.hpp>
-#include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
-#include "pcms/adapter/omega_h/omega_h_field.h"
-#include "pcms/adapter/omega_h/omega_h_field2.h"
-#include "pcms/create_field.h"
-#include <Kokkos_Core.hpp>
+#include <Omega_h_mesh.hpp>
+#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/value_view.hpp"
+#include "pcms/utility/assert.h"
+#include "field_test_utils.h"
+#include <array>
+#include <cmath>
 #include <vector>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::Real;
+
+// Non-linear test function used to exercise quadratic interpolation.
+KOKKOS_INLINE_FUNCTION static Real sin_f(Real x, Real y)
+{
+  return std::sin(20 * x * y) / 2 + 0.5;
+}
+
+// Standard interior test points shared across all evaluation tests.
+static const std::vector<Real> kEvalCoords = {
+  0.7681, 0.886,  0.5337, 0.5205,   0.8088, 0.1513, 0.13,
+  0.43,   0.5484, 0.8263, 0.006119, 0.8642, 0.5889, 0.5622,
+  0.9268, 0.1749, 0.2615, 0.1468,   0.9793, 0.9612,
+};
 
 TEST_CASE("evaluate linear 2d omega_h_field")
 {
   auto lib = Omega_h::Library{};
-  auto world = lib.world();
+  auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 100,
+                                 100, 0, false);
+  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
+  auto field = factory->CreateFunction<Real>();
+
+  pcms::test::SetField(
+    field,
+    OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
+  pcms::test::CheckEvaluation(
+    factory, field, pcms::test::StandardEvalCoords2D(),
+    OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
+}
+
+#ifdef PCMS_ENABLE_MESHFIELDS
+TEST_CASE("evaluate quadratic 2d meshfields_field")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 100,
+                                 100, 0, false);
+  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
+    pcms::LagrangeFunctionSpace::Backend::MeshFields);
+
+  // Quadratic DOF holders span vertices and edge midpoints; the layout's DOF
+  // coordinates cover both, so SetField samples sin_f at every holder.
+  auto field = factory->CreateFunction<Real>();
+  pcms::test::SetField(
+    field, OMEGA_H_LAMBDA(Real x, Real y) { return sin_f(x, y); });
+
+  pcms::test::CheckEvaluation(
+    factory, field, kEvalCoords,
+    OMEGA_H_LAMBDA(Real x, Real y) { return std::sin(20 * x * y) / 2 + 0.5; },
+    1.0e-2);
+}
+#endif
+
+#ifdef PCMS_ENABLE_MESHFIELDS
+// Recomputes the expected DOF-holder coordinates from mesh geometry exactly as
+// the layout's isoparametric map does for affine simplex elements, accumulated
+// per entity dimension in the same block order the layout stores:
+//   dim 0 (vertex) holders -> the vertex's own coordinate,
+//   dim 1 (edge)   holders -> the midpoint of the edge's two endpoint vertices.
+// Returns a flat node-major vector matching GetDOFHolderCoordinates()
+// layout.
+static std::vector<Real> ComputeManualHolderCoords(
+  Omega_h::Mesh& mesh, const std::array<int, 4>& nodes_per_dim)
+{
+  const int dim = mesh.dim();
+  auto mesh_coords_h = Omega_h::HostRead<Omega_h::Real>(mesh.coords());
+  auto edge2vtx_h = Omega_h::HostRead<Omega_h::LO>(mesh.ask_verts_of(1));
+
+  std::vector<Real> expected;
+  for (int e_dim = 0; e_dim <= dim; ++e_dim) {
+    if (nodes_per_dim[static_cast<size_t>(e_dim)] != 1)
+      continue;
+    const int num_ents = mesh.nents(e_dim);
+    for (int ent = 0; ent < num_ents; ++ent) {
+      if (e_dim == 0) {
+        for (int d = 0; d < dim; ++d)
+          expected.push_back(mesh_coords_h[ent * dim + d]);
+      } else { // e_dim == 1: edge midpoint
+        const int a = edge2vtx_h[2 * ent + 0];
+        const int b = edge2vtx_h[2 * ent + 1];
+        for (int d = 0; d < dim; ++d)
+          expected.push_back(
+            0.5 * (mesh_coords_h[a * dim + d] + mesh_coords_h[b * dim + d]));
+      }
+    }
+  }
+  return expected;
+}
+
+// Builds a MeshFields layout of the given order on a small known box and checks
+// that GetDOFHolderCoordinates() matches the manual reference computation.
+static void CheckMeshFieldsDofHolderCoordsAgainstManual(Omega_h::Library& lib,
+                                                        int order)
+{
   auto mesh =
-    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto layout =
-    pcms::CreateLagrangeLayout(mesh, 1, 1, pcms::CoordinateSystem::Cartesian);
-  const auto nverts = mesh.nents(0);
-  auto mesh_coords = mesh.coords();
-  auto f = KOKKOS_LAMBDA(Real x, Real y)
-  {
-    return std::sin(20 * x * y) / 2 + 0.5;
-  };
-  Omega_h::Write<Real> test_f(nverts);
-  Omega_h::parallel_for(
-    nverts, OMEGA_H_LAMBDA(int i) {
-      Real x = mesh_coords[2 * i + 0];
-      Real y = mesh_coords[2 * i + 1];
-      test_f[i] = f(x, y);
-    });
-  Omega_h::HostWrite<Real> test_f_host(test_f);
-  auto field = layout->CreateField();
-  field->SetDOFHolderData(pcms::make_const_array_view(test_f_host));
+    Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 2, 3, 0, false);
 
-  std::vector<Real> coords = {
-    0.7681, 0.886,  0.5337, 0.5205,   0.8088, 0.1513, 0.13,
-    0.43,   0.5484, 0.8263, 0.006119, 0.8642, 0.5889, 0.5622,
-    0.9268, 0.1749, 0.2615, 0.1468,   0.9793, 0.9612,
-  };
+  std::array<int, 4> nodes_per_dim{};
+  if (order == 1)
+    nodes_per_dim = {1, 0, 0, 0};
+  else if (order == 2)
+    nodes_per_dim = {1, 1, 0, 0};
 
-  std::vector<Real> evaluation(coords.size() / 2);
-  pcms::Rank1View<Real, pcms::HostMemorySpace> eval_view{evaluation.data(),
-                                                         evaluation.size()};
-  pcms::Rank2View<const Real, pcms::HostMemorySpace> coords_view(
-    coords.data(), coords.size() / 2, 2);
-  pcms::FieldDataView<Real, pcms::HostMemorySpace> data_view(
-    eval_view, field->GetCoordinateSystem());
-  pcms::CoordinateView<pcms::HostMemorySpace> coordinate_view{
-    field->GetCoordinateSystem(), coords_view};
+  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, order, 1, pcms::csys::Cartesian::Deferred(), "global",
+    pcms::LagrangeFunctionSpace::Backend::MeshFields);
+  auto layout = factory->GetLayout();
 
-  auto locale = field->GetLocalizationHint(coordinate_view);
-  field->Evaluate(locale, data_view);
+  // Sanity-check the block layout: vertices then edges.
+  if (order == 2) {
+    const auto offsets = layout->GetEntOffsets();
+    const int nverts = mesh.nents(0);
+    REQUIRE(offsets[0] == 0);
+    REQUIRE(offsets[1] == static_cast<size_t>(nverts));
+  }
 
-  for (int i = 0; i < coords.size() / 2; ++i) {
-    Real x = coords[2 * i + 0];
-    Real y = coords[2 * i + 1];
+  const std::vector<Real> expected =
+    ComputeManualHolderCoords(mesh, nodes_per_dim);
 
-    Real test_value = evaluation[i];
-    Real reference_value = f(x, y);
-    Real percent_error =
-      100 * std::abs(test_value - reference_value) / reference_value;
+  auto coords = layout->GetDOFHolderCoordinates().GetValues();
+  const int dim = mesh.dim();
+  REQUIRE(coords.extent(1) == static_cast<size_t>(dim));
+  REQUIRE(coords.extent(0) == expected.size() / static_cast<size_t>(dim));
 
-    REQUIRE(percent_error < 1.0);
+  auto coords_h = pcms::test::CopyCoordinatesToHost(coords);
+
+  size_t idx = 0;
+  for (size_t r = 0; r < coords_h.extent(0); ++r) {
+    for (int d = 0; d < dim; ++d) {
+      INFO("row " << r << " dim " << d);
+      REQUIRE(coords_h(r, d) == Catch::Approx(expected[idx]));
+      ++idx;
+    }
   }
 }
 
-TEST_CASE("evaluate quadratic 2d omega_h_field")
+TEST_CASE("MeshFields: linear dof-holder coordinates match manual reference")
 {
   auto lib = Omega_h::Library{};
-  auto world = lib.world();
-  auto mesh =
-    Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto layout =
-    pcms::CreateLagrangeLayout(mesh, 2, 1, pcms::CoordinateSystem::Cartesian);
-  const auto nverts = mesh.nents(0);
-  const auto nedges = mesh.nents(1);
-  auto mesh_coords = mesh.coords();
-  auto edge_verts = mesh.ask_verts_of(1);
-  auto f = KOKKOS_LAMBDA(Real x, Real y)
-  {
-    return std::sin(20 * x * y) / 2 + 0.5;
-  };
-  Omega_h::Write<Real> test_f(nverts + nedges);
-  Omega_h::parallel_for(
-    nverts, OMEGA_H_LAMBDA(int i) {
-      Real x = mesh_coords[2 * i + 0];
-      Real y = mesh_coords[2 * i + 1];
-      test_f[i] = f(x, y);
-    });
-  Omega_h::parallel_for(
-    nedges, OMEGA_H_LAMBDA(int i) {
-      auto endpoints = Omega_h::gather_verts<2>(edge_verts, i);
-      Real x0 = mesh_coords[2 * endpoints[0] + 0];
-      Real y0 = mesh_coords[2 * endpoints[0] + 1];
-      Real x1 = mesh_coords[2 * endpoints[1] + 0];
-      Real y1 = mesh_coords[2 * endpoints[1] + 1];
-      Real cx = (x0 + x1) / 2;
-      Real cy = (y0 + y1) / 2;
-      test_f[nverts + i] = f(cx, cy);
-    });
+  CheckMeshFieldsDofHolderCoordsAgainstManual(lib, 1);
+}
 
-  Omega_h::HostWrite<Real> test_f_host(test_f);
-  auto field = layout->CreateField();
-  field->SetDOFHolderData(pcms::make_const_array_view(test_f_host));
+TEST_CASE("MeshFields: quadratic dof-holder coordinates match manual reference")
+{
+  auto lib = Omega_h::Library{};
+  CheckMeshFieldsDofHolderCoordsAgainstManual(lib, 2);
+}
+#endif
 
-  std::vector<Real> coords = {
-    0.7681, 0.886,  0.5337, 0.5205,   0.8088, 0.1513, 0.13,
-    0.43,   0.5484, 0.8263, 0.006119, 0.8642, 0.5889, 0.5622,
-    0.9268, 0.1749, 0.2615, 0.1468,   0.9793, 0.9612,
-  };
+TEST_CASE("evaluate quadratic 2d omega_h_field throws")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 100,
+                                 100, 0, false);
 
-  std::vector<Real> evaluation(coords.size() / 2);
-  pcms::Rank1View<Real, pcms::HostMemorySpace> eval_view{evaluation.data(),
-                                                         evaluation.size()};
-  pcms::Rank2View<const Real, pcms::HostMemorySpace> coords_view(
-    coords.data(), coords.size() / 2, 2);
-  pcms::FieldDataView<Real, pcms::HostMemorySpace> data_view(
-    eval_view, field->GetCoordinateSystem());
-  pcms::CoordinateView<pcms::HostMemorySpace> coordinate_view{
-    field->GetCoordinateSystem(), coords_view};
-
-  auto locale = field->GetLocalizationHint(coordinate_view);
-  field->Evaluate(locale, data_view);
-
-  for (int i = 0; i < coords.size() / 2; ++i) {
-    Real x = coords[2 * i + 0];
-    Real y = coords[2 * i + 1];
-
-    Real test_value = evaluation[i];
-    Real reference_value = f(x, y);
-    Real percent_error =
-      100 * std::abs(test_value - reference_value) / reference_value;
-
-    REQUIRE(percent_error < 1.0);
-  }
+  REQUIRE_THROWS_AS(pcms::LagrangeFunctionSpace::FromMesh(
+                      mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
+                      pcms::LagrangeFunctionSpace::Backend::OmegaH),
+                    pcms::pcms_error);
 }

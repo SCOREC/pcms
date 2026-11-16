@@ -45,7 +45,7 @@ build-pcms/install
 # cmake -S kokkos-kernels -B build-kokkos-kernels \
 #   -DCMAKE_INSTALL_PREFIX=$PWD/build-kokkos-kernels/install \
 #   -DCMAKE_CXX_COMPILER=CC \
-#   -DCMAKE_CXX_STANDARD=17
+#   -DCMAKE_CXX_STANDARD=20
 # cmake --build build-kokkos-kernels -j24 --target install
 
 

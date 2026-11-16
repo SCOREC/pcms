@@ -2,35 +2,11 @@
 set(
   PCMS_HEADERS
   pcms.h
-  pcms/bounding_box.h
-  pcms/coordinate.h
-  pcms/coordinate_systems.h
-  pcms/coordinate_transform.h
-  pcms/field.h
-  pcms/create_field.h
-  pcms/field_communicator.h
-  pcms/field_communicator2.h
-  pcms/field_evaluation_methods.h
-  pcms/partition.h
-  pcms/coupler.h
-  pcms/coordinate_system.h
-  pcms/field_layout.h
-  pcms/adapter/point_cloud/point_cloud_layout.h
-  pcms/adapter/point_cloud/point_cloud.h
-  pcms/adapter/omega_h/omega_h_field_layout.h
-  pcms/adapter/omega_h/omega_h_field2.h
 )
 
 set(
   PCMS_SOURCES
   pcms.cpp
-  pcms/create_field.cpp
-  pcms/adapter/xgc/xgc_field_adapter.h
-  pcms/adapter/point_cloud/point_cloud_layout.cpp
-  pcms/adapter/point_cloud/point_cloud.cpp
-  pcms/adapter/omega_h/omega_h_field_layout.cpp
-  pcms/adapter/omega_h/omega_h_field2.cpp
-  pcms/adapter/xgc/xgc_field_adapter.h
 )
 
 configure_file(pcms/version.h.in pcms/version.h)
@@ -38,30 +14,15 @@ configure_file(pcms/configuration.h.in pcms/configuration.h)
 list(APPEND PCMS_HEADERS ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.h ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.h)
 
 add_subdirectory(pcms/utility)
+if(PCMS_ENABLE_TRANSIENT)
+  add_subdirectory(pcms/transient)
+endif()
+add_subdirectory(pcms/discretization)
+add_subdirectory(pcms/localization)
+add_subdirectory(pcms/field)
+add_subdirectory(pcms/coupler)
 
 
-if(PCMS_ENABLE_XGC)
-  list(APPEND PCMS_SOURCES pcms/adapter/xgc/xgc_reverse_classification.cpp)
-  list(APPEND PCMS_HEADERS pcms/adapter/xgc/xgc_reverse_classification.h)
-endif()
-if(PCMS_ENABLE_OMEGA_H)
-  list(APPEND PCMS_SOURCES 
-    pcms/point_search.cpp
-    pcms/adapter/uniform_grid/uniform_grid_field_layout.cpp
-    pcms/adapter/uniform_grid/uniform_grid_field.cpp
-  )
-  list(
-    APPEND
-    PCMS_HEADERS
-    pcms/adapter/omega_h/omega_h_field.h
-    pcms/transfer_field.h
-    pcms/transfer_field2.h
-    pcms/uniform_grid.h
-    pcms/point_search.h
-    pcms/adapter/uniform_grid/uniform_grid_field_layout.h
-    pcms/adapter/uniform_grid/uniform_grid_field.h
-  )
-endif()
 
 find_package(Kokkos REQUIRED)
 find_package(perfstubs REQUIRED)
@@ -72,14 +33,11 @@ set_target_properties(
   core
 )
 add_library(pcms::core ALIAS pcms_core)
-target_compile_features(pcms_core PUBLIC cxx_std_17)
+target_compile_features(pcms_core PUBLIC cxx_std_20)
 target_link_libraries(
-  pcms_core PUBLIC meshfields::meshfields redev::redev
-  MPI::MPI_CXX Kokkos::kokkos perfstubs pcms::utility
+  pcms_core PUBLIC redev::redev
+  MPI::MPI_CXX Kokkos::kokkos perfstubs pcms::utility pcms::localization pcms::field pcms::coupler
 )
-if(PCMS_ENABLE_OMEGA_H)
-  target_link_libraries(pcms_core PUBLIC Omega_h::omega_h)
-endif()
 
 if(PCMS_HAS_ASAN)
   target_compile_options(
@@ -122,6 +80,9 @@ install(
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms
 )
 
+install(FILES "${CMAKE_SOURCE_DIR}/cmake/FindPETSc.cmake"
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+
 install(
   EXPORT pcms_core-targets
   NAMESPACE pcms::
@@ -130,12 +91,14 @@ install(
 
 add_library(pcms_pcms INTERFACE)
 target_link_libraries(pcms_pcms INTERFACE pcms::core)
+if(PCMS_ENABLE_TRANSIENT)
+  target_link_libraries(pcms_pcms INTERFACE pcms::transient)
+endif()
 set_target_properties(pcms_pcms PROPERTIES EXPORT_NAME pcms)
 if (PCMS_ENABLE_Python)
   # Disable LTO/IPO before adding Python subdirectory to avoid fatbinData conflicts
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
   add_subdirectory(pcms/pythonapi)
-  target_link_libraries(pcms_pcms INTERFACE pcms::pythonapi)
 endif()
 if(PCMS_ENABLE_C)
   add_subdirectory(pcms/capi)
@@ -146,8 +109,8 @@ if(PCMS_ENABLE_Fortran)
   target_link_libraries(pcms_pcms INTERFACE pcms::fortranapi)
 endif()
 
-add_subdirectory(pcms/interpolator)
-target_link_libraries(pcms_pcms INTERFACE pcms::interpolator)
+add_subdirectory(pcms/transfer)
+target_link_libraries(pcms_pcms INTERFACE pcms::transfer)
 
 install(
   TARGETS pcms_pcms
@@ -157,8 +120,9 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   INCLUDES
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
+
+
 # install external headers
 install(
   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/pcms/external/

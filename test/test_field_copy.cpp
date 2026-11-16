@@ -3,11 +3,12 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
-#include <pcms/transfer_field2.h>
-#include "pcms/adapter/omega_h/omega_h_field.h"
-#include "pcms/adapter/omega_h/omega_h_field2.h"
-#include "pcms/create_field.h"
+#include "pcms/transfer/copy.h"
+#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/value_view.hpp"
+#include "pcms/utility/assert.h"
 #include <Kokkos_Core.hpp>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::Real;
 
@@ -19,20 +20,26 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
 
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, nx, ny, nz, false);
-  auto layout = pcms::CreateLagrangeLayout(mesh, order, num_components,
-                                           pcms::CoordinateSystem::Cartesian);
-  int ndata = layout->GetNumOwnedDofHolder() * num_components;
+  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
+    mesh, order, num_components, pcms::csys::Cartesian::Deferred(), "global",
+    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  auto layout = factory->GetLayout();
+  int ndata = layout->GetNumDofHolder() * num_components;
   Omega_h::HostWrite<Real> ids(ndata);
   Kokkos::parallel_for(
     Kokkos::RangePolicy<pcms::HostMemorySpace::execution_space>(0, ndata),
     [=](int i) { ids[i] = i; });
 
-  auto original = layout->CreateField();
-  original->SetDOFHolderData(pcms::make_const_array_view(ids));
+  auto original = factory->CreateFunction<Real>();
+  original.SetDOFHolderDataUncheckedHost(
+    pcms::Rank2View<const Real, pcms::HostMemorySpace>(
+      ids.data(), layout->GetNumDofHolder(), num_components));
 
-  auto copied = layout->CreateField();
-  pcms::copy_field2(*original, *copied);
-  auto copied_array = copied->GetDOFHolderData();
+  auto copied = factory->CreateFunction<Real>();
+  pcms::Copy<Real> copy(*factory, *factory);
+  copy.Apply(original, copied);
+  auto copied_array =
+    pcms::FlattenToRank1View(copied.GetDOFHolderDataHost().GetValues());
 
   REQUIRE(copied_array.size() == ndata);
   int sum = 0;
@@ -48,6 +55,12 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
 TEST_CASE("copy omega_h_field2 data")
 {
   auto lib = Omega_h::Library{};
+  test_copy(lib.world(), 2, 0, 1);
   test_copy(lib.world(), 2, 1, 1);
-  test_copy(lib.world(), 2, 2, 1);
+  auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 100,
+                                 100, 0, false);
+  REQUIRE_THROWS_AS(pcms::LagrangeFunctionSpace::FromMesh(
+                      mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
+                      pcms::LagrangeFunctionSpace::Backend::OmegaH),
+                    pcms::pcms_error);
 }

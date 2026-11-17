@@ -40,7 +40,7 @@ inline constexpr std::size_t SmallHostBatchSize = 256;
 {
   return Kokkos::SpaceAccessibility<Kokkos::HostSpace,
                                     DeviceMemorySpace>::accessible &&
-         n <= SmallHostBatchSize;
+         n <= detail::SmallHostBatchSize;
 }
 
 /// Runs `functor(i)` for every i in [0, n): as a plain loop on the calling
@@ -50,7 +50,7 @@ inline constexpr std::size_t SmallHostBatchSize = 256;
 template <typename Index, typename Functor>
 void ForEach(const char* label, Index n, const Functor& functor)
 {
-  if (IsSmallHostBatch(static_cast<std::size_t>(n))) {
+  if (detail::IsSmallHostBatch(static_cast<std::size_t>(n))) {
     for (Index i = 0; i < n; ++i) {
       functor(i);
     }

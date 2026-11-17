@@ -144,6 +144,9 @@ private:
 using Uniform2DGrid = UniformGrid<2>;
 using Uniform3DGrid = UniformGrid<3>;
 
+namespace detail
+{
+
 /**
  * \brief Divisions per axis giving roughly one element per grid cell.
  *
@@ -155,6 +158,8 @@ template <unsigned dim>
     std::pow(static_cast<double>(nelems), 1.0 / static_cast<double>(dim))));
   return std::max(per_axis, min_divisions);
 }
+
+} // namespace detail
 
 } // namespace pcms
 

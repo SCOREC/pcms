@@ -172,7 +172,7 @@ void client2(MPI_Comm comm, Omega_h::Mesh& mesh, std::string comm_name,
   channel.EndReceiveCommunicationPhase();
 
   auto copied_array =
-    pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());
 

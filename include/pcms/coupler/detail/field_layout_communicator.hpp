@@ -12,6 +12,7 @@
 namespace pcms
 {
 
+/// Implementer API: not covered by the public-API stability promise.
 class FieldLayoutCommunicator
 {
 public:

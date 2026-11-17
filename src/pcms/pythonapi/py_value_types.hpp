@@ -150,7 +150,7 @@ inline py::array_t<LO> IndicesToNumpy(
   if (indices.extent(0) == 0) {
     return py::array_t<LO>(0);
   }
-  return ViewToNumpy(MakeRank1View(indices), owner);
+  return ViewToNumpy(pcms::detail::MakeRank1View(indices), owner);
 }
 
 // Device copy of the coordinates together with the CoordinateView over it.
@@ -165,8 +165,9 @@ inline DeviceCoordinates CopyCoordinatesToDevice(const PyCoordinateView& coords)
 {
   auto storage = CopyNumpyToKokkosView<2, Real, DeviceMemorySpace>(
     NumpyInput<Real>::ensure(coords.values), "coordinates");
-  return DeviceCoordinates{storage, CoordinateView<DeviceMemorySpace>(
-                                      coords.system, MakeRank2View(storage))};
+  return DeviceCoordinates{
+    storage, CoordinateView<DeviceMemorySpace>(
+               coords.system, pcms::detail::MakeRank2View(storage))};
 }
 
 // Number of components of per-entity data shaped (n, num_components), where a
@@ -199,7 +200,7 @@ void WithDeviceOutput(py::array& output, F&& f)
   auto output_device = Kokkos::View<Real**, DeviceMemorySpace>(
     "output_device", output_view.extent(0), output_view.extent(1));
   DeepCopyMismatchLayouts(output_device, output_view);
-  std::forward<F>(f)(MakeRank2View(output_device));
+  std::forward<F>(f)(pcms::detail::MakeRank2View(output_device));
   DeepCopyMismatchLayouts(output_view, output_device);
 #else
   std::forward<F>(f)(output_host);

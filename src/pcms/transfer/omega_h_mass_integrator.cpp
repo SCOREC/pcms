@@ -89,7 +89,7 @@ Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
     Kokkos::View<LO*, DeviceMemorySpace> elements(
       Kokkos::view_alloc(Kokkos::WithoutInitializing, "mass_p0_elements"),
       nelems);
-    iota_view<LO>(elements);
+    pcms::detail::iota_view<LO>(elements);
     const auto centroids =
       ConvertCoordsTo2D(get_entity_centroids(mesh, Dim), nelems, Dim);
     const auto measures = detail::ElementMeasuresAtPoints(

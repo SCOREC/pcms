@@ -7,14 +7,14 @@
 
 namespace pcms
 {
+namespace detail
+{
 void Pcms_Assert_Fail(const char* msg)
 {
   printError("%s", msg);
   abort();
 }
 
-namespace detail
-{
 void AssertFail(const char* cond, const char* file, int line, const char* msg)
 {
   int rank = -1;

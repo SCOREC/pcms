@@ -44,8 +44,8 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
 
     projection.Apply(source, target);
 
-    const auto target_values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto target_values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     REQUIRE(static_cast<Omega_h::LO>(target_values.size()) ==
             target_mesh.nverts());
     for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
@@ -65,8 +65,8 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
 
     projection.Apply(source, target);
 
-    const auto target_values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto target_values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
       pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 3));
     for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
@@ -157,9 +157,9 @@ TEST_CASE("Copy transfer (3D tets) reproduces the source field",
   copy.Apply(source, target);
 
   const auto sv =
-    pcms::FlattenToRank1View(source.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(source.GetDOFHolderDataHost().GetValues());
   const auto tv =
-    pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   REQUIRE(tv.size() == sv.size());
   for (std::size_t i = 0; i < tv.size(); ++i) {
     REQUIRE(tv[i] == Catch::Approx(sv[i]));
@@ -190,7 +190,7 @@ TEST_CASE("Interpolation transfer (3D tets) reproduces a linear field",
   interp.Apply(source, target);
 
   const auto target_values =
-    pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
     pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 3));
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
@@ -229,7 +229,7 @@ TEST_CASE("OmegaHControlVariateProjection (3D tets) is exact for target-space "
   projection.Apply(source, target);
 
   const auto target_values =
-    pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
     pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 3));
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {

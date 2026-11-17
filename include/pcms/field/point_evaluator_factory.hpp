@@ -23,6 +23,8 @@ namespace pcms
 /// The geometry's Bind computes the per-point data for a set of query points
 /// once; CreatePointEvaluator creates evaluators of any value type and
 /// supported operator from the result.
+///
+/// Implementer API: not covered by the public-API stability promise.
 class PointEvaluatorFactory
 {
 public:
@@ -90,6 +92,8 @@ protected:
 /// the constructor.
 /// @tparam T value type of the evaluated fields
 /// @tparam Bound bound-source kind the geometry's Bind creates
+///
+/// Implementer API: not covered by the public-API stability promise.
 template <typename T, typename Bound>
 class TypedPointEvaluatorFactory : public PointEvaluatorFactory
 {
@@ -129,7 +133,7 @@ private:
     Type value_type, std::shared_ptr<const BoundSource> bound,
     DifferentialOperator op) const final
   {
-    if (value_type != TypeEnumFromType<T>()) {
+    if (value_type != detail::TypeEnumFromType<T>()) {
       throw pcms_error("CreatePointEvaluator: this source only supports "
                        "fields of its own value type");
     }
@@ -172,8 +176,8 @@ PointEvaluatorFactory::CreateUntransformedPointEvaluator(
                      " is not supported by this source");
   }
   return std::get<std::unique_ptr<PointEvaluator<T>>>(
-    source.CreatePointEvaluatorImpl(TypeEnumFromType<T>(), std::move(bound),
-                                    op));
+    source.CreatePointEvaluatorImpl(detail::TypeEnumFromType<T>(),
+                                    std::move(bound), op));
 }
 
 template <typename T>

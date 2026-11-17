@@ -241,7 +241,7 @@ inline std::vector<Real> CopyOmegaHRealsToVector(const Omega_h::Reals& coords)
 inline double IntegrateP0Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 {
   const auto values =
-    FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   const auto measures = Omega_h::measure_elements_real(&mesh);
   const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
 
@@ -255,7 +255,7 @@ inline double IntegrateP0Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 inline double IntegrateP1Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 {
   const auto values =
-    FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   const auto measures = Omega_h::measure_elements_real(&mesh);
   const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
   const auto elem_verts_h =
@@ -277,7 +277,8 @@ inline double IntegrateP1Field(Omega_h::Mesh& mesh, const Field<Real>& field)
 // Min/max of an order-1 nodal field. For P1, nodal values are min/max
 inline std::pair<double, double> P1FieldRange(const Field<Real>& field)
 {
-  const auto values = FlattenToRank1View(field.GetDOFHolderData().GetValues());
+  const auto values =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderData().GetValues());
   using MinMaxReducer = Kokkos::MinMax<double>;
   using MinMaxValue = MinMaxReducer::value_type;
 
@@ -317,7 +318,7 @@ inline Kokkos::View<const Real**, HostMemorySpace> CopyCoordinatesToHost(
     "coords_view", coords_device.extent(0), coords_device.extent(1));
   auto coords_view_device =
     Kokkos::create_mirror_view(DeviceMemorySpace(), coords_view);
-  ConvertMismatchLayoutView2D(coords_view_device, coords_device);
+  pcms::detail::ConvertMismatchLayoutView2D(coords_view_device, coords_device);
   Kokkos::deep_copy(coords_view, coords_view_device);
   return coords_view;
 }
@@ -454,7 +455,7 @@ inline ValueView<T, DeviceMemorySpace> TagLike(
   const Field<T>& field, Kokkos::View<T**, DeviceMemorySpace> values)
 {
   return ValueView<T, DeviceMemorySpace>(field.GetData().GetValueBasis(),
-                                         MakeRank2View(values));
+                                         pcms::detail::MakeRank2View(values));
 }
 
 /// Evaluates into a new [NumPoints()][width] view tagged `basis` and returns
@@ -465,8 +466,8 @@ inline Kokkos::View<Real**, HostMemorySpace> EvaluateToHost(
 {
   Kokkos::View<Real**, DeviceMemorySpace> out("out", evaluator.NumPoints(),
                                               width);
-  evaluator.Evaluate(
-    field, ValueView<Real, DeviceMemorySpace>(basis, MakeRank2View(out)));
+  evaluator.Evaluate(field, ValueView<Real, DeviceMemorySpace>(
+                              basis, pcms::detail::MakeRank2View(out)));
   Kokkos::View<Real**, HostMemorySpace> host("host", evaluator.NumPoints(),
                                              width);
   DeepCopyMismatchLayouts(host, out);
@@ -478,7 +479,8 @@ inline Kokkos::View<T*, DeviceMemorySpace> CreateDeviceRank1View(
   const std::vector<T>& values)
 {
   Kokkos::View<T*, DeviceMemorySpace> device("device", values.size());
-  CopyHostRank1ViewToDeviceView(device, make_const_array_view(values));
+  pcms::detail::CopyHostRank1ViewToDeviceView(
+    device, pcms::detail::make_const_array_view(values));
   return device;
 }
 
@@ -509,8 +511,8 @@ inline DeviceCoordinates CreateDeviceCoordinateView(
   return DeviceCoordinates{
     coords_device,
     CoordinateView<DeviceMemorySpace>{
-      pcms::ResolveCoordinateSystem(std::move(coordinate_system), dim),
-      pcms::MakeRank2View(coords_device)}};
+      pcms::detail::ResolveCoordinateSystem(std::move(coordinate_system), dim),
+      pcms::detail::MakeRank2View(coords_device)}};
 }
 
 // Binds interleaved points, given in the geometry's coordinate system, on

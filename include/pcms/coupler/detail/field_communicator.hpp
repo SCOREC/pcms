@@ -16,6 +16,7 @@
 namespace pcms
 {
 
+/// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 class FieldCommunicator
 {
@@ -40,7 +41,7 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     PCMS_ALWAYS_ASSERT(layout_comm_.GetChannel().InSendCommunicationPhase());
-    auto buffer = make_array_view(comm_buffer_);
+    auto buffer = detail::make_array_view(comm_buffer_);
     serializer_.Serialize(field_, buffer, layout_comm_.GetPermutationArray());
     comm_.Send(buffer.data_handle(), detail::ToRedev(mode));
   }
@@ -53,7 +54,7 @@ public:
     // mode because we make an immediate call to deserialize after a call to
     // receive.
     auto data = comm_.Recv(redev::Mode::Synchronous);
-    serializer_.Deserialize(field_, make_const_array_view(data),
+    serializer_.Deserialize(field_, detail::make_const_array_view(data),
                             layout_comm_.GetPermutationArray());
     // Deserialize writes owned DOF holders only, so ghost copies still hold
     // their previous values. Anything that evaluates the field reads ghosts

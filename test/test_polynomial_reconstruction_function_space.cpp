@@ -92,7 +92,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field set/get DOF "
     pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(pcms::ValueBasis{},
                                                              data_view));
 
-  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  auto got =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(got.size() == data.size());
   for (LO i = 0; i < static_cast<LO>(data.size()); ++i) {
     REQUIRE(got[i] == Catch::Approx(data[i]));
@@ -122,7 +123,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
     data.data(), static_cast<LO>(data.size()), 1);
   field.SetDOFHolderDataUncheckedHost(data_view);
 
-  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  auto got =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(got[0] == Catch::Approx(9.0));
   REQUIRE(got[3] == Catch::Approx(12.0));
 }

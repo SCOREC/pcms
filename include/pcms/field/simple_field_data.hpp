@@ -18,6 +18,8 @@ namespace pcms
 //
 // Ownership of the layout is shared — the layout is typically held by the
 // factory that created this field data object.
+//
+// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 class SimpleFieldData
   : public FieldData<T>
@@ -35,7 +37,7 @@ public:
 
   FieldValueType GetValueType() const override
   {
-    return ValueTypeOfRank(basis_.Rank());
+    return detail::ValueTypeOfRank(basis_.Rank());
   }
   const ValueBasis& GetValueBasis() const override { return basis_; }
 
@@ -49,7 +51,7 @@ public:
 
   void SetValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    CopyDeviceRank2ViewToDeviceView(device_data_, values);
+    detail::CopyDeviceRank2ViewToDeviceView(device_data_, values);
   }
 
 private:

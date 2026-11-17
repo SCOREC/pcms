@@ -138,7 +138,7 @@ void FoundFlags(
   Kokkos::View<bool*, DeviceMemorySpace> found)
 {
   using Result = typename PointLocalizationSearch<Dim>::Result;
-  ForEach(
+  pcms::detail::ForEach(
     "FoundFlags", static_cast<LO>(results.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       found(i) =
@@ -159,7 +159,7 @@ void ElementsOfResults(
   LO num_records, Kokkos::View<LO*, DeviceMemorySpace> elements)
 {
   const auto up = UpAdjacencies<Dim>(mesh);
-  ForEach(
+  pcms::detail::ForEach(
     "ElementsOfResults", static_cast<LO>(elements.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       elements(i) = i < num_records ? ElementOfResult<Dim>(up, results(i)) : -1;
@@ -174,7 +174,7 @@ void ElementsOfEntities(Omega_h::Mesh& mesh, int entity_dim,
                         Kokkos::View<LO*, DeviceMemorySpace> elements)
 {
   const auto up = UpAdjacencies<Dim>(mesh);
-  ForEach(
+  pcms::detail::ForEach(
     "ElementsOfEntities", static_cast<LO>(elements.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       elements(i) = LowestAdjacentElement<Dim>(up, entity_dim, entities(i));

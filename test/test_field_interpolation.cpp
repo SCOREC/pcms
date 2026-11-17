@@ -36,10 +36,10 @@ TEST_CASE("interpolate linear 2d omega_h_field")
 
   pcms::Interpolator<Real> interp(*factory, *factory);
   interp.Apply(field, interpolated);
-  auto interpolated_dof =
-    pcms::FlattenToRank1View(interpolated.GetDOFHolderDataHost().GetValues());
+  auto interpolated_dof = pcms::detail::FlattenToRank1View(
+    interpolated.GetDOFHolderDataHost().GetValues());
   auto original_dof =
-    pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(interpolated_dof.size() == original_dof.size());
   for (int i = 0; i < static_cast<int>(interpolated_dof.size()); ++i) {
     REQUIRE_THAT(interpolated_dof[i],
@@ -69,10 +69,10 @@ TEST_CASE("interpolate quadratic 2d meshfields_field")
   pcms::Interpolator<Real> interp(*factory2, *factory2);
   interp.Apply(field, interpolated);
 
-  auto interpolated_dof =
-    pcms::FlattenToRank1View(interpolated.GetDOFHolderDataHost().GetValues());
+  auto interpolated_dof = pcms::detail::FlattenToRank1View(
+    interpolated.GetDOFHolderDataHost().GetValues());
   auto original_dof =
-    pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(interpolated_dof.size() == original_dof.size());
   for (int i = 0; i < static_cast<int>(interpolated_dof.size()); ++i) {
     REQUIRE_THAT(interpolated_dof[i],
@@ -124,10 +124,10 @@ TEST_CASE("Interpolator: construct once, apply twice with different data")
   interp.Apply(source, target);
 
   {
-    auto src_dof =
-      pcms::FlattenToRank1View(source.GetDOFHolderDataHost().GetValues());
-    auto tgt_dof =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    auto src_dof = pcms::detail::FlattenToRank1View(
+      source.GetDOFHolderDataHost().GetValues());
+    auto tgt_dof = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     REQUIRE(tgt_dof.size() == src_dof.size());
     for (int i = 0; i < static_cast<int>(tgt_dof.size()); ++i) {
       REQUIRE_THAT(tgt_dof[i], Catch::Matchers::WithinRel(src_dof[i], 0.001) ||
@@ -142,8 +142,8 @@ TEST_CASE("Interpolator: construct once, apply twice with different data")
   interp.Apply(source, target);
 
   {
-    auto tgt_dof =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    auto tgt_dof = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     for (int i = 0; i < static_cast<int>(tgt_dof.size()); ++i) {
       REQUIRE_THAT(tgt_dof[i], Catch::Matchers::WithinAbs(7.0, 1E-10));
     }

@@ -119,17 +119,6 @@ using default_layout_for_memory_space_t =
 
 } // namespace detail
 
-template <typename ContainerType, typename ElementType, typename Extents,
-          typename LayoutPolicy, typename AccessorPolicy>
-auto make_mdspan(const ContainerType& /* unused */)
-  -> Kokkos::mdspan<ElementType, Extents, LayoutPolicy, AccessorPolicy>
-{
-  static_assert(detail::dependent_always_false<ContainerType>::type,
-                "creating mdspan is not implemented for type");
-}
-
-// TODO make_mdspan
-
 template <int Rank, typename ElementType, typename MemorySpace,
           typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<MemorySpace>,
@@ -149,6 +138,64 @@ template <typename ElementType, typename MemorySpace,
             detail::default_layout_for_memory_space_t<MemorySpace>>
 using Rank2View = View<2, ElementType, MemorySpace, LayoutPolicy>;
 
+template <typename MemorySpace>
+using GlobalIDView = View<1, const GO, MemorySpace, Kokkos::layout_right, GO>;
+
+template <typename T, typename... Properties>
+auto MakeConstRank2View(const Kokkos::View<T**, Properties...>& view)
+{
+  using KokkosView = Kokkos::View<T**, Properties...>;
+  using MemorySpace = typename KokkosView::memory_space;
+  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
+  return Rank2View<const T, MemorySpace, LayoutPolicy>(
+    view.data(), view.extent(0), view.extent(1));
+}
+
+// utility function to deep copy between layout incompatible views
+// layout imcompatible view can't be deep_copied directly between different
+// memory spaces, the workaround is provided from
+// https://kokkos.org/kokkos-core-wiki/API/core/view/deep_copy.html#how-to-get-layout-incompatible-views-copied
+template <typename DestView, typename SrcView>
+auto DeepCopyMismatchLayouts(DestView& dest, const SrcView& src)
+{
+  static_assert(Kokkos::is_view<DestView>::value &&
+                  Kokkos::is_view<SrcView>::value,
+                "Both arguments must be Kokkos::View types");
+
+  using DestMemSpace = typename DestView::memory_space;
+  using SrcMemSpace = typename SrcView::memory_space;
+
+  if constexpr (std::is_same_v<DestMemSpace, HostMemorySpace> &&
+                !std::is_same_v<SrcMemSpace, HostMemorySpace>) {
+    // Device to Host: mirror the device view to host
+    auto src_tmp = Kokkos::create_mirror_view_and_copy(HostMemorySpace(), src);
+    Kokkos::deep_copy(dest, src_tmp);
+  } else if constexpr (!std::is_same_v<DestMemSpace, HostMemorySpace> &&
+                       std::is_same_v<SrcMemSpace, HostMemorySpace>) {
+    // Host to Device: create mirror on device from host view
+    auto dest_tmp = Kokkos::create_mirror_view(dest);
+    Kokkos::deep_copy(dest_tmp, src);
+    Kokkos::deep_copy(dest, dest_tmp);
+  } else {
+    // Same memory space
+    Kokkos::deep_copy(dest, src);
+  }
+}
+/// Implementer API: not covered by the public-API stability promise.
+namespace detail
+{
+
+template <typename ContainerType, typename ElementType, typename Extents,
+          typename LayoutPolicy, typename AccessorPolicy>
+auto make_mdspan(const ContainerType& /* unused */)
+  -> Kokkos::mdspan<ElementType, Extents, LayoutPolicy, AccessorPolicy>
+{
+  static_assert(detail::dependent_always_false<ContainerType>::type,
+                "creating mdspan is not implemented for type");
+}
+
+// TODO make_mdspan
+
 template <typename ElementType, typename MemorySpace,
           typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<MemorySpace>>
@@ -158,9 +205,6 @@ template <typename ElementType, typename MemorySpace,
           typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<MemorySpace>>
 using Rank4View = View<4, ElementType, MemorySpace, LayoutPolicy>;
-
-template <typename MemorySpace>
-using GlobalIDView = View<1, const GO, MemorySpace, Kokkos::layout_right, GO>;
 
 // default implementation of make_array_view
 template <typename T, typename MemorySpace = detail::memory_space_selector_t<T>,
@@ -232,16 +276,6 @@ auto MakeRank2View(const Kokkos::View<T**, Properties...>& view)
     view.data(), view.extent(0), view.extent(1));
 }
 
-template <typename T, typename... Properties>
-auto MakeConstRank2View(const Kokkos::View<T**, Properties...>& view)
-{
-  using KokkosView = Kokkos::View<T**, Properties...>;
-  using MemorySpace = typename KokkosView::memory_space;
-  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
-  return Rank2View<const T, MemorySpace, LayoutPolicy>(
-    view.data(), view.extent(0), view.extent(1));
-}
-
 // Flatten a contiguous (exhaustive) 2D [dof][comp] view into a 1D view over the
 // same storage. Intended for boundary code (serialization, element-wise
 // comparison) that wants a flat [num_dof_holder * num_components] view rather
@@ -254,36 +288,6 @@ Rank1View<ElementType, MemorySpace> FlattenToRank1View(
                                              static_cast<LO>(view.size()));
 }
 
-// utility function to deep copy between layout incompatible views
-// layout imcompatible view can't be deep_copied directly between different
-// memory spaces, the workaround is provided from
-// https://kokkos.org/kokkos-core-wiki/API/core/view/deep_copy.html#how-to-get-layout-incompatible-views-copied
-template <typename DestView, typename SrcView>
-auto DeepCopyMismatchLayouts(DestView& dest, const SrcView& src)
-{
-  static_assert(Kokkos::is_view<DestView>::value &&
-                  Kokkos::is_view<SrcView>::value,
-                "Both arguments must be Kokkos::View types");
-
-  using DestMemSpace = typename DestView::memory_space;
-  using SrcMemSpace = typename SrcView::memory_space;
-
-  if constexpr (std::is_same_v<DestMemSpace, HostMemorySpace> &&
-                !std::is_same_v<SrcMemSpace, HostMemorySpace>) {
-    // Device to Host: mirror the device view to host
-    auto src_tmp = Kokkos::create_mirror_view_and_copy(HostMemorySpace(), src);
-    Kokkos::deep_copy(dest, src_tmp);
-  } else if constexpr (!std::is_same_v<DestMemSpace, HostMemorySpace> &&
-                       std::is_same_v<SrcMemSpace, HostMemorySpace>) {
-    // Host to Device: create mirror on device from host view
-    auto dest_tmp = Kokkos::create_mirror_view(dest);
-    Kokkos::deep_copy(dest_tmp, src);
-    Kokkos::deep_copy(dest, dest_tmp);
-  } else {
-    // Same memory space
-    Kokkos::deep_copy(dest, src);
-  }
-}
 template <typename DestView, typename SrcView>
 void ConvertMismatchLayoutView2D(DestView& dest, const SrcView& src)
 {
@@ -529,6 +533,8 @@ void ScatterRows(Rank2View<const T, DeviceMemorySpace> src,
       {0, 0}, {num_rows, num_comp}),
     KOKKOS_LAMBDA(size_t i, size_t c) { dest(rows(i), c) = src(i, c); });
 }
+
+} // namespace detail
 
 } // namespace pcms
 #endif // PCMS_COUPLING_ARRAYS_H

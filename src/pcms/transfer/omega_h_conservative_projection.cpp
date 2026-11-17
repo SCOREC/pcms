@@ -87,7 +87,7 @@ void OmegaHConservativeProjection::Apply(const Field<Real>& source,
   }
   const int num_dof_holders = target_layout_->GetNumDofHolder();
   const int num_components = target_layout_->GetNumComponents();
-  const auto values = MakeRank2View(target_values_);
+  const auto values = pcms::detail::MakeRank2View(target_values_);
   const auto solution = solver_->Solve(*evaluator_, source);
   const auto global_to_local = target_layout_->GetGlobalToLocalPermutation();
   const bool has_ghosts = target_layout_->HasGhosts();

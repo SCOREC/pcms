@@ -24,7 +24,7 @@ MFEMVertexFieldData::MFEMVertexFieldData(mfem::ParFiniteElementSpace& pfes,
 
 FieldValueType MFEMVertexFieldData::GetValueType() const
 {
-  return ValueTypeOfRank(basis_.Rank());
+  return pcms::detail::ValueTypeOfRank(basis_.Rank());
 }
 
 const ValueBasis& MFEMVertexFieldData::GetValueBasis() const
@@ -88,7 +88,7 @@ Rank2View<const Real, DeviceMemorySpace> MFEMVertexFieldData::GetValues() const
 void MFEMVertexFieldData::SetValues(
   Rank2View<const Real, DeviceMemorySpace> data)
 {
-  CopyDeviceRank2ViewToDeviceView(device_data_, data);
+  pcms::detail::CopyDeviceRank2ViewToDeviceView(device_data_, data);
   DeepCopyMismatchLayouts(host_data_, device_data_);
   ScatterHost(MakeConstRank2View(host_data_));
 }

@@ -13,6 +13,8 @@ namespace pcms
 ///        Geometry::Neighbourhood, in CSR form: the sites of query point i
 ///        are supports_idx[k] for supports_ptr[i] <= k < supports_ptr[i + 1],
 ///        found within the squared radius radii2[i].
+///
+/// Implementer API: not covered by the public-API stability promise.
 struct SupportResults
 {
   Kokkos::View<const LO*, DeviceMemorySpace> supports_ptr;

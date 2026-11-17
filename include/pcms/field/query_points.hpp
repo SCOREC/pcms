@@ -68,7 +68,7 @@ public:
       throw pcms_error("QueryPoints::Evaluate: no points are located; call "
                        "Locate first");
     }
-    Key key{function.GetSpacePtr(), op, TypeEnumFromType<T>()};
+    Key key{function.GetSpacePtr(), op, detail::TypeEnumFromType<T>()};
     auto it = evaluators_.find(key);
     if (it == evaluators_.end()) {
       auto evaluator =

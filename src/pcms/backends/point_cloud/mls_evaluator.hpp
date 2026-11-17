@@ -28,7 +28,7 @@ inline Kokkos::View<bool*, DeviceMemorySpace> HasSupports(
 {
   Kokkos::View<bool*, DeviceMemorySpace> found(
     Kokkos::view_alloc(Kokkos::WithoutInitializing, "mls_found"), n);
-  detail::ForEach(
+  pcms::detail::ForEach(
     "MLSBinding::found", n, KOKKOS_LAMBDA(const LO i) {
       found(i) = supports_ptr[i + 1] > supports_ptr[i];
     });

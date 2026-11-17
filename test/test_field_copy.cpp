@@ -42,7 +42,7 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
   pcms::Copy<Real> copy(*factory, *factory);
   copy.Apply(original, copied);
   auto copied_array =
-    pcms::FlattenToRank1View(copied.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(copied.GetDOFHolderDataHost().GetValues());
 
   REQUIRE(copied_array.size() == ndata);
   int sum = 0;

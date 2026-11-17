@@ -1011,7 +1011,7 @@ KOKKOS_INLINE_FUNCTION void bicubic_lookup_explicit(
 template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void bicubic_evalfn_explicit(
   Kokkos::View<LO*, MemorySpace> ict, const Out& fval, LO i, LO j, T dx, T dy,
-  Rank4View<T, MemorySpace> fspl)
+  pcms::detail::Rank4View<T, MemorySpace> fspl)
 {
   LO iaval = 0; // Index for fval
   if (ict[0] <= 2) {
@@ -1215,7 +1215,7 @@ template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void bicubic_eval_explicit(
   T xget, T yget, Kokkos::View<LO*, MemorySpace> iselect, const Out& fval,
   Rank1View<T, MemorySpace> x, LO nx, Rank1View<T, MemorySpace> y, LO ny,
-  Rank4View<T, MemorySpace> fspl, LO& ier, T lookup_tol)
+  pcms::detail::Rank4View<T, MemorySpace> fspl, LO& ier, T lookup_tol)
 {
   LO i = 0;
   LO j = 0;
@@ -1235,11 +1235,11 @@ KOKKOS_INLINE_FUNCTION void bicubic_eval_explicit(
 template <typename T, typename MemorySpace>
 void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
                                    Rank1View<T, MemorySpace> y, LO iny,
-                                   Rank4View<T, MemorySpace> fspl, LO ibcxmin,
-                                   Rank1View<T, MemorySpace> bcxmin, LO ibcxmax,
-                                   Rank1View<T, MemorySpace> bcxmax, LO ibcymin,
-                                   Rank1View<T, MemorySpace> bcymin, LO ibcymax,
-                                   Rank1View<T, MemorySpace> bcymax,
+                                   pcms::detail::Rank4View<T, MemorySpace> fspl,
+                                   LO ibcxmin, Rank1View<T, MemorySpace> bcxmin,
+                                   LO ibcxmax, Rank1View<T, MemorySpace> bcxmax,
+                                   LO ibcymin, Rank1View<T, MemorySpace> bcymin,
+                                   LO ibcymax, Rank1View<T, MemorySpace> bcymax,
                                    Rank1View<T, MemorySpace> wk)
 {
   using execution_space = typename MemorySpace::execution_space;
@@ -1570,7 +1570,7 @@ template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void bicubic_evalfn_compact(
   Kokkos::View<LO*, MemorySpace> ict, LO ivec, LO ivecd, const Out& fval, LO i,
   LO j, T xparam, T yparam, T hx, T hxi, T hy, T hyi,
-  Rank3View<T, MemorySpace> f)
+  pcms::detail::Rank3View<T, MemorySpace> f)
 {
   constexpr T sixth = 1.0 / 6.0;
   const T z36th = sixth * sixth;
@@ -1874,7 +1874,7 @@ template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void bicubic_eval_compact(
   T xget, T yget, Kokkos::View<LO*, MemorySpace> ict, const Out& fval,
   Rank1View<T, MemorySpace> x, LO nx, Rank1View<T, MemorySpace> y, LO ny,
-  Rank3View<T, MemorySpace> f, LO& ier, T lookup_tol)
+  pcms::detail::Rank3View<T, MemorySpace> f, LO& ier, T lookup_tol)
 {
   // Local variables
   LO i = 0, j = 0;
@@ -1897,11 +1897,11 @@ KOKKOS_INLINE_FUNCTION void bicubic_eval_compact(
 template <typename T, typename MemorySpace>
 void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
                                   Rank1View<T, MemorySpace> y, LO ny,
-                                  Rank3View<T, MemorySpace> f, LO ibcxmin,
-                                  Rank1View<T, MemorySpace> bcxmin, LO ibcxmax,
-                                  Rank1View<T, MemorySpace> bcxmax, LO ibcymin,
-                                  Rank1View<T, MemorySpace> bcymin, LO ibcymax,
-                                  Rank1View<T, MemorySpace> bcymax,
+                                  pcms::detail::Rank3View<T, MemorySpace> f,
+                                  LO ibcxmin, Rank1View<T, MemorySpace> bcxmin,
+                                  LO ibcxmax, Rank1View<T, MemorySpace> bcxmax,
+                                  LO ibcymin, Rank1View<T, MemorySpace> bcymin,
+                                  LO ibcymax, Rank1View<T, MemorySpace> bcymax,
                                   Rank1View<T, MemorySpace> wk)
 {
   using execution_space = typename MemorySpace::execution_space;
@@ -2023,8 +2023,8 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
     T zbcmin = 0.0;
     T zbcmax = 0.0;
 
-    auto fcorr =
-      Rank3View<T, MemorySpace>(wk.data_handle() + 7 * ny * nx, 2, nx, ny);
+    auto fcorr = pcms::detail::Rank3View<T, MemorySpace>(
+      wk.data_handle() + 7 * ny * nx, 2, nx, ny);
 
     Kokkos::parallel_for(
       Kokkos::TeamPolicy<execution_space>(nx, Kokkos::AUTO),
@@ -2431,7 +2431,7 @@ private:
   bool periodic_x_ = false;
   bool periodic_y_ = false;
   Kokkos::View<T*, MemorySpace> coefficients_;
-  Rank4View<T, MemorySpace> get_coefficients_view();
+  pcms::detail::Rank4View<T, MemorySpace> get_coefficients_view();
 };
 
 /** \brief CompactBiCubicSplineInterpolator class
@@ -2528,7 +2528,7 @@ private:
   bool periodic_x_ = false;
   bool periodic_y_ = false;
   Kokkos::View<T*, MemorySpace> coefficients_;
-  Rank3View<T, MemorySpace> get_coefficients_view();
+  pcms::detail::Rank3View<T, MemorySpace> get_coefficients_view();
 };
 
 template <typename T, typename MemorySpace>
@@ -2546,19 +2546,19 @@ CompactCubicSplineInterpolator<T, MemorySpace>::get_coefficients_view()
 }
 
 template <typename T, typename MemorySpace>
-Rank4View<T, MemorySpace>
+pcms::detail::Rank4View<T, MemorySpace>
 ExplicitBiCubicSplineInterpolator<T, MemorySpace>::get_coefficients_view()
 {
-  return Rank4View<T, MemorySpace>(coefficients_.data(), 4, 4, x_.extent(0),
-                                   y_.extent(0));
+  return pcms::detail::Rank4View<T, MemorySpace>(coefficients_.data(), 4, 4,
+                                                 x_.extent(0), y_.extent(0));
 }
 
 template <typename T, typename MemorySpace>
-Rank3View<T, MemorySpace>
+pcms::detail::Rank3View<T, MemorySpace>
 CompactBiCubicSplineInterpolator<T, MemorySpace>::get_coefficients_view()
 {
-  return Rank3View<T, MemorySpace>(coefficients_.data(), 4, x_.extent(0),
-                                   y_.extent(0));
+  return pcms::detail::Rank3View<T, MemorySpace>(coefficients_.data(), 4,
+                                                 x_.extent(0), y_.extent(0));
 }
 
 template <typename T, typename MemorySpace>
@@ -2884,11 +2884,11 @@ void CompactBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
 template <typename T, typename MemorySpace>
 struct InitExplicitBiCubicCoeffFunctor
 {
-  Rank4View<T, MemorySpace> fspl;
+  pcms::detail::Rank4View<T, MemorySpace> fspl;
   Rank1View<T, MemorySpace> values;
   LO ny;
 
-  InitExplicitBiCubicCoeffFunctor(Rank4View<T, MemorySpace> fspl_,
+  InitExplicitBiCubicCoeffFunctor(pcms::detail::Rank4View<T, MemorySpace> fspl_,
                                   Rank1View<T, MemorySpace> values_, LO ny_)
     : fspl(fspl_), values(values_), ny(ny_)
   {
@@ -2904,11 +2904,11 @@ struct InitExplicitBiCubicCoeffFunctor
 template <typename T, typename MemorySpace>
 struct InitCompactBiCubicCoeffFunctor
 {
-  Rank3View<T, MemorySpace> fspl;
+  pcms::detail::Rank3View<T, MemorySpace> fspl;
   Rank1View<T, MemorySpace> values;
   LO ny;
 
-  InitCompactBiCubicCoeffFunctor(Rank3View<T, MemorySpace> fspl_,
+  InitCompactBiCubicCoeffFunctor(pcms::detail::Rank3View<T, MemorySpace> fspl_,
                                  Rank1View<T, MemorySpace> values_, LO ny_)
     : fspl(fspl_), values(values_), ny(ny_)
   {

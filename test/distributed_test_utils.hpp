@@ -69,7 +69,7 @@ pcms::ValueView<T, pcms::DeviceMemorySpace> TagLike(
   const pcms::Field<T>& field,
   Kokkos::View<T**, pcms::DeviceMemorySpace> values)
 {
-  return {field.GetData().GetValueBasis(), pcms::MakeRank2View(values)};
+  return {field.GetData().GetValueBasis(), pcms::detail::MakeRank2View(values)};
 }
 
 /// The values of every DOF holder of `field`, owned and ghost, in mesh order,

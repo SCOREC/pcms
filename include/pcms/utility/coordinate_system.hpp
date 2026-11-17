@@ -24,6 +24,9 @@ public:
   virtual ~CoordinateSystem() = default;
 };
 
+namespace detail
+{
+
 [[nodiscard]] inline bool SameCoordinateSystem(
   const std::shared_ptr<const CoordinateSystem>& a,
   const std::shared_ptr<const CoordinateSystem>& b) noexcept
@@ -42,6 +45,8 @@ public:
 
 [[nodiscard]] std::shared_ptr<const CoordinateSystem> ResolveCoordinateSystem(
   std::shared_ptr<const CoordinateSystem> system, int dim);
+
+} // namespace detail
 
 } // namespace pcms
 

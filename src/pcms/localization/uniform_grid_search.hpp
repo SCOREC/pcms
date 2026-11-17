@@ -64,7 +64,7 @@ public:
       n);
     // the lambda must not capture this
     const auto grid = grid_;
-    detail::ForEach(
+    pcms::detail::ForEach(
       "UniformGridPointSearch", n, KOKKOS_LAMBDA(const LO i) {
         Omega_h::Vector<Dim> point;
         for (unsigned d = 0; d < Dim; ++d) {

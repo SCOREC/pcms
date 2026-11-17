@@ -31,7 +31,6 @@ struct type_identity
 };
 template <typename T>
 using type_identity_t = typename type_identity<T>::type;
-} // namespace detail
 
 template <typename T>
 constexpr Type TypeEnumFromType()
@@ -51,6 +50,7 @@ constexpr Type TypeEnumFromType()
                   "T is not a supported field type");
   }
 };
+} // namespace detail
 
 // Dispatches on a runtime Type value by instantiating F with the corresponding
 // type tag. F must accept detail::type_identity<T> for each of the five

@@ -30,7 +30,8 @@ void ReverseClassificationVertex::Deserialize(
   PCMS_ALWAYS_ASSERT(data_.empty());
   size_t i = 0;
   while (i < serialized_data.size()) {
-    DimID geom{.dim = serialized_data[i], .id = serialized_data[i + 1]};
+    pcms::detail::DimID geom{.dim = serialized_data[i],
+                             .id = serialized_data[i + 1]};
     auto nverts = serialized_data[i + 2];
     i += 3;
     for (size_t j = i; j < i + nverts; ++j) {
@@ -48,7 +49,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& in)
   in >> total_nverts;
   std::string line;
   while (!in.eof() && in.good()) {
-    DimID geometry{};
+    pcms::detail::DimID geometry{};
     in >> geometry.dim;
     // check to make sure that we aren't reading past the end of the file.
     if (in.eof()) {
@@ -120,7 +121,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(
   return ReadReverseClassificationVertex(infile, comm, root);
 }
 
-void ReverseClassificationVertex::Insert(const DimID& key,
+void ReverseClassificationVertex::Insert(const pcms::detail::DimID& key,
                                          Rank1View<LO, HostMemorySpace> data)
 {
   // mdspan doesn't have begin currently. This should be switched
@@ -130,7 +131,8 @@ void ReverseClassificationVertex::Insert(const DimID& key,
   }
 }
 
-void ReverseClassificationVertex::Insert(const DimID& key, LO data)
+void ReverseClassificationVertex::Insert(const pcms::detail::DimID& key,
+                                         LO data)
 {
   data_[key].insert(data);
   ++total_verts_;
@@ -143,7 +145,7 @@ bool ReverseClassificationVertex::operator==(
 }
 
 const std::set<LO>* ReverseClassificationVertex::Query(
-  const DimID& geometry) const noexcept
+  const pcms::detail::DimID& geometry) const noexcept
 {
   auto it = data_.find(geometry);
   if (it != data_.end()) {

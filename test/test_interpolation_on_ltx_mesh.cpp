@@ -66,7 +66,7 @@ std::function<void(HostArray, HostArray)> PointCloudInterpolation(
                                                            out.size(), 1);
     evaluator->Evaluate(*field,
                         pcms::ValueView<double, pcms::DeviceMemorySpace>(
-                          basis, pcms::MakeRank2View(values)));
+                          basis, pcms::detail::MakeRank2View(values)));
     const auto host =
       Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), values);
     for (size_t i = 0; i < out.size(); ++i) {
@@ -138,13 +138,14 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
   printf("[INFO] Degas2 Mesh loaded from %s with %d elements\n",
          degas2_mesh_filename.c_str(), degas2_num_elems);
   const auto degas2_mesh_centroids_view =
-    pcms::make_array_view(degas2_mesh_centroids_host);
+    pcms::detail::make_array_view(degas2_mesh_centroids_host);
 
   auto xgc_mesh_points = read_xgc_mesh_nodes(ltx_mesh_base_filename + ".node");
   const int xgc_num_nodes = xgc_mesh_points.size() / 2;
   printf("[INFO] XGC Mesh loaded from %s with %d points\n",
          ltx_mesh_base_filename.c_str(), xgc_num_nodes);
-  const auto xgc_mesh_points_view = pcms::make_array_view(xgc_mesh_points);
+  const auto xgc_mesh_points_view =
+    pcms::detail::make_array_view(xgc_mesh_points);
 
   auto xgc_to_degas2_interpolator = PointCloudInterpolation(
     xgc_mesh_points_view, degas2_mesh_centroids_view, 1e-3, 0.0);
@@ -170,13 +171,14 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
 
   // ------------------ First Interpolation ------------------ //
   const auto density_at_xgc_nodes_view =
-    pcms::make_array_view(density_at_xgc_nodes);
-  const auto temp_at_xgc_nodes_view = pcms::make_array_view(temp_at_xgc_nodes);
+    pcms::detail::make_array_view(density_at_xgc_nodes);
+  const auto temp_at_xgc_nodes_view =
+    pcms::detail::make_array_view(temp_at_xgc_nodes);
 
   const auto density_at_degas2_centroids_view =
-    pcms::make_array_view(density_at_degas2_centroids);
+    pcms::detail::make_array_view(density_at_degas2_centroids);
   const auto temp_at_degas2_centroids_view =
-    pcms::make_array_view(temp_at_degas2_centroids);
+    pcms::detail::make_array_view(temp_at_degas2_centroids);
 
   Omega_h::HostWrite<Omega_h::Real> interpolated_xgc_density(degas2_num_elems);
   Omega_h::HostWrite<Omega_h::Real> interpolated_xgc_temp(degas2_num_elems);
@@ -184,13 +186,13 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
   Omega_h::HostWrite<Omega_h::Real> interpolated_degas2_temp(xgc_num_nodes);
 
   const auto interpolated_xgc_density_view =
-    pcms::make_array_view(interpolated_xgc_density);
+    pcms::detail::make_array_view(interpolated_xgc_density);
   const auto interpolated_xgc_temp_view =
-    pcms::make_array_view(interpolated_xgc_temp);
+    pcms::detail::make_array_view(interpolated_xgc_temp);
   const auto interpolated_degas2_density_view =
-    pcms::make_array_view(interpolated_degas2_density);
+    pcms::detail::make_array_view(interpolated_degas2_density);
   const auto interpolated_degas2_temp_view =
-    pcms::make_array_view(interpolated_degas2_temp);
+    pcms::detail::make_array_view(interpolated_degas2_temp);
 
   xgc_to_degas2_interpolator(density_at_xgc_nodes_view,
                              interpolated_xgc_density_view);
@@ -215,13 +217,14 @@ TEST_CASE("Test Interpolation on LTX Mesh", "[interpolation]")
     degas2_num_elems);
 
   const auto interpolated_back_density_at_xgc_nodes_view =
-    pcms::make_array_view(interpolated_back_density_at_xgc_nodes);
+    pcms::detail::make_array_view(interpolated_back_density_at_xgc_nodes);
   const auto interpolated_back_temp_at_xgc_nodes_view =
-    pcms::make_array_view(interpolated_back_temp_at_xgc_nodes);
+    pcms::detail::make_array_view(interpolated_back_temp_at_xgc_nodes);
   const auto interpolated_back_density_at_degas2_centroids_view =
-    pcms::make_array_view(interpolated_back_density_at_degas2_centroids);
+    pcms::detail::make_array_view(
+      interpolated_back_density_at_degas2_centroids);
   const auto interpolated_back_temp_at_degas2_centroids_view =
-    pcms::make_array_view(interpolated_back_temp_at_degas2_centroids);
+    pcms::detail::make_array_view(interpolated_back_temp_at_degas2_centroids);
 
   degas2_to_xgc_interpolator(interpolated_xgc_density_view,
                              interpolated_back_density_at_xgc_nodes_view);

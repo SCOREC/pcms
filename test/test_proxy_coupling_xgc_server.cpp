@@ -16,8 +16,8 @@
 
 using pcms::ConstructRCFromOmegaHMesh;
 using pcms::GO;
-using pcms::make_array_view;
 using pcms::ReverseClassificationVertex;
+using pcms::detail::make_array_view;
 
 static constexpr bool done = true;
 namespace ts = test_support;
@@ -60,7 +60,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     auto field = function_space.CreateField<pcms::GO>(
       ss.str(), std::make_unique<pcms::XGCFieldData<pcms::GO>>(
                   function_space.GetXGCLayout(), pcms::ValueBasis{},
-                  make_array_view(data[i]), comm));
+                  pcms::detail::make_array_view(data[i]), comm));
     fields.push_back(application->AddField(std::move(field)));
   }
 

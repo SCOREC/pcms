@@ -548,7 +548,7 @@ TEST_CASE("point search locates points on shared faces",
                        query_divisions, query_divisions, false);
 
   // Same grid resolution the intersection search uses for this mesh.
-  const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
+  const auto n = pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
   GridPointSearch3D search{mesh, n, n, n};
 
   const auto centroids_h =
@@ -588,7 +588,7 @@ TEST_CASE("point search encodes outside points unambiguously",
     using pcms::GridPointSearch3D;
     using Dimensionality = GridPointSearch3D::Result::Dimensionality;
     auto mesh = pcms::test::BuildReferenceTet(lib);
-    const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
+    const auto n = pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
     GridPointSearch3D search{mesh, n, n, n};
 
     Kokkos::View<pcms::Real* [3]> points("points", 2);
@@ -642,7 +642,7 @@ TEST_CASE("point search encodes outside points unambiguously",
     // Only the triangle below the diagonal, so the cells above it hold no
     // candidates.
     auto mesh = pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 3}));
-    const auto n = pcms::DivisionsPerAxisForMesh<2>(mesh.nelems());
+    const auto n = pcms::detail::DivisionsPerAxisForMesh<2>(mesh.nelems());
     GridPointSearch2D search{mesh, n, n};
 
     Kokkos::View<pcms::Real* [2]> points("points", 3);
@@ -918,7 +918,7 @@ TEST_CASE("3D point search matches brute force on interior points",
   auto lib = Omega_h::Library{};
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 6, 6, 6, false);
-  const auto n = pcms::DivisionsPerAxisForMesh<3>(mesh.nelems());
+  const auto n = pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
   GridPointSearch3D search{mesh, n, n, n};
 
   std::mt19937 gen(12345);

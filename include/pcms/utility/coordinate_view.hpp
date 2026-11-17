@@ -18,8 +18,8 @@ class CoordinateView
 public:
   CoordinateView(std::shared_ptr<const CoordinateSystem> coordinate_system,
                  Rank2View<const Real, MemorySpace, LayoutPolicy> coords)
-    : system_(ResolveCoordinateSystem(std::move(coordinate_system),
-                                      static_cast<int>(coords.extent(1)))),
+    : system_(detail::ResolveCoordinateSystem(
+        std::move(coordinate_system), static_cast<int>(coords.extent(1)))),
       coordinates_(coords)
   {
   }

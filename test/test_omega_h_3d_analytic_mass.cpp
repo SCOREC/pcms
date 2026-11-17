@@ -108,8 +108,8 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
     pcms::test::SetField(
       source, KOKKOS_LAMBDA(pcms::Real, pcms::Real, pcms::Real) { return c; });
     projection.Apply(source, target);
-    const auto values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     REQUIRE(static_cast<Omega_h::LO>(values.size()) == 4);
     for (Omega_h::LO i = 0; i < 4; ++i) {
       CAPTURE(i, values[i]);
@@ -123,8 +123,8 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
         return 1.0 + x + 2.0 * y + 3.0 * z;
       });
     projection.Apply(source, target);
-    const auto values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     const auto coords_h = pcms::test::CopyCoordinatesToHost(
       pcms::backend::omega_h::MakeConstRank2View(mesh.coords(), 3));
     for (Omega_h::LO i = 0; i < 4; ++i) {

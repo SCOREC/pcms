@@ -35,13 +35,13 @@ PointCloudLayout::PointCloudLayout(
     owned_host_("", coords.extent(0)),
     gids_host_("", coords.extent(0))
 {
-  SetCoordinateSystem(ResolveCoordinateSystem(
+  SetCoordinateSystem(pcms::detail::ResolveCoordinateSystem(
     std::move(coordinate_system), static_cast<int>(coords_.extent(1))));
   components_ = 1;
 
   namespace KE = Kokkos::Experimental;
   KE::fill(Kokkos::DefaultExecutionSpace(), owned_, true);
-  iota_view(gids_);
+  pcms::detail::iota_view(gids_);
 
   LO n = static_cast<LO>(coords.extent(0));
   classification_dims_ =
@@ -78,7 +78,7 @@ GO PointCloudLayout::GetNumGlobalDofHolder() const
 
 Rank1View<const bool, HostMemorySpace> PointCloudLayout::GetOwnedHost() const
 {
-  return make_const_array_view(owned_host_);
+  return pcms::detail::make_const_array_view(owned_host_);
 }
 
 GlobalIDView<HostMemorySpace> PointCloudLayout::GetGidsHost() const
@@ -135,13 +135,13 @@ int PointCloudLayout::GetDimension() const
 Rank1View<const LO, HostMemorySpace>
 PointCloudLayout::GetDOFHolderClassificationDimensionsHost() const
 {
-  return make_const_array_view(classification_dims_host_);
+  return pcms::detail::make_const_array_view(classification_dims_host_);
 }
 
 Rank1View<const LO, HostMemorySpace>
 PointCloudLayout::GetDOFHolderClassificationIdsHost() const
 {
-  return make_const_array_view(classification_ids_host_);
+  return pcms::detail::make_const_array_view(classification_ids_host_);
 }
 
 } // namespace pcms

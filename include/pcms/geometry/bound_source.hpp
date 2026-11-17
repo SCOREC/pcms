@@ -29,6 +29,8 @@ class CoordinateMap;
 /// can be missing (outside the geometry), and the out-of-bounds policy applies
 /// to them like to any other. The ids are checked to be entities of the
 /// geometry, which throws if one is not.
+///
+/// Implementer API: not covered by the public-API stability promise.
 struct OwnerHints
 {
   /// geometry whose entities `entities` are; a hint for another geometry is
@@ -50,6 +52,8 @@ struct OwnerHints
 };
 
 /// @brief What Geometry::Bind hands to BindImpl.
+///
+/// Implementer API: not covered by the public-API stability promise.
 struct BindRequest
 {
   /// points to locate, in the geometry's coordinate system: the query points,
@@ -189,6 +193,8 @@ public:
 
   /// @brief Passkey of Rebind: its constructor is protected, and only
   ///        Geometry derives the type that creates it.
+  ///
+  /// Implementer API: not covered by the public-API stability promise.
   class RebindKey
   {
   protected:

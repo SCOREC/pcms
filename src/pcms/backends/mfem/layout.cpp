@@ -19,7 +19,7 @@ MFEMLayout::MFEMLayout(
 {
   PCMS_FUNCTION_TIMER;
   SetCoordinateSystem(
-    ResolveCoordinateSystem(std::move(coordinate_system), dim_));
+    pcms::detail::ResolveCoordinateSystem(std::move(coordinate_system), dim_));
 
   AssertVertexScalarSpace();
 
@@ -34,7 +34,8 @@ MFEMLayout::MFEMLayout(
     }
   }
   coords_ = Kokkos::View<Real**, DeviceMemorySpace>("mfem_coords", nv, dim_);
-  CopyHostRank2ViewToDeviceView(coords_, MakeConstRank2View(coords_host));
+  pcms::detail::CopyHostRank2ViewToDeviceView(coords_,
+                                              MakeConstRank2View(coords_host));
 
   mfem::Array<HYPRE_BigInt> vertex_gids;
   pmesh_.GetGlobalVertexIndices(vertex_gids);
@@ -81,7 +82,7 @@ GO MFEMLayout::GetNumGlobalDofHolder() const
 
 Rank1View<const bool, HostMemorySpace> MFEMLayout::GetOwnedHost() const
 {
-  return make_const_array_view(owned_host_);
+  return pcms::detail::make_const_array_view(owned_host_);
 }
 
 GlobalIDView<HostMemorySpace> MFEMLayout::GetGidsHost() const
@@ -119,13 +120,13 @@ int MFEMLayout::GetDimension() const
 Rank1View<const LO, HostMemorySpace>
 MFEMLayout::GetDOFHolderClassificationDimensionsHost() const
 {
-  return make_const_array_view(classification_dims_host_);
+  return pcms::detail::make_const_array_view(classification_dims_host_);
 }
 
 Rank1View<const LO, HostMemorySpace>
 MFEMLayout::GetDOFHolderClassificationIdsHost() const
 {
-  return make_const_array_view(classification_ids_host_);
+  return pcms::detail::make_const_array_view(classification_ids_host_);
 }
 
 Kokkos::View<bool*, HostMemorySpace> MFEMLayout::OverlapMaskFromAttribute(

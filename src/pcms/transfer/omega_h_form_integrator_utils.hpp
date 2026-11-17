@@ -58,8 +58,8 @@ inline OmegaHScalarSpace ResolveOmegaHScalarSpace(const FunctionSpace& space,
   if (mesh.dim() != 2 && mesh.dim() != 3) {
     throw pcms_error(prefix + "mesh must be 2D or 3D");
   }
-  if (!SameCoordinateSystem(space.GetCoordinateSystem(),
-                            csys::Cartesian::Create(mesh.dim()))) {
+  if (!pcms::detail::SameCoordinateSystem(
+        space.GetCoordinateSystem(), csys::Cartesian::Create(mesh.dim()))) {
     throw pcms_error(prefix +
                      "space must use the Cartesian coordinate system of its "
                      "mesh dimension; map other systems explicitly");

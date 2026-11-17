@@ -40,7 +40,7 @@ FieldLayoutCommunicator::FieldLayoutCommunicator(
 Rank1View<const pcms::LO, pcms::HostMemorySpace>
 FieldLayoutCommunicator::GetPermutationArray() const
 {
-  return make_const_array_view(plan_.permutation);
+  return pcms::detail::make_const_array_view(plan_.permutation);
 }
 
 const std::string& FieldLayoutCommunicator::GetName() const

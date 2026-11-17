@@ -110,7 +110,7 @@ public:
 
   FieldValueType GetValueType() const override
   {
-    return ValueTypeOfRank(basis_.Rank());
+    return pcms::detail::ValueTypeOfRank(basis_.Rank());
   }
   const ValueBasis& GetValueBasis() const override { return basis_; }
 
@@ -124,7 +124,7 @@ public:
 
   void SetValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    CopyDeviceRank2ViewToDeviceView(device_data_, values);
+    pcms::detail::CopyDeviceRank2ViewToDeviceView(device_data_, values);
     mesh_->set_tag(tag_dim_, tag_name_,
                    detail::OwnedValuesAsTag<T, tag_value_type>(
                      GetValues(), layout_->GetOwnedIndices(),

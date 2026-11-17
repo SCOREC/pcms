@@ -52,7 +52,7 @@ public:
 
   FieldValueType GetValueType() const override
   {
-    return ValueTypeOfRank(basis_.Rank());
+    return pcms::detail::ValueTypeOfRank(basis_.Rank());
   }
   const ValueBasis& GetValueBasis() const override { return basis_; }
 
@@ -63,7 +63,7 @@ public:
   {
     EnsureDeviceStaging();
     const auto nc = layout_->GetNumComponents();
-    CopyHostRank2ViewToDeviceView(
+    pcms::detail::CopyHostRank2ViewToDeviceView(
       device_data_,
       Rank2View<const T, HostMemorySpace>(
         data_.data_handle(), static_cast<LO>(data_.size()) / nc, nc));
@@ -73,7 +73,7 @@ public:
   void SetValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
     EnsureDeviceStaging();
-    CopyDeviceRank2ViewToDeviceView(device_data_, values);
+    pcms::detail::CopyDeviceRank2ViewToDeviceView(device_data_, values);
     // Explicit node-major serialization into the adapter buffer (the mirror
     // keeps the device layout, so it is indexed, not aliased).
     auto host_mirror = Kokkos::create_mirror_view(device_data_);

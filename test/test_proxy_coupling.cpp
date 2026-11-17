@@ -15,7 +15,7 @@
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 using pcms::GO;
-using pcms::make_array_view;
+using pcms::detail::make_array_view;
 
 using namespace std::chrono_literals;
 
@@ -51,7 +51,7 @@ bool validateField(const pcms::FieldLayout& layout,
 {
   auto gids = layout.GetGidsHost();
   auto copied_array =
-    pcms::FlattenToRank1View(field->GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(field->GetDOFHolderDataHost().GetValues());
   const auto n = layout.GetNumDofHolder();
 
   PCMS_ALWAYS_ASSERT(copied_array.size() == gids.size());

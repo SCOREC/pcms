@@ -91,13 +91,14 @@ public:
     const auto& sd = source.GetData();
     const auto& td = target.GetData();
     const ValueBasis written = evaluator_->OutputBasis(sd.GetValueBasis());
-    if (!SameValueBasis(written, td.GetValueBasis())) {
+    if (!detail::SameValueBasis(written, td.GetValueBasis())) {
       throw pcms_error(
         "Interpolator: the basis written for the source's stored basis "
         "differs from the target's declared basis");
     }
-    evaluator_->Evaluate(source, ValueView<T, DeviceMemorySpace>(
-                                   written, MakeRank2View(target_values_)));
+    evaluator_->Evaluate(source,
+                         ValueView<T, DeviceMemorySpace>(
+                           written, detail::MakeRank2View(target_values_)));
     target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
     target.Synchronize();
   }

@@ -14,6 +14,8 @@ namespace pcms
 // read and write directly: the values of the DOF holders this rank owns, shaped
 // [owned DOF holder][component] in the layout's order. Coupler exchanges and
 // transfer targets use it; evaluation never needs it.
+//
+// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 class DOFAccess
 {
@@ -32,6 +34,8 @@ public:
 
 // FieldData<T> holds whatever a backend needs to represent a field. It is
 // opaque. It should only be directly used by the type that created it.
+//
+// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 class FieldData
 {

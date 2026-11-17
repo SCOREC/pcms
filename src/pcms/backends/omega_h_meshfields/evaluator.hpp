@@ -45,7 +45,7 @@ GroupFoundPointsByElement(
   using Range = Kokkos::RangePolicy<DeviceMemorySpace::execution_space>;
 
   Kokkos::View<LO*> elem_counts("elem_counts", nelems);
-  ForEach(
+  pcms::detail::ForEach(
     "CountPerElement", num_found, KOKKOS_LAMBDA(const LO k) {
       const LO elem = ElementOfResult<Dim>(up, results(found(k)));
       Kokkos::atomic_add(&elem_counts(elem), 1);
@@ -65,7 +65,7 @@ GroupFoundPointsByElement(
 
   Kokkos::View<Real**> local_coords("local_coords", num_found, Dim);
   Kokkos::View<LO*> indices("indices", num_found);
-  ForEach(
+  pcms::detail::ForEach(
     "FillLocalCoordinates", num_found, KOKKOS_LAMBDA(const LO k) {
       const auto& result = results(found(k));
       const LO elem = ElementOfResult<Dim>(up, result);
@@ -148,7 +148,7 @@ public:
     int ncomp = layout_->GetNumComponents();
     int num_eval = static_cast<int>(eval_results.extent(0));
     const auto indices = indices_;
-    detail::ForEach(
+    pcms::detail::ForEach(
       "CopyEvalResultsToValues", num_eval, KOKKOS_LAMBDA(const LO i) {
         for (int c = 0; c < ncomp; ++c) {
           values(indices(i), c) = eval_results(i, c);

@@ -25,7 +25,7 @@ void CheckCopyCompatible(const Field<T>& source, const Field<T>& target)
   const auto& sd = source.GetData();
   const auto& td = target.GetData();
   if (sd.GetValueType() != td.GetValueType() ||
-      !SameValueBasis(sd.GetValueBasis(), td.GetValueBasis())) {
+      !detail::SameValueBasis(sd.GetValueBasis(), td.GetValueBasis())) {
     throw pcms_error("Copy: source and target value type/basis differ");
   }
 }

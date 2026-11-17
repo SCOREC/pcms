@@ -50,7 +50,7 @@ void test(Omega_h::Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
   // the element centroids around each vertex
   Kokkos::View<pcms::LO*, pcms::DeviceMemorySpace> vertices("vertices",
                                                             mesh.nverts());
-  pcms::iota_view<pcms::LO>(vertices);
+  pcms::detail::iota_view<pcms::LO>(vertices);
   pcms::SupportResults support = pcms::searchNeighbors(
     mesh, mesh.dim(), mesh.coords(), 0, vertices, cutoffDistance,
     min_num_supports, 3 * min_num_supports);

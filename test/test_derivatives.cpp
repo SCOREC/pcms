@@ -57,8 +57,8 @@ TEST_CASE("Spline gradients")
   const ValueBasis basis = gradient->OutputBasis(f.GetData().GetValueBasis());
   REQUIRE(basis.variance == pcms::values::Covector);
   REQUIRE(basis.scaling == pcms::ComponentScaling::Physical);
-  REQUIRE(
-    pcms::SameCoordinateSystem(basis.system, space->GetCoordinateSystem()));
+  REQUIRE(pcms::detail::SameCoordinateSystem(basis.system,
+                                             space->GetCoordinateSystem()));
 
   const auto grad = pcms::test::EvaluateToHost(*gradient, f, basis, 2);
   const auto value =
@@ -221,16 +221,16 @@ TEST_CASE("Gradients of vectors need Cartesian coordinates")
   auto cyl = pcms::csys::CylindricalRThetaZ::Create();
   pcms::ValueBasis v{cyl, pcms::ComponentScaling::Physical,
                      pcms::values::Vector};
-  REQUIRE_THROWS_WITH(pcms::GradientBasis(v, cyl),
+  REQUIRE_THROWS_WITH(pcms::detail::GradientBasis(v, cyl),
                       ContainsSubstring("connection"));
   auto cart = pcms::csys::Cartesian::Create(3);
   pcms::ValueBasis w{cart, pcms::ComponentScaling::Physical,
                      pcms::values::Vector};
-  REQUIRE(pcms::GradientBasis(w, cart).Rank() == 2);
+  REQUIRE(pcms::detail::GradientBasis(w, cart).Rank() == 2);
   // the parity of the stored basis is kept
   w.parity = pcms::Parity::Odd;
-  REQUIRE(pcms::GradientBasis(w, cart).parity == pcms::Parity::Odd);
+  REQUIRE(pcms::detail::GradientBasis(w, cart).parity == pcms::Parity::Odd);
   pcms::ValueBasis s{cart, pcms::ComponentScaling::Physical,
                      pcms::values::Scalar, pcms::Parity::Odd};
-  REQUIRE(pcms::GradientBasis(s, cart).parity == pcms::Parity::Odd);
+  REQUIRE(pcms::detail::GradientBasis(s, cart).parity == pcms::Parity::Odd);
 }

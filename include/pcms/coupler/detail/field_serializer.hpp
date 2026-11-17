@@ -14,6 +14,8 @@ namespace pcms
 // buffer, through the field's DOFAccess. Any field with DOFAccess is
 // exchanged this way. Backends that need extra work on receive (e.g.,
 // synchronizing replicas) do it in DOFAccess::SetValues.
+//
+// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 class FieldSerializer
 {

@@ -28,12 +28,13 @@ struct InitilizeXGCMembersFunctor
 // Sets the classification of the vertices of one geometric entity.
 struct ClassifyVertsFunctor
 {
-  DimID geom;
+  pcms::detail::DimID geom;
   Kokkos::View<LO*, DeviceMemorySpace> verts;
   Kokkos::View<LO*, DeviceMemorySpace> class_dims_;
   Kokkos::View<LO*, DeviceMemorySpace> class_ids_;
 
-  ClassifyVertsFunctor(DimID geom, Kokkos::View<LO*, DeviceMemorySpace> verts,
+  ClassifyVertsFunctor(pcms::detail::DimID geom,
+                       Kokkos::View<LO*, DeviceMemorySpace> verts,
                        Kokkos::View<LO*, DeviceMemorySpace> class_dims,
                        Kokkos::View<LO*, DeviceMemorySpace> class_ids)
     : geom(geom), verts(verts), class_dims_(class_dims), class_ids_(class_ids)
@@ -118,12 +119,12 @@ GO XGCFieldLayout::GetNumGlobalDofHolder() const
 
 Rank1View<const bool, HostMemorySpace> XGCFieldLayout::GetOwnedHost() const
 {
-  return make_const_array_view(owned_host_);
+  return pcms::detail::make_const_array_view(owned_host_);
 }
 
 GlobalIDView<HostMemorySpace> XGCFieldLayout::GetGidsHost() const
 {
-  return make_const_array_view(gids_host_);
+  return pcms::detail::make_const_array_view(gids_host_);
 }
 
 bool XGCFieldLayout::IsDistributed() const
@@ -154,13 +155,13 @@ int XGCFieldLayout::GetDimension() const
 Rank1View<const LO, HostMemorySpace>
 XGCFieldLayout::GetDOFHolderClassificationDimensionsHost() const
 {
-  return make_const_array_view(classification_dims_host_);
+  return pcms::detail::make_const_array_view(classification_dims_host_);
 }
 
 Rank1View<const LO, HostMemorySpace>
 XGCFieldLayout::GetDOFHolderClassificationIdsHost() const
 {
-  return make_const_array_view(classification_ids_host_);
+  return pcms::detail::make_const_array_view(classification_ids_host_);
 }
 
 LO XGCFieldLayout::GetFullDataSize() const noexcept

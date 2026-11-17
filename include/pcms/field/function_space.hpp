@@ -40,6 +40,8 @@ public:
   /// A function space from its components. Own it by std::shared_ptr:
   /// functions co-own their space. Backends build spaces this way; users call
   /// the Create* factories.
+  ///
+  /// Implementer API: not covered by the public-API stability promise.
   /// @param layout the layout of the space's fields
   /// @param create_field_data makes the data of a field of this space from a
   ///        value type and basis (may throw for spaces whose fields hold no
@@ -171,7 +173,7 @@ Function<T> FunctionSpace::CreateFunction(
                                             std::move(system), scaling);
   detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
   Field<T> field = std::get<Field<T>>(
-    CreateFieldImpl(TypeEnumFromType<T>(), std::move(basis)));
+    CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));
   return WrapFunction<T>(std::move(name), std::move(field.layout_),
                          std::move(field.data_), std::move(owner));
 }

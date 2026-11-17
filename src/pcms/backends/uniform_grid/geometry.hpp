@@ -33,7 +33,7 @@ void FillUniformGridBinding(
   Kokkos::View<Real**, DeviceMemorySpace> parametric)
 {
   using Result = typename UniformGridPointSearch<Dim>::Result;
-  detail::ForEach(
+  pcms::detail::ForEach(
     "UniformGridBinding", static_cast<LO>(results.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       const Result result = results(i);
@@ -119,7 +119,8 @@ public:
   /// shared_from_this().
   UniformGridGeometry(UniformGrid<Dim> grid,
                       std::shared_ptr<const CoordinateSystem> system)
-    : grid_(grid), system_(ResolveCoordinateSystem(std::move(system), Dim))
+    : grid_(grid),
+      system_(pcms::detail::ResolveCoordinateSystem(std::move(system), Dim))
   {
   }
 

@@ -22,6 +22,8 @@ namespace pcms
 /// the evaluated components in the bound map's output basis.
 /// PointEvaluatorFactory::CreatePointEvaluator creates it for every bound
 /// source whose GetBoundMap() is set.
+///
+/// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 class TransformedPointEvaluator final : public PointEvaluator<T>
 {

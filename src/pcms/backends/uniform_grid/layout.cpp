@@ -227,7 +227,7 @@ template <unsigned Dim>
 Rank1View<const bool, HostMemorySpace>
 UniformGridFieldLayout<Dim>::GetOwnedHost() const
 {
-  return make_const_array_view(owned_host_);
+  return pcms::detail::make_const_array_view(owned_host_);
 }
 
 template <unsigned Dim>
@@ -288,14 +288,14 @@ template <unsigned Dim>
 Rank1View<const LO, HostMemorySpace>
 UniformGridFieldLayout<Dim>::GetDOFHolderClassificationDimensionsHost() const
 {
-  return make_const_array_view(classification_dims_host_);
+  return pcms::detail::make_const_array_view(classification_dims_host_);
 }
 
 template <unsigned Dim>
 Rank1View<const LO, HostMemorySpace>
 UniformGridFieldLayout<Dim>::GetDOFHolderClassificationIdsHost() const
 {
-  return make_const_array_view(classification_ids_host_);
+  return pcms::detail::make_const_array_view(classification_ids_host_);
 }
 
 template <unsigned Dim>

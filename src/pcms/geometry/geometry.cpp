@@ -17,8 +17,10 @@ void CheckBindArguments(const Geometry& geometry,
   const auto& query_system = coords.GetCoordinateSystem();
   const auto& system = geometry.GetCoordinateSystem();
   if (map != nullptr) {
-    if (!SameCoordinateSystem(query_system, map->GetSourceCoordinateSystem()) ||
-        !SameCoordinateSystem(map->GetTargetCoordinateSystem(), system)) {
+    if (!pcms::detail::SameCoordinateSystem(query_system,
+                                            map->GetSourceCoordinateSystem()) ||
+        !pcms::detail::SameCoordinateSystem(map->GetTargetCoordinateSystem(),
+                                            system)) {
       throw pcms_error(
         "Geometry::Bind: the query points are in '" +
         std::string(query_system->Kind()) + "' and the map takes '" +
@@ -27,7 +29,7 @@ void CheckBindArguments(const Geometry& geometry,
         "'; it must take the query coordinate system to the geometry's '" +
         std::string(system->Kind()) + "'");
     }
-  } else if (!SameCoordinateSystem(query_system, system)) {
+  } else if (!pcms::detail::SameCoordinateSystem(query_system, system)) {
     throw pcms_error("Geometry::Bind: query coordinate system '" +
                      std::string(query_system->Kind()) +
                      "' is not the geometry's coordinate system '" +
@@ -120,15 +122,15 @@ void detail::CheckNeighbourhoodArguments(
   const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& coords,
   const NeighbourhoodOptions& options, const std::string& caller)
 {
-  if (!SameCoordinateSystem(coords.GetCoordinateSystem(),
-                            geometry.GetCoordinateSystem())) {
+  if (!pcms::detail::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                          geometry.GetCoordinateSystem())) {
     throw pcms_error(caller + ": query coordinate system '" +
                      std::string(coords.GetCoordinateSystem()->Kind()) +
                      "' is not the geometry's coordinate system '" +
                      std::string(geometry.GetCoordinateSystem()->Kind()) + "'");
   }
   // the searches measure Euclidean distances
-  if (!HasIdentityMetric(*geometry.GetCoordinateSystem())) {
+  if (!pcms::detail::HasIdentityMetric(*geometry.GetCoordinateSystem())) {
     throw pcms_error(
       caller +
       ": requires a coordinate system whose metric is the "

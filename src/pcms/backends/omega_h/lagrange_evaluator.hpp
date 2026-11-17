@@ -57,7 +57,7 @@ void EvaluateOmegaHLagrange(Omega_h::Mesh& mesh, int order,
   const auto up = UpAdjacencies<Dim>(mesh);
   const auto verts_of = VerticesOfEntities<Dim>(mesh);
   if (order == 0) {
-    ForEach(
+    pcms::detail::ForEach(
       "OmegaHLagrangePointEvaluator::EvaluateOrder0", n_valid,
       KOKKOS_LAMBDA(const LO k) {
         const LO elem = ElementOfResult<Dim>(up, results(found(k)));
@@ -66,7 +66,7 @@ void EvaluateOmegaHLagrange(Omega_h::Mesh& mesh, int order,
         }
       });
   } else {
-    ForEach(
+    pcms::detail::ForEach(
       "OmegaHLagrangePointEvaluator::EvaluateOrder1", n_valid,
       KOKKOS_LAMBDA(const LO k) {
         LO vertices[Dim + 1];

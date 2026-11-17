@@ -139,7 +139,8 @@ TEST_CASE("OmegaHLagrangeField order-1: set/get DOF data round-trip")
     pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(pcms::ValueBasis{},
                                                              view));
 
-  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  auto got =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(static_cast<int>(got.size()) == n);
   for (int i = 0; i < n; ++i)
     REQUIRE(got[i] == Catch::Approx(data[i]));
@@ -246,7 +247,8 @@ TEST_CASE("OmegaHLagrangeField order-0: set/get DOF data round-trip")
     pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(pcms::ValueBasis{},
                                                              view));
 
-  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  auto got =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(static_cast<int>(got.size()) == n);
   for (int i = 0; i < n; ++i)
     REQUIRE(got[i] == Catch::Approx(3.14));

@@ -137,13 +137,14 @@ void bind_value_view_module(py::module& m)
     .def(
       "__eq__",
       [](const ValueBasis& a, const ValueBasis& b) {
-        return SameValueBasis(a, b);
+        return pcms::detail::SameValueBasis(a, b);
       },
       py::is_operator(),
       "Whether the two bases describe the same components (SameValueBasis)")
     .def("__repr__", [](const ValueBasis& self) { return Repr(self); });
 
-  m.def("same_value_basis", &SameValueBasis, py::arg("a"), py::arg("b"));
+  m.def("same_value_basis", &pcms::detail::SameValueBasis, py::arg("a"),
+        py::arg("b"));
 
   py::class_<PyValueView>(m, "ValueView",
                           "Values (num_points × num_components) tagged with "
@@ -169,7 +170,7 @@ void bind_value_view_module(py::module& m)
     .def("rank", [](const PyValueView& self) { return self.basis.Rank(); })
     .def("get_value_type",
          [](const PyValueView& self) {
-           return ValueTypeOfRank(self.basis.Rank());
+           return pcms::detail::ValueTypeOfRank(self.basis.Rank());
          })
     .def(
       "extent",

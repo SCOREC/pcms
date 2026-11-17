@@ -106,8 +106,8 @@ TEST_CASE("OmegaHControlVariateProjection: exact for fields in the target "
                                                   /*seed=*/8675309, mass_type);
   projection.Apply(source_field, target_field);
 
-  const auto values =
-    pcms::FlattenToRank1View(target_field.GetDOFHolderDataHost().GetValues());
+  const auto values = pcms::detail::FlattenToRank1View(
+    target_field.GetDOFHolderDataHost().GetValues());
   const auto coords_h = pcms::test::CopyCoordinatesToHost(
     pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
   REQUIRE(static_cast<Omega_h::LO>(values.size()) == target_mesh.nverts());
@@ -142,7 +142,7 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
   pcms::OmegaHConservativeProjection reference_projection(*source_space,
                                                           *target_space);
   reference_projection.Apply(source_field, reference_field);
-  const auto reference = pcms::FlattenToRank1View(
+  const auto reference = pcms::detail::FlattenToRank1View(
     reference_field.GetDOFHolderDataHost().GetValues());
 
   const int samples_per_element = 64;
@@ -163,8 +163,8 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
   pcms::OmegaHControlVariateProjection cv_projection(
     *source_space, *target_space, samples_per_element, seed);
   cv_projection.Apply(source_field, cv_field);
-  const auto cv_values =
-    pcms::FlattenToRank1View(cv_field.GetDOFHolderDataHost().GetValues());
+  const auto cv_values = pcms::detail::FlattenToRank1View(
+    cv_field.GetDOFHolderDataHost().GetValues());
 
   double mc_error = 0.0;
   double cv_error = 0.0;
@@ -257,8 +257,8 @@ TEST_CASE(
   auto reference = target_space->CreateFunction<pcms::Real>();
   pcms::OmegaHConservativeProjection ref_proj(*source_space, *target_space);
   ref_proj.Apply(source, reference);
-  const auto ref_vals =
-    pcms::FlattenToRank1View(reference.GetDOFHolderDataHost().GetValues());
+  const auto ref_vals = pcms::detail::FlattenToRank1View(
+    reference.GetDOFHolderDataHost().GetValues());
 
   const int nsample = 64;
   const uint64_t seed = 20240611;
@@ -275,8 +275,8 @@ TEST_CASE(
   pcms::OmegaHControlVariateProjection cv(*source_space, *target_space, nsample,
                                           seed);
   cv.Apply(source, cv_field);
-  const auto cv_vals =
-    pcms::FlattenToRank1View(cv_field.GetDOFHolderDataHost().GetValues());
+  const auto cv_vals = pcms::detail::FlattenToRank1View(
+    cv_field.GetDOFHolderDataHost().GetValues());
 
   double mc_err = 0.0, cv_err = 0.0;
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
@@ -349,8 +349,8 @@ TEST_CASE("OmegaHControlVariateProjection through a coordinate map maps the "
     pcms::MassMatrixType::Consistent, std::make_shared<SwapXY>());
   projection.Apply(source_field, target_field);
 
-  const auto values =
-    pcms::FlattenToRank1View(target_field.GetDOFHolderDataHost().GetValues());
+  const auto values = pcms::detail::FlattenToRank1View(
+    target_field.GetDOFHolderDataHost().GetValues());
   const auto coords_h = pcms::test::CopyCoordinatesToHost(
     pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
   for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {

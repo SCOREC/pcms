@@ -217,7 +217,7 @@ static ReversePartitionMap2 BuildReversePartitionMap(
     for (int d = mesh_dim; d < 3; ++d)
       coord[d] = 0.0;
 
-    int mesh_ent_dim = GetMeshEntityDim(owned_index, ent_offsets);
+    int mesh_ent_dim = pcms::detail::GetMeshEntityDim(owned_index, ent_offsets);
     LO class_dim = class_dims[owned_index];
     LO class_id = class_ids[owned_index];
 
@@ -306,7 +306,7 @@ void GenericFieldExchangePlanner::FillGidMessage(
       perm_index + static_cast<LO>((block_index + 1) * ent_offsets_len);
     gid_message(gid_index) = gids(owned_index);
 
-    int mesh_ent_dim = GetMeshEntityDim(owned_index, ent_offsets);
+    int mesh_ent_dim = pcms::detail::GetMeshEntityDim(owned_index, ent_offsets);
     for (size_t e = static_cast<size_t>(mesh_ent_dim) + 1; e < ent_offsets_len;
          ++e) {
       per_rank_offsets[block_index][e] += 1;

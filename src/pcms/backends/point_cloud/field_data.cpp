@@ -17,7 +17,7 @@ PointCloud::PointCloud(std::shared_ptr<const PointCloudLayout> layout)
 
 FieldValueType PointCloud::GetValueType() const
 {
-  return ValueTypeOfRank(basis_.Rank());
+  return pcms::detail::ValueTypeOfRank(basis_.Rank());
 }
 
 const ValueBasis& PointCloud::GetValueBasis() const
@@ -33,7 +33,7 @@ Rank2View<const Real, DeviceMemorySpace> PointCloud::GetValues() const
 void PointCloud::SetValues(Rank2View<const Real, DeviceMemorySpace> data)
 {
   PCMS_FUNCTION_TIMER;
-  CopyDeviceRank2ViewToDeviceView(device_data_, data);
+  pcms::detail::CopyDeviceRank2ViewToDeviceView(device_data_, data);
 }
 
 } // namespace pcms

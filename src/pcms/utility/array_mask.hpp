@@ -62,7 +62,7 @@ public:
     // filtered array
     Kokkos::View<LO*, MemorySpace> index_mask("mask", mask.size());
     auto policy = Kokkos::RangePolicy<execution_space>(0, mask.size());
-    auto index_mask_view = make_array_view(index_mask);
+    auto index_mask_view = pcms::detail::make_array_view(index_mask);
     Kokkos::parallel_scan(
       policy, detail::ComputeMaskAV<MemorySpace>{index_mask_view, mask},
       num_active_entries_);
@@ -109,7 +109,7 @@ public:
     PCMS_ALWAYS_ASSERT(data.size() == mask_.size());
     Kokkos::View<T, MemorySpace> filtered_data("filtered data",
                                                num_active_entries_);
-    Apply(data, make_array_view(filtered_data));
+    Apply(data, pcms::detail::make_array_view(filtered_data));
     return filtered_data;
   }
 
@@ -156,7 +156,10 @@ public:
   // returns a view where each entry that's greater than 0 is active in the
   // filtered array and the value of that entry -1 is the local order of the
   // data
-  [[nodiscard]] auto GetMap() const { return make_const_array_view(mask_); }
+  [[nodiscard]] auto GetMap() const
+  {
+    return pcms::detail::make_const_array_view(mask_);
+  }
 
 private:
   Kokkos::View<LO*, MemorySpace> mask_;

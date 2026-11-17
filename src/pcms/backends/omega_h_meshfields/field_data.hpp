@@ -93,7 +93,7 @@ public:
 
   FieldValueType GetValueType() const override
   {
-    return ValueTypeOfRank(basis_.Rank());
+    return pcms::detail::ValueTypeOfRank(basis_.Rank());
   }
   const ValueBasis& GetValueBasis() const override { return basis_; }
 
@@ -107,7 +107,7 @@ public:
 
   void SetValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    CopyDeviceRank2ViewToDeviceView(owned_data_, values);
+    pcms::detail::CopyDeviceRank2ViewToDeviceView(owned_data_, values);
     if (!layout_->HasGhosts()) {
       SyncBackend(MakeConstRank2View(owned_data_));
       return;
@@ -115,8 +115,9 @@ public:
     // Write the owned rows into the backend's values with ghosts, keeping its
     // ghost values.
     auto local = ReadBackend();
-    ScatterRows(MakeConstRank2View(owned_data_), layout_->GetOwnedIndices(),
-                MakeRank2View(local));
+    pcms::detail::ScatterRows(MakeConstRank2View(owned_data_),
+                              layout_->GetOwnedIndices(),
+                              pcms::detail::MakeRank2View(local));
     SyncBackend(MakeConstRank2View(local));
   }
 
@@ -174,7 +175,7 @@ private:
         "ReadBackendReorder",
         Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
           0, static_cast<LO>(num_rows)),
-        UnflattenFunctor<T>(flat, MakeRank2View(local),
+        UnflattenFunctor<T>(flat, pcms::detail::MakeRank2View(local),
                             static_cast<LO>(row_offset), nc));
       row_offset += num_rows;
     }

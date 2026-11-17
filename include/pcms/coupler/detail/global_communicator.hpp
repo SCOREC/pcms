@@ -6,6 +6,7 @@
 #include <pcms/coupler/coupler_types.hpp>
 namespace pcms
 {
+/// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 struct GlobalCommunicator
 {

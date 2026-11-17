@@ -106,13 +106,13 @@ GridPointSearchVariant MakeGridSearch(Omega_h::Mesh& mesh,
   if (mesh.dim() == 2) {
     const LO n = options.divisions > 0
                    ? options.divisions
-                   : DivisionsPerAxisForMesh<2>(mesh.nelems());
+                   : pcms::detail::DivisionsPerAxisForMesh<2>(mesh.nelems());
     return GridPointSearch2D(mesh, n, n, options.tolerance);
   }
   if (mesh.dim() == 3) {
     const LO n = options.divisions > 0
                    ? options.divisions
-                   : DivisionsPerAxisForMesh<3>(mesh.nelems());
+                   : pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
     return GridPointSearch3D(mesh, n, n, n, options.tolerance);
   }
   throw std::invalid_argument(
@@ -125,7 +125,8 @@ OmegaHGeometry::OmegaHGeometry(Omega_h::Mesh& mesh,
   : mesh_(mesh),
     global_id_name_(std::move(options.global_id_name)),
     owned_mask_(std::move(options.owned_mask)),
-    system_(ResolveCoordinateSystem(std::move(system), mesh.dim())),
+    system_(
+      pcms::detail::ResolveCoordinateSystem(std::move(system), mesh.dim())),
     search_options_(options.search)
 {
   if (owned_mask_.size() != 0 && owned_mask_.size() != mesh_.nverts()) {

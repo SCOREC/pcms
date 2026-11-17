@@ -5,6 +5,8 @@
 
 namespace pcms
 {
+namespace detail
+{
 std::shared_ptr<const CoordinateSystem> ResolveCoordinateSystem(
   std::shared_ptr<const CoordinateSystem> system, int dim)
 {
@@ -29,4 +31,5 @@ std::shared_ptr<const CoordinateSystem> ResolveCoordinateSystem(
   return system;
 }
 
+} // namespace detail
 } // namespace pcms

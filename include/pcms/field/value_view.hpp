@@ -122,6 +122,9 @@ struct ValueBasis
   friend bool operator==(const ValueBasis&, const ValueBasis&) = default;
 };
 
+namespace detail
+{
+
 [[nodiscard]] inline FieldValueType ValueTypeOfRank(int rank)
 {
   switch (rank) {
@@ -152,15 +155,13 @@ struct ValueBasis
   if (a.Rank() == 0 && b.Rank() == 0) {
     return true;
   }
-  if (a.Rank() != b.Rank() || !SameCoordinateSystem(a.system, b.system) ||
+  if (a.Rank() != b.Rank() ||
+      !detail::SameCoordinateSystem(a.system, b.system) ||
       a.scaling != b.scaling) {
     return false;
   }
   return a.scaling == ComponentScaling::Physical || a.variance == b.variance;
 }
-
-namespace detail
-{
 
 /// Gate for a tagged write: throws pcms_error unless the basis the caller
 /// claimed on the output view is the basis the callee is about to write.
@@ -171,7 +172,7 @@ inline void CheckWrittenValueBasis(const char* context,
                                    const ValueBasis& claimed,
                                    const ValueBasis& written)
 {
-  if (!SameValueBasis(claimed, written)) {
+  if (!detail::SameValueBasis(claimed, written)) {
     throw pcms_error(std::string(context) +
                      ": the output view's declared value type/basis does not "
                      "match the basis this call writes");
@@ -240,7 +241,7 @@ inline ValueBasis MakeValueBasis(
   ComponentScaling resolved;
   if (scaling.has_value()) {
     resolved = *scaling;
-  } else if (auto derived = DerivedComponentScaling(*system)) {
+  } else if (auto derived = detail::DerivedComponentScaling(*system)) {
     resolved = *derived;
   } else {
     throw pcms_error(
@@ -263,13 +264,10 @@ inline constexpr VarianceSignature Covector{Variance::Covariant};
 inline constexpr VarianceSignature Tensor{Variance::Contravariant,
                                           Variance::Contravariant};
 
-[[nodiscard]] inline VarianceSignature Of(
-  std::initializer_list<Variance> variance)
-{
-  return VarianceSignature{variance};
-}
-
 } // namespace values
+
+namespace detail
+{
 
 /// @brief Basis of the gradient of values stored in `stored`.
 ///
@@ -299,7 +297,7 @@ inline constexpr VarianceSignature Tensor{Variance::Contravariant,
   }
   const bool cartesian =
     dynamic_cast<const csys::Cartesian*>(system.get()) != nullptr &&
-    SameCoordinateSystem(stored.system, system);
+    detail::SameCoordinateSystem(stored.system, system);
   if (!cartesian) {
     throw pcms_error("GradientBasis: the gradient of a rank-" +
                      std::to_string(stored.Rank()) +
@@ -310,6 +308,8 @@ inline constexpr VarianceSignature Tensor{Variance::Contravariant,
                     stored.variance.WithCovariantIndexAppended(),
                     stored.parity};
 }
+
+} // namespace detail
 
 // view for field values that is tagged with the coordinate system
 template <typename ElementType, typename MemorySpace,
@@ -339,7 +339,7 @@ public:
   [[nodiscard]] int Rank() const noexcept { return basis_.Rank(); }
   [[nodiscard]] FieldValueType GetValueType() const
   {
-    return ValueTypeOfRank(basis_.Rank());
+    return detail::ValueTypeOfRank(basis_.Rank());
   }
 
   [[nodiscard]] const ValueBasis& GetBasis() const noexcept { return basis_; }

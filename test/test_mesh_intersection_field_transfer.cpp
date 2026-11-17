@@ -64,8 +64,8 @@ TEST_CASE("OmegaHConservativeProjection reproduces constant and linear fields",
 
     projection.Apply(source, target);
 
-    const auto target_values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto target_values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     REQUIRE(static_cast<Omega_h::LO>(target_values.size()) ==
             target_mesh.nverts());
     for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
@@ -83,8 +83,8 @@ TEST_CASE("OmegaHConservativeProjection reproduces constant and linear fields",
 
     projection.Apply(source, target);
 
-    const auto target_values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto target_values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
       pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
     for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
@@ -169,8 +169,8 @@ TEST_CASE("OmegaHConservativeProjection with lumped mass reproduces constants, "
 
     projection.Apply(source, target);
 
-    const auto target_values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto target_values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     REQUIRE(static_cast<Omega_h::LO>(target_values.size()) ==
             target_mesh.nverts());
     for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
@@ -197,8 +197,8 @@ TEST_CASE("OmegaHConservativeProjection with lumped mass reproduces constants, "
     // solver tolerance. A consistent mass matrix reproduces the field to
     // 1e-9 (see the exact-reproduction test above), so a large error here
     // proves the lumped path was actually taken.
-    const auto target_values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto target_values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     const auto tgt_coords_h =
       Omega_h::HostRead<Omega_h::Real>(target_mesh.coords());
     double max_err = 0.0;
@@ -335,8 +335,8 @@ TEST_CASE("OmegaHConservativeProjection P0 source to P1 target",
 
     projection.Apply(source, target);
 
-    const auto target_values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto target_values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     REQUIRE(static_cast<Omega_h::LO>(target_values.size()) ==
             target_mesh.nverts());
     for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
@@ -391,8 +391,8 @@ TEST_CASE("OmegaHConservativeProjection P1 source to P0 target",
 
     projection.Apply(source, target);
 
-    const auto target_values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto target_values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     REQUIRE(static_cast<Omega_h::LO>(target_values.size()) ==
             target_mesh.nelems());
     for (Omega_h::LO e = 0; e < target_mesh.nelems(); ++e) {
@@ -412,8 +412,8 @@ TEST_CASE("OmegaHConservativeProjection P1 source to P0 target",
 
     projection.Apply(source, target);
 
-    const auto target_values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto target_values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     const auto centroids_h = Omega_h::HostRead<Omega_h::Real>(
       pcms::get_entity_centroids(target_mesh, target_mesh.dim()));
     REQUIRE(static_cast<Omega_h::LO>(target_values.size()) ==

@@ -29,9 +29,9 @@ using pcms::LagrangeOptions;
 using pcms::OutOfBoundsMode;
 using pcms::OutOfBoundsPolicy;
 using pcms::Real;
-using pcms::SameValueBasis;
 using pcms::ValueBasis;
 using pcms::ValueView;
+using pcms::detail::SameValueBasis;
 namespace values = pcms::values;
 
 namespace
@@ -107,11 +107,12 @@ TEST_CASE("Bind with a map: scalar evaluation maps the query points")
     src->GetGeometry()->Bind(pts, OutOfBoundsPolicy{}, CartToCyl());
   // the bound source keeps the mapped points, which the evaluators read
   REQUIRE(bound->GetBoundMap() != nullptr);
-  REQUIRE(pcms::SameCoordinateSystem(bound->GetCoordinateSystem(),
-                                     tgt->GetCoordinateSystem()));
+  REQUIRE(pcms::detail::SameCoordinateSystem(bound->GetCoordinateSystem(),
+                                             tgt->GetCoordinateSystem()));
   REQUIRE(static_cast<int>(bound->LocatedPointValues().extent(0)) == n);
   auto evaluator = src->CreatePointEvaluator<Real>(bound);
-  REQUIRE(SameValueBasis(evaluator->OutputBasis(ValueBasis{}), ValueBasis{}));
+  REQUIRE(pcms::detail::SameValueBasis(evaluator->OutputBasis(ValueBasis{}),
+                                       ValueBasis{}));
 
   const auto coords = pcms::test::CopyCoordinatesToHost(pts.GetValues());
   const auto located = pcms::test::CopyCoordinatesToHost(
@@ -149,10 +150,10 @@ TEST_CASE("Bind with a map: vector evaluation rotates into the target basis")
   const int n = static_cast<int>(pts.GetValues().extent(0));
   auto evaluator = src->CreatePointEvaluator<Real>(
     src->GetGeometry()->Bind(pts, OutOfBoundsPolicy{}, CartToCyl()));
-  REQUIRE(SameValueBasis(evaluator->OutputBasis(CylindricalVector()),
-                         CartesianVector()));
-  REQUIRE(SameValueBasis(evaluator->OutputBasis(CartesianVector()),
-                         CartesianVector()));
+  REQUIRE(pcms::detail::SameValueBasis(
+    evaluator->OutputBasis(CylindricalVector()), CartesianVector()));
+  REQUIRE(pcms::detail::SameValueBasis(
+    evaluator->OutputBasis(CartesianVector()), CartesianVector()));
   const ValueBasis natural_cylindrical{pcms::csys::CylindricalRThetaZ::Create(),
                                        ComponentScaling::Natural,
                                        values::Vector};
@@ -176,12 +177,13 @@ TEST_CASE("Bind with a map: vector evaluation rotates into the target basis")
     Kokkos::View<Real**, DeviceMemorySpace> out("out", n, 3);
     REQUIRE_THROWS_WITH(
       evaluator->Evaluate(
-        natural, ValueView<Real, DeviceMemorySpace>(CartesianVector(),
-                                                    pcms::MakeRank2View(out))),
+        natural, ValueView<Real, DeviceMemorySpace>(
+                   CartesianVector(), pcms::detail::MakeRank2View(out))),
       ContainsSubstring("cannot re-express"));
     REQUIRE_THROWS_WITH(
-      evaluator->Evaluate(b, ValueView<Real, DeviceMemorySpace>(
-                               CylindricalVector(), pcms::MakeRank2View(out))),
+      evaluator->Evaluate(
+        b, ValueView<Real, DeviceMemorySpace>(
+             CylindricalVector(), pcms::detail::MakeRank2View(out))),
       ContainsSubstring("does not match"));
   }
 
@@ -189,10 +191,11 @@ TEST_CASE("Bind with a map: vector evaluation rotates into the target basis")
   {
     REQUIRE(evaluator->NumPoints() == n);
     Kokkos::View<Real**, DeviceMemorySpace> short_out("short_out", n - 1, 3);
-    REQUIRE_THROWS_AS(evaluator->Evaluate(b, ValueView<Real, DeviceMemorySpace>(
-                                               CartesianVector(),
-                                               pcms::MakeRank2View(short_out))),
-                      std::invalid_argument);
+    REQUIRE_THROWS_AS(
+      evaluator->Evaluate(
+        b, ValueView<Real, DeviceMemorySpace>(
+             CartesianVector(), pcms::detail::MakeRank2View(short_out))),
+      std::invalid_argument);
   }
 }
 
@@ -501,12 +504,14 @@ TEST_CASE("Bind with a map: maps compose as separate binds")
   auto evaluator = src->CreatePointEvaluator<Real>(src->GetGeometry()->Bind(
     to_cartesian->MappedPoints(), OutOfBoundsPolicy{}, CartToCyl()));
   Kokkos::View<Real**, DeviceMemorySpace> out("out", n, 3);
-  evaluator->Evaluate(b, ValueView<Real, DeviceMemorySpace>(
-                           CartesianVector(), pcms::MakeRank2View(out)));
+  evaluator->Evaluate(
+    b, ValueView<Real, DeviceMemorySpace>(CartesianVector(),
+                                          pcms::detail::MakeRank2View(out)));
   const auto cylindrical =
     to_cartesian->TransformValues(ValueView<Real, DeviceMemorySpace>(
-      CartesianVector(), pcms::MakeRank2View(out)));
-  REQUIRE(SameValueBasis(cylindrical.GetBasis(), CylindricalVector()));
+      CartesianVector(), pcms::detail::MakeRank2View(out)));
+  REQUIRE(
+    pcms::detail::SameValueBasis(cylindrical.GetBasis(), CylindricalVector()));
   auto result = Kokkos::create_mirror_view_and_copy(HostMemorySpace{}, out);
   for (int i = 0; i < n; ++i) {
     CAPTURE(i);

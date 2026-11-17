@@ -60,7 +60,7 @@ TEST_CASE("XGCFieldFactory creates fields and rejects evaluator access")
   auto field = function_space.CreateField<pcms::Real>(
     "", std::make_unique<pcms::XGCFieldData<pcms::Real>>(
           function_space.GetXGCLayout(), pcms::ValueBasis{},
-          pcms::make_array_view(data)));
+          pcms::detail::make_array_view(data)));
 
   REQUIRE(&field.GetLayout() == function_space.GetLayout().get());
 }

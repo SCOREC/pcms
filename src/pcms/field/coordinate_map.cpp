@@ -86,7 +86,7 @@ void BindCylindricalPoints(Rank2View<const Real, DeviceMemorySpace> in,
                            Kokkos::View<Real*, DeviceMemorySpace> sin_theta,
                            PointDirection direction)
 {
-  detail::ForEach(
+  pcms::detail::ForEach(
     "cylindrical_map_bind", static_cast<LO>(in.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       Real c, s;
@@ -115,7 +115,7 @@ void RotateValues(const Kokkos::View<Real*, DeviceMemorySpace>& c,
                   const Kokkos::View<Real*, DeviceMemorySpace>& s, Real sign,
                   Rank2View<Real, DeviceMemorySpace> values, LO n)
 {
-  detail::ForEach(
+  pcms::detail::ForEach(
     "cylindrical_map_rotate_values", n, KOKKOS_LAMBDA(const LO i) {
       const Real v0 = values(i, 0);
       const Real v1 = values(i, 1);
@@ -150,7 +150,8 @@ public:
   /// expressed, so only the points needed mapping.
   [[nodiscard]] ValueBasis OutputBasis(const ValueBasis& stored) const override
   {
-    if (!SameValueBasis(stored, stored_) && !SameValueBasis(stored, output_)) {
+    if (!pcms::detail::SameValueBasis(stored, stored_) &&
+        !pcms::detail::SameValueBasis(stored, output_)) {
       throw pcms_error(
         "BoundCoordinateMap::OutputBasis: this map re-expresses values stored "
         "in '" +
@@ -168,7 +169,7 @@ public:
     PCMS_FUNCTION_TIMER;
     const ValueBasis output = ValidateTransformValues(
       "BoundCylindricalRotation::TransformValues", values);
-    if (!SameValueBasis(values.GetBasis(), output_)) {
+    if (!pcms::detail::SameValueBasis(values.GetBasis(), output_)) {
       RotateValues(cos_theta_, sin_theta_, sign_, values.GetValues(),
                    NumPoints());
     }
@@ -189,7 +190,7 @@ void EmbedPoloidalPoints(Rank2View<const Real, DeviceMemorySpace> in,
                          Kokkos::View<Real**, DeviceMemorySpace> out,
                          Real theta0)
 {
-  detail::ForEach(
+  pcms::detail::ForEach(
     "embed_poloidal_points", static_cast<LO>(in.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       out(i, 0) = in(i, 0);
@@ -272,7 +273,8 @@ std::unique_ptr<BoundCoordinateMap> CoordinateMap::Bind(
   const CoordinateView<DeviceMemorySpace>& query_points) const
 {
   PCMS_FUNCTION_TIMER;
-  if (!SameCoordinateSystem(query_points.GetCoordinateSystem(), source_)) {
+  if (!pcms::detail::SameCoordinateSystem(query_points.GetCoordinateSystem(),
+                                          source_)) {
     throw pcms_error("CoordinateMap::Bind: points are tagged with coordinate "
                      "system '" +
                      std::string(query_points.GetCoordinateSystem()->Kind()) +
@@ -286,8 +288,8 @@ std::unique_ptr<BoundCoordinateMap> CoordinateMap::Bind(
   if (bound == nullptr ||
       bound->NumPoints() !=
         static_cast<LO>(query_points.GetValues().extent(0)) ||
-      !SameCoordinateSystem(bound->MappedPoints().GetCoordinateSystem(),
-                            target_)) {
+      !pcms::detail::SameCoordinateSystem(
+        bound->MappedPoints().GetCoordinateSystem(), target_)) {
     throw pcms_error("CoordinateMap::Bind: BindImpl must return one mapped "
                      "point per query point, in the target coordinate system");
   }

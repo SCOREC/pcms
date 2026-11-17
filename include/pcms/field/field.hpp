@@ -109,7 +109,7 @@ protected:
 
   void CheckWriteTag(const ValueBasis& basis) const
   {
-    if (!SameValueBasis(basis, data_->GetValueBasis())) {
+    if (!detail::SameValueBasis(basis, data_->GetValueBasis())) {
       throw pcms_error(
         "Field::SetDOFHolderData: the written view's declared value "
         "type/basis does not match this field's declaration (use the "
@@ -157,7 +157,8 @@ protected:
       Kokkos::View<T**, DeviceMemorySpace> staged(
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "owned_values_staged"),
         values.extent(0), values.extent(1));
-      CopyDeviceRank2ViewToRank2View(MakeRank2View(staged), values);
+      detail::CopyDeviceRank2ViewToRank2View(detail::MakeRank2View(staged),
+                                             values);
       host_values_ = Kokkos::View<T**, HostMemorySpace>(
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "owned_values_host"),
         values.extent(0), values.extent(1));
@@ -174,7 +175,7 @@ protected:
       Kokkos::View<T**, DeviceMemorySpace> staged(
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "owned_values_staged"),
         values.extent(0), values.extent(1));
-      CopyHostRank2ViewToDeviceView(staged, values);
+      detail::CopyHostRank2ViewToDeviceView(staged, values);
       RequireDOFAccess().SetValues(MakeConstRank2View(staged));
     }
   }

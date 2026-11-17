@@ -39,10 +39,10 @@ auto EvaluateToHost(pcms::QueryPoints& query, const pcms::Function<Real>& f,
 {
   Kokkos::View<Real**, DeviceMemorySpace> out("out", query.Bound()->NumPoints(),
                                               width);
-  query.Evaluate(
-    f,
-    pcms::ValueView<Real, DeviceMemorySpace>(basis, pcms::MakeRank2View(out)),
-    op);
+  query.Evaluate(f,
+                 pcms::ValueView<Real, DeviceMemorySpace>(
+                   basis, pcms::detail::MakeRank2View(out)),
+                 op);
   return Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out);
 }
 
@@ -131,10 +131,10 @@ TEST_CASE("QueryPoints and the one-shot evaluation apply the operator")
   const auto through_query =
     EvaluateToHost(query, f, basis, 2, DifferentialOperator::Gradient);
   Kokkos::View<Real**, DeviceMemorySpace> out("out", pts.size() / 2, 2);
-  pcms::Evaluate(
-    f, coords.coordinate_view,
-    pcms::ValueView<Real, DeviceMemorySpace>(basis, pcms::MakeRank2View(out)),
-    DifferentialOperator::Gradient);
+  pcms::Evaluate(f, coords.coordinate_view,
+                 pcms::ValueView<Real, DeviceMemorySpace>(
+                   basis, pcms::detail::MakeRank2View(out)),
+                 DifferentialOperator::Gradient);
   const auto one_shot =
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out);
   for (size_t i = 0; i < pts.size() / 2; ++i) {

@@ -117,7 +117,7 @@ GO OmegaHEntityLayout::GetNumGlobalDofHolder() const
 
 Rank1View<const bool, HostMemorySpace> OmegaHEntityLayout::GetOwnedHost() const
 {
-  return make_const_array_view(owned_host_);
+  return pcms::detail::make_const_array_view(owned_host_);
 }
 
 GlobalIDView<HostMemorySpace> OmegaHEntityLayout::GetGidsHost() const
@@ -169,9 +169,9 @@ bool OmegaHEntityLayout::IsDistributed() const
 
 EntOffsetsArray OmegaHEntityLayout::GetEntOffsets() const
 {
-  return !HasGhosts()
-           ? EntOffsetsWithGhosts()
-           : OwnedEntOffsets(EntOffsetsWithGhosts(), owned_indices_host_);
+  return !HasGhosts() ? EntOffsetsWithGhosts()
+                      : pcms::detail::OwnedEntOffsets(EntOffsetsWithGhosts(),
+                                                      owned_indices_host_);
 }
 
 EntOffsetsArray OmegaHEntityLayout::EntOffsetsWithGhosts() const
@@ -197,20 +197,20 @@ int OmegaHEntityLayout::GetDOFHolderEntityDim() const
 Rank1View<const LO, HostMemorySpace>
 OmegaHEntityLayout::GetDOFHolderClassificationDimensionsHost() const
 {
-  return make_const_array_view(owned_classification_dims_host_);
+  return pcms::detail::make_const_array_view(owned_classification_dims_host_);
 }
 
 Rank1View<const LO, HostMemorySpace>
 OmegaHEntityLayout::GetDOFHolderClassificationIdsHost() const
 {
-  return make_const_array_view(owned_classification_ids_host_);
+  return pcms::detail::make_const_array_view(owned_classification_ids_host_);
 }
 
 void OmegaHEntityLayout::BuildOwnedClassification()
 {
-  BuildOwnedClassificationHost(class_dims_, class_ids_, owned_indices_,
-                               owned_classification_dims_host_,
-                               owned_classification_ids_host_);
+  pcms::detail::BuildOwnedClassificationHost(
+    class_dims_, class_ids_, owned_indices_, owned_classification_dims_host_,
+    owned_classification_ids_host_);
 }
 
 } // namespace pcms

@@ -58,6 +58,7 @@ void FillRows(Rank2View<T, DeviceMemorySpace, LayoutPolicy> values,
 template <typename T,
           typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
+/// Implementer API: not covered by the public-API stability promise.
 class PointEvaluator
 {
 public:
@@ -104,8 +105,8 @@ public:
       case DifferentialOperator::Gradient:
         // the partials are taken where the points were located, in the
         // geometry's system; a bound map re-expresses them afterwards
-        return GradientBasis(stored,
-                             bound_->GetGeometry()->GetCoordinateSystem());
+        return detail::GradientBasis(
+          stored, bound_->GetGeometry()->GetCoordinateSystem());
       default:
         throw pcms_error(std::string("PointEvaluator::OutputBasis: ") +
                          std::string(ToString(op_)) + " is not implemented");

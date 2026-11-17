@@ -18,6 +18,9 @@ using EntOffsetsArray = std::array<size_t, ent_offsets_len>;
 
 using ReversePartitionMap = std::map<pcms::LO, std::vector<pcms::LO>>;
 
+namespace detail
+{
+
 // Returns the mesh entity dimension for the DOF holder at local_index, based on
 // the entity-offset array: ent_offsets[d]..ent_offsets[d+1] is the range of DOF
 // indices belonging to mesh entity dimension d.
@@ -32,6 +35,8 @@ inline int GetMeshEntityDim(LO local_index, const EntOffsetsArray& ent_offsets)
   return ent_offsets_len - 1;
 }
 
+} // namespace detail
+
 // FieldLayout describes how a field's DOF holders are laid out on this rank.
 //
 // The accessors describe the DOF holders this rank owns (rank-exclusive),
@@ -40,6 +45,9 @@ inline int GetMeshEntityDim(LO local_index, const EntOffsetsArray& ent_offsets)
 // synchronization, element assembly): together they are the DOF holders with
 // ghosts, in mesh order. Only their ownership and the owned indices are exposed
 // here. For a layout without ghosts the two coincide (!HasGhosts()).
+namespace detail
+{
+
 // Entity offsets over the owned DOF holders, in owned order, from the entity
 // offsets of the DOF holders with ghosts and the owned indices.
 inline EntOffsetsArray OwnedEntOffsets(
@@ -49,13 +57,15 @@ inline EntOffsetsArray OwnedEntOffsets(
   EntOffsetsArray offsets{};
   offsets.fill(0);
   for (size_t o = 0; o < owned_indices.size(); ++o) {
-    const int d = GetMeshEntityDim(owned_indices(o), local_offsets);
+    const int d = detail::GetMeshEntityDim(owned_indices(o), local_offsets);
     for (size_t e = static_cast<size_t>(d) + 1; e < ent_offsets_len; ++e) {
       offsets[e] += 1;
     }
   }
   return offsets;
 }
+
+} // namespace detail
 
 class FieldLayout
 {
@@ -217,7 +227,12 @@ private:
 /// dimension), i.e. 0, 1, ...
 /// @return the hint when the layout has a geometry, one DOF holder per entity
 ///         of one dimension of it and no ghosts; an empty one otherwise
+///
+/// Implementer API: not covered by the public-API stability promise.
 [[nodiscard]] OwnerHints DOFHolderOwners(const FieldLayout& layout);
+
+namespace detail
+{
 
 // The geometric classification (dimension and id) of the owned DOF holders,
 // as host arrays in owned order. Converted and gathered on the device from the
@@ -249,8 +264,12 @@ void BuildOwnedClassificationHost(
     Kokkos::create_mirror_view_and_copy(HostMemorySpace(), owned_ids);
 }
 
+} // namespace detail
+
 // Compact "owned" (rank-exclusive) views derived from a layout's arrays with
 // ghosts.
+//
+// Implementer API: not covered by the public-API stability promise.
 struct OwnedLayoutData
 {
   LO num_owned = 0;

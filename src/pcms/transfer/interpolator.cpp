@@ -10,8 +10,8 @@ namespace detail
 bool SameDOFHolderSites(const BoundSource& bound, const FieldLayout& layout)
 {
   const auto sites = layout.GetDOFHolderCoordinates();
-  if (!SameCoordinateSystem(bound.GetCoordinateSystem(),
-                            sites.GetCoordinateSystem())) {
+  if (!pcms::detail::SameCoordinateSystem(bound.GetCoordinateSystem(),
+                                          sites.GetCoordinateSystem())) {
     return false;
   }
   const auto vs = sites.GetValues();

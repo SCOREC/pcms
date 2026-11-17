@@ -31,7 +31,7 @@ void CheckOutputValidation(const pcms::PointEvaluator<Real>& evaluator,
   REQUIRE(field.GetLayout().GetNumComponents() == 1);
   auto scalar = [](OutView v) {
     return pcms::ValueView<Real, pcms::DeviceMemorySpace>(
-      pcms::ValueBasis{}, pcms::MakeRank2View(v));
+      pcms::ValueBasis{}, pcms::detail::MakeRank2View(v));
   };
   const auto n = static_cast<size_t>(num_points);
 
@@ -52,7 +52,7 @@ void CheckOutputValidation(const pcms::PointEvaluator<Real>& evaluator,
                          pcms::ValueBasis{pcms::csys::Cartesian::Create(1),
                                           pcms::ComponentScaling::Physical,
                                           pcms::values::Vector},
-                         pcms::MakeRank2View(out))),
+                         pcms::detail::MakeRank2View(out))),
     pcms::pcms_error);
 }
 
@@ -355,8 +355,8 @@ TEST_CASE("FieldLayout: metadata queries")
   auto layout = factory->GetLayout();
 
   auto coords = layout->GetDOFHolderCoordinates();
-  REQUIRE(pcms::SameCoordinateSystem(coords.GetCoordinateSystem(),
-                                     pcms::csys::Cartesian::Create(2)));
+  REQUIRE(pcms::detail::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                             pcms::csys::Cartesian::Create(2)));
   REQUIRE(coords.GetValues().extent(0) > 0);
   REQUIRE(coords.GetValues().extent(1) == 2);
 }
@@ -379,8 +379,8 @@ TEST_CASE("FieldData: layout metadata queries")
   auto field_data = factory->CreateFunction<Real>();
 
   auto coords = factory->GetLayout()->GetDOFHolderCoordinates();
-  REQUIRE(pcms::SameCoordinateSystem(coords.GetCoordinateSystem(),
-                                     pcms::csys::Cartesian::Create(2)));
+  REQUIRE(pcms::detail::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                             pcms::csys::Cartesian::Create(2)));
   REQUIRE(coords.GetValues().extent(0) > 0);
   REQUIRE(coords.GetValues().extent(1) == 2);
 }
@@ -416,8 +416,8 @@ TEST_CASE("SimpleFieldData: set and get DOF holder data round-trip")
       pcms::ValueBasis{}, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
                             data_in.data(), n, 1)));
 
-  auto data_out =
-    pcms::FlattenToRank1View(field_data.GetDOFHolderDataHost().GetValues());
+  auto data_out = pcms::detail::FlattenToRank1View(
+    field_data.GetDOFHolderDataHost().GetValues());
   REQUIRE(static_cast<int>(data_out.size()) == n);
   for (int i = 0; i < n; ++i) {
     REQUIRE(data_out[i] == Catch::Approx(data_in[i]));
@@ -443,8 +443,8 @@ TEST_CASE("FieldLayout: MeshFields metadata queries")
 
   auto layout = factory->GetLayout();
   auto coords = layout->GetDOFHolderCoordinates();
-  REQUIRE(pcms::SameCoordinateSystem(coords.GetCoordinateSystem(),
-                                     pcms::csys::Cartesian::Create(2)));
+  REQUIRE(pcms::detail::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                             pcms::csys::Cartesian::Create(2)));
   REQUIRE(coords.GetValues().extent(0) > 0);
   REQUIRE(coords.GetValues().extent(1) == 2);
 }
@@ -553,7 +553,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
   // Component 0: f(x,y)=x+y, Component 1: f(x,y)=2x-y
   auto dof_coords_mdspan = layout->GetDOFHolderCoordinates().GetValues();
   Kokkos::View<Real**, pcms::DeviceMemorySpace> dof_dev("dof_dev", num_dof, 2);
-  pcms::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
+  pcms::detail::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
   auto coords_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), dof_dev);
 
@@ -608,7 +608,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
   // Component 0: x, Component 1: y, Component 2: x*y
   auto dof_coords_mdspan = layout->GetDOFHolderCoordinates().GetValues();
   Kokkos::View<Real**, pcms::DeviceMemorySpace> dof_dev("dof_dev", num_dof, 2);
-  pcms::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
+  pcms::detail::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
   auto coords_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), dof_dev);
 

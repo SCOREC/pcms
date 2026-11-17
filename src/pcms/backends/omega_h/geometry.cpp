@@ -75,7 +75,10 @@ void OmegaHMeshBinding::Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints)
     search_);
 }
 
-Kokkos::View<const LO*, DeviceMemorySpace> detail::ElementGuesses(
+namespace detail
+{
+
+Kokkos::View<const LO*, DeviceMemorySpace> ElementGuesses(
   Omega_h::Mesh& mesh, const OwnerHints& owners, const std::string& caller)
 {
   const int dim = mesh.dim();
@@ -84,8 +87,9 @@ Kokkos::View<const LO*, DeviceMemorySpace> detail::ElementGuesses(
     return {};
   }
   static const char* const names[] = {"vertex", "edge", "face", "region"};
-  CheckEntityIds(owners.entities, mesh.nents(entity_dim), caller,
-                 entity_dim == dim ? "element" : names[entity_dim]);
+  pcms::detail::CheckEntityIds(owners.entities, mesh.nents(entity_dim), caller,
+                               entity_dim == dim ? "element"
+                                                 : names[entity_dim]);
   if (entity_dim == dim) {
     return owners.entities;
   }
@@ -99,6 +103,8 @@ Kokkos::View<const LO*, DeviceMemorySpace> detail::ElementGuesses(
   }
   return guesses;
 }
+
+} // namespace detail
 
 GridPointSearchVariant MakeGridSearch(Omega_h::Mesh& mesh,
                                       const SearchOptions& options)

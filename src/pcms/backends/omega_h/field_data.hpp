@@ -119,7 +119,7 @@ public:
 
   Rank2View<const T, DeviceMemorySpace> GetValues() const override
   {
-    return MakeConstRank2View(device_data_);
+    return pcms::MakeConstRank2View(device_data_);
   }
 
   void SetValues(Rank2View<const T, DeviceMemorySpace> values) override

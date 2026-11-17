@@ -101,16 +101,12 @@ public:
   [[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<LO, dim>
   GetDimensionedIndex(LO idx) const
   {
-    LO stride = 1;
-    for (std::size_t i = 0; i < dim - 1; ++i) {
-      stride *= divisions[i];
-    }
+    // The x index varies fastest in the cell ID and is the last entry of the
+    // result; entry 0 belongs to the last coordinate axis.
     Kokkos::Array<LO, dim> result;
-
-    for (size_t i = 0; i < dim; ++i) {
-      result[i] = idx / stride;
-      idx -= result[i] * stride;
-      stride /= divisions[i];
+    for (size_t axis = 0; axis < dim; ++axis) {
+      result[dim - 1 - axis] = idx % divisions[axis];
+      idx /= divisions[axis];
     }
 
     return result;

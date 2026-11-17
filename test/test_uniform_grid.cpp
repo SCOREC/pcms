@@ -170,3 +170,35 @@ TEST_CASE("Create uniform grid from 3D mesh")
     REQUIRE(grid.divisions[2] == 12);
   }
 }
+
+TEST_CASE("UniformGrid dimensioned index with unequal 3D divisions")
+{
+  UniformGrid<3> grid;
+  grid.bot_left = {0.0, 0.0, 0.0};
+  grid.edge_length = {5.0, 3.0, 4.0};
+  grid.divisions = {5, 3, 4};
+
+  for (pcms::LO i = 0; i < grid.GetNumCells(); ++i) {
+    REQUIRE(grid.GetCellIndex(grid.GetDimensionedIndex(i)) == i);
+  }
+
+  // Entries are in the reverse order of the coordinates: {z, y, x}.
+  struct Case
+  {
+    pcms::LO cell;
+    pcms::LO z, y, x;
+  };
+  const Case cases[] = {{0, 0, 0, 0},  {1, 0, 0, 1},  {5, 0, 1, 0},
+                        {15, 1, 0, 0}, {59, 3, 2, 4}, {23, 1, 1, 3}};
+  for (const auto& c : cases) {
+    INFO("cell " << c.cell);
+    const auto index = grid.GetDimensionedIndex(c.cell);
+    REQUIRE(index[0] == c.z);
+    REQUIRE(index[1] == c.y);
+    REQUIRE(index[2] == c.x);
+    const auto box = grid.GetCellBBOX(c.cell);
+    REQUIRE(box.center[0] == Catch::Approx(c.x + 0.5));
+    REQUIRE(box.center[1] == Catch::Approx(c.y + 0.5));
+    REQUIRE(box.center[2] == Catch::Approx(c.z + 0.5));
+  }
+}

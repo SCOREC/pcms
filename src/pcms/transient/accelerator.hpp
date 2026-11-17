@@ -1,8 +1,8 @@
 #ifndef PCMS_TRANSIENT_ACCELERATOR_HPP
 #define PCMS_TRANSIENT_ACCELERATOR_HPP
 
+#include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
-#include <vector>
 
 namespace pcms
 {
@@ -15,6 +15,8 @@ namespace pcms
  * iteration. Each coupling window is started with BeginWindow() and then
  * advanced one iteration at a time with Update(). How the last Update()
  * produced the next state is reported by LastStatus().
+ *
+ * All data is passed as views in device memory and is used in place.
  */
 class InterfaceAccelerator
 {
@@ -47,15 +49,18 @@ public:
    * The residual of the iteration is @c x_out - @c x_in.
    *
    * @param x_in Interface state that was passed to the application.
-   * @param x_out Interface state produced by the application. Must hold at
-   * least @c x_in.size() entries.
-   * @param x_next Receives the next interface state. It is resized to
-   * @c x_in.size().
+   * @param x_out Interface state produced by the application. Must have the
+   * same size as @c x_in.
+   * @param x_next Receives the next interface state. Must have the same size as
+   * @c x_in. It may alias @c x_in.
    * @return The L2 norm of the residual.
+   * @throws pcms_error If the sizes differ, or if the size changed since the
+   * first Update() of the window.
    */
-  [[nodiscard]] virtual Real Update(const std::vector<Real>& x_in,
-                                    const std::vector<Real>& x_out,
-                                    std::vector<Real>& x_next) = 0;
+  [[nodiscard]] virtual Real Update(
+    Rank1View<const Real, DeviceMemorySpace> x_in,
+    Rank1View<const Real, DeviceMemorySpace> x_out,
+    Rank1View<Real, DeviceMemorySpace> x_next) = 0;
 
   /**
    * @brief Report how the last Update() produced the next interface state.
@@ -66,15 +71,6 @@ public:
   [[nodiscard]] virtual UpdateStatus LastStatus() const noexcept = 0;
 
   virtual ~InterfaceAccelerator() = default;
-
-protected:
-  /**
-   * @brief Compute the L2 norm of the residual vector.
-   *
-   * @param residual The residual vector.
-   * @return The Euclidean norm of @p residual.
-   */
-  [[nodiscard]] static Real Norm(const std::vector<Real>& residual);
 };
 
 /**
@@ -93,6 +89,8 @@ protected:
  * If the new factor is not finite or is exactly zero, it is reset to the
  * initial factor. The factor is then clamped to the range [-omega_max,
  * omega_max].
+ *
+ * The residual of the previous iteration is kept in device memory.
  */
 class AitkenRelaxation : public InterfaceAccelerator
 {
@@ -113,18 +111,14 @@ public:
   void BeginWindow() override;
 
   /**
-   * @brief Compute the next interface state with Aitken relaxation.
-   *
-   * @copydetails InterfaceAccelerator::Update
+   * @copydoc InterfaceAccelerator::Update
    */
-  [[nodiscard]] Real Update(const std::vector<Real>& x_in,
-                            const std::vector<Real>& x_out,
-                            std::vector<Real>& x_next) override;
+  [[nodiscard]] Real Update(Rank1View<const Real, DeviceMemorySpace> x_in,
+                            Rank1View<const Real, DeviceMemorySpace> x_out,
+                            Rank1View<Real, DeviceMemorySpace> x_next) override;
 
   /**
-   * @brief Report how the last Update() produced the next interface state.
-   *
-   * @copydetails InterfaceAccelerator::LastStatus
+   * @copydoc InterfaceAccelerator::LastStatus
    */
   [[nodiscard]] UpdateStatus LastStatus() const noexcept override
   {
@@ -132,10 +126,12 @@ public:
   }
 
 private:
-  Real omega0_;                         ///< Initial relaxation factor.
-  Real omega_;                          ///< Current relaxation factor.
-  Real omega_max_;                      ///< Limit on the magnitude of omega_.
-  std::vector<Real> previous_residual_; ///< Residual of the previous iteration.
+  Real omega0_;    ///< Initial relaxation factor.
+  Real omega_;     ///< Current relaxation factor.
+  Real omega_max_; ///< Limit on the magnitude of omega_.
+
+  /// Residual of the previous iteration, in device memory.
+  Kokkos::View<Real*, DeviceMemorySpace> previous_residual_;
   bool have_previous_residual_ = false; ///< Whether previous_residual_ is set.
 
   /// Outcome of the last Update().

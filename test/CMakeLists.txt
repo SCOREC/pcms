@@ -399,9 +399,10 @@ find_package(Catch2 3)
 if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
-  add_executable(test_transient_accelerator test_transient_accelerator.cpp)
+  add_executable(test_transient_accelerator kokkos_test_main.cpp
+                                            test_transient_accelerator.cpp)
   target_link_libraries(test_transient_accelerator
-          PRIVATE Catch2::Catch2WithMain pcms::transient)
+          PRIVATE Catch2::Catch2 pcms::transient)
   set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp test_coordinate_transform.cpp
                              test_coordinate.cpp test_bounding_box.cpp
                              test_field_serializer.cpp)

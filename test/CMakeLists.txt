@@ -399,9 +399,6 @@ find_package(Catch2 3)
 if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
-  add_executable(test_transient_accelerator test_transient_accelerator.cpp)
-  target_link_libraries(test_transient_accelerator
-          PRIVATE Catch2::Catch2 pcms::transient)
   set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp test_coordinate_transform.cpp
                              test_coordinate.cpp test_bounding_box.cpp
                              test_field_serializer.cpp)
@@ -448,6 +445,11 @@ if(Catch2_FOUND)
     list(APPEND PCMS_UNIT_TEST_SOURCES test_mfem_adapter.cpp)
   endif()
 
+  if(PCMS_ENABLE_TRANSIENT)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_transient_accelerator.cpp
+         test_transient_timestepper.cpp)
+  endif()
+
   if(PCMS_ENABLE_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES
       test_omega_h_form_integrator_utils.cpp)
@@ -480,6 +482,10 @@ if(Catch2_FOUND)
           pcms::transfer Kokkos::kokkoskernels)
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
+  if(PCMS_ENABLE_TRANSIENT)
+    target_link_libraries(unit_tests PUBLIC pcms::transient)
+  endif()
+
   if(PCMS_ENABLE_PETSC)
     target_link_libraries(unit_tests PRIVATE PETSc::PETSc)
   endif()
@@ -498,13 +504,6 @@ if(Catch2_FOUND)
 
  include(Catch)
    Catch_discover_tests(unit_tests)
-   Catch_discover_tests(test_transient_accelerator)
-   if(PCMS_ENABLE_TRANSIENT)
-     add_executable(test_transient_timestepper test_transient_timestepper.cpp)
-     target_link_libraries(test_transient_timestepper
-             PRIVATE Catch2::Catch2WithMain pcms::transient)
-     Catch_discover_tests(test_transient_timestepper)
-   endif()
 else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()

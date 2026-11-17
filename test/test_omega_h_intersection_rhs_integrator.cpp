@@ -104,55 +104,20 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: integration points lie inside "
   auto integrator =
     pcms::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
 
-  const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
-  auto raw_coords_host = pcms::test::CopyCoordinatesToHost(raw_coords);
+  auto raw_coords_host = pcms::test::CopyCoordinatesToHost(
+    integrator->GetIntegrationPoints().GetValues());
   const std::size_t n = raw_coords_host.extent(0);
 
   REQUIRE(n > 0);
+  // the points are in the source elements they were generated in
+  pcms::test::CheckOwnersMatchSearch(integrator->GetIntegrationPoints(),
+                                     integrator->IntegrationPointOwners());
   for (std::size_t i = 0; i < n; ++i) {
     CAPTURE(i, raw_coords_host(i, 0), raw_coords_host(i, 1));
     CHECK(raw_coords_host(i, 0) >= -1e-12);
     CHECK(raw_coords_host(i, 0) <= 1.0 + 1e-12);
     CHECK(raw_coords_host(i, 1) >= -1e-12);
     CHECK(raw_coords_host(i, 1) <= 1.0 + 1e-12);
-  }
-}
-
-// The space constructor borrows the source space's point search for the
-// intersection; the layout constructor builds its own. Both must produce the
-// same quadrature data, point for point.
-TEST_CASE("OmegaHIntersectionRHSIntegrator: space and layout constructors "
-          "build identical integration points",
-          "[rhs_integrator]")
-{
-  Omega_h::Library lib;
-  auto source_mesh = pcms::test::BuildUnitSquare(lib, 1);
-  auto target_mesh = pcms::test::BuildUnitSquare(lib, 0);
-
-  auto source_space = pcms::test::MakeP1Space(source_mesh);
-  auto target_space = pcms::test::MakeP1Space(target_mesh);
-
-  pcms::OmegaHIntersectionRHSIntegrator from_spaces(*source_space,
-                                                    *target_space);
-  pcms::OmegaHIntersectionRHSIntegrator from_layouts(
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
-      source_space->GetLayout()),
-    source_space->GetCoordinateSystem(),
-    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
-      target_space->GetLayout()),
-    target_space->GetCoordinateSystem());
-
-  const auto a = from_spaces.GetIntegrationPoints().GetValues();
-  const auto b = from_layouts.GetIntegrationPoints().GetValues();
-  REQUIRE(a.extent(0) == b.extent(0));
-  REQUIRE(a.extent(1) == b.extent(1));
-  REQUIRE(a.extent(0) > 0);
-  auto a_host = pcms::test::CopyCoordinatesToHost(a);
-  auto b_host = pcms::test::CopyCoordinatesToHost(b);
-  for (std::size_t i = 0; i < a_host.extent(0); ++i) {
-    for (std::size_t d = 0; d < a_host.extent(1); ++d) {
-      REQUIRE(a_host(i, d) == b_host(i, d));
-    }
   }
 }
 
@@ -343,10 +308,10 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator (3D): constant load sums to c times "
   auto integrator =
     pcms::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
 
-  const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
-  REQUIRE(raw_coords.extent(0) > 0);
-  REQUIRE(raw_coords.extent(1) == 3);
-  auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
+  auto coords_h = pcms::test::CopyCoordinatesToHost(
+    integrator->GetIntegrationPoints().GetValues());
+  REQUIRE(coords_h.extent(0) > 0);
+  REQUIRE(coords_h.extent(1) == 3);
   for (std::size_t i = 0; i < coords_h.extent(0); ++i) {
     const double x = coords_h(i, 0);
     const double y = coords_h(i, 1);
@@ -406,9 +371,9 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator (3D): dual tets overlap is an "
   auto integrator =
     pcms::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
 
-  const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
-  REQUIRE(raw_coords.extent(0) > 0);
-  auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
+  auto coords_h = pcms::test::CopyCoordinatesToHost(
+    integrator->GetIntegrationPoints().GetValues());
+  REQUIRE(coords_h.extent(0) > 0);
   for (std::size_t i = 0; i < coords_h.extent(0); ++i) {
     const double s = std::abs(coords_h(i, 0)) + std::abs(coords_h(i, 1)) +
                      std::abs(coords_h(i, 2));

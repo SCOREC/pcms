@@ -36,6 +36,9 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator: sample points lie inside the domain",
 
   REQUIRE(coords_h.extent(0) ==
           static_cast<std::size_t>(target_mesh.nelems() * samples_per_element));
+  // the samples are in the elements they were drawn in
+  pcms::test::CheckOwnersMatchSearch(integrator.GetIntegrationPoints(),
+                                     integrator.IntegrationPointOwners());
   for (std::size_t i = 0; i < coords_h.extent(0); ++i) {
     CAPTURE(i, coords_h(i, 0), coords_h(i, 1));
     CHECK(coords_h(i, 0) >= -1e-12);

@@ -1,5 +1,6 @@
 #include "pcms/transfer/omega_h_control_variate_projection.hpp"
 #include "pcms/transfer/conservative_projection_solver.hpp"
+#include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/omega_h_mass_integrator.hpp"
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
 #include "pcms/utility/arrays.h"
@@ -28,27 +29,31 @@ OmegaHControlVariateProjection::OmegaHControlVariateProjection(
   const PointEvaluatorFactory& source, const FunctionSpace& target_space,
   int samples_per_element, uint64_t seed, MassMatrixType mass_matrix_type,
   std::shared_ptr<const CoordinateMap> to_source)
-  : target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
-      target_space.GetLayout())),
+  : target_layout_(
+      detail::ResolveOmegaHScalarSpace(
+        target_space, 1, 1, "OmegaHControlVariateProjection", "target")
+        .layout),
     rhs_integrator_(std::make_unique<OmegaHMonteCarloRHSIntegrator>(
-      target_layout_, target_space.GetCoordinateSystem(), samples_per_element,
-      seed)),
+      target_space, samples_per_element, seed)),
     interpolator_(source, target_space,
                   SourceGeometry(source).Bind(
                     target_space.GetLayout()->GetDOFHolderCoordinates(),
                     OutOfBoundsPolicy{}, to_source)),
     control_variate_(target_space.CreateFunction<Real>())
 {
+  // The source lives on another mesh, so it searches for the samples; the
+  // target space is bound to them in their own elements, without a search.
   source_at_samples_ =
     source.CreatePointEvaluator<Real>(SourceGeometry(source).Bind(
       rhs_integrator_->GetIntegrationPoints(), OutOfBoundsPolicy{}, to_source));
-  control_variate_at_samples_ = target_space.CreatePointEvaluator<Real>(
-    target_space.GetGeometry()->Bind(rhs_integrator_->GetIntegrationPoints()));
+  control_variate_at_samples_ =
+    target_space.CreatePointEvaluator<Real>(target_space.GetGeometry()->Bind(
+      rhs_integrator_->GetIntegrationPoints(),
+      rhs_integrator_->IntegrationPointOwners()));
 
   // Mass integrator is only needed to build the solver; PETSc reference-counts
   // the matrix so it remains alive inside the KSP after this scope ends.
-  OmegaHMassIntegrator mass_integrator(
-    target_layout_, target_space.GetCoordinateSystem(), mass_matrix_type);
+  OmegaHMassIntegrator mass_integrator(target_space, mass_matrix_type);
   solver_ = std::make_unique<GalerkinProjectionSolver>(mass_integrator,
                                                        *rhs_integrator_);
 

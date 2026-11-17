@@ -21,10 +21,9 @@ namespace detail
 {
 
 /// @brief The element to start the search of each point from, given owner
-///        hints: the hinted element for an element hint, an element around the
-///        hinted vertex for a vertex hint (the first of the vertex's adjacent
-///        elements); empty for no hint, or one of another dimension, and a
-///        -1 for a vertex without elements.
+///        hints: the hinted element for an element hint, else the lowest
+///        element adjacent to the hinted entity (LowestAdjacentElement), -1
+///        for an entity without elements; empty for no hint.
 /// @param owners the hints, as handed to Bind or Neighbourhood (already
 ///        checked to name the mesh's geometry and one entity per point), or
 ///        none
@@ -33,141 +32,156 @@ namespace detail
 Kokkos::View<const LO*, DeviceMemorySpace> ElementGuesses(
   Omega_h::Mesh& mesh, const OwnerHints& owners, const std::string& caller);
 
-/// The element a search result lifts to, and the point's barycentric
-/// coordinates in it ([vertex], in the element's vertex order). An element
-/// (face in 2D, region in 3D) result is its own element, with the barycentric
-/// coordinates its reduced coordinates give. A result on a lower-dimensional
-/// entity (shared by several elements) lifts to the lowest adjacent element,
-/// with the barycentric coordinates the reduced coordinates give on the
-/// vertices of the entity and zero on the others. A point outside the mesh
-/// lifts through its nearest entity; NO_INTERSECT lifts to element -1.
-/// @param entities2elems per entity dimension below Dim, the adjacency from
-///        the entities to the elements around them
-/// @param entities2verts per entity dimension from 1 below Dim, the
-///        adjacency from the entities to their vertices
-/// @param elem_verts the vertices of each element
-/// @param result the search's result
+/// @return per entity dimension below Dim, the adjacency from the entities to
+///         the elements around them
 template <int Dim>
-KOKKOS_INLINE_FUNCTION Kokkos::pair<LO, Omega_h::Vector<Dim + 1>> LiftToElement(
-  const Omega_h::Few<Omega_h::Adj, Dim>& entities2elems,
-  const Omega_h::Few<Omega_h::Adj, Dim>& entities2verts,
-  const Omega_h::LOs& elem_verts,
-  const typename PointLocalizationSearch<Dim>::Result& result)
+Omega_h::Few<Omega_h::Adj, Dim> UpAdjacencies(Omega_h::Mesh& mesh)
 {
-  const int entity_dim = static_cast<int>(result.dimensionality);
-  const LO entity = result.EntityId();
-  auto bary = Omega_h::zero_vector<Dim + 1>();
-  if (entity < 0 || entity_dim > Dim) {
-    return {-1, bary};
+  Omega_h::Few<Omega_h::Adj, Dim> up;
+  for (int d = 0; d < Dim; ++d) {
+    up[d] = mesh.ask_up(d, Dim);
   }
-  // the barycentric coordinates of the point in the entity, in the order of
-  // the entity's vertices
-  Real weights[Dim + 1];
+  return up;
+}
+
+/// @return per entity dimension from 1 to Dim, the vertices of each entity
+///         (entry 0 is unused: a vertex is its own vertex)
+template <int Dim>
+Omega_h::Few<Omega_h::LOs, Dim + 1> VerticesOfEntities(Omega_h::Mesh& mesh)
+{
+  Omega_h::Few<Omega_h::LOs, Dim + 1> verts;
+  for (int d = 1; d <= Dim; ++d) {
+    verts[d] = mesh.ask_verts_of(d);
+  }
+  return verts;
+}
+
+/// The lowest element adjacent to an entity: an element is its own, -1 for an
+/// entity of another dimension than 0..Dim, a negative id or an entity without
+/// elements.
+/// @param up per entity dimension below Dim, the adjacency from the entities
+///        to the elements around them (UpAdjacencies)
+template <int Dim>
+KOKKOS_INLINE_FUNCTION LO LowestAdjacentElement(
+  const Omega_h::Few<Omega_h::Adj, Dim>& up, int entity_dim, LO entity)
+{
+  if (entity < 0 || entity_dim < 0 || entity_dim > Dim) {
+    return -1;
+  }
+  if (entity_dim == Dim) {
+    return entity;
+  }
+  const auto& adj = up[entity_dim];
+  const LO begin = adj.a2ab[entity];
+  const LO end = adj.a2ab[entity + 1];
+  if (begin >= end) {
+    return -1;
+  }
+  LO elem = adj.ab2b[begin];
+  for (LO i = begin + 1; i < end; ++i) {
+    elem = Kokkos::min(elem, adj.ab2b[i]);
+  }
+  return elem;
+}
+
+/// The element the record of a search lowest-adjoins: the lowest element
+/// adjacent to the entity it names (for a point outside the mesh, its nearest
+/// entity); -1 for NO_INTERSECT.
+template <int Dim>
+KOKKOS_INLINE_FUNCTION LO
+ElementOfResult(const Omega_h::Few<Omega_h::Adj, Dim>& up,
+                const typename PointLocalizationSearch<Dim>::Result& result)
+{
+  return LowestAdjacentElement(up, static_cast<int>(result.dimensionality),
+                               result.EntityId());
+}
+
+/// The vertices of the entity a search record names and the barycentric
+/// coordinates of the point on them, in the entity's vertex order: with xi the
+/// reduced coordinates, w_0 = 1 - sum(xi) and w_j = xi_j. The entity is the
+/// record's, also for a point outside the mesh (its nearest entity).
+/// @param verts_of VerticesOfEntities
+/// @param vertices out: the Dim + 1 vertices at most
+/// @param weights out: the weights, as many as vertices
+/// @return the number of vertices: the entity's dimension plus 1, 0 for
+///         NO_INTERSECT
+template <int Dim>
+KOKKOS_INLINE_FUNCTION int EntityVertexWeights(
+  const Omega_h::Few<Omega_h::LOs, Dim + 1>& verts_of,
+  const typename PointLocalizationSearch<Dim>::Result& result, LO* vertices,
+  Real* weights)
+{
+  const int d = static_cast<int>(result.dimensionality);
+  const LO entity = result.EntityId();
+  if (entity < 0 || d > Dim) {
+    return 0;
+  }
   weights[0] = 1.0;
-  for (int j = 0; j < entity_dim; ++j) {
+  for (int j = 0; j < d; ++j) {
     weights[j + 1] = result.parametric[j];
     weights[0] -= result.parametric[j];
   }
-  if (entity_dim == Dim) {
-    for (int k = 0; k <= Dim; ++k) {
-      bary[k] = weights[k];
-    }
-    return {entity, bary};
+  for (int j = 0; j <= d; ++j) {
+    vertices[j] = d == 0 ? entity : verts_of[d][entity * (d + 1) + j];
   }
-  const auto& up = entities2elems[entity_dim];
-  const LO begin = up.a2ab[entity];
-  const LO end = up.a2ab[entity + 1];
-  if (begin >= end) {
-    return {-1, bary};
-  }
-  LO elem = up.ab2b[begin];
-  for (LO i = begin + 1; i < end; ++i) {
-    elem = Kokkos::min(elem, up.ab2b[i]);
-  }
-  for (int j = 0; j <= entity_dim; ++j) {
-    const LO vertex =
-      entity_dim == 0
-        ? entity
-        : entities2verts[entity_dim].ab2b[entity * (entity_dim + 1) + j];
-    for (int k = 0; k <= Dim; ++k) {
-      if (elem_verts[elem * (Dim + 1) + k] == vertex) {
-        bary[k] = weights[j];
-      }
-    }
-  }
-  return {elem, bary};
+  return d + 1;
 }
 
-/// Writes the element and barycentric coordinates ([point][vertex]) every
-/// result of a search lifts to (see LiftToElement) to the first rows of
-/// `elem_ids` and, unless it has no rows, `bary`, and, unless it is empty,
-/// whether the point is in the mesh (as LocatePoints) to `found`.
+/// Whether each search record is in the mesh (not outside it and not
+/// NO_INTERSECT), as the points the bound source evaluates.
 template <int Dim>
-void LiftResults(
+void FoundFlags(
+  Kokkos::View<const typename PointLocalizationSearch<Dim>::Result*,
+               DeviceMemorySpace>
+    results,
+  Kokkos::View<bool*, DeviceMemorySpace> found)
+{
+  using Result = typename PointLocalizationSearch<Dim>::Result;
+  ForEach(
+    "FoundFlags", static_cast<LO>(results.extent(0)),
+    KOKKOS_LAMBDA(const LO i) {
+      found(i) =
+        !results(i).IsOutside() &&
+        results(i).dimensionality != Result::Dimensionality::NO_INTERSECT;
+    });
+}
+
+/// Writes to `elements(i)` the element of record i (ElementOfResult), for the
+/// first `num_records` records and -1 beyond them, as the guesses of a search
+/// of as many points as `elements` has.
+template <int Dim>
+void ElementsOfResults(
   Omega_h::Mesh& mesh,
   Kokkos::View<const typename PointLocalizationSearch<Dim>::Result*,
                DeviceMemorySpace>
     results,
-  Kokkos::View<LO*, DeviceMemorySpace> elem_ids,
-  Kokkos::View<Real**, DeviceMemorySpace> bary,
-  Kokkos::View<bool*, DeviceMemorySpace> found = {})
+  LO num_records, Kokkos::View<LO*, DeviceMemorySpace> elements)
 {
-  using Result = typename PointLocalizationSearch<Dim>::Result;
-  const auto n = static_cast<LO>(results.extent(0));
-  const bool with_bary = bary.extent(0) > 0;
-  const bool with_found = found.extent(0) > 0;
-  Omega_h::Few<Omega_h::Adj, Dim> entities2elems;
-  Omega_h::Few<Omega_h::Adj, Dim> entities2verts;
-  for (int d = 0; d < Dim; ++d) {
-    entities2elems[d] = mesh.ask_up(d, Dim);
-    if (d > 0) {
-      entities2verts[d] = mesh.ask_down(d, Omega_h::VERT);
-    }
-  }
-  const auto elem_verts = mesh.ask_elem_verts();
-  detail::ForEach(
-    "LiftResults", n, KOKKOS_LAMBDA(const LO i) {
-      const auto lifted = LiftToElement<Dim>(entities2elems, entities2verts,
-                                             elem_verts, results(i));
-      elem_ids(i) = lifted.first;
-      if (with_bary) {
-        for (int k = 0; k <= Dim; ++k) {
-          bary(i, k) = lifted.second[k];
-        }
-      }
-      if (with_found) {
-        found(i) =
-          !results(i).IsOutside() &&
-          results(i).dimensionality != Result::Dimensionality::NO_INTERSECT;
-      }
+  const auto up = UpAdjacencies<Dim>(mesh);
+  ForEach(
+    "ElementsOfResults", static_cast<LO>(elements.extent(0)),
+    KOKKOS_LAMBDA(const LO i) {
+      elements(i) = i < num_records ? ElementOfResult<Dim>(up, results(i)) : -1;
     });
 }
 
-/// The element and barycentric coordinates ([point][vertex]) every result of a
-/// search lifts to, see LiftToElement. Without `with_bary` only the elements
-/// are written (the coordinates view is empty).
+/// Writes to `elements(i)` the lowest element adjacent to the entity of
+/// dimension `entity_dim` and id `entities(i)` (LowestAdjacentElement).
 template <int Dim>
-std::pair<Kokkos::View<LO*, DeviceMemorySpace>,
-          Kokkos::View<Real**, DeviceMemorySpace>>
-LiftResults(Omega_h::Mesh& mesh,
-            Kokkos::View<const typename PointLocalizationSearch<Dim>::Result*,
-                         DeviceMemorySpace>
-              results,
-            bool with_bary = true)
+void ElementsOfEntities(Omega_h::Mesh& mesh, int entity_dim,
+                        Kokkos::View<const LO*, DeviceMemorySpace> entities,
+                        Kokkos::View<LO*, DeviceMemorySpace> elements)
 {
-  const auto n = static_cast<LO>(results.extent(0));
-  Kokkos::View<LO*, DeviceMemorySpace> elem_ids(
-    Kokkos::view_alloc(Kokkos::WithoutInitializing, "omega_h_lift_elem_ids"),
-    n);
-  Kokkos::View<Real**, DeviceMemorySpace> bary(
-    Kokkos::view_alloc(Kokkos::WithoutInitializing, "omega_h_lift_bary"),
-    with_bary ? n : 0, Dim + 1);
-  LiftResults<Dim>(mesh, results, elem_ids, bary);
-  return {elem_ids, bary};
+  const auto up = UpAdjacencies<Dim>(mesh);
+  ForEach(
+    "ElementsOfEntities", static_cast<LO>(elements.extent(0)),
+    KOKKOS_LAMBDA(const LO i) {
+      elements(i) = LowestAdjacentElement<Dim>(up, entity_dim, entities(i));
+    });
 }
 
-/// The element every result of a search lifts to (LiftResults without the
-/// barycentric coordinates), e.g. to seed a neighbourhood search.
+/// The element every result of a search lowest-adjoins (ElementOfResult), e.g.
+/// to seed a neighbourhood search.
 template <int Dim>
 Kokkos::View<LO*, DeviceMemorySpace> LiftElements(
   Omega_h::Mesh& mesh,
@@ -175,52 +189,27 @@ Kokkos::View<LO*, DeviceMemorySpace> LiftElements(
                DeviceMemorySpace>
     results)
 {
-  return LiftResults<Dim>(mesh, results, /*with_bary=*/false).first;
-}
-
-/// The element and barycentric coordinates of the found points, gathered from
-/// per-point lifts: row k is the lift of point rows(k). The results go to
-/// `elem_ids` and `bary`, reallocated only when too small (ReserveRows).
-/// (A free function: CUDA does not allow device lambdas inside the generic
-/// lambda that dispatches on the search.)
-template <int Dim>
-void GatherFoundLifts(Kokkos::View<const LO*, DeviceMemorySpace> rows,
-                      Kokkos::View<const LO*, DeviceMemorySpace> lifted_elems,
-                      Kokkos::View<const Real**, DeviceMemorySpace> lifted_bary,
-                      Kokkos::View<LO*, DeviceMemorySpace>& elem_ids,
-                      Kokkos::View<Real**, DeviceMemorySpace>& bary)
-{
-  const auto n = static_cast<LO>(rows.extent(0));
-  ReserveRows(elem_ids, "omega_h_elem_ids", n);
-  ReserveRows(bary, "omega_h_bary", n, Dim + 1);
-  const auto elem_out = elem_ids;
-  const auto bary_out = bary;
-  detail::ForEach(
-    "GatherFoundLifts", n, KOKKOS_LAMBDA(const LO k) {
-      elem_out(k) = lifted_elems(rows(k));
-      for (int v = 0; v <= Dim; ++v) {
-        bary_out(k, v) = lifted_bary(rows(k), v);
-      }
-    });
+  Kokkos::View<LO*, DeviceMemorySpace> elements(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "omega_h_lift_elem_ids"),
+    results.extent(0));
+  ElementsOfResults<Dim>(mesh, results, static_cast<LO>(results.extent(0)),
+                         elements);
+  return elements;
 }
 
 } // namespace detail
 
-/// Bound source of an Omega_h simplex mesh: element and barycentric
-/// coordinates of each found point, in FoundPoints() order.
+/// Bound source of an Omega_h simplex mesh: the search's record of each query
+/// point, the entity it lies on and its position on it (Results()). The binding
+/// picks no element: an evaluator applies its own rule to the entity, e.g.
+/// interpolating on the entity's own vertices, or taking the lowest adjacent
+/// element of a shared entity.
 ///
-/// The search reports the entity a point lies on and its position on it; the
-/// binding's policy picks the element for the evaluators, which need one:
-/// shared entities (a point on an edge or vertex) take the lowest adjacent
-/// element, hinted or not.
-///
-/// A rebind starts from the element each point had in the last locate: the
-/// point's guess (see the guessed GridPointSearch2D::operator()), which is
-/// verified like any hint, so the elements, barycentric coordinates and found
-/// points are those of a new bind. The per-point arrays are kept across
-/// rebinds and reallocated only when the points outgrow them (after which the
-/// next rebind has no guesses); the first bind has the guesses its hints give,
-/// else none.
+/// A rebind starts from the element of each point's record in the last locate,
+/// a guess that the search verifies like any hint, so the records and found
+/// points are those of a new bind. The records are kept across rebinds and
+/// reallocated only when the points outgrow them (after which the next rebind
+/// has no guesses); the first bind has the guesses its hints give, else none.
 class OmegaHMeshBinding final : public BoundSource
 {
 public:
@@ -232,18 +221,21 @@ public:
                     const BindRequest& request,
                     const GridPointSearchVariant& search, Omega_h::Mesh& mesh);
 
-  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> ElementIds()
-    const noexcept
+  /// [query point]: the search's record of each point, the entity it lies on
+  /// and its reduced coordinates on it (PointLocalizationSearch<Dim>::Result;
+  /// `Dim` is the mesh dimension). The rows of missing points hold the
+  /// search's outside or NO_INTERSECT record; read them only through
+  /// FoundPoints(). Evaluators apply their own element rule to it (see
+  /// detail::LowestAdjacentElement, detail::EntityVertexWeights).
+  template <int Dim>
+  [[nodiscard]] Kokkos::View<
+    const typename PointLocalizationSearch<Dim>::Result*, DeviceMemorySpace>
+  Results() const
   {
-    return Kokkos::subview(elem_ids_, Kokkos::make_pair(LO{0}, NumFound()));
-  }
-
-  /// [found point][vertex]
-  [[nodiscard]] Kokkos::View<const Real**, DeviceMemorySpace> Barycentric()
-    const noexcept
-  {
-    return Kokkos::subview(bary_, Kokkos::make_pair(LO{0}, NumFound()),
-                           Kokkos::ALL);
+    using Results = Kokkos::View<typename PointLocalizationSearch<Dim>::Result*,
+                                 DeviceMemorySpace>;
+    return Kokkos::subview(std::get<Results>(point_results_),
+                           Kokkos::make_pair(LO{0}, NumPoints()));
   }
 
 protected:
@@ -251,35 +243,27 @@ protected:
 
   [[nodiscard]] bool UnsharedImpl() const noexcept override
   {
-    return elem_ids_.use_count() <= 1 && bary_.use_count() <= 1;
+    return std::visit([](const auto& r) { return r.use_count() <= 1; },
+                      point_results_);
   }
 
 private:
-  [[nodiscard]] LO NumFound() const noexcept
-  {
-    return static_cast<LO>(FoundPoints().extent(0));
-  }
-
   /// Locates the points with the search, starting from `hints`, an element
-  /// per point or empty, else from each point's element of the last locate;
-  /// sets the found points and lifts the results to elements
-  /// (detail::LiftResults) into elem_ids_ and bary_.
+  /// per point or empty, else from the element of each point's record of the
+  /// last locate (the lowest adjacent element of its entity); records the
+  /// results in point_results_ and sets the found points.
   void Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints);
 
   const GridPointSearchVariant& search_;
   Omega_h::Mesh& mesh_;
-  Kokkos::View<LO*, DeviceMemorySpace> elem_ids_;
-  Kokkos::View<Real**, DeviceMemorySpace> bary_;
-  // per query point, the search's result, the element and barycentric
-  // coordinates it lifts to, and whether it is in the mesh; the elements of
-  // the first num_guesses_ points are the guesses of the next rebind
+  // per query point, the search's record, kept across rebinds; the first
+  // num_records_ are the last locate's
   std::variant<Kokkos::View<GridPointSearch2D::Result*, DeviceMemorySpace>,
                Kokkos::View<GridPointSearch3D::Result*, DeviceMemorySpace>>
     point_results_;
-  Kokkos::View<LO*, DeviceMemorySpace> point_elems_;
-  Kokkos::View<Real**, DeviceMemorySpace> point_bary_;
+  Kokkos::View<LO*, DeviceMemorySpace> point_guesses_;
   Kokkos::View<bool*, DeviceMemorySpace> point_found_;
-  LO num_guesses_ = 0;
+  LO num_records_ = 0;
 };
 
 /// @brief Options of an Omega_h geometry.

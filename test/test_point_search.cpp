@@ -23,16 +23,59 @@ using pcms::Uniform2DGrid;
 namespace
 {
 
-/// The element and barycentric coordinates ([point][vertex]) of the results,
-/// lifted as the Omega_h binding does, on the host.
+/// Lifts each result to the lowest element adjacent to its entity, with the
+/// result's weights on the entity's vertices and zero on the others, as an
+/// evaluator does; a functor, not a lambda, so that it compiles under nvcc in
+/// this anonymous namespace.
 template <int Dim, typename Result>
-auto LiftOnHost(Omega_h::Mesh& mesh, Kokkos::View<Result*> results)
+struct LiftResults
 {
-  auto lifted = pcms::detail::LiftResults<Dim>(
-    mesh, Kokkos::View<const Result*, pcms::DeviceMemorySpace>(results));
-  return std::make_pair(
-    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, lifted.first),
-    Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, lifted.second));
+  Omega_h::Few<Omega_h::Adj, Dim> up;
+  Omega_h::Few<Omega_h::LOs, Dim + 1> verts_of;
+  Kokkos::View<const Result*> results;
+  Kokkos::View<Omega_h::LO*> elems;
+  Kokkos::View<pcms::Real**, Kokkos::LayoutRight> bary;
+
+  KOKKOS_INLINE_FUNCTION void operator()(const int i) const
+  {
+    const auto elem = pcms::detail::ElementOfResult<Dim>(up, results(i));
+    elems(i) = elem;
+    Omega_h::LO vertices[Dim + 1];
+    pcms::Real weights[Dim + 1];
+    const int nv = pcms::detail::EntityVertexWeights<Dim>(verts_of, results(i),
+                                                          vertices, weights);
+    for (int k = 0; k <= Dim; ++k) {
+      bary(i, k) = 0.0;
+    }
+    for (int j = 0; elem >= 0 && j < nv; ++j) {
+      for (int k = 0; k <= Dim; ++k) {
+        if (verts_of[Dim][elem * (Dim + 1) + k] == vertices[j]) {
+          bary(i, k) = weights[j];
+        }
+      }
+    }
+  }
+};
+
+/// The element and barycentric coordinates ([point][vertex]) of the results,
+/// as an evaluator takes them (LiftResults), computed on the device and
+/// returned on the host.
+template <int Dim, typename Result>
+std::pair<Kokkos::View<Omega_h::LO*, Kokkos::HostSpace>,
+          Kokkos::View<pcms::Real**, Kokkos::LayoutRight, Kokkos::HostSpace>>
+LiftOnHost(Omega_h::Mesh& mesh, Kokkos::View<Result*> results)
+{
+  const auto n = static_cast<int>(results.extent(0));
+  Kokkos::View<Omega_h::LO*> elems("elems", n);
+  // LayoutRight on every backend, so the host mirror has the declared type
+  Kokkos::View<pcms::Real**, Kokkos::LayoutRight> bary("bary", n, Dim + 1);
+  Kokkos::parallel_for(
+    "LiftOnHost", n,
+    LiftResults<Dim, Result>{pcms::detail::UpAdjacencies<Dim>(mesh),
+                             pcms::detail::VerticesOfEntities<Dim>(mesh),
+                             results, elems, bary});
+  return {Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, elems),
+          Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, bary)};
 }
 
 /// Whether `elem` has all of `verts` among its vertices.

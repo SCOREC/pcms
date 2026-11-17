@@ -38,11 +38,56 @@ struct OmegaHLagrangeTagValues
     return static_cast<T>(values[holder * num_components + c]);
   }
 };
+
+/// Evaluates an order 0 or 1 Lagrange field at the found points of a binding
+/// of a mesh of dimension Dim. Order 0 takes the value of the lowest element
+/// adjacent to the entity of the point's record; order 1 interpolates on the
+/// vertices of that entity itself, with the weights its reduced coordinates
+/// give, and picks no element. (A free function: CUDA does not allow device
+/// lambdas in the public virtual function that dispatches on the dimension.)
+template <int Dim, typename T, typename Dof, typename Values>
+void EvaluateOmegaHLagrange(Omega_h::Mesh& mesh, int order,
+                            const OmegaHMeshBinding& binding,
+                            const Dof& dof_data, int n_comp,
+                            const Values& values)
+{
+  const auto found = binding.FoundPoints();
+  const auto results = binding.Results<Dim>();
+  const auto n_valid = static_cast<LO>(found.extent(0));
+  const auto up = UpAdjacencies<Dim>(mesh);
+  const auto verts_of = VerticesOfEntities<Dim>(mesh);
+  if (order == 0) {
+    ForEach(
+      "OmegaHLagrangePointEvaluator::EvaluateOrder0", n_valid,
+      KOKKOS_LAMBDA(const LO k) {
+        const LO elem = ElementOfResult<Dim>(up, results(found(k)));
+        for (int c = 0; c < n_comp; ++c) {
+          values(found(k), c) = dof_data(elem, c);
+        }
+      });
+  } else {
+    ForEach(
+      "OmegaHLagrangePointEvaluator::EvaluateOrder1", n_valid,
+      KOKKOS_LAMBDA(const LO k) {
+        LO vertices[Dim + 1];
+        Real weights[Dim + 1];
+        const int nv = EntityVertexWeights<Dim>(verts_of, results(found(k)),
+                                                vertices, weights);
+        for (int c = 0; c < n_comp; ++c) {
+          T val = T{};
+          for (int v = 0; v < nv; ++v) {
+            val += static_cast<T>(weights[v]) * dof_data(vertices[v], c);
+          }
+          values(found(k), c) = val;
+        }
+      });
+  }
+}
+
 } // namespace detail
 
 // OmegaHLagrangePointEvaluator<T> implements PointEvaluator<T> for simplex
-// meshes backed by Omega_h, using the element IDs and barycentric coordinates
-// of the bound source.
+// meshes backed by Omega_h, using the search records of the bound source.
 //
 // Output shape: [num_query_points][num_components].
 //
@@ -57,7 +102,7 @@ class OmegaHLagrangePointEvaluator : public PointEvaluator<T, LayoutPolicy>
 {
 public:
   /// @param layout Omega_h Lagrange layout of the evaluated fields
-  /// @param binding elements and barycentric coordinates of the query points
+  /// @param binding the search records of the query points
   OmegaHLagrangePointEvaluator(
     std::shared_ptr<const OmegaHLagrangeLayout> layout,
     std::shared_ptr<const OmegaHMeshBinding> binding)
@@ -85,41 +130,15 @@ public:
       layout_->GetMesh().get_array<TagValue>(layout_->GetDOFHolderEntityDim(),
                                              data.GetTagName()),
       layout_->GetNumComponents()};
-    const auto found = binding_->FoundPoints();
-    const auto elem_ids = binding_->ElementIds();
-    const auto bary = binding_->Barycentric();
-    LO n_valid = static_cast<LO>(found.extent(0));
-    int n_comp = layout_->GetNumComponents();
-
-    if (layout_->GetOrder() == 0) {
-      detail::ForEach(
-        "OmegaHLagrangePointEvaluator::EvaluateOrder0", n_valid,
-        KOKKOS_LAMBDA(LO k) {
-          for (int c = 0; c < n_comp; ++c) {
-            values(found(k), c) = dof_data(elem_ids(k), c);
-          }
-        });
-
+    Omega_h::Mesh& mesh = const_cast<Omega_h::Mesh&>(layout_->GetMesh());
+    const int order = layout_->GetOrder();
+    const int n_comp = layout_->GetNumComponents();
+    if (mesh.dim() == 2) {
+      detail::EvaluateOmegaHLagrange<2, T>(mesh, order, *binding_, dof_data,
+                                           n_comp, values);
     } else {
-      // Order-1: barycentric interpolation over element vertices
-      Omega_h::Mesh& mesh = const_cast<Omega_h::Mesh&>(layout_->GetMesh());
-      int mesh_dim = mesh.dim();
-      int nvpe = mesh_dim + 1;
-      auto elem_verts = mesh.ask_elem_verts();
-
-      detail::ForEach(
-        "OmegaHLagrangePointEvaluator::EvaluateOrder1", n_valid,
-        KOKKOS_LAMBDA(LO k) {
-          const LO elem = elem_ids(k);
-          for (int c = 0; c < n_comp; ++c) {
-            T val = T{};
-            for (int v = 0; v < nvpe; ++v) {
-              LO vert = elem_verts[elem * nvpe + v];
-              val += static_cast<T>(bary(k, v)) * dof_data(vert, c);
-            }
-            values(found(k), c) = val;
-          }
-        });
+      detail::EvaluateOmegaHLagrange<3, T>(mesh, order, *binding_, dof_data,
+                                           n_comp, values);
     }
   }
 

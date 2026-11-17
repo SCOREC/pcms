@@ -284,33 +284,5 @@ private:
 using GridPointSearchVariant =
   std::variant<GridPointSearch2D, GridPointSearch3D>;
 
-/// @brief Locates each query point.
-/// @param search containing-entity search over a mesh
-/// @param points query points, one row per point
-/// @param guesses an element per point to start from, or empty, see the
-///        search's operator()(points, guesses, results)
-/// @return per point, whether it is in the mesh (not outside and not
-///         NO_INTERSECT), and the search's result
-template <typename Search>
-std::pair<Kokkos::View<bool*>, Kokkos::View<typename Search::Result*>>
-LocatePoints(const Search& search, Kokkos::View<const Real**> points,
-             Kokkos::View<const LO*> guesses = {})
-{
-  Kokkos::View<typename Search::Result*> results(
-    Kokkos::view_alloc(Kokkos::WithoutInitializing, "point search result"),
-    points.extent(0));
-  search(points, guesses, results);
-  const auto n = static_cast<LO>(points.extent(0));
-  Kokkos::View<bool*> found(
-    Kokkos::view_alloc(Kokkos::WithoutInitializing, "found_in_mesh"), n);
-  detail::ForEach(
-    "LocatePoints", n, KOKKOS_LAMBDA(const LO i) {
-      found(i) = !results(i).IsOutside() &&
-                 results(i).dimensionality !=
-                   Search::Result::Dimensionality::NO_INTERSECT;
-    });
-  return {found, results};
-}
-
 } // namespace pcms
 #endif // PCMS_COUPLING_POINT_SEARCH_H

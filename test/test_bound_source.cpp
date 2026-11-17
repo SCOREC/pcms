@@ -333,7 +333,7 @@ namespace
 {
 
 /// Rebinds `previous` to `pts` and checks that the binding has the found and
-/// missing points, elements and barycentric coordinates of a new bind.
+/// missing points and search records of a new bind.
 std::shared_ptr<const BoundSource> CheckOmegaHRebind(
   const pcms::Geometry& geometry, std::shared_ptr<const BoundSource> previous,
   const std::vector<Real>& pts)
@@ -353,20 +353,13 @@ std::shared_ptr<const BoundSource> CheckOmegaHRebind(
   const auto missing = ToHost(rebound->MissingPoints());
   REQUIRE(found.extent(0) == fresh_found.extent(0));
   REQUIRE(missing.extent(0) == ToHost(fresh->MissingPoints()).extent(0));
-  const auto elems = ToHost(rebound->ElementIds());
-  const auto fresh_elems = ToHost(fresh->ElementIds());
-  const auto bary = ToHost(rebound->Barycentric());
-  const auto fresh_bary = ToHost(fresh->Barycentric());
+  // the same entities, with the same reduced coordinates up to rounding (the
+  // guessed element computes them from its own barycentric coordinates)
+  pcms::test::CheckSameRecords(pcms::test::FoundRecords(*rebound),
+                               pcms::test::FoundRecords(*fresh), 1e-12);
   for (size_t k = 0; k < found.extent(0); ++k) {
     CAPTURE(k, found(k));
     REQUIRE(found(k) == fresh_found(k));
-    REQUIRE(elems(k) == fresh_elems(k));
-    for (int v = 0; v <= dim; ++v) {
-      // the entity, hence the element, is the search's; its reduced
-      // coordinates are computed in the guessed element, which agree with the
-      // search's up to rounding
-      REQUIRE_THAT(bary(k, v), WithinAbs(fresh_bary(k, v), 1e-12));
-    }
   }
   return rebound;
 }
@@ -522,8 +515,7 @@ TEST_CASE("An Omega_h rebind of as many points allocates nothing")
   const auto* binding =
     dynamic_cast<const pcms::OmegaHMeshBinding*>(bound.get());
   REQUIRE(binding != nullptr);
-  const auto* elems = binding->ElementIds().data();
-  const auto* bary = binding->Barycentric().data();
+  const auto* records = binding->Results<2>().data();
 
   num_allocations = 0;
   Kokkos::Tools::Experimental::set_allocate_data_callback(CountAllocation);
@@ -536,6 +528,5 @@ TEST_CASE("An Omega_h rebind of as many points allocates nothing")
   REQUIRE(rebind_allocations == 0);
   REQUIRE(num_allocations > 0);
   REQUIRE(bound.get() == binding);
-  REQUIRE(binding->ElementIds().data() == elems);
-  REQUIRE(binding->Barycentric().data() == bary);
+  REQUIRE(binding->Results<2>().data() == records);
 }

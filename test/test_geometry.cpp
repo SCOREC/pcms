@@ -59,12 +59,10 @@ Kokkos::View<LO*> StartElements(Omega_h::Mesh& mesh,
   return std::visit(
     [&](const auto& s) {
       constexpr int Dim = std::decay_t<decltype(s)>::DIM;
-      return pcms::detail::LiftResults<Dim>(
-               mesh,
-               Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
-                            pcms::DeviceMemorySpace>(
-                 pcms::LocatePoints(s, points).second))
-        .first;
+      const auto results = s(points);
+      return pcms::detail::LiftElements<Dim>(
+        mesh, Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
+                           pcms::DeviceMemorySpace>(results));
     },
     pcms::MakeGridSearch(mesh, {}));
 }
@@ -111,8 +109,7 @@ struct BindSummary
 {
   std::vector<LO> found;
   std::vector<LO> missing;
-  std::vector<LO> elements;
-  std::vector<Real> barycentric; // [found point][vertex]
+  std::vector<pcms::test::HostRecord> records; // of the found points
 };
 
 template <typename View>
@@ -125,22 +122,15 @@ std::vector<typename View::non_const_value_type> ToVector(const View& view)
 
 BindSummary Summarize(const std::shared_ptr<const pcms::BoundSource>& bound)
 {
-  const auto& binding = dynamic_cast<const pcms::OmegaHMeshBinding&>(*bound);
   return {ToVector(bound->FoundPoints()), ToVector(bound->MissingPoints()),
-          ToVector(binding.ElementIds()), ToVector(binding.Barycentric())};
+          pcms::test::FoundRecords(*bound)};
 }
 
 void CheckSameBind(const BindSummary& actual, const BindSummary& expected)
 {
   REQUIRE(actual.found == expected.found);
   REQUIRE(actual.missing == expected.missing);
-  REQUIRE(actual.elements == expected.elements);
-  REQUIRE(actual.barycentric.size() == expected.barycentric.size());
-  for (size_t i = 0; i < expected.barycentric.size(); ++i) {
-    CAPTURE(i);
-    REQUIRE_THAT(actual.barycentric[i],
-                 WithinAbs(expected.barycentric[i], pcms::test::ExactTol));
-  }
+  pcms::test::CheckSameRecords(actual.records, expected.records);
 }
 
 Kokkos::View<LO*, DeviceMemorySpace> ToDevice(const std::vector<LO>& ids)
@@ -319,14 +309,9 @@ TEST_CASE("Correct owner hints give the search's bind")
   const auto hinted =
     geometry->Bind(coords, pcms::OwnerHints{geometry, 2, elements});
   REQUIRE(hinted->FoundPoints().extent(0) == static_cast<size_t>(nelems));
-  const auto element_ids = [](const auto& bound) {
-    return Kokkos::create_mirror_view_and_copy(
-      HostMemorySpace(),
-      dynamic_cast<const pcms::OmegaHMeshBinding&>(*bound).ElementIds());
-  };
   // inside the mesh, the hint gives what the search finds
-  const auto searched_ids = element_ids(searched);
-  const auto hinted_ids = element_ids(hinted);
+  const auto searched_ids = pcms::test::FoundRecords(*searched);
+  const auto hinted_ids = pcms::test::FoundRecords(*hinted);
   const auto searched_values =
     pcms::test::EvaluateToHost(*space->CreatePointEvaluator<Real>(searched), f,
                                f.GetData().GetValueBasis());
@@ -334,8 +319,10 @@ TEST_CASE("Correct owner hints give the search's bind")
     *space->CreatePointEvaluator<Real>(hinted), f, f.GetData().GetValueBasis());
   for (LO e = 0; e < nelems; ++e) {
     CAPTURE(e);
-    REQUIRE(searched_ids(e) == e);
-    REQUIRE(hinted_ids(e) == e);
+    REQUIRE(searched_ids[e].dim == 2);
+    REQUIRE(searched_ids[e].entity == e);
+    REQUIRE(hinted_ids[e].dim == 2);
+    REQUIRE(hinted_ids[e].entity == e);
     REQUIRE_THAT(hinted_values(e, 0),
                  WithinAbs(searched_values(e, 0), pcms::test::ExactTol));
   }
@@ -353,9 +340,9 @@ TEST_CASE("Correct owner hints give the search's bind")
   Kokkos::View<LO*, DeviceMemorySpace> wrong("wrong", nelems);
   const auto ignored =
     geometry->Bind(coords, pcms::OwnerHints{MakeGeometry(mesh), 2, wrong});
-  const auto ignored_ids = element_ids(ignored);
+  const auto ignored_ids = pcms::test::FoundRecords(*ignored);
   for (LO e = 0; e < nelems; ++e) {
-    REQUIRE(ignored_ids(e) == e);
+    REQUIRE(ignored_ids[e].entity == e);
   }
 }
 
@@ -795,7 +782,9 @@ TEST_CASE("Stale owner hints bind like the search", "[owner_hints]")
     // the elements the search finds, 0 for the points outside
     std::vector<LO> right(n, 0);
     for (size_t k = 0; k < cold.found.size(); ++k) {
-      right[cold.found[k]] = cold.elements[k];
+      // inside the mesh, away from shared entities: the record is an element
+      REQUIRE(cold.records[k].dim == dim);
+      right[cold.found[k]] = cold.records[k].entity;
     }
     {
       INFO("the right elements");
@@ -822,9 +811,15 @@ TEST_CASE("Stale owner hints bind like the search", "[owner_hints]")
       }
       CheckSameBind(bind_with(pcms::Vertex, vertices), cold);
     }
-    {
-      INFO("a hint of an unused dimension is ignored");
-      CheckSameBind(bind_with(1, right), cold);
+    for (int hint_dim = 1; hint_dim < dim; ++hint_dim) {
+      INFO("entities of dimension " << hint_dim << ", right or wrong");
+      std::mt19937 gen(13);
+      std::uniform_int_distribution<LO> any(0, mesh.nents(hint_dim) - 1);
+      std::vector<LO> entities(n);
+      for (auto& e : entities) {
+        e = any(gen);
+      }
+      CheckSameBind(bind_with(hint_dim, entities), cold);
     }
   }
 }
@@ -913,6 +908,157 @@ TEST_CASE("Stale owner hints give the neighbourhood of the search",
       cold);
   }
 }
+
+namespace
+{
+
+/// The centroids of all entities of `mesh` (vertices, edge midpoints, face and
+/// element centres): points on every kind of shared entity, interleaved.
+std::vector<Real> EntityCentroids(Omega_h::Mesh& mesh)
+{
+  std::vector<Real> pts;
+  for (int d = 0; d <= mesh.dim(); ++d) {
+    const auto c = Omega_h::HostRead<Real>(pcms::get_entity_centroids(mesh, d));
+    pts.insert(pts.end(), c.data(), c.data() + c.size());
+  }
+  return pts;
+}
+
+/// P1 and P0 values at `pts`, from a cold bind and, after the first
+/// evaluation is done with, from a rebind started from the last records.
+struct ColdAndWarm
+{
+  Kokkos::View<Real**, HostMemorySpace> cold;
+  Kokkos::View<Real**, HostMemorySpace> warm;
+};
+
+ColdAndWarm EvaluateColdAndWarm(
+  const std::shared_ptr<const pcms::Geometry>& geometry,
+  const std::shared_ptr<FunctionSpace>& space, const pcms::Field<Real>& f,
+  const std::vector<Real>& pts)
+{
+  const int dim = geometry->GetCoordinateSystem()->Dimension();
+  const auto coords = pcms::test::CreateDeviceCoordinateView(
+    pts, geometry->GetCoordinateSystem(), dim);
+  std::shared_ptr<const pcms::BoundSource> bound =
+    geometry->Bind(coords.coordinate_view);
+  ColdAndWarm out;
+  out.cold = pcms::test::EvaluateToHost(
+    *space->CreatePointEvaluator<Real>(bound), f, f.GetData().GetValueBasis());
+  bound = geometry->Rebind(std::move(bound), coords.coordinate_view);
+  out.warm = pcms::test::EvaluateToHost(
+    *space->CreatePointEvaluator<Real>(bound), f, f.GetData().GetValueBasis());
+  return out;
+}
+
+} // namespace
+
+TEST_CASE("Omega_h evaluators use the entity the search finds",
+          "[omega_h_entities]")
+{
+  auto lib = Omega_h::Library{};
+  for (const int dim : {2, 3}) {
+    CAPTURE(dim);
+    auto mesh = dim == 2 ? pcms::test::BuildSquareMesh(lib, 4)
+                         : pcms::test::BuildUnitCube(lib, 2);
+    auto geometry = MakeMeshGeometry(mesh);
+    const auto pts = EntityCentroids(mesh);
+    const auto n = static_cast<LO>(pts.size() / dim);
+
+    // P1 interpolates on the entity itself: a linear field is reproduced
+    // exactly at vertices, edge midpoints, face and element centres, and a cold
+    // and a warm bind agree
+    auto p1 = MakeSpace(geometry, 1, 1);
+    auto f1 = p1->CreateFunction<Real>("f1");
+    const auto linear = [dim](const std::vector<Real>& x, LO i) {
+      const auto p = x.data() + static_cast<size_t>(dim) * i;
+      return 1.0 + 2.0 * p[0] - 3.0 * p[1] + (dim == 3 ? 0.5 * p[2] : 0.0);
+    };
+    if (dim == 2) {
+      pcms::test::SetField(
+        f1, OMEGA_H_LAMBDA(Real x, Real y) { return 1.0 + 2.0 * x - 3.0 * y; });
+    } else {
+      pcms::test::SetField(
+        f1, OMEGA_H_LAMBDA(Real x, Real y, Real z) {
+          return 1.0 + 2.0 * x - 3.0 * y + 0.5 * z;
+        });
+    }
+    const auto values = EvaluateColdAndWarm(geometry, p1, f1, pts);
+    for (LO i = 0; i < n; ++i) {
+      CAPTURE(i);
+      REQUIRE_THAT(values.cold(i, 0),
+                   WithinAbs(linear(pts, i), pcms::test::EvalTol));
+      REQUIRE_THAT(values.warm(i, 0),
+                   WithinAbs(values.cold(i, 0), pcms::test::ExactTol));
+    }
+
+    // P0 takes the value of the lowest element adjacent to a shared entity
+    auto p0 = MakeSpace(geometry, 0, 1);
+    auto f0 = p0->CreateFunction<Real>("f0");
+    std::vector<Real> element_values(mesh.nelems());
+    for (LO e = 0; e < mesh.nelems(); ++e) {
+      element_values[e] = 10.0 + e;
+    }
+    f0.SetDOFHolderDataUncheckedHost(
+      pcms::Rank2View<const Real, HostMemorySpace>(element_values.data(),
+                                                   mesh.nelems(), 1));
+    const auto p0_values = EvaluateColdAndWarm(geometry, p0, f0, pts);
+    // the entities of the centroids, in the order of EntityCentroids
+    LO i = 0;
+    for (int d = 0; d <= dim; ++d) {
+      const auto up = mesh.ask_up(d, dim);
+      for (LO entity = 0; entity < mesh.nents(d); ++entity, ++i) {
+        CAPTURE(d, entity);
+        LO lowest = d == dim ? entity : mesh.nelems();
+        if (d < dim) {
+          const auto a2ab = Omega_h::HostRead<LO>(up.a2ab);
+          const auto ab2b = Omega_h::HostRead<LO>(up.ab2b);
+          for (LO a = a2ab[entity]; a < a2ab[entity + 1]; ++a) {
+            lowest = std::min(lowest, ab2b[a]);
+          }
+        }
+        REQUIRE(p0_values.cold(i, 0) == 10.0 + lowest);
+        REQUIRE(p0_values.warm(i, 0) == p0_values.cold(i, 0));
+      }
+    }
+  }
+}
+
+#ifdef PCMS_ENABLE_MESHFIELDS
+TEST_CASE("MeshFields values at shared entities equal the Omega_h P1 values",
+          "[omega_h_entities]")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = pcms::test::BuildSquareMesh(lib, 4);
+  auto geometry = MakeMeshGeometry(mesh);
+  const auto pts = EntityCentroids(mesh);
+  const auto n = static_cast<LO>(pts.size() / 2);
+  auto omega_h = MakeSpace(geometry, 1, 1);
+  auto mesh_fields = CreateLagrangeSpace(
+    geometry, 1, 1, LagrangeOptions{.backend = LagrangeBackend::MeshFields});
+  auto f_omega_h = omega_h->CreateFunction<Real>("f_omega_h");
+  auto f_mesh_fields = mesh_fields->CreateFunction<Real>("f_mesh_fields");
+  const auto quadratic_ish = OMEGA_H_LAMBDA(Real x, Real y)
+  {
+    return 1.0 + 2.0 * x - 3.0 * y + 0.25 * x * y;
+  };
+  pcms::test::SetField(f_omega_h, quadratic_ish);
+  pcms::test::SetField(f_mesh_fields, quadratic_ish);
+  const auto coords = pcms::test::CreateDeviceCoordinateView(
+    pts, geometry->GetCoordinateSystem());
+  const auto bound = geometry->Bind(coords.coordinate_view);
+  const auto a =
+    pcms::test::EvaluateToHost(*omega_h->CreatePointEvaluator<Real>(bound),
+                               f_omega_h, f_omega_h.GetData().GetValueBasis());
+  const auto b = pcms::test::EvaluateToHost(
+    *mesh_fields->CreatePointEvaluator<Real>(bound), f_mesh_fields,
+    f_mesh_fields.GetData().GetValueBasis());
+  for (LO i = 0; i < n; ++i) {
+    CAPTURE(i);
+    REQUIRE_THAT(b(i, 0), WithinAbs(a(i, 0), pcms::test::EvalTol));
+  }
+}
+#endif
 
 #ifdef PCMS_ENABLE_MESHFIELDS
 TEST_CASE("MeshFields evaluates P2 fields through the geometry's bind")

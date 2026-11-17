@@ -35,41 +35,33 @@ void OmegaHMeshBinding::Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints)
                                    DeviceMemorySpace>;
       const LO n = NumPoints();
       const auto first = Kokkos::make_pair(LO{0}, n);
-      if (point_elems_.extent(0) < static_cast<std::size_t>(n)) {
-        num_guesses_ = 0; // the guesses do not survive a reallocation
-      }
-      detail::ReserveRows(point_elems_, "omega_h_point_elems", n);
-      if (hints.extent(0) > 0) {
-        Kokkos::deep_copy(Kokkos::subview(point_elems_, first), hints);
-        num_guesses_ = n;
-      }
       if (!std::holds_alternative<Results>(point_results_)) {
         point_results_ = Results{};
       }
       auto& results = std::get<Results>(point_results_);
-      detail::ReserveRows(results, "omega_h_point_results", n);
-      detail::ReserveRows(point_bary_, "omega_h_point_bary", n, Dim + 1);
-      detail::ReserveRows(point_found_, "omega_h_point_found", n);
-      Kokkos::View<const LO*, DeviceMemorySpace> guesses;
-      if (num_guesses_ > 0) {
-        if (num_guesses_ < n) {
-          Kokkos::deep_copy(
-            Kokkos::subview(point_elems_, Kokkos::make_pair(num_guesses_, n)),
-            LO{-1});
-        }
-        guesses = Kokkos::subview(point_elems_, first);
+      if (results.extent(0) < static_cast<std::size_t>(n)) {
+        num_records_ = 0; // the records do not survive a reallocation
       }
+      detail::ReserveRows(results, "omega_h_point_results", n);
+      detail::ReserveRows(point_guesses_, "omega_h_point_guesses", n);
+      detail::ReserveRows(point_found_, "omega_h_point_found", n);
       const auto point_results = Kokkos::subview(results, first);
+      const auto point_guesses = Kokkos::subview(point_guesses_, first);
+      Kokkos::View<const LO*, DeviceMemorySpace> guesses;
+      if (hints.extent(0) > 0) {
+        Kokkos::deep_copy(point_guesses, hints);
+        guesses = point_guesses;
+      } else if (num_records_ > 0) {
+        // the elements of the last records; the search overwrites the records
+        detail::ElementsOfResults<Dim>(mesh_, point_results, num_records_,
+                                       point_guesses);
+        guesses = point_guesses;
+      }
       s(LocatedPointValues(), guesses, point_results);
-      // the lifts overwrite the guesses, which the search has used
       const auto found = Kokkos::subview(point_found_, first);
-      detail::LiftResults<Dim>(mesh_, point_results,
-                               Kokkos::subview(point_elems_, first),
-                               point_bary_, found);
-      num_guesses_ = n;
+      detail::FoundFlags<Dim>(point_results, found);
+      num_records_ = n;
       SetFound(found);
-      detail::GatherFoundLifts<Dim>(FoundPoints(), point_elems_, point_bary_,
-                                    elem_ids_, bary_);
     },
     search_);
 }
@@ -78,31 +70,24 @@ Kokkos::View<const LO*, DeviceMemorySpace> detail::ElementGuesses(
   Omega_h::Mesh& mesh, const OwnerHints& owners, const std::string& caller)
 {
   const int dim = mesh.dim();
-  if (owners.entities.extent(0) == 0 ||
-      (owners.entity_dim != dim && owners.entity_dim != 0)) {
+  const int entity_dim = owners.entity_dim;
+  if (owners.entities.extent(0) == 0 || entity_dim < 0 || entity_dim > dim) {
     return {};
   }
-  const bool vertices = owners.entity_dim == 0;
-  CheckEntityIds(owners.entities, mesh.nents(owners.entity_dim), caller,
-                 vertices ? "vertex" : "element");
-  if (!vertices) {
+  static const char* const names[] = {"vertex", "edge", "face", "region"};
+  CheckEntityIds(owners.entities, mesh.nents(entity_dim), caller,
+                 entity_dim == dim ? "element" : names[entity_dim]);
+  if (entity_dim == dim) {
     return owners.entities;
   }
-  const auto vertex_elems = mesh.ask_up(0, dim);
-  const auto vertices_of = owners.entities;
   Kokkos::View<LO*, DeviceMemorySpace> guesses(
     Kokkos::view_alloc(Kokkos::WithoutInitializing, "omega_h_element_guesses"),
-    vertices_of.extent(0));
-  Kokkos::parallel_for(
-    "ElementGuesses",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-      0, static_cast<LO>(vertices_of.extent(0))),
-    KOKKOS_LAMBDA(const LO i) {
-      const LO begin = vertex_elems.a2ab[vertices_of(i)];
-      guesses(i) = begin < vertex_elems.a2ab[vertices_of(i) + 1]
-                     ? vertex_elems.ab2b[begin]
-                     : -1;
-    });
+    owners.entities.extent(0));
+  if (dim == 2) {
+    ElementsOfEntities<2>(mesh, entity_dim, owners.entities, guesses);
+  } else {
+    ElementsOfEntities<3>(mesh, entity_dim, owners.entities, guesses);
+  }
   return guesses;
 }
 

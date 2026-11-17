@@ -10,24 +10,10 @@ struct InitilizeXGCMembersFunctor
 {
   Kokkos::View<bool*, DeviceMemorySpace> owned_;
   Kokkos::View<GO*, DeviceMemorySpace> gids_;
-  Kokkos::View<LO*, DeviceMemorySpace> class_dims_;
-  Kokkos::View<LO*, DeviceMemorySpace> class_ids_;
-  Rank1View<const ClassificationDimension, DeviceMemorySpace> vert_class_dims_;
-  Rank1View<const ClassificationId, DeviceMemorySpace> vert_class_ids_;
 
-  InitilizeXGCMembersFunctor(
-    Kokkos::View<bool*, DeviceMemorySpace> owned,
-    Kokkos::View<GO*, DeviceMemorySpace> gids,
-    Kokkos::View<LO*, DeviceMemorySpace> class_dims,
-    Kokkos::View<LO*, DeviceMemorySpace> class_ids,
-    Rank1View<const ClassificationDimension, DeviceMemorySpace> vert_class_dims,
-    Rank1View<const ClassificationId, DeviceMemorySpace> vert_class_ids)
-    : owned_(owned),
-      gids_(gids),
-      class_dims_(class_dims),
-      class_ids_(class_ids),
-      vert_class_dims_(vert_class_dims),
-      vert_class_ids_(vert_class_ids)
+  InitilizeXGCMembersFunctor(Kokkos::View<bool*, DeviceMemorySpace> owned,
+                             Kokkos::View<GO*, DeviceMemorySpace> gids)
+    : owned_(owned), gids_(gids)
   {
   }
 
@@ -36,11 +22,32 @@ struct InitilizeXGCMembersFunctor
   {
     owned_(i) = true;
     gids_(i) = static_cast<GO>(i) + 1;
-    // ClassificationDimension is int8_t, a small integer rather than a char
-    // NOLINTNEXTLINE(bugprone-signed-char-misuse)
-    class_dims_(i) = vert_class_dims_(i);
-    class_ids_(i) = vert_class_ids_(i);
   }
+};
+
+// Sets the classification of the vertices of one geometric entity.
+struct ClassifyVertsFunctor
+{
+  DimID geom;
+  Kokkos::View<LO*, DeviceMemorySpace> verts;
+  Kokkos::View<LO*, DeviceMemorySpace> class_dims_;
+  Kokkos::View<LO*, DeviceMemorySpace> class_ids_;
+
+  ClassifyVertsFunctor(DimID geom, Kokkos::View<LO*, DeviceMemorySpace> verts,
+                       Kokkos::View<LO*, DeviceMemorySpace> class_dims,
+                       Kokkos::View<LO*, DeviceMemorySpace> class_ids)
+    : geom(geom), verts(verts), class_dims_(class_dims), class_ids_(class_ids)
+  {
+  }
+
+  KOKKOS_INLINE_FUNCTION void operator()(const int i) const
+  {
+    LO vert = verts(i);
+    if (vert >= 0 && vert < class_dims_.extent(0)) {
+      class_dims_(vert) = geom.dim;
+      class_ids_(vert) = geom.id;
+    }
+  };
 };
 
 XGCFieldLayout::XGCFieldLayout(
@@ -58,16 +65,31 @@ XGCFieldLayout::XGCFieldLayout(
 {
   // XGC poloidal planes are in the RZ plane of a cylindrical coordinate system
   SetCoordinateSystem(csys::CylindricalRZ::Create());
-  auto discretization = std::make_shared<XGCDiscretization>(
-    reverse_classification, num_plane_nodes_);
-  Kokkos::parallel_for(
-    "InitXGCMembers",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0,
-                                                            num_plane_nodes_),
-    InitilizeXGCMembersFunctor(
-      owned_, gids_, class_dims_, class_ids_,
-      discretization->GetEntityClassificationDimensions(Vertex),
-      discretization->GetEntityClassificationIds(Vertex)));
+  Kokkos::parallel_for("InitXGCMembers",
+                       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
+                         0, num_plane_nodes_),
+                       InitilizeXGCMembersFunctor(owned_, gids_));
+  // vertices that no geometric entity of the reverse classification holds
+  // stay unclassified (-1)
+  Kokkos::deep_copy(class_dims_, LO{-1});
+  Kokkos::deep_copy(class_ids_, LO{-1});
+  for (const auto& [geom, verts] : reverse_classification) {
+    auto verts_host =
+      Kokkos::View<LO*, HostMemorySpace>("verts_host", verts.size());
+    int idx = 0;
+    for (LO vert : verts)
+      verts_host(idx++) = vert;
+    auto verts_device =
+      Kokkos::View<LO*, DeviceMemorySpace>("verts_device", verts.size());
+    Kokkos::deep_copy(verts_device, verts_host);
+    Kokkos::parallel_for(
+      "ClassifyVerts", Kokkos::RangePolicy<>(0, verts.size()),
+      ClassifyVertsFunctor(geom, verts_device, class_dims_, class_ids_));
+    Kokkos::fence(); // Wait for kernel to complete before verts_device is
+                     // destroyed, better would be to optimize the
+                     // reverse_classification data structure to avoid this copy
+                     // and synchronization, but this is simpler for now
+  }
 
   Kokkos::deep_copy(owned_host_, owned_);
   Kokkos::deep_copy(gids_host_, gids_);

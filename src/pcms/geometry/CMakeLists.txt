@@ -32,7 +32,6 @@ target_link_libraries(
         pcms_geometry PUBLIC
         Kokkos::kokkos
         pcms::utility
-        pcms::discretization
         Omega_h::omega_h
 )
 target_compile_features(pcms_geometry PUBLIC cxx_std_20)

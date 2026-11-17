@@ -103,9 +103,11 @@ if(PCMS_ENABLE_XGC)
     list(APPEND PCMS_FIELD_HEADERS
             data/xgc.h
             function_space/xgc.h
-            layout/xgc.h)
+            layout/xgc.h
+            layout/xgc_reverse_classification.h)
     list(APPEND PCMS_FIELD_SOURCES
-            layout/xgc.cpp)
+            layout/xgc.cpp
+            layout/xgc_reverse_classification.cpp)
 endif()
 
 add_library(pcms_field ${PCMS_FIELD_SOURCES})
@@ -122,7 +124,6 @@ target_compile_features(pcms_field PUBLIC cxx_std_20)
 
 target_link_libraries(pcms_field PUBLIC
         pcms::utility
-        pcms::discretization
         pcms::localization
         pcms::geometry)
 

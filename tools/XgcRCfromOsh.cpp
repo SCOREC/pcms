@@ -1,5 +1,5 @@
 #include <Omega_h_file.hpp>
-#include "pcms/discretization/discretization/xgc_reverse_classification.h"
+#include "pcms/field/layout/xgc_reverse_classification.h"
 #include "pcms/utility/print.h"
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_tag.hpp>

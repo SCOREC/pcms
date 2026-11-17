@@ -1,9 +1,8 @@
 #ifndef PCMS_XGC_FIELD_LAYOUT_H
 #define PCMS_XGC_FIELD_LAYOUT_H
 
-#include "pcms/discretization/discretization/xgc.hpp"
-#include "pcms/discretization/discretization/xgc_reverse_classification.h"
 #include "pcms/field/field_layout.h"
+#include "pcms/field/layout/xgc_reverse_classification.h"
 
 namespace pcms
 {

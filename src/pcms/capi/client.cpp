@@ -4,7 +4,7 @@
 #include "pcms/field/function_space/xgc.h"
 #include "pcms/field/data/xgc.h"
 #include "pcms/field/layout/xgc.h"
-#include "pcms/discretization/discretization/xgc_reverse_classification.h"
+#include "pcms/field/layout/xgc_reverse_classification.h"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/layout/empty.h"
 #include "pcms/field/data/simple.h"

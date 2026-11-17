@@ -27,7 +27,6 @@ target_link_libraries(
         pcms_localization PUBLIC
         Kokkos::kokkos
         pcms::utility
-        pcms::discretization
         pcms::geometry
         Omega_h::omega_h
 )

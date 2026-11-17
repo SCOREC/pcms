@@ -195,7 +195,7 @@ class TestFunction:
 
     def test_get_space_returns_the_space(self, cartesian_space):
         f = cartesian_space.create_function()
-        assert f.get_space() is cartesian_space
+        assert f.get_space() == cartesian_space
         assert isinstance(f, pcms.Field)
 
     def test_dof_holder_data_is_tagged(self, cylindrical_space):

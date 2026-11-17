@@ -129,7 +129,7 @@ def test_get_geometry_does_not_keep_the_space_alive(world):
     geometry = pcms.create_omega_h_geometry(mesh)
     space = pcms.create_lagrange_space(
         geometry, 1, 1, backend=pcms.LagrangeBackend.OmegaH)
-    assert space.get_geometry() is geometry
+    assert space.get_geometry() == geometry
     space_ref = weakref.ref(space)
     geometry_ref = weakref.ref(geometry)
     mesh_ref = weakref.ref(mesh)

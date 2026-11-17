@@ -12,6 +12,19 @@ namespace py = pybind11;
 namespace pcms
 {
 
+namespace
+{
+
+// The concrete maps a user can create derive from CoordinateMap in Python, so
+// their handles derive likewise.
+template <typename Map>
+struct MapHandle : Immutable<CoordinateMap>
+{
+  MapHandle() : Immutable<CoordinateMap>{std::make_shared<const Map>()} {}
+};
+
+} // namespace
+
 void bind_coordinate_map_module(py::module& m)
 {
   py::class_<BoundCoordinateMap, std::unique_ptr<BoundCoordinateMap>>(
@@ -43,34 +56,33 @@ void bind_coordinate_map_module(py::module& m)
       "C-contiguous float64 array) in place, and return a ValueView of the "
       "same array tagged with the new basis");
 
-  py::class_<CoordinateMap, std::shared_ptr<CoordinateMap>>(
+  ImmutableClass<CoordinateMap>(
     m, "CoordinateMap",
     "Maps points from a source to a target coordinate system; values are "
     "re-expressed the other way")
     .def("get_source_coordinate_system",
-         [](const CoordinateMap& self) {
-           return ToPyHolder(self.GetSourceCoordinateSystem());
+         [](const Immutable<CoordinateMap>& self) {
+           return ToPython(self.ptr->GetSourceCoordinateSystem());
          })
     .def("get_target_coordinate_system",
-         [](const CoordinateMap& self) {
-           return ToPyHolder(self.GetTargetCoordinateSystem());
+         [](const Immutable<CoordinateMap>& self) {
+           return ToPython(self.ptr->GetTargetCoordinateSystem());
          })
     .def(
       "bind",
-      [](const CoordinateMap& self, const PyCoordinateView& query_points) {
-        return self.Bind(CopyCoordinatesToDevice(query_points).view);
+      [](const Immutable<CoordinateMap>& self,
+         const PyCoordinateView& query_points) {
+        return self.ptr->Bind(CopyCoordinatesToDevice(query_points).view);
       },
       py::arg("query_points"),
       "Do every per-point computation for points in the source coordinate "
       "system");
 
-  py::class_<CartesianToCylindrical, CoordinateMap,
-             std::shared_ptr<CartesianToCylindrical>>(m,
-                                                      "CartesianToCylindrical")
+  py::class_<MapHandle<CartesianToCylindrical>, Immutable<CoordinateMap>>(
+    m, "CartesianToCylindrical")
     .def(py::init<>());
-  py::class_<CylindricalToCartesian, CoordinateMap,
-             std::shared_ptr<CylindricalToCartesian>>(m,
-                                                      "CylindricalToCartesian")
+  py::class_<MapHandle<CylindricalToCartesian>, Immutable<CoordinateMap>>(
+    m, "CylindricalToCartesian")
     .def(py::init<>());
 }
 

@@ -39,6 +39,10 @@ public:
   const FieldData<T>& GetData() const noexcept { return *data_; }
 
   const FieldLayout& GetLayout() const noexcept { return *layout_; }
+  [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayoutPtr() const noexcept
+  {
+    return layout_;
+  }
 
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
 

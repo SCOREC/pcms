@@ -1,4 +1,5 @@
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -117,17 +118,18 @@ void bind_value_view_module(py::module& m)
     m, "ValueBasis",
     "The basis a value's components are expressed in. The default is the "
     "scalar basis.")
-    .def(py::init([](const std::shared_ptr<CoordinateSystem>& system,
+    .def(py::init([](const std::optional<Immutable<CoordinateSystem>>& system,
                      ComponentScaling scaling, VarianceSignature variance) {
-           return ValueBasis{system, scaling, variance};
+           return ValueBasis{system ? system->ptr : nullptr, scaling, variance};
          }),
          py::arg("system") = py::none(),
          py::arg("scaling") = ComponentScaling::Physical,
          py::arg("variance") = VarianceSignature{})
     .def_property(
-      "system", [](const ValueBasis& self) { return ToPyHolder(self.system); },
-      [](ValueBasis& self, const std::shared_ptr<CoordinateSystem>& system) {
-        self.system = system;
+      "system", [](const ValueBasis& self) { return ToPython(self.system); },
+      [](ValueBasis& self,
+         const std::optional<Immutable<CoordinateSystem>>& system) {
+        self.system = system ? system->ptr : nullptr;
       })
     .def_readwrite("scaling", &ValueBasis::scaling)
     .def_readwrite("variance", &ValueBasis::variance)

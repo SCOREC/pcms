@@ -3,7 +3,7 @@
 
 #include "../field_data.h"
 #include "../field_layout.h"
-#include "pcms/discretization/discretization/omega_h.hpp"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
 #include "pcms/utility/omega_h_array_utils.h"
@@ -76,10 +76,10 @@ public:
                    static_cast<size_t>(layout_->GetNumDofHolder()),
                    static_cast<size_t>(layout_->GetNumComponents()))
   {
-    const auto* oh = dynamic_cast<const OmegaHDiscretization*>(
-      layout_->GetDiscretization().get());
+    const auto* oh =
+      dynamic_cast<const OmegaHGeometry*>(layout_->GetGeometry().get());
     if (oh == nullptr) {
-      throw pcms_error("OmegaHFieldData: layout is not on an Omega_h mesh");
+      throw pcms_error("OmegaHFieldData: layout is not on an Omega_h geometry");
     }
     tag_dim_ = layout_->GetDOFHolderEntityDim();
     if (tag_dim_ < 0) {

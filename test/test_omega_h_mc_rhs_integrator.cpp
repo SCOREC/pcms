@@ -4,12 +4,10 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/field/evaluation_request.h>
 #include <pcms/field/function_space/lagrange.h>
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/field/coordinate_systems/cartesian.hpp>
 #include <pcms/field/layout/omega_h_lagrange.h>
-#include <pcms/field/transformed_source.hpp>
 #include <pcms/transfer/conservative_projection_solver.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_control_variate_projection.hpp>
@@ -150,8 +148,7 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
   pcms::OmegaHMonteCarloRHSIntegrator mc_integrator(*target_space,
                                                     samples_per_element, seed);
   auto evaluator = source_space->CreatePointEvaluator<pcms::Real>(
-    pcms::EvaluationRequest::FromCoordinates(
-      mc_integrator.GetIntegrationPoints()));
+    source_space->GetGeometry()->Bind(mc_integrator.GetIntegrationPoints()));
   pcms::OmegaHMassIntegrator mass_integrator(*target_space);
   pcms::GalerkinProjectionSolver solver(mass_integrator, mc_integrator);
   const auto mc_projected = solver.Solve(*evaluator, source_field);
@@ -264,7 +261,7 @@ TEST_CASE(
 
   pcms::OmegaHMonteCarloRHSIntegrator mc(*target_space, nsample, seed);
   auto ev = source_space->CreatePointEvaluator<pcms::Real>(
-    pcms::EvaluationRequest::FromCoordinates(mc.GetIntegrationPoints()));
+    source_space->GetGeometry()->Bind(mc.GetIntegrationPoints()));
   pcms::OmegaHMassIntegrator mass(*target_space);
   pcms::GalerkinProjectionSolver solver(mass, mc);
   const auto mc_x = solver.Solve(*ev, source);
@@ -327,7 +324,7 @@ protected:
 
 } // namespace
 
-TEST_CASE("OmegaHControlVariateProjection over a TransformedSource maps the "
+TEST_CASE("OmegaHControlVariateProjection through a coordinate map maps the "
           "sample points",
           "[mc_rhs_integrator][control_variate]")
 {
@@ -343,10 +340,9 @@ TEST_CASE("OmegaHControlVariateProjection over a TransformedSource maps the "
     source_field,
     OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return 3.0 * x - y + 0.25; });
 
-  pcms::TransformedSource src_as_swapped(source_space,
-                                         std::make_shared<SwapXY>());
-  pcms::OmegaHControlVariateProjection projection(src_as_swapped, *target_space,
-                                                  /*samples_per_element=*/4);
+  pcms::OmegaHControlVariateProjection projection(
+    *source_space, *target_space, /*samples_per_element=*/4, /*seed=*/8675309,
+    pcms::MassMatrixType::Consistent, std::make_shared<SwapXY>());
   projection.Apply(source_field, target_field);
 
   const auto values =

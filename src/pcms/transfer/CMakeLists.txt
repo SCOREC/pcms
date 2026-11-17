@@ -13,7 +13,8 @@ set(PCMS_FIELD_TRANSFER_HEADERS
 
 set(PCMS_FIELD_TRANSFER_SOURCES
     mesh_intersection.cpp
-    interpolation_base.cpp)
+    interpolation_base.cpp
+    interpolator.cpp)
 
 
 if(PCMS_ENABLE_MESHFIELDS)

@@ -5,6 +5,7 @@
 
 #include "distributed_test_utils.h"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/utility/arrays.h"
@@ -84,7 +85,7 @@ void require(bool condition, const char* message)
 }
 
 void check_distributed_evaluation(Omega_h::Mesh& mesh,
-                                  const pcms::LagrangeFunctionSpace& space)
+                                  const pcms::FunctionSpace& space)
 {
   const auto& layout = *space.GetLayout();
   // Order-1 layout: the DOF holders with ghosts are the mesh vertices.
@@ -146,10 +147,9 @@ void check_distributed_evaluation(Omega_h::Mesh& mesh,
     }
   }
   auto device_coords = make_device_coordinates(points);
-  auto evaluator =
-    space.CreatePointEvaluator<Real>(pcms::EvaluationRequest::FromCoordinates(
-      device_coords.coordinate_view,
-      pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::FILL, kFillValue}));
+  auto evaluator = space.CreatePointEvaluator<Real>(space.GetGeometry()->Bind(
+    device_coords.coordinate_view,
+    pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::FILL, kFillValue}));
 
   const LO n_points = n_elements;
   Kokkos::View<Real**, pcms::DeviceMemorySpace> result("result", n_points, 1);
@@ -236,9 +236,11 @@ int main(int argc, char** argv)
       auto mesh = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n,
                                      n, 0, false);
       mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
-      auto space = pcms::LagrangeFunctionSpace::FromMesh(
-        mesh, 1, 1, pcms::csys::Cartesian::Deferred(), "global",
-        pcms::LagrangeFunctionSpace::Backend::OmegaH);
+      auto geometry =
+        pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+      auto space = pcms::CreateLagrangeSpace(
+        geometry, 1, 1,
+        pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
 
       check_distributed_evaluation(mesh, *space);
     }

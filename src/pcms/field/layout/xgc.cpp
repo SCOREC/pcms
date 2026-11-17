@@ -75,13 +75,6 @@ XGCFieldLayout::XGCFieldLayout(
   Kokkos::deep_copy(classification_ids_host_, class_ids_);
   // Copy coordinates to device
   Kokkos::deep_copy(coords_, 0.0);
-  discretization_ = std::move(discretization);
-}
-
-std::shared_ptr<const Discretization> XGCFieldLayout::GetDiscretization()
-  const noexcept
-{
-  return discretization_;
 }
 
 int XGCFieldLayout::GetNumComponents() const

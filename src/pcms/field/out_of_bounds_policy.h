@@ -17,9 +17,8 @@ enum class OutOfBoundsMode
 // single construction-time policy object. Out-of-bounds behavior is a policy
 // passed when creating a PointEvaluator rather than mutable state on the field.
 //
-// NearestBoundary is an optional backend capability. Call
-// FieldEvaluatorFactory::SupportsNearestBoundary() before requesting it.
-// Backends that do not support it throw a descriptive error if it is requested.
+// NearestBoundary is an optional capability: Bind throws if the source does
+// not support it (only uniform grids do).
 // The policy is fixed when the PointEvaluator is created; it is not mutable
 // after that evaluator has been constructed.
 

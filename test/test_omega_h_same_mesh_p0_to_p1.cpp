@@ -353,8 +353,10 @@ std::vector<double> ProjectSameMesh(Omega_h::Mesh& mesh,
                                     pcms::MassMatrixType mass_type,
                                     std::vector<double>& source_values)
 {
-  auto source_space = pcms::test::MakeP0Space(mesh);
-  auto target_space = pcms::test::MakeP1Space(mesh);
+  auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto source_space = pcms::test::MakeP0Space(geometry);
+  auto target_space = pcms::test::MakeP1Space(geometry);
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
   pcms::test::SetField(source, SourceFunction<Dim>{});

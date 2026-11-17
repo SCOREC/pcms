@@ -6,22 +6,25 @@
 #include "pcms/configuration.h"
 #include "pcms/field/field.h"
 #include "pcms/field/field_data.h"
-#include "pcms/field/field_evaluator_factory.h"
-#include "pcms/field/evaluation_request.h"
+#include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/coordinate_view.hpp"
+#include "pcms/geometry/geometry.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/memory_spaces.h"
 #ifdef PCMS_ENABLE_OMEGA_H
 #include <Omega_h_build.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/localization/adj_search.hpp"
 #endif
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
 #include "pcms/transfer/linear_form_integrator.hpp"
+#include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
+#include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
 #endif
 #include <cmath>
 #include <memory>
@@ -119,6 +122,14 @@ inline Omega_h::Mesh BuildUnitCube(Omega_h::Library& lib, int n)
                             n);
 }
 
+// Triangle mesh of the unit square with n x n cells. build_box classifies the
+// mesh (see AddDefaultClassification).
+inline Omega_h::Mesh BuildSquareMesh(Omega_h::Library& lib, int n)
+{
+  return Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n, n,
+                            0);
+}
+
 inline Omega_h::Mesh BuildTet(Omega_h::Library& lib,
                               const Omega_h::Reals& coords)
 {
@@ -150,19 +161,35 @@ inline Omega_h::Mesh BuildReferenceTet(Omega_h::Library& lib)
                        }));
 }
 
-inline std::shared_ptr<LagrangeFunctionSpace> MakeP1Space(
-  Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
+inline std::shared_ptr<FunctionSpace> MakeP1Space(
+  std::shared_ptr<const Geometry> geometry)
 {
-  return LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, csys::Cartesian::Deferred(), global_id_name,
-    LagrangeFunctionSpace::Backend::OmegaH);
+  return CreateLagrangeSpace(
+    std::move(geometry), 1, 1,
+    LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
-inline std::shared_ptr<LagrangeFunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
+inline std::shared_ptr<FunctionSpace> MakeP0Space(
+  std::shared_ptr<const Geometry> geometry)
 {
-  return LagrangeFunctionSpace::FromMesh(
-    mesh, 0, 1, csys::Cartesian::Deferred(), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+  return CreateLagrangeSpace(
+    std::move(geometry), 0, 1,
+    LagrangeOptions{.backend = LagrangeBackend::OmegaH});
+}
+
+// Spaces on a Cartesian geometry of their own on `mesh`; spaces that should
+// share a bind take one geometry instead.
+inline std::shared_ptr<FunctionSpace> MakeP1Space(
+  Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
+{
+  return MakeP1Space(CreateOmegaHGeometry(
+    mesh, csys::Cartesian::Deferred(),
+    OmegaHGeometryOptions{.global_id_name = global_id_name}));
+}
+
+inline std::shared_ptr<FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
+{
+  return MakeP0Space(CreateOmegaHGeometry(mesh, csys::Cartesian::Deferred()));
 }
 
 inline bool AreArraysEqualUnordered(
@@ -424,6 +451,22 @@ inline ValueView<T, DeviceMemorySpace> TagLike(
                                          MakeRank2View(values));
 }
 
+/// Evaluates into a new [NumPoints()][width] view tagged `basis` and returns
+/// a host copy.
+inline Kokkos::View<Real**, HostMemorySpace> EvaluateToHost(
+  const PointEvaluator<Real>& evaluator, const Field<Real>& field,
+  const ValueBasis& basis, int width = 1)
+{
+  Kokkos::View<Real**, DeviceMemorySpace> out("out", evaluator.NumPoints(),
+                                              width);
+  evaluator.Evaluate(
+    field, ValueView<Real, DeviceMemorySpace>(basis, MakeRank2View(out)));
+  Kokkos::View<Real**, HostMemorySpace> host("host", evaluator.NumPoints(),
+                                             width);
+  DeepCopyMismatchLayouts(host, out);
+  return host;
+}
+
 template <typename T>
 inline Kokkos::View<T*, DeviceMemorySpace> CreateDeviceRank1View(
   const std::vector<T>& values)
@@ -464,6 +507,19 @@ inline DeviceCoordinates CreateDeviceCoordinateView(
       pcms::MakeRank2View(coords_device)}};
 }
 
+// Binds interleaved points, given in the geometry's coordinate system, on
+// `geometry`; the bound source keeps what it needs, so the points may go.
+inline std::shared_ptr<const BoundSource> Bind(
+  const Geometry& geometry, const std::vector<Real>& pts,
+  OutOfBoundsPolicy policy = {},
+  std::shared_ptr<const CoordinateMap> map = nullptr)
+{
+  const auto coords =
+    CreateDeviceCoordinateView(pts, geometry.GetCoordinateSystem(),
+                               geometry.GetCoordinateSystem()->Dimension());
+  return geometry.Bind(coords.coordinate_view, policy, std::move(map));
+}
+
 // Evaluate field at explicit test points using a PointEvaluator and check
 // results.
 template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
@@ -488,19 +544,16 @@ void CheckEvaluation(const PointEvaluator<Real>& evaluator,
   }
 }
 
-// Overload that creates the evaluator from any factory with
-// CreatePointEvaluator and GetCoordinateSystem (e.g. LagrangeFunctionSpace,
-// FieldEvaluatorFactory<Real>).
+// Overload that creates the evaluator from any point evaluator factory (e.g.
+// a Lagrange FunctionSpace).
 template <typename Factory, typename ExecutionSpace = DefaultExecutionSpace,
           typename Func>
 void CheckEvaluation(const Factory& factory, const Field<Real>& field,
                      const std::vector<Real>& pts, Func func,
                      double abs_tol = EvalTol)
 {
-  auto device_coords =
-    CreateDeviceCoordinateView(pts, factory->GetCoordinateSystem());
   auto evaluator = factory->template CreatePointEvaluator<Real>(
-    EvaluationRequest::FromCoordinates(device_coords.coordinate_view));
+    pcms::test::Bind(*factory->GetGeometry(), pts));
   CheckEvaluation<ExecutionSpace>(*evaluator, field, pts, func, abs_tol);
 }
 
@@ -544,36 +597,26 @@ template <typename Factory>
 void CheckFillMode(const Factory& factory, const Field<Real>& field,
                    Real fill_value, const std::vector<Real>& outside_pts)
 {
-  auto device_coords =
-    CreateDeviceCoordinateView(outside_pts, factory->GetCoordinateSystem());
   OutOfBoundsPolicy policy{OutOfBoundsMode::FILL, fill_value};
   auto evaluator = factory->template CreatePointEvaluator<Real>(
-    EvaluationRequest::FromCoordinates(device_coords.coordinate_view, policy));
+    pcms::test::Bind(*factory->GetGeometry(), outside_pts, policy));
   CheckFillMode(*evaluator, field, fill_value, outside_pts);
 }
 
-// Check a mix of inside/outside points. inside points verified against func,
-// outside points against fill_value.
-template <typename Factory, typename ExecutionSpace = DefaultExecutionSpace,
-          typename Func>
-void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
+// Check a mix of inside/outside points with an evaluator bound to `pts` in
+// FILL mode. inside points verified against func, outside points against
+// fill_value.
+template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
+void CheckEvaluationWithFill(const PointEvaluator<Real>& evaluator,
+                             const Field<Real>& field,
                              const std::vector<Real>& pts,
                              const std::vector<bool>& is_inside, Func func,
                              Real fill_value, double abs_tol = EvalTol)
 {
   int n = static_cast<int>(pts.size()) / 2;
   REQUIRE(static_cast<int>(is_inside.size()) == n);
-
-  auto device_coords =
-    CreateDeviceCoordinateView(pts, factory->GetCoordinateSystem());
-  OutOfBoundsPolicy policy{OutOfBoundsMode::FILL, fill_value};
-  auto evaluator = factory->template CreatePointEvaluator<Real>(
-    EvaluationRequest::FromCoordinates(device_coords.coordinate_view, policy));
-
-  Kokkos::View<Real**, DeviceMemorySpace> out_device("out_device", n, 1);
-  evaluator->Evaluate(field, TagLike(field, out_device));
-  auto out_host =
-    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
+  const auto out_host =
+    EvaluateToHost(evaluator, field, field.GetData().GetValueBasis());
 
   auto expected = EvaluateReferenceFunction<ExecutionSpace>(pts, func);
 
@@ -592,21 +635,63 @@ void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
   for (size_t i = 0; i < is_inside.size(); ++i) {
     is_filled[i] = !is_inside[i];
   }
-  CheckFilledPoints(*evaluator, is_filled);
+  CheckFilledPoints(evaluator, is_filled);
+}
+
+// Overload that binds any point evaluator factory to `pts` in FILL mode.
+template <typename Factory, typename ExecutionSpace = DefaultExecutionSpace,
+          typename Func>
+void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
+                             const std::vector<Real>& pts,
+                             const std::vector<bool>& is_inside, Func func,
+                             Real fill_value, double abs_tol = EvalTol)
+{
+  OutOfBoundsPolicy policy{OutOfBoundsMode::FILL, fill_value};
+  auto evaluator = factory->template CreatePointEvaluator<Real>(
+    pcms::test::Bind(*factory->GetGeometry(), pts, policy));
+  CheckEvaluationWithFill<ExecutionSpace>(*evaluator, field, pts, is_inside,
+                                          func, fill_value, abs_tol);
+}
+
+// An Omega_h geometry of `mesh` in the Cartesian coordinate system of its
+// dimension, typed for the layouts built on it.
+inline std::shared_ptr<OmegaHGeometry> MakeOmegaHGeometry(Omega_h::Mesh& mesh)
+{
+  return std::make_shared<OmegaHGeometry>(
+    mesh, pcms::csys::Cartesian::Create(mesh.dim()));
+}
+
+// Checks that `points` bound with `owners` on their Omega_h geometry are in
+// the elements its search finds.
+inline void CheckOwnersMatchSearch(CoordinateView<DeviceMemorySpace> points,
+                                   const OwnerHints& owners)
+{
+  const auto element_ids = [](const std::shared_ptr<const BoundSource>& b) {
+    return Kokkos::create_mirror_view_and_copy(
+      HostMemorySpace(),
+      dynamic_cast<const OmegaHMeshBinding&>(*b).ElementIds());
+  };
+  const auto hinted = element_ids(owners.geometry->Bind(points, owners));
+  const auto searched = element_ids(owners.geometry->Bind(points));
+  REQUIRE(hinted.extent(0) == searched.extent(0));
+  for (size_t i = 0; i < hinted.extent(0); ++i) {
+    CAPTURE(i);
+    REQUIRE(hinted(i) == searched(i));
+  }
 }
 
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
-// Evaluates source_field at the integrator's sample points and assembles the
-// load vector.
+// Evaluates source_field at the integrator's points, searched on the source
+// space's geometry, and assembles the load vector.
 inline void EvaluateAndAssemble(
   LinearFormIntegrator& integrator,
   const std::shared_ptr<const FunctionSpace>& source_space,
   const Field<Real>& source_field)
 {
-  const auto& pts = integrator.GetIntegrationPoints();
+  const auto pts = integrator.GetIntegrationPoints();
   const std::size_t npts = pts.GetValues().extent(0);
   auto evaluator = source_space->CreatePointEvaluator<Real>(
-    EvaluationRequest::FromCoordinates(pts));
+    source_space->GetGeometry()->Bind(pts));
   Kokkos::View<Real**, DeviceMemorySpace> sampled("sampled", npts, 1);
   evaluator->Evaluate(source_field, TagLike(source_field, sampled));
   integrator.Assemble(MakeConstRank2View(sampled));

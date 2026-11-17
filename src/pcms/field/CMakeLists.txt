@@ -9,7 +9,6 @@ set(PCMS_FIELD_HEADERS
         coordinate_map.hpp
         value_view.hpp
         element_dispatch.h
-        evaluation_request.h
         gid_permutation.hpp
         field_layout.h
         layout/empty.h
@@ -19,7 +18,9 @@ set(PCMS_FIELD_HEADERS
         function_space.h
         point_evaluator.h
         point_evaluator_factory.hpp
-        transformed_source.hpp
+        differential_operator.hpp
+        gradient_source.hpp
+        transformed_point_evaluator.hpp
         data/simple.h
         function_space/polynomial_reconstruction.hpp
         layout/point_cloud.h
@@ -28,7 +29,8 @@ set(PCMS_FIELD_HEADERS
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
         coordinate_system.cpp
-        transformed_source.cpp
+        function_space.cpp
+        gradient_source.cpp
         gid_permutation.cpp
         function_space/polynomial_reconstruction.cpp
         layout/empty.cpp
@@ -44,14 +46,17 @@ if (PCMS_ENABLE_OMEGA_H)
             layout/omega_h_lagrange.cpp
             layout/uniform_grid.cpp
             evaluator/mls_interpolation.cpp
+            evaluator/omega_h_geometry.cpp
     )
     list(APPEND PCMS_FIELD_HEADERS
             function_space/lagrange.h
             function_space/spline.h
-            field_evaluator_factory.h
             layout/omega_h_entity.h
             layout/omega_h_lagrange.h
+            evaluator/omega_h_geometry.hpp
             evaluator/omega_h_lagrange.h
+            evaluator/uniform_grid_geometry.hpp
+            evaluator/point_cloud_geometry.hpp
             data/omega_h.h
             layout/uniform_grid.h
             uniform_grid_binary_field.h

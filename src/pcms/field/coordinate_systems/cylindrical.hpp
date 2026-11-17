@@ -11,9 +11,9 @@ namespace csys
 class CylindricalRThetaZ final : public CoordinateSystem
 {
 public:
-  [[nodiscard]] static std::shared_ptr<const CoordinateSystem> Create()
+  [[nodiscard]] static std::shared_ptr<const CylindricalRThetaZ> Create()
   {
-    return std::shared_ptr<const CoordinateSystem>(new CylindricalRThetaZ());
+    return std::shared_ptr<const CylindricalRThetaZ>(new CylindricalRThetaZ());
   }
 
   [[nodiscard]] std::string_view Kind() const noexcept override
@@ -42,9 +42,9 @@ private:
 class CylindricalRZ final : public CoordinateSystem
 {
 public:
-  [[nodiscard]] static std::shared_ptr<const CoordinateSystem> Create()
+  [[nodiscard]] static std::shared_ptr<const CylindricalRZ> Create()
   {
-    return std::shared_ptr<const CoordinateSystem>(new CylindricalRZ());
+    return std::shared_ptr<const CylindricalRZ>(new CylindricalRZ());
   }
 
   [[nodiscard]] std::string_view Kind() const noexcept override

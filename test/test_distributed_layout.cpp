@@ -13,6 +13,7 @@
 #include "distributed_test_utils.h"
 #include "pcms/configuration.h"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
@@ -46,7 +47,7 @@ auto ToHost(const View& view)
   return Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), view);
 }
 
-void CheckLayout(Omega_h::Mesh& mesh, const pcms::LagrangeFunctionSpace& space,
+void CheckLayout(Omega_h::Mesh& mesh, const pcms::FunctionSpace& space,
                  const std::string& label)
 {
   const auto& layout = *space.GetLayout();
@@ -241,18 +242,22 @@ int main(int argc, char** argv)
                                      n, 0, false);
       mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
 
+      auto geometry =
+        pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
       for (int nc : {1, 2}) {
         const std::string suffix = " (" + std::to_string(nc) + " components)";
-        CheckLayout(mesh,
-                    *pcms::LagrangeFunctionSpace::FromMesh(
-                      mesh, 1, nc, pcms::csys::Cartesian::Deferred(), "global",
-                      pcms::LagrangeFunctionSpace::Backend::OmegaH),
-                    "Omega_h backend" + suffix);
+        CheckLayout(
+          mesh,
+          *pcms::CreateLagrangeSpace(
+            geometry, 1, nc,
+            pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH}),
+          "Omega_h backend" + suffix);
 #ifdef PCMS_ENABLE_MESHFIELDS
         CheckLayout(mesh,
-                    *pcms::LagrangeFunctionSpace::FromMesh(
-                      mesh, 1, nc, pcms::csys::Cartesian::Deferred(), "global",
-                      pcms::LagrangeFunctionSpace::Backend::MeshFields),
+                    *pcms::CreateLagrangeSpace(
+                      geometry, 1, nc,
+                      pcms::LagrangeOptions{
+                        .backend = pcms::LagrangeBackend::MeshFields}),
                     "MeshFields backend" + suffix);
 #endif
       }

@@ -1,6 +1,7 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP
 #define PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP
 
+#include "pcms/field/coordinate_map.hpp"
 #include "pcms/field/field.h"
 #include "pcms/field/function_space.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
@@ -39,10 +40,20 @@ class OmegaHMonteCarloRHSIntegrator;
 class OmegaHControlVariateProjection : public TransferOperator<Real>
 {
 public:
+  /// @param source source evaluated at the target's DOF holders and samples
+  /// @param target_space order-1 Omega_h Lagrange space receiving the result
+  /// @param samples_per_element Monte Carlo samples per target element
+  /// @param seed seed of the sampling
+  /// @param mass_matrix_type consistent or lumped mass matrix
+  /// @param to_source map from the target's coordinate system to the source
+  ///        geometry's, or null if they are the same; the source is evaluated
+  ///        at the mapped points and its values re-expressed through it
+  /// @throws pcms_error if the source has no geometry
   OmegaHControlVariateProjection(
     const PointEvaluatorFactory& source, const FunctionSpace& target_space,
     int samples_per_element, uint64_t seed = 8675309,
-    MassMatrixType mass_matrix_type = MassMatrixType::Consistent);
+    MassMatrixType mass_matrix_type = MassMatrixType::Consistent,
+    std::shared_ptr<const CoordinateMap> to_source = nullptr);
 
   // Defined in the .cpp where GalerkinProjectionSolver is a complete type.
   ~OmegaHControlVariateProjection() override;

@@ -25,8 +25,8 @@ def mesh(world):
 
 @pytest.fixture
 def p1_space(mesh):
-    return pcms.LagrangeFunctionSpace.from_mesh(
-        mesh, 1, 1)
+    return pcms.create_lagrange_space(
+        pcms.create_omega_h_geometry(mesh), 1, 1)
 
 
 def _coordinates(field):
@@ -46,8 +46,8 @@ def _linear_field(space):
 
 class TestFieldData:
     def test_shape_matches_layout(self, mesh, world):
-        space = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, 1, 2)
+        space = pcms.create_lagrange_space(
+            pcms.create_omega_h_geometry(mesh), 1, 2)
         field = space.create_function()
         n = _num_dof_holders(field)
         data = np.arange(2 * n, dtype=np.float64).reshape(n, 2)
@@ -97,8 +97,8 @@ class TestFieldData:
             field.set_dof_holder_data(np.zeros(shape(_num_dof_holders(field))))
 
     def test_vector_field_rejects_1d(self, mesh):
-        space = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, 1, 2)
+        space = pcms.create_lagrange_space(
+            pcms.create_omega_h_geometry(mesh), 1, 2)
         field = space.create_function()
         n = _num_dof_holders(field)
         for shape in [(n,), (2 * n,)]:
@@ -146,9 +146,8 @@ class TestPointEvaluation:
     QUERY = np.array([[0.5, 0.5], [0.25, 0.75], [0.9, 0.1]])
 
     def _evaluator(self, space, coords):
-        request = pcms.EvaluationRequest.from_coordinates(
-            pcms.CoordinateView(coords))
-        return space.create_point_evaluator(request)
+        return space.create_point_evaluator(
+            space.get_geometry().bind(pcms.CoordinateView(coords)))
 
     def test_evaluate_linear_field(self, p1_space):
         field = _linear_field(p1_space)

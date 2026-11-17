@@ -87,11 +87,10 @@ Kokkos::View<T**, pcms::HostMemorySpace> ValuesWithGhostsHost(
     const auto nc = static_cast<size_t>(layout.GetNumComponents());
     // The values of every DOF holder are in the field's Omega_h tag.
     using TagValue = typename pcms::OmegaHFieldData<T>::tag_value_type;
-    const auto& discretization =
-      dynamic_cast<const pcms::OmegaHDiscretization&>(
-        *layout.GetDiscretization());
+    const auto& geometry =
+      dynamic_cast<const pcms::OmegaHGeometry&>(*layout.GetGeometry());
     const auto tag =
-      Omega_h::HostRead<TagValue>(discretization.GetMesh().get_array<TagValue>(
+      Omega_h::HostRead<TagValue>(geometry.GetMesh().get_array<TagValue>(
         layout.GetDOFHolderEntityDim(), omega_h_data->GetTagName()));
     const size_t n = static_cast<size_t>(tag.size()) / nc;
     Kokkos::View<T**, pcms::HostMemorySpace> host("values_with_ghosts_host", n,

@@ -26,8 +26,9 @@ TEST_CASE("interpolate linear 2d omega_h_field")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
+  auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto factory = pcms::CreateLagrangeSpace(geometry, 1, 1);
   auto field = factory->CreateFunction<Real>();
   auto interpolated = factory->CreateFunction<Real>();
   pcms::test::SetField(
@@ -54,9 +55,11 @@ TEST_CASE("interpolate quadratic 2d meshfields_field")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto factory2 = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::MeshFields);
+  auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto factory2 = pcms::CreateLagrangeSpace(
+    geometry, 2, 1,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
   auto field = factory2->CreateFunction<Real>();
   auto interpolated = factory2->CreateFunction<Real>();
   pcms::test::SetField(
@@ -86,10 +89,11 @@ TEST_CASE("interpolate quadratic 2d omega_h_field throws")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
 
-  REQUIRE_THROWS_AS(pcms::LagrangeFunctionSpace::FromMesh(
-                      mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
-                      pcms::LagrangeFunctionSpace::Backend::OmegaH),
-                    pcms::pcms_error);
+  REQUIRE_THROWS_AS(
+    pcms::CreateLagrangeSpace(
+      pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred()), 2, 1,
+      pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH}),
+    pcms::pcms_error);
 }
 
 // Interpolator<T> test: construct once (localize), apply twice with different
@@ -102,8 +106,9 @@ TEST_CASE("Interpolator: construct once, apply twice with different data")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
+  auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto factory = pcms::CreateLagrangeSpace(geometry, 1, 1);
 
   auto source = factory->CreateFunction<Real>();
   auto target = factory->CreateFunction<Real>();

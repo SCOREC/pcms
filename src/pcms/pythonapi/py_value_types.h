@@ -31,7 +31,10 @@ namespace py = pybind11;
 
 // pybind11 holders cannot be shared_ptr<const T>. Python only reaches the
 // const interface of these objects, so they are held as shared_ptr<T> and
-// converted at the boundary.
+// converted at the boundary. Casting const away is sound because the bindings
+// expose only const members of these types, and the objects are created
+// non-const; a non-const member must never be bound through a holder obtained
+// this way.
 template <typename T>
 std::shared_ptr<T> ToPyHolder(const std::shared_ptr<const T>& p)
 {
@@ -83,6 +86,19 @@ PyValueView ToPyValueView(const ValueView<Element, MemorySpace, Layout>& view,
                           py::handle owner)
 {
   return PyValueView{view.GetBasis(), ViewToNumpy(view.GetValues(), owner)};
+}
+
+/// @brief Read-only NumPy array over device point indices.
+/// @param indices indices to expose
+/// @param owner Python object that keeps `indices` alive
+/// @return the array (empty if there are no indices)
+inline py::array_t<LO> IndicesToNumpy(
+  Kokkos::View<const LO*, DeviceMemorySpace> indices, py::object owner)
+{
+  if (indices.extent(0) == 0) {
+    return py::array_t<LO>(0);
+  }
+  return ViewToNumpy(MakeRank1View(indices), owner);
 }
 
 // Device copy of the coordinates together with the CoordinateView over it.

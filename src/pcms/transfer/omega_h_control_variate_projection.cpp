@@ -9,22 +9,41 @@
 namespace pcms
 {
 
+namespace
+{
+
+const Geometry& SourceGeometry(const PointEvaluatorFactory& source)
+{
+  const auto geometry = source.GetGeometry();
+  if (geometry == nullptr) {
+    throw pcms_error(
+      "OmegaHControlVariateProjection: the source has no geometry");
+  }
+  return *geometry;
+}
+
+} // namespace
+
 OmegaHControlVariateProjection::OmegaHControlVariateProjection(
   const PointEvaluatorFactory& source, const FunctionSpace& target_space,
-  int samples_per_element, uint64_t seed, MassMatrixType mass_matrix_type)
+  int samples_per_element, uint64_t seed, MassMatrixType mass_matrix_type,
+  std::shared_ptr<const CoordinateMap> to_source)
   : target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
       target_space.GetLayout())),
     rhs_integrator_(std::make_unique<OmegaHMonteCarloRHSIntegrator>(
       target_layout_, target_space.GetCoordinateSystem(), samples_per_element,
       seed)),
-    interpolator_(source, target_space),
+    interpolator_(source, target_space,
+                  SourceGeometry(source).Bind(
+                    target_space.GetLayout()->GetDOFHolderCoordinates(),
+                    OutOfBoundsPolicy{}, to_source)),
     control_variate_(target_space.CreateFunction<Real>())
 {
-  const auto sample_coords = rhs_integrator_->GetIntegrationPoints();
-  source_at_samples_ = source.CreatePointEvaluator<Real>(
-    EvaluationRequest::FromCoordinates(sample_coords));
+  source_at_samples_ =
+    source.CreatePointEvaluator<Real>(SourceGeometry(source).Bind(
+      rhs_integrator_->GetIntegrationPoints(), OutOfBoundsPolicy{}, to_source));
   control_variate_at_samples_ = target_space.CreatePointEvaluator<Real>(
-    EvaluationRequest::FromCoordinates(sample_coords));
+    target_space.GetGeometry()->Bind(rhs_integrator_->GetIntegrationPoints()));
 
   // Mass integrator is only needed to build the solver; PETSc reference-counts
   // the matrix so it remains alive inside the KSP after this scope ends.
@@ -36,7 +55,8 @@ OmegaHControlVariateProjection::OmegaHControlVariateProjection(
   target_values_ = Kokkos::View<Real**, DeviceMemorySpace>(
     "cv_target_values", target_layout_->GetNumDofHolder(),
     target_layout_->GetNumComponents());
-  const auto num_samples = sample_coords.GetValues().extent(0);
+  const auto num_samples =
+    rhs_integrator_->GetIntegrationPoints().GetValues().extent(0);
   f_samples_ =
     Kokkos::View<Real**, DeviceMemorySpace>("cv_f_samples", num_samples, 1);
   residual_ =

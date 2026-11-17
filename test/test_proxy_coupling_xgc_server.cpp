@@ -10,6 +10,7 @@
 #include "pcms/field/layout/xgc.h"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/value_view.hpp"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
 
@@ -170,9 +171,13 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     // FIXME: The current C/Fortran proxy API couples layout registration to
     // field registration, so each XGC plane is registered as a separate layout
     // communicator even though the layouts are geometrically identical.
-    auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-      mesh, 1, 1, pcms::csys::Cartesian::Deferred(), numbering,
-      pcms::LagrangeFunctionSpace::Backend::OmegaH, ss.str());
+    auto geometry = pcms::CreateOmegaHGeometry(
+      mesh, pcms::csys::Cartesian::Deferred(),
+      pcms::OmegaHGeometryOptions{.global_id_name = numbering});
+    auto factory = pcms::CreateLagrangeSpace(
+      geometry, 1, 1,
+      pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH,
+                            .layout_name = ss.str()});
     auto field = factory->CreateFunction<GO>(
       ss.str(), std::make_unique<pcms::OmegaHFieldData<GO>>(
                   factory->GetLayout(), pcms::ValueBasis{}));

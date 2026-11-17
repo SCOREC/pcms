@@ -15,7 +15,9 @@
 using Catch::Matchers::ContainsSubstring;
 using pcms::DeviceMemorySpace;
 using pcms::Field;
-using pcms::LagrangeFunctionSpace;
+using pcms::FunctionSpace;
+using pcms::LagrangeBackend;
+using pcms::LagrangeOptions;
 using pcms::Real;
 using pcms::ValueView;
 namespace values = pcms::values;
@@ -36,15 +38,15 @@ Omega_h::Mesh BuildCylindricalMesh(Omega_h::Library& lib, int divisions)
                             divisions, divisions, divisions, false);
 }
 
-std::shared_ptr<LagrangeFunctionSpace> BuildCylindricalSpace(
-  Omega_h::Mesh& mesh, int num_components)
+std::shared_ptr<FunctionSpace> BuildCylindricalSpace(Omega_h::Mesh& mesh,
+                                                     int num_components)
 {
-  return LagrangeFunctionSpace::FromMesh(
-    mesh, 1, num_components, pcms::csys::CylindricalRThetaZ::Create(), "global",
-    LagrangeFunctionSpace::Backend::OmegaH);
+  return CreateLagrangeSpace(
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::CylindricalRThetaZ::Create()),
+    1, num_components, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
-int NumDOFHolders(const LagrangeFunctionSpace& space)
+int NumDOFHolders(const FunctionSpace& space)
 {
   return static_cast<int>(
     space.GetLayout()->GetDOFHolderCoordinates().GetValues().extent(0));
@@ -69,10 +71,8 @@ TEST_CASE("PointEvaluator::Evaluate gates on the source field's stored basis")
   });
 
   const std::vector<Real> pts = {0.7, 0.3, 0.4, 1.0, 0.9, 0.9};
-  auto query = pcms::test::CreateDeviceCoordinateView(
-    pts, pcms::csys::CylindricalRThetaZ::Create(), 3);
   auto evaluator = space->CreatePointEvaluator<Real>(
-    pcms::EvaluationRequest::FromCoordinates(query.coordinate_view));
+    pcms::test::Bind(*space->GetGeometry(), pts));
   const int n = static_cast<int>(pts.size()) / 3;
   Kokkos::View<Real**, DeviceMemorySpace> out("out", n, 3);
 

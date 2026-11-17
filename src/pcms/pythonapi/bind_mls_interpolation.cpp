@@ -9,7 +9,7 @@ namespace pcms
 void bind_mls_interpolation_module(py::module& m)
 {
   // RadialBasisFunction is part of the MLSOptions API used by
-  // PolynomialReconstructionFunctionSpace.
+  // create_polynomial_reconstruction_space.
   py::enum_<pcms::RadialBasisFunction>(m, "RadialBasisFunction")
     .value("RBF_GAUSSIAN", pcms::RadialBasisFunction::RBF_GAUSSIAN)
     .value("RBF_C4", pcms::RadialBasisFunction::RBF_C4)

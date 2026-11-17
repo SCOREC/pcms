@@ -118,11 +118,24 @@ struct InitilizeGidsAndOwnedFunctor
 
 } // anonymous namespace
 
+namespace
+{
+template <unsigned Dim>
+const UniformGrid<Dim>& GridOf(
+  const std::shared_ptr<const UniformGridGeometry<Dim>>& geometry)
+{
+  if (geometry == nullptr) {
+    throw pcms_error("UniformGridFieldLayout: the geometry must not be null");
+  }
+  return geometry->GetGrid();
+}
+} // anonymous namespace
+
 template <unsigned Dim>
 UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
-  UniformGrid<Dim> grid, int num_components,
-  std::shared_ptr<const CoordinateSystem> coordinate_system, int order)
-  : grid_(std::move(grid)),
+  std::shared_ptr<const UniformGridGeometry<Dim>> geometry, int num_components,
+  int order)
+  : grid_(GridOf(geometry)),
     num_components_(num_components),
     order_(order),
     gids_("gids", CountDofHolders()),
@@ -132,8 +145,7 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
     owned_host_("owned_host", CountDofHolders())
 {
   PCMS_FUNCTION_TIMER;
-  SetCoordinateSystem(ResolveCoordinateSystem(std::move(coordinate_system),
-                                              static_cast<int>(Dim)));
+  SetCoordinateSystem(geometry->GetCoordinateSystem());
   PCMS_ALWAYS_ASSERT(order_ == 0 || order_ == 1);
 
   LO num_dofs = CountDofHolders();
@@ -189,14 +201,7 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
     Kokkos::View<LO*, HostMemorySpace>("classification_ids", n);
   Kokkos::deep_copy(classification_dims_host_, classification_dims_);
   Kokkos::deep_copy(classification_ids_host_, classification_ids_);
-  discretization_ = std::make_shared<UniformGridDiscretization<Dim>>(grid_);
-}
-
-template <unsigned Dim>
-std::shared_ptr<const Discretization>
-UniformGridFieldLayout<Dim>::GetDiscretization() const noexcept
-{
-  return discretization_;
+  SetGeometry(std::move(geometry));
 }
 
 template <unsigned Dim>

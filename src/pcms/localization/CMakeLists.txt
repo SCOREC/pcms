@@ -1,6 +1,7 @@
 set(
         PCMS_LOCALIZATION_HEADERS
         point_search.h
+        uniform_grid_search.hpp
         queue_visited.hpp
         adj_search.hpp
         mls_support_helpers.h

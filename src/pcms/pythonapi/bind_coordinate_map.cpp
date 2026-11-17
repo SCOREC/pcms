@@ -4,8 +4,6 @@
 #include <pybind11/pybind11.h>
 
 #include "pcms/field/coordinate_map.hpp"
-#include "pcms/field/point_evaluator_factory.hpp"
-#include "pcms/field/transformed_source.hpp"
 #include "pcms/field/value_view.hpp"
 #include "py_value_types.h"
 
@@ -74,18 +72,6 @@ void bind_coordinate_map_module(py::module& m)
              std::shared_ptr<CylindricalToCartesian>>(m,
                                                       "CylindricalToCartesian")
     .def(py::init<>());
-
-  py::class_<TransformedSource, PointEvaluatorFactory,
-             std::shared_ptr<TransformedSource>>(
-    m, "TransformedSource",
-    "Presents a PointEvaluatorFactory as one in another coordinate system")
-    .def(py::init([](std::shared_ptr<PointEvaluatorFactory> source,
-                     std::shared_ptr<CoordinateMap> to_source) {
-           return std::make_shared<TransformedSource>(std::move(source),
-                                                      std::move(to_source));
-         }),
-         py::arg("source"), py::arg("to_source"),
-         "`to_source` maps this object's coordinate system to the source's");
 }
 
 } // namespace pcms

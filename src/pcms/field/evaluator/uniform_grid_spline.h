@@ -2,11 +2,10 @@
 #define PCMS_UNIFORM_GRID_SPLINE_EVALUATOR_FACTORY_H
 
 #include "pcms/field/evaluator/spline_interpolator.hpp"
-#include "pcms/field/evaluator/uniform_grid.h"
+#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
 #include "pcms/field/field_data.h"
-#include "pcms/field/field_evaluator_factory.h"
+#include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/layout/uniform_grid.h"
-#include "pcms/field/out_of_bounds_policy.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/types.h"
@@ -31,52 +30,76 @@ struct InitCoordsFunctor
   }
 };
 
+/// @brief Copies the coordinates of the listed points into one view per axis.
+/// @param points coordinates, one row per point
+/// @param rows indices of the points to copy
+/// @param x x coordinates of the listed points
+/// @param y y coordinates of the listed points
+inline void GatherPoints(Kokkos::View<const Real**, DeviceMemorySpace> points,
+                         Kokkos::View<const LO*, DeviceMemorySpace> rows,
+                         Kokkos::View<Real*, DeviceMemorySpace> x,
+                         Kokkos::View<Real*, DeviceMemorySpace> y)
+{
+  Kokkos::parallel_for(
+    "gather_spline_points",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
+      0, static_cast<LO>(rows.extent(0))),
+    KOKKOS_LAMBDA(const LO k) {
+      x(k) = points(rows(k), 0);
+      y(k) = points(rows(k), 1);
+    });
+}
+
 } // namespace detail
 
+/// @brief Evaluates the bicubic spline of a field's grid values, or its
+///        gradient (df/dx, df/dy) for DifferentialOperator::Gradient.
 template <typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class UniformGridSplinePointEvaluator2D
   : public PointEvaluator<Real, LayoutPolicy>
 {
 public:
+  /// @param layout order-1 single-component uniform-grid layout
+  /// @param binding cells of the query points
+  /// @param op Value or Gradient
   UniformGridSplinePointEvaluator2D(
     std::shared_ptr<const UniformGridFieldLayout<2>> layout,
-    UniformGridFieldLocalizationHint<2> hint, Real fill_value)
-    : layout_(std::move(layout)),
-      grid_(layout_->GetGrid()),
-      hint_(std::move(hint)),
-      fill_value_(fill_value),
-      filled_points_(detail::FilledPointIndices(hint_)),
+    std::shared_ptr<const UniformGridBinding<2>> binding,
+    DifferentialOperator op = DifferentialOperator::Value)
+    : PointEvaluator<Real, LayoutPolicy>(binding, op, layout),
+      grid_(layout->GetGrid()),
       x_coords_("uniform_grid_spline_x", grid_.divisions[0] + 1),
-      y_coords_("uniform_grid_spline_y", grid_.divisions[1] + 1)
+      y_coords_("uniform_grid_spline_y", grid_.divisions[1] + 1),
+      found_(binding->FoundPoints()),
+      eval_x_("uniform_grid_spline_eval_x", found_.extent(0)),
+      eval_y_("uniform_grid_spline_eval_y", found_.extent(0)),
+      spline_output_("uniform_grid_spline_output", found_.extent(0),
+                     op == DifferentialOperator::Value ? 1 : 2),
+      select_("uniform_grid_spline_select", 6),
+      empty_bc_("uniform_grid_spline_empty_bc", 0)
   {
     Real dx = grid_.edge_length[0] / grid_.divisions[0];
     Real dy = grid_.edge_length[1] / grid_.divisions[1];
-    Real bot_left_x = grid_.bot_left[0];
-    Real bot_left_y = grid_.bot_left[1];
-    LO nx = grid_.divisions[0];
-    LO ny = grid_.divisions[1];
-
     Kokkos::parallel_for(
       "init_x_coords",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, nx + 1),
-      detail::InitCoordsFunctor{x_coords_, bot_left_x, dx});
-
+      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
+        0, grid_.divisions[0] + 1),
+      detail::InitCoordsFunctor{x_coords_, grid_.bot_left[0], dx});
     Kokkos::parallel_for(
       "init_y_coords",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, ny + 1),
-      detail::InitCoordsFunctor{y_coords_, bot_left_y, dy});
-  }
-
-  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
-    const override
-  {
-    return filled_points_;
-  }
-
-  [[nodiscard]] LO NumPoints() const override
-  {
-    return static_cast<LO>(hint_.coordinates_.extent(0));
+      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
+        0, grid_.divisions[1] + 1),
+      detail::InitCoordsFunctor{y_coords_, grid_.bot_left[1], dy});
+    detail::GatherPoints(binding->LocatedPointValues(), found_, eval_x_,
+                         eval_y_);
+    // The selector picks f, df/dx, df/dy, d2f/dx2, d2f/dy2, d2f/dxdy.
+    auto select = Kokkos::create_mirror_view(select_);
+    for (int k = 0; k < 6; ++k) {
+      select(k) =
+        op == DifferentialOperator::Value ? (k == 0) : (k == 1 || k == 2);
+    }
+    Kokkos::deep_copy(select_, select);
   }
 
   // Public because CUDA forbids extended lambdas in non-public member
@@ -87,12 +110,10 @@ public:
     ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     const auto values = out.GetValues();
-    LO num_points = NumPoints();
-    if (values.extent(1) != 1) {
+    if (field.GetLayout().GetNumComponents() != 1) {
       throw pcms_error("UniformGridSplinePointEvaluator2D: only scalar "
                        "(num_components==1) fields are supported");
     }
-
     const auto dof_data = field.GetDOFHolderData().GetValues();
     LO nx = grid_.divisions[0] + 1;
     LO ny = grid_.divisions[1] + 1;
@@ -107,121 +128,72 @@ public:
         spline_values(ix * ny + iy) = dof_data(iy * nx + ix, 0);
       });
 
-    if (hint_.num_out_of_bounds_ == static_cast<size_t>(num_points) &&
-        hint_.mode_ == OutOfBoundsMode::FILL) {
-      Kokkos::parallel_for(
-        "fill_out_of_bounds_values",
-        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-        KOKKOS_CLASS_LAMBDA(LO i) { values(i, 0) = fill_value_; });
+    const auto found = found_;
+    const auto num_in_bounds = static_cast<LO>(found.extent(0));
+    if (num_in_bounds == 0) {
       return;
     }
-
-    LO num_in_bounds = static_cast<LO>(num_points - hint_.num_out_of_bounds_);
-    Kokkos::View<Real*, DeviceMemorySpace> eval_x("uniform_grid_spline_eval_x",
-                                                  num_in_bounds);
-    Kokkos::View<Real*, DeviceMemorySpace> eval_y("uniform_grid_spline_eval_y",
-                                                  num_in_bounds);
-    Kokkos::View<LO*, DeviceMemorySpace> in_bounds_indices(
-      "uniform_grid_spline_in_bounds_indices", num_in_bounds);
-
-    auto coordinates_device = hint_.coordinates_;
-
-    auto is_out_of_bounds_device = hint_.is_out_of_bounds_;
-
-    // Stream compaction: filter in-bounds points using parallel_scan
-    Kokkos::parallel_scan(
-      "compact_in_bounds_points",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_LAMBDA(const LO i, LO& update, const bool final) {
-        const bool is_in_bounds = !is_out_of_bounds_device(i);
-        if (is_in_bounds && final) {
-          eval_x(update) = coordinates_device(i, 0);
-          eval_y(update) = coordinates_device(i, 1);
-          in_bounds_indices(update) = i;
-        }
-        if (is_in_bounds) {
-          update += 1;
-        }
-      });
-
-    Kokkos::View<Real**, DeviceMemorySpace> spline_output(
-      "uniform_grid_spline_output", num_in_bounds, 1);
-    Kokkos::View<Real*, DeviceMemorySpace> empty_bc(
-      "uniform_grid_spline_empty_bc", 0);
-
+    const auto empty_bc =
+      Rank1View<Real, DeviceMemorySpace>(empty_bc_.data(), 0);
     CompactBiCubicSplineInterpolator<Real, DeviceMemorySpace> interpolator(
       Rank1View<Real, DeviceMemorySpace>(x_coords_.data(), x_coords_.extent(0)),
       Rank1View<Real, DeviceMemorySpace>(y_coords_.data(), y_coords_.extent(0)),
       Rank1View<Real, DeviceMemorySpace>(spline_values.data(),
                                          spline_values.extent(0)),
-      BoundaryCondition::NOT_A_KNOT,
-      Rank1View<Real, DeviceMemorySpace>(empty_bc.data(), empty_bc.extent(0)),
-      BoundaryCondition::NOT_A_KNOT,
-      Rank1View<Real, DeviceMemorySpace>(empty_bc.data(), empty_bc.extent(0)),
-      BoundaryCondition::NOT_A_KNOT,
-      Rank1View<Real, DeviceMemorySpace>(empty_bc.data(), empty_bc.extent(0)),
-      BoundaryCondition::NOT_A_KNOT,
-      Rank1View<Real, DeviceMemorySpace>(empty_bc.data(), empty_bc.extent(0)));
+      BoundaryCondition::NOT_A_KNOT, empty_bc, BoundaryCondition::NOT_A_KNOT,
+      empty_bc, BoundaryCondition::NOT_A_KNOT, empty_bc,
+      BoundaryCondition::NOT_A_KNOT, empty_bc);
+    // one column per selected spline output: f, or (df/dx, df/dy)
+    const auto spline_output = spline_output_;
+    const auto num_outputs = static_cast<int>(spline_output.extent(1));
     interpolator.evaluate(
-      Rank1View<Real, DeviceMemorySpace>(eval_x.data(), eval_x.extent(0)),
-      Rank1View<Real, DeviceMemorySpace>(eval_y.data(), eval_y.extent(0)),
+      select_,
+      Rank1View<Real, DeviceMemorySpace>(eval_x_.data(), eval_x_.extent(0)),
+      Rank1View<Real, DeviceMemorySpace>(eval_y_.data(), eval_y_.extent(0)),
       Rank2View<Real, DeviceMemorySpace>(spline_output.data(),
-                                         spline_output.extent(0), 1));
-
-    if (hint_.mode_ == OutOfBoundsMode::FILL) {
-      Kokkos::parallel_for(
-        "fill_out_of_bounds",
-        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-        KOKKOS_CLASS_LAMBDA(LO i) {
-          if (hint_.is_out_of_bounds_(i)) {
-            values(i, 0) = fill_value_;
-          }
-        });
-    }
+                                         spline_output.extent(0), num_outputs));
 
     Kokkos::parallel_for(
       "copy_in_bounds_values",
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_in_bounds),
-      KOKKOS_LAMBDA(LO i) {
-        values(in_bounds_indices(i), 0) = spline_output(i, 0);
+      KOKKOS_LAMBDA(LO k) {
+        for (int c = 0; c < num_outputs; ++c) {
+          values(found(k), c) = spline_output(k, c);
+        }
       });
   }
 
 private:
-  std::shared_ptr<const UniformGridFieldLayout<2>> layout_;
   UniformGrid<2> grid_;
-  UniformGridFieldLocalizationHint<2> hint_;
-  Real fill_value_;
-  Kokkos::View<const LO*, DeviceMemorySpace> filled_points_;
   Kokkos::View<Real*, DeviceMemorySpace> x_coords_;
   Kokkos::View<Real*, DeviceMemorySpace> y_coords_;
+  // per bound point: found points' coordinates and spline output
+  Kokkos::View<const LO*, DeviceMemorySpace> found_;
+  Kokkos::View<Real*, DeviceMemorySpace> eval_x_;
+  Kokkos::View<Real*, DeviceMemorySpace> eval_y_;
+  Kokkos::View<Real**, DeviceMemorySpace> spline_output_;
+  Kokkos::View<LO*, DeviceMemorySpace> select_;
+  Kokkos::View<Real*, DeviceMemorySpace> empty_bc_;
 };
 
-class UniformGridSplineEvaluatorFactory2D : public FieldEvaluatorFactory<Real>
+/// @brief Point evaluation of the bicubic spline of fields on a 2D uniform
+///        grid, and of its gradient.
+class UniformGridSplineEvaluatorFactory2D
+  : public TypedPointEvaluatorFactory<Real, UniformGridBinding<2>>
 {
+  using Bound = UniformGridBinding<2>;
+
 public:
-  explicit UniformGridSplineEvaluatorFactory2D(
+  /// @param geometry geometry of the layout's grid
+  /// @param layout order-1 single-component uniform-grid layout
+  /// @throws pcms_error if the layout is not order 1 with one component
+  UniformGridSplineEvaluatorFactory2D(
+    std::shared_ptr<const UniformGridGeometry<2>> geometry,
     std::shared_ptr<const UniformGridFieldLayout<2>> layout)
-    : layout_(std::move(layout)), grid_(layout_->GetGrid())
+    : TypedPointEvaluatorFactory<Real, Bound>(std::move(geometry),
+                                              {DifferentialOperator::Gradient}),
+      layout_(std::move(layout))
   {
-  }
-
-  const FieldLayout& GetLayout() const override { return *layout_; }
-
-  bool HasDOFHolderCoordinates() const override { return true; }
-
-  bool SupportsNearestBoundary() const override { return false; }
-
-  std::unique_ptr<PointEvaluator<Real>> CreatePointEvaluator(
-    const EvaluationRequest& request) const override
-  {
-    const auto coords = request.coords;
-    const auto policy = request.policy;
-    if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY) {
-      throw pcms_error(
-        "UniformGridSplineEvaluatorFactory2D: nearest-boundary evaluation is "
-        "not supported");
-    }
     if (layout_->GetOrder() != 1) {
       throw pcms_error(
         "UniformGridSplineEvaluatorFactory2D: spline evaluation requires an "
@@ -232,72 +204,18 @@ public:
         "UniformGridSplineEvaluatorFactory2D: spline evaluation only supports "
         "single-component fields");
     }
-
-    auto coordinates = coords.GetValues();
-    LO num_points = static_cast<LO>(coordinates.extent(0));
-
-    Kokkos::View<Real**, DeviceMemorySpace> coordinates_d("coordinates_d",
-                                                          num_points, 2);
-    Kokkos::parallel_for(
-      "copy_coordinates",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_LAMBDA(LO i) {
-        for (LO j = 0; j < 2; ++j) {
-          coordinates_d(i, j) = coordinates(i, j);
-        }
-      });
-
-    Kokkos::View<LO*, DeviceMemorySpace> cell_indices_device("cell_indices",
-                                                             num_points);
-    Kokkos::View<bool*, DeviceMemorySpace> is_out_of_bounds_device(
-      "is_out_of_bounds", num_points);
-
-    // Parallel reduction to compute cell indices and count out-of-bounds points
-    size_t num_out_of_bounds = 0;
-    auto grid_copy =
-      grid_; // Create local copy to avoid capturing reference in some compilers
-    Kokkos::parallel_reduce(
-      "localize_points_on_device_spline",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_CLASS_LAMBDA(const LO i, size_t& local_count) {
-        Omega_h::Vector<2> point;
-        for (unsigned d = 0; d < 2; ++d) {
-          point[d] = coordinates_d(i, d);
-        }
-
-        bool out_of_bounds = !grid_copy.IsPointInBounds(point);
-        is_out_of_bounds_device(i) = out_of_bounds;
-        if (out_of_bounds) {
-          local_count += 1;
-        }
-
-        cell_indices_device(i) = grid_copy.ClosestCellID(point);
-      },
-      num_out_of_bounds);
-
-    // Check for errors after kernel execution
-    if (num_out_of_bounds > 0 && policy.mode == OutOfBoundsMode::ERROR) {
-      throw pcms_error("UniformGridSplineEvaluatorFactory2D: " +
-                       std::to_string(num_out_of_bounds) +
-                       " point(s) found outside uniform grid domain");
-    }
-
-    UniformGridFieldLocalizationHint<2> hint(
-      cell_indices_device, coordinates_d, policy.mode, is_out_of_bounds_device,
-      num_out_of_bounds);
-    return std::make_unique<UniformGridSplinePointEvaluator2D<>>(
-      layout_, std::move(hint), policy.fill_value);
   }
 
-  CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const override
+protected:
+  std::unique_ptr<PointEvaluator<Real>> CreateEvaluator(
+    std::shared_ptr<const Bound> bound, DifferentialOperator op) const override
   {
-    throw pcms_error("UniformGridSplineEvaluatorFactory2D: "
-                     "GetDOFHolderCoordinates not yet implemented");
+    return std::make_unique<UniformGridSplinePointEvaluator2D<>>(
+      layout_, std::move(bound), op);
   }
 
 private:
   std::shared_ptr<const UniformGridFieldLayout<2>> layout_;
-  UniformGrid<2> grid_;
 };
 
 } // namespace pcms

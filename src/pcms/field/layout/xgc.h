@@ -14,9 +14,6 @@ public:
   XGCFieldLayout(const ReverseClassificationVertex& reverse_classification,
                  LO num_plane_nodes);
 
-  std::shared_ptr<const Discretization> GetDiscretization()
-    const noexcept override;
-
   int GetNumComponents() const override;
   LO GetNumDofHolder() const override;
   GO GetNumGlobalDofHolder() const override;
@@ -44,7 +41,6 @@ private:
   Kokkos::View<LO*, HostMemorySpace> classification_ids_host_;
   Kokkos::View<Real**, DeviceMemorySpace> coords_;
   LO num_plane_nodes_;
-  std::shared_ptr<const Discretization> discretization_;
 };
 
 } // namespace pcms

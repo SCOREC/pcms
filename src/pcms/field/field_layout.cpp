@@ -1,9 +1,29 @@
 #include "pcms/field/field_layout.h"
+#include "pcms/geometry/geometry.hpp"
 #include "pcms/field/gid_permutation.hpp"
 #include "pcms/utility/assert.h"
 
 namespace pcms
 {
+
+OwnerHints DOFHolderOwners(const FieldLayout& layout)
+{
+  const int entity_dim = layout.GetDOFHolderEntityDim();
+  if (layout.GetGeometry() == nullptr || entity_dim < 0 || layout.HasGhosts()) {
+    return {};
+  }
+  // without ghosts, DOF holder i is the i-th DOF holder of the layout's one
+  // populated dimension, whose block starts at that dimension's offset
+  const LO n = layout.GetNumDofHolder();
+  const auto first = static_cast<LO>(layout.GetEntOffsets()[entity_dim]);
+  Kokkos::View<LO*, DeviceMemorySpace> entities(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "dof_holder_owners"), n);
+  Kokkos::parallel_for(
+    "DOFHolderOwners",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n),
+    KOKKOS_LAMBDA(const LO i) { entities(i) = i - first; });
+  return OwnerHints{layout.GetGeometry(), entity_dim, entities};
+}
 
 void FieldLayout::BuildGlobalToLocalPermutation(
   Kokkos::View<const GO*, DeviceMemorySpace> local_gids,

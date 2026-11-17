@@ -31,8 +31,9 @@ TEST_CASE("evaluate linear 2d omega_h_field")
   auto lib = Omega_h::Library{};
   auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 100,
                                  100, 0, false);
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::csys::Cartesian::Deferred());
+  auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto factory = pcms::CreateLagrangeSpace(geometry, 1, 1);
   auto field = factory->CreateFunction<Real>();
 
   pcms::test::SetField(
@@ -49,9 +50,11 @@ TEST_CASE("evaluate quadratic 2d meshfields_field")
   auto lib = Omega_h::Library{};
   auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 100,
                                  100, 0, false);
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::MeshFields);
+  auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto factory = pcms::CreateLagrangeSpace(
+    geometry, 2, 1,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
 
   // Quadratic DOF holders span vertices and edge midpoints; the layout's DOF
   // coordinates cover both, so SetField samples sin_f at every holder.
@@ -116,9 +119,11 @@ static void CheckMeshFieldsDofHolderCoordsAgainstManual(Omega_h::Library& lib,
   else if (order == 2)
     nodes_per_dim = {1, 1, 0, 0};
 
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, order, 1, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::MeshFields);
+  auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto factory = pcms::CreateLagrangeSpace(
+    geometry, order, 1,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
   auto layout = factory->GetLayout();
 
   // Sanity-check the block layout: vertices then edges.
@@ -168,8 +173,9 @@ TEST_CASE("evaluate quadratic 2d omega_h_field throws")
   auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 100,
                                  100, 0, false);
 
-  REQUIRE_THROWS_AS(pcms::LagrangeFunctionSpace::FromMesh(
-                      mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
-                      pcms::LagrangeFunctionSpace::Backend::OmegaH),
-                    pcms::pcms_error);
+  REQUIRE_THROWS_AS(
+    pcms::CreateLagrangeSpace(
+      pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred()), 2, 1,
+      pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH}),
+    pcms::pcms_error);
 }

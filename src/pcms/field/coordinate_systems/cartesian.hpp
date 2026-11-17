@@ -13,18 +13,18 @@ namespace csys
 class Cartesian final : public CoordinateSystem
 {
 public:
-  [[nodiscard]] static std::shared_ptr<const CoordinateSystem> Create(int dim)
+  [[nodiscard]] static std::shared_ptr<const Cartesian> Create(int dim)
   {
     if (dim < 1 || dim > 3) {
       throw pcms_error("csys::Cartesian::Create: dimension must be 1..3, got " +
                        std::to_string(dim));
     }
-    return std::shared_ptr<const CoordinateSystem>(new Cartesian(dim));
+    return std::shared_ptr<const Cartesian>(new Cartesian(dim));
   }
 
-  [[nodiscard]] static std::shared_ptr<const CoordinateSystem> Deferred()
+  [[nodiscard]] static std::shared_ptr<const Cartesian> Deferred()
   {
-    return std::shared_ptr<const CoordinateSystem>(new Cartesian(0));
+    return std::shared_ptr<const Cartesian>(new Cartesian(0));
   }
 
   [[nodiscard]] std::string_view Kind() const noexcept override

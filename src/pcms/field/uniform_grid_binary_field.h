@@ -4,6 +4,7 @@
 #include "pcms/field/layout/uniform_grid.h"
 #include "pcms/field/data/simple.h"
 #include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/localization/point_search.h"
 #include "pcms/utility/arrays.h"
@@ -37,8 +38,8 @@ template <unsigned Dim>
 std::pair<std::shared_ptr<const UniformGridFieldLayout<Dim>>, Field<Real>>
 CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
 {
-  auto function_space = LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, csys::Cartesian::Deferred());
+  auto function_space = CreateLagrangeSpace(
+    CreateUniformGridGeometry(grid, csys::Cartesian::Deferred()), 1, 1);
   auto layout = std::dynamic_pointer_cast<const UniformGridFieldLayout<Dim>>(
     function_space->GetLayout());
   PCMS_ALWAYS_ASSERT(layout != nullptr);
@@ -71,7 +72,7 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
 
   Kokkos::View<Real*, HostMemorySpace> data("binary_mask", n);
   for (LO i = 0; i < n; ++i)
-    data(i) = (results_h(i).element_id >= 0) ? 1.0 : 0.0;
+    data(i) = (results_h(i).entity >= 0) ? 1.0 : 0.0;
 
   field.SetDOFHolderDataUncheckedHost(
     Rank2View<const Real, HostMemorySpace>(data.data(), n, 1));

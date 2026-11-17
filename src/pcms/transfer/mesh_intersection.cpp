@@ -1,4 +1,5 @@
 #include "pcms/transfer/mesh_intersection.hpp"
+#include "pcms/utility/assert.h"
 #include "pcms/utility/mesh_geometry.h"
 #include "pcms/utility/omega_h_array_utils.h"
 
@@ -7,23 +8,39 @@ namespace pcms
 namespace
 {
 // Construct the source-mesh containing-element search appropriate to the
-// spatial dimension: a uniform 20^Dim background grid over the source mesh.
+// spatial dimension: a background grid sized so cells hold ~1 element.
 template <int Dim>
 auto MakeGridPointSearch(Omega_h::Mesh& source_mesh)
 {
+  const auto n = pcms::DivisionsPerAxisForMesh<Dim>(source_mesh.nelems());
   if constexpr (Dim == 3) {
-    return pcms::GridPointSearch3D(source_mesh, 20, 20, 20);
+    return pcms::GridPointSearch3D(source_mesh, n, n, n);
   } else {
-    return pcms::GridPointSearch2D(source_mesh, 20, 20);
+    return pcms::GridPointSearch2D(source_mesh, n, n);
   }
+}
+
+// For each target element, the source element containing its centroid: where
+// the BFS over the source dual graph starts.
+template <int Dim>
+Kokkos::View<const LO*> LocateTargetCentroids(
+  Omega_h::Mesh& target_mesh, const PointLocalizationSearch<Dim>& source_search)
+{
+  const auto flat_centroids = pcms::get_entity_centroids(target_mesh, Dim);
+  // Convert layout_right 1D Omega_h array to 2D Kokkos view with correct layout
+  auto centroids = ConvertCoordsTo2D(flat_centroids, target_mesh.nelems(), Dim);
+  auto results = source_search(centroids);
+  return source_search.GetOwningElementIds(results);
 }
 } // namespace
 
 template <int Dim>
 void FindIntersections::adjBasedIntersectSearch(
+  const Kokkos::View<const LO*>& start_elements,
   const Omega_h::LOs& tgt2src_offsets,
   Omega_h::Write<Omega_h::LO>& nIntersections,
-  Omega_h::Write<Omega_h::LO>& tgt2src_indices, bool is_count_only)
+  Omega_h::Write<Omega_h::LO>& tgt2src_indices, bool is_count_only,
+  bool use_prefilter)
 {
   // Element entity dimension equals the spatial dimension (FACE for 2D, REGION
   // for 3D); measures are triangle areas (2D) or tet volumes (3D).
@@ -38,29 +55,24 @@ void FindIntersections::adjBasedIntersectSearch(
   const auto& t2tt = t2t.a2ab;
   const auto& tt2t = t2t.ab2b;
 
-  const auto flat_centroids = pcms::get_entity_centroids(target_mesh_, Dim);
-  // Convert layout_right 1D Omega_h array to 2D Kokkos view with correct layout
-  auto centroids =
-    ConvertCoordsTo2D(flat_centroids, target_mesh_.nelems(), Dim);
-
-  auto search_cell = MakeGridPointSearch<Dim>(source_mesh_);
-  auto results = search_cell(centroids);
-  auto owning_cell_ids = search_cell.GetOwningElementIds(results);
-
   auto nelems_target = target_mesh_.nelems();
+  PCMS_ALWAYS_ASSERT(static_cast<Omega_h::LO>(start_elements.extent(0)) ==
+                     nelems_target);
   Omega_h::parallel_for(
     nelems_target,
     OMEGA_H_LAMBDA(const Omega_h::LO id) {
       Queue queue;
       Track visited;
 
-      auto current_cell_id = owning_cell_ids(id);
+      auto current_cell_id = start_elements(id);
       auto current_tgt_elm_measure = tgt_elem_measures[id];
 
-      OMEGA_H_CHECK_PRINTF(current_cell_id >= 0,
-                           "ERROR: source cell id not found for given target "
-                           "centroid %d\n",
-                           id);
+      // No source element is a candidate for the centroid's grid cell, so the
+      // target lies outside the source mesh and overlaps nothing.
+      if (current_cell_id < 0) {
+        nIntersections[id] = 0;
+        return;
+      }
 
       auto tgt_elm_vert_coords =
         get_vert_coords_of_elem<Dim>(tgt_coords, tgt_elems2nodes, id);
@@ -105,6 +117,14 @@ void FindIntersections::adjBasedIntersectSearch(
             }
             auto elm_vert_coords = get_vert_coords_of_elem<Dim>(
               src_coords, src_elems2nodes, neighborElmId);
+
+            // use plane to check if element is already outside clipped region
+            // this avoids construction of unnecessary clip
+            if (use_prefilter && simplices_have_degenerate_overlap<Dim>(
+                                   tgt_elm_vert_coords, elm_vert_coords)) {
+              continue;
+            }
+
             r3d::Polytope<Dim> intersection;
             r3d::intersect_simplices(intersection, tgt_elm_vert_coords,
                                      elm_vert_coords);
@@ -154,29 +174,34 @@ void FindIntersections::adjBasedIntersectSearch(
 
 // Explicit instantiations for the supported spatial dimensions.
 template void FindIntersections::adjBasedIntersectSearch<2>(
-  const Omega_h::LOs&, Omega_h::Write<Omega_h::LO>&,
-  Omega_h::Write<Omega_h::LO>&, bool);
+  const Kokkos::View<const LO*>&, const Omega_h::LOs&,
+  Omega_h::Write<Omega_h::LO>&, Omega_h::Write<Omega_h::LO>&, bool, bool);
 template void FindIntersections::adjBasedIntersectSearch<3>(
-  const Omega_h::LOs&, Omega_h::Write<Omega_h::LO>&,
-  Omega_h::Write<Omega_h::LO>&, bool);
+  const Kokkos::View<const LO*>&, const Omega_h::LOs&,
+  Omega_h::Write<Omega_h::LO>&, Omega_h::Write<Omega_h::LO>&, bool, bool);
 
 namespace
 {
 template <int Dim>
-IntersectionResults intersectTargetsImpl(Omega_h::Mesh& source_mesh,
-                                         Omega_h::Mesh& target_mesh)
+IntersectionResults intersectTargetsImpl(
+  Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
+  const PointLocalizationSearch<Dim>& source_search, bool use_prefilter)
 {
   FindIntersections intersect(source_mesh, target_mesh);
 
   auto nelems_target = target_mesh.nelems();
+
+  const auto start_elements =
+    LocateTargetCentroids<Dim>(target_mesh, source_search);
 
   Omega_h::Write<Omega_h::LO> nIntersections(
     nelems_target, 0, "number of intersections in each target element");
 
   Omega_h::Write<Omega_h::LO> tgt2src_indices;
 
-  intersect.adjBasedIntersectSearch<Dim>(Omega_h::LOs(), nIntersections,
-                                         tgt2src_indices, true);
+  intersect.adjBasedIntersectSearch<Dim>(start_elements, Omega_h::LOs(),
+                                         nIntersections, tgt2src_indices, true,
+                                         use_prefilter);
 
   Kokkos::fence();
   auto tgt2src_offsets = Omega_h::offset_scan(Omega_h::Read(nIntersections),
@@ -189,20 +214,55 @@ IntersectionResults intersectTargetsImpl(Omega_h::Mesh& source_mesh,
     ntotal_intersections, 0,
     "indices of the source elements that intersect the given target element");
 
-  intersect.adjBasedIntersectSearch<Dim>(tgt2src_offsets, nIntersections,
-                                         tgt2src_indices, false);
+  intersect.adjBasedIntersectSearch<Dim>(start_elements, tgt2src_offsets,
+                                         nIntersections, tgt2src_indices, false,
+                                         use_prefilter);
   return {.tgt2src_offsets = tgt2src_offsets,
           .tgt2src_indices = Omega_h::read(tgt2src_indices)};
+}
+
+template <int Dim>
+const PointLocalizationSearch<Dim>& RequireSearchDimension(
+  const GridPointSearchVariant& source_search)
+{
+  using SearchT =
+    std::conditional_t<Dim == 3, GridPointSearch3D, GridPointSearch2D>;
+  const auto* search = std::get_if<SearchT>(&source_search);
+  if (search == nullptr) {
+    throw pcms_error("intersectTargets: the supplied source search has a "
+                     "different spatial dimension than the meshes");
+  }
+  return *search;
 }
 } // namespace
 
 IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
-                                     Omega_h::Mesh& target_mesh)
+                                     Omega_h::Mesh& target_mesh,
+                                     bool use_prefilter)
 {
   OMEGA_H_CHECK(source_mesh.dim() == target_mesh.dim());
   if (source_mesh.dim() == 3) {
-    return intersectTargetsImpl<3>(source_mesh, target_mesh);
+    const auto search = MakeGridPointSearch<3>(source_mesh);
+    return intersectTargetsImpl<3>(source_mesh, target_mesh, search,
+                                   use_prefilter);
   }
-  return intersectTargetsImpl<2>(source_mesh, target_mesh);
+  const auto search = MakeGridPointSearch<2>(source_mesh);
+  return intersectTargetsImpl<2>(source_mesh, target_mesh, search,
+                                 use_prefilter);
+}
+
+IntersectionResults intersectTargets(
+  Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
+  const GridPointSearchVariant& source_search, bool use_prefilter)
+{
+  OMEGA_H_CHECK(source_mesh.dim() == target_mesh.dim());
+  if (source_mesh.dim() == 3) {
+    return intersectTargetsImpl<3>(source_mesh, target_mesh,
+                                   RequireSearchDimension<3>(source_search),
+                                   use_prefilter);
+  }
+  return intersectTargetsImpl<2>(source_mesh, target_mesh,
+                                 RequireSearchDimension<2>(source_search),
+                                 use_prefilter);
 }
 } // namespace pcms

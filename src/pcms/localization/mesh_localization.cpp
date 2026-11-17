@@ -1,13 +1,14 @@
 #include "pcms/localization/mesh_localization.h"
 #include "pcms/localization/adj_search.hpp"
 #include "pcms/localization/mls_support_helpers.h"
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/entity_types.h"
 #include "pcms/utility/mesh_geometry.h"
 #include "pcms/utility/omega_h_array_utils.h"
 
 #include <Omega_h_array.hpp>
+#include <string>
 
 namespace pcms
 {
@@ -15,9 +16,13 @@ namespace pcms
 SupportResults AdjacencyLocalizationFactory::Build(
   CoordinateView<DeviceMemorySpace> target_coords) const
 {
-  if (target_coords.GetCoordinateSystem() != CoordinateSystem::Cartesian) {
+  // Euclidean search structures are valid wherever the
+  // metric is the identity.
+  if (!HasIdentityMetric(*target_coords.GetCoordinateSystem())) {
     throw pcms_error(
-      "AdjacencyLocalizationFactory: only Cartesian coordinates are supported");
+      "AdjacencyLocalizationFactory: requires a coordinate system whose metric "
+      "is the identity (orthogonal basis and unit scale factors); got '" +
+      std::string(target_coords.GetCoordinateSystem()->Kind()) + "'");
   }
 
   const auto tgt_view = target_coords.GetValues();

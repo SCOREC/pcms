@@ -73,7 +73,9 @@ redev::ClassPtn setupServerPartition(Omega_h::Mesh& mesh,
 auto setupComms(redev::Redev& rdv, std::string clientName, const int clientId)
 {
   const bool isSST = false;
-  adios2::Params params{{"Streaming", "On"}, {"OpenTimeoutSecs", "60"}};
+  adios2::Params params{{"Streaming", "On"},
+                        {"OpenTimeoutSecs", "60"},
+                        {"BeginStepPollingFrequencySecs", "0.05"}};
   REDEV_ALWAYS_ASSERT(clientId == 0 || clientId == 1);
   return rdv.CreateAdiosChannel(clientName, params,
                                 static_cast<redev::TransportType>(isSST));

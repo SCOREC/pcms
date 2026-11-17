@@ -1,5 +1,7 @@
 #include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
 #include "pcms/field/element_dispatch.h"
+#include "pcms/field/evaluator/omega_h_lagrange.h"
+#include "pcms/field/function_space/lagrange.h"
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
 #include "pcms/utility/assert.h"
@@ -7,6 +9,7 @@
 #include <Omega_h_for.hpp>
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 namespace pcms
 {
@@ -27,12 +30,28 @@ struct Data
 
 template <int Dim, int TgtOrder>
 Data BuildDataImpl(const OmegaHLagrangeLayout& source_layout,
-                   const OmegaHLagrangeLayout& target_layout, int quad_order);
+                   const OmegaHLagrangeLayout& target_layout, int quad_order,
+                   const GridPointSearchVariant* source_search);
+
+// The source space's point search, if the space is an Omega_h Lagrange space
+// and so owns one the intersection can reuse; null otherwise.
+const GridPointSearchVariant* SourceSearchFromSpace(const FunctionSpace& space)
+{
+  const auto* lagrange = dynamic_cast<const LagrangeFunctionSpace*>(&space);
+  if (lagrange == nullptr) {
+    return nullptr;
+  }
+  const auto* factory =
+    dynamic_cast<const OmegaHLagrangeEvaluatorFactory<Real>*>(
+      lagrange->GetEvaluatorFactory().get());
+  return factory ? &factory->GetSearch() : nullptr;
+}
 
 Data BuildData(const std::shared_ptr<const OmegaHLagrangeLayout>& source_layout,
-               CoordinateSystem source_coordinate_system,
+               std::shared_ptr<const CoordinateSystem> source_coordinate_system,
                const std::shared_ptr<const OmegaHLagrangeLayout>& target_layout,
-               CoordinateSystem target_coordinate_system)
+               std::shared_ptr<const CoordinateSystem> target_coordinate_system,
+               const GridPointSearchVariant* source_search)
 {
   detail::CheckOmegaHScalarLagrangeLayout(
     source_coordinate_system, source_layout, "OmegaHIntersectionRHSIntegrator",
@@ -57,16 +76,17 @@ Data BuildData(const std::shared_ptr<const OmegaHLagrangeLayout>& source_layout,
     constexpr int TgtOrder = decltype(order_c)::value;
     if (dim == 3) {
       return BuildDataImpl<3, TgtOrder>(*source_layout, *target_layout,
-                                        quad_order);
+                                        quad_order, source_search);
     }
     return BuildDataImpl<2, TgtOrder>(*source_layout, *target_layout,
-                                      quad_order);
+                                      quad_order, source_search);
   });
 }
 
 template <int Dim, int TgtOrder>
 Data BuildDataImpl(const OmegaHLagrangeLayout& source_layout,
-                   const OmegaHLagrangeLayout& target_layout, int quad_order)
+                   const OmegaHLagrangeLayout& target_layout, int quad_order,
+                   const GridPointSearchVariant* source_search)
 {
   using Basis = detail::TargetSimplexBasis<Dim, TgtOrder>;
   constexpr int ndof = Basis::ndof;
@@ -78,7 +98,9 @@ Data BuildDataImpl(const OmegaHLagrangeLayout& source_layout,
   Omega_h::Mesh& source_mesh = source_layout.GetMesh();
   Omega_h::Mesh& target_mesh = target_layout.GetMesh();
 
-  const auto intersections = intersectTargets(source_mesh, target_mesh);
+  const auto intersections =
+    source_search ? intersectTargets(source_mesh, target_mesh, *source_search)
+                  : intersectTargets(source_mesh, target_mesh);
 
   const auto& tgt_coords = target_mesh.coords();
   const auto& tgt_elems2nodes = target_mesh.ask_down(Dim, Omega_h::VERT).ab2b;
@@ -194,18 +216,30 @@ OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
       source_space.GetCoordinateSystem(),
       std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
         target_space.GetLayout()),
-      target_space.GetCoordinateSystem())
+      target_space.GetCoordinateSystem(), SourceSearchFromSpace(source_space))
 {
 }
 
 OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
   std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
-  CoordinateSystem source_coordinate_system,
+  std::shared_ptr<const CoordinateSystem> source_coordinate_system,
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-  CoordinateSystem target_coordinate_system)
+  std::shared_ptr<const CoordinateSystem> target_coordinate_system)
+  : OmegaHIntersectionRHSIntegrator(
+      std::move(source_layout), std::move(source_coordinate_system),
+      std::move(target_layout), std::move(target_coordinate_system), nullptr)
+{
+}
+
+OmegaHIntersectionRHSIntegrator::OmegaHIntersectionRHSIntegrator(
+  std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
+  std::shared_ptr<const CoordinateSystem> source_coordinate_system,
+  std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+  std::shared_ptr<const CoordinateSystem> target_coordinate_system,
+  const GridPointSearchVariant* source_search)
 {
   Data data = BuildData(source_layout, source_coordinate_system, target_layout,
-                        target_coordinate_system);
+                        target_coordinate_system, source_search);
   coords_ = std::move(data.coords);
   node_gids_ = std::move(data.node_gids);
   coeffs_ = std::move(data.coeffs);
@@ -238,8 +272,9 @@ OmegaHIntersectionRHSIntegrator::~OmegaHIntersectionRHSIntegrator()
 CoordinateView<DeviceMemorySpace>
 OmegaHIntersectionRHSIntegrator::GetIntegrationPoints() const noexcept
 {
-  return CoordinateView<DeviceMemorySpace>(CoordinateSystem::Cartesian,
-                                           MakeConstRank2View(coords_));
+  return CoordinateView<DeviceMemorySpace>(
+    csys::Cartesian::Create(static_cast<int>(coords_.extent(1))),
+    MakeConstRank2View(coords_));
 }
 
 Vec OmegaHIntersectionRHSIntegrator::GetVector() const noexcept
@@ -260,10 +295,7 @@ void OmegaHIntersectionRHSIntegrator::Assemble(
   PetscErrorCode ierr = VecZeroEntries(vec_);
   CHKERRABORT(PETSC_COMM_SELF, ierr);
 
-  auto sv = Kokkos::View<const Real**, Kokkos::LayoutRight, DeviceMemorySpace,
-                         Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
-    sampled_values.data_handle(), sampled_values.extent(0),
-    sampled_values.extent(1));
+  auto sv = sampled_values;
   Kokkos::View<PetscScalar*, DeviceMemorySpace> coo_vals("rhs_coo_vals",
                                                          num_pts * ndof);
   auto coeffs = coeffs_;

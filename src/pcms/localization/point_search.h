@@ -2,6 +2,8 @@
 #define PCMS_COUPLING_POINT_SEARCH_H
 #include <cassert>
 
+#include <variant>
+
 #include <Kokkos_Core.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_bbox.hpp>
@@ -61,7 +63,25 @@ Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_2d(Omega_h::Mesh& mesh,
                               Kokkos::View<Uniform2DGrid[1]> grid,
                               int num_grid_cells);
-}
+
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_3d(Omega_h::Mesh& mesh,
+                              Kokkos::View<Uniform3DGrid[1]> grid,
+                              int num_grid_cells);
+
+/// O(num_cells * nelems) brute-force candidate map. Test oracle for the
+/// element-major build above; never use in production.
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_reference_2d(Omega_h::Mesh& mesh,
+                                        Kokkos::View<Uniform2DGrid[1]> grid,
+                                        int num_grid_cells);
+
+/// \see construct_intersection_map_reference_2d
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
+                                        Kokkos::View<Uniform3DGrid[1]> grid,
+                                        int num_grid_cells);
+} // namespace detail
 
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
   const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox);
@@ -77,12 +97,36 @@ public:
       VERTEX = 0,
       EDGE = 1,
       FACE = 2,
-      REGION = 3
+      REGION = 3,
+      NO_INTERSECT = 4
     };
 
     Dimensionality dimensionality;
-    LO element_id; // ID of the actual entity (vertex/edge/face/region)
+    LO element_id;
     Omega_h::Vector<dim + 1> parametric_coords;
+
+    /// `element_id` of a point outside the mesh whose nearest entity is `id`.
+    [[nodiscard]] KOKKOS_INLINE_FUNCTION static constexpr LO OutsideId(LO id)
+    {
+      return -id - 1;
+    }
+
+    /// True when the point was not located inside any entity.
+    [[nodiscard]] KOKKOS_INLINE_FUNCTION constexpr bool IsOutside() const
+    {
+      return element_id < 0;
+    }
+
+    /// Id of the entity of dimension `dimensionality`: the containing entity
+    /// of a located point, the nearest entity of an outside point, or -1 for
+    /// NO_INTERSECT.
+    [[nodiscard]] KOKKOS_INLINE_FUNCTION constexpr LO EntityId() const
+    {
+      if (dimensionality == Dimensionality::NO_INTERSECT) {
+        return -1;
+      }
+      return element_id < 0 ? -element_id - 1 : element_id;
+    }
   };
 
   static constexpr auto DIM = dim;
@@ -109,7 +153,7 @@ public:
    */
   [[nodiscard]] virtual LO GetOwningElementId(const Result& result) = 0;
   [[nodiscard]] virtual Kokkos::View<LO*> GetOwningElementIds(
-    Kokkos::View<const Result*> results) = 0;
+    Kokkos::View<const Result*> results) const = 0;
   virtual ~PointLocalizationSearch() = default;
 
 protected:
@@ -132,17 +176,15 @@ public:
                     const PointSearchTolerances& tolerances);
 
   /**
-   *  given a point in global coordinates give the id of the triangle that the
-   * point lies within and the parametric coordinate of the point within the
-   * triangle. If the point does not lie within any triangle element. Then the
-   * id will be a negative number and (TODO) will return a negative id of the
-   * closest element
+   * Given points in global coordinates, returns for each the entity (vertex,
+   * edge or face, chosen with the vertex and edge tolerances) containing it
+   * and the point's barycentric coordinates in a face adjacent to that entity.
    */
   Kokkos::View<Result*> operator()(
     Kokkos::View<const Real* [DIM]> point) const override;
   [[nodiscard]] LO GetOwningElementId(const Result& result) override;
   [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
-    Kokkos::View<const Result*> results) override;
+    Kokkos::View<const Result*> results) const override;
 
 private:
   Omega_h::Mesh mesh_;
@@ -170,17 +212,26 @@ public:
                     const PointSearchTolerances& tolerances);
 
   /**
-   *  Given a point in global coordinates, returns the id of the tetrahedron (3D
-   * element) that the point lies within and the parametric coordinate of the
-   * point within the tetrahedron. If the point does not lie within any
-   * tetrahedron element, then the id will be a negative number and (TODO) will
-   * return a negative id of the closest element.
+   * Given points in global coordinates, returns for each the id of a
+   * tetrahedron containing it and the point's barycentric coordinates in that
+   * tetrahedron. Containment is tested with a Cartesian tolerance band: the
+   * point may lie up to `tolerances(2)` outside any face plane (the band is
+   * applied per barycentric coordinate, scaled by the gradient norm of that
+   * coordinate, so it is the same distance from both sides of a shared face).
+   * The result is always labelled REGION. When several tetrahedra contain the
+   * point (it lies on a shared face, edge or vertex) the smallest id is
+   * returned; this is an interim tie-break that hides a genuine ambiguity,
+   * see docs/point_search_shared_face_plan.md.
+   *
+   * If no candidate contains the point, the result is the candidate whose
+   * face is closest, encoded with Result::OutsideId or NO_INTERSECT with
+   * id -1 when the grid cell has no candidates at all.
    */
   Kokkos::View<Result*> operator()(
     Kokkos::View<const Real* [DIM]> point) const override;
   [[nodiscard]] LO GetOwningElementId(const Result& result) override;
   [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
-    Kokkos::View<const Result*> results) override;
+    Kokkos::View<const Result*> results) const override;
 
 private:
   Omega_h::Mesh mesh_;
@@ -194,8 +245,14 @@ private:
   CandidateMapT candidate_map_;
   Omega_h::LOs tris2verts_;
   Omega_h::Reals coords_;
-  Real fuzz_;
 };
+
+/// A grid search of either spatial dimension, as owned by components that are
+/// dimension-agnostic at compile time (e.g. an evaluator factory over an
+/// Omega_h mesh) and handed to consumers that need to locate points on the same
+/// mesh without building a second search.
+using GridPointSearchVariant =
+  std::variant<GridPointSearch2D, GridPointSearch3D>;
 
 } // namespace pcms
 #endif // PCMS_COUPLING_POINT_SEARCH_H

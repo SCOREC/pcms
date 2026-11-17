@@ -1,7 +1,7 @@
 #ifndef PCMS_TRANSFER_LINEAR_FORM_INTEGRATOR_H
 #define PCMS_TRANSFER_LINEAR_FORM_INTEGRATOR_H
 
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/utility/arrays.h"
 #include <petscvec.h>
 

@@ -13,6 +13,8 @@
 #include <cmath>
 #include <unordered_map>
 #include <vector>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/coordinate_systems/cylindrical.hpp"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -104,9 +106,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: integration points lie inside "
     pcms::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space);
 
   const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
-  auto raw_coords_host = pcms::test::CopyCoordinatesToHost(
-    raw_coords, static_cast<int>(raw_coords.extent(0)),
-    static_cast<int>(raw_coords.extent(1)));
+  auto raw_coords_host = pcms::test::CopyCoordinatesToHost(raw_coords);
   const std::size_t n = raw_coords_host.extent(0);
 
   REQUIRE(n > 0);
@@ -116,6 +116,44 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: integration points lie inside "
     CHECK(raw_coords_host(i, 0) <= 1.0 + 1e-12);
     CHECK(raw_coords_host(i, 1) >= -1e-12);
     CHECK(raw_coords_host(i, 1) <= 1.0 + 1e-12);
+  }
+}
+
+// The space constructor borrows the source space's point search for the
+// intersection; the layout constructor builds its own. Both must produce the
+// same quadrature data, point for point.
+TEST_CASE("OmegaHIntersectionRHSIntegrator: space and layout constructors "
+          "build identical integration points",
+          "[rhs_integrator]")
+{
+  Omega_h::Library lib;
+  auto source_mesh = pcms::test::BuildUnitSquare(lib, 1);
+  auto target_mesh = pcms::test::BuildUnitSquare(lib, 0);
+
+  auto source_space = pcms::test::MakeP1Space(source_mesh);
+  auto target_space = pcms::test::MakeP1Space(target_mesh);
+
+  pcms::OmegaHIntersectionRHSIntegrator from_spaces(*source_space,
+                                                    *target_space);
+  pcms::OmegaHIntersectionRHSIntegrator from_layouts(
+    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+      source_space->GetLayout()),
+    source_space->GetCoordinateSystem(),
+    std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
+      target_space->GetLayout()),
+    target_space->GetCoordinateSystem());
+
+  const auto a = from_spaces.GetIntegrationPoints().GetValues();
+  const auto b = from_layouts.GetIntegrationPoints().GetValues();
+  REQUIRE(a.extent(0) == b.extent(0));
+  REQUIRE(a.extent(1) == b.extent(1));
+  REQUIRE(a.extent(0) > 0);
+  auto a_host = pcms::test::CopyCoordinatesToHost(a);
+  auto b_host = pcms::test::CopyCoordinatesToHost(b);
+  for (std::size_t i = 0; i < a_host.extent(0); ++i) {
+    for (std::size_t d = 0; d < a_host.extent(1); ++d) {
+      REQUIRE(a_host(i, d) == b_host(i, d));
+    }
   }
 }
 
@@ -199,7 +237,7 @@ TEST_CASE(
     std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
       target_space->GetLayout());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(target_mesh.coords(), 2), target_mesh.nverts(), 2);
+    pcms::MakeConstRank2View(target_mesh.coords(), 2));
   std::vector<pcms::Real> g(target_mesh.nverts());
   for (int i = 0; i < target_mesh.nverts(); ++i) {
     g[i] = tgt_coords_h(i, 0) + tgt_coords_h(i, 1);
@@ -221,7 +259,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
   SECTION("multi-component source space throws")
   {
     auto source_space = pcms::LagrangeFunctionSpace::FromMesh(
-      source_mesh, 1, 2, pcms::CoordinateSystem::Cartesian, "global",
+      source_mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     auto target_space = pcms::test::MakeP1Space(target_mesh);
     REQUIRE_THROWS(
@@ -232,7 +270,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
   {
     auto source_space = pcms::test::MakeP1Space(source_mesh);
     auto target_space = pcms::LagrangeFunctionSpace::FromMesh(
-      target_mesh, 1, 2, pcms::CoordinateSystem::Cartesian, "global",
+      target_mesh, 1, 2, pcms::csys::Cartesian::Deferred(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     REQUIRE_THROWS(
       pcms::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space));
@@ -241,7 +279,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
   SECTION("non-Cartesian source coordinate system throws")
   {
     auto source_space = pcms::LagrangeFunctionSpace::FromMesh(
-      source_mesh, 1, 1, pcms::CoordinateSystem::Cylindrical, "global",
+      source_mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     auto target_space = pcms::test::MakeP1Space(target_mesh);
     REQUIRE_THROWS(
@@ -252,7 +290,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator: rejects invalid layouts",
   {
     auto source_space = pcms::test::MakeP1Space(source_mesh);
     auto target_space = pcms::LagrangeFunctionSpace::FromMesh(
-      target_mesh, 1, 1, pcms::CoordinateSystem::Cylindrical, "global",
+      target_mesh, 1, 1, pcms::csys::CylindricalRZ::Create(), "global",
       pcms::LagrangeFunctionSpace::Backend::OmegaH);
     REQUIRE_THROWS(
       pcms::BuildOmegaHConservativeRHSIntegrator(*source_space, *target_space));
@@ -305,9 +343,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator (3D): constant load sums to c times "
   const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
   REQUIRE(raw_coords.extent(0) > 0);
   REQUIRE(raw_coords.extent(1) == 3);
-  auto coords_h = pcms::test::CopyCoordinatesToHost(
-    raw_coords, static_cast<int>(raw_coords.extent(0)),
-    static_cast<int>(raw_coords.extent(1)));
+  auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
   for (std::size_t i = 0; i < coords_h.extent(0); ++i) {
     const double x = coords_h(i, 0);
     const double y = coords_h(i, 1);
@@ -369,9 +405,7 @@ TEST_CASE("OmegaHIntersectionRHSIntegrator (3D): dual tets overlap is an "
 
   const auto raw_coords = integrator->GetIntegrationPoints().GetValues();
   REQUIRE(raw_coords.extent(0) > 0);
-  auto coords_h = pcms::test::CopyCoordinatesToHost(
-    raw_coords, static_cast<int>(raw_coords.extent(0)),
-    static_cast<int>(raw_coords.extent(1)));
+  auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
   for (std::size_t i = 0; i < coords_h.extent(0); ++i) {
     const double s = std::abs(coords_h(i, 0)) + std::abs(coords_h(i, 1)) +
                      std::abs(coords_h(i, 2));

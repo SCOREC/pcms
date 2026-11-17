@@ -1,23 +1,30 @@
+#include <optional>
+#include <stdexcept>
+#include <string>
+
+#include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <pybind11/numpy.h>
-#include "pcms/field/coordinate_system.h"
-#include "pcms/field/coordinate.h"
-#include "pcms/field/field.h"
-#include "pcms/field/field_evaluator_factory.h"
-#include "pcms/field/field_layout.h"
-#include "pcms/field/field_metadata.h"
-#include "pcms/field/function_space.h"
+
 #include "pcms/discretization/discretization/omega_h.hpp"
-#include "pcms/field/data/simple.h"
-#include "pcms/field/layout/uniform_grid.h"
-#include "pcms/field/uniform_grid_binary_field.h"
+#include "pcms/field/coordinate_system.hpp"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/coordinate_view.hpp"
+#include "pcms/field/evaluation_request.h"
+#include "pcms/field/evaluator/mls_options.h"
+#include "pcms/field/field.h"
+#include "pcms/field/field_data.h"
+#include "pcms/field/field_layout.h"
+#include "pcms/field/function_space.h"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/field/evaluator/mls_options.h"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/field/point_evaluator_factory.hpp"
+#include "pcms/field/uniform_grid_binary_field.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.h"
+#include "pcms/utility/uniform_grid.h"
 #include "numpy_array_transform.h"
+#include "py_value_types.h"
 
 namespace py = pybind11;
 
@@ -27,281 +34,178 @@ namespace pcms
 namespace
 {
 
-struct PythonEvaluationRequest
+struct PyEvaluationRequest
 {
   EvaluationRequest request;
-  py::object owner;
-  // Keep the device view alive to prevent dangling pointer in mdspan
   Kokkos::View<Real**, DeviceMemorySpace> device_coords;
 };
 
+using SystemHolder = std::shared_ptr<CoordinateSystem>;
+
+void SetDOFHolderData(Field<Real>& self, const PyValueView& v)
+{
+  auto array = NumpyInput<Real>::ensure(v.values);
+  if (!array) {
+    throw py::type_error("set_dof_holder_data: values must be float64");
+  }
+  self.SetDOFHolderDataHost(ValueView<const Real, HostMemorySpace>(
+    v.basis, NumpyToHostView<2, Real>(array)));
+}
+
 } // namespace
-
-void bind_coordinate_system_module(py::module& m)
-{
-  // Bind CoordinateSystem enum
-  py::enum_<CoordinateSystem>(m, "CoordinateSystem")
-    .value("Cartesian", CoordinateSystem::Cartesian)
-    .value("Cylindrical", CoordinateSystem::Cylindrical)
-    .value("XGC", CoordinateSystem::XGC)
-    .value("GNET", CoordinateSystem::GNET)
-    .value("BEAMS3D", CoordinateSystem::BEAMS3D)
-    .export_values();
-
-  // Bind CoordinateView for HostMemorySpace
-  py::class_<CoordinateView<HostMemorySpace>>(m, "CoordinateView")
-    .def(py::init([](CoordinateSystem cs, py::array_t<Real> coords) {
-           // Convert 2D numpy array to Rank2View
-           auto buf = coords.request();
-           if (buf.ndim != 2) {
-             throw std::runtime_error("Coordinates must be a 2D array");
-           }
-           // Create a view from the numpy array
-           using LayoutPolicy =
-             detail::default_layout_for_memory_space_t<HostMemorySpace>;
-           Rank2View<const Real, HostMemorySpace, LayoutPolicy> coords_view(
-             static_cast<Real*>(buf.ptr), buf.shape[0], buf.shape[1]);
-           return CoordinateView<HostMemorySpace>(cs, coords_view);
-         }),
-         py::arg("coordinate_system"), py::arg("coordinates"),
-         "Constructor for CoordinateView")
-
-    .def("get_coordinate_system",
-         &CoordinateView<HostMemorySpace>::GetCoordinateSystem,
-         "Get the coordinate system")
-
-    .def("set_coordinate_system",
-         &CoordinateView<HostMemorySpace>::SetCoordinateSystem, py::arg("cs"),
-         "Set the coordinate system")
-
-    .def(
-      "get_coordinates",
-      [](const CoordinateView<HostMemorySpace>& self) {
-        auto coords = self.GetValues();
-        // Convert to numpy array
-        py::array_t<Real> result({static_cast<py::ssize_t>(coords.extent(0)),
-                                  static_cast<py::ssize_t>(coords.extent(1))});
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        for (size_t i = 0; i < coords.extent(0); ++i) {
-          for (size_t j = 0; j < coords.extent(1); ++j) {
-            ptr[i * coords.extent(1) + j] = coords(i, j);
-          }
-        }
-        return result;
-      },
-      "Get the coordinates as numpy array");
-
-  // Bind CoordinateTransformation abstract base class
-  py::class_<CoordinateTransformation,
-             std::shared_ptr<CoordinateTransformation>>(
-    m, "CoordinateTransformation")
-    .def("evaluate", &CoordinateTransformation::Evaluate, py::arg("from"),
-         py::arg("to"), "Evaluate the coordinate transformation");
-}
-
-void bind_coordinate_module(py::module& m)
-{
-  // Bind Coordinate template for common cases
-  // 3D Cartesian coordinates with Real type
-  py::class_<Coordinate<CoordinateSystem, Real, 3>>(m, "Coordinate3D")
-    .def(py::init<Real, Real, Real>(), py::arg("x"), py::arg("y"), py::arg("z"),
-         "Constructor for 3D coordinate")
-
-    .def(
-      "values",
-      [](const Coordinate<CoordinateSystem, Real, 3>& self) {
-        auto vals = self.Values();
-        py::array_t<Real> result(3);
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        ptr[0] = vals[0];
-        ptr[1] = vals[1];
-        ptr[2] = vals[2];
-        return result;
-      },
-      "Get coordinate values as numpy array")
-
-    .def("__getitem__", &Coordinate<CoordinateSystem, Real, 3>::operator[],
-         py::arg("index"), "Get coordinate value by index");
-
-  // 2D coordinates
-  py::class_<Coordinate<CoordinateSystem, Real, 2>>(m, "Coordinate2D")
-    .def(py::init<Real, Real>(), py::arg("x"), py::arg("y"),
-         "Constructor for 2D coordinate")
-
-    .def(
-      "values",
-      [](const Coordinate<CoordinateSystem, Real, 2>& self) {
-        auto vals = self.Values();
-        py::array_t<Real> result(2);
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        ptr[0] = vals[0];
-        ptr[1] = vals[1];
-        return result;
-      },
-      "Get coordinate values as numpy array")
-
-    .def("__getitem__", &Coordinate<CoordinateSystem, Real, 2>::operator[],
-         py::arg("index"), "Get coordinate value by index");
-
-  // Bind CoordinateElement for common types
-  py::class_<CoordinateElement<CoordinateSystem, Real>>(m, "CoordinateElement")
-    .def(py::init<Real>(), py::arg("data"), "Constructor for CoordinateElement")
-
-    .def("underlying",
-         py::overload_cast<>(
-           &CoordinateElement<CoordinateSystem, Real>::underlying, py::const_),
-         "Get the underlying value");
-}
 
 void bind_create_field_module(py::module& m)
 {
-  py::class_<PythonEvaluationRequest>(m, "EvaluationRequest")
+  py::class_<FieldLayout, std::shared_ptr<FieldLayout>>(
+    m, "FieldLayout", "How a field's DOF holders are laid out")
+    .def("get_num_components", &FieldLayout::GetNumComponents)
+    .def("get_num_owned_dof_holder", &FieldLayout::GetNumOwnedDofHolder)
+    .def("get_num_global_dof_holder", &FieldLayout::GetNumGlobalDofHolder)
+    .def("get_dimension", &FieldLayout::GetDimension)
+    .def("is_distributed", &FieldLayout::IsDistributed)
+    .def(
+      "get_coordinate_system",
+      [](const FieldLayout& self) {
+        return ToPyHolder(self.GetCoordinateSystem());
+      },
+      "What this layout's DOF-holder coordinates mean")
+    .def(
+      "get_dof_holder_coordinates",
+      [](py::object self) {
+        return ToPyCoordinateView(
+          self.cast<const FieldLayout&>().GetDOFHolderCoordinates(), self);
+      },
+      "The DOF-holder coordinates (num_dof_holders × dim), read-only");
+
+  py::class_<FieldData<Real>>(m, "FieldData", "A field's stored values")
+    .def("get_value_type", &FieldData<Real>::GetValueType)
+    .def("get_value_basis", &FieldData<Real>::GetValueBasis,
+         "The basis the stored components are in");
+
+  py::class_<Field<Real>>(
+    m, "Field", "DOF-holder values together with the layout that orders them")
+    .def("get_name", &Field<Real>::GetName)
+    .def("get_layout", &Field<Real>::GetLayout,
+         py::return_value_policy::reference_internal)
+    .def(
+      "get_data",
+      [](Field<Real>& self) -> FieldData<Real>& { return self.GetData(); },
+      py::return_value_policy::reference_internal)
+    .def(
+      "get_dof_holder_data",
+      [](py::object self) {
+        return ToPyValueView(self.cast<const Field<Real>&>().GetDOFHolderData(),
+                             self);
+      },
+      "The DOF-holder values (num_dof_holders × num_components) as a "
+      "ValueView whose array is read-only. When the field's data is in host "
+      "memory the array shares it, so it reflects later writes; otherwise it "
+      "is a copy.")
+    .def("set_dof_holder_data", &SetDOFHolderData, py::arg("data"),
+         "Set the DOF-holder values from a ValueView (num_dof_holders × "
+         "num_components) whose basis must match the field's")
+    .def(
+      "set_dof_holder_data",
+      [](Field<Real>& self, const NumpyInput<Real>& data) {
+        RequireScalarForPlainArray("set_dof_holder_data",
+                                   self.GetData().GetValueBasis());
+        self.SetDOFHolderDataHost(ValueView<const Real, HostMemorySpace>(
+          ValueBasis{},
+          NumpyToHostComponentView<Real>(data, PerEntityComponents(data))));
+      },
+      py::arg("data"),
+      "Set a scalar field's DOF-holder values from a plain 2D array "
+      "(num_dof_holders × num_components). A 1D array (num_dof_holders,) is "
+      "accepted when the field has one component.")
+    .def(
+      "set_dof_holder_data_unchecked",
+      [](Field<Real>& self, const NumpyInput<Real>& data) {
+        const auto& layout = self.GetLayout();
+        const LO num_dof_holders = layout.GetNumOwnedDofHolder();
+        auto view =
+          NumpyToHostComponentView<Real>(data, layout.GetNumComponents());
+        if (view.extent(0) != static_cast<size_t>(num_dof_holders)) {
+          throw std::invalid_argument(
+            "set_dof_holder_data_unchecked: data must have " +
+            std::to_string(num_dof_holders) + " rows, got " +
+            std::to_string(view.extent(0)));
+        }
+        self.SetDOFHolderDataUncheckedHost(view);
+      },
+      py::arg("data"),
+      "Set the DOF-holder values without checking their basis (the shape is "
+      "still checked). A 1D array (num_dof_holders,) is accepted when the "
+      "field has one component.");
+
+  py::class_<Function<Real>, Field<Real>>(
+    m, "Function", "A Field that knows its FunctionSpace")
+    .def("get_space", [](const Function<Real>& self) {
+      return ToPyHolder(self.GetSpacePtr());
+    });
+
+  py::class_<PyEvaluationRequest>(m, "EvaluationRequest")
     .def_static(
       "from_coordinates",
-      [](py::array_t<Real> coords, CoordinateSystem coordinate_system,
-         OutOfBoundsPolicy policy) {
-        auto coords_view = numpy_to_view_2d<const Real>(coords);
-        // Create a Kokkos::View from the host data and deep copy to device
-        auto coords_host = Kokkos::View<Real**, HostMemorySpace>(
-          "coords_host", coords_view.extent(0), coords_view.extent(1));
-        for (size_t i = 0; i < coords_view.extent(0); ++i) {
-          for (size_t j = 0; j < coords_view.extent(1); ++j) {
-            coords_host(i, j) = coords_view(i, j);
-          }
-        }
-        auto coords_device = Kokkos::View<Real**, DeviceMemorySpace>(
-          "coords_device", coords_view.extent(0), coords_view.extent(1));
-        DeepCopyMismatchLayouts(coords_device, coords_host);
-        auto coords_device_view = MakeRank2View(coords_device);
-        return PythonEvaluationRequest{
-          EvaluationRequest::FromCoordinates(
-            CoordinateView<DeviceMemorySpace>(coordinate_system,
-                                              coords_device_view),
-            policy),
-          py::reinterpret_borrow<py::object>(coords),
-          coords_device}; // Keep the View alive!
+      [](const PyCoordinateView& coords, OutOfBoundsPolicy policy) {
+        auto device = CopyCoordinatesToDevice(coords);
+        return PyEvaluationRequest{
+          EvaluationRequest::FromCoordinates(device.view, policy),
+          device.storage};
       },
-      py::arg("coordinates"),
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
-      py::arg("policy") = OutOfBoundsPolicy{},
-      "Create an EvaluationRequest from an explicit coordinate array.")
+      py::arg("coordinates"), py::arg("policy") = OutOfBoundsPolicy{},
+      "Request evaluation at the given CoordinateView's points")
     .def_static(
       "from_function_space",
       [](const FunctionSpace& function_space, OutOfBoundsPolicy policy) {
-        return PythonEvaluationRequest{
-          EvaluationRequest::FromFunctionSpace(function_space, policy),
-          py::none(),
-          Kokkos::View<Real**, DeviceMemorySpace>()}; // Empty view for
-                                                      // function_space case
+        return PyEvaluationRequest{
+          EvaluationRequest::FromFunctionSpace(function_space, policy), {}};
       },
       py::arg("function_space"), py::arg("policy") = OutOfBoundsPolicy{},
-      "Create an EvaluationRequest from a FunctionSpace's DOF-holder sites.");
+      "Request evaluation at a FunctionSpace's DOF-holder coordinates")
+    .def_property_readonly(
+      "coords",
+      [](py::object self) {
+        return ToPyCoordinateView(
+          self.cast<const PyEvaluationRequest&>().request.coords, self);
+      })
+    .def_property_readonly("policy", [](const PyEvaluationRequest& self) {
+      return self.request.policy;
+    });
 
-  // Bind Field<Real>: composed per-field object returned by
-  // FunctionSpace-backed factories' create_field(). Move-only in C++; Python
-  // holds it by value in a heap-allocated wrapper.
-  py::class_<Field<Real>>(m, "Field")
+  py::class_<PointEvaluatorFactory, std::shared_ptr<PointEvaluatorFactory>>(
+    m, "PointEvaluatorFactory", "Creates evaluators bound to query points")
     .def(
-      "get_dof_holder_data",
-      [](const Field<Real>& self) {
-        auto data = self.GetDOFHolderDataHost();
-        // Flatten the [dof][comp] data into node-major order for the 1D numpy
-        // array (Python-facing DOF data stays 1D).
-        const auto num_dof = data.extent(0);
-        const auto num_comp = data.extent(1);
-        py::array_t<Real> result(static_cast<py::ssize_t>(data.size()));
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        for (size_t i = 0; i < num_dof; ++i)
-          for (size_t c = 0; c < num_comp; ++c)
-            ptr[i * num_comp + c] = data(i, c);
-        return result;
+      "get_coordinate_system",
+      [](const PointEvaluatorFactory& self) {
+        return ToPyHolder(self.GetCoordinateSystem());
       },
-      "Get the DOF holder data as a 1D numpy array")
-
-    .def(
-      "set_dof_holder_data",
-      // c_style|forcecast makes pybind materialize a contiguous copy of the
-      // input, so non-contiguous arrays (e.g. a column slice like data[:, i])
-      // are read correctly rather than by walking flat memory with the wrong
-      // stride.
-      [](Field<Real>& self,
-         py::array_t<Real, py::array::c_style | py::array::forcecast> arr) {
-        auto buf = arr.request();
-        if (buf.ndim != 1) {
-          throw std::runtime_error("DOF holder data must be a 1D array");
-        }
-        // Reshape the flat 1D input into the field's [dof][comp] layout.
-        const int nc = self.GetLayout().GetNumComponents();
-        const auto total = static_cast<size_t>(buf.shape[0]);
-        self.SetDOFHolderDataHost(Rank2View<const Real, HostMemorySpace>(
-          static_cast<const Real*>(buf.ptr), static_cast<LO>(total / nc), nc));
-      },
-      py::arg("data"), "Set the DOF holder data from a 1D numpy array")
-
-    .def(
-      "get_num_dof_holders",
-      [](const Field<Real>& self) {
-        return self.GetLayout().GetNumOwnedDofHolder();
-      },
-      "Number of owned DOF holders (nodes/elements)")
-
-    .def(
-      "get_num_components",
-      [](const Field<Real>& self) {
-        return self.GetLayout().GetNumComponents();
-      },
-      "Number of field components per DOF holder")
-
-    .def(
-      "get_dof_holder_coordinates",
-      [](const Field<Real>& self) {
-        auto cv = self.GetLayout().GetDOFHolderCoordinates();
-        auto coords = cv.GetValues();
-        Kokkos::View<Real**, DeviceMemorySpace> coords_device(
-          "coords_device", coords.extent(0), coords.extent(1));
-        Kokkos::parallel_for(
-          Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-            0, coords.extent(0)),
-          KOKKOS_LAMBDA(size_t i) {
-            for (size_t j = 0; j < coords.extent(1); ++j) {
-              coords_device(i, j) = coords(i, j);
-            }
-          });
-        Kokkos::View<Real**, HostMemorySpace> coords_host(
-          "coords_host", coords.extent(0), coords.extent(1));
-        DeepCopyMismatchLayouts(coords_host, coords_device);
-        py::array_t<Real> result(
-          {static_cast<py::ssize_t>(coords_host.extent(0)),
-           static_cast<py::ssize_t>(coords_host.extent(1))});
-        auto buf = result.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        for (size_t i = 0; i < coords_host.extent(0); ++i)
-          for (size_t j = 0; j < coords_host.extent(1); ++j)
-            ptr[i * coords_host.extent(1) + j] = coords_host(i, j);
-        return result;
-      },
-      "DOF holder coordinates as a 2D numpy array (num_dof_holders × dim)");
-
-  py::class_<FunctionSpace, std::shared_ptr<FunctionSpace>>(m, "FunctionSpace")
-    .def(
-      "create_field",
-      [](const FunctionSpace& self) -> Field<Real> {
-        return self.CreateFunction<Real>();
-      },
-      "Create a Field<Real> for this function space.")
+      "The coordinate system query points must be expressed in")
     .def(
       "create_point_evaluator",
-      [](const FunctionSpace& self, const PythonEvaluationRequest& request) {
+      [](const PointEvaluatorFactory& self,
+         const PyEvaluationRequest& request) {
         return self.CreatePointEvaluator<Real>(request.request);
       },
-      py::arg("request"),
-      "Create a reusable point evaluator from an EvaluationRequest.")
-    .def("get_coordinate_system", &FunctionSpace::GetCoordinateSystem,
-         "Get the coordinate system for this function space")
+      py::arg("request"), py::keep_alive<0, 1>(),
+      "Create a reusable point evaluator for the request's points");
+
+  py::class_<FunctionSpace, PointEvaluatorFactory,
+             std::shared_ptr<FunctionSpace>>(m, "FunctionSpace")
+    .def(
+      "create_function",
+      [](const FunctionSpace& self, std::string name,
+         VarianceSignature variance, const SystemHolder& system,
+         std::optional<ComponentScaling> scaling) {
+        return self.CreateFunction<Real>(std::move(name), variance, system,
+                                         scaling);
+      },
+      py::arg("name") = "", py::arg("variance") = values::Scalar,
+      py::arg("system") = py::none(), py::arg("scaling") = py::none(),
+      "Create a Function in this space. Vector and tensor values are in "
+      "`system`'s basis (default: this space's coordinate system), with "
+      "`scaling` required when that system admits both scalings.")
+    .def("get_layout",
+         [](const FunctionSpace& self) { return ToPyHolder(self.GetLayout()); })
     .def(
       "mesh",
       [](const FunctionSpace& self) -> Omega_h::Mesh& {
@@ -318,7 +222,6 @@ void bind_create_field_module(py::module& m)
       "The Omega_h mesh this function space is defined on (Omega_h backend "
       "only).");
 
-  // Bind LagrangeFunctionSpace as a concrete FunctionSpace subtype.
   py::class_<LagrangeFunctionSpace, FunctionSpace,
              std::shared_ptr<LagrangeFunctionSpace>>
     lagrange_space(m, "LagrangeFunctionSpace");
@@ -333,49 +236,48 @@ void bind_create_field_module(py::module& m)
            "Monte Carlo projection transfer operators)")
     .export_values();
 
+  // The mesh-backed spaces refer to the mesh, so it is kept alive with them.
   lagrange_space
     .def_static(
       "from_mesh",
       [](Omega_h::Mesh& mesh, int order, int num_components,
-         CoordinateSystem coordinate_system, std::string global_id_name,
+         const SystemHolder& mesh_coordinate_system, std::string global_id_name,
          LagrangeFunctionSpace::Backend backend) {
         return LagrangeFunctionSpace::FromMesh(
-          mesh, order, num_components, coordinate_system,
+          mesh, order, num_components, CartesianIfNone(mesh_coordinate_system),
           std::move(global_id_name), backend);
       },
-      py::arg("mesh"), py::arg("order"), py::arg("num_components") = 1,
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
+      py::arg("mesh"), py::arg("order"), py::arg("num_components"),
+      py::arg("mesh_coordinate_system") = py::none(),
       py::arg("global_id_name") = "global",
       py::arg("backend") = LagrangeFunctionSpace::DefaultBackend,
-      "Create a LagrangeFunctionSpace from an Omega_h mesh")
-
+      py::keep_alive<0, 1>(),
+      "Create a LagrangeFunctionSpace from an Omega_h mesh. The coordinate "
+      "system defaults to Cartesian.")
     .def_static(
       "from_uniform_grid",
-      [](const UniformGrid<2>& grid, int num_components, CoordinateSystem cs,
-         int order) {
-        return LagrangeFunctionSpace::FromUniformGrid(grid, num_components, cs,
-                                                      order);
+      [](const UniformGrid<2>& grid, int num_components,
+         const SystemHolder& mesh_coordinate_system, int order) {
+        return LagrangeFunctionSpace::FromUniformGrid(
+          grid, num_components, CartesianIfNone(mesh_coordinate_system), order);
       },
-      py::arg("grid"), py::arg("num_components") = 1,
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
-      py::arg("order") = 1,
-      "Create a LagrangeFunctionSpace from a 2D uniform grid")
-
+      py::arg("grid"), py::arg("num_components"),
+      py::arg("mesh_coordinate_system") = py::none(), py::arg("order") = 1,
+      "Create a LagrangeFunctionSpace from a 2D uniform grid. The coordinate "
+      "system defaults to Cartesian.")
     .def_static(
       "from_uniform_grid",
-      [](const UniformGrid<3>& grid, int num_components, CoordinateSystem cs,
-         int order) {
-        return LagrangeFunctionSpace::FromUniformGrid(grid, num_components, cs,
-                                                      order);
+      [](const UniformGrid<3>& grid, int num_components,
+         const SystemHolder& mesh_coordinate_system, int order) {
+        return LagrangeFunctionSpace::FromUniformGrid(
+          grid, num_components, CartesianIfNone(mesh_coordinate_system), order);
       },
-      py::arg("grid"), py::arg("num_components") = 1,
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
-      py::arg("order") = 1,
-      "Create a LagrangeFunctionSpace from a 3D uniform grid");
+      py::arg("grid"), py::arg("num_components"),
+      py::arg("mesh_coordinate_system") = py::none(), py::arg("order") = 1,
+      "Create a LagrangeFunctionSpace from a 3D uniform grid. The coordinate "
+      "system defaults to Cartesian.");
 
-  // Bind MLSOptions: configuration struct for
-  // PolynomialReconstructionFunctionSpace MLS
-  // evaluation.
+  // Configuration for PolynomialReconstructionFunctionSpace MLS evaluation.
   py::class_<MLSOptions>(m, "MLSOptions")
     .def(py::init<>(), "Default MLSOptions")
     .def_readwrite("radius", &MLSOptions::radius)
@@ -387,36 +289,34 @@ void bind_create_field_module(py::module& m)
     .def_readwrite("decay_factor", &MLSOptions::decay_factor)
     .def_readwrite("basis", &MLSOptions::basis);
 
-  // Bind PolynomialReconstructionFunctionSpace as a concrete FunctionSpace
-  // subtype.
   py::class_<PolynomialReconstructionFunctionSpace, FunctionSpace,
              std::shared_ptr<PolynomialReconstructionFunctionSpace>>(
     m, "PolynomialReconstructionFunctionSpace")
     .def_static(
-      "from_coords",
-      [](py::array_t<Real> coords, CoordinateSystem cs, MLSOptions opts) {
-        auto view = numpy_to_view_2d<Real>(coords);
-        return PolynomialReconstructionFunctionSpace::Create(view, cs, opts);
+      "create",
+      [](const PyCoordinateView& coords, MLSOptions options) {
+        auto values = NumpyInput<Real>::ensure(coords.values);
+        return PolynomialReconstructionFunctionSpace::Create(
+          CoordinateView<HostMemorySpace>(coords.system,
+                                          NumpyToHostView<2, Real>(values)),
+          options);
       },
-      py::arg("coords"),
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
-      py::arg("options") = MLSOptions{},
-      "Create a PolynomialReconstructionFunctionSpace from a 2D array of "
-      "source coordinates (shape: num_points × dim).")
+      py::arg("coords"), py::arg("options") = MLSOptions{},
+      "Create a PolynomialReconstructionFunctionSpace over the source points "
+      "of a CoordinateView")
     .def_static(
       "from_mesh",
-      [](Omega_h::Mesh& mesh, int source_entity_dim, CoordinateSystem cs,
-         MLSOptions opts) {
+      [](Omega_h::Mesh& mesh, int source_entity_dim,
+         const SystemHolder& coordinate_system, MLSOptions options) {
         return PolynomialReconstructionFunctionSpace::FromMesh(
-          mesh, source_entity_dim, cs, opts);
+          mesh, source_entity_dim, CartesianIfNone(coordinate_system), options);
       },
       py::arg("mesh"), py::arg("source_entity_dim"),
-      py::arg("coordinate_system") = CoordinateSystem::Cartesian,
-      py::arg("options") = MLSOptions{},
+      py::arg("coordinate_system") = py::none(),
+      py::arg("options") = MLSOptions{}, py::keep_alive<0, 1>(),
       "Create a PolynomialReconstructionFunctionSpace from mesh entity "
       "coordinates.");
 
-  // Bind CreateUniformGridFromMesh for 2D
   m.def(
     "create_uniform_grid_from_mesh",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
@@ -425,7 +325,6 @@ void bind_create_field_module(py::module& m)
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D uniform grid from an Omega_h mesh");
 
-  // Bind CreateUniformGridFromMesh for 3D
   m.def(
     "create_uniform_grid_from_mesh",
     [](Omega_h::Mesh& mesh, const std::array<LO, 3>& divisions) {
@@ -437,16 +336,10 @@ void bind_create_field_module(py::module& m)
   m.def(
     "create_uniform_grid_binary_field",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      auto [layout, field] = CreateUniformGridBinaryField<2>(mesh, divisions);
-      static_cast<void>(layout);
-      return field;
+      return CreateUniformGridBinaryField<2>(mesh, divisions).second;
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D vertex mask field indicating inside/outside mesh");
 }
-
-// bind_field_module is kept for compatibility but now registers nothing that
-// refers to the deleted FieldT / LocalizationHint / FieldDataView types.
-void bind_field_module(py::module& /*m*/) {}
 
 } // namespace pcms

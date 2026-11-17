@@ -6,6 +6,7 @@
 #include "pcms/field/function_space/spline.h"
 
 #include <string>
+#include "pcms/field/coordinate_systems/cylindrical.hpp"
 
 namespace pcms
 {
@@ -41,10 +42,11 @@ struct EQDSKFieldWithData
  */
 inline EQDSKField MakeEQDSKField(const EQDSKData& eqdsk_data)
 {
+  // EQDSK is a poloidal plane in cylindrical RZ coordinates
   auto space = SplineFunctionSpace::FromUniformGrid(
-    eqdsk_data.grid, CoordinateSystem::Cartesian);
+    eqdsk_data.grid, csys::CylindricalRZ::Create());
   Field<Real> field = space->CreateFunction<Real>();
-  field.GetData().SetDOFHolderData(Rank2View<const Real, DeviceMemorySpace>(
+  field.SetDOFHolderDataUnchecked(Rank2View<const Real, DeviceMemorySpace>(
     eqdsk_data.PSIZR.data(), eqdsk_data.PSIZR.extent(0), 1));
   return {std::move(space), std::move(field)};
 }

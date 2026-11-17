@@ -1,7 +1,7 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 #define PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/field/function_space.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/transfer/linear_form_integrator.hpp"
@@ -20,7 +20,10 @@ namespace pcms
 //
 // Construction validates both spaces, computes mesh intersections, and runs a
 // two-pass device kernel (count then fill) to build the quadrature data and
-// allocate the owned RHS vector sized to the target DOF count.
+// allocate the owned RHS vector sized to the target DOF count. When built from
+// function spaces and the source is an Omega_h Lagrange space, the intersection
+// reuses the point search that space already owns; the layout constructor has
+// no space to borrow from and builds its own.
 //
 // Assemble(sampled_values):
 //   Zeros the owned vector, then for each integration point i and local target
@@ -35,9 +38,9 @@ public:
                                   const FunctionSpace& target_space);
   OmegaHIntersectionRHSIntegrator(
     std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
-    CoordinateSystem source_coordinate_system,
+    std::shared_ptr<const CoordinateSystem> source_coordinate_system,
     std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-    CoordinateSystem target_coordinate_system);
+    std::shared_ptr<const CoordinateSystem> target_coordinate_system);
   ~OmegaHIntersectionRHSIntegrator();
 
   Vec GetVector() const noexcept override;
@@ -49,6 +52,15 @@ public:
     Rank2View<const Real, DeviceMemorySpace> sampled_values) override;
 
 private:
+  // Both public constructors delegate here; `source_search` may be null, in
+  // which case the intersection builds its own search over the source mesh.
+  OmegaHIntersectionRHSIntegrator(
+    std::shared_ptr<const OmegaHLagrangeLayout> source_layout,
+    std::shared_ptr<const CoordinateSystem> source_coordinate_system,
+    std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
+    std::shared_ptr<const CoordinateSystem> target_coordinate_system,
+    const GridPointSearchVariant* source_search);
+
   Vec vec_ = nullptr;
   Kokkos::View<Real**, DeviceMemorySpace>
     coords_; // [num_pts][dim] integration point coordinates

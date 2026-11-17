@@ -9,6 +9,9 @@
 #include "../transfer/interpolator.h"
 #include "pcms/field/out_of_bounds_policy.h"
 #include "numpy_array_transform.h"
+#include "py_value_types.h"
+#include "pcms/field/point_evaluator_factory.hpp"
+#include "pcms/transfer/transfer_operator.hpp"
 #include "pcms/utility/types.h"
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
 #include "pcms/transfer/mass_matrix_type.hpp"
@@ -26,58 +29,82 @@ namespace pcms
 void bind_transfer_field_module(py::module& m)
 {
   py::class_<PointEvaluator<Real>, std::unique_ptr<PointEvaluator<Real>>>(
-    m, "PointEvaluator")
+    m, "PointEvaluator",
+    "Evaluates fields at the query points it was created for")
     .def(
       "evaluate",
       [](const PointEvaluator<Real>& self, const Field<Real>& field,
-         py::array_t<Real> output) {
-        auto output_view = numpy_to_kokkos_view_2d<Real>(output);
-        auto output_device = Kokkos::View<Real**, DeviceMemorySpace>(
-          "output_device", output_view.extent(0), output_view.extent(1));
-        DeepCopyMismatchLayouts(output_device, output_view);
-        auto output_rank2 = MakeRank2View(output_device);
-        self.Evaluate(field, output_rank2);
-        DeepCopyMismatchLayouts(output_view, output_device);
+         PyValueView output) {
+        WithDeviceOutput(output.values, [&](auto out) {
+          self.Evaluate(field,
+                        ValueView<Real, DeviceMemorySpace>(output.basis, out));
+        });
       },
       py::arg("field"), py::arg("output"),
-      "Evaluate the given field at the cached query coordinates into a "
-      "preallocated 2D numpy array of shape "
-      "(num_query_points, num_components).");
-
-  // Bind Interpolator<Real>: construct once per source×target function-space
-  // pair (localization happens at construction), then call apply() repeatedly
-  // for different field states at zero additional localization cost.
-  py::class_<Interpolator<Real>>(m, "Interpolator")
+      "Evaluate the field into `output`, a ValueView over a writeable "
+      "C-contiguous float64 array (num_points × num_components) whose basis "
+      "must be output_basis() of the field's stored basis")
     .def(
-      py::init([](const FunctionSpace& source_space,
+      "evaluate",
+      [](const PointEvaluator<Real>& self, const Field<Real>& field,
+         py::array output) {
+        const ValueBasis basis =
+          self.OutputBasis(field.GetData().GetValueBasis());
+        RequireScalarForPlainArray("evaluate", basis);
+        WithDeviceOutput(output, [&](auto out) {
+          self.Evaluate(field, ValueView<Real, DeviceMemorySpace>(basis, out));
+        });
+      },
+      py::arg("field"), py::arg("output").noconvert(),
+      "Evaluate a scalar field into a writeable C-contiguous float64 array "
+      "(num_points × num_components). A 1D array (num_points,) is accepted "
+      "when the output has one component.")
+    .def("num_points", &PointEvaluator<Real>::NumPoints)
+    .def("output_basis", &PointEvaluator<Real>::OutputBasis, py::arg("stored"),
+         "The basis this evaluator writes for a field stored in `stored`")
+    .def(
+      "filled_points",
+      [](py::object self) {
+        const auto filled =
+          self.cast<const PointEvaluator<Real>&>().FilledPoints();
+        if (filled.extent(0) == 0) {
+          return py::array_t<LO>(0);
+        }
+        return ViewToNumpy(Rank1View<const LO, DeviceMemorySpace>(
+                             filled.data(), filled.extent(0)),
+                           self);
+      },
+      "Indices of the query points that get the out-of-bounds fill value, "
+      "read-only");
+
+  py::class_<TransferOperator<Real>>(m, "TransferOperator")
+    .def("apply", &TransferOperator<Real>::Apply, py::arg("source"),
+         py::arg("target"), "Transfer the source field onto the target");
+
+  // Interpolator<Real>: construct once per source × target pair (localization
+  // happens at construction), then apply() repeatedly for different field
+  // states at zero additional localization cost.
+  py::class_<Interpolator<Real>, TransferOperator<Real>>(m, "Interpolator")
+    .def(
+      py::init([](const PointEvaluatorFactory& source,
                   const FunctionSpace& target_space, OutOfBoundsPolicy policy) {
-        return Interpolator<Real>(source_space, target_space, policy);
+        return std::make_unique<Interpolator<Real>>(source, target_space,
+                                                    policy);
       }),
-      py::arg("source_space"), py::arg("target_space"),
-      py::arg("policy") = OutOfBoundsPolicy{},
-      "Construct an interpolator. Localization is performed here and cached. "
-      "Call apply() repeatedly without re-localizing.")
-    .def(
-      "apply",
-      [](const Interpolator<Real>& self, const Field<Real>& source,
-         Field<Real>& target) { self.Apply(source, target); },
-      py::arg("source"), py::arg("target"),
-      "Interpolate source field to target DOF locations (cheap; reuses cached "
-      "localization).");
+      py::arg("source"), py::arg("target_space"),
+      py::arg("policy") = OutOfBoundsPolicy{}, py::keep_alive<1, 2>(),
+      py::keep_alive<1, 3>(),
+      "Construct an interpolator from any PointEvaluatorFactory (a "
+      "FunctionSpace or a TransformedSource) to the target space's DOF "
+      "holders. Localization is performed here and cached.");
 
-  py::class_<Copy<Real>>(m, "Copy")
-    .def(py::init([](const FunctionSpace& source_space,
-                     const FunctionSpace& target_space) {
-           return Copy<Real>(source_space, target_space);
-         }),
-         py::arg("source_space"), py::arg("target_space"),
-         "Construct a copy operator for compatible function spaces.")
-    .def(
-      "apply",
-      [](const Copy<Real>& self, const Field<Real>& source,
-         Field<Real>& target) { self.Apply(source, target); },
-      py::arg("source"), py::arg("target"),
-      "Copy source field data to target field (same layout required).");
+  py::class_<Copy<Real>, TransferOperator<Real>>(m, "Copy").def(
+    py::init(
+      [](const FunctionSpace& source_space, const FunctionSpace& target_space) {
+        return std::make_unique<Copy<Real>>(source_space, target_space);
+      }),
+    py::arg("source_space"), py::arg("target_space"),
+    "Construct a copy operator for function spaces sharing a layout.");
 
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
   // Mass-matrix formulation for the Galerkin projections. Bound before the
@@ -93,7 +120,8 @@ void bind_transfer_field_module(py::module& m)
   // Conservative L2 (Galerkin) projection between order-1 Lagrange spaces on
   // Omega_h 2D simplex meshes. The RHS is integrated exactly over the
   // intersection of the source and target meshes.
-  py::class_<OmegaHConservativeProjection>(m, "OmegaHConservativeProjection")
+  py::class_<OmegaHConservativeProjection, TransferOperator<Real>>(
+    m, "OmegaHConservativeProjection")
     .def(py::init([](const FunctionSpace& source_space,
                      const FunctionSpace& target_space,
                      MassMatrixType mass_matrix_type) {
@@ -102,16 +130,10 @@ void bind_transfer_field_module(py::module& m)
          }),
          py::arg("source_space"), py::arg("target_space"),
          py::arg("mass_matrix_type") = MassMatrixType::Consistent,
+         py::keep_alive<1, 2>(), py::keep_alive<1, 3>(),
          "Construct a mesh-intersection conservative projection. Mesh "
          "intersection, quadrature setup, and mass-matrix factorization happen "
-         "here and are cached; call apply() repeatedly.")
-    .def(
-      "apply",
-      [](const OmegaHConservativeProjection& self, const Field<Real>& source,
-         Field<Real>& target) { self.Apply(source, target); },
-      py::arg("source"), py::arg("target"),
-      "Conservatively project the source field onto the target space using "
-      "exact mesh-intersection quadrature.");
+         "here and are cached; call apply() repeatedly.");
 
   // Sampling strategy for the Monte Carlo RHS integrator.
   py::enum_<MonteCarloSampling>(m, "MonteCarloSampling")
@@ -123,8 +145,8 @@ void bind_transfer_field_module(py::module& m)
   // first interpolated onto the target space as a control variate; only the
   // residual is integrated stochastically, so sampling noise is small (and
   // exactly zero when the source already lives in the target space).
-  py::class_<OmegaHControlVariateProjection>(m,
-                                             "OmegaHControlVariateProjection")
+  py::class_<OmegaHControlVariateProjection, TransferOperator<Real>>(
+    m, "OmegaHControlVariateProjection")
     .def(py::init([](const FunctionSpace& source_space,
                      const FunctionSpace& target_space, int samples_per_element,
                      MonteCarloSampling sampling, std::uint64_t seed,
@@ -138,16 +160,10 @@ void bind_transfer_field_module(py::module& m)
          py::arg("sampling") = MonteCarloSampling::UniformRandom,
          py::arg("seed") = std::uint64_t(8675309),
          py::arg("mass_matrix_type") = MassMatrixType::Consistent,
+         py::keep_alive<1, 2>(), py::keep_alive<1, 3>(),
          "Construct a Monte Carlo (control-variate) conservative projection. "
          "Sample-point generation, the control-variate interpolator, and the "
-         "mass-matrix factorization are cached; call apply() repeatedly.")
-    .def(
-      "apply",
-      [](const OmegaHControlVariateProjection& self, const Field<Real>& source,
-         Field<Real>& target) { self.Apply(source, target); },
-      py::arg("source"), py::arg("target"),
-      "Project the source field onto the target space using Monte Carlo "
-      "integration with control-variate variance reduction.");
+         "mass-matrix factorization are cached; call apply() repeatedly.");
 #endif
 }
 

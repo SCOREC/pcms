@@ -2,13 +2,24 @@
 #include "pcms.h"
 #include <Kokkos_Core.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <array>
 #include <cmath>
+#include <limits>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <vector>
 #include "pcms/field/evaluator/spline_interpolator.hpp"
+#include "field_test_utils.h"
 
 using namespace pcms;
+using pcms::test::CreateDeviceRank1View;
 
-using TestMemorySpace = Kokkos::DefaultExecutionSpace;
+using TestMemorySpace = pcms::DeviceMemorySpace;
+using TestExecutionSpace = TestMemorySpace::execution_space;
 
 bool are_equal(double a, double b, double tolerance = 1e-7)
 {
@@ -38,7 +49,8 @@ void tset(int nth, Kokkos::View<double*, TestMemorySpace> th,
           double thmax)
 {
   Kokkos::parallel_for(
-    Kokkos::RangePolicy<TestMemorySpace>(0, nth), KOKKOS_LAMBDA(const int ith) {
+    Kokkos::RangePolicy<TestExecutionSpace>(0, nth),
+    KOKKOS_LAMBDA(const int ith) {
       th[ith] = thmin + static_cast<double>(ith) * (thmax - thmin) /
                           static_cast<double>(nth - 1);
       sth[ith] = 2.0 + std::sin(th[ith]);
@@ -53,7 +65,8 @@ void xset(int nx, Kokkos::View<double*, TestMemorySpace> x,
     return; // avoid division by zero
 
   Kokkos::parallel_for(
-    Kokkos::RangePolicy<TestMemorySpace>(0, nx), KOKKOS_LAMBDA(const int ix) {
+    Kokkos::RangePolicy<TestExecutionSpace>(0, nx),
+    KOKKOS_LAMBDA(const int ix) {
       x[ix] = xmin + static_cast<double>(ix) * (xmax - xmin) /
                        static_cast<double>(nx - 1);
       ex[ix] = std::exp(2.0 * x[ix] - 1.0);
@@ -62,13 +75,11 @@ void xset(int nx, Kokkos::View<double*, TestMemorySpace> x,
 
 void ffset(int num, Kokkos::View<double*, TestMemorySpace> xf,
            Kokkos::View<double*, TestMemorySpace> tf,
-           Kokkos::View<double*, TestMemorySpace> f)
+           Kokkos::View<double**, TestMemorySpace> f)
 {
   Kokkos::parallel_for(
     Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {num, num}),
-    KOKKOS_LAMBDA(const int i, const int j) {
-      f(i * num + j) = xf[i] * tf[j];
-    });
+    KOKKOS_LAMBDA(const int i, const int j) { f(i, j) = xf[i] * tf[j]; });
 }
 
 void bset(Rank1View<double, TestMemorySpace> fx, int nx,
@@ -79,13 +90,15 @@ void bset(Rank1View<double, TestMemorySpace> fx, int nx,
           Rank1View<double, TestMemorySpace> bcth2)
 {
   Kokkos::parallel_for(
-    Kokkos::RangePolicy<TestMemorySpace>(0, nth), KOKKOS_LAMBDA(const int ith) {
+    Kokkos::RangePolicy<TestExecutionSpace>(0, nth),
+    KOKKOS_LAMBDA(const int ith) {
       bcx1[ith] = 2.0 * fx(0) * fth(ith);      // df/dx at x(1)
       bcx2[ith] = 2.0 * fx(nx - 1) * fth(ith); // df/dx at x(nx)
     });
 
   Kokkos::parallel_for(
-    Kokkos::RangePolicy<TestMemorySpace>(0, nx), KOKKOS_LAMBDA(const int ix) {
+    Kokkos::RangePolicy<TestExecutionSpace>(0, nx),
+    KOKKOS_LAMBDA(const int ix) {
       bcth1(ix) = fx(ix); // df/dth at th = 0 (th[0])
       bcth2(ix) = fx(ix); // df/dth at th = 2π (th[nth - 1])
     });
@@ -104,7 +117,7 @@ void generate_gt_2d(Rank1View<double, TestMemorySpace> gt_splinv,
 
 void compare(Rank2View<double, TestMemorySpace> splinv,
              Rank1View<double, TestMemorySpace> gt_splinv,
-             Rank1View<double, HostMemorySpace> res, std::string label)
+             Kokkos::View<double*, HostMemorySpace> res, std::string label)
 {
   // Compare the output of splinv with gt_splinv
   double result_fdif = 0.0;
@@ -127,7 +140,7 @@ void compare(Rank2View<double, TestMemorySpace> splinv,
 
 void compare_2d(Rank2View<double, TestMemorySpace> splinv,
                 Rank1View<double, TestMemorySpace> gt_splinv,
-                Rank1View<double, HostMemorySpace> res, std::string label)
+                Kokkos::View<double*, HostMemorySpace> res, std::string label)
 {
   // Compare the output of splinv with gt_splinv
   double result_fdif = 0.0;
@@ -167,9 +180,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
   using std::data;
   using std::size;
 
-  Kokkos::View<double*, TestMemorySpace> splinv_view(
-    "splinv_view", static_cast<std::size_t>(3) * nt);
-  auto splinv = Rank2View<double, TestMemorySpace>(splinv_view.data(), nt, 3);
+  Kokkos::View<double**, TestMemorySpace> splinv_view("splinv_view", nt, 3);
+  auto splinv = MakeRank2View(splinv_view);
   reset_2dspan(splinv);
 
   // interpolator.cspline(x, ns, fspl, 1, 1, 1, 1, wk);
@@ -178,8 +190,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
                           BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
   explicit_interpolator.evaluate(xt, splinv);
 
-  auto res1 = Rank1View<double, HostMemorySpace>(res_1d.data(), 2);
-  compare(splinv, ft, res1, "cspline");
+  compare(splinv, ft, Kokkos::subview(res_1d, Kokkos::make_pair(0, 2)),
+          "cspline");
   reset_2dspan(splinv);
 
   ExplicitCubicSplineInterpolator<double, TestMemorySpace>
@@ -187,8 +199,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
                                    BoundaryCondition::PERIODIC, 0);
   explicit_interpolator_periodic.evaluate(xt, splinv);
 
-  auto res2 = Rank1View<double, HostMemorySpace>(res_1d.data() + 2, 2);
-  compare(splinv, ft, res2, "cspline_periodic");
+  compare(splinv, ft, Kokkos::subview(res_1d, Kokkos::make_pair(2, 4)),
+          "cspline_periodic");
   reset_2dspan(splinv);
 
   CompactCubicSplineInterpolator<double, TestMemorySpace> compact_interpolator(
@@ -196,8 +208,8 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
     BoundaryCondition::FIRST_DERIVATIVE_MATCH, 1);
   compact_interpolator.evaluate(xt, splinv);
 
-  auto res3 = Rank1View<double, HostMemorySpace>(res_1d.data() + 4, 2);
-  compare(splinv, ft, res3, "compact_cubic");
+  compare(splinv, ft, Kokkos::subview(res_1d, Kokkos::make_pair(4, 6)),
+          "compact_cubic");
 }
 
 void pspltest1(Kokkos::View<double*, HostMemorySpace> res_1d)
@@ -218,13 +230,12 @@ void pspltest1(Kokkos::View<double*, HostMemorySpace> res_1d)
   tset(1000, xtest_view, ftest_view, zdum_view, zero - 0.1, pi2 + 0.1);
   tset(inum, x_view, z2sin_view, zcos_view, zero, pi2);
 
-  auto x = Rank1View<double, TestMemorySpace>(x_view.data(), x_view.size());
+  auto x = MakeRank1View(x_view);
 
-  auto z2sin =
-    Rank1View<double, TestMemorySpace>(z2sin_view.data(), z2sin_view.size());
+  auto z2sin = MakeRank1View(z2sin_view);
 
-  auto xtest = Rank1View<double, TestMemorySpace>(xtest_view.data(), 1000);
-  auto ftest = Rank1View<double, TestMemorySpace>(ftest_view.data(), 1000);
+  auto xtest = MakeRank1View(xtest_view);
+  auto ftest = MakeRank1View(ftest_view);
 
   // Call test function
   dotest1(inum, x, z2sin, 1000, xtest, ftest, res_1d);
@@ -246,11 +257,10 @@ void pspltest1_long_periodic(Kokkos::View<double*, HostMemorySpace> res_1d)
   tset(1000, xtest_view, ftest_view, zdum_view, zero - 0.1, pi2 + 0.1);
   tset(inum, x_view, z2sin_view, zcos_view, zero, pi2);
 
-  auto x = Rank1View<double, TestMemorySpace>(x_view.data(), x_view.size());
-  auto z2sin =
-    Rank1View<double, TestMemorySpace>(z2sin_view.data(), z2sin_view.size());
-  auto xtest = Rank1View<double, TestMemorySpace>(xtest_view.data(), 1000);
-  auto ftest = Rank1View<double, TestMemorySpace>(ftest_view.data(), 1000);
+  auto x = MakeRank1View(x_view);
+  auto z2sin = MakeRank1View(z2sin_view);
+  auto xtest = MakeRank1View(xtest_view);
+  auto ftest = MakeRank1View(ftest_view);
 
   dotest1(inum, x, z2sin, 1000, xtest, ftest, res_1d);
 }
@@ -260,7 +270,7 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
              Rank1View<double, TestMemorySpace> th,
              Rank1View<double, TestMemorySpace> fth,
              Rank1View<double, TestMemorySpace> dfth, int nth,
-             Rank4View<double, TestMemorySpace> f,
+             Kokkos::View<double**, TestMemorySpace> f,
              Rank1View<double, TestMemorySpace> bcx1,
              Rank1View<double, TestMemorySpace> bcx2,
              Rank1View<double, TestMemorySpace> bcth1,
@@ -277,15 +287,13 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
   Kokkos::parallel_for(
     Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nth, nx}),
     KOKKOS_LAMBDA(const int ith, const int ix) {
-      values_view(ix * nth + ith) = f(0, 0, ix, ith);
+      values_view(ix * nth + ith) = f(ix, ith);
     });
-  auto values =
-    Rank1View<double, TestMemorySpace>(values_view.data(), nth * nx);
+  auto values = MakeRank1View(values_view);
 
   bset(fx, nx, fth, nth, bcx1, bcx2, bcth1, bcth2);
-  Kokkos::View<double*, TestMemorySpace> splinv_view("splinv_view", 400000);
-  auto splinv =
-    Rank2View<double, TestMemorySpace>(splinv_view.data(), 40000, 10);
+  Kokkos::View<double**, TestMemorySpace> splinv_view("splinv_view", 40000, 10);
+  auto splinv = MakeRank2View(splinv_view);
   reset_2dspan(splinv);
 
   Kokkos::View<double*, TestMemorySpace> xtest_grid_view("xtest_grid_view",
@@ -293,13 +301,10 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
   Kokkos::View<double*, TestMemorySpace> thtest_grid_view("thtest_grid_view",
                                                           40000);
   createFlatGrid(xtest, thtest, xtest_grid_view, thtest_grid_view);
-  auto xtest_grid =
-    Rank1View<double, TestMemorySpace>(xtest_grid_view.data(), 40000);
-  auto thtest_grid =
-    Rank1View<double, TestMemorySpace>(thtest_grid_view.data(), 40000);
+  auto xtest_grid = MakeRank1View(xtest_grid_view);
+  auto thtest_grid = MakeRank1View(thtest_grid_view);
   Kokkos::View<double*, TestMemorySpace> splinv_gt_view("splinv_view", 40000);
-  auto splinv_gt =
-    Rank1View<double, TestMemorySpace>(splinv_gt_view.data(), 40000);
+  auto splinv_gt = MakeRank1View(splinv_gt_view);
   generate_gt_2d(splinv_gt, fxtest, fthtest, ntest);
 
   ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>
@@ -310,8 +315,8 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
                           BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
   explicit_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
 
-  auto res1 = Rank1View<double, HostMemorySpace>(res_2d.data(), 2);
-  compare_2d(splinv, splinv_gt, res1, "bcspline");
+  compare_2d(splinv, splinv_gt,
+             Kokkos::subview(res_2d, Kokkos::make_pair(0, 2)), "bcspline");
   reset_2dspan(splinv);
 
   CompactBiCubicSplineInterpolator<double, TestMemorySpace>
@@ -322,8 +327,8 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
                          BoundaryCondition::FIRST_DERIVATIVE_MATCH, bcth2);
   compact_interpolator.evaluate(xtest_grid, thtest_grid, splinv);
 
-  auto res2 = Rank1View<double, HostMemorySpace>(res_2d.data() + 2, 2);
-  compare_2d(splinv, splinv_gt, res2, "mkbicub");
+  compare_2d(splinv, splinv_gt,
+             Kokkos::subview(res_2d, Kokkos::make_pair(2, 4)), "mkbicub");
 
   // CompactBiCubicSplineInterpolator<double, TestMemorySpace>
   //     test_interpolator(x, th, values);
@@ -345,7 +350,7 @@ void pspltest2(Kokkos::View<double*, HostMemorySpace> res_2d)
   Kokkos::View<double*, TestMemorySpace> ttest_view("ttest_view", 200);
   Kokkos::View<double*, TestMemorySpace> stest_view("stest_view", 200);
   Kokkos::View<double*, TestMemorySpace> ctest_view("ctest_view", 200);
-  Kokkos::View<double*, TestMemorySpace> f1_view("f1_view", 1600);
+  Kokkos::View<double**, TestMemorySpace> f1("f1", 10, 10);
   Kokkos::View<double*, TestMemorySpace> bcx1_view("bcx1_view", 40);
   Kokkos::View<double*, TestMemorySpace> bcx2_view("bcx2_view", 40);
   Kokkos::View<double*, TestMemorySpace> bcth1_view("bcth1_view", 40);
@@ -357,34 +362,22 @@ void pspltest2(Kokkos::View<double*, HostMemorySpace> res_2d)
   tset(10, t1_view, st1_view, ct1_view, zero, pi2);
   tset(200, ttest_view, stest_view, ctest_view, zero, pi2);
 
-  ffset(10, ex1_view, st1_view, f1_view);
+  ffset(10, ex1_view, st1_view, f1);
 
-  auto x1 = Rank1View<double, TestMemorySpace>(x1_view.data(), x1_view.size());
-  auto ex1 =
-    Rank1View<double, TestMemorySpace>(ex1_view.data(), ex1_view.size());
-  auto t1 = Rank1View<double, TestMemorySpace>(t1_view.data(), t1_view.size());
-  auto st1 =
-    Rank1View<double, TestMemorySpace>(st1_view.data(), st1_view.size());
-  auto ct1 =
-    Rank1View<double, TestMemorySpace>(ct1_view.data(), ct1_view.size());
-  auto f1 = Rank4View<double, TestMemorySpace>(f1_view.data(), 4, 4, 10, 10);
-  auto bcx1 =
-    Rank1View<double, TestMemorySpace>(bcx1_view.data(), bcx1_view.size());
-  auto bcx2 =
-    Rank1View<double, TestMemorySpace>(bcx2_view.data(), bcx2_view.size());
-  auto bcth1 =
-    Rank1View<double, TestMemorySpace>(bcth1_view.data(), bcth1_view.size());
-  auto bcth2 =
-    Rank1View<double, TestMemorySpace>(bcth2_view.data(), bcth2_view.size());
+  auto x1 = MakeRank1View(x1_view);
+  auto ex1 = MakeRank1View(ex1_view);
+  auto t1 = MakeRank1View(t1_view);
+  auto st1 = MakeRank1View(st1_view);
+  auto ct1 = MakeRank1View(ct1_view);
+  auto bcx1 = MakeRank1View(bcx1_view);
+  auto bcx2 = MakeRank1View(bcx2_view);
+  auto bcth1 = MakeRank1View(bcth1_view);
+  auto bcth2 = MakeRank1View(bcth2_view);
 
-  auto xtest =
-    Rank1View<double, TestMemorySpace>(xtest_view.data(), xtest_view.size());
-  auto extest =
-    Rank1View<double, TestMemorySpace>(extest_view.data(), extest_view.size());
-  auto ttest =
-    Rank1View<double, TestMemorySpace>(ttest_view.data(), ttest_view.size());
-  auto stest =
-    Rank1View<double, TestMemorySpace>(stest_view.data(), stest_view.size());
+  auto xtest = MakeRank1View(xtest_view);
+  auto extest = MakeRank1View(extest_view);
+  auto ttest = MakeRank1View(ttest_view);
+  auto stest = MakeRank1View(stest_view);
 
   dotest2(x1, ex1, 10, t1, st1, ct1, 10, f1, bcx1, bcx2, bcth1, bcth2, xtest,
           extest, ttest, stest, 200, res_2d);
@@ -423,4 +416,1080 @@ TEST_CASE("test_cubic_spline_interpolator")
   double time = timer.seconds();
   std::cout << "Total time for spline tests: " << time << " seconds"
             << std::endl;
+}
+
+namespace
+{
+
+/// Copy an n x ncol evaluate output to the host as point-major rows
+std::vector<double> to_row_major(Kokkos::View<double**, TestMemorySpace> out)
+{
+  auto h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, out);
+  std::vector<double> rows;
+  for (size_t i = 0; i < h.extent(0); ++i)
+    for (size_t j = 0; j < h.extent(1); ++j)
+      rows.push_back(h(i, j));
+  return rows;
+}
+
+/// Evaluate a 1D interpolator with a selector and return the n x ncol output
+template <typename Interpolator>
+std::vector<double> eval_1d(Interpolator& interp, const std::vector<LO>& sel,
+                            const std::vector<double>& xq, int ncol,
+                            double fill = 0.0)
+{
+  auto xd = CreateDeviceRank1View(xq);
+  Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), ncol);
+  Kokkos::deep_copy(out, fill);
+  interp.evaluate(CreateDeviceRank1View<LO>(sel), MakeRank1View(xd),
+                  MakeRank2View(out));
+  return to_row_major(out);
+}
+
+/// Evaluate a 2D interpolator with a selector and return the n x ncol output
+template <typename Interpolator>
+std::vector<double> eval_2d(Interpolator& interp, const std::vector<LO>& sel,
+                            const std::vector<double>& xq,
+                            const std::vector<double>& yq, int ncol,
+                            double fill = 0.0)
+{
+  auto xd = CreateDeviceRank1View(xq);
+  auto yd = CreateDeviceRank1View(yq);
+  Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), ncol);
+  Kokkos::deep_copy(out, fill);
+  interp.evaluate(CreateDeviceRank1View<LO>(sel), MakeRank1View(xd),
+                  MakeRank1View(yd), MakeRank2View(out));
+  return to_row_major(out);
+}
+
+/// Uniform grid of n points on [a, b]
+std::vector<double> linspace(double a, double b, int n)
+{
+  std::vector<double> x(n);
+  for (int i = 0; i < n; ++i)
+    x[i] = a + (b - a) * i / (n - 1);
+  return x;
+}
+
+/// Sample f on the tensor grid with x as the slow index
+template <typename F>
+std::vector<double> sample_2d(const std::vector<double>& x,
+                              const std::vector<double>& y, F f)
+{
+  std::vector<double> v;
+  for (double xi : x)
+    for (double yj : y)
+      v.push_back(f(xi, yj));
+  return v;
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("two-point splines keep both endpoint derivatives",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // f = x^3 on [1, 3]: any pair of first/second derivative end conditions
+  // determines the cubic exactly
+  auto x = CreateDeviceRank1View<double>({1.0, 3.0});
+  auto f = CreateDeviceRank1View<double>({1.0, 27.0});
+  const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+  const auto d2 = BoundaryCondition::SECOND_DERIVATIVE_MATCH;
+  auto [lo, lo_data, hi, hi_data] = GENERATE_COPY(
+    std::make_tuple(d1, 3.0, d1, 27.0), std::make_tuple(d1, 3.0, d2, 18.0),
+    std::make_tuple(d2, 6.0, d1, 27.0), std::make_tuple(d2, 6.0, d2, 18.0));
+  TestType interp(MakeRank1View(x), MakeRank1View(f), lo, lo_data, hi, hi_data);
+  auto out = eval_1d(interp, {1, 1, 1}, {1.5, 2.0, 2.5}, 3);
+  for (int i = 0; i < 3; ++i) {
+    const double xi = 1.5 + 0.5 * i;
+    CHECK(out[3 * i] == Catch::Approx(xi * xi * xi));
+    CHECK(out[3 * i + 1] == Catch::Approx(3 * xi * xi));
+    CHECK(out[3 * i + 2] == Catch::Approx(6 * xi));
+  }
+}
+
+TEMPLATE_TEST_CASE("non-zero boundary data on the lower side only is applied",
+                   "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // f = g(x) (y - y^2/2) has df/dy = g(x) at y = 0 and 0 at y = 1
+  auto g = [](double x) { return 1 + x + x * x + x * x * x; };
+  auto f = [&](double x, double y) { return g(x) * (y - 0.5 * y * y); };
+  auto xh = linspace(0, 1, 5);
+  auto yh = linspace(0, 1, 5);
+  std::vector<double> lo_h;
+  for (double xi : xh)
+    lo_h.push_back(g(xi));
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(sample_2d(xh, yh, f));
+  auto lo = CreateDeviceRank1View(lo_h);
+  auto hi = CreateDeviceRank1View(std::vector<double>(xh.size(), 0.0));
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+  TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none), d1,
+                  MakeRank1View(lo), d1, MakeRank1View(hi));
+  std::vector<double> xq = {0.1, 0.45, 0.8};
+  std::vector<double> yq = {0.05, 0.6, 0.95};
+  auto out = eval_2d(interp, {1, 0, 0, 0, 0, 0}, xq, yq, 1);
+  for (size_t i = 0; i < xq.size(); ++i)
+    CHECK(out[i] == Catch::Approx(f(xq[i], yq[i])));
+}
+
+TEST_CASE("spline grids must be finite, ascending and non-degenerate",
+          "[spline]")
+{
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
+  auto grid = GENERATE_COPY(std::vector<double>{1.0},
+                            std::vector<double>{1.0, 1.0, 1.0, 1.0},
+                            std::vector<double>{3.0, 2.0, 1.0, 0.0},
+                            std::vector<double>{0.0, nan, 2.0, 3.0},
+                            std::vector<double>{0.0, 1.0, 2.0, inf});
+  auto x = CreateDeviceRank1View(grid);
+  auto f = CreateDeviceRank1View(std::vector<double>(grid.size(), 1.0));
+  using Interp = CompactCubicSplineInterpolator<double, TestMemorySpace>;
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  REQUIRE_THROWS_AS(Interp(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0),
+                    pcms_error);
+}
+
+TEST_CASE("nearly uniform spline grids are rejected", "[spline]")
+{
+  // the solver assumes one spacing, so a 5e-4 relative deviation would be
+  // silently interpolated as if uniform
+  auto x = CreateDeviceRank1View<double>({0.0, 1.0, 2.0005, 3.0});
+  auto f = CreateDeviceRank1View<double>({0.0, 1.0, 8.0, 27.0});
+  using Interp = ExplicitCubicSplineInterpolator<double, TestMemorySpace>;
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  REQUIRE_THROWS_AS(Interp(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0),
+                    pcms_error);
+}
+
+TEMPLATE_TEST_CASE("1D queries outside the grid leave the output untouched",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  auto xh = linspace(0, 1, 6);
+  auto x = CreateDeviceRank1View(xh);
+  auto f = CreateDeviceRank1View(xh);
+  TestType interp(MakeRank1View(x), MakeRank1View(f),
+                  BoundaryCondition::NOT_A_KNOT, 0,
+                  BoundaryCondition::NOT_A_KNOT, 0);
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  auto out = eval_1d(interp, {1, 1, 0}, {nan, -1.0e6, 1.0e6}, 2);
+  for (double v : out)
+    CHECK(v == 0.0);
+}
+
+TEMPLATE_TEST_CASE("2D queries outside the grid leave the output untouched",
+                   "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  auto xh = linspace(0, 1, 6);
+  auto x = CreateDeviceRank1View(xh);
+  auto v = CreateDeviceRank1View(
+    sample_2d(xh, xh, [](double a, double b) { return a + b; }));
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType interp(MakeRank1View(x), MakeRank1View(x), MakeRank1View(v), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none));
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  auto out = eval_2d(interp, {1, 1, 0, 0, 0, 0}, {nan, 0.5, -1.0e6, 0.5},
+                     {0.5, nan, 0.5, 1.0e6}, 2);
+  for (double val : out)
+    CHECK(val == 0.0);
+}
+
+namespace
+{
+
+/// d^k/dx^k of the cubic with coefficients c
+double cubic(const double (&c)[4], double x, int k)
+{
+  const double fall[4][4] = {
+    {1, 1, 1, 1}, {0, 1, 2, 3}, {0, 0, 2, 6}, {0, 0, 0, 6}};
+  double sum = 0;
+  for (int j = k; j < 4; ++j)
+    sum += c[j] * fall[k][j] * std::pow(x, j - k);
+  return sum;
+}
+
+double px(double x, int k)
+{
+  const double c[4] = {1, 2, -1, 0.5};
+  return cubic(c, x, k);
+}
+
+double py(double y, int k)
+{
+  const double c[4] = {2, -1, 0.3, 0.2};
+  return cubic(c, y, k);
+}
+
+struct SelectorCase
+{
+  std::vector<LO> selector;
+  std::vector<std::array<int, 2>> orders;
+};
+
+} // namespace
+
+TEMPLATE_TEST_CASE("1D selectors pick derivatives in PSPLINE order", "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  auto xh = linspace(-1, 2, 6);
+  std::vector<double> fh;
+  for (double x : xh)
+    fh.push_back(px(x, 0));
+  auto x = CreateDeviceRank1View(xh);
+  auto f = CreateDeviceRank1View(fh);
+  TestType interp(MakeRank1View(x), MakeRank1View(f),
+                  BoundaryCondition::NOT_A_KNOT, 0,
+                  BoundaryCondition::NOT_A_KNOT, 0);
+  const std::vector<SelectorCase> cases = {{{1, 1, 1}, {{0}, {1}, {2}}},
+                                           {{0, 1, 0}, {{1}}},
+                                           {{0, 0, 1}, {{2}}},
+                                           {{3, 0, 0}, {{3}}}};
+  const std::vector<double> xq = {-1.0, 0.3, 1.7, 2.0};
+  const int ncol = 4;
+  for (const auto& c : cases) {
+    auto out = eval_1d(interp, c.selector, xq, ncol, -999.0);
+    for (size_t i = 0; i < xq.size(); ++i) {
+      for (int j = 0; j < ncol; ++j) {
+        INFO("selector " << c.selector[0] << c.selector[1] << c.selector[2]
+                         << " point " << i << " column " << j);
+        const double v = out[i * ncol + j];
+        if (j < static_cast<int>(c.orders.size()))
+          CHECK(v == Catch::Approx(px(xq[i], c.orders[j][0])));
+        else
+          CHECK(v == -999.0);
+      }
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("2D selectors pick derivatives in PSPLINE order", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  constexpr bool is_explicit =
+    std::is_same_v<TestType,
+                   ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>>;
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(-1, 1, 5);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none));
+
+  std::vector<SelectorCase> cases = {
+    {{1, 1, 1, 1, 1, 1}, {{0, 0}, {1, 0}, {0, 1}, {2, 0}, {0, 2}, {1, 1}}},
+    {{0, 1, 0, 0, 1, 0}, {{1, 0}, {0, 2}}},
+    {{3, 1, 1, 1, 1}, {{3, 0}, {2, 1}, {1, 2}, {0, 3}}},
+    {{3, 0, 1, 0, 1}, {{2, 1}, {0, 3}}},
+    {{4, 1, 1, 1}, {{3, 1}, {2, 2}, {1, 3}}},
+    {{5, 1, 1}, {{3, 2}, {2, 3}}},
+    {{6}, {{3, 3}}}};
+  if (is_explicit)
+    cases.push_back({{-1, 0, 0, 0, 0, 0}, {{0, 0}, {2, 0}, {0, 2}, {2, 2}}});
+  const std::vector<double> xq = {0.0, 0.7, 1.3, 2.0};
+  const std::vector<double> yq = {-1.0, 0.1, -0.45, 1.0};
+  const int ncol = 7;
+  for (const auto& c : cases) {
+    auto out = eval_2d(interp, c.selector, xq, yq, ncol, -999.0);
+    for (size_t i = 0; i < xq.size(); ++i) {
+      for (int j = 0; j < ncol; ++j) {
+        INFO("selector " << c.selector[0] << " point " << i << " column " << j);
+        const double val = out[i * ncol + j];
+        if (j < static_cast<int>(c.orders.size())) {
+          const double expected =
+            px(xq[i], c.orders[j][0]) * py(yq[i], c.orders[j][1]);
+          CHECK(val == Catch::Approx(expected).margin(1e-9));
+        } else {
+          CHECK(val == -999.0);
+        }
+      }
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("1D evaluate without a selector writes every value",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // the overload builds its own value-only selector on the device; NaN marks
+  // outputs it never wrote
+  auto xh = linspace(-1, 2, 6);
+  std::vector<double> fh;
+  for (double x : xh)
+    fh.push_back(px(x, 0));
+  auto x = CreateDeviceRank1View(xh);
+  auto f = CreateDeviceRank1View(fh);
+  TestType interp(MakeRank1View(x), MakeRank1View(f),
+                  BoundaryCondition::NOT_A_KNOT, 0,
+                  BoundaryCondition::NOT_A_KNOT, 0);
+  const std::vector<double> xq = {-1.0, 0.3, 1.7, 2.0};
+  auto xd = CreateDeviceRank1View(xq);
+  Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), 1);
+  Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
+  interp.evaluate(MakeRank1View(xd), MakeRank2View(out));
+  auto h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, out);
+  for (size_t i = 0; i < xq.size(); ++i) {
+    INFO("point " << i);
+    CHECK(h(i, 0) == Catch::Approx(px(xq[i], 0)));
+  }
+}
+
+TEMPLATE_TEST_CASE("2D evaluate without a selector writes every value",
+                   "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(-1, 1, 5);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none), nak,
+                  MakeRank1View(none), nak, MakeRank1View(none));
+  const std::vector<double> xq = {0.0, 0.7, 1.3, 2.0};
+  const std::vector<double> yq = {-1.0, 0.1, -0.45, 1.0};
+  auto xd = CreateDeviceRank1View(xq);
+  auto yd = CreateDeviceRank1View(yq);
+  Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), 1);
+  Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
+  interp.evaluate(MakeRank1View(xd), MakeRank1View(yd), MakeRank2View(out));
+  auto h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, out);
+  for (size_t i = 0; i < xq.size(); ++i) {
+    INFO("point " << i);
+    CHECK(h(i, 0) == Catch::Approx(px(xq[i], 0) * py(yq[i], 0)).margin(1e-9));
+  }
+}
+
+TEMPLATE_TEST_CASE("1D splines build and evaluate in host memory", "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, Kokkos::HostSpace>),
+                   (CompactCubicSplineInterpolator<double, Kokkos::HostSpace>))
+{
+  // every kernel must run in the interpolator's own space, even when the
+  // default execution space is a device
+  auto xh = linspace(-1, 2, 6);
+  std::vector<double> fh;
+  for (double x : xh)
+    fh.push_back(px(x, 0));
+  std::vector<double> xq = {-1.0, 0.3, 1.7, 2.0};
+  using H = Kokkos::HostSpace;
+  Kokkos::View<double**, H> out("out", xq.size(), 1);
+  Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
+  TestType interp(make_array_view(xh), make_array_view(fh),
+                  BoundaryCondition::NOT_A_KNOT, 0,
+                  BoundaryCondition::NOT_A_KNOT, 0);
+  interp.evaluate(make_array_view(xq), MakeRank2View(out));
+  Kokkos::fence();
+  for (size_t i = 0; i < xq.size(); ++i) {
+    INFO("point " << i);
+    CHECK(out(i, 0) == Catch::Approx(px(xq[i], 0)));
+  }
+}
+
+TEMPLATE_TEST_CASE(
+  "2D splines build and evaluate in host memory", "[spline]",
+  (ExplicitBiCubicSplineInterpolator<double, Kokkos::HostSpace>),
+  (CompactBiCubicSplineInterpolator<double, Kokkos::HostSpace>))
+{
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(-1, 1, 5);
+  auto v =
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); });
+  std::vector<double> xq = {0.0, 0.7, 1.3, 2.0};
+  std::vector<double> yq = {-1.0, 0.1, -0.45, 1.0};
+  using H = Kokkos::HostSpace;
+  Kokkos::View<double**, H> out("out", xq.size(), 1);
+  Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
+  Rank1View<double, H> none(nullptr, 0);
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType interp(make_array_view(xh), make_array_view(yh), make_array_view(v),
+                  nak, none, nak, none, nak, none, nak, none);
+  interp.evaluate(make_array_view(xq), make_array_view(yq), MakeRank2View(out));
+  Kokkos::fence();
+  for (size_t i = 0; i < xq.size(); ++i) {
+    INFO("point " << i);
+    CHECK(out(i, 0) == Catch::Approx(px(xq[i], 0) * py(yq[i], 0)).margin(1e-9));
+  }
+}
+
+TEST_CASE("explicit and compact splines agree for every boundary condition",
+          "[spline]")
+{
+  using BC = BoundaryCondition;
+  const double pi2 = 2 * M_PI;
+  auto [lo, hi] = GENERATE(
+    std::make_pair(BC::NOT_A_KNOT, BC::NOT_A_KNOT),
+    std::make_pair(BC::PERIODIC, BC::PERIODIC),
+    std::make_pair(BC::FIRST_DERIVATIVE_MATCH, BC::SECOND_DERIVATIVE_MATCH),
+    std::make_pair(BC::FIRST_DERIVATIVE_ZERO, BC::SECOND_DERIVATIVE_ZERO),
+    std::make_pair(BC::FIRST_DIV_DIFF_MATCH, BC::SECOND_DIV_DIFF_MATCH),
+    std::make_pair(BC::THIRD_DIV_DIFF_MATCH, BC::NOT_A_KNOT));
+  INFO("boundary conditions " << static_cast<int>(lo) << " "
+                              << static_cast<int>(hi));
+  auto xh = linspace(0, pi2, 9);
+  auto yh = linspace(0, pi2, 7);
+  auto f = [](double a, double b) { return std::sin(a) * std::cos(b) + 1; };
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  std::vector<double> fx;
+  for (double a : xh)
+    fx.push_back(f(a, 0.4));
+  auto f1 = CreateDeviceRank1View(fx);
+  auto f2 = CreateDeviceRank1View(sample_2d(xh, yh, f));
+  std::vector<double> bcx(yh.size()), bcy(xh.size());
+  for (size_t j = 0; j < yh.size(); ++j)
+    bcx[j] = 0.3 + j;
+  for (size_t i = 0; i < xh.size(); ++i)
+    bcy[i] = -0.2 * i;
+  auto bx = CreateDeviceRank1View(bcx);
+  auto by = CreateDeviceRank1View(bcy);
+
+  std::vector<double> xq, yq;
+  for (int i = 0; i < 25; ++i) {
+    xq.push_back(pi2 * std::fmod(0.137 * i + 0.01, 1.0));
+    yq.push_back(pi2 * std::fmod(0.291 * i + 0.02, 1.0));
+  }
+
+  ExplicitCubicSplineInterpolator<double, TestMemorySpace> e1(
+    MakeRank1View(x), MakeRank1View(f1), lo, 0.7, hi, -0.4);
+  CompactCubicSplineInterpolator<double, TestMemorySpace> c1(
+    MakeRank1View(x), MakeRank1View(f1), lo, 0.7, hi, -0.4);
+  auto oe1 = eval_1d(e1, {1, 1, 1}, xq, 3);
+  auto oc1 = eval_1d(c1, {1, 1, 1}, xq, 3);
+  for (size_t i = 0; i < oe1.size(); ++i)
+    CHECK(oc1[i] == Catch::Approx(oe1[i]).margin(1e-10));
+
+  ExplicitBiCubicSplineInterpolator<double, TestMemorySpace> e2(
+    MakeRank1View(x), MakeRank1View(y), MakeRank1View(f2), lo,
+    MakeRank1View(bx), hi, MakeRank1View(bx), lo, MakeRank1View(by), hi,
+    MakeRank1View(by));
+  CompactBiCubicSplineInterpolator<double, TestMemorySpace> c2(
+    MakeRank1View(x), MakeRank1View(y), MakeRank1View(f2), lo,
+    MakeRank1View(bx), hi, MakeRank1View(bx), lo, MakeRank1View(by), hi,
+    MakeRank1View(by));
+  auto oe2 = eval_2d(e2, {1, 1, 1, 1, 1, 1}, xq, yq, 6);
+  auto oc2 = eval_2d(c2, {1, 1, 1, 1, 1, 1}, xq, yq, 6);
+  for (size_t i = 0; i < oe2.size(); ++i)
+    CHECK(oc2[i] == Catch::Approx(oe2[i]).margin(1e-10));
+}
+
+namespace
+{
+
+/// Divided difference f[x_i, .., x_{i+k}]
+double divided_difference(const std::vector<double>& x,
+                          const std::vector<double>& f, int i, int k)
+{
+  if (k == 0)
+    return f[i];
+  return (divided_difference(x, f, i + 1, k - 1) -
+          divided_difference(x, f, i, k - 1)) /
+         (x[i + k] - x[i]);
+}
+
+/// The conditions the solver applies on n points: two points take the first
+/// divided difference, three points cannot use the third one and take the
+/// parabola for not-a-knot at both ends
+std::pair<int, int> effective_conditions(int n, int lo, int hi)
+{
+  if (n == 2) {
+    lo = (lo <= 0 || lo > 5) ? 5 : lo;
+    hi = (hi <= 0 || hi > 5) ? 5 : hi;
+  }
+  if (n == 3) {
+    lo = lo == 7 ? 6 : lo;
+    hi = hi == 7 ? 6 : hi;
+    if (lo == 0 && hi == 0)
+      hi = 7;
+  }
+  return {lo, hi};
+}
+
+/// End data that a product of the test cubics satisfies for condition bc
+double end_data(BoundaryCondition bc, double (*p)(double, int), double x)
+{
+  switch (bc) {
+    case BoundaryCondition::FIRST_DERIVATIVE_MATCH: return p(x, 1);
+    case BoundaryCondition::SECOND_DERIVATIVE_MATCH: return p(x, 2);
+    default: return 0;
+  }
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("every end condition holds on grids of 2 to 8 points",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  const double lo_data = 0.7, hi_data = -0.4;
+  for (int n = 2; n <= 8; ++n) {
+    for (int lo = -1; lo <= 7; ++lo) {
+      for (int hi = lo == -1 ? -1 : 0; hi <= (lo == -1 ? -1 : 7); ++hi) {
+        INFO("n " << n << " lo " << lo << " hi " << hi);
+        auto xh = linspace(0.5, 2.0, n);
+        const double h = xh[1] - xh[0];
+        std::vector<double> fh;
+        for (double x : xh)
+          fh.push_back(std::sin(1.3 * x) + 0.2 * x * x);
+        if (lo == -1)
+          fh.back() = fh.front();
+        auto x = CreateDeviceRank1View(xh);
+        auto f = CreateDeviceRank1View(fh);
+        TestType s(MakeRank1View(x), MakeRank1View(f),
+                   static_cast<BoundaryCondition>(lo), lo_data,
+                   static_cast<BoundaryCondition>(hi), hi_data);
+
+        // s', s'', s''' at both ends and in the two cells next to each end
+        auto mid = [&](int cell) { return xh[cell] + h / 2; };
+        const std::vector<double> pts = {xh[0],
+                                         mid(0),
+                                         mid(std::min(1, n - 2)),
+                                         mid(std::max(n - 3, 0)),
+                                         mid(n - 2),
+                                         xh[n - 1]};
+        auto d12 = eval_1d(s, {0, 1, 1}, pts, 2);
+        auto d3 = eval_1d(s, {3, 0, 0}, pts, 1);
+        auto at = [&](int point, int deriv) {
+          return deriv == 3 ? d3[point] : d12[2 * point + deriv - 1];
+        };
+
+        auto check_end = [&](int side, int bc) {
+          const int end = side == 0 ? 0 : 5;
+          const double d1 = at(end, 1), d2 = at(end, 2);
+          const double d3 = at(side == 0 ? 1 : 4, 3);
+          const double d3_next = at(side == 0 ? 2 : 3, 3);
+          const double data = side == 0 ? lo_data : hi_data;
+          auto dd = [&](int k) {
+            return divided_difference(xh, fh, side == 0 ? 0 : n - 1 - k, k);
+          };
+          auto approx = [](double v) {
+            return Catch::Approx(v).margin(1e-9).epsilon(1e-9);
+          };
+          switch (bc) {
+            case 0: CHECK(d3 == approx(d3_next)); break;
+            case 1: CHECK(d1 == approx(data)); break;
+            case 2: CHECK(d2 == approx(data)); break;
+            case 3: CHECK(d1 == approx(0)); break;
+            case 4: CHECK(d2 == approx(0)); break;
+            case 5: CHECK(d1 == approx(dd(1))); break;
+            case 6: CHECK(d2 == approx(2 * dd(2))); break;
+            case 7: CHECK(d3 == approx(n < 4 ? 0 : 6 * dd(3))); break;
+            default: FAIL("unexpected end condition " << bc);
+          }
+        };
+        if (lo == -1) {
+          CHECK(at(0, 1) == Catch::Approx(at(5, 1)).margin(1e-9));
+          CHECK(at(0, 2) == Catch::Approx(at(5, 2)).margin(1e-9));
+        } else {
+          const auto [elo, ehi] = effective_conditions(n, lo, hi);
+          check_end(0, elo);
+          check_end(1, ehi);
+        }
+      }
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("1D splines reproduce cubics for every exact end condition",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  using BC = BoundaryCondition;
+  const std::vector<BC> conditions = {
+    BC::NOT_A_KNOT, BC::FIRST_DERIVATIVE_MATCH, BC::SECOND_DERIVATIVE_MATCH,
+    BC::THIRD_DIV_DIFF_MATCH};
+  for (int n = 4; n <= 8; ++n) {
+    for (BC lo : conditions) {
+      for (BC hi : conditions) {
+        INFO("n " << n << " lo " << static_cast<int>(lo) << " hi "
+                  << static_cast<int>(hi));
+        auto xh = linspace(-1, 2, n);
+        std::vector<double> fh;
+        for (double x : xh)
+          fh.push_back(px(x, 0));
+        auto x = CreateDeviceRank1View(xh);
+        auto f = CreateDeviceRank1View(fh);
+        TestType s(MakeRank1View(x), MakeRank1View(f), lo,
+                   end_data(lo, px, xh.front()), hi,
+                   end_data(hi, px, xh.back()));
+        const std::vector<double> xq = {-1.0, -0.2, 0.9, 1.6, 2.0};
+        auto out = eval_1d(s, {1, 1, 1}, xq, 3);
+        auto d3 = eval_1d(s, {3, 0, 0}, xq, 1);
+        for (size_t q = 0; q < xq.size(); ++q) {
+          for (int j = 0; j < 3; ++j)
+            CHECK(out[3 * q + j] == Catch::Approx(px(xq[q], j)).margin(1e-10));
+          CHECK(d3[q] == Catch::Approx(px(xq[q], 3)).margin(1e-9));
+        }
+      }
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE(
+  "2D splines reproduce bicubics for every exact end condition", "[spline]",
+  (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+  (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  using BC = BoundaryCondition;
+  const std::vector<BC> conditions = {
+    BC::NOT_A_KNOT, BC::FIRST_DERIVATIVE_MATCH, BC::SECOND_DERIVATIVE_MATCH,
+    BC::THIRD_DIV_DIFF_MATCH};
+  auto xh = linspace(0, 2, 5);
+  auto yh = linspace(-1, 1, 6);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
+  const std::vector<double> xq = {0.0, 0.7, 1.3, 2.0, 0.0, 2.0};
+  const std::vector<double> yq = {-1.0, 0.1, -0.45, 1.0, 1.0, -1.0};
+  const std::vector<std::array<int, 2>> orders = {{0, 0}, {1, 0}, {0, 1},
+                                                  {2, 0}, {0, 2}, {1, 1}};
+  for (BC lo : conditions) {
+    for (BC hi : conditions) {
+      INFO("lo " << static_cast<int>(lo) << " hi " << static_cast<int>(hi));
+      // x faces carry d^k f / dx^k as a function of y, y faces as one of x
+      std::vector<double> bx_lo, bx_hi, by_lo, by_hi;
+      for (double b : yh) {
+        bx_lo.push_back(end_data(lo, px, xh.front()) * py(b, 0));
+        bx_hi.push_back(end_data(hi, px, xh.back()) * py(b, 0));
+      }
+      for (double a : xh) {
+        by_lo.push_back(px(a, 0) * end_data(lo, py, yh.front()));
+        by_hi.push_back(px(a, 0) * end_data(hi, py, yh.back()));
+      }
+      auto bxl = CreateDeviceRank1View(bx_lo);
+      auto bxh = CreateDeviceRank1View(bx_hi);
+      auto byl = CreateDeviceRank1View(by_lo);
+      auto byh = CreateDeviceRank1View(by_hi);
+      TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), lo,
+                 MakeRank1View(bxl), hi, MakeRank1View(bxh), lo,
+                 MakeRank1View(byl), hi, MakeRank1View(byh));
+      auto out = eval_2d(s, {1, 1, 1, 1, 1, 1}, xq, yq, 6);
+      for (size_t q = 0; q < xq.size(); ++q) {
+        for (size_t j = 0; j < orders.size(); ++j) {
+          INFO("point " << q << " column " << j);
+          const double expected =
+            px(xq[q], orders[j][0]) * py(yq[q], orders[j][1]);
+          CHECK(out[6 * q + j] == Catch::Approx(expected).margin(1e-9));
+        }
+      }
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("periodic 1D splines wrap queries outside the period",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  const double pi2 = 2 * M_PI;
+  auto xh = linspace(0, pi2, 16);
+  std::vector<double> fh;
+  for (double a : xh)
+    fh.push_back(std::sin(a) + 0.5 * std::cos(2 * a));
+  fh.back() = fh.front();
+  auto x = CreateDeviceRank1View(xh);
+  auto f = CreateDeviceRank1View(fh);
+  const auto per = BoundaryCondition::PERIODIC;
+  TestType s(MakeRank1View(x), MakeRank1View(f), per, 0, per, 0);
+  const std::vector<double> outside = {-0.1, pi2 + 0.1, -pi2 + 0.3,
+                                       2 * pi2 + 1.0};
+  const std::vector<double> inside = {pi2 - 0.1, 0.1, 0.3, 1.0};
+  auto o = eval_1d(s, {1, 1, 1}, outside, 3, -999.0);
+  auto i = eval_1d(s, {1, 1, 1}, inside, 3);
+  for (size_t k = 0; k < o.size(); ++k)
+    CHECK(o[k] == Catch::Approx(i[k]).margin(1e-10));
+}
+
+TEMPLATE_TEST_CASE("periodic 2D splines wrap queries outside the period",
+                   "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  const double pi2 = 2 * M_PI;
+  auto xh = linspace(0, pi2, 12);
+  auto yh = linspace(0, pi2, 10);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  // sin and cos of the grid ends agree to round-off, so the samples are
+  // periodic in both directions
+  auto v = CreateDeviceRank1View(sample_2d(
+    xh, yh, [](double a, double b) { return std::sin(a) * std::cos(b) + 1; }));
+  auto none = CreateDeviceRank1View<double>({});
+  const auto per = BoundaryCondition::PERIODIC;
+  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), per,
+             MakeRank1View(none), per, MakeRank1View(none), per,
+             MakeRank1View(none), per, MakeRank1View(none));
+  const std::vector<double> xo = {-0.1, pi2 + 0.2, 1.0, -0.4};
+  const std::vector<double> yo = {1.0, -0.3, pi2 + 0.5, pi2 + 0.1};
+  const std::vector<double> xi = {pi2 - 0.1, 0.2, 1.0, pi2 - 0.4};
+  const std::vector<double> yi = {1.0, pi2 - 0.3, 0.5, 0.1};
+  auto o = eval_2d(s, {1, 1, 1, 1, 1, 1}, xo, yo, 6, -999.0);
+  auto i = eval_2d(s, {1, 1, 1, 1, 1, 1}, xi, yi, 6);
+  for (size_t k = 0; k < o.size(); ++k)
+    CHECK(o[k] == Catch::Approx(i[k]).margin(1e-10));
+}
+
+TEMPLATE_TEST_CASE("short-grid splines agree with the two-point spline",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // a two-point spline with derivative ends is a cubic; splines on finer
+  // grids sampled from it, with the same ends, must be that cubic (PSPLINE
+  // smalltest)
+  using BC = BoundaryCondition;
+  const auto d1 = BC::FIRST_DERIVATIVE_MATCH;
+  const auto d2 = BC::SECOND_DERIVATIVE_MATCH;
+  auto [lo, lo_data, hi, hi_data] = GENERATE_COPY(
+    std::make_tuple(d1, 1.0, d1, 2.0), std::make_tuple(d1, 1.0, d2, -3.0),
+    std::make_tuple(d2, 0.5, d1, 2.0), std::make_tuple(d2, 0.5, d2, -3.0));
+  INFO("lo " << static_cast<int>(lo) << " hi " << static_cast<int>(hi));
+  auto x2 = CreateDeviceRank1View<double>({0.0, 1.0});
+  auto f2 = CreateDeviceRank1View<double>({0.25, 0.75});
+  TestType s2(MakeRank1View(x2), MakeRank1View(f2), lo, lo_data, hi, hi_data);
+  const std::vector<double> xq = {0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0};
+  auto expected = eval_1d(s2, {1, 1, 1}, xq, 3);
+  for (int n : {3, 4, 5}) {
+    INFO("n " << n);
+    auto xh = linspace(0, 1, n);
+    auto samples = eval_1d(s2, {1, 0, 0}, xh, 1);
+    auto x = CreateDeviceRank1View(xh);
+    auto f = CreateDeviceRank1View(samples);
+    TestType s(MakeRank1View(x), MakeRank1View(f), lo, lo_data, hi, hi_data);
+    auto out = eval_1d(s, {1, 1, 1}, xq, 3);
+    for (size_t k = 0; k < out.size(); ++k)
+      CHECK(out[k] == Catch::Approx(expected[k]).margin(1e-10));
+  }
+}
+
+namespace
+{
+
+/// 2 + sin(y) sampled on y, with the last sample set to the first so the
+/// data is exactly periodic
+std::vector<double> periodic_samples(const std::vector<double>& y)
+{
+  std::vector<double> g;
+  for (double b : y)
+    g.push_back(2 + std::sin(b));
+  g.back() = g.front();
+  return g;
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("2D splines take periodic ends on one axis only", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // f = px(x) (2 + sin y): non-periodic in x, periodic in y (PSPLINE
+  // bpspline and bpsplinb)
+  using BC = BoundaryCondition;
+  const double pi2 = 2 * M_PI;
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(0, pi2, 12);
+  const auto g = periodic_samples(yh);
+  std::vector<double> vh;
+  for (double a : xh)
+    for (double gj : g)
+      vh.push_back(px(a, 0) * gj);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(vh);
+  auto none = CreateDeviceRank1View<double>({});
+  const auto per = BC::PERIODIC;
+  const BC xbc = GENERATE(BC::NOT_A_KNOT, BC::FIRST_DERIVATIVE_MATCH);
+  INFO("x condition " << static_cast<int>(xbc));
+  std::vector<double> bx_lo, bx_hi;
+  for (double gj : g) {
+    bx_lo.push_back(px(xh.front(), 1) * gj);
+    bx_hi.push_back(px(xh.back(), 1) * gj);
+  }
+  auto bxl = CreateDeviceRank1View(bx_lo);
+  auto bxh = CreateDeviceRank1View(bx_hi);
+  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), xbc,
+             MakeRank1View(bxl), xbc, MakeRank1View(bxh), per,
+             MakeRank1View(none), per, MakeRank1View(none));
+
+  // along a y node the spline is the x spline of a cubic, so it is exact
+  std::vector<double> xq, yq;
+  for (double a : {0.0, 0.3, 1.1, 2.0})
+    for (int j : {0, 3, 7, 11}) {
+      xq.push_back(a);
+      yq.push_back(yh[j]);
+    }
+  auto out = eval_2d(s, {1, 1, 0, 0, 0, 0}, xq, yq, 2);
+  for (size_t q = 0; q < xq.size(); ++q) {
+    const double gj = g[std::lround(yq[q] / (yh[1] - yh[0])) % 11];
+    CHECK(out[2 * q] == Catch::Approx(px(xq[q], 0) * gj).margin(1e-9));
+    CHECK(out[2 * q + 1] == Catch::Approx(px(xq[q], 1) * gj).margin(1e-9));
+  }
+
+  // y wraps; x does not
+  const std::vector<double> xi = {0.4, 1.7, 0.9};
+  const std::vector<double> yi = {0.2, 5.9, 3.0};
+  const std::vector<double> yo = {0.2 + pi2, 5.9 - pi2, 3.0 - 2 * pi2};
+  auto inside = eval_2d(s, {1, 1, 1, 1, 1, 1}, xi, yi, 6);
+  auto wrapped = eval_2d(s, {1, 1, 1, 1, 1, 1}, xi, yo, 6, -999.0);
+  for (size_t k = 0; k < inside.size(); ++k)
+    CHECK(wrapped[k] == Catch::Approx(inside[k]).margin(1e-10));
+  auto outside =
+    eval_2d(s, {1, 0, 0, 0, 0, 0}, {-0.1, 2.1}, {1.0, 1.0}, 1, -999.0);
+  for (double val : outside)
+    CHECK(val == -999.0);
+}
+
+namespace
+{
+
+/// log2 of the ratio of successive errors
+std::vector<double> observed_orders(const std::vector<double>& err)
+{
+  std::vector<double> order;
+  for (size_t i = 1; i < err.size(); ++i)
+    order.push_back(std::log2(err[i - 1] / err[i]));
+  return order;
+}
+
+} // namespace
+
+TEMPLATE_TEST_CASE("1D spline errors converge at fourth order", "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // f = exp(x) on [0, 1]; the value, f' and f'' errors fall as h^4, h^3 and
+  // h^2 for exact first derivative and not-a-knot ends
+  using BC = BoundaryCondition;
+  const BC bc = GENERATE(BC::FIRST_DERIVATIVE_MATCH, BC::NOT_A_KNOT);
+  INFO("ends " << static_cast<int>(bc));
+  const auto xq = linspace(0, 1, 101);
+  std::vector<double> err[3];
+  for (int n : {10, 20, 40}) {
+    auto xh = linspace(0, 1, n);
+    std::vector<double> fh;
+    for (double a : xh)
+      fh.push_back(std::exp(a));
+    auto x = CreateDeviceRank1View(xh);
+    auto f = CreateDeviceRank1View(fh);
+    TestType s(MakeRank1View(x), MakeRank1View(f), bc, 1.0, bc, std::exp(1.0));
+    auto out = eval_1d(s, {1, 1, 1}, xq, 3);
+    double e[3] = {0, 0, 0};
+    for (size_t q = 0; q < xq.size(); ++q)
+      for (int k = 0; k < 3; ++k)
+        e[k] = std::max(e[k], std::abs(out[3 * q + k] - std::exp(xq[q])));
+    for (int k = 0; k < 3; ++k)
+      err[k].push_back(e[k]);
+  }
+  const double expected[3] = {4, 3, 2};
+  for (int k = 0; k < 3; ++k)
+    for (double order : observed_orders(err[k])) {
+      INFO("derivative " << k);
+      CHECK(order > expected[k] - 0.5);
+    }
+}
+
+TEMPLATE_TEST_CASE("2D spline errors converge at fourth order", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // f = exp(2x - 1) (2 + sin y) with exact x derivative faces and periodic
+  // y, at 10, 20 and 40 points per axis (PSPLINE pspltest2)
+  const double pi2 = 2 * M_PI;
+  auto f = [](double a, double b) {
+    return std::exp(2 * a - 1) * (2 + std::sin(b));
+  };
+  std::vector<double> xq, yq;
+  for (double a : linspace(0, 1, 31))
+    for (double b : linspace(0, pi2, 31)) {
+      xq.push_back(a);
+      yq.push_back(b);
+    }
+  std::vector<double> err;
+  for (int n : {10, 20, 40}) {
+    auto xh = linspace(0, 1, n);
+    auto yh = linspace(0, pi2, n);
+    const auto g = periodic_samples(yh);
+    std::vector<double> vh, bx_lo, bx_hi;
+    for (double a : xh)
+      for (double gj : g)
+        vh.push_back(std::exp(2 * a - 1) * gj);
+    for (double gj : g) {
+      bx_lo.push_back(2 * std::exp(-1.0) * gj);
+      bx_hi.push_back(2 * std::exp(1.0) * gj);
+    }
+    auto x = CreateDeviceRank1View(xh);
+    auto y = CreateDeviceRank1View(yh);
+    auto v = CreateDeviceRank1View(vh);
+    auto bxl = CreateDeviceRank1View(bx_lo);
+    auto bxh = CreateDeviceRank1View(bx_hi);
+    auto none = CreateDeviceRank1View<double>({});
+    const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+    const auto per = BoundaryCondition::PERIODIC;
+    TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), d1,
+               MakeRank1View(bxl), d1, MakeRank1View(bxh), per,
+               MakeRank1View(none), per, MakeRank1View(none));
+    auto out = eval_2d(s, {1, 0, 0, 0, 0, 0}, xq, yq, 1);
+    double e = 0;
+    for (size_t q = 0; q < xq.size(); ++q)
+      e = std::max(e, std::abs(out[q] - f(xq[q], yq[q])));
+    err.push_back(e);
+  }
+  for (double order : observed_orders(err))
+    CHECK(order > 3.5);
+}
+
+TEMPLATE_TEST_CASE("1D splines of zero data follow the end conditions",
+                   "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // zero samples with non-zero end data, and periodic splines of constant
+  // data (PSPLINE smalltest)
+  using BC = BoundaryCondition;
+  for (int n : {2, 3, 5}) {
+    auto xh = linspace(0, 1, n);
+    auto x = CreateDeviceRank1View(xh);
+    for (auto [bc, deriv] : {std::pair{BC::FIRST_DERIVATIVE_MATCH, 1},
+                             std::pair{BC::SECOND_DERIVATIVE_MATCH, 2}}) {
+      INFO("n " << n << " ends " << static_cast<int>(bc));
+      auto f = CreateDeviceRank1View(std::vector<double>(n, 0.0));
+      TestType s(MakeRank1View(x), MakeRank1View(f), bc, 1.0, bc, 2.0);
+      auto nodes = eval_1d(s, {1, 0, 0}, xh, 1);
+      for (double val : nodes)
+        CHECK(val == Catch::Approx(0.0).margin(1e-12));
+      std::vector<LO> sel = {0, 0, 0};
+      sel[deriv] = 1;
+      auto ends = eval_1d(s, sel, {0.0, 1.0}, 1);
+      CHECK(ends[0] == Catch::Approx(1.0));
+      CHECK(ends[1] == Catch::Approx(2.0));
+    }
+    INFO("n " << n << " periodic");
+    auto c = CreateDeviceRank1View(std::vector<double>(n, 0.7));
+    const auto per = BC::PERIODIC;
+    TestType s(MakeRank1View(x), MakeRank1View(c), per, 0, per, 0);
+    auto out = eval_1d(s, {1, 1, 1}, {0.0, 0.3, 0.8, 1.0}, 3);
+    for (size_t q = 0; q < 4; ++q) {
+      CHECK(out[3 * q] == Catch::Approx(0.7));
+      CHECK(out[3 * q + 1] == Catch::Approx(0.0).margin(1e-12));
+      CHECK(out[3 * q + 2] == Catch::Approx(0.0).margin(1e-12));
+    }
+  }
+}
+
+TEMPLATE_TEST_CASE("2D splines of zero data follow the face data", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // all-zero values: only the x face derivative data drives the spline
+  auto xh = linspace(0, 1, 5);
+  auto yh = linspace(-1, 1, 6);
+  std::vector<double> lo_h, hi_h;
+  for (double b : yh) {
+    lo_h.push_back(1 + b);
+    hi_h.push_back(b * b);
+  }
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v =
+    CreateDeviceRank1View(std::vector<double>(xh.size() * yh.size(), 0.0));
+  auto lo = CreateDeviceRank1View(lo_h);
+  auto hi = CreateDeviceRank1View(hi_h);
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
+  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), d1,
+             MakeRank1View(lo), d1, MakeRank1View(hi), nak, MakeRank1View(none),
+             nak, MakeRank1View(none));
+  std::vector<double> xn, yn, xf, yf, expected;
+  for (double a : xh)
+    for (double b : yh) {
+      xn.push_back(a);
+      yn.push_back(b);
+    }
+  for (size_t j = 0; j < yh.size(); ++j) {
+    xf.insert(xf.end(), {0.0, 1.0});
+    yf.insert(yf.end(), {yh[j], yh[j]});
+    expected.insert(expected.end(), {lo_h[j], hi_h[j]});
+  }
+  auto nodes = eval_2d(s, {1, 0, 0, 0, 0, 0}, xn, yn, 1);
+  for (double val : nodes)
+    CHECK(val == Catch::Approx(0.0).margin(1e-12));
+  auto faces = eval_2d(s, {0, 1, 0, 0, 0, 0}, xf, yf, 1);
+  for (size_t k = 0; k < faces.size(); ++k)
+    CHECK(faces[k] == Catch::Approx(expected[k]).margin(1e-10));
+}
+
+TEMPLATE_TEST_CASE("1D queries just outside the grid are clamped", "[spline]",
+                   (ExplicitCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  // the default lookup tolerance is 4e-7 relative to max(|x0|, |xn|) = 2
+  auto xh = linspace(0, 2, 6);
+  std::vector<double> fh;
+  for (double a : xh)
+    fh.push_back(px(a, 0));
+  auto x = CreateDeviceRank1View(xh);
+  auto f = CreateDeviceRank1View(fh);
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType s(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0);
+  auto clamped = eval_1d(s, {1, 1, 1}, {-4e-7, 2 + 4e-7}, 3, -999.0);
+  auto ends = eval_1d(s, {1, 1, 1}, {0.0, 2.0}, 3);
+  for (size_t k = 0; k < ends.size(); ++k)
+    CHECK(clamped[k] == ends[k]);
+  auto outside = eval_1d(s, {1, 1, 1}, {-2e-6, 2 + 2e-6}, 3, -999.0);
+  for (double val : outside)
+    CHECK(val == -999.0);
+}
+
+TEMPLATE_TEST_CASE("2D queries just outside the grid are clamped", "[spline]",
+                   (ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>),
+                   (CompactBiCubicSplineInterpolator<double, TestMemorySpace>))
+{
+  auto xh = linspace(0, 2, 6);
+  auto yh = linspace(-1, 1, 5);
+  auto x = CreateDeviceRank1View(xh);
+  auto y = CreateDeviceRank1View(yh);
+  auto v = CreateDeviceRank1View(
+    sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
+  auto none = CreateDeviceRank1View<double>({});
+  const auto nak = BoundaryCondition::NOT_A_KNOT;
+  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
+             MakeRank1View(none), nak, MakeRank1View(none), nak,
+             MakeRank1View(none), nak, MakeRank1View(none));
+  const std::vector<LO> all = {1, 1, 1, 1, 1, 1};
+  auto clamped = eval_2d(s, all, {2 + 4e-7, 0.5, -4e-7},
+                         {0.3, 1 + 4e-7, -1 - 4e-7}, 6, -999.0);
+  auto ends = eval_2d(s, all, {2.0, 0.5, 0.0}, {0.3, 1.0, -1.0}, 6);
+  for (size_t k = 0; k < ends.size(); ++k)
+    CHECK(clamped[k] == ends[k]);
+  auto outside = eval_2d(s, all, {2 + 2e-6, 0.5}, {0.3, -1 - 2e-6}, 6, -999.0);
+  for (double val : outside)
+    CHECK(val == -999.0);
 }

@@ -2,18 +2,24 @@ find_package(KokkosKernels REQUIRED)
 
 set(PCMS_FIELD_HEADERS
         field.h
-        coordinate_system.h
+        coordinate_system.hpp
+        coordinate_view.hpp
+        coordinate_systems/cartesian.hpp
+        coordinate_systems/cylindrical.hpp
+        coordinate_map.hpp
+        value_view.hpp
         element_dispatch.h
         evaluation_request.h
         gid_permutation.hpp
         field_layout.h
-        field_metadata.h
         layout/empty.h
         out_of_bounds_policy.h
         field_data.h
         field_factory.h
         function_space.h
         point_evaluator.h
+        point_evaluator_factory.hpp
+        transformed_source.hpp
         data/simple.h
         function_space/polynomial_reconstruction.hpp
         layout/point_cloud.h
@@ -21,6 +27,9 @@ set(PCMS_FIELD_HEADERS
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
+        coordinate_system.cpp
+        coordinate_map.cpp
+        transformed_source.cpp
         gid_permutation.cpp
         function_space/polynomial_reconstruction.cpp
         layout/empty.cpp
@@ -47,6 +56,7 @@ if (PCMS_ENABLE_OMEGA_H)
             layout/uniform_grid.h
             uniform_grid_binary_field.h
             evaluator/uniform_grid.h
+            evaluator/spline_interpolator.hpp
             evaluator/uniform_grid_spline.h
             eqdsk_field.h
             evaluator/mls_options.h
@@ -57,6 +67,18 @@ if (PCMS_ENABLE_OMEGA_H)
             evaluator/pcms_interpolator_logger.hpp
             evaluator/mls_point_cloud.h
             evaluator/point_cloud.h
+    )
+endif ()
+
+if (PCMS_ENABLE_MFEM)
+    list(APPEND PCMS_FIELD_SOURCES
+            layout/mfem.cpp
+            data/mfem.cpp
+    )
+    list(APPEND PCMS_FIELD_HEADERS
+            layout/mfem.hpp
+            data/mfem.hpp
+            function_space/mfem.hpp
     )
 endif ()
 
@@ -101,6 +123,10 @@ target_link_libraries(pcms_field PUBLIC
 if(PCMS_ENABLE_OMEGA_H)
     target_link_libraries(pcms_field PUBLIC Omega_h::omega_h)
     target_link_libraries(pcms_field PRIVATE Kokkos::kokkoskernels)
+endif()
+
+if(PCMS_ENABLE_MFEM)
+    target_link_libraries(pcms_field PUBLIC mfem)
 endif()
 
 if (PCMS_ENABLE_MESHFIELDS)

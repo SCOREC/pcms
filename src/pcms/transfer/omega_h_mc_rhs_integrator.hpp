@@ -1,7 +1,7 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP
 #define PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP
 
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 #include "pcms/field/function_space.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/transfer/linear_form_integrator.hpp"
@@ -36,8 +36,9 @@ public:
                                 uint64_t seed = 8675309);
   OmegaHMonteCarloRHSIntegrator(
     std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-    CoordinateSystem target_coordinate_system, int samples_per_element,
-    MonteCarloSampling sampling, uint64_t seed = 8675309);
+    std::shared_ptr<const CoordinateSystem> target_coordinate_system,
+    int samples_per_element, MonteCarloSampling sampling,
+    uint64_t seed = 8675309);
   ~OmegaHMonteCarloRHSIntegrator();
 
   OmegaHMonteCarloRHSIntegrator(const OmegaHMonteCarloRHSIntegrator&) = delete;

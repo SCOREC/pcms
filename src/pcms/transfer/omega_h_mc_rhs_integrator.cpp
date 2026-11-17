@@ -5,6 +5,7 @@
 #include <Kokkos_Random.hpp>
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 namespace pcms
 {
@@ -148,8 +149,8 @@ OmegaHMonteCarloRHSIntegrator::OmegaHMonteCarloRHSIntegrator(
 
 OmegaHMonteCarloRHSIntegrator::OmegaHMonteCarloRHSIntegrator(
   std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-  CoordinateSystem target_coordinate_system, int samples_per_element,
-  MonteCarloSampling /*sampling*/, uint64_t seed)
+  std::shared_ptr<const CoordinateSystem> target_coordinate_system,
+  int samples_per_element, MonteCarloSampling /*sampling*/, uint64_t seed)
 {
   detail::CheckOmegaHScalarP1Layout(target_coordinate_system, target_layout,
                                     "OmegaHMonteCarloRHSIntegrator", "target");
@@ -214,8 +215,9 @@ OmegaHMonteCarloRHSIntegrator::~OmegaHMonteCarloRHSIntegrator()
 CoordinateView<DeviceMemorySpace>
 OmegaHMonteCarloRHSIntegrator::GetIntegrationPoints() const noexcept
 {
-  return CoordinateView<DeviceMemorySpace>(CoordinateSystem::Cartesian,
-                                           MakeConstRank2View(coords_));
+  return CoordinateView<DeviceMemorySpace>(
+    csys::Cartesian::Create(static_cast<int>(coords_.extent(1))),
+    MakeConstRank2View(coords_));
 }
 
 Vec OmegaHMonteCarloRHSIntegrator::GetVector() const noexcept
@@ -236,10 +238,7 @@ void OmegaHMonteCarloRHSIntegrator::Assemble(
   PetscErrorCode ierr = VecZeroEntries(vec_);
   CHKERRABORT(PETSC_COMM_SELF, ierr);
 
-  auto sv = Kokkos::View<const Real**, Kokkos::LayoutRight, DeviceMemorySpace,
-                         Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
-    sampled_values.data_handle(), sampled_values.extent(0),
-    sampled_values.extent(1));
+  auto sv = sampled_values;
   Kokkos::View<PetscScalar*, DeviceMemorySpace> coo_vals("mc_rhs_coo_vals",
                                                          num_samples * nbary);
   auto coeffs = coeffs_;

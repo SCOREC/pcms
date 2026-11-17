@@ -4,7 +4,7 @@
 #include "pcms/field/layout/mesh_fields.h"
 #include "pcms/field/evaluator/mesh_fields_backend.h"
 #include "pcms/field/field_data.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/arrays.h"
 
@@ -14,19 +14,46 @@
 namespace pcms
 {
 
+namespace
+{
+// Functor that flattens component-major 2D data (LayoutLeft) into dof-major
+// order.
 template <typename T>
-class MeshFieldsFieldData : public FieldData<T>
+struct FlattenFunctor
+{
+  Rank2View<const T, DeviceMemorySpace> data_;
+  Kokkos::View<T*, DeviceMemorySpace> flat_;
+  LO row_off_;
+  size_t nc_;
+  FlattenFunctor(Rank2View<const T, DeviceMemorySpace> d,
+                 Kokkos::View<T*, DeviceMemorySpace> f, LO ro, size_t nc)
+    : data_(d), flat_(f), row_off_(ro), nc_(nc)
+  {
+  }
+  KOKKOS_INLINE_FUNCTION void operator()(LO local) const
+  {
+    LO global_dof = row_off_ + local;
+    for (size_t c = 0; c < nc_; ++c) {
+      flat_(local * nc_ + c) = data_(global_dof, c);
+    }
+  }
+};
+} // namespace
+
+template <typename T>
+class MeshFieldsFieldData
+  : public FieldData<T>
+  , public DOFAccess<T>
 {
 public:
   MeshFieldsFieldData(std::shared_ptr<const MeshFieldsAdapterLayout> layout,
-                      FieldMetadata metadata)
+                      ValueBasis basis)
     : layout_(std::move(layout)),
-      metadata_(metadata),
+      basis_(std::move(basis)),
       mesh_field_(MakeMeshFieldBackend<T>(*layout_)),
-      host_data_("meshfields_field_data",
-                 static_cast<size_t>(layout_->OwnedSize())),
       device_data_("meshfields_field_data_device",
-                   static_cast<size_t>(layout_->OwnedSize()))
+                   static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
+                   static_cast<size_t>(layout_->GetNumComponents()))
   {
     if (!mesh_field_) {
       throw pcms_error(
@@ -34,40 +61,24 @@ public:
     }
   }
 
-  const FieldMetadata& GetMetadata() const override { return metadata_; }
-
-  Rank2View<const T, HostMemorySpace> GetDOFHolderDataHost() const override
+  FieldValueType GetValueType() const override
   {
-    Kokkos::deep_copy(host_data_, device_data_);
-    return Rank2View<const T, HostMemorySpace>(host_data_.data(),
-                                               layout_->GetNumOwnedDofHolder(),
-                                               layout_->GetNumComponents());
+    return ValueTypeOfRank(basis_.Rank());
+  }
+  const ValueBasis& GetValueBasis() const override { return basis_; }
+
+  const DOFAccess<T>* GetDOFAccess() const noexcept override { return this; }
+  DOFAccess<T>* GetDOFAccess() noexcept override { return this; }
+
+  Rank2View<const T, DeviceMemorySpace> GetOwnedValues() const override
+  {
+    return MakeConstRank2View(device_data_);
   }
 
-  void SetDOFHolderDataHost(Rank2View<const T, HostMemorySpace> values) override
+  void SetOwnedValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
-    CopyHostRank2ViewToDeviceView(device_data_, values);
-    SyncBackend(GetDOFHolderData());
-  }
-
-  Rank2View<const T, DeviceMemorySpace> GetDOFHolderData() const override
-  {
-    // The Rank2View will wrap the dof-major data with layout left when device
-    // memory is enabled. This may cause issues in multi component cases. See
-    // issue #342
-    return Rank2View<const T, DeviceMemorySpace>(
-      device_data_.data(), layout_->GetNumOwnedDofHolder(),
-      layout_->GetNumComponents());
-  }
-
-  void SetDOFHolderData(Rank2View<const T, DeviceMemorySpace> values) override
-  {
-    PCMS_ALWAYS_ASSERT(values.size() ==
-                       static_cast<size_t>(layout_->OwnedSize()));
     CopyDeviceRank2ViewToDeviceView(device_data_, values);
-    SyncBackend(GetDOFHolderData());
+    SyncBackend(GetOwnedValues());
   }
 
   std::shared_ptr<MeshFieldBackend<T>> GetMeshFieldBackend() const
@@ -76,23 +87,30 @@ public:
   }
 
 private:
+  // Serialization boundary: meshfields' SetData consumes flat node-major
+  // spans, so the shaped data is explicitly repacked into a flat node-major
+  // staging buffer here — the one place this backend handles flat memory.
   void SyncBackend(Rank2View<const T, DeviceMemorySpace> data)
   {
     auto nodes_per_dim = layout_->GetNodesPerDim();
     auto num_components = layout_->GetNumComponents();
     auto& mesh = layout_->GetMesh();
-    // data is [dof_holder][component], contiguous node-major, so each mesh
-    // dimension owns a contiguous block of rows; SetData consumes a flat
-    // node-major span over that block.
+    // device_data_ is rank-2 LayoutLeft (component-major), but SetData
+    // expects a flat dof-major span.
     size_t row_offset = 0;
     for (int i = 0; i <= mesh.dim(); ++i) {
       if (nodes_per_dim[i]) {
         size_t num_rows = static_cast<size_t>(mesh.nents(i)) *
                           static_cast<size_t>(nodes_per_dim[i]);
         size_t len = num_rows * static_cast<size_t>(num_components);
-        Rank1View<const T, DeviceMemorySpace> subspan{
-          data.data_handle() + row_offset * static_cast<size_t>(num_components),
-          len};
+        Kokkos::View<T*, DeviceMemorySpace> flat("sync_flat", len);
+        Kokkos::parallel_for(
+          "SyncBackendReorder",
+          Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
+            0, static_cast<LO>(num_rows)),
+          FlattenFunctor<T>(data, flat, static_cast<LO>(row_offset),
+                            num_components));
+        Rank1View<const T, DeviceMemorySpace> subspan(flat.data(), len);
         mesh_field_->SetData(subspan, nodes_per_dim[i], num_components, i);
         row_offset += num_rows;
       }
@@ -100,10 +118,9 @@ private:
   }
 
   std::shared_ptr<const MeshFieldsAdapterLayout> layout_;
-  FieldMetadata metadata_;
+  ValueBasis basis_;
   std::shared_ptr<MeshFieldBackend<T>> mesh_field_;
-  mutable Kokkos::View<T*, HostMemorySpace> host_data_;
-  Kokkos::View<T*, DeviceMemorySpace> device_data_;
+  Kokkos::View<T**, DeviceMemorySpace> device_data_;
 };
 
 } // namespace pcms

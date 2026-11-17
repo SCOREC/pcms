@@ -5,9 +5,10 @@
 #include <Omega_h_for.hpp>
 #include "pcms/transfer/copy.h"
 #include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.h"
 #include <Kokkos_Core.hpp>
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 
 using pcms::Real;
 
@@ -20,7 +21,7 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, nx, ny, nz, false);
   auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, order, num_components, pcms::CoordinateSystem::Cartesian, "global",
+    mesh, order, num_components, pcms::csys::Cartesian::Deferred(), "global",
     pcms::LagrangeFunctionSpace::Backend::OmegaH);
   auto layout = factory->GetLayout();
   int ndata = layout->GetNumOwnedDofHolder() * num_components;
@@ -30,14 +31,15 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
     [=](int i) { ids[i] = i; });
 
   auto original = factory->CreateFunction<Real>();
-  original.SetDOFHolderDataHost(
+  original.SetDOFHolderDataUncheckedHost(
     pcms::Rank2View<const Real, pcms::HostMemorySpace>(
       ids.data(), layout->GetNumOwnedDofHolder(), num_components));
 
   auto copied = factory->CreateFunction<Real>();
   pcms::Copy<Real> copy(*factory, *factory);
   copy.Apply(original, copied);
-  auto copied_array = pcms::FlattenToRank1View(copied.GetDOFHolderDataHost());
+  auto copied_array =
+    pcms::FlattenToRank1View(copied.GetDOFHolderDataHost().GetValues());
 
   REQUIRE(copied_array.size() == ndata);
   int sum = 0;
@@ -58,7 +60,7 @@ TEST_CASE("copy omega_h_field2 data")
   auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 100,
                                  100, 0, false);
   REQUIRE_THROWS_AS(pcms::LagrangeFunctionSpace::FromMesh(
-                      mesh, 2, 1, pcms::CoordinateSystem::Cartesian, "global",
+                      mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
                       pcms::LagrangeFunctionSpace::Backend::OmegaH),
                     pcms::pcms_error);
 }

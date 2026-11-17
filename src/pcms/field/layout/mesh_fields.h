@@ -6,7 +6,6 @@
 #include "pcms/utility/arrays.h"
 #include "pcms/discretization/discretization/omega_h.hpp"
 #include "pcms/field/field_layout.h"
-#include "pcms/field/coordinate_system.h"
 #include "pcms/field/field.h"
 
 #include <array>
@@ -16,10 +15,10 @@ namespace pcms
 class MeshFieldsAdapterLayout : public FieldLayout
 {
 public:
-  MeshFieldsAdapterLayout(Omega_h::Mesh& mesh, std::array<int, 4> nodes_per_dim,
-                          int num_components,
-                          CoordinateSystem coordinate_system,
-                          std::string global_id_name = "global");
+  MeshFieldsAdapterLayout(
+    Omega_h::Mesh& mesh, std::array<int, 4> nodes_per_dim, int num_components,
+    std::shared_ptr<const CoordinateSystem> coordinate_system,
+    std::string global_id_name = "global");
 
   std::shared_ptr<const Discretization> GetDiscretization()
     const noexcept override;
@@ -60,11 +59,8 @@ private:
   Omega_h::HostWrite<Omega_h::GO> gids_host_;
   std::string global_id_name_;
   int num_components_;
-  CoordinateSystem coordinate_system_;
   std::array<int, 4> nodes_per_dim_;
   Kokkos::View<Real**> dof_holder_coords_;
-  Kokkos::View<Real**, Kokkos::LayoutRight, DeviceMemorySpace>
-    dof_holder_coords_device_right_;
   Omega_h::Write<Omega_h::ClassId> class_ids_;
   Omega_h::Write<Omega_h::I8> class_dims_;
   Omega_h::HostWrite<Omega_h::ClassId> class_ids_host_;

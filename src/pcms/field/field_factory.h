@@ -4,9 +4,10 @@
 #include "field.h"
 #include "field_data.h"
 #include "field_layout.h"
-#include "field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/types.h"
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace pcms
@@ -43,11 +44,16 @@ public:
 
   virtual ~FieldFactory() noexcept = default;
 
-  // Create a new named field with freshly allocated data. The name is optional
-  // (empty by default) and identifies the field to consumers such as a coupler.
   template <typename T>
-  [[nodiscard]] Field<T> CreateField(std::string name = "",
-                                     FieldMetadata metadata = {}) const;
+  [[nodiscard]] Field<T> CreateField(
+    std::string name = "", VarianceSignature variance = values::Scalar,
+    std::optional<ComponentScaling> scaling = std::nullopt) const;
+
+  template <typename T>
+  [[nodiscard]] Field<T> CreateField(
+    std::string name, VarianceSignature variance,
+    std::shared_ptr<const CoordinateSystem> system,
+    std::optional<ComponentScaling> scaling = std::nullopt) const;
 
   // Expert API: wrap externally constructed field data into a Field. The
   // concrete factory validates backend-specific field-data type and storage
@@ -64,20 +70,33 @@ protected:
     return Field<T>(std::string{}, std::move(layout), std::move(data));
   }
 
-  virtual FieldVariant CreateFieldImpl(Type value_type,
-                                       FieldMetadata metadata) const = 0;
+  virtual FieldVariant CreateFieldImpl(Type storage_type,
+                                       ValueBasis basis) const = 0;
 
   virtual FieldVariant CreateFieldImpl(FieldDataVariant data) const = 0;
 };
 
 template <typename T>
-Field<T> FieldFactory::CreateField(std::string name,
-                                   FieldMetadata metadata) const
+Field<T> FieldFactory::CreateField(
+  std::string name, VarianceSignature variance,
+  std::optional<ComponentScaling> scaling) const
+{
+  return CreateField<T>(std::move(name), variance, nullptr, scaling);
+}
+
+template <typename T>
+Field<T> FieldFactory::CreateField(
+  std::string name, VarianceSignature variance,
+  std::shared_ptr<const CoordinateSystem> system,
+  std::optional<ComponentScaling> scaling) const
 {
   static_assert(is_supported_field_type_v<T>,
                 "T is not a supported field type");
-  Field<T> field =
-    std::get<Field<T>>(CreateFieldImpl(TypeEnumFromType<T>(), metadata));
+  ValueBasis basis = detail::MakeValueBasis(
+    GetLayout()->GetCoordinateSystem(), variance, std::move(system), scaling);
+  detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
+  Field<T> field = std::get<Field<T>>(
+    CreateFieldImpl(TypeEnumFromType<T>(), std::move(basis)));
   field.name_ = std::move(name);
   return field;
 }
@@ -91,6 +110,8 @@ Field<T> FieldFactory::CreateField(std::string name,
   if (!data) {
     throw pcms_error("FieldFactory::CreateField: data must not be null");
   }
+  detail::ValidateValueSemantics(data->GetValueBasis(),
+                                 GetLayout()->GetNumComponents());
   Field<T> field =
     std::get<Field<T>>(CreateFieldImpl(FieldDataVariant{std::move(data)}));
   field.name_ = std::move(name);

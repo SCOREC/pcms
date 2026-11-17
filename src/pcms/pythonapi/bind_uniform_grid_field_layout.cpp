@@ -27,13 +27,13 @@ void bind_uniform_grid_field_layout_module(py::module& m)
          "Get the total number of cells in the grid")
     .def(
       "closest_cell_id",
-      [](const UniformGrid<2>& self, py::array_t<Real> point) {
-        if (point.size() != 2) {
-          throw std::runtime_error("Point must have 2 coordinates for 2D grid");
+      [](const UniformGrid<2>& self, const NumpyInput<Real>& point_arr) {
+        auto point = NumpyToHostView<1, Real>(point_arr);
+        if (point.extent(0) != 2) {
+          throw std::invalid_argument(
+            "Point must have 2 coordinates for 2D grid");
         }
-        auto buf = point.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        Omega_h::Vector<2> omega_point({ptr[0], ptr[1]});
+        Omega_h::Vector<2> omega_point({point(0), point(1)});
         return self.ClosestCellID(omega_point);
       },
       py::arg("point"),
@@ -54,13 +54,13 @@ void bind_uniform_grid_field_layout_module(py::module& m)
          "Get the total number of cells in the grid")
     .def(
       "closest_cell_id",
-      [](const UniformGrid<3>& self, py::array_t<Real> point) {
-        if (point.size() != 3) {
-          throw std::runtime_error("Point must have 3 coordinates for 3D grid");
+      [](const UniformGrid<3>& self, const NumpyInput<Real>& point_arr) {
+        auto point = NumpyToHostView<1, Real>(point_arr);
+        if (point.extent(0) != 3) {
+          throw std::invalid_argument(
+            "Point must have 3 coordinates for 3D grid");
         }
-        auto buf = point.request();
-        Real* ptr = static_cast<Real*>(buf.ptr);
-        Omega_h::Vector<3> omega_point({ptr[0], ptr[1], ptr[2]});
+        Omega_h::Vector<3> omega_point({point(0), point(1), point(2)});
         return self.ClosestCellID(omega_point);
       },
       py::arg("point"),

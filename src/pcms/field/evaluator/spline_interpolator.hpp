@@ -9,6 +9,7 @@
 #include <Kokkos_Core.hpp>
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 namespace pcms
 {
@@ -54,7 +55,7 @@ bool isUniformAscending(Rank1View<T, MemorySpace> x, T ztol)
     KOKKOS_LAMBDA(const LO ix, bool& local_flag) {
       T zdiffx = x(ix) - x(ix - 1);
       T zdiff = zdiffx - dxavg;
-      if (zdiffx < 0.0 || std::abs(zdiff) > zeps) {
+      if (!(zdiffx > 0) || !(std::abs(zdiff) <= zeps)) {
         local_flag = false;
       }
     },
@@ -65,9 +66,15 @@ bool isUniformAscending(Rank1View<T, MemorySpace> x, T ztol)
 template <typename T, typename MemorySpace>
 void grid_valid(Rank1View<T, MemorySpace> x)
 {
-  PCMS_ALWAYS_ASSERT(x.extent(0) >= 2);
-  bool is_uniform_ascending = isUniformAscending<T, MemorySpace>(x, 1.0e-3);
-  PCMS_ALWAYS_ASSERT(is_uniform_ascending);
+  if (x.extent(0) < 2) {
+    throw pcms_error("spline grid needs at least two points");
+  }
+  bool is_uniform_ascending = isUniformAscending<T, MemorySpace>(
+    x, std::sqrt(std::numeric_limits<T>::epsilon()));
+  if (!is_uniform_ascending) {
+    throw pcms_error(
+      "spline grid must be finite, strictly ascending and uniform");
+  }
 }
 
 /** \brief Clamp xget to the grid range [x[0], x[nx-1]] with tolerance
@@ -88,10 +95,10 @@ KOKKOS_INLINE_FUNCTION void clamp_to_grid_range(T xget, T& zxget,
                                                 Rank1View<T, MemorySpace> x,
                                                 LO nx, LO& ier, T tol)
 {
-  if (xget < x[0] || xget > x[nx - 1]) {
-    T zxtol = tol * std::max(std::abs(x[0]), std::abs(x[nx - 1]));
+  if (!(xget >= x[0] && xget <= x[nx - 1])) {
+    T zxtol = tol * Kokkos::max(std::abs(x[0]), std::abs(x[nx - 1]));
 
-    if (xget < x[0] - zxtol || xget > x[nx - 1] + zxtol) {
+    if (!(xget >= x[0] - zxtol && xget <= x[nx - 1] + zxtol)) {
       ier = 1; // Error code for out of range
       printf("lookup:  xget=%.6f out of range %.6f to %.6f\n", xget, x[0],
              x[nx - 1]);
@@ -103,6 +110,29 @@ KOKKOS_INLINE_FUNCTION void clamp_to_grid_range(T xget, T& zxget,
       zxget = (xget < x[0]) ? x[0] : x[nx - 1];
     }
   }
+}
+
+/** \brief Shift xget by whole periods into [x[0], x[nx-1]]
+ *
+ * \param xget input coordinate
+ * \param x input grid points
+ * \param nx number of grid points
+ * \param periodic whether the axis is periodic
+ *
+ * \details Coordinates inside the grid range, and all coordinates on a
+ * non-periodic axis, are returned unchanged.
+ */
+template <typename T, typename MemorySpace>
+KOKKOS_INLINE_FUNCTION T wrap_periodic(T xget, Rank1View<T, MemorySpace> x,
+                                       LO nx, bool periodic)
+{
+  if (!periodic || (xget >= x[0] && xget <= x[nx - 1]))
+    return xget;
+  const T period = x[nx - 1] - x[0];
+  T offset = Kokkos::fmod(xget - x[0], period);
+  if (offset < 0)
+    offset += period;
+  return x[0] + offset;
 }
 
 /** \brief Detect if the boundary conditions are homogeneous
@@ -125,6 +155,7 @@ void detect_inhomogeneous_bc(Rank1View<T, MemorySpace> bcmin, LO ibcmin,
 {
   using execution_space = typename MemorySpace::execution_space;
   if (ibcmin == 1 || ibcmin == 2) {
+    LO nonzero = 0;
     Kokkos::parallel_reduce(
       "check_nonzero", Kokkos::RangePolicy<execution_space>(0, nx),
       KOKKOS_LAMBDA(const LO ix, LO& local_flag) {
@@ -132,7 +163,8 @@ void detect_inhomogeneous_bc(Rank1View<T, MemorySpace> bcmin, LO ibcmin,
           local_flag = 1;
         }
       },
-      Kokkos::Max<LO>(iflg2));
+      Kokkos::Max<LO>(nonzero));
+    iflg2 = std::max(iflg2, nonzero);
   }
 }
 
@@ -174,8 +206,8 @@ KOKKOS_FUNCTION void compute_spline_coefficients(LO k_bc1, LO k_bcn, LO n,
   LO i3perio = 0;
 
   if (n == 3) {
-    i_bc1 = std::min(6, i_bc1);
-    i_bcn = std::min(6, i_bcn);
+    i_bc1 = Kokkos::min(6, i_bc1);
+    i_bcn = Kokkos::min(6, i_bcn);
 
     if (i_bc1 == 0)
       i3knots += 1;
@@ -255,7 +287,6 @@ KOKKOS_FUNCTION void compute_spline_coefficients(LO k_bc1, LO k_bcn, LO n,
       f(2, 1) = 0.0;
       f(3, 1) = 0.0;
     } else if (iord1 == 1 && iord2 == 1) {
-      T a1 = f(1, 0), an = f(1, 1);
       f(1, 0) = a1;
       f(1, 1) = an;
       h = dx;
@@ -270,7 +301,6 @@ KOKKOS_FUNCTION void compute_spline_coefficients(LO k_bc1, LO k_bcn, LO n,
       f(2, 1) = f(3, 0) * h + f(2, 0);
 
     } else if (iord1 == 1 && iord2 == 2) {
-      T a1 = f(1, 0), bn = f(2, 1);
       f(1, 0) = a1;
       f(2, 1) = bn;
       h = dx;
@@ -285,7 +315,6 @@ KOKKOS_FUNCTION void compute_spline_coefficients(LO k_bc1, LO k_bcn, LO n,
       f(1, 1) = f(3, 0) * h * h / 2 + f(2, 0) * h + a1;
 
     } else if (iord1 == 2 && iord2 == 1) {
-      T b1 = f(2, 0), an = f(1, 1);
       f(2, 0) = b1;
       f(1, 1) = an;
       h = dx;
@@ -300,7 +329,6 @@ KOKKOS_FUNCTION void compute_spline_coefficients(LO k_bc1, LO k_bcn, LO n,
       f(2, 1) = f(3, 0) * h + f(2, 0);
 
     } else if (iord1 == 2 && iord2 == 2) {
-      T b1 = f(2, 0), bn = f(2, 1);
       f(2, 0) = b1;
       f(2, 1) = bn;
       h = dx;
@@ -473,6 +501,11 @@ KOKKOS_FUNCTION void compute_spline_coefficients(LO k_bc1, LO k_bcn, LO n,
     T elem21 = f(3, 0);
     T elemnn1 = f(3, n - 2);
 
+    // Read before the left condition: at n = 4 a not-a-knot left end rescales
+    // f(2, n - 3)
+    const T third_diff_n =
+      i_bcn == 7 ? f(2, n - 2) / (2 * dx) - f(2, n - 3) / (2 * dx) : T(0);
+
     // Left boundary conditions
     if (i_bc1 == -1) {
       f(1, 0) = 2.0 * (f(3, 0) + f(3, n - 2));
@@ -510,8 +543,7 @@ KOKKOS_FUNCTION void compute_spline_coefficients(LO k_bc1, LO k_bcn, LO n,
       elemnn1 = 0.0;
     } else if (i_bcn == 7) {
       f(1, n - 1) = -f(3, n - 2);
-      f(2, n - 1) = f(2, n - 2) / (2 * dx) - f(2, n - 3) / (2 * dx);
-      f(2, n - 1) = -f(2, n - 1) * f(3, n - 2) * f(3, n - 2) / (3 * dx);
+      f(2, n - 1) = -third_diff_n * f(3, n - 2) * f(3, n - 2) / (3 * dx);
     } else if (i_bc1 != -1) {
       imax = n - 2;
       f(1, n - 2) = 2.0 * f(3, n - 3) + f(3, n - 2);
@@ -661,10 +693,10 @@ KOKKOS_FUNCTION void solve_cubic_spline_explicit(
  * \param dx displacement from the grid point
  * \param fspl spline coefficients
  */
-template <typename T, typename MemorySpace>
+template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void cubic_evalfn_explicit(
-  Kokkos::View<LO*, MemorySpace> selector, Rank1View<T, MemorySpace> fval, LO i,
-  T dx, Rank2View<T, MemorySpace> fspl)
+  Kokkos::View<LO*, MemorySpace> selector, const Out& fval, LO i, T dx,
+  Rank2View<T, MemorySpace> fspl)
 {
 
   LO iaval = 0;
@@ -702,11 +734,11 @@ KOKKOS_INLINE_FUNCTION LO lookup_in_grid(T zxget, Rank1View<T, MemorySpace> x,
 {
   LO nxm = nx - 1;
   LO ii = static_cast<LO>(nxm * (zxget - x[0]) / (x[nx - 1] - x[0]));
-  LO i = std::min(nxm - 1, ii);
+  LO i = Kokkos::min(nxm - 1, ii);
   if (zxget < x[i]) {
-    i = std::max(0, i - 1);
+    i = Kokkos::max(0, i - 1);
   } else if (zxget > x[i + 1]) {
-    i = std::min(nxm - 1, i + 1);
+    i = Kokkos::min(nxm - 1, i + 1);
   }
   return i;
 }
@@ -731,6 +763,8 @@ KOKKOS_INLINE_FUNCTION void cubic_lookup_explicit(T xget,
 
   // Range check
   clamp_to_grid_range(xget, zxget, x, nx, ier, lookup_tol);
+  if (ier != 0)
+    return;
 
   i = lookup_in_grid<T, MemorySpace>(zxget, x, nx);
 
@@ -752,11 +786,11 @@ KOKKOS_INLINE_FUNCTION void cubic_lookup_explicit(T xget,
  * single point. Note that this function does nothing when tje input point is
  * out of the grid range (ier is set to non-zero).
  */
-template <typename T, typename MemorySpace>
+template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void cubic_eval_explicit(
-  T xget, Kokkos::View<LO*, MemorySpace> iselect,
-  Rank1View<T, MemorySpace> fval, Rank1View<T, MemorySpace> x, LO nx,
-  Rank2View<T, MemorySpace> fspl, LO& ier, T lookup_tol)
+  T xget, Kokkos::View<LO*, MemorySpace> iselect, const Out& fval,
+  Rank1View<T, MemorySpace> x, LO nx, Rank2View<T, MemorySpace> fspl, LO& ier,
+  T lookup_tol)
 {
   LO ia = 0;
   T dxa = 0.0;
@@ -804,10 +838,10 @@ KOKKOS_FUNCTION void solve_cubic_spline_compact(
  * \param hxi inverse step size in the x direction
  * \param fs2 compact spline coefficients
  */
-template <typename T, typename MemorySpace>
+template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void cubic_evalfn_compact(
-  Kokkos::View<LO*, MemorySpace> selector, Rank1View<T, MemorySpace> fval, LO i,
-  T xparam, T hx, T hxi, Rank2View<T, MemorySpace> fs2)
+  Kokkos::View<LO*, MemorySpace> selector, const Out& fval, LO i, T xparam,
+  T hx, T hxi, Rank2View<T, MemorySpace> fs2)
 {
   const T sixth = 1.0 / 6.0;
   LO iadr = 0;
@@ -882,6 +916,8 @@ KOKKOS_INLINE_FUNCTION void cubic_lookup_compact(T xget,
   T zxget = xget;
 
   clamp_to_grid_range(xget, zxget, x, nx, ier, lookup_tol);
+  if (ier != 0)
+    return;
 
   i = lookup_in_grid<T, MemorySpace>(zxget, x, nx);
 
@@ -901,9 +937,9 @@ KOKKOS_INLINE_FUNCTION void cubic_lookup_compact(T xget,
  * \param ier error flag, 0 if successful, non-zero otherwise
  * \param lookup_tol tolerance for out-of-bound checking
  */
-template <typename T, typename MemorySpace>
+template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void cubic_eval_compact(
-  T xget, Kokkos::View<LO*, MemorySpace> ict, Rank1View<T, MemorySpace> fval,
+  T xget, Kokkos::View<LO*, MemorySpace> ict, const Out& fval,
   Rank1View<T, MemorySpace> x, LO nx, Rank2View<T, MemorySpace> fspl, LO& ier,
   T lookup_tol)
 {
@@ -972,10 +1008,10 @@ KOKKOS_INLINE_FUNCTION void bicubic_lookup_explicit(
  * \param dy displacement from the grid cell in y direction
  * \param fspl bicubic spline coefficients
  */
-template <typename T, typename MemorySpace>
+template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void bicubic_evalfn_explicit(
-  Kokkos::View<LO*, MemorySpace> ict, Rank1View<T, MemorySpace> fval, LO i,
-  LO j, T dx, T dy, Rank4View<T, MemorySpace> fspl)
+  Kokkos::View<LO*, MemorySpace> ict, const Out& fval, LO i, LO j, T dx, T dy,
+  Rank4View<T, MemorySpace> fspl)
 {
   LO iaval = 0; // Index for fval
   if (ict[0] <= 2) {
@@ -1175,12 +1211,11 @@ KOKKOS_INLINE_FUNCTION void bicubic_evalfn_explicit(
  * \param ier error flag, 0 if successful, non-zero otherwise
  * \param lookup_tol tolerance for looking up the grid point
  */
-template <typename T, typename MemorySpace>
+template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void bicubic_eval_explicit(
-  T xget, T yget, Kokkos::View<LO*, MemorySpace> iselect,
-  Rank1View<T, MemorySpace> fval, Rank1View<T, MemorySpace> x, LO nx,
-  Rank1View<T, MemorySpace> y, LO ny, Rank4View<T, MemorySpace> fspl, LO& ier,
-  T lookup_tol)
+  T xget, T yget, Kokkos::View<LO*, MemorySpace> iselect, const Out& fval,
+  Rank1View<T, MemorySpace> x, LO nx, Rank1View<T, MemorySpace> y, LO ny,
+  Rank4View<T, MemorySpace> fspl, LO& ier, T lookup_tol)
 {
   LO i = 0;
   LO j = 0;
@@ -1239,6 +1274,7 @@ void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
         fspl_x_view(0, ix) = fspl(0, 0, ix, iy);
       });
 
+      team.team_barrier();
       if (team.team_rank() == 0) {
         if (ibcxmin == 1)
           fspl_x_view(1, 0) = bcxmin[iy];
@@ -1253,6 +1289,7 @@ void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
         compute_spline_coefficients<T, MemorySpace>(ibcxmin, ibcxmax, inx, x,
                                                     fspl_x_view, wk_x_view);
       }
+      team.team_barrier();
 
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, inx), [=](LO ix) {
         fspl(1, 0, ix, iy) = fspl_x_view(1, ix);
@@ -1277,6 +1314,7 @@ void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
         });
 
         // Set linear BCs initially
+        team.team_barrier();
         if (team.team_rank() == 0) {
           fspl_y_view(1, 0) = 0.0;
           fspl_y_view(2, 0) = 0.0;
@@ -1295,6 +1333,7 @@ void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
           compute_spline_coefficients<T, MemorySpace>(
             ibcymina, ibcymaxa, iny, y, fspl_y_view, wk_y_view);
         }
+        team.team_barrier();
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, iny), [=](LO iy) {
           fspl(ic, 1, ix, iy) = fspl_y_view(1, iy);
@@ -1305,9 +1344,6 @@ void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
     });
 
   if (iflg2 == 1) {
-    LO iasc = 0;       // Workspace base for correction splines
-    LO iinc = 4 * iny; // Spacing between correction splines
-
     T zhxn =
       get_element_from_span(x, inx - 1) - get_element_from_span(x, inx - 2);
     T zhy =
@@ -1344,7 +1380,10 @@ void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
         auto zcur =
           Rank1View<T, MemorySpace>(zcur_shared.data_handle() + ix * 3, 3);
         T zdiff1 = 0.0, zdiff2 = 0.0;
-        auto wk_y = Rank1View<T, MemorySpace>(wk_l.data_handle(), iny);
+        auto wk_y =
+          Rank1View<T, MemorySpace>(wk_l.data_handle() + ix * iny, iny);
+        auto corr_y = Rank2View<T, MemorySpace>(
+          fspl_l_y.data_handle() + 4 * ix * iny, 4, iny);
 
         if (ibcymin == 1) {
           zcur[0] =
@@ -1389,42 +1428,42 @@ void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
           zdiff2 = bcymax[ix] - zcur(0);
         }
 
-        LO iadr = iasc + ix * iinc;
         for (LO iy = 0; iy < iny; ++iy)
-          fspl_l_y(ix * 4, iy) = 0.0;
+          corr_y(0, iy) = 0.0;
 
-        fspl_l_y(1 + ix * 4, 0) = 0.0;
-        fspl_l_y(2 + ix * 4, 0) = 0.0;
-        fspl_l_y(1 + ix * 4, iny - 1) = 0.0;
-        fspl_l_y(2 + ix * 4, iny - 1) = 0.0;
+        corr_y(1, 0) = 0.0;
+        corr_y(2, 0) = 0.0;
+        corr_y(1, iny - 1) = 0.0;
+        corr_y(2, iny - 1) = 0.0;
 
         if (ibcymin == 1)
-          fspl_l_y(1 + ix * 4, 0) = zdiff1;
+          corr_y(1, 0) = zdiff1;
         else if (ibcymin == 2)
-          fspl_l_y(2 + ix * 4, 0) = zdiff1;
+          corr_y(2, 0) = zdiff1;
 
         if (ibcymax == 1)
-          fspl_l_y(1 + ix * 4, iny - 1) = zdiff2;
+          corr_y(1, iny - 1) = zdiff2;
         else if (ibcymax == 2)
-          fspl_l_y(2 + ix * 4, iny - 1) = zdiff2;
+          corr_y(2, iny - 1) = zdiff2;
 
-        auto fspl_s_y =
-          Rank2View<T, MemorySpace>(fspl_l_y.data_handle() + iadr, 4, iny);
-        compute_spline_coefficients(ibcymin, ibcymax, iny, y, fspl_s_y, wk_y);
+        compute_spline_coefficients(ibcymin, ibcymax, iny, y, corr_y, wk_y);
       });
 
     Kokkos::parallel_for(
-      Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {inx, iny - 1}),
+      Kokkos::MDRangePolicy<execution_space, Kokkos::Rank<2>>({0, 0},
+                                                              {inx, iny - 1}),
       KOKKOS_LAMBDA(const LO ix, const LO iy) {
+        auto corr_y = Rank2View<T, MemorySpace>(
+          fspl_l_y.data_handle() + 4 * ix * iny, 4, iny);
         // Multiply local coefficients
-        fspl_l_y(2 + ix * 4, iy) *= xo2;
-        fspl_l_y(3 + ix * 4, iy) *= xo6;
+        corr_y(2, iy) *= xo2;
+        corr_y(3, iy) *= xo6;
 
         // Conditional accumulation LOo global fspl
         if (ix < inx - 1) {
-          fspl(0, 1, ix, iy) += fspl_l_y(1 + ix * 4, iy);
-          fspl(0, 2, ix, iy) += fspl_l_y(2 + ix * 4, iy);
-          fspl(0, 3, ix, iy) += fspl_l_y(3 + ix * 4, iy);
+          fspl(0, 1, ix, iy) += corr_y(1, iy);
+          fspl(0, 2, ix, iy) += corr_y(2, iy);
+          fspl(0, 3, ix, iy) += corr_y(3, iy);
         }
       });
     Kokkos::parallel_for(
@@ -1439,9 +1478,12 @@ void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
 
         for (LO ic = 1; ic < 4; ++ic) {
           Kokkos::parallel_for(Kokkos::TeamThreadRange(team, inx), [=](LO ix) {
-            fspl_x_view(0, ix) = fspl_l_y(ic + ix * 4, iy);
+            auto corr_y = Rank2View<T, MemorySpace>(
+              fspl_l_y.data_handle() + 4 * ix * iny, 4, iny);
+            fspl_x_view(0, ix) = corr_y(ic, iy);
           });
 
+          team.team_barrier();
           if (team.team_rank() == 0) {
             fspl_x_view(1, 0) = 0.0;
             fspl_x_view(2, 0) = 0.0;
@@ -1451,6 +1493,7 @@ void solve_bicubic_spline_explicit(Rank1View<T, MemorySpace> x, LO inx,
             compute_spline_coefficients(ibcxmin, ibcxmax, inx, x, fspl_x_view,
                                         wk_x_view);
           }
+          team.team_barrier();
 
           Kokkos::parallel_for(
             Kokkos::TeamThreadRange(team, inx - 1), [=](LO ix) {
@@ -1493,6 +1536,8 @@ KOKKOS_INLINE_FUNCTION void bicubic_lookup_compact(
 
   clamp_to_grid_range(xget, zxget, x, nx, ier, lookup_tol);
   clamp_to_grid_range(yget, zyget, y, ny, ier, lookup_tol);
+  if (ier != 0)
+    return;
 
   i = lookup_in_grid<T, MemorySpace>(zxget, x, nx);
   j = lookup_in_grid<T, MemorySpace>(zyget, y, ny);
@@ -1521,11 +1566,11 @@ KOKKOS_INLINE_FUNCTION void bicubic_lookup_compact(
  * \param hyi inverse step size in the y direction
  * \param f bicubic spline coefficients
  */
-template <typename T, typename MemorySpace>
+template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void bicubic_evalfn_compact(
-  Kokkos::View<LO*, MemorySpace> ict, LO ivec, LO ivecd,
-  Rank1View<T, MemorySpace> fval, LO i, LO j, T xparam, T yparam, T hx, T hxi,
-  T hy, T hyi, Rank3View<T, MemorySpace> f)
+  Kokkos::View<LO*, MemorySpace> ict, LO ivec, LO ivecd, const Out& fval, LO i,
+  LO j, T xparam, T yparam, T hx, T hxi, T hy, T hyi,
+  Rank3View<T, MemorySpace> f)
 {
   constexpr T sixth = 1.0 / 6.0;
   const T z36th = sixth * sixth;
@@ -1825,12 +1870,11 @@ KOKKOS_INLINE_FUNCTION void bicubic_evalfn_compact(
  * \param ier error flag, 0 if successful, non-zero otherwise
  * \param lookup_tol tolerance for the lookup
  */
-template <typename T, typename MemorySpace>
+template <typename T, typename MemorySpace, typename Out>
 KOKKOS_INLINE_FUNCTION void bicubic_eval_compact(
-  T xget, T yget, Kokkos::View<LO*, MemorySpace> ict,
-  Rank1View<T, MemorySpace> fval, Rank1View<T, MemorySpace> x, LO nx,
-  Rank1View<T, MemorySpace> y, LO ny, Rank3View<T, MemorySpace> f, LO& ier,
-  T lookup_tol)
+  T xget, T yget, Kokkos::View<LO*, MemorySpace> ict, const Out& fval,
+  Rank1View<T, MemorySpace> x, LO nx, Rank1View<T, MemorySpace> y, LO ny,
+  Rank3View<T, MemorySpace> f, LO& ier, T lookup_tol)
 {
   // Local variables
   LO i = 0, j = 0;
@@ -1892,6 +1936,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nx),
                            [=](LO ix) { fwk_x_view(0, ix) = f(0, ix, iy); });
 
+      team.team_barrier();
       if (team.team_rank() == 0) {
         if (ibcxmin == 1 || ibcxmin == 2)
           zbcmin = bcxmin[iy];
@@ -1901,6 +1946,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
         solve_cubic_spline_compact(x, nx, fwk_x_view, fwk4_x_view, ibcxmin,
                                    zbcmin, ibcxmax, zbcmax, wk_x_view);
       }
+      team.team_barrier();
 
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nx),
                            [=](LO ix) { f(1, ix, iy) = fwk_x_view(1, ix); });
@@ -1922,6 +1968,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny),
                            [=](LO iy) { fwk_y_view(0, iy) = f(0, ix, iy); });
 
+      team.team_barrier();
       if (team.team_rank() == 0) {
         if (iflg2 == 1) {
           if (ibcymin == 1 || ibcymin == 2)
@@ -1933,6 +1980,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
         solve_cubic_spline_compact(y, ny, fwk_y_view, fwk4_y_view, ibcmin, 0.0,
                                    ibcmax, 0.0, wk_y_view);
       }
+      team.team_barrier();
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny),
                            [=](LO iy) { f(2, ix, iy) = fwk_y_view(1, iy); });
     });
@@ -1953,6 +2001,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny),
                            [=](LO iy) { fwk_y_view(0, iy) = f(1, ix, iy); });
 
+      team.team_barrier();
       if (team.team_rank() == 0) {
         if (iflg2 == 1) {
           if (ibcymin == 1 || ibcymin == 2)
@@ -1964,6 +2013,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
         solve_cubic_spline_compact(y, ny, fwk_y_view, fwk4_y_view, ibcmin, 0.0,
                                    ibcmax, 0.0, wk_y_view);
       }
+      team.team_barrier();
       Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny),
                            [=](LO iy) { f(3, ix, iy) = fwk_y_view(1, iy); });
     });
@@ -2013,10 +2063,12 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny),
                              [=](LO iy) { fwk_y_view(0, iy) = 0.0; });
+        team.team_barrier();
         if (team.team_rank() == 0) {
           solve_cubic_spline_compact(y, ny, fwk_y_view, fwk4_y_view, ibcymin,
                                      zdiff1, ibcymax, zdiff2, wk_y_view);
         }
+        team.team_barrier();
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, ny), [=](LO iy) {
           fcorr(0, ix, iy) = fwk_y_view(1, iy);
         });
@@ -2037,10 +2089,12 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
           fwk_x_view(0, ix) = fcorr(0, ix, iy);
         });
 
+        team.team_barrier();
         if (team.team_rank() == 0) {
           solve_cubic_spline_compact(x, nx, fwk_x_view, fwk4_x_view, ibcxmin,
                                      zbcmin, ibcxmax, zbcmax, wk_x_view);
         }
+        team.team_barrier();
 
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nx), [=](LO ix) {
           fcorr(1, ix, iy) = fwk_x_view(1, ix);
@@ -2048,7 +2102,7 @@ void solve_bicubic_spline_compact(Rank1View<T, MemorySpace> x, LO nx,
       });
 
     Kokkos::parallel_for(
-      Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {nx, ny}),
+      Kokkos::MDRangePolicy<execution_space, Kokkos::Rank<2>>({0, 0}, {nx, ny}),
       KOKKOS_LAMBDA(const LO ix, const LO iy) {
         f(2, ix, iy) += fcorr(0, ix, iy);
         f(3, ix, iy) += fcorr(1, ix, iy);
@@ -2193,6 +2247,7 @@ public:
 
 private:
   Rank1View<T, MemorySpace> x_;
+  bool periodic_x_ = false;
   Kokkos::View<T*, MemorySpace> coefficients_;
   Rank2View<T, MemorySpace> get_coefficients_view();
 };
@@ -2267,6 +2322,7 @@ public:
 
 private:
   Rank1View<T, MemorySpace> x_;
+  bool periodic_x_ = false;
   Kokkos::View<T*, MemorySpace> coefficients_;
   Rank2View<T, MemorySpace> get_coefficients_view();
 };
@@ -2372,6 +2428,8 @@ public:
 private:
   Rank1View<T, MemorySpace> x_;
   Rank1View<T, MemorySpace> y_;
+  bool periodic_x_ = false;
+  bool periodic_y_ = false;
   Kokkos::View<T*, MemorySpace> coefficients_;
   Rank4View<T, MemorySpace> get_coefficients_view();
 };
@@ -2467,6 +2525,8 @@ public:
 private:
   Rank1View<T, MemorySpace> x_;
   Rank1View<T, MemorySpace> y_;
+  bool periodic_x_ = false;
+  bool periodic_y_ = false;
   Kokkos::View<T*, MemorySpace> coefficients_;
   Rank3View<T, MemorySpace> get_coefficients_view();
 };
@@ -2613,12 +2673,15 @@ ExplicitCubicSplineInterpolator<T, MemorySpace>::
 {
   detail::grid_valid<T, MemorySpace>(x);
   x_ = x;
+  periodic_x_ = ibcxmin == BoundaryCondition::PERIODIC;
   LO nx = x.extent(0);
   Kokkos::View<T*, MemorySpace> fspl_view("coefficients", 4 * nx);
   coefficients_ = fspl_view;
   auto fspl = get_coefficients_view();
   InitCubicCoeffFunctor<T, MemorySpace> init_functor(fspl, values);
-  Kokkos::parallel_for("initialize_coefficients", nx, init_functor);
+  Kokkos::parallel_for("initialize_coefficients",
+                       Kokkos::RangePolicy<execution_space>(0, nx),
+                       init_functor);
 
   Kokkos::View<T*, MemorySpace> wk_view("working space", nx);
   auto wk = Rank1View<T, MemorySpace>(wk_view.data(), nx);
@@ -2649,12 +2712,15 @@ CompactCubicSplineInterpolator<T, MemorySpace>::CompactCubicSplineInterpolator(
 {
   detail::grid_valid<T, MemorySpace>(x);
   x_ = x;
+  periodic_x_ = ibcxmin == BoundaryCondition::PERIODIC;
   LO nx = x.extent(0);
   Kokkos::View<T*, MemorySpace> fspl_view("coefficients", 2 * nx);
   coefficients_ = fspl_view;
   auto fspl = get_coefficients_view();
   InitCubicCoeffFunctor<T, MemorySpace> init_functor(fspl, values);
-  Kokkos::parallel_for("initialize_coefficients", nx, init_functor);
+  Kokkos::parallel_for("initialize_coefficients",
+                       Kokkos::RangePolicy<execution_space>(0, nx),
+                       init_functor);
 
   Kokkos::View<T*, MemorySpace> fspl4_view("explicit coefficients", 4 * nx);
   auto fspl4 = Rank2View<T, MemorySpace>(fspl4_view.data(), 4, nx);
@@ -2684,16 +2750,16 @@ void ExplicitCubicSplineInterpolator<T, MemorySpace>::evaluate(
   const Kokkos::View<LO*, MemorySpace> selector, Rank1View<T, MemorySpace> xvec,
   Rank2View<T, MemorySpace> fval, T lookup_tol)
 {
-  LO ivd = fval.extent(1);
   auto fspl = get_coefficients_view();
   Kokkos::parallel_for(
     Kokkos::RangePolicy<execution_space>(0, xvec.extent(0)),
     KOKKOS_CLASS_LAMBDA(const LO i) {
       LO ier = 0;
-      auto fval_view =
-        Rank1View<T, MemorySpace>(fval.data_handle() + i * ivd, ivd);
-      detail::cubic_eval_explicit(xvec(i), selector, fval_view, x_,
-                                  x_.extent(0), fspl, ier, lookup_tol);
+      auto fval_view = Kokkos::submdspan(fval, i, Kokkos::full_extent);
+      const T xq =
+        detail::wrap_periodic(xvec(i), x_, x_.extent(0), periodic_x_);
+      detail::cubic_eval_explicit(xq, selector, fval_view, x_, x_.extent(0),
+                                  fspl, ier, lookup_tol);
     });
 }
 
@@ -2701,7 +2767,7 @@ template <typename T, typename MemorySpace>
 void ExplicitCubicSplineInterpolator<T, MemorySpace>::evaluate(
   Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval)
 {
-  std::array<LO, 3> ict_arr = {1, 0, 0};
+  Kokkos::Array<LO, 3> ict_arr = {1, 0, 0};
   Kokkos::View<LO*, MemorySpace> selector("select", 3);
   Kokkos::parallel_for(
     Kokkos::RangePolicy<execution_space>(0, selector.size()),
@@ -2714,15 +2780,15 @@ void CompactCubicSplineInterpolator<T, MemorySpace>::evaluate(
   Kokkos::View<LO*, MemorySpace> selector, Rank1View<T, MemorySpace> xvec,
   Rank2View<T, MemorySpace> fval, T lookup_tol)
 {
-  LO ivd = fval.extent(1);
   auto fspl = get_coefficients_view();
   Kokkos::parallel_for(
     Kokkos::RangePolicy<execution_space>(0, xvec.extent(0)),
     KOKKOS_CLASS_LAMBDA(const LO i) {
       LO ier = 0;
-      auto fval_view =
-        Rank1View<T, MemorySpace>(fval.data_handle() + i * ivd, ivd);
-      detail::cubic_eval_compact(xvec(i), selector, fval_view, x_, x_.extent(0),
+      auto fval_view = Kokkos::submdspan(fval, i, Kokkos::full_extent);
+      const T xq =
+        detail::wrap_periodic(xvec(i), x_, x_.extent(0), periodic_x_);
+      detail::cubic_eval_compact(xq, selector, fval_view, x_, x_.extent(0),
                                  fspl, ier, lookup_tol);
     });
 }
@@ -2734,7 +2800,7 @@ template <typename T, typename MemorySpace>
 void CompactCubicSplineInterpolator<T, MemorySpace>::evaluate(
   Rank1View<T, MemorySpace> xvec, Rank2View<T, MemorySpace> fval)
 {
-  std::array<LO, 3> ict_arr = {1, 0, 0};
+  Kokkos::Array<LO, 3> ict_arr = {1, 0, 0};
   Kokkos::View<LO*, MemorySpace> selector("select", 3);
   Kokkos::parallel_for(
     Kokkos::RangePolicy<execution_space>(0, selector.size()),
@@ -2750,15 +2816,17 @@ void ExplicitBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
   PCMS_ALWAYS_ASSERT(xvec.extent(0) == yvec.extent(0) &&
                      xvec.extent(0) == fval.extent(0));
 
-  LO ivd = fval.extent(1);
   auto fspl = get_coefficients_view();
   Kokkos::parallel_for(
     Kokkos::RangePolicy<execution_space>(0, xvec.extent(0)),
     KOKKOS_CLASS_LAMBDA(const LO i) {
       LO ier = 0;
-      auto fval_view =
-        Rank1View<T, MemorySpace>(fval.data_handle() + i * ivd, ivd);
-      detail::bicubic_eval_explicit(xvec(i), yvec(i), iselect, fval_view, x_,
+      auto fval_view = Kokkos::submdspan(fval, i, Kokkos::full_extent);
+      const T xq =
+        detail::wrap_periodic(xvec(i), x_, x_.extent(0), periodic_x_);
+      const T yq =
+        detail::wrap_periodic(yvec(i), y_, y_.extent(0), periodic_y_);
+      detail::bicubic_eval_explicit(xq, yq, iselect, fval_view, x_,
                                     x_.extent(0), y_, y_.extent(0), fspl, ier,
                                     lookup_tol);
     });
@@ -2769,7 +2837,7 @@ void ExplicitBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
   Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
   Rank2View<T, MemorySpace> fval)
 {
-  LO ict_arr[6] = {1, 0, 0, 0, 0, 0};
+  Kokkos::Array<LO, 6> ict_arr = {1, 0, 0, 0, 0, 0};
   Kokkos::View<LO*, MemorySpace> ict("select", 6);
   Kokkos::parallel_for(
     Kokkos::RangePolicy<execution_space>(0, ict.size()),
@@ -2785,17 +2853,18 @@ void CompactBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
 
   PCMS_ALWAYS_ASSERT(xvec.extent(0) == yvec.extent(0) &&
                      xvec.extent(0) == fval.extent(0));
-  LO ivd = fval.extent(1);
   auto fspl = get_coefficients_view();
   Kokkos::parallel_for(
     Kokkos::RangePolicy<execution_space>(0, xvec.extent(0)),
     KOKKOS_CLASS_LAMBDA(const LO i) {
       LO ier = 0;
-      auto fval_view =
-        Rank1View<T, MemorySpace>(fval.data_handle() + i * ivd, ivd);
-      detail::bicubic_eval_compact(xvec(i), yvec(i), iselect, fval_view, x_,
-                                   x_.extent(0), y_, y_.extent(0), fspl, ier,
-                                   lookup_tol);
+      auto fval_view = Kokkos::submdspan(fval, i, Kokkos::full_extent);
+      const T xq =
+        detail::wrap_periodic(xvec(i), x_, x_.extent(0), periodic_x_);
+      const T yq =
+        detail::wrap_periodic(yvec(i), y_, y_.extent(0), periodic_y_);
+      detail::bicubic_eval_compact(xq, yq, iselect, fval_view, x_, x_.extent(0),
+                                   y_, y_.extent(0), fspl, ier, lookup_tol);
     });
 }
 
@@ -2804,7 +2873,7 @@ void CompactBiCubicSplineInterpolator<T, MemorySpace>::evaluate(
   Rank1View<T, MemorySpace> xvec, Rank1View<T, MemorySpace> yvec,
   Rank2View<T, MemorySpace> fval)
 {
-  LO ict_arr[6] = {1, 0, 0, 0, 0, 0};
+  Kokkos::Array<LO, 6> ict_arr = {1, 0, 0, 0, 0, 0};
   Kokkos::View<LO*, MemorySpace> ict("select", 6);
   Kokkos::parallel_for(
     Kokkos::RangePolicy<execution_space>(0, ict.size()),
@@ -2867,6 +2936,8 @@ ExplicitBiCubicSplineInterpolator<T, MemorySpace>::
 
   x_ = x;
   y_ = y;
+  periodic_x_ = ibcxmin == BoundaryCondition::PERIODIC;
+  periodic_y_ = ibcymin == BoundaryCondition::PERIODIC;
   LO ny = y.extent(0);
   LO nx = x.extent(0);
   Kokkos::View<T*, MemorySpace> fspl_view("fspl view", 4 * 4 * nx * ny);
@@ -2874,8 +2945,9 @@ ExplicitBiCubicSplineInterpolator<T, MemorySpace>::
   auto fspl = get_coefficients_view();
   InitExplicitBiCubicCoeffFunctor<T, MemorySpace> init_functor(fspl, values,
                                                                ny);
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {ny, nx}),
-                       init_functor);
+  Kokkos::parallel_for(
+    Kokkos::MDRangePolicy<execution_space, Kokkos::Rank<2>>({0, 0}, {ny, nx}),
+    init_functor);
 
   Kokkos::View<T*, MemorySpace> wk_view("wk", 9 * nx * ny);
   auto wk = Rank1View<T, MemorySpace>(wk_view.data(), 9 * nx * ny);
@@ -2915,6 +2987,8 @@ CompactBiCubicSplineInterpolator<T, MemorySpace>::
 
   x_ = x;
   y_ = y;
+  periodic_x_ = ibcxmin == BoundaryCondition::PERIODIC;
+  periodic_y_ = ibcymin == BoundaryCondition::PERIODIC;
   LO ny = y.extent(0);
   LO nx = x.extent(0);
   Kokkos::View<T*, MemorySpace> fspl_view("fspl view", 4 * nx * ny);
@@ -2922,8 +2996,9 @@ CompactBiCubicSplineInterpolator<T, MemorySpace>::
   auto fspl = get_coefficients_view();
 
   InitCompactBiCubicCoeffFunctor<T, MemorySpace> init_functor(fspl, values, ny);
-  Kokkos::parallel_for(Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {ny, nx}),
-                       init_functor);
+  Kokkos::parallel_for(
+    Kokkos::MDRangePolicy<execution_space, Kokkos::Rank<2>>({0, 0}, {ny, nx}),
+    init_functor);
 
   Kokkos::View<T*, MemorySpace> wk_view("wk", 9 * nx * ny);
   auto wk = Rank1View<T, MemorySpace>(wk_view.data(), 9 * nx * ny);

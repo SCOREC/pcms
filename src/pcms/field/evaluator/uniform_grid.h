@@ -44,6 +44,42 @@ struct UniformGridFieldLocalizationHint
   size_t num_out_of_bounds_;
 };
 
+namespace detail
+{
+
+/// Indices of the points `hint` fills, in increasing order; empty unless its
+/// mode is FILL.
+template <unsigned Dim>
+Kokkos::View<const LO*, DeviceMemorySpace> FilledPointIndices(
+  const UniformGridFieldLocalizationHint<Dim>& hint)
+{
+  if (hint.mode_ != OutOfBoundsMode::FILL || hint.num_out_of_bounds_ == 0) {
+    return {};
+  }
+  const auto is_out_of_bounds = hint.is_out_of_bounds_;
+  Kokkos::View<LO*, DeviceMemorySpace> indices(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "filled_points"),
+    hint.num_out_of_bounds_);
+  LO count = 0;
+  Kokkos::parallel_scan(
+    "uniform_grid_filled_points",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
+      0, static_cast<LO>(is_out_of_bounds.extent(0))),
+    KOKKOS_LAMBDA(const LO i, LO& update, const bool final) {
+      if (is_out_of_bounds(i)) {
+        if (final) {
+          indices(update) = i;
+        }
+        ++update;
+      }
+    },
+    count);
+  PCMS_ALWAYS_ASSERT(static_cast<size_t>(count) == hint.num_out_of_bounds_);
+  return indices;
+}
+
+} // namespace detail
+
 // UniformGridPointEvaluator<Dim> implements PointEvaluator<Real> for structured
 // uniform grids. Localization results (cell indices, parametric coordinates)
 // are computed once at construction and cached for repeated Evaluate calls.
@@ -65,21 +101,35 @@ public:
     : layout_(std::move(layout)),
       grid_(layout_->GetGrid()),
       hint_(std::move(hint)),
-      fill_value_(fill_value)
+      fill_value_(fill_value),
+      filled_points_(detail::FilledPointIndices(hint_))
   {
   }
 
-  void Evaluate(
+  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
+    const override
+  {
+    return filled_points_;
+  }
+
+  [[nodiscard]] LO NumPoints() const override
+  {
+    return static_cast<LO>(hint_.coordinates_.extent(0));
+  }
+
+  // Public because CUDA forbids extended lambdas in non-public member
+  // functions. User call Evaluate.
+  // TODO: add passkey or other mechanism to protect this
+  void EvaluateImpl(
     const Field<Real>& field,
-    Rank2View<Real, DeviceMemorySpace, LayoutPolicy> values) const override
+    ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
-    auto dof_data = field.GetDOFHolderData();
-    LO num_points = static_cast<LO>(hint_.coordinates_.extent(0));
+    const auto values = out.GetValues();
+    const auto dof_data = field.GetDOFHolderData().GetValues();
+    LO num_points = NumPoints();
     int n_comp = layout_->GetNumComponents();
 
-    PCMS_ALWAYS_ASSERT(values.extent(0) == static_cast<size_t>(num_points));
-    PCMS_ALWAYS_ASSERT(values.extent(1) == static_cast<size_t>(n_comp));
     PCMS_ALWAYS_ASSERT(dof_data.size() ==
                        static_cast<size_t>(layout_->GetNumOwnedDofHolder() *
                                            layout_->GetNumComponents()));
@@ -127,7 +177,9 @@ public:
       "set_dimensions_view",
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, Dim),
       KOKKOS_LAMBDA(const unsigned d) {
-        dimensions_view(d) = cell_divisions[d] + 1;
+        // cell_dim_indices uses GetDimensionedIndex(), which returns indices in
+        // the opposite order of the coordinates, so we reverse the order here.
+        dimensions_view(d) = cell_divisions[Dim - 1 - d] + 1;
       });
 
     RealMatView parametric_coords("parametric_coords", num_points, Dim);
@@ -140,7 +192,10 @@ public:
           Real coord = coordinates(i, d);
           Real cell_min = cell_bbox.center[d] - cell_bbox.half_width[d];
           Real cell_max = cell_bbox.center[d] + cell_bbox.half_width[d];
-          parametric_coords(i, d) = (coord - cell_min) / (cell_max - cell_min);
+          // cell_dim_indices is filled from GetDimensionedIndex(), which
+          // returns indices in the opposite order of the coordinates
+          parametric_coords(i, Dim - 1 - d) =
+            (coord - cell_min) / (cell_max - cell_min);
         }
       });
 
@@ -153,18 +208,16 @@ public:
           cell_indices_interp(i, d) = cell_dim_indices(i, d);
       });
 
-    // n_comp == 1 for now (multi-component path would need per-component calls)
-    PCMS_ALWAYS_ASSERT(
-      n_comp == 1 &&
-      "UniformGridPointEvaluator: multi-component order-1 not yet supported");
-
-    RealVecView values_interp("values_interp",
-                              static_cast<size_t>(dof_data.size()));
+    RealMatView values_interp(
+      "values_interp", static_cast<size_t>(layout_->GetNumOwnedDofHolder()),
+      static_cast<size_t>(n_comp));
     Kokkos::parallel_for(
       "copy_dof_data_to_values_interp",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-        0, static_cast<LO>(dof_data.size())),
-      KOKKOS_LAMBDA(const LO i) { values_interp(i) = dof_data(i, 0); });
+      Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+        {0, 0}, {static_cast<LO>(layout_->GetNumOwnedDofHolder()), n_comp}),
+      KOKKOS_LAMBDA(const LO i, const int c) {
+        values_interp(i, c) = dof_data(i, c);
+      });
 
     auto interpolator = RegularGridInterpolator(
       parametric_coords, values_interp, cell_indices_interp, dimensions_view);
@@ -174,12 +227,12 @@ public:
     Real fv = fill_value_;
     Kokkos::parallel_for(
       "evaluate_order1_device",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_LAMBDA(const LO i) {
+      Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {num_points, n_comp}),
+      KOKKOS_LAMBDA(const LO i, const int c) {
         if (is_out_of_bounds(i) && mode == OutOfBoundsMode::FILL) {
-          values(i, 0) = fv;
+          values(i, c) = fv;
         } else {
-          values(i, 0) = interpolated(i);
+          values(i, c) = interpolated(i, c);
         }
       });
   }
@@ -189,6 +242,7 @@ private:
   UniformGrid<Dim> grid_;
   UniformGridFieldLocalizationHint<Dim> hint_;
   Real fill_value_;
+  Kokkos::View<const LO*, DeviceMemorySpace> filled_points_;
 };
 
 // UniformGridEvaluatorFactory<Dim> implements FieldEvaluatorFactory<Real> for
@@ -209,11 +263,6 @@ public:
 
   const FieldLayout& GetLayout() const override { return *layout_; }
 
-  CoordinateSystem GetCoordinateSystem() const override
-  {
-    return layout_->GetDOFHolderCoordinates().GetCoordinateSystem();
-  }
-
   bool HasDOFHolderCoordinates() const override { return true; }
 
   bool SupportsNearestBoundary() const override { return true; }
@@ -225,20 +274,11 @@ public:
     const auto coords = request.coords;
     const auto policy = request.policy;
     PCMS_FUNCTION_TIMER;
-    if (coords.GetCoordinateSystem() != GetCoordinateSystem()) {
-      throw pcms_error(
-        "UniformGridEvaluatorFactory: coordinate system mismatch");
-    }
     if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY &&
         !SupportsNearestBoundary()) {
       throw pcms_error(
         "UniformGridEvaluatorFactory: nearest-boundary evaluation is not "
         "supported");
-    }
-    if (layout_->GetOrder() == 1 && layout_->GetNumComponents() != 1) {
-      throw pcms_error(
-        "UniformGridEvaluatorFactory: order-1 multi-component evaluation is "
-        "not implemented");
     }
 
     auto coordinates = coords.GetValues();

@@ -4,9 +4,8 @@
 #include "pcms/field/data/xgc.h"
 #include "pcms/field/field.h"
 #include "pcms/field/field_factory.h"
-#include "pcms/field/field_metadata.h"
+#include "pcms/field/value_view.hpp"
 #include "pcms/utility/common.h"
-#include <functional>
 #include <memory>
 
 namespace pcms
@@ -17,10 +16,9 @@ class XGCFieldFactory : public FieldFactory
 {
 public:
   XGCFieldFactory(const ReverseClassificationVertex& reverse_classification,
-                  std::function<int8_t(int, int)> in_overlap,
                   LO num_plane_nodes, std::string layout_name = "")
-    : layout_(std::make_shared<XGCFieldLayout>(
-        reverse_classification, std::move(in_overlap), num_plane_nodes))
+    : layout_(std::make_shared<XGCFieldLayout>(reverse_classification,
+                                               num_plane_nodes))
   {
     layout_->SetName(std::move(layout_name));
   }
@@ -43,13 +41,13 @@ public:
   }
 
 protected:
-  [[nodiscard]] FieldVariant CreateFieldImpl(
-    Type value_type, FieldMetadata metadata) const override
+  [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
+                                             ValueBasis basis) const override
   {
-    return apply_to_type(value_type, [&](auto tag) -> FieldVariant {
+    return apply_to_type(storage_type, [&](auto tag) -> FieldVariant {
       using T = typename decltype(tag)::type;
       return WrapField<T>(layout_,
-                          std::make_unique<XGCFieldData<T>>(layout_, metadata));
+                          std::make_unique<XGCFieldData<T>>(layout_, basis));
     });
   }
 
@@ -65,7 +63,7 @@ protected:
           throw pcms_error(
             "XGCFieldFactory::CreateField: requires XGCFieldData");
         }
-        if (fd->GetDOFHolderDataHost().size() !=
+        if (fd->GetDOFAccess()->GetOwnedValues().size() !=
             static_cast<size_t>(layout_->GetFullDataSize())) {
           throw pcms_error(
             "XGCFieldFactory::CreateField: field data size does not match "

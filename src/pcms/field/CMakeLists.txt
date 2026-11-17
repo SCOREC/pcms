@@ -28,7 +28,6 @@ set(PCMS_FIELD_HEADERS
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
         coordinate_system.cpp
-        coordinate_map.cpp
         transformed_source.cpp
         gid_permutation.cpp
         function_space/polynomial_reconstruction.cpp
@@ -119,7 +118,8 @@ target_compile_features(pcms_field PUBLIC cxx_std_20)
 target_link_libraries(pcms_field PUBLIC
         pcms::utility
         pcms::discretization
-        pcms::localization)
+        pcms::localization
+        pcms::geometry)
 
 if(PCMS_ENABLE_OMEGA_H)
     target_link_libraries(pcms_field PUBLIC Omega_h::omega_h)

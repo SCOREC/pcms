@@ -17,43 +17,6 @@
 namespace pcms
 {
 
-/**
- * Get the owning element (face for 2D, region for 3D) for a given entity.
- *
- * Given an entity of dimension `entity_dim` with ID `element_id`, returns the
- * smallest ID of the owning element of dimension `mesh_dim` (the mesh's
- * top-level dimension).
- */
-LO GetOwningElementId(Omega_h::Mesh& mesh, int mesh_dim, int entity_dim,
-                      LO element_id);
-
-template <typename DimEnum>
-KOKKOS_INLINE_FUNCTION LO
-GetOwningElementIdFromAdj(const Omega_h::Adj& upward_adj, DimEnum entity_dim,
-                          DimEnum target_dim, LO element_id)
-{
-  if (element_id < 0)
-    return -1;
-
-  // If entity is already at target dimension, return it directly
-  if (static_cast<int>(entity_dim) == static_cast<int>(target_dim))
-    return element_id;
-
-  const auto begin = upward_adj.a2ab[element_id];
-  const auto end = upward_adj.a2ab[element_id + 1];
-  if (begin >= end)
-    return -1;
-
-  // Find the smallest owning element ID
-  LO owner = upward_adj.ab2b[begin];
-  for (auto i = begin + 1; i < end; ++i) {
-    const LO candidate = upward_adj.ab2b[i];
-    if (candidate < owner)
-      owner = candidate;
-  }
-  return owner;
-}
-
 //
 // TODO take a bounding box as we may want a bbox that's bigger than the mesh!
 // this function is in the public header for testing, but should not be directly
@@ -156,18 +119,6 @@ public:
   virtual Kokkos::View<Result*> operator()(
     Kokkos::View<const Real* [dim]> point) const = 0;
 
-  /**
-   * This function provides a temporary solution to retrieve the original
-   * behavior of the point search, which previously returned the face ID
-   * regardless of which entity the search result belonged to. Many parts of
-   * the codebase still rely on this legacy behavior. After updating the point
-   * search to return the exact entity, this function can be called to retrieve
-   * the old behavior and ensure correctness. Long term, the implementation
-   * should be updated to properly handle the new result.
-   */
-  [[nodiscard]] virtual LO GetOwningElementId(const Result& result) = 0;
-  [[nodiscard]] virtual Kokkos::View<LO*> GetOwningElementIds(
-    Kokkos::View<const Result*> results) const = 0;
   virtual ~PointLocalizationSearch() = default;
 
 protected:
@@ -213,9 +164,6 @@ public:
    */
   Kokkos::View<Result*> operator()(
     Kokkos::View<const Real* [DIM]> point) const override;
-  [[nodiscard]] LO GetOwningElementId(const Result& result) override;
-  [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
-    Kokkos::View<const Result*> results) const override;
 
   /**
    * As operator()(points), into `results` (one per point), starting from a
@@ -242,9 +190,6 @@ public:
                   Kokkos::View<Result*> results) const;
 
 private:
-  Omega_h::Mesh mesh_;
-  Omega_h::Adj edges2faces_up_;
-  Omega_h::Adj verts2faces_up_;
   /// per entity dimension 1..DIM-1, the element-to-entity and
   /// entity-to-vertex adjacencies
   Omega_h::Few<Omega_h::Adj, DIM> down_;
@@ -293,9 +238,6 @@ public:
    */
   Kokkos::View<Result*> operator()(
     Kokkos::View<const Real* [DIM]> point) const override;
-  [[nodiscard]] LO GetOwningElementId(const Result& result) override;
-  [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
-    Kokkos::View<const Result*> results) const override;
 
   /**
    * As operator()(points), into `results` (one per point), starting from a
@@ -322,10 +264,6 @@ public:
                   Kokkos::View<Result*> results) const;
 
 private:
-  Omega_h::Mesh mesh_;
-  Omega_h::Adj verts2regions_up_;
-  Omega_h::Adj edges2regions_up_;
-  Omega_h::Adj faces2regions_up_;
   /// per entity dimension 1..DIM-1, the element-to-entity and
   /// entity-to-vertex adjacencies
   Omega_h::Few<Omega_h::Adj, DIM> down_;

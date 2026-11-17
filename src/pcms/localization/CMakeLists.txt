@@ -5,9 +5,6 @@ set(
         queue_visited.hpp
         adj_search.hpp
         mls_support_helpers.h
-        localization_factory.h
-        point_cloud_localization.h
-        mesh_localization.h
 )
 
 set(
@@ -15,7 +12,6 @@ set(
         point_search.cpp
         adj_search.cpp
         mls_support_helpers.cpp
-        mesh_localization.cpp
 )
 add_library(pcms_localization ${PCMS_LOCALIZATION_SOURCES})
 add_library(pcms::localization ALIAS pcms_localization)

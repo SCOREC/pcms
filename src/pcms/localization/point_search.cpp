@@ -57,38 +57,6 @@ KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> barycentric_with_scales(
 namespace pcms
 {
 
-LO GetOwningElementId(Omega_h::Mesh& mesh, int mesh_dim, int entity_dim,
-                      LO element_id)
-{
-  if (element_id < 0)
-    return -1;
-
-  const int target_dim = mesh_dim; // faces for 2D, regions for 3D
-
-  // If entity is already at target dimension, return it directly
-  if (entity_dim == target_dim)
-    return element_id;
-
-  // Get the upward adjacency from entity_dim to target_dim
-  auto upward_adj = mesh.ask_up(entity_dim, target_dim);
-  auto a2ab_h = Omega_h::HostRead<LO>(upward_adj.a2ab);
-  auto ab2b_h = Omega_h::HostRead<LO>(upward_adj.ab2b);
-
-  const auto begin = a2ab_h[element_id];
-  const auto end = a2ab_h[element_id + 1];
-  if (begin >= end)
-    return -1;
-
-  // Find the smallest owning element ID
-  LO owner = ab2b_h[begin];
-  for (auto i = begin + 1; i < end; ++i) {
-    const LO candidate = ab2b_h[i];
-    if (candidate < owner)
-      owner = candidate;
-  }
-  return owner;
-}
-
 KOKKOS_INLINE_FUNCTION
 AABBox<2> triangle_bbox(const Omega_h::Matrix<2, 3>& coords)
 {
@@ -896,7 +864,7 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny)
 
 GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
                                      Real tolerance)
-  : PointLocalizationSearch(tolerance), mesh_(mesh)
+  : PointLocalizationSearch(tolerance)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);
@@ -913,47 +881,6 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
   dual_ = mesh.ask_dual();
   down_[1] = mesh.ask_down(Omega_h::FACE, Omega_h::EDGE);
   down_verts_[1] = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
-  edges2faces_up_ = mesh.ask_up(Omega_h::EDGE, Omega_h::FACE);
-  verts2faces_up_ = mesh.ask_up(Omega_h::VERT, Omega_h::FACE);
-}
-
-LO GridPointSearch2D::GetOwningElementId(const Result& result)
-{
-  return pcms::GetOwningElementId(
-    mesh_, 2, static_cast<int>(result.dimensionality), result.EntityId());
-}
-
-Kokkos::View<LO*> GridPointSearch2D::GetOwningElementIds(
-  Kokkos::View<const Result*> results) const
-{
-  Kokkos::View<LO*> owners("point search owning face ids", results.extent(0));
-  auto edges2faces_up = edges2faces_up_;
-  auto verts2faces_up = verts2faces_up_;
-  constexpr int mesh_dim = 2;
-  Kokkos::parallel_for(
-    results.extent(0), KOKKOS_LAMBDA(const LO i) {
-      const auto result = results(i);
-      const LO element_id = result.EntityId();
-
-      LO owner = -1;
-      if (element_id >= 0) {
-        if (result.dimensionality == Result::Dimensionality::FACE) {
-          owner = GetOwningElementIdFromAdj(
-            edges2faces_up, Result::Dimensionality::FACE,
-            Result::Dimensionality::FACE, element_id);
-        } else if (result.dimensionality == Result::Dimensionality::EDGE) {
-          owner = GetOwningElementIdFromAdj(
-            edges2faces_up, Result::Dimensionality::EDGE,
-            Result::Dimensionality::FACE, element_id);
-        } else if (result.dimensionality == Result::Dimensionality::VERTEX) {
-          owner = GetOwningElementIdFromAdj(
-            verts2faces_up, Result::Dimensionality::VERTEX,
-            Result::Dimensionality::FACE, element_id);
-        }
-      }
-      owners(i) = owner;
-    });
-  return owners;
 }
 
 Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
@@ -981,7 +908,7 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz)
 
 GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
                                      Real tolerance)
-  : PointLocalizationSearch(tolerance), mesh_(mesh)
+  : PointLocalizationSearch(tolerance)
 {
   auto mesh_bbox = Omega_h::get_bounding_box<3>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);
@@ -1008,52 +935,5 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
   down_[2] = mesh.ask_down(Omega_h::REGION, Omega_h::FACE);
   down_verts_[1] = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
   down_verts_[2] = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
-  verts2regions_up_ = mesh.ask_up(Omega_h::VERT, Omega_h::REGION);
-  edges2regions_up_ = mesh.ask_up(Omega_h::EDGE, Omega_h::REGION);
-  faces2regions_up_ = mesh.ask_up(Omega_h::FACE, Omega_h::REGION);
-}
-
-LO GridPointSearch3D::GetOwningElementId(const Result& result)
-{
-  return pcms::GetOwningElementId(
-    mesh_, 3, static_cast<int>(result.dimensionality), result.EntityId());
-}
-
-Kokkos::View<LO*> GridPointSearch3D::GetOwningElementIds(
-  Kokkos::View<const Result*> results) const
-{
-  Kokkos::View<LO*> owners("point search owning region ids", results.extent(0));
-  auto verts2regions_up = verts2regions_up_;
-  auto edges2regions_up = edges2regions_up_;
-  auto faces2regions_up = faces2regions_up_;
-  constexpr int mesh_dim = 3;
-  Kokkos::parallel_for(
-    results.extent(0), KOKKOS_LAMBDA(const LO i) {
-      const auto result = results(i);
-      const LO element_id = result.EntityId();
-
-      LO owner = -1;
-      if (element_id >= 0) {
-        if (result.dimensionality == Result::Dimensionality::REGION) {
-          owner = GetOwningElementIdFromAdj(
-            faces2regions_up, Result::Dimensionality::REGION,
-            Result::Dimensionality::REGION, element_id);
-        } else if (result.dimensionality == Result::Dimensionality::FACE) {
-          owner = GetOwningElementIdFromAdj(
-            faces2regions_up, Result::Dimensionality::FACE,
-            Result::Dimensionality::REGION, element_id);
-        } else if (result.dimensionality == Result::Dimensionality::EDGE) {
-          owner = GetOwningElementIdFromAdj(
-            edges2regions_up, Result::Dimensionality::EDGE,
-            Result::Dimensionality::REGION, element_id);
-        } else if (result.dimensionality == Result::Dimensionality::VERTEX) {
-          owner = GetOwningElementIdFromAdj(
-            verts2regions_up, Result::Dimensionality::VERTEX,
-            Result::Dimensionality::REGION, element_id);
-        }
-      }
-      owners(i) = owner;
-    });
-  return owners;
 }
 } // namespace pcms

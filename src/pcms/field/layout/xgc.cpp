@@ -51,8 +51,10 @@ struct ClassifyVertsFunctor
 };
 
 XGCFieldLayout::XGCFieldLayout(
-  const ReverseClassificationVertex& reverse_classification, LO num_plane_nodes)
-  : owned_("xgc_owned", num_plane_nodes),
+  const ReverseClassificationVertex& reverse_classification, LO num_plane_nodes,
+  std::string name)
+  : FieldLayout(std::move(name)),
+    owned_("xgc_owned", num_plane_nodes),
     gids_("xgc_gids", num_plane_nodes),
     class_dims_("xgc_class_dims", num_plane_nodes),
     class_ids_("xgc_class_ids", num_plane_nodes),

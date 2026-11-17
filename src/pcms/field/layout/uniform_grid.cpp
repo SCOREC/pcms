@@ -134,8 +134,9 @@ const UniformGrid<Dim>& GridOf(
 template <unsigned Dim>
 UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
   std::shared_ptr<const UniformGridGeometry<Dim>> geometry, int num_components,
-  int order)
-  : grid_(GridOf(geometry)),
+  int order, std::string name)
+  : FieldLayout(std::move(name)),
+    grid_(GridOf(geometry)),
     num_components_(num_components),
     order_(order),
     gids_("gids", CountDofHolders()),

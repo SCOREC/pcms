@@ -46,8 +46,8 @@ class VarianceSignature
 public:
   static constexpr int max_rank = 4;
 
-  VarianceSignature() = default;
-  VarianceSignature(std::initializer_list<Variance> entries)
+  constexpr VarianceSignature() = default;
+  constexpr VarianceSignature(std::initializer_list<Variance> entries)
   {
     if (entries.size() > static_cast<std::size_t>(max_rank)) {
       throw pcms_error("VarianceSignature: rank must be 0.." +
@@ -59,15 +59,15 @@ public:
     }
   }
 
-  [[nodiscard]] int Rank() const noexcept { return rank_; }
-  [[nodiscard]] Variance operator[](int i) const noexcept
+  [[nodiscard]] constexpr int Rank() const noexcept { return rank_; }
+  [[nodiscard]] constexpr Variance operator[](int i) const noexcept
   {
     return entries_[static_cast<std::size_t>(i)];
   }
 
   /// @return a copy with a covariant index appended
   /// @throws pcms_error if the rank is already max_rank
-  [[nodiscard]] VarianceSignature WithCovariantIndexAppended() const
+  [[nodiscard]] constexpr VarianceSignature WithCovariantIndexAppended() const
   {
     if (rank_ >= max_rank) {
       throw pcms_error("VarianceSignature::WithCovariantIndexAppended: rank " +
@@ -79,8 +79,8 @@ public:
     return appended;
   }
 
-  friend bool operator==(const VarianceSignature& a,
-                         const VarianceSignature& b) noexcept
+  friend constexpr bool operator==(const VarianceSignature& a,
+                                   const VarianceSignature& b) noexcept
   {
     if (a.rank_ != b.rank_) {
       return false;
@@ -257,11 +257,11 @@ inline ValueBasis MakeValueBasis(
 namespace values
 {
 
-inline const VarianceSignature Scalar{};
-inline const VarianceSignature Vector{Variance::Contravariant};
-inline const VarianceSignature Covector{Variance::Covariant};
-inline const VarianceSignature Tensor{Variance::Contravariant,
-                                      Variance::Contravariant};
+inline constexpr VarianceSignature Scalar{};
+inline constexpr VarianceSignature Vector{Variance::Contravariant};
+inline constexpr VarianceSignature Covector{Variance::Covariant};
+inline constexpr VarianceSignature Tensor{Variance::Contravariant,
+                                          Variance::Contravariant};
 
 [[nodiscard]] inline VarianceSignature Of(
   std::initializer_list<Variance> variance)

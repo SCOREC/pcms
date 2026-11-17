@@ -15,8 +15,9 @@ namespace pcms
 /// search is the geometry's. Spaces on one geometry accept each other's bound
 /// sources.
 /// @throws pcms_error if `geometry` is null or not a point-cloud geometry
-std::shared_ptr<FunctionSpace> CreatePolynomialReconstructionSpace(
-  std::shared_ptr<const Geometry> geometry, MLSOptions options = {});
+[[nodiscard]] std::shared_ptr<const FunctionSpace>
+CreatePolynomialReconstructionSpace(std::shared_ptr<const Geometry> geometry,
+                                    MLSOptions options = {});
 
 } // namespace pcms
 

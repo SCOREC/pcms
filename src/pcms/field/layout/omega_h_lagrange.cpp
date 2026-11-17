@@ -83,8 +83,12 @@ Omega_h::Mesh& MeshOf(const std::shared_ptr<const OmegaHGeometry>& geometry)
 } // namespace
 
 OmegaHLagrangeLayout::OmegaHLagrangeLayout(
-  std::shared_ptr<const OmegaHGeometry> geometry, int order, int num_components)
-  : mesh_(MeshOf(geometry)), order_(order), num_components_(num_components)
+  std::shared_ptr<const OmegaHGeometry> geometry, int order, int num_components,
+  std::string name)
+  : FieldLayout(std::move(name)),
+    mesh_(MeshOf(geometry)),
+    order_(order),
+    num_components_(num_components)
 {
   PCMS_FUNCTION_TIMER;
   SetCoordinateSystem(geometry->GetCoordinateSystem());

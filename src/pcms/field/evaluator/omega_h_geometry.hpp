@@ -377,19 +377,19 @@ private:
 /// @param mesh the mesh; must outlive the geometry
 /// @param system the mesh's coordinate system, or null for Cartesian
 /// @param options search, global id tag and ownership
-std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
+[[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
   Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
   OmegaHGeometryOptions options = {});
 
 /// The mesh of an Omega_h geometry.
 /// @throws pcms_error if `geometry` is not an Omega_h geometry
-Omega_h::Mesh& GetMesh(const Geometry& geometry);
+[[nodiscard]] Omega_h::Mesh& GetMesh(const Geometry& geometry);
 
 /// The grid search over a mesh, with options.divisions divisions per axis when
 /// nonzero and DivisionsPerAxisForMesh otherwise.
 /// @throws std::invalid_argument unless the mesh is 2D or 3D
-GridPointSearchVariant MakeGridSearch(Omega_h::Mesh& mesh,
-                                      const SearchOptions& options);
+[[nodiscard]] GridPointSearchVariant MakeGridSearch(
+  Omega_h::Mesh& mesh, const SearchOptions& options);
 
 } // namespace pcms
 

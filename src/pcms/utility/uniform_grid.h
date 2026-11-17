@@ -20,7 +20,7 @@ struct UniformGrid
   Kokkos::Array<LO, dim> divisions;
 
 public:
-  [[nodiscard]] LO GetNumCells() const
+  [[nodiscard]] constexpr LO GetNumCells() const
   {
     LO total = 1;
     for (std::size_t i = 0; i < dim; ++i)
@@ -56,8 +56,8 @@ public:
   }
 
   /// Linear cell ID from per-axis indices given in coordinate order (x,y,z).
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO
-  CellIndexFromAxisIndices(Kokkos::Array<LO, dim> indexes) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION constexpr LO CellIndexFromAxisIndices(
+    Kokkos::Array<LO, dim> indexes) const
   {
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
@@ -84,7 +84,7 @@ public:
   }
 
   /// Check if a point is within the grid bounds
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION bool IsPointInBounds(
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION constexpr bool IsPointInBounds(
     const Omega_h::Vector<dim>& point) const
   {
     for (size_t i = 0; i < dim; ++i) {
@@ -98,7 +98,7 @@ public:
     return true;
   }
 
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<LO, dim>
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION constexpr Kokkos::Array<LO, dim>
   GetDimensionedIndex(LO idx) const
   {
     // The x index varies fastest in the cell ID and is the last entry of the
@@ -112,8 +112,8 @@ public:
     return result;
   }
 
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION LO
-  GetCellIndex(Kokkos::Array<LO, dim> dimensionedIndex) const
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION constexpr LO GetCellIndex(
+    Kokkos::Array<LO, dim> dimensionedIndex) const
   {
     // note that the indexes refer to row/columns which have the opposite order
     // of the coordinates i.e. x,y
@@ -132,7 +132,7 @@ public:
 
 private:
   template <typename T, std::size_t N>
-  KOKKOS_INLINE_FUNCTION static void reverse(Kokkos::Array<T, N>& arr)
+  KOKKOS_INLINE_FUNCTION static constexpr void reverse(Kokkos::Array<T, N>& arr)
   {
     for (size_t i = 0, j = N - 1; i < j; ++i, --j) {
       auto temp = arr[i];
@@ -150,7 +150,7 @@ using Uniform3DGrid = UniformGrid<3>;
  *
  */
 template <unsigned dim>
-LO DivisionsPerAxisForMesh(LO nelems, LO min_divisions = 10)
+[[nodiscard]] LO DivisionsPerAxisForMesh(LO nelems, LO min_divisions = 10)
 {
   const auto per_axis = static_cast<LO>(std::ceil(
     std::pow(static_cast<double>(nelems), 1.0 / static_cast<double>(dim))));
@@ -171,8 +171,8 @@ LO DivisionsPerAxisForMesh(LO nelems, LO min_divisions = 10)
  *
  */
 template <unsigned dim = 2>
-UniformGrid<dim> CreateUniformGridFromMesh(Omega_h::Mesh& mesh,
-                                           const std::array<LO, dim>& divisions)
+[[nodiscard]] UniformGrid<dim> CreateUniformGridFromMesh(
+  Omega_h::Mesh& mesh, const std::array<LO, dim>& divisions)
 {
   // Get the bounding box of the mesh
   auto bbox = Omega_h::get_bounding_box<dim>(&mesh);
@@ -205,8 +205,8 @@ UniformGrid<dim> CreateUniformGridFromMesh(Omega_h::Mesh& mesh,
  *
  */
 template <unsigned dim = 2>
-UniformGrid<dim> CreateUniformGridFromMesh(Omega_h::Mesh& mesh,
-                                           LO cells_per_dim)
+[[nodiscard]] UniformGrid<dim> CreateUniformGridFromMesh(Omega_h::Mesh& mesh,
+                                                         LO cells_per_dim)
 {
   std::array<LO, dim> divisions;
   for (unsigned i = 0; i < dim; ++i)

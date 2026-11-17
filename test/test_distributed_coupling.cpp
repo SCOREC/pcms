@@ -79,7 +79,7 @@ redev::InMessageLayout MakeInMessageLayout(int rank, int nproc, size_t msg_size)
 struct DistributedCouplingContext
 {
   Omega_h::Mesh& mesh;
-  std::shared_ptr<pcms::FunctionSpace> space;
+  std::shared_ptr<const pcms::FunctionSpace> space;
   int rank;
   int nproc;
 

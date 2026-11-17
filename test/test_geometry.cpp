@@ -67,7 +67,7 @@ Kokkos::View<LO*> StartElements(Omega_h::Mesh& mesh,
     pcms::MakeGridSearch(mesh, {}));
 }
 
-std::shared_ptr<FunctionSpace> MakeSpace(
+std::shared_ptr<const FunctionSpace> MakeSpace(
   const std::shared_ptr<const pcms::Geometry>& geometry, int order,
   int num_components)
 {
@@ -258,6 +258,50 @@ void CountGridAllocation(const Kokkos::Profiling::SpaceHandle,
 }
 
 } // namespace
+
+// the variance signatures of the common value types are constants
+static_assert(pcms::values::Scalar.Rank() == 0);
+static_assert(pcms::values::Vector.Rank() == 1);
+static_assert(pcms::values::Tensor.Rank() == 2);
+static_assert(pcms::values::Vector == pcms::values::Vector);
+static_assert(!(pcms::values::Vector == pcms::values::Covector));
+static_assert(pcms::values::Scalar.WithCovariantIndexAppended() ==
+              pcms::values::Covector);
+
+TEST_CASE("A layout is named by the options of its space")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = pcms::test::BuildSquareMesh(lib, 3);
+  auto geometry = MakeGeometry(mesh);
+  REQUIRE(MakeSpace(geometry, 1, 1)->GetLayout()->GetName().empty());
+  const auto named = CreateLagrangeSpace(
+    geometry, 1, 1,
+    LagrangeOptions{.backend = LagrangeBackend::OmegaH, .layout_name = "gids"});
+  REQUIRE(named->GetLayout()->GetName() == "gids");
+#ifdef PCMS_ENABLE_MESHFIELDS
+  REQUIRE(
+    CreateLagrangeSpace(geometry, 1, 1,
+                        LagrangeOptions{.backend = LagrangeBackend::MeshFields,
+                                        .layout_name = "mf"})
+      ->GetLayout()
+      ->GetName() == "mf");
+#endif
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {0.0, 0.0};
+  grid.edge_length = {1.0, 1.0};
+  grid.divisions = {2, 2};
+  REQUIRE(CreateLagrangeSpace(pcms::CreateUniformGridGeometry(
+                                grid, pcms::csys::Cartesian::Create(2)),
+                              1, 1, LagrangeOptions{.layout_name = "grid"})
+            ->GetLayout()
+            ->GetName() == "grid");
+  // a layout built directly takes its name as a constructor argument
+  REQUIRE(pcms::OmegaHLagrangeLayout(pcms::test::MakeOmegaHGeometry(mesh), 1, 1,
+                                     "direct")
+            .GetName() == "direct");
+  REQUIRE(pcms::EmptyFieldLayout(pcms::csys::Cartesian::Create(2), 1, "empty")
+            .GetName() == "empty");
+}
 
 TEST_CASE("The search of a geometry is built when first needed")
 {
@@ -642,7 +686,7 @@ TEST_CASE("An empty bind evaluates to nothing")
   grid.bot_left = {0.0, 0.0};
   grid.edge_length = {1.0, 1.0};
   grid.divisions = {2, 2};
-  std::vector<std::shared_ptr<FunctionSpace>> spaces{
+  std::vector<std::shared_ptr<const FunctionSpace>> spaces{
     MakeSpace(geometry, 1, 1),
     CreateLagrangeSpace(
       pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Create(2)),
@@ -934,7 +978,7 @@ struct ColdAndWarm
 
 ColdAndWarm EvaluateColdAndWarm(
   const std::shared_ptr<const pcms::Geometry>& geometry,
-  const std::shared_ptr<FunctionSpace>& space, const pcms::Field<Real>& f,
+  const std::shared_ptr<const FunctionSpace>& space, const pcms::Field<Real>& f,
   const std::vector<Real>& pts)
 {
   const int dim = geometry->GetCoordinateSystem()->Dimension();

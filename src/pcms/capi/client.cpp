@@ -24,13 +24,20 @@ namespace detail
 template <typename T>
 struct XGCFieldRegistration
 {
-  XGCFieldFactory function_space;
+  // what the field's layout is built from when the field is registered, under
+  // the field's name (a copy, so the caller may destroy its classification)
+  std::shared_ptr<const ReverseClassificationVertex> reverse_classification;
+  LO num_plane_nodes;
   MPI_Comm plane_comm;
   Rank1View<T, HostMemorySpace> data;
 
-  XGCFieldRegistration(XGCFieldFactory fs, MPI_Comm comm,
-                       Rank1View<T, HostMemorySpace> d)
-    : function_space(std::move(fs)), plane_comm(comm), data(d)
+  XGCFieldRegistration(
+    std::shared_ptr<const ReverseClassificationVertex> classification,
+    LO num_nodes, MPI_Comm comm, Rank1View<T, HostMemorySpace> d)
+    : reverse_classification(std::move(classification)),
+      num_plane_nodes(num_nodes),
+      plane_comm(comm),
+      data(d)
   {
   }
 };
@@ -43,10 +50,9 @@ class EmptyFieldFactory : public FieldFactory
 public:
   EmptyFieldFactory(std::string layout_name,
                     std::shared_ptr<const CoordinateSystem> system)
+    : layout_(std::make_shared<EmptyFieldLayout>(std::move(system), 1,
+                                                 std::move(layout_name)))
   {
-    auto layout = std::make_shared<EmptyFieldLayout>(std::move(system));
-    layout->SetName(std::move(layout_name));
-    layout_ = layout;
   }
 
   [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayout()
@@ -127,10 +133,11 @@ ClientState::HandleVariant RegisterField(
 {
   // The layout's coupling identity is the field name
   // not the arbitrary adapter name given at creation.
-  registration.function_space.SetLayoutName(name);
-  auto field = registration.function_space.template CreateField<T>(
+  const XGCFieldFactory function_space(*registration.reverse_classification,
+                                       registration.num_plane_nodes, name);
+  auto field = function_space.template CreateField<T>(
     std::move(name), std::make_unique<XGCFieldData<T>>(
-                       registration.function_space.GetXGCLayout(), ValueBasis{},
+                       function_space.GetXGCLayout(), ValueBasis{},
                        registration.data, registration.plane_comm));
   return ClientState::HandleVariant{
     app.AddField(std::move(field), participates)};
@@ -262,11 +269,12 @@ void pcms_create_xgc_field_adapter_t(
   pcms::FieldAdapterVariant& field_adapter)
 {
   PCMS_ALWAYS_ASSERT((size > 0) ? (data != nullptr) : true);
-  auto function_space = pcms::XGCFieldFactory(reverse_classification, size);
   pcms::Rank1View<T, pcms::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<pcms::detail::XGCFieldRegistration<T>>(
-    std::move(function_space), comm, data_view);
+    std::make_shared<const pcms::ReverseClassificationVertex>(
+      reverse_classification),
+    size, comm, data_view);
 }
 
 PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(

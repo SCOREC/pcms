@@ -495,10 +495,10 @@ void bind_create_field_module(py::module& m)
     "create_lagrange_space",
     [](std::shared_ptr<Geometry> geometry, int order, int num_components,
        LagrangeBackend backend, std::string layout_name) {
-      return CreateLagrangeSpace(
+      return ToPyHolder(CreateLagrangeSpace(
         std::move(geometry), order, num_components,
         LagrangeOptions{.backend = backend,
-                        .layout_name = std::move(layout_name)});
+                        .layout_name = std::move(layout_name)}));
     },
     py::arg("geometry").none(false), py::arg("order"),
     py::arg("num_components"), py::arg("backend") = DefaultLagrangeBackend,
@@ -511,7 +511,7 @@ void bind_create_field_module(py::module& m)
   m.def(
     "create_spline_space",
     [](std::shared_ptr<Geometry> geometry) {
-      return CreateSplineSpace(std::move(geometry));
+      return ToPyHolder(CreateSplineSpace(std::move(geometry)));
     },
     py::arg("geometry").none(false), py::keep_alive<0, 1>(),
     "Create a bicubic spline FunctionSpace on a 2D uniform-grid geometry");
@@ -535,7 +535,8 @@ void bind_create_field_module(py::module& m)
   m.def(
     "create_polynomial_reconstruction_space",
     [](std::shared_ptr<Geometry> geometry, MLSOptions options) {
-      return CreatePolynomialReconstructionSpace(std::move(geometry), options);
+      return ToPyHolder(
+        CreatePolynomialReconstructionSpace(std::move(geometry), options));
     },
     py::arg("geometry").none(false), py::arg("options") = MLSOptions{},
     py::keep_alive<0, 1>(),

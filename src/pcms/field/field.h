@@ -38,7 +38,7 @@ public:
   FieldData<T>& GetData() noexcept { return *data_; }
   const FieldData<T>& GetData() const noexcept { return *data_; }
 
-  const FieldLayout& GetLayout() const { return *layout_; }
+  const FieldLayout& GetLayout() const noexcept { return *layout_; }
 
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
 

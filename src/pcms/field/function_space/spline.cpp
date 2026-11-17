@@ -9,7 +9,7 @@
 namespace pcms
 {
 
-std::shared_ptr<FunctionSpace> CreateSplineSpace(
+std::shared_ptr<const FunctionSpace> CreateSplineSpace(
   std::shared_ptr<const Geometry> geometry)
 {
   if (geometry == nullptr) {

@@ -38,8 +38,8 @@ Omega_h::Mesh BuildCylindricalMesh(Omega_h::Library& lib, int divisions)
                             divisions, divisions, divisions, false);
 }
 
-std::shared_ptr<FunctionSpace> BuildCylindricalSpace(Omega_h::Mesh& mesh,
-                                                     int num_components)
+std::shared_ptr<const FunctionSpace> BuildCylindricalSpace(Omega_h::Mesh& mesh,
+                                                           int num_components)
 {
   return CreateLagrangeSpace(
     pcms::CreateOmegaHGeometry(mesh, pcms::csys::CylindricalRThetaZ::Create()),

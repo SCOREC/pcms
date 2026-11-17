@@ -38,7 +38,7 @@ struct LagrangeOptions
 /// ignored). Spaces on one geometry accept each other's bound sources.
 /// @throws pcms_error for another geometry kind, a null geometry, or an order
 ///         the backend does not support
-std::shared_ptr<FunctionSpace> CreateLagrangeSpace(
+[[nodiscard]] std::shared_ptr<const FunctionSpace> CreateLagrangeSpace(
   std::shared_ptr<const Geometry> geometry, int order, int num_components,
   LagrangeOptions options = {});
 

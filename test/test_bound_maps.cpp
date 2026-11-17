@@ -37,9 +37,8 @@ namespace values = pcms::values;
 namespace
 {
 
-std::shared_ptr<FunctionSpace> BuildCylindricalSource(Omega_h::Library& lib,
-                                                      Omega_h::Mesh& mesh,
-                                                      int num_components)
+std::shared_ptr<const FunctionSpace> BuildCylindricalSource(
+  Omega_h::Library& lib, Omega_h::Mesh& mesh, int num_components)
 {
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 2.0, 1.6, 1.1, 8, 8,
                             6, false);
@@ -48,10 +47,10 @@ std::shared_ptr<FunctionSpace> BuildCylindricalSource(Omega_h::Library& lib,
     1, num_components, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
-std::shared_ptr<FunctionSpace> BuildCartesianTarget(Omega_h::Library& lib,
-                                                    Omega_h::Mesh& mesh,
-                                                    int num_components,
-                                                    double x_extent = 1.0)
+std::shared_ptr<const FunctionSpace> BuildCartesianTarget(Omega_h::Library& lib,
+                                                          Omega_h::Mesh& mesh,
+                                                          int num_components,
+                                                          double x_extent = 1.0)
 {
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, x_extent, 1.0, 1.0, 4,
                             4, 4, false);

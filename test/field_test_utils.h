@@ -161,7 +161,7 @@ inline Omega_h::Mesh BuildReferenceTet(Omega_h::Library& lib)
                        }));
 }
 
-inline std::shared_ptr<FunctionSpace> MakeP1Space(
+inline std::shared_ptr<const FunctionSpace> MakeP1Space(
   std::shared_ptr<const Geometry> geometry)
 {
   return CreateLagrangeSpace(
@@ -169,7 +169,7 @@ inline std::shared_ptr<FunctionSpace> MakeP1Space(
     LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
-inline std::shared_ptr<FunctionSpace> MakeP0Space(
+inline std::shared_ptr<const FunctionSpace> MakeP0Space(
   std::shared_ptr<const Geometry> geometry)
 {
   return CreateLagrangeSpace(
@@ -179,7 +179,7 @@ inline std::shared_ptr<FunctionSpace> MakeP0Space(
 
 // Spaces on a Cartesian geometry of their own on `mesh`; spaces that should
 // share a bind take one geometry instead.
-inline std::shared_ptr<FunctionSpace> MakeP1Space(
+inline std::shared_ptr<const FunctionSpace> MakeP1Space(
   Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
 {
   return MakeP1Space(CreateOmegaHGeometry(
@@ -187,7 +187,7 @@ inline std::shared_ptr<FunctionSpace> MakeP1Space(
     OmegaHGeometryOptions{.global_id_name = global_id_name}));
 }
 
-inline std::shared_ptr<FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
+inline std::shared_ptr<const FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
 {
   return MakeP0Space(CreateOmegaHGeometry(mesh, csys::Cartesian::Deferred()));
 }

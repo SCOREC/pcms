@@ -30,17 +30,11 @@ public:
                    mfem::ParGridFunction& gf,
                    std::shared_ptr<const CoordinateSystem> coordinate_system,
                    std::string layout_name = "")
-    : layout_(std::make_shared<MFEMLayout>(pmesh, pfes,
-                                           std::move(coordinate_system))),
+    : layout_(std::make_shared<MFEMLayout>(
+        pmesh, pfes, std::move(coordinate_system), std::move(layout_name))),
       pfes_(pfes),
       gf_(gf)
   {
-    layout_->SetName(std::move(layout_name));
-  }
-
-  void SetLayoutName(std::string name) const
-  {
-    layout_->SetName(std::move(name));
   }
 
   [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayout()

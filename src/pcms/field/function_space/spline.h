@@ -12,7 +12,7 @@ namespace pcms
 /// A bicubic spline space on a 2D uniform-grid geometry. Spaces on one
 /// geometry accept each other's bound sources.
 /// @throws pcms_error if `geometry` is null or not a 2D uniform-grid geometry
-std::shared_ptr<FunctionSpace> CreateSplineSpace(
+[[nodiscard]] std::shared_ptr<const FunctionSpace> CreateSplineSpace(
   std::shared_ptr<const Geometry> geometry);
 
 } // namespace pcms

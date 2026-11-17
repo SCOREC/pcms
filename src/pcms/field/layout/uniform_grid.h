@@ -21,7 +21,7 @@ public:
   /// @throws pcms_error if `geometry` is null
   UniformGridFieldLayout(
     std::shared_ptr<const UniformGridGeometry<Dim>> geometry,
-    int num_components, int order = 1);
+    int num_components, int order = 1, std::string name = "");
 
   int GetNumComponents() const override;
   LO GetNumDofHolder() const override;

@@ -11,8 +11,11 @@ namespace pcms
 
 MFEMLayout::MFEMLayout(
   mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
-  std::shared_ptr<const CoordinateSystem> coordinate_system)
-  : pmesh_(pmesh), pfes_(pfes), dim_(pmesh.SpaceDimension())
+  std::shared_ptr<const CoordinateSystem> coordinate_system, std::string name)
+  : FieldLayout(std::move(name)),
+    pmesh_(pmesh),
+    pfes_(pfes),
+    dim_(pmesh.SpaceDimension())
 {
   PCMS_FUNCTION_TIMER;
   SetCoordinateSystem(

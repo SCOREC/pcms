@@ -139,8 +139,9 @@ private:
 /// @param options the support search of the geometry
 /// @throws pcms_error if the coordinate system does not have the identity
 ///         metric (MLS distances are Euclidean)
-inline std::shared_ptr<const PointCloudGeometry> CreatePointCloudGeometry(
-  CoordinateView<HostMemorySpace> coords, NeighbourhoodOptions options = {})
+[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry>
+CreatePointCloudGeometry(CoordinateView<HostMemorySpace> coords,
+                         NeighbourhoodOptions options = {})
 {
   const auto values = coords.GetValues();
   const int dim = static_cast<int>(values.extent(1));
@@ -162,8 +163,9 @@ inline std::shared_ptr<const PointCloudGeometry> CreatePointCloudGeometry(
 /// @param options the support search of the geometry
 /// @throws pcms_error if `sites` is null or its coordinate system does not
 ///         have the identity metric
-inline std::shared_ptr<const PointCloudGeometry> CreatePointCloudGeometry(
-  std::shared_ptr<const FieldLayout> sites, NeighbourhoodOptions options = {})
+[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry>
+CreatePointCloudGeometry(std::shared_ptr<const FieldLayout> sites,
+                         NeighbourhoodOptions options = {})
 {
   if (sites == nullptr) {
     throw pcms_error("CreatePointCloudGeometry: the sites must not be null");

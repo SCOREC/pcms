@@ -17,15 +17,9 @@ class XGCFieldFactory : public FieldFactory
 public:
   XGCFieldFactory(const ReverseClassificationVertex& reverse_classification,
                   LO num_plane_nodes, std::string layout_name = "")
-    : layout_(std::make_shared<XGCFieldLayout>(reverse_classification,
-                                               num_plane_nodes))
+    : layout_(std::make_shared<XGCFieldLayout>(
+        reverse_classification, num_plane_nodes, std::move(layout_name)))
   {
-    layout_->SetName(std::move(layout_name));
-  }
-
-  void SetLayoutName(std::string name) const
-  {
-    layout_->SetName(std::move(name));
   }
 
   [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayout()

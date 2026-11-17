@@ -43,8 +43,8 @@ struct Capabilities
 };
 
 /**
- * @brief Abstract base class that an application adapter implements to take part in
- * a transient coupled simulation.
+ * @brief Abstract base class that an application adapter implements to take
+ * part in a transient coupled simulation.
  */
 class Application
 {

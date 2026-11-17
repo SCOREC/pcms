@@ -26,18 +26,49 @@ void OmegaHMeshBinding::RebindImpl()
   Locate({});
 }
 
-void OmegaHMeshBinding::Locate(
-  Kokkos::View<const LO*, DeviceMemorySpace> guesses)
+void OmegaHMeshBinding::Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints)
 {
   std::visit(
     [&](const auto& s) {
       constexpr int Dim = std::decay_t<decltype(s)>::DIM;
-      auto [found, results] = LocatePoints(s, LocatedPointValues(), guesses);
+      using Results = Kokkos::View<typename std::decay_t<decltype(s)>::Result*,
+                                   DeviceMemorySpace>;
+      const LO n = NumPoints();
+      const auto first = Kokkos::make_pair(LO{0}, n);
+      if (point_elems_.extent(0) < static_cast<std::size_t>(n)) {
+        num_guesses_ = 0; // the guesses do not survive a reallocation
+      }
+      detail::ReserveRows(point_elems_, "omega_h_point_elems", n);
+      if (hints.extent(0) > 0) {
+        Kokkos::deep_copy(Kokkos::subview(point_elems_, first), hints);
+        num_guesses_ = n;
+      }
+      if (!std::holds_alternative<Results>(point_results_)) {
+        point_results_ = Results{};
+      }
+      auto& results = std::get<Results>(point_results_);
+      detail::ReserveRows(results, "omega_h_point_results", n);
+      detail::ReserveRows(point_bary_, "omega_h_point_bary", n, Dim + 1);
+      detail::ReserveRows(point_found_, "omega_h_point_found", n);
+      Kokkos::View<const LO*, DeviceMemorySpace> guesses;
+      if (num_guesses_ > 0) {
+        if (num_guesses_ < n) {
+          Kokkos::deep_copy(
+            Kokkos::subview(point_elems_, Kokkos::make_pair(num_guesses_, n)),
+            LO{-1});
+        }
+        guesses = Kokkos::subview(point_elems_, first);
+      }
+      const auto point_results = Kokkos::subview(results, first);
+      s(LocatedPointValues(), guesses, point_results);
+      // the lifts overwrite the guesses, which the search has used
+      const auto found = Kokkos::subview(point_found_, first);
+      detail::LiftResults<Dim>(mesh_, point_results,
+                               Kokkos::subview(point_elems_, first),
+                               point_bary_, found);
+      num_guesses_ = n;
       SetFound(found);
-      const auto [lifted_elems, lifted_bary] = detail::LiftResults<Dim>(
-        mesh_, Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
-                            DeviceMemorySpace>(results));
-      detail::GatherFoundLifts<Dim>(FoundPoints(), lifted_elems, lifted_bary,
+      detail::GatherFoundLifts<Dim>(FoundPoints(), point_elems_, point_bary_,
                                     elem_ids_, bary_);
     },
     search_);

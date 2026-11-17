@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <Kokkos_Core.hpp>
@@ -7,13 +8,16 @@
 #include <pcms/geometry/bound_source.hpp>
 #include <pcms/field/coordinate_systems/cartesian.hpp>
 #include <pcms/field/coordinate_systems/cylindrical.hpp>
+#include <pcms/field/evaluator/omega_h_geometry.hpp>
 #include <pcms/field/evaluator/point_cloud_geometry.hpp>
 #include <pcms/field/evaluator/uniform_grid_geometry.hpp>
 #include <pcms/field/function_space/lagrange.h>
 #include <pcms/field/function_space/polynomial_reconstruction.hpp>
 #include <pcms/field/layout/omega_h_entity.h>
+#include <pcms/field/query_points.hpp>
 #include "field_test_utils.h"
 #include <memory>
+#include <random>
 #include <type_traits>
 #include <vector>
 
@@ -323,4 +327,215 @@ TEST_CASE("ForEach writes every entry of small and large batches")
       REQUIRE(host(i) == 2 * i + 1);
     }
   }
+}
+
+namespace
+{
+
+/// Rebinds `previous` to `pts` and checks that the binding has the found and
+/// missing points, elements and barycentric coordinates of a new bind.
+std::shared_ptr<const BoundSource> CheckOmegaHRebind(
+  const pcms::Geometry& geometry, std::shared_ptr<const BoundSource> previous,
+  const std::vector<Real>& pts)
+{
+  const int dim = geometry.GetCoordinateSystem()->Dimension();
+  auto coords = pcms::test::CreateDeviceCoordinateView(
+    pts, geometry.GetCoordinateSystem(), dim);
+  const auto fresh = std::dynamic_pointer_cast<const pcms::OmegaHMeshBinding>(
+    geometry.Bind(coords.coordinate_view, previous->Policy()));
+  const BoundSource* address = previous.get();
+  const auto rebound = std::dynamic_pointer_cast<const pcms::OmegaHMeshBinding>(
+    geometry.Rebind(std::move(previous), coords.coordinate_view));
+  REQUIRE(rebound.get() == address);
+  REQUIRE(rebound->NumPoints() == fresh->NumPoints());
+  const auto found = ToHost(rebound->FoundPoints());
+  const auto fresh_found = ToHost(fresh->FoundPoints());
+  const auto missing = ToHost(rebound->MissingPoints());
+  REQUIRE(found.extent(0) == fresh_found.extent(0));
+  REQUIRE(missing.extent(0) == ToHost(fresh->MissingPoints()).extent(0));
+  const auto elems = ToHost(rebound->ElementIds());
+  const auto fresh_elems = ToHost(fresh->ElementIds());
+  const auto bary = ToHost(rebound->Barycentric());
+  const auto fresh_bary = ToHost(fresh->Barycentric());
+  for (size_t k = 0; k < found.extent(0); ++k) {
+    CAPTURE(k, found(k));
+    REQUIRE(found(k) == fresh_found(k));
+    REQUIRE(elems(k) == fresh_elems(k));
+    for (int v = 0; v <= dim; ++v) {
+      // the entity, hence the element, is the search's; its reduced
+      // coordinates are computed in the guessed element, which agree with the
+      // search's up to rounding
+      REQUIRE_THAT(bary(k, v), WithinAbs(fresh_bary(k, v), 1e-12));
+    }
+  }
+  return rebound;
+}
+
+/// `n` points in [lo, hi]^dim, interleaved.
+std::vector<Real> RandomPoints(std::mt19937& rng, int n, int dim, Real lo,
+                               Real hi)
+{
+  std::uniform_real_distribution<Real> uniform(lo, hi);
+  std::vector<Real> pts(static_cast<size_t>(n) * dim);
+  for (auto& x : pts) {
+    x = uniform(rng);
+  }
+  return pts;
+}
+
+} // namespace
+
+TEST_CASE("An Omega_h rebind from the last elements gives a new bind's")
+{
+  auto lib = Omega_h::Library{};
+  const int dim = GENERATE(2, 3);
+  auto mesh = dim == 2 ? pcms::test::BuildSquareMesh(lib, 16)
+                       : pcms::test::BuildUnitCube(lib, 4);
+  const auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Create(dim));
+  std::mt19937 rng(7);
+  const int n = 200;
+  auto pts = RandomPoints(rng, n, dim, 0.0, 1.0);
+  std::shared_ptr<const BoundSource> bound = pcms::test::Bind(
+    *geometry, pts, OutOfBoundsPolicy{OutOfBoundsMode::FILL, -1.0});
+
+  SECTION("small moves, as of tracers")
+  {
+    std::uniform_real_distribution<Real> step(-0.02, 0.02);
+    for (int s = 0; s < 10; ++s) {
+      for (auto& x : pts) {
+        x += step(rng);
+      }
+      bound = CheckOmegaHRebind(*geometry, std::move(bound), pts);
+    }
+  }
+
+  SECTION("jumps across the mesh, and other point counts")
+  {
+    for (int count : {n, n / 2, n, 2 * n}) {
+      pts = RandomPoints(rng, count, dim, 0.0, 1.0);
+      bound = CheckOmegaHRebind(*geometry, std::move(bound), pts);
+    }
+  }
+
+  SECTION("points onto vertices and edges, leaving and re-entering")
+  {
+    // vertices and the midpoints of edges of the mesh (h = 1/16 or 1/4),
+    // where the search picks among the elements sharing them
+    const Real h = dim == 2 ? 1.0 / 16 : 1.0 / 4;
+    std::vector<Real> shared;
+    for (int i = 0; i < n; ++i) {
+      for (int d = 0; d < dim; ++d) {
+        const int steps = (i * (d + 3)) % (dim == 2 ? 9 : 5);
+        shared.push_back(h * steps / (i % 2 == 0 ? 1.0 : 2.0));
+      }
+    }
+    bound = CheckOmegaHRebind(*geometry, std::move(bound), shared);
+    // half the points leave the domain, then come back
+    auto outside = pts;
+    for (size_t i = 0; i < outside.size(); i += static_cast<size_t>(2 * dim)) {
+      outside[i] += 2.0;
+    }
+    bound = CheckOmegaHRebind(*geometry, std::move(bound), outside);
+    REQUIRE(bound->MissingPoints().extent(0) == static_cast<size_t>(n / 2));
+    bound = CheckOmegaHRebind(*geometry, std::move(bound), pts);
+    REQUIRE(bound->MissingPoints().extent(0) == 0);
+  }
+}
+
+TEST_CASE("An Omega_h rebind applies the out-of-bounds policy")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = pcms::test::BuildSquareMesh(lib, 8);
+  auto space = pcms::test::MakeP1Space(mesh);
+  auto f = space->CreateFunction<Real>("f");
+  const auto linear = OMEGA_H_LAMBDA(Real x, Real y)
+  {
+    return pcms::test::linear_f(x, y);
+  };
+  pcms::test::SetField(f, linear);
+  const std::vector<Real> inside{0.25, 0.5, 0.75, 0.1};
+  const std::vector<Real> leaving{0.26, 0.5, 1.75, 0.1};
+  const std::vector<Real> back{0.27, 0.51, 0.74, 0.11};
+  const auto coords = [&](const std::vector<Real>& pts) {
+    return pcms::test::CreateDeviceCoordinateView(
+      pts, space->GetGeometry()->GetCoordinateSystem());
+  };
+
+  pcms::QueryPoints query(space->GetGeometry(),
+                          OutOfBoundsPolicy{OutOfBoundsMode::ERROR});
+  query.Locate(coords(inside).coordinate_view);
+  REQUIRE_THROWS_WITH(query.Locate(coords(leaving).coordinate_view),
+                      ContainsSubstring("outside the source's domain"));
+  query.Locate(coords(back).coordinate_view);
+  pcms::test::CheckEvaluation(*space->CreatePointEvaluator<Real>(query.Bound()),
+                              f, back, linear);
+
+  // under FILL the point that leaves is missing, and found when it is back
+  auto bound = pcms::test::Bind(*space->GetGeometry(), inside,
+                                OutOfBoundsPolicy{OutOfBoundsMode::FILL, -1.0});
+  bound = CheckOmegaHRebind(*space->GetGeometry(), std::move(bound), leaving);
+  REQUIRE(ToHost(bound->MissingPoints())(0) == 1);
+  bound = CheckOmegaHRebind(*space->GetGeometry(), std::move(bound), back);
+  REQUIRE(bound->MissingPoints().extent(0) == 0);
+}
+
+namespace
+{
+
+int num_allocations = 0;
+
+void CountAllocation(const Kokkos::Profiling::SpaceHandle, const char*,
+                     const void*, const uint64_t)
+{
+  ++num_allocations;
+}
+
+} // namespace
+
+TEST_CASE("An Omega_h rebind of as many points allocates nothing")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = pcms::test::BuildSquareMesh(lib, 16);
+  const auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Create(2));
+  // 64 points inside triangles, farther than the moves from their edges, so
+  // the guesses hold and no point is searched for on the grid
+  std::vector<Real> pts;
+  for (int i = 0; i < 8; ++i) {
+    for (int j = 0; j < 8; ++j) {
+      pts.push_back((2 * i + 0.3) / 16);
+      pts.push_back((2 * j + 0.6) / 16);
+    }
+  }
+  auto coords = pcms::test::CreateDeviceCoordinateView(
+    pts, geometry->GetCoordinateSystem());
+  auto moved = pts;
+  for (auto& x : moved) {
+    x += 1e-3;
+  }
+  auto moved_coords = pcms::test::CreateDeviceCoordinateView(
+    moved, geometry->GetCoordinateSystem());
+  std::shared_ptr<const BoundSource> bound =
+    geometry->Bind(coords.coordinate_view);
+  bound = geometry->Rebind(std::move(bound), moved_coords.coordinate_view);
+  const auto* binding =
+    dynamic_cast<const pcms::OmegaHMeshBinding*>(bound.get());
+  REQUIRE(binding != nullptr);
+  const auto* elems = binding->ElementIds().data();
+  const auto* bary = binding->Barycentric().data();
+
+  num_allocations = 0;
+  Kokkos::Tools::Experimental::set_allocate_data_callback(CountAllocation);
+  bound = geometry->Rebind(std::move(bound), coords.coordinate_view);
+  bound = geometry->Rebind(std::move(bound), moved_coords.coordinate_view);
+  const int rebind_allocations = num_allocations;
+  // the count sees allocations: a new bind allocates
+  const auto fresh = geometry->Bind(coords.coordinate_view);
+  Kokkos::Tools::Experimental::set_allocate_data_callback(nullptr);
+  REQUIRE(rebind_allocations == 0);
+  REQUIRE(num_allocations > 0);
+  REQUIRE(bound.get() == binding);
+  REQUIRE(binding->ElementIds().data() == elems);
+  REQUIRE(binding->Barycentric().data() == bary);
 }

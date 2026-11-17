@@ -14,13 +14,19 @@ namespace pcms
 /**
  * @brief The application state required to repeat a coupling window.
  *
- * The payload is defined by the application that created the checkpoint, and
+ * The state is defined by the application that created the checkpoint, and
  * only that application restores it.
  */
 struct Checkpoint
 {
   Real time = 0.0; ///< Physical time at which the state was saved.
-  std::any state;  ///< Application-defined state.
+  /**
+   * @brief Application-defined state.
+   * This is a placeholder: once a test
+   * case needs to checkpoint specific state, the type can be constrained
+   * further.
+   */
+  std::any state;
 };
 
 /**
@@ -31,17 +37,14 @@ struct Capabilities
   /// The application can save and restore its state.
   bool can_restart = false;
   /// The application can evaluate its solution between time steps.
-  bool has_dense_output = false;
+  bool has_continuous_output = false;
   /// The application reports quantities for error and conservation checks.
   bool reports_qoi = false;
 };
 
 /**
- * @brief Interface implemented by each solver in a transient coupled
- * simulation.
- *
- * Interface values are views in device memory. An application whose data lives
- * in host memory copies it to and from device memory itself.
+ * @brief Abstract base class that an application adapter implements to take part in
+ * a transient coupled simulation.
  */
 class Application
 {
@@ -52,9 +55,9 @@ public:
   [[nodiscard]] virtual std::string_view Name() const = 0;
 
   /**
-   * @brief Advance from the current state to the requested physical time.
+   * @brief Advance from the current state to the requested time.
    *
-   * @param target_time Physical time to advance to.
+   * @param target_time time to advance to.
    */
   virtual void AdvanceTo(Real target_time) = 0;
 
@@ -87,8 +90,7 @@ public:
   /**
    * @brief Apply values to a named coupling interface.
    *
-   * The values are borrowed, so implementations must use or copy them before
-   * returning.
+   * Implementations must use or copy them before returning.
    *
    * @param name Name of the coupling interface.
    * @param values Interface values in device memory.
@@ -97,14 +99,14 @@ public:
     std::string_view name, Rank1View<const Real, DeviceMemorySpace> values) = 0;
 
   /**
-   * @brief Return optional quantities used for error and conservation checks.
+   * @brief Return quantities used for error and conservation checks.
    *
    * @return The reported quantities, or an empty span by default.
    */
-  [[nodiscard]] virtual std::span<const Real> ReportQoI() const;
+  [[nodiscard]] virtual std::span<const Real> ReportQoI() const { return {}; }
 
   /**
-   * @brief Report which optional transient features this application provides.
+   * @brief Report which  transient features this application provides.
    */
   [[nodiscard]] virtual Capabilities GetCapabilities() const = 0;
 

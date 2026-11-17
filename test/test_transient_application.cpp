@@ -15,11 +15,11 @@ using pcms::Real;
 namespace
 {
 
-using Vector = Kokkos::View<Real*, pcms::DeviceMemorySpace>;
-
-Vector ToDevice(const std::vector<Real>& values)
+Kokkos::View<Real*, pcms::DeviceMemorySpace> ToDevice(
+  const std::vector<Real>& values)
 {
-  Vector device("test_vector", values.size());
+  Kokkos::View<Real*, pcms::DeviceMemorySpace> device("test_vector",
+                                                      values.size());
   pcms::CopyHostRank1ViewToDeviceView(device,
                                       pcms::make_const_array_view(values));
   return device;
@@ -43,7 +43,8 @@ public:
   pcms::Checkpoint Save() const override
   {
     // The checkpoint owns its own copy of the interface values.
-    Vector saved("test_checkpoint", interface_.extent(0));
+    Kokkos::View<Real*, pcms::DeviceMemorySpace> saved("test_checkpoint",
+                                                       interface_.extent(0));
     Kokkos::deep_copy(saved, interface_);
     return {time_, saved};
   }
@@ -51,8 +52,10 @@ public:
   void Restore(const pcms::Checkpoint& checkpoint) override
   {
     time_ = checkpoint.time;
-    Kokkos::deep_copy(interface_,
-                      std::any_cast<const Vector&>(checkpoint.state));
+    Kokkos::deep_copy(
+      interface_,
+      std::any_cast<const Kokkos::View<Real*, pcms::DeviceMemorySpace>&>(
+        checkpoint.state));
   }
 
   pcms::Rank1View<const Real, pcms::DeviceMemorySpace> GetInterface(
@@ -70,7 +73,7 @@ public:
 
   pcms::Capabilities GetCapabilities() const override
   {
-    return {/*can_restart=*/true, /*has_dense_output=*/false,
+    return {/*can_restart=*/true, /*has_continuous_output=*/false,
             /*reports_qoi=*/false};
   }
 
@@ -78,7 +81,7 @@ public:
 
 private:
   Real time_ = 0.0;
-  Vector interface_{"test_interface", 2};
+  Kokkos::View<Real*, pcms::DeviceMemorySpace> interface_{"test_interface", 2};
 };
 
 } // namespace
@@ -90,13 +93,13 @@ TEST_CASE("Application state can be saved and restored", "[transient]")
   pcms::Application& base = application;
 
   // These values represent interface DOFs in their coupling order.
-  const Vector initial_values = ToDevice({1.0, 2.0});
+  const auto initial_values = ToDevice({1.0, 2.0});
   base.SetInterface("interface", pcms::MakeRank1View(initial_values));
   base.AdvanceTo(0.5);
   const pcms::Checkpoint checkpoint = base.Save();
 
   // Change both parts of the state so restore cannot pass accidentally.
-  const Vector replacement_values = ToDevice({3.0, 4.0});
+  const auto replacement_values = ToDevice({3.0, 4.0});
   base.SetInterface("interface", pcms::MakeRank1View(replacement_values));
   base.AdvanceTo(1.0);
   base.Restore(checkpoint);
@@ -116,12 +119,12 @@ TEST_CASE("A checkpoint can be restored more than once", "[transient]")
 {
   // A Schwarz iteration restores the same window-start checkpoint every sweep.
   TestApplication application;
-  const Vector start = ToDevice({1.0, 2.0});
+  const auto start = ToDevice({1.0, 2.0});
   application.SetInterface("interface", pcms::MakeRank1View(start));
   const pcms::Checkpoint checkpoint = application.Save();
 
   for (int sweep = 0; sweep < 2; ++sweep) {
-    const Vector changed = ToDevice({5.0 + sweep, 6.0 + sweep});
+    const auto changed = ToDevice({5.0 + sweep, 6.0 + sweep});
     application.SetInterface("interface", pcms::MakeRank1View(changed));
     application.AdvanceTo(1.0 + sweep);
 

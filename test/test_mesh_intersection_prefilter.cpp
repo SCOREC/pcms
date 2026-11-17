@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <Omega_h_build.hpp>
+#include <Omega_h_for.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
 
@@ -9,7 +11,10 @@
 #include <pcms/utility/assert.h>
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
+
+#include "field_test_utils.h"
 
 namespace
 {
@@ -57,6 +62,96 @@ void require_intersections_equivalent(const pcms::IntersectionResults& a,
   }
 }
 } // namespace
+
+namespace
+{
+template <int Dim>
+void check_outside_centroid_overlap(Omega_h::Library& lib)
+{
+  const auto build_mesh = [&](int divisions) {
+    if constexpr (Dim == 3) {
+      return pcms::test::BuildReferenceTet(lib);
+    } else {
+      return Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0,
+                                divisions, divisions, 0, false);
+    }
+  };
+  auto source = build_mesh(2);
+  auto target = build_mesh(1);
+  // 2D: overlap is the slab [0.9, 1] x [0, 1], area 0.1.
+  // 3D: two reference tets shifted along x overlap in a tet of volume 0.1^3/6.
+  // Every target centroid is outside the source, but real overlaps remain.
+  const auto original = target.coords();
+  Omega_h::Write<Omega_h::Real> shifted(original.size());
+  Omega_h::parallel_for(
+    original.size(), OMEGA_H_LAMBDA(int i) {
+      shifted[i] = original[i] + (i % Dim == 0 ? 0.9 : 0.0);
+    });
+  target.set_coords(shifted);
+  const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
+    source, pcms::csys::Cartesian::Create(Dim));
+  const auto source_coords = Omega_h::HostRead(source.coords());
+  const auto target_coords = Omega_h::HostRead(target.coords());
+  const auto source_nodes = Omega_h::HostRead(source.ask_elem_verts());
+  const auto target_nodes = Omega_h::HostRead(target.ask_elem_verts());
+
+  for (bool prefilter : {false, true}) {
+    CAPTURE(Dim, prefilter);
+    const auto result = pcms::intersectTargets(*geometry, target, prefilter);
+    const auto offsets = Omega_h::HostRead(result.tgt2src_offsets);
+    const auto indices = Omega_h::HostRead(result.tgt2src_indices);
+    double total_measure = 0;
+    for (int t = 0; t < target.nelems(); ++t) {
+      r3d::Few<r3d::Vector<Dim>, Dim + 1> tgt;
+      double centroid_x = 0;
+      for (int v = 0; v <= Dim; ++v) {
+        for (int d = 0; d < Dim; ++d) {
+          tgt[v][d] = target_coords[target_nodes[t * (Dim + 1) + v] * Dim + d];
+        }
+        centroid_x += tgt[v][0] / (Dim + 1);
+      }
+      REQUIRE(centroid_x > 1.0);
+      // Exhaustive clipping is independent of centroid seeds and BFS.
+      for (int s = 0; s < source.nelems(); ++s) {
+        r3d::Few<r3d::Vector<Dim>, Dim + 1> src;
+        for (int v = 0; v <= Dim; ++v) {
+          for (int d = 0; d < Dim; ++d) {
+            src[v][d] =
+              source_coords[source_nodes[s * (Dim + 1) + v] * Dim + d];
+          }
+        }
+        r3d::Polytope<Dim> intersection;
+        r3d::intersect_simplices(intersection, tgt, src);
+        const double measure = std::abs(r3d::measure(intersection));
+        if (measure <= 1e-12) {
+          continue;
+        }
+        const auto begin = indices.data() + offsets[t];
+        const auto end = indices.data() + offsets[t + 1];
+        CAPTURE(t, s, measure);
+        REQUIRE(std::count(begin, end, s) == 1);
+        total_measure += measure;
+      }
+    }
+    const double expected = Dim == 3 ? 0.001 / 6 : 0.1;
+    REQUIRE(total_measure == Catch::Approx(expected).margin(1e-12));
+  }
+}
+} // namespace
+
+TEST_CASE("intersection preserves overlaps with outside target centroids",
+          "[intersection]")
+{
+  Omega_h::Library lib;
+  SECTION("2D")
+  {
+    check_outside_centroid_overlap<2>(lib);
+  }
+  SECTION("3D")
+  {
+    check_outside_centroid_overlap<3>(lib);
+  }
+}
 
 // A pre-filter that never fires would satisfy the equivalence test below
 // while saving nothing, so pin down that it actually rejects the case it

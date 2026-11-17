@@ -135,6 +135,30 @@ std::shared_ptr<BoundSource> OmegaHGeometry::BindImpl(
                                              Search(), mesh_);
 }
 
+Kokkos::View<const LO*, DeviceMemorySpace> OmegaHGeometry::FindElementSeeds(
+  Kokkos::View<const Real**, DeviceMemorySpace> points,
+  Kokkos::View<const LO*, DeviceMemorySpace> guesses) const
+{
+  if (points.extent(1) != static_cast<std::size_t>(mesh_.dim())) {
+    throw pcms_error("OmegaHGeometry::FindElementSeeds: point dimension "
+                     "differs from the mesh dimension");
+  }
+  return std::visit(
+    [&](const auto& s) -> Kokkos::View<const LO*, DeviceMemorySpace> {
+      constexpr int Dim = std::decay_t<decltype(s)>::DIM;
+      Kokkos::View<typename std::decay_t<decltype(s)>::Result*,
+                   DeviceMemorySpace>
+        results(Kokkos::view_alloc(Kokkos::WithoutInitializing,
+                                   "point search result"),
+                points.extent(0));
+      s(points, guesses, results);
+      return detail::LiftElements<Dim>(
+        mesh_, Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
+                            DeviceMemorySpace>(results));
+    },
+    Search());
+}
+
 SupportResults OmegaHGeometry::Neighbourhood(
   CoordinateView<DeviceMemorySpace> coords, int site_dim,
   const NeighbourhoodOptions& options, const OwnerHints& owners) const
@@ -155,23 +179,10 @@ SupportResults OmegaHGeometry::Neighbourhood(
   // (for a point outside the mesh, the element nearest it; -1, and so no
   // supports, if its grid cell has none)
   const auto points = ConvertCoordsTo2D(flat_points, n, dim);
-  const auto guesses = detail::ElementGuesses(
-    mesh_, owners.Names(*this, n) ? owners : OwnerHints{},
-    "OmegaHGeometry::Neighbourhood");
-  const auto seeds = std::visit(
-    [&](const auto& s) -> Kokkos::View<const LO*, DeviceMemorySpace> {
-      constexpr int Dim = std::decay_t<decltype(s)>::DIM;
-      Kokkos::View<typename std::decay_t<decltype(s)>::Result*,
-                   DeviceMemorySpace>
-        results(Kokkos::view_alloc(Kokkos::WithoutInitializing,
-                                   "point search result"),
-                points.extent(0));
-      s(points, guesses, results);
-      return detail::LiftElements<Dim>(
-        mesh_, Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
-                            DeviceMemorySpace>(results));
-    },
-    Search());
+  const auto seeds = FindElementSeeds(
+    points, detail::ElementGuesses(
+              mesh_, owners.Names(*this, n) ? owners : OwnerHints{},
+              "OmegaHGeometry::Neighbourhood"));
   return searchNeighbors(mesh_, site_dim, flat_points, dim, seeds,
                          options.radius * options.radius, options.min_supports,
                          3 * options.min_supports, options.adapt_radius);

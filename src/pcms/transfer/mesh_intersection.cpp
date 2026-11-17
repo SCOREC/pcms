@@ -8,9 +8,9 @@ namespace pcms
 {
 namespace
 {
-// For each target element, the source element containing its centroid (the
-// BFS over the source dual graph starts there), or -1 for a centroid outside
-// the source mesh.
+// For each target element, the source element containing or nearest its
+// centroid, where the BFS over the source dual graph starts. An outside
+// centroid does not imply that the target element has no overlap.
 template <int Dim>
 Kokkos::View<const LO*, DeviceMemorySpace> LocateTargetCentroids(
   Omega_h::Mesh& target_mesh, const OmegaHGeometry& source_geometry)
@@ -18,25 +18,7 @@ Kokkos::View<const LO*, DeviceMemorySpace> LocateTargetCentroids(
   const auto flat_centroids = pcms::get_entity_centroids(target_mesh, Dim);
   // Convert layout_right 1D Omega_h array to 2D Kokkos view with correct layout
   auto centroids = ConvertCoordsTo2D(flat_centroids, target_mesh.nelems(), Dim);
-  // Centroids outside the source mesh are legitimate: they overlap nothing.
-  const auto bound = source_geometry.Bind(
-    CoordinateView<DeviceMemorySpace>(source_geometry.GetCoordinateSystem(),
-                                      MakeConstRank2View(centroids)),
-    OutOfBoundsPolicy{OutOfBoundsMode::FILL});
-  const auto binding =
-    std::dynamic_pointer_cast<const OmegaHMeshBinding>(bound);
-  PCMS_ALWAYS_ASSERT(binding != nullptr);
-
-  Kokkos::View<LO*, DeviceMemorySpace> start("intersection start elements",
-                                             target_mesh.nelems());
-  Kokkos::deep_copy(start, -1);
-  const auto found = binding->FoundPoints();
-  const auto element_ids = binding->ElementIds();
-  Omega_h::parallel_for(
-    static_cast<LO>(found.extent(0)),
-    OMEGA_H_LAMBDA(const LO k) { start(found(k)) = element_ids(k); },
-    "scatter centroid owners");
-  return start;
+  return source_geometry.FindElementSeeds(centroids);
 }
 } // namespace
 
@@ -73,8 +55,7 @@ void FindIntersections::adjBasedIntersectSearch(
       auto current_cell_id = start_elements(id);
       auto current_tgt_elm_measure = tgt_elem_measures[id];
 
-      // No source element is a candidate for the centroid's grid cell, so the
-      // target lies outside the source mesh and overlaps nothing.
+      // The point search supplied no seed for this centroid's grid cell.
       if (current_cell_id < 0) {
         nIntersections[id] = 0;
         return;

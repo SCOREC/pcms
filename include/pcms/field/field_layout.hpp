@@ -227,8 +227,6 @@ private:
 /// dimension), i.e. 0, 1, ...
 /// @return the hint when the layout has a geometry, one DOF holder per entity
 ///         of one dimension of it and no ghosts; an empty one otherwise
-///
-/// Implementer API: not covered by the public-API stability promise.
 [[nodiscard]] OwnerHints DOFHolderOwners(const FieldLayout& layout);
 
 namespace detail
@@ -268,8 +266,6 @@ void BuildOwnedClassificationHost(
 
 // Compact "owned" (rank-exclusive) views derived from a layout's arrays with
 // ghosts.
-//
-// Implementer API: not covered by the public-API stability promise.
 struct OwnedLayoutData
 {
   LO num_owned = 0;

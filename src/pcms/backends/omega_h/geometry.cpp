@@ -27,13 +27,18 @@ static_assert(std::is_same_v<LO, Omega_h::LO>,
 static_assert(std::is_same_v<GO, Omega_h::GO>,
               "pcms and Omega_h GO types must match");
 
-OmegaHMeshBinding::OmegaHMeshBinding(std::shared_ptr<const Geometry> geometry,
-                                     const BindRequest& request,
-                                     const GridPointSearchVariant& search,
-                                     Omega_h::Mesh& mesh)
+} // namespace pcms::backend::omega_h
+
+namespace pcms::detail
+{
+
+OmegaHMeshBinding::OmegaHMeshBinding(
+  std::shared_ptr<const Geometry> geometry, const BindRequest& request,
+  const backend::omega_h::GridPointSearchVariant& search, Omega_h::Mesh& mesh)
   : BoundSource(std::move(geometry), request), search_(search), mesh_(mesh)
 {
-  Locate(detail::ElementGuesses(mesh, request.owners, "OmegaHMeshBinding"));
+  Locate(backend::omega_h::detail::ElementGuesses(mesh, request.owners,
+                                                  "OmegaHMeshBinding"));
 }
 
 void OmegaHMeshBinding::RebindImpl()
@@ -68,18 +73,23 @@ void OmegaHMeshBinding::Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints)
         guesses = point_guesses;
       } else if (num_records_ > 0) {
         // the elements of the last records; the search overwrites the records
-        detail::ElementsOfResults<Dim>(mesh_, point_results, num_records_,
-                                       point_guesses);
+        backend::omega_h::detail::ElementsOfResults<Dim>(
+          mesh_, point_results, num_records_, point_guesses);
         guesses = point_guesses;
       }
       s(LocatedPointValues(), guesses, point_results);
       const auto found = Kokkos::subview(point_found_, first);
-      detail::FoundFlags<Dim>(point_results, found);
+      backend::omega_h::detail::FoundFlags<Dim>(point_results, found);
       num_records_ = n;
       SetFound(found);
     },
     search_);
 }
+
+} // namespace pcms::detail
+
+namespace pcms::backend::omega_h
+{
 
 namespace detail
 {
@@ -184,8 +194,8 @@ std::shared_ptr<BoundSource> OmegaHGeometry::BindImpl(
   const BindRequest& request) const
 {
   PCMS_FUNCTION_TIMER;
-  return std::make_shared<OmegaHMeshBinding>(shared_from_this(), request,
-                                             Search(), mesh_);
+  return std::make_shared<pcms::detail::OmegaHMeshBinding>(
+    shared_from_this(), request, Search(), mesh_);
 }
 
 Kokkos::View<const LO*, DeviceMemorySpace> OmegaHGeometry::FindElementSeeds(

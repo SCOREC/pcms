@@ -165,7 +165,8 @@ std::shared_ptr<const FunctionSpace> CreateUniformGridLagrangeSpace(
         if constexpr (std::is_same_v<T, int8_t>) {
           throw pcms_error("CreateLagrangeSpace: int8_t is not supported");
         } else {
-          return std::make_unique<SimpleFieldData<T>>(ug_layout, basis);
+          return std::make_unique<pcms::detail::SimpleFieldData<T>>(ug_layout,
+                                                                    basis);
         }
       });
     },

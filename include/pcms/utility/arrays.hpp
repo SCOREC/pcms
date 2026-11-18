@@ -181,7 +181,63 @@ auto DeepCopyMismatchLayouts(DestView& dest, const SrcView& src)
     Kokkos::deep_copy(dest, src);
   }
 }
-/// Implementer API: not covered by the public-API stability promise.
+/// Views over the storage of a Kokkos View with the layout of the Kokkos View:
+/// MakeRank1View for a rank-1 Kokkos View, MakeRank2View for a rank-2 one
+/// (const and non-const overloads), like MakeConstRank2View.
+template <typename T, typename... Properties>
+auto MakeRank1View(Kokkos::View<T*, Properties...>& view)
+{
+  using KokkosView = Kokkos::View<T*, Properties...>;
+  using MemorySpace = typename KokkosView::memory_space;
+  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
+  return Rank1View<T, MemorySpace, LayoutPolicy>(view.data(), view.extent(0));
+}
+
+template <typename T, typename... Properties>
+auto MakeRank1View(const Kokkos::View<T*, Properties...>& view)
+{
+  using KokkosView = Kokkos::View<T*, Properties...>;
+  using MemorySpace = typename KokkosView::memory_space;
+  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
+  return Rank1View<const T, MemorySpace, LayoutPolicy>(view.data(),
+                                                       view.extent(0));
+}
+
+template <typename T, typename... Properties>
+auto MakeRank2View(Kokkos::View<T**, Properties...>& view)
+{
+  using KokkosView = Kokkos::View<T**, Properties...>;
+  using MemorySpace = typename KokkosView::memory_space;
+  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
+  return Rank2View<T, MemorySpace, LayoutPolicy>(view.data(), view.extent(0),
+                                                 view.extent(1));
+}
+
+template <typename T, typename... Properties>
+auto MakeRank2View(const Kokkos::View<T**, Properties...>& view)
+{
+  using KokkosView = Kokkos::View<T**, Properties...>;
+  using MemorySpace = typename KokkosView::memory_space;
+  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
+  return Rank2View<const T, MemorySpace, LayoutPolicy>(
+    view.data(), view.extent(0), view.extent(1));
+}
+
+/// Copies a Rank2View into a Kokkos View of the same extents element by
+/// element, whatever the layouts are, on the device of `dest`.
+template <typename DestView, typename SrcView>
+void ConvertMismatchLayoutView2D(DestView& dest, const SrcView& src)
+{
+  Kokkos::parallel_for(
+    "ConvertMismatchLayoutView2D",
+    Kokkos::RangePolicy<typename DestView::execution_space>(0, src.extent(0)),
+    KOKKOS_LAMBDA(int i) {
+      for (int j = 0; j < src.extent(1); ++j) {
+        dest(i, j) = src(i, j);
+      }
+    });
+}
+
 namespace detail
 {
 
@@ -235,47 +291,6 @@ auto make_const_array_view(T& array)
   return Rank1View<const ElementType, MemorySpace>{data(array), size(array)};
 }
 
-// Helper functions to create mdspan views from Kokkos Views with layout
-// detection
-template <typename T, typename... Properties>
-auto MakeRank1View(Kokkos::View<T*, Properties...>& view)
-{
-  using KokkosView = Kokkos::View<T*, Properties...>;
-  using MemorySpace = typename KokkosView::memory_space;
-  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
-  return Rank1View<T, MemorySpace, LayoutPolicy>(view.data(), view.extent(0));
-}
-
-template <typename T, typename... Properties>
-auto MakeRank1View(const Kokkos::View<T*, Properties...>& view)
-{
-  using KokkosView = Kokkos::View<T*, Properties...>;
-  using MemorySpace = typename KokkosView::memory_space;
-  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
-  return Rank1View<const T, MemorySpace, LayoutPolicy>(view.data(),
-                                                       view.extent(0));
-}
-
-template <typename T, typename... Properties>
-auto MakeRank2View(Kokkos::View<T**, Properties...>& view)
-{
-  using KokkosView = Kokkos::View<T**, Properties...>;
-  using MemorySpace = typename KokkosView::memory_space;
-  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
-  return Rank2View<T, MemorySpace, LayoutPolicy>(view.data(), view.extent(0),
-                                                 view.extent(1));
-}
-
-template <typename T, typename... Properties>
-auto MakeRank2View(const Kokkos::View<T**, Properties...>& view)
-{
-  using KokkosView = Kokkos::View<T**, Properties...>;
-  using MemorySpace = typename KokkosView::memory_space;
-  using LayoutPolicy = detail::layout_selector_t<KokkosView>;
-  return Rank2View<const T, MemorySpace, LayoutPolicy>(
-    view.data(), view.extent(0), view.extent(1));
-}
-
 // Flatten a contiguous (exhaustive) 2D [dof][comp] view into a 1D view over the
 // same storage. Intended for boundary code (serialization, element-wise
 // comparison) that wants a flat [num_dof_holder * num_components] view rather
@@ -286,19 +301,6 @@ Rank1View<ElementType, MemorySpace> FlattenToRank1View(
 {
   return Rank1View<ElementType, MemorySpace>(view.data_handle(),
                                              static_cast<LO>(view.size()));
-}
-
-template <typename DestView, typename SrcView>
-void ConvertMismatchLayoutView2D(DestView& dest, const SrcView& src)
-{
-  Kokkos::parallel_for(
-    "ConvertMismatchLayoutView2D",
-    Kokkos::RangePolicy<typename DestView::execution_space>(0, src.extent(0)),
-    KOKKOS_LAMBDA(int i) {
-      for (int j = 0; j < src.extent(1); ++j) {
-        dest(i, j) = src(i, j);
-      }
-    });
 }
 
 // utility function to fill a view with sequentially increasing values

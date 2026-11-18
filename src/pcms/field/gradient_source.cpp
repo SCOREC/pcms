@@ -2,7 +2,7 @@
 #include "pcms/utility/assert.hpp"
 #include <string>
 
-namespace pcms
+namespace pcms::detail
 {
 namespace
 {
@@ -84,4 +84,4 @@ std::shared_ptr<const PointEvaluatorFactory> Curl(
   return Apply(DifferentialOperator::Curl, std::move(source));
 }
 
-} // namespace pcms
+} // namespace pcms::detail

@@ -14,7 +14,7 @@ using field::GidToIndexMaps;
 using field::MakeUnmappedPermutation;
 } // namespace pcms
 
-namespace pcms::coupler
+namespace pcms::detail
 {
 
 namespace
@@ -228,7 +228,8 @@ static ReversePartitionMap2 BuildReversePartitionMap(
     LO class_dim = class_dims[owned_index];
     LO class_id = class_ids[owned_index];
 
-    auto dr = std::visit(GetRank{class_id, class_dim, coord}, partition);
+    auto dr =
+      std::visit(coupler::GetRank{class_id, class_dim, coord}, partition);
     reverse_partition[dr].indices.emplace_back(owned_index);
 
     for (size_t e = static_cast<size_t>(mesh_ent_dim) + 1; e < ent_offsets_len;
@@ -331,4 +332,4 @@ void GenericFieldExchangePlanner::FillGidMessage(
   }
 }
 
-} // namespace pcms::coupler
+} // namespace pcms::detail

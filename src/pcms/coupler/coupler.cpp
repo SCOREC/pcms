@@ -13,9 +13,8 @@ static_assert(std::is_same_v<LO, redev::LO>,
 static_assert(std::is_same_v<GO, redev::GO>,
               "pcms and redev GO types must match");
 
-coupler::FieldLayoutCommunicator&
-ApplicationComm::GetOrCreateLayoutCommunicator(const FieldLayout& layout,
-                                               bool participates)
+detail::FieldLayoutCommunicator& ApplicationComm::GetOrCreateLayoutCommunicator(
+  const FieldLayout& layout, bool participates)
 {
   PCMS_FUNCTION_TIMER;
   const std::string& name = layout.GetName();
@@ -49,9 +48,9 @@ ApplicationComm::GetOrCreateLayoutCommunicator(const FieldLayout& layout,
   }
 
   auto [it2, inserted] = field_layout_communicators_.emplace(
-    name, std::make_unique<coupler::FieldLayoutCommunicator>(
+    name, std::make_unique<detail::FieldLayoutCommunicator>(
             name, mpi_comm_subset, redev_, channel_, layout,
-            std::make_unique<coupler::GenericFieldExchangePlanner>(),
+            std::make_unique<detail::GenericFieldExchangePlanner>(),
             own_mpi_comm, overlap_mask));
   return *it2->second;
 }

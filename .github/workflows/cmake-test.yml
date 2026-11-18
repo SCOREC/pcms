@@ -46,6 +46,7 @@ jobs:
         shell: bash
 
     strategy:
+      fail-fast: false
       matrix:
         build_type: [Release]
         memory_test: [ON, OFF]

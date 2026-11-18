@@ -76,9 +76,8 @@ DeviceCoordinates make_device_coordinates(const std::vector<Real>& points)
     host(i, 1) = points[static_cast<size_t>(i) * 2 + 1];
   }
   pcms::DeepCopyMismatchLayouts(storage, host);
-  return {
-    storage,
-    {pcms::csys::Cartesian::Deferred(), pcms::detail::MakeRank2View(storage)}};
+  return {storage,
+          {pcms::csys::Cartesian::Deferred(), pcms::MakeRank2View(storage)}};
 }
 
 void require(bool condition, const char* message)

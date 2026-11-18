@@ -9,7 +9,7 @@
 
 namespace pcms
 {
-using field::mls_interpolation;
+using detail::mls_interpolation;
 using utility::get_entity_centroids;
 } // namespace pcms
 

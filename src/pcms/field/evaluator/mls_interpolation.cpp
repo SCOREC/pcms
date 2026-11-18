@@ -165,6 +165,11 @@ struct RBF_CUBIC
   }
 };
 
+} // namespace pcms::field
+
+namespace pcms::detail
+{
+
 Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
   Kokkos::View<const Real*, DeviceMemorySpace> source_values,
   Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
@@ -179,49 +184,54 @@ Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
 
   switch (bf) {
     case RadialBasisFunction::RBF_GAUSSIAN:
-      interpolated_values = detail::mls_interpolation(
+      interpolated_values = field::detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_GAUSSIAN{decay_factor}, lambda, tol);
+        degree, field::RBF_GAUSSIAN{decay_factor}, lambda, tol);
       break;
     case RadialBasisFunction::RBF_C4:
-      interpolated_values = detail::mls_interpolation(
+      interpolated_values = field::detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_C4{}, lambda, tol);
+        degree, field::RBF_C4{}, lambda, tol);
       break;
     case RadialBasisFunction::RBF_CONST:
-      interpolated_values = detail::mls_interpolation(
+      interpolated_values = field::detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_CONST{}, lambda, tol);
+        degree, field::RBF_CONST{}, lambda, tol);
       break;
     case RadialBasisFunction::NO_OP:
-      interpolated_values = detail::mls_interpolation(
+      interpolated_values = field::detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, NoOp{}, lambda, tol);
+        degree, field::NoOp{}, lambda, tol);
       break;
     case RadialBasisFunction::RBF_MULTIQUADRIC:
-      interpolated_values = detail::mls_interpolation(
+      interpolated_values = field::detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_MULTIQUADRIC{decay_factor}, lambda, tol);
+        degree, field::RBF_MULTIQUADRIC{decay_factor}, lambda, tol);
       break;
     case RadialBasisFunction::RBF_INVMULTIQUADRIC:
-      interpolated_values = detail::mls_interpolation(
+      interpolated_values = field::detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_INVMULTIQUADRIC{decay_factor}, lambda, tol);
+        degree, field::RBF_INVMULTIQUADRIC{decay_factor}, lambda, tol);
       break;
     case RadialBasisFunction::RBF_THINPLATESPLINE:
-      interpolated_values = detail::mls_interpolation(
+      interpolated_values = field::detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_THINPLATESPLINE{decay_factor}, lambda, tol);
+        degree, field::RBF_THINPLATESPLINE{decay_factor}, lambda, tol);
       break;
     case RadialBasisFunction::RBF_CUBIC:
-      interpolated_values = detail::mls_interpolation(
+      interpolated_values = field::detail::mls_interpolation(
         source_values, source_coordinates, target_coordinates, support, dim,
-        degree, RBF_CUBIC{decay_factor}, lambda, tol);
+        degree, field::RBF_CUBIC{decay_factor}, lambda, tol);
       break;
   }
 
   return interpolated_values;
 }
+
+} // namespace pcms::detail
+
+namespace pcms::field
+{
 
 namespace detail
 {

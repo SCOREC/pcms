@@ -157,8 +157,7 @@ protected:
       Kokkos::View<T**, DeviceMemorySpace> staged(
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "owned_values_staged"),
         values.extent(0), values.extent(1));
-      detail::CopyDeviceRank2ViewToRank2View(detail::MakeRank2View(staged),
-                                             values);
+      detail::CopyDeviceRank2ViewToRank2View(MakeRank2View(staged), values);
       host_values_ = Kokkos::View<T**, HostMemorySpace>(
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "owned_values_host"),
         values.extent(0), values.extent(1));

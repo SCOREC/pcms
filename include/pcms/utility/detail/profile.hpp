@@ -1,7 +1,5 @@
 #ifndef PCMS_UTILITY_DETAIL_PROFILE_HPP
 #define PCMS_UTILITY_DETAIL_PROFILE_HPP
-#include <perfstubs_api/timer.h>
-
 // perfstubs currently has a buffer overflow
 // I am disabling this, as it could cause surprising issues until I have time to
 // understand and resolve the problem see

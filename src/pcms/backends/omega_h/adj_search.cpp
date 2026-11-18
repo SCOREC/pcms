@@ -4,8 +4,8 @@
 
 namespace pcms
 {
-using localization::adapt_radii;
-using localization::within_number_of_support_range;
+using detail::adapt_radii;
+using detail::within_number_of_support_range;
 using utility::distance_squared;
 using utility::get_entity_centroids;
 } // namespace pcms

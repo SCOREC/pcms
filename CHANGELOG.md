@@ -4,8 +4,7 @@
 
 A one-time breaking reorganization so that downstream codes migrate once.
 The reorganization does not change numerical behavior. See [MIGRATION.md](MIGRATION.md) and
-`tools/migrate-pcms.sh`; the decisions behind the changes are in
-`tools/reorg/decisions.md`.
+`tools/migrate-pcms.sh`.
 
 ### Changed (breaking)
 
@@ -13,9 +12,8 @@ The reorganization does not change numerical behavior. See [MIGRATION.md](MIGRAT
   `backend::point_cloud::PointCloudGeometry` are public types and their factories return them
   (`std::shared_ptr<const Kind>`); `backend::omega_h::GetMesh(geometry)` is `OmegaHGeometry::GetMesh()`.
 - Public-API trim: helpers that 0.3 declared in public headers are in
-  `pcms::detail` (not API); the types for implementing a source, geometry kind,
-  layout or field data are implementer API, installed and not covered by the
-  stability promise (see MIGRATION.md).
+  `pcms::detail` (not API); the types a public signature or a protected hook
+  names stay public (see MIGRATION.md).
 - Public API: only interfaces and factory functions are public. Spaces are
   created on a `Geometry` (`CreateLagrangeSpace`, `CreateSplineSpace`,
   `CreatePolynomialReconstructionSpace`; `backend::uniform_grid::CreateUniformGridGeometry`,
@@ -76,7 +74,7 @@ The reorganization does not change numerical behavior. See [MIGRATION.md](MIGRAT
   (`pcms/field/query_points.hpp`).
 - Differential operators: `CreatePointEvaluator(bound, op)` with
   `DifferentialOperator`, and `Gradient(source)`, `Divergence(source)`,
-  `Curl(source)` (implementer API).
+  `Curl(source)` (in `pcms::detail`).
 - Factory functions and backend headers listed above; the Omega_h backend in
   Python (`pcms.backend.omega_h`).
 - Tests that every public header compiles on its own and that core public

@@ -128,7 +128,7 @@ void CheckLayout(Omega_h::Mesh& mesh, const pcms::FunctionSpace& space,
   Kokkos::View<Real**, pcms::DeviceMemorySpace> owned_coords_copy(
     "owned_coords", n_owned, dim);
   pcms::detail::CopyDeviceRank2ViewToRank2View(
-    pcms::detail::MakeRank2View(owned_coords_copy), owned_coords);
+    pcms::MakeRank2View(owned_coords_copy), owned_coords);
   const auto owned_coords_host = ToHost(owned_coords_copy);
   for (LO o = 0; o < n_owned; ++o) {
     for (int d = 0; d < dim; ++d) {
@@ -168,7 +168,7 @@ void CheckLayout(Omega_h::Mesh& mesh, const pcms::FunctionSpace& space,
   Kokkos::View<Real**, pcms::DeviceMemorySpace> owned_device_copy(
     "owned_device", n_owned, nc);
   pcms::detail::CopyDeviceRank2ViewToRank2View(
-    pcms::detail::MakeRank2View(owned_device_copy), owned_device);
+    pcms::MakeRank2View(owned_device_copy), owned_device);
   const auto owned_device_host = ToHost(owned_device_copy);
   for (LO o = 0; o < n_owned; ++o) {
     for (int c = 0; c < nc; ++c) {

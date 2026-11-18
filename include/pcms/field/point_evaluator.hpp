@@ -58,7 +58,6 @@ void FillRows(Rank2View<T, DeviceMemorySpace, LayoutPolicy> values,
 template <typename T,
           typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
-/// Implementer API: not covered by the public-API stability promise.
 class PointEvaluator
 {
 public:

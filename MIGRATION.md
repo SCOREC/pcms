@@ -34,11 +34,12 @@ replacement). The rest of this document explains those changes.
   `PCMS_ENABLE_SERVER=OFF`, which forces Omega_h on, and the coupler, XGC
   and MeshFields off) builds the core: uniform-grid and point-cloud
   geometries and their spaces, QueryPoints, MLS. Mesh geometries, the mesh
-  search and the projections need Omega_h.
+  search, the projections and the C and Fortran APIs need Omega_h: they are
+  switched off (with a status message) when it is off.
 - **Finding PCMS:** the package files are in `<prefix>/lib/cmake/pcms`. The
   package no longer bakes in the paths of its dependencies: make them findable
   as usual (`CMAKE_PREFIX_PATH`, `<Package>_ROOT` or `<Package>_DIR`) for
-  Kokkos, KokkosKernels, perfstubs, Omega_h, and, if PCMS was built with them,
+  Kokkos, KokkosKernels, Omega_h, and, if PCMS was built with them,
   redev, ADIOS2, MeshFields, MFEM and PETSc.
 - **Dependencies of consumers:** Omega_h, KokkosKernels, MeshFields, PETSc,
   MFEM and MPI are private dependencies of the core libraries: a program that
@@ -323,19 +324,18 @@ What is left by hand:
 - Names that are no longer public: 0.3 declared a number of helpers in public
   headers; in 0.4 they are in `pcms::detail` (array copy and view helpers of
   `utility/arrays.hpp`, `TypeEnumFromType`, `ForEach`, the coordinate
-  system and value-basis helpers; the full list is in
-  `tools/reorg/decisions.md`, "The public surface"). They are not API and may
+  system and value-basis helpers, the backends' bound sources and evaluators,
+  the coupler's communicators and planners). They are not API and may
   change; code that used one should use the public equivalent or copy the few
   lines.
-- Implementer API: the types needed to implement a source, a geometry kind, a
-  layout or field data (`PointEvaluator`, `PointEvaluatorFactory`,
-  `BindRequest`, `DifferentialView`, `SupportResults`, `OwnerHints` and `DOFHolderOwners`,
-  `FieldData`, `DOFAccess`, `SimpleFieldData`, `FieldFactory`,
-  `OwnedLayoutData`, `CreateEmptyLayout`, the `FunctionSpace` constructor, the
-  coupler detail classes) stay installed under their names, but are not
-  covered by the public-API stability promise: they can change in a minor
-  release, with a CHANGELOG entry. Each carries that line in its
-  documentation.
+- Extending PCMS: the types a public signature or a protected hook names stay
+  public (`PointEvaluator`, `PointEvaluatorFactory`, `BindRequest`,
+  `DifferentialView`, `SupportResults`, `OwnerHints`, `DOFHolderOwners`,
+  `FieldData`, `DOFAccess`, `FieldFactory`, `CreateEmptyLayout`, the
+  `FunctionSpace` constructor). The concrete helpers moved to `pcms::detail`
+  (`SimpleFieldData`, `PointCloudLayout`, the backends' bound sources and
+  evaluators, the coupler's communicators and planners, the MLS helpers); the
+  symbol map lists the 0.3 names as `cpp-private`.
 - Uses of APIs that changed shape: `migrate-pcms.sh` reports them (the
   `manual` entries of `tools/reorg/symbol-map.txt`).
 - Code that calls the point search directly (pull requests #345, #416 and

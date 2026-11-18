@@ -18,26 +18,6 @@
 #include <memory>
 #include <vector>
 
-namespace example
-{
-// copies a device Rank2View into a Kokkos view of any layout
-template <typename Dest>
-void CopyToView(Dest dest,
-                pcms::Rank2View<const pcms::Real, pcms::DeviceMemorySpace> src)
-{
-  const std::size_t num_cols = src.extent(1);
-  Kokkos::parallel_for(
-    "CopyToView",
-    Kokkos::RangePolicy<pcms::DeviceMemorySpace::execution_space>(
-      0, src.extent(0)),
-    KOKKOS_LAMBDA(const int i) {
-      for (std::size_t j = 0; j < num_cols; ++j) {
-        dest(i, j) = src(i, j);
-      }
-    });
-}
-} // namespace example
-
 namespace
 {
 // linear interpolation reproduces a linear function exactly
@@ -64,7 +44,7 @@ int EvaluateLinear(const std::shared_ptr<const pcms::FunctionSpace>& space,
                                                                 num_dofs, 2);
   auto coords_mirror =
     Kokkos::create_mirror_view(pcms::DeviceMemorySpace(), coords_host);
-  example::CopyToView(coords_mirror, dof_coords.GetValues());
+  pcms::ConvertMismatchLayoutView2D(coords_mirror, dof_coords.GetValues());
   Kokkos::deep_copy(coords_host, coords_mirror);
   std::vector<pcms::Real> values(num_dofs);
   for (std::size_t i = 0; i < num_dofs; ++i) {

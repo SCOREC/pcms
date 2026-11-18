@@ -34,7 +34,7 @@ public:
   /// @param binding cells of the query points
   UniformGridPointEvaluator(
     std::shared_ptr<const UniformGridFieldLayout<Dim>> layout,
-    std::shared_ptr<const UniformGridBinding<Dim>> binding)
+    std::shared_ptr<const pcms::detail::UniformGridBinding<Dim>> binding)
     : PointEvaluator<Real, LayoutPolicy>(binding, DifferentialOperator::Value,
                                          layout),
       layout_(std::move(layout)),
@@ -149,16 +149,17 @@ public:
 private:
   std::shared_ptr<const UniformGridFieldLayout<Dim>> layout_;
   UniformGrid<Dim> grid_;
-  std::shared_ptr<const UniformGridBinding<Dim>> binding_;
+  std::shared_ptr<const pcms::detail::UniformGridBinding<Dim>> binding_;
 };
 
 /// @brief Point evaluation of fields on a structured uniform grid.
 /// @tparam Dim grid dimension
 template <unsigned Dim = 2>
 class UniformGridEvaluatorFactory
-  : public TypedPointEvaluatorFactory<Real, UniformGridBinding<Dim>>
+  : public pcms::detail::TypedPointEvaluatorFactory<
+      Real, pcms::detail::UniformGridBinding<Dim>>
 {
-  using Bound = UniformGridBinding<Dim>;
+  using Bound = pcms::detail::UniformGridBinding<Dim>;
 
 public:
   /// @param geometry geometry of the layout's grid
@@ -166,7 +167,8 @@ public:
   UniformGridEvaluatorFactory(
     std::shared_ptr<const UniformGridGeometry<Dim>> geometry,
     std::shared_ptr<const UniformGridFieldLayout<Dim>> layout)
-    : TypedPointEvaluatorFactory<Real, Bound>(std::move(geometry)),
+    : pcms::detail::TypedPointEvaluatorFactory<Real, Bound>(
+        std::move(geometry)),
       layout_(std::move(layout))
   {
   }

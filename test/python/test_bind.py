@@ -242,3 +242,18 @@ def test_evaluate_at_points_in_one_call(field):
     pcms.evaluate(field, pcms.CoordinateView([[0.25, 0.5], [0.75, 0.1]]), out)
     np.testing.assert_allclose(out, [_linear(0.25, 0.5), _linear(0.75, 0.1)],
                                atol=1e-12)
+
+
+def test_get_mesh_outlives_temporary_geometry(world):
+    """get_mesh returns an owning handle: it stays valid after the geometry
+    and the original mesh wrapper are gone."""
+    import gc
+    mesh = omega_h.build_box(
+        world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
+    nverts = mesh.nverts()
+    held = pcms.backend.omega_h.get_mesh(
+        pcms.backend.omega_h.create_geometry(mesh))
+    del mesh
+    gc.collect()
+    assert held.nverts() == nverts
+    assert held.dim() == 2

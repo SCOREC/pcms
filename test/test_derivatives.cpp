@@ -97,7 +97,8 @@ TEST_CASE("Evaluators reject fields of another function space")
   const std::vector<Real> pts = {0.3, -0.7, 1.1, 0.2};
   const auto bound = pcms::test::Bind(*space->GetGeometry(), pts);
   auto values = space->CreatePointEvaluator<Real>(bound);
-  auto gradient = pcms::Gradient(space)->CreatePointEvaluator<Real>(bound);
+  auto gradient =
+    pcms::detail::Gradient(space)->CreatePointEvaluator<Real>(bound);
 
   const auto value_basis = f.GetData().GetValueBasis();
   const auto gradient_basis = gradient->OutputBasis(value_basis);
@@ -157,7 +158,7 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   const auto value_layout = value_space->GetLayout();
   const auto bound =
     source->GetGeometry()->Bind(value_layout->GetDOFHolderCoordinates());
-  const auto grad_source = pcms::Gradient(source);
+  const auto grad_source = pcms::detail::Gradient(source);
   pcms::Interpolator<Real> values(*source, *value_space, bound);
   pcms::Interpolator<Real> gradients(*grad_source, *gradient_space, bound);
   values.Apply(f, value);
@@ -198,7 +199,7 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
                       ContainsSubstring("target's DOF-holder sites"));
   // Second derivatives are not available from the spline yet.
   REQUIRE_THROWS_WITH(
-    pcms::Gradient(grad_source),
+    pcms::detail::Gradient(grad_source),
     ContainsSubstring(
       "Apply: Gradient is not supported by the wrapped source"));
 }
@@ -212,12 +213,12 @@ TEST_CASE("Unsupported operators are refused by name")
     space->CreatePointEvaluator<Real>(bound, pcms::DifferentialOperator::Curl),
     ContainsSubstring("Curl is not supported"));
   // an operator source only supports Value
-  auto grad = pcms::Gradient(space);
+  auto grad = pcms::detail::Gradient(space);
   REQUIRE(grad->Supports(pcms::DifferentialOperator::Value));
   REQUIRE_FALSE(grad->Supports(pcms::DifferentialOperator::Gradient));
   // an operator the wrapped source lacks is refused by name when applied
   REQUIRE_THROWS_WITH(
-    pcms::Curl(space),
+    pcms::detail::Curl(space),
     ContainsSubstring("Apply: Curl is not supported by the wrapped source"));
 }
 

@@ -49,7 +49,8 @@ bool SameDOFHolderSites(const BoundSource& bound, const FieldLayout& layout);
 //   auto bound = geometry->Bind(layout->GetDOFHolderCoordinates(),
 //                               DOFHolderOwners(*layout));
 //   Interpolator<Real> values(*src_space, *tgt_space, bound);
-//   Interpolator<Real> gradient(*Gradient(src_space), *grad_space, bound);
+//   Interpolator<Real> gradient(*detail::Gradient(src_space), *grad_space,
+//   bound);
 template <typename T>
 class Interpolator : public TransferOperator<T>
 {
@@ -96,9 +97,8 @@ public:
         "Interpolator: the basis written for the source's stored basis "
         "differs from the target's declared basis");
     }
-    evaluator_->Evaluate(source,
-                         ValueView<T, DeviceMemorySpace>(
-                           written, detail::MakeRank2View(target_values_)));
+    evaluator_->Evaluate(source, ValueView<T, DeviceMemorySpace>(
+                                   written, MakeRank2View(target_values_)));
     target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
     target.Synchronize();
   }

@@ -66,8 +66,6 @@ CreatePolynomialReconstructionSpace(std::shared_ptr<const Geometry> geometry,
 
 /// Layout without degrees of freedom, for evaluation-only spaces that
 /// implement FunctionSpace outside PCMS (e.g. fields of an external code).
-///
-/// Implementer API: not covered by the public-API stability promise.
 std::shared_ptr<const FieldLayout> CreateEmptyLayout(
   std::shared_ptr<const CoordinateSystem> coordinate_system,
   int num_components = 1);

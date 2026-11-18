@@ -39,8 +39,8 @@ std::shared_ptr<const FunctionSpace> CreatePolynomialReconstructionSpace(
           throw pcms_error("CreatePolynomialReconstructionSpace: only double "
                            "(Real) is supported");
         } else {
-          return std::make_unique<SimpleFieldData<double>>(layout,
-                                                           std::move(basis));
+          return std::make_unique<pcms::detail::SimpleFieldData<double>>(
+            layout, std::move(basis));
         }
       });
     },

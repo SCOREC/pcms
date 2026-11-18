@@ -110,7 +110,7 @@ public:
   /// @param binding the search records of the query points
   MeshFieldsPointEvaluator(
     std::shared_ptr<const MeshFieldsAdapterLayout> layout,
-    std::shared_ptr<const omega_h::OmegaHMeshBinding> binding)
+    std::shared_ptr<const pcms::detail::OmegaHMeshBinding> binding)
     : PointEvaluator<T, LayoutPolicy>(binding, DifferentialOperator::Value,
                                       layout),
       layout_(std::move(layout))
@@ -171,7 +171,8 @@ private:
 /// @tparam T field value type
 template <typename T>
 class MeshFieldsEvaluatorFactory
-  : public TypedPointEvaluatorFactory<T, omega_h::OmegaHMeshBinding>
+  : public pcms::detail::TypedPointEvaluatorFactory<
+      T, pcms::detail::OmegaHMeshBinding>
 {
 public:
   /// @param geometry geometry of the layout's mesh
@@ -179,7 +180,8 @@ public:
   MeshFieldsEvaluatorFactory(
     std::shared_ptr<const omega_h::OmegaHGeometry> geometry,
     std::shared_ptr<const MeshFieldsAdapterLayout> layout)
-    : TypedPointEvaluatorFactory<T, omega_h::OmegaHMeshBinding>(
+    : pcms::detail::TypedPointEvaluatorFactory<T,
+                                               pcms::detail::OmegaHMeshBinding>(
         std::move(geometry)),
       layout_(std::move(layout))
   {
@@ -190,7 +192,7 @@ public:
 
 protected:
   std::unique_ptr<PointEvaluator<T>> CreateEvaluator(
-    std::shared_ptr<const omega_h::OmegaHMeshBinding> bound,
+    std::shared_ptr<const pcms::detail::OmegaHMeshBinding> bound,
     DifferentialOperator /*op*/) const override
   {
     return std::make_unique<MeshFieldsPointEvaluator<T>>(layout_,

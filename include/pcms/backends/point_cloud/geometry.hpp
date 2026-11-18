@@ -67,8 +67,6 @@ public:
 
   /// A hint naming the cloud or the geometry of its site layout, whose
   /// entities the sites are, is used (and forwarded to that geometry).
-  ///
-  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] bool TakesHints(const OwnerHints& owners,
                                 LO num_points) const noexcept override
   {
@@ -105,15 +103,14 @@ public:
                                           forwarded);
     }
     const auto sites = site_layout_->GetDOFHolderCoordinates().GetValues();
-    return localization::BuildPointCloudSupports(
-      detail::FlattenRows(sites, "src_coords"),
-      detail::FlattenRows(coords.GetValues(), "tgt_coords"),
+    return pcms::detail::BuildPointCloudSupports(
+      pcms::detail::FlattenRows(sites, "src_coords"),
+      pcms::detail::FlattenRows(coords.GetValues(), "tgt_coords"),
       static_cast<int>(sites.extent(1)), options.radius, options.min_supports,
       options.adapt_radius);
   }
 
 protected:
-  /// Implementer API: not covered by the public-API stability promise.
   std::shared_ptr<BoundSource> BindImpl(
     const BindRequest& request) const override
   {
@@ -121,13 +118,13 @@ protected:
     // Extract source coordinates for the MLS solve.
     const auto src_view = site_layout_->GetDOFHolderCoordinates().GetValues();
     Kokkos::View<const Real*, DeviceMemorySpace> source_coords =
-      detail::FlattenRows(src_view, "src_coords");
+      pcms::detail::FlattenRows(src_view, "src_coords");
 
     const int site_dim = site_layout_->GetDOFHolderEntityDim();
     SupportResults supports =
       Neighbourhood(request.coords, site_dim, options_, request.owners);
 
-    return std::make_shared<MLSBinding>(
+    return std::make_shared<pcms::detail::MLSBinding>(
       shared_from_this(), request, std::move(source_coords),
       std::move(supports), site_dim, options_);
   }
@@ -153,7 +150,7 @@ CreatePointCloudGeometry(CoordinateView<HostMemorySpace> coords,
   auto device_view = Kokkos::View<Real**>("device_view", host_view.extent(0),
                                           host_view.extent(1));
   DeepCopyMismatchLayouts(device_view, host_view);
-  auto layout = std::make_shared<PointCloudLayout>(
+  auto layout = std::make_shared<pcms::detail::PointCloudLayout>(
     dim, device_view, coords.GetCoordinateSystem());
   return std::make_shared<PointCloudGeometry>(std::move(layout),
                                               std::move(options));

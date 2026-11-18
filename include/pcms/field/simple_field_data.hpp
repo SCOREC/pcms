@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 
-namespace pcms
+namespace pcms::detail
 {
 
 // SimpleFieldData<T> is a generic concrete FieldData<T> backed by shaped
@@ -18,8 +18,6 @@ namespace pcms
 //
 // Ownership of the layout is shared — the layout is typically held by the
 // factory that created this field data object.
-//
-// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 class SimpleFieldData
   : public FieldData<T>
@@ -60,6 +58,6 @@ private:
   Kokkos::View<T**, DeviceMemorySpace> device_data_;
 };
 
-} // namespace pcms
+} // namespace pcms::detail
 
 #endif // PCMS_FIELD_SIMPLE_FIELD_DATA_HPP

@@ -17,26 +17,6 @@
 #include <cstddef>
 #include <vector>
 
-namespace example
-{
-// copies a device Rank2View into a Kokkos view of any layout
-template <typename Dest>
-void CopyToView(Dest dest,
-                pcms::Rank2View<const pcms::Real, pcms::DeviceMemorySpace> src)
-{
-  const std::size_t num_cols = src.extent(1);
-  Kokkos::parallel_for(
-    "CopyToView",
-    Kokkos::RangePolicy<pcms::DeviceMemorySpace::execution_space>(
-      0, src.extent(0)),
-    KOKKOS_LAMBDA(const int i) {
-      for (std::size_t j = 0; j < num_cols; ++j) {
-        dest(i, j) = src(i, j);
-      }
-    });
-}
-} // namespace example
-
 namespace
 {
 constexpr pcms::Real LinearTol = 1e-10;
@@ -71,7 +51,7 @@ int main(int argc, char** argv)
                                                                   num_dofs, 2);
     auto coords_mirror =
       Kokkos::create_mirror_view(pcms::DeviceMemorySpace(), coords_host);
-    example::CopyToView(coords_mirror, dof_coords.GetValues());
+    pcms::ConvertMismatchLayoutView2D(coords_mirror, dof_coords.GetValues());
     Kokkos::deep_copy(coords_host, coords_mirror);
     std::vector<pcms::Real> values(num_dofs);
     for (std::size_t i = 0; i < num_dofs; ++i) {
@@ -131,7 +111,7 @@ int main(int argc, char** argv)
       "target_coords_host", num_target, 2);
     auto target_mirror =
       Kokkos::create_mirror_view(pcms::DeviceMemorySpace(), target_coords_host);
-    example::CopyToView(target_mirror, target_coords.GetValues());
+    pcms::ConvertMismatchLayoutView2D(target_mirror, target_coords.GetValues());
     Kokkos::deep_copy(target_coords_host, target_mirror);
     const auto result = target.GetDOFHolderDataHost().GetValues();
     for (std::size_t i = 0; i < num_target; ++i) {

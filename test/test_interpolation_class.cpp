@@ -18,7 +18,7 @@
 namespace pcms
 {
 using backend::omega_h::OmegaHEntityLayout;
-using backend::point_cloud::MLSBinding;
+using detail::MLSBinding;
 using utility::get_entity_centroids;
 } // namespace pcms
 

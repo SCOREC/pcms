@@ -7,15 +7,13 @@
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 
-namespace pcms::coupler
+namespace pcms::detail
 {
 
 // Packs a field's owned values into, and unpacks them from, an exchange
 // buffer, through the field's DOFAccess. Any field with DOFAccess is
 // exchanged this way. Backends that need extra work on receive (e.g.,
 // synchronizing replicas) do it in DOFAccess::SetValues.
-//
-// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 class FieldSerializer
 {
@@ -68,6 +66,6 @@ public:
   }
 };
 
-} // namespace pcms::coupler
+} // namespace pcms::detail
 
 #endif // PCMS_COUPLER_DETAIL_FIELD_SERIALIZER_HPP

@@ -47,7 +47,7 @@ struct OmegaHLagrangeTagValues
 /// lambdas in the public virtual function that dispatches on the dimension.)
 template <int Dim, typename T, typename Dof, typename Values>
 void EvaluateOmegaHLagrange(Omega_h::Mesh& mesh, int order,
-                            const OmegaHMeshBinding& binding,
+                            const pcms::detail::OmegaHMeshBinding& binding,
                             const Dof& dof_data, int n_comp,
                             const Values& values)
 {
@@ -105,7 +105,7 @@ public:
   /// @param binding the search records of the query points
   OmegaHLagrangePointEvaluator(
     std::shared_ptr<const OmegaHLagrangeLayout> layout,
-    std::shared_ptr<const OmegaHMeshBinding> binding)
+    std::shared_ptr<const pcms::detail::OmegaHMeshBinding> binding)
     : PointEvaluator<T, LayoutPolicy>(binding, DifferentialOperator::Value,
                                       layout),
       layout_(std::move(layout)),
@@ -144,7 +144,7 @@ public:
 
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
-  std::shared_ptr<const OmegaHMeshBinding> binding_;
+  std::shared_ptr<const pcms::detail::OmegaHMeshBinding> binding_;
 };
 
 // ---------------------------------------------------------------------------
@@ -155,7 +155,8 @@ private:
 /// @tparam T field value type
 template <typename T>
 class OmegaHLagrangeEvaluatorFactory
-  : public TypedPointEvaluatorFactory<T, OmegaHMeshBinding>
+  : public pcms::detail::TypedPointEvaluatorFactory<
+      T, pcms::detail::OmegaHMeshBinding>
 {
 public:
   /// @param geometry geometry of the layout's mesh
@@ -163,14 +164,16 @@ public:
   OmegaHLagrangeEvaluatorFactory(
     std::shared_ptr<const OmegaHGeometry> geometry,
     std::shared_ptr<const OmegaHLagrangeLayout> layout)
-    : TypedPointEvaluatorFactory<T, OmegaHMeshBinding>(std::move(geometry)),
+    : pcms::detail::TypedPointEvaluatorFactory<T,
+                                               pcms::detail::OmegaHMeshBinding>(
+        std::move(geometry)),
       layout_(std::move(layout))
   {
   }
 
 protected:
   std::unique_ptr<PointEvaluator<T>> CreateEvaluator(
-    std::shared_ptr<const OmegaHMeshBinding> bound,
+    std::shared_ptr<const pcms::detail::OmegaHMeshBinding> bound,
     DifferentialOperator /*op*/) const override
   {
     return std::make_unique<OmegaHLagrangePointEvaluator<T>>(layout_,

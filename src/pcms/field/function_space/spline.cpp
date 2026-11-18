@@ -42,8 +42,8 @@ std::shared_ptr<const FunctionSpace> CreateSplineSpace(
           throw pcms_error("CreateSplineSpace: only double (Real) is "
                            "supported");
         } else {
-          return std::make_unique<SimpleFieldData<double>>(layout,
-                                                           std::move(basis));
+          return std::make_unique<pcms::detail::SimpleFieldData<double>>(
+            layout, std::move(basis));
         }
       });
     },

@@ -42,7 +42,7 @@ target_include_directories(
         # include path to search for pcms/config.h
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/../..>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-target_link_libraries(pcms_utility PUBLIC Kokkos::kokkos perfstubs)
+target_link_libraries(pcms_utility PUBLIC Kokkos::kokkos)
 # assert.cpp reports the MPI rank; MPI is not part of the public interface
 target_link_libraries(pcms_utility PRIVATE MPI::MPI_CXX)
 if(PCMS_ENABLE_OMEGA_H)

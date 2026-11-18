@@ -16,7 +16,7 @@
 namespace pcms
 {
 using backend::omega_h::OmegaHEntityLayout;
-using backend::point_cloud::PointCloudLayout;
+using detail::PointCloudLayout;
 } // namespace pcms
 
 using pcms::CoordinateSystem;

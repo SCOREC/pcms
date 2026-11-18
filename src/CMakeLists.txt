@@ -1,4 +1,3 @@
-find_package(perfstubs REQUIRED)
 
 # The version comes from git describe, so version.hpp is regenerated on every
 # build, and once now so it exists after configure. See PcmsVersion.cmake.

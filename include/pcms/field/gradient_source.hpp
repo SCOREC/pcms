@@ -5,7 +5,7 @@
 #include "pcms/field/point_evaluator_factory.hpp"
 #include <memory>
 
-namespace pcms
+namespace pcms::detail
 {
 
 /// @brief Source whose evaluators apply `op` to the fields of `source`.
@@ -18,29 +18,21 @@ namespace pcms
 ///         stored basis
 /// @throws pcms_error if `source` is null, `op` is Value, or `source` does
 ///         not support `op`
-///
-/// Implementer API: not covered by the public-API stability promise.
 [[nodiscard]] std::shared_ptr<const PointEvaluatorFactory> Apply(
   DifferentialOperator op, std::shared_ptr<const PointEvaluatorFactory> source);
 
 /// @brief Apply(DifferentialOperator::Gradient, source).
-///
-/// Implementer API: not covered by the public-API stability promise.
 [[nodiscard]] std::shared_ptr<const PointEvaluatorFactory> Gradient(
   std::shared_ptr<const PointEvaluatorFactory> source);
 
 /// @brief Apply(DifferentialOperator::Divergence, source).
-///
-/// Implementer API: not covered by the public-API stability promise.
 [[nodiscard]] std::shared_ptr<const PointEvaluatorFactory> Divergence(
   std::shared_ptr<const PointEvaluatorFactory> source);
 
 /// @brief Apply(DifferentialOperator::Curl, source).
-///
-/// Implementer API: not covered by the public-API stability promise.
 [[nodiscard]] std::shared_ptr<const PointEvaluatorFactory> Curl(
   std::shared_ptr<const PointEvaluatorFactory> source);
 
-} // namespace pcms
+} // namespace pcms::detail
 
 #endif // PCMS_FIELD_GRADIENT_SOURCE_HPP

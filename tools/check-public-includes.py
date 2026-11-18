@@ -7,7 +7,7 @@ Every header below include/pcms/ may include the C++ standard library,
 Kokkos, MPI and other PCMS public headers. Headers below
 include/pcms/backends/<name>/ may in addition include the libraries of that
 backend. Headers below include/pcms/coupler/ may include redev (the coupler's
-transport, see tools/reorg/decisions.md). Any other include of a backend
+transport). Any other include of a backend
 library (Omega_h, MFEM, MeshFields, PETSc, redev, ADIOS2) is reported, and the
 script exits with status 1. So is an include of a PCMS header that is not
 public (not below include/pcms/ and not generated), e.g. the private

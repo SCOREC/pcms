@@ -71,7 +71,7 @@ std::function<void(HostArray, HostArray)> PointCloudInterpolation(
                                                            out.size(), 1);
     evaluator->Evaluate(*field,
                         pcms::ValueView<double, pcms::DeviceMemorySpace>(
-                          basis, pcms::detail::MakeRank2View(values)));
+                          basis, pcms::MakeRank2View(values)));
     const auto host =
       Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), values);
     for (size_t i = 0; i < out.size(); ++i) {

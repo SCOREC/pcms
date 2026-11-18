@@ -191,7 +191,7 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
       ignored)
   endif()
   add_executable(field_communication test_field_communication.cpp)
-  target_link_libraries(field_communication PUBLIC pcms::pcms test_support)
+  target_link_libraries(field_communication PUBLIC pcms::coupler test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
     tri_mpi_test(
       TESTNAME
@@ -230,7 +230,7 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
       ignored)
   endif()
   add_executable(proxy_coupling test_proxy_coupling.cpp)
-  target_link_libraries(proxy_coupling PUBLIC pcms::pcms test_support)
+  target_link_libraries(proxy_coupling PUBLIC pcms::coupler test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
     tri_mpi_test(
       TESTNAME
@@ -583,12 +583,12 @@ if(PCMS_ENABLE_C)
       add_executable(test_proxy_couple_xgc_cpp_interface
                      test_proxy_coupling_xgc_server.cpp)
       target_link_libraries(test_proxy_couple_xgc_cpp_interface
-                            PUBLIC pcms::pcms MPI::MPI_C test_support)
+                            PUBLIC pcms::coupler MPI::MPI_C test_support)
       # New test with proper overlap mask feature (no hacky ownership modification)
       add_executable(test_proxy_couple_xgc_overlap_interface
                      test_proxy_coupling_xgc_server_overlap.cpp)
       target_link_libraries(test_proxy_couple_xgc_overlap_interface
-                            PUBLIC pcms::pcms MPI::MPI_C test_support)
+                            PUBLIC pcms::coupler MPI::MPI_C test_support)
       if(HOST_NPROC GREATER_EQUAL 3)
         dual_mpi_test(
           TESTNAME
@@ -743,7 +743,7 @@ find_package(KokkosKernels REQUIRED)
 
 if(TARGET pcms::coupler)
   add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)
-  target_link_libraries(xgc_n0_server PUBLIC pcms::pcms test_support)
+  target_link_libraries(xgc_n0_server PUBLIC pcms::transfer pcms::coupler test_support)
 endif()
 
 # every installed public header compiles on its own

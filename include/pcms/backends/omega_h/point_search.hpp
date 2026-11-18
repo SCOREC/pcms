@@ -1,8 +1,6 @@
 #ifndef PCMS_BACKENDS_OMEGA_H_POINT_SEARCH_HPP
 #define PCMS_BACKENDS_OMEGA_H_POINT_SEARCH_HPP
 
-// Implementer API: not covered by the public-API stability promise. (the whole
-// header)
 #include <cassert>
 
 #include <utility>

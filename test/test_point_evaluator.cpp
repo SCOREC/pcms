@@ -37,7 +37,7 @@ void CheckOutputValidation(const pcms::PointEvaluator<Real>& evaluator,
   REQUIRE(field.GetLayout().GetNumComponents() == 1);
   auto scalar = [](OutView v) {
     return pcms::ValueView<Real, pcms::DeviceMemorySpace>(
-      pcms::ValueBasis{}, pcms::detail::MakeRank2View(v));
+      pcms::ValueBasis{}, pcms::MakeRank2View(v));
   };
   const auto n = static_cast<size_t>(num_points);
 
@@ -58,7 +58,7 @@ void CheckOutputValidation(const pcms::PointEvaluator<Real>& evaluator,
                          pcms::ValueBasis{pcms::csys::Cartesian::Create(1),
                                           pcms::ComponentScaling::Physical,
                                           pcms::values::Vector},
-                         pcms::detail::MakeRank2View(out))),
+                         pcms::MakeRank2View(out))),
     pcms::pcms_error);
 }
 
@@ -562,7 +562,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
   // Component 0: f(x,y)=x+y, Component 1: f(x,y)=2x-y
   auto dof_coords_mdspan = layout->GetDOFHolderCoordinates().GetValues();
   Kokkos::View<Real**, pcms::DeviceMemorySpace> dof_dev("dof_dev", num_dof, 2);
-  pcms::detail::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
+  pcms::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
   auto coords_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), dof_dev);
 
@@ -617,7 +617,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
   // Component 0: x, Component 1: y, Component 2: x*y
   auto dof_coords_mdspan = layout->GetDOFHolderCoordinates().GetValues();
   Kokkos::View<Real**, pcms::DeviceMemorySpace> dof_dev("dof_dev", num_dof, 2);
-  pcms::detail::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
+  pcms::ConvertMismatchLayoutView2D(dof_dev, dof_coords_mdspan);
   auto coords_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), dof_dev);
 

@@ -22,7 +22,7 @@ namespace pcms
 using backend::omega_h::GridPointSearch2D;
 using backend::omega_h::GridPointSearch3D;
 using backend::omega_h::triangle_intersects_bbox;
-using localization::UniformGridPointSearch;
+using detail::UniformGridPointSearch;
 using utility::get_entity_centroids;
 } // namespace pcms
 

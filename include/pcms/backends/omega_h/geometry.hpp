@@ -199,6 +199,11 @@ Kokkos::View<LO*, DeviceMemorySpace> LiftElements(
 
 } // namespace detail
 
+} // namespace pcms::backend::omega_h
+
+namespace pcms::detail
+{
+
 /// Bound source of an Omega_h simplex mesh: the search's record of each query
 /// point, the entity it lies on and its position on it (Results()). The binding
 /// picks no element: an evaluator applies its own rule to the entity, e.g.
@@ -210,8 +215,6 @@ Kokkos::View<LO*, DeviceMemorySpace> LiftElements(
 /// points are those of a new bind. The records are kept across rebinds and
 /// reallocated only when the points outgrow them (after which the next rebind
 /// has no guesses); the first bind has the guesses its hints give, else none.
-///
-/// Implementer API: not covered by the public-API stability promise.
 class OmegaHMeshBinding final : public BoundSource
 {
 public:
@@ -221,21 +224,26 @@ public:
   /// `mesh` are the geometry's; a rebind searches with them again.
   OmegaHMeshBinding(std::shared_ptr<const Geometry> geometry,
                     const BindRequest& request,
-                    const GridPointSearchVariant& search, Omega_h::Mesh& mesh);
+                    const backend::omega_h::GridPointSearchVariant& search,
+                    Omega_h::Mesh& mesh);
 
   /// [query point]: the search's record of each point, the entity it lies on
-  /// and its reduced coordinates on it (PointLocalizationSearch<Dim>::Result;
-  /// `Dim` is the mesh dimension). The rows of missing points hold the
-  /// search's outside or NO_INTERSECT record; read them only through
-  /// FoundPoints(). Evaluators apply their own element rule to it (see
-  /// detail::LowestAdjacentElement, detail::EntityVertexWeights).
+  /// and its reduced coordinates on it
+  /// (backend::omega_h::PointLocalizationSearch<Dim>::Result; `Dim` is the mesh
+  /// dimension). The rows of missing points hold the search's outside or
+  /// NO_INTERSECT record; read them only through FoundPoints(). Evaluators
+  /// apply their own element rule to it (see
+  /// backend::omega_h::detail::LowestAdjacentElement,
+  /// backend::omega_h::detail::EntityVertexWeights).
   template <int Dim>
   [[nodiscard]] Kokkos::View<
-    const typename PointLocalizationSearch<Dim>::Result*, DeviceMemorySpace>
+    const typename backend::omega_h::PointLocalizationSearch<Dim>::Result*,
+    DeviceMemorySpace>
   Results() const
   {
-    using Results = Kokkos::View<typename PointLocalizationSearch<Dim>::Result*,
-                                 DeviceMemorySpace>;
+    using Results = Kokkos::View<
+      typename backend::omega_h::PointLocalizationSearch<Dim>::Result*,
+      DeviceMemorySpace>;
     return Kokkos::subview(std::get<Results>(point_results_),
                            Kokkos::make_pair(LO{0}, NumPoints()));
   }
@@ -256,17 +264,24 @@ private:
   /// results in point_results_ and sets the found points.
   void Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints);
 
-  const GridPointSearchVariant& search_;
+  const backend::omega_h::GridPointSearchVariant& search_;
   Omega_h::Mesh& mesh_;
   // per query point, the search's record, kept across rebinds; the first
   // num_records_ are the last locate's
-  std::variant<Kokkos::View<GridPointSearch2D::Result*, DeviceMemorySpace>,
-               Kokkos::View<GridPointSearch3D::Result*, DeviceMemorySpace>>
+  std::variant<Kokkos::View<backend::omega_h::GridPointSearch2D::Result*,
+                            DeviceMemorySpace>,
+               Kokkos::View<backend::omega_h::GridPointSearch3D::Result*,
+                            DeviceMemorySpace>>
     point_results_;
   Kokkos::View<LO*, DeviceMemorySpace> point_guesses_;
   Kokkos::View<bool*, DeviceMemorySpace> point_found_;
   LO num_records_ = 0;
 };
+
+} // namespace pcms::detail
+
+namespace pcms::backend::omega_h
+{
 
 /// Options of an Omega_h geometry.
 struct OmegaHGeometryOptions
@@ -335,8 +350,6 @@ public:
   /// -1 means the search cell has no candidate. Unlike Bind, this preserves
   /// outside-point seeds: an outside target centroid can still belong to an
   /// element that overlaps the mesh.
-  ///
-  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FindElementSeeds(
     Kokkos::View<const Real**, DeviceMemorySpace> points,
     Kokkos::View<const LO*, DeviceMemorySpace> guesses = {}) const;
@@ -356,13 +369,10 @@ public:
 
   /// The per-element constant Jacobian of the affine simplex map, computed
   /// for all elements on the first call.
-  ///
-  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] DifferentialView Differential(
     const BoundSource& bound) const override;
 
 protected:
-  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] std::shared_ptr<BoundSource> BindImpl(
     const BindRequest& request) const override;
 

@@ -7,7 +7,8 @@
 namespace pcms::backend::point_cloud
 {
 
-PointCloud::PointCloud(std::shared_ptr<const PointCloudLayout> layout)
+PointCloud::PointCloud(
+  std::shared_ptr<const pcms::detail::PointCloudLayout> layout)
   : layout_(std::move(layout)),
     basis_{},
     device_data_("", layout_->GetDOFHolderCoordinates().GetValues().extent(0),

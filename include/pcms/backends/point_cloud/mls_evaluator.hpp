@@ -13,10 +13,7 @@
 
 #include <string>
 
-namespace pcms::backend::point_cloud
-{
-
-namespace detail
+namespace pcms::detail
 {
 
 /// Whether each of `n` query points has supports, from the supports' row
@@ -54,13 +51,10 @@ Kokkos::View<Real*, DeviceMemorySpace> FlattenRows(const View2D& coords,
     });
   return flat;
 }
-} // namespace detail
 
 /// @brief MLS bound source: the supports of the query points and the
 ///        coordinates the solve uses. A query point without supports (e.g.
 ///        one the adjacency search has no start for) is missing.
-///
-/// Implementer API: not covered by the public-API stability promise.
 class MLSBinding final : public BoundSource
 {
 public:
@@ -138,8 +132,6 @@ private:
 };
 
 /// @brief Evaluates a scalar point-cloud field at the bound points by MLS.
-///
-/// Implementer API: not covered by the public-API stability promise.
 template <typename LayoutPolicy =
             pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class MLSPointEvaluator : public PointEvaluator<Real, LayoutPolicy>
@@ -185,7 +177,7 @@ public:
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_sources),
       KOKKOS_LAMBDA(int i) { source_values(i) = device_data(i, 0); });
 
-    auto result = field::mls_interpolation(
+    auto result = pcms::detail::mls_interpolation(
       source_values, binding_->SourceCoordinates(),
       binding_->TargetCoordinates(), binding_->Supports(), dim_,
       static_cast<LO>(options_.degree), options_.basis, options_.lambda,
@@ -204,6 +196,6 @@ private:
   MLSOptions options_;
 };
 
-} // namespace pcms::backend::point_cloud
+} // namespace pcms::detail
 
 #endif // PCMS_BACKENDS_POINT_CLOUD_MLS_EVALUATOR_HPP

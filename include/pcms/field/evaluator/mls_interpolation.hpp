@@ -1,9 +1,6 @@
 #ifndef PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP
 #define PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP
 
-// Implementer API: not covered by the public-API stability promise. (the whole
-// header)
-
 #include "pcms/localization/mls_options.hpp"
 #include "pcms/geometry/supports.hpp"
 #include "pcms/utility/memory_spaces.hpp"
@@ -11,7 +8,7 @@
 
 #include <Kokkos_Core.hpp>
 
-namespace pcms::field
+namespace pcms::detail
 {
 
 /**
@@ -70,5 +67,5 @@ Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
   const SupportResults& support, LO dim, LO degree, RadialBasisFunction bf,
   double lambda = 0, double tol = 1e-6, double decay_factor = 5.0);
 
-} // namespace pcms::field
+} // namespace pcms::detail
 #endif // PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP

@@ -15,9 +15,10 @@ namespace pcms::backend::point_cloud
 
 /// @brief Point evaluation of point-cloud fields by moving least squares.
 class PointCloudEvaluatorFactory
-  : public TypedPointEvaluatorFactory<Real, MLSBinding>
+  : public pcms::detail::TypedPointEvaluatorFactory<Real,
+                                                    pcms::detail::MLSBinding>
 {
-  using Bound = MLSBinding;
+  using Bound = pcms::detail::MLSBinding;
 
 public:
   /// @param geometry geometry whose Bind computes the MLS supports of query
@@ -27,7 +28,8 @@ public:
   PointCloudEvaluatorFactory(std::shared_ptr<const Geometry> geometry,
                              std::shared_ptr<const FieldLayout> layout,
                              MLSOptions options = {})
-    : TypedPointEvaluatorFactory<Real, Bound>(std::move(geometry)),
+    : pcms::detail::TypedPointEvaluatorFactory<Real, Bound>(
+        std::move(geometry)),
       layout_(std::move(layout)),
       options_(options)
   {
@@ -38,7 +40,7 @@ protected:
     std::shared_ptr<const Bound> bound,
     DifferentialOperator /*op*/) const override
   {
-    return std::make_unique<MLSPointEvaluator<>>(
+    return std::make_unique<pcms::detail::MLSPointEvaluator<>>(
       std::move(bound), layout_->GetDimension(), options_, layout_);
   }
 

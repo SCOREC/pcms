@@ -25,7 +25,7 @@ namespace pcms
 {
 using backend::omega_h::CreateGeometry;
 using backend::omega_h::OmegaHEntityLayout;
-using backend::omega_h::OmegaHMeshBinding;
+using detail::OmegaHMeshBinding;
 } // namespace pcms
 
 using Catch::Matchers::ContainsSubstring;

@@ -14,6 +14,11 @@ PROJECT_VERSION = re.search(
     r"project\(\s*pcms\b.*?VERSION\s+(\S+)",
     (ROOT / "CMakeLists.txt").read_text(), re.S | re.I).group(1)
 CMAKE = shutil.which("cmake")
+# what the fallback produces when no version tag describes the commit:
+# the project version with its last component bumped
+NEXT_PATCH_VERSION = ".".join(
+    PROJECT_VERSION.split(".")[:-1]
+    + [str(int(PROJECT_VERSION.split(".")[-1]) + 1)])
 
 
 def git(source, *args):
@@ -92,8 +97,11 @@ def test_git_versions(source, tmp_path, monkeypatch, state):
         assert generated == "0.3.0"
     else:
         distance = "1" if state == "development" else "0"
+        # the next patch version after the v0.3.0 tag, or, with no version
+        # tag to describe, after the project's own version
+        base = "0.3.1" if state != "unrelated-tag" else NEXT_PATCH_VERSION
         assert re.fullmatch(
-            rf"0\.3\.1\.dev{distance}\+g{revision[:7]}[0-9a-f]*"
+            rf"{re.escape(base)}\.dev{distance}\+g{revision[:7]}[0-9a-f]*"
             + (r"\.d\d{8}" if state != "development" else ""), generated)
     if state != "unrelated-tag":
         assert metadata(source, tmp_path, monkeypatch) == generated

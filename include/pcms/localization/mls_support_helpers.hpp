@@ -1,16 +1,13 @@
 #ifndef PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP
 #define PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP
 
-// Implementer API: not covered by the public-API stability promise. (the whole
-// header)
-
 #include "pcms/geometry/supports.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 
 #include <Kokkos_Core.hpp>
 
-namespace pcms::localization
+namespace pcms::detail
 {
 
 // Returns true when both the minimum and maximum support counts fall within
@@ -43,5 +40,5 @@ SupportResults BuildPointCloudSupports(
   double radius, unsigned min_req_supports, bool adapt_radius,
   unsigned max_iterations = 100);
 
-} // namespace pcms::localization
+} // namespace pcms::detail
 #endif // PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP

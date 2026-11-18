@@ -88,13 +88,12 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
   auto f_samples = f_samples_;
   auto residual = residual_;
   source_at_samples_->Evaluate(
-    source,
-    ValueView<Real, DeviceMemorySpace>(source.GetData().GetValueBasis(),
-                                       pcms::detail::MakeRank2View(f_samples)));
+    source, ValueView<Real, DeviceMemorySpace>(source.GetData().GetValueBasis(),
+                                               pcms::MakeRank2View(f_samples)));
   control_variate_at_samples_->Evaluate(
     control_variate_, ValueView<Real, DeviceMemorySpace>(
                         control_variate_.GetData().GetValueBasis(),
-                        pcms::detail::MakeRank2View(residual)));
+                        pcms::MakeRank2View(residual)));
   Kokkos::parallel_for(
     "cv_residual", Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_samples),
     KOKKOS_LAMBDA(int i) {
@@ -117,7 +116,7 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
                      "extents do not match the target layout");
   }
 
-  const auto values = pcms::detail::MakeRank2View(target_values_);
+  const auto values = pcms::MakeRank2View(target_values_);
   Kokkos::parallel_for(
     "cv_add_correction",
     Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_dof_holders),

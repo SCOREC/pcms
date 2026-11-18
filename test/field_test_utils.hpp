@@ -320,7 +320,7 @@ inline Kokkos::View<const Real**, HostMemorySpace> CopyCoordinatesToHost(
     "coords_view", coords_device.extent(0), coords_device.extent(1));
   auto coords_view_device =
     Kokkos::create_mirror_view(DeviceMemorySpace(), coords_view);
-  pcms::detail::ConvertMismatchLayoutView2D(coords_view_device, coords_device);
+  pcms::ConvertMismatchLayoutView2D(coords_view_device, coords_device);
   Kokkos::deep_copy(coords_view, coords_view_device);
   return coords_view;
 }
@@ -457,7 +457,7 @@ inline ValueView<T, DeviceMemorySpace> TagLike(
   const Field<T>& field, Kokkos::View<T**, DeviceMemorySpace> values)
 {
   return ValueView<T, DeviceMemorySpace>(field.GetData().GetValueBasis(),
-                                         pcms::detail::MakeRank2View(values));
+                                         pcms::MakeRank2View(values));
 }
 
 /// Evaluates into a new [NumPoints()][width] view tagged `basis` and returns
@@ -468,8 +468,8 @@ inline Kokkos::View<Real**, HostMemorySpace> EvaluateToHost(
 {
   Kokkos::View<Real**, DeviceMemorySpace> out("out", evaluator.NumPoints(),
                                               width);
-  evaluator.Evaluate(field, ValueView<Real, DeviceMemorySpace>(
-                              basis, pcms::detail::MakeRank2View(out)));
+  evaluator.Evaluate(
+    field, ValueView<Real, DeviceMemorySpace>(basis, pcms::MakeRank2View(out)));
   Kokkos::View<Real**, HostMemorySpace> host("host", evaluator.NumPoints(),
                                              width);
   DeepCopyMismatchLayouts(host, out);
@@ -514,7 +514,7 @@ inline DeviceCoordinates CreateDeviceCoordinateView(
     coords_device,
     CoordinateView<DeviceMemorySpace>{
       pcms::detail::ResolveCoordinateSystem(std::move(coordinate_system), dim),
-      pcms::detail::MakeRank2View(coords_device)}};
+      pcms::MakeRank2View(coords_device)}};
 }
 
 // Binds interleaved points, given in the geometry's coordinate system, on
@@ -684,7 +684,7 @@ struct HostRecord
 
 template <int Dim>
 std::vector<HostRecord> FoundRecordsOfDim(
-  const backend::omega_h::OmegaHMeshBinding& binding)
+  const detail::OmegaHMeshBinding& binding)
 {
   const auto results = Kokkos::create_mirror_view_and_copy(
     HostMemorySpace(), binding.Results<Dim>());
@@ -705,8 +705,7 @@ std::vector<HostRecord> FoundRecordsOfDim(
 // The search records of the found points, in FoundPoints() order.
 inline std::vector<HostRecord> FoundRecords(const BoundSource& bound)
 {
-  const auto& binding =
-    dynamic_cast<const backend::omega_h::OmegaHMeshBinding&>(bound);
+  const auto& binding = dynamic_cast<const detail::OmegaHMeshBinding&>(bound);
   return dynamic_cast<const backend::omega_h::OmegaHGeometry&>(
            *bound.GetGeometry())
                .GetMesh()

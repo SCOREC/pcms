@@ -14,10 +14,7 @@
 #include <string>
 #include <utility>
 
-namespace pcms::backend::uniform_grid
-{
-
-namespace detail
+namespace pcms::detail
 {
 
 /// Fills, per query point, whether it is found (inside the grid, or any point
@@ -26,14 +23,12 @@ namespace detail
 /// constructors or non-public member functions.)
 template <unsigned Dim>
 void FillUniformGridBinding(
-  Kokkos::View<
-    const typename localization::UniformGridPointSearch<Dim>::Result*>
-    results,
+  Kokkos::View<const typename UniformGridPointSearch<Dim>::Result*> results,
   bool nearest, Kokkos::View<bool*, DeviceMemorySpace> found,
   Kokkos::View<LO*, DeviceMemorySpace> cell_indices,
   Kokkos::View<Real**, DeviceMemorySpace> parametric)
 {
-  using Result = typename localization::UniformGridPointSearch<Dim>::Result;
+  using Result = typename UniformGridPointSearch<Dim>::Result;
   pcms::detail::ForEach(
     "UniformGridBinding", static_cast<LO>(results.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
@@ -46,14 +41,10 @@ void FillUniformGridBinding(
     });
 }
 
-} // namespace detail
-
 /// Uniform-grid bound source: the cell of each query point and its position in
 /// the cell. Points outside the grid are not found, except with
 /// OutOfBoundsMode::NEAREST_BOUNDARY, where they use the closest cell and
 /// their position relative to it.
-///
-/// Implementer API: not covered by the public-API stability promise.
 template <unsigned Dim>
 class UniformGridBinding final : public BoundSource
 {
@@ -101,15 +92,20 @@ private:
       Kokkos::view_alloc(Kokkos::WithoutInitializing, "uniform_grid_found"), n);
     pcms::detail::ReserveRows(cell_indices_, "uniform_grid_cell_indices", n);
     pcms::detail::ReserveRows(parametric_, "uniform_grid_parametric", n, Dim);
-    detail::FillUniformGridBinding<Dim>(results, nearest, found, cell_indices_,
-                                        parametric_);
+    FillUniformGridBinding<Dim>(results, nearest, found, cell_indices_,
+                                parametric_);
     SetFound(found);
   }
 
-  localization::UniformGridPointSearch<Dim> search_;
+  UniformGridPointSearch<Dim> search_;
   Kokkos::View<LO*, DeviceMemorySpace> cell_indices_;
   Kokkos::View<Real**, DeviceMemorySpace> parametric_;
 };
+
+} // namespace pcms::detail
+
+namespace pcms::backend::uniform_grid
+{
 
 /// Geometry of a uniform grid: an affine map of the unit cells, located in
 /// closed form (no search to build). Create it with CreateUniformGridGeometry.
@@ -132,7 +128,6 @@ public:
     return system_;
   }
 
-  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] bool SupportsNearestBoundary() const noexcept override
   {
     return true;
@@ -144,13 +139,12 @@ public:
   }
 
 protected:
-  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] std::shared_ptr<BoundSource> BindImpl(
     const BindRequest& request) const override
   {
     PCMS_FUNCTION_TIMER;
-    return std::make_shared<UniformGridBinding<Dim>>(shared_from_this(),
-                                                     request, grid_);
+    return std::make_shared<pcms::detail::UniformGridBinding<Dim>>(
+      shared_from_this(), request, grid_);
   }
 
 private:

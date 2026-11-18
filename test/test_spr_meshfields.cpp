@@ -69,10 +69,11 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
   SupportResults support{patches.a2ab.view(), patches.ab2b.view(),
                          ignored.view()};
 
-  auto approx_target_values = Omega_h::Write<Omega_h::Real>(
-    pcms::mls_interpolation(source_values.view(), source_coordinates.view(),
-                            target_coordinates.view(), support, dim, degree,
-                            pcms::RadialBasisFunction::NO_OP, 1e-5));
+  auto approx_target_values =
+    Omega_h::Write<Omega_h::Real>(pcms::detail::mls_interpolation(
+      source_values.view(), source_coordinates.view(),
+      target_coordinates.view(), support, dim, degree,
+      pcms::RadialBasisFunction::NO_OP, 1e-5));
 
   const auto delta_abs = Omega_h::fabs_each(Omega_h::subtract_each(
     exact_target_values, Omega_h::read(approx_target_values)));

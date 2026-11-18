@@ -76,8 +76,9 @@ protected:
   {
     return apply_to_type(storage_type, [this, basis](auto tag) -> FieldVariant {
       using T = typename decltype(tag)::type;
-      return WrapField<T>(layout_,
-                          std::make_unique<SimpleFieldData<T>>(layout_, basis));
+      return WrapField<T>(
+        layout_,
+        std::make_unique<pcms::detail::SimpleFieldData<T>>(layout_, basis));
     });
   }
 
@@ -89,7 +90,8 @@ protected:
         using FD = std::decay_t<decltype(fd)>;
         using T = typename FD::element_type::value_type;
         PCMS_ALWAYS_ASSERT(fd != nullptr);
-        if (dynamic_cast<const SimpleFieldData<T>*>(fd.get()) == nullptr) {
+        if (dynamic_cast<const pcms::detail::SimpleFieldData<T>*>(fd.get()) ==
+            nullptr) {
           throw pcms_error(
             "EmptyFieldFactory::CreateField: requires SimpleFieldData");
         }

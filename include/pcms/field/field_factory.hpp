@@ -37,8 +37,6 @@ inline constexpr bool is_supported_field_type_v =
 // (not a FieldFactory) that additionally supports evaluation and produces
 // Functions; a FieldFactory can never be passed where a FunctionSpace is
 // required, which is the compile-time form of "comm-only cannot be evaluated".
-//
-// Implementer API: not covered by the public-API stability promise.
 class FieldFactory
 {
 public:

@@ -243,7 +243,7 @@ TEST_CASE("bound map: manufactured pushforward rotates vector components")
   auto values = pcms::test::CreateDeviceRank2View(
     {1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0}, 3);
   const auto result = bound->TransformValues(ValueView<Real, DeviceMemorySpace>(
-    CylindricalVector(), pcms::detail::MakeRank2View(values)));
+    CylindricalVector(), pcms::MakeRank2View(values)));
   REQUIRE(pcms::detail::SameValueBasis(result.GetBasis(), CartesianVector()));
   REQUIRE(result.GetValues().data_handle() == values.data());
   auto out =
@@ -273,7 +273,7 @@ TEST_CASE("bound map: points on the axis rotate by the angle they map to")
      -c[0] * std::sin(theta) + c[1] * std::cos(theta), c[2]},
     3);
   const auto result = bound->TransformValues(ValueView<Real, DeviceMemorySpace>(
-    CylindricalVector(), pcms::detail::MakeRank2View(values)));
+    CylindricalVector(), pcms::MakeRank2View(values)));
   REQUIRE(pcms::detail::SameValueBasis(result.GetBasis(), CartesianVector()));
   auto out =
     pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(values));
@@ -299,7 +299,7 @@ TEST_CASE("bound map: the two cylindrical maps invert each other")
   auto values = pcms::test::CreateDeviceRank2View(v, 3);
   const auto as_cart =
     to_cart->TransformValues(ValueView<Real, DeviceMemorySpace>(
-      CylindricalVector(), pcms::detail::MakeRank2View(values)));
+      CylindricalVector(), pcms::MakeRank2View(values)));
   auto a = pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(values));
   REQUIRE_THAT(a(0, 0), WithinAbs(-std::sin(theta), pcms::test::ExactTol));
   REQUIRE_THAT(a(0, 1), WithinAbs(std::cos(theta), pcms::test::ExactTol));
@@ -325,7 +325,7 @@ TEST_CASE("bound map: TransformValues validates the values it is given")
     auto values = pcms::test::CreateDeviceRank2View({1.0, 0.0, 0.0}, 3);
     REQUIRE_THROWS_WITH(
       bound->TransformValues(ValueView<Real, DeviceMemorySpace>(
-        NaturalCylindricalVector(), pcms::detail::MakeRank2View(values))),
+        NaturalCylindricalVector(), pcms::MakeRank2View(values))),
       ContainsSubstring("cannot re-express"));
     REQUIRE_THROWS_WITH(bound->OutputBasis(NaturalCylindricalVector()),
                         ContainsSubstring("cannot re-express"));
@@ -337,7 +337,7 @@ TEST_CASE("bound map: TransformValues validates the values it is given")
                                          CartesianVector()));
     const auto result =
       bound->TransformValues(ValueView<Real, DeviceMemorySpace>(
-        CartesianVector(), pcms::detail::MakeRank2View(values)));
+        CartesianVector(), pcms::MakeRank2View(values)));
     REQUIRE(pcms::detail::SameValueBasis(result.GetBasis(), CartesianVector()));
     auto out =
       pcms::test::CopyCoordinatesToHost(pcms::MakeConstRank2View(values));
@@ -351,7 +351,7 @@ TEST_CASE("bound map: TransformValues validates the values it is given")
       pcms::test::CreateDeviceRank2View({1.0, 0.0, 0.0, 0.0, 1.0, 0.0}, 3);
     REQUIRE_THROWS_WITH(
       bound->TransformValues(ValueView<Real, DeviceMemorySpace>(
-        CylindricalVector(), pcms::detail::MakeRank2View(values))),
+        CylindricalVector(), pcms::MakeRank2View(values))),
       ContainsSubstring("value count does not match"));
   }
 }

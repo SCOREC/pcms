@@ -44,8 +44,6 @@ struct NeighbourhoodOptions
 /// jacobian(r, i, j) = d x_j / d xi_i, determinant(r) = det. When
 /// per_element is true, r is an element id; otherwise r indexes the bound
 /// source's FoundPoints().
-///
-/// Implementer API: not covered by the public-API stability promise.
 struct DifferentialView
 {
   Kokkos::View<const Real***, DeviceMemorySpace> jacobian;
@@ -205,8 +203,6 @@ protected:
 
 private:
   // creates the passkey of BoundSource::Rebind
-  //
-  // Implementer API: not covered by the public-API stability promise.
   struct RebindKey : BoundSource::RebindKey
   {
     RebindKey() = default;

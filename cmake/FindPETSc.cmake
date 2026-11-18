@@ -24,7 +24,14 @@ endif()
 # note, there are a number of additional properties that
 # can be extracted / set on a target. We just do the basic
 # set for now. See: https://cmake.org/cmake/help/latest/module/FindPkgConfig.html
-if(PCMS_PETSC_LINK_STATIC)
+# the legacy name PETSC_LINK_STATIC is honored too: this installed module is
+# also used by downstream projects, which do not run PCMS's option shim
+if(DEFINED PCMS_PETSC_LINK_STATIC)
+  set(_pcms_petsc_static ${PCMS_PETSC_LINK_STATIC})
+else()
+  set(_pcms_petsc_static ${PETSC_LINK_STATIC})
+endif()
+if(_pcms_petsc_static)
   set(PETSC_LIBRARIES ${_petsc_STATIC_LIBRARIES})
   set(PETSC_INCLUDE_DIRS ${_petsc_STATIC_INCLUDE_DIRS})
   set(PETSC_LIBRARY_DIRS ${_petsc_STATIC_LIBRARY_DIRS})

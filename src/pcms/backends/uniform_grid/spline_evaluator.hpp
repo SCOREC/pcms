@@ -65,7 +65,7 @@ public:
   /// @param op Value or Gradient
   UniformGridSplinePointEvaluator2D(
     std::shared_ptr<const UniformGridFieldLayout<2>> layout,
-    std::shared_ptr<const UniformGridBinding<2>> binding,
+    std::shared_ptr<const pcms::detail::UniformGridBinding<2>> binding,
     DifferentialOperator op = DifferentialOperator::Value)
     : PointEvaluator<Real, LayoutPolicy>(binding, op, layout),
       grid_(layout->GetGrid()),
@@ -179,9 +179,10 @@ private:
 /// @brief Point evaluation of the bicubic spline of fields on a 2D uniform
 ///        grid, and of its gradient.
 class UniformGridSplineEvaluatorFactory2D
-  : public TypedPointEvaluatorFactory<Real, UniformGridBinding<2>>
+  : public pcms::detail::TypedPointEvaluatorFactory<
+      Real, pcms::detail::UniformGridBinding<2>>
 {
-  using Bound = UniformGridBinding<2>;
+  using Bound = pcms::detail::UniformGridBinding<2>;
 
 public:
   /// @param geometry geometry of the layout's grid
@@ -190,8 +191,8 @@ public:
   UniformGridSplineEvaluatorFactory2D(
     std::shared_ptr<const UniformGridGeometry<2>> geometry,
     std::shared_ptr<const UniformGridFieldLayout<2>> layout)
-    : TypedPointEvaluatorFactory<Real, Bound>(std::move(geometry),
-                                              {DifferentialOperator::Gradient}),
+    : pcms::detail::TypedPointEvaluatorFactory<Real, Bound>(
+        std::move(geometry), {DifferentialOperator::Gradient}),
       layout_(std::move(layout))
   {
     if (layout_->GetOrder() != 1) {

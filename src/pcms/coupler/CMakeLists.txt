@@ -38,7 +38,6 @@ target_link_libraries(pcms_coupler PUBLIC
         redev::redev
         MPI::MPI_CXX
         Kokkos::kokkos
-        perfstubs
         pcms::utility
         pcms::field)
 

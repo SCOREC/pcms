@@ -44,6 +44,7 @@ target_include_directories(pcms_capi_transfer
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 
 set(CAPI_TRANSFER_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/interpolator.h
+                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/kokkos.h
                      ${CMAKE_CURRENT_SOURCE_DIR}/../../../include/pcms/capi/mesh.h)
 
 set_target_properties(pcms_capi_transfer

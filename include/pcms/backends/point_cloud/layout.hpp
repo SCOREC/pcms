@@ -1,12 +1,9 @@
 #ifndef PCMS_BACKENDS_POINT_CLOUD_LAYOUT_HPP
 #define PCMS_BACKENDS_POINT_CLOUD_LAYOUT_HPP
 
-// Implementer API: not covered by the public-API stability promise. (the whole
-// header)
-
 #include "pcms/field/field.hpp"
 
-namespace pcms::backend::point_cloud
+namespace pcms::detail
 {
 
 class PointCloudLayout : public FieldLayout
@@ -55,6 +52,6 @@ private:
   Kokkos::View<LO*, HostMemorySpace> classification_dims_host_;
   Kokkos::View<LO*, HostMemorySpace> classification_ids_host_;
 };
-} // namespace pcms::backend::point_cloud
+} // namespace pcms::detail
 
 #endif // PCMS_BACKENDS_POINT_CLOUD_LAYOUT_HPP

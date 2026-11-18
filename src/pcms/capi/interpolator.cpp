@@ -201,7 +201,7 @@ void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
     "pcms_interpolate_values", output_size, 1);
   mls.evaluator->Evaluate(mls.source,
                           pcms::ValueView<pcms::Real, pcms::DeviceMemorySpace>(
-                            basis, pcms::detail::MakeRank2View(values)));
+                            basis, pcms::MakeRank2View(values)));
   Kokkos::View<pcms::Real**, Kokkos::LayoutRight, pcms::HostMemorySpace,
                Kokkos::MemoryUnmanaged>
     output_values(static_cast<pcms::Real*>(output), output_size, 1);

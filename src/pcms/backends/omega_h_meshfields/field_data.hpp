@@ -117,7 +117,7 @@ public:
     auto local = ReadBackend();
     pcms::detail::ScatterRows(MakeConstRank2View(owned_data_),
                               layout_->GetOwnedIndices(),
-                              pcms::detail::MakeRank2View(local));
+                              pcms::MakeRank2View(local));
     SyncBackend(MakeConstRank2View(local));
   }
 
@@ -175,7 +175,7 @@ private:
         "ReadBackendReorder",
         Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
           0, static_cast<LO>(num_rows)),
-        UnflattenFunctor<T>(flat, pcms::detail::MakeRank2View(local),
+        UnflattenFunctor<T>(flat, pcms::MakeRank2View(local),
                             static_cast<LO>(row_offset), nc));
       row_offset += num_rows;
     }

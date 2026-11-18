@@ -6,9 +6,8 @@
 #include <pcms/utility/assert.hpp>
 #include <pcms/utility/memory_spaces.hpp>
 #include <pcms/coupler/coupler_types.hpp>
-namespace pcms::coupler
+namespace pcms::detail
 {
-/// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 struct GlobalCommunicator
 {
@@ -52,5 +51,5 @@ private:
   std::string name_;
   redev::BidirectionalComm<T> comm_;
 };
-} // namespace pcms::coupler
+} // namespace pcms::detail
 #endif // PCMS_COUPLER_DETAIL_GLOBAL_COMMUNICATOR_HPP

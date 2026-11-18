@@ -6,7 +6,7 @@ namespace pcms
 using field::MakeUnmappedPermutation;
 } // namespace pcms
 
-namespace pcms::coupler
+namespace pcms::detail
 {
 
 FieldLayoutCommunicator::FieldLayoutCommunicator(
@@ -139,4 +139,4 @@ FieldLayoutCommunicator::~FieldLayoutCommunicator()
   }
 }
 
-} // namespace pcms::coupler
+} // namespace pcms::detail

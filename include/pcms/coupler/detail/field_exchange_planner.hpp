@@ -7,10 +7,9 @@
 #include <redev.h>
 #include <vector>
 
-namespace pcms::coupler
+namespace pcms::detail
 {
 
-/// Implementer API: not covered by the public-API stability promise.
 struct ExchangePlan
 {
   redev::LOs dest_ranks;
@@ -21,7 +20,6 @@ struct ExchangePlan
   size_t msg_size = 0;
 };
 
-/// Implementer API: not covered by the public-API stability promise.
 class FieldExchangePlanner
 {
 public:
@@ -41,7 +39,6 @@ public:
   virtual ~FieldExchangePlanner() noexcept = default;
 };
 
-/// Implementer API: not covered by the public-API stability promise.
 class GenericFieldExchangePlanner : public FieldExchangePlanner
 {
 public:
@@ -59,5 +56,5 @@ public:
     Rank1View<GO, HostMemorySpace> gid_message) const override;
 };
 
-} // namespace pcms::coupler
+} // namespace pcms::detail
 #endif // PCMS_COUPLER_DETAIL_FIELD_EXCHANGE_PLANNER_HPP

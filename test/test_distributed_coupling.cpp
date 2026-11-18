@@ -130,7 +130,7 @@ void check_serializer_round_trip(const DistributedCouplingContext& ctx)
   }
 
   // Serialize: only participating owned data is written to the buffer.
-  pcms::coupler::FieldSerializer<Real> serializer;
+  pcms::detail::FieldSerializer<Real> serializer;
   std::vector<Real> buffer(static_cast<size_t>(n_participating) * n_comp);
   const int sent =
     serializer.Serialize(field, pcms::detail::make_array_view(buffer),
@@ -235,8 +235,8 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
   // owned holders.
   pcms::OverlapMask overlap_mask(static_cast<size_t>(n_owned));
 
-  pcms::coupler::GenericFieldExchangePlanner planner;
-  pcms::coupler::ExchangePlan send_plan =
+  pcms::detail::GenericFieldExchangePlanner planner;
+  pcms::detail::ExchangePlan send_plan =
     planner.BuildExchangePlan(layout, exchange_partition, &overlap_mask);
 
   // Plan structure: a single destination (an actual neighbour) described by a
@@ -319,7 +319,7 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
   // into a single block (one sender's message) every GID some neighbour admits
   // holding, then matches those against the holders this rank owns.
   const std::vector<pcms::GO> recv_gid_message = MakeGidMessage(ghost_recv);
-  pcms::coupler::ExchangePlan recv_plan = planner.BuildReceivePlan(
+  pcms::detail::ExchangePlan recv_plan = planner.BuildReceivePlan(
     layout,
     pcms::GlobalIDView<pcms::HostMemorySpace>(recv_gid_message.data(),
                                               recv_gid_message.size()),
@@ -372,7 +372,7 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
     exchange_field, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
                       exchange_vals.data(), n_owned, n_comp)));
 
-  pcms::coupler::FieldSerializer<Real> exchange_serializer;
+  pcms::detail::FieldSerializer<Real> exchange_serializer;
   std::vector<Real> payload(recv_plan.msg_size, Real(0));
   const int packed = exchange_serializer.Serialize(
     exchange_field, pcms::detail::make_array_view(payload),

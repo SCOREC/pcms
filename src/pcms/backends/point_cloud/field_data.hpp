@@ -14,7 +14,7 @@ class PointCloud
   , public DOFAccess<Real>
 {
 public:
-  PointCloud(std::shared_ptr<const PointCloudLayout> layout);
+  PointCloud(std::shared_ptr<const pcms::detail::PointCloudLayout> layout);
 
   FieldValueType GetValueType() const override;
   const ValueBasis& GetValueBasis() const override;
@@ -26,7 +26,7 @@ public:
   void SetValues(Rank2View<const Real, DeviceMemorySpace> data) override;
 
 private:
-  std::shared_ptr<const PointCloudLayout> layout_;
+  std::shared_ptr<const pcms::detail::PointCloudLayout> layout_;
   ValueBasis basis_;
   Kokkos::View<Real**, DeviceMemorySpace> device_data_;
 };

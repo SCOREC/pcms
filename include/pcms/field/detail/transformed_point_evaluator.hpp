@@ -14,7 +14,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace pcms::field
+namespace pcms::detail
 {
 
 /// Point evaluator at the points of a bound source with a coordinate map: the
@@ -22,8 +22,6 @@ namespace pcms::field
 /// the evaluated components in the bound map's output basis.
 /// PointEvaluatorFactory::CreatePointEvaluator creates it for every bound
 /// source whose GetBoundMap() is set.
-///
-/// Implementer API: not covered by the public-API stability promise.
 template <typename T>
 class TransformedPointEvaluator final : public PointEvaluator<T>
 {
@@ -78,6 +76,6 @@ private:
   std::unique_ptr<PointEvaluator<T>> inner_;
 };
 
-} // namespace pcms::field
+} // namespace pcms::detail
 
 #endif // PCMS_FIELD_DETAIL_TRANSFORMED_POINT_EVALUATOR_HPP

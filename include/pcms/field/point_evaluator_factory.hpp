@@ -23,8 +23,6 @@ namespace pcms
 /// The geometry's Bind computes the per-point data for a set of query points
 /// once; CreatePointEvaluator creates evaluators of any value type and
 /// supported operator from the result.
-///
-/// Implementer API: not covered by the public-API stability promise.
 class PointEvaluatorFactory
 {
 public:
@@ -84,6 +82,9 @@ protected:
     DifferentialOperator op) const = 0;
 };
 
+namespace detail
+{
+
 /// @brief Source that evaluates fields of one value type from bound sources
 ///        of one kind.
 ///
@@ -92,8 +93,6 @@ protected:
 /// the constructor.
 /// @tparam T value type of the evaluated fields
 /// @tparam Bound bound-source kind the geometry's Bind creates
-///
-/// Implementer API: not covered by the public-API stability promise.
 template <typename T, typename Bound>
 class TypedPointEvaluatorFactory : public PointEvaluatorFactory
 {
@@ -150,6 +149,8 @@ private:
   std::set<DifferentialOperator> supported_;
 };
 
+} // namespace detail
+
 template <typename T>
 std::unique_ptr<PointEvaluator<T>>
 PointEvaluatorFactory::CreateUntransformedPointEvaluator(
@@ -188,7 +189,7 @@ std::unique_ptr<PointEvaluator<T>> PointEvaluatorFactory::CreatePointEvaluator(
   if (bound->GetBoundMap() == nullptr) {
     return evaluator;
   }
-  return std::make_unique<field::TransformedPointEvaluator<T>>(
+  return std::make_unique<detail::TransformedPointEvaluator<T>>(
     std::move(bound), std::move(evaluator));
 }
 

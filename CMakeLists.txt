@@ -100,17 +100,28 @@ endif()
 if (PCMS_ENABLE_PYTHON)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif ()
+if(PCMS_ENABLE_SERVER)
+  set(PCMS_ENABLE_OMEGA_H
+      ON
+      CACHE BOOL "enable Omega_h field adapter" FORCE)
+endif()
+
+# The C and Fortran APIs wrap the Omega_h-based transfer; without the Omega_h
+# backend (for example server, coupler, XGC and MeshFields all off) they are
+# not built.
+if(PCMS_ENABLE_C AND NOT PCMS_ENABLE_OMEGA_H)
+  message(STATUS "The C and Fortran APIs need the Omega_h backend: disabled")
+  set(PCMS_ENABLE_C OFF)
+endif()
 if(PCMS_ENABLE_C)
   enable_language(C)
   option(PCMS_ENABLE_FORTRAN "Enable pcms fortran api" ON)
   if(PCMS_ENABLE_FORTRAN)
     enable_language(Fortran)
   endif()
-endif()
-if(PCMS_ENABLE_SERVER)
-  set(PCMS_ENABLE_OMEGA_H
-      ON
-      CACHE BOOL "enable Omega_h field adapter" FORCE)
+else()
+  # the Fortran API wraps the C API
+  set(PCMS_ENABLE_FORTRAN OFF)
 endif()
 
 set(MPI_CXX_SKIP_MPICXX ON)
@@ -209,7 +220,7 @@ endif()
 # the smoke test exercises the coupler and needs the Omega_h test support
 if(TARGET test_support)
   add_executable(smoke_test test/test_ohClassPtn.cpp)
-  target_link_libraries(smoke_test pcms::pcms test_support)
+  target_link_libraries(smoke_test pcms::coupler test_support)
   # Uses a mesh vendored in test/data so the install check works without
   # PCMS_TEST_DATA_DIR (e.g. with BUILD_TESTING=OFF).
   dual_mpi_test(

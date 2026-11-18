@@ -293,13 +293,13 @@ void bind_create_field_module(py::module& m)
                   host.data());
         options.owned_mask = Omega_h::Read<Omega_h::I8>(host.write());
       }
-      return OmegaHGeometryHandle{{CreateOmegaHGeometry(
-        std::move(mesh), std::move(library), CartesianIfNone(system),
-        std::move(options))}};
+      return OmegaHGeometryHandle{
+        {CreateOmegaHGeometry(std::move(mesh), std::move(library),
+                              CartesianIfNone(system), std::move(options))}};
     },
     py::arg("mesh").none(false), py::arg("system") = py::none(),
-    py::arg("divisions") = 0,
-    py::arg("global_id_name") = "global", py::arg("owned_mask") = py::none(),
+    py::arg("divisions") = 0, py::arg("global_id_name") = "global",
+    py::arg("owned_mask") = py::none(),
     "Create the geometry of an Omega_h mesh: its coordinate system (default "
     "Cartesian) and point search (`divisions` grid divisions per axis, 0 to "
     "derive them from the element count); `global_id_name` names the tag "

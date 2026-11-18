@@ -4,10 +4,9 @@
 #include "pcms/transient/application.hpp"
 #include "pcms/utility/arrays.h"
 
-#include <any>
+#include <cstddef>
 #include <string>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 using pcms::Real;
@@ -33,29 +32,45 @@ std::vector<Real> ToHost(
   return values;
 }
 
+// An application that adds 10 to every interface value on each AdvanceTo, so
+// every step changes the state. It remembers the state before each step, up to
+// a limit, and rolls back through that history.
 class TestApplication final : public pcms::Application
 {
 public:
+  explicit TestApplication(std::size_t max_steps = 8) : max_steps_(max_steps) {}
+
   std::string_view Name() const override { return "test-application"; }
 
-  void AdvanceTo(Real target_time) override { time_ = target_time; }
-
-  pcms::Checkpoint Save() const override
+  void AdvanceTo(Real target_time) override
   {
-    // The checkpoint owns its own copy of the interface values.
-    Kokkos::View<Real*, pcms::DeviceMemorySpace> saved("test_checkpoint",
-                                                       interface_.extent(0));
-    Kokkos::deep_copy(saved, interface_);
-    return {time_, saved};
+    Kokkos::View<Real*, pcms::DeviceMemorySpace> before("test_step",
+                                                        interface_.extent(0));
+    Kokkos::deep_copy(before, interface_);
+    history_.push_back({time_, before});
+    if (history_.size() > max_steps_)
+      history_.erase(history_.begin());
+
+    time_ = target_time;
+    auto values = ToHost(pcms::MakeRank1View(interface_));
+    for (Real& value : values)
+      value += 10.0;
+    pcms::CopyHostRank1ViewToDeviceView(interface_,
+                                        pcms::make_const_array_view(values));
   }
 
-  void Restore(const pcms::Checkpoint& checkpoint) override
+  bool Restore(int index = -1) override
   {
-    time_ = checkpoint.time;
-    Kokkos::deep_copy(
-      interface_,
-      std::any_cast<const Kokkos::View<Real*, pcms::DeviceMemorySpace>&>(
-        checkpoint.state));
+    if (index >= 0 || static_cast<std::size_t>(-index) > history_.size())
+      return false;
+    // Go back to the state before the step, and forget the steps after it.
+    const std::size_t target =
+      history_.size() - static_cast<std::size_t>(-index);
+    const Step step = history_[target];
+    history_.resize(target);
+    time_ = step.time;
+    Kokkos::deep_copy(interface_, step.interface);
+    return true;
   }
 
   pcms::Rank1View<const Real, pcms::DeviceMemorySpace> GetInterface(
@@ -80,13 +95,27 @@ public:
   Real Time() const noexcept { return time_; }
 
 private:
+  struct Step
+  {
+    Real time;
+    Kokkos::View<Real*, pcms::DeviceMemorySpace> interface;
+  };
+
+  std::size_t max_steps_;
   Real time_ = 0.0;
   Kokkos::View<Real*, pcms::DeviceMemorySpace> interface_{"test_interface", 2};
+  std::vector<Step> history_;
 };
+
+// The interface values of an application, copied to the host.
+std::vector<Real> Interface(const pcms::Application& application)
+{
+  return ToHost(application.GetInterface("interface"));
+}
 
 } // namespace
 
-TEST_CASE("Application state can be saved and restored", "[transient]")
+TEST_CASE("Application rolls back the last step by default", "[transient]")
 {
   TestApplication application;
   // Use the base interface, as the coupling code will.
@@ -96,42 +125,96 @@ TEST_CASE("Application state can be saved and restored", "[transient]")
   const auto initial_values = ToDevice({1.0, 2.0});
   base.SetInterface("interface", pcms::MakeRank1View(initial_values));
   base.AdvanceTo(0.5);
-  const pcms::Checkpoint checkpoint = base.Save();
-
-  // Change both parts of the state so restore cannot pass accidentally.
-  const auto replacement_values = ToDevice({3.0, 4.0});
-  base.SetInterface("interface", pcms::MakeRank1View(replacement_values));
   base.AdvanceTo(1.0);
-  base.Restore(checkpoint);
+  REQUIRE(Interface(base)[0] == Catch::Approx(21.0));
 
-  const auto restored = ToHost(base.GetInterface("interface"));
+  REQUIRE(base.Restore());
 
+  const auto restored = Interface(base);
   REQUIRE(std::string(base.Name()) == "test-application");
   REQUIRE(application.Time() == Catch::Approx(0.5));
   REQUIRE(restored.size() == 2);
-  REQUIRE(restored[0] == Catch::Approx(1.0));
-  REQUIRE(restored[1] == Catch::Approx(2.0));
+  REQUIRE(restored[0] == Catch::Approx(11.0));
+  REQUIRE(restored[1] == Catch::Approx(12.0));
   REQUIRE(base.GetCapabilities().can_restart);
   REQUIRE(base.ReportQoI().empty());
 }
 
-TEST_CASE("A checkpoint can be restored more than once", "[transient]")
+TEST_CASE("The index counts the steps to roll back", "[transient]")
 {
-  // A Schwarz iteration restores the same window-start checkpoint every sweep.
   TestApplication application;
   const auto start = ToDevice({1.0, 2.0});
   application.SetInterface("interface", pcms::MakeRank1View(start));
-  const pcms::Checkpoint checkpoint = application.Save();
+  application.AdvanceTo(0.5);
+  application.AdvanceTo(1.0);
+  application.AdvanceTo(1.5);
 
-  for (int sweep = 0; sweep < 2; ++sweep) {
-    const auto changed = ToDevice({5.0 + sweep, 6.0 + sweep});
-    application.SetInterface("interface", pcms::MakeRank1View(changed));
-    application.AdvanceTo(1.0 + sweep);
+  // -2 undoes the last two steps, which leaves the state after the first.
+  REQUIRE(application.Restore(-2));
+  REQUIRE(application.Time() == Catch::Approx(0.5));
+  REQUIRE(Interface(application)[0] == Catch::Approx(11.0));
 
-    application.Restore(checkpoint);
-    const auto restored = ToHost(application.GetInterface("interface"));
+  // -1 undoes the one step that is left.
+  REQUIRE(application.Restore(-1));
+  REQUIRE(application.Time() == Catch::Approx(0.0));
+  REQUIRE(Interface(application)[0] == Catch::Approx(1.0));
+}
+
+TEST_CASE("Repeating a window rolls back one step per sweep", "[transient]")
+{
+  // A Schwarz iteration advances every application once per sweep and rolls it
+  // back before the next sweep.
+  TestApplication application;
+  const auto start = ToDevice({1.0, 2.0});
+  application.SetInterface("interface", pcms::MakeRank1View(start));
+
+  for (int sweep = 0; sweep < 3; ++sweep) {
+    application.AdvanceTo(1.0);
+    REQUIRE(Interface(application)[0] == Catch::Approx(11.0));
+
+    REQUIRE(application.Restore());
     REQUIRE(application.Time() == Catch::Approx(0.0));
+    const auto restored = Interface(application);
     REQUIRE(restored[0] == Catch::Approx(1.0));
     REQUIRE(restored[1] == Catch::Approx(2.0));
+  }
+}
+
+TEST_CASE("An application that cannot honor a rollback returns false",
+          "[transient]")
+{
+  // This application remembers only the last step.
+  TestApplication application(1);
+  const auto start = ToDevice({1.0, 2.0});
+  application.SetInterface("interface", pcms::MakeRank1View(start));
+
+  SECTION("nothing to roll back")
+  {
+    REQUIRE_FALSE(application.Restore());
+    REQUIRE(Interface(application)[0] == Catch::Approx(1.0));
+  }
+
+  SECTION("more steps than it remembers")
+  {
+    application.AdvanceTo(0.5);
+    application.AdvanceTo(1.0);
+
+    REQUIRE_FALSE(application.Restore(-2));
+    // The state did not change.
+    REQUIRE(application.Time() == Catch::Approx(1.0));
+    REQUIRE(Interface(application)[0] == Catch::Approx(21.0));
+
+    // The step it does remember can still be rolled back.
+    REQUIRE(application.Restore(-1));
+    REQUIRE(application.Time() == Catch::Approx(0.5));
+    REQUIRE(Interface(application)[0] == Catch::Approx(11.0));
+  }
+
+  SECTION("an index that is not negative")
+  {
+    application.AdvanceTo(0.5);
+    REQUIRE_FALSE(application.Restore(0));
+    REQUIRE_FALSE(application.Restore(1));
+    REQUIRE(application.Time() == Catch::Approx(0.5));
   }
 }

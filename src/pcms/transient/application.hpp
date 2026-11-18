@@ -4,7 +4,6 @@
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
 
-#include <any>
 #include <span>
 #include <string_view>
 
@@ -12,29 +11,11 @@ namespace pcms
 {
 
 /**
- * @brief The application state required to repeat a coupling window.
- *
- * The state is defined by the application that created the checkpoint, and
- * only that application restores it.
- */
-struct Checkpoint
-{
-  Real time = 0.0; ///< Physical time at which the state was saved.
-  /**
-   * @brief Application-defined state.
-   * This is a placeholder: once a test
-   * case needs to checkpoint specific state, the type can be constrained
-   * further.
-   */
-  std::any state;
-};
-
-/**
  * @brief Describes the optional transient features an application provides.
  */
 struct Capabilities
 {
-  /// The application can save and restore its state.
+  /// The application can roll back to an earlier step.
   bool can_restart = false;
   /// The application can evaluate its solution between time steps.
   bool has_continuous_output = false;
@@ -62,18 +43,20 @@ public:
   virtual void AdvanceTo(Real target_time) = 0;
 
   /**
-   * @brief Save all state required to repeat the current time window.
+   * @brief Roll the application back by a number of steps.
    *
-   * @return A checkpoint that Restore() accepts any number of times.
-   */
-  [[nodiscard]] virtual Checkpoint Save() const = 0;
-
-  /**
-   * @brief Restore the state saved by Save().
+   * A step is one call to AdvanceTo(). The index counts back from the current
+   * state: -1 undoes the last AdvanceTo(), -2 undoes the last two, and so on.
+   * The adapter keeps whatever history it needs and decides how far back it
+   * can go. The coupling code only asks.
    *
-   * @param checkpoint A checkpoint created by this application.
+   * @param index Negative number of steps to undo. The default undoes the last
+   * step.
+   * @return True if the application rolled back by the requested number of
+   * steps. False if it cannot honor the request, in which case its state is
+   * unchanged.
    */
-  virtual void Restore(const Checkpoint& checkpoint) = 0;
+  [[nodiscard]] virtual bool Restore(int index = -1) = 0;
 
   /**
    * @brief Borrow the values produced on a named coupling interface.

@@ -329,8 +329,12 @@ TEST_CASE("Bind with a map: a rebind binds anew with the map")
     pcms::csys::Cartesian::Create(3), 3);
   auto bound = geometry.Bind(first.coordinate_view, OutOfBoundsPolicy{}, map);
   const std::weak_ptr<const pcms::BoundSource> previous = bound;
-  bound = geometry.Rebind(std::move(bound), second.coordinate_view);
+  src.reset();
+  REQUIRE(bound->GetGeometry().use_count() == 1);
+  bound =
+    bound->GetGeometry()->Rebind(std::move(bound), second.coordinate_view);
   REQUIRE(previous.expired());
+  REQUIRE(bound->GetGeometry().get() == &geometry);
   REQUIRE(bound->GetCoordinateMap() == map);
   const auto fresh =
     geometry.Bind(second.coordinate_view, OutOfBoundsPolicy{}, map);

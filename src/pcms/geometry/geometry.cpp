@@ -92,8 +92,8 @@ std::shared_ptr<const BoundSource> Geometry::Rebind(
       !previous->Unshared()) {
     const OutOfBoundsPolicy policy = previous->Policy();
     std::shared_ptr<const CoordinateMap> map = previous->GetCoordinateMap();
-    previous.reset();
-    return Bind(std::move(coords), policy, std::move(map));
+    previous = Bind(std::move(coords), policy, std::move(map));
+    return previous;
   }
   CheckBindArguments(*this, coords, previous->Policy(), nullptr);
   // nothing else refers to `previous`, so writing it is not observable

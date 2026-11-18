@@ -88,7 +88,7 @@ public:
 
   pcms::Capabilities GetCapabilities() const override
   {
-    return {/*can_restart=*/true, /*has_continuous_output=*/false,
+    return {/*can_rollback=*/true, /*has_continuous_output=*/false,
             /*reports_qoi=*/false};
   }
 
@@ -136,7 +136,7 @@ TEST_CASE("Application rolls back the last step by default", "[transient]")
   REQUIRE(restored.size() == 2);
   REQUIRE(restored[0] == Catch::Approx(11.0));
   REQUIRE(restored[1] == Catch::Approx(12.0));
-  REQUIRE(base.GetCapabilities().can_restart);
+  REQUIRE(base.GetCapabilities().can_rollback);
   REQUIRE(base.ReportQoI().empty());
 }
 

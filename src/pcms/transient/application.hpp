@@ -16,7 +16,7 @@ namespace pcms
 struct Capabilities
 {
   /// The application can roll back to an earlier step.
-  bool can_restart = false;
+  bool can_rollback = false;
   /// The application can evaluate its solution between time steps.
   bool has_continuous_output = false;
   /// The application reports quantities for error and conservation checks.
@@ -47,13 +47,11 @@ public:
    *
    * A step is one call to AdvanceTo(). The index counts back from the current
    * state: -1 undoes the last AdvanceTo(), -2 undoes the last two, and so on.
-   * The adapter keeps whatever history it needs and decides how far back it
-   * can go. The coupling code only asks.
    *
    * @param index Negative number of steps to undo. The default undoes the last
    * step.
    * @return True if the application rolled back by the requested number of
-   * steps. False if it cannot honor the request, in which case its state is
+   * steps. False if the adapter cannot roll back, in which case its state is
    * unchanged.
    */
   [[nodiscard]] virtual bool Restore(int index = -1) = 0;

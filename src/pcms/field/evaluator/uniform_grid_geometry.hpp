@@ -33,10 +33,8 @@ void FillUniformGridBinding(
   Kokkos::View<Real**, DeviceMemorySpace> parametric)
 {
   using Result = typename UniformGridPointSearch<Dim>::Result;
-  Kokkos::parallel_for(
-    "UniformGridBinding",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-      0, static_cast<LO>(results.extent(0))),
+  detail::ForEach(
+    "UniformGridBinding", static_cast<LO>(results.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       const Result result = results(i);
       found(i) = nearest || !result.IsOutside();
@@ -59,26 +57,16 @@ class UniformGridBinding final : public BoundSource
 public:
   UniformGridBinding(std::shared_ptr<const Geometry> geometry,
                      const BindRequest& request, const UniformGrid<Dim>& grid)
-    : BoundSource(std::move(geometry), request)
+    : BoundSource(std::move(geometry), request), search_(grid)
   {
-    const auto results =
-      UniformGridPointSearch<Dim>(grid)(LocatedPointValues());
-    const auto n = static_cast<LO>(results.extent(0));
-    const bool nearest = Policy().mode == OutOfBoundsMode::NEAREST_BOUNDARY;
-    Kokkos::View<bool*, DeviceMemorySpace> found("uniform_grid_found", n);
-    cell_indices_ =
-      Kokkos::View<LO*, DeviceMemorySpace>("uniform_grid_cell_indices", n);
-    parametric_ = Kokkos::View<Real**, DeviceMemorySpace>(
-      "uniform_grid_parametric", n, Dim);
-    detail::FillUniformGridBinding<Dim>(results, nearest, found, cell_indices_,
-                                        parametric_);
-    SetFound(found);
+    Locate();
   }
 
   [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> CellIndices()
     const noexcept
   {
-    return cell_indices_;
+    return Kokkos::subview(cell_indices_,
+                           Kokkos::make_pair(LO{0}, NumPoints()));
   }
 
   /// [point][axis]: the position of each query point in its cell, each
@@ -86,10 +74,36 @@ public:
   [[nodiscard]] Kokkos::View<const Real**, DeviceMemorySpace> Parametric()
     const noexcept
   {
-    return parametric_;
+    return Kokkos::subview(parametric_, Kokkos::make_pair(LO{0}, NumPoints()),
+                           Kokkos::ALL);
+  }
+
+protected:
+  void RebindImpl() override { Locate(); }
+
+  [[nodiscard]] bool UnsharedImpl() const noexcept override
+  {
+    return cell_indices_.use_count() <= 1 && parametric_.use_count() <= 1;
   }
 
 private:
+  /// Locates the query points with the search into cell_indices_ and
+  /// parametric_ and sets the found points.
+  void Locate()
+  {
+    const auto results = search_(LocatedPointValues());
+    const auto n = static_cast<LO>(results.extent(0));
+    const bool nearest = Policy().mode == OutOfBoundsMode::NEAREST_BOUNDARY;
+    Kokkos::View<bool*, DeviceMemorySpace> found(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "uniform_grid_found"), n);
+    detail::ReserveRows(cell_indices_, "uniform_grid_cell_indices", n);
+    detail::ReserveRows(parametric_, "uniform_grid_parametric", n, Dim);
+    detail::FillUniformGridBinding<Dim>(results, nearest, found, cell_indices_,
+                                        parametric_);
+    SetFound(found);
+  }
+
+  UniformGridPointSearch<Dim> search_;
   Kokkos::View<LO*, DeviceMemorySpace> cell_indices_;
   Kokkos::View<Real**, DeviceMemorySpace> parametric_;
 };
@@ -141,8 +155,9 @@ private:
 /// The geometry of a 2D uniform grid.
 /// @param grid the grid
 /// @param system the grid's coordinate system, or null for Cartesian
-inline std::shared_ptr<const UniformGridGeometry<2>> CreateUniformGridGeometry(
-  UniformGrid<2> grid, std::shared_ptr<const CoordinateSystem> system)
+[[nodiscard]] inline std::shared_ptr<const UniformGridGeometry<2>>
+CreateUniformGridGeometry(UniformGrid<2> grid,
+                          std::shared_ptr<const CoordinateSystem> system)
 {
   return std::make_shared<UniformGridGeometry<2>>(grid, std::move(system));
 }
@@ -150,8 +165,9 @@ inline std::shared_ptr<const UniformGridGeometry<2>> CreateUniformGridGeometry(
 /// The geometry of a 3D uniform grid.
 /// @param grid the grid
 /// @param system the grid's coordinate system, or null for Cartesian
-inline std::shared_ptr<const UniformGridGeometry<3>> CreateUniformGridGeometry(
-  UniformGrid<3> grid, std::shared_ptr<const CoordinateSystem> system)
+[[nodiscard]] inline std::shared_ptr<const UniformGridGeometry<3>>
+CreateUniformGridGeometry(UniformGrid<3> grid,
+                          std::shared_ptr<const CoordinateSystem> system)
 {
   return std::make_shared<UniformGridGeometry<3>>(grid, std::move(system));
 }

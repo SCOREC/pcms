@@ -36,6 +36,7 @@ target_include_directories(
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(pcms_utility PUBLIC Kokkos::kokkos perfstubs)
 if(PCMS_ENABLE_OMEGA_H)
+    target_sources(pcms_utility PRIVATE mesh_geometry.cpp)
     target_link_libraries(pcms_utility PUBLIC Omega_h::omega_h)
 endif()
 target_compile_features(pcms_utility PUBLIC cxx_std_20)

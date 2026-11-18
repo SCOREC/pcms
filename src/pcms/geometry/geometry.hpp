@@ -69,7 +69,10 @@ struct DifferentialView
 /// Spaces and layouts are on the same entities when they are on the same
 /// Geometry object: OwnerHints name entities by the geometry's identity. A
 /// kind's factory (CreateOmegaHGeometry, ...) returns the most specific type it
-/// knows, as a pointer to const since a geometry is immutable once built.
+/// knows, as a pointer to const since a geometry is immutable once built; more
+/// generally, a factory returns a pointer to const for a type with no
+/// non-const public member (geometries and function spaces), the object being
+/// constructed non-const.
 class Geometry : public std::enable_shared_from_this<Geometry>
 {
 public:
@@ -137,6 +140,26 @@ public:
     return owners.Names(*this, num_points);
   }
 
+  /// @brief Localizes new query points in place of `previous`, a bound source
+  ///        of this geometry: same policy and coordinate map.
+  ///
+  /// When nothing else holds `previous` (its shared_ptr and every Kokkos view
+  /// it owns are uniquely held) its storage is reused, so a loop that
+  /// releases its evaluators before each call reallocates none of the bound
+  /// source's arrays in steady state when the point count does not grow (the
+  /// kind's search may still allocate temporaries); otherwise this is an
+  /// ordinary Bind. Binds with a coordinate map are not recycled in this
+  /// version: they are bound anew with the map. An mdspan taken from a bound
+  /// source is valid while a reference to that source is held, as always.
+  /// @param previous bound source of this geometry; consumed
+  /// @param coords query points, in the coordinate system Bind took them in
+  /// @return the bound source of `coords`: `previous`, reused, or a new one
+  /// @throws pcms_error if `previous` is null or belongs to another geometry,
+  ///         or as Bind
+  [[nodiscard]] std::shared_ptr<const BoundSource> Rebind(
+    std::shared_ptr<const BoundSource> previous,
+    CoordinateView<DeviceMemorySpace> coords) const;
+
   /// @brief Support sets of query points among this geometry's sites, for
   ///        reconstruction spaces.
   /// @throws pcms_error unless the kind overrides it, or if the coordinate
@@ -174,6 +197,13 @@ protected:
   /// @return the bound source of the kind
   [[nodiscard]] virtual std::shared_ptr<BoundSource> BindImpl(
     const BindRequest& request) const = 0;
+
+private:
+  // creates the passkey of BoundSource::Rebind
+  struct RebindKey : BoundSource::RebindKey
+  {
+    RebindKey() = default;
+  };
 };
 
 namespace detail

@@ -11,7 +11,7 @@ class XGCFieldLayout : public FieldLayout
 {
 public:
   XGCFieldLayout(const ReverseClassificationVertex& reverse_classification,
-                 LO num_plane_nodes);
+                 LO num_plane_nodes, std::string name = "");
 
   int GetNumComponents() const override;
   LO GetNumDofHolder() const override;

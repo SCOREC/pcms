@@ -37,9 +37,8 @@ namespace values = pcms::values;
 namespace
 {
 
-std::shared_ptr<FunctionSpace> BuildCylindricalSource(Omega_h::Library& lib,
-                                                      Omega_h::Mesh& mesh,
-                                                      int num_components)
+std::shared_ptr<const FunctionSpace> BuildCylindricalSource(
+  Omega_h::Library& lib, Omega_h::Mesh& mesh, int num_components)
 {
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 2.0, 1.6, 1.1, 8, 8,
                             6, false);
@@ -48,10 +47,10 @@ std::shared_ptr<FunctionSpace> BuildCylindricalSource(Omega_h::Library& lib,
     1, num_components, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
-std::shared_ptr<FunctionSpace> BuildCartesianTarget(Omega_h::Library& lib,
-                                                    Omega_h::Mesh& mesh,
-                                                    int num_components,
-                                                    double x_extent = 1.0)
+std::shared_ptr<const FunctionSpace> BuildCartesianTarget(Omega_h::Library& lib,
+                                                          Omega_h::Mesh& mesh,
+                                                          int num_components,
+                                                          double x_extent = 1.0)
 {
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, x_extent, 1.0, 1.0, 4,
                             4, 4, false);
@@ -314,6 +313,41 @@ TEST_CASE("Bind with a map: the map must take the query system to the "
   REQUIRE(
     geometry.Bind(cyl_query.coordinate_view, OutOfBoundsPolicy{}, nullptr)
       ->GetBoundMap() == nullptr);
+}
+
+TEST_CASE("Bind with a map: a rebind binds anew with the map")
+{
+  auto lib = Omega_h::Library{};
+  Omega_h::Mesh src_mesh(&lib);
+  auto src = BuildCylindricalSource(lib, src_mesh, 1);
+  const auto& geometry = *src->GetGeometry();
+  const auto map = CartToCyl();
+  auto first = pcms::test::CreateDeviceCoordinateView(
+    {0.5, 0.5, 0.5, 0.2, 0.9, 0.1}, pcms::csys::Cartesian::Create(3), 3);
+  auto second = pcms::test::CreateDeviceCoordinateView(
+    {0.9, 0.3, 0.4, 0.3, 0.4, 0.8, 0.6, 0.6, 0.2},
+    pcms::csys::Cartesian::Create(3), 3);
+  auto bound = geometry.Bind(first.coordinate_view, OutOfBoundsPolicy{}, map);
+  const std::weak_ptr<const pcms::BoundSource> previous = bound;
+  src.reset();
+  REQUIRE(bound->GetGeometry().use_count() == 1);
+  bound =
+    bound->GetGeometry()->Rebind(std::move(bound), second.coordinate_view);
+  REQUIRE(previous.expired());
+  REQUIRE(bound->GetGeometry().get() == &geometry);
+  REQUIRE(bound->GetCoordinateMap() == map);
+  const auto fresh =
+    geometry.Bind(second.coordinate_view, OutOfBoundsPolicy{}, map);
+  const auto located = pcms::test::CopyCoordinatesToHost(
+    pcms::MakeConstRank2View(bound->LocatedPointValues()));
+  const auto expected = pcms::test::CopyCoordinatesToHost(
+    pcms::MakeConstRank2View(fresh->LocatedPointValues()));
+  REQUIRE(located.extent(0) == 3);
+  for (size_t i = 0; i < 3; ++i) {
+    for (size_t d = 0; d < 3; ++d) {
+      REQUIRE(located(i, d) == expected(i, d));
+    }
+  }
 }
 
 TEST_CASE("Bind with a map: evaluator creation errors")

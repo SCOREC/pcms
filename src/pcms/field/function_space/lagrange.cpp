@@ -63,7 +63,7 @@ LagrangeBackend CheckOrderAndBackend(int order, LagrangeBackend backend,
 
 /// A Lagrange space on the mesh of an Omega_h geometry; dispatches to
 /// MeshFields or the native Omega_h backend.
-std::shared_ptr<FunctionSpace> CreateOmegaHLagrangeSpace(
+std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
   std::shared_ptr<const OmegaHGeometry> geometry, int order, int num_components,
   const LagrangeOptions& options)
 {
@@ -76,8 +76,7 @@ std::shared_ptr<FunctionSpace> CreateOmegaHLagrangeSpace(
                                                ? std::array<int, 4>{1, 0, 0, 0}
                                                : std::array<int, 4>{1, 1, 0, 0};
     auto mesh_layout = std::make_shared<MeshFieldsAdapterLayout>(
-      geometry, nodes_per_dim, num_components);
-    mesh_layout->SetName(options.layout_name);
+      geometry, nodes_per_dim, num_components, options.layout_name);
     auto eval_factory =
       std::make_shared<MeshFieldsEvaluatorFactory<Real>>(geometry, mesh_layout);
     return std::make_shared<FunctionSpace>(
@@ -103,9 +102,8 @@ std::shared_ptr<FunctionSpace> CreateOmegaHLagrangeSpace(
       std::move(eval_factory));
 #endif
   }
-  auto layout =
-    std::make_shared<OmegaHLagrangeLayout>(geometry, order, num_components);
-  layout->SetName(options.layout_name);
+  auto layout = std::make_shared<OmegaHLagrangeLayout>(
+    geometry, order, num_components, options.layout_name);
   auto eval_factory = std::make_shared<OmegaHLagrangeEvaluatorFactory<Real>>(
     std::move(geometry), layout);
   return std::make_shared<FunctionSpace>(
@@ -125,7 +123,7 @@ std::shared_ptr<FunctionSpace> CreateOmegaHLagrangeSpace(
 
 /// A Lagrange space of order 0 or 1 on the grid of a uniform-grid geometry.
 template <unsigned Dim>
-std::shared_ptr<FunctionSpace> CreateUniformGridLagrangeSpace(
+std::shared_ptr<const FunctionSpace> CreateUniformGridLagrangeSpace(
   std::shared_ptr<const UniformGridGeometry<Dim>> geometry, int order,
   int num_components, const LagrangeOptions& options)
 {
@@ -134,8 +132,7 @@ std::shared_ptr<FunctionSpace> CreateUniformGridLagrangeSpace(
                      "support Lagrange orders 0 and 1");
   }
   auto ug_layout = std::make_shared<UniformGridFieldLayout<Dim>>(
-    geometry, num_components, order);
-  ug_layout->SetName(options.layout_name);
+    geometry, num_components, order, options.layout_name);
   auto eval_factory = std::make_shared<UniformGridEvaluatorFactory<Dim>>(
     std::move(geometry), ug_layout);
   return std::make_shared<FunctionSpace>(
@@ -155,7 +152,7 @@ std::shared_ptr<FunctionSpace> CreateUniformGridLagrangeSpace(
 
 } // namespace
 
-std::shared_ptr<FunctionSpace> CreateLagrangeSpace(
+std::shared_ptr<const FunctionSpace> CreateLagrangeSpace(
   std::shared_ptr<const Geometry> geometry, int order, int num_components,
   LagrangeOptions options)
 {

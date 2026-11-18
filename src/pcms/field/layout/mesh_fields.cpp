@@ -213,8 +213,9 @@ Omega_h::Mesh& MeshOf(const std::shared_ptr<const OmegaHGeometry>& geometry)
 
 MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
   std::shared_ptr<const OmegaHGeometry> geometry,
-  std::array<int, 4> nodes_per_dim, int num_components)
-  : mesh_(MeshOf(geometry)),
+  std::array<int, 4> nodes_per_dim, int num_components, std::string name)
+  : FieldLayout(std::move(name)),
+    mesh_(MeshOf(geometry)),
     num_components_(num_components),
     nodes_per_dim_(nodes_per_dim),
     dof_holder_coords_("", GetNumDofHolderWithGhosts(), mesh_.dim()),

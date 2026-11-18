@@ -23,9 +23,10 @@ public:
   /// per vertex: it applies to the DOF holders of an order-1 layout and not to
   /// those of an order-0 layout.
   /// @throws pcms_error if `geometry` is null
+  /// @param name the layout's name (FieldLayout::GetName)
   /// @throws std::invalid_argument if `order` is neither 0 nor 1
   OmegaHLagrangeLayout(std::shared_ptr<const OmegaHGeometry> geometry,
-                       int order, int num_components);
+                       int order, int num_components, std::string name = "");
 
   int GetNumComponents() const override;
   LO GetNumDofHolder() const override;

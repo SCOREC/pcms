@@ -60,11 +60,11 @@ inline EntOffsetsArray OwnedEntOffsets(
 class FieldLayout
 {
 public:
-  // Optional identifier for this layout. Set once at construction (via a From*
-  // factory) and empty by default. Consumers that need to identify a layout by
-  // a stable name use it; it carries no meaning within the field layer itself.
+  // Optional identifier for this layout. Given at construction (the layouts a
+  // function space or factory creates take it from their options) and empty by
+  // default. Consumers that need to identify a layout by a stable name use it;
+  // it carries no meaning within the field layer itself.
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
-  void SetName(std::string name) { name_ = std::move(name); }
 
   /// The geometry the layout's entities are defined on: spaces and layouts on
   /// one geometry object share their entities (OwnerHints name entities of a
@@ -169,6 +169,9 @@ public:
   virtual ~FieldLayout() noexcept = default;
 
 protected:
+  FieldLayout() = default;
+  explicit FieldLayout(std::string name) : name_(std::move(name)) {}
+
   // Builds the global-to-local permutation from the GIDs and entity offsets of
   // the DOF holders with ghosts (the permutation is indexed with ghosts).
   // Derived layouts that support GetGlobalToLocalPermutation() must call this

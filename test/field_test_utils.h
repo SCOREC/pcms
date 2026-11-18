@@ -161,7 +161,7 @@ inline Omega_h::Mesh BuildReferenceTet(Omega_h::Library& lib)
                        }));
 }
 
-inline std::shared_ptr<FunctionSpace> MakeP1Space(
+inline std::shared_ptr<const FunctionSpace> MakeP1Space(
   std::shared_ptr<const Geometry> geometry)
 {
   return CreateLagrangeSpace(
@@ -169,7 +169,7 @@ inline std::shared_ptr<FunctionSpace> MakeP1Space(
     LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
-inline std::shared_ptr<FunctionSpace> MakeP0Space(
+inline std::shared_ptr<const FunctionSpace> MakeP0Space(
   std::shared_ptr<const Geometry> geometry)
 {
   return CreateLagrangeSpace(
@@ -179,7 +179,7 @@ inline std::shared_ptr<FunctionSpace> MakeP0Space(
 
 // Spaces on a Cartesian geometry of their own on `mesh`; spaces that should
 // share a bind take one geometry instead.
-inline std::shared_ptr<FunctionSpace> MakeP1Space(
+inline std::shared_ptr<const FunctionSpace> MakeP1Space(
   Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
 {
   return MakeP1Space(CreateOmegaHGeometry(
@@ -187,7 +187,7 @@ inline std::shared_ptr<FunctionSpace> MakeP1Space(
     OmegaHGeometryOptions{.global_id_name = global_id_name}));
 }
 
-inline std::shared_ptr<FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
+inline std::shared_ptr<const FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
 {
   return MakeP0Space(CreateOmegaHGeometry(mesh, csys::Cartesian::Deferred()));
 }
@@ -661,23 +661,67 @@ inline std::shared_ptr<OmegaHGeometry> MakeOmegaHGeometry(Omega_h::Mesh& mesh)
     mesh, pcms::csys::Cartesian::Create(mesh.dim()));
 }
 
-// Checks that `points` bound with `owners` on their Omega_h geometry are in
-// the elements its search finds.
+// The search record of a found point of an Omega_h binding, on the host: the
+// entity dimension and id and the reduced coordinates on it.
+struct HostRecord
+{
+  int dim;
+  LO entity;
+  std::array<Real, 3> xi;
+};
+
+template <int Dim>
+std::vector<HostRecord> FoundRecordsOfDim(const OmegaHMeshBinding& binding)
+{
+  const auto results = Kokkos::create_mirror_view_and_copy(
+    HostMemorySpace(), binding.Results<Dim>());
+  const auto found = Kokkos::create_mirror_view_and_copy(HostMemorySpace(),
+                                                         binding.FoundPoints());
+  std::vector<HostRecord> records;
+  for (size_t k = 0; k < found.extent(0); ++k) {
+    const auto& r = results(found(k));
+    HostRecord record{static_cast<int>(r.dimensionality), r.EntityId(), {}};
+    for (int j = 0; j < Dim; ++j) {
+      record.xi[j] = r.parametric[j];
+    }
+    records.push_back(record);
+  }
+  return records;
+}
+
+// The search records of the found points, in FoundPoints() order.
+inline std::vector<HostRecord> FoundRecords(const BoundSource& bound)
+{
+  const auto& binding = dynamic_cast<const OmegaHMeshBinding&>(bound);
+  return GetMesh(*bound.GetGeometry()).dim() == 2
+           ? FoundRecordsOfDim<2>(binding)
+           : FoundRecordsOfDim<3>(binding);
+}
+
+// Checks that two lists of records name the same entities with the same
+// reduced coordinates up to `tol`.
+inline void CheckSameRecords(const std::vector<HostRecord>& actual,
+                             const std::vector<HostRecord>& expected,
+                             double tol = ExactTol)
+{
+  REQUIRE(actual.size() == expected.size());
+  for (size_t i = 0; i < actual.size(); ++i) {
+    CAPTURE(i);
+    REQUIRE(actual[i].dim == expected[i].dim);
+    REQUIRE(actual[i].entity == expected[i].entity);
+    for (int j = 0; j < 3; ++j) {
+      REQUIRE(std::abs(actual[i].xi[j] - expected[i].xi[j]) <= tol);
+    }
+  }
+}
+
+// Checks that `points` bound with `owners` on their Omega_h geometry are on
+// the entities its search finds.
 inline void CheckOwnersMatchSearch(CoordinateView<DeviceMemorySpace> points,
                                    const OwnerHints& owners)
 {
-  const auto element_ids = [](const std::shared_ptr<const BoundSource>& b) {
-    return Kokkos::create_mirror_view_and_copy(
-      HostMemorySpace(),
-      dynamic_cast<const OmegaHMeshBinding&>(*b).ElementIds());
-  };
-  const auto hinted = element_ids(owners.geometry->Bind(points, owners));
-  const auto searched = element_ids(owners.geometry->Bind(points));
-  REQUIRE(hinted.extent(0) == searched.extent(0));
-  for (size_t i = 0; i < hinted.extent(0); ++i) {
-    CAPTURE(i);
-    REQUIRE(hinted(i) == searched(i));
-  }
+  CheckSameRecords(FoundRecords(*owners.geometry->Bind(points, owners)),
+                   FoundRecords(*owners.geometry->Bind(points)));
 }
 
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)

@@ -13,8 +13,9 @@ public:
   /// @param system coordinate system of the (absent) DOF holders
   /// @param num_components components per value of fields on this layout;
   ///        fields whose values live outside PCMS still declare their width
+  /// @param name the layout's name (FieldLayout::GetName)
   explicit EmptyFieldLayout(std::shared_ptr<const CoordinateSystem> system,
-                            int num_components = 1);
+                            int num_components = 1, std::string name = "");
 
   int GetNumComponents() const override;
   LO GetNumDofHolder() const override;

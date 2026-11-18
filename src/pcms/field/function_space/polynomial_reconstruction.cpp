@@ -8,7 +8,7 @@
 namespace pcms
 {
 
-std::shared_ptr<FunctionSpace> CreatePolynomialReconstructionSpace(
+std::shared_ptr<const FunctionSpace> CreatePolynomialReconstructionSpace(
   std::shared_ptr<const Geometry> geometry, MLSOptions options)
 {
   if (geometry == nullptr) {

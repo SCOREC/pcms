@@ -14,7 +14,7 @@ namespace pcms
 
 struct EQDSKField
 {
-  std::shared_ptr<FunctionSpace> space;
+  std::shared_ptr<const FunctionSpace> space;
   Field<Real> field;
 };
 
@@ -22,7 +22,7 @@ struct EQDSKField
 struct EQDSKFieldWithData
 {
   EQDSKData data;
-  std::shared_ptr<FunctionSpace> space;
+  std::shared_ptr<const FunctionSpace> space;
   Field<Real> field;
 };
 

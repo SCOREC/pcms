@@ -28,7 +28,7 @@ KOKKOS_INLINE_FUNCTION Real Cubic(Real x, Real y)
   return x * x + 3.0 * x * y - y * y * y;
 }
 
-std::shared_ptr<pcms::FunctionSpace> MakeSplineSpace()
+std::shared_ptr<const pcms::FunctionSpace> MakeSplineSpace()
 {
   pcms::UniformGrid<2> grid;
   grid.bot_left = {0.0, -1.0};

@@ -44,7 +44,7 @@ struct RegisteredField
 
 [[nodiscard]] static RegisteredField AddField(
   pcms::ApplicationComm* application,
-  const std::shared_ptr<pcms::FunctionSpace>& function_space,
+  const std::shared_ptr<const pcms::FunctionSpace>& function_space,
   const std::string& name, const std::string& path, int plane)
 {
   PCMS_ALWAYS_ASSERT(application != nullptr);

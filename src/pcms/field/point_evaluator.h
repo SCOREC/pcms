@@ -32,15 +32,14 @@ void FillRows(Rank2View<T, DeviceMemorySpace, LayoutPolicy> values,
               Kokkos::View<const LO*, DeviceMemorySpace> rows, T value)
 {
   const auto num_cols = static_cast<int>(values.extent(1));
-  Kokkos::parallel_for(
-    "PointEvaluator::FillRows",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
-      0, static_cast<LO>(rows.extent(0))),
-    KOKKOS_LAMBDA(const LO k) {
-      for (int c = 0; c < num_cols; ++c) {
-        values(rows(k), c) = value;
-      }
-    });
+  const auto fill = KOKKOS_LAMBDA(const LO k)
+  {
+    for (int c = 0; c < num_cols; ++c) {
+      values(rows(k), c) = value;
+    }
+  };
+  detail::ForEach("PointEvaluator::FillRows", static_cast<LO>(rows.extent(0)),
+                  fill);
 }
 
 } // namespace detail

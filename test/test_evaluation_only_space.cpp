@@ -55,6 +55,10 @@ public:
     : BoundSource(std::move(geometry), request)
   {
   }
+
+protected:
+  // Reset has marked every point found
+  void RebindImpl() override {}
 };
 
 // All of (R, theta, Z) space: every point is found, without a search.
@@ -148,7 +152,7 @@ private:
 
 // A space on an empty layout whose fields are made from data naming the
 // quantity (MockData), evaluated by the mock on the analytic geometry.
-std::shared_ptr<pcms::FunctionSpace> MakeMockSpace(int num_components)
+std::shared_ptr<const pcms::FunctionSpace> MakeMockSpace(int num_components)
 {
   const auto layout = std::make_shared<pcms::EmptyFieldLayout>(
     pcms::csys::CylindricalRThetaZ::Create(), num_components);
@@ -161,8 +165,8 @@ std::shared_ptr<pcms::FunctionSpace> MakeMockSpace(int num_components)
                                            layout));
 }
 
-std::shared_ptr<pcms::FunctionSpace> MakePoloidalTarget(Omega_h::Mesh& mesh,
-                                                        int num_components)
+std::shared_ptr<const pcms::FunctionSpace> MakePoloidalTarget(
+  Omega_h::Mesh& mesh, int num_components)
 {
   return pcms::CreateLagrangeSpace(
     pcms::CreateOmegaHGeometry(mesh, pcms::csys::CylindricalRZ::Create()), 1,

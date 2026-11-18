@@ -81,10 +81,11 @@ void bind_transfer_field_module(py::module& m)
   // states at zero additional localization cost.
   py::class_<Interpolator<Real>, TransferOperator<Real>>(m, "Interpolator")
     .def(
-      py::init([](const PointEvaluatorFactory& source,
-                  const FunctionSpace& target_space, OutOfBoundsPolicy policy) {
-        return std::make_unique<Interpolator<Real>>(source, target_space,
-                                                    policy);
+      py::init([](const Immutable<PointEvaluatorFactory>& source,
+                  const Immutable<FunctionSpace>& target_space,
+                  OutOfBoundsPolicy policy) {
+        return std::make_unique<Interpolator<Real>>(*source.ptr,
+                                                    *target_space.ptr, policy);
       }),
       py::arg("source"), py::arg("target_space"),
       py::arg("policy") = OutOfBoundsPolicy{}, py::keep_alive<1, 2>(),
@@ -95,11 +96,11 @@ void bind_transfer_field_module(py::module& m)
       "transfer across coordinate systems, bind with a map "
       "(source.get_geometry().bind(target_space, policy, map)) and pass the "
       "bound source.")
-    .def(py::init([](const PointEvaluatorFactory& source,
-                     const FunctionSpace& target_space,
-                     std::shared_ptr<BoundSource> bound) {
-           return std::make_unique<Interpolator<Real>>(source, target_space,
-                                                       std::move(bound));
+    .def(py::init([](const Immutable<PointEvaluatorFactory>& source,
+                     const Immutable<FunctionSpace>& target_space,
+                     const Immutable<BoundSource>& bound) {
+           return std::make_unique<Interpolator<Real>>(
+             *source.ptr, *target_space.ptr, bound.ptr);
          }),
          py::arg("source"), py::arg("target_space"), py::arg("bound"),
          py::keep_alive<1, 2>(), py::keep_alive<1, 3>(),
@@ -109,10 +110,10 @@ void bind_transfer_field_module(py::module& m)
          "gradient can share one localization.");
 
   py::class_<Copy<Real>, TransferOperator<Real>>(m, "Copy").def(
-    py::init(
-      [](const FunctionSpace& source_space, const FunctionSpace& target_space) {
-        return std::make_unique<Copy<Real>>(source_space, target_space);
-      }),
+    py::init([](const Immutable<FunctionSpace>& source_space,
+                const Immutable<FunctionSpace>& target_space) {
+      return std::make_unique<Copy<Real>>(*source_space.ptr, *target_space.ptr);
+    }),
     py::arg("source_space"), py::arg("target_space"),
     "Construct a copy operator for function spaces sharing a layout.");
 
@@ -132,11 +133,11 @@ void bind_transfer_field_module(py::module& m)
   // intersection of the source and target meshes.
   py::class_<OmegaHConservativeProjection, TransferOperator<Real>>(
     m, "OmegaHConservativeProjection")
-    .def(py::init([](const FunctionSpace& source_space,
-                     const FunctionSpace& target_space,
+    .def(py::init([](const Immutable<FunctionSpace>& source_space,
+                     const Immutable<FunctionSpace>& target_space,
                      MassMatrixType mass_matrix_type) {
            return std::make_unique<OmegaHConservativeProjection>(
-             source_space, target_space, mass_matrix_type);
+             *source_space.ptr, *target_space.ptr, mass_matrix_type);
          }),
          py::arg("source_space"), py::arg("target_space"),
          py::arg("mass_matrix_type") = MassMatrixType::Consistent,
@@ -151,19 +152,20 @@ void bind_transfer_field_module(py::module& m)
   // exactly zero when the source already lives in the target space).
   py::class_<OmegaHControlVariateProjection, TransferOperator<Real>>(
     m, "OmegaHControlVariateProjection")
-    .def(py::init([](const FunctionSpace& source_space,
-                     const FunctionSpace& target_space, int samples_per_element,
-                     std::uint64_t seed, MassMatrixType mass_matrix_type,
-                     std::shared_ptr<const CoordinateMap> to_source) {
+    .def(py::init([](const Immutable<FunctionSpace>& source_space,
+                     const Immutable<FunctionSpace>& target_space,
+                     int samples_per_element, std::uint64_t seed,
+                     MassMatrixType mass_matrix_type,
+                     const std::optional<Immutable<CoordinateMap>>& to_source) {
            return std::make_unique<OmegaHControlVariateProjection>(
-             source_space, target_space, samples_per_element, seed,
-             mass_matrix_type, std::move(to_source));
+             *source_space.ptr, *target_space.ptr, samples_per_element, seed,
+             mass_matrix_type, to_source ? to_source->ptr : nullptr);
          }),
          py::arg("source_space"), py::arg("target_space"),
          py::arg("samples_per_element"),
          py::arg("seed") = std::uint64_t(8675309),
          py::arg("mass_matrix_type") = MassMatrixType::Consistent,
-         py::arg("to_source") = nullptr, py::keep_alive<1, 2>(),
+         py::arg("to_source") = py::none(), py::keep_alive<1, 2>(),
          py::keep_alive<1, 3>(),
          "Construct a Monte Carlo (control-variate) conservative projection. "
          "Sample-point generation, the control-variate interpolator, and the "

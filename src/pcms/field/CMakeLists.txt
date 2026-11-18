@@ -18,6 +18,7 @@ set(PCMS_FIELD_HEADERS
         function_space.h
         point_evaluator.h
         point_evaluator_factory.hpp
+        query_points.hpp
         differential_operator.hpp
         gradient_source.hpp
         transformed_point_evaluator.hpp
@@ -31,6 +32,7 @@ set(PCMS_FIELD_SOURCES
         coordinate_system.cpp
         function_space.cpp
         gradient_source.cpp
+        query_points.cpp
         gid_permutation.cpp
         function_space/polynomial_reconstruction.cpp
         layout/empty.cpp

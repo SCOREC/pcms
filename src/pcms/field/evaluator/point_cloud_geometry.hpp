@@ -120,13 +120,13 @@ protected:
     Omega_h::Reals source_coords =
       flatten_to_omega_h_reals(src_view, "src_coords");
 
+    const int site_dim = site_layout_->GetDOFHolderEntityDim();
     SupportResults supports =
-      Neighbourhood(request.coords, site_layout_->GetDOFHolderEntityDim(),
-                    options_, request.owners);
+      Neighbourhood(request.coords, site_dim, options_, request.owners);
 
-    return std::make_shared<MLSBinding>(shared_from_this(), request,
-                                        std::move(source_coords),
-                                        std::move(supports));
+    return std::make_shared<MLSBinding>(
+      shared_from_this(), request, std::move(source_coords),
+      std::move(supports), site_dim, options_);
   }
 
 private:
@@ -139,8 +139,9 @@ private:
 /// @param options the support search of the geometry
 /// @throws pcms_error if the coordinate system does not have the identity
 ///         metric (MLS distances are Euclidean)
-inline std::shared_ptr<const PointCloudGeometry> CreatePointCloudGeometry(
-  CoordinateView<HostMemorySpace> coords, NeighbourhoodOptions options = {})
+[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry>
+CreatePointCloudGeometry(CoordinateView<HostMemorySpace> coords,
+                         NeighbourhoodOptions options = {})
 {
   const auto values = coords.GetValues();
   const int dim = static_cast<int>(values.extent(1));
@@ -162,8 +163,9 @@ inline std::shared_ptr<const PointCloudGeometry> CreatePointCloudGeometry(
 /// @param options the support search of the geometry
 /// @throws pcms_error if `sites` is null or its coordinate system does not
 ///         have the identity metric
-inline std::shared_ptr<const PointCloudGeometry> CreatePointCloudGeometry(
-  std::shared_ptr<const FieldLayout> sites, NeighbourhoodOptions options = {})
+[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry>
+CreatePointCloudGeometry(std::shared_ptr<const FieldLayout> sites,
+                         NeighbourhoodOptions options = {})
 {
   if (sites == nullptr) {
     throw pcms_error("CreatePointCloudGeometry: the sites must not be null");

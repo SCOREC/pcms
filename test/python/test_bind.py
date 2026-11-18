@@ -3,6 +3,9 @@ Tests for binding sources to query points from Python.
 """
 
 import gc
+import subprocess
+import sys
+import textwrap
 import weakref
 
 import numpy as np
@@ -123,36 +126,119 @@ def test_interpolator_reuses_a_bound_source(geometry, space, field):
                                atol=1e-12)
 
 
-def test_get_geometry_does_not_keep_the_space_alive(world):
+def test_get_geometry_outlives_the_original_wrappers(world):
     mesh = omega_h.build_box(
         world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
     geometry = pcms.create_omega_h_geometry(mesh)
     space = pcms.create_lagrange_space(
         geometry, 1, 1, backend=pcms.LagrangeBackend.OmegaH)
-    assert space.get_geometry() is geometry
+    returned = space.get_geometry()
+    assert returned == geometry
     space_ref = weakref.ref(space)
     geometry_ref = weakref.ref(geometry)
     mesh_ref = weakref.ref(mesh)
 
-    # the space and the geometry it returns do not keep each other alive
-    del space, geometry
+    del space, geometry, mesh
     gc.collect()
     assert space_ref() is None
     assert geometry_ref() is None
-    assert mesh_ref() is not None
-
-    # a geometry obtained from a space keeps the mesh alive by itself
-    space = pcms.create_lagrange_space(
-        pcms.create_omega_h_geometry(mesh), 1, 1,
-        backend=pcms.LagrangeBackend.OmegaH)
-    geometry = space.get_geometry()
-    space_ref = weakref.ref(space)
-    del space, mesh
-    gc.collect()
-    assert space_ref() is None
-    assert mesh_ref() is not None
-    bound = geometry.bind(pcms.CoordinateView([[0.5, 0.5]]))
+    assert mesh_ref() is None
+    bound = returned.bind(pcms.CoordinateView([[0.5, 0.5]]))
     assert bound.num_points() == 1
-    del bound, geometry
+
+
+@pytest.mark.parametrize("get_layout", [
+    lambda space, field: space.get_layout(),
+    lambda space, field: field.get_layout(),
+], ids=["space", "field"])
+def test_returned_layout_outlives_the_original_wrappers(world, get_layout):
+    mesh = omega_h.build_box(
+        world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
+    geometry = pcms.create_omega_h_geometry(mesh)
+    space = pcms.create_lagrange_space(
+        geometry, 1, 1, backend=pcms.LagrangeBackend.OmegaH)
+    field = space.create_function()
+    layout = get_layout(space, field)
+    space_ref = weakref.ref(space)
+    field_ref = weakref.ref(field)
+    mesh_ref = weakref.ref(mesh)
+    del field, space, geometry, mesh
+    gc.collect()
+    assert field_ref() is None
+    assert space_ref() is None
+    assert mesh_ref() is None
+    coords = layout.get_dof_holder_coordinates().get_values()
+    assert coords.shape == (25, 2)
+    cloud = pcms.create_point_cloud_geometry(layout)
+    reconstruction = pcms.create_polynomial_reconstruction_space(cloud)
+    bound = cloud.bind(pcms.CoordinateView([[0.5, 0.5]]))
+    np.testing.assert_array_equal(bound.found_points(), [0])
+    reconstruction.create_point_evaluator(bound)
+
+
+def test_function_get_space_owns_mesh_and_runtime():
+    # A fresh process gives this test sole ownership of the Omega_h runtime.
+    script = textwrap.dedent("""
+        import gc
+        import weakref
+        import pcms
+        import PyOmega_h as omega_h
+
+        library = omega_h.OmegaHLibrary()
+        world = library.world()
+        mesh = omega_h.build_box(
+            world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
+        geometry = pcms.create_omega_h_geometry(mesh)
+        space = pcms.create_lagrange_space(
+            geometry, 1, 1, backend=pcms.LagrangeBackend.OmegaH)
+        field = space.create_function()
+        returned = field.get_space()
+        originals = [weakref.ref(obj) for obj in
+                     (field, space, geometry, mesh, world, library)]
+        del field, space, geometry, mesh, world, library
+        gc.collect()
+        assert all(ref() is None for ref in originals)
+        replacement = returned.create_function()
+        assert replacement.get_layout().get_num_dof_holder() == 25
+        bound = returned.get_geometry().bind(pcms.CoordinateView([[0.5, 0.5]]))
+        assert bound.found_points().tolist() == [0]
+        del bound, replacement, returned
+        gc.collect()
+    """)
+    subprocess.run([sys.executable, "-c", script], check=True, timeout=60)
+
+
+def test_query_bound_outlives_the_original_wrappers(world):
+    mesh = omega_h.build_box(
+        world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
+    geometry = pcms.create_omega_h_geometry(mesh)
+    query = pcms.QueryPoints(geometry)
+    query.locate(pcms.CoordinateView([[0.5, 0.5]]))
+    bound = query.bound
+    mesh_ref = weakref.ref(mesh)
+    del query, geometry, mesh
     gc.collect()
     assert mesh_ref() is None
+    np.testing.assert_array_equal(bound.found_points(), [0])
+    new_bound = bound.get_geometry().bind(pcms.CoordinateView([[0.25, 0.25]]))
+    np.testing.assert_array_equal(new_bound.found_points(), [0])
+
+
+def test_query_points_follow_moving_points(geometry, field):
+    query = pcms.QueryPoints(
+        geometry, pcms.OutOfBoundsPolicy(pcms.OutOfBoundsMode.FILL, -1.0))
+    assert query.bound is None
+    out = np.zeros(2)
+    for points in ([[0.25, 0.5], [2.0, 2.0]], [[0.6, 0.6], [0.3, 0.2]]):
+        query.locate(pcms.CoordinateView(points))
+        query.evaluate(field, out)
+        expected = [_linear(x, y) if x <= 1.0 else -1.0 for x, y in points]
+        np.testing.assert_allclose(out, expected, atol=1e-12)
+    np.testing.assert_array_equal(query.bound.found_points(), [0, 1])
+
+
+def test_evaluate_at_points_in_one_call(field):
+    out = np.zeros(2)
+    pcms.evaluate(field, pcms.CoordinateView([[0.25, 0.5], [0.75, 0.1]]), out)
+    np.testing.assert_allclose(out, [_linear(0.25, 0.5), _linear(0.75, 0.1)],
+                               atol=1e-12)

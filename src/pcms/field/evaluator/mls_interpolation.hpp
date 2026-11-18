@@ -123,7 +123,8 @@ enum class RadialBasisFunction
  * possible conditioning issues)
  *
  * @return A Write<Real> array containing interpolated values at each target
- * point. Length matches the number of target points.
+ * point. Length matches the number of target points. Rows without supports
+ * are zero; the point evaluator applies its missing-point policy to them.
  *
  * @note
  * - All input arrays must reside in device memory (e.g., Kokkos device views).

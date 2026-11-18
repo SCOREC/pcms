@@ -2,6 +2,7 @@
 #define PCMS_FIELD_VALUE_VIEW_HPP
 
 #include "pcms/field/coordinate_system.hpp"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/assert.h"
 #include <array>
@@ -64,6 +65,20 @@ public:
     return entries_[static_cast<std::size_t>(i)];
   }
 
+  /// @return a copy with a covariant index appended
+  /// @throws pcms_error if the rank is already max_rank
+  [[nodiscard]] VarianceSignature WithCovariantIndexAppended() const
+  {
+    if (rank_ >= max_rank) {
+      throw pcms_error("VarianceSignature::WithCovariantIndexAppended: rank " +
+                       std::to_string(rank_) + " is already the maximum");
+    }
+    VarianceSignature appended = *this;
+    appended.entries_[static_cast<std::size_t>(appended.rank_++)] =
+      Variance::Covariant;
+    return appended;
+  }
+
   friend bool operator==(const VarianceSignature& a,
                          const VarianceSignature& b) noexcept
   {
@@ -84,11 +99,23 @@ private:
   int rank_ = 0;
 };
 
+/// Sign under an orientation reversal: Odd values (pseudo-tensors, e.g. a
+/// curl) change sign; Even values do not.
+enum class Parity
+{
+  Even,
+  Odd
+};
+
+/// Basis the components of a value are expressed in: coordinate system,
+/// component scaling, index variance and parity. Curl produces Odd output;
+/// reflections negate Odd values.
 struct ValueBasis
 {
   std::shared_ptr<const CoordinateSystem> system = nullptr;
   ComponentScaling scaling = ComponentScaling::Physical;
   VarianceSignature variance{};
+  Parity parity = Parity::Even;
 
   [[nodiscard]] int Rank() const noexcept { return variance.Rank(); }
 
@@ -243,6 +270,46 @@ inline const VarianceSignature Tensor{Variance::Contravariant,
 }
 
 } // namespace values
+
+/// @brief Basis of the gradient of values stored in `stored`.
+///
+/// Component (j..., i) is the derivative along coordinate i of stored
+/// component (j...). Components are physical on orthogonal systems and
+/// natural otherwise.
+/// @param stored basis of the differentiated values
+/// @param system coordinate system of the derivatives
+/// @return the stored basis with one covariant index appended; the parity is
+///         the stored basis's
+/// @throws pcms_error if `system` is null, or if `stored` has rank above 0
+///         and `stored` and `system` are not one Cartesian system (the
+///         gradient of a rank-N field needs the coordinate system's
+///         connection)
+[[nodiscard]] inline ValueBasis GradientBasis(
+  const ValueBasis& stored, std::shared_ptr<const CoordinateSystem> system)
+{
+  if (system == nullptr) {
+    throw pcms_error("GradientBasis: derivatives require a coordinate system");
+  }
+  const ComponentScaling scaling = system->HasOrthogonalBasis()
+                                     ? ComponentScaling::Physical
+                                     : ComponentScaling::Natural;
+  if (stored.Rank() == 0) {
+    return ValueBasis{std::move(system), scaling, values::Covector,
+                      stored.parity};
+  }
+  const bool cartesian =
+    dynamic_cast<const csys::Cartesian*>(system.get()) != nullptr &&
+    SameCoordinateSystem(stored.system, system);
+  if (!cartesian) {
+    throw pcms_error("GradientBasis: the gradient of a rank-" +
+                     std::to_string(stored.Rank()) +
+                     " field needs the coordinate system's connection, which "
+                     "is not implemented");
+  }
+  return ValueBasis{std::move(system), scaling,
+                    stored.variance.WithCovariantIndexAppended(),
+                    stored.parity};
+}
 
 // view for field values that is tagged with the coordinate system
 template <typename ElementType, typename MemorySpace,

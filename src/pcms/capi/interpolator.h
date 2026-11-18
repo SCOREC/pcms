@@ -19,8 +19,16 @@ extern "C" {
 #endif
 
 /**
- * @brief Holds a void pointer of InterpolationBase object
- * @see InterpolationBase, MLSMeshInterpolation, MLSPointCloudInterpolation
+ * @note The `radius` of the creators below is, as it has always been, the
+ * square of the starting radius of the support search; the search starts from
+ * sqrt(radius), so the starting squared radius is `radius` up to the rounding
+ * of sqrt(radius)^2.
+ */
+
+/**
+ * @brief Holds a void pointer to an MLS interpolation: a
+ * polynomial reconstruction space field and its evaluator at the targets
+ * @see CreatePolynomialReconstructionSpace
  */
 struct PcmsInterpolatorHandle
 {
@@ -30,23 +38,25 @@ struct PcmsInterpolatorHandle
 /**
  * @brief Typedef for PcmsInterpolatorHandle struct
  * @copydetails PcmsInterpolatorHandle
- * @see PcmsInterpolatorHandle, InterpolationBase, MLSMeshInterpolation,
- * MLSPointCloudInterpolation
+ * @see PcmsInterpolatorHandle, CreatePolynomialReconstructionSpace
  */
 typedef struct PcmsInterpolatorHandle PcmsInterpolatorHandle;
 
 /**
  * @brief Create centroid to node interpolator
  * @param oh_mesh Omega_h mesh handle
- * @param radius Starting radius for support search
+ * @param radius Square of the starting radius of the support search
  * @return PcmsInterpolatorHandle Handle to the created interpolator
  *
  * @details Creates an interpolator that maps values from element centroids to
  * mesh nodes It uses MLS interpolation and uses the radius to start adaptive
  * support search.
  *
- * @note Uses default parameters of MLSMeshInterpolation.
- * @see MLSMeshInterpolation
+ * @note Uses degree 3, at least 10 supports, lambda 0 and decay factor 5.
+ * @note The mesh must be 2D and carry a "global" id tag on its vertices and
+ * faces; classification tags ("class_id", "class_dim") are added to it if it
+ * has none.
+ * @see CreatePolynomialReconstructionSpace
  */
 PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,
                                                 double radius);
@@ -61,7 +71,8 @@ PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,
  * target_points_size
  * @param target_points_size Size of target points array \f$
  * Number\ of\ target\ points \times 2 \f$
- * @param radius Starting radius for support search (always adaptive)
+ * @param radius Square of the starting radius of the support search (always
+ * adaptive)
  * @param degree Degree of the MLS basis functions
  * @param min_req_supports Minimum required supports for each target point
  * (maximum allowed supports is three times this value)
@@ -79,7 +90,7 @@ PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,
  * no longer needed after the interpolator is created as they are copied
  * internally.
  *
- * @see mls_interpolation, InterpolationBase, MLSPointCloudInterpolation
+ * @see mls_interpolation, CreatePolynomialReconstructionSpace
  */
 PcmsInterpolatorHandle pcms_create_point_based_interpolator(
   void* source_points, int source_points_size, void* target_points,
@@ -95,7 +106,8 @@ PcmsInterpolatorHandle pcms_create_point_based_interpolator(
  * Number\ of\ target\ points \times 2 \f$
  * @param dg2_mesh_filename C-string of Degas2 mesh filename (Omega_h (.osh)
  * format)
- * @param radius Starting radius for support search (always adaptive)
+ * @param radius Square of the starting radius of the support search (always
+ * adaptive)
  * @param dg2_elem_count Void pointer to integer to write the number of Degas2
  * elements
  * @param degree Degree of the MLS basis functions
@@ -124,7 +136,8 @@ PcmsInterpolatorHandle pcms_create_degas2xgcnode_interpolator(
  * source_points_size
  * @param source_points_size Size of source points array \f$
  * Number\ of\ source\ points \times 2 \f$
- * @param radius Starting radius for support search (always adaptive)
+ * @param radius Square of the starting radius of the support search (always
+ * adaptive)
  * @param dg2_elem_count Void pointer to integer to write the number of Degas2
  * elements
  * @param degree Degree of the MLS basis functions
@@ -170,7 +183,7 @@ void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator);
  * data and writes the results to the output data array.
  *
  * @see pcms_create_interpolator, pcms_create_point_based_interpolator,
- * mls_interpolation, InterpolationBase
+ * mls_interpolation
  */
 void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
                       int input_size, void* output, int output_size);

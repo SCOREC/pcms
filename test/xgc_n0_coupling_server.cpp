@@ -5,6 +5,7 @@
 #include "test_support.h"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/coupler/field_serializer.h"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/layout/omega_h_lagrange.h"
 #include "pcms/field/field.h"
@@ -43,7 +44,7 @@ struct RegisteredField
 
 [[nodiscard]] static RegisteredField AddField(
   pcms::ApplicationComm* application,
-  const std::shared_ptr<pcms::LagrangeFunctionSpace>& function_space,
+  const std::shared_ptr<pcms::FunctionSpace>& function_space,
   const std::string& name, const std::string& path, int plane)
 {
   PCMS_ALWAYS_ASSERT(application != nullptr);
@@ -216,9 +217,14 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       // return 0;
       return 1;
     });
-  auto function_space = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, 1, pcms::csys::Cartesian::Deferred(), is_overlap, numbering,
-    pcms::LagrangeFunctionSpace::Backend::OmegaH, "n0_layout");
+  auto geometry = pcms::CreateOmegaHGeometry(
+    mesh, pcms::csys::Cartesian::Deferred(),
+    pcms::OmegaHGeometryOptions{.global_id_name = numbering,
+                                .owned_mask = is_overlap});
+  auto function_space = pcms::CreateLagrangeSpace(
+    geometry, 1, 1,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH,
+                          .layout_name = "n0_layout"});
   auto time2 = std::chrono::steady_clock::now();
   elapsed_seconds = time2 - time1;
   ts::timeMinMaxAvg(elapsed_seconds.count(), min, max, avg);

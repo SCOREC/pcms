@@ -4,12 +4,10 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/field/evaluation_request.h>
 #include <pcms/field/function_space/lagrange.h>
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/field/coordinate_systems/cartesian.hpp>
 #include <pcms/field/layout/omega_h_lagrange.h>
-#include <pcms/field/transformed_source.hpp>
 #include <pcms/transfer/conservative_projection_solver.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_control_variate_projection.hpp>
@@ -31,22 +29,22 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator: sample points lie inside the domain",
   auto target_space = pcms::test::MakeP1Space(target_mesh);
 
   const int samples_per_element = 16;
-  for (const auto sampling : {pcms::MonteCarloSampling::UniformRandom}) {
-    pcms::OmegaHMonteCarloRHSIntegrator integrator(
-      *target_space, samples_per_element, sampling);
-    const auto raw_coords = integrator.GetIntegrationPoints().GetValues();
-    auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
+  pcms::OmegaHMonteCarloRHSIntegrator integrator(*target_space,
+                                                 samples_per_element);
+  const auto raw_coords = integrator.GetIntegrationPoints().GetValues();
+  auto coords_h = pcms::test::CopyCoordinatesToHost(raw_coords);
 
-    REQUIRE(
-      coords_h.extent(0) ==
-      static_cast<std::size_t>(target_mesh.nelems() * samples_per_element));
-    for (std::size_t i = 0; i < coords_h.extent(0); ++i) {
-      CAPTURE(i, coords_h(i, 0), coords_h(i, 1));
-      CHECK(coords_h(i, 0) >= -1e-12);
-      CHECK(coords_h(i, 0) <= 1.0 + 1e-12);
-      CHECK(coords_h(i, 1) >= -1e-12);
-      CHECK(coords_h(i, 1) <= 1.0 + 1e-12);
-    }
+  REQUIRE(coords_h.extent(0) ==
+          static_cast<std::size_t>(target_mesh.nelems() * samples_per_element));
+  // the samples are in the elements they were drawn in
+  pcms::test::CheckOwnersMatchSearch(integrator.GetIntegrationPoints(),
+                                     integrator.IntegrationPointOwners());
+  for (std::size_t i = 0; i < coords_h.extent(0); ++i) {
+    CAPTURE(i, coords_h(i, 0), coords_h(i, 1));
+    CHECK(coords_h(i, 0) >= -1e-12);
+    CHECK(coords_h(i, 0) <= 1.0 + 1e-12);
+    CHECK(coords_h(i, 1) >= -1e-12);
+    CHECK(coords_h(i, 1) <= 1.0 + 1e-12);
   }
 }
 
@@ -65,15 +63,12 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator: constant field integrates exactly",
   pcms::test::SetField(
     source_field, OMEGA_H_LAMBDA(pcms::Real, pcms::Real) { return 2.0; });
 
-  for (const auto sampling : {pcms::MonteCarloSampling::UniformRandom}) {
-    pcms::OmegaHMonteCarloRHSIntegrator integrator(*target_space, 8, sampling);
-    pcms::test::EvaluateAndAssemble(integrator, source_space, source_field);
+  pcms::OmegaHMonteCarloRHSIntegrator integrator(*target_space, 8);
+  pcms::test::EvaluateAndAssemble(integrator, source_space, source_field);
 
-    PetscScalar sum = 0.0;
-    VecSum(integrator.GetVector(), &sum);
-    INFO("sampling=" << "UniformRandom");
-    CHECK(static_cast<pcms::Real>(sum) == Catch::Approx(2.0).margin(1e-12));
-  }
+  PetscScalar sum = 0.0;
+  VecSum(integrator.GetVector(), &sum);
+  CHECK(static_cast<pcms::Real>(sum) == Catch::Approx(2.0).margin(1e-12));
 }
 
 // ---------------------------------------------------------------------------
@@ -105,9 +100,9 @@ TEST_CASE("OmegaHControlVariateProjection: exact for fields in the target "
     GENERATE(pcms::MassMatrixType::Consistent, pcms::MassMatrixType::Lumped);
   CAPTURE(static_cast<int>(mass_type));
 
-  pcms::OmegaHControlVariateProjection projection(
-    *source_space, *target_space, /*samples_per_element=*/4,
-    pcms::MonteCarloSampling::UniformRandom, /*seed=*/8675309, mass_type);
+  pcms::OmegaHControlVariateProjection projection(*source_space, *target_space,
+                                                  /*samples_per_element=*/4,
+                                                  /*seed=*/8675309, mass_type);
   projection.Apply(source_field, target_field);
 
   const auto values =
@@ -153,12 +148,10 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
   const uint64_t seed = 20240611;
 
   // Plain Monte Carlo projection.
-  pcms::OmegaHMonteCarloRHSIntegrator mc_integrator(
-    *target_space, samples_per_element, pcms::MonteCarloSampling::UniformRandom,
-    seed);
+  pcms::OmegaHMonteCarloRHSIntegrator mc_integrator(*target_space,
+                                                    samples_per_element, seed);
   auto evaluator = source_space->CreatePointEvaluator<pcms::Real>(
-    pcms::EvaluationRequest::FromCoordinates(
-      mc_integrator.GetIntegrationPoints()));
+    source_space->GetGeometry()->Bind(mc_integrator.GetIntegrationPoints()));
   pcms::OmegaHMassIntegrator mass_integrator(*target_space);
   pcms::GalerkinProjectionSolver solver(mass_integrator, mc_integrator);
   const auto mc_projected = solver.Solve(*evaluator, source_field);
@@ -167,8 +160,7 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
   // Control-variate projection with the same sampling configuration.
   auto cv_field = target_space->CreateFunction<pcms::Real>();
   pcms::OmegaHControlVariateProjection cv_projection(
-    *source_space, *target_space, samples_per_element,
-    pcms::MonteCarloSampling::UniformRandom, seed);
+    *source_space, *target_space, samples_per_element, seed);
   cv_projection.Apply(source_field, cv_field);
   const auto cv_values =
     pcms::FlattenToRank1View(cv_field.GetDOFHolderDataHost().GetValues());
@@ -197,9 +189,8 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator (3D): sample points lie inside the "
   auto target_space = pcms::test::MakeP1Space(target_mesh);
 
   const int samples_per_element = 16;
-  pcms::OmegaHMonteCarloRHSIntegrator integrator(
-    *target_space, samples_per_element,
-    pcms::MonteCarloSampling::UniformRandom);
+  pcms::OmegaHMonteCarloRHSIntegrator integrator(*target_space,
+                                                 samples_per_element);
 
   const auto raw_coords = integrator.GetIntegrationPoints().GetValues();
   REQUIRE(raw_coords.extent(1) == 3);
@@ -236,9 +227,8 @@ TEST_CASE("OmegaHMonteCarloRHSIntegrator (3D): constant field integrates "
     source_field,
     KOKKOS_LAMBDA(pcms::Real, pcms::Real, pcms::Real) { return 2.0; });
 
-  pcms::OmegaHMonteCarloRHSIntegrator integrator(
-    *target_space, /*samples_per_element=*/8,
-    pcms::MonteCarloSampling::UniformRandom);
+  pcms::OmegaHMonteCarloRHSIntegrator integrator(*target_space,
+                                                 /*samples_per_element=*/8);
 
   pcms::test::EvaluateAndAssemble(integrator, source_space, source_field);
 
@@ -272,19 +262,17 @@ TEST_CASE(
   const int nsample = 64;
   const uint64_t seed = 20240611;
 
-  pcms::OmegaHMonteCarloRHSIntegrator mc(
-    *target_space, nsample, pcms::MonteCarloSampling::UniformRandom, seed);
+  pcms::OmegaHMonteCarloRHSIntegrator mc(*target_space, nsample, seed);
   auto ev = source_space->CreatePointEvaluator<pcms::Real>(
-    pcms::EvaluationRequest::FromCoordinates(mc.GetIntegrationPoints()));
+    source_space->GetGeometry()->Bind(mc.GetIntegrationPoints()));
   pcms::OmegaHMassIntegrator mass(*target_space);
   pcms::GalerkinProjectionSolver solver(mass, mc);
   const auto mc_x = solver.Solve(*ev, source);
   const auto mc_h = Omega_h::HostRead<Omega_h::Real>(mc_x);
 
   auto cv_field = target_space->CreateFunction<pcms::Real>();
-  pcms::OmegaHControlVariateProjection cv(
-    *source_space, *target_space, nsample,
-    pcms::MonteCarloSampling::UniformRandom, seed);
+  pcms::OmegaHControlVariateProjection cv(*source_space, *target_space, nsample,
+                                          seed);
   cv.Apply(source, cv_field);
   const auto cv_vals =
     pcms::FlattenToRank1View(cv_field.GetDOFHolderDataHost().GetValues());
@@ -339,7 +327,7 @@ protected:
 
 } // namespace
 
-TEST_CASE("OmegaHControlVariateProjection over a TransformedSource maps the "
+TEST_CASE("OmegaHControlVariateProjection through a coordinate map maps the "
           "sample points",
           "[mc_rhs_integrator][control_variate]")
 {
@@ -355,11 +343,9 @@ TEST_CASE("OmegaHControlVariateProjection over a TransformedSource maps the "
     source_field,
     OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return 3.0 * x - y + 0.25; });
 
-  pcms::TransformedSource src_as_swapped(source_space,
-                                         std::make_shared<SwapXY>());
   pcms::OmegaHControlVariateProjection projection(
-    src_as_swapped, *target_space, /*samples_per_element=*/4,
-    pcms::MonteCarloSampling::UniformRandom);
+    *source_space, *target_space, /*samples_per_element=*/4, /*seed=*/8675309,
+    pcms::MassMatrixType::Consistent, std::make_shared<SwapXY>());
   projection.Apply(source_field, target_field);
 
   const auto values =

@@ -4,6 +4,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
 #include "pcms/transfer/copy.h"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.h"
@@ -20,9 +21,11 @@ void test_copy(Omega_h::CommPtr world, int dim, int order, int num_components)
 
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, nx, ny, nz, false);
-  auto factory = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, order, num_components, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto factory = pcms::CreateLagrangeSpace(
+    geometry, order, num_components,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
   auto layout = factory->GetLayout();
   int ndata = layout->GetNumDofHolder() * num_components;
   Omega_h::HostWrite<Real> ids(ndata);
@@ -59,8 +62,9 @@ TEST_CASE("copy omega_h_field2 data")
   test_copy(lib.world(), 2, 1, 1);
   auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 100,
                                  100, 0, false);
-  REQUIRE_THROWS_AS(pcms::LagrangeFunctionSpace::FromMesh(
-                      mesh, 2, 1, pcms::csys::Cartesian::Deferred(), "global",
-                      pcms::LagrangeFunctionSpace::Backend::OmegaH),
-                    pcms::pcms_error);
+  REQUIRE_THROWS_AS(
+    pcms::CreateLagrangeSpace(
+      pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred()), 2, 1,
+      pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH}),
+    pcms::pcms_error);
 }

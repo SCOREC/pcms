@@ -1,4 +1,5 @@
 #include "pcms/transfer/mesh_intersection.hpp"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/mesh_geometry.h"
 #include "pcms/utility/omega_h_array_utils.h"
@@ -7,30 +8,17 @@ namespace pcms
 {
 namespace
 {
-// Construct the source-mesh containing-element search appropriate to the
-// spatial dimension: a background grid sized so cells hold ~1 element.
+// For each target element, the source element containing or nearest its
+// centroid, where the BFS over the source dual graph starts. An outside
+// centroid does not imply that the target element has no overlap.
 template <int Dim>
-auto MakeGridPointSearch(Omega_h::Mesh& source_mesh)
-{
-  const auto n = pcms::DivisionsPerAxisForMesh<Dim>(source_mesh.nelems());
-  if constexpr (Dim == 3) {
-    return pcms::GridPointSearch3D(source_mesh, n, n, n);
-  } else {
-    return pcms::GridPointSearch2D(source_mesh, n, n);
-  }
-}
-
-// For each target element, the source element containing its centroid: where
-// the BFS over the source dual graph starts.
-template <int Dim>
-Kokkos::View<const LO*> LocateTargetCentroids(
-  Omega_h::Mesh& target_mesh, const PointLocalizationSearch<Dim>& source_search)
+Kokkos::View<const LO*, DeviceMemorySpace> LocateTargetCentroids(
+  Omega_h::Mesh& target_mesh, const OmegaHGeometry& source_geometry)
 {
   const auto flat_centroids = pcms::get_entity_centroids(target_mesh, Dim);
   // Convert layout_right 1D Omega_h array to 2D Kokkos view with correct layout
   auto centroids = ConvertCoordsTo2D(flat_centroids, target_mesh.nelems(), Dim);
-  auto results = source_search(centroids);
-  return source_search.GetOwningElementIds(results);
+  return source_geometry.FindElementSeeds(centroids);
 }
 } // namespace
 
@@ -67,8 +55,7 @@ void FindIntersections::adjBasedIntersectSearch(
       auto current_cell_id = start_elements(id);
       auto current_tgt_elm_measure = tgt_elem_measures[id];
 
-      // No source element is a candidate for the centroid's grid cell, so the
-      // target lies outside the source mesh and overlaps nothing.
+      // The point search supplied no seed for this centroid's grid cell.
       if (current_cell_id < 0) {
         nIntersections[id] = 0;
         return;
@@ -183,16 +170,15 @@ template void FindIntersections::adjBasedIntersectSearch<3>(
 namespace
 {
 template <int Dim>
-IntersectionResults intersectTargetsImpl(
-  Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
-  const PointLocalizationSearch<Dim>& source_search, bool use_prefilter)
+IntersectionResults intersectTargetsImpl(const OmegaHGeometry& source,
+                                         Omega_h::Mesh& target_mesh,
+                                         bool use_prefilter)
 {
-  FindIntersections intersect(source_mesh, target_mesh);
+  FindIntersections intersect(GetMesh(source), target_mesh);
 
   auto nelems_target = target_mesh.nelems();
 
-  const auto start_elements =
-    LocateTargetCentroids<Dim>(target_mesh, source_search);
+  const auto start_elements = LocateTargetCentroids<Dim>(target_mesh, source);
 
   Omega_h::Write<Omega_h::LO> nIntersections(
     nelems_target, 0, "number of intersections in each target element");
@@ -221,48 +207,19 @@ IntersectionResults intersectTargetsImpl(
           .tgt2src_indices = Omega_h::read(tgt2src_indices)};
 }
 
-template <int Dim>
-const PointLocalizationSearch<Dim>& RequireSearchDimension(
-  const GridPointSearchVariant& source_search)
-{
-  using SearchT =
-    std::conditional_t<Dim == 3, GridPointSearch3D, GridPointSearch2D>;
-  const auto* search = std::get_if<SearchT>(&source_search);
-  if (search == nullptr) {
-    throw pcms_error("intersectTargets: the supplied source search has a "
-                     "different spatial dimension than the meshes");
-  }
-  return *search;
-}
 } // namespace
 
-IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
+IntersectionResults intersectTargets(const OmegaHGeometry& source,
                                      Omega_h::Mesh& target_mesh,
                                      bool use_prefilter)
 {
-  OMEGA_H_CHECK(source_mesh.dim() == target_mesh.dim());
-  if (source_mesh.dim() == 3) {
-    const auto search = MakeGridPointSearch<3>(source_mesh);
-    return intersectTargetsImpl<3>(source_mesh, target_mesh, search,
-                                   use_prefilter);
+  if (GetMesh(source).dim() != target_mesh.dim()) {
+    throw pcms_error("intersectTargets: the source geometry's mesh and the "
+                     "target mesh differ in dimension");
   }
-  const auto search = MakeGridPointSearch<2>(source_mesh);
-  return intersectTargetsImpl<2>(source_mesh, target_mesh, search,
-                                 use_prefilter);
-}
-
-IntersectionResults intersectTargets(
-  Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
-  const GridPointSearchVariant& source_search, bool use_prefilter)
-{
-  OMEGA_H_CHECK(source_mesh.dim() == target_mesh.dim());
-  if (source_mesh.dim() == 3) {
-    return intersectTargetsImpl<3>(source_mesh, target_mesh,
-                                   RequireSearchDimension<3>(source_search),
-                                   use_prefilter);
+  if (target_mesh.dim() == 3) {
+    return intersectTargetsImpl<3>(source, target_mesh, use_prefilter);
   }
-  return intersectTargetsImpl<2>(source_mesh, target_mesh,
-                                 RequireSearchDimension<2>(source_search),
-                                 use_prefilter);
+  return intersectTargetsImpl<2>(source, target_mesh, use_prefilter);
 }
 } // namespace pcms

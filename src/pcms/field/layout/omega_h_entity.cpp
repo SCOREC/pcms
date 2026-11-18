@@ -48,29 +48,38 @@ Kokkos::View<bool*, DeviceMemorySpace> BuildOwned(Omega_h::Mesh& mesh,
   return owned;
 }
 
+Omega_h::Mesh& MeshOf(const std::shared_ptr<const OmegaHGeometry>& geometry)
+{
+  if (geometry == nullptr) {
+    throw pcms_error("OmegaHEntityLayout: the geometry must not be null");
+  }
+  return geometry->GetMesh();
+}
+
 } // namespace
 
 OmegaHEntityLayout::OmegaHEntityLayout(
-  Omega_h::Mesh& mesh, int entity_dim, int num_components,
-  std::shared_ptr<const CoordinateSystem> coordinate_system,
-  std::string global_id_name)
-  // dimension_ is the first member, so this runs before the class_ids_/
-  // class_dims_ initializers below read the mesh's classification tags.
-  : dimension_((EnsureClassification(mesh), mesh.dim())),
+  std::shared_ptr<const OmegaHGeometry> geometry, int entity_dim,
+  int num_components)
+  : mesh_(MeshOf(geometry)),
+    // dimension_ is the first member after mesh_, so this runs before the
+    // class_ids_/class_dims_ initializers below read the mesh's classification
+    // tags.
+    dimension_((EnsureClassification(mesh_), mesh_.dim())),
     entity_dim_(entity_dim),
     num_components_(num_components),
-    num_global_dof_holder_(mesh.nglobal_ents(entity_dim)),
-    gids_(BuildGids(mesh, entity_dim, global_id_name)),
-    coords_(get_entity_centroids(mesh, entity_dim)),
-    coords_2d_(ConvertCoordsTo2D(coords_, mesh.nents(entity_dim), mesh.dim())),
-    class_ids_(mesh.get_array<Omega_h::ClassId>(entity_dim, "class_id")),
-    class_dims_(mesh.get_array<Omega_h::I8>(entity_dim, "class_dim")),
-    owned_(BuildOwned(mesh, entity_dim)),
-    owned_host_("owned_host", owned_.size()),
-    discretization_(std::make_shared<OmegaHDiscretization>(mesh))
+    num_global_dof_holder_(mesh_.nglobal_ents(entity_dim)),
+    gids_(BuildGids(mesh_, entity_dim, geometry->GetGlobalIdName())),
+    coords_(get_entity_centroids(mesh_, entity_dim)),
+    coords_2d_(
+      ConvertCoordsTo2D(coords_, mesh_.nents(entity_dim), mesh_.dim())),
+    class_ids_(mesh_.get_array<Omega_h::ClassId>(entity_dim, "class_id")),
+    class_dims_(mesh_.get_array<Omega_h::I8>(entity_dim, "class_dim")),
+    owned_(BuildOwned(mesh_, entity_dim)),
+    owned_host_("owned_host", owned_.size())
 {
-  SetCoordinateSystem(
-    ResolveCoordinateSystem(std::move(coordinate_system), dimension_));
+  SetCoordinateSystem(geometry->GetCoordinateSystem());
+  SetGeometry(std::move(geometry));
   PCMS_ALWAYS_ASSERT(entity_dim_ >= 0 && entity_dim_ <= dimension_);
 
   Kokkos::deep_copy(owned_host_, owned_);
@@ -79,12 +88,6 @@ OmegaHEntityLayout::OmegaHEntityLayout(
   class_dims_ = Omega_h::Read<Omega_h::I8>(class_dims_);
   class_ids_ = Omega_h::Read<Omega_h::ClassId>(class_ids_);
   BuildOwnedClassification();
-}
-
-std::shared_ptr<const Discretization> OmegaHEntityLayout::GetDiscretization()
-  const noexcept
-{
-  return discretization_;
 }
 
 int OmegaHEntityLayout::GetNumComponents() const

@@ -133,10 +133,12 @@ mask_value = mask_data[vertex_id, 0]  # Returns 0.0 or 1.0
 #### Option A: Create Field Programmatically
 
 ```python
-# Create a concrete FunctionSpace with linear (order=1) elements and
+# Create the mesh's geometry (its coordinate system and point search) once,
+# then a FunctionSpace on it with linear (order=1) elements and
 # 1 component (scalar)
-omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
-    mesh,
+geometry = pcms.create_omega_h_geometry(mesh)
+omega_h_factory = pcms.create_lagrange_space(
+    geometry,
     1,
     1,
 )
@@ -171,8 +173,9 @@ face_field = mesh.get_tag(face_dim, face_tag.name())
 vertex_field = pcms.map_entity_field_to_vertices_average(mesh, face_field, face_dim)
 
 # Create vertex-based field and set data
-omega_h_factory = pcms.LagrangeFunctionSpace.from_mesh(
-    mesh, 1, 1)
+geometry = pcms.create_omega_h_geometry(mesh)
+omega_h_factory = pcms.create_lagrange_space(
+    geometry, 1, 1)
 omega_h_field = omega_h_factory.create_function()
 omega_h_field.set_dof_holder_data(vertex_field)
 
@@ -185,9 +188,12 @@ omega_h_field.set_dof_holder_data(vertex_field)
 Set up the data structure for storing field values on the uniform grid vertices.
 
 ```python
-# Create a uniform-grid FunctionSpace
-ug_factory = pcms.LagrangeFunctionSpace.from_uniform_grid(
-    grid,
+# Create a uniform-grid FunctionSpace: the grid's geometry, then a space of
+# linear (order=1) elements on it
+ug_geometry = pcms.create_uniform_grid_geometry(grid)
+ug_factory = pcms.create_lagrange_space(
+    ug_geometry,
+    1,                                      # Order
     1,                                      # Number of components
 )
 ug_field = ug_factory.create_function()
@@ -261,10 +267,13 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 - `ValueView(basis, values)` - values `(num_points, num_components)` tagged with their basis; the array is not copied
 
 ### Field Factories
-- `FunctionSpace` - abstract base class for field spaces; a `PointEvaluatorFactory`
-- `LagrangeFunctionSpace.from_mesh(mesh, order, num_components, mesh_coordinate_system)` - create an Omega_h-backed FunctionSpace
-- `LagrangeFunctionSpace.from_uniform_grid(grid, num_components, mesh_coordinate_system, order=1)` - create a uniform-grid-backed FunctionSpace
-- `PolynomialReconstructionFunctionSpace.create(coordinate_view, options)` - MLS reconstruction over a point cloud
+- `FunctionSpace` - a field space: its layout and evaluator source; a `PointEvaluatorFactory`
+- `create_omega_h_geometry(mesh, system=None, divisions=0, global_id_name="global", owned_mask=None)` - the geometry of an Omega_h mesh (coordinate system, point search, global id tag and a per-vertex ownership override), shared by the spaces on it
+- `create_uniform_grid_geometry(grid, system=None)` - the geometry of a 2D or 3D uniform grid
+- `create_point_cloud_geometry(coordinate_view, neighbourhood)` - the geometry of a point cloud, whose supports are found with `NeighbourhoodOptions`
+- `create_lagrange_space(geometry, order, num_components, backend=default, layout_name="")` - a Lagrange `FunctionSpace` on an Omega_h or uniform-grid geometry; `LagrangeBackend.MeshFields` or `LagrangeBackend.OmegaH`
+- `create_spline_space(geometry)` - a bicubic spline `FunctionSpace` on a 2D uniform-grid geometry
+- `create_polynomial_reconstruction_space(geometry, options)` - MLS reconstruction (`MLSOptions`) on a point-cloud geometry
 
 ### Field Operations
 - `space.create_function(name="", variance=values.Scalar, system=None, scaling=None)` - Create a real-valued `Function`; vector and tensor values are in `system`'s basis (default: the space's)
@@ -276,11 +285,17 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 - `field.get_dof_holder_data()` - Field values as a `ValueView` whose array (`.get_values()`, shape `(num_dof_holders, num_components)`) is read-only and valid until the field is next modified (use `.copy()` to keep values)
 - `field.set_dof_holder_data(value_view)` - Set field values; the basis must match the field's. Scalar fields also accept a plain array, of shape `(num_dof_holders,)` when the field has one component
 - `field.set_dof_holder_data_unchecked(data)` - Set field values without checking their basis
-- `EvaluationRequest.from_coordinates(coordinate_view, policy=...)` - Build an explicit coordinate-based evaluation request
-- `EvaluationRequest.from_function_space(space, policy=...)` - Build an evaluation request from another FunctionSpace's DOF-holder sites
-- `factory.create_point_evaluator(request)` - Create a reusable point evaluator; the request's points must be in `factory.get_coordinate_system()`
+- `geometry = factory.get_geometry()` - The `Geometry` (coordinates and point search) whose bound sources a `PointEvaluatorFactory` accepts; every space on one geometry accepts the same bound sources
+- `bound = geometry.bind(coordinate_view, policy=...)` - Localize query points (in `geometry.get_coordinate_system()`); the search is done once here
+- `bound = geometry.bind(space, policy=...)` - Localize another FunctionSpace's DOF-holder coordinates
+- `create_omega_h_geometry(mesh, system=None, divisions=0)`, `create_lagrange_space(geometry, order, num_components)` - Several spaces on one mesh geometry, sharing one search and one bind
+- `bound.found_points()`, `bound.missing_points()` - indices of the query points the source evaluates / does not evaluate
+- `factory.create_point_evaluator(bound, op=DifferentialOperator.Value)` - Create an evaluator at the bound points that applies `op`; `DifferentialOperator.Gradient` evaluates the gradient
+- `factory.supports(op)` - Whether `create_point_evaluator` accepts the `DifferentialOperator` `op`
+- `gradient(source)`, `divergence(source)`, `curl(source)` - A source whose evaluators write the gradient (divergence, curl) of the field they are given
 - `evaluator.evaluate(field, output)` - Evaluate into a `ValueView` tagged `evaluator.output_basis(field.get_data().get_value_basis())` (a plain array for scalar fields, of shape `(num_points,)` when the output has one component); the output array must be writeable, C-contiguous float64
 - `Interpolator(source, target_space)` - Create an interpolator from a `PointEvaluatorFactory` (cached localization)
+- `Interpolator(source, target_space, bound)` - Create an interpolator that reuses a bound source, e.g. to interpolate a field and `gradient(source)` over one localization
 - `operator.apply(source_field, target_field)` - Apply any `TransferOperator` (`Interpolator`, `Copy`, projections)
 - `Copy(source_space, target_space)` - Create a copy operator for compatible FunctionSpaces
 - `map_entity_field_to_vertices_average(mesh, field_data, entity_dim)` - Convert element/face field to vertex field by averaging
@@ -289,7 +304,7 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 - `CartesianToCylindrical()`, `CylindricalToCartesian()` - `CoordinateMap`s; points map source to target, values are re-expressed the other way
 - `bound = coordinate_map.bind(coordinate_view)` - per-point work for points in the map's source system
 - `bound.mapped_points()`, `bound.output_basis(basis)`, `bound.transform_values(value_view)` - mapped points, and in-place re-expression of values
-- `TransformedSource(source, to_source)` - presents a `PointEvaluatorFactory` in another coordinate system; use it as an `Interpolator` source
+- `geometry.bind(coordinate_view, policy, map)` / `geometry.bind(space, policy, map)` - bind points given in another coordinate system: `map` takes them to `geometry.get_coordinate_system()`, the points are located at their images, and evaluators created from the result re-express their values through the bound map; pass the result to `Interpolator(source, target_space, bound)` to transfer across coordinate systems
 
 ### Out-of-Bounds Modes
 - `OutOfBoundsMode.ERROR` - Raise error when points are outside mesh

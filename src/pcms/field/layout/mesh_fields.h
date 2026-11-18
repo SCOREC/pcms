@@ -4,7 +4,7 @@
 #include <Omega_h_mesh.hpp>
 
 #include "pcms/utility/arrays.h"
-#include "pcms/discretization/discretization/omega_h.hpp"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/field_layout.h"
 #include "pcms/field/field.h"
 
@@ -15,13 +15,12 @@ namespace pcms
 class MeshFieldsAdapterLayout : public FieldLayout
 {
 public:
-  MeshFieldsAdapterLayout(
-    Omega_h::Mesh& mesh, std::array<int, 4> nodes_per_dim, int num_components,
-    std::shared_ptr<const CoordinateSystem> coordinate_system,
-    std::string global_id_name = "global");
-
-  std::shared_ptr<const Discretization> GetDiscretization()
-    const noexcept override;
+  /// The layout is on `geometry`, whose mesh it lays out, and takes its
+  /// coordinate system and its global id tag name; it does not apply an owned
+  /// mask.
+  /// @throws pcms_error if `geometry` is null
+  MeshFieldsAdapterLayout(std::shared_ptr<const OmegaHGeometry> geometry,
+                          std::array<int, 4> nodes_per_dim, int num_components);
 
   int GetNumComponents() const override;
   // nodes for standard lagrange FEM
@@ -61,7 +60,6 @@ private:
 
   Omega_h::Mesh& mesh_;
   Omega_h::Write<Omega_h::GO> gids_;
-  std::string global_id_name_;
   int num_components_;
   std::array<int, 4> nodes_per_dim_;
   Kokkos::View<Real**> dof_holder_coords_;
@@ -85,8 +83,6 @@ private:
   void BuildOwnedViews();
   // Requires the owned views and the classification arrays with ghosts.
   void BuildOwnedClassification();
-
-  std::shared_ptr<const Discretization> discretization_;
 };
 
 } // namespace pcms

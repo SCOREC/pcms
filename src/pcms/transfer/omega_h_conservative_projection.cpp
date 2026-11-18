@@ -1,6 +1,7 @@
 #include "pcms/transfer/omega_h_conservative_projection.hpp"
 #include "pcms/transfer/conservative_projection_solver.hpp"
 #include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
+#include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/omega_h_mass_integrator.hpp"
 #include "pcms/utility/arrays.h"
 #include <Omega_h_array.hpp>
@@ -37,24 +38,30 @@ void CheckApplyCompatible(const Field<Real>& source, const Field<Real>& target,
 OmegaHConservativeProjection::OmegaHConservativeProjection(
   const FunctionSpace& source_space, const FunctionSpace& target_space,
   MassMatrixType mass_matrix_type)
-  : source_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
-      source_space.GetLayout())),
-    target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
-      target_space.GetLayout()))
+  : source_layout_(
+      detail::ResolveOmegaHScalarSpace(source_space, 0, 1,
+                                       "OmegaHConservativeProjection", "source")
+        .layout),
+    target_layout_(
+      detail::ResolveOmegaHScalarSpace(target_space, 0, 1,
+                                       "OmegaHConservativeProjection", "target")
+        .layout)
 {
   // The space-based constructor lets the integrator reuse the source space's
   // point search for the intersection instead of building another.
   rhs_integrator_ = std::make_unique<OmegaHIntersectionRHSIntegrator>(
     source_space, target_space);
 
+  // The integration points are generated in source elements, so binding them
+  // needs no search.
   evaluator_ =
-    source_space.CreatePointEvaluator<Real>(EvaluationRequest::FromCoordinates(
-      rhs_integrator_->GetIntegrationPoints()));
+    source_space.CreatePointEvaluator<Real>(source_space.GetGeometry()->Bind(
+      rhs_integrator_->GetIntegrationPoints(),
+      rhs_integrator_->IntegrationPointOwners()));
 
   // Mass integrator is only needed to build the solver; PETSc reference-counts
   // the matrix so it remains alive inside the KSP after this scope ends.
-  OmegaHMassIntegrator mass_integrator(
-    target_layout_, target_space.GetCoordinateSystem(), mass_matrix_type);
+  OmegaHMassIntegrator mass_integrator(target_space, mass_matrix_type);
   solver_ = std::make_unique<GalerkinProjectionSolver>(mass_integrator,
                                                        *rhs_integrator_);
   target_values_ = Kokkos::View<Real**, DeviceMemorySpace>(

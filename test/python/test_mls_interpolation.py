@@ -1,8 +1,10 @@
 """
-Tests for MLS-backed PolynomialReconstructionFunctionSpace.
+Tests for MLS-backed polynomial reconstruction spaces.
 """
 
 import numpy as np
+import PyOmega_h as omega_h
+import pytest
 import pcms
 
 
@@ -54,18 +56,19 @@ class TestMLSInterpolation:
         for interp_degree in range(1, 4):
             opts = pcms.MLSOptions()
             opts.degree = interp_degree
-            opts.radius = 1.5
-            opts.adapt_radius = False
             opts.basis = pcms.RadialBasisFunction.NO_OP
+            neighbourhood = pcms.NeighbourhoodOptions()
+            neighbourhood.radius = 1.5
+            neighbourhood.adapt_radius = False
 
-            factory = pcms.PolynomialReconstructionFunctionSpace.create(
-                pcms.CoordinateView(source_xy),
+            factory = pcms.create_polynomial_reconstruction_space(
+                pcms.create_point_cloud_geometry(
+                    pcms.CoordinateView(source_xy), neighbourhood),
                 opts,
             )
             field = factory.create_function()
-            request = pcms.EvaluationRequest.from_coordinates(
-            pcms.CoordinateView(target_xy))
-            evaluator = factory.create_point_evaluator(request)
+            evaluator = factory.create_point_evaluator(
+                factory.get_geometry().bind(pcms.CoordinateView(target_xy)))
             results = np.zeros((num_targets, 1), dtype=np.float64)
 
             for func_degree in range(interp_degree, -1, -1):
@@ -89,3 +92,57 @@ class TestMLSInterpolation:
                     f"MLS failed for interp_degree={interp_degree}, "
                     f"func_degree={func_degree}: max_abs_err={max_abs_err}"
                 )
+
+
+class TestMLSOnMeshEntities:
+    """MLS reconstruction from the entities of an Omega_h mesh."""
+
+    def test_element_centroids_to_vertices(self, world):
+        """
+        Reconstruct a linear function from the element centroids of a box
+        mesh at its vertices; the supports come from the mesh adjacency.
+        """
+        mesh = omega_h.build_box(
+            world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
+        face_dim = 2
+        mesh_geometry = pcms.create_omega_h_geometry(mesh)
+        geometry = pcms.create_point_cloud_geometry(mesh_geometry, face_dim)
+        opts = pcms.MLSOptions()
+        opts.degree = 1
+        opts.basis = pcms.RadialBasisFunction.NO_OP
+        space = pcms.create_polynomial_reconstruction_space(geometry, opts)
+
+        centroids = space.get_layout().get_dof_holder_coordinates().get_values()
+        assert centroids.shape == (32, 2)
+        field = space.create_function()
+        field.set_dof_holder_data(
+            (1.0 + 2.0 * centroids[:, 0] - 3.0 * centroids[:, 1]).reshape(-1, 1))
+
+        # a space on the same geometry object: binding the cloud at its DOF
+        # holders forwards the hints of that geometry to the mesh search
+        vertex_space = pcms.create_lagrange_space(mesh_geometry, 1, 1)
+        vertices = np.array(
+            vertex_space.get_layout().get_dof_holder_coordinates().get_values())
+        evaluator = space.create_point_evaluator(geometry.bind(vertex_space))
+        results = np.zeros((vertices.shape[0], 1), dtype=np.float64)
+        evaluator.evaluate(field, results)
+
+        np.testing.assert_allclose(
+            results[:, 0], 1.0 + 2.0 * vertices[:, 0] - 3.0 * vertices[:, 1],
+            atol=1e-4)
+
+    def test_entity_dim_out_of_range(self, world):
+        mesh = omega_h.build_box(
+            world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 2, 2, 0, False)
+        with pytest.raises(ValueError):
+            pcms.create_point_cloud_geometry(
+                pcms.create_omega_h_geometry(mesh), 3)
+
+    def test_geometry_must_be_an_omega_h_geometry(self):
+        grid = pcms.UniformGrid2D()
+        grid.bot_left = [0.0, 0.0]
+        grid.edge_length = [1.0, 1.0]
+        grid.divisions = [2, 2]
+        with pytest.raises(ValueError, match="Omega_h geometry"):
+            pcms.create_point_cloud_geometry(
+                pcms.create_uniform_grid_geometry(grid), 0)

@@ -3,20 +3,69 @@
 //
 #include <pcms/capi/kokkos.h>
 #include <pcms/capi/interpolator.h>
-#include <pcms/transfer/interpolation_base.h>
+#include <pcms/field/coordinate_systems/cartesian.hpp>
+#include <pcms/field/evaluator/point_cloud_geometry.hpp>
+#include <pcms/field/function_space/polynomial_reconstruction.hpp>
+#include <pcms/field/point_evaluator.h>
+#include <pcms/field/layout/omega_h_entity.h>
+#include <pcms/utility/arrays.h>
+#include <pcms/utility/entity_types.h>
+#include <pcms/utility/mesh_geometry.h>
+#include <pcms/utility/print.h>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/utility/mesh_geometry.h>
-#include <pcms/utility/print.h>
+#include <cmath>
+#include <memory>
+
+namespace
+{
+
+/// What a PcmsInterpolatorHandle points to: a function on the source sites,
+/// which pcms_interpolate fills from its input, and its MLS evaluator at the
+/// target points.
+struct MLSInterpolation
+{
+  pcms::Function<pcms::Real> source;
+  std::unique_ptr<pcms::PointEvaluator<pcms::Real>> evaluator;
+};
+
+/// The support search of the C API: `radius` is the squared starting radius
+/// (what this API has always taken), and the radius always adapts.
+pcms::NeighbourhoodOptions Supports(double radius, int min_req_supports)
+{
+  return {.radius = std::sqrt(radius), .min_supports = min_req_supports};
+}
+
+PcmsInterpolatorHandle MakeHandle(
+  const pcms::FunctionSpace& space,
+  std::shared_ptr<const pcms::BoundSource> bound)
+{
+  return {new MLSInterpolation{
+    space.CreateFunction<pcms::Real>(),
+    space.CreatePointEvaluator<pcms::Real>(std::move(bound))}};
+}
+
+} // namespace
 
 //[[nodiscard]]
 PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,
                                                 double radius)
 {
-  auto* source_mesh = reinterpret_cast<Omega_h::Mesh*>(oh_mesh.mesh_handle);
-  auto* interpolator = new pcms::MLSMeshInterpolation(*source_mesh, radius);
-  return {reinterpret_cast<void*>(interpolator)};
+  auto& mesh = *reinterpret_cast<Omega_h::Mesh*>(oh_mesh.mesh_handle);
+  OMEGA_H_CHECK_PRINTF(
+    mesh.dim() == 2, "Only 2D meshes are supported but found %d\n", mesh.dim());
+  const auto mesh_geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Create(2));
+  auto space =
+    pcms::CreatePolynomialReconstructionSpace(pcms::CreatePointCloudGeometry(
+      std::make_shared<pcms::OmegaHEntityLayout>(mesh_geometry, pcms::Face, 1),
+      Supports(radius, 10)));
+  // the vertices of the same mesh, whose supports follow from its adjacency
+  const pcms::OmegaHEntityLayout vertices(mesh_geometry, pcms::Vertex, 1);
+  return MakeHandle(
+    *space, space->GetGeometry()->Bind(vertices.GetDOFHolderCoordinates(),
+                                       pcms::DOFHolderOwners(vertices)));
 }
 
 PcmsInterpolatorHandle pcms_create_point_based_interpolator(
@@ -24,17 +73,28 @@ PcmsInterpolatorHandle pcms_create_point_based_interpolator(
   int target_points_size, double radius, int degree, int min_req_supports,
   double lambda, double decay_factor)
 {
-
-  auto source_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
-    reinterpret_cast<double*>(source_points), source_points_size);
-  auto target_points_view = pcms::Rank1View<double, pcms::HostMemorySpace>(
-    reinterpret_cast<double*>(target_points), target_points_size);
-  auto* interpolator = new pcms::MLSPointCloudInterpolation(
-    source_points_view, target_points_view, 2, radius, min_req_supports, degree,
-    true, lambda, decay_factor);
-  return {reinterpret_cast<void*>(interpolator)};
+  const auto system = pcms::csys::Cartesian::Create(2);
+  auto space = pcms::CreatePolynomialReconstructionSpace(
+    pcms::CreatePointCloudGeometry(
+      pcms::CoordinateView<pcms::HostMemorySpace>(
+        system, pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
+                  static_cast<const pcms::Real*>(source_points),
+                  source_points_size / 2, 2)),
+      Supports(radius, min_req_supports)),
+    {.degree = static_cast<unsigned>(degree),
+     .lambda = lambda,
+     .decay_factor = decay_factor});
+  const Kokkos::View<const pcms::Real**, Kokkos::LayoutRight,
+                     pcms::HostMemorySpace, Kokkos::MemoryUnmanaged>
+    targets_host(static_cast<const pcms::Real*>(target_points),
+                 target_points_size / 2, 2);
+  Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> targets(
+    "pcms_interpolator_targets", targets_host.extent(0), 2);
+  pcms::DeepCopyMismatchLayouts(targets, targets_host);
+  return MakeHandle(*space, space->GetGeometry()->Bind(
+                              pcms::CoordinateView<pcms::DeviceMemorySpace>(
+                                system, pcms::MakeConstRank2View(targets))));
 }
-
 Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
                                                      int& num_elements)
 {
@@ -106,30 +166,36 @@ PcmsInterpolatorHandle pcms_create_xgcnodedegas2_interpolator(
 
 void pcms_destroy_interpolator(PcmsInterpolatorHandle interpolator)
 {
-  if (interpolator.pointer != nullptr) {
-    delete reinterpret_cast<pcms::InterpolationBase*>(interpolator.pointer);
-  }
+  delete static_cast<MLSInterpolation*>(interpolator.pointer);
 }
 
 void pcms_interpolate(PcmsInterpolatorHandle interpolator, void* input,
                       int input_size, void* output, int output_size)
 {
-  auto* mls_interpolator =
-    reinterpret_cast<pcms::InterpolationBase*>(interpolator.pointer);
-
+  auto& mls = *static_cast<MLSInterpolation*>(interpolator.pointer);
+  const pcms::LO num_sources = mls.source.GetLayout().GetNumDofHolder();
+  const pcms::LO num_targets = mls.evaluator->NumPoints();
   OMEGA_H_CHECK_PRINTF(
-    input_size == mls_interpolator->getSourceSize(),
-    "Input array size does not match the source size %d != %zu\n", input_size,
-    mls_interpolator->getSourceSize());
+    input_size == num_sources,
+    "Input array size does not match the source size %d != %d\n", input_size,
+    num_sources);
   OMEGA_H_CHECK_PRINTF(
-    output_size == mls_interpolator->getTargetSize(),
-    "Output array size does not match the target size %d != %zu\n", output_size,
-    mls_interpolator->getTargetSize());
+    output_size == num_targets,
+    "Output array size does not match the target size %d != %d\n", output_size,
+    num_targets);
 
-  pcms::Rank1View<double, pcms::HostMemorySpace> input_array(
-    reinterpret_cast<double*>(input), input_size);
-  pcms::Rank1View<double, pcms::HostMemorySpace> output_array(
-    reinterpret_cast<double*>(output), output_size);
-
-  mls_interpolator->eval(input_array, output_array);
+  const pcms::ValueBasis& basis = mls.source.GetData().GetValueBasis();
+  mls.source.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      basis, pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
+               static_cast<const pcms::Real*>(input), input_size, 1)));
+  Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> values(
+    "pcms_interpolate_values", output_size, 1);
+  mls.evaluator->Evaluate(mls.source,
+                          pcms::ValueView<pcms::Real, pcms::DeviceMemorySpace>(
+                            basis, pcms::MakeRank2View(values)));
+  Kokkos::View<pcms::Real**, Kokkos::LayoutRight, pcms::HostMemorySpace,
+               Kokkos::MemoryUnmanaged>
+    output_values(static_cast<pcms::Real*>(output), output_size, 1);
+  pcms::DeepCopyMismatchLayouts(output_values, values);
 }

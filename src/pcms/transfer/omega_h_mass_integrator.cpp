@@ -4,6 +4,8 @@
 #include "pcms/transfer/petsc_utils.hpp"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/memory_spaces.h"
+#include "pcms/utility/mesh_geometry.h"
+#include "pcms/utility/omega_h_array_utils.h"
 #include <KokkosController.hpp>
 #include <MeshField.hpp>
 #include <MeshField_Element.hpp>
@@ -17,24 +19,10 @@ namespace pcms
 namespace
 {
 
-// Measure (area in 2D, volume in 3D) of a simplex from its vertex-difference
-// basis.
-template <int Dim>
-KOKKOS_INLINE_FUNCTION Omega_h::Real SimplexMeasure(
-  const Omega_h::Few<Omega_h::Vector<Dim>, Dim>& basis)
-{
-  if constexpr (Dim == 3) {
-    return Kokkos::fabs(Omega_h::tet_volume_from_basis(basis));
-  } else {
-    return Kokkos::fabs(Omega_h::triangle_area_from_basis(basis));
-  }
-}
-
 // Fills the diagonal COO entries of a P0 (piecewise-constant) mass matrix: one
 // entry per element on its own DOF, valued at the element measure.
-template <int Dim>
 void FillP0MassCoo(
-  int nelems, const Omega_h::Reals& coords, const Omega_h::LOs& elems2nodes,
+  int nelems, const Kokkos::View<const Real*, DeviceMemorySpace>& measures,
   const Kokkos::View<const LO*, DeviceMemorySpace>& global_to_local,
   const Kokkos::View<PetscInt*, DeviceMemorySpace>& coo_rows,
   const Kokkos::View<PetscInt*, DeviceMemorySpace>& coo_cols,
@@ -42,18 +30,10 @@ void FillP0MassCoo(
 {
   Kokkos::parallel_for(
     "mass_p0_diag", nelems, KOKKOS_LAMBDA(int e) {
-      const auto verts = Omega_h::gather_verts<Dim + 1>(elems2nodes, e);
-      const Omega_h::Matrix<Dim, Dim + 1> vm =
-        Omega_h::gather_vectors<Dim + 1, Dim>(coords, verts);
-      Omega_h::Few<Omega_h::Vector<Dim>, Dim> basis;
-      for (int d = 0; d < Dim; ++d) {
-        basis[d] = vm[d + 1] - vm[0];
-      }
-      const Omega_h::Real measure = SimplexMeasure<Dim>(basis);
       const PetscInt g = static_cast<PetscInt>(global_to_local(e));
       coo_rows(e) = g;
       coo_cols(e) = g;
-      vals(e) = static_cast<PetscScalar>(measure);
+      vals(e) = static_cast<PetscScalar>(measures(e));
     });
 }
 
@@ -87,9 +67,11 @@ void FillP1MassCooPattern(
 
 // Assembles the target-space mass matrix for spatial dimension Dim (triangles
 // for Dim==2, tetrahedra for Dim==3) and returns the owned PETSc matrix.
+// `geometry` (the target space's) gives the element measures of a P0 target.
 template <int Dim>
 Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
                               const OmegaHLagrangeLayout& target_layout,
+                              const Geometry& geometry,
                               MassMatrixType mass_type)
 {
   const auto global_to_local = target_layout.GetGlobalToLocalPermutation();
@@ -101,16 +83,27 @@ Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
   if (target_layout.GetOrder() == 0) {
     // P0 target: piecewise-constant basis functions have disjoint support, so
     // the mass matrix is diagonal with M_ee = measure(e). One COO entry per
-    // element on its own (element-id) diagonal.
-    const auto& coords = mesh.coords();
-    const auto& elems2nodes = mesh.ask_down(Dim, Omega_h::VERT).ab2b;
+    // element on its own (element-id) diagonal. The measures come from the
+    // differential at the element centroids (the one-point rule, exact here),
+    // bound in their elements.
+    Kokkos::View<LO*, DeviceMemorySpace> elements(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "mass_p0_elements"),
+      nelems);
+    iota_view<LO>(elements);
+    const auto centroids =
+      ConvertCoordsTo2D(get_entity_centroids(mesh, Dim), nelems, Dim);
+    const auto measures = detail::ElementMeasuresAtPoints(
+      geometry,
+      CoordinateView<DeviceMemorySpace>(geometry.GetCoordinateSystem(),
+                                        MakeConstRank2View(centroids)),
+      OwnerHints{geometry.shared_from_this(), Dim, elements},
+      "OmegaHMassIntegrator");
 
     const PetscInt nnz = static_cast<PetscInt>(nelems);
     Kokkos::View<PetscInt*, DeviceMemorySpace> coo_rows("mass_coo_rows", nnz);
     Kokkos::View<PetscInt*, DeviceMemorySpace> coo_cols("mass_coo_cols", nnz);
     Kokkos::View<PetscScalar*, DeviceMemorySpace> vals("mass_vals", nnz);
-    FillP0MassCoo<Dim>(nelems, coords, elems2nodes, global_to_local, coo_rows,
-                       coo_cols, vals);
+    FillP0MassCoo(nelems, measures, global_to_local, coo_rows, coo_cols, vals);
 
     PetscErrorCode ierr =
       createSeqAIJMat(PETSC_COMM_SELF, num_dofs, num_dofs, 0, nullptr, &mat);
@@ -174,32 +167,27 @@ Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
   return mat;
 }
 
+Mat BuildOmegaHMassMatrix(const OmegaHLagrangeLayout& target_layout,
+                          const Geometry& geometry, MassMatrixType mass_type)
+{
+  Omega_h::Mesh& mesh = GetMesh(geometry);
+  if (mesh.dim() == 3) {
+    return BuildOmegaHMassMatrixImpl<3>(mesh, target_layout, geometry,
+                                        mass_type);
+  }
+  return BuildOmegaHMassMatrixImpl<2>(mesh, target_layout, geometry, mass_type);
+}
+
 } // namespace
 
 OmegaHMassIntegrator::OmegaHMassIntegrator(const FunctionSpace& target_space,
                                            MassMatrixType mass_type)
-  : OmegaHMassIntegrator(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
-                           target_space.GetLayout()),
-                         target_space.GetCoordinateSystem(), mass_type)
 {
-}
-
-OmegaHMassIntegrator::OmegaHMassIntegrator(
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout,
-  std::shared_ptr<const CoordinateSystem> coordinate_system,
-  MassMatrixType mass_type)
-{
-  detail::CheckOmegaHScalarLagrangeLayout(coordinate_system, target_layout,
-                                          "OmegaHMassIntegrator", "target");
-
-  Omega_h::Mesh& mesh = target_layout->GetMesh();
+  const auto [target_layout, geometry] = detail::ResolveOmegaHScalarSpace(
+    target_space, 0, 1, "OmegaHMassIntegrator", "target");
   diagonal_ =
     target_layout->GetOrder() == 0 || mass_type == MassMatrixType::Lumped;
-  if (mesh.dim() == 3) {
-    mat_ = BuildOmegaHMassMatrixImpl<3>(mesh, *target_layout, mass_type);
-  } else {
-    mat_ = BuildOmegaHMassMatrixImpl<2>(mesh, *target_layout, mass_type);
-  }
+  mat_ = BuildOmegaHMassMatrix(*target_layout, *geometry, mass_type);
 }
 
 OmegaHMassIntegrator::~OmegaHMassIntegrator()

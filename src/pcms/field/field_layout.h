@@ -4,11 +4,11 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "pcms/discretization/discretization.h"
 #include "pcms/utility/types.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/field/coordinate_system.hpp"
 #include "pcms/field/coordinate_view.hpp"
+#include "pcms/geometry/bound_source.hpp"
 
 namespace pcms
 {
@@ -66,8 +66,20 @@ public:
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
   void SetName(std::string name) { name_ = std::move(name); }
 
-  virtual std::shared_ptr<const Discretization> GetDiscretization()
-    const noexcept = 0;
+  /// The geometry the layout's entities are defined on: spaces and layouts on
+  /// one geometry object share their entities (OwnerHints name entities of a
+  /// geometry). Null for a layout without one: XGC, MFEM, empty, and a bare
+  /// point cloud.
+  ///
+  /// A layout never holds a point-cloud geometry built on it (that geometry
+  /// holds the layout as its site layout, which would be a cycle of
+  /// shared_ptr); the geometry of a layout is the one whose entities the DOF
+  /// holders are.
+  [[nodiscard]] const std::shared_ptr<const Geometry>& GetGeometry()
+    const noexcept
+  {
+    return geometry_;
+  }
 
   // number of components
   int virtual GetNumComponents() const = 0;
@@ -167,6 +179,13 @@ protected:
     Kokkos::View<const GO*, DeviceMemorySpace> local_gids,
     const EntOffsetsArray& local_ent_offsets);
 
+  /// Sets the geometry GetGeometry() returns; the layout must not hold a
+  /// point-cloud geometry built on it.
+  void SetGeometry(std::shared_ptr<const Geometry> geometry)
+  {
+    geometry_ = std::move(geometry);
+  }
+
   void SetCoordinateSystem(
     std::shared_ptr<const CoordinateSystem> coordinate_system)
   {
@@ -179,10 +198,23 @@ protected:
 
 private:
   std::shared_ptr<const CoordinateSystem> system_;
+  std::shared_ptr<const Geometry> geometry_;
   std::string name_;
   Kokkos::View<LO*, HostMemorySpace> global_to_local_host_;
   Kokkos::View<LO*, DeviceMemorySpace> global_to_local_;
 };
+
+/// @brief The entities of the layout's geometry the DOF holders of `layout`
+///        are, as owner hints for binding or searching at the DOF-holder
+///        coordinates (the hint names the geometry the layout is on, which
+///        verifies it, see OwnerHints).
+///
+/// DOF holder i is the i-th entity of the layout's one populated entity
+/// dimension, so the hinted entity ids are i - (the first DOF holder of that
+/// dimension), i.e. 0, 1, ...
+/// @return the hint when the layout has a geometry, one DOF holder per entity
+///         of one dimension of it and no ghosts; an empty one otherwise
+[[nodiscard]] OwnerHints DOFHolderOwners(const FieldLayout& layout);
 
 // The geometric classification (dimension and id) of the owned DOF holders,
 // as host arrays in owned order. Converted and gathered on the device from the

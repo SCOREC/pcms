@@ -1,5 +1,6 @@
 #include "pcms/transfer/omega_h_control_variate_projection.hpp"
 #include "pcms/transfer/conservative_projection_solver.hpp"
+#include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/omega_h_mass_integrator.hpp"
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
 #include "pcms/utility/arrays.h"
@@ -9,35 +10,58 @@
 namespace pcms
 {
 
+namespace
+{
+
+const Geometry& SourceGeometry(const PointEvaluatorFactory& source)
+{
+  const auto geometry = source.GetGeometry();
+  if (geometry == nullptr) {
+    throw pcms_error(
+      "OmegaHControlVariateProjection: the source has no geometry");
+  }
+  return *geometry;
+}
+
+} // namespace
+
 OmegaHControlVariateProjection::OmegaHControlVariateProjection(
   const PointEvaluatorFactory& source, const FunctionSpace& target_space,
-  int samples_per_element, MonteCarloSampling sampling, uint64_t seed,
-  MassMatrixType mass_matrix_type)
-  : target_layout_(std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(
-      target_space.GetLayout())),
+  int samples_per_element, uint64_t seed, MassMatrixType mass_matrix_type,
+  std::shared_ptr<const CoordinateMap> to_source)
+  : target_layout_(
+      detail::ResolveOmegaHScalarSpace(
+        target_space, 1, 1, "OmegaHControlVariateProjection", "target")
+        .layout),
     rhs_integrator_(std::make_unique<OmegaHMonteCarloRHSIntegrator>(
-      target_layout_, target_space.GetCoordinateSystem(), samples_per_element,
-      sampling, seed)),
-    interpolator_(source, target_space),
+      target_space, samples_per_element, seed)),
+    interpolator_(source, target_space,
+                  SourceGeometry(source).Bind(
+                    target_space.GetLayout()->GetDOFHolderCoordinates(),
+                    OutOfBoundsPolicy{}, to_source)),
     control_variate_(target_space.CreateFunction<Real>())
 {
-  const auto sample_coords = rhs_integrator_->GetIntegrationPoints();
-  source_at_samples_ = source.CreatePointEvaluator<Real>(
-    EvaluationRequest::FromCoordinates(sample_coords));
-  control_variate_at_samples_ = target_space.CreatePointEvaluator<Real>(
-    EvaluationRequest::FromCoordinates(sample_coords));
+  // The source lives on another mesh, so it searches for the samples; the
+  // target space is bound to them in their own elements, without a search.
+  source_at_samples_ =
+    source.CreatePointEvaluator<Real>(SourceGeometry(source).Bind(
+      rhs_integrator_->GetIntegrationPoints(), OutOfBoundsPolicy{}, to_source));
+  control_variate_at_samples_ =
+    target_space.CreatePointEvaluator<Real>(target_space.GetGeometry()->Bind(
+      rhs_integrator_->GetIntegrationPoints(),
+      rhs_integrator_->IntegrationPointOwners()));
 
   // Mass integrator is only needed to build the solver; PETSc reference-counts
   // the matrix so it remains alive inside the KSP after this scope ends.
-  OmegaHMassIntegrator mass_integrator(
-    target_layout_, target_space.GetCoordinateSystem(), mass_matrix_type);
+  OmegaHMassIntegrator mass_integrator(target_space, mass_matrix_type);
   solver_ = std::make_unique<GalerkinProjectionSolver>(mass_integrator,
                                                        *rhs_integrator_);
 
   target_values_ = Kokkos::View<Real**, DeviceMemorySpace>(
     "cv_target_values", target_layout_->GetNumDofHolder(),
     target_layout_->GetNumComponents());
-  const auto num_samples = sample_coords.GetValues().extent(0);
+  const auto num_samples =
+    rhs_integrator_->GetIntegrationPoints().GetValues().extent(0);
   f_samples_ =
     Kokkos::View<Real**, DeviceMemorySpace>("cv_f_samples", num_samples, 1);
   residual_ =

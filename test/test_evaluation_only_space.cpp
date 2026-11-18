@@ -9,7 +9,7 @@
 #include <pcms/field/function_space.h>
 #include <pcms/field/function_space/lagrange.h>
 #include <pcms/field/layout/empty.h>
-#include <pcms/field/transformed_source.hpp>
+#include <pcms/geometry/geometry.hpp>
 #include <pcms/transfer/interpolator.h>
 #include "field_test_utils.h"
 
@@ -22,8 +22,9 @@ using pcms::ValueBasis;
 
 // An evaluation-only source, the pattern external codes (NIMROD, Fusion-IO)
 // follow: a FunctionSpace on an EmptyFieldLayout whose field data names a
-// quantity but provides no DOFAccess. Here the quantity is analytic:
-// component c of f at (R, theta, Z) is 2R + 3 theta - Z + c.
+// quantity but provides no DOFAccess, created on a geometry of its own. Here
+// the quantity is analytic: component c of f at (R, theta, Z) is
+// 2R + 3 theta - Z + c, and the geometry is all of space.
 namespace
 {
 
@@ -45,20 +46,48 @@ private:
   ValueBasis basis_;
 };
 
+// The mock evaluates every query point, so it needs no state of its own.
+class MockBound final : public pcms::BoundSource
+{
+public:
+  MockBound(std::shared_ptr<const pcms::Geometry> geometry,
+            const pcms::BindRequest& request)
+    : BoundSource(std::move(geometry), request)
+  {
+  }
+};
+
+// All of (R, theta, Z) space: every point is found, without a search.
+class AnalyticGeometry final : public pcms::Geometry
+{
+public:
+  AnalyticGeometry() : system_(pcms::csys::CylindricalRThetaZ::Create()) {}
+
+  const std::shared_ptr<const pcms::CoordinateSystem>& GetCoordinateSystem()
+    const noexcept override
+  {
+    return system_;
+  }
+
+protected:
+  std::shared_ptr<pcms::BoundSource> BindImpl(
+    const pcms::BindRequest& request) const override
+  {
+    return std::make_shared<MockBound>(shared_from_this(), request);
+  }
+
+private:
+  std::shared_ptr<const pcms::CoordinateSystem> system_;
+};
+
 class MockEvaluator final : public pcms::PointEvaluator<Real>
 {
 public:
-  explicit MockEvaluator(const pcms::EvaluationRequest& request)
-    : points_("mock_points", request.coords.GetValues().extent(0),
-              request.coords.GetValues().extent(1))
+  MockEvaluator(std::shared_ptr<const pcms::BoundSource> bound,
+                std::shared_ptr<const pcms::FieldLayout> layout)
+    : PointEvaluator(std::move(bound), pcms::DifferentialOperator::Value,
+                     std::move(layout))
   {
-    pcms::CopyDeviceRank2ViewToRank2View(pcms::MakeRank2View(points_),
-                                         request.coords.GetValues());
-  }
-
-  [[nodiscard]] LO NumPoints() const override
-  {
-    return static_cast<LO>(points_.extent(0));
   }
 
   void EvaluateImpl(
@@ -69,7 +98,7 @@ public:
       throw pcms::pcms_error("MockEvaluator: not a field of this source");
     }
     const auto out = values.GetValues();
-    const auto points = points_;
+    const auto points = Bound().LocatedPointValues();
     Kokkos::parallel_for(
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
         0, static_cast<LO>(points.extent(0))),
@@ -80,67 +109,65 @@ public:
         }
       });
   }
-
-  Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints() const override
-  {
-    return {};
-  }
-
-private:
-  Kokkos::View<Real**, DeviceMemorySpace> points_;
 };
 
-class MockSpace final : public pcms::FunctionSpace
+// The evaluator source of the mock: it hands out MockEvaluators on the
+// analytic geometry.
+class MockEvaluatorFactory final : public pcms::PointEvaluatorFactory
 {
 public:
-  static std::shared_ptr<MockSpace> Create(int num_components)
+  MockEvaluatorFactory(std::shared_ptr<const pcms::Geometry> geometry,
+                       std::shared_ptr<const pcms::FieldLayout> layout)
+    : geometry_(std::move(geometry)), layout_(std::move(layout))
   {
-    return std::shared_ptr<MockSpace>(new MockSpace(num_components));
   }
 
-  std::shared_ptr<const pcms::FieldLayout> GetLayout() const noexcept override
+  std::shared_ptr<const pcms::Geometry> GetGeometry() const noexcept override
   {
-    return layout_;
+    return geometry_;
+  }
+
+  bool Supports(pcms::DifferentialOperator op) const noexcept override
+  {
+    return op == pcms::DifferentialOperator::Value;
   }
 
 protected:
-  pcms::FieldVariant CreateFieldImpl(pcms::Type, ValueBasis) const override
-  {
-    throw pcms::pcms_error("MockSpace: pass the data naming the quantity");
-  }
-
-  pcms::FieldVariant CreateFieldImpl(pcms::FieldDataVariant data) const override
-  {
-    auto& real = std::get<std::unique_ptr<pcms::FieldData<Real>>>(data);
-    if (dynamic_cast<const MockData*>(real.get()) == nullptr) {
-      throw pcms::pcms_error("MockSpace: requires MockData");
-    }
-    return WrapField<Real>(layout_, std::move(real));
-  }
-
   pcms::PointEvaluatorVariant CreatePointEvaluatorImpl(
-    pcms::Type, const pcms::EvaluationRequest& request) const override
+    pcms::Type, std::shared_ptr<const pcms::BoundSource> bound,
+    pcms::DifferentialOperator /*op*/) const override
   {
     return std::unique_ptr<pcms::PointEvaluator<Real>>(
-      std::make_unique<MockEvaluator>(request));
+      std::make_unique<MockEvaluator>(std::move(bound), layout_));
   }
 
 private:
-  explicit MockSpace(int num_components)
-    : layout_(std::make_shared<pcms::EmptyFieldLayout>(
-        pcms::csys::CylindricalRThetaZ::Create(), num_components))
-  {
-  }
-
-  std::shared_ptr<const pcms::EmptyFieldLayout> layout_;
+  std::shared_ptr<const pcms::Geometry> geometry_;
+  std::shared_ptr<const pcms::FieldLayout> layout_;
 };
 
-std::shared_ptr<pcms::LagrangeFunctionSpace> MakePoloidalTarget(
-  Omega_h::Mesh& mesh, int num_components)
+// A space on an empty layout whose fields are made from data naming the
+// quantity (MockData), evaluated by the mock on the analytic geometry.
+std::shared_ptr<pcms::FunctionSpace> MakeMockSpace(int num_components)
 {
-  return pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, num_components, pcms::csys::CylindricalRZ::Create(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  const auto layout = std::make_shared<pcms::EmptyFieldLayout>(
+    pcms::csys::CylindricalRThetaZ::Create(), num_components);
+  return std::make_shared<pcms::FunctionSpace>(
+    layout,
+    [](pcms::Type, ValueBasis) -> pcms::FieldDataVariant {
+      throw pcms::pcms_error("MockSpace: pass the data naming the quantity");
+    },
+    std::make_shared<MockEvaluatorFactory>(std::make_shared<AnalyticGeometry>(),
+                                           layout));
+}
+
+std::shared_ptr<pcms::FunctionSpace> MakePoloidalTarget(Omega_h::Mesh& mesh,
+                                                        int num_components)
+{
+  return pcms::CreateLagrangeSpace(
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::CylindricalRZ::Create()), 1,
+    num_components,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
 }
 
 } // namespace
@@ -150,12 +177,14 @@ TEST_CASE("Evaluation-only space interpolates onto a poloidal plane")
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildUnitSquare(lib, 1);
   const int num_components = GENERATE(1, 2);
-  auto source = MockSpace::Create(num_components);
+  auto source = MakeMockSpace(num_components);
   auto target = MakePoloidalTarget(mesh, num_components);
   const Real theta0 = -0.3;
-  pcms::TransformedSource on_plane(
-    source, std::make_shared<pcms::PoloidalPlaneEmbedding>(theta0));
-  pcms::Interpolator<Real> interpolator(on_plane, *target);
+  const auto target_layout = target->GetLayout();
+  const auto on_plane = source->GetGeometry()->Bind(
+    target_layout->GetDOFHolderCoordinates(), pcms::OutOfBoundsPolicy{},
+    std::make_shared<pcms::PoloidalPlaneEmbedding>(theta0));
+  pcms::Interpolator<Real> interpolator(*source, *target, on_plane);
 
   auto f = source->CreateFunction<Real>("f", std::make_unique<MockData>());
   auto g = target->CreateFunction<Real>("g");
@@ -174,8 +203,7 @@ TEST_CASE("Evaluation-only space interpolates onto a poloidal plane")
   }
 
   // The embedding maps points only, so vector values cannot pass through it.
-  auto evaluator = on_plane.CreatePointEvaluator<Real>(
-    pcms::EvaluationRequest::FromFunctionSpace(*target));
+  auto evaluator = source->CreatePointEvaluator<Real>(on_plane);
   REQUIRE_THROWS_WITH(
     evaluator->OutputBasis(ValueBasis{pcms::csys::CylindricalRThetaZ::Create(),
                                       pcms::ComponentScaling::Physical,
@@ -185,7 +213,7 @@ TEST_CASE("Evaluation-only space interpolates onto a poloidal plane")
 
 TEST_CASE("Functions of an evaluation-only space hold no values")
 {
-  auto source = MockSpace::Create(1);
+  auto source = MakeMockSpace(1);
   auto f = source->CreateFunction<Real>("f", std::make_unique<MockData>());
   REQUIRE(f.GetLayout().GetNumDofHolder() == 0);
   REQUIRE_THROWS_WITH(f.GetDOFHolderData(), ContainsSubstring("no DOFAccess"));

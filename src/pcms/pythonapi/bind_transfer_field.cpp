@@ -3,6 +3,7 @@
 #include <pybind11/numpy.h>
 #include "pcms/configuration.h"
 #include "pcms/transfer/copy.h"
+#include "pcms/field/coordinate_map.hpp"
 #include "pcms/field/field.h"
 #include "pcms/field/function_space.h"
 #include "pcms/field/point_evaluator.h"
@@ -65,14 +66,8 @@ void bind_transfer_field_module(py::module& m)
     .def(
       "filled_points",
       [](py::object self) {
-        const auto filled =
-          self.cast<const PointEvaluator<Real>&>().FilledPoints();
-        if (filled.extent(0) == 0) {
-          return py::array_t<LO>(0);
-        }
-        return ViewToNumpy(Rank1View<const LO, DeviceMemorySpace>(
-                             filled.data(), filled.extent(0)),
-                           self);
+        return IndicesToNumpy(
+          self.cast<const PointEvaluator<Real>&>().FilledPoints(), self);
       },
       "Indices of the query points that get the out-of-bounds fill value, "
       "read-only");
@@ -95,8 +90,23 @@ void bind_transfer_field_module(py::module& m)
       py::arg("policy") = OutOfBoundsPolicy{}, py::keep_alive<1, 2>(),
       py::keep_alive<1, 3>(),
       "Construct an interpolator from any PointEvaluatorFactory (a "
-      "FunctionSpace or a TransformedSource) to the target space's DOF "
-      "holders. Localization is performed here and cached.");
+      "FunctionSpace or an operator source such as gradient()) to the target "
+      "space's DOF holders. Localization is performed here and cached. To "
+      "transfer across coordinate systems, bind with a map "
+      "(source.get_geometry().bind(target_space, policy, map)) and pass the "
+      "bound source.")
+    .def(py::init([](const PointEvaluatorFactory& source,
+                     const FunctionSpace& target_space,
+                     std::shared_ptr<BoundSource> bound) {
+           return std::make_unique<Interpolator<Real>>(source, target_space,
+                                                       std::move(bound));
+         }),
+         py::arg("source"), py::arg("target_space"), py::arg("bound"),
+         py::keep_alive<1, 2>(), py::keep_alive<1, 3>(),
+         "Construct an interpolator that reuses `bound`, a binding of the "
+         "target space's DOF holders by `source`'s geometry "
+         "(source.get_geometry().bind(target_space)), so a field and its "
+         "gradient can share one localization.");
 
   py::class_<Copy<Real>, TransferOperator<Real>>(m, "Copy").def(
     py::init(
@@ -135,12 +145,6 @@ void bind_transfer_field_module(py::module& m)
          "intersection, quadrature setup, and mass-matrix factorization happen "
          "here and are cached; call apply() repeatedly.");
 
-  // Sampling strategy for the Monte Carlo RHS integrator.
-  py::enum_<MonteCarloSampling>(m, "MonteCarloSampling")
-    .value("UniformRandom", MonteCarloSampling::UniformRandom,
-           "Independent pseudo-random uniform draws per element")
-    .export_values();
-
   // Variance-reduced Monte Carlo Galerkin projection. The source field is
   // first interpolated onto the target space as a control variate; only the
   // residual is integrated stochastically, so sampling noise is small (and
@@ -149,21 +153,23 @@ void bind_transfer_field_module(py::module& m)
     m, "OmegaHControlVariateProjection")
     .def(py::init([](const FunctionSpace& source_space,
                      const FunctionSpace& target_space, int samples_per_element,
-                     MonteCarloSampling sampling, std::uint64_t seed,
-                     MassMatrixType mass_matrix_type) {
+                     std::uint64_t seed, MassMatrixType mass_matrix_type,
+                     std::shared_ptr<const CoordinateMap> to_source) {
            return std::make_unique<OmegaHControlVariateProjection>(
-             source_space, target_space, samples_per_element, sampling, seed,
-             mass_matrix_type);
+             source_space, target_space, samples_per_element, seed,
+             mass_matrix_type, std::move(to_source));
          }),
          py::arg("source_space"), py::arg("target_space"),
          py::arg("samples_per_element"),
-         py::arg("sampling") = MonteCarloSampling::UniformRandom,
          py::arg("seed") = std::uint64_t(8675309),
          py::arg("mass_matrix_type") = MassMatrixType::Consistent,
-         py::keep_alive<1, 2>(), py::keep_alive<1, 3>(),
+         py::arg("to_source") = nullptr, py::keep_alive<1, 2>(),
+         py::keep_alive<1, 3>(),
          "Construct a Monte Carlo (control-variate) conservative projection. "
          "Sample-point generation, the control-variate interpolator, and the "
-         "mass-matrix factorization are cached; call apply() repeatedly.");
+         "mass-matrix factorization are cached; call apply() repeatedly. "
+         "to_source maps the target's coordinate system to the source's, or "
+         "None if they are the same.");
 #endif
 }
 

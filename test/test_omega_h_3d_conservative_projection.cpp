@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
@@ -7,9 +8,9 @@
 
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_control_variate_projection.hpp>
-#include <pcms/transfer/monte_carlo_sampling.hpp>
 #include <pcms/transfer/copy.h>
 #include <pcms/transfer/interpolator.h>
+#include <pcms/field/coordinate_systems/cylindrical.hpp>
 #include <pcms/field/function_space/lagrange.h>
 #include <pcms/utility/arrays.h>
 #include "field_test_utils.h"
@@ -77,6 +78,34 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
             Catch::Approx(pcms::test::IntegrateP1Field(source_mesh, source))
               .margin(1e-8));
   }
+}
+
+TEST_CASE("OmegaHConservativeProjection (3D tets) refuses spaces in "
+          "cylindrical coordinates",
+          "[transfer][mesh_intersection][3d]")
+{
+  // The projection integrates in the mesh coordinates without a metric, which
+  // is not the physical measure in (R, theta, Z); such spaces are refused
+  // rather than silently projected in coordinate measure.
+  Omega_h::Library lib;
+  Omega_h::Mesh source_mesh = pcms::test::BuildUnitCube(lib, 1);
+  Omega_h::Mesh target_mesh = pcms::test::BuildUnitCube(lib, 2);
+  const auto cylindrical = pcms::csys::CylindricalRThetaZ::Create();
+  auto source_space = pcms::CreateLagrangeSpace(
+    pcms::CreateOmegaHGeometry(source_mesh, cylindrical), 1, 1,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
+  auto cartesian_source = pcms::test::MakeP1Space(source_mesh);
+  auto target_space = pcms::CreateLagrangeSpace(
+    pcms::CreateOmegaHGeometry(target_mesh, cylindrical), 1, 1,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
+  auto cartesian_target = pcms::test::MakeP1Space(target_mesh);
+
+  REQUIRE_THROWS_WITH(
+    pcms::OmegaHConservativeProjection(*source_space, *cartesian_target),
+    Catch::Matchers::ContainsSubstring("source space must use the Cartesian"));
+  REQUIRE_THROWS_WITH(
+    pcms::OmegaHConservativeProjection(*cartesian_source, *target_space),
+    Catch::Matchers::ContainsSubstring("target space must use the Cartesian"));
 }
 
 TEST_CASE("OmegaHConservativeProjection (3D tets) conserves the integral for a "
@@ -195,8 +224,7 @@ TEST_CASE("OmegaHControlVariateProjection (3D tets) is exact for target-space "
     });
 
   pcms::OmegaHControlVariateProjection projection(
-    *source_space, *target_space, /*samples_per_element=*/8,
-    pcms::MonteCarloSampling::UniformRandom, /*seed=*/12345);
+    *source_space, *target_space, /*samples_per_element=*/8, /*seed=*/12345);
   projection.Apply(source, target);
 
   const auto target_values =

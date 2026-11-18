@@ -2,7 +2,7 @@
 #define PCMS_TRANSFER_MESH_INTERSECTION_HPP
 
 #include <pcms/configuration.h>
-#include <pcms/localization/point_search.h>
+#include <pcms/field/evaluator/omega_h_geometry.hpp>
 #include <pcms/localization/queue_visited.hpp>
 #include <Omega_h_fail.hpp>
 #include <Omega_h_int_scan.hpp>
@@ -183,24 +183,22 @@ public:
  * adjacency-based breadth-first search strategy. The result is returned as a
  * compact mapping.
  *
- * @param source_mesh The source Omega_h mesh.
+ * @param source geometry of the source mesh; its search locates the source
+ * element containing each target centroid
  * @param target_mesh The target Omega_h mesh.
+ * @param use_prefilter if true, skip degenerate clips
  * @return An IntersectionResults struct containing target-to-source mapping
  * data.
+ * @throws pcms_error if the source geometry's mesh and the target mesh differ
+ * in dimension
  *
  * @note The intersection test is done using 2D polygon intersection routines
  * from r3d. Only valid (non-degenerate) polygonal intersections are included.
  *
  * @see FindIntersections::adjBasedIntersectSearch
  */
-IntersectionResults intersectTargets(Omega_h::Mesh& source_mesh,
+IntersectionResults intersectTargets(const OmegaHGeometry& source,
                                      Omega_h::Mesh& target_mesh,
                                      bool use_prefilter = true);
-
-/**
- */
-IntersectionResults intersectTargets(
-  Omega_h::Mesh& source_mesh, Omega_h::Mesh& target_mesh,
-  const GridPointSearchVariant& source_search, bool use_prefilter = true);
 } // namespace pcms
 #endif // PCMS_TRANSFER_MESH_INTERSECTION_HPP

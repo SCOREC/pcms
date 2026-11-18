@@ -6,15 +6,13 @@
 namespace pcms
 {
 
-/// Configuration for Moving Least Squares evaluation.
-/// Passed to PolynomialReconstructionFunctionSpace::Create and
+/// Configuration of the Moving Least Squares reconstruction. The supports it
+/// is computed on come from the geometry's search (NeighbourhoodOptions).
+/// Passed to CreatePolynomialReconstructionSpace and
 /// PointCloudEvaluatorFactory.
 struct MLSOptions
 {
-  double radius = 0.5;
-  unsigned min_req_supports = 10;
   unsigned degree = 3;
-  bool adapt_radius = true;
   double lambda = 0.0;
   double tol = 1e-6;
   double decay_factor = 5.0;

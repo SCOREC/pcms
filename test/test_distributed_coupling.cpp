@@ -10,6 +10,7 @@
 #include "pcms/field/data/simple.h"
 #include "distributed_test_utils.h"
 #include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
@@ -78,7 +79,7 @@ redev::InMessageLayout MakeInMessageLayout(int rank, int nproc, size_t msg_size)
 struct DistributedCouplingContext
 {
   Omega_h::Mesh& mesh;
-  std::shared_ptr<pcms::LagrangeFunctionSpace> space;
+  std::shared_ptr<pcms::FunctionSpace> space;
   int rank;
   int nproc;
 
@@ -441,10 +442,11 @@ int main(int argc, char** argv)
                                               /*symmetric=*/false);
       mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
 
-      auto space = pcms::LagrangeFunctionSpace::FromMesh(
-        mesh, /*order=*/1, /*num_components=*/1,
-        pcms::csys::Cartesian::Deferred(), "global",
-        pcms::LagrangeFunctionSpace::Backend::OmegaH);
+      auto geometry =
+        pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+      auto space = pcms::CreateLagrangeSpace(
+        geometry, /*order=*/1, /*num_components=*/1,
+        pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
       const DistributedCouplingContext ctx{mesh, space, rank, nproc};
 
       check_serializer_round_trip(ctx);

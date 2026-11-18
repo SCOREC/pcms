@@ -1,12 +1,14 @@
 #ifndef PCMS_FIELD_EVALUATOR_MLS_POINT_CLOUD_H
 #define PCMS_FIELD_EVALUATOR_MLS_POINT_CLOUD_H
 
+#include "pcms/field/field.h"
 #include "pcms/field/point_evaluator.h"
 #include "pcms/field/field_data.h"
 #include "pcms/field/evaluator/mls_options.h"
 #include "pcms/field/evaluator/mls_interpolation.hpp"
 #include "pcms/localization/adj_search.hpp"
 #include "pcms/utility/assert.h"
+#include "pcms/utility/omega_h_array_utils.h"
 
 #include <Omega_h_array.hpp>
 #include <Omega_h_array_ops.hpp>
@@ -14,39 +16,93 @@
 namespace pcms
 {
 
-// MLSPointEvaluator is a concrete PointEvaluator<Real> that evaluates a
-// point-cloud-backed scalar field at a fixed set of query points using MLS.
-//
-// Supports only scalar fields (num_components == 1). Throws for any other
-// component count.
-//
-// The support structure is built once at construction and reused across
-// repeated Evaluate calls at zero additional localization cost.
+namespace detail
+{
+
+/// Whether each of `n` query points has supports, from the supports' row
+/// pointers. (A free function: CUDA does not allow device lambdas in
+/// constructors or non-public member functions.)
+inline Kokkos::View<bool*, DeviceMemorySpace> HasSupports(
+  const Omega_h::LOs& supports_ptr, LO n)
+{
+  Kokkos::View<bool*, DeviceMemorySpace> found("mls_found", n);
+  Kokkos::parallel_for(
+    "MLSBinding::found",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n),
+    KOKKOS_LAMBDA(const LO i) {
+      found(i) = supports_ptr[i + 1] > supports_ptr[i];
+    });
+  return found;
+}
+
+} // namespace detail
+
+/// @brief MLS bound source: the supports of the query points and the
+///        coordinates the solve uses. A query point without supports (e.g.
+///        one the adjacency search has no start for) is missing.
+class MLSBinding final : public BoundSource
+{
+public:
+  /// @param geometry geometry the points are localized on
+  /// @param request query points and out-of-bounds policy
+  /// @param source_coords flattened coordinates of the source points
+  /// @param supports MLS supports of the query points
+  MLSBinding(std::shared_ptr<const Geometry> geometry,
+             const BindRequest& request, Omega_h::Reals source_coords,
+             SupportResults supports)
+    : BoundSource(std::move(geometry), request),
+      source_coords_(std::move(source_coords)),
+      target_coords_(
+        flatten_to_omega_h_reals(LocatedPointValues(), "mls_target_coords")),
+      supports_(std::move(supports))
+  {
+    SetFound(detail::HasSupports(supports_.supports_ptr, NumPoints()));
+  }
+
+  /// @return flattened coordinates of the source points
+  [[nodiscard]] const Omega_h::Reals& SourceCoordinates() const noexcept
+  {
+    return source_coords_;
+  }
+
+  /// @return flattened coordinates of the query points in the geometry's
+  ///         coordinate system (LocatedPointValues())
+  [[nodiscard]] const Omega_h::Reals& TargetCoordinates() const noexcept
+  {
+    return target_coords_;
+  }
+
+  /// @return MLS supports of the query points
+  [[nodiscard]] const SupportResults& Supports() const noexcept
+  {
+    return supports_;
+  }
+
+private:
+  Omega_h::Reals source_coords_;
+  Omega_h::Reals target_coords_;
+  SupportResults supports_;
+};
+
+/// @brief Evaluates a scalar point-cloud field at the bound points by MLS.
 template <typename LayoutPolicy =
             detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class MLSPointEvaluator : public PointEvaluator<Real, LayoutPolicy>
 {
 public:
-  MLSPointEvaluator(Omega_h::Reals source_coords, Omega_h::Reals target_coords,
-                    SupportResults supports, int dim, MLSOptions options)
-    : source_coords_(std::move(source_coords)),
-      target_coords_(std::move(target_coords)),
-      supports_(std::move(supports)),
+  /// @param binding MLS supports of the query points
+  /// @param dim spatial dimension
+  /// @param options MLS options
+  /// @param layout layout of the evaluated fields
+  MLSPointEvaluator(std::shared_ptr<const MLSBinding> binding, int dim,
+                    MLSOptions options,
+                    std::shared_ptr<const FieldLayout> layout)
+    : PointEvaluator<Real, LayoutPolicy>(binding, DifferentialOperator::Value,
+                                         std::move(layout)),
+      binding_(std::move(binding)),
       dim_(dim),
       options_(options)
   {
-  }
-
-  /// MLS evaluates every query point; it never fills.
-  [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FilledPoints()
-    const override
-  {
-    return {};
-  }
-
-  [[nodiscard]] LO NumPoints() const override
-  {
-    return static_cast<LO>(target_coords_.size() / dim_);
   }
 
   // Public because CUDA forbids extended lambdas in non-public member
@@ -74,7 +130,8 @@ public:
     Omega_h::Reals source_values(src_w);
 
     auto result = mls_interpolation(
-      source_values, source_coords_, target_coords_, supports_, dim_,
+      source_values, binding_->SourceCoordinates(),
+      binding_->TargetCoordinates(), binding_->Supports(), dim_,
       static_cast<Omega_h::LO>(options_.degree), options_.basis,
       options_.lambda, options_.tol, options_.decay_factor);
 
@@ -86,9 +143,7 @@ public:
   }
 
 private:
-  Omega_h::Reals source_coords_;
-  Omega_h::Reals target_coords_;
-  SupportResults supports_;
+  std::shared_ptr<const MLSBinding> binding_;
   int dim_;
   MLSOptions options_;
 };

@@ -34,9 +34,10 @@ def cylindrical_space(world):
     """P1 vector space on a box whose coordinates are (r, theta, z)."""
     mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 2.0, 1.6, 1.1,
                              6, 6, 4, False)
-    return pcms.LagrangeFunctionSpace.from_mesh(
-        mesh, 1, 3, pcms.csys.CylindricalRThetaZ.create(),
-        backend=pcms.LagrangeFunctionSpace.Backend.OmegaH)
+    return pcms.create_lagrange_space(
+        pcms.create_omega_h_geometry(
+            mesh, pcms.csys.CylindricalRThetaZ.create()),
+        1, 3, backend=pcms.LagrangeBackend.OmegaH)
 
 
 @pytest.fixture
@@ -44,9 +45,9 @@ def cartesian_space(world):
     """P1 vector space on the Cartesian unit cube."""
     mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 1.0,
                              3, 3, 3, False)
-    return pcms.LagrangeFunctionSpace.from_mesh(
-        mesh, 1, 3, pcms.csys.Cartesian.create(3),
-        backend=pcms.LagrangeFunctionSpace.Backend.OmegaH)
+    return pcms.create_lagrange_space(
+        pcms.create_omega_h_geometry(mesh, pcms.csys.Cartesian.create(3)),
+        1, 3, backend=pcms.LagrangeBackend.OmegaH)
 
 
 def _coordinates_of(space):
@@ -98,7 +99,8 @@ class TestCoordinateSystem:
     def test_space_defaults_to_cartesian_of_mesh_dimension(self, world):
         mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0,
                                  4, 4, 0, False)
-        space = pcms.LagrangeFunctionSpace.from_mesh(mesh, 1, 1)
+        space = pcms.create_lagrange_space(
+            pcms.create_omega_h_geometry(mesh), 1, 1)
         assert (space.get_layout().get_coordinate_system()
                 == pcms.csys.Cartesian.create(2))
 
@@ -292,15 +294,21 @@ class TestCoordinateMap:
                                    [[3.0, np.pi / 2, 1.0]])
 
 
-class TestTransformedSource:
+def _bind_through_map(cylindrical_space, target, policy=None):
+    """Bind `target` (a space or a CoordinateView in Cartesian coordinates)
+    on the cylindrical space's geometry through CartesianToCylindrical."""
+    if policy is None:
+        policy = pcms.OutOfBoundsPolicy()
+    return cylindrical_space.get_geometry().bind(
+        target, policy, pcms.CartesianToCylindrical())
+
+
+class TestBindWithMap:
     def _evaluator(self, cylindrical_space, cartesian_space):
-        source = pcms.TransformedSource(cylindrical_space,
-                                        pcms.CartesianToCylindrical())
-        assert isinstance(source, pcms.PointEvaluatorFactory)
-        assert source.get_coordinate_system() == \
-            pcms.csys.Cartesian.create(3)
-        request = pcms.EvaluationRequest.from_function_space(cartesian_space)
-        return source.create_point_evaluator(request)
+        bound = _bind_through_map(cylindrical_space, cartesian_space)
+        assert isinstance(bound, pcms.BoundSource)
+        assert bound.num_points() == len(_coordinates_of(cartesian_space))
+        return cylindrical_space.create_point_evaluator(bound)
 
     def test_evaluate_rotates_into_the_query_basis(self, cylindrical_space,
                                                    cartesian_space):
@@ -329,23 +337,31 @@ class TestTransformedSource:
             evaluator.evaluate(
                 b, pcms.ValueView(_cartesian_vector(), np.zeros((n + 1, 3))))
 
-    def test_query_points_must_be_in_the_factory_system(self,
-                                                        cylindrical_space):
-        request = pcms.EvaluationRequest.from_coordinates(
-            pcms.CoordinateView(pcms.csys.Cartesian.create(3),
-                                np.full((2, 3), 0.5)))
-        with pytest.raises(RuntimeError, match="TransformedSource"):
-            cylindrical_space.create_point_evaluator(request)
+    def test_query_points_must_be_in_the_geometry_system(self,
+                                                         cylindrical_space):
+        coords = pcms.CoordinateView(pcms.csys.Cartesian.create(3),
+                                     np.full((2, 3), 0.5))
+        with pytest.raises(RuntimeError, match="as Bind's map argument"):
+            cylindrical_space.get_geometry().bind(coords)
+
+    def test_the_map_must_end_in_the_geometry_system(self, cylindrical_space):
+        coords = pcms.CoordinateView(pcms.csys.Cartesian.create(3),
+                                     np.full((2, 3), 0.5))
+        with pytest.raises(RuntimeError,
+                           match="must take the query coordinate system"):
+            cylindrical_space.get_geometry().bind(
+                coords, map=pcms.CylindricalToCartesian())
 
     def test_filled_points(self, cylindrical_space):
-        source = pcms.TransformedSource(cylindrical_space,
-                                        pcms.CartesianToCylindrical())
         # The second point has theta = pi, outside the source's [0, 1.6].
-        request = pcms.EvaluationRequest.from_coordinates(
+        bound = _bind_through_map(
+            cylindrical_space,
             pcms.CoordinateView(pcms.csys.Cartesian.create(3),
                                 [[0.5, 0.5, 0.5], [-0.5, 0.0, 0.5]]),
             pcms.OutOfBoundsPolicy(pcms.OutOfBoundsMode.FILL, -7.0))
-        evaluator = source.create_point_evaluator(request)
+        np.testing.assert_array_equal(bound.found_points(), [0])
+        np.testing.assert_array_equal(bound.missing_points(), [1])
+        evaluator = cylindrical_space.create_point_evaluator(bound)
         filled = evaluator.filled_points()
         np.testing.assert_array_equal(filled, [1])
         assert not filled.flags.writeable
@@ -360,9 +376,8 @@ class TestTransformedSource:
         b_src = _radial_field(cylindrical_space)
         b_tgt = cartesian_space.create_function("b", pcms.values.Vector)
         op = pcms.Interpolator(
-            pcms.TransformedSource(cylindrical_space,
-                                   pcms.CartesianToCylindrical()),
-            cartesian_space)
+            cylindrical_space, cartesian_space,
+            _bind_through_map(cylindrical_space, cartesian_space))
         assert isinstance(op, pcms.TransferOperator)
         op.apply(b_src, b_tgt)
         np.testing.assert_allclose(b_tgt.get_dof_holder_data().get_values(),
@@ -376,15 +391,14 @@ class TestTransformedSource:
             system=pcms.csys.CylindricalRThetaZ.create(),
             scaling=pcms.ComponentScaling.Physical)
         op = pcms.Interpolator(
-            pcms.TransformedSource(cylindrical_space,
-                                   pcms.CartesianToCylindrical()),
-            cartesian_space)
+            cylindrical_space, cartesian_space,
+            _bind_through_map(cylindrical_space, cartesian_space))
         with pytest.raises(RuntimeError, match="target's declared basis"):
             op.apply(b_src, wrong)
 
     def test_plain_interpolator_refuses_to_bridge_systems(
             self, cylindrical_space, cartesian_space):
-        with pytest.raises(RuntimeError, match="TransformedSource"):
+        with pytest.raises(RuntimeError, match="as Bind's map argument"):
             pcms.Interpolator(cylindrical_space, cartesian_space)
 
 
@@ -392,16 +406,16 @@ class TestLifetimes:
     def test_space_keeps_its_mesh_alive(self, world):
         mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0,
                                  4, 4, 0, False)
-        space = pcms.LagrangeFunctionSpace.from_mesh(
-            mesh, 1, 1, backend=pcms.LagrangeFunctionSpace.Backend.OmegaH)
+        space = pcms.create_lagrange_space(
+            pcms.create_omega_h_geometry(mesh), 1, 1,
+            backend=pcms.LagrangeBackend.OmegaH)
         del mesh
         gc.collect()
         f = space.create_function()
         coords = _coordinates(f)
         f.set_dof_holder_data(coords[:, :1])
         evaluator = space.create_point_evaluator(
-            pcms.EvaluationRequest.from_coordinates(
-                pcms.CoordinateView([[0.3, 0.6]])))
+            space.get_geometry().bind(pcms.CoordinateView([[0.3, 0.6]])))
         out = np.zeros((1, 1))
         evaluator.evaluate(f, out)
         np.testing.assert_allclose(out, [[0.3]], atol=1e-12)
@@ -411,14 +425,14 @@ class TestLifetimes:
         b_src = _radial_field(cylindrical_space)
         b_tgt = cartesian_space.create_function("b", pcms.values.Vector)
         op = pcms.Interpolator(
-            pcms.TransformedSource(cylindrical_space,
-                                   pcms.CartesianToCylindrical()),
-            cartesian_space)
-        source = pcms.TransformedSource(cylindrical_space,
-                                        pcms.CartesianToCylindrical())
-        evaluator = source.create_point_evaluator(
-            pcms.EvaluationRequest.from_function_space(cartesian_space))
-        del source
+            cylindrical_space, cartesian_space,
+            _bind_through_map(cylindrical_space, cartesian_space))
+        # the bound source owns its bound map; the map object may go
+        cart_to_cyl = pcms.CartesianToCylindrical()
+        bound = cylindrical_space.get_geometry().bind(
+            cartesian_space, map=cart_to_cyl)
+        evaluator = cylindrical_space.create_point_evaluator(bound)
+        del cart_to_cyl, bound
         gc.collect()
         op.apply(b_src, b_tgt)
         out = np.zeros((evaluator.num_points(), 3))

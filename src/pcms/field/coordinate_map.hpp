@@ -30,6 +30,13 @@ public:
   /// Query points expressed in the map's target coordinate system.
   [[nodiscard]] CoordinateView<DeviceMemorySpace> MappedPoints() const;
 
+  /// @return the mapped points, shared, not copied
+  [[nodiscard]] Kokkos::View<const Real**, DeviceMemorySpace> Mapped()
+    const noexcept
+  {
+    return mapped_;
+  }
+
   [[nodiscard]] LO NumPoints() const noexcept
   {
     return static_cast<LO>(mapped_.extent(0));
@@ -120,7 +127,7 @@ protected:
 
 // Places points of a poloidal (R, Z) plane at a fixed toroidal angle:
 // (R, Z) -> (R, theta0, Z). This lets a 2D CylindricalRZ target query a 3D
-// CylindricalRThetaZ source through a TransformedSource.
+// CylindricalRThetaZ source: pass it as the map of the source geometry's Bind.
 //
 // Only scalar values (including multi-component scalars) are currently
 // supported.

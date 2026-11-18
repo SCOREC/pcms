@@ -1,5 +1,6 @@
 #include "pcms/field/layout/point_cloud.h"
 #include "pcms/utility/arrays.h"
+#include "pcms/utility/entity_types.h"
 #include <memory>
 #include <Kokkos_StdAlgorithms.hpp>
 
@@ -8,20 +9,6 @@ namespace pcms
 
 namespace
 {
-
-std::shared_ptr<const Discretization> MakePointCloudDiscretization(
-  int dim, Kokkos::View<Real**> coords)
-{
-  auto coords_mirror =
-    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), coords);
-  // Create a view with the default layout for HostMemorySpace to avoid layout
-  // incompatibility
-  Kokkos::View<Real**, HostMemorySpace> coords_host(
-    "coords_host", coords_mirror.extent(0), coords_mirror.extent(1));
-  Kokkos::deep_copy(coords_host, coords_mirror);
-  return std::make_shared<PointCloudDiscretization>(
-    dim, coords_host, static_cast<const void*>(coords.data()));
-}
 
 void InitializePointCloudClassification(
   Kokkos::View<LO*, DeviceMemorySpace> classification_dims,
@@ -40,16 +27,6 @@ void InitializePointCloudClassification(
 PointCloudLayout::PointCloudLayout(
   int dim, Kokkos::View<Real**> coords,
   std::shared_ptr<const CoordinateSystem> coordinate_system)
-  : PointCloudLayout(dim, coords, std::move(coordinate_system),
-                     MakePointCloudDiscretization(dim, coords), Vertex)
-{
-}
-
-PointCloudLayout::PointCloudLayout(
-  int dim, Kokkos::View<Real**> coords,
-  std::shared_ptr<const CoordinateSystem> coordinate_system,
-  std::shared_ptr<const Discretization> discretization,
-  int classification_entity_dim)
   : dim_(dim),
     coords_(coords),
     owned_("", coords.extent(0)),
@@ -71,23 +48,16 @@ PointCloudLayout::PointCloudLayout(
   classification_ids_ =
     Kokkos::View<LO*, DeviceMemorySpace>("classification_ids", n);
   InitializePointCloudClassification(classification_dims_, classification_ids_,
-                                     n, classification_entity_dim);
+                                     n, Vertex);
   classification_dims_host_ =
     Kokkos::View<LO*, HostMemorySpace>("classification_dims", n);
   classification_ids_host_ =
     Kokkos::View<LO*, HostMemorySpace>("classification_ids", n);
-  discretization_ = std::move(discretization);
 
   Kokkos::deep_copy(owned_host_, owned_);
   Kokkos::deep_copy(gids_host_, gids_);
   Kokkos::deep_copy(classification_dims_host_, classification_dims_);
   Kokkos::deep_copy(classification_ids_host_, classification_ids_);
-}
-
-std::shared_ptr<const Discretization> PointCloudLayout::GetDiscretization()
-  const noexcept
-{
-  return discretization_;
 }
 
 int PointCloudLayout::GetNumComponents() const

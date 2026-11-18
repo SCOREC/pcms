@@ -3,7 +3,7 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "pcms/discretization/discretization/omega_h.hpp"
+#include "pcms/field/evaluator/omega_h_geometry.hpp"
 #include "pcms/field/field_layout.h"
 
 namespace pcms
@@ -12,12 +12,12 @@ namespace pcms
 class OmegaHEntityLayout : public FieldLayout
 {
 public:
-  OmegaHEntityLayout(Omega_h::Mesh& mesh, int entity_dim, int num_components,
-                     std::shared_ptr<const CoordinateSystem> coordinate_system,
-                     std::string global_id_name = "global");
-
-  std::shared_ptr<const Discretization> GetDiscretization()
-    const noexcept override;
+  /// The DOF holders are the entities of dimension `entity_dim` of the
+  /// geometry's mesh. The layout is on `geometry`, and takes its coordinate
+  /// system and its global id tag name.
+  /// @throws pcms_error if `geometry` is null
+  OmegaHEntityLayout(std::shared_ptr<const OmegaHGeometry> geometry,
+                     int entity_dim, int num_components);
 
   int GetNumComponents() const override;
   LO GetNumDofHolder() const override;
@@ -44,6 +44,7 @@ public:
     const override;
 
 private:
+  Omega_h::Mesh& mesh_;
   int dimension_;
   int entity_dim_;
   int num_components_;
@@ -70,8 +71,6 @@ private:
   void BuildOwnedViews();
   // Requires the owned views and the classification arrays with ghosts.
   void BuildOwnedClassification();
-
-  std::shared_ptr<const Discretization> discretization_;
 };
 
 } // namespace pcms

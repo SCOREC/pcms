@@ -444,13 +444,15 @@ if(Catch2_FOUND)
       test_mesh_geometry.cpp
             test_polynomial_reconstruction_function_space.cpp
             test_polynomial_reconstruction_mls_evaluation.cpp
-      test_localization_factory.cpp
       test_omega_h_field2_outofbounds.cpp
       test_omega_h_lagrange_field.cpp
       test_point_evaluator.cpp
       test_tagged_outputs.cpp
-      test_transformed_source.cpp
-      test_evaluation_only_space.cpp)
+      test_bound_maps.cpp
+      test_evaluation_only_space.cpp
+      test_bound_source.cpp
+      test_geometry.cpp
+      test_derivatives.cpp)
   endif()
 
   if(PCMS_ENABLE_MFEM)

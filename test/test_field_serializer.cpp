@@ -13,7 +13,9 @@
 #ifdef PCMS_ENABLE_OMEGA_H
 #include "field_test_utils.h"
 #include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
 #include "pcms/field/function_space/polynomial_reconstruction.hpp"
+#include <pcms/field/evaluator/point_cloud_geometry.hpp>
 #include "pcms/utility/uniform_grid.h"
 #include <Omega_h_library.hpp>
 #endif
@@ -152,9 +154,9 @@ TEST_CASE("FieldSerializer round-trips a polynomial-reconstruction field")
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
-  auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
-    pcms::CoordinateView<pcms::HostMemorySpace>(
-      pcms::csys::Cartesian::Deferred(), coords_view));
+  auto space = pcms::CreatePolynomialReconstructionSpace(
+    pcms::CreatePointCloudGeometry(pcms::CoordinateView<pcms::HostMemorySpace>(
+      pcms::csys::Cartesian::Deferred(), coords_view)));
   auto field = space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data{5.0, 6.0, 7.0, 8.0};
@@ -171,8 +173,9 @@ TEST_CASE("FieldSerializer round-trips a uniform-grid field")
   grid.bot_left = {0.0, 0.0};
   grid.edge_length = {10.0, 10.0};
   grid.divisions = {3, 3};
-  auto space = pcms::LagrangeFunctionSpace::FromUniformGrid(
-    grid, 1, pcms::csys::Cartesian::Deferred());
+  auto space = pcms::CreateLagrangeSpace(
+    pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()), 1,
+    1);
   auto field = space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data(16);
@@ -206,9 +209,11 @@ TEST_CASE("FieldSerializer round-trips a multi-component Omega_h field")
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
   constexpr int num_components = 3;
-  auto space = pcms::LagrangeFunctionSpace::FromMesh(
-    mesh, 1, num_components, pcms::csys::Cartesian::Deferred(), "global",
-    pcms::LagrangeFunctionSpace::Backend::OmegaH);
+  auto geometry =
+    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto space = pcms::CreateLagrangeSpace(
+    geometry, 1, num_components,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
   auto field = space->CreateFunction<pcms::Real>();
 
   const int num_dof = field.GetLayout().GetNumDofHolder();
@@ -246,9 +251,9 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
-  auto space = pcms::PolynomialReconstructionFunctionSpace::Create(
-    pcms::CoordinateView<pcms::HostMemorySpace>(
-      pcms::csys::Cartesian::Deferred(), coords_view));
+  auto space = pcms::CreatePolynomialReconstructionSpace(
+    pcms::CreatePointCloudGeometry(pcms::CoordinateView<pcms::HostMemorySpace>(
+      pcms::csys::Cartesian::Deferred(), coords_view)));
   auto field = space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data{5.0, 6.0, 7.0, 8.0};

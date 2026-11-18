@@ -1,6 +1,5 @@
 #include "pcms/field/layout/mfem.hpp"
 
-#include "pcms/discretization/discretization/point_cloud.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/assert.h"
 #include "pcms/utility/profile.h"
@@ -9,17 +8,6 @@
 
 namespace pcms
 {
-
-namespace
-{
-
-std::shared_ptr<const Discretization> MakeVertexDiscretization(
-  int dim, Kokkos::View<const Real**, HostMemorySpace> coords_host)
-{
-  return std::make_shared<PointCloudDiscretization>(dim, coords_host);
-}
-
-} // namespace
 
 MFEMLayout::MFEMLayout(
   mfem::ParMesh& pmesh, mfem::ParFiniteElementSpace& pfes,
@@ -65,20 +53,12 @@ MFEMLayout::MFEMLayout(
     classification_dims_host_(v) = 0;
     classification_ids_host_(v) = v;
   }
-
-  discretization_ = MakeVertexDiscretization(dim_, coords_host);
 }
 
 void MFEMLayout::AssertVertexScalarSpace() const
 {
   PCMS_ALWAYS_ASSERT(pfes_.GetVDim() == 1);
   PCMS_ALWAYS_ASSERT(pfes_.GetNDofs() == pmesh_.GetNV());
-}
-
-std::shared_ptr<const Discretization> MFEMLayout::GetDiscretization()
-  const noexcept
-{
-  return discretization_;
 }
 
 int MFEMLayout::GetNumComponents() const

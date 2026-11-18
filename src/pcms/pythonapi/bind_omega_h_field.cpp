@@ -37,7 +37,7 @@ void bind_omega_h_field(py::module& m)
 
   // NOTE: MeshFieldsAdapter2<Real> and FieldT<Real> have been removed from
   // the C++ API. Python now works with Field<Real> objects created from
-  // FunctionSpace-derived factories such as LagrangeFunctionSpace.
+  // function spaces made by the create_*_space factories.
 }
 
 } // namespace pcms

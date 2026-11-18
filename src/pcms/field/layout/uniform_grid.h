@@ -2,7 +2,7 @@
 #define PCMS_UNIFORM_GRID_FIELD_LAYOUT_H
 
 #include "pcms/utility/arrays.h"
-#include "pcms/discretization/discretization/uniform_grid.hpp"
+#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
 #include "pcms/field/field_layout.h"
 #include "pcms/field/field.h"
 #include "pcms/utility/uniform_grid.h"
@@ -15,12 +15,13 @@ template <unsigned Dim = 2>
 class UniformGridFieldLayout : public FieldLayout
 {
 public:
+  /// The layout of order 0 (one DOF holder per cell) or 1 (one per vertex) on
+  /// the grid of `geometry`, which it is on; it takes the geometry's
+  /// coordinate system.
+  /// @throws pcms_error if `geometry` is null
   UniformGridFieldLayout(
-    UniformGrid<Dim> grid, int num_components,
-    std::shared_ptr<const CoordinateSystem> coordinate_system, int order = 1);
-
-  std::shared_ptr<const Discretization> GetDiscretization()
-    const noexcept override;
+    std::shared_ptr<const UniformGridGeometry<Dim>> geometry,
+    int num_components, int order = 1);
 
   int GetNumComponents() const override;
   LO GetNumDofHolder() const override;
@@ -62,7 +63,6 @@ private:
   Kokkos::View<LO*, DeviceMemorySpace> classification_ids_;
   Kokkos::View<LO*, HostMemorySpace> classification_dims_host_;
   Kokkos::View<LO*, HostMemorySpace> classification_ids_host_;
-  std::shared_ptr<const Discretization> discretization_;
 };
 
 using UniformGridFieldLayout2D = UniformGridFieldLayout<2>;

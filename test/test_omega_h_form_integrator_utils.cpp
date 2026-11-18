@@ -1,5 +1,6 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <Kokkos_MathematicalFunctions.hpp>
 #include <pcms/transfer/omega_h_form_integrator_utils.hpp>
 
 #include <array>
@@ -14,16 +15,45 @@
 namespace
 {
 
-double TetVolume(const r3d::Vector<3>& a, const r3d::Vector<3>& b,
-                 const r3d::Vector<3>& c, const r3d::Vector<3>& d)
+OMEGA_H_INLINE double TetVolume(const r3d::Vector<3>& a,
+                                const r3d::Vector<3>& b,
+                                const r3d::Vector<3>& c,
+                                const r3d::Vector<3>& d)
 {
   const double bx = b[0] - a[0], by = b[1] - a[1], bz = b[2] - a[2];
   const double cx = c[0] - a[0], cy = c[1] - a[1], cz = c[2] - a[2];
   const double dx = d[0] - a[0], dy = d[1] - a[1], dz = d[2] - a[2];
   const double triple = bx * (cy * dz - cz * dy) - by * (cx * dz - cz * dx) +
                         bz * (cx * dy - cy * dx);
-  return std::abs(triple) / 6.0;
+  return Kokkos::fabs(triple) / 6.0;
 }
+
+struct SumTetrahedra
+{
+  const r3d::Vector<3>& apex;
+  double& volume;
+  int& count;
+
+  OMEGA_H_INLINE void operator()(const r3d::Vector<3>& a,
+                                 const r3d::Vector<3>& b,
+                                 const r3d::Vector<3>& c) const
+  {
+    volume += TetVolume(apex, a, b, c);
+    ++count;
+  }
+};
+
+struct SumEdges
+{
+  double& area;
+  int& count;
+
+  OMEGA_H_INLINE void operator()(const r3d::Few<r3d::Vector<2>, 2>& edge) const
+  {
+    area += 0.5 * (edge[0][0] * edge[1][1] - edge[1][0] * edge[0][1]);
+    ++count;
+  }
+};
 
 // Star-decompose `poly` from its centroid exactly as ForEachIntersectionSubtet
 // does, summing the sub-tet volumes and counting the emitted face triangles.
@@ -42,12 +72,8 @@ std::pair<double, int> DecomposeFromCentroid(const r3d::Polytope<3>& poly)
 
   double total_vol = 0.0;
   int ntri = 0;
-  pcms::detail::ForEachPolytopeFaceTriangle(poly, [&](const r3d::Vector<3>& a,
-                                                      const r3d::Vector<3>& b,
-                                                      const r3d::Vector<3>& c) {
-    total_vol += TetVolume(apex, a, b, c);
-    ++ntri;
-  });
+  pcms::detail::ForEachPolytopeFaceTriangle(
+    poly, SumTetrahedra{apex, total_vol, ntri});
   return {total_vol, ntri};
 }
 
@@ -134,11 +160,8 @@ TEST_CASE("ForEachPolytopeBoundarySimplex: a triangle yields its 3 edges once, "
 
   int nedges = 0;
   double shoelace = 0.0;
-  pcms::detail::ForEachPolytopeBoundarySimplex(
-    poly, [&](const r3d::Few<r3d::Vector<2>, 2>& e) {
-      shoelace += 0.5 * (e[0][0] * e[1][1] - e[1][0] * e[0][1]);
-      ++nedges;
-    });
+  pcms::detail::ForEachPolytopeBoundarySimplex(poly,
+                                               SumEdges{shoelace, nedges});
   REQUIRE(nedges == 3);
   // Consistent orientation around the cycle: the edges alone integrate to the
   // (signed) area.

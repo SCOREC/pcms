@@ -1050,7 +1050,7 @@ TEST_CASE("Omega_h evaluators use the entity the search finds",
     // the entities of the centroids, in the order of EntityCentroids
     LO i = 0;
     for (int d = 0; d <= dim; ++d) {
-      const auto up = mesh.ask_up(d, dim);
+      const auto up = d < dim ? mesh.ask_up(d, dim) : Omega_h::Adj{};
       for (LO entity = 0; entity < mesh.nents(d); ++entity, ++i) {
         CAPTURE(d, entity);
         LO lowest = d == dim ? entity : mesh.nelems();

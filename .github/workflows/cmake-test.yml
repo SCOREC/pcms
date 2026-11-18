@@ -11,6 +11,10 @@ on:
   # Manual trigger
   workflow_dispatch:
 
+env:
+  OMEGA_H_REF: 8e8bd32ab6aab8555a2c749f8beebbd48b89c320
+  OMEGA_H_PYTHON_DEST: lib/python3.12/site-packages
+
 jobs:
   version-tests:
     runs-on: ubuntu-24.04
@@ -146,7 +150,7 @@ jobs:
       with:
         repo-name: 'omega_h'
         repo-path: 'SCOREC/omega_h'
-        repo-ref: '2b2e778472f48a85a5ff5e70083e3a415e58be72'
+        repo-ref: ${{ env.OMEGA_H_REF }}
         cache: true
         cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
@@ -154,6 +158,7 @@ jobs:
                   -DCMAKE_BUILD_TYPE="RelWithDebInfo"
                   -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
                   -DOmega_h_USE_pybind11=${{ matrix.python_api }}
+                  -DPyOmega_h_DEST=${{ env.OMEGA_H_PYTHON_DEST }}
                   -DOmega_h_USE_MPI=ON
                   -DOmega_h_USE_Kokkos=ON
                   -DBUILD_TESTING=OFF
@@ -168,7 +173,7 @@ jobs:
         repo-path: 'SCOREC/meshFields'
         repo-ref: 'b9984520c20f73955a3b4e25e4907780b91d430f'
         cache: true
-        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}
+        cache-suffix: ${{ env.DEP_CACHE_SUFFIX }}-omega-h-${{ env.OMEGA_H_REF }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
                   -DBUILD_SHARED_LIBS=${{ matrix.python_api }}
@@ -324,7 +329,7 @@ jobs:
       if: matrix.python_api == 'ON'
       run: |
         export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib/python3.12/site-packages:$PYTHONPATH
-        export PYTHONPATH=${{ runner.temp }}/build-omega_h/install/lib/python/dist-packages:$PYTHONPATH
+        export PYTHONPATH=${{ runner.temp }}/build-omega_h/install/${{ env.OMEGA_H_PYTHON_DEST }}:$PYTHONPATH
         cd ${{ github.workspace }}
         pytest -v --tb=short -p no:cacheprovider
 
@@ -336,7 +341,7 @@ jobs:
         sudo apt-get install -yq doxygen
         pip3 install -r docs/requirements.txt
         export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib/python3.12/site-packages:$PYTHONPATH
-        export PYTHONPATH=${{ runner.temp }}/build-omega_h/install/lib/python/dist-packages:$PYTHONPATH
+        export PYTHONPATH=${{ runner.temp }}/build-omega_h/install/${{ env.OMEGA_H_PYTHON_DEST }}:$PYTHONPATH
         sphinx-build -b html docs docs/_build/html
 
     - name: Upload documentation

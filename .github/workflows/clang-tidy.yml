@@ -12,6 +12,9 @@ on:
   # Manual trigger
   workflow_dispatch:
 
+env:
+  OMEGA_H_REF: 8e8bd32ab6aab8555a2c749f8beebbd48b89c320
+
 jobs:
   clang-tidy-check:
     runs-on: ubuntu-24.04
@@ -89,7 +92,7 @@ jobs:
       with:
         repo-name: 'omega_h-openmpi'
         repo-path: 'SCOREC/omega_h'
-        repo-ref: '2b2e778472f48a85a5ff5e70083e3a415e58be72'
+        repo-ref: ${{ env.OMEGA_H_REF }}
         cache: true
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
@@ -107,6 +110,7 @@ jobs:
         repo-path: 'SCOREC/meshFields'
         repo-ref: 'b9984520c20f73955a3b4e25e4907780b91d430f'
         cache: true
+        cache-suffix: -omega-h-${{ env.OMEGA_H_REF }}
         options: '-DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_C_COMPILER=`which mpicc`
                   -DMPIEXEC_EXECUTABLE=`which mpirun`

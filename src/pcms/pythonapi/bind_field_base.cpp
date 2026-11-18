@@ -1,9 +1,11 @@
 #include <algorithm>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
 
+#include <Omega_h_library.hpp>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -60,25 +62,16 @@ void SetDOFHolderData(Field<Real>& self, const PyValueView& v)
     v.basis, NumpyToHostView<2, Real>(array)));
 }
 
-/// The Python object of `geometry`. An Omega_h geometry refers to its mesh, so
-/// the object keeps the mesh alive, as create_omega_h_geometry does; it does
-/// not keep the caller alive, which would form a cycle with the spaces that
-/// keep their geometry alive.
+/// Return the Python handle matching the geometry kind.
 py::object GeometryToPython(const std::shared_ptr<const Geometry>& geometry)
 {
   if (geometry == nullptr) {
     return py::none();
   }
-  const auto* omega_h = dynamic_cast<const OmegaHGeometry*>(geometry.get());
-  py::object result = omega_h != nullptr
-                        ? py::cast(OmegaHGeometryHandle{{geometry}})
-                        : py::cast(Immutable<Geometry>{geometry});
-  if (omega_h != nullptr) {
-    py::object mesh =
-      py::cast(&omega_h->GetMesh(), py::return_value_policy::reference);
-    py::detail::keep_alive_impl(result, mesh);
+  if (dynamic_cast<const OmegaHGeometry*>(geometry.get()) != nullptr) {
+    return py::cast(OmegaHGeometryHandle{{geometry}});
   }
-  return result;
+  return py::cast(Immutable<Geometry>{geometry});
 }
 
 /// The methods a source of evaluators has, on the handle of a
@@ -249,7 +242,7 @@ void bind_create_field_module(py::module& m)
           g.ptr->Bind(device.view, policy, map ? map->ptr : nullptr)};
       },
       py::arg("coordinates"), py::arg("policy") = OutOfBoundsPolicy{},
-      py::arg("map") = py::none(), py::keep_alive<0, 1>(),
+      py::arg("map") = py::none(),
       "Localize the points of a CoordinateView (in get_coordinate_system(), "
       "or in the source system of `map`, a CoordinateMap to "
       "get_coordinate_system(): the points are then located at their images "
@@ -266,7 +259,7 @@ void bind_create_field_module(py::module& m)
           map ? map->ptr : nullptr)};
       },
       py::arg("space"), py::arg("policy") = OutOfBoundsPolicy{},
-      py::arg("map") = py::none(), py::keep_alive<0, 1>(),
+      py::arg("map") = py::none(),
       "Bind the DOF-holder coordinates of `space`, through `map` if given; "
       "without a map, a space whose DOF holders are entities of this geometry "
       "binds them with owner hints, which are verified (with a map the hints "
@@ -278,11 +271,14 @@ void bind_create_field_module(py::module& m)
 
   m.def(
     "create_omega_h_geometry",
-    [](Omega_h::Mesh& mesh,
+    [](std::shared_ptr<Omega_h::Mesh> mesh,
        const std::optional<Immutable<CoordinateSystem>>& system, int divisions,
        std::string global_id_name,
        const std::optional<py::array_t<
          std::int8_t, py::array::c_style | py::array::forcecast>>& owned_mask) {
+      auto library =
+        py::cast(mesh->library(), py::return_value_policy::reference)
+          .cast<std::shared_ptr<Omega_h::Library>>();
       OmegaHGeometryOptions options;
       options.search.divisions = divisions;
       options.global_id_name = std::move(global_id_name);
@@ -298,11 +294,12 @@ void bind_create_field_module(py::module& m)
         options.owned_mask = Omega_h::Read<Omega_h::I8>(host.write());
       }
       return OmegaHGeometryHandle{{CreateOmegaHGeometry(
-        mesh, CartesianIfNone(system), std::move(options))}};
+        std::move(mesh), std::move(library), CartesianIfNone(system),
+        std::move(options))}};
     },
-    py::arg("mesh"), py::arg("system") = py::none(), py::arg("divisions") = 0,
+    py::arg("mesh").none(false), py::arg("system") = py::none(),
+    py::arg("divisions") = 0,
     py::arg("global_id_name") = "global", py::arg("owned_mask") = py::none(),
-    py::keep_alive<0, 1>(),
     "Create the geometry of an Omega_h mesh: its coordinate system (default "
     "Cartesian) and point search (`divisions` grid divisions per axis, 0 to "
     "derive them from the element count); `global_id_name` names the tag "
@@ -388,7 +385,7 @@ void bind_create_field_module(py::module& m)
                                              map ? map->ptr : nullptr);
       }),
       py::arg("geometry"), py::arg("policy") = OutOfBoundsPolicy{},
-      py::arg("map") = py::none(), py::keep_alive<1, 2>())
+      py::arg("map") = py::none())
     .def(
       "locate",
       [](QueryPoints& self, const PyCoordinateView& coords) {
@@ -525,9 +522,6 @@ void bind_create_field_module(py::module& m)
       },
       py::arg("name") = "", py::arg("variance") = values::Scalar,
       py::arg("system") = py::none(), py::arg("scaling") = py::none(),
-      // The function refers to the space's mesh (an Omega_h function keeps a
-      // tag on it), so the space, which keeps the mesh alive, outlives it.
-      py::keep_alive<0, 1>(),
       "Create a Function in this space. Vector and tensor values are in "
       "`system`'s basis (default: this space's coordinate system), with "
       "`scaling` required when that system admits both scalings.")
@@ -564,7 +558,6 @@ void bind_create_field_module(py::module& m)
     },
     py::arg("geometry"), py::arg("order"), py::arg("num_components"),
     py::arg("backend") = DefaultLagrangeBackend, py::arg("layout_name") = "",
-    py::keep_alive<0, 1>(),
     "Create a Lagrange FunctionSpace of order `order` on an Omega_h geometry "
     "(backend OmegaH: orders 0 and 1; MeshFields: orders 1 and 2) or a "
     "uniform-grid geometry (orders 0 and 1, `backend` ignored); spaces on one "
@@ -575,7 +568,7 @@ void bind_create_field_module(py::module& m)
     [](const Immutable<Geometry>& geometry) {
       return Immutable<FunctionSpace>{CreateSplineSpace(geometry.ptr)};
     },
-    py::arg("geometry"), py::keep_alive<0, 1>(),
+    py::arg("geometry"),
     "Create a bicubic spline FunctionSpace on a 2D uniform-grid geometry");
 
   // Configuration for MLS evaluation of polynomial reconstruction spaces.
@@ -601,7 +594,6 @@ void bind_create_field_module(py::module& m)
         CreatePolynomialReconstructionSpace(geometry.ptr, options)};
     },
     py::arg("geometry"), py::arg("options") = MLSOptions{},
-    py::keep_alive<0, 1>(),
     "Create an MLS reconstruction FunctionSpace on a point-cloud geometry "
     "(its sites are the DOF holders); `options` are the reconstruction "
     "parameters, the support search is the geometry's");
@@ -627,7 +619,6 @@ void bind_create_field_module(py::module& m)
         CreatePointCloudGeometry(sites.ptr, std::move(neighbourhood))};
     },
     py::arg("sites"), py::arg("neighbourhood") = NeighbourhoodOptions{},
-    py::keep_alive<0, 1>(),
     "Create a point-cloud geometry whose sites are the DOF holders of a "
     "layout; `neighbourhood` is its support search");
 
@@ -652,7 +643,7 @@ void bind_create_field_module(py::module& m)
         std::move(neighbourhood))};
     },
     py::arg("geometry"), py::arg("entity_dim"),
-    py::arg("neighbourhood") = NeighbourhoodOptions{}, py::keep_alive<0, 1>(),
+    py::arg("neighbourhood") = NeighbourhoodOptions{},
     "A point-cloud geometry whose sites are the vertices (entity_dim 0) or "
     "the element centroids (the mesh dimension) of the mesh of an Omega_h "
     "geometry; the support search uses the mesh adjacency. Spaces made on the "

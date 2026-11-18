@@ -297,6 +297,11 @@ public:
                  std::shared_ptr<const CoordinateSystem> system,
                  OmegaHGeometryOptions options = {});
 
+  OmegaHGeometry(std::shared_ptr<Omega_h::Mesh> mesh,
+                 std::shared_ptr<Omega_h::Library> library,
+                 std::shared_ptr<const CoordinateSystem> system,
+                 OmegaHGeometryOptions options = {});
+
   [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
   GetCoordinateSystem() const noexcept override
   {
@@ -358,6 +363,9 @@ private:
   /// The containing-element search, built on first use.
   const GridPointSearchVariant& Search() const;
 
+  // The library must outlive the mesh and the cached search data.
+  std::shared_ptr<Omega_h::Library> library_owner_;
+  std::shared_ptr<Omega_h::Mesh> mesh_owner_;
   Omega_h::Mesh& mesh_;
   std::string global_id_name_;
   Omega_h::Read<Omega_h::I8> owned_mask_;
@@ -379,6 +387,13 @@ private:
 /// @param options search, global id tag and ownership
 [[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
   Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
+  OmegaHGeometryOptions options = {});
+
+/// Create a geometry that shares ownership of the mesh and its library.
+[[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
+  std::shared_ptr<Omega_h::Mesh> mesh,
+  std::shared_ptr<Omega_h::Library> library,
+  std::shared_ptr<const CoordinateSystem> system,
   OmegaHGeometryOptions options = {});
 
 /// The mesh of an Omega_h geometry.

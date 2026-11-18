@@ -125,6 +125,29 @@ OmegaHGeometry::OmegaHGeometry(Omega_h::Mesh& mesh,
   }
 }
 
+namespace
+{
+Omega_h::Mesh& RequireOwnedMesh(const std::shared_ptr<Omega_h::Mesh>& mesh,
+                               const std::shared_ptr<Omega_h::Library>& library)
+{
+  if (!mesh || !library || mesh->library() != library.get()) {
+    throw pcms_error("OmegaHGeometry: expected a mesh and its library");
+  }
+  return *mesh;
+}
+} // namespace
+
+OmegaHGeometry::OmegaHGeometry(
+  std::shared_ptr<Omega_h::Mesh> mesh,
+  std::shared_ptr<Omega_h::Library> library,
+  std::shared_ptr<const CoordinateSystem> system, OmegaHGeometryOptions options)
+  : OmegaHGeometry(RequireOwnedMesh(mesh, library), std::move(system),
+                   std::move(options))
+{
+  library_owner_ = std::move(library);
+  mesh_owner_ = std::move(mesh);
+}
+
 const GridPointSearchVariant& OmegaHGeometry::Search() const
 {
   std::call_once(search_once_, [this] {
@@ -140,6 +163,15 @@ std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
 {
   return std::make_shared<OmegaHGeometry>(mesh, std::move(system),
                                           std::move(options));
+}
+
+std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
+  std::shared_ptr<Omega_h::Mesh> mesh,
+  std::shared_ptr<Omega_h::Library> library,
+  std::shared_ptr<const CoordinateSystem> system, OmegaHGeometryOptions options)
+{
+  return std::make_shared<OmegaHGeometry>(std::move(mesh), std::move(library),
+                                         std::move(system), std::move(options));
 }
 
 Omega_h::Mesh& GetMesh(const Geometry& geometry)

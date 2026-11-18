@@ -30,6 +30,11 @@ replacement). The rest of this document explains those changes.
   `PETSC_LINK_STATIC` → `PCMS_PETSC_LINK_STATIC`.
 - **New option** `PCMS_ENABLE_COUPLER` (default `ON`): with `OFF`, PCMS builds
   without redev and ADIOS2 (no coupler, no C/Fortran client API, no Python).
+- **Without Omega_h:** `PCMS_ENABLE_OMEGA_H=OFF` (with
+  `PCMS_ENABLE_SERVER=OFF`, which forces Omega_h on, and the coupler, XGC
+  and MeshFields off) builds the core: uniform-grid and point-cloud
+  geometries and their spaces, QueryPoints, MLS. Mesh geometries, the mesh
+  search and the projections need Omega_h.
 - **Finding PCMS:** the package files are in `<prefix>/lib/cmake/pcms`. The
   package no longer bakes in the paths of its dependencies: make them findable
   as usual (`CMAKE_PREFIX_PATH`, `<Package>_ROOT` or `<Package>_DIR`) for
@@ -89,10 +94,10 @@ system and the point search; use the factories, which return the interfaces
 |---|---|
 | `LagrangeFunctionSpace::FromMesh(mesh, order, n, csys, gid_name, backend, layout_name)` | `CreateLagrangeSpace(backend::omega_h::CreateGeometry(mesh, csys, {.global_id_name = gid_name}), order, n, {.backend = backend, .layout_name = layout_name})` |
 | `... FromMesh(mesh, order, n, csys, owned_mask, ...)` | `CreateLagrangeSpace(backend::omega_h::CreateGeometry(mesh, csys, {.global_id_name = gid_name, .owned_mask = owned_mask}), ...)` |
-| `LagrangeFunctionSpace::FromUniformGrid(grid, n, csys, order)` | `CreateLagrangeSpace(CreateUniformGridGeometry(grid, csys), order, n)` |
+| `LagrangeFunctionSpace::FromUniformGrid(grid, n, csys, order)` | `CreateLagrangeSpace(backend::uniform_grid::CreateUniformGridGeometry(grid, csys), order, n)` |
 | `LagrangeFunctionSpace::Backend::{MeshFields,OmegaH}` | `LagrangeBackend::{MeshFields,OmegaH}` (in `LagrangeOptions`) |
-| `SplineFunctionSpace::FromUniformGrid(grid, csys)` | `CreateSplineSpace(CreateUniformGridGeometry(grid, csys))` |
-| `PolynomialReconstructionFunctionSpace::Create(points, opts)` | `CreatePolynomialReconstructionSpace(CreatePointCloudGeometry(points, neighbourhood), opts)` |
+| `SplineFunctionSpace::FromUniformGrid(grid, csys)` | `CreateSplineSpace(backend::uniform_grid::CreateUniformGridGeometry(grid, csys))` |
+| `PolynomialReconstructionFunctionSpace::Create(points, opts)` | `CreatePolynomialReconstructionSpace(backend::point_cloud::CreatePointCloudGeometry(points, neighbourhood), opts)` |
 | `PolynomialReconstructionFunctionSpace::FromMesh(mesh, dim, csys, opts)` | `CreatePolynomialReconstructionSpace(backend::omega_h::CreatePointCloudGeometry(backend::omega_h::CreateGeometry(mesh, csys), dim, neighbourhood), opts)` |
 | `EmptyFieldLayout(csys, n)` | `CreateEmptyLayout(csys, n)` |
 | `OmegaHConservativeProjection(src, tgt, mass)` | `CreateConservativeProjection(src, tgt, {mass})` |
@@ -116,11 +121,11 @@ build without PETSc and MeshFields.
   must outlive it. Creating a geometry builds the mesh's containing-element
   search: create one per mesh and create every space on it, so that the
   spaces share the search and accept each other's bound sources.
-- `Geometry::GetDiscretization()` replaces creating a discretization by
-  hand: there are no discretization factories, and a geometry owns its
+- There are no discretization factories (`Discretization` is removed; layouts
+  hold their geometry), and a geometry owns its
   global-id tag and ownership mask (`OmegaHGeometryOptions`).
-  `backend::omega_h::GetMesh(geometry)` returns the mesh of an Omega_h
-  geometry.
+  `OmegaHGeometry::GetMesh()` returns the mesh of an Omega_h geometry; the
+  geometry kinds are public and their factories return them.
 - The coordinate system belongs to the geometry; the space factories no
   longer take one.
 - `MLSOptions` keeps `degree`, `lambda`, `tol`, `decay_factor` and `basis`;

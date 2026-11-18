@@ -1,9 +1,14 @@
 #ifndef PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP
 #define PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP
 
-#include "pcms/geometry/supports.hpp"
+// Implementer API: not covered by the public-API stability promise. (the whole
+// header)
 
-#include <Omega_h_array.hpp>
+#include "pcms/geometry/supports.hpp"
+#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/types.hpp"
+
+#include <Kokkos_Core.hpp>
 
 namespace pcms::localization
 {
@@ -20,24 +25,23 @@ inline bool within_number_of_support_range(unsigned min_supports_found,
 }
 
 // Compute the element-wise min and max of a support-count array.
-void minmax(Omega_h::Read<Omega_h::LO> num_supports,
+void minmax(Kokkos::View<const LO*, DeviceMemorySpace> num_supports,
             unsigned& min_supports_found, unsigned& max_supports_found);
 
 // Scale per-target squared radii to drive support counts toward [min, max].
 void adapt_radii(unsigned min_req_supports, unsigned max_allowed_supports,
-                 Omega_h::LO n_targets, Omega_h::Write<Omega_h::Real> radii2_l,
-                 Omega_h::Write<Omega_h::LO> num_supports);
+                 LO n_targets, Kokkos::View<Real*, DeviceMemorySpace> radii2_l,
+                 Kokkos::View<LO*, DeviceMemorySpace> num_supports);
 
 // Build SupportResults for a point-cloud source/target pair using a
 // distance-based N² search with optional adaptive radius adjustment.
 // source_coords and target_coords are flat arrays in [x0,y0,..., x1,y1,...]
 // order.
-SupportResults BuildPointCloudSupports(const Omega_h::Reals& source_coords,
-                                       const Omega_h::Reals& target_coords,
-                                       int dim, double radius,
-                                       unsigned min_req_supports,
-                                       bool adapt_radius,
-                                       unsigned max_iterations = 100);
+SupportResults BuildPointCloudSupports(
+  Kokkos::View<const Real*, DeviceMemorySpace> source_coords,
+  Kokkos::View<const Real*, DeviceMemorySpace> target_coords, int dim,
+  double radius, unsigned min_req_supports, bool adapt_radius,
+  unsigned max_iterations = 100);
 
 } // namespace pcms::localization
 #endif // PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP

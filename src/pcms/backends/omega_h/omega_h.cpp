@@ -6,40 +6,38 @@
 namespace pcms::backend::omega_h
 {
 
-std::shared_ptr<const Geometry> CreateGeometry(
+std::shared_ptr<const OmegaHGeometry> CreateGeometry(
   Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
   OmegaHGeometryOptions options)
 {
-  return CreateOmegaHGeometry(mesh, std::move(system), std::move(options));
+  return std::make_shared<OmegaHGeometry>(mesh, std::move(system),
+                                          std::move(options));
 }
 
-Omega_h::Mesh& GetMesh(const Geometry& geometry)
+std::shared_ptr<const OmegaHGeometry> CreateGeometry(
+  std::shared_ptr<Omega_h::Mesh> mesh,
+  std::shared_ptr<Omega_h::Library> library,
+  std::shared_ptr<const CoordinateSystem> system, OmegaHGeometryOptions options)
 {
-  const auto* omega_h = dynamic_cast<const OmegaHGeometry*>(&geometry);
-  if (omega_h == nullptr) {
-    throw pcms_error("pcms::backend::omega_h::GetMesh: the geometry is not an "
-                     "Omega_h geometry");
-  }
-  return omega_h->GetMesh();
+  return std::make_shared<OmegaHGeometry>(
+    std::move(mesh), std::move(library), std::move(system), std::move(options));
 }
 
-std::shared_ptr<const Geometry> CreatePointCloudGeometry(
-  std::shared_ptr<const Geometry> geometry, int entity_dim,
+std::shared_ptr<const point_cloud::PointCloudGeometry> CreatePointCloudGeometry(
+  std::shared_ptr<const OmegaHGeometry> geometry, int entity_dim,
   NeighbourhoodOptions options)
 {
-  const auto omega_h =
-    std::dynamic_pointer_cast<const OmegaHGeometry>(std::move(geometry));
-  if (omega_h == nullptr) {
+  if (geometry == nullptr) {
     throw pcms_error("pcms::backend::omega_h::CreatePointCloudGeometry: the "
-                     "geometry must be an Omega_h geometry");
+                     "geometry must not be null");
   }
-  if (entity_dim != 0 && entity_dim != omega_h->GetMesh().dim()) {
+  if (entity_dim != 0 && entity_dim != geometry->GetMesh().dim()) {
     throw pcms_error("pcms::backend::omega_h::CreatePointCloudGeometry: "
                      "entity_dim must be 0 (vertices) or the mesh dimension "
                      "(element centroids)");
   }
-  return pcms::CreatePointCloudGeometry(
-    std::make_shared<OmegaHEntityLayout>(omega_h, entity_dim, 1),
+  return point_cloud::CreatePointCloudGeometry(
+    std::make_shared<OmegaHEntityLayout>(std::move(geometry), entity_dim, 1),
     std::move(options));
 }
 

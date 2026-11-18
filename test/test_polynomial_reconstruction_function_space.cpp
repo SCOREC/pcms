@@ -43,8 +43,9 @@ TEST_CASE(
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
 
   auto factory = pcms::CreatePolynomialReconstructionSpace(
-    pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-      pcms::csys::Cartesian::Deferred(), coords_view)));
+    pcms::backend::point_cloud::CreatePointCloudGeometry(
+      pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
+                                            coords_view)));
   auto layout = factory->GetLayout();
 
   REQUIRE(layout->GetNumComponents() == 1);
@@ -71,8 +72,9 @@ TEST_CASE("PolynomialReconstructionFunctionSpace fields share layout")
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
 
   auto factory = pcms::CreatePolynomialReconstructionSpace(
-    pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-      pcms::csys::Cartesian::Deferred(), coords_view)));
+    pcms::backend::point_cloud::CreatePointCloudGeometry(
+      pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
+                                            coords_view)));
   auto source = factory->CreateFunction<Real>();
   auto target = factory->CreateFunction<Real>();
 
@@ -85,11 +87,11 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field set/get DOF "
   auto coords = MakeCoords2D();
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
 
-  auto field =
-    pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-        pcms::csys::Cartesian::Deferred(), coords_view)))
-      ->CreateFunction<Real>();
+  auto field = pcms::CreatePolynomialReconstructionSpace(
+                 pcms::backend::point_cloud::CreatePointCloudGeometry(
+                   pcms::CoordinateView<HostMemorySpace>(
+                     pcms::csys::Cartesian::Deferred(), coords_view)))
+                 ->CreateFunction<Real>();
 
   std::vector<Real> data{1.0, 2.0, 3.0, 4.0};
   Rank2View<const Real, HostMemorySpace> data_view(
@@ -114,8 +116,9 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
 
   auto field = [&]() {
     auto factory = pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-        pcms::csys::Cartesian::Deferred(), coords_view)));
+      pcms::backend::point_cloud::CreatePointCloudGeometry(
+        pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
+                                              coords_view)));
     return factory->CreateFunction<Real>();
   }();
 
@@ -192,8 +195,9 @@ TEST_CASE("A standalone point-cloud layout has no geometry")
   auto coords = MakeCoords2D();
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
   auto standalone = pcms::CreatePolynomialReconstructionSpace(
-    pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-      pcms::csys::Cartesian::Deferred(), coords_view)));
+    pcms::backend::point_cloud::CreatePointCloudGeometry(
+      pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
+                                            coords_view)));
 
   REQUIRE(lagrange->GetLayout()->GetGeometry() != nullptr);
   REQUIRE(standalone->GetLayout()->GetGeometry() == nullptr);

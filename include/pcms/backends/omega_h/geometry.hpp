@@ -1,9 +1,8 @@
 #ifndef PCMS_BACKENDS_OMEGA_H_GEOMETRY_HPP
 #define PCMS_BACKENDS_OMEGA_H_GEOMETRY_HPP
 
-#include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/geometry/geometry.hpp"
-#include "pcms/localization/point_search.hpp"
+#include "pcms/backends/omega_h/point_search.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
@@ -89,9 +88,9 @@ KOKKOS_INLINE_FUNCTION LO LowestAdjacentElement(
 /// adjacent to the entity it names (for a point outside the mesh, its nearest
 /// entity); -1 for NO_INTERSECT.
 template <int Dim>
-KOKKOS_INLINE_FUNCTION LO ElementOfResult(
-  const Omega_h::Few<Omega_h::Adj, Dim>& up,
-  const typename localization::PointLocalizationSearch<Dim>::Result& result)
+KOKKOS_INLINE_FUNCTION LO
+ElementOfResult(const Omega_h::Few<Omega_h::Adj, Dim>& up,
+                const typename PointLocalizationSearch<Dim>::Result& result)
 {
   return LowestAdjacentElement(up, static_cast<int>(result.dimensionality),
                                result.EntityId());
@@ -109,8 +108,8 @@ KOKKOS_INLINE_FUNCTION LO ElementOfResult(
 template <int Dim>
 KOKKOS_INLINE_FUNCTION int EntityVertexWeights(
   const Omega_h::Few<Omega_h::LOs, Dim + 1>& verts_of,
-  const typename localization::PointLocalizationSearch<Dim>::Result& result,
-  LO* vertices, Real* weights)
+  const typename PointLocalizationSearch<Dim>::Result& result, LO* vertices,
+  Real* weights)
 {
   const int d = static_cast<int>(result.dimensionality);
   const LO entity = result.EntityId();
@@ -132,13 +131,12 @@ KOKKOS_INLINE_FUNCTION int EntityVertexWeights(
 /// NO_INTERSECT), as the points the bound source evaluates.
 template <int Dim>
 void FoundFlags(
-  Kokkos::View<
-    const typename localization::PointLocalizationSearch<Dim>::Result*,
-    DeviceMemorySpace>
+  Kokkos::View<const typename PointLocalizationSearch<Dim>::Result*,
+               DeviceMemorySpace>
     results,
   Kokkos::View<bool*, DeviceMemorySpace> found)
 {
-  using Result = typename localization::PointLocalizationSearch<Dim>::Result;
+  using Result = typename PointLocalizationSearch<Dim>::Result;
   pcms::detail::ForEach(
     "FoundFlags", static_cast<LO>(results.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
@@ -154,9 +152,8 @@ void FoundFlags(
 template <int Dim>
 void ElementsOfResults(
   Omega_h::Mesh& mesh,
-  Kokkos::View<
-    const typename localization::PointLocalizationSearch<Dim>::Result*,
-    DeviceMemorySpace>
+  Kokkos::View<const typename PointLocalizationSearch<Dim>::Result*,
+               DeviceMemorySpace>
     results,
   LO num_records, Kokkos::View<LO*, DeviceMemorySpace> elements)
 {
@@ -188,9 +185,8 @@ void ElementsOfEntities(Omega_h::Mesh& mesh, int entity_dim,
 template <int Dim>
 Kokkos::View<LO*, DeviceMemorySpace> LiftElements(
   Omega_h::Mesh& mesh,
-  Kokkos::View<
-    const typename localization::PointLocalizationSearch<Dim>::Result*,
-    DeviceMemorySpace>
+  Kokkos::View<const typename PointLocalizationSearch<Dim>::Result*,
+               DeviceMemorySpace>
     results)
 {
   Kokkos::View<LO*, DeviceMemorySpace> elements(
@@ -214,6 +210,8 @@ Kokkos::View<LO*, DeviceMemorySpace> LiftElements(
 /// points are those of a new bind. The records are kept across rebinds and
 /// reallocated only when the points outgrow them (after which the next rebind
 /// has no guesses); the first bind has the guesses its hints give, else none.
+///
+/// Implementer API: not covered by the public-API stability promise.
 class OmegaHMeshBinding final : public BoundSource
 {
 public:
@@ -223,8 +221,7 @@ public:
   /// `mesh` are the geometry's; a rebind searches with them again.
   OmegaHMeshBinding(std::shared_ptr<const Geometry> geometry,
                     const BindRequest& request,
-                    const localization::GridPointSearchVariant& search,
-                    Omega_h::Mesh& mesh);
+                    const GridPointSearchVariant& search, Omega_h::Mesh& mesh);
 
   /// [query point]: the search's record of each point, the entity it lies on
   /// and its reduced coordinates on it (PointLocalizationSearch<Dim>::Result;
@@ -234,13 +231,11 @@ public:
   /// detail::LowestAdjacentElement, detail::EntityVertexWeights).
   template <int Dim>
   [[nodiscard]] Kokkos::View<
-    const typename localization::PointLocalizationSearch<Dim>::Result*,
-    DeviceMemorySpace>
+    const typename PointLocalizationSearch<Dim>::Result*, DeviceMemorySpace>
   Results() const
   {
-    using Results =
-      Kokkos::View<typename localization::PointLocalizationSearch<Dim>::Result*,
-                   DeviceMemorySpace>;
+    using Results = Kokkos::View<typename PointLocalizationSearch<Dim>::Result*,
+                                 DeviceMemorySpace>;
     return Kokkos::subview(std::get<Results>(point_results_),
                            Kokkos::make_pair(LO{0}, NumPoints()));
   }
@@ -261,17 +256,30 @@ private:
   /// results in point_results_ and sets the found points.
   void Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints);
 
-  const localization::GridPointSearchVariant& search_;
+  const GridPointSearchVariant& search_;
   Omega_h::Mesh& mesh_;
   // per query point, the search's record, kept across rebinds; the first
   // num_records_ are the last locate's
-  std::variant<
-    Kokkos::View<localization::GridPointSearch2D::Result*, DeviceMemorySpace>,
-    Kokkos::View<localization::GridPointSearch3D::Result*, DeviceMemorySpace>>
+  std::variant<Kokkos::View<GridPointSearch2D::Result*, DeviceMemorySpace>,
+               Kokkos::View<GridPointSearch3D::Result*, DeviceMemorySpace>>
     point_results_;
   Kokkos::View<LO*, DeviceMemorySpace> point_guesses_;
   Kokkos::View<bool*, DeviceMemorySpace> point_found_;
   LO num_records_ = 0;
+};
+
+/// Options of an Omega_h geometry.
+struct OmegaHGeometryOptions
+{
+  /// divisions and tolerance of the containing-element search
+  SearchOptions search;
+  /// the tag holding global entity ids
+  std::string global_id_name = "global";
+  /// per-vertex ownership override: a vertex the mask is 0 for is not owned,
+  /// whatever the mesh says; empty means the mesh's own ownership. Layouts
+  /// whose DOF holders are the mesh vertices apply it; layouts of other
+  /// entities do not.
+  Omega_h::Read<Omega_h::I8> owned_mask;
 };
 
 /// Geometry of a 2D or 3D Omega_h simplex mesh with
@@ -279,12 +287,12 @@ private:
 /// built by the first Bind or Neighbourhood, which costs about as much as a
 /// bind: create one geometry per mesh and share it, so that every layout and
 /// space on the mesh is on the same entities. Create it with
-/// CreateOmegaHGeometry.
+/// CreateGeometry.
 class OmegaHGeometry final : public Geometry
 {
 public:
-  /// Own it by std::shared_ptr, as CreateOmegaHGeometry does: Bind uses
-  /// shared_from_this().
+  /// Own it by std::shared_ptr, as CreateGeometry
+  /// (pcms/backends/omega_h/omega_h.hpp) does: Bind uses shared_from_this().
   /// @throws pcms_error if the options' owned mask is not empty and does not
   ///         have one entry per mesh vertex
   OmegaHGeometry(Omega_h::Mesh& mesh,
@@ -327,6 +335,8 @@ public:
   /// -1 means the search cell has no candidate. Unlike Bind, this preserves
   /// outside-point seeds: an outside target centroid can still belong to an
   /// element that overlaps the mesh.
+  ///
+  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FindElementSeeds(
     Kokkos::View<const Real**, DeviceMemorySpace> points,
     Kokkos::View<const LO*, DeviceMemorySpace> guesses = {}) const;
@@ -346,16 +356,19 @@ public:
 
   /// The per-element constant Jacobian of the affine simplex map, computed
   /// for all elements on the first call.
+  ///
+  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] DifferentialView Differential(
     const BoundSource& bound) const override;
 
 protected:
+  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] std::shared_ptr<BoundSource> BindImpl(
     const BindRequest& request) const override;
 
 private:
   /// The containing-element search, built on first use.
-  const localization::GridPointSearchVariant& Search() const;
+  const GridPointSearchVariant& Search() const;
 
   // The library must outlive the mesh and the cached search data.
   std::shared_ptr<Omega_h::Library> library_owner_;
@@ -369,31 +382,15 @@ private:
   // and shared, hence the once_flags. These are the mutable members and they
   // are caches.
   mutable std::once_flag search_once_;
-  mutable std::unique_ptr<localization::GridPointSearchVariant> search_;
+  mutable std::unique_ptr<GridPointSearchVariant> search_;
   mutable std::once_flag differential_once_;
   mutable DifferentialView differential_;
 };
 
-/// The geometry of an Omega_h simplex mesh (2D or 3D). Create one per mesh and
-/// share it: the layouts and spaces on one geometry object share its entities.
-/// @param mesh the mesh; must outlive the geometry
-/// @param system the mesh's coordinate system, or null for Cartesian
-/// @param options search, global id tag and ownership
-[[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
-  Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
-  OmegaHGeometryOptions options = {});
-
-/// Create a geometry that shares ownership of the mesh and its library.
-[[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
-  std::shared_ptr<Omega_h::Mesh> mesh,
-  std::shared_ptr<Omega_h::Library> library,
-  std::shared_ptr<const CoordinateSystem> system,
-  OmegaHGeometryOptions options = {});
-
 /// The grid search over a mesh, with options.divisions divisions per axis when
 /// nonzero and DivisionsPerAxisForMesh otherwise.
 /// @throws std::invalid_argument unless the mesh is 2D or 3D
-[[nodiscard]] localization::GridPointSearchVariant MakeGridSearch(
+[[nodiscard]] GridPointSearchVariant MakeGridSearch(
   Omega_h::Mesh& mesh, const SearchOptions& options);
 
 } // namespace pcms::backend::omega_h

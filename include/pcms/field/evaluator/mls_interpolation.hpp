@@ -1,9 +1,15 @@
 #ifndef PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP
 #define PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP
 
-#include <Omega_h_array.hpp>
+// Implementer API: not covered by the public-API stability promise. (the whole
+// header)
+
 #include "pcms/localization/mls_options.hpp"
 #include "pcms/geometry/supports.hpp"
+#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/types.hpp"
+
+#include <Kokkos_Core.hpp>
 
 namespace pcms::field
 {
@@ -47,7 +53,7 @@ namespace pcms::field
  *                             - 8–20 → highly local behavior (sharp detail,
  * possible conditioning issues)
  *
- * @return A Write<Real> array containing interpolated values at each target
+ * @return A device view containing interpolated values at each target
  * point. Length matches the number of target points. Rows without supports
  * are zero; the point evaluator applies its missing-point policy to them.
  *
@@ -57,10 +63,11 @@ namespace pcms::field
  * - Choose `lambda` and `decay_factor` carefully to balance accuracy and
  * stability: a larger decay factor often requires a slightly higher `lambda`.
  */
-Omega_h::Write<Omega_h::Real> mls_interpolation(
-  const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
-  const Omega_h::Reals target_coordinates, const SupportResults& support,
-  const Omega_h::LO& dim, const Omega_h::LO& degree, RadialBasisFunction bf,
+Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
+  Kokkos::View<const Real*, DeviceMemorySpace> source_values,
+  Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
+  Kokkos::View<const Real*, DeviceMemorySpace> target_coordinates,
+  const SupportResults& support, LO dim, LO degree, RadialBasisFunction bf,
   double lambda = 0, double tol = 1e-6, double decay_factor = 5.0);
 
 } // namespace pcms::field

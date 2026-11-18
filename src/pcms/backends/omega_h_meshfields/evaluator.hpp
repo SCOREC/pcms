@@ -34,9 +34,8 @@ template <int Dim>
 std::tuple<Kokkos::View<LO*>, Kokkos::View<Real**>, Kokkos::View<LO*>>
 GroupFoundPointsByElement(
   Omega_h::Mesh& mesh, Kokkos::View<const LO*, DeviceMemorySpace> found,
-  Kokkos::View<
-    const typename localization::PointLocalizationSearch<Dim>::Result*,
-    DeviceMemorySpace>
+  Kokkos::View<const typename omega_h::PointLocalizationSearch<Dim>::Result*,
+               DeviceMemorySpace>
     results)
 {
   const auto num_found = static_cast<LO>(found.extent(0));

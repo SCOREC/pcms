@@ -10,6 +10,7 @@ set(
         ../../../include/pcms/utility/detail/common.hpp
         ../../../include/pcms/utility/entity_types.hpp
         ../../../include/pcms/utility/eqdsk.hpp
+        check.hpp
         mesh_geometry.hpp
         ../../../include/pcms/utility/memory_spaces.hpp
         mpi_type.hpp

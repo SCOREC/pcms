@@ -34,7 +34,8 @@ std::shared_ptr<const pcms::FunctionSpace> MakeSplineSpace()
   grid.edge_length = {2.0, 2.0};
   grid.divisions = {16, 16};
   return pcms::CreateSplineSpace(
-    pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Create(2)));
+    pcms::backend::uniform_grid::CreateUniformGridGeometry(
+      grid, pcms::csys::Cartesian::Create(2)));
 }
 
 } // namespace
@@ -44,7 +45,7 @@ TEST_CASE("Spline gradients")
   auto space = MakeSplineSpace();
   auto f = space->CreateFunction<Real>("f");
   pcms::test::SetField(
-    f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    f, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
 
   const std::vector<Real> pts = {0.3, -0.7, 1.1, 0.2, 1.7, 0.9, 0.55, 0.45};
   const size_t n = pts.size() / 2;
@@ -89,9 +90,9 @@ TEST_CASE("Evaluators reject fields of another function space")
   auto f = space->CreateFunction<Real>("f");
   auto g = other->CreateFunction<Real>("g");
   pcms::test::SetField(
-    f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    f, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
   pcms::test::SetField(
-    g, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    g, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
 
   const std::vector<Real> pts = {0.3, -0.7, 1.1, 0.2};
   const auto bound = pcms::test::Bind(*space->GetGeometry(), pts);
@@ -114,7 +115,7 @@ TEST_CASE("Gradients fill the out-of-bounds rows")
   auto space = MakeSplineSpace();
   auto f = space->CreateFunction<Real>("f");
   pcms::test::SetField(
-    f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    f, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
   const std::vector<Real> pts = {0.5, 0.5, 3.0, 0.0};
   const auto bound = pcms::test::Bind(
     *space->GetGeometry(), pts,
@@ -134,7 +135,7 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   std::shared_ptr<const pcms::FunctionSpace> source = MakeSplineSpace();
   auto f = source->CreateFunction<Real>("f");
   pcms::test::SetField(
-    f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    f, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
 
   // Targets on a coarser grid strictly inside the source grid.
   pcms::UniformGrid<2> grid;
@@ -142,9 +143,13 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   grid.edge_length = {1.5, 1.4};
   grid.divisions = {5, 7};
   auto value_space = pcms::CreateLagrangeSpace(
-    pcms::CreateUniformGridGeometry(grid, source->GetCoordinateSystem()), 1, 1);
+    pcms::backend::uniform_grid::CreateUniformGridGeometry(
+      grid, source->GetCoordinateSystem()),
+    1, 1);
   auto gradient_space = pcms::CreateLagrangeSpace(
-    pcms::CreateUniformGridGeometry(grid, source->GetCoordinateSystem()), 1, 2);
+    pcms::backend::uniform_grid::CreateUniformGridGeometry(
+      grid, source->GetCoordinateSystem()),
+    1, 2);
   auto value = value_space->CreateFunction<Real>("f");
   auto gradient =
     gradient_space->CreateFunction<Real>("grad f", pcms::values::Covector);
@@ -186,7 +191,8 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   pcms::UniformGrid<2> other_grid = grid;
   other_grid.divisions = {4, 7};
   auto other_space = pcms::CreateLagrangeSpace(
-    pcms::CreateUniformGridGeometry(other_grid, source->GetCoordinateSystem()),
+    pcms::backend::uniform_grid::CreateUniformGridGeometry(
+      other_grid, source->GetCoordinateSystem()),
     1, 1);
   REQUIRE_THROWS_WITH(pcms::Interpolator<Real>(*source, *other_space, bound),
                       ContainsSubstring("target's DOF-holder sites"));

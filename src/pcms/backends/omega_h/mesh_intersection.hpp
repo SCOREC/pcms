@@ -1,5 +1,5 @@
-#ifndef PCMS_TRANSFER_MESH_INTERSECTION_HPP
-#define PCMS_TRANSFER_MESH_INTERSECTION_HPP
+#ifndef PCMS_BACKENDS_OMEGA_H_MESH_INTERSECTION_HPP
+#define PCMS_BACKENDS_OMEGA_H_MESH_INTERSECTION_HPP
 
 #include <pcms/configuration.hpp>
 #include <pcms/backends/omega_h/geometry.hpp>
@@ -207,4 +207,4 @@ IntersectionResults intersectTargets(const OmegaHGeometry& source,
                                      Omega_h::Mesh& target_mesh,
                                      bool use_prefilter = true);
 } // namespace pcms::backend::omega_h
-#endif // PCMS_TRANSFER_MESH_INTERSECTION_HPP
+#endif // PCMS_BACKENDS_OMEGA_H_MESH_INTERSECTION_HPP

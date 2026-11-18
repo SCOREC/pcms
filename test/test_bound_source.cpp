@@ -13,6 +13,7 @@
 #include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/entity_layout.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/field/query_points.hpp>
 #include "field_test_utils.hpp"
 #include <memory>
@@ -22,7 +23,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 using backend::omega_h::OmegaHEntityLayout;
 using backend::omega_h::OmegaHMeshBinding;
 } // namespace pcms
@@ -205,11 +206,13 @@ TEST_CASE("A rebind gives what a new bind of the points gives")
   auto vertices = std::make_shared<pcms::OmegaHEntityLayout>(
     pcms::test::MakeOmegaHGeometry(mesh), pcms::Vertex, 1);
   const std::vector<std::shared_ptr<const FunctionSpace>> spaces{
-    pcms::test::MakeP1Space(pcms::CreateOmegaHGeometry(mesh, cartesian)),
-    pcms::CreateLagrangeSpace(pcms::CreateUniformGridGeometry(grid, cartesian),
-                              1, 1),
+    pcms::test::MakeP1Space(pcms::CreateGeometry(mesh, cartesian)),
+    pcms::CreateLagrangeSpace(
+      pcms::backend::uniform_grid::CreateUniformGridGeometry(grid, cartesian),
+      1, 1),
     pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(vertices), pcms::MLSOptions{.degree = 1})};
+      pcms::backend::point_cloud::CreatePointCloudGeometry(vertices),
+      pcms::MLSOptions{.degree = 1})};
   // points inside and outside the unit square, the second set of a different
   // count; then fewer and more points than the first bind's
   const std::vector<Real> first{0.25, 0.5, 1.5, 0.5, 0.75, 0.1};
@@ -392,7 +395,7 @@ TEST_CASE("An Omega_h rebind from the last elements gives a new bind's")
   auto mesh = dim == 2 ? pcms::test::BuildSquareMesh(lib, 16)
                        : pcms::test::BuildUnitCube(lib, 4);
   const auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Create(dim));
+    pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(dim));
   std::mt19937 rng(7);
   const int n = 200;
   auto pts = RandomPoints(rng, n, dim, 0.0, 1.0);
@@ -498,7 +501,7 @@ TEST_CASE("An Omega_h rebind of as many points allocates nothing")
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildSquareMesh(lib, 16);
   const auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Create(2));
+    pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(2));
   // 64 points inside triangles, farther than the moves from their edges, so
   // the guesses hold and no point is searched for on the grid
   std::vector<Real> pts;

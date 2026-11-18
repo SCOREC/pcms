@@ -1,6 +1,9 @@
 #ifndef PCMS_BACKENDS_POINT_CLOUD_LAYOUT_HPP
 #define PCMS_BACKENDS_POINT_CLOUD_LAYOUT_HPP
 
+// Implementer API: not covered by the public-API stability promise. (the whole
+// header)
+
 #include "pcms/field/field.hpp"
 
 namespace pcms::backend::point_cloud

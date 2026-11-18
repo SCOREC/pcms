@@ -16,17 +16,17 @@ struct RBF_GAUSSIAN
   double a;
   RBF_GAUSSIAN(double a_val) : a(a_val) {}
 
-  OMEGA_H_INLINE
+  KOKKOS_INLINE_FUNCTION
   double operator()(double r_sq, double rho_sq) const
   {
-    OMEGA_H_CHECK_PRINTF(rho_sq >= 0,
-                         "ERROR: square of cutoff distance should always be "
-                         "positive but the value is %.16f\n",
-                         rho_sq);
-    OMEGA_H_CHECK_PRINTF(r_sq >= 0,
-                         "ERROR: square of  distance should always be positive "
-                         "but the value is %.16f\n",
-                         r_sq);
+    PCMS_CHECK_PRINTF(rho_sq >= 0,
+                      "ERROR: square of cutoff distance should always be "
+                      "positive but the value is %.16f\n",
+                      rho_sq);
+    PCMS_CHECK_PRINTF(r_sq >= 0,
+                      "ERROR: square of  distance should always be positive "
+                      "but the value is %.16f\n",
+                      r_sq);
     double r = Kokkos::sqrt(r_sq);
     if (rho_sq < r_sq) {
       return 0;
@@ -38,10 +38,10 @@ struct RBF_GAUSSIAN
 
 struct RBF_C4
 {
-  OMEGA_H_INLINE
+  KOKKOS_INLINE_FUNCTION
   double operator()(double r_sq, double rho_sq) const
   {
-    OMEGA_H_CHECK_PRINTF(
+    PCMS_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
     double r = Kokkos::sqrt(r_sq);
@@ -56,32 +56,32 @@ struct RBF_C4
             82 * pow(ratio, 2) + 36 * ratio + 6;
       phi = phi * pow(limit, 6);
     }
-    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
-                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
-                         r_sq, rho_sq);
+    PCMS_CHECK_PRINTF(!std::isnan(phi),
+                      "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                      r_sq, rho_sq);
     return phi;
   }
 };
 
 struct RBF_CONST
 {
-  OMEGA_H_INLINE
+  KOKKOS_INLINE_FUNCTION
   double operator()(double r_sq, double rho_sq) const
   {
-    OMEGA_H_CHECK_PRINTF(
+    PCMS_CHECK_PRINTF(
       rho_sq > 0, "ERROR: rho_sq in rbf has to be positive, but got %.16f\n",
       rho_sq);
     double phi = (rho_sq < r_sq) ? 0.0 : 1.0;
-    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
-                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
-                         r_sq, rho_sq);
+    PCMS_CHECK_PRINTF(!std::isnan(phi),
+                      "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                      r_sq, rho_sq);
     return phi;
   }
 };
 
 struct NoOp
 {
-  OMEGA_H_INLINE
+  KOKKOS_INLINE_FUNCTION
   double operator()(double, double) const { return 1.0; }
 };
 
@@ -90,7 +90,7 @@ struct RBF_MULTIQUADRIC
   double a;
   RBF_MULTIQUADRIC(double a_val) : a(a_val) {}
 
-  OMEGA_H_INLINE
+  KOKKOS_INLINE_FUNCTION
   double operator()(double r_sq, double rho_sq) const
   {
     double r = Kokkos::sqrt(r_sq);
@@ -98,9 +98,9 @@ struct RBF_MULTIQUADRIC
     double ratio = r / rho;
     double phi =
       (rho_sq < r_sq) ? 0.0 : Kokkos::sqrt(1.0 + a * a * ratio * ratio);
-    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
-                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
-                         r_sq, rho_sq);
+    PCMS_CHECK_PRINTF(!std::isnan(phi),
+                      "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                      r_sq, rho_sq);
     return phi;
   }
 };
@@ -111,7 +111,7 @@ struct RBF_INVMULTIQUADRIC
   double a;
   RBF_INVMULTIQUADRIC(double a_val) : a(a_val) {}
 
-  OMEGA_H_INLINE
+  KOKKOS_INLINE_FUNCTION
   double operator()(double r_sq, double rho_sq) const
   {
     double r = Kokkos::sqrt(r_sq);
@@ -119,9 +119,9 @@ struct RBF_INVMULTIQUADRIC
     double ratio = r / rho;
     double phi =
       (rho_sq < r_sq) ? 0.0 : 1.0 / Kokkos::sqrt(1.0 + a * a * ratio * ratio);
-    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
-                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
-                         r_sq, rho_sq);
+    PCMS_CHECK_PRINTF(!std::isnan(phi),
+                      "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                      r_sq, rho_sq);
     return phi;
   }
 };
@@ -131,7 +131,7 @@ struct RBF_THINPLATESPLINE
   double a;
   RBF_THINPLATESPLINE(double a_val) : a(a_val) {}
 
-  OMEGA_H_INLINE
+  KOKKOS_INLINE_FUNCTION
   double operator()(double r_sq, double rho_sq) const
   {
     double r = Kokkos::sqrt(r_sq);
@@ -139,9 +139,9 @@ struct RBF_THINPLATESPLINE
     double ratio = r / rho;
     double phi =
       (rho_sq < r_sq) ? 0.0 : a * a * ratio * ratio * Kokkos::log(a * ratio);
-    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
-                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
-                         r_sq, rho_sq);
+    PCMS_CHECK_PRINTF(!std::isnan(phi),
+                      "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                      r_sq, rho_sq);
     return phi;
   }
 };
@@ -151,29 +151,31 @@ struct RBF_CUBIC
   double a;
   RBF_CUBIC(double a_val) : a(a_val) {}
 
-  OMEGA_H_INLINE
+  KOKKOS_INLINE_FUNCTION
   double operator()(double r_sq, double rho_sq) const
   {
     double r = Kokkos::sqrt(r_sq);
     double rho = Kokkos::sqrt(rho_sq);
     double ratio = r / rho;
     double phi = (rho_sq < r_sq) ? 0.0 : a * a * a * ratio * ratio * ratio;
-    OMEGA_H_CHECK_PRINTF(!std::isnan(phi),
-                         "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
-                         r_sq, rho_sq);
+    PCMS_CHECK_PRINTF(!std::isnan(phi),
+                      "ERROR: phi in rbf is NaN. r_sq, rho_sq = (%f, %f)\n",
+                      r_sq, rho_sq);
     return phi;
   }
 };
 
-Omega_h::Write<Omega_h::Real> mls_interpolation(
-  const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
-  const Omega_h::Reals target_coordinates, const SupportResults& support,
-  const Omega_h::LO& dim, const Omega_h::LO& degree, RadialBasisFunction bf,
+Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
+  Kokkos::View<const Real*, DeviceMemorySpace> source_values,
+  Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
+  Kokkos::View<const Real*, DeviceMemorySpace> target_coordinates,
+  const SupportResults& support, LO dim, LO degree, RadialBasisFunction bf,
   double lambda, double tol, double decay_factor)
 {
-  const auto nvertices_target = target_coordinates.size() / dim;
-  Omega_h::Write<Omega_h::Real> interpolated_values(
-    nvertices_target, 0, "approximated target values");
+  const auto nvertices_target =
+    static_cast<LO>(target_coordinates.size()) / dim;
+  Kokkos::View<Real*, DeviceMemorySpace> interpolated_values(
+    "approximated target values", nvertices_target);
 
   switch (bf) {
     case RadialBasisFunction::RBF_GAUSSIAN:

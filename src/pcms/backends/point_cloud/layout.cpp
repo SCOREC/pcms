@@ -2,7 +2,6 @@
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/entity_types.hpp"
 #include <memory>
-#include <Omega_h_for.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
 
 namespace pcms::backend::point_cloud
@@ -20,7 +19,7 @@ void InitializePointCloudClassification(
   // for (LO i = 0; i < n; ++i) {
   //   classification_ids_host(i) = i;
   // }
-  Kokkos::parallel_for(n, OMEGA_H_LAMBDA(LO i) { classification_ids(i) = i; });
+  Kokkos::parallel_for(n, KOKKOS_LAMBDA(LO i) { classification_ids(i) = i; });
 }
 
 } // namespace

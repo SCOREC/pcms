@@ -8,6 +8,7 @@
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/backends/omega_h/geometry.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/transfer/interpolator.hpp>
@@ -18,7 +19,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 } // namespace pcms
 
 using Catch::Matchers::ContainsSubstring;
@@ -48,8 +49,8 @@ std::shared_ptr<const FunctionSpace> BuildCylindricalSource(
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 2.0, 1.6, 1.1, 8, 8,
                             6, false);
   return CreateLagrangeSpace(
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::CylindricalRThetaZ::Create()),
-    1, num_components, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
+    pcms::CreateGeometry(mesh, pcms::csys::CylindricalRThetaZ::Create()), 1,
+    num_components, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
 std::shared_ptr<const FunctionSpace> BuildCartesianTarget(Omega_h::Library& lib,
@@ -60,7 +61,7 @@ std::shared_ptr<const FunctionSpace> BuildCartesianTarget(Omega_h::Library& lib,
   mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, x_extent, 1.0, 1.0, 4,
                             4, 4, false);
   return CreateLagrangeSpace(
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Create(3)), 1,
+    pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(3)), 1,
     num_components, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
@@ -391,10 +392,10 @@ TEST_CASE("Bind with a map: NEAREST_BOUNDARY follows the geometry")
     grid.bot_left = {0.1, -3.2, 0.0};
     grid.edge_length = {1.5, 6.4, 1.0};
     grid.divisions = {6, 16, 4};
-    auto src =
-      CreateLagrangeSpace(pcms::CreateUniformGridGeometry(
-                            grid, pcms::csys::CylindricalRThetaZ::Create()),
-                          1, 1);
+    auto src = CreateLagrangeSpace(
+      pcms::backend::uniform_grid::CreateUniformGridGeometry(
+        grid, pcms::csys::CylindricalRThetaZ::Create()),
+      1, 1);
     auto bound =
       src->GetGeometry()->Bind(query.coordinate_view, nearest, cart_to_cyl);
     REQUIRE(bound->MissingPoints().extent(0) == 0);

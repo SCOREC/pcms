@@ -6,13 +6,12 @@
 #include "pcms/field/field_data.hpp"
 #include "pcms/localization/mls_options.hpp"
 #include "pcms/field/evaluator/mls_interpolation.hpp"
-#include "pcms/backends/omega_h/adj_search.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/memory_spaces.hpp"
-#include "pcms/utility/omega_h_array_utils.hpp"
 
-#include <Omega_h_array.hpp>
-#include <Omega_h_array_ops.hpp>
+#include <Kokkos_Core.hpp>
+
+#include <string>
 
 namespace pcms::backend::point_cloud
 {
@@ -35,11 +34,33 @@ inline Kokkos::View<bool*, DeviceMemorySpace> HasSupports(
   return found;
 }
 
+/// The rows of `coords` (n x dim) as one flat array [x0, y0, ..., x1, ...].
+template <typename View2D>
+Kokkos::View<Real*, DeviceMemorySpace> FlattenRows(const View2D& coords,
+                                                   const char* label)
+{
+  const auto n = static_cast<LO>(coords.extent(0));
+  const auto dim = static_cast<LO>(coords.extent(1));
+  Kokkos::View<Real*, DeviceMemorySpace> flat(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, std::string(label)),
+    n * dim);
+  Kokkos::parallel_for(
+    "FlattenRows",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n),
+    KOKKOS_LAMBDA(const LO i) {
+      for (LO d = 0; d < dim; ++d) {
+        flat(i * dim + d) = coords(i, d);
+      }
+    });
+  return flat;
+}
 } // namespace detail
 
 /// @brief MLS bound source: the supports of the query points and the
 ///        coordinates the solve uses. A query point without supports (e.g.
 ///        one the adjacency search has no start for) is missing.
+///
+/// Implementer API: not covered by the public-API stability promise.
 class MLSBinding final : public BoundSource
 {
 public:
@@ -51,13 +72,14 @@ public:
   /// @param options the options `supports` were found with; a rebind finds
   ///        the supports of its points with the geometry's Neighbourhood
   MLSBinding(std::shared_ptr<const Geometry> geometry,
-             const BindRequest& request, Omega_h::Reals source_coords,
+             const BindRequest& request,
+             Kokkos::View<const Real*, DeviceMemorySpace> source_coords,
              SupportResults supports, int site_dim,
              NeighbourhoodOptions options)
     : BoundSource(std::move(geometry), request),
       source_coords_(std::move(source_coords)),
-      target_coords_(utility::flatten_to_omega_h_reals(LocatedPointValues(),
-                                                       "mls_target_coords")),
+      target_coords_(
+        detail::FlattenRows(LocatedPointValues(), "mls_target_coords")),
       supports_(std::move(supports)),
       site_dim_(site_dim),
       options_(options)
@@ -66,14 +88,16 @@ public:
   }
 
   /// @return flattened coordinates of the source points
-  [[nodiscard]] const Omega_h::Reals& SourceCoordinates() const noexcept
+  [[nodiscard]] const Kokkos::View<const Real*, DeviceMemorySpace>&
+  SourceCoordinates() const noexcept
   {
     return source_coords_;
   }
 
   /// @return flattened coordinates of the query points in the geometry's
   ///         coordinate system (LocatedPointValues())
-  [[nodiscard]] const Omega_h::Reals& TargetCoordinates() const noexcept
+  [[nodiscard]] const Kokkos::View<const Real*, DeviceMemorySpace>&
+  TargetCoordinates() const noexcept
   {
     return target_coords_;
   }
@@ -94,8 +118,8 @@ protected:
                                geometry.GetCoordinateSystem(),
                                MakeConstRank2View(LocatedPointValues())),
                              site_dim_, options_);
-    target_coords_ = utility::flatten_to_omega_h_reals(LocatedPointValues(),
-                                                       "mls_target_coords");
+    target_coords_ =
+      detail::FlattenRows(LocatedPointValues(), "mls_target_coords");
     SetFoundFromSupports();
   }
 
@@ -106,14 +130,16 @@ private:
     SetFound(detail::HasSupports(supports_.supports_ptr, NumPoints()));
   }
 
-  Omega_h::Reals source_coords_;
-  Omega_h::Reals target_coords_;
+  Kokkos::View<const Real*, DeviceMemorySpace> source_coords_;
+  Kokkos::View<const Real*, DeviceMemorySpace> target_coords_;
   SupportResults supports_;
   int site_dim_;
   NeighbourhoodOptions options_;
 };
 
 /// @brief Evaluates a scalar point-cloud field at the bound points by MLS.
+///
+/// Implementer API: not covered by the public-API stability promise.
 template <typename LayoutPolicy =
             pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class MLSPointEvaluator : public PointEvaluator<Real, LayoutPolicy>
@@ -151,24 +177,25 @@ public:
     const auto device_data = field.GetDOFHolderData().GetValues();
     const int n_sources = static_cast<int>(device_data.size());
 
-    Omega_h::Write<Omega_h::Real> src_w(n_sources, "mls_source_values");
+    Kokkos::View<Real*, DeviceMemorySpace> source_values(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "mls_source_values"),
+      n_sources);
     Kokkos::parallel_for(
-      "CopyDeviceDataToOmegaHWrite",
+      "CopyDeviceDataToSourceValues",
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_sources),
-      KOKKOS_LAMBDA(int i) { src_w[i] = device_data(i, 0); });
-    Omega_h::Reals source_values(src_w);
+      KOKKOS_LAMBDA(int i) { source_values(i) = device_data(i, 0); });
 
     auto result = field::mls_interpolation(
       source_values, binding_->SourceCoordinates(),
       binding_->TargetCoordinates(), binding_->Supports(), dim_,
-      static_cast<Omega_h::LO>(options_.degree), options_.basis,
-      options_.lambda, options_.tol, options_.decay_factor);
+      static_cast<LO>(options_.degree), options_.basis, options_.lambda,
+      options_.tol, options_.decay_factor);
 
-    const int n_targets = result.size();
+    const int n_targets = static_cast<int>(result.size());
     Kokkos::parallel_for(
       "CopyMLSResultToValues",
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_targets),
-      KOKKOS_LAMBDA(int i) { values(i, 0) = result[i]; });
+      KOKKOS_LAMBDA(int i) { values(i, 0) = result(i); });
   }
 
 private:

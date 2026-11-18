@@ -3,6 +3,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/uniform_grid/geometry.hpp"
 #include "pcms/field/value_view.hpp"
@@ -14,7 +15,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 } // namespace pcms
 
 using pcms::Real;
@@ -25,8 +26,7 @@ TEST_CASE("omega_h_field2 out of bounds FILL mode")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
   auto factory = pcms::CreateLagrangeSpace(geometry, 1, 1);
   auto field = factory->CreateFunction<Real>();
   pcms::test::SetField(field, OMEGA_H_LAMBDA(Real x, Real y) { return x + y; });
@@ -57,8 +57,9 @@ TEST_CASE("uniform_grid_field out of bounds FILL mode")
   grid.divisions = {N, N};
 
   auto factory = pcms::CreateLagrangeSpace(
-    pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()), 1,
-    1);
+    pcms::backend::uniform_grid::CreateUniformGridGeometry(
+      grid, pcms::csys::Cartesian::Deferred()),
+    1, 1);
   auto field = factory->CreateFunction<Real>();
   pcms::test::SetField(field, OMEGA_H_LAMBDA(Real x, Real y) { return x + y; });
 
@@ -88,7 +89,8 @@ TEST_CASE("spline_field out of bounds FILL mode")
   grid.divisions = {N, N};
 
   auto factory = pcms::CreateSplineSpace(
-    pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()));
+    pcms::backend::uniform_grid::CreateUniformGridGeometry(
+      grid, pcms::csys::Cartesian::Deferred()));
   auto field = factory->CreateFunction<Real>();
   pcms::test::SetField(field, OMEGA_H_LAMBDA(Real x, Real y) { return x + y; });
 

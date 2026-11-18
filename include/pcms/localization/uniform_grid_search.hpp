@@ -1,12 +1,14 @@
 #ifndef PCMS_LOCALIZATION_UNIFORM_GRID_SEARCH_HPP
 #define PCMS_LOCALIZATION_UNIFORM_GRID_SEARCH_HPP
 
+// Implementer API: not covered by the public-API stability promise. (the whole
+// header)
+
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 
 #include <Kokkos_Core.hpp>
-#include <Omega_h_vector.hpp>
 
 namespace pcms::localization
 {
@@ -26,7 +28,7 @@ public:
     /// the position in the cell, each coordinate in [0, 1] for a point
     /// inside; for a point outside it is relative to the nearest cell and
     /// lies outside [0, 1]
-    Omega_h::Vector<Dim> parametric;
+    Kokkos::Array<Real, Dim> parametric;
 
     /// `cell` of a point outside the grid whose nearest cell is `id`.
     [[nodiscard]] KOKKOS_INLINE_FUNCTION static constexpr LO OutsideId(LO id)
@@ -66,7 +68,7 @@ public:
     const auto grid = grid_;
     pcms::detail::ForEach(
       "UniformGridPointSearch", n, KOKKOS_LAMBDA(const LO i) {
-        Omega_h::Vector<Dim> point;
+        Kokkos::Array<Real, Dim> point;
         for (unsigned d = 0; d < Dim; ++d) {
           point[d] = points(i, d);
         }

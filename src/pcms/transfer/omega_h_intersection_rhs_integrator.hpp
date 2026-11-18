@@ -7,7 +7,7 @@
 #include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/geometry/bound_source.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
-#include "pcms/transfer/mesh_intersection.hpp"
+#include "pcms/backends/omega_h/mesh_intersection.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
 

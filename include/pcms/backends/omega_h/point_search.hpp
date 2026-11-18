@@ -1,5 +1,8 @@
-#ifndef PCMS_LOCALIZATION_POINT_SEARCH_HPP
-#define PCMS_LOCALIZATION_POINT_SEARCH_HPP
+#ifndef PCMS_BACKENDS_OMEGA_H_POINT_SEARCH_HPP
+#define PCMS_BACKENDS_OMEGA_H_POINT_SEARCH_HPP
+
+// Implementer API: not covered by the public-API stability promise. (the whole
+// header)
 #include <cassert>
 
 #include <utility>
@@ -15,7 +18,7 @@
 #include "pcms/utility/uniform_grid.hpp"
 #include "pcms/utility/bounding_box.hpp"
 
-namespace pcms::localization
+namespace pcms::backend::omega_h
 {
 
 //
@@ -284,5 +287,5 @@ private:
 using GridPointSearchVariant =
   std::variant<GridPointSearch2D, GridPointSearch3D>;
 
-} // namespace pcms::localization
-#endif // PCMS_LOCALIZATION_POINT_SEARCH_HPP
+} // namespace pcms::backend::omega_h
+#endif // PCMS_BACKENDS_OMEGA_H_POINT_SEARCH_HPP

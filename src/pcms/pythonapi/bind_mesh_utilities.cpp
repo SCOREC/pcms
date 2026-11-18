@@ -170,8 +170,9 @@ py::array map_entity_field_to_vertices_mls(
       });
 
     auto interpolated_values = pcms::mls_interpolation(
-      Omega_h::read(component_values), source_coordinates, target_coordinates,
-      support, dim, interp_degree, pcms::RadialBasisFunction::NO_OP, lambda_reg,
+      component_values.view(), source_coordinates.view(),
+      target_coordinates.view(), support, dim, interp_degree,
+      pcms::RadialBasisFunction::NO_OP, lambda_reg,
       1e-6, // tol
       5.0   // decay_factor
     );

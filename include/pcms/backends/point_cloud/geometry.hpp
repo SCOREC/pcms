@@ -10,10 +10,8 @@
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/entity_types.hpp"
-#include "pcms/utility/omega_h_array_utils.hpp"
 #include "pcms/utility/detail/profile.hpp"
 
-#include <Omega_h_array.hpp>
 #include <memory>
 #include <string>
 
@@ -69,6 +67,8 @@ public:
 
   /// A hint naming the cloud or the geometry of its site layout, whose
   /// entities the sites are, is used (and forwarded to that geometry).
+  ///
+  /// Implementer API: not covered by the public-API stability promise.
   [[nodiscard]] bool TakesHints(const OwnerHints& owners,
                                 LO num_points) const noexcept override
   {
@@ -106,21 +106,22 @@ public:
     }
     const auto sites = site_layout_->GetDOFHolderCoordinates().GetValues();
     return localization::BuildPointCloudSupports(
-      utility::flatten_to_omega_h_reals(sites, "src_coords"),
-      utility::flatten_to_omega_h_reals(coords.GetValues(), "tgt_coords"),
+      detail::FlattenRows(sites, "src_coords"),
+      detail::FlattenRows(coords.GetValues(), "tgt_coords"),
       static_cast<int>(sites.extent(1)), options.radius, options.min_supports,
       options.adapt_radius);
   }
 
 protected:
+  /// Implementer API: not covered by the public-API stability promise.
   std::shared_ptr<BoundSource> BindImpl(
     const BindRequest& request) const override
   {
     PCMS_FUNCTION_TIMER;
     // Extract source coordinates for the MLS solve.
     const auto src_view = site_layout_->GetDOFHolderCoordinates().GetValues();
-    Omega_h::Reals source_coords =
-      utility::flatten_to_omega_h_reals(src_view, "src_coords");
+    Kokkos::View<const Real*, DeviceMemorySpace> source_coords =
+      detail::FlattenRows(src_view, "src_coords");
 
     const int site_dim = site_layout_->GetDOFHolderEntityDim();
     SupportResults supports =
@@ -135,6 +136,46 @@ private:
   std::shared_ptr<const FieldLayout> site_layout_;
   NeighbourhoodOptions options_;
 };
+
+/// A point-cloud geometry whose sites are `coords` (copied to the device).
+/// @param coords the sites
+/// @param options the support search of the geometry
+/// @throws pcms_error if the coordinate system does not have the identity
+///         metric (MLS distances are Euclidean)
+[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry>
+CreatePointCloudGeometry(CoordinateView<HostMemorySpace> coords,
+                         NeighbourhoodOptions options = {})
+{
+  const auto values = coords.GetValues();
+  const int dim = static_cast<int>(values.extent(1));
+  Kokkos::View<const Real**, Kokkos::HostSpace> host_view(
+    values.data_handle(), values.extent(0), values.extent(1));
+  auto device_view = Kokkos::View<Real**>("device_view", host_view.extent(0),
+                                          host_view.extent(1));
+  DeepCopyMismatchLayouts(device_view, host_view);
+  auto layout = std::make_shared<PointCloudLayout>(
+    dim, device_view, coords.GetCoordinateSystem());
+  return std::make_shared<PointCloudGeometry>(std::move(layout),
+                                              std::move(options));
+}
+
+/// A point-cloud geometry whose sites are the DOF holders of `sites` (e.g. the
+/// entities of one dimension of a mesh, through OmegaHEntityLayout, whose
+/// geometry's adjacency search then serves).
+/// @param sites the layout of the sites
+/// @param options the support search of the geometry
+/// @throws pcms_error if `sites` is null or its coordinate system does not
+///         have the identity metric
+[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry>
+CreatePointCloudGeometry(std::shared_ptr<const FieldLayout> sites,
+                         NeighbourhoodOptions options = {})
+{
+  if (sites == nullptr) {
+    throw pcms_error("CreatePointCloudGeometry: the sites must not be null");
+  }
+  return std::make_shared<PointCloudGeometry>(std::move(sites),
+                                              std::move(options));
+}
 
 } // namespace pcms::backend::point_cloud
 

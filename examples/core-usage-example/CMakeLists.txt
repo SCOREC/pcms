@@ -1,5 +1,6 @@
 # ########### Use PCMS core without its private dependencies ##################
-# A program that uses only the core API needs Kokkos and PCMS: pcms::pcms
+# A program that uses only the core API (here a uniform-grid Lagrange space
+# and point-cloud MLS) needs Kokkos and PCMS: pcms::pcms
 # brings neither Omega_h, MPI, MeshFields nor PETSc onto this target's
 # include or link line (for a shared PCMS built without the coupler and the
 # C/Fortran APIs).

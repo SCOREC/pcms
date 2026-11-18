@@ -8,6 +8,7 @@
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/field/point_evaluator.hpp>
 #include <pcms/backends/omega_h/entity_layout.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/utility/arrays.hpp>
 #include <pcms/utility/entity_types.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
@@ -20,7 +21,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 using backend::omega_h::OmegaHEntityLayout;
 using utility::get_entity_centroids;
 } // namespace pcms
@@ -63,9 +64,9 @@ PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,
   OMEGA_H_CHECK_PRINTF(
     mesh.dim() == 2, "Only 2D meshes are supported but found %d\n", mesh.dim());
   const auto mesh_geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Create(2));
-  auto space =
-    pcms::CreatePolynomialReconstructionSpace(pcms::CreatePointCloudGeometry(
+    pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(2));
+  auto space = pcms::CreatePolynomialReconstructionSpace(
+    pcms::backend::point_cloud::CreatePointCloudGeometry(
       std::make_shared<pcms::OmegaHEntityLayout>(mesh_geometry, pcms::Face, 1),
       Supports(radius, 10)));
   // the vertices of the same mesh, whose supports follow from its adjacency
@@ -82,7 +83,7 @@ PcmsInterpolatorHandle pcms_create_point_based_interpolator(
 {
   const auto system = pcms::csys::Cartesian::Create(2);
   auto space = pcms::CreatePolynomialReconstructionSpace(
-    pcms::CreatePointCloudGeometry(
+    pcms::backend::point_cloud::CreatePointCloudGeometry(
       pcms::CoordinateView<pcms::HostMemorySpace>(
         system, pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
                   static_cast<const pcms::Real*>(source_points),

@@ -3,6 +3,7 @@
 // points with QueryPoints, and interpolates it onto a uniform grid. It also
 // includes a C API header to check that the installed C headers are usable.
 
+#include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/pcms.hpp>
 #include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/capi/interpolator.h>
@@ -118,7 +119,8 @@ int main(int argc, char** argv)
     const pcms::UniformGrid<2> grid{
       .edge_length = {0.8, 0.6}, .bot_left = {0.1, 0.2}, .divisions = {9, 7}};
     auto target_space = pcms::CreateLagrangeSpace(
-      pcms::CreateUniformGridGeometry(grid, cartesian), 1, 1);
+      pcms::backend::uniform_grid::CreateUniformGridGeometry(grid, cartesian),
+      1, 1);
     auto target = target_space->CreateFunction<pcms::Real>("target");
     pcms::Interpolator<pcms::Real> interpolate(*space, *target_space);
     interpolate.Apply(source, target);

@@ -5,6 +5,7 @@
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
 
 #include <pcms/transfer/mass_matrix_type.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
@@ -20,7 +21,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 using backend::omega_h::IntersectionResults;
 using transfer::OmegaHConservativeProjection;
 } // namespace pcms
@@ -360,8 +361,7 @@ std::vector<double> ProjectSameMesh(Omega_h::Mesh& mesh,
                                     pcms::MassMatrixType mass_type,
                                     std::vector<double>& source_values)
 {
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
   auto source_space = pcms::test::MakeP0Space(geometry);
   auto target_space = pcms::test::MakeP1Space(geometry);
   auto source = source_space->CreateFunction<pcms::Real>();

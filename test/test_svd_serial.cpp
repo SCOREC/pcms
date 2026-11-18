@@ -12,7 +12,6 @@
 #include <iostream>
 
 using namespace std;
-using namespace Omega_h;
 using namespace pcms;
 
 TEST_CASE("test_serial_svd")

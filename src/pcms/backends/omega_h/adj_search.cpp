@@ -241,7 +241,7 @@ SupportResults searchNeighbors(
       }
 
       adapt_radii(min_req_support, max_allowed_support, nvertices_target,
-                  radii2, nSupports);
+                  radii2.view(), nSupports.view());
     }
 
     pcms::printInfo("INFO: Took %d loops to adjust the radius\n",

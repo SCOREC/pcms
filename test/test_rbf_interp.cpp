@@ -64,8 +64,9 @@ void test(Omega_h::Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
 
   for (const auto& rbf : rbf_types) {
     auto approx_target_values =
-      pcms::mls_interpolation(source_values, source_coordinates,
-                              target_coordinates, support, dim, degree, rbf);
+      Omega_h::Write<Omega_h::Real>(pcms::mls_interpolation(
+        source_values.view(), source_coordinates.view(),
+        target_coordinates.view(), support, dim, degree, rbf));
 
     auto host_approx_target_values =
       Omega_h::HostRead<Omega_h::Real>(approx_target_values);

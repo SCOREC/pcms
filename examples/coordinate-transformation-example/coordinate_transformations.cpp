@@ -14,6 +14,7 @@
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/backends/omega_h/geometry.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/transfer/interpolator.hpp>
 #include <cmath>

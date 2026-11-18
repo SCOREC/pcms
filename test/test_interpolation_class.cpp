@@ -67,13 +67,14 @@ TEST_CASE("MLS reconstruction from a mesh to vertices")
     // element centroids to the vertices of the same mesh, by the mesh
     // adjacency and by the distance search over the centroids as a point cloud
     auto mesh_space = pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(std::make_shared<pcms::OmegaHEntityLayout>(
-                                       source_geometry, pcms::Face, 1),
-                                     supports));
+      pcms::backend::point_cloud::CreatePointCloudGeometry(
+        std::make_shared<pcms::OmegaHEntityLayout>(source_geometry, pcms::Face,
+                                                   1),
+        supports));
     auto centroids = pcms::test::CopyOmegaHRealsToVector(
       pcms::get_entity_centroids(source_mesh, Omega_h::FACE));
     auto cloud_space = pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(
+      pcms::backend::point_cloud::CreatePointCloudGeometry(
         pcms::CoordinateView<HostMemorySpace>(
           system, pcms::Rank2View<const Real, HostMemorySpace>(
                     centroids.data(), source_mesh.nfaces(), 2)),
@@ -114,7 +115,7 @@ TEST_CASE("MLS reconstruction from a mesh to vertices")
     auto target_mesh =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 17, 17, 0, false);
     auto space = pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(vertices, supports));
+      pcms::backend::point_cloud::CreatePointCloudGeometry(vertices, supports));
     auto field = space->CreateFunction<Real>();
     pcms::test::SetField(
       field, OMEGA_H_LAMBDA(Real x, Real y) { return SinxCosy(x, y); });
@@ -140,7 +141,7 @@ TEST_CASE("MLS reconstruction honours the dimension of the points")
   }
   const auto system = pcms::csys::Cartesian::Create(3);
   auto space = pcms::CreatePolynomialReconstructionSpace(
-    pcms::CreatePointCloudGeometry(
+    pcms::backend::point_cloud::CreatePointCloudGeometry(
       pcms::CoordinateView<HostMemorySpace>(
         system,
         pcms::Rank2View<const Real, HostMemorySpace>(points.data(), 27, 3)),

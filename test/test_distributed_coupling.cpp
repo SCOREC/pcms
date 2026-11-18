@@ -11,6 +11,7 @@
 #include "distributed_test_utils.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/types.hpp"
@@ -23,7 +24,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 } // namespace pcms
 
 using pcms::GO;
@@ -448,7 +449,7 @@ int main(int argc, char** argv)
       mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
 
       auto geometry =
-        pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+        pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
       auto space = pcms::CreateLagrangeSpace(
         geometry, /*order=*/1, /*num_components=*/1,
         pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});

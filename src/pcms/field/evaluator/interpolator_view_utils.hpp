@@ -2,9 +2,8 @@
 #define PCMS_FIELD_EVALUATOR_INTERPOLATOR_VIEW_UTILS_HPP
 
 #include <pcms/field/evaluator/interpolator_aliases.hpp>
-#include <Omega_h_array_ops.hpp>
 #include <cmath>
-#include <Omega_h_fail.hpp>
+#include "pcms/utility/check.hpp"
 #include <Kokkos_MathematicalFunctions.hpp>
 
 namespace pcms::field
@@ -59,11 +58,10 @@ void find_sq_root_each(member_type team, ScratchVecView& array)
 {
   int size = array.size();
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size), [=](int i) {
-    OMEGA_H_CHECK_PRINTF(
-      array(i) >= 0,
-      "[Error:] Square root of a negative number is invalid!\n"
-      "value is %12.6f\n",
-      array(i));
+    PCMS_CHECK_PRINTF(array(i) >= 0,
+                      "[Error:] Square root of a negative number is invalid!\n"
+                      "value is %12.6f\n",
+                      array(i));
     array(i) = Kokkos::sqrt(array(i));
   });
 }
@@ -146,7 +144,7 @@ void fill_diagonal(member_type team, const ScratchVecView& diagonal_entries,
                    ScratchMatView& matrix)
 {
   int size = diagonal_entries.size();
-  OMEGA_H_CHECK(size == matrix.extent(0) || size == matrix.extent(1));
+  PCMS_CHECK(size == matrix.extent(0) || size == matrix.extent(1));
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, size),
                        [=](int i) { matrix(i, i) = diagonal_entries(i); });
 }
@@ -176,7 +174,7 @@ void eval_row_scaling(member_type team, ScratchVecView diagonal_entries,
   int row = matrix.extent(0);
   int column = matrix.extent(1);
   int vector_size = diagonal_entries.size();
-  OMEGA_H_CHECK_PRINTF(
+  PCMS_CHECK_PRINTF(
     vector_size <= row,
     "[ERROR]: for row scaling the size of diagonal entries vector should be "
     "equal or less than the row of the matrix which is to be scaled\n"
@@ -211,7 +209,7 @@ void eval_rhs_scaling(member_type team, ScratchVecView diagonal_entries,
 {
   int weight_size = diagonal_entries.size();
   int rhs_size = rhs_values.size();
-  OMEGA_H_CHECK_PRINTF(
+  PCMS_CHECK_PRINTF(
     weight_size == rhs_size,
     "[ERROR]: for row scaling the size of diagonal entries vector should be "
     "equal or less than the row of the matrix which is to be scaled\n"
@@ -253,7 +251,7 @@ void scale_and_adjust(member_type team, ScratchVecView& diagonal_entries,
   size_t rowA = matrixToScale.extent(0);
   size_t rowB = adjustedMatrix.extent(0);
   size_t colB = adjustedMatrix.extent(1);
-  OMEGA_H_CHECK(colB == rowA);
+  PCMS_CHECK(colB == rowA);
   eval_row_scaling(team, diagonal_entries, matrixToScale);
   Kokkos::parallel_for(Kokkos::TeamThreadRange(team, rowB), [=](int i) {
     for (int j = 0; j < colB; ++j) {

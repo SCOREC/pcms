@@ -5,3 +5,15 @@ c726b259409b93e0a6df12d199f87eab8caa10db
 88dc8509543b34140a6015e361888644c5f5e0fe
 # reformat simplified-fields
 d521b8ce2e0d510d7472d2ac011cfc84b670f918
+# reorganization (0.4): refactor: rename C++ headers from .h to .hpp
+f214a63e1b6958f4827e6532aa3ec4423dfd2268
+# reorganization (0.4): refactor: move public headers to include/
+e4e1e10054463ec5d15525eb612b7a42d8cccef1
+# reorganization (0.4): refactor: move internal code into the sub-library and backend namespaces
+c87eb2504ce8bfcc5ad05ce13b30db20de89d85d
+# reorganization (0.4): refactor: spell out the names the namespace move would hide
+54666d81ebcceca4ff64ed499907ae0c35491342
+# reorganization (0.4): refactor: move the helpers of the public headers to pcms::detail
+42e9931c4abe3b4dfb151fe0dc93e5dde20cd544
+# reorganization (0.4): refactor: give every header a path-derived include guard
+abaab305a9a4ec01e5f5cc12493e4837a0ed228f

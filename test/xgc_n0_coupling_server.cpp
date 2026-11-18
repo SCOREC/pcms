@@ -8,6 +8,7 @@
 #include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/field/simple_field_data.hpp"
@@ -18,7 +19,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 } // namespace pcms
 
 using pcms::GO;
@@ -222,7 +223,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       // return 0;
       return 1;
     });
-  auto geometry = pcms::CreateOmegaHGeometry(
+  auto geometry = pcms::CreateGeometry(
     mesh, pcms::csys::Cartesian::Deferred(),
     pcms::backend::omega_h::OmegaHGeometryOptions{.global_id_name = numbering,
                                                   .owned_mask = is_overlap});

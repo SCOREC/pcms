@@ -7,7 +7,7 @@
 
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/backends/omega_h/geometry.hpp>
-#include <pcms/transfer/mesh_intersection.hpp>
+#include <pcms/backends/omega_h/mesh_intersection.hpp>
 #include <pcms/utility/assert.hpp>
 
 #include <algorithm>

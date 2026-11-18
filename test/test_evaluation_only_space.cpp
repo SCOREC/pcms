@@ -4,6 +4,7 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <Kokkos_Core.hpp>
 #include <Omega_h_library.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/field/function_space.hpp>
@@ -15,7 +16,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 using field::EmptyFieldLayout;
 } // namespace pcms
 
@@ -175,7 +176,7 @@ std::shared_ptr<const pcms::FunctionSpace> MakePoloidalTarget(
   Omega_h::Mesh& mesh, int num_components)
 {
   return pcms::CreateLagrangeSpace(
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::CylindricalRZ::Create()), 1,
+    pcms::CreateGeometry(mesh, pcms::csys::CylindricalRZ::Create()), 1,
     num_components,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
 }

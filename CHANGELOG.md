@@ -9,14 +9,17 @@ The reorganization does not change numerical behavior. See [MIGRATION.md](MIGRAT
 
 ### Changed (breaking)
 
+- The geometry kinds `backend::omega_h::OmegaHGeometry`, `backend::uniform_grid::UniformGridGeometry<Dim>` and
+  `backend::point_cloud::PointCloudGeometry` are public types and their factories return them
+  (`std::shared_ptr<const Kind>`); `backend::omega_h::GetMesh(geometry)` is `OmegaHGeometry::GetMesh()`.
 - Public-API trim: helpers that 0.3 declared in public headers are in
   `pcms::detail` (not API); the types for implementing a source, geometry kind,
   layout or field data are implementer API, installed and not covered by the
   stability promise (see MIGRATION.md).
 - Public API: only interfaces and factory functions are public. Spaces are
   created on a `Geometry` (`CreateLagrangeSpace`, `CreateSplineSpace`,
-  `CreatePolynomialReconstructionSpace`; `CreateUniformGridGeometry`,
-  `CreatePointCloudGeometry`, `backend::omega_h::CreateGeometry`), plus
+  `CreatePolynomialReconstructionSpace`; `backend::uniform_grid::CreateUniformGridGeometry`,
+  `backend::point_cloud::CreatePointCloudGeometry`, `backend::omega_h::CreateGeometry`), plus
   `CreateEmptyLayout`, `CreateConservativeProjection`,
   `CreateControlVariateProjection` and the backend entry points in
   `pcms/backends/<name>/<name>.hpp`. There is one concrete `FunctionSpace`;
@@ -62,6 +65,11 @@ The reorganization does not change numerical behavior. See [MIGRATION.md](MIGRAT
 ### Added
 
 - `PCMS_ENABLE_COUPLER` to build without redev and ADIOS2.
+- A build without Omega_h (`PCMS_ENABLE_OMEGA_H=OFF`, with the server, the
+  coupler, XGC and MeshFields off): the uniform-grid Lagrange and spline
+  spaces and point-cloud MLS (`backend::point_cloud::CreatePointCloudGeometry`,
+  `CreatePolynomialReconstructionSpace`) need only Kokkos, KokkosKernels and
+  MPI.
 - `Geometry` (`Bind` with out-of-bounds policy, coordinate map and owner
   hints, `Rebind`, `Neighbourhood`, `Differential`), `BoundSource`,
   `OwnerHints`, `QueryPoints` and the one-shot `Evaluate`

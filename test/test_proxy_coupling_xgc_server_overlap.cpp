@@ -12,12 +12,13 @@
 #include "pcms/coupler/overlap_mask.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 using backend::omega_h::OmegaHFieldData;
 using backend::xgc::XGCFieldData;
 using backend::xgc::XGCFieldFactory;
@@ -180,9 +181,9 @@ void omegah_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
     application->SetLayoutOverlapMask(ss.str(), std::move(overlap_mask));
 
     auto geometry =
-      pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred(),
-                                 pcms::backend::omega_h::OmegaHGeometryOptions{
-                                   .global_id_name = numbering});
+      pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred(),
+                           pcms::backend::omega_h::OmegaHGeometryOptions{
+                             .global_id_name = numbering});
     auto factory = pcms::CreateLagrangeSpace(
       geometry, 1, 1,
       pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH,

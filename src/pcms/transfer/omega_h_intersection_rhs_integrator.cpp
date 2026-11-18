@@ -52,8 +52,8 @@ Data BuildData(const FunctionSpace& source_space,
     detail::ResolveOmegaHScalarSpace(
       target_space, 0, 1, "OmegaHIntersectionRHSIntegrator", "target");
 
-  const int dim = backend::omega_h::GetMesh(*target_geometry).dim();
-  if (backend::omega_h::GetMesh(*source_geometry).dim() != dim) {
+  const int dim = target_geometry->GetMesh().dim();
+  if (source_geometry->GetMesh().dim() != dim) {
     throw pcms_error("OmegaHIntersectionRHSIntegrator: source and target mesh "
                      "dimensions differ");
   }
@@ -90,8 +90,12 @@ Data BuildDataImpl(const OmegaHLagrangeLayout& target_layout, int quad_order,
   // measure `m` scales the reference quadrature weights by Dim! * m.
   constexpr Omega_h::Real ref_factor = (Dim == 3) ? 6.0 : 2.0;
 
-  Omega_h::Mesh& source_mesh = backend::omega_h::GetMesh(source_geometry);
-  Omega_h::Mesh& target_mesh = backend::omega_h::GetMesh(target_geometry);
+  Omega_h::Mesh& source_mesh =
+    dynamic_cast<const backend::omega_h::OmegaHGeometry&>(source_geometry)
+      .GetMesh();
+  Omega_h::Mesh& target_mesh =
+    dynamic_cast<const backend::omega_h::OmegaHGeometry&>(target_geometry)
+      .GetMesh();
 
   const auto intersections = intersectTargets(source_geometry, target_mesh);
 
@@ -246,8 +250,7 @@ OmegaHIntersectionRHSIntegrator::GetIntegrationPoints() const noexcept
 
 OwnerHints OmegaHIntersectionRHSIntegrator::IntegrationPointOwners() const
 {
-  return OwnerHints{source_geometry_,
-                    backend::omega_h::GetMesh(*source_geometry_).dim(),
+  return OwnerHints{source_geometry_, source_geometry_->GetMesh().dim(),
                     source_elements_};
 }
 

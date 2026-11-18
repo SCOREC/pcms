@@ -13,9 +13,6 @@
 
 namespace pcms
 {
-using localization::GridPointSearch2D;
-using localization::GridPointSearch3D;
-using localization::GridPointSearchVariant;
 using utility::ConvertCoordsTo2D;
 using utility::flatten_to_omega_h_reals;
 } // namespace pcms
@@ -181,23 +178,6 @@ const GridPointSearchVariant& OmegaHGeometry::Search() const
       MakeGridSearch(mesh_, search_options_));
   });
   return *search_;
-}
-
-std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
-  Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
-  OmegaHGeometryOptions options)
-{
-  return std::make_shared<OmegaHGeometry>(mesh, std::move(system),
-                                          std::move(options));
-}
-
-std::shared_ptr<const OmegaHGeometry> CreateOmegaHGeometry(
-  std::shared_ptr<Omega_h::Mesh> mesh,
-  std::shared_ptr<Omega_h::Library> library,
-  std::shared_ptr<const CoordinateSystem> system, OmegaHGeometryOptions options)
-{
-  return std::make_shared<OmegaHGeometry>(
-    std::move(mesh), std::move(library), std::move(system), std::move(options));
 }
 
 std::shared_ptr<BoundSource> OmegaHGeometry::BindImpl(

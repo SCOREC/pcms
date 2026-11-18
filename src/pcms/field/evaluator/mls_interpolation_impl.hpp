@@ -2,7 +2,6 @@
 #define PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_IMPL_HPP
 
 #include <cmath>
-#include <Omega_h_fail.hpp>
 #include <type_traits>
 
 #include <KokkosBatched_Util.hpp>
@@ -14,7 +13,7 @@
 #include <Kokkos_StdAlgorithms.hpp>
 #include <pcms/field/evaluator/mls_interpolation.hpp>
 #include <pcms/field/evaluator/interpolator_aliases.hpp>
-#include <pcms/backends/omega_h/adj_search.hpp>
+#include <pcms/utility/check.hpp>
 #include <pcms/utility/assert.hpp>
 #include <pcms/utility/detail/profile.hpp>
 #include <pcms/field/evaluator/interpolator_view_utils.hpp>
@@ -107,7 +106,6 @@ int calculate_scratch_shared_size(const SupportResults& support,
  *
  * @return normalized coordinates The normlaised coordinates
  */
-Omega_h::Reals min_max_normalization(Omega_h::Reals& coordinates, int dim);
 
 /**
  * @brief Evaluates the polynomial basis
@@ -238,10 +236,10 @@ KOKKOS_INLINE_FUNCTION void compute_phi_vector(
     ds_sq += temp * temp;
   }
   phi(j) = rbf_func(ds_sq, cuttoff_dis_sq);
-  OMEGA_H_CHECK_PRINTF(!std::isnan(phi(j)),
-                       "ERROR: Phi(j) in compute_phi_vector is NaN for j = %d "
-                       "ds_sq=%.16f, cuttoff_dis_sq=%.16f",
-                       j, ds_sq, cuttoff_dis_sq);
+  PCMS_CHECK_PRINTF(!std::isnan(phi(j)),
+                    "ERROR: Phi(j) in compute_phi_vector is NaN for j = %d "
+                    "ds_sq=%.16f, cuttoff_dis_sq=%.16f",
+                    j, ds_sq, cuttoff_dis_sq);
 }
 
 /**
@@ -267,14 +265,13 @@ void scale_column_trans_matrix(const ScratchMatView& matrix,
 
   ScratchVecView matrix_row = Kokkos::subview(matrix, j, Kokkos::ALL());
   for (int k = 0; k < N; k++) {
-    OMEGA_H_CHECK_PRINTF(!std::isnan(matrix_row(k)),
-                         "ERROR: given matrix is NaN for k = %d\n", k);
-    OMEGA_H_CHECK_PRINTF(!std::isnan(vector(j)),
-                         "ERROR: given vector is NaN for j = %d\n", j);
+    PCMS_CHECK_PRINTF(!std::isnan(matrix_row(k)),
+                      "ERROR: given matrix is NaN for k = %d\n", k);
+    PCMS_CHECK_PRINTF(!std::isnan(vector(j)),
+                      "ERROR: given vector is NaN for j = %d\n", j);
     result_matrix(k, j) = matrix_row(k) * vector(j);
-    OMEGA_H_CHECK_PRINTF(!std::isnan(result_matrix(k, j)),
-                         "ERROR: result_matrix is NaN for k = %d, j = %d\n", k,
-                         j);
+    PCMS_CHECK_PRINTF(!std::isnan(result_matrix(k, j)),
+                      "ERROR: result_matrix is NaN for k = %d, j = %d\n", k, j);
   }
 }
 
@@ -320,7 +317,7 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
   int column = matrix.extent(1);
   int weight_size = weight.size();
 
-  OMEGA_H_CHECK_PRINTF(
+  PCMS_CHECK_PRINTF(
     weight_size == row,
     "the size of the weight vector should be equal to the row of the matrix\n"
     "weight vector size = %d, row of matrix = %d\n",
@@ -399,8 +396,8 @@ template <typename Func>
 void mls_interpolation(RealConstDefaultRank1View source_values,
                        RealConstDefaultRank1View source_coordinates,
                        RealConstDefaultRank1View target_coordinates,
-                       const SupportResults& support, const Omega_h::LO& dim,
-                       const Omega_h::LO& degree, Func rbf_func,
+                       const SupportResults& support, const LO& dim,
+                       const LO& degree, Func rbf_func,
                        RealDefaultRank1View approx_target_values, double lambda,
                        double tol)
 {
@@ -412,7 +409,7 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
 
   int nsources = source_coordinates.size() / dim;
 
-  OMEGA_H_CHECK_PRINTF(
+  PCMS_CHECK_PRINTF(
     source_values.size() == nsources,
     "[ERROR] The size of the source values and source coordinates is not "
     "same. "
@@ -422,12 +419,12 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
 
   const auto ntargets = target_coordinates.size() / dim;
 
-  OMEGA_H_CHECK_PRINTF(approx_target_values.size() == ntargets,
-                       "[ERROR] The size of the approx target values and the "
-                       "number of targets is "
-                       "not same. The current numbers are :\n"
-                       "approx_target_values = %d, ntargets = %d\n",
-                       approx_target_values.size(), ntargets);
+  PCMS_CHECK_PRINTF(approx_target_values.size() == ntargets,
+                    "[ERROR] The size of the approx target values and the "
+                    "number of targets is "
+                    "not same. The current numbers are :\n"
+                    "approx_target_values = %d, ntargets = %d\n",
+                    approx_target_values.size(), ntargets);
 
   IntHostMatView host_slice_length(
     "stores slice length of  polynomial basis in host", degree, dim);
@@ -542,8 +539,8 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
         Kokkos::TeamThreadRange(team, nsupports), [=](const int j) {
           support_values(j) =
             source_values[support.supports_idx[start_ptr + j]];
-          OMEGA_H_CHECK_PRINTF(!std::isnan(support_values(j)),
-                               "ERROR: NaN found: at support %d\n", j);
+          PCMS_CHECK_PRINTF(!std::isnan(support_values(j)),
+                            "ERROR: NaN found: at support %d\n", j);
         });
       team.team_barrier();
 
@@ -575,7 +572,7 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
         });
       team.team_barrier();
 
-      OMEGA_H_CHECK_PRINTF(
+      PCMS_CHECK_PRINTF(
         support.radii2[league_rank] > 0,
         "ERROR: radius2 has to be positive but found to be %.16f\n",
         support.radii2[league_rank]);
@@ -592,8 +589,8 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
         team, solution_coefficients, target_basis_vector);
 
       if (team.team_rank() == 0) {
-        OMEGA_H_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
-                             league_rank);
+        PCMS_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
+                          league_rank);
         approx_target_values[league_rank] = target_value;
       }
     });
@@ -612,18 +609,19 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
  * @param dim The dimension of the simulations
  * @param degree The degree of the interpolation order
  * @param rbf_func The radial basis function choice
- * @return  Omega_h::Write array of the interpolated field in target mesh
+ * @return  the interpolated field at the target points
  *
  *
  */
 template <typename Func>
-Omega_h::Write<Omega_h::Real> mls_interpolation(
-  const Omega_h::Reals source_values, const Omega_h::Reals source_coordinates,
-  const Omega_h::Reals target_coordinates, const SupportResults& support,
-  const Omega_h::LO& dim, const Omega_h::LO& degree, Func rbf_func,
+Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
+  Kokkos::View<const Real*, DeviceMemorySpace> source_values,
+  Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
+  Kokkos::View<const Real*, DeviceMemorySpace> target_coordinates,
+  const SupportResults& support, LO dim, LO degree, Func rbf_func,
   double lambda, double tol)
 {
-  const auto ntargets = target_coordinates.size() / dim;
+  const auto ntargets = static_cast<LO>(target_coordinates.size()) / dim;
 
   RealConstDefaultRank1View source_values_array_view(source_values.data(),
                                                      source_values.size());
@@ -634,8 +632,8 @@ Omega_h::Write<Omega_h::Real> mls_interpolation(
   RealDefaultRank1View radii2_array_view(support.radii2.data(),
                                          support.radii2.size());
 
-  Omega_h::Write<Omega_h::Real> interpolated_values(
-    ntargets, 0, "approximated target values");
+  Kokkos::View<Real*, DeviceMemorySpace> interpolated_values(
+    "approximated target values", ntargets);
   RealDefaultRank1View interpolated_values_array_view(
     interpolated_values.data(), interpolated_values.size());
 

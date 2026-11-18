@@ -8,6 +8,7 @@
 #include "test_support.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/field/value_view.hpp"
 #include <chrono>
@@ -16,7 +17,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateOmegaHGeometry;
+using backend::omega_h::CreateGeometry;
 } // namespace pcms
 
 using pcms::GO;
@@ -96,8 +97,7 @@ void xgc_delta_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   pcms::ApplicationComm* app =
     coupler.AddApplication("proxy_couple_xgc_delta_f");
 
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1, pcms::LagrangeOptions{.layout_name = "gids"});
 
@@ -136,8 +136,7 @@ void xgc_total_f(MPI_Comm comm, Omega_h::Mesh& mesh)
   pcms::ApplicationComm* app =
     coupler.AddApplication("proxy_couple_xgc_total_f");
 
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1, pcms::LagrangeOptions{.layout_name = "gids"});
 
@@ -178,8 +177,7 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
   const auto partition = std::get<redev::ClassPtn>(cpl.GetPartition());
   auto* total_f = cpl.AddApplication("proxy_couple_xgc_total_f");
   auto* delta_f = cpl.AddApplication("proxy_couple_xgc_delta_f");
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
   auto factory_total = pcms::CreateLagrangeSpace(
     geometry, 1, 1, pcms::LagrangeOptions{.layout_name = "gids"});
 

@@ -4,6 +4,8 @@
 // Public entry points of the Omega_h backend: build PCMS objects from an
 // Omega_h mesh. This header (and only backend headers) may use Omega_h types.
 
+#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/point_cloud/geometry.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -26,20 +28,6 @@
 namespace pcms::backend::omega_h
 {
 
-/// Options of an Omega_h geometry.
-struct OmegaHGeometryOptions
-{
-  /// divisions and tolerance of the containing-element search
-  SearchOptions search;
-  /// the tag holding global entity ids
-  std::string global_id_name = "global";
-  /// per-vertex ownership override: a vertex the mask is 0 for is not owned,
-  /// whatever the mesh says; empty means the mesh's own ownership. Layouts
-  /// whose DOF holders are the mesh vertices apply it; layouts of other
-  /// entities do not.
-  Omega_h::Read<Omega_h::I8> owned_mask;
-};
-
 /// The geometry of an Omega_h simplex mesh (2D or 3D, classified). Builds the
 /// mesh's containing-element search: create one per mesh and share it. The
 /// geometry owns the mesh's discretization; spaces are created on it with
@@ -48,13 +36,18 @@ struct OmegaHGeometryOptions
 ///        from it
 /// @param system the mesh's coordinate system, or null for Cartesian
 /// @param options search, global id tag and ownership
-[[nodiscard]] std::shared_ptr<const Geometry> CreateGeometry(
+[[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateGeometry(
   Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
   OmegaHGeometryOptions options = {});
 
-/// The mesh of an Omega_h geometry.
-/// @throws pcms_error if `geometry` is not an Omega_h geometry
-[[nodiscard]] Omega_h::Mesh& GetMesh(const Geometry& geometry);
+/// The geometry of an Omega_h mesh that shares ownership of the mesh and its
+/// library: they live as long as the geometry and what holds it (the Python
+/// bindings).
+[[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateGeometry(
+  std::shared_ptr<Omega_h::Mesh> mesh,
+  std::shared_ptr<Omega_h::Library> library,
+  std::shared_ptr<const CoordinateSystem> system,
+  OmegaHGeometryOptions options = {});
 
 /// A point-cloud geometry whose sites are the vertices (`entity_dim` 0) or the
 /// element centroids (the mesh dimension) of the mesh of an Omega_h geometry;
@@ -65,11 +58,10 @@ struct OmegaHGeometryOptions
 /// @param geometry an Omega_h geometry
 /// @param entity_dim 0 or the mesh dimension
 /// @param options the support search of the geometry
-/// @throws pcms_error if `geometry` is not an Omega_h geometry or `entity_dim`
-///         is not 0 or the mesh dimension
-[[nodiscard]] std::shared_ptr<const Geometry> CreatePointCloudGeometry(
-  std::shared_ptr<const Geometry> geometry, int entity_dim,
-  NeighbourhoodOptions options = {});
+/// @throws pcms_error if `entity_dim` is not 0 or the mesh dimension
+[[nodiscard]] std::shared_ptr<const point_cloud::PointCloudGeometry>
+CreatePointCloudGeometry(std::shared_ptr<const OmegaHGeometry> geometry,
+                         int entity_dim, NeighbourhoodOptions options = {});
 
 /// 0/1 field on the vertices of a 2D uniform grid marking the vertices that
 /// lie inside mesh. The grid is given, or covers the mesh's bounding box with

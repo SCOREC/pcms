@@ -299,6 +299,7 @@ TEST_CASE("A rebind reuses the bound source only when nothing else holds it")
   }
   pcms::test::CheckEvaluation(*space->CreatePointEvaluator<Real>(bound), f,
                               fewer, linear);
+  storage = bound->LocatedPointValues().data();
   bound = rebind(std::move(bound), more);
   REQUIRE(bound.get() == address);
   REQUIRE(bound->LocatedPointValues().data() != storage);

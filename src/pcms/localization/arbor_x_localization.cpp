@@ -630,7 +630,7 @@ namespace pcms
 TreePointSearch::Results TreePointSearch::Apply(
   const CoordinateView<TreePointSearch::MemorySpace>& coords) const
 {
-  if (coords.GetCoordinateSystem() != pcms::CoordinateSystem::Cartesian) {
+  if (coords.GetCoordinateSystem()->Kind() != "cartesian") {
     throw pcms_error("TreePointSearch::Apply only implemented for"
                      " Cartesian coordinates");
   }
@@ -715,7 +715,7 @@ TreePointSearch::Results TreePointSearch::Apply(
 }
 
 [[nodiscard]] Kokkos::View<LO*> TreePointSearch::GetOwningElementIds(
-  const TreePointSearch::Results& results)
+  const TreePointSearch::Results& results) const
 {
   Kokkos::View<LO*> owning_ids("Owning element IDs",
                                results.dimensionalities.size());

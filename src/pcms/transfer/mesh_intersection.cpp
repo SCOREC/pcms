@@ -30,9 +30,9 @@ Kokkos::View<const LO*> LocateTargetCentroids(
   // Convert layout_right 1D Omega_h array to 2D Kokkos view with correct layout
   auto centroids = ConvertCoordsTo2D(flat_centroids, target_mesh.nelems(), Dim);
   auto coords = CoordinateView(
-    CoordinateSystem::Cartesian,
+    csys::Cartesian::Create(2),
     MakeConstRank2View(centroids));
-  auto results = source_search.apply(coords);
+  auto results = source_search.Apply(coords);
   return source_search.GetOwningElementIds(results);
 }
 } // namespace
@@ -65,12 +65,12 @@ void FindIntersections::adjBasedIntersectSearch(
 
   pcms::GridPointSearch2D search_cell(source_mesh_, 20, 20);
   auto results = search_cell.Apply(
-    CoordinateView(CoordinateSystem::Cartesian, MakeConstRank2View(centroids)));
+    CoordinateView(csys::Cartesian::Create(3), MakeConstRank2View(centroids)));
   auto owning_cell_ids = search_cell.GetOwningElementIds(results);
 
   auto nfaces_target = target_mesh_.nfaces();
   Omega_h::parallel_for(
-    nelems_target,
+    nfaces_target,
     OMEGA_H_LAMBDA(const Omega_h::LO id) {
       Queue queue;
       Track visited;

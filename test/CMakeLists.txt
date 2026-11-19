@@ -436,7 +436,6 @@ if(Catch2_FOUND)
       test_tagged_outputs.cpp
       test_transformed_source.cpp
       test_evaluation_only_space.cpp
-	  test_tree_localization.cpp
 	)
 	if (PCMS_ENABLE_ARBORX)
 		list(

@@ -9,13 +9,46 @@
 #include "pcms/utility/types.h"
 #include "pcms/utility/uniform_grid.h"
 #include "pcms/utility/bounding_box.h"
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_system.hpp"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 #include "pcms/localization/localization.h"
 
 namespace pcms
 {
+
+//
+// TODO take a bounding box as we may want a bbox that's bigger than the mesh!
+// this function is in the public header for testing, but should not be directly
+// used
+namespace detail
+{
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_2d(Omega_h::Mesh& mesh,
+                              Kokkos::View<Uniform2DGrid[1]> grid,
+                              int num_grid_cells);
+
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_3d(Omega_h::Mesh& mesh,
+                              Kokkos::View<Uniform3DGrid[1]> grid,
+                              int num_grid_cells);
+
+/// O(num_cells * nelems) brute-force candidate map. Test oracle for the
+/// element-major build above; never use in production.
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_reference_2d(Omega_h::Mesh& mesh,
+                                        Kokkos::View<Uniform2DGrid[1]> grid,
+                                        int num_grid_cells);
+
+/// \see construct_intersection_map_reference_2d
+Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
+construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
+                                        Kokkos::View<Uniform3DGrid[1]> grid,
+                                        int num_grid_cells);
+} // namespace detail
+
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
   const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox);
+
 
 class GridPointSearch2D : public PointSearch
 {
@@ -42,7 +75,8 @@ public:
   Results Apply(const CoordinateView<MemorySpace>& coords) const override;
   [[nodiscard]] LO GetOwningElementId(const Results& result, int i) override;
   [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
-    const Results& results) override;
+    const Results& results) const override;
+  virtual LO Dim() const { return 2; };
 
 private:
   Omega_h::Mesh mesh_;
@@ -82,7 +116,9 @@ public:
   Results Apply(const CoordinateView<MemorySpace>& coords) const override;
   [[nodiscard]] LO GetOwningElementId(const Results& result, int i) override;
   [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
-    const Results& results) override;
+    const Results& results) const override;
+	virtual LO Dim() const { return 3; }
+  
 
 private:
   Omega_h::Mesh mesh_;

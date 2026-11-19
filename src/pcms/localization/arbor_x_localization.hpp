@@ -63,7 +63,7 @@ struct TreeWrapper
       throw pcms_error("Requested get_tree return "
                        "type does not match internal Tree_t");
     }
-    return std::any_cast<Tree_t<dim>>(*tree_);
+    return std::any_cast<Tree_t<dim>>(tree_);
   }
 
   /**
@@ -76,7 +76,7 @@ struct TreeWrapper
       throw pcms_error("Requested get_mappings return "
                        "type does not match internal Mappings_t");
     }
-    return std::any_cast<Mappings_t<dim>>(*mappings_);
+    return std::any_cast<Mappings_t<dim>>(mappings_);
   };
 
 private:
@@ -117,7 +117,8 @@ public:
   Results Apply(const CoordinateView<MemorySpace>& coords) const override;
   [[nodiscard]] LO GetOwningElementId(const Results& results, int i) override;
   [[nodiscard]] Kokkos::View<LO*> GetOwningElementIds(
-    const Results& results) override;
+    const Results& results) const override;
+	virtual LO Dim() const { return mesh_.dim(); };
 
 private:
   std::unique_ptr<detail::TreeWrapper> make_tree(Omega_h::Mesh& mesh) const;

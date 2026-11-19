@@ -1,4 +1,5 @@
 #include "pcms/localization/adj_search.hpp"
+#include "pcms/field/coordinate_systems/cartesian.hpp"
 #include <Omega_h_array_ops.hpp>
 
 namespace pcms
@@ -90,10 +91,10 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
       });
     Kokkos::fence();
 
-    pcms::GridPointSearch2D search_cell(source_mesh, 10, 10); //
+    GridPointSearch2D search_cell(source_mesh, 10, 10);
     auto results = search_cell.Apply(
-      pcms::CoordinateView(pcms::CoordinateSystem::Cartesian,
-                           pcms::MakeConstRank2View(target_points)));
+      CoordinateView(csys::Cartesian::Create(2),
+                           MakeConstRank2View(target_points)));
     auto owning_cell_ids = search_cell.GetOwningElementIds(results);
     Omega_h::parallel_for(
       nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {
@@ -115,10 +116,10 @@ static Omega_h::Write<Omega_h::LO> locate_target_cells(
       });
     Kokkos::fence();
 
-    pcms::GridPointSearch3D search_cell(source_mesh, 10, 10, 10);
+    GridPointSearch3D search_cell(source_mesh, 10, 10, 10);
     auto results = search_cell.Apply(
-      pcms::CoordinateView(pcms::CoordinateSystem::Cartesian,
-                           pcms::MakeConstRank2View(target_points)));
+      CoordinateView(csys::Cartesian::Create(3),
+                           MakeConstRank2View(target_points)));
     auto owning_cell_ids = search_cell.GetOwningElementIds(results);
     Omega_h::parallel_for(
       nvertices_target, OMEGA_H_LAMBDA(const Omega_h::LO i) {

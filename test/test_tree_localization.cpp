@@ -50,7 +50,7 @@ TEST_CASE("Test 10x10 2D tree point classification")
     pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
                          pcms::detail::default_layout_for_memory_space_t<
                            Omega_h::ExecSpace::memory_space>>
-      vert_cv(pcms::CoordinateSystem::Cartesian,
+      vert_cv(pcms::csys::Cartesian,
               pcms::MakeConstRank2View(coords));
     pcms::TreePointSearch::Results results = tree_search.Apply(vert_cv);
     check_res(results, 0);
@@ -77,7 +77,7 @@ TEST_CASE("Test 10x10 2D tree point classification")
     pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
                          pcms::detail::default_layout_for_memory_space_t<
                            Omega_h::ExecSpace::memory_space>>
-      edge_cv(pcms::CoordinateSystem::Cartesian,
+      edge_cv(pcms::csys::Cartesian,
               pcms::MakeConstRank2View(coords));
     pcms::TreePointSearch::Results results = tree_search.Apply(edge_cv);
     check_res(results, 1);
@@ -106,7 +106,7 @@ TEST_CASE("Test 10x10 2D tree point classification")
     pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
                          pcms::detail::default_layout_for_memory_space_t<
                            Omega_h::ExecSpace::memory_space>>
-      face_cv(pcms::CoordinateSystem::Cartesian,
+      face_cv(pcms::csys::Cartesian,
               pcms::MakeConstRank2View(coords));
     pcms::TreePointSearch::Results results = tree_search.Apply(face_cv);
     check_res(results, 2);
@@ -154,7 +154,7 @@ TEST_CASE("Test 5x5x5 3D tree point classification")
     pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
                          pcms::detail::default_layout_for_memory_space_t<
                            Omega_h::ExecSpace::memory_space>>
-      vert_cv(pcms::CoordinateSystem::Cartesian,
+      vert_cv(pcms::csys::Cartesian,
               pcms::MakeConstRank2View(coords));
     pcms::TreePointSearch::Results results = tree_search.Apply(vert_cv);
 
@@ -187,7 +187,7 @@ TEST_CASE("Test 5x5x5 3D tree point classification")
     pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
                          pcms::detail::default_layout_for_memory_space_t<
                            Omega_h::ExecSpace::memory_space>>
-      edge_cv(pcms::CoordinateSystem::Cartesian,
+      edge_cv(pcms::csys::Cartesian,
               pcms::MakeConstRank2View(coords));
     pcms::TreePointSearch::Results results = tree_search.Apply(edge_cv);
     check_res(results, 1);
@@ -221,7 +221,7 @@ TEST_CASE("Test 5x5x5 3D tree point classification")
     pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
                          pcms::detail::default_layout_for_memory_space_t<
                            Omega_h::ExecSpace::memory_space>>
-      face_cv(pcms::CoordinateSystem::Cartesian,
+      face_cv(pcms::csys::Cartesian,
               pcms::MakeConstRank2View(coords));
     pcms::TreePointSearch::Results results = tree_search.Apply(face_cv);
     check_res(results, 2);
@@ -258,7 +258,7 @@ TEST_CASE("Test 5x5x5 3D tree point classification")
     pcms::CoordinateView<Omega_h::ExecSpace::memory_space,
                          pcms::detail::default_layout_for_memory_space_t<
                            Omega_h::ExecSpace::memory_space>>
-      region_cv(pcms::CoordinateSystem::Cartesian,
+      region_cv(pcms::csys::Cartesian,
                 pcms::MakeConstRank2View(coords));
     pcms::TreePointSearch::Results results = tree_search.Apply(region_cv);
     check_res(results, 3);

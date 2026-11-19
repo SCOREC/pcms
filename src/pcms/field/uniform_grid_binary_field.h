@@ -5,7 +5,6 @@
 #include "pcms/field/data/simple.h"
 #include "pcms/field/function_space/lagrange.h"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/field_metadata.h"
 #include "pcms/localization/uniform_grid_localization.hpp"
 #include "pcms/utility/arrays.h"
 #include "pcms/utility/types.h"
@@ -62,12 +61,12 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
   if constexpr (Dim == 2) {
     GridPointSearch2D search(mesh, grid.divisions[0], grid.divisions[1]);
     results_d = search.Apply(pcms::CoordinateView(
-      pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(coords_d)));
+      pcms::csys::Cartesian::Create(Dim), pcms::MakeConstRank2View(coords_d)));
   } else {
     GridPointSearch3D search(mesh, grid.divisions[0], grid.divisions[1],
                              grid.divisions[2]);
     results_d = search.Apply(pcms::CoordinateView(
-      pcms::CoordinateSystem::Cartesian, pcms::MakeConstRank2View(coords_d)));
+      pcms::csys::Cartesian::Create(Dim), pcms::MakeConstRank2View(coords_d)));
   }
   auto result_ids_h = Kokkos::create_mirror_view_and_copy(
     Kokkos::HostSpace{}, results_d.element_ids);

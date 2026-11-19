@@ -1,5 +1,5 @@
-#ifndef PCMS_COUPLING_POINT_SEARCH_H
-#define PCMS_COUPLING_POINT_SEARCH_H
+#ifndef PCMS_COUPLING_LOCALIZATION_H
+#define PCMS_COUPLING_LOCALIZATION_H
 #include <cassert>
 
 #include <Kokkos_Core.hpp>
@@ -10,7 +10,7 @@
 #include "pcms/utility/types.h"
 #include "pcms/utility/uniform_grid.h"
 #include "pcms/utility/bounding_box.h"
-#include "pcms/field/coordinate_system.h"
+#include "pcms/field/coordinate_view.hpp"
 
 namespace pcms
 {
@@ -51,39 +51,6 @@ GetOwningElementIdFromAdj(const Omega_h::Adj& upward_adj, DimEnum entity_dim,
   }
   return owner;
 }
-
-//
-// TODO take a bounding box as we may want a bbox that's bigger than the mesh!
-// this function is in the public header for testing, but should not be directly
-// used
-namespace detail
-{
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_2d(Omega_h::Mesh& mesh,
-                              Kokkos::View<Uniform2DGrid[1]> grid,
-                              int num_grid_cells);
-
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_3d(Omega_h::Mesh& mesh,
-                              Kokkos::View<Uniform3DGrid[1]> grid,
-                              int num_grid_cells);
-
-/// O(num_cells * nelems) brute-force candidate map. Test oracle for the
-/// element-major build above; never use in production.
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_reference_2d(Omega_h::Mesh& mesh,
-                                        Kokkos::View<Uniform2DGrid[1]> grid,
-                                        int num_grid_cells);
-
-/// \see construct_intersection_map_reference_2d
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
-                                        Kokkos::View<Uniform3DGrid[1]> grid,
-                                        int num_grid_cells);
-} // namespace detail
-
-[[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
-  const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox);
 
 /**
  * Point search base class
@@ -162,7 +129,7 @@ public:
 
   ~PointSearch() = default;
 
-  virtual Results apply(const CoordinateView<MemorySpace>& coords) const = 0;
+  virtual Results Apply(const CoordinateView<MemorySpace>& coords) const = 0;
   /**
    * This function provides a temporary solution to retrieve the original
    * behavior of the point search, which previously returned the face ID
@@ -183,4 +150,4 @@ protected:
 };
 
 } // namespace pcms
-#endif // PCMS_COUPLING_POINT_SEARCH_H
+#endif // PCMS_COUPLING_LOCALIZATION_H

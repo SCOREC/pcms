@@ -62,6 +62,15 @@ public:
     return GetCellIndex(indexes);
   }
 
+  /// Per-axis cell indices in coordinate order (x,y,z) for a linear cell ID.
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<LO, dim>
+  AxisIndicesFromCellIndex(LO idx) const
+  {
+    auto indices = GetDimensionedIndex(idx);
+    reverse(indices);
+    return indices;
+  }
+
   [[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<dim> GetCellBBOX(LO idx) const
   {
     auto index = GetDimensionedIndex(idx);
@@ -107,7 +116,6 @@ public:
       result[dim - 1 - axis] = idx % divisions[axis];
       idx /= divisions[axis];
     }
-
     return result;
   }
 

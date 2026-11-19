@@ -427,6 +427,7 @@ if(Catch2_FOUND)
   set(PCMS_UNIT_TEST_SOURCES
       unit_test_main.cpp
       test_bounding_box.cpp
+      test_shapes.cpp
       test_error_handling.cpp
       test_spline_interpolator.cpp
       test_derivatives.cpp)

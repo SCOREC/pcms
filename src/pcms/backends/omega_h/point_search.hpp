@@ -7,6 +7,7 @@
 #include <variant>
 
 #include <Kokkos_Core.hpp>
+#include <Omega_h_array.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_bbox.hpp>
 #include <Omega_h_shape.hpp>
@@ -15,6 +16,8 @@
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 #include "pcms/utility/bounding_box.hpp"
+#include "pcms/utility/overlap.hpp"
+#include "pcms/utility/shapes.hpp"
 
 namespace pcms::omega_h
 {
@@ -47,6 +50,29 @@ Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
                                         Kokkos::View<UniformGrid3D[1]> grid,
                                         int num_grid_cells);
+
+// A simplex from the coordinates of its vertices, one vector per vertex.
+template <int Dim>
+[[nodiscard]] KOKKOS_INLINE_FUNCTION Simplex<Dim> ToSimplex(
+  const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>& vertex_coords)
+{
+  Simplex<Dim> simplex;
+  for (int k = 0; k < Dim + 1; ++k) {
+    for (int d = 0; d < Dim; ++d) {
+      simplex.vertices[k][d] = vertex_coords[k][d];
+    }
+  }
+  return simplex;
+}
+
+// The simplex of element `elem` of an Omega_h mesh.
+template <int Dim>
+[[nodiscard]] KOKKOS_INLINE_FUNCTION Simplex<Dim> GetElementSimplex(
+  const Omega_h::Reals& coords, const Omega_h::LOs& elems2verts, LO elem)
+{
+  const auto verts = Omega_h::gather_verts<Dim + 1>(elems2verts, elem);
+  return ToSimplex<Dim>(Omega_h::gather_vectors<Dim + 1, Dim>(coords, verts));
+}
 } // namespace detail
 
 [[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(

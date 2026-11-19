@@ -5,18 +5,26 @@
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
 
 #include <pcms/transfer/mass_matrix_type.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
 #include <pcms/transfer/omega_h_form_integrator_utils.hpp>
-#include <pcms/utility/arrays.h>
-#include "field_test_utils.h"
+#include <pcms/utility/arrays.hpp>
+#include "field_test_utils.hpp"
 
 #include <array>
 #include <cmath>
 #include <random>
 #include <utility>
 #include <vector>
+
+namespace pcms
+{
+using omega_h::CreateGeometry;
+using omega_h::IntersectionResults;
+using transfer::OmegaHConservativeProjection;
+} // namespace pcms
 
 // Same-mesh P0->P1 projection has closed-form answers, which makes it a sharp
 // test of the intersection quadrature: every target element is clipped against
@@ -202,7 +210,7 @@ Omega_h::HostRead<Omega_h::Real> SelfDecompositionMeasures(Omega_h::Mesh& mesh)
   Omega_h::parallel_for(
     nelems, OMEGA_H_LAMBDA(int e) {
       Omega_h::Real acc = 0.0;
-      pcms::detail::ForEachIntersectionSubsimplex<Dim>(
+      pcms::transfer::detail::ForEachIntersectionSubsimplex<Dim>(
         e, self, coords, coords, e2n, e2n,
         [&](const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>&, int,
             Omega_h::Real measure) { acc += measure; });
@@ -353,22 +361,21 @@ std::vector<double> ProjectSameMesh(Omega_h::Mesh& mesh,
                                     pcms::MassMatrixType mass_type,
                                     std::vector<double>& source_values)
 {
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto source_space = pcms::test::MakeP0Space(geometry);
   auto target_space = pcms::test::MakeP1Space(geometry);
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
   pcms::test::SetField(source, SourceFunction<Dim>{});
 
-  pcms::OmegaHConservativeProjection projection(*source_space, *target_space,
+  pcms::OmegaHConservativeProjection projection(source_space, target_space,
                                                 mass_type);
   projection.Apply(source, target);
 
-  source_values = ToVector(
-    pcms::FlattenToRank1View(source.GetDOFHolderDataHost().GetValues()));
-  return ToVector(
-    pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues()));
+  source_values = ToVector(pcms::detail::FlattenToRank1View(
+    source.GetDOFHolderDataHost().GetValues()));
+  return ToVector(pcms::detail::FlattenToRank1View(
+    target.GetDOFHolderDataHost().GetValues()));
 }
 
 template <int Dim>
@@ -480,7 +487,7 @@ double StarDecompositionMeasure(const r3d::Polytope<Dim>& poly)
                      PCMS_INTERSECTION_REL_TOL * std::fabs(r3d::measure(poly));
   double sum = 0.0;
   int pieces = 0;
-  pcms::detail::ForEachPolytopeStarSimplex<Dim>(
+  pcms::transfer::detail::ForEachPolytopeStarSimplex<Dim>(
     poly, eps, SumStarPieces<Dim>{sum, pieces});
   return sum;
 }
@@ -503,7 +510,7 @@ void RequireCleanSimplexDecomposition(const double* coords)
   const double measure = std::fabs(r3d::measure(poly));
   int pieces = 0;
   double sum = 0.0;
-  pcms::detail::ForEachPolytopeStarSimplex<Dim>(
+  pcms::transfer::detail::ForEachPolytopeStarSimplex<Dim>(
     poly, 0.0, SumStarPieces<Dim>{sum, pieces});
   REQUIRE(pieces == 1);
   REQUIRE(sum == Catch::Approx(measure).epsilon(1e-12));

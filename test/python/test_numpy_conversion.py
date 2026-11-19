@@ -7,7 +7,14 @@ import gc
 import numpy as np
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
+
+requires_polynomial_reconstruction = pytest.mark.skipif(
+    not pcms.features["polynomial_reconstruction"],
+    reason="pcms was built without POLYNOMIAL_RECONSTRUCTION")
 
 ZERO_COPY = pcms.device_memory_is_host_accessible
 
@@ -26,7 +33,7 @@ def mesh(world):
 @pytest.fixture
 def p1_space(mesh):
     return pcms.create_lagrange_space(
-        pcms.create_omega_h_geometry(mesh), 1, 1)
+        pcms.omega_h.create_geometry(mesh), 1, 1)
 
 
 def _coordinates(field):
@@ -47,7 +54,7 @@ def _linear_field(space):
 class TestFieldData:
     def test_shape_matches_layout(self, mesh, world):
         space = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), 1, 2)
+            pcms.omega_h.create_geometry(mesh), 1, 2)
         field = space.create_function()
         n = _num_dof_holders(field)
         data = np.arange(2 * n, dtype=np.float64).reshape(n, 2)
@@ -98,7 +105,7 @@ class TestFieldData:
 
     def test_vector_field_rejects_1d(self, mesh):
         space = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), 1, 2)
+            pcms.omega_h.create_geometry(mesh), 1, 2)
         field = space.create_function()
         n = _num_dof_holders(field)
         for shape in [(n,), (2 * n,)]:
@@ -238,80 +245,51 @@ class TestCoordinateView:
 
     def test_default_system_is_cartesian_of_array_dimension(self):
         coords = np.zeros((4, 2))
-        cartesian = pcms.csys.Cartesian.create(2)
+        cartesian = pcms.csys.create_cartesian(2)
         assert pcms.CoordinateView(coords).get_coordinate_system() == cartesian
         assert (pcms.CoordinateView(None, coords).get_coordinate_system()
                 == cartesian)
 
     def test_system_must_match_array_dimension(self):
         with pytest.raises(Exception):
-            pcms.CoordinateView(pcms.csys.CylindricalRThetaZ.create(),
+            pcms.CoordinateView(pcms.csys.create_cylindrical_r_theta_z(),
                                 np.zeros((4, 2)))
 
 
-class TestMeshUtilities:
-    def test_average_from_strided_input(self, mesh):
-        nfaces = mesh.nfaces()
-        values = np.arange(nfaces, dtype=np.float64)
-        wide = np.stack([values, -values], axis=1)
-        contiguous = pcms.map_entity_field_to_vertices_average(mesh, values, 2)
-        strided = pcms.map_entity_field_to_vertices_average(mesh, wide[:, 0],
-                                                            2)
-        np.testing.assert_array_equal(strided, contiguous)
-
-    def test_average_of_constant_is_constant(self, mesh):
-        values = np.full(mesh.nfaces(), 3.5)
-        result = pcms.map_entity_field_to_vertices_average(mesh, values, 2)
-        assert result.shape == (mesh.nverts(),)
-        assert not result.flags.writeable
-        np.testing.assert_allclose(result, 3.5)
-
-    @pytest.mark.parametrize("mapping", [
-        lambda mesh, v: pcms.map_entity_field_to_vertices_average(mesh, v, 2),
-        lambda mesh, v: pcms.map_entity_field_to_vertices_mls(mesh, v, 2),
-    ], ids=["average", "mls"])
-    def test_multicomponent_matches_per_component(self, mesh, mapping):
-        centroids = pcms.compute_entity_centroids(mesh, 2)
-        values = np.stack([_linear(centroids[:, 0], centroids[:, 1]),
-                           centroids[:, 0] - centroids[:, 1]], axis=1)
-        result = mapping(mesh, values)
-        assert result.shape == (mesh.nverts(), 2)
-        for c in range(2):
-            np.testing.assert_allclose(
-                result[:, c], mapping(mesh, values[:, c]), atol=1e-12)
-
-    def test_single_component_2d_keeps_rank(self, mesh):
-        values = np.full((mesh.nfaces(), 1), 3.5)
-        result = pcms.map_entity_field_to_vertices_average(mesh, values, 2)
-        assert result.shape == (mesh.nverts(), 1)
-        np.testing.assert_allclose(result, 3.5)
-
-    @pytest.mark.parametrize("shape", [
-        lambda n: (n + 1,), lambda n: (n + 1, 2), lambda n: (n, 0),
-        lambda n: (n, 1, 1),
-    ], ids=["1d-wrong-entities", "2d-wrong-entities", "no-components", "3d"])
-    def test_rejects_wrong_shape(self, mesh, shape):
-        with pytest.raises(ValueError):
-            pcms.map_entity_field_to_vertices_average(
-                mesh, np.zeros(shape(mesh.nfaces())), 2)
-
-    def test_centroids_survive_garbage_collection(self, mesh):
-        centroids = pcms.compute_entity_centroids(mesh, 2)
-        expected = centroids.copy()
-        gc.collect()
-        np.testing.assert_array_equal(centroids, expected)
+class TestEntityValuesToVertices:
+    @requires_polynomial_reconstruction
+    def test_mls_from_face_values(self, mesh):
+        """Face values reach the vertices through a polynomial reconstruction
+        space on the face centroids and an interpolator."""
+        geometry = pcms.omega_h.create_geometry(mesh)
+        opts = pcms.MLSOptions()
+        opts.degree = 1
+        opts.basis = pcms.RadialBasisFunction.NO_OP
+        source = pcms.create_polynomial_reconstruction_space(
+            pcms.omega_h.create_point_cloud_geometry(geometry, 2), opts)
+        target = pcms.create_lagrange_space(geometry, 1, 1)
+        centroids = source.get_layout().get_dof_holder_coordinates().get_values()
         assert centroids.shape == (mesh.nfaces(), 2)
+        f = source.create_function()
+        f.set_dof_holder_data(
+            _linear(centroids[:, 0], centroids[:, 1]).reshape(-1, 1))
+        out = target.create_function()
+        pcms.create_interpolator(source, target).apply(f, out)
+        xy = target.get_layout().get_dof_holder_coordinates().get_values()
+        np.testing.assert_allclose(
+            out.get_dof_holder_data().get_values()[:, 0],
+            _linear(xy[:, 0], xy[:, 1]), atol=1e-4)
 
 
 class TestUniformGrid:
     def test_closest_cell_id_accepts_sequences(self, mesh):
-        grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
+        grid = pcms.omega_h.create_uniform_grid_from_mesh(mesh, [4, 4])
         expected = grid.closest_cell_id(np.array([0.3, 0.6]))
         assert grid.closest_cell_id([0.3, 0.6]) == expected
         assert grid.closest_cell_id(np.array([0.3, 0.6], np.float32)) == \
             expected
 
     def test_closest_cell_id_rejects_wrong_dimension(self, mesh):
-        grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
+        grid = pcms.omega_h.create_uniform_grid_from_mesh(mesh, [4, 4])
         with pytest.raises(ValueError):
             grid.closest_cell_id(np.array([0.3, 0.6, 0.1]))

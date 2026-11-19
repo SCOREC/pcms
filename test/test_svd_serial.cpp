@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/field/evaluator/mls_interpolation_impl.hpp>
-#include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
-#include <pcms/field/evaluator/pcms_interpolator_view_utils.hpp>
+#include <pcms/backends/point_cloud/mls_interpolation_impl.hpp>
+#include <pcms/backends/point_cloud/interpolator_aliases.hpp>
+#include <pcms/backends/point_cloud/interpolator_view_utils.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "KokkosBatched_SVD_Decl.hpp"
 #include "KokkosBatched_SVD_Serial_Impl.hpp"
@@ -12,7 +12,6 @@
 #include <iostream>
 
 using namespace std;
-using namespace Omega_h;
 using namespace pcms;
 
 TEST_CASE("test_serial_svd")
@@ -84,7 +83,7 @@ TEST_CASE("test_serial_svd")
         });
 
         team.team_barrier();
-        auto transposedU = detail::find_transpose(team, U);
+        auto transposedU = field::detail::find_transpose(team, U);
 
         team.team_barrier();
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
@@ -139,7 +138,7 @@ TEST_CASE("test_serial_svd")
 
         team.team_barrier();
 
-        detail::eval_row_scaling(team, weight, A);
+        field::detail::eval_row_scaling(team, weight, A);
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
           for (int j = 0; j < column; ++j) {
             result(i, j) = A(i, j);
@@ -229,7 +228,7 @@ TEST_CASE("test_serial_svd")
       tp.set_scratch_size(1, Kokkos::PerTeam(1000)),
       KOKKOS_LAMBDA(const member_type& team) {
         ScratchMatView A(team.team_scratch(1), rowA, colA);
-        detail::fill(0.0, team, A);
+        field::detail::fill(0.0, team, A);
         ScratchMatView result_matrix(team.team_scratch(1), rowB, colB);
         ScratchVecView weight(team.team_scratch(1), rowB);
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, rowA), [=](int i) {
@@ -257,7 +256,7 @@ TEST_CASE("test_serial_svd")
           }
         }
 
-        detail::scale_and_adjust(team, weight, A, result_matrix);
+        field::detail::scale_and_adjust(team, weight, A, result_matrix);
         team.team_barrier();
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, rowB), [=](int i) {
           for (int j = 0; j < colB; ++j) {
@@ -288,10 +287,10 @@ TEST_CASE("test_serial_svd")
         ScratchMatView A(team.team_scratch(1), row, column);
         ScratchVecView rhs(team.team_scratch(1), row);
         ScratchVecView x(team.team_scratch(1), column);
-        detail::fill(0.0, team, x);
+        field::detail::fill(0.0, team, x);
 
         ScratchVecView weight(team.team_scratch(1), row);
-        detail::fill(1.0, team, weight);
+        field::detail::fill(1.0, team, weight);
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, row), [=](int i) {
           for (int j = 0; j < column; ++j) {
             A(i, j) = A_data(i, j);
@@ -317,7 +316,7 @@ TEST_CASE("test_serial_svd")
         }
 
         team.team_barrier();
-        detail::solve_matrix_svd(team, weight, rhs, A, x, 0, 1e-12);
+        field::detail::solve_matrix_svd(team, weight, rhs, A, x, 0, 1e-12);
         team.team_barrier();
         if (team.team_rank() == 0) {
           printf("[solution vector x after solve_matrix_svd]\n");

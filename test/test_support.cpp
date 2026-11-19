@@ -1,4 +1,4 @@
-#include "test_support.h"
+#include "test_support.hpp"
 #include <Omega_h_file.hpp>    //vtk::write_parallel
 #include <Omega_h_atomics.hpp> //atomic_increment
 #include <Omega_h_for.hpp>     //parallel_for

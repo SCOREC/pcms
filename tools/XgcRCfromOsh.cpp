@@ -1,13 +1,13 @@
 #include <Omega_h_file.hpp>
-#include "pcms/field/layout/xgc_reverse_classification.h"
-#include "pcms/utility/print.h"
+#include "pcms/backends/xgc/reverse_classification.hpp"
+#include "pcms/utility/detail/print.hpp"
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_tag.hpp>
 
 int main(int argc, char** argv)
 {
   if ((argc != 2) && (argc != 3)) {
-    pcms::printError("Usage: %s <mesh file> <numbering>\n", argv[0]);
+    pcms::detail::printError("Usage: %s <mesh file> <numbering>\n", argv[0]);
     std::abort();
   }
   Omega_h::Library lib(&argc, &argv);
@@ -20,16 +20,16 @@ int main(int argc, char** argv)
     numbering = std::string(argv[2]);
   }
   const auto* tag = mesh.get_tagbase(0, numbering);
-  auto index_base = pcms::IndexBase::Zero;
+  auto index_base = pcms::xgc::IndexBase::Zero;
   if (numbering == "simNumbering") {
-    index_base = pcms::IndexBase::One;
+    index_base = pcms::xgc::IndexBase::One;
   }
   if (Omega_h::is<Omega_h::LO>(tag)) {
-    std::cout << pcms::ConstructRCFromOmegaHMesh<Omega_h::LO>(mesh, numbering,
-                                                              index_base);
+    std::cout << pcms::xgc::CreateReverseClassification<Omega_h::LO>(
+      mesh, numbering, index_base);
   } else if (Omega_h::is<Omega_h::GO>(tag)) {
-    std::cout << pcms::ConstructRCFromOmegaHMesh<Omega_h::GO>(mesh, numbering,
-                                                              index_base);
+    std::cout << pcms::xgc::CreateReverseClassification<Omega_h::GO>(
+      mesh, numbering, index_base);
   } else {
     std::cerr << "IDs should be either be LO or GO\n";
     std::abort();

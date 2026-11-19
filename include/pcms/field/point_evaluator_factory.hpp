@@ -1,0 +1,131 @@
+#ifndef PCMS_FIELD_POINT_EVALUATOR_FACTORY_HPP
+#define PCMS_FIELD_POINT_EVALUATOR_FACTORY_HPP
+
+#include "pcms/field/differential_operator.hpp"
+#include "pcms/field/field_factory.hpp"
+#include "pcms/field/point_evaluator.hpp"
+#include "pcms/field/detail/transformed_point_evaluator.hpp"
+#include "pcms/geometry/bound_points.hpp"
+#include "pcms/geometry/geometry.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/types.hpp"
+#include <initializer_list>
+#include <memory>
+#include <set>
+#include <string>
+#include <variant>
+
+namespace pcms
+{
+
+/// @brief Source of point evaluators: an evaluator source on a geometry.
+///
+/// The geometry's Bind computes the per-point data for a set of query points
+/// once; CreatePointEvaluator creates evaluators of any value type and
+/// supported operator from the result.
+class PointEvaluatorFactory
+{
+public:
+  /// @return the geometry whose BoundPoints this source accepts
+  [[nodiscard]] virtual std::shared_ptr<const Geometry> GetGeometry()
+    const noexcept = 0;
+
+  /// @return whether CreatePointEvaluator accepts `op`
+  [[nodiscard]] virtual bool Supports(
+    DifferentialOperator op) const noexcept = 0;
+
+  /// @brief Creates an evaluator at the points of a BoundPoints.
+  ///
+  /// If the bind had a coordinate map, the evaluator evaluates at the mapped
+  /// points and re-expresses the values through the bound map
+  /// (TransformedPointEvaluator).
+  /// @tparam T field value type
+  /// @param bound a BoundPoints of this source's geometry (a result of
+  ///        GetGeometry()->Bind); BoundPoints of other geometries are
+  ///        refused, even on the same mesh
+  /// @param op the operator the evaluator applies
+  /// @return evaluator that writes OutputBasis of the field's stored basis
+  /// @throws pcms_error if the source has no geometry (it does not evaluate
+  ///         at points), `bound` is null or belongs to another geometry, or
+  ///         the source does not support `op`
+  template <typename T>
+  [[nodiscard]] std::unique_ptr<PointEvaluator<T>> CreatePointEvaluator(
+    std::shared_ptr<const BoundPoints> bound,
+    DifferentialOperator op = DifferentialOperator::Value) const;
+
+  virtual ~PointEvaluatorFactory() noexcept = default;
+
+protected:
+  /// @brief CreatePointEvaluator of `source` without the bound map's value
+  ///        transformation: the evaluator evaluates at the located points and
+  ///        writes the source's basis.
+  ///
+  /// A source that forwards to another source (a space to its backend source,
+  /// an operator source to the source it wraps) creates the inner evaluator
+  /// with this, so that its own CreatePointEvaluator transforms the values
+  /// once.
+  /// @throws pcms_error as CreatePointEvaluator
+  template <typename T>
+  [[nodiscard]] static std::unique_ptr<PointEvaluator<T>>
+  CreateUntransformedPointEvaluator(const PointEvaluatorFactory& source,
+                                    std::shared_ptr<const BoundPoints> bound,
+                                    DifferentialOperator op);
+
+  /// @brief Creates an evaluator from a BoundPoints.
+  /// @param value_type field value type
+  /// @param bound BoundPoints of GetGeometry()
+  /// @param op the operator the evaluator applies; Supports(op) is true
+  /// @return evaluator for `value_type`
+  /// @throws pcms_error for an unsupported value type
+  virtual PointEvaluatorVariant CreatePointEvaluatorImpl(
+    Type value_type, std::shared_ptr<const BoundPoints> bound,
+    DifferentialOperator op) const = 0;
+};
+
+template <typename T>
+std::unique_ptr<PointEvaluator<T>>
+PointEvaluatorFactory::CreateUntransformedPointEvaluator(
+  const PointEvaluatorFactory& source, std::shared_ptr<const BoundPoints> bound,
+  DifferentialOperator op)
+{
+  static_assert(detail::is_supported_field_type_v<T>,
+                "T is not a supported field type");
+  const auto geometry = source.GetGeometry();
+  if (geometry == nullptr) {
+    throw pcms_error(
+      "CreatePointEvaluator: this source does not evaluate fields at points");
+  }
+  if (bound == nullptr) {
+    throw pcms_error("CreatePointEvaluator: BoundPoints must not be null");
+  }
+  if (bound->GetGeometry().get() != geometry.get()) {
+    throw pcms_error("CreatePointEvaluator: the BoundPoints belongs to "
+                     "another geometry; bind this source's geometry to the "
+                     "points");
+  }
+  if (!source.Supports(op)) {
+    throw pcms_error("CreatePointEvaluator: " + std::string(ToString(op)) +
+                     " is not supported by this source");
+  }
+  return std::get<std::unique_ptr<PointEvaluator<T>>>(
+    source.CreatePointEvaluatorImpl(detail::TypeEnumFromType<T>(),
+                                    std::move(bound), op));
+}
+
+template <typename T>
+std::unique_ptr<PointEvaluator<T>> PointEvaluatorFactory::CreatePointEvaluator(
+  std::shared_ptr<const BoundPoints> bound, DifferentialOperator op) const
+{
+  auto evaluator = CreateUntransformedPointEvaluator<T>(*this, bound, op);
+  if (bound->GetBoundMap() == nullptr) {
+    return evaluator;
+  }
+  return std::make_unique<detail::TransformedPointEvaluator<T>>(
+    std::move(bound), std::move(evaluator));
+}
+
+} // namespace pcms
+
+#include "pcms/field/detail/point_evaluator_factory.hpp"
+
+#endif // PCMS_FIELD_POINT_EVALUATOR_FACTORY_HPP

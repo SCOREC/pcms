@@ -5,13 +5,13 @@
 #include <Omega_h_array.hpp>
 #include <petscksp.h>
 
-#include <pcms/field/field.h>
-#include <pcms/field/point_evaluator.h>
+#include <pcms/field/field.hpp>
+#include <pcms/field/point_evaluator.hpp>
 #include <pcms/transfer/bilinear_form_integrator.hpp>
 #include <pcms/transfer/linear_form_integrator.hpp>
-#include <pcms/utility/arrays.h>
+#include <pcms/utility/arrays.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Cached Galerkin projection solver for M*x = f.
@@ -67,6 +67,6 @@ private:
   mutable Kokkos::View<Real**, DeviceMemorySpace> sampled_values_;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_CONSERVATIVE_PROJECTION_SOLVER_HPP

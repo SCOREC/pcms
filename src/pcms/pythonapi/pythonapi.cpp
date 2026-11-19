@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
-#include "pcms/configuration.h"
-#include "pcms/version.h"
-#include "numpy_view.h"
+#include "pcms/configuration.hpp"
+#include "pcms/version.hpp"
+#include "pcms/pythonapi/numpy_view.hpp"
 #include <stdexcept>
 
 namespace py = pybind11;
@@ -30,9 +30,11 @@ void bind_transfer_field_module(py::module& m);
 
 void bind_coordinate_map_module(py::module& m);
 
-void bind_mls_interpolation_module(py::module& m);
+void bind_point_cloud_module(py::module& m);
 
-void bind_mesh_utilities_module(py::module& m);
+#ifdef PCMS_ENABLE_OMEGA_H
+void bind_omega_h_module(py::module& m);
+#endif
 
 } // namespace pcms
 
@@ -70,6 +72,48 @@ PYBIND11_MODULE(pcms, m)
   pcms::bind_create_field_module(m);
   pcms::bind_transfer_field_module(m);
   pcms::bind_coordinate_map_module(m);
-  pcms::bind_mls_interpolation_module(m);
-  pcms::bind_mesh_utilities_module(m);
+  pcms::bind_point_cloud_module(m);
+#ifdef PCMS_ENABLE_OMEGA_H
+  pcms::bind_omega_h_module(m);
+#endif
+
+  // The capabilities this build has (read-only): the keys are the
+  // PCMS_ENABLE_* flags without the prefix, in lowercase; a backend's bindings
+  // are the submodule of the same name.
+  py::dict features;
+  for (const char* name :
+       {"omega_h", "omega_h_meshfields", "conservative_projection",
+        "polynomial_reconstruction", "xgc", "mfem", "coupler", "c",
+        "fortran"}) {
+    features[name] = false;
+  }
+#ifdef PCMS_ENABLE_OMEGA_H
+  features["omega_h"] = true;
+#endif
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
+  features["omega_h_meshfields"] = true;
+#endif
+#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
+  features["conservative_projection"] = true;
+#endif
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
+  features["polynomial_reconstruction"] = true;
+#endif
+#ifdef PCMS_ENABLE_XGC
+  features["xgc"] = true;
+#endif
+#ifdef PCMS_ENABLE_MFEM
+  features["mfem"] = true;
+#endif
+#ifdef PCMS_ENABLE_COUPLER
+  features["coupler"] = true;
+#endif
+#ifdef PCMS_ENABLE_C
+  features["c"] = true;
+#endif
+#ifdef PCMS_ENABLE_FORTRAN
+  features["fortran"] = true;
+#endif
+  m.attr("features") =
+    py::module_::import("types").attr("MappingProxyType")(features);
 }

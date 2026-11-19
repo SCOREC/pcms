@@ -1,25 +1,34 @@
 set(PCMS_FIELD_TRANSFER_HEADERS
-    linear_interpolant.hpp
-    multidimarray.hpp
-    mesh_intersection.hpp
-    interpolator.h
-    copy.h
-    transfer_operator.hpp
-    mass_matrix_type.hpp
+    ../../../include/pcms/transfer/interpolator.hpp
+    ../../../include/pcms/transfer/copy.hpp
+    ../../../include/pcms/transfer/detail/copy.hpp
+    ../../../include/pcms/transfer/detail/interpolator.hpp
+    ../../../include/pcms/transfer/transfer_operator.hpp
+    ../../../include/pcms/transfer/mass_matrix_type.hpp
+    ../../../include/pcms/transfer/projection.hpp
 )
 
 
 set(PCMS_FIELD_TRANSFER_SOURCES
-    mesh_intersection.cpp
-    interpolator.cpp)
+    interpolator.cpp
+    projection.cpp)
 
 
-if(PCMS_ENABLE_MESHFIELDS)
+if(PCMS_ENABLE_OMEGA_H)
+  # the Omega_h mesh intersection (Omega_h backend code used by the
+  # projections)
+  list(APPEND PCMS_FIELD_TRANSFER_HEADERS
+      ../backends/omega_h/mesh_intersection.hpp)
+  list(APPEND PCMS_FIELD_TRANSFER_SOURCES
+      ../backends/omega_h/mesh_intersection.cpp)
+endif()
+
+if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
   list(APPEND PCMS_FIELD_TRANSFER_HEADERS
       mass_matrix_integrator.hpp)
 endif()
 
-if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
+if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
   list(APPEND PCMS_FIELD_TRANSFER_HEADERS
       linear_form_integrator.hpp
       bilinear_form_integrator.hpp
@@ -45,30 +54,36 @@ add_library(pcms_transfer ${PCMS_FIELD_TRANSFER_SOURCES})
 set_target_properties(pcms_transfer PROPERTIES
         OUTPUT_NAME pcmstransfer
         EXPORT_NAME transfer)
-target_sources(pcms_transfer PUBLIC
-        FILE_SET transfer
-        TYPE HEADERS
-        BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
-        FILES ${PCMS_FIELD_TRANSFER_HEADERS})
+# Only the public headers (include/pcms/...) are installed; the private
+# headers next to the sources are private sources of the target.
+set(PCMS_FIELD_TRANSFER_HEADERS_PUBLIC ${PCMS_FIELD_TRANSFER_HEADERS})
+list(FILTER PCMS_FIELD_TRANSFER_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
+set(PCMS_FIELD_TRANSFER_HEADERS_PRIVATE ${PCMS_FIELD_TRANSFER_HEADERS})
+list(FILTER PCMS_FIELD_TRANSFER_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
+target_sources(pcms_transfer
+  PUBLIC FILE_SET transfer TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${PCMS_FIELD_TRANSFER_HEADERS_PUBLIC}
+  PRIVATE ${PCMS_FIELD_TRANSFER_HEADERS_PRIVATE})
 
 add_library(pcms::transfer ALIAS pcms_transfer)
 target_compile_features(pcms_transfer PUBLIC cxx_std_20)
 
 target_link_libraries(pcms_transfer PUBLIC
-    pcms::core
     pcms::field
-    pcms::localization
-    Omega_h::omega_h)
+    pcms::localization)
+if(PCMS_ENABLE_OMEGA_H)
+  target_link_libraries(pcms_transfer PRIVATE Omega_h::omega_h)
+endif()
 
-if(PCMS_ENABLE_MESHFIELDS)
+if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
   target_link_libraries(pcms_transfer PRIVATE meshfields::meshfields)
 endif()
 
-if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
+if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
   target_link_libraries(pcms_transfer PRIVATE PETSc::PETSc)
 endif()
 
-target_compile_definitions(pcms_transfer PUBLIC R3D_USE_KOKKOS)
+target_compile_definitions(pcms_transfer PRIVATE R3D_USE_KOKKOS)
 
 target_include_directories(pcms_transfer INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -85,4 +100,4 @@ install(
 install(
     EXPORT pcms_transfer-targets
     NAMESPACE pcms::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms)
+    DESTINATION ${PCMS_INSTALL_CMAKEDIR})

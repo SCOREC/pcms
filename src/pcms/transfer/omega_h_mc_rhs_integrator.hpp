@@ -1,16 +1,16 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP
 #define PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP
 
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include <Kokkos_Core.hpp>
 #include <cstdint>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace detail
@@ -65,7 +65,7 @@ private:
                                 int samples_per_element, uint64_t seed);
 
   Vec vec_ = nullptr;
-  std::shared_ptr<const OmegaHGeometry> geometry_;
+  std::shared_ptr<const omega_h::OmegaHGeometry> geometry_;
   Kokkos::View<LO*, DeviceMemorySpace> elements_; // target element per sample
   Kokkos::View<Real**, DeviceMemorySpace>
     coords_; // [num_pts][dim] sample coordinates
@@ -74,6 +74,6 @@ private:
   int nbary_ = 3; // barycentric DOFs per sample (Dim+1): 3 in 2D, 4 in 3D
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP

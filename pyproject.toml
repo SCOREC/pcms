@@ -14,13 +14,13 @@ metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 [tool.setuptools_scm]
 # Keep in sync with project(VERSION) in CMakeLists.txt for source archives
 # without Git history or the PKG-INFO supplied by a Python sdist.
-fallback_version = "0.3.0"
+fallback_version = "0.4.0"
 
 [tool.setuptools_scm.scm.git]
 describe_command = "git describe --dirty --tags --long --match v[0-9]*"
 
 [tool.scikit-build.cmake.define]
-PCMS_ENABLE_Python = true
+PCMS_ENABLE_PYTHON = true
 
 [tool.pytest.ini_options]
 testpaths = ["test/python"]

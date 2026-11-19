@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
-#include "pcms/utility/assert.h"
-#include "pcms/utility/print.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/print.hpp"
 #include <iostream>
 
 int raise_error(int code)

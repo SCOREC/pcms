@@ -1,21 +1,23 @@
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/configuration.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/common.h"
-#ifdef PCMS_ENABLE_MESHFIELDS
-#include "pcms/field/layout/mesh_fields.h"
-#include "pcms/field/evaluator/mesh_fields.h"
-#include "pcms/field/data/mesh_fields.h"
+#include "pcms/field/function_spaces.hpp"
+#include "pcms/configuration.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/common.hpp"
+#ifdef PCMS_ENABLE_OMEGA_H
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
+#include "pcms/backends/omega_h_meshfields/layout.hpp"
+#include "pcms/backends/omega_h_meshfields/evaluator.hpp"
+#include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/evaluator/omega_h_lagrange.h"
-#include "pcms/field/layout/uniform_grid.h"
-#include "pcms/field/evaluator/uniform_grid.h"
-#include "pcms/field/data/omega_h.h"
-#include "pcms/field/data/simple.h"
-#include "pcms/utility/uniform_grid.h"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/backends/omega_h/lagrange_evaluator.hpp"
+#include "pcms/backends/omega_h/field_data.hpp"
+#endif
+#include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
+#include "pcms/backends/uniform_grid/evaluator.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
+#include "pcms/utility/uniform_grid.hpp"
 
 #include <array>
 #include <stdexcept>
@@ -23,10 +25,24 @@
 
 namespace pcms
 {
+#ifdef PCMS_ENABLE_OMEGA_H
+using omega_h::OmegaHFieldData;
+using omega_h::OmegaHGeometry;
+using omega_h::OmegaHLagrangeEvaluatorFactory;
+using omega_h::OmegaHLagrangeLayout;
+#endif
+using uniform_grid::UniformGridEvaluatorFactory;
+using uniform_grid::UniformGridFieldLayout;
+using uniform_grid::UniformGridGeometry;
+} // namespace pcms
+
+namespace pcms
+{
 
 namespace
 {
 
+#ifdef PCMS_ENABLE_OMEGA_H
 /// Checks that `backend` supports Lagrange order `order` (and an owned mask
 /// if `owned_mask`) before anything is built.
 /// @return the backend to use: MeshFields falls back to OmegaH for order 0
@@ -43,14 +59,14 @@ LagrangeBackend CheckOrderAndBackend(int order, LagrangeBackend backend,
       throw pcms_error("CreateLagrangeSpace: the geometry's owned mask is "
                        "only supported by the OmegaH backend");
     }
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
     if (order != 1 && order != 2) {
       throw pcms_error("CreateLagrangeSpace: the MeshFields backend only "
                        "supports Lagrange orders 1 and 2");
     }
 #else
     throw pcms_error("CreateLagrangeSpace: MeshFields backend requested but "
-                     "PCMS_ENABLE_MESHFIELDS is not set");
+                     "PCMS_ENABLE_OMEGA_H_MESHFIELDS is not set");
 #endif
     return backend;
   }
@@ -71,35 +87,39 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
     CheckOrderAndBackend(order, options.backend,
                          /*owned_mask=*/geometry->GetOwnedMask().size() > 0);
   if (backend == LagrangeBackend::MeshFields) {
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
     const std::array<int, 4> nodes_per_dim = order == 1
                                                ? std::array<int, 4>{1, 0, 0, 0}
                                                : std::array<int, 4>{1, 1, 0, 0};
-    auto mesh_layout = std::make_shared<MeshFieldsAdapterLayout>(
-      geometry, nodes_per_dim, num_components, options.layout_name);
+    auto mesh_layout =
+      std::make_shared<omega_h_meshfields::MeshFieldsAdapterLayout>(
+        geometry, nodes_per_dim, num_components, options.layout_name);
     auto eval_factory =
-      std::make_shared<MeshFieldsEvaluatorFactory<Real>>(geometry, mesh_layout);
+      std::make_shared<omega_h_meshfields::MeshFieldsEvaluatorFactory<Real>>(
+        geometry, mesh_layout);
     return std::make_shared<FunctionSpace>(
       mesh_layout,
       [mesh_layout](Type t, ValueBasis basis) -> FieldDataVariant {
         if (t == Type::Float) {
           if constexpr (std::is_same_v<MeshField::Real4, float> ||
                         std::is_same_v<MeshField::Real8, float>) {
-            return std::make_unique<MeshFieldsFieldData<float>>(
-              mesh_layout, std::move(basis));
+            return std::make_unique<
+              omega_h_meshfields::MeshFieldsFieldData<float>>(mesh_layout,
+                                                              std::move(basis));
           }
           throw pcms_error("CreateLagrangeSpace: MeshFields backend does not "
                            "support float in this build");
         }
         if (t == Type::Real) {
-          return std::make_unique<MeshFieldsFieldData<double>>(
-            mesh_layout, std::move(basis));
+          return std::make_unique<
+            omega_h_meshfields::MeshFieldsFieldData<double>>(mesh_layout,
+                                                             std::move(basis));
         }
         throw pcms_error("CreateLagrangeSpace: MeshFields backend only "
                          "supports the MeshFields scalar types enabled in "
                          "this build");
       },
-      std::move(eval_factory));
+      eval_factory, eval_factory->GetGeometry());
 #endif
   }
   auto layout = std::make_shared<OmegaHLagrangeLayout>(
@@ -109,7 +129,7 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
   return std::make_shared<FunctionSpace>(
     layout,
     [layout](Type t, ValueBasis basis) -> FieldDataVariant {
-      return apply_to_type(t, [&](auto tag) -> FieldDataVariant {
+      return detail::apply_to_type(t, [&](auto tag) -> FieldDataVariant {
         using T = typename decltype(tag)::type;
         if constexpr (std::is_same_v<T, int8_t>) {
           throw pcms_error("CreateLagrangeSpace: int8_t is not supported");
@@ -118,8 +138,10 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
         }
       });
     },
-    std::move(eval_factory));
+    eval_factory, eval_factory->GetGeometry());
 }
+
+#endif // PCMS_ENABLE_OMEGA_H
 
 /// A Lagrange space of order 0 or 1 on the grid of a uniform-grid geometry.
 template <unsigned Dim>
@@ -138,16 +160,17 @@ std::shared_ptr<const FunctionSpace> CreateUniformGridLagrangeSpace(
   return std::make_shared<FunctionSpace>(
     ug_layout,
     [ug_layout](Type t, ValueBasis basis) -> FieldDataVariant {
-      return apply_to_type(t, [&](auto tag) -> FieldDataVariant {
+      return detail::apply_to_type(t, [&](auto tag) -> FieldDataVariant {
         using T = typename decltype(tag)::type;
         if constexpr (std::is_same_v<T, int8_t>) {
           throw pcms_error("CreateLagrangeSpace: int8_t is not supported");
         } else {
-          return std::make_unique<SimpleFieldData<T>>(ug_layout, basis);
+          return std::make_unique<pcms::detail::SimpleFieldData<T>>(ug_layout,
+                                                                    basis);
         }
       });
     },
-    std::move(eval_factory));
+    eval_factory, eval_factory->GetGeometry());
 }
 
 } // namespace
@@ -159,11 +182,13 @@ std::shared_ptr<const FunctionSpace> CreateLagrangeSpace(
   if (geometry == nullptr) {
     throw pcms_error("CreateLagrangeSpace: the geometry must not be null");
   }
+#ifdef PCMS_ENABLE_OMEGA_H
   if (auto omega_h =
         std::dynamic_pointer_cast<const OmegaHGeometry>(geometry)) {
     return CreateOmegaHLagrangeSpace(std::move(omega_h), order, num_components,
                                      options);
   }
+#endif
   if (auto grid =
         std::dynamic_pointer_cast<const UniformGridGeometry<2>>(geometry)) {
     return CreateUniformGridLagrangeSpace<2>(std::move(grid), order,

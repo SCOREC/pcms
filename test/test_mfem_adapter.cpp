@@ -1,19 +1,26 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <pcms/coupler/field_serializer.h>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/data/mfem.hpp>
-#include <pcms/field/function_space/mfem.hpp>
-#include <pcms/field/layout/mfem.hpp>
+#include <pcms/coupler/detail/field_serializer.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/backends/mfem/field_data.hpp>
+#include <pcms/backends/mfem/field_factory.hpp>
+#include <pcms/backends/mfem/layout.hpp>
 
 #include <mfem.hpp>
 
 #include <vector>
 
+namespace pcms
+{
+using pcms::mfem::MFEMFieldFactory;
+using pcms::mfem::MFEMLayout;
+using pcms::mfem::MFEMVertexFieldData;
+} // namespace pcms
+
 namespace
 {
 
-double LinearField(const mfem::Vector& x)
+double LinearField(const ::mfem::Vector& x)
 {
   return 1.0 + 2.0 * x[0] + 3.0 * x[1];
 }
@@ -22,16 +29,17 @@ double LinearField(const mfem::Vector& x)
 
 TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
 {
-  auto serial = mfem::Mesh::MakeCartesian2D(2, 2, mfem::Element::QUADRILATERAL);
-  mfem::ParMesh pmesh(MPI_COMM_WORLD, serial);
-  mfem::H1_FECollection fec(1, pmesh.Dimension());
-  mfem::ParFiniteElementSpace pfes(&pmesh, &fec);
-  mfem::ParGridFunction gf(&pfes);
+  auto serial =
+    ::mfem::Mesh::MakeCartesian2D(2, 2, ::mfem::Element::QUADRILATERAL);
+  ::mfem::ParMesh pmesh(MPI_COMM_WORLD, serial);
+  ::mfem::H1_FECollection fec(1, pmesh.Dimension());
+  ::mfem::ParFiniteElementSpace pfes(&pmesh, &fec);
+  ::mfem::ParGridFunction gf(&pfes);
   gf = 0.0;
 
   SECTION("layout reports vertex-scalar properties")
   {
-    pcms::MFEMLayout layout(pmesh, pfes, pcms::csys::Cartesian::Deferred());
+    pcms::MFEMLayout layout(pmesh, pfes, pcms::detail::DeferredCartesian());
 
     REQUIRE(layout.GetNumComponents() == 1);
     REQUIRE(layout.GetDimension() == 2);
@@ -60,11 +68,11 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
 
   SECTION("field data round-trips through the grid function")
   {
-    mfem::FunctionCoefficient coeff(LinearField);
+    ::mfem::FunctionCoefficient coeff(LinearField);
     gf.ProjectCoefficient(coeff);
 
     pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                   pcms::csys::Cartesian::Deferred(), "mfem");
+                                   pcms::detail::DeferredCartesian(), "mfem");
     auto field = factory.CreateField<pcms::Real>("data");
     const auto& layout = field.GetLayout();
 
@@ -106,11 +114,11 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
       return;
     }
 
-    mfem::FunctionCoefficient coeff(LinearField);
+    ::mfem::FunctionCoefficient coeff(LinearField);
     gf.ProjectCoefficient(coeff);
 
     pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                   pcms::csys::Cartesian::Deferred(), "mfem");
+                                   pcms::detail::DeferredCartesian(), "mfem");
     auto field = factory.CreateField<pcms::Real>("source");
     const auto& layout = field.GetLayout();
 
@@ -123,17 +131,17 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     }
     Kokkos::View<pcms::Real*, pcms::HostMemorySpace> buffer("buffer", n);
 
-    pcms::FieldSerializer<pcms::Real> serializer;
-    serializer.Serialize(field, pcms::make_array_view(buffer),
-                         pcms::make_const_array_view(perm));
+    pcms::detail::FieldSerializer<pcms::Real> serializer;
+    serializer.Serialize(field, pcms::detail::make_array_view(buffer),
+                         pcms::detail::make_const_array_view(perm));
 
     // Deserialize into a second field bound to a fresh grid function.
-    mfem::ParGridFunction gf2(&pfes);
+    ::mfem::ParGridFunction gf2(&pfes);
     gf2 = 0.0;
     auto field2 = factory.CreateField<pcms::Real>(
       "target", std::make_unique<pcms::MFEMVertexFieldData>(pfes, gf2));
-    serializer.Deserialize(field2, pcms::make_const_array_view(buffer),
-                           pcms::make_const_array_view(perm));
+    serializer.Deserialize(field2, pcms::detail::make_const_array_view(buffer),
+                           pcms::detail::make_const_array_view(perm));
 
     auto restored = field2.GetDOFHolderDataHost().GetValues();
     auto original = field.GetDOFHolderDataHost().GetValues();

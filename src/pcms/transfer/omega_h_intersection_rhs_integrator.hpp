@@ -1,17 +1,17 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 #define PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP
 
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/geometry/bound_source.hpp"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
+#include "pcms/geometry/bound_points.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
-#include "pcms/transfer/mesh_intersection.hpp"
+#include "pcms/backends/omega_h/mesh_intersection.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 // Conservative-projection RHS integrator for Lagrange spaces on Omega_h 2D
@@ -57,7 +57,7 @@ public:
 
 private:
   Vec vec_ = nullptr;
-  std::shared_ptr<const OmegaHGeometry> source_geometry_;
+  std::shared_ptr<const omega_h::OmegaHGeometry> source_geometry_;
   Kokkos::View<Real**, DeviceMemorySpace>
     coords_; // [num_pts][dim] integration point coordinates
   // source element of each integration point
@@ -75,6 +75,6 @@ std::unique_ptr<OmegaHIntersectionRHSIntegrator>
 BuildOmegaHConservativeRHSIntegrator(const FunctionSpace& source_space,
                                      const FunctionSpace& target_space);
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_INTERSECTION_RHS_INTEGRATOR_HPP

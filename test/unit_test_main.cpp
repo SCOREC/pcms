@@ -1,9 +1,9 @@
 #include <catch2/catch_session.hpp>
 #include <mpi.h>
 #include <Kokkos_Core.hpp>
-#include <pcms/configuration.h>
+#include <pcms/configuration.hpp>
 
-#ifdef PCMS_ENABLE_PETSC
+#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
 #include <petscsys.h>
 #endif
 
@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
   {
     // PETSc uses Kokkos, so initialize Kokkos before PETSc when enabled.
     Kokkos::ScopeGuard kokkos{argc, argv};
-#ifdef PCMS_ENABLE_PETSC
+#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
     PetscBool petsc_initialized = PETSC_FALSE;
     PetscBool petsc_initialized_by_main = PETSC_FALSE;
     PetscInitialized(&petsc_initialized);

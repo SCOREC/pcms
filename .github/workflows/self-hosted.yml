@@ -87,11 +87,18 @@ jobs:
             -DPCMS_TEST_DATA_DIR=${workDir}/pcms_testcases/ \
             -DMPIEXEC_EXECUTABLE=`which mpirun` \
             -DADIOS2_DIR=$DEPENDENCY_DIR/adios2/install/lib64/cmake/adios2/ \
-            -Dperfstubs_DIR=$DEPENDENCY_DIR/perfstubs/install/lib/cmake/ \
             -DKokkos_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos/install/lib64/cmake/Kokkos/ \
             -DKokkosKernels_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos-kernels/install/lib64/cmake/KokkosKernels/ \
             -DBUILD_TESTING=ON \
-            -DPCMS_ENABLE_PETSC=OFF \
+            -DPCMS_ENABLE_OMEGA_H=ON \
+            -DPCMS_ENABLE_OMEGA_H_MESHFIELDS=ON \
+            -DPCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION=ON \
+            -DPCMS_ENABLE_XGC=ON \
+            -DPCMS_ENABLE_COUPLER=ON \
+            -DPCMS_ENABLE_C=ON \
+            -DPCMS_ENABLE_FORTRAN=ON \
+            -DPCMS_ENABLE_EXAMPLES=ON \
+            -DPCMS_ENABLE_CONSERVATIVE_PROJECTION=OFF \
             -DPETSC_ARCH="" \
             -DPETSC_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/petsc/install \
             -DPCMS_ENABLE_SPDLOG=OFF
@@ -99,8 +106,10 @@ jobs:
           cmake --build $bdir -j 4
           ctest --test-dir $bdir --output-on-failure
 
-          # Build pcms with PETSc and python enabled
-          cmake -S ${{github.workspace}}/pcms_${{ github.event.id }} -B $bdir \
+          # Build pcms with PETSc and python enabled: the full preset, in Debug.
+          # The runner's modules provide no Ninja, so the presets use Makefiles
+          # here (as the configuration above of this build directory).
+          cmake -S ${{github.workspace}}/pcms_${{ github.event.id }} --preset full -G "Unix Makefiles" -B $bdir \
             -DCMAKE_CXX_COMPILER=`which mpicxx` \
             -DCMAKE_C_COMPILER=`which mpicc` \
             -DCMAKE_Fortran_COMPILER=`which mpifort`\
@@ -113,12 +122,8 @@ jobs:
             -DPCMS_TEST_DATA_DIR=${workDir}/pcms_testcases/ \
             -DMPIEXEC_EXECUTABLE=`which mpirun` \
             -DADIOS2_DIR=$DEPENDENCY_DIR/adios2/install/lib64/cmake/adios2/ \
-            -Dperfstubs_DIR=$DEPENDENCY_DIR/perfstubs/install/lib/cmake/ \
             -DKokkos_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos/install/lib64/cmake/Kokkos/ \
             -DKokkosKernels_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos-kernels/install/lib64/cmake/KokkosKernels/ \
-            -DBUILD_TESTING=ON \
-            -DPCMS_ENABLE_Python=ON \
-            -DPCMS_ENABLE_PETSC=ON \
             -DPETSC_ARCH="" \
             -DPETSC_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/petsc/install \
             -Dpybind11_ROOT=$DEPENDENCY_DIR/pybind11/install \
@@ -151,7 +156,8 @@ jobs:
           export OMP_NUM_THREADS=2
           export OMP_PROC_BIND=false
 
-          cmake -S ${{github.workspace}}/pcms_${{ github.event.id }} -B $bdir \
+          # the full preset (Makefiles: see above)
+          cmake -S ${{github.workspace}}/pcms_${{ github.event.id }} --preset full -G "Unix Makefiles" -B $bdir \
             -DCMAKE_CXX_COMPILER=`which mpicxx` \
             -DCMAKE_C_COMPILER=`which mpicc` \
             -DCMAKE_Fortran_COMPILER=`which mpifort`\
@@ -164,12 +170,8 @@ jobs:
             -DPCMS_TEST_DATA_DIR=${workDir}/pcms_testcases/ \
             -DMPIEXEC_EXECUTABLE=`which mpirun` \
             -DADIOS2_DIR=$DEPENDENCY_DIR/adios2/install/lib64/cmake/adios2/ \
-            -Dperfstubs_DIR=$DEPENDENCY_DIR/perfstubs/install/lib/cmake/ \
             -DKokkos_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos/install/lib64/cmake/Kokkos/ \
             -DKokkosKernels_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/kokkos-kernels/install/lib64/cmake/KokkosKernels/ \
-            -DBUILD_TESTING=ON \
-            -DPCMS_ENABLE_Python=ON \
-            -DPCMS_ENABLE_PETSC=ON \
             -DPETSC_ARCH="" \
             -DPETSC_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/petsc/install \
             -Dpybind11_ROOT=$DEPENDENCY_DIR/pybind11/install \

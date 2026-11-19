@@ -61,3 +61,54 @@ Current CI/CD contains:
 - Nightly build in [CDash dashboard](https://my.cdash.org/index.php?project=SCOREC). The build script is in [`cdash/`](https://github.com/SCOREC/pcms/tree/develop/cdash) directory. The script is triggered by a cron job on a SCOREC workstation daily at early morning.
 
 To maintain the CI/CD pipeline, ensure that any changes to the build or test processes are reflected in those workflow file. Regularly review the workflow for updates to dependencies or tools used in the pipeline. When adding new steps to the CI/CD process, ensure they are properly integrated and tested to avoid disruptions. Try to avoid third party actions for security and maintenance reasons.
+
+## Conventions
+
+How the public API is organized; keep new code to these rules.
+
+1. **Minimal public API.** If in doubt, make a name private: it can be made
+   public later, but not taken back. Every public name is needed by an
+   example, a factory signature or a Python binding.
+2. **Python mirrors C++.** The module path is the namespace path
+   (`pcms::omega_h` is `pcms.omega_h`), and there are no Python-only
+   functions.
+3. **Backends.** Each backend has one flat namespace (`pcms::omega_h`,
+   `pcms::mfem`, `pcms::xgc`, `pcms::omega_h_meshfields`,
+   `pcms::uniform_grid`, `pcms::point_cloud`); its headers are in
+   `include/pcms/backends/<name>/` and its sources in
+   `src/pcms/backends/<name>/`. A backend folder holds everything that
+   supports the backend: geometry, layouts, evaluators and special-purpose
+   search. Code shared by several backends lives in core (`UniformGrid<dim>`
+   is public; the MLS support search is private, in `src/pcms/localization/`).
+4. **Internal namespaces.** Inside the library there is one namespace per
+   library (`pcms::utility`, `pcms::field`, `pcms::transfer`,
+   `pcms::coupler`, ...) and `pcms::<backend>` for backends. Anything
+   installed that is not public is in a header below a `detail/` folder and
+   in a `detail` namespace: `include/pcms/<lib>/detail/` with `pcms::detail`,
+   `include/pcms/backends/<b>/detail/` with `pcms::<b>::detail`. Public
+   headers have no `detail` blocks of their own; they include the `detail/`
+   header. `tools/check-public-includes.py` checks this.
+5. **Factories return the base type.** Concrete classes of polymorphic
+   families (geometries, transfers, coordinate systems, coordinate maps,
+   timesteppers) live in `src/` and are never installed. Factories return
+   `std::shared_ptr<const Geometry>`, `std::unique_ptr<TransferOperator<T>>`,
+   `std::shared_ptr<const CoordinateSystem>`,
+   `std::shared_ptr<const CoordinateMap>` or `std::unique_ptr<Timestepper>`.
+   A function that needs a particular kind checks it at runtime and throws
+   `pcms_error`. Non-polymorphic value types (`Field`, `Function`,
+   `QueryPoints`, `OverlapMask`, `UniformGrid`, options structs) stay public
+   classes. Every factory validates its inputs.
+6. **No pimpl.** Keeping the concrete classes in `src/` makes pimpl and
+   forward-declaration workarounds unnecessary.
+7. **Naming.** `Create*` builds a PCMS object, `Make*` wraps existing memory
+   in a non-owning view, `Read*` loads from a file.
+8. **Ownership is explicit.** An object that needs another to stay alive
+   takes and stores a `std::shared_ptr` to it. Python bindings never use
+   `py::keep_alive`.
+9. **`::mfem`.** MFEM's namespace collides with `pcms::mfem`: inside
+   `namespace pcms`, write `::mfem::`.
+
+**Extension points.** External code may implement `Geometry`,
+`PointEvaluatorFactory`, `BoundPoints` and `FunctionSpace` (and `FieldLayout`,
+`FieldData`, `CoordinateMap`, `Timestepper`); their protected and extension
+APIs are public and stay so.

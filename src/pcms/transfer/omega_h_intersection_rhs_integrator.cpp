@@ -1,16 +1,23 @@
 #include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
-#include "pcms/field/element_dispatch.h"
-#include "pcms/field/evaluator/omega_h_lagrange.h"
-#include "pcms/field/function_space/lagrange.h"
+#include "pcms/field/element_dispatch.hpp"
+#include "pcms/backends/omega_h/lagrange_evaluator.hpp"
+#include "pcms/field/function_spaces.hpp"
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <algorithm>
 #include <Omega_h_for.hpp>
 #include <Omega_h_shape.hpp>
 #include <petscksp.h>
 
 namespace pcms
+{
+using omega_h::intersectTargets;
+using omega_h::OmegaHGeometry;
+using omega_h::OmegaHLagrangeLayout;
+} // namespace pcms
+
+namespace pcms::transfer
 {
 
 namespace
@@ -45,8 +52,8 @@ Data BuildData(const FunctionSpace& source_space,
     detail::ResolveOmegaHScalarSpace(
       target_space, 0, 1, "OmegaHIntersectionRHSIntegrator", "target");
 
-  const int dim = GetMesh(*target_geometry).dim();
-  if (GetMesh(*source_geometry).dim() != dim) {
+  const int dim = target_geometry->GetMesh().dim();
+  if (source_geometry->GetMesh().dim() != dim) {
     throw pcms_error("OmegaHIntersectionRHSIntegrator: source and target mesh "
                      "dimensions differ");
   }
@@ -57,8 +64,8 @@ Data BuildData(const FunctionSpace& source_space,
   const int quad_order =
     std::max(1, source_layout->GetOrder() + target_layout->GetOrder());
 
-  Data data =
-    detail::DispatchByOrder(target_layout->GetOrder(), [&](auto order_c) {
+  Data data = field::detail::DispatchByOrder(
+    target_layout->GetOrder(), [&](auto order_c) {
       constexpr int TgtOrder = decltype(order_c)::value;
       if (dim == 3) {
         return BuildDataImpl<3, TgtOrder>(*target_layout, quad_order,
@@ -83,8 +90,10 @@ Data BuildDataImpl(const OmegaHLagrangeLayout& target_layout, int quad_order,
   // measure `m` scales the reference quadrature weights by Dim! * m.
   constexpr Omega_h::Real ref_factor = (Dim == 3) ? 6.0 : 2.0;
 
-  Omega_h::Mesh& source_mesh = GetMesh(source_geometry);
-  Omega_h::Mesh& target_mesh = GetMesh(target_geometry);
+  Omega_h::Mesh& source_mesh =
+    dynamic_cast<const omega_h::OmegaHGeometry&>(source_geometry).GetMesh();
+  Omega_h::Mesh& target_mesh =
+    dynamic_cast<const omega_h::OmegaHGeometry&>(target_geometry).GetMesh();
 
   const auto intersections = intersectTargets(source_geometry, target_mesh);
 
@@ -239,7 +248,7 @@ OmegaHIntersectionRHSIntegrator::GetIntegrationPoints() const noexcept
 
 OwnerHints OmegaHIntersectionRHSIntegrator::IntegrationPointOwners() const
 {
-  return OwnerHints{source_geometry_, GetMesh(*source_geometry_).dim(),
+  return OwnerHints{source_geometry_, source_geometry_->GetMesh().dim(),
                     source_elements_};
 }
 
@@ -290,4 +299,4 @@ BuildOmegaHConservativeRHSIntegrator(const FunctionSpace& source_space,
                                                            target_space);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

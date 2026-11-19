@@ -1,5 +1,5 @@
 #include "mdspan/mdspan.hpp"
-#include "pcms.h"
+#include "pcms/pcms.hpp"
 #include <Kokkos_Core.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_template_test_macros.hpp>
@@ -12,8 +12,17 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include "pcms/field/evaluator/spline_interpolator.hpp"
-#include "field_test_utils.h"
+#include "pcms/backends/uniform_grid/spline_interpolator.hpp"
+#include "field_test_utils.hpp"
+
+namespace pcms
+{
+using uniform_grid::BoundaryCondition;
+using uniform_grid::CompactBiCubicSplineInterpolator;
+using uniform_grid::CompactCubicSplineInterpolator;
+using uniform_grid::ExplicitBiCubicSplineInterpolator;
+using uniform_grid::ExplicitCubicSplineInterpolator;
+} // namespace pcms
 
 using namespace pcms;
 using pcms::test::CreateDeviceRank1View;
@@ -181,7 +190,7 @@ void dotest1(int ns, Rank1View<double, TestMemorySpace> x,
   using std::size;
 
   Kokkos::View<double**, TestMemorySpace> splinv_view("splinv_view", nt, 3);
-  auto splinv = MakeRank2View(splinv_view);
+  auto splinv = pcms::MakeRank2View(splinv_view);
   reset_2dspan(splinv);
 
   // interpolator.cspline(x, ns, fspl, 1, 1, 1, 1, wk);
@@ -230,12 +239,12 @@ void pspltest1(Kokkos::View<double*, HostMemorySpace> res_1d)
   tset(1000, xtest_view, ftest_view, zdum_view, zero - 0.1, pi2 + 0.1);
   tset(inum, x_view, z2sin_view, zcos_view, zero, pi2);
 
-  auto x = MakeRank1View(x_view);
+  auto x = pcms::MakeRank1View(x_view);
 
-  auto z2sin = MakeRank1View(z2sin_view);
+  auto z2sin = pcms::MakeRank1View(z2sin_view);
 
-  auto xtest = MakeRank1View(xtest_view);
-  auto ftest = MakeRank1View(ftest_view);
+  auto xtest = pcms::MakeRank1View(xtest_view);
+  auto ftest = pcms::MakeRank1View(ftest_view);
 
   // Call test function
   dotest1(inum, x, z2sin, 1000, xtest, ftest, res_1d);
@@ -257,10 +266,10 @@ void pspltest1_long_periodic(Kokkos::View<double*, HostMemorySpace> res_1d)
   tset(1000, xtest_view, ftest_view, zdum_view, zero - 0.1, pi2 + 0.1);
   tset(inum, x_view, z2sin_view, zcos_view, zero, pi2);
 
-  auto x = MakeRank1View(x_view);
-  auto z2sin = MakeRank1View(z2sin_view);
-  auto xtest = MakeRank1View(xtest_view);
-  auto ftest = MakeRank1View(ftest_view);
+  auto x = pcms::MakeRank1View(x_view);
+  auto z2sin = pcms::MakeRank1View(z2sin_view);
+  auto xtest = pcms::MakeRank1View(xtest_view);
+  auto ftest = pcms::MakeRank1View(ftest_view);
 
   dotest1(inum, x, z2sin, 1000, xtest, ftest, res_1d);
 }
@@ -289,11 +298,11 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
     KOKKOS_LAMBDA(const int ith, const int ix) {
       values_view(ix * nth + ith) = f(ix, ith);
     });
-  auto values = MakeRank1View(values_view);
+  auto values = pcms::MakeRank1View(values_view);
 
   bset(fx, nx, fth, nth, bcx1, bcx2, bcth1, bcth2);
   Kokkos::View<double**, TestMemorySpace> splinv_view("splinv_view", 40000, 10);
-  auto splinv = MakeRank2View(splinv_view);
+  auto splinv = pcms::MakeRank2View(splinv_view);
   reset_2dspan(splinv);
 
   Kokkos::View<double*, TestMemorySpace> xtest_grid_view("xtest_grid_view",
@@ -301,10 +310,10 @@ void dotest2(Rank1View<double, TestMemorySpace> x,
   Kokkos::View<double*, TestMemorySpace> thtest_grid_view("thtest_grid_view",
                                                           40000);
   createFlatGrid(xtest, thtest, xtest_grid_view, thtest_grid_view);
-  auto xtest_grid = MakeRank1View(xtest_grid_view);
-  auto thtest_grid = MakeRank1View(thtest_grid_view);
+  auto xtest_grid = pcms::MakeRank1View(xtest_grid_view);
+  auto thtest_grid = pcms::MakeRank1View(thtest_grid_view);
   Kokkos::View<double*, TestMemorySpace> splinv_gt_view("splinv_view", 40000);
-  auto splinv_gt = MakeRank1View(splinv_gt_view);
+  auto splinv_gt = pcms::MakeRank1View(splinv_gt_view);
   generate_gt_2d(splinv_gt, fxtest, fthtest, ntest);
 
   ExplicitBiCubicSplineInterpolator<double, TestMemorySpace>
@@ -364,20 +373,20 @@ void pspltest2(Kokkos::View<double*, HostMemorySpace> res_2d)
 
   ffset(10, ex1_view, st1_view, f1);
 
-  auto x1 = MakeRank1View(x1_view);
-  auto ex1 = MakeRank1View(ex1_view);
-  auto t1 = MakeRank1View(t1_view);
-  auto st1 = MakeRank1View(st1_view);
-  auto ct1 = MakeRank1View(ct1_view);
-  auto bcx1 = MakeRank1View(bcx1_view);
-  auto bcx2 = MakeRank1View(bcx2_view);
-  auto bcth1 = MakeRank1View(bcth1_view);
-  auto bcth2 = MakeRank1View(bcth2_view);
+  auto x1 = pcms::MakeRank1View(x1_view);
+  auto ex1 = pcms::MakeRank1View(ex1_view);
+  auto t1 = pcms::MakeRank1View(t1_view);
+  auto st1 = pcms::MakeRank1View(st1_view);
+  auto ct1 = pcms::MakeRank1View(ct1_view);
+  auto bcx1 = pcms::MakeRank1View(bcx1_view);
+  auto bcx2 = pcms::MakeRank1View(bcx2_view);
+  auto bcth1 = pcms::MakeRank1View(bcth1_view);
+  auto bcth2 = pcms::MakeRank1View(bcth2_view);
 
-  auto xtest = MakeRank1View(xtest_view);
-  auto extest = MakeRank1View(extest_view);
-  auto ttest = MakeRank1View(ttest_view);
-  auto stest = MakeRank1View(stest_view);
+  auto xtest = pcms::MakeRank1View(xtest_view);
+  auto extest = pcms::MakeRank1View(extest_view);
+  auto ttest = pcms::MakeRank1View(ttest_view);
+  auto stest = pcms::MakeRank1View(stest_view);
 
   dotest2(x1, ex1, 10, t1, st1, ct1, 10, f1, bcx1, bcx2, bcth1, bcth2, xtest,
           extest, ttest, stest, 200, res_2d);
@@ -441,8 +450,8 @@ std::vector<double> eval_1d(Interpolator& interp, const std::vector<LO>& sel,
   auto xd = CreateDeviceRank1View(xq);
   Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), ncol);
   Kokkos::deep_copy(out, fill);
-  interp.evaluate(CreateDeviceRank1View<LO>(sel), MakeRank1View(xd),
-                  MakeRank2View(out));
+  interp.evaluate(CreateDeviceRank1View<LO>(sel), pcms::MakeRank1View(xd),
+                  pcms::MakeRank2View(out));
   return to_row_major(out);
 }
 
@@ -457,8 +466,8 @@ std::vector<double> eval_2d(Interpolator& interp, const std::vector<LO>& sel,
   auto yd = CreateDeviceRank1View(yq);
   Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), ncol);
   Kokkos::deep_copy(out, fill);
-  interp.evaluate(CreateDeviceRank1View<LO>(sel), MakeRank1View(xd),
-                  MakeRank1View(yd), MakeRank2View(out));
+  interp.evaluate(CreateDeviceRank1View<LO>(sel), pcms::MakeRank1View(xd),
+                  pcms::MakeRank1View(yd), pcms::MakeRank2View(out));
   return to_row_major(out);
 }
 
@@ -499,7 +508,8 @@ TEMPLATE_TEST_CASE("two-point splines keep both endpoint derivatives",
   auto [lo, lo_data, hi, hi_data] = GENERATE_COPY(
     std::make_tuple(d1, 3.0, d1, 27.0), std::make_tuple(d1, 3.0, d2, 18.0),
     std::make_tuple(d2, 6.0, d1, 27.0), std::make_tuple(d2, 6.0, d2, 18.0));
-  TestType interp(MakeRank1View(x), MakeRank1View(f), lo, lo_data, hi, hi_data);
+  TestType interp(pcms::MakeRank1View(x), pcms::MakeRank1View(f), lo, lo_data,
+                  hi, hi_data);
   auto out = eval_1d(interp, {1, 1, 1}, {1.5, 2.0, 2.5}, 3);
   for (int i = 0; i < 3; ++i) {
     const double xi = 1.5 + 0.5 * i;
@@ -530,9 +540,10 @@ TEMPLATE_TEST_CASE("non-zero boundary data on the lower side only is applied",
   auto none = CreateDeviceRank1View<double>({});
   const auto nak = BoundaryCondition::NOT_A_KNOT;
   const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
-  TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
-                  MakeRank1View(none), nak, MakeRank1View(none), d1,
-                  MakeRank1View(lo), d1, MakeRank1View(hi));
+  TestType interp(pcms::MakeRank1View(x), pcms::MakeRank1View(y),
+                  pcms::MakeRank1View(v), nak, pcms::MakeRank1View(none), nak,
+                  pcms::MakeRank1View(none), d1, pcms::MakeRank1View(lo), d1,
+                  pcms::MakeRank1View(hi));
   std::vector<double> xq = {0.1, 0.45, 0.8};
   std::vector<double> yq = {0.05, 0.6, 0.95};
   auto out = eval_2d(interp, {1, 0, 0, 0, 0, 0}, xq, yq, 1);
@@ -554,8 +565,9 @@ TEST_CASE("spline grids must be finite, ascending and non-degenerate",
   auto f = CreateDeviceRank1View(std::vector<double>(grid.size(), 1.0));
   using Interp = CompactCubicSplineInterpolator<double, TestMemorySpace>;
   const auto nak = BoundaryCondition::NOT_A_KNOT;
-  REQUIRE_THROWS_AS(Interp(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0),
-                    pcms_error);
+  REQUIRE_THROWS_AS(
+    Interp(pcms::MakeRank1View(x), pcms::MakeRank1View(f), nak, 0, nak, 0),
+    pcms_error);
 }
 
 TEST_CASE("nearly uniform spline grids are rejected", "[spline]")
@@ -566,8 +578,9 @@ TEST_CASE("nearly uniform spline grids are rejected", "[spline]")
   auto f = CreateDeviceRank1View<double>({0.0, 1.0, 8.0, 27.0});
   using Interp = ExplicitCubicSplineInterpolator<double, TestMemorySpace>;
   const auto nak = BoundaryCondition::NOT_A_KNOT;
-  REQUIRE_THROWS_AS(Interp(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0),
-                    pcms_error);
+  REQUIRE_THROWS_AS(
+    Interp(pcms::MakeRank1View(x), pcms::MakeRank1View(f), nak, 0, nak, 0),
+    pcms_error);
 }
 
 TEMPLATE_TEST_CASE("1D queries outside the grid leave the output untouched",
@@ -578,7 +591,7 @@ TEMPLATE_TEST_CASE("1D queries outside the grid leave the output untouched",
   auto xh = linspace(0, 1, 6);
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(xh);
-  TestType interp(MakeRank1View(x), MakeRank1View(f),
+  TestType interp(pcms::MakeRank1View(x), pcms::MakeRank1View(f),
                   BoundaryCondition::NOT_A_KNOT, 0,
                   BoundaryCondition::NOT_A_KNOT, 0);
   const double nan = std::numeric_limits<double>::quiet_NaN();
@@ -598,9 +611,10 @@ TEMPLATE_TEST_CASE("2D queries outside the grid leave the output untouched",
     sample_2d(xh, xh, [](double a, double b) { return a + b; }));
   auto none = CreateDeviceRank1View<double>({});
   const auto nak = BoundaryCondition::NOT_A_KNOT;
-  TestType interp(MakeRank1View(x), MakeRank1View(x), MakeRank1View(v), nak,
-                  MakeRank1View(none), nak, MakeRank1View(none), nak,
-                  MakeRank1View(none), nak, MakeRank1View(none));
+  TestType interp(pcms::MakeRank1View(x), pcms::MakeRank1View(x),
+                  pcms::MakeRank1View(v), nak, pcms::MakeRank1View(none), nak,
+                  pcms::MakeRank1View(none), nak, pcms::MakeRank1View(none),
+                  nak, pcms::MakeRank1View(none));
   const double nan = std::numeric_limits<double>::quiet_NaN();
   auto out = eval_2d(interp, {1, 1, 0, 0, 0, 0}, {nan, 0.5, -1.0e6, 0.5},
                      {0.5, nan, 0.5, 1.0e6}, 2);
@@ -652,7 +666,7 @@ TEMPLATE_TEST_CASE("1D selectors pick derivatives in PSPLINE order", "[spline]",
     fh.push_back(px(x, 0));
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(fh);
-  TestType interp(MakeRank1View(x), MakeRank1View(f),
+  TestType interp(pcms::MakeRank1View(x), pcms::MakeRank1View(f),
                   BoundaryCondition::NOT_A_KNOT, 0,
                   BoundaryCondition::NOT_A_KNOT, 0);
   const std::vector<SelectorCase> cases = {{{1, 1, 1}, {{0}, {1}, {2}}},
@@ -692,9 +706,10 @@ TEMPLATE_TEST_CASE("2D selectors pick derivatives in PSPLINE order", "[spline]",
     sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
   auto none = CreateDeviceRank1View<double>({});
   const auto nak = BoundaryCondition::NOT_A_KNOT;
-  TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
-                  MakeRank1View(none), nak, MakeRank1View(none), nak,
-                  MakeRank1View(none), nak, MakeRank1View(none));
+  TestType interp(pcms::MakeRank1View(x), pcms::MakeRank1View(y),
+                  pcms::MakeRank1View(v), nak, pcms::MakeRank1View(none), nak,
+                  pcms::MakeRank1View(none), nak, pcms::MakeRank1View(none),
+                  nak, pcms::MakeRank1View(none));
 
   std::vector<SelectorCase> cases = {
     {{1, 1, 1, 1, 1, 1}, {{0, 0}, {1, 0}, {0, 1}, {2, 0}, {0, 2}, {1, 1}}},
@@ -740,14 +755,14 @@ TEMPLATE_TEST_CASE("1D evaluate without a selector writes every value",
     fh.push_back(px(x, 0));
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(fh);
-  TestType interp(MakeRank1View(x), MakeRank1View(f),
+  TestType interp(pcms::MakeRank1View(x), pcms::MakeRank1View(f),
                   BoundaryCondition::NOT_A_KNOT, 0,
                   BoundaryCondition::NOT_A_KNOT, 0);
   const std::vector<double> xq = {-1.0, 0.3, 1.7, 2.0};
   auto xd = CreateDeviceRank1View(xq);
   Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), 1);
   Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
-  interp.evaluate(MakeRank1View(xd), MakeRank2View(out));
+  interp.evaluate(pcms::MakeRank1View(xd), pcms::MakeRank2View(out));
   auto h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, out);
   for (size_t i = 0; i < xq.size(); ++i) {
     INFO("point " << i);
@@ -768,16 +783,18 @@ TEMPLATE_TEST_CASE("2D evaluate without a selector writes every value",
     sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
   auto none = CreateDeviceRank1View<double>({});
   const auto nak = BoundaryCondition::NOT_A_KNOT;
-  TestType interp(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
-                  MakeRank1View(none), nak, MakeRank1View(none), nak,
-                  MakeRank1View(none), nak, MakeRank1View(none));
+  TestType interp(pcms::MakeRank1View(x), pcms::MakeRank1View(y),
+                  pcms::MakeRank1View(v), nak, pcms::MakeRank1View(none), nak,
+                  pcms::MakeRank1View(none), nak, pcms::MakeRank1View(none),
+                  nak, pcms::MakeRank1View(none));
   const std::vector<double> xq = {0.0, 0.7, 1.3, 2.0};
   const std::vector<double> yq = {-1.0, 0.1, -0.45, 1.0};
   auto xd = CreateDeviceRank1View(xq);
   auto yd = CreateDeviceRank1View(yq);
   Kokkos::View<double**, TestMemorySpace> out("out", xq.size(), 1);
   Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
-  interp.evaluate(MakeRank1View(xd), MakeRank1View(yd), MakeRank2View(out));
+  interp.evaluate(pcms::MakeRank1View(xd), pcms::MakeRank1View(yd),
+                  pcms::MakeRank2View(out));
   auto h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, out);
   for (size_t i = 0; i < xq.size(); ++i) {
     INFO("point " << i);
@@ -799,10 +816,10 @@ TEMPLATE_TEST_CASE("1D splines build and evaluate in host memory", "[spline]",
   using H = Kokkos::HostSpace;
   Kokkos::View<double**, H> out("out", xq.size(), 1);
   Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
-  TestType interp(make_array_view(xh), make_array_view(fh),
-                  BoundaryCondition::NOT_A_KNOT, 0,
-                  BoundaryCondition::NOT_A_KNOT, 0);
-  interp.evaluate(make_array_view(xq), MakeRank2View(out));
+  TestType interp(
+    pcms::detail::make_array_view(xh), pcms::detail::make_array_view(fh),
+    BoundaryCondition::NOT_A_KNOT, 0, BoundaryCondition::NOT_A_KNOT, 0);
+  interp.evaluate(pcms::detail::make_array_view(xq), pcms::MakeRank2View(out));
   Kokkos::fence();
   for (size_t i = 0; i < xq.size(); ++i) {
     INFO("point " << i);
@@ -826,9 +843,12 @@ TEMPLATE_TEST_CASE(
   Kokkos::deep_copy(out, std::numeric_limits<double>::quiet_NaN());
   Rank1View<double, H> none(nullptr, 0);
   const auto nak = BoundaryCondition::NOT_A_KNOT;
-  TestType interp(make_array_view(xh), make_array_view(yh), make_array_view(v),
-                  nak, none, nak, none, nak, none, nak, none);
-  interp.evaluate(make_array_view(xq), make_array_view(yq), MakeRank2View(out));
+  TestType interp(pcms::detail::make_array_view(xh),
+                  pcms::detail::make_array_view(yh),
+                  pcms::detail::make_array_view(v), nak, none, nak, none, nak,
+                  none, nak, none);
+  interp.evaluate(pcms::detail::make_array_view(xq),
+                  pcms::detail::make_array_view(yq), pcms::MakeRank2View(out));
   Kokkos::fence();
   for (size_t i = 0; i < xq.size(); ++i) {
     INFO("point " << i);
@@ -875,22 +895,22 @@ TEST_CASE("explicit and compact splines agree for every boundary condition",
   }
 
   ExplicitCubicSplineInterpolator<double, TestMemorySpace> e1(
-    MakeRank1View(x), MakeRank1View(f1), lo, 0.7, hi, -0.4);
+    pcms::MakeRank1View(x), pcms::MakeRank1View(f1), lo, 0.7, hi, -0.4);
   CompactCubicSplineInterpolator<double, TestMemorySpace> c1(
-    MakeRank1View(x), MakeRank1View(f1), lo, 0.7, hi, -0.4);
+    pcms::MakeRank1View(x), pcms::MakeRank1View(f1), lo, 0.7, hi, -0.4);
   auto oe1 = eval_1d(e1, {1, 1, 1}, xq, 3);
   auto oc1 = eval_1d(c1, {1, 1, 1}, xq, 3);
   for (size_t i = 0; i < oe1.size(); ++i)
     CHECK(oc1[i] == Catch::Approx(oe1[i]).margin(1e-10));
 
   ExplicitBiCubicSplineInterpolator<double, TestMemorySpace> e2(
-    MakeRank1View(x), MakeRank1View(y), MakeRank1View(f2), lo,
-    MakeRank1View(bx), hi, MakeRank1View(bx), lo, MakeRank1View(by), hi,
-    MakeRank1View(by));
+    pcms::MakeRank1View(x), pcms::MakeRank1View(y), pcms::MakeRank1View(f2), lo,
+    pcms::MakeRank1View(bx), hi, pcms::MakeRank1View(bx), lo,
+    pcms::MakeRank1View(by), hi, pcms::MakeRank1View(by));
   CompactBiCubicSplineInterpolator<double, TestMemorySpace> c2(
-    MakeRank1View(x), MakeRank1View(y), MakeRank1View(f2), lo,
-    MakeRank1View(bx), hi, MakeRank1View(bx), lo, MakeRank1View(by), hi,
-    MakeRank1View(by));
+    pcms::MakeRank1View(x), pcms::MakeRank1View(y), pcms::MakeRank1View(f2), lo,
+    pcms::MakeRank1View(bx), hi, pcms::MakeRank1View(bx), lo,
+    pcms::MakeRank1View(by), hi, pcms::MakeRank1View(by));
   auto oe2 = eval_2d(e2, {1, 1, 1, 1, 1, 1}, xq, yq, 6);
   auto oc2 = eval_2d(c2, {1, 1, 1, 1, 1, 1}, xq, yq, 6);
   for (size_t i = 0; i < oe2.size(); ++i)
@@ -960,7 +980,7 @@ TEMPLATE_TEST_CASE("every end condition holds on grids of 2 to 8 points",
           fh.back() = fh.front();
         auto x = CreateDeviceRank1View(xh);
         auto f = CreateDeviceRank1View(fh);
-        TestType s(MakeRank1View(x), MakeRank1View(f),
+        TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(f),
                    static_cast<BoundaryCondition>(lo), lo_data,
                    static_cast<BoundaryCondition>(hi), hi_data);
 
@@ -1035,7 +1055,7 @@ TEMPLATE_TEST_CASE("1D splines reproduce cubics for every exact end condition",
           fh.push_back(px(x, 0));
         auto x = CreateDeviceRank1View(xh);
         auto f = CreateDeviceRank1View(fh);
-        TestType s(MakeRank1View(x), MakeRank1View(f), lo,
+        TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(f), lo,
                    end_data(lo, px, xh.front()), hi,
                    end_data(hi, px, xh.back()));
         const std::vector<double> xq = {-1.0, -0.2, 0.9, 1.6, 2.0};
@@ -1087,9 +1107,10 @@ TEMPLATE_TEST_CASE(
       auto bxh = CreateDeviceRank1View(bx_hi);
       auto byl = CreateDeviceRank1View(by_lo);
       auto byh = CreateDeviceRank1View(by_hi);
-      TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), lo,
-                 MakeRank1View(bxl), hi, MakeRank1View(bxh), lo,
-                 MakeRank1View(byl), hi, MakeRank1View(byh));
+      TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(y),
+                 pcms::MakeRank1View(v), lo, pcms::MakeRank1View(bxl), hi,
+                 pcms::MakeRank1View(bxh), lo, pcms::MakeRank1View(byl), hi,
+                 pcms::MakeRank1View(byh));
       auto out = eval_2d(s, {1, 1, 1, 1, 1, 1}, xq, yq, 6);
       for (size_t q = 0; q < xq.size(); ++q) {
         for (size_t j = 0; j < orders.size(); ++j) {
@@ -1117,7 +1138,7 @@ TEMPLATE_TEST_CASE("periodic 1D splines wrap queries outside the period",
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(fh);
   const auto per = BoundaryCondition::PERIODIC;
-  TestType s(MakeRank1View(x), MakeRank1View(f), per, 0, per, 0);
+  TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(f), per, 0, per, 0);
   const std::vector<double> outside = {-0.1, pi2 + 0.1, -pi2 + 0.3,
                                        2 * pi2 + 1.0};
   const std::vector<double> inside = {pi2 - 0.1, 0.1, 0.3, 1.0};
@@ -1143,9 +1164,10 @@ TEMPLATE_TEST_CASE("periodic 2D splines wrap queries outside the period",
     xh, yh, [](double a, double b) { return std::sin(a) * std::cos(b) + 1; }));
   auto none = CreateDeviceRank1View<double>({});
   const auto per = BoundaryCondition::PERIODIC;
-  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), per,
-             MakeRank1View(none), per, MakeRank1View(none), per,
-             MakeRank1View(none), per, MakeRank1View(none));
+  TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(y),
+             pcms::MakeRank1View(v), per, pcms::MakeRank1View(none), per,
+             pcms::MakeRank1View(none), per, pcms::MakeRank1View(none), per,
+             pcms::MakeRank1View(none));
   const std::vector<double> xo = {-0.1, pi2 + 0.2, 1.0, -0.4};
   const std::vector<double> yo = {1.0, -0.3, pi2 + 0.5, pi2 + 0.1};
   const std::vector<double> xi = {pi2 - 0.1, 0.2, 1.0, pi2 - 0.4};
@@ -1173,7 +1195,8 @@ TEMPLATE_TEST_CASE("short-grid splines agree with the two-point spline",
   INFO("lo " << static_cast<int>(lo) << " hi " << static_cast<int>(hi));
   auto x2 = CreateDeviceRank1View<double>({0.0, 1.0});
   auto f2 = CreateDeviceRank1View<double>({0.25, 0.75});
-  TestType s2(MakeRank1View(x2), MakeRank1View(f2), lo, lo_data, hi, hi_data);
+  TestType s2(pcms::MakeRank1View(x2), pcms::MakeRank1View(f2), lo, lo_data, hi,
+              hi_data);
   const std::vector<double> xq = {0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0};
   auto expected = eval_1d(s2, {1, 1, 1}, xq, 3);
   for (int n : {3, 4, 5}) {
@@ -1182,7 +1205,8 @@ TEMPLATE_TEST_CASE("short-grid splines agree with the two-point spline",
     auto samples = eval_1d(s2, {1, 0, 0}, xh, 1);
     auto x = CreateDeviceRank1View(xh);
     auto f = CreateDeviceRank1View(samples);
-    TestType s(MakeRank1View(x), MakeRank1View(f), lo, lo_data, hi, hi_data);
+    TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(f), lo, lo_data, hi,
+               hi_data);
     auto out = eval_1d(s, {1, 1, 1}, xq, 3);
     for (size_t k = 0; k < out.size(); ++k)
       CHECK(out[k] == Catch::Approx(expected[k]).margin(1e-10));
@@ -1234,9 +1258,10 @@ TEMPLATE_TEST_CASE("2D splines take periodic ends on one axis only", "[spline]",
   }
   auto bxl = CreateDeviceRank1View(bx_lo);
   auto bxh = CreateDeviceRank1View(bx_hi);
-  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), xbc,
-             MakeRank1View(bxl), xbc, MakeRank1View(bxh), per,
-             MakeRank1View(none), per, MakeRank1View(none));
+  TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(y),
+             pcms::MakeRank1View(v), xbc, pcms::MakeRank1View(bxl), xbc,
+             pcms::MakeRank1View(bxh), per, pcms::MakeRank1View(none), per,
+             pcms::MakeRank1View(none));
 
   // along a y node the spline is the x spline of a cubic, so it is exact
   std::vector<double> xq, yq;
@@ -1298,7 +1323,8 @@ TEMPLATE_TEST_CASE("1D spline errors converge at fourth order", "[spline]",
       fh.push_back(std::exp(a));
     auto x = CreateDeviceRank1View(xh);
     auto f = CreateDeviceRank1View(fh);
-    TestType s(MakeRank1View(x), MakeRank1View(f), bc, 1.0, bc, std::exp(1.0));
+    TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(f), bc, 1.0, bc,
+               std::exp(1.0));
     auto out = eval_1d(s, {1, 1, 1}, xq, 3);
     double e[3] = {0, 0, 0};
     for (size_t q = 0; q < xq.size(); ++q)
@@ -1352,9 +1378,10 @@ TEMPLATE_TEST_CASE("2D spline errors converge at fourth order", "[spline]",
     auto none = CreateDeviceRank1View<double>({});
     const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
     const auto per = BoundaryCondition::PERIODIC;
-    TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), d1,
-               MakeRank1View(bxl), d1, MakeRank1View(bxh), per,
-               MakeRank1View(none), per, MakeRank1View(none));
+    TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(y),
+               pcms::MakeRank1View(v), d1, pcms::MakeRank1View(bxl), d1,
+               pcms::MakeRank1View(bxh), per, pcms::MakeRank1View(none), per,
+               pcms::MakeRank1View(none));
     auto out = eval_2d(s, {1, 0, 0, 0, 0, 0}, xq, yq, 1);
     double e = 0;
     for (size_t q = 0; q < xq.size(); ++q)
@@ -1380,7 +1407,8 @@ TEMPLATE_TEST_CASE("1D splines of zero data follow the end conditions",
                              std::pair{BC::SECOND_DERIVATIVE_MATCH, 2}}) {
       INFO("n " << n << " ends " << static_cast<int>(bc));
       auto f = CreateDeviceRank1View(std::vector<double>(n, 0.0));
-      TestType s(MakeRank1View(x), MakeRank1View(f), bc, 1.0, bc, 2.0);
+      TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(f), bc, 1.0, bc,
+                 2.0);
       auto nodes = eval_1d(s, {1, 0, 0}, xh, 1);
       for (double val : nodes)
         CHECK(val == Catch::Approx(0.0).margin(1e-12));
@@ -1393,7 +1421,7 @@ TEMPLATE_TEST_CASE("1D splines of zero data follow the end conditions",
     INFO("n " << n << " periodic");
     auto c = CreateDeviceRank1View(std::vector<double>(n, 0.7));
     const auto per = BC::PERIODIC;
-    TestType s(MakeRank1View(x), MakeRank1View(c), per, 0, per, 0);
+    TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(c), per, 0, per, 0);
     auto out = eval_1d(s, {1, 1, 1}, {0.0, 0.3, 0.8, 1.0}, 3);
     for (size_t q = 0; q < 4; ++q) {
       CHECK(out[3 * q] == Catch::Approx(0.7));
@@ -1424,9 +1452,10 @@ TEMPLATE_TEST_CASE("2D splines of zero data follow the face data", "[spline]",
   auto none = CreateDeviceRank1View<double>({});
   const auto nak = BoundaryCondition::NOT_A_KNOT;
   const auto d1 = BoundaryCondition::FIRST_DERIVATIVE_MATCH;
-  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), d1,
-             MakeRank1View(lo), d1, MakeRank1View(hi), nak, MakeRank1View(none),
-             nak, MakeRank1View(none));
+  TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(y),
+             pcms::MakeRank1View(v), d1, pcms::MakeRank1View(lo), d1,
+             pcms::MakeRank1View(hi), nak, pcms::MakeRank1View(none), nak,
+             pcms::MakeRank1View(none));
   std::vector<double> xn, yn, xf, yf, expected;
   for (double a : xh)
     for (double b : yh) {
@@ -1458,7 +1487,7 @@ TEMPLATE_TEST_CASE("1D queries just outside the grid are clamped", "[spline]",
   auto x = CreateDeviceRank1View(xh);
   auto f = CreateDeviceRank1View(fh);
   const auto nak = BoundaryCondition::NOT_A_KNOT;
-  TestType s(MakeRank1View(x), MakeRank1View(f), nak, 0, nak, 0);
+  TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(f), nak, 0, nak, 0);
   auto clamped = eval_1d(s, {1, 1, 1}, {-4e-7, 2 + 4e-7}, 3, -999.0);
   auto ends = eval_1d(s, {1, 1, 1}, {0.0, 2.0}, 3);
   for (size_t k = 0; k < ends.size(); ++k)
@@ -1480,9 +1509,10 @@ TEMPLATE_TEST_CASE("2D queries just outside the grid are clamped", "[spline]",
     sample_2d(xh, yh, [](double a, double b) { return px(a, 0) * py(b, 0); }));
   auto none = CreateDeviceRank1View<double>({});
   const auto nak = BoundaryCondition::NOT_A_KNOT;
-  TestType s(MakeRank1View(x), MakeRank1View(y), MakeRank1View(v), nak,
-             MakeRank1View(none), nak, MakeRank1View(none), nak,
-             MakeRank1View(none), nak, MakeRank1View(none));
+  TestType s(pcms::MakeRank1View(x), pcms::MakeRank1View(y),
+             pcms::MakeRank1View(v), nak, pcms::MakeRank1View(none), nak,
+             pcms::MakeRank1View(none), nak, pcms::MakeRank1View(none), nak,
+             pcms::MakeRank1View(none));
   const std::vector<LO> all = {1, 1, 1, 1, 1, 1};
   auto clamped = eval_2d(s, all, {2 + 4e-7, 0.5, -4e-7},
                          {0.3, 1 + 4e-7, -1 - 4e-7}, 6, -999.0);

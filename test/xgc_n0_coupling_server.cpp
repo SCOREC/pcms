@@ -1,20 +1,26 @@
-#include <pcms.h>
-#include <pcms/utility/types.h>
+#include <pcms/pcms.hpp>
+#include <pcms/utility/types.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_for.hpp>
-#include "test_support.h"
+#include "test_support.hpp"
 #include "pcms/coupler/coupler.hpp"
-#include "pcms/coupler/field_serializer.h"
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/field.h"
+#include "pcms/coupler/detail/field_serializer.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
+#include "pcms/field/function_spaces.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
+#include "pcms/field/field.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/data/simple.h"
-#include "pcms/transfer/copy.h"
+#include "pcms/field/detail/simple_field_data.hpp"
+#include "pcms/transfer/copy.hpp"
 #include <chrono>
 #include <optional>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+
+namespace pcms
+{
+using omega_h::CreateGeometry;
+} // namespace pcms
 
 using pcms::GO;
 using pcms::LO;
@@ -217,10 +223,10 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       // return 0;
       return 1;
     });
-  auto geometry = pcms::CreateOmegaHGeometry(
-    mesh, pcms::csys::Cartesian::Deferred(),
-    pcms::OmegaHGeometryOptions{.global_id_name = numbering,
-                                .owned_mask = is_overlap});
+  auto geometry = pcms::CreateGeometry(
+    mesh, pcms::detail::DeferredCartesian(),
+    pcms::omega_h::OmegaHGeometryOptions{.global_id_name = numbering,
+                                         .owned_mask = is_overlap});
   auto function_space = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH,

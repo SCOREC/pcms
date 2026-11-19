@@ -102,7 +102,7 @@ Generate a structured uniform grid that covers the bounding box of the mesh.
 
 ```python
 # Create uniform grid with 4x4 cell divisions
-grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
+grid = pcms.omega_h.create_uniform_grid_from_mesh(mesh, [4, 4])
 print(f"Created uniform grid with {grid.get_num_cells()} cells")
 ```
 
@@ -114,7 +114,7 @@ Create a mask where each uniform grid vertex is marked as 1 (inside mesh) or 0 (
 
 ```python
 # Create binary mask indicating which vertices are inside the mesh
-mask_field = pcms.create_uniform_grid_binary_field(mesh, [4, 4])
+mask_field = pcms.omega_h.create_uniform_grid_binary_field(mesh, [4, 4])
 print(f"Created mask field with {mask_field.get_layout().get_num_dof_holder()} vertices")
 ```
 
@@ -136,7 +136,7 @@ mask_value = mask_data[vertex_id, 0]  # Returns 0.0 or 1.0
 # Create the mesh's geometry (its coordinate system and point search) once,
 # then a FunctionSpace on it with linear (order=1) elements and
 # 1 component (scalar)
-geometry = pcms.create_omega_h_geometry(mesh)
+geometry = pcms.omega_h.create_geometry(mesh)
 omega_h_factory = pcms.create_lagrange_space(
     geometry,
     1,
@@ -160,7 +160,7 @@ omega_h_field.set_dof_holder_data(omega_h_data)
 
 #### Option B: Use Existing Element/Face Field from Mesh Tags
 
-Fields data are saved as tags on mesh entities (e.g., vertices, edges, faces, elements). You can retrieve these fields and convert them to vertex-based fields for interpolation.
+Fields data are saved as tags on mesh entities (e.g., vertices, edges, faces, elements). An element field is a P0 field: one value per element. Read it into a Lagrange order-0 space and interpolate it from there.
 
 ```python
 # Get field from mesh tag (e.g., element-centered field).
@@ -169,15 +169,12 @@ tag_index = 0  # Index of the tag to use
 face_tag = mesh.get_tag(face_dim, tag_index)  # Get tag by index
 face_field = mesh.get_tag(face_dim, face_tag.name())
 
-# Convert element field to vertex field using averaging
-vertex_field = pcms.map_entity_field_to_vertices_average(mesh, face_field, face_dim)
-
-# Create vertex-based field and set data
-geometry = pcms.create_omega_h_geometry(mesh)
+# A P0 (one value per element) space on the mesh, and the field on it
+geometry = pcms.omega_h.create_geometry(mesh)
 omega_h_factory = pcms.create_lagrange_space(
-    geometry, 1, 1)
+    geometry, 0, 1)
 omega_h_field = omega_h_factory.create_function()
-omega_h_field.set_dof_holder_data(vertex_field)
+omega_h_field.set_dof_holder_data(face_field)
 
 ```
 
@@ -190,7 +187,7 @@ Set up the data structure for storing field values on the uniform grid vertices.
 ```python
 # Create a uniform-grid FunctionSpace: the grid's geometry, then a space of
 # linear (order=1) elements on it
-ug_geometry = pcms.create_uniform_grid_geometry(grid)
+ug_geometry = pcms.uniform_grid.create_geometry(grid)
 ug_factory = pcms.create_lagrange_space(
     ug_geometry,
     1,                                      # Order
@@ -207,7 +204,7 @@ Interpolate field values from the unstructured mesh to the structured uniform gr
 
 ```python
 # Transfer field from Omega_h mesh to uniform grid using two FunctionSpaces
-interp = pcms.Interpolator(omega_h_factory, ug_factory)
+interp = pcms.create_interpolator(omega_h_factory, ug_factory)
 interp.apply(omega_h_field, ug_field)
 ```
 
@@ -248,8 +245,8 @@ np.save('field_data.npy', grid_values)
 ## API Reference Summary
 
 ### Grid Creation
-- `create_uniform_grid_from_mesh(mesh, divisions)` - Create grid from mesh
-- `create_uniform_grid_binary_field(mesh, divisions)` - Create inside/outside mask
+- `omega_h.create_uniform_grid_from_mesh(mesh, divisions)` - Create grid from mesh
+- `omega_h.create_uniform_grid_binary_field(mesh, divisions)` - Create inside/outside mask
 
 The Python names mirror the C++ API: classes keep their C++ names, C++
 namespaces are submodules (`pcms.csys`, `pcms.values`), and methods are the
@@ -257,8 +254,8 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 `get_dof_holder_data`).
 
 ### Coordinate Systems and Value Bases
-- `csys.Cartesian.create(dim)` - Cartesian system. Coordinate system arguments default to `None`, meaning Cartesian in the dimension of the mesh, grid or coordinates they are used with
-- `csys.CylindricalRThetaZ.create()`, `csys.CylindricalRZ.create()` - cylindrical systems
+- `csys.create_cartesian(dim)` - Cartesian system. Coordinate system arguments default to `None`, meaning Cartesian in the dimension of the mesh, grid or coordinates they are used with
+- `csys.create_cylindrical_r_theta_z()`, `csys.create_cylindrical_rz()` - cylindrical systems
 - `CoordinateView(system, coords)`, `CoordinateView(coords)` - coordinates `(num_points, dim)` tagged with their system (Cartesian when omitted); the array is copied
 - `view.get_coordinate_system()`, `view.get_values()` - the system and a read-only coordinate array
 - `ValueBasis(system, scaling, variance)` - the basis a value's components are in; `ValueBasis()` is the scalar basis
@@ -268,9 +265,10 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 
 ### Field Factories
 - `FunctionSpace` - a field space: its layout and evaluator source; a `PointEvaluatorFactory`
-- `create_omega_h_geometry(mesh, system=None, divisions=0, global_id_name="global", owned_mask=None)` - the geometry of an Omega_h mesh (coordinate system, point search, global id tag and a per-vertex ownership override), shared by the spaces on it
-- `create_uniform_grid_geometry(grid, system=None)` - the geometry of a 2D or 3D uniform grid
-- `create_point_cloud_geometry(coordinate_view, neighbourhood)` - the geometry of a point cloud, whose supports are found with `NeighbourhoodOptions`
+- `omega_h.create_geometry(mesh, system=None, divisions=0, global_id_name="global", owned_mask=None)` - the geometry of an Omega_h mesh (coordinate system, point search, global id tag and a per-vertex ownership override), shared by the spaces on it
+- `uniform_grid.create_geometry(grid, system=None)` - the geometry of a 2D or 3D uniform grid
+- `point_cloud.create_geometry(coordinate_view, neighbourhood)` - the geometry of a point cloud, whose supports are found with `NeighbourhoodOptions`
+- `omega_h.create_point_cloud_geometry(geometry, entity_dim, neighbourhood)` - the point-cloud geometry of the vertices (entity_dim 0) or element centroids (the mesh dimension) of the mesh of an Omega_h geometry, whose supports use the mesh adjacency
 - `create_lagrange_space(geometry, order, num_components, backend=default, layout_name="")` - a Lagrange `FunctionSpace` on an Omega_h or uniform-grid geometry; `LagrangeBackend.MeshFields` or `LagrangeBackend.OmegaH`
 - `create_spline_space(geometry)` - a bicubic spline `FunctionSpace` on a 2D uniform-grid geometry
 - `create_polynomial_reconstruction_space(geometry, options)` - MLS reconstruction (`MLSOptions`) on a point-cloud geometry
@@ -285,26 +283,25 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 - `field.get_dof_holder_data()` - Field values as a `ValueView` whose array (`.get_values()`, shape `(num_dof_holders, num_components)`) is read-only and valid until the field is next modified (use `.copy()` to keep values)
 - `field.set_dof_holder_data(value_view)` - Set field values; the basis must match the field's. Scalar fields also accept a plain array, of shape `(num_dof_holders,)` when the field has one component
 - `field.set_dof_holder_data_unchecked(data)` - Set field values without checking their basis
-- `geometry = factory.get_geometry()` - The `Geometry` (coordinates and point search) whose bound sources a `PointEvaluatorFactory` accepts; every space on one geometry accepts the same bound sources
+- `geometry = factory.get_geometry()` - The `Geometry` (coordinates and point search) whose BoundPoints a `PointEvaluatorFactory` accepts; every space on one geometry accepts the same BoundPoints
 - `bound = geometry.bind(coordinate_view, policy=...)` - Localize query points (in `geometry.get_coordinate_system()`); the search is done once here
 - `bound = geometry.bind(space, policy=...)` - Localize another FunctionSpace's DOF-holder coordinates
-- `create_omega_h_geometry(mesh, system=None, divisions=0)`, `create_lagrange_space(geometry, order, num_components)` - Several spaces on one mesh geometry, sharing one search and one bind
+- `omega_h.create_geometry(mesh, system=None, divisions=0)`, `create_lagrange_space(geometry, order, num_components)` - Several spaces on one mesh geometry, sharing one search and one bind
 - `bound.found_points()`, `bound.missing_points()` - indices of the query points the source evaluates / does not evaluate
 - `factory.create_point_evaluator(bound, op=DifferentialOperator.Value)` - Create an evaluator at the bound points that applies `op`; `DifferentialOperator.Gradient` evaluates the gradient
 - `factory.supports(op)` - Whether `create_point_evaluator` accepts the `DifferentialOperator` `op`
 - `gradient(source)`, `divergence(source)`, `curl(source)` - A source whose evaluators write the gradient (divergence, curl) of the field they are given
 - `evaluator.evaluate(field, output)` - Evaluate into a `ValueView` tagged `evaluator.output_basis(field.get_data().get_value_basis())` (a plain array for scalar fields, of shape `(num_points,)` when the output has one component); the output array must be writeable, C-contiguous float64
-- `Interpolator(source, target_space)` - Create an interpolator from a `PointEvaluatorFactory` (cached localization)
-- `Interpolator(source, target_space, bound)` - Create an interpolator that reuses a bound source, e.g. to interpolate a field and `gradient(source)` over one localization
-- `operator.apply(source_field, target_field)` - Apply any `TransferOperator` (`Interpolator`, `Copy`, projections)
-- `Copy(source_space, target_space)` - Create a copy operator for compatible FunctionSpaces
-- `map_entity_field_to_vertices_average(mesh, field_data, entity_dim)` - Convert element/face field to vertex field by averaging
+- `create_interpolator(source, target_space)` - Create an interpolator from a `PointEvaluatorFactory` (cached localization)
+- `create_interpolator(source, target_space, bound)` - Create an interpolator that reuses a BoundPoints, e.g. to interpolate a field and `gradient(source)` over one localization
+- `operator.apply(source_field, target_field)` - Apply any `TransferOperator` (interpolators, copies, projections)
+- `create_copy(source_space, target_space)` - Create a copy operator for compatible FunctionSpaces
 
 ### Coordinate Transformations
-- `CartesianToCylindrical()`, `CylindricalToCartesian()` - `CoordinateMap`s; points map source to target, values are re-expressed the other way
+- `create_cartesian_to_cylindrical()`, `create_cylindrical_to_cartesian()` - `CoordinateMap`s; points map source to target, values are re-expressed the other way
 - `bound = coordinate_map.bind(coordinate_view)` - per-point work for points in the map's source system
 - `bound.mapped_points()`, `bound.output_basis(basis)`, `bound.transform_values(value_view)` - mapped points, and in-place re-expression of values
-- `geometry.bind(coordinate_view, policy, map)` / `geometry.bind(space, policy, map)` - bind points given in another coordinate system: `map` takes them to `geometry.get_coordinate_system()`, the points are located at their images, and evaluators created from the result re-express their values through the bound map; pass the result to `Interpolator(source, target_space, bound)` to transfer across coordinate systems
+- `geometry.bind(coordinate_view, policy, map)` / `geometry.bind(space, policy, map)` - bind points given in another coordinate system: `map` takes them to `geometry.get_coordinate_system()`, the points are located at their images, and evaluators created from the result re-express their values through the bound map; pass the result to `create_interpolator(source, target_space, bound)` to transfer across coordinate systems
 
 ### Out-of-Bounds Modes
 - `OutOfBoundsMode.ERROR` - Raise error when points are outside mesh

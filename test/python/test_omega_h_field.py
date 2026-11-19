@@ -5,7 +5,10 @@ Field-centric tests for Omega_h-backed function spaces.
 import numpy as np
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
 
 class TestOmegaHField:
     """Tests for Omega_h-backed Field operations."""
@@ -26,7 +29,7 @@ class TestOmegaHField:
         """Create an Omega_h-backed Field and exercise the public Field API."""
         mesh = self._build_mesh(world, dim)
         factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), order, num_components)
+            pcms.omega_h.create_geometry(mesh), order, num_components)
         field = factory.create_function()
 
         assert field.get_layout().get_num_components() == num_components
@@ -54,7 +57,7 @@ class TestOmegaHField:
             pytest.skip("Multi-component transfer not yet supported")
 
         mesh = self._build_mesh(world, dim)
-        geometry = pcms.create_omega_h_geometry(mesh)
+        geometry = pcms.omega_h.create_geometry(mesh)
         source_space = pcms.create_lagrange_space(
             geometry, order, num_components)
         target_space = pcms.create_lagrange_space(
@@ -69,7 +72,7 @@ class TestOmegaHField:
             source_data[i, 0] = np.sum(coords[i, :dim])
         source.set_dof_holder_data(source_data)
 
-        interp = pcms.Interpolator(source_space, target_space)
+        interp = pcms.create_interpolator(source_space, target_space)
         interp.apply(source, target)
         np.testing.assert_allclose(
             target.get_dof_holder_data().get_values(), source_data, atol=1e-14
@@ -82,7 +85,7 @@ class TestOmegaHField:
         """Evaluate an Omega_h-backed field at explicit query points."""
         mesh = self._build_mesh(world, dim)
         factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), order, num_components)
+            pcms.omega_h.create_geometry(mesh), order, num_components)
         field = factory.create_function()
 
         mesh_coords = mesh.coords()
@@ -144,7 +147,7 @@ class TestOmegaHField:
         """A wrongly shaped output buffer raises instead of aborting."""
         mesh = self._build_mesh(world, 2)
         factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), 1, 1)
+            pcms.omega_h.create_geometry(mesh), 1, 1)
         field = factory.create_function()
         eval_coords = np.full((5, 2), 0.5)
         evaluator = factory.create_point_evaluator(

@@ -3,11 +3,11 @@
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/omega_h_mass_integrator.hpp"
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
-#include "pcms/utility/arrays.h"
+#include "pcms/utility/arrays.hpp"
 #include <Kokkos_Core.hpp>
 #include <Omega_h_array.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 namespace
@@ -26,21 +26,26 @@ const Geometry& SourceGeometry(const PointEvaluatorFactory& source)
 } // namespace
 
 OmegaHControlVariateProjection::OmegaHControlVariateProjection(
-  const PointEvaluatorFactory& source, const FunctionSpace& target_space,
+  std::shared_ptr<const PointEvaluatorFactory> source_ptr,
+  std::shared_ptr<const FunctionSpace> target_space_ptr,
   int samples_per_element, uint64_t seed, MassMatrixType mass_matrix_type,
   std::shared_ptr<const CoordinateMap> to_source)
-  : target_layout_(
+  : source_(std::move(source_ptr)),
+    target_space_(std::move(target_space_ptr)),
+    target_layout_(
       detail::ResolveOmegaHScalarSpace(
-        target_space, 1, 1, "OmegaHControlVariateProjection", "target")
+        *target_space_, 1, 1, "OmegaHControlVariateProjection", "target")
         .layout),
     rhs_integrator_(std::make_unique<OmegaHMonteCarloRHSIntegrator>(
-      target_space, samples_per_element, seed)),
-    interpolator_(source, target_space,
-                  SourceGeometry(source).Bind(
-                    target_space.GetLayout()->GetDOFHolderCoordinates(),
+      *target_space_, samples_per_element, seed)),
+    interpolator_(source_, target_space_,
+                  SourceGeometry(*source_).Bind(
+                    target_space_->GetLayout()->GetDOFHolderCoordinates(),
                     OutOfBoundsPolicy{}, to_source)),
-    control_variate_(target_space.CreateFunction<Real>())
+    control_variate_(target_space_->CreateFunction<Real>())
 {
+  const PointEvaluatorFactory& source = *source_;
+  const FunctionSpace& target_space = *target_space_;
   // The source lives on another mesh, so it searches for the samples; the
   // target space is bound to them in their own elements, without a search.
   source_at_samples_ =
@@ -89,11 +94,11 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
   auto residual = residual_;
   source_at_samples_->Evaluate(
     source, ValueView<Real, DeviceMemorySpace>(source.GetData().GetValueBasis(),
-                                               MakeRank2View(f_samples)));
+                                               pcms::MakeRank2View(f_samples)));
   control_variate_at_samples_->Evaluate(
-    control_variate_,
-    ValueView<Real, DeviceMemorySpace>(
-      control_variate_.GetData().GetValueBasis(), MakeRank2View(residual)));
+    control_variate_, ValueView<Real, DeviceMemorySpace>(
+                        control_variate_.GetData().GetValueBasis(),
+                        pcms::MakeRank2View(residual)));
   Kokkos::parallel_for(
     "cv_residual", Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_samples),
     KOKKOS_LAMBDA(int i) {
@@ -116,7 +121,7 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
                      "extents do not match the target layout");
   }
 
-  const auto values = MakeRank2View(target_values_);
+  const auto values = pcms::MakeRank2View(target_values_);
   Kokkos::parallel_for(
     "cv_add_correction",
     Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_dof_holders),
@@ -132,4 +137,4 @@ void OmegaHControlVariateProjection::Apply(const Field<Real>& source,
   target.Synchronize();
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

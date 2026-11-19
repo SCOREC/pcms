@@ -189,7 +189,7 @@ def main(plot_path=None):
         # The conservative-projection operators require the native Omega_h
         # Lagrange backend (not the default MeshFields layout). The spaces on a
         # mesh share its geometry (coordinate system and point search).
-        source_geometry = pcms.create_omega_h_geometry(source_mesh)
+        source_geometry = pcms.omega_h.create_geometry(source_mesh)
         source_space = pcms.create_lagrange_space(
             source_geometry, 1, 1,
             backend=pcms.LagrangeBackend.OmegaH,
@@ -206,7 +206,7 @@ def main(plot_path=None):
         print(f"\nTarget mesh : {target_mesh.nverts()} verts, "
               f"{target_mesh.nelems()} elems (read from {target_path})")
 
-        target_geometry = pcms.create_omega_h_geometry(target_mesh)
+        target_geometry = pcms.omega_h.create_geometry(target_mesh)
         target_space = pcms.create_lagrange_space(
             target_geometry, 1, 1,
             backend=pcms.LagrangeBackend.OmegaH,
@@ -223,9 +223,9 @@ def main(plot_path=None):
 
         # 3a. Mesh-intersection conservative projection.
         mi_target = target_space.create_function()
-        mesh_intersection = pcms.OmegaHConservativeProjection(
-            source_space, target_space
-        )
+        mesh_intersection = pcms.create_conservative_projection(
+            source_space,
+            target_space)
         mesh_intersection.apply(source_field, mi_target)
         report("mesh intersection (exact quadrature)", mi_target, target_mesh,
                target_coords, reference_values, source_integral)
@@ -235,22 +235,21 @@ def main(plot_path=None):
         #     integral is still conserved exactly, but the max nodal error
         #     grows relative to the consistent mass matrix.
         lumped_target = target_space.create_function()
-        lumped_projection = pcms.OmegaHConservativeProjection(
-            source_space, target_space,
-            mass_matrix_type=pcms.MassMatrixType.Lumped,
-        )
+        lumped_projection = pcms.create_conservative_projection(
+            source_space,
+            target_space,
+            mass_matrix_type=pcms.MassMatrixType.Lumped)
         lumped_projection.apply(source_field, lumped_target)
         report("mesh intersection (lumped mass)", lumped_target, target_mesh,
                target_coords, reference_values, source_integral)
 
         # 3c. Monte Carlo (control-variate) conservative projection.
         mc_target = target_space.create_function()
-        monte_carlo = pcms.OmegaHControlVariateProjection(
+        monte_carlo = pcms.create_control_variate_projection(
             source_space,
             target_space,
             samples_per_element=64,
-            seed=8675309,
-        )
+            seed=8675309)
         monte_carlo.apply(source_field, mc_target)
         report("Monte Carlo (control variate, UniformRandom)", mc_target, target_mesh,
                target_coords, reference_values, source_integral)
@@ -271,9 +270,9 @@ def main(plot_path=None):
         p0_coords = (p1_to_p0.get_layout()
                      .get_dof_holder_coordinates().get_values())
         p0_reference = source_function(p0_coords[:, 0], p0_coords[:, 1])
-        proj_p1_p0 = pcms.OmegaHConservativeProjection(
-            source_space, target_p0_space
-        )
+        proj_p1_p0 = pcms.create_conservative_projection(
+            source_space,
+            target_p0_space)
         proj_p1_p0.apply(source_field, p1_to_p0)
         report("P1 -> P0 (cell averages)", p1_to_p0, target_mesh,
                p0_coords, p0_reference, source_integral,
@@ -289,9 +288,9 @@ def main(plot_path=None):
                                                        source_function)
         source_p0_integral = integral_of_p0_field(source_mesh, source_p0_field)
         p0_to_p1 = target_space.create_function()
-        proj_p0_p1 = pcms.OmegaHConservativeProjection(
-            source_p0_space, target_space
-        )
+        proj_p0_p1 = pcms.create_conservative_projection(
+            source_p0_space,
+            target_space)
         proj_p0_p1.apply(source_p0_field, p0_to_p1)
         report("P0 -> P1", p0_to_p1, target_mesh,
                target_coords, reference_values, source_p0_integral)

@@ -2,10 +2,10 @@
 #include "pcms/transfer/mass_matrix_integrator.hpp"
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/memory_spaces.h"
-#include "pcms/utility/mesh_geometry.h"
-#include "pcms/utility/omega_h_array_utils.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/mesh_geometry.hpp"
+#include "pcms/utility/omega_h_array_utils.hpp"
 #include <KokkosController.hpp>
 #include <MeshField.hpp>
 #include <MeshField_Element.hpp>
@@ -14,6 +14,13 @@
 #include <petscksp.h>
 
 namespace pcms
+{
+using omega_h::OmegaHLagrangeLayout;
+using utility::ConvertCoordsTo2D;
+using utility::get_entity_centroids;
+} // namespace pcms
+
+namespace pcms::transfer
 {
 
 namespace
@@ -89,7 +96,7 @@ Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
     Kokkos::View<LO*, DeviceMemorySpace> elements(
       Kokkos::view_alloc(Kokkos::WithoutInitializing, "mass_p0_elements"),
       nelems);
-    iota_view<LO>(elements);
+    pcms::detail::iota_view<LO>(elements);
     const auto centroids =
       ConvertCoordsTo2D(get_entity_centroids(mesh, Dim), nelems, Dim);
     const auto measures = detail::ElementMeasuresAtPoints(
@@ -170,7 +177,8 @@ Mat BuildOmegaHMassMatrixImpl(Omega_h::Mesh& mesh,
 Mat BuildOmegaHMassMatrix(const OmegaHLagrangeLayout& target_layout,
                           const Geometry& geometry, MassMatrixType mass_type)
 {
-  Omega_h::Mesh& mesh = GetMesh(geometry);
+  Omega_h::Mesh& mesh =
+    dynamic_cast<const omega_h::OmegaHGeometry&>(geometry).GetMesh();
   if (mesh.dim() == 3) {
     return BuildOmegaHMassMatrixImpl<3>(mesh, target_layout, geometry,
                                         mass_type);
@@ -213,4 +221,4 @@ std::unique_ptr<BilinearFormIntegrator> BuildOmegaHMassIntegrator(
   return std::make_unique<OmegaHMassIntegrator>(target_space, mass_type);
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

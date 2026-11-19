@@ -1,21 +1,26 @@
 #include <catch2/catch_test_macros.hpp>
+#include <pcms/configuration.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_mesh.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
 #include <stdexcept>
 
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
-#include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include <pcms/field/evaluator/point_cloud_geometry.hpp>
-#include "pcms/field/function_space/spline.h"
-#include "pcms/field/field_data.h"
-#include "pcms/field/point_evaluator.h"
-#include "pcms/field/out_of_bounds_policy.h"
+#include "pcms/field/function_spaces.hpp"
+#include "pcms/backends/uniform_grid/geometry.hpp"
+#include <pcms/backends/point_cloud/geometry.hpp>
+#include "pcms/field/field_data.hpp"
+#include "pcms/field/point_evaluator.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/coordinate_view.hpp"
-#include "pcms/utility/arrays.h"
-#include "field_test_utils.h"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "field_test_utils.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+
+namespace pcms
+{
+using omega_h::CreateGeometry;
+} // namespace pcms
 
 using pcms::CoordinateSystem;
 using pcms::Real;
@@ -51,7 +56,7 @@ void CheckOutputValidation(const pcms::PointEvaluator<Real>& evaluator,
   REQUIRE_THROWS_AS(
     evaluator.Evaluate(field,
                        pcms::ValueView<Real, pcms::DeviceMemorySpace>(
-                         pcms::ValueBasis{pcms::csys::Cartesian::Create(1),
+                         pcms::ValueBasis{pcms::csys::CreateCartesian(1),
                                           pcms::ComponentScaling::Physical,
                                           pcms::values::Vector},
                          pcms::MakeRank2View(out))),
@@ -86,38 +91,40 @@ TEST_CASE("PointEvaluator::Evaluate checks the output for every evaluator")
     auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10,
                                    10, 0, false);
     auto space = pcms::CreateLagrangeSpace(
-      pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred()), 1, 1,
+      pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian()), 1, 1,
       pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
     CheckOutputValidation(*CreateFillEvaluator(*space),
                           space->CreateFunction<Real>(), n);
   }
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
   SECTION("MeshFields Lagrange")
   {
     auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10,
                                    10, 0, false);
     auto space = pcms::CreateLagrangeSpace(
-      pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred()), 1, 1,
-      pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
+      pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian()), 1,
+      1, pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
     CheckOutputValidation(*CreateFillEvaluator(*space),
                           space->CreateFunction<Real>(), n);
   }
 #endif
   SECTION("uniform grid Lagrange")
   {
-    auto space = pcms::CreateLagrangeSpace(
-      pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()),
-      1, 1);
+    auto space =
+      pcms::CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
+                                  grid, pcms::detail::DeferredCartesian()),
+                                1, 1);
     CheckOutputValidation(*CreateFillEvaluator(*space),
                           space->CreateFunction<Real>(), n);
   }
   SECTION("uniform grid spline")
   {
-    auto space = pcms::CreateSplineSpace(
-      pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()));
+    auto space = pcms::CreateSplineSpace(pcms::uniform_grid::CreateGeometry(
+      grid, pcms::detail::DeferredCartesian()));
     CheckOutputValidation(*CreateFillEvaluator(*space),
                           space->CreateFunction<Real>(), n);
   }
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
   SECTION("MLS point cloud")
   {
     std::vector<Real> sources;
@@ -127,10 +134,10 @@ TEST_CASE("PointEvaluator::Evaluate checks the output for every evaluator")
         sources.push_back(0.25 * j);
       }
     }
-    auto space =
-      pcms::CreatePolynomialReconstructionSpace(pcms::CreatePointCloudGeometry(
+    auto space = pcms::CreatePolynomialReconstructionSpace(
+      pcms::point_cloud::CreateGeometry(
         pcms::CoordinateView<pcms::HostMemorySpace>(
-          pcms::csys::Cartesian::Deferred(),
+          pcms::detail::DeferredCartesian(),
           pcms::Rank2View<const Real, pcms::HostMemorySpace>(sources.data(), 25,
                                                              2))));
     const auto pts = pcms::test::StandardEvalCoords2D();
@@ -139,6 +146,7 @@ TEST_CASE("PointEvaluator::Evaluate checks the output for every evaluator")
     CheckOutputValidation(*evaluator, space->CreateFunction<Real>(),
                           static_cast<int>(pts.size()) / 2);
   }
+#endif
 }
 
 // ============================================================================
@@ -151,8 +159,7 @@ TEST_CASE("PointEvaluator: OmegaH order-1 linear evaluation")
   auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 100,
                                  100, 0, false);
 
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
@@ -181,8 +188,7 @@ TEST_CASE("PointEvaluator: same evaluator reused for two FieldData objects")
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
 
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
@@ -220,8 +226,7 @@ TEST_CASE("PointEvaluator: OmegaH order-1 out-of-bounds fill")
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 20, 20, 0, false);
 
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
@@ -253,8 +258,8 @@ TEST_CASE("PointEvaluator: UniformGrid order-1 linear evaluation")
   grid.divisions = {N, N};
 
   auto factory = pcms::CreateLagrangeSpace(
-    pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()), 1,
-    1);
+    pcms::uniform_grid::CreateGeometry(grid, pcms::detail::DeferredCartesian()),
+    1, 1);
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
@@ -278,8 +283,8 @@ TEST_CASE("PointEvaluator: SplineFunctionSpace uniform-grid evaluation")
   grid.edge_length = {1.0, 1.0};
   grid.divisions = {N, N};
 
-  auto factory = pcms::CreateSplineSpace(
-    pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()));
+  auto factory = pcms::CreateSplineSpace(pcms::uniform_grid::CreateGeometry(
+    grid, pcms::detail::DeferredCartesian()));
 
   auto field_data = factory->CreateFunction<Real>();
   pcms::test::SetField(
@@ -310,9 +315,10 @@ TEST_CASE("PointEvaluator: uniform grids report the points they fill")
 
   SECTION("Lagrange")
   {
-    auto factory = pcms::CreateLagrangeSpace(
-      pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()),
-      1, 1);
+    auto factory =
+      pcms::CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
+                                  grid, pcms::detail::DeferredCartesian()),
+                                1, 1);
     auto field = factory->CreateFunction<Real>();
     pcms::test::SetField(field, linear);
     pcms::test::CheckEvaluationWithFill(factory, field, pts, is_inside, linear,
@@ -320,8 +326,8 @@ TEST_CASE("PointEvaluator: uniform grids report the points they fill")
   }
   SECTION("spline")
   {
-    auto factory = pcms::CreateSplineSpace(
-      pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()));
+    auto factory = pcms::CreateSplineSpace(pcms::uniform_grid::CreateGeometry(
+      grid, pcms::detail::DeferredCartesian()));
     auto field = factory->CreateFunction<Real>();
     pcms::test::SetField(field, linear);
     pcms::test::CheckEvaluationWithFill(factory, field, pts, is_inside, linear,
@@ -329,9 +335,10 @@ TEST_CASE("PointEvaluator: uniform grids report the points they fill")
   }
   SECTION("no fill without the FILL policy")
   {
-    auto factory = pcms::CreateLagrangeSpace(
-      pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()),
-      1, 1);
+    auto factory =
+      pcms::CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
+                                  grid, pcms::detail::DeferredCartesian()),
+                                1, 1);
     auto evaluator = factory->CreatePointEvaluator<Real>(pcms::test::Bind(
       *factory->GetGeometry(), pts,
       pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::NEAREST_BOUNDARY}));
@@ -349,16 +356,15 @@ TEST_CASE("FieldLayout: metadata queries")
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
 
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
   auto layout = factory->GetLayout();
 
   auto coords = layout->GetDOFHolderCoordinates();
-  REQUIRE(pcms::SameCoordinateSystem(coords.GetCoordinateSystem(),
-                                     pcms::csys::Cartesian::Create(2)));
+  REQUIRE(pcms::detail::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                             pcms::csys::CreateCartesian(2)));
   REQUIRE(coords.GetValues().extent(0) > 0);
   REQUIRE(coords.GetValues().extent(1) == 2);
 }
@@ -373,16 +379,15 @@ TEST_CASE("FieldData: layout metadata queries")
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
 
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
   auto field_data = factory->CreateFunction<Real>();
 
   auto coords = factory->GetLayout()->GetDOFHolderCoordinates();
-  REQUIRE(pcms::SameCoordinateSystem(coords.GetCoordinateSystem(),
-                                     pcms::csys::Cartesian::Create(2)));
+  REQUIRE(pcms::detail::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                             pcms::csys::CreateCartesian(2)));
   REQUIRE(coords.GetValues().extent(0) > 0);
   REQUIRE(coords.GetValues().extent(1) == 2);
 }
@@ -397,8 +402,7 @@ TEST_CASE("SimpleFieldData: set and get DOF holder data round-trip")
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
 
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
@@ -418,8 +422,8 @@ TEST_CASE("SimpleFieldData: set and get DOF holder data round-trip")
       pcms::ValueBasis{}, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
                             data_in.data(), n, 1)));
 
-  auto data_out =
-    pcms::FlattenToRank1View(field_data.GetDOFHolderDataHost().GetValues());
+  auto data_out = pcms::detail::FlattenToRank1View(
+    field_data.GetDOFHolderDataHost().GetValues());
   REQUIRE(static_cast<int>(data_out.size()) == n);
   for (int i = 0; i < n; ++i) {
     REQUIRE(data_out[i] == Catch::Approx(data_in[i]));
@@ -430,7 +434,7 @@ TEST_CASE("SimpleFieldData: set and get DOF holder data round-trip")
 // MeshFields layout metadata (only when MeshFields is enabled)
 // ============================================================================
 
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 TEST_CASE("FieldLayout: MeshFields metadata queries")
 {
   auto lib = Omega_h::Library{};
@@ -438,15 +442,15 @@ TEST_CASE("FieldLayout: MeshFields metadata queries")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
 
   auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
 
   auto layout = factory->GetLayout();
   auto coords = layout->GetDOFHolderCoordinates();
-  REQUIRE(pcms::SameCoordinateSystem(coords.GetCoordinateSystem(),
-                                     pcms::csys::Cartesian::Create(2)));
+  REQUIRE(pcms::detail::SameCoordinateSystem(coords.GetCoordinateSystem(),
+                                             pcms::csys::CreateCartesian(2)));
   REQUIRE(coords.GetValues().extent(0) > 0);
   REQUIRE(coords.GetValues().extent(1) == 2);
 }
@@ -458,7 +462,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 linear evaluation")
                                  100, 0, false);
 
   auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
@@ -484,7 +488,7 @@ TEST_CASE("PointEvaluator: MeshFields out-of-bounds fill")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 20, 20, 0, false);
 
   auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
@@ -509,7 +513,7 @@ TEST_CASE(
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
 
   auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
@@ -542,7 +546,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
 
   auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 2,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
@@ -597,7 +601,7 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 50, 50, 0, false);
 
   auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(
     geometry, 1, 3,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
@@ -646,4 +650,4 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
     REQUIRE(out_host(i, 2) == Catch::Approx(x * y).margin(1e-8));
   }
 }
-#endif // PCMS_ENABLE_MESHFIELDS
+#endif // PCMS_ENABLE_OMEGA_H_MESHFIELDS

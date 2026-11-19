@@ -1,19 +1,26 @@
-#include "client.h"
-#include "pcms.h"
-#include "pcms/field/field_factory.h"
-#include "pcms/field/function_space/xgc.h"
-#include "pcms/field/data/xgc.h"
-#include "pcms/field/layout/xgc.h"
-#include "pcms/field/layout/xgc_reverse_classification.h"
+#include "pcms/capi/client.h"
+#include "pcms/pcms.hpp"
+#include "pcms/field/field_factory.hpp"
+#include "pcms/backends/xgc/field_factory.hpp"
+#include "pcms/backends/xgc/field_data.hpp"
+#include "pcms/backends/xgc/layout.hpp"
+#include "pcms/backends/xgc/reverse_classification.hpp"
 #include "pcms/coupler/coupler.hpp"
-#include "pcms/field/layout/empty.h"
-#include "pcms/field/data/simple.h"
-#include "pcms/utility/assert.h"
+#include "pcms/field/layout/empty.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
+#include "pcms/utility/assert.hpp"
 #include <map>
 #include <memory>
 #include <numeric>
 #include <variant>
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
+
+namespace pcms
+{
+using field::EmptyFieldLayout;
+using xgc::XGCFieldData;
+using xgc::XGCFieldFactory;
+} // namespace pcms
 
 namespace pcms
 {
@@ -26,13 +33,14 @@ struct XGCFieldRegistration
 {
   // what the field's layout is built from when the field is registered, under
   // the field's name (a copy, so the caller may destroy its classification)
-  std::shared_ptr<const ReverseClassificationVertex> reverse_classification;
+  std::shared_ptr<const xgc::ReverseClassificationVertex>
+    reverse_classification;
   LO num_plane_nodes;
   MPI_Comm plane_comm;
   Rank1View<T, HostMemorySpace> data;
 
   XGCFieldRegistration(
-    std::shared_ptr<const ReverseClassificationVertex> classification,
+    std::shared_ptr<const xgc::ReverseClassificationVertex> classification,
     LO num_nodes, MPI_Comm comm, Rank1View<T, HostMemorySpace> d)
     : reverse_classification(std::move(classification)),
       num_plane_nodes(num_nodes),
@@ -65,11 +73,13 @@ protected:
   [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
                                              ValueBasis basis) const override
   {
-    return apply_to_type(storage_type, [this, basis](auto tag) -> FieldVariant {
-      using T = typename decltype(tag)::type;
-      return WrapField<T>(layout_,
-                          std::make_unique<SimpleFieldData<T>>(layout_, basis));
-    });
+    return detail::apply_to_type(
+      storage_type, [this, basis](auto tag) -> FieldVariant {
+        using T = typename decltype(tag)::type;
+        return WrapField<T>(
+          layout_,
+          std::make_unique<pcms::detail::SimpleFieldData<T>>(layout_, basis));
+      });
   }
 
   [[nodiscard]] FieldVariant CreateFieldImpl(
@@ -80,7 +90,8 @@ protected:
         using FD = std::decay_t<decltype(fd)>;
         using T = typename FD::element_type::value_type;
         PCMS_ALWAYS_ASSERT(fd != nullptr);
-        if (dynamic_cast<const SimpleFieldData<T>*>(fd.get()) == nullptr) {
+        if (dynamic_cast<const pcms::detail::SimpleFieldData<T>*>(fd.get()) ==
+            nullptr) {
           throw pcms_error(
             "EmptyFieldFactory::CreateField: requires SimpleFieldData");
         }
@@ -153,7 +164,7 @@ inline ClientState::HandleVariant RegisterField(
   // should happen after we finalize new coordinate transformations
   // and higher level field control
   auto function_space =
-    detail::EmptyFieldFactory{name, csys::CylindricalRZ::Create()};
+    detail::EmptyFieldFactory{name, csys::CreateCylindricalRZ()};
   auto field = function_space.CreateField<int>(std::move(name));
   return ClientState::HandleVariant{
     app.AddField(std::move(field), participates)};
@@ -180,14 +191,14 @@ void pcms_destroy_client(PcmsClientHandle client)
 PcmsReverseClassificationHandle pcms_load_reverse_classification(
   const char* file, MPI_Comm comm)
 {
-  auto* rc = new pcms::ReverseClassificationVertex{
-    pcms::ReadReverseClassificationVertex(file, comm)};
+  auto* rc = new pcms::xgc::ReverseClassificationVertex{
+    pcms::xgc::ReadReverseClassificationVertex(file, comm)};
   return {reinterpret_cast<void*>(rc)};
 }
 
 void pcms_destroy_reverse_classification(PcmsReverseClassificationHandle rc)
 {
-  delete reinterpret_cast<pcms::ReverseClassificationVertex*>(rc.pointer);
+  delete reinterpret_cast<pcms::xgc::ReverseClassificationVertex*>(rc.pointer);
 }
 
 void pcms_set_overlap_mask(PcmsClientHandle client_handle, const char* name,
@@ -265,14 +276,14 @@ void pcms_receive_field(PcmsFieldHandle field_handle)
 template <typename T>
 void pcms_create_xgc_field_adapter_t(
   const char* /* name */, MPI_Comm comm, void* data, int size,
-  const pcms::ReverseClassificationVertex& reverse_classification,
+  const pcms::xgc::ReverseClassificationVertex& reverse_classification,
   pcms::FieldAdapterVariant& field_adapter)
 {
   PCMS_ALWAYS_ASSERT((size > 0) ? (data != nullptr) : true);
   pcms::Rank1View<T, pcms::HostMemorySpace> data_view(
     reinterpret_cast<T*>(data), size);
   field_adapter.emplace<pcms::detail::XGCFieldRegistration<T>>(
-    std::make_shared<const pcms::ReverseClassificationVertex>(
+    std::make_shared<const pcms::xgc::ReverseClassificationVertex>(
       reverse_classification),
     size, comm, data_view);
 }
@@ -284,7 +295,7 @@ PcmsFieldAdapterHandle pcms_create_xgc_field_adapter(
   auto* field_adapter = new pcms::FieldAdapterVariant{};
   PCMS_ALWAYS_ASSERT(rc.pointer != nullptr);
   auto* reverse_classification =
-    reinterpret_cast<const pcms::ReverseClassificationVertex*>(rc.pointer);
+    reinterpret_cast<const pcms::xgc::ReverseClassificationVertex*>(rc.pointer);
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
   switch (data_type) {
     case PCMS_DOUBLE:
@@ -325,10 +336,11 @@ void pcms_destroy_field_adapter(PcmsFieldAdapterHandle adapter_handle)
 int pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle rc)
 {
   auto* reverse_classification =
-    reinterpret_cast<const pcms::ReverseClassificationVertex*>(rc.pointer);
+    reinterpret_cast<const pcms::xgc::ReverseClassificationVertex*>(rc.pointer);
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
-  return std::accumulate(reverse_classification->begin(),
-                         reverse_classification->end(), 0,
+  const auto& entries = pcms::xgc::detail::ReverseClassificationAccess::Entries(
+    *reverse_classification);
+  return std::accumulate(entries.begin(), entries.end(), 0,
                          [](auto current, const auto& verts) {
                            return current + verts.second.size();
                          });

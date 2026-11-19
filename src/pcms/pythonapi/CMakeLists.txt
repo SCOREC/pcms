@@ -12,17 +12,22 @@ pybind11_add_module(pcms
   bind_field_base.cpp
   bind_transfer_field.cpp
   bind_coordinate_map.cpp
-  bind_mls_interpolation.cpp
-  bind_mesh_utilities.cpp
+  bind_point_cloud.cpp
 )
 target_compile_features(pcms PUBLIC cxx_std_20)
-target_link_libraries(pcms PRIVATE Kokkos::kokkos pybind11::module MPI::MPI_C pcms::core pcms::transfer)
+target_link_libraries(pcms PRIVATE Kokkos::kokkos pybind11::module MPI::MPI_CXX pcms::transfer)
+
+# each backend's bindings are compiled only when the backend is built
+if(PCMS_ENABLE_OMEGA_H)
+  target_sources(pcms PRIVATE bind_omega_h.cpp)
+  target_link_libraries(pcms PRIVATE Omega_h::omega_h)
+endif()
 
 # The conservative/Monte Carlo projection bindings include transfer headers
 # that transitively pull in PETSc (petscvec.h). PETSc is linked PRIVATE into
 # pcms_transfer, so its include directories do not propagate; link it here so
-# the bindings compile when PETSc + MeshFields are enabled.
-if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
+# the bindings compile when conservative projection is enabled.
+if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
   target_link_libraries(pcms PRIVATE PETSc::PETSc meshfields::meshfields)
 endif()
 

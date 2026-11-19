@@ -1,4 +1,4 @@
-# Writes pcms/version.h with the version derived from git. Run in script mode
+# Writes pcms/version.hpp with the version derived from git. Run in script mode
 # (cmake -P) at build time, so the version follows the checked out commit
 # without reconfiguring. configure_file only rewrites the header when its
 # contents change, so files including it are not rebuilt on every build.

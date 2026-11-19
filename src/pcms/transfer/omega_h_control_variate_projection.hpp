@@ -2,19 +2,19 @@
 #define PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP
 
 #include "pcms/field/coordinate_map.hpp"
-#include "pcms/field/field.h"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/point_evaluator.h"
+#include "pcms/field/field.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
-#include "pcms/transfer/interpolator.h"
+#include "pcms/transfer/interpolator.hpp"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
 #include <Kokkos_Core.hpp>
 #include <cstdint>
 #include <memory>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 class GalerkinProjectionSolver;
@@ -48,10 +48,12 @@ public:
   /// @param to_source map from the target's coordinate system to the source
   ///        geometry's, or null if they are the same; the source is evaluated
   ///        at the mapped points and its values re-expressed through it
+  /// Holds `source` and `target_space`.
   /// @throws pcms_error if the source has no geometry
   OmegaHControlVariateProjection(
-    const PointEvaluatorFactory& source, const FunctionSpace& target_space,
-    int samples_per_element, uint64_t seed = 8675309,
+    std::shared_ptr<const PointEvaluatorFactory> source,
+    std::shared_ptr<const FunctionSpace> target_space, int samples_per_element,
+    uint64_t seed = 8675309,
     MassMatrixType mass_matrix_type = MassMatrixType::Consistent,
     std::shared_ptr<const CoordinateMap> to_source = nullptr);
 
@@ -61,9 +63,11 @@ public:
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
 private:
-  std::shared_ptr<const OmegaHLagrangeLayout> target_layout_;
+  std::shared_ptr<const PointEvaluatorFactory> source_;
+  std::shared_ptr<const FunctionSpace> target_space_;
+  std::shared_ptr<const omega_h::OmegaHLagrangeLayout> target_layout_;
   std::unique_ptr<OmegaHMonteCarloRHSIntegrator> rhs_integrator_;
-  Interpolator<Real> interpolator_;
+  pcms::detail::Interpolator<Real> interpolator_;
   // Scratch field on the target space holding the interpolated control
   // variate; overwritten on every Apply.
   mutable Field<Real> control_variate_;
@@ -76,6 +80,6 @@ private:
   mutable Kokkos::View<Real**, DeviceMemorySpace> residual_;
 };
 
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_OMEGA_H_CONTROL_VARIATE_PROJECTION_HPP

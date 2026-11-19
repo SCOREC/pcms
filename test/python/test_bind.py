@@ -11,7 +11,17 @@ import weakref
 import numpy as np
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
+
+requires_omega_h = pytest.mark.skipif(
+    not pcms.features["omega_h"], reason="pcms was built without OMEGA_H")
+
+requires_polynomial_reconstruction = pytest.mark.skipif(
+    not pcms.features["polynomial_reconstruction"],
+    reason="pcms was built without POLYNOMIAL_RECONSTRUCTION")
 
 
 def _linear(x, y):
@@ -27,7 +37,7 @@ def mesh(world):
 
 @pytest.fixture
 def geometry(mesh):
-    return pcms.create_omega_h_geometry(mesh)
+    return pcms.omega_h.create_geometry(mesh)
 
 
 @pytest.fixture
@@ -44,7 +54,7 @@ def field(space):
     return f
 
 
-def test_evaluators_share_a_bound_source(space, field):
+def test_evaluators_share_a_bound_points(space, field):
     # the second point is outside the unit square
     bound = space.get_geometry().bind(
         pcms.CoordinateView([[0.25, 0.5], [2.0, 2.0], [0.75, 0.1]]),
@@ -68,9 +78,9 @@ def test_points_outside_raise_in_error_mode(space):
         space.get_geometry().bind(pcms.CoordinateView([[2.0, 2.0]]))
 
 
-def test_bound_source_belongs_to_its_geometry(mesh, space):
+def test_bound_points_belongs_to_its_geometry(mesh, space):
     other = pcms.create_lagrange_space(
-        pcms.create_omega_h_geometry(mesh), 1, 1,
+        pcms.omega_h.create_geometry(mesh), 1, 1,
         backend=pcms.LagrangeBackend.OmegaH)
     bound = space.get_geometry().bind(pcms.CoordinateView([[0.5, 0.5]]))
     with pytest.raises(RuntimeError, match="another geometry"):
@@ -78,7 +88,7 @@ def test_bound_source_belongs_to_its_geometry(mesh, space):
 
 
 def test_spaces_on_one_geometry_share_a_bind(mesh):
-    geometry = pcms.create_omega_h_geometry(mesh)
+    geometry = pcms.omega_h.create_geometry(mesh)
     backend = pcms.LagrangeBackend.OmegaH
     scalars = pcms.create_lagrange_space(
         geometry, 1, 1, backend=backend)
@@ -115,12 +125,12 @@ def test_derivatives_need_a_source_that_has_them(space):
         pcms.gradient(space)
 
 
-def test_interpolator_reuses_a_bound_source(geometry, space, field):
+def test_interpolator_reuses_a_bound_points(geometry, space, field):
     target = pcms.create_lagrange_space(
         geometry, 1, 1, backend=pcms.LagrangeBackend.OmegaH)
     bound = geometry.bind(target)
     out = target.create_function()
-    pcms.Interpolator(space, target, bound).apply(field, out)
+    pcms.create_interpolator(space, target, bound).apply(field, out)
     np.testing.assert_allclose(out.get_dof_holder_data().get_values(),
                                field.get_dof_holder_data().get_values(),
                                atol=1e-12)
@@ -129,7 +139,7 @@ def test_interpolator_reuses_a_bound_source(geometry, space, field):
 def test_get_geometry_outlives_the_original_wrappers(world):
     mesh = omega_h.build_box(
         world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
-    geometry = pcms.create_omega_h_geometry(mesh)
+    geometry = pcms.omega_h.create_geometry(mesh)
     space = pcms.create_lagrange_space(
         geometry, 1, 1, backend=pcms.LagrangeBackend.OmegaH)
     returned = space.get_geometry()
@@ -151,10 +161,11 @@ def test_get_geometry_outlives_the_original_wrappers(world):
     lambda space, field: space.get_layout(),
     lambda space, field: field.get_layout(),
 ], ids=["space", "field"])
+@requires_polynomial_reconstruction
 def test_returned_layout_outlives_the_original_wrappers(world, get_layout):
     mesh = omega_h.build_box(
         world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
-    geometry = pcms.create_omega_h_geometry(mesh)
+    geometry = pcms.omega_h.create_geometry(mesh)
     space = pcms.create_lagrange_space(
         geometry, 1, 1, backend=pcms.LagrangeBackend.OmegaH)
     field = space.create_function()
@@ -169,13 +180,14 @@ def test_returned_layout_outlives_the_original_wrappers(world, get_layout):
     assert mesh_ref() is None
     coords = layout.get_dof_holder_coordinates().get_values()
     assert coords.shape == (25, 2)
-    cloud = pcms.create_point_cloud_geometry(layout)
+    cloud = pcms.point_cloud.create_geometry(layout)
     reconstruction = pcms.create_polynomial_reconstruction_space(cloud)
     bound = cloud.bind(pcms.CoordinateView([[0.5, 0.5]]))
     np.testing.assert_array_equal(bound.found_points(), [0])
     reconstruction.create_point_evaluator(bound)
 
 
+@requires_omega_h
 def test_function_get_space_owns_mesh_and_runtime():
     # A fresh process gives this test sole ownership of the Omega_h runtime.
     script = textwrap.dedent("""
@@ -188,7 +200,7 @@ def test_function_get_space_owns_mesh_and_runtime():
         world = library.world()
         mesh = omega_h.build_box(
             world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
-        geometry = pcms.create_omega_h_geometry(mesh)
+        geometry = pcms.omega_h.create_geometry(mesh)
         space = pcms.create_lagrange_space(
             geometry, 1, 1, backend=pcms.LagrangeBackend.OmegaH)
         field = space.create_function()
@@ -211,7 +223,7 @@ def test_function_get_space_owns_mesh_and_runtime():
 def test_query_bound_outlives_the_original_wrappers(world):
     mesh = omega_h.build_box(
         world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
-    geometry = pcms.create_omega_h_geometry(mesh)
+    geometry = pcms.omega_h.create_geometry(mesh)
     query = pcms.QueryPoints(geometry)
     query.locate(pcms.CoordinateView([[0.5, 0.5]]))
     bound = query.bound

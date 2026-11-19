@@ -4,13 +4,19 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/transfer/interpolator.h>
-#include "field_test_utils.h"
+#include <pcms/backends/omega_h/omega_h.hpp>
+#include <pcms/field/function_spaces.hpp>
+#include <pcms/transfer/interpolator.hpp>
+#include "field_test_utils.hpp"
 #include <memory>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
+
+namespace pcms
+{
+using omega_h::CreateGeometry;
+} // namespace pcms
 
 using Catch::Matchers::ContainsSubstring;
 using pcms::DeviceMemorySpace;
@@ -42,8 +48,8 @@ std::shared_ptr<const FunctionSpace> BuildCylindricalSpace(Omega_h::Mesh& mesh,
                                                            int num_components)
 {
   return CreateLagrangeSpace(
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::CylindricalRThetaZ::Create()),
-    1, num_components, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
+    pcms::CreateGeometry(mesh, pcms::csys::CreateCylindricalRThetaZ()), 1,
+    num_components, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
 int NumDOFHolders(const FunctionSpace& space)
@@ -60,8 +66,8 @@ TEST_CASE("PointEvaluator::Evaluate gates on the source field's stored basis")
   auto mesh = BuildCylindricalMesh(lib, 6);
   auto space = BuildCylindricalSpace(mesh, 3);
   // Borrowed-basis storage: Cartesian components on a cylindrical-system space.
-  auto cartesian = space->CreateFunction<Real>(
-    "b", values::Vector, pcms::csys::Cartesian::Create(3));
+  auto cartesian = space->CreateFunction<Real>("b", values::Vector,
+                                               pcms::csys::CreateCartesian(3));
   auto cylindrical = space->CreateFunction<Real>("b_native", values::Vector,
                                                  ComponentScaling::Physical);
   pcms::test::SetFieldComponents(cartesian, [](Real, Real, Real, Real* out) {
@@ -109,7 +115,7 @@ TEST_CASE("tagged writes gate on the field's declaration")
   SECTION("a matching tag is accepted")
   {
     b.SetDOFHolderDataHost(ValueView<const Real, HostMemorySpace>(
-      ValueBasis{pcms::csys::CylindricalRThetaZ::Create(),
+      ValueBasis{pcms::csys::CreateCylindricalRThetaZ(),
                  ComponentScaling::Physical,
                  VarianceSignature{Variance::Contravariant}},
       raw));
@@ -121,7 +127,7 @@ TEST_CASE("tagged writes gate on the field's declaration")
   {
     REQUIRE_THROWS_WITH(
       b.SetDOFHolderDataHost(ValueView<const Real, HostMemorySpace>(
-        ValueBasis{pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
+        ValueBasis{pcms::csys::CreateCartesian(3), ComponentScaling::Physical,
                    VarianceSignature{Variance::Contravariant}},
         raw)),
       ContainsSubstring("does not match this field's declaration"));

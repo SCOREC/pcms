@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/localization/adj_search.hpp>
-#include <pcms/field/evaluator/mls_interpolation.hpp>
-#include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
-#include <pcms/utility/mesh_geometry.h>
+#include <pcms/backends/omega_h/adj_search.hpp>
+#include <pcms/backends/point_cloud/mls_interpolation.hpp>
+#include <pcms/backends/point_cloud/interpolator_aliases.hpp>
+#include <pcms/utility/mesh_geometry.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
@@ -66,11 +66,14 @@ void test(Mesh& mesh, Omega_h::Graph& patches, int degree,
   Omega_h::Real tolerance = 0.0005;
 
   Omega_h::Write<Omega_h::Real> ignored(patches.a2ab.size() - 1, 1);
-  SupportResults support{patches.a2ab, patches.ab2b, ignored};
+  SupportResults support{patches.a2ab.view(), patches.ab2b.view(),
+                         ignored.view()};
 
-  auto approx_target_values = pcms::mls_interpolation(
-    source_values, source_coordinates, target_coordinates, support, dim, degree,
-    pcms::RadialBasisFunction::NO_OP, 1e-5);
+  auto approx_target_values =
+    Omega_h::Write<Omega_h::Real>(pcms::detail::mls_interpolation(
+      source_values.view(), source_coordinates.view(),
+      target_coordinates.view(), support, dim, degree,
+      pcms::RadialBasisFunction::NO_OP, 1e-5));
 
   const auto delta_abs = Omega_h::fabs_each(Omega_h::subtract_each(
     exact_target_values, Omega_h::read(approx_target_values)));

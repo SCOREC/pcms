@@ -3,17 +3,24 @@
 
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/evaluator/mls_point_cloud.h>
-#include <pcms/field/evaluator/point_cloud_geometry.hpp>
-#include <pcms/field/function_space/polynomial_reconstruction.hpp>
-#include <pcms/field/layout/omega_h_entity.h>
-#include <pcms/utility/entity_types.h>
-#include <pcms/utility/mesh_geometry.h>
-#include "field_test_utils.h"
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/backends/point_cloud/mls_evaluator.hpp>
+#include <pcms/backends/point_cloud/point_cloud_geometry.hpp>
+#include <pcms/field/function_spaces.hpp>
+#include <pcms/backends/omega_h/entity_layout.hpp>
+#include <pcms/utility/entity_types.hpp>
+#include <pcms/utility/mesh_geometry.hpp>
+#include "field_test_utils.hpp"
 
 #include <cmath>
 #include <vector>
+
+namespace pcms
+{
+using detail::MLSBinding;
+using omega_h::OmegaHEntityLayout;
+using utility::get_entity_centroids;
+} // namespace pcms
 
 using Catch::Matchers::WithinAbs;
 using pcms::HostMemorySpace;
@@ -49,7 +56,7 @@ TEST_CASE("MLS reconstruction from a mesh to vertices")
   auto world = lib.world();
   auto source_mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 20, 20, 0, false);
-  const auto system = pcms::csys::Cartesian::Create(2);
+  const auto system = pcms::csys::CreateCartesian(2);
   const pcms::NeighbourhoodOptions supports{.radius = 0.12, .min_supports = 15};
   const auto source_geometry = pcms::test::MakeOmegaHGeometry(source_mesh);
   auto vertices = std::make_shared<pcms::OmegaHEntityLayout>(source_geometry,
@@ -60,13 +67,14 @@ TEST_CASE("MLS reconstruction from a mesh to vertices")
     // element centroids to the vertices of the same mesh, by the mesh
     // adjacency and by the distance search over the centroids as a point cloud
     auto mesh_space = pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(std::make_shared<pcms::OmegaHEntityLayout>(
-                                       source_geometry, pcms::Face, 1),
-                                     supports));
+      pcms::point_cloud::CreateGeometry(
+        std::make_shared<pcms::OmegaHEntityLayout>(source_geometry, pcms::Face,
+                                                   1),
+        supports));
     auto centroids = pcms::test::CopyOmegaHRealsToVector(
       pcms::get_entity_centroids(source_mesh, Omega_h::FACE));
     auto cloud_space = pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(
+      pcms::point_cloud::CreateGeometry(
         pcms::CoordinateView<HostMemorySpace>(
           system, pcms::Rank2View<const Real, HostMemorySpace>(
                     centroids.data(), source_mesh.nfaces(), 2)),
@@ -107,7 +115,7 @@ TEST_CASE("MLS reconstruction from a mesh to vertices")
     auto target_mesh =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 17, 17, 0, false);
     auto space = pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(vertices, supports));
+      pcms::point_cloud::CreateGeometry(vertices, supports));
     auto field = space->CreateFunction<Real>();
     pcms::test::SetField(
       field, OMEGA_H_LAMBDA(Real x, Real y) { return SinxCosy(x, y); });
@@ -131,9 +139,9 @@ TEST_CASE("MLS reconstruction honours the dimension of the points")
       }
     }
   }
-  const auto system = pcms::csys::Cartesian::Create(3);
+  const auto system = pcms::csys::CreateCartesian(3);
   auto space = pcms::CreatePolynomialReconstructionSpace(
-    pcms::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<HostMemorySpace>(
         system,
         pcms::Rank2View<const Real, HostMemorySpace>(points.data(), 27, 3)),

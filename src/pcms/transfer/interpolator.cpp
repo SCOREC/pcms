@@ -1,4 +1,4 @@
-#include "pcms/transfer/interpolator.h"
+#include "pcms/transfer/interpolator.hpp"
 #include "pcms/field/coordinate_map.hpp"
 
 namespace pcms
@@ -7,11 +7,11 @@ namespace pcms
 namespace detail
 {
 
-bool SameDOFHolderSites(const BoundSource& bound, const FieldLayout& layout)
+bool SameDOFHolderSites(const BoundPoints& bound, const FieldLayout& layout)
 {
   const auto sites = layout.GetDOFHolderCoordinates();
-  if (!SameCoordinateSystem(bound.GetCoordinateSystem(),
-                            sites.GetCoordinateSystem())) {
+  if (!pcms::detail::SameCoordinateSystem(bound.GetCoordinateSystem(),
+                                          sites.GetCoordinateSystem())) {
     return false;
   }
   const auto vs = sites.GetValues();

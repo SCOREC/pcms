@@ -1,8 +1,9 @@
 #include "pcms/field/gradient_source.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/field/detail/gradient_source.hpp"
+#include "pcms/utility/assert.hpp"
 #include <string>
 
-namespace pcms
+namespace pcms::detail
 {
 namespace
 {
@@ -33,14 +34,15 @@ public:
 
 protected:
   PointEvaluatorVariant CreatePointEvaluatorImpl(
-    Type value_type, std::shared_ptr<const BoundSource> bound,
+    Type value_type, std::shared_ptr<const BoundPoints> bound,
     DifferentialOperator op) const override
   {
     PCMS_ALWAYS_ASSERT(op == DifferentialOperator::Value); // Supports gated it
-    return apply_to_type(value_type, [&](auto type) -> PointEvaluatorVariant {
-      return CreateUntransformedPointEvaluator<typename decltype(type)::type>(
-        *source_, std::move(bound), op_);
-    });
+    return detail::apply_to_type(
+      value_type, [&](auto type) -> PointEvaluatorVariant {
+        return CreateUntransformedPointEvaluator<typename decltype(type)::type>(
+          *source_, std::move(bound), op_);
+      });
   }
 
 private:
@@ -66,22 +68,27 @@ std::shared_ptr<const PointEvaluatorFactory> Apply(
   return std::make_shared<OperatorSource>(std::move(source), op);
 }
 
+} // namespace pcms::detail
+
+namespace pcms
+{
+
 std::shared_ptr<const PointEvaluatorFactory> Gradient(
   std::shared_ptr<const PointEvaluatorFactory> source)
 {
-  return Apply(DifferentialOperator::Gradient, std::move(source));
+  return detail::Apply(DifferentialOperator::Gradient, std::move(source));
 }
 
 std::shared_ptr<const PointEvaluatorFactory> Divergence(
   std::shared_ptr<const PointEvaluatorFactory> source)
 {
-  return Apply(DifferentialOperator::Divergence, std::move(source));
+  return detail::Apply(DifferentialOperator::Divergence, std::move(source));
 }
 
 std::shared_ptr<const PointEvaluatorFactory> Curl(
   std::shared_ptr<const PointEvaluatorFactory> source)
 {
-  return Apply(DifferentialOperator::Curl, std::move(source));
+  return detail::Apply(DifferentialOperator::Curl, std::move(source));
 }
 
 } // namespace pcms

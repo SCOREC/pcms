@@ -1,28 +1,28 @@
 #ifndef PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP
 #define PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP
 
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/field/function_space.h"
-#include "pcms/field/layout/omega_h_lagrange.h"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
+#include "pcms/field/function_space.hpp"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/geometry/geometry.hpp"
-#include "pcms/transfer/mesh_intersection.hpp"
-#include "pcms/utility/assert.h"
+#include "pcms/backends/omega_h/mesh_intersection.hpp"
+#include "pcms/utility/assert.hpp"
 #include <MeshField_Integrate.hpp>
 #include <MeshField_Shape.hpp>
 #include <MeshField_Config.hpp>
 #include <Omega_h_shape.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 
-namespace pcms::detail
+namespace pcms::transfer::detail
 {
 
 // The layout and Omega_h geometry of a scalar Lagrange space on a simplex mesh
 // (triangles in 2D, tetrahedra in 3D) in Cartesian coordinates.
 struct OmegaHScalarSpace
 {
-  std::shared_ptr<const OmegaHLagrangeLayout> layout;
-  std::shared_ptr<const OmegaHGeometry> geometry;
+  std::shared_ptr<const omega_h::OmegaHLagrangeLayout> layout;
+  std::shared_ptr<const omega_h::OmegaHGeometry> geometry;
 };
 
 // Checks that `space` is a scalar Lagrange space of an order in [min_order,
@@ -38,27 +38,27 @@ inline OmegaHScalarSpace ResolveOmegaHScalarSpace(const FunctionSpace& space,
                                                   const char* role)
 {
   const std::string prefix = std::string(context) + ": " + role + " ";
-  auto layout =
-    std::dynamic_pointer_cast<const OmegaHLagrangeLayout>(space.GetLayout());
+  auto layout = std::dynamic_pointer_cast<const omega_h::OmegaHLagrangeLayout>(
+    space.GetLayout());
   if (layout == nullptr) {
     throw pcms_error(prefix + "space must use OmegaHLagrangeLayout");
   }
   if (layout->GetNumComponents() != 1) {
     throw pcms_error(prefix + "space must have exactly one component");
   }
-  auto geometry =
-    std::dynamic_pointer_cast<const OmegaHGeometry>(space.GetGeometry());
-  if (geometry == nullptr || &GetMesh(*geometry) != &layout->GetMesh()) {
+  auto geometry = std::dynamic_pointer_cast<const omega_h::OmegaHGeometry>(
+    space.GetGeometry());
+  if (geometry == nullptr || &geometry->GetMesh() != &layout->GetMesh()) {
     throw pcms_error(prefix +
                      "space must be on the Omega_h geometry of its layout's "
                      "mesh");
   }
-  const Omega_h::Mesh& mesh = GetMesh(*geometry);
+  const Omega_h::Mesh& mesh = geometry->GetMesh();
   if (mesh.dim() != 2 && mesh.dim() != 3) {
     throw pcms_error(prefix + "mesh must be 2D or 3D");
   }
-  if (!SameCoordinateSystem(space.GetCoordinateSystem(),
-                            csys::Cartesian::Create(mesh.dim()))) {
+  if (!pcms::detail::SameCoordinateSystem(space.GetCoordinateSystem(),
+                                          csys::CreateCartesian(mesh.dim()))) {
     throw pcms_error(prefix +
                      "space must use the Cartesian coordinate system of its "
                      "mesh dimension; map other systems explicitly");
@@ -93,7 +93,8 @@ inline Kokkos::View<Real*, DeviceMemorySpace> ElementMeasuresAtPoints(
   }
   PCMS_ALWAYS_ASSERT(owners.entities.extent(0) ==
                      static_cast<size_t>(bound->NumPoints()));
-  const int dim = GetMesh(geometry).dim();
+  const int dim =
+    dynamic_cast<const omega_h::OmegaHGeometry&>(geometry).GetMesh().dim();
   const Real reference_measure = dim == 3 ? 1.0 / 6.0 : 0.5;
   const auto determinant = differential.determinant;
   const bool per_element = differential.per_element;
@@ -283,19 +284,19 @@ OMEGA_H_INLINE void ForEachPolytopeStarSimplex(const r3d::Polytope<Dim>& poly,
 // target element's intersection with the source mesh
 template <int Dim, typename SimplexOp>
 OMEGA_H_INLINE void ForEachIntersectionSubsimplex(
-  const int elm, const IntersectionResults& intersection,
+  const int elm, const omega_h::IntersectionResults& intersection,
   const Omega_h::Reals& tgt_coords, const Omega_h::Reals& src_coords,
   const Omega_h::LOs& tgt_elems2nodes, const Omega_h::LOs& src_elems2nodes,
   SimplexOp&& op)
 {
   auto tgt_elm_vert_coords =
-    get_vert_coords_of_elem<Dim>(tgt_coords, tgt_elems2nodes, elm);
+    omega_h::get_vert_coords_of_elem<Dim>(tgt_coords, tgt_elems2nodes, elm);
   const int start = intersection.tgt2src_offsets[elm];
   const int end = intersection.tgt2src_offsets[elm + 1];
 
   for (int i = start; i < end; ++i) {
     const int current_src_elm = intersection.tgt2src_indices[i];
-    auto src_elm_vert_coords = get_vert_coords_of_elem<Dim>(
+    auto src_elm_vert_coords = omega_h::get_vert_coords_of_elem<Dim>(
       src_coords, src_elems2nodes, current_src_elm);
     r3d::Polytope<Dim> poly;
     r3d::intersect_simplices(poly, tgt_elm_vert_coords, src_elm_vert_coords);
@@ -442,6 +443,6 @@ struct TargetSimplexBasis<Dim, 1>
   }
 };
 
-} // namespace pcms::detail
+} // namespace pcms::transfer::detail
 
 #endif // PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP

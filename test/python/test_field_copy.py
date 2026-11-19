@@ -3,7 +3,10 @@
 import numpy as np
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
 
 
 class TestFieldCopy:
@@ -30,7 +33,7 @@ class TestFieldCopy:
 
         # Create factory and layout
         factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), order, num_components)
+            pcms.omega_h.create_geometry(mesh), order, num_components)
 
         # Create original field and set data
         original = factory.create_function()
@@ -44,7 +47,7 @@ class TestFieldCopy:
 
         # Create copied field and copy data
         copied = factory.create_function()
-        copier = pcms.Copy(factory, factory)
+        copier = pcms.create_copy(factory, factory)
         copier.apply(original, copied)
 
         # Get copied data

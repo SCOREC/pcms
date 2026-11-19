@@ -1,13 +1,20 @@
-#include "pcms/coupler/field_exchange_planner.h"
-#include "partition.h"
+#include "pcms/coupler/detail/field_exchange_planner.hpp"
+#include "pcms/coupler/partition.hpp"
 #include "pcms/field/gid_permutation.hpp"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/inclusive_scan.h"
-#include "pcms/utility/profile.h"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/inclusive_scan.hpp"
+#include "pcms/utility/detail/profile.hpp"
 #include <algorithm>
 #include <map>
 
 namespace pcms
+{
+using field::AppendGidPermutation;
+using field::GidToIndexMaps;
+using field::MakeUnmappedPermutation;
+} // namespace pcms
+
+namespace pcms::detail
 {
 
 namespace
@@ -54,8 +61,8 @@ static OutMsg ConstructOutMessage(const ReversePartitionMap2& reverse_partition)
   }
   out.offset.resize(counts.size() + 1);
   out.offset[0] = 0;
-  pcms::inclusive_scan(counts.begin(), counts.end(),
-                       std::next(out.offset.begin(), 1));
+  pcms::detail::inclusive_scan(counts.begin(), counts.end(),
+                               std::next(out.offset.begin(), 1));
   return out;
 }
 
@@ -217,11 +224,12 @@ static ReversePartitionMap2 BuildReversePartitionMap(
     for (int d = mesh_dim; d < 3; ++d)
       coord[d] = 0.0;
 
-    int mesh_ent_dim = GetMeshEntityDim(owned_index, ent_offsets);
+    int mesh_ent_dim = pcms::detail::GetMeshEntityDim(owned_index, ent_offsets);
     LO class_dim = class_dims[owned_index];
     LO class_id = class_ids[owned_index];
 
-    auto dr = std::visit(GetRank{class_id, class_dim, coord}, partition);
+    auto dr =
+      std::visit(coupler::GetRank{class_id, class_dim, coord}, partition);
     reverse_partition[dr].indices.emplace_back(owned_index);
 
     for (size_t e = static_cast<size_t>(mesh_ent_dim) + 1; e < ent_offsets_len;
@@ -306,7 +314,7 @@ void GenericFieldExchangePlanner::FillGidMessage(
       perm_index + static_cast<LO>((block_index + 1) * ent_offsets_len);
     gid_message(gid_index) = gids(owned_index);
 
-    int mesh_ent_dim = GetMeshEntityDim(owned_index, ent_offsets);
+    int mesh_ent_dim = pcms::detail::GetMeshEntityDim(owned_index, ent_offsets);
     for (size_t e = static_cast<size_t>(mesh_ent_dim) + 1; e < ent_offsets_len;
          ++e) {
       per_rank_offsets[block_index][e] += 1;
@@ -324,4 +332,4 @@ void GenericFieldExchangePlanner::FillGidMessage(
   }
 }
 
-} // namespace pcms
+} // namespace pcms::detail

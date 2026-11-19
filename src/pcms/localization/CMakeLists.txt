@@ -1,16 +1,11 @@
+# no public headers: the MLS support search is private
 set(
         PCMS_LOCALIZATION_HEADERS
-        point_search.h
-        uniform_grid_search.hpp
-        queue_visited.hpp
-        adj_search.hpp
-        mls_support_helpers.h
+        mls_support_helpers.hpp
 )
 
 set(
         PCMS_LOCALIZATION_SOURCES
-        point_search.cpp
-        adj_search.cpp
         mls_support_helpers.cpp
 )
 add_library(pcms_localization ${PCMS_LOCALIZATION_SOURCES})
@@ -28,8 +23,11 @@ target_link_libraries(
         Kokkos::kokkos
         pcms::utility
         pcms::geometry
-        Omega_h::omega_h
 )
+# Omega_h is used by the implementation only (no public header includes it)
+if(PCMS_ENABLE_OMEGA_H)
+  target_link_libraries(pcms_localization PRIVATE Omega_h::omega_h)
+endif()
 target_compile_features(pcms_localization PUBLIC cxx_std_20)
 
 set_target_properties(
@@ -38,7 +36,7 @@ set_target_properties(
 )
 
 ## export the library
-set_target_properties(pcms_localization PROPERTIES PUBLIC_HEADER "${PCMS_LOCALIZATION_HEADERS}")
+target_sources(pcms_localization PRIVATE ${PCMS_LOCALIZATION_HEADERS})
 
 install(
         TARGETS pcms_localization
@@ -48,11 +46,10 @@ install(
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         INCLUDES
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms/localization
 )
 
 install(
         EXPORT pcms_localization-targets
         NAMESPACE pcms::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/pcms
+        DESTINATION ${PCMS_INSTALL_CMAKEDIR}
 )

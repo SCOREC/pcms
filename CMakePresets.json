@@ -1,0 +1,193 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 26, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "ON",
+        "PCMS_ENABLE_EXAMPLES": "ON"
+      }
+    },
+    { "name": "with-omega-h", "hidden": true, "cacheVariables": { "PCMS_ENABLE_OMEGA_H": "ON" } },
+    {
+      "name": "with-omega-h-meshfields",
+      "hidden": true,
+      "inherits": "with-omega-h",
+      "cacheVariables": { "PCMS_ENABLE_OMEGA_H_MESHFIELDS": "ON" }
+    },
+    {
+      "name": "with-conservative-projection",
+      "hidden": true,
+      "inherits": "with-omega-h-meshfields",
+      "cacheVariables": { "PCMS_ENABLE_CONSERVATIVE_PROJECTION": "ON" }
+    },
+    {
+      "name": "with-polynomial-reconstruction",
+      "hidden": true,
+      "cacheVariables": { "PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION": "ON" }
+    },
+    {
+      "name": "with-xgc",
+      "hidden": true,
+      "inherits": "with-omega-h",
+      "cacheVariables": { "PCMS_ENABLE_XGC": "ON" }
+    },
+    { "name": "with-coupler", "hidden": true, "cacheVariables": { "PCMS_ENABLE_COUPLER": "ON" } },
+    {
+      "name": "with-c-fortran",
+      "hidden": true,
+      "cacheVariables": { "PCMS_ENABLE_C": "ON", "PCMS_ENABLE_FORTRAN": "ON" }
+    },
+    { "name": "with-python", "hidden": true, "cacheVariables": { "PCMS_ENABLE_PYTHON": "ON" } },
+    {
+      "name": "static",
+      "hidden": true,
+      "cacheVariables": { "BUILD_SHARED_LIBS": "OFF", "PCMS_PETSC_LINK_STATIC": "ON" }
+    },
+    {
+      "name": "minimal",
+      "displayName": "Core only (Kokkos and MPI)",
+      "inherits": "base"
+    },
+    {
+      "name": "polynomial-reconstruction",
+      "displayName": "Core and polynomial reconstruction (KokkosKernels)",
+      "inherits": ["base", "with-polynomial-reconstruction"]
+    },
+    {
+      "name": "unstructured",
+      "displayName": "Omega_h meshes with MeshFields spaces",
+      "inherits": ["base", "with-omega-h-meshfields"]
+    },
+    {
+      "name": "conservative",
+      "displayName": "unstructured and conservative projections (PETSc)",
+      "inherits": ["base", "with-conservative-projection"]
+    },
+    {
+      "name": "coupling-core",
+      "displayName": "Core and the coupler (redev, ADIOS2)",
+      "inherits": ["base", "with-coupler"]
+    },
+    {
+      "name": "coupling",
+      "displayName": "Coupler with XGC and the C and Fortran client APIs",
+      "inherits": ["base", "with-coupler", "with-xgc", "with-c-fortran"]
+    },
+    {
+      "name": "full",
+      "displayName": "Everything except MFEM",
+      "inherits": [
+        "base",
+        "with-conservative-projection",
+        "with-polynomial-reconstruction",
+        "with-xgc",
+        "with-coupler",
+        "with-c-fortran",
+        "with-python"
+      ]
+    },
+    {
+      "name": "full-static",
+      "displayName": "full without Python, static libraries and static PETSc",
+      "inherits": ["static", "full"],
+      "cacheVariables": { "PCMS_ENABLE_PYTHON": "OFF" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "minimal", "configurePreset": "minimal" },
+    { "name": "polynomial-reconstruction", "configurePreset": "polynomial-reconstruction" },
+    { "name": "unstructured", "configurePreset": "unstructured" },
+    { "name": "conservative", "configurePreset": "conservative" },
+    { "name": "coupling-core", "configurePreset": "coupling-core" },
+    { "name": "coupling", "configurePreset": "coupling" },
+    { "name": "full", "configurePreset": "full" },
+    { "name": "full-static", "configurePreset": "full-static" }
+  ],
+  "testPresets": [
+    { "name": "base", "hidden": true, "output": { "outputOnFailure": true } },
+    { "name": "minimal", "inherits": "base", "configurePreset": "minimal" },
+    {
+      "name": "polynomial-reconstruction",
+      "inherits": "base",
+      "configurePreset": "polynomial-reconstruction"
+    },
+    { "name": "unstructured", "inherits": "base", "configurePreset": "unstructured" },
+    { "name": "conservative", "inherits": "base", "configurePreset": "conservative" },
+    { "name": "coupling-core", "inherits": "base", "configurePreset": "coupling-core" },
+    { "name": "coupling", "inherits": "base", "configurePreset": "coupling" },
+    { "name": "full", "inherits": "base", "configurePreset": "full" },
+    { "name": "full-static", "inherits": "base", "configurePreset": "full-static" }
+  ],
+  "workflowPresets": [
+    {
+      "name": "minimal",
+      "steps": [
+        { "type": "configure", "name": "minimal" },
+        { "type": "build", "name": "minimal" },
+        { "type": "test", "name": "minimal" }
+      ]
+    },
+    {
+      "name": "polynomial-reconstruction",
+      "steps": [
+        { "type": "configure", "name": "polynomial-reconstruction" },
+        { "type": "build", "name": "polynomial-reconstruction" },
+        { "type": "test", "name": "polynomial-reconstruction" }
+      ]
+    },
+    {
+      "name": "unstructured",
+      "steps": [
+        { "type": "configure", "name": "unstructured" },
+        { "type": "build", "name": "unstructured" },
+        { "type": "test", "name": "unstructured" }
+      ]
+    },
+    {
+      "name": "conservative",
+      "steps": [
+        { "type": "configure", "name": "conservative" },
+        { "type": "build", "name": "conservative" },
+        { "type": "test", "name": "conservative" }
+      ]
+    },
+    {
+      "name": "coupling-core",
+      "steps": [
+        { "type": "configure", "name": "coupling-core" },
+        { "type": "build", "name": "coupling-core" },
+        { "type": "test", "name": "coupling-core" }
+      ]
+    },
+    {
+      "name": "coupling",
+      "steps": [
+        { "type": "configure", "name": "coupling" },
+        { "type": "build", "name": "coupling" },
+        { "type": "test", "name": "coupling" }
+      ]
+    },
+    {
+      "name": "full",
+      "steps": [
+        { "type": "configure", "name": "full" },
+        { "type": "build", "name": "full" },
+        { "type": "test", "name": "full" }
+      ]
+    },
+    {
+      "name": "full-static",
+      "steps": [
+        { "type": "configure", "name": "full-static" },
+        { "type": "build", "name": "full-static" },
+        { "type": "test", "name": "full-static" }
+      ]
+    }
+  ]
+}

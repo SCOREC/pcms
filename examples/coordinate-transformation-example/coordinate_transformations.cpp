@@ -11,11 +11,12 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/field/coordinate_map.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/coordinate_systems/cylindrical.hpp>
-#include <pcms/field/evaluator/omega_h_geometry.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/transfer/interpolator.h>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cylindrical.hpp>
+#include <pcms/backends/omega_h/geometry.hpp>
+#include <pcms/backends/omega_h/omega_h.hpp>
+#include <pcms/field/function_spaces.hpp>
+#include <pcms/transfer/interpolator.hpp>
 #include <cmath>
 #include <cstdio>
 #include <exception>
@@ -52,7 +53,7 @@ HostView ToHost(Rank2View<const Real, DeviceMemorySpace> v)
 
 ValueBasis CylindricalVector()
 {
-  return {csys::CylindricalRThetaZ::Create(), ComponentScaling::Physical,
+  return {csys::CreateCylindricalRThetaZ(), ComponentScaling::Physical,
           values::Vector};
 }
 
@@ -92,12 +93,12 @@ void BuildSpaces(Omega_h::Library& lib, Omega_h::Mesh& src_mesh,
   src_mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 2.0, 1.6, 1.1, 8,
                                 8, 6, false);
   src = CreateLagrangeSpace(
-    CreateOmegaHGeometry(src_mesh, csys::CylindricalRThetaZ::Create()), 1, 3,
+    omega_h::CreateGeometry(src_mesh, csys::CreateCylindricalRThetaZ()), 1, 3,
     LagrangeOptions{.backend = LagrangeBackend::OmegaH});
   tgt_mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, 4,
                                 4, 4, false);
   tgt = CreateLagrangeSpace(
-    CreateOmegaHGeometry(tgt_mesh, csys::Cartesian::Create(3)), 1, 3,
+    omega_h::CreateGeometry(tgt_mesh, csys::CreateCartesian(3)), 1, 3,
     LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
@@ -105,8 +106,9 @@ void CaseA()
 {
   std::puts("(a) coordinate transformation");
   auto xyz = ToDevice({1.0, 0.0, 0.5, 0.0, 2.0, -1.0, 1.0, 1.0, 0.0}, 3);
-  auto bound = CartesianToCylindrical{}.Bind(CoordinateView<DeviceMemorySpace>(
-    csys::Cartesian::Create(3), MakeConstRank2View(xyz)));
+  auto bound =
+    CreateCartesianToCylindrical()->Bind(CoordinateView<DeviceMemorySpace>(
+      csys::CreateCartesian(3), MakeConstRank2View(xyz)));
   auto rtz = ToHost(bound->MappedPoints().GetValues());
 
   // Values run opposite to points: this map re-expresses cylindrical
@@ -136,7 +138,7 @@ void CaseB(Omega_h::Library& lib)
   // A borrowed basis: the space's points are (r, theta, z), but the field's
   // components are Cartesian. B = (x, y, z) = (r cos theta, r sin theta, z).
   auto b_src =
-    src->CreateFunction<Real>("b", values::Vector, csys::Cartesian::Create(3));
+    src->CreateFunction<Real>("b", values::Vector, csys::CreateCartesian(3));
   FillField(b_src, [](Real r, Real theta, Real z, Real* out) {
     out[0] = r * std::cos(theta);
     out[1] = r * std::sin(theta);
@@ -147,12 +149,12 @@ void CaseB(Omega_h::Library& lib)
   // The values are already in the target's basis, so the map passes them
   // through and only the points are mapped.
   const auto layout = tgt->GetLayout();
-  Interpolator<Real> op(
-    *src, *tgt,
+  const auto op = CreateInterpolator<Real>(
+    src, tgt,
     src->GetGeometry()->Bind(layout->GetDOFHolderCoordinates(),
                              OutOfBoundsPolicy{},
-                             std::make_shared<CartesianToCylindrical>()));
-  op.Apply(b_src, b_tgt);
+                             CreateCartesianToCylindrical()));
+  op->Apply(b_src, b_tgt);
   // Not exact: B's Cartesian components are not linear in (r, theta, z), so
   // the P1 source field only approximates them.
   std::printf("    via Interpolator:  max |B - (x,y,z)| = %.2e\n",
@@ -182,12 +184,12 @@ void CaseC(Omega_h::Library& lib)
   // the target's Cartesian points to (r, theta, z), and the source's
   // cylindrical components back to Cartesian.
   const auto layout = tgt->GetLayout();
-  Interpolator<Real> op(
-    *src, *tgt,
+  const auto op = CreateInterpolator<Real>(
+    src, tgt,
     src->GetGeometry()->Bind(layout->GetDOFHolderCoordinates(),
                              OutOfBoundsPolicy{},
-                             std::make_shared<CartesianToCylindrical>()));
-  op.Apply(b_src, b_tgt);
+                             CreateCartesianToCylindrical()));
+  op->Apply(b_src, b_tgt);
   std::printf("    max |B - (x,y,z)| = %.2e\n", MaxErrorFromXYZ(b_tgt));
 }
 

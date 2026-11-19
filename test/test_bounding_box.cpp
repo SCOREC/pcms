@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include <pcms/utility/bounding_box.h>
+#include <pcms/utility/bounding_box.hpp>
 
 using pcms::AABBox;
-using pcms::intersects;
+using pcms::detail::intersects;
 #include <iostream>
 
 TEST_CASE("test intersection")

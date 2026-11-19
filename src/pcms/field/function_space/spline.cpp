@@ -1,10 +1,17 @@
-#include "pcms/field/function_space/spline.h"
+#include "pcms/field/function_spaces.hpp"
 
-#include "pcms/field/data/simple.h"
-#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
-#include "pcms/field/evaluator/uniform_grid_spline.h"
-#include "pcms/field/layout/uniform_grid.h"
-#include "pcms/utility/common.h"
+#include "pcms/field/detail/simple_field_data.hpp"
+#include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
+#include "pcms/backends/uniform_grid/spline_evaluator.hpp"
+#include "pcms/backends/uniform_grid/layout.hpp"
+#include "pcms/utility/detail/common.hpp"
+
+namespace pcms
+{
+using uniform_grid::UniformGridFieldLayout;
+using uniform_grid::UniformGridGeometry;
+using uniform_grid::UniformGridSplineEvaluatorFactory2D;
+} // namespace pcms
 
 namespace pcms
 {
@@ -29,18 +36,18 @@ std::shared_ptr<const FunctionSpace> CreateSplineSpace(
   return std::make_shared<FunctionSpace>(
     layout,
     [layout](Type t, ValueBasis basis) -> FieldDataVariant {
-      return apply_to_type(t, [&](auto tag) -> FieldDataVariant {
+      return detail::apply_to_type(t, [&](auto tag) -> FieldDataVariant {
         using T = typename decltype(tag)::type;
         if constexpr (!std::is_same_v<T, double>) {
           throw pcms_error("CreateSplineSpace: only double (Real) is "
                            "supported");
         } else {
-          return std::make_unique<SimpleFieldData<double>>(layout,
-                                                           std::move(basis));
+          return std::make_unique<pcms::detail::SimpleFieldData<double>>(
+            layout, std::move(basis));
         }
       });
     },
-    std::move(evaluator_factory));
+    evaluator_factory, evaluator_factory->GetGeometry());
 }
 
 } // namespace pcms

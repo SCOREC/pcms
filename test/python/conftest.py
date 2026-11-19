@@ -3,7 +3,8 @@ Shared pytest fixtures for pcms Python API tests.
 """
 
 import pytest
-import PyOmega_h as omega_h
+
+import pcms
 
 
 @pytest.fixture(scope="session")
@@ -13,8 +14,10 @@ def omega_h_lib():
     Session-scoped so the (potentially expensive) Omega_h initialization
     happens exactly once per test run.
     """
-    lib = omega_h.OmegaHLibrary()
-    return lib
+    if not pcms.features["omega_h"]:
+        pytest.skip("pcms was built without the Omega_h backend")
+    omega_h = pytest.importorskip("PyOmega_h")
+    return omega_h.OmegaHLibrary()
 
 
 @pytest.fixture(scope="session")

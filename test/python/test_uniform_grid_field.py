@@ -5,7 +5,10 @@ Field-centric tests for uniform-grid-backed function spaces.
 import numpy as np
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
 
 
 def _coordinates(field):
@@ -27,7 +30,7 @@ class TestUniformGridField:
         grid.divisions = [4, 4]
 
         factory = pcms.create_lagrange_space(
-            pcms.create_uniform_grid_geometry(grid), 1, 1)
+            pcms.uniform_grid.create_geometry(grid), 1, 1)
         field = factory.create_function()
         expected = (grid.divisions[0] + 1) * (grid.divisions[1] + 1)
         assert field.get_layout().get_num_components() == 1
@@ -41,7 +44,7 @@ class TestUniformGridField:
         grid.divisions = [2, 2]
 
         factory = pcms.create_lagrange_space(
-            pcms.create_uniform_grid_geometry(grid), 1, 1)
+            pcms.uniform_grid.create_geometry(grid), 1, 1)
         field = factory.create_function()
         data = np.arange(_num_dof_holders(field),
                          dtype=np.float64).reshape(-1, 1)
@@ -59,7 +62,7 @@ class TestUniformGridField:
         grid.divisions = [2, 3]
 
         factory = pcms.create_lagrange_space(
-            pcms.create_uniform_grid_geometry(grid), 1, 1)
+            pcms.uniform_grid.create_geometry(grid), 1, 1)
         field = factory.create_function()
         coords = _coordinates(field)
         expected = (grid.divisions[0] + 1) * (grid.divisions[1] + 1)
@@ -89,7 +92,7 @@ class TestUniformGridField:
         grid.divisions = [2, 2, 2]
 
         factory = pcms.create_lagrange_space(
-            pcms.create_uniform_grid_geometry(grid), 1, 1)
+            pcms.uniform_grid.create_geometry(grid), 1, 1)
         field = factory.create_function()
         coords = _coordinates(field)
         expected = (
@@ -114,7 +117,7 @@ class TestUniformGridField:
         grid.divisions = [10, 10]
 
         factory = pcms.create_lagrange_space(
-            pcms.create_uniform_grid_geometry(grid), 1, 1)
+            pcms.uniform_grid.create_geometry(grid), 1, 1)
         field = factory.create_function()
         coords = _coordinates(field)
         num_dofs = _num_dof_holders(field)
@@ -149,13 +152,13 @@ class TestUniformGridOmegaHWorkflow:
             world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False,
         )
 
-        grid = pcms.create_uniform_grid_from_mesh(mesh, [4, 4])
-        mask_field = pcms.create_uniform_grid_binary_field(mesh, [4, 4])
+        grid = pcms.omega_h.create_uniform_grid_from_mesh(mesh, [4, 4])
+        mask_field = pcms.omega_h.create_uniform_grid_binary_field(mesh, [4, 4])
         mask_data = mask_field.get_dof_holder_data().get_values()
 
         # Build a mesh-backed source field: f(x,y) = x + 2y.
         omega_h_factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(mesh), 1, 1)
+            pcms.omega_h.create_geometry(mesh), 1, 1)
         omega_h_field = omega_h_factory.create_function()
         coords = _coordinates(omega_h_field)
         omega_h_data = np.zeros(_num_dof_holders(omega_h_field),
@@ -165,11 +168,11 @@ class TestUniformGridOmegaHWorkflow:
         omega_h_field.set_dof_holder_data(omega_h_data)
 
         ug_factory = pcms.create_lagrange_space(
-            pcms.create_uniform_grid_geometry(grid), 1, 1)
+            pcms.uniform_grid.create_geometry(grid), 1, 1)
         ug_field = ug_factory.create_function()
 
         # Transfer from unstructured mesh to uniform grid.
-        interp = pcms.Interpolator(omega_h_factory, ug_factory)
+        interp = pcms.create_interpolator(omega_h_factory, ug_factory)
         interp.apply(omega_h_field, ug_field)
 
         ug_field_data = ug_field.get_dof_holder_data().get_values()
@@ -194,9 +197,9 @@ class TestUniformGridOmegaHWorkflow:
         )
 
         src_factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(src_mesh), 1, 1)
+            pcms.omega_h.create_geometry(src_mesh), 1, 1)
         tgt_factory = pcms.create_lagrange_space(
-            pcms.create_omega_h_geometry(tgt_mesh), 1, 1)
+            pcms.omega_h.create_geometry(tgt_mesh), 1, 1)
         src_field = src_factory.create_function()
         tgt_field = tgt_factory.create_function()
 
@@ -206,7 +209,7 @@ class TestUniformGridOmegaHWorkflow:
             src_data[i] = src_coords[i, 0] + 2.0 * src_coords[i, 1]
         src_field.set_dof_holder_data(src_data)
 
-        interp = pcms.Interpolator(src_factory, tgt_factory)
+        interp = pcms.create_interpolator(src_factory, tgt_factory)
         interp.apply(src_field, tgt_field)
 
         tgt_coords = _coordinates(tgt_field)

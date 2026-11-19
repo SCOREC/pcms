@@ -3,15 +3,20 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/evaluator/uniform_grid_geometry.hpp"
-#include "pcms/field/function_space/spline.h"
+#include <pcms/backends/omega_h/omega_h.hpp>
+#include "pcms/field/function_spaces.hpp"
+#include "pcms/backends/uniform_grid/geometry.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/utility/uniform_grid.h"
-#include "field_test_utils.h"
+#include "pcms/utility/uniform_grid.hpp"
+#include "field_test_utils.hpp"
 #include <Kokkos_Core.hpp>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+
+namespace pcms
+{
+using omega_h::CreateGeometry;
+} // namespace pcms
 
 using pcms::Real;
 
@@ -21,8 +26,7 @@ TEST_CASE("omega_h_field2 out of bounds FILL mode")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
-  auto geometry =
-    pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(geometry, 1, 1);
   auto field = factory->CreateFunction<Real>();
   pcms::test::SetField(field, OMEGA_H_LAMBDA(Real x, Real y) { return x + y; });
@@ -53,8 +57,8 @@ TEST_CASE("uniform_grid_field out of bounds FILL mode")
   grid.divisions = {N, N};
 
   auto factory = pcms::CreateLagrangeSpace(
-    pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()), 1,
-    1);
+    pcms::uniform_grid::CreateGeometry(grid, pcms::detail::DeferredCartesian()),
+    1, 1);
   auto field = factory->CreateFunction<Real>();
   pcms::test::SetField(field, OMEGA_H_LAMBDA(Real x, Real y) { return x + y; });
 
@@ -83,8 +87,8 @@ TEST_CASE("spline_field out of bounds FILL mode")
   grid.edge_length = {1.0, 1.0};
   grid.divisions = {N, N};
 
-  auto factory = pcms::CreateSplineSpace(
-    pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Deferred()));
+  auto factory = pcms::CreateSplineSpace(pcms::uniform_grid::CreateGeometry(
+    grid, pcms::detail::DeferredCartesian()));
   auto field = factory->CreateFunction<Real>();
   pcms::test::SetField(field, OMEGA_H_LAMBDA(Real x, Real y) { return x + y; });
 

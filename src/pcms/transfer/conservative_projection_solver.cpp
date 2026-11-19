@@ -1,12 +1,12 @@
 #include <petscksp.h>
 
-#include "pcms/configuration.h"
+#include "pcms/configuration.hpp"
 #include "pcms/transfer/conservative_projection_solver.hpp"
-#include "pcms/utility/arrays.h"
+#include "pcms/utility/arrays.hpp"
 #include "pcms/transfer/petsc_utils.hpp"
 #include <Kokkos_Core.hpp>
 
-namespace pcms
+namespace pcms::transfer
 {
 
 static Omega_h::Reals vecToOmegaHReals(Vec vec)
@@ -89,7 +89,7 @@ Omega_h::Reals GalerkinProjectionSolver::Solve(
 {
   evaluator.Evaluate(source_field, ValueView<Real, DeviceMemorySpace>(
                                      source_field.GetData().GetValueBasis(),
-                                     MakeRank2View(sampled_values_)));
+                                     pcms::MakeRank2View(sampled_values_)));
   return Solve(MakeConstRank2View(sampled_values_));
 }
 
@@ -114,4 +114,4 @@ Omega_h::Reals GalerkinProjectionSolver::Solve(
   return result;
 }
 
-} // namespace pcms
+} // namespace pcms::transfer

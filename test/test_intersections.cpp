@@ -1,5 +1,5 @@
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/evaluator/omega_h_geometry.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/backends/omega_h/omega_h_geometry.hpp>
 #include <pcms/field_transfer/mesh_intersection.hpp>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_session.hpp>
@@ -81,7 +81,7 @@ TEST_CASE("Mesh intersection test with source and target", "[intersection]")
   // Compute intersection mapping
   // ============================
   const auto src_geometry = std::make_shared<pcms::OmegaHGeometry>(
-    src_mesh, pcms::csys::Cartesian::Create(2));
+    src_mesh, pcms::csys::CreateCartesian(2));
   auto intersection = intersectTargets(*src_geometry, tgt_mesh);
 
   auto offsets = Omega_h::HostRead(intersection.tgt2src_offsets);

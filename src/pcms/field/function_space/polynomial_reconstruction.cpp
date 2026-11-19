@@ -1,9 +1,15 @@
-#include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include "pcms/field/evaluator/point_cloud.h"
-#include "pcms/field/evaluator/point_cloud_geometry.hpp"
-#include "pcms/field/data/simple.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/common.h"
+#include "pcms/field/function_spaces.hpp"
+#include "pcms/backends/point_cloud/evaluator.hpp"
+#include "pcms/backends/point_cloud/point_cloud_geometry.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/common.hpp"
+
+namespace pcms
+{
+using point_cloud::PointCloudEvaluatorFactory;
+using point_cloud::PointCloudGeometry;
+} // namespace pcms
 
 namespace pcms
 {
@@ -27,18 +33,18 @@ std::shared_ptr<const FunctionSpace> CreatePolynomialReconstructionSpace(
   return std::make_shared<FunctionSpace>(
     layout,
     [layout](Type t, ValueBasis basis) -> FieldDataVariant {
-      return apply_to_type(t, [&](auto tag) -> FieldDataVariant {
+      return detail::apply_to_type(t, [&](auto tag) -> FieldDataVariant {
         using T = typename decltype(tag)::type;
         if constexpr (!std::is_same_v<T, double>) {
           throw pcms_error("CreatePolynomialReconstructionSpace: only double "
                            "(Real) is supported");
         } else {
-          return std::make_unique<SimpleFieldData<double>>(layout,
-                                                           std::move(basis));
+          return std::make_unique<pcms::detail::SimpleFieldData<double>>(
+            layout, std::move(basis));
         }
       });
     },
-    std::move(eval_factory));
+    eval_factory, eval_factory->GetGeometry());
 }
 
 } // namespace pcms

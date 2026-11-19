@@ -6,7 +6,8 @@ message("TESTING ON SYSTEM WITH ${HOST_NPROC} CPU Cores")
 set(rendezvous 1)
 set(notRendezvous 0)
 
-if(PCMS_ENABLE_OMEGA_H)
+# coupling tests need the coupler (redev/ADIOS2)
+if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
   add_exe(test_ohClassPtn)
   set(cyclone1p ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh/)
   if(HOST_NPROC GREATER_EQUAL 3)
@@ -45,6 +46,13 @@ if(PCMS_ENABLE_OMEGA_H)
              $<TARGET_FILE:test_distributed_field>)
   endif()
   add_exe(test_distributed_coupling)
+  if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
+    # distributed_test_utils.hpp includes the (private) MeshFields field data
+    foreach(t test_distributed_layout test_distributed_field
+              test_distributed_coupling)
+      target_link_libraries(${t} meshfields::meshfields)
+    endforeach()
+  endif()
   if(HOST_NPROC GREATER_EQUAL 2)
     mpi_test(test_distributed_coupling_2p 2
              $<TARGET_FILE:test_distributed_coupling>)
@@ -183,7 +191,7 @@ if(PCMS_ENABLE_OMEGA_H)
       ignored)
   endif()
   add_executable(field_communication test_field_communication.cpp)
-  target_link_libraries(field_communication PUBLIC pcms::core test_support)
+  target_link_libraries(field_communication PUBLIC pcms::coupler test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
     tri_mpi_test(
       TESTNAME
@@ -222,7 +230,7 @@ if(PCMS_ENABLE_OMEGA_H)
       ignored)
   endif()
   add_executable(proxy_coupling test_proxy_coupling.cpp)
-  target_link_libraries(proxy_coupling PUBLIC pcms::core test_support)
+  target_link_libraries(proxy_coupling PUBLIC pcms::coupler test_support)
   if(HOST_NPROC GREATER_EQUAL 4)
     tri_mpi_test(
       TESTNAME
@@ -414,58 +422,75 @@ find_package(Catch2 3)
 if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
-  set(PCMS_UNIT_TEST_SOURCES unit_test_main.cpp
-                             test_coordinate_transformation.cpp
-                             test_bounding_box.cpp test_field_serializer.cpp)
+  # unit tests of the core (no Omega_h): splines and differential operators on
+  # uniform grids
+  set(PCMS_UNIT_TEST_SOURCES
+      unit_test_main.cpp
+      test_bounding_box.cpp
+      test_error_handling.cpp
+      test_spline_interpolator.cpp
+      test_derivatives.cpp)
+  if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
+    list(APPEND PCMS_UNIT_TEST_SOURCES
+         test_polynomial_reconstruction_mls_evaluation.cpp
+         test_svd_serial.cpp)
+  endif()
   if(PCMS_ENABLE_XGC)
-    list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_reverse_classification.cpp
-         test_xgc_field_data.cpp)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_reverse_classification.cpp)
+  endif()
+  # unit tests that use the coupler
+  if(TARGET pcms::coupler)
+    list(APPEND PCMS_UNIT_TEST_SOURCES test_field_serializer.cpp)
+    if(PCMS_ENABLE_XGC)
+      list(APPEND PCMS_UNIT_TEST_SOURCES test_xgc_field_data.cpp)
+    endif()
+    if(PCMS_ENABLE_OMEGA_H)
+      list(APPEND PCMS_UNIT_TEST_SOURCES test_field_exchange_planner.cpp)
+    endif()
+    if(PCMS_ENABLE_MFEM)
+      list(APPEND PCMS_UNIT_TEST_SOURCES test_mfem_adapter.cpp)
+    endif()
   endif()
 
   if(PCMS_ENABLE_OMEGA_H)
     list(
       APPEND
       PCMS_UNIT_TEST_SOURCES
-      test_error_handling.cpp
+      test_coordinate_transformation.cpp
             test_eqdsk.cpp
       test_uniform_grid.cpp
       test_field_evaluation.cpp
       test_field_interpolation.cpp
       test_field_copy.cpp
-      test_field_exchange_planner.cpp
       test_point_search.cpp
-      test_mls_basis.cpp
-      test_rbf_interp.cpp
-      test_normalisation.cpp
-      test_spline_interpolator.cpp
-      test_svd_serial.cpp
       test_uniform_grid_field.cpp
-      test_interpolation_class.cpp
       test_mesh_geometry.cpp
-            test_polynomial_reconstruction_function_space.cpp
-            test_polynomial_reconstruction_mls_evaluation.cpp
       test_omega_h_field2_outofbounds.cpp
       test_omega_h_lagrange_field.cpp
       test_point_evaluator.cpp
       test_tagged_outputs.cpp
       test_bound_maps.cpp
       test_evaluation_only_space.cpp
-      test_bound_source.cpp
+      test_bound_points.cpp
       test_query_points.cpp
-      test_geometry.cpp
-      test_derivatives.cpp)
+      test_geometry.cpp)
   endif()
 
-  if(PCMS_ENABLE_MFEM)
-    list(APPEND PCMS_UNIT_TEST_SOURCES test_mfem_adapter.cpp)
+  if(PCMS_ENABLE_OMEGA_H AND PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
+    list(APPEND PCMS_UNIT_TEST_SOURCES
+      test_mls_basis.cpp
+      test_rbf_interp.cpp
+      test_normalisation.cpp
+      test_interpolation_class.cpp
+      test_polynomial_reconstruction_function_space.cpp)
   endif()
 
-  if(PCMS_ENABLE_MESHFIELDS)
+  if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES
       test_omega_h_form_integrator_utils.cpp)
   endif()
 
-  if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
+  if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
     list(APPEND PCMS_UNIT_TEST_SOURCES
       test_omega_h_intersection_rhs_integrator.cpp
       test_omega_h_mass_integrator.cpp
@@ -480,7 +505,7 @@ if(Catch2_FOUND)
   
   add_executable(unit_tests ${PCMS_UNIT_TEST_SOURCES})
   
-  if(PCMS_ENABLE_MESHFIELDS)
+  if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
     target_link_libraries(unit_tests PUBLIC meshfields::meshfields)
   endif()
 
@@ -488,41 +513,49 @@ if(Catch2_FOUND)
     target_link_libraries(unit_tests PUBLIC mfem)
   endif()
 
-  target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::core
-          pcms::transfer Kokkos::kokkoskernels)
+  target_link_libraries(unit_tests PUBLIC Catch2::Catch2 pcms::pcms
+          pcms::transfer MPI::MPI_CXX)
+  if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
+    # test_svd_serial uses KokkosBatched directly
+    target_link_libraries(unit_tests PUBLIC Kokkos::kokkoskernels)
+  endif()
+  if(PCMS_ENABLE_OMEGA_H)
+    target_link_libraries(unit_tests PUBLIC Omega_h::omega_h)
+  endif()
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-  if(PCMS_ENABLE_PETSC)
+  if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
     target_link_libraries(unit_tests PRIVATE PETSc::PETSc)
   endif()
 
-  add_executable(test_interpolation_on_ltx_mesh test_interpolation_on_ltx_mesh.cpp)
-  target_link_libraries(test_interpolation_on_ltx_mesh PUBLIC Catch2::Catch2WithMain
-                                                        pcms::core
-                                                        pcms::transfer)
-  target_include_directories(test_interpolation_on_ltx_mesh PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-  add_test(NAME test_interpolation_on_ltx_mesh
-          COMMAND test_interpolation_on_ltx_mesh
-                  --degas2_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx_graded_gauss.osh
-                  --ltx_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx
-                  --data_root ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/
-  )
+  if(PCMS_ENABLE_OMEGA_H AND PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
+    add_executable(test_interpolation_on_ltx_mesh test_interpolation_on_ltx_mesh.cpp)
+    target_link_libraries(test_interpolation_on_ltx_mesh PUBLIC Catch2::Catch2WithMain
+                                                          pcms::pcms
+                                                          pcms::transfer
+                                                          Omega_h::omega_h)
+    target_include_directories(test_interpolation_on_ltx_mesh PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME test_interpolation_on_ltx_mesh
+            COMMAND test_interpolation_on_ltx_mesh
+                    --degas2_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx_graded_gauss.osh
+                    --ltx_mesh ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/ltx
+                    --data_root ${PCMS_TEST_DATA_DIR}/ltx-interpolation-case/
+    )
+  endif()
 
  include(Catch)
    Catch_discover_tests(unit_tests)
-   if(PCMS_ENABLE_TRANSIENT)
-     add_executable(test_transient_timestepper test_transient_timestepper.cpp)
-     target_link_libraries(test_transient_timestepper
-             PRIVATE Catch2::Catch2WithMain pcms::transient)
-     Catch_discover_tests(test_transient_timestepper)
-   endif()
+   add_executable(test_transient_timestepper test_transient_timestepper.cpp)
+   target_link_libraries(test_transient_timestepper
+           PRIVATE Catch2::Catch2WithMain pcms::transient)
+   Catch_discover_tests(test_transient_timestepper)
 else()
   message(WARNING "Catch2 not found. Disabling Unit Tests")
 endif()
 
-if(PCMS_ENABLE_MFEM)
+if(PCMS_ENABLE_MFEM AND TARGET pcms::coupler)
   add_executable(test_mfem_coupling test_mfem_coupling.cpp)
-  target_link_libraries(test_mfem_coupling PUBLIC pcms::core mfem)
+  target_link_libraries(test_mfem_coupling PUBLIC pcms::pcms mfem MPI::MPI_CXX)
   if(HOST_NPROC GREATER_EQUAL 2)
     dual_mpi_test(
       TESTNAME
@@ -550,7 +583,7 @@ endif()
 
 if(PCMS_ENABLE_C)
   find_package(Kokkos REQUIRED)
-  if(PCMS_ENABLE_XGC)
+  if(PCMS_ENABLE_XGC AND TARGET pcms::capi::core)
     add_executable(test_proxy_couple_xgc_c_interface
                    test_proxy_coupling_xgc_client.c)
     target_link_libraries(test_proxy_couple_xgc_c_interface
@@ -559,12 +592,12 @@ if(PCMS_ENABLE_C)
       add_executable(test_proxy_couple_xgc_cpp_interface
                      test_proxy_coupling_xgc_server.cpp)
       target_link_libraries(test_proxy_couple_xgc_cpp_interface
-                            PUBLIC pcms::core MPI::MPI_C test_support)
+                            PUBLIC pcms::coupler MPI::MPI_C test_support)
       # New test with proper overlap mask feature (no hacky ownership modification)
       add_executable(test_proxy_couple_xgc_overlap_interface
                      test_proxy_coupling_xgc_server_overlap.cpp)
       target_link_libraries(test_proxy_couple_xgc_overlap_interface
-                            PUBLIC pcms::core MPI::MPI_C test_support)
+                            PUBLIC pcms::coupler MPI::MPI_C test_support)
       if(HOST_NPROC GREATER_EQUAL 3)
         dual_mpi_test(
           TESTNAME
@@ -666,27 +699,31 @@ if(PCMS_ENABLE_C)
     endif()
   endif()
 endif()
-if(PCMS_ENABLE_Fortran)
-  add_executable(test_proxy_coupling_xgc_client_fortran
-                 test_proxy_coupling_xgc_client_fortran.f90)
-  target_link_libraries(test_proxy_coupling_xgc_client_fortran
-                        PUBLIC pcms::fortranapi MPI::MPI_Fortran)
-  set_target_properties(test_proxy_coupling_xgc_client_fortran
-                        PROPERTIES LINKER_LANGUAGE Fortran)
+if(PCMS_ENABLE_FORTRAN)
+  if(TARGET pcms::fortranapi::core)
+    add_executable(test_proxy_coupling_xgc_client_fortran
+                   test_proxy_coupling_xgc_client_fortran.f90)
+    target_link_libraries(test_proxy_coupling_xgc_client_fortran
+                          PUBLIC pcms::fortranapi MPI::MPI_Fortran)
+    set_target_properties(test_proxy_coupling_xgc_client_fortran
+                          PROPERTIES LINKER_LANGUAGE Fortran)
+  endif()
 
-  add_executable(test_interpolation_fortran_api
-                 test_interpolation.f90)
-  target_link_libraries(test_interpolation_fortran_api
-                        PUBLIC pcms::fortranapi::transfer)
-  set_target_properties(test_interpolation_fortran_api
-                       PROPERTIES LINKER_LANGUAGE Fortran)
-  add_test(
-    NAME test_interpolation_fortran_api
-    COMMAND
-    $<TARGET_FILE:test_interpolation_fortran_api> ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh 23 19
-  )
+  if(TARGET pcms::fortranapi::transfer)
+    add_executable(test_interpolation_fortran_api
+                   test_interpolation.f90)
+    target_link_libraries(test_interpolation_fortran_api
+                          PUBLIC pcms::fortranapi::transfer)
+    set_target_properties(test_interpolation_fortran_api
+                         PROPERTIES LINKER_LANGUAGE Fortran)
+    add_test(
+      NAME test_interpolation_fortran_api
+      COMMAND
+      $<TARGET_FILE:test_interpolation_fortran_api> ${PCMS_TEST_DATA_DIR}/cyclone/23elements/mesh.osh 23 19
+    )
+  endif()
 
-  if(HOST_NPROC GREATER_EQUAL 4)
+  if(HOST_NPROC GREATER_EQUAL 4 AND TARGET pcms::fortranapi::core)
     dual_mpi_test(
       TESTNAME
       xgc_fortran_proxy_to_omega
@@ -713,7 +750,22 @@ if(PCMS_ENABLE_Fortran)
   endif()
 endif()
 
-find_package(KokkosKernels REQUIRED)
+if(TARGET test_support)
+  add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)
+  target_link_libraries(xgc_n0_server PUBLIC pcms::transfer pcms::coupler test_support)
+endif()
 
-add_executable(xgc_n0_server xgc_n0_coupling_server.cpp)
-target_link_libraries(xgc_n0_server PUBLIC pcms::core test_support)
+# every installed public header compiles on its own (CMake's header-set
+# verification, enabled in the top-level CMakeLists.txt)
+add_test(NAME public_headers_self_contained
+         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config $<CONFIG>
+                 --target all_verify_interface_header_sets)
+
+# installed core headers must not include backend libraries
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME public_header_includes
+           COMMAND ${Python3_EXECUTABLE}
+                   ${PROJECT_SOURCE_DIR}/tools/check-public-includes.py
+                   ${PROJECT_SOURCE_DIR})
+endif()

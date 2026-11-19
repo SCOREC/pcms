@@ -14,7 +14,7 @@
 (configure with --with-kokkos)"
 #endif
 
-namespace pcms
+namespace pcms::transfer
 {
 // Creates a sequential AIJ matrix using the Kokkos backend when available,
 // falling back to standard sequential AIJ on CPU-only builds.
@@ -25,6 +25,6 @@ PetscErrorCode createSeqAIJMat(MPI_Comm comm, PetscInt m, PetscInt n,
 // Creates a sequential vector using the Kokkos backend when available,
 // falling back to standard sequential vector on CPU-only builds.
 PetscErrorCode createSeqVec(MPI_Comm comm, PetscInt n, Vec* vec);
-} // namespace pcms
+} // namespace pcms::transfer
 
 #endif // PCMS_TRANSFER_PETSC_UTILS_HPP

@@ -2,14 +2,13 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <Kokkos_Core.hpp>
-#include <pcms/field/coordinate_systems/cartesian.hpp>
-#include <pcms/field/coordinate_systems/cylindrical.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/field/evaluator/uniform_grid_geometry.hpp>
-#include <pcms/field/function_space/spline.h>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cylindrical.hpp>
+#include <pcms/field/function_spaces.hpp>
+#include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/gradient_source.hpp>
-#include <pcms/transfer/interpolator.h>
-#include "field_test_utils.h"
+#include <pcms/transfer/interpolator.hpp>
+#include "field_test_utils.hpp"
 #include <vector>
 
 using Catch::Matchers::ContainsSubstring;
@@ -35,7 +34,7 @@ std::shared_ptr<const pcms::FunctionSpace> MakeSplineSpace()
   grid.edge_length = {2.0, 2.0};
   grid.divisions = {16, 16};
   return pcms::CreateSplineSpace(
-    pcms::CreateUniformGridGeometry(grid, pcms::csys::Cartesian::Create(2)));
+    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::CreateCartesian(2)));
 }
 
 } // namespace
@@ -45,7 +44,7 @@ TEST_CASE("Spline gradients")
   auto space = MakeSplineSpace();
   auto f = space->CreateFunction<Real>("f");
   pcms::test::SetField(
-    f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    f, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
 
   const std::vector<Real> pts = {0.3, -0.7, 1.1, 0.2, 1.7, 0.9, 0.55, 0.45};
   const size_t n = pts.size() / 2;
@@ -58,8 +57,8 @@ TEST_CASE("Spline gradients")
   const ValueBasis basis = gradient->OutputBasis(f.GetData().GetValueBasis());
   REQUIRE(basis.variance == pcms::values::Covector);
   REQUIRE(basis.scaling == pcms::ComponentScaling::Physical);
-  REQUIRE(
-    pcms::SameCoordinateSystem(basis.system, space->GetCoordinateSystem()));
+  REQUIRE(pcms::detail::SameCoordinateSystem(basis.system,
+                                             space->GetCoordinateSystem()));
 
   const auto grad = pcms::test::EvaluateToHost(*gradient, f, basis, 2);
   const auto value =
@@ -90,9 +89,9 @@ TEST_CASE("Evaluators reject fields of another function space")
   auto f = space->CreateFunction<Real>("f");
   auto g = other->CreateFunction<Real>("g");
   pcms::test::SetField(
-    f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    f, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
   pcms::test::SetField(
-    g, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    g, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
 
   const std::vector<Real> pts = {0.3, -0.7, 1.1, 0.2};
   const auto bound = pcms::test::Bind(*space->GetGeometry(), pts);
@@ -115,7 +114,7 @@ TEST_CASE("Gradients fill the out-of-bounds rows")
   auto space = MakeSplineSpace();
   auto f = space->CreateFunction<Real>("f");
   pcms::test::SetField(
-    f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    f, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
   const std::vector<Real> pts = {0.5, 0.5, 3.0, 0.0};
   const auto bound = pcms::test::Bind(
     *space->GetGeometry(), pts,
@@ -135,7 +134,7 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   std::shared_ptr<const pcms::FunctionSpace> source = MakeSplineSpace();
   auto f = source->CreateFunction<Real>("f");
   pcms::test::SetField(
-    f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });
+    f, KOKKOS_LAMBDA(Real x, Real y) { return Cubic(x, y); });
 
   // Targets on a coarser grid strictly inside the source grid.
   pcms::UniformGrid<2> grid;
@@ -143,9 +142,11 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   grid.edge_length = {1.5, 1.4};
   grid.divisions = {5, 7};
   auto value_space = pcms::CreateLagrangeSpace(
-    pcms::CreateUniformGridGeometry(grid, source->GetCoordinateSystem()), 1, 1);
+    pcms::uniform_grid::CreateGeometry(grid, source->GetCoordinateSystem()), 1,
+    1);
   auto gradient_space = pcms::CreateLagrangeSpace(
-    pcms::CreateUniformGridGeometry(grid, source->GetCoordinateSystem()), 1, 2);
+    pcms::uniform_grid::CreateGeometry(grid, source->GetCoordinateSystem()), 1,
+    2);
   auto value = value_space->CreateFunction<Real>("f");
   auto gradient =
     gradient_space->CreateFunction<Real>("grad f", pcms::values::Covector);
@@ -154,10 +155,12 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   const auto bound =
     source->GetGeometry()->Bind(value_layout->GetDOFHolderCoordinates());
   const auto grad_source = pcms::Gradient(source);
-  pcms::Interpolator<Real> values(*source, *value_space, bound);
-  pcms::Interpolator<Real> gradients(*grad_source, *gradient_space, bound);
-  values.Apply(f, value);
-  gradients.Apply(f, gradient);
+  const auto values =
+    pcms::CreateInterpolator<Real>(source, value_space, bound);
+  const auto gradients =
+    pcms::CreateInterpolator<Real>(grad_source, gradient_space, bound);
+  values->Apply(f, value);
+  gradients->Apply(f, gradient);
 
   const auto coords = pcms::test::CopyCoordinatesToHost(
     value_space->GetLayout()->GetDOFHolderCoordinates().GetValues());
@@ -173,24 +176,27 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   }
 
   // A gradient source binds through the source, so it can also bind itself.
-  pcms::Interpolator<Real> self_bound(*grad_source, *gradient_space);
-  self_bound.Apply(f, gradient);
+  const auto self_bound =
+    pcms::CreateInterpolator<Real>(grad_source, gradient_space);
+  self_bound->Apply(f, gradient);
   REQUIRE_THAT(gradient.GetDOFHolderDataHost().GetValues()(0, 0),
                WithinAbs(g(0, 0), pcms::test::ExactTol));
 
   // Values are not written into a covector target.
   REQUIRE_THROWS_WITH(
-    pcms::Interpolator<Real>(*source, *gradient_space, bound)
-      .Apply(f, gradient),
+    pcms::CreateInterpolator<Real>(source, gradient_space, bound)
+      ->Apply(f, gradient),
     ContainsSubstring("differs from the target's declared basis"));
   // The bound points must be the target's DOF holders.
   pcms::UniformGrid<2> other_grid = grid;
   other_grid.divisions = {4, 7};
-  auto other_space = pcms::CreateLagrangeSpace(
-    pcms::CreateUniformGridGeometry(other_grid, source->GetCoordinateSystem()),
-    1, 1);
-  REQUIRE_THROWS_WITH(pcms::Interpolator<Real>(*source, *other_space, bound),
-                      ContainsSubstring("target's DOF-holder sites"));
+  auto other_space =
+    pcms::CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
+                                other_grid, source->GetCoordinateSystem()),
+                              1, 1);
+  REQUIRE_THROWS_WITH(
+    pcms::CreateInterpolator<Real>(source, other_space, bound),
+    ContainsSubstring("target's DOF-holder sites"));
   // Second derivatives are not available from the spline yet.
   REQUIRE_THROWS_WITH(
     pcms::Gradient(grad_source),
@@ -219,19 +225,19 @@ TEST_CASE("Unsupported operators are refused by name")
 TEST_CASE("Gradients of vectors need Cartesian coordinates")
 {
   // GradientBasis directly: rank-1 stored basis
-  auto cyl = pcms::csys::CylindricalRThetaZ::Create();
+  auto cyl = pcms::csys::CreateCylindricalRThetaZ();
   pcms::ValueBasis v{cyl, pcms::ComponentScaling::Physical,
                      pcms::values::Vector};
-  REQUIRE_THROWS_WITH(pcms::GradientBasis(v, cyl),
+  REQUIRE_THROWS_WITH(pcms::detail::GradientBasis(v, cyl),
                       ContainsSubstring("connection"));
-  auto cart = pcms::csys::Cartesian::Create(3);
+  auto cart = pcms::csys::CreateCartesian(3);
   pcms::ValueBasis w{cart, pcms::ComponentScaling::Physical,
                      pcms::values::Vector};
-  REQUIRE(pcms::GradientBasis(w, cart).Rank() == 2);
+  REQUIRE(pcms::detail::GradientBasis(w, cart).Rank() == 2);
   // the parity of the stored basis is kept
   w.parity = pcms::Parity::Odd;
-  REQUIRE(pcms::GradientBasis(w, cart).parity == pcms::Parity::Odd);
+  REQUIRE(pcms::detail::GradientBasis(w, cart).parity == pcms::Parity::Odd);
   pcms::ValueBasis s{cart, pcms::ComponentScaling::Physical,
                      pcms::values::Scalar, pcms::Parity::Odd};
-  REQUIRE(pcms::GradientBasis(s, cart).parity == pcms::Parity::Odd);
+  REQUIRE(pcms::detail::GradientBasis(s, cart).parity == pcms::Parity::Odd);
 }

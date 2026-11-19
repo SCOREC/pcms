@@ -13,7 +13,13 @@ import sys
 
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
+
+requires_omega_h = pytest.mark.skipif(
+    not pcms.features["omega_h"], reason="pcms was built without OMEGA_H")
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 EXAMPLES_DIR = REPO_ROOT / "examples" / "python-api-example"
@@ -47,7 +53,7 @@ def _run_example(script, *args):
 
 
 def test_conservative_transfer_example():
-    if not hasattr(pcms, "OmegaHConservativeProjection"):
+    if not hasattr(pcms, "create_conservative_projection"):
         _skip_or_fail("pcms was built without PETSc/MeshFields")
     stdout = _run_example("example_conservative_transfer.py")
     assert "Field transfer completed" in stdout
@@ -67,6 +73,7 @@ def test_flow_example():
     assert "SUCCESS" in stdout
 
 
+@requires_omega_h
 def test_coordinate_transformations_example():
     stdout = _run_example("coordinate_transformations.py")
     assert "SUCCESS" in stdout

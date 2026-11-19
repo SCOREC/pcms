@@ -1,0 +1,763 @@
+#ifndef PCMS_TEST_FIELD_TEST_UTILS_HPP
+#define PCMS_TEST_FIELD_TEST_UTILS_HPP
+
+#include <catch2/catch_approx.hpp>
+#include <Kokkos_Core.hpp>
+#include "pcms/configuration.hpp"
+#include "pcms/field/field.hpp"
+#include "pcms/field/field_data.hpp"
+#include "pcms/field/point_evaluator_factory.hpp"
+#include "pcms/field/point_evaluator.hpp"
+#include "pcms/field/out_of_bounds_policy.hpp"
+#include "pcms/utility/coordinate_view.hpp"
+#include "pcms/geometry/geometry.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/memory_spaces.hpp"
+#ifdef PCMS_ENABLE_OMEGA_H
+#include <Omega_h_build.hpp>
+#include <Omega_h_mesh.hpp>
+#include <Omega_h_shape.hpp>
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
+#include "pcms/backends/omega_h/adj_search.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
+#endif
+#include "pcms/field/function_spaces.hpp"
+#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+#include "pcms/transfer/linear_form_integrator.hpp"
+#include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
+#include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
+#endif
+#include <cmath>
+#include <memory>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+
+// Shared utilities for field tests that apply equally to MeshFields-backed
+// and native OmegaH-backed field implementations.
+
+namespace pcms::test
+{
+
+// tolerances used for testing.
+// Currently we just added for the tests we were working on.
+// We need to update all tests to use consistent tolerances
+// Those tolerances should either come from these constexpr variables
+// or toleranes in the config file
+inline constexpr double ExactTol = 1e-12;
+inline constexpr double EvalTol = 1e-10;
+
+// Affine test function — exactly representable on linear elements.
+KOKKOS_INLINE_FUNCTION Real linear_f(Real x, Real y)
+{
+  return x + 2.0 * y;
+}
+
+KOKKOS_INLINE_FUNCTION Real linear_f_3d(Real x, Real y)
+{
+  return x + 2.0 * y;
+}
+
+// Interior test points for a unit [0,1]^2 box mesh.
+inline std::vector<Real> StandardEvalCoords2D()
+{
+  return {0.1, 0.2, 0.5, 0.5, 0.7, 0.3, 0.9, 0.1, 0.2, 0.8};
+}
+
+// Points strictly outside a unit [0,1]^2 box mesh.
+inline std::vector<Real> StandardOutsideCoords2D()
+{
+  return {-0.5, 0.5, 1.5, 0.5, 0.5, -0.5, 0.5, 1.5};
+}
+
+#ifdef PCMS_ENABLE_OMEGA_H
+// Builds a unit-square 2D simplex mesh from the given element connectivity and
+// adds the geometric classification tags required to build an Omega_h-backed
+// Lagrange function space.
+//
+
+// Geometric classification tags required by OmegaHLagrangeLayout.
+inline void AddDefaultClassification(Omega_h::Mesh& mesh)
+{
+  for (Omega_h::Int dim = 0; dim <= mesh.dim(); ++dim) {
+    mesh.add_tag<Omega_h::I8>(
+      dim, "class_dim", 1,
+      Omega_h::Read<Omega_h::I8>(mesh.nents(dim), Omega_h::I8(dim)));
+    mesh.add_tag<Omega_h::ClassId>(
+      dim, "class_id", 1,
+      Omega_h::Read<Omega_h::ClassId>(mesh.nents(dim), Omega_h::ClassId(0)));
+  }
+}
+
+inline Omega_h::Mesh BuildUnitSquare(Omega_h::Library& lib,
+                                     const Omega_h::LOs& ev2v)
+{
+  const Omega_h::Reals coords({
+    0.0, 0.0, // v0
+    1.0, 0.0, // v1
+    1.0, 1.0, // v2
+    0.0, 1.0  // v3
+  });
+  Omega_h::Mesh mesh(&lib);
+  Omega_h::build_from_elems_and_coords(&mesh, OMEGA_H_SIMPLEX, 2, ev2v, coords);
+  AddDefaultClassification(mesh);
+  return mesh;
+}
+
+// Convenience overload: diagonal=0 splits the square along vertices (1,3),
+// diagonal=1 along (0,2).
+inline Omega_h::Mesh BuildUnitSquare(Omega_h::Library& lib, int diagonal)
+{
+  return BuildUnitSquare(lib, (diagonal == 0)
+                                ? Omega_h::LOs({0, 1, 3, 1, 2, 3})
+                                : Omega_h::LOs({0, 1, 2, 0, 2, 3}));
+}
+
+// Tetrahedral mesh of [0,1]^3. build_box already adds classification.
+inline Omega_h::Mesh BuildUnitCube(Omega_h::Library& lib, int n)
+{
+  return Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, n, n,
+                            n);
+}
+
+// Triangle mesh of the unit square with n x n cells. build_box classifies the
+// mesh (see AddDefaultClassification).
+inline Omega_h::Mesh BuildSquareMesh(Omega_h::Library& lib, int n)
+{
+  return Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n, n,
+                            0);
+}
+
+inline Omega_h::Mesh BuildTet(Omega_h::Library& lib,
+                              const Omega_h::Reals& coords)
+{
+
+  Omega_h::Mesh mesh(&lib);
+  const Omega_h::LOs ev2v = Omega_h::LOs({0, 1, 2, 3});
+  Omega_h::build_from_elems_and_coords(&mesh, OMEGA_H_SIMPLEX, 3, ev2v, coords);
+  AddDefaultClassification(mesh);
+  return mesh;
+}
+
+// Reference tet: (0,0,0), (1,0,0), (0,1,0), (0,0,1). Volume 1/6.
+// reversed=true swaps the last two verts so the signed volume is negative.
+inline Omega_h::Mesh BuildReferenceTet(Omega_h::Library& lib)
+{
+  return BuildTet(lib, Omega_h::Reals({
+                         0.0,
+                         0.0,
+                         0.0,
+                         1.0,
+                         0.0,
+                         0.0,
+                         0.0,
+                         1.0,
+                         0.0,
+                         0.0,
+                         0.0,
+                         1.0,
+                       }));
+}
+
+inline std::shared_ptr<const FunctionSpace> MakeP1Space(
+  std::shared_ptr<const Geometry> geometry)
+{
+  return CreateLagrangeSpace(
+    std::move(geometry), 1, 1,
+    LagrangeOptions{.backend = LagrangeBackend::OmegaH});
+}
+
+inline std::shared_ptr<const FunctionSpace> MakeP0Space(
+  std::shared_ptr<const Geometry> geometry)
+{
+  return CreateLagrangeSpace(
+    std::move(geometry), 0, 1,
+    LagrangeOptions{.backend = LagrangeBackend::OmegaH});
+}
+
+// Spaces on a Cartesian geometry of their own on `mesh`; spaces that should
+// share a bind take one geometry instead.
+inline std::shared_ptr<const FunctionSpace> MakeP1Space(
+  Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
+{
+  return MakeP1Space(omega_h::CreateGeometry(
+    mesh, pcms::detail::DeferredCartesian(),
+    omega_h::OmegaHGeometryOptions{.global_id_name = global_id_name}));
+}
+
+inline std::shared_ptr<const FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
+{
+  return MakeP0Space(
+    omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian()));
+}
+
+inline bool AreArraysEqualUnordered(
+  const Omega_h::HostRead<Omega_h::LO>& array1,
+  const Omega_h::HostRead<Omega_h::LO>& array2, int start, int end)
+{
+  std::unordered_map<Omega_h::LO, int> freq1, freq2;
+  for (int i = start; i < end; ++i) {
+    freq1[array1[i]]++;
+    freq2[array2[i]]++;
+  }
+  return freq1 == freq2;
+}
+
+inline void CheckSupportResultsEquivalent(const SupportResults& actual,
+                                          const SupportResults& expected)
+{
+  auto to_host = [](const Kokkos::View<const LO*, DeviceMemorySpace>& v) {
+    Kokkos::View<LO*, DeviceMemorySpace> copy("supports", v.size());
+    Kokkos::deep_copy(copy, v);
+    return Omega_h::HostRead<Omega_h::LO>(
+      Omega_h::LOs(Omega_h::Write<Omega_h::LO>(copy)));
+  };
+  auto actual_ptr = to_host(actual.supports_ptr);
+  auto actual_idx = to_host(actual.supports_idx);
+  auto expected_ptr = to_host(expected.supports_ptr);
+  auto expected_idx = to_host(expected.supports_idx);
+
+  REQUIRE(actual_ptr.size() == expected_ptr.size());
+  REQUIRE(actual_idx.size() == expected_idx.size());
+
+  for (int i = 0; i < actual_ptr.size(); ++i)
+    REQUIRE(actual_ptr[i] == expected_ptr[i]);
+
+  for (int i = 0; i < actual_ptr.size() - 1; ++i) {
+    CAPTURE(i);
+    REQUIRE(AreArraysEqualUnordered(actual_idx, expected_idx, actual_ptr[i],
+                                    actual_ptr[i + 1]));
+  }
+}
+
+inline std::vector<Real> CopyOmegaHRealsToVector(const Omega_h::Reals& coords)
+{
+  auto coords_read = Omega_h::HostRead<Omega_h::Real>(coords);
+  return std::vector<Real>(coords_read.data(),
+                           coords_read.data() + coords_read.size());
+}
+
+inline double IntegrateP0Field(Omega_h::Mesh& mesh, const Field<Real>& field)
+{
+  const auto values =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  const auto measures = Omega_h::measure_elements_real(&mesh);
+  const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
+
+  double integral = 0.0;
+  for (Omega_h::LO e = 0; e < mesh.nelems(); ++e) {
+    integral += measures_h[e] * values[e];
+  }
+  return integral;
+}
+
+inline double IntegrateP1Field(Omega_h::Mesh& mesh, const Field<Real>& field)
+{
+  const auto values =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  const auto measures = Omega_h::measure_elements_real(&mesh);
+  const auto measures_h = Omega_h::HostRead<Omega_h::Real>(measures);
+  const auto elem_verts_h =
+    Omega_h::HostRead<Omega_h::LO>(mesh.ask_elem_verts());
+  const int verts_per_elem = mesh.dim() + 1;
+
+  double integral = 0.0;
+  for (Omega_h::LO e = 0; e < mesh.nelems(); ++e) {
+    double avg = 0.0;
+    for (int k = 0; k < verts_per_elem; ++k) {
+      avg += values[elem_verts_h[verts_per_elem * e + k]];
+    }
+    integral += measures_h[e] * (avg / verts_per_elem);
+  }
+  return integral;
+}
+#endif // PCMS_ENABLE_OMEGA_H
+
+// Min/max of an order-1 nodal field. For P1, nodal values are min/max
+inline std::pair<double, double> P1FieldRange(const Field<Real>& field)
+{
+  const auto values =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderData().GetValues());
+  using MinMaxReducer = Kokkos::MinMax<double>;
+  using MinMaxValue = MinMaxReducer::value_type;
+
+  MinMaxValue range;
+  Kokkos::parallel_reduce(
+    static_cast<int>(values.size()),
+    KOKKOS_LAMBDA(const int i, MinMaxValue& update) {
+      const double value = static_cast<double>(values[i]);
+      if (value < update.min_val)
+        update.min_val = value;
+      if (value > update.max_val)
+        update.max_val = value;
+    },
+    MinMaxReducer(range));
+  return {range.min_val, range.max_val};
+}
+
+// Require that the target field stays within the range of the source field.
+inline void RequireBoundedBy(const Field<Real>& target,
+                             const Field<Real>& source, double tol = ExactTol)
+{
+  const auto src_range = P1FieldRange(source);
+  const auto tgt_range = P1FieldRange(target);
+  CAPTURE(src_range.first, src_range.second, tgt_range.first, tgt_range.second);
+  REQUIRE(tgt_range.first >= src_range.first - tol);
+  REQUIRE(tgt_range.second <= src_range.second + tol);
+}
+
+// Copy coordinates from device memory to a host view.
+// This handles potential layout mismatches between host and device memory
+// spaces.
+template <typename CoordView>
+inline Kokkos::View<const Real**, HostMemorySpace> CopyCoordinatesToHost(
+  const CoordView& coords_device)
+{
+  auto coords_view = Kokkos::View<Real**, HostMemorySpace>(
+    "coords_view", coords_device.extent(0), coords_device.extent(1));
+  auto coords_view_device =
+    Kokkos::create_mirror_view(DeviceMemorySpace(), coords_view);
+  pcms::ConvertMismatchLayoutView2D(coords_view_device, coords_device);
+  Kokkos::deep_copy(coords_view, coords_view_device);
+  return coords_view;
+}
+
+template <typename ExecutionSpace, typename Func>
+inline std::vector<Real> EvaluateReferenceFunction(const std::vector<Real>& pts,
+                                                   Func func)
+{
+  using MemorySpace = typename ExecutionSpace::memory_space;
+
+  int n = static_cast<int>(pts.size()) / 2;
+  auto pts_host = Kokkos::View<const Real**, HostMemorySpace>(pts.data(), n, 2);
+  auto pts_device =
+    Kokkos::create_mirror_view_and_copy(DeviceMemorySpace(), pts_host);
+
+  Kokkos::View<Real*, MemorySpace> expected_device("expected_device", n);
+  Kokkos::parallel_for(
+    "field_test_utils_expected", Kokkos::RangePolicy<ExecutionSpace>(0, n),
+    KOKKOS_LAMBDA(int i) {
+      expected_device(i) = func(pts_device(i, 0), pts_device(i, 1));
+    });
+
+  auto expected_host =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), expected_device);
+  return std::vector<Real>(expected_host.data(),
+                           expected_host.data() + expected_host.extent(0));
+}
+
+template <typename DataView, typename CoordsView, typename Func>
+struct SetFieldFunctor
+{
+  DataView data;
+  CoordsView coords;
+  Func f;
+
+  SetFieldFunctor(DataView data_, CoordsView coords_, Func f_)
+    : data(data_), coords(coords_), f(f_)
+  {
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(int i) const
+  {
+    if constexpr (std::is_invocable_v<Func, Real, Real, Real>) {
+      data(i) = f(coords(i, 0), coords(i, 1), coords(i, 2));
+    } else {
+      data(i) = f(coords(i, 0), coords(i, 1));
+    }
+  }
+};
+
+// Set scalar DOF data by sampling func at each DOF-holder coordinate. The
+// arity of func selects the spatial dimension: func(x, y) for 2D layouts,
+// func(x, y, z) for 3D.
+template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
+inline void SetField(Field<Real>& field, Func func)
+{
+  using MemorySpace = typename ExecutionSpace::memory_space;
+
+  static_assert(std::is_invocable_v<Func, Real, Real> ||
+                  std::is_invocable_v<Func, Real, Real, Real>,
+                "SetField requires func(x, y) or func(x, y, z)");
+
+  auto dof_coords = field.GetLayout().GetDOFHolderCoordinates().GetValues();
+  int n = static_cast<int>(dof_coords.extent(0));
+
+  Kokkos::View<Real*, MemorySpace> data_device("data_device", n);
+  Kokkos::parallel_for("field_test_utils_set_field",
+                       Kokkos::RangePolicy<ExecutionSpace>(0, n),
+                       SetFieldFunctor{data_device, dof_coords, func});
+
+  auto data_host =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), data_device);
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      pcms::ValueBasis{},
+      Rank2View<const Real, HostMemorySpace>(data_host.data(), n, 1)));
+}
+
+// Set multi-component DOF data by sampling func at each DOF-holder
+// coordinate, writing the components through the out pointer. The arity of
+// func selects the spatial dimension: func(x, y, out) for 2D layouts,
+// func(x, y, z, out) for 3D. Host-side; the component count comes from the
+// field's layout.
+template <typename Func>
+inline void SetFieldComponents(Field<Real>& field, Func func)
+{
+  const auto coords = field.GetLayout().GetDOFHolderCoordinates().GetValues();
+  const int n = static_cast<int>(coords.extent(0));
+  const int num_components = field.GetLayout().GetNumComponents();
+
+  static_assert(std::is_invocable_v<Func, Real, Real, Real*> ||
+                  std::is_invocable_v<Func, Real, Real, Real, Real*>,
+                "SetFieldComponents requires func(x, y, out) or "
+                "func(x, y, z, out)");
+
+  const auto coords_host = CopyCoordinatesToHost(coords);
+  std::vector<Real> data(static_cast<size_t>(n) * num_components);
+  for (int i = 0; i < n; ++i) {
+    Real* out = &data[static_cast<size_t>(i) * num_components];
+    if constexpr (std::is_invocable_v<Func, Real, Real, Real, Real*>) {
+      func(coords_host(i, 0), coords_host(i, 1), coords_host(i, 2), out);
+    } else {
+      func(coords_host(i, 0), coords_host(i, 1), out);
+    }
+  }
+  field.SetDOFHolderDataHost(
+    pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
+      field.GetData().GetValueBasis(),
+      Rank2View<const Real, HostMemorySpace>(data.data(), n, num_components)));
+}
+
+// Helper structure to hold device coordinates with proper lifetime management
+struct DeviceCoordinates
+{
+  Kokkos::View<Real**, DeviceMemorySpace> view;
+  CoordinateView<DeviceMemorySpace> coordinate_view;
+};
+
+// Binds an already-built device buffer to a coordinate system, without the
+// allocation and placeholder resolution CreateDeviceCoordinateView performs.
+inline CoordinateView<DeviceMemorySpace> MakeCoords(
+  const Kokkos::View<Real**, DeviceMemorySpace>& data,
+  std::shared_ptr<const CoordinateSystem> coordinate_system)
+{
+  return CoordinateView<DeviceMemorySpace>(std::move(coordinate_system),
+                                           MakeConstRank2View(data));
+}
+
+/// Tags a device output buffer with a field's stored value basis, which is
+/// what evaluators and the component-moving transfer operators write.
+template <typename T>
+inline ValueView<T, DeviceMemorySpace> TagLike(
+  const Field<T>& field, Kokkos::View<T**, DeviceMemorySpace> values)
+{
+  return ValueView<T, DeviceMemorySpace>(field.GetData().GetValueBasis(),
+                                         pcms::MakeRank2View(values));
+}
+
+/// Evaluates into a new [NumPoints()][width] view tagged `basis` and returns
+/// a host copy.
+inline Kokkos::View<Real**, HostMemorySpace> EvaluateToHost(
+  const PointEvaluator<Real>& evaluator, const Field<Real>& field,
+  const ValueBasis& basis, int width = 1)
+{
+  Kokkos::View<Real**, DeviceMemorySpace> out("out", evaluator.NumPoints(),
+                                              width);
+  evaluator.Evaluate(
+    field, ValueView<Real, DeviceMemorySpace>(basis, pcms::MakeRank2View(out)));
+  Kokkos::View<Real**, HostMemorySpace> host("host", evaluator.NumPoints(),
+                                             width);
+  DeepCopyMismatchLayouts(host, out);
+  return host;
+}
+
+template <typename T>
+inline Kokkos::View<T*, DeviceMemorySpace> CreateDeviceRank1View(
+  const std::vector<T>& values)
+{
+  Kokkos::View<T*, DeviceMemorySpace> device("device", values.size());
+  pcms::detail::CopyHostRank1ViewToDeviceView(
+    device, pcms::detail::make_const_array_view(values));
+  return device;
+}
+
+inline Kokkos::View<Real**, DeviceMemorySpace> CreateDeviceRank2View(
+  const std::vector<Real>& values, int num_columns)
+{
+  const int n = static_cast<int>(values.size()) / num_columns;
+  Kokkos::View<Real**, HostMemorySpace> host("host", n, num_columns);
+  for (int i = 0; i < n; ++i) {
+    for (int c = 0; c < num_columns; ++c) {
+      host(i, c) = values[static_cast<size_t>(i) * num_columns + c];
+    }
+  }
+  Kokkos::View<Real**, DeviceMemorySpace> device("device", n, num_columns);
+  DeepCopyMismatchLayouts(device, host);
+  return device;
+}
+
+// Helper function to create device CoordinateView from a vector of interleaved
+// points Returns both the underlying View (to keep memory alive) and the
+// CoordinateView pts contains interleaved coordinates: [x0, y0, x1, y1, ...]
+// for 2D or [x0, y0, z0, x1, y1, z1, ...] for 3D
+inline DeviceCoordinates CreateDeviceCoordinateView(
+  const std::vector<Real>& pts,
+  std::shared_ptr<const CoordinateSystem> coordinate_system, int dim = 2)
+{
+  auto coords_device = CreateDeviceRank2View(pts, dim);
+  return DeviceCoordinates{
+    coords_device,
+    CoordinateView<DeviceMemorySpace>{
+      pcms::detail::ResolveCoordinateSystem(std::move(coordinate_system), dim),
+      pcms::MakeRank2View(coords_device)}};
+}
+
+// Binds interleaved points, given in the geometry's coordinate system, on
+// `geometry`; the BoundPoints keeps what it needs, so the points may go.
+inline std::shared_ptr<const BoundPoints> Bind(
+  const Geometry& geometry, const std::vector<Real>& pts,
+  OutOfBoundsPolicy policy = {},
+  std::shared_ptr<const CoordinateMap> map = nullptr)
+{
+  const auto coords =
+    CreateDeviceCoordinateView(pts, geometry.GetCoordinateSystem(),
+                               geometry.GetCoordinateSystem()->Dimension());
+  return geometry.Bind(coords.coordinate_view, policy, std::move(map));
+}
+
+// Evaluate field at explicit test points using a PointEvaluator and check
+// results.
+template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
+void CheckEvaluation(const PointEvaluator<Real>& evaluator,
+                     const Field<Real>& field, const std::vector<Real>& pts,
+                     Func func, double abs_tol = EvalTol)
+{
+  int n = static_cast<int>(pts.size()) / 2;
+
+  Kokkos::View<Real**, DeviceMemorySpace> out_device("out_device", n, 1);
+  evaluator.Evaluate(field, TagLike(field, out_device));
+  auto out_host =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
+
+  auto expected = EvaluateReferenceFunction<ExecutionSpace>(pts, func);
+
+  for (int i = 0; i < n; ++i) {
+    INFO("Point " << i << " (" << pts[2 * static_cast<size_t>(i)] << ", "
+                  << pts[2 * static_cast<size_t>(i) + 1] << ")"
+                  << " got=" << out_host(i, 0) << " expected=" << expected[i]);
+    REQUIRE(out_host(i, 0) == Catch::Approx(expected[i]).margin(abs_tol));
+  }
+}
+
+// Overload that creates the evaluator from any point evaluator factory (e.g.
+// a Lagrange FunctionSpace).
+template <typename Factory, typename ExecutionSpace = DefaultExecutionSpace,
+          typename Func>
+void CheckEvaluation(const Factory& factory, const Field<Real>& field,
+                     const std::vector<Real>& pts, Func func,
+                     double abs_tol = EvalTol)
+{
+  auto evaluator = factory->template CreatePointEvaluator<Real>(
+    pcms::test::Bind(*factory->GetGeometry(), pts));
+  CheckEvaluation<ExecutionSpace>(*evaluator, field, pts, func, abs_tol);
+}
+
+// Evaluate field at points known to be outside the mesh and verify fill value.
+// Checks that the evaluator reports exactly the rows marked in `is_filled`.
+inline void CheckFilledPoints(const PointEvaluator<Real>& evaluator,
+                              const std::vector<bool>& is_filled)
+{
+  auto filled = Kokkos::create_mirror_view_and_copy(HostMemorySpace(),
+                                                    evaluator.FilledPoints());
+  std::vector<bool> reported(is_filled.size(), false);
+  for (size_t k = 0; k < filled.extent(0); ++k) {
+    const LO i = filled(k);
+    REQUIRE(i >= 0);
+    REQUIRE(static_cast<size_t>(i) < is_filled.size());
+    REQUIRE_FALSE(reported[i]);
+    reported[i] = true;
+  }
+  REQUIRE(reported == is_filled);
+}
+
+inline void CheckFillMode(const PointEvaluator<Real>& evaluator,
+                          const Field<Real>& field, Real fill_value,
+                          const std::vector<Real>& outside_pts)
+{
+  int n = static_cast<int>(outside_pts.size()) / 2;
+
+  Kokkos::View<Real**, DeviceMemorySpace> out_device("out_device", n, 1);
+  evaluator.Evaluate(field, TagLike(field, out_device));
+  auto out_host =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out_device);
+
+  for (int i = 0; i < n; ++i) {
+    REQUIRE(out_host(i, 0) == fill_value);
+  }
+  CheckFilledPoints(evaluator, std::vector<bool>(n, true));
+}
+
+// Overload that creates the evaluator from any factory with FILL policy.
+template <typename Factory>
+void CheckFillMode(const Factory& factory, const Field<Real>& field,
+                   Real fill_value, const std::vector<Real>& outside_pts)
+{
+  OutOfBoundsPolicy policy{OutOfBoundsMode::FILL, fill_value};
+  auto evaluator = factory->template CreatePointEvaluator<Real>(
+    pcms::test::Bind(*factory->GetGeometry(), outside_pts, policy));
+  CheckFillMode(*evaluator, field, fill_value, outside_pts);
+}
+
+// Check a mix of inside/outside points with an evaluator bound to `pts` in
+// FILL mode. inside points verified against func, outside points against
+// fill_value.
+template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
+void CheckEvaluationWithFill(const PointEvaluator<Real>& evaluator,
+                             const Field<Real>& field,
+                             const std::vector<Real>& pts,
+                             const std::vector<bool>& is_inside, Func func,
+                             Real fill_value, double abs_tol = EvalTol)
+{
+  int n = static_cast<int>(pts.size()) / 2;
+  REQUIRE(static_cast<int>(is_inside.size()) == n);
+  const auto out_host =
+    EvaluateToHost(evaluator, field, field.GetData().GetValueBasis());
+
+  auto expected = EvaluateReferenceFunction<ExecutionSpace>(pts, func);
+
+  for (int i = 0; i < n; ++i) {
+    INFO("Point " << i << " (" << pts[2 * static_cast<size_t>(i)] << ", "
+                  << pts[2 * static_cast<size_t>(i) + 1] << ")"
+                  << " got=" << out_host(i, 0));
+    if (is_inside[i]) {
+      INFO(" expected=" << expected[i]);
+      REQUIRE(out_host(i, 0) == Catch::Approx(expected[i]).margin(abs_tol));
+    } else {
+      REQUIRE(out_host(i, 0) == fill_value);
+    }
+  }
+  std::vector<bool> is_filled(is_inside.size());
+  for (size_t i = 0; i < is_inside.size(); ++i) {
+    is_filled[i] = !is_inside[i];
+  }
+  CheckFilledPoints(evaluator, is_filled);
+}
+
+// Overload that binds any point evaluator factory to `pts` in FILL mode.
+template <typename Factory, typename ExecutionSpace = DefaultExecutionSpace,
+          typename Func>
+void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
+                             const std::vector<Real>& pts,
+                             const std::vector<bool>& is_inside, Func func,
+                             Real fill_value, double abs_tol = EvalTol)
+{
+  OutOfBoundsPolicy policy{OutOfBoundsMode::FILL, fill_value};
+  auto evaluator = factory->template CreatePointEvaluator<Real>(
+    pcms::test::Bind(*factory->GetGeometry(), pts, policy));
+  CheckEvaluationWithFill<ExecutionSpace>(*evaluator, field, pts, is_inside,
+                                          func, fill_value, abs_tol);
+}
+
+#ifdef PCMS_ENABLE_OMEGA_H
+// An Omega_h geometry of `mesh` in the Cartesian coordinate system of its
+// dimension, typed for the layouts built on it.
+inline std::shared_ptr<omega_h::OmegaHGeometry> MakeOmegaHGeometry(
+  Omega_h::Mesh& mesh)
+{
+  return std::make_shared<omega_h::OmegaHGeometry>(
+    mesh, pcms::csys::CreateCartesian(mesh.dim()));
+}
+
+// The search record of a found point of an Omega_h binding, on the host: the
+// entity dimension and id and the reduced coordinates on it.
+struct HostRecord
+{
+  int dim;
+  LO entity;
+  std::array<Real, 3> xi;
+};
+
+template <int Dim>
+std::vector<HostRecord> FoundRecordsOfDim(
+  const detail::OmegaHMeshBinding& binding)
+{
+  const auto results = Kokkos::create_mirror_view_and_copy(
+    HostMemorySpace(), binding.Results<Dim>());
+  const auto found = Kokkos::create_mirror_view_and_copy(HostMemorySpace(),
+                                                         binding.FoundPoints());
+  std::vector<HostRecord> records;
+  for (size_t k = 0; k < found.extent(0); ++k) {
+    const auto& r = results(found(k));
+    HostRecord record{static_cast<int>(r.dimensionality), r.EntityId(), {}};
+    for (int j = 0; j < Dim; ++j) {
+      record.xi[j] = r.parametric[j];
+    }
+    records.push_back(record);
+  }
+  return records;
+}
+
+// The search records of the found points, in FoundPoints() order.
+inline std::vector<HostRecord> FoundRecords(const BoundPoints& bound)
+{
+  const auto& binding = dynamic_cast<const detail::OmegaHMeshBinding&>(bound);
+  return dynamic_cast<const omega_h::OmegaHGeometry&>(*bound.GetGeometry())
+               .GetMesh()
+               .dim() == 2
+           ? FoundRecordsOfDim<2>(binding)
+           : FoundRecordsOfDim<3>(binding);
+}
+
+// Checks that two lists of records name the same entities with the same
+// reduced coordinates up to `tol`.
+inline void CheckSameRecords(const std::vector<HostRecord>& actual,
+                             const std::vector<HostRecord>& expected,
+                             double tol = ExactTol)
+{
+  REQUIRE(actual.size() == expected.size());
+  for (size_t i = 0; i < actual.size(); ++i) {
+    CAPTURE(i);
+    REQUIRE(actual[i].dim == expected[i].dim);
+    REQUIRE(actual[i].entity == expected[i].entity);
+    for (int j = 0; j < 3; ++j) {
+      REQUIRE(std::abs(actual[i].xi[j] - expected[i].xi[j]) <= tol);
+    }
+  }
+}
+
+// Checks that `points` bound with `owners` on their Omega_h geometry are on
+// the entities its search finds.
+inline void CheckOwnersMatchSearch(CoordinateView<DeviceMemorySpace> points,
+                                   const OwnerHints& owners)
+{
+  CheckSameRecords(FoundRecords(*owners.geometry->Bind(points, owners)),
+                   FoundRecords(*owners.geometry->Bind(points)));
+}
+#endif // PCMS_ENABLE_OMEGA_H
+
+#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+// Evaluates source_field at the integrator's points, searched on the source
+// space's geometry, and assembles the load vector.
+inline void EvaluateAndAssemble(
+  transfer::LinearFormIntegrator& integrator,
+  const std::shared_ptr<const FunctionSpace>& source_space,
+  const Field<Real>& source_field)
+{
+  const auto pts = integrator.GetIntegrationPoints();
+  const std::size_t npts = pts.GetValues().extent(0);
+  auto evaluator = source_space->CreatePointEvaluator<Real>(
+    source_space->GetGeometry()->Bind(pts));
+  Kokkos::View<Real**, DeviceMemorySpace> sampled("sampled", npts, 1);
+  evaluator->Evaluate(source_field, TagLike(source_field, sampled));
+  integrator.Assemble(MakeConstRank2View(sampled));
+}
+#endif // PCMS_ENABLE_CONSERVATIVE_PROJECTION
+
+} // namespace pcms::test
+
+#endif // PCMS_TEST_FIELD_TEST_UTILS_HPP

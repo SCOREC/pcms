@@ -1,8 +1,8 @@
-#include "pcms/configuration.h"
+#include "pcms/configuration.hpp"
 #include <mpi.h>
-#include "pcms/utility/assert.h"
+#include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
-#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
 #include <petscsys.h>
 #endif
 
@@ -33,7 +33,7 @@ void initialize()
     Kokkos::initialize();
     g_py_owns_kokkos = true;
   }
-#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
   PetscBool petsc_initialized = PETSC_FALSE;
   PetscInitialized(&petsc_initialized);
   if (!petsc_initialized) {
@@ -47,7 +47,7 @@ void initialize()
 
 void finalize()
 {
-#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
   if (g_py_owns_petsc) {
     PetscBool petsc_finalized = PETSC_FALSE;
     PetscFinalized(&petsc_finalized);

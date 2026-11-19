@@ -1,14 +1,14 @@
-#include "pcms/field/function_space.h"
-#include "pcms/configuration.h"
-#include "pcms/utility/assert.h"
-#include "pcms/utility/common.h"
-#ifdef PCMS_ENABLE_MESHFIELDS
-#include "pcms/field/layout/mesh_fields.h"
-#include "pcms/field/data/mesh_fields.h"
+#include "pcms/field/function_space.hpp"
+#include "pcms/configuration.hpp"
+#include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/common.hpp"
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
+#include "pcms/backends/omega_h_meshfields/layout.hpp"
+#include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
 #ifdef PCMS_ENABLE_OMEGA_H
-#include "pcms/field/layout/omega_h_lagrange.h"
-#include "pcms/field/data/omega_h.h"
+#include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/backends/omega_h/field_data.hpp"
 #endif
 
 namespace pcms
@@ -24,16 +24,18 @@ template <typename T>
 void ValidateWrappedFieldData(const FieldLayout& layout,
                               const FieldData<T>& data)
 {
-#ifdef PCMS_ENABLE_MESHFIELDS
-  if (dynamic_cast<const MeshFieldsAdapterLayout*>(&layout) != nullptr &&
-      dynamic_cast<const MeshFieldsFieldData<T>*>(&data) == nullptr) {
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
+  if (dynamic_cast<const omega_h_meshfields::MeshFieldsAdapterLayout*>(
+        &layout) != nullptr &&
+      dynamic_cast<const omega_h_meshfields::MeshFieldsFieldData<T>*>(&data) ==
+        nullptr) {
     throw pcms_error("FunctionSpace::CreateField: MeshFields layout requires "
                      "MeshFieldsFieldData");
   }
 #endif
 #ifdef PCMS_ENABLE_OMEGA_H
-  if (dynamic_cast<const OmegaHLagrangeLayout*>(&layout) != nullptr &&
-      dynamic_cast<const OmegaHFieldData<T>*>(&data) == nullptr) {
+  if (dynamic_cast<const omega_h::OmegaHLagrangeLayout*>(&layout) != nullptr &&
+      dynamic_cast<const omega_h::OmegaHFieldData<T>*>(&data) == nullptr) {
     throw pcms_error("FunctionSpace::CreateField: OmegaH layout requires "
                      "OmegaHFieldData");
   }
@@ -50,9 +52,8 @@ void ValidateWrappedFieldData(const FieldLayout& layout,
 
 bool FunctionSpace::Supports(DifferentialOperator op) const noexcept
 {
-  return evaluator_ != nullptr
-           ? evaluator_->Supports(op)
-           : (geometry_ != nullptr && op == DifferentialOperator::Value);
+  return evaluator_ != nullptr ? evaluator_->Supports(op)
+                               : op == DifferentialOperator::Value;
 }
 
 std::shared_ptr<const FunctionSpace> FunctionSpace::Owner() const
@@ -65,18 +66,19 @@ std::shared_ptr<const FunctionSpace> FunctionSpace::Owner() const
 }
 
 PointEvaluatorVariant FunctionSpace::CreatePointEvaluatorImpl(
-  Type value_type, std::shared_ptr<const BoundSource> bound,
+  Type value_type, std::shared_ptr<const BoundPoints> bound,
   DifferentialOperator op) const
 {
   if (evaluator_ == nullptr) {
     throw pcms_error("CreatePointEvaluator: this function space does not "
                      "evaluate fields at points");
   }
-  return apply_to_type(value_type, [&](auto type) -> PointEvaluatorVariant {
-    using T = typename decltype(type)::type;
-    return CreateUntransformedPointEvaluator<T>(*evaluator_, std::move(bound),
-                                                op);
-  });
+  return detail::apply_to_type(value_type,
+                               [&](auto type) -> PointEvaluatorVariant {
+                                 using T = typename decltype(type)::type;
+                                 return CreateUntransformedPointEvaluator<T>(
+                                   *evaluator_, std::move(bound), op);
+                               });
 }
 
 FieldVariant FunctionSpace::CreateFieldImpl(Type storage_type,

@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/localization/adj_search.hpp>
-#include <pcms/field/evaluator/mls_interpolation.hpp>
-#include <pcms/field/evaluator/pcms_interpolator_aliases.hpp>
-#include <pcms/utility/arrays.h>
+#include <pcms/backends/omega_h/adj_search.hpp>
+#include <pcms/backends/point_cloud/mls_interpolation.hpp>
+#include <pcms/backends/point_cloud/interpolator_aliases.hpp>
+#include <pcms/utility/arrays.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
@@ -11,6 +11,13 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <vector>
 #include <iostream>
+
+namespace pcms
+{
+using detail::mls_interpolation;
+using omega_h::searchNeighbors;
+using utility::get_entity_centroids;
+} // namespace pcms
 
 KOKKOS_INLINE_FUNCTION
 double func(pcms::Coord& p, int degree)
@@ -50,15 +57,16 @@ void test(Omega_h::Mesh& mesh, Omega_h::Real cutoffDistance, int degree,
   // the element centroids around each vertex
   Kokkos::View<pcms::LO*, pcms::DeviceMemorySpace> vertices("vertices",
                                                             mesh.nverts());
-  pcms::iota_view<pcms::LO>(vertices);
+  pcms::detail::iota_view<pcms::LO>(vertices);
   pcms::SupportResults support = pcms::searchNeighbors(
     mesh, mesh.dim(), mesh.coords(), 0, vertices, cutoffDistance,
     min_num_supports, 3 * min_num_supports);
 
   for (const auto& rbf : rbf_types) {
     auto approx_target_values =
-      mls_interpolation(source_values, source_coordinates, target_coordinates,
-                        support, dim, degree, rbf);
+      Omega_h::Write<Omega_h::Real>(pcms::mls_interpolation(
+        source_values.view(), source_coordinates.view(),
+        target_coordinates.view(), support, dim, degree, rbf));
 
     auto host_approx_target_values =
       Omega_h::HostRead<Omega_h::Real>(approx_target_values);

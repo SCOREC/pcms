@@ -4,22 +4,28 @@
 #include <Omega_h_for.hpp>
 #include <Omega_h_mesh.hpp>
 
-#include "pcms/coupler/field_exchange_planner.h"
-#include "pcms/coupler/field_serializer.h"
-#include "pcms/coupler/overlap_mask.h"
-#include "pcms/field/data/simple.h"
-#include "distributed_test_utils.h"
-#include "pcms/field/coordinate_systems/cartesian.hpp"
-#include "pcms/field/evaluator/omega_h_geometry.hpp"
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/utility/arrays.h"
-#include "pcms/utility/types.h"
+#include "pcms/coupler/detail/field_exchange_planner.hpp"
+#include "pcms/coupler/detail/field_serializer.hpp"
+#include "pcms/coupler/overlap_mask.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
+#include "distributed_test_utils.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
+#include "pcms/backends/omega_h/omega_h.hpp"
+#include "pcms/field/function_spaces.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/types.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
 #include <set>
 #include <vector>
+
+namespace pcms
+{
+using omega_h::CreateGeometry;
+} // namespace pcms
 
 using pcms::GO;
 using pcms::LO;
@@ -124,16 +130,16 @@ void check_serializer_round_trip(const DistributedCouplingContext& ctx)
   }
 
   // Serialize: only participating owned data is written to the buffer.
-  pcms::FieldSerializer<Real> serializer;
+  pcms::detail::FieldSerializer<Real> serializer;
   std::vector<Real> buffer(static_cast<size_t>(n_participating) * n_comp);
   const int sent =
-    serializer.Serialize(field, pcms::make_array_view(buffer),
-                         pcms::make_const_array_view(permutation));
+    serializer.Serialize(field, pcms::detail::make_array_view(buffer),
+                         pcms::detail::make_const_array_view(permutation));
   require(sent == static_cast<int>(n_participating) * n_comp,
           "serialized size matches participating holders");
 
   auto owned_field =
-    pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   require(owned_field.size() == static_cast<size_t>(n_owned),
           "owned field size");
   for (LO o = 0; o < n_participating; ++o) {
@@ -145,10 +151,10 @@ void check_serializer_round_trip(const DistributedCouplingContext& ctx)
   // Deserialize into a fresh field: participating owned values are restored;
   // ghost and non-participating owned holders stay zero.
   auto target = ctx.space->CreateFunction<Real>();
-  serializer.Deserialize(target, pcms::make_const_array_view(buffer),
-                         pcms::make_const_array_view(permutation));
+  serializer.Deserialize(target, pcms::detail::make_const_array_view(buffer),
+                         pcms::detail::make_const_array_view(permutation));
   auto target_data =
-    pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    pcms::detail::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
   require(target_data.size() == static_cast<size_t>(n_owned),
           "target owned size");
 
@@ -229,8 +235,8 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
   // owned holders.
   pcms::OverlapMask overlap_mask(static_cast<size_t>(n_owned));
 
-  pcms::GenericFieldExchangePlanner planner;
-  pcms::ExchangePlan send_plan =
+  pcms::detail::GenericFieldExchangePlanner planner;
+  pcms::detail::ExchangePlan send_plan =
     planner.BuildExchangePlan(layout, exchange_partition, &overlap_mask);
 
   // Plan structure: a single destination (an actual neighbour) described by a
@@ -313,7 +319,7 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
   // into a single block (one sender's message) every GID some neighbour admits
   // holding, then matches those against the holders this rank owns.
   const std::vector<pcms::GO> recv_gid_message = MakeGidMessage(ghost_recv);
-  pcms::ExchangePlan recv_plan = planner.BuildReceivePlan(
+  pcms::detail::ExchangePlan recv_plan = planner.BuildReceivePlan(
     layout,
     pcms::GlobalIDView<pcms::HostMemorySpace>(recv_gid_message.data(),
                                               recv_gid_message.size()),
@@ -366,11 +372,11 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
     exchange_field, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
                       exchange_vals.data(), n_owned, n_comp)));
 
-  pcms::FieldSerializer<Real> exchange_serializer;
+  pcms::detail::FieldSerializer<Real> exchange_serializer;
   std::vector<Real> payload(recv_plan.msg_size, Real(0));
   const int packed = exchange_serializer.Serialize(
-    exchange_field, pcms::make_array_view(payload),
-    pcms::make_const_array_view(recv_plan.permutation));
+    exchange_field, pcms::detail::make_array_view(payload),
+    pcms::detail::make_const_array_view(recv_plan.permutation));
   require(packed == static_cast<int>(recv_plan.msg_size),
           "packed payload size != receive plan message size");
 
@@ -378,10 +384,10 @@ void check_distributed_exchange(const DistributedCouplingContext& ctx)
   // plan slot, and holders the plan did not match stay untouched.
   auto echo_field = ctx.space->CreateFunction<Real>();
   exchange_serializer.Deserialize(
-    echo_field, pcms::make_const_array_view(payload),
-    pcms::make_const_array_view(recv_plan.permutation));
-  auto echo_data =
-    pcms::FlattenToRank1View(echo_field.GetDOFHolderDataHost().GetValues());
+    echo_field, pcms::detail::make_const_array_view(payload),
+    pcms::detail::make_const_array_view(recv_plan.permutation));
+  auto echo_data = pcms::detail::FlattenToRank1View(
+    echo_field.GetDOFHolderDataHost().GetValues());
   for (LO o = 0; o < n_owned; ++o) {
     if (recv_plan.permutation[static_cast<size_t>(o)] >= 0) {
       require(echo_data[static_cast<size_t>(o)] ==
@@ -443,7 +449,7 @@ int main(int argc, char** argv)
       mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
 
       auto geometry =
-        pcms::CreateOmegaHGeometry(mesh, pcms::csys::Cartesian::Deferred());
+        pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
       auto space = pcms::CreateLagrangeSpace(
         geometry, /*order=*/1, /*num_components=*/1,
         pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});

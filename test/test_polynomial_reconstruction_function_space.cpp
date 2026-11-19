@@ -1,18 +1,23 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "pcms/field/function_space/polynomial_reconstruction.hpp"
-#include <pcms/field/evaluator/point_cloud_geometry.hpp>
+#include "pcms/field/function_spaces.hpp"
+#include <pcms/backends/point_cloud/point_cloud_geometry.hpp>
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/function_space/lagrange.h"
-#include "pcms/field/layout/omega_h_entity.h"
-#include "pcms/field/layout/point_cloud.h"
-#include "field_test_utils.h"
+#include "pcms/backends/omega_h/entity_layout.hpp"
+#include "pcms/backends/point_cloud/layout.hpp"
+#include "field_test_utils.hpp"
 
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <vector>
-#include "pcms/field/coordinate_systems/cartesian.hpp"
+#include "pcms/utility/coordinate_systems/cartesian.hpp"
+
+namespace pcms
+{
+using detail::PointCloudLayout;
+using omega_h::OmegaHEntityLayout;
+} // namespace pcms
 
 using pcms::CoordinateSystem;
 using pcms::HostMemorySpace;
@@ -38,8 +43,8 @@ TEST_CASE(
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
 
   auto factory = pcms::CreatePolynomialReconstructionSpace(
-    pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-      pcms::csys::Cartesian::Deferred(), coords_view)));
+    pcms::point_cloud::CreateGeometry(pcms::CoordinateView<HostMemorySpace>(
+      pcms::detail::DeferredCartesian(), coords_view)));
   auto layout = factory->GetLayout();
 
   REQUIRE(layout->GetNumComponents() == 1);
@@ -66,8 +71,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace fields share layout")
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
 
   auto factory = pcms::CreatePolynomialReconstructionSpace(
-    pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-      pcms::csys::Cartesian::Deferred(), coords_view)));
+    pcms::point_cloud::CreateGeometry(pcms::CoordinateView<HostMemorySpace>(
+      pcms::detail::DeferredCartesian(), coords_view)));
   auto source = factory->CreateFunction<Real>();
   auto target = factory->CreateFunction<Real>();
 
@@ -82,8 +87,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field set/get DOF "
 
   auto field =
     pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-        pcms::csys::Cartesian::Deferred(), coords_view)))
+      pcms::point_cloud::CreateGeometry(pcms::CoordinateView<HostMemorySpace>(
+        pcms::detail::DeferredCartesian(), coords_view)))
       ->CreateFunction<Real>();
 
   std::vector<Real> data{1.0, 2.0, 3.0, 4.0};
@@ -93,7 +98,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace point-cloud field set/get DOF "
     pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(pcms::ValueBasis{},
                                                              data_view));
 
-  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  auto got =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(got.size() == data.size());
   for (LO i = 0; i < static_cast<LO>(data.size()); ++i) {
     REQUIRE(got[i] == Catch::Approx(data[i]));
@@ -108,8 +114,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
 
   auto field = [&]() {
     auto factory = pcms::CreatePolynomialReconstructionSpace(
-      pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-        pcms::csys::Cartesian::Deferred(), coords_view)));
+      pcms::point_cloud::CreateGeometry(pcms::CoordinateView<HostMemorySpace>(
+        pcms::detail::DeferredCartesian(), coords_view)));
     return factory->CreateFunction<Real>();
   }();
 
@@ -123,7 +129,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace field keeps layout alive "
     data.data(), static_cast<LO>(data.size()), 1);
   field.SetDOFHolderDataUncheckedHost(data_view);
 
-  auto got = pcms::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  auto got =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
   REQUIRE(got[0] == Catch::Approx(9.0));
   REQUIRE(got[3] == Catch::Approx(12.0));
 }
@@ -185,8 +192,8 @@ TEST_CASE("A standalone point-cloud layout has no geometry")
   auto coords = MakeCoords2D();
   Rank2View<Real, HostMemorySpace> coords_view(coords.data(), 4, 2);
   auto standalone = pcms::CreatePolynomialReconstructionSpace(
-    pcms::CreatePointCloudGeometry(pcms::CoordinateView<HostMemorySpace>(
-      pcms::csys::Cartesian::Deferred(), coords_view)));
+    pcms::point_cloud::CreateGeometry(pcms::CoordinateView<HostMemorySpace>(
+      pcms::detail::DeferredCartesian(), coords_view)));
 
   REQUIRE(lagrange->GetLayout()->GetGeometry() != nullptr);
   REQUIRE(standalone->GetLayout()->GetGeometry() == nullptr);

@@ -3,12 +3,20 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
-#include <pcms/field/function_space/lagrange.h>
-#include <pcms/field/layout/omega_h_lagrange.h>
+#include <pcms/field/function_spaces.hpp>
+#include <pcms/backends/omega_h/lagrange_layout.hpp>
 #include <pcms/transfer/omega_h_mass_integrator.hpp>
 #include <pcms/transfer/omega_h_conservative_projection.hpp>
-#include "field_test_utils.h"
+#include "field_test_utils.hpp"
 #include <petscksp.h>
+#include "pcms/backends/omega_h/omega_h.hpp"
+
+namespace pcms
+{
+using omega_h::OmegaHLagrangeLayout;
+using transfer::BuildOmegaHMassIntegrator;
+using transfer::OmegaHConservativeProjection;
+} // namespace pcms
 
 // Reference corner tet:
 //   v0=(0,0,0), v1=(1,0,0), v2=(0,1,0), v3=(0,0,1)
@@ -100,15 +108,15 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
   auto space = pcms::test::MakeP1Space(mesh);
   auto source = space->CreateFunction<pcms::Real>();
   auto target = space->CreateFunction<pcms::Real>();
-  pcms::OmegaHConservativeProjection projection(*space, *space);
+  pcms::OmegaHConservativeProjection projection(space, space);
   SECTION("constant field")
   {
     const double c = 2.5;
     pcms::test::SetField(
       source, KOKKOS_LAMBDA(pcms::Real, pcms::Real, pcms::Real) { return c; });
     projection.Apply(source, target);
-    const auto values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     REQUIRE(static_cast<Omega_h::LO>(values.size()) == 4);
     for (Omega_h::LO i = 0; i < 4; ++i) {
       CAPTURE(i, values[i]);
@@ -122,10 +130,10 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
         return 1.0 + x + 2.0 * y + 3.0 * z;
       });
     projection.Apply(source, target);
-    const auto values =
-      pcms::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());
+    const auto values = pcms::detail::FlattenToRank1View(
+      target.GetDOFHolderDataHost().GetValues());
     const auto coords_h = pcms::test::CopyCoordinatesToHost(
-      pcms::MakeConstRank2View(mesh.coords(), 3));
+      pcms::omega_h::MakeConstRank2View(mesh.coords(), 3));
     for (Omega_h::LO i = 0; i < 4; ++i) {
       const double expected =
         1.0 + coords_h(i, 0) + 2.0 * coords_h(i, 1) + 3.0 * coords_h(i, 2);

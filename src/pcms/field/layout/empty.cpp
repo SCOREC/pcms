@@ -1,7 +1,7 @@
-#include "pcms/field/layout/empty.h"
-#include "pcms/utility/assert.h"
+#include "pcms/field/layout/empty.hpp"
+#include "pcms/utility/assert.hpp"
 
-namespace pcms
+namespace pcms::field
 {
 
 namespace
@@ -63,12 +63,12 @@ GO EmptyFieldLayout::GetNumGlobalDofHolder() const
 
 Rank1View<const bool, HostMemorySpace> EmptyFieldLayout::GetOwnedHost() const
 {
-  return make_const_array_view(owned_host_);
+  return pcms::detail::make_const_array_view(owned_host_);
 }
 
 GlobalIDView<HostMemorySpace> EmptyFieldLayout::GetGidsHost() const
 {
-  return make_const_array_view(gids_host_);
+  return pcms::detail::make_const_array_view(gids_host_);
 }
 
 bool EmptyFieldLayout::IsDistributed() const
@@ -96,13 +96,13 @@ int EmptyFieldLayout::GetDimension() const
 Rank1View<const LO, HostMemorySpace>
 EmptyFieldLayout::GetDOFHolderClassificationDimensionsHost() const
 {
-  return make_const_array_view(classification_dims_host_);
+  return pcms::detail::make_const_array_view(classification_dims_host_);
 }
 
 Rank1View<const LO, HostMemorySpace>
 EmptyFieldLayout::GetDOFHolderClassificationIdsHost() const
 {
-  return make_const_array_view(classification_ids_host_);
+  return pcms::detail::make_const_array_view(classification_ids_host_);
 }
 
-} // namespace pcms
+} // namespace pcms::field

@@ -7,6 +7,11 @@ else is internal. Behavior and numerical results do not change.
 ## Building and linking
 
 - **Requirements:** CMake 3.26 or newer.
+- **Build configurations:** `CMakePresets.json` names the supported
+  configurations (`minimal`, `polynomial-reconstruction`, `unstructured`,
+  `conservative`, `coupling-core`, `coupling`, `full`, `full-static`); see
+  the README. `cmake --workflow --preset <name>` configures, builds and
+  tests one; `cmake --preset <name> -DCMAKE_PREFIX_PATH=...` configures it.
 - **Link `pcms::pcms`.** It links every PCMS library that was built and is the
   supported way to use PCMS. `pcms::core` still works in 0.4 as a deprecated
   alias of `pcms::pcms` (CMake prints a deprecation warning) and will be

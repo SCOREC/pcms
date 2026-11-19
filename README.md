@@ -48,6 +48,30 @@ reconstruction, XGC, MFEM, the coupler, the C and Fortran APIs, Python, examples
 a `PCMS_ENABLE_<NAME>` flag that is off by default; see
 [MIGRATION.md](MIGRATION.md#building-and-linking) for the list.
 
+### Build configurations
+
+[`CMakePresets.json`](CMakePresets.json) names the configurations CI builds
+and tests (Ninja, Release, tests and examples on):
+
+| Preset | Capabilities |
+| --- | --- |
+| `minimal` | none: Kokkos and MPI only |
+| `polynomial-reconstruction` | `POLYNOMIAL_RECONSTRUCTION` |
+| `unstructured` | `OMEGA_H`, `OMEGA_H_MESHFIELDS` |
+| `conservative` | `unstructured` and `CONSERVATIVE_PROJECTION` |
+| `coupling-core` | `COUPLER` |
+| `coupling` | `COUPLER`, `OMEGA_H`, `XGC`, `C`, `FORTRAN` |
+| `full` | everything except `MFEM` |
+| `full-static` | `full` without `PYTHON`, static libraries and static PETSc |
+
+The presets hold no dependency paths; pass them at configure time. Configure,
+build and test in one step, or configure only (into `build/<preset>`):
+
+```console
+$ CMAKE_PREFIX_PATH=<dependency prefixes> cmake --workflow --preset unstructured
+$ cmake --preset unstructured -DCMAKE_PREFIX_PATH="<dependency prefixes>"
+```
+
 ## Build with Spack
 
 The environment in [`spack/spack.yaml`](spack/spack.yaml) builds PCMS from

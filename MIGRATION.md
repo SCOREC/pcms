@@ -6,7 +6,7 @@ else is internal. Behavior and numerical results do not change.
 
 ## Building and linking
 
-- **Requirements:** CMake 3.23 or newer.
+- **Requirements:** CMake 3.26 or newer.
 - **Link `pcms::pcms`.** It links every PCMS library that was built and is the
   supported way to use PCMS. `pcms::core` still works in 0.4 as a deprecated
   alias of `pcms::pcms` (CMake prints a deprecation warning) and will be

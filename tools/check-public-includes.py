@@ -16,6 +16,11 @@ pcms/discretization/discretization.hpp.
 Installed code that is not public lives in headers below a detail/ folder, in
 a detail namespace: a header outside detail/ may not open a detail namespace,
 and a header below detail/ may declare nothing outside one.
+
+Every header is installed as part of a header file set of its library (CMake
+compiles each one on its own through the file sets, see
+public_headers_self_contained), so each must be named in a CMake file below
+src/ outside an install() call.
 """
 
 import os
@@ -88,8 +93,32 @@ def detail_violations(rel, text):
     return []
 
 
+CMAKE_COMMENT = re.compile(r'#[^\n]*')
+INSTALL_CALL = re.compile(r'\binstall\s*\(', re.I)
+
+
+def file_set_text(root):
+    """The CMake code below src/, without comments and install() calls."""
+    text = []
+    for dirpath, _, files in os.walk(os.path.join(root, "src")):
+        for name in files:
+            if name == "CMakeLists.txt" or name.endswith(".cmake"):
+                with open(os.path.join(dirpath, name), encoding="utf-8") as fh:
+                    code = CMAKE_COMMENT.sub('', fh.read())
+                # drop each install(...) with its nested parentheses
+                while m := INSTALL_CALL.search(code):
+                    depth, i = 1, m.end()
+                    while depth and i < len(code):
+                        depth += {'(': 1, ')': -1}.get(code[i], 0)
+                        i += 1
+                    code = code[:m.start()] + code[i:]
+                text.append(code)
+    return "\n".join(text)
+
+
 def check(root):
     base = os.path.join(root, "include", "pcms")
+    file_sets = file_set_text(root)
     bad = []
     for dirpath, _, files in os.walk(base):
         for name in files:
@@ -101,6 +130,9 @@ def check(root):
             for prefix, libs in ALLOWED.items():
                 if rel.startswith(prefix):
                     allowed |= libs
+            if f"include/pcms/{rel}" not in file_sets:
+                bad.append(f"include/pcms/{rel}: in no header file set (not "
+                           "named in a CMake file below src/)")
             with open(path, encoding="utf-8") as fh:
                 text = fh.read()
             bad += detail_violations(rel, text)
@@ -127,8 +159,8 @@ def main():
     if bad:
         print(f"{len(bad)} problem(s) in public headers")
         return 1
-    print("public headers: no disallowed includes; detail namespaces only "
-          "in detail/ headers")
+    print("public headers: all in header file sets, no disallowed includes, "
+          "detail namespaces only in detail/ headers")
     return 0
 
 

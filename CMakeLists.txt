@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.26)
 project(
   pcms
   VERSION 0.4.0
@@ -239,9 +239,15 @@ if(PCMS_ENABLE_MFEM)
   endif()
 endif()
 
+include(CTest)
+# Every installed header is in a file set of its library; with testing on,
+# the target all_verify_interface_header_sets compiles each one on its own
+# (the test public_headers_self_contained).
+if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
+  set(CMAKE_VERIFY_INTERFACE_HEADER_SETS ON)
+endif()
 add_subdirectory(src)
 
-include(CTest)
 include(test/testing.cmake)
 # define 'smoke tests' to test the install
 add_custom_target(test_install DEPENDS check) # maintain test_install target

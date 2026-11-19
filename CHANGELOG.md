@@ -43,7 +43,7 @@ The reorganization does not change numerical behavior. See [MIGRATION.md](MIGRAT
 - Python API mirrors the C++ factories; the class-based constructors are
   removed.
 - Macros `MAX_DIM` and `ACTIVE_GPU_EXECUTION` are `PCMS_`-prefixed.
-- Build: CMake 3.23 required; options renamed to `PCMS_ENABLE_<UPPERCASE>` /
+- Build: CMake 3.26 required; options renamed to `PCMS_ENABLE_<UPPERCASE>` /
   `PCMS_` form (old names still accepted in 0.4, deprecated); `pcms::core` is
   a deprecated alias of `pcms::pcms`; `pcms::transfer` no longer depends on
   the coupler, redev or ADIOS2; package files installed to

@@ -37,7 +37,7 @@ add_subdirectory(pcms/eqdsk)
 # Top-level and generated headers. They are found through pcms::utility's
 # include directories (source and binary src/ directories).
 install(
-  FILES ../include/pcms/pcms.hpp ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.hpp
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/pcms/version.hpp
         ${CMAKE_CURRENT_BINARY_DIR}/pcms/configuration.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms)
 
@@ -80,6 +80,9 @@ if(TARGET pcms::coupler)
 endif()
 target_link_libraries(pcms_pcms INTERFACE pcms::transient)
 set_target_properties(pcms_pcms PROPERTIES EXPORT_NAME pcms)
+target_sources(
+  pcms_pcms INTERFACE FILE_SET HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include
+                      FILES ${PROJECT_SOURCE_DIR}/include/pcms/pcms.hpp)
 if (PCMS_ENABLE_PYTHON)
   # Disable LTO/IPO before adding Python subdirectory to avoid fatbinData conflicts
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
@@ -134,6 +137,7 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   INCLUDES
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILE_SET HEADERS
 )
 
 

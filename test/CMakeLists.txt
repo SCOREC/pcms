@@ -755,8 +755,11 @@ if(TARGET test_support)
   target_link_libraries(xgc_n0_server PUBLIC pcms::transfer pcms::coupler test_support)
 endif()
 
-# every installed public header compiles on its own
-add_subdirectory(public_headers)
+# every installed public header compiles on its own (CMake's header-set
+# verification, enabled in the top-level CMakeLists.txt)
+add_test(NAME public_headers_self_contained
+         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config $<CONFIG>
+                 --target all_verify_interface_header_sets)
 
 # installed core headers must not include backend libraries
 find_package(Python3 COMPONENTS Interpreter)

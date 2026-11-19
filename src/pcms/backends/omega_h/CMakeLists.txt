@@ -19,4 +19,8 @@ if(PCMS_ENABLE_OMEGA_H)
            ${PROJECT_SOURCE_DIR}/include/pcms FILES
            ${PROJECT_SOURCE_DIR}/include/pcms/backends/omega_h/omega_h.hpp
            ${PROJECT_SOURCE_DIR}/include/pcms/backends/omega_h/geometry.hpp)
+  # The public header includes Omega_h, which its installed users link
+  # themselves; in the build tree pcms::field provides it, so the header-set
+  # verification compiles the header.
+  target_link_libraries(pcms_field INTERFACE $<BUILD_INTERFACE:Omega_h::omega_h>)
 endif()

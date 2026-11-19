@@ -65,6 +65,10 @@ target_sources(pcms_capi_transfer
   PRIVATE ${CAPI_TRANSFER_HEADERS_PRIVATE})
 endif()
 
+# the headers are C: the header-set verification compiles them as C
+set_source_files_properties(${CAPI_CORE_HEADERS} ${CAPI_TRANSFER_HEADERS}
+                            PROPERTIES LANGUAGE C)
+
 # high level interface target
 add_library(pcms_capi INTERFACE)
 add_library(pcms::capi ALIAS pcms_capi)

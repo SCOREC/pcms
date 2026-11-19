@@ -17,11 +17,11 @@
 
 namespace pcms
 {
-using backend::uniform_grid::BoundaryCondition;
-using backend::uniform_grid::CompactBiCubicSplineInterpolator;
-using backend::uniform_grid::CompactCubicSplineInterpolator;
-using backend::uniform_grid::ExplicitBiCubicSplineInterpolator;
-using backend::uniform_grid::ExplicitCubicSplineInterpolator;
+using uniform_grid::BoundaryCondition;
+using uniform_grid::CompactBiCubicSplineInterpolator;
+using uniform_grid::CompactCubicSplineInterpolator;
+using uniform_grid::ExplicitBiCubicSplineInterpolator;
+using uniform_grid::ExplicitCubicSplineInterpolator;
 } // namespace pcms
 
 using namespace pcms;

@@ -4,7 +4,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/profile.hpp"
 
-namespace pcms::backend::mfem
+namespace pcms::mfem
 {
 
 MFEMVertexFieldData::MFEMVertexFieldData(::mfem::ParFiniteElementSpace& pfes,
@@ -93,4 +93,4 @@ void MFEMVertexFieldData::SetValues(
   ScatterHost(MakeConstRank2View(host_data_));
 }
 
-} // namespace pcms::backend::mfem
+} // namespace pcms::mfem

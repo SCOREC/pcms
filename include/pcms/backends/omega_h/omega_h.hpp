@@ -25,7 +25,7 @@
 #include <optional>
 #include <string>
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 /// The geometry of an Omega_h simplex mesh (2D or 3D, classified). Builds the
@@ -154,6 +154,6 @@ inline Kokkos::View<bool*, HostMemorySpace> OverlapMaskFromArray(
   return OverlapMaskFromArray(Omega_h::HostRead<Omega_h::I8>(mask), size);
 }
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h
 
 #endif // PCMS_BACKENDS_OMEGA_H_OMEGA_H_HPP

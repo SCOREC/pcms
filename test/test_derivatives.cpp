@@ -34,8 +34,7 @@ std::shared_ptr<const pcms::FunctionSpace> MakeSplineSpace()
   grid.edge_length = {2.0, 2.0};
   grid.divisions = {16, 16};
   return pcms::CreateSplineSpace(
-    pcms::backend::uniform_grid::CreateUniformGridGeometry(
-      grid, pcms::csys::Cartesian::Create(2)));
+    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::Cartesian::Create(2)));
 }
 
 } // namespace
@@ -144,13 +143,11 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   grid.edge_length = {1.5, 1.4};
   grid.divisions = {5, 7};
   auto value_space = pcms::CreateLagrangeSpace(
-    pcms::backend::uniform_grid::CreateUniformGridGeometry(
-      grid, source->GetCoordinateSystem()),
-    1, 1);
+    pcms::uniform_grid::CreateGeometry(grid, source->GetCoordinateSystem()), 1,
+    1);
   auto gradient_space = pcms::CreateLagrangeSpace(
-    pcms::backend::uniform_grid::CreateUniformGridGeometry(
-      grid, source->GetCoordinateSystem()),
-    1, 2);
+    pcms::uniform_grid::CreateGeometry(grid, source->GetCoordinateSystem()), 1,
+    2);
   auto value = value_space->CreateFunction<Real>("f");
   auto gradient =
     gradient_space->CreateFunction<Real>("grad f", pcms::values::Covector);
@@ -191,10 +188,10 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   // The bound points must be the target's DOF holders.
   pcms::UniformGrid<2> other_grid = grid;
   other_grid.divisions = {4, 7};
-  auto other_space = pcms::CreateLagrangeSpace(
-    pcms::backend::uniform_grid::CreateUniformGridGeometry(
-      other_grid, source->GetCoordinateSystem()),
-    1, 1);
+  auto other_space =
+    pcms::CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
+                                other_grid, source->GetCoordinateSystem()),
+                              1, 1);
   REQUIRE_THROWS_WITH(pcms::Interpolator<Real>(*source, *other_space, bound),
                       ContainsSubstring("target's DOF-holder sites"));
   // Second derivatives are not available from the spline yet.

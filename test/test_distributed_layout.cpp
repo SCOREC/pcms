@@ -27,7 +27,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
+using omega_h::CreateGeometry;
 } // namespace pcms
 
 using pcms::GO;

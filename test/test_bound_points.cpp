@@ -5,7 +5,7 @@
 #include <Kokkos_Core.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/geometry/bound_source.hpp>
+#include <pcms/geometry/bound_points.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/backends/omega_h/geometry.hpp>
@@ -23,14 +23,14 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
-using backend::omega_h::OmegaHEntityLayout;
 using detail::OmegaHMeshBinding;
+using omega_h::CreateGeometry;
+using omega_h::OmegaHEntityLayout;
 } // namespace pcms
 
 using Catch::Matchers::ContainsSubstring;
 using Catch::Matchers::WithinAbs;
-using pcms::BoundSource;
+using pcms::BoundPoints;
 using pcms::DeviceMemorySpace;
 using pcms::FunctionSpace;
 using pcms::HostMemorySpace;
@@ -51,15 +51,15 @@ auto ToHost(const Kokkos::View<T, DeviceMemorySpace>& view)
 /// Checks that rebinding `previous`, which nothing else holds, to `pts` reuses
 /// it and gives what a new bind of them gives: the same found and missing
 /// points and the same values of `f`.
-std::shared_ptr<const BoundSource> CheckRebind(
+std::shared_ptr<const BoundPoints> CheckRebind(
   const FunctionSpace& space, const pcms::Function<Real>& f,
-  std::shared_ptr<const BoundSource> previous, const std::vector<Real>& pts)
+  std::shared_ptr<const BoundPoints> previous, const std::vector<Real>& pts)
 {
   const auto& geometry = *space.GetGeometry();
   auto coords =
     pcms::test::CreateDeviceCoordinateView(pts, geometry.GetCoordinateSystem());
   const auto fresh = geometry.Bind(coords.coordinate_view, previous->Policy());
-  const BoundSource* address = previous.get();
+  const BoundPoints* address = previous.get();
   auto rebound = geometry.Rebind(std::move(previous), coords.coordinate_view);
   REQUIRE(rebound.get() == address);
   REQUIRE(rebound->NumPoints() == fresh->NumPoints());
@@ -88,7 +88,7 @@ std::shared_ptr<const BoundSource> CheckRebind(
 
 } // namespace
 
-TEST_CASE("Evaluators created from one bound source share its points")
+TEST_CASE("Evaluators created from one BoundPoints share its points")
 {
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildSquareMesh(lib, 8);
@@ -103,7 +103,7 @@ TEST_CASE("Evaluators created from one bound source share its points")
   const auto pts = pcms::test::StandardEvalCoords2D();
   const size_t n = pts.size() / 2;
   auto bound = [&] {
-    // The bound source keeps what it needs, so the caller's points may go.
+    // The BoundPoints keeps what it needs, so the caller's points may go.
     return pcms::test::Bind(*space->GetGeometry(), pts);
   }();
   REQUIRE(bound->NumPoints() == static_cast<pcms::LO>(n));
@@ -115,7 +115,7 @@ TEST_CASE("Evaluators created from one bound source share its points")
   pcms::test::CheckEvaluation(*second, field, pts, linear);
 }
 
-TEST_CASE("A bound source is accepted only by sources on its geometry")
+TEST_CASE("A BoundPoints is accepted only by sources on its geometry")
 {
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildSquareMesh(lib, 8);
@@ -208,10 +208,9 @@ TEST_CASE("A rebind gives what a new bind of the points gives")
   const std::vector<std::shared_ptr<const FunctionSpace>> spaces{
     pcms::test::MakeP1Space(pcms::CreateGeometry(mesh, cartesian)),
     pcms::CreateLagrangeSpace(
-      pcms::backend::uniform_grid::CreateUniformGridGeometry(grid, cartesian),
-      1, 1),
+      pcms::uniform_grid::CreateGeometry(grid, cartesian), 1, 1),
     pcms::CreatePolynomialReconstructionSpace(
-      pcms::backend::point_cloud::CreatePointCloudGeometry(vertices),
+      pcms::point_cloud::CreateGeometry(vertices),
       pcms::MLSOptions{.degree = 1})};
   // points inside and outside the unit square, the second set of a different
   // count; then fewer and more points than the first bind's
@@ -238,7 +237,7 @@ TEST_CASE("A rebind gives what a new bind of the points gives")
   }
 }
 
-TEST_CASE("A rebind reuses the bound source only when nothing else holds it")
+TEST_CASE("A rebind reuses the BoundPoints only when nothing else holds it")
 {
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildSquareMesh(lib, 8);
@@ -258,14 +257,14 @@ TEST_CASE("A rebind reuses the bound source only when nothing else holds it")
     return pcms::test::CreateDeviceCoordinateView(
       pts, geometry->GetCoordinateSystem());
   };
-  const auto rebind = [&](std::shared_ptr<const BoundSource> bound,
+  const auto rebind = [&](std::shared_ptr<const BoundPoints> bound,
                           const std::vector<Real>& pts) {
     auto query = coords(pts);
     return geometry->Rebind(std::move(bound), query.coordinate_view);
   };
 
   auto bound = pcms::test::Bind(*geometry, a);
-  const BoundSource* address = bound.get();
+  const BoundPoints* address = bound.get();
   const Real* storage = bound->LocatedPointValues().data();
   // released into the rebind: the same source, written in place
   bound = rebind(std::move(bound), b);
@@ -277,7 +276,7 @@ TEST_CASE("A rebind reuses the bound source only when nothing else holds it")
   // the caller keeps a view of its points: a new source, the view unchanged
   {
     const auto kept = bound->LocatedPointValues();
-    std::weak_ptr<const BoundSource> previous = bound;
+    std::weak_ptr<const BoundPoints> previous = bound;
     bound = rebind(std::move(bound), a);
     REQUIRE(previous.expired());
     const auto kept_host = ToHost(kept);
@@ -315,7 +314,7 @@ TEST_CASE("A rebind reuses the bound source only when nothing else holds it")
   pcms::test::CheckEvaluation(*space->CreatePointEvaluator<Real>(bound), f,
                               more, linear);
 
-  // a bound source of another geometry, or none
+  // a BoundPoints of another geometry, or none
   const auto other = pcms::test::MakeP1Space(mesh)->GetGeometry();
   auto query = coords(a);
   REQUIRE_THROWS_WITH(other->Rebind(bound, query.coordinate_view),
@@ -344,8 +343,8 @@ namespace
 
 /// Rebinds `previous` to `pts` and checks that the binding has the found and
 /// missing points and search records of a new bind.
-std::shared_ptr<const BoundSource> CheckOmegaHRebind(
-  const pcms::Geometry& geometry, std::shared_ptr<const BoundSource> previous,
+std::shared_ptr<const BoundPoints> CheckOmegaHRebind(
+  const pcms::Geometry& geometry, std::shared_ptr<const BoundPoints> previous,
   const std::vector<Real>& pts)
 {
   const int dim = geometry.GetCoordinateSystem()->Dimension();
@@ -353,7 +352,7 @@ std::shared_ptr<const BoundSource> CheckOmegaHRebind(
     pts, geometry.GetCoordinateSystem(), dim);
   const auto fresh = std::dynamic_pointer_cast<const pcms::OmegaHMeshBinding>(
     geometry.Bind(coords.coordinate_view, previous->Policy()));
-  const BoundSource* address = previous.get();
+  const BoundPoints* address = previous.get();
   const auto rebound = std::dynamic_pointer_cast<const pcms::OmegaHMeshBinding>(
     geometry.Rebind(std::move(previous), coords.coordinate_view));
   REQUIRE(rebound.get() == address);
@@ -399,7 +398,7 @@ TEST_CASE("An Omega_h rebind from the last elements gives a new bind's")
   std::mt19937 rng(7);
   const int n = 200;
   auto pts = RandomPoints(rng, n, dim, 0.0, 1.0);
-  std::shared_ptr<const BoundSource> bound = pcms::test::Bind(
+  std::shared_ptr<const BoundPoints> bound = pcms::test::Bind(
     *geometry, pts, OutOfBoundsPolicy{OutOfBoundsMode::FILL, -1.0});
 
   SECTION("small moves, as of tracers")
@@ -519,7 +518,7 @@ TEST_CASE("An Omega_h rebind of as many points allocates nothing")
   }
   auto moved_coords = pcms::test::CreateDeviceCoordinateView(
     moved, geometry->GetCoordinateSystem());
-  std::shared_ptr<const BoundSource> bound =
+  std::shared_ptr<const BoundPoints> bound =
     geometry->Bind(coords.coordinate_view);
   bound = geometry->Rebind(std::move(bound), moved_coords.coordinate_view);
   const auto* binding =

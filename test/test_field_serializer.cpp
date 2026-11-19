@@ -73,13 +73,13 @@ void CheckSerializeDeserialize(pcms::Field<pcms::Real>& field)
 #endif
 
 #ifdef PCMS_ENABLE_XGC
-pcms::backend::xgc::ReverseClassificationVertex
-CreateDummyReverseClassification(int size)
+pcms::xgc::ReverseClassificationVertex CreateDummyReverseClassification(
+  int size)
 {
-  pcms::backend::xgc::ReverseClassificationVertex rc;
+  pcms::xgc::ReverseClassificationVertex rc;
   for (int i = 0; i < size; ++i) {
-    rc.Insert(i % 4 == 0 ? pcms::backend::xgc::detail::DimID{0, 0}
-                         : pcms::backend::xgc::detail::DimID{0, 1},
+    rc.Insert(i % 4 == 0 ? pcms::xgc::detail::DimID{0, 0}
+                         : pcms::xgc::detail::DimID{0, 1},
               i);
   }
   return rc;
@@ -98,13 +98,13 @@ TEST_CASE("Serializing an XGC field preserves inactive field entries")
 {
   static constexpr int data_size = 16;
   auto rc = CreateDummyReverseClassification(data_size);
-  pcms::backend::xgc::XGCFieldFactory factory(rc, data_size);
+  pcms::xgc::XGCFieldFactory factory(rc, data_size);
 
   std::vector<pcms::Real> data(data_size);
   std::iota(data.begin(), data.end(), 0.0);
   const auto original = data;
   auto field = factory.CreateField<pcms::Real>(
-    "", std::make_unique<pcms::backend::xgc::XGCFieldData<pcms::Real>>(
+    "", std::make_unique<pcms::xgc::XGCFieldData<pcms::Real>>(
           factory.GetXGCLayout(), pcms::ValueBasis{},
           pcms::detail::make_array_view(data), MPI_COMM_SELF));
   pcms::detail::FieldSerializer<pcms::Real> serializer;
@@ -157,8 +157,8 @@ TEST_CASE("FieldSerializer round-trips a polynomial-reconstruction field")
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
-  auto space = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+  auto space =
+    pcms::CreatePolynomialReconstructionSpace(pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<pcms::HostMemorySpace>(
         pcms::csys::Cartesian::Deferred(), coords_view)));
   auto field = space->CreateFunction<pcms::Real>();
@@ -178,8 +178,7 @@ TEST_CASE("FieldSerializer round-trips a uniform-grid field")
   grid.edge_length = {10.0, 10.0};
   grid.divisions = {3, 3};
   auto space = pcms::CreateLagrangeSpace(
-    pcms::backend::uniform_grid::CreateUniformGridGeometry(
-      grid, pcms::csys::Cartesian::Deferred()),
+    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::Cartesian::Deferred()),
     1, 1);
   auto field = space->CreateFunction<pcms::Real>();
 
@@ -214,8 +213,8 @@ TEST_CASE("FieldSerializer round-trips a multi-component Omega_h field")
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
   constexpr int num_components = 3;
-  auto geometry = pcms::backend::omega_h::CreateGeometry(
-    mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry =
+    pcms::omega_h::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
   auto space = pcms::CreateLagrangeSpace(
     geometry, 1, num_components,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
@@ -256,8 +255,8 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
   pcms::Rank2View<pcms::Real, pcms::HostMemorySpace> coords_view(coords.data(),
                                                                  4, 2);
-  auto space = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+  auto space =
+    pcms::CreatePolynomialReconstructionSpace(pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<pcms::HostMemorySpace>(
         pcms::csys::Cartesian::Deferred(), coords_view)));
   auto field = space->CreateFunction<pcms::Real>();

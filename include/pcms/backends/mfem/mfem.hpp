@@ -13,7 +13,7 @@
 #include <memory>
 #include <string>
 
-namespace pcms::backend::mfem
+namespace pcms::mfem
 {
 
 /// Field factory for order-1 H1 (vertex) fields of pfes on pmesh whose values
@@ -31,6 +31,6 @@ std::shared_ptr<FieldFactory> CreateFieldFactory(
 Kokkos::View<bool*, HostMemorySpace> OverlapMaskFromAttribute(
   ::mfem::ParMesh& pmesh, int attribute);
 
-} // namespace pcms::backend::mfem
+} // namespace pcms::mfem
 
 #endif // PCMS_BACKENDS_MFEM_MFEM_HPP

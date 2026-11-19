@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-namespace pcms::backend::xgc
+namespace pcms::xgc
 {
 
 std::shared_ptr<FieldFactory> CreateFieldFactory(
@@ -23,8 +23,8 @@ Field<T> CreateField(const FieldFactory& factory, std::string name,
 {
   const auto* xgc_factory = dynamic_cast<const XGCFieldFactory*>(&factory);
   if (xgc_factory == nullptr) {
-    throw pcms_error("pcms::backend::xgc::CreateField: the factory was not "
-                     "created by pcms::backend::xgc::CreateFieldFactory");
+    throw pcms_error("pcms::xgc::CreateField: the factory was not "
+                     "created by pcms::xgc::CreateFieldFactory");
   }
   return xgc_factory->CreateField<T>(
     std::move(name),
@@ -43,4 +43,4 @@ PCMS_XGC_INSTANTIATE_CREATE_FIELD(float)
 PCMS_XGC_INSTANTIATE_CREATE_FIELD(double)
 #undef PCMS_XGC_INSTANTIATE_CREATE_FIELD
 
-} // namespace pcms::backend::xgc
+} // namespace pcms::xgc

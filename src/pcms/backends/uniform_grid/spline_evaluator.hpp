@@ -12,7 +12,7 @@
 
 #include <memory>
 
-namespace pcms::backend::uniform_grid
+namespace pcms::uniform_grid
 {
 
 namespace detail
@@ -219,6 +219,6 @@ private:
   std::shared_ptr<const UniformGridFieldLayout<2>> layout_;
 };
 
-} // namespace pcms::backend::uniform_grid
+} // namespace pcms::uniform_grid
 
 #endif // PCMS_BACKENDS_UNIFORM_GRID_SPLINE_EVALUATOR_HPP

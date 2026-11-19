@@ -17,7 +17,7 @@ QueryPoints::QueryPoints(std::shared_ptr<const Geometry> geometry,
 
 void QueryPoints::Locate(CoordinateView<DeviceMemorySpace> coords)
 {
-  // the evaluators hold the bound source; released, Rebind can reuse it
+  // the evaluators hold the BoundPoints; released, Rebind can reuse it
   evaluators_.clear();
   if (bound_ == nullptr) {
     bound_ = geometry_->Bind(std::move(coords), policy_, map_);

@@ -17,7 +17,7 @@ using utility::ConvertCoordsTo2D;
 using utility::flatten_to_omega_h_reals;
 } // namespace pcms
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 // pcms and Omega_h exchange data without conversion
 static_assert(std::is_same_v<Real, Omega_h::Real>,
@@ -27,18 +27,18 @@ static_assert(std::is_same_v<LO, Omega_h::LO>,
 static_assert(std::is_same_v<GO, Omega_h::GO>,
               "pcms and Omega_h GO types must match");
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h
 
 namespace pcms::detail
 {
 
 OmegaHMeshBinding::OmegaHMeshBinding(
   std::shared_ptr<const Geometry> geometry, const BindRequest& request,
-  const backend::omega_h::GridPointSearchVariant& search, Omega_h::Mesh& mesh)
-  : BoundSource(std::move(geometry), request), search_(search), mesh_(mesh)
+  const omega_h::GridPointSearchVariant& search, Omega_h::Mesh& mesh)
+  : BoundPoints(std::move(geometry), request), search_(search), mesh_(mesh)
 {
-  Locate(backend::omega_h::detail::ElementGuesses(mesh, request.owners,
-                                                  "OmegaHMeshBinding"));
+  Locate(
+    omega_h::detail::ElementGuesses(mesh, request.owners, "OmegaHMeshBinding"));
 }
 
 void OmegaHMeshBinding::RebindImpl()
@@ -73,13 +73,13 @@ void OmegaHMeshBinding::Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints)
         guesses = point_guesses;
       } else if (num_records_ > 0) {
         // the elements of the last records; the search overwrites the records
-        backend::omega_h::detail::ElementsOfResults<Dim>(
-          mesh_, point_results, num_records_, point_guesses);
+        omega_h::detail::ElementsOfResults<Dim>(mesh_, point_results,
+                                                num_records_, point_guesses);
         guesses = point_guesses;
       }
       s(LocatedPointValues(), guesses, point_results);
       const auto found = Kokkos::subview(point_found_, first);
-      backend::omega_h::detail::FoundFlags<Dim>(point_results, found);
+      omega_h::detail::FoundFlags<Dim>(point_results, found);
       num_records_ = n;
       SetFound(found);
     },
@@ -88,7 +88,7 @@ void OmegaHMeshBinding::Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints)
 
 } // namespace pcms::detail
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 namespace detail
@@ -190,7 +190,7 @@ const GridPointSearchVariant& OmegaHGeometry::Search() const
   return *search_;
 }
 
-std::shared_ptr<BoundSource> OmegaHGeometry::BindImpl(
+std::shared_ptr<BoundPoints> OmegaHGeometry::BindImpl(
   const BindRequest& request) const
 {
   PCMS_FUNCTION_TIMER;
@@ -301,11 +301,11 @@ DifferentialView SimplexDifferential(Omega_h::Mesh& mesh)
 
 } // namespace
 
-DifferentialView OmegaHGeometry::Differential(const BoundSource& bound) const
+DifferentialView OmegaHGeometry::Differential(const BoundPoints& bound) const
 {
   if (bound.GetGeometry().get() != this) {
     throw pcms_error(
-      "Differential: the bound source belongs to another geometry");
+      "Differential: the BoundPoints belongs to another geometry");
   }
   std::call_once(differential_once_, [this] {
     differential_ = mesh_.dim() == 2 ? SimplexDifferential<2>(mesh_)
@@ -314,4 +314,4 @@ DifferentialView OmegaHGeometry::Differential(const BoundSource& bound) const
   return differential_;
 }
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h

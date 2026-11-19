@@ -44,9 +44,8 @@ struct EQDSKFieldWithData
 inline EQDSKField MakeEQDSKField(const EQDSKData& eqdsk_data)
 {
   // EQDSK is a poloidal plane in cylindrical RZ coordinates
-  auto space =
-    CreateSplineSpace(backend::uniform_grid::CreateUniformGridGeometry(
-      eqdsk_data.grid, csys::CylindricalRZ::Create()));
+  auto space = CreateSplineSpace(uniform_grid::CreateGeometry(
+    eqdsk_data.grid, csys::CylindricalRZ::Create()));
   Field<Real> field = space->CreateFunction<Real>();
   field.SetDOFHolderDataUnchecked(Rank2View<const Real, DeviceMemorySpace>(
     eqdsk_data.PSIZR.data(), eqdsk_data.PSIZR.extent(0), 1));

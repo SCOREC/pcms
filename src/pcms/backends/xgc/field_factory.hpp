@@ -8,7 +8,7 @@
 #include "pcms/utility/detail/common.hpp"
 #include <memory>
 
-namespace pcms::backend::xgc
+namespace pcms::xgc
 {
 
 // XGC is a comm-only backend
@@ -72,6 +72,6 @@ private:
   std::shared_ptr<XGCFieldLayout> layout_;
 };
 
-} // namespace pcms::backend::xgc
+} // namespace pcms::xgc
 
 #endif // PCMS_BACKENDS_XGC_FIELD_FACTORY_HPP

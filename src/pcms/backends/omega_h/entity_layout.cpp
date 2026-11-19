@@ -11,7 +11,7 @@ using utility::EnsureClassification;
 using utility::get_entity_centroids;
 } // namespace pcms
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 namespace
@@ -220,4 +220,4 @@ void OmegaHEntityLayout::BuildOwnedClassification()
     owned_classification_ids_host_);
 }
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h

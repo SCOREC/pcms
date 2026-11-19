@@ -6,17 +6,17 @@
 
 namespace pcms
 {
-using backend::xgc::XGCFieldData;
-using backend::xgc::XGCFieldFactory;
-using backend::xgc::XGCFieldLayout;
+using xgc::XGCFieldData;
+using xgc::XGCFieldFactory;
+using xgc::XGCFieldLayout;
 } // namespace pcms
 
 namespace
 {
 
-pcms::backend::xgc::ReverseClassificationVertex create_dummy_rc(int size)
+pcms::xgc::ReverseClassificationVertex create_dummy_rc(int size)
 {
-  pcms::backend::xgc::ReverseClassificationVertex rc;
+  pcms::xgc::ReverseClassificationVertex rc;
   for (int i = 0; i < size; ++i) {
     if (i % 4 == 0) {
       rc.Insert({0, 0}, i);

@@ -55,7 +55,7 @@ KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> barycentric_with_scales(
   return result;
 }
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 KOKKOS_INLINE_FUNCTION
@@ -492,7 +492,7 @@ construct_intersection_map_reference(Omega_h::Mesh& mesh,
 
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_reference_2d(Omega_h::Mesh& mesh,
-                                        Kokkos::View<Uniform2DGrid[1]> grid,
+                                        Kokkos::View<UniformGrid2D[1]> grid,
                                         int num_grid_cells)
 {
   return construct_intersection_map_reference<2>(mesh, grid, num_grid_cells);
@@ -500,7 +500,7 @@ construct_intersection_map_reference_2d(Omega_h::Mesh& mesh,
 
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
-                                        Kokkos::View<Uniform3DGrid[1]> grid,
+                                        Kokkos::View<UniformGrid3D[1]> grid,
                                         int num_grid_cells)
 {
   return construct_intersection_map_reference<3>(mesh, grid, num_grid_cells);
@@ -510,7 +510,7 @@ construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
 // avoid extra copy of grid from gpu to cpu
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_2d(Omega_h::Mesh& mesh,
-                              Kokkos::View<Uniform2DGrid[1]> grid,
+                              Kokkos::View<UniformGrid2D[1]> grid,
                               int num_grid_cells, Real inflation)
 {
   return construct_intersection_map<2>(mesh, grid, num_grid_cells, inflation);
@@ -518,7 +518,7 @@ construct_intersection_map_2d(Omega_h::Mesh& mesh,
 
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_3d(Omega_h::Mesh& mesh,
-                              Kokkos::View<Uniform3DGrid[1]> grid,
+                              Kokkos::View<UniformGrid3D[1]> grid,
                               int num_grid_cells, Real inflation)
 {
   return construct_intersection_map<3>(mesh, grid, num_grid_cells, inflation);
@@ -890,7 +890,7 @@ GridPointSearch2D::GridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
   auto mesh_bbox = Omega_h::get_bounding_box<2>(&mesh);
   auto grid_h = Kokkos::create_mirror_view(grid_);
   grid_h(0) =
-    Uniform2DGrid{.edge_length = {mesh_bbox.max[0] - mesh_bbox.min[0],
+    UniformGrid2D{.edge_length = {mesh_bbox.max[0] - mesh_bbox.min[0],
                                   mesh_bbox.max[1] - mesh_bbox.min[1]},
                   .bot_left = {mesh_bbox.min[0], mesh_bbox.min[1]},
                   .divisions = {Nx, Ny}};
@@ -942,7 +942,7 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
     bot_left[i] = mesh_bbox.min[i];
   }
 
-  grid_h(0) = Uniform3DGrid{.edge_length = edge_lengths,
+  grid_h(0) = UniformGrid3D{.edge_length = edge_lengths,
                             .bot_left = bot_left,
                             .divisions = {Nx, Ny, Nz}};
 
@@ -957,4 +957,4 @@ GridPointSearch3D::GridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny, LO Nz,
   down_verts_[1] = mesh.ask_down(Omega_h::EDGE, Omega_h::VERT);
   down_verts_[2] = mesh.ask_down(Omega_h::FACE, Omega_h::VERT);
 }
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h

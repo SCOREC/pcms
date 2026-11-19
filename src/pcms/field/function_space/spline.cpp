@@ -8,9 +8,9 @@
 
 namespace pcms
 {
-using backend::uniform_grid::UniformGridFieldLayout;
-using backend::uniform_grid::UniformGridGeometry;
-using backend::uniform_grid::UniformGridSplineEvaluatorFactory2D;
+using uniform_grid::UniformGridFieldLayout;
+using uniform_grid::UniformGridGeometry;
+using uniform_grid::UniformGridSplineEvaluatorFactory2D;
 } // namespace pcms
 
 namespace pcms

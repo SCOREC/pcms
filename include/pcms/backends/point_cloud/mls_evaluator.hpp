@@ -52,10 +52,10 @@ Kokkos::View<Real*, DeviceMemorySpace> FlattenRows(const View2D& coords,
   return flat;
 }
 
-/// @brief MLS bound source: the supports of the query points and the
+/// @brief MLS BoundPoints: the supports of the query points and the
 ///        coordinates the solve uses. A query point without supports (e.g.
 ///        one the adjacency search has no start for) is missing.
-class MLSBinding final : public BoundSource
+class MLSBinding final : public BoundPoints
 {
 public:
   /// @param geometry geometry the points are localized on
@@ -70,7 +70,7 @@ public:
              Kokkos::View<const Real*, DeviceMemorySpace> source_coords,
              SupportResults supports, int site_dim,
              NeighbourhoodOptions options)
-    : BoundSource(std::move(geometry), request),
+    : BoundPoints(std::move(geometry), request),
       source_coords_(std::move(source_coords)),
       target_coords_(
         detail::FlattenRows(LocatedPointValues(), "mls_target_coords")),

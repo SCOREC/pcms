@@ -18,8 +18,8 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
-using backend::omega_h::OmegaHLagrangeLayout;
+using omega_h::CreateGeometry;
+using omega_h::OmegaHLagrangeLayout;
 using transfer::BuildOmegaHConservativeRHSIntegrator;
 using transfer::LinearFormIntegrator;
 } // namespace pcms
@@ -210,7 +210,7 @@ TEST_CASE(
     std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
       target_space->GetLayout());
   const auto tgt_coords_h = pcms::test::CopyCoordinatesToHost(
-    pcms::backend::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
+    pcms::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
   std::vector<pcms::Real> g(target_mesh.nverts());
   for (int i = 0; i < target_mesh.nverts(); ++i) {
     g[i] = tgt_coords_h(i, 0) + tgt_coords_h(i, 1);

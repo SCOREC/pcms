@@ -19,7 +19,7 @@
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 /**
@@ -41,8 +41,7 @@ std::pair<std::shared_ptr<const uniform_grid::UniformGridFieldLayout<Dim>>,
 CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
 {
   auto function_space = CreateLagrangeSpace(
-    uniform_grid::CreateUniformGridGeometry(grid, csys::Cartesian::Deferred()),
-    1, 1);
+    uniform_grid::CreateGeometry(grid, csys::Cartesian::Deferred()), 1, 1);
   auto layout =
     std::dynamic_pointer_cast<const uniform_grid::UniformGridFieldLayout<Dim>>(
       function_space->GetLayout());
@@ -97,6 +96,6 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
     mesh, CreateUniformGridFromMesh<Dim>(mesh, divisions));
 }
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h
 
 #endif // PCMS_BACKENDS_OMEGA_H_UNIFORM_GRID_BINARY_FIELD_HPP

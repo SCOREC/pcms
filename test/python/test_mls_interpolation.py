@@ -62,7 +62,7 @@ class TestMLSInterpolation:
             neighbourhood.adapt_radius = False
 
             factory = pcms.create_polynomial_reconstruction_space(
-                pcms.create_point_cloud_geometry(
+                pcms.point_cloud.create_geometry(
                     pcms.CoordinateView(source_xy), neighbourhood),
                 opts,
             )
@@ -105,8 +105,8 @@ class TestMLSOnMeshEntities:
         mesh = omega_h.build_box(
             world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
         face_dim = 2
-        mesh_geometry = pcms.backend.omega_h.create_geometry(mesh)
-        geometry = pcms.backend.omega_h.create_point_cloud_geometry(mesh_geometry, face_dim)
+        mesh_geometry = pcms.omega_h.create_geometry(mesh)
+        geometry = pcms.omega_h.create_point_cloud_geometry(mesh_geometry, face_dim)
         opts = pcms.MLSOptions()
         opts.degree = 1
         opts.basis = pcms.RadialBasisFunction.NO_OP
@@ -135,8 +135,8 @@ class TestMLSOnMeshEntities:
         mesh = omega_h.build_box(
             world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 2, 2, 0, False)
         with pytest.raises(ValueError):
-            pcms.backend.omega_h.create_point_cloud_geometry(
-                pcms.backend.omega_h.create_geometry(mesh),
+            pcms.omega_h.create_point_cloud_geometry(
+                pcms.omega_h.create_geometry(mesh),
                 3)
 
     def test_geometry_must_be_an_omega_h_geometry(self):
@@ -145,6 +145,6 @@ class TestMLSOnMeshEntities:
         grid.edge_length = [1.0, 1.0]
         grid.divisions = [2, 2]
         with pytest.raises(ValueError, match="Omega_h geometry"):
-            pcms.backend.omega_h.create_point_cloud_geometry(
-                pcms.create_uniform_grid_geometry(grid),
+            pcms.omega_h.create_point_cloud_geometry(
+                pcms.uniform_grid.create_geometry(grid),
                 0)

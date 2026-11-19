@@ -141,8 +141,8 @@ private:
   }
 };
 
-using Uniform2DGrid = UniformGrid<2>;
-using Uniform3DGrid = UniformGrid<3>;
+using UniformGrid2D = UniformGrid<2>;
+using UniformGrid3D = UniformGrid<3>;
 
 namespace detail
 {

@@ -18,16 +18,16 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
-using backend::omega_h::OmegaHFieldData;
-using backend::xgc::XGCFieldData;
-using backend::xgc::XGCFieldFactory;
+using omega_h::CreateGeometry;
+using omega_h::OmegaHFieldData;
+using xgc::XGCFieldData;
+using xgc::XGCFieldFactory;
 } // namespace pcms
 
 using pcms::GO;
-using pcms::backend::xgc::ConstructRCFromOmegaHMesh;
-using pcms::backend::xgc::ReverseClassificationVertex;
 using pcms::detail::make_array_view;
+using pcms::xgc::CreateReverseClassification;
+using pcms::xgc::ReverseClassificationVertex;
 
 static constexpr bool done = true;
 namespace ts = test_support;
@@ -42,10 +42,10 @@ void xgc_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
 
   ReverseClassificationVertex rc;
   if (mesh.has_tag(0, "simNumbering")) {
-    rc = ConstructRCFromOmegaHMesh(mesh, "simNumbering");
+    rc = CreateReverseClassification(mesh, "simNumbering");
   } else {
-    rc = ConstructRCFromOmegaHMesh<GO>(mesh, "global",
-                                       pcms::backend::xgc::IndexBase::Zero);
+    rc = CreateReverseClassification<GO>(mesh, "global",
+                                         pcms::xgc::IndexBase::Zero);
   }
 
   auto* application = cpl.AddApplication("proxy_couple");
@@ -180,10 +180,9 @@ void omegah_coupler_with_overlap(MPI_Comm comm, Omega_h::Mesh& mesh,
 
     application->SetLayoutOverlapMask(ss.str(), std::move(overlap_mask));
 
-    auto geometry =
-      pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred(),
-                           pcms::backend::omega_h::OmegaHGeometryOptions{
-                             .global_id_name = numbering});
+    auto geometry = pcms::CreateGeometry(
+      mesh, pcms::csys::Cartesian::Deferred(),
+      pcms::omega_h::OmegaHGeometryOptions{.global_id_name = numbering});
     auto factory = pcms::CreateLagrangeSpace(
       geometry, 1, 1,
       pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH,

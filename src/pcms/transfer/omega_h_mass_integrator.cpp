@@ -15,7 +15,7 @@
 
 namespace pcms
 {
-using backend::omega_h::OmegaHLagrangeLayout;
+using omega_h::OmegaHLagrangeLayout;
 using utility::ConvertCoordsTo2D;
 using utility::get_entity_centroids;
 } // namespace pcms
@@ -178,7 +178,7 @@ Mat BuildOmegaHMassMatrix(const OmegaHLagrangeLayout& target_layout,
                           const Geometry& geometry, MassMatrixType mass_type)
 {
   Omega_h::Mesh& mesh =
-    dynamic_cast<const backend::omega_h::OmegaHGeometry&>(geometry).GetMesh();
+    dynamic_cast<const omega_h::OmegaHGeometry&>(geometry).GetMesh();
   if (mesh.dim() == 3) {
     return BuildOmegaHMassMatrixImpl<3>(mesh, target_layout, geometry,
                                         mass_type);

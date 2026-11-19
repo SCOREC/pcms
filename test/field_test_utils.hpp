@@ -183,15 +183,15 @@ inline std::shared_ptr<const FunctionSpace> MakeP0Space(
 inline std::shared_ptr<const FunctionSpace> MakeP1Space(
   Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
 {
-  return MakeP1Space(backend::omega_h::CreateGeometry(
+  return MakeP1Space(omega_h::CreateGeometry(
     mesh, csys::Cartesian::Deferred(),
-    backend::omega_h::OmegaHGeometryOptions{.global_id_name = global_id_name}));
+    omega_h::OmegaHGeometryOptions{.global_id_name = global_id_name}));
 }
 
 inline std::shared_ptr<const FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
 {
   return MakeP0Space(
-    backend::omega_h::CreateGeometry(mesh, csys::Cartesian::Deferred()));
+    omega_h::CreateGeometry(mesh, csys::Cartesian::Deferred()));
 }
 
 inline bool AreArraysEqualUnordered(
@@ -518,8 +518,8 @@ inline DeviceCoordinates CreateDeviceCoordinateView(
 }
 
 // Binds interleaved points, given in the geometry's coordinate system, on
-// `geometry`; the bound source keeps what it needs, so the points may go.
-inline std::shared_ptr<const BoundSource> Bind(
+// `geometry`; the BoundPoints keeps what it needs, so the points may go.
+inline std::shared_ptr<const BoundPoints> Bind(
   const Geometry& geometry, const std::vector<Real>& pts,
   OutOfBoundsPolicy policy = {},
   std::shared_ptr<const CoordinateMap> map = nullptr)
@@ -666,10 +666,10 @@ void CheckEvaluationWithFill(const Factory& factory, const Field<Real>& field,
 #ifdef PCMS_ENABLE_OMEGA_H
 // An Omega_h geometry of `mesh` in the Cartesian coordinate system of its
 // dimension, typed for the layouts built on it.
-inline std::shared_ptr<backend::omega_h::OmegaHGeometry> MakeOmegaHGeometry(
+inline std::shared_ptr<omega_h::OmegaHGeometry> MakeOmegaHGeometry(
   Omega_h::Mesh& mesh)
 {
-  return std::make_shared<backend::omega_h::OmegaHGeometry>(
+  return std::make_shared<omega_h::OmegaHGeometry>(
     mesh, pcms::csys::Cartesian::Create(mesh.dim()));
 }
 
@@ -703,11 +703,10 @@ std::vector<HostRecord> FoundRecordsOfDim(
 }
 
 // The search records of the found points, in FoundPoints() order.
-inline std::vector<HostRecord> FoundRecords(const BoundSource& bound)
+inline std::vector<HostRecord> FoundRecords(const BoundPoints& bound)
 {
   const auto& binding = dynamic_cast<const detail::OmegaHMeshBinding&>(bound);
-  return dynamic_cast<const backend::omega_h::OmegaHGeometry&>(
-           *bound.GetGeometry())
+  return dynamic_cast<const omega_h::OmegaHGeometry&>(*bound.GetGeometry())
                .GetMesh()
                .dim() == 2
            ? FoundRecordsOfDim<2>(binding)

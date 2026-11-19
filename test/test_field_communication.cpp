@@ -20,7 +20,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
+using omega_h::CreateGeometry;
 } // namespace pcms
 
 namespace ts = test_support;

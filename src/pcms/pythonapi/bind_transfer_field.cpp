@@ -93,10 +93,10 @@ void bind_transfer_field_module(py::module& m)
       "space's DOF holders. Localization is performed here and cached. To "
       "transfer across coordinate systems, bind with a map "
       "(source.get_geometry().bind(target_space, policy, map)) and pass the "
-      "bound source.")
+      "BoundPoints.")
     .def(py::init([](const Immutable<PointEvaluatorFactory>& source,
                      const Immutable<FunctionSpace>& target_space,
-                     const Immutable<BoundSource>& bound) {
+                     const Immutable<BoundPoints>& bound) {
            return std::make_unique<Interpolator<Real>>(
              *source.ptr, *target_space.ptr, bound.ptr);
          }),

@@ -8,7 +8,7 @@
 
 #include <memory>
 
-namespace pcms::backend::mfem
+namespace pcms::mfem
 {
 
 // Field layout for an MFEM order-1 H1 (vertex) scalar field.
@@ -58,6 +58,6 @@ private:
   Kokkos::View<LO*, HostMemorySpace> classification_ids_host_;
 };
 
-} // namespace pcms::backend::mfem
+} // namespace pcms::mfem
 
 #endif // PCMS_BACKENDS_MFEM_LAYOUT_HPP

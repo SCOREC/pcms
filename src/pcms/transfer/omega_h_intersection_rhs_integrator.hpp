@@ -5,7 +5,7 @@
 #include "pcms/field/function_space.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
-#include "pcms/geometry/bound_source.hpp"
+#include "pcms/geometry/bound_points.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include "pcms/backends/omega_h/mesh_intersection.hpp"
 #include <Kokkos_Core.hpp>
@@ -57,7 +57,7 @@ public:
 
 private:
   Vec vec_ = nullptr;
-  std::shared_ptr<const backend::omega_h::OmegaHGeometry> source_geometry_;
+  std::shared_ptr<const omega_h::OmegaHGeometry> source_geometry_;
   Kokkos::View<Real**, DeviceMemorySpace>
     coords_; // [num_pts][dim] integration point coordinates
   // source element of each integration point

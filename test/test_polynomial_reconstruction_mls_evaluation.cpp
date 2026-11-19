@@ -22,7 +22,7 @@
 
 namespace pcms
 {
-using backend::point_cloud::PointCloudGeometry;
+using point_cloud::PointCloudGeometry;
 } // namespace pcms
 
 using pcms::CoordinateSystem;
@@ -96,7 +96,7 @@ void CheckPolynomialReproduction(unsigned degree,
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 81, 2);
 
   auto fs = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                             coords_view),
       pcms::NeighbourhoodOptions{.radius = 0.45,
@@ -152,7 +152,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: same PointEvaluator "
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 49, 2);
 
   auto fs = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                             coords_view),
       GridSupports),
@@ -189,9 +189,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: Evaluate throws for "
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 25, 2);
 
   auto fs = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
-      pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
-                                            coords_view)));
+    pcms::point_cloud::CreateGeometry(pcms::CoordinateView<HostMemorySpace>(
+      pcms::csys::Cartesian::Deferred(), coords_view)));
   auto field = fs->CreateFunction<Real>();
 
   auto pts = pcms::test::StandardEvalCoords2D();
@@ -217,9 +216,8 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: default MLSOptions — "
 
   // Use default options — no third argument
   auto fs = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
-      pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
-                                            coords_view)));
+    pcms::point_cloud::CreateGeometry(pcms::CoordinateView<HostMemorySpace>(
+      pcms::csys::Cartesian::Deferred(), coords_view)));
   auto field = fs->CreateFunction<Real>();
   pcms::test::SetField(field, KOKKOS_LAMBDA(Real, Real) { return Real(1.0); });
 
@@ -245,7 +243,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: CreatePointEvaluator "
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 25, 2);
 
   auto fs = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<HostMemorySpace>(pcms::csys::CylindricalRZ::Create(),
                                             coords_view),
       GridSupports),
@@ -270,7 +268,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: accepts the (R, Z) "
     src.data(), static_cast<pcms::LO>(src.size() / 2), 2);
 
   auto fs = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<HostMemorySpace>(pcms::csys::CylindricalRZ::Create(),
                                             coords_view),
       GridSupports),
@@ -314,7 +312,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: rejects coordinates "
   // The geometry checks its sites' system once, when it is created.
   REQUIRE_THROWS_WITH(
     pcms::CreatePolynomialReconstructionSpace(
-      pcms::backend::point_cloud::CreatePointCloudGeometry(
+      pcms::point_cloud::CreateGeometry(
         pcms::CoordinateView<HostMemorySpace>(
           pcms::csys::CylindricalRThetaZ::Create(), coords_view),
         GridSupports3D),
@@ -329,7 +327,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: spaces of two degrees "
   Rank2View<Real, HostMemorySpace> coords_view(
     src.data(), static_cast<pcms::LO>(src.size() / 2), 2);
   auto first = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Create(2),
                                             coords_view),
       GridSupports),
@@ -386,7 +384,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: radius option is "
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 2, 2);
 
   auto fs = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                             coords_view),
       pcms::NeighbourhoodOptions{
@@ -420,7 +418,7 @@ TEST_CASE("PolynomialReconstructionFunctionSpace MLS: 3D point clouds preserve "
   Rank2View<Real, HostMemorySpace> coords_view(src.data(), 27, 3);
 
   auto fs = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<HostMemorySpace>(pcms::csys::Cartesian::Deferred(),
                                             coords_view),
       GridSupports3D),

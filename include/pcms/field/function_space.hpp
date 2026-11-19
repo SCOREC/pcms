@@ -117,7 +117,7 @@ private:
   /// @brief Creates the evaluator through the evaluator source.
   /// @throws pcms_error if the space has no evaluator source
   PointEvaluatorVariant CreatePointEvaluatorImpl(
-    Type value_type, std::shared_ptr<const BoundSource> bound,
+    Type value_type, std::shared_ptr<const BoundPoints> bound,
     DifferentialOperator op) const override;
 
   /// @throws pcms_error if the space is not owned by a std::shared_ptr

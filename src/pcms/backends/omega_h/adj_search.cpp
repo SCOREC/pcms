@@ -10,7 +10,7 @@ using utility::distance_squared;
 using utility::get_entity_centroids;
 } // namespace pcms
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 static constexpr int max_dim = 3;
@@ -264,4 +264,4 @@ SupportResults searchNeighbors(
                         radii2.view()};
 }
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h

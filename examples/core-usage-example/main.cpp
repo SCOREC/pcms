@@ -100,8 +100,7 @@ int main(int argc, char** argv)
       .edge_length = {1.0, 1.0}, .bot_left = {0.0, 0.0}, .divisions = {4, 4}};
     const int lagrange = EvaluateLinear(
       pcms::CreateLagrangeSpace(
-        pcms::backend::uniform_grid::CreateUniformGridGeometry(grid, cartesian),
-        1, 1),
+        pcms::uniform_grid::CreateGeometry(grid, cartesian), 1, 1),
       cartesian, LagrangeTol);
 
     // linear MLS on a point cloud (a 9x9 grid of points)
@@ -115,7 +114,7 @@ int main(int argc, char** argv)
     }
     const int mls = EvaluateLinear(
       pcms::CreatePolynomialReconstructionSpace(
-        pcms::backend::point_cloud::CreatePointCloudGeometry(
+        pcms::point_cloud::CreateGeometry(
           pcms::CoordinateView<pcms::HostMemorySpace>(
             cartesian, pcms::Rank2View<pcms::Real, pcms::HostMemorySpace>(
                          sites.data(), n * n, 2)),

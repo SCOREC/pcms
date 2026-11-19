@@ -93,35 +93,35 @@ system and the point search; use the factories, which return the interfaces
 
 | 0.3 | 0.4 |
 |---|---|
-| `LagrangeFunctionSpace::FromMesh(mesh, order, n, csys, gid_name, backend, layout_name)` | `CreateLagrangeSpace(backend::omega_h::CreateGeometry(mesh, csys, {.global_id_name = gid_name}), order, n, {.backend = backend, .layout_name = layout_name})` |
-| `... FromMesh(mesh, order, n, csys, owned_mask, ...)` | `CreateLagrangeSpace(backend::omega_h::CreateGeometry(mesh, csys, {.global_id_name = gid_name, .owned_mask = owned_mask}), ...)` |
-| `LagrangeFunctionSpace::FromUniformGrid(grid, n, csys, order)` | `CreateLagrangeSpace(backend::uniform_grid::CreateUniformGridGeometry(grid, csys), order, n)` |
+| `LagrangeFunctionSpace::FromMesh(mesh, order, n, csys, gid_name, backend, layout_name)` | `CreateLagrangeSpace(omega_h::CreateGeometry(mesh, csys, {.global_id_name = gid_name}), order, n, {.backend = backend, .layout_name = layout_name})` |
+| `... FromMesh(mesh, order, n, csys, owned_mask, ...)` | `CreateLagrangeSpace(omega_h::CreateGeometry(mesh, csys, {.global_id_name = gid_name, .owned_mask = owned_mask}), ...)` |
+| `LagrangeFunctionSpace::FromUniformGrid(grid, n, csys, order)` | `CreateLagrangeSpace(uniform_grid::CreateGeometry(grid, csys), order, n)` |
 | `LagrangeFunctionSpace::Backend::{MeshFields,OmegaH}` | `LagrangeBackend::{MeshFields,OmegaH}` (in `LagrangeOptions`) |
-| `SplineFunctionSpace::FromUniformGrid(grid, csys)` | `CreateSplineSpace(backend::uniform_grid::CreateUniformGridGeometry(grid, csys))` |
-| `PolynomialReconstructionFunctionSpace::Create(points, opts)` | `CreatePolynomialReconstructionSpace(backend::point_cloud::CreatePointCloudGeometry(points, neighbourhood), opts)` |
-| `PolynomialReconstructionFunctionSpace::FromMesh(mesh, dim, csys, opts)` | `CreatePolynomialReconstructionSpace(backend::omega_h::CreatePointCloudGeometry(backend::omega_h::CreateGeometry(mesh, csys), dim, neighbourhood), opts)` |
+| `SplineFunctionSpace::FromUniformGrid(grid, csys)` | `CreateSplineSpace(uniform_grid::CreateGeometry(grid, csys))` |
+| `PolynomialReconstructionFunctionSpace::Create(points, opts)` | `CreatePolynomialReconstructionSpace(point_cloud::CreateGeometry(points, neighbourhood), opts)` |
+| `PolynomialReconstructionFunctionSpace::FromMesh(mesh, dim, csys, opts)` | `CreatePolynomialReconstructionSpace(omega_h::CreatePointCloudGeometry(omega_h::CreateGeometry(mesh, csys), dim, neighbourhood), opts)` |
 | `EmptyFieldLayout(csys, n)` | `CreateEmptyLayout(csys, n)` |
 | `OmegaHConservativeProjection(src, tgt, mass)` | `CreateConservativeProjection(src, tgt, {mass})` |
 | `OmegaHControlVariateProjection(src, tgt, samples, sampling, seed, mass)` | `CreateControlVariateProjection(src, tgt, {samples, seed, mass, to_source})` |
-| `XGCFieldFactory(rc, n, layout_name)` | `backend::xgc::CreateFieldFactory(rc, n, layout_name)` |
-| `factory.CreateField<T>(name, make_unique<XGCFieldData<T>>(factory.GetXGCLayout(), basis, data, comm))` | `backend::xgc::CreateField<T>(factory, name, data, comm, basis)` |
-| `MFEMFieldFactory(pmesh, pfes, gf, csys, layout_name)` | `backend::mfem::CreateFieldFactory(pmesh, pfes, gf, csys, layout_name)` |
-| `MFEMLayout::OverlapMaskFromAttribute(pmesh, attr)` | `backend::mfem::OverlapMaskFromAttribute(pmesh, attr)` |
-| `OverlapMask(size, omega_h_mask)` | `OverlapMask(size, backend::omega_h::OverlapMaskFromArray(omega_h_mask, size))` |
-| `MakeConstRank2View(omega_h_array, dim)` | `backend::omega_h::MakeConstRank2View(omega_h_array, dim)` |
-| `CreateUniformGridFromMesh<dim>(mesh, ...)` | `backend::omega_h::CreateUniformGridFromMesh<dim>(mesh, ...)` |
-| `CreateUniformGridBinaryField<2>(mesh, ...).second` | `backend::omega_h::CreateUniformGridBinaryField(mesh, ...)` |
+| `XGCFieldFactory(rc, n, layout_name)` | `xgc::CreateFieldFactory(rc, n, layout_name)` |
+| `factory.CreateField<T>(name, make_unique<XGCFieldData<T>>(factory.GetXGCLayout(), basis, data, comm))` | `xgc::CreateField<T>(factory, name, data, comm, basis)` |
+| `MFEMFieldFactory(pmesh, pfes, gf, csys, layout_name)` | `mfem::CreateFieldFactory(pmesh, pfes, gf, csys, layout_name)` |
+| `MFEMLayout::OverlapMaskFromAttribute(pmesh, attr)` | `mfem::OverlapMaskFromAttribute(pmesh, attr)` |
+| `OverlapMask(size, omega_h_mask)` | `OverlapMask(size, omega_h::OverlapMaskFromArray(omega_h_mask, size))` |
+| `MakeConstRank2View(omega_h_array, dim)` | `omega_h::MakeConstRank2View(omega_h_array, dim)` |
+| `CreateUniformGridFromMesh<dim>(mesh, ...)` | `omega_h::CreateUniformGridFromMesh<dim>(mesh, ...)` |
+| `CreateUniformGridBinaryField<2>(mesh, ...).second` | `omega_h::CreateUniformGridBinaryField(mesh, ...)` |
 
-(`backend::` is `pcms::backend::`; all other names are in `pcms::`.) Factories
+(`` is `pcms::`; all other names are in `pcms::`.) Factories
 for a combination PCMS does not support (e.g. a Lagrange space on a
 point-cloud geometry) throw `pcms_error`. The projection factories throw in a
 build without PETSc and MeshFields.
 
 - A geometry must be owned by a `std::shared_ptr` (the factories return one);
-  spaces and bound sources hold it, and what it refers to (the Omega_h mesh)
+  spaces and BoundPoints hold it, and what it refers to (the Omega_h mesh)
   must outlive it. Creating a geometry builds the mesh's containing-element
   search: create one per mesh and create every space on it, so that the
-  spaces share the search and accept each other's bound sources.
+  spaces share the search and accept each other's BoundPoints.
 - There are no discretization factories (`Discretization` is removed; layouts
   hold their geometry), and a geometry owns its
   global-id tag and ownership mask (`OmegaHGeometryOptions`).
@@ -146,7 +146,7 @@ indexable with `[i]` (`Kokkos::Array`, a subview, `Omega_h::Vector`).
 
 A source (`PointEvaluatorFactory`: a function space, or a gradient,
 divergence or curl source) is bound to its query points once by its
-geometry, and evaluators are created from the bound source without searching
+geometry, and evaluators are created from the BoundPoints without searching
 again. `EvaluationRequest` and its `From*` factories are removed, and so is
 `TransformedSource`: a coordinate map is an argument of the bind.
 
@@ -156,7 +156,7 @@ again. `EvaluationRequest` and its `From*` factories are removed, and so is
 | `source.CreatePointEvaluator<T>(EvaluationRequest::FromFunctionSpace(space, policy))` | `source.CreatePointEvaluator<T>(source.GetGeometry()->Bind(space.GetLayout()->GetDOFHolderCoordinates(), policy))`, or an `Interpolator` |
 | `TransformedSource(source, map)` | `geometry->Bind(coords, policy, map)`: the points are in the map's source coordinate system, are located at their images, and the evaluators re-express the values through the map |
 | (none) | `source.CreatePointEvaluator<T>(bound, DifferentialOperator::Gradient)`; `Gradient(source)`, `Divergence(source)`, `Curl(source)` are sources whose evaluators write the operator applied to the field (`pcms/field/gradient_source.hpp`); `Supports(op)` tells which a source implements |
-| (none) | `geometry->Bind(coords, OwnerHints{...}, policy, map)`: points whose owners are known (generated in the elements of the geometry) skip the search; `geometry->Rebind(previous, coords)` recycles the storage of a bound source nothing else holds |
+| (none) | `geometry->Bind(coords, OwnerHints{...}, policy, map)`: points whose owners are known (generated in the elements of the geometry) skip the search; `geometry->Rebind(previous, coords)` recycles the storage of a BoundPoints nothing else holds |
 | (none) | `QueryPoints query(geometry, policy, map); query.Locate(coords); query.Evaluate(function, out, op)`: evaluation at points that move between calls; `Evaluate(function, points, out, op, policy, map)` (`pcms/field/query_points.hpp`) does one evaluation |
 | (none) | `geometry->Neighbourhood(coords, NeighbourhoodOptions, owners)`: the supports of reconstruction spaces; `geometry->Differential(bound)`: the Jacobian at the bound points |
 
@@ -166,11 +166,11 @@ op)` (`pcms/field/point_evaluator_factory.hpp`; deriving from
 `TypedPointEvaluatorFactory<T, Bound>` and implementing `CreateEvaluator`
 gets the value-type and operator checks), and a `Geometry` implemented
 outside PCMS implements `GetCoordinateSystem()` and
-`BindImpl(request)` (`pcms/geometry/geometry.hpp` and `bound_source.hpp`:
-`BoundSource` is the per-point data of a bind). A `PointEvaluator`
+`BindImpl(request)` (`pcms/geometry/geometry.hpp` and `bound_points.hpp`:
+`BoundPoints` is the per-point data of a bind). A `PointEvaluator`
 implements `NumPoints()` and `EvaluateImpl` instead of overriding
 `Evaluate`, which checks the output's shape and basis and fills the points
-the bound source did not find.
+the BoundPoints did not find.
 
 `TransformedSource`, `InterpolationBase`, `MLSMeshInterpolation`,
 `MLSPointCloudInterpolation`, `LocalizationFactory` and its two
@@ -182,7 +182,7 @@ reconstruction spaces) and `Geometry::Neighbourhood`.
 ## Namespaces
 
 - The public API stays in `pcms::`.
-- Backend code is in `pcms::backend::<name>` (`omega_h`, `mfem`, `xgc`,
+- Backend code is in `pcms::<name>` (`omega_h`, `mfem`, `xgc`,
   `point_cloud`, `uniform_grid`, `omega_h_meshfields`).
 - Internal code is in `pcms::utility`, `pcms::discretization`,
   `pcms::localization`, `pcms::field`, `pcms::transfer` and `pcms::coupler`.
@@ -209,17 +209,17 @@ are removed:
 
 | 0.3 | 0.4 |
 |---|---|
-| `pcms.LagrangeFunctionSpace.from_mesh(mesh, order, n, csys, backend=...)` | `pcms.create_lagrange_space(pcms.backend.omega_h.create_geometry(mesh, csys), order, n, backend=pcms.LagrangeBackend.X)` |
-| `pcms.LagrangeFunctionSpace.from_uniform_grid(grid, n, csys, order)` | `pcms.create_lagrange_space(pcms.create_uniform_grid_geometry(grid, csys), order, n)` |
-| `pcms.PolynomialReconstructionFunctionSpace.create(coords, opts)` | `pcms.create_polynomial_reconstruction_space(pcms.create_point_cloud_geometry(coords), opts)` |
-| `pcms.PolynomialReconstructionFunctionSpace.from_mesh(mesh, dim, csys, opts)` | `pcms.create_polynomial_reconstruction_space(pcms.backend.omega_h.create_point_cloud_geometry(pcms.backend.omega_h.create_geometry(mesh, system=csys), dim), opts)` |
+| `pcms.LagrangeFunctionSpace.from_mesh(mesh, order, n, csys, backend=...)` | `pcms.create_lagrange_space(pcms.omega_h.create_geometry(mesh, csys), order, n, backend=pcms.LagrangeBackend.X)` |
+| `pcms.LagrangeFunctionSpace.from_uniform_grid(grid, n, csys, order)` | `pcms.create_lagrange_space(pcms.uniform_grid.create_geometry(grid, csys), order, n)` |
+| `pcms.PolynomialReconstructionFunctionSpace.create(coords, opts)` | `pcms.create_polynomial_reconstruction_space(pcms.point_cloud.create_geometry(coords), opts)` |
+| `pcms.PolynomialReconstructionFunctionSpace.from_mesh(mesh, dim, csys, opts)` | `pcms.create_polynomial_reconstruction_space(pcms.omega_h.create_point_cloud_geometry(pcms.omega_h.create_geometry(mesh, system=csys), dim), opts)` |
 | `pcms.OmegaHConservativeProjection(src, tgt, ...)` | `pcms.create_conservative_projection(src, tgt, ...)` |
 | `pcms.OmegaHControlVariateProjection(src, tgt, ...)` | `pcms.create_control_variate_projection(src, tgt, ...)` |
-| `space.mesh()` | `pcms.backend.omega_h.get_mesh(space.get_geometry())` |
-| `pcms.create_uniform_grid_binary_field(mesh, divs)` | `pcms.backend.omega_h.create_uniform_grid_binary_field(mesh, divs)` |
-| `pcms.create_uniform_grid_from_mesh(mesh, divs)` | `pcms.backend.omega_h.create_uniform_grid_from_mesh(mesh, divs)` |
-| `pcms.map_entity_field_to_vertices_{average,mls}(mesh, ...)` | `pcms.backend.omega_h.map_entity_field_to_vertices_{average,mls}(mesh, ...)` |
-| `pcms.compute_entity_centroids(mesh, dim)`, `pcms.compute_entity_centroids_few(mesh, dim)` | `pcms.backend.omega_h.compute_entity_centroids(mesh, dim)` |
+| `space.mesh()` | `pcms.omega_h.get_mesh(space.get_geometry())` |
+| `pcms.create_uniform_grid_binary_field(mesh, divs)` | `pcms.omega_h.create_uniform_grid_binary_field(mesh, divs)` |
+| `pcms.create_uniform_grid_from_mesh(mesh, divs)` | `pcms.omega_h.create_uniform_grid_from_mesh(mesh, divs)` |
+| `pcms.map_entity_field_to_vertices_{average,mls}(mesh, ...)` | `pcms.omega_h.map_entity_field_to_vertices_{average,mls}(mesh, ...)` |
+| `pcms.compute_entity_centroids(mesh, dim)`, `pcms.compute_entity_centroids_few(mesh, dim)` | `pcms.omega_h.compute_entity_centroids(mesh, dim)` |
 
 A geometry keeps its mesh alive and a space keeps its geometry alive;
 `pcms.Geometry.bind`, `pcms.QueryPoints`, `pcms.gradient` and
@@ -272,7 +272,7 @@ N=$(git log --format=%H -1 --grep='move internal code into the sub-library and b
    reorganization, `git diff $N~1 -- <the branch's files>`: a kept hunk that
    only edited code the reorganization removed or replaced brings that code
    back (for example, comment edits on `OverlapMask`'s Omega_h constructors,
-   which became `pcms::backend::omega_h::OverlapMaskFromArray`); take the
+   which became `pcms::omega_h::OverlapMaskFromArray`); take the
    reorganization's side there. Commit the merge. Do not use
    `git merge -X ours` for the whole merge: in CMake files it silently drops
    the reorganization's changes.
@@ -324,7 +324,7 @@ What is left by hand:
 - Names that are no longer public: 0.3 declared a number of helpers in public
   headers; in 0.4 they are in `pcms::detail` (array copy and view helpers of
   `utility/arrays.hpp`, `TypeEnumFromType`, `ForEach`, the coordinate
-  system and value-basis helpers, the backends' bound sources and evaluators,
+  system and value-basis helpers, the backends' BoundPoints and evaluators,
   the coupler's communicators and planners). They are not API and may
   change; code that used one should use the public equivalent or copy the few
   lines.
@@ -333,7 +333,7 @@ What is left by hand:
   `DifferentialView`, `SupportResults`, `OwnerHints`, `DOFHolderOwners`,
   `FieldData`, `DOFAccess`, `FieldFactory`, `CreateEmptyLayout`, the
   `FunctionSpace` constructor). The concrete helpers moved to `pcms::detail`
-  (`SimpleFieldData`, `PointCloudLayout`, the backends' bound sources and
+  (`SimpleFieldData`, `PointCloudLayout`, the backends' BoundPoints and
   evaluators, the coupler's communicators and planners, the MLS helpers); the
   symbol map lists the 0.3 names as `cpp-private`.
 - Uses of APIs that changed shape: `migrate-pcms.sh` reports them (the

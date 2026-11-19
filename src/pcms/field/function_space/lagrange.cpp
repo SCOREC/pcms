@@ -26,14 +26,14 @@
 namespace pcms
 {
 #ifdef PCMS_ENABLE_OMEGA_H
-using backend::omega_h::OmegaHFieldData;
-using backend::omega_h::OmegaHGeometry;
-using backend::omega_h::OmegaHLagrangeEvaluatorFactory;
-using backend::omega_h::OmegaHLagrangeLayout;
+using omega_h::OmegaHFieldData;
+using omega_h::OmegaHGeometry;
+using omega_h::OmegaHLagrangeEvaluatorFactory;
+using omega_h::OmegaHLagrangeLayout;
 #endif
-using backend::uniform_grid::UniformGridEvaluatorFactory;
-using backend::uniform_grid::UniformGridFieldLayout;
-using backend::uniform_grid::UniformGridGeometry;
+using uniform_grid::UniformGridEvaluatorFactory;
+using uniform_grid::UniformGridFieldLayout;
+using uniform_grid::UniformGridGeometry;
 } // namespace pcms
 
 namespace pcms
@@ -92,11 +92,11 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
                                                ? std::array<int, 4>{1, 0, 0, 0}
                                                : std::array<int, 4>{1, 1, 0, 0};
     auto mesh_layout =
-      std::make_shared<backend::omega_h_meshfields::MeshFieldsAdapterLayout>(
+      std::make_shared<omega_h_meshfields::MeshFieldsAdapterLayout>(
         geometry, nodes_per_dim, num_components, options.layout_name);
-    auto eval_factory = std::make_shared<
-      backend::omega_h_meshfields::MeshFieldsEvaluatorFactory<Real>>(
-      geometry, mesh_layout);
+    auto eval_factory =
+      std::make_shared<omega_h_meshfields::MeshFieldsEvaluatorFactory<Real>>(
+        geometry, mesh_layout);
     return std::make_shared<FunctionSpace>(
       mesh_layout,
       [mesh_layout](Type t, ValueBasis basis) -> FieldDataVariant {
@@ -104,16 +104,16 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
           if constexpr (std::is_same_v<MeshField::Real4, float> ||
                         std::is_same_v<MeshField::Real8, float>) {
             return std::make_unique<
-              backend::omega_h_meshfields::MeshFieldsFieldData<float>>(
-              mesh_layout, std::move(basis));
+              omega_h_meshfields::MeshFieldsFieldData<float>>(mesh_layout,
+                                                              std::move(basis));
           }
           throw pcms_error("CreateLagrangeSpace: MeshFields backend does not "
                            "support float in this build");
         }
         if (t == Type::Real) {
           return std::make_unique<
-            backend::omega_h_meshfields::MeshFieldsFieldData<double>>(
-            mesh_layout, std::move(basis));
+            omega_h_meshfields::MeshFieldsFieldData<double>>(mesh_layout,
+                                                             std::move(basis));
         }
         throw pcms_error("CreateLagrangeSpace: MeshFields backend only "
                          "supports the MeshFields scalar types enabled in "

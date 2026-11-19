@@ -14,8 +14,8 @@
 
 namespace pcms
 {
-using backend::omega_h::searchNeighbors;
 using detail::mls_interpolation;
+using omega_h::searchNeighbors;
 using utility::get_entity_centroids;
 } // namespace pcms
 

@@ -16,8 +16,8 @@
 
 namespace pcms
 {
-using backend::mfem::MFEMFieldFactory;
-using backend::mfem::MFEMLayout;
+using pcms::mfem::MFEMFieldFactory;
+using pcms::mfem::MFEMLayout;
 } // namespace pcms
 
 using pcms::Real;
@@ -33,11 +33,12 @@ constexpr Real OutsideOverlapSentinel = -7.0;
 
 // Build a 4x4 quad mesh and tag the left half (centroid x < 0.5) with the
 // target attribute, everything else has tag 1.
-mfem::Mesh MakeAttributedMesh()
+::mfem::Mesh MakeAttributedMesh()
 {
-  auto mesh = mfem::Mesh::MakeCartesian2D(4, 4, mfem::Element::QUADRILATERAL);
+  auto mesh =
+    ::mfem::Mesh::MakeCartesian2D(4, 4, ::mfem::Element::QUADRILATERAL);
   for (int e = 0; e < mesh.GetNE(); ++e) {
-    mfem::Vector center;
+    ::mfem::Vector center;
     mesh.GetElementCenter(e, center);
     mesh.SetAttribute(e, center[0] < 0.5 ? TargetAttribute : 1);
   }
@@ -72,10 +73,10 @@ void FillField(pcms::Field<Real>& field, const std::vector<Real>& values)
 int RunClient(MPI_Comm comm)
 {
   auto serial = MakeAttributedMesh();
-  mfem::ParMesh pmesh(comm, serial);
-  mfem::H1_FECollection fec(1, pmesh.Dimension());
-  mfem::ParFiniteElementSpace pfes(&pmesh, &fec);
-  mfem::ParGridFunction gf(&pfes);
+  ::mfem::ParMesh pmesh(comm, serial);
+  ::mfem::H1_FECollection fec(1, pmesh.Dimension());
+  ::mfem::ParFiniteElementSpace pfes(&pmesh, &fec);
+  ::mfem::ParGridFunction gf(&pfes);
   gf = 0.0;
 
   pcms::CouplerComm cpl("mfem_overlap_coupler", comm, false,
@@ -110,10 +111,10 @@ int RunClient(MPI_Comm comm)
 int RunServer(MPI_Comm comm)
 {
   auto serial = MakeAttributedMesh();
-  mfem::ParMesh pmesh(comm, serial);
-  mfem::H1_FECollection fec(1, pmesh.Dimension());
-  mfem::ParFiniteElementSpace pfes(&pmesh, &fec);
-  mfem::ParGridFunction gf(&pfes);
+  ::mfem::ParMesh pmesh(comm, serial);
+  ::mfem::H1_FECollection fec(1, pmesh.Dimension());
+  ::mfem::ParFiniteElementSpace pfes(&pmesh, &fec);
+  ::mfem::ParGridFunction gf(&pfes);
   gf = 0.0;
 
   pcms::CouplerComm cpl("mfem_overlap_coupler", comm, true,

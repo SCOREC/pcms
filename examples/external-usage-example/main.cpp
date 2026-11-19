@@ -39,7 +39,7 @@ int main(int argc, char** argv)
     const auto cartesian = pcms::csys::Cartesian::Create(2);
 
     // The geometry of the mesh, and a linear Lagrange space on it.
-    auto geometry = pcms::backend::omega_h::CreateGeometry(mesh, cartesian);
+    auto geometry = pcms::omega_h::CreateGeometry(mesh, cartesian);
     auto space = pcms::CreateLagrangeSpace(geometry, 1, 1);
     auto source = space->CreateFunction<pcms::Real>("source");
 
@@ -99,8 +99,7 @@ int main(int argc, char** argv)
     const pcms::UniformGrid<2> grid{
       .edge_length = {0.8, 0.6}, .bot_left = {0.1, 0.2}, .divisions = {9, 7}};
     auto target_space = pcms::CreateLagrangeSpace(
-      pcms::backend::uniform_grid::CreateUniformGridGeometry(grid, cartesian),
-      1, 1);
+      pcms::uniform_grid::CreateGeometry(grid, cartesian), 1, 1);
     auto target = target_space->CreateFunction<pcms::Real>("target");
     pcms::Interpolator<pcms::Real> interpolate(*space, *target_space);
     interpolate.Apply(source, target);

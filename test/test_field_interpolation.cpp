@@ -16,7 +16,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
+using omega_h::CreateGeometry;
 } // namespace pcms
 
 using pcms::Real;
@@ -60,8 +60,8 @@ TEST_CASE("interpolate quadratic 2d meshfields_field")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto geometry = pcms::backend::omega_h::CreateGeometry(
-    mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry =
+    pcms::omega_h::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
   auto factory2 = pcms::CreateLagrangeSpace(
     geometry, 2, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});

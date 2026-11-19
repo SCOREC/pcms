@@ -17,7 +17,7 @@
 #include <memory>
 #include <utility>
 
-namespace pcms::backend::uniform_grid
+namespace pcms::uniform_grid
 {
 
 /// @brief Evaluates order-0 (cell value) or order-1 (multilinear) fields on a
@@ -188,6 +188,6 @@ private:
 
 using UniformGridEvaluatorFactory2D = UniformGridEvaluatorFactory<2>;
 
-} // namespace pcms::backend::uniform_grid
+} // namespace pcms::uniform_grid
 
 #endif // PCMS_BACKENDS_UNIFORM_GRID_EVALUATOR_HPP

@@ -14,7 +14,7 @@
 #include <string>
 #include <variant>
 
-namespace pcms::backend::mfem
+namespace pcms::mfem
 {
 
 // Communication-only field factory for an MFEM order-1 H1 (vertex) scalar
@@ -82,6 +82,6 @@ private:
   ::mfem::ParGridFunction& gf_;
 };
 
-} // namespace pcms::backend::mfem
+} // namespace pcms::mfem
 
 #endif // PCMS_BACKENDS_MFEM_FIELD_FACTORY_HPP

@@ -21,8 +21,8 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
-using backend::omega_h::IntersectionResults;
+using omega_h::CreateGeometry;
+using omega_h::IntersectionResults;
 using transfer::OmegaHConservativeProjection;
 } // namespace pcms
 

@@ -46,14 +46,14 @@ void CheckBindArguments(const Geometry& geometry,
 
 } // namespace
 
-std::shared_ptr<const BoundSource> Geometry::Bind(
+std::shared_ptr<const BoundPoints> Geometry::Bind(
   CoordinateView<DeviceMemorySpace> coords, OutOfBoundsPolicy policy,
   std::shared_ptr<const CoordinateMap> map) const
 {
   return Bind(std::move(coords), OwnerHints{}, policy, std::move(map));
 }
 
-std::shared_ptr<const BoundSource> Geometry::Bind(
+std::shared_ptr<const BoundPoints> Geometry::Bind(
   CoordinateView<DeviceMemorySpace> coords, const OwnerHints& owners,
   OutOfBoundsPolicy policy, std::shared_ptr<const CoordinateMap> map) const
 {
@@ -65,7 +65,7 @@ std::shared_ptr<const BoundSource> Geometry::Bind(
         TakesHints(owners, static_cast<LO>(coords.GetValues().extent(0)))
       ? owners
       : OwnerHints{};
-  std::shared_ptr<BoundSource> bound;
+  std::shared_ptr<BoundPoints> bound;
   if (map != nullptr) {
     std::shared_ptr<const BoundCoordinateMap> bound_map = map->Bind(coords);
     const CoordinateView<DeviceMemorySpace> mapped = bound_map->MappedPoints();
@@ -78,16 +78,16 @@ std::shared_ptr<const BoundSource> Geometry::Bind(
   return bound;
 }
 
-std::shared_ptr<const BoundSource> Geometry::Rebind(
-  std::shared_ptr<const BoundSource> previous,
+std::shared_ptr<const BoundPoints> Geometry::Rebind(
+  std::shared_ptr<const BoundPoints> previous,
   CoordinateView<DeviceMemorySpace> coords) const
 {
   if (previous == nullptr) {
-    throw pcms_error("Geometry::Rebind: the previous bound source must not be "
+    throw pcms_error("Geometry::Rebind: the previous BoundPoints must not be "
                      "null");
   }
   if (previous->GetGeometry().get() != this) {
-    throw pcms_error("Geometry::Rebind: the previous bound source belongs to "
+    throw pcms_error("Geometry::Rebind: the previous BoundPoints belongs to "
                      "another geometry");
   }
   if (previous->GetCoordinateMap() != nullptr || previous.use_count() != 1 ||
@@ -99,7 +99,7 @@ std::shared_ptr<const BoundSource> Geometry::Rebind(
   }
   CheckBindArguments(*this, coords, previous->Policy(), nullptr);
   // nothing else refers to `previous`, so writing it is not observable
-  auto reused = std::const_pointer_cast<BoundSource>(std::move(previous));
+  auto reused = std::const_pointer_cast<BoundPoints>(std::move(previous));
   reused->Rebind(RebindKey{},
                  BindRequest{coords, reused->Policy(), {}, nullptr, coords});
   return reused;
@@ -113,7 +113,7 @@ SupportResults Geometry::Neighbourhood(CoordinateView<DeviceMemorySpace>, int,
                    "neighbourhood search");
 }
 
-DifferentialView Geometry::Differential(const BoundSource&) const
+DifferentialView Geometry::Differential(const BoundPoints&) const
 {
   return {};
 }

@@ -26,7 +26,7 @@ namespace detail
 ///        those coordinates, mapped by the bind's coordinate map if it had
 ///        one.
 /// @return true if it was
-bool SameDOFHolderSites(const BoundSource& bound, const FieldLayout& layout);
+bool SameDOFHolderSites(const BoundPoints& bound, const FieldLayout& layout);
 
 } // namespace detail
 
@@ -43,7 +43,7 @@ bool SameDOFHolderSites(const BoundSource& bound, const FieldLayout& layout);
 //   interp.Apply(src_field, tgt_field);   // cheap; called in coupling loop
 //   interp.Apply(src_field_next, tgt_field_next); // reuses cached localization
 //
-// Interpolators of the same source at the same target share one bound source:
+// Interpolators of the same source at the same target share one BoundPoints:
 //   auto layout = tgt_space->GetLayout();
 //   auto geometry = src_space->GetGeometry();
 //   auto bound = geometry->Bind(layout->GetDOFHolderCoordinates(),
@@ -67,7 +67,7 @@ public:
   {
   }
 
-  /// @brief Creates an interpolator from an existing bound source.
+  /// @brief Creates an interpolator from an existing BoundPoints.
   /// @param source source evaluated at the target's DOF-holder coordinates
   /// @param target_space space whose DOF holders receive the values; its
   ///        basis must be the basis the source's evaluators write
@@ -76,7 +76,7 @@ public:
   ///        DOF-holder coordinates
   Interpolator(const PointEvaluatorFactory& source,
                const FunctionSpace& target_space,
-               std::shared_ptr<const BoundSource> bound)
+               std::shared_ptr<const BoundPoints> bound)
     : num_points_(static_cast<LO>(
         target_space.GetLayout()->GetDOFHolderCoordinates().GetValues().extent(
           0))),
@@ -104,7 +104,7 @@ public:
   }
 
 private:
-  static std::shared_ptr<const BoundSource> BindTargetSites(
+  static std::shared_ptr<const BoundPoints> BindTargetSites(
     const PointEvaluatorFactory& source, const FunctionSpace& target_space,
     OutOfBoundsPolicy policy)
   {
@@ -119,11 +119,11 @@ private:
 
   static std::unique_ptr<PointEvaluator<T>> CreateEvaluator(
     const PointEvaluatorFactory& source, const FunctionSpace& target_space,
-    std::shared_ptr<const BoundSource> bound)
+    std::shared_ptr<const BoundPoints> bound)
   {
     if (bound == nullptr ||
         !detail::SameDOFHolderSites(*bound, *target_space.GetLayout())) {
-      throw pcms_error("Interpolator: the bound source must be bound to a "
+      throw pcms_error("Interpolator: the BoundPoints must be bound to a "
                        "space with the target's DOF-holder sites");
     }
     return source.CreatePointEvaluator<T>(std::move(bound));

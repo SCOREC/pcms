@@ -15,7 +15,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
+using omega_h::CreateGeometry;
 } // namespace pcms
 
 using pcms::Real;
@@ -57,8 +57,7 @@ TEST_CASE("uniform_grid_field out of bounds FILL mode")
   grid.divisions = {N, N};
 
   auto factory = pcms::CreateLagrangeSpace(
-    pcms::backend::uniform_grid::CreateUniformGridGeometry(
-      grid, pcms::csys::Cartesian::Deferred()),
+    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::Cartesian::Deferred()),
     1, 1);
   auto field = factory->CreateFunction<Real>();
   pcms::test::SetField(field, OMEGA_H_LAMBDA(Real x, Real y) { return x + y; });
@@ -88,9 +87,8 @@ TEST_CASE("spline_field out of bounds FILL mode")
   grid.edge_length = {1.0, 1.0};
   grid.divisions = {N, N};
 
-  auto factory = pcms::CreateSplineSpace(
-    pcms::backend::uniform_grid::CreateUniformGridGeometry(
-      grid, pcms::csys::Cartesian::Deferred()));
+  auto factory = pcms::CreateSplineSpace(pcms::uniform_grid::CreateGeometry(
+    grid, pcms::csys::Cartesian::Deferred()));
   auto field = factory->CreateFunction<Real>();
   pcms::test::SetField(field, OMEGA_H_LAMBDA(Real x, Real y) { return x + y; });
 

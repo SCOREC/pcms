@@ -1,7 +1,7 @@
 #include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/backends/omega_h/uniform_grid_binary_field.hpp"
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 Field<Real> CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
@@ -16,4 +16,4 @@ Field<Real> CreateUniformGridBinaryField(Omega_h::Mesh& mesh,
   return CreateUniformGridBinaryField<2>(mesh, divisions).second;
 }
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h

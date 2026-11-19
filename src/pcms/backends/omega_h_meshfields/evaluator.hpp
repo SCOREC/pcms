@@ -12,7 +12,7 @@
 #include <memory>
 #include <tuple>
 
-namespace pcms::backend::omega_h_meshfields
+namespace pcms::omega_h_meshfields
 {
 
 namespace detail
@@ -203,6 +203,6 @@ private:
   std::shared_ptr<const MeshFieldsAdapterLayout> layout_;
 };
 
-} // namespace pcms::backend::omega_h_meshfields
+} // namespace pcms::omega_h_meshfields
 
 #endif // PCMS_BACKENDS_OMEGA_H_MESHFIELDS_EVALUATOR_HPP

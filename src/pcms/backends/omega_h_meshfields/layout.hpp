@@ -10,7 +10,7 @@
 
 #include <array>
 
-namespace pcms::backend::omega_h_meshfields
+namespace pcms::omega_h_meshfields
 {
 class MeshFieldsAdapterLayout : public FieldLayout
 {
@@ -88,5 +88,5 @@ private:
   void BuildOwnedClassification();
 };
 
-} // namespace pcms::backend::omega_h_meshfields
+} // namespace pcms::omega_h_meshfields
 #endif // PCMS_BACKENDS_OMEGA_H_MESHFIELDS_LAYOUT_HPP

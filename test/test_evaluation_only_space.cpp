@@ -16,8 +16,8 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
 using field::EmptyFieldLayout;
+using omega_h::CreateGeometry;
 } // namespace pcms
 
 using Catch::Matchers::ContainsSubstring;
@@ -54,12 +54,12 @@ private:
 };
 
 // The mock evaluates every query point, so it needs no state of its own.
-class MockBound final : public pcms::BoundSource
+class MockBound final : public pcms::BoundPoints
 {
 public:
   MockBound(std::shared_ptr<const pcms::Geometry> geometry,
             const pcms::BindRequest& request)
-    : BoundSource(std::move(geometry), request)
+    : BoundPoints(std::move(geometry), request)
   {
   }
 
@@ -81,7 +81,7 @@ public:
   }
 
 protected:
-  std::shared_ptr<pcms::BoundSource> BindImpl(
+  std::shared_ptr<pcms::BoundPoints> BindImpl(
     const pcms::BindRequest& request) const override
   {
     return std::make_shared<MockBound>(shared_from_this(), request);
@@ -94,7 +94,7 @@ private:
 class MockEvaluator final : public pcms::PointEvaluator<Real>
 {
 public:
-  MockEvaluator(std::shared_ptr<const pcms::BoundSource> bound,
+  MockEvaluator(std::shared_ptr<const pcms::BoundPoints> bound,
                 std::shared_ptr<const pcms::FieldLayout> layout)
     : PointEvaluator(std::move(bound), pcms::DifferentialOperator::Value,
                      std::move(layout))
@@ -145,7 +145,7 @@ public:
 
 protected:
   pcms::PointEvaluatorVariant CreatePointEvaluatorImpl(
-    pcms::Type, std::shared_ptr<const pcms::BoundSource> bound,
+    pcms::Type, std::shared_ptr<const pcms::BoundPoints> bound,
     pcms::DifferentialOperator /*op*/) const override
   {
     return std::unique_ptr<pcms::PointEvaluator<Real>>(

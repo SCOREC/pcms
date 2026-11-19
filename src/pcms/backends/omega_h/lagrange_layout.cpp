@@ -12,7 +12,7 @@ using utility::EnsureClassification;
 using utility::get_entity_centroids;
 } // namespace pcms
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 namespace
@@ -274,4 +274,4 @@ Omega_h::Mesh& OmegaHLagrangeLayout::GetMesh() const
   return mesh_;
 }
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h

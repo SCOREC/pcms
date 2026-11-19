@@ -65,7 +65,7 @@ private:
                                 int samples_per_element, uint64_t seed);
 
   Vec vec_ = nullptr;
-  std::shared_ptr<const backend::omega_h::OmegaHGeometry> geometry_;
+  std::shared_ptr<const omega_h::OmegaHGeometry> geometry_;
   Kokkos::View<LO*, DeviceMemorySpace> elements_; // target element per sample
   Kokkos::View<Real**, DeviceMemorySpace>
     coords_; // [num_pts][dim] sample coordinates

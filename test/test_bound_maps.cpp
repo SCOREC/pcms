@@ -19,7 +19,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
+using omega_h::CreateGeometry;
 } // namespace pcms
 
 using Catch::Matchers::ContainsSubstring;
@@ -84,7 +84,7 @@ std::shared_ptr<const CoordinateMap> CartToCyl()
 
 /// Binds the DOF holders of `target` on the geometry of `source` through
 /// `map`, as an Interpolator across coordinate systems needs.
-std::shared_ptr<const pcms::BoundSource> BindTargetSites(
+std::shared_ptr<const pcms::BoundPoints> BindTargetSites(
   const pcms::FunctionSpace& source, const pcms::FunctionSpace& target,
   std::shared_ptr<const CoordinateMap> map, OutOfBoundsPolicy policy = {})
 {
@@ -111,7 +111,7 @@ TEST_CASE("Bind with a map: scalar evaluation maps the query points")
   const int n = static_cast<int>(pts.GetValues().extent(0));
   const auto bound =
     src->GetGeometry()->Bind(pts, OutOfBoundsPolicy{}, CartToCyl());
-  // the bound source keeps the mapped points, which the evaluators read
+  // the BoundPoints keeps the mapped points, which the evaluators read
   REQUIRE(bound->GetBoundMap() != nullptr);
   REQUIRE(pcms::detail::SameCoordinateSystem(bound->GetCoordinateSystem(),
                                              tgt->GetCoordinateSystem()));
@@ -335,7 +335,7 @@ TEST_CASE("Bind with a map: a rebind binds anew with the map")
     {0.9, 0.3, 0.4, 0.3, 0.4, 0.8, 0.6, 0.6, 0.2},
     pcms::csys::Cartesian::Create(3), 3);
   auto bound = geometry.Bind(first.coordinate_view, OutOfBoundsPolicy{}, map);
-  const std::weak_ptr<const pcms::BoundSource> previous = bound;
+  const std::weak_ptr<const pcms::BoundPoints> previous = bound;
   src.reset();
   REQUIRE(bound->GetGeometry().use_count() == 1);
   bound =
@@ -390,10 +390,10 @@ TEST_CASE("Bind with a map: NEAREST_BOUNDARY follows the geometry")
     grid.bot_left = {0.1, -3.2, 0.0};
     grid.edge_length = {1.5, 6.4, 1.0};
     grid.divisions = {6, 16, 4};
-    auto src = CreateLagrangeSpace(
-      pcms::backend::uniform_grid::CreateUniformGridGeometry(
-        grid, pcms::csys::CylindricalRThetaZ::Create()),
-      1, 1);
+    auto src =
+      CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
+                            grid, pcms::csys::CylindricalRThetaZ::Create()),
+                          1, 1);
     auto bound =
       src->GetGeometry()->Bind(query.coordinate_view, nearest, cart_to_cyl);
     REQUIRE(bound->MissingPoints().extent(0) == 0);
@@ -564,7 +564,7 @@ TEST_CASE("Interpolator over a mapped bind transfers across systems")
                         ContainsSubstring("target's declared basis"));
   }
 
-  SECTION("the bound source must be of the target's DOF holders")
+  SECTION("the BoundPoints must be of the target's DOF holders")
   {
     // as many DOF holders as the target, at other coordinates
     Omega_h::Mesh other_mesh(&lib);

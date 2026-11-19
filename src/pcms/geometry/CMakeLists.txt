@@ -1,14 +1,14 @@
 set(
         PCMS_GEOMETRY_HEADERS
         ../../../include/pcms/geometry/geometry.hpp
-        ../../../include/pcms/geometry/bound_source.hpp
+        ../../../include/pcms/geometry/bound_points.hpp
         ../../../include/pcms/geometry/supports.hpp
 )
 
 set(
         PCMS_GEOMETRY_SOURCES
         geometry.cpp
-        bound_source.cpp
+        bound_points.cpp
         # Geometry::Bind binds coordinate maps; the map sits below the geometry
         # (its header stays in pcms/field), so it is compiled here
         ../field/coordinate_map.cpp

@@ -17,7 +17,7 @@
 #include "pcms/utility/arrays.hpp"
 #include "pcms/field/field.hpp"
 
-namespace pcms::backend::omega_h_meshfields
+namespace pcms::omega_h_meshfields
 {
 
 // ---------------------------------------------------------------------------
@@ -161,6 +161,6 @@ std::shared_ptr<MeshFieldBackend<T>> MakeMeshFieldBackend(
   return nullptr;
 }
 
-} // namespace pcms::backend::omega_h_meshfields
+} // namespace pcms::omega_h_meshfields
 
 #endif // PCMS_BACKENDS_OMEGA_H_MESHFIELDS_EVALUATOR_BACKEND_HPP

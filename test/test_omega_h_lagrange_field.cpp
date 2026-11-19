@@ -19,8 +19,8 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
-using backend::omega_h::OmegaHLagrangeLayout;
+using omega_h::CreateGeometry;
+using omega_h::OmegaHLagrangeLayout;
 using utility::get_entity_centroids;
 } // namespace pcms
 

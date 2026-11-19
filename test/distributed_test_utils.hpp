@@ -82,16 +82,14 @@ Kokkos::View<T**, pcms::HostMemorySpace> ValuesWithGhostsHost(
   const pcms::Field<T>& field)
 {
   if (const auto* omega_h_data =
-        dynamic_cast<const pcms::backend::omega_h::OmegaHFieldData<T>*>(
+        dynamic_cast<const pcms::omega_h::OmegaHFieldData<T>*>(
           &field.GetData())) {
     const auto& layout = field.GetLayout();
     const auto nc = static_cast<size_t>(layout.GetNumComponents());
     // The values of every DOF holder are in the field's Omega_h tag.
-    using TagValue =
-      typename pcms::backend::omega_h::OmegaHFieldData<T>::tag_value_type;
+    using TagValue = typename pcms::omega_h::OmegaHFieldData<T>::tag_value_type;
     const auto& geometry =
-      dynamic_cast<const pcms::backend::omega_h::OmegaHGeometry&>(
-        *layout.GetGeometry());
+      dynamic_cast<const pcms::omega_h::OmegaHGeometry&>(*layout.GetGeometry());
     const auto tag =
       Omega_h::HostRead<TagValue>(geometry.GetMesh().get_array<TagValue>(
         layout.GetDOFHolderEntityDim(), omega_h_data->GetTagName()));
@@ -106,14 +104,14 @@ Kokkos::View<T**, pcms::HostMemorySpace> ValuesWithGhostsHost(
     return host;
   }
 #ifdef PCMS_ENABLE_MESHFIELDS
-  if (const auto* mesh_fields = dynamic_cast<
-        const pcms::backend::omega_h_meshfields::MeshFieldsFieldData<T>*>(
-        &field.GetData())) {
+  if (const auto* mesh_fields =
+        dynamic_cast<const pcms::omega_h_meshfields::MeshFieldsFieldData<T>*>(
+          &field.GetData())) {
     // The MeshFields backend stores every local entity; read it per entity
     // dimension, in the layout's dimension-block order.
-    const auto& layout = dynamic_cast<
-      const pcms::backend::omega_h_meshfields::MeshFieldsAdapterLayout&>(
-      field.GetLayout());
+    const auto& layout =
+      dynamic_cast<const pcms::omega_h_meshfields::MeshFieldsAdapterLayout&>(
+        field.GetLayout());
     auto& mesh = layout.GetMesh();
     const auto nodes_per_dim = layout.GetNodesPerDim();
     const auto nc = static_cast<size_t>(layout.GetNumComponents());

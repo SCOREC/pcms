@@ -16,7 +16,7 @@
 #include <memory>
 #include <string>
 
-namespace pcms::backend::xgc
+namespace pcms::xgc
 {
 
 /// Field factory for XGC fields on the plane described by
@@ -36,6 +36,6 @@ Field<T> CreateField(const FieldFactory& factory, std::string name,
                      MPI_Comm plane_comm = MPI_COMM_NULL,
                      ValueBasis basis = {});
 
-} // namespace pcms::backend::xgc
+} // namespace pcms::xgc
 
 #endif // PCMS_BACKENDS_XGC_XGC_HPP

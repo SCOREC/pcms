@@ -19,7 +19,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
+using omega_h::CreateGeometry;
 } // namespace pcms
 
 using pcms::GO;
@@ -225,8 +225,8 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     });
   auto geometry = pcms::CreateGeometry(
     mesh, pcms::csys::Cartesian::Deferred(),
-    pcms::backend::omega_h::OmegaHGeometryOptions{.global_id_name = numbering,
-                                                  .owned_mask = is_overlap});
+    pcms::omega_h::OmegaHGeometryOptions{.global_id_name = numbering,
+                                         .owned_mask = is_overlap});
   auto function_space = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH,

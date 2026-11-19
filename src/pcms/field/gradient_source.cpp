@@ -33,7 +33,7 @@ public:
 
 protected:
   PointEvaluatorVariant CreatePointEvaluatorImpl(
-    Type value_type, std::shared_ptr<const BoundSource> bound,
+    Type value_type, std::shared_ptr<const BoundPoints> bound,
     DifferentialOperator op) const override
   {
     PCMS_ALWAYS_ASSERT(op == DifferentialOperator::Value); // Supports gated it

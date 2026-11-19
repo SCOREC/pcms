@@ -55,7 +55,7 @@ struct BindRequest
   /// points to locate, in the geometry's coordinate system: the query points,
   /// or their images under `map`; may be released after BindImpl returns
   CoordinateView<DeviceMemorySpace> coords;
-  /// out-of-bounds policy of the evaluators created from the bound source
+  /// out-of-bounds policy of the evaluators created from the BoundPoints
   OutOfBoundsPolicy policy;
   /// the claimed owner of each point, from the caller, when it names entities
   /// of this geometry; otherwise empty, and the kind searches
@@ -113,14 +113,14 @@ void ReserveRows(Kokkos::View<T**, DeviceMemorySpace>& storage,
 /// Created by Geometry::Bind. Valid for every evaluator source whose
 /// GetGeometry() is this source's geometry, and stays valid after later binds
 /// on the same geometry. Immutable while it is shared: Geometry::Rebind reuses
-/// the storage of a bound source only when nothing else refers to it. It is
+/// the storage of a BoundPoints only when nothing else refers to it. It is
 /// shared by every evaluator created from it; evaluators that share a bound
 /// source must not be evaluated concurrently.
 ///
 /// The arrays are allocated with a capacity, the number of points of the
 /// largest bind they have held, and the accessors return the views of their
 /// first NumPoints() (or found, or missing) entries.
-class BoundSource
+class BoundPoints
 {
 public:
   /// @return the geometry the points were localized on
@@ -204,17 +204,17 @@ public:
   /// @return whether nothing outside this source holds one of its arrays
   [[nodiscard]] bool Unshared() const noexcept;
 
-  virtual ~BoundSource() noexcept = default;
+  virtual ~BoundPoints() noexcept = default;
 
-  BoundSource(const BoundSource&) = delete;
-  BoundSource& operator=(const BoundSource&) = delete;
+  BoundPoints(const BoundPoints&) = delete;
+  BoundPoints& operator=(const BoundPoints&) = delete;
 
 protected:
   /// @brief Copies the request's query points (and, with a map, the mapped
   ///        points); every point counts as found until SetFound is called.
   /// @param geometry geometry the points are localized on
   /// @param request bound query points, map and out-of-bounds policy
-  BoundSource(std::shared_ptr<const Geometry> geometry,
+  BoundPoints(std::shared_ptr<const Geometry> geometry,
               const BindRequest& request);
 
   /// @brief Records which query points the source evaluates.

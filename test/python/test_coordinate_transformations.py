@@ -35,7 +35,7 @@ def cylindrical_space(world):
     mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 2.0, 1.6, 1.1,
                              6, 6, 4, False)
     return pcms.create_lagrange_space(
-        pcms.backend.omega_h.create_geometry(
+        pcms.omega_h.create_geometry(
             mesh, pcms.csys.CylindricalRThetaZ.create()),
         1, 3, backend=pcms.LagrangeBackend.OmegaH)
 
@@ -46,7 +46,7 @@ def cartesian_space(world):
     mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 1.0,
                              3, 3, 3, False)
     return pcms.create_lagrange_space(
-        pcms.backend.omega_h.create_geometry(mesh, pcms.csys.Cartesian.create(3)),
+        pcms.omega_h.create_geometry(mesh, pcms.csys.Cartesian.create(3)),
         1, 3, backend=pcms.LagrangeBackend.OmegaH)
 
 
@@ -100,7 +100,7 @@ class TestCoordinateSystem:
         mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0,
                                  4, 4, 0, False)
         space = pcms.create_lagrange_space(
-            pcms.backend.omega_h.create_geometry(mesh), 1, 1)
+            pcms.omega_h.create_geometry(mesh), 1, 1)
         assert (space.get_layout().get_coordinate_system()
                 == pcms.csys.Cartesian.create(2))
 
@@ -306,7 +306,7 @@ def _bind_through_map(cylindrical_space, target, policy=None):
 class TestBindWithMap:
     def _evaluator(self, cylindrical_space, cartesian_space):
         bound = _bind_through_map(cylindrical_space, cartesian_space)
-        assert isinstance(bound, pcms.BoundSource)
+        assert isinstance(bound, pcms.BoundPoints)
         assert bound.num_points() == len(_coordinates_of(cartesian_space))
         return cylindrical_space.create_point_evaluator(bound)
 
@@ -407,7 +407,7 @@ class TestLifetimes:
         mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0,
                                  4, 4, 0, False)
         space = pcms.create_lagrange_space(
-            pcms.backend.omega_h.create_geometry(mesh), 1, 1,
+            pcms.omega_h.create_geometry(mesh), 1, 1,
             backend=pcms.LagrangeBackend.OmegaH)
         del mesh
         gc.collect()
@@ -427,7 +427,7 @@ class TestLifetimes:
         op = pcms.Interpolator(
             cylindrical_space, cartesian_space,
             _bind_through_map(cylindrical_space, cartesian_space))
-        # the bound source owns its bound map; the map object may go
+        # the BoundPoints owns its bound map; the map object may go
         cart_to_cyl = pcms.CartesianToCylindrical()
         bound = cylindrical_space.get_geometry().bind(
             cartesian_space, map=cart_to_cyl)

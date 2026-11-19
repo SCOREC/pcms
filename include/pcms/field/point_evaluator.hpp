@@ -3,7 +3,7 @@
 
 #include "pcms/field/differential_operator.hpp"
 #include "pcms/field/field_layout.hpp"
-#include "pcms/geometry/bound_source.hpp"
+#include "pcms/geometry/bound_points.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.hpp"
@@ -44,14 +44,14 @@ void FillRows(Rank2View<T, DeviceMemorySpace, LayoutPolicy> values,
 
 } // namespace detail
 
-/// @brief Evaluates fields at the points of a bound source.
+/// @brief Evaluates fields at the points of a BoundPoints.
 ///
 /// Created by PointEvaluatorFactory::CreatePointEvaluator. Evaluate writes
 /// OutputBasis(stored basis of the field): the basis `OutputBasis` gives for
 /// the evaluator's operator. The output has one row per query point and the
 /// field's number of components times the coordinate dimension per added
 /// index as columns. EvaluateImpl writes the rows of the
-/// bound source's FoundPoints(); in OutOfBoundsMode::FILL, Evaluate then sets
+/// BoundPoints's FoundPoints(); in OutOfBoundsMode::FILL, Evaluate then sets
 /// the rows of MissingPoints() to the fill value.
 /// @tparam T field value type
 /// @tparam LayoutPolicy layout of the output view
@@ -136,12 +136,12 @@ public:
   virtual ~PointEvaluator() noexcept = default;
 
 protected:
-  /// @param bound bound source of the query points; not null
+  /// @param bound BoundPoints of the query points; not null
   /// @param op the operator this evaluator applies
   /// @param accepted_layout the layout whose fields EvaluateImpl can read, or
   ///        null to accept any field (layout-agnostic evaluators)
   explicit PointEvaluator(
-    std::shared_ptr<const BoundSource> bound,
+    std::shared_ptr<const BoundPoints> bound,
     DifferentialOperator op = DifferentialOperator::Value,
     std::shared_ptr<const FieldLayout> accepted_layout = nullptr)
     : bound_(std::move(bound)),
@@ -150,10 +150,10 @@ protected:
   {
   }
 
-  /// @return the bound source of the query points
-  [[nodiscard]] const BoundSource& Bound() const noexcept { return *bound_; }
+  /// @return the BoundPoints of the query points
+  [[nodiscard]] const BoundPoints& Bound() const noexcept { return *bound_; }
 
-  /// @brief Writes the field's values at the bound source's FoundPoints().
+  /// @brief Writes the field's values at the BoundPoints's FoundPoints().
   /// @param field field to evaluate; its output shape and basis are checked
   /// @param values output view; rows of other points may be left unset
   virtual void EvaluateImpl(
@@ -188,7 +188,7 @@ private:
     }
   }
 
-  std::shared_ptr<const BoundSource> bound_;
+  std::shared_ptr<const BoundPoints> bound_;
   DifferentialOperator op_;
   // layout of the fields Evaluate accepts; null accepts any field
   std::shared_ptr<const FieldLayout> accepted_layout_;

@@ -7,7 +7,7 @@
 
 #include <mfem.hpp>
 
-namespace pcms::backend::mfem
+namespace pcms::mfem
 {
 
 // FieldData backend for an MFEM order-1 H1 (vertex) scalar field.
@@ -39,6 +39,6 @@ private:
   mutable Kokkos::View<Real**, DeviceMemorySpace> device_data_;
 };
 
-} // namespace pcms::backend::mfem
+} // namespace pcms::mfem
 
 #endif // PCMS_BACKENDS_MFEM_FIELD_DATA_HPP

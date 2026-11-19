@@ -16,7 +16,7 @@
 #include "pcms/utility/assert.hpp"
 #endif
 
-namespace pcms::backend::xgc
+namespace pcms::xgc
 {
 
 namespace detail
@@ -34,16 +34,15 @@ struct DimID
 
 } // namespace detail
 
-} // namespace pcms::backend::xgc
+} // namespace pcms::xgc
 
 namespace std
 {
 
 template <>
-struct hash<pcms::backend::xgc::detail::DimID>
+struct hash<pcms::xgc::detail::DimID>
 {
-  std::size_t operator()(
-    const pcms::backend::xgc::detail::DimID& key) const noexcept
+  std::size_t operator()(const pcms::xgc::detail::DimID& key) const noexcept
   {
     auto h1 = hash<pcms::LO>{}(key.dim);
     auto h2 = hash<pcms::LO>{}(key.id);
@@ -54,7 +53,7 @@ struct hash<pcms::backend::xgc::detail::DimID>
 
 } // namespace std
 
-namespace pcms::backend::xgc
+namespace pcms::xgc
 {
 ///
 /// This datastructure represents the reverse classification
@@ -116,7 +115,7 @@ enum class IndexBase
 };
 
 template <typename T = Omega_h::LO>
-[[nodiscard]] ReverseClassificationVertex ConstructRCFromOmegaHMesh(
+[[nodiscard]] ReverseClassificationVertex CreateReverseClassification(
   Omega_h::Mesh& mesh, std::string numbering = "simNumbering",
   IndexBase index_base = IndexBase::One)
 {
@@ -141,6 +140,6 @@ template <typename T = Omega_h::LO>
 
 #endif
 
-} // namespace pcms::backend::xgc
+} // namespace pcms::xgc
 
 #endif // PCMS_BACKENDS_XGC_REVERSE_CLASSIFICATION_HPP

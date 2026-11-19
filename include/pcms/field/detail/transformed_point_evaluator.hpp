@@ -6,7 +6,7 @@
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/geometry/bound_source.hpp"
+#include "pcms/geometry/bound_points.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/detail/profile.hpp"
@@ -17,7 +17,7 @@
 namespace pcms::detail
 {
 
-/// Point evaluator at the points of a bound source with a coordinate map: the
+/// Point evaluator at the points of a BoundPoints with a coordinate map: the
 /// inner evaluator evaluates at the mapped points, and this one re-expresses
 /// the evaluated components in the bound map's output basis.
 /// PointEvaluatorFactory::CreatePointEvaluator creates it for every bound
@@ -26,10 +26,10 @@ template <typename T>
 class TransformedPointEvaluator final : public PointEvaluator<T>
 {
 public:
-  /// @param bound bound source of the query points; GetBoundMap() not null
+  /// @param bound BoundPoints of the query points; GetBoundMap() not null
   /// @param inner evaluator created from `bound` that evaluates at the mapped
   ///        points without re-expressing the values; not null
-  TransformedPointEvaluator(std::shared_ptr<const BoundSource> bound,
+  TransformedPointEvaluator(std::shared_ptr<const BoundPoints> bound,
                             std::unique_ptr<PointEvaluator<T>> inner)
     : PointEvaluator<T>(bound, inner->Operator(), inner->AcceptedLayout()),
       map_(bound->GetBoundMap()),

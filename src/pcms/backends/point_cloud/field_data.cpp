@@ -4,7 +4,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/arrays.hpp"
 
-namespace pcms::backend::point_cloud
+namespace pcms::point_cloud
 {
 
 PointCloud::PointCloud(
@@ -37,4 +37,4 @@ void PointCloud::SetValues(Rank2View<const Real, DeviceMemorySpace> data)
   pcms::detail::CopyDeviceRank2ViewToDeviceView(device_data_, data);
 }
 
-} // namespace pcms::backend::point_cloud
+} // namespace pcms::point_cloud

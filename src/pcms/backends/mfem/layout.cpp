@@ -6,7 +6,7 @@
 
 #include <memory>
 
-namespace pcms::backend::mfem
+namespace pcms::mfem
 {
 
 MFEMLayout::MFEMLayout(
@@ -152,4 +152,4 @@ Kokkos::View<bool*, HostMemorySpace> MFEMLayout::OverlapMaskFromAttribute(
   return overlap;
 }
 
-} // namespace pcms::backend::mfem
+} // namespace pcms::mfem

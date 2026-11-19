@@ -32,15 +32,15 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
-using backend::omega_h::MakeGridSearch;
-using backend::omega_h::OmegaHEntityLayout;
-using backend::omega_h::OmegaHLagrangeLayout;
-using backend::omega_h::searchNeighbors;
 using detail::BuildPointCloudSupports;
 using detail::MLSBinding;
 using detail::PointCloudLayout;
 using field::EmptyFieldLayout;
+using omega_h::CreateGeometry;
+using omega_h::MakeGridSearch;
+using omega_h::OmegaHEntityLayout;
+using omega_h::OmegaHLagrangeLayout;
+using omega_h::searchNeighbors;
 using utility::ConvertCoordsTo2D;
 using utility::flatten_to_omega_h_reals;
 using utility::get_entity_centroids;
@@ -64,7 +64,7 @@ std::shared_ptr<const pcms::Geometry> MakeGeometry(
 {
   return pcms::CreateGeometry(
     mesh, pcms::csys::Cartesian::Create(2),
-    pcms::backend::omega_h::OmegaHGeometryOptions{.search = options});
+    pcms::omega_h::OmegaHGeometryOptions{.search = options});
 }
 
 /// The element the grid search of `mesh` finds for each point, lifted from the
@@ -76,7 +76,7 @@ Kokkos::View<LO*> StartElements(Omega_h::Mesh& mesh,
     [&](const auto& s) {
       constexpr int Dim = std::decay_t<decltype(s)>::DIM;
       const auto results = s(points);
-      return pcms::backend::omega_h::detail::LiftElements<Dim>(
+      return pcms::omega_h::detail::LiftElements<Dim>(
         mesh, Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
                            pcms::DeviceMemorySpace>(results));
     },
@@ -135,7 +135,7 @@ std::vector<typename View::non_const_value_type> ToVector(const View& view)
   return {host.data(), host.data() + host.size()};
 }
 
-BindSummary Summarize(const std::shared_ptr<const pcms::BoundSource>& bound)
+BindSummary Summarize(const std::shared_ptr<const pcms::BoundPoints>& bound)
 {
   return {ToVector(bound->FoundPoints()), ToVector(bound->MissingPoints()),
           pcms::test::FoundRecords(*bound)};
@@ -305,12 +305,11 @@ TEST_CASE("A layout is named by the options of its space")
   grid.bot_left = {0.0, 0.0};
   grid.edge_length = {1.0, 1.0};
   grid.divisions = {2, 2};
-  REQUIRE(
-    CreateLagrangeSpace(pcms::backend::uniform_grid::CreateUniformGridGeometry(
-                          grid, pcms::csys::Cartesian::Create(2)),
-                        1, 1, LagrangeOptions{.layout_name = "grid"})
-      ->GetLayout()
-      ->GetName() == "grid");
+  REQUIRE(CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
+                                grid, pcms::csys::Cartesian::Create(2)),
+                              1, 1, LagrangeOptions{.layout_name = "grid"})
+            ->GetLayout()
+            ->GetName() == "grid");
   // a layout built directly takes its name as a constructor argument
   REQUIRE(pcms::OmegaHLagrangeLayout(pcms::test::MakeOmegaHGeometry(mesh), 1, 1,
                                      "direct")
@@ -428,7 +427,7 @@ TEST_CASE("Differential gives the element measure")
       REQUIRE_THAT(det(e) / 2.0, WithinAbs(measures[e], pcms::test::ExactTol));
     }
     CheckJacobianRows<2>(mesh, differential, mesh.nelems() / 2);
-    // the bound source must be one of this geometry
+    // the BoundPoints must be one of this geometry
     auto other = MakeGeometry(mesh);
     REQUIRE_THROWS_WITH(geometry->Differential(*pcms::test::Bind(*other, pts)),
                         ContainsSubstring("belongs to another geometry"));
@@ -570,18 +569,15 @@ TEST_CASE("PointCloudGeometry::Neighbourhood takes the search of its sites")
 
   // a bare point cloud has no geometry to search: the distance search
   pcms::test::CheckSupportResultsEquivalent(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(cloud)->Neighbourhood(
-      query, 0, options),
+    pcms::point_cloud::CreateGeometry(cloud)->Neighbourhood(query, 0, options),
     pcms::BuildPointCloudSupports(centroids.view(), mesh.coords().view(), 2,
                                   options.radius, 8, true));
   // sites that are entities of a mesh geometry's mesh, vertices or element
   // centroids: the adjacency search of the mesh from the element of each
   // query point (of the entity dimension the sites are)
   const auto start = StartElements(mesh, query_points);
-  const auto vertex_sites =
-    pcms::backend::point_cloud::CreatePointCloudGeometry(vertices);
-  const auto centroid_sites =
-    pcms::backend::point_cloud::CreatePointCloudGeometry(faces);
+  const auto vertex_sites = pcms::point_cloud::CreateGeometry(vertices);
+  const auto centroid_sites = pcms::point_cloud::CreateGeometry(faces);
   const auto vertex_supports =
     pcms::searchNeighbors(mesh, 0, mesh.coords(), 2, start, radius_sq, 8, 24);
   const auto centroid_supports =
@@ -677,7 +673,7 @@ TEST_CASE("Points the adjacency search cannot start from are missing")
   auto vertices = std::make_shared<pcms::OmegaHEntityLayout>(
     pcms::test::MakeOmegaHGeometry(mesh), pcms::Vertex, 1);
   auto space = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       vertices, pcms::NeighbourhoodOptions{.radius = 0.5, .min_supports = 3}),
     pcms::MLSOptions{.degree = 1});
   auto f = space->CreateFunction<Real>();
@@ -707,7 +703,7 @@ TEST_CASE("An empty bind evaluates to nothing")
   grid.divisions = {2, 2};
   std::vector<std::shared_ptr<const FunctionSpace>> spaces{
     MakeSpace(geometry, 1, 1),
-    CreateLagrangeSpace(pcms::backend::uniform_grid::CreateUniformGridGeometry(
+    CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
                           grid, pcms::csys::Cartesian::Create(2)),
                         1, 1)};
 #ifdef PCMS_ENABLE_MESHFIELDS
@@ -754,9 +750,9 @@ TEST_CASE("DOFHolderOwners gives the entity of each DOF holder")
   Omega_h::Write<Omega_h::I8> mask(mesh.nverts(), 1);
   Kokkos::deep_copy(Kokkos::View<Omega_h::I8*>(mask.data(), 1), 0);
   const auto ghosted = CreateLagrangeSpace(
-    pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(2),
-                         pcms::backend::omega_h::OmegaHGeometryOptions{
-                           .owned_mask = Omega_h::Read(mask)}),
+    pcms::CreateGeometry(
+      mesh, pcms::csys::Cartesian::Create(2),
+      pcms::omega_h::OmegaHGeometryOptions{.owned_mask = Omega_h::Read(mask)}),
     1, 1, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
   REQUIRE(ghosted->GetLayout()->HasGhosts());
   REQUIRE(pcms::DOFHolderOwners(*ghosted->GetLayout()).entities.extent(0) == 0);
@@ -1003,7 +999,7 @@ ColdAndWarm EvaluateColdAndWarm(
   const int dim = geometry->GetCoordinateSystem()->Dimension();
   const auto coords = pcms::test::CreateDeviceCoordinateView(
     pts, geometry->GetCoordinateSystem(), dim);
-  std::shared_ptr<const pcms::BoundSource> bound =
+  std::shared_ptr<const pcms::BoundPoints> bound =
     geometry->Bind(coords.coordinate_view);
   ColdAndWarm out;
   out.cold = pcms::test::EvaluateToHost(

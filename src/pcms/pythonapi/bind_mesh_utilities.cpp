@@ -196,7 +196,7 @@ void bind_mesh_utilities_module(py::module& m)
 
   // Omega_h backend entry points (the submodule is created in
   // bind_create_field_module, which runs first)
-  auto omega_h_module = m.attr("backend").attr("omega_h").cast<py::module>();
+  auto omega_h_module = m.attr("omega_h").cast<py::module>();
 
   omega_h_module.def("compute_entity_centroids", &compute_entity_centroids,
                      py::arg("mesh"), py::arg("entity_dim"),

@@ -8,7 +8,7 @@
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/geometry/bound_source.hpp"
+#include "pcms/geometry/bound_points.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/memory_spaces.hpp"
@@ -24,12 +24,12 @@ namespace pcms
 
 class CoordinateMap; // pcms/field/coordinate_map.hpp
 
-/// @brief Evaluation at points that move between calls: one bound source on a
+/// @brief Evaluation at points that move between calls: one BoundPoints on a
 ///        geometry, rebound in place by Locate, and the evaluators of the
 ///        functions evaluated on it, created on first use after each Locate.
 ///
 /// Locate releases the evaluators before it rebinds, so Geometry::Rebind
-/// reuses the bound source's storage unless the caller still holds it
+/// reuses the BoundPoints's storage unless the caller still holds it
 /// through Bound(). Evaluators of an Interpolator hold their own bound
 /// source and are not affected. Not thread-safe.
 class QueryPoints
@@ -79,11 +79,11 @@ public:
       ->Evaluate(function, out);
   }
 
-  /// @return the bound source of the located points (FoundPoints(),
+  /// @return the BoundPoints of the located points (FoundPoints(),
   ///         MissingPoints()), or null before Locate. A copy held past the
   ///         next Locate keeps these points; that Locate then binds anew
   ///         instead of reusing the storage.
-  [[nodiscard]] const std::shared_ptr<const BoundSource>& Bound() const noexcept
+  [[nodiscard]] const std::shared_ptr<const BoundPoints>& Bound() const noexcept
   {
     return bound_;
   }
@@ -96,7 +96,7 @@ private:
   std::shared_ptr<const Geometry> geometry_;
   OutOfBoundsPolicy policy_;
   std::shared_ptr<const CoordinateMap> map_;
-  std::shared_ptr<const BoundSource> bound_;
+  std::shared_ptr<const BoundPoints> bound_;
   std::map<Key, PointEvaluatorVariant> evaluators_;
 };
 

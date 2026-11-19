@@ -16,7 +16,7 @@
 #include "pcms/utility/uniform_grid.hpp"
 #include "pcms/utility/bounding_box.hpp"
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 //
@@ -27,25 +27,25 @@ namespace detail
 {
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_2d(Omega_h::Mesh& mesh,
-                              Kokkos::View<Uniform2DGrid[1]> grid,
+                              Kokkos::View<UniformGrid2D[1]> grid,
                               int num_grid_cells, Real inflation = 0);
 
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_3d(Omega_h::Mesh& mesh,
-                              Kokkos::View<Uniform3DGrid[1]> grid,
+                              Kokkos::View<UniformGrid3D[1]> grid,
                               int num_grid_cells, Real inflation = 0);
 
 /// O(num_cells * nelems) brute-force candidate map. Test oracle for the
 /// element-major build above; never use in production.
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_reference_2d(Omega_h::Mesh& mesh,
-                                        Kokkos::View<Uniform2DGrid[1]> grid,
+                                        Kokkos::View<UniformGrid2D[1]> grid,
                                         int num_grid_cells);
 
 /// \see construct_intersection_map_reference_2d
 Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
 construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
-                                        Kokkos::View<Uniform3DGrid[1]> grid,
+                                        Kokkos::View<UniformGrid3D[1]> grid,
                                         int num_grid_cells);
 } // namespace detail
 
@@ -196,7 +196,7 @@ private:
   /// entity-to-vertex adjacencies
   Omega_h::Few<Omega_h::Adj, DIM> down_;
   Omega_h::Few<Omega_h::Adj, DIM> down_verts_;
-  Kokkos::View<Uniform2DGrid[1]> grid_{"uniform grid"};
+  Kokkos::View<UniformGrid2D[1]> grid_{"uniform grid"};
   CandidateMapT candidate_map_;
   Omega_h::LOs elem_verts_;
   Omega_h::Reals coords_;
@@ -285,5 +285,5 @@ private:
 using GridPointSearchVariant =
   std::variant<GridPointSearch2D, GridPointSearch3D>;
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h
 #endif // PCMS_BACKENDS_OMEGA_H_POINT_SEARCH_HPP

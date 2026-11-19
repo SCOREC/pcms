@@ -9,7 +9,7 @@
 
 namespace pcms
 {
-using backend::omega_h::OmegaHLagrangeLayout;
+using omega_h::OmegaHLagrangeLayout;
 } // namespace pcms
 
 namespace pcms::transfer

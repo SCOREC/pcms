@@ -1,4 +1,4 @@
-#include "pcms/geometry/bound_source.hpp"
+#include "pcms/geometry/bound_points.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/field/coordinate_map.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -22,7 +22,7 @@ LO CountFound(Kokkos::View<const bool*, DeviceMemorySpace> found)
   }
   LO num_found = 0;
   Kokkos::parallel_reduce(
-    "BoundSource::CountFound",
+    "BoundPoints::CountFound",
     Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n),
     KOKKOS_LAMBDA(const LO i, LO& count) { count += found(i) ? 1 : 0; },
     num_found);
@@ -42,7 +42,7 @@ void SplitPoints(Kokkos::View<const bool*, DeviceMemorySpace> found,
     return;
   }
   Kokkos::parallel_scan(
-    "BoundSource::SplitPoints",
+    "BoundPoints::SplitPoints",
     Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
       0, static_cast<LO>(found.extent(0))),
     KOKKOS_LAMBDA(const LO i, LO& num_found_before, const bool final) {
@@ -57,7 +57,7 @@ void SplitPoints(Kokkos::View<const bool*, DeviceMemorySpace> found,
     });
 }
 
-/// Copies the query coordinates into the bound source's points, whatever the
+/// Copies the query coordinates into the BoundPoints's points, whatever the
 /// layouts. (A free function: CUDA does not allow device lambdas in private
 /// member functions.)
 template <typename PointsView>
@@ -66,7 +66,7 @@ void CopyPoints(PointsView points,
 {
   const auto dim = static_cast<int>(coords.extent(1));
   pcms::detail::ForEach(
-    "BoundSource::CopyPoints", static_cast<LO>(coords.extent(0)),
+    "BoundPoints::CopyPoints", static_cast<LO>(coords.extent(0)),
     KOKKOS_LAMBDA(const LO i) {
       for (int d = 0; d < dim; ++d) {
         points(i, d) = coords(i, d);
@@ -76,14 +76,14 @@ void CopyPoints(PointsView points,
 
 } // namespace
 
-BoundSource::BoundSource(std::shared_ptr<const Geometry> geometry,
+BoundPoints::BoundPoints(std::shared_ptr<const Geometry> geometry,
                          const BindRequest& request)
   : geometry_(std::move(geometry))
 {
   Reset(request);
 }
 
-void BoundSource::Reset(const BindRequest& request)
+void BoundPoints::Reset(const BindRequest& request)
 {
   policy_ = request.policy;
   map_ = request.map;
@@ -110,7 +110,7 @@ void BoundSource::Reset(const BindRequest& request)
   }
 }
 
-Kokkos::View<const Real**, DeviceMemorySpace> BoundSource::LocatedPointValues()
+Kokkos::View<const Real**, DeviceMemorySpace> BoundPoints::LocatedPointValues()
   const noexcept
 {
   if (map_ != nullptr) {
@@ -120,19 +120,19 @@ Kokkos::View<const Real**, DeviceMemorySpace> BoundSource::LocatedPointValues()
                          Kokkos::ALL);
 }
 
-void BoundSource::Rebind(RebindKey, const BindRequest& request)
+void BoundPoints::Rebind(RebindKey, const BindRequest& request)
 {
   Reset(request);
   RebindImpl();
 }
 
-bool BoundSource::Unshared() const noexcept
+bool BoundPoints::Unshared() const noexcept
 {
   return points_.use_count() <= 1 && point_indices_.use_count() <= 1 &&
          UnsharedImpl();
 }
 
-void BoundSource::SetFound(Kokkos::View<const bool*, DeviceMemorySpace> found)
+void BoundPoints::SetFound(Kokkos::View<const bool*, DeviceMemorySpace> found)
 {
   PCMS_ALWAYS_ASSERT(static_cast<LO>(found.extent(0)) == NumPoints());
   const LO num_found = CountFound(found);

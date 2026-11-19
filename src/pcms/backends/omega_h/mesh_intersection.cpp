@@ -10,7 +10,7 @@ using utility::ConvertCoordsTo2D;
 using utility::get_entity_centroids;
 } // namespace pcms
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 namespace
 {
@@ -228,4 +228,4 @@ IntersectionResults intersectTargets(const OmegaHGeometry& source,
   }
   return intersectTargetsImpl<2>(source, target_mesh, use_prefilter);
 }
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h

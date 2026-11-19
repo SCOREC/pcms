@@ -7,7 +7,7 @@
 #include <sstream>
 #include <string>
 
-namespace pcms::backend::xgc
+namespace pcms::xgc
 {
 
 std::vector<LO> ReverseClassificationVertex::Serialize() const
@@ -165,4 +165,4 @@ std::ostream& operator<<(std::ostream& os, const ReverseClassificationVertex& v)
   return os;
 }
 
-} // namespace pcms::backend::xgc
+} // namespace pcms::xgc

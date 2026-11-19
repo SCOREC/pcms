@@ -189,7 +189,7 @@ def main(plot_path=None):
         # The conservative-projection operators require the native Omega_h
         # Lagrange backend (not the default MeshFields layout). The spaces on a
         # mesh share its geometry (coordinate system and point search).
-        source_geometry = pcms.backend.omega_h.create_geometry(source_mesh)
+        source_geometry = pcms.omega_h.create_geometry(source_mesh)
         source_space = pcms.create_lagrange_space(
             source_geometry, 1, 1,
             backend=pcms.LagrangeBackend.OmegaH,
@@ -206,7 +206,7 @@ def main(plot_path=None):
         print(f"\nTarget mesh : {target_mesh.nverts()} verts, "
               f"{target_mesh.nelems()} elems (read from {target_path})")
 
-        target_geometry = pcms.backend.omega_h.create_geometry(target_mesh)
+        target_geometry = pcms.omega_h.create_geometry(target_mesh)
         target_space = pcms.create_lagrange_space(
             target_geometry, 1, 1,
             backend=pcms.LagrangeBackend.OmegaH,

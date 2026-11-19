@@ -12,15 +12,15 @@
 
 namespace pcms
 {
-using backend::mfem::MFEMFieldFactory;
-using backend::mfem::MFEMLayout;
-using backend::mfem::MFEMVertexFieldData;
+using pcms::mfem::MFEMFieldFactory;
+using pcms::mfem::MFEMLayout;
+using pcms::mfem::MFEMVertexFieldData;
 } // namespace pcms
 
 namespace
 {
 
-double LinearField(const mfem::Vector& x)
+double LinearField(const ::mfem::Vector& x)
 {
   return 1.0 + 2.0 * x[0] + 3.0 * x[1];
 }
@@ -29,11 +29,12 @@ double LinearField(const mfem::Vector& x)
 
 TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
 {
-  auto serial = mfem::Mesh::MakeCartesian2D(2, 2, mfem::Element::QUADRILATERAL);
-  mfem::ParMesh pmesh(MPI_COMM_WORLD, serial);
-  mfem::H1_FECollection fec(1, pmesh.Dimension());
-  mfem::ParFiniteElementSpace pfes(&pmesh, &fec);
-  mfem::ParGridFunction gf(&pfes);
+  auto serial =
+    ::mfem::Mesh::MakeCartesian2D(2, 2, ::mfem::Element::QUADRILATERAL);
+  ::mfem::ParMesh pmesh(MPI_COMM_WORLD, serial);
+  ::mfem::H1_FECollection fec(1, pmesh.Dimension());
+  ::mfem::ParFiniteElementSpace pfes(&pmesh, &fec);
+  ::mfem::ParGridFunction gf(&pfes);
   gf = 0.0;
 
   SECTION("layout reports vertex-scalar properties")
@@ -67,7 +68,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
 
   SECTION("field data round-trips through the grid function")
   {
-    mfem::FunctionCoefficient coeff(LinearField);
+    ::mfem::FunctionCoefficient coeff(LinearField);
     gf.ProjectCoefficient(coeff);
 
     pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
@@ -113,7 +114,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
       return;
     }
 
-    mfem::FunctionCoefficient coeff(LinearField);
+    ::mfem::FunctionCoefficient coeff(LinearField);
     gf.ProjectCoefficient(coeff);
 
     pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
@@ -135,7 +136,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
                          pcms::detail::make_const_array_view(perm));
 
     // Deserialize into a second field bound to a fresh grid function.
-    mfem::ParGridFunction gf2(&pfes);
+    ::mfem::ParGridFunction gf2(&pfes);
     gf2 = 0.0;
     auto field2 = factory.CreateField<pcms::Real>(
       "target", std::make_unique<pcms::MFEMVertexFieldData>(pfes, gf2));

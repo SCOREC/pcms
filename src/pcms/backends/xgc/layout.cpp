@@ -3,7 +3,7 @@
 #include "pcms/utility/entity_types.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
 
-namespace pcms::backend::xgc
+namespace pcms::xgc
 {
 
 struct InitilizeXGCMembersFunctor
@@ -169,4 +169,4 @@ LO XGCFieldLayout::GetFullDataSize() const noexcept
   return num_plane_nodes_;
 }
 
-} // namespace pcms::backend::xgc
+} // namespace pcms::xgc

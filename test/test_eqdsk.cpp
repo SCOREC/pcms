@@ -23,7 +23,7 @@ TEST_CASE("EQDSKData manual constructor")
   {
     // Create a simple test grid
     // divisions stores cell counts: 4 R cells, 3 Z cells → 5x4 grid points
-    pcms::Uniform2DGrid test_grid;
+    pcms::UniformGrid2D test_grid;
     test_grid.divisions[0] = 4;     // 4 R cells → 5 R points
     test_grid.divisions[1] = 3;     // 3 Z cells → 4 Z points
     test_grid.bot_left[0] = 1.0;    // R_min
@@ -87,7 +87,7 @@ TEST_CASE("EQDSKData manual constructor")
   SECTION("Grid accessor methods")
   {
     // Create a test grid (4 R cells, 3 Z cells → 5x4 grid points)
-    pcms::Uniform2DGrid test_grid;
+    pcms::UniformGrid2D test_grid;
     test_grid.divisions[0] = 4;
     test_grid.divisions[1] = 3;
     test_grid.bot_left[0] = 1.0;
@@ -116,7 +116,7 @@ TEST_CASE("EQDSKData manual constructor")
 
   SECTION("Input validation")
   {
-    pcms::Uniform2DGrid test_grid;
+    pcms::UniformGrid2D test_grid;
     test_grid.divisions[0] = 4;
     test_grid.divisions[1] = 3;
     test_grid.bot_left[0] = 1.0;
@@ -147,7 +147,7 @@ TEST_CASE("EQDSKData with SplineFunctionSpace")
   auto lib = Omega_h::Library{};
 
   // Create a test grid (9 R cells, 7 Z cells → 10x8 grid points)
-  pcms::Uniform2DGrid test_grid;
+  pcms::UniformGrid2D test_grid;
   test_grid.divisions[0] = 9; // 9 R cells → 10 R points
   test_grid.divisions[1] = 7; // 7 Z cells → 8 Z points
   test_grid.bot_left[0] = 1.0;

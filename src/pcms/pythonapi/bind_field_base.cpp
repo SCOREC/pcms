@@ -14,7 +14,7 @@
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_view.hpp"
-#include "pcms/geometry/bound_source.hpp"
+#include "pcms/geometry/bound_points.hpp"
 #include "pcms/field/differential_operator.hpp"
 #include "pcms/localization/mls_options.hpp"
 #include "pcms/backends/omega_h/geometry.hpp"
@@ -38,8 +38,7 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
-using backend::omega_h::OmegaHGeometry;
+using omega_h::CreateGeometry;
 } // namespace pcms
 
 namespace py = pybind11;
@@ -49,11 +48,6 @@ namespace pcms
 
 namespace
 {
-
-// The Python classes of the Omega_h geometries derive from Geometry, so Python
-// sees the kind of any geometry pcms returns.
-struct OmegaHGeometryHandle : Immutable<Geometry>
-{};
 
 void SetDOFHolderData(Field<Real>& self, const PyValueView& v)
 {
@@ -65,14 +59,11 @@ void SetDOFHolderData(Field<Real>& self, const PyValueView& v)
     v.basis, NumpyToHostView<2, Real>(array)));
 }
 
-/// Return the Python handle matching the geometry kind.
+/// Return the Python handle of a geometry (None for a null geometry).
 py::object GeometryToPython(const std::shared_ptr<const Geometry>& geometry)
 {
   if (geometry == nullptr) {
     return py::none();
-  }
-  if (dynamic_cast<const OmegaHGeometry*>(geometry.get()) != nullptr) {
-    return py::cast(OmegaHGeometryHandle{{geometry}});
   }
   return py::cast(Immutable<Geometry>{geometry});
 }
@@ -89,11 +80,11 @@ void BindEvaluatorFactoryMethods(py::class_<Handle>& cls)
       [](const Handle& self) {
         return GeometryToPython(self.ptr->GetGeometry());
       },
-      "The geometry whose bound sources this source accepts; bind query points "
+      "The geometry whose BoundPoints this source accepts; bind query points "
       "with its bind()")
     .def(
       "create_point_evaluator",
-      [](const Handle& self, const Immutable<BoundSource>& bound,
+      [](const Handle& self, const Immutable<BoundPoints>& bound,
          DifferentialOperator op) {
         return self.ptr->template CreatePointEvaluator<Real>(bound.ptr, op);
       },
@@ -239,9 +230,9 @@ void bind_create_field_module(py::module& m)
       [](const Immutable<Geometry>& g, const PyCoordinateView& coords,
          OutOfBoundsPolicy policy,
          const std::optional<Immutable<CoordinateMap>>& map) {
-        // the bound source copies the points
+        // the BoundPoints copies the points
         auto device = CopyCoordinatesToDevice(coords);
-        return Immutable<BoundSource>{
+        return Immutable<BoundPoints>{
           g.ptr->Bind(device.view, policy, map ? map->ptr : nullptr)};
       },
       py::arg("coordinates"), py::arg("policy") = OutOfBoundsPolicy{},
@@ -257,7 +248,7 @@ void bind_create_field_module(py::module& m)
          OutOfBoundsPolicy policy,
          const std::optional<Immutable<CoordinateMap>>& map) {
         auto layout = space.ptr->GetLayout();
-        return Immutable<BoundSource>{g.ptr->Bind(
+        return Immutable<BoundPoints>{g.ptr->Bind(
           layout->GetDOFHolderCoordinates(), DOFHolderOwners(*layout), policy,
           map ? map->ptr : nullptr)};
       },
@@ -268,13 +259,12 @@ void bind_create_field_module(py::module& m)
       "binds them with owner hints, which are verified (with a map the hints "
       "are ignored)");
 
-  [[maybe_unused]] const auto omega_h_geometry =
-    py::class_<OmegaHGeometryHandle, Immutable<Geometry>>(
-      m, "OmegaHGeometry", "The geometry of an Omega_h simplex mesh");
-
-  auto omega_h_module =
-    m.def_submodule("backend", "Backend-specific entry points")
-      .def_submodule("omega_h", "Omega_h backend");
+  // one submodule per backend namespace (pcms::omega_h -> pcms.omega_h)
+  auto omega_h_module = m.def_submodule("omega_h", "Omega_h backend");
+  auto uniform_grid_module =
+    m.def_submodule("uniform_grid", "Uniform-grid backend");
+  auto point_cloud_module =
+    m.def_submodule("point_cloud", "Point-cloud backend");
   omega_h_module.def(
     "create_geometry",
     [](std::shared_ptr<Omega_h::Mesh> mesh,
@@ -285,7 +275,7 @@ void bind_create_field_module(py::module& m)
       auto library =
         py::cast(mesh->library(), py::return_value_policy::reference)
           .cast<std::shared_ptr<Omega_h::Library>>();
-      backend::omega_h::OmegaHGeometryOptions options;
+      omega_h::OmegaHGeometryOptions options;
       options.search.divisions = divisions;
       options.global_id_name = std::move(global_id_name);
       if (owned_mask) {
@@ -299,9 +289,9 @@ void bind_create_field_module(py::module& m)
                   host.data());
         options.owned_mask = Omega_h::Read<Omega_h::I8>(host.write());
       }
-      return OmegaHGeometryHandle{
-        {CreateGeometry(std::move(mesh), std::move(library),
-                        CartesianIfNone(system), std::move(options))}};
+      return Immutable<Geometry>{
+        CreateGeometry(std::move(mesh), std::move(library),
+                       CartesianIfNone(system), std::move(options))};
     },
     py::arg("mesh").none(false), py::arg("system") = py::none(),
     py::arg("divisions") = 0, py::arg("global_id_name") = "global",
@@ -312,58 +302,56 @@ void bind_create_field_module(py::module& m)
     "that holds the global entity ids; `owned_mask` is a per-vertex (int8) "
     "ownership override, by default the mesh's ownership");
 
-  m.def(
-    "create_uniform_grid_geometry",
+  uniform_grid_module.def(
+    "create_geometry",
     [](const UniformGrid<2>& grid,
        const std::optional<Immutable<CoordinateSystem>>& system) {
       return Immutable<Geometry>{
-        backend::uniform_grid::CreateUniformGridGeometry(
-          grid, CartesianIfNone(system))};
+        uniform_grid::CreateGeometry(grid, CartesianIfNone(system))};
     },
     py::arg("grid"), py::arg("system") = py::none(),
     "Create the geometry of a 2D uniform grid; the coordinate system defaults "
     "to Cartesian");
 
-  m.def(
-    "create_uniform_grid_geometry",
+  uniform_grid_module.def(
+    "create_geometry",
     [](const UniformGrid<3>& grid,
        const std::optional<Immutable<CoordinateSystem>>& system) {
       return Immutable<Geometry>{
-        backend::uniform_grid::CreateUniformGridGeometry(
-          grid, CartesianIfNone(system))};
+        uniform_grid::CreateGeometry(grid, CartesianIfNone(system))};
     },
     py::arg("grid"), py::arg("system") = py::none(),
     "Create the geometry of a 3D uniform grid; the coordinate system defaults "
     "to Cartesian");
 
-  ImmutableClass<BoundSource>(
-    m, "BoundSource",
+  ImmutableClass<BoundPoints>(
+    m, "BoundPoints",
     "A set of query points localized on a geometry; evaluators created from "
     "it share its search")
     .def(
       "get_geometry",
-      [](const Immutable<BoundSource>& self) {
+      [](const Immutable<BoundPoints>& self) {
         return GeometryToPython(self.ptr->GetGeometry());
       },
       "The geometry the points were localized on")
     .def(
       "num_points",
-      [](const Immutable<BoundSource>& self) { return self.ptr->NumPoints(); })
+      [](const Immutable<BoundPoints>& self) { return self.ptr->NumPoints(); })
     .def_property_readonly(
       "policy",
-      [](const Immutable<BoundSource>& self) { return self.ptr->Policy(); })
+      [](const Immutable<BoundPoints>& self) { return self.ptr->Policy(); })
     .def(
       "found_points",
       [](py::object self) {
         return IndicesToNumpy(
-          self.cast<const Immutable<BoundSource>&>().ptr->FoundPoints(), self);
+          self.cast<const Immutable<BoundPoints>&>().ptr->FoundPoints(), self);
       },
       "Indices of the query points the source evaluates, read-only")
     .def(
       "missing_points",
       [](py::object self) {
         return IndicesToNumpy(
-          self.cast<const Immutable<BoundSource>&>().ptr->MissingPoints(),
+          self.cast<const Immutable<BoundPoints>&>().ptr->MissingPoints(),
           self);
       },
       "Indices of the query points the source does not evaluate, read-only");
@@ -378,7 +366,7 @@ void bind_create_field_module(py::module& m)
 
   auto factory = ImmutableClass<PointEvaluatorFactory>(
     m, "PointEvaluatorFactory",
-    "Creates evaluators at the points of bound sources of its geometry");
+    "Creates evaluators at the points of BoundPoints of its geometry");
   BindEvaluatorFactoryMethods(factory);
 
   py::class_<QueryPoints>(
@@ -397,7 +385,7 @@ void bind_create_field_module(py::module& m)
     .def(
       "locate",
       [](QueryPoints& self, const PyCoordinateView& coords) {
-        // the bound source copies the points
+        // the BoundPoints copies the points
         auto device = CopyCoordinatesToDevice(coords);
         self.Locate(device.view);
       },
@@ -435,13 +423,13 @@ void bind_create_field_module(py::module& m)
       "writeable C-contiguous float64 array (num_points × num_components)")
     .def_property_readonly(
       "bound",
-      [](const QueryPoints& self) -> std::optional<Immutable<BoundSource>> {
+      [](const QueryPoints& self) -> std::optional<Immutable<BoundPoints>> {
         if (self.Bound() == nullptr) {
           return std::nullopt;
         }
-        return Immutable<BoundSource>{self.Bound()};
+        return Immutable<BoundPoints>{self.Bound()};
       },
-      "The BoundSource of the located points, or None before locate(); while "
+      "The BoundPoints of the located points, or None before locate(); while "
       "it is held, the next locate() binds anew instead of reusing it");
 
   m.def(
@@ -491,7 +479,7 @@ void bind_create_field_module(py::module& m)
     },
     py::arg("source"),
     "A source whose evaluators write the gradient of the field they are given; "
-    "it accepts the bound sources of `source`'s geometry");
+    "it accepts the BoundPoints of `source`'s geometry");
 
   m.def(
     "divergence",
@@ -501,7 +489,7 @@ void bind_create_field_module(py::module& m)
     },
     py::arg("source"),
     "A source whose evaluators write the divergence of the field they are "
-    "given; it accepts the bound sources of `source`'s geometry");
+    "given; it accepts the BoundPoints of `source`'s geometry");
 
   m.def(
     "curl",
@@ -510,7 +498,7 @@ void bind_create_field_module(py::module& m)
     },
     py::arg("source"),
     "A source whose evaluators write the curl of the field they are given; it "
-    "accepts the bound sources of `source`'s geometry");
+    "accepts the BoundPoints of `source`'s geometry");
 
   auto space = ImmutableClass<FunctionSpace>(m, "FunctionSpace");
   BindEvaluatorFactoryMethods(space);
@@ -571,7 +559,7 @@ void bind_create_field_module(py::module& m)
     "Create a Lagrange FunctionSpace of order `order` on an Omega_h geometry "
     "(backend OmegaH: orders 0 and 1; MeshFields: orders 1 and 2) or a "
     "uniform-grid geometry (orders 0 and 1, `backend` ignored); spaces on one "
-    "geometry accept each other's bound sources.");
+    "geometry accept each other's BoundPoints.");
 
   m.def(
     "create_spline_space",
@@ -608,11 +596,11 @@ void bind_create_field_module(py::module& m)
     "(its sites are the DOF holders); `options` are the reconstruction "
     "parameters, the support search is the geometry's");
 
-  m.def(
-    "create_point_cloud_geometry",
+  point_cloud_module.def(
+    "create_geometry",
     [](const PyCoordinateView& coords, NeighbourhoodOptions neighbourhood) {
       auto values = NumpyInput<Real>::ensure(coords.values);
-      return Immutable<Geometry>{backend::point_cloud::CreatePointCloudGeometry(
+      return Immutable<Geometry>{point_cloud::CreateGeometry(
         CoordinateView<HostMemorySpace>(coords.system,
                                         NumpyToHostView<2, Real>(values)),
         std::move(neighbourhood))};
@@ -621,12 +609,12 @@ void bind_create_field_module(py::module& m)
     "Create a point-cloud geometry whose sites are the points of a "
     "CoordinateView; `neighbourhood` is its support search");
 
-  m.def(
-    "create_point_cloud_geometry",
+  point_cloud_module.def(
+    "create_geometry",
     [](const Immutable<FieldLayout>& sites,
        NeighbourhoodOptions neighbourhood) {
-      return Immutable<Geometry>{backend::point_cloud::CreatePointCloudGeometry(
-        sites.ptr, std::move(neighbourhood))};
+      return Immutable<Geometry>{
+        point_cloud::CreateGeometry(sites.ptr, std::move(neighbourhood))};
     },
     py::arg("sites"), py::arg("neighbourhood") = NeighbourhoodOptions{},
     "Create a point-cloud geometry whose sites are the DOF holders of a "
@@ -637,15 +625,14 @@ void bind_create_field_module(py::module& m)
     [](const Immutable<Geometry>& geometry, int entity_dim,
        NeighbourhoodOptions neighbourhood) {
       const auto omega_h =
-        std::dynamic_pointer_cast<const backend::omega_h::OmegaHGeometry>(
-          geometry.ptr);
+        std::dynamic_pointer_cast<const omega_h::OmegaHGeometry>(geometry.ptr);
       if (omega_h == nullptr) {
         throw py::value_error(
           "create_point_cloud_geometry: the geometry must be an Omega_h "
           "geometry");
       }
       try {
-        return Immutable<Geometry>{backend::omega_h::CreatePointCloudGeometry(
+        return Immutable<Geometry>{omega_h::CreatePointCloudGeometry(
           omega_h, entity_dim, std::move(neighbourhood))};
       } catch (const pcms_error& e) {
         throw py::value_error(e.what());
@@ -662,8 +649,7 @@ void bind_create_field_module(py::module& m)
     "get_mesh",
     [](const Immutable<Geometry>& geometry) -> std::shared_ptr<Omega_h::Mesh> {
       const auto* omega_h =
-        dynamic_cast<const backend::omega_h::OmegaHGeometry*>(
-          geometry.ptr.get());
+        dynamic_cast<const omega_h::OmegaHGeometry*>(geometry.ptr.get());
       if (omega_h == nullptr) {
         throw py::value_error(
           "get_mesh: the geometry must be an Omega_h geometry");
@@ -678,7 +664,7 @@ void bind_create_field_module(py::module& m)
   omega_h_module.def(
     "create_uniform_grid_binary_field",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return backend::omega_h::CreateUniformGridBinaryField(mesh, divisions);
+      return omega_h::CreateUniformGridBinaryField(mesh, divisions);
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D vertex mask field indicating inside/outside mesh");
@@ -686,8 +672,7 @@ void bind_create_field_module(py::module& m)
   omega_h_module.def(
     "create_uniform_grid_from_mesh",
     [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return pcms::backend::omega_h::CreateUniformGridFromMesh<2>(mesh,
-                                                                  divisions);
+      return pcms::omega_h::CreateUniformGridFromMesh<2>(mesh, divisions);
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 2D uniform grid from an Omega_h mesh");
@@ -695,8 +680,7 @@ void bind_create_field_module(py::module& m)
   omega_h_module.def(
     "create_uniform_grid_from_mesh",
     [](Omega_h::Mesh& mesh, const std::array<LO, 3>& divisions) {
-      return pcms::backend::omega_h::CreateUniformGridFromMesh<3>(mesh,
-                                                                  divisions);
+      return pcms::omega_h::CreateUniformGridFromMesh<3>(mesh, divisions);
     },
     py::arg("mesh"), py::arg("divisions"),
     "Create a 3D uniform grid from an Omega_h mesh");

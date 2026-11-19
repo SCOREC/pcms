@@ -9,7 +9,7 @@
 
 #include <array>
 
-namespace pcms::backend::uniform_grid
+namespace pcms::uniform_grid
 {
 template <unsigned Dim = 2>
 class UniformGridFieldLayout : public FieldLayout
@@ -67,5 +67,5 @@ private:
 
 using UniformGridFieldLayout2D = UniformGridFieldLayout<2>;
 
-} // namespace pcms::backend::uniform_grid
+} // namespace pcms::uniform_grid
 #endif // PCMS_BACKENDS_UNIFORM_GRID_LAYOUT_HPP

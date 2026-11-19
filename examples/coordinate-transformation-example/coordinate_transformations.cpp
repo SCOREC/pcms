@@ -93,14 +93,13 @@ void BuildSpaces(Omega_h::Library& lib, Omega_h::Mesh& src_mesh,
   src_mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 2.0, 1.6, 1.1, 8,
                                 8, 6, false);
   src = CreateLagrangeSpace(
-    backend::omega_h::CreateGeometry(src_mesh,
-                                     csys::CylindricalRThetaZ::Create()),
-    1, 3, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
+    omega_h::CreateGeometry(src_mesh, csys::CylindricalRThetaZ::Create()), 1, 3,
+    LagrangeOptions{.backend = LagrangeBackend::OmegaH});
   tgt_mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 1.0, 4,
                                 4, 4, false);
   tgt = CreateLagrangeSpace(
-    backend::omega_h::CreateGeometry(tgt_mesh, csys::Cartesian::Create(3)), 1,
-    3, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
+    omega_h::CreateGeometry(tgt_mesh, csys::Cartesian::Create(3)), 1, 3,
+    LagrangeOptions{.backend = LagrangeBackend::OmegaH});
 }
 
 void CaseA()

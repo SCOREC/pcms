@@ -43,7 +43,7 @@ std::function<void(HostArray, HostArray)> PointCloudInterpolation(
 {
   const auto system = pcms::csys::Cartesian::Create(2);
   auto space = pcms::CreatePolynomialReconstructionSpace(
-    pcms::backend::point_cloud::CreatePointCloudGeometry(
+    pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<pcms::HostMemorySpace>(
         system, pcms::Rank2View<const double, pcms::HostMemorySpace>(
                   source.data_handle(), source.size() / 2, 2)),

@@ -2,8 +2,9 @@
 #define PCMS_FIELD_FUNCTION_SPACES_HPP
 
 // Factories for the function spaces PCMS provides. Each takes the Geometry the
-// space is defined on (CreateUniformGridGeometry, CreatePointCloudGeometry,
-// backend::omega_h::CreateGeometry) and returns the FunctionSpace.
+// space is defined on (uniform_grid::CreateGeometry,
+// point_cloud::CreateGeometry, omega_h::CreateGeometry) and returns the
+// FunctionSpace.
 
 #include "pcms/configuration.hpp"
 #include "pcms/field/field_layout.hpp"
@@ -42,7 +43,7 @@ struct LagrangeOptions
 /// A Lagrange space of order `order` with `num_components` components on
 /// `geometry`: an Omega_h geometry (backend OmegaH: orders 0 and 1; MeshFields:
 /// orders 1 and 2) or a uniform-grid geometry (orders 0 and 1, backend
-/// ignored). Spaces on one geometry accept each other's bound sources.
+/// ignored). Spaces on one geometry accept each other's BoundPoints.
 /// @throws pcms_error for another geometry kind, a null geometry, or an order
 ///         the backend does not support
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateLagrangeSpace(
@@ -50,7 +51,7 @@ struct LagrangeOptions
   LagrangeOptions options = {});
 
 /// A bicubic spline space on a 2D uniform-grid geometry. Spaces on one
-/// geometry accept each other's bound sources.
+/// geometry accept each other's BoundPoints.
 /// @throws pcms_error if `geometry` is null or not a 2D uniform-grid geometry
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateSplineSpace(
   std::shared_ptr<const Geometry> geometry);

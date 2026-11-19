@@ -41,17 +41,17 @@ void FillUniformGridBinding(
     });
 }
 
-/// Uniform-grid bound source: the cell of each query point and its position in
+/// Uniform-grid BoundPoints: the cell of each query point and its position in
 /// the cell. Points outside the grid are not found, except with
 /// OutOfBoundsMode::NEAREST_BOUNDARY, where they use the closest cell and
 /// their position relative to it.
 template <unsigned Dim>
-class UniformGridBinding final : public BoundSource
+class UniformGridBinding final : public BoundPoints
 {
 public:
   UniformGridBinding(std::shared_ptr<const Geometry> geometry,
                      const BindRequest& request, const UniformGrid<Dim>& grid)
-    : BoundSource(std::move(geometry), request), search_(grid)
+    : BoundPoints(std::move(geometry), request), search_(grid)
   {
     Locate();
   }
@@ -104,16 +104,16 @@ private:
 
 } // namespace pcms::detail
 
-namespace pcms::backend::uniform_grid
+namespace pcms::uniform_grid
 {
 
 /// Geometry of a uniform grid: an affine map of the unit cells, located in
-/// closed form (no search to build). Create it with CreateUniformGridGeometry.
+/// closed form (no search to build). Create it with CreateGeometry.
 template <unsigned Dim>
 class UniformGridGeometry final : public Geometry
 {
 public:
-  /// Own it by std::shared_ptr, as CreateUniformGridGeometry does: Bind uses
+  /// Own it by std::shared_ptr, as CreateGeometry does: Bind uses
   /// shared_from_this().
   UniformGridGeometry(UniformGrid<Dim> grid,
                       std::shared_ptr<const CoordinateSystem> system)
@@ -139,7 +139,7 @@ public:
   }
 
 protected:
-  [[nodiscard]] std::shared_ptr<BoundSource> BindImpl(
+  [[nodiscard]] std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const override
   {
     PCMS_FUNCTION_TIMER;
@@ -156,8 +156,8 @@ private:
 /// @param grid the grid
 /// @param system the grid's coordinate system, or null for Cartesian
 [[nodiscard]] inline std::shared_ptr<const UniformGridGeometry<2>>
-CreateUniformGridGeometry(UniformGrid<2> grid,
-                          std::shared_ptr<const CoordinateSystem> system)
+CreateGeometry(UniformGrid<2> grid,
+               std::shared_ptr<const CoordinateSystem> system)
 {
   return std::make_shared<UniformGridGeometry<2>>(grid, std::move(system));
 }
@@ -166,12 +166,12 @@ CreateUniformGridGeometry(UniformGrid<2> grid,
 /// @param grid the grid
 /// @param system the grid's coordinate system, or null for Cartesian
 [[nodiscard]] inline std::shared_ptr<const UniformGridGeometry<3>>
-CreateUniformGridGeometry(UniformGrid<3> grid,
-                          std::shared_ptr<const CoordinateSystem> system)
+CreateGeometry(UniformGrid<3> grid,
+               std::shared_ptr<const CoordinateSystem> system)
 {
   return std::make_shared<UniformGridGeometry<3>>(grid, std::move(system));
 }
 
-} // namespace pcms::backend::uniform_grid
+} // namespace pcms::uniform_grid
 
 #endif // PCMS_BACKENDS_UNIFORM_GRID_GEOMETRY_HPP

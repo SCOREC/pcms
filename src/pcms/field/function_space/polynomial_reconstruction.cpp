@@ -7,8 +7,8 @@
 
 namespace pcms
 {
-using backend::point_cloud::PointCloudEvaluatorFactory;
-using backend::point_cloud::PointCloudGeometry;
+using point_cloud::PointCloudEvaluatorFactory;
+using point_cloud::PointCloudGeometry;
 } // namespace pcms
 
 namespace pcms

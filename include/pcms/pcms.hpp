@@ -27,7 +27,7 @@
 // discretization and localization
 
 // geometry
-#include "pcms/geometry/bound_source.hpp"
+#include "pcms/geometry/bound_points.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/geometry/supports.hpp"
 #include "pcms/localization/mls_options.hpp"

@@ -13,7 +13,7 @@
 
 namespace pcms
 {
-using backend::omega_h::OmegaHLagrangeLayout;
+using omega_h::OmegaHLagrangeLayout;
 using transfer::BuildOmegaHMassIntegrator;
 using transfer::OmegaHConservativeProjection;
 } // namespace pcms
@@ -133,7 +133,7 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
     const auto values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
     const auto coords_h = pcms::test::CopyCoordinatesToHost(
-      pcms::backend::omega_h::MakeConstRank2View(mesh.coords(), 3));
+      pcms::omega_h::MakeConstRank2View(mesh.coords(), 3));
     for (Omega_h::LO i = 0; i < 4; ++i) {
       const double expected =
         1.0 + coords_h(i, 0) + 2.0 * coords_h(i, 1) + 3.0 * coords_h(i, 2);

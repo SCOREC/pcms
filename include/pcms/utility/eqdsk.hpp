@@ -33,7 +33,7 @@ struct EQDSKData
   // grid.edge_length[1] = ZDIM (vertical dimension in meter)
   // grid.bot_left[0] = RLEFT (minimum R in meter)
   // grid.bot_left[1] = Z_min (minimum Z in meter)
-  Uniform2DGrid grid;
+  UniformGrid2D grid;
 
   // PSIZR: Poloidal flux in Weber/rad on the rectangular grid points
   Kokkos::View<Real*, DeviceMemorySpace> PSIZR;
@@ -49,13 +49,13 @@ struct EQDSKData
   EQDSKData(const std::string& filename);
 
   // Manual constructor for programmatic construction
-  // grid: Uniform2DGrid structure defining the R-Z computational domain
+  // grid: UniformGrid2D structure defining the R-Z computational domain
   //   grid.divisions = number of cells in R and Z
   // psirz: 2D flux array (flattened in column-major order, size =
   //   (grid.divisions[0]+1)*(grid.divisions[1]+1))
   // psi_grid_vals: psi grid values (size = npsi)
   // I_psi_vals: poloidal current function values (size = npsi)
-  EQDSKData(const Uniform2DGrid& grid, const std::vector<Real>& psirz,
+  EQDSKData(const UniformGrid2D& grid, const std::vector<Real>& psirz,
             const std::vector<Real>& psi_grid_vals,
             const std::vector<Real>& I_psi_vals);
 

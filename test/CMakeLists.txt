@@ -473,7 +473,7 @@ if(Catch2_FOUND)
       test_tagged_outputs.cpp
       test_bound_maps.cpp
       test_evaluation_only_space.cpp
-      test_bound_source.cpp
+      test_bound_points.cpp
       test_query_points.cpp
       test_geometry.cpp)
   endif()

@@ -19,15 +19,15 @@
 
 namespace pcms
 {
-using backend::omega_h::GridPointSearch2D;
-using backend::omega_h::GridPointSearch3D;
-using backend::omega_h::triangle_intersects_bbox;
 using detail::UniformGridPointSearch;
+using omega_h::GridPointSearch2D;
+using omega_h::GridPointSearch3D;
+using omega_h::triangle_intersects_bbox;
 using utility::get_entity_centroids;
 } // namespace pcms
 
 using pcms::AABBox;
-using pcms::Uniform2DGrid;
+using pcms::UniformGrid2D;
 
 namespace
 {
@@ -48,11 +48,11 @@ struct LiftResults
   KOKKOS_INLINE_FUNCTION void operator()(const int i) const
   {
     const auto elem =
-      pcms::backend::omega_h::detail::ElementOfResult<Dim>(up, results(i));
+      pcms::omega_h::detail::ElementOfResult<Dim>(up, results(i));
     elems(i) = elem;
     Omega_h::LO vertices[Dim + 1];
     pcms::Real weights[Dim + 1];
-    const int nv = pcms::backend::omega_h::detail::EntityVertexWeights<Dim>(
+    const int nv = pcms::omega_h::detail::EntityVertexWeights<Dim>(
       verts_of, results(i), vertices, weights);
     for (int k = 0; k <= Dim; ++k) {
       bary(i, k) = 0.0;
@@ -79,12 +79,11 @@ LiftOnHost(Omega_h::Mesh& mesh, Kokkos::View<Result*> results)
   Kokkos::View<Omega_h::LO*> elems("elems", n);
   // LayoutRight on every backend, so the host mirror has the declared type
   Kokkos::View<pcms::Real**, Kokkos::LayoutRight> bary("bary", n, Dim + 1);
-  Kokkos::parallel_for(
-    "LiftOnHost", n,
-    LiftResults<Dim, Result>{
-      pcms::backend::omega_h::detail::UpAdjacencies<Dim>(mesh),
-      pcms::backend::omega_h::detail::VerticesOfEntities<Dim>(mesh), results,
-      elems, bary});
+  Kokkos::parallel_for("LiftOnHost", n,
+                       LiftResults<Dim, Result>{
+                         pcms::omega_h::detail::UpAdjacencies<Dim>(mesh),
+                         pcms::omega_h::detail::VerticesOfEntities<Dim>(mesh),
+                         results, elems, bary});
   return {Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, elems),
           Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, bary)};
 }
@@ -268,13 +267,13 @@ TEST_CASE("construct intersection map")
   REQUIRE(mesh.dim() == 2);
   SECTION("grid bbox overlap")
   {
-    Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
+    Kokkos::View<UniformGrid2D[1]> grid_d("uniform grid");
     auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = Uniform2DGrid{
+    grid_h(0) = UniformGrid2D{
       .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
     Kokkos::deep_copy(grid_d, grid_h);
     auto intersection_map =
-      pcms::backend::omega_h::detail::construct_intersection_map_2d(
+      pcms::omega_h::detail::construct_intersection_map_2d(
         mesh, grid_d, grid_h(0).GetNumCells());
     // assert(cudaSuccess == cudaDeviceSynchronize());
     REQUIRE(intersection_map.numRows() == 100);
@@ -282,14 +281,14 @@ TEST_CASE("construct intersection map")
   }
   SECTION("fine grid")
   {
-    Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
+    Kokkos::View<UniformGrid2D[1]> grid_d("uniform grid");
     auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = Uniform2DGrid{
+    grid_h(0) = UniformGrid2D{
       .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
     Kokkos::deep_copy(grid_d, grid_h);
     // require number of candidates is >=1 and <=6
     auto intersection_map =
-      pcms::backend::omega_h::detail::construct_intersection_map_2d(
+      pcms::omega_h::detail::construct_intersection_map_2d(
         mesh, grid_d, grid_h(0).GetNumCells());
 
     REQUIRE(intersection_map.numRows() == 3600);
@@ -340,17 +339,17 @@ TEST_CASE("candidate map matches brute-force reference")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
     REQUIRE(mesh.dim() == 2);
     for (pcms::LO divisions : {3, 10, 37}) {
-      Kokkos::View<Uniform2DGrid[1]> grid_d("uniform grid");
+      Kokkos::View<UniformGrid2D[1]> grid_d("uniform grid");
       auto grid_h = Kokkos::create_mirror_view(grid_d);
-      grid_h(0) = Uniform2DGrid{.edge_length{1, 1},
+      grid_h(0) = UniformGrid2D{.edge_length{1, 1},
                                 .bot_left = {0, 0},
                                 .divisions = {divisions, divisions}};
       Kokkos::deep_copy(grid_d, grid_h);
       const auto ncells = grid_h(0).GetNumCells();
       require_maps_identical(
-        pcms::backend::omega_h::detail::construct_intersection_map_2d(
-          mesh, grid_d, ncells),
-        pcms::backend::omega_h::detail::construct_intersection_map_reference_2d(
+        pcms::omega_h::detail::construct_intersection_map_2d(mesh, grid_d,
+                                                             ncells),
+        pcms::omega_h::detail::construct_intersection_map_reference_2d(
           mesh, grid_d, ncells));
     }
   }
@@ -360,18 +359,18 @@ TEST_CASE("candidate map matches brute-force reference")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 5, 5, 5, false);
     REQUIRE(mesh.dim() == 3);
     for (pcms::LO divisions : {2, 5, 11}) {
-      Kokkos::View<pcms::Uniform3DGrid[1]> grid_d("uniform grid");
+      Kokkos::View<pcms::UniformGrid3D[1]> grid_d("uniform grid");
       auto grid_h = Kokkos::create_mirror_view(grid_d);
       grid_h(0) =
-        pcms::Uniform3DGrid{.edge_length{1, 1, 1},
+        pcms::UniformGrid3D{.edge_length{1, 1, 1},
                             .bot_left = {0, 0, 0},
                             .divisions = {divisions, divisions, divisions}};
       Kokkos::deep_copy(grid_d, grid_h);
       const auto ncells = grid_h(0).GetNumCells();
       require_maps_identical(
-        pcms::backend::omega_h::detail::construct_intersection_map_3d(
-          mesh, grid_d, ncells),
-        pcms::backend::omega_h::detail::construct_intersection_map_reference_3d(
+        pcms::omega_h::detail::construct_intersection_map_3d(mesh, grid_d,
+                                                             ncells),
+        pcms::omega_h::detail::construct_intersection_map_reference_3d(
           mesh, grid_d, ncells));
     }
   }

@@ -2,7 +2,7 @@
 #include "pcms/backends/mfem/field_factory.hpp"
 #include "pcms/backends/mfem/layout.hpp"
 
-namespace pcms::backend::mfem
+namespace pcms::mfem
 {
 
 std::shared_ptr<FieldFactory> CreateFieldFactory(
@@ -21,4 +21,4 @@ Kokkos::View<bool*, HostMemorySpace> OverlapMaskFromAttribute(
   return MFEMLayout::OverlapMaskFromAttribute(pmesh, attribute);
 }
 
-} // namespace pcms::backend::mfem
+} // namespace pcms::mfem

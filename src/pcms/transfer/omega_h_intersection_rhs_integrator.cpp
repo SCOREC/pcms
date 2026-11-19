@@ -12,9 +12,9 @@
 
 namespace pcms
 {
-using backend::omega_h::intersectTargets;
-using backend::omega_h::OmegaHGeometry;
-using backend::omega_h::OmegaHLagrangeLayout;
+using omega_h::intersectTargets;
+using omega_h::OmegaHGeometry;
+using omega_h::OmegaHLagrangeLayout;
 } // namespace pcms
 
 namespace pcms::transfer
@@ -91,11 +91,9 @@ Data BuildDataImpl(const OmegaHLagrangeLayout& target_layout, int quad_order,
   constexpr Omega_h::Real ref_factor = (Dim == 3) ? 6.0 : 2.0;
 
   Omega_h::Mesh& source_mesh =
-    dynamic_cast<const backend::omega_h::OmegaHGeometry&>(source_geometry)
-      .GetMesh();
+    dynamic_cast<const omega_h::OmegaHGeometry&>(source_geometry).GetMesh();
   Omega_h::Mesh& target_mesh =
-    dynamic_cast<const backend::omega_h::OmegaHGeometry&>(target_geometry)
-      .GetMesh();
+    dynamic_cast<const omega_h::OmegaHGeometry&>(target_geometry).GetMesh();
 
   const auto intersections = intersectTargets(source_geometry, target_mesh);
 

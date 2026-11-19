@@ -17,7 +17,7 @@
 #include <memory>
 #include <utility>
 
-namespace pcms::backend::omega_h
+namespace pcms::omega_h
 {
 
 // ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ void EvaluateOmegaHLagrange(Omega_h::Mesh& mesh, int order,
 } // namespace detail
 
 // OmegaHLagrangePointEvaluator<T> implements PointEvaluator<T> for simplex
-// meshes backed by Omega_h, using the search records of the bound source.
+// meshes backed by Omega_h, using the search records of the BoundPoints.
 //
 // Output shape: [num_query_points][num_components].
 //
@@ -184,6 +184,6 @@ private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
 };
 
-} // namespace pcms::backend::omega_h
+} // namespace pcms::omega_h
 
 #endif // PCMS_BACKENDS_OMEGA_H_LAGRANGE_EVALUATOR_HPP

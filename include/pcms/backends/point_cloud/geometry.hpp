@@ -15,7 +15,7 @@
 #include <memory>
 #include <string>
 
-namespace pcms::backend::point_cloud
+namespace pcms::point_cloud
 {
 
 /// Geometry of a set of sites (the DOF holders of a layout: a point cloud or
@@ -29,13 +29,13 @@ namespace pcms::backend::point_cloud
 /// an Omega_h mesh for its vertices or element centroids; otherwise, for a bare
 /// point cloud, by distance. It holds only the site layout, and the layout
 /// never holds a point-cloud geometry built on it.
-/// Create it with CreatePointCloudGeometry (pcms/geometry/geometry.hpp).
+/// Create it with CreateGeometry (pcms/geometry/geometry.hpp).
 /// @throws pcms_error on construction if the sites' coordinate system does not
 ///         have the identity metric
 class PointCloudGeometry final : public Geometry
 {
 public:
-  /// Own it by std::shared_ptr, as CreatePointCloudGeometry does: Bind uses
+  /// Own it by std::shared_ptr, as CreateGeometry does: Bind uses
   /// shared_from_this().
   PointCloudGeometry(std::shared_ptr<const FieldLayout> site_layout,
                      NeighbourhoodOptions options)
@@ -111,7 +111,7 @@ public:
   }
 
 protected:
-  std::shared_ptr<BoundSource> BindImpl(
+  std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const override
   {
     PCMS_FUNCTION_TIMER;
@@ -139,9 +139,8 @@ private:
 /// @param options the support search of the geometry
 /// @throws pcms_error if the coordinate system does not have the identity
 ///         metric (MLS distances are Euclidean)
-[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry>
-CreatePointCloudGeometry(CoordinateView<HostMemorySpace> coords,
-                         NeighbourhoodOptions options = {})
+[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry> CreateGeometry(
+  CoordinateView<HostMemorySpace> coords, NeighbourhoodOptions options = {})
 {
   const auto values = coords.GetValues();
   const int dim = static_cast<int>(values.extent(1));
@@ -163,17 +162,16 @@ CreatePointCloudGeometry(CoordinateView<HostMemorySpace> coords,
 /// @param options the support search of the geometry
 /// @throws pcms_error if `sites` is null or its coordinate system does not
 ///         have the identity metric
-[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry>
-CreatePointCloudGeometry(std::shared_ptr<const FieldLayout> sites,
-                         NeighbourhoodOptions options = {})
+[[nodiscard]] inline std::shared_ptr<const PointCloudGeometry> CreateGeometry(
+  std::shared_ptr<const FieldLayout> sites, NeighbourhoodOptions options = {})
 {
   if (sites == nullptr) {
-    throw pcms_error("CreatePointCloudGeometry: the sites must not be null");
+    throw pcms_error("CreateGeometry: the sites must not be null");
   }
   return std::make_shared<PointCloudGeometry>(std::move(sites),
                                               std::move(options));
 }
 
-} // namespace pcms::backend::point_cloud
+} // namespace pcms::point_cloud
 
 #endif // PCMS_BACKENDS_POINT_CLOUD_GEOMETRY_HPP

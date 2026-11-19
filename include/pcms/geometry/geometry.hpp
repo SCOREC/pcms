@@ -4,7 +4,7 @@
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
-#include "pcms/geometry/bound_source.hpp"
+#include "pcms/geometry/bound_points.hpp"
 #include "pcms/geometry/supports.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
@@ -59,17 +59,17 @@ struct DifferentialView
 /// physical points among its entities and, when the kind has one, the
 /// Jacobian of the map from parametric to physical coordinates. Function
 /// spaces are created on a geometry, and their layouts carry it
-/// (FieldLayout::GetGeometry); Bind produces bound sources every space on the
+/// (FieldLayout::GetGeometry); Bind produces BoundPoints every space on the
 /// geometry accepts.
 ///
-/// Lifetime: bound sources and the spaces created on a geometry hold it by
+/// Lifetime: BoundPoints and the spaces created on a geometry hold it by
 /// std::shared_ptr, so it outlives them; what the geometry refers to (e.g. a
-/// mesh) must outlive the geometry. A bound source is immutable and
+/// mesh) must outlive the geometry. A BoundPoints is immutable and
 /// stays valid after later binds on the same geometry; evaluators hold their
-/// bound source. Bind uses shared_from_this(), so a geometry must be owned by
+/// BoundPoints. Bind uses shared_from_this(), so a geometry must be owned by
 /// a std::shared_ptr (create it with the kind's factory:
-/// CreateUniformGridGeometry, CreatePointCloudGeometry or
-/// backend::omega_h::CreateGeometry). Spaces and layouts are on the same
+/// uniform_grid::CreateGeometry, point_cloud::CreateGeometry or
+/// omega_h::CreateGeometry). Spaces and layouts are on the same
 /// entities when they are on the same Geometry object: OwnerHints name entities
 /// by the geometry's identity. A kind's factory (CreateGeometry, ...)
 /// returns the most specific type it knows, as a pointer to const since a
@@ -100,14 +100,14 @@ public:
   /// @param map map from the query coordinate system to GetCoordinateSystem(),
   ///        or null; the points are located at their images, and evaluators
   ///        created from the result re-express their values through it
-  /// @return bound source for the evaluator sources on this geometry; its
+  /// @return BoundPoints for the evaluator sources on this geometry; its
   ///         LocatedPointValues() are the query points (or their images)
   /// @throws pcms_error if the query coordinate system is not
   ///         GetCoordinateSystem() (without a map) or the map does not take it
   ///         to GetCoordinateSystem(), or the policy is NEAREST_BOUNDARY and
   ///         SupportsNearestBoundary() is false, or the policy is ERROR and a
   ///         point is outside
-  [[nodiscard]] std::shared_ptr<const BoundSource> Bind(
+  [[nodiscard]] std::shared_ptr<const BoundPoints> Bind(
     CoordinateView<DeviceMemorySpace> coords, OutOfBoundsPolicy policy = {},
     std::shared_ptr<const CoordinateMap> map = nullptr) const;
 
@@ -128,7 +128,7 @@ public:
   /// @param policy what to do with points outside the geometry
   /// @param map map from the query coordinate system to GetCoordinateSystem(),
   ///        or null, as for the coordinates overload
-  [[nodiscard]] std::shared_ptr<const BoundSource> Bind(
+  [[nodiscard]] std::shared_ptr<const BoundPoints> Bind(
     CoordinateView<DeviceMemorySpace> coords, const OwnerHints& owners,
     OutOfBoundsPolicy policy = {},
     std::shared_ptr<const CoordinateMap> map = nullptr) const;
@@ -143,7 +143,7 @@ public:
     return owners.Names(*this, num_points);
   }
 
-  /// @brief Localizes new query points in place of `previous`, a bound source
+  /// @brief Localizes new query points in place of `previous`, a BoundPoints
   ///        of this geometry: same policy and coordinate map.
   ///
   /// When nothing else holds `previous` (its shared_ptr and every Kokkos view
@@ -154,13 +154,13 @@ public:
   /// ordinary Bind. Binds with a coordinate map are not recycled in this
   /// version: they are bound anew with the map. An mdspan taken from a bound
   /// source is valid while a reference to that source is held, as always.
-  /// @param previous bound source of this geometry; consumed
+  /// @param previous BoundPoints of this geometry; consumed
   /// @param coords query points, in the coordinate system Bind took them in
-  /// @return the bound source of `coords`: `previous`, reused, or a new one
+  /// @return the BoundPoints of `coords`: `previous`, reused, or a new one
   /// @throws pcms_error if `previous` is null or belongs to another geometry,
   ///         or as Bind
-  [[nodiscard]] std::shared_ptr<const BoundSource> Rebind(
-    std::shared_ptr<const BoundSource> previous,
+  [[nodiscard]] std::shared_ptr<const BoundPoints> Rebind(
+    std::shared_ptr<const BoundPoints> previous,
     CoordinateView<DeviceMemorySpace> coords) const;
 
   /// @brief Support sets of query points among this geometry's sites, for
@@ -184,26 +184,26 @@ public:
     const NeighbourhoodOptions& options, const OwnerHints& owners = {}) const;
 
   /// @brief Jacobian at the bound points.
-  /// @param bound a bound source of this geometry
+  /// @param bound a BoundPoints of this geometry
   /// @return an empty view unless the kind overrides it
   /// @throws pcms_error from the kinds that override it if `bound` belongs to
   ///         another geometry
   [[nodiscard]] virtual DifferentialView Differential(
-    const BoundSource& bound) const;
+    const BoundPoints& bound) const;
 
 protected:
   Geometry() = default;
 
   /// @param request points to locate, already checked to be in
   ///        GetCoordinateSystem() (mapped there if the bind had a map), and the
-  ///        query points the bound source keeps
-  /// @return the bound source of the kind
-  [[nodiscard]] virtual std::shared_ptr<BoundSource> BindImpl(
+  ///        query points the BoundPoints keeps
+  /// @return the BoundPoints of the kind
+  [[nodiscard]] virtual std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const = 0;
 
 private:
-  // creates the passkey of BoundSource::Rebind
-  struct RebindKey : BoundSource::RebindKey
+  // creates the passkey of BoundPoints::Rebind
+  struct RebindKey : BoundPoints::RebindKey
   {
     RebindKey() = default;
   };

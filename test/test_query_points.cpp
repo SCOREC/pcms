@@ -81,7 +81,7 @@ TEST_CASE("QueryPoints evaluates at the points of the last Locate")
   REQUIRE_THAT(values(2, 0),
                WithinAbs(pcms::test::linear_f(0.75, 0.1), pcms::test::EvalTol));
 
-  // Locate drops the evaluators, so the bound source is reused, and the
+  // Locate drops the evaluators, so the BoundPoints is reused, and the
   // evaluator created after it sees the new points: the explicit path's values
   const auto* address = query.Bound().get();
   query.Locate(second_coords.coordinate_view);
@@ -113,8 +113,7 @@ TEST_CASE("QueryPoints and the one-shot evaluation apply the operator")
   grid.edge_length = {2.0, 2.0};
   grid.divisions = {16, 16};
   auto space = pcms::CreateSplineSpace(
-    pcms::backend::uniform_grid::CreateUniformGridGeometry(
-      grid, pcms::csys::Cartesian::Create(2)));
+    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::Cartesian::Create(2)));
   auto f = space->CreateFunction<Real>("f");
   pcms::test::SetField(
     f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });

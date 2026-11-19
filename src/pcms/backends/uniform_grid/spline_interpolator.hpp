@@ -11,7 +11,7 @@
 #include <iostream>
 #include <limits>
 
-namespace pcms::backend::uniform_grid
+namespace pcms::uniform_grid
 {
 
 namespace detail
@@ -3023,5 +3023,5 @@ CompactBiCubicSplineInterpolator<T, MemorySpace>::
             << std::endl;
 }
 
-} // namespace pcms::backend::uniform_grid
+} // namespace pcms::uniform_grid
 #endif // PCMS_BACKENDS_UNIFORM_GRID_SPLINE_INTERPOLATOR_HPP

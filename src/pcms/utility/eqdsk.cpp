@@ -260,7 +260,7 @@ EQDSKData::EQDSKData(const std::string& filename)
 }
 
 // Manual constructor for programmatic construction
-EQDSKData::EQDSKData(const Uniform2DGrid& grid_in,
+EQDSKData::EQDSKData(const UniformGrid2D& grid_in,
                      const std::vector<Real>& psirz,
                      const std::vector<Real>& psi_grid_vals,
                      const std::vector<Real>& I_psi_vals)

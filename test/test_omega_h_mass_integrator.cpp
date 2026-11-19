@@ -24,8 +24,8 @@
 
 namespace pcms
 {
-using backend::omega_h::CreateGeometry;
-using backend::omega_h::OmegaHLagrangeLayout;
+using omega_h::CreateGeometry;
+using omega_h::OmegaHLagrangeLayout;
 using transfer::buildElementMassMatrix;
 using transfer::BuildOmegaHMassIntegrator;
 } // namespace pcms

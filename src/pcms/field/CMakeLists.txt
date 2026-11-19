@@ -1,5 +1,3 @@
-find_package(KokkosKernels REQUIRED)
-
 set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/field.hpp
         ../../../include/pcms/field/coordinate_map.hpp
@@ -35,7 +33,6 @@ set(PCMS_FIELD_SOURCES
         gradient_source.cpp
         query_points.cpp
         gid_permutation.cpp
-        function_space/polynomial_reconstruction.cpp
         layout/empty.cpp
         function_space/lagrange.cpp
         function_space/spline.cpp
@@ -71,8 +68,6 @@ if(PCMS_ENABLE_OMEGA_H)
     # Omega_h::omega_h themselves
     target_link_libraries(pcms_field PRIVATE Omega_h::omega_h)
 endif()
-# the MLS solve uses KokkosBatched
-target_link_libraries(pcms_field PRIVATE Kokkos::kokkoskernels)
 
 
 target_include_directories(pcms_field INTERFACE

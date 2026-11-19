@@ -4,7 +4,7 @@
 #include "pcms/pythonapi/numpy_array_transform.hpp"
 #include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/utility/uniform_grid.hpp"
-#include <Omega_h_vector.hpp>
+#include <Kokkos_Core.hpp>
 
 namespace py = pybind11;
 
@@ -34,8 +34,8 @@ void bind_uniform_grid_field_layout_module(py::module& m)
           throw std::invalid_argument(
             "Point must have 2 coordinates for 2D grid");
         }
-        Omega_h::Vector<2> omega_point({point(0), point(1)});
-        return self.ClosestCellID(omega_point);
+        Kokkos::Array<Real, 2> cell_point{point(0), point(1)};
+        return self.ClosestCellID(cell_point);
       },
       py::arg("point"),
       "Get the cell ID that contains or is closest to the given point")
@@ -61,8 +61,8 @@ void bind_uniform_grid_field_layout_module(py::module& m)
           throw std::invalid_argument(
             "Point must have 3 coordinates for 3D grid");
         }
-        Omega_h::Vector<3> omega_point({point(0), point(1), point(2)});
-        return self.ClosestCellID(omega_point);
+        Kokkos::Array<Real, 3> cell_point{point(0), point(1), point(2)};
+        return self.ClosestCellID(cell_point);
       },
       py::arg("point"),
       "Get the cell ID that contains or is closest to the given point")

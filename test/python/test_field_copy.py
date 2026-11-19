@@ -3,7 +3,10 @@
 import numpy as np
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
 
 
 class TestFieldCopy:

@@ -58,8 +58,6 @@
 #endif
 
 // transient
-#ifdef PCMS_ENABLE_TRANSIENT
 #include "pcms/transient/timestepper.hpp"
-#endif
 
 #endif // PCMS_PCMS_HPP

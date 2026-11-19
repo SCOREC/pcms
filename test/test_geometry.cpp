@@ -237,7 +237,7 @@ TEST_CASE("Spaces on a geometry share it")
   REQUIRE(scalars->GetLayout()->GetGeometry() == geometry);
   REQUIRE(cells->GetLayout()->GetGeometry() == geometry);
   REQUIRE(scalars->GetGeometry() == geometry);
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
   auto p2 = CreateLagrangeSpace(
     geometry, 2, 1, LagrangeOptions{.backend = LagrangeBackend::MeshFields});
   REQUIRE(p2->GetLayout()->GetGeometry() == geometry);
@@ -292,7 +292,7 @@ TEST_CASE("A layout is named by the options of its space")
     geometry, 1, 1,
     LagrangeOptions{.backend = LagrangeBackend::OmegaH, .layout_name = "gids"});
   REQUIRE(named->GetLayout()->GetName() == "gids");
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
   REQUIRE(
     CreateLagrangeSpace(geometry, 1, 1,
                         LagrangeOptions{.backend = LagrangeBackend::MeshFields,
@@ -658,6 +658,7 @@ TEST_CASE("OmegaHGeometry::Neighbourhood searches among vertices or cells")
     ContainsSubstring("the sites must be the mesh vertices"));
 }
 
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
 TEST_CASE("Points the adjacency search cannot start from are missing")
 {
   auto lib = Omega_h::Library{};
@@ -689,6 +690,7 @@ TEST_CASE("Points the adjacency search cannot start from are missing")
                                        pcms::test::EvalTol));
   REQUIRE(values(1, 0) == -1.0);
 }
+#endif
 
 TEST_CASE("An empty bind evaluates to nothing")
 {
@@ -704,7 +706,7 @@ TEST_CASE("An empty bind evaluates to nothing")
     CreateLagrangeSpace(
       pcms::uniform_grid::CreateGeometry(grid, pcms::csys::CreateCartesian(2)),
       1, 1)};
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
   spaces.push_back(CreateLagrangeSpace(
     geometry, 1, 1, LagrangeOptions{.backend = LagrangeBackend::MeshFields}));
 #endif
@@ -738,7 +740,7 @@ TEST_CASE("DOFHolderOwners gives the entity of each DOF holder")
   };
   entities(*MakeSpace(geometry, 1, 1), pcms::Vertex);
   entities(*MakeSpace(geometry, 0, 1), pcms::Face);
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
   entities(
     *CreateLagrangeSpace(
       geometry, 1, 1, LagrangeOptions{.backend = LagrangeBackend::MeshFields}),
@@ -1081,7 +1083,7 @@ TEST_CASE("Omega_h evaluators use the entity the search finds",
   }
 }
 
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 TEST_CASE("MeshFields values at shared entities equal the Omega_h P1 values",
           "[omega_h_entities]")
 {
@@ -1117,7 +1119,7 @@ TEST_CASE("MeshFields values at shared entities equal the Omega_h P1 values",
 }
 #endif
 
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 TEST_CASE("MeshFields evaluates P2 fields through the geometry's bind")
 {
   // P2 reproduces a quadratic exactly, so any change in the element

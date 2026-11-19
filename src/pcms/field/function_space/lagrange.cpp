@@ -3,7 +3,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/common.hpp"
 #ifdef PCMS_ENABLE_OMEGA_H
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 #include "pcms/backends/omega_h_meshfields/layout.hpp"
 #include "pcms/backends/omega_h_meshfields/evaluator.hpp"
 #include "pcms/backends/omega_h_meshfields/field_data.hpp"
@@ -59,14 +59,14 @@ LagrangeBackend CheckOrderAndBackend(int order, LagrangeBackend backend,
       throw pcms_error("CreateLagrangeSpace: the geometry's owned mask is "
                        "only supported by the OmegaH backend");
     }
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
     if (order != 1 && order != 2) {
       throw pcms_error("CreateLagrangeSpace: the MeshFields backend only "
                        "supports Lagrange orders 1 and 2");
     }
 #else
     throw pcms_error("CreateLagrangeSpace: MeshFields backend requested but "
-                     "PCMS_ENABLE_MESHFIELDS is not set");
+                     "PCMS_ENABLE_OMEGA_H_MESHFIELDS is not set");
 #endif
     return backend;
   }
@@ -87,7 +87,7 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
     CheckOrderAndBackend(order, options.backend,
                          /*owned_mask=*/geometry->GetOwnedMask().size() > 0);
   if (backend == LagrangeBackend::MeshFields) {
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
     const std::array<int, 4> nodes_per_dim = order == 1
                                                ? std::array<int, 4>{1, 0, 0, 0}
                                                : std::array<int, 4>{1, 1, 0, 0};

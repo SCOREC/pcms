@@ -258,7 +258,7 @@ int main(int argc, char** argv)
             geometry, 1, nc,
             pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH}),
           "Omega_h backend" + suffix);
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
         CheckLayout(mesh,
                     *pcms::CreateLagrangeSpace(
                       geometry, 1, nc,

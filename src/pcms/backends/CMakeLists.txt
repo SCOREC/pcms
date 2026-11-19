@@ -8,7 +8,8 @@ add_subdirectory(uniform_grid)
 if(PCMS_ENABLE_MFEM)
   add_subdirectory(mfem)
 endif()
-# bridges: built only when both backends are enabled
-if(PCMS_ENABLE_OMEGA_H AND PCMS_ENABLE_MESHFIELDS)
+# the MeshFields spaces on Omega_h meshes (PCMS_ENABLE_OMEGA_H_MESHFIELDS,
+# which needs PCMS_ENABLE_OMEGA_H)
+if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
   add_subdirectory(omega_h_meshfields)
 endif()

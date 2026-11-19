@@ -3,9 +3,16 @@ Tests for MLS-backed polynomial reconstruction spaces.
 """
 
 import numpy as np
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
 import pytest
 import pcms
+
+pytestmark = pytest.mark.skipif(
+    not pcms.features["polynomial_reconstruction"],
+    reason="pcms was built without POLYNOMIAL_RECONSTRUCTION")
 
 
 def poly_value(x, y, degree):

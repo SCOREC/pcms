@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <pcms/configuration.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_mesh.hpp>
 #include <pcms/backends/omega_h/omega_h.hpp>
@@ -95,7 +96,7 @@ TEST_CASE("PointEvaluator::Evaluate checks the output for every evaluator")
     CheckOutputValidation(*CreateFillEvaluator(*space),
                           space->CreateFunction<Real>(), n);
   }
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
   SECTION("MeshFields Lagrange")
   {
     auto mesh = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 10,
@@ -123,6 +124,7 @@ TEST_CASE("PointEvaluator::Evaluate checks the output for every evaluator")
     CheckOutputValidation(*CreateFillEvaluator(*space),
                           space->CreateFunction<Real>(), n);
   }
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
   SECTION("MLS point cloud")
   {
     std::vector<Real> sources;
@@ -144,6 +146,7 @@ TEST_CASE("PointEvaluator::Evaluate checks the output for every evaluator")
     CheckOutputValidation(*evaluator, space->CreateFunction<Real>(),
                           static_cast<int>(pts.size()) / 2);
   }
+#endif
 }
 
 // ============================================================================
@@ -431,7 +434,7 @@ TEST_CASE("SimpleFieldData: set and get DOF holder data round-trip")
 // MeshFields layout metadata (only when MeshFields is enabled)
 // ============================================================================
 
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 TEST_CASE("FieldLayout: MeshFields metadata queries")
 {
   auto lib = Omega_h::Library{};
@@ -647,4 +650,4 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
     REQUIRE(out_host(i, 2) == Catch::Approx(x * y).margin(1e-8));
   }
 }
-#endif // PCMS_ENABLE_MESHFIELDS
+#endif // PCMS_ENABLE_OMEGA_H_MESHFIELDS

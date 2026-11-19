@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <pcms/configuration.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
@@ -209,10 +210,14 @@ TEST_CASE("A rebind gives what a new bind of the points gives")
   const std::vector<std::shared_ptr<const FunctionSpace>> spaces{
     pcms::test::MakeP1Space(pcms::CreateGeometry(mesh, cartesian)),
     pcms::CreateLagrangeSpace(
-      pcms::uniform_grid::CreateGeometry(grid, cartesian), 1, 1),
+      pcms::uniform_grid::CreateGeometry(grid, cartesian), 1, 1)
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
+      ,
     pcms::CreatePolynomialReconstructionSpace(
       pcms::point_cloud::CreateGeometry(vertices),
-      pcms::MLSOptions{.degree = 1})};
+      pcms::MLSOptions{.degree = 1})
+#endif
+  };
   // points inside and outside the unit square, the second set of a different
   // count; then fewer and more points than the first bind's
   const std::vector<Real> first{0.25, 0.5, 1.5, 0.5, 0.75, 0.1};

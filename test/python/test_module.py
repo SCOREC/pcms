@@ -81,3 +81,18 @@ def test_version_matches_git_describe():
     else:
         assert match["release"] == f"{major}.{minor}.{patch + 1}"
         assert match["distance"] == (distance or "0")
+
+
+def test_features_is_a_read_only_mapping_of_bools():
+    assert pcms.features
+    assert all(isinstance(v, bool) for v in pcms.features.values())
+    with pytest.raises(TypeError):
+        pcms.features["omega_h"] = True
+
+
+def test_backend_submodules_exist_with_their_feature():
+    assert hasattr(pcms, "omega_h") == pcms.features["omega_h"]
+    assert (hasattr(pcms, "create_polynomial_reconstruction_space")
+            == pcms.features["polynomial_reconstruction"])
+    assert hasattr(pcms, "uniform_grid")
+    assert hasattr(pcms, "point_cloud")

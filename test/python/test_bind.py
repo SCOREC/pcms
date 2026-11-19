@@ -11,7 +11,17 @@ import weakref
 import numpy as np
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
+
+requires_omega_h = pytest.mark.skipif(
+    not pcms.features["omega_h"], reason="pcms was built without OMEGA_H")
+
+requires_polynomial_reconstruction = pytest.mark.skipif(
+    not pcms.features["polynomial_reconstruction"],
+    reason="pcms was built without POLYNOMIAL_RECONSTRUCTION")
 
 
 def _linear(x, y):
@@ -151,6 +161,7 @@ def test_get_geometry_outlives_the_original_wrappers(world):
     lambda space, field: space.get_layout(),
     lambda space, field: field.get_layout(),
 ], ids=["space", "field"])
+@requires_polynomial_reconstruction
 def test_returned_layout_outlives_the_original_wrappers(world, get_layout):
     mesh = omega_h.build_box(
         world, omega_h.Family.SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0, False)
@@ -176,6 +187,7 @@ def test_returned_layout_outlives_the_original_wrappers(world, get_layout):
     reconstruction.create_point_evaluator(bound)
 
 
+@requires_omega_h
 def test_function_get_space_owns_mesh_and_runtime():
     # A fresh process gives this test sole ownership of the Omega_h runtime.
     script = textwrap.dedent("""

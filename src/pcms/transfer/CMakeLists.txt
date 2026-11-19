@@ -23,12 +23,12 @@ if(PCMS_ENABLE_OMEGA_H)
       ../backends/omega_h/mesh_intersection.cpp)
 endif()
 
-if(PCMS_ENABLE_MESHFIELDS)
+if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
   list(APPEND PCMS_FIELD_TRANSFER_HEADERS
       mass_matrix_integrator.hpp)
 endif()
 
-if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
+if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
   list(APPEND PCMS_FIELD_TRANSFER_HEADERS
       linear_form_integrator.hpp
       bilinear_form_integrator.hpp
@@ -75,11 +75,11 @@ if(PCMS_ENABLE_OMEGA_H)
   target_link_libraries(pcms_transfer PRIVATE Omega_h::omega_h)
 endif()
 
-if(PCMS_ENABLE_MESHFIELDS)
+if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
   target_link_libraries(pcms_transfer PRIVATE meshfields::meshfields)
 endif()
 
-if(PCMS_ENABLE_PETSC AND PCMS_ENABLE_MESHFIELDS)
+if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
   target_link_libraries(pcms_transfer PRIVATE PETSc::PETSc)
 endif()
 

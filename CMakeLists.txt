@@ -54,19 +54,78 @@ if(PROJECT_IS_TOP_LEVEL)
   endif()
 endif()
 
-option(PCMS_ENABLE_SERVER "enable the coupling server implementation" ON)
-option(PCMS_ENABLE_CLIENT "enable the coupling client implementation" ON)
-option(PCMS_ENABLE_COUPLER "Build the coupler (requires redev and ADIOS2)" ON)
-
-option(PCMS_ENABLE_XGC "enable xgc field adapter" ON)
-option(PCMS_ENABLE_OMEGA_H "enable Omega_h field adapter" OFF)
-option(PCMS_ENABLE_MFEM "enable MFEM field adapter" OFF)
-option(PCMS_ENABLE_TRANSIENT "Enable pcms transient module" ON)
-option(PCMS_ENABLE_C "Enable pcms C api" ON)
-option(PCMS_ENABLE_PYTHON "Enable pcms Python api" OFF)
-
+# Every optional capability is off by default; a build with none of them needs
+# only Kokkos and MPI (see the presets in CMakePresets.json). Each flag names
+# the backend namespace or feature it builds (pcms::omega_h, pcms.omega_h in
+# Python, PCMS_ENABLE_OMEGA_H in pcms/configuration.hpp, ...).
+option(PCMS_ENABLE_OMEGA_H "Omega_h backend (needs Omega_h)" OFF)
+option(PCMS_ENABLE_OMEGA_H_MESHFIELDS
+       "MeshFields Lagrange spaces on Omega_h meshes (needs OMEGA_H, MeshFields)" OFF)
+option(PCMS_ENABLE_CONSERVATIVE_PROJECTION
+       "Conservative and control-variate projections (needs OMEGA_H_MESHFIELDS, PETSc)" OFF)
+option(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
+       "Polynomial-reconstruction spaces on point clouds (needs KokkosKernels)" OFF)
+option(PCMS_ENABLE_XGC "XGC backend (needs OMEGA_H)" OFF)
+option(PCMS_ENABLE_MFEM "MFEM backend (needs MFEM)" OFF)
+option(PCMS_ENABLE_COUPLER "Coupler (needs redev and ADIOS2)" OFF)
+option(PCMS_ENABLE_C
+       "C API: the client part with COUPLER and XGC, the transfer part with OMEGA_H and POLYNOMIAL_RECONSTRUCTION"
+       OFF)
+option(PCMS_ENABLE_FORTRAN "Fortran API (needs C)" OFF)
+option(PCMS_ENABLE_PYTHON "Python module (needs pybind11)" OFF)
+option(PCMS_ENABLE_EXAMPLES "Build the in-tree examples" OFF)
 option(PCMS_ENABLE_PRINT "PCMS print statements enabled" ON)
-option(PCMS_ENABLE_EXAMPLES "Build the in-tree C++ examples" ON)
+
+# Options with no effect any more
+pcms_removed_option(PCMS_ENABLE_SERVER
+                    "the coupler no longer has a separate server part")
+pcms_removed_option(PCMS_ENABLE_CLIENT
+                    "the coupler no longer has a separate client part")
+pcms_removed_option(PCMS_ENABLE_TRANSIENT "the timestepper is always built")
+
+# A capability whose prerequisite capability is off is an error, not a silent
+# change of the configuration.
+function(pcms_require capability prerequisite)
+  if(PCMS_ENABLE_${capability} AND NOT PCMS_ENABLE_${prerequisite})
+    message(FATAL_ERROR "PCMS_ENABLE_${capability} needs PCMS_ENABLE_${prerequisite}: "
+                        "configure with -DPCMS_ENABLE_${prerequisite}=ON.")
+  endif()
+endfunction()
+pcms_require(OMEGA_H_MESHFIELDS OMEGA_H)
+pcms_require(CONSERVATIVE_PROJECTION OMEGA_H_MESHFIELDS)
+pcms_require(XGC OMEGA_H)
+pcms_require(FORTRAN C)
+# PCMS_ENABLE_C builds each part of the C (and Fortran) API whose capabilities
+# are on: the client wraps the coupler with XGC fields, the transfer part
+# interpolates on Omega_h meshes by polynomial reconstruction.
+set(PCMS_BUILD_CAPI_CLIENT OFF)
+set(PCMS_BUILD_CAPI_TRANSFER OFF)
+if(PCMS_ENABLE_C)
+  if(PCMS_ENABLE_COUPLER AND PCMS_ENABLE_XGC)
+    set(PCMS_BUILD_CAPI_CLIENT ON)
+  endif()
+  if(PCMS_ENABLE_OMEGA_H AND PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
+    set(PCMS_BUILD_CAPI_TRANSFER ON)
+  endif()
+  if(NOT PCMS_BUILD_CAPI_CLIENT AND NOT PCMS_BUILD_CAPI_TRANSFER)
+    message(FATAL_ERROR "PCMS_ENABLE_C builds the C client API with "
+                        "PCMS_ENABLE_COUPLER and PCMS_ENABLE_XGC and the C "
+                        "transfer API with PCMS_ENABLE_OMEGA_H and "
+                        "PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION: turn on at "
+                        "least one of the two pairs.")
+  endif()
+endif()
+
+# Find the dependency of a capability (the package and the arguments of
+# find_package, without REQUIRED); fail naming the capability if it is missing.
+macro(pcms_find_package capability package)
+  find_package(${package} ${ARGN})
+  if(NOT ${package}_FOUND)
+    message(FATAL_ERROR "PCMS_ENABLE_${capability} needs ${package}, which was "
+                        "not found: add its prefix to CMAKE_PREFIX_PATH or "
+                        "set ${package}_DIR.")
+  endif()
+endmacro()
 
 # Per-thread on-stack ring-buffer capacities for the adjacency-based
 # intersection/adjacency BFS (queue_visited.hpp). Defaults are sized for 3D
@@ -92,36 +151,18 @@ option(PCMS_PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"
 # interfaces this is important because adios2 build with clang/gfortran is
 # broken
 if(PCMS_ENABLE_COUPLER)
-  find_package(redev 4.3.0 REQUIRED)
-elseif(PCMS_ENABLE_PYTHON)
-  message(FATAL_ERROR "PCMS_ENABLE_PYTHON requires PCMS_ENABLE_COUPLER")
+  pcms_find_package(COUPLER redev 4.3.0)
 endif()
 
 if (PCMS_ENABLE_PYTHON)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif ()
-if(PCMS_ENABLE_SERVER)
-  set(PCMS_ENABLE_OMEGA_H
-      ON
-      CACHE BOOL "enable Omega_h field adapter" FORCE)
-endif()
 
-# The C and Fortran APIs wrap the Omega_h-based transfer; without the Omega_h
-# backend (for example server, coupler, XGC and MeshFields all off) they are
-# not built.
-if(PCMS_ENABLE_C AND NOT PCMS_ENABLE_OMEGA_H)
-  message(STATUS "The C and Fortran APIs need the Omega_h backend: disabled")
-  set(PCMS_ENABLE_C OFF)
-endif()
 if(PCMS_ENABLE_C)
   enable_language(C)
-  option(PCMS_ENABLE_FORTRAN "Enable pcms fortran api" ON)
-  if(PCMS_ENABLE_FORTRAN)
-    enable_language(Fortran)
-  endif()
-else()
-  # the Fortran API wraps the C API
-  set(PCMS_ENABLE_FORTRAN OFF)
+endif()
+if(PCMS_ENABLE_FORTRAN)
+  enable_language(Fortran)
 endif()
 
 set(MPI_CXX_SKIP_MPICXX ON)
@@ -163,42 +204,39 @@ endif()
 
 if(PCMS_ENABLE_COUPLER)
   message(STATUS "Found redev: ${redev_DIR} (found version ${redev_VERSION})")
+  # adios2 adds C and Fortran depending on how it was built
+  pcms_find_package(COUPLER ADIOS2 CONFIG 2.10.2)
 endif()
+find_package(Kokkos CONFIG 4.5 REQUIRED)
 if(PCMS_ENABLE_OMEGA_H)
-  find_package(Omega_h REQUIRED VERSION 10)
+  pcms_find_package(OMEGA_H Omega_h)
   message(
     STATUS "Found Omega_h: ${Omega_h_DIR} (found version ${Omega_h_VERSION})")
   if(NOT Omega_h_USE_MPI)
     message(FATAL_ERROR "Omega_h must be built with MPI enabled.")
   endif()
   if(PCMS_ENABLE_PYTHON AND Omega_h_VERSION VERSION_LESS 11.4)
-    message(FATAL_ERROR "PCMS Python requires Omega_h 11.4 or newer.")
+    message(FATAL_ERROR "PCMS Python with PCMS_ENABLE_OMEGA_H requires "
+                        "Omega_h 11.4 or newer.")
   endif()
 endif()
-
+if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
+  pcms_find_package(OMEGA_H_MESHFIELDS meshfields)
+  message(STATUS "Found MeshFields: ${meshfields_DIR} (found version ${meshfields_VERSION})")
+endif()
+if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+  pcms_find_package(CONSERVATIVE_PROJECTION PETSc)
+endif()
+if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
+  # the MLS solve uses KokkosBatched
+  pcms_find_package(POLYNOMIAL_RECONSTRUCTION KokkosKernels)
+endif()
 if(PCMS_ENABLE_MFEM)
-  find_package(MFEM REQUIRED)
+  pcms_find_package(MFEM MFEM)
   message(STATUS "Found MFEM: ${MFEM_DIR} (found version ${MFEM_VERSION})")
   if(NOT MFEM_USE_MPI)
     message(FATAL_ERROR "MFEM must be built with MPI enabled.")
   endif()
-endif()
-# adios2 adds C and Fortran depending on how it was built
-if(PCMS_ENABLE_COUPLER)
-  find_package(ADIOS2 CONFIG 2.10.2 REQUIRED)
-endif()
-find_package(Kokkos CONFIG 4.5 REQUIRED)
-
-option(PCMS_ENABLE_MESHFIELDS "Enable MeshFields support" ON)
-option(PCMS_ENABLE_PETSC "Enable PETSc support" OFF)
-
-if(PCMS_ENABLE_MESHFIELDS)
-  find_package(meshfields REQUIRED)
-  message(STATUS "Found MeshFields: ${meshfields_DIR} (found version ${meshfields_VERSION})")
-endif()
-
-if(PCMS_ENABLE_PETSC)
-  find_package(PETSc REQUIRED)
 endif()
 
 add_subdirectory(src)

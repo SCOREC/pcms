@@ -49,7 +49,7 @@ TEST_CASE("evaluate linear 2d omega_h_field")
     OMEGA_H_LAMBDA(Real x, Real y) { return pcms::test::linear_f(x, y); });
 }
 
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 TEST_CASE("evaluate quadratic 2d meshfields_field")
 {
   auto lib = Omega_h::Library{};
@@ -74,7 +74,7 @@ TEST_CASE("evaluate quadratic 2d meshfields_field")
 }
 #endif
 
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 // Recomputes the expected DOF-holder coordinates from mesh geometry exactly as
 // the layout's isoparametric map does for affine simplex elements, accumulated
 // per entity dimension in the same block order the layout stores:

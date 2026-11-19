@@ -13,18 +13,61 @@ else is internal. Behavior and numerical results do not change.
   removed. The other targets are `pcms::utility`, `pcms::discretization`,
   `pcms::localization`, `pcms::field`, `pcms::transfer`, `pcms::coupler`,
   `pcms::transient`, `pcms::capi`, `pcms::fortranapi`.
+- **Optional capabilities are off by default.** A plain
+  `cmake -S . -B build` needs only Kokkos and MPI and builds the core: the
+  uniform-grid backend (Lagrange and spline spaces), the point-cloud geometry
+  and its support search, coordinate systems and
+  maps, QueryPoints, interpolation and copy, derivative sources, the
+  timestepper, and the Python module with `-DPCMS_ENABLE_PYTHON=ON`. Everything
+  else is a flag named after what it builds (the backend namespace, the Python
+  module `pcms.<name>`, the key of `pcms.features`, and the macro in
+  `pcms/configuration.hpp` all share the name):
+
+  | Flag (`PCMS_ENABLE_...`) | Builds | Needs |
+  |---|---|---|
+  | `OMEGA_H` | the Omega_h backend | Omega_h |
+  | `OMEGA_H_MESHFIELDS` | MeshFields spaces on Omega_h meshes | flag `OMEGA_H`, MeshFields |
+  | `CONSERVATIVE_PROJECTION` | conservative and control-variate projections | flag `OMEGA_H_MESHFIELDS`, PETSc |
+  | `POLYNOMIAL_RECONSTRUCTION` | polynomial-reconstruction (MLS) spaces on point clouds | KokkosKernels |
+  | `XGC` | the XGC backend | flag `OMEGA_H` |
+  | `MFEM` | the MFEM backend | MFEM |
+  | `COUPLER` | the coupler | redev, ADIOS2 |
+  | `C` | the C client API with `COUPLER` and `XGC`, the C transfer API with `OMEGA_H` and `POLYNOMIAL_RECONSTRUCTION` | one of the two pairs of flags |
+  | `FORTRAN` | the Fortran API (the parts `C` builds) | flag `C` |
+  | `PYTHON` | the Python module | pybind11 |
+  | `EXAMPLES` | the in-tree examples | |
+
+  A flag whose prerequisite flag is off stops the configuration with an error
+  that names both; nothing is switched on or off silently. To get the previous
+  full build, pass `-DPCMS_ENABLE_OMEGA_H=ON -DPCMS_ENABLE_OMEGA_H_MESHFIELDS=ON
+  -DPCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION=ON -DPCMS_ENABLE_XGC=ON -DPCMS_ENABLE_COUPLER=ON
+  -DPCMS_ENABLE_C=ON -DPCMS_ENABLE_FORTRAN=ON -DPCMS_ENABLE_EXAMPLES=ON` (and
+  `-DPCMS_ENABLE_CONSERVATIVE_PROJECTION=ON` for what `PCMS_ENABLE_PETSC=ON`
+  built). `PCMS_ENABLE_PRINT` stays `ON`.
 - **Renamed options** (the old names still work in 0.4, with a deprecation
   warning): `PCMS_ENABLE_Python` → `PCMS_ENABLE_PYTHON`,
   `PCMS_ENABLE_Fortran` → `PCMS_ENABLE_FORTRAN`,
-  `PETSC_LINK_STATIC` → `PCMS_PETSC_LINK_STATIC`.
-- **New option** `PCMS_ENABLE_COUPLER` (default `ON`): with `OFF`, PCMS builds
-  without redev and ADIOS2 (no coupler, no C/Fortran client API, no Python).
-- **Without Omega_h:** `PCMS_ENABLE_OMEGA_H=OFF` (with
-  `PCMS_ENABLE_SERVER=OFF`, which forces Omega_h on, and the coupler, XGC
-  and MeshFields off) builds the core: uniform-grid and point-cloud
-  geometries and their spaces, QueryPoints, MLS. Mesh geometries, the mesh
-  search, the projections and the C and Fortran APIs need Omega_h: they are
-  switched off (with a status message) when it is off.
+  `PCMS_ENABLE_MESHFIELDS` → `PCMS_ENABLE_OMEGA_H_MESHFIELDS`,
+  `PCMS_ENABLE_PETSC` → `PCMS_ENABLE_CONSERVATIVE_PROJECTION`,
+  `PETSC_LINK_STATIC` → `PCMS_PETSC_LINK_STATIC`. The macros
+  `PCMS_ENABLE_MESHFIELDS` and `PCMS_ENABLE_PETSC` are still defined in
+  `pcms/configuration.hpp` for 0.4.
+- **Removed options:** `PCMS_ENABLE_SERVER` and `PCMS_ENABLE_CLIENT` (they
+  gated nothing since the coupler communication merged) and
+  `PCMS_ENABLE_TRANSIENT` (the timestepper is always built). Setting one
+  prints a deprecation message and has no effect; remove it. The macros
+  `PCMS_ENABLE_SERVER` and `PCMS_ENABLE_CLIENT` are no longer defined
+  (`PCMS_ENABLE_TRANSIENT` still is, always).
+- **Python:** the module no longer needs the coupler or Omega_h. `pcms.omega_h`
+  (with `PCMS_ENABLE_OMEGA_H`) and the polynomial-reconstruction and
+  projection factories exist only when built; `pcms.features` is a read-only dict of the
+  capability flags (`pcms.features["omega_h"]`, ...) to test for them.
+- **`CreatePolynomialReconstructionSpace`** (and `pcms.MLSOptions`,
+  `pcms.RadialBasisFunction` and `pcms.create_polynomial_reconstruction_space`
+  in Python) exist only with `PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION`; the
+  point-cloud geometries (`point_cloud::CreateGeometry`,
+  `omega_h::CreatePointCloudGeometry`) are always built.
+
 - **Finding PCMS:** the package files are in `<prefix>/lib/cmake/pcms`. The
   package no longer bakes in the paths of its dependencies: make them findable
   as usual (`CMAKE_PREFIX_PATH`, `<Package>_ROOT` or `<Package>_DIR`) for

@@ -7,7 +7,14 @@ import gc
 import numpy as np
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
+
+requires_polynomial_reconstruction = pytest.mark.skipif(
+    not pcms.features["polynomial_reconstruction"],
+    reason="pcms was built without POLYNOMIAL_RECONSTRUCTION")
 
 ZERO_COPY = pcms.device_memory_is_host_accessible
 
@@ -250,6 +257,7 @@ class TestCoordinateView:
 
 
 class TestEntityValuesToVertices:
+    @requires_polynomial_reconstruction
     def test_mls_from_face_values(self, mesh):
         """Face values reach the vertices through a polynomial reconstruction
         space on the face centroids and an interpolator."""

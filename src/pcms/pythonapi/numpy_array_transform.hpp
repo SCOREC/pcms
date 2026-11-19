@@ -4,7 +4,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
-#include <Omega_h_array.hpp>
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/pythonapi/numpy_view.hpp"
@@ -55,42 +54,6 @@ struct type_caster<Kokkos::Array<Type, Size>>
 
 namespace pcms
 {
-
-// Omega_h arrays (Read/Write) have storage in the default (device) memory
-// space.
-
-template <typename T>
-Omega_h::Read<T> NumpyToOmegaHRead(const NumpyInput<T>& arr)
-{
-  Rank1View<const T, HostMemorySpace, Kokkos::layout_right> host(
-    arr.data(), static_cast<LO>(arr.size()));
-  if constexpr (is_host_accessible_v<DeviceMemorySpace>) {
-    return Omega_h::Read<T>(Omega_h::Write<T>(
-      Kokkos::View<T*>(const_cast<T*>(host.data_handle()), host.extent(0))));
-  } else {
-    Kokkos::View<T*, DeviceMemorySpace> device(
-      Kokkos::view_alloc(Kokkos::WithoutInitializing, "numpy_to_omega_h"),
-      host.extent(0));
-    DeepCopyMismatchLayouts(device, MakeUnmanagedKokkosView(host));
-    return Omega_h::Read<T>(Omega_h::Write<T>(device));
-  }
-}
-
-template <typename T>
-py::array_t<T> ToNumpy(Omega_h::Read<T> arr)
-{
-  Rank1View<const T, DeviceMemorySpace, Kokkos::layout_right> view(arr.data(),
-                                                                   arr.size());
-  // Only the host branch dereferences owner; on device builds ViewToNumpy
-  // copies before the Read goes out of scope.
-  py::object owner = py::none();
-  if constexpr (is_host_accessible_v<DeviceMemorySpace>) {
-    owner = py::capsule(new Omega_h::Read<T>(std::move(arr)), [](void* p) {
-      delete static_cast<Omega_h::Read<T>*>(p);
-    });
-  }
-  return ViewToNumpy(view, owner);
-}
 
 } // namespace pcms
 

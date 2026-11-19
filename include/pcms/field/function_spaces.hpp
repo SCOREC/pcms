@@ -25,7 +25,7 @@ enum class LagrangeBackend
   OmegaH
 };
 
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 inline constexpr LagrangeBackend DefaultLagrangeBackend =
   LagrangeBackend::MeshFields;
 #else
@@ -56,6 +56,7 @@ struct LagrangeOptions
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateSplineSpace(
   std::shared_ptr<const Geometry> geometry);
 
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
 /// An MLS reconstruction space on a point-cloud geometry (its sites are the
 /// DOF holders); `options` are the reconstruction parameters, the support
 /// search is the geometry's. Spaces on one geometry accept each other's bound
@@ -64,6 +65,7 @@ struct LagrangeOptions
 [[nodiscard]] std::shared_ptr<const FunctionSpace>
 CreatePolynomialReconstructionSpace(std::shared_ptr<const Geometry> geometry,
                                     MLSOptions options = {});
+#endif
 
 /// Layout without degrees of freedom, for evaluation-only spaces that
 /// implement FunctionSpace outside PCMS (e.g. fields of an external code).

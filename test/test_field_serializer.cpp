@@ -154,6 +154,7 @@ TEST_CASE("Serializing an XGC field preserves inactive field entries")
 #endif
 
 #ifdef PCMS_ENABLE_OMEGA_H
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
 TEST_CASE("FieldSerializer round-trips a polynomial-reconstruction field")
 {
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
@@ -172,6 +173,7 @@ TEST_CASE("FieldSerializer round-trips a polynomial-reconstruction field")
 
   CheckSerializeDeserialize(field);
 }
+#endif
 
 TEST_CASE("FieldSerializer round-trips a uniform-grid field")
 {
@@ -252,6 +254,7 @@ TEST_CASE("FieldSerializer round-trips an order-0 Omega_h field")
 
   CheckSerializeDeserialize(field);
 }
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
 TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
 {
   std::vector<pcms::Real> coords{0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0};
@@ -282,4 +285,5 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   REQUIRE(after(2, 0) == 70.0);
   REQUIRE(after(3, 0) == 8.0);
 }
+#endif
 #endif

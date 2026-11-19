@@ -10,7 +10,7 @@ if(TARGET pcms_capi_core)
   target_include_directories(
     pcms_fortranapi_core
     PUBLIC
-      $<BUILD_INTERFACE:$<TARGET_PROPERTY:pcms::fortranapi,Fortran_MODULE_DIRECTORY>>
+      $<BUILD_INTERFACE:$<TARGET_PROPERTY:pcms::fortranapi::core,Fortran_MODULE_DIRECTORY>>
       $<INSTALL_INTERFACE:${CMAKE_INSTALL_LIBDIR}/fortran>)
   target_link_libraries(
     pcms_fortranapi_core
@@ -18,6 +18,7 @@ if(TARGET pcms_capi_core)
     PUBLIC Kokkos::kokkos)
 endif()
 
+if(TARGET pcms_capi_transfer)
 add_library(pcms_fortranapi_transfer pcms_interpolator.f90 interpolator_wrap.c pcms_mesh.f90 mesh_wrap.c)
 add_library(pcms::fortranapi::transfer ALIAS pcms_fortranapi_transfer)
 set_target_properties(pcms_fortranapi_transfer PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/fortran
@@ -26,14 +27,17 @@ set_target_properties(pcms_fortranapi_transfer PROPERTIES Fortran_MODULE_DIRECTO
 target_include_directories(pcms_fortranapi_transfer PUBLIC $<BUILD_INTERFACE:$<TARGET_PROPERTY:pcms::fortranapi::transfer,Fortran_MODULE_DIRECTORY>>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_LIBDIR}/fortran>)
 target_link_libraries(pcms_fortranapi_transfer PRIVATE pcms::capi::transfer PUBLIC Kokkos::kokkos)
+endif()
 
 if(TARGET pcms_fortranapi_core)
   INSTALL(DIRECTORY $<TARGET_PROPERTY:pcms::fortranapi::core,Fortran_MODULE_DIRECTORY>
           DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
-INSTALL(DIRECTORY $<TARGET_PROPERTY:pcms::fortranapi::transfer,Fortran_MODULE_DIRECTORY>
-        DESTINATION ${CMAKE_INSTALL_LIBDIR})
+if(TARGET pcms_fortranapi_transfer)
+  INSTALL(DIRECTORY $<TARGET_PROPERTY:pcms::fortranapi::transfer,Fortran_MODULE_DIRECTORY>
+          DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 
 # high level interface target
 add_library(pcms_fortranapi INTERFACE)
@@ -43,7 +47,9 @@ set_target_properties(pcms_fortranapi PROPERTIES EXPORT_NAME fortranapi)
 if(TARGET pcms_fortranapi_core)
   target_link_libraries(pcms_fortranapi INTERFACE pcms::fortranapi::core)
 endif()
-target_link_libraries(pcms_fortranapi INTERFACE pcms::fortranapi::transfer)
+if(TARGET pcms_fortranapi_transfer)
+  target_link_libraries(pcms_fortranapi INTERFACE pcms::fortranapi::transfer)
+endif()
 
 
 install(
@@ -78,6 +84,7 @@ if(TARGET pcms_fortranapi_core)
     DESTINATION ${PCMS_INSTALL_CMAKEDIR})
 endif()
 
+if(TARGET pcms_fortranapi_transfer)
 install(
   TARGETS pcms_fortranapi_transfer
   EXPORT pcms_fortranapi_transfer-targets
@@ -92,3 +99,4 @@ install(
   EXPORT pcms_fortranapi_transfer-targets
   NAMESPACE pcms::
   DESTINATION ${PCMS_INSTALL_CMAKEDIR})
+endif()

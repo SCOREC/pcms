@@ -1,8 +1,10 @@
 // Uses PCMS core through its installed public headers only, without Omega_h
 // or MPI: evaluates a linear function with QueryPoints in a linear Lagrange
-// space on a uniform grid and in a polynomial-reconstruction (MLS) space on a
-// point cloud.
+// space on a uniform grid and, when PCMS has polynomial reconstruction
+// (PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION), in a polynomial-reconstruction
+// space on a point cloud.
 
+#include <pcms/configuration.hpp>
 #include <pcms/backends/point_cloud/geometry.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/function_spaces.hpp>
@@ -22,8 +24,10 @@ namespace
 {
 // linear interpolation reproduces a linear function exactly
 constexpr pcms::Real LagrangeTol = 1e-10;
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
 // linear MLS on a 9x9 point grid, as the MLS reproduction tests
 constexpr pcms::Real MLSTol = 5e-3;
+#endif
 
 pcms::Real Linear(pcms::Real x, pcms::Real y)
 {
@@ -103,6 +107,10 @@ int main(int argc, char** argv)
         pcms::uniform_grid::CreateGeometry(grid, cartesian), 1, 1),
       cartesian, LagrangeTol);
 
+    mismatches = lagrange;
+    std::printf("uniform-grid Lagrange: %d mismatches\n", lagrange);
+
+#ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
     // linear MLS on a point cloud (a 9x9 grid of points)
     const int n = 9;
     std::vector<pcms::Real> sites;
@@ -122,10 +130,9 @@ int main(int argc, char** argv)
         pcms::MLSOptions{.degree = 1}),
       cartesian, MLSTol);
 
-    mismatches = lagrange + mls;
-    std::printf("uniform-grid Lagrange: %d mismatches; point-cloud MLS: %d "
-                "mismatches\n",
-                lagrange, mls);
+    mismatches += mls;
+    std::printf("point-cloud MLS: %d mismatches\n", mls);
+#endif
   }
   return mismatches == 0 ? 0 : 1;
 }

@@ -1,5 +1,5 @@
-# the C API client wraps the coupler
-if(TARGET pcms::coupler)
+# the C API client wraps the coupler with XGC fields
+if(PCMS_BUILD_CAPI_CLIENT)
   add_library(pcms_capi_core client.cpp kokkos.cpp)
   add_library(pcms::capi::core ALIAS pcms_capi_core)
 
@@ -33,6 +33,9 @@ target_sources(pcms_capi_core
   PRIVATE ${CAPI_CORE_HEADERS_PRIVATE})
 endif()
 
+# the C transfer API interpolates on Omega_h meshes by polynomial
+# reconstruction
+if(PCMS_BUILD_CAPI_TRANSFER)
 add_library(pcms_capi_transfer mesh.cpp interpolator.cpp kokkos.cpp)
 add_library(pcms::capi::transfer ALIAS pcms_capi_transfer)
 target_link_libraries(pcms_capi_transfer PUBLIC MPI::MPI_C PRIVATE pcms::transfer
@@ -60,6 +63,8 @@ target_sources(pcms_capi_transfer
   PUBLIC FILE_SET transfer TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
          FILES ${CAPI_TRANSFER_HEADERS_PUBLIC}
   PRIVATE ${CAPI_TRANSFER_HEADERS_PRIVATE})
+endif()
+
 # high level interface target
 add_library(pcms_capi INTERFACE)
 add_library(pcms::capi ALIAS pcms_capi)
@@ -68,7 +73,9 @@ set_target_properties(pcms_capi PROPERTIES EXPORT_NAME capi)
 if(TARGET pcms_capi_core)
   target_link_libraries(pcms_capi INTERFACE pcms::capi::core)
 endif()
-target_link_libraries(pcms_capi INTERFACE pcms::capi::transfer)
+if(TARGET pcms_capi_transfer)
+  target_link_libraries(pcms_capi INTERFACE pcms::capi::transfer)
+endif()
 install(
   TARGETS pcms_capi
   EXPORT pcms_capi-targets
@@ -100,6 +107,7 @@ if(TARGET pcms_capi_core)
     DESTINATION ${PCMS_INSTALL_CMAKEDIR})
 endif()
 
+if(TARGET pcms_capi_transfer)
 install(
   TARGETS pcms_capi_transfer
   EXPORT pcms_capi_transfer-targets
@@ -113,3 +121,4 @@ install(
   EXPORT pcms_capi_transfer-targets
   NAMESPACE pcms::
   DESTINATION ${PCMS_INSTALL_CMAKEDIR})
+endif()

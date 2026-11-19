@@ -24,3 +24,15 @@ endfunction()
 pcms_renamed_option(PCMS_ENABLE_Python PCMS_ENABLE_PYTHON)
 pcms_renamed_option(PCMS_ENABLE_Fortran PCMS_ENABLE_FORTRAN)
 pcms_renamed_option(PETSC_LINK_STATIC PCMS_PETSC_LINK_STATIC)
+pcms_renamed_option(PCMS_ENABLE_MESHFIELDS PCMS_ENABLE_OMEGA_H_MESHFIELDS)
+pcms_renamed_option(PCMS_ENABLE_PETSC PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+
+# pcms_removed_option(<old> <reason>)
+#   Options that no longer exist: if <old> is set, say that it has no effect
+#   (for one release) and drop it from the cache.
+function(pcms_removed_option old reason)
+  if(DEFINED ${old})
+    message(DEPRECATION "${old} is removed and has no effect (${reason}).")
+    unset(${old} CACHE)
+  endif()
+endfunction()

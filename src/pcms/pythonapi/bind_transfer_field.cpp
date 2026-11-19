@@ -15,7 +15,7 @@
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
 #include "pcms/utility/types.hpp"
-#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include <cstdint>
 #endif
@@ -110,7 +110,7 @@ void bind_transfer_field_module(py::module& m)
     py::arg("source_space"), py::arg("target_space"),
     "Create a copy operator for function spaces sharing a layout.");
 
-#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
   // Mass-matrix formulation for the Galerkin projections. Bound before the
   // projection classes so it can be used as a default argument value.
   py::enum_<MassMatrixType>(m, "MassMatrixType")

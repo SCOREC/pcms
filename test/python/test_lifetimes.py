@@ -8,7 +8,14 @@ import gc
 import numpy as np
 import pytest
 import pcms
-import PyOmega_h as omega_h
+try:
+    import PyOmega_h as omega_h
+except ImportError:  # pcms built without Omega_h
+    omega_h = None
+
+requires_polynomial_reconstruction = pytest.mark.skipif(
+    not pcms.features["polynomial_reconstruction"],
+    reason="pcms was built without POLYNOMIAL_RECONSTRUCTION")
 
 
 def _linear(x, y):
@@ -61,6 +68,7 @@ def test_point_evaluator_outlives_its_source_and_bound(world):
     np.testing.assert_allclose(out, [_linear(*p) for p in points], atol=1e-12)
 
 
+@requires_polynomial_reconstruction
 def test_point_cloud_geometry_outlives_the_mesh_geometry(world):
     mesh = _mesh(world)
     geometry = pcms.omega_h.create_geometry(mesh)

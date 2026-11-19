@@ -22,7 +22,7 @@
 #include "pcms/backends/omega_h/omega_h.hpp"
 #endif
 #include "pcms/field/function_spaces.hpp"
-#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
 #include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
@@ -740,7 +740,7 @@ inline void CheckOwnersMatchSearch(CoordinateView<DeviceMemorySpace> points,
 }
 #endif // PCMS_ENABLE_OMEGA_H
 
-#if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
+#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
 // Evaluates source_field at the integrator's points, searched on the source
 // space's geometry, and assembles the load vector.
 inline void EvaluateAndAssemble(
@@ -756,7 +756,7 @@ inline void EvaluateAndAssemble(
   evaluator->Evaluate(source_field, TagLike(source_field, sampled));
   integrator.Assemble(MakeConstRank2View(sampled));
 }
-#endif // PCMS_ENABLE_PETSC && PCMS_ENABLE_MESHFIELDS
+#endif // PCMS_ENABLE_CONSERVATIVE_PROJECTION
 
 } // namespace pcms::test
 

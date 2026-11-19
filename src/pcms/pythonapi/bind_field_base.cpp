@@ -5,7 +5,6 @@
 #include <stdexcept>
 #include <string>
 
-#include <Omega_h_library.hpp>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -16,16 +15,12 @@
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/geometry/bound_points.hpp"
 #include "pcms/field/differential_operator.hpp"
-#include "pcms/field/mls_options.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
-#include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/backends/uniform_grid/geometry.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/field_layout.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/field/function_spaces.hpp"
-#include "pcms/backends/point_cloud/geometry.hpp"
 #include "pcms/field/gradient_source.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/query_points.hpp"
@@ -35,11 +30,6 @@
 #include "pcms/utility/uniform_grid.hpp"
 #include "pcms/pythonapi/numpy_array_transform.hpp"
 #include "pcms/pythonapi/py_value_types.hpp"
-
-namespace pcms
-{
-using omega_h::CreateGeometry;
-} // namespace pcms
 
 namespace py = pybind11;
 
@@ -258,48 +248,10 @@ void bind_create_field_module(py::module& m)
       "binds them with owner hints, which are verified (with a map the hints "
       "are ignored)");
 
-  // one submodule per backend namespace (pcms::omega_h -> pcms.omega_h)
-  auto omega_h_module = m.def_submodule("omega_h", "Omega_h backend");
+  // one submodule per backend namespace (pcms::uniform_grid ->
+  // pcms.uniform_grid); the others are in their own files
   auto uniform_grid_module =
     m.def_submodule("uniform_grid", "Uniform-grid backend");
-  auto point_cloud_module =
-    m.def_submodule("point_cloud", "Point-cloud backend");
-  omega_h_module.def(
-    "create_geometry",
-    [](std::shared_ptr<Omega_h::Mesh> mesh,
-       const std::optional<Immutable<CoordinateSystem>>& system, int divisions,
-       std::string global_id_name,
-       const std::optional<py::array_t<
-         std::int8_t, py::array::c_style | py::array::forcecast>>& owned_mask) {
-      auto library =
-        py::cast(mesh->library(), py::return_value_policy::reference)
-          .cast<std::shared_ptr<Omega_h::Library>>();
-      omega_h::OmegaHGeometryOptions options;
-      options.search.divisions = divisions;
-      options.global_id_name = std::move(global_id_name);
-      if (owned_mask) {
-        if (owned_mask->ndim() != 1) {
-          throw py::value_error(
-            "create_geometry: owned_mask must be a 1D array");
-        }
-        Omega_h::HostWrite<Omega_h::I8> host(
-          static_cast<Omega_h::LO>(owned_mask->size()));
-        std::copy(owned_mask->data(), owned_mask->data() + owned_mask->size(),
-                  host.data());
-        options.owned_mask = Omega_h::Read<Omega_h::I8>(host.write());
-      }
-      return Immutable<Geometry>{
-        CreateGeometry(std::move(mesh), std::move(library),
-                       CartesianIfNone(system), std::move(options))};
-    },
-    py::arg("mesh").none(false), py::arg("system") = py::none(),
-    py::arg("divisions") = 0, py::arg("global_id_name") = "global",
-    py::arg("owned_mask") = py::none(),
-    "Create the geometry of an Omega_h mesh: its coordinate system (default "
-    "Cartesian) and point search (`divisions` grid divisions per axis, 0 to "
-    "derive them from the element count); `global_id_name` names the tag "
-    "that holds the global entity ids; `owned_mask` is a per-vertex (int8) "
-    "ownership override, by default the mesh's ownership");
 
   uniform_grid_module.def(
     "create_geometry",
@@ -565,99 +517,6 @@ void bind_create_field_module(py::module& m)
     },
     py::arg("geometry"),
     "Create a bicubic spline FunctionSpace on a 2D uniform-grid geometry");
-
-  // Configuration for MLS evaluation of polynomial reconstruction spaces.
-  py::class_<MLSOptions>(m, "MLSOptions")
-    .def(py::init<>(), "Default MLSOptions")
-    .def_readwrite("degree", &MLSOptions::degree)
-    .def_readwrite("lambda_reg", &MLSOptions::lambda)
-    .def_readwrite("tol", &MLSOptions::tol)
-    .def_readwrite("decay_factor", &MLSOptions::decay_factor)
-    .def_readwrite("basis", &MLSOptions::basis);
-
-  py::class_<NeighbourhoodOptions>(m, "NeighbourhoodOptions",
-                                   "Support search of a point-cloud geometry")
-    .def(py::init<>(), "Default NeighbourhoodOptions")
-    .def_readwrite("radius", &NeighbourhoodOptions::radius)
-    .def_readwrite("min_supports", &NeighbourhoodOptions::min_supports)
-    .def_readwrite("adapt_radius", &NeighbourhoodOptions::adapt_radius);
-
-  m.def(
-    "create_polynomial_reconstruction_space",
-    [](const Immutable<Geometry>& geometry, MLSOptions options) {
-      return Immutable<FunctionSpace>{
-        CreatePolynomialReconstructionSpace(geometry.ptr, options)};
-    },
-    py::arg("geometry"), py::arg("options") = MLSOptions{},
-    "Create an MLS reconstruction FunctionSpace on a point-cloud geometry "
-    "(its sites are the DOF holders); `options` are the reconstruction "
-    "parameters, the support search is the geometry's");
-
-  point_cloud_module.def(
-    "create_geometry",
-    [](const PyCoordinateView& coords, NeighbourhoodOptions neighbourhood) {
-      auto values = NumpyInput<Real>::ensure(coords.values);
-      return Immutable<Geometry>{point_cloud::CreateGeometry(
-        CoordinateView<HostMemorySpace>(coords.system,
-                                        NumpyToHostView<2, Real>(values)),
-        std::move(neighbourhood))};
-    },
-    py::arg("coords"), py::arg("neighbourhood") = NeighbourhoodOptions{},
-    "Create a point-cloud geometry whose sites are the points of a "
-    "CoordinateView; `neighbourhood` is its support search");
-
-  point_cloud_module.def(
-    "create_geometry",
-    [](const Immutable<FieldLayout>& sites,
-       NeighbourhoodOptions neighbourhood) {
-      return Immutable<Geometry>{
-        point_cloud::CreateGeometry(sites.ptr, std::move(neighbourhood))};
-    },
-    py::arg("sites"), py::arg("neighbourhood") = NeighbourhoodOptions{},
-    "Create a point-cloud geometry whose sites are the DOF holders of a "
-    "layout; `neighbourhood` is its support search");
-
-  omega_h_module.def(
-    "create_point_cloud_geometry",
-    [](const Immutable<Geometry>& geometry, int entity_dim,
-       NeighbourhoodOptions neighbourhood) {
-      try {
-        return Immutable<Geometry>{omega_h::CreatePointCloudGeometry(
-          geometry.ptr, entity_dim, std::move(neighbourhood))};
-      } catch (const pcms_error& e) {
-        throw py::value_error(e.what());
-      }
-    },
-    py::arg("geometry"), py::arg("entity_dim"),
-    py::arg("neighbourhood") = NeighbourhoodOptions{},
-    "A point-cloud geometry whose sites are the vertices (entity_dim 0) or "
-    "the element centroids (the mesh dimension) of the mesh of an Omega_h "
-    "geometry; the support search uses the mesh adjacency. Spaces made on the "
-    "same geometry object share its entities, so binding the cloud at their "
-    "DOF holders (bind(space)) starts from those entities.");
-  omega_h_module.def(
-    "create_uniform_grid_binary_field",
-    [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return omega_h::CreateUniformGridBinaryField(mesh, divisions);
-    },
-    py::arg("mesh"), py::arg("divisions"),
-    "Create a 2D vertex mask field indicating inside/outside mesh");
-
-  omega_h_module.def(
-    "create_uniform_grid_from_mesh",
-    [](Omega_h::Mesh& mesh, const std::array<LO, 2>& divisions) {
-      return pcms::omega_h::CreateUniformGridFromMesh<2>(mesh, divisions);
-    },
-    py::arg("mesh"), py::arg("divisions"),
-    "Create a 2D uniform grid from an Omega_h mesh");
-
-  omega_h_module.def(
-    "create_uniform_grid_from_mesh",
-    [](Omega_h::Mesh& mesh, const std::array<LO, 3>& divisions) {
-      return pcms::omega_h::CreateUniformGridFromMesh<3>(mesh, divisions);
-    },
-    py::arg("mesh"), py::arg("divisions"),
-    "Create a 3D uniform grid from an Omega_h mesh");
 }
 
 } // namespace pcms

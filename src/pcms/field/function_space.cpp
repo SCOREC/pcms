@@ -2,7 +2,7 @@
 #include "pcms/configuration.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/common.hpp"
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 #include "pcms/backends/omega_h_meshfields/layout.hpp"
 #include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
@@ -24,7 +24,7 @@ template <typename T>
 void ValidateWrappedFieldData(const FieldLayout& layout,
                               const FieldData<T>& data)
 {
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
   if (dynamic_cast<const omega_h_meshfields::MeshFieldsAdapterLayout*>(
         &layout) != nullptr &&
       dynamic_cast<const omega_h_meshfields::MeshFieldsFieldData<T>*>(&data) ==

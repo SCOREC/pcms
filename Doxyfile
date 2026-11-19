@@ -2280,16 +2280,15 @@ INCLUDE_FILE_PATTERNS  =
 # recursively expanded use the := operator instead of the = operator.
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
-PREDEFINED             = PCMS_ENABLE_SERVER \
-                         PCMS_ENABLE_CLIENT \
+PREDEFINED             = PCMS_ENABLE_OMEGA_H \
+                         PCMS_ENABLE_OMEGA_H_MESHFIELDS \
+                         PCMS_ENABLE_CONSERVATIVE_PROJECTION \
+                         PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION \
                          PCMS_ENABLE_XGC \
-                         PCMS_ENABLE_OMEGA_H \
                          PCMS_ENABLE_MFEM \
+                         PCMS_ENABLE_COUPLER \
                          PCMS_ENABLE_C \
-                         PCMS_ENABLE_TRANSIENT \
                          PCMS_ENABLE_FORTRAN \
-                         PCMS_ENABLE_MESHFIELDS \
-                         PCMS_ENABLE_PETSC \
                          KOKKOS_INLINE_FUNCTION= \
                          KOKKOS_FUNCTION= \
                          KOKKOS_FORCEINLINE_FUNCTION= \

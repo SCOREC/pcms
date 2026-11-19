@@ -261,7 +261,8 @@ jobs:
 
     - name: Set PCMS PETSc options
       run: |
-        echo "PCMS_ENABLE_PETSC=-DPCMS_ENABLE_PETSC=${{ matrix.petsc }}" >> $GITHUB_ENV
+        # conservative projection needs both PETSc and MeshFields
+        echo "PCMS_ENABLE_CONSERVATIVE_PROJECTION=-DPCMS_ENABLE_CONSERVATIVE_PROJECTION=${{ matrix.petsc == 'ON' && matrix.meshfields == 'ON' && 'ON' || 'OFF' }}" >> $GITHUB_ENV
         if [ "${{ matrix.petsc }}" = "ON" ]; then
           echo "PCMS_PETSC_OPTIONS=-DPCMS_PETSC_LINK_STATIC=ON -DPETSC_DIR=${{ runner.temp }}/petsc -DPETSC_ARCH=ubuntu-kokkos" >> $GITHUB_ENV
         else
@@ -279,7 +280,7 @@ jobs:
 
     - name: Set PCMS MeshFields options
       run: |
-        echo "PCMS_ENABLE_MESHFIELDS=-DPCMS_ENABLE_MESHFIELDS=${{ matrix.meshfields }}" >> $GITHUB_ENV
+        echo "PCMS_ENABLE_OMEGA_H_MESHFIELDS=-DPCMS_ENABLE_OMEGA_H_MESHFIELDS=${{ matrix.meshfields }}" >> $GITHUB_ENV
         if [ "${{ matrix.meshfields }}" = "ON" ]; then
           echo "PCMS_MESHFIELDS_DIR=-Dmeshfields_DIR=${{ runner.temp }}/build-meshFields/install/lib/cmake/meshfields" >> $GITHUB_ENV
         else
@@ -300,8 +301,15 @@ jobs:
                   -DCMAKE_CXX_COMPILER=`which mpicxx`
                   -DCMAKE_Fortran_COMPILER=`which mpifort`
                   -DMPIEXEC_PREFLAGS="--oversubscribe"
-                  ${{ env.PCMS_ENABLE_MESHFIELDS }}
-                  ${{ env.PCMS_ENABLE_PETSC }}
+                  -DPCMS_ENABLE_OMEGA_H=ON
+                  -DPCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION=ON
+                  -DPCMS_ENABLE_XGC=ON
+                  -DPCMS_ENABLE_COUPLER=ON
+                  -DPCMS_ENABLE_C=ON
+                  -DPCMS_ENABLE_FORTRAN=ON
+                  -DPCMS_ENABLE_EXAMPLES=ON
+                  ${{ env.PCMS_ENABLE_OMEGA_H_MESHFIELDS }}
+                  ${{ env.PCMS_ENABLE_CONSERVATIVE_PROJECTION }}
                   ${{ env.PCMS_PETSC_OPTIONS }}
                   -DPCMS_TIMEOUT=10
                   -DPCMS_ENABLE_PYTHON=${{ matrix.python_api }}
@@ -311,7 +319,6 @@ jobs:
                   -Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev
                   -DMPIEXEC_EXECUTABLE=`which mpirun`
                   -DADIOS2_DIR=${{ runner.temp }}/build-ADIOS2/install/lib/cmake/adios2
-                  -Dperfstubs_DIR=${{ runner.temp }}/build-perfstubs/install/lib/cmake
                   -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
                   -DKokkosKernels_DIR=${{ runner.temp }}/build-kokkos-kernels/install/lib/cmake/KokkosKernels/
                   -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases'
@@ -390,6 +397,110 @@ jobs:
 
     - name: Check public header includes
       run: python3 tools/check-public-includes.py
+
+  # Kokkos (Serial) and MPI only: none of Omega_h, redev, ADIOS2, KokkosKernels,
+  # MeshFields or PETSc is built, and the options of the optional capabilities
+  # keep their default (OFF). Builds the C++ library and the Python module.
+  minimal-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    env:
+      OMP_NUM_THREADS: '1'
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+
+    - name: Update packages
+      run: sudo apt-get update
+
+    - name: Install openmpi, cmake and Python
+      run: |
+        sudo apt-get install -yq libopenmpi-dev openmpi-bin cmake python3 python3-pip python3-dev python3-pybind11 pybind11-dev
+        pip3 install numpy pytest
+
+    - uses: actions/checkout@v4
+      with:
+        # full history and tags, so the version is derived from git describe
+        fetch-depth: 0
+
+    - name: build Catch2
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'Catch2'
+        repo-path: 'catchorg/Catch2'
+        repo-ref: 'v3.11.0'
+        cache: true
+
+    # shared, as for the Python builds above (same cache entry)
+    - name: build kokkos
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'kokkos'
+        repo-path: 'kokkos/kokkos'
+        repo-ref: '4.6.01'
+        cache: true
+        cache-suffix: '-shared'
+        options: '-DCMAKE_CXX_STANDARD=20
+                  -DBUILD_SHARED_LIBS=ON
+                  -DKokkos_ENABLE_SERIAL=ON
+                  -DKokkos_ENABLE_OPENMP=OFF
+                  -DKokkos_ENABLE_CUDA=OFF
+                  -DKokkos_ENABLE_CUDA_LAMBDA=OFF
+                  -DKokkos_ENABLE_CUDA_CONSTEXPR=OFF'
+
+    - name: checkout pcms_testcases
+      uses: actions/checkout@v3
+      with:
+        repository: jacobmerson/pcms_testcases
+        path: pcms_testcases
+
+    - name: build pcms
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'pcms'
+        repo-path: 'SCOREC/pcms'
+        repo-ref: ''
+        cache: false
+        fetch-depth: 0
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_CXX_COMPILER=`which mpicxx`
+                  -DMPIEXEC_PREFLAGS="--oversubscribe"
+                  -DMPIEXEC_EXECUTABLE=`which mpirun`
+                  -DPCMS_ENABLE_PYTHON=ON
+                  -DPCMS_TIMEOUT=10
+                  -DCatch2_DIR=${{ runner.temp }}/build-Catch2/install/lib/cmake/Catch2
+                  -DKokkos_DIR=${{ runner.temp }}/build-kokkos/install/lib/cmake/Kokkos
+                  -DPCMS_TEST_DATA_DIR=$PWD/pcms_testcases'
+
+    # the core tests and public_headers_self_contained
+    - name: Run CTest
+      run: ctest --test-dir ${{ runner.temp }}/build-pcms --output-on-failure
+
+    - name: Run Python API tests
+      run: |
+        export LD_LIBRARY_PATH=${{ runner.temp }}/build-kokkos/install/lib:$LD_LIBRARY_PATH
+        export PYTHONPATH=${{ runner.temp }}/build-pcms/install/lib/python3.12/site-packages:$PYTHONPATH
+        pytest -v --tb=short -p no:cacheprovider test/python
+
+    - name: Check public header includes
+      run: python3 tools/check-public-includes.py
+
+    # a consumer of the install tree finds only Kokkos and MPI
+    - name: Test PCMS Installation
+      run: |
+        export LD_LIBRARY_PATH=${{ runner.temp }}/build-kokkos/install/lib:$LD_LIBRARY_PATH
+        cmake \
+          -B ${{github.workspace}}/examples/core-usage-example/build \
+          -S ${{github.workspace}}/examples/core-usage-example/ \
+          -Dpcms_DIR=${{ runner.temp }}/build-pcms/install/lib/cmake/pcms \
+          -DCMAKE_PREFIX_PATH="${{ runner.temp }}/build-kokkos/install" \
+          -DCMAKE_CXX_COMPILER=`which mpicxx`
+        cmake --build ${{github.workspace}}/examples/core-usage-example/build
+        ${{github.workspace}}/examples/core-usage-example/build/pcms_core_test
 
   deploy-docs:
     needs: test-build

@@ -53,7 +53,7 @@ TEST_CASE("interpolate linear 2d omega_h_field")
   }
 }
 
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 TEST_CASE("interpolate quadratic 2d meshfields_field")
 {
   auto lib = Omega_h::Library{};

@@ -14,7 +14,7 @@
 #include "pcms/configuration.hpp"
 #include "pcms/backends/omega_h/field_data.hpp"
 #include "pcms/field/detail/simple_field_data.hpp"
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 #include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
 #include "pcms/field/field.hpp"
@@ -103,7 +103,7 @@ Kokkos::View<T**, pcms::HostMemorySpace> ValuesWithGhostsHost(
     }
     return host;
   }
-#ifdef PCMS_ENABLE_MESHFIELDS
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
   if (const auto* mesh_fields =
         dynamic_cast<const pcms::omega_h_meshfields::MeshFieldsFieldData<T>*>(
           &field.GetData())) {
